@@ -81,8 +81,9 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 | POST | `/shots/:id/branch` | Branch Point 保存 + Snapshot 生成（Body: `branch_point_type`=`scene\|shot\|frame`、`frame`時は`offset_seconds`を指定。`scene`指定時は当該Shotの所属Sceneを分岐点とする） | F-17 |
 | GET | `/branches/:id` | Branch 詳細（フラグメント） | F-17 |
 | POST | `/shots/:id/versions/:versionNumber/restore` | Shot/Take（`prompt_version`）の指定バージョンへ復元 | F-28 |
-| POST | `/projects/:id/world-state/versions/:versionNumber/restore` | World State の指定バージョンへ復元 | F-28 |
-| POST | `/branches/:id/versions/:versionNumber/restore` | Branch の指定バージョンへ復元 | F-28 |
+| POST | `/projects/:id/world-state/versions/:versionNumber/restore` | 主系列（トランク、`branch_id`=NULL）World State の指定バージョンへ復元 | F-28 |
+| POST | `/branches/:branchId/world-state/versions/:versionNumber/restore` | 当該Branchが独立して持つ World State バージョン系列の指定バージョンへ復元 | F-28 |
+| POST | `/branches/:id/versions/:versionNumber/restore` | Branch自体（`branch_version`）の指定バージョンへ復元 | F-28 |
 
 ### 2.5 Director Command
 
@@ -117,7 +118,7 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 | PUT | `/projects/:id/characters/:characterId` | Character 属性更新（wardrobe/hairstyle/personality 等、LOCK対象項目は423） | F-09 |
 | PUT | `/projects/:id/products/:productId` | Product 属性更新（material/orientation/condition 等、LOCK対象項目は423） | F-09 |
 | PUT | `/projects/:id/locations/:locationId` | Location 属性更新（lighting_state/weather 等、LOCK対象項目は423） | F-09 |
-| GET | `/projects/:id/world-state` | 現在の World State（Character/Product/Location/Camera/Story）フラグメント取得 | F-09, F-10 |
+| GET | `/projects/:id/world-state` | 現在の World State（Character/Product/Location/Camera/Story）フラグメント取得。クエリ `branch_id`（省略時=主系列トランク）で対象Branchの派生World Stateを取得 | F-09, F-10 |
 
 ## 3. API ルート（Huma, JSON, `/api/v1`）
 
@@ -208,3 +209,4 @@ Response 200:
 | 1.8 | 2026-09-28 | `PUT /projects/:id/locks`（Story/Music等ShotスコープでないパラメータのAUTO/MANUAL/LOCK設定）を追加 | F-05がShot外パラメータもLOCK対象とするのに対し `PUT /shots/:id/locks` しか存在しなかったため（整合性レビュー指摘） |
 | 1.9 | 2026-09-28 | `GET /projects/:id/cost-summary`（Shot/Scene/Project別コスト集計）を追加 | components/overview.mdの`cost_summary_panel`・non-functional.md §6の「コスト可視化」に対応するエンドポイントが未定義だったため（整合性レビュー指摘） |
 | 1.10 | 2026-09-28 | `PUT /projects/:id/locks` の概要から「等」を削除し「Story/Music という」に修正 | 対象を`target_type`=`story\|music`の2値に限定する記述と「等」（他にもあることを示唆）が自己矛盾していたため（品質レビュー指摘） |
+| 1.11 | 2026-09-28 | `GET /projects/:id/world-state` に `branch_id` クエリを追加。`POST /branches/:branchId/world-state/versions/:versionNumber/restore`（Branch専用World State復元）を追加し、既存の `/projects/:id/world-state/.../restore` は主系列（トランク）専用と明記 | er.mdの`world_state_version`が`(project_id, branch_id, version_number)`UNIQUEとなったのに対し、既存エンドポイントにBranch指定手段がなくトランクとBranchの`version_number`衝突時に対象を一意特定できなかったため（整合性レビュー指摘） |
