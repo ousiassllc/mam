@@ -25,12 +25,12 @@ erDiagram
     SCENE ||--o{ SHOT : contains
     SHOT ||--o{ PROMPT_VERSION : has
     SHOT ||--o{ STATE_DIFF : produces
-    SHOT }o--|| TAKE : selected_take_ref
+    SHOT }o--o| TAKE : selected_take_ref
 
     PROMPT_VERSION ||--o{ TAKE : generates
     TAKE ||--o| JUDGE_RESULT : evaluated_by
     JUDGE_RESULT ||--o| REPAIR_ACTION : triggers
-    REPAIR_ACTION }o--|| TAKE : produces_next
+    REPAIR_ACTION }o--o| TAKE : produces_next
 
     STATE_DIFF }o--|| WORLD_STATE_VERSION : creates
     BRANCH }o--|| WORLD_STATE_VERSION : snapshot_of
@@ -308,3 +308,4 @@ erDiagram
 | 1.1 | 2026-09-28 | 全体ER図で `SHOT` から自分自身への誤った自己参照になっていた `selected_take_ref` の関係定義を `SHOT` → `TAKE` へ修正 | `shot.selected_take_id` が `take.id` への FK である実際のテーブル定義と図の関係定義が矛盾していたための表記修正 |
 | 1.2 | 2026-09-28 | 全体ER図の `PROJECT` エンティティに `mode`/`confirmation_level`/`production_template`/`quality_policy`/`project_budget_ceiling`/`shot_budget_ceiling` 属性を追加し、`project` テーブル定義の制約説明を更新 | F-02/F-03/F-21/F-22 に対応する `PUT /projects/:id/mode` 等のAPIエンドポイントの書き込み先カラムが仕様上存在しなかったため（整合性レビュー指摘） |
 | 1.3 | 2026-09-28 | `BRAND_CONSTRAINT` に `enforcement_level`（`lock/advisory`）カラムを追加 | F-23/UC-9の「LOCK違反はスコアに関係なくFAIL」を判定するための強制レベル区分が存在しなかったため（整合性レビュー指摘） |
+| 1.4 | 2026-09-28 | 全体ER図の `SHOT }o--\|\| TAKE` / `REPAIR_ACTION }o--\|\| TAKE` のカーディナリティを `}o--o\|`（zero-or-one）へ修正 | `shot.selected_take_id`・`repair_action.resulting_take_id` は §3 でNULL許容と明記されているのに図では「exactly one」表記になっていたため（品質レビュー指摘、自動修正） |
