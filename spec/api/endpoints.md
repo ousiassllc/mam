@@ -48,7 +48,7 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 | PUT | `/projects/:id/quality-policy` | FAST / BALANCED / MAX QUALITY 設定 | F-22 |
 | PUT | `/projects/:id/budget` | Project/Shot budget ceiling 設定 | F-22 |
 | PUT | `/projects/:id/production-template` | PRODUCT/CM・DRAMA・ANIME・SNS/SHORT VIDEO 切替 | F-21 |
-| PUT | `/projects/:id/locks` | Story/Music 等 Shot に属さないパラメータの AUTO/MANUAL/LOCK 設定（`target_type`=`story\|music` を受理） | F-05 |
+| PUT | `/projects/:id/locks` | Story/Music という Shot に属さないパラメータの AUTO/MANUAL/LOCK 設定（`target_type`=`story\|music` を受理） | F-05 |
 
 ### 2.2 Scene / Shot / Lock
 
@@ -207,3 +207,4 @@ Response 200:
 | 1.7 | 2026-09-28 | 復元エンドポイントをスコープ別に分割（Shot/Take用に加え `POST /projects/:id/world-state/versions/:versionNumber/restore`・`POST /branches/:id/versions/:versionNumber/restore` を追加） | F-28「Shot/Take/Branch/State」全対象の復元を単一のShotスコープパスでは表現できなかったため（整合性レビュー指摘） |
 | 1.8 | 2026-09-28 | `PUT /projects/:id/locks`（Story/Music等ShotスコープでないパラメータのAUTO/MANUAL/LOCK設定）を追加 | F-05がShot外パラメータもLOCK対象とするのに対し `PUT /shots/:id/locks` しか存在しなかったため（整合性レビュー指摘） |
 | 1.9 | 2026-09-28 | `GET /projects/:id/cost-summary`（Shot/Scene/Project別コスト集計）を追加 | components/overview.mdの`cost_summary_panel`・non-functional.md §6の「コスト可視化」に対応するエンドポイントが未定義だったため（整合性レビュー指摘） |
+| 1.10 | 2026-09-28 | `PUT /projects/:id/locks` の概要から「等」を削除し「Story/Music という」に修正 | 対象を`target_type`=`story\|music`の2値に限定する記述と「等」（他にもあることを示唆）が自己矛盾していたため（品質レビュー指摘） |
