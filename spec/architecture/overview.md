@@ -15,8 +15,8 @@
 
 | レイヤー | 技術 | 役割 |
 |---------|------|------|
-| デスクトップシェル | Wails v3 | Go バックエンドとネイティブ WebView（WebView2/WKWebView/WebKitGTK）を単一バイナリに統合 |
-| サーバーフレームワーク | Go + Gin | ルーティング + SSR。Wails の AssetServer に `http.Handler` としてそのままマウントする |
+| 実行方式 | Go net/http（Gin） + ブラウザ | ローカルループバック（127.0.0.1）で SSR+HTMX を配信し、起動時に既定ブラウザを自動オープンする。将来的にネイティブシェル（Wails等）へ移行可能な `http.Handler` 設計を維持する |
+| サーバーフレームワーク | Go + Gin | ルーティング + SSR。独立した `http.Handler` として起動する |
 | API フレームワーク | Huma | OpenAPI 3.1 自動生成、`/api/v1` 配下の JSON API の入出力バリデーション |
 | テンプレートエンジン | Templ | 型安全な Go HTML テンプレート（atoms/molecules/organisms/pages） |
 | インタラクション | HTMX | サーバー駆動の DOM 更新 |
@@ -32,8 +32,8 @@
 
 ```mermaid
 flowchart TB
-    subgraph App["Wails デスクトップアプリ（単一バイナリ）"]
-        WebView["ネイティブ WebView<br/>(WebView2 / WKWebView / WebKitGTK)"]
+    subgraph Local["ローカル環境（Go 単一バイナリ）"]
+        Browser["既定ブラウザ<br/>(アプリ起動時に自動オープン)"]
         subgraph Backend["Go バックエンド"]
             Router["router（ページ/アクション/APIルート）"]
             Handler["web/handler"]
@@ -47,7 +47,7 @@ flowchart TB
     end
     ExtAPI["外部 画像/動画生成モデルAPI群"]
 
-    WebView <-->|"HTMXフラグメント / JSON"| Router
+    Browser <-->|"HTMXフラグメント / JSON（ループバック）"| Router
     Router --> Handler --> Service --> Repo --> Domain
     Service --> Orchestrator
     Orchestrator --> Repo
@@ -84,10 +84,10 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 
 ```
 .
-├── main.go                 # Wails エントリーポイント（AssetServer に Gin Handler をマウント）
-├── wails.json
 ├── backend/
-│   ├── cmd/                # サーバー単体起動用（開発/テスト時）
+│   ├── cmd/
+│   │   └── server/
+│   │       └── main.go     # エントリーポイント。127.0.0.1のポートでGinサーバーを起動し、既定ブラウザを自動オープンする
 │   └── internal/
 │       ├── domain/         # Project/Scene/Shot/Take/WorldState等のドメインモデル
 │       ├── repository/     # SQLite アクセス層（domainのみに依存）
@@ -137,26 +137,25 @@ handler → service → agent → repository → domain
 - `web/handler/`: `service/`, `domain/` に依存。`repository/`・`agent/` を直接使わない
 - `router/`: `handler/` を参照してルートを定義
 
-## 6. Wails 統合方式
+## 6. 起動方式（ローカル Web サーバー）
 
-Wails v3 の AssetServer に Gin の `http.Handler` をそのまま渡すことで、HALT の SSR + HTMX 構成を変更せずデスクトップアプリ内で動作させる。
+`backend/cmd/server/main.go` が Gin サーバーを `127.0.0.1:<port>` で起動し、既定ブラウザで `http://127.0.0.1:<port>` を自動的に開く。ネイティブ WebView は用いず、OS標準のブラウザ（Chrome/Edge/Firefox/Safari）でHALTのSSR+HTMX+Lit UIを表示する。
 
 ```go
-// main.go（概念コード）
+// backend/cmd/server/main.go（概念コード）
 ginEngine := router.New(services) // Gin *gin.Engine（HALTのSSR+HTMXルート+Huma APIを登録済み）
 
-app := application.New(application.Options{
-    Assets: application.AssetOptions{
-        Handler: ginEngine, // http.Handler として直接マウント
-    },
-})
-app.NewWebviewWindow()
-app.Run()
+port := findAvailablePort(preferredPort) // 使用中なら空きポートへフォールバック
+srv := &http.Server{Addr: fmt.Sprintf("127.0.0.1:%d", port), Handler: ginEngine}
+
+go srv.ListenAndServe()
+openBrowser(fmt.Sprintf("http://127.0.0.1:%d", port)) // OS別のブラウザ起動コマンドを実行
+waitForShutdownSignal()
 ```
 
-- HTMX のフラグメント swap・`hx-boost`・WebSocket は通常の HTTP リクエストとして WebView → 埋め込み Gin サーバーへループバックする（実ネットワークを経由しないローカル配信）
-- 開発時は `templ generate --watch` と `esbuild --watch`（CSS/JS）を並行起動し、Wails の Dev モードでホットリロードする
-- 本番ビルドでは `static/dist` を `go:embed` し、単一バイナリに同梱する
+- HTMX のフラグメント swap・`hx-boost`・WebSocket はすべて `127.0.0.1` へのループバック HTTP リクエストとして処理する
+- 本番ビルドでは `static/dist` を `go:embed` し、単一バイナリに同梱する（サーバー・アセットとも1バイナリで完結）
+- `internal/router`, `internal/web`, `internal/agent` 等はすべて `http.Handler` 単位で完結しており、実行方式（標準サーバー起動 or 将来のネイティブシェル埋め込み）に依存しない
 
 ## 7. HTMX ルーティングパターン
 
@@ -187,15 +186,15 @@ Lit Web Components（Video Player/Timeline Editor/Take Comparator/Branch Tree）
 .PHONY: dev
 dev:
 	@concurrently \
-		"wails dev" \
+		"air" \
 		"templ generate --watch" \
 		"npm run dev --prefix static"
 ```
 
-- `.templ` 編集 → `templ generate --watch` が `_templ.go` を再生成 → `wails dev` が Go 変更を検知しサーバー再起動
-- `.ts` 編集 → esbuild がバンドル → WebView リロードで反映
-- `.css` 編集 → Tailwind がビルド → WebView リロードで反映
-- 本番ビルド: `wails build` が `templ generate` → `esbuild`（minify） → `tailwind`（minify） → Go バイナリ埋め込みを一括実行する
+- `.templ` 編集 → `templ generate --watch` が `_templ.go` を再生成 → `air` が Go 変更を検知しサーバー再起動
+- `.ts` 編集 → esbuild がバンドル → ブラウザリロードで反映
+- `.css` 編集 → Tailwind がビルド → ブラウザリロードで反映
+- 本番ビルド: `templ generate` → `esbuild`（minify） → `tailwind`（minify） → `go build`（`go:embed`で静的アセット同梱）を一括実行するビルドスクリプトを用意する
 
 ## 10. テスト戦略
 
@@ -207,10 +206,19 @@ HALT のレイヤー別テスト方針を踏襲する。
 | Templ テンプレート | `Render()` → HTML文字列アサーション | コンポーネント出力 |
 | Agent（Producer/Judge/RepairAgent等） | Go ユニットテスト（外部APIはモック） | Shot Spec変換、Judge出力パース、Repair戦略選択ロジック |
 | Lit コンポーネント | `@open-wc/testing` + `@web/test-runner` | 単体の振る舞い |
-| E2E | Playwright（Ginサーバーを直接ブラウザから起動して検証） | HTMXインタラクション込みのユーザーフロー。パッケージ済みWailsバイナリは主要フローの手動スモークテストで補完する |
+| E2E | Playwright（Ginサーバーを直接起動してブラウザから検証） | HTMXインタラクション込みのユーザーフロー |
+
+## 11. 将来拡張: Wails によるネイティブデスクトップ化
+
+現段階ではローカル Web サーバー + ブラウザ構成とするが、以下の設計により将来 Wails（またはTauri等）でのネイティブパッケージング化を低コストで行えるようにしておく。
+
+- `internal/router` が返す Gin の `*gin.Engine` は標準の `http.Handler` であり、Wails v3 の `application.AssetOptions.Handler` へそのまま渡せる
+- ブラウザ自動オープン処理（`openBrowser()`）は `backend/cmd/server/main.go` に閉じているため、Wails採用時はこのエントリーポイントのみ `backend/cmd/wails/main.go` 等に差し替えれば良く、`internal/` 配下（domain/repository/agent/service/web）は変更不要
+- Wails化のトリガー例: OSネイティブの通知・トレイアイコン・自動更新・単一実行ファイルへのアイコン付与などデスクトップ体験の強化が必要になった時点で着手する
 
 ## 改訂履歴
 
 | 版 | 日付 | 変更内容 | 変更理由 |
 |----|------|---------|---------|
 | 1.0 | 2026-09-28 | 新規作成 | HALT（HTMX+Atomic+Lit+Templ）+ Wails によるデスクトップアプリ構成を定義 |
+| 1.1 | 2026-09-28 | Wails前提の記述をローカルWebサーバー+ブラウザ構成へ変更し、Wailsは将来拡張セクションへ移動 | ユーザー指示により、Wails統合は現段階のスコープ外とし将来拡張に切り出す |

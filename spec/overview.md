@@ -2,7 +2,7 @@
 
 ## 目的
 
-AI Video Production Agent は、単一プロンプトで動画を出す「生成ツール」ではなく、企画・脚本・演出・撮影・品質判定・撮り直し・編集・音声・最終QCまでを AI が自律的に遂行する **AI Production Studio** をデスクトップアプリとして提供する。ユーザーは高度なプロンプトエンジニアリングではなく、「何を作りたいか」「どこを自分で決めたいか」を伝えるだけで、商品CM・SNS広告・ドラマ・アニメ・MV 等の映像を完成まで到達させることを目的とする。
+AI Video Production Agent は、単一プロンプトで動画を出す「生成ツール」ではなく、企画・脚本・演出・撮影・品質判定・撮り直し・編集・音声・最終QCまでを AI が自律的に遂行する **AI Production Studio** を、ローカルで動作する Web アプリとして提供する。ユーザーは高度なプロンプトエンジニアリングではなく、「何を作りたいか」「どこを自分で決めたいか」を伝えるだけで、商品CM・SNS広告・ドラマ・アニメ・MV 等の映像を完成まで到達させることを目的とする。
 
 ## 背景
 
@@ -24,7 +24,7 @@ AI Video Production Agent は、単一プロンプトで動画を出す「生成
 - **Quality/Cost Policy**: FAST / BALANCED / MAX QUALITY と予算・リトライ上限設定
 - **Safety / Brand Constraints**: ブランドガイドライン・禁止表現・権利メタデータの Prompt/Judge 適用
 - 対象コンテンツ種別: 商品PV、TVCM/Web CM、SNS広告・縦型ショート、ドラマ、アニメーション、MV、YouTubeコンテンツ、ブランドムービー、シリーズ/エピソード型コンテンツ
-- 実行基盤: Wails によるデスクトップアプリ（Windows/macOS/Linux）、HALT（HTMX + Atomic Design + Lit + Templ）構成のサーバー内蔵型フロントエンド
+- 実行基盤: HALT（HTMX + Atomic Design + Lit + Templ）構成のサーバー内蔵型フロントエンドを持つ、ローカル起動型 Web アプリ（Go 単一バイナリ + ブラウザ）。ネイティブデスクトップパッケージング（Wails 等）は将来拡張とする
 
 ### 含まないもの
 
@@ -39,13 +39,14 @@ AI Video Production Agent は、単一プロンプトで動画を出す「生成
 | 区分 | 役割 | 備考 |
 |------|------|------|
 | エンドユーザー（個人クリエイター/マーケター） | 企画者・監督・クライアントとして AI 制作チームを監督し、映像を完成させる | 1デバイス・1ユーザー前提。プロジェクトファイルはローカル保存 |
-| 開発者（本プロジェクトの実装者） | Go バックエンド（Orchestrator/各Agent/Model Adapter）とHALTフロントエンドの実装・保守 | サーバー運用チームは存在しない（デスクトップアプリのため） |
+| 開発者（本プロジェクトの実装者） | Go バックエンド（Orchestrator/各Agent/Model Adapter）とHALTフロントエンドの実装・保守 | サーバー運用チームは存在しない（ローカル起動型 Web アプリのため） |
 
 ## システム全体像
 
 ```mermaid
 flowchart TB
-    subgraph Desktop["Wails デスクトップアプリ（Windows / macOS / Linux）"]
+    subgraph Local["ローカル環境（Go 単一バイナリ、Windows / macOS / Linux）"]
+        Browser["既定ブラウザ<br/>（アプリ起動時に自動オープン）"]
         UI["HALT フロントエンド<br/>Templ SSR + HTMX + Lit Web Components"]
         Server["Go バックエンド<br/>Gin + Huma（レイヤード: domain/repository/service/web）"]
         Orchestrator["Orchestrator Agent<br/>状態機械 + goroutine ワーカー"]
@@ -54,7 +55,8 @@ flowchart TB
     end
     ExtAPIs["外部 画像/動画生成モデルAPI群<br/>（Model Adapter 経由・ベンダー非依存）"]
 
-    UI <-->|HTMX フラグメント / JSON API（ループバック）| Server
+    Browser <-->|HTMX フラグメント / JSON API（ループバック）| Server
+    Server --> UI
     Server --> Orchestrator
     Orchestrator --> DB
     Orchestrator --> FS
@@ -63,7 +65,7 @@ flowchart TB
     Server --> FS
 ```
 
-詳細なアーキテクチャ（レイヤー構成、HALT の技術スタック、Wails 組み込み方式）は `spec/architecture/overview.md` を参照。
+詳細なアーキテクチャ（レイヤー構成、HALT の技術スタック、将来の Wails 拡張方針）は `spec/architecture/overview.md` を参照。
 
 ## ドキュメントマップ
 
@@ -72,8 +74,8 @@ flowchart TB
 | ドキュメント | パス | 概要 |
 |------------|------|------|
 | 機能要件 | `spec/requirements/functional.md` | AUTO/DIRECTOR MODE、Prompt Autopilot、World State、Judge、Repair/Retake、Take/Continue/Branch、Editor、Audio 等のユースケースと機能一覧 |
-| 非機能要件 | `spec/requirements/non-functional.md` | デスクトップアプリとしての性能・可用性・データ整合性・セキュリティ・コスト制御要件 |
-| アーキテクチャ設計 | `spec/architecture/overview.md` | Wails + HALT（Gin/Huma/Templ/HTMX/Lit）レイヤー構成、Agent Architecture、通信フロー |
+| 非機能要件 | `spec/requirements/non-functional.md` | ローカル起動型 Web アプリとしての性能・可用性・データ整合性・セキュリティ・コスト制御要件 |
+| アーキテクチャ設計 | `spec/architecture/overview.md` | HALT（Gin/Huma/Templ/HTMX/Lit）レイヤー構成、Agent Architecture、通信フロー、将来の Wails 拡張方針 |
 | ER / データモデル | `spec/architecture/er.md` | Project Data Model（Scene/Shot/Take/World State 等）の ER 図とテーブル定義 |
 | API 仕様 | `spec/api/endpoints.md` | ページルート/アクションルート（HTMX）と `/api/v1` JSON API（Huma/OpenAPI）のエンドポイント仕様 |
 | コンポーネント設計 | `spec/components/overview.md` | Agent 群（Producer/Director/Editor 等）とHALT側コンポーネント（atoms/molecules/organisms/Lit）の責務分割 |
@@ -107,10 +109,11 @@ flowchart TB
 | Orchestrator Agent | 制作全体を状態機械として管理し、次に実行する Agent や人間確認要否を判断する中枢 Agent |
 | Production Template | コンテンツ種別（PRODUCT/CM・DRAMA・ANIME・SNS/SHORT VIDEO）ごとの評価軸・優先度・Workflow定義 |
 | HALT | HTMX + Atomic Design + Lit + Templ による、フロントエンドが API サーバー内で動くサーバー内蔵型アーキテクチャ |
-| Wails | Go バックエンドとネイティブ WebView を組み合わせてデスクトップアプリを構築するフレームワーク。本プロジェクトでは HALT の Go/Gin サーバーをそのまま AssetServer として組み込む |
+| Wails | Go バックエンドとネイティブ WebView を組み合わせてデスクトップアプリを構築するフレームワーク。現段階はローカル Web サーバー + ブラウザ構成とし、Wails 採用は将来のネイティブパッケージング拡張として検討する（同一の `http.Handler` をそのまま AssetServer へ移植可能な設計を維持する） |
 
 ## 改訂履歴
 
 | 版 | 日付 | 変更内容 | 変更理由 |
 |----|------|---------|---------|
 | 1.0 | 2026-09-28 | 新規作成 | `spec/spec.md`（製品仕様ドラフト v1.0）を構造化ドキュメントセットへ展開する初版 |
+| 1.1 | 2026-09-28 | 実行基盤を Wails デスクトップアプリ前提からローカル起動型 Web アプリ（Go 単一バイナリ + ブラウザ）前提へ変更。Wails は将来拡張として位置付け | ユーザー指示により、Wails 統合は現段階のスコープ外とし将来拡張に切り出す |
