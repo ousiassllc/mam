@@ -24,7 +24,7 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 | Method | Path | 概要 | 返却（通常/HTMX） |
 |---|---|---|---|
 | GET | `/projects` | プロジェクト一覧・新規作成導線 | フルページ / プロジェクト一覧フラグメント |
-| GET | `/projects/:id` | Main Workspace（Scene/Shotタブ + Video Preview + Mode切替） | フルページ / ワークスペースフラグメント |
+| GET | `/projects/:id` | Main Workspace（Scene/Shotタブ + Video Preview + Mode切替、Video Previewに `mam-video-player` を埋め込み） | フルページ / ワークスペースフラグメント |
 | GET | `/projects/:id/brief` | Creative Brief 入力ページ（F-01） | フルページ / フォームフラグメント |
 | GET | `/projects/:id/scenes/:sceneId` | Scene詳細（Shot一覧） | フルページ / Shot一覧フラグメント |
 | GET | `/shots/:id` | Shot Inspector（Objective/Duration/Character/Acting/Camera/Lighting/Product/Continuity/References/Prompt/Model/Take List/Judge Results/Locks） | フルページ / Inspectorフラグメント |
@@ -193,3 +193,4 @@ Response 200:
 |----|------|---------|---------|
 | 1.0 | 2026-09-28 | 新規作成 | 機能要件（F-01〜F-28）と ER 設計を HALT の3ルートパターンへ落とし込み定義 |
 | 1.1 | 2026-09-28 | World State（Character/Product/Location）のページルート・アクションルート（`GET /projects/:id/world-state`、`PUT /projects/:id/characters/:characterId` 等）を追加 | F-09/F-10（World State管理・差分反映）に対応するエンドポイントが未定義だったため（整合性レビュー指摘） |
+| 1.2 | 2026-09-28 | `GET /projects/:id`（Main Workspace）の概要に `mam-video-player` の埋め込みを明記 | 他3つのLit Web Components（timeline-editor/take-comparator/branch-tree）は埋め込み先ページが明記されているのに `mam-video-player` だけ記載が無かったため（整合性レビュー指摘） |
