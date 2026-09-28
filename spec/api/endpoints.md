@@ -79,7 +79,9 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 | POST | `/shots/:id/continue/confirm` | 選択した展開候補で次 Shot/Scene を生成 | F-16 |
 | POST | `/shots/:id/branch` | Branch Point 保存 + Snapshot 生成（Body: `branch_point_type`=`scene\|shot\|frame`、`frame`時は`offset_seconds`を指定。`scene`指定時は当該Shotの所属Sceneを分岐点とする） | F-17 |
 | GET | `/branches/:id` | Branch 詳細（フラグメント） | F-17 |
-| POST | `/shots/:id/versions/:versionNumber/restore` | Shot/Take/Branch/State の指定バージョンへ復元 | F-28 |
+| POST | `/shots/:id/versions/:versionNumber/restore` | Shot/Take（`prompt_version`）の指定バージョンへ復元 | F-28 |
+| POST | `/projects/:id/world-state/versions/:versionNumber/restore` | World State の指定バージョンへ復元 | F-28 |
+| POST | `/branches/:id/versions/:versionNumber/restore` | Branch の指定バージョンへ復元 | F-28 |
 
 ### 2.5 Director Command
 
@@ -200,3 +202,4 @@ Response 200:
 | 1.4 | 2026-09-28 | `POST /shots/:id/versions/:versionNumber/restore`（バージョン復元）を追加 | F-28（Reversible Decisions）の「復元」を実行するエンドポイントが未定義だったため（整合性レビュー指摘） |
 | 1.5 | 2026-09-28 | `PUT /api/v1/projects/:id/edit-timeline` レスポンス例の `updated_at` を `created_at` に修正 | er.md の `edit_timeline_version` テーブルには `created_at` のみ定義され `updated_at` は存在しない（追記のみで上書きしない設計）ため、API例が実際のカラムと矛盾していた（整合性レビュー指摘） |
 | 1.6 | 2026-09-28 | `POST /shots/:id/branch` のリクエストボディに `branch_point_type`（scene/shot/frame）・`offset_seconds` を追加 | UC-5が要求するScene/Frame単位の分岐点作成にShot専用パスしか対応していなかったため（整合性レビュー指摘） |
+| 1.7 | 2026-09-28 | 復元エンドポイントをスコープ別に分割（Shot/Take用に加え `POST /projects/:id/world-state/versions/:versionNumber/restore`・`POST /branches/:id/versions/:versionNumber/restore` を追加） | F-28「Shot/Take/Branch/State」全対象の復元を単一のShotスコープパスでは表現できなかったため（整合性レビュー指摘） |
