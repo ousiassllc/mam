@@ -79,6 +79,7 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 | POST | `/shots/:id/continue/confirm` | 選択した展開候補で次 Shot/Scene を生成 | F-16 |
 | POST | `/shots/:id/branch` | Branch Point 保存 + Snapshot 生成 | F-17 |
 | GET | `/branches/:id` | Branch 詳細（フラグメント） | F-17 |
+| POST | `/shots/:id/versions/:versionNumber/restore` | Shot/Take/Branch/State の指定バージョンへ復元 | F-28 |
 
 ### 2.5 Director Command
 
@@ -196,3 +197,4 @@ Response 200:
 | 1.1 | 2026-09-28 | World State（Character/Product/Location）のページルート・アクションルート（`GET /projects/:id/world-state`、`PUT /projects/:id/characters/:characterId` 等）を追加 | F-09/F-10（World State管理・差分反映）に対応するエンドポイントが未定義だったため（整合性レビュー指摘） |
 | 1.2 | 2026-09-28 | `GET /projects/:id`（Main Workspace）の概要に `mam-video-player` の埋め込みを明記 | 他3つのLit Web Components（timeline-editor/take-comparator/branch-tree）は埋め込み先ページが明記されているのに `mam-video-player` だけ記載が無かったため（整合性レビュー指摘） |
 | 1.3 | 2026-09-28 | `POST /shots/:id/reference-pack`（Keyframe/Reference Pack生成）を追加 | F-11（M1必須機能）に対応するエンドポイントが未定義だったため（整合性レビュー指摘） |
+| 1.4 | 2026-09-28 | `POST /shots/:id/versions/:versionNumber/restore`（バージョン復元）を追加 | F-28（Reversible Decisions）の「復元」を実行するエンドポイントが未定義だったため（整合性レビュー指摘） |
