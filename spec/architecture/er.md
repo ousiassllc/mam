@@ -39,6 +39,9 @@ erDiagram
     BRANCH ||--o{ BRANCH_VERSION : has
     BRANCH ||--o{ SCENE : branch_scenes
     BRANCH ||--o{ WORLD_STATE_VERSION : branch_versions
+    BRANCH ||--o{ CHARACTER : branch_characters
+    BRANCH ||--o{ PRODUCT : branch_products
+    BRANCH ||--o{ LOCATION : branch_locations
     BRANCH_VERSION }o--o| WORLD_STATE_VERSION : version_snapshot
 
     EDIT_TIMELINE_VERSION ||--o{ EDITOR_JUDGE_RESULT : evaluated_by
@@ -143,10 +146,14 @@ erDiagram
     BRANCH ||--o{ WORLD_STATE_VERSION : branch_versions
     BRANCH ||--o{ SCENE : branch_scenes
     BRANCH_VERSION }o--o| WORLD_STATE_VERSION : version_snapshot
+    BRANCH ||--o{ CHARACTER : branch_characters
+    BRANCH ||--o{ PRODUCT : branch_products
+    BRANCH ||--o{ LOCATION : branch_locations
 
     CHARACTER {
         string id PK
         string project_id FK
+        string branch_id FK
         string name
         string face_reference_asset_id FK
         string body_reference_asset_id FK
@@ -159,6 +166,7 @@ erDiagram
     PRODUCT {
         string id PK
         string project_id FK
+        string branch_id FK
         string name
         string geometry_reference_asset_id FK
         string label_reference_asset_id FK
@@ -170,6 +178,7 @@ erDiagram
     LOCATION {
         string id PK
         string project_id FK
+        string branch_id FK
         string name
         string layout_reference_asset_id FK
         string time
@@ -298,7 +307,7 @@ erDiagram
 | `project` | `id` PK。`state` は Core State Machine（§22）の値のみ許可（CHECK制約）。`mode` は `auto/director`、`confirmation_level` は `full_auto/key_check/custom_check`、`production_template` は `product_cm/drama/anime/sns_short`、`quality_policy` は `fast/balanced/max_quality` のいずれか（各CHECK制約） | `idx_project_state (state)` |
 | `brief` | `project_id` UNIQUE FK（1:1） | - |
 | `asset` | `project_id` FK。`type` は `image/video/reference` のいずれか | `idx_asset_project (project_id)` |
-| `character` / `product` / `location` | `project_id` FK。`lock_state` は `auto/manual/lock` のいずれか（CHECK制約） | `idx_character_project (project_id)` 等 |
+| `character` / `product` / `location` | `project_id` FK。`branch_id` FK（NULL許容、NULL=主系列、非NULL=当該BranchのWorld State固有値）。`lock_state` は `auto/manual/lock` のいずれか（CHECK制約） | `idx_character_project (project_id, branch_id)` 等 |
 | `script_version` | `project_id` FK。`(project_id, version_number)` UNIQUE | - |
 | `scene` | `project_id` FK。`branch_id` FK（NULL許容、NULL=主系列/トランク、非NULL=当該Branchの派生ツリーに属するScene）。`(project_id, order_index)` UNIQUE | `idx_scene_project_order (project_id, order_index)`, `idx_scene_branch (branch_id)` |
 | `shot` | `scene_id` FK。`selected_take_id` は `take.id` への FK（NULL許容）。`state` は Core State Machine のサブ状態のみ許可 | `idx_shot_scene_order (scene_id, order_index)` |
@@ -339,3 +348,4 @@ erDiagram
 | 1.7 | 2026-09-28 | `BRANCH` から `version_number` を削除し、代わりに `BRANCH ||--o{ BRANCH_VERSION` の子テーブル `branch_version`（`branch_id`, `(branch_id, version_number)` UNIQUE）を追加。§2.2の関係線を `BRANCH }o--o\| SHOT`・`BRANCH }o--o\| SCENE`・`BRANCH ||--o{ BRANCH_VERSION` へ修正し §1/§3と整合させた | `(project_id, version_number)` UNIQUEでは1 Branch行につきversion_numberが1つしか持てず「Branchごとの複数バージョン履歴」を表現できなかったため。また§2.2の関係線が§1・§3のNULL許容/子テーブル構造と食い違っていたため（整合性・品質レビュー指摘） |
 | 1.8 | 2026-09-28 | `scene`・`world_state_version` に nullable `branch_id` を追加（NULL=主系列）。`world_state_version` のUNIQUE制約を `(project_id, branch_id, version_number)` へ変更しBranchごとに独立したバージョン系列を持てるようにした | UC-5「各Branchが独立した派生プロジェクトツリーとして保持される」・設計メモ「Branch自体は新しいworld_state_version系列を独立して持つ」を実現するカラムがER図に存在しなかったため（整合性レビュー指摘） |
 | 1.9 | 2026-09-28 | §1・§2.2に `BRANCH ||--o{ SCENE : branch_scenes`（§1のみ存在し§2.2に欠落）と `BRANCH_VERSION }o--o\| WORLD_STATE_VERSION : version_snapshot`（両図とも欠落）を追加 | `scene.branch_id`・`branch_version.world_state_version_id` というFKに対応する関係線が図に描かれておらず、他のFKと非対称だったため（整合性・品質レビュー指摘） |
+| 1.10 | 2026-09-28 | `character`/`product`/`location` に nullable `branch_id` を追加し、§1・§2.2に `BRANCH ||--o{ CHARACTER/PRODUCT/LOCATION` 関係線を追加 | Branch上でのCharacter/Product/Location編集がトランクや他Branchに影響してしまい、round3で導入したBranch独立性（world_state_version/sceneのbranch_id）と設計意図が食い違っていたため（整合性レビュー指摘） |
