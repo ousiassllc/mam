@@ -46,7 +46,7 @@ flowchart TB
 |------|-----------------|------|
 | atoms | `button`, `input`, `textarea`, `select`, `avatar`, `badge`, `spinner`, `toast`, `lock_toggle`（AUTO/MANUAL/LOCK 3値スイッチ） | 最小のUI要素。単一責務 |
 | molecules | `brief_form`, `shot_card`, `take_row`, `world_state_field`, `scene_tab`, `production_template_select`, `quality_policy_select`, `judge_issue_badge` | atomsを組み合わせた複合要素 |
-| organisms | `main_workspace_header`, `scene_shot_navigator`, `inspector_panel`, `take_comparison_table`, `director_command_input`, `brand_constraint_list`, `cost_summary_panel` | molecules/atomsを組み合わせた機能単位 |
+| organisms | `main_workspace_header`, `scene_shot_navigator`, `inspector_panel`, `take_comparison_table`, `director_command_input`, `brand_constraint_list`, `cost_summary_panel`, `version_history_panel` | molecules/atomsを組み合わせた機能単位 |
 | pages | `project_list_page`, `brief_page`, `workspace_page`（`mam-video-player`埋め込み）, `shot_inspector_page`, `take_comparison_page`（`mam-take-comparator`埋め込み）, `edit_page`（`mam-timeline-editor`埋め込み）, `branch_page`（`mam-branch-tree`埋め込み）, `export_page`, `settings_page` | organismsを組み合わせたページ全体 |
 | layout | `app_layout` | 共通レイアウト（ナビゲーション、Mode切替、Qualityセレクタを含むフッター） |
 
@@ -134,3 +134,4 @@ export class MamBranchTree extends LitElement {
 | 1.1 | 2026-09-28 | Prompt Planner・AI Video Judge の入力列に Brand Constraints を追加 | non-functional.md §5・F-23/UC-9の「Prompt生成・AI Video Judge・Final QCの全段階でBrand/Safety Constraintを適用する」との対応が取れていなかったため（整合性レビュー指摘） |
 | 1.2 | 2026-09-28 | `workspace_page` に `mam-video-player` 埋め込みの注記を追加 | api/endpoints.md（1周目改訂1.2）で明記済みの埋め込みが、pagesテーブル側では他3ページと異なり未記載だったため（整合性レビュー指摘） |
 | 1.3 | 2026-09-28 | Editor Agent の責務説明に「Product Exposure」「Narrative Clarity」を追加 | F-18のAI Editor機能範囲と表現が一致していなかったため（整合性レビュー指摘） |
+| 1.4 | 2026-09-28 | organisms一覧に `version_history_panel`（Shot/World State/Branchのバージョン一覧表示・復元ボタン）を追加 | F-28・api/endpoints.mdの復元エンドポイント群（Shot/WorldState/Branch）に対応するUI導線コンポーネントが定義されていなかったため（整合性レビュー指摘） |
