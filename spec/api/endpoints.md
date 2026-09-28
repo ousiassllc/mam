@@ -48,6 +48,7 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 | PUT | `/projects/:id/quality-policy` | FAST / BALANCED / MAX QUALITY 設定 | F-22 |
 | PUT | `/projects/:id/budget` | Project/Shot budget ceiling 設定 | F-22 |
 | PUT | `/projects/:id/production-template` | PRODUCT/CM・DRAMA・ANIME・SNS/SHORT VIDEO 切替 | F-21 |
+| PUT | `/projects/:id/locks` | Story/Music 等 Shot に属さないパラメータの AUTO/MANUAL/LOCK 設定（`target_type`=`story\|music` を受理） | F-05 |
 
 ### 2.2 Scene / Shot / Lock
 
@@ -203,3 +204,4 @@ Response 200:
 | 1.5 | 2026-09-28 | `PUT /api/v1/projects/:id/edit-timeline` レスポンス例の `updated_at` を `created_at` に修正 | er.md の `edit_timeline_version` テーブルには `created_at` のみ定義され `updated_at` は存在しない（追記のみで上書きしない設計）ため、API例が実際のカラムと矛盾していた（整合性レビュー指摘） |
 | 1.6 | 2026-09-28 | `POST /shots/:id/branch` のリクエストボディに `branch_point_type`（scene/shot/frame）・`offset_seconds` を追加 | UC-5が要求するScene/Frame単位の分岐点作成にShot専用パスしか対応していなかったため（整合性レビュー指摘） |
 | 1.7 | 2026-09-28 | 復元エンドポイントをスコープ別に分割（Shot/Take用に加え `POST /projects/:id/world-state/versions/:versionNumber/restore`・`POST /branches/:id/versions/:versionNumber/restore` を追加） | F-28「Shot/Take/Branch/State」全対象の復元を単一のShotスコープパスでは表現できなかったため（整合性レビュー指摘） |
+| 1.8 | 2026-09-28 | `PUT /projects/:id/locks`（Story/Music等ShotスコープでないパラメータのAUTO/MANUAL/LOCK設定）を追加 | F-05がShot外パラメータもLOCK対象とするのに対し `PUT /shots/:id/locks` しか存在しなかったため（整合性レビュー指摘） |
