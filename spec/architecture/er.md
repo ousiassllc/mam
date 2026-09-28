@@ -37,6 +37,8 @@ erDiagram
     BRANCH }o--o| SHOT : branch_point
     BRANCH }o--o| SCENE : scene_branch_point
     BRANCH ||--o{ BRANCH_VERSION : has
+    BRANCH ||--o{ SCENE : branch_scenes
+    BRANCH ||--o{ WORLD_STATE_VERSION : branch_versions
 
     EDIT_TIMELINE_VERSION ||--o{ EDITOR_JUDGE_RESULT : evaluated_by
 
@@ -68,6 +70,7 @@ erDiagram
     SCENE {
         string id PK
         string project_id FK
+        string branch_id FK
         int order_index
         string title
         string location_id FK
@@ -136,6 +139,7 @@ erDiagram
     BRANCH }o--o| SHOT : branch_point
     BRANCH }o--o| SCENE : scene_branch_point
     BRANCH ||--o{ BRANCH_VERSION : has
+    BRANCH ||--o{ WORLD_STATE_VERSION : branch_versions
 
     CHARACTER {
         string id PK
@@ -173,6 +177,7 @@ erDiagram
     WORLD_STATE_VERSION {
         string id PK
         string project_id FK
+        string branch_id FK
         int version_number
         json state
         datetime created_at
@@ -292,13 +297,13 @@ erDiagram
 | `asset` | `project_id` FK。`type` は `image/video/reference` のいずれか | `idx_asset_project (project_id)` |
 | `character` / `product` / `location` | `project_id` FK。`lock_state` は `auto/manual/lock` のいずれか（CHECK制約） | `idx_character_project (project_id)` 等 |
 | `script_version` | `project_id` FK。`(project_id, version_number)` UNIQUE | - |
-| `scene` | `project_id` FK。`(project_id, order_index)` UNIQUE | `idx_scene_project_order (project_id, order_index)` |
+| `scene` | `project_id` FK。`branch_id` FK（NULL許容、NULL=主系列/トランク、非NULL=当該Branchの派生ツリーに属するScene）。`(project_id, order_index)` UNIQUE | `idx_scene_project_order (project_id, order_index)`, `idx_scene_branch (branch_id)` |
 | `shot` | `scene_id` FK。`selected_take_id` は `take.id` への FK（NULL許容）。`state` は Core State Machine のサブ状態のみ許可 | `idx_shot_scene_order (scene_id, order_index)` |
 | `prompt_version` | `shot_id` FK。`(shot_id, version_number)` UNIQUE | `idx_prompt_version_shot (shot_id)` |
 | `take` | `prompt_version_id` FK。`status` は `candidate/ai_pick/selected/rejected` のいずれか | `idx_take_prompt_version (prompt_version_id)`, `idx_take_status (status)` |
 | `judge_result` | `take_id` UNIQUE FK（最新判定を1件、履歴は再生成のたびに新規Takeを作るため1:1で十分）。`result` は `pass/fail` | `idx_judge_result_take (take_id)` |
 | `repair_action` | `judge_result_id` FK。`resulting_take_id` は次に生成された `take.id`（NULL許容 = 未生成） | `idx_repair_action_judge_result (judge_result_id)` |
-| `world_state_version` | `project_id` FK。`(project_id, version_number)` UNIQUE、`version_number` は単調増加 | `idx_world_state_version_project (project_id, version_number)` |
+| `world_state_version` | `project_id` FK。`branch_id` FK（NULL許容、NULL=主系列、非NULL=当該Branchが独立して持つバージョン系列）。`(project_id, branch_id, version_number)` UNIQUE、Branch単位で`version_number`は独立して単調増加 | `idx_world_state_version_project (project_id, branch_id, version_number)` |
 | `state_diff` | `shot_id` FK、`take_id` FK、`world_state_version_id` FK | `idx_state_diff_shot (shot_id)` |
 | `branch` | `project_id` FK。`branch_point_type` は `scene/shot/frame` のいずれか（CHECK制約）。`branch_point_scene_id`（type=scene時）/`branch_point_shot_id`（type=shot/frame時）はいずれかNULL許容。`branch_point_offset_seconds`（type=frame時のみ使用、他はNULL）。`world_state_version_id` FK（Snapshot） | `idx_branch_project (project_id)` |
 | `branch_version` | `branch_id` FK。`(branch_id, version_number)` UNIQUE、`version_number` は単調増加。Branch自体の主要変更（名称変更・World State参照更新等）を追記のみで履歴化する | `idx_branch_version_branch (branch_id, version_number)` |
@@ -329,3 +334,4 @@ erDiagram
 | 1.5 | 2026-09-28 | `BRANCH` に `branch_point_type`/`branch_point_scene_id`/`branch_point_offset_seconds` を追加し、Scene/Frame単位の分岐点を表現可能にした | UC-5/用語集の「任意のScene/Shot/Frameを分岐点として保存」に対しShotのみしか表現できていなかったため（整合性レビュー指摘） |
 | 1.6 | 2026-09-28 | `BRANCH` に `version_number` を追加し `(project_id, version_number)` UNIQUE制約とした | F-28「Shot/Take/Branch/State の主要変更のバージョン化と復元」に対しBranch自体のバージョン管理カラムが存在しなかったため（整合性レビュー指摘） |
 | 1.7 | 2026-09-28 | `BRANCH` から `version_number` を削除し、代わりに `BRANCH ||--o{ BRANCH_VERSION` の子テーブル `branch_version`（`branch_id`, `(branch_id, version_number)` UNIQUE）を追加。§2.2の関係線を `BRANCH }o--o\| SHOT`・`BRANCH }o--o\| SCENE`・`BRANCH ||--o{ BRANCH_VERSION` へ修正し §1/§3と整合させた | `(project_id, version_number)` UNIQUEでは1 Branch行につきversion_numberが1つしか持てず「Branchごとの複数バージョン履歴」を表現できなかったため。また§2.2の関係線が§1・§3のNULL許容/子テーブル構造と食い違っていたため（整合性・品質レビュー指摘） |
+| 1.8 | 2026-09-28 | `scene`・`world_state_version` に nullable `branch_id` を追加（NULL=主系列）。`world_state_version` のUNIQUE制約を `(project_id, branch_id, version_number)` へ変更しBranchごとに独立したバージョン系列を持てるようにした | UC-5「各Branchが独立した派生プロジェクトツリーとして保持される」・設計メモ「Branch自体は新しいworld_state_version系列を独立して持つ」を実現するカラムがER図に存在しなかったため（整合性レビュー指摘） |
