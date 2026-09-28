@@ -77,7 +77,7 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 | DELETE | `/takes/:id` | Take を Rejected として除外 | F-15 |
 | POST | `/shots/:id/continue` | Continue: 次展開候補（NEXT A/B/C/.../AIに任せる）を提示 | F-16 |
 | POST | `/shots/:id/continue/confirm` | 選択した展開候補で次 Shot/Scene を生成 | F-16 |
-| POST | `/shots/:id/branch` | Branch Point 保存 + Snapshot 生成 | F-17 |
+| POST | `/shots/:id/branch` | Branch Point 保存 + Snapshot 生成（Body: `branch_point_type`=`scene\|shot\|frame`、`frame`時は`offset_seconds`を指定。`scene`指定時は当該Shotの所属Sceneを分岐点とする） | F-17 |
 | GET | `/branches/:id` | Branch 詳細（フラグメント） | F-17 |
 | POST | `/shots/:id/versions/:versionNumber/restore` | Shot/Take/Branch/State の指定バージョンへ復元 | F-28 |
 
@@ -199,3 +199,4 @@ Response 200:
 | 1.3 | 2026-09-28 | `POST /shots/:id/reference-pack`（Keyframe/Reference Pack生成）を追加 | F-11（M1必須機能）に対応するエンドポイントが未定義だったため（整合性レビュー指摘） |
 | 1.4 | 2026-09-28 | `POST /shots/:id/versions/:versionNumber/restore`（バージョン復元）を追加 | F-28（Reversible Decisions）の「復元」を実行するエンドポイントが未定義だったため（整合性レビュー指摘） |
 | 1.5 | 2026-09-28 | `PUT /api/v1/projects/:id/edit-timeline` レスポンス例の `updated_at` を `created_at` に修正 | er.md の `edit_timeline_version` テーブルには `created_at` のみ定義され `updated_at` は存在しない（追記のみで上書きしない設計）ため、API例が実際のカラムと矛盾していた（整合性レビュー指摘） |
+| 1.6 | 2026-09-28 | `POST /shots/:id/branch` のリクエストボディに `branch_point_type`（scene/shot/frame）・`offset_seconds` を追加 | UC-5が要求するScene/Frame単位の分岐点作成にShot専用パスしか対応していなかったため（整合性レビュー指摘） |
