@@ -37,6 +37,18 @@ erDiagram
     BRANCH }o--|| SHOT : branch_point
 
     EDIT_TIMELINE_VERSION ||--o{ EDITOR_JUDGE_RESULT : evaluated_by
+
+    PROJECT {
+        string id PK
+        string state
+        string mode
+        string confirmation_level
+        string production_template
+        string quality_policy
+        decimal project_budget_ceiling
+        decimal shot_budget_ceiling
+        datetime created_at
+    }
 ```
 
 ## 2. ドメイン別 ER 図
@@ -258,7 +270,7 @@ erDiagram
 
 | テーブル | 主要制約 | インデックス |
 |---------|---------|------------|
-| `project` | `id` PK。`state` は Core State Machine（§22）の値のみ許可（CHECK制約） | `idx_project_state (state)` |
+| `project` | `id` PK。`state` は Core State Machine（§22）の値のみ許可（CHECK制約）。`mode` は `auto/director`、`confirmation_level` は `full_auto/key_check/custom_check`、`production_template` は `product_cm/drama/anime/sns_short`、`quality_policy` は `fast/balanced/max_quality` のいずれか（各CHECK制約） | `idx_project_state (state)` |
 | `brief` | `project_id` UNIQUE FK（1:1） | - |
 | `asset` | `project_id` FK。`type` は `image/video/reference` のいずれか | `idx_asset_project (project_id)` |
 | `character` / `product` / `location` | `project_id` FK。`lock_state` は `auto/manual/lock` のいずれか（CHECK制約） | `idx_character_project (project_id)` 等 |
@@ -293,3 +305,4 @@ erDiagram
 |----|------|---------|---------|
 | 1.0 | 2026-09-28 | 新規作成 | `spec/spec.md` §9,12,13,14,21 の概念モデルを SQLite テーブル設計として具体化 |
 | 1.1 | 2026-09-28 | 全体ER図で `SHOT` から自分自身への誤った自己参照になっていた `selected_take_ref` の関係定義を `SHOT` → `TAKE` へ修正 | `shot.selected_take_id` が `take.id` への FK である実際のテーブル定義と図の関係定義が矛盾していたための表記修正 |
+| 1.2 | 2026-09-28 | 全体ER図の `PROJECT` エンティティに `mode`/`confirmation_level`/`production_template`/`quality_policy`/`project_budget_ceiling`/`shot_budget_ceiling` 属性を追加し、`project` テーブル定義の制約説明を更新 | F-02/F-03/F-21/F-22 に対応する `PUT /projects/:id/mode` 等のAPIエンドポイントの書き込み先カラムが仕様上存在しなかったため（整合性レビュー指摘） |
