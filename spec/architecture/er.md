@@ -67,9 +67,11 @@ erDiagram
 erDiagram
     SCENE ||--o{ SHOT : contains
     SHOT ||--o{ PROMPT_VERSION : has
+    SHOT }o--o| TAKE : selected_take_ref
     PROMPT_VERSION ||--o{ TAKE : generates
     TAKE ||--o| JUDGE_RESULT : evaluated_by
     JUDGE_RESULT ||--o| REPAIR_ACTION : triggers
+    REPAIR_ACTION }o--o| TAKE : produces_next
 
     SCENE {
         string id PK
@@ -349,3 +351,4 @@ erDiagram
 | 1.8 | 2026-09-28 | `scene`・`world_state_version` に nullable `branch_id` を追加（NULL=主系列）。`world_state_version` のUNIQUE制約を `(project_id, branch_id, version_number)` へ変更しBranchごとに独立したバージョン系列を持てるようにした | UC-5「各Branchが独立した派生プロジェクトツリーとして保持される」・設計メモ「Branch自体は新しいworld_state_version系列を独立して持つ」を実現するカラムがER図に存在しなかったため（整合性レビュー指摘） |
 | 1.9 | 2026-09-28 | §1・§2.2に `BRANCH ||--o{ SCENE : branch_scenes`（§1のみ存在し§2.2に欠落）と `BRANCH_VERSION }o--o\| WORLD_STATE_VERSION : version_snapshot`（両図とも欠落）を追加 | `scene.branch_id`・`branch_version.world_state_version_id` というFKに対応する関係線が図に描かれておらず、他のFKと非対称だったため（整合性・品質レビュー指摘） |
 | 1.10 | 2026-09-28 | `character`/`product`/`location` に nullable `branch_id` を追加し、§1・§2.2に `BRANCH ||--o{ CHARACTER/PRODUCT/LOCATION` 関係線を追加 | Branch上でのCharacter/Product/Location編集がトランクや他Branchに影響してしまい、round3で導入したBranch独立性（world_state_version/sceneのbranch_id）と設計意図が食い違っていたため（整合性レビュー指摘） |
+| 1.11 | 2026-09-28 | §2.1に `SHOT }o--o\| TAKE : selected_take_ref` と `REPAIR_ACTION }o--o\| TAKE : produces_next` を追加 | `shot.selected_take_id`・`repair_action.resulting_take_id` というFK（§2.1のSHOT/REPAIR_ACTION属性ブロックには既に記載済み）に対応する関係線が§1には存在するのに§2.1には描かれておらず、TAKE/SHOT/REPAIR_ACTIONが全て§2.1に描画済みであるにもかかわらず非対称だったため（品質レビュー指摘） |
