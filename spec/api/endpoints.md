@@ -156,7 +156,7 @@ Request:
 Response 200:
   Body:
     version_number: 5
-    updated_at: "2026-09-28T10:00:00Z"
+    created_at: "2026-09-28T10:00:00Z"
 Errors:
   409: "他クライアントが同時編集中"（本製品はシングルユーザーのため通常発生しないが排他制御として定義）
   422: "shot_id が存在しない / start >= end"
@@ -198,3 +198,4 @@ Response 200:
 | 1.2 | 2026-09-28 | `GET /projects/:id`（Main Workspace）の概要に `mam-video-player` の埋め込みを明記 | 他3つのLit Web Components（timeline-editor/take-comparator/branch-tree）は埋め込み先ページが明記されているのに `mam-video-player` だけ記載が無かったため（整合性レビュー指摘） |
 | 1.3 | 2026-09-28 | `POST /shots/:id/reference-pack`（Keyframe/Reference Pack生成）を追加 | F-11（M1必須機能）に対応するエンドポイントが未定義だったため（整合性レビュー指摘） |
 | 1.4 | 2026-09-28 | `POST /shots/:id/versions/:versionNumber/restore`（バージョン復元）を追加 | F-28（Reversible Decisions）の「復元」を実行するエンドポイントが未定義だったため（整合性レビュー指摘） |
+| 1.5 | 2026-09-28 | `PUT /api/v1/projects/:id/edit-timeline` レスポンス例の `updated_at` を `created_at` に修正 | er.md の `edit_timeline_version` テーブルには `created_at` のみ定義され `updated_at` は存在しない（追記のみで上書きしない設計）ため、API例が実際のカラムと矛盾していた（整合性レビュー指摘） |
