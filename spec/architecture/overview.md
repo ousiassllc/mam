@@ -27,6 +27,7 @@
 | アセットストレージ | ローカルファイルシステム | Keyframe/Reference/生成動画・画像の保存 |
 | バックグラウンド処理 | Go goroutine + 内部ジョブキュー | 生成・Judge・Repair 等の非同期実行、進捗は WebSocket で通知 |
 | 外部生成モデル連携 | Model Adapter（アダプタパターン） | 画像/動画生成モデル API をベンダー非依存に抽象化。特定モデルへの構造的依存を作らない |
+| 認証情報管理 | OS セキュアストレージ（Windows Credential Manager / macOS Keychain / Linux Secret Service） | 外部生成モデル API キーを平文設定ファイルに書かず OS ネイティブストアへ保存・取得する（`internal/credential`） |
 
 ## 3. 全体構成図
 
@@ -91,6 +92,7 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 │   └── internal/
 │       ├── domain/         # Project/Scene/Shot/Take/WorldState等のドメインモデル
 │       ├── repository/     # SQLite アクセス層（domainのみに依存）
+│       ├── credential/     # OSセキュアストレージ（Keychain/Credential Manager/Secret Service）経由の外部モデルAPIキー保存・取得
 │       ├── agent/          # Producer/Writer/Director/Storyboard/ArtDirector/
 │       │                   # PromptPlanner/ModelAdapter/VideoJudge/RepairAgent/
 │       │                   # EditorAgent/AudioDirector/FinalQC/Orchestrator
@@ -222,3 +224,4 @@ HALT のレイヤー別テスト方針を踏襲する。
 |----|------|---------|---------|
 | 1.0 | 2026-09-28 | 新規作成 | HALT（HTMX+Atomic+Lit+Templ）+ Wails によるデスクトップアプリ構成を定義 |
 | 1.1 | 2026-09-28 | Wails前提の記述をローカルWebサーバー+ブラウザ構成へ変更し、Wailsは将来拡張セクションへ移動 | ユーザー指示により、Wails統合は現段階のスコープ外とし将来拡張に切り出す |
+| 1.2 | 2026-09-28 | 技術スタック表に「認証情報管理」行、ディレクトリ構成に `internal/credential` を追加 | non-functional.md §5「APIキーはOSセキュアストレージに保存」を実現する層がアーキテクチャ設計に明記されていなかったため（整合性レビュー指摘） |
