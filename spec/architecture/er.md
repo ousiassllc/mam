@@ -262,6 +262,7 @@ erDiagram
         string id PK
         string project_id FK
         string type
+        string enforcement_level
         json value
     }
 ```
@@ -289,7 +290,7 @@ erDiagram
 | `export` | `project_id` FK | `idx_export_project (project_id)` |
 | `lock` | `project_id` FK。`(project_id, target_type, target_id, parameter_name)` UNIQUE。`mode` は `auto/manual/lock` | `idx_lock_project_target (project_id, target_type, target_id)` |
 | `cost_ledger_entry` | `project_id` FK。`shot_id`/`take_id` は NULL 許容（プロジェクト全体コストの場合） | `idx_cost_ledger_project (project_id)` |
-| `brand_constraint` | `project_id` FK。`type` は `forbidden_expression/required_disclaimer/product_claim/logo_rule/character_restriction/asset_rights/platform_rule` のいずれか | `idx_brand_constraint_project (project_id)` |
+| `brand_constraint` | `project_id` FK。`type` は `forbidden_expression/required_disclaimer/product_claim/logo_rule/character_restriction/asset_rights/platform_rule` のいずれか。`enforcement_level` は `lock/advisory` のいずれか（CHECK制約、`lock`はスコアに関係なく違反時FAIL） | `idx_brand_constraint_project (project_id)` |
 
 ## 4. 設計メモ
 
@@ -306,3 +307,4 @@ erDiagram
 | 1.0 | 2026-09-28 | 新規作成 | `spec/spec.md` §9,12,13,14,21 の概念モデルを SQLite テーブル設計として具体化 |
 | 1.1 | 2026-09-28 | 全体ER図で `SHOT` から自分自身への誤った自己参照になっていた `selected_take_ref` の関係定義を `SHOT` → `TAKE` へ修正 | `shot.selected_take_id` が `take.id` への FK である実際のテーブル定義と図の関係定義が矛盾していたための表記修正 |
 | 1.2 | 2026-09-28 | 全体ER図の `PROJECT` エンティティに `mode`/`confirmation_level`/`production_template`/`quality_policy`/`project_budget_ceiling`/`shot_budget_ceiling` 属性を追加し、`project` テーブル定義の制約説明を更新 | F-02/F-03/F-21/F-22 に対応する `PUT /projects/:id/mode` 等のAPIエンドポイントの書き込み先カラムが仕様上存在しなかったため（整合性レビュー指摘） |
+| 1.3 | 2026-09-28 | `BRAND_CONSTRAINT` に `enforcement_level`（`lock/advisory`）カラムを追加 | F-23/UC-9の「LOCK違反はスコアに関係なくFAIL」を判定するための強制レベル区分が存在しなかったため（整合性レビュー指摘） |
