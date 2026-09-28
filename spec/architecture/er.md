@@ -25,7 +25,7 @@ erDiagram
     SCENE ||--o{ SHOT : contains
     SHOT ||--o{ PROMPT_VERSION : has
     SHOT ||--o{ STATE_DIFF : produces
-    SHOT }o--|| SHOT : selected_take_ref
+    SHOT }o--|| TAKE : selected_take_ref
 
     PROMPT_VERSION ||--o{ TAKE : generates
     TAKE ||--o| JUDGE_RESULT : evaluated_by
@@ -292,3 +292,4 @@ erDiagram
 | 版 | 日付 | 変更内容 | 変更理由 |
 |----|------|---------|---------|
 | 1.0 | 2026-09-28 | 新規作成 | `spec/spec.md` §9,12,13,14,21 の概念モデルを SQLite テーブル設計として具体化 |
+| 1.1 | 2026-09-28 | 全体ER図で `SHOT` から自分自身への誤った自己参照になっていた `selected_take_ref` の関係定義を `SHOT` → `TAKE` へ修正 | `shot.selected_take_id` が `take.id` への FK である実際のテーブル定義と図の関係定義が矛盾していたための表記修正 |
