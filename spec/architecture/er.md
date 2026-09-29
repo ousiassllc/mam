@@ -166,7 +166,6 @@ erDiagram
         string wardrobe
         string voice
         string personality
-        string lock_state
     }
     PRODUCT {
         string id PK
@@ -178,7 +177,6 @@ erDiagram
         string material
         string orientation
         string condition
-        string lock_state
     }
     LOCATION {
         string id PK
@@ -189,7 +187,6 @@ erDiagram
         string time
         string lighting_state
         string weather
-        string lock_state
     }
     WORLD_STATE_VERSION {
         string id PK
@@ -318,7 +315,7 @@ erDiagram
 | `project` | `id` PK。`state` は Core State Machine（§22）の値のみ許可（CHECK制約）。`mode` は `auto/director`、`confirmation_level` は `full_auto/key_check/custom_check`、`production_template` は `product_cm/drama/anime/sns_short`、`quality_policy` は `fast/balanced/max_quality` のいずれか（各CHECK制約） | `idx_project_state (state)` |
 | `brief` | `project_id` UNIQUE FK（1:1） | - |
 | `asset` | `project_id` FK。`type` は `image/video/reference` のいずれか | `idx_asset_project (project_id)` |
-| `character` / `product` / `location` | `project_id` FK。`branch_id` FK（NULL許容、NULL=主系列、非NULL=当該BranchのWorld State固有値）。`lock_state` は `auto/manual/lock` のいずれか（CHECK制約） | `idx_character_project (project_id, branch_id)` 等 |
+| `character` / `product` / `location` | `project_id` FK。`branch_id` FK（NULL許容、NULL=主系列、非NULL=当該BranchのWorld State固有値） | `idx_character_project (project_id, branch_id)` 等 |
 | `script_version` | `project_id` FK。`(project_id, version_number)` UNIQUE | - |
 | `scene` | `project_id` FK。`branch_id` FK（NULL許容、NULL=主系列/トランク、非NULL=当該Branchの派生ツリーに属するScene）。`(project_id, branch_id, order_index)` UNIQUE | `idx_scene_project_branch_order (project_id, branch_id, order_index)` |
 | `shot` | `scene_id` FK。`selected_take_id` は `take.id` への FK（NULL許容）。`state` は Core State Machine のサブ状態のみ許可 | `idx_shot_scene_order (scene_id, order_index)` |
@@ -333,7 +330,7 @@ erDiagram
 | `edit_timeline_version` / `audio_timeline_version` | `project_id` FK。`branch_id` FK（NULL許容、NULL=主系列トランク、非NULL=当該BranchのTimeline）。`(project_id, branch_id, version_number)` UNIQUE | `idx_edit_timeline_project (project_id, branch_id, version_number)` |
 | `editor_judge_result` | `edit_timeline_version_id` FK。`result` は `pass/re_edit/need_shot` | `idx_editor_judge_result_timeline (edit_timeline_version_id)` |
 | `export` | `project_id` FK。`branch_id` FK（NULL許容、NULL=主系列トランクからの書き出し） | `idx_export_project (project_id, branch_id)` |
-| `lock` | `project_id` FK。`(project_id, target_type, target_id, parameter_name)` UNIQUE。`mode` は `auto/manual/lock` | `idx_lock_project_target (project_id, target_type, target_id)` |
+| `lock` | `project_id` FK。`(project_id, target_type, target_id, parameter_name)` UNIQUE。`mode` は `auto/manual/lock`。`target_type` は `story/music/character/product/location/shot` 等、`parameter_name` は `wardrobe`/`orientation`/`lighting_state` 等の属性単位。Character/Product/LocationのLOCK判定は本テーブルに一元化し、エンティティ側に専用カラムは持たない | `idx_lock_project_target (project_id, target_type, target_id)` |
 | `cost_ledger_entry` | `project_id` FK。`shot_id`/`take_id` は NULL 許容（プロジェクト全体コストの場合） | `idx_cost_ledger_project (project_id)` |
 | `brand_constraint` | `project_id` FK。`type` は `brand_guideline/forbidden_expression/required_disclaimer/product_claim/logo_rule/character_restriction/asset_rights/platform_rule` のいずれか。`enforcement_level` は `lock/advisory` のいずれか（CHECK制約、`lock`はスコアに関係なく違反時FAIL） | `idx_brand_constraint_project (project_id)` |
 
@@ -364,3 +361,4 @@ erDiagram
 | 1.12 | 2026-09-28 | `scene` のUNIQUE制約を `(project_id, order_index)` から `(project_id, branch_id, order_index)` へ変更 | round3で`scene.branch_id`を追加した際、UNIQUE制約が未修正のままでBranch配下のSceneがトランク/他Branchと同じ`order_index`を使うと制約違反になり、UC-5「各Branchが独立した派生プロジェクトツリー」を満たせなかったため（整合性レビュー指摘） |
 | 1.13 | 2026-09-28 | `brand_constraint.type` のCHECK制約に `brand_guideline` を追加 | UC-9・`POST /projects/:id/brand-constraints`の概要が「Brand Guideline」を登録対象の先頭に挙げているのに対し、typeの許容値7種にbrand_guidelineが存在せずCHECK制約違反となっていたため（整合性レビュー指摘） |
 | 1.14 | 2026-09-28 | `edit_timeline_version`/`audio_timeline_version`/`export` に nullable `branch_id` を追加。UNIQUE制約を `(project_id, branch_id, version_number)` へ変更し、§1・§2.3に `BRANCH \|\|--o{ EDIT_TIMELINE_VERSION/AUDIO_TIMELINE_VERSION/EXPORT` 関係線を追加 | scene/character/product/location/world_state_versionはBranch独立化済みだったが編集・音声・書き出しにはbranch_idが無く、Branch別の編集・音声・Exportができなかったため（整合性レビュー指摘） |
+| 1.15 | 2026-09-28 | `character`/`product`/`location` から `lock_state` カラムを削除し、LOCK判定を汎用 `lock` テーブル（`target_type`/`parameter_name`単位）に一元化 | 単一値`lock_state`とF-05・`PUT /shots/:id/locks`が前提とする属性単位（wardrobe/hairstyle等）のLOCK粒度が不一致で、判定手段が二重化していたため（整合性レビュー指摘） |
