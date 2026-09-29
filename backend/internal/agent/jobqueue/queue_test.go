@@ -206,3 +206,34 @@ func TestQueue_StopRequeuesInterruptedJobSoNextStartResumesIt(t *testing.T) {
 	done := waitStatus(t, repo, job.ID, domain.JobSucceeded)
 	assert.Equal(t, 2, done.Attempts)
 }
+
+func TestQueue_OnChangeNotifiesAfterTheFinalStatusIsPersisted(t *testing.T) {
+	_, repo := newRepo(t)
+	q := jobqueue.New(repo, jobqueue.Options{})
+	q.Register(domain.JobGenerate, func(context.Context, domain.Job) error { return nil }, false)
+
+	var mu sync.Mutex
+	var seen []domain.JobStatus
+	q.OnChange(func(id string) {
+		job, err := repo.Get(context.Background(), id)
+		require.NoError(t, err)
+		mu.Lock()
+		seen = append(seen, job.Status)
+		mu.Unlock()
+	})
+	q.Start(context.Background())
+	defer q.Stop()
+
+	job, err := q.Enqueue(context.Background(), domain.JobGenerate, struct{}{})
+	require.NoError(t, err)
+	waitStatus(t, repo, job.ID, domain.JobSucceeded)
+
+	require.Eventually(t, func() bool {
+		mu.Lock()
+		defer mu.Unlock()
+		return len(seen) > 0 && seen[len(seen)-1] == domain.JobSucceeded
+	}, 5*time.Second, 5*time.Millisecond)
+	mu.Lock()
+	defer mu.Unlock()
+	assert.Equal(t, domain.JobSucceeded, seen[len(seen)-1], "the last notification already sees the final status")
+}

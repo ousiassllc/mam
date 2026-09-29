@@ -68,6 +68,7 @@ erDiagram
         string state
         string mode
         string confirmation_level
+        json custom_checkpoints
         string production_template
         string quality_policy
         decimal project_budget_ceiling
@@ -398,7 +399,7 @@ erDiagram
 
 | テーブル | 主要制約 | インデックス |
 |---------|---------|------------|
-| `project` | `id` PK。`state` は Core State Machine（§22）の値のみ許可（CHECK制約）。`mode` は `auto/director`、`confirmation_level` は `full_auto/key_check/custom_check`、`production_template` は `product_cm/drama/anime/sns_short`、`quality_policy` は `fast/balanced/max_quality` のいずれか（各CHECK制約）。`series_id` FK（NULL許容、NULL=単発プロジェクト）、`episode_number`（`series_id` 非NULL時のみ使用）。`(series_id, episode_number)` UNIQUE。`inherited_world_state_version_id` FK（NULL許容、前 Episode の最終 `world_state_version` を開始状態として継承する場合に設定） | `idx_project_state (state)`, `idx_project_series (series_id, episode_number)` |
+| `project` | `id` PK。`state` は Core State Machine（§22）の値のみ許可（CHECK制約）。`mode` は `auto/director`、`confirmation_level` は `full_auto/key_check/custom_check`（`custom_check` の確認ポイントは `custom_checkpoints`＝`domain.Checkpoint` 名の JSON 配列。`script/character_design/main_visual/product_key_visual/scene_complete/rough_cut/final`）、`production_template` は `product_cm/drama/anime/sns_short`、`quality_policy` は `fast/balanced/max_quality` のいずれか（各CHECK制約）。`series_id` FK（NULL許容、NULL=単発プロジェクト）、`episode_number`（`series_id` 非NULL時のみ使用）。`(series_id, episode_number)` UNIQUE。`inherited_world_state_version_id` FK（NULL許容、前 Episode の最終 `world_state_version` を開始状態として継承する場合に設定） | `idx_project_state (state)`, `idx_project_series (series_id, episode_number)` |
 | `series` | `id` PK。Series（複数 Episode を束ねる単位、F-29）。Character/Product/Location の正本と Reference Pack を保持する | - |
 | `brief` | `project_id` UNIQUE FK（1:1） | - |
 | `asset` | `project_id` FK。`type` は `image/video/reference` のいずれか | `idx_asset_project (project_id)` |
@@ -437,6 +438,8 @@ erDiagram
 - **チャットスレッド**: 1 Project に1本のスレッドを `chat_message` で保持し、Project を開くたびに履歴を再表示する（F-30）。カードは実体テーブルへの参照（`ref_type`/`ref_id`）として持ち、実体の複製は持たない。Approval カードに応答するまで Project は AWAITING_APPROVAL（`spec/spec.md` §22）に留まる（`ref_type=note_promotion` のカードを除く）。Branch ごとのスレッド分離は行わない（1 Project 1 スレッド）
 - **Notes と World State の関係**: `note` / `note_version` は自由記述の文脈で、Source of Truth ではない（`spec/spec.md` §29.2）。Prompt Planner が Shot Spec を生成する際に参照したメモのバージョンを `prompt_version.note_refs` に記録し、Take 単位の Traceability（F-27）を保つ。メモは Branch スコープを持たない（Branch ごとの差異は World State で表現する）
 - **Notes の昇格**: 承認された昇格は、Shot に紐づく `state_diff` を作らず `world_state_version`（主系列、`branch_id`=NULL）を直接追記し、`note_promotion.world_state_version_id` で辿る。LOCK 項目は提案時と適用時の両方で除外する。`status=pending` の間も Project の状態遷移は止めない（`spec/spec.md` §9.4）
+- **Brief と Project 名**: `brief.content` は Creative Brief の JSON（`content_type/objective/subject/target/duration/aspect_ratio/mood/additional_instruction/assets/references/delegated`）。`assets` は画像アセット ID、`references` は URL または動画アセット ID、`delegated` は「AIに任せる」を選んだ項目名。`project` に名前カラムは持たず、表示名は Brief の `subject`、無ければ最初のユーザー発言から導出する（`domain.ProjectName`）
+- **チャットの追記と応答**: ユーザー発言と AI の応答・状態遷移・Brief 更新は `repository.ProjectRepository.Apply` の 1 トランザクションで書き込む。質問カード（`kind=question`）の回答済み判定は `reply_to_message_id` で返信が存在するかと Brief 項目の充足で行い、行は更新しない（追記専用）。`ref_type=brief_field` の質問カードの `ref_id` は Brief 項目名、Approval カードの `ref_type` は確認ポイント種別（`script_version/character_design/main_visual/product_key_visual/scene/edit_timeline_version/export`）
 - **マイグレーション**: `backend/internal/repository/migrations/` に goose 形式の SQL（`<UTC timestamp>_<name>.sql`、`go:embed`）として置き、起動時に自動適用する。連番ではなくタイムスタンプ版とし、並行ブランチで追加されたマイグレーションが衝突しない（`WithAllowOutofOrder`）。M1 の初期スキーマは M2 専用のテーブル・カラム（`series` / `note*` / `branch*` / `brand_constraint`、各テーブルの `branch_id`/`series_id`/`origin_id`、`project.episode_number` 等）を含めず、M2 の各 Issue が自身のマイグレーションで追加する。そのため M1 時点の `character`/`product`/`location` は `project_id` NOT NULL、`scene` は `(project_id, order_index)` UNIQUE とし、M2 で §3 の制約へ拡張する（SQLite の制約変更はテーブル再作成で行う）
 - **書き込みの直列化**: 書き込みは `repository.DB.Write`（単一ゴルーチン・単一コネクション）だけを通し、読み取りは query-only の別プールで行う（WAL により読み取りは書き込みをブロックしない）。日時は UTC の ISO-8601 文字列（`YYYY-MM-DDTHH:MM:SS.mmmZ`）で保存する
 
@@ -465,3 +468,4 @@ erDiagram
 | 1.18 | 2026-09-29 | `chat_message` テーブルを追加 | チャット中心UI（`spec/spec.md` §23、F-30）のスレッド履歴・カード・承認状態を保存するテーブルが存在しなかったため |
 | 1.19 | 2026-09-29 | `note` / `note_version` / `note_promotion` テーブルと §2.5 を追加。`prompt_version` に `note_refs`、`chat_message.ref_type` に `note_promotion` を追加。設計メモに Notes の関係と昇格を追記 | F-31（Notes, M2）の自由記述メモ・バージョン管理・World State 昇格・参照の Traceability を保存するテーブルが存在しなかったため |
 | 1.20 | 2026-09-29 | `job` テーブルを追加。設計メモにマイグレーション方式（タイムスタンプ版 goose）と M1/M2 の境界、書き込み直列化を追記 | M1「実行基盤」（Issue #4）で内部ジョブキューの永続化（異常終了後の再開/失敗処理）と M1 スキーマの作成方式を確定する必要があったため |
+| 1.21 | 2026-09-29 | `project.custom_checkpoints`（CUSTOM CHECK の確認ポイント選択）を追加。Brief の JSON 構造、Project 表示名の導出、チャット追記のトランザクション境界を設計メモに追記 | M1「Project とチャット画面」（Issue #5）の実装で、CUSTOM CHECK の選択保存先・Brief の構造・チャットの整合性の取り方が未定義だったため |

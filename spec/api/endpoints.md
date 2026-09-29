@@ -25,7 +25,9 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 |---|---|---|---|
 | GET | `/projects` | プロジェクト一覧・新規作成導線 | フルページ / プロジェクト一覧フラグメント |
 | GET | `/projects/:id` | Chat Workspace（標準画面。`chat_thread` + `chat_composer`。Take カード内に `mam-video-player` を埋め込み、履歴は `GET /projects/:id/messages` と同じ内容を初期表示） | フルページ / ワークスペースフラグメント |
-| GET | `/projects/:id/messages` | チャット履歴のフラグメント取得。クエリ `after`（メッセージID、省略時=全履歴）で新着のみ取得 | フラグメントのみ |
+| GET | `/projects/:id/messages` | チャット履歴のフラグメント取得。クエリ `after`（メッセージID、省略時=全履歴）で新着のみ取得。応答済みになったカードは `hx-swap-oob` で差し替え、Project 状態バッジも同梱する | フラグメントのみ |
+| GET | `/projects/:id/messages/:messageId` | 1 枚のカードの現在の描画（進捗カードの自動更新・応答済み Approval カードの再描画用） | フラグメントのみ |
+| GET | `/projects/:id/assets/:assetId` | アップロード済みアセットの配信（当該 Project のアセットのみ。`X-Content-Type-Options: nosniff`、`Content-Security-Policy: sandbox`） | ファイル |
 | GET | `/projects/:id/brief` | Creative Brief の確認・編集ページ（補助ビュー。Brief は通常チャットで作成する、F-01） | フルページ / フォームフラグメント |
 | GET | `/projects/:id/scenes/:sceneId` | Scene詳細（Shot一覧） | フルページ / Shot一覧フラグメント |
 | GET | `/shots/:id` | Shot Inspector（Objective/Duration/Character/Acting/Camera/Lighting/Product/Continuity/References/Prompt/Model/Take List/Judge Results/Locks） | フルページ / Inspectorフラグメント |
@@ -44,10 +46,10 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 
 | Method | Path | 概要 | 対応機能 |
 |---|---|---|---|
-| POST | `/projects` | 新規プロジェクト作成。Body に最初の発言（`content`、任意で `attachment_asset_ids`）を指定でき、Brief はその発言から抽出してチャットで補完する。Series 作成後の Episode は `POST /series/:id/episodes` を使う | F-01, F-25, F-30 |
+| POST | `/projects` | 新規プロジェクト作成。Body（`multipart/form-data`）に最初の発言（`content`）と添付（`attachments`、画像 jpg/png/webp/gif ≤20MB・動画 mp4/mov/webm ≤300MB、最大8件。拡張子と内容の署名を検証し不正は 422）を指定でき、Brief はその発言から抽出してチャットで補完する。成功時は `HX-Redirect: /projects/:id`（201）。既存アセットの再利用は `POST /projects/:id/messages` の `attachment_asset_ids`。Series 作成後の Episode は `POST /series/:id/episodes` を使う | F-01, F-25, F-30 |
 | PUT | `/projects/:id/brief` | Brief 更新 | F-01 |
 | PUT | `/projects/:id/mode` | AUTO ⇄ DIRECTOR 切替 | F-02 |
-| PUT | `/projects/:id/confirmation-level` | FULL AUTO / KEY CHECK / CUSTOM CHECK 設定 | F-03 |
+| PUT | `/projects/:id/confirmation-level` | FULL AUTO / KEY CHECK / CUSTOM CHECK 設定。Body `level`=`full_auto\|key_check\|custom_check`、`checkpoints`（CUSTOM CHECK の確認ポイント、複数可。空なら前回の選択、無ければ script+final）。変更内容はスレッドに AI 発言として記録される | F-03 |
 | PUT | `/projects/:id/quality-policy` | FAST / BALANCED / MAX QUALITY 設定 | F-22 |
 | PUT | `/projects/:id/budget` | Project/Shot budget ceiling 設定 | F-22 |
 | PUT | `/projects/:id/production-template` | PRODUCT/CM・DRAMA・ANIME・SNS/SHORT VIDEO 切替 | F-21 |
@@ -57,8 +59,8 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 
 | Method | Path | 概要 | 対応機能 |
 |---|---|---|---|
-| POST | `/projects/:id/messages` | チャットへの発言。Body `content`、`reply_to_message_id`（任意、返信先カード）、`attachment_asset_ids`（任意）。AI 発言への回答（Question/Escalation カードの選択肢押下を含む）もこの経路。内容は Command Interpreter が解釈し、対象解決・構造化操作・聞き返しのいずれかを実行して AI 発言をスレッドに追記する | F-30, F-24, F-01 |
-| POST | `/projects/:id/approvals/:messageId` | Approval カードへの応答。Body `decision`=`approve\|request_changes`、`comment`（任意）。`approve` で AWAITING_APPROVAL から次工程へ進む（`ref_type=note_promotion` のカードを除く）。`ref_type=note_promotion` のカード（M2）は非ブロッキングで、`approve` は `proposed_diff` を主系列 World State に適用して `applied`（LOCK 項目は再判定して除外し、エラーにはしない）、`request_changes` は `rejected` とする。いずれも Project の状態は変わらない | F-30, F-03, F-31 |
+| POST | `/projects/:id/messages` | チャットへの発言。Body `content`、`reply_to_message_id`（任意、返信先カード）、`attachment_asset_ids`（任意、当該 Project の既存アセット）、`attachments`（任意、`multipart/form-data` の新規ファイル。検証は `POST /projects` と同じ）。応答は追加された発言・AI 発言のフラグメント。AI 発言への回答（Question/Escalation カードの選択肢押下を含む）もこの経路。内容は Command Interpreter が解釈し、対象解決・構造化操作・聞き返しのいずれかを実行して AI 発言をスレッドに追記する | F-30, F-24, F-01 |
+| POST | `/projects/:id/approvals/:messageId` | Approval カードへの応答。Body `decision`=`approve\|request_changes`、`comment`（任意）。`approve` で AWAITING_APPROVAL から次工程へ進む（`ref_type=note_promotion` のカードを除く）。`ref_type=note_promotion` のカード（M2）は非ブロッキングで、`approve` は `proposed_diff` を主系列 World State に適用して `applied`（LOCK 項目は再判定して除外し、エラーにはしない）、`request_changes` は `rejected` とする。いずれも Project の状態は変わらない。応答は応答済みのカード（ボタンなし）で、`HX-Trigger: chat:refresh` により後続メッセージを取得させる。応答済みのカードへの再応答は 409 | F-30, F-03, F-31 |
 
 ### 2.2 Scene / Shot / Lock
 
@@ -229,7 +231,7 @@ Response 200:
 | Path | 概要 |
 |---|---|
 | `/ws/shots/:id` | 生成中Shotの進捗（キュー待ち/生成中/Judge中/完了/失敗）をプッシュ通知 |
-| `/ws/projects/:id` | プロジェクト全体イベント（Core State Machine遷移、コスト更新、Editor→Reshootループの発火） |
+| `/ws/projects/:id` | プロジェクト全体イベント（Core State Machine遷移、コスト更新、Editor→Reshootループの発火）と、チャットの通知。チャットの通知は本文を含まない JSON `{"type":"message.created","message_id":"<最新メッセージID>"}`（新着あり。クライアントは `GET /projects/:id/messages?after=` で取得）と `{"type":"card.updated","message_id":"<カードID>"}`（進捗カード等の更新。`GET /projects/:id/messages/:messageId` で取得）。同一オリジンの接続のみ受理する |
 
 `lib/ws.ts` 経由で接続し、自動再接続（指数バックオフ、最大10回）を行う（`spec/architecture/overview.md` 参照元 HALT 標準パターン）。
 
@@ -256,3 +258,4 @@ Response 200:
 | 1.16 | 2026-09-29 | Series / Episode 用エンドポイント（§2.9）を追加。`GET /api/v1/takes/:id/judge-result` の応答例に `metrics` と `face_identity_drift` Issue を追加 | F-29（Series / Episode Memory, M2）と F-13 の Face Identity Similarity（`spec/spec.md` §12.4）に対応する API 契約がなかったため |
 | 1.17 | 2026-09-29 | チャット中心UIに対応し、`GET /projects/:id` を Chat Workspace に変更、`GET /projects/:id/messages`・`POST /projects/:id/messages`・`POST /projects/:id/approvals/:messageId`（§2.1a）を追加。`POST /projects` の Body に最初の発言を追加。`GET /projects/:id/brief` を補助ビューに位置づけ直し | ユーザー要望「基本的にはただのチャット画面にしたい」（`spec/spec.md` §23）。既存の Shot 単位エンドポイントだけではチャットの発言・承認カード応答を受ける経路がなかったため |
 | 1.18 | 2026-09-29 | Notes 用のページルート（`/projects/:id/notes`、`/series/:id/notes`）と §2.10 を追加。`POST /projects/:id/approvals/:messageId` に昇格提案カードの挙動を追記。`POST /series`・`POST /series/:id/episodes` に Notes の登録・コピーを追記 | F-31（Notes, M2）に対応する API 契約がなかったため |
+| 1.19 | 2026-09-29 | `GET /projects/:id/messages/:messageId`・`GET /projects/:id/assets/:assetId` を追加。`POST /projects` を `multipart/form-data`（添付検証の上限を明記）にし、`PUT /projects/:id/confirmation-level` に `checkpoints` を追加。`/ws/projects/:id` のチャット通知ペイロードと Approval 応答の挙動（`HX-Trigger`、409）を明記 | M1「Project とチャット画面」（Issue #5）の実装で、カードの部分更新・添付ファイルの配信/検証・CUSTOM CHECK の選択・WebSocket ペイロードの契約が未定義だったため |

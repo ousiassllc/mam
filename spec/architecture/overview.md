@@ -109,6 +109,7 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 │       ├── agent/          # Producer/Writer/Director/Storyboard/ArtDirector/
 │       │   │               # PromptPlanner/ModelAdapter/VideoJudge/RepairAgent/
 │       │   │               # EditorAgent/AudioDirector/FinalQC/Orchestrator
+│       │   ├── briefing/   # チャット発言からの Creative Brief 抽出（Extractor インターフェース。M1 はルールベース、LLM 版は Reasoning LLM Adapter の Issue で差し替え）
 │       │   └── jobqueue/   # 内部ジョブキュー（goroutineワーカー。ジョブは job テーブルに永続化し、再起動時に復旧）
 │       ├── service/        # アプリケーションサービス層（agentを利用しユースケースを実装）。services.go が DI ルート
 │       ├── router/         # ページ(pages.go)/アクション(actions.go)/API(api.go, Huma)ルート定義
@@ -253,3 +254,4 @@ HALT のレイヤー別テスト方針を踏襲する。
 | 1.3 | 2026-09-29 | 技術スタック表に「エージェント推論用LLM連携（Reasoning LLM Adapter）」行を追加。Model Adapter行・全体構成図に採用プロバイダー（Imagen4/Nano Banana/FLUX.2/GPT Image 2、Kling 3.0/Seedance 2.0/Runway Gen-4.5）を明記 | ユーザーとの協議によりエージェント推論LLM・画像/動画生成プロバイダーを具体的に選定したため（`spec/architecture/model-adapters.md` 新設に対応） |
 | 1.4 | 2026-09-29 | §7 にチャット画面の更新方式（`/ws/projects/:id` の新着通知 + `GET /projects/:id/messages?after=` の HTMX フラグメント取得）を追記 | チャット中心UI（`spec/spec.md` §23）でスレッドをリアルタイム更新する方式が未定義だったため |
 | 1.5 | 2026-09-29 | §5 ディレクトリ構成に `config`/`logging`/`fsutil`/`agent/jobqueue`/`repository/migrations`/ビルド関連ファイルを追加し、DI ルートと depguard によるレイヤー検査を追記。§6 にループバックガード・CSRF方式・設定項目を追記、§9 に本番ビルドと各ターゲットの実際の構成を反映 | M1「実行基盤」（Issue #4）の実装で確定した構成を仕様へ反映するため |
+| 1.6 | 2026-09-29 | §5 に `agent/briefing`（Brief 抽出）を追加。ジョブ状態変化の通知フック（`jobqueue.Queue.OnChange`）でチャットの進捗カードを更新する構成を追記 | M1「Project とチャット画面」（Issue #5）の実装で確定した構成を仕様へ反映するため |
