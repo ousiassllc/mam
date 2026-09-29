@@ -28,7 +28,7 @@ erDiagram
     SHOT }o--o| TAKE : selected_take_ref
 
     PROMPT_VERSION ||--o{ TAKE : generates
-    TAKE ||--o| JUDGE_RESULT : evaluated_by
+    TAKE ||--o{ JUDGE_RESULT : evaluated_by
     JUDGE_RESULT ||--o| REPAIR_ACTION : triggers
     REPAIR_ACTION }o--o| TAKE : produces_next
 
@@ -72,7 +72,7 @@ erDiagram
     SHOT ||--o{ PROMPT_VERSION : has
     SHOT }o--o| TAKE : selected_take_ref
     PROMPT_VERSION ||--o{ TAKE : generates
-    TAKE ||--o| JUDGE_RESULT : evaluated_by
+    TAKE ||--o{ JUDGE_RESULT : evaluated_by
     JUDGE_RESULT ||--o| REPAIR_ACTION : triggers
     REPAIR_ACTION }o--o| TAKE : produces_next
 
@@ -321,7 +321,7 @@ erDiagram
 | `shot` | `scene_id` FK。`selected_take_id` は `take.id` への FK（NULL許容）。`state` は Core State Machine のサブ状態のみ許可 | `idx_shot_scene_order (scene_id, order_index)` |
 | `prompt_version` | `shot_id` FK。`(shot_id, version_number)` UNIQUE | `idx_prompt_version_shot (shot_id)` |
 | `take` | `prompt_version_id` FK。`status` は `candidate/ai_pick/selected/rejected` のいずれか | `idx_take_prompt_version (prompt_version_id)`, `idx_take_status (status)` |
-| `judge_result` | `take_id` UNIQUE FK（最新判定を1件、履歴は再生成のたびに新規Takeを作るため1:1で十分）。`result` は `pass/fail` | `idx_judge_result_take (take_id)` |
+| `judge_result` | `take_id` FK（UNIQUEではない、同一Takeへの複数回Judge実行履歴を保持）。`result` は `pass/fail` | `idx_judge_result_take (take_id, created_at)` |
 | `repair_action` | `judge_result_id` FK。`resulting_take_id` は次に生成された `take.id`（NULL許容 = 未生成） | `idx_repair_action_judge_result (judge_result_id)` |
 | `world_state_version` | `project_id` FK。`branch_id` FK（NULL許容、NULL=主系列、非NULL=当該Branchが独立して持つバージョン系列）。`(project_id, branch_id, version_number)` UNIQUE、Branch単位で`version_number`は独立して単調増加 | `idx_world_state_version_project (project_id, branch_id, version_number)` |
 | `state_diff` | `shot_id` FK、`take_id` FK、`world_state_version_id` FK | `idx_state_diff_shot (shot_id)` |
@@ -362,3 +362,4 @@ erDiagram
 | 1.13 | 2026-09-28 | `brand_constraint.type` のCHECK制約に `brand_guideline` を追加 | UC-9・`POST /projects/:id/brand-constraints`の概要が「Brand Guideline」を登録対象の先頭に挙げているのに対し、typeの許容値7種にbrand_guidelineが存在せずCHECK制約違反となっていたため（整合性レビュー指摘） |
 | 1.14 | 2026-09-28 | `edit_timeline_version`/`audio_timeline_version`/`export` に nullable `branch_id` を追加。UNIQUE制約を `(project_id, branch_id, version_number)` へ変更し、§1・§2.3に `BRANCH \|\|--o{ EDIT_TIMELINE_VERSION/AUDIO_TIMELINE_VERSION/EXPORT` 関係線を追加 | scene/character/product/location/world_state_versionはBranch独立化済みだったが編集・音声・書き出しにはbranch_idが無く、Branch別の編集・音声・Exportができなかったため（整合性レビュー指摘） |
 | 1.15 | 2026-09-28 | `character`/`product`/`location` から `lock_state` カラムを削除し、LOCK判定を汎用 `lock` テーブル（`target_type`/`parameter_name`単位）に一元化 | 単一値`lock_state`とF-05・`PUT /shots/:id/locks`が前提とする属性単位（wardrobe/hairstyle等）のLOCK粒度が不一致で、判定手段が二重化していたため（整合性レビュー指摘） |
+| 1.16 | 2026-09-28 | `judge_result.take_id` のUNIQUE制約を削除し複数回のJudge実行履歴を保持可能にした。§1・§2.1の関係線を `TAKE ||--o{ JUDGE_RESULT`（zero-or-many）へ変更 | `POST /takes/:id/judge`（AI Video Judge明示的再実行）が同一Takeに複数回Judgeを実行する前提なのに、UNIQUE制約により先行結果が上書きされ、設計原則「Every Generation Is Traceable」・F-27のJudge結果保存要件と矛盾していたため（整合性レビュー指摘） |
