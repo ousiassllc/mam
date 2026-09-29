@@ -27,6 +27,11 @@ erDiagram
     SERIES ||--o{ CHARACTER : canonical_characters
     SERIES ||--o{ PRODUCT : canonical_products
     SERIES ||--o{ LOCATION : canonical_locations
+    PROJECT ||--o{ NOTE : owns
+    SERIES ||--o{ NOTE : canonical_notes
+    NOTE ||--o{ NOTE_VERSION : has
+    NOTE_VERSION ||--o| NOTE_PROMOTION : proposes
+    NOTE_PROMOTION }o--o| WORLD_STATE_VERSION : creates
 
     SCENE ||--o{ SHOT : contains
     SHOT ||--o{ PROMPT_VERSION : has
@@ -126,6 +131,7 @@ erDiagram
         int version_number
         json shot_spec_snapshot
         json model_adapter_output
+        json note_refs
         datetime created_at
     }
     TAKE {
@@ -347,6 +353,47 @@ erDiagram
     }
 ```
 
+### 2.5 Notes（M2）
+
+```mermaid
+erDiagram
+    PROJECT ||--o{ NOTE : owns
+    SERIES ||--o{ NOTE : canonical_notes
+    NOTE ||--o{ NOTE_VERSION : has
+    NOTE_VERSION ||--o| NOTE_PROMOTION : proposes
+    NOTE_PROMOTION }o--o| WORLD_STATE_VERSION : creates
+
+    NOTE {
+        string id PK
+        string project_id FK
+        string series_id FK
+        string origin_id FK
+        string category
+        boolean pinned
+        datetime archived_at
+        datetime created_at
+    }
+    NOTE_VERSION {
+        string id PK
+        string note_id FK
+        int version_number
+        string title
+        text content
+        string source
+        datetime created_at
+    }
+    NOTE_PROMOTION {
+        string id PK
+        string note_version_id FK
+        json proposed_diff
+        json locked_conflicts
+        string status
+        string world_state_version_id FK
+        datetime created_at
+        datetime resolved_at
+    }
+```
+
 ## 3. テーブル定義・制約・インデックス
 
 | テーブル | 主要制約 | インデックス |
@@ -355,12 +402,12 @@ erDiagram
 | `series` | `id` PK。Series（複数 Episode を束ねる単位、F-29）。Character/Product/Location の正本と Reference Pack を保持する | - |
 | `brief` | `project_id` UNIQUE FK（1:1） | - |
 | `asset` | `project_id` FK。`type` は `image/video/reference` のいずれか | `idx_asset_project (project_id)` |
-| `chat_message` | `project_id` FK、`reply_to_message_id` FK（NULL許容、返信先メッセージ）。`role` は `user/assistant`、`kind` は `text/question/approval/keyframe/take/progress/escalation`（各CHECK制約。`role=user` は `text` のみ）。`ref_type`/`ref_id` はカードが指す実体（`script_version`/`asset`/`take`/`edit_timeline_version`/`export` 等、NULL許容）。`approval_status` は `kind=approval` のときのみ `pending/approved/changes_requested`、それ以外は NULL（CHECK制約）。`attachment_asset_ids` は添付 `asset.id` の JSON 配列。追記のみで更新しない（`approval_status` のみ応答時に更新可） | `idx_chat_message_project (project_id, created_at)`, `idx_chat_message_reply (reply_to_message_id)` |
+| `chat_message` | `project_id` FK、`reply_to_message_id` FK（NULL許容、返信先メッセージ）。`role` は `user/assistant`、`kind` は `text/question/approval/keyframe/take/progress/escalation`（各CHECK制約。`role=user` は `text` のみ）。`ref_type`/`ref_id` はカードが指す実体（`script_version`/`asset`/`take`/`edit_timeline_version`/`export`/`note_promotion` 等、NULL許容）。`approval_status` は `kind=approval` のときのみ `pending/approved/changes_requested`、それ以外は NULL（CHECK制約）。`ref_type=note_promotion` の Approval カードは非ブロッキング（Project を AWAITING_APPROVAL に遷移させない）。`attachment_asset_ids` は添付 `asset.id` の JSON 配列。追記のみで更新しない（`approval_status` のみ応答時に更新可） | `idx_chat_message_project (project_id, created_at)`, `idx_chat_message_reply (reply_to_message_id)` |
 | `character` / `product` / `location` | `project_id` FK（NULL許容）と `series_id` FK（NULL許容）のちょうど一方が非NULL（CHECK制約）。`project_id` 非NULL=Project（Episode）内の行、`series_id` 非NULL=Series 正本。Episode 開始時に Series 正本から project 側の行へコピーし、`origin_id`（Series 正本行への FK、NULL許容）で由来を保持する。`branch_id` FK（NULL許容、NULL=主系列、非NULL=当該BranchのWorld State固有値。Series 正本は常にNULL） | `idx_character_project (project_id, branch_id)`, `idx_character_series (series_id)` 等 |
 | `script_version` | `project_id` FK。`(project_id, version_number)` UNIQUE | - |
 | `scene` | `project_id` FK。`branch_id` FK（NULL許容、NULL=主系列/トランク、非NULL=当該Branchの派生ツリーに属するScene）。`(project_id, branch_id, order_index)` UNIQUE | `idx_scene_project_branch_order (project_id, branch_id, order_index)` |
 | `shot` | `scene_id` FK。`selected_take_id` は `take.id` への FK（NULL許容）。`state` は Core State Machine のサブ状態のみ許可 | `idx_shot_scene_order (scene_id, order_index)` |
-| `prompt_version` | `shot_id` FK。`(shot_id, version_number)` UNIQUE | `idx_prompt_version_shot (shot_id)` |
+| `prompt_version` | `shot_id` FK。`(shot_id, version_number)` UNIQUE。`note_refs` は Shot Spec 生成時に Prompt Planner へ渡した制作メモのバージョンの JSON 配列（`[{note_id, version_number}]`、M2。メモを使わなかった場合は空配列） | `idx_prompt_version_shot (shot_id)` |
 | `take` | `prompt_version_id` FK。`status` は `candidate/ai_pick/selected/rejected` のいずれか | `idx_take_prompt_version (prompt_version_id)`, `idx_take_status (status)` |
 | `judge_result` | `take_id` FK（UNIQUEではない、同一Takeへの複数回Judge実行履歴を保持）。`result` は `pass/fail`。`metrics` は Face Identity Similarity 等の数値指標（JSON、`spec/spec.md` §12.4） | `idx_judge_result_take (take_id, created_at)` |
 | `repair_action` | `judge_result_id` FK。`resulting_take_id` は次に生成された `take.id`（NULL許容 = 未生成） | `idx_repair_action_judge_result (judge_result_id)` |
@@ -374,6 +421,9 @@ erDiagram
 | `lock` | `project_id` FK。`(project_id, target_type, target_id, parameter_name)` UNIQUE。`mode` は `auto/manual/lock`。`target_type` は `story/music/character/product/location/shot` 等、`parameter_name` は `wardrobe`/`orientation`/`lighting_state` 等の属性単位。Character/Product/LocationのLOCK判定は本テーブルに一元化し、エンティティ側に専用カラムは持たない | `idx_lock_project_target (project_id, target_type, target_id)` |
 | `cost_ledger_entry` | `project_id` FK。`shot_id`/`take_id` は NULL 許容（プロジェクト全体コストの場合） | `idx_cost_ledger_project (project_id)` |
 | `brand_constraint` | `project_id` FK。`type` は `brand_guideline/forbidden_expression/required_disclaimer/product_claim/logo_rule/character_restriction/asset_rights/platform_rule` のいずれか。`enforcement_level` は `lock/advisory` のいずれか（CHECK制約、`lock`はスコアに関係なく違反時FAIL） | `idx_brand_constraint_project (project_id)` |
+| `note` | `project_id` FK（NULL許容）と `series_id` FK（NULL許容）のちょうど一方が非NULL（CHECK制約、`character` 等と同じ規則）。`project_id` 非NULL=Project 内のメモ、`series_id` 非NULL=Series 正本。Episode 開始時に Series 正本から project 側の行へコピーし（最新バージョンを `version_number`=1 として複製。アーカイブ済みは除く）、`origin_id`（Series 正本行への FK、NULL許容）で由来を保持する。`category` は `character/product/location/world/tone/other`（CHECK制約）。`pinned` は既定 false。`archived_at`（NULL許容、NULL=有効。`DELETE` はアーカイブであり行を削除しない）。タイトル・本文は `note_version` が持つ | `idx_note_project (project_id, archived_at)`, `idx_note_series (series_id, archived_at)` |
+| `note_version` | `note_id` FK。`(note_id, version_number)` UNIQUE、`version_number` は単調増加。`title`、`content`（自由記述テキスト）、`source` は `manual/chat`（CHECK制約）。追記のみで更新しない | `idx_note_version_note (note_id, version_number)` |
+| `note_promotion` | `note_version_id` FK（UNIQUE。同じメモバージョンから再提案しない。対象は Project スコープの `note` のバージョンのみで、アプリケーション層で検証）。`proposed_diff` は World State へ適用する差分の JSON（対象 Character/Product/Location・フィールド・値）、`locked_conflicts` は LOCK のため除外した項目の JSON。`status` は `pending/applied/rejected`（CHECK制約）。`world_state_version_id` FK（NULL許容、`applied` のときのみ設定）。`resolved_at`（NULL許容）。Approval カードは `chat_message.ref_type=note_promotion` と `ref_id` でこの行を指す | `idx_note_promotion_status (status)` |
 
 ## 4. 設計メモ
 
@@ -383,7 +433,9 @@ erDiagram
 - **Branch の Snapshot**: Branch作成時点の `world_state_version_id` を参照するのみで、Branch自体は新しい `world_state_version` 系列を独立して持つ（Branch以降の変更は元系列に影響しない）
 - **JSON カラム**: SQLite の `JSON` 型（TEXT + `json_valid` CHECK制約）を用いる。将来的な検索要件が増えた場合は生成列（generated column）でインデックスを追加する
 - **Series 正本と Episode の継承**: Series 正本の更新は、コピー済みの既存 Episode 行へ自動伝播しない（各 Episode の再現性・Traceability を保つ）。`origin_id` で由来を辿る。Series 正本自体の更新履歴は F-28 のバージョン化に含め、M2 実装時に設計する
-- **チャットスレッド**: 1 Project に1本のスレッドを `chat_message` で保持し、Project を開くたびに履歴を再表示する（F-30）。カードは実体テーブルへの参照（`ref_type`/`ref_id`）として持ち、実体の複製は持たない。Approval カードに応答するまで Project は AWAITING_APPROVAL（`spec/spec.md` §22）に留まる。Branch ごとのスレッド分離は行わない（1 Project 1 スレッド）
+- **チャットスレッド**: 1 Project に1本のスレッドを `chat_message` で保持し、Project を開くたびに履歴を再表示する（F-30）。カードは実体テーブルへの参照（`ref_type`/`ref_id`）として持ち、実体の複製は持たない。Approval カードに応答するまで Project は AWAITING_APPROVAL（`spec/spec.md` §22）に留まる（`ref_type=note_promotion` のカードを除く）。Branch ごとのスレッド分離は行わない（1 Project 1 スレッド）
+- **Notes と World State の関係**: `note` / `note_version` は自由記述の文脈で、Source of Truth ではない（`spec/spec.md` §29.2）。Prompt Planner が Shot Spec を生成する際に参照したメモのバージョンを `prompt_version.note_refs` に記録し、Take 単位の Traceability（F-27）を保つ。メモは Branch スコープを持たない（Branch ごとの差異は World State で表現する）
+- **Notes の昇格**: 承認された昇格は、Shot に紐づく `state_diff` を作らず `world_state_version`（主系列、`branch_id`=NULL）を直接追記し、`note_promotion.world_state_version_id` で辿る。LOCK 項目は提案時と適用時の両方で除外する。`status=pending` の間も Project の状態遷移は止めない（`spec/spec.md` §9.4）
 
 ## 改訂履歴
 
@@ -408,3 +460,4 @@ erDiagram
 | 1.16 | 2026-09-28 | `judge_result.take_id` のUNIQUE制約を削除し複数回のJudge実行履歴を保持可能にした。§1・§2.1の関係線を `TAKE ||--o{ JUDGE_RESULT`（zero-or-many）へ変更 | `POST /takes/:id/judge`（AI Video Judge明示的再実行）が同一Takeに複数回Judgeを実行する前提なのに、UNIQUE制約により先行結果が上書きされ、設計原則「Every Generation Is Traceable」・F-27のJudge結果保存要件と矛盾していたため（整合性レビュー指摘） |
 | 1.17 | 2026-09-29 | `series` テーブルを追加。`project` に `series_id`/`episode_number`/`inherited_world_state_version_id`、`character`/`product`/`location` に `series_id`/`origin_id`、`judge_result` に `metrics` を追加 | F-29（Series / Episode Memory, M2）と F-13 の Face Identity Similarity（`spec/spec.md` §12.4）を保存するカラムが存在しなかったため |
 | 1.18 | 2026-09-29 | `chat_message` テーブルを追加 | チャット中心UI（`spec/spec.md` §23、F-30）のスレッド履歴・カード・承認状態を保存するテーブルが存在しなかったため |
+| 1.19 | 2026-09-29 | `note` / `note_version` / `note_promotion` テーブルと §2.5 を追加。`prompt_version` に `note_refs`、`chat_message.ref_type` に `note_promotion` を追加。設計メモに Notes の関係と昇格を追記 | F-31（Notes, M2）の自由記述メモ・バージョン管理・World State 昇格・参照の Traceability を保存するテーブルが存在しなかったため |

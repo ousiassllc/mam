@@ -35,6 +35,8 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 | GET | `/projects/:id/export` | Final Export ページ | フルページ / フラグメント |
 | GET | `/projects/:id/settings` | Quality/Cost Policy・Brand Constraints・APIキー設定 | フルページ / フラグメント |
 | GET | `/projects/:id/world-state` | World State 一覧（Character/Product/Location/Camera/Story の現在値表示） | フルページ / フラグメント |
+| GET | `/projects/:id/notes` | Notes 一覧・編集（補助ビュー、M2。ピン留め・カテゴリ・アーカイブの表示、`version_history_panel` でバージョン復元） | フルページ / フラグメント |
+| GET | `/series/:id/notes` | Series 正本 Notes の一覧・編集（M2） | フルページ / フラグメント |
 
 ## 2. アクションルート（Gin, フラグメントのみ）
 
@@ -56,7 +58,7 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 | Method | Path | 概要 | 対応機能 |
 |---|---|---|---|
 | POST | `/projects/:id/messages` | チャットへの発言。Body `content`、`reply_to_message_id`（任意、返信先カード）、`attachment_asset_ids`（任意）。AI 発言への回答（Question/Escalation カードの選択肢押下を含む）もこの経路。内容は Command Interpreter が解釈し、対象解決・構造化操作・聞き返しのいずれかを実行して AI 発言をスレッドに追記する | F-30, F-24, F-01 |
-| POST | `/projects/:id/approvals/:messageId` | Approval カードへの応答。Body `decision`=`approve\|request_changes`、`comment`（任意）。`approve` で AWAITING_APPROVAL から次工程へ進む | F-30, F-03 |
+| POST | `/projects/:id/approvals/:messageId` | Approval カードへの応答。Body `decision`=`approve\|request_changes`、`comment`（任意）。`approve` で AWAITING_APPROVAL から次工程へ進む（`ref_type=note_promotion` のカードを除く）。`ref_type=note_promotion` のカード（M2）は非ブロッキングで、`approve` は `proposed_diff` を主系列 World State に適用して `applied`（LOCK 項目は再判定して除外し、エラーにはしない）、`request_changes` は `rejected` とする。いずれも Project の状態は変わらない | F-30, F-03, F-31 |
 
 ### 2.2 Scene / Shot / Lock
 
@@ -133,9 +135,19 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 
 | Method | Path | 概要 | 対応機能 |
 |---|---|---|---|
-| POST | `/series` | Series 作成。Body `from_project_id`（任意）で既存 Project の Character/Product/Location を Series 正本として登録 | F-29 |
-| POST | `/series/:id/episodes` | Series 正本を継承した Episode（Project）を作成。Body `previous_episode_id`（任意）で前 Episode の最終 World State を開始状態にする | F-29, F-25 |
+| POST | `/series` | Series 作成。Body `from_project_id`（任意）で既存 Project の Character/Product/Location と有効な Notes を Series 正本として登録 | F-29, F-31 |
+| POST | `/series/:id/episodes` | Series 正本を継承した Episode（Project）を作成（Character/Product/Location/Notes をコピー）。Body `previous_episode_id`（任意）で前 Episode の最終 World State を開始状態にする | F-29, F-25, F-31 |
 | PUT | `/series/:id/characters/:characterId` | Series 正本の Character 更新。既存 Episode には自動伝播しない | F-29 |
+
+### 2.10 Notes（M2）
+
+| Method | Path | 概要 | 対応機能 |
+|---|---|---|---|
+| POST | `/projects/:id/notes` | Project メモ作成。Body `title`、`content`、`category`（任意、省略時は AI が分類）、`pinned`（任意）。チャットからは `POST /projects/:id/messages` の Command Interpreter が同じ処理を呼ぶ（`source=chat`）。作成後、State Extractor が昇格提案を非同期で生成する | F-31 |
+| POST | `/series/:id/notes` | Series 正本メモ作成（昇格提案は生成しない） | F-31, F-29 |
+| PUT | `/notes/:id` | メモ更新。`title`/`content` が変わる場合は新しい `note_version` を追記する（Project スコープは昇格提案を再生成）。`category`/`pinned`/`archived`（`false` でアーカイブ解除）は行を更新し、バージョンは増えない。Series 正本の更新はコピー済みの Episode へ伝播しない | F-31, F-28 |
+| DELETE | `/notes/:id` | メモをアーカイブ（`archived_at` を設定。以降の推論文脈には渡さない） | F-31 |
+| POST | `/notes/:id/versions/:versionNumber/restore` | 指定バージョンの内容を新しい `note_version` として追記して復元 | F-31, F-28 |
 
 ## 3. API ルート（Huma, JSON, `/api/v1`）
 
@@ -243,3 +255,4 @@ Response 200:
 | 1.15 | 2026-09-28 | `GET /api/v1/takes/:id/judge-result` の概要に「最新1件のみ返す」ことを明記 | er.md 1.16で`judge_result`のUNIQUE制約を削除し複数回のJudge履歴を保持可能にしたため、取得APIがどのレコードを返すか明示する必要があったため（整合性レビュー指摘） |
 | 1.16 | 2026-09-29 | Series / Episode 用エンドポイント（§2.9）を追加。`GET /api/v1/takes/:id/judge-result` の応答例に `metrics` と `face_identity_drift` Issue を追加 | F-29（Series / Episode Memory, M2）と F-13 の Face Identity Similarity（`spec/spec.md` §12.4）に対応する API 契約がなかったため |
 | 1.17 | 2026-09-29 | チャット中心UIに対応し、`GET /projects/:id` を Chat Workspace に変更、`GET /projects/:id/messages`・`POST /projects/:id/messages`・`POST /projects/:id/approvals/:messageId`（§2.1a）を追加。`POST /projects` の Body に最初の発言を追加。`GET /projects/:id/brief` を補助ビューに位置づけ直し | ユーザー要望「基本的にはただのチャット画面にしたい」（`spec/spec.md` §23）。既存の Shot 単位エンドポイントだけではチャットの発言・承認カード応答を受ける経路がなかったため |
+| 1.18 | 2026-09-29 | Notes 用のページルート（`/projects/:id/notes`、`/series/:id/notes`）と §2.10 を追加。`POST /projects/:id/approvals/:messageId` に昇格提案カードの挙動を追記。`POST /series`・`POST /series/:id/episodes` に Notes の登録・コピーを追記 | F-31（Notes, M2）に対応する API 契約がなかったため |

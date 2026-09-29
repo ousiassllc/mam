@@ -485,6 +485,37 @@ Next Shot
 
 ユーザーがLOCKしたStateは自動更新禁止とする。
 
+## 9.4 Notes（制作メモ、M2）
+
+World State（構造化状態）に収まらない文脈（登場人物の背景・世界観・口調・トーン・伏せておきたい情報など）を、自由記述で保持する。
+
+- **位置づけ**: Notes は Source of Truth ではない（§29.2）。構造化状態（World State / Shot Spec / Constraints / References）を置き換えず、Reasoning LLM に渡す補助的な文脈として使う
+- **スコープ**: Project 単位と Series 単位。Series のメモは Episode 開始時に Project へコピーし（`origin_id` で由来を保持）、Series 側の更新は既存 Episode へ自動伝播しない（F-29 と同じ規則）
+- **登録**: チャットの発言（§24 Example 5）または補助ビューの Notes。チャットからの登録は Project スコープ。Series スコープは Series 側の Notes 画面で登録する。メモは追記のみのバージョンで保持し、以前のバージョンへ復元できる（§29.4）
+- **参照先**: Writer / Director / Prompt Planner のみ。ピン留めしたメモは常に、それ以外は推論 LLM のコンテキスト予算の範囲で関連度順に渡す。アーカイブ済みのメモは渡さない
+- **渡さない先**: 画像/動画生成モデル（モデル非依存の Canonical Shot Spec 経由でのみ影響する、§29.1）、AI Video Judge、Final QC。メモは判定基準にならない。守らせたいルールは Brand Constraint（§26）に登録する
+- **Traceability**: Prompt Version に、Shot Spec 生成時に参照したメモのバージョンを記録する（§29.3）
+
+### 昇格（World State への反映）
+
+```text
+Note Version（新規 / 更新）
+      ↓
+State Extractor（現在の World State と比較）
+      ↓
+昇格提案（構造化できる項目のみ）
+      ↓
+Approval カード（非ブロッキング）
+      ↓ 承認
+新しい World State Version
+```
+
+- **抽出**: 構造化フィールド（髪型・衣装・性格・Location の時間帯等）に落とせる項目だけを提案する。背景や経緯など構造化できない内容は提案せず、メモのまま保持する
+- **カード**: Approval カード（§23.2）で提示する。Confirmation Level に関わらず**非ブロッキング**とし、Project は AWAITING_APPROVAL に遷移しない。応答がなくても制作は継続し、未応答の提案は反映されない（メモは参照専用のまま）。提案は1メモバージョンにつき1枚とし、同じメモバージョンから再提案しない
+- **LOCK**: LOCK 中の項目は提案から除外し、カードに「LOCK 中のため未反映」と表示する。承認時にも再判定し、LOCK 中の項目は適用しない
+- **反映**: 承認すると主系列（トランク）の World State に新しい World State Version を追記する（F-28 で復元可能）。修正依頼は却下として扱い、メモは残る。Branch 側の World State への反映は通常の World State 編集で行う
+- **対象**: Project スコープのメモのみ。Series のメモは Episode へコピーされた後の Project メモが昇格の対象になる
+
 ---
 
 # 10. Image / Keyframe Generation
@@ -966,6 +997,7 @@ Project
 ├── Products
 ├── Locations
 ├── References
+├── Notes（M2）
 ├── Script
 ├── Scenes[]
 │    ├── Scene State
@@ -1021,6 +1053,8 @@ EXPORTED
 
 ユーザーは任意の段階でDIRECTOR MODEに入り、状態を修正できる。
 
+AWAITING_APPROVAL に遷移するのは、確認ポイントの Approval カードと Escalation カードのみとする。Notes の昇格提案カード（`ref_type=note_promotion`、§9.4）は非ブロッキングで、Core State Machine の状態を変えない。
+
 ---
 
 # 23. UI Concept
@@ -1058,7 +1092,7 @@ EXPORTED
 ```
 
 - **Brief は会話で作る**: 最初の発言から Creative Brief を抽出し、不足項目は AI が質問する（選択肢ボタンと「AIに任せる」を併記）。確定した Brief は補助ビューで確認・編集できる
-- **確認ポイントはスレッド内カード**: Confirmation Level で設定した確認ポイント（脚本/Main Visual/Rough Cut/Final 等）と Escalation は、承認カードとして表示する。ボタン（承認 / 修正を依頼）か、自然言語の返答で応答できる。応答があるまで Core State Machine は AWAITING_APPROVAL に留まる（§22）
+- **確認ポイントはスレッド内カード**: Confirmation Level で設定した確認ポイント（脚本/Main Visual/Rough Cut/Final 等）と Escalation は、承認カードとして表示する。ボタン（承認 / 修正を依頼）か、自然言語の返答で応答できる。応答があるまで Core State Machine は AWAITING_APPROVAL に留まる（§22。Notes の昇格提案カードを除く）
 - **発言の対象**: 指示の対象 Scene/Shot/Take は、カードへの返信（引用）で明示するか、直前の文脈から AI が解決する。解決できない場合は AI が聞き返す。§24 の Command Interpreter がこの解決を含めて構造化操作へ変換する
 - **MODE / Quality**: 入力欄の下に小さく置く。AUTO では AI が主導し、DIRECTOR では指示した箇所だけを直して待機する。切替はいつでも可能で、状態は保持される
 - **添付**: 画像・動画をドラッグ&ドロップまたは［＋］で添付でき、Assets/References として Brief に取り込まれる
@@ -1069,7 +1103,7 @@ EXPORTED
 | カード | 内容 | 操作 |
 |--------|------|------|
 | Question | Brief 補完・曖昧な指示の聞き返し | 選択肢ボタン / 自由入力 / 「AIに任せる」 |
-| Approval | 確認ポイントの成果物（脚本・Main Visual・Rough Cut・Final 等） | 承認 / 修正を依頼 |
+| Approval | 確認ポイントの成果物（脚本・Main Visual・Rough Cut・Final 等）。M2 では Notes の World State 昇格提案（§9.4）も同じカードで提示する。昇格提案は非ブロッキング | 承認 / 修正を依頼（昇格提案では「修正を依頼」は却下） |
 | Keyframe | Keyframe / Reference Pack 画像 | 拡大、返信で修正指示 |
 | Take | 動画プレーヤー、Judge 要約、Take 状態（AI Pick 等） | 再生、返信で指示、Take比較を開く |
 | Progress | 生成・Judge・Repair の進捗 | なし（自動更新） |
@@ -1080,7 +1114,7 @@ EXPORTED
 チャットの横に開く/別ページで開くビューで、スレッド内カードや［⋯］メニューから到達する。いずれも操作結果は同じ Project の状態に反映され、スレッドにも発言またはカードとして記録される。
 
 - **Inspector**（選択中 Shot の詳細）: Shot Objective / Duration / Character / Acting / Camera / Lighting / Product / Continuity / References / Prompt / Generation Model / Take List / Judge Results / Locks。各項目は AUTO / MANUAL / LOCK を切替可能
-- Take 比較、Timeline、Branch ツリー、World State、Cost、Settings
+- Take 比較、Timeline、Branch ツリー、World State、Notes（M2、§9.4）、Cost、Settings
 
 ---
 
@@ -1123,6 +1157,18 @@ Generate 3 narrative continuations
 > 商品をあと1秒長く見せて。
 
 AIが文脈から、編集変更で済むか追加Shotが必要かを判断する。
+
+### Example 5（M2）
+
+> 主人公は落ち着いた口調で、黒髪ロングにしたい。過去の火事の話は序盤では出さないで。これ覚えておいて。
+
+```text
+Action:
+Create Note (Project scope)
+State Extractor: propose promotion
+  Character_A.hairstyle = long_black   ← 承認カードで提示
+口調・「火事の話は序盤では出さない」はメモのまま保持し、Writer / Director が参照する
+```
 
 ---
 
@@ -1214,6 +1260,7 @@ Project / Organization単位で制作制約を登録可能とする。
 - Reference Library
 - Partial Regeneration
 - Series / Episode Memory
+- Notes（制作メモ、§9.4）
 
 ## MVP 3 — AI Production Studio
 
@@ -1290,6 +1337,7 @@ Promptはそれらから生成される一時的な実行形式とする。
 - Output
 - Judge result
 - Repair history
+- Note version（参照した制作メモ、M2）
 
 ### 29.4 Reversible Decisions
 

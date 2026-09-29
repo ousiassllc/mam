@@ -86,7 +86,7 @@ flowchart TB
 時期は未定。`spec/spec.md` §27 の MVP 区分をそのまま採用する。
 
 - **M1 — Autonomous Shot Studio**: Chat Workspace（チャット中心の標準画面）、Creative Brief、AUTO/DIRECTOR 切替、Scene/Shot/Take、Keyframe Generation、Prompt Autopilot、Video Model Adapter（Kling 3.0 + Seedance 2.0 の2アダプタ）、Video Judge、Retake Loop、Basic World State、Simple Timeline Editing、Final Export。1本の短尺動画をAIが自律制作できることを検証する（採用プロバイダーの詳細は `spec/architecture/model-adapters.md` 参照）
-- **M2 — Production Memory**: Character Lock、Product Lock、Location State、Continue、Branch、Reference Library、Partial Regeneration、Series/Episode Memory を追加
+- **M2 — Production Memory**: Character Lock、Product Lock、Location State、Continue、Branch、Reference Library、Partial Regeneration、Series/Episode Memory、Notes（制作メモ）を追加
 - **M3 — AI Production Studio**: Advanced Editor Agent、Editor→Reshoot Loop、Audio Director、Multi-model routing、Brand Templates、Team Collaboration、Production Analytics を追加
 
 ## 用語集
@@ -100,6 +100,7 @@ flowchart TB
 | Scene / Shot / Take | Scene: 物語・場所・時間・目的を共有する単位。Shot: 一つの連続した撮影単位。Take: 同一 Shot Spec を基準に生成された複数候補 |
 | Shot Spec | ユーザー指示から展開される、モデル非依存の構造化された撮影仕様（YAML形式で表現） |
 | World State | キャラクター・商品・場所・カメラ・物語状態を保持し、Shot 間で継承される状態 |
+| Notes | Project / Series 単位の自由記述の制作メモ（登場人物の背景・世界観・トーン等）。Writer/Director/Prompt Planner の推論の文脈として参照され、構造化できる内容は承認を経て World State へ昇格できる。Source of Truth ではない（M2） |
 | Model Adapter | Canonical Shot Spec を各画像/動画生成モデル固有のプロンプト/パラメータへ変換する層 |
 | AI Video Judge | 生成動画を AI 自身が視聴し、フレーム/時間単位で Issue と Repair Strategy を返す評価機構 |
 | Repair / Retake Loop | Judge の Issue 分類に基づき Prompt 修正・部分再生成・全撮り直し・別モデル利用等を選択する自己修正ループ |
@@ -121,3 +122,4 @@ flowchart TB
 | 1.2 | 2026-09-29 | ドキュメントマップに `model-adapters.md` を追加。M1マイルストーンにVideo Model Adapterの採用プロバイダー（Kling 3.0 + Seedance 2.0）を明記 | ユーザーとの協議によりエージェント推論LLM・画像/動画生成/音声プロバイダーを具体的に選定したため |
 | 1.3 | 2026-09-29 | Series/Episode Memory を M3 から M2 へ前倒し | シリーズ制作で顔・見た目が話数ごとにブレることを避けるため。Reference Library・Character Lock（いずれも M2）と同時に提供する必要があるため |
 | 1.4 | 2026-09-29 | M1 に Chat Workspace（チャット中心の標準画面）を追加 | ユーザー要望「基本的にはただのチャット画面にしたい」。詳細は `spec/spec.md` §23、F-30 |
+| 1.5 | 2026-09-29 | M2 に Notes（制作メモ）を追加。用語集に Notes を追加 | 構造化された World State だけでは登場人物の背景・世界観など自由記述の文脈を保持できないため（ユーザー要望、F-31） |
