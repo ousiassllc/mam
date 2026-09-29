@@ -44,6 +44,7 @@ type Services struct {
 	Chat        *ChatService
 	Plans       *PlanService
 	Generation  *GenerationService
+	World       *WorldService
 }
 
 // Recover puts Shots left GENERATING by an abnormal termination back to PLANNING. It MUST run
@@ -89,10 +90,11 @@ func New(deps Deps) *Services {
 		}
 	}
 	gens := repository.NewGenerationRepository(deps.DB)
+	world := repository.NewWorldRepository(deps.DB)
 	generations := &GenerationService{core: c, shots: gens, progress: newBroker[generation.Progress]()}
 	if deps.Jobs != nil && deps.LLM != nil && deps.Models != nil {
 		generations.gen = generation.New(generation.Deps{
-			Generations: gens, Projects: c.projects, Assets: c.assets, Chat: chat, Jobs: deps.Jobs,
+			Generations: gens, World: world, Projects: c.projects, Assets: c.assets, Chat: chat, Jobs: deps.Jobs,
 			LLM: deps.LLM, Adapter: deps.Models, AssetsDir: deps.AssetsDir, Logger: logger,
 			Notify: func(p generation.Progress) { generations.progress.Publish(p.ShotID, p) },
 		})
@@ -106,5 +108,6 @@ func New(deps Deps) *Services {
 		Chat:        chat,
 		Plans:       &PlanService{c},
 		Generation:  generations,
+		World:       &WorldService{core: c, world: world},
 	}
 }

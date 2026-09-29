@@ -134,6 +134,12 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 | PUT | `/projects/:id/locations/:locationId` | Location 属性更新（lighting_state/weather 等、LOCK対象項目は423）。クエリ `branch_id`（省略時=主系列トランク）で更新対象Branchを指定 | F-09 |
 | GET | `/projects/:id/world-state` | 現在の World State（Character/Product/Location/Camera/Story）フラグメント取得。クエリ `branch_id`（省略時=主系列トランク）で対象Branchの派生World Stateを取得 | F-09, F-10 |
 
+M1 の入出力契約（Issue #8）:
+
+- `PUT /projects/:id/characters|products|locations/:entityId`: Body は `application/x-www-form-urlencoded`。編集できる項目は Character が `hairstyle/wardrobe/voice/personality/emotion/position/current_action`、Product が `material/orientation/condition`、Location が `time/lighting_state/weather`（各 200 文字以内、前後の空白は除去）。送った項目だけを更新し、空文字は項目のクリア。応答は更新後の World State ビュー（`#world-state-view` フラグメント、200）で、新しい `world_state_version` を追記する。エラーはトースト（`HX-Reswap: none`）: LOCK 対象を1項目でも含むと **423** で全体を拒否（何も書き込まない）、更新項目なし・未知の項目・長すぎる値は 422、Project または当該 Project のエンティティが無ければ 404
+- `GET /projects/:id/world-state`: `HX-Request` でフラグメント、なければフルページ（`world_state_page`）。LOCK 中の項目は「LOCK」バッジ付きで編集不可。Camera/Story は Shot 完了ごとに State Extractor が更新するため参照専用
+- `branch_id` クエリは Branch（M2）が存在しない M1 では、指定されていれば 404 とする
+
 ### 2.9 Series / Episode（M2）
 
 | Method | Path | 概要 | 対応機能 |
@@ -262,3 +268,4 @@ Response 200:
 | 1.19 | 2026-09-29 | `GET /projects/:id/messages/:messageId`・`GET /projects/:id/assets/:assetId` を追加。`POST /projects` を `multipart/form-data`（添付検証の上限を明記）にし、`PUT /projects/:id/confirmation-level` に `checkpoints` を追加。`/ws/projects/:id` のチャット通知ペイロードと Approval 応答の挙動（`HX-Trigger`、409）を明記 | M1「Project とチャット画面」（Issue #5）の実装で、カードの部分更新・添付ファイルの配信/検証・CUSTOM CHECK の選択・WebSocket ペイロードの契約が未定義だったため |
 | 1.20 | 2026-09-29 | `GET /projects/:id/scenes` を追加。Scene/Shot 作成エンドポイントと `GET /projects/:id/scenes/:sceneId` の入力・エラー契約を明記 | M1「Reasoning LLM Adapter と AUTO パイプライン」（Issue #6）で Scene/Shot/Take 階層の表示・選択・作成 API の契約が未定義だったため |
 | 1.21 | 2026-09-29 | `POST /shots/:id/generate` の Body・エラー（402/404/409/503）、`POST /shots/:id/reference-pack` の非同期応答、`/ws/shots/:id` のメッセージ形式を明記 | M1「Prompt Autopilot・Model Adapter・Reference Pack・生成オーケストレーション」（Issue #7）で生成 API と進捗通知の契約が未定義だったため |
+| 1.22 | 2026-09-29 | §2.8 に M1 の入出力契約を追記（編集できる項目・応答・423/422/404 の条件、`branch_id` は M2 まで 404） | M1「World State（Basic）と State Extractor」（Issue #8）で `PUT .../characters/:id` 等の Body・応答・LOCK 時の挙動が名称レベルでしか定義されていなかったため |

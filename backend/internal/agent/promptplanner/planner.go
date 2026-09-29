@@ -64,6 +64,7 @@ Rules:
 - "framing" is one of: extreme close-up, close-up, medium close-up, medium, medium wide, wide, extreme wide.
 - Use "inherit_previous" for wardrobe and hair, and "previous_shot" for lighting, when the previous shot's look continues. Never invent a look that contradicts the world state or the previous shot.
 - Use the ids of the characters, products and locations of the world state when the shot uses them.
+- The world state is the state left by the previous shot (positions, emotions, current actions, wardrobe, camera, story). Start this shot from it and keep it consistent unless the instruction changes it.
 - "constraints" are short snake_case rules the generation must keep (preserve_face_identity, preserve_wardrobe, preserve_product_geometry, preserve_logo, do_not_add_characters ...). Add the ones that protect what the references show.
 - Do not invent facts about the product (effects, prices, awards).`
 
@@ -98,7 +99,7 @@ func userPrompt(in Input) string {
 	if s := strings.TrimSpace(in.Instruction); s != "" {
 		b.WriteString("\n## Instruction from the director (must be reflected)\n" + s + "\n")
 	}
-	if w := worldText(in.World); w != "" {
+	if w := in.World.Text(); w != "" {
 		b.WriteString("\n## World state\n" + w)
 	}
 	if in.Previous != nil {
@@ -121,18 +122,4 @@ func nameSuffix(n string) string {
 		return ""
 	}
 	return ": " + n
-}
-
-func worldText(w domain.WorldContext) string {
-	var b strings.Builder
-	for _, c := range w.Characters {
-		fmt.Fprintf(&b, "- character id=%q name=%q hairstyle=%q wardrobe=%q personality=%q\n", c.ID, c.Name, c.Hairstyle, c.Wardrobe, c.Personality)
-	}
-	for _, p := range w.Products {
-		fmt.Fprintf(&b, "- product id=%q name=%q material=%q orientation=%q condition=%q\n", p.ID, p.Name, p.Material, p.Orientation, p.Condition)
-	}
-	for _, l := range w.Locations {
-		fmt.Fprintf(&b, "- location id=%q name=%q time=%q lighting=%q weather=%q\n", l.ID, l.Name, l.Time, l.LightingState, l.Weather)
-	}
-	return b.String()
 }
