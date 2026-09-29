@@ -63,6 +63,7 @@ type Services struct {
 	Policy      *PolicyService
 	Judge       *JudgeService
 	Continue    *ContinueService
+	Reference   *ReferenceService
 }
 
 // Recover puts Shots left GENERATING by an abnormal termination back to PLANNING. It MUST run
@@ -95,6 +96,8 @@ func New(deps Deps) *Services {
 		assetsDir: deps.AssetsDir,
 		logger:    logger,
 		plans:     repository.NewPlanRepository(deps.DB),
+
+		references: repository.NewReferenceRepository(deps.DB),
 	}
 	chat := &ChatService{c}
 	if deps.Jobs != nil {
@@ -159,7 +162,8 @@ func New(deps Deps) *Services {
 		Policy: &PolicyService{
 			core: c, freeBytes: deps.FreeBytes, policies: policies, costs: repository.NewCostRepository(deps.DB), storage: repository.NewStorageRepository(deps.DB),
 		},
-		Judge:    judges,
-		Continue: continues,
+		Judge:     judges,
+		Continue:  continues,
+		Reference: &ReferenceService{c},
 	}
 }

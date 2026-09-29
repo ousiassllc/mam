@@ -336,3 +336,78 @@ func ensureWorldEntity(ctx context.Context, tx *sql.Tx, projectID string, ref do
 	_, err = tx.ExecContext(ctx, `INSERT INTO `+table+` (id, project_id, name) VALUES (?, ?, ?)`, domain.NewID(), projectID, name) //nolint:gosec // table is from worldTables
 	return err
 }
+
+// SetFieldLock sets an attribute of the World State to AUTO or LOCK (a lock row of the target;
+// the singleton Camera and Story use the Project's ID as target_id). The attribute is not
+// checked here (see domain.IsLockable). An unknown Project, or an entity that is not in the
+// Project, is ErrNotFound.
+func (r *WorldRepository) SetFieldLock(ctx context.Context, projectID string, target domain.WorldTarget, id, field string, mode domain.LockMode) error {
+	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
+		if err := projectExists(ctx, tx, projectID); err != nil {
+			return err
+		}
+		targetID := projectID
+		if !target.IsSingleton() {
+			if err := entityExists(ctx, tx, projectID, target, id); err != nil {
+				return err
+			}
+			targetID = id
+		}
+		return upsertLock(ctx, tx, projectID, string(target), targetID, field, mode, nil)
+	})
+	if errors.Is(err, ErrNotFound) {
+		return err
+	}
+	if err != nil {
+		return fmt.Errorf("set %s lock: %w", target, err)
+	}
+	return nil
+}
+
+func entityExists(ctx context.Context, q queryer, projectID string, target domain.WorldTarget, id string) error {
+	table, ok := worldTables[target]
+	if !ok {
+		return fmt.Errorf("%s is not an entity target", target)
+	}
+	var one int
+	err := q.QueryRowContext(ctx, `SELECT 1 FROM `+table+` WHERE id = ? AND project_id = ?`, id, projectID).Scan(&one) //nolint:gosec // table is from worldTables
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrNotFound
+	}
+	return err
+}
+
+// AssignReference sets the image of a reference slot of a Character, Product or Location (the
+// asset of a Reference Library entry; "" clears the slot) and appends the resulting World State
+// as a new version. The entity is ErrNotFound when it is not in the Project and the write is
+// ErrLocked when the attribute the slot belongs to (slot.Lock) is LOCKed.
+func (r *WorldRepository) AssignReference(ctx context.Context, projectID string, slot domain.ReferenceSlot, id, assetID string) error {
+	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
+		if err := entityExists(ctx, tx, projectID, slot.Target, id); err != nil {
+			return err
+		}
+		locks, err := readLocks(ctx, tx, projectID)
+		if err != nil {
+			return err
+		}
+		if locks.Locked(slot.Target, id, slot.Lock) {
+			return ErrLocked
+		}
+		if _, err := tx.ExecContext(ctx, `UPDATE `+worldTables[slot.Target]+` SET `+slot.Column+` = ? WHERE id = ?`, nullIfEmpty(assetID), id); err != nil { //nolint:gosec // table and column are constants of domain.ReferenceSlots; only the values are data
+			return err
+		}
+		w, err := readWorld(ctx, tx, projectID)
+		if err != nil {
+			return err
+		}
+		_, _, err = r.appendVersion(ctx, tx, projectID, w)
+		return err
+	})
+	if errors.Is(err, ErrNotFound) || errors.Is(err, ErrLocked) {
+		return err
+	}
+	if err != nil {
+		return fmt.Errorf("assign %s reference: %w", slot.Target, err)
+	}
+	return nil
+}

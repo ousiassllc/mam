@@ -30,6 +30,13 @@ func registerActions(engine *gin.Engine, services *service.Services) {
 	engine.PUT("/projects/:id/characters/:characterId", handler.UpdateCharacter(services.World))
 	engine.PUT("/projects/:id/products/:productId", handler.UpdateProduct(services.World))
 	engine.PUT("/projects/:id/locations/:locationId", handler.UpdateLocation(services.World))
+	engine.PUT("/projects/:id/world-state/locks", handler.SetWorldLock(services.World))
+	engine.PUT("/projects/:id/characters/:characterId/reference", handler.AssignCharacterReference(services.World))
+	engine.PUT("/projects/:id/products/:productId/reference", handler.AssignProductReference(services.World))
+	engine.PUT("/projects/:id/locations/:locationId/reference", handler.AssignLocationReference(services.World))
+	engine.POST("/projects/:id/references", handler.UploadReference(services.Reference))
+	engine.DELETE("/projects/:id/references/:referenceId", handler.DeleteReference(services.Reference))
+	engine.POST("/shots/:id/references", handler.PinReference(services.Reference))
 
 	engine.POST("/shots/:id/generate", handler.GenerateShot(services.Generation))
 	engine.POST("/shots/:id/continue", handler.ProposeContinue(services.Continue))
