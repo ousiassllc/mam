@@ -1,0 +1,144 @@
+// Package molecules holds the compound components of the chat: the thread cards,
+// the attachment strip and the confirmation control.
+package molecules
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"strings"
+
+	"github.com/a-h/templ"
+
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+)
+
+const replyExcerptRunes = 40
+
+// excerpt is the one-line summary of a message used for reply previews.
+func excerpt(m domain.ChatMessage) string {
+	text := m.Content
+	switch m.Kind {
+	case domain.KindQuestion, domain.KindEscalation:
+		text = domain.DecodeCardBody(m.Content).Text
+	case domain.KindTake:
+		text = domain.DecodeTakeCardBody(m.Content).Title
+	case domain.KindProgress:
+		text = "進捗: " + m.Content
+	case domain.KindKeyframe:
+		text = "Keyframe: " + m.Content
+	}
+	text = strings.Join(strings.Fields(text), " ")
+	if r := []rune(text); len(r) > replyExcerptRunes {
+		return string(r[:replyExcerptRunes]) + "…"
+	}
+	if text == "" && len(m.AttachmentAssetIDs) > 0 {
+		return "添付ファイル"
+	}
+	return text
+}
+
+// AssetURL is where an uploaded asset is served (GET /projects/:id/assets/:assetId).
+func AssetURL(projectID, assetID string) templ.SafeURL {
+	return templ.SafeURL(fmt.Sprintf("/projects/%s/assets/%s", projectID, assetID))
+}
+
+func messagesURL(projectID string) string { return "/projects/" + projectID + "/messages" }
+
+func approvalURL(projectID, messageID string) string {
+	return "/projects/" + projectID + "/approvals/" + messageID
+}
+
+// answerAttrs makes a button post `answer` as a reply to the card.
+func answerAttrs(m domain.ThreadMessage, answer string) templ.Attributes {
+	return templ.Attributes{
+		"type":      "button",
+		"hx-post":   messagesURL(m.ProjectID),
+		"hx-vals":   hxVals(map[string]string{"content": answer, "reply_to_message_id": m.ID}),
+		"hx-target": "#chat-thread",
+		"hx-swap":   "beforeend",
+	}
+}
+
+// hxVals encodes the hx-vals attribute (extra request parameters).
+func hxVals(v map[string]string) string {
+	raw, err := json.Marshal(v)
+	if err != nil { // a map of strings always marshals
+		return "{}"
+	}
+	return string(raw)
+}
+
+func replyAttrs(m domain.ThreadMessage) templ.Attributes {
+	return templ.Attributes{
+		"type":             "button",
+		"data-reply-to":    m.ID,
+		"data-reply-label": excerpt(m.ChatMessage),
+		"aria-label":       "このカードに返信",
+	}
+}
+
+func submitAttrs(decision string) templ.Attributes {
+	return templ.Attributes{"type": "submit", "name": "decision", "value": decision}
+}
+
+// approvalLabel names what the approval card asks to confirm.
+func approvalLabel(m domain.ChatMessage) string {
+	if m.RefType == domain.RefNotePromotion {
+		return "World State への反映の提案"
+	}
+	if cp, ok := domain.CheckpointForRefType(m.RefType); ok {
+		return "確認: " + cp.Label()
+	}
+	return "確認"
+}
+
+func approvalBadge(s domain.ApprovalStatus) (atoms.BadgeTone, string) {
+	switch s {
+	case domain.ApprovalApproved:
+		return atoms.BadgeOK, "承認済み"
+	case domain.ApprovalChangesRequested:
+		return atoms.BadgeWarn, "修正依頼済み"
+	}
+	return atoms.BadgeInfo, "確認待ち"
+}
+
+// progressView is the text and tone of a progress card for the live job status.
+func progressView(job *domain.Job) (atoms.BadgeTone, string, bool) {
+	if job == nil {
+		return atoms.BadgeNeutral, "状態不明", false
+	}
+	switch job.Status {
+	case domain.JobQueued:
+		return atoms.BadgeNeutral, "待機中", true
+	case domain.JobRunning:
+		return atoms.BadgeInfo, "実行中", true
+	case domain.JobSucceeded:
+		return atoms.BadgeOK, "完了", false
+	case domain.JobFailed:
+		return atoms.BadgeError, "失敗", false
+	}
+	return atoms.BadgeNeutral, string(job.Status), false
+}
+
+func scorePercent(score float64) string { return fmt.Sprintf("%.2f", score) }
+
+// isLocalPath accepts only same-origin absolute paths as video sources.
+func isLocalPath(p string) bool { return strings.HasPrefix(p, "/") && !strings.HasPrefix(p, "//") }
+
+func frameClass(m domain.ThreadMessage) string {
+	base := "max-w-[85%] rounded-lg px-4 py-3 text-sm "
+	if m.Role == domain.RoleUser {
+		return base + "ml-auto bg-indigo-600/30 text-neutral-100"
+	}
+	return base + "mr-auto border border-neutral-700 bg-neutral-900 text-neutral-100"
+}
+
+type oobKey struct{}
+
+// WithOOB makes the cards rendered with the returned context replace the card of the
+// same id already on the page (out-of-band swap) instead of being appended.
+func WithOOB(ctx context.Context) context.Context { return context.WithValue(ctx, oobKey{}, true) }
+
+func isOOB(ctx context.Context) bool { v, _ := ctx.Value(oobKey{}).(bool); return v }

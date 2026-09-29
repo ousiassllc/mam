@@ -1,0 +1,29 @@
+package molecules
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+)
+
+// EscalationCard asks the user for a decision the AI cannot make itself.
+templ EscalationCard(m domain.ThreadMessage) {
+	@MessageFrame(m) {
+		<p class="mb-1">
+			@atoms.Badge(atoms.BadgeWarn, "相談")
+		</p>
+		<p class="whitespace-pre-wrap break-words">{ domain.DecodeCardBody(m.Content).Text }</p>
+		if m.Open {
+			<div class="mt-3 flex flex-wrap gap-2" data-options>
+				for _, option := range domain.DecodeCardBody(m.Content).Options {
+					@atoms.Button(atoms.ToneNeutral, option, answerAttrs(m, option))
+				}
+			</div>
+			<p class="mt-2 text-xs text-neutral-500">入力欄からの返信でも判断を伝えられます。</p>
+			<div class="mt-1">
+				@ReplyButton(m)
+			</div>
+		} else {
+			<p class="mt-2 text-xs text-neutral-500">回答済み</p>
+		}
+	}
+}

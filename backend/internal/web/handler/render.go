@@ -1,3 +1,5 @@
+// Package handler holds the Gin handlers. Handlers depend on service and domain
+// only; they never touch repository or agent directly.
 package handler
 
 import (

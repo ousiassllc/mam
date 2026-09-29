@@ -1,0 +1,9 @@
+package atoms
+
+// ToastOOB appends a toast to #toast-region (out-of-band swap). Business errors
+// (403/409/423, ...) are shown this way instead of replacing the target.
+templ ToastOOB(message string) {
+	<div id="toast-region" hx-swap-oob="beforeend">
+		<div class="pointer-events-auto rounded-md border border-red-500/50 bg-neutral-900 px-4 py-2 text-sm text-red-200 shadow-lg" role="alert" data-toast>{ message }</div>
+	</div>
+}

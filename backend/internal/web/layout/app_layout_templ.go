@@ -10,7 +10,8 @@ import templruntime "github.com/a-h/templ/runtime"
 
 // AppLayout is the shared page shell. The CSRF token is published in a meta tag;
 // static/src/main.ts reads it and attaches it to every HTMX request, and
-// components/lib/api.ts attaches it to every fetch.
+// components/lib/api.ts attaches it to every fetch. #toast-region receives the
+// out-of-band toasts of failed actions.
 func AppLayout(title string, csrfToken string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -39,7 +40,7 @@ func AppLayout(title string, csrfToken string) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.ResolveAttributeValue(csrfToken)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/layout/app_layout.templ`, Line: 12, Col: 46}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/layout/app_layout.templ`, Line: 13, Col: 46}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
 		if templ_7745c5c3_Err != nil {
@@ -52,7 +53,7 @@ func AppLayout(title string, csrfToken string) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/layout/app_layout.templ`, Line: 13, Col: 17}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/layout/app_layout.templ`, Line: 14, Col: 17}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -66,7 +67,7 @@ func AppLayout(title string, csrfToken string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</body></html>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<div id=\"toast-region\" class=\"pointer-events-none fixed bottom-4 right-4 z-50 flex max-w-sm flex-col gap-2\" aria-live=\"assertive\"></div></body></html>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

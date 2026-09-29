@@ -92,6 +92,14 @@ func serve(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 
 	jobs := jobqueue.New(repository.NewJobRepository(db), jobqueue.Options{Logger: logger})
 	// Feature Issues register their job handlers here: jobs.Register(domain.JobGenerate, h, resumable).
+	// The services are built before the queue starts: they subscribe to job changes.
+	services := service.New(service.Deps{
+		DB:          db,
+		Jobs:        jobs,
+		Credentials: credential.NewKeyring(),
+		Logger:      logger,
+		AssetsDir:   cfg.AssetsDir(),
+	})
 	resumed, failed, err := jobs.Recover(ctx)
 	if err != nil {
 		return fmt.Errorf("recover jobs: %w", err)
@@ -101,13 +109,6 @@ func serve(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	}
 	jobs.Start(ctx)
 	defer jobs.Stop()
-
-	services := service.New(service.Deps{
-		DB:          db,
-		Jobs:        jobs,
-		Credentials: credential.NewKeyring(),
-		Logger:      logger,
-	})
 
 	gin.SetMode(gin.ReleaseMode)
 	engine := router.New(services, router.Options{Logger: logger, Static: staticFS(cfg)})

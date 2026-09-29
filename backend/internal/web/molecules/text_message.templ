@@ -1,0 +1,12 @@
+package molecules
+
+import "github.com/ousiassllc/mam/backend/internal/domain"
+
+// TextMessage is a plain user or AI message.
+templ TextMessage(m domain.ThreadMessage) {
+	@MessageFrame(m) {
+		if m.Content != "" {
+			<p class="whitespace-pre-wrap break-words">{ m.Content }</p>
+		}
+	}
+}

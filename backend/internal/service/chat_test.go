@@ -1,0 +1,636 @@
+package service_test
+
+import (
+	"bytes"
+	"context"
+	"database/sql"
+	"io"
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/service"
+)
+
+type fixture struct {
+	svc       *service.Services
+	db        *repository.DB
+	assetsDir string
+}
+
+func newFixture(t *testing.T) fixture {
+	t.Helper()
+	dir := t.TempDir()
+	db, err := repository.Open(context.Background(), filepath.Join(dir, "mam.db"), nil)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = db.Close() })
+	assets := filepath.Join(dir, "assets")
+	return fixture{svc: service.New(service.Deps{DB: db, AssetsDir: assets}), db: db, assetsDir: assets}
+}
+
+var (
+	pngBytes = append([]byte("\x89PNG\r\n\x1a\n"), bytes.Repeat([]byte{0}, 32)...)
+	mp4Bytes = append([]byte("\x00\x00\x00\x18ftypisom"), bytes.Repeat([]byte{0}, 32)...)
+	movBytes = append([]byte("\x00\x00\x00\x14ftypqt  "), bytes.Repeat([]byte{0}, 32)...)
+)
+
+func upload(name string, data []byte) service.Upload {
+	return service.Upload{Name: name, Size: int64(len(data)), Open: func() (io.ReadCloser, error) {
+		return io.NopCloser(bytes.NewReader(data)), nil
+	}}
+}
+
+func (f fixture) createProject(t *testing.T, content string, uploads ...service.Upload) domain.Project {
+	t.Helper()
+	p, err := f.svc.Projects.Create(context.Background(), service.CreateProjectInput{Content: content, Uploads: uploads})
+	require.NoError(t, err)
+	return p
+}
+
+func (f fixture) thread(t *testing.T, projectID string) []domain.ThreadMessage {
+	t.Helper()
+	ws, err := f.svc.Chat.Workspace(context.Background(), projectID)
+	require.NoError(t, err)
+	return ws.Messages
+}
+
+func (f fixture) brief(t *testing.T, projectID string) domain.Brief {
+	t.Helper()
+	view, err := f.svc.Projects.Brief(context.Background(), projectID)
+	require.NoError(t, err)
+	return view.Brief
+}
+
+func lastMessage(t *testing.T, msgs []domain.ThreadMessage) domain.ThreadMessage {
+	t.Helper()
+	require.NotEmpty(t, msgs)
+	return msgs[len(msgs)-1]
+}
+
+func TestCreateProject_ExtractsBriefAndAsksForTheFirstMissingItem(t *testing.T) {
+	f := newFixture(t)
+	p := f.createProject(t, "美容液の縦型15秒CMを作りたい。上品な雰囲気で")
+
+	assert.Equal(t, domain.StateDraft, p.State)
+	assert.Equal(t, domain.ModeAuto, p.Mode)
+	assert.Equal(t, domain.ConfirmKeyCheck, p.ConfirmationLevel)
+	assert.Equal(t, "美容液", p.Name)
+
+	brief := f.brief(t, p.ID)
+	assert.Equal(t, "美容液", brief.Subject)
+	assert.Equal(t, "15秒", brief.Duration)
+	assert.Equal(t, "9:16", brief.AspectRatio)
+
+	msgs := f.thread(t, p.ID)
+	require.Len(t, msgs, 2)
+	assert.Equal(t, domain.RoleUser, msgs[0].Role)
+	q := msgs[1]
+	assert.Equal(t, domain.KindQuestion, q.Kind)
+	assert.Equal(t, string(domain.BriefObjective), q.RefID, "Content Type and Subject were extracted; Objective is next")
+	assert.True(t, q.Open)
+	assert.NotEmpty(t, domain.DecodeCardBody(q.Content).Options)
+}
+
+func TestCreateProject_TakesAttachmentsIntoAssetsAndReferences(t *testing.T) {
+	f := newFixture(t)
+	p := f.createProject(t, "商品CMを作りたい", upload("product.png", pngBytes), upload("ref.mp4", mp4Bytes))
+
+	brief := f.brief(t, p.ID)
+	require.Len(t, brief.Assets, 1)
+	require.Len(t, brief.References, 1)
+
+	first := f.thread(t, p.ID)[0]
+	require.Len(t, first.Attachments, 2)
+	file, err := f.svc.Projects.Asset(context.Background(), p.ID, brief.Assets[0])
+	require.NoError(t, err)
+	assert.Equal(t, "image/png", file.Asset.MimeType)
+	stored, err := os.ReadFile(file.Path)
+	require.NoError(t, err)
+	assert.Equal(t, pngBytes, stored)
+
+	_, err = f.svc.Projects.Asset(context.Background(), "other-project", brief.Assets[0])
+	assert.ErrorIs(t, err, service.ErrNotFound, "assets are only reachable through their own project")
+}
+
+func TestCreateProject_RejectsInvalidInputAndLeavesNothingBehind(t *testing.T) {
+	huge := service.Upload{Name: "big.png", Size: service.MaxImageBytes + 1, Open: func() (io.ReadCloser, error) {
+		t.Fatal("an oversized upload must be rejected before it is read")
+		return nil, nil
+	}}
+	tooMany := make([]service.Upload, service.MaxAttachments+1)
+	for i := range tooMany {
+		tooMany[i] = upload("a.png", pngBytes)
+	}
+	tests := []struct {
+		name    string
+		content string
+		uploads []service.Upload
+		field   string
+	}{
+		{"empty", "  ", nil, "content"},
+		{"too long", string(bytes.Repeat([]byte("あ"), service.MaxMessageRunes+1)), nil, "content"},
+		{"unsupported extension", "hi", []service.Upload{upload("run.exe", pngBytes)}, "attachments"},
+		{"content does not match the extension", "hi", []service.Upload{upload("fake.png", []byte("MZ\x90\x00 not an image"))}, "attachments"},
+		{"webm claim with mp4 body", "hi", []service.Upload{upload("v.webm", mp4Bytes)}, "attachments"},
+		{"quicktime body named mp4", "hi", []service.Upload{upload("v.mp4", movBytes)}, "attachments"},
+		{"empty file", "hi", []service.Upload{upload("empty.png", nil)}, "attachments"},
+		{"oversized image", "hi", []service.Upload{huge}, "attachments"},
+		{"too many attachments", "hi", tooMany, "attachments"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := newFixture(t)
+			_, err := f.svc.Projects.Create(context.Background(), service.CreateProjectInput{Content: tt.content, Uploads: tt.uploads})
+			var invalid *service.ValidationError
+			require.ErrorAs(t, err, &invalid)
+			assert.Equal(t, tt.field, invalid.Field)
+
+			list, err := f.svc.Projects.List(context.Background())
+			require.NoError(t, err)
+			assert.Empty(t, list, "no project is created")
+			entries, _ := os.ReadDir(f.assetsDir)
+			assert.Empty(t, entries, "no file is left on disk")
+		})
+	}
+}
+
+func TestCreateProject_AcceptsEveryAllowedFormat(t *testing.T) {
+	f := newFixture(t)
+	jpeg := append([]byte{0xFF, 0xD8, 0xFF, 0xE0}, bytes.Repeat([]byte{0}, 16)...)
+	gif := append([]byte("GIF89a"), bytes.Repeat([]byte{0}, 16)...)
+	webp := append([]byte("RIFF\x00\x00\x00\x00WEBPVP8 "), bytes.Repeat([]byte{0}, 16)...)
+	webm := append([]byte{0x1A, 0x45, 0xDF, 0xA3}, bytes.Repeat([]byte{0}, 16)...)
+	p := f.createProject(t, "x動画", upload("a.JPG", jpeg), upload("b.gif", gif), upload("c.webp", webp),
+		upload("d.webm", webm), upload("e.mov", movBytes), upload("f.mp4", mp4Bytes), upload("g.png", pngBytes))
+	assert.Len(t, f.thread(t, p.ID)[0].Attachments, 7)
+}
+
+func TestPostMessage_AnswersTheOpenQuestionAndAsksTheNextOne(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	p := f.createProject(t, "美容液の縦型15秒CMを作りたい。上品な雰囲気で")
+	q := lastMessage(t, f.thread(t, p.ID)) // Objective
+
+	ws, err := f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "Instagram広告", ReplyToMessageID: q.ID})
+	require.NoError(t, err)
+	require.Len(t, ws.Messages, 2, "the user's answer and the next question")
+	assert.Equal(t, q.ID, ws.Messages[0].ReplyTo.ID)
+	assert.Equal(t, "Instagram広告", f.brief(t, p.ID).Objective)
+	assert.Equal(t, string(domain.BriefTarget), ws.Messages[1].RefID)
+
+	thread := f.thread(t, p.ID)
+	assert.False(t, thread[1].Open, "the answered question is closed")
+	assert.True(t, thread[len(thread)-1].Open)
+}
+
+func TestPostMessage_FreeInputAnswersTheNewestOpenQuestionAndExtractsOtherItems(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	p := f.createProject(t, "動画を作りたい") // asks Content Type first
+
+	_, err := f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "美容液のCMで、20〜30代女性向け"})
+	require.NoError(t, err)
+
+	b := f.brief(t, p.ID)
+	assert.Equal(t, "商品CM", b.ContentType)
+	assert.Equal(t, "美容液", b.Subject)
+	assert.Equal(t, "20〜30代女性", b.Target)
+}
+
+func TestPostMessage_DelegatingLeavesTheItemToTheAIAndMovesOn(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	p := f.createProject(t, "動画を作りたい")
+
+	var last domain.ThreadMessage
+	for range domain.RequiredBriefFields() {
+		last = lastMessage(t, f.thread(t, p.ID))
+		if last.Kind != domain.KindQuestion {
+			break
+		}
+		_, err := f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: domain.DelegateOption, ReplyToMessageID: last.ID})
+		require.NoError(t, err)
+	}
+
+	brief := f.brief(t, p.ID)
+	assert.Empty(t, brief.Missing())
+	assert.Len(t, brief.Delegated, len(domain.RequiredBriefFields()))
+	done := lastMessage(t, f.thread(t, p.ID))
+	assert.Equal(t, domain.KindText, done.Kind)
+	assert.Contains(t, done.Content, "Brief が揃いました")
+}
+
+func TestPostMessage_KeepsWorkingWhileTheProjectIsBusyAndDoesNotTouchTheBrief(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	p := f.createProject(t, "美容液の縦型15秒CMを作りたい")
+	require.NoError(t, f.svc.Chat.Announce(ctx, p.ID, domain.ChatMessage{Kind: domain.KindText, Content: "生成中"}))
+	before := f.brief(t, p.ID)
+	setState(t, f, p.ID, domain.StateGenerating)
+
+	ws, err := f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "10秒にしてほしい"})
+	require.NoError(t, err)
+	assert.Len(t, ws.Messages, 1, "input is accepted during generation; interpreting it is the DIRECTOR MODE feature")
+	assert.Equal(t, before, f.brief(t, p.ID))
+}
+
+func TestPostMessage_RejectsUnknownReplyTargetsAndAttachments(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	p := f.createProject(t, "動画")
+	other := f.createProject(t, "別の動画", upload("a.png", pngBytes))
+	foreign := f.brief(t, other.ID).Assets[0]
+
+	_, err := f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "x", ReplyToMessageID: "missing"})
+	var invalid *service.ValidationError
+	require.ErrorAs(t, err, &invalid)
+	assert.Equal(t, "reply_to_message_id", invalid.Field)
+
+	_, err = f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "x", AttachmentAssetIDs: []string{foreign}})
+	require.ErrorAs(t, err, &invalid)
+	assert.Equal(t, "attachment_asset_ids", invalid.Field, "assets of another project cannot be attached")
+
+	_, err = f.svc.Chat.PostMessage(ctx, "missing", service.PostMessageInput{Content: "x"})
+	assert.ErrorIs(t, err, service.ErrNotFound)
+}
+
+func TestPostMessage_AttachmentsSentLaterJoinTheBrief(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	p := f.createProject(t, "動画を作りたい")
+
+	_, err := f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "商品画像です", Uploads: []service.Upload{upload("a.png", pngBytes)}})
+	require.NoError(t, err)
+	assert.Len(t, f.brief(t, p.ID).Assets, 1)
+}
+
+func setState(t *testing.T, f fixture, projectID string, state domain.ProjectState) {
+	t.Helper()
+	err := f.db.Write(context.Background(), func(ctx context.Context, tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, `UPDATE project SET state = ? WHERE id = ?`, state, projectID)
+		return err
+	})
+	require.NoError(t, err)
+}
+
+func TestRequestApproval_FollowsTheConfirmationLevel(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	p := f.createProject(t, "動画")
+
+	posted, err := f.svc.Chat.RequestApproval(ctx, p.ID, domain.CheckpointScript, "脚本 v1（3 Scene / 15秒）", "sv1")
+	require.NoError(t, err)
+	assert.True(t, posted, "KEY CHECK asks at the script")
+	got, _ := f.svc.Projects.Get(ctx, p.ID)
+	assert.Equal(t, domain.StateAwaitingApproval, got.State)
+	card := lastMessage(t, f.thread(t, p.ID))
+	assert.Equal(t, domain.KindApproval, card.Kind)
+	assert.Equal(t, domain.ApprovalPending, card.ApprovalStatus)
+	assert.Equal(t, "script_version", card.RefType)
+
+	posted, err = f.svc.Chat.RequestApproval(ctx, p.ID, domain.CheckpointSceneComplete, "Scene 1", "sc1")
+	require.NoError(t, err)
+	assert.False(t, posted, "KEY CHECK does not ask at each Scene")
+
+	_, err = f.svc.Projects.SetConfirmationLevel(ctx, p.ID, domain.ConfirmFullAuto, nil)
+	require.NoError(t, err)
+	posted, err = f.svc.Chat.RequestApproval(ctx, p.ID, domain.CheckpointFinal, "Final", "e1")
+	require.NoError(t, err)
+	assert.False(t, posted, "FULL AUTO never asks for approval")
+
+	_, err = f.svc.Projects.SetConfirmationLevel(ctx, p.ID, domain.ConfirmCustomCheck, []domain.Checkpoint{domain.CheckpointSceneComplete})
+	require.NoError(t, err)
+	posted, err = f.svc.Chat.RequestApproval(ctx, p.ID, domain.CheckpointSceneComplete, "Scene 1", "sc1")
+	require.NoError(t, err)
+	assert.True(t, posted, "CUSTOM CHECK asks at the selected checkpoint")
+	posted, err = f.svc.Chat.RequestApproval(ctx, p.ID, domain.CheckpointScript, "脚本 v2", "sv2")
+	require.NoError(t, err)
+	assert.False(t, posted)
+}
+
+func TestRespondApproval_StaysAwaitingUntilAnsweredThenMovesOn(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	p := f.createProject(t, "動画")
+	_, err := f.svc.Chat.RequestApproval(ctx, p.ID, domain.CheckpointScript, "脚本 v1", "sv1")
+	require.NoError(t, err)
+	card := lastMessage(t, f.thread(t, p.ID))
+
+	project, updated, err := f.svc.Chat.RespondApproval(ctx, p.ID, card.ID, service.DecisionApprove, "いいですね")
+	require.NoError(t, err)
+	assert.Equal(t, domain.ApprovalApproved, updated.ApprovalStatus)
+	assert.Equal(t, domain.StateVisualDesign, project.State, "script approved: on to visual design")
+
+	thread := f.thread(t, p.ID)
+	user := thread[len(thread)-2]
+	assert.Equal(t, domain.RoleUser, user.Role)
+	assert.Equal(t, card.ID, user.ReplyToMessageID, "the answer is recorded as a reply to the card")
+	assert.Contains(t, user.Content, "いいですね")
+
+	_, _, err = f.svc.Chat.RespondApproval(ctx, p.ID, card.ID, service.DecisionApprove, "")
+	assert.ErrorIs(t, err, service.ErrConflict, "a card is answered exactly once")
+}
+
+func TestRespondApproval_RequestChangesSendsTheProjectBack(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	p := f.createProject(t, "動画")
+	_, err := f.svc.Chat.RequestApproval(ctx, p.ID, domain.CheckpointScript, "脚本 v1", "sv1")
+	require.NoError(t, err)
+	card := lastMessage(t, f.thread(t, p.ID))
+
+	project, updated, err := f.svc.Chat.RespondApproval(ctx, p.ID, card.ID, service.DecisionRequestChanges, "もっと短く")
+	require.NoError(t, err)
+	assert.Equal(t, domain.ApprovalChangesRequested, updated.ApprovalStatus)
+	assert.Equal(t, domain.StatePlanning, project.State)
+	assert.Contains(t, f.thread(t, p.ID)[len(f.thread(t, p.ID))-2].Content, "もっと短く")
+}
+
+func TestRespondApproval_ValidatesTheRequest(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	p := f.createProject(t, "動画")
+	text := f.thread(t, p.ID)[0]
+
+	var invalid *service.ValidationError
+	_, _, err := f.svc.Chat.RespondApproval(ctx, p.ID, text.ID, "maybe", "")
+	require.ErrorAs(t, err, &invalid)
+	assert.Equal(t, "decision", invalid.Field)
+
+	_, _, err = f.svc.Chat.RespondApproval(ctx, p.ID, text.ID, service.DecisionApprove, "")
+	require.ErrorAs(t, err, &invalid)
+	assert.Equal(t, "message", invalid.Field, "only approval cards can be approved")
+
+	_, _, err = f.svc.Chat.RespondApproval(ctx, p.ID, "missing", service.DecisionApprove, "")
+	assert.ErrorIs(t, err, service.ErrNotFound)
+	_, _, err = f.svc.Chat.RespondApproval(ctx, "missing", text.ID, service.DecisionApprove, "")
+	assert.ErrorIs(t, err, service.ErrNotFound)
+}
+
+func TestPostMessage_ReplyingToApprovalCardInWordsAnswersIt(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	p := f.createProject(t, "動画")
+	_, err := f.svc.Chat.RequestApproval(ctx, p.ID, domain.CheckpointScript, "脚本 v1", "sv1")
+	require.NoError(t, err)
+	card := lastMessage(t, f.thread(t, p.ID))
+
+	_, err = f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "もっと短くしてください", ReplyToMessageID: card.ID})
+	require.NoError(t, err)
+	project, updated, err := f.svc.Chat.Card(ctx, p.ID, card.ID)
+	require.NoError(t, err)
+	assert.Equal(t, domain.ApprovalChangesRequested, updated.ApprovalStatus, "any answer that is not an approval is feedback")
+	assert.Equal(t, domain.StatePlanning, project.State)
+
+	// A second card, answered with an approval word.
+	_, err = f.svc.Chat.RequestApproval(ctx, p.ID, domain.CheckpointMainVisual, "Main Visual", "mv1")
+	require.NoError(t, err)
+	card2 := lastMessage(t, f.thread(t, p.ID))
+	_, err = f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "承認します。", ReplyToMessageID: card2.ID})
+	require.NoError(t, err)
+	project, updated2, err := f.svc.Chat.Card(ctx, p.ID, card2.ID)
+	require.NoError(t, err)
+	assert.Equal(t, domain.ApprovalApproved, updated2.ApprovalStatus)
+	assert.Equal(t, domain.StateGenerating, project.State)
+}
+
+func TestEscalation_AnyReplyResumesTheProject(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	p := f.createProject(t, "動画")
+
+	require.NoError(t, f.svc.Chat.RaiseEscalation(ctx, p.ID, "リトライ上限に達しました", []string{"続行", "中止"}, "shot1"))
+	got, _ := f.svc.Projects.Get(ctx, p.ID)
+	assert.Equal(t, domain.StateAwaitingApproval, got.State, "escalation holds the project even at FULL AUTO")
+	esc := lastMessage(t, f.thread(t, p.ID))
+	assert.True(t, esc.Open)
+
+	_, err := f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "続行", ReplyToMessageID: esc.ID})
+	require.NoError(t, err)
+	got, _ = f.svc.Projects.Get(ctx, p.ID)
+	assert.Equal(t, domain.EscalationResumeState, got.State)
+	_, again, err := f.svc.Chat.Card(ctx, p.ID, esc.ID)
+	require.NoError(t, err)
+	assert.False(t, again.Open)
+}
+
+func TestAnnounce_PostsCardsAndRejectsBlockingKinds(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	p := f.createProject(t, "動画")
+
+	require.NoError(t, f.svc.Chat.Announce(ctx, p.ID, domain.ChatMessage{Kind: domain.KindKeyframe, RefID: "asset1", Content: "Main Visual"}))
+	require.NoError(t, f.svc.Chat.Announce(ctx, p.ID, domain.ChatMessage{Kind: domain.KindTake, RefID: "take1",
+		Content: domain.EncodeTakeCardBody(domain.TakeCardBody{Title: "Take 2", Badge: "AI Pick"})}))
+	msgs := f.thread(t, p.ID)
+	assert.Equal(t, domain.RefAsset, msgs[len(msgs)-2].RefType)
+	assert.Equal(t, domain.RefTake, msgs[len(msgs)-1].RefType)
+
+	var invalid *service.ValidationError
+	require.ErrorAs(t, f.svc.Chat.Announce(ctx, p.ID, domain.ChatMessage{Kind: domain.KindApproval}), &invalid)
+	require.ErrorAs(t, f.svc.Chat.Announce(ctx, p.ID, domain.ChatMessage{Kind: domain.KindTake}), &invalid, "cards need a reference")
+	got, _ := f.svc.Projects.Get(ctx, p.ID)
+	assert.Equal(t, domain.StateDraft, got.State, "announcements never block the project")
+}
+
+func TestProgressCard_ShowsTheLiveJobAndNotifiesOnJobChange(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	p := f.createProject(t, "動画")
+	jobs := repository.NewJobRepository(f.db)
+	job, err := jobs.Create(ctx, domain.JobGenerate, nil)
+	require.NoError(t, err)
+	require.NoError(t, f.svc.Chat.Announce(ctx, p.ID, domain.ChatMessage{Kind: domain.KindProgress, RefID: job.ID, Content: "Scene 02 を生成中"}))
+	card := lastMessage(t, f.thread(t, p.ID))
+	require.NotNil(t, card.Job)
+	assert.Equal(t, domain.JobQueued, card.Job.Status)
+
+	events, cancel, err := f.svc.Chat.Subscribe(ctx, p.ID)
+	require.NoError(t, err)
+	defer cancel()
+	require.NoError(t, jobs.MarkRunning(ctx, job.ID))
+	f.svc.Chat.JobChanged(ctx, job.ID)
+
+	select {
+	case e := <-events:
+		assert.Equal(t, service.Event{Type: service.EventCardUpdated, MessageID: card.ID}, e)
+	case <-time.After(time.Second):
+		t.Fatal("no event for the progress card")
+	}
+	_, live, err := f.svc.Chat.Card(ctx, p.ID, card.ID)
+	require.NoError(t, err)
+	assert.Equal(t, domain.JobRunning, live.Job.Status)
+}
+
+func TestEvents_AreNotificationsOnlyAndReachOnlyTheirProject(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	p := f.createProject(t, "動画")
+	other := f.createProject(t, "別")
+	mine, cancel, err := f.svc.Chat.Subscribe(ctx, p.ID)
+	require.NoError(t, err)
+	defer cancel()
+	theirs, cancelOther, err := f.svc.Chat.Subscribe(ctx, other.ID)
+	require.NoError(t, err)
+	defer cancelOther()
+
+	ws, err := f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "Instagram広告"})
+	require.NoError(t, err)
+
+	select {
+	case e := <-mine:
+		assert.Equal(t, service.EventMessageCreated, e.Type)
+		assert.Equal(t, ws.Messages[len(ws.Messages)-1].ID, e.MessageID, "points at the newest message; carries no body")
+	case <-time.After(time.Second):
+		t.Fatal("no event")
+	}
+	select {
+	case e := <-theirs:
+		t.Fatalf("event leaked into another project: %+v", e)
+	default:
+	}
+	_, _, err = f.svc.Chat.Subscribe(ctx, "missing")
+	assert.ErrorIs(t, err, service.ErrNotFound)
+}
+
+func TestHub_SlowSubscriberKeepsTheNewestEvent(t *testing.T) {
+	hub := service.NewHub()
+	ch, cancel := hub.Subscribe("p")
+	defer cancel()
+	for i := 0; i < 100; i++ {
+		hub.Publish("p", service.Event{Type: service.EventMessageCreated, MessageID: string(rune('a' + i%26))})
+	}
+	hub.Publish("p", service.Event{Type: service.EventCardUpdated, MessageID: "last"})
+
+	var got []service.Event
+	for len(ch) > 0 {
+		got = append(got, <-ch)
+	}
+	require.NotEmpty(t, got)
+	assert.Equal(t, "last", got[len(got)-1].MessageID)
+	assert.LessOrEqual(t, len(got), 16, "the buffer is bounded")
+
+	cancel()
+	cancel()                          // idempotent
+	hub.Publish("p", service.Event{}) // no subscribers: must not block or panic
+}
+
+func TestSetConfirmationLevel_ValidatesAndRemembersCustomSelection(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	p := f.createProject(t, "動画")
+
+	var invalid *service.ValidationError
+	_, err := f.svc.Projects.SetConfirmationLevel(ctx, p.ID, "sometimes", nil)
+	require.ErrorAs(t, err, &invalid)
+	_, err = f.svc.Projects.SetConfirmationLevel(ctx, p.ID, domain.ConfirmCustomCheck, []domain.Checkpoint{"bogus"})
+	require.ErrorAs(t, err, &invalid)
+	_, err = f.svc.Projects.SetConfirmationLevel(ctx, "missing", domain.ConfirmKeyCheck, nil)
+	assert.ErrorIs(t, err, service.ErrNotFound)
+
+	got, err := f.svc.Projects.SetConfirmationLevel(ctx, p.ID, domain.ConfirmCustomCheck, nil)
+	require.NoError(t, err)
+	assert.Equal(t, []domain.Checkpoint{domain.CheckpointScript, domain.CheckpointFinal}, got.CustomCheckpoints, "an empty selection falls back to script + final")
+
+	got, err = f.svc.Projects.SetConfirmationLevel(ctx, p.ID, domain.ConfirmCustomCheck,
+		[]domain.Checkpoint{domain.CheckpointRoughCut, domain.CheckpointCharacterDesign})
+	require.NoError(t, err)
+	assert.Equal(t, []domain.Checkpoint{domain.CheckpointCharacterDesign, domain.CheckpointRoughCut}, got.CustomCheckpoints, "stored in pipeline order")
+
+	got, err = f.svc.Projects.SetConfirmationLevel(ctx, p.ID, domain.ConfirmFullAuto, nil)
+	require.NoError(t, err)
+	assert.Equal(t, domain.ConfirmFullAuto, got.ConfirmationLevel)
+	assert.Len(t, got.CustomCheckpoints, 2, "the custom selection is remembered")
+	assert.Contains(t, lastMessage(t, f.thread(t, p.ID)).Content, "FULL AUTO", "the change is recorded in the thread")
+}
+
+func TestUpdateBrief_SavesEditsAndValidates(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	p := f.createProject(t, "美容液の縦型15秒CMを作りたい", upload("ref.mp4", mp4Bytes))
+
+	view, err := f.svc.Projects.UpdateBrief(ctx, p.ID, service.BriefForm{
+		Values: map[domain.BriefField]string{
+			domain.BriefSubject: "化粧水", domain.BriefAspectRatio: "16:9", domain.BriefDuration: "",
+		},
+		AdditionalInstruction: " 夜のシーン ",
+		References:            "https://example.com/a\n\nhttps://example.com/b\n",
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "化粧水", view.Brief.Subject)
+	assert.Empty(t, view.Brief.Duration, "clearing a field makes the AI ask again")
+	assert.Equal(t, "夜のシーン", view.Brief.AdditionalInstruction)
+	assert.Len(t, view.Brief.References, 3, "the uploaded video reference is kept next to the two URLs")
+	assert.Contains(t, lastMessage(t, f.thread(t, p.ID)).Content, "Brief を更新しました")
+
+	var invalid *service.ValidationError
+	_, err = f.svc.Projects.UpdateBrief(ctx, p.ID, service.BriefForm{Values: map[domain.BriefField]string{domain.BriefAspectRatio: "縦"}})
+	require.ErrorAs(t, err, &invalid)
+	assert.Equal(t, string(domain.BriefAspectRatio), invalid.Field)
+	_, err = f.svc.Projects.UpdateBrief(ctx, p.ID, service.BriefForm{References: "ftp://example.com"})
+	require.ErrorAs(t, err, &invalid)
+	assert.Equal(t, "references", invalid.Field)
+	assert.Equal(t, "化粧水", f.brief(t, p.ID).Subject, "rejected edits are not stored")
+
+	_, err = f.svc.Projects.UpdateBrief(ctx, "missing", service.BriefForm{})
+	assert.ErrorIs(t, err, service.ErrNotFound)
+}
+
+func TestWorkspace_UnknownProjectIsNotFound(t *testing.T) {
+	f := newFixture(t)
+	_, err := f.svc.Chat.Workspace(context.Background(), "missing")
+	assert.ErrorIs(t, err, service.ErrNotFound)
+	_, err = f.svc.Chat.Messages(context.Background(), "missing", "x")
+	assert.ErrorIs(t, err, service.ErrNotFound)
+}
+
+type zeros struct{}
+
+func (zeros) Read(p []byte) (int, error) { clear(p); return len(p), nil }
+
+func TestCreateProject_StopsCopyingAnUploadThatIsLargerThanItClaims(t *testing.T) {
+	f := newFixture(t)
+	lying := service.Upload{Name: "lie.png", Size: 64, Open: func() (io.ReadCloser, error) {
+		return io.NopCloser(io.MultiReader(bytes.NewReader(pngBytes), zeros{})), nil
+	}}
+
+	_, err := f.svc.Projects.Create(context.Background(), service.CreateProjectInput{Content: "hi", Uploads: []service.Upload{lying}})
+
+	var invalid *service.ValidationError
+	require.ErrorAs(t, err, &invalid)
+	assert.Contains(t, invalid.Message, "サイズが上限")
+	entries, _ := os.ReadDir(filepath.Join(f.assetsDir))
+	for _, e := range entries {
+		sub, _ := os.ReadDir(filepath.Join(f.assetsDir, e.Name()))
+		assert.Empty(t, sub, "the oversized file was removed")
+	}
+}
+
+func TestPostMessage_ReturnsTheQuestionCardsItClosed(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	p := f.createProject(t, "動画を作りたい") // asks Content Type
+	q := lastMessage(t, f.thread(t, p.ID))
+
+	// A reply closes the card it targets ...
+	ws, err := f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "商品CM", ReplyToMessageID: q.ID})
+	require.NoError(t, err)
+	require.Len(t, ws.Updated, 1)
+	assert.Equal(t, q.ID, ws.Updated[0].ID)
+	assert.False(t, ws.Updated[0].Open)
+
+	// ... and a free-text answer closes the card of the field it decided, although nothing was replied to.
+	open := lastMessage(t, ws.Messages)
+	require.Equal(t, domain.KindQuestion, open.Kind)
+	ws, err = f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "Instagram広告"})
+	require.NoError(t, err)
+	require.Len(t, ws.Updated, 1)
+	assert.Equal(t, open.ID, ws.Updated[0].ID)
+	assert.False(t, ws.Updated[0].Open)
+}

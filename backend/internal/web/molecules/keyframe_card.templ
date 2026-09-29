@@ -1,0 +1,18 @@
+package molecules
+
+import "github.com/ousiassllc/mam/backend/internal/domain"
+
+// KeyframeCard shows a Keyframe / Reference Pack image; replying to it targets it.
+templ KeyframeCard(m domain.ThreadMessage) {
+	@MessageFrame(m) {
+		<a href={ AssetURL(m.ProjectID, m.RefID) } target="_blank" rel="noopener">
+			<img src={ string(AssetURL(m.ProjectID, m.RefID)) } alt="Keyframe" loading="lazy" class="max-h-80 rounded border border-neutral-700"/>
+		</a>
+		if m.Content != "" {
+			<p class="mt-2 whitespace-pre-wrap break-words text-neutral-300">{ m.Content }</p>
+		}
+		<div class="mt-1">
+			@ReplyButton(m)
+		</div>
+	}
+}

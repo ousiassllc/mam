@@ -1,0 +1,33 @@
+package atoms
+
+// BadgeTone selects the badge colours.
+type BadgeTone string
+
+// Badge tones.
+const (
+	BadgeNeutral BadgeTone = "neutral"
+	BadgeInfo    BadgeTone = "info"
+	BadgeWarn    BadgeTone = "warn"
+	BadgeOK      BadgeTone = "ok"
+	BadgeError   BadgeTone = "error"
+)
+
+func badgeClass(tone BadgeTone) string {
+	base := "inline-block rounded-full px-2 py-0.5 text-xs font-medium "
+	switch tone {
+	case BadgeInfo:
+		return base + "bg-sky-500/20 text-sky-300"
+	case BadgeWarn:
+		return base + "bg-amber-500/20 text-amber-300"
+	case BadgeOK:
+		return base + "bg-emerald-500/20 text-emerald-300"
+	case BadgeError:
+		return base + "bg-red-500/20 text-red-300"
+	}
+	return base + "bg-neutral-700 text-neutral-300"
+}
+
+// Badge is a small status label.
+templ Badge(tone BadgeTone, text string) {
+	<span class={ badgeClass(tone) }>{ text }</span>
+}

@@ -1,0 +1,50 @@
+package molecules
+
+import "github.com/ousiassllc/mam/backend/internal/domain"
+
+// MessageFrame is the common shell of every thread entry. The element id
+// (msg-<id>) lets the client replace a card in place and skip messages it already shows.
+templ MessageFrame(m domain.ThreadMessage) {
+	<article
+		id={ "msg-" + m.ID }
+		data-message-id={ m.ID }
+		data-kind={ string(m.Kind) }
+		if m.Open {
+			data-card-open="true"
+		}
+		if isOOB(ctx) {
+			hx-swap-oob="outerHTML"
+		}
+		class={ frameClass(m) }
+	>
+		if m.ReplyTo != nil {
+			<p class="mb-2 border-l-2 border-neutral-500 pl-2 text-xs text-neutral-400">{ "返信: " + excerpt(*m.ReplyTo) }</p>
+		}
+		{ children... }
+		if len(m.Attachments) > 0 {
+			@AttachmentStrip(m.ProjectID, m.Attachments)
+		}
+	</article>
+}
+
+// AttachmentStrip shows the images and videos attached to a message.
+templ AttachmentStrip(projectID string, assets []domain.Asset) {
+	<ul class="mt-2 flex flex-wrap gap-2" data-attachments>
+		for _, a := range assets {
+			<li>
+				if a.Type == domain.AssetImage {
+					<a href={ AssetURL(projectID, a.ID) } target="_blank" rel="noopener">
+						<img src={ string(AssetURL(projectID, a.ID)) } alt="添付画像" loading="lazy" class="h-24 rounded border border-neutral-700 object-cover"/>
+					</a>
+				} else {
+					<video src={ string(AssetURL(projectID, a.ID)) } controls preload="metadata" class="h-32 rounded border border-neutral-700"></video>
+				}
+			</li>
+		}
+	</ul>
+}
+
+// ReplyButton lets the user reply to a card so the instruction targets it (spec/spec.md §23.2).
+templ ReplyButton(m domain.ThreadMessage) {
+	<button class="text-xs text-neutral-400 underline hover:text-neutral-200" { replyAttrs(m)... }>返信</button>
+}

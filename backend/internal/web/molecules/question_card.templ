@@ -1,0 +1,23 @@
+package molecules
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+)
+
+// QuestionCard asks for a missing Brief item: option buttons, "AIに任せる", or free input in the composer.
+templ QuestionCard(m domain.ThreadMessage) {
+	@MessageFrame(m) {
+		<p class="whitespace-pre-wrap break-words">{ domain.DecodeCardBody(m.Content).Text }</p>
+		if m.Open {
+			<div class="mt-3 flex flex-wrap gap-2" data-options>
+				for _, option := range domain.DecodeCardBody(m.Content).Options {
+					@atoms.Button(atoms.ToneNeutral, option, answerAttrs(m, option))
+				}
+				@atoms.Button(atoms.TonePrimary, domain.DelegateOption, answerAttrs(m, domain.DelegateOption))
+			</div>
+		} else {
+			<p class="mt-2 text-xs text-neutral-500">回答済み</p>
+		}
+	}
+}

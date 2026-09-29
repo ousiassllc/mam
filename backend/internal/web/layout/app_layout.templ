@@ -2,7 +2,8 @@ package layout
 
 // AppLayout is the shared page shell. The CSRF token is published in a meta tag;
 // static/src/main.ts reads it and attaches it to every HTMX request, and
-// components/lib/api.ts attaches it to every fetch.
+// components/lib/api.ts attaches it to every fetch. #toast-region receives the
+// out-of-band toasts of failed actions.
 templ AppLayout(title string, csrfToken string) {
 	<!DOCTYPE html>
 	<html lang="ja">
@@ -16,6 +17,7 @@ templ AppLayout(title string, csrfToken string) {
 		</head>
 		<body class="min-h-screen bg-neutral-950 text-neutral-100">
 			{ children... }
+			<div id="toast-region" class="pointer-events-none fixed bottom-4 right-4 z-50 flex max-w-sm flex-col gap-2" aria-live="assertive"></div>
 		</body>
 	</html>
 }
