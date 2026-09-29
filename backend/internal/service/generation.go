@@ -91,6 +91,8 @@ func mapGenerationError(err error) error {
 		return ErrBusy
 	case errors.Is(err, generation.ErrBudgetExceeded):
 		return ErrBudgetExceeded
+	case errors.Is(err, repository.ErrLocked):
+		return lockedError(err)
 	}
 	return notFound(err)
 }

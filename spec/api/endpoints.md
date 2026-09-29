@@ -72,6 +72,17 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 | PUT | `/shots/:id/locks` | パラメータ単位の AUTO/MANUAL/LOCK 設定（Character Identity/Camera/Product Geometry 等） | F-05 |
 | PUT | `/shots/:id/shot-spec` | Canonical Shot Spec の手動編集（DIRECTOR MODE） | F-06 |
 
+M1 の入出力契約（Issue #12）:
+
+- `PUT /projects/:id/mode`: Body `mode`=`auto|director`。応答は MODE コントロール（`chat_composer` 内）のフラグメントで、`HX-Trigger: chat:refresh` によりスレッドに追記された AI 発言（モード切替の通知）を取得させる。不正値は 422、存在しない Project は 404。DIRECTOR の間はパイプラインが工程を進めない（指示した箇所だけを直して待機する）。AUTO に戻すと、DIRECTOR 中に止まっていた工程から再開する。モードは `project.mode` に保持され、切替でほかの状態は変わらない
+- `PUT /shots/:id/locks`: Body `parameter`（`dialogue|character_identity|acting|camera|lighting|product_geometry|prompt|video_model|take_selection|editing`）と `mode`（`auto|manual|lock`）、`video_model` のみ `value`（`kling-3.0|seedance-2.0`）。応答は当該パラメータの `lock_toggle` フラグメント。`video_model` は MANUAL でモデル名が必須、LOCK で省略時は最新 Take のモデルを固定する。すでに LOCK 中の値を別の値で LOCK し直す要求は 423。不正なパラメータ/モードは 422、存在しない Shot は 404。`lock` に行が無いパラメータは AUTO
+- `PUT /projects/:id/locks`: Body `target_type`（または `parameter`）=`story|music` と `mode`。Story を LOCK すると State Extractor は Story の全項目を変更しない。Shot のパラメータは 422、存在しない Project は 404
+- `PUT /shots/:id/shot-spec`: Body `shot_spec` は Canonical Shot Spec の JSON（未知のキーは 422。`duration` は Shot の長さに固定）。`domain.ShotSpec.Validate` を満たさない入力は 422 でフォームを入力値と理由付きで再描画。LOCK 中のパラメータの部分を変える編集は 423 で何も書かず（Prompt を LOCK した Shot は Spec のどの部分も変えられない）、生成中の Shot は 409。成功時は新しい `prompt_version` を追記して Inspector を返す
+- `GET /shots/:id`: `HX-Request` でフラグメント、なければフルページ（`shot_inspector_page`）。Canonical Shot Spec・Take List・全パラメータの AUTO/MANUAL/LOCK 切替・Spec の手動編集フォーム・自然言語の指示フォームを表示する
+- `POST /shots/:id/director-command`: Body `content`（必須、`POST /projects/:id/messages` と同じ上限）。Command Interpreter が返した操作を実行する。順序は LOCK 設定 → 再生成 → モード切替。再生成は対象 Shot だけを起動し（202、他は 200）、変更する部分以外（Character/Acting/Environment 等）と LOCK 中の部分は Shot Spec に引き継ぐ。LOCK 中の部分を変える再生成を含む指示は 423 で、発言も記録せず何も実行しない（同じ指示の中で LOCK を外していれば許可）。LLM 未構成は 503。発言と結果は AI 発言としてスレッドに記録される
+- `POST /projects/:id/messages`: DIRECTOR MODE で Brief 確定後（DRAFT 以外）の発言は Command Interpreter が解釈する（Approval / Question / Escalation カードへの返信は従来どおりその回答）。対象 Shot は「Take カードへの返信 → 発言中の Scene/Shot 番号 → スレッドの直近の Take カード → Shot が 1 つだけの Project」の順で解決し、解決できなければ AI が聞き返して何も実行しない。LOCK 中の部分を変える再生成は実行せず、AI 発言でその旨を伝える。Branch 作成の指示は M2 まで「未対応」と返す
+- `POST /shots/:id/generate`: `additional_instruction` を伴う要求は、Prompt が LOCK された Shot では 423。LOCK / 指示で保持する部分は Shot Spec を作り直す際にも変更されず、`video_model` が MANUAL/LOCK の Shot はそのモデルだけで生成する（長さやコストによる別モデルへの切替は行わない）
+
 ### 2.3 Prompt / Generation / Judge / Repair
 
 | Method | Path | 概要 | 対応機能 |
@@ -269,3 +280,4 @@ Response 200:
 | 1.20 | 2026-09-29 | `GET /projects/:id/scenes` を追加。Scene/Shot 作成エンドポイントと `GET /projects/:id/scenes/:sceneId` の入力・エラー契約を明記 | M1「Reasoning LLM Adapter と AUTO パイプライン」（Issue #6）で Scene/Shot/Take 階層の表示・選択・作成 API の契約が未定義だったため |
 | 1.21 | 2026-09-29 | `POST /shots/:id/generate` の Body・エラー（402/404/409/503）、`POST /shots/:id/reference-pack` の非同期応答、`/ws/shots/:id` のメッセージ形式を明記 | M1「Prompt Autopilot・Model Adapter・Reference Pack・生成オーケストレーション」（Issue #7）で生成 API と進捗通知の契約が未定義だったため |
 | 1.22 | 2026-09-29 | §2.8 に M1 の入出力契約を追記（編集できる項目・応答・423/422/404 の条件、`branch_id` は M2 まで 404） | M1「World State（Basic）と State Extractor」（Issue #8）で `PUT .../characters/:id` 等の Body・応答・LOCK 時の挙動が名称レベルでしか定義されていなかったため |
+| 1.23 | 2026-09-29 | §2.2 に M1 の入出力契約（mode / locks / shot-spec / Inspector / director-command / チャットの DIRECTOR 解釈）を追記。`POST /shots/:id/generate` の LOCK・Video Model 固定時の挙動を追記 | M1「AUTO/MANUAL/LOCK と DIRECTOR MODE」（Issue #12）で、Body・応答・423/422/409/202 の条件、対象 Shot の解決順、LOCK の判定範囲が名称レベルでしか定義されていなかったため |

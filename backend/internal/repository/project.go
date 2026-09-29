@@ -101,6 +101,8 @@ type Turn struct {
 	Approval  *ApprovalUpdate
 	// Confirmation replaces the Confirmation Level setting.
 	Confirmation *Confirmation
+	// Mode switches AUTO / DIRECTOR (F-02).
+	Mode *domain.Mode
 	// ResumeState, when set, moves the Project out of AWAITING_APPROVAL into that state
 	// after the other changes, but only if no blocking card is left unanswered.
 	ResumeState *domain.ProjectState
@@ -160,6 +162,11 @@ func (r *ProjectRepository) Apply(ctx context.Context, t Turn) error {
 		if t.Confirmation != nil {
 			if _, err := tx.ExecContext(ctx, `UPDATE project SET confirmation_level = ?, custom_checkpoints = ? WHERE id = ?`,
 				t.Confirmation.Level, string(checkpoints), t.ProjectID); err != nil {
+				return err
+			}
+		}
+		if t.Mode != nil {
+			if _, err := tx.ExecContext(ctx, `UPDATE project SET mode = ? WHERE id = ?`, *t.Mode, t.ProjectID); err != nil {
 				return err
 			}
 		}

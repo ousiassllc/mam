@@ -51,6 +51,9 @@ func shotURL(projectID, sceneID, shotID string) string {
 	return "/projects/" + projectID + "/scenes/" + sceneID + "?shot=" + shotID
 }
 
+// inspectorURL is the Shot Inspector page.
+func inspectorURL(shotID string) string { return "/shots/" + shotID }
+
 func shotActionURL(shotID, action string) string { return "/shots/" + shotID + "/" + action }
 
 func shotProgressURL(shotID string) string { return "/ws/shots/" + shotID }
@@ -131,6 +134,7 @@ templ ShotCard(d ShotCardData) {
 				hx-push-url="true"
 			>{ fmt.Sprintf("Shot %d: %s", d.Shot.OrderIndex+1, d.Shot.Objective) }</a>
 			<span class="flex items-center gap-2 text-xs text-neutral-400">
+				<a href={ templ.SafeURL(inspectorURL(d.Shot.ID)) } class="underline hover:text-neutral-100">Inspector</a>
 				<span>{ secondsText(d.Shot.Duration) }</span>
 				if d.Shot.State == domain.ShotGenerating {
 					@atoms.Spinner("生成中")

@@ -7,6 +7,7 @@ import (
 	"log/slog"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/briefing"
+	"github.com/ousiassllc/mam/backend/internal/agent/commandinterpreter"
 	"github.com/ousiassllc/mam/backend/internal/agent/generation"
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
@@ -45,6 +46,7 @@ type Services struct {
 	Plans       *PlanService
 	Generation  *GenerationService
 	World       *WorldService
+	Director    *DirectorService
 }
 
 // Recover puts Shots left GENERATING by an abnormal termination back to PLANNING. It MUST run
@@ -101,6 +103,11 @@ func New(deps Deps) *Services {
 		// Not resumable: a generation costs money, so an interrupted one is failed, not repeated.
 		deps.Jobs.Register(domain.JobGenerate, generations.gen.Handle, false)
 	}
+	director := &DirectorService{core: c, gens: gens, locks: repository.NewLockRepository(deps.DB), orch: generations.gen}
+	if deps.LLM != nil {
+		director.interpreter = commandinterpreter.New(deps.LLM)
+	}
+	c.director = director
 	return &Services{
 		Health:      NewHealthService(deps.DB),
 		Credentials: NewCredentialService(deps.Credentials),
@@ -109,5 +116,6 @@ func New(deps Deps) *Services {
 		Plans:       &PlanService{c},
 		Generation:  generations,
 		World:       &WorldService{core: c, world: world},
+		Director:    director,
 	}
 }

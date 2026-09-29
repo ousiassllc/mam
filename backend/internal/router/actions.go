@@ -13,6 +13,11 @@ func registerActions(engine *gin.Engine, services *service.Services) {
 	engine.POST("/projects", handler.CreateProject(services.Projects))
 	engine.PUT("/projects/:id/brief", handler.UpdateBrief(services.Projects))
 	engine.PUT("/projects/:id/confirmation-level", handler.SetConfirmationLevel(services.Projects))
+	engine.PUT("/projects/:id/mode", handler.SetMode(services.Director))
+	engine.PUT("/projects/:id/locks", handler.SetProjectLock(services.Director))
+	engine.PUT("/shots/:id/locks", handler.SetShotLock(services.Director))
+	engine.PUT("/shots/:id/shot-spec", handler.EditShotSpec(services.Director))
+	engine.POST("/shots/:id/director-command", handler.DirectorCommand(services.Director))
 
 	engine.POST("/projects/:id/scenes", handler.CreateScene(services.Plans))
 	engine.POST("/scenes/:id/shots", handler.CreateShot(services.Plans))

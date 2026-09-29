@@ -19,6 +19,7 @@ func registerPages(engine *gin.Engine, services *service.Services) {
 	engine.GET("/projects/:id/brief", handler.BriefPage(services.Projects))
 	engine.GET("/projects/:id/scenes", handler.ScenePage(services.Plans))
 	engine.GET("/projects/:id/scenes/:sceneId", handler.ScenePage(services.Plans))
+	engine.GET("/shots/:id", handler.ShotInspector(services.Director))
 	engine.GET("/projects/:id/world-state", handler.WorldStatePage(services.World))
 	engine.GET("/projects/:id/assets/:assetId", handler.ProjectAsset(services.Projects))
 
