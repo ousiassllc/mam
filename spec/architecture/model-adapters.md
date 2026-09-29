@@ -51,6 +51,25 @@
 - **M1 実装順**: コスト効率と音声同時生成による検証のしやすさを優先し、Kling 3.0 + Seedance 2.0 の2アダプタを先行実装する。Runway Gen-4.5 はM2以降で追加する（`spec/overview.md` マイルストーンの「1〜2 Video Model Adapter」に対応）
 - OpenAI Sora 2 は候補から除外: API提供が2026-09-24付で終了済みのため
 
+## 4.5 評価・判断の補助（Judge / Repair 用）
+
+Reasoning LLM Adapter にも動画/画像生成 Model Adapter にも属さない、判定精度と判断コストを補う2つの部品。いずれも生成物ではないため Take / Cost Ledger の対象外（§6）。
+
+| 用途 | 採用 | 実行場所 | 入力 | 選定理由 |
+|------|------|---------|------|---------|
+| Face Identity Similarity（F-13、`spec/spec.md` §12.4） | 顔検出 + 顔埋め込みモデル（ArcFace 系を想定。具体モデルは実装時に確定） | ローカル（外部送信なし） | Take のサンプルフレーム、`character.face_reference_asset_id` の参照顔 | Gemini の定性評価だけでは微妙な顔のズレを見逃す恐れがあり、シリーズ制作で致命的になる。数値化により閾値判定と時系列追跡ができる |
+| Repair Strategy の前段選別（F-14） | TypeSafe AI Jev（System One API。外部 API、`POST https://api.typesafe.ai/v1/systemone`） | 外部 API | Judge Result の issues（`type` / `severity` / `time_range`）を英語の構造化 JSON にしたもの | Choice で Repair 戦略を選び、確率と confidence を返す。confidence を閾値ゲートに使えるため、低 confidence の場合のみ Repair Agent（LLM）に回して LLM 呼び出しを減らせる |
+
+Jev の利用ルール:
+
+- **テキスト専用**: 画像・動画・音声は入力できない。顔や映像の判定には使わず、Judge が出した Issue の構造化データのみを入力とする
+- **前段選別**: Choice で Repair 戦略（§13 の6種）から1つを選ぶ。confidence が閾値以上なら採用、閾値未満なら Repair Agent（Claude Opus 系）へ回す
+- **決定的ルールを優先**: LOCK 違反・Critical constraints・Retry Policy の上限判定は決定的ルールで行い、Jev を経由しない
+- **言語**: Jev の主学習言語は英語で、日本語を含む CJK は精度が低い。`type` / `severity` 等の英語スキーマ値のみを渡し、日本語の自由記述は渡さない
+- **送信範囲**: Issue の構造化フィールドのみ。Brief・脚本・画像・動画は送らない。API キーは `internal/credential` で管理する
+- **バージョン固定**: `jev-latest` は使わず、具体バージョンを指定する。モデル更新で選別結果が変わることを避けるため
+- **導入手順**: M1 では Repair Agent の LLM 判断のみで動かし、Jev を並走（シャドー）実行して LLM の選択との一致率・confidence 分布・遅延・コストを記録する。許容水準に達した場合のみ前段選別を有効化する。閾値と許容水準は実測で決定する（仕様では固定しない）
+
 ## 5. 音声（Audio Director）
 
 | 機能（F-20対応） | プロバイダー | 選定理由 |
@@ -82,9 +101,12 @@ Reasoning LLM Adapter側の呼び出しモデルは Take/Cost Ledger の対象�
 - 各プロバイダーのSDKバージョン・具体的なエンドポイント・レート制限値は実装フェーズで確定する
 - コスト実測値（$/秒、$/画像等）は市場変動が大きいため、`non-functional.md` §6「コスト可視化」機能で継続的に検証し、本書の数値は参考値として扱う
 - 動画/画像/LLM市場は数ヶ月単位でモデル改廃が発生するため、本書は半期ごとに見直しレビューを行う（次回レビュー目安: 2027-03）
+- Face Identity Similarity の埋め込みモデルは、商用利用可能なライセンスかを確認したうえで選定する。Go 単一バイナリでの推論ランタイム（ONNX Runtime 等）との両立も実装時に検証する
+- Jev の外部 API 利用は、シャドー実行の結果（一致率・confidence・遅延・コスト）で採否を判断する。`spec/requirements/non-functional.md` §5 の外部送信方針との整合を導入時に確認する
 
 ## 改訂履歴
 
 | 版 | 日付 | 変更内容 | 変更理由 |
 |----|------|---------|---------|
 | 1.0 | 2026-09-29 | 新規作成 | LLM/画像生成/動画生成/音声の具体的プロバイダー選定をユーザーと合意し、Model Adapter層の対象を確定するため |
+| 1.1 | 2026-09-29 | §4.5（Face Identity Similarity / Jev による Repair 前段選別）と §8 の未確定事項を追加 | シリーズ制作での顔のブレ検知の数値化と、Repair 戦略選択の低コスト化を仕様に加えるため |

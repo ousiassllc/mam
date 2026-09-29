@@ -21,6 +21,10 @@ erDiagram
     PROJECT ||--o{ EXPORT : produces
     PROJECT ||--o{ COST_LEDGER_ENTRY : accrues
     PROJECT ||--o{ BRAND_CONSTRAINT : enforces
+    SERIES ||--o{ PROJECT : episodes
+    SERIES ||--o{ CHARACTER : canonical_characters
+    SERIES ||--o{ PRODUCT : canonical_products
+    SERIES ||--o{ LOCATION : canonical_locations
 
     SCENE ||--o{ SHOT : contains
     SHOT ||--o{ PROMPT_VERSION : has
@@ -51,6 +55,9 @@ erDiagram
 
     PROJECT {
         string id PK
+        string series_id FK
+        int episode_number
+        string inherited_world_state_version_id FK
         string state
         string mode
         string confirmation_level
@@ -121,6 +128,7 @@ erDiagram
         string result
         float overall_confidence
         json issues
+        json metrics
         json preserve
         datetime created_at
     }
@@ -141,6 +149,10 @@ erDiagram
     PROJECT ||--o{ CHARACTER : owns
     PROJECT ||--o{ PRODUCT : owns
     PROJECT ||--o{ LOCATION : owns
+    SERIES ||--o{ PROJECT : episodes
+    SERIES ||--o{ CHARACTER : canonical_characters
+    SERIES ||--o{ PRODUCT : canonical_products
+    SERIES ||--o{ LOCATION : canonical_locations
     PROJECT ||--o{ WORLD_STATE_VERSION : tracks
     SHOT ||--o{ STATE_DIFF : produces
     STATE_DIFF }o--|| WORLD_STATE_VERSION : creates
@@ -159,6 +171,8 @@ erDiagram
         string id PK
         string project_id FK
         string branch_id FK
+        string series_id FK
+        string origin_id FK
         string name
         string face_reference_asset_id FK
         string body_reference_asset_id FK
@@ -171,6 +185,8 @@ erDiagram
         string id PK
         string project_id FK
         string branch_id FK
+        string series_id FK
+        string origin_id FK
         string name
         string geometry_reference_asset_id FK
         string label_reference_asset_id FK
@@ -182,6 +198,8 @@ erDiagram
         string id PK
         string project_id FK
         string branch_id FK
+        string series_id FK
+        string origin_id FK
         string name
         string layout_reference_asset_id FK
         string time
@@ -194,6 +212,11 @@ erDiagram
         string branch_id FK
         int version_number
         json state
+        datetime created_at
+    }
+    SERIES {
+        string id PK
+        string name
         datetime created_at
     }
     STATE_DIFF {
@@ -312,16 +335,17 @@ erDiagram
 
 | テーブル | 主要制約 | インデックス |
 |---------|---------|------------|
-| `project` | `id` PK。`state` は Core State Machine（§22）の値のみ許可（CHECK制約）。`mode` は `auto/director`、`confirmation_level` は `full_auto/key_check/custom_check`、`production_template` は `product_cm/drama/anime/sns_short`、`quality_policy` は `fast/balanced/max_quality` のいずれか（各CHECK制約） | `idx_project_state (state)` |
+| `project` | `id` PK。`state` は Core State Machine（§22）の値のみ許可（CHECK制約）。`mode` は `auto/director`、`confirmation_level` は `full_auto/key_check/custom_check`、`production_template` は `product_cm/drama/anime/sns_short`、`quality_policy` は `fast/balanced/max_quality` のいずれか（各CHECK制約）。`series_id` FK（NULL許容、NULL=単発プロジェクト）、`episode_number`（`series_id` 非NULL時のみ使用）。`(series_id, episode_number)` UNIQUE。`inherited_world_state_version_id` FK（NULL許容、前 Episode の最終 `world_state_version` を開始状態として継承する場合に設定） | `idx_project_state (state)`, `idx_project_series (series_id, episode_number)` |
+| `series` | `id` PK。Series（複数 Episode を束ねる単位、F-29）。Character/Product/Location の正本と Reference Pack を保持する | - |
 | `brief` | `project_id` UNIQUE FK（1:1） | - |
 | `asset` | `project_id` FK。`type` は `image/video/reference` のいずれか | `idx_asset_project (project_id)` |
-| `character` / `product` / `location` | `project_id` FK。`branch_id` FK（NULL許容、NULL=主系列、非NULL=当該BranchのWorld State固有値） | `idx_character_project (project_id, branch_id)` 等 |
+| `character` / `product` / `location` | `project_id` FK（NULL許容）と `series_id` FK（NULL許容）のちょうど一方が非NULL（CHECK制約）。`project_id` 非NULL=Project（Episode）内の行、`series_id` 非NULL=Series 正本。Episode 開始時に Series 正本から project 側の行へコピーし、`origin_id`（Series 正本行への FK、NULL許容）で由来を保持する。`branch_id` FK（NULL許容、NULL=主系列、非NULL=当該BranchのWorld State固有値。Series 正本は常にNULL） | `idx_character_project (project_id, branch_id)`, `idx_character_series (series_id)` 等 |
 | `script_version` | `project_id` FK。`(project_id, version_number)` UNIQUE | - |
 | `scene` | `project_id` FK。`branch_id` FK（NULL許容、NULL=主系列/トランク、非NULL=当該Branchの派生ツリーに属するScene）。`(project_id, branch_id, order_index)` UNIQUE | `idx_scene_project_branch_order (project_id, branch_id, order_index)` |
 | `shot` | `scene_id` FK。`selected_take_id` は `take.id` への FK（NULL許容）。`state` は Core State Machine のサブ状態のみ許可 | `idx_shot_scene_order (scene_id, order_index)` |
 | `prompt_version` | `shot_id` FK。`(shot_id, version_number)` UNIQUE | `idx_prompt_version_shot (shot_id)` |
 | `take` | `prompt_version_id` FK。`status` は `candidate/ai_pick/selected/rejected` のいずれか | `idx_take_prompt_version (prompt_version_id)`, `idx_take_status (status)` |
-| `judge_result` | `take_id` FK（UNIQUEではない、同一Takeへの複数回Judge実行履歴を保持）。`result` は `pass/fail` | `idx_judge_result_take (take_id, created_at)` |
+| `judge_result` | `take_id` FK（UNIQUEではない、同一Takeへの複数回Judge実行履歴を保持）。`result` は `pass/fail`。`metrics` は Face Identity Similarity 等の数値指標（JSON、`spec/spec.md` §12.4） | `idx_judge_result_take (take_id, created_at)` |
 | `repair_action` | `judge_result_id` FK。`resulting_take_id` は次に生成された `take.id`（NULL許容 = 未生成） | `idx_repair_action_judge_result (judge_result_id)` |
 | `world_state_version` | `project_id` FK。`branch_id` FK（NULL許容、NULL=主系列、非NULL=当該Branchが独立して持つバージョン系列）。`(project_id, branch_id, version_number)` UNIQUE、Branch単位で`version_number`は独立して単調増加 | `idx_world_state_version_project (project_id, branch_id, version_number)` |
 | `state_diff` | `shot_id` FK、`take_id` FK、`world_state_version_id` FK | `idx_state_diff_shot (shot_id)` |
@@ -341,6 +365,7 @@ erDiagram
 - **World State のバージョニング**: Shot完了ごとに `state_diff` を生成し、新しい `world_state_version` を追加する（追記のみ、上書きしない）。ユーザーが LOCK した項目は State Extractor（Agent側ロジック）が diff 対象から除外する
 - **Branch の Snapshot**: Branch作成時点の `world_state_version_id` を参照するのみで、Branch自体は新しい `world_state_version` 系列を独立して持つ（Branch以降の変更は元系列に影響しない）
 - **JSON カラム**: SQLite の `JSON` 型（TEXT + `json_valid` CHECK制約）を用いる。将来的な検索要件が増えた場合は生成列（generated column）でインデックスを追加する
+- **Series 正本と Episode の継承**: Series 正本の更新は、コピー済みの既存 Episode 行へ自動伝播しない（各 Episode の再現性・Traceability を保つ）。`origin_id` で由来を辿る。Series 正本自体の更新履歴は F-28 のバージョン化に含め、M2 実装時に設計する
 
 ## 改訂履歴
 
@@ -363,3 +388,4 @@ erDiagram
 | 1.14 | 2026-09-28 | `edit_timeline_version`/`audio_timeline_version`/`export` に nullable `branch_id` を追加。UNIQUE制約を `(project_id, branch_id, version_number)` へ変更し、§1・§2.3に `BRANCH \|\|--o{ EDIT_TIMELINE_VERSION/AUDIO_TIMELINE_VERSION/EXPORT` 関係線を追加 | scene/character/product/location/world_state_versionはBranch独立化済みだったが編集・音声・書き出しにはbranch_idが無く、Branch別の編集・音声・Exportができなかったため（整合性レビュー指摘） |
 | 1.15 | 2026-09-28 | `character`/`product`/`location` から `lock_state` カラムを削除し、LOCK判定を汎用 `lock` テーブル（`target_type`/`parameter_name`単位）に一元化 | 単一値`lock_state`とF-05・`PUT /shots/:id/locks`が前提とする属性単位（wardrobe/hairstyle等）のLOCK粒度が不一致で、判定手段が二重化していたため（整合性レビュー指摘） |
 | 1.16 | 2026-09-28 | `judge_result.take_id` のUNIQUE制約を削除し複数回のJudge実行履歴を保持可能にした。§1・§2.1の関係線を `TAKE ||--o{ JUDGE_RESULT`（zero-or-many）へ変更 | `POST /takes/:id/judge`（AI Video Judge明示的再実行）が同一Takeに複数回Judgeを実行する前提なのに、UNIQUE制約により先行結果が上書きされ、設計原則「Every Generation Is Traceable」・F-27のJudge結果保存要件と矛盾していたため（整合性レビュー指摘） |
+| 1.17 | 2026-09-29 | `series` テーブルを追加。`project` に `series_id`/`episode_number`/`inherited_world_state_version_id`、`character`/`product`/`location` に `series_id`/`origin_id`、`judge_result` に `metrics` を追加 | F-29（Series / Episode Memory, M2）と F-13 の Face Identity Similarity（`spec/spec.md` §12.4）を保存するカラムが存在しなかったため |

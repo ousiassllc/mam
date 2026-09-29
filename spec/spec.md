@@ -560,6 +560,7 @@ Take C
 - Logo / Text Accuracy
 - Object Consistency
 - Face
+- Face Identity Similarity（数値指標、§12.4）
 - Hands
 - Pose
 - Acting
@@ -582,6 +583,14 @@ result: fail
 
 overall_confidence: 0.94
 
+metrics:
+  face_identity:
+    - character_id: Character_A
+      similarity_mean: 0.71
+      similarity_min: 0.42
+      sampled_frames: 48
+      undetected_ratio: 0.08
+
 issues:
   - type: product_logo_deformation
     severity: high
@@ -591,6 +600,10 @@ issues:
   - type: camera_speed
     severity: medium
     time_range: 0.8-1.7s
+
+  - type: face_identity_drift
+    severity: high
+    time_range: 3.0-3.9s
 
 preserve:
   - character
@@ -604,6 +617,20 @@ repair_strategy:
     - preserve_logo_geometry
     - reduce_camera_speed_40_percent
 ```
+
+## 12.4 Face Identity Similarity（顔同一性の数値指標）
+
+Judge の Face / Character Identity 評価を補うローカル計測。Shot 間・Episode 間の顔のブレを、定性評価の見逃しなく検知するために用いる。
+
+- **基準**: World State の Character の `face_reference`（Reference Pack）
+- **手順**: Take のフレームをサンプリング → 顔検出 → 顔埋め込み → 参照顔とのコサイン類似度を算出。1フレームに複数の顔がある場合は各 Character の参照顔と照合して割り当てる
+- **出力**: Judge Result の `metrics.face_identity`（Character 別の `similarity_mean` / `similarity_min` / `sampled_frames` / `undetected_ratio`）。閾値割れが連続した区間は `face_identity_drift` Issue（`time_range` / `frames` 付き）として出力する
+- **欠測**: 顔を検出できないフレーム（後ろ向き・遮蔽・極小）は欠測として扱い、FAIL 判定に含めない。`undetected_ratio` が高く数値評価が成立しない Take は、定性評価（Gemini）のみで判定する
+- **閾値**: 警告 / FAIL の2段階の設定値（ハードコード禁止）。Reference Pack 内の参照画像同士の類似度分布を基準にキャリブレーションし、具体値は実測で決定する
+- **LOCK 連動**: Character Identity が LOCK のとき、FAIL 閾値を割った Take は総合スコアに関係なく FAIL とする（§13）
+- **Repair**: `face_identity_drift` は Reference Reinforcement を優先候補とする
+- **Series**: Episode をまたいでも Series 正本の `face_reference` を基準に計測する（F-29）
+- **実行**: ローカル実行。顔画像は外部へ送信しない。モデルのライセンス（商用利用可否）と Go 単一バイナリでの推論ランタイムは実装時に確認する（`spec/architecture/model-adapters.md` §4.5, §8）
 
 ---
 
@@ -1173,6 +1200,7 @@ Project / Organization単位で制作制約を登録可能とする。
 - Branch
 - Reference Library
 - Partial Regeneration
+- Series / Episode Memory
 
 ## MVP 3 — AI Production Studio
 
@@ -1182,7 +1210,6 @@ Project / Organization単位で制作制約を登録可能とする。
 - Editor → Reshoot Loop
 - Audio Director
 - Multi-model routing
-- Series / Episode Memory
 - Brand Templates
 - Team Collaboration
 - Production Analytics

@@ -121,6 +121,14 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 | PUT | `/projects/:id/locations/:locationId` | Location 属性更新（lighting_state/weather 等、LOCK対象項目は423）。クエリ `branch_id`（省略時=主系列トランク）で更新対象Branchを指定 | F-09 |
 | GET | `/projects/:id/world-state` | 現在の World State（Character/Product/Location/Camera/Story）フラグメント取得。クエリ `branch_id`（省略時=主系列トランク）で対象Branchの派生World Stateを取得 | F-09, F-10 |
 
+### 2.9 Series / Episode（M2）
+
+| Method | Path | 概要 | 対応機能 |
+|---|---|---|---|
+| POST | `/series` | Series 作成。Body `from_project_id`（任意）で既存 Project の Character/Product/Location を Series 正本として登録 | F-29 |
+| POST | `/series/:id/episodes` | Series 正本を継承した Episode（Project）を作成。Body `previous_episode_id`（任意）で前 Episode の最終 World State を開始状態にする | F-29, F-25 |
+| PUT | `/series/:id/characters/:characterId` | Series 正本の Character 更新。既存 Episode には自動伝播しない | F-29 |
+
 ## 3. API ルート（Huma, JSON, `/api/v1`）
 
 Lit Web Components 専用。HTMX リクエストは発行しない（`spec/architecture/overview.md` §7 の境界ルール）。
@@ -174,11 +182,21 @@ Response 200:
   Body:
     result: "fail"
     overall_confidence: 0.94
+    metrics:
+      face_identity:
+        - character_id: "Character_A"
+          similarity_mean: 0.71
+          similarity_min: 0.42
+          sampled_frames: 48
+          undetected_ratio: 0.08
     issues:
       - type: "product_logo_deformation"
         severity: "high"
         time_range: "2.1-2.8s"
         frames: [63, 84]
+      - type: "face_identity_drift"
+        severity: "high"
+        time_range: "3.0-3.9s"
     repair_strategy:
       action: "partial_regeneration"
       instructions:
@@ -215,3 +233,4 @@ Response 200:
 | 1.13 | 2026-09-28 | `PUT /branches/:id`（Branch名称変更・World State参照更新、branch_version新規行生成）を追加 | er.mdの`branch_version`が「Branch自体の主要変更を追記のみで履歴化」としていたのに対し、2件目以降の生成契機となるエンドポイントが存在しなかったため（整合性レビュー指摘） |
 | 1.14 | 2026-09-28 | Editor/Audio/Export/edit-timeline取得APIに `branch_id` パラメータ（Body/Query）を追加 | er.md 1.14で`edit_timeline_version`/`audio_timeline_version`/`export`にbranch_idを追加したのに対し、APIから対象BranchのTimeline/Exportを指定する手段が存在しなかったため（整合性レビュー指摘） |
 | 1.15 | 2026-09-28 | `GET /api/v1/takes/:id/judge-result` の概要に「最新1件のみ返す」ことを明記 | er.md 1.16で`judge_result`のUNIQUE制約を削除し複数回のJudge履歴を保持可能にしたため、取得APIがどのレコードを返すか明示する必要があったため（整合性レビュー指摘） |
+| 1.16 | 2026-09-29 | Series / Episode 用エンドポイント（§2.9）を追加。`GET /api/v1/takes/:id/judge-result` の応答例に `metrics` と `face_identity_drift` Issue を追加 | F-29（Series / Episode Memory, M2）と F-13 の Face Identity Similarity（`spec/spec.md` §12.4）に対応する API 契約がなかったため |
