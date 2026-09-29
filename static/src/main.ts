@@ -1,5 +1,6 @@
 import htmx from 'htmx.org';
 import { initChatWorkspaces } from './chat';
+import { initShotProgress } from './shot';
 import { CSRF_HEADER, csrfToken } from './components/lib/api';
 import { swapsErrorResponse } from './components/lib/thread';
 
@@ -34,8 +35,14 @@ new MutationObserver((records) => {
 }).observe(document.documentElement, { childList: true, subtree: true });
 
 // The Chat Workspace can arrive as a full page or as an HTMX fragment.
-document.addEventListener('DOMContentLoaded', () => initChatWorkspaces());
-document.addEventListener('htmx:load', (event) => initChatWorkspaces(event.target as ParentNode));
+document.addEventListener('DOMContentLoaded', () => {
+  initChatWorkspaces();
+  initShotProgress();
+});
+document.addEventListener('htmx:load', (event) => {
+  initChatWorkspaces(event.target as ParentNode);
+  initShotProgress(event.target as ParentNode);
+});
 
 // Lit components (mam-video-player, mam-timeline-editor, mam-take-comparator,
 // mam-branch-tree) are imported here as they are implemented.

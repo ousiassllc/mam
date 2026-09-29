@@ -25,6 +25,12 @@ func statusOf(c *gin.Context, err error) (int, string) {
 		return http.StatusNotFound, "対象が見つかりません"
 	case errors.Is(err, service.ErrConflict):
 		return http.StatusConflict, "すでに応答済みか、状態が変わっています。画面を更新してください"
+	case errors.Is(err, service.ErrBusy):
+		return http.StatusConflict, "この Shot はすでに生成中です"
+	case errors.Is(err, service.ErrBudgetExceeded):
+		return http.StatusPaymentRequired, "予算上限を超えるため生成できません"
+	case errors.Is(err, service.ErrUnavailable):
+		return http.StatusServiceUnavailable, "生成機能が有効になっていません（API キーと設定を確認してください）"
 	}
 	_ = c.Error(err)
 	return http.StatusInternalServerError, "内部エラーが発生しました"

@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log/slog"
 	"time"
+
+	"github.com/ousiassllc/mam/backend/internal/agent/resilience"
 )
 
 // Request is one model call. The prompt is text only: Agents build it from structured state.
@@ -42,7 +44,7 @@ type Backend interface {
 }
 
 // ErrCircuitOpen marks a provider that was skipped because its circuit breaker is open.
-var ErrCircuitOpen = errors.New("llm: circuit breaker is open")
+var ErrCircuitOpen = fmt.Errorf("llm: %w", resilience.ErrOpen)
 
 // ErrNoAPIKey means no API key is stored for the provider.
 var ErrNoAPIKey = errors.New("llm: API key is not configured")
@@ -90,7 +92,7 @@ func unavailable(err error) bool {
 type Client struct {
 	cfg      Config
 	backends map[Provider]Backend
-	breakers map[Provider]*breaker
+	breakers map[Provider]*resilience.Breaker
 	now      func() time.Time
 	sleep    func(ctx context.Context, d time.Duration) error
 	logger   *slog.Logger
@@ -115,29 +117,18 @@ func NewClient(cfg Config, backends map[Provider]Backend, opts ...Option) *Clien
 	c := &Client{
 		cfg:      cfg,
 		backends: backends,
-		breakers: make(map[Provider]*breaker),
+		breakers: make(map[Provider]*resilience.Breaker),
 		now:      time.Now,
-		sleep:    sleepContext,
+		sleep:    resilience.SleepContext,
 		logger:   slog.New(slog.DiscardHandler),
 	}
 	for _, o := range opts {
 		o(c)
 	}
 	for p := range cfg.Providers {
-		c.breakers[p] = newBreaker(cfg.Breaker.FailureThreshold, cfg.breakerOpen(), c.now)
+		c.breakers[p] = resilience.NewBreaker(cfg.Breaker.FailureThreshold, cfg.breakerOpen(), c.now)
 	}
 	return c
-}
-
-func sleepContext(ctx context.Context, d time.Duration) error {
-	t := time.NewTimer(d)
-	defer t.Stop()
-	select {
-	case <-t.C:
-		return nil
-	case <-ctx.Done():
-		return ctx.Err()
-	}
 }
 
 // Complete calls the primary target of the Agent, retrying timeouts and 429 with exponential
@@ -182,42 +173,23 @@ func (c *Client) callTarget(ctx context.Context, agent Agent, t Target, req Requ
 	if b == nil || backend == nil {
 		return "", fmt.Errorf("llm: provider %q is not available", t.Provider)
 	}
-
-	var last error
-	delay := c.cfg.baseDelay()
-	for attempt := 1; attempt <= c.cfg.Retry.MaxAttempts; attempt++ {
-		if !b.allow() {
-			if last != nil {
-				return "", last // the failures of this call opened the breaker
-			}
-			return "", ErrCircuitOpen
-		}
-		text, err := c.attempt(ctx, backend, t, req)
-		switch {
-		case err == nil:
-			b.success()
-			return text, nil
-		case ctx.Err() != nil:
-			b.release()
-			return "", ctx.Err()
-		case !unavailable(err):
-			b.release()
-			return "", err
-		}
-		b.failure()
-		last = err
-		if attempt == c.cfg.Retry.MaxAttempts || b.isOpen() {
-			break
-		}
-		wait := min(max(delay, retryAfter(err)), c.cfg.maxDelay())
-		c.logger.Warn("llm call failed, retrying", "agent", agent, "provider", t.Provider,
-			"attempt", attempt, "wait", wait, "err", err)
-		if err := c.sleep(ctx, wait); err != nil {
-			return "", err
-		}
-		delay = min(delay*2, c.cfg.maxDelay())
+	policy := resilience.Policy{MaxAttempts: c.cfg.Retry.MaxAttempts, BaseDelay: c.cfg.baseDelay(), MaxDelay: c.cfg.maxDelay()}
+	hooks := resilience.Hooks{
+		Unavailable: unavailable,
+		RetryAfter:  retryAfter,
+		Sleep:       c.sleep,
+		OnRetry: func(attempt int, wait time.Duration, err error) {
+			c.logger.Warn("llm call failed, retrying", "agent", agent, "provider", t.Provider,
+				"attempt", attempt, "wait", wait, "err", err)
+		},
 	}
-	return "", last
+	text, err := resilience.Do(ctx, b, policy, hooks, func(ctx context.Context) (string, error) {
+		return c.attempt(ctx, backend, t, req)
+	})
+	if errors.Is(err, resilience.ErrOpen) {
+		return "", ErrCircuitOpen
+	}
+	return text, err
 }
 
 func (c *Client) attempt(ctx context.Context, backend Backend, t Target, req Request) (string, error) {

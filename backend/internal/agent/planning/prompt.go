@@ -95,3 +95,10 @@ func ParseSeconds(s string) (float64, bool) {
 	}
 	return total, total > 0
 }
+
+// BriefText renders the Creative Brief for the prompt of an Agent outside this package.
+func BriefText(b domain.Brief, t domain.ProductionTemplate) string { return briefText(b, t) }
+
+// Invalidf reports an answer that is valid JSON but unusable (it wraps ErrInvalidPlan), for
+// Agents outside this package that validate their own answers.
+func Invalidf(format string, args ...any) error { return invalidf(format, args...) }

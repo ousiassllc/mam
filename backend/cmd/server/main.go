@@ -19,6 +19,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/config"
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
@@ -98,6 +99,12 @@ func serve(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	keys := credential.NewKeyring()
 	reasoning := llm.NewClient(llmCfg, llm.NewBackends(llmCfg, keys, nil), llm.WithLogger(logger))
 
+	modelCfg, err := modeladapter.LoadConfig(cfg.ModelConfigPath)
+	if err != nil {
+		return err
+	}
+	models := modeladapter.New(modelCfg, modeladapter.NewBackends(modelCfg, keys, nil, 0), modeladapter.WithLogger(logger))
+
 	jobs := jobqueue.New(repository.NewJobRepository(db), jobqueue.Options{Logger: logger})
 	// Job handlers are registered by service.New (the plan job) and by the features that add more kinds.
 	// The services are built before the queue starts: they subscribe to job changes.
@@ -106,9 +113,18 @@ func serve(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 		Jobs:        jobs,
 		Credentials: keys,
 		LLM:         reasoning,
+		Models:      models,
 		Logger:      logger,
 		AssetsDir:   cfg.AssetsDir(),
 	})
+	// Shots left GENERATING by an abnormal termination are released before their jobs are failed.
+	released, err := services.Recover(ctx)
+	if err != nil {
+		return fmt.Errorf("recover shots: %w", err)
+	}
+	if released > 0 {
+		logger.Warn("released shots interrupted while generating", "count", released)
+	}
 	resumed, failed, err := jobs.Recover(ctx)
 	if err != nil {
 		return fmt.Errorf("recover jobs: %w", err)

@@ -1,0 +1,288 @@
+package generation
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"log/slog"
+	"strings"
+	"sync"
+
+	"github.com/ousiassllc/mam/backend/internal/agent/artdirector"
+	"github.com/ousiassllc/mam/backend/internal/agent/llm"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
+	"github.com/ousiassllc/mam/backend/internal/agent/promptplanner"
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/repository"
+)
+
+// ErrShotBusy means the Shot is already being generated (409, no double execution).
+var ErrShotBusy = errors.New("generation: the shot is already being generated")
+
+// Stage is what a Shot is doing, as shown by the progress notifications (WebSocket /ws/shots/:id).
+type Stage string
+
+// Stages. Judging is added by the AI Video Judge.
+const (
+	StageIdle       Stage = "idle"       // nothing is running (first message of a connection)
+	StageQueued     Stage = "queued"     // waiting in the job queue
+	StageGenerating Stage = "generating" // writing the spec, making images or Takes
+	StageDone       Stage = "done"
+	StageFailed     Stage = "failed"
+)
+
+// Action is what a job of the generate kind does.
+type Action string
+
+// Job actions.
+const (
+	ActionGenerate      Action = "generate"       // Prompt Autopilot → Model Adapter → Takes
+	ActionReferencePack Action = "reference_pack" // Art Director → image models → Reference Pack
+)
+
+// Progress is one notification about a Shot.
+type Progress struct {
+	ShotID     string `json:"shot_id"`
+	Action     Action `json:"action,omitempty"`
+	Stage      Stage  `json:"stage"`
+	Message    string `json:"message,omitempty"`
+	TakesDone  int    `json:"takes_done,omitempty"`
+	TakesTotal int    `json:"takes_total,omitempty"`
+}
+
+// Chat is what the Generation Orchestrator needs from the chat thread. *service.ChatService implements it.
+type Chat interface {
+	Announce(ctx context.Context, projectID string, m domain.ChatMessage) error
+}
+
+// Jobs is the background job queue. *jobqueue.Queue implements it.
+type Jobs interface {
+	Enqueue(ctx context.Context, kind domain.JobKind, payload any) (domain.Job, error)
+}
+
+// Deps are the collaborators of an Orchestrator.
+type Deps struct {
+	Generations *repository.GenerationRepository
+	Projects    *repository.ProjectRepository
+	Assets      *repository.AssetRepository
+	Chat        Chat
+	Jobs        Jobs
+	// LLM is the Reasoning LLM Adapter the Prompt Planner and the Art Director reason through.
+	LLM     llm.Completer
+	Adapter *modeladapter.Adapter
+	// AssetsDir is the root of stored files (config.AssetsDir).
+	AssetsDir string
+	// Notify receives every progress notification. It MUST NOT block.
+	Notify func(Progress)
+	Logger *slog.Logger
+}
+
+// Orchestrator is the Generation Orchestrator. It is safe for concurrent use.
+type Orchestrator struct {
+	gens     *repository.GenerationRepository
+	projects *repository.ProjectRepository
+	assets   *repository.AssetRepository
+	chat     Chat
+	jobs     Jobs
+	adapter  *modeladapter.Adapter
+	planner  *promptplanner.Planner
+	art      *artdirector.Director
+	files    fileStore
+	notify   func(Progress)
+	logger   *slog.Logger
+}
+
+// New returns an Orchestrator.
+func New(d Deps) *Orchestrator {
+	o := &Orchestrator{
+		gens: d.Generations, projects: d.Projects, assets: d.Assets, chat: d.Chat, jobs: d.Jobs, adapter: d.Adapter,
+		planner: promptplanner.New(d.LLM), art: artdirector.New(d.LLM),
+		files: fileStore{root: d.AssetsDir}, notify: d.Notify, logger: d.Logger,
+	}
+	if o.logger == nil {
+		o.logger = slog.New(slog.DiscardHandler)
+	}
+	if o.notify == nil {
+		o.notify = func(Progress) {}
+	}
+	return o
+}
+
+// payload is the payload of a generate job.
+type payload struct {
+	Action      Action `json:"action"`
+	ShotID      string `json:"shot_id"`
+	Instruction string `json:"instruction,omitempty"`
+}
+
+// progressText is the content of the progress card of a job.
+func progressText(a Action, shot domain.Shot) string {
+	if a == ActionReferencePack {
+		return fmt.Sprintf("Shot %d の Reference Pack（キャラクター・商品・場所・スタイル・ライティング・Keyframe）を作成しています", shot.OrderIndex+1)
+	}
+	return fmt.Sprintf("Shot %d を生成しています（Shot Spec の作成 → 動画生成）", shot.OrderIndex+1)
+}
+
+// Start begins generating the Shot: it claims the Shot (ErrShotBusy when it is already being
+// generated), checks that at least one Take fits the budget (ErrBudgetExceeded) and queues the job.
+// instruction is an optional extra direction ("もう少しカメラを寄せて").
+func (o *Orchestrator) Start(ctx context.Context, shotID, instruction string) (domain.Job, error) {
+	ref, err := o.gens.GetShot(ctx, shotID)
+	if err != nil {
+		return domain.Job{}, err
+	}
+	project, err := o.projects.Get(ctx, ref.ProjectID)
+	if err != nil {
+		return domain.Job{}, err
+	}
+	budget, err := o.gens.Budget(ctx, ref.ProjectID, shotID)
+	if err != nil {
+		return domain.Job{}, err
+	}
+	if _, err := Decide(o.adapter.Config(), project.QualityPolicy, ref.Shot.Duration, budget); err != nil {
+		return domain.Job{}, err
+	}
+	return o.enqueue(ctx, ref, payload{Action: ActionGenerate, ShotID: shotID, Instruction: strings.TrimSpace(instruction)})
+}
+
+// StartReferencePack begins building (or rebuilding) the Reference Pack of the Shot.
+func (o *Orchestrator) StartReferencePack(ctx context.Context, shotID string) (domain.Job, error) {
+	ref, err := o.gens.GetShot(ctx, shotID)
+	if err != nil {
+		return domain.Job{}, err
+	}
+	return o.enqueue(ctx, ref, payload{Action: ActionReferencePack, ShotID: shotID})
+}
+
+func (o *Orchestrator) enqueue(ctx context.Context, ref repository.ShotRef, p payload) (domain.Job, error) {
+	claimed, err := o.gens.StartShot(ctx, ref.Shot.ID)
+	if err != nil {
+		return domain.Job{}, err
+	}
+	if !claimed {
+		return domain.Job{}, ErrShotBusy
+	}
+	job, err := o.jobs.Enqueue(ctx, domain.JobGenerate, p)
+	if err != nil {
+		o.release(ctx, ref.Shot.ID)
+		return domain.Job{}, fmt.Errorf("enqueue generate job: %w", err)
+	}
+	card := domain.ChatMessage{Role: domain.RoleAssistant, Kind: domain.KindProgress, Content: progressText(p.Action, ref.Shot), RefID: job.ID}
+	if err := o.chat.Announce(ctx, ref.ProjectID, card); err != nil {
+		o.logger.Error("post progress card failed", "shot_id", ref.Shot.ID, "job_id", job.ID, "err", err)
+	}
+	o.notify(Progress{ShotID: ref.Shot.ID, Action: p.Action, Stage: StageQueued})
+	return job, nil
+}
+
+// release gives the Shot back (no generation is running). It works on a context that survives shutdown.
+func (o *Orchestrator) release(ctx context.Context, shotID string) {
+	if err := o.gens.SetShotState(context.WithoutCancel(ctx), shotID, domain.ShotPlanning); err != nil && !errors.Is(err, repository.ErrNotFound) {
+		o.logger.Error("release shot failed", "shot_id", shotID, "err", err)
+	}
+}
+
+// Recover puts Shots that were being generated when the app terminated abnormally back to PLANNING.
+// Call it at start-up, before the job queue starts: the generate jobs of those Shots are failed by
+// the queue (they are not resumable, so no paid call is repeated silently).
+func (o *Orchestrator) Recover(ctx context.Context) (int, error) { return o.gens.ResetStaleShots(ctx) }
+
+// Handle is the job handler of domain.JobGenerate. Register it as NOT resumable: a generation
+// costs money, so an interrupted one is failed and the user starts it again.
+func (o *Orchestrator) Handle(ctx context.Context, job domain.Job) error {
+	var p payload
+	if err := json.Unmarshal(job.Payload, &p); err != nil || p.ShotID == "" || (p.Action != ActionGenerate && p.Action != ActionReferencePack) {
+		return fmt.Errorf("generate job %s: invalid payload", job.ID)
+	}
+	ref, err := o.gens.GetShot(ctx, p.ShotID)
+	if err != nil {
+		return err
+	}
+	// The Shot may have been reset by Recover while this job waited in the queue.
+	if err := o.gens.SetShotState(ctx, p.ShotID, domain.ShotGenerating); err != nil {
+		return err
+	}
+	o.notify(Progress{ShotID: p.ShotID, Action: p.Action, Stage: StageGenerating, Message: "準備しています"})
+
+	var done Progress
+	if p.Action == ActionReferencePack {
+		done, err = o.buildReferencePack(ctx, ref)
+	} else {
+		done, err = o.generate(ctx, ref, p.Instruction)
+	}
+	if err != nil {
+		return o.fail(ctx, ref, p.Action, err)
+	}
+	o.release(ctx, p.ShotID)
+	done.ShotID, done.Action, done.Stage = p.ShotID, p.Action, StageDone
+	o.notify(done)
+	return nil
+}
+
+// fail tells the user why the job stopped and returns the error for the job record.
+func (o *Orchestrator) fail(ctx context.Context, ref repository.ShotRef, a Action, err error) error {
+	if ctx.Err() != nil {
+		o.release(ctx, ref.Shot.ID)
+		return err // shutting down: nobody is told
+	}
+	o.release(ctx, ref.Shot.ID)
+	if errors.Is(err, repository.ErrNotFound) {
+		return err // the Shot is gone
+	}
+	o.logger.Error("generation failed", "shot_id", ref.Shot.ID, "action", a, "err", err)
+	reason := FailureReason(err)
+	what := "生成"
+	if a == ActionReferencePack {
+		what = "Reference Pack の作成"
+	}
+	notice := domain.ChatMessage{
+		Role: domain.RoleAssistant, Kind: domain.KindText,
+		Content: fmt.Sprintf("Shot %d の%sに失敗しました: %s\n対処したら、もう一度実行してください。", ref.Shot.OrderIndex+1, what, reason),
+	}
+	if aerr := o.chat.Announce(context.WithoutCancel(ctx), ref.ProjectID, notice); aerr != nil {
+		o.logger.Error("post failure notice failed", "shot_id", ref.Shot.ID, "err", aerr)
+	}
+	o.notify(Progress{ShotID: ref.Shot.ID, Action: a, Stage: StageFailed, Message: reason})
+	return errors.New(reason)
+}
+
+// FailureReason is the user-facing cause of a failure. Details stay in the log.
+func FailureReason(err error) string {
+	switch {
+	case errors.Is(err, modeladapter.ErrNoAPIKey), errors.Is(err, llm.ErrNoAPIKey):
+		return "生成モデルまたは LLM の API キーが設定されていません（設定画面でキーを登録してください）"
+	case errors.Is(err, ErrBudgetExceeded):
+		return "予算上限を超えるため生成できません"
+	case modeladapter.RateLimited(err):
+		return "生成モデルのレート制限に達しました。しばらく待ってから再実行してください"
+	case errors.Is(err, modeladapter.ErrCircuitOpen):
+		return "生成モデルが一時的に利用できません。しばらく待ってから再実行してください"
+	case errors.Is(err, modeladapter.ErrRejected):
+		return "生成モデルがリクエストを拒否しました（コンテンツポリシー等）。指示を変えて再実行してください"
+	case errors.Is(err, modeladapter.ErrTimeout), errors.Is(err, llm.ErrTimeout):
+		return "生成モデルの応答がタイムアウトしました"
+	case errors.Is(err, llm.ErrInvalidOutput), errors.Is(err, errInvalidPlan):
+		return "AI の出力を制作に使える形で受け取れませんでした"
+	}
+	var pe *modeladapter.ProviderError
+	if errors.As(err, &pe) {
+		return "生成モデルの呼び出しに失敗しました"
+	}
+	var api *llm.APIError
+	if errors.As(err, &api) {
+		return "AI サービスの呼び出しに失敗しました"
+	}
+	return "内部エラーが発生しました"
+}
+
+// parallel runs fn for i in [0, n) concurrently and returns the errors in order.
+func parallel(n int, fn func(i int) error) []error {
+	errs := make([]error, n)
+	var wg sync.WaitGroup
+	for i := range n {
+		wg.Go(func() { errs[i] = fn(i) })
+	}
+	wg.Wait()
+	return errs
+}

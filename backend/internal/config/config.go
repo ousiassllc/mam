@@ -29,6 +29,9 @@ type Config struct {
 	// LLMConfigPath is a JSON file overriding the Reasoning LLM Adapter routes (agent.llm.LoadConfig);
 	// empty selects the built-in assignment of spec/architecture/model-adapters.md §2.
 	LLMConfigPath string
+	// ModelConfigPath is a JSON file overriding the Model Adapter setting (agent.modeladapter.LoadConfig):
+	// image/video model routes, prices, rate limits; empty selects spec/architecture/model-adapters.md §3, §4.
+	ModelConfigPath string
 }
 
 // DBPath is the SQLite database file.
@@ -55,6 +58,7 @@ func Load(args []string, getenv func(string) string, output io.Writer) (Config, 
 	level := fs.String("log-level", envOr(getenv, "MAM_LOG_LEVEL", "info"), "log level: debug, info, warn, error (MAM_LOG_LEVEL)")
 	staticDir := fs.String("static-dir", getenv("MAM_STATIC_DIR"), "serve static assets from this directory instead of the embedded copy (MAM_STATIC_DIR)")
 	llmConfig := fs.String("llm-config", getenv("MAM_LLM_CONFIG"), "JSON file with the Reasoning LLM provider assignment per agent (MAM_LLM_CONFIG)")
+	modelConfig := fs.String("model-config", getenv("MAM_MODEL_CONFIG"), "JSON file with the image / video Model Adapter setting (MAM_MODEL_CONFIG)")
 	if err := fs.Parse(args); err != nil {
 		return Config{}, err
 	}
@@ -70,12 +74,13 @@ func Load(args []string, getenv func(string) string, output io.Writer) (Config, 
 		return Config{}, fmt.Errorf("data directory must not be empty")
 	}
 	return Config{
-		DataDir:       *dataDir,
-		Port:          *port,
-		OpenBrowser:   !*noBrowser,
-		LogLevel:      lvl,
-		StaticDir:     *staticDir,
-		LLMConfigPath: *llmConfig,
+		DataDir:         *dataDir,
+		Port:            *port,
+		OpenBrowser:     !*noBrowser,
+		LogLevel:        lvl,
+		StaticDir:       *staticDir,
+		LLMConfigPath:   *llmConfig,
+		ModelConfigPath: *modelConfig,
 	}, nil
 }
 
