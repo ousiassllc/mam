@@ -34,6 +34,9 @@ func Capabilities(m domain.ModelName) (VideoCapabilities, bool) {
 			Durations: []float64{4, 5, 6, 7, 8, 9, 10, 11, 12}, Resolutions: []string{"480p", "720p", "1080p"},
 			MaxReferenceImages: 9, FirstFrame: true, LastFrame: true, NativeAudio: true,
 		}, true
+	case domain.ModelRunwayGen45:
+		// Text-to-video and image-to-video (first frame only) at 720p; no free reference images.
+		return VideoCapabilities{Durations: []float64{2, 3, 4, 5, 6, 7, 8, 9, 10}, Resolutions: []string{"720p"}, FirstFrame: true}, true
 	}
 	return VideoCapabilities{}, false
 }

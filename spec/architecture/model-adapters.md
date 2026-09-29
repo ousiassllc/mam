@@ -48,7 +48,7 @@
 | MAX QUALITY / クライアント案件 | Runway Gen-4.5 | Kling 3.0 | 生成間の再現性・一貫性が高くNG率（外れ値）が低い。プロンプト制御力が高くDIRECTOR MODEでの細かい演出指示に向く |
 
 - Repair Agent の **Different Model** 戦略（F-14）は上記3モデル間の自動フォールバックとして実装し、同一 Canonical Shot Spec から別ベンダーへの再試行で品質不足・レート制限の双方をヘッジする
-- **M1 実装順**: コスト効率と音声同時生成による検証のしやすさを優先し、Kling 3.0 + Seedance 2.0 の2アダプタを先行実装する。Runway Gen-4.5 はM2以降で追加する（`spec/overview.md` マイルストーンの「1〜2 Video Model Adapter」に対応）
+- **M1 実装順**: コスト効率と音声同時生成による検証のしやすさを優先し、Kling 3.0 + Seedance 2.0 の2アダプタを先行実装する。Runway Gen-4.5 は M2 で追加した（§9.1、MAX QUALITY のプライマリ）
 - OpenAI Sora 2 は候補から除外: API提供が2026-09-24付で終了済みのため
 
 ## 4.5 評価・判断の補助（Judge / Repair 用）
@@ -119,8 +119,8 @@ M1 Issue #7（F-06/F-07/F-11/F-12）の実装仕様。Reasoning LLM Adapter（§
 ### 9.1 M1 で実装するプロバイダー
 
 - **画像**: §3 の 4 種すべて（Imagen 4 / Nano Banana / FLUX.2 / GPT Image 2）を実装する。用途→プライマリ/代替は §3 の表どおり（`new_reference` / `edit_reference` / `preview` / `unified_openai`）。Reference Pack の Character/Product/Location は新規生成として `new_reference`（アップロード素材や World State の参照画像がある場合は参照ベース編集として `edit_reference`）、Style/Lighting/Keyframe は `edit_reference` を使う。`prefer_openai` を有効にすると新規参照を `unified_openai` へ回す
-- **動画**: Kling 3.0 と Seedance 2.0 の 2 アダプタ（§4）。Runway Gen-4.5 は M2
-- **`model_name` / `provider`**: `take.model_name`・`cost_ledger_entry.provider` は §6 の正規識別子（`imagen-4` / `nano-banana` / `flux-2` / `gpt-image-2` / `kling-3.0` / `seedance-2.0`）で保存する。API のモデル ID（`imagen-4.0-generate-001` など）は設定値で、保存値には使わない
+- **動画**: Kling 3.0 / Seedance 2.0（M1）と Runway Gen-4.5（M2）の 3 アダプタ（§4）。Runway Gen-4.5 は `POST /v1/text_to_video`（Shot に先頭フレームがなければ）または `POST /v1/image_to_video`（先頭フレームのみ）を非同期タスクとして起動して `GET /v1/tasks/:id` をポーリングし、`X-Runway-Version` ヘッダーを付ける。出力は 720p のみ、長さは 2〜10 秒、ネガティブプロンプトはなく（Avoid は本文に含める）プロンプトは 1000 文字まで、自由な参照画像は取れない。価格はクレジット（12 クレジット/秒、1 クレジット = 0.01 USD）から USD に換算して見積る
+- **`model_name` / `provider`**: `take.model_name`・`cost_ledger_entry.provider` は §6 の正規識別子（`imagen-4` / `nano-banana` / `flux-2` / `gpt-image-2` / `kling-3.0` / `seedance-2.0` / `runway-gen-4.5`）で保存する。API のモデル ID（`imagen-4.0-generate-001` など）は設定値で、保存値には使わない
 
 ### 9.2 設定
 
@@ -128,19 +128,19 @@ M1 Issue #7（F-06/F-07/F-11/F-12）の実装仕様。Reasoning LLM Adapter（§
 
 | キー | 内容 | 既定 |
 |---|---|---|
-| `vendors.<google\|openai\|flux\|kling\|seedance>` | `base_url` / `max_concurrency`（同時実行の上限） / `timeout_seconds` | 4 / 4 / 4 / 3 / 3、120〜900 秒 |
+| `vendors.<google\|openai\|flux\|kling\|seedance\|runway>` | `base_url` / `max_concurrency`（同時実行の上限） / `timeout_seconds` | 4 / 4 / 4 / 3 / 3 / 2、120〜900 秒 |
 | `models.<正規識別子>` | `model`（API のモデル ID）、`fast_model`、`cost_per_image_usd`、`cost_per_second_usd`（解像度別）。価格は参考値（§8）で見積コストにのみ使う | §3 / §4 の割り当て |
 | `images.<purpose>` | `primary` / `fallback`（`model` と `fast`） | §3 の表 |
-| `policies.<fast\|balanced\|max_quality>` | `primary` / `fallback`（`model` と `resolution`）、`takes`（Take 数） | FAST: Kling 3.0 720p → Seedance 2.0 480p、2 Take。BALANCED: Seedance 2.0 720p → Kling 3.0 720p、3 Take。MAX QUALITY: Seedance 2.0 1080p → Kling 3.0 1080p、4 Take（Runway Gen-4.5 は M2 のため暫定） |
+| `policies.<fast\|balanced\|max_quality>` | `primary` / `fallback`（`model` と `resolution`）、`takes`（Take 数） | FAST: Kling 3.0 720p → Seedance 2.0 480p、2 Take。BALANCED: Seedance 2.0 720p → Kling 3.0 720p、3 Take。MAX QUALITY: Runway Gen-4.5 720p → Kling 3.0 1080p、4 Take |
 | `retry` / `breaker` | §2.1 と同じ形式・同じ既定値 | 3 回 / 1000ms〜16000ms、5 回失敗で 30 秒 OPEN |
 
-API キーは `credential.Store` のベンダー名（`google` / `openai` / `flux` / `kling` / `seedance`）で呼び出しごとに読む。Kling のキーは `ACCESS_KEY:SECRET_KEY` の形式で保存する。
+API キーは `credential.Store` のベンダー名（`google` / `openai` / `flux` / `kling` / `seedance` / `runway`）で呼び出しごとに読む。Kling のキーは `ACCESS_KEY:SECRET_KEY` の形式で保存する。
 
 ### 9.3 動作
 
 - **Canonical Shot Spec → モデル固有プロンプト（F-07）**: `Prepare` が Shot Spec を英語のプロンプトへ変換する。モデルごとに対応する長さ（Kling 5/10 秒、Seedance 4〜12 秒。要求を満たす最短の長さ）、First/Last Frame、参照画像の上限（Seedance 9 枚）に合わせて入力を絞る。Negative Prompt を持たないモデルでは本文へ折り込む。プロンプトは英語のみ（`non-functional.md` §9）
 - **フェイルオーバー（§7）**: ベンダー単位のブレーカーが OPEN、または再試行しても失敗したとき、同じ Shot Spec を代替モデル向けに再変換して呼ぶ。タイムアウト・429・5xx・ネットワーク断のみ再試行し、認証エラー等の 4xx は再試行しない（`Retry-After` があれば優先）
-- **同時実行数（`non-functional.md` §4）**: ベンダーごとの上限を Model Adapter が持つ。429 を受けると上限を半分（最小 1）にし、成功が上限回数続くごとに 1 ずつ戻す。上限を超える呼び出しはスロットが空くまで待つ
+- **同時実行数（`non-functional.md` §4）**: ベンダーごとの上限を Model Adapter が持つ。429 を受けると上限を半分（最小 1）にし、成功が上限回数続くごとに 1 ずつ戻す。上限を超える呼び出しはスロットが空くまで待つ。Prompt Candidate Generation（F-08）が Candidate を並列に生成しても、外部 API への同時呼び出し数はこの上限（Runway は既定 2）で抑えられる
 - **Generation Orchestrator（F-12）**: Quality Policy でモデル・解像度・Take 数を決め、(1) Shot が主モデルの最長クリップを超え代替モデルなら収まる場合は入れ替え、(2) Shot/Project の予算上限（残額）に Take 数が収まらなければ Take 数を減らし、主モデルが 1 Take も収まらず代替なら収まるなら代替を主にし、(3) 1 Take も収まらなければ 402 で開始しない。決定理由は `prompt_version.model_adapter_output`（`reasons`）に残る。Take は並列に生成し、1 つ以上成功すれば成功とする
 - **Prompt Autopilot（F-06）**: Prompt Planner（Reasoning LLM）が Shot の指示と World State・直前 Shot の Spec・Reference Pack から Canonical Shot Spec（JSON、英語）を作る。検証（目的・フレーミングあり、Acting が Shot 内で時系列順、日本語などを含まない）に失敗した回答は保存しない。既存 Spec は、追加指示がある場合だけ改訂し、無ければ再利用する。生成のたびに `prompt_version` が 1 行増え、`shot_spec_snapshot` に保存時点の Spec、`model_adapter_output` に各モデルへ渡す内容（プロンプト・解像度・参照枚数）を記録する
 - **Reference Pack（F-11）**: Art Director（Reasoning LLM）が Character/Product/Location/Style/Lighting/Keyframe の各画像のプロンプトを決め、画像 Model Adapter が生成する。Character/Product/Location/Style/Lighting を先に並列生成し、Keyframe は先行する 3 種を入力にして最後に生成する。全画像が揃ったときだけ `shot.shot_spec.references` を置き換え（途中で失敗したら旧 Pack を残し、作成済みファイルも削除する）。Keyframe は動画生成の First Frame になる
