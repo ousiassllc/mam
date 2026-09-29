@@ -1,0 +1,21 @@
+package layout
+
+// AppLayout is the shared page shell. The CSRF token is published in a meta tag;
+// static/src/main.ts reads it and attaches it to every HTMX request, and
+// components/lib/api.ts attaches it to every fetch.
+templ AppLayout(title string, csrfToken string) {
+	<!DOCTYPE html>
+	<html lang="ja">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<meta name="csrf-token" content={ csrfToken }/>
+			<title>{ title } | mam</title>
+			<link rel="stylesheet" href="/static/app.css"/>
+			<script type="module" src="/static/app.js"></script>
+		</head>
+		<body class="min-h-screen bg-neutral-950 text-neutral-100">
+			{ children... }
+		</body>
+	</html>
+}

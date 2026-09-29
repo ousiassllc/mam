@@ -1,0 +1,4 @@
+@import "tailwindcss";
+
+/* Tailwind must see class names used in Templ templates. */
+@source "../../../backend/internal/web";

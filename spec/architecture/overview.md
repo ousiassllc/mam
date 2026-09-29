@@ -86,43 +86,60 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 
 ```
 .
+├── go.mod                  # モジュール: github.com/ousiassllc/mam
+├── Makefile                # dev / build / test / lint / fmt（§9）
+├── .air.toml               # make dev のホットリロード設定
+├── .golangci.yml           # lint。depguard でレイヤー依存ルールを強制
+├── scripts/
+│   └── build.sh            # 本番ビルド（templ → esbuild/tailwind → go build）
 ├── backend/
 │   ├── cmd/
 │   │   └── server/
-│   │       └── main.go     # エントリーポイント。127.0.0.1のポートでGinサーバーを起動し、既定ブラウザを自動オープンする
+│   │       ├── main.go     # エントリーポイント。配線（DI）・起動・グレースフルシャットダウン
+│   │       ├── listen.go   # 127.0.0.1 の空きポート確保（使用中なら別ポートへフォールバック）
+│   │       └── browser.go  # OS別のブラウザ自動オープン
 │   └── internal/
+│       ├── config/         # フラグ / 環境変数（MAM_*）からの設定解決（データディレクトリ・ポート等）
+│       ├── logging/        # 構造化ログ（slog、レベル別、ローカルファイルへローテーション出力）
+│       ├── fsutil/         # 一時ファイル→リネームのアトミック書き込み、異常終了時の一時ファイル掃除
 │       ├── domain/         # Project/Scene/Shot/Take/WorldState等のドメインモデル
 │       ├── repository/     # SQLite アクセス層（domainのみに依存）
+│       │   └── migrations/ # goose 形式の SQL マイグレーション（タイムスタンプ版、go:embed、起動時に自動適用）
 │       ├── credential/     # OSセキュアストレージ（Keychain/Credential Manager/Secret Service）経由の外部モデルAPIキー保存・取得
 │       ├── agent/          # Producer/Writer/Director/Storyboard/ArtDirector/
-│       │                   # PromptPlanner/ModelAdapter/VideoJudge/RepairAgent/
-│       │                   # EditorAgent/AudioDirector/FinalQC/Orchestrator
-│       ├── service/        # アプリケーションサービス層（agentを利用しユースケースを実装）
-│       ├── router/         # ページ/アクション/APIルート定義
+│       │   │               # PromptPlanner/ModelAdapter/VideoJudge/RepairAgent/
+│       │   │               # EditorAgent/AudioDirector/FinalQC/Orchestrator
+│       │   └── jobqueue/   # 内部ジョブキュー（goroutineワーカー。ジョブは job テーブルに永続化し、再起動時に復旧）
+│       ├── service/        # アプリケーションサービス層（agentを利用しユースケースを実装）。services.go が DI ルート
+│       ├── router/         # ページ(pages.go)/アクション(actions.go)/API(api.go, Huma)ルート定義
 │       └── web/
 │           ├── handler/    # brief.go, scene.go, shot.go, take.go, director.go,
 │           │                # branch.go, export.go, settings.go ...
-│           ├── middleware/  # CSRF、ロギング等
+│           ├── middleware/  # CSRF、ループバック限定ガード、ロギング/リカバリ
 │           ├── atoms/       # button, input, badge, spinner, toast, slider(AUTO/MANUAL/LOCK) 等
 │           ├── molecules/   # shot_card, take_row, world_state_field, brief_form 等
 │           ├── organisms/   # main_workspace, inspector, scene_tabs, take_comparison_table 等
 │           ├── pages/       # project_page, brief_page, export_page 等
 │           └── layout/      # レイアウトラッパー
 └── static/
+    ├── embed.go            # src/dist を go:embed（`static.Dist()`）
+    ├── package.json        # esbuild / Tailwind / htmx / vitest
+    ├── build.mjs           # esbuild（JS）+ Tailwind（CSS）のビルド・ウォッチ
     └── src/
+        ├── main.ts         # エントリーポイント。htmx へ CSRF トークンを付与、Lit コンポーネントを import
         ├── components/
         │   ├── video-player/         # mam-video-player
         │   ├── timeline-editor/      # mam-timeline-editor
         │   ├── take-comparator/      # mam-take-comparator
         │   ├── branch-tree/          # mam-branch-tree
         │   └── lib/
-        │       ├── api.ts
+        │       ├── api.ts            # CSRFトークン自動付与のHTTPクライアント
         │       ├── ws.ts
         │       ├── logger.ts
         │       ├── video.ts          # フレーム精度シーク・タイムコード変換
         │       └── timeline-model.ts # タイムライン共通データモデル
         ├── css/
-        └── dist/
+        └── dist/                     # ビルド成果物（git 管理外。.gitkeep のみコミット）
 ```
 
 ### レイヤー依存ルール
@@ -139,6 +156,8 @@ handler → service → agent → repository → domain
 - `service/`: `domain/`, `repository/`, `agent/` に依存。ユースケース単位のオーケストレーション
 - `web/handler/`: `service/`, `domain/` に依存。`repository/`・`agent/` を直接使わない
 - `router/`: `handler/` を参照してルートを定義
+- `service/Services`（`service/services.go`）が DI ルート。`cmd/server/main.go` がインフラ（DB・ジョブキュー・認証情報ストア・ロガー）を生成して `service.New(Deps)` に渡し、`router.New(services, opts)` が `services` を各ルート登録関数へ渡す。新機能は「サービス追加 → `Services` にフィールド追加 → ルートを `pages.go`/`actions.go`/`api.go` に追加」の追記だけで組み込める
+- レイヤー依存ルールは `.golangci.yml` の depguard で機械的に検査する（違反はlintエラー）
 
 ## 6. 起動方式（ローカル Web サーバー）
 
@@ -157,8 +176,11 @@ waitForShutdownSignal()
 ```
 
 - HTMX のフラグメント swap・`hx-boost`・WebSocket はすべて `127.0.0.1` へのループバック HTTP リクエストとして処理する
-- 本番ビルドでは `static/dist` を `go:embed` し、単一バイナリに同梱する（サーバー・アセットとも1バイナリで完結）
+- 本番ビルドでは `static/src/dist` を `go:embed` し、単一バイナリに同梱する（サーバー・アセットとも1バイナリで完結）
 - `internal/router`, `internal/web`, `internal/agent` 等はすべて `http.Handler` 単位で完結しており、実行方式（標準サーバー起動 or 将来のネイティブシェル埋め込み）に依存しない
+- サーバーは `127.0.0.1` のみにバインドし、加えて `LoopbackOnly` ミドルウェアがループバック以外のクライアント・`Host`（DNSリバインディング対策）・`Origin` を 403 で拒否する。CSRF は Cookie（`mam_csrf`、HttpOnly/SameSite=Strict）と `<meta name="csrf-token">` の二重送信方式で、`GET/HEAD/OPTIONS` 以外は `X-CSRF-Token` ヘッダ（htmx・`lib/api.ts`が付与）またはフォームフィールド `csrf_token` の一致を必須とする
+- 設定は `--data-dir`（既定: OS のユーザー設定ディレクトリ配下の `mam`）・`--port`（既定 8787、使用中なら空きポート）・`--no-browser`・`--log-level`・`--static-dir`（開発時のみ、ディスクから静的アセットを配信）と対応する `MAM_*` 環境変数で指定する。データディレクトリ配下に `mam.db`（SQLite）・`logs/`・`assets/` を置く
+- Huma の対話ドキュメントページは CDN から UI を読み込むため無効化し、OpenAPI 3.1 は `/api/v1/openapi.json` で配信する（外部通信を行わない）
 
 ## 7. HTMX ルーティングパターン
 
@@ -194,10 +216,12 @@ dev:
 		"npm run dev --prefix static"
 ```
 
-- `.templ` 編集 → `templ generate --watch` が `_templ.go` を再生成 → `air` が Go 変更を検知しサーバー再起動
+- `.templ` 編集 → `templ generate --watch` が `_templ.go` を再生成 → `air` が Go 変更を検知しサーバー再起動（`_templ.go` は `go build` だけで動くよう git 管理する）
 - `.ts` 編集 → esbuild がバンドル → ブラウザリロードで反映
 - `.css` 編集 → Tailwind がビルド → ブラウザリロードで反映
-- 本番ビルド: `templ generate` → `esbuild`（minify） → `tailwind`（minify） → `go build`（`go:embed`で静的アセット同梱）を一括実行するビルドスクリプトを用意する
+- `make dev` は `MAM_STATIC_DIR=static/src/dist` を設定し、再ビルドのたびにバイナリを作り直さずディスク上のアセットを配信する
+- 本番ビルド: `make build`（`scripts/build.sh`）が `templ generate` → `esbuild`（minify） → `tailwind`（minify） → `go build`（`go:embed`で静的アセット同梱、`CGO_ENABLED=0`）を一括実行し `bin/mam` を生成する。SQLite は純 Go ドライバ（modernc.org/sqlite）のため各 OS/arch へクロスコンパイル可能
+- その他のターゲット: `make test`（Go `-race` + フロントの vitest）、`make lint`（golangci-lint + `tsc --noEmit`）、`make fmt` / `make fmt-check`
 
 ## 10. テスト戦略
 
@@ -228,3 +252,4 @@ HALT のレイヤー別テスト方針を踏襲する。
 | 1.2 | 2026-09-28 | 技術スタック表に「認証情報管理」行、ディレクトリ構成に `internal/credential` を追加 | non-functional.md §5「APIキーはOSセキュアストレージに保存」を実現する層がアーキテクチャ設計に明記されていなかったため（整合性レビュー指摘） |
 | 1.3 | 2026-09-29 | 技術スタック表に「エージェント推論用LLM連携（Reasoning LLM Adapter）」行を追加。Model Adapter行・全体構成図に採用プロバイダー（Imagen4/Nano Banana/FLUX.2/GPT Image 2、Kling 3.0/Seedance 2.0/Runway Gen-4.5）を明記 | ユーザーとの協議によりエージェント推論LLM・画像/動画生成プロバイダーを具体的に選定したため（`spec/architecture/model-adapters.md` 新設に対応） |
 | 1.4 | 2026-09-29 | §7 にチャット画面の更新方式（`/ws/projects/:id` の新着通知 + `GET /projects/:id/messages?after=` の HTMX フラグメント取得）を追記 | チャット中心UI（`spec/spec.md` §23）でスレッドをリアルタイム更新する方式が未定義だったため |
+| 1.5 | 2026-09-29 | §5 ディレクトリ構成に `config`/`logging`/`fsutil`/`agent/jobqueue`/`repository/migrations`/ビルド関連ファイルを追加し、DI ルートと depguard によるレイヤー検査を追記。§6 にループバックガード・CSRF方式・設定項目を追記、§9 に本番ビルドと各ターゲットの実際の構成を反映 | M1「実行基盤」（Issue #4）の実装で確定した構成を仕様へ反映するため |
