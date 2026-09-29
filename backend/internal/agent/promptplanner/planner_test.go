@@ -95,3 +95,28 @@ func TestPlan_WorldStateLeftByThePreviousShotIsGivenToTheModel(t *testing.T) {
 		assert.Contains(t, f.user, want, "the next shot starts from the state the last one left")
 	}
 }
+
+func TestPlan_EachCandidateStrategyPutsItsOwnPriorityToTheModel(t *testing.T) {
+	want := map[domain.CandidateStrategy]string{
+		domain.CandidateStabilityFirst: "rock steady",
+		domain.CandidateActingFirst:    "the performance",
+		domain.CandidateDynamicCamera:  "cinematic camera work",
+	}
+	require.Len(t, want, len(domain.CandidateStrategies()), "every strategy is covered")
+	for _, strategy := range domain.CandidateStrategies() {
+		f := &fakeLLM{answer: good}
+		in := input()
+		in.Strategy = strategy
+
+		_, err := promptplanner.New(f).Plan(context.Background(), in)
+
+		require.NoError(t, err)
+		assert.Contains(t, f.user, want[strategy], strategy)
+		assert.Contains(t, f.user, "主人公が振り返って走り出す", "the Shot itself is still planned")
+	}
+
+	f := &fakeLLM{answer: good}
+	_, err := promptplanner.New(f).Plan(context.Background(), input())
+	require.NoError(t, err)
+	assert.NotContains(t, f.user, "Shooting strategy", "a plain plan has no strategy section")
+}

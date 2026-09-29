@@ -100,6 +100,7 @@ func baseJob() modeladapter.VideoJob {
 var (
 	klingTarget    = modeladapter.VideoTarget{Model: domain.ModelKling3, Resolution: "720p"}
 	seedanceTarget = modeladapter.VideoTarget{Model: domain.ModelSeedance2, Resolution: "720p"}
+	runwayTarget   = modeladapter.VideoTarget{Model: domain.ModelRunwayGen45, Resolution: "720p"}
 )
 
 func newAdapter(cfg modeladapter.Config, b modeladapter.Backends, opts ...modeladapter.Option) *modeladapter.Adapter {
@@ -113,13 +114,13 @@ func TestDefaultConfigIsValid(t *testing.T) {
 func TestConfigValidateRejectsUnsupportedRoutes(t *testing.T) {
 	cfg := modeladapter.DefaultConfig()
 	cfg.Policies[domain.QualityFast] = modeladapter.PolicyRoute{
-		Primary:  modeladapter.VideoTarget{Model: domain.ModelRunwayGen45, Resolution: "720p"}, // adapter comes in M2
-		Fallback: modeladapter.VideoTarget{Model: domain.ModelKling3, Resolution: "480p"},      // Kling has no 480p
+		Primary:  modeladapter.VideoTarget{Model: domain.ModelName("veo-3"), Resolution: "720p"}, // no adapter
+		Fallback: modeladapter.VideoTarget{Model: domain.ModelKling3, Resolution: "480p"},        // Kling has no 480p
 		Takes:    0,
 	}
 	err := cfg.Validate()
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "runway-gen-4.5")
+	assert.Contains(t, err.Error(), "veo-3")
 	assert.Contains(t, err.Error(), `"kling-3.0" does not support "480p"`)
 	assert.Contains(t, err.Error(), "takes must be positive")
 }
@@ -323,4 +324,42 @@ func TestFastPreviewFallbackUsesImagenFastModel(t *testing.T) {
 	_, err := a.GenerateImage(context.Background(), modeladapter.PurposePreview, modeladapter.ImageRequest{Prompt: "p"})
 	require.NoError(t, err)
 	assert.Equal(t, []string{"imagen-4.0-fast-generate-001"}, imagen.models)
+}
+
+func TestMaxQualityUsesRunwayAndDifferentModelSwitchesToKling(t *testing.T) {
+	route := modeladapter.DefaultConfig().Policies[domain.QualityMaxQuality]
+	assert.Equal(t, domain.ModelRunwayGen45, route.Primary.Model)
+	assert.Equal(t, domain.ModelKling3, route.Fallback.Model)
+
+	runway := &fakeVideo{results: []error{perr(modeladapter.VendorRunway, http.StatusServiceUnavailable)}}
+	kling := &fakeVideo{results: []error{nil}}
+	b := modeladapter.Backends{Video: map[domain.ModelName]modeladapter.VideoBackend{domain.ModelRunwayGen45: runway, domain.ModelKling3: kling}}
+	a := newAdapter(modeladapter.DefaultConfig(), b)
+
+	out, err := a.GenerateVideo(context.Background(), route.Primary, route.Fallback, baseJob())
+
+	require.NoError(t, err)
+	assert.Equal(t, domain.ModelKling3, out.Model)
+	assert.True(t, out.FellBack)
+	assert.Equal(t, []string{"gen4.5"}, runway.models[:1])
+}
+
+func TestRunwayCallsAreLimitedByTheVendorConcurrency(t *testing.T) {
+	cfg := modeladapter.DefaultConfig()
+	vc := cfg.Vendors[modeladapter.VendorRunway]
+	vc.MaxConcurrency = 2
+	cfg.Vendors[modeladapter.VendorRunway] = vc
+	runway := &fakeVideo{results: []error{nil}, block: make(chan struct{})}
+	a := newAdapter(cfg, modeladapter.Backends{Video: map[domain.ModelName]modeladapter.VideoBackend{domain.ModelRunwayGen45: runway}})
+
+	var wg sync.WaitGroup
+	for range 5 {
+		wg.Go(func() { _, _ = a.GenerateVideo(context.Background(), runwayTarget, runwayTarget, baseJob()) })
+	}
+	require.Eventually(t, func() bool { return runway.peak.Load() == 2 }, time.Second, time.Millisecond)
+	time.Sleep(20 * time.Millisecond)
+	assert.EqualValues(t, 2, runway.peak.Load())
+	close(runway.block)
+	wg.Wait()
+	assert.Equal(t, 5, runway.callCount())
 }

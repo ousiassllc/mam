@@ -37,6 +37,21 @@ type Input struct {
 	Current *domain.ShotSpec
 	// References lists the kinds of the Reference Pack the Shot has, so the spec relies on them.
 	References []domain.Reference
+	// Strategy is the shooting strategy of a Prompt Candidate (spec/spec.md §8). Empty plans the
+	// Shot without a particular priority.
+	Strategy domain.CandidateStrategy
+}
+
+// strategyDirectives tell the Planner what a Prompt Candidate puts first. Every strategy keeps the
+// constraints and the locked identity: only the priority changes.
+var strategyDirectives = map[domain.CandidateStrategy]string{
+	domain.CandidateStabilityFirst: "Stability First: the priority is a clean, stable clip. Keep identity, product shape and environment rock steady. " +
+		"Use a static or very slow camera, one simple action per beat and conservative framing (medium or wider unless the storyboard needs closer). " +
+		"Avoid fast motion, occlusion and anything that risks morphing or drift.",
+	domain.CandidateActingFirst: "Acting First: the priority is the performance. Make the emotion and the acting beats the focus: expressive but physically plausible actions, " +
+		"clear reactions, a closer framing (medium close-up or close-up) so the face reads. Keep the camera restrained so it does not compete with the acting.",
+	domain.CandidateDynamicCamera: "Dynamic Camera: the priority is cinematic camera work. Give the shot one bold but continuous camera move that serves the story " +
+		"(push-in, orbit, tracking, crane). Keep the acting readable and simple so the move carries the shot.",
 }
 
 const system = `You are the Prompt Planner of an AI video production team.
@@ -98,6 +113,9 @@ func userPrompt(in Input) string {
 	}
 	if s := strings.TrimSpace(in.Instruction); s != "" {
 		b.WriteString("\n## Instruction from the director (must be reflected)\n" + s + "\n")
+	}
+	if d, ok := strategyDirectives[in.Strategy]; ok {
+		b.WriteString("\n## Shooting strategy of this candidate (must be reflected)\n" + d + "\n")
 	}
 	if w := in.World.Text(); w != "" {
 		b.WriteString("\n## World state\n" + w)

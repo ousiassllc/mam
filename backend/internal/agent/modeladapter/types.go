@@ -156,6 +156,7 @@ const (
 	VendorFlux     Vendor = "flux"
 	VendorKling    Vendor = "kling"
 	VendorSeedance Vendor = "seedance"
+	VendorRunway   Vendor = "runway"
 )
 
 // VendorOf returns the vendor of a model.
@@ -171,11 +172,13 @@ func VendorOf(m domain.ModelName) Vendor {
 		return VendorKling
 	case domain.ModelSeedance2:
 		return VendorSeedance
+	case domain.ModelRunwayGen45:
+		return VendorRunway
 	}
 	return Vendor(m)
 }
 
 // Vendors lists every vendor that has a backend.
 func Vendors() []Vendor {
-	return []Vendor{VendorGoogle, VendorOpenAI, VendorFlux, VendorKling, VendorSeedance}
+	return []Vendor{VendorGoogle, VendorOpenAI, VendorFlux, VendorKling, VendorSeedance, VendorRunway}
 }

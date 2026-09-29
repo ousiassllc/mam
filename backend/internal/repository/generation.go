@@ -133,6 +133,17 @@ func (r *GenerationRepository) ResetStaleShots(ctx context.Context) (int, error)
 // and appends a prompt_version whose snapshot is the resulting shot_spec. adapterOutput is
 // stored in prompt_version.model_adapter_output.
 func (r *GenerationRepository) SavePromptedSpec(ctx context.Context, shotID string, spec domain.ShotSpec, adapterOutput json.RawMessage) (domain.PromptVersion, error) {
+	return r.savePromptVersion(ctx, shotID, spec, adapterOutput, true)
+}
+
+// SaveCandidateSpec appends a prompt_version for a Prompt Candidate like SavePromptedSpec does, but
+// leaves shot.shot_spec as it is: the Candidates of a Shot are alternatives, and only the one the
+// Judge picks becomes the spec of the Shot (AdoptSpec).
+func (r *GenerationRepository) SaveCandidateSpec(ctx context.Context, shotID string, spec domain.ShotSpec, adapterOutput json.RawMessage) (domain.PromptVersion, error) {
+	return r.savePromptVersion(ctx, shotID, spec, adapterOutput, false)
+}
+
+func (r *GenerationRepository) savePromptVersion(ctx context.Context, shotID string, spec domain.ShotSpec, adapterOutput json.RawMessage, adopt bool) (domain.PromptVersion, error) {
 	var pv domain.PromptVersion
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		var current string
@@ -146,8 +157,10 @@ func (r *GenerationRepository) SavePromptedSpec(ctx context.Context, shotID stri
 		if err != nil {
 			return err
 		}
-		if _, err := tx.ExecContext(ctx, `UPDATE shot SET shot_spec = ? WHERE id = ?`, string(merged), shotID); err != nil {
-			return err
+		if adopt {
+			if _, err := tx.ExecContext(ctx, `UPDATE shot SET shot_spec = ? WHERE id = ?`, string(merged), shotID); err != nil {
+				return err
+			}
 		}
 		var next int
 		if err := tx.QueryRowContext(ctx, `SELECT COALESCE(MAX(version_number), 0) + 1 FROM prompt_version WHERE shot_id = ?`, shotID).Scan(&next); err != nil {
@@ -167,6 +180,57 @@ func (r *GenerationRepository) SavePromptedSpec(ctx context.Context, shotID stri
 		return domain.PromptVersion{}, fmt.Errorf("save prompted spec: %w", err)
 	}
 	return pv, nil
+}
+
+// AdoptSpec merges the Canonical Shot Spec of a Prompt Candidate into shot.shot_spec (keeping the
+// other keys), so that the Shot carries the spec of the Take the Judge picked.
+func (r *GenerationRepository) AdoptSpec(ctx context.Context, shotID string, spec domain.ShotSpec) error {
+	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
+		var current string
+		if err := tx.QueryRowContext(ctx, `SELECT shot_spec FROM shot WHERE id = ?`, shotID).Scan(&current); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return ErrNotFound
+			}
+			return err
+		}
+		merged, err := domain.MergeShotSpec(json.RawMessage(current), spec)
+		if err != nil {
+			return err
+		}
+		_, err = tx.ExecContext(ctx, `UPDATE shot SET shot_spec = ? WHERE id = ?`, string(merged), shotID)
+		return err
+	})
+	if err != nil {
+		return fmt.Errorf("adopt spec: %w", err)
+	}
+	return nil
+}
+
+// MarkAIPick makes the Take the AI pick of its Shot (take.status = ai_pick). The AI pick of the
+// Shot before it goes back to candidate; a Take the user selected or rejected is left alone.
+// It returns ErrNotFound when the Take does not belong to the Shot.
+func (r *GenerationRepository) MarkAIPick(ctx context.Context, shotID, takeID string) error {
+	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
+		if _, err := tx.ExecContext(ctx,
+			`UPDATE take SET status = ? WHERE status = ? AND prompt_version_id IN (SELECT id FROM prompt_version WHERE shot_id = ?)`,
+			domain.TakeCandidate, domain.TakeAIPick, shotID); err != nil {
+			return err
+		}
+		res, err := tx.ExecContext(ctx,
+			`UPDATE take SET status = ? WHERE id = ? AND status IN (?, ?) AND prompt_version_id IN (SELECT id FROM prompt_version WHERE shot_id = ?)`,
+			domain.TakeAIPick, takeID, domain.TakeCandidate, domain.TakeAIPick, shotID)
+		if err != nil {
+			return err
+		}
+		if n, _ := res.RowsAffected(); n == 0 {
+			return ErrNotFound
+		}
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("mark ai pick: %w", err)
+	}
+	return nil
 }
 
 // NewTake is a finished generation: the Take row, the asset row of its video file and the

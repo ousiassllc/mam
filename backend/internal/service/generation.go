@@ -43,6 +43,23 @@ func (s *GenerationService) GenerateShot(ctx context.Context, shotID, instructio
 	return s.Shot(ctx, shotID)
 }
 
+// GenerateCandidates queues Prompt Candidate Generation for the Shot (F-08) and returns it in the
+// GENERATING state (202). The Generation Mode follows from the Quality Policy of the Project.
+// instruction is an optional additional direction. ErrUnavailable means generation or the AI Video
+// Judge (which picks the Best Take) is not configured.
+func (s *GenerationService) GenerateCandidates(ctx context.Context, shotID, instruction string) (ShotFragment, error) {
+	if s.gen == nil {
+		return ShotFragment{}, ErrUnavailable
+	}
+	if utf8.RuneCountInString(instruction) > maxInstructionRunes {
+		return ShotFragment{}, invalid("additional_instruction", "%d 文字以内で入力してください", maxInstructionRunes)
+	}
+	if _, err := s.gen.StartCandidates(ctx, shotID, instruction); err != nil {
+		return ShotFragment{}, mapGenerationError(err)
+	}
+	return s.Shot(ctx, shotID)
+}
+
 // BuildReferencePack queues the (re)generation of the Shot's Reference Pack and returns the Shot.
 func (s *GenerationService) BuildReferencePack(ctx context.Context, shotID string) (ShotFragment, error) {
 	if s.gen == nil {
@@ -91,6 +108,8 @@ func mapGenerationError(err error) error {
 		return ErrBusy
 	case errors.Is(err, generation.ErrBudgetExceeded):
 		return ErrBudgetExceeded
+	case errors.Is(err, generation.ErrJudgeUnavailable):
+		return ErrUnavailable
 	}
 	return notFound(err)
 }

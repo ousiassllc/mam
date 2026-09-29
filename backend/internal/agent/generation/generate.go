@@ -47,45 +47,32 @@ type recordedRequest struct {
 
 // adapterRecord is the content of prompt_version.model_adapter_output.
 type adapterRecord struct {
-	Policy      domain.QualityPolicy                 `json:"quality_policy"`
-	Takes       int                                  `json:"takes"`
-	Primary     modeladapter.VideoTarget             `json:"primary"`
-	Fallback    modeladapter.VideoTarget             `json:"fallback"`
-	CostPerTake float64                              `json:"estimated_cost_per_take"`
-	Reasons     []string                             `json:"reasons,omitempty"`
-	Requests    map[domain.ModelName]recordedRequest `json:"requests"`
+	Policy      domain.QualityPolicy     `json:"quality_policy"`
+	Takes       int                      `json:"takes"`
+	Primary     modeladapter.VideoTarget `json:"primary"`
+	Fallback    modeladapter.VideoTarget `json:"fallback"`
+	CostPerTake float64                  `json:"estimated_cost_per_take"`
+	Reasons     []string                 `json:"reasons,omitempty"`
+	// Candidate is the strategy of a Prompt Candidate (empty for a plain generation).
+	Candidate domain.CandidateStrategy             `json:"candidate_strategy,omitempty"`
+	Requests  map[domain.ModelName]recordedRequest `json:"requests"`
 }
 
 // generate runs Prompt Autopilot and the Model Adapter for a Shot: it writes the Canonical Shot
 // Spec, decides the strategy, and makes the Takes.
 func (o *Orchestrator) generate(ctx context.Context, ref repository.ShotRef, instruction string) (Progress, error) {
 	shot := ref.Shot
-	policy, err := o.policies.Get(ctx, ref.ProjectID)
+	sc, err := o.loadShotContext(ctx, ref)
 	if err != nil {
 		return Progress{}, err
 	}
-	brief, err := o.projects.GetBrief(ctx, ref.ProjectID)
-	if err != nil {
-		return Progress{}, err
-	}
-	world, err := o.gens.WorldContext(ctx, ref.ProjectID)
-	if err != nil {
-		return Progress{}, err
-	}
-	shots, err := o.gens.ListProjectShots(ctx, ref.ProjectID)
-	if err != nil {
-		return Progress{}, err
-	}
-	references := shot.References()
+	policy, brief, references := sc.policy, sc.brief, sc.references
 
 	// Prompt Autopilot (F-06). An existing spec is kept unless the user gave a new direction.
 	current, hasSpec := shot.CanonicalSpec()
 	spec := current
 	if !hasSpec || instruction != "" {
-		in := promptplanner.Input{
-			Brief: brief, Template: policy.Template, Scene: ref.Scene, Shot: shot,
-			Instruction: instruction, World: world, Previous: previousSpec(shots, shot.ID), References: references,
-		}
+		in := sc.plannerInput(ref, instruction)
 		if hasSpec {
 			in.Current = &current
 		}
@@ -107,7 +94,7 @@ func (o *Orchestrator) generate(ctx context.Context, ref repository.ShotRef, ins
 	if err != nil {
 		return Progress{}, err
 	}
-	record, err := recordOf(strategy, job)
+	record, err := recordOf(strategy, job, "")
 	if err != nil {
 		return Progress{}, err
 	}
@@ -120,7 +107,7 @@ func (o *Orchestrator) generate(ctx context.Context, ref repository.ShotRef, ins
 	o.notify(Progress{ShotID: shot.ID, Action: ActionGenerate, Stage: StageGenerating, Message: "動画を生成しています", TakesTotal: strategy.Takes})
 	var made counter
 	errs := parallel(strategy.Takes, func(i int) error {
-		takeID, err := o.makeTake(ctx, ref, pv, strategy, job, i, policy.Effective().MaxGenerationTime)
+		takeID, err := o.makeTake(ctx, ref, pv, strategy, job, i, policy.Effective().MaxGenerationTime, "")
 		if err != nil {
 			return err
 		}
@@ -137,6 +124,44 @@ func (o *Orchestrator) generate(ctx context.Context, ref repository.ShotRef, ins
 	}
 	o.updateWorldState(ctx, ref, spec, made.first())
 	return Progress{TakesDone: done, TakesTotal: strategy.Takes}, nil
+}
+
+// shotContext is what planning a Shot needs besides the Shot itself.
+type shotContext struct {
+	policy     domain.ProjectPolicy
+	brief      domain.Brief
+	world      domain.WorldContext
+	previous   *domain.ShotSpec
+	references []domain.Reference
+}
+
+// loadShotContext reads the Policy, Brief, World State, neighbouring spec and Reference Pack of the Shot.
+func (o *Orchestrator) loadShotContext(ctx context.Context, ref repository.ShotRef) (shotContext, error) {
+	policy, err := o.policies.Get(ctx, ref.ProjectID)
+	if err != nil {
+		return shotContext{}, err
+	}
+	brief, err := o.projects.GetBrief(ctx, ref.ProjectID)
+	if err != nil {
+		return shotContext{}, err
+	}
+	world, err := o.gens.WorldContext(ctx, ref.ProjectID)
+	if err != nil {
+		return shotContext{}, err
+	}
+	shots, err := o.gens.ListProjectShots(ctx, ref.ProjectID)
+	if err != nil {
+		return shotContext{}, err
+	}
+	return shotContext{policy: policy, brief: brief, world: world, previous: previousSpec(shots, ref.Shot.ID), references: ref.Shot.References()}, nil
+}
+
+// plannerInput is the input of the Prompt Planner for the Shot with the user's extra direction.
+func (c shotContext) plannerInput(ref repository.ShotRef, instruction string) promptplanner.Input {
+	return promptplanner.Input{
+		Brief: c.brief, Template: c.policy.Template, Scene: ref.Scene, Shot: ref.Shot,
+		Instruction: instruction, World: c.world, Previous: c.previous, References: c.references,
+	}
 }
 
 // previousSpec is the Canonical Shot Spec of the Shot before shotID in story order.
@@ -182,9 +207,9 @@ func (o *Orchestrator) videoJob(ctx context.Context, projectID string, spec doma
 
 // recordOf renders the job for both models of the strategy and returns the JSON kept in
 // prompt_version.model_adapter_output.
-func recordOf(s Strategy, job modeladapter.VideoJob) (json.RawMessage, error) {
+func recordOf(s Strategy, job modeladapter.VideoJob, candidate domain.CandidateStrategy) (json.RawMessage, error) {
 	rec := adapterRecord{
-		Policy: s.Policy, Takes: s.Takes, Primary: s.Primary, Fallback: s.Fallback,
+		Candidate: candidate, Policy: s.Policy, Takes: s.Takes, Primary: s.Primary, Fallback: s.Fallback,
 		CostPerTake: s.CostPerTake, Reasons: s.Reasons, Requests: map[domain.ModelName]recordedRequest{},
 	}
 	for _, t := range []modeladapter.VideoTarget{s.Primary, s.Fallback} {
@@ -208,11 +233,14 @@ type takeParameters struct {
 	AspectRatio     string               `json:"aspect_ratio"`
 	FellBack        bool                 `json:"fell_back,omitempty"`
 	Prompt          string               `json:"prompt"`
+	// Candidate is the strategy of the Prompt Candidate the Take was made for.
+	Candidate domain.CandidateStrategy `json:"candidate_strategy,omitempty"`
 }
 
 // makeTake generates one Take, stores its file, the Take row and cost, and posts its card.
 // The time spent on the model is bounded by limit (Max generation time of the Quality/Cost Policy).
-func (o *Orchestrator) makeTake(ctx context.Context, ref repository.ShotRef, pv domain.PromptVersion, s Strategy, job modeladapter.VideoJob, index int, limit time.Duration) (string, error) {
+// candidate is the Prompt Candidate strategy the Take is made for ("" for a plain generation).
+func (o *Orchestrator) makeTake(ctx context.Context, ref repository.ShotRef, pv domain.PromptVersion, s Strategy, job modeladapter.VideoJob, index int, limit time.Duration, candidate domain.CandidateStrategy) (string, error) {
 	callCtx, cancel := context.WithTimeout(ctx, limit)
 	defer cancel()
 	out, err := o.adapter.GenerateVideo(callCtx, s.Primary, s.Fallback, job)
@@ -228,7 +256,7 @@ func (o *Orchestrator) makeTake(ctx context.Context, ref repository.ShotRef, pv 
 	}
 	params, err := json.Marshal(takeParameters{
 		Policy: s.Policy, Resolution: out.Resolution, DurationSeconds: out.DurationSeconds,
-		AspectRatio: out.Request.AspectRatio, FellBack: out.FellBack, Prompt: out.Request.Prompt,
+		AspectRatio: out.Request.AspectRatio, FellBack: out.FellBack, Prompt: out.Request.Prompt, Candidate: candidate,
 	})
 	if err != nil {
 		o.files.remove(asset)
@@ -242,10 +270,14 @@ func (o *Orchestrator) makeTake(ctx context.Context, ref repository.ShotRef, pv 
 		o.files.remove(asset)
 		return "", err
 	}
+	title := fmt.Sprintf("Shot %d · Take %d", ref.Shot.OrderIndex+1, index+1)
+	if candidate != "" {
+		title += " · " + candidate.Label()
+	}
 	card := domain.ChatMessage{
 		Role: domain.RoleAssistant, Kind: domain.KindTake, RefID: takeID,
 		Content: domain.EncodeTakeCardBody(domain.TakeCardBody{
-			Title:    fmt.Sprintf("Shot %d · Take %d", ref.Shot.OrderIndex+1, index+1),
+			Title:    title,
 			Summary:  fmt.Sprintf("%s（%s・%.0f 秒）", out.Model, out.Resolution, out.DurationSeconds),
 			VideoURL: fmt.Sprintf("/projects/%s/assets/%s", ref.ProjectID, asset.ID),
 		}),

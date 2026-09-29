@@ -25,7 +25,7 @@ func TestDecide_QualityPolicyPicksModelsResolutionAndTakeCount(t *testing.T) {
 	}{
 		{domain.QualityFast, domain.ModelKling3, domain.ModelSeedance2, "720p", 2},
 		{domain.QualityBalanced, domain.ModelSeedance2, domain.ModelKling3, "720p", 3},
-		{domain.QualityMaxQuality, domain.ModelSeedance2, domain.ModelKling3, "1080p", 4},
+		{domain.QualityMaxQuality, domain.ModelRunwayGen45, domain.ModelKling3, "720p", 4},
 	}
 	for _, c := range cases {
 		s, err := generation.Decide(cfg, c.policy, 5, repository.Budget{})
@@ -78,10 +78,19 @@ func TestDecide_BudgetReducesTakesThenSwitchesModelThenFails(t *testing.T) {
 
 func TestDecide_UsesTheCheaperAlternativeWhenOnlyItFits(t *testing.T) {
 	cfg := modeladapter.DefaultConfig()
-	// MAX QUALITY, 4 s: Seedance 1080p = 0.72 per Take; Kling 1080p (5 s clip) = 0.70.
-	s, err := generation.Decide(cfg, domain.QualityMaxQuality, 4, repository.Budget{ShotCeiling: ptr(0.71)})
+	// FAST, 4 s: Kling 720p (5 s clip) = 0.35 per Take; Seedance 480p = 0.12.
+	s, err := generation.Decide(cfg, domain.QualityFast, 4, repository.Budget{ShotCeiling: ptr(0.2)})
 	require.NoError(t, err)
-	assert.Equal(t, domain.ModelKling3, s.Primary.Model)
+	assert.Equal(t, domain.ModelSeedance2, s.Primary.Model)
 	assert.Equal(t, 1, s.Takes)
 	assert.Contains(t, s.Reasons[0], "does not fit the budget")
+}
+
+func TestDecide_MaxQualityUsesRunwayAndTheDifferentModelIsKling(t *testing.T) {
+	s, err := generation.Decide(modeladapter.DefaultConfig(), domain.QualityMaxQuality, 4, repository.Budget{})
+	require.NoError(t, err)
+	assert.Equal(t, domain.ModelRunwayGen45, s.Primary.Model)
+	assert.Equal(t, domain.ModelKling3, s.Fallback.Model)
+	assert.InDelta(t, 4, s.DurationSeconds, 1e-9, "Runway makes clips of any whole second from 2 to 10")
+	assert.InDelta(t, 4*0.12, s.CostPerTake, 1e-9)
 }

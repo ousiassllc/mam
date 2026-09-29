@@ -109,20 +109,45 @@ func (r *Runner) Handle(ctx context.Context, job domain.Job) error {
 	if err != nil {
 		return r.fail(ctx, ref, err)
 	}
-	saved, err := r.Judges.Save(context.WithoutCancel(ctx), res)
-	if err != nil {
+	if _, err := r.store(ctx, ref, res); err != nil {
 		return err
 	}
-	shot, err := r.Generations.GetShot(ctx, shotID)
+	r.Notify(generation.Progress{ShotID: shotID, Action: generation.ActionJudge, Stage: generation.StageDone})
+	return nil
+}
+
+// Evaluate judges the Take now, in the calling goroutine, and returns the stored result. It is
+// for callers that need the verdict before they go on (the Best Take selection of Prompt Candidate
+// Generation); it does not use the job queue and does not change the state of the Shot. The result
+// is stored and posted to the thread like the one of a judge job. It returns
+// repository.ErrNotFound for an unknown Take.
+func (r *Runner) Evaluate(ctx context.Context, takeID string) (domain.JudgeResult, error) {
+	ref, err := r.Judges.GetTake(ctx, takeID)
 	if err != nil {
-		return err
+		return domain.JudgeResult{}, err
+	}
+	res, err := r.judge(ctx, ref)
+	if err != nil {
+		return domain.JudgeResult{}, err
+	}
+	return r.store(ctx, ref, res)
+}
+
+// store saves a Judge result and posts its summary to the thread.
+func (r *Runner) store(ctx context.Context, ref repository.TakeRef, res domain.JudgeResult) (domain.JudgeResult, error) {
+	saved, err := r.Judges.Save(context.WithoutCancel(ctx), res)
+	if err != nil {
+		return domain.JudgeResult{}, err
+	}
+	shot, err := r.Generations.GetShot(ctx, ref.Take.ShotID)
+	if err != nil {
+		return domain.JudgeResult{}, err
 	}
 	notice := domain.ChatMessage{Role: domain.RoleAssistant, Kind: domain.KindText, Content: Summary(shot.Shot.OrderIndex+1, ref.Take.ID, saved)}
 	if err := r.Chat.Announce(context.WithoutCancel(ctx), ref.ProjectID, notice); err != nil {
 		r.Logger.Error("post judge result failed", "take_id", ref.Take.ID, "err", err)
 	}
-	r.Notify(generation.Progress{ShotID: shotID, Action: generation.ActionJudge, Stage: generation.StageDone})
-	return nil
+	return saved, nil
 }
 
 // judge gathers the input of the Take and runs the Judge.
