@@ -2,6 +2,7 @@ package llm_test
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -182,4 +183,66 @@ func TestLoadConfig_RejectsBadFiles(t *testing.T) {
 	}
 	_, err := llm.LoadConfig(filepath.Join(t.TempDir(), "missing.json"))
 	assert.Error(t, err)
+}
+
+// images are what the AI Video Judge attaches: a captioned reference and a frame.
+var images = []llm.Image{
+	{MimeType: "image/png", Data: []byte("ref"), Caption: "Reference image"},
+	{MimeType: "image/jpeg", Data: []byte("frame")},
+}
+
+func TestBackends_Anthropic_SendsImagesAfterTheText(t *testing.T) {
+	ps := newProviderServer(t, 200, `{"content":[{"type":"text","text":"ok"}]}`, nil)
+	b := backendFor(t, llm.ProviderAnthropic, ps, true)
+
+	_, err := b.Complete(context.Background(), "claude-x", llm.Request{System: "sys", User: "usr", Images: images})
+	require.NoError(t, err)
+	msgs, _ := ps.body["messages"].([]any)
+	require.Len(t, msgs, 1)
+	blocks, _ := msgs[0].(map[string]any)["content"].([]any)
+	require.Len(t, blocks, 4, "user text, caption, two images (the frame has no caption)")
+	assert.Equal(t, "usr", blocks[0].(map[string]any)["text"])
+	assert.Equal(t, "Reference image", blocks[1].(map[string]any)["text"])
+	src := blocks[2].(map[string]any)["source"].(map[string]any)
+	assert.Equal(t, "image/png", src["media_type"])
+	assert.Equal(t, base64.StdEncoding.EncodeToString([]byte("ref")), src["data"])
+	assert.Equal(t, "image", blocks[3].(map[string]any)["type"])
+}
+
+func TestBackends_OpenAI_SendsImagesAsDataURLs(t *testing.T) {
+	ps := newProviderServer(t, 200, `{"choices":[{"message":{"content":"ok"}}]}`, nil)
+	b := backendFor(t, llm.ProviderOpenAI, ps, true)
+
+	_, err := b.Complete(context.Background(), "gpt-x", llm.Request{System: "sys", User: "usr", Images: images})
+	require.NoError(t, err)
+	msgs, _ := ps.body["messages"].([]any)
+	require.Len(t, msgs, 2)
+	parts, _ := msgs[1].(map[string]any)["content"].([]any)
+	require.Len(t, parts, 4)
+	url := parts[2].(map[string]any)["image_url"].(map[string]any)["url"]
+	assert.Equal(t, "data:image/png;base64,"+base64.StdEncoding.EncodeToString([]byte("ref")), url)
+}
+
+func TestBackends_Google_SendsImagesAsInlineData(t *testing.T) {
+	ps := newProviderServer(t, 200, `{"candidates":[{"content":{"parts":[{"text":"ok"}]}}]}`, nil)
+	b := backendFor(t, llm.ProviderGoogle, ps, true)
+
+	_, err := b.Complete(context.Background(), "gemini-x", llm.Request{System: "sys", User: "usr", Images: images})
+	require.NoError(t, err)
+	contents, _ := ps.body["contents"].([]any)
+	parts, _ := contents[0].(map[string]any)["parts"].([]any)
+	require.Len(t, parts, 4)
+	inline := parts[2].(map[string]any)["inline_data"].(map[string]any)
+	assert.Equal(t, "image/png", inline["mime_type"])
+	assert.Equal(t, base64.StdEncoding.EncodeToString([]byte("ref")), inline["data"])
+}
+
+func TestBackends_TextOnlyRequestsKeepThePlainUserMessage(t *testing.T) {
+	ps := newProviderServer(t, 200, `{"content":[{"type":"text","text":"ok"}]}`, nil)
+	b := backendFor(t, llm.ProviderAnthropic, ps, true)
+
+	_, err := b.Complete(context.Background(), "claude-x", llm.Request{User: "usr"})
+	require.NoError(t, err)
+	msgs, _ := ps.body["messages"].([]any)
+	assert.Equal(t, "usr", msgs[0].(map[string]any)["content"])
 }

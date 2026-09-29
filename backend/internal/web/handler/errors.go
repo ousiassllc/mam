@@ -27,6 +27,8 @@ func statusOf(c *gin.Context, err error) (int, string) {
 		return http.StatusConflict, "すでに応答済みか、状態が変わっています。画面を更新してください"
 	case errors.Is(err, service.ErrBusy):
 		return http.StatusConflict, "この Shot はすでに生成中です"
+	case errors.Is(err, service.ErrJudgeBusy):
+		return http.StatusConflict, "この Take はすでに Judge 中です"
 	case errors.Is(err, service.ErrBudgetExceeded):
 		return http.StatusPaymentRequired, "予算上限を超えるため生成できません"
 	case errors.Is(err, service.ErrLocked):

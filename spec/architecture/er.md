@@ -153,6 +153,7 @@ erDiagram
         json issues
         json metrics
         json preserve
+        json repair_strategy
         datetime created_at
     }
     REPAIR_ACTION {
@@ -413,7 +414,7 @@ erDiagram
 | `shot` | `scene_id` FK。`selected_take_id` は `take.id` への FK（NULL許容）。`state` は Core State Machine のサブ状態のみ許可 | `idx_shot_scene_order (scene_id, order_index)` |
 | `prompt_version` | `shot_id` FK。`(shot_id, version_number)` UNIQUE。`note_refs` は Shot Spec 生成時に Prompt Planner へ渡した制作メモのバージョンの JSON 配列（`[{note_id, version_number}]`、M2。メモを使わなかった場合は空配列） | `idx_prompt_version_shot (shot_id)` |
 | `take` | `prompt_version_id` FK。`status` は `candidate/ai_pick/selected/rejected` のいずれか | `idx_take_prompt_version (prompt_version_id)`, `idx_take_status (status)` |
-| `judge_result` | `take_id` FK（UNIQUEではない、同一Takeへの複数回Judge実行履歴を保持）。`result` は `pass/fail`。`metrics` は Face Identity Similarity 等の数値指標（JSON、`spec/spec.md` §12.4） | `idx_judge_result_take (take_id, created_at)` |
+| `judge_result` | `take_id` FK（UNIQUEではない、同一Takeへの複数回Judge実行履歴を保持）。`result` は `pass/fail`。`metrics` は Face Identity Similarity 等の数値指標（JSON、`spec/spec.md` §12.4。`face_identity_status`（`measured/not_applicable/unavailable`）と Character 別の `face_identity`）。`issues` は JSON 配列（`type`/`severity`/`dimension`/`time_range`/`frames`/`character_id`/`lock_violation` 等）、`preserve` は JSON 配列（既定 `[]`）、`repair_strategy` は JSON（`action` + `instructions`、NULL許容 = 推奨なし） | `idx_judge_result_take (take_id, created_at)` |
 | `repair_action` | `judge_result_id` FK。`resulting_take_id` は次に生成された `take.id`（NULL許容 = 未生成） | `idx_repair_action_judge_result (judge_result_id)` |
 | `world_state_version` | `project_id` FK。`branch_id` FK（NULL許容、NULL=主系列、非NULL=当該Branchが独立して持つバージョン系列）。`(project_id, branch_id, version_number)` UNIQUE、Branch単位で`version_number`は独立して単調増加 | `idx_world_state_version_project (project_id, branch_id, version_number)` |
 | `state_diff` | `shot_id` FK、`take_id` FK、`world_state_version_id` FK | `idx_state_diff_shot (shot_id)` |
@@ -481,3 +482,4 @@ erDiagram
 | 1.22 | 2026-09-29 | `job.kind` に `plan` を追加。`script_version.content` の JSON 構造を明記。`scene`/`shot` は計画時に `SavePlan` が 1 トランザクションで作成し、`shot.shot_spec` の `storyboard` キーに Storyboard Agent の絵コンテを保持する | M1「Reasoning LLM Adapter と AUTO パイプライン」（Issue #6）で企画〜Shot 計画の永続化形式が未定義だったため |
 | 1.23 | 2026-09-29 | `character` に `emotion`/`position`/`current_action` を追加。World State の保持形式・State Diff の JSON 構造・State Extractor の変更可能項目・Character/Product の登録契機を設計メモに追記 | M1「World State（Basic）と State Extractor」（Issue #8）で、`spec/spec.md` §9.2 の Character の状態項目（emotion/position/current_action）を保持する場所と、Camera/Story・diff の格納形式、Character/Product 行の作成契機が仕様になかったため（Issue 本文の補足に沿い、Location State と LOCK 強化は M2 のまま） |
 | 1.24 | 2026-09-29 | `project_policy` テーブルを追加。`cost_ledger_entry.actual_cost` の意味（ベンダー報告額）を明記。設計メモに Quality/Cost Policy の適用と不要 Take のアーカイブを追記 | M1「Production Template・Quality/Cost Policy・コスト可視化」（Issue #13）で、Max retries・Max generation time・Minimum quality thresholds（UC-8）を保存する場所が未定義だったため |
+| 1.25 | 2026-09-29 | `judge_result` に `repair_strategy`（JSON、NULL許容）を追加。`issues`/`metrics`/`preserve` の JSON 構造を明記。マイグレーションは `20260929210909_judge_result_repair_strategy.sql` | M1「AI Video Judge（Face Identity Similarity 含む）」（Issue #9）で、Judge Result の `repair_strategy`（`spec/spec.md` §12.3）を保存する場所が無かったため |

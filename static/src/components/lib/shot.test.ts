@@ -6,6 +6,6 @@ describe('isFinished', () => {
     expect(['done', 'failed', 'idle'].map((stage) => isFinished({ stage: stage as never }))).toEqual([true, true, true]);
   });
   it('is false while the Shot is queued or generating', () => {
-    expect(['queued', 'generating'].map((stage) => isFinished({ stage: stage as never }))).toEqual([false, false]);
+    expect(['queued', 'generating', 'judging'].map((stage) => isFinished({ stage: stage as never }))).toEqual([false, false, false]);
   });
 });

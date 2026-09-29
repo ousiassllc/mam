@@ -125,6 +125,7 @@ func (o *Orchestrator) generate(ctx context.Context, ref repository.ShotRef, ins
 			return err
 		}
 		o.notify(Progress{ShotID: shot.ID, Action: ActionGenerate, Stage: StageGenerating, Message: "動画を生成しています", TakesDone: made.add(takeID), TakesTotal: strategy.Takes})
+		o.judgeTake(ctx, takeID)
 		return nil
 	})
 	done := made.value()
@@ -283,4 +284,15 @@ func (c *counter) first() string {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return c.firstID
+}
+
+// judgeTake has the AI Video Judge look at a Take that was just made. The Take is kept whether or
+// not it can be judged: the user can run the Judge again.
+func (o *Orchestrator) judgeTake(ctx context.Context, takeID string) {
+	if o.judge == nil {
+		return
+	}
+	if _, err := o.judge.Start(context.WithoutCancel(ctx), takeID); err != nil {
+		o.logger.Error("start judge failed", "take_id", takeID, "err", err)
+	}
 }
