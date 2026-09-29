@@ -42,6 +42,9 @@ erDiagram
     BRANCH ||--o{ CHARACTER : branch_characters
     BRANCH ||--o{ PRODUCT : branch_products
     BRANCH ||--o{ LOCATION : branch_locations
+    BRANCH ||--o{ EDIT_TIMELINE_VERSION : branch_edit_timelines
+    BRANCH ||--o{ AUDIO_TIMELINE_VERSION : branch_audio_timelines
+    BRANCH ||--o{ EXPORT : branch_exports
     BRANCH_VERSION }o--o| WORLD_STATE_VERSION : version_snapshot
 
     EDIT_TIMELINE_VERSION ||--o{ EDITOR_JUDGE_RESULT : evaluated_by
@@ -233,10 +236,14 @@ erDiagram
     EDIT_TIMELINE_VERSION ||--o{ EDITOR_JUDGE_RESULT : evaluated_by
     PROJECT ||--o{ AUDIO_TIMELINE_VERSION : has
     PROJECT ||--o{ EXPORT : produces
+    BRANCH ||--o{ EDIT_TIMELINE_VERSION : branch_edit_timelines
+    BRANCH ||--o{ AUDIO_TIMELINE_VERSION : branch_audio_timelines
+    BRANCH ||--o{ EXPORT : branch_exports
 
     EDIT_TIMELINE_VERSION {
         string id PK
         string project_id FK
+        string branch_id FK
         int version_number
         json timeline
         datetime created_at
@@ -251,6 +258,7 @@ erDiagram
     AUDIO_TIMELINE_VERSION {
         string id PK
         string project_id FK
+        string branch_id FK
         int version_number
         json timeline
         datetime created_at
@@ -258,6 +266,7 @@ erDiagram
     EXPORT {
         string id PK
         string project_id FK
+        string branch_id FK
         string file_path
         string resolution
         string aspect_ratio
@@ -321,9 +330,9 @@ erDiagram
 | `state_diff` | `shot_id` FK、`take_id` FK、`world_state_version_id` FK | `idx_state_diff_shot (shot_id)` |
 | `branch` | `project_id` FK。`branch_point_type` は `scene/shot/frame` のいずれか（CHECK制約）。`branch_point_scene_id`（type=scene時）/`branch_point_shot_id`（type=shot/frame時）はいずれかNULL許容。`branch_point_offset_seconds`（type=frame時のみ使用、他はNULL）。`world_state_version_id` FK（Snapshot） | `idx_branch_project (project_id)` |
 | `branch_version` | `branch_id` FK。`(branch_id, version_number)` UNIQUE、`version_number` は単調増加。Branch自体の主要変更（名称変更・World State参照更新等）を追記のみで履歴化する | `idx_branch_version_branch (branch_id, version_number)` |
-| `edit_timeline_version` / `audio_timeline_version` | `project_id` FK。`(project_id, version_number)` UNIQUE | `idx_edit_timeline_project (project_id, version_number)` |
+| `edit_timeline_version` / `audio_timeline_version` | `project_id` FK。`branch_id` FK（NULL許容、NULL=主系列トランク、非NULL=当該BranchのTimeline）。`(project_id, branch_id, version_number)` UNIQUE | `idx_edit_timeline_project (project_id, branch_id, version_number)` |
 | `editor_judge_result` | `edit_timeline_version_id` FK。`result` は `pass/re_edit/need_shot` | `idx_editor_judge_result_timeline (edit_timeline_version_id)` |
-| `export` | `project_id` FK | `idx_export_project (project_id)` |
+| `export` | `project_id` FK。`branch_id` FK（NULL許容、NULL=主系列トランクからの書き出し） | `idx_export_project (project_id, branch_id)` |
 | `lock` | `project_id` FK。`(project_id, target_type, target_id, parameter_name)` UNIQUE。`mode` は `auto/manual/lock` | `idx_lock_project_target (project_id, target_type, target_id)` |
 | `cost_ledger_entry` | `project_id` FK。`shot_id`/`take_id` は NULL 許容（プロジェクト全体コストの場合） | `idx_cost_ledger_project (project_id)` |
 | `brand_constraint` | `project_id` FK。`type` は `brand_guideline/forbidden_expression/required_disclaimer/product_claim/logo_rule/character_restriction/asset_rights/platform_rule` のいずれか。`enforcement_level` は `lock/advisory` のいずれか（CHECK制約、`lock`はスコアに関係なく違反時FAIL） | `idx_brand_constraint_project (project_id)` |
@@ -354,3 +363,4 @@ erDiagram
 | 1.11 | 2026-09-28 | §2.1に `SHOT }o--o\| TAKE : selected_take_ref` と `REPAIR_ACTION }o--o\| TAKE : produces_next` を追加 | `shot.selected_take_id`・`repair_action.resulting_take_id` というFK（§2.1のSHOT/REPAIR_ACTION属性ブロックには既に記載済み）に対応する関係線が§1には存在するのに§2.1には描かれておらず、TAKE/SHOT/REPAIR_ACTIONが全て§2.1に描画済みであるにもかかわらず非対称だったため（品質レビュー指摘） |
 | 1.12 | 2026-09-28 | `scene` のUNIQUE制約を `(project_id, order_index)` から `(project_id, branch_id, order_index)` へ変更 | round3で`scene.branch_id`を追加した際、UNIQUE制約が未修正のままでBranch配下のSceneがトランク/他Branchと同じ`order_index`を使うと制約違反になり、UC-5「各Branchが独立した派生プロジェクトツリー」を満たせなかったため（整合性レビュー指摘） |
 | 1.13 | 2026-09-28 | `brand_constraint.type` のCHECK制約に `brand_guideline` を追加 | UC-9・`POST /projects/:id/brand-constraints`の概要が「Brand Guideline」を登録対象の先頭に挙げているのに対し、typeの許容値7種にbrand_guidelineが存在せずCHECK制約違反となっていたため（整合性レビュー指摘） |
+| 1.14 | 2026-09-28 | `edit_timeline_version`/`audio_timeline_version`/`export` に nullable `branch_id` を追加。UNIQUE制約を `(project_id, branch_id, version_number)` へ変更し、§1・§2.3に `BRANCH \|\|--o{ EDIT_TIMELINE_VERSION/AUDIO_TIMELINE_VERSION/EXPORT` 関係線を追加 | scene/character/product/location/world_state_versionはBranch独立化済みだったが編集・音声・書き出しにはbranch_idが無く、Branch別の編集・音声・Exportができなかったため（整合性レビュー指摘） |
