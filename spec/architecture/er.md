@@ -326,7 +326,7 @@ erDiagram
 | `export` | `project_id` FK | `idx_export_project (project_id)` |
 | `lock` | `project_id` FK。`(project_id, target_type, target_id, parameter_name)` UNIQUE。`mode` は `auto/manual/lock` | `idx_lock_project_target (project_id, target_type, target_id)` |
 | `cost_ledger_entry` | `project_id` FK。`shot_id`/`take_id` は NULL 許容（プロジェクト全体コストの場合） | `idx_cost_ledger_project (project_id)` |
-| `brand_constraint` | `project_id` FK。`type` は `forbidden_expression/required_disclaimer/product_claim/logo_rule/character_restriction/asset_rights/platform_rule` のいずれか。`enforcement_level` は `lock/advisory` のいずれか（CHECK制約、`lock`はスコアに関係なく違反時FAIL） | `idx_brand_constraint_project (project_id)` |
+| `brand_constraint` | `project_id` FK。`type` は `brand_guideline/forbidden_expression/required_disclaimer/product_claim/logo_rule/character_restriction/asset_rights/platform_rule` のいずれか。`enforcement_level` は `lock/advisory` のいずれか（CHECK制約、`lock`はスコアに関係なく違反時FAIL） | `idx_brand_constraint_project (project_id)` |
 
 ## 4. 設計メモ
 
@@ -353,3 +353,4 @@ erDiagram
 | 1.10 | 2026-09-28 | `character`/`product`/`location` に nullable `branch_id` を追加し、§1・§2.2に `BRANCH ||--o{ CHARACTER/PRODUCT/LOCATION` 関係線を追加 | Branch上でのCharacter/Product/Location編集がトランクや他Branchに影響してしまい、round3で導入したBranch独立性（world_state_version/sceneのbranch_id）と設計意図が食い違っていたため（整合性レビュー指摘） |
 | 1.11 | 2026-09-28 | §2.1に `SHOT }o--o\| TAKE : selected_take_ref` と `REPAIR_ACTION }o--o\| TAKE : produces_next` を追加 | `shot.selected_take_id`・`repair_action.resulting_take_id` というFK（§2.1のSHOT/REPAIR_ACTION属性ブロックには既に記載済み）に対応する関係線が§1には存在するのに§2.1には描かれておらず、TAKE/SHOT/REPAIR_ACTIONが全て§2.1に描画済みであるにもかかわらず非対称だったため（品質レビュー指摘） |
 | 1.12 | 2026-09-28 | `scene` のUNIQUE制約を `(project_id, order_index)` から `(project_id, branch_id, order_index)` へ変更 | round3で`scene.branch_id`を追加した際、UNIQUE制約が未修正のままでBranch配下のSceneがトランク/他Branchと同じ`order_index`を使うと制約違反になり、UC-5「各Branchが独立した派生プロジェクトツリー」を満たせなかったため（整合性レビュー指摘） |
+| 1.13 | 2026-09-28 | `brand_constraint.type` のCHECK制約に `brand_guideline` を追加 | UC-9・`POST /projects/:id/brand-constraints`の概要が「Brand Guideline」を登録対象の先頭に挙げているのに対し、typeの許容値7種にbrand_guidelineが存在せずCHECK制約違反となっていたため（整合性レビュー指摘） |
