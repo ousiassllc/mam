@@ -20,6 +20,7 @@ func isHTMX(c *gin.Context) bool { return c.GetHeader("HX-Request") == "true" }
 func statusOf(c *gin.Context, err error) (int, string) {
 	var invalid *service.ValidationError
 	var locked *service.LockedError
+	var ai *service.AIError
 	switch {
 	case errors.As(err, &locked) && len(locked.Parameters) > 0:
 		names := make([]string, len(locked.Parameters))
@@ -27,6 +28,8 @@ func statusOf(c *gin.Context, err error) (int, string) {
 			names[i] = p.Label()
 		}
 		return http.StatusLocked, strings.Join(names, " / ") + " は LOCK されているため変更できません。LOCK を解除してから指示してください"
+	case errors.As(err, &ai):
+		return http.StatusBadGateway, ai.Reason
 	case errors.As(err, &invalid):
 		return http.StatusUnprocessableEntity, invalid.Message
 	case errors.Is(err, service.ErrNotFound):
@@ -35,6 +38,8 @@ func statusOf(c *gin.Context, err error) (int, string) {
 		return http.StatusConflict, "すでに応答済みか、状態が変わっています。画面を更新してください"
 	case errors.Is(err, service.ErrBusy):
 		return http.StatusConflict, "この Shot はすでに生成中です"
+	case errors.Is(err, service.ErrJudgeBusy):
+		return http.StatusConflict, "この Take はすでに Judge 中です"
 	case errors.Is(err, service.ErrBudgetExceeded):
 		return http.StatusPaymentRequired, "予算上限を超えるため生成できません"
 	case errors.Is(err, service.ErrLocked):

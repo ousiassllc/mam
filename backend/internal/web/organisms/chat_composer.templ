@@ -19,7 +19,7 @@ var qualityOptions = []qualityOption{
 // ChatComposer is the input area: message, attachments (［＋］ or drag and drop), reply
 // target, and the MODE / Quality controls. Input stays enabled while generation runs.
 // MODE switches AUTO ⇄ DIRECTOR (F-02); in DIRECTOR the message is read by the Command Interpreter
-// (F-24). Quality only shows the current value here: switching it belongs to the Quality/Cost Policy feature.
+// (F-24). Quality switches the Quality Policy at once (F-22).
 templ ChatComposer(p domain.Project) {
 	<div class="border-t border-neutral-800 px-4 py-3">
 		<form
@@ -52,14 +52,23 @@ templ ChatComposer(p domain.Project) {
 		</form>
 		<div class="mt-2 flex flex-wrap items-center gap-4 text-xs text-neutral-400">
 			@molecules.ModeControl(p)
-			<label class="flex items-center gap-2" title="Quality の切替は Quality/Cost Policy の機能で有効になります">
+			<label class="flex items-center gap-2" title="Quality Policy（詳細は設定画面）">
 				Quality
-				<select name="quality" disabled class="rounded-md border border-neutral-700 bg-neutral-950 px-2 py-1">
+				<select
+					name="quality_policy"
+					hx-put={ "/projects/" + p.ID + "/quality-policy" }
+					hx-trigger="change"
+					hx-params="quality_policy"
+					hx-encoding="application/x-www-form-urlencoded"
+					hx-swap="none"
+					class="rounded-md border border-neutral-700 bg-neutral-950 px-2 py-1"
+				>
 					for _, q := range qualityOptions {
 						<option value={ string(q.Value) } selected?={ q.Value == p.QualityPolicy }>{ q.Label }</option>
 					}
 				</select>
 			</label>
+			<a href={ templ.SafeURL("/projects/" + p.ID + "/settings") } class="hover:text-neutral-100">設定</a>
 		</div>
 	</div>
 }

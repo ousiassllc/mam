@@ -8,13 +8,16 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/briefing"
 	"github.com/ousiassllc/mam/backend/internal/agent/commandinterpreter"
+	"github.com/ousiassllc/mam/backend/internal/agent/continuation"
 	"github.com/ousiassllc/mam/backend/internal/agent/generation"
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
+	"github.com/ousiassllc/mam/backend/internal/agent/judge"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/orchestrator"
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/facesim"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
 
@@ -34,6 +37,16 @@ type Deps struct {
 	// Models is the Model Adapter that generates images and videos. Generation (Shot Takes and
 	// Reference Packs) is available only when it, LLM and Jobs are all set.
 	Models *modeladapter.Adapter
+	// FreeBytes reports the free disk space at a path. Nil selects fsutil.FreeBytes.
+	FreeBytes func(path string) (uint64, error)
+	// Frames samples frames from Takes (ffmpeg). The AI Video Judge is available only when it, LLM
+	// and Jobs are all set.
+	Frames judge.FrameSource
+	// Faces is the local face engine of the Face Identity Similarity. Nil: Takes are judged
+	// qualitatively only.
+	Faces facesim.Engine
+	// Judge is the AI Video Judge setting. The zero value selects judge.DefaultConfig.
+	Judge judge.Config
 }
 
 // Services is the DI root handed to router.New. Each feature adds one field
@@ -47,6 +60,9 @@ type Services struct {
 	Generation  *GenerationService
 	World       *WorldService
 	Director    *DirectorService
+	Policy      *PolicyService
+	Judge       *JudgeService
+	Continue    *ContinueService
 }
 
 // Recover puts Shots left GENERATING by an abnormal termination back to PLANNING. It MUST run
@@ -93,11 +109,29 @@ func New(deps Deps) *Services {
 	}
 	gens := repository.NewGenerationRepository(deps.DB)
 	world := repository.NewWorldRepository(deps.DB)
+	policies := repository.NewPolicyRepository(deps.DB)
 	generations := &GenerationService{core: c, shots: gens, progress: newBroker[generation.Progress]()}
+	judges := &JudgeService{core: c, judges: repository.NewJudgeRepository(deps.DB), generations: generations}
+	var takeJudge generation.Judger // stays nil (not a typed nil) while the Judge is off
+	if deps.Jobs != nil && deps.LLM != nil && deps.Frames != nil {
+		cfg := deps.Judge
+		if cfg == (judge.Config{}) {
+			cfg = judge.DefaultConfig()
+		}
+		judges.runner = judge.NewRunner(judge.Deps{
+			Generations: gens, Judges: judges.judges, Assets: c.assets, Chat: chat, Jobs: deps.Jobs,
+			Judge:     judge.New(deps.LLM, deps.Frames, deps.Faces, cfg, logger),
+			AssetsDir: deps.AssetsDir, Logger: logger,
+			Notify: func(p generation.Progress) { generations.progress.Publish(p.ShotID, p) },
+		})
+		// Resumable: judging is repeatable and cheap, so an interrupted run is run again.
+		deps.Jobs.Register(domain.JobJudge, judges.runner.Handle, true)
+		takeJudge = judges.runner
+	}
 	if deps.Jobs != nil && deps.LLM != nil && deps.Models != nil {
 		generations.gen = generation.New(generation.Deps{
-			Generations: gens, World: world, Projects: c.projects, Assets: c.assets, Chat: chat, Jobs: deps.Jobs,
-			LLM: deps.LLM, Adapter: deps.Models, AssetsDir: deps.AssetsDir, Logger: logger,
+			Generations: gens, World: world, Projects: c.projects, Policies: policies, FreeBytes: deps.FreeBytes, Assets: c.assets, Chat: chat, Jobs: deps.Jobs,
+			LLM: deps.LLM, Adapter: deps.Models, AssetsDir: deps.AssetsDir, Logger: logger, Judge: takeJudge,
 			Notify: func(p generation.Progress) { generations.progress.Publish(p.ShotID, p) },
 		})
 		// Not resumable: a generation costs money, so an interrupted one is failed, not repeated.
@@ -108,6 +142,11 @@ func New(deps Deps) *Services {
 		director.interpreter = commandinterpreter.New(deps.LLM)
 	}
 	c.director = director
+	continues := &ContinueService{core: c, generation: generations, shots: gens}
+	if deps.LLM != nil {
+		continues.agent = continuation.New(deps.LLM)
+	}
+	c.continuer = continues
 	return &Services{
 		Health:      NewHealthService(deps.DB),
 		Credentials: NewCredentialService(deps.Credentials),
@@ -117,5 +156,10 @@ func New(deps Deps) *Services {
 		Generation:  generations,
 		World:       &WorldService{core: c, world: world},
 		Director:    director,
+		Policy: &PolicyService{
+			core: c, freeBytes: deps.FreeBytes, policies: policies, costs: repository.NewCostRepository(deps.DB), storage: repository.NewStorageRepository(deps.DB),
+		},
+		Judge:    judges,
+		Continue: continues,
 	}
 }

@@ -83,6 +83,11 @@ templ ShotActions(shotID string) {
 			"hx-target": "#shot-" + shotID,
 			"hx-swap":   "outerHTML",
 		})
+		@atoms.Button(atoms.ToneNeutral, "続きを作る", templ.Attributes{
+			"type":    "button",
+			"hx-post": shotActionURL(shotID, "continue"),
+			"hx-swap": "none",
+		})
 	</form>
 }
 
@@ -118,7 +123,7 @@ templ ShotCard(d ShotCardData) {
 		if d.Selected {
 			aria-current="true"
 		}
-		if d.Shot.State == domain.ShotGenerating {
+		if d.Shot.State == domain.ShotGenerating || d.Shot.State == domain.ShotJudging {
 			data-shot-progress
 			data-ws-url={ shotProgressURL(d.Shot.ID) }
 			data-refresh-url={ shotURL(d.ProjectID, d.Shot.SceneID, d.Shot.ID) }
@@ -138,6 +143,9 @@ templ ShotCard(d ShotCardData) {
 				<span>{ secondsText(d.Shot.Duration) }</span>
 				if d.Shot.State == domain.ShotGenerating {
 					@atoms.Spinner("生成中")
+				}
+				if d.Shot.State == domain.ShotJudging {
+					@atoms.Spinner("Judge 中")
 				}
 				@atoms.Badge(atoms.BadgeNeutral, shotStateLabel(d.Shot.State))
 			</span>

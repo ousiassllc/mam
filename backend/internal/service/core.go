@@ -29,6 +29,8 @@ type core struct {
 	plans    *repository.PlanRepository
 	// director runs DIRECTOR MODE (F-02, F-24): the chat hands directions to it.
 	director *DirectorService
+	// continuer answers the replies to Continue cards; set by New.
+	continuer *ContinueService
 }
 
 // getProject maps repository.ErrNotFound to ErrNotFound.

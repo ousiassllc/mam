@@ -50,6 +50,8 @@ type genReasoner struct {
 	interpreter func(user string) string
 	// planner, when set, answers the Prompt Planner instead of specAnswer.
 	planner func(user string) string
+	// director answers the Director Agent (Continue) from its prompt; nil means an empty answer.
+	director func(system, user string) string
 }
 
 func (g *genReasoner) Complete(_ context.Context, agent llm.Agent, req llm.Request) (llm.Response, error) {
@@ -72,6 +74,9 @@ func (g *genReasoner) Complete(_ context.Context, agent llm.Agent, req llm.Reque
 			text = g.interpreter(req.User)
 		}
 	}
+	if agent == llm.AgentDirector && g.director != nil {
+		text = g.director(req.System, req.User)
+	}
 	return llm.Response{Text: text, Provider: llm.ProviderAnthropic, Model: "fake"}, nil
 }
 
@@ -86,6 +91,7 @@ type modelFake struct {
 	mu       sync.Mutex
 	err      error
 	block    chan struct{}
+	actual   *float64 // the cost the vendor reports for a video, when set
 	requests []modeladapter.VideoRequest
 	images   []string
 	inflight atomic.Int32
@@ -107,7 +113,7 @@ func (m *modelFake) GenerateVideo(ctx context.Context, _ string, req modeladapte
 	if m.err != nil {
 		return modeladapter.VideoResult{}, m.err
 	}
-	return modeladapter.VideoResult{Data: mp4Bytes, MimeType: "video/mp4"}, nil
+	return modeladapter.VideoResult{Data: mp4Bytes, MimeType: "video/mp4", ActualCost: m.actual}, nil
 }
 
 func (m *modelFake) GenerateImage(_ context.Context, model string, _ modeladapter.ImageRequest) (modeladapter.ImageResult, error) {
@@ -137,6 +143,11 @@ type genFixture struct {
 
 func newGenFixture(t *testing.T, withModels bool) genFixture {
 	t.Helper()
+	return newGenFixtureWithFreeBytes(t, withModels, func(string) (uint64, error) { return 1 << 40, nil })
+}
+
+func newGenFixtureWithFreeBytes(t *testing.T, withModels bool, freeBytes func(string) (uint64, error)) genFixture {
+	t.Helper()
 	dir := t.TempDir()
 	db, err := repository.Open(context.Background(), filepath.Join(dir, "mam.db"), nil)
 	require.NoError(t, err)
@@ -151,7 +162,7 @@ func newGenFixture(t *testing.T, withModels bool) genFixture {
 		backends.Video[m] = fake
 	}
 	noSleep := func(context.Context, time.Duration) error { return nil }
-	deps := service.Deps{DB: db, AssetsDir: filepath.Join(dir, "assets"), LLM: reasoner}
+	deps := service.Deps{DB: db, AssetsDir: filepath.Join(dir, "assets"), LLM: reasoner, FreeBytes: freeBytes}
 	jobs := jobqueue.New(repository.NewJobRepository(db), jobqueue.Options{})
 	deps.Jobs = jobs
 	if withModels {

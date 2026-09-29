@@ -79,7 +79,7 @@ func (s *GenerationService) SubscribeShot(ctx context.Context, shotID string) (<
 		return nil, nil, notFound(err)
 	}
 	ch, cancel := s.progress.Subscribe(shotID)
-	if ref.Shot.State != domain.ShotGenerating {
+	if ref.Shot.State != domain.ShotGenerating && ref.Shot.State != domain.ShotJudging {
 		s.progress.Publish(shotID, generation.Progress{ShotID: shotID, Stage: generation.StageIdle})
 	}
 	return ch, cancel, nil

@@ -33,10 +33,22 @@ import (
 const plannerAnswer = `{"shot_objective":"A woman turns and runs","duration":"4.0s","camera":{"framing":"medium"},
 	"acting":[{"time":"0.0-4.0","action":"runs"}]}`
 
+const (
+	directorProposeAnswer = `{"analysis":{"final_frame":"ドアの前"},"candidates":["ドアを開ける","声が聞こえる","照明が消える"]}`
+	directorPlanAnswer    = `{"new_scene":false,"shot":{"objective":"ドアを開ける","duration_seconds":4}}`
+)
+
 type plannerLLM struct{}
 
-func (plannerLLM) Complete(context.Context, llm.Agent, llm.Request) (llm.Response, error) {
-	return llm.Response{Text: plannerAnswer, Provider: llm.ProviderAnthropic, Model: "fake"}, nil
+func (plannerLLM) Complete(_ context.Context, agent llm.Agent, req llm.Request) (llm.Response, error) {
+	text := plannerAnswer
+	if agent == llm.AgentDirector { // Continue
+		text = directorPlanAnswer
+		if strings.Contains(req.System, `"candidates"`) {
+			text = directorProposeAnswer
+		}
+	}
+	return llm.Response{Text: text, Provider: llm.ProviderAnthropic, Model: "fake"}, nil
 }
 
 // videoFake makes every video; while gate is open it waits for it to be closed.
@@ -212,4 +224,37 @@ func TestShotWebSocket_UnknownShotAndForeignOriginAreRefused(t *testing.T) {
 	require.Error(t, err)
 	require.NotNil(t, resp)
 	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
+}
+
+func TestContinue_ProposesACardInTheChatAndConfirmAddsAndGeneratesTheNextShot(t *testing.T) {
+	g := newGenApp(t, true)
+	assert.Equal(t, http.StatusConflict, g.form(http.MethodPost, "/shots/"+g.shotID+"/continue", nil).Code, "nothing has been completed yet")
+	assert.Equal(t, http.StatusNotFound, g.form(http.MethodPost, "/shots/nope/continue", nil).Code)
+	assert.Equal(t, http.StatusNotFound, g.form(http.MethodPost, "/shots/nope/continue/confirm", url.Values{"delegate": {"true"}}).Code)
+	g.form(http.MethodPost, "/shots/"+g.shotID+"/generate", nil)
+	g.waitTakes(3)
+	require.Eventually(t, func() bool {
+		var state string
+		return g.db.Reader().QueryRow(`SELECT state FROM shot WHERE id = ?`, g.shotID).Scan(&state) == nil && state == "PLANNING"
+	}, 30*time.Second, 10*time.Millisecond)
+
+	rec := g.form(http.MethodPost, "/shots/"+g.shotID+"/continue", nil)
+	require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
+	assert.Equal(t, "/projects/"+g.project, rec.Header().Get("HX-Redirect"))
+	body := rec.Body.String()
+	assert.Contains(t, body, "A. ドアを開ける")
+	assert.Contains(t, body, "最終フレーム: ドアの前")
+	assert.Contains(t, body, domain.DelegateOption)
+
+	assert.Equal(t, http.StatusUnprocessableEntity, g.form(http.MethodPost, "/shots/"+g.shotID+"/continue/confirm", nil).Code, "a choice is required")
+	rec = g.form(http.MethodPost, "/shots/"+g.shotID+"/continue/confirm", url.Values{"delegate": {"true"}})
+	require.Equal(t, http.StatusAccepted, rec.Code, rec.Body.String())
+	assert.Equal(t, "chat:refresh", rec.Header().Get("HX-Trigger"))
+	assert.Contains(t, rec.Body.String(), "Shot 2: ドアを開ける")
+	assert.Contains(t, rec.Body.String(), "生成中")
+}
+
+func TestContinue_MissingConfigurationIs503(t *testing.T) {
+	off := newGenApp(t, false)
+	assert.Equal(t, http.StatusServiceUnavailable, off.form(http.MethodPost, "/shots/"+off.shotID+"/continue", nil).Code)
 }

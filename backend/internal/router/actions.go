@@ -18,6 +18,11 @@ func registerActions(engine *gin.Engine, services *service.Services) {
 	engine.PUT("/shots/:id/locks", handler.SetShotLock(services.Director))
 	engine.PUT("/shots/:id/shot-spec", handler.EditShotSpec(services.Director))
 	engine.POST("/shots/:id/director-command", handler.DirectorCommand(services.Director))
+	engine.PUT("/projects/:id/production-template", handler.SetProductionTemplate(services.Policy))
+	engine.PUT("/projects/:id/quality-policy", handler.SetQualityPolicy(services.Policy))
+	engine.PUT("/projects/:id/budget", handler.SetBudget(services.Policy))
+	engine.POST("/projects/:id/takes/:takeId/archive", handler.ArchiveTake(services.Policy))
+	engine.POST("/projects/:id/storage/archive-unneeded", handler.ArchiveUnneededTakes(services.Policy))
 
 	engine.POST("/projects/:id/scenes", handler.CreateScene(services.Plans))
 	engine.POST("/scenes/:id/shots", handler.CreateShot(services.Plans))
@@ -27,7 +32,10 @@ func registerActions(engine *gin.Engine, services *service.Services) {
 	engine.PUT("/projects/:id/locations/:locationId", handler.UpdateLocation(services.World))
 
 	engine.POST("/shots/:id/generate", handler.GenerateShot(services.Generation))
+	engine.POST("/shots/:id/continue", handler.ProposeContinue(services.Continue))
+	engine.POST("/shots/:id/continue/confirm", handler.ConfirmContinue(services.Continue))
 	engine.POST("/shots/:id/reference-pack", handler.BuildReferencePack(services.Generation))
+	engine.POST("/takes/:id/judge", handler.JudgeTake(services.Judge))
 	engine.POST("/projects/:id/messages", handler.PostMessage(services.Chat))
 	engine.POST("/projects/:id/approvals/:messageId", handler.RespondApproval(services.Chat))
 }

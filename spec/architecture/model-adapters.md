@@ -101,7 +101,7 @@ Reasoning LLM Adapter側の呼び出しモデルは Take/Cost Ledger の対象�
 - 各プロバイダーのSDKバージョン・具体的なエンドポイント・レート制限値は実装フェーズで確定する
 - コスト実測値（$/秒、$/画像等）は市場変動が大きいため、`non-functional.md` §6「コスト可視化」機能で継続的に検証し、本書の数値は参考値として扱う
 - 動画/画像/LLM市場は数ヶ月単位でモデル改廃が発生するため、本書は半期ごとに見直しレビューを行う（次回レビュー目安: 2027-03）
-- Face Identity Similarity の埋め込みモデルは、商用利用可能なライセンスかを確認したうえで選定する。Go 単一バイナリでの推論ランタイム（ONNX Runtime 等）との両立も実装時に検証する
+- Face Identity Similarity の顔検出・埋め込みモデルと推論ランタイム（ONNX Runtime）は M1 で検証済み（§10.1）。残る確認事項は、SFace の学習データの権利関係（配布元リポジトリは重みのライセンス（Apache-2.0）のみを明記し、学習データセットを明記していない）で、商用配布前に法務確認が必要（本アプリはモデルファイルを同梱しない）。閾値は実測で決定する（仕様では固定しない）
 - Jev の外部 API 利用は、シャドー実行の結果（一致率・confidence・遅延・コスト）で採否を判断する。`spec/requirements/non-functional.md` §5 の外部送信方針との整合を導入時に確認する
 
 ## 2.1 実装（`internal/agent/llm`）
@@ -146,6 +146,36 @@ API キーは `credential.Store` のベンダー名（`google` / `openai` / `flu
 - **Reference Pack（F-11）**: Art Director（Reasoning LLM）が Character/Product/Location/Style/Lighting/Keyframe の各画像のプロンプトを決め、画像 Model Adapter が生成する。Character/Product/Location/Style/Lighting を先に並列生成し、Keyframe は先行する 3 種を入力にして最後に生成する。全画像が揃ったときだけ `shot.shot_spec.references` を置き換え（途中で失敗したら旧 Pack を残し、作成済みファイルも削除する）。Keyframe は動画生成の First Frame になる
 - **ジョブ**: 生成・Reference Pack 作成は `job.kind = generate` の非再開ジョブ（課金を伴うため、異常終了後は失敗として扱い、Shot を PLANNING へ戻す）。開始時に Shot を GENERATING にし、同じ Shot の二重実行は 409 とする。進捗は `/ws/shots/:id`、チャットの進捗カードと Take/Keyframe カードで通知する
 
+## 10. AI Video Judge と Face Identity Similarity の実装（`internal/agent/judge`、`internal/facesim`）
+
+M1 Issue #9（F-13）の実装仕様。
+
+### 10.1 モデルと推論ランタイムの検証結果
+
+| 項目 | 採用 | ライセンス | 検証 |
+|---|---|---|---|
+| 顔検出 | YuNet（`face_detection_yunet_2023mar.onnx`、OpenCV Zoo）。5 点ランドマーク付き | MIT | 本リポジトリの Go 実装の出力が OpenCV `FaceDetectorYN` の出力と一致（同一画像で検出枠・スコアが一致）することを確認 |
+| 顔埋め込み | SFace（`face_recognition_sface_2021dec.onnx`、OpenCV Zoo）。112×112 の整列顔から 128 次元、コサイン類似度で照合 | Apache-2.0（重み。学習データの権利は §8） | 同一人物（縮小・明度変更）0.93、別人物 −0.03（各 1 例。閾値は実測で決める） |
+| 推論ランタイム | ONNX Runtime 1.23.x の共有ライブラリ（`libonnxruntime.so` / `.dylib` / `onnxruntime.dll`）を `github.com/shota3506/onnxruntime-purego`（MIT、purego 経由）で実行時にロード | MIT（ONNX Runtime 本体、バインディングとも） | `CGO_ENABLED=0` のバイナリのまま推論できることを確認。cgo バインディング（`yalue/onnxruntime_go`）は単一バイナリ・クロスコンパイル（`make build`）と両立しないため不採用 |
+
+- **同梱しない**: モデルファイル（約 39 MB）と ONNX Runtime ライブラリはバイナリに同梱せず、利用者が配置する（`--face-model-dir`（`MAM_FACE_MODEL_DIR`、既定 `<data-dir>/models`）にモデル 2 ファイル、`--onnxruntime-lib`（`MAM_ONNXRUNTIME_LIB`、空ならシステムの標準ライブラリ検索）にランタイム）。`scripts/fetch-face-models.sh` がモデルを取得し SHA-256 を検証する
+- **未配置でも動く**: モデルまたはランタイムが無いとき、起動時に警告ログを残し Face Identity Similarity を無効にする。Take は定性評価のみで判定し、Judge Result の `metrics.face_identity_status` は `unavailable` になる（チャットにも明記する）
+- **ローカル実行**: 顔検出・埋め込みはプロセス内で実行し、顔画像はネットワークに出さない。Reasoning LLM（Gemini）には定性評価用のフレームと Reference Pack を送る（`non-functional.md` §5 の外部送信方針の対象。顔の数値化そのものは送らない）
+
+### 10.2 動作
+
+- **フレームサンプリング**: `ffmpeg` / `ffprobe`（PATH）でフレームを抜き出す。数値評価用は `face_sample_fps`（既定 4 fps）で最大 `max_face_frames`（48）枚（長い Take は間引く）、定性評価用は等間隔に `review_frames`（12）枚。ffmpeg が無いと Judge 自体が無効になる（起動時に警告）
+- **顔照合**: 各フレームで顔検出 → 埋め込み → Character の参照顔とのコサイン類似度。1 フレームに複数の顔があるときは、全ペアの類似度が高い順に「1 顔 = 1 Character」で割り当てる。参照顔は Character の `face_reference_asset_id` と、Reference Pack の Character 画像のうち名前が一致するもの。検出できない参照画像は使わず、どの参照画像にも顔が無い Character は測定対象から外す（`face_identity_status = not_applicable`）
+- **欠測**: 顔を検出できない（または割り当てられなかった）フレームは `undetected_ratio` にだけ数え、類似度の平均・最小・drift 判定・FAIL 判定に含めない。`undetected_ratio` が `max_undetected_ratio`（0.5）を超える、または検出フレームが `min_detected_frames`（3）未満なら `evaluated = false` とし、その Take は定性評価だけで判定する（`face_identity_drift` は出さない）
+- **閾値（設定値）**: 警告 `warn` と FAIL `fail` の 2 段階。Character の参照画像が 2 枚以上あり、参照画像同士の平均類似度 $m$ が `min_calibration_similarity`（0.4）以上のとき、`warn = calibration_warn_scale × m`（0.85）、`fail = calibration_fail_scale × m`（0.65）にキャリブレーションする（`calibrated = true`）。それ以外は固定値 `warn_similarity`（0.5）・`fail_similarity`（0.363、SFace 公開の照合閾値）を使う。適用した閾値は `metrics.face_identity[].warn_threshold` / `fail_threshold` に記録する。値はすべて `--judge-config`（`MAM_JUDGE_CONFIG`、JSON、未知のキーはエラー）で上書きでき、既定値は実測で見直す出発点である
+- **drift Issue**: 連続する `min_run_frames`（2）フレーム以上が `warn` を下回った区間を `face_identity_drift` Issue にする（`time_range`・`frames` 付き、`dimension = character_identity`）。区間内に `min_run_frames` フレーム連続で `fail` を下回る箇所があれば `severity = high`、なければ `medium`（警告）。顔が検出できないフレームは区間を切る
+- **定性評価**: Reasoning LLM（`AgentVideoJudge`、既定 Gemini → GPT）に、Canonical Shot Spec・前後 Shot の Spec・LOCK 中の評価軸・Reference Pack（`max_reference_images` 枚まで）・サンプルフレームを渡し、§12.2 の評価軸（識別子は `domain.JudgeDimensions`）で JSON を返させる。数値評価が成立している Character については、モデル自身の `face_identity_drift` は採用しない（数値が正本）。`time_range` は Take の長さに収め、ソースのフレーム番号（`frames`）を付ける。時間範囲を読めない Issue は範囲なしで残す
+- **判定（決定的ルール、`judge.Decide`）**: (1) LOCK 違反（LOCK 中の評価軸の medium 以上の Issue、または Character Identity が LOCK のときの FAIL 閾値割れ = high の `face_identity_drift`）があれば、モデルの判定・信頼度に関係なく FAIL（§13）。(2) それ以外は、モデルが fail を返す、または severity `high` の Issue があれば FAIL、なければ PASS。警告（medium）だけでは FAIL にしない。`overall_confidence` はモデルの値をそのまま保存する
+- **LOCK の解決**: Shot Spec の `character.identity` / `product.geometry` が `locked`、または `lock` テーブルの `(character, <id>, identity)`・`(product, <id>, geometry|label)` が `mode = lock` のとき、Character Identity + Face / Product Geometry / Logo・Text Accuracy が LOCK 扱い
+- **Repair Strategy**: モデルの `repair_strategy`（`action` は §13 の 6 種）を保存する。high の `face_identity_drift` があるとき、`action` が無い・`prompt_repair` なら `reference_reinforcement` に置き換え、`increase_face_reference_strength` を `instructions` に足す（§12.4）。PASS で戦略が無い Take は `repair_strategy` なし
+- **ジョブ**: Take を作るたびに `job.kind = judge` のジョブを起動する（`payload = {take_id, shot_id}`）。再開可能ジョブ（低コストで再実行できるため、異常終了後は再実行する）。実行中は Shot を `JUDGING` にし（GENERATING 中の Shot の状態は変えない）、`/ws/shots/:id` に `action = judge` の `queued` / `judging` / `done` / `failed` を流す。結果は `judge_result` に追記し（上書きしない）、チャットに PASS/FAIL・Issue・LOCK 違反・数値評価が使えなかった理由を投稿する。同じ Take の Judge が queued/running なら `POST /takes/:id/judge` は 409
+- **エラー**: ffmpeg 未導入は「ffmpeg / ffprobe が見つかりません」、API キー未設定・レート制限・タイムアウト・AI 出力不正は生成と同じ分類（`generation.FailureReason`）で通知する。顔モデルの推論エラーは Judge を失敗させず、その Take を定性評価のみで判定する（`face_identity_status = unavailable`）
+
 ## 改訂履歴
 
 | 版 | 日付 | 変更内容 | 変更理由 |
@@ -154,3 +184,4 @@ API キーは `credential.Store` のベンダー名（`google` / `openai` / `flu
 | 1.1 | 2026-09-29 | §4.5（Face Identity Similarity / Jev による Repair 前段選別）と §8 の未確定事項を追加 | シリーズ制作での顔のブレ検知の数値化と、Repair 戦略選択の低コスト化を仕様に加えるため |
 | 1.2 | 2026-09-29 | §2.1（Reasoning LLM Adapter の実装仕様: 設定・再試行・サーキットブレーカー・出力検証）を追加 | M1「Reasoning LLM Adapter と AUTO パイプライン」（Issue #6）で設定項目と耐障害動作の具体値が未定義だったため |
 | 1.3 | 2026-09-29 | §9（画像・動画生成 Model Adapter と Generation Orchestrator の実装仕様）を追加。M1 で実装する画像プロバイダーは §3 の 4 種すべてと決定 | M1「Prompt Autopilot・Model Adapter・Reference Pack・生成オーケストレーション」（Issue #7）で画像プロバイダーの範囲と設定・耐障害動作の具体値が未定義だったため |
+| 1.4 | 2026-09-29 | §10（AI Video Judge と Face Identity Similarity の実装仕様、顔モデル・ONNX Runtime のライセンスと単一バイナリ両立の検証結果、閾値のキャリブレーション、LOCK 連動）を追加。§8 の Face Identity Similarity の未確定事項を検証済みの内容に更新 | M1「AI Video Judge（Face Identity Similarity 含む）」（Issue #9）で、埋め込みモデルの商用ライセンス・推論ランタイム・閾値の決め方・欠測の扱いが名称レベルで未確定だったため |

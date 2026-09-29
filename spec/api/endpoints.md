@@ -36,7 +36,7 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 | GET | `/projects/:id/edit` | AI Editor / Rough Cut編集ページ（`mam-timeline-editor` を埋め込み） | フルページ |
 | GET | `/projects/:id/branches` | Branch ツリーページ（`mam-branch-tree` を埋め込み） | フルページ |
 | GET | `/projects/:id/export` | Final Export ページ | フルページ / フラグメント |
-| GET | `/projects/:id/settings` | Quality/Cost Policy・Brand Constraints・APIキー設定 | フルページ / フラグメント |
+| GET | `/projects/:id/settings` | Production Template・Quality/Cost Policy・予算上限・コスト（`cost_summary_panel`）・ディスク使用量と不要 Take のアーカイブ・Brand Constraints・APIキー設定。Chat Workspace の補助ビュー一覧と入力欄の「設定」から開く | フルページ / フラグメント |
 | GET | `/projects/:id/world-state` | World State 一覧（Character/Product/Location/Camera/Story の現在値表示） | フルページ / フラグメント |
 | GET | `/projects/:id/notes` | Notes 一覧・編集（補助ビュー、M2。ピン留め・カテゴリ・アーカイブの表示、`version_history_panel` でバージョン復元） | フルページ / フラグメント |
 | GET | `/series/:id/notes` | Series 正本 Notes の一覧・編集（M2） | フルページ / フラグメント |
@@ -51,9 +51,9 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 | PUT | `/projects/:id/brief` | Brief 更新 | F-01 |
 | PUT | `/projects/:id/mode` | AUTO ⇄ DIRECTOR 切替 | F-02 |
 | PUT | `/projects/:id/confirmation-level` | FULL AUTO / KEY CHECK / CUSTOM CHECK 設定。Body `level`=`full_auto\|key_check\|custom_check`、`checkpoints`（CUSTOM CHECK の確認ポイント、複数可。空なら前回の選択、無ければ script+final）。変更内容はスレッドに AI 発言として記録される | F-03 |
-| PUT | `/projects/:id/quality-policy` | FAST / BALANCED / MAX QUALITY 設定 | F-22 |
-| PUT | `/projects/:id/budget` | Project/Shot budget ceiling 設定 | F-22 |
-| PUT | `/projects/:id/production-template` | PRODUCT/CM・DRAMA・ANIME・SNS/SHORT VIDEO 切替 | F-21 |
+| PUT | `/projects/:id/quality-policy` | FAST / BALANCED / MAX QUALITY 設定。Body `quality_policy`=`fast\|balanced\|max_quality`。設定画面のフォームは併せて `max_retries`（0〜10）・`max_generation_seconds`（10〜3600、Take あたり）・`min_acceptance_score`（0〜100、総合）・`min_axis_score`（0〜100、軸ごと）を送り、空欄は「Policy の既定値」（保存済みの上書きも消える）。`quality_policy` だけの要求（入力欄のセレクト）は上書きを変えず 204。不正値は 422（設定画面はフォームを入力値・エラー付きで再描画）。変更内容はスレッドに AI 発言として記録される | F-22 |
+| PUT | `/projects/:id/budget` | Project/Shot budget ceiling 設定。Body `project_budget`・`shot_budget`（USD、0 より大きく 1,000,000 以下。空欄=上限なし）。不正値は 422（フォーム再描画）。Shot の上限は Repair/Retake の Max cost per Shot を兼ねる。上限を超える見込みの生成は §2.3 の `POST /shots/:id/generate` が 402 で拒否する | F-22 |
+| PUT | `/projects/:id/production-template` | PRODUCT/CM・DRAMA・ANIME・SNS/SHORT VIDEO 切替。Body `production_template`=`product_cm\|drama\|anime\|sns_short`。以降の Prompt Planner / Art Director / Judge / Editor は選択テンプレートの評価軸と優先順位（`spec/spec.md` §19）に従う。不明な値は 422。変更内容はスレッドに AI 発言として記録される | F-21 |
 | PUT | `/projects/:id/locks` | Story/Music という Shot に属さないパラメータの AUTO/MANUAL/LOCK 設定（`target_type`=`story\|music` を受理） | F-05 |
 
 ### 2.1a Chat / Approval
@@ -90,7 +90,7 @@ M1 の入出力契約（Issue #12）:
 | POST | `/shots/:id/reference-pack` | Keyframe / Reference Pack（Character/Product/Location/Style/Lighting Reference）生成・再生成。非同期ジョブを起動し、`/shots/:id/generate` と同じく 202 と GENERATING の Shot カードを返す | F-11 |
 | POST | `/shots/:id/generate` | Prompt Autopilot → Model Adapter → Video Generation を実行（非同期ジョブ起動、202+進捗はWSで通知）。Body `additional_instruction`（任意、1000 文字以内）。予算上限に 1 Take も収まらなければ 402、生成中の Shot は 409、存在しない Shot は 404、生成機能が未構成（Model Adapter / LLM / ジョブキューなし）は 503。完了した Take は Take カードとしてチャットに追記され、`take.model_name` と `cost_ledger_entry.provider` は `spec/architecture/model-adapters.md` §6 の正規識別子で保存される | F-06, F-07, F-12 |
 | POST | `/shots/:id/generate/candidates` | Prompt Candidate Generation（Quality/Balanced/Economy Mode） | F-08 |
-| POST | `/takes/:id/judge` | AI Video Judge を明示的に再実行 | F-13 |
+| POST | `/takes/:id/judge` | AI Video Judge を明示的に再実行。非同期ジョブ（`job.kind=judge`）を起動し、202 と JUDGING の Shot カードを返す。結果は `judge_result` に追記され（過去の結果は残る）、チャットに投稿される。Take を作るたびに自動でも実行される。エラー: 404（Take が存在しない）、409（この Take の Judge がすでに実行待ち/実行中）、503（ffmpeg / LLM 未設定で Judge が無効） | F-13 |
 | POST | `/takes/:id/repair` | Judge結果に基づく Repair 実行（Prompt Repair/Partial Regeneration/Full Retake/Different Model/Reference Reinforcement/Edit-Level Repair） | F-14 |
 
 ### 2.4 Take / Continue / Branch
@@ -100,8 +100,8 @@ M1 の入出力契約（Issue #12）:
 | POST | `/takes/:id/select` | Take を Selected として確定（DIRECTOR MODEでの手動選択） | F-15 |
 | POST | `/shots/:id/takes/partial` | 複数Takeの区間指定による部分合成 | F-15 |
 | DELETE | `/takes/:id` | Take を Rejected として除外 | F-15 |
-| POST | `/shots/:id/continue` | Continue: 次展開候補（NEXT A/B/C/.../AIに任せる）を提示 | F-16 |
-| POST | `/shots/:id/continue/confirm` | 選択した展開候補で次 Shot/Scene を生成 | F-16 |
+| POST | `/shots/:id/continue` | Continue: 完成した Shot の最終フレームと Story/Character/Position/Emotion/Object/Camera/Lighting/Motion/Dialogue/Music State を解析し、次展開候補（NEXT A/B/C）を Question カード（`ref_type=continue`、`ref_id`=Shot ID）としてチャットに追記する。選択肢は A〜C、D（自由指示）は入力欄からの返信、E（AIに任せる）は常設ボタン。応答は 201 とカードのフラグメントで、`HX-Redirect` でチャットへ遷移させる。未完成の Shot（非 Rejected の Take が無い）は 409、生成中の Shot は 409、存在しない Shot は 404、生成機能が未構成は 503、AI の出力が使えない場合は 502 | F-16 |
+| POST | `/shots/:id/continue/confirm` | 選択した展開候補で次 Shot/Scene を生成。Body `instruction`（選択した候補または自由指示、1000 文字以内）または `delegate=true`（AIに任せる。AI が候補を選ぶ）。Director Agent が World State を引き継いだ次 Shot を決め、場所・時間が変わる場合のみ新しい Scene を作って既存プロジェクト末尾に連結し（同じ Scene の場合は完成 Shot の Scene 末尾に追加）、`POST /shots/:id/generate` と同じ生成を `instruction` を追加指示として開始する。応答は 202 と新 Shot の GENERATING の Shot カード（`HX-Trigger: chat:refresh`）。指示も `delegate` も無ければ 422、その他のエラーは `/shots/:id/continue` と同じ。Continue カードへの返信（`POST /projects/:id/messages` の `reply_to_message_id`）も同じ処理を起動する（選択肢の押下・自由入力・「AIに任せる」）。カードは 1 回だけ回答でき、2 回目は 409 | F-16 |
 | POST | `/shots/:id/branch` | Branch Point 保存 + Snapshot 生成（Body: `branch_point_type`=`scene\|shot\|frame`、`frame`時は`offset_seconds`を指定。`scene`指定時は当該Shotの所属Sceneを分岐点とする） | F-17 |
 | GET | `/branches/:id` | Branch 詳細（フラグメント） | F-17 |
 | PUT | `/branches/:id` | Branch 名称変更・World State参照更新（`branch_version` に新規バージョン行を追記） | F-17, F-28 |
@@ -134,7 +134,9 @@ M1 の入出力契約（Issue #12）:
 |---|---|---|---|
 | POST | `/projects/:id/brand-constraints` | Brand Guideline/禁止表現/Disclaimer/Product Claims/Logo Rules/Character Restrictions/Rights/Platform Rules 登録 | F-23 |
 | DELETE | `/brand-constraints/:id` | 制約削除 | F-23 |
-| GET | `/projects/:id/cost-summary` | Shot/Scene/Project 別の推定コスト・実コスト集計（`cost_summary_panel`向けフラグメント） | F-22 |
+| GET | `/projects/:id/cost-summary` | Shot/Scene/Project 別の推定コスト・実コスト集計（`cost_summary_panel`向けフラグメント）。推定コストは生成時の見積り、実コストはベンダーが報告した金額（`cost_ledger_entry.actual_cost`。報告が無い呼び出しがあれば合計に `*` を付ける）。予算上限に対する消化率を併せて表示し、フラグメントは 15 秒ごとに自己更新する | F-22 |
+| POST | `/projects/:id/takes/:takeId/archive` | Take の動画ファイルを削除して Rejected にする（Take 行・Judge/Repair 履歴・コスト記録は残す）。Selected Take は 409、当該 Project に無い Take・ファイルを既に手放した Take は 404。ディスク使用量パネルのフラグメントを返す | non-functional.md §4 |
+| POST | `/projects/:id/storage/archive-unneeded` | 不要な Take（Rejected、または同じ Shot の別 Take が Selected）をまとめてアーカイブする。ディスク使用量パネルのフラグメントを返す | non-functional.md §4 |
 
 ### 2.8 World State
 
@@ -177,7 +179,7 @@ Lit Web Components 専用。HTMX リクエストは発行しない（`spec/archi
 |---|---|---|---|
 | GET | `/api/v1/shots/:id` | Shot詳細（shot_spec, duration, selected_take_id等） | `mam-video-player`, `mam-timeline-editor` |
 | GET | `/api/v1/shots/:id/takes` | Take一覧（スコア: Product/Acting/Camera/Continuity, Status） | `mam-take-comparator` |
-| GET | `/api/v1/takes/:id/judge-result` | 最新のJudge Issue一覧（`time_range`/`frames`付き）。同一Takeの過去Judge履歴は含まない（最新1件） | `mam-video-player`（フレームマーカー重畳） |
+| GET | `/api/v1/takes/:id/judge-result` | 最新のJudge Result（`result`/`overall_confidence`/`metrics`/`issues`（`time_range`/`frames`付き）/`preserve`/`repair_strategy`）。同一Takeの過去Judge履歴は含まない（最新1件）。Take が存在しない、または一度も Judge されていないとき 404 | `mam-video-player`（フレームマーカー重畳） |
 | GET | `/api/v1/projects/:id/edit-timeline` | 現在の Edit Timeline（Shot順序/Cut Point/Transition）。クエリ `branch_id`（省略時=主系列トランク）で対象Branchを指定 | `mam-timeline-editor` |
 | PUT | `/api/v1/projects/:id/edit-timeline` | Edit Timeline 保存（ドラッグ&ドロップ操作の反映）。クエリ `branch_id`（省略時=主系列トランク）で対象Branchを指定 | `mam-timeline-editor` |
 | GET | `/api/v1/projects/:id/branches` | Branch ツリー構造（親子関係、Snapshot参照） | `mam-branch-tree` |
@@ -237,18 +239,24 @@ Response 200:
       - type: "face_identity_drift"
         severity: "high"
         time_range: "3.0-3.9s"
-    repair_strategy:
+    preserve: ["character", "acting", "background"]
+    repair_strategy:            # PASS で戦略が無いときは省略
       action: "partial_regeneration"
       instructions:
         - "increase_product_reference_strength"
         - "preserve_logo_geometry"
+Notes:
+  metrics.face_identity_status: "measured" | "not_applicable"（顔参照を持つ Character が Shot にいない）| "unavailable"（顔モデル未配置・推論エラーで定性評価のみ）
+  metrics.face_identity[]: 上記に加え evaluated（数値評価が成立したか。false は undetected_ratio が高い等で定性評価のみ）/ warn_threshold / fail_threshold / calibrated（参照画像でキャリブレーションした閾値か）
+  issues[]: 上記に加え dimension（評価軸）/ character_id（face_identity_drift）/ description / lock_violation（LOCK 違反。true の Take は score に関係なく FAIL）
+  time_range: "開始-終了s"（秒）。frames: [開始フレーム, 終了フレーム]（ソース動画のフレーム番号、両端を含む）
 ```
 
 ## 4. WebSocket
 
 | Path | 概要 |
 |---|---|
-| `/ws/shots/:id` | 生成中Shotの進捗（キュー待ち/生成中/Judge中/完了/失敗）をプッシュ通知。メッセージは JSON `{"shot_id","action"?:"generate\|reference_pack","stage":"idle\|queued\|generating\|done\|failed","message"?,"takes_done"?,"takes_total"?}`。接続直後に生成中でなければ `stage=idle` を 1 通送る。同一オリジンの接続のみ受理し、存在しない Shot は 404。M1 では Judge 中の通知はまだ流れない（F-13 で追加） |
+| `/ws/shots/:id` | 生成中Shotの進捗（キュー待ち/生成中/Judge中/完了/失敗）をプッシュ通知。メッセージは JSON `{"shot_id","action"?:"generate\|reference_pack\|judge","stage":"idle\|queued\|generating\|judging\|done\|failed","message"?,"takes_done"?,"takes_total"?}`。接続直後に生成中でなければ `stage=idle` を 1 通送る。同一オリジンの接続のみ受理し、存在しない Shot は 404。Judge 中は `action=judge` で `stage=queued\|judging\|done\|failed`（`stage` に `judging` を追加） |
 | `/ws/projects/:id` | プロジェクト全体イベント（Core State Machine遷移、コスト更新、Editor→Reshootループの発火）と、チャットの通知。チャットの通知は本文を含まない JSON `{"type":"message.created","message_id":"<最新メッセージID>"}`（新着あり。クライアントは `GET /projects/:id/messages?after=` で取得）と `{"type":"card.updated","message_id":"<カードID>"}`（進捗カード等の更新。`GET /projects/:id/messages/:messageId` で取得）。同一オリジンの接続のみ受理する |
 
 `lib/ws.ts` 経由で接続し、自動再接続（指数バックオフ、最大10回）を行う（`spec/architecture/overview.md` 参照元 HALT 標準パターン）。
@@ -280,4 +288,7 @@ Response 200:
 | 1.20 | 2026-09-29 | `GET /projects/:id/scenes` を追加。Scene/Shot 作成エンドポイントと `GET /projects/:id/scenes/:sceneId` の入力・エラー契約を明記 | M1「Reasoning LLM Adapter と AUTO パイプライン」（Issue #6）で Scene/Shot/Take 階層の表示・選択・作成 API の契約が未定義だったため |
 | 1.21 | 2026-09-29 | `POST /shots/:id/generate` の Body・エラー（402/404/409/503）、`POST /shots/:id/reference-pack` の非同期応答、`/ws/shots/:id` のメッセージ形式を明記 | M1「Prompt Autopilot・Model Adapter・Reference Pack・生成オーケストレーション」（Issue #7）で生成 API と進捗通知の契約が未定義だったため |
 | 1.22 | 2026-09-29 | §2.8 に M1 の入出力契約を追記（編集できる項目・応答・423/422/404 の条件、`branch_id` は M2 まで 404） | M1「World State（Basic）と State Extractor」（Issue #8）で `PUT .../characters/:id` 等の Body・応答・LOCK 時の挙動が名称レベルでしか定義されていなかったため |
-| 1.23 | 2026-09-29 | §2.2 に M1 の入出力契約（mode / locks / shot-spec / Inspector / director-command / チャットの DIRECTOR 解釈）を追記。`POST /shots/:id/generate` の LOCK・Video Model 固定時の挙動を追記 | M1「AUTO/MANUAL/LOCK と DIRECTOR MODE」（Issue #12）で、Body・応答・423/422/409/202 の条件、対象 Shot の解決順、LOCK の判定範囲が名称レベルでしか定義されていなかったため |
+| 1.23 | 2026-09-29 | `PUT /projects/:id/quality-policy`・`budget`・`production-template` の Body・エラー、`GET /projects/:id/settings`・`cost-summary` の表示内容を明記。`POST /projects/:id/takes/:takeId/archive`・`POST /projects/:id/storage/archive-unneeded`（不要 Take のアーカイブ）を追加 | M1「Production Template・Quality/Cost Policy・コスト可視化」（Issue #13）で設定 API の入力・エラー契約と、non-functional.md §4 の「不要 Take のアーカイブ/削除」に対応するエンドポイントが未定義だったため |
+| 1.24 | 2026-09-29 | `POST /takes/:id/judge` の応答・エラー（202/404/409/503）、`GET /api/v1/takes/:id/judge-result` の 404 と応答項目（`preserve`・`metrics.face_identity_status`・`lock_violation` 等）、`/ws/shots/:id` の Judge 通知（`action=judge`・`stage=judging`）を明記 | M1「AI Video Judge（Face Identity Similarity 含む）」（Issue #9）で Judge の API 契約と進捗通知が未定義だったため |
+| 1.25 | 2026-09-29 | §2.4 の `POST /shots/:id/continue`・`/continue/confirm` の入出力・エラー・チャットカードとの対応を明記 | M2「Continue」（Issue #17）で Body・応答・Continue カード（`ref_type=continue`）の回答方法・新 Scene を作る条件が名称レベルでしか定義されておらず、保守的に確定したため |
+| 1.26 | 2026-09-29 | §2.2 に M1 の入出力契約（mode / locks / shot-spec / Inspector / director-command / チャットの DIRECTOR 解釈）を追記。`POST /shots/:id/generate` の LOCK・Video Model 固定時の挙動を追記 | M1「AUTO/MANUAL/LOCK と DIRECTOR MODE」（Issue #12）で、Body・応答・423/422/409/202 の条件、対象 Shot の解決順、LOCK の判定範囲が名称レベルでしか定義されていなかったため |

@@ -1,0 +1,360 @@
+package router_test
+
+import (
+	"bytes"
+	"context"
+	"database/sql"
+	"encoding/json"
+	"image"
+	"image/color"
+	"image/jpeg"
+	"math"
+	"net/http"
+	"net/url"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/zalando/go-keyring"
+
+	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
+	"github.com/ousiassllc/mam/backend/internal/agent/judge"
+	"github.com/ousiassllc/mam/backend/internal/agent/llm"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
+	"github.com/ousiassllc/mam/backend/internal/credential"
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/facesim"
+	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/router"
+	"github.com/ousiassllc/mam/backend/internal/service"
+)
+
+// The Shot Spec names the Character the way the Prompt Planner does: "identity": "locked".
+const lockedSpecAnswer = `{"shot_objective":"A woman turns and runs","duration":"4.0s","camera":{"framing":"medium"},
+	"character":{"id":"Mira","identity":"locked"}}`
+
+// judgeLLM answers the Prompt Planner with a spec and the Video Judge with the given verdict.
+type judgeLLM struct {
+	mu      sync.Mutex
+	verdict string
+	specs   string
+	judged  int
+}
+
+func (l *judgeLLM) Complete(_ context.Context, agent llm.Agent, _ llm.Request) (llm.Response, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	text := l.specs
+	if agent == llm.AgentVideoJudge {
+		l.judged++
+		text = l.verdict
+	}
+	return llm.Response{Text: text, Provider: llm.ProviderGoogle, Model: "fake"}, nil
+}
+
+func (l *judgeLLM) judgeCalls() int {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.judged
+}
+
+// A picture's red channel is the face in it: red r is the unit embedding at angle r/255·π/2, so
+// the similarity to red 0 (Mira's reference face) is cos(angle).
+func faceJPEG(t *testing.T, sim float64) []byte {
+	t.Helper()
+	red := uint8(math.Round(math.Acos(sim) / (math.Pi / 2) * 255))
+	img := image.NewRGBA(image.Rect(0, 0, 8, 8))
+	for y := range 8 {
+		for x := range 8 {
+			img.Set(x, y, color.RGBA{R: red, A: 255})
+		}
+	}
+	var buf bytes.Buffer
+	require.NoError(t, jpeg.Encode(&buf, img, &jpeg.Options{Quality: 100}))
+	return buf.Bytes()
+}
+
+type redFaces struct{}
+
+func (redFaces) Faces(_ context.Context, img image.Image) ([]facesim.Face, error) {
+	r, _, _, _ := img.At(0, 0).RGBA()
+	a := float64(r>>8) / 255 * math.Pi / 2
+	return []facesim.Face{{Embedding: facesim.Embedding{float32(math.Cos(a)), float32(math.Sin(a))}}}, nil
+}
+
+// clipFrames is a FrameSource that shows the same frames for every Take.
+type clipFrames struct{ pictures [][]byte }
+
+func (c clipFrames) Sample(_ context.Context, _ string, _ judge.SampleSpec) (judge.Clip, error) {
+	clip := judge.Clip{Duration: 4, FPS: 25, Interval: 4 / float64(len(c.pictures))}
+	for i, p := range c.pictures {
+		tm := float64(i) * clip.Interval
+		n, _ := clip.FrameRange(tm, tm)
+		clip.Frames = append(clip.Frames, judge.Frame{Time: tm, Number: n, JPEG: p})
+	}
+	return clip, nil
+}
+
+type judgeApp struct {
+	*genApp
+	llm *judgeLLM
+	dir string
+}
+
+// newJudgeApp is a generation app with the Judge on: Mira has a face reference asset (red 0),
+// and every Take shows the given similarities.
+func newJudgeApp(t *testing.T, verdict string, sims ...float64) *judgeApp {
+	t.Helper()
+	keyring.MockInit()
+	dir := t.TempDir()
+	db, err := repository.Open(context.Background(), filepath.Join(dir, "mam.db"), nil)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = db.Close() })
+
+	l := &judgeLLM{verdict: verdict, specs: lockedSpecAnswer}
+	video := &videoFake{}
+	jobs := jobqueue.New(repository.NewJobRepository(db), jobqueue.Options{})
+	var pics [][]byte
+	for _, s := range sims {
+		pics = append(pics, faceJPEG(t, s))
+	}
+	backends := modeladapter.Backends{Video: map[domain.ModelName]modeladapter.VideoBackend{domain.ModelKling3: video, domain.ModelSeedance2: video}}
+	svc := service.New(service.Deps{
+		DB: db, Credentials: credential.NewKeyring(), AssetsDir: filepath.Join(dir, "assets"), LLM: l, Jobs: jobs,
+		Models: modeladapter.New(modeladapter.DefaultConfig(), backends), Frames: clipFrames{pics}, Faces: redFaces{},
+	})
+	ctx, cancel := context.WithCancel(context.Background())
+	jobs.Start(ctx)
+	t.Cleanup(func() { cancel(); jobs.Stop() })
+
+	a := &app{t: t, db: db, engine: router.New(svc, router.Options{}), svc: svc}
+	a.cookie, a.token = bootstrap(t, a.engine)
+	g := &genApp{app: a, video: video}
+	g.project = a.createProject("美容液のCMを作りたい")
+	rec := a.form(http.MethodPost, "/projects/"+g.project+"/scenes", url.Values{"title": {"Street"}})
+	m := sceneIDRe.FindStringSubmatch(rec.Body.String())
+	require.NotNil(t, m)
+	g.sceneID = m[1]
+	rec = a.form(http.MethodPost, "/scenes/"+g.sceneID+"/shots", url.Values{"objective": {"走り出す"}, "duration_seconds": {"4"}})
+	require.Equal(t, http.StatusCreated, rec.Code)
+	m = shotIDRe.FindStringSubmatch(rec.Body.String())
+	require.NotNil(t, m)
+	g.shotID = m[1]
+
+	// Mira and her face reference: a stored picture (red 0) and its asset row.
+	rel := filepath.Join(g.project, "mira.jpg")
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "assets", g.project), 0o700))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "assets", rel), faceJPEG(t, 1.0), 0o600))
+	require.NoError(t, db.Write(context.Background(), func(ctx context.Context, tx *sql.Tx) error {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO asset (id, project_id, type, file_path, mime_type, size_bytes) VALUES ('face-1', ?, 'image', ?, 'image/jpeg', 1)`, g.project, rel); err != nil {
+			return err
+		}
+		_, err := tx.ExecContext(ctx, `INSERT INTO character (id, project_id, name, face_reference_asset_id) VALUES ('char-1', ?, 'Mira', 'face-1')`, g.project)
+		return err
+	}))
+	return &judgeApp{genApp: g, llm: l, dir: dir}
+}
+
+func (j *judgeApp) takeIDs() []string {
+	j.t.Helper()
+	rows, err := j.db.Reader().Query(`SELECT id FROM take ORDER BY created_at, id`)
+	require.NoError(j.t, err)
+	defer func() { _ = rows.Close() }()
+	var ids []string
+	for rows.Next() {
+		var id string
+		require.NoError(j.t, rows.Scan(&id))
+		ids = append(ids, id)
+	}
+	return ids
+}
+
+func (j *judgeApp) results(takeID string) int {
+	var n int
+	require.NoError(j.t, j.db.Reader().QueryRow(`SELECT COUNT(*) FROM judge_result WHERE take_id = ?`, takeID).Scan(&n))
+	return n
+}
+
+// generateAndJudge generates the Shot's Takes and waits until each of them has been judged.
+func (j *judgeApp) generateAndJudge() []string {
+	j.t.Helper()
+	require.Equal(j.t, http.StatusAccepted, j.form(http.MethodPost, "/shots/"+j.shotID+"/generate", nil).Code)
+	j.waitTakes(3)
+	ids := j.takeIDs()
+	require.Eventually(j.t, func() bool {
+		for _, id := range ids {
+			if j.results(id) == 0 {
+				return false
+			}
+		}
+		return true
+	}, 30*time.Second, 10*time.Millisecond, "every Take is judged as soon as it is made")
+	return ids
+}
+
+type judgeBody struct {
+	Result            string  `json:"result"`
+	OverallConfidence float64 `json:"overall_confidence"`
+	Metrics           struct {
+		Status       string `json:"face_identity_status"`
+		FaceIdentity []struct {
+			CharacterID     string  `json:"character_id"`
+			SimilarityMean  float64 `json:"similarity_mean"`
+			SimilarityMin   float64 `json:"similarity_min"`
+			SampledFrames   int     `json:"sampled_frames"`
+			UndetectedRatio float64 `json:"undetected_ratio"`
+		} `json:"face_identity"`
+	} `json:"metrics"`
+	Issues []struct {
+		Type          string `json:"type"`
+		Severity      string `json:"severity"`
+		TimeRange     string `json:"time_range"`
+		Frames        []int  `json:"frames"`
+		LockViolation bool   `json:"lock_violation"`
+	} `json:"issues"`
+	Preserve       []string `json:"preserve"`
+	RepairStrategy *struct {
+		Action       string   `json:"action"`
+		Instructions []string `json:"instructions"`
+	} `json:"repair_strategy"`
+}
+
+func (j *judgeApp) result(takeID string) (int, judgeBody) {
+	j.t.Helper()
+	rec := j.get("/api/v1/takes/"+takeID+"/judge-result", false)
+	var b judgeBody
+	if rec.Code == http.StatusOK {
+		require.NoError(j.t, json.Unmarshal(rec.Body.Bytes(), &b), rec.Body.String())
+	}
+	return rec.Code, b
+}
+
+const goodVerdict = `{"result":"pass","overall_confidence":0.93,"issues":[],"preserve":["character","acting"]}`
+
+func TestJudge_EveryGeneratedTakeIsJudgedAndTheAPIReturnsTheResult(t *testing.T) {
+	// A steady face all along.
+	j := newJudgeApp(t, goodVerdict, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95)
+	ids := j.generateAndJudge()
+
+	for _, id := range ids {
+		code, body := j.result(id)
+		require.Equal(t, http.StatusOK, code)
+		assert.Equal(t, "pass", body.Result)
+		assert.InDelta(t, 0.93, body.OverallConfidence, 1e-9)
+		assert.Equal(t, []string{"character", "acting"}, body.Preserve)
+		assert.Equal(t, "measured", body.Metrics.Status)
+		require.Len(t, body.Metrics.FaceIdentity, 1)
+		m := body.Metrics.FaceIdentity[0]
+		assert.Equal(t, "Mira", m.CharacterID)
+		assert.Equal(t, 8, m.SampledFrames)
+		assert.InDelta(t, 0.95, m.SimilarityMean, 0.02)
+		assert.Zero(t, m.UndetectedRatio)
+		assert.Empty(t, body.Issues)
+		assert.Nil(t, body.RepairStrategy)
+	}
+	assert.Equal(t, 3, j.llm.judgeCalls())
+
+	page := j.get("/projects/"+j.project+"/scenes/"+j.sceneID+"?shot="+j.shotID, true).Body.String()
+	assert.Contains(t, page, `hx-post="/shots/`+j.shotID+`/generate"`, "the Shot is free again once every Take is judged")
+}
+
+func TestJudge_ALockedIdentityDriftFailsTheTakeWhateverTheModelSays(t *testing.T) {
+	// The face drifts for frames 3-5 of 8 (1.5-3.0 s). The model gives a confident pass.
+	j := newJudgeApp(t, goodVerdict, 0.95, 0.95, 0.95, 0.2, 0.2, 0.2, 0.95, 0.95)
+	ids := j.generateAndJudge()
+
+	code, body := j.result(ids[0])
+	require.Equal(t, http.StatusOK, code)
+	assert.Equal(t, "fail", body.Result)
+	assert.InDelta(t, 0.93, body.OverallConfidence, 1e-9, "the model's confidence is reported as it is")
+	require.Len(t, body.Issues, 1)
+	is := body.Issues[0]
+	assert.Equal(t, "face_identity_drift", is.Type)
+	assert.Equal(t, "high", is.Severity)
+	assert.Equal(t, "1.5-3.0s", is.TimeRange)
+	assert.Equal(t, []int{38, 75}, is.Frames)
+	assert.True(t, is.LockViolation, "the spec locks Mira's identity")
+	require.NotNil(t, body.RepairStrategy)
+	assert.Equal(t, "reference_reinforcement", body.RepairStrategy.Action)
+	assert.Contains(t, body.RepairStrategy.Instructions, "increase_face_reference_strength")
+
+	rows := j.get("/projects/"+j.project, false).Body.String()
+	assert.Contains(t, rows, "LOCK 違反", "the chat says the Take failed on a LOCK violation")
+}
+
+func TestJudge_PostRerunsTheJudgeAndKeepsEveryResultAsHistory(t *testing.T) {
+	j := newJudgeApp(t, goodVerdict, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95)
+	ids := j.generateAndJudge()
+	take := ids[0]
+	require.Equal(t, 1, j.results(take))
+
+	// The next run is a fail: the latest result must be the new one.
+	j.llm.mu.Lock()
+	j.llm.verdict = `{"result":"fail","overall_confidence":0.8,"issues":[{"type":"camera_speed","severity":"medium","dimension":"camera_motion","time_range":"0.8-1.7s"}],"repair_strategy":{"action":"partial_regeneration","instructions":["reduce_camera_speed_40_percent"]}}`
+	j.llm.mu.Unlock()
+
+	rec := j.form(http.MethodPost, "/takes/"+take+"/judge", nil)
+	require.Equal(t, http.StatusAccepted, rec.Code, rec.Body.String())
+	assert.NotContains(t, rec.Body.String(), "<html", "a fragment")
+	assert.Contains(t, rec.Body.String(), `id="shot-`+j.shotID+`"`)
+	require.Eventually(t, func() bool { return j.results(take) == 2 }, 30*time.Second, 10*time.Millisecond)
+
+	code, body := j.result(take)
+	require.Equal(t, http.StatusOK, code)
+	assert.Equal(t, "fail", body.Result, "the latest run")
+	require.Len(t, body.Issues, 1)
+	assert.Equal(t, "camera_speed", body.Issues[0].Type)
+	assert.Equal(t, "0.8-1.7s", body.Issues[0].TimeRange)
+	assert.Equal(t, []int{20, 43}, body.Issues[0].Frames)
+	require.NotNil(t, body.RepairStrategy)
+	assert.Equal(t, "partial_regeneration", body.RepairStrategy.Action)
+
+	var passes int
+	require.NoError(t, j.db.Reader().QueryRow(`SELECT COUNT(*) FROM judge_result WHERE take_id = ? AND result = 'pass'`, take).Scan(&passes))
+	assert.Equal(t, 1, passes, "the first result is still there")
+}
+
+func TestJudge_UnknownTakeIs404AndAnUnjudgedTakeHasNoResult(t *testing.T) {
+	j := newJudgeApp(t, goodVerdict, 0.95, 0.95, 0.95)
+	assert.Equal(t, http.StatusNotFound, j.form(http.MethodPost, "/takes/nope/judge", nil).Code)
+	code, _ := j.result("nope")
+	assert.Equal(t, http.StatusNotFound, code)
+
+	ids := j.generateAndJudge()
+	require.NoError(t, j.db.Write(context.Background(), func(ctx context.Context, tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, `DELETE FROM judge_result WHERE take_id = ?`, ids[0])
+		return err
+	}))
+	code, _ = j.result(ids[0])
+	assert.Equal(t, http.StatusNotFound, code, "the Take exists but was never judged")
+}
+
+func TestJudge_AJudgeRunThatIsQueuedOrRunningCannotBeStartedTwice(t *testing.T) {
+	j := newJudgeApp(t, goodVerdict, 0.95, 0.95, 0.95)
+	ids := j.generateAndJudge()
+	// A queued judge job of the Take is on record.
+	require.NoError(t, j.db.Write(context.Background(), func(ctx context.Context, tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, `INSERT INTO job (id, kind, payload, status) VALUES ('stuck', 'judge', ?, 'queued')`, `{"take_id":"`+ids[0]+`","shot_id":"`+j.shotID+`"}`)
+		return err
+	}))
+	rec := j.form(http.MethodPost, "/takes/"+ids[0]+"/judge", nil)
+	assert.Equal(t, http.StatusConflict, rec.Code)
+	assert.True(t, strings.Contains(rec.Body.String(), "Judge 中"), rec.Body.String())
+}
+
+func TestJudge_IsUnavailableWithoutFrameSampling(t *testing.T) {
+	g := newGenApp(t, true) // the generation app has no Frames: the Judge is off
+	assert.Equal(t, http.StatusServiceUnavailable, g.form(http.MethodPost, "/takes/anything/judge", nil).Code)
+
+	require.Equal(t, http.StatusAccepted, g.form(http.MethodPost, "/shots/"+g.shotID+"/generate", nil).Code)
+	g.waitTakes(3)
+	var id string
+	require.NoError(t, g.db.Reader().QueryRow(`SELECT id FROM take LIMIT 1`).Scan(&id))
+	assert.Equal(t, http.StatusServiceUnavailable, g.form(http.MethodPost, "/takes/"+id+"/judge", nil).Code)
+	assert.Equal(t, http.StatusNotFound, g.get("/api/v1/takes/"+id+"/judge-result", false).Code)
+}
