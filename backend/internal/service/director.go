@@ -132,6 +132,9 @@ type Inspector struct {
 	Spec    *domain.ShotSpec // nil until a spec exists
 	Takes   []domain.Take
 	Locks   domain.ParameterLocks
+	// Pack is the Reference Pack of the Shot and Library the images of the Project that can be added to it (F-11).
+	Pack    []domain.Reference
+	Library []domain.ReferenceItem
 	// SpecInput and SpecError hold a rejected manual edit of the spec.
 	SpecInput string
 	SpecError string
@@ -170,7 +173,11 @@ func (s *DirectorService) Inspector(ctx context.Context, shotID string) (Inspect
 	if err != nil {
 		return Inspector{}, err
 	}
-	view := Inspector{Project: project, Scene: ref.Scene, Shot: ref.Shot, Takes: takes[shotID], Locks: locks}
+	library, err := s.references.List(ctx, ref.ProjectID, repository.ReferenceFilter{})
+	if err != nil {
+		return Inspector{}, err
+	}
+	view := Inspector{Project: project, Scene: ref.Scene, Shot: ref.Shot, Takes: takes[shotID], Locks: locks, Pack: ref.Shot.References(), Library: library}
 	if spec, ok := ref.Shot.CanonicalSpec(); ok {
 		view.Spec = &spec
 	}

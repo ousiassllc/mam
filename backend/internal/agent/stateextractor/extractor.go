@@ -32,7 +32,7 @@ type Input struct {
 
 // llmTargets are the targets the model may change, in prompt order. story.scene is set from the
 // Scene of the Shot, not by the model.
-var llmTargets = []domain.WorldTarget{domain.TargetCharacter, domain.TargetProduct, domain.TargetCamera, domain.TargetStory}
+var llmTargets = []domain.WorldTarget{domain.TargetCharacter, domain.TargetProduct, domain.TargetLocation, domain.TargetCamera, domain.TargetStory}
 
 func llmFields(t domain.WorldTarget) []string {
 	var out []string
@@ -56,6 +56,7 @@ Return ONLY one JSON object with this shape:
 {"changes": [
   {"target": "character", "id": "<id from the world state>", "field": "emotion", "value": "relieved"},
   {"target": "product", "id": "<id from the world state>", "field": "condition", "value": "opened"},
+  {"target": "location", "id": "<id from the world state>", "field": "lighting_state", "value": "dim_lamp_light"},
   {"target": "camera", "field": "movement", "value": "static"},
   {"target": "story", "field": "known_information", "value": ["heard_noise_outside", "found_key"]}
 ]}
@@ -64,7 +65,8 @@ Fields you may change:
 ` + fields.String() + `
 Rules:
 - List a field only when its value at the end of the shot differs from the current world state. Return {"changes": []} when nothing changed.
-- "character" and "product" changes need the "id" of an entry of the world state; never invent characters or products. "camera" and "story" have no "id".
+- "character", "product" and "location" changes need the "id" of an entry of the world state; never invent characters, products or locations. "camera" and "story" have no "id".
+- A "location" change is only for the location the shot takes place in (named in the shot spec): "time" is the time of day, "lighting_state" the light on the location and "weather" the weather at the last frame.
 - "position" is where the character or camera is at the last frame; "current_action" is what the character is doing at the last frame; "emotion" is how the character feels at the end.
 - "known_information" is the COMPLETE list after the shot: keep the current items and add what the shot reveals. Every other value is one short text.
 - Write every value in English, short snake_case or a few words, in the style of the current values. Do not describe anything the shot does not show or clearly imply.`
@@ -72,8 +74,8 @@ Rules:
 
 // Extract returns the State Diff of the completed Shot: the fields whose value at the end of the
 // Shot differs from the World State. Answers that name an unknown entity or field, a value of the
-// wrong shape, an unchanged value or a LOCKed field are left out, so every change of the diff is
-// applicable. story.scene follows the Scene of the Shot.
+// wrong shape, an unchanged value, a Location other than the Shot's or a LOCKed field are left out,
+// so every change of the diff is applicable. story.scene follows the Scene of the Shot.
 func (e *Extractor) Extract(ctx context.Context, in Input) (domain.StateDiff, error) {
 	type change struct {
 		Target domain.WorldTarget `json:"target"`
@@ -90,10 +92,20 @@ func (e *Extractor) Extract(ctx context.Context, in Input) (domain.StateDiff, er
 
 	diff := domain.StateDiff{Changes: []domain.StateChange{}}
 	seen := map[domain.LockKey]bool{}
+	// Only the Location the Shot takes place in can change (spec/spec.md §9.3).
+	var shotLocation string
+	if in.Spec.Location != nil {
+		if l, ok := in.World.Location(in.Spec.Location.ID); ok {
+			shotLocation = l.ID
+		}
+	}
 	add := func(t domain.WorldTarget, id, field string, to json.RawMessage) {
 		key := domain.LockKey{Target: t, ID: id, Field: field}
 		if t.IsSingleton() {
 			key.ID, id = "", ""
+		}
+		if t == domain.TargetLocation && (shotLocation == "" || id != shotLocation) {
+			return
 		}
 		if seen[key] || domain.SameValue(to, nil) || !domain.IsExtractable(t, field) || in.Locks.Locked(t, id, field) ||
 			domain.ValidateFieldValue(t, field, to) != nil {

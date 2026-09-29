@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -339,18 +340,21 @@ func insertCost(ctx context.Context, tx *sql.Tx, c domain.CostEntry, now string)
 	return nil
 }
 
-// NewReferencePack is the Reference Pack of a Shot with the image assets and their cost.
+// NewReferencePack is the Reference Pack of a Shot with the image assets and their cost. References
+// may include images that already exist (pinned from the Reference Library, or the images a World
+// State reference slot holds): only the images in Assets are new.
 type NewReferencePack struct {
 	ProjectID  string
 	ShotID     string
 	References []domain.Reference
-	Assets     []domain.Asset // one per reference, same order (type reference)
+	Assets     []domain.Asset // the new image assets (type reference)
 	Costs      []domain.CostEntry
 }
 
 // SaveReferencePack replaces the Reference Pack of the Shot: the assets and costs are inserted,
-// the Characters and Products it names join the World State (when not already there) and the
-// "references" key of shot.shot_spec is rewritten, in one transaction.
+// the new images join the Project's Reference Library (spec/spec.md §10.1; the Keyframe stays
+// with its Shot), the Characters and Products it names join the World State (when not already
+// there) and the "references" key of shot.shot_spec is rewritten, in one transaction.
 func (r *GenerationRepository) SaveReferencePack(ctx context.Context, p NewReferencePack) error {
 	now := formatTime(r.now())
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
@@ -371,6 +375,22 @@ func (r *GenerationRepository) SaveReferencePack(ctx context.Context, p NewRefer
 				return err
 			}
 		}
+		added := make(map[string]bool, len(p.Assets))
+		for _, a := range p.Assets {
+			added[a.ID] = true
+		}
+		for _, ref := range p.References {
+			if !added[ref.AssetID] || !domain.ValidLibraryKind(ref.Kind) {
+				continue
+			}
+			item := domain.ReferenceItem{
+				ID: domain.NewID(), ProjectID: p.ProjectID, AssetID: ref.AssetID, Kind: ref.Kind,
+				Name: libraryName(ref), Tags: []string{}, Source: domain.SourceGenerated, SourceShotID: p.ShotID,
+			}
+			if err := insertReferenceItem(ctx, tx, item, now); err != nil {
+				return err
+			}
+		}
 		for _, ref := range p.References {
 			if err := ensureWorldEntity(ctx, tx, p.ProjectID, ref); err != nil {
 				return err
@@ -387,6 +407,19 @@ func (r *GenerationRepository) SaveReferencePack(ctx context.Context, p NewRefer
 		return fmt.Errorf("save reference pack: %w", err)
 	}
 	return nil
+}
+
+// libraryName is the name a generated reference gets in the Reference Library: the name the Art
+// Director gave it, or its kind for a Style / Lighting image; at most domain.MaxReferenceNameRunes.
+func libraryName(ref domain.Reference) string {
+	name := strings.TrimSpace(ref.Name)
+	if name == "" {
+		name = ref.Kind.Label()
+	}
+	if r := []rune(name); len(r) > domain.MaxReferenceNameRunes {
+		name = string(r[:domain.MaxReferenceNameRunes])
+	}
+	return name
 }
 
 // WorldContext returns the World State of the Project: its Characters, Products and Locations

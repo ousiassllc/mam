@@ -273,6 +273,20 @@ erDiagram
         string world_state_version_id FK
         datetime created_at
     }
+    PROJECT ||--o{ REFERENCE_ITEM : library
+    ASSET ||--o| REFERENCE_ITEM : registered_as
+    SHOT ||--o{ REFERENCE_ITEM : made_for
+    REFERENCE_ITEM {
+        string id PK
+        string project_id FK
+        string asset_id FK
+        string kind
+        string name
+        json tags
+        string source
+        string source_shot_id FK
+        datetime created_at
+    }
 ```
 
 ### 2.3 編集・音声・書き出し
@@ -431,6 +445,7 @@ erDiagram
 | `note` | `project_id` FK（NULL許容）と `series_id` FK（NULL許容）のちょうど一方が非NULL（CHECK制約、`character` 等と同じ規則）。`project_id` 非NULL=Project 内のメモ、`series_id` 非NULL=Series 正本。Episode 開始時に Series 正本から project 側の行へコピーし（最新バージョンを `version_number`=1 として複製。アーカイブ済みは除く）、`origin_id`（Series 正本行への FK、NULL許容）で由来を保持する。`category` は `character/product/location/world/tone/other`（CHECK制約）。`pinned` は既定 false。`archived_at`（NULL許容、NULL=有効。`DELETE` はアーカイブであり行を削除しない）。タイトル・本文は `note_version` が持つ | `idx_note_project (project_id, archived_at)`, `idx_note_series (series_id, archived_at)` |
 | `note_version` | `note_id` FK。`(note_id, version_number)` UNIQUE、`version_number` は単調増加。`title`、`content`（自由記述テキスト）、`source` は `manual/chat`（CHECK制約）。追記のみで更新しない | `idx_note_version_note (note_id, version_number)` |
 | `note_promotion` | `note_version_id` FK（UNIQUE。同じメモバージョンから再提案しない。対象は Project スコープの `note` のバージョンのみで、アプリケーション層で検証）。`proposed_diff` は World State へ適用する差分の JSON（対象 Character/Product/Location・フィールド・値）、`locked_conflicts` は LOCK のため除外した項目の JSON。`status` は `pending/applied/rejected`（CHECK制約）。`world_state_version_id` FK（NULL許容、`applied` のときのみ設定）。`resolved_at`（NULL許容）。Approval カードは `chat_message.ref_type=note_promotion` と `ref_id` でこの行を指す | `idx_note_promotion_status (status)` |
+| `reference_item` | Reference Library（`spec/spec.md` §10.1、M2）。`project_id` FK、`asset_id` FK（UNIQUE、`asset.type=reference` の画像。Asset の削除で行も消える）。`kind` は `character/product/location/style/lighting`（CHECK制約。Keyframe は Shot 固有のため登録しない）、`name`（100文字以内、アプリケーション層で検証）、`tags`（JSON 配列、最大10個）、`source` は `generated/uploaded`（CHECK制約）、`source_shot_id` FK（NULL許容、`generated` の由来の Shot。Shot 削除で NULL）。マイグレーションは `20260930001500_reference_library` | `idx_reference_item_project (project_id, kind)` |
 
 ## 4. 設計メモ
 
@@ -440,6 +455,7 @@ erDiagram
 - **World State のバージョニング**: Shot完了ごとに `state_diff` を生成し、新しい `world_state_version` を追加する（追記のみ、上書きしない）。ユーザーが LOCK した項目は State Extractor（Agent側ロジック）が diff 対象から除外する
 - **World State の保持形式（M1）**: Character/Product/Location は各テーブルの行が現在値の Source of Truth（`character` には Shot ごとに変わる `emotion`/`position`/`current_action` を持つ。マイグレーション `20260929081500_world_state`）。Camera/Story は Project に1つずつで、専用テーブルを持たず `world_state_version.state` の `camera`/`story` に保持し、最新バージョンが現在値になる。`world_state_version.state` は `spec/spec.md` §9.2 の構造（`characters`/`products`/`locations`/`camera`/`story`）の JSON スナップショット。ユーザー編集（`PUT /projects/:id/characters|products|locations/:id`）も新しいバージョンを追記する（Shot に紐づく `state_diff` は作らない）
 - **State Diff（M1）**: `state_diff.diff` は `{"changes":[{"target":"character|product|location|camera|story","id":"…","field":"…","from":…,"to":…}]}`。State Extractor が変更してよい項目は character の `hairstyle/wardrobe/emotion/position/current_action`、product の `orientation/condition`、camera の全項目、story の `scene/character_goal/known_information/previous_event` に限る（`personality`/`voice`/`material` と Location State は M2・ユーザー専用）。`story.scene` は Shot が属する Scene の番号（1始まり）に追従する。LOCK 項目は Agent が diff から除外するのに加え、`ApplyStateDiff` が書き込む行に対して LOCK を再判定して適用しない（`state_diff.diff` には適用された変更だけが残る）。`take_id` は当該 Shot で最初に完成した Take。Shot の完了は M1 では「生成ジョブで Take が1つ以上できた時点」とし、抽出に失敗しても生成は失敗にせず（Take は課金済みのため）World State はそのまま据え置く
+- **Location State・属性 LOCK・Reference Library（M2）**: Location の `time/lighting_state/weather` は State Extractor が更新してよい項目に加わる（`extractableFields`）。`lock` の `parameter_name` に使える属性は、character が `hairstyle/wardrobe/voice/personality/emotion/position/current_action/identity`、product が `material/orientation/condition/geometry/label`、location が `time/lighting_state/weather/layout_reference`、camera が `lens/position/angle/movement`、story が `scene/character_goal/known_information/previous_event`（`target_type` は `character/product/location/camera/story`。`camera` と `story` は `target_id=Project ID`。行が無い属性は AUTO、World State の属性は `auto/lock` のみ）。AI Video Judge の LOCK 違反への対応付けは `spec/spec.md` §9.3。Character/Product/Location の参照画像列（`face_reference_asset_id` 等）はライブラリの画像を割り当てて設定する（対応する LOCK 中は書かない）。Shot の Reference Pack（`shot.shot_spec.references`）の各要素には、ライブラリからピン留めした場合 `library_item`（`reference_item.id`）を記録する
 - **Character/Product の登録（M1）**: Reference Pack の保存時に、Art Director が名前を付けた `character`/`product` の参照について、同名の行が Project に無ければ `character`/`product` に追加する（Location は Scene の作成時に追加される）。これにより State Extractor が追跡できる Character/Product が生まれる
 - **Branch の Snapshot**: Branch作成時点の `world_state_version_id` を参照するのみで、Branch自体は新しい `world_state_version` 系列を独立して持つ（Branch以降の変更は元系列に影響しない）
 - **JSON カラム**: SQLite の `JSON` 型（TEXT + `json_valid` CHECK制約）を用いる。将来的な検索要件が増えた場合は生成列（generated column）でインデックスを追加する
@@ -485,3 +501,4 @@ erDiagram
 | 1.24 | 2026-09-29 | `project_policy` テーブルを追加。`cost_ledger_entry.actual_cost` の意味（ベンダー報告額）を明記。設計メモに Quality/Cost Policy の適用と不要 Take のアーカイブを追記 | M1「Production Template・Quality/Cost Policy・コスト可視化」（Issue #13）で、Max retries・Max generation time・Minimum quality thresholds（UC-8）を保存する場所が未定義だったため |
 | 1.25 | 2026-09-29 | `judge_result` に `repair_strategy`（JSON、NULL許容）を追加。`issues`/`metrics`/`preserve` の JSON 構造を明記。マイグレーションは `20260929210909_judge_result_repair_strategy.sql` | M1「AI Video Judge（Face Identity Similarity 含む）」（Issue #9）で、Judge Result の `repair_strategy`（`spec/spec.md` §12.3）を保存する場所が無かったため |
 | 1.26 | 2026-09-29 | 設計メモに LOCK の保持形式（`lock` の行の作り方、Shot/Project のパラメータ、判定箇所）を追記 | M1「AUTO/MANUAL/LOCK と DIRECTOR MODE」（Issue #12）で、`target_type`/`parameter_name` に入れる値と LOCK 判定の責務が「属性単位」としか定義されていなかったため |
+| 1.27 | 2026-09-30 | `reference_item`（Reference Library）を追加。設計メモに Location State・属性 LOCK・Reference Library を追記 | M2「Character/Product Lock・Location State・Reference Library」（Issue #15）で Reference Library のデータモデルが仕様になかったため。`asset` は種別・名前・タグを持たず検索できないので専用テーブルを 1 つ追加し、画像本体は既存の `asset.type=reference` を使う |

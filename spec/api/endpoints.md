@@ -38,6 +38,7 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 | GET | `/projects/:id/export` | Final Export ページ | フルページ / フラグメント |
 | GET | `/projects/:id/settings` | Production Template・Quality/Cost Policy・予算上限・コスト（`cost_summary_panel`）・ディスク使用量と不要 Take のアーカイブ・Brand Constraints・APIキー設定。Chat Workspace の補助ビュー一覧と入力欄の「設定」から開く | フルページ / フラグメント |
 | GET | `/projects/:id/world-state` | World State 一覧（Character/Product/Location/Camera/Story の現在値表示） | フルページ / フラグメント |
+| GET | `/projects/:id/references` | Reference Library（補助ビュー、M2。登録済みの参照画像の検索・アップロード・Shot への追加・削除）。クエリ `q`・`kind`・`tag` で絞り込む | フルページ / フラグメント |
 | GET | `/projects/:id/notes` | Notes 一覧・編集（補助ビュー、M2。ピン留め・カテゴリ・アーカイブの表示、`version_history_panel` でバージョン復元） | フルページ / フラグメント |
 | GET | `/series/:id/notes` | Series 正本 Notes の一覧・編集（M2） | フルページ / フラグメント |
 
@@ -153,6 +154,12 @@ M1 の入出力契約（Issue #8）:
 - `GET /projects/:id/world-state`: `HX-Request` でフラグメント、なければフルページ（`world_state_page`）。LOCK 中の項目は「LOCK」バッジ付きで編集不可。Camera/Story は Shot 完了ごとに State Extractor が更新するため参照専用
 - `branch_id` クエリは Branch（M2）が存在しない M1 では、指定されていれば 404 とする
 
+M2 の入出力契約（Issue #15）:
+
+- `PUT /projects/:id/world-state/locks`: World State の項目ごとの AUTO/LOCK 設定。Body `target_type`（`character|product|location|camera|story`）、`target_id`（Character/Product/Location の ID。`camera`/`story` は省略）、`parameter`（`spec/architecture/er.md` §4 の属性名）、`mode`（`auto|lock`）。応答は更新後の World State ビュー（`#world-state-view`、200）。LOCK 中の項目は State Extractor が更新せず、ユーザー編集は 423。未知の `target_type`/`parameter`/`mode` は 422、存在しない Project・エンティティは 404。Story 全体の LOCK は従来どおり `PUT /projects/:id/locks`
+- `PUT /projects/:id/characters|products|locations/:entityId/reference`: ライブラリの画像を World State の参照に割り当てる。Body `slot`（Character は `face|body`、Product は `geometry|label`、Location は `layout`）、`reference_id`（`reference_item.id`。空文字で割り当てを外す）。応答は更新後の World State ビュー（200）で、新しい `world_state_version` を追記する。対応する LOCK（`spec/spec.md` §10.1）が掛かっていれば 423、`slot` が種別に合わない・`reference_id` の種別がスロットに合わないは 422、Project/エンティティ/`reference_id` が無ければ 404
+- `GET /projects/:id/world-state` の各項目には LOCK の状態（`world_state_field` の LOCK バッジと `lock_toggle`）を表示する
+
 ### 2.9 Series / Episode（M2）
 
 | Method | Path | 概要 | 対応機能 |
@@ -170,6 +177,21 @@ M1 の入出力契約（Issue #8）:
 | PUT | `/notes/:id` | メモ更新。`title`/`content` が変わる場合は新しい `note_version` を追記する（Project スコープは昇格提案を再生成）。`category`/`pinned`/`archived`（`false` でアーカイブ解除）は行を更新し、バージョンは増えない。Series 正本の更新はコピー済みの Episode へ伝播しない | F-31, F-28 |
 | DELETE | `/notes/:id` | メモをアーカイブ（`archived_at` を設定。以降の推論文脈には渡さない） | F-31 |
 | POST | `/notes/:id/versions/:versionNumber/restore` | 指定バージョンの内容を新しい `note_version` として追記して復元 | F-31, F-28 |
+
+### 2.11 Reference Library（M2）
+
+| Method | Path | 概要 | 対応機能 |
+|---|---|---|---|
+| POST | `/projects/:id/references` | 参照画像をライブラリへ登録。`multipart/form-data`: `file`（必須、jpg/png/webp/gif、20MB まで）、`kind`（必須、`character|product|location|style|lighting`）、`name`（必須、100文字以内）、`tags`（任意、カンマ・空白・読点区切り、最大10個・各30文字以内） | F-11 |
+| DELETE | `/projects/:id/references/:referenceId` | ライブラリから外す（画像と、すでに Shot に付いた参照は残す） | F-11 |
+| POST | `/shots/:id/references` | ライブラリの画像を Shot の Reference Pack に追加（ピン留め）。Body `reference_id` | F-11 |
+
+入出力契約:
+
+- `GET /projects/:id/references`: `HX-Request` でフラグメント（`#reference-library`）、なければフルページ（`reference_library_page`）。`q`（名前・タグの部分一致）、`kind`、`tag`（完全一致）は AND で絞り込み、新しい登録順。不正な `kind` は 422
+- `POST /projects/:id/references`: 成功時は更新後のライブラリ（201）。ファイルなし・拡張子と内容の不一致・サイズ超過・不正な `kind`・名前が空か長すぎる・タグが多すぎる／長すぎるは 422（何も保存しない）、存在しない Project は 404
+- `DELETE /projects/:id/references/:referenceId`: 更新後のライブラリ（200）。当該 Project に無ければ 404
+- `POST /shots/:id/references`: 応答は更新後のライブラリ相当ではなく Shot カード（200）。同じ種別・同じ名前の参照があれば置き換え、`library_item` に登録 ID を記録する。Reference Pack の再生成ではピン留めした参照を残し、再生成しない。`reference_id` が空は 422、Shot または `reference_id`（同じ Project のもの）が無ければ 404、生成中の Shot は 409
 
 ## 3. API ルート（Huma, JSON, `/api/v1`）
 
@@ -292,3 +314,4 @@ Notes:
 | 1.24 | 2026-09-29 | `POST /takes/:id/judge` の応答・エラー（202/404/409/503）、`GET /api/v1/takes/:id/judge-result` の 404 と応答項目（`preserve`・`metrics.face_identity_status`・`lock_violation` 等）、`/ws/shots/:id` の Judge 通知（`action=judge`・`stage=judging`）を明記 | M1「AI Video Judge（Face Identity Similarity 含む）」（Issue #9）で Judge の API 契約と進捗通知が未定義だったため |
 | 1.25 | 2026-09-29 | §2.4 の `POST /shots/:id/continue`・`/continue/confirm` の入出力・エラー・チャットカードとの対応を明記 | M2「Continue」（Issue #17）で Body・応答・Continue カード（`ref_type=continue`）の回答方法・新 Scene を作る条件が名称レベルでしか定義されておらず、保守的に確定したため |
 | 1.26 | 2026-09-29 | §2.2 に M1 の入出力契約（mode / locks / shot-spec / Inspector / director-command / チャットの DIRECTOR 解釈）を追記。`POST /shots/:id/generate` の LOCK・Video Model 固定時の挙動を追記 | M1「AUTO/MANUAL/LOCK と DIRECTOR MODE」（Issue #12）で、Body・応答・423/422/409/202 の条件、対象 Shot の解決順、LOCK の判定範囲が名称レベルでしか定義されていなかったため |
+| 1.27 | 2026-09-30 | §2.8 に M2 の契約（`PUT /projects/:id/world-state/locks`、`PUT …/:entityId/reference`）を追記。`GET /projects/:id/references` と §2.11 Reference Library（`POST/DELETE /projects/:id/references`、`POST /shots/:id/references`）を追加 | M2「Character/Product Lock・Location State・Reference Library」（Issue #15）で、World State の属性単位 LOCK の切替とライブラリの登録・検索・再利用の API が定義されていなかったため。ライブラリは Project 内の画像を対象とし、Reference Pack への追加は Shot 単位のピン留めにした |

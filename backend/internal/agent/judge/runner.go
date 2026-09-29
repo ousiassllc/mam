@@ -225,13 +225,13 @@ func (r *Runner) input(ctx context.Context, ref repository.TakeRef) (Input, erro
 	if err != nil {
 		return Input{}, err
 	}
-	in.Locked = lockedDimensions(spec, locks)
+	world, err := r.Generations.WorldContext(ctx, ref.ProjectID)
+	if err != nil {
+		return Input{}, err
+	}
+	in.Locked = lockedDimensions(spec, world, locks)
 
 	if spec.Character != nil {
-		world, err := r.Generations.WorldContext(ctx, ref.ProjectID)
-		if err != nil {
-			return Input{}, err
-		}
 		if subject, ok := r.faceSubject(ctx, ref.ProjectID, *spec.Character, world, references); ok {
 			in.FaceSubjects = []FaceSubject{subject}
 		}
@@ -260,20 +260,71 @@ func neighbours(shots []repository.ShotRef, shotID string) (prev, next *domain.S
 	return nil, nil
 }
 
-// lockedDimensions maps the LOCKs that apply to the Shot to Judge dimensions. A parameter is LOCKed
-// by a lock row of its Character / Product, or by the Shot Spec itself (identity: locked).
-func lockedDimensions(spec domain.ShotSpec, locks domain.LockSet) map[domain.JudgeDimension]bool {
+// dimensionsOfLock maps the LOCKed attributes of a Character, Product or Location to the Judge
+// dimensions that check them (spec/spec.md §9.3): a deviation in such a dimension is a LOCK
+// violation and fails the Take whatever the score.
+var dimensionsOfLock = map[domain.WorldTarget]map[string][]domain.JudgeDimension{
+	domain.TargetCharacter: {
+		domain.LockParamIdentity: {domain.DimCharacterIdentity, domain.DimFace},
+		"wardrobe":               {domain.DimCharacterConsistency},
+		"hairstyle":              {domain.DimCharacterConsistency},
+	},
+	domain.TargetProduct: {
+		domain.LockParamGeometry: {domain.DimProductGeometry},
+		domain.LockParamLabel:    {domain.DimLogoTextAccuracy},
+		"orientation":            {domain.DimProductAccuracy},
+		"material":               {domain.DimProductAccuracy},
+		"condition":              {domain.DimProductAccuracy},
+	},
+	domain.TargetLocation: {
+		"time":                          {domain.DimLighting},
+		"lighting_state":                {domain.DimLighting},
+		"weather":                       {domain.DimBackground},
+		domain.LockFieldLayoutReference: {domain.DimBackground},
+	},
+}
+
+// lockedDimensions maps the LOCKs that apply to the Shot to Judge dimensions. The Character,
+// Product and Location of the Shot are found in the World State by ID or name (the Shot Spec
+// uses either); an attribute is LOCKed by a lock row of that entity, and Character Identity and
+// Product Geometry also by the Shot Spec itself ("locked").
+func lockedDimensions(spec domain.ShotSpec, world domain.WorldContext, locks domain.LockSet) map[domain.JudgeDimension]bool {
 	out := map[domain.JudgeDimension]bool{}
-	if c := spec.Character; c != nil && (c.Identity == "locked" || locks.Locked(domain.TargetCharacter, c.ID, domain.LockParamIdentity)) {
-		out[domain.DimCharacterIdentity], out[domain.DimFace] = true, true
+	mark := func(target domain.WorldTarget, id string) {
+		for field, dims := range dimensionsOfLock[target] {
+			if locks.Locked(target, id, field) {
+				for _, d := range dims {
+					out[d] = true
+				}
+			}
+		}
+	}
+	if c := spec.Character; c != nil {
+		id := c.ID
+		if w, ok := world.Character(c.ID); ok {
+			id = w.ID
+		}
+		mark(domain.TargetCharacter, id)
+		if c.Identity == "locked" {
+			out[domain.DimCharacterIdentity], out[domain.DimFace] = true, true
+		}
 	}
 	if p := spec.Product; p != nil {
-		if p.Geometry == "locked" || locks.Locked(domain.TargetProduct, p.ID, domain.LockParamGeometry) {
+		id := p.ID
+		if w, ok := world.Product(p.ID); ok {
+			id = w.ID
+		}
+		mark(domain.TargetProduct, id)
+		if p.Geometry == "locked" {
 			out[domain.DimProductGeometry] = true
 		}
-		if locks.Locked(domain.TargetProduct, p.ID, domain.LockParamLabel) {
-			out[domain.DimLogoTextAccuracy] = true
+	}
+	if l := spec.Location; l != nil {
+		id := l.ID
+		if w, ok := world.Location(l.ID); ok {
+			id = w.ID
 		}
+		mark(domain.TargetLocation, id)
 	}
 	return out
 }

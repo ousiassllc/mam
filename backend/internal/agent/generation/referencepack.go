@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/artdirector"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
@@ -60,8 +61,21 @@ func (o *Orchestrator) buildReferencePack(ctx context.Context, ref repository.Sh
 		plan   artdirector.Plan
 		output modeladapter.ImageOutput
 		asset  domain.Asset
+		// reused is set when the image already exists (a pinned Library image or the image of a
+		// World State reference slot): nothing was generated, so nothing is paid or stored.
+		reused  bool
+		pinning domain.Reference // the reference kept for a reused image
 	}
 	results := make([]made, len(plans))
+	pinned := pinnedReferences(shot)
+	for i, p := range plans {
+		if p.Kind == domain.RefKeyframe {
+			continue
+		}
+		if r, asset, ok := o.reusable(ctx, ref.ProjectID, p, pinned, world); ok {
+			results[i] = made{plan: p, asset: asset, reused: true, pinning: r}
+		}
+	}
 	generate := func(i int, extra []modeladapter.Input) error {
 		p := plans[i]
 		var inputs []modeladapter.Input
@@ -82,12 +96,16 @@ func (o *Orchestrator) buildReferencePack(ctx context.Context, ref repository.Sh
 		return nil
 	}
 
-	// References first, at the same time; then the Keyframe with them as input.
-	var first, keyframes []int
+	// References first, at the same time; then the Keyframe with them as input. An image that
+	// exists already is not made again but still goes to the Keyframe.
+	var first, keyframes, existing []int
 	for i, p := range plans {
-		if p.Kind == domain.RefKeyframe {
+		switch {
+		case p.Kind == domain.RefKeyframe:
 			keyframes = append(keyframes, i)
-		} else {
+		case results[i].reused:
+			existing = append(existing, i)
+		default:
 			first = append(first, i)
 		}
 	}
@@ -101,7 +119,7 @@ func (o *Orchestrator) buildReferencePack(ctx context.Context, ref repository.Sh
 	}
 	if len(failed) == 0 {
 		var inputs []modeladapter.Input
-		for _, i := range first {
+		for _, i := range append(slices.Clone(existing), first...) {
 			if k := plans[i].Kind; k == domain.RefCharacter || k == domain.RefProduct || k == domain.RefLocation {
 				if data, err := o.files.read(results[i].asset); err == nil {
 					inputs = append(inputs, modeladapter.Input{Data: data, MimeType: results[i].asset.MimeType})
@@ -116,16 +134,23 @@ func (o *Orchestrator) buildReferencePack(ctx context.Context, ref repository.Sh
 		}
 	}
 	if len(failed) > 0 {
-		for _, r := range results {
-			if r.asset.ID != "" {
-				o.files.remove(r.asset)
+		removeMade := func() {
+			for _, r := range results {
+				if r.asset.ID != "" && !r.reused {
+					o.files.remove(r.asset)
+				}
 			}
 		}
+		removeMade()
 		return Progress{}, errors.Join(failed...)
 	}
 
 	pack := repository.NewReferencePack{ProjectID: ref.ProjectID, ShotID: shot.ID}
 	for _, r := range results {
+		if r.reused {
+			pack.References = append(pack.References, r.pinning)
+			continue
+		}
 		pack.References = append(pack.References, domain.Reference{
 			Kind: r.plan.Kind, Name: r.plan.Name, AssetID: r.asset.ID, Prompt: r.plan.Prompt, Model: r.output.Model,
 		})
@@ -134,13 +159,22 @@ func (o *Orchestrator) buildReferencePack(ctx context.Context, ref repository.Sh
 			ProjectID: ref.ProjectID, ShotID: shot.ID, Provider: r.output.Model, EstimatedCost: r.output.EstimatedCost, ActualCost: r.output.ActualCost,
 		})
 	}
+	// A pinned image the Art Director did not plan stays in the Pack.
+	for _, p := range pinned {
+		if !slices.ContainsFunc(plans, func(pl artdirector.Plan) bool { return matchesPlan(p, pl) }) {
+			pack.References = append(pack.References, p)
+		}
+	}
 	if err := o.gens.SaveReferencePack(context.WithoutCancel(ctx), pack); err != nil {
-		for _, r := range results {
-			o.files.remove(r.asset)
+		for _, a := range pack.Assets {
+			o.files.remove(a)
 		}
 		return Progress{}, err
 	}
 	for _, r := range results {
+		if r.reused {
+			continue
+		}
 		label := kindLabel[r.plan.Kind]
 		if r.plan.Name != "" {
 			label += "（" + r.plan.Name + "）"
@@ -218,4 +252,63 @@ func (o *Orchestrator) worldInputs(ctx context.Context, projectID string, kind d
 		}
 	}
 	return o.loadInputs(ctx, projectID, present, maxUploadedInputs)
+}
+
+// pinnedReferences are the references of the Shot's current Reference Pack that were taken from
+// the Reference Library: a rebuild keeps them (spec/spec.md §10.1).
+func pinnedReferences(shot domain.Shot) []domain.Reference {
+	var out []domain.Reference
+	for _, r := range shot.References() {
+		if r.LibraryItem != "" {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+// matchesPlan reports whether the pinned reference takes the place of the planned image: the same
+// kind and, for Character / Product / Location, the same name (a Pack has one Style and one
+// Lighting image, so those match by kind).
+func matchesPlan(r domain.Reference, p artdirector.Plan) bool {
+	if r.Kind != p.Kind {
+		return false
+	}
+	return r.Kind == domain.RefStyle || r.Kind == domain.RefLighting || domain.SameReferenceName(r.Name, p.Name)
+}
+
+// reusable returns the image that already exists for the planned reference, so that it is not
+// generated again: the image pinned to the Shot from the Reference Library, else the image the World
+// State holds for the named Character (face), Product (geometry) or Location (layout).
+func (o *Orchestrator) reusable(ctx context.Context, projectID string, p artdirector.Plan, pinned []domain.Reference, w domain.WorldContext) (domain.Reference, domain.Asset, bool) {
+	for _, r := range pinned {
+		if !matchesPlan(r, p) {
+			continue
+		}
+		if a, err := o.assets.Get(ctx, projectID, r.AssetID); err == nil {
+			return r, a, true
+		}
+	}
+	var assetID string
+	switch p.Kind {
+	case domain.RefCharacter:
+		if c, ok := w.Character(p.Name); ok {
+			assetID = c.FaceReferenceAssetID
+		}
+	case domain.RefProduct:
+		if pr, ok := w.Product(p.Name); ok {
+			assetID = pr.GeometryReferenceAssetID
+		}
+	case domain.RefLocation:
+		if l, ok := w.Location(p.Name); ok {
+			assetID = l.LayoutReferenceAssetID
+		}
+	}
+	if assetID == "" {
+		return domain.Reference{}, domain.Asset{}, false
+	}
+	a, err := o.assets.Get(ctx, projectID, assetID)
+	if err != nil {
+		return domain.Reference{}, domain.Asset{}, false
+	}
+	return domain.Reference{Kind: p.Kind, Name: p.Name, AssetID: a.ID, Prompt: p.Prompt}, a, true
 }
