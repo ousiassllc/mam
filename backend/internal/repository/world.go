@@ -1,0 +1,338 @@
+package repository
+
+import (
+	"context"
+	"database/sql"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"strings"
+	"time"
+
+	"github.com/ousiassllc/mam/backend/internal/domain"
+)
+
+// ErrLocked means the write would change a field the user has LOCKed (HTTP 423).
+var ErrLocked = errors.New("repository: field is locked")
+
+// WorldRepository persists the World State (spec/spec.md §9): the Character, Product and
+// Location rows, the appended world_state_version snapshots and the state_diff of each completed
+// Shot (spec/architecture/er.md §2.2). All writes go through DB.Write.
+type WorldRepository struct {
+	db  *DB
+	now func() time.Time
+}
+
+// NewWorldRepository returns a WorldRepository backed by db.
+func NewWorldRepository(db *DB) *WorldRepository {
+	return &WorldRepository{db: db, now: time.Now}
+}
+
+// queryer is what *sql.DB and *sql.Tx share.
+type queryer interface {
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+}
+
+// worldTables maps an entity target to its table. The names are constants, never user input.
+var worldTables = map[domain.WorldTarget]string{
+	domain.TargetCharacter: "character",
+	domain.TargetProduct:   "product",
+	domain.TargetLocation:  "location",
+}
+
+// World returns the current World State of the Project or ErrNotFound when the Project does not exist.
+func (r *WorldRepository) World(ctx context.Context, projectID string) (domain.WorldContext, error) {
+	db := r.db.Reader()
+	var one int
+	if err := db.QueryRowContext(ctx, `SELECT 1 FROM project WHERE id = ?`, projectID).Scan(&one); errors.Is(err, sql.ErrNoRows) {
+		return domain.WorldContext{}, ErrNotFound
+	} else if err != nil {
+		return domain.WorldContext{}, fmt.Errorf("get project: %w", err)
+	}
+	return readWorld(ctx, db, projectID)
+}
+
+// Locks returns the fields of the Project that are LOCKed.
+func (r *WorldRepository) Locks(ctx context.Context, projectID string) (domain.LockSet, error) {
+	return readLocks(ctx, r.db.Reader(), projectID)
+}
+
+// readWorld reads the entity rows and the Camera and Story of the latest world_state_version.
+func readWorld(ctx context.Context, q queryer, projectID string) (domain.WorldContext, error) {
+	var w domain.WorldContext
+	chars, err := q.QueryContext(ctx,
+		`SELECT id, name, COALESCE(hairstyle, ''), COALESCE(wardrobe, ''), COALESCE(voice, ''), COALESCE(personality, ''),
+		        COALESCE(emotion, ''), COALESCE(position, ''), COALESCE(current_action, ''),
+		        COALESCE(face_reference_asset_id, ''), COALESCE(body_reference_asset_id, '')
+		 FROM character WHERE project_id = ? ORDER BY name, id`, projectID)
+	if err != nil {
+		return w, fmt.Errorf("list characters: %w", err)
+	}
+	defer func() { _ = chars.Close() }()
+	for chars.Next() {
+		var c domain.WorldCharacter
+		if err := chars.Scan(&c.ID, &c.Name, &c.Hairstyle, &c.Wardrobe, &c.Voice, &c.Personality,
+			&c.Emotion, &c.Position, &c.CurrentAction, &c.FaceReferenceAssetID, &c.BodyReferenceAssetID); err != nil {
+			return w, err
+		}
+		w.Characters = append(w.Characters, c)
+	}
+	if err := chars.Err(); err != nil {
+		return w, err
+	}
+
+	prods, err := q.QueryContext(ctx,
+		`SELECT id, name, COALESCE(material, ''), COALESCE(orientation, ''), COALESCE(condition, ''),
+		        COALESCE(geometry_reference_asset_id, ''), COALESCE(label_reference_asset_id, '')
+		 FROM product WHERE project_id = ? ORDER BY name, id`, projectID)
+	if err != nil {
+		return w, fmt.Errorf("list products: %w", err)
+	}
+	defer func() { _ = prods.Close() }()
+	for prods.Next() {
+		var p domain.WorldProduct
+		if err := prods.Scan(&p.ID, &p.Name, &p.Material, &p.Orientation, &p.Condition, &p.GeometryReferenceAssetID, &p.LabelReferenceAssetID); err != nil {
+			return w, err
+		}
+		w.Products = append(w.Products, p)
+	}
+	if err := prods.Err(); err != nil {
+		return w, err
+	}
+
+	locs, err := q.QueryContext(ctx,
+		`SELECT id, name, COALESCE(time, ''), COALESCE(lighting_state, ''), COALESCE(weather, ''), COALESCE(layout_reference_asset_id, '')
+		 FROM location WHERE project_id = ? ORDER BY name, id`, projectID)
+	if err != nil {
+		return w, fmt.Errorf("list locations: %w", err)
+	}
+	defer func() { _ = locs.Close() }()
+	for locs.Next() {
+		var l domain.WorldLocation
+		if err := locs.Scan(&l.ID, &l.Name, &l.Time, &l.LightingState, &l.Weather, &l.LayoutReferenceAssetID); err != nil {
+			return w, err
+		}
+		w.Locations = append(w.Locations, l)
+	}
+	if err := locs.Err(); err != nil {
+		return w, err
+	}
+
+	var state string
+	err = q.QueryRowContext(ctx,
+		`SELECT version_number, state FROM world_state_version WHERE project_id = ? ORDER BY version_number DESC LIMIT 1`, projectID).
+		Scan(&w.Version, &state)
+	if errors.Is(err, sql.ErrNoRows) {
+		return w, nil
+	}
+	if err != nil {
+		return w, fmt.Errorf("get latest world state version: %w", err)
+	}
+	var snapshot domain.WorldContext
+	if err := json.Unmarshal([]byte(state), &snapshot); err != nil {
+		return w, fmt.Errorf("decode world state version %d: %w", w.Version, err)
+	}
+	w.Camera, w.Story = snapshot.Camera, snapshot.Story
+	return w, nil
+}
+
+// readLocks reads lock rows in mode 'lock'. The singleton Camera and Story are locked regardless of target_id.
+func readLocks(ctx context.Context, q queryer, projectID string) (domain.LockSet, error) {
+	rows, err := q.QueryContext(ctx, `SELECT target_type, target_id, parameter_name FROM lock WHERE project_id = ? AND mode = 'lock'`, projectID)
+	if err != nil {
+		return nil, fmt.Errorf("list locks: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	locks := domain.LockSet{}
+	for rows.Next() {
+		var k domain.LockKey
+		if err := rows.Scan(&k.Target, &k.ID, &k.Field); err != nil {
+			return nil, err
+		}
+		if k.Target.IsSingleton() {
+			k.ID = ""
+		}
+		locks[k] = struct{}{}
+	}
+	return locks, rows.Err()
+}
+
+// appendVersion appends a snapshot of the World State as the next world_state_version and
+// returns its ID and number. Versions are never updated or deleted.
+func (r *WorldRepository) appendVersion(ctx context.Context, tx *sql.Tx, projectID string, w domain.WorldContext) (string, int, error) {
+	state, err := json.Marshal(w)
+	if err != nil {
+		return "", 0, err
+	}
+	var next int
+	if err := tx.QueryRowContext(ctx, `SELECT COALESCE(MAX(version_number), 0) + 1 FROM world_state_version WHERE project_id = ?`, projectID).Scan(&next); err != nil {
+		return "", 0, err
+	}
+	id := domain.NewID()
+	if _, err := tx.ExecContext(ctx,
+		`INSERT INTO world_state_version (id, project_id, version_number, state, created_at) VALUES (?, ?, ?, ?, ?)`,
+		id, projectID, next, string(state), formatTime(r.now())); err != nil {
+		return "", 0, err
+	}
+	return id, next, nil
+}
+
+// UpdateEntity sets fields of a Character, Product or Location of the Project (F-09) and appends
+// the resulting World State as a new version. fields maps an editable field name (domain.EditableFields)
+// to its new text; all of them are written or none. It returns ErrNotFound when the entity is not
+// in the Project and ErrLocked when any of the fields is LOCKed.
+func (r *WorldRepository) UpdateEntity(ctx context.Context, projectID string, target domain.WorldTarget, id string, fields map[string]string) error {
+	table, ok := worldTables[target]
+	if !ok {
+		return fmt.Errorf("update %s: not an entity target", target)
+	}
+	for name := range fields {
+		if !domain.IsEditable(target, name) {
+			return fmt.Errorf("update %s: field %q is not editable", target, name)
+		}
+	}
+	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
+		var one int
+		err := tx.QueryRowContext(ctx, `SELECT 1 FROM `+table+` WHERE id = ? AND project_id = ?`, id, projectID).Scan(&one)
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrNotFound
+		}
+		if err != nil {
+			return err
+		}
+		locks, err := readLocks(ctx, tx, projectID)
+		if err != nil {
+			return err
+		}
+		for name := range fields {
+			if locks.Locked(target, id, name) {
+				return ErrLocked
+			}
+		}
+		for name, value := range fields {
+			if err := setField(ctx, tx, table, id, name, value); err != nil {
+				return err
+			}
+		}
+		w, err := readWorld(ctx, tx, projectID)
+		if err != nil {
+			return err
+		}
+		// The Camera and Story carry over from the previous version.
+		_, _, err = r.appendVersion(ctx, tx, projectID, w)
+		return err
+	})
+	if errors.Is(err, ErrNotFound) || errors.Is(err, ErrLocked) {
+		return err
+	}
+	if err != nil {
+		return fmt.Errorf("update %s: %w", target, err)
+	}
+	return nil
+}
+
+// setField writes one text column. name has been checked against the editable or extractable fields.
+func setField(ctx context.Context, tx *sql.Tx, table, id, name, value string) error {
+	_, err := tx.ExecContext(ctx, `UPDATE `+table+` SET `+name+` = ? WHERE id = ?`, nullIfEmpty(value), id) //nolint:gosec // table is from worldTables and name is a domain-checked field; only the value is user input
+	return err
+}
+
+// ApplyStateDiff applies the State Diff of a completed Shot and appends the resulting World State
+// as a new version, in one transaction (F-10). Changes that hit a LOCKed field, a missing
+// Character/Product or a field the State Extractor may not change are left out, whatever the
+// caller checked before: the LOCK is judged here, on the data being written. Each change's From
+// is filled with the value it replaced. It returns the changes that were applied and the number
+// of the new version. A diff with no applicable change still appends a version, so every
+// completed Shot has the World State it left behind.
+func (r *WorldRepository) ApplyStateDiff(ctx context.Context, projectID, shotID, takeID string, diff domain.StateDiff) (domain.StateDiff, int, error) {
+	applied := domain.StateDiff{Changes: []domain.StateChange{}}
+	var number int
+	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
+		before, err := readWorld(ctx, tx, projectID)
+		if err != nil {
+			return err
+		}
+		locks, err := readLocks(ctx, tx, projectID)
+		if err != nil {
+			return err
+		}
+		camStory := before // Camera and Story are edited on this copy
+		for _, c := range diff.Changes {
+			if !domain.IsExtractable(c.Target, c.Field) || locks.Locked(c.Target, c.ID, c.Field) ||
+				domain.ValidateFieldValue(c.Target, c.Field, c.To) != nil {
+				continue
+			}
+			old, exists := before.Current(c.Target, c.ID, c.Field)
+			if !exists {
+				continue
+			}
+			c.From = old
+			if c.Target.IsSingleton() {
+				if err := camStory.SetSingleton(c.Target, c.Field, c.To); err != nil {
+					return err
+				}
+			} else {
+				var text string
+				if err := json.Unmarshal(c.To, &text); err != nil {
+					continue
+				}
+				if err := setField(ctx, tx, worldTables[c.Target], c.ID, c.Field, text); err != nil {
+					return err
+				}
+			}
+			applied.Changes = append(applied.Changes, c)
+		}
+		after, err := readWorld(ctx, tx, projectID)
+		if err != nil {
+			return err
+		}
+		after.Camera, after.Story = camStory.Camera, camStory.Story
+		versionID, n, err := r.appendVersion(ctx, tx, projectID, after)
+		if err != nil {
+			return err
+		}
+		number = n
+		raw, err := json.Marshal(applied)
+		if err != nil {
+			return err
+		}
+		_, err = tx.ExecContext(ctx,
+			`INSERT INTO state_diff (id, shot_id, take_id, diff, world_state_version_id, applied_at) VALUES (?, ?, ?, ?, ?, ?)`,
+			domain.NewID(), shotID, takeID, string(raw), versionID, formatTime(r.now()))
+		return err
+	})
+	if err != nil {
+		return domain.StateDiff{}, 0, fmt.Errorf("apply state diff: %w", err)
+	}
+	return applied, number, nil
+}
+
+// ensureWorldEntity adds the Character or Product a Reference names to the World State when the
+// Project has none of that name, so the State Extractor can track it (F-09). Locations come from
+// the Scenes (PlanRepository) and other kinds are not World State entities.
+func ensureWorldEntity(ctx context.Context, tx *sql.Tx, projectID string, ref domain.Reference) error {
+	var table string
+	switch ref.Kind {
+	case domain.RefCharacter:
+		table = worldTables[domain.TargetCharacter]
+	case domain.RefProduct:
+		table = worldTables[domain.TargetProduct]
+	default:
+		return nil
+	}
+	name := strings.TrimSpace(ref.Name)
+	if name == "" {
+		return nil
+	}
+	var one int
+	err := tx.QueryRowContext(ctx, `SELECT 1 FROM `+table+` WHERE project_id = ? AND name = ? LIMIT 1`, projectID, name).Scan(&one)
+	if err == nil {
+		return nil
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return err
+	}
+	_, err = tx.ExecContext(ctx, `INSERT INTO `+table+` (id, project_id, name) VALUES (?, ?, ?)`, domain.NewID(), projectID, name) //nolint:gosec // table is from worldTables
+	return err
+}

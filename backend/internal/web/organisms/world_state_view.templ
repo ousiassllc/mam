@@ -1,0 +1,155 @@
+package organisms
+
+import (
+	"strconv"
+	"strings"
+
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules"
+)
+
+// WorldStateData is the state of the World State view (world_state_page).
+type WorldStateData struct {
+	Project domain.Project
+	World   domain.WorldContext
+	Locks   domain.LockSet
+}
+
+var fieldLabels = map[string]string{
+	"hairstyle": "髪型 (hairstyle)", "wardrobe": "衣装 (wardrobe)", "voice": "声 (voice)", "personality": "性格 (personality)",
+	"emotion": "感情 (emotion)", "position": "位置 (position)", "current_action": "動作 (current_action)",
+	"material": "素材 (material)", "orientation": "向き (orientation)", "condition": "状態 (condition)",
+	"time": "時間帯 (time)", "lighting_state": "照明 (lighting_state)", "weather": "天気 (weather)",
+	"lens": "レンズ (lens)", "angle": "アングル (angle)", "movement": "動き (movement)",
+	"character_goal": "目的 (character_goal)", "known_information": "既知の情報 (known_information)", "previous_event": "直前の出来事 (previous_event)",
+}
+
+func fieldLabel(name string) string {
+	if l, ok := fieldLabels[name]; ok {
+		return l
+	}
+	return name
+}
+
+func entityURL(projectID, plural, id string) string {
+	return "/projects/" + projectID + "/" + plural + "/" + id
+}
+
+func (d WorldStateData) field(target domain.WorldTarget, id, name, value string) molecules.WorldStateFieldData {
+	return molecules.WorldStateFieldData{
+		ID: "ws-" + string(target) + "-" + id + "-" + name, Name: name, Label: fieldLabel(name), Value: value,
+		Locked: d.Locks.Locked(target, id, name),
+	}
+}
+
+func characterFields(d WorldStateData, c domain.WorldCharacter) []molecules.WorldStateFieldData {
+	values := map[string]string{
+		"hairstyle": c.Hairstyle, "wardrobe": c.Wardrobe, "voice": c.Voice, "personality": c.Personality,
+		"emotion": c.Emotion, "position": c.Position, "current_action": c.CurrentAction,
+	}
+	return entityFields(d, domain.TargetCharacter, c.ID, values)
+}
+
+func productFields(d WorldStateData, p domain.WorldProduct) []molecules.WorldStateFieldData {
+	return entityFields(d, domain.TargetProduct, p.ID, map[string]string{"material": p.Material, "orientation": p.Orientation, "condition": p.Condition})
+}
+
+func locationFields(d WorldStateData, l domain.WorldLocation) []molecules.WorldStateFieldData {
+	return entityFields(d, domain.TargetLocation, l.ID, map[string]string{"time": l.Time, "lighting_state": l.LightingState, "weather": l.Weather})
+}
+
+func entityFields(d WorldStateData, target domain.WorldTarget, id string, values map[string]string) []molecules.WorldStateFieldData {
+	names := domain.EditableFields(target)
+	out := make([]molecules.WorldStateFieldData, len(names))
+	for i, name := range names {
+		out[i] = d.field(target, id, name, values[name])
+	}
+	return out
+}
+
+func (d WorldStateData) empty() bool {
+	return len(d.World.Characters)+len(d.World.Products)+len(d.World.Locations) == 0 && d.World.Version == 0
+}
+
+func versionText(v int) string {
+	if v == 0 {
+		return "まだ Shot が完了していません"
+	}
+	return "World State バージョン " + strconv.Itoa(v)
+}
+
+func storyScene(s domain.WorldStory) string {
+	if s.Scene == 0 {
+		return ""
+	}
+	return strconv.Itoa(s.Scene)
+}
+
+func joinKnown(items []string) string { return strings.Join(items, " / ") }
+
+templ entityForm(d WorldStateData, plural, id, name string, fields []molecules.WorldStateFieldData) {
+	<form
+		class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3"
+		hx-put={ entityURL(d.Project.ID, plural, id) }
+		hx-target="#world-state-view"
+		hx-swap="outerHTML"
+	>
+		<p class="text-sm font-medium">{ name }</p>
+		<div class="grid gap-2 sm:grid-cols-2">
+			for _, f := range fields {
+				@molecules.WorldStateField(f)
+			}
+		</div>
+		<div>
+			@atoms.Button(atoms.TonePrimary, "保存", templ.Attributes{"type": "submit"})
+		</div>
+	</form>
+}
+
+// WorldStateView shows the World State: Characters, Products, Locations (editable unless LOCKed)
+// and the Camera and Story left by the latest Shot.
+templ WorldStateView(d WorldStateData) {
+	<div id="world-state-view" class="flex flex-col gap-6">
+		<p class="text-xs text-neutral-400">{ versionText(d.World.Version) }。LOCK した項目は Shot 完了時にも自動更新されません。</p>
+		if d.empty() {
+			<p class="text-sm text-neutral-400">登場人物・商品・場所はまだ登録されていません。</p>
+		}
+		<section aria-label="Characters" class="flex flex-col gap-2">
+			<h2 class="text-sm font-semibold text-neutral-200">Characters</h2>
+			for _, c := range d.World.Characters {
+				@entityForm(d, "characters", c.ID, c.Name, characterFields(d, c))
+			}
+		</section>
+		<section aria-label="Products" class="flex flex-col gap-2">
+			<h2 class="text-sm font-semibold text-neutral-200">Products</h2>
+			for _, p := range d.World.Products {
+				@entityForm(d, "products", p.ID, p.Name, productFields(d, p))
+			}
+		</section>
+		<section aria-label="Locations" class="flex flex-col gap-2">
+			<h2 class="text-sm font-semibold text-neutral-200">Locations</h2>
+			for _, l := range d.World.Locations {
+				@entityForm(d, "locations", l.ID, l.Name, locationFields(d, l))
+			}
+		</section>
+		<section aria-label="Camera" class="flex flex-col gap-2">
+			<h2 class="text-sm font-semibold text-neutral-200">Camera</h2>
+			<dl class="flex flex-col gap-1">
+				@molecules.WorldStateReadonly(fieldLabel("lens"), d.World.Camera.Lens, d.Locks.Locked(domain.TargetCamera, "", "lens"))
+				@molecules.WorldStateReadonly(fieldLabel("position"), d.World.Camera.Position, d.Locks.Locked(domain.TargetCamera, "", "position"))
+				@molecules.WorldStateReadonly(fieldLabel("angle"), d.World.Camera.Angle, d.Locks.Locked(domain.TargetCamera, "", "angle"))
+				@molecules.WorldStateReadonly(fieldLabel("movement"), d.World.Camera.Movement, d.Locks.Locked(domain.TargetCamera, "", "movement"))
+			</dl>
+		</section>
+		<section aria-label="Story" class="flex flex-col gap-2">
+			<h2 class="text-sm font-semibold text-neutral-200">Story</h2>
+			<dl class="flex flex-col gap-1">
+				@molecules.WorldStateReadonly("Scene", storyScene(d.World.Story), d.Locks.Locked(domain.TargetStory, "", domain.StoryFieldScene))
+				@molecules.WorldStateReadonly(fieldLabel("character_goal"), d.World.Story.CharacterGoal, d.Locks.Locked(domain.TargetStory, "", "character_goal"))
+				@molecules.WorldStateReadonly(fieldLabel("known_information"), joinKnown(d.World.Story.KnownInformation), d.Locks.Locked(domain.TargetStory, "", "known_information"))
+				@molecules.WorldStateReadonly(fieldLabel("previous_event"), d.World.Story.PreviousEvent, d.Locks.Locked(domain.TargetStory, "", "previous_event"))
+			</dl>
+		</section>
+	</div>
+}

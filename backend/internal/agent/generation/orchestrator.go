@@ -13,6 +13,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/promptplanner"
+	"github.com/ousiassllc/mam/backend/internal/agent/stateextractor"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
@@ -66,8 +67,10 @@ type Deps struct {
 	Generations *repository.GenerationRepository
 	Projects    *repository.ProjectRepository
 	Assets      *repository.AssetRepository
-	Chat        Chat
-	Jobs        Jobs
+	// World holds the World State the State Extractor updates after each Shot.
+	World *repository.WorldRepository
+	Chat  Chat
+	Jobs  Jobs
 	// LLM is the Reasoning LLM Adapter the Prompt Planner and the Art Director reason through.
 	LLM     llm.Completer
 	Adapter *modeladapter.Adapter
@@ -80,17 +83,19 @@ type Deps struct {
 
 // Orchestrator is the Generation Orchestrator. It is safe for concurrent use.
 type Orchestrator struct {
-	gens     *repository.GenerationRepository
-	projects *repository.ProjectRepository
-	assets   *repository.AssetRepository
-	chat     Chat
-	jobs     Jobs
-	adapter  *modeladapter.Adapter
-	planner  *promptplanner.Planner
-	art      *artdirector.Director
-	files    fileStore
-	notify   func(Progress)
-	logger   *slog.Logger
+	gens      *repository.GenerationRepository
+	projects  *repository.ProjectRepository
+	assets    *repository.AssetRepository
+	chat      Chat
+	jobs      Jobs
+	adapter   *modeladapter.Adapter
+	planner   *promptplanner.Planner
+	art       *artdirector.Director
+	world     *repository.WorldRepository
+	extractor *stateextractor.Extractor
+	files     fileStore
+	notify    func(Progress)
+	logger    *slog.Logger
 }
 
 // New returns an Orchestrator.
@@ -100,6 +105,7 @@ func New(d Deps) *Orchestrator {
 		planner: promptplanner.New(d.LLM), art: artdirector.New(d.LLM),
 		files: fileStore{root: d.AssetsDir}, notify: d.Notify, logger: d.Logger,
 	}
+	o.world, o.extractor = d.World, stateextractor.New(d.LLM)
 	if o.logger == nil {
 		o.logger = slog.New(slog.DiscardHandler)
 	}
