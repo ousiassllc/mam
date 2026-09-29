@@ -1025,56 +1025,68 @@ EXPORTED
 
 # 23. UI Concept
 
-## 23.1 Main Workspace
+## 23.1 Chat Workspace（標準画面）
+
+標準画面は1プロジェクト＝1本のチャットスレッドとする。ユーザーの操作は原則すべて、このスレッドへの発言とスレッド内カードへのボタン操作で完結する。Scene/Shot/Take の階層、Inspector、Take比較、タイムライン、Branch は補助ビュー（§23.3）であり、使わなくても最後まで制作できる。
 
 ```text
 ┌────────────────────────────────────────────────────┐
-│ PROJECT: Serum Commercial                    Export │
+│ PROJECT: Serum Commercial     [ ⋯ 補助ビュー ] Export │
 ├────────────────────────────────────────────────────┤
+│ あなた: 美容液の縦型15秒CMを作りたい。上品な雰囲気で │
 │                                                    │
-│                  VIDEO PREVIEW                     │
+│ AI: 確認です。ターゲットは誰ですか？                │
+│     [ 20代女性 ] [ 30〜40代女性 ] [ AIに任せる ]    │
 │                                                    │
-├────────────────────────────────────────────────────┤
-│ Scene 01 │ Scene 02 │ Scene 03 │ Scene 04 │   +   │
-├────────────────────────────────────────────────────┤
-│ Shot 01  │ Shot 02  │ Shot 03  │ Shot 04           │
-├────────────────────────────────────────────────────┤
+│ AI: コンセプトと脚本を作りました。                  │
+│     ┌──────────────────────────────┐              │
+│     │ 脚本 v1（3 Scene / 15秒）     │              │
+│     │ [ 承認 ]  [ 修正を依頼 ]      │              │
+│     └──────────────────────────────┘              │
 │                                                    │
-│ 「ここから商品に寄って。背景はそのまま。          │
-│   商品のラベルは固定して、高級感を強めて」        │
+│ AI: Scene 02 を生成しました。                       │
+│     ┌──────────────────────────────┐              │
+│     │ ▶ Take 2（AI Pick / 0.91）    │              │
+│     └──────────────────────────────┘              │
 │                                                    │
-│                                       [ Generate ] │
+│ あなた（上のカードに返信）: 商品に寄って。          │
+│   ラベルは固定して、高級感を強めて                  │
 ├────────────────────────────────────────────────────┤
-│ MODE  [ DIRECTOR ] [ AUTO ]    Quality: Balanced  │
+│ [＋] 指示を入力…                          [ 送信 ] │
+│ MODE [ AUTO | DIRECTOR ]   Quality: Balanced        │
 └────────────────────────────────────────────────────┘
 ```
 
-## 23.2 Inspector
+- **Brief は会話で作る**: 最初の発言から Creative Brief を抽出し、不足項目は AI が質問する（選択肢ボタンと「AIに任せる」を併記）。確定した Brief は補助ビューで確認・編集できる
+- **確認ポイントはスレッド内カード**: Confirmation Level で設定した確認ポイント（脚本/Main Visual/Rough Cut/Final 等）と Escalation は、承認カードとして表示する。ボタン（承認 / 修正を依頼）か、自然言語の返答で応答できる。応答があるまで Core State Machine は AWAITING_APPROVAL に留まる（§22）
+- **発言の対象**: 指示の対象 Scene/Shot/Take は、カードへの返信（引用）で明示するか、直前の文脈から AI が解決する。解決できない場合は AI が聞き返す。§24 の Command Interpreter がこの解決を含めて構造化操作へ変換する
+- **MODE / Quality**: 入力欄の下に小さく置く。AUTO では AI が主導し、DIRECTOR では指示した箇所だけを直して待機する。切替はいつでも可能で、状態は保持される
+- **添付**: 画像・動画をドラッグ&ドロップまたは［＋］で添付でき、Assets/References として Brief に取り込まれる
+- **非同期**: 生成・Judge・Repair の進捗はスレッド内の進捗カードにリアルタイム表示される。入力は生成中も可能
 
-選択中Shotについて以下を表示する。
+## 23.2 スレッド内カード
 
-- Shot Objective
-- Duration
-- Character
-- Acting
-- Camera
-- Lighting
-- Product
-- Continuity
-- References
-- Prompt
-- Generation Model
-- Take List
-- Judge Results
-- Locks
+| カード | 内容 | 操作 |
+|--------|------|------|
+| Question | Brief 補完・曖昧な指示の聞き返し | 選択肢ボタン / 自由入力 / 「AIに任せる」 |
+| Approval | 確認ポイントの成果物（脚本・Main Visual・Rough Cut・Final 等） | 承認 / 修正を依頼 |
+| Keyframe | Keyframe / Reference Pack 画像 | 拡大、返信で修正指示 |
+| Take | 動画プレーヤー、Judge 要約、Take 状態（AI Pick 等） | 再生、返信で指示、Take比較を開く |
+| Progress | 生成・Judge・Repair の進捗 | なし（自動更新） |
+| Escalation | Retry Policy 上限到達などで AI が判断を求める内容 | 選択肢ボタン / 自由入力 |
 
-各項目はAUTO / MANUAL / LOCKを切り替え可能。
+## 23.3 補助ビュー
+
+チャットの横に開く/別ページで開くビューで、スレッド内カードや［⋯］メニューから到達する。いずれも操作結果は同じ Project の状態に反映され、スレッドにも発言またはカードとして記録される。
+
+- **Inspector**（選択中 Shot の詳細）: Shot Objective / Duration / Character / Acting / Camera / Lighting / Product / Continuity / References / Prompt / Generation Model / Take List / Judge Results / Locks。各項目は AUTO / MANUAL / LOCK を切替可能
+- Take 比較、Timeline、Branch ツリー、World State、Cost、Settings
 
 ---
 
 # 24. Natural Language Director Commands
 
-自然言語入力をCommand Interpreterが構造化操作へ変換する。
+自然言語入力をCommand Interpreterが構造化操作へ変換する。入力はチャット画面（§23.1）の発言で、対象 Scene/Shot/Take はカードへの返信または直前の文脈から解決し、解決できない場合は聞き返す。
 
 ### Example 1
 
@@ -1177,6 +1189,7 @@ Project / Organization単位で制作制約を登録可能とする。
 
 実装：
 
+- Chat Workspace（チャット中心UI、§23）
 - Creative Brief
 - AUTO / DIRECTOR切替
 - Scene / Shot / Take

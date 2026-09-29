@@ -21,6 +21,8 @@ erDiagram
     PROJECT ||--o{ EXPORT : produces
     PROJECT ||--o{ COST_LEDGER_ENTRY : accrues
     PROJECT ||--o{ BRAND_CONSTRAINT : enforces
+    PROJECT ||--o{ CHAT_MESSAGE : thread
+    CHAT_MESSAGE ||--o{ CHAT_MESSAGE : replies
     SERIES ||--o{ PROJECT : episodes
     SERIES ||--o{ CHARACTER : canonical_characters
     SERIES ||--o{ PRODUCT : canonical_products
@@ -65,6 +67,20 @@ erDiagram
         string quality_policy
         decimal project_budget_ceiling
         decimal shot_budget_ceiling
+        datetime created_at
+    }
+
+    CHAT_MESSAGE {
+        string id PK
+        string project_id FK
+        string role
+        string kind
+        text content
+        string reply_to_message_id FK
+        string ref_type
+        string ref_id
+        string approval_status
+        json attachment_asset_ids
         datetime created_at
     }
 ```
@@ -339,6 +355,7 @@ erDiagram
 | `series` | `id` PK。Series（複数 Episode を束ねる単位、F-29）。Character/Product/Location の正本と Reference Pack を保持する | - |
 | `brief` | `project_id` UNIQUE FK（1:1） | - |
 | `asset` | `project_id` FK。`type` は `image/video/reference` のいずれか | `idx_asset_project (project_id)` |
+| `chat_message` | `project_id` FK、`reply_to_message_id` FK（NULL許容、返信先メッセージ）。`role` は `user/assistant`、`kind` は `text/question/approval/keyframe/take/progress/escalation`（各CHECK制約。`role=user` は `text` のみ）。`ref_type`/`ref_id` はカードが指す実体（`script_version`/`asset`/`take`/`edit_timeline_version`/`export` 等、NULL許容）。`approval_status` は `kind=approval` のときのみ `pending/approved/changes_requested`、それ以外は NULL（CHECK制約）。`attachment_asset_ids` は添付 `asset.id` の JSON 配列。追記のみで更新しない（`approval_status` のみ応答時に更新可） | `idx_chat_message_project (project_id, created_at)`, `idx_chat_message_reply (reply_to_message_id)` |
 | `character` / `product` / `location` | `project_id` FK（NULL許容）と `series_id` FK（NULL許容）のちょうど一方が非NULL（CHECK制約）。`project_id` 非NULL=Project（Episode）内の行、`series_id` 非NULL=Series 正本。Episode 開始時に Series 正本から project 側の行へコピーし、`origin_id`（Series 正本行への FK、NULL許容）で由来を保持する。`branch_id` FK（NULL許容、NULL=主系列、非NULL=当該BranchのWorld State固有値。Series 正本は常にNULL） | `idx_character_project (project_id, branch_id)`, `idx_character_series (series_id)` 等 |
 | `script_version` | `project_id` FK。`(project_id, version_number)` UNIQUE | - |
 | `scene` | `project_id` FK。`branch_id` FK（NULL許容、NULL=主系列/トランク、非NULL=当該Branchの派生ツリーに属するScene）。`(project_id, branch_id, order_index)` UNIQUE | `idx_scene_project_branch_order (project_id, branch_id, order_index)` |
@@ -366,6 +383,7 @@ erDiagram
 - **Branch の Snapshot**: Branch作成時点の `world_state_version_id` を参照するのみで、Branch自体は新しい `world_state_version` 系列を独立して持つ（Branch以降の変更は元系列に影響しない）
 - **JSON カラム**: SQLite の `JSON` 型（TEXT + `json_valid` CHECK制約）を用いる。将来的な検索要件が増えた場合は生成列（generated column）でインデックスを追加する
 - **Series 正本と Episode の継承**: Series 正本の更新は、コピー済みの既存 Episode 行へ自動伝播しない（各 Episode の再現性・Traceability を保つ）。`origin_id` で由来を辿る。Series 正本自体の更新履歴は F-28 のバージョン化に含め、M2 実装時に設計する
+- **チャットスレッド**: 1 Project に1本のスレッドを `chat_message` で保持し、Project を開くたびに履歴を再表示する（F-30）。カードは実体テーブルへの参照（`ref_type`/`ref_id`）として持ち、実体の複製は持たない。Approval カードに応答するまで Project は AWAITING_APPROVAL（`spec/spec.md` §22）に留まる。Branch ごとのスレッド分離は行わない（1 Project 1 スレッド）
 
 ## 改訂履歴
 
@@ -389,3 +407,4 @@ erDiagram
 | 1.15 | 2026-09-28 | `character`/`product`/`location` から `lock_state` カラムを削除し、LOCK判定を汎用 `lock` テーブル（`target_type`/`parameter_name`単位）に一元化 | 単一値`lock_state`とF-05・`PUT /shots/:id/locks`が前提とする属性単位（wardrobe/hairstyle等）のLOCK粒度が不一致で、判定手段が二重化していたため（整合性レビュー指摘） |
 | 1.16 | 2026-09-28 | `judge_result.take_id` のUNIQUE制約を削除し複数回のJudge実行履歴を保持可能にした。§1・§2.1の関係線を `TAKE ||--o{ JUDGE_RESULT`（zero-or-many）へ変更 | `POST /takes/:id/judge`（AI Video Judge明示的再実行）が同一Takeに複数回Judgeを実行する前提なのに、UNIQUE制約により先行結果が上書きされ、設計原則「Every Generation Is Traceable」・F-27のJudge結果保存要件と矛盾していたため（整合性レビュー指摘） |
 | 1.17 | 2026-09-29 | `series` テーブルを追加。`project` に `series_id`/`episode_number`/`inherited_world_state_version_id`、`character`/`product`/`location` に `series_id`/`origin_id`、`judge_result` に `metrics` を追加 | F-29（Series / Episode Memory, M2）と F-13 の Face Identity Similarity（`spec/spec.md` §12.4）を保存するカラムが存在しなかったため |
+| 1.18 | 2026-09-29 | `chat_message` テーブルを追加 | チャット中心UI（`spec/spec.md` §23、F-30）のスレッド履歴・カード・承認状態を保存するテーブルが存在しなかったため |

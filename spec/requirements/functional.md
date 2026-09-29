@@ -9,10 +9,10 @@
 - **Actor**: エンドユーザー（クリエイター/マーケター）
 - **事前条件**: プロジェクト未作成、またはドラフト状態
 - **フロー**:
-  1. ユーザーが Creative Brief（Content Type / Objective / Subject / Target / Duration / Aspect Ratio / Mood / Assets / References）を入力する。不足項目は AI が自動補完する
+  1. ユーザーがチャットで作りたい動画を伝える。AI が発言から Creative Brief（Content Type / Objective / Subject / Target / Duration / Aspect Ratio / Mood / Assets / References）を抽出し、不足項目は質問する（「AIに任せる」を選べる）。添付した画像・動画は Assets/References として取り込む
   2. Confirmation Level（FULL AUTO / KEY CHECK / CUSTOM CHECK）を選択する
   3. Producer → Writer → Director → Storyboard → Art Director → Prompt Planner → Video Generation → AI Video Judge → (Repair/Retake) → AI Editor → Audio Production → Final QC の順に自動実行される
-  4. 設定した確認ポイントでのみユーザーに提示され、承認/差し戻しを行う
+  4. 設定した確認ポイントでのみ、承認カードとしてチャットに提示される。ユーザーはボタンまたは返信で承認/差し戻しを行う
 - **事後条件**: Final QC を PASS した動画が Export 可能な状態になる
 
 ### UC-2: DIRECTOR MODE で特定 Shot の演技/カメラを修正する
@@ -20,8 +20,8 @@
 - **Actor**: エンドユーザー
 - **事前条件**: AUTO MODE で生成済みの Scene/Shot が存在する
 - **フロー**:
-  1. ユーザーが気になる Scene/Shot を選択し DIRECTOR MODE に切り替える
-  2. 自然言語で演出指示を入力する（例:「もう少し寄って」「この瞬間だけ不安そうな顔にして」）
+  1. ユーザーがチャットで、対象の Scene/Shot/Take を示して（カードへの返信、または文脈から AI が解決）DIRECTOR MODE に切り替える
+  2. 自然言語で演出指示を発言する（例:「もう少し寄って」「この瞬間だけ不安そうな顔にして」）
   3. Command Interpreter が指示を構造化操作（LOCK設定、パラメータ更新、再生成、Branch生成等）へ変換する
   4. 対象 Shot のみ再生成され、Character/Acting/Environment 等の指定要素は保持される
   5. 修正完了後、AUTO MODE に戻し後続工程を再開できる
@@ -91,7 +91,7 @@
 
 | ID | カテゴリ | 機能 | 概要 | MVP |
 |----|---------|------|------|-----|
-| F-01 | Brief | Creative Brief 入力 | Content Type/Objective/Subject/Target/Duration/Aspect Ratio/Mood/Assets/References の入力と自動補完 | M1 |
+| F-01 | Brief | Creative Brief 入力 | チャットでの発言・添付から Content Type/Objective/Subject/Target/Duration/Aspect Ratio/Mood/Assets/References を抽出し、不足を質問して補完する。「AIに任せる」を選択可 | M1 |
 | F-02 | Mode | AUTO ⇄ DIRECTOR 切替 | 同一プロジェクト上でモードをいつでも切替 | M1 |
 | F-03 | Confirmation | Confirmation Level 設定 | FULL AUTO / KEY CHECK / CUSTOM CHECK | M1 |
 | F-04 | Hierarchy | Scene/Shot/Take 階層管理 | 階層構造の表示・選択・生成状態管理 | M1 |
@@ -120,37 +120,37 @@
 | F-27 | Trace | Generation Traceability | Shot Spec/World State version/Prompt version/Model/Parameters/References/Output/Judge結果/Repair履歴の保存 | M2 |
 | F-28 | Versioning | Reversible Decisions | Shot/Take/Branch/State の主要変更のバージョン化と復元 | M2〜M3 |
 | F-29 | Continuity | Series / Episode Memory | Series 単位で Character/Product/Location/Style の正本と Reference Pack を保持し、Episode（Project）開始時に継承する。前 Episode 終了時の World State を次 Episode の開始状態にできる。正本の更新は既存 Episode へ自動伝播しない（Traceability）。顔同一性は Series 正本の `face_reference` を基準に Episode 間でも計測する（`spec/spec.md` §12.4） | M2 |
+| F-30 | UI | Chat Workspace | 1プロジェクト＝1チャットスレッドを標準画面とし、Brief 入力・確認ポイントの承認・演出指示・進捗確認・Take 視聴をスレッド内で完結できる。Inspector/Take比較/Timeline/Branch/World State は補助ビュー（`spec/spec.md` §23） | M1 |
 
 ## 3. 画面・操作フロー
 
-### 3.1 Main Workspace
+### 3.1 Chat Workspace（標準画面）
 
 ```text
 ┌────────────────────────────────────────────────────┐
-│ PROJECT: <プロジェクト名>                    Export │
+│ PROJECT: <プロジェクト名>      [ ⋯ 補助ビュー ] Export │
 ├────────────────────────────────────────────────────┤
-│                  VIDEO PREVIEW                     │
+│ チャットスレッド（ユーザー発言 / AI 発言 / カード）  │
+│                                                    │
 ├────────────────────────────────────────────────────┤
-│ Scene 01 │ Scene 02 │ Scene 03 │ Scene 04 │   +   │
-├────────────────────────────────────────────────────┤
-│ Shot 01  │ Shot 02  │ Shot 03  │ Shot 04           │
-├────────────────────────────────────────────────────┤
-│ 自然言語での演出指示入力欄                          │
-│                                       [ Generate ] │
-├────────────────────────────────────────────────────┤
-│ MODE  [ DIRECTOR ] [ AUTO ]    Quality: Balanced  │
+│ [＋] 指示を入力…                          [ 送信 ] │
+│ MODE [ AUTO | DIRECTOR ]   Quality: Balanced        │
 └────────────────────────────────────────────────────┘
 ```
 
-- Scene/Shot タブ切替で選択状態を変更する
+- ユーザーの操作は、スレッドへの発言とスレッド内カードのボタン操作で完結する。補助ビューは使わなくても制作を完了できる
+- カードの種類: Question / Approval / Keyframe / Take / Progress / Escalation（`spec/spec.md` §23.2）
+- 指示の対象 Scene/Shot/Take は、カードへの返信または直前の文脈から AI が解決し、解決できない場合は聞き返す
 - MODE トグルで AUTO ⇄ DIRECTOR をいつでも切替可能（同一プロジェクト内、状態は保持）
 - Quality セレクタで FAST/BALANCED/MAX QUALITY を切替
+- スレッドは Project ごとに永続化され、再度開いたときに履歴を再表示する
 
-### 3.2 Inspector（選択中 Shot の詳細）
+### 3.2 補助ビュー
 
-表示項目: Shot Objective / Duration / Character / Acting / Camera / Lighting / Product / Continuity / References / Prompt / Generation Model / Take List / Judge Results / Locks
+チャットの横、または別ページで開く。スレッド内カードと［⋯］メニューから到達でき、操作結果は同じ Project の状態とスレッドに反映される。
 
-各項目には AUTO / MANUAL / LOCK の切替コントロールを持つ。
+- **Inspector**（選択中 Shot の詳細）: Shot Objective / Duration / Character / Acting / Camera / Lighting / Product / Continuity / References / Prompt / Generation Model / Take List / Judge Results / Locks。各項目には AUTO / MANUAL / LOCK の切替コントロールを持つ
+- Take 比較（§3.4）、Timeline、Branch ツリー（§3.5）、World State、Cost、Settings
 
 ### 3.3 典型的な操作フロー（モード遷移）
 
@@ -180,3 +180,4 @@ Scene/Shot 配下に複数 Branch をツリー表示し、Branch 間の比較・
 | 1.2 | 2026-09-28 | 3.4 Take比較UIのStatus表示に「Selected」を追加 | er.mdの`take.status` CHECK制約（candidate/ai_pick/selected/rejected）およびF-15のDIRECTORモードでのユーザー選択に対応する状態表示が欠落していたため（整合性レビュー指摘） |
 | 1.3 | 2026-09-29 | F-07（Model Adapter）・F-20（Audio Production）に採用プロバイダーへの参照を追加 | ユーザーとの協議によりエージェント推論LLM・画像/動画生成/音声プロバイダーを具体的に選定したため（`spec/architecture/model-adapters.md` 新設に対応） |
 | 1.4 | 2026-09-29 | F-13 に Face Identity Similarity を追記。F-29（Series / Episode Memory, M2）を追加 | シリーズ制作で顔が毎回ブレることを避けるための数値指標と、話数をまたぐ正本管理が仕様になかったため |
+| 1.5 | 2026-09-29 | 標準画面を Scene/Shot タブ + Video Preview 構成から、チャット中心の Chat Workspace に変更（§3.1, §3.2）。F-30 を追加。UC-1/UC-2 と F-01 をチャット入力前提に更新 | ユーザー要望「基本的にはただのチャット画面にしたい」。従来の Inspector 等は補助ビューへ位置づけ直した |
