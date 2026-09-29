@@ -66,10 +66,22 @@ func Prepare(target VideoTarget, job VideoJob) (VideoRequest, error) {
 	case domain.ModelKling3:
 		req.Prompt = clip(main, 2400)
 		req.NegativePrompt = clip(strings.Join(avoid, ", "), 400)
+	case domain.ModelRunwayGen45: // no negative prompt, and a 1000 character limit: the avoid list is kept whole
+		req.Prompt = promptWithAvoid(main, avoid, 1000)
 	default: // models without a negative prompt get the constraints as part of the prompt
-		req.Prompt = clip(main+" Avoid: "+strings.Join(avoid, ", ")+".", 2400)
+		req.Prompt = promptWithAvoid(main, avoid, 2400)
 	}
 	return req, nil
+}
+
+// promptWithAvoid appends the avoid list to the prompt. When the result would exceed limit, the
+// prompt is shortened and the avoid list is kept.
+func promptWithAvoid(main string, avoid []string, limit int) string {
+	tail := " Avoid: " + strings.Join(avoid, ", ") + "."
+	if n := limit - len([]rune(tail)); n > 0 {
+		return clip(main, n) + tail
+	}
+	return clip(main+tail, limit)
 }
 
 // describe writes the spec as prose. It returns the prompt and the things to avoid.

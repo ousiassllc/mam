@@ -12,8 +12,11 @@ const (
 	ActionJudge  Action = "judge"   // a job of the judge kind
 )
 
-// Judger starts the AI Video Judge on a Take. *judge.Runner implements it. The Orchestrator calls
-// it for every Take it makes, so a Take is judged without a request from the user (spec §13).
+// Judger runs the AI Video Judge on a Take. *judge.Runner implements it. The Orchestrator starts it
+// for every Take it makes, so a Take is judged without a request from the user (spec §13), and
+// evaluates Prompt Candidates in place because it needs their verdicts to pick the Best Take (§8).
 type Judger interface {
 	Start(ctx context.Context, takeID string) (domain.Job, error)
+	// Evaluate judges the Take before it returns and returns the stored result.
+	Evaluate(ctx context.Context, takeID string) (domain.JudgeResult, error)
 }

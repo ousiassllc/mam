@@ -18,7 +18,7 @@ const (
 	ModelGPTImage2  ModelName = "gpt-image-2"
 )
 
-// Video models. ModelRunwayGen45 is reserved: its adapter is added in M2.
+// Video models.
 const (
 	ModelKling3      ModelName = "kling-3.0"
 	ModelSeedance2   ModelName = "seedance-2.0"
@@ -31,7 +31,7 @@ func ImageModels() []ModelName {
 }
 
 // VideoModels lists the video models that have an adapter.
-func VideoModels() []ModelName { return []ModelName{ModelKling3, ModelSeedance2} }
+func VideoModels() []ModelName { return []ModelName{ModelKling3, ModelSeedance2, ModelRunwayGen45} }
 
 // PromptVersion is a row of prompt_version: the Shot Spec a generation started from and what the
 // Model Adapter derived from it.
