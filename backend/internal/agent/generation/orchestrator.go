@@ -13,6 +13,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/promptplanner"
+	"github.com/ousiassllc/mam/backend/internal/agent/stateextractor"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
 	"github.com/ousiassllc/mam/backend/internal/repository"
@@ -71,8 +72,10 @@ type Deps struct {
 	Projects    *repository.ProjectRepository
 	Policies    *repository.PolicyRepository
 	Assets      *repository.AssetRepository
-	Chat        Chat
-	Jobs        Jobs
+	// World holds the World State the State Extractor updates after each Shot.
+	World *repository.WorldRepository
+	Chat  Chat
+	Jobs  Jobs
 	// LLM is the Reasoning LLM Adapter the Prompt Planner and the Art Director reason through.
 	LLM     llm.Completer
 	Adapter *modeladapter.Adapter
@@ -87,19 +90,21 @@ type Deps struct {
 
 // Orchestrator is the Generation Orchestrator. It is safe for concurrent use.
 type Orchestrator struct {
-	gens     *repository.GenerationRepository
-	projects *repository.ProjectRepository
-	policies *repository.PolicyRepository
-	assets   *repository.AssetRepository
-	chat     Chat
-	jobs     Jobs
-	adapter  *modeladapter.Adapter
-	planner  *promptplanner.Planner
-	art      *artdirector.Director
-	files    fileStore
-	freeDisk func(path string) (uint64, error)
-	notify   func(Progress)
-	logger   *slog.Logger
+	gens      *repository.GenerationRepository
+	projects  *repository.ProjectRepository
+	policies  *repository.PolicyRepository
+	assets    *repository.AssetRepository
+	chat      Chat
+	jobs      Jobs
+	adapter   *modeladapter.Adapter
+	planner   *promptplanner.Planner
+	art       *artdirector.Director
+	world     *repository.WorldRepository
+	extractor *stateextractor.Extractor
+	files     fileStore
+	freeDisk  func(path string) (uint64, error)
+	notify    func(Progress)
+	logger    *slog.Logger
 }
 
 // New returns an Orchestrator.
@@ -112,6 +117,7 @@ func New(d Deps) *Orchestrator {
 	if o.freeDisk == nil {
 		o.freeDisk = fsutil.FreeBytes
 	}
+	o.world, o.extractor = d.World, stateextractor.New(d.LLM)
 	if o.logger == nil {
 		o.logger = slog.New(slog.DiscardHandler)
 	}

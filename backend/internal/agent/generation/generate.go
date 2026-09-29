@@ -120,10 +120,11 @@ func (o *Orchestrator) generate(ctx context.Context, ref repository.ShotRef, ins
 	o.notify(Progress{ShotID: shot.ID, Action: ActionGenerate, Stage: StageGenerating, Message: "動画を生成しています", TakesTotal: strategy.Takes})
 	var made counter
 	errs := parallel(strategy.Takes, func(i int) error {
-		if err := o.makeTake(ctx, ref, pv, strategy, job, i, policy.Effective().MaxGenerationTime); err != nil {
+		takeID, err := o.makeTake(ctx, ref, pv, strategy, job, i, policy.Effective().MaxGenerationTime)
+		if err != nil {
 			return err
 		}
-		o.notify(Progress{ShotID: shot.ID, Action: ActionGenerate, Stage: StageGenerating, Message: "動画を生成しています", TakesDone: made.add(), TakesTotal: strategy.Takes})
+		o.notify(Progress{ShotID: shot.ID, Action: ActionGenerate, Stage: StageGenerating, Message: "動画を生成しています", TakesDone: made.add(takeID), TakesTotal: strategy.Takes})
 		return nil
 	})
 	done := made.value()
@@ -133,6 +134,7 @@ func (o *Orchestrator) generate(ctx context.Context, ref repository.ShotRef, ins
 	if err := errors.Join(errs...); err != nil {
 		o.logger.Warn("some takes failed", "shot_id", shot.ID, "made", done, "wanted", strategy.Takes, "err", err)
 	}
+	o.updateWorldState(ctx, ref, spec, made.first())
 	return Progress{TakesDone: done, TakesTotal: strategy.Takes}, nil
 }
 
@@ -209,19 +211,19 @@ type takeParameters struct {
 
 // makeTake generates one Take, stores its file, the Take row and cost, and posts its card.
 // The time spent on the model is bounded by limit (Max generation time of the Quality/Cost Policy).
-func (o *Orchestrator) makeTake(ctx context.Context, ref repository.ShotRef, pv domain.PromptVersion, s Strategy, job modeladapter.VideoJob, index int, limit time.Duration) error {
+func (o *Orchestrator) makeTake(ctx context.Context, ref repository.ShotRef, pv domain.PromptVersion, s Strategy, job modeladapter.VideoJob, index int, limit time.Duration) (string, error) {
 	callCtx, cancel := context.WithTimeout(ctx, limit)
 	defer cancel()
 	out, err := o.adapter.GenerateVideo(callCtx, s.Primary, s.Fallback, job)
 	if err != nil {
 		if ctx.Err() == nil && errors.Is(callCtx.Err(), context.DeadlineExceeded) {
-			return fmt.Errorf("%w (%s): %w", ErrGenerationTimeLimit, limit, err)
+			return "", fmt.Errorf("%w (%s): %w", ErrGenerationTimeLimit, limit, err)
 		}
-		return err
+		return "", err
 	}
 	asset, err := o.files.write(ref.ProjectID, domain.AssetVideo, out.MimeType, out.Data)
 	if err != nil {
-		return err
+		return "", err
 	}
 	params, err := json.Marshal(takeParameters{
 		Policy: s.Policy, Resolution: out.Resolution, DurationSeconds: out.DurationSeconds,
@@ -229,7 +231,7 @@ func (o *Orchestrator) makeTake(ctx context.Context, ref repository.ShotRef, pv 
 	})
 	if err != nil {
 		o.files.remove(asset)
-		return err
+		return "", err
 	}
 	takeID, err := o.gens.CreateTake(context.WithoutCancel(ctx), repository.NewTake{
 		ProjectID: ref.ProjectID, ShotID: ref.Shot.ID, PromptVersionID: pv.ID, Model: out.Model,
@@ -237,7 +239,7 @@ func (o *Orchestrator) makeTake(ctx context.Context, ref repository.ShotRef, pv 
 	})
 	if err != nil {
 		o.files.remove(asset)
-		return err
+		return "", err
 	}
 	card := domain.ChatMessage{
 		Role: domain.RoleAssistant, Kind: domain.KindTake, RefID: takeID,
@@ -250,18 +252,22 @@ func (o *Orchestrator) makeTake(ctx context.Context, ref repository.ShotRef, pv 
 	if err := o.chat.Announce(context.WithoutCancel(ctx), ref.ProjectID, card); err != nil {
 		o.logger.Error("post take card failed", "take_id", takeID, "err", err)
 	}
-	return nil
+	return takeID, nil
 }
 
-// counter counts finished Takes from concurrent goroutines.
+// counter counts finished Takes from concurrent goroutines and remembers the first one.
 type counter struct {
-	mu sync.Mutex
-	n  int
+	mu      sync.Mutex
+	n       int
+	firstID string
 }
 
-func (c *counter) add() int {
+func (c *counter) add(takeID string) int {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	if c.n == 0 {
+		c.firstID = takeID
+	}
 	c.n++
 	return c.n
 }
@@ -270,4 +276,11 @@ func (c *counter) value() int {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return c.n
+}
+
+// first is the ID of the Take that was finished first ("" when none).
+func (c *counter) first() string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.firstID
 }

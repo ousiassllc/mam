@@ -229,8 +229,9 @@ type NewReferencePack struct {
 	Costs      []domain.CostEntry
 }
 
-// SaveReferencePack replaces the Reference Pack of the Shot: the assets and costs are inserted
-// and the "references" key of shot.shot_spec is rewritten, in one transaction.
+// SaveReferencePack replaces the Reference Pack of the Shot: the assets and costs are inserted,
+// the Characters and Products it names join the World State (when not already there) and the
+// "references" key of shot.shot_spec is rewritten, in one transaction.
 func (r *GenerationRepository) SaveReferencePack(ctx context.Context, p NewReferencePack) error {
 	now := formatTime(r.now())
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
@@ -251,6 +252,11 @@ func (r *GenerationRepository) SaveReferencePack(ctx context.Context, p NewRefer
 				return err
 			}
 		}
+		for _, ref := range p.References {
+			if err := ensureWorldEntity(ctx, tx, p.ProjectID, ref); err != nil {
+				return err
+			}
+		}
 		next, err := domain.WithReferences(json.RawMessage(current), p.References)
 		if err != nil {
 			return err
@@ -264,63 +270,10 @@ func (r *GenerationRepository) SaveReferencePack(ctx context.Context, p NewRefer
 	return nil
 }
 
-// WorldContext returns the Characters, Products and Locations of the Project.
+// WorldContext returns the World State of the Project: its Characters, Products and Locations
+// and the Camera and Story of the latest Shot.
 func (r *GenerationRepository) WorldContext(ctx context.Context, projectID string) (domain.WorldContext, error) {
-	var w domain.WorldContext
-	db := r.db.Reader()
-	chars, err := db.QueryContext(ctx,
-		`SELECT id, name, COALESCE(hairstyle, ''), COALESCE(wardrobe, ''), COALESCE(personality, ''),
-		        COALESCE(face_reference_asset_id, ''), COALESCE(body_reference_asset_id, '')
-		 FROM character WHERE project_id = ? ORDER BY name, id`, projectID)
-	if err != nil {
-		return w, fmt.Errorf("list characters: %w", err)
-	}
-	defer func() { _ = chars.Close() }()
-	for chars.Next() {
-		var c domain.WorldCharacter
-		if err := chars.Scan(&c.ID, &c.Name, &c.Hairstyle, &c.Wardrobe, &c.Personality, &c.FaceReferenceAssetID, &c.BodyReferenceAssetID); err != nil {
-			return w, err
-		}
-		w.Characters = append(w.Characters, c)
-	}
-	if err := chars.Err(); err != nil {
-		return w, err
-	}
-
-	prods, err := db.QueryContext(ctx,
-		`SELECT id, name, COALESCE(material, ''), COALESCE(orientation, ''), COALESCE(condition, ''),
-		        COALESCE(geometry_reference_asset_id, ''), COALESCE(label_reference_asset_id, '')
-		 FROM product WHERE project_id = ? ORDER BY name, id`, projectID)
-	if err != nil {
-		return w, fmt.Errorf("list products: %w", err)
-	}
-	defer func() { _ = prods.Close() }()
-	for prods.Next() {
-		var p domain.WorldProduct
-		if err := prods.Scan(&p.ID, &p.Name, &p.Material, &p.Orientation, &p.Condition, &p.GeometryReferenceAssetID, &p.LabelReferenceAssetID); err != nil {
-			return w, err
-		}
-		w.Products = append(w.Products, p)
-	}
-	if err := prods.Err(); err != nil {
-		return w, err
-	}
-
-	locs, err := db.QueryContext(ctx,
-		`SELECT id, name, COALESCE(time, ''), COALESCE(lighting_state, ''), COALESCE(weather, ''), COALESCE(layout_reference_asset_id, '')
-		 FROM location WHERE project_id = ? ORDER BY name, id`, projectID)
-	if err != nil {
-		return w, fmt.Errorf("list locations: %w", err)
-	}
-	defer func() { _ = locs.Close() }()
-	for locs.Next() {
-		var l domain.WorldLocation
-		if err := locs.Scan(&l.ID, &l.Name, &l.Time, &l.LightingState, &l.Weather, &l.LayoutReferenceAssetID); err != nil {
-			return w, err
-		}
-		w.Locations = append(w.Locations, l)
-	}
-	return w, locs.Err()
+	return readWorld(ctx, r.db.Reader(), projectID)
 }
 
 // Budget is the money side of a Shot: the ceilings of the Project and the Shot (nil when unset,

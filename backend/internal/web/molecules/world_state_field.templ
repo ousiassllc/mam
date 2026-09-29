@@ -1,0 +1,51 @@
+package molecules
+
+import "github.com/ousiassllc/mam/backend/internal/web/atoms"
+
+// WorldStateFieldData is one field of the World State. Locked fields cannot be edited (F-10, §9.3).
+type WorldStateFieldData struct {
+	// ID is the DOM id of the input, unique on the page.
+	ID     string
+	Name   string // form field name
+	Label  string
+	Value  string
+	Locked bool
+}
+
+// WorldStateField is a labelled text input; when the field is LOCKed it is read-only and marked.
+templ WorldStateField(d WorldStateFieldData) {
+	<div>
+		<label for={ d.ID } class="mb-1 flex items-center gap-2 text-xs text-neutral-400">
+			{ d.Label }
+			if d.Locked {
+				@atoms.Badge(atoms.BadgeWarn, "LOCK")
+			}
+		</label>
+		<input
+			id={ d.ID }
+			name={ d.Name }
+			type="text"
+			value={ d.Value }
+			maxlength="200"
+			disabled?={ d.Locked }
+			class="w-full rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm disabled:opacity-60"
+		/>
+	</div>
+}
+
+// WorldStateReadonly is a labelled value that the user does not edit (Camera and Story follow the shots).
+templ WorldStateReadonly(label, value string, locked bool) {
+	<div class="flex items-baseline gap-2 text-sm">
+		<dt class="w-40 shrink-0 text-xs text-neutral-400">{ label }</dt>
+		<dd class="flex items-center gap-2">
+			if value == "" {
+				<span class="text-neutral-500">未設定</span>
+			} else {
+				{ value }
+			}
+			if locked {
+				@atoms.Badge(atoms.BadgeWarn, "LOCK")
+			}
+		</dd>
+	</div>
+}

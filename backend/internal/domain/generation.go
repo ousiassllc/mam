@@ -54,29 +54,3 @@ type CostEntry struct {
 	EstimatedCost float64
 	ActualCost    *float64
 }
-
-// WorldContext is the part of the World State (spec/spec.md §9) that generation reads: the
-// Characters, Products and Locations of the Project with their reference assets.
-type WorldContext struct {
-	Characters []WorldCharacter
-	Products   []WorldProduct
-	Locations  []WorldLocation
-}
-
-// WorldCharacter is a row of character.
-type WorldCharacter struct {
-	ID, Name, Hairstyle, Wardrobe, Personality string
-	FaceReferenceAssetID, BodyReferenceAssetID string
-}
-
-// WorldProduct is a row of product.
-type WorldProduct struct {
-	ID, Name, Material, Orientation, Condition      string
-	GeometryReferenceAssetID, LabelReferenceAssetID string
-}
-
-// WorldLocation is a row of location.
-type WorldLocation struct {
-	ID, Name, Time, LightingState, Weather string
-	LayoutReferenceAssetID                 string
-}

@@ -46,6 +46,7 @@ type Services struct {
 	Chat        *ChatService
 	Plans       *PlanService
 	Generation  *GenerationService
+	World       *WorldService
 	Policy      *PolicyService
 }
 
@@ -92,11 +93,12 @@ func New(deps Deps) *Services {
 		}
 	}
 	gens := repository.NewGenerationRepository(deps.DB)
+	world := repository.NewWorldRepository(deps.DB)
 	policies := repository.NewPolicyRepository(deps.DB)
 	generations := &GenerationService{core: c, shots: gens, progress: newBroker[generation.Progress]()}
 	if deps.Jobs != nil && deps.LLM != nil && deps.Models != nil {
 		generations.gen = generation.New(generation.Deps{
-			Generations: gens, Projects: c.projects, Policies: policies, FreeBytes: deps.FreeBytes, Assets: c.assets, Chat: chat, Jobs: deps.Jobs,
+			Generations: gens, World: world, Projects: c.projects, Policies: policies, FreeBytes: deps.FreeBytes, Assets: c.assets, Chat: chat, Jobs: deps.Jobs,
 			LLM: deps.LLM, Adapter: deps.Models, AssetsDir: deps.AssetsDir, Logger: logger,
 			Notify: func(p generation.Progress) { generations.progress.Publish(p.ShotID, p) },
 		})
@@ -110,6 +112,7 @@ func New(deps Deps) *Services {
 		Chat:        chat,
 		Plans:       &PlanService{c},
 		Generation:  generations,
+		World:       &WorldService{core: c, world: world},
 		Policy: &PolicyService{
 			core: c, freeBytes: deps.FreeBytes, policies: policies, costs: repository.NewCostRepository(deps.DB), storage: repository.NewStorageRepository(deps.DB),
 		},

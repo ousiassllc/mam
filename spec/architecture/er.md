@@ -203,6 +203,9 @@ erDiagram
         string wardrobe
         string voice
         string personality
+        string emotion
+        string position
+        string current_action
     }
     PRODUCT {
         string id PK
@@ -433,6 +436,9 @@ erDiagram
 - **Shot Spec の格納**: `shot.shot_spec` および `prompt_version.shot_spec_snapshot` は `spec/spec.md` §7.1 の YAML 構造を JSON にシリアライズして格納する（モデル非依存の Canonical Shot Spec を Source of Truth とする、`spec/architecture/overview.md` §1 の設計原則に対応）
 - **Take と再生成の関係**: Repair/Retake により再生成された結果は新しい `take` 行として追加する（既存 Take は不変・Traceability保持）。`repair_action.resulting_take_id` で追跡する
 - **World State のバージョニング**: Shot完了ごとに `state_diff` を生成し、新しい `world_state_version` を追加する（追記のみ、上書きしない）。ユーザーが LOCK した項目は State Extractor（Agent側ロジック）が diff 対象から除外する
+- **World State の保持形式（M1）**: Character/Product/Location は各テーブルの行が現在値の Source of Truth（`character` には Shot ごとに変わる `emotion`/`position`/`current_action` を持つ。マイグレーション `20260929081500_world_state`）。Camera/Story は Project に1つずつで、専用テーブルを持たず `world_state_version.state` の `camera`/`story` に保持し、最新バージョンが現在値になる。`world_state_version.state` は `spec/spec.md` §9.2 の構造（`characters`/`products`/`locations`/`camera`/`story`）の JSON スナップショット。ユーザー編集（`PUT /projects/:id/characters|products|locations/:id`）も新しいバージョンを追記する（Shot に紐づく `state_diff` は作らない）
+- **State Diff（M1）**: `state_diff.diff` は `{"changes":[{"target":"character|product|location|camera|story","id":"…","field":"…","from":…,"to":…}]}`。State Extractor が変更してよい項目は character の `hairstyle/wardrobe/emotion/position/current_action`、product の `orientation/condition`、camera の全項目、story の `scene/character_goal/known_information/previous_event` に限る（`personality`/`voice`/`material` と Location State は M2・ユーザー専用）。`story.scene` は Shot が属する Scene の番号（1始まり）に追従する。LOCK 項目は Agent が diff から除外するのに加え、`ApplyStateDiff` が書き込む行に対して LOCK を再判定して適用しない（`state_diff.diff` には適用された変更だけが残る）。`take_id` は当該 Shot で最初に完成した Take。Shot の完了は M1 では「生成ジョブで Take が1つ以上できた時点」とし、抽出に失敗しても生成は失敗にせず（Take は課金済みのため）World State はそのまま据え置く
+- **Character/Product の登録（M1）**: Reference Pack の保存時に、Art Director が名前を付けた `character`/`product` の参照について、同名の行が Project に無ければ `character`/`product` に追加する（Location は Scene の作成時に追加される）。これにより State Extractor が追跡できる Character/Product が生まれる
 - **Branch の Snapshot**: Branch作成時点の `world_state_version_id` を参照するのみで、Branch自体は新しい `world_state_version` 系列を独立して持つ（Branch以降の変更は元系列に影響しない）
 - **JSON カラム**: SQLite の `JSON` 型（TEXT + `json_valid` CHECK制約）を用いる。将来的な検索要件が増えた場合は生成列（generated column）でインデックスを追加する
 - **Series 正本と Episode の継承**: Series 正本の更新は、コピー済みの既存 Episode 行へ自動伝播しない（各 Episode の再現性・Traceability を保つ）。`origin_id` で由来を辿る。Series 正本自体の更新履歴は F-28 のバージョン化に含め、M2 実装時に設計する
@@ -473,4 +479,5 @@ erDiagram
 | 1.20 | 2026-09-29 | `job` テーブルを追加。設計メモにマイグレーション方式（タイムスタンプ版 goose）と M1/M2 の境界、書き込み直列化を追記 | M1「実行基盤」（Issue #4）で内部ジョブキューの永続化（異常終了後の再開/失敗処理）と M1 スキーマの作成方式を確定する必要があったため |
 | 1.21 | 2026-09-29 | `project.custom_checkpoints`（CUSTOM CHECK の確認ポイント選択）を追加。Brief の JSON 構造、Project 表示名の導出、チャット追記のトランザクション境界を設計メモに追記 | M1「Project とチャット画面」（Issue #5）の実装で、CUSTOM CHECK の選択保存先・Brief の構造・チャットの整合性の取り方が未定義だったため |
 | 1.22 | 2026-09-29 | `job.kind` に `plan` を追加。`script_version.content` の JSON 構造を明記。`scene`/`shot` は計画時に `SavePlan` が 1 トランザクションで作成し、`shot.shot_spec` の `storyboard` キーに Storyboard Agent の絵コンテを保持する | M1「Reasoning LLM Adapter と AUTO パイプライン」（Issue #6）で企画〜Shot 計画の永続化形式が未定義だったため |
-| 1.23 | 2026-09-29 | `project_policy` テーブルを追加。`cost_ledger_entry.actual_cost` の意味（ベンダー報告額）を明記。設計メモに Quality/Cost Policy の適用と不要 Take のアーカイブを追記 | M1「Production Template・Quality/Cost Policy・コスト可視化」（Issue #13）で、Max retries・Max generation time・Minimum quality thresholds（UC-8）を保存する場所が未定義だったため |
+| 1.23 | 2026-09-29 | `character` に `emotion`/`position`/`current_action` を追加。World State の保持形式・State Diff の JSON 構造・State Extractor の変更可能項目・Character/Product の登録契機を設計メモに追記 | M1「World State（Basic）と State Extractor」（Issue #8）で、`spec/spec.md` §9.2 の Character の状態項目（emotion/position/current_action）を保持する場所と、Camera/Story・diff の格納形式、Character/Product 行の作成契機が仕様になかったため（Issue 本文の補足に沿い、Location State と LOCK 強化は M2 のまま） |
+| 1.24 | 2026-09-29 | `project_policy` テーブルを追加。`cost_ledger_entry.actual_cost` の意味（ベンダー報告額）を明記。設計メモに Quality/Cost Policy の適用と不要 Take のアーカイブを追記 | M1「Production Template・Quality/Cost Policy・コスト可視化」（Issue #13）で、Max retries・Max generation time・Minimum quality thresholds（UC-8）を保存する場所が未定義だったため |

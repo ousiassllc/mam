@@ -485,6 +485,8 @@ Next Shot
 
 ユーザーがLOCKしたStateは自動更新禁止とする。
 
+**M1 の範囲**: 上記のうち Character の `hairstyle/wardrobe/emotion/position/current_action`、Product の `orientation/condition`、Camera、Story を State Extractor が更新する。次の Shot の Prompt Planner は最新の World State（前 Shot が残した状態）を入力に使う。Location State（時間帯・照明・天気の自動更新）と LOCK 強化は M2。保持形式・diff 形式は `spec/architecture/er.md` §4 を参照。
+
 ## 9.4 Notes（制作メモ、M2）
 
 World State（構造化状態）に収まらない文脈（登場人物の背景・世界観・口調・トーン・伏せておきたい情報など）を、自由記述で保持する。
