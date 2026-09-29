@@ -23,7 +23,7 @@ var ErrShotBusy = errors.New("generation: the shot is already being generated")
 // Stage is what a Shot is doing, as shown by the progress notifications (WebSocket /ws/shots/:id).
 type Stage string
 
-// Stages. Judging is added by the AI Video Judge.
+// Stages. StageJudging (judge.go) is added by the AI Video Judge.
 const (
 	StageIdle       Stage = "idle"       // nothing is running (first message of a connection)
 	StageQueued     Stage = "queued"     // waiting in the job queue
@@ -73,6 +73,8 @@ type Deps struct {
 	Adapter *modeladapter.Adapter
 	// AssetsDir is the root of stored files (config.AssetsDir).
 	AssetsDir string
+	// Judge, when set, judges every Take as soon as it is made (AI Video Judge, F-13).
+	Judge Judger
 	// Notify receives every progress notification. It MUST NOT block.
 	Notify func(Progress)
 	Logger *slog.Logger
@@ -89,6 +91,7 @@ type Orchestrator struct {
 	planner  *promptplanner.Planner
 	art      *artdirector.Director
 	files    fileStore
+	judge    Judger
 	notify   func(Progress)
 	logger   *slog.Logger
 }
@@ -98,7 +101,7 @@ func New(d Deps) *Orchestrator {
 	o := &Orchestrator{
 		gens: d.Generations, projects: d.Projects, assets: d.Assets, chat: d.Chat, jobs: d.Jobs, adapter: d.Adapter,
 		planner: promptplanner.New(d.LLM), art: artdirector.New(d.LLM),
-		files: fileStore{root: d.AssetsDir}, notify: d.Notify, logger: d.Logger,
+		files: fileStore{root: d.AssetsDir}, judge: d.Judge, notify: d.Notify, logger: d.Logger,
 	}
 	if o.logger == nil {
 		o.logger = slog.New(slog.DiscardHandler)

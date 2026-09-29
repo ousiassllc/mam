@@ -13,6 +13,8 @@ var (
 	ErrConflict = errors.New("service: conflict")
 	// ErrBusy means the Shot is already being generated. HTTP 409.
 	ErrBusy = errors.New("service: shot is being generated")
+	// ErrJudgeBusy means the Take is already being judged. HTTP 409.
+	ErrJudgeBusy = errors.New("service: take is being judged")
 	// ErrBudgetExceeded means not even one Take fits the budget ceiling. HTTP 402.
 	ErrBudgetExceeded = errors.New("service: budget ceiling exceeded")
 	// ErrUnavailable means generation is not configured (no Model Adapter, job queue or Reasoning LLM). HTTP 503.

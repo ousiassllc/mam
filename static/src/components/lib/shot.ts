@@ -3,8 +3,8 @@
 /** Message of WebSocket /ws/shots/:id. */
 export interface ShotProgress {
   shot_id: string;
-  action?: 'generate' | 'reference_pack';
-  stage: 'idle' | 'queued' | 'generating' | 'done' | 'failed';
+  action?: 'generate' | 'reference_pack' | 'judge';
+  stage: 'idle' | 'queued' | 'generating' | 'judging' | 'done' | 'failed';
   message?: string;
   takes_done?: number;
   takes_total?: number;

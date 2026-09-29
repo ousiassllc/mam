@@ -9,11 +9,13 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/briefing"
 	"github.com/ousiassllc/mam/backend/internal/agent/generation"
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
+	"github.com/ousiassllc/mam/backend/internal/agent/judge"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/orchestrator"
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/facesim"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
 
@@ -33,6 +35,14 @@ type Deps struct {
 	// Models is the Model Adapter that generates images and videos. Generation (Shot Takes and
 	// Reference Packs) is available only when it, LLM and Jobs are all set.
 	Models *modeladapter.Adapter
+	// Frames samples frames from Takes (ffmpeg). The AI Video Judge is available only when it, LLM
+	// and Jobs are all set.
+	Frames judge.FrameSource
+	// Faces is the local face engine of the Face Identity Similarity. Nil: Takes are judged
+	// qualitatively only.
+	Faces facesim.Engine
+	// Judge is the AI Video Judge setting. The zero value selects judge.DefaultConfig.
+	Judge judge.Config
 }
 
 // Services is the DI root handed to router.New. Each feature adds one field
@@ -44,6 +54,7 @@ type Services struct {
 	Chat        *ChatService
 	Plans       *PlanService
 	Generation  *GenerationService
+	Judge       *JudgeService
 }
 
 // Recover puts Shots left GENERATING by an abnormal termination back to PLANNING. It MUST run
@@ -90,10 +101,27 @@ func New(deps Deps) *Services {
 	}
 	gens := repository.NewGenerationRepository(deps.DB)
 	generations := &GenerationService{core: c, shots: gens, progress: newBroker[generation.Progress]()}
+	judges := &JudgeService{core: c, judges: repository.NewJudgeRepository(deps.DB), generations: generations}
+	var takeJudge generation.Judger // stays nil (not a typed nil) while the Judge is off
+	if deps.Jobs != nil && deps.LLM != nil && deps.Frames != nil {
+		cfg := deps.Judge
+		if cfg == (judge.Config{}) {
+			cfg = judge.DefaultConfig()
+		}
+		judges.runner = judge.NewRunner(judge.Deps{
+			Generations: gens, Judges: judges.judges, Assets: c.assets, Chat: chat, Jobs: deps.Jobs,
+			Judge:     judge.New(deps.LLM, deps.Frames, deps.Faces, cfg, logger),
+			AssetsDir: deps.AssetsDir, Logger: logger,
+			Notify: func(p generation.Progress) { generations.progress.Publish(p.ShotID, p) },
+		})
+		// Resumable: judging is repeatable and cheap, so an interrupted run is run again.
+		deps.Jobs.Register(domain.JobJudge, judges.runner.Handle, true)
+		takeJudge = judges.runner
+	}
 	if deps.Jobs != nil && deps.LLM != nil && deps.Models != nil {
 		generations.gen = generation.New(generation.Deps{
 			Generations: gens, Projects: c.projects, Assets: c.assets, Chat: chat, Jobs: deps.Jobs,
-			LLM: deps.LLM, Adapter: deps.Models, AssetsDir: deps.AssetsDir, Logger: logger,
+			LLM: deps.LLM, Adapter: deps.Models, AssetsDir: deps.AssetsDir, Logger: logger, Judge: takeJudge,
 			Notify: func(p generation.Progress) { generations.progress.Publish(p.ShotID, p) },
 		})
 		// Not resumable: a generation costs money, so an interrupted one is failed, not repeated.
@@ -106,5 +134,6 @@ func New(deps Deps) *Services {
 		Chat:        chat,
 		Plans:       &PlanService{c},
 		Generation:  generations,
+		Judge:       judges,
 	}
 }

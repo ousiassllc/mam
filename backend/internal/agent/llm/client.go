@@ -10,14 +10,25 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/resilience"
 )
 
-// Request is one model call. The prompt is text only: Agents build it from structured state.
+// Request is one model call. The prompt is text; Agents that judge pictures (AI Video Judge)
+// attach them as Images.
 type Request struct {
 	System string
 	User   string
+	// Images are shown to the model after User, in order (multimodal Agents only).
+	Images []Image
 	// MaxTokens bounds the answer. Zero selects DefaultMaxTokens.
 	MaxTokens int
 	// JSON asks the provider for a JSON object answer where it has such a mode.
 	JSON bool
+}
+
+// Image is a picture attached to a Request. Caption, when set, is given to the model as text
+// just before the picture (e.g. "frame 3, t=1.5s").
+type Image struct {
+	MimeType string
+	Data     []byte
+	Caption  string
 }
 
 // DefaultMaxTokens is the answer limit when Request.MaxTokens is zero.

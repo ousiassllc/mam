@@ -1,0 +1,392 @@
+package judge
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"log/slog"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/ousiassllc/mam/backend/internal/agent/generation"
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/repository"
+)
+
+// ErrBusy means the Take is already being judged (409, no double execution).
+var ErrBusy = errors.New("judge: the take is already being judged")
+
+// maxImageBytes bounds a stored image handed to a model.
+const maxImageBytes = 20 << 20
+
+// Deps are the collaborators of a Runner.
+type Deps struct {
+	Generations *repository.GenerationRepository
+	Judges      *repository.JudgeRepository
+	Assets      *repository.AssetRepository
+	Chat        generation.Chat
+	Jobs        generation.Jobs
+	Judge       *Judge
+	// AssetsDir is the root of stored files (config.AssetsDir).
+	AssetsDir string
+	// Notify receives every progress notification. It MUST NOT block.
+	Notify func(generation.Progress)
+	Logger *slog.Logger
+}
+
+// Runner runs the AI Video Judge as background jobs: it gathers what the Judge needs about a Take,
+// runs it, stores the result and tells the user. It is safe for concurrent use.
+type Runner struct {
+	Deps
+}
+
+// NewRunner returns a Runner.
+func NewRunner(d Deps) *Runner {
+	if d.Logger == nil {
+		d.Logger = slog.New(slog.DiscardHandler)
+	}
+	if d.Notify == nil {
+		d.Notify = func(generation.Progress) {}
+	}
+	return &Runner{d}
+}
+
+type payload struct {
+	TakeID string `json:"take_id"`
+	ShotID string `json:"shot_id"`
+}
+
+// Start queues a Judge run on the Take (ErrBusy when one is already queued or running,
+// repository.ErrNotFound for an unknown Take). Every run adds a result; earlier ones are kept.
+func (r *Runner) Start(ctx context.Context, takeID string) (domain.Job, error) {
+	ref, err := r.Judges.GetTake(ctx, takeID)
+	if err != nil {
+		return domain.Job{}, err
+	}
+	pending, err := r.Judges.JudgePending(ctx, takeID)
+	if err != nil {
+		return domain.Job{}, err
+	}
+	if pending {
+		return domain.Job{}, ErrBusy
+	}
+	job, err := r.Jobs.Enqueue(ctx, domain.JobJudge, payload{TakeID: takeID, ShotID: ref.Take.ShotID})
+	if err != nil {
+		return domain.Job{}, fmt.Errorf("enqueue judge job: %w", err)
+	}
+	if err := r.Judges.BeginJudging(ctx, ref.Take.ShotID); err != nil {
+		r.Logger.Error("mark shot judging failed", "shot_id", ref.Take.ShotID, "err", err)
+	}
+	r.Notify(generation.Progress{ShotID: ref.Take.ShotID, Action: generation.ActionJudge, Stage: generation.StageQueued})
+	return job, nil
+}
+
+// Handle is the job handler of domain.JobJudge. Register it as resumable: judging costs little and
+// is repeatable, so a run interrupted by an abnormal termination is simply run again.
+func (r *Runner) Handle(ctx context.Context, job domain.Job) error {
+	var p payload
+	if err := json.Unmarshal(job.Payload, &p); err != nil || p.TakeID == "" {
+		return fmt.Errorf("judge job %s: invalid payload", job.ID)
+	}
+	ref, err := r.Judges.GetTake(ctx, p.TakeID)
+	if err != nil {
+		return err // the Take is gone
+	}
+	shotID := ref.Take.ShotID
+	defer func() {
+		if err := r.Judges.EndJudging(context.WithoutCancel(ctx), shotID, job.ID); err != nil {
+			r.Logger.Error("release shot after judging failed", "shot_id", shotID, "err", err)
+		}
+	}()
+	if err := r.Judges.BeginJudging(ctx, shotID); err != nil {
+		return err
+	}
+	r.Notify(generation.Progress{ShotID: shotID, Action: generation.ActionJudge, Stage: generation.StageJudging, Message: "Take を評価しています"})
+
+	res, err := r.judge(ctx, ref)
+	if err != nil {
+		return r.fail(ctx, ref, err)
+	}
+	saved, err := r.Judges.Save(context.WithoutCancel(ctx), res)
+	if err != nil {
+		return err
+	}
+	shot, err := r.Generations.GetShot(ctx, shotID)
+	if err != nil {
+		return err
+	}
+	notice := domain.ChatMessage{Role: domain.RoleAssistant, Kind: domain.KindText, Content: Summary(shot.Shot.OrderIndex+1, ref.Take.ID, saved)}
+	if err := r.Chat.Announce(context.WithoutCancel(ctx), ref.ProjectID, notice); err != nil {
+		r.Logger.Error("post judge result failed", "take_id", ref.Take.ID, "err", err)
+	}
+	r.Notify(generation.Progress{ShotID: shotID, Action: generation.ActionJudge, Stage: generation.StageDone})
+	return nil
+}
+
+// judge gathers the input of the Take and runs the Judge.
+func (r *Runner) judge(ctx context.Context, ref repository.TakeRef) (domain.JudgeResult, error) {
+	in, err := r.input(ctx, ref)
+	if err != nil {
+		return domain.JudgeResult{}, err
+	}
+	res, err := r.Judge.Evaluate(ctx, in)
+	if err != nil {
+		return domain.JudgeResult{}, err
+	}
+	res.TakeID = ref.Take.ID
+	return res, nil
+}
+
+// fail tells the user why judging stopped and returns the error for the job record.
+func (r *Runner) fail(ctx context.Context, ref repository.TakeRef, err error) error {
+	shotID := ref.Take.ShotID
+	if ctx.Err() != nil {
+		return err // shutting down: nobody is told
+	}
+	if errors.Is(err, repository.ErrNotFound) {
+		return err
+	}
+	r.Logger.Error("judge failed", "take_id", ref.Take.ID, "err", err)
+	reason := FailureReason(err)
+	notice := domain.ChatMessage{
+		Role: domain.RoleAssistant, Kind: domain.KindText,
+		Content: fmt.Sprintf("Take %s の Judge に失敗しました: %s\n対処したら、もう一度 Judge を実行してください。", shortID(ref.Take.ID), reason),
+	}
+	if aerr := r.Chat.Announce(context.WithoutCancel(ctx), ref.ProjectID, notice); aerr != nil {
+		r.Logger.Error("post judge failure notice failed", "take_id", ref.Take.ID, "err", aerr)
+	}
+	r.Notify(generation.Progress{ShotID: shotID, Action: generation.ActionJudge, Stage: generation.StageFailed, Message: reason})
+	return errors.New(reason)
+}
+
+// FailureReason is the user-facing cause of a failed Judge run. Details stay in the log.
+func FailureReason(err error) string {
+	if errors.Is(err, ErrNoFFmpeg) {
+		return "ffmpeg / ffprobe が見つかりません（インストールして PATH に追加してください）"
+	}
+	return generation.FailureReason(err)
+}
+
+// input gathers what the Judge needs: the spec the Take was generated from (with its Reference
+// Pack), the neighbouring Shots, the LOCKed parameters and the face references of the Character.
+func (r *Runner) input(ctx context.Context, ref repository.TakeRef) (Input, error) {
+	snapshot := domain.Shot{ShotSpec: ref.SpecSnapshot}
+	spec, ok := snapshot.CanonicalSpec()
+	if !ok {
+		return Input{}, fmt.Errorf("take %s: its prompt version has no Canonical Shot Spec", ref.Take.ID)
+	}
+	path, err := r.videoPath(ref.Take)
+	if err != nil {
+		return Input{}, err
+	}
+	in := Input{VideoPath: path, Spec: spec}
+
+	shots, err := r.Generations.ListProjectShots(ctx, ref.ProjectID)
+	if err != nil {
+		return Input{}, err
+	}
+	in.Previous, in.Next = neighbours(shots, ref.Take.ShotID)
+
+	references := snapshot.References()
+	for _, rf := range references {
+		if img, ok := r.image(ctx, ref.ProjectID, rf.AssetID); ok {
+			in.References = append(in.References, RefImage{Kind: rf.Kind, Name: rf.Name, MimeType: img.mime, Data: img.data})
+		}
+	}
+
+	locks, err := r.Judges.Locks(ctx, ref.ProjectID)
+	if err != nil {
+		return Input{}, err
+	}
+	in.Locked = lockedDimensions(spec, locks)
+
+	if spec.Character != nil {
+		world, err := r.Generations.WorldContext(ctx, ref.ProjectID)
+		if err != nil {
+			return Input{}, err
+		}
+		if subject, ok := r.faceSubject(ctx, ref.ProjectID, *spec.Character, world, references); ok {
+			in.FaceSubjects = []FaceSubject{subject}
+		}
+	}
+	return in, nil
+}
+
+// neighbours returns the specs of the Shots before and after shotID in story order.
+func neighbours(shots []repository.ShotRef, shotID string) (prev, next *domain.ShotSpec) {
+	for i, s := range shots {
+		if s.Shot.ID != shotID {
+			continue
+		}
+		if i > 0 {
+			if spec, ok := shots[i-1].Shot.CanonicalSpec(); ok {
+				prev = &spec
+			}
+		}
+		if i+1 < len(shots) {
+			if spec, ok := shots[i+1].Shot.CanonicalSpec(); ok {
+				next = &spec
+			}
+		}
+		return prev, next
+	}
+	return nil, nil
+}
+
+// lockedDimensions maps the LOCKs that apply to the Shot to Judge dimensions. A parameter is LOCKed
+// by a lock row of its Character / Product, or by the Shot Spec itself (identity: locked).
+func lockedDimensions(spec domain.ShotSpec, locks []domain.LockKey) map[domain.JudgeDimension]bool {
+	has := func(target, id, param string) bool {
+		for _, l := range locks {
+			if l.TargetType == target && l.TargetID == id && l.Parameter == param {
+				return true
+			}
+		}
+		return false
+	}
+	out := map[domain.JudgeDimension]bool{}
+	if c := spec.Character; c != nil && (c.Identity == "locked" || has(domain.LockTargetCharacter, c.ID, domain.LockParamIdentity)) {
+		out[domain.DimCharacterIdentity], out[domain.DimFace] = true, true
+	}
+	if p := spec.Product; p != nil {
+		if p.Geometry == "locked" || has(domain.LockTargetProduct, p.ID, domain.LockParamGeometry) {
+			out[domain.DimProductGeometry] = true
+		}
+		if has(domain.LockTargetProduct, p.ID, domain.LockParamLabel) {
+			out[domain.DimLogoTextAccuracy] = true
+		}
+	}
+	return out
+}
+
+// faceSubject is the Character of the Shot with its reference faces: the Character's
+// face_reference asset and the Character images of the Reference Pack that carry its name.
+func (r *Runner) faceSubject(ctx context.Context, projectID string, actor domain.SpecActor, world domain.WorldContext, refs []domain.Reference) (FaceSubject, bool) {
+	// The Shot Spec names the Character by ID or by name, whichever the Prompt Planner wrote.
+	var character *domain.WorldCharacter
+	for i, c := range world.Characters {
+		if c.ID == actor.ID || strings.EqualFold(strings.TrimSpace(c.Name), strings.TrimSpace(actor.ID)) {
+			character = &world.Characters[i]
+			break
+		}
+	}
+	subject := FaceSubject{ID: actor.ID}
+	assetIDs := []string{}
+	if character != nil {
+		if character.FaceReferenceAssetID != "" {
+			assetIDs = append(assetIDs, character.FaceReferenceAssetID)
+		}
+		for _, rf := range refs {
+			if rf.Kind == domain.RefCharacter && strings.EqualFold(strings.TrimSpace(rf.Name), strings.TrimSpace(character.Name)) {
+				assetIDs = append(assetIDs, rf.AssetID)
+			}
+		}
+	}
+	for _, id := range assetIDs {
+		if img, ok := r.image(ctx, projectID, id); ok {
+			subject.ReferenceImages = append(subject.ReferenceImages, img.data)
+		}
+	}
+	return subject, len(subject.ReferenceImages) > 0
+}
+
+type storedImage struct {
+	data []byte
+	mime string
+}
+
+// image reads the image of an asset. A missing or oversized file is skipped: a Reference Pack can
+// be rebuilt, so a lost image must not stop the Judge.
+func (r *Runner) image(ctx context.Context, projectID, assetID string) (storedImage, bool) {
+	asset, err := r.Assets.Get(ctx, projectID, assetID)
+	if err != nil {
+		if !errors.Is(err, repository.ErrNotFound) {
+			r.Logger.Warn("reference asset unavailable", "asset_id", assetID, "err", err)
+		}
+		return storedImage{}, false
+	}
+	abs, err := r.assetPath(asset.FilePath)
+	if err != nil {
+		r.Logger.Warn("reference asset path rejected", "asset_id", assetID, "err", err)
+		return storedImage{}, false
+	}
+	if info, err := os.Stat(abs); err != nil || info.Size() > maxImageBytes {
+		return storedImage{}, false
+	}
+	data, err := os.ReadFile(abs) // #nosec G304 -- inside the assets directory (assetPath)
+	if err != nil {
+		r.Logger.Warn("reference image unreadable", "asset_id", assetID, "err", err)
+		return storedImage{}, false
+	}
+	return storedImage{data: data, mime: asset.MimeType}, true
+}
+
+// videoPath is the file of the Take.
+func (r *Runner) videoPath(t domain.Take) (string, error) {
+	if t.FilePath == "" {
+		return "", fmt.Errorf("take %s has no video file", t.ID)
+	}
+	abs, err := r.assetPath(t.FilePath)
+	if err != nil {
+		return "", err
+	}
+	if _, err := os.Stat(abs); err != nil {
+		return "", fmt.Errorf("take %s: %w", t.ID, err)
+	}
+	return abs, nil
+}
+
+// assetPath resolves a path stored in the database inside the assets directory.
+func (r *Runner) assetPath(rel string) (string, error) {
+	if r.AssetsDir == "" {
+		return "", errors.New("assets directory is not configured")
+	}
+	abs := filepath.Join(r.AssetsDir, filepath.FromSlash(rel))
+	if within, err := filepath.Rel(r.AssetsDir, abs); err != nil || within == ".." || strings.HasPrefix(within, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("path %q is outside the assets directory", rel)
+	}
+	return abs, nil
+}
+
+func shortID(id string) string {
+	if len(id) > 8 {
+		return id[:8]
+	}
+	return id
+}
+
+// Summary is the chat notice of a Judge result: the verdict and the Issues.
+func Summary(shotNumber int, takeID string, res domain.JudgeResult) string {
+	var b strings.Builder
+	verdict := "PASS"
+	if res.Result == domain.JudgeFail {
+		verdict = "FAIL"
+	}
+	fmt.Fprintf(&b, "Shot %d · Take %s の Judge 結果: %s（信頼度 %.2f）", shotNumber, shortID(takeID), verdict, res.OverallConfidence)
+	for _, is := range res.Issues {
+		fmt.Fprintf(&b, "\n・[%s] %s", is.Severity, is.Type)
+		if is.TimeRange != "" {
+			b.WriteString(" " + is.TimeRange)
+		}
+		if is.LockViolation {
+			b.WriteString("（LOCK 違反）")
+		}
+	}
+	switch res.Metrics.FaceIdentityStatus {
+	case domain.FaceUnavailable:
+		b.WriteString("\n顔の同一性の数値評価は利用できないため、定性評価のみで判定しました。")
+	case domain.FaceMeasured:
+		for _, f := range res.Metrics.FaceIdentity {
+			if !f.Evaluated {
+				b.WriteString("\n顔を検出できないフレームが多いため、顔の同一性は定性評価のみで判定しました。")
+				break
+			}
+		}
+	}
+	if rs := res.RepairStrategy; rs != nil {
+		fmt.Fprintf(&b, "\n推奨する修復: %s", rs.Action)
+	}
+	return b.String()
+}

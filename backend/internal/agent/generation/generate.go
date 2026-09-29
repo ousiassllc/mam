@@ -243,6 +243,12 @@ func (o *Orchestrator) makeTake(ctx context.Context, ref repository.ShotRef, pv 
 	if err := o.chat.Announce(context.WithoutCancel(ctx), ref.ProjectID, card); err != nil {
 		o.logger.Error("post take card failed", "take_id", takeID, "err", err)
 	}
+	if o.judge != nil {
+		// The Take is kept whether or not it can be judged: the user can run the Judge again.
+		if _, err := o.judge.Start(context.WithoutCancel(ctx), takeID); err != nil {
+			o.logger.Error("start judge failed", "take_id", takeID, "err", err)
+		}
+	}
 	return nil
 }
 
