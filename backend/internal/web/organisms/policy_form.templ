@@ -1,0 +1,103 @@
+package organisms
+
+import "github.com/ousiassllc/mam/backend/internal/domain"
+
+// PolicyForm sets the Quality Policy and, on top of it, Max retries, Max generation time and the
+// Minimum quality thresholds (UC-8). An empty field uses the default of the Quality Policy, which
+// is shown as the placeholder.
+templ PolicyForm(d PolicyFormData) {
+	<form
+		id="policy-form"
+		class="flex flex-col gap-4"
+		hx-put={ "/projects/" + d.Project.ID + "/quality-policy" }
+		hx-target="this"
+		hx-swap="outerHTML"
+	>
+		<div>
+			<label for="policy-quality" class="mb-1 block text-sm font-medium">Quality Policy</label>
+			<select id="policy-quality" name="quality_policy" class="rounded-md border border-neutral-600 bg-neutral-950 px-3 py-2 text-sm">
+				for _, q := range domain.QualityPolicies() {
+					<option value={ string(q) } selected?={ q == d.Policy.Quality }>{ q.Label() }</option>
+				}
+			</select>
+			if msg := d.Errors["quality_policy"]; msg != "" {
+				<p class="mt-1 text-sm text-red-300" role="alert">{ msg }</p>
+			}
+		</div>
+		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+			@numberField(d, "max_retries", "Max retries（1 Shot あたり）", "0", "10", intValue(d.Policy.Limits.MaxRetries), d.Effective.MaxRetries)
+			@numberField(d, "max_generation_seconds", "Max generation time（秒 / Take）", "10", "3600", intValue(d.Policy.Limits.MaxGenerationSeconds), int(d.Effective.MaxGenerationTime.Seconds()))
+			@numberField(d, "min_acceptance_score", "合格スコア（総合 0〜100）", "0", "100", intValue(d.Policy.Limits.MinAcceptanceScore), d.Effective.MinAcceptanceScore)
+			@numberField(d, "min_axis_score", "軸ごとの最低スコア（0〜100）", "0", "100", intValue(d.Policy.Limits.MinAxisScore), d.Effective.MinAxisScore)
+		</div>
+		<div class="flex items-center gap-3">
+			<button type="submit" class="rounded-md bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-400">保存</button>
+			if d.Saved {
+				<span class="text-sm text-emerald-300" role="status">保存しました</span>
+			}
+		</div>
+	</form>
+}
+
+templ numberField(d PolicyFormData, name, label, lo, hi, stored string, effective int) {
+	<div>
+		<label for={ "policy-" + name } class="mb-1 block text-sm font-medium">{ label }</label>
+		<input
+			id={ "policy-" + name }
+			name={ name }
+			type="number"
+			inputmode="numeric"
+			min={ lo }
+			max={ hi }
+			step="1"
+			value={ fieldValue(d.Typed, name, stored) }
+			placeholder={ intValue(&effective) }
+			class="w-full rounded-md border border-neutral-600 bg-neutral-950 px-3 py-2 text-sm"
+		/>
+		if msg := d.Errors[name]; msg != "" {
+			<p class="mt-1 text-sm text-red-300" role="alert">{ msg }</p>
+		}
+	</div>
+}
+
+// BudgetForm sets the Project budget ceiling and the Shot budget ceiling in USD (F-22). An empty
+// field removes the ceiling.
+templ BudgetForm(d PolicyFormData) {
+	<form
+		id="budget-form"
+		class="flex flex-col gap-4"
+		hx-put={ "/projects/" + d.Project.ID + "/budget" }
+		hx-target="this"
+		hx-swap="outerHTML"
+	>
+		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+			@budgetField(d, "project_budget", "Project budget ceiling（USD）", ceilingValue(d.Policy.ProjectBudgetCeiling))
+			@budgetField(d, "shot_budget", "Shot budget ceiling（USD）", ceilingValue(d.Policy.ShotBudgetCeiling))
+		</div>
+		<p class="text-xs text-neutral-400">空欄は上限なし。上限を超える見込みの生成は実行前に拒否されます（402）。Shot の上限は Repair / Retake の Max cost per Shot も兼ねます。</p>
+		<div class="flex items-center gap-3">
+			<button type="submit" class="rounded-md bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-400">保存</button>
+			if d.Saved {
+				<span class="text-sm text-emerald-300" role="status">保存しました</span>
+			}
+		</div>
+	</form>
+}
+
+templ budgetField(d PolicyFormData, name, label, stored string) {
+	<div>
+		<label for={ "budget-" + name } class="mb-1 block text-sm font-medium">{ label }</label>
+		<input
+			id={ "budget-" + name }
+			name={ name }
+			type="text"
+			inputmode="decimal"
+			value={ fieldValue(d.Typed, name, stored) }
+			placeholder="上限なし"
+			class="w-full rounded-md border border-neutral-600 bg-neutral-950 px-3 py-2 text-sm"
+		/>
+		if msg := d.Errors[name]; msg != "" {
+			<p class="mt-1 text-sm text-red-300" role="alert">{ msg }</p>
+		}
+	</div>
+}

@@ -20,6 +20,8 @@ func registerPages(engine *gin.Engine, services *service.Services) {
 	engine.GET("/projects/:id/scenes", handler.ScenePage(services.Plans))
 	engine.GET("/projects/:id/scenes/:sceneId", handler.ScenePage(services.Plans))
 	engine.GET("/projects/:id/assets/:assetId", handler.ProjectAsset(services.Projects))
+	engine.GET("/projects/:id/settings", handler.SettingsPage(services.Policy))
+	engine.GET("/projects/:id/cost-summary", handler.CostSummary(services.Policy))
 
 	// WebSocket: notifications only, no HTML (spec/architecture/overview.md §7).
 	engine.GET("/ws/projects/:id", handler.ProjectEvents(services.Chat))

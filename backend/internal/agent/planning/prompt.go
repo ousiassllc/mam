@@ -21,8 +21,20 @@ const systemPrefix = "あなたは AI 動画制作チームの一員です。" +
 	"説明文・前置き・コードフェンスは付けないでください。" +
 	"値の文章は日本語で書き、Brief に無い固有名詞や事実（商品の効能・価格・受賞歴など）を作らないでください。\n\n"
 
-// templateGuide is the emphasis of each Production Template (spec/spec.md §19).
+// templateGuide is the emphasis of each Production Template (spec/spec.md §19) followed by its
+// evaluation axes from the highest priority to the lowest.
 func templateGuide(t domain.ProductionTemplate) string {
+	if !t.Valid() {
+		t = domain.TemplateProductCM
+	}
+	labels := make([]string, 0, 8)
+	for _, a := range t.Axes() {
+		labels = append(labels, a.Label())
+	}
+	return templateEmphasis(t) + " 評価軸の優先順位: " + strings.Join(labels, " > ")
+}
+
+func templateEmphasis(t domain.ProductionTemplate) string {
 	switch t {
 	case domain.TemplateDrama:
 		return "ドラマ: 登場人物の感情の変化と場面のつながりを重視する。"

@@ -179,6 +179,7 @@ type NewTake struct {
 	Parameters      json.RawMessage
 	Asset           domain.Asset // Type video; ID and FilePath are set by the caller
 	EstimatedCost   float64
+	ActualCost      *float64 // reported by the vendor; nil when it is not
 }
 
 // CreateTake stores a Take (status candidate) with its video asset and cost ledger entry and
@@ -200,7 +201,7 @@ func (r *GenerationRepository) CreateTake(ctx context.Context, nt NewTake) (stri
 			return fmt.Errorf("insert take: %w", err)
 		}
 		return insertCost(ctx, tx, domain.CostEntry{
-			ProjectID: nt.ProjectID, ShotID: nt.ShotID, TakeID: takeID, Provider: nt.Model, EstimatedCost: nt.EstimatedCost,
+			ProjectID: nt.ProjectID, ShotID: nt.ShotID, TakeID: takeID, Provider: nt.Model, EstimatedCost: nt.EstimatedCost, ActualCost: nt.ActualCost,
 		}, now)
 	})
 	if err != nil {
@@ -211,8 +212,8 @@ func (r *GenerationRepository) CreateTake(ctx context.Context, nt NewTake) (stri
 
 func insertCost(ctx context.Context, tx *sql.Tx, c domain.CostEntry, now string) error {
 	_, err := tx.ExecContext(ctx,
-		`INSERT INTO cost_ledger_entry (id, project_id, shot_id, take_id, provider, estimated_cost, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		domain.NewID(), c.ProjectID, nullIfEmpty(c.ShotID), nullIfEmpty(c.TakeID), c.Provider, c.EstimatedCost, now)
+		`INSERT INTO cost_ledger_entry (id, project_id, shot_id, take_id, provider, estimated_cost, actual_cost, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		domain.NewID(), c.ProjectID, nullIfEmpty(c.ShotID), nullIfEmpty(c.TakeID), c.Provider, c.EstimatedCost, c.ActualCost, now)
 	if err != nil {
 		return fmt.Errorf("insert cost: %w", err)
 	}

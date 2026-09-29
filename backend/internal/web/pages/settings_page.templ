@@ -1,0 +1,63 @@
+package pages
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/layout"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+)
+
+// SettingsPageData is everything the settings screen shows.
+type SettingsPageData struct {
+	Policy  organisms.PolicyFormData
+	Cost    domain.CostSummary
+	Storage organisms.StoragePanelData
+}
+
+// SettingsPage is GET /projects/:id/settings: Production Template, Quality/Cost Policy, budget, the
+// cost of the Project and its disk usage.
+templ SettingsPage(csrfToken string, d SettingsPageData) {
+	@layout.AppLayout("設定: "+d.Policy.Project.Name, csrfToken) {
+		<main class="mx-auto flex max-w-3xl flex-col gap-8 p-8">
+			<div>
+				<a href={ templ.SafeURL("/projects/" + d.Policy.Project.ID) } class="text-sm text-neutral-400 hover:text-neutral-100">← チャットに戻る</a>
+				<h1 class="mb-1 mt-3 text-xl font-semibold">設定</h1>
+				<p class="text-sm text-neutral-400">{ d.Policy.Project.Name }</p>
+			</div>
+			@SettingsBody(d)
+		</main>
+	}
+}
+
+// SettingsBody is the sections of the settings screen without the page frame.
+templ SettingsBody(d SettingsPageData) {
+	<div id="settings-body" class="flex flex-col gap-8">
+		@SettingsSection("Production Template", "選ぶと Judge / Editor の評価軸の優先度が切り替わります。") {
+			@organisms.ProductionTemplateForm(d.Policy)
+		}
+		@SettingsSection("Quality Policy", "FAST は少ない Take と高速モデル、BALANCED は標準、MAX QUALITY は複数 Take と厳格な判定。空欄の項目は Policy の既定値を使います。") {
+			@organisms.PolicyForm(d.Policy)
+		}
+		@SettingsSection("予算", "") {
+			@organisms.BudgetForm(d.Policy)
+		}
+		@SettingsSection("コスト", "") {
+			@organisms.CostSummaryPanel(d.Policy.Project.ID, d.Cost)
+		}
+		@SettingsSection("ディスク", "生成前に空き容量を見積もり、不足なら警告します。") {
+			@organisms.StoragePanel(d.Storage)
+		}
+	</div>
+}
+
+// SettingsSection is one titled block of the settings screen.
+templ SettingsSection(title, description string) {
+	<section class="flex flex-col gap-3">
+		<div>
+			<h2 class="text-base font-semibold">{ title }</h2>
+			if description != "" {
+				<p class="text-sm text-neutral-400">{ description }</p>
+			}
+		</div>
+		{ children... }
+	</section>
+}

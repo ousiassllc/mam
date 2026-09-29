@@ -37,6 +37,8 @@ type ImageRequest struct {
 type ImageResult struct {
 	Data     []byte
 	MimeType string
+	// ActualCost is the cost in USD the vendor reported for the call; nil when it reports none.
+	ActualCost *float64
 }
 
 // ImageBackend calls one image model. apiModel is the vendor's model identifier from Config.
@@ -62,6 +64,8 @@ type VideoRequest struct {
 type VideoResult struct {
 	Data     []byte
 	MimeType string
+	// ActualCost is the cost in USD the vendor reported for the call; nil when it reports none.
+	ActualCost *float64
 }
 
 // VideoBackend calls one video model: it submits the job, waits for it and downloads the file.
