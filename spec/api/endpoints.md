@@ -36,7 +36,7 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 | GET | `/projects/:id/edit` | AI Editor / Rough Cut編集ページ（`mam-timeline-editor` を埋め込み） | フルページ |
 | GET | `/projects/:id/branches` | Branch ツリーページ（`mam-branch-tree` を埋め込み） | フルページ |
 | GET | `/projects/:id/export` | Final Export ページ | フルページ / フラグメント |
-| GET | `/projects/:id/settings` | Quality/Cost Policy・Brand Constraints・APIキー設定 | フルページ / フラグメント |
+| GET | `/projects/:id/settings` | Production Template・Quality/Cost Policy・予算上限・コスト（`cost_summary_panel`）・ディスク使用量と不要 Take のアーカイブ・Brand Constraints・APIキー設定。Chat Workspace の補助ビュー一覧と入力欄の「設定」から開く | フルページ / フラグメント |
 | GET | `/projects/:id/world-state` | World State 一覧（Character/Product/Location/Camera/Story の現在値表示） | フルページ / フラグメント |
 | GET | `/projects/:id/notes` | Notes 一覧・編集（補助ビュー、M2。ピン留め・カテゴリ・アーカイブの表示、`version_history_panel` でバージョン復元） | フルページ / フラグメント |
 | GET | `/series/:id/notes` | Series 正本 Notes の一覧・編集（M2） | フルページ / フラグメント |
@@ -51,9 +51,9 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 | PUT | `/projects/:id/brief` | Brief 更新 | F-01 |
 | PUT | `/projects/:id/mode` | AUTO ⇄ DIRECTOR 切替 | F-02 |
 | PUT | `/projects/:id/confirmation-level` | FULL AUTO / KEY CHECK / CUSTOM CHECK 設定。Body `level`=`full_auto\|key_check\|custom_check`、`checkpoints`（CUSTOM CHECK の確認ポイント、複数可。空なら前回の選択、無ければ script+final）。変更内容はスレッドに AI 発言として記録される | F-03 |
-| PUT | `/projects/:id/quality-policy` | FAST / BALANCED / MAX QUALITY 設定 | F-22 |
-| PUT | `/projects/:id/budget` | Project/Shot budget ceiling 設定 | F-22 |
-| PUT | `/projects/:id/production-template` | PRODUCT/CM・DRAMA・ANIME・SNS/SHORT VIDEO 切替 | F-21 |
+| PUT | `/projects/:id/quality-policy` | FAST / BALANCED / MAX QUALITY 設定。Body `quality_policy`=`fast\|balanced\|max_quality`。設定画面のフォームは併せて `max_retries`（0〜10）・`max_generation_seconds`（10〜3600、Take あたり）・`min_acceptance_score`（0〜100、総合）・`min_axis_score`（0〜100、軸ごと）を送り、空欄は「Policy の既定値」（保存済みの上書きも消える）。`quality_policy` だけの要求（入力欄のセレクト）は上書きを変えず 204。不正値は 422（設定画面はフォームを入力値・エラー付きで再描画）。変更内容はスレッドに AI 発言として記録される | F-22 |
+| PUT | `/projects/:id/budget` | Project/Shot budget ceiling 設定。Body `project_budget`・`shot_budget`（USD、0 より大きく 1,000,000 以下。空欄=上限なし）。不正値は 422（フォーム再描画）。Shot の上限は Repair/Retake の Max cost per Shot を兼ねる。上限を超える見込みの生成は §2.3 の `POST /shots/:id/generate` が 402 で拒否する | F-22 |
+| PUT | `/projects/:id/production-template` | PRODUCT/CM・DRAMA・ANIME・SNS/SHORT VIDEO 切替。Body `production_template`=`product_cm\|drama\|anime\|sns_short`。以降の Prompt Planner / Art Director / Judge / Editor は選択テンプレートの評価軸と優先順位（`spec/spec.md` §19）に従う。不明な値は 422。変更内容はスレッドに AI 発言として記録される | F-21 |
 | PUT | `/projects/:id/locks` | Story/Music という Shot に属さないパラメータの AUTO/MANUAL/LOCK 設定（`target_type`=`story\|music` を受理） | F-05 |
 
 ### 2.1a Chat / Approval
@@ -123,7 +123,9 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 |---|---|---|---|
 | POST | `/projects/:id/brand-constraints` | Brand Guideline/禁止表現/Disclaimer/Product Claims/Logo Rules/Character Restrictions/Rights/Platform Rules 登録 | F-23 |
 | DELETE | `/brand-constraints/:id` | 制約削除 | F-23 |
-| GET | `/projects/:id/cost-summary` | Shot/Scene/Project 別の推定コスト・実コスト集計（`cost_summary_panel`向けフラグメント） | F-22 |
+| GET | `/projects/:id/cost-summary` | Shot/Scene/Project 別の推定コスト・実コスト集計（`cost_summary_panel`向けフラグメント）。推定コストは生成時の見積り、実コストはベンダーが報告した金額（`cost_ledger_entry.actual_cost`。報告が無い呼び出しがあれば合計に `*` を付ける）。予算上限に対する消化率を併せて表示し、フラグメントは 15 秒ごとに自己更新する | F-22 |
+| POST | `/projects/:id/takes/:takeId/archive` | Take の動画ファイルを削除して Rejected にする（Take 行・Judge/Repair 履歴・コスト記録は残す）。Selected Take は 409、当該 Project に無い Take・ファイルを既に手放した Take は 404。ディスク使用量パネルのフラグメントを返す | non-functional.md §4 |
+| POST | `/projects/:id/storage/archive-unneeded` | 不要な Take（Rejected、または同じ Shot の別 Take が Selected）をまとめてアーカイブする。ディスク使用量パネルのフラグメントを返す | non-functional.md §4 |
 
 ### 2.8 World State
 
@@ -269,3 +271,4 @@ Response 200:
 | 1.20 | 2026-09-29 | `GET /projects/:id/scenes` を追加。Scene/Shot 作成エンドポイントと `GET /projects/:id/scenes/:sceneId` の入力・エラー契約を明記 | M1「Reasoning LLM Adapter と AUTO パイプライン」（Issue #6）で Scene/Shot/Take 階層の表示・選択・作成 API の契約が未定義だったため |
 | 1.21 | 2026-09-29 | `POST /shots/:id/generate` の Body・エラー（402/404/409/503）、`POST /shots/:id/reference-pack` の非同期応答、`/ws/shots/:id` のメッセージ形式を明記 | M1「Prompt Autopilot・Model Adapter・Reference Pack・生成オーケストレーション」（Issue #7）で生成 API と進捗通知の契約が未定義だったため |
 | 1.22 | 2026-09-29 | §2.8 に M1 の入出力契約を追記（編集できる項目・応答・423/422/404 の条件、`branch_id` は M2 まで 404） | M1「World State（Basic）と State Extractor」（Issue #8）で `PUT .../characters/:id` 等の Body・応答・LOCK 時の挙動が名称レベルでしか定義されていなかったため |
+| 1.23 | 2026-09-29 | `PUT /projects/:id/quality-policy`・`budget`・`production-template` の Body・エラー、`GET /projects/:id/settings`・`cost-summary` の表示内容を明記。`POST /projects/:id/takes/:takeId/archive`・`POST /projects/:id/storage/archive-unneeded`（不要 Take のアーカイブ）を追加 | M1「Production Template・Quality/Cost Policy・コスト可視化」（Issue #13）で設定 API の入力・エラー契約と、non-functional.md §4 の「不要 Take のアーカイブ/削除」に対応するエンドポイントが未定義だったため |

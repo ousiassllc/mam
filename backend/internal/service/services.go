@@ -33,6 +33,8 @@ type Deps struct {
 	// Models is the Model Adapter that generates images and videos. Generation (Shot Takes and
 	// Reference Packs) is available only when it, LLM and Jobs are all set.
 	Models *modeladapter.Adapter
+	// FreeBytes reports the free disk space at a path. Nil selects fsutil.FreeBytes.
+	FreeBytes func(path string) (uint64, error)
 }
 
 // Services is the DI root handed to router.New. Each feature adds one field
@@ -45,6 +47,7 @@ type Services struct {
 	Plans       *PlanService
 	Generation  *GenerationService
 	World       *WorldService
+	Policy      *PolicyService
 }
 
 // Recover puts Shots left GENERATING by an abnormal termination back to PLANNING. It MUST run
@@ -91,10 +94,11 @@ func New(deps Deps) *Services {
 	}
 	gens := repository.NewGenerationRepository(deps.DB)
 	world := repository.NewWorldRepository(deps.DB)
+	policies := repository.NewPolicyRepository(deps.DB)
 	generations := &GenerationService{core: c, shots: gens, progress: newBroker[generation.Progress]()}
 	if deps.Jobs != nil && deps.LLM != nil && deps.Models != nil {
 		generations.gen = generation.New(generation.Deps{
-			Generations: gens, World: world, Projects: c.projects, Assets: c.assets, Chat: chat, Jobs: deps.Jobs,
+			Generations: gens, World: world, Projects: c.projects, Policies: policies, FreeBytes: deps.FreeBytes, Assets: c.assets, Chat: chat, Jobs: deps.Jobs,
 			LLM: deps.LLM, Adapter: deps.Models, AssetsDir: deps.AssetsDir, Logger: logger,
 			Notify: func(p generation.Progress) { generations.progress.Publish(p.ShotID, p) },
 		})
@@ -109,5 +113,8 @@ func New(deps Deps) *Services {
 		Plans:       &PlanService{c},
 		Generation:  generations,
 		World:       &WorldService{core: c, world: world},
+		Policy: &PolicyService{
+			core: c, freeBytes: deps.FreeBytes, policies: policies, costs: repository.NewCostRepository(deps.DB), storage: repository.NewStorageRepository(deps.DB),
+		},
 	}
 }
