@@ -1,0 +1,13 @@
+# build output
+/bin/
+/tmp/
+
+# front end
+static/node_modules/
+static/src/dist/*
+!static/src/dist/.gitkeep
+
+# local data
+*.db
+*.db-shm
+*.db-wal
