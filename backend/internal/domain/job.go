@@ -13,11 +13,13 @@ const (
 	JobGenerate JobKind = "generate"
 	JobJudge    JobKind = "judge"
 	JobRepair   JobKind = "repair"
+	// JobPlan runs the planning stages of the AUTO pipeline (Producer to Storyboard) for one Project.
+	JobPlan JobKind = "plan"
 )
 
 // JobKinds lists every valid JobKind.
 func JobKinds() []JobKind {
-	return []JobKind{JobGenerate, JobJudge, JobRepair}
+	return []JobKind{JobGenerate, JobJudge, JobRepair, JobPlan}
 }
 
 // JobStatus is the lifecycle state of a background job.

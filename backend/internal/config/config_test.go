@@ -41,12 +41,13 @@ func TestLoad_FlagsOverrideEnvironment(t *testing.T) {
 
 func TestLoad_EnvironmentIsUsedWhenNoFlag(t *testing.T) {
 	cfg, err := config.Load(nil, env(map[string]string{
-		"MAM_PORT": "1234", "MAM_DATA_DIR": "/env", "MAM_NO_BROWSER": "1", "MAM_STATIC_DIR": "/static",
+		"MAM_PORT": "1234", "MAM_DATA_DIR": "/env", "MAM_NO_BROWSER": "1", "MAM_STATIC_DIR": "/static", "MAM_LLM_CONFIG": "/llm.json",
 	}), io.Discard)
 	require.NoError(t, err)
 	assert.Equal(t, 1234, cfg.Port)
 	assert.False(t, cfg.OpenBrowser)
 	assert.Equal(t, "/static", cfg.StaticDir)
+	assert.Equal(t, "/llm.json", cfg.LLMConfigPath)
 }
 
 func TestLoad_RejectsInvalidValues(t *testing.T) {

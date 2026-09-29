@@ -18,6 +18,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
+	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/config"
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
@@ -90,13 +91,21 @@ func serve(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 		}
 	}()
 
+	llmCfg, err := llm.LoadConfig(cfg.LLMConfigPath)
+	if err != nil {
+		return err
+	}
+	keys := credential.NewKeyring()
+	reasoning := llm.NewClient(llmCfg, llm.NewBackends(llmCfg, keys, nil), llm.WithLogger(logger))
+
 	jobs := jobqueue.New(repository.NewJobRepository(db), jobqueue.Options{Logger: logger})
-	// Feature Issues register their job handlers here: jobs.Register(domain.JobGenerate, h, resumable).
+	// Job handlers are registered by service.New (the plan job) and by the features that add more kinds.
 	// The services are built before the queue starts: they subscribe to job changes.
 	services := service.New(service.Deps{
 		DB:          db,
 		Jobs:        jobs,
-		Credentials: credential.NewKeyring(),
+		Credentials: keys,
+		LLM:         reasoning,
 		Logger:      logger,
 		AssetsDir:   cfg.AssetsDir(),
 	})

@@ -104,9 +104,18 @@ Reasoning LLM Adapter側の呼び出しモデルは Take/Cost Ledger の対象�
 - Face Identity Similarity の埋め込みモデルは、商用利用可能なライセンスかを確認したうえで選定する。Go 単一バイナリでの推論ランタイム（ONNX Runtime 等）との両立も実装時に検証する
 - Jev の外部 API 利用は、シャドー実行の結果（一致率・confidence・遅延・コスト）で採否を判断する。`spec/requirements/non-functional.md` §5 の外部送信方針との整合を導入時に確認する
 
+## 2.1 実装（`internal/agent/llm`）
+
+- 設定: Agent ごとの `routes`（`primary` / `fallback` の `provider`+`model`）、`providers`（`base_url`）、`timeout_seconds`（既定 120）、`retry`（`max_attempts` 3 / `base_delay_ms` 1000 / `max_delay_ms` 16000）、`breaker`（`failure_threshold` 5 / `open_seconds` 30）。既定値は §2 の表と同じ割り当てで、`--llm-config`（`MAM_LLM_CONFIG`）の JSON ファイルで上書きできる（未知のキーはエラー）。モデル名は設定値であり Agent のコードには書かない
+- API キーは `credential.Store` のプロバイダー名（`anthropic` / `openai` / `google`）で呼び出しごとに読む。設定画面で保存したキーは再起動なしで有効になる
+- 再試行: タイムアウト・ネットワーク断・429・5xx を指数バックオフ（`Retry-After` があれば優先）で再試行する。認証エラー等の 4xx は再試行しない
+- サーキットブレーカー: プロバイダー単位。連続失敗が `failure_threshold` に達すると OPEN になり、`open_seconds` 経過後に 1 回だけ試行（HALF-OPEN）して成功で CLOSED に戻る。OPEN のプロバイダーは呼ばず、代替へ自動でルーティングする（§7）
+- 出力は構造化 JSON を要求し、コードフェンスや前置きを除いて検証する。検証に失敗した回答は保存せず、チャットにエラーを通知して再開できる状態に留める
+
 ## 改訂履歴
 
 | 版 | 日付 | 変更内容 | 変更理由 |
 |----|------|---------|---------|
 | 1.0 | 2026-09-29 | 新規作成 | LLM/画像生成/動画生成/音声の具体的プロバイダー選定をユーザーと合意し、Model Adapter層の対象を確定するため |
 | 1.1 | 2026-09-29 | §4.5（Face Identity Similarity / Jev による Repair 前段選別）と §8 の未確定事項を追加 | シリーズ制作での顔のブレ検知の数値化と、Repair 戦略選択の低コスト化を仕様に加えるため |
+| 1.2 | 2026-09-29 | §2.1（Reasoning LLM Adapter の実装仕様: 設定・再試行・サーキットブレーカー・出力検証）を追加 | M1「Reasoning LLM Adapter と AUTO パイプライン」（Issue #6）で設定項目と耐障害動作の具体値が未定義だったため |

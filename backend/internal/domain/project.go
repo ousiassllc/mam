@@ -1,5 +1,7 @@
 package domain
 
+import "slices"
+
 // ProjectState is a state of the Core State Machine (spec/spec.md §22).
 type ProjectState string
 
@@ -27,6 +29,30 @@ func ProjectStates() []ProjectState {
 		StateGenerating, StateJudging, StateRepairing, StateEditing,
 		StateEditJudging, StateAudio, StateFinalQC, StateReady, StateExported,
 	}
+}
+
+// stateTransitions lists the legal moves of the Core State Machine (spec/spec.md §22).
+// AWAITING_APPROVAL is entered from every stage that has a checkpoint or an escalation
+// and left to the state chosen by Checkpoint.ApprovedState / ChangesRequestedState or
+// EscalationResumeState.
+var stateTransitions = map[ProjectState][]ProjectState{
+	StateDraft:            {StatePlanning},
+	StatePlanning:         {StateVisualDesign, StateAwaitingApproval},
+	StateVisualDesign:     {StateGenerating, StateAwaitingApproval},
+	StateAwaitingApproval: {StatePlanning, StateVisualDesign, StateGenerating, StateRepairing, StateEditing, StateAudio, StateReady},
+	StateGenerating:       {StateJudging, StateAwaitingApproval},
+	StateJudging:          {StateRepairing, StateEditing, StateAwaitingApproval},
+	StateRepairing:        {StateGenerating, StateAwaitingApproval},
+	StateEditing:          {StateEditJudging, StateAwaitingApproval},
+	StateEditJudging:      {StatePlanning, StateGenerating, StateEditing, StateAudio, StateAwaitingApproval},
+	StateAudio:            {StateFinalQC},
+	StateFinalQC:          {StatePlanning, StateVisualDesign, StateGenerating, StateEditing, StateAudio, StateReady, StateAwaitingApproval},
+	StateReady:            {StateExported},
+}
+
+// CanTransition reports whether the Core State Machine may move from one state to another.
+func CanTransition(from, to ProjectState) bool {
+	return slices.Contains(stateTransitions[from], to)
 }
 
 // ShotState is the sub-state of a Shot within the Core State Machine.
