@@ -129,7 +129,7 @@ Lit Web Components 専用。HTMX リクエストは発行しない（`spec/archi
 |---|---|---|---|
 | GET | `/api/v1/shots/:id` | Shot詳細（shot_spec, duration, selected_take_id等） | `mam-video-player`, `mam-timeline-editor` |
 | GET | `/api/v1/shots/:id/takes` | Take一覧（スコア: Product/Acting/Camera/Continuity, Status） | `mam-take-comparator` |
-| GET | `/api/v1/takes/:id/judge-result` | Judge Issue一覧（`time_range`/`frames`付き） | `mam-video-player`（フレームマーカー重畳） |
+| GET | `/api/v1/takes/:id/judge-result` | 最新のJudge Issue一覧（`time_range`/`frames`付き）。同一Takeの過去Judge履歴は含まない（最新1件） | `mam-video-player`（フレームマーカー重畳） |
 | GET | `/api/v1/projects/:id/edit-timeline` | 現在の Edit Timeline（Shot順序/Cut Point/Transition）。クエリ `branch_id`（省略時=主系列トランク）で対象Branchを指定 | `mam-timeline-editor` |
 | PUT | `/api/v1/projects/:id/edit-timeline` | Edit Timeline 保存（ドラッグ&ドロップ操作の反映）。クエリ `branch_id`（省略時=主系列トランク）で対象Branchを指定 | `mam-timeline-editor` |
 | GET | `/api/v1/projects/:id/branches` | Branch ツリー構造（親子関係、Snapshot参照） | `mam-branch-tree` |
@@ -214,3 +214,4 @@ Response 200:
 | 1.12 | 2026-09-28 | Character/Product/Location更新エンドポイントに `branch_id` クエリを追加 | er.md 1.10 で `character`/`product`/`location` に `branch_id` を追加したのに対し、更新対象BranchをAPIから指定する手段がなかったため（整合性レビュー指摘） |
 | 1.13 | 2026-09-28 | `PUT /branches/:id`（Branch名称変更・World State参照更新、branch_version新規行生成）を追加 | er.mdの`branch_version`が「Branch自体の主要変更を追記のみで履歴化」としていたのに対し、2件目以降の生成契機となるエンドポイントが存在しなかったため（整合性レビュー指摘） |
 | 1.14 | 2026-09-28 | Editor/Audio/Export/edit-timeline取得APIに `branch_id` パラメータ（Body/Query）を追加 | er.md 1.14で`edit_timeline_version`/`audio_timeline_version`/`export`にbranch_idを追加したのに対し、APIから対象BranchのTimeline/Exportを指定する手段が存在しなかったため（整合性レビュー指摘） |
+| 1.15 | 2026-09-28 | `GET /api/v1/takes/:id/judge-result` の概要に「最新1件のみ返す」ことを明記 | er.md 1.16で`judge_result`のUNIQUE制約を削除し複数回のJudge履歴を保持可能にしたため、取得APIがどのレコードを返すか明示する必要があったため（整合性レビュー指摘） |
