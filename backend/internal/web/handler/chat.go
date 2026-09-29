@@ -72,6 +72,8 @@ func PostMessage(svc *service.ChatService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
+		// A reply to a Continue card starts a generation whose cards are posted after this answer.
+		c.Header("HX-Trigger", refreshTrigger)
 		render(c, http.StatusOK, organisms.MessageFragment(ws.Project, ws.Messages, ws.Updated))
 	}
 }

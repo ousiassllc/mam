@@ -18,7 +18,10 @@ func isHTMX(c *gin.Context) bool { return c.GetHeader("HX-Request") == "true" }
 // and shown as a generic message.
 func statusOf(c *gin.Context, err error) (int, string) {
 	var invalid *service.ValidationError
+	var ai *service.AIError
 	switch {
+	case errors.As(err, &ai):
+		return http.StatusBadGateway, ai.Reason
 	case errors.As(err, &invalid):
 		return http.StatusUnprocessableEntity, invalid.Message
 	case errors.Is(err, service.ErrNotFound):

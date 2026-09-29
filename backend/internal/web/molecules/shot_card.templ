@@ -80,6 +80,11 @@ templ ShotActions(shotID string) {
 			"hx-target": "#shot-" + shotID,
 			"hx-swap":   "outerHTML",
 		})
+		@atoms.Button(atoms.ToneNeutral, "続きを作る", templ.Attributes{
+			"type":    "button",
+			"hx-post": shotActionURL(shotID, "continue"),
+			"hx-swap": "none",
+		})
 	</form>
 }
 

@@ -27,6 +27,8 @@ func registerActions(engine *gin.Engine, services *service.Services) {
 	engine.PUT("/projects/:id/locations/:locationId", handler.UpdateLocation(services.World))
 
 	engine.POST("/shots/:id/generate", handler.GenerateShot(services.Generation))
+	engine.POST("/shots/:id/continue", handler.ProposeContinue(services.Continue))
+	engine.POST("/shots/:id/continue/confirm", handler.ConfirmContinue(services.Continue))
 	engine.POST("/shots/:id/reference-pack", handler.BuildReferencePack(services.Generation))
 	engine.POST("/takes/:id/judge", handler.JudgeTake(services.Judge))
 	engine.POST("/projects/:id/messages", handler.PostMessage(services.Chat))
