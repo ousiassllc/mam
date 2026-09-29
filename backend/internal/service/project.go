@@ -51,6 +51,7 @@ func (s *ProjectService) Create(ctx context.Context, in CreateProjectInput) (dom
 		discardUploads(stored)
 		return domain.Project{}, err
 	}
+	s.kick(ctx, projectID)
 	return s.getProject(ctx, projectID)
 }
 
@@ -131,6 +132,7 @@ func (s *ProjectService) UpdateBrief(ctx context.Context, projectID string, form
 		return BriefView{}, notFound(err)
 	}
 	s.publishCreated(projectID, msgs)
+	s.kick(ctx, projectID)
 	view.Brief = edited
 	return view, nil
 }

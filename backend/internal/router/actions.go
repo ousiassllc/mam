@@ -14,6 +14,9 @@ func registerActions(engine *gin.Engine, services *service.Services) {
 	engine.PUT("/projects/:id/brief", handler.UpdateBrief(services.Projects))
 	engine.PUT("/projects/:id/confirmation-level", handler.SetConfirmationLevel(services.Projects))
 
+	engine.POST("/projects/:id/scenes", handler.CreateScene(services.Plans))
+	engine.POST("/scenes/:id/shots", handler.CreateShot(services.Plans))
+
 	engine.POST("/projects/:id/messages", handler.PostMessage(services.Chat))
 	engine.POST("/projects/:id/approvals/:messageId", handler.RespondApproval(services.Chat))
 }

@@ -1,0 +1,119 @@
+package molecules
+
+import (
+	"fmt"
+
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+)
+
+// ShotCardData is a Shot with its storyboard frame and Takes.
+type ShotCardData struct {
+	ProjectID  string
+	Shot       domain.Shot
+	Storyboard *domain.ShotStoryboard // nil when the Shot has no storyboard frame
+	Takes      []domain.Take
+	Selected   bool
+}
+
+func takeStatusLabel(s domain.TakeStatus) (atoms.BadgeTone, string) {
+	switch s {
+	case domain.TakeAIPick:
+		return atoms.BadgeInfo, "AI Pick"
+	case domain.TakeSelected:
+		return atoms.BadgeOK, "採用"
+	case domain.TakeRejected:
+		return atoms.BadgeNeutral, "除外"
+	}
+	return atoms.BadgeWarn, "候補"
+}
+
+func shotStateLabel(s domain.ShotState) string {
+	switch s {
+	case domain.ShotPlanning:
+		return "計画中"
+	case domain.ShotGenerating:
+		return "生成中"
+	case domain.ShotJudging:
+		return "Judge 中"
+	case domain.ShotRepairing:
+		return "Repair 中"
+	case domain.ShotEditing:
+		return "編集待ち"
+	}
+	return string(s)
+}
+
+func secondsText(d float64) string { return fmt.Sprintf("%.1f 秒", d) }
+
+// shotURL selects the Shot on the Scene page.
+func shotURL(projectID, sceneID, shotID string) string {
+	return "/projects/" + projectID + "/scenes/" + sceneID + "?shot=" + shotID
+}
+
+// TakeRow is one Take under a Shot.
+templ TakeRow(t domain.Take) {
+	<li class="flex items-center justify-between gap-2 text-xs text-neutral-300">
+		<span class="truncate">{ t.ModelName }</span>
+		{{ tone, label := takeStatusLabel(t.Status) }}
+		@atoms.Badge(tone, label)
+	</li>
+}
+
+// storyboardRows are the labelled lines of a storyboard frame that are not empty.
+func storyboardRows(f domain.ShotStoryboard) [][2]string {
+	var rows [][2]string
+	for _, r := range [][2]string{
+		{"画", f.Description}, {"サイズ", f.Framing}, {"カメラ", f.Camera},
+		{"構図", f.Composition}, {"動き", f.Action}, {"セリフ", f.Dialogue},
+	} {
+		if r[1] != "" {
+			rows = append(rows, r)
+		}
+	}
+	return rows
+}
+
+// ShotCard is a Shot of the selected Scene: its objective, duration and state. Selecting it
+// opens the storyboard frame; its Takes are listed below.
+templ ShotCard(d ShotCardData) {
+	<li
+		id={ "shot-" + d.Shot.ID }
+		class={ "rounded-md border p-3", templ.KV("border-indigo-400 bg-indigo-500/10", d.Selected), templ.KV("border-neutral-700 bg-neutral-900", !d.Selected) }
+		if d.Selected {
+			aria-current="true"
+		}
+	>
+		<div class="flex flex-wrap items-center justify-between gap-2">
+			<a
+				class="min-w-0 flex-1 font-medium hover:underline"
+				href={ templ.SafeURL(shotURL(d.ProjectID, d.Shot.SceneID, d.Shot.ID)) }
+				hx-get={ shotURL(d.ProjectID, d.Shot.SceneID, d.Shot.ID) }
+				hx-target="#scene-shot-view"
+				hx-swap="outerHTML"
+				hx-push-url="true"
+			>{ fmt.Sprintf("Shot %d: %s", d.Shot.OrderIndex+1, d.Shot.Objective) }</a>
+			<span class="flex items-center gap-2 text-xs text-neutral-400">
+				<span>{ secondsText(d.Shot.Duration) }</span>
+				@atoms.Badge(atoms.BadgeNeutral, shotStateLabel(d.Shot.State))
+			</span>
+		</div>
+		if d.Selected && d.Storyboard != nil {
+			<dl class="mt-2 grid grid-cols-[4rem_1fr] gap-x-2 gap-y-1 text-sm">
+				for _, row := range storyboardRows(*d.Storyboard) {
+					<dt class="text-neutral-400">{ row[0] }</dt>
+					<dd class="whitespace-pre-wrap break-words">{ row[1] }</dd>
+				}
+			</dl>
+		}
+		if len(d.Takes) > 0 {
+			<ul class="mt-2 flex flex-col gap-1 border-t border-neutral-800 pt-2" aria-label="Take 一覧">
+				for _, t := range d.Takes {
+					@TakeRow(t)
+				}
+			</ul>
+		} else if d.Selected {
+			<p class="mt-2 text-xs text-neutral-500">Take はまだありません。</p>
+		}
+	</li>
+}

@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/briefing"
+	"github.com/ousiassllc/mam/backend/internal/agent/orchestrator"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
@@ -23,6 +24,9 @@ type core struct {
 	extractor briefing.Extractor
 	assetsDir string
 	logger    *slog.Logger
+	// pipeline drives the AUTO pipeline; nil when no Reasoning LLM is configured.
+	pipeline *orchestrator.Orchestrator
+	plans    *repository.PlanRepository
 }
 
 // getProject maps repository.ErrNotFound to ErrNotFound.
@@ -36,6 +40,18 @@ func notFound(err error) error {
 		return ErrNotFound
 	}
 	return err
+}
+
+// kick lets the AUTO pipeline look at the Project after the user changed something
+// (a finished Brief, an answered Approval card, a message after a failure). It never fails
+// the user's action: the pipeline can be kicked again by the next change.
+func (c *core) kick(ctx context.Context, projectID string) {
+	if c.pipeline == nil {
+		return
+	}
+	if err := c.pipeline.Kick(context.WithoutCancel(ctx), projectID); err != nil {
+		c.logger.Error("start the AUTO pipeline failed", "project_id", projectID, "err", err)
+	}
 }
 
 // publishCreated tells the Project's clients that messages up to lastID exist.

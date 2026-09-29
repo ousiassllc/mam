@@ -26,6 +26,9 @@ type Config struct {
 	LogLevel slog.Level
 	// StaticDir, when set, serves static assets from disk instead of the embedded copy (make dev).
 	StaticDir string
+	// LLMConfigPath is a JSON file overriding the Reasoning LLM Adapter routes (agent.llm.LoadConfig);
+	// empty selects the built-in assignment of spec/architecture/model-adapters.md §2.
+	LLMConfigPath string
 }
 
 // DBPath is the SQLite database file.
@@ -51,6 +54,7 @@ func Load(args []string, getenv func(string) string, output io.Writer) (Config, 
 	noBrowser := fs.Bool("no-browser", getenv("MAM_NO_BROWSER") != "", "do not open the default browser (MAM_NO_BROWSER)")
 	level := fs.String("log-level", envOr(getenv, "MAM_LOG_LEVEL", "info"), "log level: debug, info, warn, error (MAM_LOG_LEVEL)")
 	staticDir := fs.String("static-dir", getenv("MAM_STATIC_DIR"), "serve static assets from this directory instead of the embedded copy (MAM_STATIC_DIR)")
+	llmConfig := fs.String("llm-config", getenv("MAM_LLM_CONFIG"), "JSON file with the Reasoning LLM provider assignment per agent (MAM_LLM_CONFIG)")
 	if err := fs.Parse(args); err != nil {
 		return Config{}, err
 	}
@@ -66,11 +70,12 @@ func Load(args []string, getenv func(string) string, output io.Writer) (Config, 
 		return Config{}, fmt.Errorf("data directory must not be empty")
 	}
 	return Config{
-		DataDir:     *dataDir,
-		Port:        *port,
-		OpenBrowser: !*noBrowser,
-		LogLevel:    lvl,
-		StaticDir:   *staticDir,
+		DataDir:       *dataDir,
+		Port:          *port,
+		OpenBrowser:   !*noBrowser,
+		LogLevel:      lvl,
+		StaticDir:     *staticDir,
+		LLMConfigPath: *llmConfig,
 	}, nil
 }
 

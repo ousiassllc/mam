@@ -176,6 +176,7 @@ func (s *ChatService) PostMessage(ctx context.Context, projectID string, in Post
 		discardUploads(stored)
 		return Workspace{}, err
 	}
+	s.kick(ctx, projectID)
 	ws, err := s.workspaceOf(ctx, projectID, turn.Messages)
 	if err != nil {
 		return Workspace{}, err
@@ -398,6 +399,7 @@ func (s *ChatService) RespondApproval(ctx context.Context, projectID, messageID 
 	if err := s.commit(ctx, turn); err != nil {
 		return domain.Project{}, domain.ThreadMessage{}, err
 	}
+	s.kick(ctx, projectID)
 	s.hub.Publish(projectID, Event{Type: EventCardUpdated, MessageID: card.ID})
 	return s.Card(ctx, projectID, card.ID)
 }
