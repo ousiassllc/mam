@@ -311,7 +311,7 @@ erDiagram
 | `asset` | `project_id` FK。`type` は `image/video/reference` のいずれか | `idx_asset_project (project_id)` |
 | `character` / `product` / `location` | `project_id` FK。`branch_id` FK（NULL許容、NULL=主系列、非NULL=当該BranchのWorld State固有値）。`lock_state` は `auto/manual/lock` のいずれか（CHECK制約） | `idx_character_project (project_id, branch_id)` 等 |
 | `script_version` | `project_id` FK。`(project_id, version_number)` UNIQUE | - |
-| `scene` | `project_id` FK。`branch_id` FK（NULL許容、NULL=主系列/トランク、非NULL=当該Branchの派生ツリーに属するScene）。`(project_id, order_index)` UNIQUE | `idx_scene_project_order (project_id, order_index)`, `idx_scene_branch (branch_id)` |
+| `scene` | `project_id` FK。`branch_id` FK（NULL許容、NULL=主系列/トランク、非NULL=当該Branchの派生ツリーに属するScene）。`(project_id, branch_id, order_index)` UNIQUE | `idx_scene_project_branch_order (project_id, branch_id, order_index)` |
 | `shot` | `scene_id` FK。`selected_take_id` は `take.id` への FK（NULL許容）。`state` は Core State Machine のサブ状態のみ許可 | `idx_shot_scene_order (scene_id, order_index)` |
 | `prompt_version` | `shot_id` FK。`(shot_id, version_number)` UNIQUE | `idx_prompt_version_shot (shot_id)` |
 | `take` | `prompt_version_id` FK。`status` は `candidate/ai_pick/selected/rejected` のいずれか | `idx_take_prompt_version (prompt_version_id)`, `idx_take_status (status)` |
@@ -352,3 +352,4 @@ erDiagram
 | 1.9 | 2026-09-28 | §1・§2.2に `BRANCH ||--o{ SCENE : branch_scenes`（§1のみ存在し§2.2に欠落）と `BRANCH_VERSION }o--o\| WORLD_STATE_VERSION : version_snapshot`（両図とも欠落）を追加 | `scene.branch_id`・`branch_version.world_state_version_id` というFKに対応する関係線が図に描かれておらず、他のFKと非対称だったため（整合性・品質レビュー指摘） |
 | 1.10 | 2026-09-28 | `character`/`product`/`location` に nullable `branch_id` を追加し、§1・§2.2に `BRANCH ||--o{ CHARACTER/PRODUCT/LOCATION` 関係線を追加 | Branch上でのCharacter/Product/Location編集がトランクや他Branchに影響してしまい、round3で導入したBranch独立性（world_state_version/sceneのbranch_id）と設計意図が食い違っていたため（整合性レビュー指摘） |
 | 1.11 | 2026-09-28 | §2.1に `SHOT }o--o\| TAKE : selected_take_ref` と `REPAIR_ACTION }o--o\| TAKE : produces_next` を追加 | `shot.selected_take_id`・`repair_action.resulting_take_id` というFK（§2.1のSHOT/REPAIR_ACTION属性ブロックには既に記載済み）に対応する関係線が§1には存在するのに§2.1には描かれておらず、TAKE/SHOT/REPAIR_ACTIONが全て§2.1に描画済みであるにもかかわらず非対称だったため（品質レビュー指摘） |
+| 1.12 | 2026-09-28 | `scene` のUNIQUE制約を `(project_id, order_index)` から `(project_id, branch_id, order_index)` へ変更 | round3で`scene.branch_id`を追加した際、UNIQUE制約が未修正のままでBranch配下のSceneがトランク/他Branchと同じ`order_index`を使うと制約違反になり、UC-5「各Branchが独立した派生プロジェクトツリー」を満たせなかったため（整合性レビュー指摘） |
