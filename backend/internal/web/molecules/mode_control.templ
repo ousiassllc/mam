@@ -1,0 +1,30 @@
+package molecules
+
+import "github.com/ousiassllc/mam/backend/internal/domain"
+
+// ModeControl switches AUTO ⇄ DIRECTOR at any time (F-02). The choice is saved at once and the
+// state is kept: in DIRECTOR the AI only changes what the user directs and waits; back in AUTO
+// the pipeline continues.
+templ ModeControl(p domain.Project) {
+	<form
+		id="mode-control"
+		class="flex items-center gap-2"
+		hx-put={ "/projects/" + p.ID + "/mode" }
+		hx-trigger="change"
+		hx-target="this"
+		hx-swap="outerHTML"
+	>
+		<fieldset class="flex items-center gap-2">
+			<legend class="sr-only">MODE</legend>
+			<span>MODE</span>
+			<label class="flex items-center gap-1">
+				<input type="radio" name="mode" value="auto" checked?={ p.Mode == domain.ModeAuto }/>
+				AUTO
+			</label>
+			<label class="flex items-center gap-1">
+				<input type="radio" name="mode" value="director" checked?={ p.Mode == domain.ModeDirector }/>
+				DIRECTOR
+			</label>
+		</fieldset>
+	</form>
+}

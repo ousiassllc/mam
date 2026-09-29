@@ -3,6 +3,7 @@ package handler
 import (
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -18,8 +19,15 @@ func isHTMX(c *gin.Context) bool { return c.GetHeader("HX-Request") == "true" }
 // and shown as a generic message.
 func statusOf(c *gin.Context, err error) (int, string) {
 	var invalid *service.ValidationError
+	var locked *service.LockedError
 	var ai *service.AIError
 	switch {
+	case errors.As(err, &locked) && len(locked.Parameters) > 0:
+		names := make([]string, len(locked.Parameters))
+		for i, p := range locked.Parameters {
+			names[i] = p.Label()
+		}
+		return http.StatusLocked, strings.Join(names, " / ") + " は LOCK されているため変更できません。LOCK を解除してから指示してください"
 	case errors.As(err, &ai):
 		return http.StatusBadGateway, ai.Reason
 	case errors.As(err, &invalid):

@@ -22,6 +22,8 @@ type WorldStateData struct {
 	Project domain.Project
 	World   domain.WorldContext
 	Locks   domain.LockSet
+	// ProjectLocks is the AUTO / MANUAL / LOCK setting of Story and Music.
+	ProjectLocks domain.ParameterLocks
 }
 
 var fieldLabels = map[string]string{
@@ -124,7 +126,7 @@ func entityForm(d WorldStateData, plural, id, name string, fields []molecules.Wo
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.ResolveAttributeValue(entityURL(d.Project.ID, plural, id))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/world_state_view.templ`, Line: 94, Col: 46}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/world_state_view.templ`, Line: 96, Col: 46}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
 		if templ_7745c5c3_Err != nil {
@@ -137,7 +139,7 @@ func entityForm(d WorldStateData, plural, id, name string, fields []molecules.Wo
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/world_state_view.templ`, Line: 98, Col: 39}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/world_state_view.templ`, Line: 100, Col: 39}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -199,23 +201,33 @@ func WorldStateView(d WorldStateData) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(versionText(d.World.Version))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/world_state_view.templ`, Line: 114, Col: 68}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/world_state_view.templ`, Line: 116, Col: 68}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "。LOCK した項目は Shot 完了時にも自動更新されません。</p>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "。LOCK した項目は Shot 完了時にも自動更新されません。</p><section aria-label=\"Story / Music\" class=\"flex flex-col gap-2\"><h2 class=\"text-sm font-semibold text-neutral-200\">Story / Music</h2>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		if d.empty() {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<p class=\"text-sm text-neutral-400\">登場人物・商品・場所はまだ登録されていません。</p>")
+		for _, p := range domain.ProjectLockParameters() {
+			templ_7745c5c3_Err = atoms.LockToggle(ProjectLockToggle(d.Project.ID, p, d.ProjectLocks)).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<section aria-label=\"Characters\" class=\"flex flex-col gap-2\"><h2 class=\"text-sm font-semibold text-neutral-200\">Characters</h2>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "</section>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if d.empty() {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<p class=\"text-sm text-neutral-400\">登場人物・商品・場所はまだ登録されていません。</p>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<section aria-label=\"Characters\" class=\"flex flex-col gap-2\"><h2 class=\"text-sm font-semibold text-neutral-200\">Characters</h2>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -225,7 +237,7 @@ func WorldStateView(d WorldStateData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</section><section aria-label=\"Products\" class=\"flex flex-col gap-2\"><h2 class=\"text-sm font-semibold text-neutral-200\">Products</h2>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</section><section aria-label=\"Products\" class=\"flex flex-col gap-2\"><h2 class=\"text-sm font-semibold text-neutral-200\">Products</h2>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -235,7 +247,7 @@ func WorldStateView(d WorldStateData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</section><section aria-label=\"Locations\" class=\"flex flex-col gap-2\"><h2 class=\"text-sm font-semibold text-neutral-200\">Locations</h2>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</section><section aria-label=\"Locations\" class=\"flex flex-col gap-2\"><h2 class=\"text-sm font-semibold text-neutral-200\">Locations</h2>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -245,7 +257,7 @@ func WorldStateView(d WorldStateData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</section><section aria-label=\"Camera\" class=\"flex flex-col gap-2\"><h2 class=\"text-sm font-semibold text-neutral-200\">Camera</h2><dl class=\"flex flex-col gap-1\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</section><section aria-label=\"Camera\" class=\"flex flex-col gap-2\"><h2 class=\"text-sm font-semibold text-neutral-200\">Camera</h2><dl class=\"flex flex-col gap-1\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -265,7 +277,7 @@ func WorldStateView(d WorldStateData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</dl></section><section aria-label=\"Story\" class=\"flex flex-col gap-2\"><h2 class=\"text-sm font-semibold text-neutral-200\">Story</h2><dl class=\"flex flex-col gap-1\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</dl></section><section aria-label=\"Story\" class=\"flex flex-col gap-2\"><h2 class=\"text-sm font-semibold text-neutral-200\">Story</h2><dl class=\"flex flex-col gap-1\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -285,7 +297,7 @@ func WorldStateView(d WorldStateData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</dl></section></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "</dl></section></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

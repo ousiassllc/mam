@@ -269,3 +269,20 @@ func (r *AssetRepository) ListByIDs(ctx context.Context, projectID string, ids [
 	}
 	return assets, nil
 }
+
+// LatestOfKind returns the newest message of the Project of the given kind, or nil when there is none.
+func (r *ChatRepository) LatestOfKind(ctx context.Context, projectID string, kind domain.MessageKind) (*domain.ChatMessage, error) {
+	rows, err := r.db.Reader().QueryContext(ctx, messageSelect+` WHERE project_id = ? AND kind = ? ORDER BY id DESC LIMIT 1`, projectID, kind)
+	if err != nil {
+		return nil, fmt.Errorf("get latest message: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	if !rows.Next() {
+		return nil, rows.Err()
+	}
+	m, err := scanMessage(rows)
+	if err != nil {
+		return nil, fmt.Errorf("scan message: %w", err)
+	}
+	return &m, nil
+}

@@ -95,3 +95,40 @@ func TestPlan_WorldStateLeftByThePreviousShotIsGivenToTheModel(t *testing.T) {
 		assert.Contains(t, f.user, want, "the next shot starts from the state the last one left")
 	}
 }
+
+func TestPlan_FixedPartsAreCopiedFromTheCurrentSpecWhateverTheModelAnswers(t *testing.T) {
+	current := domain.ShotSpec{
+		ShotObjective: "She runs", Duration: "4.0s",
+		Character: &domain.SpecActor{ID: "Character_A", Wardrobe: "black_coat"},
+		Acting:    []domain.ActingBeat{{Time: "0.0-4.0", Action: "run"}},
+		Camera:    domain.SpecCamera{Framing: "wide", Movement: "static"},
+	}
+	in := input()
+	in.Current = &current
+	in.Fixed = []domain.SpecPart{domain.PartCharacter, domain.PartCamera}
+	in.Manual = []domain.SpecPart{domain.PartActing}
+	f := &fakeLLM{answer: good}
+
+	spec, err := promptplanner.New(f).Plan(context.Background(), in)
+
+	require.NoError(t, err)
+	assert.Equal(t, "black_coat", spec.Character.Wardrobe)
+	assert.Equal(t, "static", spec.Camera.Movement, "the model's camera is replaced by the LOCKed one")
+	assert.Equal(t, "wide", spec.Camera.Framing)
+	assert.Equal(t, "begin running", spec.Acting[1].Action, "unfixed parts follow the model")
+	assert.Contains(t, f.user, "Fixed parts")
+	assert.Contains(t, f.user, "character, camera")
+	assert.Contains(t, f.user, "Parts the user specified himself")
+}
+
+func TestPlan_FixedPartsAreIgnoredWithoutACurrentSpec(t *testing.T) {
+	in := input()
+	in.Fixed = []domain.SpecPart{domain.PartCamera}
+	f := &fakeLLM{answer: good}
+
+	spec, err := promptplanner.New(f).Plan(context.Background(), in)
+
+	require.NoError(t, err)
+	assert.Equal(t, "medium", spec.Camera.Framing)
+	assert.NotContains(t, f.user, "Fixed parts")
+}

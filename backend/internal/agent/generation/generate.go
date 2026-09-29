@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 	"sync"
 	"time"
 
@@ -58,7 +59,7 @@ type adapterRecord struct {
 
 // generate runs Prompt Autopilot and the Model Adapter for a Shot: it writes the Canonical Shot
 // Spec, decides the strategy, and makes the Takes.
-func (o *Orchestrator) generate(ctx context.Context, ref repository.ShotRef, instruction string) (Progress, error) {
+func (o *Orchestrator) generate(ctx context.Context, ref repository.ShotRef, instruction string, preserve []domain.SpecPart) (Progress, error) {
 	shot := ref.Shot
 	policy, err := o.policies.Get(ctx, ref.ProjectID)
 	if err != nil {
@@ -77,17 +78,25 @@ func (o *Orchestrator) generate(ctx context.Context, ref repository.ShotRef, ins
 		return Progress{}, err
 	}
 	references := shot.References()
+	locks, err := o.gens.ShotLocks(ctx, shot.ID)
+	if err != nil {
+		return Progress{}, err
+	}
 
-	// Prompt Autopilot (F-06). An existing spec is kept unless the user gave a new direction.
+	// Prompt Autopilot (F-06). An existing spec is kept unless the user gave a new direction, and
+	// then the LOCKed parts and the parts the director asked to preserve are carried over as they
+	// are (F-05, UC-2). With Prompt LOCKed the spec is never rewritten.
 	current, hasSpec := shot.CanonicalSpec()
 	spec := current
-	if !hasSpec || instruction != "" {
+	if !hasSpec || (instruction != "" && !locks.Locked(domain.ParamPrompt)) {
 		in := promptplanner.Input{
 			Brief: brief, Template: policy.Template, Scene: ref.Scene, Shot: shot,
 			Instruction: instruction, World: world, Previous: previousSpec(shots, shot.ID), References: references,
 		}
 		if hasSpec {
 			in.Current = &current
+			in.Fixed = slices.Concat(locks.LockedParts(), preserve)
+			in.Manual = locks.PartsWith(domain.LockManual)
 		}
 		if spec, err = o.planner.Plan(ctx, in); err != nil {
 			return Progress{}, err
@@ -99,7 +108,7 @@ func (o *Orchestrator) generate(ctx context.Context, ref repository.ShotRef, ins
 	if err != nil {
 		return Progress{}, err
 	}
-	strategy, err := Decide(o.adapter.Config(), policy.Quality, shot.Duration, budget)
+	strategy, err := o.decide(ctx, policy.Quality, shot, budget)
 	if err != nil {
 		return Progress{}, err
 	}

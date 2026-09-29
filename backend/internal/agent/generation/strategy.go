@@ -39,13 +39,25 @@ type Strategy struct {
 //     of Takes is reduced; when even one Take of the primary does not fit but one of the alternative
 //     does, the alternative is used. Otherwise it fails with ErrBudgetExceeded.
 func Decide(cfg modeladapter.Config, policy domain.QualityPolicy, shotSeconds float64, budget repository.Budget) (Strategy, error) {
+	return DecideWithModel(cfg, policy, shotSeconds, budget, "")
+}
+
+// DecideWithModel is Decide for a Shot whose Video Model the user fixed (MANUAL, or LOCK): that
+// model is the only one used, at the resolution of the Quality Policy, and is neither swapped for a
+// longer-clip model nor replaced by the alternative when the budget is short. An empty forced
+// is Decide.
+func DecideWithModel(cfg modeladapter.Config, policy domain.QualityPolicy, shotSeconds float64, budget repository.Budget, forced domain.ModelName) (Strategy, error) {
 	route, ok := cfg.Policies[policy]
 	if !ok {
 		return Strategy{}, fmt.Errorf("generation: no route for the quality policy %q", policy)
 	}
 	s := Strategy{Policy: policy, Primary: route.Primary, Fallback: route.Fallback, Takes: route.Takes}
 
-	if longest(route.Primary.Model) < shotSeconds && longest(route.Fallback.Model) >= shotSeconds {
+	if forced != "" {
+		s.Primary = modeladapter.VideoTarget{Model: forced, Resolution: route.Primary.Resolution}
+		s.Fallback = s.Primary
+		s.Reasons = append(s.Reasons, fmt.Sprintf("the video model is fixed by the user: %s", forced))
+	} else if longest(route.Primary.Model) < shotSeconds && longest(route.Fallback.Model) >= shotSeconds {
 		s.Primary, s.Fallback = s.Fallback, s.Primary
 		s.Reasons = append(s.Reasons, fmt.Sprintf("the %.1fs Shot exceeds the longest clip of %s: %s is primary", shotSeconds, route.Primary.Model, s.Primary.Model))
 	}

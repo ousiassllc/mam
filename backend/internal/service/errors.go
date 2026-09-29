@@ -3,6 +3,9 @@ package service
 import (
 	"errors"
 	"fmt"
+
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/repository"
 )
 
 var (
@@ -22,6 +25,23 @@ var (
 	// ErrLocked means the change would touch a field the user has LOCKed. HTTP 423.
 	ErrLocked = errors.New("service: field is locked")
 )
+
+// LockedError is ErrLocked with the LOCKed parameters the change touched.
+type LockedError struct{ Parameters []domain.LockParameter }
+
+func (e *LockedError) Error() string { return fmt.Sprintf("%v: %v", ErrLocked, e.Parameters) }
+
+// Is makes errors.Is(err, ErrLocked) hold.
+func (e *LockedError) Is(target error) bool { return target == ErrLocked }
+
+// lockedError converts the repository's LOCK error, keeping the parameters.
+func lockedError(err error) error {
+	var le *repository.LockedParametersError
+	if errors.As(err, &le) {
+		return &LockedError{Parameters: le.Parameters}
+	}
+	return err
+}
 
 // ValidationError is invalid user input. Field names the form field ("" for the
 // request as a whole); Message is shown to the user. HTTP 422.

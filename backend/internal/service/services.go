@@ -7,6 +7,7 @@ import (
 	"log/slog"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/briefing"
+	"github.com/ousiassllc/mam/backend/internal/agent/commandinterpreter"
 	"github.com/ousiassllc/mam/backend/internal/agent/continuation"
 	"github.com/ousiassllc/mam/backend/internal/agent/generation"
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
@@ -58,6 +59,7 @@ type Services struct {
 	Plans       *PlanService
 	Generation  *GenerationService
 	World       *WorldService
+	Director    *DirectorService
 	Policy      *PolicyService
 	Judge       *JudgeService
 	Continue    *ContinueService
@@ -135,6 +137,11 @@ func New(deps Deps) *Services {
 		// Not resumable: a generation costs money, so an interrupted one is failed, not repeated.
 		deps.Jobs.Register(domain.JobGenerate, generations.gen.Handle, false)
 	}
+	director := &DirectorService{core: c, gens: gens, locks: repository.NewLockRepository(deps.DB), orch: generations.gen}
+	if deps.LLM != nil {
+		director.interpreter = commandinterpreter.New(deps.LLM)
+	}
+	c.director = director
 	continues := &ContinueService{core: c, generation: generations, shots: gens}
 	if deps.LLM != nil {
 		continues.agent = continuation.New(deps.LLM)
@@ -148,6 +155,7 @@ func New(deps Deps) *Services {
 		Plans:       &PlanService{c},
 		Generation:  generations,
 		World:       &WorldService{core: c, world: world},
+		Director:    director,
 		Policy: &PolicyService{
 			core: c, freeBytes: deps.FreeBytes, policies: policies, costs: repository.NewCostRepository(deps.DB), storage: repository.NewStorageRepository(deps.DB),
 		},

@@ -14,6 +14,8 @@ type WorldStateData struct {
 	Project domain.Project
 	World   domain.WorldContext
 	Locks   domain.LockSet
+	// ProjectLocks is the AUTO / MANUAL / LOCK setting of Story and Music.
+	ProjectLocks domain.ParameterLocks
 }
 
 var fieldLabels = map[string]string{
@@ -112,6 +114,12 @@ templ entityForm(d WorldStateData, plural, id, name string, fields []molecules.W
 templ WorldStateView(d WorldStateData) {
 	<div id="world-state-view" class="flex flex-col gap-6">
 		<p class="text-xs text-neutral-400">{ versionText(d.World.Version) }。LOCK した項目は Shot 完了時にも自動更新されません。</p>
+		<section aria-label="Story / Music" class="flex flex-col gap-2">
+			<h2 class="text-sm font-semibold text-neutral-200">Story / Music</h2>
+			for _, p := range domain.ProjectLockParameters() {
+				@atoms.LockToggle(ProjectLockToggle(d.Project.ID, p, d.ProjectLocks))
+			}
+		</section>
 		if d.empty() {
 			<p class="text-sm text-neutral-400">登場人物・商品・場所はまだ登録されていません。</p>
 		}

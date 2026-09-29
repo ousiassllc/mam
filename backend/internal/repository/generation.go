@@ -135,38 +135,92 @@ func (r *GenerationRepository) ResetStaleShots(ctx context.Context) (int, error)
 func (r *GenerationRepository) SavePromptedSpec(ctx context.Context, shotID string, spec domain.ShotSpec, adapterOutput json.RawMessage) (domain.PromptVersion, error) {
 	var pv domain.PromptVersion
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
-		var current string
-		if err := tx.QueryRowContext(ctx, `SELECT shot_spec FROM shot WHERE id = ?`, shotID).Scan(&current); err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				return ErrNotFound
-			}
-			return err
-		}
-		merged, err := domain.MergeShotSpec(json.RawMessage(current), spec)
+		current, _, err := readShotSpec(ctx, tx, shotID)
 		if err != nil {
 			return err
 		}
-		if _, err := tx.ExecContext(ctx, `UPDATE shot SET shot_spec = ? WHERE id = ?`, string(merged), shotID); err != nil {
-			return err
-		}
-		var next int
-		if err := tx.QueryRowContext(ctx, `SELECT COALESCE(MAX(version_number), 0) + 1 FROM prompt_version WHERE shot_id = ?`, shotID).Scan(&next); err != nil {
-			return err
-		}
-		pv = domain.PromptVersion{ID: domain.NewID(), ShotID: shotID, VersionNumber: next, SpecSnapshot: merged, AdapterOutput: adapterOutput}
-		var output any
-		if len(adapterOutput) > 0 {
-			output = string(adapterOutput)
-		}
-		_, err = tx.ExecContext(ctx,
-			`INSERT INTO prompt_version (id, shot_id, version_number, shot_spec_snapshot, model_adapter_output, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
-			pv.ID, shotID, next, string(merged), output, formatTime(r.now()))
+		pv, err = r.writeSpec(ctx, tx, shotID, current, spec, adapterOutput)
 		return err
 	})
 	if err != nil {
 		return domain.PromptVersion{}, fmt.Errorf("save prompted spec: %w", err)
 	}
 	return pv, nil
+}
+
+// SaveEditedSpec stores a Canonical Shot Spec the user edited by hand (F-06, DIRECTOR MODE) as a
+// new prompt_version. LOCK is judged on the data being written: it returns ErrLocked (wrapping the
+// names of the LOCKed parameters the edit touches) and writes nothing when a LOCKed part or, with
+// Prompt LOCKed, any part of the current spec would change; ErrConflict while the Shot is being
+// generated; ErrNotFound for an unknown Shot. A Shot without a spec has nothing to be LOCKed.
+func (r *GenerationRepository) SaveEditedSpec(ctx context.Context, shotID string, spec domain.ShotSpec) (domain.PromptVersion, error) {
+	var pv domain.PromptVersion
+	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
+		current, state, err := readShotSpec(ctx, tx, shotID)
+		if err != nil {
+			return err
+		}
+		if state == domain.ShotGenerating {
+			return ErrConflict
+		}
+		if old, ok := (domain.Shot{ShotSpec: json.RawMessage(current)}).CanonicalSpec(); ok {
+			locks, err := readParameterLocks(ctx, tx, `target_type = ? AND target_id = ?`, domain.LockTargetShot, shotID)
+			if err != nil {
+				return err
+			}
+			if hit := domain.LockedChanges(locks, old, spec); len(hit) > 0 {
+				return &LockedParametersError{Parameters: hit}
+			}
+		}
+		pv, err = r.writeSpec(ctx, tx, shotID, current, spec, nil)
+		return err
+	})
+	if errors.Is(err, ErrNotFound) || errors.Is(err, ErrConflict) || errors.Is(err, ErrLocked) {
+		return domain.PromptVersion{}, err
+	}
+	if err != nil {
+		return domain.PromptVersion{}, fmt.Errorf("save edited spec: %w", err)
+	}
+	return pv, nil
+}
+
+// readShotSpec reads shot.shot_spec and the state of the Shot.
+func readShotSpec(ctx context.Context, tx *sql.Tx, shotID string) (string, domain.ShotState, error) {
+	var (
+		spec  string
+		state domain.ShotState
+	)
+	if err := tx.QueryRowContext(ctx, `SELECT shot_spec, state FROM shot WHERE id = ?`, shotID).Scan(&spec, &state); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", "", ErrNotFound
+		}
+		return "", "", err
+	}
+	return spec, state, nil
+}
+
+// writeSpec merges the spec into the shot_spec JSON current and appends a prompt_version.
+func (r *GenerationRepository) writeSpec(ctx context.Context, tx *sql.Tx, shotID, current string, spec domain.ShotSpec, adapterOutput json.RawMessage) (domain.PromptVersion, error) {
+	merged, err := domain.MergeShotSpec(json.RawMessage(current), spec)
+	if err != nil {
+		return domain.PromptVersion{}, err
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE shot SET shot_spec = ? WHERE id = ?`, string(merged), shotID); err != nil {
+		return domain.PromptVersion{}, err
+	}
+	var next int
+	if err := tx.QueryRowContext(ctx, `SELECT COALESCE(MAX(version_number), 0) + 1 FROM prompt_version WHERE shot_id = ?`, shotID).Scan(&next); err != nil {
+		return domain.PromptVersion{}, err
+	}
+	pv := domain.PromptVersion{ID: domain.NewID(), ShotID: shotID, VersionNumber: next, SpecSnapshot: merged, AdapterOutput: adapterOutput}
+	var output any
+	if len(adapterOutput) > 0 {
+		output = string(adapterOutput)
+	}
+	_, err = tx.ExecContext(ctx,
+		`INSERT INTO prompt_version (id, shot_id, version_number, shot_spec_snapshot, model_adapter_output, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
+		pv.ID, shotID, next, string(merged), output, formatTime(r.now()))
+	return pv, err
 }
 
 // NewTake is a finished generation: the Take row, the asset row of its video file and the
@@ -309,4 +363,23 @@ func (r *GenerationRepository) Budget(ctx context.Context, projectID, shotID str
 		b.ShotCeiling = &shotCap.Float64
 	}
 	return b, nil
+}
+
+// ShotLocks returns the AUTO / MANUAL / LOCK setting of the parameters of the Shot.
+func (r *GenerationRepository) ShotLocks(ctx context.Context, shotID string) (domain.ParameterLocks, error) {
+	return readParameterLocks(ctx, r.db.Reader(), `target_type = ? AND target_id = ?`, domain.LockTargetShot, shotID)
+}
+
+// ShotOfTake returns the Shot that the Take belongs to, when the Shot is in the Project
+// (ErrNotFound otherwise).
+func (r *GenerationRepository) ShotOfTake(ctx context.Context, projectID, takeID string) (ShotRef, error) {
+	ref, err := scanShotRef(r.db.Reader().QueryRowContext(ctx,
+		shotRefSelect+` WHERE s.project_id = ? AND sh.id = (SELECT pv.shot_id FROM take t JOIN prompt_version pv ON pv.id = t.prompt_version_id WHERE t.id = ?)`, projectID, takeID))
+	if errors.Is(err, sql.ErrNoRows) {
+		return ShotRef{}, ErrNotFound
+	}
+	if err != nil {
+		return ShotRef{}, fmt.Errorf("get shot of take: %w", err)
+	}
+	return ref, nil
 }

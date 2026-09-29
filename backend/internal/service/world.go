@@ -21,6 +21,8 @@ type WorldView struct {
 	Project domain.Project
 	World   domain.WorldContext
 	Locks   domain.LockSet
+	// ProjectLocks is the AUTO / MANUAL / LOCK setting of Story and Music.
+	ProjectLocks domain.ParameterLocks
 }
 
 // View returns the current World State of the Project.
@@ -37,7 +39,11 @@ func (s *WorldService) View(ctx context.Context, projectID string) (WorldView, e
 	if err != nil {
 		return WorldView{}, err
 	}
-	return WorldView{Project: project, World: world, Locks: locks}, nil
+	projectLocks, err := s.director.locks.ProjectLocks(ctx, projectID)
+	if err != nil {
+		return WorldView{}, err
+	}
+	return WorldView{Project: project, World: world, Locks: locks, ProjectLocks: projectLocks}, nil
 }
 
 // UpdateEntity sets the given fields (domain.EditableFields) of a Character, Product or Location
