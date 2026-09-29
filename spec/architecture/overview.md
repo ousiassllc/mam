@@ -26,7 +26,8 @@
 | 永続化 | SQLite (WAL mode) | Project Data Model の永続化。単一ユーザー・単一バイナリ運用に最適 |
 | アセットストレージ | ローカルファイルシステム | Keyframe/Reference/生成動画・画像の保存 |
 | バックグラウンド処理 | Go goroutine + 内部ジョブキュー | 生成・Judge・Repair 等の非同期実行、進捗は WebSocket で通知 |
-| 外部生成モデル連携 | Model Adapter（アダプタパターン） | 画像/動画生成モデル API をベンダー非依存に抽象化。特定モデルへの構造的依存を作らない |
+| 外部生成モデル連携 | Model Adapter（アダプタパターン） | 画像/動画生成モデル API をベンダー非依存に抽象化。特定モデルへの構造的依存を作らない。採用プロバイダーは `spec/architecture/model-adapters.md` 参照（画像: Imagen 4/Nano Banana/FLUX.2/GPT Image 2、動画: Kling 3.0/Seedance 2.0/Runway Gen-4.5） |
+| エージェント推論用LLM連携 | Reasoning LLM Adapter（アダプタパターン） | Producer/Writer/Director/Judge/Repair等の自然言語推論をLLM API経由で実行する層。Model Adapterとは別レイヤー（画像/動画生成物を伴わない）。採用プロバイダーは Claude Opus系/GPT-5系/Gemini 3.1 Pro（Agentごとのルーティングは `spec/architecture/model-adapters.md` 参照） |
 | 認証情報管理 | OS セキュアストレージ（Windows Credential Manager / macOS Keychain / Linux Secret Service） | 外部生成モデル API キーを平文設定ファイルに書かず OS ネイティブストアへ保存・取得する（`internal/credential`） |
 
 ## 3. 全体構成図
@@ -46,7 +47,7 @@ flowchart TB
         DB[("SQLite (WAL)")]
         FS[("ローカルFS<br/>Assets/Keyframe/Video")]
     end
-    ExtAPI["外部 画像/動画生成モデルAPI群"]
+    ExtAPI["外部 LLM推論API群<br/>（Reasoning LLM Adapter経由）<br/>+ 画像/動画/音声生成モデルAPI群<br/>（Model Adapter経由）"]
 
     Browser <-->|"HTMXフラグメント / JSON（ループバック）"| Router
     Router --> Handler --> Service --> Repo --> Domain
@@ -225,3 +226,4 @@ HALT のレイヤー別テスト方針を踏襲する。
 | 1.0 | 2026-09-28 | 新規作成 | HALT（HTMX+Atomic+Lit+Templ）+ Wails によるデスクトップアプリ構成を定義 |
 | 1.1 | 2026-09-28 | Wails前提の記述をローカルWebサーバー+ブラウザ構成へ変更し、Wailsは将来拡張セクションへ移動 | ユーザー指示により、Wails統合は現段階のスコープ外とし将来拡張に切り出す |
 | 1.2 | 2026-09-28 | 技術スタック表に「認証情報管理」行、ディレクトリ構成に `internal/credential` を追加 | non-functional.md §5「APIキーはOSセキュアストレージに保存」を実現する層がアーキテクチャ設計に明記されていなかったため（整合性レビュー指摘） |
+| 1.3 | 2026-09-29 | 技術スタック表に「エージェント推論用LLM連携（Reasoning LLM Adapter）」行を追加。Model Adapter行・全体構成図に採用プロバイダー（Imagen4/Nano Banana/FLUX.2/GPT Image 2、Kling 3.0/Seedance 2.0/Runway Gen-4.5）を明記 | ユーザーとの協議によりエージェント推論LLM・画像/動画生成プロバイダーを具体的に選定したため（`spec/architecture/model-adapters.md` 新設に対応） |

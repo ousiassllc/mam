@@ -79,12 +79,13 @@ flowchart TB
 | ER / データモデル | `spec/architecture/er.md` | Project Data Model（Scene/Shot/Take/World State 等）の ER 図とテーブル定義 |
 | API 仕様 | `spec/api/endpoints.md` | ページルート/アクションルート（HTMX）と `/api/v1` JSON API（Huma/OpenAPI）のエンドポイント仕様 |
 | コンポーネント設計 | `spec/components/overview.md` | Agent 群（Producer/Director/Editor 等）とHALT側コンポーネント（atoms/molecules/organisms/Lit）の責務分割 |
+| Model Adapter 選定 | `spec/architecture/model-adapters.md` | エージェント推論LLM・画像/動画生成モデル・音声プロバイダーの具体的な選定とルーティング表（Claude/GPT-5/Gemini、Imagen4/Nano Banana/FLUX.2/GPT Image 2、Kling/Seedance/Runway、ElevenLabs/Sync Labs） |
 
 ## マイルストーン / リリース計画
 
 時期は未定。`spec/spec.md` §27 の MVP 区分をそのまま採用する。
 
-- **M1 — Autonomous Shot Studio**: Creative Brief、AUTO/DIRECTOR 切替、Scene/Shot/Take、Keyframe Generation、Prompt Autopilot、1〜2 Video Model Adapter、Video Judge、Retake Loop、Basic World State、Simple Timeline Editing、Final Export。1本の短尺動画をAIが自律制作できることを検証する
+- **M1 — Autonomous Shot Studio**: Creative Brief、AUTO/DIRECTOR 切替、Scene/Shot/Take、Keyframe Generation、Prompt Autopilot、Video Model Adapter（Kling 3.0 + Seedance 2.0 の2アダプタ）、Video Judge、Retake Loop、Basic World State、Simple Timeline Editing、Final Export。1本の短尺動画をAIが自律制作できることを検証する（採用プロバイダーの詳細は `spec/architecture/model-adapters.md` 参照）
 - **M2 — Production Memory**: Character Lock、Product Lock、Location State、Continue、Branch、Reference Library、Partial Regeneration を追加
 - **M3 — AI Production Studio**: Advanced Editor Agent、Editor→Reshoot Loop、Audio Director、Multi-model routing、Series/Episode Memory、Brand Templates、Team Collaboration、Production Analytics を追加
 
@@ -117,3 +118,4 @@ flowchart TB
 |----|------|---------|---------|
 | 1.0 | 2026-09-28 | 新規作成 | `spec/spec.md`（製品仕様ドラフト v1.0）を構造化ドキュメントセットへ展開する初版 |
 | 1.1 | 2026-09-28 | 実行基盤を Wails デスクトップアプリ前提からローカル起動型 Web アプリ（Go 単一バイナリ + ブラウザ）前提へ変更。Wails は将来拡張として位置付け | ユーザー指示により、Wails 統合は現段階のスコープ外とし将来拡張に切り出す |
+| 1.2 | 2026-09-29 | ドキュメントマップに `model-adapters.md` を追加。M1マイルストーンにVideo Model Adapterの採用プロバイダー（Kling 3.0 + Seedance 2.0）を明記 | ユーザーとの協議によりエージェント推論LLM・画像/動画生成/音声プロバイダーを具体的に選定したため |
