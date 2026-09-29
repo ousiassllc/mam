@@ -166,11 +166,13 @@ const (
 
 // Take is a row of take, seen from its Shot.
 type Take struct {
-	ID        string
-	ShotID    string
-	ModelName string
-	Status    TakeStatus
-	CreatedAt time.Time
+	ID              string
+	ShotID          string
+	PromptVersionID string
+	ModelName       string
+	FilePath        string // relative to the assets directory; "" until the file exists
+	Status          TakeStatus
+	CreatedAt       time.Time
 }
 
 // Summary is the text of the script's Approval card: a headline such as

@@ -304,7 +304,7 @@ func (r *PlanRepository) ListShots(ctx context.Context, sceneID string) ([]domai
 // first, grouped by Shot ID.
 func (r *PlanRepository) ListTakes(ctx context.Context, sceneID string) (map[string][]domain.Take, error) {
 	rows, err := r.db.Reader().QueryContext(ctx,
-		`SELECT t.id, pv.shot_id, t.model_name, t.status, t.created_at
+		`SELECT t.id, pv.shot_id, t.prompt_version_id, t.model_name, COALESCE(t.file_path, ''), t.status, t.created_at
 		 FROM take t
 		 JOIN prompt_version pv ON pv.id = t.prompt_version_id
 		 JOIN shot sh ON sh.id = pv.shot_id
@@ -319,7 +319,7 @@ func (r *PlanRepository) ListTakes(ctx context.Context, sceneID string) (map[str
 			t       domain.Take
 			created string
 		)
-		if err := rows.Scan(&t.ID, &t.ShotID, &t.ModelName, &t.Status, &created); err != nil {
+		if err := rows.Scan(&t.ID, &t.ShotID, &t.PromptVersionID, &t.ModelName, &t.FilePath, &t.Status, &created); err != nil {
 			return nil, fmt.Errorf("scan take: %w", err)
 		}
 		if t.CreatedAt, err = parseTime(created); err != nil {

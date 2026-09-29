@@ -51,6 +51,38 @@ func shotURL(projectID, sceneID, shotID string) string {
 	return "/projects/" + projectID + "/scenes/" + sceneID + "?shot=" + shotID
 }
 
+func shotActionURL(shotID, action string) string { return "/shots/" + shotID + "/" + action }
+
+func shotProgressURL(shotID string) string { return "/ws/shots/" + shotID }
+
+// ShotActions starts the generation of a Shot (optionally with an additional direction) or the
+// building of its Reference Pack. Both answer with the Shot card in the GENERATING state.
+templ ShotActions(shotID string) {
+	<form
+		class="mt-2 flex flex-wrap items-center gap-2"
+		hx-post={ shotActionURL(shotID, "generate") }
+		hx-target={ "#shot-" + shotID }
+		hx-swap="outerHTML"
+	>
+		<label class="sr-only" for={ "instruction-" + shotID }>追加の指示</label>
+		<input
+			id={ "instruction-" + shotID }
+			name="additional_instruction"
+			type="text"
+			maxlength="1000"
+			placeholder="追加の指示（任意。例: もう少しカメラを寄せて）"
+			class="min-w-0 flex-1 rounded-md border border-neutral-700 bg-neutral-950 px-2 py-1.5 text-sm"
+		/>
+		@atoms.Button(atoms.TonePrimary, "生成", templ.Attributes{"type": "submit"})
+		@atoms.Button(atoms.ToneNeutral, "Reference Pack", templ.Attributes{
+			"type":      "button",
+			"hx-post":   shotActionURL(shotID, "reference-pack"),
+			"hx-target": "#shot-" + shotID,
+			"hx-swap":   "outerHTML",
+		})
+	</form>
+}
+
 // TakeRow is one Take under a Shot.
 templ TakeRow(t domain.Take) {
 	<li class="flex items-center justify-between gap-2 text-xs text-neutral-300">
@@ -83,6 +115,11 @@ templ ShotCard(d ShotCardData) {
 		if d.Selected {
 			aria-current="true"
 		}
+		if d.Shot.State == domain.ShotGenerating {
+			data-shot-progress
+			data-ws-url={ shotProgressURL(d.Shot.ID) }
+			data-refresh-url={ shotURL(d.ProjectID, d.Shot.SceneID, d.Shot.ID) }
+		}
 	>
 		<div class="flex flex-wrap items-center justify-between gap-2">
 			<a
@@ -95,6 +132,9 @@ templ ShotCard(d ShotCardData) {
 			>{ fmt.Sprintf("Shot %d: %s", d.Shot.OrderIndex+1, d.Shot.Objective) }</a>
 			<span class="flex items-center gap-2 text-xs text-neutral-400">
 				<span>{ secondsText(d.Shot.Duration) }</span>
+				if d.Shot.State == domain.ShotGenerating {
+					@atoms.Spinner("生成中")
+				}
 				@atoms.Badge(atoms.BadgeNeutral, shotStateLabel(d.Shot.State))
 			</span>
 		</div>
@@ -105,6 +145,9 @@ templ ShotCard(d ShotCardData) {
 					<dd class="whitespace-pre-wrap break-words">{ row[1] }</dd>
 				}
 			</dl>
+		}
+		if d.Selected && d.Shot.State != domain.ShotGenerating {
+			@ShotActions(d.Shot.ID)
 		}
 		if len(d.Takes) > 0 {
 			<ul class="mt-2 flex flex-col gap-1 border-t border-neutral-800 pt-2" aria-label="Take 一覧">

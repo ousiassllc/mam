@@ -7,8 +7,10 @@ import (
 	"log/slog"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/briefing"
+	"github.com/ousiassllc/mam/backend/internal/agent/generation"
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/orchestrator"
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -28,6 +30,9 @@ type Deps struct {
 	// LLM is the Reasoning LLM Adapter of the AUTO pipeline. When nil, or when Jobs is nil,
 	// the pipeline is off: Projects stay in DRAFT after the Brief is complete.
 	LLM llm.Completer
+	// Models is the Model Adapter that generates images and videos. Generation (Shot Takes and
+	// Reference Packs) is available only when it, LLM and Jobs are all set.
+	Models *modeladapter.Adapter
 }
 
 // Services is the DI root handed to router.New. Each feature adds one field
@@ -38,6 +43,16 @@ type Services struct {
 	Projects    *ProjectService
 	Chat        *ChatService
 	Plans       *PlanService
+	Generation  *GenerationService
+}
+
+// Recover puts Shots left GENERATING by an abnormal termination back to PLANNING. It MUST run
+// after New and before the job queue starts (their generate jobs are then failed by the queue).
+func (s *Services) Recover(ctx context.Context) (int, error) {
+	if s.Generation.gen == nil {
+		return 0, nil
+	}
+	return s.Generation.gen.Recover(ctx)
 }
 
 // New builds every service from deps. When deps.Jobs is set, job status changes refresh
@@ -73,11 +88,23 @@ func New(deps Deps) *Services {
 			deps.Jobs.Register(domain.JobPlan, c.pipeline.Handle, true)
 		}
 	}
+	gens := repository.NewGenerationRepository(deps.DB)
+	generations := &GenerationService{core: c, shots: gens, progress: newBroker[generation.Progress]()}
+	if deps.Jobs != nil && deps.LLM != nil && deps.Models != nil {
+		generations.gen = generation.New(generation.Deps{
+			Generations: gens, Projects: c.projects, Assets: c.assets, Chat: chat, Jobs: deps.Jobs,
+			LLM: deps.LLM, Adapter: deps.Models, AssetsDir: deps.AssetsDir, Logger: logger,
+			Notify: func(p generation.Progress) { generations.progress.Publish(p.ShotID, p) },
+		})
+		// Not resumable: a generation costs money, so an interrupted one is failed, not repeated.
+		deps.Jobs.Register(domain.JobGenerate, generations.gen.Handle, false)
+	}
 	return &Services{
 		Health:      NewHealthService(deps.DB),
 		Credentials: NewCredentialService(deps.Credentials),
 		Projects:    &ProjectService{c},
 		Chat:        chat,
 		Plans:       &PlanService{c},
+		Generation:  generations,
 	}
 }

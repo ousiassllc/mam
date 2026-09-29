@@ -23,4 +23,5 @@ func registerPages(engine *gin.Engine, services *service.Services) {
 
 	// WebSocket: notifications only, no HTML (spec/architecture/overview.md §7).
 	engine.GET("/ws/projects/:id", handler.ProjectEvents(services.Chat))
+	engine.GET("/ws/shots/:id", handler.ShotProgress(services.Generation))
 }

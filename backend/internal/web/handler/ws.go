@@ -1,8 +1,6 @@
 package handler
 
 import (
-	"github.com/coder/websocket"
-	"github.com/coder/websocket/wsjson"
 	"github.com/gin-gonic/gin"
 
 	"github.com/ousiassllc/mam/backend/internal/service"
@@ -21,23 +19,6 @@ func ProjectEvents(svc *service.ChatService) gin.HandlerFunc {
 		}
 		defer cancel()
 
-		// Accept checks that Origin matches Host, so only pages served by this app can connect.
-		conn, err := websocket.Accept(c.Writer, c.Request, nil)
-		if err != nil {
-			return // Accept has already answered the request
-		}
-		defer func() { _ = conn.CloseNow() }()
-		ctx := conn.CloseRead(c.Request.Context()) // cancelled when the client goes away
-
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case e := <-events:
-				if err := wsjson.Write(ctx, conn, e); err != nil {
-					return
-				}
-			}
-		}
+		streamEvents(c, events)
 	}
 }

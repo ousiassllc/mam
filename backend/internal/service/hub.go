@@ -25,23 +25,22 @@ type Event struct {
 // dropped; the newest one always survives.
 const subscriberBuffer = 16
 
-// Hub fans project events out to subscribers (the WebSocket connections).
-type Hub struct {
+// broker fans events of type T out to the subscribers of a key (a Project or a Shot).
+type broker[T any] struct {
 	mu   sync.Mutex
-	subs map[string]map[chan Event]struct{}
+	subs map[string]map[chan T]struct{}
 }
 
-// NewHub returns an empty Hub.
-func NewHub() *Hub { return &Hub{subs: make(map[string]map[chan Event]struct{})} }
+func newBroker[T any]() *broker[T] { return &broker[T]{subs: make(map[string]map[chan T]struct{})} }
 
-// Subscribe returns a channel of the Project's events and a function that ends the subscription.
-func (h *Hub) Subscribe(projectID string) (<-chan Event, func()) {
-	ch := make(chan Event, subscriberBuffer)
+// Subscribe returns a channel of the key's events and a function that ends the subscription.
+func (h *broker[T]) Subscribe(key string) (<-chan T, func()) {
+	ch := make(chan T, subscriberBuffer)
 	h.mu.Lock()
-	if h.subs[projectID] == nil {
-		h.subs[projectID] = make(map[chan Event]struct{})
+	if h.subs[key] == nil {
+		h.subs[key] = make(map[chan T]struct{})
 	}
-	h.subs[projectID][ch] = struct{}{}
+	h.subs[key][ch] = struct{}{}
 	h.mu.Unlock()
 
 	var once sync.Once
@@ -49,19 +48,19 @@ func (h *Hub) Subscribe(projectID string) (<-chan Event, func()) {
 		once.Do(func() {
 			h.mu.Lock()
 			defer h.mu.Unlock()
-			delete(h.subs[projectID], ch)
-			if len(h.subs[projectID]) == 0 {
-				delete(h.subs, projectID)
+			delete(h.subs[key], ch)
+			if len(h.subs[key]) == 0 {
+				delete(h.subs, key)
 			}
 		})
 	}
 }
 
-// Publish delivers e to every subscriber of the Project without blocking.
-func (h *Hub) Publish(projectID string, e Event) {
+// Publish delivers e to every subscriber of the key without blocking.
+func (h *broker[T]) Publish(key string, e T) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	for ch := range h.subs[projectID] {
+	for ch := range h.subs[key] {
 		select {
 		case ch <- e:
 		default: // lagging client: make room by dropping its oldest hint
@@ -76,3 +75,9 @@ func (h *Hub) Publish(projectID string, e Event) {
 		}
 	}
 }
+
+// Hub fans project events out to subscribers (the WebSocket connections).
+type Hub struct{ *broker[Event] }
+
+// NewHub returns an empty Hub.
+func NewHub() *Hub { return &Hub{newBroker[Event]()} }
