@@ -368,7 +368,8 @@ func TestComposer_HasModeAndQualityControlsAndStaysEnabledWhileGenerating(t *tes
 
 	body := a.get("/projects/"+id, false).Body.String()
 	assert.Contains(t, body, `name="mode"`)
-	assert.Contains(t, body, `name="quality"`)
+	assert.Contains(t, body, `name="quality_policy"`)
+	assert.Contains(t, body, `hx-put="/projects/`+id+`/quality-policy"`, "the Quality control switches the policy")
 	assert.Contains(t, body, `value="auto" checked`)
 	assert.Contains(t, body, `value="balanced" selected`)
 	assert.Contains(t, body, "Scene 02 を生成中")

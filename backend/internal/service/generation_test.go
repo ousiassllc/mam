@@ -44,6 +44,8 @@ const (
 type genReasoner struct {
 	mu    sync.Mutex
 	users map[llm.Agent][]string
+	// extractor answers the State Extractor from its prompt; nil means an unusable answer.
+	extractor func(user string) string
 }
 
 func (g *genReasoner) Complete(_ context.Context, agent llm.Agent, req llm.Request) (llm.Response, error) {
@@ -54,6 +56,9 @@ func (g *genReasoner) Complete(_ context.Context, agent llm.Agent, req llm.Reque
 	}
 	g.users[agent] = append(g.users[agent], req.User)
 	text := map[llm.Agent]string{llm.AgentPromptPlanner: specAnswer, llm.AgentArtDirector: artAnswer}[agent]
+	if agent == llm.AgentStateExtractor && g.extractor != nil {
+		text = g.extractor(req.User)
+	}
 	return llm.Response{Text: text, Provider: llm.ProviderAnthropic, Model: "fake"}, nil
 }
 
@@ -68,6 +73,7 @@ type modelFake struct {
 	mu       sync.Mutex
 	err      error
 	block    chan struct{}
+	actual   *float64 // the cost the vendor reports for a video, when set
 	requests []modeladapter.VideoRequest
 	images   []string
 	inflight atomic.Int32
@@ -89,7 +95,7 @@ func (m *modelFake) GenerateVideo(ctx context.Context, _ string, req modeladapte
 	if m.err != nil {
 		return modeladapter.VideoResult{}, m.err
 	}
-	return modeladapter.VideoResult{Data: mp4Bytes, MimeType: "video/mp4"}, nil
+	return modeladapter.VideoResult{Data: mp4Bytes, MimeType: "video/mp4", ActualCost: m.actual}, nil
 }
 
 func (m *modelFake) GenerateImage(_ context.Context, model string, _ modeladapter.ImageRequest) (modeladapter.ImageResult, error) {
@@ -119,6 +125,11 @@ type genFixture struct {
 
 func newGenFixture(t *testing.T, withModels bool) genFixture {
 	t.Helper()
+	return newGenFixtureWithFreeBytes(t, withModels, func(string) (uint64, error) { return 1 << 40, nil })
+}
+
+func newGenFixtureWithFreeBytes(t *testing.T, withModels bool, freeBytes func(string) (uint64, error)) genFixture {
+	t.Helper()
 	dir := t.TempDir()
 	db, err := repository.Open(context.Background(), filepath.Join(dir, "mam.db"), nil)
 	require.NoError(t, err)
@@ -133,7 +144,7 @@ func newGenFixture(t *testing.T, withModels bool) genFixture {
 		backends.Video[m] = fake
 	}
 	noSleep := func(context.Context, time.Duration) error { return nil }
-	deps := service.Deps{DB: db, AssetsDir: filepath.Join(dir, "assets"), LLM: reasoner}
+	deps := service.Deps{DB: db, AssetsDir: filepath.Join(dir, "assets"), LLM: reasoner, FreeBytes: freeBytes}
 	jobs := jobqueue.New(repository.NewJobRepository(db), jobqueue.Options{})
 	deps.Jobs = jobs
 	if withModels {
@@ -510,4 +521,109 @@ func TestRecover_ReleasesShotsThatWereBeingGeneratedWhenTheAppStopped(t *testing
 	require.NoError(t, err)
 	assert.Equal(t, 1, n)
 	assert.Equal(t, domain.ShotPlanning, f.shot(t).State)
+}
+
+var characterIDRe = regexp.MustCompile(`character id="([^"]+)"`)
+
+// extractAnswer makes the State Extractor say Mio is anxious at the hallway door and the camera is static.
+func extractAnswer(user string) string {
+	m := characterIDRe.FindStringSubmatch(user)
+	if m == nil {
+		return `{"changes":[{"target":"camera","field":"movement","value":"static"}]}`
+	}
+	return `{"changes":[
+		{"target":"character","id":"` + m[1] + `","field":"emotion","value":"anxious"},
+		{"target":"character","id":"` + m[1] + `","field":"position","value":"hallway_door"},
+		{"target":"camera","field":"movement","value":"static"},
+		{"target":"story","field":"previous_event","value":"phone_call_ended"}]}`
+}
+
+func (f genFixture) buildReferencePack(t *testing.T) {
+	t.Helper()
+	_, err := f.svc.Generation.BuildReferencePack(context.Background(), f.shotID)
+	require.NoError(t, err)
+	f.waitJobsDone(t)
+	f.waitShotState(t, domain.ShotPlanning)
+}
+
+func (f genFixture) generateAndWait(t *testing.T, shotID string, jobs int) {
+	t.Helper()
+	_, err := f.svc.Generation.GenerateShot(context.Background(), shotID, "")
+	require.NoError(t, err)
+	require.Eventually(t, func() bool {
+		return f.count(t, `SELECT COUNT(*) FROM job WHERE status = 'succeeded' AND kind = 'generate'`) == jobs
+	}, 30*time.Second, 10*time.Millisecond)
+}
+
+func TestGenerateShot_StateExtractorAppendsWorldStateVersionAndTheNextShotStartsFromIt(t *testing.T) {
+	f := newGenFixture(t, true)
+	f.llm.extractor = extractAnswer
+	f.buildReferencePack(t)
+
+	f.generateAndWait(t, f.shotID, 2) // the Reference Pack job counts as the first
+
+	// F-10: a State Diff and a new world_state_version were appended for the Shot.
+	assert.Equal(t, 1, f.count(t, `SELECT COUNT(*) FROM world_state_version WHERE project_id = ?`, f.projectID))
+	assert.Equal(t, 1, f.count(t, `SELECT COUNT(*) FROM state_diff WHERE shot_id = ? AND take_id IN (SELECT id FROM take)`, f.shotID))
+	var diff string
+	require.NoError(t, f.query(t, `SELECT diff FROM state_diff WHERE shot_id = ?`, f.shotID).Scan(&diff))
+	assert.Contains(t, diff, `"field":"emotion"`)
+	assert.Contains(t, diff, `"to":"anxious"`)
+	world, err := f.svc.World.View(context.Background(), f.projectID)
+	require.NoError(t, err)
+	require.NotEmpty(t, world.World.Characters)
+	assert.Equal(t, "anxious", world.World.Characters[0].Emotion)
+	assert.Equal(t, "hallway_door", world.World.Characters[0].Position)
+	assert.Equal(t, "static", world.World.Camera.Movement)
+	assert.Equal(t, 1, world.World.Story.Scene, "the Shot is in the first Scene")
+	assert.Equal(t, "phone_call_ended", world.World.Story.PreviousEvent)
+
+	// F-09 / F-10: the next Shot's Prompt Planner input carries that state.
+	shot2, err := f.svc.Plans.CreateShot(context.Background(), f.sceneID, service.ShotForm{Objective: "ドアを開ける", DurationSeconds: "4"})
+	require.NoError(t, err)
+	f.generateAndWait(t, shot2.Shots[1].ID, 3)
+	planner := f.llm.users[llm.AgentPromptPlanner]
+	require.Len(t, planner, 2)
+	for _, want := range []string{`emotion="anxious"`, `position="hallway_door"`, `movement="static"`, "phone_call_ended"} {
+		assert.Contains(t, planner[1], want)
+	}
+	assert.NotContains(t, planner[0], "anxious", "the first Shot had no earlier state")
+	assert.Equal(t, 2, f.count(t, `SELECT COUNT(*) FROM world_state_version WHERE project_id = ?`, f.projectID), "versions are appended, never overwritten")
+}
+
+func TestGenerateShot_StateExtractorLeavesLockedFieldsAlone(t *testing.T) {
+	f := newGenFixture(t, true)
+	f.llm.extractor = extractAnswer
+	f.buildReferencePack(t)
+	var charID string
+	require.NoError(t, f.query(t, `SELECT id FROM character WHERE project_id = ?`, f.projectID).Scan(&charID))
+	require.NoError(t, f.db.Write(context.Background(), func(ctx context.Context, tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx,
+			`INSERT INTO lock (id, project_id, target_type, target_id, parameter_name, mode, value) VALUES ('l1', ?, 'character', ?, 'emotion', 'lock', 'null')`, f.projectID, charID)
+		return err
+	}))
+	require.NoError(t, f.db.Write(context.Background(), func(ctx context.Context, tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, `UPDATE character SET emotion = 'calm' WHERE id = ?`, charID)
+		return err
+	}))
+
+	f.generateAndWait(t, f.shotID, 2)
+
+	world, err := f.svc.World.View(context.Background(), f.projectID)
+	require.NoError(t, err)
+	assert.Equal(t, "calm", world.World.Characters[0].Emotion, "the LOCKed emotion is not updated")
+	assert.Equal(t, "hallway_door", world.World.Characters[0].Position, "unlocked fields still follow the Shot")
+	var diff string
+	require.NoError(t, f.query(t, `SELECT diff FROM state_diff WHERE shot_id = ?`, f.shotID).Scan(&diff))
+	assert.NotContains(t, diff, `"emotion"`, "LOCKed fields are excluded from the State Diff")
+}
+
+func TestGenerateShot_StateExtractorFailureDoesNotFailTheGeneration(t *testing.T) {
+	f := newGenFixture(t, true) // the fake reasoner gives the State Extractor an unusable answer
+
+	f.generateAndWait(t, f.shotID, 1)
+
+	assert.Equal(t, 3, f.count(t, `SELECT COUNT(*) FROM take`), "the Takes are kept")
+	assert.Zero(t, f.count(t, `SELECT COUNT(*) FROM world_state_version`), "the World State simply stays as it was")
+	assert.Zero(t, f.count(t, `SELECT COUNT(*) FROM job WHERE status = 'failed'`))
 }

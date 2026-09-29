@@ -31,6 +31,8 @@ func statusOf(c *gin.Context, err error) (int, string) {
 		return http.StatusConflict, "この Take はすでに Judge 中です"
 	case errors.Is(err, service.ErrBudgetExceeded):
 		return http.StatusPaymentRequired, "予算上限を超えるため生成できません"
+	case errors.Is(err, service.ErrLocked):
+		return http.StatusLocked, "LOCK されている項目は変更できません"
 	case errors.Is(err, service.ErrUnavailable):
 		return http.StatusServiceUnavailable, "生成機能が有効になっていません（API キーと設定を確認してください）"
 	}

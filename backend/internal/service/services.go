@@ -35,6 +35,8 @@ type Deps struct {
 	// Models is the Model Adapter that generates images and videos. Generation (Shot Takes and
 	// Reference Packs) is available only when it, LLM and Jobs are all set.
 	Models *modeladapter.Adapter
+	// FreeBytes reports the free disk space at a path. Nil selects fsutil.FreeBytes.
+	FreeBytes func(path string) (uint64, error)
 	// Frames samples frames from Takes (ffmpeg). The AI Video Judge is available only when it, LLM
 	// and Jobs are all set.
 	Frames judge.FrameSource
@@ -54,6 +56,8 @@ type Services struct {
 	Chat        *ChatService
 	Plans       *PlanService
 	Generation  *GenerationService
+	World       *WorldService
+	Policy      *PolicyService
 	Judge       *JudgeService
 }
 
@@ -100,6 +104,8 @@ func New(deps Deps) *Services {
 		}
 	}
 	gens := repository.NewGenerationRepository(deps.DB)
+	world := repository.NewWorldRepository(deps.DB)
+	policies := repository.NewPolicyRepository(deps.DB)
 	generations := &GenerationService{core: c, shots: gens, progress: newBroker[generation.Progress]()}
 	judges := &JudgeService{core: c, judges: repository.NewJudgeRepository(deps.DB), generations: generations}
 	var takeJudge generation.Judger // stays nil (not a typed nil) while the Judge is off
@@ -120,7 +126,7 @@ func New(deps Deps) *Services {
 	}
 	if deps.Jobs != nil && deps.LLM != nil && deps.Models != nil {
 		generations.gen = generation.New(generation.Deps{
-			Generations: gens, Projects: c.projects, Assets: c.assets, Chat: chat, Jobs: deps.Jobs,
+			Generations: gens, World: world, Projects: c.projects, Policies: policies, FreeBytes: deps.FreeBytes, Assets: c.assets, Chat: chat, Jobs: deps.Jobs,
 			LLM: deps.LLM, Adapter: deps.Models, AssetsDir: deps.AssetsDir, Logger: logger, Judge: takeJudge,
 			Notify: func(p generation.Progress) { generations.progress.Publish(p.ShotID, p) },
 		})
@@ -134,6 +140,10 @@ func New(deps Deps) *Services {
 		Chat:        chat,
 		Plans:       &PlanService{c},
 		Generation:  generations,
-		Judge:       judges,
+		World:       &WorldService{core: c, world: world},
+		Policy: &PolicyService{
+			core: c, freeBytes: deps.FreeBytes, policies: policies, costs: repository.NewCostRepository(deps.DB), storage: repository.NewStorageRepository(deps.DB),
+		},
+		Judge: judges,
 	}
 }

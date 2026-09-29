@@ -237,24 +237,16 @@ func neighbours(shots []repository.ShotRef, shotID string) (prev, next *domain.S
 
 // lockedDimensions maps the LOCKs that apply to the Shot to Judge dimensions. A parameter is LOCKed
 // by a lock row of its Character / Product, or by the Shot Spec itself (identity: locked).
-func lockedDimensions(spec domain.ShotSpec, locks []domain.LockKey) map[domain.JudgeDimension]bool {
-	has := func(target, id, param string) bool {
-		for _, l := range locks {
-			if l.TargetType == target && l.TargetID == id && l.Parameter == param {
-				return true
-			}
-		}
-		return false
-	}
+func lockedDimensions(spec domain.ShotSpec, locks domain.LockSet) map[domain.JudgeDimension]bool {
 	out := map[domain.JudgeDimension]bool{}
-	if c := spec.Character; c != nil && (c.Identity == "locked" || has(domain.LockTargetCharacter, c.ID, domain.LockParamIdentity)) {
+	if c := spec.Character; c != nil && (c.Identity == "locked" || locks.Locked(domain.TargetCharacter, c.ID, domain.LockParamIdentity)) {
 		out[domain.DimCharacterIdentity], out[domain.DimFace] = true, true
 	}
 	if p := spec.Product; p != nil {
-		if p.Geometry == "locked" || has(domain.LockTargetProduct, p.ID, domain.LockParamGeometry) {
+		if p.Geometry == "locked" || locks.Locked(domain.TargetProduct, p.ID, domain.LockParamGeometry) {
 			out[domain.DimProductGeometry] = true
 		}
-		if has(domain.LockTargetProduct, p.ID, domain.LockParamLabel) {
+		if locks.Locked(domain.TargetProduct, p.ID, domain.LockParamLabel) {
 			out[domain.DimLogoTextAccuracy] = true
 		}
 	}

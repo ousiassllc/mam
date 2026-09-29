@@ -13,12 +13,17 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/promptplanner"
+	"github.com/ousiassllc/mam/backend/internal/agent/stateextractor"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/fsutil"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
 
 // ErrShotBusy means the Shot is already being generated (409, no double execution).
 var ErrShotBusy = errors.New("generation: the shot is already being generated")
+
+// ErrGenerationTimeLimit means a Take took longer than the Max generation time of the Quality/Cost Policy.
+var ErrGenerationTimeLimit = errors.New("generation: the generation time limit was exceeded")
 
 // Stage is what a Shot is doing, as shown by the progress notifications (WebSocket /ws/shots/:id).
 type Stage string
@@ -65,9 +70,12 @@ type Jobs interface {
 type Deps struct {
 	Generations *repository.GenerationRepository
 	Projects    *repository.ProjectRepository
+	Policies    *repository.PolicyRepository
 	Assets      *repository.AssetRepository
-	Chat        Chat
-	Jobs        Jobs
+	// World holds the World State the State Extractor updates after each Shot.
+	World *repository.WorldRepository
+	Chat  Chat
+	Jobs  Jobs
 	// LLM is the Reasoning LLM Adapter the Prompt Planner and the Art Director reason through.
 	LLM     llm.Completer
 	Adapter *modeladapter.Adapter
@@ -75,6 +83,8 @@ type Deps struct {
 	AssetsDir string
 	// Judge, when set, judges every Take as soon as it is made (AI Video Judge, F-13).
 	Judge Judger
+	// FreeBytes reports the free disk space at a path; it defaults to fsutil.FreeBytes.
+	FreeBytes func(path string) (uint64, error)
 	// Notify receives every progress notification. It MUST NOT block.
 	Notify func(Progress)
 	Logger *slog.Logger
@@ -82,27 +92,35 @@ type Deps struct {
 
 // Orchestrator is the Generation Orchestrator. It is safe for concurrent use.
 type Orchestrator struct {
-	gens     *repository.GenerationRepository
-	projects *repository.ProjectRepository
-	assets   *repository.AssetRepository
-	chat     Chat
-	jobs     Jobs
-	adapter  *modeladapter.Adapter
-	planner  *promptplanner.Planner
-	art      *artdirector.Director
-	files    fileStore
-	judge    Judger
-	notify   func(Progress)
-	logger   *slog.Logger
+	gens      *repository.GenerationRepository
+	projects  *repository.ProjectRepository
+	policies  *repository.PolicyRepository
+	assets    *repository.AssetRepository
+	chat      Chat
+	jobs      Jobs
+	adapter   *modeladapter.Adapter
+	planner   *promptplanner.Planner
+	art       *artdirector.Director
+	world     *repository.WorldRepository
+	extractor *stateextractor.Extractor
+	files     fileStore
+	judge     Judger
+	freeDisk  func(path string) (uint64, error)
+	notify    func(Progress)
+	logger    *slog.Logger
 }
 
 // New returns an Orchestrator.
 func New(d Deps) *Orchestrator {
 	o := &Orchestrator{
-		gens: d.Generations, projects: d.Projects, assets: d.Assets, chat: d.Chat, jobs: d.Jobs, adapter: d.Adapter,
+		gens: d.Generations, projects: d.Projects, policies: d.Policies, assets: d.Assets, chat: d.Chat, jobs: d.Jobs, adapter: d.Adapter,
 		planner: promptplanner.New(d.LLM), art: artdirector.New(d.LLM),
-		files: fileStore{root: d.AssetsDir}, judge: d.Judge, notify: d.Notify, logger: d.Logger,
+		files: fileStore{root: d.AssetsDir}, freeDisk: d.FreeBytes, judge: d.Judge, notify: d.Notify, logger: d.Logger,
 	}
+	if o.freeDisk == nil {
+		o.freeDisk = fsutil.FreeBytes
+	}
+	o.world, o.extractor = d.World, stateextractor.New(d.LLM)
 	if o.logger == nil {
 		o.logger = slog.New(slog.DiscardHandler)
 	}
@@ -135,7 +153,7 @@ func (o *Orchestrator) Start(ctx context.Context, shotID, instruction string) (d
 	if err != nil {
 		return domain.Job{}, err
 	}
-	project, err := o.projects.Get(ctx, ref.ProjectID)
+	policy, err := o.policies.Get(ctx, ref.ProjectID)
 	if err != nil {
 		return domain.Job{}, err
 	}
@@ -143,10 +161,43 @@ func (o *Orchestrator) Start(ctx context.Context, shotID, instruction string) (d
 	if err != nil {
 		return domain.Job{}, err
 	}
-	if _, err := Decide(o.adapter.Config(), project.QualityPolicy, ref.Shot.Duration, budget); err != nil {
+	strategy, err := Decide(o.adapter.Config(), policy.Quality, ref.Shot.Duration, budget)
+	if err != nil {
 		return domain.Job{}, err
 	}
-	return o.enqueue(ctx, ref, payload{Action: ActionGenerate, ShotID: shotID, Instruction: strings.TrimSpace(instruction)})
+	job, err := o.enqueue(ctx, ref, payload{Action: ActionGenerate, ShotID: shotID, Instruction: strings.TrimSpace(instruction)})
+	if err != nil {
+		return domain.Job{}, err
+	}
+	o.warnLowDisk(ctx, ref, strategy)
+	return job, nil
+}
+
+// bytesPerVideoSecond is the assumed size of one second of generated video (about 16 Mbit/s: the
+// 1080p clips of the models). It is only used to warn before the disk fills up.
+const bytesPerVideoSecond = 2 << 20
+
+// warnLowDisk tells the user in the thread when the free space of the assets volume is smaller than
+// what the Takes of the strategy are expected to take. Generation still starts: the estimate is rough
+// (non-functional.md §4 "警告してから生成を開始する").
+func (o *Orchestrator) warnLowDisk(ctx context.Context, ref repository.ShotRef, s Strategy) {
+	need := uint64(float64(s.Takes) * s.DurationSeconds * bytesPerVideoSecond)
+	free, err := o.freeDisk(o.files.root)
+	if err != nil {
+		o.logger.Warn("read free disk space failed", "err", err)
+		return
+	}
+	if free >= need {
+		return
+	}
+	notice := domain.ChatMessage{
+		Role: domain.RoleAssistant, Kind: domain.KindText,
+		Content: fmt.Sprintf("ディスクの空き容量が少ない可能性があります（Shot %d の生成に約 %s 必要な見込みに対し、空きは %s）。"+
+			"不要な Take は設定画面（/projects/%s/settings）からアーカイブできます。", ref.Shot.OrderIndex+1, domain.FormatBytes(need), domain.FormatBytes(free), ref.ProjectID),
+	}
+	if err := o.chat.Announce(ctx, ref.ProjectID, notice); err != nil {
+		o.logger.Error("post disk warning failed", "shot_id", ref.Shot.ID, "err", err)
+	}
 }
 
 // StartReferencePack begins building (or rebuilding) the Reference Pack of the Shot.
@@ -257,6 +308,8 @@ func FailureReason(err error) string {
 		return "生成モデルまたは LLM の API キーが設定されていません（設定画面でキーを登録してください）"
 	case errors.Is(err, ErrBudgetExceeded):
 		return "予算上限を超えるため生成できません"
+	case errors.Is(err, ErrGenerationTimeLimit):
+		return "生成が制限時間（Max generation time）を超えました。設定画面で制限時間を延ばすか、ポリシーを見直してください"
 	case modeladapter.RateLimited(err):
 		return "生成モデルのレート制限に達しました。しばらく待ってから再実行してください"
 	case errors.Is(err, modeladapter.ErrCircuitOpen):

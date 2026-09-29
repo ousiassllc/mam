@@ -131,7 +131,7 @@ func (o *Orchestrator) buildReferencePack(ctx context.Context, ref repository.Sh
 		})
 		pack.Assets = append(pack.Assets, r.asset)
 		pack.Costs = append(pack.Costs, domain.CostEntry{
-			ProjectID: ref.ProjectID, ShotID: shot.ID, Provider: r.output.Model, EstimatedCost: r.output.EstimatedCost,
+			ProjectID: ref.ProjectID, ShotID: shot.ID, Provider: r.output.Model, EstimatedCost: r.output.EstimatedCost, ActualCost: r.output.ActualCost,
 		})
 	}
 	if err := o.gens.SaveReferencePack(context.WithoutCancel(ctx), pack); err != nil {

@@ -15,10 +15,10 @@ func TestLockedDimensions_ComeFromTheSpecAndFromTheLockTable(t *testing.T) {
 	}
 	assert.Empty(t, lockedDimensions(spec, nil), "nothing is locked")
 
-	got := lockedDimensions(spec, []domain.LockKey{
-		{TargetType: "character", TargetID: "c1", Parameter: "identity"},
-		{TargetType: "product", TargetID: "p1", Parameter: "label"},
-		{TargetType: "product", TargetID: "other", Parameter: "geometry"},
+	got := lockedDimensions(spec, domain.LockSet{
+		{Target: domain.TargetCharacter, ID: "c1", Field: "identity"}:  {},
+		{Target: domain.TargetProduct, ID: "p1", Field: "label"}:       {},
+		{Target: domain.TargetProduct, ID: "other", Field: "geometry"}: {},
 	})
 	assert.Equal(t, map[domain.JudgeDimension]bool{
 		domain.DimCharacterIdentity: true, domain.DimFace: true, domain.DimLogoTextAccuracy: true,

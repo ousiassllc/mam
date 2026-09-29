@@ -108,7 +108,7 @@ func TestJudgeRepository_LocksListsOnlyLockedParametersOfTheProject(t *testing.T
 	}))
 	locks, err := repository.NewJudgeRepository(db).Locks(context.Background(), "p1")
 	require.NoError(t, err)
-	assert.Equal(t, []domain.LockKey{{TargetType: "character", TargetID: "c1", Parameter: "identity"}}, locks)
+	assert.Equal(t, domain.LockSet{{Target: domain.TargetCharacter, ID: "c1", Field: "identity"}: {}}, locks)
 }
 
 func TestJudgeRepository_ShotIsJudgingOnlyWhileNoOtherWorkHasIt(t *testing.T) {

@@ -163,23 +163,9 @@ func nonNilSlice[T any](s []T) []T {
 	return s
 }
 
-// Locks returns the parameters of the Project that are LOCKed (lock.mode = 'lock').
-func (r *JudgeRepository) Locks(ctx context.Context, projectID string) ([]domain.LockKey, error) {
-	rows, err := r.db.Reader().QueryContext(ctx,
-		`SELECT target_type, target_id, parameter_name FROM lock WHERE project_id = ? AND mode = 'lock'`, projectID)
-	if err != nil {
-		return nil, fmt.Errorf("list locks: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-	var out []domain.LockKey
-	for rows.Next() {
-		var k domain.LockKey
-		if err := rows.Scan(&k.TargetType, &k.TargetID, &k.Parameter); err != nil {
-			return nil, err
-		}
-		out = append(out, k)
-	}
-	return out, rows.Err()
+// Locks returns the LOCKed fields of the Project (lock.mode = 'lock').
+func (r *JudgeRepository) Locks(ctx context.Context, projectID string) (domain.LockSet, error) {
+	return readLocks(ctx, r.db.Reader(), projectID)
 }
 
 // JudgePending reports whether a judge job of the Take is queued or running.

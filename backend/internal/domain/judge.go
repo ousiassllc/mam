@@ -223,17 +223,9 @@ func nonNil[T any](s []T) []T {
 	return s
 }
 
-// LockKey names one LOCKed parameter (lock.target_type, lock.target_id, lock.parameter_name).
-type LockKey struct {
-	TargetType string
-	TargetID   string
-	Parameter  string
-}
-
-// Lock targets and parameters the AI Video Judge checks (spec/spec.md §6, §13).
+// Lock parameters the AI Video Judge checks (lock.parameter_name of a Character or Product,
+// spec/spec.md §6, §13).
 const (
-	LockTargetCharacter = "character"
-	LockTargetProduct   = "product"
 	// LockParamIdentity is the Character Identity: the face and look of the Character.
 	LockParamIdentity = "identity"
 	// LockParamGeometry is the Product Geometry: the shape of the Product.

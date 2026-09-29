@@ -80,3 +80,18 @@ func TestPlan_ExistingSpecAndPreviousShotAreGivenToTheModel(t *testing.T) {
 	assert.Contains(t, f.user, "black_coat_v2", "wardrobe continuity comes from the previous shot")
 	assert.Contains(t, f.user, "She runs", "a revision starts from the current spec")
 }
+
+func TestPlan_WorldStateLeftByThePreviousShotIsGivenToTheModel(t *testing.T) {
+	f := &fakeLLM{answer: good}
+	in := input()
+	in.World = domain.WorldContext{
+		Characters: []domain.WorldCharacter{{ID: "c1", Name: "Mio", Emotion: "anxious", Position: "hallway_door", CurrentAction: "reaching_for_handle"}},
+		Camera:     domain.WorldCamera{Lens: "35mm", Movement: "static"},
+		Story:      domain.WorldStory{Scene: 8, PreviousEvent: "phone_call_ended"},
+	}
+	_, err := promptplanner.New(f).Plan(context.Background(), in)
+	require.NoError(t, err)
+	for _, want := range []string{"anxious", "hallway_door", "reaching_for_handle", `lens="35mm"`, "phone_call_ended"} {
+		assert.Contains(t, f.user, want, "the next shot starts from the state the last one left")
+	}
+}

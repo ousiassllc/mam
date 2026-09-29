@@ -19,6 +19,8 @@ var (
 	ErrBudgetExceeded = errors.New("service: budget ceiling exceeded")
 	// ErrUnavailable means generation is not configured (no Model Adapter, job queue or Reasoning LLM). HTTP 503.
 	ErrUnavailable = errors.New("service: generation is not available")
+	// ErrLocked means the change would touch a field the user has LOCKed. HTTP 423.
+	ErrLocked = errors.New("service: field is locked")
 )
 
 // ValidationError is invalid user input. Field names the form field ("" for the
