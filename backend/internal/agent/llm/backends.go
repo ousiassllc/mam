@@ -3,6 +3,7 @@ package llm
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -141,7 +142,7 @@ func (b anthropicBackend) Complete(ctx context.Context, model string, req Reques
 		"model":      model,
 		"max_tokens": req.MaxTokens,
 		"system":     req.System,
-		"messages":   []map[string]any{{"role": "user", "content": req.User}},
+		"messages":   []map[string]any{{"role": "user", "content": anthropicContent(req)}},
 	})
 	if err != nil {
 		return "", err
@@ -180,7 +181,7 @@ func (b openAIBackend) Complete(ctx context.Context, model string, req Request) 
 		"max_completion_tokens": req.MaxTokens,
 		"messages": []map[string]any{
 			{"role": "system", "content": req.System},
-			{"role": "user", "content": req.User},
+			{"role": "user", "content": openAIContent(req)},
 		},
 	}
 	if req.JSON {
@@ -220,7 +221,7 @@ func (b googleBackend) Complete(ctx context.Context, model string, req Request) 
 	}
 	data, err := b.post(ctx, "/v1beta/models/"+url.PathEscape(model)+":generateContent", map[string]string{"x-goog-api-key": key}, map[string]any{
 		"systemInstruction": map[string]any{"parts": []map[string]any{{"text": req.System}}},
-		"contents":          []map[string]any{{"role": "user", "parts": []map[string]any{{"text": req.User}}}},
+		"contents":          []map[string]any{{"role": "user", "parts": googleParts(req)}},
 		"generationConfig":  gen,
 	})
 	if err != nil {
@@ -248,4 +249,52 @@ func (b googleBackend) Complete(ctx context.Context, model string, req Request) 
 		return "", b.emptyAnswer()
 	}
 	return text.String(), nil
+}
+
+// anthropicContent is the user content of a request: the plain text, or text and pictures.
+func anthropicContent(req Request) any {
+	if len(req.Images) == 0 {
+		return req.User
+	}
+	blocks := []map[string]any{{"type": "text", "text": req.User}}
+	for _, img := range req.Images {
+		if img.Caption != "" {
+			blocks = append(blocks, map[string]any{"type": "text", "text": img.Caption})
+		}
+		blocks = append(blocks, map[string]any{"type": "image", "source": map[string]any{
+			"type": "base64", "media_type": img.MimeType, "data": base64.StdEncoding.EncodeToString(img.Data),
+		}})
+	}
+	return blocks
+}
+
+// openAIContent is the user content of a request: the plain text, or text and pictures.
+func openAIContent(req Request) any {
+	if len(req.Images) == 0 {
+		return req.User
+	}
+	parts := []map[string]any{{"type": "text", "text": req.User}}
+	for _, img := range req.Images {
+		if img.Caption != "" {
+			parts = append(parts, map[string]any{"type": "text", "text": img.Caption})
+		}
+		parts = append(parts, map[string]any{"type": "image_url", "image_url": map[string]any{
+			"url": "data:" + img.MimeType + ";base64," + base64.StdEncoding.EncodeToString(img.Data),
+		}})
+	}
+	return parts
+}
+
+// googleParts is the user parts of a request: the text, then the pictures.
+func googleParts(req Request) []map[string]any {
+	parts := []map[string]any{{"text": req.User}}
+	for _, img := range req.Images {
+		if img.Caption != "" {
+			parts = append(parts, map[string]any{"text": img.Caption})
+		}
+		parts = append(parts, map[string]any{"inline_data": map[string]any{
+			"mime_type": img.MimeType, "data": base64.StdEncoding.EncodeToString(img.Data),
+		}})
+	}
+	return parts
 }

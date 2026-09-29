@@ -1,0 +1,52 @@
+package organisms
+
+import "github.com/ousiassllc/mam/backend/internal/domain"
+
+// PolicyFormData is the state of a settings form. Errors are keyed by form field name; Typed holds the
+// values of a rejected submission.
+type PolicyFormData struct {
+	Project   domain.Project
+	Policy    domain.ProjectPolicy
+	Effective domain.EffectivePolicy
+	Errors    map[string]string
+	Typed     map[string]string
+	Saved     bool
+}
+
+// ProductionTemplateForm switches the Production Template (F-21) and shows the evaluation axes
+// the Judge and the Editor use, from the highest priority to the lowest. A change is saved at once.
+templ ProductionTemplateForm(d PolicyFormData) {
+	<form
+		id="production-template-form"
+		class="flex flex-col gap-3"
+		hx-put={ "/projects/" + d.Project.ID + "/production-template" }
+		hx-trigger="change"
+		hx-target="this"
+		hx-swap="outerHTML"
+	>
+		<fieldset class="flex flex-col gap-3">
+			<legend class="sr-only">Production Template</legend>
+			for _, t := range domain.ProductionTemplates() {
+				<label class="flex cursor-pointer gap-3 rounded-md border border-neutral-700 p-3 has-[:checked]:border-indigo-400">
+					<input type="radio" name="production_template" value={ string(t) } checked?={ t == d.Policy.Template } class="mt-1"/>
+					<span class="flex flex-col gap-1">
+						<span class="text-sm font-medium">{ t.Label() }</span>
+						<ol class="flex flex-wrap gap-x-3 gap-y-1 text-xs text-neutral-400">
+							for i, a := range t.Axes() {
+								<li>
+									{ a.Label() } <span class="text-neutral-500">{ axisWeightPercent(t, a) }</span>
+									if i < len(t.Axes())-1 {
+										<span aria-hidden="true">›</span>
+									}
+								</li>
+							}
+						</ol>
+					</span>
+				</label>
+			}
+		</fieldset>
+		if msg := d.Errors["production_template"]; msg != "" {
+			<p class="text-sm text-red-300" role="alert">{ msg }</p>
+		}
+	</form>
+}

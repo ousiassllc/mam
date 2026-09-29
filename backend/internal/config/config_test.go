@@ -60,3 +60,23 @@ func TestLoad_RejectsInvalidValues(t *testing.T) {
 	_, err = config.Load([]string{"-nope"}, env(base), io.Discard)
 	assert.Error(t, err)
 }
+
+func TestLoad_JudgeAndFaceModelSettings(t *testing.T) {
+	cfg, err := config.Load([]string{"--data-dir", "/d"}, func(string) string { return "" }, io.Discard)
+	require.NoError(t, err)
+	assert.Equal(t, "/d/models", cfg.FaceModels(), "the models default to <data-dir>/models")
+	assert.Empty(t, cfg.JudgeConfigPath)
+
+	env := map[string]string{"MAM_JUDGE_CONFIG": "/j.json", "MAM_FACE_MODEL_DIR": "/m", "MAM_ONNXRUNTIME_LIB": "/lib/libonnxruntime.so"}
+	cfg, err = config.Load([]string{"--data-dir", "/d"}, func(k string) string { return env[k] }, io.Discard)
+	require.NoError(t, err)
+	assert.Equal(t, "/j.json", cfg.JudgeConfigPath)
+	assert.Equal(t, "/m", cfg.FaceModels())
+	assert.Equal(t, "/lib/libonnxruntime.so", cfg.ONNXRuntimeLib)
+
+	cfg, err = config.Load([]string{"--data-dir", "/d", "--judge-config", "/x.json", "--face-model-dir", "/y", "--onnxruntime-lib", "/z.so"}, func(k string) string { return env[k] }, io.Discard)
+	require.NoError(t, err)
+	assert.Equal(t, "/x.json", cfg.JudgeConfigPath, "a flag beats the environment")
+	assert.Equal(t, "/y", cfg.FaceModels())
+	assert.Equal(t, "/z.so", cfg.ONNXRuntimeLib)
+}

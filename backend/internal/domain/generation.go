@@ -45,10 +45,12 @@ type PromptVersion struct {
 }
 
 // CostEntry is a row of cost_ledger_entry. Provider is a ModelName. ShotID and TakeID may be empty.
+// ActualCost is the cost the vendor reported for the call (nil when it reports none).
 type CostEntry struct {
 	ProjectID     string
 	ShotID        string
 	TakeID        string
 	Provider      ModelName
 	EstimatedCost float64
+	ActualCost    *float64
 }

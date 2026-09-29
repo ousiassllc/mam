@@ -48,4 +48,5 @@ func registerAPIRoutes(api huma.API, services *service.Services) {
 		out.Body.Database = st.Database
 		return out, nil
 	})
+	registerJudgeAPI(api, services)
 }

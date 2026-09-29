@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"regexp"
 	"sync"
+	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/planning"
@@ -59,7 +60,7 @@ type adapterRecord struct {
 // Spec, decides the strategy, and makes the Takes.
 func (o *Orchestrator) generate(ctx context.Context, ref repository.ShotRef, instruction string) (Progress, error) {
 	shot := ref.Shot
-	project, err := o.projects.Get(ctx, ref.ProjectID)
+	policy, err := o.policies.Get(ctx, ref.ProjectID)
 	if err != nil {
 		return Progress{}, err
 	}
@@ -82,7 +83,7 @@ func (o *Orchestrator) generate(ctx context.Context, ref repository.ShotRef, ins
 	spec := current
 	if !hasSpec || instruction != "" {
 		in := promptplanner.Input{
-			Brief: brief, Template: project.ProductionTemplate, Scene: ref.Scene, Shot: shot,
+			Brief: brief, Template: policy.Template, Scene: ref.Scene, Shot: shot,
 			Instruction: instruction, World: world, Previous: previousSpec(shots, shot.ID), References: references,
 		}
 		if hasSpec {
@@ -98,7 +99,7 @@ func (o *Orchestrator) generate(ctx context.Context, ref repository.ShotRef, ins
 	if err != nil {
 		return Progress{}, err
 	}
-	strategy, err := Decide(o.adapter.Config(), project.QualityPolicy, shot.Duration, budget)
+	strategy, err := Decide(o.adapter.Config(), policy.Quality, shot.Duration, budget)
 	if err != nil {
 		return Progress{}, err
 	}
@@ -119,11 +120,12 @@ func (o *Orchestrator) generate(ctx context.Context, ref repository.ShotRef, ins
 	o.notify(Progress{ShotID: shot.ID, Action: ActionGenerate, Stage: StageGenerating, Message: "動画を生成しています", TakesTotal: strategy.Takes})
 	var made counter
 	errs := parallel(strategy.Takes, func(i int) error {
-		takeID, err := o.makeTake(ctx, ref, pv, strategy, job, i)
+		takeID, err := o.makeTake(ctx, ref, pv, strategy, job, i, policy.Effective().MaxGenerationTime)
 		if err != nil {
 			return err
 		}
 		o.notify(Progress{ShotID: shot.ID, Action: ActionGenerate, Stage: StageGenerating, Message: "動画を生成しています", TakesDone: made.add(takeID), TakesTotal: strategy.Takes})
+		o.judgeTake(ctx, takeID)
 		return nil
 	})
 	done := made.value()
@@ -209,9 +211,15 @@ type takeParameters struct {
 }
 
 // makeTake generates one Take, stores its file, the Take row and cost, and posts its card.
-func (o *Orchestrator) makeTake(ctx context.Context, ref repository.ShotRef, pv domain.PromptVersion, s Strategy, job modeladapter.VideoJob, index int) (string, error) {
-	out, err := o.adapter.GenerateVideo(ctx, s.Primary, s.Fallback, job)
+// The time spent on the model is bounded by limit (Max generation time of the Quality/Cost Policy).
+func (o *Orchestrator) makeTake(ctx context.Context, ref repository.ShotRef, pv domain.PromptVersion, s Strategy, job modeladapter.VideoJob, index int, limit time.Duration) (string, error) {
+	callCtx, cancel := context.WithTimeout(ctx, limit)
+	defer cancel()
+	out, err := o.adapter.GenerateVideo(callCtx, s.Primary, s.Fallback, job)
 	if err != nil {
+		if ctx.Err() == nil && errors.Is(callCtx.Err(), context.DeadlineExceeded) {
+			return "", fmt.Errorf("%w (%s): %w", ErrGenerationTimeLimit, limit, err)
+		}
 		return "", err
 	}
 	asset, err := o.files.write(ref.ProjectID, domain.AssetVideo, out.MimeType, out.Data)
@@ -228,7 +236,7 @@ func (o *Orchestrator) makeTake(ctx context.Context, ref repository.ShotRef, pv 
 	}
 	takeID, err := o.gens.CreateTake(context.WithoutCancel(ctx), repository.NewTake{
 		ProjectID: ref.ProjectID, ShotID: ref.Shot.ID, PromptVersionID: pv.ID, Model: out.Model,
-		Parameters: params, Asset: asset, EstimatedCost: out.EstimatedCost,
+		Parameters: params, Asset: asset, EstimatedCost: out.EstimatedCost, ActualCost: out.ActualCost,
 	})
 	if err != nil {
 		o.files.remove(asset)
@@ -276,4 +284,15 @@ func (c *counter) first() string {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return c.firstID
+}
+
+// judgeTake has the AI Video Judge look at a Take that was just made. The Take is kept whether or
+// not it can be judged: the user can run the Judge again.
+func (o *Orchestrator) judgeTake(ctx context.Context, takeID string) {
+	if o.judge == nil {
+		return
+	}
+	if _, err := o.judge.Start(context.WithoutCancel(ctx), takeID); err != nil {
+		o.logger.Error("start judge failed", "take_id", takeID, "err", err)
+	}
 }
