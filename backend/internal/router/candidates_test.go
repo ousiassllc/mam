@@ -102,3 +102,15 @@ func TestCandidates_IsUnavailableWithoutTheJudgeAndUnknownShotIs404(t *testing.T
 	j := newJudgeApp(t, goodVerdict, steadyFaces...)
 	assert.Equal(t, http.StatusNotFound, j.form(http.MethodPost, "/shots/missing/generate/candidates", nil).Code)
 }
+
+func TestCandidates_ALockedPromptRulesOutRewritingTheSpec(t *testing.T) {
+	j := newJudgeApp(t, goodVerdict, steadyFaces...)
+	j.generateAndJudge() // the Shot has a spec now
+	takes := j.count(`SELECT COUNT(*) FROM take`)
+	require.Equal(t, http.StatusOK, j.form(http.MethodPut, "/shots/"+j.shotID+"/locks", url.Values{"parameter": {"prompt"}, "mode": {"lock"}}).Code)
+
+	rec := j.form(http.MethodPost, "/shots/"+j.shotID+"/generate/candidates", nil)
+
+	assert.Equal(t, http.StatusLocked, rec.Code, rec.Body.String())
+	assert.Equal(t, takes, j.count(`SELECT COUNT(*) FROM take`))
+}

@@ -114,7 +114,8 @@ type candidateRun struct {
 	sc          shotContext
 	instruction string
 	current     *domain.ShotSpec // the spec the Shot has, which the Candidates revise
-	total       int              // most Takes this run makes (progress)
+	locks       domain.ParameterLocks
+	total       int // most Takes this run makes (progress)
 
 	mu       sync.Mutex
 	outcomes []judged
@@ -140,7 +141,11 @@ func (o *Orchestrator) generateCandidates(ctx context.Context, ref repository.Sh
 	if err != nil {
 		return Progress{}, err
 	}
-	run := &candidateRun{o: o, ref: ref, sc: sc, instruction: instruction}
+	locks, err := o.gens.ShotLocks(ctx, ref.Shot.ID)
+	if err != nil {
+		return Progress{}, err
+	}
+	run := &candidateRun{o: o, ref: ref, sc: sc, instruction: instruction, locks: locks}
 	if current, ok := ref.Shot.CanonicalSpec(); ok {
 		run.current = &current
 	}
@@ -178,13 +183,16 @@ func (r *candidateRun) strategy(ctx context.Context) (Strategy, error) {
 	if err != nil {
 		return Strategy{}, err
 	}
-	return Decide(r.o.adapter.Config(), r.sc.policy.Quality, r.ref.Shot.Duration, budget)
+	return r.o.decide(ctx, r.sc.policy.Quality, r.ref.Shot, budget)
 }
 
 // plan has the Prompt Planner write the Candidate of the strategy.
 func (r *candidateRun) plan(ctx context.Context, strategy domain.CandidateStrategy) (domain.ShotSpec, error) {
 	in := r.sc.plannerInput(r.ref, r.instruction)
 	in.Current, in.Strategy = r.current, strategy
+	if r.current != nil {
+		in.Fixed, in.Manual = r.locks.LockedParts(), r.locks.PartsWith(domain.LockManual)
+	}
 	return r.o.planner.Plan(ctx, in)
 }
 
@@ -299,7 +307,7 @@ func (r *candidateRun) mayRetry(ctx context.Context, eff domain.EffectivePolicy,
 		r.o.logger.Warn("read budget failed", "shot_id", r.ref.Shot.ID, "err", err)
 		return Strategy{}, false
 	}
-	s, err := Decide(r.o.adapter.Config(), r.sc.policy.Quality, r.ref.Shot.Duration, budget)
+	s, err := r.o.decide(ctx, r.sc.policy.Quality, r.ref.Shot, budget)
 	if err != nil {
 		r.stop("予算上限に達したため、追加の生成は行いませんでした")
 		return Strategy{}, false

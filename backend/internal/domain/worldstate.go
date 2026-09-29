@@ -129,13 +129,20 @@ type LockKey struct {
 // LockSet is the set of fields the user has LOCKed (lock.mode = 'lock', spec/spec.md §6).
 type LockSet map[LockKey]struct{}
 
-// Locked reports whether the field is LOCKed.
+// Locked reports whether the field is LOCKed. The Story parameter of spec/spec.md §6 (the lock row
+// story/story, set by PUT /projects/:id/locks) freezes every field of the Story.
 func (l LockSet) Locked(t WorldTarget, id, field string) bool {
 	if t.IsSingleton() {
 		id = ""
 	}
-	_, ok := l[LockKey{t, id, field}]
-	return ok
+	if _, ok := l[LockKey{t, id, field}]; ok {
+		return true
+	}
+	if t == TargetStory {
+		_, ok := l[LockKey{TargetStory, "", string(ParamStory)}]
+		return ok
+	}
+	return false
 }
 
 var editableFields = map[WorldTarget][]string{

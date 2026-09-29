@@ -168,6 +168,9 @@ func (s *ChatService) PostMessage(ctx context.Context, projectID string, in Post
 	attached := slices.Concat(existing, assetsOf(stored))
 	user := userText(content, in.ReplyToMessageID, assetIDs(attached))
 
+	if s.director.wants(project, target, content) {
+		return s.postDirection(ctx, project, target, user, stored)
+	}
 	turn, decided, err := s.planTurn(ctx, project, target, user, attached)
 	if err != nil {
 		discardUploads(stored)
@@ -185,6 +188,27 @@ func (s *ChatService) PostMessage(ctx context.Context, projectID string, in Post
 		return Workspace{}, err
 	}
 	return s.withAnsweredQuestions(ctx, ws, decided)
+}
+
+// postDirection handles a message of DIRECTOR MODE: it is stored first, then the Command Interpreter
+// reads it, resolves the Shot it is about and carries it out, and the AI's answer (what was done,
+// refused or asked) follows it in the thread.
+func (s *ChatService) postDirection(ctx context.Context, project domain.Project, target *domain.ChatMessage, user domain.ChatMessage, stored []storedUpload) (Workspace, error) {
+	user.ID = domain.NewID()
+	turn := repository.Turn{ProjectID: project.ID, Messages: []domain.ChatMessage{user}, Assets: assetsOf(stored)}
+	if err := s.commit(ctx, turn); err != nil {
+		discardUploads(stored)
+		return Workspace{}, err
+	}
+	reply, err := s.director.Chat(ctx, project, target, user.Content)
+	if err != nil {
+		return Workspace{}, err
+	}
+	msgs := assignIDs([]domain.ChatMessage{reply})
+	if err := s.commit(ctx, repository.Turn{ProjectID: project.ID, Messages: msgs}); err != nil {
+		return Workspace{}, err
+	}
+	return s.workspaceOf(ctx, project.ID, append([]domain.ChatMessage{user}, msgs...))
 }
 
 // withAnsweredQuestions adds the question cards of the Brief fields this turn decided:

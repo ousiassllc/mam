@@ -94,3 +94,26 @@ func TestDecide_MaxQualityUsesRunwayAndTheDifferentModelIsKling(t *testing.T) {
 	assert.InDelta(t, 4, s.DurationSeconds, 1e-9, "Runway makes clips of any whole second from 2 to 10")
 	assert.InDelta(t, 4*0.12, s.CostPerTake, 1e-9)
 }
+
+func TestDecideWithModel_TheModelTheUserFixedIsTheOnlyOne(t *testing.T) {
+	cfg := modeladapter.DefaultConfig()
+
+	s, err := generation.DecideWithModel(cfg, domain.QualityBalanced, 4, repository.Budget{}, domain.ModelKling3)
+	require.NoError(t, err)
+	assert.Equal(t, domain.ModelKling3, s.Primary.Model)
+	assert.Equal(t, domain.ModelKling3, s.Fallback.Model, "no other model is called instead")
+	assert.Equal(t, "720p", s.Primary.Resolution, "the Quality Policy still sets the resolution")
+	assert.Equal(t, 3, s.Takes)
+
+	long, err := generation.DecideWithModel(cfg, domain.QualityFast, 12, repository.Budget{}, domain.ModelKling3)
+	require.NoError(t, err)
+	assert.Equal(t, domain.ModelKling3, long.Primary.Model, "a longer Shot does not swap the fixed model")
+
+	_, err = generation.DecideWithModel(cfg, domain.QualityBalanced, 4, repository.Budget{ShotCeiling: ptr(0.1)}, domain.ModelKling3)
+	assert.ErrorIs(t, err, generation.ErrBudgetExceeded, "and it is not replaced by a cheaper one")
+
+	auto, err := generation.DecideWithModel(cfg, domain.QualityBalanced, 4, repository.Budget{}, "")
+	require.NoError(t, err)
+	same, _ := generation.Decide(cfg, domain.QualityBalanced, 4, repository.Budget{})
+	assert.Equal(t, same, auto)
+}

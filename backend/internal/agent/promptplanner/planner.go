@@ -40,6 +40,11 @@ type Input struct {
 	// Strategy is the shooting strategy of a Prompt Candidate (spec/spec.md §8). Empty plans the
 	// Shot without a particular priority.
 	Strategy domain.CandidateStrategy
+	// Fixed are the parts of Current that MUST stay as they are: the LOCKed parameters and what the
+	// director asked to preserve. Plan copies them from Current whatever the model answered.
+	Fixed []domain.SpecPart
+	// Manual are the parts of Current the user specified (MANUAL): kept unless the instruction changes them.
+	Manual []domain.SpecPart
 }
 
 // strategyDirectives tell the Planner what a Prompt Candidate puts first. Every strategy keeps the
@@ -92,6 +97,9 @@ func (p *Planner) Plan(ctx context.Context, in Input) (domain.ShotSpec, error) {
 		return domain.ShotSpec{}, fmt.Errorf("prompt planner: %w", err)
 	}
 	spec.Duration = domain.FormatDuration(in.Shot.Duration)
+	if in.Current != nil {
+		spec = domain.PreserveParts(spec, *in.Current, in.Fixed)
+	}
 	if err := spec.Validate(in.Shot.Duration); err != nil {
 		return domain.ShotSpec{}, fmt.Errorf("prompt planner: %w", planning.Invalidf("%v", err))
 	}
@@ -126,6 +134,12 @@ func userPrompt(in Input) string {
 	if in.Current != nil {
 		b.WriteString("\n## Current spec of this shot (revise it according to the instruction; keep what the instruction does not change)\n" + jsonText(*in.Current) + "\n")
 	}
+	if in.Current != nil && len(in.Fixed) > 0 {
+		b.WriteString("\n## Fixed parts (LOCKED or to be preserved: copy them from the current spec unchanged)\n" + partNames(in.Fixed) + "\n")
+	}
+	if in.Current != nil && len(in.Manual) > 0 {
+		b.WriteString("\n## Parts the user specified himself (keep them unless the instruction explicitly changes them)\n" + partNames(in.Manual) + "\n")
+	}
 	if len(in.References) > 0 {
 		b.WriteString("\n## Reference images available\n")
 		for _, r := range in.References {
@@ -140,4 +154,12 @@ func nameSuffix(n string) string {
 		return ""
 	}
 	return ": " + n
+}
+
+func partNames(parts []domain.SpecPart) string {
+	names := make([]string, len(parts))
+	for i, p := range parts {
+		names[i] = string(p)
+	}
+	return strings.Join(names, ", ")
 }

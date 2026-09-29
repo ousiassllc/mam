@@ -1,0 +1,18 @@
+package pages
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/layout"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+)
+
+// ShotInspectorPage is GET /shots/:id: the Shot Inspector in an auxiliary view.
+templ ShotInspectorPage(csrfToken string, d organisms.ShotInspectorData) {
+	@layout.AppLayout("Shot Inspector: "+d.Project.Name, csrfToken) {
+		<main class="mx-auto max-w-4xl p-8">
+			<a href={ templ.SafeURL("/projects/" + d.Project.ID + "/scenes/" + d.Scene.ID) } class="text-sm text-neutral-400 hover:text-neutral-100">← Scene / Shot に戻る</a>
+			<h1 class="mb-1 mt-3 text-xl font-semibold">Shot Inspector</h1>
+			<p class="mb-6 text-sm text-neutral-400">{ d.Project.Name }</p>
+			@organisms.ShotInspector(d)
+		</main>
+	}
+}

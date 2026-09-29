@@ -81,6 +81,9 @@ const (
 	ModeDirector Mode = "director"
 )
 
+// Valid reports whether m is a known mode.
+func (m Mode) Valid() bool { return m == ModeAuto || m == ModeDirector }
+
 // ConfirmationLevel is the human-confirmation policy (F-03).
 type ConfirmationLevel string
 

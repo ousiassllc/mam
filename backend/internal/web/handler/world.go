@@ -74,5 +74,5 @@ func updateEntity(svc *service.WorldService, target domain.WorldTarget, param st
 }
 
 func worldStateData(v service.WorldView) organisms.WorldStateData {
-	return organisms.WorldStateData{Project: v.Project, World: v.World, Locks: v.Locks}
+	return organisms.WorldStateData{Project: v.Project, World: v.World, Locks: v.Locks, ProjectLocks: v.ProjectLocks}
 }

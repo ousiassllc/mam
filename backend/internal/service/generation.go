@@ -110,6 +110,8 @@ func mapGenerationError(err error) error {
 		return ErrBudgetExceeded
 	case errors.Is(err, generation.ErrJudgeUnavailable):
 		return ErrUnavailable
+	case errors.Is(err, repository.ErrLocked):
+		return lockedError(err)
 	}
 	return notFound(err)
 }

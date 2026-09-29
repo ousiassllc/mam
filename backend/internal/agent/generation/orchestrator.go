@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 	"sync"
 
@@ -136,6 +137,8 @@ type payload struct {
 	Action      Action `json:"action"`
 	ShotID      string `json:"shot_id"`
 	Instruction string `json:"instruction,omitempty"`
+	// Preserve are the parts of the Shot Spec the director asked to keep as they are.
+	Preserve []domain.SpecPart `json:"preserve,omitempty"`
 }
 
 // progressText is the content of the progress card of a job.
@@ -153,7 +156,13 @@ func progressText(a Action, shot domain.Shot) string {
 // generated), checks that at least one Take fits the budget (ErrBudgetExceeded) and queues the job.
 // instruction is an optional extra direction ("もう少しカメラを寄せて").
 func (o *Orchestrator) Start(ctx context.Context, shotID, instruction string) (domain.Job, error) {
-	return o.start(ctx, shotID, ActionGenerate, instruction)
+	return o.StartDirected(ctx, shotID, instruction, nil)
+}
+
+// StartDirected is Start with the parts of the Shot Spec the director asked to preserve (the
+// LOCKed parts are always preserved).
+func (o *Orchestrator) StartDirected(ctx context.Context, shotID, instruction string, preserve []domain.SpecPart) (domain.Job, error) {
+	return o.start(ctx, shotID, ActionGenerate, instruction, preserve)
 }
 
 // StartCandidates begins Prompt Candidate Generation for the Shot (F-08): the Prompt Planner writes
@@ -164,13 +173,23 @@ func (o *Orchestrator) StartCandidates(ctx context.Context, shotID, instruction 
 	if o.judge == nil {
 		return domain.Job{}, ErrJudgeUnavailable
 	}
-	return o.start(ctx, shotID, ActionCandidates, instruction)
+	return o.start(ctx, shotID, ActionCandidates, instruction, nil)
 }
 
-func (o *Orchestrator) start(ctx context.Context, shotID string, action Action, instruction string) (domain.Job, error) {
+func (o *Orchestrator) start(ctx context.Context, shotID string, action Action, instruction string, preserve []domain.SpecPart) (domain.Job, error) {
 	ref, err := o.gens.GetShot(ctx, shotID)
 	if err != nil {
 		return domain.Job{}, err
+	}
+	// Candidates always rewrite the spec, so a LOCKed Prompt rules them out even without an instruction.
+	if _, hasSpec := ref.Shot.CanonicalSpec(); hasSpec && (strings.TrimSpace(instruction) != "" || action == ActionCandidates) {
+		locks, err := o.gens.ShotLocks(ctx, shotID)
+		if err != nil {
+			return domain.Job{}, err
+		}
+		if locks.Locked(domain.ParamPrompt) {
+			return domain.Job{}, &repository.LockedParametersError{Parameters: []domain.LockParameter{domain.ParamPrompt}}
+		}
 	}
 	policy, err := o.policies.Get(ctx, ref.ProjectID)
 	if err != nil {
@@ -180,11 +199,11 @@ func (o *Orchestrator) start(ctx context.Context, shotID string, action Action, 
 	if err != nil {
 		return domain.Job{}, err
 	}
-	strategy, err := Decide(o.adapter.Config(), policy.Quality, ref.Shot.Duration, budget)
+	strategy, err := o.decide(ctx, policy.Quality, ref.Shot, budget)
 	if err != nil {
 		return domain.Job{}, err
 	}
-	job, err := o.enqueue(ctx, ref, payload{Action: action, ShotID: shotID, Instruction: strings.TrimSpace(instruction)})
+	job, err := o.enqueue(ctx, ref, payload{Action: action, ShotID: shotID, Instruction: strings.TrimSpace(instruction), Preserve: preserve})
 	if err != nil {
 		return domain.Job{}, err
 	}
@@ -193,6 +212,25 @@ func (o *Orchestrator) start(ctx context.Context, shotID string, action Action, 
 	}
 	o.warnLowDisk(ctx, ref, strategy)
 	return job, nil
+}
+
+// decide is the generation strategy of the Shot: the Quality Policy, cost and model capabilities,
+// and the Video Model when the user fixed one (Video Model MANUAL or LOCK).
+func (o *Orchestrator) decide(ctx context.Context, quality domain.QualityPolicy, shot domain.Shot, budget repository.Budget) (Strategy, error) {
+	locks, err := o.gens.ShotLocks(ctx, shot.ID)
+	if err != nil {
+		return Strategy{}, err
+	}
+	return DecideWithModel(o.adapter.Config(), quality, shot.Duration, budget, fixedModel(locks))
+}
+
+// fixedModel is the Video Model the user fixed for the Shot, or "" (AUTO, or no known model chosen).
+func fixedModel(l domain.ParameterLocks) domain.ModelName {
+	m := domain.ModelName(l.Text(domain.ParamVideoModel))
+	if l.Mode(domain.ParamVideoModel) == domain.LockAuto || !slices.Contains(domain.VideoModels(), m) {
+		return ""
+	}
+	return m
 }
 
 // bytesPerVideoSecond is the assumed size of one second of generated video (about 16 Mbit/s: the
@@ -288,7 +326,7 @@ func (o *Orchestrator) Handle(ctx context.Context, job domain.Job) error {
 	case ActionCandidates:
 		done, err = o.generateCandidates(ctx, ref, p.Instruction)
 	default:
-		done, err = o.generate(ctx, ref, p.Instruction)
+		done, err = o.generate(ctx, ref, p.Instruction, p.Preserve)
 	}
 	if err != nil {
 		return o.fail(ctx, ref, p.Action, err)
