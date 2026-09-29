@@ -49,4 +49,5 @@ func registerAPIRoutes(api huma.API, services *service.Services) {
 		return out, nil
 	})
 	registerJudgeAPI(api, services)
+	registerRepairAPI(api, services)
 }

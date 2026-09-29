@@ -198,11 +198,11 @@ func (o *Orchestrator) decide(ctx context.Context, quality domain.QualityPolicy,
 	if err != nil {
 		return Strategy{}, err
 	}
-	return DecideWithModel(o.adapter.Config(), quality, shot.Duration, budget, fixedModel(locks))
+	return DecideWithModel(o.adapter.Config(), quality, shot.Duration, budget, FixedModel(locks))
 }
 
-// fixedModel is the Video Model the user fixed for the Shot, or "" (AUTO, or no known model chosen).
-func fixedModel(l domain.ParameterLocks) domain.ModelName {
+// FixedModel is the Video Model the user fixed for the Shot, or "" (AUTO, or no known model chosen).
+func FixedModel(l domain.ParameterLocks) domain.ModelName {
 	m := domain.ModelName(l.Text(domain.ParamVideoModel))
 	if l.Mode(domain.ParamVideoModel) == domain.LockAuto || !slices.Contains(domain.VideoModels(), m) {
 		return ""

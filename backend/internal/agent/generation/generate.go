@@ -129,7 +129,7 @@ func (o *Orchestrator) generate(ctx context.Context, ref repository.ShotRef, ins
 	o.notify(Progress{ShotID: shot.ID, Action: ActionGenerate, Stage: StageGenerating, Message: "動画を生成しています", TakesTotal: strategy.Takes})
 	var made counter
 	errs := parallel(strategy.Takes, func(i int) error {
-		takeID, err := o.makeTake(ctx, ref, pv, strategy, job, i, policy.Effective().MaxGenerationTime)
+		takeID, err := o.makeTake(ctx, ref, pv, strategy, job, fmt.Sprintf("Shot %d · Take %d", shot.OrderIndex+1, i+1), policy.Effective().MaxGenerationTime)
 		if err != nil {
 			return err
 		}
@@ -219,9 +219,10 @@ type takeParameters struct {
 	Prompt          string               `json:"prompt"`
 }
 
-// makeTake generates one Take, stores its file, the Take row and cost, and posts its card.
-// The time spent on the model is bounded by limit (Max generation time of the Quality/Cost Policy).
-func (o *Orchestrator) makeTake(ctx context.Context, ref repository.ShotRef, pv domain.PromptVersion, s Strategy, job modeladapter.VideoJob, index int, limit time.Duration) (string, error) {
+// makeTake generates one Take, stores its file, the Take row and cost, and posts its card, whose
+// title is title. The time spent on the model is bounded by limit (Max generation time of the
+// Quality/Cost Policy).
+func (o *Orchestrator) makeTake(ctx context.Context, ref repository.ShotRef, pv domain.PromptVersion, s Strategy, job modeladapter.VideoJob, title string, limit time.Duration) (string, error) {
 	callCtx, cancel := context.WithTimeout(ctx, limit)
 	defer cancel()
 	out, err := o.adapter.GenerateVideo(callCtx, s.Primary, s.Fallback, job)
@@ -254,7 +255,7 @@ func (o *Orchestrator) makeTake(ctx context.Context, ref repository.ShotRef, pv 
 	card := domain.ChatMessage{
 		Role: domain.RoleAssistant, Kind: domain.KindTake, RefID: takeID,
 		Content: domain.EncodeTakeCardBody(domain.TakeCardBody{
-			Title:    fmt.Sprintf("Shot %d · Take %d", ref.Shot.OrderIndex+1, index+1),
+			Title:    title,
 			Summary:  fmt.Sprintf("%s（%s・%.0f 秒）", out.Model, out.Resolution, out.DurationSeconds),
 			VideoURL: fmt.Sprintf("/projects/%s/assets/%s", ref.ProjectID, asset.ID),
 		}),

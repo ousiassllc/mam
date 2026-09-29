@@ -17,6 +17,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/jev"
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
@@ -111,6 +112,16 @@ func serve(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	}
 	defer judging.close()
 
+	jevCfg, err := jev.LoadConfig(cfg.JevConfigPath)
+	if err != nil {
+		return err
+	}
+	// The Jev shadow run of the Repair Agent works once a TypeSafe API key is stored (credential provider "typesafe").
+	shadow, err := jev.New(jevCfg, keys, nil)
+	if err != nil {
+		return err
+	}
+
 	jobs := jobqueue.New(repository.NewJobRepository(db), jobqueue.Options{Logger: logger})
 	// Job handlers are registered by service.New (the plan job) and by the features that add more kinds.
 	// The services are built before the queue starts: they subscribe to job changes.
@@ -125,6 +136,7 @@ func serve(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 		Frames:      judging.frames,
 		Faces:       judging.engine(),
 		Judge:       judging.config,
+		Jev:         shadow,
 	})
 	// Shots left GENERATING by an abnormal termination are released before their jobs are failed.
 	released, err := services.Recover(ctx)

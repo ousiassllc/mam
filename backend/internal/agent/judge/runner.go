@@ -26,9 +26,11 @@ type Deps struct {
 	Generations *repository.GenerationRepository
 	Judges      *repository.JudgeRepository
 	Assets      *repository.AssetRepository
-	Chat        generation.Chat
-	Jobs        generation.Jobs
-	Judge       *Judge
+	// Policies gives the Production Template of the Project, whose axes the Judge scores. Optional.
+	Policies *repository.PolicyRepository
+	Chat     generation.Chat
+	Jobs     generation.Jobs
+	Judge    *Judge
 	// AssetsDir is the root of stored files (config.AssetsDir).
 	AssetsDir string
 	// Notify receives every progress notification. It MUST NOT block.
@@ -182,6 +184,13 @@ func (r *Runner) input(ctx context.Context, ref repository.TakeRef) (Input, erro
 		return Input{}, err
 	}
 	in := Input{VideoPath: path, Spec: spec}
+	if r.Policies != nil {
+		policy, err := r.Policies.Get(ctx, ref.ProjectID)
+		if err != nil {
+			return Input{}, err
+		}
+		in.Template = policy.Template
+	}
 
 	shots, err := r.Generations.ListProjectShots(ctx, ref.ProjectID)
 	if err != nil {

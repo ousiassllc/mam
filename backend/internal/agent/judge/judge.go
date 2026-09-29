@@ -15,6 +15,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"math"
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
@@ -72,6 +73,9 @@ type Input struct {
 	// Locked are the LOCKed dimensions: any Issue of at least medium severity in one of them is a
 	// LOCK violation and fails the Take.
 	Locked map[domain.JudgeDimension]bool
+	// Template is the Production Template of the Project. When set, the Judge scores its evaluation
+	// axes (0-100), which the Retry Policy's Minimum acceptance score is applied to.
+	Template domain.ProductionTemplate
 }
 
 // Evaluate judges a Take. The returned result has no ID, TakeID or CreatedAt yet.
@@ -92,7 +96,7 @@ func (j *Judge) Evaluate(ctx context.Context, in Input) (domain.JudgeResult, err
 	if err != nil {
 		return domain.JudgeResult{}, err
 	}
-	result, err := ans.result(review, in.Locked, hasEvaluated(metrics))
+	result, err := ans.result(review, in.Locked, hasEvaluated(metrics), in.Template)
 	if err != nil {
 		return domain.JudgeResult{}, err
 	}
@@ -152,6 +156,8 @@ type answer struct {
 	Issues            []answerIssue `json:"issues"`
 	Preserve          []string      `json:"preserve"`
 	RepairStrategy    *answerRepair `json:"repair_strategy"`
+	// Scores are 0-100 per axis of the Production Template (optional).
+	Scores map[string]float64 `json:"scores"`
 }
 
 type answerIssue struct {
@@ -175,8 +181,9 @@ func (a answer) verdict() domain.JudgeVerdict {
 // result validates the answer and converts it: issue types become snake_case identifiers, time
 // ranges are checked against the clip and given source frame numbers, unknown dimensions are
 // dropped. skipFaceDrift drops the model's own face_identity_drift Issues when the numeric
-// measurement produced the authoritative ones.
-func (a answer) result(clip Clip, locked map[domain.JudgeDimension]bool, skipFaceDrift bool) (domain.JudgeResult, error) {
+// measurement produced the authoritative ones. Scores of axes outside the Production Template, or
+// outside 0-100, are dropped.
+func (a answer) result(clip Clip, locked map[domain.JudgeDimension]bool, skipFaceDrift bool, template domain.ProductionTemplate) (domain.JudgeResult, error) {
 	if v := a.verdict(); v != domain.JudgePass && v != domain.JudgeFail {
 		return domain.JudgeResult{}, fmt.Errorf("%w: result %q is neither pass nor fail", ErrInvalidJudgement, a.Result)
 	}
@@ -209,6 +216,7 @@ func (a answer) result(clip Clip, locked map[domain.JudgeDimension]bool, skipFac
 		issue.LockViolation = issue.Dimension != "" && locked[issue.Dimension] && sev.Rank() >= domain.SeverityMedium.Rank()
 		res.Issues = append(res.Issues, issue)
 	}
+	res.Scores = a.axisScores(template)
 	if rs := a.RepairStrategy; rs != nil {
 		action := domain.RepairAction(identifier(rs.Action))
 		if action.Valid() {
@@ -216,6 +224,22 @@ func (a answer) result(clip Clip, locked map[domain.JudgeDimension]bool, skipFac
 		}
 	}
 	return res, nil
+}
+
+// axisScores keeps the scores of the axes of the template that are numbers in 0-100.
+func (a answer) axisScores(template domain.ProductionTemplate) map[domain.EvaluationAxis]float64 {
+	var out map[domain.EvaluationAxis]float64
+	for _, axis := range template.Axes() {
+		s, ok := a.Scores[string(axis)]
+		if !ok || math.IsNaN(s) || s < 0 || s > domain.MaxScore {
+			continue
+		}
+		if out == nil {
+			out = map[domain.EvaluationAxis]float64{}
+		}
+		out[axis] = s
+	}
+	return out
 }
 
 // Decide sets the verdict and completes the Repair Strategy of the result. The rules are
@@ -337,6 +361,13 @@ func userPrompt(in Input, clip Clip, metrics domain.JudgeMetrics) string {
 	if hasEvaluated(metrics) {
 		b.WriteString("\nThe face identity of the Character is measured separately by a numeric model: do NOT report face_identity_drift yourself; still judge the face qualitatively (naturalness, distortion, expression).")
 	}
+	if axes := in.Template.Axes(); len(axes) > 0 {
+		names := make([]string, len(axes))
+		for i, a := range axes {
+			names[i] = string(a)
+		}
+		fmt.Fprintf(&b, "\nAlso give \"scores\": a number from 0 to 100 for each of these axes of the %s template, in priority order: %s.", in.Template.Label(), strings.Join(names, ", "))
+	}
 	b.WriteString("\nReference images (if any) come first, then the video frames.")
 	return b.String()
 }
@@ -379,6 +410,7 @@ Return ONLY one JSON object:
      "time_range": "2.1-2.8s" (seconds from the start of the Take; omit if it concerns the whole Take),
      "description": "one short English sentence"}
   ],
+  "scores": {"axis_identifier": a number from 0 to 100, ...} (only the axes named in the request; omit when none are named),
   "preserve": ["what is good and must be kept when repairing, e.g. character, acting, background"],
   "repair_strategy": {"action": one of ` + strings.Join(actions, ", ") + `,
                       "instructions": ["snake_case_instruction such as reduce_camera_speed_40_percent"]}

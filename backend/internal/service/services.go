@@ -15,6 +15,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/orchestrator"
+	"github.com/ousiassllc/mam/backend/internal/agent/repair"
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/facesim"
@@ -47,6 +48,8 @@ type Deps struct {
 	Faces facesim.Engine
 	// Judge is the AI Video Judge setting. The zero value selects judge.DefaultConfig.
 	Judge judge.Config
+	// Jev is the TypeSafe Jev client of the Repair Agent's shadow run. Nil: no shadow run.
+	Jev repair.Shadow
 }
 
 // Services is the DI root handed to router.New. Each feature adds one field
@@ -62,6 +65,7 @@ type Services struct {
 	Director    *DirectorService
 	Policy      *PolicyService
 	Judge       *JudgeService
+	Repair      *RepairService
 	Continue    *ContinueService
 }
 
@@ -97,8 +101,14 @@ func New(deps Deps) *Services {
 		plans:     repository.NewPlanRepository(deps.DB),
 	}
 	chat := &ChatService{c}
+	var jobFinished func(jobID string) // set once the Repair Agent exists (before the queue starts)
 	if deps.Jobs != nil {
-		deps.Jobs.OnChange(func(jobID string) { chat.JobChanged(context.Background(), jobID) })
+		deps.Jobs.OnChange(func(jobID string) {
+			chat.JobChanged(context.Background(), jobID)
+			if jobFinished != nil {
+				jobFinished(jobID)
+			}
+		})
 		if deps.LLM != nil {
 			c.pipeline = orchestrator.New(orchestrator.Deps{
 				Projects: c.projects, Plans: c.plans, ChatRepo: c.chat, Chat: chat, Jobs: deps.Jobs,
@@ -112,6 +122,7 @@ func New(deps Deps) *Services {
 	policies := repository.NewPolicyRepository(deps.DB)
 	generations := &GenerationService{core: c, shots: gens, progress: newBroker[generation.Progress]()}
 	judges := &JudgeService{core: c, judges: repository.NewJudgeRepository(deps.DB), generations: generations}
+	repairs := &RepairService{core: c, repairs: repository.NewRepairRepository(deps.DB), judges: judges.judges, generations: generations}
 	var takeJudge generation.Judger // stays nil (not a typed nil) while the Judge is off
 	if deps.Jobs != nil && deps.LLM != nil && deps.Frames != nil {
 		cfg := deps.Judge
@@ -119,7 +130,7 @@ func New(deps Deps) *Services {
 			cfg = judge.DefaultConfig()
 		}
 		judges.runner = judge.NewRunner(judge.Deps{
-			Generations: gens, Judges: judges.judges, Assets: c.assets, Chat: chat, Jobs: deps.Jobs,
+			Generations: gens, Judges: judges.judges, Assets: c.assets, Policies: policies, Chat: chat, Jobs: deps.Jobs,
 			Judge:     judge.New(deps.LLM, deps.Frames, deps.Faces, cfg, logger),
 			AssetsDir: deps.AssetsDir, Logger: logger,
 			Notify: func(p generation.Progress) { generations.progress.Publish(p.ShotID, p) },
@@ -136,6 +147,18 @@ func New(deps Deps) *Services {
 		})
 		// Not resumable: a generation costs money, so an interrupted one is failed, not repeated.
 		deps.Jobs.Register(domain.JobGenerate, generations.gen.Handle, false)
+		if judges.runner != nil {
+			repairs.agent = repair.New(repair.Deps{
+				Generations: gens, Judges: judges.judges, Repairs: repairs.repairs, JobRepo: c.jobs, Policies: policies, Projects: c.projects,
+				Regenerator: generations.gen, Chat: chat, Jobs: deps.Jobs, LLM: deps.LLM, Shadow: deps.Jev, Logger: logger,
+				Notify: func(p generation.Progress) { generations.progress.Publish(p.ShotID, p) },
+			})
+			// Not resumable: a repair costs money, so an interrupted one is failed, not repeated.
+			deps.Jobs.Register(domain.JobRepair, repairs.agent.Handle, false)
+			// The Repair / Retake Loop continues when a generate or judge job has finished (the queue's
+			// callback must not block).
+			jobFinished = func(jobID string) { go repairs.agent.JobChanged(context.Background(), jobID) }
+		}
 	}
 	director := &DirectorService{core: c, gens: gens, locks: repository.NewLockRepository(deps.DB), orch: generations.gen}
 	if deps.LLM != nil {
@@ -160,6 +183,7 @@ func New(deps Deps) *Services {
 			core: c, freeBytes: deps.FreeBytes, policies: policies, costs: repository.NewCostRepository(deps.DB), storage: repository.NewStorageRepository(deps.DB),
 		},
 		Judge:    judges,
+		Repair:   repairs,
 		Continue: continues,
 	}
 }

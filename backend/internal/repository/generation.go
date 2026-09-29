@@ -80,13 +80,23 @@ func (r *GenerationRepository) ListProjectShots(ctx context.Context, projectID s
 	return out, rows.Err()
 }
 
-// StartShot moves the Shot to GENERATING unless it already is. It reports whether this call
-// made the move, so that two requests never generate the same Shot at once.
+// StartShot moves the Shot to GENERATING unless it already is (or is being repaired). It reports
+// whether this call made the move, so that two requests never generate the same Shot at once.
 func (r *GenerationRepository) StartShot(ctx context.Context, shotID string) (bool, error) {
+	return r.claimShot(ctx, shotID, domain.ShotGenerating)
+}
+
+// StartRepair moves the Shot to REPAIRING unless it is being generated or repaired. It reports
+// whether this call made the move, so that a Shot is never repaired twice at once.
+func (r *GenerationRepository) StartRepair(ctx context.Context, shotID string) (bool, error) {
+	return r.claimShot(ctx, shotID, domain.ShotRepairing)
+}
+
+func (r *GenerationRepository) claimShot(ctx context.Context, shotID string, state domain.ShotState) (bool, error) {
 	var started bool
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
-		res, err := tx.ExecContext(ctx, `UPDATE shot SET state = ? WHERE id = ? AND state <> ?`,
-			domain.ShotGenerating, shotID, domain.ShotGenerating)
+		res, err := tx.ExecContext(ctx, `UPDATE shot SET state = ? WHERE id = ? AND state NOT IN (?, ?)`,
+			state, shotID, domain.ShotGenerating, domain.ShotRepairing)
 		if err != nil {
 			return err
 		}
@@ -95,7 +105,7 @@ func (r *GenerationRepository) StartShot(ctx context.Context, shotID string) (bo
 		return err
 	})
 	if err != nil {
-		return false, fmt.Errorf("start shot: %w", err)
+		return false, fmt.Errorf("claim shot: %w", err)
 	}
 	return started, nil
 }
@@ -114,12 +124,12 @@ func (r *GenerationRepository) SetShotState(ctx context.Context, shotID string, 
 	})
 }
 
-// ResetStaleShots puts Shots that are GENERATING back to PLANNING. It is called at start-up,
-// before any job runs: after an abnormal termination no generation is in flight.
+// ResetStaleShots puts Shots that are GENERATING or REPAIRING back to PLANNING. It is called at
+// start-up, before any job runs: after an abnormal termination no generation or repair is in flight.
 func (r *GenerationRepository) ResetStaleShots(ctx context.Context) (int, error) {
 	var n int64
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
-		res, err := tx.ExecContext(ctx, `UPDATE shot SET state = ? WHERE state = ?`, domain.ShotPlanning, domain.ShotGenerating)
+		res, err := tx.ExecContext(ctx, `UPDATE shot SET state = ? WHERE state IN (?, ?)`, domain.ShotPlanning, domain.ShotGenerating, domain.ShotRepairing)
 		if err != nil {
 			return err
 		}

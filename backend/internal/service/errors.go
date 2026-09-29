@@ -18,6 +18,11 @@ var (
 	ErrBusy = errors.New("service: shot is being generated")
 	// ErrJudgeBusy means the Take is already being judged. HTTP 409.
 	ErrJudgeBusy = errors.New("service: take is being judged")
+	// ErrNotJudged means the Take has no Judge result to repair from. HTTP 409.
+	ErrNotJudged = errors.New("service: take has not been judged")
+	// ErrAccepted means the Take passed the Judge and the minimum scores of the Retry Policy, so there is
+	// nothing to repair. HTTP 409.
+	ErrAccepted = errors.New("service: take is accepted")
 	// ErrBudgetExceeded means not even one Take fits the budget ceiling. HTTP 402.
 	ErrBudgetExceeded = errors.New("service: budget ceiling exceeded")
 	// ErrUnavailable means generation is not configured (no Model Adapter, job queue or Reasoning LLM). HTTP 503.
