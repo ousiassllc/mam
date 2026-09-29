@@ -221,57 +221,83 @@ func (r *PlanRepository) GetSceneByID(ctx context.Context, sceneID string) (doma
 // CreateScene appends a Scene at the end of the Project (F-04). The Location, when named,
 // is reused by name or created. It returns ErrNotFound when the Project does not exist.
 func (r *PlanRepository) CreateScene(ctx context.Context, s domain.Scene) (domain.Scene, error) {
-	s.ID = domain.NewID()
-	s.State = domain.ShotPlanning
-	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
-		if err := projectExists(ctx, tx, s.ProjectID); err != nil {
-			return err
-		}
-		locationID, err := locationFor(ctx, tx, s.ProjectID, s.Location, map[string]string{})
-		if err != nil {
-			return err
-		}
-		s.LocationID = locationID
-		if err := tx.QueryRowContext(ctx,
-			`SELECT COALESCE(MAX(order_index), -1) + 1 FROM scene WHERE project_id = ?`, s.ProjectID).Scan(&s.OrderIndex); err != nil {
-			return err
-		}
-		_, err = tx.ExecContext(ctx,
-			`INSERT INTO scene (id, project_id, order_index, title, location_id, time, objective, state) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-			s.ID, s.ProjectID, s.OrderIndex, s.Title, nullIfEmpty(s.LocationID), nullIfEmpty(s.Time), nullIfEmpty(s.Objective), s.State)
-		return err
-	})
+	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error { return insertScene(ctx, tx, &s) })
 	if err != nil {
 		return domain.Scene{}, fmt.Errorf("create scene: %w", err)
 	}
 	return s, nil
 }
 
+func insertScene(ctx context.Context, tx *sql.Tx, s *domain.Scene) error {
+	s.ID = domain.NewID()
+	s.State = domain.ShotPlanning
+	if err := projectExists(ctx, tx, s.ProjectID); err != nil {
+		return err
+	}
+	locationID, err := locationFor(ctx, tx, s.ProjectID, s.Location, map[string]string{})
+	if err != nil {
+		return err
+	}
+	s.LocationID = locationID
+	if err := tx.QueryRowContext(ctx,
+		`SELECT COALESCE(MAX(order_index), -1) + 1 FROM scene WHERE project_id = ?`, s.ProjectID).Scan(&s.OrderIndex); err != nil {
+		return err
+	}
+	_, err = tx.ExecContext(ctx,
+		`INSERT INTO scene (id, project_id, order_index, title, location_id, time, objective, state) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		s.ID, s.ProjectID, s.OrderIndex, s.Title, nullIfEmpty(s.LocationID), nullIfEmpty(s.Time), nullIfEmpty(s.Objective), s.State)
+	return err
+}
+
 // CreateShot appends a Shot at the end of the Scene (F-04). It returns ErrNotFound when the Scene does not exist.
 func (r *PlanRepository) CreateShot(ctx context.Context, sh domain.Shot) (domain.Shot, error) {
+	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error { return insertShot(ctx, tx, &sh) })
+	if err != nil {
+		return domain.Shot{}, fmt.Errorf("create shot: %w", err)
+	}
+	return sh, nil
+}
+
+func insertShot(ctx context.Context, tx *sql.Tx, sh *domain.Shot) error {
 	sh.ID = domain.NewID()
 	sh.State = domain.ShotPlanning
 	if len(sh.ShotSpec) == 0 {
 		sh.ShotSpec = domain.EncodeShotSpec(nil)
 	}
-	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
-		var one int
-		if err := tx.QueryRowContext(ctx, `SELECT 1 FROM scene WHERE id = ?`, sh.SceneID).Scan(&one); errors.Is(err, sql.ErrNoRows) {
-			return ErrNotFound
-		} else if err != nil {
-			return err
-		}
-		if err := tx.QueryRowContext(ctx,
-			`SELECT COALESCE(MAX(order_index), -1) + 1 FROM shot WHERE scene_id = ?`, sh.SceneID).Scan(&sh.OrderIndex); err != nil {
-			return err
-		}
-		_, err := tx.ExecContext(ctx,
-			`INSERT INTO shot (id, scene_id, order_index, objective, duration_seconds, shot_spec, state) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-			sh.ID, sh.SceneID, sh.OrderIndex, sh.Objective, sh.Duration, string(sh.ShotSpec), sh.State)
+	var one int
+	if err := tx.QueryRowContext(ctx, `SELECT 1 FROM scene WHERE id = ?`, sh.SceneID).Scan(&one); errors.Is(err, sql.ErrNoRows) {
+		return ErrNotFound
+	} else if err != nil {
 		return err
+	}
+	if err := tx.QueryRowContext(ctx,
+		`SELECT COALESCE(MAX(order_index), -1) + 1 FROM shot WHERE scene_id = ?`, sh.SceneID).Scan(&sh.OrderIndex); err != nil {
+		return err
+	}
+	_, err := tx.ExecContext(ctx,
+		`INSERT INTO shot (id, scene_id, order_index, objective, duration_seconds, shot_spec, state) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		sh.ID, sh.SceneID, sh.OrderIndex, sh.Objective, sh.Duration, string(sh.ShotSpec), sh.State)
+	return err
+}
+
+// AppendContinuation adds the Shot Continue planned (F-16) in one transaction. With newScene it
+// first appends that Scene at the end of the Project and puts the Shot in it; otherwise the
+// Shot goes to the end of the Scene sh.SceneID. It returns the stored Shot, or ErrNotFound when
+// the Project or the Scene does not exist.
+func (r *PlanRepository) AppendContinuation(ctx context.Context, projectID string, newScene *domain.Scene, sh domain.Shot) (domain.Shot, error) {
+	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
+		if newScene != nil {
+			scene := *newScene
+			scene.ProjectID = projectID
+			if err := insertScene(ctx, tx, &scene); err != nil {
+				return err
+			}
+			sh.SceneID = scene.ID
+		}
+		return insertShot(ctx, tx, &sh)
 	})
 	if err != nil {
-		return domain.Shot{}, fmt.Errorf("create shot: %w", err)
+		return domain.Shot{}, fmt.Errorf("append continuation: %w", err)
 	}
 	return sh, nil
 }
