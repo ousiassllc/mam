@@ -27,6 +27,8 @@ type core struct {
 	// pipeline drives the AUTO pipeline; nil when no Reasoning LLM is configured.
 	pipeline *orchestrator.Orchestrator
 	plans    *repository.PlanRepository
+	// continuer answers the replies to Continue cards; set by New.
+	continuer *ContinueService
 }
 
 // getProject maps repository.ErrNotFound to ErrNotFound.

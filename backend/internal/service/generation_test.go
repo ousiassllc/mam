@@ -46,6 +46,8 @@ type genReasoner struct {
 	users map[llm.Agent][]string
 	// extractor answers the State Extractor from its prompt; nil means an unusable answer.
 	extractor func(user string) string
+	// director answers the Director Agent (Continue) from its prompt; nil means an empty answer.
+	director func(system, user string) string
 }
 
 func (g *genReasoner) Complete(_ context.Context, agent llm.Agent, req llm.Request) (llm.Response, error) {
@@ -58,6 +60,9 @@ func (g *genReasoner) Complete(_ context.Context, agent llm.Agent, req llm.Reque
 	text := map[llm.Agent]string{llm.AgentPromptPlanner: specAnswer, llm.AgentArtDirector: artAnswer}[agent]
 	if agent == llm.AgentStateExtractor && g.extractor != nil {
 		text = g.extractor(req.User)
+	}
+	if agent == llm.AgentDirector && g.director != nil {
+		text = g.director(req.System, req.User)
 	}
 	return llm.Response{Text: text, Provider: llm.ProviderAnthropic, Model: "fake"}, nil
 }

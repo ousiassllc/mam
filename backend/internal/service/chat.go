@@ -151,6 +151,9 @@ func (s *ChatService) PostMessage(ctx context.Context, projectID string, in Post
 		}
 		target = &m
 	}
+	if target != nil && target.Kind == domain.KindQuestion && target.RefType == domain.RefContinue {
+		return s.answerContinue(ctx, project, *target, content, len(in.Uploads)+len(in.AttachmentAssetIDs) > 0)
+	}
 	existing, err := s.assets.ListByIDs(ctx, projectID, in.AttachmentAssetIDs)
 	if err != nil {
 		return Workspace{}, err
@@ -525,7 +528,11 @@ func (s *ChatService) views(ctx context.Context, projectID string, msgs []domain
 		switch m.Kind {
 		case domain.KindQuestion:
 			f := domain.BriefField(m.RefID)
-			v.Open = !replied[m.ID] && brief.Get(f) == "" && !brief.IsDelegated(f)
+			if m.RefType == domain.RefContinue {
+				v.Open = !replied[m.ID]
+			} else {
+				v.Open = !replied[m.ID] && brief.Get(f) == "" && !brief.IsDelegated(f)
+			}
 		case domain.KindEscalation:
 			v.Open = !replied[m.ID]
 		case domain.KindProgress:

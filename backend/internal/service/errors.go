@@ -37,6 +37,16 @@ func (e *ValidationError) Error() string {
 	return fmt.Sprintf("invalid input: %s: %s", e.Field, e.Message)
 }
 
+// AIError means the Reasoning LLM could not give a usable answer (the request itself was fine).
+// Reason is the user-facing cause. HTTP 502.
+type AIError struct {
+	Reason string
+	Err    error
+}
+
+func (e *AIError) Error() string { return "ai request failed: " + e.Reason }
+func (e *AIError) Unwrap() error { return e.Err }
+
 func invalid(field, format string, args ...any) error {
 	return &ValidationError{Field: field, Message: fmt.Sprintf(format, args...)}
 }

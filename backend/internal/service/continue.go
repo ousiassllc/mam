@@ -7,6 +7,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/continuation"
+	"github.com/ousiassllc/mam/backend/internal/agent/generation"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
@@ -96,7 +97,7 @@ func (s *ContinueService) Propose(ctx context.Context, shotID string) (domain.Pr
 	}
 	proposal, err := s.agent.Propose(ctx, in)
 	if err != nil {
-		return domain.Project{}, domain.ThreadMessage{}, err
+		return domain.Project{}, domain.ThreadMessage{}, aiError(err)
 	}
 	card := domain.ChatMessage{
 		ID: domain.NewID(), Role: domain.RoleAssistant, Kind: domain.KindQuestion, RefType: domain.RefContinue, RefID: shotID,
@@ -170,7 +171,7 @@ func (s *ContinueService) Confirm(ctx context.Context, shotID string, in Confirm
 	}
 	plan, err := s.agent.Plan(ctx, agentIn, direction)
 	if err != nil {
-		return ShotFragment{}, err
+		return ShotFragment{}, aiError(err)
 	}
 	var newScene *domain.Scene
 	shot := domain.Shot{SceneID: ref.Shot.SceneID, Objective: plan.Shot.Objective, Duration: plan.Shot.DurationSeconds}
@@ -194,4 +195,36 @@ func (s *ContinueService) Confirm(ctx context.Context, shotID string, in Confirm
 		return ShotFragment{}, mapGenerationError(err)
 	}
 	return s.generation.Shot(ctx, shot.ID)
+}
+
+// aiError reports a failed Continue Agent call with the reason the user can act on.
+func aiError(err error) error { return &AIError{Reason: generation.FailureReason(err), Err: err} }
+
+// answerContinue handles a reply to a Continue card (an option button, "AIに任せる", or the user's
+// own words). The reply is recorded first, which closes the card, and then the next Shot is made;
+// when that fails the error is returned and the user asks for a new card. It is called by
+// PostMessage before anything is written.
+func (s *ChatService) answerContinue(ctx context.Context, project domain.Project, card domain.ChatMessage, content string, hasAttachments bool) (Workspace, error) {
+	if hasAttachments {
+		return Workspace{}, invalid("attachment_asset_ids", "この質問には添付できません")
+	}
+	replied, err := s.chat.RepliedMessageIDs(ctx, project.ID)
+	if err != nil {
+		return Workspace{}, err
+	}
+	if replied[card.ID] {
+		return Workspace{}, ErrConflict
+	}
+	if _, err := s.continuer.check(ctx, card.RefID); err != nil {
+		return Workspace{}, err
+	}
+	choice := directionOf(domain.DecodeCardBody(card.Content), content)
+	turn := repository.Turn{ProjectID: project.ID, Messages: assignIDs([]domain.ChatMessage{userText(content, card.ID, nil)})}
+	if err := s.commit(ctx, turn); err != nil {
+		return Workspace{}, err
+	}
+	if _, err := s.continuer.Confirm(ctx, card.RefID, choice); err != nil {
+		return Workspace{}, err
+	}
+	return s.workspaceOf(ctx, project.ID, turn.Messages)
 }

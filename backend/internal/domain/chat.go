@@ -47,6 +47,7 @@ const (
 	RefJob           = "job"         // Progress card: ref_id is the job ID (status is read live)
 	RefShot          = "shot"        // Escalation card: ref_id is the shot ID (optional)
 	RefNotePromotion = "note_promotion"
+	RefContinue      = "continue" // Question card of Continue: ref_id is the completed shot ID
 )
 
 // ChatMessage is one entry of a Project's chat thread. The thread is append-only;
