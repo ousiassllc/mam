@@ -63,8 +63,13 @@ func (r *JudgeRepository) GetTake(ctx context.Context, takeID string) (TakeRef, 
 }
 
 // Save stores a Judge result for its Take as a new row and returns it with ID and CreatedAt set.
+// The Take's scores (take.scores, the four scores of the Take comparison) follow its latest result.
 func (r *JudgeRepository) Save(ctx context.Context, res domain.JudgeResult) (domain.JudgeResult, error) {
 	issues, metrics, preserve, repair, err := res.EncodeJSON()
+	scores, scoresErr := json.Marshal(domain.ScoreTake(res.Issues))
+	if err == nil {
+		err = scoresErr
+	}
 	if err != nil {
 		return domain.JudgeResult{}, fmt.Errorf("encode judge result: %w", err)
 	}
@@ -75,11 +80,14 @@ func (r *JudgeRepository) Save(ctx context.Context, res domain.JudgeResult) (dom
 	res.ID = domain.NewID()
 	res.CreatedAt = r.now().UTC()
 	err = r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
-		_, err := tx.ExecContext(ctx,
+		if _, err := tx.ExecContext(ctx,
 			`INSERT INTO judge_result (id, take_id, result, overall_confidence, issues, metrics, preserve, repair_strategy, created_at)
 			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			res.ID, res.TakeID, res.Result, res.OverallConfidence, string(issues), string(metrics), string(preserve), repairColumn,
-			formatTime(res.CreatedAt))
+			formatTime(res.CreatedAt)); err != nil {
+			return err
+		}
+		_, err := tx.ExecContext(ctx, `UPDATE take SET scores = ? WHERE id = ?`, string(scores), res.TakeID)
 		return err
 	})
 	if err != nil {
