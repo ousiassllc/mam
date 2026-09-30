@@ -29,12 +29,17 @@ import (
 type editorLLM struct {
 	answer    string
 	audioPlan string
+	// audioErr, when set, fails the Audio Director's Planner call.
+	audioErr error
 }
 
 const defaultAudioPlan = `{"scenes":[{"index":1,"emotion":"期待","bgm":"warm acoustic guitar","ambience":"","effects":[{"layer":"se","at_seconds":0.2,"duration_seconds":1,"prompt":"soft chime"}]}]}`
 
 func (l *editorLLM) Complete(_ context.Context, agent llm.Agent, _ llm.Request) (llm.Response, error) {
 	if agent == llm.AgentAudioDirector {
+		if l.audioErr != nil {
+			return llm.Response{}, l.audioErr
+		}
 		return llm.Response{Text: l.audioPlan}, nil
 	}
 	return llm.Response{Text: l.answer}, nil
