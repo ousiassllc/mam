@@ -140,3 +140,69 @@ func TestBundleRepository_AnEpisodeIsExportedDetachedFromItsSeries(t *testing.T)
 	dst := openTestDB(t)
 	require.NoError(t, repository.NewBundleRepository(dst).Import(ctx, data), "no foreign key points at the Series that is not there")
 }
+
+// setBundleField changes one field of the first row of a table in an exported bundle.
+func setBundleField(t *testing.T, data domain.BundleData, table, column string, value any) {
+	t.Helper()
+	for _, tb := range data.Tables {
+		if tb.Name == table {
+			require.NotEmpty(t, tb.Rows, table)
+			tb.Rows[0][column] = value
+			return
+		}
+	}
+	require.Failf(t, "no such table in the bundle", table)
+}
+
+func TestBundleRepository_ImportRejectsRowsThatReachOutsideTheBundle(t *testing.T) {
+	cases := []struct {
+		name, table, column string
+		value               any
+	}{
+		{"a shot of another project's scene", "shot", "scene_id", "b-sc"},
+		{"a prompt version of another project's shot", "prompt_version", "shot_id", "b-sh"},
+		{"a take of another project's prompt version", "take", "prompt_version_id", "b-pv"},
+		{"a judge result of another project's take", "judge_result", "take_id", "b-t"},
+		{"a selected take of another project", "shot", "selected_take_id", "b-t"},
+		{"an existing series", "project", "series_id", "s"},
+		{"an existing series version", "project", "inherited_series_version_id", "sv"},
+		{"an existing character as origin", "character", "origin_id", "b-ch"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			db := openTestDB(t)
+			seedDeepProject(t, db, "a")
+			seedDeepProject(t, db, "b")
+			for _, q := range []string{
+				`INSERT INTO series (id, name) VALUES ('s', 'Show')`,
+				`INSERT INTO series_version (id, series_id, version_number, state) VALUES ('sv', 's', 1, '{}')`,
+				`INSERT INTO character (id, project_id, name) VALUES ('b-ch', 'b', 'Mio')`,
+				`INSERT INTO character (id, project_id, name) VALUES ('a-ch', 'a', 'Mio')`,
+			} {
+				require.NoError(t, exec(t, db, q), q)
+			}
+			r := repository.NewBundleRepository(db)
+			data, err := r.Export(ctx, "a")
+			require.NoError(t, err)
+			require.NoError(t, exec(t, db, `DELETE FROM project WHERE id = 'a'`)) // foreign keys cascade
+			setBundleField(t, data, tc.table, tc.column, tc.value)
+
+			before := countRows(t, db, "shot", "project", "character")
+			err = r.Import(ctx, data)
+			assert.ErrorIs(t, err, repository.ErrInvalidBundle)
+			assert.Equal(t, before, countRows(t, db, "shot", "project", "character"), "nothing is written")
+		})
+	}
+}
+
+func countRows(t *testing.T, db *repository.DB, tables ...string) map[string]int {
+	t.Helper()
+	out := map[string]int{}
+	for _, table := range tables {
+		var n int
+		require.NoError(t, db.Reader().QueryRow(`SELECT count(*) FROM `+table).Scan(&n))
+		out[table] = n
+	}
+	return out
+}
