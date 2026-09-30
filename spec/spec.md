@@ -487,6 +487,12 @@ Next Shot
 
 **M1 の範囲**: 上記のうち Character の `hairstyle/wardrobe/emotion/position/current_action`、Product の `orientation/condition`、Camera、Story を State Extractor が更新する。次の Shot の Prompt Planner は最新の World State（前 Shot が残した状態）を入力に使う。Location State（時間帯・照明・天気の自動更新）と LOCK 強化は M2。保持形式・diff 形式は `spec/architecture/er.md` §4 を参照。
 
+**M2 の範囲（Location State・属性単位の LOCK、Issue #15）**:
+
+- **Location State**: `time`（時間帯）・`lighting_state`・`weather` は State Extractor が Shot 完了ごとに更新する（更新対象は、その Shot の Canonical Shot Spec が指す Location のみ）。次の Shot の Prompt Planner が最新の World State を入力にすることで Shot・Scene をまたいで引き継がれる。`layout_reference` はライブラリ（§10.1）の画像をユーザーが割り当てる項目で、AI は変更しない。いずれもユーザーが編集・LOCK できる
+- **属性単位の LOCK**: World State の項目ごとに AUTO / LOCK を切り替える（MANUAL は使わない。ユーザーが直接編集した値を守りたいときは LOCK）。LOCK 対象は、Character が編集項目（`hairstyle/wardrobe/voice/personality/emotion/position/current_action`）と `identity`、Product が編集項目（`material/orientation/condition`）と `geometry`・`label`、Location が編集項目（`time/lighting_state/weather`）と `layout_reference`、Camera（`lens/position/angle/movement`）と Story（`scene/character_goal/known_information/previous_event`）の全項目。LOCK 項目は State Extractor が diff に含めず、`ApplyStateDiff` も書き込まず、ユーザー編集は 423 になる
+- **LOCK 違反の判定**: AI Video Judge は、Shot が使う Character / Product / Location の LOCK を次の評価軸に対応付け、その軸の Issue が severity medium 以上なら LOCK 違反とし、スコア・確信度に関係なく Take を FAIL にする（§13）。`identity` → `character_identity`・`face`、`wardrobe/hairstyle` → `character_consistency`、`geometry` → `product_geometry`、`label` → `logo_text_accuracy`、`orientation/material/condition` → `product_accuracy`、Location の `time/lighting_state` → `lighting`、`weather/layout_reference` → `background_consistency`
+
 ## 9.4 Notes（制作メモ、M2）
 
 World State（構造化状態）に収まらない文脈（登場人物の背景・世界観・口調・トーン・伏せておきたい情報など）を、自由記述で保持する。
@@ -545,6 +551,31 @@ KEYFRAME
 ```
 
 これらをShot Generation時に自動利用する。
+
+## 10.1 Reference Library（M2）
+
+Reference Pack の素材を Shot・Scene をまたいで再利用するための、Project 単位の参照画像の保管庫。`asset.type=reference` の画像に、種別・名前・タグを付けて保持する。
+
+### 登録
+
+- **自動登録**: Art Director が Reference Pack のために生成した Character / Product / Location / Style / Lighting Reference の画像は、生成時にライブラリへ登録される（`source=generated`、由来の Shot を記録）。Keyframe は Shot 固有なので登録しない
+- **アップロード**: ユーザーが画像（jpg / png / webp / gif、1枚 20MB まで）に種別（character / product / location / style / lighting）と名前（必須、100文字以内）、タグ（任意、最大10個、各30文字以内）を付けて登録する（`source=uploaded`）
+
+### 検索
+
+名前とタグの部分一致（`q`、大文字小文字を区別しない）、種別（`kind`）、タグの完全一致（`tag`）で絞り込む。新しい登録順に並べる。
+
+### 再利用
+
+- **Shot への追加（ピン留め）**: ライブラリの画像を Shot の Reference Pack に加える。同じ種別・同じ名前の参照が Pack にあれば置き換える。ピン留めした参照は Reference Pack の再生成でも残り、再生成しない（Art Director が同じ種別・名前の参照を計画しても新たに生成せず、ピン留めした画像を使う。コストは発生しない）
+- **World State への割り当て**: Character の `face_reference` / `body_reference`、Product の `geometry_reference` / `label_reference`、Location の `layout_reference` に、同じ種別のライブラリ画像を割り当てる。割り当てた画像は、同じ名前の Character / Product / Location の Reference Pack 生成で（`face` / `geometry` / `layout` を）新たに生成せずに使い、AI Video Judge の顔参照と画像生成の入力にも使う。対応する LOCK（後述）が掛かっている項目への割り当ては拒否する
+- **削除**: ライブラリから外す。画像そのものと、すでに Shot に付いた参照は残る
+
+Series をまたぐ再利用は F-29 の範囲（本節は Project 内）。
+
+### World State の LOCK との対応（M2）
+
+`face_reference` / `body_reference` は `identity`、`geometry_reference` は `geometry`、`label_reference` は `label`、`layout_reference` は `layout_reference` の LOCK に従う。
 
 ---
 

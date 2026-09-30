@@ -149,7 +149,7 @@ func (o *Orchestrator) Regenerate(ctx context.Context, ref repository.ShotRef, r
 	if err != nil {
 		return "", err
 	}
-	record, err := recordOf(strategy, job)
+	record, err := recordOf(strategy, job, "")
 	if err != nil {
 		return "", err
 	}
@@ -158,7 +158,7 @@ func (o *Orchestrator) Regenerate(ctx context.Context, ref repository.ShotRef, r
 		return "", err
 	}
 	title := fmt.Sprintf("Shot %d · %s", shot.OrderIndex+1, r.Action.Label())
-	takeID, err := o.makeTake(ctx, ref, pv, strategy, job, title, policy.Effective().MaxGenerationTime)
+	takeID, err := o.makeTake(ctx, ref, pv, strategy, job, title, policy.Effective().MaxGenerationTime, "")
 	if err != nil {
 		return "", err
 	}

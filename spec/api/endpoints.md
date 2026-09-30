@@ -38,6 +38,7 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 | GET | `/projects/:id/export` | Final Export ページ | フルページ / フラグメント |
 | GET | `/projects/:id/settings` | Production Template・Quality/Cost Policy・予算上限・コスト（`cost_summary_panel`）・ディスク使用量と不要 Take のアーカイブ・Brand Constraints・APIキー設定。Chat Workspace の補助ビュー一覧と入力欄の「設定」から開く | フルページ / フラグメント |
 | GET | `/projects/:id/world-state` | World State 一覧（Character/Product/Location/Camera/Story の現在値表示） | フルページ / フラグメント |
+| GET | `/projects/:id/references` | Reference Library（補助ビュー、M2。登録済みの参照画像の検索・アップロード・Shot への追加・削除）。クエリ `q`・`kind`・`tag` で絞り込む | フルページ / フラグメント |
 | GET | `/projects/:id/notes` | Notes 一覧・編集（補助ビュー、M2。ピン留め・カテゴリ・アーカイブの表示、`version_history_panel` でバージョン復元） | フルページ / フラグメント |
 | GET | `/series/:id/notes` | Series 正本 Notes の一覧・編集（M2） | フルページ / フラグメント |
 
@@ -89,7 +90,7 @@ M1 の入出力契約（Issue #12）:
 |---|---|---|---|
 | POST | `/shots/:id/reference-pack` | Keyframe / Reference Pack（Character/Product/Location/Style/Lighting Reference）生成・再生成。非同期ジョブを起動し、`/shots/:id/generate` と同じく 202 と GENERATING の Shot カードを返す | F-11 |
 | POST | `/shots/:id/generate` | Prompt Autopilot → Model Adapter → Video Generation を実行（非同期ジョブ起動、202+進捗はWSで通知）。Body `additional_instruction`（任意、1000 文字以内）。予算上限に 1 Take も収まらなければ 402、生成中の Shot は 409、存在しない Shot は 404、生成機能が未構成（Model Adapter / LLM / ジョブキューなし）は 503。完了した Take は Take カードとしてチャットに追記され、`take.model_name` と `cost_ledger_entry.provider` は `spec/architecture/model-adapters.md` §6 の正規識別子で保存される | F-06, F-07, F-12 |
-| POST | `/shots/:id/generate/candidates` | Prompt Candidate Generation（Quality/Balanced/Economy Mode） | F-08 |
+| POST | `/shots/:id/generate/candidates` | Prompt Candidate Generation（Quality/Balanced/Economy Mode）。Prompt Planner が Stability First / Acting First / Dynamic Camera の Candidate（Prompt Version）を作り、Take を生成して AI Video Judge が Best Take（`take.status=ai_pick`）を選ぶ。非同期ジョブ（`job.kind` は generation と同じ）を起動し、`/shots/:id/generate` と同じく 202 と GENERATING の Shot カードを返す。Body `additional_instruction`（任意）。モードは Quality/Cost Policy で決まる: MAX QUALITY→Quality（全 Candidate を並列生成し Judge が選ぶ）、BALANCED→Balanced（第一候補のみ。Judge が FAIL の間、Retry Policy と予算の範囲で次の Candidate を追加）、FAST→Economy（1 Take。LOCK 違反または high の Issue があるときだけ Retake）。Take の `model_parameters.candidate_strategy` に戦略を保存する。エラーは `/shots/:id/generate` と同じ（402 / 404 / 409 / 503）で、Judge が未構成でも 503 | F-08 |
 | POST | `/takes/:id/judge` | AI Video Judge を明示的に再実行。非同期ジョブ（`job.kind=judge`）を起動し、202 と JUDGING の Shot カードを返す。結果は `judge_result` に追記され（過去の結果は残る）、チャットに投稿される。Take を作るたびに自動でも実行される。エラー: 404（Take が存在しない）、409（この Take の Judge がすでに実行待ち/実行中）、503（ffmpeg / LLM 未設定で Judge が無効） | F-13 |
 | POST | `/takes/:id/repair` | Judge 結果に基づく Repair 実行。最新の Judge 結果から Repair Agent が戦略（Prompt Repair/Partial Regeneration/Full Retake/Different Model/Reference Reinforcement/Edit-Level Repair）を選び、Retry Policy の範囲内で新しい Take を作る。非同期ジョブ（`job.kind=repair`）を起動し、202 と REPAIRING の Shot カードを返す。新しい Take は `take` の新しい行で、修復元の Take は変わらない（`repair_action.resulting_take_id` で追跡）。作られた Take は自動で Judge される。Retry Policy（Max retries / Max cost per Shot / Project 予算）の上限に達していたときはジョブが Take を作らず、チャットに Escalation カードを出す。AUTO MODE では Judge のあと全 Take が不合格なら最良の Take から自動で繰り返す（DIRECTOR MODE では自動で繰り返さない）。エラー: 404（Take が存在しない）、409（まだ Judge されていない／Judge に合格していて Repair 不要／Shot が生成中または Repair 中）、503（ジョブキュー・LLM 未設定で Repair が無効） | F-14 |
 
@@ -153,6 +154,12 @@ M1 の入出力契約（Issue #8）:
 - `GET /projects/:id/world-state`: `HX-Request` でフラグメント、なければフルページ（`world_state_page`）。LOCK 中の項目は「LOCK」バッジ付きで編集不可。Camera/Story は Shot 完了ごとに State Extractor が更新するため参照専用
 - `branch_id` クエリは Branch（M2）が存在しない M1 では、指定されていれば 404 とする
 
+M2 の入出力契約（Issue #15）:
+
+- `PUT /projects/:id/world-state/locks`: World State の項目ごとの AUTO/LOCK 設定。Body `target_type`（`character|product|location|camera|story`）、`target_id`（Character/Product/Location の ID。`camera`/`story` は省略）、`parameter`（`spec/architecture/er.md` §4 の属性名）、`mode`（`auto|lock`）。応答は更新後の World State ビュー（`#world-state-view`、200）。LOCK 中の項目は State Extractor が更新せず、ユーザー編集は 423。未知の `target_type`/`parameter`/`mode` は 422、存在しない Project・エンティティは 404。Story 全体の LOCK は従来どおり `PUT /projects/:id/locks`
+- `PUT /projects/:id/characters|products|locations/:entityId/reference`: ライブラリの画像を World State の参照に割り当てる。Body `slot`（Character は `face|body`、Product は `geometry|label`、Location は `layout`）、`reference_id`（`reference_item.id`。空文字で割り当てを外す）。応答は更新後の World State ビュー（200）で、新しい `world_state_version` を追記する。対応する LOCK（`spec/spec.md` §10.1）が掛かっていれば 423、`slot` が種別に合わない・`reference_id` の種別がスロットに合わないは 422、Project/エンティティ/`reference_id` が無ければ 404
+- `GET /projects/:id/world-state` の各項目には LOCK の状態（`world_state_field` の LOCK バッジと `lock_toggle`）を表示する
+
 ### 2.9 Series / Episode（M2）
 
 | Method | Path | 概要 | 対応機能 |
@@ -170,6 +177,21 @@ M1 の入出力契約（Issue #8）:
 | PUT | `/notes/:id` | メモ更新。`title`/`content` が変わる場合は新しい `note_version` を追記する（Project スコープは昇格提案を再生成）。`category`/`pinned`/`archived`（`false` でアーカイブ解除）は行を更新し、バージョンは増えない。Series 正本の更新はコピー済みの Episode へ伝播しない | F-31, F-28 |
 | DELETE | `/notes/:id` | メモをアーカイブ（`archived_at` を設定。以降の推論文脈には渡さない） | F-31 |
 | POST | `/notes/:id/versions/:versionNumber/restore` | 指定バージョンの内容を新しい `note_version` として追記して復元 | F-31, F-28 |
+
+### 2.11 Reference Library（M2）
+
+| Method | Path | 概要 | 対応機能 |
+|---|---|---|---|
+| POST | `/projects/:id/references` | 参照画像をライブラリへ登録。`multipart/form-data`: `file`（必須、jpg/png/webp/gif、20MB まで）、`kind`（必須、`character|product|location|style|lighting`）、`name`（必須、100文字以内）、`tags`（任意、カンマ・空白・読点区切り、最大10個・各30文字以内） | F-11 |
+| DELETE | `/projects/:id/references/:referenceId` | ライブラリから外す（画像と、すでに Shot に付いた参照は残す） | F-11 |
+| POST | `/shots/:id/references` | ライブラリの画像を Shot の Reference Pack に追加（ピン留め）。Body `reference_id` | F-11 |
+
+入出力契約:
+
+- `GET /projects/:id/references`: `HX-Request` でフラグメント（`#reference-library`）、なければフルページ（`reference_library_page`）。`q`（名前・タグの部分一致）、`kind`、`tag`（完全一致）は AND で絞り込み、新しい登録順。不正な `kind` は 422
+- `POST /projects/:id/references`: 成功時は更新後のライブラリ（201）。ファイルなし・拡張子と内容の不一致・サイズ超過・不正な `kind`・名前が空か長すぎる・タグが多すぎる／長すぎるは 422（何も保存しない）、存在しない Project は 404
+- `DELETE /projects/:id/references/:referenceId`: 更新後のライブラリ（200）。当該 Project に無ければ 404
+- `POST /shots/:id/references`: 応答は更新後のライブラリ相当ではなく Shot カード（200）。同じ種別・同じ名前の参照があれば置き換え、`library_item` に登録 ID を記録する。Reference Pack の再生成ではピン留めした参照を残し、再生成しない。`reference_id` が空は 422、Shot または `reference_id`（同じ Project のもの）が無ければ 404、生成中の Shot は 409
 
 ## 3. API ルート（Huma, JSON, `/api/v1`）
 
@@ -293,4 +315,5 @@ Notes:
 | 1.24 | 2026-09-29 | `POST /takes/:id/judge` の応答・エラー（202/404/409/503）、`GET /api/v1/takes/:id/judge-result` の 404 と応答項目（`preserve`・`metrics.face_identity_status`・`lock_violation` 等）、`/ws/shots/:id` の Judge 通知（`action=judge`・`stage=judging`）を明記 | M1「AI Video Judge（Face Identity Similarity 含む）」（Issue #9）で Judge の API 契約と進捗通知が未定義だったため |
 | 1.25 | 2026-09-29 | §2.4 の `POST /shots/:id/continue`・`/continue/confirm` の入出力・エラー・チャットカードとの対応を明記 | M2「Continue」（Issue #17）で Body・応答・Continue カード（`ref_type=continue`）の回答方法・新 Scene を作る条件が名称レベルでしか定義されておらず、保守的に確定したため |
 | 1.26 | 2026-09-29 | §2.2 に M1 の入出力契約（mode / locks / shot-spec / Inspector / director-command / チャットの DIRECTOR 解釈）を追記。`POST /shots/:id/generate` の LOCK・Video Model 固定時の挙動を追記 | M1「AUTO/MANUAL/LOCK と DIRECTOR MODE」（Issue #12）で、Body・応答・423/422/409/202 の条件、対象 Shot の解決順、LOCK の判定範囲が名称レベルでしか定義されていなかったため |
-| 1.27 | 2026-09-29 | `POST /takes/:id/repair` の応答・エラー（202/404/409/503）・Retry Policy の適用・AUTO MODE の自動ループ、`/ws/shots/:id` の Repair 通知（`action=repair`・`stage=repairing`）、`GET /api/v1/repair/jev-shadow-report` を明記 | M1「Repair/Retake Loop」（Issue #10）で Repair の API 契約と進捗通知が未定義だったため |
+| 1.27 | 2026-09-30 | §2.8 に M2 の契約（`PUT /projects/:id/world-state/locks`、`PUT …/:entityId/reference`）を追記。`GET /projects/:id/references` と §2.11 Reference Library（`POST/DELETE /projects/:id/references`、`POST /shots/:id/references`）を追加 | M2「Character/Product Lock・Location State・Reference Library」（Issue #15）で、World State の属性単位 LOCK の切替とライブラリの登録・検索・再利用の API が定義されていなかったため。ライブラリは Project 内の画像を対象とし、Reference Pack への追加は Shot 単位のピン留めにした |
+| 1.28 | 2026-09-30 | `POST /takes/:id/repair` の応答・エラー（202/404/409/503）・Retry Policy の適用・AUTO MODE の自動ループ、`/ws/shots/:id` の Repair 通知（`action=repair`・`stage=repairing`）、`GET /api/v1/repair/jev-shadow-report` を明記 | M1「Repair/Retake Loop」（Issue #10）で Repair の API 契約と進捗通知が未定義だったため |

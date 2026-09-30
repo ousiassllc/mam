@@ -19,13 +19,6 @@ import (
 const failVerdict = `{"result":"fail","overall_confidence":0.8,"issues":[{"type":"camera_speed","severity":"medium","dimension":"camera_motion"}],
 	"preserve":["character"],"repair_strategy":{"action":"partial_regeneration","instructions":["reduce_camera_speed_40_percent"]}}`
 
-func (j *judgeApp) count(query string, args ...any) int {
-	j.t.Helper()
-	var n int
-	require.NoError(j.t, j.db.Reader().QueryRow(query, args...).Scan(&n))
-	return n
-}
-
 // director switches the Project to DIRECTOR MODE: nothing is repaired unless the user asks.
 func (j *judgeApp) director() {
 	j.execSQL(`UPDATE project SET mode = 'director' WHERE id = ?`, j.project)

@@ -151,6 +151,65 @@ func TestGenerationRepository_CreateTakeStoresTakeAssetAndCostTogether(t *testin
 	assert.Zero(t, n)
 }
 
+func TestGenerationRepository_CandidateSpecsAreVersionedAndOnlyTheAdoptedOneBecomesTheShotSpec(t *testing.T) {
+	ctx := context.Background()
+	f := newGenRepoFixture(t)
+	_, err := f.repo.SavePromptedSpec(ctx, f.shotID, domain.ShotSpec{ShotObjective: "current", Camera: domain.SpecCamera{Framing: "wide"}}, nil)
+	require.NoError(t, err)
+
+	pv, err := f.repo.SaveCandidateSpec(ctx, f.shotID, domain.ShotSpec{ShotObjective: "acting first", Camera: domain.SpecCamera{Framing: "close"}}, json.RawMessage(`{"candidate_strategy":"acting_first"}`))
+	require.NoError(t, err)
+	assert.Equal(t, 2, pv.VersionNumber)
+	ref, err := f.repo.GetShot(ctx, f.shotID)
+	require.NoError(t, err)
+	stored, _ := ref.Shot.CanonicalSpec()
+	assert.Equal(t, "current", stored.ShotObjective, "a Candidate is only an alternative")
+
+	require.NoError(t, f.repo.AdoptSpec(ctx, f.shotID, domain.ShotSpec{ShotObjective: "acting first", Camera: domain.SpecCamera{Framing: "close"}}))
+	ref, err = f.repo.GetShot(ctx, f.shotID)
+	require.NoError(t, err)
+	stored, _ = ref.Shot.CanonicalSpec()
+	assert.Equal(t, "acting first", stored.ShotObjective)
+	_, hasBoard := ref.Shot.Storyboard()
+	assert.True(t, hasBoard, "the storyboard survives")
+	assert.ErrorIs(t, f.repo.AdoptSpec(ctx, "missing", stored), repository.ErrNotFound)
+}
+
+func TestGenerationRepository_MarkAIPickMovesTheAIPickAndLeavesTheUsersChoiceAlone(t *testing.T) {
+	ctx := context.Background()
+	f := newGenRepoFixture(t)
+	pv, err := f.repo.SavePromptedSpec(ctx, f.shotID, domain.ShotSpec{ShotObjective: "x", Camera: domain.SpecCamera{Framing: "wide"}}, nil)
+	require.NoError(t, err)
+	take := func(n string) string {
+		id, err := f.repo.CreateTake(ctx, repository.NewTake{
+			ProjectID: f.projectID, ShotID: f.shotID, PromptVersionID: pv.ID, Model: domain.ModelSeedance2,
+			Asset: domain.Asset{ID: "asset-" + n, ProjectID: f.projectID, Type: domain.AssetVideo, FilePath: "p/" + n + ".mp4", MimeType: "video/mp4", SizeBytes: 1},
+		})
+		require.NoError(t, err)
+		return id
+	}
+	status := func(id string) string {
+		var s string
+		require.NoError(t, f.db.Reader().QueryRow(`SELECT status FROM take WHERE id = ?`, id).Scan(&s))
+		return s
+	}
+	a, b, selected := take("a"), take("b"), take("c")
+	require.NoError(t, f.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, `UPDATE take SET status = 'selected' WHERE id = ?`, selected)
+		return err
+	}))
+
+	require.NoError(t, f.repo.MarkAIPick(ctx, f.shotID, a))
+	assert.Equal(t, "ai_pick", status(a))
+	require.NoError(t, f.repo.MarkAIPick(ctx, f.shotID, b))
+	assert.Equal(t, "candidate", status(a), "the earlier AI pick goes back to candidate")
+	assert.Equal(t, "ai_pick", status(b))
+
+	assert.ErrorIs(t, f.repo.MarkAIPick(ctx, f.shotID, selected), repository.ErrNotFound, "the user's choice is not overridden")
+	assert.Equal(t, "selected", status(selected))
+	assert.ErrorIs(t, f.repo.MarkAIPick(ctx, "other-shot", b), repository.ErrNotFound)
+}
+
 func TestGenerationRepository_SaveReferencePackReplacesThePackAndKeepsTheSpec(t *testing.T) {
 	ctx := context.Background()
 	f := newGenRepoFixture(t)

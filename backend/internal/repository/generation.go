@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -143,19 +144,81 @@ func (r *GenerationRepository) ResetStaleShots(ctx context.Context) (int, error)
 // and appends a prompt_version whose snapshot is the resulting shot_spec. adapterOutput is
 // stored in prompt_version.model_adapter_output.
 func (r *GenerationRepository) SavePromptedSpec(ctx context.Context, shotID string, spec domain.ShotSpec, adapterOutput json.RawMessage) (domain.PromptVersion, error) {
+	return r.savePromptVersion(ctx, shotID, spec, adapterOutput, true)
+}
+
+// SaveCandidateSpec appends a prompt_version for a Prompt Candidate like SavePromptedSpec does, but
+// leaves shot.shot_spec as it is: the Candidates of a Shot are alternatives, and only the one the
+// Judge picks becomes the spec of the Shot (AdoptSpec).
+func (r *GenerationRepository) SaveCandidateSpec(ctx context.Context, shotID string, spec domain.ShotSpec, adapterOutput json.RawMessage) (domain.PromptVersion, error) {
+	return r.savePromptVersion(ctx, shotID, spec, adapterOutput, false)
+}
+
+func (r *GenerationRepository) savePromptVersion(ctx context.Context, shotID string, spec domain.ShotSpec, adapterOutput json.RawMessage, adopt bool) (domain.PromptVersion, error) {
 	var pv domain.PromptVersion
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		current, _, err := readShotSpec(ctx, tx, shotID)
 		if err != nil {
 			return err
 		}
-		pv, err = r.writeSpec(ctx, tx, shotID, current, spec, adapterOutput)
+		pv, err = r.writeSpec(ctx, tx, shotID, current, spec, adapterOutput, adopt)
 		return err
 	})
 	if err != nil {
 		return domain.PromptVersion{}, fmt.Errorf("save prompted spec: %w", err)
 	}
 	return pv, nil
+}
+
+// AdoptSpec merges the Canonical Shot Spec of a Prompt Candidate into shot.shot_spec (keeping the
+// other keys), so that the Shot carries the spec of the Take the Judge picked.
+func (r *GenerationRepository) AdoptSpec(ctx context.Context, shotID string, spec domain.ShotSpec) error {
+	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
+		var current string
+		if err := tx.QueryRowContext(ctx, `SELECT shot_spec FROM shot WHERE id = ?`, shotID).Scan(&current); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return ErrNotFound
+			}
+			return err
+		}
+		merged, err := domain.MergeShotSpec(json.RawMessage(current), spec)
+		if err != nil {
+			return err
+		}
+		_, err = tx.ExecContext(ctx, `UPDATE shot SET shot_spec = ? WHERE id = ?`, string(merged), shotID)
+		return err
+	})
+	if err != nil {
+		return fmt.Errorf("adopt spec: %w", err)
+	}
+	return nil
+}
+
+// MarkAIPick makes the Take the AI pick of its Shot (take.status = ai_pick). The AI pick of the
+// Shot before it goes back to candidate; a Take the user selected or rejected is left alone.
+// It returns ErrNotFound when the Take does not belong to the Shot.
+func (r *GenerationRepository) MarkAIPick(ctx context.Context, shotID, takeID string) error {
+	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
+		if _, err := tx.ExecContext(ctx,
+			`UPDATE take SET status = ? WHERE status = ? AND prompt_version_id IN (SELECT id FROM prompt_version WHERE shot_id = ?)`,
+			domain.TakeCandidate, domain.TakeAIPick, shotID); err != nil {
+			return err
+		}
+		res, err := tx.ExecContext(ctx,
+			`UPDATE take SET status = ? WHERE id = ? AND status IN (?, ?) AND prompt_version_id IN (SELECT id FROM prompt_version WHERE shot_id = ?)`,
+			domain.TakeAIPick, takeID, domain.TakeCandidate, domain.TakeAIPick, shotID)
+		if err != nil {
+			return err
+		}
+		if n, _ := res.RowsAffected(); n == 0 {
+			return ErrNotFound
+		}
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("mark ai pick: %w", err)
+	}
+	return nil
 }
 
 // SaveEditedSpec stores a Canonical Shot Spec the user edited by hand (F-06, DIRECTOR MODE) as a
@@ -182,7 +245,7 @@ func (r *GenerationRepository) SaveEditedSpec(ctx context.Context, shotID string
 				return &LockedParametersError{Parameters: hit}
 			}
 		}
-		pv, err = r.writeSpec(ctx, tx, shotID, current, spec, nil)
+		pv, err = r.writeSpec(ctx, tx, shotID, current, spec, nil, true)
 		return err
 	})
 	if errors.Is(err, ErrNotFound) || errors.Is(err, ErrConflict) || errors.Is(err, ErrLocked) {
@@ -209,14 +272,17 @@ func readShotSpec(ctx context.Context, tx *sql.Tx, shotID string) (string, domai
 	return spec, state, nil
 }
 
-// writeSpec merges the spec into the shot_spec JSON current and appends a prompt_version.
-func (r *GenerationRepository) writeSpec(ctx context.Context, tx *sql.Tx, shotID, current string, spec domain.ShotSpec, adapterOutput json.RawMessage) (domain.PromptVersion, error) {
+// writeSpec appends a prompt_version whose snapshot is the spec merged into the shot_spec JSON
+// current. adopt also stores the merged spec in shot.shot_spec.
+func (r *GenerationRepository) writeSpec(ctx context.Context, tx *sql.Tx, shotID, current string, spec domain.ShotSpec, adapterOutput json.RawMessage, adopt bool) (domain.PromptVersion, error) {
 	merged, err := domain.MergeShotSpec(json.RawMessage(current), spec)
 	if err != nil {
 		return domain.PromptVersion{}, err
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE shot SET shot_spec = ? WHERE id = ?`, string(merged), shotID); err != nil {
-		return domain.PromptVersion{}, err
+	if adopt {
+		if _, err := tx.ExecContext(ctx, `UPDATE shot SET shot_spec = ? WHERE id = ?`, string(merged), shotID); err != nil {
+			return domain.PromptVersion{}, err
+		}
 	}
 	var next int
 	if err := tx.QueryRowContext(ctx, `SELECT COALESCE(MAX(version_number), 0) + 1 FROM prompt_version WHERE shot_id = ?`, shotID).Scan(&next); err != nil {
@@ -284,18 +350,21 @@ func insertCost(ctx context.Context, tx *sql.Tx, c domain.CostEntry, now string)
 	return nil
 }
 
-// NewReferencePack is the Reference Pack of a Shot with the image assets and their cost.
+// NewReferencePack is the Reference Pack of a Shot with the image assets and their cost. References
+// may include images that already exist (pinned from the Reference Library, or the images a World
+// State reference slot holds): only the images in Assets are new.
 type NewReferencePack struct {
 	ProjectID  string
 	ShotID     string
 	References []domain.Reference
-	Assets     []domain.Asset // one per reference, same order (type reference)
+	Assets     []domain.Asset // the new image assets (type reference)
 	Costs      []domain.CostEntry
 }
 
 // SaveReferencePack replaces the Reference Pack of the Shot: the assets and costs are inserted,
-// the Characters and Products it names join the World State (when not already there) and the
-// "references" key of shot.shot_spec is rewritten, in one transaction.
+// the new images join the Project's Reference Library (spec/spec.md §10.1; the Keyframe stays
+// with its Shot), the Characters and Products it names join the World State (when not already
+// there) and the "references" key of shot.shot_spec is rewritten, in one transaction.
 func (r *GenerationRepository) SaveReferencePack(ctx context.Context, p NewReferencePack) error {
 	now := formatTime(r.now())
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
@@ -316,6 +385,22 @@ func (r *GenerationRepository) SaveReferencePack(ctx context.Context, p NewRefer
 				return err
 			}
 		}
+		added := make(map[string]bool, len(p.Assets))
+		for _, a := range p.Assets {
+			added[a.ID] = true
+		}
+		for _, ref := range p.References {
+			if !added[ref.AssetID] || !domain.ValidLibraryKind(ref.Kind) {
+				continue
+			}
+			item := domain.ReferenceItem{
+				ID: domain.NewID(), ProjectID: p.ProjectID, AssetID: ref.AssetID, Kind: ref.Kind,
+				Name: libraryName(ref), Tags: []string{}, Source: domain.SourceGenerated, SourceShotID: p.ShotID,
+			}
+			if err := insertReferenceItem(ctx, tx, item, now); err != nil {
+				return err
+			}
+		}
 		for _, ref := range p.References {
 			if err := ensureWorldEntity(ctx, tx, p.ProjectID, ref); err != nil {
 				return err
@@ -332,6 +417,19 @@ func (r *GenerationRepository) SaveReferencePack(ctx context.Context, p NewRefer
 		return fmt.Errorf("save reference pack: %w", err)
 	}
 	return nil
+}
+
+// libraryName is the name a generated reference gets in the Reference Library: the name the Art
+// Director gave it, or its kind for a Style / Lighting image; at most domain.MaxReferenceNameRunes.
+func libraryName(ref domain.Reference) string {
+	name := strings.TrimSpace(ref.Name)
+	if name == "" {
+		name = ref.Kind.Label()
+	}
+	if r := []rune(name); len(r) > domain.MaxReferenceNameRunes {
+		name = string(r[:domain.MaxReferenceNameRunes])
+	}
+	return name
 }
 
 // WorldContext returns the World State of the Project: its Characters, Products and Locations

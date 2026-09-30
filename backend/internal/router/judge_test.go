@@ -134,7 +134,7 @@ func newJudgeAppWith(t *testing.T, verdict string, shadow repair.Shadow, sims ..
 	for _, s := range sims {
 		pics = append(pics, faceJPEG(t, s))
 	}
-	backends := modeladapter.Backends{Video: map[domain.ModelName]modeladapter.VideoBackend{domain.ModelKling3: video, domain.ModelSeedance2: video}}
+	backends := modeladapter.Backends{Video: map[domain.ModelName]modeladapter.VideoBackend{domain.ModelKling3: video, domain.ModelSeedance2: video, domain.ModelRunwayGen45: video}}
 	svc := service.New(service.Deps{
 		DB: db, Credentials: credential.NewKeyring(), AssetsDir: filepath.Join(dir, "assets"), LLM: l, Jobs: jobs,
 		Models: modeladapter.New(modeladapter.DefaultConfig(), backends), Frames: clipFrames{pics}, Faces: redFaces{}, Jev: shadow,
@@ -274,8 +274,11 @@ func TestJudge_EveryGeneratedTakeIsJudgedAndTheAPIReturnsTheResult(t *testing.T)
 	}
 	assert.Equal(t, 3, j.llm.judgeCalls())
 
-	page := j.get("/projects/"+j.project+"/scenes/"+j.sceneID+"?shot="+j.shotID, true).Body.String()
-	assert.Contains(t, page, `hx-post="/shots/`+j.shotID+`/generate"`, "the Shot is free again once every Take is judged")
+	// The Shot is released when the last Judge job finishes, a moment after its result is stored.
+	require.Eventually(t, func() bool {
+		page := j.get("/projects/"+j.project+"/scenes/"+j.sceneID+"?shot="+j.shotID, true).Body.String()
+		return strings.Contains(page, `hx-post="/shots/`+j.shotID+`/generate"`)
+	}, 10*time.Second, 10*time.Millisecond, "the Shot is free again once every Take is judged")
 }
 
 func TestJudge_ALockedIdentityDriftFailsTheTakeWhateverTheModelSays(t *testing.T) {

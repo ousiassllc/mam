@@ -44,6 +44,7 @@ type Action string
 // Job actions.
 const (
 	ActionGenerate      Action = "generate"       // Prompt Autopilot → Model Adapter → Takes
+	ActionCandidates    Action = "candidates"     // Prompt Candidate Generation → Takes → Judge → Best Take
 	ActionReferencePack Action = "reference_pack" // Art Director → image models → Reference Pack
 )
 
@@ -142,8 +143,11 @@ type payload struct {
 
 // progressText is the content of the progress card of a job.
 func progressText(a Action, shot domain.Shot) string {
-	if a == ActionReferencePack {
+	switch a {
+	case ActionReferencePack:
 		return fmt.Sprintf("Shot %d の Reference Pack（キャラクター・商品・場所・スタイル・ライティング・Keyframe）を作成しています", shot.OrderIndex+1)
+	case ActionCandidates:
+		return fmt.Sprintf("Shot %d の撮影戦略の候補を生成しています（Prompt Candidate → 動画生成 → Judge）", shot.OrderIndex+1)
 	}
 	return fmt.Sprintf("Shot %d を生成しています（Shot Spec の作成 → 動画生成）", shot.OrderIndex+1)
 }
@@ -158,11 +162,27 @@ func (o *Orchestrator) Start(ctx context.Context, shotID, instruction string) (d
 // StartDirected is Start with the parts of the Shot Spec the director asked to preserve (the
 // LOCKed parts are always preserved).
 func (o *Orchestrator) StartDirected(ctx context.Context, shotID, instruction string, preserve []domain.SpecPart) (domain.Job, error) {
+	return o.start(ctx, shotID, ActionGenerate, instruction, preserve)
+}
+
+// StartCandidates begins Prompt Candidate Generation for the Shot (F-08): the Prompt Planner writes
+// candidate specs with different shooting strategies, each is generated, and the AI Video Judge
+// picks the Best Take, all according to the Generation Mode of the Quality Policy (see
+// generateCandidates). It fails like Start, and with ErrJudgeUnavailable when the Judge is off.
+func (o *Orchestrator) StartCandidates(ctx context.Context, shotID, instruction string) (domain.Job, error) {
+	if o.judge == nil {
+		return domain.Job{}, ErrJudgeUnavailable
+	}
+	return o.start(ctx, shotID, ActionCandidates, instruction, nil)
+}
+
+func (o *Orchestrator) start(ctx context.Context, shotID string, action Action, instruction string, preserve []domain.SpecPart) (domain.Job, error) {
 	ref, err := o.gens.GetShot(ctx, shotID)
 	if err != nil {
 		return domain.Job{}, err
 	}
-	if _, hasSpec := ref.Shot.CanonicalSpec(); hasSpec && strings.TrimSpace(instruction) != "" {
+	// Candidates always rewrite the spec, so a LOCKed Prompt rules them out even without an instruction.
+	if _, hasSpec := ref.Shot.CanonicalSpec(); hasSpec && (strings.TrimSpace(instruction) != "" || action == ActionCandidates) {
 		locks, err := o.gens.ShotLocks(ctx, shotID)
 		if err != nil {
 			return domain.Job{}, err
@@ -183,9 +203,12 @@ func (o *Orchestrator) StartDirected(ctx context.Context, shotID, instruction st
 	if err != nil {
 		return domain.Job{}, err
 	}
-	job, err := o.enqueue(ctx, ref, payload{Action: ActionGenerate, ShotID: shotID, Instruction: strings.TrimSpace(instruction), Preserve: preserve})
+	job, err := o.enqueue(ctx, ref, payload{Action: action, ShotID: shotID, Instruction: strings.TrimSpace(instruction), Preserve: preserve})
 	if err != nil {
 		return domain.Job{}, err
+	}
+	if action == ActionCandidates {
+		strategy.Takes = plannedTakes(domain.ModeOf(policy.Quality), policy.Effective(), strategy)
 	}
 	o.warnLowDisk(ctx, ref, strategy)
 	return job, nil
@@ -283,7 +306,7 @@ func (o *Orchestrator) Recover(ctx context.Context) (int, error) { return o.gens
 // costs money, so an interrupted one is failed and the user starts it again.
 func (o *Orchestrator) Handle(ctx context.Context, job domain.Job) error {
 	var p payload
-	if err := json.Unmarshal(job.Payload, &p); err != nil || p.ShotID == "" || (p.Action != ActionGenerate && p.Action != ActionReferencePack) {
+	if err := json.Unmarshal(job.Payload, &p); err != nil || p.ShotID == "" || (p.Action != ActionGenerate && p.Action != ActionReferencePack && p.Action != ActionCandidates) {
 		return fmt.Errorf("generate job %s: invalid payload", job.ID)
 	}
 	ref, err := o.gens.GetShot(ctx, p.ShotID)
@@ -297,9 +320,12 @@ func (o *Orchestrator) Handle(ctx context.Context, job domain.Job) error {
 	o.notify(Progress{ShotID: p.ShotID, Action: p.Action, Stage: StageGenerating, Message: "準備しています"})
 
 	var done Progress
-	if p.Action == ActionReferencePack {
+	switch p.Action {
+	case ActionReferencePack:
 		done, err = o.buildReferencePack(ctx, ref)
-	} else {
+	case ActionCandidates:
+		done, err = o.generateCandidates(ctx, ref, p.Instruction)
+	default:
 		done, err = o.generate(ctx, ref, p.Instruction, p.Preserve)
 	}
 	if err != nil {
@@ -345,6 +371,8 @@ func FailureReason(err error) string {
 		return "生成モデルまたは LLM の API キーが設定されていません（設定画面でキーを登録してください）"
 	case errors.Is(err, ErrBudgetExceeded):
 		return "予算上限を超えるため生成できません"
+	case errors.Is(err, ErrJudgeUnavailable):
+		return "AI Video Judge が利用できないため、候補から最良の Take を選べません"
 	case errors.Is(err, ErrGenerationTimeLimit):
 		return "生成が制限時間（Max generation time）を超えました。設定画面で制限時間を延ばすか、ポリシーを見直してください"
 	case modeladapter.RateLimited(err):

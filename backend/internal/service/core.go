@@ -27,6 +27,8 @@ type core struct {
 	// pipeline drives the AUTO pipeline; nil when no Reasoning LLM is configured.
 	pipeline *orchestrator.Orchestrator
 	plans    *repository.PlanRepository
+	// references is the Reference Library (F-11).
+	references *repository.ReferenceRepository
 	// director runs DIRECTOR MODE (F-02, F-24): the chat hands directions to it.
 	director *DirectorService
 	// continuer answers the replies to Continue cards; set by New.

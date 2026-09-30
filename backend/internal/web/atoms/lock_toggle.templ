@@ -2,6 +2,9 @@ package atoms
 
 import "github.com/ousiassllc/mam/backend/internal/domain"
 
+// HiddenField is a hidden input of a form.
+type HiddenField struct{ Name, Value string }
+
 // LockToggleData is one AUTO / MANUAL / LOCK switch (spec/spec.md §6).
 type LockToggleData struct {
 	// DOMID is the id of the form; it is the swap target of the request.
@@ -13,6 +16,34 @@ type LockToggleData struct {
 	// Models, when set, adds the choice of the Video Model kept with MANUAL and LOCK; Model is the current one.
 	Models []domain.ModelName
 	Model  string
+	// The World State switches (spec/spec.md §9.3) differ: Label names the attribute, Modes limits the
+	// choice (AUTO / LOCK), Hidden are further fields of the request (target_type, target_id) and
+	// Target is the selector the response replaces (the whole view) instead of the form itself.
+	Label  string
+	Modes  []domain.LockMode
+	Hidden []HiddenField
+	Target string
+}
+
+func (d LockToggleData) label() string {
+	if d.Label != "" {
+		return d.Label
+	}
+	return d.Parameter.Label()
+}
+
+func (d LockToggleData) modes() []domain.LockMode {
+	if len(d.Modes) > 0 {
+		return d.Modes
+	}
+	return domain.LockModes()
+}
+
+func (d LockToggleData) target() string {
+	if d.Target != "" {
+		return d.Target
+	}
+	return "this"
 }
 
 func lockModeClass(active bool, m domain.LockMode) string {
@@ -33,13 +64,16 @@ templ LockToggle(d LockToggleData) {
 		id={ d.DOMID }
 		class="flex flex-wrap items-center gap-2 text-sm"
 		hx-put={ d.URL }
-		hx-target="this"
+		hx-target={ d.target() }
 		hx-swap="outerHTML"
 	>
 		<input type="hidden" name="parameter" value={ string(d.Parameter) }/>
-		<span class="w-40 shrink-0 text-neutral-300">{ d.Parameter.Label() }</span>
-		<span role="group" aria-label={ d.Parameter.Label() + " の制御" } class="inline-flex overflow-hidden rounded-md border border-neutral-600">
-			for _, m := range domain.LockModes() {
+		for _, h := range d.Hidden {
+			<input type="hidden" name={ h.Name } value={ h.Value }/>
+		}
+		<span class="w-40 shrink-0 text-neutral-300">{ d.label() }</span>
+		<span role="group" aria-label={ d.label() + " の制御" } class="inline-flex overflow-hidden rounded-md border border-neutral-600">
+			for _, m := range d.modes() {
 				<button type="submit" name="mode" value={ string(m) } aria-pressed={ boolText(d.Mode == m) } class={ lockModeClass(d.Mode == m, m) }>{ m.Label() }</button>
 			}
 		</span>

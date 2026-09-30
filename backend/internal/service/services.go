@@ -67,6 +67,7 @@ type Services struct {
 	Judge       *JudgeService
 	Repair      *RepairService
 	Continue    *ContinueService
+	Reference   *ReferenceService
 }
 
 // Recover puts Shots left GENERATING by an abnormal termination back to PLANNING. It MUST run
@@ -99,6 +100,8 @@ func New(deps Deps) *Services {
 		assetsDir: deps.AssetsDir,
 		logger:    logger,
 		plans:     repository.NewPlanRepository(deps.DB),
+
+		references: repository.NewReferenceRepository(deps.DB),
 	}
 	chat := &ChatService{c}
 	var jobFinished func(jobID string) // set once the Repair Agent exists (before the queue starts)
@@ -182,8 +185,9 @@ func New(deps Deps) *Services {
 		Policy: &PolicyService{
 			core: c, freeBytes: deps.FreeBytes, policies: policies, costs: repository.NewCostRepository(deps.DB), storage: repository.NewStorageRepository(deps.DB),
 		},
-		Judge:    judges,
-		Repair:   repairs,
-		Continue: continues,
+		Judge:     judges,
+		Repair:    repairs,
+		Continue:  continues,
+		Reference: &ReferenceService{c},
 	}
 }

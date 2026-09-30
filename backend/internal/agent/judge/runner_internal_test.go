@@ -13,9 +13,9 @@ func TestLockedDimensions_ComeFromTheSpecAndFromTheLockTable(t *testing.T) {
 		Character: &domain.SpecActor{ID: "c1"},
 		Product:   &domain.SpecProduct{ID: "p1"},
 	}
-	assert.Empty(t, lockedDimensions(spec, nil), "nothing is locked")
+	assert.Empty(t, lockedDimensions(spec, domain.WorldContext{}, nil), "nothing is locked")
 
-	got := lockedDimensions(spec, domain.LockSet{
+	got := lockedDimensions(spec, domain.WorldContext{}, domain.LockSet{
 		{Target: domain.TargetCharacter, ID: "c1", Field: "identity"}:  {},
 		{Target: domain.TargetProduct, ID: "p1", Field: "label"}:       {},
 		{Target: domain.TargetProduct, ID: "other", Field: "geometry"}: {},
@@ -25,9 +25,34 @@ func TestLockedDimensions_ComeFromTheSpecAndFromTheLockTable(t *testing.T) {
 	}, got, "another product's lock does not apply")
 
 	spec.Character.Identity, spec.Product.Geometry = "locked", "locked"
-	got = lockedDimensions(spec, nil)
+	got = lockedDimensions(spec, domain.WorldContext{}, nil)
 	assert.True(t, got[domain.DimCharacterIdentity])
 	assert.True(t, got[domain.DimProductGeometry], "the spec's own 'locked' counts")
+}
+
+func TestLockedDimensions_AttributeLocksOfCharacterProductAndLocationMapToTheirDimensions(t *testing.T) {
+	world := domain.WorldContext{
+		Characters: []domain.WorldCharacter{{ID: "c1", Name: "Mio"}},
+		Products:   []domain.WorldProduct{{ID: "p1", Name: "Serum"}},
+		Locations:  []domain.WorldLocation{{ID: "l1", Name: "Street"}},
+	}
+	// The Shot Spec names its entities by name; the lock rows use their IDs.
+	spec := domain.ShotSpec{
+		Character: &domain.SpecActor{ID: "Mio"}, Product: &domain.SpecProduct{ID: "serum"}, Location: &domain.SpecLocation{ID: "Street"},
+	}
+	locks := domain.LockSet{
+		{Target: domain.TargetCharacter, ID: "c1", Field: "wardrobe"}:        {},
+		{Target: domain.TargetProduct, ID: "p1", Field: "orientation"}:       {},
+		{Target: domain.TargetLocation, ID: "l1", Field: "lighting_state"}:   {},
+		{Target: domain.TargetLocation, ID: "l1", Field: "layout_reference"}: {},
+		{Target: domain.TargetCharacter, ID: "c1", Field: "voice"}:           {}, // nothing to see in a video
+	}
+	assert.Equal(t, map[domain.JudgeDimension]bool{
+		domain.DimCharacterConsistency: true, domain.DimProductAccuracy: true, domain.DimLighting: true, domain.DimBackground: true,
+	}, lockedDimensions(spec, world, locks))
+
+	other := domain.LockSet{{Target: domain.TargetLocation, ID: "elsewhere", Field: "weather"}: {}}
+	assert.Empty(t, lockedDimensions(spec, world, other), "a lock of a Location the Shot is not in does not apply")
 }
 
 func TestAssetPath_StaysInsideTheAssetsDirectory(t *testing.T) {
