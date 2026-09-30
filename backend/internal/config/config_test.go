@@ -61,6 +61,20 @@ func TestLoad_RejectsInvalidValues(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestLoad_MalformedPortEnvironmentIsAnErrorNotTheDefault(t *testing.T) {
+	for _, bad := range []string{"abc", "80a", "8 787", "1.5"} {
+		_, err := config.Load(nil, env(map[string]string{"MAM_DATA_DIR": "/data", "MAM_PORT": bad}), io.Discard)
+		require.Error(t, err, bad)
+		assert.Contains(t, err.Error(), "MAM_PORT", bad)
+	}
+	cfg, err := config.Load(nil, env(map[string]string{"MAM_DATA_DIR": "/data"}), io.Discard)
+	require.NoError(t, err)
+	assert.Equal(t, config.DefaultPort, cfg.Port, "unset still means the default")
+	cfg, err = config.Load(nil, env(map[string]string{"MAM_DATA_DIR": "/data", "MAM_PORT": "9001"}), io.Discard)
+	require.NoError(t, err)
+	assert.Equal(t, 9001, cfg.Port)
+}
+
 func TestLoad_JudgeAndFaceModelSettings(t *testing.T) {
 	cfg, err := config.Load([]string{"--data-dir", "/d"}, func(string) string { return "" }, io.Discard)
 	require.NoError(t, err)

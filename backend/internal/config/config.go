@@ -70,10 +70,15 @@ func Load(args []string, getenv func(string) string, output io.Writer) (Config, 
 		return Config{}, err
 	}
 
+	envPort, err := envInt(getenv, "MAM_PORT", DefaultPort)
+	if err != nil {
+		return Config{}, err
+	}
+
 	fs := flag.NewFlagSet("mam", flag.ContinueOnError)
 	fs.SetOutput(output)
 	dataDir := fs.String("data-dir", envOr(getenv, "MAM_DATA_DIR", defaultDir), "directory for the database, logs and assets (MAM_DATA_DIR)")
-	port := fs.Int("port", envInt(getenv, "MAM_PORT", DefaultPort), "preferred loopback port; a free port is used if it is busy (MAM_PORT)")
+	port := fs.Int("port", envPort, "preferred loopback port; a free port is used if it is busy (MAM_PORT)")
 	noBrowser := fs.Bool("no-browser", getenv("MAM_NO_BROWSER") != "", "do not open the default browser (MAM_NO_BROWSER)")
 	level := fs.String("log-level", envOr(getenv, "MAM_LOG_LEVEL", "info"), "log level: debug, info, warn, error (MAM_LOG_LEVEL)")
 	staticDir := fs.String("static-dir", getenv("MAM_STATIC_DIR"), "serve static assets from this directory instead of the embedded copy (MAM_STATIC_DIR)")
@@ -127,14 +132,17 @@ func envOr(getenv func(string) string, key, fallback string) string {
 	return fallback
 }
 
-func envInt(getenv func(string) string, key string, fallback int) int {
+// envInt is the integer in the environment variable key, fallback when it is unset. A value that
+// is not an integer is an error: silently using the default would start the server somewhere the
+// operator did not ask for.
+func envInt(getenv func(string) string, key string, fallback int) (int, error) {
 	v := getenv(key)
 	if v == "" {
-		return fallback
+		return fallback, nil
 	}
 	n, err := strconv.Atoi(v)
 	if err != nil {
-		return fallback
+		return 0, fmt.Errorf("invalid %s %q: not an integer", key, v)
 	}
-	return n
+	return n, nil
 }
