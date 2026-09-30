@@ -1,6 +1,9 @@
 package organisms
 
-import "github.com/ousiassllc/mam/backend/internal/domain"
+import (
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+)
 
 // NewProjectFormData is the state of the "new project" form.
 type NewProjectFormData struct {
@@ -22,14 +25,13 @@ templ NewProjectForm(d NewProjectFormData) {
 		hx-swap="outerHTML"
 	>
 		<label for="new-project-content" class="mb-2 block text-sm font-medium">作りたい動画を教えてください</label>
-		<textarea
-			id="new-project-content"
-			name="content"
-			rows="3"
-			maxlength="4000"
-			placeholder="例: 美容液の縦型15秒CMを作りたい。上品な雰囲気で"
-			class="w-full rounded-md border border-neutral-600 bg-neutral-950 px-3 py-2 text-sm"
-		>{ d.Content }</textarea>
+		@atoms.Textarea(atoms.FieldLg, "w-full", templ.Attributes{
+			"id":          "new-project-content",
+			"name":        "content",
+			"rows":        "3",
+			"maxlength":   "4000",
+			"placeholder": "例: 美容液の縦型15秒CMを作りたい。上品な雰囲気で",
+		}, d.Content)
 		if d.Error != "" {
 			<p class="mt-1 text-sm text-red-300" role="alert">{ d.Error }</p>
 		}
@@ -41,7 +43,9 @@ templ NewProjectForm(d NewProjectFormData) {
 				添付（商品画像・参考動画）
 				<input type="file" name="attachments" multiple accept={ AcceptedUploads } class="ml-2 text-xs"/>
 			</label>
-			<button type="submit" class="rounded-md bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-400">プロジェクトを作成</button>
+			@atoms.Button(atoms.TonePrimary, "プロジェクトを作成", templ.Attributes{
+				"type": "submit",
+			})
 		</div>
 	</form>
 }

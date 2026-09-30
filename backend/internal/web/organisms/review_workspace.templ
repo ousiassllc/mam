@@ -75,11 +75,24 @@ templ ReviewWorkspace(i domain.ReviewInbox) {
 			<form class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3" hx-post={ "/reviews/" + i.ID + "/comments" } hx-target="#review-workspace" hx-swap="outerHTML">
 				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="review-comment-timecode">
 					位置（秒 または 分:秒。空なら動画全体）
-					<input id="review-comment-timecode" name="timecode" type="text" inputmode="decimal" maxlength="16" placeholder="1:23" class="w-32 rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm text-neutral-100"/>
+					@atoms.Input(atoms.FieldMd, "w-32", templ.Attributes{
+						"id":          "review-comment-timecode",
+						"name":        "timecode",
+						"type":        "text",
+						"inputmode":   "decimal",
+						"maxlength":   "16",
+						"placeholder": "1:23",
+					})
 				</label>
 				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="review-comment-body">
 					コメント
-					<textarea id="review-comment-body" name="body" rows="3" maxlength="2000" required class="rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm text-neutral-100"></textarea>
+					@atoms.Textarea(atoms.FieldMd, "", templ.Attributes{
+						"id":        "review-comment-body",
+						"name":      "body",
+						"rows":      "3",
+						"maxlength": "2000",
+						"required":  true,
+					}, "")
 				</label>
 				<div>
 					@atoms.Button(atoms.ToneNeutral, "コメントを追加", templ.Attributes{"type": "submit"})
@@ -92,16 +105,45 @@ templ ReviewWorkspace(i domain.ReviewInbox) {
 			<form class="flex flex-col gap-2" hx-put={ "/reviews/" + i.ID + "/decision" } hx-target="#review-workspace" hx-swap="outerHTML">
 				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="review-reviewer-name">
 					表示名（1〜50 文字）
-					<input id="review-reviewer-name" name="reviewer_name" type="text" maxlength="50" required value={ i.ReviewerName } class="w-64 rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm text-neutral-100"/>
+					@atoms.Input(atoms.FieldMd, "w-64", templ.Attributes{
+						"id":        "review-reviewer-name",
+						"name":      "reviewer_name",
+						"type":      "text",
+						"maxlength": "50",
+						"required":  true,
+						"value":     i.ReviewerName,
+					})
 				</label>
 				<fieldset class="flex flex-wrap gap-4 text-sm">
 					<legend class="mb-1 text-xs text-neutral-400">判定</legend>
-					<label class="flex items-center gap-1"><input type="radio" name="decision" value="approved" required checked?={ i.Decision == domain.DecisionApproved }/>承認</label>
-					<label class="flex items-center gap-1"><input type="radio" name="decision" value="changes_requested" checked?={ i.Decision == domain.DecisionChangesRequested }/>修正依頼</label>
+					<label class="flex items-center gap-1">
+						@atoms.Choice("", templ.Attributes{
+							"type":     "radio",
+							"name":     "decision",
+							"value":    "approved",
+							"required": true,
+							"checked":  i.Decision == domain.DecisionApproved,
+						})
+						承認
+					</label>
+					<label class="flex items-center gap-1">
+						@atoms.Choice("", templ.Attributes{
+							"type":    "radio",
+							"name":    "decision",
+							"value":   "changes_requested",
+							"checked": i.Decision == domain.DecisionChangesRequested,
+						})
+						修正依頼
+					</label>
 				</fieldset>
 				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="review-decision-comment">
 					全体コメント（任意）
-					<textarea id="review-decision-comment" name="comment" rows="3" maxlength="2000" class="rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm text-neutral-100">{ i.Comment }</textarea>
+					@atoms.Textarea(atoms.FieldMd, "", templ.Attributes{
+						"id":        "review-decision-comment",
+						"name":      "comment",
+						"rows":      "3",
+						"maxlength": "2000",
+					}, i.Comment)
 				</label>
 				<div>
 					@atoms.Button(atoms.TonePrimary, "判定を保存", templ.Attributes{"type": "submit"})

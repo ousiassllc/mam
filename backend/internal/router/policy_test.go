@@ -29,7 +29,7 @@ func TestSettingsPage_ShowsTemplatePolicyBudgetCostAndStorage(t *testing.T) {
 	} {
 		assert.Contains(t, body, want)
 	}
-	assert.Contains(t, body, `value="product_cm" checked`, "the current template is selected")
+	assertChecked(t, body, "product_cm", "the current template is selected")
 
 	frag := a.get("/projects/"+id+"/settings", true).Body.String()
 	assert.NotContains(t, frag, "<html")
@@ -45,7 +45,7 @@ func TestProductionTemplate_PutSwitchesTheTemplateAndRejectsUnknownOnes(t *testi
 
 	rec := a.form(http.MethodPut, "/projects/"+id+"/production-template", url.Values{"production_template": {"drama"}})
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-	assert.Contains(t, rec.Body.String(), `value="drama" checked`)
+	assertChecked(t, rec.Body.String(), "drama")
 	var got string
 	require.NoError(t, a.db.Reader().QueryRow(`SELECT production_template FROM project WHERE id = ?`, id).Scan(&got))
 	assert.Equal(t, "drama", got)

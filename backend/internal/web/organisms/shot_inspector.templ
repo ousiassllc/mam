@@ -113,7 +113,11 @@ templ ShotInspector(d ShotInspectorData) {
 			}
 			<form hx-put={ shotURL(d.Shot.ID) + "/shot-spec" } hx-target="#shot-inspector" hx-swap="outerHTML" class="flex flex-col gap-2">
 				<label for="shot-spec-text" class="text-xs text-neutral-400">Shot Spec を直接編集（JSON。英語で記述。LOCK 中の項目は変更できません）</label>
-				<textarea id="shot-spec-text" name="shot_spec" rows="12" class="rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 font-mono text-xs">{ d.SpecText }</textarea>
+				@atoms.Textarea(atoms.FieldSm, "font-mono", templ.Attributes{
+					"id":   "shot-spec-text",
+					"name": "shot_spec",
+					"rows": "12",
+				}, d.SpecText)
 				if d.SpecError != "" {
 					<p class="text-sm text-red-300" role="alert">{ d.SpecError }</p>
 				}
@@ -142,11 +146,15 @@ templ ShotInspector(d ShotInspectorData) {
 			if len(d.Library) > 0 {
 				<form hx-post={ shotURL(d.Shot.ID) + "/references" } hx-target="#shot-inspector" hx-swap="outerHTML" class="flex flex-wrap items-center gap-2">
 					<label for="pin-reference" class="text-xs text-neutral-400">ライブラリの参照画像を追加</label>
-					<select id="pin-reference" name="reference_id" required class="rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-xs">
+					@atoms.Select(atoms.FieldSm, "", templ.Attributes{
+						"id":       "pin-reference",
+						"name":     "reference_id",
+						"required": true,
+					}) {
 						for _, it := range d.Library {
 							<option value={ it.ID }>{ it.Kind.Label() + " / " + it.Name }</option>
 						}
-					</select>
+					}
 					@atoms.Button(atoms.ToneNeutral, "Reference Pack に追加", templ.Attributes{"type": "submit"})
 				</form>
 			}
@@ -155,7 +163,13 @@ templ ShotInspector(d ShotInspectorData) {
 			<h3 class="text-sm font-semibold">演出指示</h3>
 			<form hx-post={ shotURL(d.Shot.ID) + "/director-command" } hx-target="#shot-inspector" hx-swap="outerHTML" class="flex flex-col gap-2">
 				<label for="director-command" class="text-xs text-neutral-400">自然言語で指示（例: もう少し寄って。ラベルは固定して）。この Shot だけが再生成されます</label>
-				<textarea id="director-command" name="content" rows="2" maxlength="4000" required class="rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm"></textarea>
+				@atoms.Textarea(atoms.FieldMd, "", templ.Attributes{
+					"id":        "director-command",
+					"name":      "content",
+					"rows":      "2",
+					"maxlength": "4000",
+					"required":  true,
+				}, "")
 				<div>
 					@atoms.Button(atoms.TonePrimary, "指示する", templ.Attributes{"type": "submit"})
 				</div>

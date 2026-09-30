@@ -28,13 +28,13 @@ func TestMode_PutSwitchesAndKeepsTheState(t *testing.T) {
 
 	rec := a.form(http.MethodPut, "/projects/"+id+"/mode", url.Values{"mode": {"director"}})
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-	assert.Contains(t, rec.Body.String(), `value="director" checked`)
+	assertChecked(t, rec.Body.String(), "director")
 	assert.Equal(t, "chat:refresh", rec.Header().Get("HX-Trigger"), "the thread fetches the AI's notice")
-	assert.Contains(t, a.get("/projects/"+id, false).Body.String(), `value="director" checked`, "the choice is kept")
+	assertChecked(t, a.get("/projects/"+id, false).Body.String(), "director", "the choice is kept")
 
 	rec = a.form(http.MethodPut, "/projects/"+id+"/mode", url.Values{"mode": {"auto"}})
 	require.Equal(t, http.StatusOK, rec.Code)
-	assert.Contains(t, rec.Body.String(), `value="auto" checked`)
+	assertChecked(t, rec.Body.String(), "auto")
 
 	assert.Equal(t, http.StatusUnprocessableEntity, a.form(http.MethodPut, "/projects/"+id+"/mode", url.Values{"mode": {"x"}}).Code)
 	assert.Equal(t, http.StatusNotFound, a.form(http.MethodPut, "/projects/nope/mode", url.Values{"mode": {"auto"}}).Code)

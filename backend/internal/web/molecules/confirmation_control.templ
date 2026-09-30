@@ -1,6 +1,9 @@
 package molecules
 
-import "github.com/ousiassllc/mam/backend/internal/domain"
+import (
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+)
 
 type levelOption struct {
 	Level domain.ConfirmationLevel
@@ -34,17 +37,25 @@ templ ConfirmationControl(p domain.Project) {
 		hx-swap="outerHTML"
 	>
 		<label for="confirmation-level" class="text-neutral-400">確認レベル</label>
-		<select id="confirmation-level" name="level" class="rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1">
+		@atoms.Select(atoms.FieldMd, "", templ.Attributes{
+			"id":   "confirmation-level",
+			"name": "level",
+		}) {
 			for _, o := range levelOptions {
 				<option value={ string(o.Level) } selected?={ o.Level == p.ConfirmationLevel }>{ o.Label }</option>
 			}
-		</select>
+		}
 		if p.ConfirmationLevel == domain.ConfirmCustomCheck {
 			<fieldset class="flex flex-wrap gap-x-3 gap-y-1">
 				<legend class="sr-only">確認ポイント</legend>
 				for _, c := range domain.SelectableCheckpoints() {
 					<label class="flex items-center gap-1">
-						<input type="checkbox" name="checkpoints" value={ string(c) } checked?={ hasCheckpoint(p, c) }/>
+						@atoms.Choice("", templ.Attributes{
+							"type":    "checkbox",
+							"name":    "checkpoints",
+							"value":   string(c),
+							"checked": hasCheckpoint(p, c),
+						})
 						{ c.Label() }
 					</label>
 				}

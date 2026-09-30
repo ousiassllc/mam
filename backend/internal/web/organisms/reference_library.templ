@@ -38,20 +38,33 @@ templ ReferenceLibrary(d ReferenceLibraryData) {
 		>
 			<div>
 				<label for="ref-q" class="mb-1 block text-xs text-neutral-400">名前・タグ</label>
-				<input id="ref-q" name="q" type="search" value={ d.Q } class="rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm"/>
+				@atoms.Input(atoms.FieldMd, "", templ.Attributes{
+					"id":    "ref-q",
+					"name":  "q",
+					"type":  "search",
+					"value": d.Q,
+				})
 			</div>
 			<div>
 				<label for="ref-kind" class="mb-1 block text-xs text-neutral-400">種別</label>
-				<select id="ref-kind" name="kind" class="rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm">
+				@atoms.Select(atoms.FieldMd, "", templ.Attributes{
+					"id":   "ref-kind",
+					"name": "kind",
+				}) {
 					<option value="">すべて</option>
 					for _, k := range domain.LibraryKinds() {
 						<option value={ string(k) } selected?={ string(k) == d.Kind }>{ k.Label() }</option>
 					}
-				</select>
+				}
 			</div>
 			<div>
 				<label for="ref-tag" class="mb-1 block text-xs text-neutral-400">タグ（完全一致）</label>
-				<input id="ref-tag" name="tag" type="text" value={ d.Tag } class="rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm"/>
+				@atoms.Input(atoms.FieldMd, "", templ.Attributes{
+					"id":    "ref-tag",
+					"name":  "tag",
+					"type":  "text",
+					"value": d.Tag,
+				})
 			</div>
 			@atoms.Button(atoms.ToneNeutral, "検索", templ.Attributes{"type": "submit"})
 		</form>
@@ -104,19 +117,33 @@ templ ReferenceLibrary(d ReferenceLibraryData) {
 				</div>
 				<div>
 					<label for="ref-new-kind" class="mb-1 block text-xs text-neutral-400">種別</label>
-					<select id="ref-new-kind" name="kind" required class="w-full rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm">
+					@atoms.Select(atoms.FieldMd, "w-full", templ.Attributes{
+						"id":       "ref-new-kind",
+						"name":     "kind",
+						"required": true,
+					}) {
 						for _, k := range domain.LibraryKinds() {
 							<option value={ string(k) }>{ k.Label() }</option>
 						}
-					</select>
+					}
 				</div>
 				<div>
 					<label for="ref-new-name" class="mb-1 block text-xs text-neutral-400">名前（100 文字以内。Character / Product / Location は登場する名前と揃える）</label>
-					<input id="ref-new-name" name="name" type="text" required maxlength="100" class="w-full rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm"/>
+					@atoms.Input(atoms.FieldMd, "w-full", templ.Attributes{
+						"id":        "ref-new-name",
+						"name":      "name",
+						"type":      "text",
+						"required":  true,
+						"maxlength": "100",
+					})
 				</div>
 				<div>
 					<label for="ref-new-tags" class="mb-1 block text-xs text-neutral-400">タグ（カンマ区切り、10 個まで）</label>
-					<input id="ref-new-tags" name="tags" type="text" class="w-full rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm"/>
+					@atoms.Input(atoms.FieldMd, "w-full", templ.Attributes{
+						"id":   "ref-new-tags",
+						"name": "tags",
+						"type": "text",
+					})
 				</div>
 			</div>
 			<div>

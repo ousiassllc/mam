@@ -1,6 +1,9 @@
 package organisms
 
-import "github.com/ousiassllc/mam/backend/internal/domain"
+import (
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+)
 
 // BrandConstraintListData is the Brand / Safety Constraints of a Project. Typed and Errors are what
 // the user typed and why it was rejected.
@@ -33,14 +36,13 @@ templ BrandConstraintList(d BrandConstraintListData) {
 							</div>
 							<p class="mt-1 whitespace-pre-wrap break-words text-neutral-300">{ c.Text }</p>
 						</div>
-						<button
-							type="button"
-							class="rounded-md border border-neutral-600 px-2 py-1 text-xs hover:bg-neutral-800"
-							hx-delete={ "/brand-constraints/" + c.ID }
-							hx-target="#brand-constraint-list"
-							hx-swap="outerHTML"
-							hx-confirm="この制約を削除します。よろしいですか？"
-						>削除</button>
+						@atoms.SmallButton(atoms.ToneNeutral, "削除", templ.Attributes{
+							"type":       "button",
+							"hx-delete":  "/brand-constraints/" + c.ID,
+							"hx-target":  "#brand-constraint-list",
+							"hx-swap":    "outerHTML",
+							"hx-confirm": "この制約を削除します。よろしいですか？",
+						})
 					</li>
 				}
 			</ul>
@@ -54,22 +56,28 @@ templ BrandConstraintList(d BrandConstraintListData) {
 			<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
 				<div>
 					<label for="brand-type" class="mb-1 block text-sm font-medium">種類</label>
-					<select id="brand-type" name="type" class="w-full rounded-md border border-neutral-600 bg-neutral-950 px-3 py-2 text-sm">
+					@atoms.Select(atoms.FieldLg, "w-full", templ.Attributes{
+						"id":   "brand-type",
+						"name": "type",
+					}) {
 						for _, t := range domain.BrandConstraintTypes() {
 							<option value={ string(t) } selected?={ string(t) == d.Typed["type"] }>{ t.Label() }</option>
 						}
-					</select>
+					}
 					if msg := d.Errors["type"]; msg != "" {
 						<p class="mt-1 text-sm text-red-300" role="alert">{ msg }</p>
 					}
 				</div>
 				<div>
 					<label for="brand-level" class="mb-1 block text-sm font-medium">強制レベル</label>
-					<select id="brand-level" name="level" class="w-full rounded-md border border-neutral-600 bg-neutral-950 px-3 py-2 text-sm">
+					@atoms.Select(atoms.FieldLg, "w-full", templ.Attributes{
+						"id":   "brand-level",
+						"name": "level",
+					}) {
 						for _, l := range []domain.EnforcementLevel{domain.EnforceLock, domain.EnforceAdvisory} {
 							<option value={ string(l) } selected?={ string(l) == d.Typed["level"] }>{ l.Label() }</option>
 						}
-					</select>
+					}
 					if msg := d.Errors["level"]; msg != "" {
 						<p class="mt-1 text-sm text-red-300" role="alert">{ msg }</p>
 					}
@@ -77,20 +85,21 @@ templ BrandConstraintList(d BrandConstraintListData) {
 			</div>
 			<div>
 				<label for="brand-text" class="mb-1 block text-sm font-medium">内容</label>
-				<textarea
-					id="brand-text"
-					name="text"
-					rows="3"
-					maxlength={ intText(domain.MaxBrandTextRunes) }
-					class="w-full rounded-md border border-neutral-600 bg-neutral-950 px-3 py-2 text-sm"
-				>{ d.Typed["text"] }</textarea>
+				@atoms.Textarea(atoms.FieldLg, "w-full", templ.Attributes{
+					"id":        "brand-text",
+					"name":      "text",
+					"rows":      "3",
+					"maxlength": intText(domain.MaxBrandTextRunes),
+				}, d.Typed["text"])
 				<p class="mt-1 text-xs text-neutral-400">禁止表現は 1 行に 1 つ、免責表記は表示すべき文言をそのまま書きます。</p>
 				if msg := d.Errors["text"]; msg != "" {
 					<p class="mt-1 text-sm text-red-300" role="alert">{ msg }</p>
 				}
 			</div>
 			<div>
-				<button type="submit" class="rounded-md bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-400">制約を追加</button>
+				@atoms.Button(atoms.TonePrimary, "制約を追加", templ.Attributes{
+					"type": "submit",
+				})
 			</div>
 		</form>
 	</section>
