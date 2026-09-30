@@ -4,6 +4,7 @@
 //   node build.mjs --watch    rebuild on change (make dev)
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { mkdirSync, readdirSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import * as esbuild from 'esbuild';
 
@@ -12,6 +13,14 @@ const args = new Set(process.argv.slice(2));
 const minify = args.has('--minify');
 const watch = args.has('--watch');
 const outdir = join(root, 'src', 'dist');
+
+// embed.go embeds the whole of src/dist, so anything a previous build left there (a dev build's
+// app.js.map, renamed outputs) would ship in the binary and be served. Start from an empty dir;
+// .gitkeep stays so a clean checkout still compiles.
+mkdirSync(outdir, { recursive: true });
+for (const name of readdirSync(outdir)) {
+  if (name !== '.gitkeep') rmSync(join(outdir, name), { recursive: true, force: true });
+}
 
 const jsOptions = {
   entryPoints: [join(root, 'src', 'main.ts')],
