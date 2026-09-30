@@ -94,7 +94,7 @@ Reasoning LLM Adapter側の呼び出しモデルは Take/Cost Ledger の対象�
 
 ## 7. フォールバック / サーキットブレーカー
 
-`spec/requirements/non-functional.md` §6「モデル呼び出し耐性」（プロバイダ単位のタイムアウト・429指数バックオフ・サーキットブレーカー）は、本書§2〜§4の「代替」列をフェイルオーバー先として実装する。あるプロバイダーのサーキットブレーカーがOPENになった場合、Model/LLM Adapterは同一用途の代替プロバイダーへ自動的にルーティングする。
+`spec/requirements/non-functional.md` §6「モデル呼び出し耐性」（プロバイダ単位のタイムアウト・429指数バックオフ・サーキットブレーカー。画像・動画生成ではタイムアウトは再試行せず代替へ、§9.3）は、本書§2〜§4の「代替」列をフェイルオーバー先として実装する。あるプロバイダーのサーキットブレーカーがOPENになった場合、Model/LLM Adapterは同一用途の代替プロバイダーへ自動的にルーティングする。
 
 ## 8. 未確定事項・レビュー方針
 
@@ -139,7 +139,7 @@ API キーは `credential.Store` のベンダー名（`google` / `openai` / `flu
 ### 9.3 動作
 
 - **Canonical Shot Spec → モデル固有プロンプト（F-07）**: `Prepare` が Shot Spec を英語のプロンプトへ変換する。モデルごとに対応する長さ（Kling 5/10 秒、Seedance 4〜12 秒。要求を満たす最短の長さ）、First/Last Frame、参照画像の上限（Seedance 9 枚）に合わせて入力を絞る。Negative Prompt を持たないモデルでは本文へ折り込む。プロンプトは英語のみ（`non-functional.md` §9）
-- **フェイルオーバー（§7）**: ベンダー単位のブレーカーが OPEN、または再試行しても失敗したとき、同じ Shot Spec を代替モデル向けに再変換して呼ぶ。タイムアウト・429・5xx・ネットワーク断のみ再試行し、認証エラー等の 4xx は再試行しない（`Retry-After` があれば優先）
+- **フェイルオーバー（§7）**: ベンダー単位のブレーカーが OPEN、または再試行しても失敗したとき、同じ Shot Spec を代替モデル向けに再変換して呼ぶ。429・5xx・ネットワーク断のみ同じモデルで再試行し、認証エラー等の 4xx は再試行しない（`Retry-After` があれば優先）。タイムアウトは同じモデルでは再試行せず、直ちに代替モデルへフェイルオーバーする（ベンダー側でジョブが継続・課金されている可能性があり、再提出すると二重に課金されるため。LLM の §2.1 は課金を伴う非同期ジョブを持たないためタイムアウトも再試行する）。タイムアウトもブレーカーの失敗に数える
 - **同時実行数（`non-functional.md` §4）**: ベンダーごとの上限を Model Adapter が持つ。429 を受けると上限を半分（最小 1）にし、成功が上限回数続くごとに 1 ずつ戻す。上限を超える呼び出しはスロットが空くまで待つ。Prompt Candidate Generation（F-08）が Candidate を並列に生成しても、外部 API への同時呼び出し数はこの上限（Runway は既定 2）で抑えられる
 - **Generation Orchestrator（F-12）**: Quality Policy でモデル・解像度・Take 数を決め、(1) Shot が主モデルの最長クリップを超え代替モデルなら収まる場合は入れ替え、(2) Shot/Project の予算上限（残額）に Take 数が収まらなければ Take 数を減らし、主モデルが 1 Take も収まらず代替なら収まるなら代替を主にし、(3) 1 Take も収まらなければ 402 で開始しない。決定理由は `prompt_version.model_adapter_output`（`reasons`）に残る。Take は並列に生成し、1 つ以上成功すれば成功とする
 - **Prompt Autopilot（F-06）**: Prompt Planner（Reasoning LLM）が Shot の指示と World State・直前 Shot の Spec・Reference Pack から Canonical Shot Spec（JSON、英語）を作る。検証（目的・フレーミングあり、Acting が Shot 内で時系列順、日本語などを含まない）に失敗した回答は保存しない。既存 Spec は、追加指示がある場合だけ改訂し、無ければ再利用する。生成のたびに `prompt_version` が 1 行増え、`shot_spec_snapshot` に保存時点の Spec、`model_adapter_output` に各モデルへ渡す内容（プロンプト・解像度・参照枚数）を記録する
@@ -364,3 +364,4 @@ MAX QUALITY のみ。話者付きの Dialogue の行（Narration は対象外）
 | 1.8 | 2026-09-30 | §12（M1 の音声: ElevenLabs TTS とローカル DSP の実装仕様）を追加 | M1「簡易 Editor・簡易 Audio・Final QC・Export」（Issue #14）の実装に合わせるため |
 | 1.9 | 2026-09-30 | §13（Multi-model routing の判断基準・切り替え条件・ブレーカーとの関係・トレース・設定）を追加 | M3「Multi-model routing」（Issue #26）が M1 のポリシー別ルーティングとどう違うか、Shot の性質・Judge 実績・コストをどう使うかが未定義だったため、保守的な選択（アンカー方式・実績が無ければ M1 と同じ・対象は動画モデル）で確定した |
 | 1.10 | 2026-09-30 | §14（Audio Director の M3 実装: ElevenLabs TTS・音声クローン・Music・SFX / Sync Labs の識別子・呼び出し、Scene Emotion と編集テンポによる Planner、Quality Policy ごとの層、Lip Sync、コストと予算、M1 からの移行と Branch ごとの版管理）を追加。§12 の冒頭を M3 で追加済みに更新 | M3「Audio Director（フル機能）」（Issue #25）の実装に合わせるため |
+| 1.11 | 2026-10-01 | §7・§9.3 に、画像・動画生成ではタイムアウトを同じモデルで再試行せず直ちに代替モデルへフェイルオーバーすることを明記 | 実装（`modeladapter.retryable`）はタイムアウト後の再提出による二重課金を避けて再試行しないが、仕様は再試行対象と記していたため（Issue #32） |
