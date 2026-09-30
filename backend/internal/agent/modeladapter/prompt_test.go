@@ -72,11 +72,17 @@ func TestPrepareForSeedanceKeepsReferencesWithinTheModelLimitAndFoldsTheNegative
 	assert.Equal(t, "720p", req.Resolution)
 }
 
-func TestPrepareUsesFramesInsteadOfReferencesWhenBothAreGiven(t *testing.T) {
+func TestPrepareKeepsFramesAndReferencesForSeedance(t *testing.T) {
 	req, err := modeladapter.Prepare(seedanceTarget, fullJob())
 	require.NoError(t, err)
 	assert.NotNil(t, req.FirstFrame)
-	assert.Empty(t, req.References)
+	assert.NotNil(t, req.LastFrame)
+	assert.Len(t, req.References, 9, "Seedance takes the first frame and up to 9 other reference images")
+
+	kling, err := modeladapter.Prepare(klingTarget, fullJob())
+	require.NoError(t, err)
+	assert.NotNil(t, kling.FirstFrame)
+	assert.Empty(t, kling.References, "Kling takes frames only")
 }
 
 func TestSnapDurationChoosesTheShortestSupportedLengthThatFits(t *testing.T) {

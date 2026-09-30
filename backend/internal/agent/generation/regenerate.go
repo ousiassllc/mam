@@ -120,8 +120,8 @@ func (o *Orchestrator) RegenerationStrategy(ctx context.Context, ref repository.
 //   - Full Retake: the same Shot Spec, a new generation.
 //   - Different Model: the same Shot Spec for the other video model of the Quality Policy.
 //   - Reference Reinforcement: the constraints that protect what the References show are added to the
-//     Shot Spec, the References of the failed kind go first, and a model that takes free references
-//     uses them instead of the Keyframe as its first frame.
+//     Shot Spec, and the References of the failed kind go first. The Keyframe stays the first frame;
+//     a model that takes free references also receives the other images.
 func (o *Orchestrator) Regenerate(ctx context.Context, ref repository.ShotRef, r Regeneration) (string, error) {
 	if !r.Action.Regenerates() {
 		return "", fmt.Errorf("generation: %q does not regenerate", r.Action)
@@ -396,20 +396,10 @@ func reinforce(spec domain.ShotSpec, boost []domain.ReferenceKind) domain.ShotSp
 }
 
 // reinforceReferences puts the References of the boosted kinds first (the model keeps the first ones
-// when it accepts fewer). A model that takes free reference images gets no Keyframe as first frame:
-// it reads either the frames or the references, and the references are what is being reinforced.
-func reinforceReferences(refs []domain.Reference, boost []domain.ReferenceKind, model domain.ModelName) []domain.Reference {
-	out := make([]domain.Reference, 0, len(refs))
-	dropKeyframe := false
-	if caps, ok := modeladapter.Capabilities(model); ok && caps.MaxReferenceImages > 0 {
-		dropKeyframe = slices.ContainsFunc(refs, func(r domain.Reference) bool { return r.Kind != domain.RefKeyframe })
-	}
-	for _, r := range refs {
-		if dropKeyframe && r.Kind == domain.RefKeyframe {
-			continue
-		}
-		out = append(out, r)
-	}
+// when it accepts fewer). The Keyframe stays, so a model that takes both still gets it as the first
+// frame and the other images as references.
+func reinforceReferences(refs []domain.Reference, boost []domain.ReferenceKind, _ domain.ModelName) []domain.Reference {
+	out := slices.Clone(refs)
 	rank := func(k domain.ReferenceKind) int {
 		if i := slices.Index(boost, k); i >= 0 {
 			return i

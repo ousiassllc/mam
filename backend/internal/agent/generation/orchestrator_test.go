@@ -172,7 +172,7 @@ func TestOrchestrator_CancellationReleasesTheShotWithoutABotherNotice(t *testing
 }
 
 func TestOrchestrator_GenerationTimeLimitFailsTheTake(t *testing.T) {
-	f := newFixture(t, options{limits: &domain.PolicyLimits{MaxGenerationSeconds: new(1)}})
+	f := newFixture(t, options{limits: &domain.PolicyLimits{MaxGenerationSeconds: new(domain.MinGenerationSeconds)}})
 	f.video.block = make(chan struct{}) // the model never answers
 
 	err := f.generate(t, "")
