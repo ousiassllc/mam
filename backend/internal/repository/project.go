@@ -33,6 +33,9 @@ type NewProject struct {
 	Brief    domain.Brief
 	Assets   []domain.Asset
 	Messages []domain.ChatMessage
+	// BrandTemplateID, when set, copies the Brand Template's constraints into the Project. An unknown
+	// template fails the whole creation with ErrNotFound.
+	BrandTemplateID string
 }
 
 // Create inserts the Project, its Brief, its uploaded Assets and its first messages.
@@ -53,7 +56,10 @@ func (r *ProjectRepository) Create(ctx context.Context, np NewProject) error {
 				return err
 			}
 		}
-		return nil
+		if np.BrandTemplateID == "" {
+			return nil
+		}
+		return applyBrandTemplate(ctx, tx, np.BrandTemplateID, p.ID, now)
 	})
 	if err != nil {
 		return fmt.Errorf("create project: %w", err)

@@ -87,6 +87,15 @@
 - **フロー**: Project 単位で Brand Guidelines・Forbidden Expressions・Required Disclaimer・Product Claims・Logo Rules・Character Restrictions・Music/Asset Rights・Platform Rules を登録する。これらは Prompt 生成・AI Video Judge・Final QC すべてに適用される。LOCK 違反はスコアに関係なく FAIL とする（強制レベルと適用の詳細は `spec/spec.md` §26.1）
 - **事後条件**: 制約に反する生成結果は自動的に不合格となる
 
+#### UC-9 拡張: Brand Templates（M3）
+
+- **フロー**: 設定画面で、その Project の制約の現在のセットに名前を付けて Brand Template として保存する。新しい Project の作成フォーム、Series 画面の「次の Episode を作成」、既存 Project の設定画面から、テンプレートを選んで適用できる
+- **保存単位**: テンプレート 1 件 = 名前（前後・連続する空白を 1 つにまとめた 1〜100 文字。大文字小文字を区別せず一意）＋ 制約のセット（`type` / `enforcement_level` / `text`）。テンプレートはどの Project・Series にも属さない（Organization は存在しないため。全 Project から共有して選べる）。制約が 1 件もない Project は保存できない
+- **適用範囲**: 新規 Project 作成（`POST /projects`）、新規 Episode 作成（`POST /series/:id/episodes`）、既存 Project への適用。適用は制約の **コピー**（新しい `brand_constraint` 行）で、リンクは持たない。既存 Project に適用するときは、同じ `type`・`enforcement_level`・`text` の制約をすでに持っていればその制約はコピーせず、既存の制約は削除も変更もしない
+- **更新の非伝播（Traceability）**: 保存はその時点の制約のスナップショットで、保存後に元の Project の制約を変えてもテンプレートは変わらない。適用後の各 Project の制約は独立して追加・削除でき、テンプレートの削除やテンプレート側の変更は、すでに適用した Project に自動では伝播しない（`er.md` の Series 正本と同じ方針）。テンプレート内の制約を編集する機能は持たず、変える場合は制約を整えた Project から別名で保存し直す
+- **Series との関係**: Series は制約を持たない（Series の正本は Character / Product / Location / Style / Notes）。Series には制約を継承させず、Episode 作成時にテンプレートを選んだ場合だけその Episode に制約がコピーされる
+- **事後条件**: 適用された制約は UC-9 の他の制約と同じく Prompt 生成・AI Video Judge・Final QC に適用される
+
 ### UC-10: 制作メモを登録し、制作に反映する（M2）
 
 - **Actor**: エンドユーザー、システム（State Extractor）
@@ -124,7 +133,7 @@
 | F-20 | Audio | Audio Production | Dialogue/Voice/Narration/Lip Sync/BGM/SE/Foley/Ambience/Mixing/Loudness最適化。TTS/Music/SFXはElevenLabs、Lip SyncはSync Labs（`spec/architecture/model-adapters.md`§5） | M3（Audio Director含む）/ 簡易版はM1 |
 | F-21 | Template | Production Templates | PRODUCT/CM・DRAMA・ANIME・SNS/SHORT VIDEO ごとの評価軸切替 | M1〜 |
 | F-22 | Policy | Quality/Cost Control | FAST/BALANCED/MAX QUALITY、予算・リトライ上限設定 | M1 |
-| F-23 | Safety | Safety/Brand Constraints | Brand Guidelines等の登録とPrompt/Judge/Final QCへの適用 | M2〜 |
+| F-23 | Safety | Safety/Brand Constraints | Brand Guidelines等の登録とPrompt/Judge/Final QCへの適用。M3 で Brand Templates（制約のセットの保存と、新規 Project / Episode・既存 Project へのコピー適用） | M2〜 |
 | F-24 | Director | Natural Language Director Commands | 自然言語 → 構造化操作（LOCK設定/パラメータ更新/Branch作成等）へのCommand Interpreter変換 | M1 |
 | F-25 | Project | Project Data Model管理 | Brief/Template/Preferences/Policy/World State/Assets/Scenes/Shots/Takes/Edit Timeline/Audio Timeline/Branches/Exports の保持 | M1 |
 | F-26 | Export | Final Export | Final QC PASS後の動画書き出し | M1 |
@@ -237,3 +246,4 @@ Editor Agent は Production Template（`spec/spec.md` §19）が評価軸に持�
 | 1.8 | 2026-09-30 | §3.6 を追加し、F-18 Simple の編集項目（Shot Selection / Cut Point / Timing / Transition）、F-20 簡易版の範囲（Dialogue / Narration の TTS + ローカル DSP のラウドネス正規化）、Final QC の M1 判定、Export の指定項目を確定 | Issue #14 の着手前確定事項（M1 の Simple / 簡易版と Advanced / M3 の境界が仕様になかったため） |
 | 1.9 | 2026-09-30 | UC-9 / F-23 に強制レベル（`lock` は違反時 FAIL・403、`advisory` は警告）と適用の仕方（`spec/spec.md` §26.1）を参照させ、Final QC の記述を更新 | M2「Safety / Brand Constraints」（Issue #23）の実装に合わせるため。制約の単位は UC-9 のとおり Project 単位（`spec.md` §26 の Organization 表記を修正） |
 | 1.10 | 2026-09-30 | §3.7 に M3 の Editor（Advanced 編集項目・Reshoot Loop）の範囲を追加 | Advanced Editor Agent と Editor → Reshoot Loop（Issue #24）の実装に合わせるため |
+| 1.11 | 2026-09-30 | UC-9 に Brand Templates（M3）の保存単位・適用範囲・Series との関係・更新の非伝播ルールを追記し、F-23 を更新 | M3「Brand Templates」（Issue #27）。要件が未定義だったため保守的に確定（Organization が無いのでテンプレートはグローバル、適用はコピー、テンプレート編集は持たない） |

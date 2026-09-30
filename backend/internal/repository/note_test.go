@@ -122,7 +122,7 @@ func TestNoteRepository_EpisodeCopiesActiveSeriesNotesAndStaysIndependent(t *tes
 	_, _, err = notes.Update(ctx, old.ID, repository.NoteUpdate{Archived: new(true)})
 	require.NoError(t, err)
 
-	_, err = f.series.CreateEpisode(ctx, s.ID, "", newEpisodeProject("ep2"))
+	_, err = f.series.CreateEpisode(ctx, s.ID, "", "", newEpisodeProject("ep2"))
 	require.NoError(t, err)
 
 	copied, err := notes.ListProject(ctx, "ep2")

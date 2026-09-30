@@ -13,6 +13,8 @@ type SeriesViewData struct {
 	Canon    domain.SeriesCanon
 	Versions []domain.SeriesVersion
 	Episodes []domain.Project
+	// Templates are the Brand Templates a new Episode can start from.
+	Templates []domain.BrandTemplate
 }
 
 var seriesFieldLabels = map[string]string{
@@ -123,6 +125,7 @@ templ SeriesView(d SeriesViewData) {
 						}
 					</select>
 				</label>
+				@BrandTemplateSelect("series-brand-template", d.Templates)
 				@atoms.Button(atoms.TonePrimary, "次の Episode を作成", templ.Attributes{"type": "submit"})
 			</form>
 		</section>

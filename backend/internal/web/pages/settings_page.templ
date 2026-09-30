@@ -8,10 +8,11 @@ import (
 
 // SettingsPageData is everything the settings screen shows.
 type SettingsPageData struct {
-	Policy  organisms.PolicyFormData
-	Cost    domain.CostSummary
-	Storage organisms.StoragePanelData
-	Brand   organisms.BrandConstraintListData
+	Policy    organisms.PolicyFormData
+	Cost      domain.CostSummary
+	Storage   organisms.StoragePanelData
+	Brand     organisms.BrandConstraintListData
+	Templates organisms.BrandTemplatePanelData
 }
 
 // SettingsPage is GET /projects/:id/settings: Production Template, Quality/Cost Policy, budget, the
@@ -49,6 +50,9 @@ templ SettingsBody(d SettingsPageData) {
 		}
 		@SettingsSection("Brand / Safety Constraints", "ブランドガイドライン・禁止表現・免責表記などを登録します。Prompt 生成・AI Video Judge・Final QC のすべてで守らせ、LOCK の制約に違反した Take・成果物はスコアに関係なく不合格になります（Advisory は警告のみ）。") {
 			@organisms.BrandConstraintList(d.Brand)
+		}
+		@SettingsSection("Brand Templates", "制約のセットをテンプレートとして保存し、別の Project や Series の Episode を作るときに適用します。適用は制約のコピーで、テンプレートを更新・削除しても既存の Project には反映されません。") {
+			@organisms.BrandTemplatePanel(d.Templates)
 		}
 		@SettingsSection("プロジェクトバンドル", "プロジェクトのデータとアセットを 1 つの ZIP に書き出します。プロジェクト一覧の読み込みフォームから、この端末でも別の端末でも復元できます。") {
 			<div>
