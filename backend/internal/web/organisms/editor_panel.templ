@@ -69,7 +69,7 @@ func needLabel(n *domain.ShotNeed) string {
 
 // CanJudge reports whether the Editor Judge can be run now.
 func (d EditorPanelData) CanJudge() bool {
-	return d.TimelineID != "" && (d.Project.State == domain.StateEditing || d.Project.State == domain.StateEditJudging)
+	return d.TimelineID != "" && (d.Project.State == domain.StateEditing || d.Project.State == domain.StateEditJudging || d.Project.State == domain.StateRepairing)
 }
 
 // CanAudio reports whether the audio can be made now.

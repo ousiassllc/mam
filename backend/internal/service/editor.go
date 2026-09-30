@@ -554,6 +554,13 @@ func (s *EditorService) JudgeTimeline(ctx context.Context, id string) (EditorVie
 	} else if latest.ID != id {
 		return EditorView{}, conflict("この編集より新しい版があります。画面を更新してから判定してください")
 	}
+	if project.State == domain.StateRepairing {
+		// An Escalation card of the Reshoot Loop was answered: the Project continues here, in editing.
+		if err := s.toEditing(ctx, project); err != nil {
+			return EditorView{}, err
+		}
+		project.State = domain.StateEditing
+	}
 	if project.State != domain.StateEditing && project.State != domain.StateEditJudging {
 		return EditorView{}, conflict("編集中（EDITING）の Project だけ判定できます（現在: %s）", project.State)
 	}
