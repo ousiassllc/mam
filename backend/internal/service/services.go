@@ -93,6 +93,10 @@ type Services struct {
 	Analytics   *AnalyticsService
 }
 
+// Close stops the background workers of the services. Call it on shutdown, after the job queue
+// stopped.
+func (s *Services) Close() { s.Editor.Close() }
+
 // Recover puts Shots left GENERATING by an abnormal termination back to PLANNING. It MUST run
 // after New and before the job queue starts (their generate jobs are then failed by the queue).
 func (s *Services) Recover(ctx context.Context) (int, error) {
@@ -141,8 +145,7 @@ func New(deps Deps) *Services {
 			}
 			// A finished generation / judge job may complete an additional Shot of the Editor → Reshoot Loop.
 			if editors != nil {
-				go editors.ResumeReshoots(context.Background())
-				go editors.ResumeAuto(context.Background())
+				editors.ResumeEditing()
 			}
 		})
 		if deps.LLM != nil {
@@ -230,10 +233,8 @@ func New(deps Deps) *Services {
 		judge: editor.NewJudge(deps.LLM), brands: brands, judges: judges.judges,
 		voices: repository.NewVoiceRepository(deps.DB), cloner: deps.Audio.Cloner,
 	}
-	takeService.afterSelect = func() {
-		go editors.ResumeReshoots(context.Background())
-		go editors.ResumeAuto(context.Background())
-	}
+	editors.resume = newResumer(editors.resumeAll)
+	takeService.afterSelect = editors.ResumeEditing
 	// An Approval card answered in the editing half (Rough Cut, Final) lets the AUTO chain go on.
 	c.afterAnswer = func(projectID string) { go editors.AdvanceAuto(context.Background(), projectID) }
 	if deps.Media != nil && deps.Audio.Speech != nil {

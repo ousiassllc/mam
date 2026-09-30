@@ -102,6 +102,33 @@ func TestEditorReshootLoop_AdditionalShotIsMadeAndPutIntoTheTimelineAfterItsAnch
 	assert.Equal(t, domain.ClipReaction, again.Timeline.Clips[1].Kind)
 }
 
+func TestEditorReshootLoop_AFinishedShotWaitsForTheBusyStageAndIsPutInWhenItEnds(t *testing.T) {
+	f, _ := editedFixture(t)
+	require.Eventually(t, func() bool { return f.trunkShots(t) == 2 }, 10*time.Second, 10*time.Millisecond)
+	f.waitJobsDone(t)
+	var newShot string
+	require.NoError(t, f.query(t, `SELECT id FROM shot WHERE id <> ?`, f.shotID).Scan(&newShot))
+	require.Eventually(t, func() bool {
+		return f.count(t, `SELECT COUNT(*) FROM take t JOIN prompt_version pv ON pv.id = t.prompt_version_id WHERE pv.shot_id = ?`, newShot) > 0
+	}, 30*time.Second, 10*time.Millisecond)
+
+	// The last Take is selected while another stage (Final QC, a preview) holds the Project.
+	release, err := f.svc.Editor.HoldStage(f.projectID)
+	require.NoError(t, err)
+	f.selectTakeOf(t, newShot)
+	time.Sleep(200 * time.Millisecond)
+	assert.Equal(t, domain.StateGenerating, f.state(t), "the busy stage keeps the round waiting")
+
+	// Nothing else will start the Reshoot Loop again: the end of the stage does.
+	release()
+	require.Eventually(t, func() bool { return f.state(t) == domain.StateEditing }, 10*time.Second, 10*time.Millisecond, "back to EDITING after the stage ended")
+	view, err := f.svc.Editor.View(context.Background(), f.projectID, "")
+	require.NoError(t, err)
+	require.NotNil(t, view.Timeline)
+	require.Len(t, view.Timeline.Clips, 2)
+	assert.Equal(t, newShot, view.Timeline.Clips[1].ShotID)
+}
+
 func TestEditorReshootLoop_StopsAtTheRetryPolicyLimitAndEscalates(t *testing.T) {
 	f, _ := editedFixture(t)
 	ctx := context.Background()
