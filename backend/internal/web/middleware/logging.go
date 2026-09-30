@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"errors"
 	"log/slog"
 	"net/http"
 	"runtime/debug"
@@ -23,13 +24,22 @@ func Logger(logger *slog.Logger) gin.HandlerFunc {
 		case status >= http.StatusBadRequest:
 			level = slog.LevelWarn
 		}
-		logger.Log(c.Request.Context(), level, "http request",
+		attrs := []any{
 			"method", c.Request.Method,
 			"path", c.Request.URL.Path,
 			"status", status,
 			"duration", time.Since(start),
 			"hx_request", c.GetHeader("HX-Request") == "true",
-		)
+		}
+		// Handlers attach unexpected errors with c.Error; without this the cause of a 500 is lost.
+		if len(c.Errors) > 0 {
+			errs := make([]error, len(c.Errors))
+			for i, e := range c.Errors {
+				errs[i] = e.Err
+			}
+			attrs = append(attrs, "err", errors.Join(errs...))
+		}
+		logger.Log(c.Request.Context(), level, "http request", attrs...)
 	}
 }
 
