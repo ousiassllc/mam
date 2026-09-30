@@ -25,6 +25,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/router"
 	"github.com/ousiassllc/mam/backend/internal/service"
@@ -83,6 +84,18 @@ var shotIDRe = regexp.MustCompile(`id="shot-([0-9a-f-]{36})"`)
 
 func newGenApp(t *testing.T, withModels bool) *genApp {
 	t.Helper()
+	return newGenAppOpts(t, withModels, genOpts{})
+}
+
+// genOpts replaces parts of the generation app: the LLM, the video model and ffmpeg.
+type genOpts struct {
+	llm   llm.Completer
+	video modeladapter.VideoBackend
+	media *media.Tools
+}
+
+func newGenAppOpts(t *testing.T, withModels bool, o genOpts) *genApp {
+	t.Helper()
 	keyring.MockInit()
 	dir := t.TempDir()
 	db, err := repository.Open(context.Background(), filepath.Join(dir, "mam.db"), nil)
@@ -90,11 +103,19 @@ func newGenApp(t *testing.T, withModels bool) *genApp {
 	t.Cleanup(func() { _ = db.Close() })
 
 	video := &videoFake{}
-	deps := service.Deps{DB: db, Credentials: credential.NewKeyring(), AssetsDir: filepath.Join(dir, "assets"), LLM: plannerLLM{}}
+	deps := service.Deps{DB: db, Credentials: credential.NewKeyring(), AssetsDir: filepath.Join(dir, "assets"), Media: o.media}
+	deps.LLM = plannerLLM{}
+	if o.llm != nil {
+		deps.LLM = o.llm
+	}
 	jobs := jobqueue.New(repository.NewJobRepository(db), jobqueue.Options{})
 	deps.Jobs = jobs
 	if withModels {
-		backends := modeladapter.Backends{Video: map[domain.ModelName]modeladapter.VideoBackend{domain.ModelKling3: video, domain.ModelSeedance2: video}}
+		var backend modeladapter.VideoBackend = video
+		if o.video != nil {
+			backend = o.video
+		}
+		backends := modeladapter.Backends{Video: map[domain.ModelName]modeladapter.VideoBackend{domain.ModelKling3: backend, domain.ModelSeedance2: backend}}
 		deps.Models = modeladapter.New(modeladapter.DefaultConfig(), backends)
 	}
 	svc := service.New(deps)
@@ -267,4 +288,48 @@ func TestContinue_ProposesACardInTheChatAndConfirmAddsAndGeneratesTheNextShot(t 
 func TestContinue_MissingConfigurationIs503(t *testing.T) {
 	off := newGenApp(t, false)
 	assert.Equal(t, http.StatusServiceUnavailable, off.form(http.MethodPost, "/shots/"+off.shotID+"/continue", nil).Code)
+}
+
+// frameSpyLLM records the images of the Continue Agent's requests.
+type frameSpyLLM struct {
+	plannerLLM
+	mu     sync.Mutex
+	images [][]llm.Image
+}
+
+func (f *frameSpyLLM) Complete(ctx context.Context, agent llm.Agent, req llm.Request) (llm.Response, error) {
+	if agent == llm.AgentDirector {
+		f.mu.Lock()
+		f.images = append(f.images, req.Images)
+		f.mu.Unlock()
+	}
+	return f.plannerLLM.Complete(ctx, agent, req)
+}
+
+func TestContinue_TheAgentSeesTheFinalFrameOfTheTakeWhenFfmpegIsAvailable(t *testing.T) {
+	tools, err := media.Look()
+	if err != nil {
+		t.Skip("ffmpeg / ffprobe are not installed")
+	}
+	spy := &frameSpyLLM{}
+	g := newGenAppOpts(t, true, genOpts{llm: spy, video: newMP4Video(t), media: &tools})
+	g.form(http.MethodPost, "/shots/"+g.shotID+"/generate", nil)
+	g.waitTakes(3)
+	require.Eventually(t, func() bool {
+		var state string
+		return g.db.Reader().QueryRow(`SELECT state FROM shot WHERE id = ?`, g.shotID).Scan(&state) == nil && state == "PLANNING"
+	}, 30*time.Second, 10*time.Millisecond)
+
+	require.Equal(t, http.StatusCreated, g.form(http.MethodPost, "/shots/"+g.shotID+"/continue", nil).Code)
+	require.Equal(t, http.StatusAccepted, g.form(http.MethodPost, "/shots/"+g.shotID+"/continue/confirm", url.Values{"delegate": {"true"}}).Code)
+
+	spy.mu.Lock()
+	defer spy.mu.Unlock()
+	require.Len(t, spy.images, 2, "Propose and Plan")
+	for _, imgs := range spy.images {
+		require.Len(t, imgs, 1)
+		assert.Equal(t, "image/jpeg", imgs[0].MimeType)
+		assert.True(t, len(imgs[0].Data) > 3 && imgs[0].Data[0] == 0xFF && imgs[0].Data[1] == 0xD8, "a JPEG taken from the video")
+		assert.Contains(t, imgs[0].Caption, "最終フレーム")
+	}
 }
