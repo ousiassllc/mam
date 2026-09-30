@@ -68,6 +68,7 @@ type Services struct {
 	Repair      *RepairService
 	Continue    *ContinueService
 	Reference   *ReferenceService
+	Series      *SeriesService
 }
 
 // Recover puts Shots left GENERATING by an abnormal termination back to PLANNING. It MUST run
@@ -189,5 +190,6 @@ func New(deps Deps) *Services {
 		Repair:    repairs,
 		Continue:  continues,
 		Reference: &ReferenceService{c},
+		Series:    &SeriesService{core: c, series: repository.NewSeriesRepository(deps.DB)},
 	}
 }

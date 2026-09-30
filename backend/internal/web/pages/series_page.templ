@@ -1,0 +1,18 @@
+package pages
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/layout"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+)
+
+// SeriesPage is GET /series/:id: the canon and the Episodes of a Series.
+templ SeriesPage(csrfToken string, d organisms.SeriesViewData) {
+	@layout.AppLayout("Series: "+d.Series.Name, csrfToken) {
+		<main class="mx-auto max-w-5xl p-8">
+			<a href="/projects" class="text-sm text-neutral-400 hover:text-neutral-100">← プロジェクト一覧へ</a>
+			<h1 class="mb-1 mt-3 text-xl font-semibold">Series</h1>
+			<p class="mb-6 text-sm text-neutral-400">{ d.Series.Name }</p>
+			@organisms.SeriesView(d)
+		</main>
+	}
+}

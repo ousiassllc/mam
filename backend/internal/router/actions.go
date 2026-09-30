@@ -38,6 +38,11 @@ func registerActions(engine *gin.Engine, services *service.Services) {
 	engine.DELETE("/projects/:id/references/:referenceId", handler.DeleteReference(services.Reference))
 	engine.POST("/shots/:id/references", handler.PinReference(services.Reference))
 
+	engine.POST("/series", handler.CreateSeries(services.Series))
+	engine.POST("/series/:id/episodes", handler.CreateEpisode(services.Series))
+	engine.PUT("/series/:id/characters/:characterId", handler.UpdateSeriesCharacter(services.Series))
+	engine.PUT("/series/:id/style", handler.UpdateSeriesStyle(services.Series))
+
 	engine.POST("/shots/:id/generate", handler.GenerateShot(services.Generation))
 	engine.POST("/shots/:id/generate/candidates", handler.GenerateCandidates(services.Generation))
 	engine.POST("/shots/:id/continue", handler.ProposeContinue(services.Continue))

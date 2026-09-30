@@ -27,6 +27,7 @@ erDiagram
     SERIES ||--o{ CHARACTER : canonical_characters
     SERIES ||--o{ PRODUCT : canonical_products
     SERIES ||--o{ LOCATION : canonical_locations
+    SERIES ||--o{ SERIES_VERSION : canon_history
     PROJECT ||--o{ NOTE : owns
     SERIES ||--o{ NOTE : canonical_notes
     NOTE ||--o{ NOTE_VERSION : has
@@ -66,6 +67,7 @@ erDiagram
         string series_id FK
         int episode_number
         string inherited_world_state_version_id FK
+        string inherited_series_version_id FK
         string state
         string mode
         string confirmation_level
@@ -196,6 +198,7 @@ erDiagram
     SERIES ||--o{ CHARACTER : canonical_characters
     SERIES ||--o{ PRODUCT : canonical_products
     SERIES ||--o{ LOCATION : canonical_locations
+    SERIES ||--o{ SERIES_VERSION : canon_history
     PROJECT ||--o{ WORLD_STATE_VERSION : tracks
     SHOT ||--o{ STATE_DIFF : produces
     STATE_DIFF }o--|| WORLD_STATE_VERSION : creates
@@ -263,6 +266,15 @@ erDiagram
     SERIES {
         string id PK
         string name
+        string style
+        string style_reference_asset_id FK
+        datetime created_at
+    }
+    SERIES_VERSION {
+        string id PK
+        string series_id FK
+        int version_number
+        json state
         datetime created_at
     }
     STATE_DIFF {
@@ -436,12 +448,13 @@ erDiagram
 
 | テーブル | 主要制約 | インデックス |
 |---------|---------|------------|
-| `project` | `id` PK。`state` は Core State Machine（§22）の値のみ許可（CHECK制約）。`mode` は `auto/director`、`confirmation_level` は `full_auto/key_check/custom_check`（`custom_check` の確認ポイントは `custom_checkpoints`＝`domain.Checkpoint` 名の JSON 配列。`script/character_design/main_visual/product_key_visual/scene_complete/rough_cut/final`）、`production_template` は `product_cm/drama/anime/sns_short`、`quality_policy` は `fast/balanced/max_quality` のいずれか（各CHECK制約）。`series_id` FK（NULL許容、NULL=単発プロジェクト）、`episode_number`（`series_id` 非NULL時のみ使用）。`(series_id, episode_number)` UNIQUE。`inherited_world_state_version_id` FK（NULL許容、前 Episode の最終 `world_state_version` を開始状態として継承する場合に設定） | `idx_project_state (state)`, `idx_project_series (series_id, episode_number)` |
-| `series` | `id` PK。Series（複数 Episode を束ねる単位、F-29）。Character/Product/Location の正本と Reference Pack を保持する | - |
+| `project` | `id` PK。`state` は Core State Machine（§22）の値のみ許可（CHECK制約）。`mode` は `auto/director`、`confirmation_level` は `full_auto/key_check/custom_check`（`custom_check` の確認ポイントは `custom_checkpoints`＝`domain.Checkpoint` 名の JSON 配列。`script/character_design/main_visual/product_key_visual/scene_complete/rough_cut/final`）、`production_template` は `product_cm/drama/anime/sns_short`、`quality_policy` は `fast/balanced/max_quality` のいずれか（各CHECK制約）。`series_id` FK（NULL許容、NULL=単発プロジェクト）、`episode_number`（`series_id` 非NULL時のみ使用）。`(series_id, episode_number)` UNIQUE。`inherited_world_state_version_id` FK（NULL許容、前 Episode の最終 `world_state_version` を開始状態として継承する場合に設定）、`inherited_series_version_id` FK（NULL許容、Episode 開始時に継承した `series_version`。Series 作成元の Project は作成時の版） | `idx_project_state (state)`, `idx_project_series (series_id, episode_number)` |
+| `series` | `id` PK。Series（複数 Episode を束ねる単位、F-29）。Character/Product/Location の正本と Reference Pack（正本行が指す参照画像）を保持する。`name` は 1〜100 文字。**Style の正本**は Series 自体の 2 カラムで持つ: `style`（テキスト。絵柄・色調・質感など、既定 `''`、500 文字以内）と `style_reference_asset_id`（FK、NULL許容、Style の参照画像）。Style は World State の対象ではなく（Shot で変化しない）、行を増やすほどの構造も持たないため、`character` 等とは別のテーブルにせず Series の属性とする | - |
+| `series_version` | `series_id` FK。`(series_id, version_number)` UNIQUE。`state` は Series 正本の全体スナップショット（JSON。`name`、`style`、`style_reference`、`characters`/`products`/`locations` の正本フィールド）。正本を変えるたび（Series 作成、Character 更新、Style 更新）に新しい行を追記し、更新・削除しない（`world_state_version` と同じ追記専用）。最新の `version_number` が「現在の正本」で、Episode 開始時に継承する版として `project.inherited_series_version_id` が指す | - |
 | `brief` | `project_id` UNIQUE FK（1:1） | - |
 | `asset` | `project_id` FK。`type` は `image/video/reference` のいずれか | `idx_asset_project (project_id)` |
 | `chat_message` | `project_id` FK、`reply_to_message_id` FK（NULL許容、返信先メッセージ）。`role` は `user/assistant`、`kind` は `text/question/approval/keyframe/take/progress/escalation`（各CHECK制約。`role=user` は `text` のみ）。`ref_type`/`ref_id` はカードが指す実体（`script_version`/`asset`/`take`/`edit_timeline_version`/`export`/`note_promotion` 等、NULL許容）。`approval_status` は `kind=approval` のときのみ `pending/approved/changes_requested`、それ以外は NULL（CHECK制約）。`ref_type=note_promotion` の Approval カードは非ブロッキング（Project を AWAITING_APPROVAL に遷移させない）。`attachment_asset_ids` は添付 `asset.id` の JSON 配列。追記のみで更新しない（`approval_status` のみ応答時に更新可） | `idx_chat_message_project (project_id, created_at)`, `idx_chat_message_reply (reply_to_message_id)` |
-| `character` / `product` / `location` | `project_id` FK（NULL許容）と `series_id` FK（NULL許容）のちょうど一方が非NULL（CHECK制約）。`project_id` 非NULL=Project（Episode）内の行、`series_id` 非NULL=Series 正本。Episode 開始時に Series 正本から project 側の行へコピーし、`origin_id`（Series 正本行への FK、NULL許容）で由来を保持する。`branch_id` FK（NULL許容、NULL=主系列、非NULL=当該BranchのWorld State固有値。Series 正本は常にNULL） | `idx_character_project (project_id, branch_id)`, `idx_character_series (series_id)` 等 |
+| `character` / `product` / `location` | `project_id` FK（NULL許容）と `series_id` FK（NULL許容）のちょうど一方が非NULL（CHECK制約）。`project_id` 非NULL=Project（Episode）内の行、`series_id` 非NULL=Series 正本。Episode 開始時に Series 正本から project 側の行へコピーし、`origin_id`（Series 正本行への FK、NULL許容）で由来を保持する。`branch_id` FK（NULL許容、NULL=主系列、非NULL=当該BranchのWorld State固有値。Series 正本は常にNULL） | `idx_character_project (project_id, branch_id)`, `idx_character_series (series_id)`, `idx_character_origin (origin_id)` 等 |
 | `script_version` | `project_id` FK。`(project_id, version_number)` UNIQUE。`content` は JSON `{"concept": Producer の Concept/Structure, "script": Writer の Script}`（Approval カードの `ref_type=script_version`、`ref_id`=`script_version.id`）。修正依頼のたびに新しいバージョンを追記し、上書きしない | - |
 | `scene` | `project_id` FK。`branch_id` FK（NULL許容、NULL=主系列/トランク、非NULL=当該Branchの派生ツリーに属するScene）。`(project_id, branch_id, order_index)` UNIQUE | `idx_scene_project_branch_order (project_id, branch_id, order_index)` |
 | `shot` | `scene_id` FK。`selected_take_id` は `take.id` への FK（NULL許容）。`state` は Core State Machine のサブ状態のみ許可 | `idx_shot_scene_order (scene_id, order_index)` |
@@ -479,7 +492,10 @@ erDiagram
 - **Character/Product の登録（M1）**: Reference Pack の保存時に、Art Director が名前を付けた `character`/`product` の参照について、同名の行が Project に無ければ `character`/`product` に追加する（Location は Scene の作成時に追加される）。これにより State Extractor が追跡できる Character/Product が生まれる
 - **Branch の Snapshot**: Branch作成時点の `world_state_version_id` を参照するのみで、Branch自体は新しい `world_state_version` 系列を独立して持つ（Branch以降の変更は元系列に影響しない）
 - **JSON カラム**: SQLite の `JSON` 型（TEXT + `json_valid` CHECK制約）を用いる。将来的な検索要件が増えた場合は生成列（generated column）でインデックスを追加する
-- **Series 正本と Episode の継承**: Series 正本の更新は、コピー済みの既存 Episode 行へ自動伝播しない（各 Episode の再現性・Traceability を保つ）。`origin_id` で由来を辿る。Series 正本自体の更新履歴は F-28 のバージョン化に含め、M2 実装時に設計する
+- **Series 正本と Episode の継承**: Series 正本の更新は、コピー済みの既存 Episode 行へ自動伝播しない（各 Episode の再現性・Traceability を保つ）。`origin_id` で由来を辿る。Series 正本自体の更新履歴は `series_version`（追記専用の全体スナップショット）で持つ（設計）。Series の作成・正本 Character の更新（`PUT /series/:id/characters/:characterId`）・Style の更新（`PUT /series/:id/style`）のたびに、その時点の正本全体を新しい版として 1 行追記する。差分ではなく全体を保存するため、任意の版の正本がその 1 行から読める（`world_state_version` と同じ理由）。正本の行（`series_id` 非NULLの `character` 等）は常に最新値を持ち、履歴は `series_version` にだけある
+- **正本に入れる項目**: Series 正本の Character は `hairstyle/wardrobe/voice/personality` と `face_reference_asset_id`/`body_reference_asset_id`、Product は `material/condition` と `geometry_reference_asset_id`/`label_reference_asset_id`、Location は `layout_reference_asset_id`（と名前）。Shot が変える状態（Character の `emotion/position/current_action`、Product の `orientation`、Location の `time/lighting_state/weather`）は正本に入れない。`PUT /series/:id/characters/:characterId` が編集できるのは `hairstyle/wardrobe/voice/personality`
+- **Series の作成と Episode の開始**: `POST /series` に `from_project_id` を指定すると、その Project の行から正本を作り（`origin_id` を元の Project の行に張る）、Project を Episode 1（`episode_number=1`）にする。`POST /series/:id/episodes` は Episode 番号（最大値+1）の新しい Project を作り、最新の正本を `character`/`product`/`location` の project 側の行へコピーして `origin_id` で由来を残し、正本の参照画像は Project 自身の `asset` 行（ファイルは共有）として複製して `reference_item`（Reference Library）にも登録する。Style は Brief の `style` にコピーし、Style の参照画像は `kind=style` の Library エントリにする。`previous_episode_id`（同じ Series の Episode）を指定すると、前 Episode の同じ `origin_id` の行の状態（上記の状態項目）と最終 `world_state_version` の Camera・Story（`story.scene` は 0 に戻す）を最初の `world_state_version` にし、前 Episode の最新版を `inherited_world_state_version_id` に記録する。Notes（F-31）のコピーは Notes の実装 Issue で加える
+- **顔同一性の基準**: `readWorld` は Episode の `character` 行を `origin_id` で正本行に結び、正本の `face_reference_asset_id` を `WorldCharacter.SeriesFaceReferenceAssetID` として渡す。Judge の Face Identity Similarity は、この正本の顔・Character 自身の顔・Reference Pack の同名の Character 画像を参照顔にする（同じファイルは 1 枚に数える）。そのため Episode の参照を外しても、全 Episode が同じ正本の顔を基準に計測される（F-29、`model-adapters.md` §10.2）
 - **チャットスレッド**: 1 Project に1本のスレッドを `chat_message` で保持し、Project を開くたびに履歴を再表示する（F-30）。カードは実体テーブルへの参照（`ref_type`/`ref_id`）として持ち、実体の複製は持たない。Approval カードに応答するまで Project は AWAITING_APPROVAL（`spec/spec.md` §22）に留まる（`ref_type=note_promotion` のカードを除く）。Branch ごとのスレッド分離は行わない（1 Project 1 スレッド）
 - **Notes と World State の関係**: `note` / `note_version` は自由記述の文脈で、Source of Truth ではない（`spec/spec.md` §29.2）。Prompt Planner が Shot Spec を生成する際に参照したメモのバージョンを `prompt_version.note_refs` に記録し、Take 単位の Traceability（F-27）を保つ。メモは Branch スコープを持たない（Branch ごとの差異は World State で表現する）
 - **Notes の昇格**: 承認された昇格は、Shot に紐づく `state_diff` を作らず `world_state_version`（主系列、`branch_id`=NULL）を直接追記し、`note_promotion.world_state_version_id` で辿る。LOCK 項目は提案時と適用時の両方で除外する。`status=pending` の間も Project の状態遷移は止めない（`spec/spec.md` §9.4）
@@ -523,3 +539,4 @@ erDiagram
 | 1.26 | 2026-09-29 | 設計メモに LOCK の保持形式（`lock` の行の作り方、Shot/Project のパラメータ、判定箇所）を追記 | M1「AUTO/MANUAL/LOCK と DIRECTOR MODE」（Issue #12）で、`target_type`/`parameter_name` に入れる値と LOCK 判定の責務が「属性単位」としか定義されていなかったため |
 | 1.27 | 2026-09-30 | `reference_item`（Reference Library）を追加。設計メモに Location State・属性 LOCK・Reference Library を追記 | M2「Character/Product Lock・Location State・Reference Library」（Issue #15）で Reference Library のデータモデルが仕様になかったため。`asset` は種別・名前・タグを持たず検索できないので専用テーブルを 1 つ追加し、画像本体は既存の `asset.type=reference` を使う |
 | 1.28 | 2026-09-30 | `judge_result` に `scores`（JSON、NULL許容）を追加。`repair_action` の `instructions` の JSON 構造と `repair_shadow` テーブル（Jev のシャドー実行）を追加。`JUDGE_RESULT` と `REPAIR_ACTION` の関係を 1:0..N へ修正。マイグレーションは `20260929220000_repair_loop.sql` | M1「Repair/Retake Loop」（Issue #10）で、Minimum acceptance score を適用する軸別スコアの保存先、Repair の判断内容・判断者の記録、Jev の一致率・confidence・遅延・コストの記録先が無かったため。同じ Judge 結果から上限引き上げ後にもう一度 Repair できるため 1:0..1 では足りない |
+| 1.29 | 2026-09-30 | `series` に `style`/`style_reference_asset_id`（Style の正本）を追加。`series_version`（正本の追記専用の履歴）と `project.inherited_series_version_id` を追加。`character`/`product`/`location` の `project_id` を NULL 許容にして `series_id`/`origin_id` を追加（どちらか一方のみ非NULL）。設計メモに正本の項目・Episode の継承・顔同一性の基準を追記。マイグレーションは `20260930020000_series.sql` | M2「Series / Episode Memory」（Issue #21）で、正本の更新履歴のバージョン化と Style の保持方法が `er.md` に未定義だったため |

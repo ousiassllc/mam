@@ -63,6 +63,9 @@ func briefText(b domain.Brief, t domain.ProductionTemplate) string {
 	if b.AdditionalInstruction != "" {
 		fmt.Fprintf(&sb, "- 追加指示: %s\n", b.AdditionalInstruction)
 	}
+	if b.Style != "" {
+		fmt.Fprintf(&sb, "- スタイル（Series 正本。全話で統一する）: %s\n", b.Style)
+	}
 	if n := len(b.Assets); n > 0 {
 		fmt.Fprintf(&sb, "- 添付画像: %d 点（商品・人物などの素材として使う）\n", n)
 	}

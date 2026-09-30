@@ -17,7 +17,10 @@ type Project struct {
 	CustomCheckpoints  []Checkpoint
 	ProductionTemplate ProductionTemplate
 	QualityPolicy      QualityPolicy
-	CreatedAt          time.Time
+	// SeriesID and EpisodeNumber place the Project in a Series (F-29); "" and 0 for a single Project.
+	SeriesID      string
+	EpisodeNumber int
+	CreatedAt     time.Time
 }
 
 // UntitledProject is the display name of a Project with neither Subject nor first message.
