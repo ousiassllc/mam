@@ -27,6 +27,7 @@ templ ChatWorkspace(p domain.Project, msgs []domain.ThreadMessage) {
 					<ul class="absolute right-0 z-10 mt-1 w-40 rounded-md border border-neutral-700 bg-neutral-900 py-1 shadow-lg">
 						<li><a class="block px-3 py-1.5 hover:bg-neutral-800" href={ templ.SafeURL("/projects/" + p.ID + "/brief") }>Brief</a></li>
 						<li><a class="block px-3 py-1.5 hover:bg-neutral-800" href={ templ.SafeURL("/projects/" + p.ID + "/scenes") }>Scene / Shot</a></li>
+						<li><a class="block px-3 py-1.5 hover:bg-neutral-800" href={ templ.SafeURL("/projects/" + p.ID + "/editor") }>編集 / 書き出し</a></li>
 						<li><a class="block px-3 py-1.5 hover:bg-neutral-800" href={ templ.SafeURL("/projects/" + p.ID + "/settings") }>設定 / コスト</a></li>
 						<li><a class="block px-3 py-1.5 hover:bg-neutral-800" href={ templ.SafeURL("/projects/" + p.ID + "/world-state") }>World State</a></li>
 						<li><a class="block px-3 py-1.5 hover:bg-neutral-800" href={ templ.SafeURL("/projects/" + p.ID + "/references") }>Reference Library</a></li>
