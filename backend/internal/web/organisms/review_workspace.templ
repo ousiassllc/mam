@@ -49,7 +49,7 @@ func reviewDecisionBadge(d domain.ReviewDecision) (atoms.BadgeTone, string) {
 // comments, the form of the decision and the link that downloads the Review Response.
 templ ReviewWorkspace(i domain.ReviewInbox) {
 	<div id="review-workspace" class="flex flex-col gap-6">
-		<video class="w-full rounded-md bg-black" controls preload="metadata" src={ "/reviews/" + i.ID + "/video" }></video>
+		<video class="w-full rounded-md bg-black" aria-label="レビュー対象の動画" controls preload="metadata" src={ "/reviews/" + i.ID + "/video" }></video>
 		if i.Note != "" {
 			<section class="rounded-md border border-neutral-700 p-3" aria-label="オーナーからのメモ">
 				<h2 class="mb-1 text-sm font-semibold">オーナーからのメモ</h2>
