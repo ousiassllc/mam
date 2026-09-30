@@ -236,7 +236,7 @@ func TestTakeRepository_CreateCompositeIsTheUsersSelectionAndKeepsTheBaseTakesPr
 	require.NoError(t, err)
 	assert.Equal(t, domain.TakeSelected, got.Status)
 	assert.Equal(t, "acomp", got.AssetID)
-	assert.Equal(t, "kling-3.0", string(got.ModelName), "the model of the first segment's Take")
+	assert.Equal(t, "kling-3.0", got.ModelName, "the model of the first segment's Take")
 	assert.Equal(t, "pv1", got.PromptVersionID)
 	assert.Equal(t, 3.75, got.DurationSeconds)
 	assert.Equal(t, id, selectedTake(t, db))

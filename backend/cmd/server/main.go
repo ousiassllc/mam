@@ -24,6 +24,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
 	"github.com/ousiassllc/mam/backend/internal/logging"
+	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/router"
 	"github.com/ousiassllc/mam/backend/internal/service"
@@ -111,6 +112,13 @@ func serve(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	}
 	defer judging.close()
 
+	var previews *media.Tools // ffmpeg for the Take previews and Partial Take Use; nil when missing
+	if tools, err := media.Look(); err != nil {
+		logger.Warn("Take previews are limited: ffmpeg / ffprobe not found (4K Takes play as they are, Partial Take Use is off)")
+	} else {
+		previews = &tools
+	}
+
 	jobs := jobqueue.New(repository.NewJobRepository(db), jobqueue.Options{Logger: logger})
 	// Job handlers are registered by service.New (the plan job) and by the features that add more kinds.
 	// The services are built before the queue starts: they subscribe to job changes.
@@ -125,6 +133,7 @@ func serve(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 		Frames:      judging.frames,
 		Faces:       judging.engine(),
 		Judge:       judging.config,
+		Media:       previews,
 	})
 	// Shots left GENERATING by an abnormal termination are released before their jobs are failed.
 	released, err := services.Recover(ctx)

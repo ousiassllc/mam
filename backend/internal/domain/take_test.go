@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestScoreTake_SeverityTakesPenaltyOffTheAxisOfTheDimension(t *testing.T) {
@@ -80,4 +81,51 @@ func TestResolutionHeight_And_Proxied(t *testing.T) {
 	assert.False(t, TakeInfo{Resolution: "1080p"}.Proxied())
 	assert.True(t, TakeInfo{Resolution: "4K"}.Proxied())
 	assert.False(t, TakeInfo{}.Proxied())
+}
+
+func shotTakes() []TakeInfo {
+	return []TakeInfo{
+		{Take: Take{ID: "t1", FilePath: "p/1.mp4"}, DurationSeconds: 4},
+		{Take: Take{ID: "t2", FilePath: "p/2.mp4"}, DurationSeconds: 4},
+		{Take: Take{ID: "t3", FilePath: "p/3.mp4", Status: TakeRejected}, DurationSeconds: 4},
+	}
+}
+
+func TestParseTakeSegments_ReadsLettersNumbersAndSeparatorsInTheOrderOfTheText(t *testing.T) {
+	segs, err := ParseTakeSegments("Take B の 2-4秒 + Take A の 0〜2秒", shotTakes())
+	require.NoError(t, err)
+	assert.Equal(t, []TakeSegment{{TakeID: "t2", Start: 2, End: 4}, {TakeID: "t1", Start: 0, End: 2}}, segs)
+
+	segs, err = ParseTakeSegments("take 1: 0.5 - 1.5s, take 2: 1.5から3.25秒", shotTakes())
+	require.NoError(t, err)
+	assert.Equal(t, []TakeSegment{{TakeID: "t1", Start: 0.5, End: 1.5}, {TakeID: "t2", Start: 1.5, End: 3.25}}, segs)
+}
+
+func TestParseTakeSegments_UnreadableTextAndUnknownTakesAreErrors(t *testing.T) {
+	_, err := ParseTakeSegments("いい感じに繋いで", shotTakes())
+	assert.Error(t, err)
+
+	_, err = ParseTakeSegments("Take A の 0-2秒 + Take D の 2-4秒", shotTakes())
+	assert.ErrorContains(t, err, "Take D")
+}
+
+func TestValidateTakeSegments_RejectsWhatCannotBeComposed(t *testing.T) {
+	ok := []TakeSegment{{TakeID: "t1", Start: 0, End: 2}, {TakeID: "t2", Start: 2, End: 4}}
+	assert.NoError(t, ValidateTakeSegments(ok, shotTakes()))
+
+	for name, segs := range map[string][]TakeSegment{
+		"one segment":     ok[:1],
+		"unknown take":    {ok[0], {TakeID: "x", Start: 0, End: 2}},
+		"rejected take":   {ok[0], {TakeID: "t3", Start: 0, End: 2}},
+		"too short":       {ok[0], {TakeID: "t2", Start: 1, End: 1.1}},
+		"negative start":  {ok[0], {TakeID: "t2", Start: -1, End: 2}},
+		"beyond the take": {ok[0], {TakeID: "t2", Start: 2, End: 5}},
+		"too many parts":  append(make([]TakeSegment, 0), ok[0], ok[1], ok[0], ok[1], ok[0], ok[1], ok[0], ok[1], ok[0]),
+	} {
+		assert.Error(t, ValidateTakeSegments(segs, shotTakes()), name)
+	}
+}
+
+func TestTakeLabel(t *testing.T) {
+	assert.Equal(t, []string{"A", "B", "Z", "27"}, []string{TakeLabel(0), TakeLabel(1), TakeLabel(25), TakeLabel(26)})
 }

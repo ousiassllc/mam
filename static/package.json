@@ -6,7 +6,8 @@
     "dev": "node build.mjs --watch",
     "build": "node build.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run && npm run test:components",
+    "test:components": "wtr"
   },
   "dependencies": {
     "htmx.org": "^2.0.4",
@@ -15,6 +16,7 @@
   "devDependencies": {
     "@open-wc/testing": "^5.0.0",
     "@tailwindcss/cli": "^4.1.0",
+    "@types/mocha": "^10.0.10",
     "@web/dev-server-esbuild": "^2.0.0",
     "@web/test-runner": "^1.0.0",
     "@web/test-runner-chrome": "^1.0.1",

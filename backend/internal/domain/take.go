@@ -1,6 +1,9 @@
 package domain
 
 import (
+	"errors"
+	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -147,3 +150,83 @@ const (
 
 // PartialTakeKind is the "kind" of the model parameters of a Take composed from segments of others.
 const PartialTakeKind = "partial_take"
+
+// TakeLabel is how the comparison names the n-th Take of a Shot (0-based): "A", "B", ... "Z", then "27", "28", ...
+func TakeLabel(n int) string {
+	if n >= 0 && n < 26 {
+		return string(rune('A' + n))
+	}
+	return strconv.Itoa(n + 1)
+}
+
+// segmentPattern is one "Take A の 0-2秒" of a natural-language instruction: a Take label (a
+// letter or a number), then the start and end of the part in seconds.
+var segmentPattern = regexp.MustCompile(
+	`(?i)take\s*([a-z]|\d+)\s*(?:の|:|：|@|,|、)?\s*(\d+(?:\.\d+)?)\s*(?:秒|s|sec)?\s*(?:-|–|—|~|〜|～|から|to)\s*(\d+(?:\.\d+)?)\s*(?:秒|s|sec)?`)
+
+// ParseTakeSegments reads a Partial Take Use written in words, such as "Take A の 0-2秒 + Take B の
+// 2-4秒", against the Takes of the Shot (oldest first: Take A is the first). Segments keep the order of
+// the text, which is the order they are joined in.
+func ParseTakeSegments(text string, takes []TakeInfo) ([]TakeSegment, error) {
+	found := segmentPattern.FindAllStringSubmatch(text, -1)
+	if len(found) == 0 {
+		return nil, errors.New("区間を読み取れませんでした。「Take A の 0-2秒 + Take B の 2-4秒」のように指定してください")
+	}
+	segs := make([]TakeSegment, 0, len(found))
+	for _, m := range found {
+		var idx int
+		if n, err := strconv.Atoi(m[1]); err == nil {
+			idx = n - 1
+		} else {
+			idx = int(strings.ToUpper(m[1])[0] - 'A')
+		}
+		if idx < 0 || idx >= len(takes) {
+			return nil, fmt.Errorf("Take %s はこの Shot にありません", strings.ToUpper(m[1]))
+		}
+		start, _ := strconv.ParseFloat(m[2], 64)
+		end, _ := strconv.ParseFloat(m[3], 64)
+		segs = append(segs, TakeSegment{TakeID: takes[idx].ID, Start: start, End: end})
+	}
+	return segs, nil
+}
+
+// ValidateTakeSegments checks a Partial Take Use against the Takes of the Shot: every Take must
+// belong to the Shot, still have its file and not be rejected, and every part must lie inside the
+// Take (when the Take's length is known) and be at least MinTakeSegmentSeconds long.
+func ValidateTakeSegments(segs []TakeSegment, takes []TakeInfo) error {
+	if len(segs) < 2 {
+		return errors.New("部分採用には 2 つ以上の区間を指定してください（Take 全体を採用するときは選択してください）")
+	}
+	if len(segs) > MaxTakeSegments {
+		return fmt.Errorf("区間は最大 %d 個までです", MaxTakeSegments)
+	}
+	for i, s := range segs {
+		n := i + 1
+		var take *TakeInfo
+		for j := range takes {
+			if takes[j].ID == s.TakeID {
+				take = &takes[j]
+			}
+		}
+		switch {
+		case take == nil:
+			return fmt.Errorf("区間 %d の Take がこの Shot にありません", n)
+		case take.Status == TakeRejected:
+			return fmt.Errorf("区間 %d の Take は除外されています", n)
+		case take.FilePath == "":
+			return fmt.Errorf("区間 %d の Take のファイルはアーカイブされています", n)
+		case s.Start < 0 || s.End-s.Start < MinTakeSegmentSeconds:
+			return fmt.Errorf("区間 %d は %.1f 秒以上にしてください", n, MinTakeSegmentSeconds)
+		case take.DurationSeconds > 0 && s.End > take.DurationSeconds+0.001:
+			return fmt.Errorf("区間 %d は Take の長さ（%.1f 秒）を超えています", n, take.DurationSeconds)
+		}
+	}
+	return nil
+}
+
+// TakeVideoURL is the same-origin URL of the preview video of a Take: the file itself, or a 1080p
+// proxy of a 4K one.
+func TakeVideoURL(takeID string) string { return "/takes/" + takeID + "/video" }
+
+// TakeThumbnailURL is the same-origin URL of a still of the first frame of a Take.
+func TakeThumbnailURL(takeID string) string { return "/takes/" + takeID + "/thumbnail" }

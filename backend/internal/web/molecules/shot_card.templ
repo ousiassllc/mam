@@ -58,6 +58,12 @@ func shotActionURL(shotID, action string) string { return "/shots/" + shotID + "
 
 func shotProgressURL(shotID string) string { return "/ws/shots/" + shotID }
 
+func takeComparisonURL(shotID string) string { return "/shots/" + shotID + "/takes" }
+
+func takeJudgeResultURL(takeID string) string { return "/api/v1/takes/" + takeID + "/judge-result" }
+
+func takeActionURL(takeID, action string) string { return "/takes/" + takeID + "/" + action }
+
 // ShotActions starts the generation of a Shot (optionally with an additional direction) or the
 // building of its Reference Pack. Both answer with the Shot card in the GENERATING state.
 templ ShotActions(shotID string) {
@@ -91,12 +97,34 @@ templ ShotActions(shotID string) {
 	</form>
 }
 
-// TakeRow is one Take under a Shot.
+// TakeRow is one Take under a Shot: its status, and the buttons that select it (the user's choice
+// replaces the AI Pick) or exclude it. Both answer with the Shot card.
 templ TakeRow(t domain.Take) {
 	<li class="flex items-center justify-between gap-2 text-xs text-neutral-300">
 		<span class="truncate">{ t.ModelName }</span>
-		{{ tone, label := takeStatusLabel(t.Status) }}
-		@atoms.Badge(tone, label)
+		<span class="flex shrink-0 items-center gap-2">
+			if t.Status != domain.TakeRejected && t.FilePath != "" {
+				if t.Status != domain.TakeSelected {
+					<button
+						type="button"
+						class="underline hover:text-neutral-100"
+						hx-post={ takeActionURL(t.ID, "select") }
+						hx-target={ "#shot-" + t.ShotID }
+						hx-swap="outerHTML"
+					>選択</button>
+				}
+				<button
+					type="button"
+					class="underline hover:text-neutral-100"
+					hx-delete={ "/takes/" + t.ID }
+					hx-target={ "#shot-" + t.ShotID }
+					hx-swap="outerHTML"
+					hx-confirm="この Take を除外しますか？"
+				>除外</button>
+			}
+			{{ tone, label := takeStatusLabel(t.Status) }}
+			@atoms.Badge(tone, label)
+		</span>
 	</li>
 }
 
@@ -161,12 +189,18 @@ templ ShotCard(d ShotCardData) {
 		if d.Selected && d.Shot.State != domain.ShotGenerating {
 			@ShotActions(d.Shot.ID)
 		}
+		if d.Shot.State == domain.ShotGenerating || d.Shot.State == domain.ShotJudging {
+			<mam-video-player class="mt-2 block" ws-url={ shotProgressURL(d.Shot.ID) }></mam-video-player>
+		}
 		if len(d.Takes) > 0 {
 			<ul class="mt-2 flex flex-col gap-1 border-t border-neutral-800 pt-2" aria-label="Take 一覧">
 				for _, t := range d.Takes {
 					@TakeRow(t)
 				}
 			</ul>
+			if len(d.Takes) > 1 {
+				<a href={ templ.SafeURL(takeComparisonURL(d.Shot.ID)) } class="mt-1 inline-block text-xs text-neutral-400 underline hover:text-neutral-100">Take 比較</a>
+			}
 		} else if d.Selected {
 			<p class="mt-2 text-xs text-neutral-500">Take はまだありません。</p>
 		}

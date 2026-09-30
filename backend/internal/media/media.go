@@ -150,7 +150,7 @@ func (t Tools) write(ctx context.Context, dst, format string, args []string) err
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return fmt.Errorf("create directory: %w", err)
 	}
-	tmp := filepath.Join(dir, "."+base+".ffmpeg.tmp") // the stale-temp sweep at startup removes it
+	tmp := filepath.Join(dir, "."+base+".ffmpeg.tmp") // a crash leaves it behind; the next run to the same dst overwrites it
 	full := append([]string{"-v", "error", "-y", "-nostdin"}, args...)
 	full = append(full, "-f", format, tmp)
 	var stderr bytes.Buffer

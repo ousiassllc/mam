@@ -1,0 +1,196 @@
+import { aTimeout, expect, fixture, html, oneEvent, waitUntil } from '@open-wc/testing';
+import './mam-video-player';
+import type { MamVideoPlayer, SeekRequestedDetail } from './mam-video-player';
+import { FakeSocket, stubFetch, stubWebSocket } from '../testdata/fakes';
+
+// 2 s, 25 fps, 160x90. The dev server does not answer Range requests, so the file is played from a
+// blob URL: a video that cannot be ranged cannot be seeked.
+const CLIP = URL.createObjectURL(await (await fetch('/src/components/testdata/clip.webm')).blob());
+const JUDGE_URL = '/api/v1/takes/t1/judge-result';
+
+async function player(attrs: { src?: string; api?: string; ws?: string; fps?: number } = {}): Promise<MamVideoPlayer> {
+  const el = await fixture<MamVideoPlayer>(html`<mam-video-player
+    video-src=${attrs.src ?? ''}
+    api-url=${attrs.api ?? ''}
+    ws-url=${attrs.ws ?? ''}
+    fps=${attrs.fps ?? 0}
+  ></mam-video-player>`);
+  return el;
+}
+
+async function loaded(el: MamVideoPlayer): Promise<HTMLVideoElement> {
+  const video = el.querySelector('video') as HTMLVideoElement;
+  await waitUntil(() => video.readyState >= 1, 'video metadata did not load', { timeout: 5000 });
+  await el.updateComplete;
+  return video;
+}
+
+describe('mam-video-player: seeking', () => {
+  it('seeks to an exact frame and tells the others', async () => {
+    const el = await player({ src: CLIP, fps: 25 });
+    const video = await loaded(el);
+
+    const seek = oneEvent(el, 'seek-requested');
+    el.seekFrame(25);
+    const { detail } = (await seek) as CustomEvent<SeekRequestedDetail>;
+
+    expect(detail.frame).to.equal(25);
+    expect(detail.time).to.be.closeTo(1.02, 1e-6); // the middle of frame 25
+    expect(video.currentTime).to.be.closeTo(1.02, 0.01);
+    expect(video.paused).to.equal(true);
+  });
+
+  it('steps one frame at a time with the buttons and the arrow keys, and stays inside the video', async () => {
+    const el = await player({ src: CLIP, fps: 25 });
+    await loaded(el);
+    const timecode = () => el.querySelector('[data-timecode]')?.textContent;
+
+    (el.querySelector('[data-action="next-frame"]') as HTMLButtonElement).click();
+    await waitUntil(() => timecode() === '00:00:01');
+    (el.querySelector('[data-action="next-frame"]') as HTMLButtonElement).click();
+    await waitUntil(() => timecode() === '00:00:02');
+    (el.querySelector('[data-action="prev-frame"]') as HTMLButtonElement).click();
+    await waitUntil(() => timecode() === '00:00:01');
+
+    el.querySelector('video')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    await waitUntil(() => timecode() === '00:00:02');
+
+    el.seekFrame(0);
+    (el.querySelector('[data-action="prev-frame"]') as HTMLButtonElement).click();
+    await aTimeout(50);
+    expect(timecode()).to.equal('00:00:00');
+  });
+
+  it('seeks from the time bar', async () => {
+    const el = await player({ src: CLIP, fps: 25 });
+    await loaded(el);
+    const bar = el.querySelector('input[type="range"]') as HTMLInputElement;
+
+    const seek = oneEvent(el, 'seek-requested');
+    bar.value = '1.48'; // a multiple of the 1/25 s step of the bar
+    bar.dispatchEvent(new Event('input', { bubbles: true }));
+    const { detail } = (await seek) as CustomEvent<SeekRequestedDetail>;
+
+    expect(detail.frame).to.equal(37);
+  });
+
+  it('measures the frame rate of the file while it plays when the server did not give one', async () => {
+    const el = await player({ src: CLIP });
+    const video = await loaded(el);
+    expect(el.frameRateKnown).to.equal(false);
+
+    video.muted = true;
+    await video.play();
+    await waitUntil(() => el.frameRateKnown, 'the frame rate was not measured', { timeout: 5000 });
+    video.pause();
+
+    expect(el.frameRate).to.equal(25);
+  });
+});
+
+describe('mam-video-player: Judge Issue markers', () => {
+  let restore: () => void;
+  afterEach(() => restore());
+
+  it('draws one marker per Issue over the time bar, frames first', async () => {
+    ({ restore } = stubFetch({
+      [`GET ${JUDGE_URL}`]: {
+        body: {
+          issues: [
+            { type: 'product_logo_deformation', severity: 'high', time_range: '0.4-0.8s', frames: [10, 19] },
+            { type: 'face_identity_drift', severity: 'medium', time_range: '1.0-1.5s' },
+            { type: 'unreadable', severity: 'low', time_range: 'whenever' },
+          ],
+        },
+      },
+    }));
+    const el = await player({ src: CLIP, api: JUDGE_URL, fps: 25 });
+    await loaded(el);
+    await waitUntil(() => el.querySelectorAll('[data-marker]').length === 2, 'markers were not drawn');
+
+    const [first, second] = Array.from(el.querySelectorAll<HTMLElement>('[data-marker]'));
+    expect(first!.dataset.severity).to.equal('high');
+    expect(first!.getAttribute('aria-label')).to.contain('product_logo_deformation');
+    // frames 10..19 at 25 fps = 0.4 s to 0.8 s of a 2 s video
+    expect(parseFloat(first!.style.left)).to.be.closeTo(20, 0.5);
+    expect(parseFloat(first!.style.width)).to.be.closeTo(20, 0.5);
+    expect(parseFloat(second!.style.left)).to.be.closeTo(50, 0.5);
+  });
+
+  it('jumps to the start of an Issue when its marker is clicked', async () => {
+    ({ restore } = stubFetch({
+      [`GET ${JUDGE_URL}`]: { body: { issues: [{ type: 'flicker', severity: 'low', time_range: '1.0-1.4s' }] } },
+    }));
+    const el = await player({ src: CLIP, api: JUDGE_URL, fps: 25 });
+    await loaded(el);
+    await waitUntil(() => el.querySelector('[data-marker]') !== null);
+
+    const seek = oneEvent(el, 'seek-requested');
+    (el.querySelector('[data-marker]') as HTMLButtonElement).click();
+    const { detail } = (await seek) as CustomEvent<SeekRequestedDetail>;
+
+    expect(detail.frame).to.equal(25);
+  });
+
+  it('shows no markers for a Take that has not been judged (404) or when the request fails', async () => {
+    ({ restore } = stubFetch({}));
+    const el = await player({ src: CLIP, api: JUDGE_URL, fps: 25 });
+    await loaded(el);
+    await aTimeout(50);
+    expect(el.querySelectorAll('[data-marker]').length).to.equal(0);
+    expect(el.querySelector('video')).to.not.equal(null);
+  });
+});
+
+describe('mam-video-player: generation placeholder', () => {
+  let restoreSocket: () => void;
+  beforeEach(() => {
+    restoreSocket = stubWebSocket();
+  });
+  afterEach(() => restoreSocket());
+
+  const placeholder = (el: MamVideoPlayer) => el.querySelector('[data-placeholder]') as HTMLElement | null;
+
+  it('reflects the progress pushed over the WebSocket instead of a video', async () => {
+    const el = await player({ ws: '/ws/shots/s1' });
+    expect(placeholder(el)!.textContent).to.contain('動画はまだありません');
+    const socket = FakeSocket.instances[0]!;
+    expect(socket.url).to.match(/^wss?:\/\/.+\/ws\/shots\/s1$/);
+
+    socket.emit({ shot_id: 's1', action: 'generate', stage: 'queued' });
+    await waitUntil(() => placeholder(el)!.textContent!.includes('順番を待っています'));
+
+    socket.emit({ shot_id: 's1', action: 'generate', stage: 'generating', takes_done: 1, takes_total: 4 });
+    await waitUntil(() => placeholder(el)!.textContent!.includes('1 / 4 Take'));
+    expect(parseFloat((el.querySelector('[data-progress-bar]') as HTMLElement).style.width)).to.equal(25);
+    expect(el.querySelector('video')).to.equal(null);
+  });
+
+  it('announces the end of the work and closes the socket', async () => {
+    const el = await player({ ws: '/ws/shots/s1' });
+    const socket = FakeSocket.instances[0]!;
+
+    const finished = oneEvent(el, 'progress-finished');
+    socket.emit({ shot_id: 's1', action: 'generate', stage: 'done' });
+    await finished;
+
+    expect(socket.closed).to.equal(true);
+  });
+
+  it('covers a video that is already there while a new generation runs, and closes the socket when removed', async () => {
+    const el = await player({ src: CLIP, ws: '/ws/shots/s1', fps: 25 });
+    const socket = FakeSocket.instances[0]!;
+    expect(el.querySelector('video')).to.not.equal(null);
+
+    socket.emit({ shot_id: 's1', action: 'generate', stage: 'generating', takes_done: 0, takes_total: 2 });
+    await waitUntil(() => placeholder(el) !== null);
+
+    el.remove();
+    expect(socket.closed).to.equal(true);
+  });
+
+  it('shows the placeholder when the video cannot be played', async () => {
+    const el = await player({ src: '/src/components/testdata/missing.webm' });
+    await waitUntil(() => placeholder(el)?.textContent?.includes('再生できません') === true, 'no error shown', { timeout: 5000 });
+  });
+});

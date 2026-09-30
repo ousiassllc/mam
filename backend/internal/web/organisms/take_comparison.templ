@@ -1,0 +1,27 @@
+package organisms
+
+import (
+	"fmt"
+
+	"github.com/ousiassllc/mam/backend/internal/domain"
+)
+
+// TakeComparisonData is the Take comparison of a Shot (GET /shots/:id/takes).
+type TakeComparisonData struct {
+	Project domain.Project
+	Shot    domain.Shot
+}
+
+func takesAPIURL(shotID string) string { return "/api/v1/shots/" + shotID + "/takes" }
+
+// TakeComparison hosts mam-take-comparator: the score table of the Takes of the Shot and the
+// selection of the parts to join. The component loads the Takes from the JSON API.
+templ TakeComparison(d TakeComparisonData) {
+	<section id="take-comparison" class="flex flex-col gap-3" aria-label="Take 比較">
+		<h2 class="text-lg font-semibold">{ fmt.Sprintf("Shot %d の Take 比較", d.Shot.OrderIndex+1) }</h2>
+		<p class="text-sm text-neutral-400">
+			スコア表で Take を比べ、選択または除外できます。動画のタイムライン上をドラッグするか、「Take A の 0-2秒 + Take B の 2-4秒」のように書いて、複数の Take の区間を合成できます。
+		</p>
+		<mam-take-comparator api-url={ takesAPIURL(d.Shot.ID) }></mam-take-comparator>
+	</section>
+}

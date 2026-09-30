@@ -18,6 +18,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/facesim"
+	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
 
@@ -45,6 +46,9 @@ type Deps struct {
 	// Faces is the local face engine of the Face Identity Similarity. Nil: Takes are judged
 	// qualitatively only.
 	Faces facesim.Engine
+	// Media is ffmpeg / ffprobe for the Take previews (4K proxies, thumbnails) and Partial Take Use.
+	// Nil: 4K Takes play as they are and Partial Take Use is unavailable.
+	Media *media.Tools
 	// Judge is the AI Video Judge setting. The zero value selects judge.DefaultConfig.
 	Judge judge.Config
 }
@@ -63,6 +67,7 @@ type Services struct {
 	Policy      *PolicyService
 	Judge       *JudgeService
 	Continue    *ContinueService
+	Takes       *TakeService
 }
 
 // Recover puts Shots left GENERATING by an abnormal termination back to PLANNING. It MUST run
@@ -112,6 +117,7 @@ func New(deps Deps) *Services {
 	policies := repository.NewPolicyRepository(deps.DB)
 	generations := &GenerationService{core: c, shots: gens, progress: newBroker[generation.Progress]()}
 	judges := &JudgeService{core: c, judges: repository.NewJudgeRepository(deps.DB), generations: generations}
+	takes := repository.NewTakeRepository(deps.DB)
 	var takeJudge generation.Judger // stays nil (not a typed nil) while the Judge is off
 	if deps.Jobs != nil && deps.LLM != nil && deps.Frames != nil {
 		cfg := deps.Judge
@@ -120,6 +126,7 @@ func New(deps Deps) *Services {
 		}
 		judges.runner = judge.NewRunner(judge.Deps{
 			Generations: gens, Judges: judges.judges, Assets: c.assets, Chat: chat, Jobs: deps.Jobs,
+			Takes: takes, Projects: c.projects,
 			Judge:     judge.New(deps.LLM, deps.Frames, deps.Faces, cfg, logger),
 			AssetsDir: deps.AssetsDir, Logger: logger,
 			Notify: func(p generation.Progress) { generations.progress.Publish(p.ShotID, p) },
@@ -161,5 +168,6 @@ func New(deps Deps) *Services {
 		},
 		Judge:    judges,
 		Continue: continues,
+		Takes:    &TakeService{core: c, takes: takes, shots: gens, generations: generations, chatSvc: chat, tools: deps.Media},
 	}
 }
