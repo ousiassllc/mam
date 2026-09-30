@@ -56,6 +56,10 @@ func ProjectsPage(csrfToken string, projects []domain.Project, form organisms.Ne
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
+			templ_7745c5c3_Err = organisms.ProjectImportForm(organisms.ProjectImportFormData{}).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<h2 class=\"mt-8 text-sm font-medium text-neutral-300\">プロジェクト</h2>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err

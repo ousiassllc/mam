@@ -53,6 +53,12 @@ func registerActions(engine *gin.Engine, services *service.Services) {
 	engine.POST("/shots/:id/takes/partial", handler.UsePartialTakes(services.Takes))
 	engine.POST("/takes/:id/judge", handler.JudgeTake(services.Judge))
 	engine.POST("/takes/:id/repair", handler.RepairTake(services.Repair))
+	engine.POST("/shots/:id/versions/:versionNumber/restore", handler.RestoreShotVersion(services.Versions))
+	engine.POST("/projects/:id/world-state/versions/:versionNumber/restore", handler.RestoreWorldStateVersion(services.Versions))
+	// The Branch routes name the Branch :id: gin allows one wildcard name per path position.
+	engine.POST("/branches/:id/world-state/versions/:versionNumber/restore", handler.RestoreBranchWorldStateVersion(services.Versions))
+	engine.POST("/branches/:id/versions/:versionNumber/restore", handler.RestoreBranchVersion(services.Versions))
+	engine.POST("/projects/import", handler.ImportBundle(services.Bundle))
 	engine.POST("/projects/:id/messages", handler.PostMessage(services.Chat))
 	engine.POST("/projects/:id/approvals/:messageId", handler.RespondApproval(services.Chat))
 }
