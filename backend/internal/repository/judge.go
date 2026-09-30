@@ -72,13 +72,21 @@ func (r *JudgeRepository) Save(ctx context.Context, res domain.JudgeResult) (dom
 	if res.RepairStrategy != nil {
 		repairColumn = string(repair)
 	}
+	var scoresColumn any // NULL when the Judge gave no scores
+	scores, err := res.EncodeScores()
+	if err != nil {
+		return domain.JudgeResult{}, fmt.Errorf("encode judge scores: %w", err)
+	}
+	if scores != nil {
+		scoresColumn = string(scores)
+	}
 	res.ID = domain.NewID()
 	res.CreatedAt = r.now().UTC()
 	err = r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		_, err := tx.ExecContext(ctx,
-			`INSERT INTO judge_result (id, take_id, result, overall_confidence, issues, metrics, preserve, repair_strategy, created_at)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			res.ID, res.TakeID, res.Result, res.OverallConfidence, string(issues), string(metrics), string(preserve), repairColumn,
+			`INSERT INTO judge_result (id, take_id, result, overall_confidence, issues, metrics, preserve, repair_strategy, scores, created_at)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			res.ID, res.TakeID, res.Result, res.OverallConfidence, string(issues), string(metrics), string(preserve), repairColumn, scoresColumn,
 			formatTime(res.CreatedAt))
 		return err
 	})
@@ -88,11 +96,23 @@ func (r *JudgeRepository) Save(ctx context.Context, res domain.JudgeResult) (dom
 	return res, nil
 }
 
-const judgeSelect = `SELECT id, take_id, result, COALESCE(overall_confidence, 0), issues, metrics, preserve, repair_strategy, created_at FROM judge_result`
+const judgeSelect = `SELECT id, take_id, result, COALESCE(overall_confidence, 0), issues, metrics, preserve, repair_strategy, scores, created_at FROM judge_result`
 
 // Latest returns the newest Judge result of the Take, or ErrNotFound when it was never judged.
 func (r *JudgeRepository) Latest(ctx context.Context, takeID string) (domain.JudgeResult, error) {
 	res, err := scanJudge(r.db.Reader().QueryRowContext(ctx, judgeSelect+` WHERE take_id = ? ORDER BY created_at DESC, rowid DESC LIMIT 1`, takeID))
+	if errors.Is(err, sql.ErrNoRows) {
+		return domain.JudgeResult{}, ErrNotFound
+	}
+	if err != nil {
+		return domain.JudgeResult{}, fmt.Errorf("get judge result: %w", err)
+	}
+	return res, nil
+}
+
+// Get returns the Judge result with the ID, or ErrNotFound.
+func (r *JudgeRepository) Get(ctx context.Context, id string) (domain.JudgeResult, error) {
+	res, err := scanJudge(r.db.Reader().QueryRowContext(ctx, judgeSelect+` WHERE id = ?`, id))
 	if errors.Is(err, sql.ErrNoRows) {
 		return domain.JudgeResult{}, ErrNotFound
 	}
@@ -124,9 +144,9 @@ func scanJudge(row rowScanner) (domain.JudgeResult, error) {
 	var (
 		res                                  domain.JudgeResult
 		issues, metrics, preserve, createdAt string
-		repair                               sql.NullString
+		repair, scores                       sql.NullString
 	)
-	if err := row.Scan(&res.ID, &res.TakeID, &res.Result, &res.OverallConfidence, &issues, &metrics, &preserve, &repair, &createdAt); err != nil {
+	if err := row.Scan(&res.ID, &res.TakeID, &res.Result, &res.OverallConfidence, &issues, &metrics, &preserve, &repair, &scores, &createdAt); err != nil {
 		return domain.JudgeResult{}, err
 	}
 	if err := json.Unmarshal([]byte(issues), &res.Issues); err != nil {
@@ -145,6 +165,11 @@ func scanJudge(row rowScanner) (domain.JudgeResult, error) {
 			return domain.JudgeResult{}, fmt.Errorf("decode repair strategy: %w", err)
 		}
 		res.RepairStrategy = &rs
+	}
+	if scores.Valid {
+		if err := json.Unmarshal([]byte(scores.String), &res.Scores); err != nil {
+			return domain.JudgeResult{}, fmt.Errorf("decode judge scores: %w", err)
+		}
 	}
 	res.Issues = nonNilSlice(res.Issues)
 	res.Preserve = nonNilSlice(res.Preserve)

@@ -199,6 +199,53 @@ type JudgeResult struct {
 	Preserve          []string        `json:"preserve"`
 	RepairStrategy    *RepairStrategy `json:"repair_strategy,omitempty"`
 	CreatedAt         time.Time       `json:"created_at"`
+	// Scores are the 0-100 scores of the evaluation axes of the Production Template, when the Judge
+	// gave them (nil otherwise). The Retry Policy's Minimum acceptance score is applied to them.
+	Scores map[EvaluationAxis]float64 `json:"scores,omitempty"`
+}
+
+// HasLockViolation reports whether an Issue breaks a LOCKed parameter (a critical constraint):
+// such a Take fails whatever its score is (spec/spec.md §13).
+func (r JudgeResult) HasLockViolation() bool {
+	for _, is := range r.Issues {
+		if is.LockViolation {
+			return true
+		}
+	}
+	return false
+}
+
+// Score is the overall score of the result: the scores of the axes weighted by the Production
+// Template. It returns false when the Judge gave no score of the template's axes.
+func (r JudgeResult) Score(t ProductionTemplate) (float64, bool) { return t.WeightedScore(r.Scores) }
+
+// Accepted reports whether the Take may stand under the Retry Policy. This is a deterministic rule:
+// the verdict must be pass, no LOCK violation may exist (a critical constraint fails the Take
+// whatever the score), and, when the Judge gave scores, the overall score and every axis of the
+// template must reach the Minimum acceptance scores of the policy.
+func (r JudgeResult) Accepted(p EffectivePolicy, t ProductionTemplate) bool {
+	if r.Result != JudgePass || r.HasLockViolation() {
+		return false
+	}
+	overall, ok := r.Score(t)
+	if !ok {
+		return true
+	}
+	axes := make(map[EvaluationAxis]float64, len(r.Scores))
+	for _, a := range t.Axes() {
+		if s, ok := r.Scores[a]; ok {
+			axes[a] = s
+		}
+	}
+	return p.Accepts(overall, axes)
+}
+
+// EncodeScores returns the JSON of Scores; nil when there are none.
+func (r JudgeResult) EncodeScores() ([]byte, error) {
+	if len(r.Scores) == 0 {
+		return nil, nil
+	}
+	return json.Marshal(r.Scores)
 }
 
 // EncodeJSON returns the columns of judge_result as JSON: issues, metrics, preserve, repair strategy.

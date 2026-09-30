@@ -21,3 +21,16 @@ func JudgeTake(svc *service.JudgeService) gin.HandlerFunc {
 		render(c, http.StatusAccepted, molecules.ShotCard(shotCardData(frag)))
 	}
 }
+
+// RepairTake has the Repair Agent repair a Take from its Judge result (POST /takes/:id/repair). It
+// answers 202 with the Shot card in the REPAIRING state; the progress arrives on /ws/shots/:id.
+func RepairTake(svc *service.RepairService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		frag, err := svc.Repair(c.Request.Context(), c.Param("id"))
+		if err != nil {
+			toast(c, err)
+			return
+		}
+		render(c, http.StatusAccepted, molecules.ShotCard(shotCardData(frag)))
+	}
+}
