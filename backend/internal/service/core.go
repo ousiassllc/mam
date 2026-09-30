@@ -37,6 +37,8 @@ type core struct {
 	notes *NoteService
 	// branches are the Branches of the Project (F-17).
 	branches *repository.BranchRepository
+	// brandTemplates are the Brand Templates a new Project or Episode can start from (F-23, M3).
+	brandTemplates *repository.BrandTemplateRepository
 }
 
 // getProject maps repository.ErrNotFound to ErrNotFound.

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -19,6 +20,8 @@ type ProjectService struct{ *core }
 type CreateProjectInput struct {
 	Content string
 	Uploads []Upload
+	// BrandTemplateID, when set, copies that Brand Template's constraints into the new Project.
+	BrandTemplateID string
 }
 
 // Create starts a Project from the user's first message: the Brief is extracted from
@@ -46,9 +49,12 @@ func (s *ProjectService) Create(ctx context.Context, in CreateProjectInput) (dom
 		ProductionTemplate: templateFor(brief.ContentType),
 		QualityPolicy:      domain.QualityBalanced,
 	}
-	err = s.projects.Create(ctx, repository.NewProject{Project: project, Brief: brief, Assets: assets, Messages: withProject(messages, projectID)})
+	err = s.projects.Create(ctx, repository.NewProject{Project: project, Brief: brief, Assets: assets, Messages: withProject(messages, projectID), BrandTemplateID: strings.TrimSpace(in.BrandTemplateID)})
 	if err != nil {
 		discardUploads(stored)
+		if errors.Is(err, repository.ErrTemplateNotFound) {
+			return domain.Project{}, invalidTemplate()
+		}
 		return domain.Project{}, err
 	}
 	s.kick(ctx, projectID)

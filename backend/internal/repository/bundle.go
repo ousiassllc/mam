@@ -73,11 +73,13 @@ var bundleTables = []bundleTable{
 
 // unbundledTables are the tables a bundle leaves out, with the reason.
 var unbundledTables = map[string]string{
-	"series":           "shared by the Episodes of a Series, not part of one Project; an exported Project is detached from it",
-	"series_version":   "the version history of a Series (see series)",
-	"job":              "background job queue: runtime state of this instance (a progress card whose job is gone is shown as finished)",
-	"goose_db_version": "migration bookkeeping of this instance",
-	"sqlite_sequence":  "SQLite internal",
+	"series":                    "shared by the Episodes of a Series, not part of one Project; an exported Project is detached from it",
+	"series_version":            "the version history of a Series (see series)",
+	"brand_template":            "shared by every Project (a saved set of Brand Constraints); an applied template lives on as the Project's own brand_constraint rows",
+	"brand_template_constraint": "the constraints of a Brand Template (see brand_template)",
+	"job":                       "background job queue: runtime state of this instance (a progress card whose job is gone is shown as finished)",
+	"goose_db_version":          "migration bookkeeping of this instance",
+	"sqlite_sequence":           "SQLite internal",
 }
 
 // BundleRepository reads the Project Data Model of a Project out of the database and writes it into

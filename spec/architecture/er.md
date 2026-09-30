@@ -413,6 +413,19 @@ erDiagram
         string enforcement_level
         json value
     }
+    BRAND_TEMPLATE ||--o{ BRAND_TEMPLATE_CONSTRAINT : contains
+    BRAND_TEMPLATE {
+        string id PK
+        string name UK
+        datetime created_at
+    }
+    BRAND_TEMPLATE_CONSTRAINT {
+        string id PK
+        string template_id FK
+        string type
+        string enforcement_level
+        json value
+    }
 ```
 
 ### 2.5 Notes（M2）
@@ -488,6 +501,8 @@ erDiagram
 | `project_policy` | `project_id` PK・FK（1:1、行が無い Project は上書き無し）。Quality Policy の既定値への個別上書き: `max_retries`（0〜10、1 Shot あたりの再試行回数）、`max_generation_seconds`（1〜3600、Take あたり）、`min_acceptance_score`（0〜100、総合）、`min_axis_score`（0〜100、Production Template の各軸）。NULL=Quality Policy の既定値（`domain.ProjectPolicy.Effective`）。Quality Policy・予算上限は `project` の列を使う | - |
 | `job` | バックグラウンドジョブ（生成・Judge・Repair、`spec/requirements/non-functional.md` §2, §3）。`id` PK。`kind` は `generate/judge/repair/plan`（`plan` は AUTO パイプラインの企画〜Shot 計画。`payload` は `{"project_id": ...}`、再開可能）、`status` は `queued/running/succeeded/failed`（各CHECK制約）。`payload` は JSON、`attempts` は実行開始ごとに加算、`error` は失敗理由、`started_at`/`finished_at` は NULL 許容。異常終了後の再起動時に `running` のまま残ったジョブを検出し、再開可能な種別は `queued` へ戻し、それ以外と再開回数上限超過は `failed`（`error`=`interrupted by abnormal termination`）にする。終端状態（`succeeded`/`failed`）は変更しない | `idx_job_status (status, created_at)` |
 | `brand_constraint` | `project_id` FK。`type` は `brand_guideline/forbidden_expression/required_disclaimer/product_claim/logo_rule/character_restriction/asset_rights/platform_rule` のいずれか。`enforcement_level` は `lock/advisory` のいずれか（CHECK制約、既定 `lock`。`lock` はスコアに関係なく違反時FAIL）。`value` は JSON `{"text": "..."}`（制約の内容。`forbidden_expression` は 1 行 1 表現）。`created_at`。Project の削除で行も消え（ON DELETE CASCADE）、Project バンドルに含める | `idx_brand_constraint_project (project_id)` |
+| `brand_template` | Brand Template（M3、F-23 / UC-9 拡張）。Project にも Series にも属さない（Organization が無いため全 Project で共有）。`name`（UNIQUE・大文字小文字を区別しない `COLLATE NOCASE`、1〜100 文字）、`created_at`。Project 単位の Export バンドルには含めない（適用済みの制約は Project の `brand_constraint` 行として含まれる） | `name` の UNIQUE |
+| `brand_template_constraint` | `template_id` FK（ON DELETE CASCADE）。`type` / `enforcement_level` / `value` は `brand_constraint` と同じ形式と CHECK 制約。`project_id` を持たない。挿入順（`rowid`）が表示順。保存時に Project の `brand_constraint` 行を **コピー**して作り、以後 Project の制約とはリンクしない（元の Project の制約を変えてもテンプレートは変わらない）。Project / Episode への適用も `brand_constraint` 行のコピーで、`origin_id` のような参照は残さない（同じ `type`・`enforcement_level`・`text` を既に持つ制約はコピーしない）。テンプレートを削除しても適用済みの Project には影響しない（Series 正本と同じ「更新は自動伝播しない」方針） | `idx_brand_template_constraint_template (template_id)` |
 | `note` | `project_id` FK（NULL許容）と `series_id` FK（NULL許容）のちょうど一方が非NULL（CHECK制約、`character` 等と同じ規則）。`project_id` 非NULL=Project 内のメモ、`series_id` 非NULL=Series 正本。Episode 開始時に Series 正本から project 側の行へコピーし（最新バージョンを `version_number`=1 として複製。アーカイブ済みは除く）、`origin_id`（Series 正本行への FK、NULL許容）で由来を保持する。`category` は `character/product/location/world/tone/other`（CHECK制約）。`pinned` は既定 false。`archived_at`（NULL許容、NULL=有効。`DELETE` はアーカイブであり行を削除しない）。タイトル・本文は `note_version` が持つ | `idx_note_project (project_id, archived_at)`, `idx_note_series (series_id, archived_at)` |
 | `note_version` | `note_id` FK。`(note_id, version_number)` UNIQUE、`version_number` は単調増加。`title`、`content`（自由記述テキスト）、`source` は `manual/chat`（CHECK制約）。追記のみで更新しない | `idx_note_version_note (note_id, version_number)` |
 | `note_promotion` | `note_version_id` FK（UNIQUE。同じメモバージョンから再提案しない。対象は Project スコープの `note` のバージョンのみで、アプリケーション層で検証）。`proposed_diff` は World State へ適用する差分の JSON（対象 Character/Product/Location・フィールド・値）、`locked_conflicts` は LOCK のため除外した項目の JSON。`status` は `pending/applied/rejected`（CHECK制約）。`world_state_version_id` FK（NULL許容、`applied` のときのみ設定）。`resolved_at`（NULL許容）。Approval カードは `chat_message.ref_type=note_promotion` と `ref_id` でこの行を指す | `idx_note_promotion_status (status)` |
@@ -567,3 +582,4 @@ erDiagram
 | 1.31 | 2026-09-30 | `branch` / `branch_version` を追加（マイグレーション `20260930030000_branch.sql`）。`scene` / `world_state_version` / `edit_timeline_version` / `audio_timeline_version` は UNIQUE を `(project_id, COALESCE(branch_id, ''), …)` として作り直し、`character` / `product` / `location` / `export` に `branch_id` を追加。Branch の親は `branch_point_shot_id` の所属 Scene の `branch_id` から導出し、列は持たない。Branch 作成時、分岐点の World State（`scene` は直前の Shot、`shot` / `frame` は当該 Shot の `state_diff` が指す版）を Branch 独自の版 v1 と実体の行としてコピーする | M2「Branch（別展開の並行生成）」（Issue #18）の実装 |
 | 1.32 | 2026-09-30 | `final_qc_result` テーブルを追加。設計メモに `edit_timeline_version.timeline` / `audio_timeline_version.timeline` の JSON 構造と保存の規則（追記のみ・古い版からの保存は拒否）を追記 | M1「簡易 Editor・簡易 Audio・Final QC・Export」（Issue #14）の Final QC 結果を履歴として保持するため |
 | 1.33 | 2026-09-30 | `brand_constraint` テーブルを実装（マイグレーション `20260930103000_brand_constraint.sql`）。`value` の JSON 構造・`created_at`・カスケード削除を明記。`final_qc_result.findings` の要素に `advisory`（Brand 制約の警告。FAIL にしない）を追加 | M2「Safety / Brand Constraints」（Issue #23）の実装に合わせるため |
+| 1.34 | 2026-09-30 | `brand_template` / `brand_template_constraint` テーブルを追加（マイグレーション `20260930130000_brand_template.sql`）。テンプレートはグローバル（Project/Series に属さない）で、保存・適用ともに `brand_constraint` 行のコピー（リンクなし・更新は非伝播）と定めた | M3「Brand Templates」（Issue #27）。要件が未定義だったため保守的に確定 |

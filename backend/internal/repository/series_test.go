@@ -116,7 +116,7 @@ func TestSeriesRepository_CreateEpisodeCopiesCanonWithOrigin(t *testing.T) {
 	f := newSeriesFixture(t)
 	s := f.createFromSource(t)
 
-	n, err := f.series.CreateEpisode(ctx, s.ID, "", newEpisodeProject("ep2"))
+	n, err := f.series.CreateEpisode(ctx, s.ID, "", "", newEpisodeProject("ep2"))
 	require.NoError(t, err)
 	assert.Equal(t, 2, n, "the source Project is Episode 1")
 
@@ -171,7 +171,7 @@ func TestSeriesRepository_CreateEpisodeCopiesCanonWithOrigin(t *testing.T) {
 		VALUES ('dup', 'auto', 'key_check', 'product_cm', 'balanced', ?, 2)`, s.ID)
 	assert.Error(t, err)
 
-	n, err = f.series.CreateEpisode(ctx, s.ID, "", newEpisodeProject("ep3"))
+	n, err = f.series.CreateEpisode(ctx, s.ID, "", "", newEpisodeProject("ep3"))
 	require.NoError(t, err)
 	assert.Equal(t, 3, n)
 }
@@ -186,7 +186,7 @@ func TestSeriesRepository_CreateEpisodeStartsFromPreviousWorldState(t *testing.T
 	require.NoError(t, exec(t, f.db, `INSERT INTO world_state_version (id, project_id, version_number, state) VALUES ('wsv-1', 'proj-src', 1, ?)`,
 		`{"characters":[],"products":[],"locations":[],"camera":{"lens":"35mm"},"story":{"scene":4,"character_goal":"find the letter","previous_event":"the door slammed"}}`))
 
-	_, err := f.series.CreateEpisode(ctx, s.ID, f.source, newEpisodeProject("ep2"))
+	_, err := f.series.CreateEpisode(ctx, s.ID, f.source, "", newEpisodeProject("ep2"))
 	require.NoError(t, err)
 
 	w, err := f.world.World(ctx, "ep2", "")
@@ -212,11 +212,11 @@ func TestSeriesRepository_CreateEpisodeRejectsUnknownSeriesAndForeignPrevious(t 
 	f := newSeriesFixture(t)
 	s := f.createFromSource(t)
 
-	_, err := f.series.CreateEpisode(ctx, "no-such-series", "", newEpisodeProject("ep2"))
+	_, err := f.series.CreateEpisode(ctx, "no-such-series", "", "", newEpisodeProject("ep2"))
 	assert.ErrorIs(t, err, repository.ErrNotFound)
 
 	seedProject(t, f.db, "loner")
-	_, err = f.series.CreateEpisode(ctx, s.ID, "loner", newEpisodeProject("ep2"))
+	_, err = f.series.CreateEpisode(ctx, s.ID, "loner", "", newEpisodeProject("ep2"))
 	assert.ErrorIs(t, err, repository.ErrNotInSeries)
 	_, err = f.projects.Get(ctx, "ep2")
 	assert.ErrorIs(t, err, repository.ErrNotFound, "a rejected Episode leaves nothing behind")
@@ -226,7 +226,7 @@ func TestSeriesRepository_CanonUpdateIsVersionedAndDoesNotReachEpisodes(t *testi
 	ctx := context.Background()
 	f := newSeriesFixture(t)
 	s := f.createFromSource(t)
-	_, err := f.series.CreateEpisode(ctx, s.ID, "", newEpisodeProject("ep2"))
+	_, err := f.series.CreateEpisode(ctx, s.ID, "", "", newEpisodeProject("ep2"))
 	require.NoError(t, err)
 	canon, err := f.series.Canon(ctx, s.ID)
 	require.NoError(t, err)
@@ -272,7 +272,7 @@ func TestSeriesRepository_CanonUpdateIsVersionedAndDoesNotReachEpisodes(t *testi
 	assert.Equal(t, "soft watercolor", brief.Style)
 
 	// A new Episode inherits the updated canon.
-	_, err = f.series.CreateEpisode(ctx, s.ID, "", newEpisodeProject("ep3"))
+	_, err = f.series.CreateEpisode(ctx, s.ID, "", "", newEpisodeProject("ep3"))
 	require.NoError(t, err)
 	w, err := f.world.World(ctx, "ep3", "")
 	require.NoError(t, err)
@@ -301,7 +301,7 @@ func TestSeriesRepository_EpisodesListsByNumber(t *testing.T) {
 	ctx := context.Background()
 	f := newSeriesFixture(t)
 	s := f.createFromSource(t)
-	_, err := f.series.CreateEpisode(ctx, s.ID, "", newEpisodeProject("ep2"))
+	_, err := f.series.CreateEpisode(ctx, s.ID, "", "", newEpisodeProject("ep2"))
 	require.NoError(t, err)
 
 	eps, err := f.series.Episodes(ctx, s.ID)

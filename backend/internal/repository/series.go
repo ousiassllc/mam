@@ -381,8 +381,10 @@ func (r *SeriesRepository) UpdateStyle(ctx context.Context, seriesID, style stri
 // With previousEpisodeID the Project starts from the final World State of that Episode: the state
 // of the rows with the same origin, the Camera and the Story, as its first world_state_version
 // (inherited_world_state_version_id is that Episode's latest version). An unknown Series is
-// ErrNotFound; a previous Project that is not an Episode of the Series is ErrNotInSeries.
-func (r *SeriesRepository) CreateEpisode(ctx context.Context, seriesID, previousEpisodeID string, p domain.Project) (int, error) {
+// ErrNotFound; a previous Project that is not an Episode of the Series is ErrNotInSeries. With
+// brandTemplateID the Brand Template's constraints are copied into the Project (an unknown template
+// is ErrNotFound and nothing is created).
+func (r *SeriesRepository) CreateEpisode(ctx context.Context, seriesID, previousEpisodeID, brandTemplateID string, p domain.Project) (int, error) {
 	var number int
 	now := formatTime(r.now())
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
@@ -420,6 +422,11 @@ func (r *SeriesRepository) CreateEpisode(ctx context.Context, seriesID, previous
 		}
 		if err := copyNotes(ctx, tx, seriesID, p.ID, now); err != nil {
 			return err
+		}
+		if brandTemplateID != "" {
+			if err := applyBrandTemplate(ctx, tx, brandTemplateID, p.ID, now); err != nil {
+				return err
+			}
 		}
 		if previousEpisodeID == "" {
 			return nil
