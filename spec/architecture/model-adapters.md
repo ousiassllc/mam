@@ -199,7 +199,7 @@ M1（F-14、Issue #10）で実装する Repair / Retake Loop の判断部分。�
 | 戦略 | 実装 |
 |------|------|
 | Prompt Repair | Prompt Planner が Issue と修復指示に沿って Shot Spec を修正して再生成する。LOCK された部分は変えない（Prompt が LOCK なら選べない） |
-| Partial Regeneration | Prompt Repair に加え、Judge の `preserve`（良かった部分）を保つ。**M1 では新しい Take は Shot 全体を作り直す**。時間範囲だけを再生成してつなぐ処理は MVP 2（`spec/spec.md` §27）で実装する |
+| Partial Regeneration | Prompt Repair に加え、Judge の `preserve`（良かった部分）を保つ。新しい Take は Shot 全体を作り直す（M1）。**M2**: Judge のすべての Issue が `time_range` を持ち、ffmpeg があるときは、それに加えて修復元の Take の問題区間（前後 0.2 秒を足し、0.3 秒未満は広げる）だけを新しい Take の同じ区間に差し替えた Take（`repair.Splicer` = `TakeService.SpliceRegenerated`、`media.Compose` でクロスフェード）を候補として 1 本足し、Judge する。区間の決め方と足さない条件は `spec/spec.md` §13 の「Partial Regeneration の範囲（M1 と M2）」が正 |
 | Full Retake | 同じ Shot Spec で新しく生成し直す |
 | Different Model | Quality Policy の primary / fallback の**もう一方**のモデルで生成する（Kling 3.0 ↔ Seedance 2.0 の自動フォールバック、§4）。ユーザーが Video Model を固定していたとき（AUTO 以外）は選べない |
 | Reference Reinforcement | Reference に基づく制約を Shot Spec に足し、失敗した種類の Reference を先頭にする。自由な Reference 画像を受け取れるモデルでは、Keyframe の代わりにそれを使う |
@@ -223,3 +223,4 @@ M1（F-14、Issue #10）で実装する Repair / Retake Loop の判断部分。�
 | 1.3 | 2026-09-29 | §9（画像・動画生成 Model Adapter と Generation Orchestrator の実装仕様）を追加。M1 で実装する画像プロバイダーは §3 の 4 種すべてと決定 | M1「Prompt Autopilot・Model Adapter・Reference Pack・生成オーケストレーション」（Issue #7）で画像プロバイダーの範囲と設定・耐障害動作の具体値が未定義だったため |
 | 1.4 | 2026-09-29 | §10（AI Video Judge と Face Identity Similarity の実装仕様、顔モデル・ONNX Runtime のライセンスと単一バイナリ両立の検証結果、閾値のキャリブレーション、LOCK 連動）を追加。§8 の Face Identity Similarity の未確定事項を検証済みの内容に更新 | M1「AI Video Judge（Face Identity Similarity 含む）」（Issue #9）で、埋め込みモデルの商用ライセンス・推論ランタイム・閾値の決め方・欠測の扱いが名称レベルで未確定だったため |
 | 1.5 | 2026-09-29 | §11（Repair Agent の戦略選択・Retry Policy・戦略ごとの再生成・Jev のシャドー実行の実装仕様）を追加。Partial Regeneration は M1 では「Judge の `preserve` を保つ Shot 全体の再生成」とし、時間範囲の再生成とつなぎ込みは MVP 2 と確定 | M1「Repair/Retake Loop」（Issue #10）で、Partial Regeneration の M1 での範囲（`spec/spec.md` §27 は MVP 2 に列挙）、決定的ルールと LLM の分担、Jev のシャドー記録項目が未確定だったため |
+| 1.6 | 2026-09-30 | §11.3 の Partial Regeneration に M2 の時間範囲つなぎ込み（Shot 全体の Take + 問題区間だけを差し替えた候補 Take、`repair.Splicer`）を追記 | M2「Partial Regeneration」（Issue #16）で、動画モデルが区間だけを生成できない前提での実現方法と新しい Take の扱いを確定するため |
