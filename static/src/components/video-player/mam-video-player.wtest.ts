@@ -2,6 +2,7 @@ import { aTimeout, expect, fixture, html, oneEvent, waitUntil } from '@open-wc/t
 import './mam-video-player';
 import type { MamVideoPlayer, SeekRequestedDetail } from './mam-video-player';
 import { FakeSocket, stubFetch, stubWebSocket } from '../testdata/fakes';
+import { sanitizeHistoryHtml } from '../lib/history';
 import { initShotProgress } from '../../shot';
 
 // 2 s, 25 fps, 160x90. The dev server does not answer Range requests, so the file is played from a
@@ -234,6 +235,27 @@ function refreshes(): { urls: string[]; stop: () => void } {
   document.body.addEventListener('htmx:beforeRequest', on);
   return { urls, stop: () => document.body.removeEventListener('htmx:beforeRequest', on) };
 }
+
+describe('mam-video-player: history restore', () => {
+  it('keeps a single video after an htmx history snapshot is restored', async () => {
+    const el = await player({ src: CLIP, fps: 25 });
+    await loaded(el);
+    expect(el.querySelectorAll('video').length).to.equal(1);
+
+    const saved = sanitizeHistoryHtml(el.outerHTML);
+    const host = document.createElement('div');
+    host.innerHTML = saved;
+    document.body.append(host);
+    try {
+      const restored = host.querySelector('mam-video-player') as MamVideoPlayer;
+      await restored.updateComplete;
+      expect(host.querySelectorAll('video').length).to.equal(1);
+      expect(restored.querySelectorAll('[data-placeholder]').length).to.equal(0);
+    } finally {
+      host.remove();
+    }
+  });
+});
 
 describe('Shot card: one WebSocket per card (shot.ts)', () => {
   let restoreSocket: () => void;
