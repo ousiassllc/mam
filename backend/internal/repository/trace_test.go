@@ -22,7 +22,7 @@ func TestTraceRepository_TakeTraceGathersEverythingThatLedToTheTake(t *testing.T
 		Resolution string `json:"resolution"`
 	}{domain.TakeLineage{WorldStateVersion: 4, References: refs}, "1080p"})
 	require.NoError(t, err)
-	pv, err := f.repo.SavePromptedSpec(ctx, f.shotID, spec, json.RawMessage(`{"requests":{}}`))
+	pv, err := f.repo.SavePromptedSpec(ctx, f.shotID, spec, json.RawMessage(`{"requests":{}}`), nil)
 	require.NoError(t, err)
 	first, err := f.repo.CreateTake(ctx, repository.NewTake{
 		ProjectID: f.projectID, ShotID: f.shotID, PromptVersionID: pv.ID, Model: domain.ModelKling3, Parameters: params,
@@ -78,7 +78,7 @@ func TestTraceRepository_TakeTraceGathersEverythingThatLedToTheTake(t *testing.T
 func TestTraceRepository_ArchivedTakeHasNoOutput(t *testing.T) {
 	ctx := context.Background()
 	f := newGenRepoFixture(t)
-	pv, err := f.repo.SavePromptedSpec(ctx, f.shotID, wideSpec("run"), nil)
+	pv, err := f.repo.SavePromptedSpec(ctx, f.shotID, wideSpec("run"), nil, nil)
 	require.NoError(t, err)
 	take, err := f.repo.CreateTake(ctx, repository.NewTake{
 		ProjectID: f.projectID, ShotID: f.shotID, PromptVersionID: pv.ID, Model: domain.ModelKling3,
@@ -98,7 +98,7 @@ func TestTraceRepository_ArchivedTakeHasNoOutput(t *testing.T) {
 func TestTraceRepository_TakeTraceReadsTheRoutingDecisionOfTheTake(t *testing.T) {
 	ctx := context.Background()
 	f := newGenRepoFixture(t)
-	pv, err := f.repo.SavePromptedSpec(ctx, f.shotID, wideSpec("run"), nil)
+	pv, err := f.repo.SavePromptedSpec(ctx, f.shotID, wideSpec("run"), nil, nil)
 	require.NoError(t, err)
 	decision := domain.RoutingDecision{
 		Mode: domain.RoutingAdaptive, Reason: "kling-3.0 replaces seedance-2.0",

@@ -142,9 +142,10 @@ func (o *Orchestrator) Regenerate(ctx context.Context, ref repository.ShotRef, r
 
 	spec := current
 	references := shot.References()
+	var noteRefs []domain.NoteRef // the notes the Planner was given; none when it did not run
 	switch r.Action {
 	case domain.RepairPrompt, domain.RepairPartialRegeneration:
-		if spec, err = o.reviseSpec(ctx, ref, policy, locks, current, r); err != nil {
+		if spec, noteRefs, err = o.reviseSpec(ctx, ref, policy, locks, current, r); err != nil {
 			return "", err
 		}
 	case domain.RepairReferenceReinforce:
@@ -171,7 +172,7 @@ func (o *Orchestrator) Regenerate(ctx context.Context, ref repository.ShotRef, r
 	if err != nil {
 		return "", err
 	}
-	pv, err := o.gens.SavePromptedSpec(ctx, shot.ID, spec, record)
+	pv, err := o.gens.SavePromptedSpec(ctx, shot.ID, spec, record, noteRefs)
 	if err != nil {
 		return "", err
 	}
@@ -187,32 +188,39 @@ func (o *Orchestrator) Regenerate(ctx context.Context, ref repository.ShotRef, r
 	return takeID, nil
 }
 
-// reviseSpec has the Prompt Planner revise the spec for the Issues of the failed Take.
-func (o *Orchestrator) reviseSpec(ctx context.Context, ref repository.ShotRef, policy domain.ProjectPolicy, locks domain.ParameterLocks, current domain.ShotSpec, r Regeneration) (domain.ShotSpec, error) {
+// reviseSpec has the Prompt Planner revise the spec for the Issues of the failed Take. It also returns
+// the versions of the production notes the Planner was given (for prompt_version.note_refs).
+func (o *Orchestrator) reviseSpec(ctx context.Context, ref repository.ShotRef, policy domain.ProjectPolicy, locks domain.ParameterLocks, current domain.ShotSpec, r Regeneration) (domain.ShotSpec, []domain.NoteRef, error) {
 	if locks.Locked(domain.ParamPrompt) {
-		return domain.ShotSpec{}, &repository.LockedParametersError{Parameters: []domain.LockParameter{domain.ParamPrompt}}
+		return domain.ShotSpec{}, nil, &repository.LockedParametersError{Parameters: []domain.LockParameter{domain.ParamPrompt}}
 	}
 	brief, err := o.projects.GetBrief(ctx, ref.ProjectID)
 	if err != nil {
-		return domain.ShotSpec{}, err
+		return domain.ShotSpec{}, nil, err
 	}
 	world, err := o.gens.WorldContext(ctx, ref.ProjectID, ref.Scene.BranchID)
 	if err != nil {
-		return domain.ShotSpec{}, err
+		return domain.ShotSpec{}, nil, err
 	}
 	shots, err := o.gens.StoryShots(ctx, ref.ProjectID, ref.Scene.BranchID)
 	if err != nil {
-		return domain.ShotSpec{}, err
+		return domain.ShotSpec{}, nil, err
+	}
+	instruction := repairInstruction(r)
+	notes, err := o.shotNotes(ctx, ref, instruction)
+	if err != nil {
+		return domain.ShotSpec{}, nil, err
 	}
 	fixed := locks.LockedParts()
 	if r.Action == domain.RepairPartialRegeneration {
 		fixed = slices.Concat(fixed, preservedParts(r.Preserve))
 	}
-	return o.planner.Plan(ctx, promptplanner.Input{
+	spec, err := o.planner.Plan(ctx, promptplanner.Input{
 		Brief: brief, Template: policy.Template, Scene: ref.Scene, Shot: ref.Shot,
-		Instruction: repairInstruction(r), World: world, Previous: previousSpec(shots, ref.Shot.ID), References: ref.Shot.References(),
-		Current: &current, Fixed: fixed, Manual: locks.PartsWith(domain.LockManual),
+		Instruction: instruction, World: world, Previous: previousSpec(shots, ref.Shot.ID), References: ref.Shot.References(),
+		Current: &current, Fixed: fixed, Manual: locks.PartsWith(domain.LockManual), Notes: notes,
 	})
+	return spec, domain.NoteRefs(notes), err
 }
 
 // repairInstruction is the direction the Prompt Planner receives: the Issues in their structured

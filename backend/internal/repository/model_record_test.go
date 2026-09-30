@@ -16,7 +16,7 @@ import (
 func TestGenerationRepository_ModelRecordsAveragesTheLatestJudgeRunOfEachTakePerModel(t *testing.T) {
 	ctx := context.Background()
 	f := newGenRepoFixture(t)
-	pv, err := f.repo.SavePromptedSpec(ctx, f.shotID, wideSpec("run"), nil)
+	pv, err := f.repo.SavePromptedSpec(ctx, f.shotID, wideSpec("run"), nil, nil)
 	require.NoError(t, err)
 	judges := repository.NewJudgeRepository(f.db)
 	n := 0

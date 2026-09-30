@@ -100,6 +100,10 @@ templ SeriesView(d SeriesViewData) {
 				}
 			</ul>
 		</section>
+		<section aria-label="Notes" class="flex flex-col gap-2">
+			<h2 class="text-sm font-semibold text-neutral-200">Notes</h2>
+			<a class="text-sm text-indigo-300 underline" href={ templ.SafeURL("/series/" + d.Series.ID + "/notes") }>Series の制作メモを開く（Episode 開始時に Project へコピーされます）</a>
+		</section>
 		<section aria-label="Episodes" class="flex flex-col gap-2">
 			<h2 class="text-sm font-semibold text-neutral-200">Episodes</h2>
 			<ul class="flex flex-col gap-1 text-sm">

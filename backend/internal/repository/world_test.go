@@ -26,7 +26,7 @@ func newWorldFixture(t *testing.T) worldFixture {
 	ctx := context.Background()
 	f := worldFixture{genRepoFixture: newGenRepoFixture(t)}
 	f.world = repository.NewWorldRepository(f.db)
-	pv, err := f.repo.SavePromptedSpec(ctx, f.shotID, domain.ShotSpec{ShotObjective: "x", Camera: domain.SpecCamera{Framing: "wide"}}, nil)
+	pv, err := f.repo.SavePromptedSpec(ctx, f.shotID, domain.ShotSpec{ShotObjective: "x", Camera: domain.SpecCamera{Framing: "wide"}}, nil, nil)
 	require.NoError(t, err)
 	f.takeID, err = f.repo.CreateTake(ctx, repository.NewTake{
 		ProjectID: f.projectID, ShotID: f.shotID, PromptVersionID: pv.ID, Model: domain.ModelSeedance2,

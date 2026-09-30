@@ -76,6 +76,9 @@ type Deps struct {
 	Assets      *repository.AssetRepository
 	// World holds the World State the State Extractor updates after each Shot.
 	World *repository.WorldRepository
+	// Notes are the production notes of the Project; the Prompt Planner is given the relevant ones.
+	// Nil: no notes.
+	Notes *repository.NoteRepository
 	Chat  Chat
 	Jobs  Jobs
 	// LLM is the Reasoning LLM Adapter the Prompt Planner and the Art Director reason through.
@@ -104,6 +107,7 @@ type Orchestrator struct {
 	planner   *promptplanner.Planner
 	art       *artdirector.Director
 	world     *repository.WorldRepository
+	notes     *repository.NoteRepository
 	extractor *stateextractor.Extractor
 	files     fileStore
 	judge     Judger
@@ -122,7 +126,7 @@ func New(d Deps) *Orchestrator {
 	if o.freeDisk == nil {
 		o.freeDisk = fsutil.FreeBytes
 	}
-	o.world, o.extractor = d.World, stateextractor.New(d.LLM)
+	o.world, o.notes, o.extractor = d.World, d.Notes, stateextractor.New(d.LLM)
 	if o.logger == nil {
 		o.logger = slog.New(slog.DiscardHandler)
 	}

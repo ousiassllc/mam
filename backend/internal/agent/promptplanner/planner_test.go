@@ -157,3 +157,20 @@ func TestPlan_FixedPartsAreIgnoredWithoutACurrentSpec(t *testing.T) {
 	assert.Equal(t, "medium", spec.Camera.Framing)
 	assert.NotContains(t, f.user, "Fixed parts")
 }
+
+func TestPlan_NotesAreGivenToTheModelAsContext(t *testing.T) {
+	f := &fakeLLM{answer: good}
+	in := input()
+	in.Notes = []domain.NoteView{{
+		Note:    domain.Note{ID: "n1", Category: domain.NoteCategoryTone},
+		Version: domain.NoteVersion{Number: 2, Title: "口調", Content: "主人公は落ち着いた口調で話す"},
+	}}
+	_, err := promptplanner.New(f).Plan(context.Background(), in)
+	require.NoError(t, err)
+	assert.Contains(t, f.user, "主人公は落ち着いた口調で話す")
+
+	g := &fakeLLM{answer: good}
+	_, err = promptplanner.New(g).Plan(context.Background(), input())
+	require.NoError(t, err)
+	assert.NotContains(t, g.user, "Production notes")
+}

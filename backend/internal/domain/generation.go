@@ -41,7 +41,9 @@ type PromptVersion struct {
 	VersionNumber int
 	SpecSnapshot  json.RawMessage
 	AdapterOutput json.RawMessage
-	CreatedAt     time.Time
+	// NoteRefs are the note versions the Prompt Planner was given (prompt_version.note_refs, F-31).
+	NoteRefs  []NoteRef
+	CreatedAt time.Time
 }
 
 // CostEntry is a row of cost_ledger_entry. Provider is a ModelName. ShotID and TakeID may be empty.
