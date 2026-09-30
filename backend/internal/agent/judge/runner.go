@@ -28,6 +28,9 @@ type Deps struct {
 	Assets      *repository.AssetRepository
 	// Policies gives the Production Template of the Project, whose axes the Judge scores. Optional.
 	Policies *repository.PolicyRepository
+	// Takes and Projects make the AI Pick after every result (F-15). Both nil: no Take is picked.
+	Takes    *repository.TakeRepository
+	Projects *repository.ProjectRepository
 	Chat     generation.Chat
 	Jobs     generation.Jobs
 	Judge    *Judge
@@ -145,11 +148,39 @@ func (r *Runner) store(ctx context.Context, ref repository.TakeRef, res domain.J
 	if err != nil {
 		return domain.JudgeResult{}, err
 	}
-	notice := domain.ChatMessage{Role: domain.RoleAssistant, Kind: domain.KindText, Content: Summary(shot.Shot.OrderIndex+1, ref.Take.ID, saved)}
+	content := Summary(shot.Shot.OrderIndex+1, ref.Take.ID, saved) + r.pick(ctx, ref)
+	notice := domain.ChatMessage{Role: domain.RoleAssistant, Kind: domain.KindText, Content: content}
 	if err := r.Chat.Announce(context.WithoutCancel(ctx), ref.ProjectID, notice); err != nil {
 		r.Logger.Error("post judge result failed", "take_id", ref.Take.ID, "err", err)
 	}
 	return saved, nil
+}
+
+// pick marks the best judged Take of the Shot as its AI Pick: in AUTO a Take that passed the Judge
+// also becomes the Shot's Take, in DIRECTOR the pick is only a recommendation. It returns the line
+// of the chat notice about it ("" when the pick did not change or could not be made).
+func (r *Runner) pick(ctx context.Context, ref repository.TakeRef) string {
+	if r.Takes == nil || r.Projects == nil {
+		return ""
+	}
+	ctx = context.WithoutCancel(ctx)
+	project, err := r.Projects.Get(ctx, ref.ProjectID)
+	if err != nil {
+		r.Logger.Error("ai pick: read project failed", "project_id", ref.ProjectID, "err", err)
+		return ""
+	}
+	pick, err := r.Takes.PickBest(ctx, ref.Take.ShotID, project.Mode == domain.ModeAuto)
+	if err != nil {
+		r.Logger.Error("ai pick failed", "shot_id", ref.Take.ShotID, "err", err)
+		return ""
+	}
+	if !pick.Changed {
+		return ""
+	}
+	if pick.Adopted {
+		return fmt.Sprintf("\nAI Pick: Take %s を採用しました。", shortID(pick.TakeID))
+	}
+	return fmt.Sprintf("\nAI Pick: Take %s がおすすめです（Take 比較から選択できます）。", shortID(pick.TakeID))
 }
 
 // judge gathers the input of the Take and runs the Judge.

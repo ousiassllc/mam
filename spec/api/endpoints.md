@@ -99,9 +99,11 @@ M1 の入出力契約（Issue #12）:
 
 | Method | Path | 概要 | 対応機能 |
 |---|---|---|---|
-| POST | `/takes/:id/select` | Take を Selected として確定（DIRECTOR MODEでの手動選択） | F-15 |
-| POST | `/shots/:id/takes/partial` | 複数Takeの区間指定による部分合成 | F-15 |
-| DELETE | `/takes/:id` | Take を Rejected として除外 | F-15 |
+| POST | `/takes/:id/select` | Take を Selected として確定（DIRECTOR MODEでの手動選択。AI Pick や以前の選択より優先され、以前の Selected は Candidate に戻る）。アーカイブ済み Take は 422、存在しなければ 404。応答は Shot カード（200） | F-15 |
+| POST | `/shots/:id/takes/partial` | 複数Takeの区間指定による部分合成。Body は JSON `{"segments":[{"take_id","start","end"}]}`（秒）または `{"instruction":"Take A の 0-2秒 + Take B の 2-4秒"}`（フォームの `segments`（JSON 配列）/`instruction` も可、`segments` 優先）。区間は 2〜8 個・各 0.3 秒以上・Take の長さ内・除外/アーカイブ済み Take 不可（違反は 422）。つなぎ目は 0.25 秒のクロスフェード（音声も）で、映像は先頭区間の解像度・フレームレートに揃える。新 Take を作って Selected にし、チャットに Take カードを投稿。ffmpeg が無いとき 503。応答は Shot カード（200） | F-15 |
+| DELETE | `/takes/:id` | Take を Rejected として除外（ファイルと履歴は残す。Shot の選択中 Take だった場合は選択なしに戻る）。応答は Shot カード（200） | F-15 |
+| GET | `/takes/:id/video` | Take のプレビュー動画（Range 対応）。高さ 1080 超（4K）のときは 1080p プロキシを初回に生成して配信し、原本は変えない。ffmpeg が無いときは原本を配信。アーカイブ済みは 404 | `mam-video-player` |
+| GET | `/takes/:id/thumbnail` | Take の先頭フレームの JPEG（ffmpeg が無いとき 503） | `mam-video-player`（poster） |
 | POST | `/shots/:id/continue` | Continue: 完成した Shot の最終フレームと Story/Character/Position/Emotion/Object/Camera/Lighting/Motion/Dialogue/Music State を解析し、次展開候補（NEXT A/B/C）を Question カード（`ref_type=continue`、`ref_id`=Shot ID）としてチャットに追記する。選択肢は A〜C、D（自由指示）は入力欄からの返信、E（AIに任せる）は常設ボタン。応答は 201 とカードのフラグメントで、`HX-Redirect` でチャットへ遷移させる。未完成の Shot（非 Rejected の Take が無い）は 409、生成中の Shot は 409、存在しない Shot は 404、生成機能が未構成は 503、AI の出力が使えない場合は 502 | F-16 |
 | POST | `/shots/:id/continue/confirm` | 選択した展開候補で次 Shot/Scene を生成。Body `instruction`（選択した候補または自由指示、1000 文字以内）または `delegate=true`（AIに任せる。AI が候補を選ぶ）。Director Agent が World State を引き継いだ次 Shot を決め、場所・時間が変わる場合のみ新しい Scene を作って既存プロジェクト末尾に連結し（同じ Scene の場合は完成 Shot の Scene 末尾に追加）、`POST /shots/:id/generate` と同じ生成を `instruction` を追加指示として開始する。応答は 202 と新 Shot の GENERATING の Shot カード（`HX-Trigger: chat:refresh`）。指示も `delegate` も無ければ 422、その他のエラーは `/shots/:id/continue` と同じ。Continue カードへの返信（`POST /projects/:id/messages` の `reply_to_message_id`）も同じ処理を起動する（選択肢の押下・自由入力・「AIに任せる」）。カードは 1 回だけ回答でき、2 回目は 409 | F-16 |
 | POST | `/shots/:id/branch` | Branch Point 保存 + Snapshot 生成（Body: `branch_point_type`=`scene\|shot\|frame`、`frame`時は`offset_seconds`を指定。`scene`指定時は当該Shotの所属Sceneを分岐点とする） | F-17 |
@@ -111,6 +113,13 @@ M1 の入出力契約（Issue #12）:
 | POST | `/projects/:id/world-state/versions/:versionNumber/restore` | 主系列（トランク、`branch_id`=NULL）World State の指定バージョンへ復元 | F-28 |
 | POST | `/branches/:branchId/world-state/versions/:versionNumber/restore` | 当該Branchが独立して持つ World State バージョン系列の指定バージョンへ復元 | F-28 |
 | POST | `/branches/:id/versions/:versionNumber/restore` | Branch自体（`branch_version`）の指定バージョンへ復元 | F-28 |
+
+
+**Take System の動作（M1）**
+
+- AI Pick: Judge が結果を保存するたびに、その Shot の Take のうち Judge 済みで除外されていないものから最良を `ai_pick` にする（PASS が FAIL より先、次に 4 スコアの平均、同点は古い方）。ユーザーが Selected にした Take があれば何もしない。AUTO MODE では PASS した AI Pick を Shot の Take（`selected_take_id`）にもする。DIRECTOR MODE では推奨のみで、確定はユーザー（`POST /takes/:id/select`）。変更があったときは Judge のチャット通知に「AI Pick: …」を追記する。
+- Take カード（`ref_type=take`）の本文 JSON は `video_url`（`/takes/:id/video`）・`poster_url`・`shot_id` を持ち、`mam-video-player` を埋め込む。カードには返信と Take 比較（`GET /shots/:id/takes`）への導線がある。
+- `GET /shots/:id/takes` は `mam-take-comparator`（`api-url` に `GET /api/v1/shots/:id/takes`）を置くページ。部分採用が確定するとコンポーネントが `partial-take-confirmed` を発火する。
 
 ### 2.5 Director Command
 
@@ -202,7 +211,7 @@ Lit Web Components 専用。HTMX リクエストは発行しない（`spec/archi
 | Method | Path | 概要 | 利用コンポーネント |
 |---|---|---|---|
 | GET | `/api/v1/shots/:id` | Shot詳細（shot_spec, duration, selected_take_id等） | `mam-video-player`, `mam-timeline-editor` |
-| GET | `/api/v1/shots/:id/takes` | Take一覧（スコア: Product/Acting/Camera/Continuity, Status） | `mam-take-comparator` |
+| GET | `/api/v1/shots/:id/takes` | Take一覧（古い順。`label`（A, B, …）・`status`（candidate/ai_pick/selected/rejected）・`adopted`（Shot が使う Take）・`scores`（product/acting/camera/continuity/overall、各 0-100。最新 Judge の Issue から算出: 各軸 100 から high 35・medium 15・low 5 を Issue ごとに引く。未 Judge は null）・`verdict`・`resolution`/`fps`/`duration_seconds`・`proxied`・`video_url`/`thumbnail_url`/`judge_result_url`/`select_url`/`reject_url`、および Shot の `partial_url`） | `mam-take-comparator` |
 | GET | `/api/v1/takes/:id/judge-result` | 最新のJudge Result（`result`/`overall_confidence`/`metrics`/`issues`（`time_range`/`frames`付き）/`preserve`/`repair_strategy`）。同一Takeの過去Judge履歴は含まない（最新1件）。Take が存在しない、または一度も Judge されていないとき 404 | `mam-video-player`（フレームマーカー重畳） |
 | GET | `/api/v1/repair/jev-shadow-report` | Jev のシャドー実行の集計（`runs`/`errors`/`agreed`/`agreement_rate`（失敗を除く一致率）/`mean_confidence`/`mean_latency_ms`/`total_cost_usd`/`confidence_histogram`（0.1 刻み 10 区間）/`confidence_agreed`）。Jev による前段選別を有効にするかどうかの判断材料（`spec/architecture/model-adapters.md` §4.5・§11） | Repair Agent（F-14） |
 | GET | `/api/v1/projects/:id/edit-timeline` | 現在の Edit Timeline（Shot順序/Cut Point/Transition）。クエリ `branch_id`（省略時=主系列トランク）で対象Branchを指定 | `mam-timeline-editor` |
@@ -319,4 +328,5 @@ Notes:
 | 1.26 | 2026-09-29 | §2.2 に M1 の入出力契約（mode / locks / shot-spec / Inspector / director-command / チャットの DIRECTOR 解釈）を追記。`POST /shots/:id/generate` の LOCK・Video Model 固定時の挙動を追記 | M1「AUTO/MANUAL/LOCK と DIRECTOR MODE」（Issue #12）で、Body・応答・423/422/409/202 の条件、対象 Shot の解決順、LOCK の判定範囲が名称レベルでしか定義されていなかったため |
 | 1.27 | 2026-09-30 | §2.8 に M2 の契約（`PUT /projects/:id/world-state/locks`、`PUT …/:entityId/reference`）を追記。`GET /projects/:id/references` と §2.11 Reference Library（`POST/DELETE /projects/:id/references`、`POST /shots/:id/references`）を追加 | M2「Character/Product Lock・Location State・Reference Library」（Issue #15）で、World State の属性単位 LOCK の切替とライブラリの登録・検索・再利用の API が定義されていなかったため。ライブラリは Project 内の画像を対象とし、Reference Pack への追加は Shot 単位のピン留めにした |
 | 1.28 | 2026-09-30 | `POST /takes/:id/repair` の応答・エラー（202/404/409/503）・Retry Policy の適用・AUTO MODE の自動ループ、`/ws/shots/:id` の Repair 通知（`action=repair`・`stage=repairing`）、`GET /api/v1/repair/jev-shadow-report` を明記 | M1「Repair/Retake Loop」（Issue #10）で Repair の API 契約と進捗通知が未定義だったため |
-| 1.29 | 2026-09-30 | §2.9 に `POST /series`・`POST /series/:id/episodes`・`PUT /series/:id/characters/:characterId` の入出力とエラー、`PUT /series/:id/style` を追記。`GET /series/:id`（Series ページ）を追加 | M2「Series / Episode Memory」（Issue #21）で、Series の入出力契約・Style の更新経路・画面が未定義だったため |
+| 1.29 | 2026-09-30 | §2.4 の Take 選択・除外・部分採用の入出力とエラー、`/takes/:id/video`・`/thumbnail`、`GET /api/v1/shots/:id/takes` の項目、AI Pick の動作を追記 | M1「Take システムと補助ビュー」（Issue #11）で Body・エラー・スコア算出・AUTO/DIRECTOR の扱いが名称レベルでしか定義されていなかったため |
+| 1.30 | 2026-09-30 | §2.9 に `POST /series`・`POST /series/:id/episodes`・`PUT /series/:id/characters/:characterId` の入出力とエラー、`PUT /series/:id/style` を追記。`GET /series/:id`（Series ページ）を追加 | M2「Series / Episode Memory」（Issue #21）で、Series の入出力契約・Style の更新経路・画面が未定義だったため |

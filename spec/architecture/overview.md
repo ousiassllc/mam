@@ -102,6 +102,7 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 │       ├── config/         # フラグ / 環境変数（MAM_*）からの設定解決（データディレクトリ・ポート等）
 │       ├── logging/        # 構造化ログ（slog、レベル別、ローカルファイルへローテーション出力）
 │       ├── fsutil/         # 一時ファイル→リネームのアトミック書き込み、異常終了時の一時ファイル掃除
+│       ├── media/          # ffmpeg / ffprobe（Take の解像度・フレームレート取得、4K プロキシ・サムネイル、部分採用の合成）
 │       ├── domain/         # Project/Scene/Shot/Take/WorldState等のドメインモデル
 │       ├── repository/     # SQLite アクセス層（domainのみに依存）
 │       │   └── migrations/ # goose 形式の SQL マイグレーション（タイムスタンプ版、go:embed、起動時に自動適用）
@@ -127,7 +128,7 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 │           └── layout/      # レイアウトラッパー
 └── static/
     ├── embed.go            # src/dist を go:embed（`static.Dist()`）
-    ├── package.json        # esbuild / Tailwind / htmx / vitest
+    ├── package.json        # esbuild / Tailwind / htmx / Lit / vitest（lib）/ @web/test-runner（Lit コンポーネント、`*.wtest.ts`）
     ├── build.mjs           # esbuild（JS）+ Tailwind（CSS）のビルド・ウォッチ
     └── src/
         ├── main.ts         # エントリーポイント。htmx へ CSRF トークンを付与、Lit コンポーネントを import
@@ -259,3 +260,4 @@ HALT のレイヤー別テスト方針を踏襲する。
 | 1.5 | 2026-09-29 | §5 ディレクトリ構成に `config`/`logging`/`fsutil`/`agent/jobqueue`/`repository/migrations`/ビルド関連ファイルを追加し、DI ルートと depguard によるレイヤー検査を追記。§6 にループバックガード・CSRF方式・設定項目を追記、§9 に本番ビルドと各ターゲットの実際の構成を反映 | M1「実行基盤」（Issue #4）の実装で確定した構成を仕様へ反映するため |
 | 1.6 | 2026-09-29 | §5 に `agent/briefing`（Brief 抽出）を追加。ジョブ状態変化の通知フック（`jobqueue.Queue.OnChange`）でチャットの進捗カードを更新する構成を追記 | M1「Project とチャット画面」（Issue #5）の実装で確定した構成を仕様へ反映するため |
 | 1.7 | 2026-09-29 | §5 に `agent/llm`（Reasoning LLM Adapter）・`agent/planning`・`agent/orchestrator` を追加。AUTO パイプラインの企画〜Shot 計画は `plan` ジョブ（再開可能）として実行し、遷移は `repository.ProjectRepository.Transition`（`domain.CanTransition` で検証）で永続化する構成を追記 | M1「Reasoning LLM Adapter と AUTO パイプライン」（Issue #6）の実装で確定した構成を仕様へ反映するため |
+| 1.8 | 2026-09-30 | §5 に `media`（ffmpeg / ffprobe）を追加。Lit コンポーネントのテストは `*.wtest.ts` を `@web/test-runner` で実行し、`lib` の純関数は vitest で検証する | M1「Take システムと補助ビュー」（Issue #11）でプレビュー用プロキシ・部分採用の合成と Lit コンポーネントのテスト方式を実装したため |
