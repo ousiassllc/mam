@@ -1,6 +1,8 @@
 package molecules
 
 import (
+	"fmt"
+
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 )
@@ -33,17 +35,20 @@ templ MessageFrame(m domain.ThreadMessage) {
 	</article>
 }
 
-// AttachmentStrip shows the images and videos attached to a message.
+// AttachmentStrip shows the images and videos attached to a message. An attachment has no caption
+// of its own (an uploaded reference image or a generated clip), so each one is named by its place
+// among the attachments ("添付画像 2 / 3"). The videos have no <track kind="captions">: no caption
+// file exists for a clip the user uploaded or a vendor generated, and the app does not produce one.
 templ AttachmentStrip(projectID string, assets []domain.Asset) {
 	<ul class="mt-2 flex flex-wrap gap-2" data-attachments>
-		for _, a := range assets {
+		for i, a := range assets {
 			<li>
 				if a.Type == domain.AssetImage {
 					<a href={ AssetURL(projectID, a.ID) } target="_blank" rel="noopener">
-						<img src={ string(AssetURL(projectID, a.ID)) } alt="添付画像" loading="lazy" class="h-24 rounded border border-neutral-700 object-cover"/>
+						<img src={ string(AssetURL(projectID, a.ID)) } alt={ attachmentLabel("添付画像", i, len(assets)) } loading="lazy" class="h-24 rounded border border-neutral-700 object-cover"/>
 					</a>
 				} else {
-					<video src={ string(AssetURL(projectID, a.ID)) } controls preload="metadata" class="h-32 rounded border border-neutral-700"></video>
+					<video src={ string(AssetURL(projectID, a.ID)) } aria-label={ attachmentLabel("添付動画", i, len(assets)) } controls preload="metadata" class="h-32 rounded border border-neutral-700"></video>
 				}
 			</li>
 		}
@@ -53,4 +58,9 @@ templ AttachmentStrip(projectID string, assets []domain.Asset) {
 // ReplyButton lets the user reply to a card so the instruction targets it (spec/spec.md §23.2).
 templ ReplyButton(m domain.ThreadMessage) {
 	@atoms.LinkButton("返信", replyAttrs(m))
+}
+
+// attachmentLabel names the i-th (0-based) of n attachments for assistive technology.
+func attachmentLabel(kind string, i, n int) string {
+	return fmt.Sprintf("%s %d / %d", kind, i+1, n)
 }

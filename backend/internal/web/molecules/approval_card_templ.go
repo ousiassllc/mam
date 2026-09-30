@@ -123,6 +123,7 @@ func ApprovalCard(m domain.ThreadMessage) templ.Component {
 					"name":        "comment",
 					"maxlength":   "500",
 					"placeholder": "コメント（任意）",
+					"aria-label":  "コメント",
 				}).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err

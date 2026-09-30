@@ -27,6 +27,7 @@ templ ApprovalCard(m domain.ThreadMessage) {
 					"name":        "comment",
 					"maxlength":   "500",
 					"placeholder": "コメント（任意）",
+					"aria-label":  "コメント",
 				})
 				@atoms.Button(atoms.TonePrimary, "承認", submitAttrs("approve"))
 				@atoms.Button(atoms.ToneNeutral, "修正を依頼", submitAttrs("request_changes"))
