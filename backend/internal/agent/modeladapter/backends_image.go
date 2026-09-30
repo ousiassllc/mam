@@ -256,7 +256,7 @@ func (b fluxBackend) GenerateImage(ctx context.Context, apiModel string, req Ima
 	if err != nil {
 		return ImageResult{}, err
 	}
-	img, mime, err := b.download(ctx, sample)
+	img, mime, err := b.downloadBytes(ctx, sample)
 	if err != nil {
 		return ImageResult{}, err
 	}

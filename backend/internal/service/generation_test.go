@@ -118,7 +118,7 @@ func (m *modelFake) GenerateVideo(ctx context.Context, _ string, req modeladapte
 	if m.err != nil {
 		return modeladapter.VideoResult{}, m.err
 	}
-	return modeladapter.VideoResult{Data: mp4Bytes, MimeType: "video/mp4", ActualCost: m.actual}, nil
+	return modeladapter.VideoResult{File: modeladapter.BlobOf(mp4Bytes), MimeType: "video/mp4", ActualCost: m.actual}, nil
 }
 
 func (m *modelFake) GenerateImage(_ context.Context, model string, _ modeladapter.ImageRequest) (modeladapter.ImageResult, error) {

@@ -34,7 +34,7 @@ func newMP4Video(t *testing.T) *mp4Video {
 }
 
 func (v *mp4Video) GenerateVideo(context.Context, string, modeladapter.VideoRequest) (modeladapter.VideoResult, error) {
-	return modeladapter.VideoResult{Data: v.data, MimeType: "video/mp4"}, nil
+	return modeladapter.VideoResult{File: modeladapter.BlobOf(v.data), MimeType: "video/mp4"}, nil
 }
 
 // Judge answers: one camera Issue at 1.5-2.5 s, or the same Issue about the whole Take.

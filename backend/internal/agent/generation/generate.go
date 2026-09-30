@@ -311,7 +311,7 @@ func (o *Orchestrator) makeTake(ctx context.Context, ref repository.ShotRef, pv 
 		}
 		return "", err
 	}
-	asset, err := o.files.write(ref.ProjectID, domain.AssetVideo, out.MimeType, out.Data)
+	asset, err := o.files.store(ref.ProjectID, domain.AssetVideo, out.MimeType, out.File)
 	if err != nil {
 		return "", err
 	}

@@ -60,9 +60,9 @@ type VideoRequest struct {
 	References      []Input
 }
 
-// VideoResult is a generated video file.
+// VideoResult is a generated video file. The caller owns File and MUST store or discard it.
 type VideoResult struct {
-	Data     []byte
+	File     Blob
 	MimeType string
 	// ActualCost is the cost in USD the vendor reported for the call; nil when it reports none.
 	ActualCost *float64

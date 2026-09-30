@@ -194,7 +194,7 @@ func TestSeedanceBackendSubmitsPollsAndDownloads(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	assert.Equal(t, []byte("MP4"), res.Data)
+	assert.Equal(t, []byte("MP4"), fileBytes(t, res.File))
 	assert.Equal(t, "video/mp4", res.MimeType)
 	assert.Equal(t, "seedance-2-0", submitted["model"])
 	content := submitted["content"].([]any)
@@ -246,7 +246,7 @@ func TestKlingBackendSignsAJWTAndUsesImage2VideoWithFrames(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	assert.Equal(t, []byte("KMP4"), res.Data)
+	assert.Equal(t, []byte("KMP4"), fileBytes(t, res.File))
 	assert.Equal(t, "video/mp4", res.MimeType, "an unknown content type falls back to mp4")
 	assert.True(t, strings.HasPrefix(auth, "Bearer "), auth)
 	assert.Equal(t, 3, strings.Count(auth, ".")+1)
@@ -339,7 +339,7 @@ func TestRunwayBackendUsesTextToVideoWithoutFrames(t *testing.T) {
 		Prompt: "run", DurationSeconds: 5, Resolution: "720p", AspectRatio: "9:16"})
 
 	require.NoError(t, err)
-	assert.Equal(t, []byte("RMP4"), res.Data)
+	assert.Equal(t, []byte("RMP4"), fileBytes(t, res.File))
 	assert.Equal(t, "Bearer k", auth)
 	assert.NotEmpty(t, version)
 	assert.Equal(t, "gen4.5", submitted["model"])
@@ -464,7 +464,7 @@ func TestSubmittedJobSurvivesATransientPollFailureWithoutBeingSubmittedAgain(t *
 	res, err := b.Video[domain.ModelSeedance2].GenerateVideo(context.Background(), "m", seedanceReq)
 
 	require.NoError(t, err)
-	assert.Equal(t, []byte("MP4"), res.Data)
+	assert.Equal(t, []byte("MP4"), fileBytes(t, res.File))
 	assert.EqualValues(t, 1, submits.Load())
 	assert.EqualValues(t, 2, polls.Load())
 }
@@ -476,7 +476,7 @@ func TestSubmittedJobSurvivesATransientDownloadFailureWithoutBeingSubmittedAgain
 	res, err := b.Video[domain.ModelSeedance2].GenerateVideo(context.Background(), "m", seedanceReq)
 
 	require.NoError(t, err)
-	assert.Equal(t, []byte("MP4"), res.Data)
+	assert.Equal(t, []byte("MP4"), fileBytes(t, res.File))
 	assert.EqualValues(t, 1, submits.Load())
 	assert.EqualValues(t, 2, downloads.Load())
 }
@@ -619,4 +619,13 @@ func TestDefaultClientDoesNotForwardTheKeyOnARedirectToAnotherHost(t *testing.T)
 	require.Error(t, err)
 
 	assert.Zero(t, foreignHits.Load())
+}
+
+// fileBytes reads the content of a generated video and discards the staged file.
+func fileBytes(t *testing.T, b modeladapter.Blob) []byte {
+	t.Helper()
+	data, err := b.Bytes()
+	require.NoError(t, err)
+	b.Discard()
+	return data
 }

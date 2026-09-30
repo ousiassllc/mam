@@ -64,6 +64,13 @@ func WriteAtomic(path string, perm fs.FileMode, write func(w io.Writer) error) (
 	return nil
 }
 
+// CreateStagingTemp creates a temporary file in dir (the system temporary directory when dir is
+// empty) named so that RemoveStaleTemp removes it if the process dies before the file is moved
+// into place or removed.
+func CreateStagingTemp(dir string) (*os.File, error) {
+	return os.CreateTemp(dir, tempPrefix+"staging."+"*"+tempSuffix)
+}
+
 // syncDir makes the rename durable. It is best effort: directories cannot be opened on Windows.
 func syncDir(dir string) {
 	d, err := os.Open(dir) //nolint:gosec // dir is the destination directory the caller already writes to
