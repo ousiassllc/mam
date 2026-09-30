@@ -176,7 +176,7 @@ func TestBundle_AnUnusableFileIsRefusedAndNothingIsLeftBehind(t *testing.T) {
 	assert.True(t, os.IsNotExist(err))
 
 	missing := dst.request(http.MethodPost, "/projects/import", nil, "", true)
-	assert.Equal(t, http.StatusUnprocessableEntity, missing.Code, "no file at all")
+	assert.Equal(t, http.StatusBadRequest, missing.Code, "not a multipart body at all")
 }
 
 func TestBundle_AnAudioTimelineNamingFilesOutsideTheProjectIsRefused(t *testing.T) {

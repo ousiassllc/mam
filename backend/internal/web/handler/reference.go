@@ -36,15 +36,12 @@ func ReferenceLibraryPage(svc *service.ReferenceService) gin.HandlerFunc {
 // Library (201).
 func UploadReference(svc *service.ReferenceService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, service.MaxImageBytes+1<<20)
-		if err := c.Request.ParseMultipartForm(multipartMemory); err != nil {
-			toast(c, &service.ValidationError{Field: "file", Message: "送信内容が大きすぎるか、形式が正しくありません"})
+		form, err := readMultipart(c, service.MaxImageBytes+1<<20)
+		if err != nil {
+			toast(c, err)
 			return
 		}
-		in := service.UploadReferenceInput{Kind: c.PostForm("kind"), Name: c.PostForm("name"), Tags: c.PostForm("tags")}
-		if files := c.Request.MultipartForm.File["file"]; len(files) > 0 && files[0].Filename != "" {
-			in.File = uploadOf(files[0])
-		}
+		in := service.UploadReferenceInput{Kind: c.PostForm("kind"), Name: c.PostForm("name"), Tags: c.PostForm("tags"), File: optionalUpload(form, "file")}
 		view, err := svc.Upload(c.Request.Context(), c.Param("id"), in)
 		if err != nil {
 			toast(c, err)

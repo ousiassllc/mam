@@ -117,15 +117,11 @@ func GenerateAudio(svc *service.EditorService) gin.HandlerFunc {
 // multipart speaker / sample; optional branch_id selects the panel that is answered).
 func CloneVoice(svc *service.EditorService) gin.HandlerFunc {
 	return editorStage(func(c *gin.Context) (service.EditorView, error) {
-		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, service.MaxVoiceSampleBytes+1<<20)
-		if err := c.Request.ParseMultipartForm(multipartMemory); err != nil {
-			return service.EditorView{}, &service.ValidationError{Field: "sample", Message: "送信内容が大きすぎるか、形式が正しくありません"}
+		form, err := readMultipart(c, service.MaxVoiceSampleBytes+1<<20)
+		if err != nil {
+			return service.EditorView{}, err
 		}
-		var sample service.Upload
-		if files := c.Request.MultipartForm.File["sample"]; len(files) > 0 && files[0].Filename != "" {
-			sample = uploadOf(files[0])
-		}
-		if _, err := svc.CloneVoice(c.Request.Context(), c.Param("id"), c.PostForm("speaker"), c.PostForm("name"), sample); err != nil {
+		if _, err := svc.CloneVoice(c.Request.Context(), c.Param("id"), c.PostForm("speaker"), c.PostForm("name"), optionalUpload(form, "sample")); err != nil {
 			return service.EditorView{}, err
 		}
 		return svc.View(c.Request.Context(), c.Param("id"), c.PostForm("branch_id"))

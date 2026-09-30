@@ -53,18 +53,18 @@ func ImportBundle(svc *service.BundleService) gin.HandlerFunc {
 }
 
 func importBundle(c *gin.Context, svc *service.BundleService) (domain.Project, error) {
-	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, service.MaxBundleBytes+1<<20)
-	if err := c.Request.ParseMultipartForm(multipartMemory); err != nil {
-		return domain.Project{}, &service.ValidationError{Field: "bundle", Message: "送信内容が大きすぎるか、形式が正しくありません"}
+	form, err := readMultipart(c, service.MaxBundleBytes+1<<20)
+	if err != nil {
+		return domain.Project{}, err
 	}
-	files := c.Request.MultipartForm.File["bundle"]
-	if len(files) == 0 || files[0].Filename == "" {
-		return domain.Project{}, &service.ValidationError{Field: "bundle", Message: "バンドルファイルを選んでください"}
+	fh, err := firstFile(form, "bundle", "バンドルファイルを選んでください")
+	if err != nil {
+		return domain.Project{}, err
 	}
-	f, err := files[0].Open()
+	f, err := fh.Open()
 	if err != nil {
 		return domain.Project{}, err
 	}
 	defer func() { _ = f.Close() }()
-	return svc.Import(c.Request.Context(), f, files[0].Size)
+	return svc.Import(c.Request.Context(), f, fh.Size)
 }

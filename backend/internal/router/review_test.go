@@ -256,7 +256,8 @@ func TestReview_OwnerRefusesRequestsAndResponsesThatDoNotBelong(t *testing.T) {
 	}
 	// A response for a request of another Project.
 	assert.Equal(t, http.StatusUnprocessableEntity, o.importReviewFile("/projects/"+other+"/reviews/feedback", "response", "r.json", []byte(good)).Code)
-	assert.Equal(t, http.StatusUnprocessableEntity, o.request(http.MethodPost, "/projects/"+o.project+"/reviews/feedback", nil, "", true).Code, "no file")
+	assert.Equal(t, http.StatusBadRequest, o.request(http.MethodPost, "/projects/"+o.project+"/reviews/feedback", nil, "", true).Code, "not a multipart body")
+	assert.Equal(t, http.StatusUnprocessableEntity, o.multipart(http.MethodPost, "/projects/"+o.project+"/reviews/feedback", map[string]string{"x": "y"}).Code, "no file")
 	var n int
 	require.NoError(t, o.db.Reader().QueryRow(`SELECT COUNT(*) FROM review_response`).Scan(&n))
 	assert.Zero(t, n, "every refusal stored nothing")
@@ -300,7 +301,8 @@ func TestReview_ReviewerRefusesPackagesThatAreNotOnTheAllowlist(t *testing.T) {
 		rec := r.importReviewFile("/reviews/import", "package", "p.zip", body)
 		assert.Equal(t, http.StatusUnprocessableEntity, rec.Code, name)
 	}
-	assert.Equal(t, http.StatusUnprocessableEntity, r.request(http.MethodPost, "/reviews/import", nil, "", true).Code, "no file")
+	assert.Equal(t, http.StatusBadRequest, r.request(http.MethodPost, "/reviews/import", nil, "", true).Code, "not a multipart body")
+	assert.Equal(t, http.StatusUnprocessableEntity, r.multipart(http.MethodPost, "/reviews/import", map[string]string{"x": "y"}).Code, "no file")
 	var n int
 	require.NoError(t, r.db.Reader().QueryRow(`SELECT COUNT(*) FROM review_inbox`).Scan(&n))
 	assert.Zero(t, n)

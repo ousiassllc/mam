@@ -2,8 +2,6 @@ package handler
 
 import (
 	"errors"
-	"io"
-	"mime/multipart"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -19,9 +17,6 @@ import (
 
 // maxUploadRequestBytes caps one multipart request: all attachments plus the text.
 const maxUploadRequestBytes = service.MaxAttachments*service.MaxVideoBytes + 1<<20
-
-// multipartMemory is how much of an upload Go keeps in memory before spilling to temp files.
-const multipartMemory = 8 << 20
 
 // Projects renders the project list and the new-project form (GET / and GET /projects).
 // HTMX requests get the list fragment only.
@@ -66,26 +61,18 @@ func CreateProject(svc *service.ProjectService) gin.HandlerFunc {
 
 // readMessageForm reads the content and the attachments of a multipart message form.
 func readMessageForm(c *gin.Context) (string, []service.Upload, error) {
-	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxUploadRequestBytes)
-	if err := c.Request.ParseMultipartForm(multipartMemory); err != nil {
-		return "", nil, &service.ValidationError{Field: "attachments", Message: "送信内容が大きすぎるか、形式が正しくありません"}
+	form, err := readMultipart(c, maxUploadRequestBytes)
+	if err != nil {
+		return "", nil, err
 	}
 	var uploads []service.Upload
-	for _, fh := range c.Request.MultipartForm.File["attachments"] {
+	for _, fh := range form.File["attachments"] {
 		if fh.Filename == "" { // an empty file input is sent as an unnamed empty part
 			continue
 		}
 		uploads = append(uploads, uploadOf(fh))
 	}
 	return c.PostForm("content"), uploads, nil
-}
-
-func uploadOf(fh *multipart.FileHeader) service.Upload {
-	return service.Upload{
-		Name: fh.Filename,
-		Size: fh.Size,
-		Open: func() (io.ReadCloser, error) { return fh.Open() },
-	}
 }
 
 // ProjectAsset serves an uploaded file of the Project (GET /projects/:id/assets/:assetId).
