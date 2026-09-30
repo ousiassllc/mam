@@ -16,6 +16,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/orchestrator"
 	"github.com/ousiassllc/mam/backend/internal/agent/repair"
+	"github.com/ousiassllc/mam/backend/internal/agent/stateextractor"
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/facesim"
@@ -77,6 +78,7 @@ type Services struct {
 	Bundle      *BundleService
 	Series      *SeriesService
 	Takes       *TakeService
+	Notes       *NoteService
 }
 
 // Recover puts Shots left GENERATING by an abnormal termination back to PLANNING. It MUST run
@@ -124,12 +126,13 @@ func New(deps Deps) *Services {
 		if deps.LLM != nil {
 			c.pipeline = orchestrator.New(orchestrator.Deps{
 				Projects: c.projects, Plans: c.plans, ChatRepo: c.chat, Chat: chat, Jobs: deps.Jobs,
-				LLM: deps.LLM, Logger: logger,
+				LLM: deps.LLM, Notes: repository.NewNoteRepository(deps.DB), Logger: logger,
 			})
 			deps.Jobs.Register(domain.JobPlan, c.pipeline.Handle, true)
 		}
 	}
 	gens := repository.NewGenerationRepository(deps.DB)
+	notesRepo := repository.NewNoteRepository(deps.DB)
 	world := repository.NewWorldRepository(deps.DB)
 	policies := repository.NewPolicyRepository(deps.DB)
 	generations := &GenerationService{core: c, shots: gens, progress: newBroker[generation.Progress]()}
@@ -156,7 +159,7 @@ func New(deps Deps) *Services {
 	}
 	if deps.Jobs != nil && deps.LLM != nil && deps.Models != nil {
 		generations.gen = generation.New(generation.Deps{
-			Generations: gens, World: world, Projects: c.projects, Policies: policies, FreeBytes: deps.FreeBytes, Assets: c.assets, Chat: chat, Jobs: deps.Jobs,
+			Generations: gens, World: world, Notes: notesRepo, Projects: c.projects, Policies: policies, FreeBytes: deps.FreeBytes, Assets: c.assets, Chat: chat, Jobs: deps.Jobs,
 			LLM: deps.LLM, Adapter: deps.Models, AssetsDir: deps.AssetsDir, Logger: logger, Judge: takeJudge,
 			Notify: func(p generation.Progress) { generations.progress.Publish(p.ShotID, p) },
 		})
@@ -190,6 +193,11 @@ func New(deps Deps) *Services {
 		continues.agent = continuation.New(deps.LLM)
 	}
 	c.continuer = continues
+	notes := &NoteService{core: c, notes: notesRepo, series: repository.NewSeriesRepository(deps.DB), world: world}
+	if deps.LLM != nil {
+		notes.extractor = stateextractor.New(deps.LLM)
+	}
+	c.notes = notes
 	worlds := &WorldService{core: c, world: world, versions: versions}
 	return &Services{
 		Health:      NewHealthService(deps.DB),
@@ -212,5 +220,6 @@ func New(deps Deps) *Services {
 		Bundle:    &BundleService{core: c, bundles: repository.NewBundleRepository(deps.DB)},
 		Series:    &SeriesService{core: c, series: repository.NewSeriesRepository(deps.DB)},
 		Takes:     takeService,
+		Notes:     notes,
 	}
 }

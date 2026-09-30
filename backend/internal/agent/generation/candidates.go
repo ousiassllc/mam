@@ -137,7 +137,7 @@ type candidateRun struct {
 // vendor according to its rate limit. The Best Take becomes the AI pick of the Shot and its spec
 // the spec of the Shot.
 func (o *Orchestrator) generateCandidates(ctx context.Context, ref repository.ShotRef, instruction string) (Progress, error) {
-	sc, err := o.loadShotContext(ctx, ref)
+	sc, err := o.loadShotContext(ctx, ref, instruction)
 	if err != nil {
 		return Progress{}, err
 	}
@@ -208,7 +208,7 @@ func (r *candidateRun) take(ctx context.Context, s Strategy, strategy domain.Can
 	if err != nil {
 		return judged{}, err
 	}
-	pv, err := o.gens.SaveCandidateSpec(ctx, r.ref.Shot.ID, spec, record)
+	pv, err := o.gens.SaveCandidateSpec(ctx, r.ref.Shot.ID, spec, record, domain.NoteRefs(r.sc.notes))
 	if err != nil {
 		return judged{}, err
 	}

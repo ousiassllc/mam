@@ -61,4 +61,10 @@ func registerActions(engine *gin.Engine, services *service.Services) {
 	engine.POST("/projects/import", handler.ImportBundle(services.Bundle))
 	engine.POST("/projects/:id/messages", handler.PostMessage(services.Chat))
 	engine.POST("/projects/:id/approvals/:messageId", handler.RespondApproval(services.Chat))
+
+	engine.POST("/projects/:id/notes", handler.CreateProjectNote(services.Notes))
+	engine.POST("/series/:id/notes", handler.CreateSeriesNote(services.Notes))
+	engine.PUT("/notes/:id", handler.UpdateNote(services.Notes))
+	engine.DELETE("/notes/:id", handler.ArchiveNote(services.Notes))
+	engine.POST("/notes/:id/versions/:versionNumber/restore", handler.RestoreNoteVersion(services.Notes))
 }

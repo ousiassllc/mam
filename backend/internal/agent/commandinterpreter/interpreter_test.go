@@ -126,3 +126,19 @@ func TestInterpret_PartialRegenerationWithoutAReadableRangeRegeneratesTheWholeSh
 		assert.Empty(t, cmd.Operations[0].Ranges, ranges)
 	}
 }
+
+func TestInterpret_RememberBecomesACreateNoteOperation(t *testing.T) {
+	cmd, _ := interpret(t, `{"operations":[
+		{"type":"create_note","title":"  口調 ","content":" 主人公は落ち着いた口調で話す。過去の火事は序盤では出さない。 ","category":"tone"},
+		{"type":"create_note","content":"黒髪ロング\n二行目","category":"weather"},
+		{"type":"create_note","title":"empty","content":"  "}]}`,
+		commandinterpreter.Input{Message: "主人公は落ち着いた口調で、過去の火事の話は序盤では出さないで。これ覚えておいて。"})
+
+	require.Len(t, cmd.Operations, 2, "a note without text is dropped")
+	assert.Equal(t, commandinterpreter.Operation{
+		Type: commandinterpreter.OpCreateNote, Title: "口調", Content: "主人公は落ち着いた口調で話す。過去の火事は序盤では出さない。", Category: domain.NoteCategoryTone,
+	}, cmd.Operations[0])
+	second := cmd.Operations[1]
+	assert.Equal(t, "黒髪ロング", second.Title, "a missing title is the first line of the text")
+	assert.Empty(t, second.Category, "an unknown category is left for the service to classify")
+}

@@ -33,6 +33,8 @@ type core struct {
 	director *DirectorService
 	// continuer answers the replies to Continue cards; set by New.
 	continuer *ContinueService
+	// notes keeps the production notes and settles the promotion cards; set by New.
+	notes *NoteService
 }
 
 // getProject maps repository.ErrNotFound to ErrNotFound.

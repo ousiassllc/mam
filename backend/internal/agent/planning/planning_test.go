@@ -229,3 +229,30 @@ func TestParseSeconds(t *testing.T) {
 		assert.False(t, ok, in)
 	}
 }
+
+func noteFixture() []domain.NoteView {
+	return []domain.NoteView{{
+		Note:    domain.Note{ID: "n1", Category: domain.NoteCategoryWorld, Pinned: true},
+		Version: domain.NoteVersion{Number: 1, Title: "秘密の設定", Content: "過去の火事の話は序盤では出さない"},
+	}}
+}
+
+func TestWriterAndDirector_ReceiveTheNotesAsContext(t *testing.T) {
+	w := &fakeLLM{answers: []string{scriptJSON}}
+	_, err := planning.NewWriter(w).Write(context.Background(), planning.ScriptInput{Brief: brief(), Notes: noteFixture()})
+	require.NoError(t, err)
+	assert.Contains(t, w.users[0], "過去の火事の話は序盤では出さない")
+	assert.Contains(t, w.users[0], "制作メモ")
+
+	d := &fakeLLM{answers: []string{planJSON(5, 5, 5)}}
+	_, err = planning.NewDirector(d).Plan(context.Background(), planning.PlanInput{Brief: brief(), Notes: noteFixture()})
+	require.NoError(t, err)
+	assert.Contains(t, d.users[0], "過去の火事の話は序盤では出さない")
+}
+
+func TestWriterAndDirector_WithoutNotesThePromptHasNoNotesSection(t *testing.T) {
+	w := &fakeLLM{answers: []string{scriptJSON}}
+	_, err := planning.NewWriter(w).Write(context.Background(), planning.ScriptInput{Brief: brief()})
+	require.NoError(t, err)
+	assert.NotContains(t, w.users[0], "制作メモ")
+}

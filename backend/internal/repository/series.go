@@ -418,6 +418,9 @@ func (r *SeriesRepository) CreateEpisode(ctx context.Context, seriesID, previous
 		if err := copyCanon(ctx, tx, canon, p.ID, now); err != nil {
 			return err
 		}
+		if err := copyNotes(ctx, tx, seriesID, p.ID, now); err != nil {
+			return err
+		}
 		if previousEpisodeID == "" {
 			return nil
 		}

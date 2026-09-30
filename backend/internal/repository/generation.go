@@ -142,26 +142,27 @@ func (r *GenerationRepository) ResetStaleShots(ctx context.Context) (int, error)
 
 // SavePromptedSpec stores the Canonical Shot Spec in shot.shot_spec (keeping the other keys)
 // and appends a prompt_version whose snapshot is the resulting shot_spec. adapterOutput is
-// stored in prompt_version.model_adapter_output.
-func (r *GenerationRepository) SavePromptedSpec(ctx context.Context, shotID string, spec domain.ShotSpec, adapterOutput json.RawMessage) (domain.PromptVersion, error) {
-	return r.savePromptVersion(ctx, shotID, spec, adapterOutput, true)
+// stored in prompt_version.model_adapter_output; noteRefs (the note versions the Prompt Planner
+// was given, nil for none) in prompt_version.note_refs.
+func (r *GenerationRepository) SavePromptedSpec(ctx context.Context, shotID string, spec domain.ShotSpec, adapterOutput json.RawMessage, noteRefs []domain.NoteRef) (domain.PromptVersion, error) {
+	return r.savePromptVersion(ctx, shotID, spec, adapterOutput, noteRefs, true)
 }
 
 // SaveCandidateSpec appends a prompt_version for a Prompt Candidate like SavePromptedSpec does, but
 // leaves shot.shot_spec as it is: the Candidates of a Shot are alternatives, and only the one the
 // Judge picks becomes the spec of the Shot (AdoptSpec).
-func (r *GenerationRepository) SaveCandidateSpec(ctx context.Context, shotID string, spec domain.ShotSpec, adapterOutput json.RawMessage) (domain.PromptVersion, error) {
-	return r.savePromptVersion(ctx, shotID, spec, adapterOutput, false)
+func (r *GenerationRepository) SaveCandidateSpec(ctx context.Context, shotID string, spec domain.ShotSpec, adapterOutput json.RawMessage, noteRefs []domain.NoteRef) (domain.PromptVersion, error) {
+	return r.savePromptVersion(ctx, shotID, spec, adapterOutput, noteRefs, false)
 }
 
-func (r *GenerationRepository) savePromptVersion(ctx context.Context, shotID string, spec domain.ShotSpec, adapterOutput json.RawMessage, adopt bool) (domain.PromptVersion, error) {
+func (r *GenerationRepository) savePromptVersion(ctx context.Context, shotID string, spec domain.ShotSpec, adapterOutput json.RawMessage, noteRefs []domain.NoteRef, adopt bool) (domain.PromptVersion, error) {
 	var pv domain.PromptVersion
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		current, _, err := readShotSpec(ctx, tx, shotID)
 		if err != nil {
 			return err
 		}
-		pv, err = r.writeSpec(ctx, tx, shotID, current, spec, adapterOutput, adopt)
+		pv, err = r.writeSpec(ctx, tx, shotID, current, spec, adapterOutput, noteRefs, adopt)
 		return err
 	})
 	if err != nil {
@@ -245,7 +246,7 @@ func (r *GenerationRepository) SaveEditedSpec(ctx context.Context, shotID string
 				return &LockedParametersError{Parameters: hit}
 			}
 		}
-		pv, err = r.writeSpec(ctx, tx, shotID, current, spec, nil, true)
+		pv, err = r.writeSpec(ctx, tx, shotID, current, spec, nil, nil, true)
 		return err
 	})
 	if errors.Is(err, ErrNotFound) || errors.Is(err, ErrConflict) || errors.Is(err, ErrLocked) {
@@ -273,8 +274,9 @@ func readShotSpec(ctx context.Context, tx *sql.Tx, shotID string) (string, domai
 }
 
 // writeSpec appends a prompt_version whose snapshot is the spec merged into the shot_spec JSON
-// current. adopt also stores the merged spec in shot.shot_spec.
-func (r *GenerationRepository) writeSpec(ctx context.Context, tx *sql.Tx, shotID, current string, spec domain.ShotSpec, adapterOutput json.RawMessage, adopt bool) (domain.PromptVersion, error) {
+// current, recording the note versions the spec was planned with. adopt also stores the merged spec
+// in shot.shot_spec.
+func (r *GenerationRepository) writeSpec(ctx context.Context, tx *sql.Tx, shotID, current string, spec domain.ShotSpec, adapterOutput json.RawMessage, noteRefs []domain.NoteRef, adopt bool) (domain.PromptVersion, error) {
 	merged, err := domain.MergeShotSpec(json.RawMessage(current), spec)
 	if err != nil {
 		return domain.PromptVersion{}, err
@@ -284,18 +286,25 @@ func (r *GenerationRepository) writeSpec(ctx context.Context, tx *sql.Tx, shotID
 			return domain.PromptVersion{}, err
 		}
 	}
+	if noteRefs == nil {
+		noteRefs = []domain.NoteRef{}
+	}
+	refs, err := json.Marshal(noteRefs)
+	if err != nil {
+		return domain.PromptVersion{}, err
+	}
 	var next int
 	if err := tx.QueryRowContext(ctx, `SELECT COALESCE(MAX(version_number), 0) + 1 FROM prompt_version WHERE shot_id = ?`, shotID).Scan(&next); err != nil {
 		return domain.PromptVersion{}, err
 	}
-	pv := domain.PromptVersion{ID: domain.NewID(), ShotID: shotID, VersionNumber: next, SpecSnapshot: merged, AdapterOutput: adapterOutput}
+	pv := domain.PromptVersion{ID: domain.NewID(), ShotID: shotID, VersionNumber: next, SpecSnapshot: merged, AdapterOutput: adapterOutput, NoteRefs: noteRefs}
 	var output any
 	if len(adapterOutput) > 0 {
 		output = string(adapterOutput)
 	}
 	_, err = tx.ExecContext(ctx,
-		`INSERT INTO prompt_version (id, shot_id, version_number, shot_spec_snapshot, model_adapter_output, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
-		pv.ID, shotID, next, string(merged), output, formatTime(r.now()))
+		`INSERT INTO prompt_version (id, shot_id, version_number, shot_spec_snapshot, model_adapter_output, note_refs, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		pv.ID, shotID, next, string(merged), output, string(refs), formatTime(r.now()))
 	return pv, err
 }
 
