@@ -25,10 +25,13 @@ import (
 // Bundle limits. The bundle is a local file the user chose, but a broken or hostile archive must
 // not fill the disk or memory.
 const (
-	MaxBundleBytes     = 8 << 30   // the archive
-	maxBundleFileBytes = 2 << 30   // one file in it
-	maxBundleDataBytes = 512 << 20 // data.json and manifest.json
-	maxBundleEntries   = 100_000
+	MaxBundleBytes     = 8 << 30 // the archive
+	maxBundleFileBytes = 2 << 30 // one file in it
+	// maxBundleExtractBytes is what an import writes to the assets directory at most, however much
+	// room the disk has: the files the data names, added up.
+	maxBundleExtractBytes = 32 << 30
+	maxBundleDataBytes    = 512 << 20 // data.json and manifest.json
+	maxBundleEntries      = 100_000
 )
 
 // BundleService exports a Project as a portable bundle and imports one
@@ -36,7 +39,8 @@ const (
 // with the Project Data Model as JSON and the asset files.
 type BundleService struct {
 	*core
-	bundles *repository.BundleRepository
+	bundles   *repository.BundleRepository
+	freeBytes func(path string) (uint64, error) // nil selects fsutil.FreeBytes
 }
 
 // BundleExport is a bundle ready to be written.
@@ -138,13 +142,17 @@ func (s *BundleService) Import(ctx context.Context, src io.ReaderAt, size int64)
 	if err != nil {
 		return domain.Project{}, invalid("bundle", "音声タイムラインを読み取れません")
 	}
-	for _, rel := range append(data.FilePaths(), timelinePaths...) {
+	named := append(data.FilePaths(), timelinePaths...)
+	for _, rel := range named {
 		if !domain.ValidBundleFilePath(data.ProjectID, rel) {
 			return domain.Project{}, invalid("bundle", "バンドルに不正なファイルパスがあります")
 		}
 	}
-	files, err := bundleFiles(zr, data.ProjectID)
+	files, err := bundleFiles(zr, data.ProjectID, named)
 	if err != nil {
+		return domain.Project{}, err
+	}
+	if err := s.checkRoom(files); err != nil {
 		return domain.Project{}, err
 	}
 	if _, err := s.projects.Get(ctx, data.ProjectID); err == nil {
@@ -219,11 +227,17 @@ func readZipJSON(zr *zip.Reader, name string, v any, useNumber bool) error {
 type bundleFile struct {
 	rel  string
 	file *zip.File
+	size int64 // the size the header declares, at most maxBundleFileBytes
 }
 
-// bundleFiles lists the asset entries of the archive, refusing any path that would leave the
-// Project's directory.
-func bundleFiles(zr *zip.Reader, projectID string) ([]bundleFile, error) {
+// bundleFiles lists the asset entries of the archive that the data names (an entry nothing refers to
+// is not extracted), refusing any entry whose path would leave the Project's directory, and any file
+// that is over the size limit.
+func bundleFiles(zr *zip.Reader, projectID string, named []string) ([]bundleFile, error) {
+	wanted := make(map[string]bool, len(named))
+	for _, rel := range named {
+		wanted[rel] = true
+	}
 	var out []bundleFile
 	for _, f := range zr.File {
 		rel, ok := strings.CutPrefix(f.Name, domain.BundleAssetsDir)
@@ -233,12 +247,36 @@ func bundleFiles(zr *zip.Reader, projectID string) ([]bundleFile, error) {
 		if !domain.ValidBundleFilePath(projectID, rel) || path.Clean(rel) != rel {
 			return nil, invalid("bundle", "バンドルに不正なファイルパスがあります")
 		}
+		if !wanted[rel] {
+			continue
+		}
 		if f.UncompressedSize64 > maxBundleFileBytes {
 			return nil, invalid("bundle", "%s が大きすぎます", rel)
 		}
-		out = append(out, bundleFile{rel: rel, file: f})
+		delete(wanted, rel)                                                                 // a name that appears twice is extracted once
+		out = append(out, bundleFile{rel: rel, file: f, size: int64(f.UncompressedSize64)}) //nolint:gosec // checked against maxBundleFileBytes above
 	}
 	return out, nil
+}
+
+// checkRoom refuses files that add up to more than an import may write, or more than the disk that
+// holds the assets directory has free. Nothing has been written yet.
+func (s *BundleService) checkRoom(files []bundleFile) error {
+	var total uint64
+	for _, bf := range files {
+		total += bf.file.UncompressedSize64
+	}
+	if total > maxBundleExtractBytes {
+		return invalid("bundle", "バンドルのファイルの合計が大きすぎます（上限 %d GB）", int64(maxBundleExtractBytes)>>30)
+	}
+	freeBytes := s.freeBytes
+	if freeBytes == nil {
+		freeBytes = fsutil.FreeBytes
+	}
+	if free, err := freeBytes(s.assetsDir); err == nil && total > free {
+		return invalid("bundle", "ディスクの空き容量が足りません（必要 %s、空き %s）", domain.FormatBytes(total), domain.FormatBytes(free))
+	}
+	return nil
 }
 
 // writeProject puts the Project of the bundle in place. The files are extracted into a staging
@@ -284,8 +322,9 @@ func extractFiles(root string, files []bundleFile) error {
 				return err
 			}
 			defer func() { _ = rc.Close() }()
-			n, err := io.Copy(w, io.LimitReader(rc, maxBundleFileBytes+1))
-			if err == nil && n > maxBundleFileBytes {
+			// The header's size is what checkRoom counted; an entry that holds more is refused.
+			n, err := io.Copy(w, io.LimitReader(rc, bf.size+1))
+			if err == nil && n > bf.size {
 				err = invalid("bundle", "%s が大きすぎます", bf.rel)
 			}
 			return err
