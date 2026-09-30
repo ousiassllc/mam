@@ -42,12 +42,12 @@ type BranchDetailData struct {
 // BranchPageData is the Branch page (branch_page): the tree, the Shots a Branch can be made at and,
 // when a Branch is selected, its detail.
 type BranchPageData struct {
-	Project  domain.Project
+	Project domain.Project
+	// Roots are the Branches whose Branch Point lies in the trunk.
+	Roots    []BranchTreeNode
 	Shots    []BranchShotOption
 	Selected *BranchDetailData
 }
-
-func branchTreeAPIURL(projectID string) string { return "/api/v1/projects/" + projectID + "/branches" }
 
 func branchURL(id string) string { return "/branches/" + id }
 
@@ -92,7 +92,7 @@ func versionOptions(latest int) []int {
 
 // BranchDetail shows one Branch: where it starts, its own derived tree and versions, the rename and
 // World State reference forms, and the link to its World State (branch_id scoped). It is swapped into
-// #branch-detail when a Branch is selected in mam-branch-tree.
+// #branch-detail when a Branch is selected in the Branch tree.
 templ BranchDetail(d BranchDetailData) {
 	<article class="flex flex-col gap-4 rounded-md border border-neutral-700 p-4" aria-label="Branch の詳細" data-branch-detail={ d.Branch.ID }>
 		<header class="flex flex-col gap-1">
@@ -166,13 +166,85 @@ templ BranchDetail(d BranchDetailData) {
 	</article>
 }
 
-// BranchView is the body of the Branch page: mam-branch-tree, the detail of the selected Branch and
+// BranchTreeNode is a Branch of the tree with the Branches whose Branch Point lies in it.
+type BranchTreeNode struct {
+	Branch   domain.Branch
+	Children []BranchTreeNode
+}
+
+// BranchTreeData is the Branch tree: the Branches whose Branch Point lies in the trunk, and the one
+// whose detail is shown.
+type BranchTreeData struct {
+	Roots      []BranchTreeNode
+	SelectedID string
+}
+
+// BranchTree is the Branch hierarchy of a Project: the trunk on top, every Branch under the Branch
+// it starts from. Choosing a Branch loads its detail into #branch-detail (the response redraws the
+// tree with that Branch selected). oob makes the tree replace the #branch-tree of the page, so a
+// response that changes a Branch (rename) or selects one can carry the tree along.
+templ BranchTree(d BranchTreeData, oob bool) {
+	<nav
+		id="branch-tree"
+		aria-label="Branch ツリー"
+		if oob {
+			hx-swap-oob="true"
+		}
+	>
+		<ul role="tree" class="flex flex-col gap-1 text-sm">
+			<li role="treeitem" aria-selected="false" aria-expanded="true">
+				<span class="text-neutral-300">トランク</span>
+				if len(d.Roots) > 0 {
+					@branchTreeGroup(d.Roots, d.SelectedID)
+				}
+			</li>
+		</ul>
+		if len(d.Roots) == 0 {
+			<p class="mt-2 text-sm text-neutral-400" data-empty>まだ Branch がありません。Shot から「Branch を作る」か、チャットで「このカットから別展開を作って」と頼めます。</p>
+		}
+	</nav>
+}
+
+templ branchTreeGroup(nodes []BranchTreeNode, selected string) {
+	<ul role="group" class="ml-3 mt-1 flex flex-col gap-1 border-l border-neutral-700 pl-3">
+		for _, n := range nodes {
+			<li
+				role="treeitem"
+				aria-selected={ strconv.FormatBool(n.Branch.ID == selected) }
+				if len(n.Children) > 0 {
+					aria-expanded="true"
+				}
+			>
+				<a
+					href={ templ.SafeURL(branchURL(n.Branch.ID)) }
+					hx-get={ branchURL(n.Branch.ID) }
+					hx-target="#branch-detail"
+					hx-swap="innerHTML"
+					class={ "underline", templ.KV("font-semibold text-indigo-300", n.Branch.ID == selected), templ.KV("text-neutral-200", n.Branch.ID != selected) }
+					data-branch={ n.Branch.ID }
+				>{ n.Branch.Name }（{ branchPointText(n.Branch) }）</a>
+				if len(n.Children) > 0 {
+					@branchTreeGroup(n.Children, selected)
+				}
+			</li>
+		}
+	</ul>
+}
+
+// BranchDetailWithTree is what HTMX gets for a Branch: the detail for #branch-detail and the tree,
+// redrawn out-of-band with the Branch selected.
+templ BranchDetailWithTree(d BranchDetailData, tree BranchTreeData) {
+	@BranchDetail(d)
+	@BranchTree(tree, true)
+}
+
+// BranchView is the body of the Branch page: the Branch tree, the detail of the selected Branch and
 // the forms that make a Branch at a Shot. The chat thread is not split by Branch.
 templ BranchView(d BranchPageData) {
 	<div id="branch-view" class="flex flex-col gap-6">
 		<section aria-label="Branch ツリー" class="flex flex-col gap-2">
 			<h2 class="text-sm font-semibold text-neutral-200">Branch ツリー</h2>
-			<mam-branch-tree api-url={ branchTreeAPIURL(d.Project.ID) } selected={ selectedBranchID(d) }></mam-branch-tree>
+			@BranchTree(BranchTreeData{Roots: d.Roots, SelectedID: selectedBranchID(d)}, false)
 		</section>
 		<div id="branch-detail">
 			if d.Selected != nil {

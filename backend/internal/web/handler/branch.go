@@ -29,9 +29,9 @@ func BranchTreePage(svc *service.BranchService) gin.HandlerFunc {
 	}
 }
 
-// BranchPage renders one Branch (GET /branches/:id): the detail fragment for HTMX (what
-// mam-branch-tree swaps into #branch-detail on branch-selected), or the Branch page with that
-// Branch selected.
+// BranchPage renders one Branch (GET /branches/:id): for HTMX the detail fragment the Branch tree
+// swaps into #branch-detail, with the tree redrawn out-of-band with that Branch selected; otherwise
+// the Branch page with that Branch selected.
 func BranchPage(svc *service.BranchService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		detail, err := svc.Detail(c.Request.Context(), c.Param("id"))
@@ -40,13 +40,13 @@ func BranchPage(svc *service.BranchService) gin.HandlerFunc {
 			return
 		}
 		selected := branchDetailData(detail)
-		if isHTMX(c) {
-			render(c, http.StatusOK, organisms.BranchDetail(selected))
-			return
-		}
 		tree, err := svc.Tree(c.Request.Context(), detail.Project.ID)
 		if err != nil {
 			pageError(c, err)
+			return
+		}
+		if isHTMX(c) {
+			render(c, http.StatusOK, organisms.BranchDetailWithTree(selected, branchTreeData(tree, selected.Branch.ID)))
 			return
 		}
 		render(c, http.StatusOK, pages.BranchPage(middleware.CSRFToken(c), branchPageData(tree, &selected)))
@@ -73,7 +73,7 @@ func CreateBranch(svc *service.BranchService) gin.HandlerFunc {
 }
 
 // UpdateBranch renames the Branch or moves its World State reference (PUT /branches/:id) and answers
-// with the detail fragment; the tree is told to reload.
+// with the detail fragment and the Branch tree redrawn out-of-band (the name is in it).
 func UpdateBranch(svc *service.BranchService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var name, version *string
@@ -88,8 +88,12 @@ func UpdateBranch(svc *service.BranchService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		c.Header("HX-Trigger", "branches-changed")
-		render(c, http.StatusOK, organisms.BranchDetail(branchDetailData(detail)))
+		tree, err := svc.Tree(c.Request.Context(), detail.Project.ID)
+		if err != nil {
+			toast(c, err)
+			return
+		}
+		render(c, http.StatusOK, organisms.BranchDetailWithTree(branchDetailData(detail), branchTreeData(tree, detail.Branch.ID)))
 	}
 }
 
@@ -98,7 +102,19 @@ func branchPageData(t service.BranchTree, selected *organisms.BranchDetailData) 
 	for i, s := range t.Shots {
 		shots[i] = organisms.BranchShotOption{ShotID: s.ShotID, Label: s.Label}
 	}
-	return organisms.BranchPageData{Project: t.Project, Shots: shots, Selected: selected}
+	return organisms.BranchPageData{Project: t.Project, Roots: branchTreeNodes(t.Roots), Shots: shots, Selected: selected}
+}
+
+func branchTreeData(t service.BranchTree, selectedID string) organisms.BranchTreeData {
+	return organisms.BranchTreeData{Roots: branchTreeNodes(t.Roots), SelectedID: selectedID}
+}
+
+func branchTreeNodes(nodes []*service.BranchNode) []organisms.BranchTreeNode {
+	out := make([]organisms.BranchTreeNode, len(nodes))
+	for i, n := range nodes {
+		out[i] = organisms.BranchTreeNode{Branch: n.Branch, Children: branchTreeNodes(n.Children)}
+	}
+	return out
 }
 
 func branchDetailData(d service.BranchDetail) organisms.BranchDetailData {
