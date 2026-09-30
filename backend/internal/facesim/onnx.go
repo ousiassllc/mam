@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"image"
 	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"sync"
@@ -20,6 +21,29 @@ import (
 
 // ortAPIVersion is the ONNX Runtime C API version the bindings use (ONNX Runtime 1.23.x).
 const ortAPIVersion = 23
+
+const (
+	// detectorSize is the side of YuNet's (fixed) square input.
+	detectorSize = 640
+	// nmsIoU is the overlap above which a lower-scoring detection is dropped.
+	nmsIoU = 0.3
+	// maxImageSide bounds the raster the detector works from (larger images are box-reduced first).
+	maxImageSide = 2 * detectorSize
+)
+
+func (c ONNXConfig) detector() string {
+	if c.DetectorPath != "" {
+		return c.DetectorPath
+	}
+	return filepath.Join(c.ModelDir, DetectorFile)
+}
+
+func (c ONNXConfig) recognizer() string {
+	if c.RecognizerPath != "" {
+		return c.RecognizerPath
+	}
+	return filepath.Join(c.ModelDir, RecognizerFile)
+}
 
 // ONNX is the Engine backed by YuNet and SFace running on the ONNX Runtime.
 type ONNX struct {
