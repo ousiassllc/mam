@@ -489,3 +489,79 @@ func TestEditor_NeedShotVerdictIsReportedWithTheShotToMakeAndAwaitsTheDirector(t
 	// Without generation configured (no video model) the Director cannot be asked.
 	assert.Equal(t, http.StatusServiceUnavailable, e.form(http.MethodPost, body.RequestShotURL, nil).Code)
 }
+
+func TestEditor_RoughCutKeepsTheClipOfAShotWhoseEditingIsFixed(t *testing.T) {
+	for _, mode := range []string{"manual", "lock"} {
+		t.Run(mode, func(t *testing.T) {
+			e := newEditorApp(t)
+			e.setState("VISUAL_DESIGN")
+			require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/takes/t1/select", nil).Code)
+			require.Equal(t, http.StatusOK, e.roughCut().Code)
+			tl := e.timeline()
+			body := `{"clips":[{"shot_id":"` + e.shotID + `","take_id":"t1","in_point":1,"out_point":3,"transition":{"type":"fade","seconds":0.5}}]}`
+			require.Equal(t, http.StatusNoContent, e.request(http.MethodPut, "/edit-timelines/"+tl.ID, []byte(body), "application/json", false).Code)
+			require.Equal(t, http.StatusOK, e.form(http.MethodPut, "/shots/"+e.shotID+"/locks", url.Values{"parameter": {"editing"}, "mode": {mode}}).Code)
+
+			require.Equal(t, http.StatusOK, e.roughCut().Code)
+
+			got := e.timeline()
+			require.Len(t, got.Clips, 1)
+			assert.InDelta(t, 1, got.Clips[0].In, 1e-9, "Editing %s: the user's cut survives a new Rough Cut", mode)
+			assert.InDelta(t, 2, got.Duration, 0.01)
+		})
+	}
+
+	t.Run("auto", func(t *testing.T) {
+		e := newEditorApp(t)
+		e.setState("VISUAL_DESIGN")
+		require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/takes/t1/select", nil).Code)
+		require.Equal(t, http.StatusOK, e.roughCut().Code)
+		tl := e.timeline()
+		body := `{"clips":[{"shot_id":"` + e.shotID + `","take_id":"t1","in_point":1,"out_point":3,"transition":{"type":"fade","seconds":0.5}}]}`
+		require.Equal(t, http.StatusNoContent, e.request(http.MethodPut, "/edit-timelines/"+tl.ID, []byte(body), "application/json", false).Code)
+
+		require.Equal(t, http.StatusOK, e.roughCut().Code)
+
+		assert.InDelta(t, 4, e.timeline().Duration, 0.01, "AUTO: the AI cuts the Shot afresh")
+	})
+}
+
+func TestEditor_AudioKeepsTheEarlierBGMWhenMusicIsFixed(t *testing.T) {
+	e := newEditorApp(t)
+	e.setState("VISUAL_DESIGN")
+	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/takes/t1/select", nil).Code)
+	require.Equal(t, http.StatusOK, e.roughCut().Code)
+	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/edit-timelines/"+e.timeline().ID+"/judge", nil).Code)
+	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/projects/"+e.project+"/audio/generate", nil).Code)
+	repo := repository.NewEditorRepository(e.db)
+	first, err := repo.LatestAudioTimeline(context.Background(), e.project, "")
+	require.NoError(t, err)
+	var bgm domain.AudioClip
+	for _, c := range first.Timeline.Clips {
+		if c.LayerOf() == domain.LayerBGM {
+			bgm = c
+		}
+	}
+	require.NotEmpty(t, bgm.Path)
+	require.Equal(t, http.StatusOK, e.form(http.MethodPut, "/projects/"+e.project+"/locks", url.Values{"parameter": {"music"}, "mode": {"lock"}}).Code)
+	musicCalls := func() int {
+		var n int
+		require.NoError(t, e.db.Reader().QueryRowContext(context.Background(), `SELECT COUNT(*) FROM cost_ledger_entry WHERE project_id = ? AND provider = 'elevenlabs-music'`, e.project).Scan(&n))
+		return n
+	}
+	before := musicCalls()
+
+	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/projects/"+e.project+"/audio/generate", nil).Code)
+
+	second, err := repo.LatestAudioTimeline(context.Background(), e.project, "")
+	require.NoError(t, err)
+	assert.Equal(t, first.VersionNumber+1, second.VersionNumber)
+	assert.Equal(t, before, musicCalls(), "Music LOCK: no new music is paid for")
+	var kept []domain.AudioClip
+	for _, c := range second.Timeline.Clips {
+		if c.LayerOf() == domain.LayerBGM {
+			kept = append(kept, c)
+		}
+	}
+	assert.Equal(t, []domain.AudioClip{bgm}, kept, "the earlier BGM is carried over")
+}

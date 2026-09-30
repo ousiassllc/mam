@@ -48,7 +48,9 @@ type EditorService struct {
 	generation *GenerationService
 	policies   *repository.PolicyRepository
 	takes      *repository.TakeRepository
-	judge      *editor.Judge
+	// locks give the Editing setting of a Shot and the Music setting of the Project (spec/spec.md §6).
+	locks *repository.LockRepository
+	judge *editor.Judge
 	// brands and judges give Final QC the Brand constraints and the Brand Issues of the Takes (F-23).
 	brands *repository.BrandRepository
 	judges *repository.JudgeRepository
@@ -408,6 +410,9 @@ func (s *EditorService) RoughCut(ctx context.Context, projectID, branchID string
 	if err != nil {
 		return EditorView{}, invalid("", "%s", timelineMessage(err))
 	}
+	if tl, err = s.keepFixedClips(ctx, idx, projectID, branchID, tl); err != nil {
+		return EditorView{}, err
+	}
 	brief, _, err := s.briefOptions(ctx, projectID)
 	if err != nil {
 		return EditorView{}, err
@@ -432,6 +437,57 @@ func (s *EditorService) RoughCut(ctx context.Context, projectID, branchID string
 	}
 	s.announce(ctx, projectID, text)
 	return s.View(ctx, projectID, branchID)
+}
+
+// keepFixedClips puts back, into a Rough Cut that is made again, the clips of the Shots whose
+// Editing is MANUAL or LOCK (spec/spec.md §6): the AI does not re-cut what the user cut. A clip
+// whose Take file is gone is not brought back, since it could not be played.
+func (s *EditorService) keepFixedClips(ctx context.Context, idx shotIndex, projectID, branchID string, fresh domain.EditTimeline) (domain.EditTimeline, error) {
+	fixed, err := s.editingFixed(ctx, idx, fresh)
+	if err != nil || len(fixed) == 0 {
+		return fresh, err
+	}
+	prev, err := s.editors.LatestEditTimeline(ctx, projectID, branchID)
+	if errors.Is(err, repository.ErrNotFound) {
+		return fresh, nil
+	}
+	if err != nil {
+		return domain.EditTimeline{}, err
+	}
+	usable := make(map[string]bool, len(fixed))
+	for _, c := range prev.Timeline.Clips {
+		if !fixed[c.ShotID] {
+			continue
+		}
+		if _, ok, err := s.takeSource(ctx, c.TakeID); err != nil {
+			return domain.EditTimeline{}, err
+		} else if ok {
+			usable[c.ShotID] = true
+		}
+	}
+	kept, err := editor.KeepFixedClips(fresh, prev.Timeline, usable).Normalize()
+	if err != nil {
+		return domain.EditTimeline{}, invalid("", "%s", timelineMessage(err))
+	}
+	return kept, nil
+}
+
+// editingFixed lists the Shots of the timeline whose Editing parameter is MANUAL or LOCK.
+func (s *EditorService) editingFixed(ctx context.Context, idx shotIndex, tl domain.EditTimeline) (map[string]bool, error) {
+	fixed := map[string]bool{}
+	for _, c := range tl.Clips {
+		if _, ok := idx.byID[c.ShotID]; !ok || fixed[c.ShotID] {
+			continue
+		}
+		locks, err := s.locks.ShotLocks(ctx, c.ShotID)
+		if err != nil {
+			return nil, err
+		}
+		if locks.Mode(domain.ParamEditing) != domain.LockAuto {
+			fixed[c.ShotID] = true
+		}
+	}
+	return fixed, nil
 }
 
 // insertionPoint is where an additional Shot that follows the Shot anchor goes into a list of n
@@ -531,12 +587,16 @@ func (s *EditorService) SaveTimeline(ctx context.Context, id string, tl domain.E
 // shotFacts is what the Editor Judge needs to know about the Shots of the clips.
 func (s *EditorService) shotFacts(ctx context.Context, idx shotIndex, tl domain.EditTimeline) (map[string]editor.ShotFacts, error) {
 	facts := make(map[string]editor.ShotFacts, len(tl.Clips))
+	fixed, err := s.editingFixed(ctx, idx, tl)
+	if err != nil {
+		return nil, err
+	}
 	for _, c := range tl.Clips {
 		r, ok := idx.byID[c.ShotID]
 		if !ok {
 			continue
 		}
-		f := editor.ShotFacts{Label: idx.labels[c.ShotID], Objective: r.Shot.Objective, SelectedTakeID: r.Shot.SelectedTakeID}
+		f := editor.ShotFacts{Label: idx.labels[c.ShotID], Objective: r.Shot.Objective, SelectedTakeID: r.Shot.SelectedTakeID, EditingFixed: fixed[c.ShotID]}
 		if sb, ok := r.Shot.Storyboard(); ok {
 			f.Dialogue = sb.Dialogue
 		}

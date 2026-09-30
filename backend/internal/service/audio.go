@@ -65,6 +65,9 @@ func (s *EditorService) GenerateAudio(ctx context.Context, projectID, branchID s
 			return EditorView{}, err
 		}
 	}
+	if err := s.fixMusic(ctx, projectID, branchID, &in); err != nil {
+		return EditorView{}, err
+	}
 	clones, err := s.voices.List(ctx, projectID)
 	if err != nil {
 		return EditorView{}, err
@@ -83,6 +86,33 @@ func (s *EditorService) GenerateAudio(ctx context.Context, projectID, branchID s
 	}
 	s.announce(ctx, projectID, audioSummary(tl, branchID != ""))
 	return s.View(ctx, projectID, branchID)
+}
+
+// fixMusic holds the BGM when the Project's Music is MANUAL or LOCK (spec/spec.md §6): the Audio
+// Director carries over the BGM of the latest Audio Timeline, whose files are still there, instead
+// of planning and making it again.
+func (s *EditorService) fixMusic(ctx context.Context, projectID, branchID string, in *audiodirector.Input) error {
+	locks, err := s.locks.ProjectLocks(ctx, projectID)
+	if err != nil {
+		return err
+	}
+	if locks.Mode(domain.ParamMusic) == domain.LockAuto {
+		return nil
+	}
+	in.MusicFixed = true
+	prev, err := s.editors.LatestAudioTimeline(ctx, projectID, branchID)
+	if errors.Is(err, repository.ErrNotFound) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	for _, c := range prev.Timeline.Clips {
+		if c.LayerOf() == domain.LayerBGM && s.fileExists(c.Path) {
+			in.FixedBGM = append(in.FixedBGM, c)
+		}
+	}
+	return nil
 }
 
 // audioSummary is the chat message after the Audio Director finished.

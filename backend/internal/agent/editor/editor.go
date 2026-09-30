@@ -10,6 +10,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"slices"
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
@@ -64,6 +65,25 @@ type ShotFacts struct {
 	Dialogue string
 	// HasProduct is true when the product is in the Shot (its Canonical Shot Spec names one).
 	HasProduct bool
+	// EditingFixed is true when the Shot's Editing parameter is MANUAL or LOCK (spec/spec.md §6):
+	// the cut of its clip is the user's, so the Editor Agent does not trim, extend or caption it.
+	EditingFixed bool
+}
+
+// KeepFixedClips puts back the clips the user fixed (Editing MANUAL / LOCK) when a Rough Cut is
+// made again: a clip of a Shot in fixed replaces the fresh clip of that Shot with the one of the
+// previous timeline, in place. A Shot without a clip in the previous timeline keeps its fresh clip.
+func KeepFixedClips(fresh, previous domain.EditTimeline, fixed map[string]bool) domain.EditTimeline {
+	out := domain.EditTimeline{Clips: slices.Clone(fresh.Clips)}
+	for i, c := range out.Clips {
+		if !fixed[c.ShotID] {
+			continue
+		}
+		if j := slices.IndexFunc(previous.Clips, func(p domain.EditClip) bool { return p.ShotID == c.ShotID }); j >= 0 {
+			out.Clips[i] = previous.Clips[j]
+		}
+	}
+	return out
 }
 
 // JudgeInput is what the Editor Judge looks at.

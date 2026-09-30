@@ -225,7 +225,7 @@ func New(deps Deps) *Services {
 	worlds := &WorldService{core: c, world: world, versions: versions}
 	// Without a Reasoning LLM the Editor Judge runs its deterministic checks alone.
 	editors = &EditorService{
-		core: c, editors: repository.NewEditorRepository(deps.DB), shots: gens, generation: generations, policies: policies, takes: takes, chatSvc: chat, tools: deps.Media,
+		core: c, editors: repository.NewEditorRepository(deps.DB), shots: gens, generation: generations, policies: policies, takes: takes, locks: repository.NewLockRepository(deps.DB), chatSvc: chat, tools: deps.Media,
 		judge: editor.NewJudge(deps.LLM), brands: brands, judges: judges.judges,
 		voices: repository.NewVoiceRepository(deps.DB), cloner: deps.Audio.Cloner,
 	}

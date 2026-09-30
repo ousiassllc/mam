@@ -37,6 +37,11 @@ type Input struct {
 	Scenes []Scene
 	// Clips are the clips of the Edit Timeline with their Take files (used by Lip Sync).
 	Clips []VideoClip
+	// MusicFixed is true when the Project's Music is MANUAL or LOCK (spec/spec.md §6): the BGM is
+	// not planned or made again, and FixedBGM, the BGM of the previous Audio Timeline, is carried
+	// over as it is (none when there was none).
+	MusicFixed bool
+	FixedBGM   []domain.AudioClip
 	// Voices maps a speaker name to the cloned voice that speaks their lines.
 	Voices map[string]string
 	// Rough is the rendered Rough Cut and HasSound tells whether it has sound of its own.
@@ -282,6 +287,10 @@ func (r *run) planScenes(ctx context.Context) error {
 // comes last.
 func (r *run) makeLayers(ctx context.Context) error {
 	for _, layer := range []domain.AudioLayer{domain.LayerBGM, domain.LayerAmbience, domain.LayerSE, domain.LayerFoley} {
+		if layer == domain.LayerBGM && r.in.MusicFixed {
+			r.tl.Clips = append(r.tl.Clips, r.in.FixedBGM...)
+			continue
+		}
 		for _, j := range r.jobs(layer) {
 			if err := r.make(ctx, j); err != nil {
 				return err
