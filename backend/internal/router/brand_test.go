@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -210,4 +211,124 @@ func TestFinalQC_ARequiredDisclaimerThatIsNeverStatedFailsAndOneThatIsPasses(t *
 	e.addBrand("required_disclaimer", "lock", "行こう")
 	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/projects/"+e.project+"/final-qc", nil).Code)
 	assert.Equal(t, "READY", e.state(), "a disclaimer that is spoken passes")
+}
+
+func (a *app) addConstraint(projectID, typ, level, text string) {
+	a.t.Helper()
+	rec := a.form(http.MethodPost, "/projects/"+projectID+"/brand-constraints", url.Values{"type": {typ}, "level": {level}, "text": {text}})
+	require.Equal(a.t, http.StatusOK, rec.Code, rec.Body.String())
+}
+
+func (a *app) constraintTexts(projectID string) []string {
+	a.t.Helper()
+	rows, err := a.db.Reader().Query(`SELECT json_extract(value, '$.text') FROM brand_constraint WHERE project_id = ? ORDER BY created_at, rowid`, projectID)
+	require.NoError(a.t, err)
+	defer func() { _ = rows.Close() }()
+	var out []string
+	for rows.Next() {
+		var s string
+		require.NoError(a.t, rows.Scan(&s))
+		out = append(out, s)
+	}
+	require.NoError(a.t, rows.Err())
+	return out
+}
+
+func (a *app) saveTemplate(projectID, name string) string {
+	a.t.Helper()
+	rec := a.form(http.MethodPost, "/projects/"+projectID+"/brand-templates", url.Values{"name": {name}})
+	require.Equal(a.t, http.StatusOK, rec.Code, rec.Body.String())
+	var id string
+	require.NoError(a.t, a.db.Reader().QueryRow(`SELECT id FROM brand_template WHERE name = ?`, name).Scan(&id))
+	return id
+}
+
+func TestBrandTemplates_SaveApplyToProjectAndEpisodeStayIndependentOfTheTemplate(t *testing.T) {
+	a := newApp(t)
+	src := a.createProject("CM")
+	other := a.createProject("Other CM")
+	a.addConstraint(src, "forbidden_expression", "lock", "最安値")
+	a.addConstraint(src, "required_disclaimer", "advisory", "効果には個人差があります")
+
+	// The settings screen offers saving; a saved template is listed with its constraints.
+	assert.Contains(t, a.get("/projects/"+src+"/settings", false).Body.String(), `hx-post="/projects/`+src+`/brand-templates"`)
+	tpl := a.saveTemplate(src, "ブランドA")
+	body := a.get("/projects/"+other+"/settings", false).Body.String()
+	for _, want := range []string{"ブランドA", "2 件の制約", "最安値", `hx-post="/projects/` + other + `/brand-templates/` + tpl + `/apply"`} {
+		assert.Contains(t, body, want)
+	}
+
+	// Apply to another Project.
+	rec := a.form(http.MethodPost, "/projects/"+other+"/brand-templates/"+tpl+"/apply", nil)
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.Contains(t, rec.Body.String(), `id="brand-constraint-list"`)
+	assert.Contains(t, rec.Body.String(), "最安値")
+	assert.Equal(t, []string{"最安値", "効果には個人差があります"}, a.constraintTexts(other))
+
+	// The Project's constraints change independently; the template does not follow.
+	var cid string
+	require.NoError(t, a.db.Reader().QueryRow(`SELECT id FROM brand_constraint WHERE project_id = ? AND value LIKE '%最安値%'`, other).Scan(&cid))
+	require.Equal(t, http.StatusOK, a.form(http.MethodDelete, "/brand-constraints/"+cid, nil).Code)
+	a.addConstraint(other, "logo_rule", "lock", "ロゴを歪めない")
+	assert.Equal(t, []string{"最安値", "効果には個人差があります"}, a.constraintTexts(src), "the source Project is untouched")
+	var n int
+	require.NoError(t, a.db.Reader().QueryRow(`SELECT COUNT(*) FROM brand_template_constraint WHERE template_id = ?`, tpl).Scan(&n))
+	assert.Equal(t, 2, n, "the template is untouched")
+
+	// A new Project, and a new Episode of a Series, can start from the template.
+	rec = a.multipart(http.MethodPost, "/projects", map[string]string{"content": "新しいCM", "brand_template_id": tpl})
+	require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
+	fresh := strings.TrimPrefix(rec.Header().Get("HX-Redirect"), "/projects/")
+	assert.Equal(t, []string{"最安値", "効果には個人差があります"}, a.constraintTexts(fresh))
+	assert.Contains(t, a.get("/projects", false).Body.String(), `name="brand_template_id"`)
+
+	rec = a.form(http.MethodPost, "/series", url.Values{"name": {"S"}, "from_project_id": {src}})
+	require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
+	seriesID := strings.TrimPrefix(rec.Header().Get("HX-Redirect"), "/series/")
+	assert.Contains(t, a.get("/series/"+seriesID, false).Body.String(), `name="brand_template_id"`)
+	rec = a.form(http.MethodPost, "/series/"+seriesID+"/episodes", url.Values{"brand_template_id": {tpl}})
+	require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
+	ep := strings.TrimPrefix(rec.Header().Get("HX-Redirect"), "/projects/")
+	assert.Equal(t, []string{"最安値", "効果には個人差があります"}, a.constraintTexts(ep))
+
+	// Deleting the template leaves every Project that used it as it is.
+	rec = a.form(http.MethodDelete, "/projects/"+src+"/brand-templates/"+tpl, nil)
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.NotContains(t, rec.Body.String(), `data-testid="brand-template"`)
+	assert.Equal(t, []string{"最安値", "効果には個人差があります"}, a.constraintTexts(ep))
+	assert.Equal(t, []string{"最安値", "効果には個人差があります"}, a.constraintTexts(fresh))
+}
+
+func TestBrandTemplates_InvalidRequestsAreRejected(t *testing.T) {
+	a := newApp(t)
+	id := a.createProject("CM")
+
+	// A Project without constraints has nothing to save.
+	rec := a.form(http.MethodPost, "/projects/"+id+"/brand-templates", url.Values{"name": {"A"}})
+	require.Equal(t, http.StatusUnprocessableEntity, rec.Code)
+	assert.Contains(t, rec.Body.String(), "保存できる制約がありません")
+	assert.Contains(t, rec.Body.String(), `id="brand-template-panel"`)
+
+	a.addConstraint(id, "logo_rule", "lock", "ロゴを歪めない")
+	rec = a.form(http.MethodPost, "/projects/"+id+"/brand-templates", url.Values{"name": {"  "}})
+	require.Equal(t, http.StatusUnprocessableEntity, rec.Code)
+	assert.Contains(t, rec.Body.String(), "テンプレート名は")
+
+	a.saveTemplate(id, "Dup")
+	rec = a.form(http.MethodPost, "/projects/"+id+"/brand-templates", url.Values{"name": {"dup"}})
+	require.Equal(t, http.StatusUnprocessableEntity, rec.Code)
+	assert.Contains(t, rec.Body.String(), "すでにあります")
+	assert.Contains(t, rec.Body.String(), `value="dup"`, "the input is kept")
+
+	assert.Equal(t, http.StatusNotFound, a.form(http.MethodPost, "/projects/missing/brand-templates", url.Values{"name": {"X"}}).Code)
+	assert.Equal(t, http.StatusNotFound, a.form(http.MethodPost, "/projects/"+id+"/brand-templates/nope/apply", nil).Code)
+	assert.Equal(t, http.StatusNotFound, a.form(http.MethodDelete, "/projects/"+id+"/brand-templates/nope", nil).Code)
+
+	// An unknown template on creation is a form error and creates nothing.
+	rec = a.multipart(http.MethodPost, "/projects", map[string]string{"content": "別のCM", "brand_template_id": "nope"})
+	require.Equal(t, http.StatusUnprocessableEntity, rec.Code)
+	assert.Contains(t, rec.Body.String(), "見つかりません")
+	var n int
+	require.NoError(t, a.db.Reader().QueryRow(`SELECT COUNT(*) FROM project`).Scan(&n))
+	assert.Equal(t, 1, n)
 }

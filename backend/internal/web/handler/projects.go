@@ -37,7 +37,13 @@ func Projects(svc *service.ProjectService) gin.HandlerFunc {
 			render(c, http.StatusOK, organisms.ProjectList(projects))
 			return
 		}
-		render(c, http.StatusOK, pages.ProjectsPage(middleware.CSRFToken(c), projects, organisms.NewProjectFormData{}))
+		templates, err := svc.Templates(c.Request.Context())
+		if err != nil {
+			_ = c.Error(err)
+			c.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
+		render(c, http.StatusOK, pages.ProjectsPage(middleware.CSRFToken(c), projects, organisms.NewProjectFormData{Templates: templates}))
 	}
 }
 
@@ -48,14 +54,15 @@ func CreateProject(svc *service.ProjectService) gin.HandlerFunc {
 		content, uploads, err := readMessageForm(c)
 		if err == nil {
 			var project domain.Project
-			if project, err = svc.Create(c.Request.Context(), service.CreateProjectInput{Content: content, Uploads: uploads}); err == nil {
+			if project, err = svc.Create(c.Request.Context(), service.CreateProjectInput{Content: content, Uploads: uploads, BrandTemplateID: c.PostForm("brand_template_id")}); err == nil {
 				c.Header("HX-Redirect", "/projects/"+project.ID)
 				c.Status(http.StatusCreated)
 				return
 			}
 		}
 		status, message := statusOf(c, err)
-		render(c, status, organisms.NewProjectForm(organisms.NewProjectFormData{Content: content, Error: message}))
+		templates, _ := svc.Templates(c.Request.Context()) // the form is still usable without the choice
+		render(c, status, organisms.NewProjectForm(organisms.NewProjectFormData{Content: content, Error: message, Templates: templates}))
 	}
 }
 

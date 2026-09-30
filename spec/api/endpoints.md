@@ -47,6 +47,12 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 | GET | `/projects/:id/notes` | Notes 一覧・編集（補助ビュー、M2。ピン留め・カテゴリ・アーカイブの表示、`version_history_panel` でバージョン復元） | フルページ / フラグメント |
 | GET | `/series/:id` | Series（M2。正本の Style・Character・Product・Location、Episode 一覧と次の Episode 作成、正本の更新履歴。Character の編集と Style の保存フォームを持つ） | フルページ / フラグメント |
 | GET | `/series/:id/notes` | Series 正本 Notes の一覧・編集（M2） | フルページ / フラグメント |
+| GET | `/projects/:id/reviews` | レビュー（補助ビュー、M3。オーナー側）: 書き出しからレビュー依頼を作るフォーム、依頼ごとの状態（未回答/承認済み/修正依頼あり）・パッケージのダウンロード・取り込んだ応答（判定・コメント、解決済み切替）、応答の取り込みフォーム | フルページ / フラグメント |
+| GET | `/projects/:id/reviews/:reviewId/package` | Review Package のダウンロード（ZIP。`Content-Disposition: attachment`、`manifest.json` と `video.mp4|webm` だけ。`spec/spec.md` §27.1）。当該 Project の依頼でなければ 404、書き出しファイルが無ければ 409 | ファイル |
+| GET | `/reviews` | レビュアー側の入口（M3）: Review Package の読み込みフォームと、読み込み済みのレビュー一覧（判定済みか）。Project を持たないので Project の画面に依存しない | フルページ / フラグメント |
+| GET | `/reviews/:id` | レビュー画面（M3）: 動画プレーヤー、オーナーのメモ、コメント追加フォーム・一覧、判定フォーム、応答の書き出しリンク。存在しなければ 404 | フルページ / フラグメント |
+| GET | `/reviews/:id/video` | 読み込んだ動画の配信（`X-Content-Type-Options: nosniff`、`Content-Security-Policy: sandbox`） | ファイル |
+| GET | `/reviews/:id/response` | Review Response（JSON、`Content-Disposition: attachment`）のダウンロード。判定を書いていなければ 409 | ファイル |
 
 ## 2. アクションルート（Gin, フラグメントのみ）
 
@@ -55,7 +61,7 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 | Method | Path | 概要 | 対応機能 |
 |---|---|---|---|
 | POST | `/projects/import` | プロジェクトバンドルのインポート（`multipart/form-data`、フィールド `bundle`＝`GET /projects/:id/bundle` の ZIP。`spec/requirements/non-functional.md` §8）。バンドルの Project を ID・ファイルパスのまま新規に作る（1 トランザクション。失敗時は行もファイルも残さない）。成功は 201 と `HX-Redirect: /projects/:id`。ファイルがない・ZIP でない・`manifest.json`/`data.json` が読めない・`format`/`version` が違う・未知のテーブル/カラム・他 Project の行・外部キーが壊れている・Project ディレクトリ外を指すパスは 422（インポートフォームをエラー付きで再描画）。同じ ID の Project が既にあれば 409（既存を変更しない）。取り込んだ Project に実行中のジョブは無いので、生成中だった Shot は PLANNING に戻す | non-functional.md §8 |
-| POST | `/projects` | 新規プロジェクト作成。Body（`multipart/form-data`）に最初の発言（`content`）と添付（`attachments`、画像 jpg/png/webp/gif ≤20MB・動画 mp4/mov/webm ≤300MB、最大8件。拡張子と内容の署名を検証し不正は 422）を指定でき、Brief はその発言から抽出してチャットで補完する。成功時は `HX-Redirect: /projects/:id`（201）。既存アセットの再利用は `POST /projects/:id/messages` の `attachment_asset_ids`。Series 作成後の Episode は `POST /series/:id/episodes` を使う | F-01, F-25, F-30 |
+| POST | `/projects` | 新規プロジェクト作成。Body（`multipart/form-data`）に最初の発言（`content`）と添付（`attachments`、画像 jpg/png/webp/gif ≤20MB・動画 mp4/mov/webm ≤300MB、最大8件。拡張子と内容の署名を検証し不正は 422）を指定でき、Brief はその発言から抽出してチャットで補完する。成功時は `HX-Redirect: /projects/:id`（201）。既存アセットの再利用は `POST /projects/:id/messages` の `attachment_asset_ids`。Series 作成後の Episode は `POST /series/:id/episodes` を使う。任意のフォーム項目 `brand_template_id` を指定すると、その Brand Template の制約を新しい Project にコピーする（存在しなければ 422 で何も作らない。F-23） | F-01, F-25, F-30 |
 | PUT | `/projects/:id/brief` | Brief 更新 | F-01 |
 | PUT | `/projects/:id/mode` | AUTO ⇄ DIRECTOR 切替 | F-02 |
 | PUT | `/projects/:id/confirmation-level` | FULL AUTO / KEY CHECK / CUSTOM CHECK 設定。Body `level`=`full_auto\|key_check\|custom_check`、`checkpoints`（CUSTOM CHECK の確認ポイント、複数可。空なら前回の選択、無ければ script+final）。変更内容はスレッドに AI 発言として記録される | F-03 |
@@ -186,6 +192,9 @@ Audio Timeline の版は Branch ごとに 1 から振る追記のみの系列で
 |---|---|---|---|
 | POST | `/projects/:id/brand-constraints` | Brand Guideline/禁止表現/Disclaimer/Product Claims/Logo Rules/Character Restrictions/Rights/Platform Rules 登録。フォーム `type`（`brand_guideline`/`forbidden_expression`/`required_disclaimer`/`product_claim`/`logo_rule`/`character_restriction`/`asset_rights`/`platform_rule`）・`level`（`lock`/`advisory`、省略時 `lock`）・`text`（1〜1000 文字。禁止表現は 1 行に 1 つ）。成功は 200 で `brand_constraint_list` を返す。入力不備は 422（入力とエラーを載せた `brand_constraint_list`）、Project が無ければ 404。Prompt 生成・AI Video Judge・Final QC の適用は `spec/spec.md` §26.1。`lock` の禁止表現を含む指示での生成・再生成・候補生成は 403（Take を作らない）、生成した Shot Spec が違反する場合は生成ジョブが失敗して理由をチャットに残す | F-23 |
 | DELETE | `/brand-constraints/:id` | 制約削除。200 で `brand_constraint_list` を返す。無ければ 404。設定画面（`GET /projects/:id/settings`）の `brand_constraint_list` から登録・削除できる | F-23 |
+| POST | `/projects/:id/brand-templates` | Project の制約の現在のセットを Brand Template として保存（M3）。フォーム `name`（空白をまとめて 1〜100 文字、大文字小文字を区別せず一意）。保存はその時点のコピー（以後の Project の制約の変更はテンプレートに影響しない）。成功は 200 で `brand_template_panel`。名前の不備・重複、制約が 1 件もない Project は 422（入力とエラーを載せた `brand_template_panel`）、Project が無ければ 404。設定画面（`GET /projects/:id/settings`）に `brand_template_panel` を表示する | F-23 |
+| POST | `/projects/:id/brand-templates/:templateId/apply` | テンプレートの制約を既存 Project にコピー適用（M3）。同じ `type`・`level`・`text` の制約を Project がすでに持つ場合はコピーせず、既存の制約は変更しない。適用後のコピーは Project 自身の制約で、独立して削除・追加できテンプレートには伝播しない。200 で `brand_constraint_list`、Project またはテンプレートが無ければ 404 | F-23 |
+| DELETE | `/projects/:id/brand-templates/:templateId` | テンプレートを削除（M3。`:id` は応答を描く設定画面の Project）。適用済みの Project の制約は変わらない。200 で `brand_template_panel`、無ければ 404 | F-23 |
 | GET | `/projects/:id/cost-summary` | Shot/Scene/Project 別の推定コスト・実コスト集計（`cost_summary_panel`向けフラグメント）。推定コストは生成時の見積り、実コストはベンダーが報告した金額（`cost_ledger_entry.actual_cost`。報告が無い呼び出しがあれば合計に `*` を付ける）。予算上限に対する消化率を併せて表示し、フラグメントは 15 秒ごとに自己更新する | F-22 |
 | POST | `/projects/:id/takes/:takeId/archive` | Take の動画ファイルを削除して Rejected にする（Take 行・Judge/Repair 履歴・コスト記録は残す）。Selected Take は 409、当該 Project に無い Take・ファイルを既に手放した Take は 404。ディスク使用量パネルのフラグメントを返す | non-functional.md §4 |
 | POST | `/projects/:id/storage/archive-unneeded` | 不要な Take（Rejected、または同じ Shot の別 Take が Selected）をまとめてアーカイブする。ディスク使用量パネルのフラグメントを返す | non-functional.md §4 |
@@ -216,7 +225,7 @@ M2 の入出力契約（Issue #15）:
 | Method | Path | 概要 | 対応機能 |
 |---|---|---|---|
 | POST | `/series` | Series 作成。Body（フォーム）`name`（1〜100 文字。`from_project_id` があれば省略可で、その Project 名になる）、`from_project_id`（任意）で既存 Project の Character/Product/Location と有効な Notes を Series 正本として登録し、その Project を Episode 1 にする。正本はバージョン 1（`series_version`）。成功は 201 と `HX-Redirect: /series/:id`。名前が空・長すぎる／`from_project_id` がすでに Series に属している場合は 422、`from_project_id` が存在しない場合は 404 | F-29, F-31 |
-| POST | `/series/:id/episodes` | Series 正本を継承した Episode（Project）を作成（Character/Product/Location/Notes を project 側の行へコピーし `origin_id` で由来を保持。参照画像は Project の `asset`・Reference Library にも複製し、Style は Brief の `style` に入れる）。`episode_number` は最大値+1（`(series_id, episode_number)` UNIQUE）。Body `previous_episode_id`（任意、同じ Series の Episode）で前 Episode の最終 World State を開始状態にし、`inherited_world_state_version_id` に記録する。成功は 201 と `HX-Redirect: /projects/:id`。Series が無ければ 404、`previous_episode_id` が同じ Series の Episode でなければ 422 | F-29, F-25, F-31 |
+| POST | `/series/:id/episodes` | Series 正本を継承した Episode（Project）を作成（Character/Product/Location/Notes を project 側の行へコピーし `origin_id` で由来を保持。参照画像は Project の `asset`・Reference Library にも複製し、Style は Brief の `style` に入れる）。`episode_number` は最大値+1（`(series_id, episode_number)` UNIQUE）。Body `previous_episode_id`（任意、同じ Series の Episode）で前 Episode の最終 World State を開始状態にし、`inherited_world_state_version_id` に記録する。成功は 201 と `HX-Redirect: /projects/:id`。Series が無ければ 404、`previous_episode_id` が同じ Series の Episode でなければ 422。任意のフォーム項目 `brand_template_id` を指定すると、その Brand Template の制約を Episode にコピーする（存在しなければ 422 で何も作らない。F-23。Series 自体は制約を持たない） | F-29, F-25, F-31 |
 | PUT | `/series/:id/characters/:characterId` | Series 正本の Character 更新。Body（フォーム）`hairstyle`/`wardrobe`/`voice`/`personality`（送った項目だけ更新）。応答は更新後の Series ビュー（200）で、新しい `series_version` を追記する。既存 Episode には自動伝播しない（次の Episode から適用）。項目が無い／長すぎる場合は 422、Series・Character が無ければ 404 | F-29 |
 | PUT | `/series/:id/style` | Series の Style 正本（テキスト、500 文字以内）の更新。Body `style`。応答は更新後の Series ビュー（200）で、新しい `series_version` を追記する。既存 Episode には自動伝播しない | F-29 |
 
@@ -244,6 +253,26 @@ M2 の入出力契約（Issue #15）:
 - `POST /projects/:id/references`: 成功時は更新後のライブラリ（201）。ファイルなし・拡張子と内容の不一致・サイズ超過・不正な `kind`・名前が空か長すぎる・タグが多すぎる／長すぎるは 422（何も保存しない）、存在しない Project は 404
 - `DELETE /projects/:id/references/:referenceId`: 更新後のライブラリ（200）。当該 Project に無ければ 404
 - `POST /shots/:id/references`: 応答は更新後のライブラリ相当ではなく Shot カード（200）。同じ種別・同じ名前の参照があれば置き換え、`library_item` に登録 ID を記録する。Reference Pack の再生成ではピン留めした参照を残し、再生成しない。`reference_id` が空は 422、Shot または `reference_id`（同じ Project のもの）が無ければ 404、生成中の Shot は 409
+
+### 2.12 Team Collaboration（M3）
+
+| Method | Path | 概要 | 対応機能 |
+|---|---|---|---|
+| POST | `/projects/:id/reviews` | レビュー依頼の作成。Body（フォーム）`export_id`（当該 Project の Final Export）、`note`（任意、1000 文字以内） | F-32 |
+| POST | `/projects/:id/reviews/feedback` | Review Response の取り込み。`multipart/form-data`、フィールド `response`（JSON ファイル） | F-32 |
+| PUT | `/projects/:id/review-comments/:commentId` | 取り込んだコメントの解決済み切替。Body `resolved=true\|false` | F-32 |
+| POST | `/reviews/import` | Review Package の読み込み（レビュアー側）。`multipart/form-data`、フィールド `package` | F-32 |
+| POST | `/reviews/:id/comments` | コメントの追加。Body `timecode`（動画内の位置、秒。空なら位置なし）、`body`（1〜2000 文字） | F-32 |
+| DELETE | `/reviews/:id/comments/:commentId` | コメントの削除 | F-32 |
+| PUT | `/reviews/:id/decision` | 判定を書く。Body `reviewer_name`（1〜50 文字）、`decision=approved\|changes_requested`、`comment`（任意、2000 文字以内） | F-32 |
+
+入出力契約（認証は行わない。共有物の中身と除外は `spec/spec.md` §27.1、`spec/requirements/non-functional.md` §5）:
+
+- `POST /projects/:id/reviews`: 成功時は更新後のレビュー一覧（201）。`export_id` が空・当該 Project の書き出しでない（存在しない Project も）は 404、書き出しファイルが無ければ 409、`note` が長すぎるは 422
+- `POST /projects/:id/reviews/feedback`: 成功時は更新後のレビュー一覧（201）。ファイルなし・JSON として読めない・`format`/`version` が違う・判定やコメントが不正・1MB 超過は 422（何も保存しない）、`review_id` がこの Project のレビュー依頼でなければ 422、`response_id` が取り込み済みなら 409。取り込むと Chat Workspace のスレッドに AI の発言（表示名・判定・コメント件数）を追加する
+- `PUT /projects/:id/review-comments/:commentId`: 更新後のレビュー一覧（200）。当該 Project のコメントでなければ 404
+- `POST /reviews/import`: 成功時は `HX-Redirect: /reviews/:id`（201）。ZIP として読めない・`manifest.json` と `video.mp4|webm` 以外のエントリがある・形式やバージョンが違う・動画の署名が合わない・サイズ超過は 422（何も保存しない）、同じ `review_id` を読み込み済みなら 409
+- `POST /reviews/:id/comments`・`DELETE /reviews/:id/comments/:commentId`・`PUT /reviews/:id/decision`: 更新後のレビュー画面のフラグメント（201 / 200）。コメントは 1 レビュー 200 件まで（超過は 422）、`timecode` が負・数値でない・24 時間超は 422、`decision` が不正・`reviewer_name` が空か長すぎるは 422。コメントや判定を変えると、書き出す応答の `response_id` が新しくなる
 
 ## 3. API ルート（Huma, JSON, `/api/v1`）
 
@@ -382,4 +411,5 @@ Notes:
 | 1.35 | 2026-09-30 | §2.7 の `POST /projects/:id/brand-constraints`・`DELETE /brand-constraints/:id` の入出力・エラー（422/404）と、Brand 違反の 403 の扱い、Judge Issue の `brand_constraint_id` を追記 | M2「Safety / Brand Constraints」（Issue #23）の実装に合わせるため。403 の意味は `spec/spec.md` §26.1 |
 | 1.36 | 2026-09-30 | ページルートに `GET /projects/:id/analytics`・`GET /analytics`（Production Analytics）を追加。人間の介入の記録は既存のアクションルート（Take の選択・除外・Repair・生成・Shot Spec 編集・LOCK 変更・Timeline 保存・承認の変更依頼・モード切替）が成功時に `human_intervention` へ追記する（新しいアクションルートは無い） | M3「Production Analytics」（Issue #29）の MVP Success Metrics の表示と、既存テーブルにない人間の介入・上書きの記録のため |
 | 1.37 | 2026-09-30 | §2.6 に M3 の Editor 契約（Advanced 編集項目の反映、`need_shot`、`POST /edit-timelines/:id/request-additional-shot` と Retry Policy、Branch ごとの Edit Timeline、クリップの `kind`/`caption`）を追記 | Advanced Editor Agent と Editor → Reshoot Loop（Issue #24）の実装に合わせるため |
-| 1.38 | 2026-09-30 | §2.6 に M3 の Audio Director 契約（`POST /projects/:id/audio/generate` の Quality Policy ごとの層・`branch_id`・予算・エラー、`POST /projects/:id/audio/voices`）を追記 | M3「Audio Director（フル機能）」（Issue #25）の実装に合わせるため |
+| 1.38 | 2026-09-30 | §2.7 に Brand Templates の `POST /projects/:id/brand-templates`・`POST /projects/:id/brand-templates/:templateId/apply`・`DELETE /projects/:id/brand-templates/:templateId` を追加し、`POST /projects` と `POST /series/:id/episodes` に任意の `brand_template_id` を追記 | M3「Brand Templates」（Issue #27）の API 契約がなかったため。保存・適用はコピーで更新は非伝播（`spec/requirements/functional.md` UC-9 拡張） |
+| 1.39 | 2026-09-30 | §2.6 に M3 の Audio Director 契約（`POST /projects/:id/audio/generate` の Quality Policy ごとの層・`branch_id`・予算・エラー、`POST /projects/:id/audio/voices`）を追記 | M3「Audio Director（フル機能）」（Issue #25）の実装に合わせるため |

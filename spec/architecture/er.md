@@ -432,6 +432,19 @@ erDiagram
         string enforcement_level
         json value
     }
+    BRAND_TEMPLATE ||--o{ BRAND_TEMPLATE_CONSTRAINT : contains
+    BRAND_TEMPLATE {
+        string id PK
+        string name UK
+        datetime created_at
+    }
+    BRAND_TEMPLATE_CONSTRAINT {
+        string id PK
+        string template_id FK
+        string type
+        string enforcement_level
+        json value
+    }
 ```
 
 ### 2.5 Notes（M2）
@@ -510,10 +523,17 @@ erDiagram
 | `project_policy` | `project_id` PK・FK（1:1、行が無い Project は上書き無し）。Quality Policy の既定値への個別上書き: `max_retries`（0〜10、1 Shot あたりの再試行回数）、`max_generation_seconds`（1〜3600、Take あたり）、`min_acceptance_score`（0〜100、総合）、`min_axis_score`（0〜100、Production Template の各軸）。NULL=Quality Policy の既定値（`domain.ProjectPolicy.Effective`）。Quality Policy・予算上限は `project` の列を使う | - |
 | `job` | バックグラウンドジョブ（生成・Judge・Repair、`spec/requirements/non-functional.md` §2, §3）。`id` PK。`kind` は `generate/judge/repair/plan`（`plan` は AUTO パイプラインの企画〜Shot 計画。`payload` は `{"project_id": ...}`、再開可能）、`status` は `queued/running/succeeded/failed`（各CHECK制約）。`payload` は JSON、`attempts` は実行開始ごとに加算、`error` は失敗理由、`started_at`/`finished_at` は NULL 許容。異常終了後の再起動時に `running` のまま残ったジョブを検出し、再開可能な種別は `queued` へ戻し、それ以外と再開回数上限超過は `failed`（`error`=`interrupted by abnormal termination`）にする。終端状態（`succeeded`/`failed`）は変更しない | `idx_job_status (status, created_at)` |
 | `brand_constraint` | `project_id` FK。`type` は `brand_guideline/forbidden_expression/required_disclaimer/product_claim/logo_rule/character_restriction/asset_rights/platform_rule` のいずれか。`enforcement_level` は `lock/advisory` のいずれか（CHECK制約、既定 `lock`。`lock` はスコアに関係なく違反時FAIL）。`value` は JSON `{"text": "..."}`（制約の内容。`forbidden_expression` は 1 行 1 表現）。`created_at`。Project の削除で行も消え（ON DELETE CASCADE）、Project バンドルに含める | `idx_brand_constraint_project (project_id)` |
+| `brand_template` | Brand Template（M3、F-23 / UC-9 拡張）。Project にも Series にも属さない（Organization が無いため全 Project で共有）。`name`（UNIQUE・大文字小文字を区別しない `COLLATE NOCASE`、1〜100 文字）、`created_at`。Project 単位の Export バンドルには含めない（適用済みの制約は Project の `brand_constraint` 行として含まれる） | `name` の UNIQUE |
+| `brand_template_constraint` | `template_id` FK（ON DELETE CASCADE）。`type` / `enforcement_level` / `value` は `brand_constraint` と同じ形式と CHECK 制約。`project_id` を持たない。挿入順（`rowid`）が表示順。保存時に Project の `brand_constraint` 行を **コピー**して作り、以後 Project の制約とはリンクしない（元の Project の制約を変えてもテンプレートは変わらない）。Project / Episode への適用も `brand_constraint` 行のコピーで、`origin_id` のような参照は残さない（同じ `type`・`enforcement_level`・`text` を既に持つ制約はコピーしない）。テンプレートを削除しても適用済みの Project には影響しない（Series 正本と同じ「更新は自動伝播しない」方針） | `idx_brand_template_constraint_template (template_id)` |
 | `note` | `project_id` FK（NULL許容）と `series_id` FK（NULL許容）のちょうど一方が非NULL（CHECK制約、`character` 等と同じ規則）。`project_id` 非NULL=Project 内のメモ、`series_id` 非NULL=Series 正本。Episode 開始時に Series 正本から project 側の行へコピーし（最新バージョンを `version_number`=1 として複製。アーカイブ済みは除く）、`origin_id`（Series 正本行への FK、NULL許容）で由来を保持する。`category` は `character/product/location/world/tone/other`（CHECK制約）。`pinned` は既定 false。`archived_at`（NULL許容、NULL=有効。`DELETE` はアーカイブであり行を削除しない）。タイトル・本文は `note_version` が持つ | `idx_note_project (project_id, archived_at)`, `idx_note_series (series_id, archived_at)` |
 | `note_version` | `note_id` FK。`(note_id, version_number)` UNIQUE、`version_number` は単調増加。`title`、`content`（自由記述テキスト）、`source` は `manual/chat`（CHECK制約）。追記のみで更新しない | `idx_note_version_note (note_id, version_number)` |
 | `note_promotion` | `note_version_id` FK（UNIQUE。同じメモバージョンから再提案しない。対象は Project スコープの `note` のバージョンのみで、アプリケーション層で検証）。`proposed_diff` は World State へ適用する差分の JSON（対象 Character/Product/Location・フィールド・値）、`locked_conflicts` は LOCK のため除外した項目の JSON。`status` は `pending/applied/rejected`（CHECK制約）。`world_state_version_id` FK（NULL許容、`applied` のときのみ設定）。`resolved_at`（NULL許容）。Approval カードは `chat_message.ref_type=note_promotion` と `ref_id` でこの行を指す | `idx_note_promotion_status (status)` |
 | `reference_item` | Reference Library（`spec/spec.md` §10.1、M2）。`project_id` FK、`asset_id` FK（UNIQUE、`asset.type=reference` の画像。Asset の削除で行も消える）。`kind` は `character/product/location/style/lighting`（CHECK制約。Keyframe は Shot 固有のため登録しない）、`name`（100文字以内、アプリケーション層で検証）、`tags`（JSON 配列、最大10個）、`source` は `generated/uploaded`（CHECK制約）、`source_shot_id` FK（NULL許容、`generated` の由来の Shot。Shot 削除で NULL）。マイグレーションは `20260930001500_reference_library` | `idx_reference_item_project (project_id, kind)` |
+| `review_request` | Team Collaboration（`spec/spec.md` §27.1、M3）のオーナー側。`project_id` FK、`export_id` FK（レビュー対象の Final Export。書き出しの削除で行も消える）、`note`（レビュアーへのメモ、1000文字以内はアプリケーション層で検証）。Review Package の `review_id` はこの `id`。マイグレーションは `20260930130800_team_collaboration` | `idx_review_request_project (project_id, created_at)` |
+| `review_response` | 取り込んだ Review Response 1 件。`id` はレビュアーが付けた `response_id`（PK。同じファイルを二重に取り込まない）、`review_request_id` FK、`reviewer_name`（自己申告で未検証）、`decision` は `approved/changes_requested`（CHECK制約）、`comment`、`created_at`（応答の作成時刻）、`imported_at` | `idx_review_response_request (review_request_id)` |
+| `review_comment` | 応答のコメント。`review_response_id` FK、`timecode_ms`（NULL許容、0 以上）、`body`、`resolved`（0/1、オーナーの解決済みマーク） | `idx_review_comment_response (review_response_id)` |
+| `review_inbox` | レビュアー側で読み込んだ Review Package 1 件（どの Project にも属さない。プロジェクトバンドルには入れない）。`review_id` UNIQUE（同じパッケージを二重に読み込まない）、`project_name`・`note`・`file_name`・`resolution`・`aspect_ratio`・`codec` は manifest 由来、`video_path` はアセットディレクトリからの相対パス（`reviews/<inbox id>/video.mp4|webm`）、`reviewer_name`・`decision`（NULL許容）・`comment` はレビュアーの入力、`response_id` はコメントや判定を変えるたびに新しくなる | - |
+| `review_inbox_comment` | レビュアーのコメント。`inbox_id` FK（削除でカスケード）、`timecode_ms`（NULL許容）、`body`。1 件の `review_inbox` に最大 200 件（アプリケーション層で検証） | `idx_review_inbox_comment_inbox (inbox_id)` |
 
 ## 4. 設計メモ
 
@@ -550,6 +570,7 @@ erDiagram
 - `audio_timeline_version.timeline`: `{"mode"?,"edit_timeline_id","clips":[{"kind"?,"speaker"?,"text"?,"voice_id"?,"layer"?,"prompt"?,"model"?,"path","start_seconds","duration_seconds","loop"?,"gain_db"?}],"speech_expected","quality"?,"scenes"?:[{"index","title"?,"start_seconds","end_seconds","tempo","emotion"?,"clips","avg_clip_seconds"}],"lip_sync"?:[{"clip_index","take_id","path","duration_seconds","model"}],"skipped"?:[{"layer","prompt"?,"reason":"policy|budget|error","detail"?}],"estimated_cost"?,"mix_path","duration_seconds","target_lufs","measured_lufs","true_peak_db"}`。`edit_timeline_id` は音声を作った Edit Timeline の版で、Final QC が最新の編集と一致するかを判定するのに使う。`mix_path` と各クリップ・`lip_sync` の `path` はアセットディレクトリからの相対パス。**M3 の Audio Director が作った版は `mode` が `director`**で、`layer`（`dialogue/narration/bgm/se/foley/ambience`）と `model`（`elevenlabs-tts/-music/-sfx`）を持つ。M1 の簡易音声の版（`mode` なし・`layer` なし）はそのまま読める（層は `kind` から Dialogue / Narration とみなす）。版は `(project_id, branch_id)` ごとの追記のみ
 - 保存は追記のみ（`version_number` は Project 内の最大値 + 1）。Edit Timeline の保存は、呼び出し側が表示していた版が最新のときだけ成功する（別の版が保存済みなら拒否）
 - `export.file_path` はアセットディレクトリからの相対パス（`<project_id>/exports/<export_id>.mp4|webm`）
+- **Team Collaboration の保存（M3）**: 共有物（Review Package / Review Response）は DB の行やファイルをそのまま渡さず、`domain.ReviewManifest` / `domain.ReviewResponse` の固定フィールドだけから組み立てる（API キー・顔基準画像・Brief・パスを構造的に含められない。`spec/requirements/non-functional.md` §5）。API キーは OS のセキュアストレージにだけあり DB に無い。オーナー側の `review_request` / `review_response` / `review_comment` は Project に属するのでプロジェクトバンドルに含め、レビュアー側の `review_inbox` / `review_inbox_comment` は他チームの動画を含む別物としてバンドルから除く（`unbundledTables`）。承認状態は列に持たず、`review_response` のレビュアー表示名ごとの最新の応答から求める（`spec/spec.md` §27.1）
 
 ## 改訂履歴
 
@@ -591,4 +612,6 @@ erDiagram
 | 1.33 | 2026-09-30 | `brand_constraint` テーブルを実装（マイグレーション `20260930103000_brand_constraint.sql`）。`value` の JSON 構造・`created_at`・カスケード削除を明記。`final_qc_result.findings` の要素に `advisory`（Brand 制約の警告。FAIL にしない）を追加 | M2「Safety / Brand Constraints」（Issue #23）の実装に合わせるため |
 | 1.34 | 2026-09-30 | `human_intervention` を追加（§2.4 の ER 図、§3 のテーブル定義） | M3「Production Analytics」（Issue #29）。MVP Success Metrics の Human Intervention・User Override・AUTO Completion Rate が既存テーブルから読めないため |
 | 1.35 | 2026-09-30 | `edit_timeline_version.timeline` のクリップに `kind`・`caption`、`editor_judge_result.findings` に `need_shot` を追記し、`reshoot_request` テーブルを追加 | Advanced Editor Agent と Editor → Reshoot Loop（Issue #24）の実装に合わせるため |
-| 1.36 | 2026-09-30 | `voice_clone` テーブルを追加（マイグレーション `20260930193000_voice_clone.sql`）。`audio_timeline_version.timeline` に M3 の Audio Director の構造（`mode`・`layer`・`scenes`・`lip_sync`・`skipped`・`estimated_cost`）を追記し、版を Branch ごとの系列とした | M3「Audio Director（フル機能）」（Issue #25）の実装に合わせるため |
+| 1.36 | 2026-09-30 | `brand_template` / `brand_template_constraint` テーブルを追加（マイグレーション `20260930130000_brand_template.sql`）。テンプレートはグローバル（Project/Series に属さない）で、保存・適用ともに `brand_constraint` 行のコピー（リンクなし・更新は非伝播）と定めた | M3「Brand Templates」（Issue #27）。要件が未定義だったため保守的に確定 |
+| 1.37 | 2026-09-30 | `review_request` / `review_response` / `review_comment` / `review_inbox` / `review_inbox_comment` テーブルと設計メモを追加（マイグレーション `20260930130800_team_collaboration`） | M3「Team Collaboration」（Issue #28）のレビュー依頼・応答・コメント・レビュアー側の受信箱を保存するテーブルが存在しなかったため |
+| 1.38 | 2026-09-30 | `voice_clone` テーブルを追加（マイグレーション `20260930193000_voice_clone.sql`）。`audio_timeline_version.timeline` に M3 の Audio Director の構造（`mode`・`layer`・`scenes`・`lip_sync`・`skipped`・`estimated_cost`）を追記し、版を Branch ごとの系列とした | M3「Audio Director（フル機能）」（Issue #25）の実装に合わせるため |
