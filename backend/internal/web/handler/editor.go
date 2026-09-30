@@ -80,7 +80,7 @@ func RoughCut(svc *service.EditorService) gin.HandlerFunc {
 	return editorStage(func(c *gin.Context) (service.EditorView, error) {
 		var in roughCutForm
 		if err := c.ShouldBind(&in); err != nil {
-			return service.EditorView{}, &service.ValidationError{Field: "branch_id", Message: "Branch の指定を読み取れませんでした"}
+			return service.EditorView{}, unreadable(c, err, "branch_id", "Branch の指定を読み取れませんでした")
 		}
 		return svc.RoughCut(c.Request.Context(), c.Param("id"), in.BranchID)
 	}, "timeline-reload")
@@ -107,7 +107,7 @@ func GenerateAudio(svc *service.EditorService) gin.HandlerFunc {
 	return editorStage(func(c *gin.Context) (service.EditorView, error) {
 		var in roughCutForm
 		if err := c.ShouldBind(&in); err != nil {
-			return service.EditorView{}, &service.ValidationError{Field: "branch_id", Message: "Branch の指定を読み取れませんでした"}
+			return service.EditorView{}, unreadable(c, err, "branch_id", "Branch の指定を読み取れませんでした")
 		}
 		return svc.GenerateAudio(c.Request.Context(), c.Param("id"), in.BranchID)
 	}, "")
@@ -147,7 +147,7 @@ func Export(svc *service.EditorService) gin.HandlerFunc {
 	return editorStage(func(c *gin.Context) (service.EditorView, error) {
 		var in exportForm
 		if err := c.ShouldBind(&in); err != nil {
-			return service.EditorView{}, &service.ValidationError{Message: "書き出しの指定を読み取れませんでした"}
+			return service.EditorView{}, unreadable(c, err, "", "書き出しの指定を読み取れませんでした")
 		}
 		return svc.Export(c.Request.Context(), c.Param("id"), service.ExportInput{AspectRatio: in.AspectRatio, Resolution: in.Resolution, Codec: in.Codec})
 	}, "")
@@ -160,7 +160,7 @@ func SaveEditTimeline(svc *service.EditorService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var tl domain.EditTimeline
 		if err := c.ShouldBindJSON(&tl); err != nil {
-			toast(c, &service.ValidationError{Field: "clips", Message: "タイムラインの内容を読み取れませんでした"})
+			toast(c, unreadable(c, err, "clips", "タイムラインの内容を読み取れませんでした"))
 			return
 		}
 		if _, err := svc.SaveTimeline(c.Request.Context(), c.Param("id"), tl); err != nil {

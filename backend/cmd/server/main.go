@@ -178,6 +178,9 @@ func serve(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	srv := &http.Server{
 		Handler:           engine,
 		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       5 * time.Minute, // the largest upload (a video bundle) must arrive within it
+		IdleTimeout:       2 * time.Minute,
+		// No WriteTimeout: media is streamed and can take arbitrarily long.
 	}
 
 	serveErr := make(chan error, 1)
