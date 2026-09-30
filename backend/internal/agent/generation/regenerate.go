@@ -67,7 +67,7 @@ func (o *Orchestrator) RegenerationStrategy(ctx context.Context, ref repository.
 		return Strategy{}, err
 	}
 	cfg := o.adapter.Config()
-	s, err := DecideWithModel(cfg, policy.Quality, ref.Shot.Duration, budget, FixedModel(locks))
+	s, err := o.decide(ctx, ref, policy, specOf(ref.Shot), budget)
 	if err != nil {
 		return Strategy{}, err
 	}
@@ -96,7 +96,13 @@ func (o *Orchestrator) RegenerationStrategy(ctx context.Context, ref repository.
 	if affordable(remainingBudget(budget), s.CostPerTake) == 0 {
 		return Strategy{}, ErrBudgetExceeded
 	}
-	s.Reasons = append(s.Reasons, fmt.Sprintf("different model: %s instead of %s", primary.Model, r.SourceModel))
+	reason := fmt.Sprintf("different model: %s instead of %s", primary.Model, r.SourceModel)
+	s.Reasons = append(s.Reasons, reason)
+	if s.Routing.Mode != "" {
+		s.Routing.Primary = domain.RoutingModel{Model: primary.Model, Resolution: primary.Resolution}
+		s.Routing.Fallback = domain.RoutingModel{Model: fallback.Model, Resolution: fallback.Resolution}
+		s.Routing.Reason += "; " + reason
+	}
 	return s, nil
 }
 
@@ -154,7 +160,7 @@ func (o *Orchestrator) Regenerate(ctx context.Context, ref repository.ShotRef, r
 	if err != nil {
 		return "", err
 	}
-	world, err := o.gens.WorldContext(ctx, ref.ProjectID)
+	world, err := o.gens.WorldContext(ctx, ref.ProjectID, ref.Scene.BranchID)
 	if err != nil {
 		return "", err
 	}
@@ -192,11 +198,11 @@ func (o *Orchestrator) reviseSpec(ctx context.Context, ref repository.ShotRef, p
 	if err != nil {
 		return domain.ShotSpec{}, nil, err
 	}
-	world, err := o.gens.WorldContext(ctx, ref.ProjectID)
+	world, err := o.gens.WorldContext(ctx, ref.ProjectID, ref.Scene.BranchID)
 	if err != nil {
 		return domain.ShotSpec{}, nil, err
 	}
-	shots, err := o.gens.ListProjectShots(ctx, ref.ProjectID)
+	shots, err := o.gens.StoryShots(ctx, ref.ProjectID, ref.Scene.BranchID)
 	if err != nil {
 		return domain.ShotSpec{}, nil, err
 	}

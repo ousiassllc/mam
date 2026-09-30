@@ -205,10 +205,10 @@ func (r *VersionRepository) RestoreShotVersion(ctx context.Context, shotID strin
 // RestoreWorldStateVersion restores the World State of the trunk (branchID "") or of the Branch
 // to version number and returns the number of the version that records the restore.
 //
-// The trunk keeps its state in the Character / Product / Location rows, so the text fields of
-// the entities the version knows are written back (entities added since are left alone), the
-// Camera and Story come from the version, and the result is appended as a new version. A Branch
-// keeps whole snapshots only, so its version is copied to the end of its series.
+// The trunk and every Branch keep their state in their own Character / Product / Location rows, so
+// the text fields of the entities the version knows are written back (entities added since are
+// left alone), the Camera and Story come from the version, and the result is appended as a new
+// version of that series.
 // ErrNotFound: unknown Project, Branch or version; ErrLocked: the restore would change a LOCKed field.
 func (r *VersionRepository) RestoreWorldStateVersion(ctx context.Context, projectID, branchID string, number int) (int, error) {
 	var newNumber int
@@ -226,11 +226,7 @@ func (r *VersionRepository) RestoreWorldStateVersion(ctx context.Context, projec
 		if err != nil {
 			return err
 		}
-		if branchID != "" {
-			newNumber, err = r.appendBranchWorldState(ctx, tx, projectID, branchID, state)
-			return err
-		}
-		newNumber, err = r.restoreTrunk(ctx, tx, projectID, state)
+		newNumber, err = r.restoreWorld(ctx, tx, projectID, branchID, state)
 		return err
 	})
 	if errors.Is(err, ErrNotFound) || errors.Is(err, ErrLocked) {
@@ -242,26 +238,15 @@ func (r *VersionRepository) RestoreWorldStateVersion(ctx context.Context, projec
 	return newNumber, nil
 }
 
-func (r *VersionRepository) appendBranchWorldState(ctx context.Context, tx *sql.Tx, projectID, branchID, state string) (int, error) {
-	var next int
-	if err := tx.QueryRowContext(ctx,
-		`SELECT COALESCE(MAX(version_number), 0) + 1 FROM world_state_version WHERE project_id = ? AND branch_id = ?`, projectID, branchID).Scan(&next); err != nil {
-		return 0, err
-	}
-	_, err := tx.ExecContext(ctx,
-		`INSERT INTO world_state_version (id, project_id, branch_id, version_number, state, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
-		domain.NewID(), projectID, branchID, next, state, formatTime(r.now()))
-	return next, err
-}
-
-// restoreTrunk writes the version's entity fields back into the rows, checks LOCK on the data
-// being written, and appends the resulting World State.
-func (r *VersionRepository) restoreTrunk(ctx context.Context, tx *sql.Tx, projectID, state string) (int, error) {
+// restoreWorld writes the version's entity fields back into the rows of the trunk (or of the
+// Branch), checks LOCK on the data being written, and appends the resulting World State to that
+// series.
+func (r *VersionRepository) restoreWorld(ctx context.Context, tx *sql.Tx, projectID, branchID, state string) (int, error) {
 	var snapshot domain.WorldContext
 	if err := json.Unmarshal([]byte(state), &snapshot); err != nil {
 		return 0, fmt.Errorf("decode world state version: %w", err)
 	}
-	before, err := readWorld(ctx, tx, projectID)
+	before, err := readWorld(ctx, tx, projectID, branchID)
 	if err != nil {
 		return 0, err
 	}
@@ -323,13 +308,13 @@ func (r *VersionRepository) restoreTrunk(ctx context.Context, tx *sql.Tx, projec
 			}
 		}
 	}
-	after, err := readWorld(ctx, tx, projectID)
+	after, err := readWorld(ctx, tx, projectID, branchID)
 	if err != nil {
 		return 0, err
 	}
 	after.Camera, after.Story = camStory.Camera, camStory.Story
 	wr := &WorldRepository{db: r.db, now: r.now}
-	_, number, err := wr.appendVersion(ctx, tx, projectID, after)
+	_, number, err := wr.appendVersion(ctx, tx, projectID, branchID, after)
 	return number, err
 }
 

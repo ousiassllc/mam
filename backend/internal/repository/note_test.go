@@ -232,7 +232,7 @@ func TestNoteRepository_ApprovingAppliesToTheTrunkWorldStateAndAppendsAVersion(t
 	assert.Equal(t, 1, res.Version)
 	assert.JSONEq(t, `"bob"`, string(res.Applied.Changes[0].From))
 
-	w, err := f.world.World(ctx, "p1")
+	w, err := f.world.World(ctx, "p1", "")
 	require.NoError(t, err)
 	assert.Equal(t, "long_black", w.Characters[0].Hairstyle)
 	assert.Equal(t, "red_scarf", w.Characters[0].Wardrobe)
@@ -263,7 +263,7 @@ func TestNoteRepository_ApprovalJudgesLockAgain(t *testing.T) {
 	require.Len(t, res.Skipped.Changes, 1)
 	assert.Equal(t, "hairstyle", res.Skipped.Changes[0].Field)
 
-	w, err := f.world.World(ctx, "p1")
+	w, err := f.world.World(ctx, "p1", "")
 	require.NoError(t, err)
 	assert.Equal(t, "bob", w.Characters[0].Hairstyle)
 	assert.Equal(t, "red_scarf", w.Characters[0].Wardrobe)
@@ -279,7 +279,7 @@ func TestNoteRepository_ApprovingWhenEverythingIsLockedAppendsNoVersion(t *testi
 	res, err := f.notes.ResolvePromotion(ctx, p.ID, true)
 	require.NoError(t, err)
 	assert.Zero(t, res.Version)
-	w, err := f.world.World(ctx, "p1")
+	w, err := f.world.World(ctx, "p1", "")
 	require.NoError(t, err)
 	assert.Zero(t, w.Version)
 }
@@ -294,7 +294,7 @@ func TestNoteRepository_RejectingLeavesTheWorldStateAlone(t *testing.T) {
 	got, err := f.notes.Promotion(ctx, p.ID)
 	require.NoError(t, err)
 	assert.Equal(t, domain.PromotionRejected, got.Status)
-	w, err := f.world.World(ctx, "p1")
+	w, err := f.world.World(ctx, "p1", "")
 	require.NoError(t, err)
 	assert.Equal(t, "bob", w.Characters[0].Hairstyle)
 	assert.Zero(t, w.Version)

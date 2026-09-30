@@ -37,7 +37,10 @@ type takeApp struct {
 
 // newTakeApp is an app with ffmpeg and a Shot with three Takes: t1 and t2 are 1080p, 4 s; t3 is a
 // 4K (2160p) Take of 1 s. Their files are real videos.
-func newTakeApp(t *testing.T) *takeApp {
+func newTakeApp(t *testing.T) *takeApp { return newTakeAppWith(t, nil) }
+
+// newTakeAppWith is newTakeApp with the chance to change the service dependencies.
+func newTakeAppWith(t *testing.T, mutate func(*service.Deps)) *takeApp {
 	t.Helper()
 	tools, err := media.Look()
 	if err != nil {
@@ -48,7 +51,11 @@ func newTakeApp(t *testing.T) *takeApp {
 	db, err := repository.Open(context.Background(), filepath.Join(dir, "mam.db"), nil)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = db.Close() })
-	svc := service.New(service.Deps{DB: db, Credentials: credential.NewKeyring(), AssetsDir: filepath.Join(dir, "assets"), Media: &tools})
+	deps := service.Deps{DB: db, Credentials: credential.NewKeyring(), AssetsDir: filepath.Join(dir, "assets"), Media: &tools}
+	if mutate != nil {
+		mutate(&deps)
+	}
+	svc := service.New(deps)
 	a := &app{t: t, db: db, engine: router.New(svc, router.Options{}), svc: svc}
 	a.cookie, a.token = bootstrap(t, a.engine)
 	ta := &takeApp{app: a, dir: dir, tools: tools}

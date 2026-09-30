@@ -14,7 +14,7 @@ import (
 // fails the generation: the World State then simply stays as it was and the next Shot starts
 // from it.
 func (o *Orchestrator) updateWorldState(ctx context.Context, ref repository.ShotRef, spec domain.ShotSpec, takeID string) {
-	world, err := o.world.World(ctx, ref.ProjectID)
+	world, err := o.world.World(ctx, ref.ProjectID, ref.Scene.BranchID)
 	if err != nil {
 		o.logger.Warn("world state update skipped: read world state", "shot_id", ref.Shot.ID, "err", err)
 		return
@@ -30,7 +30,7 @@ func (o *Orchestrator) updateWorldState(ctx context.Context, ref repository.Shot
 		return
 	}
 	// ApplyStateDiff judges the LOCKs again on the rows it writes.
-	applied, version, err := o.world.ApplyStateDiff(ctx, ref.ProjectID, ref.Shot.ID, takeID, diff)
+	applied, version, err := o.world.ApplyStateDiff(ctx, ref.ProjectID, ref.Scene.BranchID, ref.Shot.ID, takeID, diff)
 	if err != nil {
 		o.logger.Warn("world state update failed", "shot_id", ref.Shot.ID, "err", err)
 		return

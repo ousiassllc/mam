@@ -60,7 +60,7 @@ func (f genFixture) projectState(t *testing.T) domain.ProjectState {
 
 func (f genFixture) character(t *testing.T) domain.WorldCharacter {
 	t.Helper()
-	view, err := f.svc.World.View(context.Background(), f.projectID)
+	view, err := f.svc.World.View(context.Background(), f.projectID, "")
 	require.NoError(t, err)
 	require.NotEmpty(t, view.World.Characters)
 	return view.World.Characters[0]
@@ -135,7 +135,7 @@ func TestNotes_LockedFieldsAreLeftOutOfTheProposalAndOfTheApproval(t *testing.T)
 	f.llm.extractor = promotionAnswer("hairstyle", "personality")
 	f.buildReferencePack(t)
 	c := f.character(t)
-	_, err := f.svc.World.SetFieldLock(context.Background(), f.projectID, domain.TargetCharacter, c.ID, "hairstyle", domain.LockLocked)
+	_, err := f.svc.World.SetFieldLock(context.Background(), f.projectID, "", domain.TargetCharacter, c.ID, "hairstyle", domain.LockLocked)
 	require.NoError(t, err)
 
 	_, err = f.svc.Notes.CreateProjectNote(context.Background(), f.projectID, service.NoteInput{Title: "Mio", Content: "黒髪ロングで落ち着いた性格"})
@@ -144,7 +144,7 @@ func TestNotes_LockedFieldsAreLeftOutOfTheProposalAndOfTheApproval(t *testing.T)
 	assert.Contains(t, card.Content, "LOCK 中のため未反映")
 
 	// A LOCK set after the proposal is judged again on approval.
-	_, err = f.svc.World.SetFieldLock(context.Background(), f.projectID, domain.TargetCharacter, c.ID, "personality", domain.LockLocked)
+	_, err = f.svc.World.SetFieldLock(context.Background(), f.projectID, "", domain.TargetCharacter, c.ID, "personality", domain.LockLocked)
 	require.NoError(t, err)
 	_, _, err = f.svc.Chat.RespondApproval(context.Background(), f.projectID, card.ID, service.DecisionApprove, "")
 	require.NoError(t, err)

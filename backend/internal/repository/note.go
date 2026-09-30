@@ -547,7 +547,7 @@ func (r *NoteRepository) ResolvePromotion(ctx context.Context, id string, approv
 
 func (r *NoteRepository) applyPromotion(ctx context.Context, tx *sql.Tx, p domain.NotePromotion) (domain.PromotionResult, any, error) {
 	res := domain.PromotionResult{Applied: domain.StateDiff{Changes: []domain.StateChange{}}, Skipped: domain.StateDiff{Changes: []domain.StateChange{}}}
-	before, err := readWorld(ctx, tx, p.ProjectID)
+	before, err := readWorld(ctx, tx, p.ProjectID, "")
 	if err != nil {
 		return res, nil, err
 	}
@@ -579,11 +579,11 @@ func (r *NoteRepository) applyPromotion(ctx context.Context, tx *sql.Tx, p domai
 	if len(res.Applied.Changes) == 0 {
 		return res, nil, nil
 	}
-	after, err := readWorld(ctx, tx, p.ProjectID)
+	after, err := readWorld(ctx, tx, p.ProjectID, "")
 	if err != nil {
 		return res, nil, err
 	}
-	versionID, number, err := r.world.appendVersion(ctx, tx, p.ProjectID, after)
+	versionID, number, err := r.world.appendVersion(ctx, tx, p.ProjectID, "", after)
 	if err != nil {
 		return res, nil, err
 	}

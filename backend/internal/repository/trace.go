@@ -73,6 +73,11 @@ func (r *TraceRepository) TakeTrace(ctx context.Context, takeID string) (domain.
 	if tr.References == nil {
 		tr.References = domain.Shot{ShotSpec: pv.SpecSnapshot}.References()
 	}
+	var routed struct {
+		Routing *domain.RoutingDecision `json:"routing"`
+	}
+	_ = json.Unmarshal([]byte(params), &routed) // parameters written before Multi-model routing lack it
+	tr.Routing = routed.Routing
 	if assetID.Valid {
 		tr.Output = &domain.TraceOutput{AssetID: assetID.String, FilePath: filePath, MimeType: mime.String, SizeBytes: size.Int64}
 	}

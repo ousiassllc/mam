@@ -213,6 +213,86 @@ M1（F-14、Issue #10）で実装する Repair / Retake Loop の判断部分。�
 - **API キー**: `internal/credential` のプロバイダー `typesafe` に保存する。キーが無いときは呼ばず、何も記録しない
 - **記録**: `repair_shadow`（`spec/architecture/er.md`）に、Jev の選択・確率・confidence・Repair Agent の選択・一致の有無・遅延・トークン数・コスト（入力トークン × 単価）・失敗時の理由を 1 呼び出し 1 行で残す。集計（`RepairRepository.ShadowReport`）は一致率（失敗を除く）・confidence の平均と 10 区間の分布（各区間での一致数つき）・平均遅延・合計コストを返す。前段選別を有効にするかどうかは、この集計を見て §4.5 の導入手順に従って決める
 
+## 12. 音声（M1 簡易版）の実装（`internal/agent/audiodirector`）
+
+M1 は §5 のうち ElevenLabs の TTS（Dialogue / Narration）とローカル DSP（ffmpeg）のみを実装する。BGM・SE・Foley・Ambience・Lip Sync・音声クローンは M3。
+
+- **認証**: 設定画面の API キー（`credential.Store` のプロバイダー名 `elevenlabs`）。ヘッダー `xi-api-key`。キーがなければ音声生成は 502（「ElevenLabs の API キーが設定されていません」）
+- **TTS**: `POST {base}/v1/text-to-speech/{voice_id}`（既定 base `https://api.elevenlabs.io`、モデル `eleven_multilingual_v2`、日本語対応）。Dialogue と Narration はそれぞれ別の voice ID（既定は ElevenLabs の premade voice）。応答の音声（mp3）をそのままファイルにし、ffmpeg で扱う。429 はレート制限として利用者に伝え、リトライは行わない
+- **ミキシング・ラウドネス正規化**: すべてローカルの ffmpeg（外部 API を呼ばない）。TTS の行を `adelay` で Scene の開始時刻に置き、Take 自体の音声と `amix` で 1 本にし、`loudnorm` を 2 パス（測定 → 測定値を渡して線形補正）で −14 LUFS / −1.5 dBTP に揃える。測定値を Audio Timeline に保存する
+- **コスト**: TTS は `cost_ledger_entry` に記録しない（M1 の予算管理は動画 Take が対象。音声のコスト管理は M3）
+
+## 13. Multi-model routing（M3、`internal/agent/generation`）
+
+M3 Issue #26 の仕様。`spec/spec.md` §27 の「Multi-model routing」を、M1 のポリシー別ルーティング（§4、§9.3 の Generation Orchestrator）との差分として定義する。
+
+### 13.1 M1 のポリシー別ルーティングとの違い
+
+| 観点 | M1: ポリシー別ルーティング（§4） | M3: Multi-model routing |
+|------|--------------------------------|------------------------|
+| 決め方 | Quality Policy（FAST / BALANCED / MAX QUALITY）ごとに固定のプライマリ/代替 | Quality Policy の割り当てを**出発点（アンカー）**にし、Shot の性質・過去の Judge 実績・コストで、Shot ごとに使う動画モデルを入れ替える |
+| 入力 | Quality Policy、Shot の長さ、予算残額 | 左に加えて Shot Spec の性質（Product・Character/Acting・Camera Movement・Continuity）、Reference の種類、Project 内の Take の Judge 実績、モデルごとの推定コスト、ベンダーのサーキットブレーカーの状態 |
+| 実績の扱い | 使わない | Project 内で Judge 済みの Take の点数・合否を、モデルごとに集計して使う |
+| 実績が無いとき | — | アンカーのまま（M1 と完全に同じ結果になる）。実績が十分に溜まったモデルだけが候補として切り替わる |
+| 対象 | 動画 | **動画モデル（Take 生成）**。画像は用途別ルート（§3）、LLM は Agent 別ルート（§2）のまま。この 2 つは Take・Judge 実績を持たず、実績を判断基準に使えないため。ブレーカー連動のフェイルオーバー（§7）は従来どおり |
+
+Multi-model routing が動かない場合（ユーザーが Video Model を MANUAL / LOCK で固定した Shot、`routing.enabled` が偽）は M1 の挙動のままである。固定された Shot は、その Video Model だけを使い（M1 と同じ）、決定理由に「ユーザーが固定」と記録する。
+
+### 13.2 候補
+
+Quality Policy ごとに候補（`routing.candidates.<policy>`、動画モデル + 解像度）を設定で持つ。既定は、そのポリシーのプライマリ・代替と、残りの動画モデル 1 つ（`policies` の解像度に近い、対応する最小の解像度）:
+
+- FAST: Kling 3.0 720p / Seedance 2.0 480p / Runway Gen-4.5 720p
+- BALANCED: Seedance 2.0 720p / Kling 3.0 720p / Runway Gen-4.5 720p
+- MAX QUALITY: Runway Gen-4.5 720p / Kling 3.0 1080p / Seedance 2.0 1080p
+
+### 13.3 判断基準
+
+アンカー = Quality Policy のプライマリ（M1 の能力による入れ替え = Shot が最長クリップを超えるときの入れ替えの後）。アンカー以外の候補（以下「挑戦者」）を、次の 3 つの値（各 0〜1）で比べる。
+
+1. **quality（過去の Judge 実績）**: Project 内で Judge 済みの Take（最新の Judge result があるもの）を、`take.model_name` ごとに集計する。`quality = 0.5 × 軸別平均点の加重和 / 100 + 0.5 × 合格率`。軸は `take.scores` の 4 軸（product / acting / camera / continuity）で、重みは **Shot の性質**から決める（下記）。実績（Judge 済み Take）が `min_samples`（既定 5）に満たないモデルは実績なしとして `prior_quality`（既定 0.75）を使う。
+2. **cost（コスト効率）**: `候補の中で最も安い推定コスト / そのモデルの推定コスト`（推定コストは Shot を対応する長さに合わせたクリップ 1 本分。同じ Shot・同じ長さで比べる）。
+3. **fit（Shot の性質への適合）**: Shot が要求する能力のうち、モデルが満たす割合。要求は (a) Shot の長さを 1 クリップで収められる、(b) Reference Pack に Keyframe があれば First Frame を取れる、(c) Keyframe 以外の参照画像があれば自由な参照画像を取れる。要求が無ければ 1。
+
+Shot の性質による軸の重み: 4 軸とも基準 1 に、Shot Spec に Product があれば product に +2、Character があるか Acting が 1 つ以上あれば acting に +2、`camera.movement` があり `static` でなければ camera に +2、`continuity.start_from_previous_final_state` が真または `lighting.inherit` があれば continuity に +2 を加え、合計が 1 になるよう正規化する。
+
+`score = w_quality × quality + w_cost × cost + w_fit × fit`。重みは Quality Policy ごと（`routing.weights.<policy>`）: FAST は 0.4 / 0.5 / 0.1、BALANCED は 0.6 / 0.3 / 0.1、MAX QUALITY は 0.85 / 0.05 / 0.1（コスト重視の FAST は安さ、品質重視の MAX QUALITY は実績を優先する）。
+
+### 13.4 切り替え条件
+
+挑戦者は、次をすべて満たすときだけアンカーに代わってプライマリになる。
+
+1. Video Model が固定されていない（13.1）。
+2. そのモデルのベンダーのブレーカーが OPEN でなく、バックエンド（API キー）がある（13.5）。
+3. 実績が `min_samples` 以上ある。
+4. 実績の軸別平均点の加重和が、その Project の Minimum acceptance score（Quality/Cost Policy、UC-8）以上（最低限の品質に届かないモデルへは切り替えない）。
+5. `score` がアンカーの `score` より `switch_margin`（既定 0.05）以上高い（僅差では動かない）。
+
+複数が満たせば `score` 最大のものを選ぶ。切り替えたときは元のプライマリ（アンカー）を代替にする（Different Model・フェイルオーバーの行き先）。切り替えなければプライマリ/代替は Quality Policy のまま。ここまでで決めたプライマリ/代替に、既存の予算ロジック（Take 数の削減、プライマリが 1 Take も収まらなければ代替、収まらなければ 402）を適用する。
+
+### 13.5 フォールバック・サーキットブレーカーとの関係
+
+- Multi-model routing は「どのモデルを先に使うか」（プライマリ/代替の組）だけを決める。実行時のフェイルオーバー（ブレーカー OPEN・再試行後の失敗で代替へ）、再試行、429 での同時実行数の調整は Model Adapter が従来どおり行い、変えない（§7、§9.3、`non-functional.md` §6）
+- ブレーカーが OPEN のベンダーのモデルは、挑戦者として選ばない（呼んでも `ErrCircuitOpen` で失敗するため）。アンカーのブレーカーが OPEN のときは、M1 と同じく Model Adapter が代替へフェイルオーバーする
+- Repair Agent の Different Model は、決めたプライマリ/代替の間の切り替えとして動く（元の Take のモデルと別の方へ）
+
+### 13.6 トレーサビリティ（F-27）
+
+決定は `take.model_parameters.routing` に Take ごとに保存する: 方式（`adaptive`: 13.4 で挑戦者に切り替えた / `policy_default`: 比べたが Quality Policy のまま / `fixed`: ユーザーが固定 / `disabled`: 設定で無効）、Quality Policy のプライマリ/代替、選んだプライマリ/代替、理由（1 文）、候補ごとの quality・実績数・平均点・合格率・コスト・cost・fit・score・除外理由（`circuit_open` / `no_backend` / `insufficient_evidence` / `below_minimum_score` / `margin` など）、Shot の性質から決めた軸の重み。実際に使われたモデル（`fell_back`）は従来どおり `model_name` / `fell_back` で分かる。`GET /takes/:id/trace` の「Model routing」に表示する。Take を作らずに失敗したときは Take がないので記録しない（決定理由は `prompt_version.model_adapter_output.reasons` に従来どおり残る）。
+
+### 13.7 設定
+
+`--model-config` の JSON に `routing` を追加する（未知のキーはエラー）。
+
+| キー | 内容 | 既定 |
+|---|---|---|
+| `routing.enabled` | Multi-model routing を有効にする。偽なら M1 のポリシー別ルーティングのみ | 真 |
+| `routing.min_samples` | 実績として使うのに必要な Judge 済み Take 数 | 5 |
+| `routing.prior_quality` | 実績が足りないモデルの quality（0〜1） | 0.75 |
+| `routing.switch_margin` | 切り替えに必要な score の差 | 0.05 |
+| `routing.weights.<fast\|balanced\|max_quality>` | `quality` / `cost` / `fit` の重み（負でなく、合計が正） | 13.3 |
+| `routing.candidates.<fast\|balanced\|max_quality>` | `model` と `resolution` の配列（各モデルは動画モデルで、`policies` と同じ検証を受ける） | 13.2 |
+
 ## 改訂履歴
 
 | 版 | 日付 | 変更内容 | 変更理由 |
@@ -225,3 +305,5 @@ M1（F-14、Issue #10）で実装する Repair / Retake Loop の判断部分。�
 | 1.5 | 2026-09-29 | §11（Repair Agent の戦略選択・Retry Policy・戦略ごとの再生成・Jev のシャドー実行の実装仕様）を追加。Partial Regeneration は M1 では「Judge の `preserve` を保つ Shot 全体の再生成」とし、時間範囲の再生成とつなぎ込みは MVP 2 と確定 | M1「Repair/Retake Loop」（Issue #10）で、Partial Regeneration の M1 での範囲（`spec/spec.md` §27 は MVP 2 に列挙）、決定的ルールと LLM の分担、Jev のシャドー記録項目が未確定だったため |
 | 1.6 | 2026-09-30 | §11.3 の Partial Regeneration に M2 の時間範囲つなぎ込み（Shot 全体の Take + 問題区間だけを差し替えた候補 Take、`repair.Splicer`）を追記 | M2「Partial Regeneration」（Issue #16）で、動画モデルが区間だけを生成できない前提での実現方法と新しい Take の扱いを確定するため |
 | 1.7 | 2026-09-30 | §10.2 の参照顔に Series 正本の `face_reference` を追加 | M2「Series / Episode Memory」（Issue #21）で、顔同一性を Episode をまたいで Series 正本の顔を基準に計測する契約を定めるため |
+| 1.8 | 2026-09-30 | §12（M1 の音声: ElevenLabs TTS とローカル DSP の実装仕様）を追加 | M1「簡易 Editor・簡易 Audio・Final QC・Export」（Issue #14）の実装に合わせるため |
+| 1.9 | 2026-09-30 | §13（Multi-model routing の判断基準・切り替え条件・ブレーカーとの関係・トレース・設定）を追加 | M3「Multi-model routing」（Issue #26）が M1 のポリシー別ルーティングとどう違うか、Shot の性質・Judge 実績・コストをどう使うかが未定義だったため、保守的な選択（アンカー方式・実績が無ければ M1 と同じ・対象は動画モデル）で確定した |

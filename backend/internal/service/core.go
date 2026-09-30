@@ -35,6 +35,8 @@ type core struct {
 	continuer *ContinueService
 	// notes keeps the production notes and settles the promotion cards; set by New.
 	notes *NoteService
+	// branches are the Branches of the Project (F-17).
+	branches *repository.BranchRepository
 }
 
 // getProject maps repository.ErrNotFound to ErrNotFound.

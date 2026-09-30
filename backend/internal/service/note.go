@@ -250,7 +250,7 @@ func (s *NoteService) ProposePromotion(ctx context.Context, noteID string, versi
 	if n.ProjectID == "" {
 		return nil
 	}
-	world, err := s.world.World(ctx, n.ProjectID)
+	world, err := s.world.World(ctx, n.ProjectID, "")
 	if err != nil {
 		return notFound(err)
 	}
@@ -347,7 +347,7 @@ func (s *NoteService) settlePromotion(ctx context.Context, card domain.ChatMessa
 	if err != nil {
 		return "", err
 	}
-	world, err := s.world.World(ctx, promo.ProjectID)
+	world, err := s.world.World(ctx, promo.ProjectID, "")
 	if err != nil {
 		return "", err
 	}

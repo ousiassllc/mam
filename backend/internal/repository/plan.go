@@ -95,7 +95,7 @@ func (r *PlanRepository) SavePlan(ctx context.Context, projectID string, plan do
 			return err
 		}
 		var scenes int
-		if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM scene WHERE project_id = ?`, projectID).Scan(&scenes); err != nil {
+		if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM scene WHERE project_id = ? AND branch_id IS NULL`, projectID).Scan(&scenes); err != nil {
 			return err
 		}
 		if scenes > 0 {
@@ -103,7 +103,7 @@ func (r *PlanRepository) SavePlan(ctx context.Context, projectID string, plan do
 		}
 		locations := map[string]string{}
 		for i, ps := range plan.Scenes {
-			locationID, err := locationFor(ctx, tx, projectID, ps.Location, locations)
+			locationID, err := locationFor(ctx, tx, projectID, "", ps.Location, locations)
 			if err != nil {
 				return err
 			}
@@ -133,9 +133,10 @@ func (r *PlanRepository) SavePlan(ctx context.Context, projectID string, plan do
 	return nil
 }
 
-// locationFor returns the ID of the Project's Location with that name, creating it when
-// missing. cache holds the IDs resolved earlier in the transaction. "" means no Location.
-func locationFor(ctx context.Context, tx *sql.Tx, projectID, name string, cache map[string]string) (string, error) {
+// locationFor returns the ID of the Location of the Project (of its Branch when branchID is set, ""
+// is the trunk) with that name, creating it when missing. cache holds the IDs resolved earlier in
+// the transaction. "" means no Location.
+func locationFor(ctx context.Context, tx *sql.Tx, projectID, branchID, name string, cache map[string]string) (string, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return "", nil
@@ -144,10 +145,11 @@ func locationFor(ctx context.Context, tx *sql.Tx, projectID, name string, cache 
 		return id, nil
 	}
 	var id string
-	err := tx.QueryRowContext(ctx, `SELECT id FROM location WHERE project_id = ? AND name = ? ORDER BY id LIMIT 1`, projectID, name).Scan(&id)
+	err := tx.QueryRowContext(ctx, `SELECT id FROM location WHERE project_id = ? AND branch_id IS ? AND name = ? ORDER BY id LIMIT 1`,
+		projectID, nullIfEmpty(branchID), name).Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {
 		id = domain.NewID()
-		_, err = tx.ExecContext(ctx, `INSERT INTO location (id, project_id, name) VALUES (?, ?, ?)`, id, projectID, name)
+		_, err = tx.ExecContext(ctx, `INSERT INTO location (id, project_id, branch_id, name) VALUES (?, ?, ?, ?)`, id, projectID, nullIfEmpty(branchID), name)
 	}
 	if err != nil {
 		return "", err
@@ -156,29 +158,30 @@ func locationFor(ctx context.Context, tx *sql.Tx, projectID, name string, cache 
 	return id, nil
 }
 
-// HasScenes reports whether the Project has at least one Scene.
+// HasScenes reports whether the trunk of the Project has at least one Scene.
 func (r *PlanRepository) HasScenes(ctx context.Context, projectID string) (bool, error) {
 	var n int
-	if err := r.db.Reader().QueryRowContext(ctx, `SELECT COUNT(*) FROM scene WHERE project_id = ?`, projectID).Scan(&n); err != nil {
+	if err := r.db.Reader().QueryRowContext(ctx, `SELECT COUNT(*) FROM scene WHERE project_id = ? AND branch_id IS NULL`, projectID).Scan(&n); err != nil {
 		return false, fmt.Errorf("count scenes: %w", err)
 	}
 	return n > 0, nil
 }
 
 const sceneSelect = `
-SELECT s.id, s.project_id, s.order_index, s.title, COALESCE(s.location_id, ''), COALESCE(l.name, ''),
+SELECT s.id, s.project_id, COALESCE(s.branch_id, ''), s.order_index, s.title, COALESCE(s.location_id, ''), COALESCE(l.name, ''),
        COALESCE(s.time, ''), COALESCE(s.objective, ''), s.state
 FROM scene s LEFT JOIN location l ON l.id = s.location_id`
 
 func scanScene(row rowScanner) (domain.Scene, error) {
 	var s domain.Scene
-	err := row.Scan(&s.ID, &s.ProjectID, &s.OrderIndex, &s.Title, &s.LocationID, &s.Location, &s.Time, &s.Objective, &s.State)
+	err := row.Scan(&s.ID, &s.ProjectID, &s.BranchID, &s.OrderIndex, &s.Title, &s.LocationID, &s.Location, &s.Time, &s.Objective, &s.State)
 	return s, err
 }
 
-// ListScenes returns the Scenes of the Project in order.
+// ListScenes returns the Scenes of the trunk of the Project in order (the Scenes of a Branch are
+// listed by BranchRepository.Scenes).
 func (r *PlanRepository) ListScenes(ctx context.Context, projectID string) ([]domain.Scene, error) {
-	rows, err := r.db.Reader().QueryContext(ctx, sceneSelect+` WHERE s.project_id = ? ORDER BY s.order_index`, projectID)
+	rows, err := r.db.Reader().QueryContext(ctx, sceneSelect+` WHERE s.project_id = ? AND s.branch_id IS NULL ORDER BY s.order_index`, projectID)
 	if err != nil {
 		return nil, fmt.Errorf("list scenes: %w", err)
 	}
@@ -218,8 +221,9 @@ func (r *PlanRepository) GetSceneByID(ctx context.Context, sceneID string) (doma
 	return s, nil
 }
 
-// CreateScene appends a Scene at the end of the Project (F-04). The Location, when named,
-// is reused by name or created. It returns ErrNotFound when the Project does not exist.
+// CreateScene appends a Scene at the end of the trunk of the Project, or of its Branch when
+// s.BranchID is set (F-04). The Location, when named, is reused by name or created. It returns
+// ErrNotFound when the Project does not exist.
 func (r *PlanRepository) CreateScene(ctx context.Context, s domain.Scene) (domain.Scene, error) {
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error { return insertScene(ctx, tx, &s) })
 	if err != nil {
@@ -234,18 +238,18 @@ func insertScene(ctx context.Context, tx *sql.Tx, s *domain.Scene) error {
 	if err := projectExists(ctx, tx, s.ProjectID); err != nil {
 		return err
 	}
-	locationID, err := locationFor(ctx, tx, s.ProjectID, s.Location, map[string]string{})
+	locationID, err := locationFor(ctx, tx, s.ProjectID, s.BranchID, s.Location, map[string]string{})
 	if err != nil {
 		return err
 	}
 	s.LocationID = locationID
 	if err := tx.QueryRowContext(ctx,
-		`SELECT COALESCE(MAX(order_index), -1) + 1 FROM scene WHERE project_id = ?`, s.ProjectID).Scan(&s.OrderIndex); err != nil {
+		`SELECT COALESCE(MAX(order_index), -1) + 1 FROM scene WHERE project_id = ? AND branch_id IS ?`, s.ProjectID, nullIfEmpty(s.BranchID)).Scan(&s.OrderIndex); err != nil {
 		return err
 	}
 	_, err = tx.ExecContext(ctx,
-		`INSERT INTO scene (id, project_id, order_index, title, location_id, time, objective, state) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		s.ID, s.ProjectID, s.OrderIndex, s.Title, nullIfEmpty(s.LocationID), nullIfEmpty(s.Time), nullIfEmpty(s.Objective), s.State)
+		`INSERT INTO scene (id, project_id, branch_id, order_index, title, location_id, time, objective, state) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		s.ID, s.ProjectID, nullIfEmpty(s.BranchID), s.OrderIndex, s.Title, nullIfEmpty(s.LocationID), nullIfEmpty(s.Time), nullIfEmpty(s.Objective), s.State)
 	return err
 }
 

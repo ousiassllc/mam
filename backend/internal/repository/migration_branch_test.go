@@ -12,13 +12,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const beforeVersioning = 20260930001500
+// beforeBranch is the migration before 20260930030000_branch.sql.
+const beforeBranch = 20260930020000
 
-// TestMigration_VersioningKeepsWorldStateVersionsAndTheirDependents rebuilds world_state_version
+// TestMigration_BranchKeepsWorldStateVersionsAndTheirDependents rebuilds world_state_version
 // on a database that already holds data: the versions and the state_diff rows that point at them
 // must survive (dropping the table with foreign keys on would cascade into state_diff), and the
 // migration must be reversible.
-func TestMigration_VersioningKeepsWorldStateVersionsAndTheirDependents(t *testing.T) {
+func TestMigration_BranchKeepsWorldStateVersionsAndTheirDependents(t *testing.T) {
 	ctx := context.Background()
 	db, err := sql.Open("sqlite", "file:"+filepath.Join(t.TempDir(), "m.db")+"?_pragma=foreign_keys(1)")
 	require.NoError(t, err)
@@ -27,7 +28,7 @@ func TestMigration_VersioningKeepsWorldStateVersionsAndTheirDependents(t *testin
 	provider, err := goose.NewProvider(goose.DialectSQLite3, db, os.DirFS("migrations"), goose.WithAllowOutofOrder(true))
 	require.NoError(t, err)
 
-	_, err = provider.UpTo(ctx, beforeVersioning)
+	_, err = provider.UpTo(ctx, beforeBranch)
 	require.NoError(t, err)
 	for _, q := range []string{
 		`INSERT INTO project (id, mode, confirmation_level, production_template, quality_policy) VALUES ('p', 'auto', 'key_check', 'product_cm', 'balanced')`,
@@ -55,7 +56,7 @@ func TestMigration_VersioningKeepsWorldStateVersionsAndTheirDependents(t *testin
 	assert.Equal(t, 1, count(`PRAGMA foreign_keys`), "foreign keys are back on")
 	assert.Zero(t, count(`SELECT COUNT(*) FROM pragma_foreign_key_check`))
 
-	_, err = provider.DownTo(ctx, beforeVersioning)
+	_, err = provider.DownTo(ctx, beforeBranch)
 	require.NoError(t, err)
 	assert.Equal(t, 2, count(`SELECT COUNT(*) FROM world_state_version`))
 	assert.Equal(t, 1, count(`SELECT COUNT(*) FROM state_diff`))

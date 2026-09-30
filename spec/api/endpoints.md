@@ -32,7 +32,7 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 | GET | `/projects/:id/scenes` | Scene / Shot / Take 階層（先頭 Scene を選択。Scene がなければ追加フォームのみ）。補助ビュー | フルページ / 階層フラグメント |
 | GET | `/projects/:id/scenes/:sceneId` | Scene詳細（Shot一覧、各 Shot の絵コンテと Take）。クエリ `shot` で 1 つの Shot を選択。他 Project の Scene は 404 | フルページ / 階層フラグメント |
 | GET | `/shots/:id` | Shot Inspector（Objective/Duration/Character/Acting/Camera/Lighting/Product/Continuity/References/Prompt/Model/Take List/Judge Results/Locks） | フルページ / Inspectorフラグメント |
-| GET | `/takes/:id/trace` | Take の Generation Trace（F-27）: Prompt version・Source Shot Spec（Prompt version のスナップショット）・World State version・Model・Model parameters・References・Output（動画へのリンク。アーカイブ済みなら「アーカイブ済み」）・Judge results（新しい順）・Repair history（この Take への Repair と、この Take を作った Repair）。Shot Inspector の Take 一覧の「生成の経緯」から `hx-get` で読み込む。存在しない Take は 404 | フラグメントのみ（`take_trace_panel`） |
+| GET | `/takes/:id/trace` | Take の Generation Trace（F-27）: Prompt version・Source Shot Spec（Prompt version のスナップショット）・World State version・Model・Model routing（Multi-model routing の選択理由: 方式・Quality Policy の割り当て・選んだモデル・候補ごとの実績/コスト/適合/score・除外理由。旧 Take や失敗時は「記録なし」）・Model parameters・References・Output（動画へのリンク。アーカイブ済みなら「アーカイブ済み」）・Judge results（新しい順）・Repair history（この Take への Repair と、この Take を作った Repair）。Shot Inspector の Take 一覧の「生成の経緯」から `hx-get` で読み込む。存在しない Take は 404 | フラグメントのみ（`take_trace_panel`） |
 | GET | `/branches/:id/versions` | Branch のバージョン履歴（`version_history_panel` を 2 つ: Branch 自体の `branch_version` と、当該 Branch 独自の World State バージョン系列。復元ボタン付き）。存在しない Branch は 404 | フラグメントのみ |
 | GET | `/projects/:id/bundle` | プロジェクトバンドルのエクスポート（`spec/requirements/non-functional.md` §8）。ZIP（`Content-Disposition: attachment`）: `manifest.json`（`format=mam-project-bundle`・`version`・`project_id`・`exported_at`）、`data.json`（Project の全テーブルの行。`job` は実行時状態のため含めない。Series 所属の Episode は Series から切り離して出力し、`series_id` などの Series 由来の参照を空にする）、`assets/<asset 相対パス>`（Asset・Take・Export のファイル。既にアーカイブされて無いファイルは含めず、行だけ残る）。存在しない Project は 404 | ファイル |
 | GET | `/shots/:id/takes` | Take比較ページ（`mam-take-comparator` を埋め込み） | フルページ（Lit埋め込みのため常にフルページ） |
@@ -115,7 +115,7 @@ M1 の入出力契約（Issue #12）:
 | PUT | `/branches/:id` | Branch 名称変更・World State参照更新（`branch_version` に新規バージョン行を追記） | F-17, F-28 |
 | POST | `/shots/:id/versions/:versionNumber/restore` | Shot/Take（`prompt_version`）の指定バージョンの Canonical Shot Spec を Shot の現在の Spec に戻し、新しい `prompt_version` として追記する（既存バージョンとその Take は変えない。復元自体も戻せる）。応答は 200 と Shot Inspector。バージョン番号が 1 以上の整数でなければ 422、存在しない Shot/バージョンは 404、生成中の Shot は 409、復元で LOCK 中の部分が変わるなら 423（何も書かない） | F-28 |
 | POST | `/projects/:id/world-state/versions/:versionNumber/restore` | 主系列（トランク、`branch_id`=NULL）World State の指定バージョンへ復元。そのバージョンに載っている Character/Product/Location の各フィールド値を行へ書き戻し（バージョンに無い、後から追加された行は変えない）、Camera/Story はそのバージョンの値にして、結果を新しい `world_state_version` として追記する。応答は 200 と World State ビュー。422（番号）/404（Project・バージョン）/423（復元で LOCK 中のフィールドが変わる。何も書かない） | F-28 |
-| POST | `/branches/:id/world-state/versions/:versionNumber/restore` | 当該Branchが独立して持つ World State バージョン系列の指定バージョンへ復元。Branch の系列は状態のスナップショットのみを持つので、指定バージョンの内容をその系列の末尾へ新バージョンとして複製する。応答は 200 と Branch のバージョン履歴。422/404（Branch・バージョン）。パスの Branch ID は他の `/branches/:id/...` と同じく `:id`（Gin は同じパス位置のワイルドカード名を 1 つしか許さない） | F-28 |
+| POST | `/branches/:id/world-state/versions/:versionNumber/restore` | 当該Branchが独立して持つ World State バージョン系列の指定バージョンへ復元。Branch はトランクと同じく自身の Character / Product / Location 行に状態を持つので（Issue #18）、指定バージョンの内容をその Branch の行へ書き戻し、結果をその系列の末尾へ新バージョンとして追記する（LOCK 中の項目が変わる復元は 423 で何も書かない）。応答は 200 と Branch のバージョン履歴。422/404（Branch・バージョン）。パスの Branch ID は他の `/branches/:id/...` と同じく `:id`（Gin は同じパス位置のワイルドカード名を 1 つしか許さない） | F-28 |
 | POST | `/branches/:id/versions/:versionNumber/restore` | Branch自体（`branch_version`）の指定バージョンへ復元。その名称・World State 参照を Branch に戻し、新しい `branch_version` として追記する。応答は 200 と Branch のバージョン履歴。422/404 | F-28 |
 
 
@@ -124,6 +124,15 @@ M1 の入出力契約（Issue #12）:
 - AI Pick: Judge が結果を保存するたびに、その Shot の Take のうち Judge 済みで除外されていないものから最良を `ai_pick` にする（PASS が FAIL より先、次に 4 スコアの平均、同点は古い方）。ユーザーが Selected にした Take があれば何もしない。AUTO MODE では PASS した AI Pick を Shot の Take（`selected_take_id`）にもする。DIRECTOR MODE では推奨のみで、確定はユーザー（`POST /takes/:id/select`）。変更があったときは Judge のチャット通知に「AI Pick: …」を追記する。
 - Take カード（`ref_type=take`）の本文 JSON は `video_url`（`/takes/:id/video`）・`poster_url`・`shot_id` を持ち、`mam-video-player` を埋め込む。カードには返信と Take 比較（`GET /shots/:id/takes`）への導線がある。
 - `GET /shots/:id/takes` は `mam-take-comparator`（`api-url` に `GET /api/v1/shots/:id/takes`）を置くページ。部分採用が確定するとコンポーネントが `partial-take-confirmed` を発火する。
+
+M2 の入出力契約（Issue #18 Branch）:
+
+- `POST /shots/:id/branch`: Body は `application/x-www-form-urlencoded`。`point_type`（`scene|shot|frame`、省略時 `shot`）、`offset_seconds`（`frame` のときのみ。0 以上・Shot の長さ以内、外れれば 422）、`name`（省略時は指示文、なければ「Branch N」。100 文字以内）、`direction`（省略可。指定すると Continue Agent が Branch 最初の Shot を計画して生成する。生成が未設定なら 503）。分岐点の World State を Snapshot として Branch 独自の `world_state_version` v1 に保存し、201 と `HX-Redirect: /branches/:id` を返す。分岐点が Branch 内の Shot なら、その Branch の子 Branch になる
+- `GET /branches/:id`: `HX-Request` で詳細フラグメント（`mam-branch-tree` の `branch-selected` が `#branch-detail` へ差し込む。分岐点・親 Branch・Branch 独自の Scene/Shot・バージョン履歴・`/projects/:id/world-state?branch_id=` への導線）、なければ Branch ツリー付きのフルページ。`GET /projects/:id/branches` は選択なしのツリーページ
+- `PUT /branches/:id`: `name` と `world_state_version`（その Branch 自身の World State 系列の番号）の少なくとも一方。応答は詳細フラグメントと `HX-Trigger: branches-changed`。変更があれば `branch_version` に 1 行追記する（変化なしは追記しない）。系列にない番号・空の名前は 422、不明な ID は 404
+- Branch は `scene` / `character` / `product` / `location` / `world_state_version` を独自に持ち（`branch_id`）、Branch の Shot の生成・State Extractor・編集はその Branch の行だけを更新する。トランクや他の Branch には影響しない。チャットスレッドは Project に 1 本で Branch では分けない
+- チャット（DIRECTOR MODE）の「このカットから別展開を3つ作って」は Command Interpreter の `create_branch`（`count` 1〜5、`point_type` は `scene|shot`、`directions`）となり、指示のない分は Continue Agent の NEXT 候補で埋め、各 Branch の最初の Shot を生成する
+- `GET /api/v1/projects/:id/branches`: `branches[]` に親子（`children`）、`branch_point_type`、`scene_number` / `shot_number`（親系列内の番号）、`offset_seconds`、`snapshot_version`、`version`、`detail_url`、`world_state_url` を含む
 
 ### 2.5 Director Command
 
@@ -142,6 +151,22 @@ M1 の入出力契約（Issue #12）:
 | POST | `/projects/:id/audio/generate` | Audio Production 実行（Dialogue/Narration/BGM/SE/Mixing）。Body `branch_id`（省略時=主系列トランク）で対象Branchを指定 | F-20 |
 | POST | `/projects/:id/final-qc` | Final QC 実行 | F-26 |
 | POST | `/projects/:id/export` | 最終書き出し実行（Aspect Ratio/解像度/コーデック指定）。Body `branch_id`（省略時=主系列トランク）で対象Branchを指定 | F-26 |
+
+M1（F-18 Simple / F-20 簡易版 / F-26。範囲は `spec/requirements/functional.md` §3.6）の実装は次のとおり。アクションルートは HTML フラグメント（`#editor-actions`）を返し、業務エラーは Toast（§0）で返す。
+
+| Method | Path | M1 の挙動 |
+|---|---|---|
+| GET | `/projects/:id/edit`（別名 `/projects/:id/export`） | 編集画面（`mam-timeline-editor` と Rough Cut〜書き出しの各ステージのボタン）。補助ビュー（別ページ）。チャットの［⋯］メニューから到達 |
+| GET | `/projects/:id/edit/actions` | ステージボタン部分のフラグメント。`timeline-updated` イベントで再取得される |
+| POST | `/projects/:id/edit/rough-cut` | 各 Shot の Selected Take（ファイルのあるもの）から Rough Cut を作り、Project を EDITING にして Edit Timeline の第1版を保存する。Selected Take のない Shot がある・Shot がない場合は 422。EDITING へ進めない状態（承認待ち等）は 409。`HX-Trigger: timeline-reload` を返す（`mam-timeline-editor` が読み直す）。`branch_id` は M2 |
+| PUT | `/edit-timelines/:id` | JSON `{"clips":[{"shot_id","take_id","in_point","out_point","transition":{"type","seconds"}}]}` を次の版として保存し 204。`:id` は編集画面が表示していた版で、それより新しい版があれば 409（古い画面での上書き防止）。クリップ 0 件・最短 0.5 秒未満・Take の長さ超過・別 Shot の Take・不明な Transition は 422。保存すると Project は EDITING に戻る |
+| GET | `/edit-timelines/:id/preview` | Rough Cut の下書きレンダリング（`video/mp4`、Range 対応）。版ごとに初回アクセスで作成しキャッシュする（ffmpeg が必要。なければ 503） |
+| POST | `/edit-timelines/:id/judge` | Editor Judge（PASS / Re-edit。素材不足 `need_shot` の差し戻しは M3）。最新版のみ・EDITING のみ。結果を `editor_judge_result` に保存する。PASS は AUDIO へ（Confirmation Level が Rough Cut の確認を求める場合は Approval カードで AWAITING_APPROVAL、承認で AUDIO）。Re-edit は EDITING のまま、指摘をチャットに投稿する |
+| POST | `/projects/:id/audio/generate` | AUDIO のときのみ。脚本の `dialogue` 行を ElevenLabs TTS で音声化し、Take の音声とミックスして −14 LUFS に正規化し、Audio Timeline の版として保存する。API キー未設定は 502（`elevenlabs` のキーを設定画面で登録）、ffmpeg なしは 503 |
+| POST | `/projects/:id/final-qc` | AUDIO のときのみ。PASS → READY（Final の確認を求める設定なら Approval カード経由）。FAIL → 該当工程（EDITING / AUDIO）へ差し戻し、指摘をチャットに投稿する。結果は `final_qc_result` に履歴として残る |
+| POST | `/projects/:id/export` | READY（または再書き出しの EXPORTED）のときのみ。フォーム／JSON の `aspect_ratio`（`16:9`/`9:16`/`1:1`/`4:5`）・`resolution`（`720p`/`1080p`/`1440p`/`2160p`）・`codec`（`h264`/`h265`/`vp9`）を指定（省略時は Brief のアスペクト比・1080p・h264）。一時ファイルへ書いて完了後にリネームし（アトミック）、`export` に記録して EXPORTED にする |
+| GET | `/projects/:id/exports/:exportId/video` | 書き出した動画のダウンロード（`video/mp4` / `video/webm`） |
+
 
 ### 2.7 Brand / Cost
 
@@ -166,7 +191,7 @@ M1 の入出力契約（Issue #8）:
 
 - `PUT /projects/:id/characters|products|locations/:entityId`: Body は `application/x-www-form-urlencoded`。編集できる項目は Character が `hairstyle/wardrobe/voice/personality/emotion/position/current_action`、Product が `material/orientation/condition`、Location が `time/lighting_state/weather`（各 200 文字以内、前後の空白は除去）。送った項目だけを更新し、空文字は項目のクリア。応答は更新後の World State ビュー（`#world-state-view` フラグメント、200）で、新しい `world_state_version` を追記する。エラーはトースト（`HX-Reswap: none`）: LOCK 対象を1項目でも含むと **423** で全体を拒否（何も書き込まない）、更新項目なし・未知の項目・長すぎる値は 422、Project または当該 Project のエンティティが無ければ 404
 - `GET /projects/:id/world-state`: `HX-Request` でフラグメント、なければフルページ（`world_state_page`）。LOCK 中の項目は「LOCK」バッジ付きで編集不可。Camera/Story は Shot 完了ごとに State Extractor が更新するため参照専用
-- `branch_id` クエリは Branch（M2）が存在しない M1 では、指定されていれば 404 とする
+- `branch_id` クエリは、当該 Project の Branch を指すときだけ有効で（Issue #18）、存在しない Branch は 404。省略時は主系列（トランク）
 
 M2 の入出力契約（Issue #15）:
 
@@ -218,8 +243,8 @@ Lit Web Components 専用。HTMX リクエストは発行しない（`spec/archi
 | GET | `/api/v1/shots/:id/takes` | Take一覧（古い順。`label`（A, B, …）・`status`（candidate/ai_pick/selected/rejected）・`adopted`（Shot が使う Take）・`scores`（product/acting/camera/continuity/overall、各 0-100。最新 Judge の Issue から算出: 各軸 100 から high 35・medium 15・low 5 を Issue ごとに引く。未 Judge は null）・`verdict`・`resolution`/`fps`/`duration_seconds`・`proxied`・`video_url`/`thumbnail_url`/`judge_result_url`/`select_url`/`reject_url`、および Shot の `partial_url`） | `mam-take-comparator` |
 | GET | `/api/v1/takes/:id/judge-result` | 最新のJudge Result（`result`/`overall_confidence`/`metrics`/`issues`（`time_range`/`frames`付き）/`preserve`/`repair_strategy`）。同一Takeの過去Judge履歴は含まない（最新1件）。Take が存在しない、または一度も Judge されていないとき 404 | `mam-video-player`（フレームマーカー重畳） |
 | GET | `/api/v1/repair/jev-shadow-report` | Jev のシャドー実行の集計（`runs`/`errors`/`agreed`/`agreement_rate`（失敗を除く一致率）/`mean_confidence`/`mean_latency_ms`/`total_cost_usd`/`confidence_histogram`（0.1 刻み 10 区間）/`confidence_agreed`）。Jev による前段選別を有効にするかどうかの判断材料（`spec/architecture/model-adapters.md` §4.5・§11） | Repair Agent（F-14） |
-| GET | `/api/v1/projects/:id/edit-timeline` | 現在の Edit Timeline（Shot順序/Cut Point/Transition）。クエリ `branch_id`（省略時=主系列トランク）で対象Branchを指定 | `mam-timeline-editor` |
-| PUT | `/api/v1/projects/:id/edit-timeline` | Edit Timeline 保存（ドラッグ&ドロップ操作の反映）。クエリ `branch_id`（省略時=主系列トランク）で対象Branchを指定 | `mam-timeline-editor` |
+| GET | `/api/v1/projects/:id/edit-timeline` | 現在の Edit Timeline（Shot順序/Cut Point/Transition）と最新の Editor Judge。Rough Cut がなければ 404。クエリ `branch_id`（省略時=主系列トランク）は M2 | `mam-timeline-editor` |
+| — | `PUT /edit-timelines/:id`（アクションルート、§2.6） | Edit Timeline 保存（ドラッグ&ドロップ操作の反映）。`/api/v1` では提供せず、JSON API の GET が返す `save_url` へ PUT する（Lit は API クライアント経由で CSRF トークン付きで送る）。`branch_id` は M2 | `mam-timeline-editor` |
 | GET | `/api/v1/projects/:id/branches` | Branch ツリー構造（親子関係、Snapshot参照） | `mam-branch-tree` |
 | GET | `/api/v1/openapi.json` | OpenAPI 3.1 スペック（Huma自動生成） | - |
 
@@ -235,26 +260,30 @@ Response: 202 Accepted
 ```
 
 ```yaml
-# PUT /api/v1/projects/:id/edit-timeline
-Request:
-  Body:
-    shots:
-      - shot_id: "shot_003"
-        start: 0.0
-        end: 4.2
-        transition: "cut"
-      - shot_id: "shot_004"
-        start: 4.2
-        end: 7.8
-        transition: "cross_dissolve"
+# GET /api/v1/projects/:id/edit-timeline   （mam-timeline-editor。保存は PUT /edit-timelines/:id のアクションルート）
 Response 200:
   Body:
+    id: "et_01"                  # 表示している版。保存時に PUT のパスへ使う
     version_number: 5
-    created_at: "2026-09-28T10:00:00Z"
+    duration_seconds: 9.5
+    readonly: false              # 編集できない段階（承認待ち・READY 等）では true
+    save_url: "/edit-timelines/et_01"
+    preview_url: "/edit-timelines/et_01/preview"
+    transitions: ["cut", "fade", "fade_black", "dissolve"]
+    limits: { min_clip_seconds: 0.5, max_transition_seconds: 2, max_clips: 200 }
+    judge: { verdict: "re_edit", findings: [{ clip_index: 2, issue: "...", action: "..." }] }   # 省略あり
+    clips:
+      - shot_id: "shot_003"
+        take_id: "take_010"
+        label: "Scene 1 · Shot 1"
+        in_point: 0.0
+        out_point: 4.2
+        start: 0.0
+        transition: { type: "cut", seconds: 0 }
 Errors:
-  409: "他クライアントが同時編集中"（本製品はシングルユーザーのため通常発生しないが排他制御として定義）
-  422: "shot_id が存在しない / start >= end"
+  404: "Rough Cut がまだない"
 ```
+
 
 ```yaml
 # GET /api/v1/takes/:id/judge-result
@@ -336,3 +365,5 @@ Notes:
 | 1.30 | 2026-09-30 | `POST /takes/:id/repair` の Partial Regeneration がすべての Issue に時間範囲があるとき、区間をつなぎ込んだ候補 Take も足すことを追記。`POST /shots/:id/director-command` に時間範囲を名指しした再生成（`partial_regenerate`）の動作・エラーを追記 | M2「Partial Regeneration」（Issue #16）で、新しい Take の数・選択への影響・DIRECTOR MODE からの起動が名称レベルでしか定義されていなかったため |
 | 1.31 | 2026-09-30 | §2.9 に `POST /series`・`POST /series/:id/episodes`・`PUT /series/:id/characters/:characterId` の入出力とエラー、`PUT /series/:id/style` を追記。`GET /series/:id`（Series ページ）を追加 | M2「Series / Episode Memory」（Issue #21）で、Series の入出力契約・Style の更新経路・画面が未定義だったため |
 | 1.32 | 2026-09-30 | 復元エンドポイント（§2.4）の入出力・エラー・LOCK との関係を定義。`GET /takes/:id/trace`・`GET /branches/:id/versions`・`GET /projects/:id/bundle`・`POST /projects/import` を追加。Branch 系の復元パスの Branch ID を `:id` に統一 | F-27/F-28 とデータポータビリティ（Issue #20）の入出力契約が未定義だった。Gin は同じパス位置のワイルドカード名を 1 つしか許さず、`/branches/:branchId/...` と `/branches/:id/...` を併存できないため |
+| 1.33 | 2026-09-30 | §2.4 に M2 の Branch 契約（`POST /shots/:id/branch`・`GET/PUT /branches/:id`・`GET /api/v1/projects/:id/branches`・チャットの `create_branch`）を追記。§2.8 の `branch_id` は Branch が存在すれば有効とした | M2「Branch（別展開の並行生成）」（Issue #18）で Branch を実装したため |
+| 1.34 | 2026-09-30 | §2.6 に M1 の Editor / Audio / Final QC / Export の挙動（Rough Cut・タイムライン保存の版管理と 409/422・プレビュー・Editor Judge・音声・Final QC・書き出し・ダウンロード）を追記。Edit Timeline の保存を `PUT /edit-timelines/:id`（アクションルート）に確定し、`GET /api/v1/projects/:id/edit-timeline` の応答例を更新（旧 `PUT /api/v1/projects/:id/edit-timeline` は提供しない） | M1「簡易 Editor・簡易 Audio・Final QC・Export」（Issue #14）の実装に合わせるため |

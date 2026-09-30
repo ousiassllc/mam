@@ -39,7 +39,7 @@ func (o *Orchestrator) buildReferencePack(ctx context.Context, ref repository.Sh
 	if err != nil {
 		return Progress{}, err
 	}
-	world, err := o.gens.WorldContext(ctx, ref.ProjectID)
+	world, err := o.gens.WorldContext(ctx, ref.ProjectID, ref.Scene.BranchID)
 	if err != nil {
 		return Progress{}, err
 	}

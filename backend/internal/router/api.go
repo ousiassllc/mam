@@ -51,4 +51,6 @@ func registerAPIRoutes(api huma.API, services *service.Services) {
 	registerJudgeAPI(api, services)
 	registerRepairAPI(api, services)
 	registerTakeAPI(api, services)
+	registerBranchAPI(api, services)
+	registerEditorAPI(api, services)
 }

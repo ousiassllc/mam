@@ -21,7 +21,10 @@ func statusOf(c *gin.Context, err error) (int, string) {
 	var invalid *service.ValidationError
 	var locked *service.LockedError
 	var ai *service.AIError
+	var conflicted *service.ConflictError
 	switch {
+	case errors.As(err, &conflicted):
+		return http.StatusConflict, conflicted.Message
 	case errors.As(err, &locked) && len(locked.Parameters) > 0:
 		names := make([]string, len(locked.Parameters))
 		for i, p := range locked.Parameters {
@@ -38,6 +41,8 @@ func statusOf(c *gin.Context, err error) (int, string) {
 		return http.StatusConflict, "すでに応答済みか、状態が変わっています。画面を更新してください"
 	case errors.Is(err, service.ErrBusy):
 		return http.StatusConflict, "この Shot はすでに生成中です"
+	case errors.Is(err, service.ErrStageBusy):
+		return http.StatusConflict, "別の編集処理（Rough Cut・判定・音声・Final QC・書き出し）が実行中です。終わってからやり直してください"
 	case errors.Is(err, service.ErrJudgeBusy):
 		return http.StatusConflict, "この Take はすでに Judge 中です"
 	case errors.Is(err, service.ErrNotJudged):
