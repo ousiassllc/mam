@@ -116,7 +116,8 @@ func (m *FaceMeasurer) reference(ctx context.Context, s FaceSubject) (*subjectSt
 	if len(st.refs) == 0 {
 		return nil, nil
 	}
-	st.warn, st.fail = m.cfg.WarnSimilarity, m.cfg.FailSimilarity
+	// One reference, or references that do not resemble each other, has no distribution to
+	// calibrate from. Those Characters are not judged against a fixed similarity (spec §12.4).
 	if mean, ok := meanPairwise(st.refs); ok && mean >= m.cfg.MinCalibrationSimilarity {
 		st.fail = m.cfg.CalibrationFailScale * mean
 		st.warn = max(m.cfg.CalibrationWarnScale*mean, st.fail)
@@ -193,7 +194,8 @@ func (m *FaceMeasurer) metric(st *subjectState, sampled int) domain.FaceIdentity
 	if detected > 0 {
 		out.SimilarityMean, out.SimilarityMin = round4(sum/float64(detected)), round4(minSim)
 	}
-	out.Evaluated = detected >= m.cfg.MinDetectedFrames && float64(sampled-detected)/float64(sampled) <= m.cfg.MaxUndetectedRatio
+	enough := sampled > 0 && detected >= m.cfg.MinDetectedFrames && float64(sampled-detected)/float64(sampled) <= m.cfg.MaxUndetectedRatio
+	out.Evaluated = st.calibrated && enough
 	return out
 }
 

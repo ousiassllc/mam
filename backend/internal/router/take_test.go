@@ -370,8 +370,9 @@ func TestAIPick_DirectorOnlyRecommendsAndAUserChoiceIsNeverReplaced(t *testing.T
 }
 
 func TestAIPick_ATakeThatFailedIsRecommendedButNotAdoptedInAuto(t *testing.T) {
-	// The face drifts while the spec locks it: every Take fails.
+	// The face drifts while the spec locks it: every Take fails. Two references calibrate the threshold.
 	j := newJudgeApp(t, goodVerdict, 0.95, 0.95, 0.95, 0.2, 0.2, 0.2, 0.95, 0.95)
+	j.addMatchingCanonFace(t)
 	j.generateAndJudge()
 
 	statuses, adopted := pickState(t, j.app, j.shotID)
