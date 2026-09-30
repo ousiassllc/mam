@@ -1,12 +1,21 @@
 /**
- * WebSocket client with automatic reconnection (exponential backoff, at most
- * MAX_RETRIES consecutive failed attempts). Messages are JSON.
+ * WebSocket client with automatic reconnection (exponential backoff, at most MAX_RETRIES
+ * consecutive failed attempts). Messages are JSON.
+ *
+ * A connection that closes within STABLE_MS of opening counts as a failed attempt, like one that
+ * never opened: a server that accepts and hangs up again is given up on instead of being retried
+ * every 500 ms for ever. After giving up, and while waiting for the next attempt, the page coming
+ * back online or visible tries again at once, as does `retry()`.
  */
 import { createLogger } from './logger';
 
 export const MAX_RETRIES = 10;
+/** What the user is told when the retries are used up (the caller adds what stopped updating). */
+export const CONNECTION_LOST_MESSAGE = '接続が切れました。';
 const BASE_DELAY_MS = 500;
 const MAX_DELAY_MS = 30_000;
+/** A connection that lived this long was a working one. */
+export const STABLE_MS = 1000;
 
 /** The part of WebSocket this module uses; tests inject a fake. */
 export interface SocketLike {
@@ -26,10 +35,28 @@ export interface ConnectOptions<T> {
   createSocket?: (url: string) => SocketLike;
   setTimer?: (fn: () => void, ms: number) => unknown;
   clearTimer?: (handle: unknown) => void;
+  now?: () => number;
+  /** Registers `resume` for "the page may have a network / the user is looking again"; returns the unregister function. Defaults to window `online` and document `visibilitychange`. */
+  subscribeResume?: (resume: () => void) => () => void;
 }
 
 export interface Connection {
+  /** Connects now when waiting for the next attempt or given up, forgetting earlier failures. */
+  retry(): void;
   close(): void;
+}
+
+function browserResume(resume: () => void): () => void {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return () => {};
+  const onVisible = () => {
+    if (document.visibilityState === 'visible') resume();
+  };
+  window.addEventListener('online', resume);
+  document.addEventListener('visibilitychange', onVisible);
+  return () => {
+    window.removeEventListener('online', resume);
+    document.removeEventListener('visibilitychange', onVisible);
+  };
 }
 
 /** Delay before reconnect attempt `attempt` (0-based): 0.5s, 1s, 2s, ... capped at 30s. */
@@ -49,19 +76,22 @@ export function connect<T>(options: ConnectOptions<T>): Connection {
   const setTimer = options.setTimer ?? ((fn: () => void, ms: number) => setTimeout(fn, ms));
   const clearTimer = options.clearTimer ?? ((h: unknown) => clearTimeout(h as ReturnType<typeof setTimeout>));
 
+  const now = options.now ?? Date.now;
+
   let socket: SocketLike | null = null;
   let timer: unknown = null;
   let failures = 0;
   let opened = false;
   let closed = false;
+  let waiting = false; // no socket: waiting for the next attempt, or given up
 
   const open = () => {
+    waiting = false;
     const current = createSocket(options.url);
     socket = current;
-    let connected = false;
+    let openedAt: number | null = null;
     current.onopen = () => {
-      connected = true;
-      failures = 0;
+      openedAt = now();
       options.onOpen?.(opened);
       opened = true;
     };
@@ -74,20 +104,33 @@ export function connect<T>(options: ConnectOptions<T>): Connection {
     };
     current.onclose = () => {
       if (closed || socket !== current) return;
-      if (!connected) failures += 1;
+      waiting = true;
+      if (openedAt !== null && now() - openedAt >= STABLE_MS) failures = 0;
+      else failures += 1;
       if (failures >= MAX_RETRIES) {
         log.warn('gave up reconnecting');
         options.onGiveUp?.();
         return;
       }
-      timer = setTimer(open, backoffDelay(connected ? 0 : failures - 1));
+      timer = setTimer(open, backoffDelay(Math.max(failures - 1, 0)));
     };
   };
 
+  const retry = () => {
+    if (closed || !waiting) return;
+    if (timer !== null) clearTimer(timer);
+    timer = null;
+    failures = 0;
+    open();
+  };
+
+  const unsubscribe = (options.subscribeResume ?? browserResume)(retry);
   open();
   return {
+    retry,
     close() {
       closed = true;
+      unsubscribe();
       if (timer !== null) clearTimer(timer);
       socket?.close();
     },

@@ -5,6 +5,7 @@
  */
 import htmx from 'htmx.org';
 import { ajaxGet, showToast } from './ajax';
+import { createConnectionNotice } from './components/lib/connection-notice';
 import { AJAX_FAILED_MESSAGE } from './components/lib/ajax';
 import { createSyncer } from './components/lib/sync';
 import { connect, socketUrl } from './components/lib/ws';
@@ -49,11 +50,16 @@ class ChatWorkspace {
     this.bindThread();
     this.bindComposer();
     this.scrollToBottom();
-    connect<ProjectEvent>({
+    const notice = createConnectionNotice('チャット');
+    const connection = connect<ProjectEvent>({
       url: socketUrl(root.dataset.wsUrl ?? '', location),
       onMessage: (event) => this.onEvent(event),
       // After a reconnect, events may have been missed: catch up on new messages and on cards that can still change.
-      onOpen: (reconnected) => reconnected && void this.catchUp(),
+      onOpen: (reconnected) => {
+        notice.hide();
+        if (reconnected) void this.catchUp();
+      },
+      onGiveUp: () => notice.show(() => connection.retry()),
     });
   }
 

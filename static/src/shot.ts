@@ -4,6 +4,7 @@
  * again (the socket carries no HTML).
  */
 import { ajaxGet } from './ajax';
+import { createConnectionNotice } from './components/lib/connection-notice';
 import { connect, socketUrl, type Connection } from './components/lib/ws';
 import { createRefreshGuard, isFinished, type ShotProgress } from './components/lib/shot';
 
@@ -19,11 +20,25 @@ export function initShotProgress(root: ParentNode = document): void {
 function watch(el: HTMLElement): void {
   const refreshUrl = el.dataset.refreshUrl ?? '';
   let connection: Connection | null = null;
+  const notice = createConnectionNotice('生成の進捗');
   connection = connect<ShotProgress>({
     url: socketUrl(el.dataset.wsUrl ?? '', location),
+    onOpen: () => notice.hide(),
+    onGiveUp: () => {
+      // The card was replaced meanwhile: nobody is waiting for this socket any more.
+      if (!el.isConnected) return;
+      notice.show(() => {
+        if (el.isConnected) connection?.retry();
+        else {
+          notice.hide();
+          connection?.close();
+        }
+      });
+    },
     onMessage: (progress) => {
       // The card was replaced (another swap): this socket is no longer needed.
       if (!el.isConnected) {
+        notice.hide();
         connection?.close();
         return;
       }
@@ -31,6 +46,7 @@ function watch(el: HTMLElement): void {
         el.setAttribute('aria-label', `${progress.takes_done ?? 0}/${progress.takes_total}`);
       }
       if (isFinished(progress)) {
+        notice.hide();
         connection?.close();
         if (refreshUrl && mayRefresh(refreshUrl)) void ajaxGet(refreshUrl, { target: '#scene-shot-view', swap: 'outerHTML' });
       }
