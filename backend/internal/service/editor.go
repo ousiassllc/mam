@@ -52,8 +52,10 @@ type EditorService struct {
 	// brands and judges give Final QC the Brand constraints and the Brand Issues of the Takes (F-23).
 	brands *repository.BrandRepository
 	judges *repository.JudgeRepository
-	// audio is nil without ffmpeg.
+	// audio is nil without ffmpeg or the speech vendor; cloner is nil without the ElevenLabs adapter.
 	audio   *audiodirector.Director
+	voices  *repository.VoiceRepository
+	cloner  audiodirector.VoiceCloner
 	chatSvc *ChatService
 	// tools is ffmpeg / ffprobe; nil when they are not installed.
 	tools   *media.Tools
@@ -124,8 +126,10 @@ type EditorView struct {
 	PendingShots int
 	Timeline     *TimelineView
 	Audio        *domain.AudioTimelineVersion
-	QC           *domain.FinalQCResult
-	Exports      []domain.Export
+	// Voices are the cloned voices of the Project's speakers.
+	Voices  []domain.VoiceClone
+	QC      *domain.FinalQCResult
+	Exports []domain.Export
 	// Defaults are the export options preselected: the Brief's aspect ratio, 1080p, H.264.
 	Defaults domain.ExportOptions
 	// CanRender is false without ffmpeg: no preview, audio or export.
@@ -170,9 +174,12 @@ func (s *EditorService) View(ctx context.Context, projectID, branchID string) (E
 	} else if !errors.Is(err, ErrNotFound) {
 		return EditorView{}, err
 	}
-	if a, err := s.editors.LatestAudioTimeline(ctx, projectID); err == nil {
+	if a, err := s.editors.LatestAudioTimeline(ctx, projectID, branchID); err == nil {
 		v.Audio = &a
 	} else if !errors.Is(err, repository.ErrNotFound) {
+		return EditorView{}, err
+	}
+	if v.Voices, err = s.voices.List(ctx, projectID); err != nil {
 		return EditorView{}, err
 	}
 	if qc, err := s.editors.LatestFinalQC(ctx, projectID); err == nil {
@@ -658,7 +665,7 @@ func (s *EditorService) rough(ctx context.Context, ver domain.EditTimelineVersio
 	if info, err := s.tools.Probe(ctx, dst); err == nil {
 		return dst, info, nil
 	}
-	cuts, err := s.cuts(ctx, ver.Timeline)
+	cuts, err := s.cuts(ctx, ver.Timeline, nil)
 	if err != nil {
 		return "", media.Info{}, err
 	}
@@ -674,8 +681,9 @@ var transitionNames = map[domain.TransitionType]string{
 	domain.TransitionCut: "cut", domain.TransitionFade: "fade", domain.TransitionFadeBlack: "fadeblack", domain.TransitionDissolve: "dissolve",
 }
 
-// cuts turns the Edit Timeline into what Render takes. A clip whose Take file is gone fails the stage.
-func (s *EditorService) cuts(ctx context.Context, tl domain.EditTimeline) ([]media.Cut, error) {
+// cuts turns the Edit Timeline into what Render takes. A clip whose Take file is gone fails the
+// stage. A clip that Lip Sync redid (lipSync) plays that picture instead of its Take's.
+func (s *EditorService) cuts(ctx context.Context, tl domain.EditTimeline, lipSync []domain.LipSyncClip) ([]media.Cut, error) {
 	cuts := make([]media.Cut, len(tl.Clips))
 	for i, c := range tl.Clips {
 		src, ok, err := s.takeSource(ctx, c.TakeID)
@@ -685,7 +693,14 @@ func (s *EditorService) cuts(ctx context.Context, tl domain.EditTimeline) ([]med
 		if !ok {
 			return nil, conflict("クリップ %d の Take のファイルが見つかりません。編集し直してください", i+1)
 		}
-		cuts[i] = media.Cut{Path: s.assetPath(src.path), Start: c.In, End: c.Out, Transition: transitionNames[c.Transition.Type], Overlap: c.Transition.Seconds, Caption: c.Caption}
+		cut := media.Cut{Path: s.assetPath(src.path), Start: c.In, End: c.Out, Transition: transitionNames[c.Transition.Type], Overlap: c.Transition.Seconds, Caption: c.Caption}
+		if j := slices.IndexFunc(lipSync, func(l domain.LipSyncClip) bool { return l.ClipIndex == i+1 && l.TakeID == c.TakeID }); j >= 0 {
+			if !s.fileExists(lipSync[j].Path) {
+				return nil, conflict("クリップ %d の Lip Sync の映像ファイルが見つかりません。音声を作り直してください", i+1)
+			}
+			cut.Path, cut.Start, cut.End = s.assetPath(lipSync[j].Path), 0, min(c.Out-c.In, lipSync[j].DurationSeconds)
+		}
+		cuts[i] = cut
 	}
 	return cuts, nil
 }
@@ -701,122 +716,6 @@ func (s *EditorService) Preview(ctx context.Context, id string) (MediaFile, erro
 		return MediaFile{}, err
 	}
 	return MediaFile{Path: file, MimeType: "video/mp4"}, nil
-}
-
-// GenerateAudio makes the simple Audio Timeline for the latest Edit Timeline (POST
-// /projects/:id/audio/generate): the Dialogue and Narration of the script spoken by ElevenLabs,
-// mixed with the sound of the Rough Cut and normalized to the target loudness. The Project must
-// be in AUDIO (the Editor Judge passed).
-func (s *EditorService) GenerateAudio(ctx context.Context, projectID string) (EditorView, error) {
-	if s.audio == nil || s.tools == nil {
-		return EditorView{}, ErrUnavailable
-	}
-	release, err := s.acquire(projectID)
-	if err != nil {
-		return EditorView{}, err
-	}
-	defer release()
-
-	project, err := s.getProject(ctx, projectID)
-	if err != nil {
-		return EditorView{}, err
-	}
-	if project.State != domain.StateAudio {
-		return EditorView{}, conflict("音声を作れるのは Editor Judge に合格した後（AUDIO）です（現在: %s）", project.State)
-	}
-	ver, err := s.editors.LatestEditTimeline(ctx, projectID, "")
-	if err != nil {
-		return EditorView{}, notFound(err)
-	}
-	roughPath, info, err := s.rough(ctx, ver)
-	if err != nil {
-		return EditorView{}, err
-	}
-	idx, err := s.shotIndex(ctx, projectID, "")
-	if err != nil {
-		return EditorView{}, err
-	}
-	cues, err := s.cues(ctx, projectID, idx, ver.Timeline)
-	if err != nil {
-		return EditorView{}, err
-	}
-	tl, err := s.audio.Produce(ctx, audiodirector.Input{
-		ProjectID: projectID, EditTimelineID: ver.ID, Cues: cues,
-		Rough: roughPath, HasSound: info.HasAudio, Seconds: info.Duration,
-	})
-	if err != nil {
-		return EditorView{}, audioError(err)
-	}
-	if _, err := s.editors.SaveAudioTimeline(ctx, projectID, tl); err != nil {
-		return EditorView{}, notFound(err)
-	}
-	var text string
-	if n := len(tl.Clips); n > 0 {
-		text = fmt.Sprintf("音声を作成しました（Dialogue / Narration %d 行、ラウドネス %.1f LUFS）。", n, tl.MeasuredLUFS)
-	} else if tl.MixPath != "" {
-		text = fmt.Sprintf("音声を作成しました（セリフなし。Take の音声のラウドネスを %.1f LUFS に整えました）。", tl.MeasuredLUFS)
-	} else {
-		text = "音声を作成しました（セリフも Take の音声もないため、無音の動画になります）。"
-	}
-	s.announce(ctx, projectID, text)
-	return s.View(ctx, projectID, "")
-}
-
-// cues are the script lines of each Scene with the second the Scene begins at in the Rough Cut. A
-// Scene none of whose Shots is in the timeline is not spoken.
-func (s *EditorService) cues(ctx context.Context, projectID string, idx shotIndex, tl domain.EditTimeline) ([]audiodirector.Cue, error) {
-	script, err := s.plans.LatestScript(ctx, projectID)
-	if errors.Is(err, repository.ErrNotFound) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	starts := tl.Starts()
-	sceneStart := map[int]float64{}
-	for i, c := range tl.Clips {
-		r, ok := idx.byID[c.ShotID]
-		if !ok {
-			continue
-		}
-		if _, seen := sceneStart[r.Scene.OrderIndex]; !seen {
-			sceneStart[r.Scene.OrderIndex] = starts[i]
-		}
-	}
-	var cues []audiodirector.Cue
-	for i, sc := range script.Doc.Script.Scenes {
-		start, ok := sceneStart[i]
-		if !ok || len(sc.Dialogue) == 0 {
-			continue
-		}
-		cues = append(cues, audiodirector.Cue{Start: start, Lines: sc.Dialogue})
-	}
-	slices.SortFunc(cues, func(a, b audiodirector.Cue) int {
-		switch {
-		case a.Start < b.Start:
-			return -1
-		case a.Start > b.Start:
-			return 1
-		}
-		return 0
-	})
-	return cues, nil
-}
-
-// audioError is the error the user sees when the audio stage failed.
-func audioError(err error) error {
-	var pe *audiodirector.ProviderError
-	switch {
-	case errors.Is(err, audiodirector.ErrNoAPIKey):
-		return &AIError{Reason: "ElevenLabs の API キーが設定されていません（設定画面で elevenlabs のキーを登録してください）", Err: err}
-	case errors.As(err, &pe) && pe.Status == 429:
-		return &AIError{Reason: "ElevenLabs のレート制限に達しました。しばらく待ってから再実行してください", Err: err}
-	case errors.As(err, &pe):
-		return &AIError{Reason: "ElevenLabs の音声合成に失敗しました", Err: err}
-	case errors.Is(err, media.ErrUnavailable):
-		return ErrUnavailable
-	}
-	return &AIError{Reason: "音声のミキシングに失敗しました: " + err.Error(), Err: err}
 }
 
 // FinalQC runs Final QC on the latest Edit and Audio Timelines (POST /projects/:id/final-qc). The
@@ -840,7 +739,7 @@ func (s *EditorService) FinalQC(ctx context.Context, projectID string) (EditorVi
 	if err != nil {
 		return EditorView{}, notFound(err)
 	}
-	audio, err := s.editors.LatestAudioTimeline(ctx, projectID)
+	audio, err := s.editors.LatestAudioTimeline(ctx, projectID, "")
 	if errors.Is(err, repository.ErrNotFound) {
 		return EditorView{}, conflict("音声がまだありません。先に音声を作成してください")
 	}
@@ -917,12 +816,12 @@ func (s *EditorService) brandInput(ctx context.Context, projectID string, in *fi
 	if err != nil {
 		return err
 	}
-	cues, err := s.cues(ctx, projectID, idx, in.Edit.Timeline)
+	scenes, err := s.audioScenes(ctx, projectID, "", in.Edit.Timeline)
 	if err != nil {
 		return err
 	}
-	for _, cue := range cues {
-		for _, line := range cue.Lines {
+	for _, sc := range scenes {
+		for _, line := range sc.Lines {
 			if vl, ok := domain.ParseVoiceLine(line); ok {
 				in.Spoken = append(in.Spoken, vl.Text)
 			}
@@ -1023,11 +922,11 @@ func (s *EditorService) Export(ctx context.Context, projectID string, in ExportI
 	if err != nil {
 		return EditorView{}, notFound(err)
 	}
-	audio, err := s.editors.LatestAudioTimeline(ctx, projectID)
+	audio, err := s.editors.LatestAudioTimeline(ctx, projectID, "")
 	if err != nil {
 		return EditorView{}, notFound(err)
 	}
-	cuts, err := s.cuts(ctx, edit.Timeline)
+	cuts, err := s.cuts(ctx, edit.Timeline, audio.Timeline.LipSync)
 	if err != nil {
 		return EditorView{}, err
 	}

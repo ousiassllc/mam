@@ -23,29 +23,66 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service"
 )
 
-// editorLLM answers the Editor Judge with a fixed JSON reply.
-type editorLLM struct{ answer string }
+// editorLLM answers the Editor Judge with a fixed JSON reply and the Audio Director's Planner with
+// audioPlan (a plan for Scene 1).
+type editorLLM struct {
+	answer    string
+	audioPlan string
+}
 
-func (l *editorLLM) Complete(context.Context, llm.Agent, llm.Request) (llm.Response, error) {
+const defaultAudioPlan = `{"scenes":[{"index":1,"emotion":"期待","bgm":"warm acoustic guitar","ambience":"","effects":[{"layer":"se","at_seconds":0.2,"duration_seconds":1,"prompt":"soft chime"}]}]}`
+
+func (l *editorLLM) Complete(_ context.Context, agent llm.Agent, _ llm.Request) (llm.Response, error) {
+	if agent == llm.AgentAudioDirector {
+		return llm.Response{Text: l.audioPlan}, nil
+	}
 	return llm.Response{Text: l.answer}, nil
 }
 
-// tone is a Synthesizer that "speaks" a 1.5 s tone.
-type tone struct{ data []byte }
+// tone is every ElevenLabs model in one fake: it "speaks", composes and generates a 1.5 s tone.
+type tone struct {
+	data []byte
+	// spoken collects the lines it was asked to speak.
+	spoken *[]domain.VoiceLine
+}
 
-func (t tone) Synthesize(context.Context, domain.VoiceLine) (audiodirector.Speech, error) {
+func (t tone) Synthesize(_ context.Context, line domain.VoiceLine) (audiodirector.Speech, error) {
+	*t.spoken = append(*t.spoken, line)
+	return audiodirector.Speech{Data: t.data, Ext: "wav"}, nil
+}
+
+func (t tone) Compose(context.Context, string, float64) (audiodirector.Speech, error) {
+	return audiodirector.Speech{Data: t.data, Ext: "wav"}, nil
+}
+
+func (t tone) Generate(context.Context, string, float64, bool) (audiodirector.Speech, error) {
 	return audiodirector.Speech{Data: t.data, Ext: "wav"}, nil
 }
 
 type editorApp struct {
 	*takeApp
 	llm *editorLLM
+	// spoken are the lines the fake text-to-speech was asked for.
+	spoken *[]domain.VoiceLine
+}
+
+// voiceCloner answers a clone request with a fixed voice and remembers the sample.
+type voiceCloner struct {
+	id     string
+	sample *audiodirector.Sample
+}
+
+func (c voiceCloner) Clone(_ context.Context, _ string, s audiodirector.Sample) (string, error) {
+	*c.sample = s
+	return c.id, nil
 }
 
 func newEditorApp(t *testing.T) *editorApp {
 	t.Helper()
-	l := &editorLLM{answer: `{"verdict":"pass","findings":[]}`}
-	var speech tone
+	l := &editorLLM{answer: `{"verdict":"pass","findings":[]}`, audioPlan: defaultAudioPlan}
+	spoken := &[]domain.VoiceLine{}
+	sample := &audiodirector.Sample{}
+	speech := tone{spoken: spoken}
 	ta := newTakeAppWith(t, func(d *service.Deps) {
 		tools, err := media.Look()
 		require.NoError(t, err)
@@ -54,9 +91,10 @@ func newEditorApp(t *testing.T) *editorApp {
 		require.NoError(t, err, string(out))
 		speech.data, err = os.ReadFile(wav)
 		require.NoError(t, err)
-		d.LLM, d.Speech, d.Media = l, speech, &tools
+		d.LLM, d.Media = l, &tools
+		d.Audio = audiodirector.Providers{Speech: speech, Music: speech, Sounds: speech, Cloner: voiceCloner{id: "cloned-voice-1", sample: sample}}
 	})
-	e := &editorApp{takeApp: ta, llm: l}
+	e := &editorApp{takeApp: ta, llm: l, spoken: spoken}
 	e.setLevel(domain.ConfirmFullAuto) // no approval card unless a test asks for one
 	// DRAMA asks nothing of a one-clip cut that a test could trip over (PRODUCT / CM wants the product on screen).
 	e.execSQL(`UPDATE project SET production_template = 'drama' WHERE id = ?`, e.project)
@@ -186,15 +224,33 @@ func TestEditor_FullFlowFromRoughCutToExport(t *testing.T) {
 	assert.Equal(t, "AUDIO", e.state())
 	assert.Equal(t, "pass", e.timeline().Judge.Verdict)
 
-	// Audio: two lines are spoken, mixed and normalized.
+	// Audio: two lines are spoken, the Scene gets the BGM and SE its Emotion asks for, all mixed and normalized.
 	rec = e.form(http.MethodPost, "/projects/"+e.project+"/audio/generate", nil)
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-	assert.Contains(t, rec.Body.String(), "セリフ 2 行")
-	latest, err := repository.NewEditorRepository(e.db).LatestAudioTimeline(context.Background(), e.project)
+	assert.Contains(t, rec.Body.String(), "Dialogue 1")
+	assert.Contains(t, rec.Body.String(), "BGM 1")
+	latest, err := repository.NewEditorRepository(e.db).LatestAudioTimeline(context.Background(), e.project, "")
 	require.NoError(t, err)
 	audio := latest.Timeline
-	require.Len(t, audio.Clips, 2)
+	assert.Equal(t, domain.AudioModeDirector, audio.Mode)
+	assert.Equal(t, 1, latest.VersionNumber)
+	assert.Equal(t, 2, audio.SpeechLines())
+	assert.Equal(t, 1, audio.Count(domain.LayerBGM))
+	assert.Equal(t, 1, audio.Count(domain.LayerSE))
+	require.Len(t, audio.Scenes, 1)
+	assert.Equal(t, "期待", audio.Scenes[0].Emotion)
 	assert.InDelta(t, domain.DefaultTargetLUFS, audio.MeasuredLUFS, 1.5)
+	// Every provider call is in the cost ledger under the identifier of model-adapters.md §6.
+	var providers []string
+	rows, err := e.db.Reader().QueryContext(context.Background(), `SELECT provider FROM cost_ledger_entry WHERE project_id = ? AND provider LIKE 'elevenlabs-%' ORDER BY provider`, e.project)
+	require.NoError(t, err)
+	for rows.Next() {
+		var p string
+		require.NoError(t, rows.Scan(&p))
+		providers = append(providers, p)
+	}
+	require.NoError(t, rows.Err())
+	assert.Equal(t, []string{"elevenlabs-music", "elevenlabs-sfx", "elevenlabs-tts", "elevenlabs-tts"}, providers)
 	_, statErr := os.Stat(filepath.Join(e.dir, "assets", filepath.FromSlash(audio.MixPath)))
 	assert.NoError(t, statErr)
 

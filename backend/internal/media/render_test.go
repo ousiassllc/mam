@@ -109,7 +109,7 @@ func TestMaster_NormalizesTheMixToTheTargetLoudness(t *testing.T) {
 	voice := makeTone(t, tools, "voice.wav", 1.5, 0.2)
 	dst := filepath.Join(t.TempDir(), "audio", "mix.m4a")
 
-	got, err := tools.Master(context.Background(), base, []Voice{{Path: voice, Start: 1}}, 4, -14, dst)
+	got, err := tools.Master(context.Background(), base, []Track{{Path: voice, Start: 1}}, 4, -14, dst)
 
 	require.NoError(t, err)
 	assert.InDelta(t, -14, got.Integrated, 1.0)
@@ -124,7 +124,7 @@ func TestMaster_VoicesAloneMakeTheMix(t *testing.T) {
 	voice := makeTone(t, tools, "voice.wav", 1, 0.05) // very quiet: gain is added
 	dst := filepath.Join(t.TempDir(), "mix.m4a")
 
-	got, err := tools.Master(context.Background(), "", []Voice{{Path: voice, Start: 0}}, 2, -14, dst)
+	got, err := tools.Master(context.Background(), "", []Track{{Path: voice, Start: 0}}, 2, -14, dst)
 
 	require.NoError(t, err)
 	assert.InDelta(t, -14, got.Integrated, 1.5)

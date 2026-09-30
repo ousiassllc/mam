@@ -57,9 +57,10 @@ type Deps struct {
 	Judge judge.Config
 	// Jev is the TypeSafe Jev client of the Repair Agent's shadow run. Nil: no shadow run.
 	Jev repair.Shadow
-	// Speech is the text-to-speech of the simple Audio Director (ElevenLabs). Nil: audio production is
-	// unavailable. It also needs Media.
-	Speech audiodirector.Synthesizer
+	// Audio are the vendors of the Audio Director: ElevenLabs (TTS, cloned voices, Music, Sound
+	// Effects) and Sync Labs (Lip Sync). Audio production is available only when Audio.Speech and
+	// Media are set; a missing Music / Sounds / LipSync leaves that layer out.
+	Audio audiodirector.Providers
 }
 
 // Services is the DI root handed to router.New. Each feature adds one field
@@ -222,10 +223,15 @@ func New(deps Deps) *Services {
 	editors = &EditorService{
 		core: c, editors: repository.NewEditorRepository(deps.DB), shots: gens, generation: generations, policies: policies, takes: takes, chatSvc: chat, tools: deps.Media,
 		judge: editor.NewJudge(deps.LLM), brands: brands, judges: judges.judges,
+		voices: repository.NewVoiceRepository(deps.DB), cloner: deps.Audio.Cloner,
 	}
 	takeService.afterSelect = func() { go editors.ResumeReshoots(context.Background()) }
-	if deps.Media != nil && deps.Speech != nil {
-		editors.audio = audiodirector.New(deps.Speech, *deps.Media, deps.AssetsDir)
+	if deps.Media != nil && deps.Audio.Speech != nil {
+		// Without a Reasoning LLM the Audio Director plans its layers by rule (tempo, Brief mood, location).
+		editors.audio = audiodirector.New(audiodirector.Deps{
+			Providers: deps.Audio, Planner: audiodirector.NewPlanner(deps.LLM), Ledger: repository.NewCostRepository(deps.DB),
+			Tools: *deps.Media, Root: deps.AssetsDir,
+		})
 	}
 	return &Services{
 		Health:      NewHealthService(deps.DB),

@@ -64,6 +64,7 @@ func registerActions(engine *gin.Engine, services *service.Services) {
 	engine.POST("/edit-timelines/:id/judge", handler.JudgeTimeline(services.Editor))
 	engine.POST("/edit-timelines/:id/request-additional-shot", handler.RequestAdditionalShot(services.Editor))
 	engine.POST("/projects/:id/audio/generate", handler.GenerateAudio(services.Editor))
+	engine.POST("/projects/:id/audio/voices", handler.CloneVoice(services.Editor))
 	engine.POST("/projects/:id/final-qc", handler.FinalQC(services.Editor))
 	engine.POST("/projects/:id/export", handler.Export(services.Editor))
 	engine.POST("/projects/:id/messages", handler.PostMessage(services.Chat))

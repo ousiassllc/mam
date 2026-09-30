@@ -331,6 +331,7 @@ erDiagram
     AUDIO_TIMELINE_VERSION ||--o{ FINAL_QC_RESULT : checked_by
     PROJECT ||--o{ FINAL_QC_RESULT : project_final_qc
     PROJECT ||--o{ AUDIO_TIMELINE_VERSION : has
+    PROJECT ||--o{ VOICE_CLONE : has
     PROJECT ||--o{ EXPORT : produces
     BRANCH ||--o{ EDIT_TIMELINE_VERSION : branch_edit_timelines
     BRANCH ||--o{ AUDIO_TIMELINE_VERSION : branch_audio_timelines
@@ -365,6 +366,14 @@ erDiagram
         string audio_timeline_version_id FK
         string result
         json findings
+        datetime created_at
+    }
+    VOICE_CLONE {
+        string id PK
+        string project_id FK
+        string speaker
+        string name
+        string voice_id
         datetime created_at
     }
     EXPORT {
@@ -492,6 +501,7 @@ erDiagram
 | `reshoot_request` | Editor → Reshoot Loop（F-19）が Director に求めた追加 Shot。`project_id` FK、`branch_id` FK（NULL許容、NULL=主系列トランク）、`edit_timeline_version_id` FK（判定した版）、`round`（`(project_id, branch_id)` ごとの要求ラウンド。Retry Policy が数える）、`shot_id` FK（作らせた Shot）、`after_shot_id` FK（クリップを足す位置の Shot）、`kind`（`insert/reaction`）、`objective`、`duration_seconds`、`status`（`requested/applied`）、`applied_edit_timeline_version_id` FK（足した版） | `idx_reshoot_request_project (project_id, branch_id, round)`, `idx_reshoot_request_status (status)` |
 | `edit_timeline_version` / `audio_timeline_version` | `project_id` FK。`branch_id` FK（NULL許容、NULL=主系列トランク、非NULL=当該BranchのTimeline）。`(project_id, branch_id, version_number)` UNIQUE | `idx_edit_timeline_project (project_id, branch_id, version_number)` |
 | `editor_judge_result` | `edit_timeline_version_id` FK。`result` は `pass/re_edit/need_shot` | `idx_editor_judge_result_timeline (edit_timeline_version_id)` |
+| `voice_clone` | Audio Director（F-20、M3）の音声クローン。`project_id` FK（ON DELETE CASCADE）、`speaker`（脚本の話者名）、`name`、`voice_id`（ElevenLabs の声）。`(project_id, speaker)` UNIQUE（話者ごとに 1 件。再クローンは置き換え） | - |
 | `final_qc_result` | `project_id` FK。`audio_timeline_version_id` FK（チェックした Audio Timeline の版）。`result` は `pass/fail`（CHECK制約）。`findings`（JSON 配列。`check`/`message`/`stage`（差し戻し先の Project 状態）/`advisory`（true は Brand 制約の警告で FAIL にしない。省略=false））。実行のたびに 1 行追加し履歴を残す（Final QC の M1、F-26） | `idx_final_qc_result_project (project_id, created_at)` |
 | `export` | `project_id` FK。`branch_id` FK（NULL許容、NULL=主系列トランクからの書き出し） | `idx_export_project (project_id, branch_id)` |
 | `lock` | `project_id` FK。`(project_id, target_type, target_id, parameter_name)` UNIQUE。`mode` は `auto/manual/lock`。`target_type` は `story/music/character/product/location/shot` 等、`parameter_name` は `wardrobe`/`orientation`/`lighting_state` 等の属性単位。Character/Product/LocationのLOCK判定は本テーブルに一元化し、エンティティ側に専用カラムは持たない | `idx_lock_project_target (project_id, target_type, target_id)` |
@@ -537,7 +547,7 @@ erDiagram
 ### 4.x 編集・音声・書き出しの保持形式（M1）
 
 - `edit_timeline_version.timeline`: `{"clips":[{"shot_id","take_id","source_seconds"?,"in_point","out_point","transition":{"type":"cut|fade|fade_black|dissolve","seconds"}}]}`。クリップの並びが再生順。`in_point`/`out_point` は Take 内の秒で、区間は 0.5 秒以上。先頭クリップの `transition` は常に `cut`。`transition` は前のクリップとの重なり（前後の短いほうの半分が上限）を作る。総尺 = 各クリップの長さの合計 − 重なりの合計
-- `audio_timeline_version.timeline`: `{"edit_timeline_id","clips":[{"path","start_seconds","duration_seconds",...}],"speech_expected","mix_path","duration_seconds","target_lufs","measured_lufs","true_peak_db"}`。`edit_timeline_id` は音声を作った Edit Timeline の版で、Final QC が最新の編集と一致するかを判定するのに使う。`mix_path` はアセットディレクトリからの相対パス
+- `audio_timeline_version.timeline`: `{"mode"?,"edit_timeline_id","clips":[{"kind"?,"speaker"?,"text"?,"voice_id"?,"layer"?,"prompt"?,"model"?,"path","start_seconds","duration_seconds","loop"?,"gain_db"?}],"speech_expected","quality"?,"scenes"?:[{"index","title"?,"start_seconds","end_seconds","tempo","emotion"?,"clips","avg_clip_seconds"}],"lip_sync"?:[{"clip_index","take_id","path","duration_seconds","model"}],"skipped"?:[{"layer","prompt"?,"reason":"policy|budget|error","detail"?}],"estimated_cost"?,"mix_path","duration_seconds","target_lufs","measured_lufs","true_peak_db"}`。`edit_timeline_id` は音声を作った Edit Timeline の版で、Final QC が最新の編集と一致するかを判定するのに使う。`mix_path` と各クリップ・`lip_sync` の `path` はアセットディレクトリからの相対パス。**M3 の Audio Director が作った版は `mode` が `director`**で、`layer`（`dialogue/narration/bgm/se/foley/ambience`）と `model`（`elevenlabs-tts/-music/-sfx`）を持つ。M1 の簡易音声の版（`mode` なし・`layer` なし）はそのまま読める（層は `kind` から Dialogue / Narration とみなす）。版は `(project_id, branch_id)` ごとの追記のみ
 - 保存は追記のみ（`version_number` は Project 内の最大値 + 1）。Edit Timeline の保存は、呼び出し側が表示していた版が最新のときだけ成功する（別の版が保存済みなら拒否）
 - `export.file_path` はアセットディレクトリからの相対パス（`<project_id>/exports/<export_id>.mp4|webm`）
 
@@ -581,3 +591,4 @@ erDiagram
 | 1.33 | 2026-09-30 | `brand_constraint` テーブルを実装（マイグレーション `20260930103000_brand_constraint.sql`）。`value` の JSON 構造・`created_at`・カスケード削除を明記。`final_qc_result.findings` の要素に `advisory`（Brand 制約の警告。FAIL にしない）を追加 | M2「Safety / Brand Constraints」（Issue #23）の実装に合わせるため |
 | 1.34 | 2026-09-30 | `human_intervention` を追加（§2.4 の ER 図、§3 のテーブル定義） | M3「Production Analytics」（Issue #29）。MVP Success Metrics の Human Intervention・User Override・AUTO Completion Rate が既存テーブルから読めないため |
 | 1.35 | 2026-09-30 | `edit_timeline_version.timeline` のクリップに `kind`・`caption`、`editor_judge_result.findings` に `need_shot` を追記し、`reshoot_request` テーブルを追加 | Advanced Editor Agent と Editor → Reshoot Loop（Issue #24）の実装に合わせるため |
+| 1.36 | 2026-09-30 | `voice_clone` テーブルを追加（マイグレーション `20260930193000_voice_clone.sql`）。`audio_timeline_version.timeline` に M3 の Audio Director の構造（`mode`・`layer`・`scenes`・`lip_sync`・`skipped`・`estimated_cost`）を追記し、版を Branch ごとの系列とした | M3「Audio Director（フル機能）」（Issue #25）の実装に合わせるため |

@@ -147,7 +147,7 @@ func serve(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 		Judge:       judging.config,
 		Jev:         shadow,
 		Media:       previews,
-		Speech:      audiodirector.NewElevenLabs(audiodirector.Config{}, keys, nil),
+		Audio:       audioProviders(keys),
 	})
 	// Shots left GENERATING by an abnormal termination are released before their jobs are failed.
 	released, err := services.Recover(ctx)
@@ -203,4 +203,12 @@ func serve(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 		return fmt.Errorf("shutdown: %w", err)
 	}
 	return nil
+}
+
+// audioProviders are the vendors of the Audio Director: ElevenLabs (TTS, cloned voices, Music,
+// Sound Effects; API key "elevenlabs") and Sync Labs (Lip Sync; API key "synclabs").
+func audioProviders(keys credential.Store) audiodirector.Providers {
+	p := audiodirector.ElevenLabsProviders(audiodirector.NewElevenLabs(audiodirector.Config{}, keys, nil))
+	p.LipSync = audiodirector.NewSyncLabs(audiodirector.SyncLabsConfig{}, keys, nil)
+	return p
 }

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
@@ -97,4 +98,41 @@ func (r *CostRepository) ledgerByShot(ctx context.Context, projectID string) (ma
 		perShot[shotID] = t
 	}
 	return perShot, unassigned, rows.Err()
+}
+
+// ProjectBudget returns the Project budget ceiling in USD (nil when none is set) and the money the
+// cost ledger holds for the Project: the actual cost of an entry when the vendor reported one, else
+// the estimate. It is what the Audio Director checks its spending against (F-22).
+func (r *CostRepository) ProjectBudget(ctx context.Context, projectID string) (*float64, float64, error) {
+	var ceiling sql.NullFloat64
+	err := r.db.Reader().QueryRowContext(ctx, `SELECT project_budget_ceiling FROM project WHERE id = ?`, projectID).Scan(&ceiling)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, 0, ErrNotFound
+	}
+	if err != nil {
+		return nil, 0, fmt.Errorf("get ceiling: %w", err)
+	}
+	var spent float64
+	if err := r.db.Reader().QueryRowContext(ctx,
+		`SELECT COALESCE(SUM(COALESCE(actual_cost, estimated_cost)), 0) FROM cost_ledger_entry WHERE project_id = ?`, projectID).Scan(&spent); err != nil {
+		return nil, 0, fmt.Errorf("sum cost ledger: %w", err)
+	}
+	return floatOrNil(ceiling), spent, nil
+}
+
+// AddCost appends an entry to the cost ledger.
+func (r *CostRepository) AddCost(ctx context.Context, e domain.CostEntry) error {
+	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
+		if err := projectExists(ctx, tx, e.ProjectID); err != nil {
+			return err
+		}
+		return insertCost(ctx, tx, e, formatTime(time.Now()))
+	})
+	if errors.Is(err, ErrNotFound) {
+		return err
+	}
+	if err != nil {
+		return fmt.Errorf("add cost: %w", err)
+	}
+	return nil
 }

@@ -215,7 +215,7 @@ M1（F-14、Issue #10）で実装する Repair / Retake Loop の判断部分。�
 
 ## 12. 音声（M1 簡易版）の実装（`internal/agent/audiodirector`）
 
-M1 は §5 のうち ElevenLabs の TTS（Dialogue / Narration）とローカル DSP（ffmpeg）のみを実装する。BGM・SE・Foley・Ambience・Lip Sync・音声クローンは M3。
+M1 は §5 のうち ElevenLabs の TTS（Dialogue / Narration）とローカル DSP（ffmpeg）のみを実装した。BGM・SE・Foley・Ambience・Lip Sync・音声クローンは M3 で追加した（§14）。M1 の簡易音声から M3 の Audio Director への移行は §14.6。
 
 - **認証**: 設定画面の API キー（`credential.Store` のプロバイダー名 `elevenlabs`）。ヘッダー `xi-api-key`。キーがなければ音声生成は 502（「ElevenLabs の API キーが設定されていません」）
 - **TTS**: `POST {base}/v1/text-to-speech/{voice_id}`（既定 base `https://api.elevenlabs.io`、モデル `eleven_multilingual_v2`、日本語対応）。Dialogue と Narration はそれぞれ別の voice ID（既定は ElevenLabs の premade voice）。応答の音声（mp3）をそのままファイルにし、ffmpeg で扱う。429 はレート制限として利用者に伝え、リトライは行わない
@@ -293,6 +293,62 @@ Shot の性質による軸の重み: 4 軸とも基準 1 に、Shot Spec に Pro
 | `routing.weights.<fast\|balanced\|max_quality>` | `quality` / `cost` / `fit` の重み（負でなく、合計が正） | 13.3 |
 | `routing.candidates.<fast\|balanced\|max_quality>` | `model` と `resolution` の配列（各モデルは動画モデルで、`policies` と同じ検証を受ける） | 13.2 |
 
+## 14. Audio Director（M3）の実装（`internal/agent/audiodirector`）
+
+M3 Issue #25 の仕様。§5 の全機能（TTS・音声クローン / Music / Sound Effects / Lip Sync / Mixing・Loudness）を実装する。
+
+### 14.1 プロバイダーと識別子
+
+| 機能 | 識別子（`cost_ledger_entry.provider`、`audio_timeline` のクリップの `model`） | 呼び出し | 認証（設定画面のキー名） |
+|------|------|------|------|
+| Dialogue / Narration（TTS） | `elevenlabs-tts` | `POST /v1/text-to-speech/{voice_id}`（モデル `eleven_multilingual_v2`） | `elevenlabs`（ヘッダー `xi-api-key`） |
+| 音声クローン | （生成物ではなくコストなし。音声 ID は `voice_clone` に保存） | `POST /v1/voices/add`（multipart。`name` と `files`）。応答の `voice_id` を保存する | `elevenlabs` |
+| BGM（Music v2） | `elevenlabs-music` | `POST /v1/music`（`prompt`・`music_length_ms`・`model_id: music_v2`・`force_instrumental: true`）。長さは 3〜600 秒 | `elevenlabs` |
+| SE / Foley / Ambience | `elevenlabs-sfx` | `POST /v1/sound-generation`（`text`・`duration_seconds`・`loop`）。長さは 0.5〜30 秒 | `elevenlabs` |
+| Lip Sync | `sync-labs` | `POST https://api.sync.so/v2/generate`（multipart。`video`・`audio`・`model`）→ `GET /v2/generate/{id}` を `COMPLETED` までポーリングし、`outputUrl` をダウンロードする（ダウンロードには API キーを送らない） | `synclabs`（ヘッダー `x-api-key`） |
+
+- 長さが範囲外の Music / SE はリクエストを送らずに拒否する。429 はレート制限として利用者に伝え、リトライしない。API キーはエラーメッセージに含めない
+- 各ベンダーの呼び出しはインターフェース（`Synthesizer` / `Composer` / `SoundMaker` / `VoiceCloner` / `LipSyncer`）の裏にあり、`audiodirector.Providers` で束ねて `service.Deps.Audio` に渡す。未設定のプロバイダーの層は作らず、Audio Timeline の `skipped` に残す（偽の音は作らない）
+
+### 14.2 Audio Timeline の生成（Scene Emotion と編集テンポ）
+
+1. **Scene の読み取り**: Edit Timeline のクリップを Scene ごとにまとめ、編集後の動画上の開始・終了、クリップ数、Scene の場所・目的・脚本の内容・Shot の目的を集める。編集テンポは Scene 内のクリップの平均の長さから決める（2.5 秒未満 `fast`、5 秒超 `slow`、それ以外 `medium`）
+2. **プラン（Planner）**: Reasoning LLM（`llm.AgentAudioDirector`）が Scene ごとに Scene Emotion（感情）・BGM のプロンプト・Ambience のプロンプト・SE / Foley の置き場所（Scene 先頭からの秒数・長さ・プロンプト）を JSON で返す。Quality Policy の範囲外の層、Scene の外・長さ 0.5 秒未満・最大 4 個を超える効果音は捨てる。LLM が未設定のときは規則で作る（BGM はテンポとブリーフの mood、Ambience は Scene の場所から。効果音は置かない）。LLM の出力が使えない（Scene を 1 つも指していない等）ときは **プロバイダーへの支払いの前に** エラーにする
+3. **層ごとの生成**: Dialogue / Narration は脚本の行を順に話し、行は Scene の開始位置か直前の行の直後（遅い方）に置く（行の間 0.3 秒）。話者に音声クローンがあれば Dialogue の行はその声で話す（Narration は既定の声）。その後、BGM（Scene の長さ）→ Ambience（Scene の長さ。ループ）→ SE → Foley の順に作る。この順は予算が足りないときの優先順位でもある
+4. **ミキシング・ラウドネス**: Take 自体の音声（あれば）と全クリップをローカルの ffmpeg で 1 本にする。BGM・Ambience は Scene の両端で 0.5 秒フェードし、層ごとの音量は Dialogue / Narration 0 dB、BGM −16 dB、Ambience −22 dB、SE −8 dB、Foley −12 dB（ファイルに対して）。そのうえで §12 と同じ 2 パスの `loudnorm` で −14 LUFS / −1.5 dBTP に揃え、測定値を保存する（外部 API は呼ばない）。セリフも Take の音声も足す音もなければ無音とし、ミックスは作らない
+
+### 14.3 Quality Policy が決める層
+
+Dialogue と Narration は常に作る。
+
+| Quality Policy | 足す層 | Lip Sync |
+|------|------|------|
+| FAST | BGM | なし |
+| BALANCED | BGM・Ambience・SE | なし |
+| MAX QUALITY | BGM・Ambience・SE・Foley | あり（Sync Labs `sync-3`） |
+
+ポリシーが作らない層は `skipped`（`reason: policy`）に残す。
+
+### 14.4 Lip Sync
+
+MAX QUALITY のみ。話者付きの Dialogue の行（Narration は対象外）が入っているクリップごとに、そのクリップの Take の該当範囲を切り出した動画と、そのクリップの行を本来の時刻に置いた音声（ffmpeg で作る）を Sync Labs に渡し、返った動画を `audio/<edit_timeline_id>/<run>/lipsync-NN.mp4` に保存して Audio Timeline の `lip_sync` に記録する。書き出し（Export）はそのクリップの映像を Take の代わりにこの動画から切り出す。行がクリップをまたぐ・どのクリップにも入らない場合と、失敗した場合は、そのクリップの Lip Sync だけ諦めて `skipped` に残す（音声は作る）。Sync Labs のキーがなければ、残りのクリップも試さない。
+
+### 14.5 コストと予算（F-22）
+
+- 料金はプロバイダー呼び出しごとの **見積** で `cost_ledger_entry`（`provider` は §14.1 の識別子）に記録する。単価の既定は TTS 1,000 文字あたり $0.30、Music 1 秒あたり $0.02、SFX 1 秒あたり $0.01、Lip Sync は Sync Labs の公開価格（25fps）の 1 秒あたり `lipsync-1.9.0-beta` $0.02・`lipsync-2` $0.04・`sync-3` $0.133。ベンダーの課金は plan・クレジットで実額と異なりうるため、予算管理のための見積である（`actual_cost` は空）。失敗した呼び出しは記録しない
+- Project の予算上限（`project.project_budget_ceiling`）から台帳の合計（`COALESCE(actual_cost, estimated_cost)` の和）を引いた残りが、各呼び出しの見積に足りなければその呼び出しは行わず `skipped`（`reason: budget`）に残す。セリフの音声合成の見積の合計が残りを超えるときは、何も呼ばずに 409（`BudgetError`）にする
+- Audio Timeline の `estimated_cost` にその実行の見積合計を保存する
+
+### 14.6 M1 の簡易音声からの移行と Branch ごとの版管理
+
+- M1 の簡易音声（`mode` なし、セリフの行だけのクリップ）の Audio Timeline は **移行せずそのまま読める**。`clips` の `layer` が空のクリップは話者の種別（`kind`）から Dialogue / Narration として扱い、Final QC・Export・画面表示は従来どおり動く。スキーマの変更は `branch_id`（#18 で追加済み）のみで、既存データの書き換えは行わない
+- `POST /projects/:id/audio/generate` は、以後は常に Audio Director で作り、`mode: "director"` の版を追記する。M1 の簡易版だけを作る経路は残さない（FAST は「セリフ + BGM」まで）
+- Audio Timeline の版は `(project_id, branch_id)` ごとに `version_number` を 1 から振り、追記のみ（Edit Timeline と同じ）。Branch の音声は、その Branch の最新の Edit Timeline を元に、Branch 自身の系列へ保存する。Final QC と書き出しが使うのは主系列トランクの最新版
+
+### 14.7 音声クローン
+
+`POST /projects/:id/audio/voices`（multipart。`speaker`・`sample`（音声ファイル、最大 10 MB）・任意の `name`）で、サンプル音声から ElevenLabs の声を作り、`voice_clone`（Project × 話者で 1 件。再クローンは置き換え）に保存する。以後の音声生成でその話者の Dialogue の行はこの声で話す。クローンはアカウントの声として ElevenLabs 側に作られ、Project の削除では消さない（ベンダー側の削除は設定画面で行う）。
+
 ## 改訂履歴
 
 | 版 | 日付 | 変更内容 | 変更理由 |
@@ -307,3 +363,4 @@ Shot の性質による軸の重み: 4 軸とも基準 1 に、Shot Spec に Pro
 | 1.7 | 2026-09-30 | §10.2 の参照顔に Series 正本の `face_reference` を追加 | M2「Series / Episode Memory」（Issue #21）で、顔同一性を Episode をまたいで Series 正本の顔を基準に計測する契約を定めるため |
 | 1.8 | 2026-09-30 | §12（M1 の音声: ElevenLabs TTS とローカル DSP の実装仕様）を追加 | M1「簡易 Editor・簡易 Audio・Final QC・Export」（Issue #14）の実装に合わせるため |
 | 1.9 | 2026-09-30 | §13（Multi-model routing の判断基準・切り替え条件・ブレーカーとの関係・トレース・設定）を追加 | M3「Multi-model routing」（Issue #26）が M1 のポリシー別ルーティングとどう違うか、Shot の性質・Judge 実績・コストをどう使うかが未定義だったため、保守的な選択（アンカー方式・実績が無ければ M1 と同じ・対象は動画モデル）で確定した |
+| 1.10 | 2026-09-30 | §14（Audio Director の M3 実装: ElevenLabs TTS・音声クローン・Music・SFX / Sync Labs の識別子・呼び出し、Scene Emotion と編集テンポによる Planner、Quality Policy ごとの層、Lip Sync、コストと予算、M1 からの移行と Branch ごとの版管理）を追加。§12 の冒頭を M3 で追加済みに更新 | M3「Audio Director（フル機能）」（Issue #25）の実装に合わせるため |

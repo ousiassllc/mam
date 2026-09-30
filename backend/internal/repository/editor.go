@@ -183,24 +183,37 @@ func (r *EditorRepository) LatestEditorJudge(ctx context.Context, editTimelineID
 	return res, err
 }
 
-// SaveAudioTimeline appends the next Audio Timeline version of the Project.
-func (r *EditorRepository) SaveAudioTimeline(ctx context.Context, projectID string, tl domain.AudioTimeline) (domain.AudioTimelineVersion, error) {
+// SaveAudioTimeline appends the next Audio Timeline version of the trunk of the Project (branchID
+// "") or of its Branch: every Branch numbers its own versions and never touches another's. A
+// Branch of another Project is ErrNotFound.
+func (r *EditorRepository) SaveAudioTimeline(ctx context.Context, projectID, branchID string, tl domain.AudioTimeline) (domain.AudioTimelineVersion, error) {
 	raw, err := json.Marshal(tl)
 	if err != nil {
 		return domain.AudioTimelineVersion{}, fmt.Errorf("marshal audio timeline: %w", err)
 	}
-	v := domain.AudioTimelineVersion{ID: domain.NewID(), ProjectID: projectID, Timeline: tl, CreatedAt: r.now().UTC()}
+	v := domain.AudioTimelineVersion{ID: domain.NewID(), ProjectID: projectID, BranchID: branchID, Timeline: tl, CreatedAt: r.now().UTC()}
 	err = r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		if err := projectExists(ctx, tx, projectID); err != nil {
 			return err
 		}
+		if branchID != "" {
+			var one int
+			err := tx.QueryRowContext(ctx, `SELECT 1 FROM branch WHERE id = ? AND project_id = ?`, branchID, projectID).Scan(&one)
+			if errors.Is(err, sql.ErrNoRows) {
+				return ErrNotFound
+			}
+			if err != nil {
+				return err
+			}
+		}
 		if err := tx.QueryRowContext(ctx,
-			`SELECT COALESCE(MAX(version_number), 0) + 1 FROM audio_timeline_version WHERE project_id = ?`, projectID).Scan(&v.VersionNumber); err != nil {
+			`SELECT COALESCE(MAX(version_number), 0) + 1 FROM audio_timeline_version WHERE project_id = ? AND branch_id IS ?`,
+			projectID, nullIfEmpty(branchID)).Scan(&v.VersionNumber); err != nil {
 			return err
 		}
 		_, err := tx.ExecContext(ctx,
-			`INSERT INTO audio_timeline_version (id, project_id, version_number, timeline, created_at) VALUES (?, ?, ?, ?, ?)`,
-			v.ID, projectID, v.VersionNumber, string(raw), formatTime(v.CreatedAt))
+			`INSERT INTO audio_timeline_version (id, project_id, branch_id, version_number, timeline, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
+			v.ID, projectID, nullIfEmpty(branchID), v.VersionNumber, string(raw), formatTime(v.CreatedAt))
 		return err
 	})
 	if err != nil {
@@ -218,7 +231,7 @@ func scanAudioTimeline(row rowScanner) (domain.AudioTimelineVersion, error) {
 		raw     string
 		created string
 	)
-	if err := row.Scan(&v.ID, &v.ProjectID, &v.VersionNumber, &raw, &created); err != nil {
+	if err := row.Scan(&v.ID, &v.ProjectID, &v.BranchID, &v.VersionNumber, &raw, &created); err != nil {
 		return domain.AudioTimelineVersion{}, err
 	}
 	if err := json.Unmarshal([]byte(raw), &v.Timeline); err != nil {
@@ -229,13 +242,34 @@ func scanAudioTimeline(row rowScanner) (domain.AudioTimelineVersion, error) {
 	return v, err
 }
 
-const audioTimelineSelect = `SELECT id, project_id, version_number, timeline, created_at FROM audio_timeline_version`
+const audioTimelineSelect = `SELECT id, project_id, COALESCE(branch_id, ''), version_number, timeline, created_at FROM audio_timeline_version`
 
-// LatestAudioTimeline returns the newest Audio Timeline version of the Project or ErrNotFound.
-func (r *EditorRepository) LatestAudioTimeline(ctx context.Context, projectID string) (domain.AudioTimelineVersion, error) {
+// LatestAudioTimeline returns the newest Audio Timeline version of the trunk of the Project
+// (branchID "") or of its Branch, or ErrNotFound.
+func (r *EditorRepository) LatestAudioTimeline(ctx context.Context, projectID, branchID string) (domain.AudioTimelineVersion, error) {
 	v, err := scanAudioTimeline(r.db.Reader().QueryRowContext(ctx,
-		audioTimelineSelect+` WHERE project_id = ? ORDER BY version_number DESC LIMIT 1`, projectID))
+		audioTimelineSelect+` WHERE project_id = ? AND branch_id IS ? ORDER BY version_number DESC LIMIT 1`, projectID, nullIfEmpty(branchID)))
 	return v, notFoundOr(err, "get latest audio timeline")
+}
+
+// ListAudioTimelines returns every Audio Timeline version of the trunk of the Project (branchID
+// "") or of its Branch, newest first.
+func (r *EditorRepository) ListAudioTimelines(ctx context.Context, projectID, branchID string) ([]domain.AudioTimelineVersion, error) {
+	rows, err := r.db.Reader().QueryContext(ctx,
+		audioTimelineSelect+` WHERE project_id = ? AND branch_id IS ? ORDER BY version_number DESC`, projectID, nullIfEmpty(branchID))
+	if err != nil {
+		return nil, fmt.Errorf("list audio timelines: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	var out []domain.AudioTimelineVersion
+	for rows.Next() {
+		v, err := scanAudioTimeline(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, v)
+	}
+	return out, rows.Err()
 }
 
 // SaveFinalQC stores the result of a Final QC run.
