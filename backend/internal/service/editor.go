@@ -937,6 +937,8 @@ func describeQC(findings []domain.QCFinding) string {
 // ExportInput is what the user chooses for an export; an empty field takes the default (the
 // Brief's aspect ratio, 1080p, H.264).
 type ExportInput struct {
+	// BranchID is the Branch whose Edit and Audio Timelines are exported ("" for the trunk).
+	BranchID    string
 	AspectRatio string
 	Resolution  string
 	Codec       string
@@ -988,11 +990,11 @@ func (s *EditorService) Export(ctx context.Context, projectID string, in ExportI
 	if err != nil {
 		return EditorView{}, invalid("", "%s", err.Error())
 	}
-	edit, err := s.editors.LatestEditTimeline(ctx, projectID, "")
+	edit, err := s.editors.LatestEditTimeline(ctx, projectID, in.BranchID)
 	if err != nil {
 		return EditorView{}, notFound(err)
 	}
-	audio, err := s.editors.LatestAudioTimeline(ctx, projectID, "")
+	audio, err := s.editors.LatestAudioTimeline(ctx, projectID, in.BranchID)
 	if err != nil {
 		return EditorView{}, notFound(err)
 	}
@@ -1014,7 +1016,7 @@ func (s *EditorService) Export(ctx context.Context, projectID string, in ExportI
 		return EditorView{}, &AIError{Reason: "動画の書き出しに失敗しました: " + err.Error(), Err: err}
 	}
 	if _, err := s.editors.CreateExport(context.WithoutCancel(ctx), domain.Export{
-		ID: id, ProjectID: projectID, FilePath: rel, Resolution: opts.Resolution, AspectRatio: opts.AspectRatio, Codec: opts.Codec,
+		ID: id, ProjectID: projectID, BranchID: in.BranchID, FilePath: rel, Resolution: opts.Resolution, AspectRatio: opts.AspectRatio, Codec: opts.Codec,
 	}); err != nil {
 		_ = os.Remove(dst)
 		return EditorView{}, notFound(err)

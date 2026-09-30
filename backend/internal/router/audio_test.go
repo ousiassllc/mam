@@ -143,3 +143,29 @@ func TestAudio_CloneVoiceValidatesTheRequest(t *testing.T) {
 	assert.Equal(t, http.StatusUnprocessableEntity, post("ユイ", []byte{}), "an empty sample is refused")
 	assert.Equal(t, http.StatusUnprocessableEntity, post(strings.Repeat("あ", 21), []byte("x")), "a long speaker name is refused")
 }
+
+func TestExport_ABranchIsExportedFromItsOwnTimelinesAndTheRecordSaysSo(t *testing.T) {
+	e := toAudio(t)
+	rec := e.form(http.MethodPost, "/shots/"+e.shotID+"/branch", url.Values{"name": {"逃げる"}})
+	require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
+	branchID := strings.TrimPrefix(rec.Header().Get("HX-Redirect"), "/branches/")
+	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/projects/"+e.project+"/edit/rough-cut", url.Values{"branch_id": {branchID}}).Code)
+	e.setState("AUDIO")
+	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/projects/"+e.project+"/audio/generate", url.Values{"branch_id": {branchID}}).Code)
+	e.setState("READY")
+	exportURL := "/projects/" + e.project + "/export"
+
+	// Only the Branch has an Audio Timeline: the trunk cannot be exported, an unknown Branch neither.
+	assert.Equal(t, http.StatusNotFound, e.form(http.MethodPost, exportURL, nil).Code)
+	assert.Equal(t, http.StatusNotFound, e.form(http.MethodPost, exportURL, url.Values{"branch_id": {"no-such-branch"}}).Code)
+	exports, err := repository.NewEditorRepository(e.db).ListExports(context.Background(), e.project)
+	require.NoError(t, err)
+	assert.Empty(t, exports)
+
+	rec = e.form(http.MethodPost, exportURL, url.Values{"branch_id": {branchID}})
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	exports, err = repository.NewEditorRepository(e.db).ListExports(context.Background(), e.project)
+	require.NoError(t, err)
+	require.Len(t, exports, 1)
+	assert.Equal(t, branchID, exports[0].BranchID)
+}
