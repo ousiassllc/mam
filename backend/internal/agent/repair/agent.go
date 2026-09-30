@@ -15,6 +15,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"runtime/debug"
 	"strings"
 	"sync"
 
@@ -362,11 +363,7 @@ func (a *Agent) run(ctx context.Context, shot repository.ShotRef, p payload) (bo
 
 	var shadowDone sync.WaitGroup
 	if decider == domain.DecidedByLLM && a.Shadow != nil {
-		shadowDone.Add(1)
-		go func() {
-			defer shadowDone.Done()
-			a.runShadow(context.WithoutCancel(ctx), rec.ID, res, candidates, action)
-		}()
+		a.goShadow(context.WithoutCancel(ctx), &shadowDone, rec.ID, res, candidates, action)
 	}
 	defer shadowDone.Wait()
 
@@ -474,6 +471,21 @@ func mergeInstructions(res domain.JudgeResult, extra []string) []string {
 		list = append(list, rs.Instructions...)
 	}
 	return identifiers(append(list, extra...))
+}
+
+// goShadow runs runShadow in the background, counted in done. The measurement is optional, so a
+// panic in it is logged with its stack and stops there: it must not take the server down.
+func (a *Agent) goShadow(ctx context.Context, done *sync.WaitGroup, actionID string, res domain.JudgeResult, candidates []domain.RepairAction, decided domain.RepairAction) {
+	done.Add(1)
+	go func() {
+		defer done.Done()
+		defer func() {
+			if r := recover(); r != nil {
+				a.Logger.Error("repair shadow panicked", "action_id", actionID, "panic", r, "stack", string(debug.Stack()))
+			}
+		}()
+		a.runShadow(ctx, actionID, res, candidates, decided)
+	}()
 }
 
 // runShadow asks Jev the question the Repair Agent just answered and records the outcome. Nothing

@@ -110,7 +110,7 @@ func (o *Orchestrator) buildReferencePack(ctx context.Context, ref repository.Sh
 		}
 	}
 	o.notify(Progress{ShotID: shot.ID, Action: ActionReferencePack, Stage: StageGenerating, Message: "参照画像を生成しています", TakesTotal: len(plans)})
-	errs := parallel(len(first), func(k int) error { return generate(first[k], nil) })
+	errs := parallel(o.logger, len(first), func(k int) error { return generate(first[k], nil) })
 	var failed []error
 	for _, e := range errs {
 		if e != nil {
