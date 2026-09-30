@@ -605,7 +605,9 @@ func (s *EditorService) shotFacts(ctx context.Context, idx shotIndex, tl domain.
 		if spec, ok := r.Shot.CanonicalSpec(); ok {
 			f.HasProduct = spec.Product != nil
 		}
-		_, f.TakeReady, _ = s.takeSource(ctx, c.TakeID)
+		if _, f.TakeReady, err = s.takeSource(ctx, c.TakeID); err != nil {
+			return nil, err // a failed read is not a missing file: the Editor Judge must not report one
+		}
 		facts[c.ShotID] = f
 	}
 	return facts, nil
