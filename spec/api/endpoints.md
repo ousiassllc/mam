@@ -365,7 +365,7 @@ Notes:
 | Path | 概要 |
 |---|---|
 | `/ws/shots/:id` | 生成中Shotの進捗（キュー待ち/生成中/Judge中/完了/失敗）をプッシュ通知。メッセージは JSON `{"shot_id","action"?:"generate\|reference_pack\|judge\|repair","stage":"idle\|queued\|generating\|judging\|repairing\|done\|failed","message"?,"takes_done"?,"takes_total"?}`。接続直後に生成中でなければ `stage=idle` を 1 通送る。同一オリジンの接続のみ受理し、存在しない Shot は 404。Judge 中は `action=judge` で `stage=queued\|judging\|done\|failed`（`stage` に `judging` を追加）。Repair 中は `action=repair` で `stage=queued\|repairing\|done\|failed`（`stage` に `repairing` を追加。Retry Policy の上限で止めたときは `done` とその理由の `message`） |
-| `/ws/projects/:id` | プロジェクト全体イベント（Core State Machine遷移、コスト更新、Editor→Reshootループの発火）と、チャットの通知。チャットの通知は本文を含まない JSON `{"type":"message.created","message_id":"<最新メッセージID>"}`（新着あり。クライアントは `GET /projects/:id/messages?after=` で取得）と `{"type":"card.updated","message_id":"<カードID>"}`（進捗カード等の更新。`GET /projects/:id/messages/:messageId` で取得）。同一オリジンの接続のみ受理する |
+| `/ws/projects/:id` | チャットの通知のみを配信する（Core State Machine 遷移・コスト更新・Editor→Reshoot ループの発火のための専用イベントは配信しない。これらの変化はチャットに投稿されたメッセージ・カードとして `message.created` / `card.updated` で届くか、画面が HTTP で取得する。コストは Cost Summary パネルが 15 秒間隔の HTMX ポーリングで更新する）。通知は本文を含まない JSON `{"type":"message.created","message_id":"<最新メッセージID>"}`（新着あり。クライアントは `GET /projects/:id/messages?after=` で取得）と `{"type":"card.updated","message_id":"<カードID>"}`（進捗カード等の更新。`GET /projects/:id/messages/:messageId` で取得）。同一オリジンの接続のみ受理する |
 
 `lib/ws.ts` 経由で接続し、自動再接続（指数バックオフ、最大10回）を行う（`spec/architecture/overview.md` 参照元 HALT 標準パターン）。
 
@@ -414,3 +414,4 @@ Notes:
 | 1.38 | 2026-09-30 | §2.7 に Brand Templates の `POST /projects/:id/brand-templates`・`POST /projects/:id/brand-templates/:templateId/apply`・`DELETE /projects/:id/brand-templates/:templateId` を追加し、`POST /projects` と `POST /series/:id/episodes` に任意の `brand_template_id` を追記 | M3「Brand Templates」（Issue #27）の API 契約がなかったため。保存・適用はコピーで更新は非伝播（`spec/requirements/functional.md` UC-9 拡張） |
 | 1.39 | 2026-09-30 | §2.6 に M3 の Audio Director 契約（`POST /projects/:id/audio/generate` の Quality Policy ごとの層・`branch_id`・予算・エラー、`POST /projects/:id/audio/voices`）を追記 | M3「Audio Director（フル機能）」（Issue #25）の実装に合わせるため |
 | 1.40 | 2026-10-01 | §3 の `GET /api/v1/shots/:id` の応答項目と 404 を明記（実装を追加） | 仕様にあるが未実装だった（#31） |
+| 1.41 | 2026-10-01 | §4 の `/ws/projects/:id` を実装の現状（チャット通知のみ。状態遷移・コスト・Reshoot の専用イベントは配信せず、コストは Cost Summary パネルのポーリングで更新）に合わせた | 仕様は状態遷移・コスト更新・Reshoot 発火のプロジェクトイベントを列挙していたが、実装は `message.created` / `card.updated` しか配信していなかったため（Issue #96） |
