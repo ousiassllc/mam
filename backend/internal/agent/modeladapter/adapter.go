@@ -75,6 +75,19 @@ func New(cfg Config, backends Backends, opts ...Option) *Adapter {
 // Config returns the setting the Adapter runs with.
 func (a *Adapter) Config() Config { return a.cfg }
 
+// Unavailable says why the video model cannot be called now (domain.ExcludedNoBackend: it has no
+// backend; domain.ExcludedCircuitOpen: its vendor's circuit breaker is open), or "" when it can. It
+// does not consume the breaker's probe call.
+func (a *Adapter) Unavailable(m domain.ModelName) string {
+	if a.backends.Video[m] == nil {
+		return domain.ExcludedNoBackend
+	}
+	if b := a.breakers[VendorOf(m)]; b == nil || b.IsOpen() {
+		return domain.ExcludedCircuitOpen
+	}
+	return ""
+}
+
 // EstimateVideo is the estimated cost of one Take at the target for a clip of the requested length.
 func (a *Adapter) EstimateVideo(t VideoTarget, seconds float64) float64 {
 	caps, ok := Capabilities(t.Model)
