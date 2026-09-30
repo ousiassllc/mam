@@ -112,7 +112,10 @@ func TestEditorReshootLoop_AFinishedShotWaitsForTheBusyStageAndIsPutInWhenItEnds
 		return f.count(t, `SELECT COUNT(*) FROM take t JOIN prompt_version pv ON pv.id = t.prompt_version_id WHERE pv.shot_id = ?`, newShot) > 0
 	}, 30*time.Second, 10*time.Millisecond)
 
-	// The last Take is selected while another stage (Final QC, a preview) holds the Project.
+	// A round that is not complete yet (its last Take is not selected) must not hold the editing
+	// stage: the worker woken by the finished job only looks at it. HoldStage here stands for a
+	// stage of the user (Final QC, a preview) and must not meet ErrStageBusy (#139).
+	// The last Take is selected while that stage holds the Project.
 	release, err := f.svc.Editor.HoldStage(f.projectID)
 	require.NoError(t, err)
 	f.selectTakeOf(t, newShot)
