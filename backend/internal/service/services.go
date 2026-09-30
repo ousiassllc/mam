@@ -72,6 +72,7 @@ type Services struct {
 	Repair      *RepairService
 	Continue    *ContinueService
 	Reference   *ReferenceService
+	Series      *SeriesService
 	Takes       *TakeService
 }
 
@@ -201,6 +202,7 @@ func New(deps Deps) *Services {
 		Repair:    repairs,
 		Continue:  continues,
 		Reference: &ReferenceService{c},
+		Series:    &SeriesService{core: c, series: repository.NewSeriesRepository(deps.DB)},
 		Takes:     takeService,
 	}
 }

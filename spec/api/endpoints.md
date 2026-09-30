@@ -40,6 +40,7 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 | GET | `/projects/:id/world-state` | World State 一覧（Character/Product/Location/Camera/Story の現在値表示） | フルページ / フラグメント |
 | GET | `/projects/:id/references` | Reference Library（補助ビュー、M2。登録済みの参照画像の検索・アップロード・Shot への追加・削除）。クエリ `q`・`kind`・`tag` で絞り込む | フルページ / フラグメント |
 | GET | `/projects/:id/notes` | Notes 一覧・編集（補助ビュー、M2。ピン留め・カテゴリ・アーカイブの表示、`version_history_panel` でバージョン復元） | フルページ / フラグメント |
+| GET | `/series/:id` | Series（M2。正本の Style・Character・Product・Location、Episode 一覧と次の Episode 作成、正本の更新履歴。Character の編集と Style の保存フォームを持つ） | フルページ / フラグメント |
 | GET | `/series/:id/notes` | Series 正本 Notes の一覧・編集（M2） | フルページ / フラグメント |
 
 ## 2. アクションルート（Gin, フラグメントのみ）
@@ -173,9 +174,10 @@ M2 の入出力契約（Issue #15）:
 
 | Method | Path | 概要 | 対応機能 |
 |---|---|---|---|
-| POST | `/series` | Series 作成。Body `from_project_id`（任意）で既存 Project の Character/Product/Location と有効な Notes を Series 正本として登録 | F-29, F-31 |
-| POST | `/series/:id/episodes` | Series 正本を継承した Episode（Project）を作成（Character/Product/Location/Notes をコピー）。Body `previous_episode_id`（任意）で前 Episode の最終 World State を開始状態にする | F-29, F-25, F-31 |
-| PUT | `/series/:id/characters/:characterId` | Series 正本の Character 更新。既存 Episode には自動伝播しない | F-29 |
+| POST | `/series` | Series 作成。Body（フォーム）`name`（1〜100 文字。`from_project_id` があれば省略可で、その Project 名になる）、`from_project_id`（任意）で既存 Project の Character/Product/Location と有効な Notes を Series 正本として登録し、その Project を Episode 1 にする。正本はバージョン 1（`series_version`）。成功は 201 と `HX-Redirect: /series/:id`。名前が空・長すぎる／`from_project_id` がすでに Series に属している場合は 422、`from_project_id` が存在しない場合は 404 | F-29, F-31 |
+| POST | `/series/:id/episodes` | Series 正本を継承した Episode（Project）を作成（Character/Product/Location/Notes を project 側の行へコピーし `origin_id` で由来を保持。参照画像は Project の `asset`・Reference Library にも複製し、Style は Brief の `style` に入れる）。`episode_number` は最大値+1（`(series_id, episode_number)` UNIQUE）。Body `previous_episode_id`（任意、同じ Series の Episode）で前 Episode の最終 World State を開始状態にし、`inherited_world_state_version_id` に記録する。成功は 201 と `HX-Redirect: /projects/:id`。Series が無ければ 404、`previous_episode_id` が同じ Series の Episode でなければ 422 | F-29, F-25, F-31 |
+| PUT | `/series/:id/characters/:characterId` | Series 正本の Character 更新。Body（フォーム）`hairstyle`/`wardrobe`/`voice`/`personality`（送った項目だけ更新）。応答は更新後の Series ビュー（200）で、新しい `series_version` を追記する。既存 Episode には自動伝播しない（次の Episode から適用）。項目が無い／長すぎる場合は 422、Series・Character が無ければ 404 | F-29 |
+| PUT | `/series/:id/style` | Series の Style 正本（テキスト、500 文字以内）の更新。Body `style`。応答は更新後の Series ビュー（200）で、新しい `series_version` を追記する。既存 Episode には自動伝播しない | F-29 |
 
 ### 2.10 Notes（M2）
 
@@ -328,3 +330,4 @@ Notes:
 | 1.28 | 2026-09-30 | `POST /takes/:id/repair` の応答・エラー（202/404/409/503）・Retry Policy の適用・AUTO MODE の自動ループ、`/ws/shots/:id` の Repair 通知（`action=repair`・`stage=repairing`）、`GET /api/v1/repair/jev-shadow-report` を明記 | M1「Repair/Retake Loop」（Issue #10）で Repair の API 契約と進捗通知が未定義だったため |
 | 1.29 | 2026-09-30 | §2.4 の Take 選択・除外・部分採用の入出力とエラー、`/takes/:id/video`・`/thumbnail`、`GET /api/v1/shots/:id/takes` の項目、AI Pick の動作を追記 | M1「Take システムと補助ビュー」（Issue #11）で Body・エラー・スコア算出・AUTO/DIRECTOR の扱いが名称レベルでしか定義されていなかったため |
 | 1.30 | 2026-09-30 | `POST /takes/:id/repair` の Partial Regeneration がすべての Issue に時間範囲があるとき、区間をつなぎ込んだ候補 Take も足すことを追記。`POST /shots/:id/director-command` に時間範囲を名指しした再生成（`partial_regenerate`）の動作・エラーを追記 | M2「Partial Regeneration」（Issue #16）で、新しい Take の数・選択への影響・DIRECTOR MODE からの起動が名称レベルでしか定義されていなかったため |
+| 1.31 | 2026-09-30 | §2.9 に `POST /series`・`POST /series/:id/episodes`・`PUT /series/:id/characters/:characterId` の入出力とエラー、`PUT /series/:id/style` を追記。`GET /series/:id`（Series ページ）を追加 | M2「Series / Episode Memory」（Issue #21）で、Series の入出力契約・Style の更新経路・画面が未定義だったため |

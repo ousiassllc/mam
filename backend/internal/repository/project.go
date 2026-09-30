@@ -37,27 +37,11 @@ type NewProject struct {
 
 // Create inserts the Project, its Brief, its uploaded Assets and its first messages.
 func (r *ProjectRepository) Create(ctx context.Context, np NewProject) error {
-	briefJSON, err := json.Marshal(np.Brief)
-	if err != nil {
-		return fmt.Errorf("marshal brief: %w", err)
-	}
-	checkpoints, err := json.Marshal(nonNilCheckpoints(np.Project.CustomCheckpoints))
-	if err != nil {
-		return fmt.Errorf("marshal checkpoints: %w", err)
-	}
 	now := formatTime(r.now())
-	err = r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
+	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		p := np.Project
-		if _, err := tx.ExecContext(ctx,
-			`INSERT INTO project (id, state, mode, confirmation_level, custom_checkpoints, production_template, quality_policy, created_at)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-			p.ID, p.State, p.Mode, p.ConfirmationLevel, string(checkpoints), p.ProductionTemplate, p.QualityPolicy, now); err != nil {
-			return fmt.Errorf("insert project: %w", err)
-		}
-		if _, err := tx.ExecContext(ctx,
-			`INSERT INTO brief (id, project_id, content, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
-			domain.NewID(), p.ID, string(briefJSON), now, now); err != nil {
-			return fmt.Errorf("insert brief: %w", err)
+		if err := insertProject(ctx, tx, p, np.Brief, now); err != nil {
+			return err
 		}
 		for _, a := range np.Assets {
 			if err := insertAsset(ctx, tx, a, now); err != nil {
@@ -73,6 +57,30 @@ func (r *ProjectRepository) Create(ctx context.Context, np NewProject) error {
 	})
 	if err != nil {
 		return fmt.Errorf("create project: %w", err)
+	}
+	return nil
+}
+
+// insertProject inserts the project row (a Project outside any Series) and its Brief.
+func insertProject(ctx context.Context, tx *sql.Tx, p domain.Project, brief domain.Brief, now string) error {
+	briefJSON, err := json.Marshal(brief)
+	if err != nil {
+		return fmt.Errorf("marshal brief: %w", err)
+	}
+	checkpoints, err := json.Marshal(nonNilCheckpoints(p.CustomCheckpoints))
+	if err != nil {
+		return fmt.Errorf("marshal checkpoints: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx,
+		`INSERT INTO project (id, state, mode, confirmation_level, custom_checkpoints, production_template, quality_policy, created_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		p.ID, p.State, p.Mode, p.ConfirmationLevel, string(checkpoints), p.ProductionTemplate, p.QualityPolicy, now); err != nil {
+		return fmt.Errorf("insert project: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx,
+		`INSERT INTO brief (id, project_id, content, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
+		domain.NewID(), p.ID, string(briefJSON), now, now); err != nil {
+		return fmt.Errorf("insert brief: %w", err)
 	}
 	return nil
 }
@@ -200,17 +208,19 @@ const noBlockingCard = `NOT EXISTS (
 const projectSelect = `
 SELECT p.id, p.state, p.mode, p.confirmation_level, p.custom_checkpoints, p.production_template, p.quality_policy, p.created_at,
        COALESCE(json_extract(b.content, '$.subject'), ''),
-       COALESCE((SELECT m.content FROM chat_message m WHERE m.project_id = p.id AND m.role = 'user' ORDER BY m.id LIMIT 1), '')
-FROM project p LEFT JOIN brief b ON b.project_id = p.id`
+       COALESCE((SELECT m.content FROM chat_message m WHERE m.project_id = p.id AND m.role = 'user' ORDER BY m.id LIMIT 1), ''),
+       COALESCE(p.series_id, ''), COALESCE(p.episode_number, 0), COALESCE(s.name, '')
+FROM project p LEFT JOIN brief b ON b.project_id = p.id LEFT JOIN series s ON s.id = p.series_id`
 
 func scanProject(row rowScanner) (domain.Project, error) {
 	var (
 		p                     domain.Project
 		checkpoints, created  string
 		subject, firstMessage string
+		seriesName            string
 	)
 	if err := row.Scan(&p.ID, &p.State, &p.Mode, &p.ConfirmationLevel, &checkpoints, &p.ProductionTemplate,
-		&p.QualityPolicy, &created, &subject, &firstMessage); err != nil {
+		&p.QualityPolicy, &created, &subject, &firstMessage, &p.SeriesID, &p.EpisodeNumber, &seriesName); err != nil {
 		return domain.Project{}, err
 	}
 	if err := json.Unmarshal([]byte(checkpoints), &p.CustomCheckpoints); err != nil {
@@ -222,6 +232,9 @@ func scanProject(row rowScanner) (domain.Project, error) {
 	}
 	p.CreatedAt = t
 	p.Name = domain.ProjectName(subject, firstMessage)
+	if p.Name == domain.UntitledProject && p.SeriesID != "" {
+		p.Name = domain.EpisodeName(seriesName, p.EpisodeNumber)
+	}
 	return p, nil
 }
 
