@@ -149,7 +149,7 @@ func TestGenerateShot_StopsAtMaxGenerationTimeAndReportsIt(t *testing.T) {
 	f := newGenFixture(t, true)
 	f.models.block = make(chan struct{}) // the model never answers
 	require.NoError(t, f.db.Write(context.Background(), func(ctx context.Context, tx *sql.Tx) error {
-		_, err := tx.ExecContext(ctx, `INSERT INTO project_policy (project_id, max_generation_seconds) VALUES (?, 1)`, f.projectID)
+		_, err := tx.ExecContext(ctx, `INSERT INTO project_policy (project_id, max_generation_seconds) VALUES (?, ?)`, f.projectID, domain.MinGenerationSeconds)
 		return err
 	}))
 

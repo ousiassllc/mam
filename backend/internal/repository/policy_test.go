@@ -71,7 +71,14 @@ func TestPolicyRepository_UnknownProjectIsNotFoundAndLimitsAreBoundedByTheSchema
 
 	assert.Error(t, repo.SetQualityPolicy(ctx, id, domain.QualityFast, &domain.PolicyLimits{MinAcceptanceScore: ptr(101)}))
 	assert.Error(t, repo.SetQualityPolicy(ctx, id, domain.QualityFast, &domain.PolicyLimits{MaxRetries: ptr(-1)}))
+	assert.Error(t, repo.SetQualityPolicy(ctx, id, domain.QualityFast, &domain.PolicyLimits{MaxGenerationSeconds: ptr(domain.MinGenerationSeconds - 1)}), "below the API minimum")
 	assert.Error(t, repo.SetProductionTemplate(ctx, id, "movie"))
 	got, _ := repo.Get(ctx, id)
 	assert.Equal(t, domain.QualityBalanced, got.Quality, "a rejected write changes nothing")
+
+	require.NoError(t, repo.SetQualityPolicy(ctx, id, domain.QualityFast, &domain.PolicyLimits{MaxGenerationSeconds: ptr(domain.MinGenerationSeconds)}))
+	got, err = repo.Get(ctx, id)
+	require.NoError(t, err)
+	require.NotNil(t, got.Limits.MaxGenerationSeconds)
+	assert.Equal(t, domain.MinGenerationSeconds, *got.Limits.MaxGenerationSeconds)
 }
