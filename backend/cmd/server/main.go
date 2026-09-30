@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -106,7 +107,7 @@ func serve(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	models := modeladapter.New(modelCfg, modeladapter.NewBackends(modelCfg, keys, nil, 0), modeladapter.WithLogger(logger))
+	models := modeladapter.New(modelCfg, modeladapter.NewBackends(modelCfg, keys, nil, 0, modeladapter.WithStagingDir(filepath.Join(cfg.AssetsDir(), ".staging"))), modeladapter.WithLogger(logger))
 
 	judging, err := newJudgeSetup(cfg, logger)
 	if err != nil {

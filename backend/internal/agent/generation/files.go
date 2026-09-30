@@ -5,8 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/domain"
-	"github.com/ousiassllc/mam/backend/internal/fsutil"
 )
 
 const (
@@ -41,20 +41,29 @@ func extFor(mime string) string {
 // write stores data as a new asset file of the Project and returns the asset (without size checks
 // beyond len(data)). The file is written atomically, so a crash never leaves a partial file.
 func (f fileStore) write(projectID string, typ domain.AssetType, mime string, data []byte) (domain.Asset, error) {
+	return f.store(projectID, typ, mime, modeladapter.BlobOf(data))
+}
+
+// store makes content a new asset file of the Project and returns the asset. The content is
+// consumed: a staged download is moved into place (or removed on failure), never read into
+// memory. The file only appears at its final path complete.
+func (f fileStore) store(projectID string, typ domain.AssetType, mime string, content modeladapter.Blob) (domain.Asset, error) {
 	if f.root == "" {
+		content.Discard()
 		return domain.Asset{}, fmt.Errorf("assets directory is not configured")
 	}
 	id := domain.NewID()
 	rel := filepath.Join(projectID, id+extFor(mime))
 	abs := filepath.Join(f.root, rel)
 	if err := os.MkdirAll(filepath.Dir(abs), assetDirPerm); err != nil {
+		content.Discard()
 		return domain.Asset{}, fmt.Errorf("create asset directory: %w", err)
 	}
-	if err := fsutil.WriteFileAtomic(abs, data, assetFilePerm); err != nil {
+	if err := content.StoreAs(abs, assetFilePerm); err != nil {
 		return domain.Asset{}, fmt.Errorf("write asset file: %w", err)
 	}
 	return domain.Asset{
-		ID: id, ProjectID: projectID, Type: typ, FilePath: filepath.ToSlash(rel), MimeType: mime, SizeBytes: int64(len(data)),
+		ID: id, ProjectID: projectID, Type: typ, FilePath: filepath.ToSlash(rel), MimeType: mime, SizeBytes: content.Size(),
 	}, nil
 }
 

@@ -68,7 +68,7 @@ func (v *videoFake) GenerateVideo(ctx context.Context, _ string, _ modeladapter.
 			return modeladapter.VideoResult{}, ctx.Err()
 		}
 	}
-	return modeladapter.VideoResult{Data: []byte("\x00\x00\x00\x18ftypisom"), MimeType: "video/mp4"}, nil
+	return modeladapter.VideoResult{File: modeladapter.BlobOf([]byte("\x00\x00\x00\x18ftypisom")), MimeType: "video/mp4"}, nil
 }
 
 type genApp struct {

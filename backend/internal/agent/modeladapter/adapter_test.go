@@ -54,7 +54,7 @@ func (f *fakeVideo) GenerateVideo(ctx context.Context, model string, req modelad
 	if err := f.results[i]; err != nil {
 		return modeladapter.VideoResult{}, err
 	}
-	return modeladapter.VideoResult{Data: []byte("mp4 " + model), MimeType: "video/mp4"}, nil
+	return modeladapter.VideoResult{File: modeladapter.BlobOf([]byte("mp4 " + model)), MimeType: "video/mp4"}, nil
 }
 
 func (f *fakeVideo) callCount() int {
