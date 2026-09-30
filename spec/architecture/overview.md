@@ -236,7 +236,7 @@ HALT のレイヤー別テスト方針を踏襲する。
 | Templ テンプレート | `Render()` → HTML文字列アサーション | コンポーネント出力 |
 | Agent（Producer/Judge/RepairAgent等） | Go ユニットテスト（外部APIはモック） | Shot Spec変換、Judge出力パース、Repair戦略選択ロジック |
 | Lit コンポーネント | `@open-wc/testing` + `@web/test-runner` | 単体の振る舞い |
-| E2E | Playwright（Ginサーバーを直接起動してブラウザから検証） | HTMXインタラクション込みのユーザーフロー |
+| E2E | 未導入（方針: Playwright で Gin サーバーを直接起動してブラウザから検証する） | HTMXインタラクション込みのユーザーフロー。現状は Go ハンドラ（`internal/router` の `httptest`、HTMX ヘッダ込み）と Lit のブラウザ内テストで層別に検証しており、ブラウザ通しのフローは自動検証されない |
 
 ## 11. 将来拡張: Wails によるネイティブデスクトップ化
 
