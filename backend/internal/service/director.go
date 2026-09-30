@@ -27,6 +27,8 @@ type DirectorService struct {
 	orch *generation.Orchestrator
 	// interpreter reads directions; nil when no Reasoning LLM is configured.
 	interpreter *commandinterpreter.Interpreter
+	// branch makes the Branches of a "create_branch" operation; set by New.
+	branch *BranchService
 }
 
 // SetMode switches the Project between AUTO and DIRECTOR (PUT /projects/:id/mode) and tells the
@@ -417,7 +419,8 @@ func (s *DirectorService) execute(ctx context.Context, project domain.Project, r
 		return outcome{lines: []string{cmd.Question}}, nil
 	}
 	needsShot := slices.ContainsFunc(cmd.Operations, func(op commandinterpreter.Operation) bool {
-		return op.Type == commandinterpreter.OpRegenerate || (op.Type == commandinterpreter.OpSetLock && op.Parameter.ValidForShot())
+		return op.Type == commandinterpreter.OpRegenerate || op.Type == commandinterpreter.OpCreateBranch ||
+			(op.Type == commandinterpreter.OpSetLock && op.Parameter.ValidForShot())
 	})
 	if needsShot && ref == nil {
 		return outcome{lines: []string{askWhichShot}}, nil
@@ -461,6 +464,12 @@ func (s *DirectorService) execute(ctx context.Context, project domain.Project, r
 			}
 			out.lines = append(out.lines, line)
 			out.started = out.started || started
+		case commandinterpreter.OpCreateBranch:
+			lines, err := s.branch.Fork(ctx, *ref, op.PointType, op.Count, op.Directions)
+			out.lines = append(out.lines, lines...)
+			if err != nil {
+				return out, err
+			}
 		case commandinterpreter.OpUnsupported:
 			reason := op.Reason
 			if reason == "" {

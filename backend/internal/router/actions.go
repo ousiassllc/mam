@@ -50,4 +50,6 @@ func registerActions(engine *gin.Engine, services *service.Services) {
 	engine.POST("/takes/:id/repair", handler.RepairTake(services.Repair))
 	engine.POST("/projects/:id/messages", handler.PostMessage(services.Chat))
 	engine.POST("/projects/:id/approvals/:messageId", handler.RespondApproval(services.Chat))
+	engine.POST("/shots/:id/branch", handler.CreateBranch(services.Branch))
+	engine.PUT("/branches/:id", handler.UpdateBranch(services.Branch))
 }

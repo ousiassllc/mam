@@ -178,11 +178,11 @@ func (o *Orchestrator) reviseSpec(ctx context.Context, ref repository.ShotRef, p
 	if err != nil {
 		return domain.ShotSpec{}, err
 	}
-	world, err := o.gens.WorldContext(ctx, ref.ProjectID)
+	world, err := o.gens.WorldContext(ctx, ref.ProjectID, ref.Scene.BranchID)
 	if err != nil {
 		return domain.ShotSpec{}, err
 	}
-	shots, err := o.gens.ListProjectShots(ctx, ref.ProjectID)
+	shots, err := o.gens.StoryShots(ctx, ref.ProjectID, ref.Scene.BranchID)
 	if err != nil {
 		return domain.ShotSpec{}, err
 	}

@@ -154,11 +154,11 @@ func (o *Orchestrator) loadShotContext(ctx context.Context, ref repository.ShotR
 	if err != nil {
 		return shotContext{}, err
 	}
-	world, err := o.gens.WorldContext(ctx, ref.ProjectID)
+	world, err := o.gens.WorldContext(ctx, ref.ProjectID, ref.Scene.BranchID)
 	if err != nil {
 		return shotContext{}, err
 	}
-	shots, err := o.gens.ListProjectShots(ctx, ref.ProjectID)
+	shots, err := o.gens.StoryShots(ctx, ref.ProjectID, ref.Scene.BranchID)
 	if err != nil {
 		return shotContext{}, err
 	}

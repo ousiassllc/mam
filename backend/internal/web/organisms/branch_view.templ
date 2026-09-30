@@ -1,0 +1,222 @@
+package organisms
+
+import (
+	"fmt"
+	"strconv"
+
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+)
+
+// BranchShotOption is a Shot a new Branch can start from.
+type BranchShotOption struct {
+	ShotID string
+	// Label is "Scene 2 / Shot 1", prefixed with the name of the Branch for a Shot of a Branch.
+	Label string
+}
+
+// BranchShotItem is a Shot of the derived tree of a Branch.
+type BranchShotItem struct {
+	ShotID    string
+	Scene     int
+	Shot      int
+	Objective string
+}
+
+// BranchDetailData is the detail of one Branch (GET /branches/:id).
+type BranchDetailData struct {
+	Project domain.Project
+	Branch  domain.Branch
+	// Parent is the Branch the Branch Point lies in; nil for the trunk.
+	Parent *domain.Branch
+	Scenes []domain.Scene
+	Shots  []BranchShotItem
+	// Versions are the branch_versions, newest first.
+	Versions []domain.BranchVersion
+	// LatestWorldVersion is the newest version of the World State series of the Branch.
+	LatestWorldVersion int
+	// Started is true when the first Shot of the Branch is being generated.
+	Started bool
+}
+
+// BranchPageData is the Branch page (branch_page): the tree, the Shots a Branch can be made at and,
+// when a Branch is selected, its detail.
+type BranchPageData struct {
+	Project  domain.Project
+	Shots    []BranchShotOption
+	Selected *BranchDetailData
+}
+
+func branchTreeAPIURL(projectID string) string { return "/api/v1/projects/" + projectID + "/branches" }
+
+func branchURL(id string) string { return "/branches/" + id }
+
+func branchWorldStateURL(projectID, branchID string) string {
+	return "/projects/" + projectID + "/world-state?branch_id=" + branchID
+}
+
+func branchShotURL(shotID string) string { return "/shots/" + shotID + "/branch" }
+
+func selectedBranchID(d BranchPageData) string {
+	if d.Selected == nil {
+		return ""
+	}
+	return d.Selected.Branch.ID
+}
+
+// branchPointText describes where the Branch starts, in the numbers of the series it hangs from.
+func branchPointText(b domain.Branch) string {
+	switch b.PointType {
+	case domain.BranchAtScene:
+		return fmt.Sprintf("Scene %d の頭から", b.PointSceneNumber)
+	case domain.BranchAtFrame:
+		return fmt.Sprintf("Scene %d / Shot %d の %.1f 秒地点から", b.PointSceneNumber, b.PointShotNumber, b.PointOffsetSeconds)
+	}
+	return fmt.Sprintf("Scene %d / Shot %d の後から", b.PointSceneNumber, b.PointShotNumber)
+}
+
+func worldVersionText(n int) string {
+	if n == 0 {
+		return "なし"
+	}
+	return "バージョン " + strconv.Itoa(n)
+}
+
+func versionOptions(latest int) []int {
+	out := make([]int, latest)
+	for i := range out {
+		out[i] = i + 1
+	}
+	return out
+}
+
+// BranchDetail shows one Branch: where it starts, its own derived tree and versions, the rename and
+// World State reference forms, and the link to its World State (branch_id scoped). It is swapped into
+// #branch-detail when a Branch is selected in mam-branch-tree.
+templ BranchDetail(d BranchDetailData) {
+	<article class="flex flex-col gap-4 rounded-md border border-neutral-700 p-4" aria-label="Branch の詳細" data-branch-detail={ d.Branch.ID }>
+		<header class="flex flex-col gap-1">
+			<h2 class="text-lg font-semibold">{ d.Branch.Name }</h2>
+			<p class="text-sm text-neutral-400">
+				{ branchPointText(d.Branch) }
+				if d.Parent != nil {
+					（親 Branch:
+					<a class="text-indigo-300 underline" href={ templ.SafeURL(branchURL(d.Parent.ID)) }>{ d.Parent.Name }</a>
+					）
+				} else {
+					（トランクから）
+				}
+			</p>
+			<p class="text-sm">
+				World State: { worldVersionText(d.Branch.WorldStateVersion) }（Branch 独自のバージョン系列）
+				<a class="ml-2 text-indigo-300 underline" href={ templ.SafeURL(branchWorldStateURL(d.Project.ID, d.Branch.ID)) }>この Branch の World State を見る</a>
+			</p>
+			if d.Started {
+				<p class="text-sm text-emerald-300">最初の Shot の生成を開始しました。</p>
+			}
+		</header>
+		<form class="flex flex-wrap items-end gap-2" hx-put={ branchURL(d.Branch.ID) } hx-target="#branch-detail" hx-swap="innerHTML">
+			<label class="flex flex-col gap-1 text-xs text-neutral-400">
+				名称
+				<input type="text" name="name" value={ d.Branch.Name } maxlength={ strconv.Itoa(domain.MaxBranchNameRunes) } required class="rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm text-neutral-100"/>
+			</label>
+			@atoms.Button(atoms.ToneNeutral, "名称を変更", templ.Attributes{"type": "submit"})
+		</form>
+		if d.LatestWorldVersion > 0 {
+			<form class="flex flex-wrap items-end gap-2" hx-put={ branchURL(d.Branch.ID) } hx-target="#branch-detail" hx-swap="innerHTML">
+				<label class="flex flex-col gap-1 text-xs text-neutral-400">
+					参照する World State
+					<select name="world_state_version" class="rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm text-neutral-100">
+						for _, n := range versionOptions(d.LatestWorldVersion) {
+							<option value={ strconv.Itoa(n) } selected?={ n == d.Branch.WorldStateVersion }>{ worldVersionText(n) }</option>
+						}
+					</select>
+				</label>
+				@atoms.Button(atoms.ToneNeutral, "参照を更新", templ.Attributes{"type": "submit"})
+			</form>
+		}
+		<section aria-label="Branch の Scene / Shot" class="flex flex-col gap-1">
+			<h3 class="text-sm font-semibold text-neutral-200">この Branch の Scene / Shot</h3>
+			if len(d.Scenes) == 0 {
+				<p class="text-sm text-neutral-400">まだ Scene がありません。Shot から「続きを作る」と、この Branch の Scene / Shot が作られます。</p>
+			}
+			<ul class="flex flex-col gap-1 text-sm">
+				for _, sc := range d.Scenes {
+					<li>
+						Scene { strconv.Itoa(sc.OrderIndex + 1) }「{ sc.Title }」
+						<ul class="ml-4 list-disc">
+							for _, sh := range d.Shots {
+								if sh.Scene == sc.OrderIndex+1 {
+									<li><a class="text-indigo-300 underline" href={ templ.SafeURL("/shots/" + sh.ShotID) }>Shot { strconv.Itoa(sh.Shot) }</a>: { sh.Objective }</li>
+								}
+							}
+						</ul>
+					</li>
+				}
+			</ul>
+		</section>
+		<section aria-label="Branch のバージョン履歴" class="flex flex-col gap-1">
+			<h3 class="text-sm font-semibold text-neutral-200">バージョン履歴</h3>
+			<ol class="flex flex-col gap-1 text-xs text-neutral-300">
+				for _, v := range d.Versions {
+					<li>v{ strconv.Itoa(v.Number) } · { v.Name } · World State: { worldVersionText(v.WorldStateVersion) } · { v.CreatedAt.Local().Format("2006-01-02 15:04") }</li>
+				}
+			</ol>
+		</section>
+	</article>
+}
+
+// BranchView is the body of the Branch page: mam-branch-tree, the detail of the selected Branch and
+// the forms that make a Branch at a Shot. The chat thread is not split by Branch.
+templ BranchView(d BranchPageData) {
+	<div id="branch-view" class="flex flex-col gap-6">
+		<section aria-label="Branch ツリー" class="flex flex-col gap-2">
+			<h2 class="text-sm font-semibold text-neutral-200">Branch ツリー</h2>
+			<mam-branch-tree api-url={ branchTreeAPIURL(d.Project.ID) } selected={ selectedBranchID(d) }></mam-branch-tree>
+		</section>
+		<div id="branch-detail">
+			if d.Selected != nil {
+				@BranchDetail(*d.Selected)
+			} else {
+				<p class="text-sm text-neutral-400">ツリーの Branch を選ぶと詳細を表示します。</p>
+			}
+		</div>
+		<section aria-label="Branch を作る" class="flex flex-col gap-2">
+			<h2 class="text-sm font-semibold text-neutral-200">Shot から Branch を作る</h2>
+			<p class="text-xs text-neutral-400">
+				分岐点の World State を Snapshot として保存します。チャットで「このカットから別展開を3つ作って」と頼むこともできます。
+			</p>
+			if len(d.Shots) == 0 {
+				<p class="text-sm text-neutral-400">Branch を作れる Shot がまだありません。</p>
+			}
+			for _, s := range d.Shots {
+				<details class="rounded-md border border-neutral-700 p-2 text-sm">
+					<summary class="cursor-pointer">{ s.Label }</summary>
+					<form class="mt-2 flex flex-wrap items-end gap-2" hx-post={ branchShotURL(s.ShotID) } hx-swap="none">
+						<label class="flex flex-col gap-1 text-xs text-neutral-400">
+							分岐点
+							<select name="point_type" class="rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm text-neutral-100">
+								<option value="shot">Shot の後</option>
+								<option value="scene">Scene の頭</option>
+								<option value="frame">Shot 内の位置（Frame）</option>
+							</select>
+						</label>
+						<label class="flex flex-col gap-1 text-xs text-neutral-400">
+							位置（秒、Frame のみ）
+							<input type="number" name="offset_seconds" min="0" step="0.1" class="w-24 rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm text-neutral-100"/>
+						</label>
+						<label class="flex flex-col gap-1 text-xs text-neutral-400">
+							名称（省略可）
+							<input type="text" name="name" maxlength={ strconv.Itoa(domain.MaxBranchNameRunes) } class="rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm text-neutral-100"/>
+						</label>
+						<label class="flex flex-col gap-1 text-xs text-neutral-400">
+							展開の指示（省略可、AI が最初の Shot を作ります）
+							<input type="text" name="direction" class="w-64 rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm text-neutral-100" placeholder="例: ドアを開ける"/>
+						</label>
+						@atoms.Button(atoms.TonePrimary, "Branch を作る", templ.Attributes{"type": "submit"})
+					</form>
+				</details>
+			}
+		</section>
+	</div>
+}

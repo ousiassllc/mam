@@ -73,6 +73,7 @@ type Services struct {
 	Continue    *ContinueService
 	Reference   *ReferenceService
 	Takes       *TakeService
+	Branch      *BranchService
 }
 
 // Recover puts Shots left GENERATING by an abnormal termination back to PLANNING. It MUST run
@@ -107,6 +108,7 @@ func New(deps Deps) *Services {
 		plans:     repository.NewPlanRepository(deps.DB),
 
 		references: repository.NewReferenceRepository(deps.DB),
+		branches:   repository.NewBranchRepository(deps.DB),
 	}
 	chat := &ChatService{c}
 	var jobFinished func(jobID string) // set once the Repair Agent exists (before the queue starts)
@@ -180,6 +182,8 @@ func New(deps Deps) *Services {
 		continues.agent = continuation.New(deps.LLM)
 	}
 	c.continuer = continues
+	branch := &BranchService{core: c, shots: gens, continues: continues}
+	director.branch = branch
 	return &Services{
 		Health:      NewHealthService(deps.DB),
 		Credentials: NewCredentialService(deps.Credentials),
@@ -197,5 +201,6 @@ func New(deps Deps) *Services {
 		Continue:  continues,
 		Reference: &ReferenceService{c},
 		Takes:     &TakeService{core: c, takes: takes, shots: gens, generations: generations, chatSvc: chat, tools: deps.Media},
+		Branch:    branch,
 	}
 }
