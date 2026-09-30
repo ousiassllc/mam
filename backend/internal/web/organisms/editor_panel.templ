@@ -7,7 +7,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 )
 
-// EditorPanelData is the editing state of a Project (GET /projects/:id/editor): Rough Cut, Editor
+// EditorPanelData is the editing state of a Project (GET /projects/:id/edit): Rough Cut, Editor
 // Judge, Audio, Final QC and Export (F-18 Simple, F-20 Simple, F-26).
 type EditorPanelData struct {
 	Project domain.Project
@@ -25,7 +25,7 @@ type EditorPanelData struct {
 	CanRender bool
 }
 
-func editorURL(projectID string) string { return "/projects/" + projectID + "/editor" }
+func projectURL(projectID string) string { return "/projects/" + projectID }
 
 func editorAPIURL(projectID string) string { return "/api/v1/projects/" + projectID + "/edit-timeline" }
 
@@ -100,7 +100,7 @@ templ EditorActions(d EditorPanelData) {
 	<div
 		id="editor-actions"
 		class="flex flex-col gap-5"
-		hx-get={ editorURL(d.Project.ID) + "/actions" }
+		hx-get={ projectURL(d.Project.ID) + "/edit/actions" }
 		hx-trigger="timeline-updated from:body"
 		hx-swap="outerHTML"
 	>
@@ -110,12 +110,12 @@ templ EditorActions(d EditorPanelData) {
 			<div class="flex items-center gap-3">
 				if d.TimelineID == "" {
 					@atoms.Button(atoms.TonePrimary, "Rough Cut を作成", templ.Attributes{
-						"type": "button", "hx-post": editorURL(d.Project.ID) + "/edit/rough-cut",
+						"type": "button", "hx-post": projectURL(d.Project.ID) + "/edit/rough-cut",
 						"hx-target": "#editor-actions", "hx-swap": "outerHTML", "hx-disabled-elt": "this",
 					})
 				} else {
 					@atoms.Button(atoms.ToneNeutral, "Rough Cut を作り直す", templ.Attributes{
-						"type": "button", "hx-post": editorURL(d.Project.ID) + "/edit/rough-cut",
+						"type": "button", "hx-post": projectURL(d.Project.ID) + "/edit/rough-cut",
 						"hx-target": "#editor-actions", "hx-swap": "outerHTML", "hx-disabled-elt": "this",
 						"hx-confirm": "Rough Cut を作り直します。手動の編集は新しい版に置き換わります。よろしいですか？",
 					})
@@ -147,7 +147,7 @@ templ EditorActions(d EditorPanelData) {
 			<p class="text-xs text-neutral-400">脚本のセリフ・ナレーションを ElevenLabs で音声化し、Take の音声とミックスして −14 LUFS に整えます。</p>
 			<div class="flex items-center gap-3">
 				@atoms.Button(atoms.ToneNeutral, "音声を作成", templ.Attributes{
-					"type": "button", "hx-post": editorURL(d.Project.ID) + "/audio/generate",
+					"type": "button", "hx-post": projectURL(d.Project.ID) + "/audio/generate",
 					"hx-target": "#editor-actions", "hx-swap": "outerHTML", "hx-disabled-elt": "this", "disabled": !d.CanAudio(),
 				})
 				if d.Audio != nil {
@@ -164,7 +164,7 @@ templ EditorActions(d EditorPanelData) {
 			<h3 class="text-sm font-semibold">4. Final QC</h3>
 			<div class="flex items-center gap-3">
 				@atoms.Button(atoms.ToneNeutral, "Final QC を実行", templ.Attributes{
-					"type": "button", "hx-post": editorURL(d.Project.ID) + "/final-qc",
+					"type": "button", "hx-post": projectURL(d.Project.ID) + "/final-qc",
 					"hx-target": "#editor-actions", "hx-swap": "outerHTML", "hx-disabled-elt": "this", "disabled": !d.CanFinalQC(),
 				})
 				if d.QC != nil {
@@ -182,7 +182,7 @@ templ EditorActions(d EditorPanelData) {
 		<section class="flex flex-col gap-2" aria-label="Export">
 			<h3 class="text-sm font-semibold">5. 書き出し</h3>
 			<form
-				hx-post={ editorURL(d.Project.ID) + "/export" }
+				hx-post={ projectURL(d.Project.ID) + "/export" }
 				hx-target="#editor-actions"
 				hx-swap="outerHTML"
 				hx-disabled-elt="find button"

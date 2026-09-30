@@ -138,6 +138,22 @@ M1 の入出力契約（Issue #12）:
 | POST | `/projects/:id/final-qc` | Final QC 実行 | F-26 |
 | POST | `/projects/:id/export` | 最終書き出し実行（Aspect Ratio/解像度/コーデック指定）。Body `branch_id`（省略時=主系列トランク）で対象Branchを指定 | F-26 |
 
+M1（F-18 Simple / F-20 簡易版 / F-26。範囲は `spec/requirements/functional.md` §3.6）の実装は次のとおり。アクションルートは HTML フラグメント（`#editor-actions`）を返し、業務エラーは Toast（§0）で返す。
+
+| Method | Path | M1 の挙動 |
+|---|---|---|
+| GET | `/projects/:id/edit`（別名 `/projects/:id/export`） | 編集画面（`mam-timeline-editor` と Rough Cut〜書き出しの各ステージのボタン）。補助ビュー（別ページ）。チャットの［⋯］メニューから到達 |
+| GET | `/projects/:id/edit/actions` | ステージボタン部分のフラグメント。`timeline-updated` イベントで再取得される |
+| POST | `/projects/:id/edit/rough-cut` | 各 Shot の Selected Take（ファイルのあるもの）から Rough Cut を作り、Project を EDITING にして Edit Timeline の第1版を保存する。Selected Take のない Shot がある・Shot がない場合は 422。EDITING へ進めない状態（承認待ち等）は 409。`HX-Trigger: timeline-reload` を返す（`mam-timeline-editor` が読み直す）。`branch_id` は M2 |
+| PUT | `/edit-timelines/:id` | JSON `{"clips":[{"shot_id","take_id","in_point","out_point","transition":{"type","seconds"}}]}` を次の版として保存し 204。`:id` は編集画面が表示していた版で、それより新しい版があれば 409（古い画面での上書き防止）。クリップ 0 件・最短 0.5 秒未満・Take の長さ超過・別 Shot の Take・不明な Transition は 422。保存すると Project は EDITING に戻る |
+| GET | `/edit-timelines/:id/preview` | Rough Cut の下書きレンダリング（`video/mp4`、Range 対応）。版ごとに初回アクセスで作成しキャッシュする（ffmpeg が必要。なければ 503） |
+| POST | `/edit-timelines/:id/judge` | Editor Judge（PASS / Re-edit。素材不足 `need_shot` の差し戻しは M3）。最新版のみ・EDITING のみ。結果を `editor_judge_result` に保存する。PASS は AUDIO へ（Confirmation Level が Rough Cut の確認を求める場合は Approval カードで AWAITING_APPROVAL、承認で AUDIO）。Re-edit は EDITING のまま、指摘をチャットに投稿する |
+| POST | `/projects/:id/audio/generate` | AUDIO のときのみ。脚本の `dialogue` 行を ElevenLabs TTS で音声化し、Take の音声とミックスして −14 LUFS に正規化し、Audio Timeline の版として保存する。API キー未設定は 502（`elevenlabs` のキーを設定画面で登録）、ffmpeg なしは 503 |
+| POST | `/projects/:id/final-qc` | AUDIO のときのみ。PASS → READY（Final の確認を求める設定なら Approval カード経由）。FAIL → 該当工程（EDITING / AUDIO）へ差し戻し、指摘をチャットに投稿する。結果は `final_qc_result` に履歴として残る |
+| POST | `/projects/:id/export` | READY（または再書き出しの EXPORTED）のときのみ。フォーム／JSON の `aspect_ratio`（`16:9`/`9:16`/`1:1`/`4:5`）・`resolution`（`720p`/`1080p`/`1440p`/`2160p`）・`codec`（`h264`/`h265`/`vp9`）を指定（省略時は Brief のアスペクト比・1080p・h264）。一時ファイルへ書いて完了後にリネームし（アトミック）、`export` に記録して EXPORTED にする |
+| GET | `/projects/:id/exports/:exportId/video` | 書き出した動画のダウンロード（`video/mp4` / `video/webm`） |
+
+
 ### 2.7 Brand / Cost
 
 | Method | Path | 概要 | 対応機能 |
@@ -212,8 +228,8 @@ Lit Web Components 専用。HTMX リクエストは発行しない（`spec/archi
 | GET | `/api/v1/shots/:id/takes` | Take一覧（古い順。`label`（A, B, …）・`status`（candidate/ai_pick/selected/rejected）・`adopted`（Shot が使う Take）・`scores`（product/acting/camera/continuity/overall、各 0-100。最新 Judge の Issue から算出: 各軸 100 から high 35・medium 15・low 5 を Issue ごとに引く。未 Judge は null）・`verdict`・`resolution`/`fps`/`duration_seconds`・`proxied`・`video_url`/`thumbnail_url`/`judge_result_url`/`select_url`/`reject_url`、および Shot の `partial_url`） | `mam-take-comparator` |
 | GET | `/api/v1/takes/:id/judge-result` | 最新のJudge Result（`result`/`overall_confidence`/`metrics`/`issues`（`time_range`/`frames`付き）/`preserve`/`repair_strategy`）。同一Takeの過去Judge履歴は含まない（最新1件）。Take が存在しない、または一度も Judge されていないとき 404 | `mam-video-player`（フレームマーカー重畳） |
 | GET | `/api/v1/repair/jev-shadow-report` | Jev のシャドー実行の集計（`runs`/`errors`/`agreed`/`agreement_rate`（失敗を除く一致率）/`mean_confidence`/`mean_latency_ms`/`total_cost_usd`/`confidence_histogram`（0.1 刻み 10 区間）/`confidence_agreed`）。Jev による前段選別を有効にするかどうかの判断材料（`spec/architecture/model-adapters.md` §4.5・§11） | Repair Agent（F-14） |
-| GET | `/api/v1/projects/:id/edit-timeline` | 現在の Edit Timeline（Shot順序/Cut Point/Transition）。クエリ `branch_id`（省略時=主系列トランク）で対象Branchを指定 | `mam-timeline-editor` |
-| PUT | `/api/v1/projects/:id/edit-timeline` | Edit Timeline 保存（ドラッグ&ドロップ操作の反映）。クエリ `branch_id`（省略時=主系列トランク）で対象Branchを指定 | `mam-timeline-editor` |
+| GET | `/api/v1/projects/:id/edit-timeline` | 現在の Edit Timeline（Shot順序/Cut Point/Transition）と最新の Editor Judge。Rough Cut がなければ 404。クエリ `branch_id`（省略時=主系列トランク）は M2 | `mam-timeline-editor` |
+| — | `PUT /edit-timelines/:id`（アクションルート、§2.6） | Edit Timeline 保存（ドラッグ&ドロップ操作の反映）。`/api/v1` では提供せず、JSON API の GET が返す `save_url` へ PUT する（Lit は API クライアント経由で CSRF トークン付きで送る）。`branch_id` は M2 | `mam-timeline-editor` |
 | GET | `/api/v1/projects/:id/branches` | Branch ツリー構造（親子関係、Snapshot参照） | `mam-branch-tree` |
 | GET | `/api/v1/openapi.json` | OpenAPI 3.1 スペック（Huma自動生成） | - |
 
@@ -229,26 +245,30 @@ Response: 202 Accepted
 ```
 
 ```yaml
-# PUT /api/v1/projects/:id/edit-timeline
-Request:
-  Body:
-    shots:
-      - shot_id: "shot_003"
-        start: 0.0
-        end: 4.2
-        transition: "cut"
-      - shot_id: "shot_004"
-        start: 4.2
-        end: 7.8
-        transition: "cross_dissolve"
+# GET /api/v1/projects/:id/edit-timeline   （mam-timeline-editor。保存は PUT /edit-timelines/:id のアクションルート）
 Response 200:
   Body:
+    id: "et_01"                  # 表示している版。保存時に PUT のパスへ使う
     version_number: 5
-    created_at: "2026-09-28T10:00:00Z"
+    duration_seconds: 9.5
+    readonly: false              # 編集できない段階（承認待ち・READY 等）では true
+    save_url: "/edit-timelines/et_01"
+    preview_url: "/edit-timelines/et_01/preview"
+    transitions: ["cut", "fade", "fade_black", "dissolve"]
+    limits: { min_clip_seconds: 0.5, max_transition_seconds: 2, max_clips: 200 }
+    judge: { verdict: "re_edit", findings: [{ clip_index: 2, issue: "...", action: "..." }] }   # 省略あり
+    clips:
+      - shot_id: "shot_003"
+        take_id: "take_010"
+        label: "Scene 1 · Shot 1"
+        in_point: 0.0
+        out_point: 4.2
+        start: 0.0
+        transition: { type: "cut", seconds: 0 }
 Errors:
-  409: "他クライアントが同時編集中"（本製品はシングルユーザーのため通常発生しないが排他制御として定義）
-  422: "shot_id が存在しない / start >= end"
+  404: "Rough Cut がまだない"
 ```
+
 
 ```yaml
 # GET /api/v1/takes/:id/judge-result
@@ -327,3 +347,4 @@ Notes:
 | 1.27 | 2026-09-30 | §2.8 に M2 の契約（`PUT /projects/:id/world-state/locks`、`PUT …/:entityId/reference`）を追記。`GET /projects/:id/references` と §2.11 Reference Library（`POST/DELETE /projects/:id/references`、`POST /shots/:id/references`）を追加 | M2「Character/Product Lock・Location State・Reference Library」（Issue #15）で、World State の属性単位 LOCK の切替とライブラリの登録・検索・再利用の API が定義されていなかったため。ライブラリは Project 内の画像を対象とし、Reference Pack への追加は Shot 単位のピン留めにした |
 | 1.28 | 2026-09-30 | `POST /takes/:id/repair` の応答・エラー（202/404/409/503）・Retry Policy の適用・AUTO MODE の自動ループ、`/ws/shots/:id` の Repair 通知（`action=repair`・`stage=repairing`）、`GET /api/v1/repair/jev-shadow-report` を明記 | M1「Repair/Retake Loop」（Issue #10）で Repair の API 契約と進捗通知が未定義だったため |
 | 1.29 | 2026-09-30 | §2.4 の Take 選択・除外・部分採用の入出力とエラー、`/takes/:id/video`・`/thumbnail`、`GET /api/v1/shots/:id/takes` の項目、AI Pick の動作を追記 | M1「Take システムと補助ビュー」（Issue #11）で Body・エラー・スコア算出・AUTO/DIRECTOR の扱いが名称レベルでしか定義されていなかったため |
+| 1.30 | 2026-09-30 | §2.6 に M1 の Editor / Audio / Final QC / Export の挙動（Rough Cut・タイムライン保存の版管理と 409/422・プレビュー・Editor Judge・音声・Final QC・書き出し・ダウンロード）を追記。Edit Timeline の保存を `PUT /edit-timelines/:id`（アクションルート）に確定し、`GET /api/v1/projects/:id/edit-timeline` の応答例を更新（旧 `PUT /api/v1/projects/:id/edit-timeline` は提供しない） | M1「簡易 Editor・簡易 Audio・Final QC・Export」（Issue #14）の実装に合わせるため |

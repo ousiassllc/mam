@@ -13,7 +13,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
 )
 
-// EditorPage is GET /projects/:id/editor: the timeline editor and the stages from Rough Cut to Export.
+// EditorPage is GET /projects/:id/edit: the timeline editor and the stages from Rough Cut to Export.
 func EditorPage(csrfToken string, d organisms.EditorPanelData) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context

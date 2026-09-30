@@ -5,7 +5,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
 )
 
-// EditorPage is GET /projects/:id/editor: the timeline editor and the stages from Rough Cut to Export.
+// EditorPage is GET /projects/:id/edit: the timeline editor and the stages from Rough Cut to Export.
 templ EditorPage(csrfToken string, d organisms.EditorPanelData) {
 	@layout.AppLayout("編集: "+d.Project.Name, csrfToken) {
 		<main class="mx-auto max-w-5xl p-8">

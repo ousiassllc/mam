@@ -302,12 +302,17 @@ func TestEditor_ExportValidatesTheOptions(t *testing.T) {
 func TestEditor_PageRendersTheTimelineEditorAndTheStages(t *testing.T) {
 	e := newEditorApp(t)
 
-	rec := e.get("/projects/"+e.project+"/editor", false)
+	rec := e.get("/projects/"+e.project+"/edit", false)
 
 	require.Equal(t, http.StatusOK, rec.Code)
 	assert.Contains(t, rec.Body.String(), `<mam-timeline-editor api-url="/api/v1/projects/`+e.project+`/edit-timeline">`)
 	assert.Contains(t, rec.Body.String(), `id="editor-actions"`)
-	assert.Equal(t, http.StatusNotFound, e.get("/projects/nope/editor", false).Code)
+	for _, action := range []string{"/edit/rough-cut", "/audio/generate", "/final-qc", "/export"} {
+		assert.Contains(t, rec.Body.String(), `hx-post="/projects/`+e.project+action+`"`, "the stage buttons post to routes that exist")
+	}
+	assert.Equal(t, http.StatusOK, e.get("/projects/"+e.project+"/export", false).Code)
+	assert.Equal(t, http.StatusOK, e.get("/projects/"+e.project+"/edit/actions", true).Code)
+	assert.Equal(t, http.StatusNotFound, e.get("/projects/nope/edit", false).Code)
 }
 
 func TestEditor_RoughCutCheckpointHoldsTheProjectUntilTheCardIsApproved(t *testing.T) {

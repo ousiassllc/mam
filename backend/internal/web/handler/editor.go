@@ -22,7 +22,7 @@ func editorPanelData(v service.EditorView) organisms.EditorPanelData {
 	return d
 }
 
-// EditorPage renders the editor of a Project (GET /projects/:id/editor): the full page, or the
+// EditorPage renders the editor of a Project (GET /projects/:id/edit): the full page, or the
 // workspace for HTMX. The timeline itself is loaded by the component from the JSON API.
 func EditorPage(svc *service.EditorService) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -40,7 +40,7 @@ func EditorPage(svc *service.EditorService) gin.HandlerFunc {
 	}
 }
 
-// EditorActions renders the stage buttons of a Project (GET /projects/:id/editor/actions): what
+// EditorActions renders the stage buttons of a Project (GET /projects/:id/edit/actions): what
 // #editor-actions reloads from once the timeline editor saved.
 func EditorActions(svc *service.EditorService) gin.HandlerFunc {
 	return func(c *gin.Context) {

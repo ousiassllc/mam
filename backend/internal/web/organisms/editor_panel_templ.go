@@ -15,7 +15,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 )
 
-// EditorPanelData is the editing state of a Project (GET /projects/:id/editor): Rough Cut, Editor
+// EditorPanelData is the editing state of a Project (GET /projects/:id/edit): Rough Cut, Editor
 // Judge, Audio, Final QC and Export (F-18 Simple, F-20 Simple, F-26).
 type EditorPanelData struct {
 	Project domain.Project
@@ -33,7 +33,7 @@ type EditorPanelData struct {
 	CanRender bool
 }
 
-func editorURL(projectID string) string { return "/projects/" + projectID + "/editor" }
+func projectURL(projectID string) string { return "/projects/" + projectID }
 
 func editorAPIURL(projectID string) string { return "/api/v1/projects/" + projectID + "/edit-timeline" }
 
@@ -177,9 +177,9 @@ func EditorActions(d EditorPanelData) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var4 string
-		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(editorURL(d.Project.ID) + "/actions")
+		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(projectURL(d.Project.ID) + "/edit/actions")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 103, Col: 47}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 103, Col: 53}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 		if templ_7745c5c3_Err != nil {
@@ -191,7 +191,7 @@ func EditorActions(d EditorPanelData) templ.Component {
 		}
 		if d.TimelineID == "" {
 			templ_7745c5c3_Err = atoms.Button(atoms.TonePrimary, "Rough Cut を作成", templ.Attributes{
-				"type": "button", "hx-post": editorURL(d.Project.ID) + "/edit/rough-cut",
+				"type": "button", "hx-post": projectURL(d.Project.ID) + "/edit/rough-cut",
 				"hx-target": "#editor-actions", "hx-swap": "outerHTML", "hx-disabled-elt": "this",
 			}).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
@@ -199,7 +199,7 @@ func EditorActions(d EditorPanelData) templ.Component {
 			}
 		} else {
 			templ_7745c5c3_Err = atoms.Button(atoms.ToneNeutral, "Rough Cut を作り直す", templ.Attributes{
-				"type": "button", "hx-post": editorURL(d.Project.ID) + "/edit/rough-cut",
+				"type": "button", "hx-post": projectURL(d.Project.ID) + "/edit/rough-cut",
 				"hx-target": "#editor-actions", "hx-swap": "outerHTML", "hx-disabled-elt": "this",
 				"hx-confirm": "Rough Cut を作り直します。手動の編集は新しい版に置き換わります。よろしいですか？",
 			}).Render(ctx, templ_7745c5c3_Buffer)
@@ -305,7 +305,7 @@ func EditorActions(d EditorPanelData) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		templ_7745c5c3_Err = atoms.Button(atoms.ToneNeutral, "音声を作成", templ.Attributes{
-			"type": "button", "hx-post": editorURL(d.Project.ID) + "/audio/generate",
+			"type": "button", "hx-post": projectURL(d.Project.ID) + "/audio/generate",
 			"hx-target": "#editor-actions", "hx-swap": "outerHTML", "hx-disabled-elt": "this", "disabled": !d.CanAudio(),
 		}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
@@ -345,7 +345,7 @@ func EditorActions(d EditorPanelData) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		templ_7745c5c3_Err = atoms.Button(atoms.ToneNeutral, "Final QC を実行", templ.Attributes{
-			"type": "button", "hx-post": editorURL(d.Project.ID) + "/final-qc",
+			"type": "button", "hx-post": projectURL(d.Project.ID) + "/final-qc",
 			"hx-target": "#editor-actions", "hx-swap": "outerHTML", "hx-disabled-elt": "this", "disabled": !d.CanFinalQC(),
 		}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
@@ -395,9 +395,9 @@ func EditorActions(d EditorPanelData) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var11 string
-		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.ResolveAttributeValue(editorURL(d.Project.ID) + "/export")
+		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.ResolveAttributeValue(projectURL(d.Project.ID) + "/export")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 185, Col: 49}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 185, Col: 50}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var11)
 		if templ_7745c5c3_Err != nil {

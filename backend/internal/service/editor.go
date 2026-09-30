@@ -637,7 +637,7 @@ func (s *EditorService) GenerateAudio(ctx context.Context, projectID string) (Ed
 	if _, err := s.editors.SaveAudioTimeline(ctx, projectID, tl); err != nil {
 		return EditorView{}, notFound(err)
 	}
-	text := "音声を作成しました。"
+	var text string
 	if n := len(tl.Clips); n > 0 {
 		text = fmt.Sprintf("音声を作成しました（Dialogue / Narration %d 行、ラウドネス %.1f LUFS）。", n, tl.MeasuredLUFS)
 	} else if tl.MixPath != "" {
