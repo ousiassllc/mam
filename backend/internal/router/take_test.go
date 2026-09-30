@@ -335,6 +335,21 @@ func TestAIPick_AutoAdoptsTheBestTakeThatPassedTheJudge(t *testing.T) {
 	assert.Contains(t, j.get("/projects/"+j.project, false).Body.String(), "AI Pick: Take ", "the chat says which Take was adopted")
 }
 
+func TestAIPick_TakeSelectionManualOrLockOnlyRecommendsEvenInAuto(t *testing.T) {
+	for _, mode := range []string{"manual", "lock"} {
+		t.Run(mode, func(t *testing.T) {
+			j := newJudgeApp(t, goodVerdict, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95)
+			require.Equal(t, http.StatusOK, j.form(http.MethodPut, "/shots/"+j.shotID+"/locks", url.Values{"parameter": {"take_selection"}, "mode": {mode}}).Code)
+			j.generateAndJudge()
+
+			statuses, adopted := pickState(t, j.app, j.shotID)
+			assert.Equal(t, []string{"ai_pick", "candidate", "candidate"}, statuses, "the Take is still recommended")
+			assert.Equal(t, -1, adopted, "Take Selection %s: the AI does not make the Shot use it", mode)
+			assert.Contains(t, j.get("/projects/"+j.project, false).Body.String(), "がおすすめです")
+		})
+	}
+}
+
 func TestAIPick_DirectorOnlyRecommendsAndAUserChoiceIsNeverReplaced(t *testing.T) {
 	j := newJudgeApp(t, goodVerdict, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95)
 	require.Equal(t, http.StatusOK, j.form(http.MethodPut, "/projects/"+j.project+"/mode", url.Values{"mode": {"director"}}).Code)
