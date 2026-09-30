@@ -26,7 +26,9 @@ type core struct {
 	logger    *slog.Logger
 	// pipeline drives the AUTO pipeline; nil when no Reasoning LLM is configured.
 	pipeline *orchestrator.Orchestrator
-	plans    *repository.PlanRepository
+	// afterAnswer lets the AUTO editing chain go on after the user changed something (see kick).
+	afterAnswer func(projectID string)
+	plans       *repository.PlanRepository
 	// references is the Reference Library (F-11).
 	references *repository.ReferenceRepository
 	// director runs DIRECTOR MODE (F-02, F-24): the chat hands directions to it.
@@ -84,6 +86,9 @@ func (c *core) generationRecorder(ctx context.Context, shotID string) func() {
 // (a finished Brief, an answered Approval card, a message after a failure). It never fails
 // the user's action: the pipeline can be kicked again by the next change.
 func (c *core) kick(ctx context.Context, projectID string) {
+	if c.afterAnswer != nil {
+		c.afterAnswer(projectID)
+	}
 	if c.pipeline == nil {
 		return
 	}

@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -96,6 +97,8 @@ func newEditorApp(t *testing.T) *editorApp {
 	})
 	e := &editorApp{takeApp: ta, llm: l, spoken: spoken}
 	e.setLevel(domain.ConfirmFullAuto) // no approval card unless a test asks for one
+	// The tests run the stages one by one; the AUTO chain is tested with setMode("auto").
+	e.setMode("director")
 	// DRAMA asks nothing of a one-clip cut that a test could trip over (PRODUCT / CM wants the product on screen).
 	e.execSQL(`UPDATE project SET production_template = 'drama' WHERE id = ?`, e.project)
 	return e
@@ -105,6 +108,10 @@ func (e *editorApp) setLevel(level domain.ConfirmationLevel) {
 	e.t.Helper()
 	rec := e.form(http.MethodPut, "/projects/"+e.project+"/confirmation-level", url.Values{"level": {string(level)}})
 	require.Equal(e.t, http.StatusOK, rec.Code, rec.Body.String())
+}
+
+func (e *editorApp) setMode(mode string) {
+	e.execSQL(`UPDATE project SET mode = ? WHERE id = ?`, mode, e.project)
 }
 
 // setState puts the Project in a state the pipeline would have reached.
@@ -565,3 +572,47 @@ func TestEditor_AudioKeepsTheEarlierBGMWhenMusicIsFixed(t *testing.T) {
 	}
 	assert.Equal(t, []domain.AudioClip{bgm}, kept, "the earlier BGM is carried over")
 }
+
+func TestEditor_AutoChainRunsFromTheLastSelectedTakeToReady(t *testing.T) {
+	e := newEditorApp(t)
+	e.setMode("auto")
+	e.setState("JUDGING")
+	doc := domain.ScriptDoc{Script: domain.Script{Scenes: []domain.ScriptScene{{Title: "Street", Dialogue: []string{"ナレーション: 朝が来た"}}}}}
+	_, err := repository.NewPlanRepository(e.db).SaveScript(context.Background(), e.project, doc)
+	require.NoError(t, err)
+
+	// The only Shot gets its Selected Take: Rough Cut, Editor Judge, audio and Final QC follow on their own.
+	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/takes/t1/select", nil).Code)
+
+	require.Eventually(t, func() bool { return e.state() == "READY" }, 60*time.Second, 50*time.Millisecond, "state: %s", e.state())
+	assert.Equal(t, "pass", e.timeline().Judge.Verdict)
+	audio, err := repository.NewEditorRepository(e.db).LatestAudioTimeline(context.Background(), e.project, "")
+	require.NoError(t, err)
+	assert.Equal(t, 1, audio.VersionNumber)
+	qc, err := repository.NewEditorRepository(e.db).LatestFinalQC(context.Background(), e.project)
+	require.NoError(t, err)
+	assert.Equal(t, audio.ID, qc.AudioTimelineVersionID)
+	exports, err := repository.NewEditorRepository(e.db).ListExports(context.Background(), e.project)
+	require.NoError(t, err)
+	assert.Empty(t, exports, "the export is the user's action")
+}
+
+func TestEditor_AutoChainStopsAtAReEditVerdict(t *testing.T) {
+	e := newEditorApp(t)
+	e.setMode("auto")
+	e.setState("JUDGING")
+	e.llm.answer = `{"verdict":"re_edit","findings":[{"clip_index":1,"issue":"冒頭が長い","action":"1 秒短くする"}]}`
+
+	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/takes/t1/select", nil).Code)
+
+	require.Eventually(t, func() bool {
+		rec := e.get("/api/v1/projects/"+e.project+"/edit-timeline", false)
+		return rec.Code == http.StatusOK && e.timeline().Judge != nil
+	}, 30*time.Second, 50*time.Millisecond)
+	assert.Equal(t, "re_edit", e.timeline().Judge.Verdict)
+	time.Sleep(300 * time.Millisecond)
+	assert.Equal(t, "EDITING", e.state(), "a Re-edit verdict waits for the user")
+	_, err := repository.NewEditorRepository(e.db).LatestAudioTimeline(context.Background(), e.project, "")
+	assert.ErrorIs(t, err, repository.ErrNotFound)
+}
+
