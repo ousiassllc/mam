@@ -23,6 +23,11 @@ const (
 	TargetStory     WorldTarget = "story"
 )
 
+// WorldTargets lists every target in display order.
+func WorldTargets() []WorldTarget {
+	return []WorldTarget{TargetCharacter, TargetProduct, TargetLocation, TargetCamera, TargetStory}
+}
+
 // IsSingleton reports whether the Project has exactly one of the target (no entity id).
 func (t WorldTarget) IsSingleton() bool { return t == TargetCamera || t == TargetStory }
 
@@ -152,13 +157,27 @@ var editableFields = map[WorldTarget][]string{
 }
 
 // The State Extractor changes what a Shot can change. Personality, voice and material are set by
-// the user only. Location State (time of day, lighting, weather) is M2 (Issue #8).
+// the user only. Location State (time of day, lighting, weather) is updated for the Location the
+// Shot takes place in (spec/spec.md §9.3, M2).
 var extractableFields = map[WorldTarget][]string{
 	TargetCharacter: {"hairstyle", "wardrobe", "emotion", "position", "current_action"},
 	TargetProduct:   {"orientation", "condition"},
+	TargetLocation:  {"time", "lighting_state", "weather"},
 	TargetCamera:    {"lens", "position", "angle", "movement"},
 	TargetStory:     {"character_goal", "known_information", "previous_event"},
 }
+
+// lockOnlyFields are the LOCKable attributes that are not text fields of the World State: the
+// look of a Character and the shape and label of a Product (the reference images), and the layout
+// of a Location. They name the rows of the lock table only (spec/architecture/er.md §4).
+var lockOnlyFields = map[WorldTarget][]string{
+	TargetCharacter: {LockParamIdentity},
+	TargetProduct:   {LockParamGeometry, LockParamLabel},
+	TargetLocation:  {LockFieldLayoutReference},
+}
+
+// LockFieldLayoutReference is the lock attribute of a Location's layout reference image.
+const LockFieldLayoutReference = "layout_reference"
 
 // EditableFields lists the fields the user may edit with PUT /projects/:id/{characters,products,locations}/:id,
 // in display order. Camera and Story have none.
@@ -169,6 +188,87 @@ func ExtractableFields(t WorldTarget) []string { return slices.Clone(extractable
 
 // IsEditable reports whether the user may edit the field.
 func IsEditable(t WorldTarget, field string) bool { return slices.Contains(editableFields[t], field) }
+
+// LockableFields lists the attributes of the target the user can switch between AUTO and LOCK, in
+// display order: the editable fields, then the reference attributes (identity, geometry, label,
+// layout_reference); Camera and Story have their extractable fields (and story.scene).
+func LockableFields(t WorldTarget) []string {
+	switch t {
+	case TargetCamera:
+		return ExtractableFields(t)
+	case TargetStory:
+		return append([]string{StoryFieldScene}, extractableFields[t]...)
+	}
+	return append(EditableFields(t), lockOnlyFields[t]...)
+}
+
+// IsLockable reports whether the attribute can be LOCKed.
+func IsLockable(t WorldTarget, field string) bool { return slices.Contains(LockableFields(t), field) }
+
+// ReferenceSlot is a place of the World State that holds a reference image of the Reference
+// Library (spec/spec.md §10.1): the image of a Character's face or body, of a Product's shape or
+// label, or of a Location's layout.
+type ReferenceSlot struct {
+	Target WorldTarget
+	Name   string        // "face", "body", "geometry", "label", "layout"
+	Kind   ReferenceKind // the kind of library image that fits
+	Lock   string        // the lock attribute that freezes the slot
+	Column string        // the column of the entity table
+}
+
+// ReferenceSlots lists every slot.
+func ReferenceSlots() []ReferenceSlot {
+	return []ReferenceSlot{
+		{TargetCharacter, "face", RefCharacter, LockParamIdentity, "face_reference_asset_id"},
+		{TargetCharacter, "body", RefCharacter, LockParamIdentity, "body_reference_asset_id"},
+		{TargetProduct, "geometry", RefProduct, LockParamGeometry, "geometry_reference_asset_id"},
+		{TargetProduct, "label", RefProduct, LockParamLabel, "label_reference_asset_id"},
+		{TargetLocation, "layout", RefLocation, LockFieldLayoutReference, "layout_reference_asset_id"},
+	}
+}
+
+// FindReferenceSlot returns the slot of the target with the given name.
+func FindReferenceSlot(t WorldTarget, name string) (ReferenceSlot, bool) {
+	for _, s := range ReferenceSlots() {
+		if s.Target == t && s.Name == name {
+			return s, true
+		}
+	}
+	return ReferenceSlot{}, false
+}
+
+// Character returns the Character that ref names, by ID or (ignoring case) by name: the Shot Spec
+// and the Reference Pack name entities either way.
+func (w WorldContext) Character(ref string) (WorldCharacter, bool) {
+	i := slices.IndexFunc(w.Characters, func(c WorldCharacter) bool { return sameEntity(ref, c.ID, c.Name) })
+	if i < 0 {
+		return WorldCharacter{}, false
+	}
+	return w.Characters[i], true
+}
+
+// Product returns the Product that ref names, by ID or name.
+func (w WorldContext) Product(ref string) (WorldProduct, bool) {
+	i := slices.IndexFunc(w.Products, func(p WorldProduct) bool { return sameEntity(ref, p.ID, p.Name) })
+	if i < 0 {
+		return WorldProduct{}, false
+	}
+	return w.Products[i], true
+}
+
+// Location returns the Location that ref names, by ID or name.
+func (w WorldContext) Location(ref string) (WorldLocation, bool) {
+	i := slices.IndexFunc(w.Locations, func(l WorldLocation) bool { return sameEntity(ref, l.ID, l.Name) })
+	if i < 0 {
+		return WorldLocation{}, false
+	}
+	return w.Locations[i], true
+}
+
+func sameEntity(ref, id, name string) bool {
+	ref = strings.TrimSpace(ref)
+	return ref != "" && (ref == id || strings.EqualFold(ref, strings.TrimSpace(name)))
+}
 
 // IsExtractable reports whether a State Diff may change the field (story.scene included).
 func IsExtractable(t WorldTarget, field string) bool {

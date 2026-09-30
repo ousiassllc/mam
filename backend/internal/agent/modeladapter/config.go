@@ -117,6 +117,7 @@ func DefaultConfig() Config {
 			VendorFlux:     {BaseURL: "https://api.bfl.ai", MaxConcurrency: 4, TimeoutSeconds: 180},
 			VendorKling:    {BaseURL: "https://api.klingai.com", MaxConcurrency: 3, TimeoutSeconds: 900},
 			VendorSeedance: {BaseURL: "https://ark.ap-southeast.bytepluses.com", MaxConcurrency: 3, TimeoutSeconds: 900},
+			VendorRunway:   {BaseURL: "https://api.dev.runwayml.com", MaxConcurrency: 2, TimeoutSeconds: 900},
 		},
 		Models: map[domain.ModelName]ModelConfig{
 			domain.ModelImagen4:    {Model: "imagen-4.0-generate-001", FastModel: "imagen-4.0-fast-generate-001", CostPerImage: 0.04},
@@ -125,6 +126,8 @@ func DefaultConfig() Config {
 			domain.ModelGPTImage2:  {Model: "gpt-image-1", CostPerImage: 0.06},
 			domain.ModelKling3:     {Model: "kling-v3", CostPerSecond: map[string]float64{"720p": 0.07, "1080p": 0.14}},
 			domain.ModelSeedance2:  {Model: "seedance-2-0", CostPerSecond: map[string]float64{"480p": 0.03, "720p": 0.08, "1080p": 0.18}},
+			// Runway prices in credits (12 credits per second of Gen-4.5, 1 credit = USD 0.01).
+			domain.ModelRunwayGen45: {Model: "gen4.5", CostPerSecond: map[string]float64{"720p": 0.12}},
 		},
 		Images: map[ImagePurpose]ImageRoute{
 			PurposeNewReference:  {Primary: ImageTarget{Model: domain.ModelImagen4}, Fallback: ImageTarget{Model: domain.ModelGPTImage2}},
@@ -132,12 +135,12 @@ func DefaultConfig() Config {
 			PurposePreview:       {Primary: ImageTarget{Model: domain.ModelFlux2}, Fallback: ImageTarget{Model: domain.ModelImagen4, Fast: true}},
 			PurposeUnifiedOpenAI: {Primary: ImageTarget{Model: domain.ModelGPTImage2}, Fallback: ImageTarget{Model: domain.ModelImagen4}},
 		},
-		// model-adapters.md §4. MAX QUALITY names Runway Gen-4.5, which is added in M2; until then
-		// Seedance 2.0 at 1080p is the primary and Kling 3.0 at 1080p the alternative.
+		// model-adapters.md §4. MAX QUALITY uses Runway Gen-4.5 (720p, its only output size); the
+		// alternative ("Different Model") is Kling 3.0.
 		Policies: map[domain.QualityPolicy]PolicyRoute{
 			domain.QualityFast:       {Primary: VideoTarget{domain.ModelKling3, "720p"}, Fallback: VideoTarget{domain.ModelSeedance2, "480p"}, Takes: 2},
 			domain.QualityBalanced:   {Primary: VideoTarget{domain.ModelSeedance2, "720p"}, Fallback: VideoTarget{domain.ModelKling3, "720p"}, Takes: 3},
-			domain.QualityMaxQuality: {Primary: VideoTarget{domain.ModelSeedance2, "1080p"}, Fallback: VideoTarget{domain.ModelKling3, "1080p"}, Takes: 4},
+			domain.QualityMaxQuality: {Primary: VideoTarget{domain.ModelRunwayGen45, "720p"}, Fallback: VideoTarget{domain.ModelKling3, "1080p"}, Takes: 4},
 		},
 		Retry:   RetryConfig{MaxAttempts: 3, BaseDelayMillis: 1000, MaxDelayMillis: 16000},
 		Breaker: BreakerConfig{FailureThreshold: 5, OpenSeconds: 30},

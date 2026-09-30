@@ -131,3 +131,42 @@ func TestExtract_PromptOffersOnlyTheFieldsTheModelMayChange(t *testing.T) {
 	assert.NotContains(t, f.system, "personality", "personality is set by the user only")
 	assert.NotContains(t, f.system, "voice")
 }
+
+func locationInput() stateextractor.Input {
+	in := input()
+	in.World.Locations = []domain.WorldLocation{
+		{ID: "l1", Name: "Street", Time: "sunset", LightingState: "warm", Weather: "clear"},
+		{ID: "l2", Name: "Cafe", Time: "noon"},
+	}
+	in.Spec.Location = &domain.SpecLocation{ID: "Street"}
+	return in
+}
+
+func TestExtract_UpdatesTheLocationStateOfTheShotsLocationOnly(t *testing.T) {
+	diff, f := extract(t, `{"changes":[
+		{"target":"location","id":"l1","field":"time","value":"night"},
+		{"target":"location","id":"l1","field":"weather","value":"clear"},
+		{"target":"location","id":"l1","field":"layout_reference","value":"x"},
+		{"target":"location","id":"l2","field":"time","value":"evening"}]}`, locationInput())
+
+	assert.Equal(t, []string{"location.l1.time"}, fields(diff), "same weather, non-extractable layout_reference and another Location are left out")
+	assert.JSONEq(t, `"sunset"`, string(diff.Changes[0].From))
+	assert.Contains(t, f.system, "lighting_state")
+	assert.Contains(t, f.user, "sunset", "the model sees the current Location State")
+}
+
+func TestExtract_LockedLocationFieldsAreNotChanged(t *testing.T) {
+	in := locationInput()
+	in.Locks = domain.LockSet{{Target: domain.TargetLocation, ID: "l1", Field: "lighting_state"}: {}}
+	diff, _ := extract(t, `{"changes":[
+		{"target":"location","id":"l1","field":"lighting_state","value":"dark"},
+		{"target":"location","id":"l1","field":"weather","value":"rain"}]}`, in)
+	assert.Equal(t, []string{"location.l1.weather"}, fields(diff))
+}
+
+func TestExtract_NoLocationChangeWhenTheShotHasNoKnownLocation(t *testing.T) {
+	in := locationInput()
+	in.Spec.Location = nil
+	diff, _ := extract(t, `{"changes":[{"target":"location","id":"l1","field":"time","value":"night"}]}`, in)
+	assert.Empty(t, diff.Changes)
+}

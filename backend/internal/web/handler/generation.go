@@ -24,6 +24,19 @@ func GenerateShot(svc *service.GenerationService) gin.HandlerFunc {
 	}
 }
 
+// GenerateCandidates starts Prompt Candidate Generation for a Shot (POST /shots/:id/generate/candidates).
+// It answers 202 with the Shot card in the GENERATING state, like GenerateShot.
+func GenerateCandidates(svc *service.GenerationService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		frag, err := svc.GenerateCandidates(c.Request.Context(), c.Param("id"), c.PostForm("additional_instruction"))
+		if err != nil {
+			toast(c, err)
+			return
+		}
+		render(c, http.StatusAccepted, molecules.ShotCard(shotCardData(frag)))
+	}
+}
+
 // BuildReferencePack starts the (re)generation of the Reference Pack of a Shot
 // (POST /shots/:id/reference-pack). It answers 202 like GenerateShot.
 func BuildReferencePack(svc *service.GenerationService) gin.HandlerFunc {

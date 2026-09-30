@@ -62,10 +62,10 @@ func TestSetQualityPolicy_RoutesTheVideoModelsAndTakeCountAccordingToThePolicy(t
 	_, err = f.svc.Policy.SetQualityPolicy(ctx, f.projectID, domain.QualityMaxQuality, nil)
 	require.NoError(t, err)
 	f.generate(t)
-	assert.Equal(t, 4, f.count(t, `SELECT COUNT(*) FROM take WHERE model_name = 'seedance-2.0'`), "MAX QUALITY -> more Takes on the top model")
+	assert.Equal(t, 4, f.count(t, `SELECT COUNT(*) FROM take WHERE model_name = 'runway-gen-4.5'`), "MAX QUALITY -> more Takes on Runway Gen-4.5")
 	var params string
-	require.NoError(t, f.query(t, `SELECT model_parameters FROM take WHERE model_name = 'seedance-2.0' LIMIT 1`).Scan(&params))
-	assert.Contains(t, params, `"1080p"`)
+	require.NoError(t, f.query(t, `SELECT model_parameters FROM take WHERE model_name = 'runway-gen-4.5' LIMIT 1`).Scan(&params))
+	assert.Contains(t, params, `"720p"`)
 }
 
 func TestSetQualityPolicy_ValidatesLimitsAndAppliesThem(t *testing.T) {

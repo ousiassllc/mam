@@ -67,6 +67,7 @@ type Services struct {
 	Policy      *PolicyService
 	Judge       *JudgeService
 	Continue    *ContinueService
+	Reference   *ReferenceService
 	Takes       *TakeService
 }
 
@@ -100,6 +101,8 @@ func New(deps Deps) *Services {
 		assetsDir: deps.AssetsDir,
 		logger:    logger,
 		plans:     repository.NewPlanRepository(deps.DB),
+
+		references: repository.NewReferenceRepository(deps.DB),
 	}
 	chat := &ChatService{c}
 	if deps.Jobs != nil {
@@ -166,8 +169,9 @@ func New(deps Deps) *Services {
 		Policy: &PolicyService{
 			core: c, freeBytes: deps.FreeBytes, policies: policies, costs: repository.NewCostRepository(deps.DB), storage: repository.NewStorageRepository(deps.DB),
 		},
-		Judge:    judges,
-		Continue: continues,
-		Takes:    &TakeService{core: c, takes: takes, shots: gens, generations: generations, chatSvc: chat, tools: deps.Media},
+		Judge:     judges,
+		Continue:  continues,
+		Reference: &ReferenceService{c},
+		Takes:     &TakeService{core: c, takes: takes, shots: gens, generations: generations, chatSvc: chat, tools: deps.Media},
 	}
 }

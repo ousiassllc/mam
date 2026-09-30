@@ -24,6 +24,7 @@ func registerPages(engine *gin.Engine, services *service.Services) {
 	engine.GET("/takes/:id/video", handler.TakeVideo(services.Takes))
 	engine.GET("/takes/:id/thumbnail", handler.TakeThumbnail(services.Takes))
 	engine.GET("/projects/:id/world-state", handler.WorldStatePage(services.World))
+	engine.GET("/projects/:id/references", handler.ReferenceLibraryPage(services.Reference))
 	engine.GET("/projects/:id/assets/:assetId", handler.ProjectAsset(services.Projects))
 	engine.GET("/projects/:id/settings", handler.SettingsPage(services.Policy))
 	engine.GET("/projects/:id/cost-summary", handler.CostSummary(services.Policy))

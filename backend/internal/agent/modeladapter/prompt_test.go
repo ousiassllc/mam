@@ -2,6 +2,7 @@ package modeladapter_test
 
 import (
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -88,6 +89,21 @@ func TestSnapDurationChoosesTheShortestSupportedLengthThatFits(t *testing.T) {
 }
 
 func TestPrepareRejectsAModelWithoutAdapter(t *testing.T) {
-	_, err := modeladapter.Prepare(modeladapter.VideoTarget{Model: domain.ModelRunwayGen45, Resolution: "1080p"}, baseJob())
+	_, err := modeladapter.Prepare(modeladapter.VideoTarget{Model: domain.ModelName("veo-3"), Resolution: "1080p"}, baseJob())
 	require.Error(t, err)
+}
+
+func TestPrepareForRunwayUsesTheFirstFrameAndKeepsTheAvoidListWithinTheLimit(t *testing.T) {
+	job := fullJob()
+	job.Spec.ShotObjective = strings.Repeat("A very long objective. ", 80)
+	req, err := modeladapter.Prepare(runwayTarget, job)
+	require.NoError(t, err)
+
+	assert.NotNil(t, req.FirstFrame)
+	assert.Nil(t, req.LastFrame, "Gen-4.5 takes a first frame only")
+	assert.Empty(t, req.References)
+	assert.Empty(t, req.NegativePrompt)
+	assert.LessOrEqual(t, len([]rune(req.Prompt)), 1000, "promptText is limited to 1000 characters")
+	assert.Contains(t, req.Prompt, "distorted face", "the avoid list survives the cut")
+	assert.Equal(t, 4.0, req.DurationSeconds, "any whole second from 2 to 10 is available")
 }
