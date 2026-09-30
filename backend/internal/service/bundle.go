@@ -8,11 +8,14 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
@@ -113,8 +116,9 @@ func writeZipEntry(zw *zip.Writer, name string, method uint16, modified time.Tim
 
 // Import creates the Project of the bundle (POST /projects/import) and returns it. The Project
 // keeps its ID and its files keep their paths, so a Project that already exists is ErrConflict and
-// is never touched. A file that is not a bundle of this format, or that holds data this version
-// cannot import, is a ValidationError; nothing is left behind in either case.
+// is never touched, not even by another import of the same bundle running at the same time. A file
+// that is not a bundle of this format, or that holds data this version cannot import, is a
+// ValidationError; nothing is left behind in either case.
 func (s *BundleService) Import(ctx context.Context, src io.ReaderAt, size int64) (domain.Project, error) {
 	if s.assetsDir == "" {
 		return domain.Project{}, errors.New("import is not configured: assets directory is empty")
@@ -149,20 +153,14 @@ func (s *BundleService) Import(ctx context.Context, src io.ReaderAt, size int64)
 		return domain.Project{}, err
 	}
 
-	written, err := s.extractFiles(files)
-	if err == nil {
-		err = s.bundles.Import(ctx, data)
-	}
-	if err != nil {
-		for _, p := range written {
-			_ = os.Remove(p)
-		}
-		switch {
-		case errors.Is(err, repository.ErrConflict):
-			return domain.Project{}, ErrConflict
-		case errors.Is(err, repository.ErrInvalidBundle):
-			return domain.Project{}, invalid("bundle", "このバージョンでは読み込めないデータです: %s", strings.TrimPrefix(err.Error(), repository.ErrInvalidBundle.Error()+": "))
-		}
+	err = s.writeProject(ctx, data, files)
+	switch {
+	case err == nil:
+	case errors.Is(err, repository.ErrConflict):
+		return domain.Project{}, ErrConflict
+	case errors.Is(err, repository.ErrInvalidBundle):
+		return domain.Project{}, invalid("bundle", "このバージョンでは読み込めないデータです: %s", strings.TrimPrefix(err.Error(), repository.ErrInvalidBundle.Error()+": "))
+	default:
 		return domain.Project{}, err
 	}
 	return s.getProject(ctx, data.ProjectID)
@@ -243,14 +241,42 @@ func bundleFiles(zr *zip.Reader, projectID string) ([]bundleFile, error) {
 	return out, nil
 }
 
-// extractFiles writes the files below the assets directory and returns the paths it wrote (so a
-// failed import can remove them).
-func (s *BundleService) extractFiles(files []bundleFile) ([]string, error) {
-	var written []string
+// writeProject puts the Project of the bundle in place. The files are extracted into a staging
+// directory first; moving the Project's directory into the assets directory is what claims it, so of
+// two imports of the same Project only one gets there (the other is ErrConflict and removes nothing
+// but its own staging directory). A database failure removes the directory this import moved.
+func (s *BundleService) writeProject(ctx context.Context, data domain.BundleData, files []bundleFile) error {
+	var moved string
+	if len(files) > 0 {
+		staging := filepath.Join(s.assetsDir, ".import-"+uuid.NewString())
+		defer func() { _ = os.RemoveAll(staging) }()
+		if err := extractFiles(staging, files); err != nil {
+			return err
+		}
+		target := filepath.Join(s.assetsDir, data.ProjectID)
+		if err := os.Rename(filepath.Join(staging, data.ProjectID), target); err != nil {
+			if errors.Is(err, fs.ErrExist) {
+				return repository.ErrConflict
+			}
+			return fmt.Errorf("move imported files: %w", err)
+		}
+		moved = target
+	}
+	if err := s.bundles.Import(ctx, data); err != nil {
+		if moved != "" {
+			_ = os.RemoveAll(moved)
+		}
+		return err
+	}
+	return nil
+}
+
+// extractFiles writes the files below root (the asset-relative paths are kept).
+func extractFiles(root string, files []bundleFile) error {
 	for _, bf := range files {
-		abs := filepath.Join(s.assetsDir, filepath.FromSlash(bf.rel))
+		abs := filepath.Join(root, filepath.FromSlash(bf.rel))
 		if err := os.MkdirAll(filepath.Dir(abs), assetDirPerm); err != nil {
-			return written, fmt.Errorf("create asset directory: %w", err)
+			return fmt.Errorf("create asset directory: %w", err)
 		}
 		err := fsutil.WriteAtomic(abs, assetFilePerm, func(w io.Writer) error {
 			rc, err := bf.file.Open()
@@ -265,9 +291,8 @@ func (s *BundleService) extractFiles(files []bundleFile) ([]string, error) {
 			return err
 		})
 		if err != nil {
-			return written, err
+			return err
 		}
-		written = append(written, abs)
 	}
-	return written, nil
+	return nil
 }

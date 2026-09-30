@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -229,4 +230,71 @@ func TestBundle_ImportFormAndExportLinkAreOnTheirPages(t *testing.T) {
 	assert.Contains(t, list, `name="bundle"`)
 	settings := a.get("/projects/"+id+"/settings", false).Body.String()
 	assert.Contains(t, settings, `href="/projects/`+id+`/bundle"`)
+}
+
+func TestBundle_ImportsOfTheSameBundleAtTheSameTimeLeaveTheWinnersFilesAlone(t *testing.T) {
+	src := newGenApp(t, true)
+	src.generateAndWait()
+	bundle := src.get("/projects/"+src.project+"/bundle", false).Body.Bytes()
+	dst := newApp(t)
+
+	const imports = 6
+	codes := make([]int, imports)
+	var wg sync.WaitGroup
+	for i := range codes {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			codes[i] = dst.importBundle(bundle).Code
+		}()
+	}
+	wg.Wait()
+
+	created, conflicts := 0, 0
+	for _, c := range codes {
+		switch c {
+		case http.StatusCreated:
+			created++
+		case http.StatusConflict:
+			conflicts++
+		}
+	}
+	assert.Equal(t, 1, created, "codes: %v", codes)
+	assert.Equal(t, imports-1, conflicts, "codes: %v", codes)
+
+	rows, err := dst.db.Reader().Query(`SELECT file_path FROM asset`)
+	require.NoError(t, err)
+	defer func() { _ = rows.Close() }()
+	var paths int
+	for rows.Next() {
+		var p string
+		require.NoError(t, rows.Scan(&p))
+		content, err := os.ReadFile(filepath.Join(dst.assets, filepath.FromSlash(p)))
+		require.NoError(t, err, "the winner's file is still there: %s", p)
+		assert.NotEmpty(t, content)
+		paths++
+	}
+	assert.NotZero(t, paths)
+
+	left, err := filepath.Glob(filepath.Join(dst.assets, ".import-*"))
+	require.NoError(t, err)
+	assert.Empty(t, left, "no staging directory stays behind")
+}
+
+func TestBundle_ARefusedImportLeavesNoDirectoryInTheAssetsDirectory(t *testing.T) {
+	dst := newApp(t)
+	// The file is fine but the row is not: the database refuses after the files are in place.
+	bad := zipOf(t, map[string][]byte{
+		"manifest.json":        []byte(`{"format":"mam-project-bundle","version":1,"project_id":"proj1"}`),
+		"data.json":            []byte(`{"project_id":"proj1","tables":[{"name":"project","rows":[{"id":"proj1","state":"NOPE"}]}]}`),
+		"assets/proj1/a/b.bin": []byte("x"),
+	})
+	assert.Equal(t, http.StatusUnprocessableEntity, dst.importBundle(bad).Code)
+
+	entries, err := os.ReadDir(dst.assets)
+	if err != nil {
+		require.True(t, os.IsNotExist(err))
+		return
+	}
+	assert.Empty(t, entries, "neither the Project's directories nor a staging directory remain")
 }
