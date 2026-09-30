@@ -414,7 +414,11 @@ func (a *Agent) withinPolicy(ctx context.Context, shot repository.ShotRef, eff d
 	if _, asked := a.escalated.LoadOrStore(res.ID, struct{}{}); asked && auto {
 		return false, nil // the user was already asked about this result; a manual Repair always asks again
 	}
-	return false, a.escalate(ctx, shot, takeID, res, verdict)
+	if err := a.escalate(ctx, shot, takeID, res, verdict); err != nil {
+		a.escalated.Delete(res.ID) // the question never reached the user: the next automatic run asks again
+		return false, err
+	}
+	return false, nil
 }
 
 // verdict is the Retry Policy's answer for regen. A retry that no budget covers is a budget verdict.
