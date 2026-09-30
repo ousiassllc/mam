@@ -1,7 +1,9 @@
 /**
- * Progress of a Shot that is being generated (F-12). The card is rendered by the server; this
- * module listens to /ws/shots/:id and, when the work is over, asks for the Shot's page fragment
- * again (the socket carries no HTML).
+ * Progress of a Shot that is being generated (F-12). The card is rendered by the server; when the
+ * work is over this module asks for the Shot's page fragment again (the socket carries no HTML).
+ * A card has one /ws/shots/:id connection: its mam-video-player holds it when there is one (this
+ * module waits for the player's progress-finished), otherwise data-ws-url names the socket and this
+ * module listens to it.
  */
 import { ajaxGet } from './ajax';
 import { createConnectionNotice } from './components/lib/connection-notice';
@@ -17,8 +19,17 @@ export function initShotProgress(root: ParentNode = document): void {
   }
 }
 
+function refresh(refreshUrl: string): void {
+  if (refreshUrl && mayRefresh(refreshUrl)) void ajaxGet(refreshUrl, { target: '#scene-shot-view', swap: 'outerHTML' });
+}
+
 function watch(el: HTMLElement): void {
   const refreshUrl = el.dataset.refreshUrl ?? '';
+  if (!el.dataset.wsUrl) {
+    // The card's mam-video-player follows the progress and says when it is over.
+    el.addEventListener('progress-finished', () => refresh(refreshUrl), { once: true });
+    return;
+  }
   let connection: Connection | null = null;
   const notice = createConnectionNotice('生成の進捗');
   connection = connect<ShotProgress>({
@@ -48,7 +59,7 @@ function watch(el: HTMLElement): void {
       if (isFinished(progress)) {
         notice.hide();
         connection?.close();
-        if (refreshUrl && mayRefresh(refreshUrl)) void ajaxGet(refreshUrl, { target: '#scene-shot-view', swap: 'outerHTML' });
+        refresh(refreshUrl);
       }
     },
   });
