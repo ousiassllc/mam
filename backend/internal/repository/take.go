@@ -109,6 +109,35 @@ func (r *TakeRepository) Get(ctx context.Context, takeID string) (TakeDetail, er
 	return d, nil
 }
 
+// GetMany returns the Takes with the given IDs, keyed by ID, in one query whatever their number. An
+// ID that matches no Take is left out of the map.
+func (r *TakeRepository) GetMany(ctx context.Context, takeIDs []string) (map[string]TakeDetail, error) {
+	out := make(map[string]TakeDetail, len(takeIDs))
+	if len(takeIDs) == 0 {
+		return out, nil
+	}
+	ids, err := json.Marshal(takeIDs)
+	if err != nil {
+		return nil, fmt.Errorf("get takes: %w", err)
+	}
+	rows, err := r.db.Reader().QueryContext(ctx, takeInfoSelect+` WHERE t.id IN (SELECT value FROM json_each(?))`, string(ids))
+	if err != nil {
+		return nil, fmt.Errorf("get takes: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		d, err := scanTakeDetail(rows)
+		if err != nil {
+			return nil, fmt.Errorf("get takes: %w", err)
+		}
+		out[d.ID] = d
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("get takes: %w", err)
+	}
+	return out, nil
+}
+
 // Select adopts the Take for its Shot as the user's choice: it becomes "selected" and the Shot's
 // selected Take, and the Take that was selected before goes back to being a candidate. A Take whose
 // file was archived cannot be selected (ErrConflict). It returns the Shot ID.

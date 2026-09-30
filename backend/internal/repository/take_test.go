@@ -267,3 +267,22 @@ func TestTakeRepository_CandidateCompositeLeavesTheShotsSelectionAlone(t *testin
 	assert.Equal(t, domain.TakeCandidate, statuses(t, r)[id])
 	assert.Equal(t, domain.TakeSelected, statuses(t, r)["t2"])
 }
+
+func TestTakeRepository_GetManyReturnsEachKnownTakeOnceAndSkipsTheUnknown(t *testing.T) {
+	db := openTestDB(t)
+	seedTake(t, db)
+	addTakes(t, db, 3)
+	r := repository.NewTakeRepository(db)
+
+	got, err := r.GetMany(context.Background(), []string{"t3", "t1", "t3", "nope"})
+
+	require.NoError(t, err)
+	require.Len(t, got, 2)
+	one, err := r.Get(context.Background(), "t1")
+	require.NoError(t, err)
+	assert.Equal(t, one, got["t1"], "the same detail Get returns")
+	assert.Equal(t, "sh1", got["t3"].ShotID)
+	none, err := r.GetMany(context.Background(), nil)
+	require.NoError(t, err)
+	assert.Empty(t, none)
+}

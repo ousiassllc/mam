@@ -228,11 +228,12 @@ func (s *EditorService) audioScenes(ctx context.Context, projectID, branchID str
 func (s *EditorService) videoClips(ctx context.Context, tl domain.EditTimeline) ([]audiodirector.VideoClip, error) {
 	starts := tl.Starts()
 	clips := make([]audiodirector.VideoClip, 0, len(tl.Clips))
+	sources, err := s.loadSources(ctx, clipTakeIDs(tl.Clips))
+	if err != nil {
+		return nil, err
+	}
 	for i, c := range tl.Clips {
-		src, ok, err := s.takeSource(ctx, c.TakeID)
-		if err != nil {
-			return nil, err
-		}
+		src, ok := sources.take(ctx, c.TakeID)
 		if !ok {
 			return nil, conflict("クリップ %d の Take のファイルが見つかりません。編集し直してください", i+1)
 		}
