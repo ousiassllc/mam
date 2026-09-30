@@ -1,0 +1,30 @@
+# 環境構築
+
+## 開発ツール
+
+Go（`go.mod` のバージョン）、Node.js、`templ`、`golangci-lint`、`linterly`、`lefthook`。`make tools` で templ・air・npm 依存を入れる。フロントエンドのパッケージマネージャは npm（`static/package-lock.json`）。
+
+## タスク
+
+| コマンド | 内容 |
+|---|---|
+| `make generate` | `templ generate` |
+| `make fmt` / `make fmt-check` | gofmt・`templ fmt`（check は未整形で失敗） |
+| `make lint` | `golangci-lint`（`.golangci.yml`）と `tsc --noEmit` |
+| `make test` | `go test -race ./...` と `npm test --prefix static` |
+| `make build` | `scripts/build.sh`（templ → esbuild/tailwind minify → go build） |
+
+## CI
+
+`.github/workflows/ci.yml`。`main` への push と全 PR で実行する。`make generate` → `fmt-check` → `lint` → `test` → `build` の順。
+
+## Linterly
+
+`.linterly.yml`。行数上限はデフォルト（1 ファイル 300 行 / 1 ディレクトリ 2000 行）のまま維持し、特別な理由がない限り変えない。除外は生成物（`*_templ.go`、`static/src/dist/**`、`package-lock.json`）のみで、手書きソースは除外しない。既存の超過は CI では止めず、pre-commit でコミット対象のファイルに限って止める。
+
+## Git Hooks
+
+`lefthook.yml`（`lefthook install` で有効化）。
+
+- pre-commit: コミット対象ファイルの行数（`scripts/linterly-staged.sh`。`linterly check` は 1 パスしか受け取れないため全体結果をコミット対象に絞る）、`make fmt-check`、`make lint-go`、`make lint-static`（対象ファイルがある場合）
+- pre-push: `go build` / `go vet` と `make test`
