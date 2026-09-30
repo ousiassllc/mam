@@ -212,7 +212,7 @@ func (s *BranchService) newBranch(ctx context.Context, ref repository.ShotRef, i
 		typ = domain.BranchAtShot
 	}
 	if !typ.Valid() {
-		return repository.NewBranch{}, invalid("branch_point_type", "分岐点の種類は scene / shot / frame のいずれかです")
+		return repository.NewBranch{}, invalid("point_type", "分岐点の種類は scene / shot / frame のいずれかです")
 	}
 	spec := repository.NewBranch{ShotID: ref.Shot.ID, PointType: typ}
 	if typ == domain.BranchAtFrame {
