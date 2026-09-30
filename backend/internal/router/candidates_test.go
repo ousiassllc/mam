@@ -67,6 +67,31 @@ func TestCandidates_QualityModeMakesEveryStrategyOnRunwayAndTheJudgePicksTheBest
 	assert.Equal(t, 3, j.count(`SELECT COUNT(*) FROM prompt_version`), "each Candidate has a Prompt Version of its own")
 }
 
+func TestCandidates_QualityModeGeneratesOnlyTheStrategiesTheBudgetPaysFor(t *testing.T) {
+	j := newJudgeApp(t, goodVerdict, steadyFaces...)
+	j.setQuality("max_quality")
+	// Runway Gen-4.5 at 4s is 0.48 per Take. 1.00 pays for two Takes, not three.
+	require.Equal(t, http.StatusOK, j.form(http.MethodPut, "/projects/"+j.project+"/budget", url.Values{"shot_budget": {"1"}}).Code)
+
+	j.candidates()
+
+	assert.ElementsMatch(t, []string{"stability_first", "acting_first"}, j.candidateStrategies())
+	assert.Equal(t, 2, j.count(`SELECT COUNT(*) FROM take`))
+}
+
+func TestCandidates_QualityModeIs402WhenNoTakeFitsTheBudget(t *testing.T) {
+	j := newJudgeApp(t, goodVerdict, steadyFaces...)
+	j.setQuality("max_quality")
+	require.Equal(t, http.StatusOK, j.form(http.MethodPut, "/projects/"+j.project+"/budget", url.Values{"shot_budget": {"0.01"}}).Code)
+	jobs := j.count(`SELECT COUNT(*) FROM job WHERE kind = 'generate'`)
+
+	rec := j.form(http.MethodPost, "/shots/"+j.shotID+"/generate/candidates", nil)
+
+	assert.Equal(t, http.StatusPaymentRequired, rec.Code, rec.Body.String())
+	assert.Equal(t, jobs, j.count(`SELECT COUNT(*) FROM job WHERE kind = 'generate'`))
+	assert.Zero(t, j.count(`SELECT COUNT(*) FROM take`))
+}
+
 func TestCandidates_BalancedModeStopsAtTheFirstCandidateThatPasses(t *testing.T) {
 	j := newJudgeApp(t, goodVerdict, steadyFaces...)
 	j.candidates()
