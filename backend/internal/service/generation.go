@@ -100,7 +100,10 @@ func (s *GenerationService) SubscribeShot(ctx context.Context, shotID string) (<
 		return nil, nil, notFound(err)
 	}
 	ch, cancel := s.progress.Subscribe(shotID)
-	if ref.Shot.State != domain.ShotGenerating && ref.Shot.State != domain.ShotJudging {
+	switch ref.Shot.State {
+	case domain.ShotGenerating, domain.ShotJudging, domain.ShotRepairing:
+		// Work is in progress: the card keeps listening for its messages.
+	default:
 		s.progress.Publish(shotID, generation.Progress{ShotID: shotID, Stage: generation.StageIdle})
 	}
 	return ch, cancel, nil

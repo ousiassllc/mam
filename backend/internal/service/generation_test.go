@@ -505,6 +505,25 @@ func TestSubscribeShot_SaysIdleWhenNothingRunsAndStreamsProgressUntilDone(t *tes
 	assert.Contains(t, stages, generation.StageGenerating)
 }
 
+func TestSubscribeShot_RepairingShotIsNotToldIdle(t *testing.T) {
+	f := newGenFixture(t, true)
+	ctx := context.Background()
+	require.NoError(t, f.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, `UPDATE shot SET state = 'REPAIRING' WHERE id = ?`, f.shotID)
+		return err
+	}))
+
+	ch, cancel, err := f.svc.Generation.SubscribeShot(ctx, f.shotID)
+	require.NoError(t, err)
+	defer cancel()
+
+	select {
+	case p := <-ch:
+		t.Fatalf("a Shot being repaired must not start with a message, got stage %q", p.Stage)
+	case <-time.After(200 * time.Millisecond):
+	}
+}
+
 func TestSubscribeShot_UnknownShotIsNotFound(t *testing.T) {
 	f := newGenFixture(t, true)
 	_, _, err := f.svc.Generation.SubscribeShot(context.Background(), "nope")
