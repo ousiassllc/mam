@@ -159,7 +159,7 @@ M1 Issue #9（F-13）の実装仕様。
 | 顔埋め込み | SFace（`face_recognition_sface_2021dec.onnx`、OpenCV Zoo）。112×112 の整列顔から 128 次元、コサイン類似度で照合 | Apache-2.0（重み。学習データの権利は §8） | 同一人物（縮小・明度変更）0.93、別人物 −0.03（各 1 例。閾値は実測で決める） |
 | 推論ランタイム | ONNX Runtime 1.23.x の共有ライブラリ（`libonnxruntime.so` / `.dylib` / `onnxruntime.dll`）を `github.com/shota3506/onnxruntime-purego`（MIT、purego 経由）で実行時にロード | MIT（ONNX Runtime 本体、バインディングとも） | `CGO_ENABLED=0` のバイナリのまま推論できることを確認。cgo バインディング（`yalue/onnxruntime_go`）は単一バイナリ・クロスコンパイル（`make build`）と両立しないため不採用 |
 
-- **同梱しない**: モデルファイル（約 39 MB）と ONNX Runtime ライブラリはバイナリに同梱せず、利用者が配置する（`--face-model-dir`（`MAM_FACE_MODEL_DIR`、既定 `<data-dir>/models`）にモデル 2 ファイル、`--onnxruntime-lib`（`MAM_ONNXRUNTIME_LIB`、空ならシステムの標準ライブラリ検索）にランタイム）。`scripts/fetch-face-models.sh` がモデルを取得し SHA-256 を検証する
+- **同梱しない**: モデルファイル（約 39 MB）と ONNX Runtime ライブラリはバイナリに同梱せず、利用者が配置する（`--face-model-dir`（`MAM_FACE_MODEL_DIR`、既定 `<data-dir>/models`）にモデル 2 ファイル、`--onnxruntime-lib`（`MAM_ONNXRUNTIME_LIB`、空ならシステムの標準ライブラリ検索）にランタイム）。`scripts/fetch-face-models.sh` がモデルを取得し SHA-256 を検証する（取得元は OpenCV Zoo のコミットに固定、`sha256sum` または `shasum` で検証、https のみ・タイムアウトと再試行あり、失敗時に一時ファイルを残さない。配置先は引数、`MAM_FACE_MODEL_DIR`、`MAM_DATA_DIR/models` の順で決まる）
 - **未配置でも動く**: モデルまたはランタイムが無いとき、起動時に警告ログを残し Face Identity Similarity を無効にする。Take は定性評価のみで判定し、Judge Result の `metrics.face_identity_status` は `unavailable` になる（チャットにも明記する）
 - **ローカル実行**: 顔検出・埋め込みはプロセス内で実行し、顔画像はネットワークに出さない。Reasoning LLM（Gemini）には定性評価用のフレームと Reference Pack を送る（`non-functional.md` §5 の外部送信方針の対象。顔の数値化そのものは送らない）
 
@@ -370,3 +370,4 @@ MAX QUALITY のみ。話者付きの Dialogue の行（Narration は対象外）
 | 1.13 | 2026-10-01 | §9.3 に、ベンダー応答の URL（FLUX の `polling_url`、結果ファイルのダウンロード URL）の検査規則を追加 | 応答の URL へ API キーを送り、http や内部アドレスの URL も取得していたため、キーの漏えいと SSRF の恐れがあった（Issue #43） |
 | 1.14 | 2026-10-01 | §9.3 のベンダー応答 URL の扱いに、既定の HTTP クライアントが別ホストへのリダイレクトを拒否することを追記 | Go 標準のリダイレクトは `x-api-key` 等の独自ヘッダーを別ホストへ転送するため（Issue #45） |
 | 1.15 | 2026-10-01 | §9.3 に、動画のダウンロードを一時ファイルへのストリーム書き込みにし、保存をリネームにすることを追記 | Take の同時生成時に最大 300 MB の動画を複数メモリへ載せていたため（Issue #48） |
+| 1.16 | 2026-10-01 | §10.1 のモデル取得スクリプトの説明に、取得元コミットの固定・検証コマンドの自動選択・配置先の決定順を追記 | スクリプトが `shasum` のみに依存し、取得元が可変ブランチで、`MAM_FACE_MODEL_DIR` を見ていなかったため（Issue #77） |
