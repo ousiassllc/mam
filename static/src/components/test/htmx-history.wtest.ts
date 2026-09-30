@@ -33,6 +33,20 @@ describe('htmx history snapshot', () => {
     expect(saved).to.not.contain('connection-lost-region');
   });
 
+  it('drops the light-DOM paint of mam-* elements and keeps their attributes', () => {
+    const saved = sanitizeHistoryHtml(`
+      <mam-video-player video-src="/a.webm"><video></video><p>hello</p></mam-video-player>
+      <mam-take-comparator api-url="/takes"><div>old</div></mam-take-comparator>
+      <mam-timeline-editor api-url="/edit"><span>old</span></mam-timeline-editor>
+    `);
+    expect(saved).to.contain('video-src="/a.webm"');
+    expect(saved).to.contain('api-url="/takes"');
+    expect(saved).to.contain('api-url="/edit"');
+    expect(saved).to.not.contain('<video');
+    expect(saved).to.not.contain('hello');
+    expect(saved).to.not.contain('old');
+  });
+
   it('watches a generating card again after Back restores the scene', async () => {
     sessionStorage.removeItem('htmx-history-cache');
     const root = document.createElement('div');

@@ -6,6 +6,8 @@
  * `htmx:beforeHistorySave` hands over the live element, and htmx clones it only after the event
  * returns, so removing nodes there would also remove them from the page still on screen.
  * `htmx:historyItemCreated` carries the cloned HTML before it is cached; that string is what we clean.
+ * Lit components render into the light DOM, so a snapshot also contains that paint. Restoring it and
+ * letting Lit render again would leave the old nodes in front of the new ones.
  */
 
 const READY = ['data-shot-ready', 'data-chat-ready'] as const;
@@ -18,6 +20,10 @@ export function sanitizeHistoryHtml(html: string): string {
   root.querySelector('#connection-lost-region')?.remove();
   for (const name of READY) {
     for (const el of root.querySelectorAll(`[${name}]`)) el.removeAttribute(name);
+  }
+  // Attributes stay, so the component can render again; the previous paint does not.
+  for (const el of root.querySelectorAll('*')) {
+    if (el.localName.startsWith('mam-')) el.replaceChildren();
   }
   return template.innerHTML;
 }
