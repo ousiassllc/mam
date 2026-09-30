@@ -24,6 +24,45 @@ type ShotInspectorData struct {
 	SpecError string
 	// Versions are the saved versions of the spec, newest first (F-28).
 	Versions []domain.VersionEntry
+	// Judged is the latest Judge result of each Take that was judged, by Take ID.
+	Judged map[string]domain.JudgeResult
+}
+
+// generationModel is the model the next Take is made with: the one LOCKed for the Shot, otherwise
+// the one of its latest Take, otherwise the Orchestrator's choice.
+func (d ShotInspectorData) generationModel() string {
+	if m := d.Locks.Text(domain.ParamVideoModel); m != "" && d.Locks.Mode(domain.ParamVideoModel) != domain.LockAuto {
+		return m
+	}
+	if n := len(d.Takes); n > 0 && d.Takes[n-1].ModelName != "" {
+		return d.Takes[n-1].ModelName
+	}
+	return "自動選択（生成時に決定）"
+}
+
+// judgeSummary is the one line of a Take's latest Judge result: the verdict and confidence.
+func judgeSummary(r domain.JudgeResult) (atoms.BadgeTone, string) {
+	label := fmt.Sprintf("Judge: %s（確信度 %.0f%%）", r.Result, r.OverallConfidence*100)
+	if r.Result == domain.JudgePass {
+		return atoms.BadgeOK, label
+	}
+	return atoms.BadgeError, label
+}
+
+// issueLine is one Issue of a Judge result as the Take List shows it.
+func issueLine(is domain.JudgeIssue) string {
+	var b strings.Builder
+	if is.LockViolation {
+		b.WriteString("LOCK 違反 / ")
+	}
+	b.WriteString(string(is.Severity) + " / " + is.Type)
+	if is.TimeRange != "" {
+		b.WriteString(" / " + is.TimeRange)
+	}
+	if is.Description != "" {
+		b.WriteString(": " + is.Description)
+	}
+	return b.String()
 }
 
 func shotURL(id string) string { return "/shots/" + id }
@@ -180,8 +219,13 @@ templ ShotInspector(d ShotInspectorData) {
 			DOMID: "version-history-shot-" + d.Shot.ID, Title: "Shot Spec のバージョン", BasePath: shotURL(d.Shot.ID),
 			Target: "#shot-inspector", Entries: d.Versions,
 		})
+		<section aria-label="Generation Model" class="flex flex-col gap-2">
+			<h3 class="text-sm font-semibold">Generation Model</h3>
+			<p class="text-sm">{ d.generationModel() }</p>
+			<p class="text-xs text-neutral-400">モデル別のプロンプトは各 Take の「生成の経緯」で確認できます。</p>
+		</section>
 		<section aria-label="Take 一覧" class="flex flex-col gap-2">
-			<h3 class="text-sm font-semibold">Take List</h3>
+			<h3 class="text-sm font-semibold">Take List / Judge Results</h3>
 			if len(d.Takes) == 0 {
 				<p class="text-sm text-neutral-400">Take はまだありません。</p>
 			} else {
@@ -196,6 +240,19 @@ templ ShotInspector(d ShotInspectorData) {
 									"type": "button", "hx-get": "/takes/" + t.ID + "/trace", "hx-target": "#take-trace-slot-" + t.ID, "hx-swap": "innerHTML",
 								})
 							</div>
+							if res, ok := d.Judged[t.ID]; ok {
+								<div class="flex flex-col gap-1" data-judge-result>
+									{{ tone, label := judgeSummary(res) }}
+									@atoms.Badge(tone, label)
+									if len(res.Issues) > 0 {
+										<ul class="list-disc pl-5 text-xs text-neutral-300">
+											for _, is := range res.Issues {
+												<li>{ issueLine(is) }</li>
+											}
+										</ul>
+									}
+								</div>
+							}
 							<div id={ "take-trace-slot-" + t.ID }></div>
 						</li>
 					}

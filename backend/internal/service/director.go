@@ -35,6 +35,8 @@ type DirectorService struct {
 	// or Model Adapter).
 	takes  *repository.TakeRepository
 	repair *repair.Agent
+	// judges gives the Inspector the latest Judge result of each Take.
+	judges *repository.JudgeRepository
 }
 
 // SetMode switches the Project between AUTO and DIRECTOR (PUT /projects/:id/mode) and tells the
@@ -157,6 +159,8 @@ type Inspector struct {
 	SpecError string
 	// Versions are the saved versions of the Shot's spec, newest first (F-28).
 	Versions []domain.VersionEntry
+	// Judged is the latest Judge result of each Take that was judged, by Take ID.
+	Judged map[string]domain.JudgeResult
 }
 
 // SpecText is the Canonical Shot Spec as the edit form shows it (indented JSON).
@@ -200,7 +204,17 @@ func (s *DirectorService) Inspector(ctx context.Context, shotID string) (Inspect
 	if err != nil {
 		return Inspector{}, notFound(err)
 	}
-	view := Inspector{Project: project, Scene: ref.Scene, Shot: ref.Shot, Takes: takes[shotID], Locks: locks, Pack: ref.Shot.References(), Library: library, Versions: versions}
+	view := Inspector{Project: project, Scene: ref.Scene, Shot: ref.Shot, Takes: takes[shotID], Locks: locks, Pack: ref.Shot.References(), Library: library, Versions: versions, Judged: map[string]domain.JudgeResult{}}
+	for _, t := range view.Takes {
+		res, err := s.judges.Latest(ctx, t.ID)
+		if errors.Is(err, repository.ErrNotFound) {
+			continue
+		}
+		if err != nil {
+			return Inspector{}, err
+		}
+		view.Judged[t.ID] = res
+	}
 	if spec, ok := ref.Shot.CanonicalSpec(); ok {
 		view.Spec = &spec
 	}

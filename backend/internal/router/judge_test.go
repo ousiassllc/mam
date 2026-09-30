@@ -437,3 +437,20 @@ func TestJudge_IsUnavailableWithoutFrameSampling(t *testing.T) {
 	assert.Equal(t, http.StatusServiceUnavailable, g.form(http.MethodPost, "/takes/"+id+"/judge", nil).Code)
 	assert.Equal(t, http.StatusNotFound, g.get("/api/v1/takes/"+id+"/judge-result", false).Code)
 }
+
+func TestJudge_TheShotInspectorShowsEachTakesLatestJudgeResultAndTheGenerationModel(t *testing.T) {
+	const actingIssue = `{"result":"pass","overall_confidence":0.9,"issues":[{"type":"acting_drift","severity":"medium","dimension":"acting","time_range":"0.8-1.7s","description":"表情が急に変わる"}]}`
+	j := newJudgeApp(t, actingIssue, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95)
+	require.NoError(t, repository.NewLockRepository(j.db).SetShotLock(context.Background(), j.shotID, domain.ParamActing, domain.LockLocked, nil))
+	before := j.get("/shots/"+j.shotID, false).Body.String()
+	assert.NotContains(t, before, "data-judge-result")
+
+	j.generateAndJudge()
+
+	html := j.get("/shots/"+j.shotID, false).Body.String()
+	assert.Contains(t, html, "data-judge-result")
+	assert.Contains(t, html, "Judge: fail（確信度 90%）")
+	assert.Contains(t, html, "LOCK 違反 / medium / acting_drift / 0.8-1.7s: 表情が急に変わる")
+	assert.Contains(t, html, `aria-label="Generation Model"`)
+	assert.NotContains(t, html, "自動選択（生成時に決定）", "the Shot has a Take, whose model is the Generation Model")
+}
