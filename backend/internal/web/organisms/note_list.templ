@@ -1,0 +1,124 @@
+package organisms
+
+import (
+	"strconv"
+
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules"
+)
+
+// NoteListData is the state of the note list (notes_page): the notes of a Project or of a Series.
+type NoteListData struct {
+	// BasePath is the notes resource of the scope: /projects/:id/notes or /series/:id/notes.
+	BasePath string
+	// Series is true for the canonical notes of a Series (no promotion to the World State).
+	Series bool
+	Notes  []domain.NoteView
+}
+
+// noteGroup is a heading of the list with its notes.
+type noteGroup struct {
+	Title string
+	Notes []domain.NoteView
+}
+
+// groupNotes splits the active notes into the pinned ones and one group per category (in category
+// order); archived notes are returned apart.
+func groupNotes(notes []domain.NoteView) (groups []noteGroup, archived []domain.NoteView) {
+	var pinned []domain.NoteView
+	byCategory := map[domain.NoteCategory][]domain.NoteView{}
+	for _, n := range notes {
+		switch {
+		case n.Archived():
+			archived = append(archived, n)
+		case n.Pinned:
+			pinned = append(pinned, n)
+		default:
+			byCategory[n.Category] = append(byCategory[n.Category], n)
+		}
+	}
+	if len(pinned) > 0 {
+		groups = append(groups, noteGroup{Title: "ピン留め", Notes: pinned})
+	}
+	for _, c := range domain.NoteCategories() {
+		if len(byCategory[c]) > 0 {
+			groups = append(groups, noteGroup{Title: c.Label(), Notes: byCategory[c]})
+		}
+	}
+	return groups, archived
+}
+
+// NoteList lists the notes by pin and category with the form that adds one, the archived notes
+// apart, and, per note, the version history (version_history_panel) whose restore buttons answer with
+// this list.
+templ NoteList(d NoteListData) {
+	{{ groups, archived := groupNotes(d.Notes) }}
+	<div id="note-list" class="flex flex-col gap-6">
+		<form class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3" hx-post={ d.BasePath } hx-target="#note-list" hx-swap="outerHTML">
+			<h2 class="text-sm font-semibold">メモを追加</h2>
+			<label class="flex flex-col gap-1 text-xs text-neutral-400" for="note-new-title">
+				タイトル（空なら本文の先頭行）
+				<input id="note-new-title" name="title" type="text" maxlength="100" class="rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm text-neutral-100"/>
+			</label>
+			<label class="flex flex-col gap-1 text-xs text-neutral-400" for="note-new-content">
+				本文
+				<textarea id="note-new-content" name="content" rows="4" maxlength="4000" required class="rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm text-neutral-100"></textarea>
+			</label>
+			<div class="flex flex-wrap items-end gap-3">
+				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="note-new-category">
+					カテゴリ
+					<select id="note-new-category" name="category" class="rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm text-neutral-100">
+						<option value="">AI に分類させる</option>
+						for _, c := range domain.NoteCategories() {
+							<option value={ string(c) }>{ c.Label() }</option>
+						}
+					</select>
+				</label>
+				<label class="flex items-center gap-1 text-sm">
+					<input type="hidden" name="pinned" value="false"/>
+					<input type="checkbox" name="pinned" value="true"/>
+					ピン留め
+				</label>
+				@atoms.Button(atoms.TonePrimary, "追加", templ.Attributes{"type": "submit"})
+			</div>
+		</form>
+		if len(groups) == 0 {
+			<p class="text-sm text-neutral-400">メモはまだありません。チャットで「覚えておいて」と伝えても追加できます。</p>
+		}
+		for _, g := range groups {
+			<section aria-label={ g.Title } class="flex flex-col gap-2">
+				<h2 class="text-sm font-semibold text-neutral-200">{ g.Title }</h2>
+				for _, n := range g.Notes {
+					@noteWithHistory(n)
+				}
+			</section>
+		}
+		if len(archived) > 0 {
+			<details class="flex flex-col gap-2">
+				<summary class="cursor-pointer text-sm font-semibold text-neutral-300">{ "アーカイブ済み (" + strconv.Itoa(len(archived)) + ")" }</summary>
+				<div class="mt-2 flex flex-col gap-2">
+					for _, n := range archived {
+						@noteWithHistory(n)
+					}
+				</div>
+			</details>
+		}
+	</div>
+}
+
+// noteWithHistory is a note card with the version history under it.
+templ noteWithHistory(n domain.NoteView) {
+	<div class="flex flex-col gap-2">
+		@molecules.NoteCard(n)
+		<details class="pl-3 text-sm">
+			<summary class="cursor-pointer text-xs text-neutral-400">バージョン履歴</summary>
+			<div class="mt-2">
+				@VersionHistoryPanel(VersionHistoryData{
+					DOMID: "note-history-" + n.ID, Title: "メモのバージョン", BasePath: "/notes/" + n.ID,
+					Target: "#note-list", Entries: n.Versions,
+				})
+			</div>
+		</details>
+	</div>
+}

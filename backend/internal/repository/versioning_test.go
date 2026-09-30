@@ -30,9 +30,9 @@ func TestVersionRepository_RestoreShotVersionAppendsACopyAndKeepsHistory(t *test
 	ctx := context.Background()
 	f := newGenRepoFixture(t)
 	versions := repository.NewVersionRepository(f.db)
-	_, err := f.repo.SavePromptedSpec(ctx, f.shotID, wideSpec("first"), nil)
+	_, err := f.repo.SavePromptedSpec(ctx, f.shotID, wideSpec("first"), nil, nil)
 	require.NoError(t, err)
-	_, err = f.repo.SavePromptedSpec(ctx, f.shotID, wideSpec("second"), json.RawMessage(`{"n":2}`))
+	_, err = f.repo.SavePromptedSpec(ctx, f.shotID, wideSpec("second"), json.RawMessage(`{"n":2}`), nil)
 	require.NoError(t, err)
 
 	pv, err := versions.RestoreShotVersion(ctx, f.shotID, 1)
@@ -55,9 +55,9 @@ func TestVersionRepository_RestoreShotVersionRefusals(t *testing.T) {
 	ctx := context.Background()
 	f := newGenRepoFixture(t)
 	versions := repository.NewVersionRepository(f.db)
-	_, err := f.repo.SavePromptedSpec(ctx, f.shotID, wideSpec("first"), nil)
+	_, err := f.repo.SavePromptedSpec(ctx, f.shotID, wideSpec("first"), nil, nil)
 	require.NoError(t, err)
-	_, err = f.repo.SavePromptedSpec(ctx, f.shotID, wideSpec("second"), nil)
+	_, err = f.repo.SavePromptedSpec(ctx, f.shotID, wideSpec("second"), nil, nil)
 	require.NoError(t, err)
 
 	_, err = versions.RestoreShotVersion(ctx, f.shotID, 9)

@@ -213,7 +213,7 @@ func TestBranchRepository_BranchAtSceneStartsFromTheStateBeforeTheScene(t *testi
 	shot, err := f.plans.CreateShot(ctx, domain.Shot{SceneID: second.ID, Objective: "later", Duration: 2})
 	require.NoError(t, err)
 	// Shot 1 of Scene 2 completes and changes the emotion; a Branch at Scene 2 must not see it.
-	pv, err := f.repo.SavePromptedSpec(ctx, shot.ID, domain.ShotSpec{ShotObjective: "x", Camera: domain.SpecCamera{Framing: "wide"}}, nil)
+	pv, err := f.repo.SavePromptedSpec(ctx, shot.ID, domain.ShotSpec{ShotObjective: "x", Camera: domain.SpecCamera{Framing: "wide"}}, nil, nil)
 	require.NoError(t, err)
 	take2, err := f.repo.CreateTake(ctx, repository.NewTake{
 		ProjectID: f.projectID, ShotID: shot.ID, PromptVersionID: pv.ID, Model: domain.ModelSeedance2,

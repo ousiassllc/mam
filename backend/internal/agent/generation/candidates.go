@@ -137,8 +137,11 @@ type candidateRun struct {
 // vendor according to its rate limit. The Best Take becomes the AI pick of the Shot and its spec
 // the spec of the Shot.
 func (o *Orchestrator) generateCandidates(ctx context.Context, ref repository.ShotRef, instruction string) (Progress, error) {
-	sc, err := o.loadShotContext(ctx, ref)
+	sc, err := o.loadShotContext(ctx, ref, instruction)
 	if err != nil {
+		return Progress{}, err
+	}
+	if err := sc.brand.CheckText(instruction); err != nil {
 		return Progress{}, err
 	}
 	locks, err := o.gens.ShotLocks(ctx, ref.Shot.ID)
@@ -183,7 +186,7 @@ func (r *candidateRun) strategy(ctx context.Context) (Strategy, error) {
 	if err != nil {
 		return Strategy{}, err
 	}
-	return r.o.decide(ctx, r.sc.policy.Quality, r.ref.Shot, budget)
+	return r.o.decide(ctx, r.ref, r.sc.policy, specOf(r.ref.Shot), budget)
 }
 
 // plan has the Prompt Planner write the Candidate of the strategy.
@@ -208,7 +211,7 @@ func (r *candidateRun) take(ctx context.Context, s Strategy, strategy domain.Can
 	if err != nil {
 		return judged{}, err
 	}
-	pv, err := o.gens.SaveCandidateSpec(ctx, r.ref.Shot.ID, spec, record)
+	pv, err := o.gens.SaveCandidateSpec(ctx, r.ref.Shot.ID, spec, record, domain.NoteRefs(r.sc.notes))
 	if err != nil {
 		return judged{}, err
 	}
@@ -307,7 +310,7 @@ func (r *candidateRun) mayRetry(ctx context.Context, eff domain.EffectivePolicy,
 		r.o.logger.Warn("read budget failed", "shot_id", r.ref.Shot.ID, "err", err)
 		return Strategy{}, false
 	}
-	s, err := r.o.decide(ctx, r.sc.policy.Quality, r.ref.Shot, budget)
+	s, err := r.o.decide(ctx, r.ref, r.sc.policy, specOf(r.ref.Shot), budget)
 	if err != nil {
 		r.stop("予算上限に達したため、追加の生成は行いませんでした")
 		return Strategy{}, false

@@ -74,8 +74,13 @@ type Deps struct {
 	Projects    *repository.ProjectRepository
 	Policies    *repository.PolicyRepository
 	Assets      *repository.AssetRepository
+	// Brands gives the Safety / Brand Constraints the Prompt Planner follows (F-23). Optional.
+	Brands *repository.BrandRepository
 	// World holds the World State the State Extractor updates after each Shot.
 	World *repository.WorldRepository
+	// Notes are the production notes of the Project; the Prompt Planner is given the relevant ones.
+	// Nil: no notes.
+	Notes *repository.NoteRepository
 	Chat  Chat
 	Jobs  Jobs
 	// LLM is the Reasoning LLM Adapter the Prompt Planner and the Art Director reason through.
@@ -98,12 +103,14 @@ type Orchestrator struct {
 	projects  *repository.ProjectRepository
 	policies  *repository.PolicyRepository
 	assets    *repository.AssetRepository
+	brands    *repository.BrandRepository
 	chat      Chat
 	jobs      Jobs
 	adapter   *modeladapter.Adapter
 	planner   *promptplanner.Planner
 	art       *artdirector.Director
 	world     *repository.WorldRepository
+	notes     *repository.NoteRepository
 	extractor *stateextractor.Extractor
 	files     fileStore
 	judge     Judger
@@ -115,14 +122,14 @@ type Orchestrator struct {
 // New returns an Orchestrator.
 func New(d Deps) *Orchestrator {
 	o := &Orchestrator{
-		gens: d.Generations, projects: d.Projects, policies: d.Policies, assets: d.Assets, chat: d.Chat, jobs: d.Jobs, adapter: d.Adapter,
+		gens: d.Generations, projects: d.Projects, policies: d.Policies, assets: d.Assets, brands: d.Brands, chat: d.Chat, jobs: d.Jobs, adapter: d.Adapter,
 		planner: promptplanner.New(d.LLM), art: artdirector.New(d.LLM),
 		files: fileStore{root: d.AssetsDir}, freeDisk: d.FreeBytes, judge: d.Judge, notify: d.Notify, logger: d.Logger,
 	}
 	if o.freeDisk == nil {
 		o.freeDisk = fsutil.FreeBytes
 	}
-	o.world, o.extractor = d.World, stateextractor.New(d.LLM)
+	o.world, o.notes, o.extractor = d.World, d.Notes, stateextractor.New(d.LLM)
 	if o.logger == nil {
 		o.logger = slog.New(slog.DiscardHandler)
 	}
@@ -181,6 +188,14 @@ func (o *Orchestrator) start(ctx context.Context, shotID string, action Action, 
 	if err != nil {
 		return domain.Job{}, err
 	}
+	// A direction that contains a forbidden expression of a LOCK Brand constraint is refused up front.
+	brand, err := o.brandConstraints(ctx, ref.ProjectID)
+	if err != nil {
+		return domain.Job{}, err
+	}
+	if err := brand.CheckText(instruction); err != nil {
+		return domain.Job{}, err
+	}
 	// Candidates always rewrite the spec, so a LOCKed Prompt rules them out even without an instruction.
 	if _, hasSpec := ref.Shot.CanonicalSpec(); hasSpec && (strings.TrimSpace(instruction) != "" || action == ActionCandidates) {
 		locks, err := o.gens.ShotLocks(ctx, shotID)
@@ -199,7 +214,7 @@ func (o *Orchestrator) start(ctx context.Context, shotID string, action Action, 
 	if err != nil {
 		return domain.Job{}, err
 	}
-	strategy, err := o.decide(ctx, policy.Quality, ref.Shot, budget)
+	strategy, err := o.decide(ctx, ref, policy, specOf(ref.Shot), budget)
 	if err != nil {
 		return domain.Job{}, err
 	}
@@ -214,14 +229,39 @@ func (o *Orchestrator) start(ctx context.Context, shotID string, action Action, 
 	return job, nil
 }
 
-// decide is the generation strategy of the Shot: the Quality Policy, cost and model capabilities,
-// and the Video Model when the user fixed one (Video Model MANUAL or LOCK).
-func (o *Orchestrator) decide(ctx context.Context, quality domain.QualityPolicy, shot domain.Shot, budget repository.Budget) (Strategy, error) {
-	locks, err := o.gens.ShotLocks(ctx, shot.ID)
+// decide is the generation strategy of the Shot: the Quality Policy, Multi-model routing (the nature
+// of the Shot, the Judge record of the models, cost, and the state of the vendors), cost and model
+// capabilities, and the Video Model when the user fixed one (Video Model MANUAL or LOCK). spec is the
+// Shot Spec the Shot is generated from (nil when it has none yet).
+func (o *Orchestrator) decide(ctx context.Context, ref repository.ShotRef, policy domain.ProjectPolicy, spec *domain.ShotSpec, budget repository.Budget) (Strategy, error) {
+	locks, err := o.gens.ShotLocks(ctx, ref.Shot.ID)
 	if err != nil {
 		return Strategy{}, err
 	}
-	return DecideWithModel(o.adapter.Config(), quality, shot.Duration, budget, FixedModel(locks))
+	cfg, forced := o.adapter.Config(), FixedModel(locks)
+	var in *RoutingInput
+	if forced == "" {
+		in = &RoutingInput{}
+		if cfg.Routing.Enabled {
+			records, err := o.gens.ModelRecords(ctx, ref.ProjectID)
+			if err != nil {
+				return Strategy{}, err
+			}
+			in = &RoutingInput{
+				Spec: spec, References: ref.Shot.References(), Records: records,
+				MinAcceptance: policy.Effective().MinAcceptanceScore, Unavailable: o.adapter.Unavailable,
+			}
+		}
+	}
+	return DecideRouted(cfg, policy.Quality, ref.Shot.Duration, budget, forced, in)
+}
+
+// specOf is the Canonical Shot Spec of the Shot, or nil when it has none.
+func specOf(shot domain.Shot) *domain.ShotSpec {
+	if spec, ok := shot.CanonicalSpec(); ok {
+		return &spec
+	}
+	return nil
 }
 
 // FixedModel is the Video Model the user fixed for the Shot, or "" (AUTO, or no known model chosen).
@@ -371,6 +411,12 @@ func FailureReason(err error) string {
 		return "生成モデルまたは LLM の API キーが設定されていません（設定画面でキーを登録してください）"
 	case errors.Is(err, ErrBudgetExceeded):
 		return "予算上限を超えるため生成できません"
+	case errors.Is(err, domain.ErrBrandViolation):
+		msg := "Brand / Safety Constraint に違反するため生成できません"
+		if bv := new(domain.BrandViolationError); errors.As(err, &bv) {
+			msg += "（" + bv.Message() + "）"
+		}
+		return msg
 	case errors.Is(err, ErrJudgeUnavailable):
 		return "AI Video Judge が利用できないため、候補から最良の Take を選べません"
 	case errors.Is(err, ErrGenerationTimeLimit):

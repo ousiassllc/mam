@@ -255,6 +255,9 @@ func (s *ChatService) commit(ctx context.Context, turn repository.Turn) error {
 		return notFound(err)
 	}
 	s.publishCreated(turn.ProjectID, turn.Messages)
+	if turn.Approval != nil && turn.Approval.Status == domain.ApprovalChangesRequested {
+		s.recordIntervention(ctx, domain.Intervention{ProjectID: turn.ProjectID, Kind: domain.InterventionRequestChanges, Override: true})
+	}
 	return nil
 }
 
@@ -263,7 +266,11 @@ func (s *ChatService) commit(ctx context.Context, turn repository.Turn) error {
 func (s *ChatService) planTurn(ctx context.Context, project domain.Project, target *domain.ChatMessage, user domain.ChatMessage, attached []domain.Asset) (repository.Turn, []domain.BriefField, error) {
 	turn := repository.Turn{ProjectID: project.ID, Messages: []domain.ChatMessage{user}}
 	if target != nil && target.Kind == domain.KindApproval && target.ApprovalStatus == domain.ApprovalPending {
-		return s.planApprovalReply(project, *target, user), nil, nil
+		turn := s.planApprovalReply(project, *target, user)
+		if err := s.settlePromotion(ctx, *target, &turn); err != nil {
+			return turn, nil, err
+		}
+		return turn, nil, nil
 	}
 
 	replied, err := s.chat.RepliedMessageIDs(ctx, project.ID)
@@ -422,6 +429,9 @@ func (s *ChatService) RespondApproval(ctx context.Context, projectID, messageID 
 		text = "承認しました。" + comment
 	}
 	turn := approvalTurn(project, card, decision, userText(text, card.ID, nil))
+	if err := s.settlePromotion(ctx, card, &turn); err != nil {
+		return domain.Project{}, domain.ThreadMessage{}, err
+	}
 	turn.Messages = assignIDs(turn.Messages)
 	if err := s.commit(ctx, turn); err != nil {
 		return domain.Project{}, domain.ThreadMessage{}, err
@@ -429,6 +439,26 @@ func (s *ChatService) RespondApproval(ctx context.Context, projectID, messageID 
 	s.kick(ctx, projectID)
 	s.hub.Publish(projectID, Event{Type: EventCardUpdated, MessageID: card.ID})
 	return s.Card(ctx, projectID, card.ID)
+}
+
+// settlePromotion carries out the answer of a Notes promotion card (F-31): approving writes the
+// proposal into the World State, requesting changes rejects it. The AI's answer in turn is replaced
+// by what happened. Other cards are left alone.
+func (s *ChatService) settlePromotion(ctx context.Context, card domain.ChatMessage, turn *repository.Turn) error {
+	if card.RefType != domain.RefNotePromotion {
+		return nil
+	}
+	decision := DecisionRequestChanges
+	if turn.Approval != nil && turn.Approval.Status == domain.ApprovalApproved {
+		decision = DecisionApprove
+	}
+	answer, err := s.notes.settlePromotion(ctx, card, decision)
+	if err != nil {
+		return err
+	}
+	last := len(turn.Messages) - 1
+	turn.Messages[last].Content = answer
+	return nil
 }
 
 // RequestApproval posts the Approval card of a checkpoint when the Confirmation Level

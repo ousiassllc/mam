@@ -36,6 +36,54 @@ templ TakeTracePanel(t domain.TakeTrace) {
 				}
 			</dd>
 		</dl>
+		<div id={ "take-routing-" + t.Take.ID }>
+			<h4 class="text-xs font-semibold">Model routing</h4>
+			if t.Routing == nil {
+				<p class="text-xs text-neutral-400">記録なし（Multi-model routing の導入前に作られた Take です）。</p>
+			} else {
+				<p class="flex flex-wrap items-center gap-2 text-xs">
+					@atoms.Badge(routingTone(t.Routing.Mode), routingModeLabel(t.Routing.Mode))
+					<span>{ t.Routing.Reason }</span>
+				</p>
+				<p class="text-xs text-neutral-400">
+					{ "Quality Policy の割り当て: " + routingModelText(t.Routing.PolicyPrimary) + " → " + routingModelText(t.Routing.PolicyFallback) }
+					{ " / 使用: " + routingModelText(t.Routing.Primary) + " → " + routingModelText(t.Routing.Fallback) }
+				</p>
+				if len(t.Routing.Candidates) > 0 {
+					<table class="mt-1 w-full text-left text-xs">
+						<thead>
+							<tr class="text-neutral-400">
+								<th class="pr-2 font-normal">候補</th>
+								<th class="pr-2 font-normal">実績（Take・平均点・合格率）</th>
+								<th class="pr-2 font-normal">コスト/Take</th>
+								<th class="pr-2 font-normal">quality</th>
+								<th class="pr-2 font-normal">cost</th>
+								<th class="pr-2 font-normal">fit</th>
+								<th class="pr-2 font-normal">score</th>
+								<th class="font-normal">除外理由</th>
+							</tr>
+						</thead>
+						<tbody>
+							for _, c := range t.Routing.Candidates {
+								<tr>
+									<td class="pr-2">{ routingCandidateName(c) }</td>
+									<td class="pr-2">{ routingRecordText(c) }</td>
+									<td class="pr-2">{ fmt.Sprintf("$%.2f", c.CostPerTake) }</td>
+									<td class="pr-2">{ fmt.Sprintf("%.2f", c.Quality) }</td>
+									<td class="pr-2">{ fmt.Sprintf("%.2f", c.Cost) }</td>
+									<td class="pr-2">{ fmt.Sprintf("%.2f", c.Fit) }</td>
+									<td class="pr-2">{ fmt.Sprintf("%.2f", c.Score) }</td>
+									<td>{ routingExcludedLabel(c.Excluded) }</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				}
+				if t.Routing.AxisWeights != nil {
+					<p class="text-xs text-neutral-400">{ routingAxisText(*t.Routing.AxisWeights) }</p>
+				}
+			}
+		</div>
 		<div>
 			<h4 class="text-xs font-semibold">References</h4>
 			if len(t.References) == 0 {

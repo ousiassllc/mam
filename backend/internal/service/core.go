@@ -33,8 +33,12 @@ type core struct {
 	director *DirectorService
 	// continuer answers the replies to Continue cards; set by New.
 	continuer *ContinueService
+	// notes keeps the production notes and settles the promotion cards; set by New.
+	notes *NoteService
 	// branches are the Branches of the Project (F-17).
 	branches *repository.BranchRepository
+	// analytics records the human interventions the MVP Success Metrics count (spec/spec.md §28).
+	analytics *repository.AnalyticsRepository
 }
 
 // getProject maps repository.ErrNotFound to ErrNotFound.
@@ -48,6 +52,30 @@ func notFound(err error) error {
 		return ErrNotFound
 	}
 	return err
+}
+
+// recordIntervention notes a hand operation of the user for the Production Analytics. It never
+// fails the user's action: a missing row only makes the metrics a little too good.
+func (c *core) recordIntervention(ctx context.Context, in domain.Intervention) {
+	if err := c.analytics.Record(context.WithoutCancel(ctx), in); err != nil {
+		c.logger.Error("record human intervention failed", "kind", in.Kind, "shot_id", in.ShotID, "take_id", in.TakeID, "err", err)
+	}
+}
+
+// generationRecorder reads the state of the Shot before the user's generation of it is queued and
+// returns what records that generation once it was queued: the first one is a generate, later ones
+// are retakes, and asking again for a Shot the Judge passed is an override.
+func (c *core) generationRecorder(ctx context.Context, shotID string) func() {
+	hasTakes, passed, err := c.analytics.ShotState(ctx, shotID)
+	if err != nil {
+		c.logger.Error("read shot state for the analytics failed", "shot_id", shotID, "err", err)
+		return func() {}
+	}
+	in := domain.Intervention{ShotID: shotID, Kind: domain.InterventionGenerate}
+	if hasTakes {
+		in.Kind, in.Override = domain.InterventionRegenerate, passed
+	}
+	return func() { c.recordIntervention(ctx, in) }
 }
 
 // kick lets the AUTO pipeline look at the Project after the user changed something

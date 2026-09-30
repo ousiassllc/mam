@@ -500,6 +500,7 @@ World State（構造化状態）に収まらない文脈（登場人物の背景
 - **位置づけ**: Notes は Source of Truth ではない（§29.2）。構造化状態（World State / Shot Spec / Constraints / References）を置き換えず、Reasoning LLM に渡す補助的な文脈として使う
 - **スコープ**: Project 単位と Series 単位。Series のメモは Episode 開始時に Project へコピーし（`origin_id` で由来を保持）、Series 側の更新は既存 Episode へ自動伝播しない（F-29 と同じ規則）
 - **登録**: チャットの発言（§24 Example 5）または補助ビューの Notes。チャットからの登録は Project スコープ。Series スコープは Series 側の Notes 画面で登録する。メモは追記のみのバージョンで保持し、以前のバージョンへ復元できる（§29.4）
+- **チャットからの登録の判定**: 「覚えておいて」「メモして」「remember」などの依頼語を含む発言は、AUTO / DIRECTOR のどちらのモードでも Command Interpreter が読み、`create_note` を Project メモとして作成する（`source=chat`）。AUTO MODE ではこの操作だけを実行し、Shot への指示は実行しない。依頼語を含まない発言はメモにしない
 - **参照先**: Writer / Director / Prompt Planner のみ。ピン留めしたメモは常に、それ以外は推論 LLM のコンテキスト予算の範囲で関連度順に渡す。アーカイブ済みのメモは渡さない
 - **渡さない先**: 画像/動画生成モデル（モデル非依存の Canonical Shot Spec 経由でのみ影響する、§29.1）、AI Video Judge、Final QC。メモは判定基準にならない。守らせたいルールは Brand Constraint（§26）に登録する
 - **Traceability**: Prompt Version に、Shot Spec 生成時に参照したメモのバージョンを記録する（§29.3）
@@ -582,6 +583,8 @@ Series をまたぐ再利用は F-29 の範囲（本節は Project 内）。
 # 11. Video Generation Engine
 
 Generation OrchestratorがShot Spec、Reference、World State、コスト、モデル能力をもとに使用モデルと生成戦略を決定する。
+
+M3のMulti-model routingでは、これに加えてShotの性質とProject内の過去のJudge実績（モデルごとの点数・合格率）を使い、Quality Policyの割り当てを出発点にShotごとに動画モデルを入れ替える（`spec/architecture/model-adapters.md` §13）。選択理由はTake単位で保存する（§29.3）。
 
 入力：
 
@@ -1280,9 +1283,9 @@ Preserve character / acting / environment
 
 # 26. Safety and Brand Constraints
 
-Project / Organization単位で制作制約を登録可能とする。
+Project単位で制作制約を登録可能とする（`functional.md` UC-9 と `er.md` に合わせる。Organization エンティティは持たないため、Organization 単位の制約は設けない。複数の Project で同じ制約を使いたい場合は Project ごとに登録する）。
 
-例：
+種類（`brand_constraint.type`）：
 
 - Brand Guidelines
 - Forbidden Expressions
@@ -1294,6 +1297,25 @@ Project / Organization単位で制作制約を登録可能とする。
 - Platform Rules
 
 これらはPrompt生成だけでなくJudge / Final QCにも適用する。
+
+## 26.1 強制レベルと適用の仕方
+
+各制約は `enforcement_level` を持つ。
+
+- **`lock`**（既定）: 違反した Take・成果物は、スコアや Judge のモデルの verdict に関係なく FAIL とする。違反の操作は HTTP 403 で拒否する
+- **`advisory`**: 警告扱い。違反を Issue／指摘として記録・表示するが、FAIL にも 403 にもしない
+
+制約の内容は自由記述（`value` の `text`）。`forbidden_expression` は 1 行に 1 つの禁止表現（大文字小文字・空白の違いを無視した部分一致）、`required_disclaimer` は表示すべき文言をそのまま書く。他の種類は文章のルールとしてモデルへ渡す。
+
+適用箇所：
+
+| 段階 | 適用 |
+|---|---|
+| Prompt Planner | 全制約を英語の指示として入力に含める（各制約の ID 付き）。生成した Canonical Shot Spec に `lock` の禁止表現が含まれれば 403（Take を作らない）。ユーザーの指示文に `lock` の禁止表現が含まれる場合も、生成・再生成・候補生成を開始する前に 403 で拒否する |
+| AI Video Judge | 全制約をモデルへ渡し、違反は `type=brand_constraint_violation`・`brand_constraint_id` 付きの Issue にする。`lock` の違反は `lock_violation=true`（severity は high）で Take を FAIL、`advisory` の違反は severity low の警告で FAIL にしない。Shot Spec に `lock` の禁止表現があれば、モデルの判断に依らず決定的に `lock_violation` の Issue にする |
+| Final QC | セリフ・ナレーションと各クリップの Shot Spec に、`lock` の禁止表現があれば FAIL（セリフ → AUDIO、Shot Spec → EDITING に差し戻し）。必須の免責表記がセリフ・Shot Spec のどこにも無ければ FAIL（EDITING）。各クリップの Take の Judge が出した Brand 違反 Issue（`lock_violation`）も FAIL（EDITING）。`advisory` の違反はすべて警告として指摘に残し、FAIL にしない |
+
+Shot Spec は英語で書かれるため、Shot Spec に対する禁止表現の一致は、英語で登録された表現・ロゴ等の固有名に対して働く。日本語の禁止表現は、ユーザーの指示文、セリフ・ナレーション、映像のフレーム（Judge のモデル）に対して働く。
 
 ---
 
@@ -1341,7 +1363,7 @@ Project / Organization単位で制作制約を登録可能とする。
 - Advanced Editor Agent
 - Editor → Reshoot Loop
 - Audio Director
-- Multi-model routing
+- Multi-model routing（Shot の性質・Project 内の Judge 実績・コストに応じて、Shot ごとに使う動画モデルを Quality Policy の割り当てから入れ替える。実績が無ければ M1 のポリシー別ルーティングと同じ。判断基準・切り替え条件は `spec/architecture/model-adapters.md` §13）
 - Brand Templates
 - Team Collaboration
 - Production Analytics
@@ -1352,7 +1374,7 @@ Project / Organization単位で制作制約を登録可能とする。
 
 単なる生成回数ではなく「完成作品まで到達する能力」を測定する。
 
-主要指標：
+主要指標（計算式は §28.2、表示は §28.4）：
 
 - First-pass Shot Acceptance Rate
 - Final Shot Acceptance Rate
@@ -1371,6 +1393,68 @@ Project / Organization単位で制作制約を登録可能とする。
 特に重要なNorth Star候補：
 
 > **人間の細かな生成操作なしで、採用可能な完成動画に到達した割合**
+
+### 28.1 集計の対象と用語
+
+指標は Project 単位、またはすべての Project の合計として算出する（Project が 0 件、または分母が 0 の指標は「—」と表示し、0% とは区別する）。
+
+| 用語 | 定義 |
+|------|------|
+| 着手済み Project | 状態が `DRAFT` 以外の Project |
+| 完成した動画 | 状態が `READY` / `EXPORTED` の Project、または書き出し（`export`）がある Project |
+| 書き出し済み | `export` 行がある Project |
+| 計測対象の Shot | Take を 1 つ以上持つ Shot |
+| 採用された Shot | `shot.selected_take_id` がある Shot（AUTO では Judge を通過した AI Pick、DIRECTOR ではユーザーの選択） |
+| 最初の Take | Shot の最も古い Take。その最初の Judge 結果を「最初の判定」とする |
+| 最新の判定 | Take の最も新しい `judge_result` |
+| 人間の介入（Human Intervention） | ユーザーが生成の中身を手で操作した記録（§28.3）。承認カードの「承認」、モード切替、閲覧は含まない |
+| 上書き（Override） | 人間の介入のうち、AI の判断に反するもの（§28.3） |
+| 引き継ぎ | AUTO の Project を DIRECTOR MODE に切り替えたこと（`switch_to_director`）。人間の介入には数えないが、AUTO Completion Rate と North Star が見る |
+
+### 28.2 計算式
+
+| 指標 | 計算式 | 出どころ |
+|------|-------|---------|
+| First-pass Shot Acceptance Rate | 最初の判定が `pass` で、最初の Take が除外されていない Shot ÷ 最初の Take が判定された Shot | `take` / `judge_result` |
+| Final Shot Acceptance Rate | 採用された Shot ÷ 計測対象の Shot | `shot.selected_take_id` |
+| Average Retakes per Shot | （Repair が作った Take（`repair_action.resulting_take_id`）＋ユーザーが依頼した再生成（`human_intervention.kind=regenerate`））÷ 計測対象の Shot | `repair_action` / `human_intervention` |
+| Human Interventions per Finished Video | 完成した動画の人間の介入の数 ÷ 完成した動画の数（引き継ぎは数えない） | `human_intervention` / `project` / `export` |
+| Time to First Rough Cut | Project 作成から最初の Edit Timeline（Rough Cut）の保存までの秒数の平均（Rough Cut がある Project） | `project.created_at` / `edit_timeline_version` |
+| Time to Final Video | Project 作成から最初の書き出しまでの秒数の平均（書き出し済みの Project） | `project.created_at` / `export` |
+| Cost per Accepted Second | Cost Ledger の合計（`actual_cost` があればそれ、なければ `estimated_cost`。採用されなかった Take の費用も含む）÷ 採用された Shot の秒数の合計（採用 Take の `duration_seconds`、なければ Shot の長さ） | `cost_ledger_entry` / `take` / `shot` |
+| Character Continuity Failure Rate | 最新の判定に `severity` が medium / high で `dimension` が `character_identity` / `character_consistency` / `face` の Issue がある Take ÷ 判定された Take | `judge_result.issues` |
+| Product Accuracy Failure Rate | 同様に `dimension` が `product_accuracy` / `product_geometry` / `logo_text_accuracy` / `object_consistency` の Issue がある Take ÷ 判定された Take | `judge_result.issues` |
+| Prompt Adherence Rate | 最新の判定に `prompt_adherence` の medium / high の Issue が**ない** Take ÷ 判定された Take | `judge_result.issues` |
+| AUTO Completion Rate | AUTO で着手し（現在も AUTO、または引き継ぎ済み）、引き継がれずに完成した Project ÷ AUTO で着手した Project | `project` / `human_intervention` |
+| User Override Rate | 上書きが 1 回以上ある Shot ÷ 計測対象の Shot | `human_intervention.override` |
+| Export / Completion Rate | 書き出し済みの Project ÷ 完成した動画の数 | `export` / `project` |
+| **North Star** | 完成し、引き継がれず、人間の介入が 1 件もない Project ÷ 着手済み Project | `project` / `human_intervention` |
+
+### 28.3 記録する人間の介入
+
+既存のテーブルから読み取れない「人間が手で操作した」事実は `human_intervention`（`spec/architecture/er.md`）に 1 操作 1 行で追記する。記録は操作の成功後に行い、記録に失敗してもユーザーの操作は失敗させない。
+
+| `kind` | 記録するタイミング | 上書き（`override`） |
+|-------|------------------|---------------------|
+| `generate` | ユーザーが Take のない Shot の生成を依頼した（`POST /shots/:id/generate` ほか、DIRECTOR の指示） | しない |
+| `regenerate` | ユーザーが Take のある Shot の再生成を依頼した | Judge を通過した（除外されていない）Take が既にあるとき |
+| `repair` | ユーザーが Take の Repair を依頼した（`POST /takes/:id/repair`、DIRECTOR の部分再生成） | しない |
+| `select_take` | ユーザーが Take を選んだ | AI Pick が別の Take のとき |
+| `reject_take` | ユーザーが Take を除外した | 除外した Take が AI Pick のとき |
+| `partial_take` | Partial Take Use で Take を合成した | しない |
+| `edit_shot_spec` | Shot Spec を手で編集した | する |
+| `lock_change` | パラメータを MANUAL / LOCK にした（AUTO に戻す操作は記録しない） | しない |
+| `edit_timeline` | Edit Timeline を手で保存した | する |
+| `request_changes` | 承認カード（チェックポイント）で「変更を依頼」した | する |
+| `switch_to_director` | AUTO の Project を DIRECTOR MODE に切り替えた | しない（人間の介入にも数えない） |
+
+AUTO のパイプラインが自分で行う生成・Judge・Repair・選択は記録しない（`repair_action` / `take` から読み取る）。
+
+### 28.4 表示と外部送信
+
+- 画面: `GET /projects/:id/analytics`（Project 単位）と `GET /analytics`（すべての Project の合計）。Project 一覧と Project のメニューからリンクする。
+- 最上段に North Star（割合・分子/分母）、その下に Shot / 人間の介入 / 時間・コスト / 品質 / 完成の各指標を、名称・値・根拠（分子/分母や件数）の組で表示する。
+- 集計はローカルの SQLite だけから行い、外部へ送信しない（`spec/requirements/non-functional.md` §5）。
 
 ---
 
@@ -1405,6 +1489,7 @@ Promptはそれらから生成される一時的な実行形式とする。
 - Prompt version
 - Model
 - Model parameters
+- Model routing（選択理由、M3）
 - References
 - Output
 - Judge result

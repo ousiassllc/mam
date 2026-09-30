@@ -364,12 +364,14 @@ const (
 	FinalQCFail FinalQCVerdict = "fail"
 )
 
-// QCFinding is one failed check of Final QC. Stage is where the Project goes back to:
-// StateEditing or StateAudio.
+// QCFinding is one finding of Final QC. Stage is where the Project goes back to: StateEditing or
+// StateAudio. An Advisory finding (a broken Advisory Brand constraint) is a warning: it does not
+// fail Final QC.
 type QCFinding struct {
-	Check   string       `json:"check"`
-	Message string       `json:"message"`
-	Stage   ProjectState `json:"stage"`
+	Check    string       `json:"check"`
+	Message  string       `json:"message"`
+	Stage    ProjectState `json:"stage"`
+	Advisory bool         `json:"advisory,omitempty"`
 }
 
 // FinalQCResult is one row of final_qc_result.

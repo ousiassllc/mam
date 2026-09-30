@@ -11,6 +11,7 @@ type SettingsPageData struct {
 	Policy  organisms.PolicyFormData
 	Cost    domain.CostSummary
 	Storage organisms.StoragePanelData
+	Brand   organisms.BrandConstraintListData
 }
 
 // SettingsPage is GET /projects/:id/settings: Production Template, Quality/Cost Policy, budget, the
@@ -45,6 +46,9 @@ templ SettingsBody(d SettingsPageData) {
 		}
 		@SettingsSection("ディスク", "生成前に空き容量を見積もり、不足なら警告します。") {
 			@organisms.StoragePanel(d.Storage)
+		}
+		@SettingsSection("Brand / Safety Constraints", "ブランドガイドライン・禁止表現・免責表記などを登録します。Prompt 生成・AI Video Judge・Final QC のすべてで守らせ、LOCK の制約に違反した Take・成果物はスコアに関係なく不合格になります（Advisory は警告のみ）。") {
+			@organisms.BrandConstraintList(d.Brand)
 		}
 		@SettingsSection("プロジェクトバンドル", "プロジェクトのデータとアセットを 1 つの ZIP に書き出します。プロジェクト一覧の読み込みフォームから、この端末でも別の端末でも復元できます。") {
 			<div>

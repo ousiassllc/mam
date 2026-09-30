@@ -1,11 +1,13 @@
-// Package finalqc is Final QC (F-26, M1): deterministic checks that the edit and the audio agree
-// with each other and meet the delivery loudness, before the video is exported. Brand and Safety
-// Constraints are applied from M2 (spec/requirements/functional.md §3.6).
+// Package finalqc is Final QC (F-26): deterministic checks that the edit and the audio agree with
+// each other and meet the delivery loudness, and that the deliverable keeps the Safety / Brand
+// Constraints of the Project (F-23), before the video is exported.
 package finalqc
 
 import (
 	"fmt"
 	"math"
+	"slices"
+	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
@@ -28,6 +30,20 @@ type Input struct {
 	MixFileExists bool
 	// MissingClips are the 1-based clips of the Edit Timeline whose Take file is gone.
 	MissingClips []int
+	// Brand are the Safety / Brand Constraints of the Project. Spoken are the lines the audio says
+	// and ShotTexts the texts of the Shot Specs of the clips (what the picture shows, with the text on
+	// screen): together they are everything the deliverable states. ClipBrandIssues are the Brand
+	// Issues the AI Video Judge found in the Takes of the clips.
+	Brand           domain.BrandConstraints
+	Spoken          []string
+	ShotTexts       []string
+	ClipBrandIssues []ClipBrandIssue
+}
+
+// ClipBrandIssue is a Brand Issue of the AI Video Judge in the Take of a clip (1-based).
+type ClipBrandIssue struct {
+	Clip  int
+	Issue domain.JudgeIssue
 }
 
 // Check runs every check and returns the ones that failed; none means PASS.
@@ -63,14 +79,48 @@ func Check(in Input) []domain.QCFinding {
 				Message: fmt.Sprintf("True Peak が %.1f dBTP で、%.1f dBTP を超えています（音割れの恐れ）", a.TruePeakDB, MaxTruePeak)})
 		}
 	}
+	return append(out, brandFindings(in)...)
+}
+
+// brandFindings applies the Brand / Safety Constraints (F-23). A broken LOCK constraint is a finding
+// that fails Final QC whatever else is good; a broken Advisory one is an advisory finding (a warning).
+func brandFindings(in Input) []domain.QCFinding {
+	var out []domain.QCFinding
+	add := func(check string, stage domain.ProjectState, level domain.EnforcementLevel, msg string) {
+		if level == domain.EnforceAdvisory {
+			msg = "（警告）" + msg
+		}
+		out = append(out, domain.QCFinding{Check: check, Stage: stage, Message: msg, Advisory: level == domain.EnforceAdvisory})
+	}
+	for _, v := range in.Brand.ForbiddenIn(strings.Join(in.Spoken, "\n")) {
+		add("brand_forbidden", domain.StateAudio, v.Constraint.Level, "セリフ・ナレーションに"+v.Message())
+	}
+	for _, v := range in.Brand.ForbiddenIn(strings.Join(in.ShotTexts, "\n")) {
+		add("brand_forbidden", domain.StateEditing, v.Constraint.Level, "映像の指示（Shot Spec）に"+v.Message())
+	}
+	for _, v := range in.Brand.MissingDisclaimers(append(slices.Clone(in.Spoken), in.ShotTexts...)...) {
+		add("brand_disclaimer", domain.StateEditing, v.Constraint.Level, v.Message()+"（セリフ・ナレーションまたは映像内テキストに入れてください）")
+	}
+	for _, ci := range in.ClipBrandIssues {
+		level := domain.EnforceAdvisory
+		if ci.Issue.LockViolation {
+			level = domain.EnforceLock
+		}
+		add("brand_take", domain.StateEditing, level, fmt.Sprintf("クリップ %d の Take が Brand 制約に違反しています: %s", ci.Clip, ci.Issue.Description))
+	}
 	return out
 }
 
-// ReturnStage is the stage a FAIL goes back to: the earliest one any finding points at.
+// Failed reports whether the findings fail Final QC: any finding that is not advisory does.
+func Failed(findings []domain.QCFinding) bool {
+	return slices.ContainsFunc(findings, func(f domain.QCFinding) bool { return !f.Advisory })
+}
+
+// ReturnStage is the stage a FAIL goes back to: the earliest one any failing finding points at.
 func ReturnStage(findings []domain.QCFinding) domain.ProjectState {
 	stage := domain.StateAudio
 	for _, f := range findings {
-		if f.Stage == domain.StateEditing {
+		if f.Stage == domain.StateEditing && !f.Advisory {
 			return domain.StateEditing
 		}
 	}

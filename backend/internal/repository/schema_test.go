@@ -18,7 +18,7 @@ func seedProject(t *testing.T, db *repository.DB, id string) {
 		 VALUES (?, 'auto', 'key_check', 'product_cm', 'balanced')`, id))
 }
 
-func TestSchema_M1TablesExistAndM2TablesDoNot(t *testing.T) {
+func TestSchema_M1TablesExist(t *testing.T) {
 	db := openTestDB(t)
 	tables := map[string]bool{}
 	rows, err := db.Reader().Query(`SELECT name FROM sqlite_master WHERE type = 'table'`)
@@ -38,9 +38,6 @@ func TestSchema_M1TablesExistAndM2TablesDoNot(t *testing.T) {
 		"cost_ledger_entry", "job",
 	} {
 		assert.True(t, tables[name], "missing M1 table %s", name)
-	}
-	for _, name := range []string{"note", "note_version", "note_promotion", "brand_constraint"} {
-		assert.False(t, tables[name], "M2 table %s must not be in the M1 schema", name)
 	}
 }
 

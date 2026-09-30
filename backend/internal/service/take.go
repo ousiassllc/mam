@@ -96,6 +96,7 @@ func (s *TakeService) assetPath(rel string) string {
 // Select makes the Take the one the Shot uses (POST /takes/:id/select). It is the user's choice
 // and replaces the AI Pick or an earlier choice.
 func (s *TakeService) Select(ctx context.Context, takeID string) (ShotFragment, error) {
+	override := s.overridesAIPick(ctx, takeID)
 	shotID, err := s.takes.Select(ctx, takeID)
 	switch {
 	case errors.Is(err, repository.ErrConflict):
@@ -103,18 +104,36 @@ func (s *TakeService) Select(ctx context.Context, takeID string) (ShotFragment, 
 	case err != nil:
 		return ShotFragment{}, notFound(err)
 	}
+	s.recordIntervention(ctx, domain.Intervention{ShotID: shotID, TakeID: takeID, Kind: domain.InterventionSelectTake, Override: override})
 	if s.afterSelect != nil {
 		s.afterSelect()
 	}
 	return s.generations.Shot(ctx, shotID)
 }
 
-// Reject excludes the Take (DELETE /takes/:id). Its file and history stay.
+// overridesAIPick tells whether selecting the Take contradicts the AI Pick of its Shot. A Take it
+// cannot read is no override: the selection itself reports the error.
+func (s *TakeService) overridesAIPick(ctx context.Context, takeID string) bool {
+	d, err := s.takes.Get(ctx, takeID)
+	if err != nil {
+		return false
+	}
+	takes, err := s.takes.ShotTakes(ctx, d.ShotID)
+	return err == nil && domain.OverridesAIPick(takes, takeID)
+}
+
+// Reject excludes the Take (DELETE /takes/:id). Its file and history stay. Rejecting the AI Pick
+// contradicts the AI.
 func (s *TakeService) Reject(ctx context.Context, takeID string) (ShotFragment, error) {
+	override := false
+	if d, err := s.takes.Get(ctx, takeID); err == nil {
+		override = d.Status == domain.TakeAIPick
+	}
 	shotID, err := s.takes.Reject(ctx, takeID)
 	if err != nil {
 		return ShotFragment{}, notFound(err)
 	}
+	s.recordIntervention(ctx, domain.Intervention{ShotID: shotID, TakeID: takeID, Kind: domain.InterventionRejectTake, Override: override})
 	return s.generations.Shot(ctx, shotID)
 }
 
@@ -161,6 +180,7 @@ func (s *TakeService) UsePartial(ctx context.Context, shotID string, in PartialI
 	}); err != nil {
 		return ShotFragment{}, err
 	}
+	s.recordIntervention(ctx, domain.Intervention{ShotID: shotID, Kind: domain.InterventionPartialTake})
 	return s.generations.Shot(ctx, shotID)
 }
 

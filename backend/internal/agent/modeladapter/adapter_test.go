@@ -3,6 +3,8 @@ package modeladapter_test
 import (
 	"context"
 	"net/http"
+	"os"
+	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -362,4 +364,54 @@ func TestRunwayCallsAreLimitedByTheVendorConcurrency(t *testing.T) {
 	close(runway.block)
 	wg.Wait()
 	assert.Equal(t, 5, runway.callCount())
+}
+
+func TestUnavailableNamesTheReasonAModelCannotBeCalled(t *testing.T) {
+	cfg := modeladapter.DefaultConfig()
+	cfg.Retry.MaxAttempts = 1
+	cfg.Breaker.FailureThreshold = 1
+	seedance := &fakeVideo{results: []error{perr(modeladapter.VendorSeedance, http.StatusBadGateway)}}
+	a := newAdapter(cfg, modeladapter.Backends{Video: map[domain.ModelName]modeladapter.VideoBackend{
+		domain.ModelSeedance2: seedance, domain.ModelKling3: &fakeVideo{results: []error{nil}},
+	}})
+	assert.Empty(t, a.Unavailable(domain.ModelSeedance2))
+	assert.Equal(t, domain.ExcludedNoBackend, a.Unavailable(domain.ModelRunwayGen45), "no API key, no backend")
+
+	_, err := a.GenerateVideo(context.Background(), seedanceTarget, seedanceTarget, baseJob())
+	require.Error(t, err)
+
+	assert.Equal(t, domain.ExcludedCircuitOpen, a.Unavailable(domain.ModelSeedance2), "the vendor's breaker opened")
+	assert.Empty(t, a.Unavailable(domain.ModelKling3), "another vendor is not affected")
+}
+
+func TestConfigValidateRejectsBrokenRouting(t *testing.T) {
+	cfg := modeladapter.DefaultConfig()
+	cfg.Routing.MinSamples = 0
+	cfg.Routing.Weights[domain.QualityFast] = modeladapter.RoutingWeights{}
+	cfg.Routing.Candidates[domain.QualityBalanced] = []modeladapter.VideoTarget{{Model: domain.ModelKling3, Resolution: "480p"}}
+
+	err := cfg.Validate()
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "routing weights fast")
+	assert.Contains(t, err.Error(), "min_samples must be positive")
+	assert.Contains(t, err.Error(), `"kling-3.0" does not support "480p"`)
+}
+
+func TestLoadConfigOverridesRoutingAndKeepsTheRestOfTheDefaults(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "models.json")
+	require.NoError(t, os.WriteFile(path, []byte(`{"routing":{"enabled":false,"min_samples":9,"weights":{"fast":{"quality":1,"cost":0,"fit":0}}}}`), 0o600))
+
+	cfg, err := modeladapter.LoadConfig(path)
+
+	require.NoError(t, err)
+	assert.False(t, cfg.Routing.Enabled)
+	assert.Equal(t, 9, cfg.Routing.MinSamples)
+	assert.Equal(t, modeladapter.RoutingWeights{Quality: 1}, cfg.Routing.Weights[domain.QualityFast])
+	assert.Equal(t, 0.6, cfg.Routing.Weights[domain.QualityBalanced].Quality, "the other policies keep their default weights")
+	assert.Len(t, cfg.Routing.Candidates[domain.QualityMaxQuality], 3)
+
+	require.NoError(t, os.WriteFile(path, []byte(`{"routing":{"enable":true}}`), 0o600))
+	_, err = modeladapter.LoadConfig(path)
+	assert.ErrorContains(t, err, "unknown field")
 }

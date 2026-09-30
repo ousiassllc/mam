@@ -157,3 +157,56 @@ func TestPlan_FixedPartsAreIgnoredWithoutACurrentSpec(t *testing.T) {
 	assert.Equal(t, "medium", spec.Camera.Framing)
 	assert.NotContains(t, f.user, "Fixed parts")
 }
+
+func brandInput() promptplanner.Input {
+	in := input()
+	in.Brand = domain.BrandConstraints{
+		{ID: "lock-1", Type: domain.BrandForbidden, Level: domain.EnforceLock, Text: "cheapest"},
+		{ID: "adv-1", Type: domain.BrandForbidden, Level: domain.EnforceAdvisory, Text: "sale"},
+		{ID: "lock-2", Type: domain.BrandDisclaimer, Level: domain.EnforceLock, Text: "Results may vary"},
+	}
+	return in
+}
+
+func TestPlan_TheBrandConstraintsReachTheModel(t *testing.T) {
+	f := &fakeLLM{answer: good}
+	_, err := promptplanner.New(f).Plan(context.Background(), brandInput())
+	require.NoError(t, err)
+
+	for _, want := range []string{"id=lock-1", `"cheapest"`, "LOCKED", "ADVISORY", "Required disclaimer: Results may vary"} {
+		assert.Contains(t, f.user, want)
+	}
+	f = &fakeLLM{answer: good}
+	_, err = promptplanner.New(f).Plan(context.Background(), input())
+	require.NoError(t, err)
+	assert.NotContains(t, f.user, "Brand / Safety", "no constraints, no section")
+}
+
+func TestPlan_ASpecWithALockForbiddenExpressionIsRefusedAndAnAdvisoryOneIsKept(t *testing.T) {
+	bad := `{"shot_objective":"The cheapest serum","camera":{"framing":"medium"}}`
+	_, err := promptplanner.New(&fakeLLM{answer: bad}).Plan(context.Background(), brandInput())
+	require.Error(t, err)
+	assert.ErrorIs(t, err, domain.ErrBrandViolation)
+
+	warn := `{"shot_objective":"A big sale on serum","camera":{"framing":"medium"}}`
+	spec, err := promptplanner.New(&fakeLLM{answer: warn}).Plan(context.Background(), brandInput())
+	require.NoError(t, err)
+	assert.Contains(t, spec.ShotObjective, "sale")
+}
+
+func TestPlan_NotesAreGivenToTheModelAsContext(t *testing.T) {
+	f := &fakeLLM{answer: good}
+	in := input()
+	in.Notes = []domain.NoteView{{
+		Note:    domain.Note{ID: "n1", Category: domain.NoteCategoryTone},
+		Version: domain.NoteVersion{Number: 2, Title: "口調", Content: "主人公は落ち着いた口調で話す"},
+	}}
+	_, err := promptplanner.New(f).Plan(context.Background(), in)
+	require.NoError(t, err)
+	assert.Contains(t, f.user, "主人公は落ち着いた口調で話す")
+
+	g := &fakeLLM{answer: good}
+	_, err = promptplanner.New(g).Plan(context.Background(), input())
+	require.NoError(t, err)
+	assert.NotContains(t, g.user, "Production notes")
+}

@@ -22,6 +22,8 @@ type PlanInput struct {
 	Template domain.ProductionTemplate
 	Concept  domain.Concept
 	Script   domain.Script
+	// Notes are the production notes the Director may use as context (spec/spec.md §9.4).
+	Notes []domain.NoteView
 }
 
 const directorSystem = systemPrefix + `あなたは Director Agent です。脚本を Scene と Shot に分解します。
@@ -53,7 +55,7 @@ const minShotSeconds = 0.5
 // rescaled to it, since a model cannot be trusted to add up.
 func (d *Director) Plan(ctx context.Context, in PlanInput) (domain.ScenePlan, error) {
 	user := "## Creative Brief\n" + briefText(in.Brief, in.Template) +
-		"\n## コンセプトと構成\n" + mustJSON(in.Concept) + "\n\n## 脚本\n" + mustJSON(in.Script) + "\n"
+		"\n## コンセプトと構成\n" + mustJSON(in.Concept) + "\n\n## 脚本\n" + mustJSON(in.Script) + "\n" + notesText(in.Notes)
 	plan, err := llm.CompleteJSON[domain.ScenePlan](ctx, d.llm, llm.AgentDirector, llm.Request{System: directorSystem, User: user})
 	if err != nil {
 		return domain.ScenePlan{}, fmt.Errorf("director: %w", err)
