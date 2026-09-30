@@ -37,9 +37,11 @@ func newEngine(t *testing.T) *gin.Engine {
 	svc := service.New(service.Deps{DB: db, Credentials: credential.NewKeyring()})
 	return router.New(svc, router.Options{
 		Static: fstest.MapFS{
-			"app.js":       {Data: []byte("console.log(1)")},
-			".secret":      {Data: []byte("x")},
-			"sub/inner.js": {Data: []byte("y")},
+			"app.js":           {Data: []byte("console.log(1)")},
+			".secret":          {Data: []byte("x")},
+			".hidden/file.txt": {Data: []byte("z")},
+			"sub/.git/config":  {Data: []byte("z")},
+			"sub/inner.js":     {Data: []byte("y")},
 		},
 	})
 }
@@ -214,4 +216,8 @@ func TestStatic_ServesFilesButNotDotfilesOrListings(t *testing.T) {
 
 	assert.Equal(t, http.StatusNotFound, do(engine, httptest.NewRequest(http.MethodGet, "/static/.secret", nil)).Code)
 	assert.Equal(t, http.StatusNotFound, do(engine, httptest.NewRequest(http.MethodGet, "/static/sub/", nil)).Code)
+	for _, hidden := range []string{"/static/.hidden/file.txt", "/static/sub/.git/config", "/static/sub/../.hidden/file.txt"} {
+		assert.Equal(t, http.StatusNotFound, do(engine, httptest.NewRequest(http.MethodGet, hidden, nil)).Code, hidden)
+	}
+	assert.Equal(t, http.StatusOK, do(engine, httptest.NewRequest(http.MethodGet, "/static/sub/inner.js", nil)).Code)
 }
