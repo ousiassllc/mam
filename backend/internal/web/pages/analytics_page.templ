@@ -1,0 +1,42 @@
+package pages
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/layout"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+)
+
+// AnalyticsPageData is everything the analytics screen shows. Project is nil for the metrics of
+// every Project.
+type AnalyticsPageData struct {
+	Project *domain.Project
+	Metrics domain.ProductionMetrics
+}
+
+// AnalyticsPage is GET /projects/:id/analytics (one Project) and GET /analytics (every Project):
+// the MVP Success Metrics of spec/spec.md §28.
+templ AnalyticsPage(csrfToken string, d AnalyticsPageData) {
+	@layout.AppLayout("制作指標", csrfToken) {
+		<main class="mx-auto flex max-w-4xl flex-col gap-6 p-8">
+			<div>
+				if d.Project != nil {
+					<a href={ templ.SafeURL("/projects/" + d.Project.ID) } class="text-sm text-neutral-400 hover:text-neutral-100">← チャットに戻る</a>
+				} else {
+					<a href="/" class="text-sm text-neutral-400 hover:text-neutral-100">← プロジェクト一覧に戻る</a>
+				}
+				<h1 class="mb-1 mt-3 text-xl font-semibold">制作指標</h1>
+				if d.Project != nil {
+					<p class="text-sm text-neutral-400">{ d.Project.Name }</p>
+				} else {
+					<p class="text-sm text-neutral-400">すべてのプロジェクト</p>
+				}
+			</div>
+			@AnalyticsBody(d)
+		</main>
+	}
+}
+
+// AnalyticsBody is the metrics without the page frame (HTMX requests).
+templ AnalyticsBody(d AnalyticsPageData) {
+	@organisms.AnalyticsPanel(d.Metrics)
+}

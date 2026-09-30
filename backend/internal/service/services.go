@@ -84,6 +84,7 @@ type Services struct {
 	Takes       *TakeService
 	Branch      *BranchService
 	Editor      *EditorService
+	Analytics   *AnalyticsService
 }
 
 // Recover puts Shots left GENERATING by an abnormal termination back to PLANNING. It MUST run
@@ -119,6 +120,7 @@ func New(deps Deps) *Services {
 
 		references: repository.NewReferenceRepository(deps.DB),
 		branches:   repository.NewBranchRepository(deps.DB),
+		analytics:  repository.NewAnalyticsRepository(deps.DB),
 	}
 	chat := &ChatService{c}
 	var jobFinished func(jobID string) // set once the Repair Agent exists (before the queue starts)
@@ -232,5 +234,6 @@ func New(deps Deps) *Services {
 		Takes:     takeService,
 		Branch:    branch,
 		Editor:    editors,
+		Analytics: &AnalyticsService{c},
 	}
 }

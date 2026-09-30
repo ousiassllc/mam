@@ -421,6 +421,7 @@ func (s *EditorService) SaveTimeline(ctx context.Context, id string, tl domain.E
 	case err != nil:
 		return TimelineView{}, notFound(err)
 	}
+	s.recordIntervention(ctx, domain.Intervention{ProjectID: project.ID, Kind: domain.InterventionEditTimeline, Override: true})
 	return s.timelineView(ctx, ver)
 }
 
