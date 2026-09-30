@@ -385,6 +385,7 @@ erDiagram
 erDiagram
     PROJECT ||--o{ LOCK : configures
     PROJECT ||--o{ COST_LEDGER_ENTRY : accrues
+    PROJECT ||--o{ HUMAN_INTERVENTION : records
     PROJECT ||--o{ BRAND_CONSTRAINT : enforces
 
     LOCK {
@@ -404,6 +405,15 @@ erDiagram
         string provider
         decimal estimated_cost
         decimal actual_cost
+        datetime created_at
+    }
+    HUMAN_INTERVENTION {
+        string id PK
+        string project_id FK
+        string shot_id FK
+        string take_id FK
+        string kind
+        boolean override
         datetime created_at
     }
     BRAND_CONSTRAINT {
@@ -485,6 +495,7 @@ erDiagram
 | `export` | `project_id` FK。`branch_id` FK（NULL許容、NULL=主系列トランクからの書き出し） | `idx_export_project (project_id, branch_id)` |
 | `lock` | `project_id` FK。`(project_id, target_type, target_id, parameter_name)` UNIQUE。`mode` は `auto/manual/lock`。`target_type` は `story/music/character/product/location/shot` 等、`parameter_name` は `wardrobe`/`orientation`/`lighting_state` 等の属性単位。Character/Product/LocationのLOCK判定は本テーブルに一元化し、エンティティ側に専用カラムは持たない | `idx_lock_project_target (project_id, target_type, target_id)` |
 | `cost_ledger_entry` | `project_id` FK。`shot_id`/`take_id` は NULL 許容（プロジェクト全体コストの場合）。`estimated_cost` は生成時の見積り、`actual_cost` はベンダーが報告した金額（USD、報告が無い呼び出しは NULL）。動画 Take と Reference Pack の画像で 1 呼び出し 1 行 | `idx_cost_ledger_project (project_id)` |
+| `human_intervention` | Production Analytics（M3、`spec/spec.md` §28）が使う、ユーザーの手操作の記録（1 操作 1 行、追記のみ）。`project_id` FK（CASCADE）。`shot_id`/`take_id` は NULL 許容で、Shot/Take の削除で NULL になる（行は残る）。`kind` は CHECK で `generate` / `regenerate` / `repair` / `select_take` / `reject_take` / `partial_take` / `edit_shot_spec` / `lock_change` / `edit_timeline` / `request_changes` / `switch_to_director`。`override`（0/1）は AI の判断に反した操作（判定は §28.3）。プロジェクトバンドルに含める。集計はこのテーブルと Take / Judge Result / Repair Action / Cost Ledger / Export / Edit Timeline から行い、外部へ送信しない | `idx_human_intervention_project (project_id, created_at)`, `idx_human_intervention_shot (shot_id)` |
 | `project_policy` | `project_id` PK・FK（1:1、行が無い Project は上書き無し）。Quality Policy の既定値への個別上書き: `max_retries`（0〜10、1 Shot あたりの再試行回数）、`max_generation_seconds`（1〜3600、Take あたり）、`min_acceptance_score`（0〜100、総合）、`min_axis_score`（0〜100、Production Template の各軸）。NULL=Quality Policy の既定値（`domain.ProjectPolicy.Effective`）。Quality Policy・予算上限は `project` の列を使う | - |
 | `job` | バックグラウンドジョブ（生成・Judge・Repair、`spec/requirements/non-functional.md` §2, §3）。`id` PK。`kind` は `generate/judge/repair/plan`（`plan` は AUTO パイプラインの企画〜Shot 計画。`payload` は `{"project_id": ...}`、再開可能）、`status` は `queued/running/succeeded/failed`（各CHECK制約）。`payload` は JSON、`attempts` は実行開始ごとに加算、`error` は失敗理由、`started_at`/`finished_at` は NULL 許容。異常終了後の再起動時に `running` のまま残ったジョブを検出し、再開可能な種別は `queued` へ戻し、それ以外と再開回数上限超過は `failed`（`error`=`interrupted by abnormal termination`）にする。終端状態（`succeeded`/`failed`）は変更しない | `idx_job_status (status, created_at)` |
 | `brand_constraint` | `project_id` FK。`type` は `brand_guideline/forbidden_expression/required_disclaimer/product_claim/logo_rule/character_restriction/asset_rights/platform_rule` のいずれか。`enforcement_level` は `lock/advisory` のいずれか（CHECK制約、既定 `lock`。`lock` はスコアに関係なく違反時FAIL）。`value` は JSON `{"text": "..."}`（制約の内容。`forbidden_expression` は 1 行 1 表現）。`created_at`。Project の削除で行も消え（ON DELETE CASCADE）、Project バンドルに含める | `idx_brand_constraint_project (project_id)` |
@@ -567,3 +578,4 @@ erDiagram
 | 1.31 | 2026-09-30 | `branch` / `branch_version` を追加（マイグレーション `20260930030000_branch.sql`）。`scene` / `world_state_version` / `edit_timeline_version` / `audio_timeline_version` は UNIQUE を `(project_id, COALESCE(branch_id, ''), …)` として作り直し、`character` / `product` / `location` / `export` に `branch_id` を追加。Branch の親は `branch_point_shot_id` の所属 Scene の `branch_id` から導出し、列は持たない。Branch 作成時、分岐点の World State（`scene` は直前の Shot、`shot` / `frame` は当該 Shot の `state_diff` が指す版）を Branch 独自の版 v1 と実体の行としてコピーする | M2「Branch（別展開の並行生成）」（Issue #18）の実装 |
 | 1.32 | 2026-09-30 | `final_qc_result` テーブルを追加。設計メモに `edit_timeline_version.timeline` / `audio_timeline_version.timeline` の JSON 構造と保存の規則（追記のみ・古い版からの保存は拒否）を追記 | M1「簡易 Editor・簡易 Audio・Final QC・Export」（Issue #14）の Final QC 結果を履歴として保持するため |
 | 1.33 | 2026-09-30 | `brand_constraint` テーブルを実装（マイグレーション `20260930103000_brand_constraint.sql`）。`value` の JSON 構造・`created_at`・カスケード削除を明記。`final_qc_result.findings` の要素に `advisory`（Brand 制約の警告。FAIL にしない）を追加 | M2「Safety / Brand Constraints」（Issue #23）の実装に合わせるため |
+| 1.34 | 2026-09-30 | `human_intervention` を追加（§2.4 の ER 図、§3 のテーブル定義） | M3「Production Analytics」（Issue #29）。MVP Success Metrics の Human Intervention・User Override・AUTO Completion Rate が既存テーブルから読めないため |

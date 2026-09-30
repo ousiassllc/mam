@@ -1374,7 +1374,7 @@ Shot Spec は英語で書かれるため、Shot Spec に対する禁止表現の
 
 単なる生成回数ではなく「完成作品まで到達する能力」を測定する。
 
-主要指標：
+主要指標（計算式は §28.2、表示は §28.4）：
 
 - First-pass Shot Acceptance Rate
 - Final Shot Acceptance Rate
@@ -1393,6 +1393,68 @@ Shot Spec は英語で書かれるため、Shot Spec に対する禁止表現の
 特に重要なNorth Star候補：
 
 > **人間の細かな生成操作なしで、採用可能な完成動画に到達した割合**
+
+### 28.1 集計の対象と用語
+
+指標は Project 単位、またはすべての Project の合計として算出する（Project が 0 件、または分母が 0 の指標は「—」と表示し、0% とは区別する）。
+
+| 用語 | 定義 |
+|------|------|
+| 着手済み Project | 状態が `DRAFT` 以外の Project |
+| 完成した動画 | 状態が `READY` / `EXPORTED` の Project、または書き出し（`export`）がある Project |
+| 書き出し済み | `export` 行がある Project |
+| 計測対象の Shot | Take を 1 つ以上持つ Shot |
+| 採用された Shot | `shot.selected_take_id` がある Shot（AUTO では Judge を通過した AI Pick、DIRECTOR ではユーザーの選択） |
+| 最初の Take | Shot の最も古い Take。その最初の Judge 結果を「最初の判定」とする |
+| 最新の判定 | Take の最も新しい `judge_result` |
+| 人間の介入（Human Intervention） | ユーザーが生成の中身を手で操作した記録（§28.3）。承認カードの「承認」、モード切替、閲覧は含まない |
+| 上書き（Override） | 人間の介入のうち、AI の判断に反するもの（§28.3） |
+| 引き継ぎ | AUTO の Project を DIRECTOR MODE に切り替えたこと（`switch_to_director`）。人間の介入には数えないが、AUTO Completion Rate と North Star が見る |
+
+### 28.2 計算式
+
+| 指標 | 計算式 | 出どころ |
+|------|-------|---------|
+| First-pass Shot Acceptance Rate | 最初の判定が `pass` で、最初の Take が除外されていない Shot ÷ 最初の Take が判定された Shot | `take` / `judge_result` |
+| Final Shot Acceptance Rate | 採用された Shot ÷ 計測対象の Shot | `shot.selected_take_id` |
+| Average Retakes per Shot | （Repair が作った Take（`repair_action.resulting_take_id`）＋ユーザーが依頼した再生成（`human_intervention.kind=regenerate`））÷ 計測対象の Shot | `repair_action` / `human_intervention` |
+| Human Interventions per Finished Video | 完成した動画の人間の介入の数 ÷ 完成した動画の数（引き継ぎは数えない） | `human_intervention` / `project` / `export` |
+| Time to First Rough Cut | Project 作成から最初の Edit Timeline（Rough Cut）の保存までの秒数の平均（Rough Cut がある Project） | `project.created_at` / `edit_timeline_version` |
+| Time to Final Video | Project 作成から最初の書き出しまでの秒数の平均（書き出し済みの Project） | `project.created_at` / `export` |
+| Cost per Accepted Second | Cost Ledger の合計（`actual_cost` があればそれ、なければ `estimated_cost`。採用されなかった Take の費用も含む）÷ 採用された Shot の秒数の合計（採用 Take の `duration_seconds`、なければ Shot の長さ） | `cost_ledger_entry` / `take` / `shot` |
+| Character Continuity Failure Rate | 最新の判定に `severity` が medium / high で `dimension` が `character_identity` / `character_consistency` / `face` の Issue がある Take ÷ 判定された Take | `judge_result.issues` |
+| Product Accuracy Failure Rate | 同様に `dimension` が `product_accuracy` / `product_geometry` / `logo_text_accuracy` / `object_consistency` の Issue がある Take ÷ 判定された Take | `judge_result.issues` |
+| Prompt Adherence Rate | 最新の判定に `prompt_adherence` の medium / high の Issue が**ない** Take ÷ 判定された Take | `judge_result.issues` |
+| AUTO Completion Rate | AUTO で着手し（現在も AUTO、または引き継ぎ済み）、引き継がれずに完成した Project ÷ AUTO で着手した Project | `project` / `human_intervention` |
+| User Override Rate | 上書きが 1 回以上ある Shot ÷ 計測対象の Shot | `human_intervention.override` |
+| Export / Completion Rate | 書き出し済みの Project ÷ 完成した動画の数 | `export` / `project` |
+| **North Star** | 完成し、引き継がれず、人間の介入が 1 件もない Project ÷ 着手済み Project | `project` / `human_intervention` |
+
+### 28.3 記録する人間の介入
+
+既存のテーブルから読み取れない「人間が手で操作した」事実は `human_intervention`（`spec/architecture/er.md`）に 1 操作 1 行で追記する。記録は操作の成功後に行い、記録に失敗してもユーザーの操作は失敗させない。
+
+| `kind` | 記録するタイミング | 上書き（`override`） |
+|-------|------------------|---------------------|
+| `generate` | ユーザーが Take のない Shot の生成を依頼した（`POST /shots/:id/generate` ほか、DIRECTOR の指示） | しない |
+| `regenerate` | ユーザーが Take のある Shot の再生成を依頼した | Judge を通過した（除外されていない）Take が既にあるとき |
+| `repair` | ユーザーが Take の Repair を依頼した（`POST /takes/:id/repair`、DIRECTOR の部分再生成） | しない |
+| `select_take` | ユーザーが Take を選んだ | AI Pick が別の Take のとき |
+| `reject_take` | ユーザーが Take を除外した | 除外した Take が AI Pick のとき |
+| `partial_take` | Partial Take Use で Take を合成した | しない |
+| `edit_shot_spec` | Shot Spec を手で編集した | する |
+| `lock_change` | パラメータを MANUAL / LOCK にした（AUTO に戻す操作は記録しない） | しない |
+| `edit_timeline` | Edit Timeline を手で保存した | する |
+| `request_changes` | 承認カード（チェックポイント）で「変更を依頼」した | する |
+| `switch_to_director` | AUTO の Project を DIRECTOR MODE に切り替えた | しない（人間の介入にも数えない） |
+
+AUTO のパイプラインが自分で行う生成・Judge・Repair・選択は記録しない（`repair_action` / `take` から読み取る）。
+
+### 28.4 表示と外部送信
+
+- 画面: `GET /projects/:id/analytics`（Project 単位）と `GET /analytics`（すべての Project の合計）。Project 一覧と Project のメニューからリンクする。
+- 最上段に North Star（割合・分子/分母）、その下に Shot / 人間の介入 / 時間・コスト / 品質 / 完成の各指標を、名称・値・根拠（分子/分母や件数）の組で表示する。
+- 集計はローカルの SQLite だけから行い、外部へ送信しない（`spec/requirements/non-functional.md` §5）。
 
 ---
 
