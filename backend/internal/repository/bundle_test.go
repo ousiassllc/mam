@@ -109,3 +109,34 @@ func TestBundleRepository_ImportOfInFlightShotsDoesNotLeaveThemRunning(t *testin
 	require.NoError(t, dst.Reader().QueryRow(`SELECT state FROM shot WHERE id = 'a-sh'`).Scan(&state))
 	assert.NotEqual(t, "GENERATING", state, "no job runs in the imported Project")
 }
+
+func TestBundleRepository_AnEpisodeIsExportedDetachedFromItsSeries(t *testing.T) {
+	ctx := context.Background()
+	src := openTestDB(t)
+	seedDeepProject(t, src, "a")
+	for _, q := range []string{
+		`INSERT INTO series (id, name) VALUES ('s', 'Show')`,
+		`INSERT INTO series_version (id, series_id, version_number, state) VALUES ('sv', 's', 1, '{}')`,
+		`INSERT INTO character (id, series_id, name) VALUES ('canon', 's', 'Mio')`,
+		`INSERT INTO character (id, project_id, origin_id, name) VALUES ('copy', 'a', 'canon', 'Mio')`,
+		`UPDATE project SET series_id = 's', episode_number = 2, inherited_series_version_id = 'sv', inherited_world_state_version_id = 'a-w' WHERE id = 'a'`,
+	} {
+		require.NoError(t, exec(t, src, q), q)
+	}
+	data, err := repository.NewBundleRepository(src).Export(ctx, "a")
+	require.NoError(t, err)
+
+	tables := map[string][]domain.BundleRow{}
+	for _, tb := range data.Tables {
+		tables[tb.Name] = tb.Rows
+	}
+	require.Len(t, tables["project"], 1)
+	for _, col := range []string{"series_id", "episode_number", "inherited_series_version_id", "inherited_world_state_version_id"} {
+		assert.Nil(t, tables["project"][0][col], col)
+	}
+	require.Len(t, tables["character"], 1, "the Series' canonical Character is not part of the Project")
+	assert.Nil(t, tables["character"][0]["origin_id"])
+
+	dst := openTestDB(t)
+	require.NoError(t, repository.NewBundleRepository(dst).Import(ctx, data), "no foreign key points at the Series that is not there")
+}

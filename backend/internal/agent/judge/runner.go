@@ -28,6 +28,9 @@ type Deps struct {
 	Assets      *repository.AssetRepository
 	// Policies gives the Production Template of the Project, whose axes the Judge scores. Optional.
 	Policies *repository.PolicyRepository
+	// Takes and Projects make the AI Pick after every result (F-15). Both nil: no Take is picked.
+	Takes    *repository.TakeRepository
+	Projects *repository.ProjectRepository
 	Chat     generation.Chat
 	Jobs     generation.Jobs
 	Judge    *Judge
@@ -145,11 +148,39 @@ func (r *Runner) store(ctx context.Context, ref repository.TakeRef, res domain.J
 	if err != nil {
 		return domain.JudgeResult{}, err
 	}
-	notice := domain.ChatMessage{Role: domain.RoleAssistant, Kind: domain.KindText, Content: Summary(shot.Shot.OrderIndex+1, ref.Take.ID, saved)}
+	content := Summary(shot.Shot.OrderIndex+1, ref.Take.ID, saved) + r.pick(ctx, ref)
+	notice := domain.ChatMessage{Role: domain.RoleAssistant, Kind: domain.KindText, Content: content}
 	if err := r.Chat.Announce(context.WithoutCancel(ctx), ref.ProjectID, notice); err != nil {
 		r.Logger.Error("post judge result failed", "take_id", ref.Take.ID, "err", err)
 	}
 	return saved, nil
+}
+
+// pick marks the best judged Take of the Shot as its AI Pick: in AUTO a Take that passed the Judge
+// also becomes the Shot's Take, in DIRECTOR the pick is only a recommendation. It returns the line
+// of the chat notice about it ("" when the pick did not change or could not be made).
+func (r *Runner) pick(ctx context.Context, ref repository.TakeRef) string {
+	if r.Takes == nil || r.Projects == nil {
+		return ""
+	}
+	ctx = context.WithoutCancel(ctx)
+	project, err := r.Projects.Get(ctx, ref.ProjectID)
+	if err != nil {
+		r.Logger.Error("ai pick: read project failed", "project_id", ref.ProjectID, "err", err)
+		return ""
+	}
+	pick, err := r.Takes.PickBest(ctx, ref.Take.ShotID, project.Mode == domain.ModeAuto)
+	if err != nil {
+		r.Logger.Error("ai pick failed", "shot_id", ref.Take.ShotID, "err", err)
+		return ""
+	}
+	if !pick.Changed {
+		return ""
+	}
+	if pick.Adopted {
+		return fmt.Sprintf("\nAI Pick: Take %s を採用しました。", shortID(pick.TakeID))
+	}
+	return fmt.Sprintf("\nAI Pick: Take %s がおすすめです（Take 比較から選択できます）。", shortID(pick.TakeID))
 }
 
 // judge gathers the input of the Take and runs the Judge.
@@ -338,8 +369,11 @@ func lockedDimensions(spec domain.ShotSpec, world domain.WorldContext, locks dom
 	return out
 }
 
-// faceSubject is the Character of the Shot with its reference faces: the Character's
-// face_reference asset and the Character images of the Reference Pack that carry its name.
+// faceSubject is the Character of the Shot with its reference faces: the face_reference of the
+// Series canon the Character was copied from (so that the face is measured against the same
+// baseline in every Episode, F-29), the Character's own face_reference asset and the Character
+// images of the Reference Pack that carry its name. Images that are the same file count once: an
+// Episode's copy of the canon face must not weigh twice in the calibration of the thresholds.
 func (r *Runner) faceSubject(ctx context.Context, projectID string, actor domain.SpecActor, world domain.WorldContext, refs []domain.Reference) (FaceSubject, bool) {
 	// The Shot Spec names the Character by ID or by name, whichever the Prompt Planner wrote.
 	var character *domain.WorldCharacter
@@ -350,20 +384,25 @@ func (r *Runner) faceSubject(ctx context.Context, projectID string, actor domain
 		}
 	}
 	subject := FaceSubject{ID: actor.ID}
-	assetIDs := []string{}
-	if character != nil {
-		if character.FaceReferenceAssetID != "" {
-			assetIDs = append(assetIDs, character.FaceReferenceAssetID)
-		}
-		for _, rf := range refs {
-			if rf.Kind == domain.RefCharacter && strings.EqualFold(strings.TrimSpace(rf.Name), strings.TrimSpace(character.Name)) {
-				assetIDs = append(assetIDs, rf.AssetID)
-			}
+	if character == nil {
+		return subject, false
+	}
+	seen := map[string]bool{}
+	add := func(img storedImage, ok bool) {
+		if ok && !seen[img.path] {
+			seen[img.path] = true
+			subject.ReferenceImages = append(subject.ReferenceImages, img.data)
 		}
 	}
-	for _, id := range assetIDs {
-		if img, ok := r.image(ctx, projectID, id); ok {
-			subject.ReferenceImages = append(subject.ReferenceImages, img.data)
+	if id := character.SeriesFaceReferenceAssetID; id != "" {
+		add(r.canonImage(ctx, id))
+	}
+	if id := character.FaceReferenceAssetID; id != "" {
+		add(r.image(ctx, projectID, id))
+	}
+	for _, rf := range refs {
+		if rf.Kind == domain.RefCharacter && strings.EqualFold(strings.TrimSpace(rf.Name), strings.TrimSpace(character.Name)) {
+			add(r.image(ctx, projectID, rf.AssetID))
 		}
 	}
 	return subject, len(subject.ReferenceImages) > 0
@@ -372,12 +411,25 @@ func (r *Runner) faceSubject(ctx context.Context, projectID string, actor domain
 type storedImage struct {
 	data []byte
 	mime string
+	path string // the file, as in asset.file_path
 }
 
 // image reads the image of an asset. A missing or oversized file is skipped: a Reference Pack can
 // be rebuilt, so a lost image must not stop the Judge.
 func (r *Runner) image(ctx context.Context, projectID, assetID string) (storedImage, bool) {
 	asset, err := r.Assets.Get(ctx, projectID, assetID)
+	return r.read(assetID, asset, err)
+}
+
+// canonImage reads the image of a Series canon asset, which belongs to the Project the Series was
+// made from, not to the Project being judged.
+func (r *Runner) canonImage(ctx context.Context, assetID string) (storedImage, bool) {
+	asset, err := r.Assets.GetAny(ctx, assetID)
+	return r.read(assetID, asset, err)
+}
+
+// read reads the file of an asset that was looked up with err.
+func (r *Runner) read(assetID string, asset domain.Asset, err error) (storedImage, bool) {
 	if err != nil {
 		if !errors.Is(err, repository.ErrNotFound) {
 			r.Logger.Warn("reference asset unavailable", "asset_id", assetID, "err", err)
@@ -397,7 +449,7 @@ func (r *Runner) image(ctx context.Context, projectID, assetID string) (storedIm
 		r.Logger.Warn("reference image unreadable", "asset_id", assetID, "err", err)
 		return storedImage{}, false
 	}
-	return storedImage{data: data, mime: asset.MimeType}, true
+	return storedImage{data: data, mime: asset.MimeType, path: asset.FilePath}, true
 }
 
 // videoPath is the file of the Take.

@@ -20,6 +20,9 @@ var ErrInvalidBundle = errors.New("repository: invalid project bundle")
 // Project (:pid is the Project ID).
 type bundleTable struct {
 	name, where string
+	// detach are columns that point outside the Project (at its Series, at another Episode's World
+	// State). The bundle is self-contained, so they are exported empty: the imported Project stands alone.
+	detach []string
 }
 
 const (
@@ -30,41 +33,43 @@ const (
 )
 
 // bundleTables is every table a bundle carries. A table that belongs to a Project MUST be listed
-// here, or in unbundledTables with the reason (TestBundle_EveryProjectTableIsClassified enforces it).
+// here, or in unbundledTables with the reason (TestBundle_EveryTableIsBundledOrHasAReasonNotToBe enforces it).
 var bundleTables = []bundleTable{
-	{"project", `id = :pid`},
-	{"project_policy", byProject},
-	{"brief", byProject},
-	{"asset", byProject},
-	{"chat_message", byProject},
-	{"character", byProject},
-	{"product", byProject},
-	{"location", byProject},
-	{"script_version", byProject},
-	{"scene", byProject},
-	{"shot", `scene_id IN (SELECT id FROM scene WHERE project_id = :pid)`},
-	{"prompt_version", byShot},
-	{"take", `prompt_version_id IN (SELECT pv.id FROM prompt_version pv JOIN shot sh ON sh.id = pv.shot_id
+	{name: "project", where: `id = :pid`, detach: []string{"series_id", "episode_number", "inherited_series_version_id", "inherited_world_state_version_id"}},
+	{name: "project_policy", where: byProject},
+	{name: "brief", where: byProject},
+	{name: "asset", where: byProject},
+	{name: "chat_message", where: byProject},
+	{name: "character", where: byProject, detach: []string{"origin_id"}},
+	{name: "product", where: byProject, detach: []string{"origin_id"}},
+	{name: "location", where: byProject, detach: []string{"origin_id"}},
+	{name: "script_version", where: byProject},
+	{name: "scene", where: byProject},
+	{name: "shot", where: `scene_id IN (SELECT id FROM scene WHERE project_id = :pid)`},
+	{name: "prompt_version", where: byShot},
+	{name: "take", where: `prompt_version_id IN (SELECT pv.id FROM prompt_version pv JOIN shot sh ON sh.id = pv.shot_id
 		JOIN scene sc ON sc.id = sh.scene_id WHERE sc.project_id = :pid)`},
-	{"judge_result", byTake},
-	{"repair_action", `judge_result_id IN (SELECT jr.id FROM judge_result jr WHERE jr.` + byTake + `)`},
-	{"repair_shadow", `repair_action_id IN (SELECT ra.id FROM repair_action ra WHERE ra.judge_result_id IN
+	{name: "judge_result", where: byTake},
+	{name: "repair_action", where: `judge_result_id IN (SELECT jr.id FROM judge_result jr WHERE jr.` + byTake + `)`},
+	{name: "repair_shadow", where: `repair_action_id IN (SELECT ra.id FROM repair_action ra WHERE ra.judge_result_id IN
 		(SELECT jr.id FROM judge_result jr WHERE jr.` + byTake + `))`},
-	{"world_state_version", byProject},
-	{"state_diff", byShot},
-	{"edit_timeline_version", byProject},
-	{"editor_judge_result", `edit_timeline_version_id IN (SELECT id FROM edit_timeline_version WHERE project_id = :pid)`},
-	{"audio_timeline_version", byProject},
-	{"export", byProject},
-	{"lock", byProject},
-	{"cost_ledger_entry", byProject},
-	{"reference_item", byProject},
-	{"branch", byProject},
-	{"branch_version", `branch_id IN (SELECT id FROM branch WHERE project_id = :pid)`},
+	{name: "world_state_version", where: byProject},
+	{name: "state_diff", where: byShot},
+	{name: "edit_timeline_version", where: byProject},
+	{name: "editor_judge_result", where: `edit_timeline_version_id IN (SELECT id FROM edit_timeline_version WHERE project_id = :pid)`},
+	{name: "audio_timeline_version", where: byProject},
+	{name: "export", where: byProject},
+	{name: "lock", where: byProject},
+	{name: "cost_ledger_entry", where: byProject},
+	{name: "reference_item", where: byProject},
+	{name: "branch", where: byProject},
+	{name: "branch_version", where: `branch_id IN (SELECT id FROM branch WHERE project_id = :pid)`},
 }
 
 // unbundledTables are the tables a bundle leaves out, with the reason.
 var unbundledTables = map[string]string{
+	"series":           "shared by the Episodes of a Series, not part of one Project; an exported Project is detached from it",
+	"series_version":   "the version history of a Series (see series)",
 	"job":              "background job queue: runtime state of this instance (a progress card whose job is gone is shown as finished)",
 	"goose_db_version": "migration bookkeeping of this instance",
 	"sqlite_sequence":  "SQLite internal",
@@ -126,6 +131,11 @@ func readBundleRows(ctx context.Context, tx *sql.Tx, t bundleTable, projectID st
 				values[i] = string(b) // the schema has no BLOB column; text stored as bytes is text
 			}
 			row[c] = values[i]
+		}
+		for _, c := range t.detach {
+			if _, ok := row[c]; ok {
+				row[c] = nil
+			}
 		}
 		out = append(out, row)
 	}

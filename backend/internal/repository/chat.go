@@ -233,6 +233,19 @@ func (r *AssetRepository) Get(ctx context.Context, projectID, id string) (domain
 	return a, nil
 }
 
+// GetAny returns an Asset whichever Project owns it, or ErrNotFound. It is for the images of a
+// Series canon, which are shared by the Episodes.
+func (r *AssetRepository) GetAny(ctx context.Context, id string) (domain.Asset, error) {
+	a, err := scanAsset(r.db.Reader().QueryRowContext(ctx, assetSelect+` WHERE id = ?`, id))
+	if errors.Is(err, sql.ErrNoRows) {
+		return domain.Asset{}, ErrNotFound
+	}
+	if err != nil {
+		return domain.Asset{}, fmt.Errorf("get asset: %w", err)
+	}
+	return a, nil
+}
+
 // ListByIDs returns the Assets of the Project with the given IDs, in the order of ids.
 // IDs that do not belong to the Project are simply absent from the result.
 func (r *AssetRepository) ListByIDs(ctx context.Context, projectID string, ids []string) ([]domain.Asset, error) {

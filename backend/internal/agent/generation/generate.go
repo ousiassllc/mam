@@ -290,7 +290,7 @@ func (o *Orchestrator) makeTake(ctx context.Context, ref repository.ShotRef, pv 
 		Content: domain.EncodeTakeCardBody(domain.TakeCardBody{
 			Title:    title,
 			Summary:  fmt.Sprintf("%s（%s・%.0f 秒）", out.Model, out.Resolution, out.DurationSeconds),
-			VideoURL: fmt.Sprintf("/projects/%s/assets/%s", ref.ProjectID, asset.ID),
+			VideoURL: domain.TakeVideoURL(takeID), PosterURL: domain.TakeThumbnailURL(takeID), ShotID: ref.Shot.ID,
 		}),
 	}
 	if err := o.chat.Announce(context.WithoutCancel(ctx), ref.ProjectID, card); err != nil {

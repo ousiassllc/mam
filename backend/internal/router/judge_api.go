@@ -10,6 +10,8 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service"
 )
 
+func isNotFound(err error) bool { return errors.Is(err, service.ErrNotFound) }
+
 // registerJudgeAPI registers GET /api/v1/takes/{id}/judge-result: the newest AI Video Judge result of a Take.
 func registerJudgeAPI(api huma.API, services *service.Services) {
 	type output struct {
@@ -26,7 +28,7 @@ func registerJudgeAPI(api huma.API, services *service.Services) {
 		ID string `path:"id" doc:"Take ID"`
 	}) (*output, error) {
 		res, err := services.Judge.LatestResult(ctx, in.ID)
-		if errors.Is(err, service.ErrNotFound) {
+		if isNotFound(err) {
 			return nil, huma.Error404NotFound("この Take にはまだ Judge 結果がありません")
 		}
 		if err != nil {

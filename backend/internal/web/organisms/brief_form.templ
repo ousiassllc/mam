@@ -61,6 +61,9 @@ templ BriefForm(d BriefFormData) {
 				}
 			</div>
 		}
+		if d.Brief.Style != "" {
+			<p class="text-sm text-neutral-400">スタイル（Series 正本）: { d.Brief.Style }</p>
+		}
 		<div>
 			<label for="brief-additional-instruction" class="mb-1 block text-sm font-medium">Additional Instruction</label>
 			<textarea
