@@ -615,3 +615,19 @@ func TestEditor_AutoChainStopsAtAReEditVerdict(t *testing.T) {
 	_, err := repository.NewEditorRepository(e.db).LatestAudioTimeline(context.Background(), e.project, "")
 	assert.ErrorIs(t, err, repository.ErrNotFound)
 }
+
+func TestEditor_JudgeStopsOnADatabaseErrorInsteadOfReportingAMissingTakeFile(t *testing.T) {
+	e := newEditorApp(t)
+	e.setState("VISUAL_DESIGN")
+	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/takes/t1/select", nil).Code)
+	require.Equal(t, http.StatusOK, e.roughCut().Code)
+	id := e.timeline().ID
+	// A Take row that cannot be read back (its scores are not a Take Scores object).
+	e.execSQL(`UPDATE take SET scores = '"broken"' WHERE id = 't1'`)
+
+	rec := e.form(http.MethodPost, "/edit-timelines/"+id+"/judge", nil)
+
+	assert.GreaterOrEqual(t, rec.Code, http.StatusInternalServerError, rec.Body.String())
+	assert.Equal(t, "EDITING", e.state())
+	assert.Nil(t, e.timeline().Judge, "no false Re-edit finding is stored")
+}
