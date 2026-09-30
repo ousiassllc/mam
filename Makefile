@@ -15,6 +15,9 @@ dev: ## watch mode: air (Go) + templ generate --watch + esbuild/tailwind --watch
 build: ## production build into bin/mam (templ -> esbuild -> tailwind -> go build)
 	./scripts/build.sh
 
+build-all: ## production build for every platform (windows/darwin/linux x amd64/arm64) into bin/mam-<os>-<arch>
+	./scripts/build.sh --all
+
 generate: ## templ generate
 	templ generate ./backend/...
 
