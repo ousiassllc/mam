@@ -74,3 +74,23 @@ func TestJobRepository_GetMissing(t *testing.T) {
 	_, err := repo.Get(context.Background(), "nope")
 	assert.ErrorIs(t, err, repository.ErrNotFound)
 }
+
+func TestJobRepository_ListByIDsReturnsTheExistingJobsKeyedByID(t *testing.T) {
+	ctx := context.Background()
+	repo := repository.NewJobRepository(openTestDB(t))
+	a, err := repo.Create(ctx, domain.JobGenerate, nil)
+	require.NoError(t, err)
+	b, err := repo.Create(ctx, domain.JobGenerate, nil)
+	require.NoError(t, err)
+	require.NoError(t, repo.MarkRunning(ctx, b.ID))
+
+	got, err := repo.ListByIDs(ctx, []string{a.ID, b.ID, "missing"})
+
+	require.NoError(t, err)
+	require.Len(t, got, 2)
+	assert.Equal(t, domain.JobQueued, got[a.ID].Status)
+	assert.Equal(t, domain.JobRunning, got[b.ID].Status)
+	none, err := repo.ListByIDs(ctx, nil)
+	require.NoError(t, err)
+	assert.Empty(t, none)
+}

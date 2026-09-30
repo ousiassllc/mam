@@ -55,6 +55,29 @@ func (r *ChatRepository) Get(ctx context.Context, projectID, id string) (domain.
 	return m, nil
 }
 
+// ListByIDs returns the messages of the Project with the given IDs keyed by ID in one query. IDs
+// that are not messages of the Project are absent from the result.
+func (r *ChatRepository) ListByIDs(ctx context.Context, projectID string, ids []string) (map[string]domain.ChatMessage, error) {
+	messages := make(map[string]domain.ChatMessage, len(ids))
+	if len(ids) == 0 {
+		return messages, nil
+	}
+	rows, err := r.db.Reader().QueryContext(ctx,
+		messageSelect+` WHERE project_id = ? AND id IN (`+placeholders(len(ids))+`)`, append([]any{projectID}, toAny(ids)...)...)
+	if err != nil {
+		return nil, fmt.Errorf("list messages by ids: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		m, err := scanMessage(rows)
+		if err != nil {
+			return nil, fmt.Errorf("scan message: %w", err)
+		}
+		messages[m.ID] = m
+	}
+	return messages, rows.Err()
+}
+
 // List returns the thread in order. With after set, only messages newer than that
 // message ID are returned (IDs are time-ordered UUIDv7, so the ID order is the thread order).
 func (r *ChatRepository) List(ctx context.Context, projectID, after string) ([]domain.ChatMessage, error) {
