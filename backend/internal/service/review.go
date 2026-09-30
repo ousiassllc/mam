@@ -24,8 +24,10 @@ const (
 	maxReviewVideoBytes    = 2 << 30 // the video of a package
 	MaxReviewPackageBytes  = maxReviewVideoBytes + 1<<20
 	maxReviewResponseBytes = 1 << 20 // a Review Response and manifest.json
-	reviewVideoSniffBytes  = 16
-	reviewsDir             = "reviews/" // below the assets directory: the videos of imported packages
+	// MaxReviewResponseRequestBytes caps the upload of a Review Response: the file plus the form overhead.
+	MaxReviewResponseRequestBytes = maxReviewResponseBytes + 1<<20
+	reviewVideoSniffBytes         = 16
+	reviewsDir                    = "reviews/" // below the assets directory: the videos of imported packages
 )
 
 // ReviewService is Team Collaboration: the owner makes Review Packages and imports the responses; a

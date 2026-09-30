@@ -31,7 +31,10 @@ func statusOf(c *gin.Context, err error) (int, string) {
 	var ai *service.AIError
 	var conflicted *service.ConflictError
 	var brand *domain.BrandViolationError
+	var request *requestError
 	switch {
+	case errors.As(err, &request):
+		return request.status, request.message
 	case errors.As(err, &brand):
 		return http.StatusForbidden, "Brand / Safety Constraint に違反しています: " + brand.Message()
 	case errors.Is(err, service.ErrBrandViolation):
