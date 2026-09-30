@@ -583,6 +583,8 @@ Series をまたぐ再利用は F-29 の範囲（本節は Project 内）。
 
 Generation OrchestratorがShot Spec、Reference、World State、コスト、モデル能力をもとに使用モデルと生成戦略を決定する。
 
+M3のMulti-model routingでは、これに加えてShotの性質とProject内の過去のJudge実績（モデルごとの点数・合格率）を使い、Quality Policyの割り当てを出発点にShotごとに動画モデルを入れ替える（`spec/architecture/model-adapters.md` §12）。選択理由はTake単位で保存する（§29.3）。
+
 入力：
 
 ```text
@@ -1341,7 +1343,7 @@ Project / Organization単位で制作制約を登録可能とする。
 - Advanced Editor Agent
 - Editor → Reshoot Loop
 - Audio Director
-- Multi-model routing
+- Multi-model routing（Shot の性質・Project 内の Judge 実績・コストに応じて、Shot ごとに使う動画モデルを Quality Policy の割り当てから入れ替える。実績が無ければ M1 のポリシー別ルーティングと同じ。判断基準・切り替え条件は `spec/architecture/model-adapters.md` §12）
 - Brand Templates
 - Team Collaboration
 - Production Analytics
@@ -1405,6 +1407,7 @@ Promptはそれらから生成される一時的な実行形式とする。
 - Prompt version
 - Model
 - Model parameters
+- Model routing（選択理由、M3）
 - References
 - Output
 - Judge result
