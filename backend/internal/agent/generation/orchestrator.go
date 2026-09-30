@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"runtime/debug"
 	"slices"
 	"strings"
 	"sync"
@@ -443,12 +444,23 @@ func FailureReason(err error) string {
 	return "内部エラーが発生しました"
 }
 
-// parallel runs fn for i in [0, n) concurrently and returns the errors in order.
-func parallel(n int, fn func(i int) error) []error {
+// parallel runs fn for i in [0, n) concurrently and returns the errors in order. A panic in fn is
+// not propagated (it would end the goroutine, and the whole server, outside the job queue's
+// recover): it is logged with its stack and becomes the error of that index, while the others
+// finish.
+func parallel(logger *slog.Logger, n int, fn func(i int) error) []error {
 	errs := make([]error, n)
 	var wg sync.WaitGroup
 	for i := range n {
-		wg.Go(func() { errs[i] = fn(i) })
+		wg.Go(func() {
+			defer func() {
+				if r := recover(); r != nil {
+					logger.Error("parallel task panicked", "index", i, "panic", r, "stack", string(debug.Stack()))
+					errs[i] = fmt.Errorf("task %d panicked: %v", i, r)
+				}
+			}()
+			errs[i] = fn(i)
+		})
 	}
 	wg.Wait()
 	return errs

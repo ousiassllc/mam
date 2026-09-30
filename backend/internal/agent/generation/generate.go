@@ -126,7 +126,7 @@ func (o *Orchestrator) generate(ctx context.Context, ref repository.ShotRef, ins
 	// Takes (F-12). They run at the same time; the Model Adapter limits calls per vendor.
 	o.notify(Progress{ShotID: shot.ID, Action: ActionGenerate, Stage: StageGenerating, Message: "動画を生成しています", TakesTotal: strategy.Takes})
 	var made counter
-	errs := parallel(strategy.Takes, func(i int) error {
+	errs := parallel(o.logger, strategy.Takes, func(i int) error {
 		takeID, err := o.makeTake(ctx, ref, pv, strategy, job, domain.TakeLineage{WorldStateVersion: sc.world.Version, References: references}, fmt.Sprintf("Shot %d · Take %d", shot.OrderIndex+1, i+1), policy.Effective().MaxGenerationTime, "")
 		if err != nil {
 			return err
