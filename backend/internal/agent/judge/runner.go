@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/generation"
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -47,6 +48,33 @@ type Deps struct {
 // runs it, stores the result and tells the user. It is safe for concurrent use.
 type Runner struct {
 	Deps
+
+	mu      sync.Mutex
+	running map[string]int // Shot ID -> judge jobs whose handler is executing
+}
+
+func (r *Runner) enter(shotID string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.running == nil {
+		r.running = make(map[string]int)
+	}
+	r.running[shotID]++
+}
+
+// leave releases the Shot when the last judge job that runs on it ends. The count lives here
+// rather than in the job table because a job is still marked running for a moment after its
+// handler returned, so two jobs that end together would each see the other as running.
+func (r *Runner) leave(ctx context.Context, shotID string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.running[shotID]--; r.running[shotID] > 0 {
+		return
+	}
+	delete(r.running, shotID)
+	if err := r.Judges.EndJudging(ctx, shotID); err != nil {
+		r.Logger.Error("release shot after judging failed", "shot_id", shotID, "err", err)
+	}
 }
 
 // NewRunner returns a Runner.
@@ -57,7 +85,7 @@ func NewRunner(d Deps) *Runner {
 	if d.Notify == nil {
 		d.Notify = func(generation.Progress) {}
 	}
-	return &Runner{d}
+	return &Runner{Deps: d}
 }
 
 type payload struct {
@@ -102,11 +130,8 @@ func (r *Runner) Handle(ctx context.Context, job domain.Job) error {
 		return err // the Take is gone
 	}
 	shotID := ref.Take.ShotID
-	defer func() {
-		if err := r.Judges.EndJudging(context.WithoutCancel(ctx), shotID, job.ID); err != nil {
-			r.Logger.Error("release shot after judging failed", "shot_id", shotID, "err", err)
-		}
-	}()
+	r.enter(shotID)
+	defer r.leave(context.WithoutCancel(ctx), shotID)
 	if err := r.Judges.BeginJudging(ctx, shotID); err != nil {
 		return err
 	}

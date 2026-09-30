@@ -233,6 +233,12 @@ func (j *judgeApp) generateAndJudge() []string {
 		var state string
 		return j.db.Reader().QueryRow(`SELECT state FROM shot WHERE id = ?`, j.shotID).Scan(&state) == nil && state == "PLANNING"
 	}, 30*time.Second, 10*time.Millisecond, "the Shot is free again")
+	// The Shot is released inside the job handler, a moment before the queue marks the job done;
+	// a re-run posted in between would get 409.
+	require.Eventually(j.t, func() bool {
+		var active int
+		return j.db.Reader().QueryRow(`SELECT COUNT(*) FROM job WHERE kind = 'judge' AND status IN ('queued', 'running')`).Scan(&active) == nil && active == 0
+	}, 30*time.Second, 10*time.Millisecond, "every judge job is finished")
 	return ids
 }
 

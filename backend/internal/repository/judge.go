@@ -224,14 +224,16 @@ func (r *JudgeRepository) BeginJudging(ctx context.Context, shotID string) error
 	})
 }
 
-// EndJudging moves the Shot from JUDGING back to PLANNING unless another judge job of the Shot
-// (other than exceptJobID, the one that is ending) is still queued or running.
-func (r *JudgeRepository) EndJudging(ctx context.Context, shotID, exceptJobID string) error {
+// EndJudging moves the Shot from JUDGING back to PLANNING unless a judge job of the Shot is still
+// queued. Judge jobs that are running are the caller's business: they are still marked running
+// after their handler returned, so counting them here would keep two jobs that end together
+// from ever releasing the Shot.
+func (r *JudgeRepository) EndJudging(ctx context.Context, shotID string) error {
 	return r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		_, err := tx.ExecContext(ctx,
 			`UPDATE shot SET state = ? WHERE id = ? AND state = ?
-			   AND NOT EXISTS (SELECT 1 FROM job WHERE kind = ? AND status IN (?, ?) AND id <> ? AND json_extract(payload, '$.shot_id') = ?)`,
-			domain.ShotPlanning, shotID, domain.ShotJudging, domain.JobJudge, domain.JobQueued, domain.JobRunning, exceptJobID, shotID)
+			   AND NOT EXISTS (SELECT 1 FROM job WHERE kind = ? AND status = ? AND json_extract(payload, '$.shot_id') = ?)`,
+			domain.ShotPlanning, shotID, domain.ShotJudging, domain.JobJudge, domain.JobQueued, shotID)
 		return err
 	})
 }
