@@ -2,7 +2,7 @@
 
 ## 開発ツール
 
-Go（`go.mod` のバージョン）、Node.js、`templ`、`golangci-lint`、`linterly`、`lefthook`。`make tools` で templ・air・npm 依存を入れる。フロントエンドのパッケージマネージャは npm（`static/package-lock.json`）。
+Go（`go.mod` のバージョン）、Node.js、`templ`、`golangci-lint`、`linterly`、`lefthook`。`make tools` が templ（`go.mod` の版に合わせる）・air・golangci-lint を版を固定して入れ、npm 依存（`static/node_modules`）も用意する。`make assets` / `make test-static` / `make lint-static` / `make dev` は `static/node_modules` が無ければ（または `package-lock.json` が新しければ）`npm ci` を自動で実行する。フロントエンドのパッケージマネージャは npm（`static/package-lock.json`）。
 
 ## タスク
 
@@ -16,7 +16,7 @@ Go（`go.mod` のバージョン）、Node.js、`templ`、`golangci-lint`、`lin
 
 ## CI
 
-`.github/workflows/ci.yml`。`main` への push と全 PR で実行する。`make generate` → `fmt-check` → `lint` → `test` → `build` の順。
+`.github/workflows/ci.yml`。`main` への push と全 PR で実行する。ツールは `make tools`（Makefile の版指定）で入れる。`make generate` → `fmt-check` → `lint` → `test` → `build` の順。
 
 ## Linterly
 
