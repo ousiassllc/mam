@@ -35,7 +35,7 @@ type GenerationMode string
 
 // Generation modes.
 const (
-	// ModeQuality generates every Candidate at the same time and lets the Judge pick the Best Take.
+	// ModeQuality generates every Candidate at the same time, as many as the budget allows, and lets the Judge pick the Best Take.
 	ModeQuality GenerationMode = "quality"
 	// ModeBalanced generates the first Candidate and adds the next one only while the Judge fails it.
 	ModeBalanced GenerationMode = "balanced"

@@ -406,7 +406,7 @@ Dynamic Camera
 
 **Quality Mode**
 
-複数Candidateを並列生成し、JudgeがBest Takeを選択。
+複数Candidateを並列生成し、JudgeがBest Takeを選択。予算が 3 Take 分あれば Stability First / Acting First / Dynamic Camera の 3 戦略すべて。1〜2 本だけ収まるときは先頭からその本数だけ生成し、1 本も収まらなければ生成しない（402）。
 
 **Balanced Mode**
 
