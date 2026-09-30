@@ -446,6 +446,26 @@ func TestChat_DirectorModeAsksWhenTheShotCannotBeResolved(t *testing.T) {
 	assert.Equal(t, 1, f.lockRows(t))
 }
 
+func TestChat_Example4RepliesWithTheFixedSentenceAndCreatesNothing(t *testing.T) {
+	f := newGenFixture(t, true)
+	f.startDirecting(t)
+	shots := f.count(t, `SELECT COUNT(*) FROM shot`)
+	timelines := f.count(t, `SELECT COUNT(*) FROM edit_timeline_version`)
+	jobs := f.count(t, `SELECT COUNT(*) FROM job`)
+
+	f.llm.interpreter = opsJSON(`{"type":"unsupported","reason":"尺はタイムライン側で調整してください"}`)
+	ws := f.say(t, "商品をあと1秒長く見せて", "")
+	assert.Equal(t, "その操作にはまだ対応していません", ws.Messages[1].Content)
+
+	f.llm.interpreter = opsJSON(`{"type":"unsupported","reason":"追加のカットはまだチャットから作れません"}`)
+	ws = f.say(t, "このあとにカットを1本足して", "")
+	assert.Equal(t, "その操作にはまだ対応していません", ws.Messages[1].Content)
+
+	assert.Equal(t, shots, f.count(t, `SELECT COUNT(*) FROM shot`))
+	assert.Equal(t, timelines, f.count(t, `SELECT COUNT(*) FROM edit_timeline_version`))
+	assert.Equal(t, jobs, f.count(t, `SELECT COUNT(*) FROM job`))
+}
+
 func TestChat_DirectorModeCanSwitchBackToAutoAndReportsWhatIsNotSupported(t *testing.T) {
 	f := newGenFixture(t, true)
 	f.startDirecting(t)

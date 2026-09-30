@@ -304,7 +304,7 @@ func (s *DirectorService) DirectorCommand(ctx context.Context, shotID, message s
 	if err := s.refuseBrand(ctx, project.ID, message, cmd); err != nil {
 		return DirectorCommandResult{}, err // a LOCK brand violation is 403; nothing is recorded or queued
 	}
-	res, err := s.execute(ctx, project, &ref, cmd, true)
+	res, err := s.execute(ctx, project, &ref, cmd, message, true)
 	if err != nil {
 		return DirectorCommandResult{}, err
 	}
@@ -377,7 +377,7 @@ func (s *DirectorService) Chat(ctx context.Context, project domain.Project, targ
 	if err := s.refuseBrand(ctx, project.ID, content, cmd); err != nil {
 		return domain.ChatMessage{}, err
 	}
-	res, err := s.execute(ctx, project, ref, cmd, false)
+	res, err := s.execute(ctx, project, ref, cmd, content, false)
 	if err != nil {
 		return domain.ChatMessage{}, err
 	}
@@ -390,7 +390,7 @@ func (s *DirectorService) rememberOnly(ctx context.Context, project domain.Proje
 	if len(cmd.Operations) == 0 {
 		return assistantText("メモとして残せる内容が見つかりませんでした。覚えておきたい内容を、もう一度教えてください。"), nil
 	}
-	res, err := s.execute(ctx, project, nil, cmd, false)
+	res, err := s.execute(ctx, project, nil, cmd, "", false)
 	if err != nil {
 		return domain.ChatMessage{}, err
 	}
@@ -493,11 +493,40 @@ func (o outcome) text() string {
 
 const askWhichShot = "どの Shot への指示ですか？ Take カードに返信するか、「Scene 1 の Shot 2」のように指定してください。"
 
+// unsupportedFixed is the reply to Example 4 (spec/spec.md): a timeline edit or an extra Shot asked
+// for in chat. The model's own reason is not used for those.
+const unsupportedFixed = "その操作にはまだ対応していません"
+
+// unsupportedReply is what the thread shows for an unsupported direction. A request to change the
+// Edit Timeline or to add a Shot always gets unsupportedFixed, even when the interpreter wrote
+// another sentence. Other unsupported directions keep that sentence, or the fixed one when it is empty.
+func unsupportedReply(message, reason string) string {
+	if isTimelineOrExtraShot(message) || strings.TrimSpace(reason) == "" {
+		return unsupportedFixed
+	}
+	return strings.TrimSpace(reason)
+}
+
+// isTimelineOrExtraShot reports whether the director asked to change a clip's length (Example 4) or
+// to add a Shot. Chat does not do either.
+func isTimelineOrExtraShot(message string) bool {
+	m := strings.ToLower(message)
+	if strings.Contains(m, "タイムライン") || strings.Contains(m, "timeline") || strings.Contains(m, "尺") {
+		return true
+	}
+	if strings.Contains(m, "秒") && (strings.Contains(m, "長") || strings.Contains(m, "短")) {
+		return true
+	}
+	aboutShot := strings.Contains(m, "ショット") || strings.Contains(m, "shot") || strings.Contains(m, "カット")
+	asksMore := strings.Contains(m, "追加") || strings.Contains(m, "足して") || strings.Contains(m, "増や")
+	return aboutShot && asksMore
+}
+
 // execute carries out the operations of a Command: settings first (so that "カメラは固定して、表情だけ
 // 変えて" locks before it regenerates), then regenerations, then the mode switch. strict makes a
 // regeneration that would change a LOCKed parameter fail with ErrLocked before anything is done;
 // otherwise it is left out and reported.
-func (s *DirectorService) execute(ctx context.Context, project domain.Project, ref *repository.ShotRef, cmd commandinterpreter.Command, strict bool) (outcome, error) {
+func (s *DirectorService) execute(ctx context.Context, project domain.Project, ref *repository.ShotRef, cmd commandinterpreter.Command, message string, strict bool) (outcome, error) {
 	var out outcome
 	if cmd.Question != "" {
 		return outcome{lines: []string{cmd.Question}}, nil
@@ -554,11 +583,7 @@ func (s *DirectorService) execute(ctx context.Context, project domain.Project, r
 				return out, err
 			}
 		case commandinterpreter.OpUnsupported:
-			reason := op.Reason
-			if reason == "" {
-				reason = "その操作にはまだ対応していません"
-			}
-			out.lines = append(out.lines, reason)
+			out.lines = append(out.lines, unsupportedReply(message, op.Reason))
 		}
 	}
 	for _, op := range cmd.Operations {
