@@ -88,10 +88,14 @@ func dsnFor(path string) string {
 // Reader returns the read-only connection pool. Writes through it fail (query_only).
 func (d *DB) Reader() *sql.DB { return d.read }
 
-// Ping verifies both pools can reach the database.
+// Ping verifies both pools can reach the database. The writer has one connection: while a
+// transaction holds it the ping waits, so a writer that is stuck shows as ctx's deadline.
 func (d *DB) Ping(ctx context.Context) error {
 	if err := d.read.PingContext(ctx); err != nil {
 		return fmt.Errorf("ping read db: %w", err)
+	}
+	if err := d.write.PingContext(ctx); err != nil {
+		return fmt.Errorf("ping write db: %w", err)
 	}
 	return nil
 }
