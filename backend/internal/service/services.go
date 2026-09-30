@@ -82,6 +82,7 @@ type Services struct {
 	Bundle      *BundleService
 	Series      *SeriesService
 	Takes       *TakeService
+	Branch      *BranchService
 	Editor      *EditorService
 }
 
@@ -117,6 +118,7 @@ func New(deps Deps) *Services {
 		plans:     repository.NewPlanRepository(deps.DB),
 
 		references: repository.NewReferenceRepository(deps.DB),
+		branches:   repository.NewBranchRepository(deps.DB),
 	}
 	chat := &ChatService{c}
 	var jobFinished func(jobID string) // set once the Repair Agent exists (before the queue starts)
@@ -196,6 +198,8 @@ func New(deps Deps) *Services {
 		continues.agent = continuation.New(deps.LLM)
 	}
 	c.continuer = continues
+	branch := &BranchService{core: c, shots: gens, continues: continues}
+	director.branch = branch
 	worlds := &WorldService{core: c, world: world, versions: versions}
 	// Without a Reasoning LLM the Editor Judge runs its deterministic checks alone.
 	editors := &EditorService{
@@ -226,6 +230,7 @@ func New(deps Deps) *Services {
 		Bundle:    &BundleService{core: c, bundles: repository.NewBundleRepository(deps.DB)},
 		Series:    &SeriesService{core: c, series: repository.NewSeriesRepository(deps.DB)},
 		Takes:     takeService,
+		Branch:    branch,
 		Editor:    editors,
 	}
 }

@@ -587,7 +587,7 @@ func TestGenerateShot_StateExtractorAppendsWorldStateVersionAndTheNextShotStarts
 	require.NoError(t, f.query(t, `SELECT diff FROM state_diff WHERE shot_id = ?`, f.shotID).Scan(&diff))
 	assert.Contains(t, diff, `"field":"emotion"`)
 	assert.Contains(t, diff, `"to":"anxious"`)
-	world, err := f.svc.World.View(context.Background(), f.projectID)
+	world, err := f.svc.World.View(context.Background(), f.projectID, "")
 	require.NoError(t, err)
 	require.NotEmpty(t, world.World.Characters)
 	assert.Equal(t, "anxious", world.World.Characters[0].Emotion)
@@ -627,7 +627,7 @@ func TestGenerateShot_StateExtractorLeavesLockedFieldsAlone(t *testing.T) {
 
 	f.generateAndWait(t, f.shotID, 2)
 
-	world, err := f.svc.World.View(context.Background(), f.projectID)
+	world, err := f.svc.World.View(context.Background(), f.projectID, "")
 	require.NoError(t, err)
 	assert.Equal(t, "calm", world.World.Characters[0].Emotion, "the LOCKed emotion is not updated")
 	assert.Equal(t, "hallway_door", world.World.Characters[0].Position, "unlocked fields still follow the Shot")

@@ -27,6 +27,8 @@ func NewJudgeRepository(db *DB) *JudgeRepository {
 type TakeRef struct {
 	Take      domain.Take
 	ProjectID string
+	// BranchID is the Branch the Take's Scene belongs to; "" for the trunk.
+	BranchID string
 	// SpecSnapshot is prompt_version.shot_spec_snapshot: the Shot Spec (and Reference Pack) as they
 	// were when the Take was generated, which is what the Take is judged against.
 	SpecSnapshot json.RawMessage
@@ -42,13 +44,13 @@ func (r *JudgeRepository) GetTake(ctx context.Context, takeID string) (TakeRef, 
 	t := &ref.Take
 	err := r.db.Reader().QueryRowContext(ctx,
 		`SELECT t.id, pv.shot_id, t.prompt_version_id, t.model_name, COALESCE(t.file_path, ''), t.status, t.created_at,
-		        sc.project_id, pv.shot_spec_snapshot
+		        sc.project_id, COALESCE(sc.branch_id, ''), pv.shot_spec_snapshot
 		 FROM take t
 		 JOIN prompt_version pv ON pv.id = t.prompt_version_id
 		 JOIN shot sh ON sh.id = pv.shot_id
 		 JOIN scene sc ON sc.id = sh.scene_id
 		 WHERE t.id = ?`, takeID).
-		Scan(&t.ID, &t.ShotID, &t.PromptVersionID, &t.ModelName, &t.FilePath, &t.Status, &created, &ref.ProjectID, &spec)
+		Scan(&t.ID, &t.ShotID, &t.PromptVersionID, &t.ModelName, &t.FilePath, &t.Status, &created, &ref.ProjectID, &ref.BranchID, &spec)
 	if errors.Is(err, sql.ErrNoRows) {
 		return TakeRef{}, ErrNotFound
 	}

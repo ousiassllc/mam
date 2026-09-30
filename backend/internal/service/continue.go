@@ -65,11 +65,11 @@ func (s *ContinueService) input(ctx context.Context, ref repository.ShotRef) (co
 	if err != nil {
 		return continuation.Input{}, notFound(err)
 	}
-	world, err := s.shots.WorldContext(ctx, ref.ProjectID)
+	world, err := s.shots.WorldContext(ctx, ref.ProjectID, ref.Scene.BranchID)
 	if err != nil {
 		return continuation.Input{}, err
 	}
-	shots, err := s.shots.ListProjectShots(ctx, ref.ProjectID)
+	shots, err := s.shots.StoryShots(ctx, ref.ProjectID, ref.Scene.BranchID)
 	if err != nil {
 		return continuation.Input{}, err
 	}
@@ -176,7 +176,7 @@ func (s *ContinueService) Confirm(ctx context.Context, shotID string, in Confirm
 	var newScene *domain.Scene
 	shot := domain.Shot{SceneID: ref.Shot.SceneID, Objective: plan.Shot.Objective, Duration: plan.Shot.DurationSeconds}
 	if plan.NewScene {
-		newScene = &domain.Scene{Title: plan.Scene.Title, Location: plan.Scene.Location, Time: plan.Scene.Time, Objective: plan.Scene.Objective}
+		newScene = &domain.Scene{BranchID: ref.Scene.BranchID, Title: plan.Scene.Title, Location: plan.Scene.Location, Time: plan.Scene.Time, Objective: plan.Scene.Objective}
 	}
 	shot, err = s.plans.AppendContinuation(ctx, ref.ProjectID, newScene, shot)
 	if err != nil {

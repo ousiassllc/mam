@@ -29,6 +29,8 @@ func registerPages(engine *gin.Engine, services *service.Services) {
 	engine.GET("/projects/:id/assets/:assetId", handler.ProjectAsset(services.Projects))
 	engine.GET("/projects/:id/settings", handler.SettingsPage(services.Policy))
 	engine.GET("/projects/:id/cost-summary", handler.CostSummary(services.Policy))
+	engine.GET("/projects/:id/branches", handler.BranchTreePage(services.Branch))
+	engine.GET("/branches/:id", handler.BranchPage(services.Branch))
 	engine.GET("/projects/:id/bundle", handler.ExportBundle(services.Bundle))
 	engine.GET("/takes/:id/trace", handler.TakeTrace(services.Trace))
 	engine.GET("/branches/:id/versions", handler.BranchVersions(services.Versions))

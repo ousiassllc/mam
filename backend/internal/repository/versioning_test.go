@@ -88,12 +88,12 @@ func TestVersionRepository_RestoreWorldStateBringsTheEntityFieldsBackAsANewVersi
 	ctx := context.Background()
 	f := newWorldFixture(t)
 	versions := repository.NewVersionRepository(f.db)
-	_, v1, err := f.world.ApplyStateDiff(ctx, f.projectID, f.shotID, f.takeID, domain.StateDiff{Changes: []domain.StateChange{
+	_, v1, err := f.world.ApplyStateDiff(ctx, f.projectID, "", f.shotID, f.takeID, domain.StateDiff{Changes: []domain.StateChange{
 		{Target: domain.TargetCharacter, ID: f.charID, Field: "emotion", To: raw(`"anxious"`)},
 		{Target: domain.TargetCamera, Field: "movement", To: raw(`"static"`)},
 	}})
 	require.NoError(t, err)
-	_, _, err = f.world.ApplyStateDiff(ctx, f.projectID, f.shotID, f.takeID, domain.StateDiff{Changes: []domain.StateChange{
+	_, _, err = f.world.ApplyStateDiff(ctx, f.projectID, "", f.shotID, f.takeID, domain.StateDiff{Changes: []domain.StateChange{
 		{Target: domain.TargetCharacter, ID: f.charID, Field: "emotion", To: raw(`"angry"`)},
 		{Target: domain.TargetCamera, Field: "movement", To: raw(`"pan"`)},
 		{Target: domain.TargetProduct, ID: f.prodID, Field: "condition", To: raw(`"opened"`)},
@@ -106,7 +106,7 @@ func TestVersionRepository_RestoreWorldStateBringsTheEntityFieldsBackAsANewVersi
 	require.NoError(t, err)
 
 	assert.Equal(t, 3, n)
-	w, err := f.world.World(ctx, f.projectID)
+	w, err := f.world.World(ctx, f.projectID, "")
 	require.NoError(t, err)
 	assert.Equal(t, 3, w.Version)
 	byID := map[string]domain.WorldCharacter{}
@@ -127,17 +127,17 @@ func TestVersionRepository_RestoreWorldStateRefusesToChangeALockedFieldAndWrites
 	ctx := context.Background()
 	f := newWorldFixture(t)
 	versions := repository.NewVersionRepository(f.db)
-	_, v1, err := f.world.ApplyStateDiff(ctx, f.projectID, f.shotID, f.takeID, domain.StateDiff{Changes: []domain.StateChange{
+	_, v1, err := f.world.ApplyStateDiff(ctx, f.projectID, "", f.shotID, f.takeID, domain.StateDiff{Changes: []domain.StateChange{
 		{Target: domain.TargetCharacter, ID: f.charID, Field: "emotion", To: raw(`"anxious"`)},
 	}})
 	require.NoError(t, err)
-	require.NoError(t, f.world.UpdateEntity(ctx, f.projectID, domain.TargetCharacter, f.charID, map[string]string{"wardrobe": "red_dress", "emotion": "angry"}))
+	require.NoError(t, f.world.UpdateEntity(ctx, f.projectID, "", domain.TargetCharacter, f.charID, map[string]string{"wardrobe": "red_dress", "emotion": "angry"}))
 	f.lock(t, "character", f.charID, "wardrobe")
 
 	_, err = versions.RestoreWorldStateVersion(ctx, f.projectID, "", v1)
 
 	assert.ErrorIs(t, err, repository.ErrLocked)
-	w, err := f.world.World(ctx, f.projectID)
+	w, err := f.world.World(ctx, f.projectID, "")
 	require.NoError(t, err)
 	assert.Equal(t, "angry", w.Characters[0].Emotion, "the emotion was not written either: all or nothing")
 	assert.Equal(t, 2, w.Version)
@@ -155,29 +155,36 @@ func seedBranch(t *testing.T, f genRepoFixture, id, name string) {
 		`INSERT INTO branch (id, project_id, branch_point_type, branch_point_shot_id, name) VALUES (?, ?, 'shot', ?, ?)`, id, f.projectID, f.shotID, name))
 }
 
-func TestVersionRepository_BranchWorldStateHasItsOwnSeriesAndTheTrunkIsUntouched(t *testing.T) {
+func TestVersionRepository_RestoringABranchWorldStateWritesItsOwnRowsAndLeavesTheTrunkAlone(t *testing.T) {
 	ctx := context.Background()
 	f := newWorldFixture(t)
 	versions := repository.NewVersionRepository(f.db)
-	seedBranch(t, f.genRepoFixture, "b1", "alt")
-	_, _, err := f.world.ApplyStateDiff(ctx, f.projectID, f.shotID, f.takeID, domain.StateDiff{})
+	branches := repository.NewBranchRepository(f.db)
+	_, _, err := f.world.ApplyStateDiff(ctx, f.projectID, "", f.shotID, f.takeID, domain.StateDiff{Changes: []domain.StateChange{
+		{Target: domain.TargetCharacter, ID: f.charID, Field: "emotion", To: raw(`"anxious"`)},
+	}})
 	require.NoError(t, err)
-	for i, state := range []string{`{"characters":[{"id":"c","name":"A"}]}`, `{"characters":[{"id":"c","name":"A"},{"id":"d","name":"B"}]}`} {
-		require.NoError(t, exec(t, f.db, `INSERT INTO world_state_version (id, project_id, branch_id, version_number, state) VALUES (?, ?, 'b1', ?, ?)`,
-			domain.NewID(), f.projectID, i+1, state), "the branch series numbers from 1 next to the trunk's")
-	}
+	b, err := branches.Create(ctx, repository.NewBranch{ShotID: f.shotID, PointType: domain.BranchAtShot, Name: "alt"})
+	require.NoError(t, err)
+	w, err := f.world.World(ctx, f.projectID, b.ID)
+	require.NoError(t, err)
+	require.NoError(t, f.world.UpdateEntity(ctx, f.projectID, b.ID, domain.TargetCharacter, w.Characters[0].ID, map[string]string{"emotion": "sad"}))
+	trunkBefore, err := versions.WorldStateVersions(ctx, f.projectID, "")
+	require.NoError(t, err)
 
-	n, err := versions.RestoreWorldStateVersion(ctx, f.projectID, "b1", 1)
+	n, err := versions.RestoreWorldStateVersion(ctx, f.projectID, b.ID, 1)
 	require.NoError(t, err)
 
-	assert.Equal(t, 3, n)
-	list, err := versions.WorldStateVersions(ctx, f.projectID, "b1")
+	assert.Equal(t, 3, n, "the restore is a new version of the Branch's own series")
+	w, err = f.world.World(ctx, f.projectID, b.ID)
 	require.NoError(t, err)
-	require.Len(t, list, 3)
-	assert.Equal(t, "Character 1 / Product 0 / Location 0", list[0].Summary)
+	assert.Equal(t, "anxious", w.Characters[0].Emotion, "the Branch's rows are written back")
+	list, err := versions.WorldStateVersions(ctx, f.projectID, b.ID)
+	require.NoError(t, err)
+	assert.Len(t, list, 3)
 	trunk, err := versions.WorldStateVersions(ctx, f.projectID, "")
 	require.NoError(t, err)
-	assert.Len(t, trunk, 1, "the trunk series does not see the Branch's versions")
+	assert.Len(t, trunk, len(trunkBefore), "the trunk series does not see the Branch's versions")
 
 	_, err = versions.RestoreWorldStateVersion(ctx, f.projectID, "nope", 1)
 	assert.ErrorIs(t, err, repository.ErrNotFound)

@@ -29,6 +29,8 @@ type DirectorService struct {
 	orch *generation.Orchestrator
 	// interpreter reads directions; nil when no Reasoning LLM is configured.
 	interpreter *commandinterpreter.Interpreter
+	// branch makes the Branches of a "create_branch" operation; set by New.
+	branch *BranchService
 	// takes finds the Take a Partial Regeneration fixes; repair makes it (nil without ffmpeg, LLM
 	// or Model Adapter).
 	takes  *repository.TakeRepository
@@ -258,7 +260,7 @@ func (s *DirectorService) DirectorCommand(ctx context.Context, shotID, message s
 	if err != nil {
 		return DirectorCommandResult{}, err
 	}
-	shots, err := s.gens.ListProjectShots(ctx, ref.ProjectID)
+	shots, err := s.gens.StoryShots(ctx, ref.ProjectID, ref.Scene.BranchID)
 	if err != nil {
 		return DirectorCommandResult{}, err
 	}
@@ -429,7 +431,7 @@ func (s *DirectorService) execute(ctx context.Context, project domain.Project, r
 		return outcome{lines: []string{cmd.Question}}, nil
 	}
 	needsShot := slices.ContainsFunc(cmd.Operations, func(op commandinterpreter.Operation) bool {
-		return op.Regenerates() || (op.Type == commandinterpreter.OpSetLock && op.Parameter.ValidForShot())
+		return op.Regenerates() || op.Type == commandinterpreter.OpCreateBranch || (op.Type == commandinterpreter.OpSetLock && op.Parameter.ValidForShot())
 	})
 	if needsShot && ref == nil {
 		return outcome{lines: []string{askWhichShot}}, nil
@@ -473,6 +475,12 @@ func (s *DirectorService) execute(ctx context.Context, project domain.Project, r
 			}
 			out.lines = append(out.lines, line)
 			out.started = out.started || started
+		case commandinterpreter.OpCreateBranch:
+			lines, err := s.branch.Fork(ctx, *ref, op.PointType, op.Count, op.Directions)
+			out.lines = append(out.lines, lines...)
+			if err != nil {
+				return out, err
+			}
 		case commandinterpreter.OpUnsupported:
 			reason := op.Reason
 			if reason == "" {

@@ -86,7 +86,7 @@ func TestSeriesRepository_CreateFromProjectRegistersCanonAndEpisodeOne(t *testin
 	require.NoError(t, err)
 	assert.Equal(t, s.ID, p.SeriesID)
 	assert.Equal(t, 1, p.EpisodeNumber)
-	w, err := f.world.World(ctx, f.source)
+	w, err := f.world.World(ctx, f.source, "")
 	require.NoError(t, err)
 	assert.Equal(t, "face-1", w.Characters[0].SeriesFaceReferenceAssetID)
 	assert.Equal(t, "angry", w.Characters[0].Emotion, "the source Project keeps its own state")
@@ -128,7 +128,7 @@ func TestSeriesRepository_CreateEpisodeCopiesCanonWithOrigin(t *testing.T) {
 
 	canon, err := f.series.Canon(ctx, s.ID)
 	require.NoError(t, err)
-	w, err := f.world.World(ctx, "ep2")
+	w, err := f.world.World(ctx, "ep2", "")
 	require.NoError(t, err)
 	require.Len(t, w.Characters, 1)
 	ch := w.Characters[0]
@@ -189,7 +189,7 @@ func TestSeriesRepository_CreateEpisodeStartsFromPreviousWorldState(t *testing.T
 	_, err := f.series.CreateEpisode(ctx, s.ID, f.source, newEpisodeProject("ep2"))
 	require.NoError(t, err)
 
-	w, err := f.world.World(ctx, "ep2")
+	w, err := f.world.World(ctx, "ep2", "")
 	require.NoError(t, err)
 	assert.Equal(t, "angry", w.Characters[0].Emotion)
 	assert.Equal(t, "left", w.Characters[0].Position)
@@ -262,7 +262,7 @@ func TestSeriesRepository_CanonUpdateIsVersionedAndDoesNotReachEpisodes(t *testi
 
 	// The existing Episodes are untouched.
 	for _, id := range []string{"ep2", f.source} {
-		w, err := f.world.World(ctx, id)
+		w, err := f.world.World(ctx, id, "")
 		require.NoError(t, err)
 		assert.Equal(t, "bob", w.Characters[0].Hairstyle, id)
 		assert.Equal(t, "black_coat", w.Characters[0].Wardrobe, id)
@@ -274,7 +274,7 @@ func TestSeriesRepository_CanonUpdateIsVersionedAndDoesNotReachEpisodes(t *testi
 	// A new Episode inherits the updated canon.
 	_, err = f.series.CreateEpisode(ctx, s.ID, "", newEpisodeProject("ep3"))
 	require.NoError(t, err)
-	w, err := f.world.World(ctx, "ep3")
+	w, err := f.world.World(ctx, "ep3", "")
 	require.NoError(t, err)
 	assert.Equal(t, "long", w.Characters[0].Hairstyle)
 }
