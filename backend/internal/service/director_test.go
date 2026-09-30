@@ -391,6 +391,37 @@ func TestChat_DirectorModeResolvesTheShotFromAReplyToATakeCard(t *testing.T) {
 	assert.True(t, locks.Locks.Locked(domain.ParamCamera))
 }
 
+func TestChat_ReplyToATakeCardIgnoresSceneShotNumbersInTheMessage(t *testing.T) {
+	f := newGenFixture(t, true)
+	f.firstGeneration(t)
+	var shot1Card domain.ThreadMessage
+	for _, m := range f.thread(t, f.projectID) {
+		if m.Kind == domain.KindTake {
+			shot1Card = m
+		}
+	}
+	require.NotEmpty(t, shot1Card.ID)
+
+	second, err := f.svc.Plans.CreateShot(context.Background(), f.sceneID, service.ShotForm{Objective: "ドアを開ける", DurationSeconds: "4"})
+	require.NoError(t, err)
+	shot2ID := second.Shots[1].ID
+	f.generateAndWait(t, shot2ID, 2)
+	f.startDirecting(t)
+	f.llm.interpreter = func(string) string {
+		return `{"scene":1,"shot":2,"operations":[{"type":"set_lock","parameter":"camera","mode":"lock"}]}`
+	}
+
+	ws := f.say(t, "Scene 1 の Shot 2 のカメラを固定して", shot1Card.ID)
+
+	assert.Contains(t, ws.Messages[1].Content, "Scene 1 / Shot 1", "the Take card being replied to wins over numbers in the message")
+	locks1, err := f.svc.Director.Inspector(context.Background(), f.shotID)
+	require.NoError(t, err)
+	assert.True(t, locks1.Locks.Locked(domain.ParamCamera))
+	locks2, err := f.svc.Director.Inspector(context.Background(), shot2ID)
+	require.NoError(t, err)
+	assert.False(t, locks2.Locks.Locked(domain.ParamCamera))
+}
+
 func TestChat_DirectorModeAsksWhenTheShotCannotBeResolved(t *testing.T) {
 	f := newGenFixture(t, true)
 	_, err := f.svc.Plans.CreateShot(context.Background(), f.sceneID, service.ShotForm{Objective: "ドアを開ける", DurationSeconds: "4"})
