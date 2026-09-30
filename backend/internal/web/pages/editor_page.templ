@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/layout"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
 )
@@ -9,7 +10,7 @@ import (
 templ EditorPage(csrfToken string, d organisms.EditorPanelData) {
 	@layout.AppLayout("編集: "+d.Project.Name, csrfToken) {
 		<main class="mx-auto max-w-5xl p-8">
-			<a href={ templ.SafeURL("/projects/" + d.Project.ID) } class="text-sm text-neutral-400 hover:text-neutral-100">← チャットに戻る</a>
+			@atoms.ChatBackLink(d.Project.ID)
 			<p class="mb-6 mt-3 text-sm text-neutral-400">{ d.Project.Name }</p>
 			@organisms.EditorWorkspace(d)
 		</main>

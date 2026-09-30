@@ -12,6 +12,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 const replyExcerptRunes = 40
@@ -41,13 +42,13 @@ func excerpt(m domain.ChatMessage) string {
 
 // AssetURL is where an uploaded asset is served (GET /projects/:id/assets/:assetId).
 func AssetURL(projectID, assetID string) templ.SafeURL {
-	return templ.SafeURL(fmt.Sprintf("/projects/%s/assets/%s", projectID, assetID))
+	return templ.SafeURL(paths.Project(projectID, "assets", assetID))
 }
 
-func messagesURL(projectID string) string { return "/projects/" + projectID + "/messages" }
+func messagesURL(projectID string) string { return paths.Project(projectID, "messages") }
 
 func approvalURL(projectID, messageID string) string {
-	return "/projects/" + projectID + "/approvals/" + messageID
+	return paths.Project(projectID, "approvals", messageID)
 }
 
 // answerAttrs makes a button post `answer` as a reply to the card.

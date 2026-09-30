@@ -3,6 +3,7 @@ package organisms
 import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // ChatWorkspace is the standard screen: one Project = one chat thread (F-30). It
@@ -25,16 +26,16 @@ templ ChatWorkspace(p domain.Project, msgs []domain.ThreadMessage) {
 				<details class="relative text-sm">
 					<summary class="cursor-pointer list-none rounded-md border border-neutral-600 px-2 py-1 hover:bg-neutral-800">⋯ 補助ビュー</summary>
 					<ul class="absolute right-0 z-10 mt-1 w-40 rounded-md border border-neutral-700 bg-neutral-900 py-1 shadow-lg">
-						<li><a class="block px-3 py-1.5 hover:bg-neutral-800" href={ templ.SafeURL("/projects/" + p.ID + "/brief") }>Brief</a></li>
-						<li><a class="block px-3 py-1.5 hover:bg-neutral-800" href={ templ.SafeURL("/projects/" + p.ID + "/scenes") }>Scene / Shot</a></li>
-						<li><a class="block px-3 py-1.5 hover:bg-neutral-800" href={ templ.SafeURL("/projects/" + p.ID + "/edit") }>編集 / 書き出し</a></li>
-						<li><a class="block px-3 py-1.5 hover:bg-neutral-800" href={ templ.SafeURL("/projects/" + p.ID + "/settings") }>設定 / コスト</a></li>
-						<li><a class="block px-3 py-1.5 hover:bg-neutral-800" href={ templ.SafeURL("/projects/" + p.ID + "/analytics") }>制作指標</a></li>
-						<li><a class="block px-3 py-1.5 hover:bg-neutral-800" href={ templ.SafeURL("/projects/" + p.ID + "/branches") }>Branch</a></li>
-						<li><a class="block px-3 py-1.5 hover:bg-neutral-800" href={ templ.SafeURL("/projects/" + p.ID + "/world-state") }>World State</a></li>
-						<li><a class="block px-3 py-1.5 hover:bg-neutral-800" href={ templ.SafeURL("/projects/" + p.ID + "/references") }>Reference Library</a></li>
-						<li><a class="block px-3 py-1.5 hover:bg-neutral-800" href={ templ.SafeURL("/projects/" + p.ID + "/notes") }>Notes</a></li>
-						<li><a class="block px-3 py-1.5 hover:bg-neutral-800" href={ templ.SafeURL("/projects/" + p.ID + "/reviews") }>レビュー</a></li>
+						<li><a class="block px-3 py-1.5 hover:bg-neutral-800" href={ templ.SafeURL(paths.Project(p.ID, "brief")) }>Brief</a></li>
+						<li><a class="block px-3 py-1.5 hover:bg-neutral-800" href={ templ.SafeURL(paths.Project(p.ID, "scenes")) }>Scene / Shot</a></li>
+						<li><a class="block px-3 py-1.5 hover:bg-neutral-800" href={ templ.SafeURL(paths.Project(p.ID, "edit")) }>編集 / 書き出し</a></li>
+						<li><a class="block px-3 py-1.5 hover:bg-neutral-800" href={ templ.SafeURL(paths.Project(p.ID, "settings")) }>設定 / コスト</a></li>
+						<li><a class="block px-3 py-1.5 hover:bg-neutral-800" href={ templ.SafeURL(paths.Project(p.ID, "analytics")) }>制作指標</a></li>
+						<li><a class="block px-3 py-1.5 hover:bg-neutral-800" href={ templ.SafeURL(paths.Project(p.ID, "branches")) }>Branch</a></li>
+						<li><a class="block px-3 py-1.5 hover:bg-neutral-800" href={ templ.SafeURL(paths.Project(p.ID, "world-state")) }>World State</a></li>
+						<li><a class="block px-3 py-1.5 hover:bg-neutral-800" href={ templ.SafeURL(paths.Project(p.ID, "references")) }>Reference Library</a></li>
+						<li><a class="block px-3 py-1.5 hover:bg-neutral-800" href={ templ.SafeURL(paths.Project(p.ID, "notes")) }>Notes</a></li>
+						<li><a class="block px-3 py-1.5 hover:bg-neutral-800" href={ templ.SafeURL(paths.Project(p.ID, "reviews")) }>レビュー</a></li>
 						if p.SeriesID != "" {
 							<li><a class="block px-3 py-1.5 hover:bg-neutral-800" href={ templ.SafeURL("/series/" + p.SeriesID) }>Series</a></li>
 						}

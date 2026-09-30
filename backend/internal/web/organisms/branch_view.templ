@@ -2,10 +2,12 @@ package organisms
 
 import (
 	"fmt"
+	"net/url"
 	"strconv"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // BranchShotOption is a Shot a new Branch can start from.
@@ -52,7 +54,7 @@ type BranchPageData struct {
 func branchURL(id string) string { return "/branches/" + id }
 
 func branchWorldStateURL(projectID, branchID string) string {
-	return "/projects/" + projectID + "/world-state?branch_id=" + branchID
+	return paths.Project(projectID, "world-state") + "?branch_id=" + url.QueryEscape(branchID)
 }
 
 func branchShotURL(shotID string) string { return "/shots/" + shotID + "/branch" }

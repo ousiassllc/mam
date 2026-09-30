@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/layout"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
 )
@@ -9,7 +10,7 @@ import (
 templ BriefPage(csrfToken string, d organisms.BriefFormData) {
 	@layout.AppLayout("Brief: "+d.Project.Name, csrfToken) {
 		<main class="mx-auto max-w-2xl p-8">
-			<a href={ templ.SafeURL("/projects/" + d.Project.ID) } class="text-sm text-neutral-400 hover:text-neutral-100">← チャットに戻る</a>
+			@atoms.ChatBackLink(d.Project.ID)
 			<h1 class="mb-1 mt-3 text-xl font-semibold">Creative Brief</h1>
 			<p class="mb-6 text-sm text-neutral-400">{ d.Project.Name }</p>
 			@organisms.BriefForm(d)

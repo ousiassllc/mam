@@ -5,6 +5,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // TakeTracePanel is the Generation Traceability of a Take (F-27, GET /takes/:id/trace): what led
@@ -23,7 +24,7 @@ templ TakeTracePanel(t domain.TakeTrace) {
 				if t.Output == nil {
 					アーカイブ済み（動画ファイルは削除されています）
 				} else {
-					<a class="underline" href={ templ.SafeURL("/projects/" + t.ProjectID + "/assets/" + t.Output.AssetID) }>{ t.Output.FilePath }</a>
+					<a class="underline" href={ templ.SafeURL(paths.Project(t.ProjectID, "assets", t.Output.AssetID)) }>{ t.Output.FilePath }</a>
 					<span class="text-xs text-neutral-400">{ t.Output.MimeType } · { fmt.Sprintf("%d bytes", t.Output.SizeBytes) }</span>
 				}
 			</dd>

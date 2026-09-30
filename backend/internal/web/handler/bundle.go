@@ -9,6 +9,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // ExportBundle downloads the Project as a portable bundle (GET /projects/:id/bundle): a ZIP with
@@ -47,7 +48,7 @@ func ImportBundle(svc *service.BundleService) gin.HandlerFunc {
 			render(c, status, organisms.ProjectImportForm(organisms.ProjectImportFormData{Error: message}))
 			return
 		}
-		c.Header("HX-Redirect", "/projects/"+project.ID)
+		c.Header("HX-Redirect", paths.Project(project.ID))
 		c.Status(http.StatusCreated)
 	}
 }

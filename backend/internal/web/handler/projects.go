@@ -13,6 +13,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
 	"github.com/ousiassllc/mam/backend/internal/web/pages"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // maxUploadRequestBytes caps one multipart request: all attachments plus the text.
@@ -48,7 +49,7 @@ func CreateProject(svc *service.ProjectService) gin.HandlerFunc {
 		if err == nil {
 			var project domain.Project
 			if project, err = svc.Create(c.Request.Context(), service.CreateProjectInput{Content: content, Uploads: uploads, BrandTemplateID: c.PostForm("brand_template_id")}); err == nil {
-				c.Header("HX-Redirect", "/projects/"+project.ID)
+				c.Header("HX-Redirect", paths.Project(project.ID))
 				c.Status(http.StatusCreated)
 				return
 			}

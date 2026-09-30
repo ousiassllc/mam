@@ -1,10 +1,11 @@
 package organisms
 
 import (
-	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"strconv"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // BrandTemplatePanelData is the Brand Templates on the settings screen of a Project. Typed and Errors
@@ -58,14 +59,14 @@ templ BrandTemplatePanel(d BrandTemplatePanelData) {
 						<div class="flex gap-2">
 							@atoms.SmallButton(atoms.ToneNeutral, "この Project に適用", templ.Attributes{
 								"type":       "button",
-								"hx-post":    "/projects/" + d.ProjectID + "/brand-templates/" + t.ID + "/apply",
+								"hx-post":    paths.Project(d.ProjectID, "brand-templates", t.ID, "apply"),
 								"hx-target":  "#brand-constraint-list",
 								"hx-swap":    "outerHTML",
 								"hx-confirm": "このテンプレートの制約をこの Project にコピーします（同じ制約はスキップ）。よろしいですか？",
 							})
 							@atoms.SmallButton(atoms.ToneNeutral, "削除", templ.Attributes{
 								"type":       "button",
-								"hx-delete":  "/projects/" + d.ProjectID + "/brand-templates/" + t.ID,
+								"hx-delete":  paths.Project(d.ProjectID, "brand-templates", t.ID),
 								"hx-target":  "#brand-template-panel",
 								"hx-swap":    "outerHTML",
 								"hx-confirm": "このテンプレートを削除します。適用済みの Project の制約は変わりません。よろしいですか？",
@@ -77,7 +78,7 @@ templ BrandTemplatePanel(d BrandTemplatePanelData) {
 		}
 		<form
 			class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3"
-			hx-post={ "/projects/" + d.ProjectID + "/brand-templates" }
+			hx-post={ paths.Project(d.ProjectID, "brand-templates") }
 			hx-target="#brand-template-panel"
 			hx-swap="outerHTML"
 		>

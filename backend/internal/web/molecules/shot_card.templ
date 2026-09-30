@@ -5,6 +5,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // ShotCardData is a Shot with its storyboard frame and Takes.
@@ -48,7 +49,7 @@ func secondsText(d float64) string { return fmt.Sprintf("%.1f 秒", d) }
 
 // shotURL selects the Shot on the Scene page.
 func shotURL(projectID, sceneID, shotID string) string {
-	return "/projects/" + projectID + "/scenes/" + sceneID + "?shot=" + shotID
+	return paths.Project(projectID, "scenes", sceneID) + "?shot=" + shotID
 }
 
 // inspectorURL is the Shot Inspector page.

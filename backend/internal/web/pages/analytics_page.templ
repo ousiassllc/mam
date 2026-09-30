@@ -2,6 +2,7 @@ package pages
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/layout"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
 )
@@ -20,9 +21,9 @@ templ AnalyticsPage(csrfToken string, d AnalyticsPageData) {
 		<main class="mx-auto flex max-w-4xl flex-col gap-6 p-8">
 			<div>
 				if d.Project != nil {
-					<a href={ templ.SafeURL("/projects/" + d.Project.ID) } class="text-sm text-neutral-400 hover:text-neutral-100">← チャットに戻る</a>
+					@atoms.ChatBackLink(d.Project.ID)
 				} else {
-					<a href="/" class="text-sm text-neutral-400 hover:text-neutral-100">← プロジェクト一覧に戻る</a>
+					@atoms.BackLink("/", "← プロジェクト一覧に戻る")
 				}
 				<h1 class="mb-1 mt-3 text-xl font-semibold">制作指標</h1>
 				if d.Project != nil {

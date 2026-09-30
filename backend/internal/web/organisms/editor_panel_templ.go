@@ -15,6 +15,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // EditorPanelData is the editing state of a Project (GET /projects/:id/edit): Rough Cut, Editor
@@ -41,10 +42,8 @@ type EditorPanelData struct {
 	CanRender bool
 }
 
-func projectURL(projectID string) string { return "/projects/" + projectID }
-
 func editorAPIURL(projectID, branchID string) string {
-	return "/api/v1/projects/" + projectID + "/edit-timeline" + branchQuery(branchID)
+	return "/api/v1" + paths.Project(projectID, "edit-timeline") + branchQuery(branchID)
 }
 
 func branchQuery(branchID string) string {
@@ -128,7 +127,7 @@ func resolutionOptions() []string { return domain.ExportResolutions() }
 func codecOptions() []string { return domain.ExportCodecs() }
 
 func exportURL(projectID, exportID string) string {
-	return "/projects/" + projectID + "/exports/" + exportID + "/video"
+	return paths.Project(projectID, "exports", exportID, "video")
 }
 
 // EditorWorkspace hosts mam-timeline-editor (loaded from the JSON API) and the stage buttons.
@@ -168,7 +167,7 @@ func EditorWorkspace(d EditorPanelData) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.ResolveAttributeValue(editorAPIURL(d.Project.ID, d.BranchID))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 133, Col: 71}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 132, Col: 71}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
 		if templ_7745c5c3_Err != nil {
@@ -217,9 +216,9 @@ func EditorActions(d EditorPanelData) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var4 string
-		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(projectURL(d.Project.ID) + "/edit/actions" + branchQuery(d.BranchID))
+		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(paths.Project(d.Project.ID, "edit", "actions") + branchQuery(d.BranchID))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 143, Col: 79}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 142, Col: 83}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 		if templ_7745c5c3_Err != nil {
@@ -231,7 +230,7 @@ func EditorActions(d EditorPanelData) templ.Component {
 		}
 		if d.TimelineID == "" {
 			templ_7745c5c3_Err = atoms.Button(atoms.TonePrimary, "Rough Cut を作成", templ.Attributes{
-				"type": "button", "hx-post": projectURL(d.Project.ID) + "/edit/rough-cut", "hx-vals": branchVals(d.BranchID),
+				"type": "button", "hx-post": paths.Project(d.Project.ID, "edit", "rough-cut"), "hx-vals": branchVals(d.BranchID),
 				"hx-target": "#editor-actions", "hx-swap": "outerHTML", "hx-disabled-elt": "this",
 			}).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
@@ -239,7 +238,7 @@ func EditorActions(d EditorPanelData) templ.Component {
 			}
 		} else {
 			templ_7745c5c3_Err = atoms.Button(atoms.ToneNeutral, "Rough Cut を作り直す", templ.Attributes{
-				"type": "button", "hx-post": projectURL(d.Project.ID) + "/edit/rough-cut", "hx-vals": branchVals(d.BranchID),
+				"type": "button", "hx-post": paths.Project(d.Project.ID, "edit", "rough-cut"), "hx-vals": branchVals(d.BranchID),
 				"hx-target": "#editor-actions", "hx-swap": "outerHTML", "hx-disabled-elt": "this",
 				"hx-confirm": "Rough Cut を作り直します。手動の編集は新しい版に置き換わります。よろしいですか？",
 			}).Render(ctx, templ_7745c5c3_Buffer)
@@ -253,7 +252,7 @@ func EditorActions(d EditorPanelData) templ.Component {
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d クリップ / %.1f 秒", d.Clips, d.Duration))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 162, Col: 108}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 161, Col: 108}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -298,7 +297,7 @@ func EditorActions(d EditorPanelData) templ.Component {
 				var templ_7745c5c3_Var6 string
 				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(clipPosition(f.ClipIndex))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 181, Col: 73}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 180, Col: 73}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 				if templ_7745c5c3_Err != nil {
@@ -311,7 +310,7 @@ func EditorActions(d EditorPanelData) templ.Component {
 				var templ_7745c5c3_Var7 string
 				templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(f.Issue)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 181, Col: 92}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 180, Col: 92}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 				if templ_7745c5c3_Err != nil {
@@ -324,7 +323,7 @@ func EditorActions(d EditorPanelData) templ.Component {
 				var templ_7745c5c3_Var8 string
 				templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(f.Action)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 181, Col: 109}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 180, Col: 109}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 				if templ_7745c5c3_Err != nil {
@@ -342,7 +341,7 @@ func EditorActions(d EditorPanelData) templ.Component {
 					var templ_7745c5c3_Var9 string
 					templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(" 追加 Shot: " + needLabel(f.Need))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 183, Col: 98}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 182, Col: 98}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 					if templ_7745c5c3_Err != nil {
@@ -388,7 +387,7 @@ func EditorActions(d EditorPanelData) templ.Component {
 			var templ_7745c5c3_Var10 string
 			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("追加 Shot を %d 件生成中です。できたら自動で編集タイムラインに入ります。", d.PendingShots))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 199, Col: 193}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 198, Col: 193}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {
@@ -404,7 +403,7 @@ func EditorActions(d EditorPanelData) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		templ_7745c5c3_Err = atoms.Button(atoms.ToneNeutral, "音声を作成", templ.Attributes{
-			"type": "button", "hx-post": projectURL(d.Project.ID) + "/audio/generate", "hx-vals": branchVals(d.BranchID),
+			"type": "button", "hx-post": paths.Project(d.Project.ID, "audio", "generate"), "hx-vals": branchVals(d.BranchID),
 			"hx-target": "#editor-actions", "hx-swap": "outerHTML", "hx-disabled-elt": "this", "disabled": !d.CanAudio(),
 		}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
@@ -418,7 +417,7 @@ func EditorActions(d EditorPanelData) templ.Component {
 			var templ_7745c5c3_Var11 string
 			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(audioSummary(d.Audio))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 214, Col: 86}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 213, Col: 86}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {
@@ -446,7 +445,7 @@ func EditorActions(d EditorPanelData) templ.Component {
 				var templ_7745c5c3_Var12 string
 				templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(audioSceneText(s))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 220, Col: 29}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 219, Col: 29}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 				if templ_7745c5c3_Err != nil {
@@ -475,7 +474,7 @@ func EditorActions(d EditorPanelData) templ.Component {
 				var templ_7745c5c3_Var13 string
 				templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(audioSkippedText(s))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 227, Col: 31}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 226, Col: 31}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 				if templ_7745c5c3_Err != nil {
@@ -502,9 +501,9 @@ func EditorActions(d EditorPanelData) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var14 string
-		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.ResolveAttributeValue(projectURL(d.Project.ID) + "/audio/voices")
+		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.ResolveAttributeValue(paths.Project(d.Project.ID, "audio", "voices"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 235, Col: 56}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 234, Col: 60}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var14)
 		if templ_7745c5c3_Err != nil {
@@ -517,7 +516,7 @@ func EditorActions(d EditorPanelData) templ.Component {
 		var templ_7745c5c3_Var15 string
 		templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.ResolveAttributeValue(branchVals(d.BranchID))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 240, Col: 36}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 239, Col: 36}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var15)
 		if templ_7745c5c3_Err != nil {
@@ -561,7 +560,7 @@ func EditorActions(d EditorPanelData) templ.Component {
 				var templ_7745c5c3_Var16 string
 				templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(v.Speaker + "（クローン音声）")
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 262, Col: 50}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 261, Col: 50}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 				if templ_7745c5c3_Err != nil {
@@ -582,7 +581,7 @@ func EditorActions(d EditorPanelData) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		templ_7745c5c3_Err = atoms.Button(atoms.ToneNeutral, "Final QC を実行", templ.Attributes{
-			"type": "button", "hx-post": projectURL(d.Project.ID) + "/final-qc",
+			"type": "button", "hx-post": paths.Project(d.Project.ID, "final-qc"),
 			"hx-target": "#editor-actions", "hx-swap": "outerHTML", "hx-disabled-elt": "this", "disabled": !d.CanFinalQC(),
 		}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
@@ -611,7 +610,7 @@ func EditorActions(d EditorPanelData) templ.Component {
 				var templ_7745c5c3_Var17 string
 				templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(f.Message)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 281, Col: 21}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 280, Col: 21}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 				if templ_7745c5c3_Err != nil {
@@ -632,9 +631,9 @@ func EditorActions(d EditorPanelData) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var18 string
-		templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.ResolveAttributeValue(projectURL(d.Project.ID) + "/export")
+		templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.ResolveAttributeValue(paths.Project(d.Project.ID, "export"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 289, Col: 50}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 288, Col: 51}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var18)
 		if templ_7745c5c3_Err != nil {
@@ -664,7 +663,7 @@ func EditorActions(d EditorPanelData) templ.Component {
 				var templ_7745c5c3_Var20 string
 				templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.ResolveAttributeValue(o)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 301, Col: 24}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 300, Col: 24}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var20)
 				if templ_7745c5c3_Err != nil {
@@ -687,7 +686,7 @@ func EditorActions(d EditorPanelData) templ.Component {
 				var templ_7745c5c3_Var21 string
 				templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(o)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 301, Col: 72}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 300, Col: 72}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 				if templ_7745c5c3_Err != nil {
@@ -730,7 +729,7 @@ func EditorActions(d EditorPanelData) templ.Component {
 				var templ_7745c5c3_Var23 string
 				templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.ResolveAttributeValue(o)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 311, Col: 24}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 310, Col: 24}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var23)
 				if templ_7745c5c3_Err != nil {
@@ -753,7 +752,7 @@ func EditorActions(d EditorPanelData) templ.Component {
 				var templ_7745c5c3_Var24 string
 				templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(o)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 311, Col: 71}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 310, Col: 71}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 				if templ_7745c5c3_Err != nil {
@@ -796,7 +795,7 @@ func EditorActions(d EditorPanelData) templ.Component {
 				var templ_7745c5c3_Var26 string
 				templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.ResolveAttributeValue(o)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 321, Col: 24}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 320, Col: 24}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var26)
 				if templ_7745c5c3_Err != nil {
@@ -819,7 +818,7 @@ func EditorActions(d EditorPanelData) templ.Component {
 				var templ_7745c5c3_Var27 string
 				templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(o)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 321, Col: 66}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 320, Col: 66}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
 				if templ_7745c5c3_Err != nil {
@@ -863,7 +862,7 @@ func EditorActions(d EditorPanelData) templ.Component {
 				var templ_7745c5c3_Var28 templ.SafeURL
 				templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(exportURL(d.Project.ID, e.ID)))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 331, Col: 95}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 330, Col: 95}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
 				if templ_7745c5c3_Err != nil {
@@ -876,7 +875,7 @@ func EditorActions(d EditorPanelData) templ.Component {
 				var templ_7745c5c3_Var29 string
 				templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(e.ExportedAt.Local().Format("2006-01-02 15:04") + " の書き出し")
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 331, Col: 177}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 330, Col: 177}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
 				if templ_7745c5c3_Err != nil {
@@ -889,7 +888,7 @@ func EditorActions(d EditorPanelData) templ.Component {
 				var templ_7745c5c3_Var30 string
 				templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(e.AspectRatio + " / " + e.Resolution + " / " + e.Codec)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 332, Col: 102}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/editor_panel.templ`, Line: 331, Col: 102}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
 				if templ_7745c5c3_Err != nil {

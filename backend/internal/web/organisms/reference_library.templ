@@ -5,6 +5,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // ReferenceLibraryData is the state of the Reference Library view (reference_library_page).
@@ -16,7 +17,7 @@ type ReferenceLibraryData struct {
 }
 
 func referenceURL(projectID, id string) string {
-	return "/projects/" + projectID + "/references/" + id
+	return paths.Project(projectID, "references", id)
 }
 
 func sourceLabel(s domain.ReferenceSource) string {
@@ -32,7 +33,7 @@ templ ReferenceLibrary(d ReferenceLibraryData) {
 	<div id="reference-library" class="flex flex-col gap-6">
 		<form
 			class="flex flex-wrap items-end gap-2"
-			hx-get={ "/projects/" + d.Project.ID + "/references" }
+			hx-get={ paths.Project(d.Project.ID, "references") }
 			hx-target="#reference-library"
 			hx-swap="outerHTML"
 		>
@@ -75,7 +76,7 @@ templ ReferenceLibrary(d ReferenceLibraryData) {
 				for _, it := range d.Items {
 					<li class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3">
 						<img
-							src={ "/projects/" + d.Project.ID + "/assets/" + it.AssetID }
+							src={ paths.Project(d.Project.ID, "assets", it.AssetID) }
 							alt={ it.Name }
 							loading="lazy"
 							class="aspect-video w-full rounded object-contain bg-neutral-900"
@@ -104,7 +105,7 @@ templ ReferenceLibrary(d ReferenceLibraryData) {
 		}
 		<form
 			class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3"
-			hx-post={ "/projects/" + d.Project.ID + "/references" }
+			hx-post={ paths.Project(d.Project.ID, "references") }
 			hx-encoding="multipart/form-data"
 			hx-target="#reference-library"
 			hx-swap="outerHTML"

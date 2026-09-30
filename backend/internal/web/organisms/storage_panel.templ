@@ -3,6 +3,7 @@ package organisms
 import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // StoragePanelData is the disk usage of a Project.
@@ -48,7 +49,7 @@ templ StoragePanel(d StoragePanelData) {
 		</dl>
 		if hasUnneeded(d.Storage) {
 			<form
-				hx-post={ "/projects/" + d.ProjectID + "/storage/archive-unneeded" }
+				hx-post={ paths.Project(d.ProjectID, "storage", "archive-unneeded") }
 				hx-target="#storage-panel"
 				hx-swap="outerHTML"
 				hx-confirm="不要な Take の動画ファイルを削除します。よろしいですか？"
@@ -74,7 +75,7 @@ templ StoragePanel(d StoragePanelData) {
 						if t.Status != domain.TakeSelected {
 							@atoms.SmallButton(atoms.ToneNeutral, "アーカイブ", templ.Attributes{
 								"type":       "button",
-								"hx-post":    "/projects/" + d.ProjectID + "/takes/" + t.TakeID + "/archive",
+								"hx-post":    paths.Project(d.ProjectID, "takes", t.TakeID, "archive"),
 								"hx-target":  "#storage-panel",
 								"hx-swap":    "outerHTML",
 								"hx-confirm": "この Take の動画ファイルを削除します。よろしいですか？",

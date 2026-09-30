@@ -9,10 +9,11 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 import (
-	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"strconv"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // BrandTemplatePanelData is the Brand Templates on the settings screen of a Project. Typed and Errors
@@ -55,7 +56,7 @@ func BrandTemplateSelect(id string, templates []domain.BrandTemplate) templ.Comp
 			var templ_7745c5c3_Var2 string
 			templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.ResolveAttributeValue(id)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/brand_template_panel.templ`, Line: 23, Col: 70}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/brand_template_panel.templ`, Line: 24, Col: 70}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
 			if templ_7745c5c3_Err != nil {
@@ -89,7 +90,7 @@ func BrandTemplateSelect(id string, templates []domain.BrandTemplate) templ.Comp
 					var templ_7745c5c3_Var4 string
 					templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(t.ID)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/brand_template_panel.templ`, Line: 31, Col: 25}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/brand_template_panel.templ`, Line: 32, Col: 25}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 					if templ_7745c5c3_Err != nil {
@@ -102,7 +103,7 @@ func BrandTemplateSelect(id string, templates []domain.BrandTemplate) templ.Comp
 					var templ_7745c5c3_Var5 string
 					templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(t.Name)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/brand_template_panel.templ`, Line: 31, Col: 36}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/brand_template_panel.templ`, Line: 32, Col: 36}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 					if templ_7745c5c3_Err != nil {
@@ -115,7 +116,7 @@ func BrandTemplateSelect(id string, templates []domain.BrandTemplate) templ.Comp
 					var templ_7745c5c3_Var6 string
 					templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(len(t.Constraints)))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/brand_template_panel.templ`, Line: 31, Col: 75}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/brand_template_panel.templ`, Line: 32, Col: 75}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 					if templ_7745c5c3_Err != nil {
@@ -190,7 +191,7 @@ func BrandTemplatePanel(d BrandTemplatePanelData) templ.Component {
 				var templ_7745c5c3_Var8 string
 				templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(t.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/brand_template_panel.templ`, Line: 50, Col: 41}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/brand_template_panel.templ`, Line: 51, Col: 41}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 				if templ_7745c5c3_Err != nil {
@@ -203,7 +204,7 @@ func BrandTemplatePanel(d BrandTemplatePanelData) templ.Component {
 				var templ_7745c5c3_Var9 string
 				templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(len(t.Constraints)))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/brand_template_panel.templ`, Line: 51, Col: 85}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/brand_template_panel.templ`, Line: 52, Col: 85}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 				if templ_7745c5c3_Err != nil {
@@ -221,7 +222,7 @@ func BrandTemplatePanel(d BrandTemplatePanelData) templ.Component {
 					var templ_7745c5c3_Var10 string
 					templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(c.Type.Label())
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/brand_template_panel.templ`, Line: 54, Col: 29}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/brand_template_panel.templ`, Line: 55, Col: 29}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 					if templ_7745c5c3_Err != nil {
@@ -234,7 +235,7 @@ func BrandTemplatePanel(d BrandTemplatePanelData) templ.Component {
 					var templ_7745c5c3_Var11 string
 					templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(string(c.Level))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/brand_template_panel.templ`, Line: 54, Col: 51}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/brand_template_panel.templ`, Line: 55, Col: 51}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 					if templ_7745c5c3_Err != nil {
@@ -247,7 +248,7 @@ func BrandTemplatePanel(d BrandTemplatePanelData) templ.Component {
 					var templ_7745c5c3_Var12 string
 					templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(c.Text)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/brand_template_panel.templ`, Line: 54, Col: 66}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/brand_template_panel.templ`, Line: 55, Col: 66}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 					if templ_7745c5c3_Err != nil {
@@ -264,7 +265,7 @@ func BrandTemplatePanel(d BrandTemplatePanelData) templ.Component {
 				}
 				templ_7745c5c3_Err = atoms.SmallButton(atoms.ToneNeutral, "この Project に適用", templ.Attributes{
 					"type":       "button",
-					"hx-post":    "/projects/" + d.ProjectID + "/brand-templates/" + t.ID + "/apply",
+					"hx-post":    paths.Project(d.ProjectID, "brand-templates", t.ID, "apply"),
 					"hx-target":  "#brand-constraint-list",
 					"hx-swap":    "outerHTML",
 					"hx-confirm": "このテンプレートの制約をこの Project にコピーします（同じ制約はスキップ）。よろしいですか？",
@@ -274,7 +275,7 @@ func BrandTemplatePanel(d BrandTemplatePanelData) templ.Component {
 				}
 				templ_7745c5c3_Err = atoms.SmallButton(atoms.ToneNeutral, "削除", templ.Attributes{
 					"type":       "button",
-					"hx-delete":  "/projects/" + d.ProjectID + "/brand-templates/" + t.ID,
+					"hx-delete":  paths.Project(d.ProjectID, "brand-templates", t.ID),
 					"hx-target":  "#brand-template-panel",
 					"hx-swap":    "outerHTML",
 					"hx-confirm": "このテンプレートを削除します。適用済みの Project の制約は変わりません。よろしいですか？",
@@ -297,9 +298,9 @@ func BrandTemplatePanel(d BrandTemplatePanelData) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var13 string
-		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.ResolveAttributeValue("/projects/" + d.ProjectID + "/brand-templates")
+		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.ResolveAttributeValue(paths.Project(d.ProjectID, "brand-templates"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/brand_template_panel.templ`, Line: 80, Col: 60}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/brand_template_panel.templ`, Line: 81, Col: 58}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var13)
 		if templ_7745c5c3_Err != nil {
@@ -328,7 +329,7 @@ func BrandTemplatePanel(d BrandTemplatePanelData) templ.Component {
 			var templ_7745c5c3_Var14 string
 			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(msg)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/brand_template_panel.templ`, Line: 94, Col: 54}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/brand_template_panel.templ`, Line: 95, Col: 54}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 			if templ_7745c5c3_Err != nil {

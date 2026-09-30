@@ -6,6 +6,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // SceneItem is one entry of the Scene list.
@@ -35,7 +36,7 @@ type SceneInput struct{ Title, Location, Time, Objective string }
 type ShotInput struct{ Objective, DurationSeconds string }
 
 func sceneURL(projectID, sceneID string) string {
-	return "/projects/" + projectID + "/scenes/" + sceneID
+	return paths.Project(projectID, "scenes", sceneID)
 }
 
 func sceneSummary(s domain.Scene) string {
@@ -118,7 +119,7 @@ templ fieldError(errs map[string]string, field string) {
 templ sceneForm(d SceneShotData) {
 	<form
 		class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3"
-		hx-post={ "/projects/" + d.Project.ID + "/scenes" }
+		hx-post={ paths.Project(d.Project.ID, "scenes") }
 		hx-target="#scene-shot-view"
 		hx-swap="outerHTML"
 	>

@@ -11,6 +11,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
 	"github.com/ousiassllc/mam/backend/internal/web/pages"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 func seriesData(v service.SeriesView) organisms.SeriesViewData {
@@ -56,7 +57,7 @@ func CreateEpisode(svc *service.SeriesService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		c.Header("HX-Redirect", "/projects/"+project.ID)
+		c.Header("HX-Redirect", paths.Project(project.ID))
 		c.Status(http.StatusCreated)
 	}
 }

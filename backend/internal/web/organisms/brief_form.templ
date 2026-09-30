@@ -1,11 +1,12 @@
 package organisms
 
 import (
-	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // BriefFormData is the state of the Brief editing form. Errors are keyed by form field name.
@@ -38,7 +39,7 @@ templ BriefForm(d BriefFormData) {
 	<form
 		id="brief-form"
 		class="flex flex-col gap-4"
-		hx-put={ "/projects/" + d.Project.ID + "/brief" }
+		hx-put={ paths.Project(d.Project.ID, "brief") }
 		hx-target="this"
 		hx-swap="outerHTML"
 	>
