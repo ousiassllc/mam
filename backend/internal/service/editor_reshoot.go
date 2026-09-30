@@ -13,10 +13,12 @@ import (
 
 // RequestAdditionalShot asks the Director for the additional Shots the Editor Judge of the Edit
 // Timeline version found missing (POST /edit-timelines/:id/request-additional-shot, F-19): it adds
-// each as a Shot of the Project, records the request as the next round of the Editor → Reshoot
-// Loop and starts generating them. The Project goes to GENERATING; once every Shot of the round
-// has its Selected Take they are put into the Edit Timeline and the Project is back in EDITING
-// (ResumeReshoots). The rounds are limited by the Retry Policy, shared with the Repair / Retake Loop.
+// each as a Shot of the Project and starts generating them. The request is the next round of the
+// Editor → Reshoot Loop only when every Shot was queued; the Project then goes to GENERATING.
+// A Shot that fails to start is removed and the Project stays in EDIT_JUDGING, so the same version
+// can be asked again. Once every Shot of the round has its Selected Take they are put into the
+// Edit Timeline and the Project is back in EDITING (ResumeReshoots). The rounds are limited by
+// the Retry Policy, shared with the Repair / Retake Loop.
 func (s *EditorService) RequestAdditionalShot(ctx context.Context, id string) (EditorView, error) {
 	ver, err := s.editors.GetEditTimeline(ctx, id)
 	if err != nil {
@@ -58,6 +60,33 @@ func (s *EditorService) requestShots(ctx context.Context, ver domain.EditTimelin
 	if err != nil {
 		return EditorView{}, err
 	}
+	// Queue every Shot before the round exists. The round stays pending only when every enqueue
+	// succeeds, so a budget or routing failure does not block the next request.
+	var (
+		failed   []repository.NewReshoot
+		startErr error
+		started  int
+	)
+	for _, r := range reqs {
+		if _, err := s.generation.gen.Start(ctx, r.ShotID, ""); err != nil {
+			failed = append(failed, r)
+			if startErr == nil {
+				startErr = err
+			}
+			continue
+		}
+		started++
+	}
+	if startErr != nil {
+		ids := make([]string, len(failed))
+		for i, r := range failed {
+			ids[i] = r.ShotID
+		}
+		if err := s.plans.RemoveShots(ctx, ids); err != nil {
+			s.logger.Error("remove additional shots that failed to start", "err", err)
+		}
+		return EditorView{}, additionalShotStartError(failed, started, startErr)
+	}
 	if _, err := s.editors.CreateReshootRound(ctx, ver.ID, reqs); err != nil {
 		return EditorView{}, notFound(err)
 	}
@@ -69,16 +98,25 @@ func (s *EditorService) requestShots(ctx context.Context, ver domain.EditTimelin
 		lines[i] = fmt.Sprintf("・%s（%.1f 秒）: %s", clipKindLabel(r.Kind), r.DurationSeconds, r.Objective)
 	}
 	s.announce(ctx, projectID, fmt.Sprintf("Director に追加 Shot を %d 件要求しました（Editor → Reshoot Loop %d 回目）。生成できたら編集に戻ります。\n%s", len(reqs), rounds+1, strings.Join(lines, "\n")))
-	var startErr error
-	for _, r := range reqs {
-		if _, err := s.generation.gen.Start(ctx, r.ShotID, ""); err != nil && startErr == nil {
-			startErr = err
-		}
-	}
-	if startErr != nil {
-		return EditorView{}, mapGenerationError(startErr)
-	}
 	return s.View(ctx, projectID, branchID)
+}
+
+// additionalShotStartError reports the Shots whose generation did not start. Shots that did start
+// keep running; they are not part of a round unless every Shot of the call was queued.
+func additionalShotStartError(failed []repository.NewReshoot, started int, err error) error {
+	names := make([]string, len(failed))
+	for i, r := range failed {
+		name := strings.TrimSpace(r.Objective)
+		if name == "" {
+			name = r.ShotID
+		}
+		names[i] = name
+	}
+	msg := fmt.Sprintf("追加 Shot の生成を始められませんでした（%s）", strings.Join(names, "、"))
+	if started > 0 {
+		msg += fmt.Sprintf("。始められた %d 件の生成はそのまま続けます", started)
+	}
+	return fmt.Errorf("%s: %w", msg, mapGenerationError(err))
 }
 
 // readyToRequestShots checks that the Judge found Shots missing in the latest version, that the

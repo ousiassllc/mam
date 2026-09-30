@@ -157,3 +157,38 @@ func TestEditorReshootLoop_StopsAtTheRetryPolicyLimitAndEscalates(t *testing.T) 
 	assert.ErrorIs(t, err, service.ErrConflict, "the escalation has to be answered first")
 	assert.Equal(t, 2, f.trunkShots(t))
 }
+
+// A generation that cannot start (the Shot ceiling cannot buy one Take) must not leave the round
+// pending: the same timeline can be asked again once the budget allows it.
+func TestEditorReshootLoop_StartFailureDoesNotLeaveAPendingRound(t *testing.T) {
+	f := newGenFixture(t, true)
+	f.llm.extractor = extractAnswer
+	f.llm.planner = func(string) string {
+		return `{"shot_objective":"Character looks back, surprised","duration":"2.0s","camera":{"lens":"35mm","framing":"close"},"lighting":{"mood":"cold blue"},"continuity":{"start_from_previous_final_state":true}}`
+	}
+	f.buildReferencePack(t)
+	f.generateAndWait(t, f.shotID, 2)
+	f.selectTakeOf(t, f.shotID)
+	f.execSQL(t, `UPDATE project SET production_template = 'drama', state = 'VISUAL_DESIGN' WHERE id = ?`, f.projectID)
+	ctx := context.Background()
+	view, err := f.svc.Editor.RoughCut(ctx, f.projectID, "")
+	require.NoError(t, err)
+	require.NotNil(t, view.Timeline)
+	timelineID := view.Timeline.ID
+	f.llm.editor = needReaction
+
+	tiny := 0.01
+	f.setBudget(t, nil, &tiny)
+	_, err = f.svc.Editor.JudgeTimeline(ctx, timelineID)
+	require.ErrorIs(t, err, service.ErrBudgetExceeded)
+	assert.NotContains(t, err.Error(), "まだできていません")
+	assert.Equal(t, domain.StateEditJudging, f.state(t))
+	assert.Zero(t, f.count(t, `SELECT COUNT(*) FROM reshoot_request WHERE status = 'requested'`))
+	assert.Equal(t, 1, f.trunkShots(t), "a Shot whose generation never started is not left in the Project")
+
+	f.setBudget(t, nil, nil)
+	_, err = f.svc.Editor.RequestAdditionalShot(ctx, timelineID)
+	require.NoError(t, err, "the same timeline can ask again after the start failure")
+	assert.Equal(t, domain.StateGenerating, f.state(t))
+	assert.Equal(t, 1, f.count(t, `SELECT COUNT(*) FROM reshoot_request WHERE project_id = ? AND status = 'requested'`, f.projectID))
+}
