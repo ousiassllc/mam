@@ -54,7 +54,7 @@ func NewCredentialService(store credential.Store) *CredentialService {
 func (s *CredentialService) Status() ([]CredentialStatus, error) {
 	out := make([]CredentialStatus, 0, len(CredentialProviders))
 	for _, p := range CredentialProviders {
-		ok, err := s.store.Has(p.ID)
+		ok, err := s.Configured(p.ID)
 		if err != nil {
 			return nil, err
 		}
