@@ -21,3 +21,8 @@ func (a *Agent) GoShadow(ctx context.Context, done *sync.WaitGroup, actionID str
 func (a *Agent) WithinPolicy(ctx context.Context, shot repository.ShotRef, eff domain.EffectivePolicy, auto bool, retries int, res domain.JudgeResult, takeID string) (bool, error) {
 	return a.withinPolicy(ctx, shot, eff, auto, retries, generation.Regeneration{}, res, takeID)
 }
+
+// Decide exposes decide to the tests.
+func (a *Agent) Decide(ctx context.Context, s Situation, candidates []domain.RepairAction) (domain.RepairAction, string, domain.RepairDecider, []string) {
+	return a.decide(ctx, s, candidates)
+}
