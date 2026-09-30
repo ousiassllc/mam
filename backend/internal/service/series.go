@@ -22,6 +22,8 @@ type SeriesView struct {
 	Canon    domain.SeriesCanon
 	Versions []domain.SeriesVersion
 	Episodes []domain.Project
+	// Templates are the Brand Templates a new Episode can start from.
+	Templates []domain.BrandTemplate
 }
 
 // View returns the Series, its current canon, the history of the canon (newest first) and its
@@ -43,7 +45,11 @@ func (s *SeriesService) View(ctx context.Context, seriesID string) (SeriesView, 
 	if err != nil {
 		return SeriesView{}, err
 	}
-	return SeriesView{Series: series, Canon: canon, Versions: versions, Episodes: episodes}, nil
+	templates, err := s.Templates(ctx)
+	if err != nil {
+		return SeriesView{}, err
+	}
+	return SeriesView{Series: series, Canon: canon, Versions: versions, Episodes: episodes, Templates: templates}, nil
 }
 
 // Create makes a Series (POST /series). With fromProjectID the Character, Product and Location of
@@ -77,15 +83,19 @@ func (s *SeriesService) Create(ctx context.Context, name, fromProjectID string) 
 // CreateEpisode starts the next Episode of the Series from its canon (POST /series/:id/episodes)
 // and returns the new Project. previousEpisodeID, when set, must be an Episode of the same Series
 // (else a ValidationError): the new Episode then starts from that Episode's final World State.
-func (s *SeriesService) CreateEpisode(ctx context.Context, seriesID, previousEpisodeID string) (domain.Project, error) {
+// brandTemplateID, when set, copies that Brand Template's constraints into the Episode (an unknown one
+// is a ValidationError).
+func (s *SeriesService) CreateEpisode(ctx context.Context, seriesID, previousEpisodeID, brandTemplateID string) (domain.Project, error) {
 	project := domain.Project{
 		ID: domain.NewID(), State: domain.StateDraft, Mode: domain.ModeAuto,
 		ConfirmationLevel:  domain.ConfirmKeyCheck,
 		ProductionTemplate: domain.TemplateProductCM,
 		QualityPolicy:      domain.QualityBalanced,
 	}
-	_, err := s.series.CreateEpisode(ctx, seriesID, strings.TrimSpace(previousEpisodeID), project)
+	_, err := s.series.CreateEpisode(ctx, seriesID, strings.TrimSpace(previousEpisodeID), strings.TrimSpace(brandTemplateID), project)
 	switch {
+	case errors.Is(err, repository.ErrTemplateNotFound):
+		return domain.Project{}, invalidTemplate()
 	case errors.Is(err, repository.ErrNotInSeries):
 		return domain.Project{}, invalid("previous_episode_id", "前の話はこの Series の Episode を指定してください")
 	case err != nil:

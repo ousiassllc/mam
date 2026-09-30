@@ -322,3 +322,44 @@ func (s ShotSpec) BrandText() string {
 	parts = append(parts, s.Constraints...)
 	return strings.Join(parts, "\n")
 }
+
+// MaxBrandTemplateNameRunes bounds the name of a Brand Template.
+const MaxBrandTemplateNameRunes = 100
+
+// BrandTemplate is a named set of Brand / Safety Constraints kept apart from every Project (F-23,
+// M3). Applying it to a Project copies the constraints (BrandConstraints.MissingFrom): the Project's
+// constraints and the template change independently, and editing a template never reaches a Project
+// that has already used it. The constraints have no ProjectID.
+type BrandTemplate struct {
+	ID          string
+	Name        string
+	Constraints BrandConstraints
+	CreatedAt   time.Time
+}
+
+// ValidateBrandTemplateName collapses white space and checks the name is 1..MaxBrandTemplateNameRunes
+// runes.
+func ValidateBrandTemplateName(name string) (string, bool) {
+	name = strings.Join(strings.Fields(name), " ")
+	n := utf8.RuneCountInString(name)
+	return name, n >= 1 && n <= MaxBrandTemplateNameRunes
+}
+
+// MissingFrom returns the constraints of cs that have no equal (same type, level and text) in have:
+// what applying a template to a Project with the constraints have has to add.
+func (cs BrandConstraints) MissingFrom(have BrandConstraints) BrandConstraints {
+	var out BrandConstraints
+	for _, c := range cs {
+		dup := false
+		for _, h := range have {
+			if h.Type == c.Type && h.Level == c.Level && h.Text == c.Text {
+				dup = true
+				break
+			}
+		}
+		if !dup {
+			out = append(out, c)
+		}
+	}
+	return out
+}

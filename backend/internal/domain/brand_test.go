@@ -95,3 +95,28 @@ func TestShotSpec_BrandTextCoversWhatTheShotShowsAndSays(t *testing.T) {
 		assert.Contains(t, got, want)
 	}
 }
+
+func TestValidateBrandTemplateName_CollapsesWhiteSpaceAndBoundsTheLength(t *testing.T) {
+	got, ok := domain.ValidateBrandTemplateName("  ブランド　A \n標準 ")
+	assert.True(t, ok)
+	assert.Equal(t, "ブランド A 標準", got)
+	_, ok = domain.ValidateBrandTemplateName("  ")
+	assert.False(t, ok)
+	_, ok = domain.ValidateBrandTemplateName(strings.Repeat("あ", domain.MaxBrandTemplateNameRunes+1))
+	assert.False(t, ok)
+	_, ok = domain.ValidateBrandTemplateName(strings.Repeat("あ", domain.MaxBrandTemplateNameRunes))
+	assert.True(t, ok)
+}
+
+func TestBrandConstraints_MissingFromMatchesOnTypeLevelAndText(t *testing.T) {
+	a := domain.BrandConstraint{Type: domain.BrandForbidden, Level: domain.EnforceLock, Text: "x"}
+	tpl := cs(a,
+		domain.BrandConstraint{Type: domain.BrandForbidden, Level: domain.EnforceAdvisory, Text: "x"},
+		domain.BrandConstraint{Type: domain.BrandLogoRule, Level: domain.EnforceLock, Text: "x"})
+	have := cs(domain.BrandConstraint{ID: "own", Type: a.Type, Level: a.Level, Text: a.Text})
+
+	missing := tpl.MissingFrom(have)
+	require.Len(t, missing, 2)
+	assert.Equal(t, domain.EnforceAdvisory, missing[0].Level, "a different level is a different constraint")
+	assert.Equal(t, domain.BrandLogoRule, missing[1].Type)
+}

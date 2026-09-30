@@ -38,9 +38,14 @@ func SettingsPage(svc *service.PolicyService, brands *service.BrandService) gin.
 			pageError(c, err)
 			return
 		}
+		templates, err := brands.TemplatesFor(c.Request.Context(), c.Param("id"))
+		if err != nil {
+			pageError(c, err)
+			return
+		}
 		data := pages.SettingsPageData{
 			Policy: policyFormData(view.PolicyView, nil, nil, false), Cost: view.Cost, Storage: storagePanelData(view.Storage),
-			Brand: brandListData(brand),
+			Brand: brandListData(brand), Templates: brandTemplatePanelData(templates),
 		}
 		if isHTMX(c) {
 			render(c, http.StatusOK, pages.SettingsBody(data))

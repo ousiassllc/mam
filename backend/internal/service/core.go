@@ -37,6 +37,8 @@ type core struct {
 	notes *NoteService
 	// branches are the Branches of the Project (F-17).
 	branches *repository.BranchRepository
+	// brandTemplates are the Brand Templates a new Project or Episode can start from (F-23, M3).
+	brandTemplates *repository.BrandTemplateRepository
 	// analytics records the human interventions the MVP Success Metrics count (spec/spec.md §28).
 	analytics *repository.AnalyticsRepository
 }

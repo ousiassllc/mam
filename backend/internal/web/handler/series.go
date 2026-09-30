@@ -14,7 +14,7 @@ import (
 )
 
 func seriesData(v service.SeriesView) organisms.SeriesViewData {
-	return organisms.SeriesViewData{Series: v.Series, Canon: v.Canon, Versions: v.Versions, Episodes: v.Episodes}
+	return organisms.SeriesViewData{Series: v.Series, Canon: v.Canon, Versions: v.Versions, Episodes: v.Episodes, Templates: v.Templates}
 }
 
 // SeriesPage renders a Series (GET /series/:id): the full page, or the view fragment for HTMX.
@@ -48,10 +48,10 @@ func CreateSeries(svc *service.SeriesService) gin.HandlerFunc {
 }
 
 // CreateEpisode starts the next Episode of a Series (POST /series/:id/episodes, form field
-// previous_episode_id) and redirects to the new Project (HX-Redirect, 201).
+// previous_episode_id and optional brand_template_id) and redirects to the new Project (HX-Redirect, 201).
 func CreateEpisode(svc *service.SeriesService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		project, err := svc.CreateEpisode(c.Request.Context(), c.Param("id"), c.PostForm("previous_episode_id"))
+		project, err := svc.CreateEpisode(c.Request.Context(), c.Param("id"), c.PostForm("previous_episode_id"), c.PostForm("brand_template_id"))
 		if err != nil {
 			toast(c, err)
 			return
