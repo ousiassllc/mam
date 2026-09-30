@@ -742,7 +742,24 @@ PASS
 - Max retries per Shot は、新しい Take を作った再生成系の Repair の数で数える。Max cost per Shot は Shot の予算上限（`shot_budget_ceiling`）で、次の再生成の見積りが上限を超えるなら再生成しない。上限に達したら Escalation（チャットのカード）で人間に判断を求める
 - Minimum acceptance score は、Judge が付けた Production Template の軸別点数の総合点と各軸の最低点に適用する。LOCK 違反・Critical constraints・上限判定は決定的ルールで行い、LLM や Jev を経由しない
 - 戦略は決定的ルールで候補を絞り、決まらないときだけ Repair Agent（LLM）が選ぶ（`face_identity_drift` は Reference Reinforcement を優先）。Jev は M1 ではシャドー実行のみ（`spec/architecture/model-adapters.md` §4.5・§11）
-- Partial Regeneration は M1 では、Judge の `preserve`（良かった部分）を保ったまま Shot 全体を作り直す。時間範囲だけを再生成してつなぐ処理は MVP 2（§27）
+- Partial Regeneration は、Judge の `preserve`（良かった部分）とLOCK された部分を保ったまま Shot 全体を作り直す（M1・実装済み）。M2 ではこれに、問題のあった時間範囲だけを差し替える「つなぎ込み」を加える。動画生成モデルはクリップ全体しか作れないため、区間だけの再生成は「Shot 全体を新しい Take として作る → 修復元の Take の問題区間だけをその Take の同じ区間に差し替えた Take を、もう 1 本新しい Take として足す」ことで実現する。判定は §13 の下の「Partial Regeneration の範囲（M1 と M2）」を正とする
+
+### Partial Regeneration の範囲（M1 と M2）
+
+| | M1（F-14） | M2（F-14 の Partial Regeneration の拡張） |
+|---|---|---|
+| 新しい Take | Shot 全体を作り直した 1 本 | 同左に加え、問題区間だけを差し替えてつないだ 1 本（`take.model_parameters.kind = partial_take`、`source = partial_regeneration`、`regenerated_take_id`）。区間を差し替えない条件（下）のときは足さない |
+| 保持するもの | Judge の `preserve` と LOCK された部分（Shot Spec の該当部分を Prompt Planner が固定する） | 同左に加え、問題区間の外側は修復元の Take の映像そのもの |
+| 起動 | Repair Agent が戦略として選ぶ（AUTO は自動、DIRECTOR は `POST /takes/:id/repair`） | 同左。加えて DIRECTOR MODE の自然言語指示（「2〜3秒目のカメラだけ直して」→ `partial_regenerate`） |
+| 既存 Take | 変えない | 変えない（修復元・再生成した Take・つないだ Take は別々の行）。つないだ Take は候補で、Shot の選択 Take を置き換えない。ユーザーは Partial Take Use（§14）でさらに区間を組み替えられる |
+
+つなぎ込みの規則（決定的。LLM を使わない）:
+
+- 差し替える区間は、Judge の Issue の `time_range` を前後 0.2 秒ずつ広げたもの（クロスフェードの境目が問題の映像にかからないようにする）。**すべての Issue が `time_range` を持つとき**だけつなぐ。Shot 全体の Issue が 1 つでもあれば、つながずに Shot 全体の Take だけを残す
+- 区間は 0.3 秒未満にならないよう広げ、0.3 秒未満の間隔しかない区間は 1 つにまとめる。先頭・末尾に 0.3 秒未満しか元の映像が残らないときはその部分も再生成した映像にする。区間が Shot のほとんどを占めて元の映像が残らないとき、Take が短すぎるとき、必要な部品が 8 個（Partial Take Use の上限）を超えるときは、つながずに Shot 全体の Take だけを残す
+- ffmpeg が無いときはつなぎ込めない。Repair は Shot 全体の Take だけを作り（M1 と同じ）、DIRECTOR MODE の区間指定の再生成は「ffmpeg が必要」と返して何も作らない
+- つないだ Take は自動で Judge される（AUTO MODE の Repair / Retake Loop はそれも含めて続ける）
+- DIRECTOR MODE の区間指定の再生成は、ユーザーが求めた操作なので Retry Policy の再試行回数には数えない（予算上限は適用する）。元の Take は、ユーザーが選んだ Take、なければ AI Pick、なければ最新の（除外されていない）Take
 
 ---
 
@@ -769,6 +786,8 @@ DIRECTOR MODEではユーザーがTakeを選択・比較・部分採用できる
 > Take Aの0〜2秒 + Take Bの2〜4秒
 
 Editor / Repair Agentが自然な接続を試みる。
+
+Partial Regeneration（§13）が作るつなぎ込みも同じ合成（区間の境目をクロスフェードする）を使う。
 
 ---
 
@@ -1210,6 +1229,19 @@ State Extractor: propose promotion
 口調・「火事の話は序盤では出さない」はメモのまま保持し、Writer / Director が参照する
 ```
 
+### Example 6（M2）
+
+> 2〜3秒目のカメラの揺れだけ直して。他はそのままで。
+
+```text
+Action:
+Partial Regeneration of the current take, range 2.0-3.0s
+Update Shot.camera.movement
+Preserve character / acting / environment
+```
+
+区間を名指しした再生成は `partial_regenerate` になる。区間を言わない「カメラ動かしすぎ」は Shot 全体の再生成（Example 2）のまま。
+
 ---
 
 # 25. Quality / Cost Controls
@@ -1298,7 +1330,7 @@ Project / Organization単位で制作制約を登録可能とする。
 - Continue
 - Branch
 - Reference Library
-- Partial Regeneration（時間範囲の再生成とつなぎ込み。M1 の Retake Loop では Judge の `preserve` を保つ Shot 全体の再生成として実装済み、§13）
+- Partial Regeneration（時間範囲の再生成とつなぎ込み、§13。M1 の Retake Loop が実装した「Judge の `preserve` を保つ Shot 全体の再生成」を、問題の区間だけを差し替える形に広げる）
 - Series / Episode Memory
 - Notes（制作メモ、§9.4）
 

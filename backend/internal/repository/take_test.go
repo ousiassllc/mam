@@ -246,3 +246,24 @@ func TestTakeRepository_CreateCompositeIsTheUsersSelectionAndKeepsTheBaseTakesPr
 		Asset: domain.Asset{ID: "a9", ProjectID: "p1", Type: domain.AssetVideo, FilePath: "p1/9.mp4"}})
 	assert.ErrorIs(t, err, repository.ErrNotFound)
 }
+
+func TestTakeRepository_CandidateCompositeLeavesTheShotsSelectionAlone(t *testing.T) {
+	db := openTestDB(t)
+	seedTake(t, db)
+	addTakes(t, db, 2)
+	r := repository.NewTakeRepository(db)
+	ctx := context.Background()
+	_, err := r.Select(ctx, "t2")
+	require.NoError(t, err)
+
+	id, err := r.CreateComposite(ctx, repository.NewComposite{
+		ProjectID: "p1", ShotID: "sh1", BaseTakeID: "t1", Candidate: true,
+		Parameters: []byte(`{"kind":"partial_take","resolution":"1080p","duration_seconds":4}`),
+		Asset:      domain.Asset{ID: "acand", ProjectID: "p1", Type: domain.AssetVideo, FilePath: "p1/cand.mp4", MimeType: "video/mp4", SizeBytes: 10},
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, "t2", selectedTake(t, db))
+	assert.Equal(t, domain.TakeCandidate, statuses(t, r)[id])
+	assert.Equal(t, domain.TakeSelected, statuses(t, r)["t2"])
+}

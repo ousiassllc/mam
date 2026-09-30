@@ -30,6 +30,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/facesim"
+	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/router"
 	"github.com/ousiassllc/mam/backend/internal/service"
@@ -45,6 +46,7 @@ type judgeLLM struct {
 	verdict string
 	specs   string
 	repair  string // the Repair Agent's answer; empty: the Shot Spec (which is no valid choice)
+	command string // the Command Interpreter's answer; empty: the Shot Spec (which holds no operation)
 	judged  int
 }
 
@@ -58,6 +60,8 @@ func (l *judgeLLM) Complete(_ context.Context, agent llm.Agent, _ llm.Request) (
 		text = l.verdict
 	case agent == llm.AgentRepair && l.repair != "":
 		text = l.repair
+	case agent == llm.AgentCommandInterpreter && l.command != "":
+		text = l.command
 	}
 	return llm.Response{Text: text, Provider: llm.ProviderGoogle, Model: "fake"}, nil
 }
@@ -121,23 +125,43 @@ func newJudgeApp(t *testing.T, verdict string, sims ...float64) *judgeApp {
 // newJudgeAppWith is newJudgeApp with a Jev client for the Repair Agent's shadow run (nil: none).
 func newJudgeAppWith(t *testing.T, verdict string, shadow repair.Shadow, sims ...float64) *judgeApp {
 	t.Helper()
+	return newJudgeAppOpts(t, judgeOpts{verdict: verdict, shadow: shadow}, sims...)
+}
+
+// judgeOpts are the parts of a judgeApp a test replaces.
+type judgeOpts struct {
+	verdict string
+	shadow  repair.Shadow
+	// video replaces the fake video backend; media turns on ffmpeg (splicing Partial Regenerations).
+	video modeladapter.VideoBackend
+	media *media.Tools
+	// command is the Command Interpreter's answer (empty: the Shot Spec, which holds no operation).
+	command string
+}
+
+func newJudgeAppOpts(t *testing.T, o judgeOpts, sims ...float64) *judgeApp {
+	t.Helper()
 	keyring.MockInit()
 	dir := t.TempDir()
 	db, err := repository.Open(context.Background(), filepath.Join(dir, "mam.db"), nil)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = db.Close() })
 
-	l := &judgeLLM{verdict: verdict, specs: lockedSpecAnswer}
+	l := &judgeLLM{verdict: o.verdict, specs: lockedSpecAnswer, command: o.command}
 	video := &videoFake{}
 	jobs := jobqueue.New(repository.NewJobRepository(db), jobqueue.Options{})
 	var pics [][]byte
 	for _, s := range sims {
 		pics = append(pics, faceJPEG(t, s))
 	}
-	backends := modeladapter.Backends{Video: map[domain.ModelName]modeladapter.VideoBackend{domain.ModelKling3: video, domain.ModelSeedance2: video, domain.ModelRunwayGen45: video}}
+	var backend modeladapter.VideoBackend = video
+	if o.video != nil {
+		backend = o.video
+	}
+	backends := modeladapter.Backends{Video: map[domain.ModelName]modeladapter.VideoBackend{domain.ModelKling3: backend, domain.ModelSeedance2: backend, domain.ModelRunwayGen45: backend}}
 	svc := service.New(service.Deps{
 		DB: db, Credentials: credential.NewKeyring(), AssetsDir: filepath.Join(dir, "assets"), LLM: l, Jobs: jobs,
-		Models: modeladapter.New(modeladapter.DefaultConfig(), backends), Frames: clipFrames{pics}, Faces: redFaces{}, Jev: shadow,
+		Models: modeladapter.New(modeladapter.DefaultConfig(), backends), Frames: clipFrames{pics}, Faces: redFaces{}, Jev: o.shadow, Media: o.media,
 	})
 	ctx, cancel := context.WithCancel(context.Background())
 	jobs.Start(ctx)
