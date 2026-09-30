@@ -135,8 +135,10 @@ func FinalQC(svc *service.EditorService) gin.HandlerFunc {
 	}, "timeline-reload")
 }
 
-// exportForm is the body of POST /projects/:id/export. Empty fields take the defaults.
+// exportForm is the body of POST /projects/:id/export. Empty fields take the defaults; branch_id
+// picks the Branch to export ("" is the trunk).
 type exportForm struct {
+	BranchID    string `form:"branch_id" json:"branch_id"`
 	AspectRatio string `form:"aspect_ratio" json:"aspect_ratio"`
 	Resolution  string `form:"resolution" json:"resolution"`
 	Codec       string `form:"codec" json:"codec"`
@@ -149,7 +151,7 @@ func Export(svc *service.EditorService) gin.HandlerFunc {
 		if err := c.ShouldBind(&in); err != nil {
 			return service.EditorView{}, unreadable(c, err, "", "書き出しの指定を読み取れませんでした")
 		}
-		return svc.Export(c.Request.Context(), c.Param("id"), service.ExportInput{AspectRatio: in.AspectRatio, Resolution: in.Resolution, Codec: in.Codec})
+		return svc.Export(c.Request.Context(), c.Param("id"), service.ExportInput{BranchID: in.BranchID, AspectRatio: in.AspectRatio, Resolution: in.Resolution, Codec: in.Codec})
 	}, "")
 }
 

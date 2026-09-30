@@ -492,6 +492,7 @@ func (o ExportOptions) Size() (width, height int, err error) {
 type Export struct {
 	ID          string
 	ProjectID   string
+	BranchID    string // "" for an export of the trunk
 	FilePath    string // relative to the assets directory
 	Resolution  string
 	AspectRatio string
