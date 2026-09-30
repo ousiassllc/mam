@@ -55,7 +55,7 @@
 - **フロー**:
   1. ユーザーが Branch Point を指定する
   2. Branch 作成時点の World State を Snapshot として保存する
-  3. 複数 Branch（例: ドアを開ける / 逃げる / 電話する）を並行して生成・比較する
+  3. 複数 Branch（例: ドアを開ける / 逃げる / 電話する）を並行して生成し、Branch ツリーで切り替えて見比べる（2 つの Branch を並べる専用の比較画面は設けない）
 - **事後条件**: 各 Branch が独立した派生プロジェクトツリーとして保持される
 
 ### UC-6: AI Editor が素材不足を検知し追加撮影ループへ戻る
@@ -203,7 +203,7 @@ Take一覧をスコア表（Product/Acting/Camera/Continuity, Status: Candidate/
 
 ### 3.5 Branch ツリー UI
 
-Scene/Shot 配下に複数 Branch をツリー表示し、Branch 間の比較・切替・削除を行える。
+Scene/Shot 配下に複数 Branch をツリー表示し、Branch の切替（ツリーの項目を選ぶと詳細を読み込む）・名称変更を行える。Branch は追記のみで保持し（F-28、`spec/architecture/er.md` §4）、削除はしない。2 つの Branch を並べて比較する専用の画面も設けず、比較はツリーでの切替で行う。
 
 ### 3.6 M1 の編集・音声・書き出しの範囲（F-18 Simple / F-20 簡易版 / F-26）
 
@@ -273,3 +273,4 @@ Editor Agent は Production Template（`spec/spec.md` §19）が評価軸に持�
 | 1.14 | 2026-10-01 | UC-1 に、AUTO の自動実行範囲が Scene/Shot 計画までで Art Director 以降は Shot 単位の手動起動であること、確認ポイントが脚本・Rough Cut・Final であることを明記 | 実装は Orchestrator が Storyboard までを自動実行し、Reference Pack 以降は `POST /shots/:id/reference-pack\|generate\|generate-candidates` の起動で進むため（#85, #87） |
 | 1.15 | 2026-10-01 | F-05 の Editing / Music / Dialogue の制御が効く範囲を `spec/spec.md` §6 に明記 | Editor Agent・Audio Director が Editing / Music の設定を参照するようにしたため（#88） |
 | 1.16 | 2026-10-01 | UC-1 に、AUTO MODE の編集工程（Rough Cut〜Editor Judge〜Audio〜Final QC）の自動連鎖と、人の対応を待つ停止点・Export がユーザー操作であることを明記 | 仕様と実装が乖離していた（#86） |
+| 1.17 | 2026-10-01 | §3.5 と UC-5 から Branch の削除と Branch 間の比較画面を外し、切替・名称変更までを範囲と明記 | 実装は作成・詳細・名称変更・バージョン復元・ツリーでの切替までで、Branch は追記のみ保持する方針（F-28）と、削除時の配下の行・World State の扱いを持ち込まないため（Issue #102） |
