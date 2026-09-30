@@ -186,9 +186,10 @@ func New(deps Deps) *Services {
 		continues.agent = continuation.New(deps.LLM)
 	}
 	c.continuer = continues
-	editors := &EditorService{core: c, editors: repository.NewEditorRepository(deps.DB), shots: gens, takes: takes, chatSvc: chat, tools: deps.Media}
-	if deps.LLM != nil {
-		editors.judge = editor.NewJudge(deps.LLM)
+	// Without a Reasoning LLM the Editor Judge runs its deterministic checks alone.
+	editors := &EditorService{
+		core: c, editors: repository.NewEditorRepository(deps.DB), shots: gens, takes: takes, chatSvc: chat, tools: deps.Media,
+		judge: editor.NewJudge(deps.LLM),
 	}
 	if deps.Media != nil && deps.Speech != nil {
 		editors.audio = audiodirector.New(deps.Speech, *deps.Media, deps.AssetsDir)

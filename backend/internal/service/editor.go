@@ -478,9 +478,6 @@ func (s *EditorService) JudgeTimeline(ctx context.Context, id string) (EditorVie
 	if err != nil {
 		return EditorView{}, err
 	}
-	if s.judge == nil {
-		return EditorView{}, ErrUnavailable
-	}
 	if err := s.projects.Transition(ctx, projectID, domain.StateEditJudging); err != nil {
 		return EditorView{}, err
 	}

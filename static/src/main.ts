@@ -44,6 +44,7 @@ document.addEventListener('htmx:load', (event) => {
   initShotProgress(event.target as ParentNode);
 });
 
-// Lit components (mam-timeline-editor and mam-branch-tree are imported here as they are implemented).
+// Lit components (mam-branch-tree is imported here as it is implemented).
 import './components/video-player/mam-video-player';
 import './components/take-comparator/mam-take-comparator';
+import './components/timeline-editor/mam-timeline-editor';
