@@ -315,9 +315,32 @@ func TestJudge_EveryGeneratedTakeIsJudgedAndTheAPIReturnsTheResult(t *testing.T)
 	}, 10*time.Second, 10*time.Millisecond, "the Shot is free again once every Take is judged")
 }
 
+// addMatchingCanonFace gives Mira a second picture of the same face on the Series canon, so the
+// warn / FAIL thresholds are calibrated from that pair (spec §12.4). One reference is not enough.
+func (j *judgeApp) addMatchingCanonFace(t *testing.T) {
+	t.Helper()
+	rel := filepath.Join(j.project, "mira-canon.jpg")
+	require.NoError(t, os.WriteFile(filepath.Join(j.dir, "assets", rel), faceJPEG(t, 1.0), 0o600))
+	require.NoError(t, j.db.Write(context.Background(), func(ctx context.Context, tx *sql.Tx) error {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO asset (id, project_id, type, file_path, mime_type, size_bytes) VALUES ('face-2', ?, 'image', ?, 'image/jpeg', 1)`, j.project, rel); err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `INSERT INTO series (id, name) VALUES ('series-1', 'Mira')`); err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `INSERT INTO character (id, series_id, name, face_reference_asset_id) VALUES ('canon-1', 'series-1', 'Mira', 'face-2')`); err != nil {
+			return err
+		}
+		_, err := tx.ExecContext(ctx, `UPDATE character SET origin_id = 'canon-1' WHERE id = 'char-1'`)
+		return err
+	}))
+}
+
 func TestJudge_ALockedIdentityDriftFailsTheTakeWhateverTheModelSays(t *testing.T) {
 	// The face drifts for frames 3-5 of 8 (1.5-3.0 s). The model gives a confident pass.
+	// Two pictures of Mira let the thresholds come from their similarity (spec §12.4).
 	j := newJudgeApp(t, goodVerdict, 0.95, 0.95, 0.95, 0.2, 0.2, 0.2, 0.95, 0.95)
+	j.addMatchingCanonFace(t)
 	ids := j.generateAndJudge()
 
 	code, body := j.result(ids[0])

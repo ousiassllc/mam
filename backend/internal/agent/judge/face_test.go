@@ -116,31 +116,29 @@ func TestFaceMeasure_FewDetectedFramesLeaveTheTakeUnevaluated(t *testing.T) {
 	assert.False(t, rep.Metrics[0].Evaluated)
 }
 
-func TestFaceMeasure_ThresholdsAreTheConfiguredOnesWithoutACalibration(t *testing.T) {
-	cfg := judge.DefaultConfig().Face
-	clip := clipOf(t, frames(t, 0.95, 0.95, 0.95, 0.95)...)
+func TestFaceMeasure_UncalibratedReferencesAreNotJudgedByAFixedThreshold(t *testing.T) {
+	// Frames at 0.2 would be a FAIL under the old source constants (0.363). They must not be.
+	clip := clipOf(t, frames(t, 0.95, 0.2, 0.2, 0.2)...)
+	one := judge.NewFaceMeasurer(&fakeEngine{}, judge.DefaultConfig().Face)
 
-	one := judge.NewFaceMeasurer(&fakeEngine{}, cfg)
 	rep, err := one.Measure(context.Background(), []judge.FaceSubject{subject(t, "a", 1.0)}, clip)
 	require.NoError(t, err)
 	m := rep.Metrics[0]
 	assert.False(t, m.Calibrated, "one reference image has no pairwise similarity")
-	assert.InDelta(t, cfg.WarnSimilarity, m.WarnThreshold, 1e-9)
-	assert.InDelta(t, cfg.FailSimilarity, m.FailThreshold, 1e-9)
+	assert.False(t, m.Evaluated, "without a distribution the numbers do not judge the Take")
+	assert.Zero(t, m.WarnThreshold)
+	assert.Zero(t, m.FailThreshold)
+	assert.InDelta(t, 0.2, m.SimilarityMin, 0.02, "the similarity is still recorded")
+	assert.Empty(t, rep.Issues)
 
-	// References that do not resemble each other (0.2) are not a trustworthy basis either.
+	// References that do not resemble each other are not a trustworthy basis either.
 	rep, err = one.Measure(context.Background(), []judge.FaceSubject{subject(t, "a", 1.0, 0.2)}, clip)
 	require.NoError(t, err)
 	assert.False(t, rep.Metrics[0].Calibrated)
-	assert.InDelta(t, cfg.FailSimilarity, rep.Metrics[0].FailThreshold, 1e-9)
-
-	// The thresholds follow the configuration.
-	cfg.WarnSimilarity, cfg.FailSimilarity = 0.99, 0.98
-	strict := judge.NewFaceMeasurer(&fakeEngine{}, cfg)
-	rep, err = strict.Measure(context.Background(), []judge.FaceSubject{subject(t, "a", 1.0)}, clip)
-	require.NoError(t, err)
-	require.Len(t, rep.Issues, 1, "0.95 is below a 0.98 FAIL threshold for the whole clip")
-	assert.Equal(t, domain.SeverityHigh, rep.Issues[0].Severity)
+	assert.False(t, rep.Metrics[0].Evaluated)
+	assert.Zero(t, rep.Metrics[0].WarnThreshold)
+	assert.Zero(t, rep.Metrics[0].FailThreshold)
+	assert.Empty(t, rep.Issues)
 }
 
 func TestFaceMeasure_EachFaceGoesToTheCharacterItResemblesMost(t *testing.T) {

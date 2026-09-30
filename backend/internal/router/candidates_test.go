@@ -77,6 +77,7 @@ func TestCandidates_BalancedModeStopsAtTheFirstCandidateThatPasses(t *testing.T)
 
 func TestCandidates_BalancedModeAddsTheNextCandidateWhileTheJudgeFailsAndStopsAtTheRetryLimit(t *testing.T) {
 	j := newJudgeApp(t, goodVerdict, driftFaces...)
+	j.addMatchingCanonFace(t)
 	j.candidates()
 
 	assert.Equal(t, []string{"stability_first", "acting_first", "dynamic_camera"}, j.candidateStrategies(), "1 + Max retries (2) Takes, one per strategy")
@@ -90,6 +91,7 @@ func TestCandidates_EconomyModeMakesOneTakeAndRetakesOnlyAfterASevereProblem(t *
 	assert.Equal(t, 1, ok.count(`SELECT COUNT(*) FROM take WHERE model_name = 'kling-3.0'`), "FAST: one Take on Kling 3.0")
 
 	bad := newJudgeApp(t, goodVerdict, driftFaces...)
+	bad.addMatchingCanonFace(t)
 	bad.setQuality("fast")
 	bad.candidates()
 	assert.Equal(t, []string{"stability_first", "stability_first"}, bad.candidateStrategies(), "a LOCK violation is retaken once (Max retries 1)")
