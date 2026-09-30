@@ -258,11 +258,14 @@ type NewComposite struct {
 	BaseTakeID string
 	Parameters json.RawMessage
 	Asset      domain.Asset // Type video; ID and FilePath are set by the caller
+	// Candidate leaves the Shot's selection alone: the Take is only added as a candidate (a Partial
+	// Regeneration is the AI's proposal, not the user's choice).
+	Candidate bool
 }
 
-// CreateComposite stores the composed Take with its video asset. It is the user's choice: it becomes
-// the Shot's selected Take with the status "selected". It returns the Take ID, or ErrNotFound when
-// the base Take does not belong to the Shot.
+// CreateComposite stores the composed Take with its video asset. Unless it is a Candidate it is the
+// user's choice: it becomes the Shot's selected Take with the status "selected". It returns the Take
+// ID, or ErrNotFound when the base Take does not belong to the Shot.
 func (r *TakeRepository) CreateComposite(ctx context.Context, nc NewComposite) (string, error) {
 	takeID := domain.NewID()
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
@@ -284,6 +287,9 @@ func (r *TakeRepository) CreateComposite(ctx context.Context, nc NewComposite) (
 			`INSERT INTO take (id, prompt_version_id, model_name, model_parameters, file_path, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
 			takeID, promptVersionID, model, string(nc.Parameters), nc.Asset.FilePath, domain.TakeCandidate, now); err != nil {
 			return fmt.Errorf("insert take: %w", err)
+		}
+		if nc.Candidate {
+			return nil
 		}
 		return adoptTake(ctx, tx, nc.ShotID, takeID, domain.TakeSelected)
 	})

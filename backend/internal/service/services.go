@@ -133,6 +133,7 @@ func New(deps Deps) *Services {
 	judges := &JudgeService{core: c, judges: repository.NewJudgeRepository(deps.DB), generations: generations}
 	repairs := &RepairService{core: c, repairs: repository.NewRepairRepository(deps.DB), judges: judges.judges, generations: generations}
 	takes := repository.NewTakeRepository(deps.DB)
+	takeService := &TakeService{core: c, takes: takes, shots: gens, generations: generations, chatSvc: chat, tools: deps.Media}
 	var takeJudge generation.Judger // stays nil (not a typed nil) while the Judge is off
 	if deps.Jobs != nil && deps.LLM != nil && deps.Frames != nil {
 		cfg := deps.Judge
@@ -159,11 +160,15 @@ func New(deps Deps) *Services {
 		// Not resumable: a generation costs money, so an interrupted one is failed, not repeated.
 		deps.Jobs.Register(domain.JobGenerate, generations.gen.Handle, false)
 		if judges.runner != nil {
-			repairs.agent = repair.New(repair.Deps{
+			repairDeps := repair.Deps{
 				Generations: gens, Judges: judges.judges, Repairs: repairs.repairs, JobRepo: c.jobs, Policies: policies, Projects: c.projects,
 				Regenerator: generations.gen, Chat: chat, Jobs: deps.Jobs, LLM: deps.LLM, Shadow: deps.Jev, Logger: logger,
 				Notify: func(p generation.Progress) { generations.progress.Publish(p.ShotID, p) },
-			})
+			}
+			if deps.Media != nil { // splicing a Partial Regeneration into its Take needs ffmpeg
+				repairDeps.Splicer, repairDeps.Judge = takeService, judges.runner
+			}
+			repairs.agent = repair.New(repairDeps)
 			// Not resumable: a repair costs money, so an interrupted one is failed, not repeated.
 			deps.Jobs.Register(domain.JobRepair, repairs.agent.Handle, false)
 			// The Repair / Retake Loop continues when a generate or judge job has finished (the queue's
@@ -171,7 +176,7 @@ func New(deps Deps) *Services {
 			jobFinished = func(jobID string) { go repairs.agent.JobChanged(context.Background(), jobID) }
 		}
 	}
-	director := &DirectorService{core: c, gens: gens, locks: repository.NewLockRepository(deps.DB), orch: generations.gen}
+	director := &DirectorService{core: c, gens: gens, locks: repository.NewLockRepository(deps.DB), orch: generations.gen, takes: takes, repair: repairs.agent}
 	if deps.LLM != nil {
 		director.interpreter = commandinterpreter.New(deps.LLM)
 	}
@@ -198,6 +203,6 @@ func New(deps Deps) *Services {
 		Continue:  continues,
 		Reference: &ReferenceService{c},
 		Series:    &SeriesService{core: c, series: repository.NewSeriesRepository(deps.DB)},
-		Takes:     &TakeService{core: c, takes: takes, shots: gens, generations: generations, chatSvc: chat, tools: deps.Media},
+		Takes:     takeService,
 	}
 }

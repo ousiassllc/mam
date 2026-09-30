@@ -52,6 +52,18 @@ type Shadow interface {
 	Model() string
 }
 
+// Splicer joins a Partial Regeneration into the Take it repairs. *service.TakeService implements it.
+type Splicer interface {
+	// SpliceRegenerated adds a Take that shows baseTakeID outside the ranges and regeneratedTakeID
+	// inside them, and returns its ID ("" when no splice is worth making).
+	SpliceRegenerated(ctx context.Context, shotID, baseTakeID, regeneratedTakeID string, ranges []domain.TimeRange) (string, error)
+}
+
+// TakeJudge has the AI Video Judge look at a Take. *judge.Runner implements it.
+type TakeJudge interface {
+	Start(ctx context.Context, takeID string) (domain.Job, error)
+}
+
 // Deps are the collaborators of an Agent.
 type Deps struct {
 	Generations *repository.GenerationRepository
@@ -68,6 +80,12 @@ type Deps struct {
 	// Shadow, when set, is asked the same question as the Repair Agent whenever the Repair Agent
 	// chooses. Its answer is only recorded.
 	Shadow Shadow
+	// Splicer, when set, splices the new Take of a Partial Regeneration into the Take it repairs
+	// (it needs ffmpeg). Without it Partial Regeneration only adds the new Take of the whole Shot, and
+	// a Partial Regeneration the director asks for by time range is not available.
+	Splicer Splicer
+	// Judge judges the spliced Take. Required with Splicer.
+	Judge TakeJudge
 	// Notify receives every progress notification. It MUST NOT block.
 	Notify func(generation.Progress)
 	Logger *slog.Logger
@@ -96,9 +114,12 @@ func New(d Deps) *Agent {
 type payload struct {
 	TakeID        string `json:"take_id"`
 	ShotID        string `json:"shot_id"`
-	JudgeResultID string `json:"judge_result_id"`
+	JudgeResultID string `json:"judge_result_id,omitempty"`
 	// Auto is true when the loop started the job by itself after a Judge run (AUTO mode).
 	Auto bool `json:"auto,omitempty"`
+	// Partial is set when the director asked for a Partial Regeneration (StartPartial): there is no
+	// Judge result then, and the Retry Policy does not apply (the user asked).
+	Partial *PartialRequest `json:"partial,omitempty"`
 }
 
 // Start queues a repair of the Take from its latest Judge result. It returns ErrNotJudged when
@@ -243,7 +264,7 @@ func baseTake(verdicts []repository.TakeVerdict, policy domain.ProjectPolicy) (s
 // so an interrupted one is failed and the loop starts again from the next Judge result.
 func (a *Agent) Handle(ctx context.Context, job domain.Job) error {
 	var p payload
-	if err := json.Unmarshal(job.Payload, &p); err != nil || p.TakeID == "" || p.ShotID == "" || p.JudgeResultID == "" {
+	if err := json.Unmarshal(job.Payload, &p); err != nil || p.TakeID == "" || p.ShotID == "" || (p.JudgeResultID == "" && p.Partial == nil) {
 		return fmt.Errorf("repair job %s: invalid payload", job.ID)
 	}
 	shot, err := a.Generations.GetShot(ctx, p.ShotID)
@@ -280,6 +301,9 @@ func (a *Agent) Handle(ctx context.Context, job domain.Job) error {
 // run is one step of the loop: the Retry Policy, the strategy, the new Take. It reports whether a
 // new Take was made.
 func (a *Agent) run(ctx context.Context, shot repository.ShotRef, p payload) (bool, error) {
+	if p.Partial != nil {
+		return a.runPartial(ctx, shot, p)
+	}
 	take, err := a.Judges.GetTake(ctx, p.TakeID)
 	if err != nil {
 		return false, err
@@ -350,12 +374,24 @@ func (a *Agent) run(ctx context.Context, shot repository.ShotRef, p payload) (bo
 		return false, a.announceEditLevel(ctx, shot, take.Take.ID, res)
 	}
 	a.Notify(generation.Progress{ShotID: shot.Shot.ID, Action: generation.ActionRepair, Stage: generation.StageRepairing, Message: action.Label() + " で新しい Take を作成しています"})
+	// A Partial Regeneration whose Issues all name a time range is spliced into the failed Take: only
+	// those ranges of the new Take are used.
+	var ranges []domain.TimeRange
+	if action == domain.RepairPartialRegeneration && a.Splicer != nil {
+		if r, ok := domain.IssueRanges(res.Issues); ok {
+			ranges = r
+		}
+	}
+	regen.Ranges = ranges
 	newTake, err := a.Regenerator.Regenerate(ctx, shot, regen)
 	if err != nil {
 		return false, err
 	}
 	if err := a.Repairs.SetResultingTake(context.WithoutCancel(ctx), rec.ID, newTake); err != nil {
 		return false, err
+	}
+	if len(ranges) > 0 {
+		a.splice(ctx, shot, take.Take.ID, newTake, ranges)
 	}
 	notice := domain.ChatMessage{
 		Role: domain.RoleAssistant, Kind: domain.KindText,
