@@ -1134,6 +1134,8 @@ EXPORTED
 
 ユーザーは任意の段階でDIRECTOR MODEに入り、状態を修正できる。
 
+> **Project 状態と Shot 状態（実装の範囲）**: 上の状態遷移のうち、Project の状態として実際に遷移するのは DRAFT → PLANNING → VISUAL_DESIGN（Orchestrator）、確認ポイントでの AWAITING_APPROVAL、およびユーザーが Rough Cut を作る／編集した時点からの EDITING 以降（EDIT_JUDGING・AUDIO・FINAL_QC・READY・EXPORTED）である。GENERATING / JUDGING / REPAIRING は Shot 単位（`shot.state`、§13）で進み、Shot の生成・Judge・Repair は Shot ごとに並行して起動されるため、Project 全体の状態としては遷移させない（Project は VISUAL_DESIGN のまま）。EDITING を開始するとき（`POST /projects/:id/edit/rough-cut`）に、VISUAL_DESIGN からは GENERATING → JUDGING → EDITING を一括で辿る（全 Shot に Selected Take があることが前提）。Reshoot Loop の追加 Shot のみ、Project を GENERATING にする。
+
 AWAITING_APPROVAL に遷移するのは、確認ポイントの Approval カードと Escalation カードのみとする。Notes の昇格提案カード（`ref_type=note_promotion`、§9.4）は非ブロッキングで、Core State Machine の状態を変えない。
 
 ---
@@ -1238,6 +1240,8 @@ Generate 3 narrative continuations
 > 商品をあと1秒長く見せて。
 
 AIが文脈から、編集変更で済むか追加Shotが必要かを判断する。
+
+> **実装の範囲**: Command Interpreter が構造化できる操作は、ロック設定・Shot の再生成・部分再生成・モード切替・ノート作成・Branch 作成のみで、チャットの発言から Edit Timeline（クリップの尺など）の変更や追加 Shot の要求は導かない。これらは、タイムラインエディタでの編集（`PUT /edit-timelines/:id`）、Editor Judge の NEED_SHOT が出す追加 Shot の提案（Reshoot Loop、`POST /edit-timelines/:id/request-additional-shot`）から行う。この Example 4 の発言には「その操作にはまだ対応していません」と返す。
 
 ### Example 5（M2）
 
