@@ -1,13 +1,19 @@
 package atoms
 
+// Toast is the one definition of an error toast's markup. A toast stays until its close button is
+// pressed (static/src/components/lib/toast.ts handles the click). The page shell embeds it once as
+// <template id="toast-template">, which toast.ts clones for the toasts it raises itself.
+templ Toast(message string) {
+	<div class="pointer-events-auto flex items-start gap-3 rounded-md border border-red-500/50 bg-neutral-900 px-4 py-2 text-sm text-red-200 shadow-lg" role="alert" data-toast>
+		<span data-toast-message>{ message }</span>
+		<button type="button" class="ml-auto leading-none hover:text-red-100" aria-label="閉じる" data-toast-close>×</button>
+	</div>
+}
+
 // ToastOOB appends a toast to #toast-region (out-of-band swap). Business errors
-// (403/409/423, ...) are shown this way instead of replacing the target. A toast stays until its
-// close button is pressed (static/src/components/lib/toast.ts handles the click).
+// (403/409/423, ...) are shown this way instead of replacing the target.
 templ ToastOOB(message string) {
 	<div id="toast-region" hx-swap-oob="beforeend">
-		<div class="pointer-events-auto flex items-start gap-3 rounded-md border border-red-500/50 bg-neutral-900 px-4 py-2 text-sm text-red-200 shadow-lg" role="alert" data-toast>
-			<span>{ message }</span>
-			<button type="button" class="ml-auto leading-none hover:text-red-100" aria-label="閉じる" data-toast-close>×</button>
-		</div>
+		@Toast(message)
 	</div>
 }

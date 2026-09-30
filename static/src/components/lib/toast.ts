@@ -1,28 +1,24 @@
 /**
  * Error toasts (#toast-region). They stay until the user closes them: an error message (a LOCK
  * violation, an exceeded budget) may be long, and a toast that vanishes on a timer cannot be read
- * at the reader's own pace or by a screen reader (WCAG 2.2.1). The server renders the same markup
- * (atoms/toast.templ).
+ * at the reader's own pace or by a screen reader (WCAG 2.2.1). The markup is defined once, in
+ * atoms/toast.templ; the page shell embeds it as #toast-template and this module clones it.
  */
+import { createLogger } from './logger';
+
+const log = createLogger('toast');
 const CLOSE = '[data-toast-close]';
 
-export const TOAST_CLASS = 'pointer-events-auto flex items-start gap-3 rounded-md border border-red-500/50 bg-neutral-900 px-4 py-2 text-sm text-red-200 shadow-lg';
-
-/** An error toast for `message`, not yet in the document. */
-export function createToast(message: string): HTMLElement {
-  const toast = document.createElement('div');
-  toast.className = TOAST_CLASS;
-  toast.setAttribute('role', 'alert');
-  toast.dataset.toast = '';
-  const text = document.createElement('span');
-  text.textContent = message;
-  const close = document.createElement('button');
-  close.type = 'button';
-  close.textContent = '×';
-  close.setAttribute('aria-label', '閉じる');
-  close.dataset.toastClose = '';
-  close.className = 'ml-auto leading-none hover:text-red-100';
-  toast.append(text, close);
+/** An error toast for `message`, not yet in the document; null when the page has no #toast-template. */
+export function createToast(message: string): HTMLElement | null {
+  const template = document.getElementById('toast-template');
+  const toast = template instanceof HTMLTemplateElement ? template.content.firstElementChild?.cloneNode(true) : null;
+  if (!(toast instanceof HTMLElement)) {
+    log.warn('#toast-template is missing; cannot show', message);
+    return null;
+  }
+  const text = toast.querySelector('[data-toast-message]');
+  if (text) text.textContent = message;
   return toast;
 }
 

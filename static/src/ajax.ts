@@ -5,7 +5,8 @@ import { createToast } from './components/lib/toast';
 
 /** Shows a message in #toast-region, where the server's own toasts go. */
 export function showToast(message: string): void {
-  document.getElementById('toast-region')?.append(createToast(message));
+  const toast = createToast(message);
+  if (toast) document.getElementById('toast-region')?.append(toast);
 }
 
 export const ajaxGet = createAjaxGet((verb, url, context) => htmx.ajax(verb, url, context), showToast);
