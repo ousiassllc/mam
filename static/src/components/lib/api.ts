@@ -21,9 +21,9 @@ export class ApiError extends Error {
   }
 }
 
-type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+type Method = 'GET' | 'POST' | 'PUT' | 'DELETE';
 
-async function request<T>(method: Method, url: string, body?: BodyInit | null, json = false): Promise<T> {
+async function request<T>(method: Method, url: string, body?: string | null, json = false): Promise<T> {
   const headers: Record<string, string> = { Accept: 'application/json', [CSRF_HEADER]: csrfToken() };
   if (json) headers['Content-Type'] = 'application/json';
 
@@ -47,12 +47,4 @@ export const post = <T>(url: string, data?: unknown) =>
   request<T>('POST', url, data === undefined ? null : JSON.stringify(data), data !== undefined);
 export const put = <T>(url: string, data?: unknown) =>
   request<T>('PUT', url, data === undefined ? null : JSON.stringify(data), data !== undefined);
-export const patch = <T>(url: string, data?: unknown) =>
-  request<T>('PATCH', url, data === undefined ? null : JSON.stringify(data), data !== undefined);
 export const del = <T>(url: string) => request<T>('DELETE', url);
-/** Multipart upload; the browser sets the Content-Type boundary itself. */
-export const uploadFile = <T>(url: string, file: File, field = 'file') => {
-  const form = new FormData();
-  form.append(field, file);
-  return request<T>('POST', url, form);
-};
