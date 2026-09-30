@@ -49,6 +49,20 @@ type Input struct {
 	World domain.WorldContext
 	// Story lists the objectives of the Shots of the Project in story order ("Scene 1 / Shot 1: ...").
 	Story []string
+	// FinalFrame is the last frame of the Take the next Shot continues from; nil when it could not be
+	// taken (no ffmpeg, no file), in which case the States are inferred from the text alone.
+	FinalFrame *llm.Image
+}
+
+// request is the LLM request for the Input: the text, and the final frame when there is one.
+func (in Input) request(system string, plan bool, direction string) llm.Request {
+	req := llm.Request{System: system, User: userPrompt(in, plan, direction)}
+	if in.FinalFrame != nil {
+		img := *in.FinalFrame
+		img.Caption = "完成した Shot の最終フレーム（実際の映像から取り出した画像）。状態はこの画像を優先して読み取る"
+		req.Images = []llm.Image{img}
+	}
+	return req
 }
 
 // Proposal is the analysis of the completed Shot and the NEXT candidates.
@@ -69,6 +83,7 @@ const proposeSystem = `あなたは AI 動画制作チームの Director Agent �
   "candidates": ["彼女がドアを開ける", "背後から声が聞こえる", "突然照明が消える"]
 }
 ルール:
+- 最終フレームの画像が付いているときは、final_frame・character・position・emotion・object・camera・lighting・motion を画像から読み取る。画像と Shot Spec が食い違うときは画像を正とする。
 - candidates は 3 つ。互いに異なる方向の展開にし、最終フレームの状態から自然につながるものにする。1 つ 100 文字以内。
 - Creative Brief と World State に反する展開、Brief に無い事実（商品の効能・価格・受賞歴など）を作る展開は出さない。`
 
@@ -92,7 +107,7 @@ func (a *Agent) Propose(ctx context.Context, in Input) (Proposal, error) {
 		Analysis   domain.StateAnalysis `json:"analysis"`
 		Candidates []string             `json:"candidates"`
 	}
-	out, err := llm.CompleteJSON[answer](ctx, a.llm, llm.AgentDirector, llm.Request{System: proposeSystem, User: userPrompt(in, false, "")})
+	out, err := llm.CompleteJSON[answer](ctx, a.llm, llm.AgentDirector, in.request(proposeSystem, false, ""))
 	if err != nil {
 		return Proposal{}, fmt.Errorf("continue: %w", err)
 	}
@@ -123,7 +138,7 @@ func (a *Agent) Plan(ctx context.Context, in Input, direction string) (domain.Co
 		Scene    domain.PlannedScene `json:"scene"`
 		Shot     domain.PlannedShot  `json:"shot"`
 	}
-	out, err := llm.CompleteJSON[answer](ctx, a.llm, llm.AgentDirector, llm.Request{System: planSystem, User: userPrompt(in, true, direction)})
+	out, err := llm.CompleteJSON[answer](ctx, a.llm, llm.AgentDirector, in.request(planSystem, true, direction))
 	if err != nil {
 		return domain.ContinuePlan{}, fmt.Errorf("continue: %w", err)
 	}

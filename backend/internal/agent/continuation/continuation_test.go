@@ -87,3 +87,28 @@ func TestPlan_RejectsAnAnswerWithoutAShotObjectiveOrANewSceneTitle(t *testing.T)
 		assert.ErrorIs(t, err, planning.ErrInvalidPlan, answer)
 	}
 }
+
+func TestPropose_AttachesTheFinalFrameImageWhenThereIsOne(t *testing.T) {
+	var got llm.Request
+	spy := llmFunc(func(req llm.Request) { got = req })
+	in := input()
+
+	_, err := continuation.New(spy).Propose(context.Background(), in)
+	require.NoError(t, err)
+	assert.Empty(t, got.Images, "no frame: the text alone")
+
+	in.FinalFrame = &llm.Image{MimeType: "image/jpeg", Data: []byte{0xFF, 0xD8}}
+	_, err = continuation.New(spy).Propose(context.Background(), in)
+	require.NoError(t, err)
+	require.Len(t, got.Images, 1)
+	assert.Equal(t, []byte{0xFF, 0xD8}, got.Images[0].Data)
+	assert.Contains(t, got.Images[0].Caption, "最終フレーム")
+	assert.Empty(t, in.FinalFrame.Caption, "the caller's image is not modified")
+}
+
+type llmFunc func(llm.Request)
+
+func (f llmFunc) Complete(_ context.Context, _ llm.Agent, req llm.Request) (llm.Response, error) {
+	f(req)
+	return llm.Response{Text: `{"analysis":{},"candidates":["A"]}`, Provider: llm.ProviderAnthropic, Model: "fake"}, nil
+}
