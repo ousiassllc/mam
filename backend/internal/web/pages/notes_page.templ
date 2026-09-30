@@ -1,0 +1,30 @@
+package pages
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/layout"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+)
+
+// NotesPageData is the header of the Notes page: whose notes they are and where to go back to.
+type NotesPageData struct {
+	// Title is the tab title and Owner the name of the Project or Series.
+	Title, Owner string
+	// BackHref and BackLabel are the link back to the chat or the Series page.
+	BackHref, BackLabel string
+	// Lead explains what the notes do in this scope.
+	Lead  string
+	Notes organisms.NoteListData
+}
+
+// NotesPage is GET /projects/:id/notes and GET /series/:id/notes: the notes in an auxiliary view.
+templ NotesPage(csrfToken string, d NotesPageData) {
+	@layout.AppLayout(d.Title+": "+d.Owner, csrfToken) {
+		<main class="mx-auto max-w-5xl p-8">
+			<a href={ templ.SafeURL(d.BackHref) } class="text-sm text-neutral-400 hover:text-neutral-100">{ d.BackLabel }</a>
+			<h1 class="mb-1 mt-3 text-xl font-semibold">{ d.Title }</h1>
+			<p class="mb-2 text-sm text-neutral-400">{ d.Owner }</p>
+			<p class="mb-6 text-xs text-neutral-400">{ d.Lead }</p>
+			@organisms.NoteList(d.Notes)
+		</main>
+	}
+}

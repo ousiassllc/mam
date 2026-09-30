@@ -28,6 +28,9 @@ type TakeTrace struct {
 	Take      Take
 	// ModelParameters is take.model_parameters as stored.
 	ModelParameters json.RawMessage
+	// Routing is why the video model was chosen (Multi-model routing, M3); nil for a Take that
+	// predates the record.
+	Routing *RoutingDecision
 	// PromptVersion holds the Source Shot Spec (SpecSnapshot) and what the Model Adapter derived from it.
 	PromptVersion PromptVersion
 	// WorldStateVersion is 0 when unknown or when no World State version existed yet.

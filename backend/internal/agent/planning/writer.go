@@ -23,6 +23,8 @@ type ScriptInput struct {
 	Concept  domain.Concept
 	Previous *domain.Script
 	Feedback string
+	// Notes are the production notes the Writer may use as context (spec/spec.md §9.4).
+	Notes []domain.NoteView
 }
 
 const writerSystem = systemPrefix + `あなたは Writer Agent です。コンセプトと構成から脚本を書きます。
@@ -45,7 +47,7 @@ scenes は動画の流れの順に並べ、全体の長さが Brief の Duration
 // Write returns the Script.
 func (w *Writer) Write(ctx context.Context, in ScriptInput) (domain.Script, error) {
 	user := "## Creative Brief\n" + briefText(in.Brief, in.Template) +
-		"\n## コンセプトと構成\n" + mustJSON(in.Concept) + "\n" + feedbackText(in.Previous, in.Feedback)
+		"\n## コンセプトと構成\n" + mustJSON(in.Concept) + "\n" + feedbackText(in.Previous, in.Feedback) + notesText(in.Notes)
 	s, err := llm.CompleteJSON[domain.Script](ctx, w.llm, llm.AgentWriter, llm.Request{System: writerSystem, User: user})
 	if err != nil {
 		return domain.Script{}, fmt.Errorf("writer: %w", err)

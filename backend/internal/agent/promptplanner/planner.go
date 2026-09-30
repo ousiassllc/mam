@@ -45,6 +45,9 @@ type Input struct {
 	Fixed []domain.SpecPart
 	// Manual are the parts of Current the user specified (MANUAL): kept unless the instruction changes them.
 	Manual []domain.SpecPart
+	// Notes are the production notes the Planner may use as context (spec/spec.md §9.4). The caller
+	// records their versions in prompt_version.note_refs.
+	Notes []domain.NoteView
 }
 
 // strategyDirectives tell the Planner what a Prompt Candidate puts first. Every strategy keeps the
@@ -145,6 +148,9 @@ func userPrompt(in Input) string {
 		for _, r := range in.References {
 			fmt.Fprintf(&b, "- %s%s\n", r.Kind, nameSuffix(r.Name))
 		}
+	}
+	if t := domain.NotesText(in.Notes); t != "" {
+		b.WriteString("\n## Production notes (context only: the world state, the constraints and the director's instruction win over them)\n" + t)
 	}
 	return b.String()
 }

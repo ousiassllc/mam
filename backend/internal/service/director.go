@@ -308,13 +308,17 @@ func (s *DirectorService) commitMessages(ctx context.Context, projectID string, 
 	return nil
 }
 
-// wants reports whether a chat message is a direction for the Command Interpreter: the Project is
-// in DIRECTOR MODE, past the Brief, and the message does not answer an open card.
+// wants reports whether a chat message is a direction for the Command Interpreter: a message that asks
+// the team to remember something (F-31, in any mode), or, in DIRECTOR MODE past the Brief, any message.
+// A message that answers an open card never is.
 func (s *DirectorService) wants(project domain.Project, target *domain.ChatMessage, content string) bool {
-	if project.Mode != domain.ModeDirector || project.State == domain.StateDraft || content == "" {
+	if content == "" || (target != nil && isAnswerable(target.Kind)) {
 		return false
 	}
-	return target == nil || !isAnswerable(target.Kind)
+	if domain.AsksToRemember(content) {
+		return true
+	}
+	return project.Mode == domain.ModeDirector && project.State != domain.StateDraft
 }
 
 // Chat interprets a message of the thread (already stored) and carries it out. The result is the AI
@@ -336,6 +340,11 @@ func (s *DirectorService) Chat(ctx context.Context, project domain.Project, targ
 	if err != nil {
 		return assistantText("指示を読み取れませんでした: " + generation.FailureReason(err)), nil
 	}
+	if project.Mode != domain.ModeDirector {
+		// Outside DIRECTOR MODE only a request to remember something is carried out: AUTO MODE does
+		// not take Shot directions from the chat.
+		return s.rememberOnly(ctx, project, cmd)
+	}
 	if cmd.Question != "" {
 		return assistantText(cmd.Question), nil
 	}
@@ -347,6 +356,33 @@ func (s *DirectorService) Chat(ctx context.Context, project domain.Project, targ
 		return domain.ChatMessage{}, err
 	}
 	return assistantText(res.text()), nil
+}
+
+// rememberOnly carries out the create_note operations of a Command (AUTO MODE).
+func (s *DirectorService) rememberOnly(ctx context.Context, project domain.Project, cmd commandinterpreter.Command) (domain.ChatMessage, error) {
+	cmd.Operations = slices.DeleteFunc(cmd.Operations, func(op commandinterpreter.Operation) bool { return op.Type != commandinterpreter.OpCreateNote })
+	if len(cmd.Operations) == 0 {
+		return assistantText("メモとして残せる内容が見つかりませんでした。覚えておきたい内容を、もう一度教えてください。"), nil
+	}
+	res, err := s.execute(ctx, project, nil, cmd, false)
+	if err != nil {
+		return domain.ChatMessage{}, err
+	}
+	return assistantText(res.text()), nil
+}
+
+// remember keeps what the director asked to remember as a note of the Project (source chat).
+func (s *DirectorService) remember(ctx context.Context, projectID string, op commandinterpreter.Operation) (string, error) {
+	n, err := s.notes.createProjectNote(ctx, projectID,
+		NoteInput{Title: op.Title, Content: op.Content, Category: string(op.Category)}, domain.NoteSourceChat)
+	if err != nil {
+		var ve *ValidationError
+		if errors.As(err, &ve) {
+			return "メモに残せませんでした: " + ve.Message, nil
+		}
+		return "", err
+	}
+	return fmt.Sprintf("メモに残しました:「%s」（%s）。以降の脚本・構成・Shot の設計で参照します。", n.Version.Title, n.Category.Label()), nil
 }
 
 // contextShot resolves the Shot a message is about without the words of the message: the Take card
@@ -498,6 +534,16 @@ func (s *DirectorService) execute(ctx context.Context, project domain.Project, r
 			}
 			out.lines = append(out.lines, reason)
 		}
+	}
+	for _, op := range cmd.Operations {
+		if op.Type != commandinterpreter.OpCreateNote {
+			continue
+		}
+		line, err := s.remember(ctx, project.ID, op)
+		if err != nil {
+			return out, err
+		}
+		out.lines = append(out.lines, line)
 	}
 	for _, op := range cmd.Operations {
 		if op.Type == commandinterpreter.OpSetMode {

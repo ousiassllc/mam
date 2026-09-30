@@ -85,6 +85,16 @@ func feedbackText(previous any, feedback string) string {
 	return "\n## 前回の案\n" + mustJSON(previous) + "\n\n## ユーザーからの修正依頼（必ず反映する）\n" + feedback + "\n"
 }
 
+// notesText is the section of the production notes (spec/spec.md §9.4), or "" when there are none.
+// The notes are context only: the Brief and the constraints win over them.
+func notesText(notes []domain.NoteView) string {
+	text := domain.NotesText(notes)
+	if text == "" {
+		return ""
+	}
+	return "\n## 制作メモ（文脈として参照する。Brief・制約・確定した設定と矛盾する場合はそちらを優先する）\n" + text
+}
+
 func mustJSON(v any) string {
 	raw, err := json.MarshalIndent(v, "", "  ")
 	if err != nil { // the inputs are plain structs of strings and numbers

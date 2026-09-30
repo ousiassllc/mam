@@ -76,6 +76,9 @@ type Deps struct {
 	Assets      *repository.AssetRepository
 	// World holds the World State the State Extractor updates after each Shot.
 	World *repository.WorldRepository
+	// Notes are the production notes of the Project; the Prompt Planner is given the relevant ones.
+	// Nil: no notes.
+	Notes *repository.NoteRepository
 	Chat  Chat
 	Jobs  Jobs
 	// LLM is the Reasoning LLM Adapter the Prompt Planner and the Art Director reason through.
@@ -104,6 +107,7 @@ type Orchestrator struct {
 	planner   *promptplanner.Planner
 	art       *artdirector.Director
 	world     *repository.WorldRepository
+	notes     *repository.NoteRepository
 	extractor *stateextractor.Extractor
 	files     fileStore
 	judge     Judger
@@ -122,7 +126,7 @@ func New(d Deps) *Orchestrator {
 	if o.freeDisk == nil {
 		o.freeDisk = fsutil.FreeBytes
 	}
-	o.world, o.extractor = d.World, stateextractor.New(d.LLM)
+	o.world, o.notes, o.extractor = d.World, d.Notes, stateextractor.New(d.LLM)
 	if o.logger == nil {
 		o.logger = slog.New(slog.DiscardHandler)
 	}
@@ -199,7 +203,7 @@ func (o *Orchestrator) start(ctx context.Context, shotID string, action Action, 
 	if err != nil {
 		return domain.Job{}, err
 	}
-	strategy, err := o.decide(ctx, policy.Quality, ref.Shot, budget)
+	strategy, err := o.decide(ctx, ref, policy, specOf(ref.Shot), budget)
 	if err != nil {
 		return domain.Job{}, err
 	}
@@ -214,14 +218,39 @@ func (o *Orchestrator) start(ctx context.Context, shotID string, action Action, 
 	return job, nil
 }
 
-// decide is the generation strategy of the Shot: the Quality Policy, cost and model capabilities,
-// and the Video Model when the user fixed one (Video Model MANUAL or LOCK).
-func (o *Orchestrator) decide(ctx context.Context, quality domain.QualityPolicy, shot domain.Shot, budget repository.Budget) (Strategy, error) {
-	locks, err := o.gens.ShotLocks(ctx, shot.ID)
+// decide is the generation strategy of the Shot: the Quality Policy, Multi-model routing (the nature
+// of the Shot, the Judge record of the models, cost, and the state of the vendors), cost and model
+// capabilities, and the Video Model when the user fixed one (Video Model MANUAL or LOCK). spec is the
+// Shot Spec the Shot is generated from (nil when it has none yet).
+func (o *Orchestrator) decide(ctx context.Context, ref repository.ShotRef, policy domain.ProjectPolicy, spec *domain.ShotSpec, budget repository.Budget) (Strategy, error) {
+	locks, err := o.gens.ShotLocks(ctx, ref.Shot.ID)
 	if err != nil {
 		return Strategy{}, err
 	}
-	return DecideWithModel(o.adapter.Config(), quality, shot.Duration, budget, FixedModel(locks))
+	cfg, forced := o.adapter.Config(), FixedModel(locks)
+	var in *RoutingInput
+	if forced == "" {
+		in = &RoutingInput{}
+		if cfg.Routing.Enabled {
+			records, err := o.gens.ModelRecords(ctx, ref.ProjectID)
+			if err != nil {
+				return Strategy{}, err
+			}
+			in = &RoutingInput{
+				Spec: spec, References: ref.Shot.References(), Records: records,
+				MinAcceptance: policy.Effective().MinAcceptanceScore, Unavailable: o.adapter.Unavailable,
+			}
+		}
+	}
+	return DecideRouted(cfg, policy.Quality, ref.Shot.Duration, budget, forced, in)
+}
+
+// specOf is the Canonical Shot Spec of the Shot, or nil when it has none.
+func specOf(shot domain.Shot) *domain.ShotSpec {
+	if spec, ok := shot.CanonicalSpec(); ok {
+		return &spec
+	}
+	return nil
 }
 
 // FixedModel is the Video Model the user fixed for the Shot, or "" (AUTO, or no known model chosen).

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"regexp"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -63,7 +64,7 @@ type adapterRecord struct {
 // Spec, decides the strategy, and makes the Takes.
 func (o *Orchestrator) generate(ctx context.Context, ref repository.ShotRef, instruction string, preserve []domain.SpecPart) (Progress, error) {
 	shot := ref.Shot
-	sc, err := o.loadShotContext(ctx, ref)
+	sc, err := o.loadShotContext(ctx, ref, instruction)
 	if err != nil {
 		return Progress{}, err
 	}
@@ -78,6 +79,7 @@ func (o *Orchestrator) generate(ctx context.Context, ref repository.ShotRef, ins
 	// are (F-05, UC-2). With Prompt LOCKed the spec is never rewritten.
 	current, hasSpec := shot.CanonicalSpec()
 	spec := current
+	var noteRefs []domain.NoteRef // the notes the Planner was given; none when the spec is kept
 	if !hasSpec || (instruction != "" && !locks.Locked(domain.ParamPrompt)) {
 		in := sc.plannerInput(ref, instruction)
 		if hasSpec {
@@ -88,6 +90,7 @@ func (o *Orchestrator) generate(ctx context.Context, ref repository.ShotRef, ins
 		if spec, err = o.planner.Plan(ctx, in); err != nil {
 			return Progress{}, err
 		}
+		noteRefs = domain.NoteRefs(sc.notes)
 	}
 
 	// Generation strategy: Shot Spec duration, cost and model capabilities.
@@ -95,7 +98,7 @@ func (o *Orchestrator) generate(ctx context.Context, ref repository.ShotRef, ins
 	if err != nil {
 		return Progress{}, err
 	}
-	strategy, err := o.decide(ctx, policy.Quality, shot, budget)
+	strategy, err := o.decide(ctx, ref, policy, &spec, budget)
 	if err != nil {
 		return Progress{}, err
 	}
@@ -107,7 +110,7 @@ func (o *Orchestrator) generate(ctx context.Context, ref repository.ShotRef, ins
 	if err != nil {
 		return Progress{}, err
 	}
-	pv, err := o.gens.SavePromptedSpec(ctx, shot.ID, spec, record)
+	pv, err := o.gens.SavePromptedSpec(ctx, shot.ID, spec, record, noteRefs)
 	if err != nil {
 		return Progress{}, err
 	}
@@ -142,10 +145,13 @@ type shotContext struct {
 	world      domain.WorldContext
 	previous   *domain.ShotSpec
 	references []domain.Reference
+	// notes are the production notes the Prompt Planner is given (spec/spec.md §9.4).
+	notes []domain.NoteView
 }
 
-// loadShotContext reads the Policy, Brief, World State, neighbouring spec and Reference Pack of the Shot.
-func (o *Orchestrator) loadShotContext(ctx context.Context, ref repository.ShotRef) (shotContext, error) {
+// loadShotContext reads the Policy, Brief, World State, neighbouring spec, Reference Pack and notes of
+// the Shot; instruction is the user's extra direction, which the choice of notes takes into account.
+func (o *Orchestrator) loadShotContext(ctx context.Context, ref repository.ShotRef, instruction string) (shotContext, error) {
 	policy, err := o.policies.Get(ctx, ref.ProjectID)
 	if err != nil {
 		return shotContext{}, err
@@ -162,14 +168,33 @@ func (o *Orchestrator) loadShotContext(ctx context.Context, ref repository.ShotR
 	if err != nil {
 		return shotContext{}, err
 	}
-	return shotContext{policy: policy, brief: brief, world: world, previous: previousSpec(shots, ref.Shot.ID), references: ref.Shot.References()}, nil
+	notes, err := o.shotNotes(ctx, ref, instruction)
+	if err != nil {
+		return shotContext{}, err
+	}
+	return shotContext{policy: policy, brief: brief, world: world, previous: previousSpec(shots, ref.Shot.ID), references: ref.Shot.References(), notes: notes}, nil
+}
+
+// shotNotes chooses the production notes of the Project the Prompt Planner is given for the Shot: the
+// pinned ones, then the ones that match the Scene, the Shot and the instruction, within the context
+// budget (spec/spec.md §9.4). Archived notes are never chosen.
+func (o *Orchestrator) shotNotes(ctx context.Context, ref repository.ShotRef, instruction string) ([]domain.NoteView, error) {
+	if o.notes == nil {
+		return nil, nil
+	}
+	all, err := o.notes.Context(ctx, ref.ProjectID)
+	if err != nil {
+		return nil, err
+	}
+	query := strings.Join([]string{ref.Scene.Title, ref.Scene.Objective, ref.Shot.Objective, instruction}, "\n")
+	return domain.SelectNotes(all, query, domain.NoteContextBudgetRunes), nil
 }
 
 // plannerInput is the input of the Prompt Planner for the Shot with the user's extra direction.
 func (c shotContext) plannerInput(ref repository.ShotRef, instruction string) promptplanner.Input {
 	return promptplanner.Input{
 		Brief: c.brief, Template: c.policy.Template, Scene: ref.Scene, Shot: ref.Shot,
-		Instruction: instruction, World: c.world, Previous: c.previous, References: c.references,
+		Instruction: instruction, World: c.world, Previous: c.previous, References: c.references, Notes: c.notes,
 	}
 }
 
@@ -246,6 +271,8 @@ type takeParameters struct {
 	Prompt          string               `json:"prompt"`
 	// Candidate is the strategy of the Prompt Candidate the Take was made for.
 	Candidate domain.CandidateStrategy `json:"candidate_strategy,omitempty"`
+	// Routing is why the Take's video model was chosen (Multi-model routing, F-27).
+	Routing *domain.RoutingDecision `json:"routing,omitempty"`
 }
 
 // makeTake generates one Take, stores its file, the Take row and cost, and posts its card, whose
@@ -269,6 +296,7 @@ func (o *Orchestrator) makeTake(ctx context.Context, ref repository.ShotRef, pv 
 	params, err := json.Marshal(takeParameters{
 		Policy: s.Policy, Resolution: out.Resolution, DurationSeconds: out.DurationSeconds,
 		AspectRatio: out.Request.AspectRatio, FellBack: out.FellBack, Prompt: out.Request.Prompt, Candidate: candidate, TakeLineage: lineage,
+		Routing: s.routing(),
 	})
 	if err != nil {
 		o.files.remove(asset)
