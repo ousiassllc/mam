@@ -404,3 +404,121 @@ func TestRunwayBackendWithoutAPIKeyFailsBeforeAnyRequest(t *testing.T) {
 	require.ErrorIs(t, err, modeladapter.ErrNoAPIKey)
 	assert.Zero(t, hits.Load())
 }
+
+// seedanceServer serves a Seedance job whose status and file answers come from the given codes:
+// 0 = the normal answer, anything else is returned as the HTTP status. The last code repeats.
+func seedanceServer(t *testing.T, pollCodes, downloadCodes []int) (srv *httptest.Server, submits, polls, downloads *atomic.Int32) {
+	t.Helper()
+	submits, polls, downloads = new(atomic.Int32), new(atomic.Int32), new(atomic.Int32)
+	code := func(codes []int, n int32) int { return codes[min(int(n)-1, len(codes)-1)] }
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/v3/contents/generations/tasks", func(w http.ResponseWriter, _ *http.Request) {
+		submits.Add(1)
+		_, _ = w.Write([]byte(`{"id":"task1"}`))
+	})
+	mux.HandleFunc("/api/v3/contents/generations/tasks/task1", func(w http.ResponseWriter, _ *http.Request) {
+		if c := code(pollCodes, polls.Add(1)); c != 0 {
+			w.WriteHeader(c)
+			return
+		}
+		_, _ = w.Write([]byte(`{"status":"succeeded","content":{"video_url":"` + srv.URL + `/v.mp4"}}`))
+	})
+	mux.HandleFunc("/v.mp4", func(w http.ResponseWriter, _ *http.Request) {
+		if c := code(downloadCodes, downloads.Add(1)); c != 0 {
+			w.WriteHeader(c)
+			return
+		}
+		w.Header().Set("Content-Type", "video/mp4")
+		_, _ = w.Write([]byte("MP4"))
+	})
+	srv = httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	return srv, submits, polls, downloads
+}
+
+var seedanceReq = modeladapter.VideoRequest{Prompt: "p", DurationSeconds: 4, Resolution: "720p", AspectRatio: "16:9"}
+
+func TestSubmittedJobSurvivesATransientPollFailureWithoutBeingSubmittedAgain(t *testing.T) {
+	srv, submits, polls, _ := seedanceServer(t, []int{http.StatusServiceUnavailable, 0}, []int{0})
+	b := backendsFor(t, srv, memKeys{"seedance": "k"})
+
+	res, err := b.Video[domain.ModelSeedance2].GenerateVideo(context.Background(), "m", seedanceReq)
+
+	require.NoError(t, err)
+	assert.Equal(t, []byte("MP4"), res.Data)
+	assert.EqualValues(t, 1, submits.Load())
+	assert.EqualValues(t, 2, polls.Load())
+}
+
+func TestSubmittedJobSurvivesATransientDownloadFailureWithoutBeingSubmittedAgain(t *testing.T) {
+	srv, submits, _, downloads := seedanceServer(t, []int{0}, []int{http.StatusBadGateway, 0})
+	b := backendsFor(t, srv, memKeys{"seedance": "k"})
+
+	res, err := b.Video[domain.ModelSeedance2].GenerateVideo(context.Background(), "m", seedanceReq)
+
+	require.NoError(t, err)
+	assert.Equal(t, []byte("MP4"), res.Data)
+	assert.EqualValues(t, 1, submits.Load())
+	assert.EqualValues(t, 2, downloads.Load())
+}
+
+func TestPollAndDownloadRetriesAreBounded(t *testing.T) {
+	srv, _, polls, _ := seedanceServer(t, []int{http.StatusServiceUnavailable}, []int{0})
+	b := backendsFor(t, srv, memKeys{"seedance": "k"})
+
+	_, err := b.Video[domain.ModelSeedance2].GenerateVideo(context.Background(), "m", seedanceReq)
+
+	var pe *modeladapter.ProviderError
+	require.ErrorAs(t, err, &pe)
+	assert.Equal(t, http.StatusServiceUnavailable, pe.Status)
+	assert.EqualValues(t, 3, polls.Load())
+}
+
+func TestAdapterDoesNotSubmitAgainWhenPollingKeepsFailing(t *testing.T) {
+	srv, submits, _, _ := seedanceServer(t, []int{http.StatusServiceUnavailable}, []int{0})
+	cfg := modeladapter.DefaultConfig()
+	for v, vc := range cfg.Vendors {
+		vc.BaseURL = srv.URL
+		cfg.Vendors[v] = vc
+	}
+	a := newAdapter(cfg, modeladapter.NewBackends(cfg, memKeys{"seedance": "k"}, srv.Client(), time.Millisecond))
+
+	_, err := a.GenerateVideo(context.Background(), seedanceTarget, seedanceTarget, baseJob())
+
+	require.Error(t, err)
+	assert.EqualValues(t, 1, submits.Load(), "the vendor accepted the job: a failed status request must not submit it (and bill it) again")
+}
+
+func TestFluxJobSurvivesATransientPollAndDownloadFailure(t *testing.T) {
+	var submits, polls, downloads atomic.Int32
+	mux := http.NewServeMux()
+	var srv *httptest.Server
+	mux.HandleFunc("/v1/flux-2-pro", func(w http.ResponseWriter, _ *http.Request) {
+		submits.Add(1)
+		_, _ = w.Write([]byte(`{"id":"j1","polling_url":"` + srv.URL + `/poll"}`))
+	})
+	mux.HandleFunc("/poll", func(w http.ResponseWriter, _ *http.Request) {
+		if polls.Add(1) == 1 {
+			w.WriteHeader(http.StatusTooManyRequests)
+			return
+		}
+		_, _ = w.Write([]byte(`{"status":"Ready","result":{"sample":"` + srv.URL + `/file.jpg"}}`))
+	})
+	mux.HandleFunc("/file.jpg", func(w http.ResponseWriter, _ *http.Request) {
+		if downloads.Add(1) == 1 {
+			w.WriteHeader(http.StatusBadGateway)
+			return
+		}
+		w.Header().Set("Content-Type", "image/jpeg")
+		_, _ = w.Write([]byte("JPEG"))
+	})
+	srv = httptest.NewServer(mux)
+	defer srv.Close()
+	b := backendsFor(t, srv, memKeys{"flux": "k"})
+
+	res, err := b.Image[domain.ModelFlux2].GenerateImage(context.Background(), "flux-2-pro", modeladapter.ImageRequest{Prompt: "p", AspectRatio: "16:9"})
+
+	require.NoError(t, err)
+	assert.Equal(t, []byte("JPEG"), res.Data)
+	assert.EqualValues(t, 1, submits.Load())
+}

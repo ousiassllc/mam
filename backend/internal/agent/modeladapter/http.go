@@ -97,8 +97,25 @@ func jsonHeader(h map[string]string) map[string]string {
 	return out
 }
 
-// download fetches a generated file from the URL the vendor returned.
+// download fetches a generated file from the URL the vendor returned. It only runs after the job
+// was submitted, so a transient failure is retried here (the GET is repeatable) and any error it
+// finally returns is marked errAfterSubmit: the job must not be submitted again.
 func (a api) download(ctx context.Context, fileURL string) ([]byte, string, error) {
+	var (
+		data []byte
+		mime string
+	)
+	err := a.repeat(ctx, func() (err error) {
+		data, mime, err = a.downloadOnce(ctx, fileURL)
+		return err
+	})
+	if err != nil {
+		return nil, "", afterSubmit(err)
+	}
+	return data, mime, nil
+}
+
+func (a api) downloadOnce(ctx context.Context, fileURL string) ([]byte, string, error) {
 	u, err := url.Parse(fileURL)
 	if err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" {
 		return nil, "", &ProviderError{Vendor: string(a.vendor), Status: http.StatusOK, Message: "the result URL is not an http(s) URL"}
@@ -125,17 +142,48 @@ func (a api) download(ctx context.Context, fileURL string) ([]byte, string, erro
 	return data, res.Header.Get("Content-Type"), nil
 }
 
-// poll calls check until it reports done or fails, waiting pollEvery between calls.
-func (a api) poll(ctx context.Context, check func(ctx context.Context) (done bool, err error)) error {
-	for {
-		done, err := check(ctx)
-		if err != nil || done {
+// maxTransientAttempts bounds how often one status request or download is tried when the vendor
+// answers 429 / 5xx or the connection breaks.
+const maxTransientAttempts = 3
+
+// repeat runs fn, repeating it up to maxTransientAttempts times (waiting pollEvery between the
+// tries) while it fails with an unavailable answer. fn must be safe to repeat: a GET of a job that
+// was already submitted.
+func (a api) repeat(ctx context.Context, fn func() error) error {
+	for attempt := 1; ; attempt++ {
+		err := fn()
+		if err == nil || attempt >= maxTransientAttempts || ctx.Err() != nil || !unavailable(err) {
 			return err
 		}
 		select {
 		case <-time.After(a.pollEvery):
 		case <-ctx.Done():
-			return ctx.Err()
+			return err
+		}
+	}
+}
+
+// poll calls check until it reports done or fails, waiting pollEvery between calls. It only runs
+// after the job was submitted: a transient failure of one status request is retried (it is a GET
+// of the same job), and any error it finally returns is marked errAfterSubmit so the whole call
+// is not repeated, which would submit, and be billed for, the job a second time.
+func (a api) poll(ctx context.Context, check func(ctx context.Context) (done bool, err error)) error {
+	for {
+		var done bool
+		err := a.repeat(ctx, func() (err error) {
+			done, err = check(ctx)
+			return err
+		})
+		if err != nil {
+			return afterSubmit(err)
+		}
+		if done {
+			return nil
+		}
+		select {
+		case <-time.After(a.pollEvery):
+		case <-ctx.Done():
+			return afterSubmit(ctx.Err())
 		}
 	}
 }
