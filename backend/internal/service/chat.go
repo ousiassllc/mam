@@ -255,7 +255,7 @@ func (s *ChatService) commit(ctx context.Context, turn repository.Turn) error {
 		return notFound(err)
 	}
 	s.publishCreated(turn.ProjectID, turn.Messages)
-	if turn.Approval != nil && turn.Approval.Status == domain.ApprovalChangesRequested {
+	if turn.CheckpointChanges {
 		s.recordIntervention(ctx, domain.Intervention{ProjectID: turn.ProjectID, Kind: domain.InterventionRequestChanges, Override: true})
 	}
 	return nil
@@ -375,6 +375,9 @@ func approvalTurn(project domain.Project, card domain.ChatMessage, decision Deci
 	if card.IsBlockingApproval() {
 		next := resumeStateAfter(card, decision)
 		turn.ResumeState = &next
+		if decision == DecisionRequestChanges {
+			turn.CheckpointChanges = true
+		}
 	}
 	return turn
 }
