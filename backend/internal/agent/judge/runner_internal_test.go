@@ -13,19 +13,19 @@ func TestLockedDimensions_ComeFromTheSpecAndFromTheLockTable(t *testing.T) {
 		Character: &domain.SpecActor{ID: "c1"},
 		Product:   &domain.SpecProduct{ID: "p1"},
 	}
-	assert.Empty(t, lockedDimensions(spec, domain.WorldContext{}, nil), "nothing is locked")
+	assert.Empty(t, lockedDimensions(spec, domain.WorldContext{}, nil, nil), "nothing is locked")
 
 	got := lockedDimensions(spec, domain.WorldContext{}, domain.LockSet{
 		{Target: domain.TargetCharacter, ID: "c1", Field: "identity"}:  {},
 		{Target: domain.TargetProduct, ID: "p1", Field: "label"}:       {},
 		{Target: domain.TargetProduct, ID: "other", Field: "geometry"}: {},
-	})
+	}, nil)
 	assert.Equal(t, map[domain.JudgeDimension]bool{
 		domain.DimCharacterIdentity: true, domain.DimFace: true, domain.DimLogoTextAccuracy: true,
 	}, got, "another product's lock does not apply")
 
 	spec.Character.Identity, spec.Product.Geometry = "locked", "locked"
-	got = lockedDimensions(spec, domain.WorldContext{}, nil)
+	got = lockedDimensions(spec, domain.WorldContext{}, nil, nil)
 	assert.True(t, got[domain.DimCharacterIdentity])
 	assert.True(t, got[domain.DimProductGeometry], "the spec's own 'locked' counts")
 }
@@ -49,10 +49,10 @@ func TestLockedDimensions_AttributeLocksOfCharacterProductAndLocationMapToTheirD
 	}
 	assert.Equal(t, map[domain.JudgeDimension]bool{
 		domain.DimCharacterConsistency: true, domain.DimProductAccuracy: true, domain.DimLighting: true, domain.DimBackground: true,
-	}, lockedDimensions(spec, world, locks))
+	}, lockedDimensions(spec, world, locks, nil))
 
 	other := domain.LockSet{{Target: domain.TargetLocation, ID: "elsewhere", Field: "weather"}: {}}
-	assert.Empty(t, lockedDimensions(spec, world, other), "a lock of a Location the Shot is not in does not apply")
+	assert.Empty(t, lockedDimensions(spec, world, other, nil), "a lock of a Location the Shot is not in does not apply")
 }
 
 func TestAssetPath_StaysInsideTheAssetsDirectory(t *testing.T) {
@@ -80,4 +80,25 @@ func TestSummary_SaysWhyTheNumbersAreMissing(t *testing.T) {
 
 	res.Metrics = domain.JudgeMetrics{FaceIdentityStatus: domain.FaceMeasured, FaceIdentity: []domain.FaceIdentityMetric{{Evaluated: false}}}
 	assert.Contains(t, Summary(1, "x", res), "顔を検出できないフレームが多い")
+}
+
+func TestLockedDimensions_ParametersLockedOnTheShotReachTheJudge(t *testing.T) {
+	locked := domain.LockSetting{Mode: domain.LockLocked}
+	shotLocks := domain.ParameterLocks{
+		domain.ParamCharacterIdentity: locked,
+		domain.ParamProductGeometry:   locked,
+		domain.ParamActing:            locked,
+		domain.ParamCamera:            locked,
+		domain.ParamLighting:          locked,
+		domain.ParamDialogue:          locked, // has no Judge dimension
+		domain.ParamPrompt:            {Mode: domain.LockManual},
+	}
+
+	got := lockedDimensions(domain.ShotSpec{}, domain.WorldContext{}, nil, shotLocks)
+
+	assert.Equal(t, map[domain.JudgeDimension]bool{
+		domain.DimCharacterIdentity: true, domain.DimFace: true, domain.DimProductGeometry: true,
+		domain.DimActing: true, domain.DimCameraMotion: true, domain.DimLighting: true,
+	}, got)
+	assert.Empty(t, lockedDimensions(domain.ShotSpec{}, domain.WorldContext{}, nil, domain.ParameterLocks{domain.ParamActing: {Mode: domain.LockManual}}), "only LOCK counts, not MANUAL")
 }
