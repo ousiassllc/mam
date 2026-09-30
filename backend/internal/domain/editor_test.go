@@ -1,6 +1,7 @@
 package domain_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -133,4 +134,62 @@ func TestExportOptions_SizeFollowsTheShortSideAndTheAspectRatio(t *testing.T) {
 	assert.Error(t, err)
 	_, _, err = domain.ExportOptions{AspectRatio: "16:9", Resolution: "big"}.Size()
 	assert.Error(t, err)
+}
+
+func TestEditTimeline_NormalizeKeepsKindAndTidiesTheCaption(t *testing.T) {
+	c := clip("a", 0, 2, domain.TransitionCut, 0)
+	c.Kind, c.Caption = domain.ClipReaction, "  えっ？\r\n\r\n\r\n本当に  "
+	plain := clip("b", 0, 2, domain.TransitionCut, 0)
+
+	got, err := domain.EditTimeline{Clips: []domain.EditClip{c, plain}}.Normalize()
+
+	require.NoError(t, err)
+	assert.Equal(t, domain.ClipReaction, got.Clips[0].Kind)
+	assert.Equal(t, domain.ClipMain, got.Clips[1].Kind, "no kind is the story")
+	assert.Equal(t, domain.CleanCaption(c.Caption), got.Clips[0].Caption)
+	assert.NotContains(t, got.Clips[0].Caption, "\r")
+}
+
+func TestEditTimeline_NormalizeRejectsAnUnknownKindAndATooLongCaption(t *testing.T) {
+	bad := clip("a", 0, 2, domain.TransitionCut, 0)
+	bad.Kind = "trailer"
+	long := clip("a", 0, 2, domain.TransitionCut, 0)
+	long.Caption = strings.Repeat("あ", domain.MaxCaptionRunes+1)
+	ok := clip("a", 0, 2, domain.TransitionCut, 0)
+	ok.Caption = strings.Repeat("あ", domain.MaxCaptionRunes)
+
+	_, err := domain.EditTimeline{Clips: []domain.EditClip{bad}}.Normalize()
+	assert.ErrorIs(t, err, domain.ErrInvalidTimeline)
+	_, err = domain.EditTimeline{Clips: []domain.EditClip{long}}.Normalize()
+	assert.ErrorIs(t, err, domain.ErrInvalidTimeline)
+	_, err = domain.EditTimeline{Clips: []domain.EditClip{ok}}.Normalize()
+	assert.NoError(t, err)
+}
+
+func TestShotNeed(t *testing.T) {
+	good := domain.ShotNeed{Kind: domain.ClipInsert, AfterClip: 2, Objective: "商品のアップ", DurationSeconds: 1.5}
+	tests := []struct {
+		name string
+		mut  func(*domain.ShotNeed)
+		ok   bool
+	}{
+		{"valid", func(*domain.ShotNeed) {}, true},
+		{"after the last clip", func(n *domain.ShotNeed) { n.AfterClip = 3 }, true},
+		{"beyond the timeline", func(n *domain.ShotNeed) { n.AfterClip = 4 }, false},
+		{"before the first clip", func(n *domain.ShotNeed) { n.AfterClip = 0 }, false},
+		{"the story is not an additional shot", func(n *domain.ShotNeed) { n.Kind = domain.ClipMain }, false},
+		{"no objective", func(n *domain.ShotNeed) { n.Objective = "  " }, false},
+		{"too long", func(n *domain.ShotNeed) { n.DurationSeconds = domain.MaxNeedSeconds + 1 }, false},
+		{"no length: the default", func(n *domain.ShotNeed) { n.DurationSeconds = 0 }, true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			n := good
+			tc.mut(&n)
+			assert.Equal(t, tc.ok, n.Valid(3))
+		})
+	}
+	assert.Equal(t, domain.DefaultNeedSeconds, domain.ShotNeed{}.Seconds())
+	assert.Equal(t, domain.MinNeedSeconds, domain.ShotNeed{DurationSeconds: 0.2}.Seconds())
+	assert.Equal(t, 5.0, domain.ShotNeed{DurationSeconds: 5}.Seconds())
 }

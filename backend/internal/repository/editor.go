@@ -27,22 +27,48 @@ func NewEditorRepository(db *DB) *EditorRepository {
 	return &EditorRepository{db: db, now: time.Now}
 }
 
-// SaveEditTimeline appends the next Edit Timeline version of the Project. When baseID is not
-// empty the save only succeeds if that version is still the latest (ErrStale otherwise), so
-// that an editor that was open on an old version cannot overwrite a newer one.
-func (r *EditorRepository) SaveEditTimeline(ctx context.Context, projectID, baseID string, tl domain.EditTimeline) (domain.EditTimelineVersion, error) {
+// SaveEditTimeline appends the next Edit Timeline version of the trunk of the Project (branchID
+// "") or of its Branch: every Branch numbers its own versions and never touches another's. When
+// baseID is not empty the save only succeeds if that version is still the latest of the series
+// (ErrStale otherwise), so that an editor that was open on an old version cannot overwrite a newer
+// one. A Branch of another Project is ErrNotFound.
+func (r *EditorRepository) SaveEditTimeline(ctx context.Context, projectID, branchID, baseID string, tl domain.EditTimeline) (domain.EditTimelineVersion, error) {
+	v, err := r.saveEditTimeline(ctx, projectID, branchID, baseID, tl, nil)
+	if err != nil {
+		if errors.Is(err, ErrStale) || errors.Is(err, ErrNotFound) {
+			return domain.EditTimelineVersion{}, err
+		}
+		return domain.EditTimelineVersion{}, fmt.Errorf("save edit timeline: %w", err)
+	}
+	return v, nil
+}
+
+// saveEditTimeline is SaveEditTimeline with after, run in the same transaction once the version is
+// written. Errors are not wrapped.
+func (r *EditorRepository) saveEditTimeline(ctx context.Context, projectID, branchID, baseID string, tl domain.EditTimeline, after func(ctx context.Context, tx *sql.Tx, versionID string) error) (domain.EditTimelineVersion, error) {
 	raw, err := json.Marshal(tl)
 	if err != nil {
 		return domain.EditTimelineVersion{}, fmt.Errorf("marshal edit timeline: %w", err)
 	}
-	v := domain.EditTimelineVersion{ID: domain.NewID(), ProjectID: projectID, Timeline: tl, CreatedAt: r.now().UTC()}
+	v := domain.EditTimelineVersion{ID: domain.NewID(), ProjectID: projectID, BranchID: branchID, Timeline: tl, CreatedAt: r.now().UTC()}
 	err = r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		if err := projectExists(ctx, tx, projectID); err != nil {
 			return err
 		}
+		if branchID != "" {
+			var one int
+			err := tx.QueryRowContext(ctx, `SELECT 1 FROM branch WHERE id = ? AND project_id = ?`, branchID, projectID).Scan(&one)
+			if errors.Is(err, sql.ErrNoRows) {
+				return ErrNotFound
+			}
+			if err != nil {
+				return err
+			}
+		}
 		var latestID string
 		err := tx.QueryRowContext(ctx,
-			`SELECT id FROM edit_timeline_version WHERE project_id = ? ORDER BY version_number DESC LIMIT 1`, projectID).Scan(&latestID)
+			`SELECT id FROM edit_timeline_version WHERE project_id = ? AND branch_id IS ? ORDER BY version_number DESC LIMIT 1`,
+			projectID, nullIfEmpty(branchID)).Scan(&latestID)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return err
 		}
@@ -50,19 +76,22 @@ func (r *EditorRepository) SaveEditTimeline(ctx context.Context, projectID, base
 			return ErrStale
 		}
 		if err := tx.QueryRowContext(ctx,
-			`SELECT COALESCE(MAX(version_number), 0) + 1 FROM edit_timeline_version WHERE project_id = ?`, projectID).Scan(&v.VersionNumber); err != nil {
+			`SELECT COALESCE(MAX(version_number), 0) + 1 FROM edit_timeline_version WHERE project_id = ? AND branch_id IS ?`,
+			projectID, nullIfEmpty(branchID)).Scan(&v.VersionNumber); err != nil {
 			return err
 		}
-		_, err = tx.ExecContext(ctx,
-			`INSERT INTO edit_timeline_version (id, project_id, version_number, timeline, created_at) VALUES (?, ?, ?, ?, ?)`,
-			v.ID, projectID, v.VersionNumber, string(raw), formatTime(v.CreatedAt))
-		return err
+		if _, err := tx.ExecContext(ctx,
+			`INSERT INTO edit_timeline_version (id, project_id, branch_id, version_number, timeline, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
+			v.ID, projectID, nullIfEmpty(branchID), v.VersionNumber, string(raw), formatTime(v.CreatedAt)); err != nil {
+			return err
+		}
+		if after != nil {
+			return after(ctx, tx, v.ID)
+		}
+		return nil
 	})
 	if err != nil {
-		if errors.Is(err, ErrStale) || errors.Is(err, ErrNotFound) {
-			return domain.EditTimelineVersion{}, err
-		}
-		return domain.EditTimelineVersion{}, fmt.Errorf("save edit timeline: %w", err)
+		return domain.EditTimelineVersion{}, err
 	}
 	return v, nil
 }
@@ -73,7 +102,7 @@ func scanEditTimeline(row rowScanner) (domain.EditTimelineVersion, error) {
 		raw     string
 		created string
 	)
-	if err := row.Scan(&v.ID, &v.ProjectID, &v.VersionNumber, &raw, &created); err != nil {
+	if err := row.Scan(&v.ID, &v.ProjectID, &v.BranchID, &v.VersionNumber, &raw, &created); err != nil {
 		return domain.EditTimelineVersion{}, err
 	}
 	if err := json.Unmarshal([]byte(raw), &v.Timeline); err != nil {
@@ -84,7 +113,7 @@ func scanEditTimeline(row rowScanner) (domain.EditTimelineVersion, error) {
 	return v, err
 }
 
-const editTimelineSelect = `SELECT id, project_id, version_number, timeline, created_at FROM edit_timeline_version`
+const editTimelineSelect = `SELECT id, project_id, COALESCE(branch_id, ''), version_number, timeline, created_at FROM edit_timeline_version`
 
 // GetEditTimeline returns an Edit Timeline version or ErrNotFound.
 func (r *EditorRepository) GetEditTimeline(ctx context.Context, id string) (domain.EditTimelineVersion, error) {
@@ -92,10 +121,11 @@ func (r *EditorRepository) GetEditTimeline(ctx context.Context, id string) (doma
 	return v, notFoundOr(err, "get edit timeline")
 }
 
-// LatestEditTimeline returns the newest Edit Timeline version of the Project or ErrNotFound.
-func (r *EditorRepository) LatestEditTimeline(ctx context.Context, projectID string) (domain.EditTimelineVersion, error) {
+// LatestEditTimeline returns the newest Edit Timeline version of the trunk of the Project (branchID
+// "") or of its Branch, or ErrNotFound.
+func (r *EditorRepository) LatestEditTimeline(ctx context.Context, projectID, branchID string) (domain.EditTimelineVersion, error) {
 	v, err := scanEditTimeline(r.db.Reader().QueryRowContext(ctx,
-		editTimelineSelect+` WHERE project_id = ? ORDER BY version_number DESC LIMIT 1`, projectID))
+		editTimelineSelect+` WHERE project_id = ? AND branch_id IS ? ORDER BY version_number DESC LIMIT 1`, projectID, nullIfEmpty(branchID)))
 	return v, notFoundOr(err, "get latest edit timeline")
 }
 

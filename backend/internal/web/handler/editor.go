@@ -14,7 +14,7 @@ import (
 
 func editorPanelData(v service.EditorView) organisms.EditorPanelData {
 	d := organisms.EditorPanelData{
-		Project: v.Project, Audio: v.Audio, QC: v.QC, Exports: v.Exports, Defaults: v.Defaults, CanRender: v.CanRender,
+		Project: v.Project, BranchID: v.BranchID, Audio: v.Audio, QC: v.QC, Exports: v.Exports, Defaults: v.Defaults, CanRender: v.CanRender,
 	}
 	if t := v.Timeline; t != nil {
 		d.TimelineID, d.Clips, d.Duration, d.Judge = t.ID, len(t.Clips), t.Duration, t.Judge
@@ -26,7 +26,7 @@ func editorPanelData(v service.EditorView) organisms.EditorPanelData {
 // workspace for HTMX. The timeline itself is loaded by the component from the JSON API.
 func EditorPage(svc *service.EditorService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		v, err := svc.View(c.Request.Context(), c.Param("id"))
+		v, err := svc.View(c.Request.Context(), c.Param("id"), c.Query("branch_id"))
 		if err != nil {
 			pageError(c, err)
 			return
@@ -44,7 +44,7 @@ func EditorPage(svc *service.EditorService) gin.HandlerFunc {
 // #editor-actions reloads from once the timeline editor saved.
 func EditorActions(svc *service.EditorService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		v, err := svc.View(c.Request.Context(), c.Param("id"))
+		v, err := svc.View(c.Request.Context(), c.Param("id"), c.Query("branch_id"))
 		if err != nil {
 			toast(c, err)
 			return
@@ -68,11 +68,21 @@ func editorStage(run func(c *gin.Context) (service.EditorView, error), trigger s
 	}
 }
 
-// RoughCut makes the Rough Cut from the Selected Takes (POST /projects/:id/edit/rough-cut). The
-// timeline editor reloads on the timeline-reload event the response carries.
+// roughCutForm is the body of POST /projects/:id/edit/rough-cut: the Branch to cut ("" is the trunk).
+type roughCutForm struct {
+	BranchID string `form:"branch_id" json:"branch_id"`
+}
+
+// RoughCut makes the Rough Cut from the Selected Takes of the trunk or of the Branch in branch_id
+// (POST /projects/:id/edit/rough-cut). The timeline editor reloads on the timeline-reload event the
+// response carries.
 func RoughCut(svc *service.EditorService) gin.HandlerFunc {
 	return editorStage(func(c *gin.Context) (service.EditorView, error) {
-		return svc.RoughCut(c.Request.Context(), c.Param("id"))
+		var in roughCutForm
+		if err := c.ShouldBind(&in); err != nil {
+			return service.EditorView{}, &service.ValidationError{Field: "branch_id", Message: "Branch の指定を読み取れませんでした"}
+		}
+		return svc.RoughCut(c.Request.Context(), c.Param("id"), in.BranchID)
 	}, "timeline-reload")
 }
 
@@ -80,6 +90,14 @@ func RoughCut(svc *service.EditorService) gin.HandlerFunc {
 func JudgeTimeline(svc *service.EditorService) gin.HandlerFunc {
 	return editorStage(func(c *gin.Context) (service.EditorView, error) {
 		return svc.JudgeTimeline(c.Request.Context(), c.Param("id"))
+	}, "")
+}
+
+// RequestAdditionalShot asks the Director for the additional Shots the Editor Judge found missing
+// (POST /edit-timelines/:id/request-additional-shot): the Editor → Reshoot Loop.
+func RequestAdditionalShot(svc *service.EditorService) gin.HandlerFunc {
+	return editorStage(func(c *gin.Context) (service.EditorView, error) {
+		return svc.RequestAdditionalShot(c.Request.Context(), c.Param("id"))
 	}, "")
 }
 
