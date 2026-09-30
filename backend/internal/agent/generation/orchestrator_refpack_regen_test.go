@@ -53,6 +53,7 @@ func TestOrchestrator_ReferencePackMakesEveryReferenceAndFeedsTheNextGeneration(
 	require.NotEmpty(t, sent)
 	for _, req := range sent {
 		assert.NotNil(t, req.FirstFrame, "the Keyframe is the first frame")
+		assert.NotEmpty(t, req.References, "Seedance also receives the other Reference Pack images")
 	}
 }
 

@@ -202,6 +202,35 @@ func TestSeedanceBackendSubmitsPollsAndDownloads(t *testing.T) {
 	assert.Equal(t, "reference_image", content[1].(map[string]any)["role"])
 }
 
+func TestSeedanceSendsTheFirstFrameAndReferenceImagesTogether(t *testing.T) {
+	var submitted map[string]any
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/v3/contents/generations/tasks", func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewDecoder(r.Body).Decode(&submitted)
+		_, _ = w.Write([]byte(`{"id":"task1"}`))
+	})
+	mux.HandleFunc("/api/v3/contents/generations/tasks/task1", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"status":"succeeded","content":{"video_url":"http://127.0.0.1/missing.mp4"}}`))
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	b := backendsFor(t, srv, memKeys{"seedance": "k"})
+
+	_, _ = b.Video[domain.ModelSeedance2].GenerateVideo(context.Background(), "seedance-2-0", modeladapter.VideoRequest{
+		Prompt: "run", DurationSeconds: 4, Resolution: "720p", AspectRatio: "16:9",
+		FirstFrame: &modeladapter.Input{Data: []byte("F"), MimeType: "image/png"},
+		LastFrame:  &modeladapter.Input{Data: []byte("L"), MimeType: "image/png"},
+		References: []modeladapter.Input{{Data: []byte("R"), MimeType: "image/png"}},
+	})
+
+	content := submitted["content"].([]any)
+	roles := make([]string, len(content)-1)
+	for i, item := range content[1:] {
+		roles[i] = item.(map[string]any)["role"].(string)
+	}
+	assert.Equal(t, []string{"first_frame", "last_frame", "reference_image"}, roles)
+}
+
 func TestSeedanceFailedJobIsARejectionNotARetry(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/v3/contents/generations/tasks", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte(`{"id":"t"}`)) })

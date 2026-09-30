@@ -176,11 +176,8 @@ func (b seedanceBackend) GenerateVideo(ctx context.Context, apiModel string, req
 			image(*req.LastFrame, "last_frame")
 		}
 	}
-	// References cannot be combined with frames: the model reads either the frames or the references.
-	if req.FirstFrame == nil {
-		for _, r := range req.References {
-			image(r, "reference_image")
-		}
+	for _, r := range req.References {
+		image(r, "reference_image")
 	}
 	raw, _ := json.Marshal(map[string]any{"model": apiModel, "content": content})
 	base := b.baseURL + "/api/v3/contents/generations/tasks"
