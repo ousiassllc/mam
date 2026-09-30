@@ -500,6 +500,7 @@ World State（構造化状態）に収まらない文脈（登場人物の背景
 - **位置づけ**: Notes は Source of Truth ではない（§29.2）。構造化状態（World State / Shot Spec / Constraints / References）を置き換えず、Reasoning LLM に渡す補助的な文脈として使う
 - **スコープ**: Project 単位と Series 単位。Series のメモは Episode 開始時に Project へコピーし（`origin_id` で由来を保持）、Series 側の更新は既存 Episode へ自動伝播しない（F-29 と同じ規則）
 - **登録**: チャットの発言（§24 Example 5）または補助ビューの Notes。チャットからの登録は Project スコープ。Series スコープは Series 側の Notes 画面で登録する。メモは追記のみのバージョンで保持し、以前のバージョンへ復元できる（§29.4）
+- **チャットからの登録の判定**: 「覚えておいて」「メモして」「remember」などの依頼語を含む発言は、AUTO / DIRECTOR のどちらのモードでも Command Interpreter が読み、`create_note` を Project メモとして作成する（`source=chat`）。AUTO MODE ではこの操作だけを実行し、Shot への指示は実行しない。依頼語を含まない発言はメモにしない
 - **参照先**: Writer / Director / Prompt Planner のみ。ピン留めしたメモは常に、それ以外は推論 LLM のコンテキスト予算の範囲で関連度順に渡す。アーカイブ済みのメモは渡さない
 - **渡さない先**: 画像/動画生成モデル（モデル非依存の Canonical Shot Spec 経由でのみ影響する、§29.1）、AI Video Judge、Final QC。メモは判定基準にならない。守らせたいルールは Brand Constraint（§26）に登録する
 - **Traceability**: Prompt Version に、Shot Spec 生成時に参照したメモのバージョンを記録する（§29.3）
@@ -582,6 +583,8 @@ Series をまたぐ再利用は F-29 の範囲（本節は Project 内）。
 # 11. Video Generation Engine
 
 Generation OrchestratorがShot Spec、Reference、World State、コスト、モデル能力をもとに使用モデルと生成戦略を決定する。
+
+M3のMulti-model routingでは、これに加えてShotの性質とProject内の過去のJudge実績（モデルごとの点数・合格率）を使い、Quality Policyの割り当てを出発点にShotごとに動画モデルを入れ替える（`spec/architecture/model-adapters.md` §13）。選択理由はTake単位で保存する（§29.3）。
 
 入力：
 
@@ -1360,7 +1363,7 @@ Shot Spec は英語で書かれるため、Shot Spec に対する禁止表現の
 - Advanced Editor Agent
 - Editor → Reshoot Loop
 - Audio Director
-- Multi-model routing
+- Multi-model routing（Shot の性質・Project 内の Judge 実績・コストに応じて、Shot ごとに使う動画モデルを Quality Policy の割り当てから入れ替える。実績が無ければ M1 のポリシー別ルーティングと同じ。判断基準・切り替え条件は `spec/architecture/model-adapters.md` §13）
 - Brand Templates
 - Team Collaboration
 - Production Analytics
@@ -1424,6 +1427,7 @@ Promptはそれらから生成される一時的な実行形式とする。
 - Prompt version
 - Model
 - Model parameters
+- Model routing（選択理由、M3）
 - References
 - Output
 - Judge result

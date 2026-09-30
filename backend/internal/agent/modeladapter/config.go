@@ -58,6 +58,29 @@ type PolicyRoute struct {
 	Takes    int         `json:"takes"`
 }
 
+// RoutingWeights are the weights of the three values Multi-model routing scores a video model by
+// (spec/architecture/model-adapters.md §13.3).
+type RoutingWeights struct {
+	Quality float64 `json:"quality"`
+	Cost    float64 `json:"cost"`
+	Fit     float64 `json:"fit"`
+}
+
+// RoutingConfig is the setting of Multi-model routing (model-adapters.md §13).
+type RoutingConfig struct {
+	// Enabled switches it on; off means the Quality Policy's assignment alone (M1).
+	Enabled bool `json:"enabled"`
+	// MinSamples is the number of judged Takes a model needs before its record counts.
+	MinSamples int `json:"min_samples"`
+	// PriorQuality (0-1) is the quality a model without a record is assumed to have.
+	PriorQuality float64 `json:"prior_quality"`
+	// SwitchMargin is how much better a challenger must score than the Quality Policy's primary.
+	SwitchMargin float64                                 `json:"switch_margin"`
+	Weights      map[domain.QualityPolicy]RoutingWeights `json:"weights"`
+	// Candidates are the video models (with a resolution) weighed for each Quality Policy.
+	Candidates map[domain.QualityPolicy][]VideoTarget `json:"candidates"`
+}
+
 // VendorConfig holds the connection settings of a vendor.
 type VendorConfig struct {
 	// BaseURL is the API origin.
@@ -106,6 +129,8 @@ type Config struct {
 	PreferOpenAI bool          `json:"prefer_openai"`
 	Retry        RetryConfig   `json:"retry"`
 	Breaker      BreakerConfig `json:"breaker"`
+	// Routing is Multi-model routing on top of Policies (model-adapters.md §13).
+	Routing RoutingConfig `json:"routing"`
 }
 
 // DefaultConfig is the assignment of model-adapters.md §3, §4 for M1. The prices are reference values.
@@ -144,6 +169,20 @@ func DefaultConfig() Config {
 		},
 		Retry:   RetryConfig{MaxAttempts: 3, BaseDelayMillis: 1000, MaxDelayMillis: 16000},
 		Breaker: BreakerConfig{FailureThreshold: 5, OpenSeconds: 30},
+		// model-adapters.md §13.2, §12.3: FAST weighs cost most, MAX QUALITY the Judge record.
+		Routing: RoutingConfig{
+			Enabled: true, MinSamples: 5, PriorQuality: 0.75, SwitchMargin: 0.05,
+			Weights: map[domain.QualityPolicy]RoutingWeights{
+				domain.QualityFast:       {Quality: 0.4, Cost: 0.5, Fit: 0.1},
+				domain.QualityBalanced:   {Quality: 0.6, Cost: 0.3, Fit: 0.1},
+				domain.QualityMaxQuality: {Quality: 0.85, Cost: 0.05, Fit: 0.1},
+			},
+			Candidates: map[domain.QualityPolicy][]VideoTarget{
+				domain.QualityFast:       {{domain.ModelKling3, "720p"}, {domain.ModelSeedance2, "480p"}, {domain.ModelRunwayGen45, "720p"}},
+				domain.QualityBalanced:   {{domain.ModelSeedance2, "720p"}, {domain.ModelKling3, "720p"}, {domain.ModelRunwayGen45, "720p"}},
+				domain.QualityMaxQuality: {{domain.ModelRunwayGen45, "720p"}, {domain.ModelKling3, "1080p"}, {domain.ModelSeedance2, "1080p"}},
+			},
+		},
 	}
 }
 
@@ -228,6 +267,18 @@ func (c Config) Validate() error {
 		}
 		video("policies "+string(q)+" primary", r.Primary)
 		video("policies "+string(q)+" fallback", r.Fallback)
+	}
+	for _, q := range domain.QualityPolicies() {
+		for i, t := range c.Routing.Candidates[q] {
+			video(fmt.Sprintf("routing candidates %s[%d]", q, i), t)
+		}
+		w := c.Routing.Weights[q]
+		if w.Quality < 0 || w.Cost < 0 || w.Fit < 0 || w.Quality+w.Cost+w.Fit <= 0 {
+			errs = append(errs, fmt.Errorf("routing weights %s: must not be negative and must sum to more than 0", q))
+		}
+	}
+	if r := c.Routing; r.MinSamples <= 0 || r.PriorQuality < 0 || r.PriorQuality > 1 || r.SwitchMargin < 0 {
+		errs = append(errs, errors.New("routing: min_samples must be positive, prior_quality within 0-1 and switch_margin not negative"))
 	}
 	if c.Retry.MaxAttempts <= 0 || c.Retry.BaseDelayMillis <= 0 || c.Retry.MaxDelayMillis < c.Retry.BaseDelayMillis ||
 		c.Breaker.FailureThreshold <= 0 || c.Breaker.OpenSeconds <= 0 {

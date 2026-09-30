@@ -17,6 +17,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"sync"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
@@ -47,7 +48,10 @@ type Deps struct {
 	Chat     Chat
 	Jobs     Jobs
 	// LLM is the Reasoning LLM Adapter every planning Agent reasons through.
-	LLM    llm.Completer
+	LLM llm.Completer
+	// Notes are the production notes of the Project; the Writer and Director are given the relevant
+	// ones (spec/spec.md §9.4). Nil: no notes.
+	Notes  *repository.NoteRepository
 	Logger *slog.Logger
 }
 
@@ -56,6 +60,7 @@ type Orchestrator struct {
 	projects *repository.ProjectRepository
 	plans    *repository.PlanRepository
 	chatRepo *repository.ChatRepository
+	notes    *repository.NoteRepository
 	chat     Chat
 	jobs     Jobs
 	logger   *slog.Logger
@@ -78,7 +83,7 @@ func New(d Deps) *Orchestrator {
 		logger = slog.New(slog.DiscardHandler)
 	}
 	return &Orchestrator{
-		projects: d.Projects, plans: d.Plans, chatRepo: d.ChatRepo, chat: d.Chat, jobs: d.Jobs, logger: logger,
+		projects: d.Projects, plans: d.Plans, chatRepo: d.ChatRepo, notes: d.Notes, chat: d.Chat, jobs: d.Jobs, logger: logger,
 		producer:     planning.NewProducer(d.LLM),
 		writer:       planning.NewWriter(d.LLM),
 		director:     planning.NewDirector(d.LLM),
@@ -354,7 +359,11 @@ func (o *Orchestrator) writeScript(ctx context.Context, p domain.Project, previo
 	if err != nil {
 		return err
 	}
-	sin := planning.ScriptInput{Brief: brief, Template: p.ProductionTemplate, Concept: concept, Feedback: feedback}
+	notes, err := o.projectNotes(ctx, p.ID, brief, feedback)
+	if err != nil {
+		return err
+	}
+	sin := planning.ScriptInput{Brief: brief, Template: p.ProductionTemplate, Concept: concept, Feedback: feedback, Notes: notes}
 	if previous != nil {
 		sin.Previous = &previous.Doc.Script
 	}
@@ -381,7 +390,11 @@ func (o *Orchestrator) shotPlanStage(ctx context.Context, p domain.Project) (boo
 	if err != nil {
 		return false, err
 	}
-	plan, err := o.director.Plan(ctx, planning.PlanInput{Brief: brief, Template: p.ProductionTemplate, Concept: script.Doc.Concept, Script: script.Doc.Script})
+	notes, err := o.projectNotes(ctx, p.ID, brief, script.Doc.Script.Title)
+	if err != nil {
+		return false, err
+	}
+	plan, err := o.director.Plan(ctx, planning.PlanInput{Brief: brief, Template: p.ProductionTemplate, Concept: script.Doc.Concept, Script: script.Doc.Script, Notes: notes})
 	if err != nil {
 		return false, err
 	}
@@ -397,4 +410,19 @@ func (o *Orchestrator) shotPlanStage(ctx context.Context, p domain.Project) (boo
 		o.logger.Error("post plan notice failed", "project_id", p.ID, "err", err)
 	}
 	return false, nil // Art Director and the later stages take over from here
+}
+
+// projectNotes chooses the production notes the Writer or Director is given (spec/spec.md §9.4): the
+// pinned ones, then the ones that match the Brief and extra text (the change request, the script
+// title), within the context budget. Archived notes are never chosen.
+func (o *Orchestrator) projectNotes(ctx context.Context, projectID string, brief domain.Brief, extra string) ([]domain.NoteView, error) {
+	if o.notes == nil {
+		return nil, nil
+	}
+	all, err := o.notes.Context(ctx, projectID)
+	if err != nil {
+		return nil, err
+	}
+	query := strings.Join([]string{brief.Subject, brief.Objective, brief.Mood, brief.AdditionalInstruction, extra}, "\n")
+	return domain.SelectNotes(all, query, domain.NoteContextBudgetRunes), nil
 }

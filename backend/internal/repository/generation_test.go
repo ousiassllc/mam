@@ -89,10 +89,10 @@ func TestGenerationRepository_SavePromptedSpecKeepsStoryboardAndVersionsEverySav
 	f := newGenRepoFixture(t)
 	spec := domain.ShotSpec{ShotObjective: "A woman runs", Camera: domain.SpecCamera{Framing: "wide"}}
 
-	pv1, err := f.repo.SavePromptedSpec(ctx, f.shotID, spec, json.RawMessage(`{"n":1}`))
+	pv1, err := f.repo.SavePromptedSpec(ctx, f.shotID, spec, json.RawMessage(`{"n":1}`), nil)
 	require.NoError(t, err)
 	spec.ShotObjective = "A woman walks"
-	pv2, err := f.repo.SavePromptedSpec(ctx, f.shotID, spec, nil)
+	pv2, err := f.repo.SavePromptedSpec(ctx, f.shotID, spec, nil, nil)
 	require.NoError(t, err)
 	assert.Equal(t, 1, pv1.VersionNumber)
 	assert.Equal(t, 2, pv2.VersionNumber)
@@ -113,14 +113,14 @@ func TestGenerationRepository_SavePromptedSpecKeepsStoryboardAndVersionsEverySav
 	require.NoError(t, f.db.Reader().QueryRow(`SELECT model_adapter_output FROM prompt_version WHERE id = ?`, pv2.ID).Scan(&output))
 	assert.False(t, output.Valid)
 
-	_, err = f.repo.SavePromptedSpec(ctx, "missing", spec, nil)
+	_, err = f.repo.SavePromptedSpec(ctx, "missing", spec, nil, nil)
 	assert.ErrorIs(t, err, repository.ErrNotFound)
 }
 
 func TestGenerationRepository_CreateTakeStoresTakeAssetAndCostTogether(t *testing.T) {
 	ctx := context.Background()
 	f := newGenRepoFixture(t)
-	pv, err := f.repo.SavePromptedSpec(ctx, f.shotID, domain.ShotSpec{ShotObjective: "x", Camera: domain.SpecCamera{Framing: "wide"}}, nil)
+	pv, err := f.repo.SavePromptedSpec(ctx, f.shotID, domain.ShotSpec{ShotObjective: "x", Camera: domain.SpecCamera{Framing: "wide"}}, nil, nil)
 	require.NoError(t, err)
 
 	id, err := f.repo.CreateTake(ctx, repository.NewTake{
@@ -154,10 +154,10 @@ func TestGenerationRepository_CreateTakeStoresTakeAssetAndCostTogether(t *testin
 func TestGenerationRepository_CandidateSpecsAreVersionedAndOnlyTheAdoptedOneBecomesTheShotSpec(t *testing.T) {
 	ctx := context.Background()
 	f := newGenRepoFixture(t)
-	_, err := f.repo.SavePromptedSpec(ctx, f.shotID, domain.ShotSpec{ShotObjective: "current", Camera: domain.SpecCamera{Framing: "wide"}}, nil)
+	_, err := f.repo.SavePromptedSpec(ctx, f.shotID, domain.ShotSpec{ShotObjective: "current", Camera: domain.SpecCamera{Framing: "wide"}}, nil, nil)
 	require.NoError(t, err)
 
-	pv, err := f.repo.SaveCandidateSpec(ctx, f.shotID, domain.ShotSpec{ShotObjective: "acting first", Camera: domain.SpecCamera{Framing: "close"}}, json.RawMessage(`{"candidate_strategy":"acting_first"}`))
+	pv, err := f.repo.SaveCandidateSpec(ctx, f.shotID, domain.ShotSpec{ShotObjective: "acting first", Camera: domain.SpecCamera{Framing: "close"}}, json.RawMessage(`{"candidate_strategy":"acting_first"}`), nil)
 	require.NoError(t, err)
 	assert.Equal(t, 2, pv.VersionNumber)
 	ref, err := f.repo.GetShot(ctx, f.shotID)
@@ -178,7 +178,7 @@ func TestGenerationRepository_CandidateSpecsAreVersionedAndOnlyTheAdoptedOneBeco
 func TestGenerationRepository_MarkAIPickMovesTheAIPickAndLeavesTheUsersChoiceAlone(t *testing.T) {
 	ctx := context.Background()
 	f := newGenRepoFixture(t)
-	pv, err := f.repo.SavePromptedSpec(ctx, f.shotID, domain.ShotSpec{ShotObjective: "x", Camera: domain.SpecCamera{Framing: "wide"}}, nil)
+	pv, err := f.repo.SavePromptedSpec(ctx, f.shotID, domain.ShotSpec{ShotObjective: "x", Camera: domain.SpecCamera{Framing: "wide"}}, nil, nil)
 	require.NoError(t, err)
 	take := func(n string) string {
 		id, err := f.repo.CreateTake(ctx, repository.NewTake{
@@ -213,7 +213,7 @@ func TestGenerationRepository_MarkAIPickMovesTheAIPickAndLeavesTheUsersChoiceAlo
 func TestGenerationRepository_SaveReferencePackReplacesThePackAndKeepsTheSpec(t *testing.T) {
 	ctx := context.Background()
 	f := newGenRepoFixture(t)
-	_, err := f.repo.SavePromptedSpec(ctx, f.shotID, domain.ShotSpec{ShotObjective: "x", Camera: domain.SpecCamera{Framing: "wide"}}, nil)
+	_, err := f.repo.SavePromptedSpec(ctx, f.shotID, domain.ShotSpec{ShotObjective: "x", Camera: domain.SpecCamera{Framing: "wide"}}, nil, nil)
 	require.NoError(t, err)
 
 	pack := func(assetID string) repository.NewReferencePack {

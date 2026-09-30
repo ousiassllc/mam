@@ -66,6 +66,9 @@ var bundleTables = []bundleTable{
 	{name: "branch", where: byProject},
 	{name: "branch_version", where: `branch_id IN (SELECT id FROM branch WHERE project_id = :pid)`},
 	{name: "brand_constraint", where: byProject},
+	{name: "note", where: byProject, detach: []string{"origin_id"}},
+	{name: "note_version", where: `note_id IN (SELECT id FROM note WHERE project_id = :pid)`},
+	{name: "note_promotion", where: `note_version_id IN (SELECT v.id FROM note_version v JOIN note n ON n.id = v.note_id WHERE n.project_id = :pid)`},
 }
 
 // unbundledTables are the tables a bundle leaves out, with the reason.

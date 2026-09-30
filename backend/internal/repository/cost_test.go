@@ -15,7 +15,7 @@ import (
 // newTake stores a Take with a video file of size bytes and returns its ID.
 func newTake(t *testing.T, f genRepoFixture, shotID, file string, size int64, est float64, actual *float64) string {
 	t.Helper()
-	pv, err := f.repo.SavePromptedSpec(context.Background(), shotID, domain.ShotSpec{ShotObjective: "x", Camera: domain.SpecCamera{Framing: "wide"}}, nil)
+	pv, err := f.repo.SavePromptedSpec(context.Background(), shotID, domain.ShotSpec{ShotObjective: "x", Camera: domain.SpecCamera{Framing: "wide"}}, nil, nil)
 	require.NoError(t, err)
 	id, err := f.repo.CreateTake(context.Background(), repository.NewTake{
 		ProjectID: f.projectID, ShotID: shotID, PromptVersionID: pv.ID, Model: domain.ModelKling3,

@@ -26,13 +26,14 @@ func (r *TraceRepository) TakeTrace(ctx context.Context, takeID string) (domain.
 		tr                                       domain.TakeTrace
 		takeAt, pvAt, snapshot, params, filePath string
 		adapter                                  sql.NullString
+		noteRefs                                 string
 		assetID, mime                            sql.NullString
 		size                                     sql.NullInt64
 	)
 	t, pv := &tr.Take, &tr.PromptVersion
 	err := q.QueryRowContext(ctx,
 		`SELECT t.id, pv.shot_id, t.prompt_version_id, t.model_name, t.model_parameters, COALESCE(t.file_path, ''), t.status, t.created_at,
-		        sc.project_id, pv.version_number, pv.shot_spec_snapshot, pv.model_adapter_output, pv.created_at,
+		        sc.project_id, pv.version_number, pv.shot_spec_snapshot, pv.model_adapter_output, pv.note_refs, pv.created_at,
 		        a.id, a.mime_type, a.size_bytes
 		 FROM take t
 		 JOIN prompt_version pv ON pv.id = t.prompt_version_id
@@ -41,7 +42,7 @@ func (r *TraceRepository) TakeTrace(ctx context.Context, takeID string) (domain.
 		 LEFT JOIN asset a ON a.project_id = sc.project_id AND a.file_path = t.file_path
 		 WHERE t.id = ?`, takeID).
 		Scan(&t.ID, &pv.ShotID, &t.PromptVersionID, &t.ModelName, &params, &filePath, &t.Status, &takeAt,
-			&tr.ProjectID, &pv.VersionNumber, &snapshot, &adapter, &pvAt, &assetID, &mime, &size)
+			&tr.ProjectID, &pv.VersionNumber, &snapshot, &adapter, &noteRefs, &pvAt, &assetID, &mime, &size)
 	if errors.Is(err, sql.ErrNoRows) {
 		return domain.TakeTrace{}, ErrNotFound
 	}
@@ -53,6 +54,9 @@ func (r *TraceRepository) TakeTrace(ctx context.Context, takeID string) (domain.
 	pv.SpecSnapshot = json.RawMessage(snapshot)
 	if adapter.Valid {
 		pv.AdapterOutput = json.RawMessage(adapter.String)
+	}
+	if err := json.Unmarshal([]byte(noteRefs), &pv.NoteRefs); err != nil {
+		return domain.TakeTrace{}, fmt.Errorf("decode note refs: %w", err)
 	}
 	tr.ModelParameters = json.RawMessage(params)
 	if t.CreatedAt, err = parseTime(takeAt); err != nil {
@@ -69,6 +73,11 @@ func (r *TraceRepository) TakeTrace(ctx context.Context, takeID string) (domain.
 	if tr.References == nil {
 		tr.References = domain.Shot{ShotSpec: pv.SpecSnapshot}.References()
 	}
+	var routed struct {
+		Routing *domain.RoutingDecision `json:"routing"`
+	}
+	_ = json.Unmarshal([]byte(params), &routed) // parameters written before Multi-model routing lack it
+	tr.Routing = routed.Routing
 	if assetID.Valid {
 		tr.Output = &domain.TraceOutput{AssetID: assetID.String, FilePath: filePath, MimeType: mime.String, SizeBytes: size.Int64}
 	}
