@@ -15,6 +15,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/safefetch"
 )
 
 // klingBackend calls Kling 3.0. Its API key is "ACCESS_KEY:SECRET_KEY" (as issued by Kling); every
@@ -333,19 +334,43 @@ func videoMime(header string) string {
 	return "video/mp4"
 }
 
+// BackendOption changes how NewBackends builds the backends.
+type BackendOption func(*backendOptions)
+
+type backendOptions struct{ localDownloads bool }
+
+// WithLocalDownloads lets result files be downloaded from plain http URLs and local addresses, and
+// through the client given to NewBackends. It exists for tests against httptest servers: without
+// it a result URL must be an https URL of a public host.
+func WithLocalDownloads() BackendOption { return func(o *backendOptions) { o.localDownloads = true } }
+
 // NewBackends returns the HTTP backend of every model. API keys are read from keys at call time,
 // so a key stored in the settings screen takes effect without a restart. client may be nil (a
 // client without an overall timeout: the Adapter bounds every call). pollEvery is the wait
-// between two status requests of an asynchronous job (zero selects 5 seconds).
-func NewBackends(cfg Config, keys credential.Store, client Doer, pollEvery time.Duration) Backends {
+// between two status requests of an asynchronous job (zero selects 5 seconds). Result files are
+// downloaded with a client that connects to public addresses only (safefetch.NewClient) when
+// client is nil, otherwise with client; either way the URL must be https (see WithLocalDownloads).
+func NewBackends(cfg Config, keys credential.Store, client Doer, pollEvery time.Duration, opts ...BackendOption) Backends {
+	var o backendOptions
+	for _, opt := range opts {
+		opt(&o)
+	}
+	fetcher := client
 	if client == nil {
 		client = &http.Client{}
+		fetcher = client
+		if !o.localDownloads {
+			fetcher = safefetch.NewClient()
+		}
 	}
 	if pollEvery <= 0 {
 		pollEvery = 5 * time.Second
 	}
 	mk := func(v Vendor) api {
-		return api{vendor: v, baseURL: strings.TrimRight(cfg.Vendors[v].BaseURL, "/"), keys: keys, client: client, pollEvery: pollEvery}
+		return api{
+			vendor: v, baseURL: strings.TrimRight(cfg.Vendors[v].BaseURL, "/"), keys: keys,
+			client: client, fetcher: fetcher, localDownloads: o.localDownloads, pollEvery: pollEvery,
+		}
 	}
 	return Backends{
 		Image: map[domain.ModelName]ImageBackend{

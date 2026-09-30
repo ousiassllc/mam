@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/credential"
+	"github.com/ousiassllc/mam/backend/internal/safefetch"
 )
 
 // SyncCredentialProvider is the credential.Store key of the Sync Labs API key (model identifier
@@ -44,6 +45,10 @@ type SyncLabsConfig struct {
 	Timeout time.Duration
 	// PollInterval is the pause between two status requests.
 	PollInterval time.Duration
+	// LocalDownloads lets the output be downloaded from a plain http URL or a local address. It
+	// exists for tests against httptest servers; by default the output URL must be https and
+	// the download only connects to public addresses.
+	LocalDownloads bool
 }
 
 // DefaultSyncLabsConfig is the setting used unless the caller changes it.
@@ -59,10 +64,13 @@ type SyncLabs struct {
 	cfg    SyncLabsConfig
 	keys   credential.Store
 	client Doer
+	// fetcher downloads the output, whose URL comes from the vendor's answer.
+	fetcher Doer
 }
 
-// NewSyncLabs returns a SyncLabs adapter. A nil client selects a plain http.Client; zero fields
-// of cfg take the DefaultSyncLabsConfig values.
+// NewSyncLabs returns a SyncLabs adapter. A nil client selects a plain http.Client for the API and
+// a client that connects to public addresses only (safefetch.NewClient) for the download; a given
+// client serves both. Zero fields of cfg take the DefaultSyncLabsConfig values.
 func NewSyncLabs(cfg SyncLabsConfig, keys credential.Store, client Doer) *SyncLabs {
 	def := DefaultSyncLabsConfig()
 	if cfg.BaseURL == "" {
@@ -74,10 +82,15 @@ func NewSyncLabs(cfg SyncLabsConfig, keys credential.Store, client Doer) *SyncLa
 	if cfg.PollInterval <= 0 {
 		cfg.PollInterval = def.PollInterval
 	}
+	fetcher := client
 	if client == nil {
 		client = &http.Client{}
+		fetcher = client
+		if !cfg.LocalDownloads {
+			fetcher = safefetch.NewClient()
+		}
 	}
-	return &SyncLabs{cfg: cfg, keys: keys, client: client}
+	return &SyncLabs{cfg: cfg, keys: keys, client: client, fetcher: fetcher}
 }
 
 // generation is the part of the Sync Labs generation object the adapter reads.
@@ -199,11 +212,14 @@ func (s *SyncLabs) send(r *http.Request, key string) (generation, error) {
 
 // download fetches the output video. The API key is not sent: the URL is a signed link of the vendor's storage.
 func (s *SyncLabs) download(ctx context.Context, link string) ([]byte, error) {
+	if err := s.checkOutputURL(link); err != nil {
+		return nil, &ProviderError{Vendor: VendorSyncLabs, Message: err.Error()}
+	}
 	r, err := http.NewRequestWithContext(ctx, http.MethodGet, link, nil)
 	if err != nil {
 		return nil, err
 	}
-	res, err := s.client.Do(r)
+	res, err := s.fetcher.Do(r)
 	if err != nil {
 		return nil, err
 	}
@@ -219,4 +235,18 @@ func (s *SyncLabs) download(ctx context.Context, link string) ([]byte, error) {
 		return nil, &ProviderError{Vendor: VendorSyncLabs, Status: res.StatusCode, Message: "the output is empty or too large"}
 	}
 	return data, nil
+}
+
+// checkOutputURL refuses an output URL that is not an https URL of a public host.
+func (s *SyncLabs) checkOutputURL(link string) error {
+	if s.cfg.LocalDownloads {
+		if u, err := url.Parse(link); err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" {
+			return errors.New("the output URL is not an http(s) URL")
+		}
+		return nil
+	}
+	if err := safefetch.CheckURL(link); err != nil {
+		return errors.New(strings.Replace(err.Error(), "result URL", "output URL", 1))
+	}
+	return nil
 }
