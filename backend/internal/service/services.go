@@ -142,6 +142,7 @@ func New(deps Deps) *Services {
 			// A finished generation / judge job may complete an additional Shot of the Editor → Reshoot Loop.
 			if editors != nil {
 				go editors.ResumeReshoots(context.Background())
+				go editors.ResumeAuto(context.Background())
 			}
 		})
 		if deps.LLM != nil {
@@ -229,7 +230,12 @@ func New(deps Deps) *Services {
 		judge: editor.NewJudge(deps.LLM), brands: brands, judges: judges.judges,
 		voices: repository.NewVoiceRepository(deps.DB), cloner: deps.Audio.Cloner,
 	}
-	takeService.afterSelect = func() { go editors.ResumeReshoots(context.Background()) }
+	takeService.afterSelect = func() {
+		go editors.ResumeReshoots(context.Background())
+		go editors.ResumeAuto(context.Background())
+	}
+	// An Approval card answered in the editing half (Rough Cut, Final) lets the AUTO chain go on.
+	c.afterAnswer = func(projectID string) { go editors.AdvanceAuto(context.Background(), projectID) }
 	if deps.Media != nil && deps.Audio.Speech != nil {
 		// Without a Reasoning LLM the Audio Director plans its layers by rule (tempo, Brief mood, location).
 		editors.audio = audiodirector.New(audiodirector.Deps{

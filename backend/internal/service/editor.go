@@ -60,8 +60,10 @@ type EditorService struct {
 	cloner  audiodirector.VoiceCloner
 	chatSvc *ChatService
 	// tools is ffmpeg / ffprobe; nil when they are not installed.
-	tools   *media.Tools
-	stage   sync.Map // project ID -> *sync.Mutex
+	tools *media.Tools
+	stage sync.Map // project ID -> *sync.Mutex
+	// auto guards the AUTO chain of a Project (AdvanceAuto): project ID -> *sync.Mutex.
+	auto    sync.Map
 	preview sync.Map // preview file -> *sync.Mutex
 }
 
