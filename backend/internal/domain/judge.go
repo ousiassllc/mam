@@ -108,6 +108,9 @@ type JudgeIssue struct {
 	// LockViolation is set when the Issue breaks a LOCKed parameter (Character Identity, Product
 	// Geometry): such a Take fails whatever its score is (spec/spec.md §13).
 	LockViolation bool `json:"lock_violation,omitempty"`
+	// BrandConstraintID is the Brand / Safety Constraint the Issue reports as broken (type
+	// brand_constraint_violation). A violation of a LOCK constraint sets LockViolation.
+	BrandConstraintID string `json:"brand_constraint_id,omitempty"`
 }
 
 // FaceIdentityStatus says how the numeric Face Identity Similarity ended.

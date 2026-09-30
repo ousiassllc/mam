@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 )
@@ -22,7 +23,12 @@ func statusOf(c *gin.Context, err error) (int, string) {
 	var locked *service.LockedError
 	var ai *service.AIError
 	var conflicted *service.ConflictError
+	var brand *domain.BrandViolationError
 	switch {
+	case errors.As(err, &brand):
+		return http.StatusForbidden, "Brand / Safety Constraint に違反しています: " + brand.Message()
+	case errors.Is(err, service.ErrBrandViolation):
+		return http.StatusForbidden, "Brand / Safety Constraint に違反しています"
 	case errors.As(err, &conflicted):
 		return http.StatusConflict, conflicted.Message
 	case errors.As(err, &locked) && len(locked.Parameters) > 0:

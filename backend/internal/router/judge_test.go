@@ -255,6 +255,7 @@ type judgeBody struct {
 		TimeRange     string `json:"time_range"`
 		Frames        []int  `json:"frames"`
 		LockViolation bool   `json:"lock_violation"`
+		BrandID       string `json:"brand_constraint_id"`
 	} `json:"issues"`
 	Preserve       []string `json:"preserve"`
 	RepairStrategy *struct {

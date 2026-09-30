@@ -141,6 +141,9 @@ func (o *Orchestrator) generateCandidates(ctx context.Context, ref repository.Sh
 	if err != nil {
 		return Progress{}, err
 	}
+	if err := sc.brand.CheckText(instruction); err != nil {
+		return Progress{}, err
+	}
 	locks, err := o.gens.ShotLocks(ctx, ref.Shot.ID)
 	if err != nil {
 		return Progress{}, err

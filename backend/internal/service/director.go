@@ -658,6 +658,8 @@ func (s *DirectorService) regenerate(ctx context.Context, ref *repository.ShotRe
 			return label + " は生成中のため、終わってからもう一度指示してください。", false, nil
 		case errors.Is(err, ErrBudgetExceeded):
 			return label + " は予算上限を超えるため再生成できません。", false, nil
+		case errors.Is(err, ErrBrandViolation):
+			return label + " は Brand / Safety Constraint に違反するため再生成できません。指示を見直してください。", false, nil
 		}
 		return "", false, err
 	}
