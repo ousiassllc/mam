@@ -184,7 +184,8 @@ func (r *Runner) store(ctx context.Context, ref repository.TakeRef, res domain.J
 }
 
 // pick marks the best judged Take of the Shot as its AI Pick: in AUTO a Take that passed the Judge
-// also becomes the Shot's Take, in DIRECTOR the pick is only a recommendation. It returns the line
+// also becomes the Shot's Take, in DIRECTOR (or when the Shot's Take Selection is MANUAL / LOCK) the
+// pick is only a recommendation. It returns the line
 // of the chat notice about it ("" when the pick did not change or could not be made).
 func (r *Runner) pick(ctx context.Context, ref repository.TakeRef) string {
 	if r.Takes == nil || r.Projects == nil {
@@ -196,7 +197,18 @@ func (r *Runner) pick(ctx context.Context, ref repository.TakeRef) string {
 		r.Logger.Error("ai pick: read project failed", "project_id", ref.ProjectID, "err", err)
 		return ""
 	}
-	pick, err := r.Takes.PickBest(ctx, ref.Take.ShotID, project.Mode == domain.ModeAuto)
+	// Take Selection MANUAL / LOCK (spec/spec.md §6): the AI keeps its hands off the Shot's Take, so
+	// the pick is only a recommendation, as in DIRECTOR.
+	adopt := project.Mode == domain.ModeAuto
+	if adopt {
+		locks, err := r.Generations.ShotLocks(ctx, ref.Take.ShotID)
+		if err != nil {
+			r.Logger.Error("ai pick: read shot locks failed", "shot_id", ref.Take.ShotID, "err", err)
+			return ""
+		}
+		adopt = locks.Mode(domain.ParamTakeSelection) == domain.LockAuto
+	}
+	pick, err := r.Takes.PickBest(ctx, ref.Take.ShotID, adopt)
 	if err != nil {
 		r.Logger.Error("ai pick failed", "shot_id", ref.Take.ShotID, "err", err)
 		return ""
