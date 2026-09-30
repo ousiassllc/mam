@@ -671,7 +671,7 @@ func TestDirector_ACostThePaidCallIncurredIsRecordedWhenTheLocalWorkFails(t *tes
 
 		v2 := &unreadableSync{fakeVendors: &fakeVendors{t: t}}
 		ledger2 := &fakeLedger{}
-		d2 := audiodirector.New(audiodirector.Deps{Providers: v2.fakeVendors.providersWith(v2), Ledger: ledger2, Tools: tools(t), Root: t.TempDir()})
+		d2 := audiodirector.New(audiodirector.Deps{Providers: v2.providersWith(v2), Ledger: ledger2, Tools: tools(t), Root: t.TempDir()})
 		got, err := d2.Produce(context.Background(), in)
 
 		require.NoError(t, err)
