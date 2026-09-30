@@ -1,6 +1,7 @@
 // Package safefetch guards the download of a file whose URL a vendor API answered with: the URL
 // comes from outside, so it must not lead to a plain-http endpoint or to an address of the
-// machine's own network (loopback, link-local such as the cloud metadata service, private ranges).
+// machine's own network (loopback, link-local such as the cloud metadata service, private ranges,
+// including those embedded in 6to4 or well-known NAT64).
 package safefetch
 
 import (
@@ -29,9 +30,23 @@ var blocked = []netip.Prefix{
 	netip.MustParsePrefix("240.0.0.0/4"),
 }
 
-// IsPublic reports whether ip is an address of the public internet.
+// translated lists the IPv6 prefixes that embed an IPv4 address: 6to4 (RFC 3056) and the
+// well-known NAT64 prefix (RFC 6052). The embedded address is judged on its own.
+var translated = []struct {
+	prefix netip.Prefix
+	at     int // index of the embedded IPv4 in the 16-byte form
+}{
+	{netip.MustParsePrefix("2002::/16"), 2},
+	{netip.MustParsePrefix("64:ff9b::/96"), 12},
+}
+
+// IsPublic reports whether ip is an address of the public internet. An IPv4 address embedded in
+// 6to4 or well-known NAT64 is public only when that IPv4 address is.
 func IsPublic(ip netip.Addr) bool {
 	ip = ip.Unmap()
+	if v4, ok := embeddedIPv4(ip); ok {
+		return IsPublic(v4)
+	}
 	if !ip.IsValid() || ip.IsLoopback() || ip.IsPrivate() || ip.IsUnspecified() || ip.IsMulticast() ||
 		ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsInterfaceLocalMulticast() {
 		return false
@@ -42,6 +57,20 @@ func IsPublic(ip netip.Addr) bool {
 		}
 	}
 	return true
+}
+
+// embeddedIPv4 returns the IPv4 address carried by a 6to4 or well-known NAT64 address.
+func embeddedIPv4(ip netip.Addr) (netip.Addr, bool) {
+	if !ip.Is6() {
+		return netip.Addr{}, false
+	}
+	b := ip.As16()
+	for _, t := range translated {
+		if t.prefix.Contains(ip) {
+			return netip.AddrFrom4([4]byte{b[t.at], b[t.at+1], b[t.at+2], b[t.at+3]}), true
+		}
+	}
+	return netip.Addr{}, false
 }
 
 // CheckURL accepts raw only when it is an https URL and its host is neither "localhost" nor a
