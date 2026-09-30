@@ -4,6 +4,9 @@
  * (the socket never carries a body), and handles the composer (reply target, attachments, Enter to send).
  */
 import htmx from 'htmx.org';
+import { ajaxGet, showToast } from './ajax';
+import { AJAX_FAILED_MESSAGE } from './components/lib/ajax';
+import { createSyncer } from './components/lib/sync';
 import { connect, socketUrl } from './components/lib/ws';
 import {
   cardUrl,
@@ -29,8 +32,11 @@ class ChatWorkspace {
   private readonly content: HTMLTextAreaElement;
   private readonly files: HTMLInputElement;
   private stickToBottom = true; // is the thread scrolled to the bottom (so new messages should be followed)?
-  private syncing = false;
-  private syncAgain = false;
+  /** Fetches the messages after the last one shown; requests are merged and a failure is retried. */
+  private readonly syncer = createSyncer({
+    run: () => htmx.ajax('get', messagesUrl(this.projectId, this.lastMessageId()), { target: THREAD, swap: 'beforeend' }),
+    onGiveUp: () => showToast(AJAX_FAILED_MESSAGE),
+  });
 
   constructor(private readonly root: HTMLElement) {
     this.projectId = root.dataset.projectId ?? '';
@@ -46,7 +52,7 @@ class ChatWorkspace {
       url: socketUrl(root.dataset.wsUrl ?? '', location),
       onMessage: (event) => this.onEvent(event),
       // After a reconnect, events may have been missed: catch up.
-      onOpen: (reconnected) => reconnected && void this.syncNew(),
+      onOpen: (reconnected) => reconnected && this.syncNew(),
     });
   }
 
@@ -54,28 +60,15 @@ class ChatWorkspace {
     if (event.type === 'card.updated') {
       const card = this.thread.querySelector(`#msg-${CSS.escape(event.message_id)}`);
       if (card) {
-        void htmx.ajax('get', cardUrl(this.projectId, event.message_id), { target: `#msg-${CSS.escape(event.message_id)}`, swap: 'outerHTML' });
+        void ajaxGet(cardUrl(this.projectId, event.message_id), { target: `#msg-${CSS.escape(event.message_id)}`, swap: 'outerHTML' });
         return;
       }
     }
-    void this.syncNew();
+    this.syncNew();
   }
 
-  /** Fetches the messages after the last one shown. Concurrent calls are merged. */
-  private async syncNew(): Promise<void> {
-    if (this.syncing) {
-      this.syncAgain = true;
-      return;
-    }
-    this.syncing = true;
-    try {
-      do {
-        this.syncAgain = false;
-        await htmx.ajax('get', messagesUrl(this.projectId, this.lastMessageId()), { target: THREAD, swap: 'beforeend' });
-      } while (this.syncAgain);
-    } finally {
-      this.syncing = false;
-    }
+  private syncNew(): void {
+    void this.syncer.request();
   }
 
   private lastMessageId(): string {
@@ -89,7 +82,7 @@ class ChatWorkspace {
     // shift elsewhere on the page must not make the thread stop following new messages.
     this.thread.addEventListener('scroll', () => (this.stickToBottom = this.isNearBottom()));
     this.thread.addEventListener('htmx:afterSwap', () => this.afterThreadChange());
-    this.root.addEventListener('chat:refresh', () => void this.syncNew());
+    this.root.addEventListener('chat:refresh', () => this.syncNew());
     this.thread.addEventListener('click', (event) => {
       const button = (event.target as HTMLElement).closest<HTMLElement>('[data-reply-to]');
       if (button) this.setReplyTarget(button.dataset.replyTo ?? '', button.dataset.replyLabel ?? '');

@@ -3,7 +3,7 @@
  * module listens to /ws/shots/:id and, when the work is over, asks for the Shot's page fragment
  * again (the socket carries no HTML).
  */
-import htmx from 'htmx.org';
+import { ajaxGet } from './ajax';
 import { connect, socketUrl, type Connection } from './components/lib/ws';
 import { createRefreshGuard, isFinished, type ShotProgress } from './components/lib/shot';
 
@@ -32,7 +32,7 @@ function watch(el: HTMLElement): void {
       }
       if (isFinished(progress)) {
         connection?.close();
-        if (refreshUrl && mayRefresh(refreshUrl)) void htmx.ajax('get', refreshUrl, { target: '#scene-shot-view', swap: 'outerHTML' });
+        if (refreshUrl && mayRefresh(refreshUrl)) void ajaxGet(refreshUrl, { target: '#scene-shot-view', swap: 'outerHTML' });
       }
     },
   });
