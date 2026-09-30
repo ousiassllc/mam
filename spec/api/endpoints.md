@@ -25,6 +25,9 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 
 | Method | Path | 概要 | 返却（通常/HTMX） |
 |---|---|---|---|
+| GET | `/` | `GET /projects` と同じ（プロジェクト一覧。ルート URL の入口） | フルページ / プロジェクト一覧フラグメント |
+| GET | `/healthz` | ヘルスチェック。JSON `{"ok": bool, "database": "ok"\|"unavailable"}`。DB への Ping が失敗すると `ok:false`・`database:"unavailable"` で 503（それ以外は 200）。`GET /api/v1/health` と同じ結果を返す | JSON（HX 分岐なし） |
+| GET | `/static/*filepath` | ビルド済みフロントエンド資産（`app.js`・`app.css` 等）。`HEAD` も可。埋め込みまたは `--static-dir` の内容を配信する | ファイル（HX 分岐なし） |
 | GET | `/projects` | プロジェクト一覧・新規作成導線 | フルページ / プロジェクト一覧フラグメント |
 | GET | `/projects/:id` | Chat Workspace（標準画面。`chat_thread` + `chat_composer`。Take カード内に `mam-video-player` を埋め込み、履歴は `GET /projects/:id/messages` と同じ内容を初期表示） | フルページ / ワークスペースフラグメント |
 | GET | `/projects/:id/messages` | チャット履歴のフラグメント取得。クエリ `after`（メッセージID、省略時=全履歴）で新着のみ取得。応答済みになったカードは `hx-swap-oob` で差し替え、Project 状態バッジも同梱する | フラグメントのみ |
@@ -289,7 +292,8 @@ Lit Web Components 専用。HTMX リクエストは発行しない（`spec/archi
 | GET | `/api/v1/repair/jev-shadow-report` | Jev のシャドー実行の集計（`runs`/`errors`/`agreed`/`agreement_rate`（失敗を除く一致率）/`mean_confidence`/`mean_latency_ms`/`total_cost_usd`/`confidence_histogram`（0.1 刻み 10 区間）/`confidence_agreed`）。Jev による前段選別を有効にするかどうかの判断材料（`spec/architecture/model-adapters.md` §4.5・§11） | Repair Agent（F-14） |
 | GET | `/api/v1/projects/:id/edit-timeline` | 現在の Edit Timeline（Shot順序/Cut Point/Transition）と最新の Editor Judge。Rough Cut がなければ 404。クエリ `branch_id`（省略時=主系列トランク）で Branch ごとの版を返す。クリップに `kind`・`caption`、判定の指摘に `need_shot`、応答に `request_shot_url` と `limits.max_caption_runes` を含む | `mam-timeline-editor` |
 | — | `PUT /edit-timelines/:id`（アクションルート、§2.6） | Edit Timeline 保存（ドラッグ&ドロップ操作の反映）。`/api/v1` では提供せず、JSON API の GET が返す `save_url` へ PUT する（Lit は API クライアント経由で CSRF トークン付きで送る）。`branch_id` は M2 | `mam-timeline-editor` |
-| GET | `/api/v1/openapi.json` | OpenAPI 3.1 スペック（Huma自動生成） | - |
+| GET | `/api/v1/health` | ヘルスチェック。`/healthz` と同一の応答（`ok`/`database`、DB 障害時は 503） | 外形監視（Lit は使わない） |
+| GET | `/api/v1/openapi.json` | OpenAPI 3.1 スペック（Huma自動生成）。`/api/v1/openapi.yaml`・`/api/v1/openapi-3.0.json`・`/api/v1/openapi-3.0.yaml` は同内容の別形式、`/api/v1/schemas/:schema` は各型の JSON Schema | - |
 
 ### リクエスト/レスポンス例
 
@@ -427,3 +431,4 @@ Notes:
 | 1.49 | 2026-10-01 | §2.11 の `POST /shots/:id/references` の応答を Shot カードから Shot Inspector に改めた | 実装はピン留め後の Reference Pack を Inspector の References 欄に表示するため Shot Inspector を返しており、仕様と食い違っていたため（Issue #100） |
 | 1.50 | 2026-10-01 | `/ws/shots/:id` の接続は Shot カード 1 枚につき 1 本（プレーヤーがあればプレーヤー、なければ `shot.ts`）と明記 | 同じ進捗 WebSocket を 2 本張っていたため（Issue #38） |
 | 1.51 | 2026-10-01 | §2.4 の `POST /shots/:id/branch` の Body 名を実装と §2.8 に合わせて `branch_point_type` から `point_type` に修正（検証エラーの項目名も `point_type`）。Issue #40 で削除済みの `GET /api/v1/projects/:id/branches` の応答説明を削除 | 表と M2 契約で項目名が食い違い、表の名前で送ると黙って既定の shot になるため（Issue #101） |
+| 1.52 | 2026-10-01 | §1 に `GET /`・`GET /healthz`・`GET /static/*filepath`、§3 に `GET /api/v1/health` と OpenAPI の別形式・`schemas` ルートを追記 | 実装（`router/pages.go`・`router/api.go`）にあり仕様に無かった（#36）。ヘルスは 503 に統一済み（#66） |
