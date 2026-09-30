@@ -255,7 +255,7 @@ func TestSyncLabs_UploadsThenPollsUntilCompletedAndDownloadsTheVideo(t *testing.
 		}
 	}))
 	defer srv.Close()
-	sl := audiodirector.NewSyncLabs(audiodirector.SyncLabsConfig{BaseURL: srv.URL, PollInterval: time.Millisecond}, syncKeys(t, true), nil)
+	sl := audiodirector.NewSyncLabs(audiodirector.SyncLabsConfig{BaseURL: srv.URL, PollInterval: time.Millisecond, LocalDownloads: true}, syncKeys(t, true), nil)
 
 	out, err := sl.Sync(context.Background(), audiodirector.LipSyncRequest{
 		Model: "sync-3", Video: audiodirector.Sample{Filename: "v.mp4", Data: []byte("v")}, Audio: audiodirector.Sample{Filename: "a.wav", Data: []byte("a")},
@@ -315,4 +315,32 @@ func TestSyncLabs_Failures(t *testing.T) {
 
 		require.Error(t, err)
 	})
+}
+
+func TestSyncLabs_RefusesAnOutputURLThatIsNotHTTPSOrPointsToTheLocalNetwork(t *testing.T) {
+	for name, output := range map[string]string{
+		"plain http": "http://cdn.example.com/out.mp4",
+		"loopback":   "https://127.0.0.1/out.mp4",
+		"metadata":   "https://169.254.169.254/latest/meta-data",
+	} {
+		t.Run(name, func(t *testing.T) {
+			var outputHits int
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/out.mp4" {
+					outputHits++
+				}
+				_, _ = w.Write([]byte(`{"id":"g","status":"COMPLETED","outputUrl":"` + output + `"}`))
+			}))
+			defer srv.Close()
+			sl := audiodirector.NewSyncLabs(audiodirector.SyncLabsConfig{BaseURL: srv.URL}, syncKeys(t, true), nil)
+
+			_, err := sl.Sync(context.Background(), audiodirector.LipSyncRequest{
+				Model: "sync-3", Video: audiodirector.Sample{Filename: "v.mp4", Data: []byte("v")}, Audio: audiodirector.Sample{Filename: "a.wav", Data: []byte("a")},
+			})
+
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "output URL")
+			assert.Zero(t, outputHits)
+		})
+	}
 }

@@ -40,8 +40,27 @@ func backendsFor(t *testing.T, srv *httptest.Server, keys memKeys) modeladapter.
 		vc.BaseURL = srv.URL
 		cfg.Vendors[v] = vc
 	}
-	return modeladapter.NewBackends(cfg, keys, srv.Client(), time.Millisecond)
+	return modeladapter.NewBackends(cfg, keys, srv.Client(), time.Millisecond, modeladapter.WithLocalDownloads())
 }
+
+// strictBackendsFor is backendsFor without WithLocalDownloads: result URLs must be https URLs of
+// public hosts. client records every request it is asked to send.
+func strictBackendsFor(t *testing.T, srv *httptest.Server, keys memKeys, sent *[]string) modeladapter.Backends {
+	t.Helper()
+	cfg := modeladapter.DefaultConfig()
+	for v, vc := range cfg.Vendors {
+		vc.BaseURL = srv.URL
+		cfg.Vendors[v] = vc
+	}
+	return modeladapter.NewBackends(cfg, keys, doerFunc(func(r *http.Request) (*http.Response, error) {
+		*sent = append(*sent, r.URL.String())
+		return srv.Client().Do(r)
+	}), time.Millisecond)
+}
+
+type doerFunc func(*http.Request) (*http.Response, error)
+
+func (f doerFunc) Do(r *http.Request) (*http.Response, error) { return f(r) }
 
 func TestImagenBackendSendsPromptAndKeyAndDecodesTheImage(t *testing.T) {
 	var gotKey, gotPath string
@@ -481,7 +500,7 @@ func TestAdapterDoesNotSubmitAgainWhenPollingKeepsFailing(t *testing.T) {
 		vc.BaseURL = srv.URL
 		cfg.Vendors[v] = vc
 	}
-	a := newAdapter(cfg, modeladapter.NewBackends(cfg, memKeys{"seedance": "k"}, srv.Client(), time.Millisecond))
+	a := newAdapter(cfg, modeladapter.NewBackends(cfg, memKeys{"seedance": "k"}, srv.Client(), time.Millisecond, modeladapter.WithLocalDownloads()))
 
 	_, err := a.GenerateVideo(context.Background(), seedanceTarget, seedanceTarget, baseJob())
 
@@ -521,4 +540,60 @@ func TestFluxJobSurvivesATransientPollAndDownloadFailure(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, []byte("JPEG"), res.Data)
 	assert.EqualValues(t, 1, submits.Load())
+}
+
+func TestFluxDoesNotSendTheKeyToAPollingURLOfAnotherHost(t *testing.T) {
+	var foreignHits atomic.Int32
+	var foreignKey atomic.Value
+	foreign := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		foreignHits.Add(1)
+		foreignKey.Store(r.Header.Get("x-key"))
+		_, _ = w.Write([]byte(`{"status":"Pending"}`))
+	}))
+	defer foreign.Close()
+	vendor := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"id":"j1","polling_url":"` + foreign.URL + `/poll"}`))
+	}))
+	defer vendor.Close()
+	b := backendsFor(t, vendor, memKeys{"flux": "secret"})
+
+	_, err := b.Image[domain.ModelFlux2].GenerateImage(context.Background(), "flux-2-pro", modeladapter.ImageRequest{Prompt: "p"})
+
+	var pe *modeladapter.ProviderError
+	require.ErrorAs(t, err, &pe)
+	assert.Contains(t, pe.Message, "polling URL")
+	assert.Zero(t, foreignHits.Load(), "the foreign host must not be contacted")
+	assert.Nil(t, foreignKey.Load())
+}
+
+func TestDownloadRefusesPlainHTTPAndNonPublicAddressesWithoutConnecting(t *testing.T) {
+	for name, resultURL := range map[string]string{
+		"plain http":    "http://cdn.example.com/v.mp4",
+		"loopback":      "https://127.0.0.1/v.mp4",
+		"localhost":     "https://localhost/v.mp4",
+		"metadata":      "https://169.254.169.254/latest/meta-data",
+		"private":       "https://192.168.0.10/v.mp4",
+		"loopback IPv6": "https://[::1]/v.mp4",
+	} {
+		t.Run(name, func(t *testing.T) {
+			mux := http.NewServeMux()
+			mux.HandleFunc("/api/v3/contents/generations/tasks", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte(`{"id":"t"}`)) })
+			mux.HandleFunc("/api/v3/contents/generations/tasks/t", func(w http.ResponseWriter, _ *http.Request) {
+				_, _ = w.Write([]byte(`{"status":"succeeded","content":{"video_url":"` + resultURL + `"}}`))
+			})
+			srv := httptest.NewServer(mux)
+			defer srv.Close()
+			var sent []string
+			b := strictBackendsFor(t, srv, memKeys{"seedance": "k"}, &sent)
+
+			_, err := b.Video[domain.ModelSeedance2].GenerateVideo(context.Background(), "m", seedanceReq)
+
+			var pe *modeladapter.ProviderError
+			require.ErrorAs(t, err, &pe)
+			assert.Contains(t, pe.Message, "result URL")
+			for _, u := range sent {
+				assert.True(t, strings.HasPrefix(u, srv.URL), "no request may go to %s", u)
+			}
+		})
+	}
 }

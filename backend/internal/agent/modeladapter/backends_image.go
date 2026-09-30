@@ -225,6 +225,10 @@ func (b fluxBackend) GenerateImage(ctx context.Context, apiModel string, req Ima
 	if pollURL == "" {
 		return ImageResult{}, b.empty("job")
 	}
+	if !b.ownsURL(pollURL) {
+		// the status request carries the API key: it only goes to the vendor's own hosts
+		return ImageResult{}, &ProviderError{Vendor: string(b.vendor), Status: http.StatusOK, Message: "the polling URL is not a URL of the vendor"}
+	}
 	var sample string
 	err = b.poll(ctx, func(ctx context.Context) (bool, error) {
 		d, err := b.request(ctx, http.MethodGet, pollURL, auth, nil, maxJSONBytes)

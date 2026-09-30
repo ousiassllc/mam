@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"strconv"
 	"strings"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/safefetch"
 )
 
 const (
@@ -40,6 +42,10 @@ type api struct {
 	baseURL string
 	keys    credential.Store
 	client  Doer
+	// fetcher downloads the result files (their URLs come from the vendor's answers).
+	fetcher Doer
+	// localDownloads lets a result URL be plain http and point to a local address (tests).
+	localDownloads bool
 	// pollEvery is the wait between two status requests of an asynchronous job.
 	pollEvery time.Duration
 }
@@ -116,15 +122,14 @@ func (a api) download(ctx context.Context, fileURL string) ([]byte, string, erro
 }
 
 func (a api) downloadOnce(ctx context.Context, fileURL string) ([]byte, string, error) {
-	u, err := url.Parse(fileURL)
-	if err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" {
-		return nil, "", &ProviderError{Vendor: string(a.vendor), Status: http.StatusOK, Message: "the result URL is not an http(s) URL"}
+	if err := a.checkResultURL(fileURL); err != nil {
+		return nil, "", &ProviderError{Vendor: string(a.vendor), Status: http.StatusOK, Message: err.Error()}
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fileURL, nil)
 	if err != nil {
 		return nil, "", fmt.Errorf("build %s download: %w", a.vendor, err)
 	}
-	res, err := a.client.Do(req)
+	res, err := a.fetcher.Do(req)
 	if err != nil {
 		return nil, "", &ProviderError{Vendor: string(a.vendor), Err: redactURL(err)}
 	}
@@ -140,6 +145,45 @@ func (a api) downloadOnce(ctx context.Context, fileURL string) ([]byte, string, 
 		return nil, "", &ProviderError{Vendor: string(a.vendor), Status: http.StatusOK, Message: "the result file is too large"}
 	}
 	return data, res.Header.Get("Content-Type"), nil
+}
+
+// ownsURL reports whether target is a URL of the vendor, the only kind a request carrying the API
+// key may go to: it has the scheme and port of the vendor's base URL and its host is the base host
+// or a sub-domain of the base host's parent domain (api.bfl.ai also answers from api.eu.bfl.ai).
+func (a api) ownsURL(target string) bool {
+	base, err := url.Parse(a.baseURL)
+	if err != nil || base.Hostname() == "" {
+		return false
+	}
+	u, err := url.Parse(target)
+	if err != nil || u.Scheme != base.Scheme || u.Port() != base.Port() || u.User != nil {
+		return false
+	}
+	host, baseHost := strings.ToLower(u.Hostname()), strings.ToLower(base.Hostname())
+	if host == baseHost {
+		return true
+	}
+	if _, err := netip.ParseAddr(baseHost); err == nil {
+		return false
+	}
+	parent := baseHost
+	if labels := strings.Split(baseHost, "."); len(labels) >= 3 {
+		parent = strings.Join(labels[1:], ".")
+	}
+	return strings.HasSuffix(host, "."+parent)
+}
+
+// checkResultURL refuses a result URL that is not an https URL of a public host: it comes from the
+// vendor's answer, so it must not lead the download to plain http or to the local network.
+func (a api) checkResultURL(raw string) error {
+	if a.localDownloads {
+		u, err := url.Parse(raw)
+		if err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" {
+			return errors.New("the result URL is not an http(s) URL")
+		}
+		return nil
+	}
+	return safefetch.CheckURL(raw)
 }
 
 // maxTransientAttempts bounds how often one status request or download is tried when the vendor
