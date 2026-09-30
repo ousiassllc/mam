@@ -256,7 +256,7 @@ M2 の入出力契約（Issue #15）:
 - `GET /projects/:id/references`: `HX-Request` でフラグメント（`#reference-library`）、なければフルページ（`reference_library_page`）。`q`（名前・タグの部分一致）、`kind`、`tag`（完全一致）は AND で絞り込み、新しい登録順。不正な `kind` は 422
 - `POST /projects/:id/references`: 成功時は更新後のライブラリ（201）。ファイルなし・拡張子と内容の不一致・サイズ超過・不正な `kind`・名前が空か長すぎる・タグが多すぎる／長すぎるは 422（何も保存しない）、存在しない Project は 404
 - `DELETE /projects/:id/references/:referenceId`: 更新後のライブラリ（200）。当該 Project に無ければ 404
-- `POST /shots/:id/references`: 応答は更新後のライブラリ相当ではなく Shot カード（200）。同じ種別・同じ名前の参照があれば置き換え、`library_item` に登録 ID を記録する。Reference Pack の再生成ではピン留めした参照を残し、再生成しない。`reference_id` が空は 422、Shot または `reference_id`（同じ Project のもの）が無ければ 404、生成中の Shot は 409
+- `POST /shots/:id/references`: 応答は更新後の Shot Inspector（`GET /shots/:id` と同じ、Reference Pack にピン留めした参照を含む。200）。同じ種別・同じ名前の参照があれば置き換え、`library_item` に登録 ID を記録する。Reference Pack の再生成ではピン留めした参照を残し、再生成しない。`reference_id` が空は 422、Shot または `reference_id`（同じ Project のもの）が無ければ 404、生成中の Shot は 409
 
 ### 2.12 Team Collaboration（M3）
 
@@ -425,3 +425,4 @@ Notes:
 | 1.46 | 2026-10-01 | `PUT`・`DELETE /credentials/:provider` を追加し、設定画面の `credential_panel`（API キーの設定済み/未設定表示・保存・削除）を仕様化 | 仕様（設定画面の API キー設定）に実装が無かった（#90） |
 | 1.47 | 2026-10-01 | WebSocket の再接続仕様に、開いてすぐ閉じる接続を失敗として数えること、断念時の通知と再試行手段（再接続ボタン・`online`・`visibilitychange`）を追記 | 断念しても利用者に知らされず更新が止まること、即閉じるサーバーへ永久に再接続することを防ぐため（Issue #76） |
 | 1.48 | 2026-10-01 | `POST /projects/:id/export` が `branch_id` を受け付け、その Branch の Edit/Audio Timeline を書き出して `export.branch_id` に記録することを M1 の挙動表に明記（実装を追加） | 表に `branch_id` があるが実装はトランク固定だった（#97） |
+| 1.49 | 2026-10-01 | §2.11 の `POST /shots/:id/references` の応答を Shot カードから Shot Inspector に改めた | 実装はピン留め後の Reference Pack を Inspector の References 欄に表示するため Shot Inspector を返しており、仕様と食い違っていたため（Issue #100） |
