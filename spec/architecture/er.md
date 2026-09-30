@@ -98,10 +98,13 @@ erDiagram
 
 ## 2. ドメイン別 ER 図
 
-### 2.1 制作進行（Scene / Shot / Take / Judge / Repair）
+### 2.1 制作進行（Brief / Script / Scene / Shot / Take / Judge / Repair）
 
 ```mermaid
 erDiagram
+    PROJECT ||--|| BRIEF : has
+    PROJECT ||--o{ ASSET : owns
+    PROJECT ||--o{ SCRIPT_VERSION : has
     SCENE ||--o{ SHOT : contains
     SHOT ||--o{ PROMPT_VERSION : has
     SHOT }o--o| TAKE : selected_take_ref
@@ -111,6 +114,29 @@ erDiagram
     REPAIR_ACTION ||--o{ REPAIR_SHADOW : measured_by
     REPAIR_ACTION }o--o| TAKE : produces_next
 
+    BRIEF {
+        string id PK
+        string project_id FK "UNIQUE"
+        json content
+        datetime created_at
+        datetime updated_at
+    }
+    ASSET {
+        string id PK
+        string project_id FK
+        string type
+        string file_path
+        string mime_type
+        int size_bytes
+        datetime created_at
+    }
+    SCRIPT_VERSION {
+        string id PK
+        string project_id FK
+        int version_number
+        json content
+        datetime created_at
+    }
     SCENE {
         string id PK
         string project_id FK
@@ -336,7 +362,28 @@ erDiagram
     BRANCH ||--o{ EDIT_TIMELINE_VERSION : branch_edit_timelines
     BRANCH ||--o{ AUDIO_TIMELINE_VERSION : branch_audio_timelines
     BRANCH ||--o{ EXPORT : branch_exports
+    PROJECT ||--o{ RESHOOT_REQUEST : requests
+    BRANCH ||--o{ RESHOOT_REQUEST : branch_reshoots
+    EDIT_TIMELINE_VERSION ||--o{ RESHOOT_REQUEST : judged_version
+    EDIT_TIMELINE_VERSION |o--o{ RESHOOT_REQUEST : applied_version
+    SHOT ||--o{ RESHOOT_REQUEST : requested_shot
+    SHOT |o--o{ RESHOOT_REQUEST : after_shot
 
+    RESHOOT_REQUEST {
+        string id PK
+        string project_id FK
+        string branch_id FK
+        string edit_timeline_version_id FK
+        int round
+        string shot_id FK
+        string after_shot_id FK
+        string kind
+        string objective
+        float duration_seconds
+        string status
+        string applied_edit_timeline_version_id FK
+        datetime created_at
+    }
     EDIT_TIMELINE_VERSION {
         string id PK
         string project_id FK
@@ -396,7 +443,26 @@ erDiagram
     PROJECT ||--o{ COST_LEDGER_ENTRY : accrues
     PROJECT ||--o{ HUMAN_INTERVENTION : records
     PROJECT ||--o{ BRAND_CONSTRAINT : enforces
+    PROJECT ||--o| PROJECT_POLICY : overrides
 
+    PROJECT_POLICY {
+        string project_id PK, FK
+        int max_retries
+        int max_generation_seconds
+        int min_acceptance_score
+        int min_axis_score
+    }
+    JOB {
+        string id PK
+        string kind
+        json payload
+        string status
+        int attempts
+        string error
+        datetime created_at
+        datetime started_at
+        datetime finished_at
+    }
     LOCK {
         string id PK
         string project_id FK
@@ -487,6 +553,67 @@ erDiagram
         datetime resolved_at
     }
 ```
+
+### 2.6 Team Collaboration（M3）
+
+```mermaid
+erDiagram
+    PROJECT ||--o{ REVIEW_REQUEST : sends
+    EXPORT ||--o{ REVIEW_REQUEST : reviewed_export
+    REVIEW_REQUEST ||--o{ REVIEW_RESPONSE : receives
+    REVIEW_RESPONSE ||--o{ REVIEW_COMMENT : has
+    REVIEW_INBOX ||--o{ REVIEW_INBOX_COMMENT : has
+
+    REVIEW_REQUEST {
+        string id PK
+        string project_id FK
+        string export_id FK
+        text note
+        datetime created_at
+    }
+    REVIEW_RESPONSE {
+        string id PK
+        string review_request_id FK
+        string reviewer_name
+        string decision
+        text comment
+        datetime created_at
+        datetime imported_at
+    }
+    REVIEW_COMMENT {
+        string id PK
+        string review_response_id FK
+        int timecode_ms
+        text body
+        boolean resolved
+    }
+    REVIEW_INBOX {
+        string id PK
+        string review_id UK
+        string project_name
+        text note
+        string video_path
+        string file_name
+        string resolution
+        string aspect_ratio
+        string codec
+        string reviewer_name
+        string decision
+        text comment
+        string response_id
+        datetime created_at
+        datetime updated_at
+    }
+    REVIEW_INBOX_COMMENT {
+        string id PK
+        string inbox_id FK
+        int timecode_ms
+        text body
+        datetime created_at
+    }
+```
+
+`REVIEW_REQUEST` 以下の 3 表はオーナー側（Project に属しバンドルに含む）、`REVIEW_INBOX` 以下の 2 表はレビュアー側（どの Project にも属さない）。
 
 ## 3. テーブル定義・制約・インデックス
 
@@ -615,3 +742,4 @@ erDiagram
 | 1.36 | 2026-09-30 | `brand_template` / `brand_template_constraint` テーブルを追加（マイグレーション `20260930130000_brand_template.sql`）。テンプレートはグローバル（Project/Series に属さない）で、保存・適用ともに `brand_constraint` 行のコピー（リンクなし・更新は非伝播）と定めた | M3「Brand Templates」（Issue #27）。要件が未定義だったため保守的に確定 |
 | 1.37 | 2026-09-30 | `review_request` / `review_response` / `review_comment` / `review_inbox` / `review_inbox_comment` テーブルと設計メモを追加（マイグレーション `20260930130800_team_collaboration`） | M3「Team Collaboration」（Issue #28）のレビュー依頼・応答・コメント・レビュアー側の受信箱を保存するテーブルが存在しなかったため |
 | 1.38 | 2026-09-30 | `voice_clone` テーブルを追加（マイグレーション `20260930193000_voice_clone.sql`）。`audio_timeline_version.timeline` に M3 の Audio Director の構造（`mode`・`layer`・`scenes`・`lip_sync`・`skipped`・`estimated_cost`）を追記し、版を Branch ごとの系列とした | M3「Audio Director（フル機能）」（Issue #25）の実装に合わせるため |
+| 1.39 | 2026-10-01 | §2.1 に `BRIEF` / `ASSET` / `SCRIPT_VERSION`、§2.3 に `RESHOOT_REQUEST`、§2.4 に `PROJECT_POLICY` / `JOB`、新設の §2.6 に `REVIEW_*` 5 表を PK/FK 付きで追加。`PROJECT` の属性は実スキーマ（`series_id` / `episode_number` / `inherited_*` を含む）と一致することを確認 | §3 にあるテーブルの多くが ER 図に描かれていなかったため（Issue #33） |
