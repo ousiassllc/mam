@@ -130,7 +130,11 @@ func (s *BundleService) Import(ctx context.Context, src io.ReaderAt, size int64)
 	if err != nil {
 		return domain.Project{}, err
 	}
-	for _, rel := range data.FilePaths() {
+	timelinePaths, err := data.AudioTimelinePaths()
+	if err != nil {
+		return domain.Project{}, invalid("bundle", "音声タイムラインを読み取れません")
+	}
+	for _, rel := range append(data.FilePaths(), timelinePaths...) {
 		if !domain.ValidBundleFilePath(data.ProjectID, rel) {
 			return domain.Project{}, invalid("bundle", "バンドルに不正なファイルパスがあります")
 		}

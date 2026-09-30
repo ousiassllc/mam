@@ -179,6 +179,48 @@ func TestBundle_AnUnusableFileIsRefusedAndNothingIsLeftBehind(t *testing.T) {
 	assert.Equal(t, http.StatusUnprocessableEntity, missing.Code, "no file at all")
 }
 
+func TestBundle_AnAudioTimelineNamingFilesOutsideTheProjectIsRefused(t *testing.T) {
+	manifest := []byte(`{"format":"mam-project-bundle","version":1,"project_id":"proj1"}`)
+	project := `{"id":"proj1","state":"DRAFT","mode":"auto","confirmation_level":"key_check","production_template":"product_cm","quality_policy":"balanced"}`
+	// The Audio Timeline is JSON inside a column: the files it names are the Project's own too.
+	cases := map[string]string{
+		"mix path escapes":             `{"mix_path":"../../x.mp4"}`,
+		"mix path of another project":  `{"mix_path":"other/mix.m4a"}`,
+		"mix path escapes the project": `{"mix_path":"proj1/../../x.mp4"}`,
+		"audio clip path escapes":      `{"clips":[{"path":"proj1/../../x.mp3"}]}`,
+		"lip sync path is absolute":    `{"lip_sync":[{"clip_index":1,"take_id":"t","path":"/etc/passwd"}]}`,
+		"not a timeline":               `[]`,
+	}
+	for name, timeline := range cases {
+		dst := newApp(t)
+		quoted, err := json.Marshal(timeline)
+		require.NoError(t, err)
+		data := `{"project_id":"proj1","tables":[{"name":"project","rows":[` + project + `]},` +
+			`{"name":"audio_timeline_version","rows":[{"id":"av","project_id":"proj1","version_number":1,"timeline":` + string(quoted) + `}]}]}`
+
+		rec := dst.importBundle(zipOf(t, map[string][]byte{"manifest.json": manifest, "data.json": []byte(data)}))
+
+		assert.Equal(t, http.StatusUnprocessableEntity, rec.Code, name)
+		var n int
+		require.NoError(t, dst.db.Reader().QueryRow(`SELECT COUNT(*) FROM project`).Scan(&n))
+		assert.Zero(t, n, name)
+	}
+}
+
+func TestBundle_AnAudioTimelineOfTheProjectsOwnFilesImports(t *testing.T) {
+	dst := newApp(t)
+	manifest := []byte(`{"format":"mam-project-bundle","version":1,"project_id":"proj1"}`)
+	project := `{"id":"proj1","state":"DRAFT","mode":"auto","confirmation_level":"key_check","production_template":"product_cm","quality_policy":"balanced"}`
+	timeline, err := json.Marshal(`{"mix_path":"proj1/audio/e/r/mix.m4a","clips":[{"path":"proj1/audio/e/r/a.mp3"},{"path":""}],"lip_sync":[{"path":"proj1/audio/e/r/lipsync-01.mp4"}]}`)
+	require.NoError(t, err)
+	data := `{"project_id":"proj1","tables":[{"name":"project","rows":[` + project + `]},` +
+		`{"name":"audio_timeline_version","rows":[{"id":"av","project_id":"proj1","version_number":1,"timeline":` + string(timeline) + `}]}]}`
+
+	rec := dst.importBundle(zipOf(t, map[string][]byte{"manifest.json": manifest, "data.json": []byte(data)}))
+
+	assert.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
+}
+
 func TestBundle_ImportFormAndExportLinkAreOnTheirPages(t *testing.T) {
 	a := newApp(t)
 	id := a.createProject("美容液の縦型15秒CMを作りたい")
