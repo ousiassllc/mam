@@ -124,6 +124,12 @@ templ TakeRow(t domain.Take) {
 			}
 			{{ tone, label := takeStatusLabel(t.Status) }}
 			@atoms.Badge(tone, label)
+			@atoms.Button(atoms.ToneNeutral, "Repair", templ.Attributes{
+				"type":      "button",
+				"hx-post":   "/takes/" + t.ID + "/repair",
+				"hx-target": "#shot-" + t.ShotID,
+				"hx-swap":   "outerHTML",
+			})
 		</span>
 	</li>
 }
@@ -151,7 +157,7 @@ templ ShotCard(d ShotCardData) {
 		if d.Selected {
 			aria-current="true"
 		}
-		if d.Shot.State == domain.ShotGenerating || d.Shot.State == domain.ShotJudging {
+		if d.Shot.State == domain.ShotGenerating || d.Shot.State == domain.ShotJudging || d.Shot.State == domain.ShotRepairing {
 			data-shot-progress
 			data-ws-url={ shotProgressURL(d.Shot.ID) }
 			data-refresh-url={ shotURL(d.ProjectID, d.Shot.SceneID, d.Shot.ID) }
@@ -174,6 +180,9 @@ templ ShotCard(d ShotCardData) {
 				}
 				if d.Shot.State == domain.ShotJudging {
 					@atoms.Spinner("Judge 中")
+				}
+				if d.Shot.State == domain.ShotRepairing {
+					@atoms.Spinner("Repair 中")
 				}
 				@atoms.Badge(atoms.BadgeNeutral, shotStateLabel(d.Shot.State))
 			</span>

@@ -35,6 +35,9 @@ type Config struct {
 	// JudgeConfigPath is a JSON file overriding the AI Video Judge setting (agent.judge.LoadConfig):
 	// frame sampling and the Face Identity Similarity thresholds; empty selects the defaults.
 	JudgeConfigPath string
+	// JevConfigPath is a JSON file overriding the Jev shadow-run setting (agent.jev.LoadConfig): the
+	// pinned version, base URL, timeout and price; empty selects the defaults.
+	JevConfigPath string
 	// FaceModelDir holds the face detection and embedding models (facesim.DetectorFile / RecognizerFile).
 	// Empty selects FaceModels(): DataDir/models.
 	FaceModelDir string
@@ -77,6 +80,7 @@ func Load(args []string, getenv func(string) string, output io.Writer) (Config, 
 	llmConfig := fs.String("llm-config", getenv("MAM_LLM_CONFIG"), "JSON file with the Reasoning LLM provider assignment per agent (MAM_LLM_CONFIG)")
 	modelConfig := fs.String("model-config", getenv("MAM_MODEL_CONFIG"), "JSON file with the image / video Model Adapter setting (MAM_MODEL_CONFIG)")
 	judgeConfig := fs.String("judge-config", getenv("MAM_JUDGE_CONFIG"), "JSON file with the AI Video Judge setting: frame sampling and face similarity thresholds (MAM_JUDGE_CONFIG)")
+	jevConfig := fs.String("jev-config", getenv("MAM_JEV_CONFIG"), "JSON file with the TypeSafe Jev shadow-run setting of the Repair Agent: pinned version, base URL, timeout, price (MAM_JEV_CONFIG)")
 	faceModels := fs.String("face-model-dir", getenv("MAM_FACE_MODEL_DIR"), "directory with the face detection and embedding models; default <data-dir>/models (MAM_FACE_MODEL_DIR)")
 	onnxRuntime := fs.String("onnxruntime-lib", getenv("MAM_ONNXRUNTIME_LIB"), "ONNX Runtime shared library (1.23.x) for the face models (MAM_ONNXRUNTIME_LIB)")
 	if err := fs.Parse(args); err != nil {
@@ -102,6 +106,7 @@ func Load(args []string, getenv func(string) string, output io.Writer) (Config, 
 		LLMConfigPath:   *llmConfig,
 		ModelConfigPath: *modelConfig,
 		JudgeConfigPath: *judgeConfig,
+		JevConfigPath:   *jevConfig,
 		FaceModelDir:    *faceModels,
 		ONNXRuntimeLib:  *onnxRuntime,
 	}, nil

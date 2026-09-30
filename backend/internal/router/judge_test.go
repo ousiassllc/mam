@@ -26,6 +26,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/judge"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
+	"github.com/ousiassllc/mam/backend/internal/agent/repair"
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/facesim"
@@ -43,6 +44,7 @@ type judgeLLM struct {
 	mu      sync.Mutex
 	verdict string
 	specs   string
+	repair  string // the Repair Agent's answer; empty: the Shot Spec (which is no valid choice)
 	judged  int
 }
 
@@ -50,9 +52,12 @@ func (l *judgeLLM) Complete(_ context.Context, agent llm.Agent, _ llm.Request) (
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	text := l.specs
-	if agent == llm.AgentVideoJudge {
+	switch {
+	case agent == llm.AgentVideoJudge:
 		l.judged++
 		text = l.verdict
+	case agent == llm.AgentRepair && l.repair != "":
+		text = l.repair
 	}
 	return llm.Response{Text: text, Provider: llm.ProviderGoogle, Model: "fake"}, nil
 }
@@ -110,6 +115,12 @@ type judgeApp struct {
 // and every Take shows the given similarities.
 func newJudgeApp(t *testing.T, verdict string, sims ...float64) *judgeApp {
 	t.Helper()
+	return newJudgeAppWith(t, verdict, nil, sims...)
+}
+
+// newJudgeAppWith is newJudgeApp with a Jev client for the Repair Agent's shadow run (nil: none).
+func newJudgeAppWith(t *testing.T, verdict string, shadow repair.Shadow, sims ...float64) *judgeApp {
+	t.Helper()
 	keyring.MockInit()
 	dir := t.TempDir()
 	db, err := repository.Open(context.Background(), filepath.Join(dir, "mam.db"), nil)
@@ -126,7 +137,7 @@ func newJudgeApp(t *testing.T, verdict string, sims ...float64) *judgeApp {
 	backends := modeladapter.Backends{Video: map[domain.ModelName]modeladapter.VideoBackend{domain.ModelKling3: video, domain.ModelSeedance2: video, domain.ModelRunwayGen45: video}}
 	svc := service.New(service.Deps{
 		DB: db, Credentials: credential.NewKeyring(), AssetsDir: filepath.Join(dir, "assets"), LLM: l, Jobs: jobs,
-		Models: modeladapter.New(modeladapter.DefaultConfig(), backends), Frames: clipFrames{pics}, Faces: redFaces{},
+		Models: modeladapter.New(modeladapter.DefaultConfig(), backends), Frames: clipFrames{pics}, Faces: redFaces{}, Jev: shadow,
 	})
 	ctx, cancel := context.WithCancel(context.Background())
 	jobs.Start(ctx)
@@ -194,6 +205,10 @@ func (j *judgeApp) generateAndJudge() []string {
 		}
 		return true
 	}, 30*time.Second, 10*time.Millisecond, "every Take is judged as soon as it is made")
+	require.Eventually(j.t, func() bool {
+		var state string
+		return j.db.Reader().QueryRow(`SELECT state FROM shot WHERE id = ?`, j.shotID).Scan(&state) == nil && state == "PLANNING"
+	}, 30*time.Second, 10*time.Millisecond, "the Shot is free again")
 	return ids
 }
 

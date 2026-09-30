@@ -26,6 +26,8 @@ type Deps struct {
 	Generations *repository.GenerationRepository
 	Judges      *repository.JudgeRepository
 	Assets      *repository.AssetRepository
+	// Policies gives the Production Template of the Project, whose axes the Judge scores. Optional.
+	Policies *repository.PolicyRepository
 	// Takes and Projects make the AI Pick after every result (F-15). Both nil: no Take is picked.
 	Takes    *repository.TakeRepository
 	Projects *repository.ProjectRepository
@@ -238,6 +240,13 @@ func (r *Runner) input(ctx context.Context, ref repository.TakeRef) (Input, erro
 		return Input{}, err
 	}
 	in := Input{VideoPath: path, Spec: spec}
+	if r.Policies != nil {
+		policy, err := r.Policies.Get(ctx, ref.ProjectID)
+		if err != nil {
+			return Input{}, err
+		}
+		in.Template = policy.Template
+	}
 
 	shots, err := r.Generations.ListProjectShots(ctx, ref.ProjectID)
 	if err != nil {

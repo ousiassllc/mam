@@ -116,7 +116,7 @@ func (o *Orchestrator) generate(ctx context.Context, ref repository.ShotRef, ins
 	o.notify(Progress{ShotID: shot.ID, Action: ActionGenerate, Stage: StageGenerating, Message: "動画を生成しています", TakesTotal: strategy.Takes})
 	var made counter
 	errs := parallel(strategy.Takes, func(i int) error {
-		takeID, err := o.makeTake(ctx, ref, pv, strategy, job, i, policy.Effective().MaxGenerationTime, "")
+		takeID, err := o.makeTake(ctx, ref, pv, strategy, job, fmt.Sprintf("Shot %d · Take %d", shot.OrderIndex+1, i+1), policy.Effective().MaxGenerationTime, "")
 		if err != nil {
 			return err
 		}
@@ -246,10 +246,11 @@ type takeParameters struct {
 	Candidate domain.CandidateStrategy `json:"candidate_strategy,omitempty"`
 }
 
-// makeTake generates one Take, stores its file, the Take row and cost, and posts its card.
-// The time spent on the model is bounded by limit (Max generation time of the Quality/Cost Policy).
-// candidate is the Prompt Candidate strategy the Take is made for ("" for a plain generation).
-func (o *Orchestrator) makeTake(ctx context.Context, ref repository.ShotRef, pv domain.PromptVersion, s Strategy, job modeladapter.VideoJob, index int, limit time.Duration, candidate domain.CandidateStrategy) (string, error) {
+// makeTake generates one Take, stores its file, the Take row and cost, and posts its card, whose
+// title is title. The time spent on the model is bounded by limit (Max generation time of the
+// Quality/Cost Policy). candidate is the Prompt Candidate strategy the Take is made for ("" for a
+// plain generation or a repair).
+func (o *Orchestrator) makeTake(ctx context.Context, ref repository.ShotRef, pv domain.PromptVersion, s Strategy, job modeladapter.VideoJob, title string, limit time.Duration, candidate domain.CandidateStrategy) (string, error) {
 	callCtx, cancel := context.WithTimeout(ctx, limit)
 	defer cancel()
 	out, err := o.adapter.GenerateVideo(callCtx, s.Primary, s.Fallback, job)
@@ -279,7 +280,6 @@ func (o *Orchestrator) makeTake(ctx context.Context, ref repository.ShotRef, pv 
 		o.files.remove(asset)
 		return "", err
 	}
-	title := fmt.Sprintf("Shot %d · Take %d", ref.Shot.OrderIndex+1, index+1)
 	if candidate != "" {
 		title += " · " + candidate.Label()
 	}

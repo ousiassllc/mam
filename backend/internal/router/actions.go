@@ -47,6 +47,7 @@ func registerActions(engine *gin.Engine, services *service.Services) {
 	engine.DELETE("/takes/:id", handler.RejectTake(services.Takes))
 	engine.POST("/shots/:id/takes/partial", handler.UsePartialTakes(services.Takes))
 	engine.POST("/takes/:id/judge", handler.JudgeTake(services.Judge))
+	engine.POST("/takes/:id/repair", handler.RepairTake(services.Repair))
 	engine.POST("/projects/:id/messages", handler.PostMessage(services.Chat))
 	engine.POST("/projects/:id/approvals/:messageId", handler.RespondApproval(services.Chat))
 }
