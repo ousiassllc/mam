@@ -1198,7 +1198,7 @@ AWAITING_APPROVAL に遷移するのは、確認ポイントの Approval カー�
 
 チャットの横に開く/別ページで開くビューで、スレッド内カードや［⋯］メニューから到達する。いずれも操作結果は同じ Project の状態に反映され、スレッドにも発言またはカードとして記録される。
 
-- **Inspector**（選択中 Shot の詳細）: Shot Objective / Duration / Character / Acting / Camera / Lighting / Product / Continuity / References / Prompt / Generation Model / Take List / Judge Results / Locks。各項目は AUTO / MANUAL / LOCK を切替可能
+- **Inspector**（選択中 Shot の詳細）: Shot Objective / Duration / Character / Acting / Camera / Lighting / Product / Continuity / References / Generation Model / Take List / Judge Results / Locks。モデル別プロンプトは Inspector に常設せず、各 Take の「生成の経緯」（Generation Trace、`GET /takes/:id/trace`）で確認する。各項目は AUTO / MANUAL / LOCK を切替可能
 - Take 比較、Timeline、Branch ツリー、World State、Notes（M2、§9.4）、Cost、Settings
 
 ---
