@@ -47,6 +47,10 @@ type Regeneration struct {
 	// Direction is a free-text direction of the director (English), for a regeneration the director
 	// asked for in DIRECTOR MODE (there are no Issues then).
 	Direction string
+	// Prepared is a Shot Spec already checked against LOCK brand constraints. When set, Regenerate
+	// does not ask the Prompt Planner again. NoteRefs are the notes that spec was planned from.
+	Prepared *domain.ShotSpec
+	NoteRefs []domain.NoteRef
 }
 
 // RegenerationStrategy plans the single Take of a repair: the strategy of the Quality Policy, with
@@ -150,12 +154,14 @@ func (o *Orchestrator) Regenerate(ctx context.Context, ref repository.ShotRef, r
 	spec := current
 	references := shot.References()
 	var noteRefs []domain.NoteRef // the notes the Planner was given; none when it did not run
-	switch r.Action {
-	case domain.RepairPrompt, domain.RepairPartialRegeneration:
+	switch {
+	case r.Prepared != nil:
+		spec, noteRefs = *r.Prepared, r.NoteRefs
+	case r.Action == domain.RepairPrompt || r.Action == domain.RepairPartialRegeneration:
 		if spec, noteRefs, err = o.reviseSpec(ctx, ref, policy, locks, brand, current, r); err != nil {
 			return "", err
 		}
-	case domain.RepairReferenceReinforce:
+	case r.Action == domain.RepairReferenceReinforce:
 		boost := boostedKinds(r)
 		if reinforced := reinforce(current, boost); len(domain.LockedChanges(locks, current, reinforced)) == 0 {
 			spec = reinforced
@@ -196,6 +202,40 @@ func (o *Orchestrator) Regenerate(ctx context.Context, ref repository.ShotRef, r
 		o.updateWorldState(ctx, ref, spec, takeID) // the Shot Spec changed, and so may the state it leaves
 	}
 	return takeID, nil
+}
+
+// PreparePartial revises the Shot Spec for a director's Partial Regeneration and checks the direction
+// and the spec against LOCK brand constraints. checked is false when the spec was not prepared (there
+// is nothing to revise, or the planner failed for a reason other than a brand violation): the job
+// then plans it and reports that failure. A brand violation is returned so nothing is queued.
+func (o *Orchestrator) PreparePartial(ctx context.Context, ref repository.ShotRef, r Regeneration) (spec domain.ShotSpec, notes []domain.NoteRef, checked bool, err error) {
+	brand, err := o.brandConstraints(ctx, ref.ProjectID)
+	if err != nil {
+		return domain.ShotSpec{}, nil, false, err
+	}
+	if err := brand.CheckText(r.Direction); err != nil {
+		return domain.ShotSpec{}, nil, false, err
+	}
+	current, ok := ref.Shot.CanonicalSpec()
+	if !ok {
+		return domain.ShotSpec{}, nil, false, nil
+	}
+	policy, err := o.policies.Get(ctx, ref.ProjectID)
+	if err != nil {
+		return domain.ShotSpec{}, nil, false, err
+	}
+	locks, err := o.gens.ShotLocks(ctx, ref.Shot.ID)
+	if err != nil {
+		return domain.ShotSpec{}, nil, false, err
+	}
+	spec, notes, err = o.reviseSpec(ctx, ref, policy, locks, brand, current, r)
+	if err != nil {
+		if errors.Is(err, domain.ErrBrandViolation) {
+			return domain.ShotSpec{}, nil, false, err
+		}
+		return domain.ShotSpec{}, nil, false, nil
+	}
+	return spec, notes, true, nil
 }
 
 // reviseSpec has the Prompt Planner revise the spec for the Issues of the failed Take. It also returns

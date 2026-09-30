@@ -148,6 +148,14 @@ type payload struct {
 	Instruction string `json:"instruction,omitempty"`
 	// Preserve are the parts of the Shot Spec the director asked to keep as they are.
 	Preserve []domain.SpecPart `json:"preserve,omitempty"`
+	// Spec is a Canonical Shot Spec already checked against LOCK brand constraints, so the job
+	// does not plan a second one. Nil when the job keeps the Shot's spec or plans it itself.
+	Spec *domain.ShotSpec `json:"spec,omitempty"`
+	// NoteRefs are the production notes Spec was planned from.
+	NoteRefs []domain.NoteRef `json:"note_refs,omitempty"`
+	// CandidateSpecs are the Prompt Candidate specs already checked, in CandidateStrategies order.
+	// The job uses these instead of planning them again; strategies past the end are planned in the job.
+	CandidateSpecs []domain.ShotSpec `json:"candidate_specs,omitempty"`
 }
 
 // progressText is the content of the progress card of a job.
@@ -190,7 +198,10 @@ func (o *Orchestrator) start(ctx context.Context, shotID string, action Action, 
 	if err != nil {
 		return domain.Job{}, err
 	}
+	instruction = strings.TrimSpace(instruction)
 	// A direction that contains a forbidden expression of a LOCK Brand constraint is refused up front.
+	// Advisory constraints are not an error. The spec that will be generated is checked the same way,
+	// before the job is queued, so a violation is HTTP 403 and creates neither a Take nor a progress job.
 	brand, err := o.brandConstraints(ctx, ref.ProjectID)
 	if err != nil {
 		return domain.Job{}, err
@@ -199,7 +210,7 @@ func (o *Orchestrator) start(ctx context.Context, shotID string, action Action, 
 		return domain.Job{}, err
 	}
 	// Candidates always rewrite the spec, so a LOCKed Prompt rules them out even without an instruction.
-	if _, hasSpec := ref.Shot.CanonicalSpec(); hasSpec && (strings.TrimSpace(instruction) != "" || action == ActionCandidates) {
+	if _, hasSpec := ref.Shot.CanonicalSpec(); hasSpec && (instruction != "" || action == ActionCandidates) {
 		locks, err := o.gens.ShotLocks(ctx, shotID)
 		if err != nil {
 			return domain.Job{}, err
@@ -220,7 +231,17 @@ func (o *Orchestrator) start(ctx context.Context, shotID string, action Action, 
 	if err != nil {
 		return domain.Job{}, err
 	}
-	job, err := o.enqueue(ctx, ref, payload{Action: action, ShotID: shotID, Instruction: strings.TrimSpace(instruction), Preserve: preserve})
+	p := payload{Action: action, ShotID: shotID, Instruction: instruction, Preserve: preserve}
+	switch action {
+	case ActionCandidates:
+		p.CandidateSpecs, err = o.prepareCandidates(ctx, ref, instruction, strategy)
+	default:
+		p.Spec, p.NoteRefs, err = o.prepareGenerate(ctx, ref, instruction, preserve)
+	}
+	if err != nil {
+		return domain.Job{}, err
+	}
+	job, err := o.enqueue(ctx, ref, p)
 	if err != nil {
 		return domain.Job{}, err
 	}
@@ -366,9 +387,9 @@ func (o *Orchestrator) Handle(ctx context.Context, job domain.Job) error {
 	case ActionReferencePack:
 		done, err = o.buildReferencePack(ctx, ref)
 	case ActionCandidates:
-		done, err = o.generateCandidates(ctx, ref, p.Instruction)
+		done, err = o.generateCandidates(ctx, ref, p.Instruction, p.CandidateSpecs)
 	default:
-		done, err = o.generate(ctx, ref, p.Instruction, p.Preserve)
+		done, err = o.generate(ctx, ref, p.Instruction, p.Preserve, p.Spec, p.NoteRefs)
 	}
 	if err != nil {
 		return o.fail(ctx, ref, p.Action, err)

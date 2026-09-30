@@ -121,6 +121,8 @@ type candidateRun struct {
 	outcomes []judged
 	// stopped says why the run made fewer Takes than it could (shown to the user).
 	stopped string
+	// prepared are Candidate specs already checked before the job was queued, in CandidateStrategies order.
+	prepared []domain.ShotSpec
 }
 
 // generateCandidates runs Prompt Candidate Generation for a Shot (spec/spec.md §8). The mode follows
@@ -136,7 +138,47 @@ type candidateRun struct {
 // Calls to the video models run in parallel; the Model Adapter limits how many are in flight per
 // vendor according to its rate limit. The Best Take becomes the AI pick of the Shot and its spec
 // the spec of the Shot.
-func (o *Orchestrator) generateCandidates(ctx context.Context, ref repository.ShotRef, instruction string) (Progress, error) {
+// prepareCandidates plans the Prompt Candidate specs that are known before any Take is judged,
+// and refuses a LOCK brand violation before the job is queued. Quality Mode plans every strategy
+// it will shoot; other modes plan only the first, because the rest depend on the Judge.
+// A nil slice means the job should plan them itself (the planner failed for another reason).
+func (o *Orchestrator) prepareCandidates(ctx context.Context, ref repository.ShotRef, instruction string, strategy Strategy) ([]domain.ShotSpec, error) {
+	sc, err := o.loadShotContext(ctx, ref, instruction)
+	if err != nil {
+		return nil, err
+	}
+	locks, err := o.gens.ShotLocks(ctx, ref.Shot.ID)
+	if err != nil {
+		return nil, err
+	}
+	n := 1
+	if mode := domain.ModeOf(sc.policy.Quality); mode == domain.ModeQuality {
+		n = min(len(domain.CandidateStrategies()), plannedTakes(mode, sc.policy.Effective(), strategy))
+	}
+	var current *domain.ShotSpec
+	if spec, ok := ref.Shot.CanonicalSpec(); ok {
+		current = &spec
+	}
+	var prepared []domain.ShotSpec
+	for _, s := range domain.CandidateStrategies()[:n] {
+		in := sc.plannerInput(ref, instruction)
+		in.Current, in.Strategy = current, s
+		if current != nil {
+			in.Fixed, in.Manual = locks.LockedParts(), locks.PartsWith(domain.LockManual)
+		}
+		spec, err := o.planner.Plan(ctx, in)
+		if err != nil {
+			if errors.Is(err, domain.ErrBrandViolation) {
+				return nil, err
+			}
+			return nil, nil
+		}
+		prepared = append(prepared, spec)
+	}
+	return prepared, nil
+}
+
+func (o *Orchestrator) generateCandidates(ctx context.Context, ref repository.ShotRef, instruction string, prepared []domain.ShotSpec) (Progress, error) {
 	sc, err := o.loadShotContext(ctx, ref, instruction)
 	if err != nil {
 		return Progress{}, err
@@ -148,7 +190,7 @@ func (o *Orchestrator) generateCandidates(ctx context.Context, ref repository.Sh
 	if err != nil {
 		return Progress{}, err
 	}
-	run := &candidateRun{o: o, ref: ref, sc: sc, instruction: instruction, locks: locks}
+	run := &candidateRun{o: o, ref: ref, sc: sc, instruction: instruction, locks: locks, prepared: prepared}
 	if current, ok := ref.Shot.CanonicalSpec(); ok {
 		run.current = &current
 	}
@@ -191,6 +233,11 @@ func (r *candidateRun) strategy(ctx context.Context) (Strategy, error) {
 
 // plan has the Prompt Planner write the Candidate of the strategy.
 func (r *candidateRun) plan(ctx context.Context, strategy domain.CandidateStrategy) (domain.ShotSpec, error) {
+	for i, s := range domain.CandidateStrategies() {
+		if s == strategy && i < len(r.prepared) {
+			return r.prepared[i], nil
+		}
+	}
 	in := r.sc.plannerInput(r.ref, r.instruction)
 	in.Current, in.Strategy = r.current, strategy
 	if r.current != nil {
