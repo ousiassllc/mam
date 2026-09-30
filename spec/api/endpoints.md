@@ -280,7 +280,7 @@ Lit Web Components 専用。HTMX リクエストは発行しない（`spec/archi
 
 | Method | Path | 概要 | 利用コンポーネント |
 |---|---|---|---|
-| GET | `/api/v1/shots/:id` | Shot詳細（shot_spec, duration, selected_take_id等） | `mam-video-player`, `mam-timeline-editor` |
+| GET | `/api/v1/shots/:id` | Shot詳細（`id`/`scene_id`/`project_id`/`order_index`/`objective`/`duration_seconds`/`shot_spec`/`state`/`selected_take_id`（未選択なら省略））。存在しない Shot は 404 | `mam-video-player`, `mam-timeline-editor` |
 | GET | `/api/v1/shots/:id/takes` | Take一覧（古い順。`label`（A, B, …）・`status`（candidate/ai_pick/selected/rejected）・`adopted`（Shot が使う Take）・`scores`（product/acting/camera/continuity/overall、各 0-100。最新 Judge の Issue から算出: 各軸 100 から high 35・medium 15・low 5 を Issue ごとに引く。未 Judge は null）・`verdict`・`resolution`/`fps`/`duration_seconds`・`proxied`・`video_url`/`thumbnail_url`/`judge_result_url`/`select_url`/`reject_url`、および Shot の `partial_url`） | `mam-take-comparator` |
 | GET | `/api/v1/takes/:id/judge-result` | 最新のJudge Result（`result`/`overall_confidence`/`metrics`/`issues`（`time_range`/`frames`付き）/`preserve`/`repair_strategy`）。同一Takeの過去Judge履歴は含まない（最新1件）。Take が存在しない、または一度も Judge されていないとき 404 | `mam-video-player`（フレームマーカー重畳） |
 | GET | `/api/v1/repair/jev-shadow-report` | Jev のシャドー実行の集計（`runs`/`errors`/`agreed`/`agreement_rate`（失敗を除く一致率）/`mean_confidence`/`mean_latency_ms`/`total_cost_usd`/`confidence_histogram`（0.1 刻み 10 区間）/`confidence_agreed`）。Jev による前段選別を有効にするかどうかの判断材料（`spec/architecture/model-adapters.md` §4.5・§11） | Repair Agent（F-14） |
@@ -413,3 +413,4 @@ Notes:
 | 1.37 | 2026-09-30 | §2.6 に M3 の Editor 契約（Advanced 編集項目の反映、`need_shot`、`POST /edit-timelines/:id/request-additional-shot` と Retry Policy、Branch ごとの Edit Timeline、クリップの `kind`/`caption`）を追記 | Advanced Editor Agent と Editor → Reshoot Loop（Issue #24）の実装に合わせるため |
 | 1.38 | 2026-09-30 | §2.7 に Brand Templates の `POST /projects/:id/brand-templates`・`POST /projects/:id/brand-templates/:templateId/apply`・`DELETE /projects/:id/brand-templates/:templateId` を追加し、`POST /projects` と `POST /series/:id/episodes` に任意の `brand_template_id` を追記 | M3「Brand Templates」（Issue #27）の API 契約がなかったため。保存・適用はコピーで更新は非伝播（`spec/requirements/functional.md` UC-9 拡張） |
 | 1.39 | 2026-09-30 | §2.6 に M3 の Audio Director 契約（`POST /projects/:id/audio/generate` の Quality Policy ごとの層・`branch_id`・予算・エラー、`POST /projects/:id/audio/voices`）を追記 | M3「Audio Director（フル機能）」（Issue #25）の実装に合わせるため |
+| 1.40 | 2026-10-01 | §3 の `GET /api/v1/shots/:id` の応答項目と 404 を明記（実装を追加） | 仕様にあるが未実装だった（#31） |
