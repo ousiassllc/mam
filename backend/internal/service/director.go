@@ -12,6 +12,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/commandinterpreter"
 	"github.com/ousiassllc/mam/backend/internal/agent/generation"
+	"github.com/ousiassllc/mam/backend/internal/agent/repair"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
@@ -21,14 +22,19 @@ import (
 // Command Interpreter that turns a direction into operations on one Shot.
 type DirectorService struct {
 	*core
-	gens  *repository.GenerationRepository
-	locks *repository.LockRepository
+	gens     *repository.GenerationRepository
+	locks    *repository.LockRepository
+	versions *repository.VersionRepository
 	// orch starts the regeneration of a Shot; nil when generation is not configured.
 	orch *generation.Orchestrator
 	// interpreter reads directions; nil when no Reasoning LLM is configured.
 	interpreter *commandinterpreter.Interpreter
 	// branch makes the Branches of a "create_branch" operation; set by New.
 	branch *BranchService
+	// takes finds the Take a Partial Regeneration fixes; repair makes it (nil without ffmpeg, LLM
+	// or Model Adapter).
+	takes  *repository.TakeRepository
+	repair *repair.Agent
 }
 
 // SetMode switches the Project between AUTO and DIRECTOR (PUT /projects/:id/mode) and tells the
@@ -140,6 +146,8 @@ type Inspector struct {
 	// SpecInput and SpecError hold a rejected manual edit of the spec.
 	SpecInput string
 	SpecError string
+	// Versions are the saved versions of the Shot's spec, newest first (F-28).
+	Versions []domain.VersionEntry
 }
 
 // SpecText is the Canonical Shot Spec as the edit form shows it (indented JSON).
@@ -179,7 +187,11 @@ func (s *DirectorService) Inspector(ctx context.Context, shotID string) (Inspect
 	if err != nil {
 		return Inspector{}, err
 	}
-	view := Inspector{Project: project, Scene: ref.Scene, Shot: ref.Shot, Takes: takes[shotID], Locks: locks, Pack: ref.Shot.References(), Library: library}
+	versions, err := s.versions.ShotVersions(ctx, shotID)
+	if err != nil {
+		return Inspector{}, notFound(err)
+	}
+	view := Inspector{Project: project, Scene: ref.Scene, Shot: ref.Shot, Takes: takes[shotID], Locks: locks, Pack: ref.Shot.References(), Library: library, Versions: versions}
 	if spec, ok := ref.Shot.CanonicalSpec(); ok {
 		view.Spec = &spec
 	}
@@ -248,7 +260,7 @@ func (s *DirectorService) DirectorCommand(ctx context.Context, shotID, message s
 	if err != nil {
 		return DirectorCommandResult{}, err
 	}
-	shots, err := s.gens.ListProjectShots(ctx, ref.ProjectID)
+	shots, err := s.gens.StoryShots(ctx, ref.ProjectID, ref.Scene.BranchID)
 	if err != nil {
 		return DirectorCommandResult{}, err
 	}
@@ -419,8 +431,7 @@ func (s *DirectorService) execute(ctx context.Context, project domain.Project, r
 		return outcome{lines: []string{cmd.Question}}, nil
 	}
 	needsShot := slices.ContainsFunc(cmd.Operations, func(op commandinterpreter.Operation) bool {
-		return op.Type == commandinterpreter.OpRegenerate || op.Type == commandinterpreter.OpCreateBranch ||
-			(op.Type == commandinterpreter.OpSetLock && op.Parameter.ValidForShot())
+		return op.Regenerates() || op.Type == commandinterpreter.OpCreateBranch || (op.Type == commandinterpreter.OpSetLock && op.Parameter.ValidForShot())
 	})
 	if needsShot && ref == nil {
 		return outcome{lines: []string{askWhichShot}}, nil
@@ -457,7 +468,7 @@ func (s *DirectorService) execute(ctx context.Context, project domain.Project, r
 	}
 	for _, op := range cmd.Operations {
 		switch op.Type {
-		case commandinterpreter.OpRegenerate:
+		case commandinterpreter.OpRegenerate, commandinterpreter.OpPartialRegenerate:
 			line, started, err := s.regenerate(ctx, ref, locks, op)
 			if err != nil {
 				return out, err
@@ -505,7 +516,7 @@ func lockedRegeneration(locks domain.ParameterLocks, ops []commandinterpreter.Op
 	}
 	var hit []domain.LockParameter
 	for _, op := range ops {
-		if op.Type == commandinterpreter.OpRegenerate {
+		if op.Regenerates() {
 			hit = append(hit, lockedParameters(effective, op)...)
 		}
 	}
@@ -558,14 +569,27 @@ func (s *DirectorService) regenerate(ctx context.Context, ref *repository.ShotRe
 		}
 		return fmt.Sprintf("%s の %s は LOCK されているため変更しませんでした。変えたい場合は LOCK を解除するよう指示してください。", label, strings.Join(names, " / ")), false, nil
 	}
-	if s.orch == nil {
-		return "", false, ErrUnavailable
-	}
 	instruction := op.Instruction
 	if utf8.RuneCountInString(instruction) > maxInstructionRunes {
 		instruction = string([]rune(instruction)[:maxInstructionRunes])
 	}
-	if _, err := s.orch.StartDirected(ctx, ref.Shot.ID, instruction, op.Preserve); err != nil {
+	partial := op.Type == commandinterpreter.OpPartialRegenerate
+	var err error
+	switch {
+	case partial:
+		err = s.startPartial(ctx, ref, op, instruction)
+	case s.orch == nil:
+		return "", false, ErrUnavailable
+	default:
+		_, err = s.orch.StartDirected(ctx, ref.Shot.ID, instruction, op.Preserve)
+	}
+	if err != nil {
+		if errors.Is(err, errNoTakeToFix) {
+			return label + " には再生成の元にできる Take がまだありません。先に Shot を生成してください。", false, nil
+		}
+		if errors.Is(err, repair.ErrSpliceUnavailable) {
+			return label + " の時間範囲だけの再生成には ffmpeg が必要ですが、見つかりませんでした。", false, nil
+		}
 		err = mapGenerationError(err)
 		switch {
 		case errors.Is(err, ErrBusy):
@@ -575,7 +599,12 @@ func (s *DirectorService) regenerate(ctx context.Context, ref *repository.ShotRe
 		}
 		return "", false, err
 	}
-	text := label + " だけを再生成します"
+	text := label
+	if partial {
+		text += " の " + domain.FormatTimeRanges(op.Ranges) + " だけを再生成して、元の Take につなぎ込みます"
+	} else {
+		text += " だけを再生成します"
+	}
 	if len(op.Changes) > 0 {
 		text += "（変更: " + partLabels(op.Changes)
 		if len(op.Preserve) > 0 {
@@ -584,6 +613,27 @@ func (s *DirectorService) regenerate(ctx context.Context, ref *repository.ShotRe
 		text += "）"
 	}
 	return text + "。", true, nil
+}
+
+// errNoTakeToFix means the Shot has no Take a Partial Regeneration could fix.
+var errNoTakeToFix = errors.New("service: the shot has no take to regenerate from")
+
+// startPartial queues the Partial Regeneration of op for the Take the Shot uses: the one the user
+// selected, else the AI Pick, else the newest one that is not rejected.
+func (s *DirectorService) startPartial(ctx context.Context, ref *repository.ShotRef, op commandinterpreter.Operation, instruction string) error {
+	if s.repair == nil {
+		return ErrUnavailable
+	}
+	takes, err := s.takes.ShotTakes(ctx, ref.Shot.ID)
+	if err != nil {
+		return err
+	}
+	base, ok := domain.TakeToRepair(takes)
+	if !ok {
+		return errNoTakeToFix
+	}
+	_, err = s.repair.StartPartial(ctx, base, repair.PartialRequest{Ranges: op.Ranges, Instruction: instruction, Preserve: op.Preserve})
+	return err
 }
 
 func partLabels(parts []domain.SpecPart) string {

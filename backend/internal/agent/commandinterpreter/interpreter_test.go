@@ -113,3 +113,27 @@ func TestInterpret_CreateBranchKeepsANumberedRequestWithinTheLimitAndAShotOrScen
 	}, cmd.Operations[0], "the count is capped, a frame becomes a shot (a message gives no offset) and blank directions are dropped")
 	assert.Equal(t, commandinterpreter.Operation{Type: commandinterpreter.OpCreateBranch, Count: 1, PointType: domain.BranchAtScene}, cmd.Operations[1])
 }
+
+func TestInterpret_PartialRegenerationKeepsTheNamedRangesAndPreservesWhatItDoesNotChange(t *testing.T) {
+	cmd, _ := interpret(t, `{"operations":[{"type":"partial_regenerate","time_ranges":["2-3","0.5-1.0s"],"changes":["camera"],"instruction":"Static camera."}]}`,
+		commandinterpreter.Input{Message: "0.5〜1秒と2〜3秒目のカメラだけ直して"})
+
+	require.Len(t, cmd.Operations, 1)
+	op := cmd.Operations[0]
+	assert.Equal(t, commandinterpreter.OpPartialRegenerate, op.Type)
+	assert.Equal(t, []domain.TimeRange{{From: 2, To: 3}, {From: 0.5, To: 1}}, op.Ranges)
+	assert.Equal(t, []domain.SpecPart{domain.PartCamera}, op.Changes)
+	assert.Contains(t, op.Preserve, domain.PartCharacter)
+	assert.True(t, op.Regenerates())
+}
+
+func TestInterpret_PartialRegenerationWithoutAReadableRangeRegeneratesTheWholeShot(t *testing.T) {
+	for _, ranges := range []string{`[]`, `["soon"]`, `["2.0-2.1"]`} {
+		cmd, _ := interpret(t, `{"operations":[{"type":"partial_regenerate","time_ranges":`+ranges+`,"changes":["camera"]}]}`,
+			commandinterpreter.Input{Message: "カメラだけ直して"})
+
+		require.Len(t, cmd.Operations, 1, ranges)
+		assert.Equal(t, commandinterpreter.OpRegenerate, cmd.Operations[0].Type, ranges)
+		assert.Empty(t, cmd.Operations[0].Ranges, ranges)
+	}
+}

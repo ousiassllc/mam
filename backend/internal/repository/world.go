@@ -83,10 +83,12 @@ func (r *WorldRepository) Locks(ctx context.Context, projectID string) (domain.L
 func readWorld(ctx context.Context, q queryer, projectID, branchID string) (domain.WorldContext, error) {
 	var w domain.WorldContext
 	chars, err := q.QueryContext(ctx,
-		`SELECT id, name, COALESCE(hairstyle, ''), COALESCE(wardrobe, ''), COALESCE(voice, ''), COALESCE(personality, ''),
-		        COALESCE(emotion, ''), COALESCE(position, ''), COALESCE(current_action, ''),
-		        COALESCE(face_reference_asset_id, ''), COALESCE(body_reference_asset_id, '')
-		 FROM character WHERE project_id = ? AND branch_id IS ? ORDER BY name, id`, projectID, nullIfEmpty(branchID))
+		`SELECT c.id, c.name, COALESCE(c.hairstyle, ''), COALESCE(c.wardrobe, ''), COALESCE(c.voice, ''), COALESCE(c.personality, ''),
+		        COALESCE(c.emotion, ''), COALESCE(c.position, ''), COALESCE(c.current_action, ''),
+		        COALESCE(c.face_reference_asset_id, ''), COALESCE(c.body_reference_asset_id, ''),
+		        COALESCE(o.face_reference_asset_id, '')
+		 FROM character c LEFT JOIN character o ON o.id = c.origin_id
+		 WHERE c.project_id = ? AND c.branch_id IS ? ORDER BY c.name, c.id`, projectID, nullIfEmpty(branchID))
 	if err != nil {
 		return w, fmt.Errorf("list characters: %w", err)
 	}
@@ -94,7 +96,7 @@ func readWorld(ctx context.Context, q queryer, projectID, branchID string) (doma
 	for chars.Next() {
 		var c domain.WorldCharacter
 		if err := chars.Scan(&c.ID, &c.Name, &c.Hairstyle, &c.Wardrobe, &c.Voice, &c.Personality,
-			&c.Emotion, &c.Position, &c.CurrentAction, &c.FaceReferenceAssetID, &c.BodyReferenceAssetID); err != nil {
+			&c.Emotion, &c.Position, &c.CurrentAction, &c.FaceReferenceAssetID, &c.BodyReferenceAssetID, &c.SeriesFaceReferenceAssetID); err != nil {
 			return w, err
 		}
 		w.Characters = append(w.Characters, c)

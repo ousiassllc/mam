@@ -95,17 +95,19 @@ const DelegateOption = "AIに任せる"
 
 // Brief is the Creative Brief stored in brief.content as JSON (F-01, F-25).
 type Brief struct {
-	ContentType           string   `json:"content_type,omitempty"`
-	Objective             string   `json:"objective,omitempty"`
-	Subject               string   `json:"subject,omitempty"`
-	Target                string   `json:"target,omitempty"`
-	Duration              string   `json:"duration,omitempty"`
-	AspectRatio           string   `json:"aspect_ratio,omitempty"`
-	Mood                  string   `json:"mood,omitempty"`
-	AdditionalInstruction string   `json:"additional_instruction,omitempty"`
-	Assets                []string `json:"assets,omitempty"`     // image asset IDs
-	References            []string `json:"references,omitempty"` // URLs or video asset IDs
-	Delegated             []string `json:"delegated,omitempty"`  // fields the user left to the AI
+	ContentType           string `json:"content_type,omitempty"`
+	Objective             string `json:"objective,omitempty"`
+	Subject               string `json:"subject,omitempty"`
+	Target                string `json:"target,omitempty"`
+	Duration              string `json:"duration,omitempty"`
+	AspectRatio           string `json:"aspect_ratio,omitempty"`
+	Mood                  string `json:"mood,omitempty"`
+	AdditionalInstruction string `json:"additional_instruction,omitempty"`
+	// Style is the canonical Style of the Series an Episode inherits (F-29); it is not a required field.
+	Style      string   `json:"style,omitempty"`
+	Assets     []string `json:"assets,omitempty"`     // image asset IDs
+	References []string `json:"references,omitempty"` // URLs or video asset IDs
+	Delegated  []string `json:"delegated,omitempty"`  // fields the user left to the AI
 }
 
 // Get returns the value of a required field ("" when unset).

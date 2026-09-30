@@ -38,6 +38,11 @@ func registerActions(engine *gin.Engine, services *service.Services) {
 	engine.DELETE("/projects/:id/references/:referenceId", handler.DeleteReference(services.Reference))
 	engine.POST("/shots/:id/references", handler.PinReference(services.Reference))
 
+	engine.POST("/series", handler.CreateSeries(services.Series))
+	engine.POST("/series/:id/episodes", handler.CreateEpisode(services.Series))
+	engine.PUT("/series/:id/characters/:characterId", handler.UpdateSeriesCharacter(services.Series))
+	engine.PUT("/series/:id/style", handler.UpdateSeriesStyle(services.Series))
+
 	engine.POST("/shots/:id/generate", handler.GenerateShot(services.Generation))
 	engine.POST("/shots/:id/generate/candidates", handler.GenerateCandidates(services.Generation))
 	engine.POST("/shots/:id/continue", handler.ProposeContinue(services.Continue))
@@ -48,6 +53,12 @@ func registerActions(engine *gin.Engine, services *service.Services) {
 	engine.POST("/shots/:id/takes/partial", handler.UsePartialTakes(services.Takes))
 	engine.POST("/takes/:id/judge", handler.JudgeTake(services.Judge))
 	engine.POST("/takes/:id/repair", handler.RepairTake(services.Repair))
+	engine.POST("/shots/:id/versions/:versionNumber/restore", handler.RestoreShotVersion(services.Versions))
+	engine.POST("/projects/:id/world-state/versions/:versionNumber/restore", handler.RestoreWorldStateVersion(services.Versions))
+	// The Branch routes name the Branch :id: gin allows one wildcard name per path position.
+	engine.POST("/branches/:id/world-state/versions/:versionNumber/restore", handler.RestoreBranchWorldStateVersion(services.Versions))
+	engine.POST("/branches/:id/versions/:versionNumber/restore", handler.RestoreBranchVersion(services.Versions))
+	engine.POST("/projects/import", handler.ImportBundle(services.Bundle))
 	engine.POST("/projects/:id/messages", handler.PostMessage(services.Chat))
 	engine.POST("/projects/:id/approvals/:messageId", handler.RespondApproval(services.Chat))
 	engine.POST("/shots/:id/branch", handler.CreateBranch(services.Branch))

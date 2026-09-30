@@ -369,8 +369,11 @@ func lockedDimensions(spec domain.ShotSpec, world domain.WorldContext, locks dom
 	return out
 }
 
-// faceSubject is the Character of the Shot with its reference faces: the Character's
-// face_reference asset and the Character images of the Reference Pack that carry its name.
+// faceSubject is the Character of the Shot with its reference faces: the face_reference of the
+// Series canon the Character was copied from (so that the face is measured against the same
+// baseline in every Episode, F-29), the Character's own face_reference asset and the Character
+// images of the Reference Pack that carry its name. Images that are the same file count once: an
+// Episode's copy of the canon face must not weigh twice in the calibration of the thresholds.
 func (r *Runner) faceSubject(ctx context.Context, projectID string, actor domain.SpecActor, world domain.WorldContext, refs []domain.Reference) (FaceSubject, bool) {
 	// The Shot Spec names the Character by ID or by name, whichever the Prompt Planner wrote.
 	var character *domain.WorldCharacter
@@ -381,20 +384,25 @@ func (r *Runner) faceSubject(ctx context.Context, projectID string, actor domain
 		}
 	}
 	subject := FaceSubject{ID: actor.ID}
-	assetIDs := []string{}
-	if character != nil {
-		if character.FaceReferenceAssetID != "" {
-			assetIDs = append(assetIDs, character.FaceReferenceAssetID)
-		}
-		for _, rf := range refs {
-			if rf.Kind == domain.RefCharacter && strings.EqualFold(strings.TrimSpace(rf.Name), strings.TrimSpace(character.Name)) {
-				assetIDs = append(assetIDs, rf.AssetID)
-			}
+	if character == nil {
+		return subject, false
+	}
+	seen := map[string]bool{}
+	add := func(img storedImage, ok bool) {
+		if ok && !seen[img.path] {
+			seen[img.path] = true
+			subject.ReferenceImages = append(subject.ReferenceImages, img.data)
 		}
 	}
-	for _, id := range assetIDs {
-		if img, ok := r.image(ctx, projectID, id); ok {
-			subject.ReferenceImages = append(subject.ReferenceImages, img.data)
+	if id := character.SeriesFaceReferenceAssetID; id != "" {
+		add(r.canonImage(ctx, id))
+	}
+	if id := character.FaceReferenceAssetID; id != "" {
+		add(r.image(ctx, projectID, id))
+	}
+	for _, rf := range refs {
+		if rf.Kind == domain.RefCharacter && strings.EqualFold(strings.TrimSpace(rf.Name), strings.TrimSpace(character.Name)) {
+			add(r.image(ctx, projectID, rf.AssetID))
 		}
 	}
 	return subject, len(subject.ReferenceImages) > 0
@@ -403,12 +411,25 @@ func (r *Runner) faceSubject(ctx context.Context, projectID string, actor domain
 type storedImage struct {
 	data []byte
 	mime string
+	path string // the file, as in asset.file_path
 }
 
 // image reads the image of an asset. A missing or oversized file is skipped: a Reference Pack can
 // be rebuilt, so a lost image must not stop the Judge.
 func (r *Runner) image(ctx context.Context, projectID, assetID string) (storedImage, bool) {
 	asset, err := r.Assets.Get(ctx, projectID, assetID)
+	return r.read(assetID, asset, err)
+}
+
+// canonImage reads the image of a Series canon asset, which belongs to the Project the Series was
+// made from, not to the Project being judged.
+func (r *Runner) canonImage(ctx context.Context, assetID string) (storedImage, bool) {
+	asset, err := r.Assets.GetAny(ctx, assetID)
+	return r.read(assetID, asset, err)
+}
+
+// read reads the file of an asset that was looked up with err.
+func (r *Runner) read(assetID string, asset domain.Asset, err error) (storedImage, bool) {
 	if err != nil {
 		if !errors.Is(err, repository.ErrNotFound) {
 			r.Logger.Warn("reference asset unavailable", "asset_id", assetID, "err", err)
@@ -428,7 +449,7 @@ func (r *Runner) image(ctx context.Context, projectID, assetID string) (storedIm
 		r.Logger.Warn("reference image unreadable", "asset_id", assetID, "err", err)
 		return storedImage{}, false
 	}
-	return storedImage{data: data, mime: asset.MimeType}, true
+	return storedImage{data: data, mime: asset.MimeType, path: asset.FilePath}, true
 }
 
 // videoPath is the file of the Take.

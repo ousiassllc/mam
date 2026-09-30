@@ -75,7 +75,7 @@ func branchPointText(b domain.Branch) string {
 	return fmt.Sprintf("Scene %d / Shot %d の後から", b.PointSceneNumber, b.PointShotNumber)
 }
 
-func worldVersionText(n int) string {
+func branchWorldText(n int) string {
 	if n == 0 {
 		return "なし"
 	}
@@ -108,7 +108,7 @@ templ BranchDetail(d BranchDetailData) {
 				}
 			</p>
 			<p class="text-sm">
-				World State: { worldVersionText(d.Branch.WorldStateVersion) }（Branch 独自のバージョン系列）
+				World State: { branchWorldText(d.Branch.WorldStateVersion) }（Branch 独自のバージョン系列）
 				<a class="ml-2 text-indigo-300 underline" href={ templ.SafeURL(branchWorldStateURL(d.Project.ID, d.Branch.ID)) }>この Branch の World State を見る</a>
 			</p>
 			if d.Started {
@@ -128,7 +128,7 @@ templ BranchDetail(d BranchDetailData) {
 					参照する World State
 					<select name="world_state_version" class="rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm text-neutral-100">
 						for _, n := range versionOptions(d.LatestWorldVersion) {
-							<option value={ strconv.Itoa(n) } selected?={ n == d.Branch.WorldStateVersion }>{ worldVersionText(n) }</option>
+							<option value={ strconv.Itoa(n) } selected?={ n == d.Branch.WorldStateVersion }>{ branchWorldText(n) }</option>
 						}
 					</select>
 				</label>
@@ -159,7 +159,7 @@ templ BranchDetail(d BranchDetailData) {
 			<h3 class="text-sm font-semibold text-neutral-200">バージョン履歴</h3>
 			<ol class="flex flex-col gap-1 text-xs text-neutral-300">
 				for _, v := range d.Versions {
-					<li>v{ strconv.Itoa(v.Number) } · { v.Name } · World State: { worldVersionText(v.WorldStateVersion) } · { v.CreatedAt.Local().Format("2006-01-02 15:04") }</li>
+					<li>v{ strconv.Itoa(v.Number) } · { v.Name } · World State: { branchWorldText(v.WorldStateVersion) } · { v.CreatedAt.Local().Format("2006-01-02 15:04") }</li>
 				}
 			</ol>
 		</section>

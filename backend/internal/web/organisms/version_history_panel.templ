@@ -1,0 +1,91 @@
+package organisms
+
+import (
+	"fmt"
+	"strconv"
+
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+)
+
+// VersionHistoryData is one version list of Reversible Decisions (F-28): the saved versions of a
+// Shot spec, of the World State (trunk or Branch) or of a Branch, newest first.
+type VersionHistoryData struct {
+	// DOMID is the id of the panel element.
+	DOMID string
+	Title string
+	// BasePath is the resource of the versions; a restore is POST BasePath/versions/:number/restore.
+	BasePath string
+	// Target is the CSS selector of what the restore response replaces: the view that shows the
+	// restored content. Empty replaces the panel itself.
+	Target  string
+	Entries []domain.VersionEntry
+}
+
+func (d VersionHistoryData) restoreURL(number int) string {
+	return d.BasePath + "/versions/" + strconv.Itoa(number) + "/restore"
+}
+
+func (d VersionHistoryData) target() string {
+	if d.Target != "" {
+		return d.Target
+	}
+	return "#" + d.DOMID
+}
+
+// VersionHistoryPanel lists the versions with a restore button each. The newest version is the
+// current one and needs none. Restoring appends a copy as the newest version, so it can be undone
+// by restoring an older one.
+templ VersionHistoryPanel(d VersionHistoryData) {
+	<section id={ d.DOMID } aria-label={ d.Title } class="flex flex-col gap-2">
+		<h3 class="text-sm font-semibold">{ d.Title }</h3>
+		if len(d.Entries) == 0 {
+			<p class="text-sm text-neutral-400">保存されたバージョンはまだありません。</p>
+		} else {
+			<ol class="flex flex-col gap-1 text-sm">
+				for i, e := range d.Entries {
+					<li class="flex flex-wrap items-center gap-2">
+						<span class="font-mono text-xs">{ fmt.Sprintf("v%d", e.Number) }</span>
+						<time class="text-xs text-neutral-400" datetime={ e.CreatedAt.Format("2006-01-02T15:04:05Z07:00") }>{ e.CreatedAt.Local().Format("2006/01/02 15:04:05") }</time>
+						if e.Summary != "" {
+							<span class="truncate text-xs">{ e.Summary }</span>
+						}
+						if i == 0 {
+							@atoms.Badge(atoms.BadgeNeutral, "現在")
+						} else {
+							@atoms.Button(atoms.ToneNeutral, "このバージョンに復元", templ.Attributes{
+								"type":       "button",
+								"hx-post":    d.restoreURL(e.Number),
+								"hx-target":  d.target(),
+								"hx-swap":    "outerHTML",
+								"hx-confirm": fmt.Sprintf("v%d に復元しますか？（新しいバージョンとして追記され、現在の内容も履歴に残ります）", e.Number),
+							})
+						}
+					</li>
+				}
+			</ol>
+		}
+	</section>
+}
+
+// BranchHistoryData is the version history of one Branch.
+type BranchHistoryData struct {
+	BranchID string
+	Versions []domain.VersionEntry
+	World    []domain.VersionEntry
+}
+
+// BranchVersionHistory shows the versions of a Branch and of its own World State series
+// (GET /branches/:id/versions). A restore replaces the whole block.
+templ BranchVersionHistory(d BranchHistoryData) {
+	<div id="branch-version-history" class="flex flex-col gap-4">
+		@VersionHistoryPanel(VersionHistoryData{
+			DOMID: "version-history-branch", Title: "Branch のバージョン", BasePath: "/branches/" + d.BranchID,
+			Target: "#branch-version-history", Entries: d.Versions,
+		})
+		@VersionHistoryPanel(VersionHistoryData{
+			DOMID: "version-history-branch-world", Title: "Branch の World State バージョン", BasePath: "/branches/" + d.BranchID + "/world-state",
+			Target: "#branch-version-history", Entries: d.World,
+		})
+	</div>
+}

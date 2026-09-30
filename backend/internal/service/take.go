@@ -151,6 +151,27 @@ func (s *TakeService) UsePartial(ctx context.Context, shotID string, in PartialI
 		return ShotFragment{}, invalid("segments", "%s", err.Error())
 	}
 
+	if _, err := s.composeTake(ctx, ref, takes, segs, composeOptions{
+		Title: fmt.Sprintf("Shot %d · 部分採用 Take", ref.Shot.OrderIndex+1), Badge: "採用",
+	}); err != nil {
+		return ShotFragment{}, err
+	}
+	return s.generations.Shot(ctx, shotID)
+}
+
+// composeOptions is how composeTake records the Take it makes.
+type composeOptions struct {
+	Title, Badge string
+	// Candidate adds the Take without selecting it (a Partial Regeneration splice).
+	Candidate bool
+	// Source and RegeneratedTakeID say in the model parameters how the Take came to be.
+	Source, RegeneratedTakeID string
+}
+
+// composeTake cuts the segments out of their Takes, joins them into a new video file and stores it
+// as a new Take of the Shot, announced in the chat. The Takes it is made from are not touched. The
+// caller holds the Shot's compose lock and has validated the segments.
+func (s *TakeService) composeTake(ctx context.Context, ref repository.ShotRef, takes []domain.TakeInfo, segs []domain.TakeSegment, o composeOptions) (string, error) {
 	assetID := domain.NewID()
 	rel := filepath.ToSlash(filepath.Join(ref.ProjectID, assetID+".mp4"))
 	dst := s.assetPath(rel)
@@ -164,37 +185,39 @@ func (s *TakeService) UsePartial(ctx context.Context, shotID string, in PartialI
 	}
 	info, err := s.tools.Compose(ctx, parts, dst)
 	if err != nil {
-		return ShotFragment{}, &AIError{Reason: "Take の合成に失敗しました: " + err.Error()}
+		return "", &AIError{Reason: "Take の合成に失敗しました: " + err.Error()}
 	}
 	params, err := json.Marshal(struct {
-		Kind            string               `json:"kind"`
-		Resolution      string               `json:"resolution"`
-		DurationSeconds float64              `json:"duration_seconds"`
-		Segments        []domain.TakeSegment `json:"segments"`
-	}{domain.PartialTakeKind, fmt.Sprintf("%dp", info.Height), info.Duration, segs})
+		Kind              string               `json:"kind"`
+		Source            string               `json:"source,omitempty"`
+		RegeneratedTakeID string               `json:"regenerated_take_id,omitempty"`
+		Resolution        string               `json:"resolution"`
+		DurationSeconds   float64              `json:"duration_seconds"`
+		Segments          []domain.TakeSegment `json:"segments"`
+	}{domain.PartialTakeKind, o.Source, o.RegeneratedTakeID, fmt.Sprintf("%dp", info.Height), info.Duration, segs})
 	if err != nil {
 		_ = os.Remove(dst)
-		return ShotFragment{}, err
+		return "", err
 	}
 	var size int64
 	if st, err := os.Stat(dst); err == nil {
 		size = st.Size()
 	}
 	takeID, err := s.takes.CreateComposite(context.WithoutCancel(ctx), repository.NewComposite{
-		ProjectID: ref.ProjectID, ShotID: shotID, BaseTakeID: segs[0].TakeID, Parameters: params,
+		ProjectID: ref.ProjectID, ShotID: ref.Shot.ID, BaseTakeID: segs[0].TakeID, Parameters: params, Candidate: o.Candidate,
 		Asset: domain.Asset{ID: assetID, ProjectID: ref.ProjectID, Type: domain.AssetVideo, FilePath: rel, MimeType: "video/mp4", SizeBytes: size},
 	})
 	if err != nil {
 		_ = os.Remove(dst)
-		return ShotFragment{}, notFound(err)
+		return "", notFound(err)
 	}
 	card := domain.ChatMessage{
 		Role: domain.RoleAssistant, Kind: domain.KindTake, RefID: takeID,
 		Content: domain.EncodeTakeCardBody(domain.TakeCardBody{
-			Title:     fmt.Sprintf("Shot %d · 部分採用 Take", ref.Shot.OrderIndex+1),
-			Badge:     "採用",
+			Title:     o.Title,
+			Badge:     o.Badge,
 			Summary:   describeSegments(segs, takes),
-			ShotID:    shotID,
+			ShotID:    ref.Shot.ID,
 			VideoURL:  domain.TakeVideoURL(takeID),
 			PosterURL: domain.TakeThumbnailURL(takeID),
 		}),
@@ -202,7 +225,53 @@ func (s *TakeService) UsePartial(ctx context.Context, shotID string, in PartialI
 	if err := s.chatSvc.Announce(context.WithoutCancel(ctx), ref.ProjectID, card); err != nil {
 		s.logger.Error("post partial take card failed", "take_id", takeID, "err", err)
 	}
-	return s.generations.Shot(ctx, shotID)
+	return takeID, nil
+}
+
+// SpliceRegenerated is the last step of a Partial Regeneration (repair.Splicer). The Take
+// regeneratedTakeID is a new Take of the whole Shot made to fix the ranges of baseTakeID; this adds
+// one more Take that shows baseTakeID everywhere but in the ranges, where it shows the new one (the
+// joints are cross-faded, like Partial Take Use). Neither of the two Takes is changed, and the
+// added Take is a candidate: it does not take the place of the Shot's selected Take. It returns ""
+// when no splice is worth making (see domain.SpliceSegments), and ErrUnavailable without ffmpeg.
+func (s *TakeService) SpliceRegenerated(ctx context.Context, shotID, baseTakeID, regeneratedTakeID string, ranges []domain.TimeRange) (string, error) {
+	if s.tools == nil {
+		return "", ErrUnavailable
+	}
+	unlock := lockFor(&s.compose, shotID)
+	defer unlock()
+
+	ref, err := s.shots.GetShot(ctx, shotID)
+	if err != nil {
+		return "", notFound(err)
+	}
+	takes, err := s.takes.ShotTakes(ctx, shotID)
+	if err != nil {
+		return "", err
+	}
+	byID := make(map[string]domain.TakeInfo, len(takes))
+	for _, t := range takes {
+		byID[t.ID] = t
+	}
+	base, regenerated := byID[baseTakeID], byID[regeneratedTakeID]
+	if base.FilePath == "" || regenerated.FilePath == "" {
+		return "", invalid("", "Take のファイルがないため、部分再生成をつなぎ込めません")
+	}
+	length := func(t domain.TakeInfo) float64 {
+		info, err := s.tools.Probe(ctx, s.assetPath(t.FilePath))
+		if err != nil {
+			return 0
+		}
+		return info.Duration
+	}
+	segs := domain.SpliceSegments(baseTakeID, length(base), regeneratedTakeID, length(regenerated), ranges)
+	if segs == nil {
+		return "", nil
+	}
+	return s.composeTake(ctx, ref, takes, segs, composeOptions{
+		Title:     fmt.Sprintf("Shot %d · 部分再生成 Take", ref.Shot.OrderIndex+1),
+		Candidate: true, Source: "partial_regeneration", RegeneratedTakeID: regeneratedTakeID,
+	})
 }
 
 // describeSegments is "Take A 0.0-2.0秒 + Take B 2.0-4.0秒".

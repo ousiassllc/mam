@@ -14,7 +14,8 @@ import (
 // WorldService shows and edits the World State of a Project (F-09).
 type WorldService struct {
 	*core
-	world *repository.WorldRepository
+	world    *repository.WorldRepository
+	versions *repository.VersionRepository
 }
 
 // WorldView is the world_state_page: the current World State with the fields the user has LOCKed.
@@ -28,6 +29,8 @@ type WorldView struct {
 	ProjectLocks domain.ParameterLocks
 	// Library is the Reference Library of the Project: the images a reference slot can hold.
 	Library []domain.ReferenceItem
+	// Versions are the saved World State versions of the trunk, newest first (F-28).
+	Versions []domain.VersionEntry
 }
 
 // View returns the current World State of the trunk of the Project, or of its Branch when
@@ -53,7 +56,11 @@ func (s *WorldService) View(ctx context.Context, projectID, branchID string) (Wo
 	if err != nil {
 		return WorldView{}, err
 	}
-	view := WorldView{Project: project, World: world, Locks: locks, ProjectLocks: projectLocks, Library: library}
+	versions, err := s.versions.WorldStateVersions(ctx, projectID, branchID)
+	if err != nil {
+		return WorldView{}, notFound(err)
+	}
+	view := WorldView{Project: project, World: world, Locks: locks, ProjectLocks: projectLocks, Library: library, Versions: versions}
 	if branchID != "" {
 		branch, err := s.branches.Get(ctx, branchID)
 		if err != nil {

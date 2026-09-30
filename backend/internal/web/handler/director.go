@@ -67,7 +67,7 @@ func SetShotLock(svc *service.DirectorService) gin.HandlerFunc {
 func inspectorData(v service.Inspector) organisms.ShotInspectorData {
 	return organisms.ShotInspectorData{
 		Project: v.Project, Scene: v.Scene, Shot: v.Shot, Spec: v.Spec, Takes: v.Takes, Locks: v.Locks,
-		Pack: v.Pack, Library: v.Library, SpecText: v.SpecText(), SpecError: v.SpecError,
+		Pack: v.Pack, Library: v.Library, SpecText: v.SpecText(), SpecError: v.SpecError, Versions: v.Versions,
 	}
 }
 

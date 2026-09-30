@@ -54,6 +54,10 @@ const (
 	// other parts are preserved (UC-2): "カメラ動かしすぎ" changes the camera, keeps character,
 	// acting and environment.
 	OpRegenerate OpType = "regenerate"
+	// OpPartialRegenerate is OpRegenerate for a time range of the Shot's Take ("2〜3 秒目のカメラの
+	// 揺れだけ直して"): only that range is regenerated and spliced into the Take (Partial
+	// Regeneration, spec/spec.md §13); the rest of the Take is kept.
+	OpPartialRegenerate OpType = "partial_regenerate"
 	// OpSetMode switches AUTO / DIRECTOR.
 	OpSetMode OpType = "set_mode"
 	// OpCreateBranch makes Branches at the target Shot (F-17, UC-5): "このカットから別展開を3つ作って"
@@ -72,12 +76,17 @@ type Operation struct {
 	Mode      domain.LockMode      `json:"mode,omitempty"`
 	Value     string               `json:"value,omitempty"`
 
-	// OpRegenerate. Changes are the parts of the Shot Spec the direction changes; Preserve are the
-	// parts that MUST stay as they are (always the complement of Changes, plus what the user
-	// named). Instruction is the direction for the Prompt Planner.
+	// OpRegenerate and OpPartialRegenerate. Changes are the parts of the Shot Spec the direction
+	// changes; Preserve are the parts that MUST stay as they are (always the complement of Changes,
+	// plus what the user named). Instruction is the direction for the Prompt Planner.
 	Changes     []domain.SpecPart `json:"changes,omitempty"`
 	Preserve    []domain.SpecPart `json:"preserve,omitempty"`
 	Instruction string            `json:"instruction,omitempty"`
+
+	// OpPartialRegenerate. TimeRanges are the stretches the director named in seconds ("2.0-3.0");
+	// clean turns them into Ranges.
+	TimeRanges []string           `json:"time_ranges,omitempty"`
+	Ranges     []domain.TimeRange `json:"-"`
 
 	// OpSetMode.
 	ProjectMode domain.Mode `json:"project_mode,omitempty"`
@@ -91,6 +100,11 @@ type Operation struct {
 
 	// OpUnsupported: why, in the user's language.
 	Reason string `json:"reason,omitempty"`
+}
+
+// Regenerates reports whether the operation makes a new Take of the Shot.
+func (o Operation) Regenerates() bool {
+	return o.Type == OpRegenerate || o.Type == OpPartialRegenerate
 }
 
 // Command is the interpretation of one message.
@@ -112,6 +126,7 @@ Convert the director's message into structured operations. Return ONLY one JSON 
     {"type": "set_lock", "parameter": "character_identity", "mode": "lock"},
     {"type": "set_lock", "parameter": "video_model", "mode": "manual", "value": "kling-3.0"},
     {"type": "regenerate", "changes": ["camera"], "preserve": [], "instruction": "camera movement: static, no handheld motion"},
+    {"type": "partial_regenerate", "time_ranges": ["2.0-3.0"], "changes": ["camera"], "preserve": [], "instruction": "camera movement: static, no handheld motion"},
     {"type": "set_mode", "project_mode": "auto"},
     {"type": "create_branch", "count": 3, "point_type": "shot", "directions": ["ドアを開ける", "逃げる"]},
     {"type": "unsupported", "reason": "書き出しはこのチャットからはまだ指示できません"}
@@ -121,6 +136,7 @@ Convert the director's message into structured operations. Return ONLY one JSON 
 Operations:
 - "set_lock": set one parameter to "auto" (the AI decides), "manual" (the user specified it) or "lock" (freeze the current value, no change by the AI). Parameters: ` + "`story`, `music`" + ` (the whole project) and, for one shot: ` + "`dialogue`, `character_identity`, `acting`, `camera`, `lighting`, `product_geometry`, `prompt`, `video_model`, `take_selection`, `editing`" + `. "Fix / keep / do not change X" (固定・変えないで) is "lock". "value" is only for video_model: "kling-3.0" or "seedance-2.0".
 - "regenerate": the director wants this shot changed. "changes" lists the parts that change: ` + "`character`, `product`, `location`, `acting`, `camera`, `lighting`" + ` ("location" is the environment). "preserve" lists parts the director explicitly asks to keep although the change might touch them; leave it empty otherwise, everything not in "changes" is preserved anyway. "instruction" is one or two English sentences directing the change, without restating what stays.
+- "partial_regenerate": like "regenerate" (same "changes", "preserve", "instruction"), but only for the time ranges of the current take named in "time_ranges"; the rest of the take is kept as it is.
 - "set_mode": "auto" or "director": the director wants the team to lead again (auto) or to only change what is told (director).
 - "create_branch": the director wants alternative developments of the story from this shot or scene ("このカットから別展開を3つ作って"). "count" is how many (default 1). "point_type" is "shot" (after this shot, the default) or "scene" (from the start of this shot's scene). "directions" lists the developments the director named, one per branch, in the director's words; leave it empty when the director named none, the team proposes them.
 - "unsupported": the director asks for something that is not available: exporting, editing the timeline. "reason" is one short Japanese sentence.
@@ -129,6 +145,7 @@ Rules:
 - "scene" and "shot" are the numbers the director names ("Scene 2 の Shot 1", "シーン2のショット1"). Use 0 for both when the message does not name a shot. When the input says which shot the message is about, use its numbers.
 - If the message is about a shot but it is impossible to tell which one (no shot named, none given as the target, several shots exist), set "question" to one short Japanese question asking which shot, and return no operations.
 - Several operations may be returned for one message ("カメラは固定して、表情だけ変えて" = lock camera + regenerate with changes ["acting"]).
+- When the director names a time range of the shot's video ("2〜3秒目だけ", "最初の1秒", "from 1.5s to 2.5s"), use "partial_regenerate" instead of "regenerate": "time_ranges" lists each range as "from-to" in seconds ("2.0-3.0"), at least 0.3 seconds long. Only those ranges are remade and spliced into the current take. Without a named time range use "regenerate".
 - A message that is only a question, a greeting or an opinion has no operation: return an empty "operations" and an empty "question".
 - Never invent operations the message does not ask for.`
 
@@ -169,7 +186,7 @@ func clean(op Operation, message string) (Operation, bool) {
 			op.Value = ""
 		}
 		return Operation{Type: OpSetLock, Parameter: op.Parameter, Mode: op.Mode, Value: op.Value}, true
-	case OpRegenerate:
+	case OpRegenerate, OpPartialRegenerate:
 		changes := validParts(op.Changes)
 		preserve := validParts(op.Preserve)
 		// What the direction does not change stays: Character, Acting and Environment are kept
@@ -184,7 +201,14 @@ func clean(op Operation, message string) (Operation, bool) {
 		if instruction == "" {
 			instruction = strings.TrimSpace(message)
 		}
-		return Operation{Type: OpRegenerate, Changes: changes, Preserve: preserve, Instruction: instruction}, true
+		out := Operation{Type: OpRegenerate, Changes: changes, Preserve: preserve, Instruction: instruction}
+		// A partial regeneration without a readable time range is a regeneration of the whole Shot.
+		if op.Type == OpPartialRegenerate {
+			if ranges, err := domain.ParseTimeRanges(op.TimeRanges, 0); err == nil {
+				out.Type, out.Ranges = OpPartialRegenerate, ranges
+			}
+		}
+		return out, true
 	case OpSetMode:
 		if !op.ProjectMode.Valid() {
 			return Operation{}, false

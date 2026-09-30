@@ -109,5 +109,5 @@ func assignReference(svc *service.WorldService, target domain.WorldTarget, param
 }
 
 func worldStateData(v service.WorldView) organisms.WorldStateData {
-	return organisms.WorldStateData{Project: v.Project, Branch: v.Branch, World: v.World, Locks: v.Locks, ProjectLocks: v.ProjectLocks, Library: v.Library}
+	return organisms.WorldStateData{Project: v.Project, Branch: v.Branch, World: v.World, Locks: v.Locks, ProjectLocks: v.ProjectLocks, Library: v.Library, Versions: v.Versions}
 }

@@ -72,6 +72,10 @@ type Services struct {
 	Repair      *RepairService
 	Continue    *ContinueService
 	Reference   *ReferenceService
+	Trace       *TraceService
+	Versions    *VersionService
+	Bundle      *BundleService
+	Series      *SeriesService
 	Takes       *TakeService
 	Branch      *BranchService
 }
@@ -134,6 +138,7 @@ func New(deps Deps) *Services {
 	judges := &JudgeService{core: c, judges: repository.NewJudgeRepository(deps.DB), generations: generations}
 	repairs := &RepairService{core: c, repairs: repository.NewRepairRepository(deps.DB), judges: judges.judges, generations: generations}
 	takes := repository.NewTakeRepository(deps.DB)
+	takeService := &TakeService{core: c, takes: takes, shots: gens, generations: generations, chatSvc: chat, tools: deps.Media}
 	var takeJudge generation.Judger // stays nil (not a typed nil) while the Judge is off
 	if deps.Jobs != nil && deps.LLM != nil && deps.Frames != nil {
 		cfg := deps.Judge
@@ -160,11 +165,15 @@ func New(deps Deps) *Services {
 		// Not resumable: a generation costs money, so an interrupted one is failed, not repeated.
 		deps.Jobs.Register(domain.JobGenerate, generations.gen.Handle, false)
 		if judges.runner != nil {
-			repairs.agent = repair.New(repair.Deps{
+			repairDeps := repair.Deps{
 				Generations: gens, Judges: judges.judges, Repairs: repairs.repairs, JobRepo: c.jobs, Policies: policies, Projects: c.projects,
 				Regenerator: generations.gen, Chat: chat, Jobs: deps.Jobs, LLM: deps.LLM, Shadow: deps.Jev, Logger: logger,
 				Notify: func(p generation.Progress) { generations.progress.Publish(p.ShotID, p) },
-			})
+			}
+			if deps.Media != nil { // splicing a Partial Regeneration into its Take needs ffmpeg
+				repairDeps.Splicer, repairDeps.Judge = takeService, judges.runner
+			}
+			repairs.agent = repair.New(repairDeps)
 			// Not resumable: a repair costs money, so an interrupted one is failed, not repeated.
 			deps.Jobs.Register(domain.JobRepair, repairs.agent.Handle, false)
 			// The Repair / Retake Loop continues when a generate or judge job has finished (the queue's
@@ -172,7 +181,8 @@ func New(deps Deps) *Services {
 			jobFinished = func(jobID string) { go repairs.agent.JobChanged(context.Background(), jobID) }
 		}
 	}
-	director := &DirectorService{core: c, gens: gens, locks: repository.NewLockRepository(deps.DB), orch: generations.gen}
+	versions := repository.NewVersionRepository(deps.DB)
+	director := &DirectorService{core: c, gens: gens, locks: repository.NewLockRepository(deps.DB), versions: versions, orch: generations.gen, takes: takes, repair: repairs.agent}
 	if deps.LLM != nil {
 		director.interpreter = commandinterpreter.New(deps.LLM)
 	}
@@ -184,6 +194,7 @@ func New(deps Deps) *Services {
 	c.continuer = continues
 	branch := &BranchService{core: c, shots: gens, continues: continues}
 	director.branch = branch
+	worlds := &WorldService{core: c, world: world, versions: versions}
 	return &Services{
 		Health:      NewHealthService(deps.DB),
 		Credentials: NewCredentialService(deps.Credentials),
@@ -191,7 +202,7 @@ func New(deps Deps) *Services {
 		Chat:        chat,
 		Plans:       &PlanService{c},
 		Generation:  generations,
-		World:       &WorldService{core: c, world: world},
+		World:       worlds,
 		Director:    director,
 		Policy: &PolicyService{
 			core: c, freeBytes: deps.FreeBytes, policies: policies, costs: repository.NewCostRepository(deps.DB), storage: repository.NewStorageRepository(deps.DB),
@@ -200,7 +211,11 @@ func New(deps Deps) *Services {
 		Repair:    repairs,
 		Continue:  continues,
 		Reference: &ReferenceService{c},
-		Takes:     &TakeService{core: c, takes: takes, shots: gens, generations: generations, chatSvc: chat, tools: deps.Media},
+		Trace:     &TraceService{traces: repository.NewTraceRepository(deps.DB)},
+		Versions:  &VersionService{core: c, versions: versions, director: director, world: worlds},
+		Bundle:    &BundleService{core: c, bundles: repository.NewBundleRepository(deps.DB)},
+		Series:    &SeriesService{core: c, series: repository.NewSeriesRepository(deps.DB)},
+		Takes:     takeService,
 		Branch:    branch,
 	}
 }
