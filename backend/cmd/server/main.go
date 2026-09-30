@@ -150,6 +150,7 @@ func serve(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 		Media:       previews,
 		Audio:       audioProviders(keys),
 	})
+	defer services.Close() // runs after jobs.Stop: no job change wakes the workers any more
 	// Shots left GENERATING by an abnormal termination are released before their jobs are failed.
 	released, err := services.Recover(ctx)
 	if err != nil {

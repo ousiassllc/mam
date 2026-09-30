@@ -130,9 +130,9 @@ func (s *EditorService) autoAudioOrQC(ctx context.Context, projectID string) (bo
 	return true, nil
 }
 
-// ResumeAuto advances every AUTO Project that may be waiting for an editing stage. It runs whenever
+// resumeAuto advances every AUTO Project that may be waiting for an editing stage. It runs whenever
 // a job finished or a Take was selected: the last Shot of a Project may just have got its Take.
-func (s *EditorService) ResumeAuto(ctx context.Context) {
+func (s *EditorService) resumeAuto(ctx context.Context) {
 	projects, err := s.projects.List(ctx)
 	if err != nil {
 		s.logger.Error("list projects for the AUTO editing chain failed", "err", err)

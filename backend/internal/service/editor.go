@@ -65,6 +65,10 @@ type EditorService struct {
 	// auto guards the AUTO chain of a Project (AdvanceAuto): project ID -> *sync.Mutex.
 	auto    sync.Map
 	preview sync.Map // preview file -> *sync.Mutex
+	// resume is the single worker behind ResumeEditing; missed marks Projects whose Reshoot round
+	// found the stage busy, so the release of the stage wakes the worker again.
+	resume *resumer
+	missed sync.Map // project ID -> struct{}
 }
 
 // acquire claims the Project's editing stage; ErrStageBusy when another one runs.
@@ -74,7 +78,12 @@ func (s *EditorService) acquire(projectID string) (release func(), err error) {
 	if !l.TryLock() {
 		return nil, ErrStageBusy
 	}
-	return l.Unlock, nil
+	return func() {
+		l.Unlock()
+		if _, ok := s.missed.LoadAndDelete(projectID); ok {
+			s.resume.Wake()
+		}
+	}, nil
 }
 
 // fileExists tells whether the stored path is a regular file inside the assets directory; every
@@ -1164,11 +1173,11 @@ func (s *EditorService) escalateReshoot(ctx context.Context, ver domain.EditTime
 	return s.View(ctx, ver.ProjectID, ver.BranchID)
 }
 
-// ResumeReshoots is the return of the Editor → Reshoot Loop: it puts the additional Shots that
+// resumeReshoots is the return of the Editor → Reshoot Loop: it puts the additional Shots that
 // have their Selected Take into the Edit Timeline of the trunk / Branch that asked for them and
-// takes the Project back to EDITING. It runs whenever a job finished or a Take was selected, and
-// does nothing for a round whose Shots are not all ready.
-func (s *EditorService) ResumeReshoots(ctx context.Context) {
+// takes the Project back to EDITING. It runs on the ResumeEditing worker, and does nothing for a
+// round whose Shots are not all ready.
+func (s *EditorService) resumeReshoots(ctx context.Context) {
 	ids, err := s.editors.ProjectsWithPendingReshoots(ctx)
 	if err != nil {
 		s.logger.Error("list projects with pending additional shots failed", "err", err)
@@ -1184,7 +1193,14 @@ func (s *EditorService) ResumeReshoots(ctx context.Context) {
 func (s *EditorService) applyReshoots(ctx context.Context, projectID string) error {
 	release, err := s.acquire(projectID)
 	if err != nil {
-		return nil // another stage runs; the next job or selection brings us back
+		// Another stage runs. Nothing else would bring us back (the last job may already be done), so
+		// the stage wakes the worker when it is released. The second try closes the gap in which it
+		// was released before the mark was set.
+		s.missed.Store(projectID, struct{}{})
+		if release, err = s.acquire(projectID); err != nil {
+			return nil
+		}
+		s.missed.Delete(projectID)
 	}
 	defer release()
 	pending, err := s.editors.PendingReshoots(ctx, projectID)
