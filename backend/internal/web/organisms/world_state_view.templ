@@ -15,8 +15,8 @@ type WorldStateData struct {
 	Project domain.Project
 	// Branch is the Branch the view shows; nil for the trunk.
 	Branch *domain.Branch
-	World   domain.WorldContext
-	Locks   domain.LockSet
+	World  domain.WorldContext
+	Locks  domain.LockSet
 	// ProjectLocks is the AUTO / MANUAL / LOCK setting of Story and Music.
 	ProjectLocks domain.ParameterLocks
 	// Library is the Reference Library of the Project (images a reference slot can hold).
