@@ -1,6 +1,6 @@
 # API 仕様
 
-HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う。ページルート/アクションルートは Gin が HTML（フルページ or フラグメント）を返し、`/api/v1` は Huma が JSON（OpenAPI 3.1 自動生成、`/api/v1/openapi.json`）を返す。JSON API は主に Lit Web Components（`mam-video-player` / `mam-timeline-editor` / `mam-take-comparator` / `mam-branch-tree`）向け。
+HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う。ページルート/アクションルートは Gin が HTML（フルページ or フラグメント）を返し、`/api/v1` は Huma が JSON（OpenAPI 3.1 自動生成、`/api/v1/openapi.json`）を返す。JSON API は主に Lit Web Components（`mam-video-player` / `mam-timeline-editor` / `mam-take-comparator`）向け。
 
 ## 0. 認証・共通仕様
 
@@ -437,3 +437,4 @@ Notes:
 | 1.55 | 2026-10-01 | `MaxBody` の 1MiB は Content-Type ではなくルートで外す。アップロード以外（`PUT /edit-timelines/:id`、`POST /shots/:id/branch` を含む）は `multipart/form-data` でも 1MiB を超えれば本文を読まず 413 | Content-Type を multipart と偽ると本文上限が外れていたため（Issue #125） |
 | 1.56 | 2026-10-01 | `POST /shots/:id/takes/partial` のつなぎ目を、`media.Compose` に合わせて「0.25 秒。最短区間の 1/3 の方が短いときは短縮。音声は全区間にあるときだけクロスフェードし、1 本でも無音なら出力は無音」と明記 | 仕様は常に 0.25 秒（音声も）だったが、短い区間では縮み、音声の無い Take が混ざると無音にしていたため（Issue #127） |
 | 1.57 | 2026-10-01 | `GET /shots/:id` と `spec/spec.md` §23.3 から Prompt を Shot Inspector の常設項目から外し、モデル別プロンプトは `GET /takes/:id/trace`（「生成の経緯」）で確認すると明記 | #104 以降も製品仕様と API 概要が Prompt を Inspector の常設項目のまま残していたため（Issue #135） |
+| 1.58 | 2026-10-01 | 冒頭の JSON API の利用者から廃止済みの `mam-branch-tree` を外し、Lit は Video Player / Timeline Editor / Take Comparator の 3 つとした | #40 で Branch ツリーは Templ の `branch_tree` に移したが、冒頭の 1 文だけが残っていたため（Issue #136） |
