@@ -43,8 +43,12 @@ type EditorService struct {
 	*core
 	editors *repository.EditorRepository
 	shots   *repository.GenerationRepository
-	takes   *repository.TakeRepository
-	judge   *editor.Judge
+	// generation makes the additional Shots the Reshoot Loop asks for; policies hold the Retry
+	// Policy that limits its rounds.
+	generation *GenerationService
+	policies   *repository.PolicyRepository
+	takes      *repository.TakeRepository
+	judge      *editor.Judge
 	// audio is nil without ffmpeg.
 	audio   *audiodirector.Director
 	chatSvc *ChatService
@@ -101,7 +105,7 @@ type TimelineView struct {
 // editable reports whether a Project in the state can take an edit (see toEditing).
 func editable(state domain.ProjectState) bool {
 	switch state {
-	case domain.StateEditing, domain.StateVisualDesign, domain.StateGenerating, domain.StateJudging,
+	case domain.StateEditing, domain.StateVisualDesign, domain.StateGenerating, domain.StateJudging, domain.StateRepairing,
 		domain.StateEditJudging, domain.StateAudio, domain.StateFinalQC:
 		return true
 	}
@@ -110,11 +114,15 @@ func editable(state domain.ProjectState) bool {
 
 // EditorView is the editing state of a Project: what the panel shows.
 type EditorView struct {
-	Project  domain.Project
-	Timeline *TimelineView
-	Audio    *domain.AudioTimelineVersion
-	QC       *domain.FinalQCResult
-	Exports  []domain.Export
+	Project domain.Project
+	// BranchID is the Branch whose Edit Timeline is shown ("" for the trunk).
+	BranchID string
+	// PendingShots is how many additional Shots of the Editor → Reshoot Loop are still being made.
+	PendingShots int
+	Timeline     *TimelineView
+	Audio        *domain.AudioTimelineVersion
+	QC           *domain.FinalQCResult
+	Exports      []domain.Export
 	// Defaults are the export options preselected: the Brief's aspect ratio, 1080p, H.264.
 	Defaults domain.ExportOptions
 	// CanRender is false without ffmpeg: no preview, audio or export.
@@ -133,8 +141,9 @@ func (s *EditorService) briefOptions(ctx context.Context, projectID string) (dom
 	return brief, opts, nil
 }
 
-// View returns the editing state of the Project (GET /projects/:id/timeline).
-func (s *EditorService) View(ctx context.Context, projectID string) (EditorView, error) {
+// View returns the editing state of the Project: the Edit Timeline of its trunk (branchID "") or
+// of one of its Branches (GET /projects/:id/edit).
+func (s *EditorService) View(ctx context.Context, projectID, branchID string) (EditorView, error) {
 	project, err := s.getProject(ctx, projectID)
 	if err != nil {
 		return EditorView{}, err
@@ -143,8 +152,17 @@ func (s *EditorService) View(ctx context.Context, projectID string) (EditorView,
 	if err != nil {
 		return EditorView{}, err
 	}
-	v := EditorView{Project: project, Defaults: defaults, CanRender: s.tools != nil}
-	if tl, err := s.Timeline(ctx, projectID); err == nil {
+	v := EditorView{Project: project, BranchID: branchID, Defaults: defaults, CanRender: s.tools != nil}
+	pending, err := s.editors.PendingReshoots(ctx, projectID)
+	if err != nil {
+		return EditorView{}, err
+	}
+	for _, r := range pending {
+		if r.BranchID == branchID {
+			v.PendingShots++
+		}
+	}
+	if tl, err := s.Timeline(ctx, projectID, branchID); err == nil {
 		v.Timeline = &tl
 	} else if !errors.Is(err, ErrNotFound) {
 		return EditorView{}, err
@@ -172,10 +190,10 @@ type shotIndex struct {
 	order  []repository.ShotRef
 }
 
-func (s *EditorService) shotIndex(ctx context.Context, projectID string) (shotIndex, error) {
-	refs, err := s.shots.ListProjectShots(ctx, projectID)
+func (s *EditorService) shotIndex(ctx context.Context, projectID, branchID string) (shotIndex, error) {
+	refs, err := s.shots.StoryShots(ctx, projectID, branchID)
 	if err != nil {
-		return shotIndex{}, err
+		return shotIndex{}, notFound(err)
 	}
 	idx := shotIndex{byID: make(map[string]repository.ShotRef, len(refs)), labels: make(map[string]string, len(refs)), order: refs}
 	for _, r := range refs {
@@ -187,11 +205,11 @@ func (s *EditorService) shotIndex(ctx context.Context, projectID string) (shotIn
 
 // Timeline returns the latest Edit Timeline of the Project for the editor (ErrNotFound before the
 // first Rough Cut).
-func (s *EditorService) Timeline(ctx context.Context, projectID string) (TimelineView, error) {
+func (s *EditorService) Timeline(ctx context.Context, projectID, branchID string) (TimelineView, error) {
 	if _, err := s.getProject(ctx, projectID); err != nil {
 		return TimelineView{}, err
 	}
-	ver, err := s.editors.LatestEditTimeline(ctx, projectID)
+	ver, err := s.editors.LatestEditTimeline(ctx, projectID, branchID)
 	if err != nil {
 		return TimelineView{}, notFound(err)
 	}
@@ -199,7 +217,7 @@ func (s *EditorService) Timeline(ctx context.Context, projectID string) (Timelin
 }
 
 func (s *EditorService) timelineView(ctx context.Context, ver domain.EditTimelineVersion) (TimelineView, error) {
-	idx, err := s.shotIndex(ctx, ver.ProjectID)
+	idx, err := s.shotIndex(ctx, ver.ProjectID, ver.BranchID)
 	if err != nil {
 		return TimelineView{}, err
 	}
@@ -239,6 +257,8 @@ func (s *EditorService) toEditing(ctx context.Context, p domain.Project) error {
 		path = []domain.ProjectState{domain.StateGenerating, domain.StateJudging, domain.StateEditing}
 	case domain.StateGenerating:
 		path = []domain.ProjectState{domain.StateJudging, domain.StateEditing}
+	case domain.StateRepairing:
+		path = []domain.ProjectState{domain.StateGenerating, domain.StateJudging, domain.StateEditing}
 	case domain.StateJudging, domain.StateEditJudging, domain.StateAudio, domain.StateFinalQC:
 		path = []domain.ProjectState{domain.StateEditing}
 	case domain.StateAwaitingApproval:
@@ -292,9 +312,12 @@ func (s *EditorService) takeSource(ctx context.Context, takeID string) (cutSourc
 	return src, true, nil
 }
 
-// RoughCut makes the Rough Cut from the Selected Takes of every Shot (POST /projects/:id/edit/rough-cut)
-// and starts EDITING. Every Shot needs a Selected Take with a file.
-func (s *EditorService) RoughCut(ctx context.Context, projectID string) (EditorView, error) {
+// RoughCut makes the Rough Cut from the Selected Takes of every Shot of the trunk of the Project,
+// or of its Branch (POST /projects/:id/edit/rough-cut), and starts EDITING. Every Shot needs a
+// Selected Take with a file. The Editor Agent then edits what the Production Template ranks (Pace,
+// Hook, CTA Timing, Caption: editor.Advance) and additional Shots the Reshoot Loop already put in
+// stay in the cut, after the Shot they follow.
+func (s *EditorService) RoughCut(ctx context.Context, projectID, branchID string) (EditorView, error) {
 	release, err := s.acquire(projectID)
 	if err != nil {
 		return EditorView{}, err
@@ -305,16 +328,30 @@ func (s *EditorService) RoughCut(ctx context.Context, projectID string) (EditorV
 	if err != nil {
 		return EditorView{}, err
 	}
-	idx, err := s.shotIndex(ctx, projectID)
+	idx, err := s.shotIndex(ctx, projectID, branchID)
 	if err != nil {
 		return EditorView{}, err
 	}
-	if len(idx.order) == 0 {
+	reshoots, err := s.editors.ListReshoots(ctx, projectID, branchID)
+	if err != nil {
+		return EditorView{}, err
+	}
+	additional := make(map[string]bool, len(reshoots))
+	for _, r := range reshoots {
+		additional[r.ShotID] = true
+	}
+	var story []repository.ShotRef
+	for _, r := range idx.order {
+		if !additional[r.Shot.ID] {
+			story = append(story, r)
+		}
+	}
+	if len(story) == 0 {
 		return EditorView{}, invalid("", "Shot がまだありません。Scene / Shot を作成してから Rough Cut を作ってください")
 	}
-	cuts := make([]editor.ShotCut, 0, len(idx.order))
+	cuts := make([]editor.ShotCut, 0, len(story))
 	var missing []string
-	for _, r := range idx.order {
+	for _, r := range story {
 		src, ok, err := s.selectedSource(ctx, r.Shot)
 		if err != nil {
 			return EditorView{}, err
@@ -328,28 +365,76 @@ func (s *EditorService) RoughCut(ctx context.Context, projectID string) (EditorV
 	if len(missing) > 0 {
 		return EditorView{}, invalid("", "Selected Take（ファイルのある採用 Take）がない Shot があります: %s", strings.Join(missing, "、"))
 	}
+	placed := map[string]bool{}
+	for _, r := range reshoots {
+		ref, known := idx.byID[r.ShotID]
+		if !known || r.Status != domain.ReshootApplied {
+			continue
+		}
+		src, ok, err := s.selectedSource(ctx, ref.Shot)
+		if err != nil {
+			return EditorView{}, err
+		}
+		if !ok {
+			continue // the additional Shot has no usable Take now: the cut goes on without it
+		}
+		at := insertionPoint(len(cuts), func(i int) string { return cuts[i].ShotID }, r.AfterShotID, placed)
+		c := editor.ShotCut{ShotID: r.ShotID, TakeID: src.takeID, Planned: r.DurationSeconds, TakeSeconds: src.seconds, Kind: r.Kind}
+		if at > 0 {
+			c.SceneIndex = cuts[at-1].SceneIndex
+		}
+		cuts = slices.Insert(cuts, at, c)
+		placed[r.ShotID] = true
+	}
 	tl, err := editor.RoughCut(cuts).Normalize()
 	if err != nil {
+		return EditorView{}, invalid("", "%s", timelineMessage(err))
+	}
+	brief, _, err := s.briefOptions(ctx, projectID)
+	if err != nil {
+		return EditorView{}, err
+	}
+	facts, err := s.shotFacts(ctx, idx, tl)
+	if err != nil {
+		return EditorView{}, err
+	}
+	tl, notes := editor.Advance(editor.JudgeInput{Brief: brief, Template: project.ProductionTemplate, Timeline: tl, Shots: facts})
+	if tl, err = tl.Normalize(); err != nil {
 		return EditorView{}, invalid("", "%s", timelineMessage(err))
 	}
 	if err := s.toEditing(ctx, project); err != nil {
 		return EditorView{}, err
 	}
-	ver, err := s.editors.SaveEditTimeline(ctx, projectID, "", tl)
-	if err != nil {
+	if _, err := s.editors.SaveEditTimeline(ctx, projectID, branchID, "", tl); err != nil {
 		return EditorView{}, notFound(err)
 	}
-	s.announce(ctx, projectID, fmt.Sprintf("Rough Cut を作成しました（%d クリップ / %.1f 秒）。タイムラインで並べ替え・Cut Point・Transition を編集できます。", len(tl.Clips), tl.Duration()))
-	return s.viewAfter(ctx, projectID, ver.ID)
+	text := fmt.Sprintf("Rough Cut を作成しました（%d クリップ / %.1f 秒）。タイムラインで並べ替え・Cut Point・Transition・字幕を編集できます。", len(tl.Clips), tl.Duration())
+	if len(notes) > 0 {
+		text += fmt.Sprintf("\nProduction Template（%s）に合わせて編集しました:\n・%s", project.ProductionTemplate.Label(), strings.Join(notes, "\n・"))
+	}
+	s.announce(ctx, projectID, text)
+	return s.View(ctx, projectID, branchID)
+}
+
+// insertionPoint is where an additional Shot that follows the Shot anchor goes into a list of n
+// clips: right after the anchor and the additional Shots already placed there (the end when the
+// anchor is not in the list).
+func insertionPoint(n int, shotAt func(i int) string, anchor string, placed map[string]bool) int {
+	at := n
+	for i := range n {
+		if shotAt(i) == anchor {
+			at = i + 1
+		}
+	}
+	for at < n && placed[shotAt(at)] {
+		at++
+	}
+	return at
 }
 
 // timelineMessage is the message of an invalid timeline without its sentinel prefix.
 func timelineMessage(err error) string {
 	return strings.TrimPrefix(err.Error(), domain.ErrInvalidTimeline.Error()+": ")
-}
-
-func (s *EditorService) viewAfter(ctx context.Context, projectID, _ string) (EditorView, error) {
-	return s.View(ctx, projectID)
 }
 
 // announce posts a message of the editing stage in the chat. A failure is logged, not returned:
@@ -378,7 +463,7 @@ func (s *EditorService) SaveTimeline(ctx context.Context, id string, tl domain.E
 	if err != nil {
 		return TimelineView{}, err
 	}
-	idx, err := s.shotIndex(ctx, project.ID)
+	idx, err := s.shotIndex(ctx, project.ID, base.BranchID)
 	if err != nil {
 		return TimelineView{}, err
 	}
@@ -406,7 +491,7 @@ func (s *EditorService) SaveTimeline(ctx context.Context, id string, tl domain.E
 	if err != nil {
 		return TimelineView{}, invalid("clips", "%s", timelineMessage(err))
 	}
-	if latest, err := s.editors.LatestEditTimeline(ctx, project.ID); err != nil {
+	if latest, err := s.editors.LatestEditTimeline(ctx, project.ID, base.BranchID); err != nil {
 		return TimelineView{}, notFound(err)
 	} else if latest.ID != id {
 		return TimelineView{}, conflict("別の編集が保存されています。画面を更新してから編集し直してください")
@@ -414,7 +499,7 @@ func (s *EditorService) SaveTimeline(ctx context.Context, id string, tl domain.E
 	if err := s.toEditing(ctx, project); err != nil {
 		return TimelineView{}, err
 	}
-	ver, err := s.editors.SaveEditTimeline(ctx, project.ID, id, norm)
+	ver, err := s.editors.SaveEditTimeline(ctx, project.ID, base.BranchID, id, norm)
 	switch {
 	case errors.Is(err, repository.ErrStale):
 		return TimelineView{}, conflict("別の編集が保存されています。画面を更新してから編集し直してください")
@@ -433,6 +518,12 @@ func (s *EditorService) shotFacts(ctx context.Context, idx shotIndex, tl domain.
 			continue
 		}
 		f := editor.ShotFacts{Label: idx.labels[c.ShotID], Objective: r.Shot.Objective, SelectedTakeID: r.Shot.SelectedTakeID}
+		if sb, ok := r.Shot.Storyboard(); ok {
+			f.Dialogue = sb.Dialogue
+		}
+		if spec, ok := r.Shot.CanonicalSpec(); ok {
+			f.HasProduct = spec.Product != nil
+		}
 		_, f.TakeReady, _ = s.takeSource(ctx, c.TakeID)
 		facts[c.ShotID] = f
 	}
@@ -458,7 +549,7 @@ func (s *EditorService) JudgeTimeline(ctx context.Context, id string) (EditorVie
 	if err != nil {
 		return EditorView{}, err
 	}
-	if latest, err := s.editors.LatestEditTimeline(ctx, projectID); err != nil {
+	if latest, err := s.editors.LatestEditTimeline(ctx, projectID, ver.BranchID); err != nil {
 		return EditorView{}, notFound(err)
 	} else if latest.ID != id {
 		return EditorView{}, conflict("この編集より新しい版があります。画面を更新してから判定してください")
@@ -470,7 +561,7 @@ func (s *EditorService) JudgeTimeline(ctx context.Context, id string) (EditorVie
 	if err != nil {
 		return EditorView{}, err
 	}
-	idx, err := s.shotIndex(ctx, projectID)
+	idx, err := s.shotIndex(ctx, projectID, ver.BranchID)
 	if err != nil {
 		return EditorView{}, err
 	}
@@ -491,12 +582,23 @@ func (s *EditorService) JudgeTimeline(ctx context.Context, id string) (EditorVie
 		s.backTo(ctx, projectID, domain.StateEditing)
 		return EditorView{}, err
 	}
-	if res.Verdict != domain.EditorPass {
+	switch res.Verdict {
+	case domain.EditorNeedShot:
+		next := "編集画面の「追加 Shot を要求」から Director に追加 Shot を要求してください。"
+		if project.Mode == domain.ModeAuto && s.generation.gen != nil {
+			next = "Director に追加 Shot を要求します。"
+		}
+		s.announce(ctx, projectID, "Editor Judge: 素材不足（編集では直せません）\n"+describeFindings(res.Findings)+"\n"+next)
+		if project.Mode == domain.ModeAuto && s.generation.gen != nil {
+			return s.requestShots(ctx, ver, res)
+		}
+		return s.View(ctx, projectID, ver.BranchID)
+	case domain.EditorReEdit:
 		if err := s.projects.Transition(ctx, projectID, domain.StateEditing); err != nil {
 			return EditorView{}, err
 		}
 		s.announce(ctx, projectID, "Editor Judge: Re-edit（編集で直せる問題があります）\n"+describeFindings(res.Findings))
-		return s.View(ctx, projectID)
+		return s.View(ctx, projectID, ver.BranchID)
 	}
 	summary := fmt.Sprintf("Rough Cut（%d クリップ / %.1f 秒）が Editor Judge に合格しました。音声制作に進んでよいですか？", len(ver.Timeline.Clips), ver.Timeline.Duration())
 	posted, err := s.chatSvc.RequestApproval(ctx, projectID, domain.CheckpointRoughCut, summary, id)
@@ -510,7 +612,7 @@ func (s *EditorService) JudgeTimeline(ctx context.Context, id string) (EditorVie
 		}
 		s.announce(ctx, projectID, "Editor Judge: PASS。音声制作に進みます。")
 	}
-	return s.View(ctx, projectID)
+	return s.View(ctx, projectID, ver.BranchID)
 }
 
 // backTo puts the Project back into a state after a stage failed. It works on a context that
@@ -572,7 +674,7 @@ func (s *EditorService) cuts(ctx context.Context, tl domain.EditTimeline) ([]med
 		if !ok {
 			return nil, conflict("クリップ %d の Take のファイルが見つかりません。編集し直してください", i+1)
 		}
-		cuts[i] = media.Cut{Path: s.assetPath(src.path), Start: c.In, End: c.Out, Transition: transitionNames[c.Transition.Type], Overlap: c.Transition.Seconds}
+		cuts[i] = media.Cut{Path: s.assetPath(src.path), Start: c.In, End: c.Out, Transition: transitionNames[c.Transition.Type], Overlap: c.Transition.Seconds, Caption: c.Caption}
 	}
 	return cuts, nil
 }
@@ -611,7 +713,7 @@ func (s *EditorService) GenerateAudio(ctx context.Context, projectID string) (Ed
 	if project.State != domain.StateAudio {
 		return EditorView{}, conflict("音声を作れるのは Editor Judge に合格した後（AUDIO）です（現在: %s）", project.State)
 	}
-	ver, err := s.editors.LatestEditTimeline(ctx, projectID)
+	ver, err := s.editors.LatestEditTimeline(ctx, projectID, "")
 	if err != nil {
 		return EditorView{}, notFound(err)
 	}
@@ -619,7 +721,7 @@ func (s *EditorService) GenerateAudio(ctx context.Context, projectID string) (Ed
 	if err != nil {
 		return EditorView{}, err
 	}
-	idx, err := s.shotIndex(ctx, projectID)
+	idx, err := s.shotIndex(ctx, projectID, "")
 	if err != nil {
 		return EditorView{}, err
 	}
@@ -646,7 +748,7 @@ func (s *EditorService) GenerateAudio(ctx context.Context, projectID string) (Ed
 		text = "音声を作成しました（セリフも Take の音声もないため、無音の動画になります）。"
 	}
 	s.announce(ctx, projectID, text)
-	return s.View(ctx, projectID)
+	return s.View(ctx, projectID, "")
 }
 
 // cues are the script lines of each Scene with the second the Scene begins at in the Rough Cut. A
@@ -723,7 +825,7 @@ func (s *EditorService) FinalQC(ctx context.Context, projectID string) (EditorVi
 	if project.State != domain.StateAudio && project.State != domain.StateFinalQC {
 		return EditorView{}, conflict("Final QC を実行できるのは音声を作った後（AUDIO）です（現在: %s）", project.State)
 	}
-	edit, err := s.editors.LatestEditTimeline(ctx, projectID)
+	edit, err := s.editors.LatestEditTimeline(ctx, projectID, "")
 	if err != nil {
 		return EditorView{}, notFound(err)
 	}
@@ -761,7 +863,7 @@ func (s *EditorService) FinalQC(ctx context.Context, projectID string) (EditorVi
 			return EditorView{}, err
 		}
 		s.announce(ctx, projectID, fmt.Sprintf("Final QC: FAIL。%s に戻します。\n%s", stageLabel(stage), describeQC(findings)))
-		return s.View(ctx, projectID)
+		return s.View(ctx, projectID, "")
 	}
 	summary := fmt.Sprintf("Final QC に合格しました（%.1f 秒 / %.1f LUFS）。書き出してよいですか？", edit.Timeline.Duration(), audio.Timeline.MeasuredLUFS)
 	posted, err := s.chatSvc.RequestApproval(ctx, projectID, domain.CheckpointFinal, summary, res.ID)
@@ -775,7 +877,7 @@ func (s *EditorService) FinalQC(ctx context.Context, projectID string) (EditorVi
 		}
 		s.announce(ctx, projectID, "Final QC: PASS。書き出しの準備ができました。")
 	}
-	return s.View(ctx, projectID)
+	return s.View(ctx, projectID, "")
 }
 
 func stageLabel(state domain.ProjectState) string {
@@ -847,7 +949,7 @@ func (s *EditorService) Export(ctx context.Context, projectID string, in ExportI
 	if err != nil {
 		return EditorView{}, invalid("", "%s", err.Error())
 	}
-	edit, err := s.editors.LatestEditTimeline(ctx, projectID)
+	edit, err := s.editors.LatestEditTimeline(ctx, projectID, "")
 	if err != nil {
 		return EditorView{}, notFound(err)
 	}
@@ -884,7 +986,7 @@ func (s *EditorService) Export(ctx context.Context, projectID string, in ExportI
 		}
 	}
 	s.announce(ctx, projectID, fmt.Sprintf("書き出しが完了しました（%s / %s / %s）。ダウンロード: /projects/%s/exports/%s/video", opts.AspectRatio, opts.Resolution, opts.Codec, projectID, id))
-	return s.View(ctx, projectID)
+	return s.View(ctx, projectID, "")
 }
 
 // ExportFile returns the exported video (GET /projects/:id/exports/:exportId/video).
@@ -901,4 +1003,277 @@ func (s *EditorService) ExportFile(ctx context.Context, projectID, exportID stri
 		mime = "video/webm"
 	}
 	return MediaFile{Path: s.assetPath(e.FilePath), MimeType: mime}, nil
+}
+
+// RequestAdditionalShot asks the Director for the additional Shots the Editor Judge of the Edit
+// Timeline version found missing (POST /edit-timelines/:id/request-additional-shot, F-19): it adds
+// each as a Shot of the Project, records the request as the next round of the Editor → Reshoot
+// Loop and starts generating them. The Project goes to GENERATING; once every Shot of the round
+// has its Selected Take they are put into the Edit Timeline and the Project is back in EDITING
+// (ResumeReshoots). The rounds are limited by the Retry Policy, shared with the Repair / Retake Loop.
+func (s *EditorService) RequestAdditionalShot(ctx context.Context, id string) (EditorView, error) {
+	ver, err := s.editors.GetEditTimeline(ctx, id)
+	if err != nil {
+		return EditorView{}, notFound(err)
+	}
+	release, err := s.acquire(ver.ProjectID)
+	if err != nil {
+		return EditorView{}, err
+	}
+	defer release()
+	res, err := s.editors.LatestEditorJudge(ctx, id)
+	if errors.Is(err, repository.ErrNotFound) {
+		return EditorView{}, conflict("この版はまだ Editor Judge にかけていません")
+	}
+	if err != nil {
+		return EditorView{}, err
+	}
+	return s.requestShots(ctx, ver, res)
+}
+
+// requestShots is RequestAdditionalShot with the stage held and the Judge result read.
+func (s *EditorService) requestShots(ctx context.Context, ver domain.EditTimelineVersion, res domain.EditorJudgeResult) (EditorView, error) {
+	projectID, branchID := ver.ProjectID, ver.BranchID
+	if res.Verdict != domain.EditorNeedShot {
+		return EditorView{}, conflict("この版の Editor Judge は素材不足を判定していません")
+	}
+	if s.generation == nil || s.generation.gen == nil {
+		return EditorView{}, ErrUnavailable
+	}
+	project, err := s.getProject(ctx, projectID)
+	if err != nil {
+		return EditorView{}, err
+	}
+	if latest, err := s.editors.LatestEditTimeline(ctx, projectID, branchID); err != nil {
+		return EditorView{}, notFound(err)
+	} else if latest.ID != ver.ID {
+		return EditorView{}, conflict("この編集より新しい版があります。画面を更新してから Editor Judge をやり直してください")
+	}
+	if project.State != domain.StateEditJudging {
+		return EditorView{}, conflict("追加 Shot を要求できるのは Editor Judge が素材不足と判定した直後（EDIT_JUDGING）です（現在: %s）", project.State)
+	}
+	pending, err := s.editors.PendingReshoots(ctx, projectID)
+	if err != nil {
+		return EditorView{}, err
+	}
+	if slices.ContainsFunc(pending, func(r domain.ReshootRequest) bool { return r.BranchID == branchID }) {
+		return EditorView{}, conflict("前回の追加 Shot がまだできていません")
+	}
+	policy, err := s.policies.Get(ctx, projectID)
+	if err != nil {
+		return EditorView{}, notFound(err)
+	}
+	rounds, err := s.editors.ReshootRounds(ctx, projectID, branchID)
+	if err != nil {
+		return EditorView{}, err
+	}
+	if verdict := policy.Effective().CanRetry(rounds, 0, 0, 0); verdict != domain.RetryAllowed {
+		return s.escalateReshoot(ctx, ver, res, rounds, verdict)
+	}
+	idx, err := s.shotIndex(ctx, projectID, branchID)
+	if err != nil {
+		return EditorView{}, err
+	}
+	clips := ver.Timeline.Clips
+	var (
+		reqs       []repository.NewReshoot
+		extraScene string
+	)
+	for _, f := range res.Findings {
+		need := f.Need
+		if need == nil || !need.Valid(len(clips)) {
+			continue
+		}
+		anchor := clips[need.AfterClip-1]
+		ref, ok := idx.byID[anchor.ShotID]
+		if !ok {
+			continue
+		}
+		shot := domain.Shot{SceneID: ref.Shot.SceneID, Objective: strings.TrimSpace(need.Objective), Duration: need.Seconds()}
+		var newScene *domain.Scene
+		if ref.Scene.BranchID != branchID {
+			// The Shot follows one of the series the Branch hangs from: it goes into a Scene of the
+			// Branch, so the additional Shot never appears in the series it is not part of.
+			if extraScene == "" {
+				newScene = &domain.Scene{BranchID: branchID, Title: "追加カット"}
+			} else {
+				shot.SceneID = extraScene
+			}
+		}
+		shot, err = s.plans.AppendContinuation(ctx, projectID, newScene, shot)
+		if err != nil {
+			return EditorView{}, notFound(err)
+		}
+		if newScene != nil {
+			extraScene = shot.SceneID
+		}
+		reqs = append(reqs, repository.NewReshoot{ShotID: shot.ID, AfterShotID: anchor.ShotID, Kind: need.Kind, Objective: shot.Objective, DurationSeconds: shot.Duration})
+	}
+	if len(reqs) == 0 {
+		return EditorView{}, conflict("追加できる Shot がありません（判定に追加 Shot の指定がありません）")
+	}
+	if _, err := s.editors.CreateReshootRound(ctx, ver.ID, reqs); err != nil {
+		return EditorView{}, notFound(err)
+	}
+	if err := s.projects.Transition(ctx, projectID, domain.StateGenerating); err != nil {
+		return EditorView{}, err
+	}
+	lines := make([]string, len(reqs))
+	for i, r := range reqs {
+		lines[i] = fmt.Sprintf("・%s（%.1f 秒）: %s", clipKindLabel(r.Kind), r.DurationSeconds, r.Objective)
+	}
+	s.announce(ctx, projectID, fmt.Sprintf("Director に追加 Shot を %d 件要求しました（Editor → Reshoot Loop %d 回目）。生成できたら編集に戻ります。\n%s", len(reqs), rounds+1, strings.Join(lines, "\n")))
+	var startErr error
+	for _, r := range reqs {
+		if _, err := s.generation.gen.Start(ctx, r.ShotID, ""); err != nil && startErr == nil {
+			startErr = err
+		}
+	}
+	if startErr != nil {
+		return EditorView{}, mapGenerationError(startErr)
+	}
+	return s.View(ctx, projectID, branchID)
+}
+
+func clipKindLabel(k domain.ClipKind) string {
+	if k == domain.ClipReaction {
+		return "リアクションショット"
+	}
+	return "インサートショット"
+}
+
+// escalateReshoot stops the Editor → Reshoot Loop when the Retry Policy allows no further round and
+// asks the user for a decision (an Escalation card, posted at every Confirmation Level).
+func (s *EditorService) escalateReshoot(ctx context.Context, ver domain.EditTimelineVersion, res domain.EditorJudgeResult, rounds int, verdict domain.RetryVerdict) (EditorView, error) {
+	var missing []domain.EditorFinding
+	for _, f := range res.Findings {
+		if f.Need != nil {
+			missing = append(missing, f)
+		}
+	}
+	text := fmt.Sprintf("追加 Shot の要求を止めました: %s（これまでに %d 回要求しました）。\n足りない素材:\n%s", verdict.Reason(), rounds, describeFindings(missing))
+	options := []string{
+		"設定で上限を引き上げてから、もう一度 Editor Judge を実行する",
+		"追加 Shot なしで、今ある素材のまま編集を続ける",
+		"Shot を手動で追加して生成する",
+	}
+	if err := s.chatSvc.RaiseEscalation(context.WithoutCancel(ctx), ver.ProjectID, text, options, ""); err != nil {
+		return EditorView{}, err
+	}
+	return s.View(ctx, ver.ProjectID, ver.BranchID)
+}
+
+// ResumeReshoots is the return of the Editor → Reshoot Loop: it puts the additional Shots that
+// have their Selected Take into the Edit Timeline of the trunk / Branch that asked for them and
+// takes the Project back to EDITING. It runs whenever a job finished or a Take was selected, and
+// does nothing for a round whose Shots are not all ready.
+func (s *EditorService) ResumeReshoots(ctx context.Context) {
+	ids, err := s.editors.ProjectsWithPendingReshoots(ctx)
+	if err != nil {
+		s.logger.Error("list projects with pending additional shots failed", "err", err)
+		return
+	}
+	for _, id := range ids {
+		if err := s.applyReshoots(ctx, id); err != nil {
+			s.logger.Error("put additional shots into the edit timeline failed", "project_id", id, "err", err)
+		}
+	}
+}
+
+func (s *EditorService) applyReshoots(ctx context.Context, projectID string) error {
+	release, err := s.acquire(projectID)
+	if err != nil {
+		return nil // another stage runs; the next job or selection brings us back
+	}
+	defer release()
+	pending, err := s.editors.PendingReshoots(ctx, projectID)
+	if err != nil {
+		return err
+	}
+	type round struct {
+		branch string
+		number int
+	}
+	groups := map[round][]domain.ReshootRequest{}
+	var order []round
+	for _, r := range pending {
+		k := round{r.BranchID, r.Round}
+		if _, seen := groups[k]; !seen {
+			order = append(order, k)
+		}
+		groups[k] = append(groups[k], r)
+	}
+	for _, k := range order {
+		if err := s.applyRound(ctx, projectID, k.branch, groups[k]); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// applyRound puts the Shots of one round into the latest Edit Timeline of the series, each after
+// the Shot it follows, as one new version. A round whose Shots are not all ready waits.
+func (s *EditorService) applyRound(ctx context.Context, projectID, branchID string, reqs []domain.ReshootRequest) error {
+	idx, err := s.shotIndex(ctx, projectID, branchID)
+	if err != nil {
+		return err
+	}
+	sources := make([]cutSource, len(reqs))
+	for i, r := range reqs {
+		ref, known := idx.byID[r.ShotID]
+		if !known {
+			return nil
+		}
+		src, ok, err := s.selectedSource(ctx, ref.Shot)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return nil // still being made
+		}
+		sources[i] = src
+	}
+	latest, err := s.editors.LatestEditTimeline(ctx, projectID, branchID)
+	if errors.Is(err, repository.ErrNotFound) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	clips := slices.Clone(latest.Timeline.Clips)
+	placed := map[string]bool{}
+	ids := make([]string, len(reqs))
+	for i, r := range reqs {
+		ids[i] = r.ID
+		if slices.ContainsFunc(clips, func(c domain.EditClip) bool { return c.ShotID == r.ShotID }) {
+			continue // a Rough Cut made since already has it
+		}
+		out := r.DurationSeconds
+		if sources[i].seconds > 0 {
+			out = min(out, sources[i].seconds)
+		}
+		clip := domain.EditClip{
+			ShotID: r.ShotID, TakeID: sources[i].takeID, Kind: r.Kind, SourceSeconds: sources[i].seconds, Out: out,
+			Transition: domain.Transition{Type: domain.TransitionCut},
+		}
+		at := insertionPoint(len(clips), func(j int) string { return clips[j].ShotID }, r.AfterShotID, placed)
+		clips = slices.Insert(clips, at, clip)
+		placed[r.ShotID] = true
+	}
+	tl, err := domain.EditTimeline{Clips: clips}.Normalize()
+	if err != nil {
+		return fmt.Errorf("additional shots do not fit the timeline: %w", err)
+	}
+	if _, err := s.editors.SaveReshootApplied(ctx, projectID, branchID, latest.ID, tl, ids); err != nil {
+		if errors.Is(err, repository.ErrStale) || errors.Is(err, repository.ErrConflict) {
+			return nil // edited or applied meanwhile: the next trigger looks again
+		}
+		return err
+	}
+	project, err := s.getProject(ctx, projectID)
+	if err != nil {
+		return err
+	}
+	s.announce(ctx, projectID, fmt.Sprintf("追加 Shot %d 件を編集タイムラインに入れました。編集に戻ります。タイムラインを確認して、もう一度 Editor Judge を実行してください。", len(reqs)))
+	return s.toEditing(ctx, project)
 }

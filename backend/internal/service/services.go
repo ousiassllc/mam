@@ -122,11 +122,16 @@ func New(deps Deps) *Services {
 	}
 	chat := &ChatService{c}
 	var jobFinished func(jobID string) // set once the Repair Agent exists (before the queue starts)
+	var editors *EditorService         // set below (before the queue starts)
 	if deps.Jobs != nil {
 		deps.Jobs.OnChange(func(jobID string) {
 			chat.JobChanged(context.Background(), jobID)
 			if jobFinished != nil {
 				jobFinished(jobID)
+			}
+			// A finished generation / judge job may complete an additional Shot of the Editor → Reshoot Loop.
+			if editors != nil {
+				go editors.ResumeReshoots(context.Background())
 			}
 		})
 		if deps.LLM != nil {
@@ -202,10 +207,11 @@ func New(deps Deps) *Services {
 	director.branch = branch
 	worlds := &WorldService{core: c, world: world, versions: versions}
 	// Without a Reasoning LLM the Editor Judge runs its deterministic checks alone.
-	editors := &EditorService{
-		core: c, editors: repository.NewEditorRepository(deps.DB), shots: gens, takes: takes, chatSvc: chat, tools: deps.Media,
+	editors = &EditorService{
+		core: c, editors: repository.NewEditorRepository(deps.DB), shots: gens, generation: generations, policies: policies, takes: takes, chatSvc: chat, tools: deps.Media,
 		judge: editor.NewJudge(deps.LLM),
 	}
+	takeService.afterSelect = func() { go editors.ResumeReshoots(context.Background()) }
 	if deps.Media != nil && deps.Speech != nil {
 		editors.audio = audiodirector.New(deps.Speech, *deps.Media, deps.AssetsDir)
 	}

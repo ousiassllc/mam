@@ -35,6 +35,8 @@ type TakeService struct {
 	preview sync.Map // path -> *sync.Mutex
 	// compose serializes Partial Take Use per Shot.
 	compose sync.Map // shot ID -> *sync.Mutex
+	// afterSelect runs after a Take was selected: the Editor → Reshoot Loop may have been waiting for it.
+	afterSelect func()
 }
 
 // TakeView is a Take of the comparison.
@@ -100,6 +102,9 @@ func (s *TakeService) Select(ctx context.Context, takeID string) (ShotFragment, 
 		return ShotFragment{}, invalid("", "この Take のファイルはアーカイブされているため選択できません")
 	case err != nil:
 		return ShotFragment{}, notFound(err)
+	}
+	if s.afterSelect != nil {
+		s.afterSelect()
 	}
 	return s.generations.Shot(ctx, shotID)
 }

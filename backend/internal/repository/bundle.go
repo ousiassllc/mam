@@ -57,6 +57,7 @@ var bundleTables = []bundleTable{
 	{name: "state_diff", where: byShot},
 	{name: "edit_timeline_version", where: byProject},
 	{name: "editor_judge_result", where: `edit_timeline_version_id IN (SELECT id FROM edit_timeline_version WHERE project_id = :pid)`},
+	{name: "reshoot_request", where: byProject},
 	{name: "audio_timeline_version", where: byProject},
 	{name: "final_qc_result", where: byProject},
 	{name: "export", where: byProject},
