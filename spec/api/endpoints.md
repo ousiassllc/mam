@@ -14,7 +14,7 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
   | HTTPステータス | 意味 |
   |---|---|
   | 400 | multipart の本文が読み取れない（multipart ではない・途中で切断された） |
-  | 413 | アップロードがリクエスト上限を超えた（multipart 受け取りはハンドラ共通の `readMultipart` が上限を適用する） |
+  | 413 | リクエスト本文が上限を超えた（JSON/urlencoded は `MaxBody` ミドルウェアが 1MiB、multipart は `readMultipart` が各アップロードの上限を適用する） |
   | 402 | Project/Shot budget ceiling 超過（F-22） |
   | 403 | Brand/Safety Constraint 違反、または LOCK 対象への変更試行 |
   | 409 | 対象 Shot が既に生成中（多重実行防止） |

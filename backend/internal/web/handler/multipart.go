@@ -24,19 +24,28 @@ type requestError struct {
 func (e *requestError) Error() string { return e.message }
 
 // readMultipart reads a multipart request of at most limit bytes. It is the only place that
-// applies the limit and parses the form: an oversized body is a 413, anything else that cannot
-// be parsed (not multipart, cut off by the client) a 400 whose cause is logged.
+// applies the upload limit and parses the form; see unreadable for the errors.
 func readMultipart(c *gin.Context, limit int64) (*multipart.Form, error) {
 	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, limit)
 	if err := c.Request.ParseMultipartForm(multipartMemory); err != nil {
-		var tooLarge *http.MaxBytesError
-		if errors.As(err, &tooLarge) {
-			return nil, &requestError{status: http.StatusRequestEntityTooLarge, message: "送信内容が大きすぎます"}
-		}
-		_ = c.Error(err)
-		return nil, &requestError{status: http.StatusBadRequest, message: "送信内容の形式が正しくありません"}
+		return nil, unreadable(c, err, "", "")
 	}
 	return c.Request.MultipartForm, nil
+}
+
+// unreadable is the error for a body that could not be read or bound: a 413 when it exceeded the
+// size limit. Otherwise it is a ValidationError with msg on field when msg is given, else a 400
+// whose cause is logged.
+func unreadable(c *gin.Context, err error, field, msg string) error {
+	var tooLarge *http.MaxBytesError
+	switch {
+	case errors.As(err, &tooLarge):
+		return &requestError{status: http.StatusRequestEntityTooLarge, message: "送信内容が大きすぎます"}
+	case msg != "":
+		return &service.ValidationError{Field: field, Message: msg}
+	}
+	_ = c.Error(err)
+	return &requestError{status: http.StatusBadRequest, message: "送信内容の形式が正しくありません"}
 }
 
 // namedFile is the first file of the field, or nil: an empty file input is sent as an unnamed
