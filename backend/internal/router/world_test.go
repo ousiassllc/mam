@@ -45,7 +45,7 @@ func TestWorldState_PageShowsCurrentValuesAndUnknownProjectIs404(t *testing.T) {
 	assert.Contains(t, frag.Body.String(), `id="world-state-view"`)
 
 	assert.Equal(t, http.StatusNotFound, a.get("/projects/nope/world-state", false).Code)
-	assert.Equal(t, http.StatusNotFound, a.get("/projects/"+id+"/world-state?branch_id=b1", false).Code, "Branches are M2")
+	assert.Equal(t, http.StatusNotFound, a.get("/projects/"+id+"/world-state?branch_id=b1", false).Code, "a Branch that does not exist")
 	assert.Contains(t, a.get("/projects/"+id, false).Body.String(), `/projects/`+id+`/world-state"`, "the workspace links to it")
 }
 
@@ -106,7 +106,7 @@ func TestWorldState_PutRejectsBadInput(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, a.form(http.MethodPut, "/projects/"+id+"/characters/nope", url.Values{"wardrobe": {"x"}}).Code)
 	assert.Equal(t, http.StatusNotFound, a.form(http.MethodPut, "/projects/"+other+"/characters/c1", url.Values{"wardrobe": {"x"}}).Code, "another Project's character")
 	assert.Equal(t, http.StatusNotFound, a.form(http.MethodPut, "/projects/nope/characters/c1", url.Values{"wardrobe": {"x"}}).Code)
-	assert.Equal(t, http.StatusNotFound, a.form(http.MethodPut, "/projects/"+id+"/characters/c1?branch_id=b1", url.Values{"wardrobe": {"x"}}).Code, "Branches are M2")
+	assert.Equal(t, http.StatusNotFound, a.form(http.MethodPut, "/projects/"+id+"/characters/c1?branch_id=b1", url.Values{"wardrobe": {"x"}}).Code, "a Branch that does not exist")
 	assert.Equal(t, http.StatusUnprocessableEntity, a.form(http.MethodPut, "/projects/"+id+"/characters/c1", url.Values{}).Code, "nothing to update")
 	assert.Equal(t, http.StatusUnprocessableEntity, a.form(http.MethodPut, "/projects/"+id+"/characters/c1", url.Values{"name": {"x"}}).Code, "name is not an attribute of the form: nothing to update")
 	long := make([]byte, domain.MaxWorldValueRunes+1)

@@ -9,7 +9,7 @@ import (
 
 // ModelRecords returns, for every video model that has made a judged Take in the Project, what the
 // AI Video Judge found: the number of Takes, the mean of each score axis and the share of Takes
-// whose latest Judge result passed (Multi-model routing, spec/architecture/model-adapters.md §12).
+// whose latest Judge result passed (Multi-model routing, spec/architecture/model-adapters.md §13).
 // A Take counts once, by its latest Judge result and the scores that follow it.
 func (r *GenerationRepository) ModelRecords(ctx context.Context, projectID string) (map[domain.ModelName]domain.ModelRecord, error) {
 	rows, err := r.db.Reader().QueryContext(ctx,

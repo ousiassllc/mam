@@ -91,7 +91,7 @@ func (r *SeriesRepository) Create(ctx context.Context, name, fromProjectID strin
 // registerCanon copies the canonical fields of the Project's rows into canon rows of the Series
 // and points the Project's rows at them (origin_id).
 func registerCanon(ctx context.Context, tx *sql.Tx, seriesID, projectID string) error {
-	w, err := readWorld(ctx, tx, projectID)
+	w, err := readWorld(ctx, tx, projectID, "")
 	if err != nil {
 		return err
 	}
@@ -577,13 +577,13 @@ func (r *SeriesRepository) inheritWorldState(ctx context.Context, tx *sql.Tx, pr
 	if err := json.Unmarshal([]byte(state), &snapshot); err != nil {
 		return fmt.Errorf("decode world state of the previous episode: %w", err)
 	}
-	w, err := readWorld(ctx, tx, projectID)
+	w, err := readWorld(ctx, tx, projectID, "")
 	if err != nil {
 		return err
 	}
 	w.Camera, w.Story = snapshot.Camera, snapshot.Story
 	w.Story.Scene = 0 // the Scene number counts within an Episode
-	if _, _, err := r.world.appendVersion(ctx, tx, projectID, w); err != nil {
+	if _, _, err := r.world.appendVersion(ctx, tx, projectID, "", w); err != nil {
 		return err
 	}
 	_, err = tx.ExecContext(ctx, `UPDATE project SET inherited_world_state_version_id = ? WHERE id = ?`, prevVersionID, projectID)

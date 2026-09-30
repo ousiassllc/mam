@@ -10,7 +10,7 @@ import (
 )
 
 // RoutingInput is what Multi-model routing weighs besides the configuration (spec/architecture/
-// model-adapters.md §12): the nature of the Shot, the Judge record of each video model in the
+// model-adapters.md §13): the nature of the Shot, the Judge record of each video model in the
 // Project, the Project's Minimum acceptance score and the state of the vendors.
 type RoutingInput struct {
 	// Spec is the Shot Spec the Shot is generated from; nil when the Shot has none yet.

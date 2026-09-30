@@ -61,6 +61,8 @@ erDiagram
     BRANCH_VERSION }o--o| WORLD_STATE_VERSION : version_snapshot
 
     EDIT_TIMELINE_VERSION ||--o{ EDITOR_JUDGE_RESULT : evaluated_by
+    AUDIO_TIMELINE_VERSION ||--o{ FINAL_QC_RESULT : checked_by
+    PROJECT ||--o{ FINAL_QC_RESULT : project_final_qc
 
     PROJECT {
         string id PK
@@ -326,6 +328,8 @@ erDiagram
 erDiagram
     PROJECT ||--o{ EDIT_TIMELINE_VERSION : has
     EDIT_TIMELINE_VERSION ||--o{ EDITOR_JUDGE_RESULT : evaluated_by
+    AUDIO_TIMELINE_VERSION ||--o{ FINAL_QC_RESULT : checked_by
+    PROJECT ||--o{ FINAL_QC_RESULT : project_final_qc
     PROJECT ||--o{ AUDIO_TIMELINE_VERSION : has
     PROJECT ||--o{ EXPORT : produces
     BRANCH ||--o{ EDIT_TIMELINE_VERSION : branch_edit_timelines
@@ -353,6 +357,14 @@ erDiagram
         string branch_id FK
         int version_number
         json timeline
+        datetime created_at
+    }
+    FINAL_QC_RESULT {
+        string id PK
+        string project_id FK
+        string audio_timeline_version_id FK
+        string result
+        json findings
         datetime created_at
     }
     EXPORT {
@@ -469,6 +481,7 @@ erDiagram
 | `branch_version` | `branch_id` FK。`(branch_id, version_number)` UNIQUE、`version_number` は単調増加。Branch自体の主要変更（名称変更・World State参照更新等）を追記のみで履歴化する | `idx_branch_version_branch (branch_id, version_number)` |
 | `edit_timeline_version` / `audio_timeline_version` | `project_id` FK。`branch_id` FK（NULL許容、NULL=主系列トランク、非NULL=当該BranchのTimeline）。`(project_id, branch_id, version_number)` UNIQUE | `idx_edit_timeline_project (project_id, branch_id, version_number)` |
 | `editor_judge_result` | `edit_timeline_version_id` FK。`result` は `pass/re_edit/need_shot` | `idx_editor_judge_result_timeline (edit_timeline_version_id)` |
+| `final_qc_result` | `project_id` FK。`audio_timeline_version_id` FK（チェックした Audio Timeline の版）。`result` は `pass/fail`（CHECK制約）。`findings`（JSON 配列。`check`/`message`/`stage`（差し戻し先の Project 状態））。実行のたびに 1 行追加し履歴を残す（Final QC の M1、F-26） | `idx_final_qc_result_project (project_id, created_at)` |
 | `export` | `project_id` FK。`branch_id` FK（NULL許容、NULL=主系列トランクからの書き出し） | `idx_export_project (project_id, branch_id)` |
 | `lock` | `project_id` FK。`(project_id, target_type, target_id, parameter_name)` UNIQUE。`mode` は `auto/manual/lock`。`target_type` は `story/music/character/product/location/shot` 等、`parameter_name` は `wardrobe`/`orientation`/`lighting_state` 等の属性単位。Character/Product/LocationのLOCK判定は本テーブルに一元化し、エンティティ側に専用カラムは持たない | `idx_lock_project_target (project_id, target_type, target_id)` |
 | `cost_ledger_entry` | `project_id` FK。`shot_id`/`take_id` は NULL 許容（プロジェクト全体コストの場合）。`estimated_cost` は生成時の見積り、`actual_cost` はベンダーが報告した金額（USD、報告が無い呼び出しは NULL）。動画 Take と Reference Pack の画像で 1 呼び出し 1 行 | `idx_cost_ledger_project (project_id)` |
@@ -485,7 +498,7 @@ erDiagram
 - **Shot Spec の格納**: `shot.shot_spec` および `prompt_version.shot_spec_snapshot` は `spec/spec.md` §7.1 の YAML 構造を JSON にシリアライズして格納する（モデル非依存の Canonical Shot Spec を Source of Truth とする、`spec/architecture/overview.md` §1 の設計原則に対応）
 - **LOCK の保持形式（M1）**: パラメータ単位の AUTO/MANUAL/LOCK は `lock` の 1 行で表す。Shot のパラメータ（`dialogue/character_identity/acting/camera/lighting/product_geometry/prompt/video_model/take_selection/editing`）は `target_type=shot`・`target_id=Shot ID`・`parameter_name=パラメータ名`、Story と Music は `target_type=story|music`・`target_id=Project ID`・`parameter_name=story|music`。行が無いパラメータは AUTO。`value` は `video_model`（MANUAL/LOCK で固定するモデルの正規識別子）のみ使う。LOCK の判定は書き込む側が行う: `SaveEditedSpec`（Shot Spec の手動編集）は LOCK 中のパラメータの部分（Prompt は Spec 全体）が変わると `ErrLocked`、`ApplyStateDiff` と World State の編集は `readLocks` で判定し、Story の LOCK（`story/story`）は Story の全項目を対象にする。再生成では Prompt Planner の出力に対して LOCK 中の部分と指示で保持する部分を現在の Spec から書き戻す
 - **Generation Traceability（F-27）**: Take から次のものを辿れる。Source Shot Spec と Prompt version＝`prompt_version.shot_spec_snapshot`/`version_number`、Model＝`take.model_name`、Model parameters・World State version・References＝`take.model_parameters`、Model Adapter の出力＝`prompt_version.model_adapter_output`、Output＝`take.file_path` の `asset`、Judge result＝`judge_result`、Repair history＝`repair_action`（この Take を対象とする行と `resulting_take_id`=この Take の行）。`model_parameters` に `world_state_version`/`references` が無い古い Take は、World State version を「不明」、References を Prompt version のスナップショットの Reference Pack として表示する（`GET /takes/:id/trace`）
-- **バージョン復元（F-28）は追記のみ**: 復元は指定バージョンの内容を系列の末尾へ新しいバージョンとして複製し、現在値にする（既存バージョンは変更・削除しない。復元自体も戻せる）。Shot は `prompt_version`（`shot.shot_spec` を戻す）、トランクの World State は `world_state_version`（Character/Product/Location 行へ値を書き戻し、Camera/Story はバージョンの値）、Branch の World State は `branch_id` 付きの `world_state_version` 系列（スナップショットの複製のみ）、Branch 自体は `branch_version`（`branch.name`/`world_state_version_id` を戻す）。LOCK 中のフィールド/部分を変える復元は 423 で何も書かない。`world_state_version` の `UNIQUE (project_id, branch_id, version_number)` は NULL 同士を別扱いにするので、トランク（`branch_id` IS NULL）には `(project_id, version_number)` の部分ユニークインデックス `uq_world_state_version_trunk` を別に持つ（マイグレーション `20260930100000_versioning`）
+- **バージョン復元（F-28）は追記のみ**: 復元は指定バージョンの内容を系列の末尾へ新しいバージョンとして複製し、現在値にする（既存バージョンは変更・削除しない。復元自体も戻せる）。Shot は `prompt_version`（`shot.shot_spec` を戻す）、トランクの World State は `world_state_version`（Character/Product/Location 行へ値を書き戻し、Camera/Story はバージョンの値）、Branch の World State は `branch_id` 付きの `world_state_version` 系列で、トランクと同様に Branch 自身の Character/Product/Location 行へ値を書き戻して末尾に追記する、Branch 自体は `branch_version`（`branch.name`/`world_state_version_id` を戻す）。LOCK 中のフィールド/部分を変える復元は 423 で何も書かない。`world_state_version` の `UNIQUE (project_id, branch_id, version_number)` は NULL 同士を別扱いにするので、トランク（`branch_id` IS NULL）には `(project_id, version_number)` の部分ユニークインデックス `uq_world_state_version_trunk` を別に持つ（マイグレーション `20260930100000_versioning`）
 - **プロジェクトバンドル**: `GET /projects/:id/bundle` は Project に属する全テーブル（`project` から `world_state_version`・`branch*`・`lock`・`cost_ledger_entry` まで。実行時状態の `job` と goose の管理表は除く）の行を `data.json` に、Asset/Take/Export のファイルを `assets/<相対パス>` に入れた ZIP。インポートは ID・パスを保ったまま 1 トランザクションで挿入し（外部キーは最後にまとめて検査）。Series は複数 Episode で共有され 1 つの Project に属さないので `series`/`series_version` は含めず、Episode は Series から切り離して書き出す（`project.series_id`/`episode_number`/`inherited_series_version_id`/`inherited_world_state_version_id` と `character`/`product`/`location` の `origin_id` を空にする。Series 正本からコピー済みの行と値はそのまま残る）、テーブルを追加したら `bundleTables` か `unbundledTables`（理由付き）に載せる（テストで強制）
 - **Take と再生成の関係**: Repair/Retake により再生成された結果は新しい `take` 行として追加する（既存 Take は不変・Traceability保持）。`repair_action.resulting_take_id` で追跡する
 - **World State のバージョニング**: Shot完了ごとに `state_diff` を生成し、新しい `world_state_version` を追加する（追記のみ、上書きしない）。ユーザーが LOCK した項目は State Extractor（Agent側ロジック）が diff 対象から除外する
@@ -508,6 +521,13 @@ erDiagram
 - **不要 Take のアーカイブ**: アーカイブは Take の動画ファイルと `asset` 行を削除し、Take 行を `rejected`・`file_path=NULL` にする（Judge/Repair 履歴・`cost_ledger_entry` は残し、Traceability と実コストを失わない）。Selected Take はアーカイブできない。生成前に空き容量を見積り（Take 数 × 尺 × 約 2 MiB/秒）、不足ならスレッドに警告してから生成を開始する
 - **マイグレーション**: `backend/internal/repository/migrations/` に goose 形式の SQL（`<UTC timestamp>_<name>.sql`、`go:embed`）として置き、起動時に自動適用する。連番ではなくタイムスタンプ版とし、並行ブランチで追加されたマイグレーションが衝突しない（`WithAllowOutofOrder`）。M1 の初期スキーマは M2 専用のテーブル・カラム（`series` / `note*` / `branch*` / `brand_constraint`、各テーブルの `branch_id`/`series_id`/`origin_id`、`project.episode_number` 等）を含めず、M2 の各 Issue が自身のマイグレーションで追加する。そのため M1 時点の `character`/`product`/`location` は `project_id` NOT NULL、`scene` は `(project_id, order_index)` UNIQUE とし、M2 で §3 の制約へ拡張する（SQLite の制約変更はテーブル再作成で行う）
 - **書き込みの直列化**: 書き込みは `repository.DB.Write`（単一ゴルーチン・単一コネクション）だけを通し、読み取りは query-only の別プールで行う（WAL により読み取りは書き込みをブロックしない）。日時は UTC の ISO-8601 文字列（`YYYY-MM-DDTHH:MM:SS.mmmZ`）で保存する
+
+### 4.x 編集・音声・書き出しの保持形式（M1）
+
+- `edit_timeline_version.timeline`: `{"clips":[{"shot_id","take_id","source_seconds"?,"in_point","out_point","transition":{"type":"cut|fade|fade_black|dissolve","seconds"}}]}`。クリップの並びが再生順。`in_point`/`out_point` は Take 内の秒で、区間は 0.5 秒以上。先頭クリップの `transition` は常に `cut`。`transition` は前のクリップとの重なり（前後の短いほうの半分が上限）を作る。総尺 = 各クリップの長さの合計 − 重なりの合計
+- `audio_timeline_version.timeline`: `{"edit_timeline_id","clips":[{"path","start_seconds","duration_seconds",...}],"speech_expected","mix_path","duration_seconds","target_lufs","measured_lufs","true_peak_db"}`。`edit_timeline_id` は音声を作った Edit Timeline の版で、Final QC が最新の編集と一致するかを判定するのに使う。`mix_path` はアセットディレクトリからの相対パス
+- 保存は追記のみ（`version_number` は Project 内の最大値 + 1）。Edit Timeline の保存は、呼び出し側が表示していた版が最新のときだけ成功する（別の版が保存済みなら拒否）
+- `export.file_path` はアセットディレクトリからの相対パス（`<project_id>/exports/<export_id>.mp4|webm`）
 
 ## 改訂履歴
 
@@ -543,4 +563,6 @@ erDiagram
 | 1.27 | 2026-09-30 | `reference_item`（Reference Library）を追加。設計メモに Location State・属性 LOCK・Reference Library を追記 | M2「Character/Product Lock・Location State・Reference Library」（Issue #15）で Reference Library のデータモデルが仕様になかったため。`asset` は種別・名前・タグを持たず検索できないので専用テーブルを 1 つ追加し、画像本体は既存の `asset.type=reference` を使う |
 | 1.28 | 2026-09-30 | `judge_result` に `scores`（JSON、NULL許容）を追加。`repair_action` の `instructions` の JSON 構造と `repair_shadow` テーブル（Jev のシャドー実行）を追加。`JUDGE_RESULT` と `REPAIR_ACTION` の関係を 1:0..N へ修正。マイグレーションは `20260929220000_repair_loop.sql` | M1「Repair/Retake Loop」（Issue #10）で、Minimum acceptance score を適用する軸別スコアの保存先、Repair の判断内容・判断者の記録、Jev の一致率・confidence・遅延・コストの記録先が無かったため。同じ Judge 結果から上限引き上げ後にもう一度 Repair できるため 1:0..1 では足りない |
 | 1.29 | 2026-09-30 | `series` に `style`/`style_reference_asset_id`（Style の正本）を追加。`series_version`（正本の追記専用の履歴）と `project.inherited_series_version_id` を追加。`character`/`product`/`location` の `project_id` を NULL 許容にして `series_id`/`origin_id` を追加（どちらか一方のみ非NULL）。設計メモに正本の項目・Episode の継承・顔同一性の基準を追記。マイグレーションは `20260930020000_series.sql` | M2「Series / Episode Memory」（Issue #21）で、正本の更新履歴のバージョン化と Style の保持方法が `er.md` に未定義だったため |
-| 1.30 | 2026-09-30 | `branch`・`branch_version` テーブルを実装（Issue #20。Branch 機能本体は別 Issue）。`world_state_version.branch_id` と `UNIQUE (project_id, branch_id, version_number)`＋トランク用部分ユニークインデックスを実装。`take.model_parameters` に `world_state_version`/`references` を記録。設計メモに Traceability・追記のみの復元・プロジェクトバンドルを追記 | F-27/F-28 と `spec/requirements/non-functional.md` §8 の実装に、Branch 系の復元対象テーブルと、Take ごとの World State version・References の記録先が必要だったため |
+| 1.30 | 2026-09-30 | `branch`・`branch_version` テーブルを実装（Issue #20。Branch 機能本体は別 Issue #18。#18 の `20260930030000_branch.sql` に統合し、Issue #20 の `20260930100000_versioning.sql` は削除した）。`world_state_version.branch_id` と `UNIQUE (project_id, branch_id, version_number)`＋トランク用部分ユニークインデックスを実装。`take.model_parameters` に `world_state_version`/`references` を記録。設計メモに Traceability・追記のみの復元・プロジェクトバンドルを追記 | F-27/F-28 と `spec/requirements/non-functional.md` §8 の実装に、Branch 系の復元対象テーブルと、Take ごとの World State version・References の記録先が必要だったため |
+| 1.31 | 2026-09-30 | `branch` / `branch_version` を追加（マイグレーション `20260930030000_branch.sql`）。`scene` / `world_state_version` / `edit_timeline_version` / `audio_timeline_version` は UNIQUE を `(project_id, COALESCE(branch_id, ''), …)` として作り直し、`character` / `product` / `location` / `export` に `branch_id` を追加。Branch の親は `branch_point_shot_id` の所属 Scene の `branch_id` から導出し、列は持たない。Branch 作成時、分岐点の World State（`scene` は直前の Shot、`shot` / `frame` は当該 Shot の `state_diff` が指す版）を Branch 独自の版 v1 と実体の行としてコピーする | M2「Branch（別展開の並行生成）」（Issue #18）の実装 |
+| 1.32 | 2026-09-30 | `final_qc_result` テーブルを追加。設計メモに `edit_timeline_version.timeline` / `audio_timeline_version.timeline` の JSON 構造と保存の規則（追記のみ・古い版からの保存は拒否）を追記 | M1「簡易 Editor・簡易 Audio・Final QC・Export」（Issue #14）の Final QC 結果を履歴として保持するため |

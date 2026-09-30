@@ -56,7 +56,7 @@
 |------|------|
 | 予算上限 | Project budget ceiling / Shot budget ceiling をユーザー設定可能とし、超過が見込まれる生成はブロックまたは警告する |
 | リトライ制御 | Max retries per Shot / Max cost per Shot / Minimum acceptance score を Repair/Retake Loop に適用し、無限再生成を防止する |
-| モデル呼び出し耐性 | 外部 API のタイムアウト・429（レート制限）に対し指数バックオフで再試行し、プロバイダ単位でサーキットブレーカーを設ける。M3 の Multi-model routing（`architecture/model-adapters.md` §12）は使うモデルの順序（プライマリ/代替）だけを決め、OPEN のベンダーのモデルを先頭に選ばない。再試行・フェイルオーバー・同時実行数の制御は変えない |
+| モデル呼び出し耐性 | 外部 API のタイムアウト・429（レート制限）に対し指数バックオフで再試行し、プロバイダ単位でサーキットブレーカーを設ける。M3 の Multi-model routing（`architecture/model-adapters.md` §13）は使うモデルの順序（プライマリ/代替）だけを決め、OPEN のベンダーのモデルを先頭に選ばない。再試行・フェイルオーバー・同時実行数の制御は変えない |
 | コスト可視化 | Shot/Scene/Project 単位の推定コストと実コストを UI に表示する |
 
 ## 7. 可観測性 / トレーサビリティ

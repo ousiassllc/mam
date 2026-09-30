@@ -1,6 +1,6 @@
 package domain
 
-// RoutingMode is how the video model of a Take was chosen (spec/architecture/model-adapters.md §12).
+// RoutingMode is how the video model of a Take was chosen (spec/architecture/model-adapters.md §13).
 type RoutingMode string
 
 // Routing modes.

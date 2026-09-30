@@ -168,18 +168,18 @@ func TestWorldRepository_SetFieldLockBlocksExtractorAndUserEditsAndAutoReleases(
 	ctx := context.Background()
 	f := newLibraryFixture(t)
 
-	require.NoError(t, f.world.SetFieldLock(ctx, f.projectID, domain.TargetLocation, f.locID, "lighting_state", domain.LockLocked))
-	require.NoError(t, f.world.SetFieldLock(ctx, f.projectID, domain.TargetCamera, "", "lens", domain.LockLocked))
+	require.NoError(t, f.world.SetFieldLock(ctx, f.projectID, "", domain.TargetLocation, f.locID, "lighting_state", domain.LockLocked))
+	require.NoError(t, f.world.SetFieldLock(ctx, f.projectID, "", domain.TargetCamera, "", "lens", domain.LockLocked))
 	locks, err := f.world.Locks(ctx, f.projectID)
 	require.NoError(t, err)
 	assert.True(t, locks.Locked(domain.TargetLocation, f.locID, "lighting_state"))
 	assert.True(t, locks.Locked(domain.TargetCamera, "", "lens"))
 	assert.False(t, locks.Locked(domain.TargetLocation, f.locID, "weather"))
 
-	assert.ErrorIs(t, f.world.UpdateEntity(ctx, f.projectID, domain.TargetLocation, f.locID, map[string]string{"lighting_state": "dark"}), repository.ErrLocked)
-	require.NoError(t, f.world.UpdateEntity(ctx, f.projectID, domain.TargetLocation, f.locID, map[string]string{"weather": "rain"}))
+	assert.ErrorIs(t, f.world.UpdateEntity(ctx, f.projectID, "", domain.TargetLocation, f.locID, map[string]string{"lighting_state": "dark"}), repository.ErrLocked)
+	require.NoError(t, f.world.UpdateEntity(ctx, f.projectID, "", domain.TargetLocation, f.locID, map[string]string{"weather": "rain"}))
 
-	applied, _, err := f.world.ApplyStateDiff(ctx, f.projectID, f.shotID, f.takeID, domain.StateDiff{Changes: []domain.StateChange{
+	applied, _, err := f.world.ApplyStateDiff(ctx, f.projectID, "", f.shotID, f.takeID, domain.StateDiff{Changes: []domain.StateChange{
 		{Target: domain.TargetLocation, ID: f.locID, Field: "lighting_state", To: raw(`"dark"`)},
 		{Target: domain.TargetLocation, ID: f.locID, Field: "time", To: raw(`"night"`)},
 		{Target: domain.TargetCamera, Field: "lens", To: raw(`"85mm"`)},
@@ -188,21 +188,21 @@ func TestWorldRepository_SetFieldLockBlocksExtractorAndUserEditsAndAutoReleases(
 	require.Len(t, applied.Changes, 1, "only the unlocked Location field is applied")
 	assert.Equal(t, "time", applied.Changes[0].Field)
 	assert.JSONEq(t, `"sunset"`, string(applied.Changes[0].From))
-	w, err := f.world.World(ctx, f.projectID)
+	w, err := f.world.World(ctx, f.projectID, "")
 	require.NoError(t, err)
 	assert.Equal(t, "night", w.Locations[0].Time, "Location State carries over to the next Shot")
 	assert.Empty(t, w.Locations[0].LightingState)
 	assert.Empty(t, w.Camera.Lens)
 
 	// Switching back to AUTO releases the field, and a repeated LOCK is one row.
-	require.NoError(t, f.world.SetFieldLock(ctx, f.projectID, domain.TargetLocation, f.locID, "lighting_state", domain.LockLocked))
+	require.NoError(t, f.world.SetFieldLock(ctx, f.projectID, "", domain.TargetLocation, f.locID, "lighting_state", domain.LockLocked))
 	assert.Equal(t, 2, f.count(t, `SELECT COUNT(*) FROM lock WHERE project_id = ? AND mode = 'lock'`, f.projectID))
-	require.NoError(t, f.world.SetFieldLock(ctx, f.projectID, domain.TargetLocation, f.locID, "lighting_state", domain.LockAuto))
-	require.NoError(t, f.world.UpdateEntity(ctx, f.projectID, domain.TargetLocation, f.locID, map[string]string{"lighting_state": "dark"}))
+	require.NoError(t, f.world.SetFieldLock(ctx, f.projectID, "", domain.TargetLocation, f.locID, "lighting_state", domain.LockAuto))
+	require.NoError(t, f.world.UpdateEntity(ctx, f.projectID, "", domain.TargetLocation, f.locID, map[string]string{"lighting_state": "dark"}))
 
-	assert.ErrorIs(t, f.world.SetFieldLock(ctx, f.projectID, domain.TargetLocation, "missing", "time", domain.LockLocked), repository.ErrNotFound)
-	assert.ErrorIs(t, f.world.SetFieldLock(ctx, "nope", domain.TargetCamera, "", "lens", domain.LockLocked), repository.ErrNotFound)
-	assert.ErrorIs(t, f.world.SetFieldLock(ctx, f.projectID, domain.TargetCharacter, f.locID, "wardrobe", domain.LockLocked), repository.ErrNotFound, "an ID of another kind")
+	assert.ErrorIs(t, f.world.SetFieldLock(ctx, f.projectID, "", domain.TargetLocation, "missing", "time", domain.LockLocked), repository.ErrNotFound)
+	assert.ErrorIs(t, f.world.SetFieldLock(ctx, "nope", "", domain.TargetCamera, "", "lens", domain.LockLocked), repository.ErrNotFound)
+	assert.ErrorIs(t, f.world.SetFieldLock(ctx, f.projectID, "", domain.TargetCharacter, f.locID, "wardrobe", domain.LockLocked), repository.ErrNotFound, "an ID of another kind")
 }
 
 func TestWorldRepository_AssignReferenceHonoursLockAndAppendsAVersion(t *testing.T) {
@@ -212,23 +212,23 @@ func TestWorldRepository_AssignReferenceHonoursLockAndAppendsAVersion(t *testing
 	x := f.upload(t, domain.RefCharacter, "Mio").AssetID
 	y := f.upload(t, domain.RefCharacter, "Mio 2").AssetID
 
-	require.NoError(t, f.world.AssignReference(ctx, f.projectID, face, f.charID, x))
-	w, err := f.world.World(ctx, f.projectID)
+	require.NoError(t, f.world.AssignReference(ctx, f.projectID, "", face, f.charID, x))
+	w, err := f.world.World(ctx, f.projectID, "")
 	require.NoError(t, err)
 	assert.Equal(t, x, w.Characters[0].FaceReferenceAssetID)
 	assert.Equal(t, 1, w.Version)
 
-	require.NoError(t, f.world.SetFieldLock(ctx, f.projectID, domain.TargetCharacter, f.charID, "identity", domain.LockLocked))
-	assert.ErrorIs(t, f.world.AssignReference(ctx, f.projectID, face, f.charID, y), repository.ErrLocked)
-	assert.ErrorIs(t, f.world.AssignReference(ctx, f.projectID, face, f.charID, ""), repository.ErrLocked, "clearing a LOCKed slot is refused too")
-	w, _ = f.world.World(ctx, f.projectID)
+	require.NoError(t, f.world.SetFieldLock(ctx, f.projectID, "", domain.TargetCharacter, f.charID, "identity", domain.LockLocked))
+	assert.ErrorIs(t, f.world.AssignReference(ctx, f.projectID, "", face, f.charID, y), repository.ErrLocked)
+	assert.ErrorIs(t, f.world.AssignReference(ctx, f.projectID, "", face, f.charID, ""), repository.ErrLocked, "clearing a LOCKed slot is refused too")
+	w, _ = f.world.World(ctx, f.projectID, "")
 	assert.Equal(t, x, w.Characters[0].FaceReferenceAssetID)
 
-	require.NoError(t, f.world.SetFieldLock(ctx, f.projectID, domain.TargetCharacter, f.charID, "identity", domain.LockAuto))
-	require.NoError(t, f.world.AssignReference(ctx, f.projectID, face, f.charID, ""))
-	w, _ = f.world.World(ctx, f.projectID)
+	require.NoError(t, f.world.SetFieldLock(ctx, f.projectID, "", domain.TargetCharacter, f.charID, "identity", domain.LockAuto))
+	require.NoError(t, f.world.AssignReference(ctx, f.projectID, "", face, f.charID, ""))
+	w, _ = f.world.World(ctx, f.projectID, "")
 	assert.Empty(t, w.Characters[0].FaceReferenceAssetID, "an empty asset clears the slot")
 
 	layout, _ := domain.FindReferenceSlot(domain.TargetLocation, "layout")
-	assert.ErrorIs(t, f.world.AssignReference(ctx, f.projectID, layout, "missing", x), repository.ErrNotFound)
+	assert.ErrorIs(t, f.world.AssignReference(ctx, f.projectID, "", layout, "missing", x), repository.ErrNotFound)
 }

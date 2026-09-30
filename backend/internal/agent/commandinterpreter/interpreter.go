@@ -60,7 +60,10 @@ const (
 	OpPartialRegenerate OpType = "partial_regenerate"
 	// OpSetMode switches AUTO / DIRECTOR.
 	OpSetMode OpType = "set_mode"
-	// OpUnsupported is a direction that has no operation yet (creating Branches is M2).
+	// OpCreateBranch makes Branches at the target Shot (F-17, UC-5): "このカットから別展開を3つ作って"
+	// is three Branches, each a different continuation.
+	OpCreateBranch OpType = "create_branch"
+	// OpUnsupported is a direction that has no operation (exporting, editing the timeline).
 	OpUnsupported OpType = "unsupported"
 )
 
@@ -87,6 +90,13 @@ type Operation struct {
 
 	// OpSetMode.
 	ProjectMode domain.Mode `json:"project_mode,omitempty"`
+
+	// OpCreateBranch. Count is how many Branches (1 to domain.MaxBranchesPerRequest), PointType
+	// where they start (scene or shot) and Directions the developments the director named, one per
+	// Branch; the team proposes the developments the director left open.
+	Count      int                    `json:"count,omitempty"`
+	PointType  domain.BranchPointType `json:"point_type,omitempty"`
+	Directions []string               `json:"directions,omitempty"`
 
 	// OpUnsupported: why, in the user's language.
 	Reason string `json:"reason,omitempty"`
@@ -118,7 +128,8 @@ Convert the director's message into structured operations. Return ONLY one JSON 
     {"type": "regenerate", "changes": ["camera"], "preserve": [], "instruction": "camera movement: static, no handheld motion"},
     {"type": "partial_regenerate", "time_ranges": ["2.0-3.0"], "changes": ["camera"], "preserve": [], "instruction": "camera movement: static, no handheld motion"},
     {"type": "set_mode", "project_mode": "auto"},
-    {"type": "unsupported", "reason": "Branch の作成はまだ利用できません"}
+    {"type": "create_branch", "count": 3, "point_type": "shot", "directions": ["ドアを開ける", "逃げる"]},
+    {"type": "unsupported", "reason": "書き出しはこのチャットからはまだ指示できません"}
   ]
 }
 
@@ -127,7 +138,8 @@ Operations:
 - "regenerate": the director wants this shot changed. "changes" lists the parts that change: ` + "`character`, `product`, `location`, `acting`, `camera`, `lighting`" + ` ("location" is the environment). "preserve" lists parts the director explicitly asks to keep although the change might touch them; leave it empty otherwise, everything not in "changes" is preserved anyway. "instruction" is one or two English sentences directing the change, without restating what stays.
 - "partial_regenerate": like "regenerate" (same "changes", "preserve", "instruction"), but only for the time ranges of the current take named in "time_ranges"; the rest of the take is kept as it is.
 - "set_mode": "auto" or "director": the director wants the team to lead again (auto) or to only change what is told (director).
-- "unsupported": the director asks for something that is not available: creating branches / alternative storylines, exporting, editing the timeline. "reason" is one short Japanese sentence.
+- "create_branch": the director wants alternative developments of the story from this shot or scene ("このカットから別展開を3つ作って"). "count" is how many (default 1). "point_type" is "shot" (after this shot, the default) or "scene" (from the start of this shot's scene). "directions" lists the developments the director named, one per branch, in the director's words; leave it empty when the director named none, the team proposes them.
+- "unsupported": the director asks for something that is not available: exporting, editing the timeline. "reason" is one short Japanese sentence.
 
 Rules:
 - "scene" and "shot" are the numbers the director names ("Scene 2 の Shot 1", "シーン2のショット1"). Use 0 for both when the message does not name a shot. When the input says which shot the message is about, use its numbers.
@@ -202,6 +214,19 @@ func clean(op Operation, message string) (Operation, bool) {
 			return Operation{}, false
 		}
 		return Operation{Type: OpSetMode, ProjectMode: op.ProjectMode}, true
+	case OpCreateBranch:
+		count := min(max(op.Count, 1), domain.MaxBranchesPerRequest)
+		typ := op.PointType
+		if typ != domain.BranchAtScene {
+			typ = domain.BranchAtShot // a frame needs an offset a message cannot give
+		}
+		var directions []string
+		for _, d := range op.Directions {
+			if d = strings.TrimSpace(d); d != "" && len(directions) < count {
+				directions = append(directions, d)
+			}
+		}
+		return Operation{Type: OpCreateBranch, Count: count, PointType: typ, Directions: directions}, true
 	case OpUnsupported:
 		return Operation{Type: OpUnsupported, Reason: strings.TrimSpace(op.Reason)}, true
 	}

@@ -44,6 +44,18 @@ document.addEventListener('htmx:load', (event) => {
   initShotProgress(event.target as ParentNode);
 });
 
-// Lit components (mam-timeline-editor and mam-branch-tree are imported here as they are implemented).
+// Lit components.
 import './components/video-player/mam-video-player';
 import './components/take-comparator/mam-take-comparator';
+import './components/branch-tree/mam-branch-tree';
+import './components/timeline-editor/mam-timeline-editor';
+
+// mam-branch-tree: choosing a Branch loads its detail (with the link to its World State) into
+// #branch-detail; a rename (HX-Trigger: branches-changed) redraws the tree.
+document.addEventListener('branch-selected', (event) => {
+  const { detail_url: url } = (event as CustomEvent<{ detail_url: string }>).detail;
+  void htmx.ajax('get', url, { target: '#branch-detail', swap: 'innerHTML' });
+});
+document.addEventListener('branches-changed', () => {
+  for (const tree of document.querySelectorAll('mam-branch-tree')) void tree.load();
+});

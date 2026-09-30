@@ -1,6 +1,7 @@
 package organisms
 
 import (
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -12,8 +13,10 @@ import (
 // WorldStateData is the state of the World State view (world_state_page).
 type WorldStateData struct {
 	Project domain.Project
-	World   domain.WorldContext
-	Locks   domain.LockSet
+	// Branch is the Branch the view shows; nil for the trunk.
+	Branch *domain.Branch
+	World  domain.WorldContext
+	Locks  domain.LockSet
 	// ProjectLocks is the AUTO / MANUAL / LOCK setting of Story and Music.
 	ProjectLocks domain.ParameterLocks
 	// Library is the Reference Library of the Project (images a reference slot can hold).
@@ -38,8 +41,16 @@ func fieldLabel(name string) string {
 	return name
 }
 
-func entityURL(projectID, plural, id string) string {
-	return "/projects/" + projectID + "/" + plural + "/" + id
+// branchQuery is the query that addresses the Branch of the view ("" for the trunk).
+func (d WorldStateData) branchQuery() string {
+	if d.Branch == nil {
+		return ""
+	}
+	return "?branch_id=" + url.QueryEscape(d.Branch.ID)
+}
+
+func (d WorldStateData) entityURL(plural, id string) string {
+	return "/projects/" + d.Project.ID + "/" + plural + "/" + id
 }
 
 func (d WorldStateData) field(target domain.WorldTarget, id, name, value string) molecules.WorldStateFieldData {
@@ -86,7 +97,7 @@ func (d WorldStateData) fieldLockToggle(target domain.WorldTarget, id, field str
 		hidden = append(hidden, atoms.HiddenField{Name: "target_id", Value: id})
 	}
 	return atoms.LockToggleData{
-		DOMID: "lock-" + string(target) + "-" + id + "-" + field, URL: "/projects/" + d.Project.ID + "/world-state/locks",
+		DOMID: "lock-" + string(target) + "-" + id + "-" + field, URL: "/projects/" + d.Project.ID + "/world-state/locks" + d.branchQuery(),
 		Parameter: domain.LockParameter(field), Label: lockLabel(field), Mode: mode,
 		Modes: []domain.LockMode{domain.LockAuto, domain.LockLocked}, Hidden: hidden,
 		Target: "#world-state-view",
@@ -157,7 +168,7 @@ templ entityForm(d WorldStateData, target domain.WorldTarget, plural, id, name s
 	<div class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3">
 		<form
 			class="flex flex-col gap-2"
-			hx-put={ entityURL(d.Project.ID, plural, id) }
+			hx-put={ d.entityURL(plural, id) + d.branchQuery() }
 			hx-target="#world-state-view"
 			hx-swap="outerHTML"
 		>
@@ -190,7 +201,7 @@ templ entityForm(d WorldStateData, target domain.WorldTarget, plural, id, name s
 templ referenceSlotForm(d WorldStateData, plural, id string, sf slotForm) {
 	<form
 		class="flex flex-wrap items-center gap-2 text-sm"
-		hx-put={ entityURL(d.Project.ID, plural, id) + "/reference" }
+		hx-put={ d.entityURL(plural, id) + "/reference" + d.branchQuery() }
 		hx-target="#world-state-view"
 		hx-swap="outerHTML"
 	>
@@ -213,6 +224,12 @@ templ referenceSlotForm(d WorldStateData, plural, id string, sf slotForm) {
 // and the Camera and Story left by the latest Shot.
 templ WorldStateView(d WorldStateData) {
 	<div id="world-state-view" class="flex flex-col gap-6">
+		if d.Branch != nil {
+			<p class="text-sm text-indigo-300">
+				Branch「{ d.Branch.Name }」の World State です。ここでの変更はトランクや他の Branch には影響しません。
+				<a class="underline" href={ templ.SafeURL("/branches/" + d.Branch.ID) }>Branch の詳細へ</a>
+			</p>
+		}
 		<p class="text-xs text-neutral-400">{ versionText(d.World.Version) }。LOCK した項目は Shot 完了時にも自動更新されません。</p>
 		<section aria-label="Story / Music" class="flex flex-col gap-2">
 			<h2 class="text-sm font-semibold text-neutral-200">Story / Music</h2>

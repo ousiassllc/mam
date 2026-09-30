@@ -59,14 +59,14 @@ type PolicyRoute struct {
 }
 
 // RoutingWeights are the weights of the three values Multi-model routing scores a video model by
-// (spec/architecture/model-adapters.md §12.3).
+// (spec/architecture/model-adapters.md §13.3).
 type RoutingWeights struct {
 	Quality float64 `json:"quality"`
 	Cost    float64 `json:"cost"`
 	Fit     float64 `json:"fit"`
 }
 
-// RoutingConfig is the setting of Multi-model routing (model-adapters.md §12).
+// RoutingConfig is the setting of Multi-model routing (model-adapters.md §13).
 type RoutingConfig struct {
 	// Enabled switches it on; off means the Quality Policy's assignment alone (M1).
 	Enabled bool `json:"enabled"`
@@ -129,7 +129,7 @@ type Config struct {
 	PreferOpenAI bool          `json:"prefer_openai"`
 	Retry        RetryConfig   `json:"retry"`
 	Breaker      BreakerConfig `json:"breaker"`
-	// Routing is Multi-model routing on top of Policies (model-adapters.md §12).
+	// Routing is Multi-model routing on top of Policies (model-adapters.md §13).
 	Routing RoutingConfig `json:"routing"`
 }
 
@@ -169,7 +169,7 @@ func DefaultConfig() Config {
 		},
 		Retry:   RetryConfig{MaxAttempts: 3, BaseDelayMillis: 1000, MaxDelayMillis: 16000},
 		Breaker: BreakerConfig{FailureThreshold: 5, OpenSeconds: 30},
-		// model-adapters.md §12.2, §12.3: FAST weighs cost most, MAX QUALITY the Judge record.
+		// model-adapters.md §13.2, §12.3: FAST weighs cost most, MAX QUALITY the Judge record.
 		Routing: RoutingConfig{
 			Enabled: true, MinSamples: 5, PriorQuality: 0.75, SwitchMargin: 0.05,
 			Weights: map[domain.QualityPolicy]RoutingWeights{

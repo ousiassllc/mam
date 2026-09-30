@@ -33,7 +33,7 @@ type ShotRef struct {
 }
 
 const shotRefSelect = `SELECT sh.id, sh.scene_id, sh.order_index, COALESCE(sh.objective, ''), COALESCE(sh.duration_seconds, 0),
-       sh.shot_spec, sh.state, COALESCE(sh.selected_take_id, ''), s.project_id, s.order_index, s.title, COALESCE(s.time, ''), COALESCE(s.objective, '')
+       sh.shot_spec, sh.state, COALESCE(sh.selected_take_id, ''), s.project_id, COALESCE(s.branch_id, ''), s.order_index, s.title, COALESCE(s.time, ''), COALESCE(s.objective, '')
 FROM shot sh JOIN scene s ON s.id = sh.scene_id`
 
 func scanShotRef(row rowScanner) (ShotRef, error) {
@@ -43,7 +43,7 @@ func scanShotRef(row rowScanner) (ShotRef, error) {
 	)
 	sh := &r.Shot
 	if err := row.Scan(&sh.ID, &sh.SceneID, &sh.OrderIndex, &sh.Objective, &sh.Duration, &spec, &sh.State, &sh.SelectedTakeID,
-		&r.ProjectID, &r.Scene.OrderIndex, &r.Scene.Title, &r.Scene.Time, &r.Scene.Objective); err != nil {
+		&r.ProjectID, &r.Scene.BranchID, &r.Scene.OrderIndex, &r.Scene.Title, &r.Scene.Time, &r.Scene.Objective); err != nil {
 		return ShotRef{}, err
 	}
 	sh.ShotSpec = json.RawMessage(spec)
@@ -63,9 +63,10 @@ func (r *GenerationRepository) GetShot(ctx context.Context, shotID string) (Shot
 	return ref, nil
 }
 
-// ListProjectShots returns every Shot of the Project in story order (Scene, then Shot).
+// ListProjectShots returns every Shot of the trunk of the Project in story order (Scene, then
+// Shot). The Shots of a Branch are read with StoryShots.
 func (r *GenerationRepository) ListProjectShots(ctx context.Context, projectID string) ([]ShotRef, error) {
-	rows, err := r.db.Reader().QueryContext(ctx, shotRefSelect+` WHERE s.project_id = ? ORDER BY s.order_index, sh.order_index`, projectID)
+	rows, err := r.db.Reader().QueryContext(ctx, shotRefSelect+` WHERE s.project_id = ? AND s.branch_id IS NULL ORDER BY s.order_index, sh.order_index`, projectID)
 	if err != nil {
 		return nil, fmt.Errorf("list project shots: %w", err)
 	}
@@ -368,8 +369,9 @@ type NewReferencePack struct {
 func (r *GenerationRepository) SaveReferencePack(ctx context.Context, p NewReferencePack) error {
 	now := formatTime(r.now())
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
-		var current string
-		if err := tx.QueryRowContext(ctx, `SELECT shot_spec FROM shot WHERE id = ?`, p.ShotID).Scan(&current); err != nil {
+		var current, branchID string
+		if err := tx.QueryRowContext(ctx,
+			`SELECT sh.shot_spec, COALESCE(s.branch_id, '') FROM shot sh JOIN scene s ON s.id = sh.scene_id WHERE sh.id = ?`, p.ShotID).Scan(&current, &branchID); err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				return ErrNotFound
 			}
@@ -402,7 +404,7 @@ func (r *GenerationRepository) SaveReferencePack(ctx context.Context, p NewRefer
 			}
 		}
 		for _, ref := range p.References {
-			if err := ensureWorldEntity(ctx, tx, p.ProjectID, ref); err != nil {
+			if err := ensureWorldEntity(ctx, tx, p.ProjectID, branchID, ref); err != nil {
 				return err
 			}
 		}
@@ -432,10 +434,10 @@ func libraryName(ref domain.Reference) string {
 	return name
 }
 
-// WorldContext returns the World State of the Project: its Characters, Products and Locations
-// and the Camera and Story of the latest Shot.
-func (r *GenerationRepository) WorldContext(ctx context.Context, projectID string) (domain.WorldContext, error) {
-	return readWorld(ctx, r.db.Reader(), projectID)
+// WorldContext returns the World State of the trunk of the Project, or of its Branch when branchID
+// is set: its Characters, Products and Locations and the Camera and Story of the latest Shot.
+func (r *GenerationRepository) WorldContext(ctx context.Context, projectID, branchID string) (domain.WorldContext, error) {
+	return readWorld(ctx, r.db.Reader(), projectID, branchID)
 }
 
 // Budget is the money side of a Shot: the ceilings of the Project and the Shot (nil when unset,

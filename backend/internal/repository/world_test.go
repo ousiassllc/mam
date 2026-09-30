@@ -59,11 +59,11 @@ func TestWorldRepository_ApplyStateDiffAppendsVersionsAndKeepsEarlierOnes(t *tes
 	ctx := context.Background()
 	f := newWorldFixture(t)
 
-	w, err := f.world.World(ctx, f.projectID)
+	w, err := f.world.World(ctx, f.projectID, "")
 	require.NoError(t, err)
 	assert.Zero(t, w.Version, "no Shot has completed yet")
 
-	applied, v1, err := f.world.ApplyStateDiff(ctx, f.projectID, f.shotID, f.takeID, domain.StateDiff{Changes: []domain.StateChange{
+	applied, v1, err := f.world.ApplyStateDiff(ctx, f.projectID, "", f.shotID, f.takeID, domain.StateDiff{Changes: []domain.StateChange{
 		{Target: domain.TargetCharacter, ID: f.charID, Field: "emotion", To: raw(`"anxious"`)},
 		{Target: domain.TargetCamera, Field: "movement", To: raw(`"static"`)},
 		{Target: domain.TargetStory, Field: "known_information", To: raw(`["heard_noise"]`)},
@@ -73,13 +73,13 @@ func TestWorldRepository_ApplyStateDiffAppendsVersionsAndKeepsEarlierOnes(t *tes
 	require.Len(t, applied.Changes, 3)
 	assert.JSONEq(t, `"calm"`, string(applied.Changes[0].From), "the diff records the value it replaced")
 
-	_, v2, err := f.world.ApplyStateDiff(ctx, f.projectID, f.shotID, f.takeID, domain.StateDiff{Changes: []domain.StateChange{
+	_, v2, err := f.world.ApplyStateDiff(ctx, f.projectID, "", f.shotID, f.takeID, domain.StateDiff{Changes: []domain.StateChange{
 		{Target: domain.TargetCharacter, ID: f.charID, Field: "position", To: raw(`"hallway"`)},
 	}})
 	require.NoError(t, err)
 	assert.Equal(t, 2, v2)
 
-	w, err = f.world.World(ctx, f.projectID)
+	w, err = f.world.World(ctx, f.projectID, "")
 	require.NoError(t, err)
 	assert.Equal(t, 2, w.Version)
 	assert.Equal(t, "anxious", w.Characters[0].Emotion)
@@ -103,7 +103,7 @@ func TestWorldRepository_ApplyStateDiffSkipsLockedFieldsMissingEntitiesAndUnknow
 	f.lock(t, "character", f.charID, "wardrobe")
 	f.lock(t, "camera", "", "lens")
 
-	applied, _, err := f.world.ApplyStateDiff(ctx, f.projectID, f.shotID, f.takeID, domain.StateDiff{Changes: []domain.StateChange{
+	applied, _, err := f.world.ApplyStateDiff(ctx, f.projectID, "", f.shotID, f.takeID, domain.StateDiff{Changes: []domain.StateChange{
 		{Target: domain.TargetCharacter, ID: f.charID, Field: "wardrobe", To: raw(`"red_dress"`)},
 		{Target: domain.TargetCamera, Field: "lens", To: raw(`"85mm"`)},
 		{Target: domain.TargetCharacter, ID: "missing", Field: "emotion", To: raw(`"happy"`)},
@@ -115,7 +115,7 @@ func TestWorldRepository_ApplyStateDiffSkipsLockedFieldsMissingEntitiesAndUnknow
 	require.Len(t, applied.Changes, 1, "only the unlocked, known change is applied")
 	assert.Equal(t, "condition", applied.Changes[0].Field)
 
-	w, err := f.world.World(ctx, f.projectID)
+	w, err := f.world.World(ctx, f.projectID, "")
 	require.NoError(t, err)
 	assert.Equal(t, "black_coat", w.Characters[0].Wardrobe, "LOCKed wardrobe is untouched")
 	assert.Empty(t, w.Characters[0].Personality, "the State Extractor never sets personality")
@@ -127,24 +127,24 @@ func TestWorldRepository_UpdateEntityWritesFieldsAppendsVersionAndRefusesLocks(t
 	ctx := context.Background()
 	f := newWorldFixture(t)
 
-	require.NoError(t, f.world.UpdateEntity(ctx, f.projectID, domain.TargetCharacter, f.charID, map[string]string{"hairstyle": "long_black", "personality": "reserved"}))
-	w, err := f.world.World(ctx, f.projectID)
+	require.NoError(t, f.world.UpdateEntity(ctx, f.projectID, "", domain.TargetCharacter, f.charID, map[string]string{"hairstyle": "long_black", "personality": "reserved"}))
+	w, err := f.world.World(ctx, f.projectID, "")
 	require.NoError(t, err)
 	assert.Equal(t, "long_black", w.Characters[0].Hairstyle)
 	assert.Equal(t, "reserved", w.Characters[0].Personality)
 	assert.Equal(t, 1, w.Version, "a user edit is a new World State version too")
 
 	f.lock(t, "character", f.charID, "wardrobe")
-	err = f.world.UpdateEntity(ctx, f.projectID, domain.TargetCharacter, f.charID, map[string]string{"hairstyle": "short", "wardrobe": "red_dress"})
+	err = f.world.UpdateEntity(ctx, f.projectID, "", domain.TargetCharacter, f.charID, map[string]string{"hairstyle": "short", "wardrobe": "red_dress"})
 	assert.ErrorIs(t, err, repository.ErrLocked)
-	w, err = f.world.World(ctx, f.projectID)
+	w, err = f.world.World(ctx, f.projectID, "")
 	require.NoError(t, err)
 	assert.Equal(t, "long_black", w.Characters[0].Hairstyle, "all or none: the unlocked field of a refused update is not written either")
 	assert.Equal(t, 1, w.Version)
 
-	assert.ErrorIs(t, f.world.UpdateEntity(ctx, f.projectID, domain.TargetCharacter, "missing", map[string]string{"hairstyle": "x"}), repository.ErrNotFound)
-	assert.ErrorIs(t, f.world.UpdateEntity(ctx, "other-project", domain.TargetCharacter, f.charID, map[string]string{"hairstyle": "x"}), repository.ErrNotFound, "an entity of another Project is not found")
-	assert.Error(t, f.world.UpdateEntity(ctx, f.projectID, domain.TargetProduct, f.prodID, map[string]string{"name": "x"}), "only editable fields are written")
+	assert.ErrorIs(t, f.world.UpdateEntity(ctx, f.projectID, "", domain.TargetCharacter, "missing", map[string]string{"hairstyle": "x"}), repository.ErrNotFound)
+	assert.ErrorIs(t, f.world.UpdateEntity(ctx, "other-project", "", domain.TargetCharacter, f.charID, map[string]string{"hairstyle": "x"}), repository.ErrNotFound, "an entity of another Project is not found")
+	assert.Error(t, f.world.UpdateEntity(ctx, f.projectID, "", domain.TargetProduct, f.prodID, map[string]string{"name": "x"}), "only editable fields are written")
 }
 
 func TestWorldRepository_AutoModeLocksDoNotBlock(t *testing.T) {
@@ -153,7 +153,7 @@ func TestWorldRepository_AutoModeLocksDoNotBlock(t *testing.T) {
 	require.NoError(t, exec(t, f.db,
 		`INSERT INTO lock (id, project_id, target_type, target_id, parameter_name, mode, value) VALUES (?, ?, 'character', ?, 'wardrobe', 'auto', 'null')`,
 		domain.NewID(), f.projectID, f.charID))
-	require.NoError(t, f.world.UpdateEntity(ctx, f.projectID, domain.TargetCharacter, f.charID, map[string]string{"wardrobe": "red_dress"}))
+	require.NoError(t, f.world.UpdateEntity(ctx, f.projectID, "", domain.TargetCharacter, f.charID, map[string]string{"wardrobe": "red_dress"}))
 }
 
 func TestGenerationRepository_SaveReferencePackRegistersCharactersAndProductsOnce(t *testing.T) {
@@ -178,7 +178,7 @@ func TestGenerationRepository_SaveReferencePackRegistersCharactersAndProductsOnc
 	require.NoError(t, f.repo.SaveReferencePack(ctx, pack("one")))
 	require.NoError(t, f.repo.SaveReferencePack(ctx, pack("two")), "a rebuild does not duplicate them")
 
-	w, err := f.world.World(ctx, f.projectID)
+	w, err := f.world.World(ctx, f.projectID, "")
 	require.NoError(t, err)
 	require.Len(t, w.Characters, 2)
 	assert.Equal(t, "Mio", w.Characters[0].Name)

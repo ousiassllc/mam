@@ -17,6 +17,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector"
 	"github.com/ousiassllc/mam/backend/internal/agent/jev"
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
@@ -146,6 +147,7 @@ func serve(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 		Judge:       judging.config,
 		Jev:         shadow,
 		Media:       previews,
+		Speech:      audiodirector.NewElevenLabs(audiodirector.Config{}, keys, nil),
 	})
 	// Shots left GENERATING by an abnormal termination are released before their jobs are failed.
 	released, err := services.Recover(ctx)
