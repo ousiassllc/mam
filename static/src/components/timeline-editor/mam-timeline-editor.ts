@@ -2,10 +2,13 @@ import { LitElement, html, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { get, put } from '../lib/api';
 import {
+  CLIP_KIND_LABEL,
   TRANSITION_LABEL,
+  captionProblem,
   isDirty,
   moveClip,
   removeClip,
+  setCaption,
   setTransition,
   setTrim,
   timelineSeconds,
@@ -22,10 +25,19 @@ import '../video-player/mam-video-player';
 
 const log = createLogger('timeline-editor');
 
+/** The additional Shot only new footage settles (Editor → Reshoot Loop). */
+interface ShotNeed {
+  kind: 'insert' | 'reaction';
+  after_clip: number;
+  objective: string;
+  duration_seconds: number;
+}
+
 interface EditorFinding {
   clip_index: number;
   issue: string;
   action: string;
+  need_shot?: ShotNeed;
 }
 
 /** GET /api/v1/projects/:id/edit-timeline. The URLs are the server's: the component builds none. */
@@ -35,12 +47,18 @@ export interface EditTimelineBody {
   duration_seconds: number;
   clips: EditClip[];
   judge?: { verdict: 'pass' | 're_edit' | 'need_shot'; findings: EditorFinding[] };
+  branch_id?: string;
   save_url: string;
+  /** POST here (an action route) to ask the Director for the additional Shots of a need_shot verdict. */
+  request_shot_url: string;
   preview_url: string;
   transitions: TransitionType[];
   limits: EditLimits;
   readonly: boolean;
 }
+
+/** Fired when the server made new work of its own (the Reshoot Loop was started): the page's stage buttons reload. */
+export const TIMELINE_UPDATED_EVENT = 'timeline-updated';
 
 /** The event `htmx` fires (HX-Trigger of the Rough Cut / Final QC actions) when the timeline changed on the server. */
 export const TIMELINE_RELOAD_EVENT = 'timeline-reload';
@@ -154,6 +172,18 @@ export class MamTimelineEditor extends LitElement {
     this.change(setTransition(this.clips, index, type, Number.isFinite(seconds) ? seconds : 0.5, body.limits));
   }
 
+  private onCaption(index: number, input: HTMLTextAreaElement): void {
+    const body = this.body;
+    const clip = this.clips[index];
+    if (!body || !clip) return;
+    const problem = captionProblem(input.value, body.limits);
+    if (problem) {
+      this.error = `${clip.label}: ${problem}`;
+      return; // the text stays in the box so it can be shortened
+    }
+    this.change(setCaption(this.clips, index, input.value, body.limits));
+  }
+
   private onDrop(to: number): void {
     const from = this.dragIndex;
     this.dragIndex = this.overIndex = -1;
@@ -171,7 +201,7 @@ export class MamTimelineEditor extends LitElement {
       this.busy = false;
       await this.load();
       this.notice = '保存しました';
-      this.dispatchEvent(new CustomEvent('timeline-updated', { detail: { id: this.body?.id ?? '' }, bubbles: true, composed: true }));
+      this.dispatchEvent(new CustomEvent(TIMELINE_UPDATED_EVENT, { detail: { id: this.body?.id ?? '' }, bubbles: true, composed: true }));
     } catch (error) {
       this.error = errorMessage(error);
     } finally {
@@ -229,7 +259,16 @@ export class MamTimelineEditor extends LitElement {
       <p class="font-medium">Editor Judge: ${label}</p>
       ${judge.findings.length > 0
         ? html`<ul class="mt-1 flex flex-col gap-1 text-neutral-300">
-            ${judge.findings.map((f) => html`<li>${f.clip_index > 0 ? `クリップ ${f.clip_index}: ` : ''}${f.issue} → ${f.action}</li>`)}
+            ${judge.findings.map(
+              (f) => html`<li>
+                ${f.clip_index > 0 ? `クリップ ${f.clip_index}: ` : ''}${f.issue} → ${f.action}
+                ${f.need_shot
+                  ? html`<span class="text-amber-300" data-need-shot>
+                      （追加 Shot: ${CLIP_KIND_LABEL[f.need_shot.kind]} ${f.need_shot.duration_seconds.toFixed(1)} 秒をクリップ ${f.need_shot.after_clip} の後に）
+                    </span>`
+                  : nothing}
+              </li>`,
+            )}
           </ul>`
         : nothing}
     </div>`;
@@ -263,7 +302,9 @@ export class MamTimelineEditor extends LitElement {
         <span class="text-xs text-neutral-500">${i + 1}</span>
         ${c.thumbnail_url ? html`<img class="h-10 w-auto rounded" src=${c.thumbnail_url} alt="" />` : nothing}
         <div class="min-w-40 flex-1">
-          <p class="text-sm font-medium">${c.label}</p>
+          <p class="text-sm font-medium">
+            ${c.label}${c.kind && c.kind !== 'main' ? html` <span class="rounded bg-sky-900 px-1.5 py-0.5 text-[10px] text-sky-200" data-kind=${c.kind}>${CLIP_KIND_LABEL[c.kind]}</span>` : nothing}
+          </p>
           ${c.objective ? html`<p class="text-xs text-neutral-400">${c.objective}</p>` : nothing}
         </div>
         <span class="text-xs text-neutral-400" data-start>${c.start.toFixed(1)} 秒〜 / ${(c.out_point - c.in_point).toFixed(1)} 秒</span>
@@ -296,6 +337,19 @@ export class MamTimelineEditor extends LitElement {
                     <input type="number" data-field="transition-seconds" step="0.05" min="0.1" max=${body.limits.max_transition_seconds} class="w-24 rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-neutral-100" .value=${String(t.seconds)} ?disabled=${locked} @change=${(e: Event) => this.onTransition(i, t.type, (e.target as HTMLInputElement).value)} />
                   </label>`}`}
       </div>
+      <label class="flex flex-col gap-1 text-xs text-neutral-400">
+        字幕（Caption）
+        <textarea
+          data-field="caption"
+          rows="2"
+          maxlength=${body.limits.max_caption_runes * 2}
+          placeholder="この区間に重ねる文字。空なら字幕なし"
+          class="rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-neutral-100"
+          .value=${c.caption ?? ''}
+          ?disabled=${locked}
+          @change=${(e: Event) => this.onCaption(i, e.target as HTMLTextAreaElement)}
+        ></textarea>
+      </label>
     </li>`;
   }
 }

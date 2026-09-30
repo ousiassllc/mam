@@ -139,13 +139,25 @@ func TestJudge_ModelPassKeepsRuleFindings(t *testing.T) {
 	assert.Len(t, findings, 1)
 }
 
-func TestJudge_ModelNeedShotIsNotAnM1Verdict(t *testing.T) {
-	m := &fakeLLM{answer: `{"verdict":"need_shot","findings":[{"clip_index":1,"issue":"Reaction Shot が足りない","action":"追加撮影"}]}`}
+func TestJudge_ModelNeedShotAsksForAnAdditionalShot(t *testing.T) {
+	m := &fakeLLM{answer: `{"verdict":"need_shot","findings":[{"clip_index":1,"issue":"リアクションが足りない","action":"リアクションを足す",` +
+		`"need_shot":{"kind":"reaction","after_clip":1,"objective":" 驚く表情 ","duration_seconds":2}}]}`}
 
-	verdict, _, err := editor.NewJudge(m).Judge(context.Background(), judgeInput())
+	verdict, findings, err := editor.NewJudge(m).Judge(context.Background(), judgeInput())
 
 	require.NoError(t, err)
-	assert.Equal(t, domain.EditorReEdit, verdict, "material shortage is M3: the finding is handed back as a re-edit")
+	assert.Equal(t, domain.EditorNeedShot, verdict)
+	require.Len(t, findings, 1)
+	assert.Equal(t, &domain.ShotNeed{Kind: domain.ClipReaction, AfterClip: 1, Objective: "驚く表情", DurationSeconds: 2}, findings[0].Need)
+}
+
+func TestJudge_ModelNeedShotThatCannotBePlacedIsAnError(t *testing.T) {
+	m := &fakeLLM{answer: `{"verdict":"need_shot","findings":[{"clip_index":1,"issue":"足りない","action":"足す",` +
+		`"need_shot":{"kind":"insert","after_clip":9,"objective":"x","duration_seconds":2}}]}`}
+
+	_, _, err := editor.NewJudge(m).Judge(context.Background(), judgeInput())
+
+	assert.ErrorIs(t, err, llm.ErrInvalidOutput)
 }
 
 func TestJudge_UnusableModelAnswersAreErrors(t *testing.T) {

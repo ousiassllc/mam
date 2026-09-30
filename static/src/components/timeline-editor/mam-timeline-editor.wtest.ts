@@ -30,9 +30,10 @@ function timeline(id: string, clips: EditClip[], over: Partial<EditTimelineBody>
     duration_seconds: 0,
     clips,
     save_url: `/edit-timelines/${id}`,
+    request_shot_url: `/edit-timelines/${id}/request-additional-shot`,
     preview_url: `/edit-timelines/${id}/preview`,
     transitions: ['cut', 'fade', 'fade_black', 'dissolve'],
-    limits: { min_clip_seconds: 0.5, max_transition_seconds: 2, max_clips: 200 },
+    limits: { min_clip_seconds: 0.5, max_transition_seconds: 2, max_clips: 200, max_caption_runes: 10 },
     readonly: false,
     ...over,
   };
@@ -159,5 +160,58 @@ describe('mam-timeline-editor', () => {
     document.body.dispatchEvent(new CustomEvent('timeline-reload', { bubbles: true }));
     await waitUntil(() => order(el).join() === 'z');
     expect(el.querySelector('mam-video-player')?.getAttribute('video-src')).to.equal('/edit-timelines/e2/preview');
+  });
+
+  it('edits the caption of a clip and saves it with the clip kind', async () => {
+    let gets = 0;
+    stub = stubFetch({
+      [`GET ${API}`]: () => {
+        gets += 1;
+        return { body: timeline(`e${gets}`, [clip('a', 0, 4), clip('r', 0, 2, { kind: 'reaction' })]) };
+      },
+      'PUT /edit-timelines/e1': { status: 200 },
+    });
+    const el = await editor();
+    expect(text(el, '[data-clip="r"] [data-kind]')).to.equal('リアクション');
+    expect(el.querySelector('[data-clip="a"] [data-kind]')).to.equal(null);
+
+    type(el.querySelector('[data-clip="a"] [data-field="caption"]') as HTMLTextAreaElement as unknown as HTMLInputElement, '  朝が来た ');
+    await waitUntil(() => text(el, '[data-total]')?.includes('未保存') === true);
+    (el.querySelector('[data-action="save"]') as HTMLButtonElement).click();
+    await waitUntil(() => stub.requests.some((r) => r.method === 'PUT'));
+
+    const sent = (stub.requests.find((r) => r.method === 'PUT')!.body as { clips: Array<Record<string, unknown>> }).clips;
+    expect(sent[0]).to.deep.include({ shot_id: 'a', kind: 'main', caption: '朝が来た' });
+    expect(sent[1]).to.deep.include({ shot_id: 'r', kind: 'reaction', caption: '' });
+  });
+
+  it('refuses a caption over the limit without changing the clip', async () => {
+    stub = stubFetch({ [`GET ${API}`]: { body: timeline('e1', three()) } });
+    const el = await editor();
+
+    type(el.querySelector('[data-clip="a"] [data-field="caption"]') as HTMLTextAreaElement as unknown as HTMLInputElement, 'あ'.repeat(11));
+    await waitUntil(() => el.querySelector('[data-error]') !== null);
+
+    expect(text(el, '[data-error]')).to.contain('10 文字以内');
+    expect((el.querySelector('[data-action="save"]') as HTMLButtonElement).disabled).to.equal(true);
+  });
+
+  it('shows the additional Shot a need_shot verdict asks the Director for', async () => {
+    const judge = {
+      verdict: 'need_shot' as const,
+      findings: [
+        {
+          clip_index: 2,
+          issue: 'リアクションがありません',
+          action: 'リアクションショットを足す',
+          need_shot: { kind: 'reaction' as const, after_clip: 2, objective: '驚く', duration_seconds: 1.5 },
+        },
+      ],
+    };
+    stub = stubFetch({ [`GET ${API}`]: { body: timeline('e1', three(), { judge }) } });
+    const el = await editor();
+
+    expect(text(el, '[data-judge]')).to.contain('素材不足');
+    expect(text(el, '[data-need-shot]')).to.contain('リアクション 1.5 秒をクリップ 2 の後に');
   });
 });

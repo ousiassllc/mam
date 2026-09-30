@@ -21,16 +21,16 @@ func TestEditorRepository_TimelinesAreAppendedAndAStaleBaseIsRefused(t *testing.
 	repo := repository.NewEditorRepository(db)
 	ctx := context.Background()
 
-	first, err := repo.SaveEditTimeline(ctx, "p1", "", timelineOf(4))
+	first, err := repo.SaveEditTimeline(ctx, "p1", "", "", timelineOf(4))
 	require.NoError(t, err)
-	second, err := repo.SaveEditTimeline(ctx, "p1", first.ID, timelineOf(3))
+	second, err := repo.SaveEditTimeline(ctx, "p1", "", first.ID, timelineOf(3))
 	require.NoError(t, err)
-	_, err = repo.SaveEditTimeline(ctx, "p1", first.ID, timelineOf(2)) // an editor still on the first version
+	_, err = repo.SaveEditTimeline(ctx, "p1", "", first.ID, timelineOf(2)) // an editor still on the first version
 
 	assert.Equal(t, 1, first.VersionNumber)
 	assert.Equal(t, 2, second.VersionNumber)
 	assert.ErrorIs(t, err, repository.ErrStale)
-	latest, err := repo.LatestEditTimeline(ctx, "p1")
+	latest, err := repo.LatestEditTimeline(ctx, "p1", "")
 	require.NoError(t, err)
 	assert.Equal(t, second.ID, latest.ID)
 	assert.Equal(t, 3.0, latest.Timeline.Clips[0].Out)
@@ -44,9 +44,9 @@ func TestEditorRepository_NotFound(t *testing.T) {
 	repo := repository.NewEditorRepository(db)
 	ctx := context.Background()
 
-	_, err := repo.SaveEditTimeline(ctx, "nope", "", timelineOf(4))
+	_, err := repo.SaveEditTimeline(ctx, "nope", "", "", timelineOf(4))
 	assert.ErrorIs(t, err, repository.ErrNotFound)
-	_, err = repo.LatestEditTimeline(ctx, "nope")
+	_, err = repo.LatestEditTimeline(ctx, "nope", "")
 	assert.ErrorIs(t, err, repository.ErrNotFound)
 	_, err = repo.LatestAudioTimeline(ctx, "nope")
 	assert.ErrorIs(t, err, repository.ErrNotFound)
@@ -61,7 +61,7 @@ func TestEditorRepository_JudgeQCAndExportHistory(t *testing.T) {
 	seedProject(t, db, "p1")
 	repo := repository.NewEditorRepository(db)
 	ctx := context.Background()
-	et, err := repo.SaveEditTimeline(ctx, "p1", "", timelineOf(4))
+	et, err := repo.SaveEditTimeline(ctx, "p1", "", "", timelineOf(4))
 	require.NoError(t, err)
 
 	_, err = repo.SaveEditorJudge(ctx, et.ID, domain.EditorReEdit, []domain.EditorFinding{{ClipIndex: 1, Issue: "長い", Action: "短く"}})

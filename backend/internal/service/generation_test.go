@@ -52,6 +52,8 @@ type genReasoner struct {
 	planner func(user string) string
 	// director answers the Director Agent (Continue) from its prompt; nil means an empty answer.
 	director func(system, user string) string
+	// editor answers the Editor Judge; nil means an empty answer.
+	editor string
 }
 
 func (g *genReasoner) Complete(_ context.Context, agent llm.Agent, req llm.Request) (llm.Response, error) {
@@ -73,6 +75,9 @@ func (g *genReasoner) Complete(_ context.Context, agent llm.Agent, req llm.Reque
 		if g.interpreter != nil {
 			text = g.interpreter(req.User)
 		}
+	}
+	if agent == llm.AgentEditor {
+		text = g.editor
 	}
 	if agent == llm.AgentDirector && g.director != nil {
 		text = g.director(req.System, req.User)

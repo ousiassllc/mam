@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 )
 
@@ -24,6 +25,8 @@ type Cut struct {
 	// Overlap is the length of the transition in seconds. It is shortened to half of the shorter
 	// of the two cuts it joins.
 	Overlap float64
+	// Caption is the text drawn over the cut ("" for none); ffmpeg needs the drawtext filter.
+	Caption string
 }
 
 // Length is the duration of the cut in seconds.
@@ -68,7 +71,24 @@ func (t Tools) Render(ctx context.Context, cuts []Cut, opt RenderOptions, dst st
 	if w == 0 || h == 0 {
 		w, h = infos[0].Width&^1, infos[0].Height&^1
 	}
-	graph, nativeAudio := renderGraph(clamped, infos, w, h, opt.Audio == "")
+	var err error
+	captionDir := ""
+	captions := make([]string, len(clamped))
+	for i, c := range clamped {
+		if strings.TrimSpace(c.Caption) == "" {
+			continue
+		}
+		if captionDir == "" {
+			if captionDir, err = os.MkdirTemp("", "mam-caption-"); err != nil {
+				return Info{}, fmt.Errorf("render: %w", err)
+			}
+			defer func() { _ = os.RemoveAll(captionDir) }()
+		}
+		if captions[i], err = captionFilter(captionDir, i, c.Caption, w, h); err != nil {
+			return Info{}, fmt.Errorf("render: %w", err)
+		}
+	}
+	graph, nativeAudio := renderGraph(clamped, infos, w, h, opt.Audio == "", captions)
 	args := make([]string, 0, 2*len(clamped)+24)
 	for _, c := range clamped {
 		args = append(args, "-i", c.Path)
@@ -138,7 +158,7 @@ func overlapOf(cuts []Cut, i int) float64 {
 
 // renderGraph builds the filter graph of Render: the picture comes out as [v], and, when native
 // is set and every cut has sound, the sound as [a] (reported by the second result).
-func renderGraph(cuts []Cut, infos []Info, w, h int, native bool) (graph string, audio bool) {
+func renderGraph(cuts []Cut, infos []Info, w, h int, native bool, captions []string) (graph string, audio bool) {
 	audio = native
 	for _, in := range infos {
 		audio = audio && in.HasAudio
@@ -146,8 +166,8 @@ func renderGraph(cuts []Cut, infos []Info, w, h int, native bool) (graph string,
 	var parts []string
 	for i, c := range cuts {
 		parts = append(parts, fmt.Sprintf(
-			"[%d:v]trim=start=%s:end=%s,setpts=PTS-STARTPTS,fps=%s,settb=AVTB,scale=%d:%d:force_original_aspect_ratio=decrease,pad=%d:%d:(ow-iw)/2:(oh-ih)/2,setsar=1,format=yuv420p[v%d]",
-			i, sec(c.Start), sec(c.End), infos[0].FrameRate, w, h, w, h, i))
+			"[%d:v]trim=start=%s:end=%s,setpts=PTS-STARTPTS,fps=%s,settb=AVTB,scale=%d:%d:force_original_aspect_ratio=decrease,pad=%d:%d:(ow-iw)/2:(oh-ih)/2,setsar=1,format=yuv420p%s[v%d]",
+			i, sec(c.Start), sec(c.End), infos[0].FrameRate, w, h, w, h, captions[i], i))
 		if audio {
 			parts = append(parts, fmt.Sprintf(
 				"[%d:a]atrim=start=%s:end=%s,asetpts=PTS-STARTPTS,aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo[a%d]",

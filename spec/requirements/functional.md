@@ -219,6 +219,22 @@ Scene/Shot 配下に複数 Branch をツリー表示し、Branch 間の比較・
 
 **Export（F-26）**: Aspect Ratio（Project の Brief の値を既定とし、`16:9` / `9:16` / `1:1` / `4:5` から選択）、解像度（短辺 `720p` / `1080p` / `1440p` / `2160p`）、コーデック（`h264` / `h265` / `vp9`）を指定してローカルへ書き出す。書き出しはアトミックに行い（一時ファイルへ書いて完了後にリネーム）、途中で失敗しても不完全なファイルは残らない。
 
+### 3.7 M3 の Editor（F-18 Advanced / F-19）の範囲
+
+Editor Agent は Production Template（`spec/spec.md` §19）が評価軸に持つ項目だけを扱う。テンプレートに無い項目は見ない。
+
+| 項目 | 見るテンプレート | 内容 | 直し方 |
+|------|-----------------|------|--------|
+| Pace / Retention | SNS / SHORT VIDEO（Tempo・Retention）、DRAMA（Editing Rhythm） | 1 クリップの長さの上限（SNS 4 秒、DRAMA 6 秒） | 編集（Rough Cut 作成時に自動で短縮。Brief の Duration の許容範囲を下回らない） |
+| Hook | PRODUCT / CM（Hook）、SNS（Opening Hook） | 冒頭クリップを 3 秒以内で切り替える | 編集 |
+| CTA Timing | PRODUCT / CM、SNS（CTA） | 最後のクリップを 1.5 秒以上見せる | 編集（Take の長さの範囲で延長） |
+| Caption | SNS（Caption） | セリフのある Shot に字幕を入れる。タイムラインで編集でき、書き出し・プレビューに焼き込む | 編集 |
+| Product Exposure | PRODUCT / CM | 商品が映る時間が全体の 25% 以上 | 素材不足（商品のインサートショットを追加） |
+| Reaction Shot / Insert Shot | DRAMA（Dialogue・Acting・Emotion） | セリフのクリップが 3 つ続いたらリアクションを挟む | 素材不足（リアクションショットを追加） |
+| Narrative Clarity | すべて | LLM による Editor Judge の講評（Shot の並びと物語の流れ） | 編集 または 素材不足 |
+
+**Editor → Reshoot Loop（F-19）**: 素材不足の指摘は追加 Shot（`kind`・挿入位置・長さ・狙い）を伴い、Editor Judge の判定は `need_shot` になる。`POST /edit-timelines/:id/request-additional-shot`（AUTO では判定に続いて自動）が Director に追加 Shot を作らせ、Selected Take が揃うと元の Shot の後にクリップとして足して EDITING へ戻る。要求の回数は Retry Policy の Max retries（Repair / Retake Loop と共通）で制限し、上限に達したら Escalation カードでユーザーに判断を求める。Edit Timeline は Branch ごとに独立した版として保持する。
+
 ## 改訂履歴
 
 | 版 | 日付 | 変更内容 | 変更理由 |
@@ -233,4 +249,5 @@ Scene/Shot 配下に複数 Branch をツリー表示し、Branch 間の比較・
 | 1.7 | 2026-09-30 | F-14 の Partial Regeneration を「M1: Judge の `preserve` を保つ Shot 全体の再生成 / M2: 問題の時間範囲だけを差し替えるつなぎ込み」に分けて明記（`spec/spec.md` §13・§27 と一致）。UC-2 に区間指定の指示を追加 | `spec.md` §27 は Partial Regeneration を MVP 2、F-14 は M1 としており食い違っていたため（Issue #16） |
 | 1.8 | 2026-09-30 | §3.6 を追加し、F-18 Simple の編集項目（Shot Selection / Cut Point / Timing / Transition）、F-20 簡易版の範囲（Dialogue / Narration の TTS + ローカル DSP のラウドネス正規化）、Final QC の M1 判定、Export の指定項目を確定 | Issue #14 の着手前確定事項（M1 の Simple / 簡易版と Advanced / M3 の境界が仕様になかったため） |
 | 1.9 | 2026-09-30 | UC-9 / F-23 に強制レベル（`lock` は違反時 FAIL・403、`advisory` は警告）と適用の仕方（`spec/spec.md` §26.1）を参照させ、Final QC の記述を更新 | M2「Safety / Brand Constraints」（Issue #23）の実装に合わせるため。制約の単位は UC-9 のとおり Project 単位（`spec.md` §26 の Organization 表記を修正） |
-| 1.10 | 2026-09-30 | UC-11（チームでのレビューと承認）と F-32（Team Collaboration）を追加 | M3「Team Collaboration」（Issue #28）の要件が未定義だったため。スコープ外（同時編集・SaaS）を超えない範囲で確定した（`spec/overview.md` 1.6） |
+| 1.10 | 2026-09-30 | §3.7 に M3 の Editor（Advanced 編集項目・Reshoot Loop）の範囲を追加 | Advanced Editor Agent と Editor → Reshoot Loop（Issue #24）の実装に合わせるため |
+| 1.11 | 2026-09-30 | UC-11（チームでのレビューと承認）と F-32（Team Collaboration）を追加 | M3「Team Collaboration」（Issue #28）の要件が未定義だったため。スコープ外（同時編集・SaaS）を超えない範囲で確定した（`spec/overview.md` 1.6） |

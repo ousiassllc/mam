@@ -4,9 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 // TransitionType is how a clip of the Edit Timeline follows the one before it (F-18 Simple).
@@ -47,6 +49,31 @@ const (
 	MaxClips = 200
 )
 
+// ClipKind tells the story clips of the Edit Timeline from the cutaways added in editing.
+type ClipKind string
+
+// Clip kinds. Insert and reaction clips are Shots used as a cutaway: the additional Shots of the
+// Reshoot Loop become one of them.
+const (
+	ClipMain     ClipKind = "main"
+	ClipInsert   ClipKind = "insert"
+	ClipReaction ClipKind = "reaction"
+)
+
+// ClipKinds lists every valid ClipKind.
+func ClipKinds() []ClipKind { return []ClipKind{ClipMain, ClipInsert, ClipReaction} }
+
+// Valid reports whether k is a known kind.
+func (k ClipKind) Valid() bool { return slices.Contains(ClipKinds(), k) }
+
+// MaxCaptionRunes bounds a caption: it is written over the picture in one or two lines.
+const MaxCaptionRunes = 60
+
+// CleanCaption trims a caption and turns its line breaks into spaces.
+func CleanCaption(s string) string {
+	return strings.Join(strings.Fields(s), " ")
+}
+
 // Transition is the switch from the previous clip into this one.
 type Transition struct {
 	Type    TransitionType `json:"type"`
@@ -58,6 +85,11 @@ type Transition struct {
 type EditClip struct {
 	ShotID string `json:"shot_id"`
 	TakeID string `json:"take_id"`
+	// Kind is what the clip is: the story (ClipMain, the default), a cutaway (ClipInsert) or a
+	// reaction (ClipReaction) (F-18 Advanced: Reaction Shot, Insert Shot).
+	Kind ClipKind `json:"kind,omitempty"`
+	// Caption is the text shown over the clip ("" for none) (F-18 Advanced: Caption).
+	Caption string `json:"caption,omitempty"`
 	// SourceSeconds is the length of the Take file (0 when unknown); Out never needs to exceed it.
 	SourceSeconds float64    `json:"source_seconds,omitempty"`
 	In            float64    `json:"in_point"`
@@ -102,6 +134,17 @@ func (t EditTimeline) Normalize() (EditTimeline, error) {
 		if c.SourceSeconds > 0 && c.Out > c.SourceSeconds+0.05 {
 			return EditTimeline{}, invalidTimeline("クリップ %d の終了点が Take の長さ（%.1f 秒）を超えています", i+1, c.SourceSeconds)
 		}
+		kind := c.Kind
+		if kind == "" {
+			kind = ClipMain
+		}
+		if !kind.Valid() {
+			return EditTimeline{}, invalidTimeline("クリップ %d の種類が正しくありません: %s", i+1, kind)
+		}
+		caption := CleanCaption(c.Caption)
+		if utf8.RuneCountInString(caption) > MaxCaptionRunes {
+			return EditTimeline{}, invalidTimeline("クリップ %d の字幕は %d 文字以内にしてください", i+1, MaxCaptionRunes)
+		}
 		if c.Transition.Type == "" {
 			c.Transition.Type = TransitionCut
 		}
@@ -114,6 +157,7 @@ func (t EditTimeline) Normalize() (EditTimeline, error) {
 		case !finite(c.Transition.Seconds) || c.Transition.Seconds <= 0 || c.Transition.Seconds > MaxTransitionSeconds:
 			return EditTimeline{}, invalidTimeline("クリップ %d の Transition は 0 秒より長く %.0f 秒以下にしてください", i+1, MaxTransitionSeconds)
 		}
+		c.Kind, c.Caption = kind, caption
 		out.Clips[i] = c
 	}
 	return out, nil
@@ -151,8 +195,11 @@ func (t EditTimeline) Duration() float64 {
 
 // EditTimelineVersion is one row of edit_timeline_version. Every edit appends a version.
 type EditTimelineVersion struct {
-	ID            string
+	ID string
+	// ProjectID and BranchID say whose timeline it is; BranchID is "" for the trunk. Every Branch
+	// has its own series of versions.
 	ProjectID     string
+	BranchID      string
 	VersionNumber int
 	Timeline      EditTimeline
 	CreatedAt     time.Time
@@ -161,19 +208,60 @@ type EditTimelineVersion struct {
 // EditorVerdict is the result of the Editor Judge (editor_judge_result.result).
 type EditorVerdict string
 
-// Editor Judge verdicts. NeedShot (missing material, F-19) is judged from M3 on.
+// Editor Judge verdicts. NeedShot is missing material (F-19): the editor cannot fix it, so the
+// Director is asked for an additional Shot (Editor → Reshoot Loop).
 const (
 	EditorPass     EditorVerdict = "pass"
 	EditorReEdit   EditorVerdict = "re_edit"
 	EditorNeedShot EditorVerdict = "need_shot"
 )
 
-// EditorFinding is one thing the Editor Judge found wrong, with the edit that fixes it.
+// Limits of an additional Shot the Editor Judge asks for.
+const (
+	// MaxShotNeeds bounds the additional Shots one Editor Judge run asks for.
+	MaxShotNeeds = 3
+	// MinNeedSeconds and MaxNeedSeconds bound the length of an additional Shot.
+	MinNeedSeconds = 1.0
+	MaxNeedSeconds = 8.0
+	// DefaultNeedSeconds is the length used when the Judge did not name one.
+	DefaultNeedSeconds = 2.0
+)
+
+// ShotNeed is the additional Shot the Editor Judge asks the Director for: what is missing (a
+// reaction, an insert such as the product hero shot), where in the cut it goes and how long it is.
+type ShotNeed struct {
+	// Kind is ClipReaction or ClipInsert: what the clip made of the new Shot will be.
+	Kind ClipKind `json:"kind"`
+	// AfterClip is the 1-based clip of the timeline the new Shot follows.
+	AfterClip       int     `json:"after_clip"`
+	Objective       string  `json:"objective"`
+	DurationSeconds float64 `json:"duration_seconds"`
+}
+
+// Valid reports whether the need can be acted on for a timeline of clips clips.
+func (n ShotNeed) Valid(clips int) bool {
+	return (n.Kind == ClipReaction || n.Kind == ClipInsert) && n.AfterClip >= 1 && n.AfterClip <= clips &&
+		strings.TrimSpace(n.Objective) != "" && finite(n.DurationSeconds) && n.DurationSeconds >= 0 && n.DurationSeconds <= MaxNeedSeconds
+}
+
+// Seconds is the length of the additional Shot: the one asked for, at least MinNeedSeconds, or
+// DefaultNeedSeconds when none was asked for.
+func (n ShotNeed) Seconds() float64 {
+	if n.DurationSeconds <= 0 {
+		return DefaultNeedSeconds
+	}
+	return math.Max(n.DurationSeconds, MinNeedSeconds)
+}
+
+// EditorFinding is one thing the Editor Judge found wrong, with the edit that fixes it. A finding
+// that no edit can fix (missing material) carries the Shot that would.
 type EditorFinding struct {
 	// ClipIndex is the 1-based position of the clip (0: the timeline as a whole).
 	ClipIndex int    `json:"clip_index"`
 	Issue     string `json:"issue"`
 	Action    string `json:"action"`
+	// Need is the additional Shot to ask the Director for; nil for a finding an edit fixes.
+	Need *ShotNeed `json:"need_shot,omitempty"`
 }
 
 // EditorJudgeResult is one row of editor_judge_result.

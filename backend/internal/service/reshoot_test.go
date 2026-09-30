@@ -1,0 +1,132 @@
+package service_test
+
+import (
+	"context"
+	"database/sql"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/service"
+)
+
+const needReaction = `{"verdict":"need_shot","findings":[{"clip_index":1,"issue":"リアクションがない","action":"リアクションショットを足す",` +
+	`"need_shot":{"kind":"reaction","after_clip":1,"objective":"驚いて振り返る","duration_seconds":2}}]}`
+
+// editedFixture is a Project whose only Shot has a Selected Take and a Rough Cut, judged NEED_SHOT.
+func editedFixture(t *testing.T) (genFixture, domain.EditTimelineVersion) {
+	t.Helper()
+	f := newGenFixture(t, true)
+	f.llm.extractor = extractAnswer
+	// The additional Shot is shorter than the canned spec's acting.
+	f.llm.planner = func(string) string {
+		return `{"shot_objective":"Character looks back, surprised","duration":"2.0s","camera":{"lens":"35mm","framing":"close"},"lighting":{"mood":"cold blue"},"continuity":{"start_from_previous_final_state":true}}`
+	}
+	f.buildReferencePack(t)
+	f.generateAndWait(t, f.shotID, 2)
+	f.selectTakeOf(t, f.shotID)
+	f.execSQL(t, `UPDATE project SET production_template = 'drama', state = 'VISUAL_DESIGN' WHERE id = ?`, f.projectID)
+	ctx := context.Background()
+	view, err := f.svc.Editor.RoughCut(ctx, f.projectID, "")
+	require.NoError(t, err)
+	require.NotNil(t, view.Timeline)
+	f.llm.editor = needReaction
+	view, err = f.svc.Editor.JudgeTimeline(ctx, view.Timeline.ID)
+	require.NoError(t, err)
+	return f, view.Timeline.EditTimelineVersion
+}
+
+func (f genFixture) execSQL(t *testing.T, q string, args ...any) {
+	t.Helper()
+	require.NoError(t, f.db.Write(context.Background(), func(ctx context.Context, tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, q, args...)
+		return err
+	}))
+}
+
+// selectTakeOf makes the newest Take of the Shot its Selected Take.
+func (f genFixture) selectTakeOf(t *testing.T, shotID string) {
+	t.Helper()
+	var takeID string
+	require.NoError(t, f.query(t, `SELECT t.id FROM take t JOIN prompt_version pv ON pv.id = t.prompt_version_id WHERE pv.shot_id = ? ORDER BY t.rowid DESC LIMIT 1`, shotID).Scan(&takeID))
+	_, err := f.svc.Takes.Select(context.Background(), takeID)
+	require.NoError(t, err)
+}
+
+func (f genFixture) state(t *testing.T) domain.ProjectState {
+	t.Helper()
+	p, err := f.svc.Projects.Get(context.Background(), f.projectID)
+	require.NoError(t, err)
+	return p.State
+}
+
+func TestEditorReshootLoop_AdditionalShotIsMadeAndPutIntoTheTimelineAfterItsAnchor(t *testing.T) {
+	f, judged := editedFixture(t)
+	ctx := context.Background()
+
+	// The NEED_SHOT verdict in AUTO asks the Director by itself: a new Shot is generated.
+	require.Eventually(t, func() bool { return f.trunkShots(t) == 2 }, 10*time.Second, 10*time.Millisecond, "the Director makes the additional Shot")
+	assert.Equal(t, domain.StateGenerating, f.state(t))
+	var newShot string
+	require.NoError(t, f.query(t, `SELECT id FROM shot WHERE id <> ?`, f.shotID).Scan(&newShot))
+	f.waitJobsDone(t)
+	require.Eventually(t, func() bool {
+		return f.count(t, `SELECT COUNT(*) FROM take t JOIN prompt_version pv ON pv.id = t.prompt_version_id WHERE pv.shot_id = ?`, newShot) > 0
+	}, 30*time.Second, 10*time.Millisecond)
+
+	view, err := f.svc.Editor.View(ctx, f.projectID, "")
+	require.NoError(t, err)
+	assert.Equal(t, 1, view.PendingShots, "the Shot has no Selected Take yet")
+
+	// Selecting its Take returns to the Editor: the clip follows its anchor as a reaction.
+	f.selectTakeOf(t, newShot)
+	require.Eventually(t, func() bool { return f.state(t) == domain.StateEditing }, 10*time.Second, 10*time.Millisecond, "back to EDITING")
+	view, err = f.svc.Editor.View(ctx, f.projectID, "")
+	require.NoError(t, err)
+	require.NotNil(t, view.Timeline)
+	assert.Equal(t, judged.VersionNumber+1, view.Timeline.VersionNumber)
+	require.Len(t, view.Timeline.Clips, 2)
+	assert.Equal(t, f.shotID, view.Timeline.Clips[0].ShotID)
+	assert.Equal(t, newShot, view.Timeline.Clips[1].ShotID)
+	assert.Equal(t, domain.ClipReaction, view.Timeline.Clips[1].Kind)
+	assert.InDelta(t, 2, view.Timeline.Clips[1].Length(), 1e-9)
+	assert.Zero(t, view.PendingShots)
+
+	// A Rough Cut made again keeps the additional Shot (it is not a story Shot).
+	again, err := f.svc.Editor.RoughCut(ctx, f.projectID, "")
+	require.NoError(t, err)
+	require.Len(t, again.Timeline.Clips, 2)
+	assert.Equal(t, domain.ClipReaction, again.Timeline.Clips[1].Kind)
+}
+
+func TestEditorReshootLoop_StopsAtTheRetryPolicyLimitAndEscalates(t *testing.T) {
+	f, _ := editedFixture(t)
+	ctx := context.Background()
+	require.Eventually(t, func() bool { return f.trunkShots(t) == 2 }, 10*time.Second, 10*time.Millisecond)
+	f.waitJobsDone(t)
+	var newShot string
+	require.NoError(t, f.query(t, `SELECT id FROM shot WHERE id <> ?`, f.shotID).Scan(&newShot))
+	require.Eventually(t, func() bool {
+		return f.count(t, `SELECT COUNT(*) FROM take t JOIN prompt_version pv ON pv.id = t.prompt_version_id WHERE pv.shot_id = ?`, newShot) > 0
+	}, 30*time.Second, 10*time.Millisecond)
+	f.selectTakeOf(t, newShot)
+	require.Eventually(t, func() bool { return f.state(t) == domain.StateEditing }, 10*time.Second, 10*time.Millisecond)
+
+	// One round is the whole budget of Retry Policy "max retries = 1".
+	_, err := f.svc.Policy.SetQualityPolicy(ctx, f.projectID, domain.QualityBalanced, &service.PolicyForm{MaxRetries: "1"})
+	require.NoError(t, err)
+	view, err := f.svc.Editor.View(ctx, f.projectID, "")
+	require.NoError(t, err)
+	view, err = f.svc.Editor.JudgeTimeline(ctx, view.Timeline.ID)
+	require.NoError(t, err)
+
+	assert.Equal(t, domain.StateAwaitingApproval, f.state(t), "no second round: the Project waits for the user's decision")
+	assert.Equal(t, 2, f.trunkShots(t), "no further Shot was made")
+	assert.Equal(t, 1, f.count(t, `SELECT COUNT(*) FROM chat_message WHERE kind = 'escalation'`))
+	_, err = f.svc.Editor.RequestAdditionalShot(ctx, view.Timeline.ID)
+	assert.ErrorIs(t, err, service.ErrConflict, "the escalation has to be answered first")
+	assert.Equal(t, 2, f.trunkShots(t))
+}
