@@ -141,13 +141,14 @@ func TestJudgeRepository_ShotIsJudgingOnlyWhileNoOtherWorkHasIt(t *testing.T) {
 	require.NoError(t, r.BeginJudging(ctx, shot))
 	assert.Equal(t, "JUDGING", state())
 
-	require.NoError(t, r.EndJudging(ctx, shot, "j1"))
-	assert.Equal(t, "JUDGING", state(), "another judge job (j2) of the Shot is still waiting")
+	require.NoError(t, r.EndJudging(ctx, shot))
+	assert.Equal(t, "JUDGING", state(), "another judge job (j2) of the Shot is still queued")
 	require.NoError(t, db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		_, err := tx.ExecContext(ctx, `UPDATE job SET status = 'succeeded' WHERE id = 'j2'`)
 		return err
 	}))
-	require.NoError(t, r.EndJudging(ctx, shot, "j1"))
+	require.NoError(t, r.EndJudging(ctx, shot))
+	// j1 is still marked running here (the queue settles it after the handler returned): it must not hold the Shot.
 	assert.Equal(t, "PLANNING", state())
 
 	// A Shot that is being generated keeps its state.

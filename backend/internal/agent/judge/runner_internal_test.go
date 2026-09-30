@@ -56,7 +56,7 @@ func TestLockedDimensions_AttributeLocksOfCharacterProductAndLocationMapToTheirD
 }
 
 func TestAssetPath_StaysInsideTheAssetsDirectory(t *testing.T) {
-	r := &Runner{Deps{AssetsDir: "/data/assets"}}
+	r := &Runner{Deps: Deps{AssetsDir: "/data/assets"}}
 	p, err := r.assetPath("proj/a.mp4")
 	assert.NoError(t, err)
 	assert.Equal(t, "/data/assets/proj/a.mp4", p)
