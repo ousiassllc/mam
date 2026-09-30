@@ -2,6 +2,7 @@ import { aTimeout, expect, fixture, html, oneEvent, waitUntil } from '@open-wc/t
 import './mam-video-player';
 import type { MamVideoPlayer, SeekRequestedDetail } from './mam-video-player';
 import { FakeSocket, stubFetch, stubWebSocket } from '../testdata/fakes';
+import { initShotProgress } from '../../shot';
 
 // 2 s, 25 fps, 160x90. The dev server does not answer Range requests, so the file is played from a
 // blob URL: a video that cannot be ranged cannot be seeked.
@@ -223,5 +224,64 @@ describe('mam-video-player: generation placeholder', () => {
   it('shows the placeholder when the video cannot be played', async () => {
     const el = await player({ src: '/src/components/testdata/missing.webm' });
     await waitUntil(() => placeholder(el)?.textContent?.includes('再生できません') === true, 'no error shown', { timeout: 5000 });
+  });
+});
+
+// The refresh is an htmx GET into #scene-shot-view: the test only watches it start.
+function refreshes(): { urls: string[]; stop: () => void } {
+  const urls: string[] = [];
+  const on = (e: Event) => urls.push((e as CustomEvent<{ pathInfo: { requestPath: string } }>).detail.pathInfo.requestPath);
+  document.body.addEventListener('htmx:beforeRequest', on);
+  return { urls, stop: () => document.body.removeEventListener('htmx:beforeRequest', on) };
+}
+
+describe('Shot card: one WebSocket per card (shot.ts)', () => {
+  let restoreSocket: () => void;
+  beforeEach(() => {
+    restoreSocket = stubWebSocket();
+  });
+  afterEach(() => restoreSocket());
+
+  it('a card with a player is followed by the player alone, and is refreshed when the player says it is over', async () => {
+    const watch = refreshes();
+    const root = await fixture(html`<div>
+      <div id="scene-shot-view"></div>
+      <ul>
+        <li data-shot-progress data-refresh-url="/refresh/player">
+          <mam-video-player ws-url="/ws/shots/s1"></mam-video-player>
+        </li>
+      </ul>
+    </div>`);
+    initShotProgress(root);
+
+    expect(FakeSocket.instances.map((s) => s.url)).to.deep.equal([`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws/shots/s1`]);
+
+    FakeSocket.instances[0]!.emit({ shot_id: 's1', stage: 'generating', takes_done: 1, takes_total: 3 });
+    await aTimeout(20);
+    expect(watch.urls).to.deep.equal([]);
+
+    FakeSocket.instances[0]!.emit({ shot_id: 's1', stage: 'done' });
+    await aTimeout(50);
+    watch.stop();
+    expect(watch.urls).to.deep.equal(['/refresh/player']);
+    expect(FakeSocket.instances.length).to.equal(1);
+  });
+
+  it('a card without a player is followed over data-ws-url, and is refreshed when the work is over', async () => {
+    const watch = refreshes();
+    const root = await fixture(html`<div>
+      <div id="scene-shot-view"></div>
+      <ul>
+        <li data-shot-progress data-refresh-url="/refresh/socket" data-ws-url="/ws/shots/s2"></li>
+      </ul>
+    </div>`);
+    initShotProgress(root);
+    expect(FakeSocket.instances.length).to.equal(1);
+    expect(FakeSocket.instances[0]!.url).to.contain('/ws/shots/s2');
+
+    FakeSocket.instances[0]!.emit({ shot_id: 's2', stage: 'failed' });
+    await aTimeout(50);
+    watch.stop();
+    expect(watch.urls).to.deep.equal(['/refresh/socket']);
   });
 });

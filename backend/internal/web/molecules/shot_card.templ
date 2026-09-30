@@ -58,6 +58,13 @@ func shotActionURL(shotID, action string) string { return "/shots/" + shotID + "
 
 func shotProgressURL(shotID string) string { return "/ws/shots/" + shotID }
 
+// showsProgressPlayer reports whether the card carries a mam-video-player that follows the Shot's
+// progress itself. That player is then the card's only /ws/shots/:id connection; shot.ts waits for its
+// progress-finished. A card without one (repairing) is followed by shot.ts over data-ws-url.
+func showsProgressPlayer(s domain.Shot) bool {
+	return s.State == domain.ShotGenerating || s.State == domain.ShotJudging
+}
+
 func takeComparisonURL(shotID string) string { return "/shots/" + shotID + "/takes" }
 
 func takeJudgeResultURL(takeID string) string { return "/api/v1/takes/" + takeID + "/judge-result" }
@@ -156,8 +163,10 @@ templ ShotCard(d ShotCardData) {
 		}
 		if d.Shot.State == domain.ShotGenerating || d.Shot.State == domain.ShotJudging || d.Shot.State == domain.ShotRepairing {
 			data-shot-progress
-			data-ws-url={ shotProgressURL(d.Shot.ID) }
 			data-refresh-url={ shotURL(d.ProjectID, d.Shot.SceneID, d.Shot.ID) }
+			if !showsProgressPlayer(d.Shot) {
+				data-ws-url={ shotProgressURL(d.Shot.ID) }
+			}
 		}
 	>
 		<div class="flex flex-wrap items-center justify-between gap-2">
@@ -195,7 +204,7 @@ templ ShotCard(d ShotCardData) {
 		if d.Selected && d.Shot.State != domain.ShotGenerating {
 			@ShotActions(d.Shot.ID)
 		}
-		if d.Shot.State == domain.ShotGenerating || d.Shot.State == domain.ShotJudging {
+		if showsProgressPlayer(d.Shot) {
 			<mam-video-player class="mt-2 block" ws-url={ shotProgressURL(d.Shot.ID) }></mam-video-player>
 		}
 		if len(d.Takes) > 0 {
