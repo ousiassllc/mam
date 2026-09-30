@@ -62,6 +62,7 @@ var bundleTables = []bundleTable{
 	{name: "export", where: byProject},
 	{name: "lock", where: byProject},
 	{name: "cost_ledger_entry", where: byProject},
+	{name: "human_intervention", where: byProject},
 	{name: "reference_item", where: byProject},
 	{name: "branch", where: byProject},
 	{name: "branch_version", where: `branch_id IN (SELECT id FROM branch WHERE project_id = :pid)`},

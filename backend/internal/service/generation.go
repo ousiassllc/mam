@@ -37,9 +37,11 @@ func (s *GenerationService) GenerateShot(ctx context.Context, shotID, instructio
 	if utf8.RuneCountInString(instruction) > maxInstructionRunes {
 		return ShotFragment{}, invalid("additional_instruction", "%d 文字以内で入力してください", maxInstructionRunes)
 	}
+	record := s.generationRecorder(ctx, shotID)
 	if _, err := s.gen.Start(ctx, shotID, instruction); err != nil {
 		return ShotFragment{}, mapGenerationError(err)
 	}
+	record()
 	return s.Shot(ctx, shotID)
 }
 
@@ -54,9 +56,11 @@ func (s *GenerationService) GenerateCandidates(ctx context.Context, shotID, inst
 	if utf8.RuneCountInString(instruction) > maxInstructionRunes {
 		return ShotFragment{}, invalid("additional_instruction", "%d 文字以内で入力してください", maxInstructionRunes)
 	}
+	record := s.generationRecorder(ctx, shotID)
 	if _, err := s.gen.StartCandidates(ctx, shotID, instruction); err != nil {
 		return ShotFragment{}, mapGenerationError(err)
 	}
+	record()
 	return s.Shot(ctx, shotID)
 }
 

@@ -73,6 +73,9 @@ func (s *DirectorService) applyMode(ctx context.Context, projectID string, mode 
 		return notFound(err)
 	}
 	s.publishCreated(projectID, msgs)
+	if mode == domain.ModeDirector {
+		s.recordIntervention(ctx, domain.Intervention{ProjectID: projectID, Kind: domain.InterventionSwitchToDirector})
+	}
 	return nil
 }
 
@@ -111,6 +114,9 @@ func (s *DirectorService) SetShotLock(ctx context.Context, shotID string, p doma
 	if err := s.locks.SetShotLock(ctx, shotID, p, mode, raw); err != nil {
 		return nil, lockedError(notFound(err))
 	}
+	if mode != domain.LockAuto {
+		s.recordIntervention(ctx, domain.Intervention{ShotID: shotID, Kind: domain.InterventionLockChange})
+	}
 	return s.locks.ShotLocks(ctx, shotID)
 }
 
@@ -122,6 +128,9 @@ func (s *DirectorService) SetProjectLock(ctx context.Context, projectID string, 
 	}
 	if err := s.locks.SetProjectLock(ctx, projectID, p, mode); err != nil {
 		return nil, notFound(err)
+	}
+	if mode != domain.LockAuto {
+		s.recordIntervention(ctx, domain.Intervention{ProjectID: projectID, Kind: domain.InterventionLockChange})
 	}
 	return s.locks.ProjectLocks(ctx, projectID)
 }
@@ -231,6 +240,7 @@ func (s *DirectorService) EditSpec(ctx context.Context, shotID, text string) (In
 		}
 		return Inspector{}, lockedError(notFound(err))
 	}
+	s.recordIntervention(ctx, domain.Intervention{ShotID: shotID, Kind: domain.InterventionEditShotSpec, Override: true})
 	return s.Inspector(ctx, shotID)
 }
 
@@ -624,10 +634,16 @@ func (s *DirectorService) regenerate(ctx context.Context, ref *repository.ShotRe
 	switch {
 	case partial:
 		err = s.startPartial(ctx, ref, op, instruction)
+		if err == nil {
+			s.recordIntervention(ctx, domain.Intervention{ShotID: ref.Shot.ID, Kind: domain.InterventionRepair})
+		}
 	case s.orch == nil:
 		return "", false, ErrUnavailable
 	default:
-		_, err = s.orch.StartDirected(ctx, ref.Shot.ID, instruction, op.Preserve)
+		record := s.generationRecorder(ctx, ref.Shot.ID)
+		if _, err = s.orch.StartDirected(ctx, ref.Shot.ID, instruction, op.Preserve); err == nil {
+			record()
+		}
 	}
 	if err != nil {
 		if errors.Is(err, errNoTakeToFix) {

@@ -39,6 +39,7 @@ func (s *RepairService) Repair(ctx context.Context, takeID string) (ShotFragment
 		}
 		return ShotFragment{}, notFound(err)
 	}
+	s.recordIntervention(ctx, domain.Intervention{TakeID: takeID, Kind: domain.InterventionRepair})
 	return s.generations.Shot(ctx, ref.Take.ShotID)
 }
 
