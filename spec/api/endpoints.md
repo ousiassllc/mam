@@ -14,7 +14,7 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
   | HTTPステータス | 意味 |
   |---|---|
   | 400 | multipart の本文が読み取れない（multipart ではない・途中で切断された） |
-  | 413 | リクエスト本文が上限を超えた（JSON/urlencoded は `MaxBody` ミドルウェアが 1MiB、multipart は `readMultipart` が各アップロードの上限を適用する） |
+  | 413 | リクエスト本文が上限を超えた（`MaxBody` ミドルウェアが 1MiB。`readMultipart` を呼ぶアップロードルートだけが各上限で、Content-Type を `multipart/form-data` にしてもそれ以外のルートの上限は外れない。宣言された長さが上限を超える本文は読まずに 413） |
   | 402 | Project/Shot budget ceiling 超過（F-22） |
   | 403 | Brand/Safety Constraint 違反、または LOCK 対象への変更試行 |
   | 409 | 対象 Shot が既に生成中（多重実行防止） |
@@ -434,3 +434,4 @@ Notes:
 | 1.52 | 2026-10-01 | §1 に `GET /`・`GET /healthz`・`GET /static/*filepath`、§3 に `GET /api/v1/health` と OpenAPI の別形式・`schemas` ルートを追記 | 実装（`router/pages.go`・`router/api.go`）にあり仕様に無かった（#36）。ヘルスは 503 に統一済み（#66） |
 | 1.53 | 2026-10-01 | `POST /shots/:id/continue` の解析が、起点の Take の最終フレーム画像を Continue Agent に渡すことを明記（ffmpeg が無いときはテキストのみ）。`spec/spec.md` §15 にも追記 | 実装はテキストだけから State を推測しており、仕様の「最終フレームを解析」と食い違っていたため、最終フレームの抽出を実装した（Issue #110） |
 | 1.54 | 2026-10-01 | `POST /edit-timelines/:id/request-additional-shot` は、全 Shot の生成開始に成功したときだけ `reshoot_request` を `requested` にして GENERATING へ進む。開始失敗時はラウンドを残さず EDIT_JUDGING のままエラーを返す | 開始失敗が未完了ラウンドを残し、同じ版への再要求が拒否されていたため（Issue #120） |
+| 1.55 | 2026-10-01 | `MaxBody` の 1MiB は Content-Type ではなくルートで外す。アップロード以外（`PUT /edit-timelines/:id`、`POST /shots/:id/branch` を含む）は `multipart/form-data` でも 1MiB を超えれば本文を読まず 413 | Content-Type を multipart と偽ると本文上限が外れていたため（Issue #125） |

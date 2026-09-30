@@ -8,21 +8,43 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// MaxBodyBytes is the largest JSON or urlencoded body a route reads. It matches Huma's default
-// limit, so the gin routes and /api/v1 agree.
+// MaxBodyBytes is the largest body a route reads, unless the route is an upload that sets its own
+// limit in readMultipart. It matches Huma's default limit, so the gin routes and /api/v1 agree.
 const MaxBodyBytes = 1 << 20
 
-// MaxBody caps the request body at MaxBodyBytes for every route except multipart uploads, whose
-// handlers set their own (larger) limit. A urlencoded form is parsed here, because gin ignores a
-// form parse error and a too-long form would silently arrive empty; over the limit it is a 413.
+// uploadRoutes are the routes whose handlers call readMultipart and therefore apply their own,
+// larger MaxBytesReader. Every other route keeps MaxBodyBytes no matter the Content-Type.
+var uploadRoutes = map[string]struct{}{
+	"POST /projects":                      {},
+	"POST /projects/:id/messages":         {},
+	"POST /projects/import":               {},
+	"POST /projects/:id/references":       {},
+	"POST /projects/:id/audio/voices":     {},
+	"POST /projects/:id/reviews/feedback": {},
+	"POST /reviews/import":                {},
+}
+
+func isUploadRoute(c *gin.Context) bool {
+	_, ok := uploadRoutes[c.Request.Method+" "+c.FullPath()]
+	return ok
+}
+
+// MaxBody caps the request body at MaxBodyBytes. Upload routes are the exception: they limit the
+// body themselves. A declared length over the cap is refused before the body is read, so it is not
+// parsed into memory or a temp file. A urlencoded form within the cap is parsed here, because gin
+// ignores a form parse error and a too-long form would silently arrive empty.
 func MaxBody() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		mediaType, _, _ := mime.ParseMediaType(c.GetHeader("Content-Type"))
-		if mediaType == "multipart/form-data" || c.Request.Body == nil || c.Request.Body == http.NoBody {
+		if c.Request.Body == nil || c.Request.Body == http.NoBody || isUploadRoute(c) {
 			c.Next()
 			return
 		}
+		if c.Request.ContentLength > MaxBodyBytes {
+			c.AbortWithStatusJSON(http.StatusRequestEntityTooLarge, gin.H{"error": "送信内容が大きすぎます"})
+			return
+		}
 		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, MaxBodyBytes)
+		mediaType, _, _ := mime.ParseMediaType(c.GetHeader("Content-Type"))
 		if mediaType == "application/x-www-form-urlencoded" {
 			if err := c.Request.ParseForm(); err != nil {
 				status := http.StatusBadRequest
