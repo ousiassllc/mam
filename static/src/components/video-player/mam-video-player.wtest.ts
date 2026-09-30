@@ -210,6 +210,14 @@ describe('mam-video-player: generation placeholder', () => {
       expect(notice()).to.not.equal(null);
       expect(notice()!.getAttribute('role')).to.equal('alert');
       expect(notice()!.textContent).to.contain('接続が切れました');
+      expect(notice()!.textContent).to.contain('再読み込み');
+
+      let reloaded = 0;
+      el.reload = () => {
+        reloaded += 1;
+      };
+      (el.querySelector('[data-action="reload"]') as HTMLButtonElement).click();
+      expect(reloaded).to.equal(1);
 
       const before = FakeSocket.instances.length;
       (el.querySelector('[data-action="reconnect"]') as HTMLButtonElement).click();

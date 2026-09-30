@@ -77,6 +77,11 @@ export class MamVideoPlayer extends LitElement {
     return this;
   }
 
+  /** Reloads the page from the connection-lost notice. */
+  reload(): void {
+    location.reload();
+  }
+
   /** Frame rate used for stepping and timecodes: the given one, the measured one, else 30. */
   get frameRate(): number {
     return this.fps > 0 ? this.fps : this.measuredFps > 0 ? this.measuredFps : DEFAULT_FPS;
@@ -275,6 +280,9 @@ export class MamVideoPlayer extends LitElement {
       <span>${CONNECTION_LOST_MESSAGE}生成の進捗が自動で更新されなくなりました。</span>
       <button type="button" class="rounded border border-amber-500/50 px-2 py-0.5 hover:bg-neutral-800" data-action="reconnect" @click=${() => this.connection?.retry()}>
         再接続
+      </button>
+      <button type="button" class="rounded border border-amber-500/50 px-2 py-0.5 hover:bg-neutral-800" data-action="reload" @click=${() => this.reload()}>
+        再読み込み
       </button>
     </p>`;
   }
