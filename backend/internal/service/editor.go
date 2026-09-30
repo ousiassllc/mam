@@ -45,6 +45,9 @@ type EditorService struct {
 	shots   *repository.GenerationRepository
 	takes   *repository.TakeRepository
 	judge   *editor.Judge
+	// brands and judges give Final QC the Brand constraints and the Brand Issues of the Takes (F-23).
+	brands *repository.BrandRepository
+	judges *repository.JudgeRepository
 	// audio is nil without ffmpeg.
 	audio   *audiodirector.Director
 	chatSvc *ChatService
@@ -742,12 +745,15 @@ func (s *EditorService) FinalQC(ctx context.Context, projectID string) (EditorVi
 			in.MissingClips = append(in.MissingClips, i+1)
 		}
 	}
+	if err := s.brandInput(ctx, projectID, &in); err != nil {
+		return EditorView{}, err
+	}
 	if err := s.projects.Transition(ctx, projectID, domain.StateFinalQC); err != nil {
 		return EditorView{}, err
 	}
 	findings := finalqc.Check(in)
 	verdict := domain.FinalQCPass
-	if len(findings) > 0 {
+	if finalqc.Failed(findings) {
 		verdict = domain.FinalQCFail
 	}
 	res, err := s.editors.SaveFinalQC(ctx, projectID, audio.ID, verdict, findings)
@@ -764,6 +770,9 @@ func (s *EditorService) FinalQC(ctx context.Context, projectID string) (EditorVi
 		return s.View(ctx, projectID)
 	}
 	summary := fmt.Sprintf("Final QC に合格しました（%.1f 秒 / %.1f LUFS）。書き出してよいですか？", edit.Timeline.Duration(), audio.Timeline.MeasuredLUFS)
+	if len(findings) > 0 {
+		summary += "\n" + describeQC(findings)
+	}
 	posted, err := s.chatSvc.RequestApproval(ctx, projectID, domain.CheckpointFinal, summary, res.ID)
 	if err != nil {
 		s.backTo(ctx, projectID, domain.StateAudio)
@@ -773,9 +782,62 @@ func (s *EditorService) FinalQC(ctx context.Context, projectID string) (EditorVi
 		if err := s.projects.Transition(ctx, projectID, domain.StateReady); err != nil {
 			return EditorView{}, err
 		}
-		s.announce(ctx, projectID, "Final QC: PASS。書き出しの準備ができました。")
+		text := "Final QC: PASS。書き出しの準備ができました。"
+		if len(findings) > 0 {
+			text += "\n" + describeQC(findings)
+		}
+		s.announce(ctx, projectID, text)
 	}
 	return s.View(ctx, projectID)
+}
+
+// brandInput gives Final QC the Brand / Safety Constraints, the lines the deliverable speaks, the
+// texts of the Shot Specs of its clips and the Brand Issues the AI Video Judge found in their Takes.
+// Issues of a constraint that was deleted since are not counted.
+func (s *EditorService) brandInput(ctx context.Context, projectID string, in *finalqc.Input) error {
+	brand, err := s.brands.List(ctx, projectID)
+	if err != nil {
+		return err
+	}
+	if len(brand) == 0 {
+		return nil
+	}
+	in.Brand = brand
+	idx, err := s.shotIndex(ctx, projectID)
+	if err != nil {
+		return err
+	}
+	cues, err := s.cues(ctx, projectID, idx, in.Edit.Timeline)
+	if err != nil {
+		return err
+	}
+	for _, cue := range cues {
+		for _, line := range cue.Lines {
+			if vl, ok := domain.ParseVoiceLine(line); ok {
+				in.Spoken = append(in.Spoken, vl.Text)
+			}
+		}
+	}
+	for i, c := range in.Edit.Timeline.Clips {
+		if r, ok := idx.byID[c.ShotID]; ok {
+			if spec, ok := r.Shot.CanonicalSpec(); ok {
+				in.ShotTexts = append(in.ShotTexts, spec.BrandText())
+			}
+		}
+		res, err := s.judges.Latest(ctx, c.TakeID)
+		if errors.Is(err, repository.ErrNotFound) {
+			continue
+		}
+		if err != nil {
+			return err
+		}
+		for _, is := range res.Issues {
+			if _, ok := brand.ByID(is.BrandConstraintID); ok {
+				in.ClipBrandIssues = append(in.ClipBrandIssues, finalqc.ClipBrandIssue{Clip: i + 1, Issue: is})
+			}
+		}
+	}
+	return nil
 }
 
 func stageLabel(state domain.ProjectState) string {

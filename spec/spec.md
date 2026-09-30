@@ -1280,9 +1280,9 @@ Preserve character / acting / environment
 
 # 26. Safety and Brand Constraints
 
-Project / Organization単位で制作制約を登録可能とする。
+Project単位で制作制約を登録可能とする（`functional.md` UC-9 と `er.md` に合わせる。Organization エンティティは持たないため、Organization 単位の制約は設けない。複数の Project で同じ制約を使いたい場合は Project ごとに登録する）。
 
-例：
+種類（`brand_constraint.type`）：
 
 - Brand Guidelines
 - Forbidden Expressions
@@ -1294,6 +1294,25 @@ Project / Organization単位で制作制約を登録可能とする。
 - Platform Rules
 
 これらはPrompt生成だけでなくJudge / Final QCにも適用する。
+
+## 26.1 強制レベルと適用の仕方
+
+各制約は `enforcement_level` を持つ。
+
+- **`lock`**（既定）: 違反した Take・成果物は、スコアや Judge のモデルの verdict に関係なく FAIL とする。違反の操作は HTTP 403 で拒否する
+- **`advisory`**: 警告扱い。違反を Issue／指摘として記録・表示するが、FAIL にも 403 にもしない
+
+制約の内容は自由記述（`value` の `text`）。`forbidden_expression` は 1 行に 1 つの禁止表現（大文字小文字・空白の違いを無視した部分一致）、`required_disclaimer` は表示すべき文言をそのまま書く。他の種類は文章のルールとしてモデルへ渡す。
+
+適用箇所：
+
+| 段階 | 適用 |
+|---|---|
+| Prompt Planner | 全制約を英語の指示として入力に含める（各制約の ID 付き）。生成した Canonical Shot Spec に `lock` の禁止表現が含まれれば 403（Take を作らない）。ユーザーの指示文に `lock` の禁止表現が含まれる場合も、生成・再生成・候補生成を開始する前に 403 で拒否する |
+| AI Video Judge | 全制約をモデルへ渡し、違反は `type=brand_constraint_violation`・`brand_constraint_id` 付きの Issue にする。`lock` の違反は `lock_violation=true`（severity は high）で Take を FAIL、`advisory` の違反は severity low の警告で FAIL にしない。Shot Spec に `lock` の禁止表現があれば、モデルの判断に依らず決定的に `lock_violation` の Issue にする |
+| Final QC | セリフ・ナレーションと各クリップの Shot Spec に、`lock` の禁止表現があれば FAIL（セリフ → AUDIO、Shot Spec → EDITING に差し戻し）。必須の免責表記がセリフ・Shot Spec のどこにも無ければ FAIL（EDITING）。各クリップの Take の Judge が出した Brand 違反 Issue（`lock_violation`）も FAIL（EDITING）。`advisory` の違反はすべて警告として指摘に残し、FAIL にしない |
+
+Shot Spec は英語で書かれるため、Shot Spec に対する禁止表現の一致は、英語で登録された表現・ロゴ等の固有名に対して働く。日本語の禁止表現は、ユーザーの指示文、セリフ・ナレーション、映像のフレーム（Judge のモデル）に対して働く。
 
 ---
 

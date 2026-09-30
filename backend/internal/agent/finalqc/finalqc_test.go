@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/finalqc"
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -78,4 +79,87 @@ func TestCheck_ProjectWithoutSpeechMayHaveNoAudioAtAll(t *testing.T) {
 	in.MixFileExists = false
 
 	assert.Empty(t, finalqc.Check(in))
+}
+
+func brandInput() finalqc.Input {
+	in := input()
+	in.Brand = domain.BrandConstraints{
+		{ID: "f-lock", Type: domain.BrandForbidden, Level: domain.EnforceLock, Text: "最安値"},
+		{ID: "f-adv", Type: domain.BrandForbidden, Level: domain.EnforceAdvisory, Text: "激安"},
+		{ID: "d-lock", Type: domain.BrandDisclaimer, Level: domain.EnforceLock, Text: "効果には個人差があります"},
+		{ID: "d-adv", Type: domain.BrandDisclaimer, Level: domain.EnforceAdvisory, Text: "Results may vary"},
+	}
+	in.Spoken = []string{"効果には個人差があります", "Results may vary"}
+	return in
+}
+
+func TestCheck_ACleanDeliverableWithBrandConstraintsPasses(t *testing.T) {
+	findings := finalqc.Check(brandInput())
+	assert.Empty(t, findings)
+	assert.False(t, finalqc.Failed(findings))
+}
+
+func TestCheck_ALockForbiddenExpressionFailsFinalQCWhereverItIs(t *testing.T) {
+	in := brandInput()
+	in.Spoken = append(in.Spoken, "業界最安値です")
+	findings := finalqc.Check(in)
+	require.Len(t, findings, 1)
+	assert.Equal(t, "brand_forbidden", findings[0].Check)
+	assert.Equal(t, domain.StateAudio, findings[0].Stage, "the fix is in the script's lines")
+	assert.False(t, findings[0].Advisory)
+	assert.True(t, finalqc.Failed(findings))
+	assert.Equal(t, domain.StateAudio, finalqc.ReturnStage(findings))
+
+	in = brandInput()
+	in.ShotTexts = []string{"Text on screen: 最安値"}
+	findings = finalqc.Check(in)
+	require.Len(t, findings, 1)
+	assert.Equal(t, domain.StateEditing, findings[0].Stage, "the fix is in the picture")
+	assert.Equal(t, domain.StateEditing, finalqc.ReturnStage(findings))
+}
+
+func TestCheck_AnAdvisoryViolationIsAWarningThatDoesNotFail(t *testing.T) {
+	in := brandInput()
+	in.Spoken = append(in.Spoken, "激安セール")
+	in.Spoken = in.Spoken[:2] // keep both disclaimers, add the advisory word below
+	in.Spoken = append(in.Spoken, "激安セール")
+	findings := finalqc.Check(in)
+
+	require.Len(t, findings, 1)
+	assert.True(t, findings[0].Advisory)
+	assert.False(t, finalqc.Failed(findings))
+	assert.Equal(t, domain.StateAudio, finalqc.ReturnStage(findings), "an advisory finding never sends the Project back")
+}
+
+func TestCheck_AMissingLockDisclaimerFailsAndAMissingAdvisoryOneWarns(t *testing.T) {
+	in := brandInput()
+	in.Spoken = nil
+	findings := finalqc.Check(in)
+	require.Len(t, findings, 2)
+	byCheck := map[bool]domain.QCFinding{}
+	for _, f := range findings {
+		assert.Equal(t, "brand_disclaimer", f.Check)
+		byCheck[f.Advisory] = f
+	}
+	assert.Contains(t, byCheck[false].Message, "効果には個人差があります")
+	assert.Contains(t, byCheck[true].Message, "Results may vary")
+	assert.True(t, finalqc.Failed(findings))
+
+	in.Spoken = nil
+	in.ShotTexts = []string{"Caption: 効果には個人差があります / Results may vary"}
+	assert.Empty(t, finalqc.Check(in), "a disclaimer on screen counts")
+}
+
+func TestCheck_ABrandIssueOfATakeFailsOnlyWhenItIsALockViolation(t *testing.T) {
+	in := brandInput()
+	in.ClipBrandIssues = []finalqc.ClipBrandIssue{
+		{Clip: 2, Issue: domain.JudgeIssue{Type: domain.BrandIssueType, LockViolation: true, Description: "logo warped"}},
+		{Clip: 3, Issue: domain.JudgeIssue{Type: domain.BrandIssueType, Description: "weak hook"}},
+	}
+	findings := finalqc.Check(in)
+	require.Len(t, findings, 2)
+	assert.False(t, findings[0].Advisory)
+	assert.Contains(t, findings[0].Message, "クリップ 2")
+	assert.True(t, findings[1].Advisory)
+	assert.True(t, finalqc.Failed(findings))
 }

@@ -67,6 +67,9 @@ func (o *Orchestrator) generate(ctx context.Context, ref repository.ShotRef, ins
 	if err != nil {
 		return Progress{}, err
 	}
+	if err := sc.brand.CheckText(instruction); err != nil {
+		return Progress{}, err
+	}
 	policy, brief, references := sc.policy, sc.brief, sc.references
 	locks, err := o.gens.ShotLocks(ctx, shot.ID)
 	if err != nil {
@@ -88,6 +91,11 @@ func (o *Orchestrator) generate(ctx context.Context, ref repository.ShotRef, ins
 		if spec, err = o.planner.Plan(ctx, in); err != nil {
 			return Progress{}, err
 		}
+	}
+
+	// The spec of the Shot may predate a constraint, and a LOCKed Prompt is never rewritten.
+	if err := sc.brand.CheckText(spec.BrandText()); err != nil {
+		return Progress{}, err
 	}
 
 	// Generation strategy: Shot Spec duration, cost and model capabilities.
@@ -142,9 +150,11 @@ type shotContext struct {
 	world      domain.WorldContext
 	previous   *domain.ShotSpec
 	references []domain.Reference
+	brand      domain.BrandConstraints
 }
 
-// loadShotContext reads the Policy, Brief, World State, neighbouring spec and Reference Pack of the Shot.
+// loadShotContext reads the Policy, Brief, World State, neighbouring spec, Reference Pack and Brand
+// constraints of the Shot.
 func (o *Orchestrator) loadShotContext(ctx context.Context, ref repository.ShotRef) (shotContext, error) {
 	policy, err := o.policies.Get(ctx, ref.ProjectID)
 	if err != nil {
@@ -162,14 +172,26 @@ func (o *Orchestrator) loadShotContext(ctx context.Context, ref repository.ShotR
 	if err != nil {
 		return shotContext{}, err
 	}
-	return shotContext{policy: policy, brief: brief, world: world, previous: previousSpec(shots, ref.Shot.ID), references: ref.Shot.References()}, nil
+	brand, err := o.brandConstraints(ctx, ref.ProjectID)
+	if err != nil {
+		return shotContext{}, err
+	}
+	return shotContext{policy: policy, brief: brief, world: world, previous: previousSpec(shots, ref.Shot.ID), references: ref.Shot.References(), brand: brand}, nil
+}
+
+// brandConstraints are the Safety / Brand Constraints of the Project (none without a repository).
+func (o *Orchestrator) brandConstraints(ctx context.Context, projectID string) (domain.BrandConstraints, error) {
+	if o.brands == nil {
+		return nil, nil
+	}
+	return o.brands.List(ctx, projectID)
 }
 
 // plannerInput is the input of the Prompt Planner for the Shot with the user's extra direction.
 func (c shotContext) plannerInput(ref repository.ShotRef, instruction string) promptplanner.Input {
 	return promptplanner.Input{
 		Brief: c.brief, Template: c.policy.Template, Scene: ref.Scene, Shot: ref.Shot,
-		Instruction: instruction, World: c.world, Previous: c.previous, References: c.references,
+		Instruction: instruction, World: c.world, Previous: c.previous, References: c.references, Brand: c.brand,
 	}
 }
 

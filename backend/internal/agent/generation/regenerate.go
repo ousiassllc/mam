@@ -129,6 +129,13 @@ func (o *Orchestrator) Regenerate(ctx context.Context, ref repository.ShotRef, r
 	if err != nil {
 		return "", err
 	}
+	brand, err := o.brandConstraints(ctx, ref.ProjectID)
+	if err != nil {
+		return "", err
+	}
+	if err := brand.CheckText(r.Direction); err != nil {
+		return "", err
+	}
 	strategy, err := o.RegenerationStrategy(ctx, ref, r)
 	if err != nil {
 		return "", err
@@ -138,7 +145,7 @@ func (o *Orchestrator) Regenerate(ctx context.Context, ref repository.ShotRef, r
 	references := shot.References()
 	switch r.Action {
 	case domain.RepairPrompt, domain.RepairPartialRegeneration:
-		if spec, err = o.reviseSpec(ctx, ref, policy, locks, current, r); err != nil {
+		if spec, err = o.reviseSpec(ctx, ref, policy, locks, brand, current, r); err != nil {
 			return "", err
 		}
 	case domain.RepairReferenceReinforce:
@@ -149,6 +156,9 @@ func (o *Orchestrator) Regenerate(ctx context.Context, ref repository.ShotRef, r
 		references = reinforceReferences(references, boost, strategy.Primary.Model)
 	}
 
+	if err := brand.CheckText(spec.BrandText()); err != nil {
+		return "", err
+	}
 	brief, err := o.projects.GetBrief(ctx, ref.ProjectID)
 	if err != nil {
 		return "", err
@@ -182,7 +192,7 @@ func (o *Orchestrator) Regenerate(ctx context.Context, ref repository.ShotRef, r
 }
 
 // reviseSpec has the Prompt Planner revise the spec for the Issues of the failed Take.
-func (o *Orchestrator) reviseSpec(ctx context.Context, ref repository.ShotRef, policy domain.ProjectPolicy, locks domain.ParameterLocks, current domain.ShotSpec, r Regeneration) (domain.ShotSpec, error) {
+func (o *Orchestrator) reviseSpec(ctx context.Context, ref repository.ShotRef, policy domain.ProjectPolicy, locks domain.ParameterLocks, brand domain.BrandConstraints, current domain.ShotSpec, r Regeneration) (domain.ShotSpec, error) {
 	if locks.Locked(domain.ParamPrompt) {
 		return domain.ShotSpec{}, &repository.LockedParametersError{Parameters: []domain.LockParameter{domain.ParamPrompt}}
 	}
@@ -205,7 +215,7 @@ func (o *Orchestrator) reviseSpec(ctx context.Context, ref repository.ShotRef, p
 	return o.planner.Plan(ctx, promptplanner.Input{
 		Brief: brief, Template: policy.Template, Scene: ref.Scene, Shot: ref.Shot,
 		Instruction: repairInstruction(r), World: world, Previous: previousSpec(shots, ref.Shot.ID), References: ref.Shot.References(),
-		Current: &current, Fixed: fixed, Manual: locks.PartsWith(domain.LockManual),
+		Current: &current, Fixed: fixed, Manual: locks.PartsWith(domain.LockManual), Brand: brand,
 	})
 }
 

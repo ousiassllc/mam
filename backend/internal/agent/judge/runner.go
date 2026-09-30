@@ -28,6 +28,8 @@ type Deps struct {
 	Assets      *repository.AssetRepository
 	// Policies gives the Production Template of the Project, whose axes the Judge scores. Optional.
 	Policies *repository.PolicyRepository
+	// Brands gives the Safety / Brand Constraints of the Project, which the Judge enforces (F-23). Optional.
+	Brands *repository.BrandRepository
 	// Takes and Projects make the AI Pick after every result (F-15). Both nil: no Take is picked.
 	Takes    *repository.TakeRepository
 	Projects *repository.ProjectRepository
@@ -246,6 +248,13 @@ func (r *Runner) input(ctx context.Context, ref repository.TakeRef) (Input, erro
 			return Input{}, err
 		}
 		in.Template = policy.Template
+	}
+	if r.Brands != nil {
+		brand, err := r.Brands.List(ctx, ref.ProjectID)
+		if err != nil {
+			return Input{}, err
+		}
+		in.Brand = brand
 	}
 
 	shots, err := r.Generations.StoryShots(ctx, ref.ProjectID, ref.BranchID)

@@ -74,6 +74,8 @@ type Deps struct {
 	Projects    *repository.ProjectRepository
 	Policies    *repository.PolicyRepository
 	Assets      *repository.AssetRepository
+	// Brands gives the Safety / Brand Constraints the Prompt Planner follows (F-23). Optional.
+	Brands *repository.BrandRepository
 	// World holds the World State the State Extractor updates after each Shot.
 	World *repository.WorldRepository
 	Chat  Chat
@@ -98,6 +100,7 @@ type Orchestrator struct {
 	projects  *repository.ProjectRepository
 	policies  *repository.PolicyRepository
 	assets    *repository.AssetRepository
+	brands    *repository.BrandRepository
 	chat      Chat
 	jobs      Jobs
 	adapter   *modeladapter.Adapter
@@ -115,7 +118,7 @@ type Orchestrator struct {
 // New returns an Orchestrator.
 func New(d Deps) *Orchestrator {
 	o := &Orchestrator{
-		gens: d.Generations, projects: d.Projects, policies: d.Policies, assets: d.Assets, chat: d.Chat, jobs: d.Jobs, adapter: d.Adapter,
+		gens: d.Generations, projects: d.Projects, policies: d.Policies, assets: d.Assets, brands: d.Brands, chat: d.Chat, jobs: d.Jobs, adapter: d.Adapter,
 		planner: promptplanner.New(d.LLM), art: artdirector.New(d.LLM),
 		files: fileStore{root: d.AssetsDir}, freeDisk: d.FreeBytes, judge: d.Judge, notify: d.Notify, logger: d.Logger,
 	}
@@ -179,6 +182,14 @@ func (o *Orchestrator) StartCandidates(ctx context.Context, shotID, instruction 
 func (o *Orchestrator) start(ctx context.Context, shotID string, action Action, instruction string, preserve []domain.SpecPart) (domain.Job, error) {
 	ref, err := o.gens.GetShot(ctx, shotID)
 	if err != nil {
+		return domain.Job{}, err
+	}
+	// A direction that contains a forbidden expression of a LOCK Brand constraint is refused up front.
+	brand, err := o.brandConstraints(ctx, ref.ProjectID)
+	if err != nil {
+		return domain.Job{}, err
+	}
+	if err := brand.CheckText(instruction); err != nil {
 		return domain.Job{}, err
 	}
 	// Candidates always rewrite the spec, so a LOCKed Prompt rules them out even without an instruction.
@@ -371,6 +382,12 @@ func FailureReason(err error) string {
 		return "生成モデルまたは LLM の API キーが設定されていません（設定画面でキーを登録してください）"
 	case errors.Is(err, ErrBudgetExceeded):
 		return "予算上限を超えるため生成できません"
+	case errors.Is(err, domain.ErrBrandViolation):
+		msg := "Brand / Safety Constraint に違反するため生成できません"
+		if bv := new(domain.BrandViolationError); errors.As(err, &bv) {
+			msg += "（" + bv.Message() + "）"
+		}
+		return msg
 	case errors.Is(err, ErrJudgeUnavailable):
 		return "AI Video Judge が利用できないため、候補から最良の Take を選べません"
 	case errors.Is(err, ErrGenerationTimeLimit):

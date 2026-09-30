@@ -65,6 +65,7 @@ var bundleTables = []bundleTable{
 	{name: "reference_item", where: byProject},
 	{name: "branch", where: byProject},
 	{name: "branch_version", where: `branch_id IN (SELECT id FROM branch WHERE project_id = :pid)`},
+	{name: "brand_constraint", where: byProject},
 }
 
 // unbundledTables are the tables a bundle leaves out, with the reason.
