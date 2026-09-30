@@ -120,7 +120,7 @@ M1 の入出力契約（Issue #12）:
 | GET | `/takes/:id/thumbnail` | Take の先頭フレームの JPEG（ffmpeg が無いとき 503） | `mam-video-player`（poster） |
 | POST | `/shots/:id/continue` | Continue: 完成した Shot の最終フレームと Story/Character/Position/Emotion/Object/Camera/Lighting/Motion/Dialogue/Music State を解析し、次展開候補（NEXT A/B/C）を Question カード（`ref_type=continue`、`ref_id`=Shot ID）としてチャットに追記する。選択肢は A〜C、D（自由指示）は入力欄からの返信、E（AIに任せる）は常設ボタン。応答は 201 とカードのフラグメントで、`HX-Redirect` でチャットへ遷移させる。未完成の Shot（非 Rejected の Take が無い）は 409、生成中の Shot は 409、存在しない Shot は 404、生成機能が未構成は 503、AI の出力が使えない場合は 502 | F-16 |
 | POST | `/shots/:id/continue/confirm` | 選択した展開候補で次 Shot/Scene を生成。Body `instruction`（選択した候補または自由指示、1000 文字以内）または `delegate=true`（AIに任せる。AI が候補を選ぶ）。Director Agent が World State を引き継いだ次 Shot を決め、場所・時間が変わる場合のみ新しい Scene を作って既存プロジェクト末尾に連結し（同じ Scene の場合は完成 Shot の Scene 末尾に追加）、`POST /shots/:id/generate` と同じ生成を `instruction` を追加指示として開始する。応答は 202 と新 Shot の GENERATING の Shot カード（`HX-Trigger: chat:refresh`）。指示も `delegate` も無ければ 422、その他のエラーは `/shots/:id/continue` と同じ。Continue カードへの返信（`POST /projects/:id/messages` の `reply_to_message_id`）も同じ処理を起動する（選択肢の押下・自由入力・「AIに任せる」）。カードは 1 回だけ回答でき、2 回目は 409 | F-16 |
-| POST | `/shots/:id/branch` | Branch Point 保存 + Snapshot 生成（Body: `branch_point_type`=`scene\|shot\|frame`、`frame`時は`offset_seconds`を指定。`scene`指定時は当該Shotの所属Sceneを分岐点とする） | F-17 |
+| POST | `/shots/:id/branch` | Branch Point 保存 + Snapshot 生成（Body: `point_type`=`scene\|shot\|frame`、`frame`時は`offset_seconds`を指定。`scene`指定時は当該Shotの所属Sceneを分岐点とする） | F-17 |
 | GET | `/branches/:id` | Branch 詳細（フラグメント） | F-17 |
 | PUT | `/branches/:id` | Branch 名称変更・World State参照更新（`branch_version` に新規バージョン行を追記） | F-17, F-28 |
 | POST | `/shots/:id/versions/:versionNumber/restore` | Shot/Take（`prompt_version`）の指定バージョンの Canonical Shot Spec を Shot の現在の Spec に戻し、新しい `prompt_version` として追記する（既存バージョンとその Take は変えない。復元自体も戻せる）。応答は 200 と Shot Inspector。バージョン番号が 1 以上の整数でなければ 422、存在しない Shot/バージョンは 404、生成中の Shot は 409、復元で LOCK 中の部分が変わるなら 423（何も書かない） | F-28 |
@@ -142,7 +142,6 @@ M2 の入出力契約（Issue #18 Branch）:
 - `PUT /branches/:id`: `name` と `world_state_version`（その Branch 自身の World State 系列の番号）の少なくとも一方。応答は詳細フラグメントと、新しい名前を反映した Branch ツリー（`hx-swap-oob` で `#branch-tree` を置換）。変更があれば `branch_version` に 1 行追記する（変化なしは追記しない）。系列にない番号・空の名前は 422、不明な ID は 404
 - Branch は `scene` / `character` / `product` / `location` / `world_state_version` を独自に持ち（`branch_id`）、Branch の Shot の生成・State Extractor・編集はその Branch の行だけを更新する。トランクや他の Branch には影響しない。チャットスレッドは Project に 1 本で Branch では分けない
 - チャット（DIRECTOR MODE）の「このカットから別展開を3つ作って」は Command Interpreter の `create_branch`（`count` 1〜5、`point_type` は `scene|shot`、`directions`）となり、指示のない分は Continue Agent の NEXT 候補で埋め、各 Branch の最初の Shot を生成する
-- `GET /api/v1/projects/:id/branches`: `branches[]` に親子（`children`）、`branch_point_type`、`scene_number` / `shot_number`（親系列内の番号）、`offset_seconds`、`snapshot_version`、`version`、`detail_url`、`world_state_url` を含む
 
 ### 2.5 Director Command
 
@@ -427,3 +426,4 @@ Notes:
 | 1.48 | 2026-10-01 | `POST /projects/:id/export` が `branch_id` を受け付け、その Branch の Edit/Audio Timeline を書き出して `export.branch_id` に記録することを M1 の挙動表に明記（実装を追加） | 表に `branch_id` があるが実装はトランク固定だった（#97） |
 | 1.49 | 2026-10-01 | §2.11 の `POST /shots/:id/references` の応答を Shot カードから Shot Inspector に改めた | 実装はピン留め後の Reference Pack を Inspector の References 欄に表示するため Shot Inspector を返しており、仕様と食い違っていたため（Issue #100） |
 | 1.50 | 2026-10-01 | `/ws/shots/:id` の接続は Shot カード 1 枚につき 1 本（プレーヤーがあればプレーヤー、なければ `shot.ts`）と明記 | 同じ進捗 WebSocket を 2 本張っていたため（Issue #38） |
+| 1.51 | 2026-10-01 | §2.4 の `POST /shots/:id/branch` の Body 名を実装と §2.8 に合わせて `branch_point_type` から `point_type` に修正（検証エラーの項目名も `point_type`）。Issue #40 で削除済みの `GET /api/v1/projects/:id/branches` の応答説明を削除 | 表と M2 契約で項目名が食い違い、表の名前で送ると黙って既定の shot になるため（Issue #101） |

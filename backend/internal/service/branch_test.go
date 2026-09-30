@@ -62,6 +62,7 @@ func TestBranchCreate_FrameNeedsAnOffsetInsideTheShotAndNamesAreNumbered(t *test
 	require.ErrorAs(t, err, &ve)
 	_, err = f.svc.Branch.Create(ctx, f.shotID, service.BranchInput{PointType: "moon"})
 	require.ErrorAs(t, err, &ve)
+	assert.Equal(t, "point_type", ve.Field, "the error names the form field the handler reads")
 	_, err = f.svc.Branch.Create(ctx, "missing", service.BranchInput{})
 	assert.ErrorIs(t, err, service.ErrNotFound)
 
