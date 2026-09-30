@@ -159,3 +159,18 @@ func TestJudgeRepository_ShotIsJudgingOnlyWhileNoOtherWorkHasIt(t *testing.T) {
 	require.NoError(t, r.BeginJudging(ctx, shot))
 	assert.Equal(t, "GENERATING", state())
 }
+
+func TestJudgeRepository_ARowInsertedWithTheColumnDefaultsReadsWithAnEmptyPreserve(t *testing.T) {
+	db := openTestDB(t)
+	_, _, take := seedTake(t, db)
+	require.NoError(t, db.Write(context.Background(), func(ctx context.Context, tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, `INSERT INTO judge_result (id, take_id, result) VALUES ('jr1', ?, 'pass')`, take)
+		return err
+	}))
+
+	got, err := repository.NewJudgeRepository(db).Latest(context.Background(), take)
+
+	require.NoError(t, err)
+	assert.Equal(t, domain.JudgePass, got.Result)
+	assert.Empty(t, got.Preserve)
+}
