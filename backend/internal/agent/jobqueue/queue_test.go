@@ -237,3 +237,41 @@ func TestQueue_OnChangeNotifiesAfterTheFinalStatusIsPersisted(t *testing.T) {
 	defer mu.Unlock()
 	assert.Equal(t, domain.JobSucceeded, seen[len(seen)-1], "the last notification already sees the final status")
 }
+
+func TestQueue_TransientClaimErrorDoesNotStrandQueuedJobs(t *testing.T) {
+	_, repo := newRepo(t)
+	q := jobqueue.New(repo, jobqueue.Options{Workers: 1})
+	ran := make(chan struct{}, 1)
+	q.Register(domain.JobGenerate, func(context.Context, domain.Job) error {
+		ran <- struct{}{}
+		return nil
+	}, false)
+
+	// Persist the job before the workers start so that no later Enqueue/signal can rescue the worker.
+	job, err := repo.Create(context.Background(), domain.JobGenerate, []byte(`{}`))
+	require.NoError(t, err)
+
+	realClaim := q.ClaimFunc()
+	var calls atomic.Int32
+	q.SetClaim(func(ctx context.Context) (domain.Job, error) {
+		switch calls.Add(1) {
+		case 1:
+			// Uses up the wake-up Start sends, so only a retry can reach the job afterwards.
+			return domain.Job{}, repository.ErrNotFound
+		case 2:
+			return domain.Job{}, errors.New("database is locked")
+		default:
+			return realClaim(ctx)
+		}
+	})
+	q.SetClaimBackoff(5 * time.Millisecond)
+	q.Start(context.Background())
+	defer q.Stop()
+
+	select {
+	case <-ran:
+	case <-time.After(5 * time.Second):
+		t.Fatal("queued job was not run after a transient ClaimNext error")
+	}
+	waitStatus(t, repo, job.ID, domain.JobSucceeded)
+}
