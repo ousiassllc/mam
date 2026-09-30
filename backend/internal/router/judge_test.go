@@ -2,6 +2,7 @@ package router_test
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -137,6 +138,8 @@ type judgeOpts struct {
 	media *media.Tools
 	// command is the Command Interpreter's answer (empty: the Shot Spec, which holds no operation).
 	command string
+	// spec replaces the Prompt Planner's answer (empty: lockedSpecAnswer).
+	spec string
 }
 
 func newJudgeAppOpts(t *testing.T, o judgeOpts, sims ...float64) *judgeApp {
@@ -147,7 +150,7 @@ func newJudgeAppOpts(t *testing.T, o judgeOpts, sims ...float64) *judgeApp {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = db.Close() })
 
-	l := &judgeLLM{verdict: o.verdict, specs: lockedSpecAnswer, command: o.command}
+	l := &judgeLLM{verdict: o.verdict, specs: cmp.Or(o.spec, lockedSpecAnswer), command: o.command}
 	video := &videoFake{}
 	jobs := jobqueue.New(repository.NewJobRepository(db), jobqueue.Options{})
 	var pics [][]byte
@@ -334,6 +337,33 @@ func TestJudge_ALockedIdentityDriftFailsTheTakeWhateverTheModelSays(t *testing.T
 
 	rows := j.get("/projects/"+j.project, false).Body.String()
 	assert.Contains(t, rows, "LOCK 違反", "the chat says the Take failed on a LOCK violation")
+}
+
+func TestJudge_ALockSetOnTheShotMakesAMediumIssueInThatDimensionAViolation(t *testing.T) {
+	// The model passes the Take but notes a medium Acting issue. Without a LOCK that is a pass with
+	// a remark; with Acting LOCKed on the Shot (PUT /shots/:id/locks) it is a LOCK violation.
+	const actingIssue = `{"result":"pass","overall_confidence":0.9,"issues":[{"type":"acting_drift","severity":"medium","dimension":"acting","time_range":"0.8-1.7s"}]}`
+	judged := func(lock bool) (judgeBody, *judgeApp) {
+		j := newJudgeApp(t, actingIssue, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95)
+		if lock {
+			require.NoError(t, repository.NewLockRepository(j.db).SetShotLock(context.Background(), j.shotID, domain.ParamActing, domain.LockLocked, nil))
+		}
+		ids := j.generateAndJudge()
+		code, body := j.result(ids[0])
+		require.Equal(t, http.StatusOK, code)
+		return body, j
+	}
+
+	body, _ := judged(false)
+	assert.Equal(t, "pass", body.Result, "without the LOCK the model's pass stands")
+	require.Len(t, body.Issues, 1)
+	assert.False(t, body.Issues[0].LockViolation)
+
+	body, j := judged(true)
+	assert.Equal(t, "fail", body.Result, "a LOCK on the Shot is a LOCK for the Judge")
+	require.Len(t, body.Issues, 1)
+	assert.True(t, body.Issues[0].LockViolation)
+	assert.Contains(t, j.get("/projects/"+j.project, false).Body.String(), "LOCK 違反")
 }
 
 func TestJudge_PostRerunsTheJudgeAndKeepsEveryResultAsHistory(t *testing.T) {

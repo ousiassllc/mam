@@ -303,7 +303,11 @@ func (r *Runner) input(ctx context.Context, ref repository.TakeRef) (Input, erro
 	if err != nil {
 		return Input{}, err
 	}
-	in.Locked = lockedDimensions(spec, world, locks)
+	shotLocks, err := r.Generations.ShotLocks(ctx, ref.Take.ShotID)
+	if err != nil {
+		return Input{}, err
+	}
+	in.Locked = lockedDimensions(spec, world, locks, shotLocks)
 
 	if spec.Character != nil {
 		if subject, ok := r.faceSubject(ctx, ref.ProjectID, *spec.Character, world, references); ok {
@@ -358,12 +362,30 @@ var dimensionsOfLock = map[domain.WorldTarget]map[string][]domain.JudgeDimension
 	},
 }
 
+// dimensionsOfShotLock maps the parameters the user LOCKed on the Shot itself (PUT /shots/:id/locks,
+// spec/spec.md §6) to the Judge dimensions that check them.
+var dimensionsOfShotLock = map[domain.LockParameter][]domain.JudgeDimension{
+	domain.ParamCharacterIdentity: {domain.DimCharacterIdentity, domain.DimFace},
+	domain.ParamProductGeometry:   {domain.DimProductGeometry},
+	domain.ParamActing:            {domain.DimActing},
+	domain.ParamCamera:            {domain.DimCameraMotion},
+	domain.ParamLighting:          {domain.DimLighting},
+}
+
 // lockedDimensions maps the LOCKs that apply to the Shot to Judge dimensions. The Character,
 // Product and Location of the Shot are found in the World State by ID or name (the Shot Spec
 // uses either); an attribute is LOCKed by a lock row of that entity, and Character Identity and
-// Product Geometry also by the Shot Spec itself ("locked").
-func lockedDimensions(spec domain.ShotSpec, world domain.WorldContext, locks domain.LockSet) map[domain.JudgeDimension]bool {
+// Product Geometry also by the Shot Spec itself ("locked"). The parameters LOCKed on the Shot
+// (shotLocks: Character Identity, Product Geometry, Acting, Camera, Lighting) count as well.
+func lockedDimensions(spec domain.ShotSpec, world domain.WorldContext, locks domain.LockSet, shotLocks domain.ParameterLocks) map[domain.JudgeDimension]bool {
 	out := map[domain.JudgeDimension]bool{}
+	for param, dims := range dimensionsOfShotLock {
+		if shotLocks.Locked(param) {
+			for _, d := range dims {
+				out[d] = true
+			}
+		}
+	}
 	mark := func(target domain.WorldTarget, id string) {
 		for field, dims := range dimensionsOfLock[target] {
 			if locks.Locked(target, id, field) {
