@@ -2,6 +2,7 @@ package router_test
 
 import (
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"regexp"
 	"testing"
@@ -69,4 +70,33 @@ func TestScenes_InvalidInputRerendersWithTheErrorAndTheUsersValues(t *testing.T)
 	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
 	assert.Contains(t, rec.Body.String(), "残る目的")
 	assert.Contains(t, rec.Body.String(), `value="abc"`)
+}
+
+func TestScenes_HistoryRestoreGetsTheFullPageNotTheFragment(t *testing.T) {
+	a := newApp(t)
+	id := a.createProject("美容液の縦型15秒CMを作りたい")
+	rec := a.form(http.MethodPost, "/projects/"+id+"/scenes", url.Values{"title": {"導入"}})
+	require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
+	sceneID := sceneIDRe.FindStringSubmatch(rec.Body.String())[1]
+	path := "/projects/" + id + "/scenes/" + sceneID
+
+	get := func(headers map[string]string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		req.AddCookie(a.cookie)
+		for k, v := range headers {
+			req.Header.Set(k, v)
+		}
+		return do(a.engine, req)
+	}
+
+	restore := get(map[string]string{"HX-Request": "true", "HX-History-Restore-Request": "true"})
+	require.Equal(t, http.StatusOK, restore.Code)
+	assert.Contains(t, restore.Body.String(), "<!doctype html>", "htmx swaps the whole body on a history restore")
+	assert.Contains(t, restore.Body.String(), `name="csrf-token"`)
+	assert.Contains(t, restore.Header().Get("Vary"), "HX-History-Restore-Request")
+
+	fragment := get(map[string]string{"HX-Request": "true"})
+	require.Equal(t, http.StatusOK, fragment.Code)
+	assert.NotContains(t, fragment.Body.String(), "<html")
+	assert.NotContains(t, fragment.Body.String(), `name="csrf-token"`)
 }
