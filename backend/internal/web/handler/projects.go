@@ -29,8 +29,7 @@ func Projects(svc *service.ProjectService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		projects, err := svc.List(c.Request.Context())
 		if err != nil {
-			_ = c.Error(err)
-			c.AbortWithStatus(http.StatusInternalServerError)
+			pageError(c, err)
 			return
 		}
 		if isHTMX(c) {
@@ -39,8 +38,7 @@ func Projects(svc *service.ProjectService) gin.HandlerFunc {
 		}
 		templates, err := svc.Templates(c.Request.Context())
 		if err != nil {
-			_ = c.Error(err)
-			c.AbortWithStatus(http.StatusInternalServerError)
+			pageError(c, err)
 			return
 		}
 		render(c, http.StatusOK, pages.ProjectsPage(middleware.CSRFToken(c), projects, organisms.NewProjectFormData{Templates: templates}))
