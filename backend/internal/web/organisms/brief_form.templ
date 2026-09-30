@@ -1,0 +1,104 @@
+package organisms
+
+import (
+	"strings"
+
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules"
+)
+
+// BriefFormData is the state of the Brief editing form. Errors are keyed by form field name.
+type BriefFormData struct {
+	Project domain.Project
+	Brief   domain.Brief
+	Assets  []domain.Asset
+	Errors  map[string]string
+	Saved   bool
+	// ReferencesText overrides the References textarea (the user's rejected input).
+	ReferencesText string
+}
+
+func referencesText(d BriefFormData) string {
+	if d.ReferencesText != "" {
+		return d.ReferencesText
+	}
+	b := d.Brief
+	var urls []string
+	for _, r := range b.References {
+		if strings.HasPrefix(r, "http://") || strings.HasPrefix(r, "https://") {
+			urls = append(urls, r)
+		}
+	}
+	return strings.Join(urls, "\n")
+}
+
+// BriefForm confirms and edits the Creative Brief (auxiliary view; the Brief is normally built in the chat).
+templ BriefForm(d BriefFormData) {
+	<form
+		id="brief-form"
+		class="flex flex-col gap-4"
+		hx-put={ "/projects/" + d.Project.ID + "/brief" }
+		hx-target="this"
+		hx-swap="outerHTML"
+	>
+		for _, f := range domain.RequiredBriefFields() {
+			<div>
+				<label for={ "brief-" + string(f) } class="mb-1 flex items-center gap-2 text-sm font-medium">
+					{ f.Label() }
+					if d.Brief.Get(f) == "" && d.Brief.IsDelegated(f) {
+						<span class="rounded-full bg-neutral-700 px-2 py-0.5 text-xs font-normal text-neutral-300">AIに任せる</span>
+					}
+				</label>
+				<input
+					id={ "brief-" + string(f) }
+					name={ string(f) }
+					type="text"
+					value={ d.Brief.Get(f) }
+					class="w-full rounded-md border border-neutral-600 bg-neutral-950 px-3 py-2 text-sm"
+				/>
+				if msg := d.Errors[string(f)]; msg != "" {
+					<p class="mt-1 text-sm text-red-300" role="alert">{ msg }</p>
+				}
+			</div>
+		}
+		if d.Brief.Style != "" {
+			<p class="text-sm text-neutral-400">スタイル（Series 正本）: { d.Brief.Style }</p>
+		}
+		<div>
+			<label for="brief-additional-instruction" class="mb-1 block text-sm font-medium">Additional Instruction</label>
+			<textarea
+				id="brief-additional-instruction"
+				name="additional_instruction"
+				rows="3"
+				class="w-full rounded-md border border-neutral-600 bg-neutral-950 px-3 py-2 text-sm"
+			>{ d.Brief.AdditionalInstruction }</textarea>
+			if msg := d.Errors["additional_instruction"]; msg != "" {
+				<p class="mt-1 text-sm text-red-300" role="alert">{ msg }</p>
+			}
+		</div>
+		<div>
+			<label for="brief-references" class="mb-1 block text-sm font-medium">References（URL、1行に1件）</label>
+			<textarea
+				id="brief-references"
+				name="references"
+				rows="3"
+				class="w-full rounded-md border border-neutral-600 bg-neutral-950 px-3 py-2 text-sm"
+			>{ referencesText(d) }</textarea>
+			if msg := d.Errors["references"]; msg != "" {
+				<p class="mt-1 text-sm text-red-300" role="alert">{ msg }</p>
+			}
+		</div>
+		if len(d.Assets) > 0 {
+			<div>
+				<p class="mb-1 text-sm font-medium">Assets / References（添付）</p>
+				@molecules.AttachmentStrip(d.Project.ID, d.Assets)
+			</div>
+		}
+		<div class="flex items-center gap-3">
+			<button type="submit" class="rounded-md bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-400">保存</button>
+			if d.Saved {
+				<span class="text-sm text-emerald-300" role="status">保存しました</span>
+			}
+		</div>
+	</form>
+}

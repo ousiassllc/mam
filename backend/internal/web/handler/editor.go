@@ -1,0 +1,192 @@
+package handler
+
+import (
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/web/middleware"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/pages"
+)
+
+func editorPanelData(v service.EditorView) organisms.EditorPanelData {
+	d := organisms.EditorPanelData{
+		Project: v.Project, BranchID: v.BranchID, Audio: v.Audio, Voices: v.Voices, QC: v.QC, Exports: v.Exports, Defaults: v.Defaults, CanRender: v.CanRender,
+	}
+	if t := v.Timeline; t != nil {
+		d.TimelineID, d.Clips, d.Duration, d.Judge = t.ID, len(t.Clips), t.Duration, t.Judge
+	}
+	return d
+}
+
+// EditorPage renders the editor of a Project (GET /projects/:id/edit): the full page, or the
+// workspace for HTMX. The timeline itself is loaded by the component from the JSON API.
+func EditorPage(svc *service.EditorService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		v, err := svc.View(c.Request.Context(), c.Param("id"), c.Query("branch_id"))
+		if err != nil {
+			pageError(c, err)
+			return
+		}
+		d := editorPanelData(v)
+		if isHTMX(c) {
+			render(c, http.StatusOK, organisms.EditorWorkspace(d))
+			return
+		}
+		render(c, http.StatusOK, pages.EditorPage(middleware.CSRFToken(c), d))
+	}
+}
+
+// EditorActions renders the stage buttons of a Project (GET /projects/:id/edit/actions): what
+// #editor-actions reloads from once the timeline editor saved.
+func EditorActions(svc *service.EditorService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		v, err := svc.View(c.Request.Context(), c.Param("id"), c.Query("branch_id"))
+		if err != nil {
+			toast(c, err)
+			return
+		}
+		render(c, http.StatusOK, organisms.EditorActions(editorPanelData(v)))
+	}
+}
+
+// editorStage answers a stage action with the refreshed stage buttons. Errors are toasts.
+func editorStage(run func(c *gin.Context) (service.EditorView, error), trigger string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		v, err := run(c)
+		if err != nil {
+			toast(c, err)
+			return
+		}
+		if trigger != "" {
+			c.Header("HX-Trigger", trigger)
+		}
+		render(c, http.StatusOK, organisms.EditorActions(editorPanelData(v)))
+	}
+}
+
+// roughCutForm is the body of POST /projects/:id/edit/rough-cut: the Branch to cut ("" is the trunk).
+type roughCutForm struct {
+	BranchID string `form:"branch_id" json:"branch_id"`
+}
+
+// RoughCut makes the Rough Cut from the Selected Takes of the trunk or of the Branch in branch_id
+// (POST /projects/:id/edit/rough-cut). The timeline editor reloads on the timeline-reload event the
+// response carries.
+func RoughCut(svc *service.EditorService) gin.HandlerFunc {
+	return editorStage(func(c *gin.Context) (service.EditorView, error) {
+		var in roughCutForm
+		if err := c.ShouldBind(&in); err != nil {
+			return service.EditorView{}, &service.ValidationError{Field: "branch_id", Message: "Branch の指定を読み取れませんでした"}
+		}
+		return svc.RoughCut(c.Request.Context(), c.Param("id"), in.BranchID)
+	}, "timeline-reload")
+}
+
+// JudgeTimeline runs the Editor Judge (POST /edit-timelines/:id/judge).
+func JudgeTimeline(svc *service.EditorService) gin.HandlerFunc {
+	return editorStage(func(c *gin.Context) (service.EditorView, error) {
+		return svc.JudgeTimeline(c.Request.Context(), c.Param("id"))
+	}, "")
+}
+
+// RequestAdditionalShot asks the Director for the additional Shots the Editor Judge found missing
+// (POST /edit-timelines/:id/request-additional-shot): the Editor → Reshoot Loop.
+func RequestAdditionalShot(svc *service.EditorService) gin.HandlerFunc {
+	return editorStage(func(c *gin.Context) (service.EditorView, error) {
+		return svc.RequestAdditionalShot(c.Request.Context(), c.Param("id"))
+	}, "")
+}
+
+// GenerateAudio makes the Audio Timeline of the trunk or of the Branch in branch_id (POST
+// /projects/:id/audio/generate).
+func GenerateAudio(svc *service.EditorService) gin.HandlerFunc {
+	return editorStage(func(c *gin.Context) (service.EditorView, error) {
+		var in roughCutForm
+		if err := c.ShouldBind(&in); err != nil {
+			return service.EditorView{}, &service.ValidationError{Field: "branch_id", Message: "Branch の指定を読み取れませんでした"}
+		}
+		return svc.GenerateAudio(c.Request.Context(), c.Param("id"), in.BranchID)
+	}, "")
+}
+
+// CloneVoice clones the voice of a speaker from an uploaded sample (POST /projects/:id/audio/voices,
+// multipart speaker / sample; optional branch_id selects the panel that is answered).
+func CloneVoice(svc *service.EditorService) gin.HandlerFunc {
+	return editorStage(func(c *gin.Context) (service.EditorView, error) {
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, service.MaxVoiceSampleBytes+1<<20)
+		if err := c.Request.ParseMultipartForm(multipartMemory); err != nil {
+			return service.EditorView{}, &service.ValidationError{Field: "sample", Message: "送信内容が大きすぎるか、形式が正しくありません"}
+		}
+		var sample service.Upload
+		if files := c.Request.MultipartForm.File["sample"]; len(files) > 0 && files[0].Filename != "" {
+			sample = uploadOf(files[0])
+		}
+		if _, err := svc.CloneVoice(c.Request.Context(), c.Param("id"), c.PostForm("speaker"), c.PostForm("name"), sample); err != nil {
+			return service.EditorView{}, err
+		}
+		return svc.View(c.Request.Context(), c.Param("id"), c.PostForm("branch_id"))
+	}, "")
+}
+
+// FinalQC runs Final QC (POST /projects/:id/final-qc).
+func FinalQC(svc *service.EditorService) gin.HandlerFunc {
+	return editorStage(func(c *gin.Context) (service.EditorView, error) {
+		return svc.FinalQC(c.Request.Context(), c.Param("id"))
+	}, "timeline-reload")
+}
+
+// exportForm is the body of POST /projects/:id/export. Empty fields take the defaults.
+type exportForm struct {
+	AspectRatio string `form:"aspect_ratio" json:"aspect_ratio"`
+	Resolution  string `form:"resolution" json:"resolution"`
+	Codec       string `form:"codec" json:"codec"`
+}
+
+// Export writes the finished video (POST /projects/:id/export).
+func Export(svc *service.EditorService) gin.HandlerFunc {
+	return editorStage(func(c *gin.Context) (service.EditorView, error) {
+		var in exportForm
+		if err := c.ShouldBind(&in); err != nil {
+			return service.EditorView{}, &service.ValidationError{Message: "書き出しの指定を読み取れませんでした"}
+		}
+		return svc.Export(c.Request.Context(), c.Param("id"), service.ExportInput{AspectRatio: in.AspectRatio, Resolution: in.Resolution, Codec: in.Codec})
+	}, "")
+}
+
+// SaveEditTimeline saves the clips the timeline editor sends as the next version
+// (PUT /edit-timelines/:id, JSON {"clips":[{shot_id,take_id,in_point,out_point,transition}]}).
+// It answers 204; the editor reloads the timeline it now has.
+func SaveEditTimeline(svc *service.EditorService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var tl domain.EditTimeline
+		if err := c.ShouldBindJSON(&tl); err != nil {
+			toast(c, &service.ValidationError{Field: "clips", Message: "タイムラインの内容を読み取れませんでした"})
+			return
+		}
+		if _, err := svc.SaveTimeline(c.Request.Context(), c.Param("id"), tl); err != nil {
+			toast(c, err)
+			return
+		}
+		c.Status(http.StatusNoContent)
+	}
+}
+
+// EditPreview serves the rendered Rough Cut (GET /edit-timelines/:id/preview).
+func EditPreview(svc *service.EditorService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		file, err := svc.Preview(c.Request.Context(), c.Param("id"))
+		serveMedia(c, file, err)
+	}
+}
+
+// ExportVideo serves an exported video as a download (GET /projects/:id/exports/:exportId/video).
+func ExportVideo(svc *service.EditorService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		file, err := svc.ExportFile(c.Request.Context(), c.Param("id"), c.Param("exportId"))
+		serveMedia(c, file, err)
+	}
+}

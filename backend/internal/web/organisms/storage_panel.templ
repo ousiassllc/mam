@@ -1,0 +1,84 @@
+package organisms
+
+import "github.com/ousiassllc/mam/backend/internal/domain"
+
+// StoragePanelData is the disk usage of a Project.
+type StoragePanelData struct {
+	ProjectID string
+	Storage   domain.StorageSummary
+}
+
+func hasUnneeded(s domain.StorageSummary) bool {
+	n, _ := s.UnneededTakes()
+	return n > 0
+}
+
+func unneededText(s domain.StorageSummary) string {
+	n, size := s.UnneededTakes()
+	return intText(n) + " 件 / " + domain.FormatBytes(size)
+}
+
+// StoragePanel shows the disk usage of the Project and lets the user archive Takes that are not
+// needed (Rejected, or not chosen where another Take of the Shot is Selected), which frees their
+// video files (spec/requirements/non-functional.md §4).
+templ StoragePanel(d StoragePanelData) {
+	<section id="storage-panel" class="flex flex-col gap-3">
+		<dl class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+			<div class="rounded-md border border-neutral-700 p-3">
+				<dt class="text-xs text-neutral-400">Project のファイル</dt>
+				<dd class="text-lg font-semibold" data-testid="asset-bytes">{ domain.FormatBytes(d.Storage.AssetBytes) }</dd>
+			</div>
+			<div class="rounded-md border border-neutral-700 p-3">
+				<dt class="text-xs text-neutral-400">ディスクの空き容量</dt>
+				<dd class="text-lg font-semibold" data-testid="free-bytes">
+					if d.Storage.FreeKnown {
+						{ domain.FormatBytes(d.Storage.FreeBytes) }
+					} else {
+						不明
+					}
+				</dd>
+			</div>
+			<div class="rounded-md border border-neutral-700 p-3">
+				<dt class="text-xs text-neutral-400">不要な Take</dt>
+				<dd class="text-lg font-semibold" data-testid="unneeded">{ unneededText(d.Storage) }</dd>
+			</div>
+		</dl>
+		if hasUnneeded(d.Storage) {
+			<form
+				hx-post={ "/projects/" + d.ProjectID + "/storage/archive-unneeded" }
+				hx-target="#storage-panel"
+				hx-swap="outerHTML"
+				hx-confirm="不要な Take の動画ファイルを削除します。よろしいですか？"
+			>
+				<button type="submit" class="rounded-md border border-red-500/60 px-3 py-1.5 text-sm text-red-300 hover:bg-red-500/10">不要な Take をまとめてアーカイブ</button>
+			</form>
+		}
+		if len(d.Storage.Takes) == 0 {
+			<p class="text-sm text-neutral-400">保存されている Take はありません。</p>
+		} else {
+			<ul class="flex flex-col divide-y divide-neutral-800 text-sm">
+				for _, t := range d.Storage.Takes {
+					<li class="flex flex-wrap items-center justify-between gap-2 py-2">
+						<span>
+							{ "Scene " + intText(t.SceneIndex+1) + " · Shot " + intText(t.ShotIndex+1) + " · " + t.ModelName }
+							<span class="text-neutral-400">{ " · " + string(t.Status) + " · " + domain.FormatBytes(t.SizeBytes) }</span>
+							if t.Unneeded {
+								<span class="ml-1 rounded-full bg-amber-500/20 px-2 py-0.5 text-xs text-amber-300">不要</span>
+							}
+						</span>
+						if t.Status != domain.TakeSelected {
+							<button
+								type="button"
+								class="rounded-md border border-neutral-600 px-2 py-1 text-xs hover:bg-neutral-800"
+								hx-post={ "/projects/" + d.ProjectID + "/takes/" + t.TakeID + "/archive" }
+								hx-target="#storage-panel"
+								hx-swap="outerHTML"
+								hx-confirm="この Take の動画ファイルを削除します。よろしいですか？"
+							>アーカイブ</button>
+						}
+					</li>
+				}
+			</ul>
+		}
+	</section>
+}

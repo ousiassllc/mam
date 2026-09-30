@@ -1,0 +1,71 @@
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  default: standard
+  enable:
+    - depguard
+    - errorlint
+    - gosec
+    - misspell
+    - revive
+    - unconvert
+  settings:
+    depguard:
+      # Layer rules: handler -> service -> agent -> repository -> domain (overview.md §5).
+      rules:
+        domain:
+          files: ["**/internal/domain/**", "!$test"]
+          deny:
+            - pkg: github.com/ousiassllc/mam/backend/internal
+              desc: domain MUST NOT depend on any other layer
+        repository:
+          files: ["**/internal/repository/**", "!$test"]
+          deny:
+            - {pkg: github.com/ousiassllc/mam/backend/internal/agent, desc: repository depends on domain only}
+            - {pkg: github.com/ousiassllc/mam/backend/internal/service, desc: repository depends on domain only}
+            - {pkg: github.com/ousiassllc/mam/backend/internal/router, desc: repository depends on domain only}
+            - {pkg: github.com/ousiassllc/mam/backend/internal/web, desc: repository depends on domain only}
+            - {pkg: github.com/ousiassllc/mam/backend/internal/credential, desc: repository depends on domain only}
+        agent:
+          files: ["**/internal/agent/**", "!$test"]
+          deny:
+            - {pkg: github.com/ousiassllc/mam/backend/internal/service, desc: agent MUST NOT depend on service}
+            - {pkg: github.com/ousiassllc/mam/backend/internal/router, desc: agent MUST NOT depend on router}
+            - {pkg: github.com/ousiassllc/mam/backend/internal/web, desc: agent MUST NOT depend on web}
+        service:
+          files: ["**/internal/service/**", "!$test"]
+          deny:
+            - {pkg: github.com/ousiassllc/mam/backend/internal/router, desc: service MUST NOT depend on router}
+            - {pkg: github.com/ousiassllc/mam/backend/internal/web, desc: service MUST NOT depend on web}
+        handler:
+          files: ["**/internal/web/handler/**", "!$test"]
+          deny:
+            - {pkg: github.com/ousiassllc/mam/backend/internal/repository, desc: handler MUST go through service}
+            - {pkg: github.com/ousiassllc/mam/backend/internal/agent, desc: handler MUST go through service}
+    revive:
+      rules:
+        - name: exported
+        - name: package-comments
+        - name: error-naming
+        - name: error-strings
+        - name: context-as-argument
+        - name: unused-parameter
+  exclusions:
+    generated: lax
+    presets:
+      - std-error-handling
+    rules:
+      - path: _test\.go
+        linters: [gosec]
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/ousiassllc/mam

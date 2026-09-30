@@ -1,0 +1,217 @@
+package molecules
+
+import (
+	"fmt"
+
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+)
+
+// ShotCardData is a Shot with its storyboard frame and Takes.
+type ShotCardData struct {
+	ProjectID  string
+	Shot       domain.Shot
+	Storyboard *domain.ShotStoryboard // nil when the Shot has no storyboard frame
+	Takes      []domain.Take
+	Selected   bool
+}
+
+func takeStatusLabel(s domain.TakeStatus) (atoms.BadgeTone, string) {
+	switch s {
+	case domain.TakeAIPick:
+		return atoms.BadgeInfo, "AI Pick"
+	case domain.TakeSelected:
+		return atoms.BadgeOK, "採用"
+	case domain.TakeRejected:
+		return atoms.BadgeNeutral, "除外"
+	}
+	return atoms.BadgeWarn, "候補"
+}
+
+func shotStateLabel(s domain.ShotState) string {
+	switch s {
+	case domain.ShotPlanning:
+		return "計画中"
+	case domain.ShotGenerating:
+		return "生成中"
+	case domain.ShotJudging:
+		return "Judge 中"
+	case domain.ShotRepairing:
+		return "Repair 中"
+	case domain.ShotEditing:
+		return "編集待ち"
+	}
+	return string(s)
+}
+
+func secondsText(d float64) string { return fmt.Sprintf("%.1f 秒", d) }
+
+// shotURL selects the Shot on the Scene page.
+func shotURL(projectID, sceneID, shotID string) string {
+	return "/projects/" + projectID + "/scenes/" + sceneID + "?shot=" + shotID
+}
+
+// inspectorURL is the Shot Inspector page.
+func inspectorURL(shotID string) string { return "/shots/" + shotID }
+
+func shotActionURL(shotID, action string) string { return "/shots/" + shotID + "/" + action }
+
+func shotProgressURL(shotID string) string { return "/ws/shots/" + shotID }
+
+func takeComparisonURL(shotID string) string { return "/shots/" + shotID + "/takes" }
+
+func takeJudgeResultURL(takeID string) string { return "/api/v1/takes/" + takeID + "/judge-result" }
+
+func takeActionURL(takeID, action string) string { return "/takes/" + takeID + "/" + action }
+
+// ShotActions starts the generation of a Shot (optionally with an additional direction) or the
+// building of its Reference Pack. Both answer with the Shot card in the GENERATING state.
+templ ShotActions(shotID string) {
+	<form
+		class="mt-2 flex flex-wrap items-center gap-2"
+		hx-post={ shotActionURL(shotID, "generate") }
+		hx-target={ "#shot-" + shotID }
+		hx-swap="outerHTML"
+	>
+		<label class="sr-only" for={ "instruction-" + shotID }>追加の指示</label>
+		<input
+			id={ "instruction-" + shotID }
+			name="additional_instruction"
+			type="text"
+			maxlength="1000"
+			placeholder="追加の指示（任意。例: もう少しカメラを寄せて）"
+			class="min-w-0 flex-1 rounded-md border border-neutral-700 bg-neutral-950 px-2 py-1.5 text-sm"
+		/>
+		@atoms.Button(atoms.TonePrimary, "生成", templ.Attributes{"type": "submit"})
+		@atoms.Button(atoms.ToneNeutral, "Reference Pack", templ.Attributes{
+			"type":      "button",
+			"hx-post":   shotActionURL(shotID, "reference-pack"),
+			"hx-target": "#shot-" + shotID,
+			"hx-swap":   "outerHTML",
+		})
+		@atoms.Button(atoms.ToneNeutral, "続きを作る", templ.Attributes{
+			"type":    "button",
+			"hx-post": shotActionURL(shotID, "continue"),
+			"hx-swap": "none",
+		})
+	</form>
+}
+
+// TakeRow is one Take under a Shot: its status, and the buttons that select it (the user's choice
+// replaces the AI Pick) or exclude it. Both answer with the Shot card.
+templ TakeRow(t domain.Take) {
+	<li class="flex items-center justify-between gap-2 text-xs text-neutral-300">
+		<span class="truncate">{ t.ModelName }</span>
+		<span class="flex shrink-0 items-center gap-2">
+			if t.Status != domain.TakeRejected && t.FilePath != "" {
+				if t.Status != domain.TakeSelected {
+					<button
+						type="button"
+						class="underline hover:text-neutral-100"
+						hx-post={ takeActionURL(t.ID, "select") }
+						hx-target={ "#shot-" + t.ShotID }
+						hx-swap="outerHTML"
+					>選択</button>
+				}
+				<button
+					type="button"
+					class="underline hover:text-neutral-100"
+					hx-delete={ "/takes/" + t.ID }
+					hx-target={ "#shot-" + t.ShotID }
+					hx-swap="outerHTML"
+					hx-confirm="この Take を除外しますか？"
+				>除外</button>
+			}
+			{{ tone, label := takeStatusLabel(t.Status) }}
+			@atoms.Badge(tone, label)
+			@atoms.Button(atoms.ToneNeutral, "Repair", templ.Attributes{
+				"type":      "button",
+				"hx-post":   "/takes/" + t.ID + "/repair",
+				"hx-target": "#shot-" + t.ShotID,
+				"hx-swap":   "outerHTML",
+			})
+		</span>
+	</li>
+}
+
+// storyboardRows are the labelled lines of a storyboard frame that are not empty.
+func storyboardRows(f domain.ShotStoryboard) [][2]string {
+	var rows [][2]string
+	for _, r := range [][2]string{
+		{"画", f.Description}, {"サイズ", f.Framing}, {"カメラ", f.Camera},
+		{"構図", f.Composition}, {"動き", f.Action}, {"セリフ", f.Dialogue},
+	} {
+		if r[1] != "" {
+			rows = append(rows, r)
+		}
+	}
+	return rows
+}
+
+// ShotCard is a Shot of the selected Scene: its objective, duration and state. Selecting it
+// opens the storyboard frame; its Takes are listed below.
+templ ShotCard(d ShotCardData) {
+	<li
+		id={ "shot-" + d.Shot.ID }
+		class={ "rounded-md border p-3", templ.KV("border-indigo-400 bg-indigo-500/10", d.Selected), templ.KV("border-neutral-700 bg-neutral-900", !d.Selected) }
+		if d.Selected {
+			aria-current="true"
+		}
+		if d.Shot.State == domain.ShotGenerating || d.Shot.State == domain.ShotJudging || d.Shot.State == domain.ShotRepairing {
+			data-shot-progress
+			data-ws-url={ shotProgressURL(d.Shot.ID) }
+			data-refresh-url={ shotURL(d.ProjectID, d.Shot.SceneID, d.Shot.ID) }
+		}
+	>
+		<div class="flex flex-wrap items-center justify-between gap-2">
+			<a
+				class="min-w-0 flex-1 font-medium hover:underline"
+				href={ templ.SafeURL(shotURL(d.ProjectID, d.Shot.SceneID, d.Shot.ID)) }
+				hx-get={ shotURL(d.ProjectID, d.Shot.SceneID, d.Shot.ID) }
+				hx-target="#scene-shot-view"
+				hx-swap="outerHTML"
+				hx-push-url="true"
+			>{ fmt.Sprintf("Shot %d: %s", d.Shot.OrderIndex+1, d.Shot.Objective) }</a>
+			<span class="flex items-center gap-2 text-xs text-neutral-400">
+				<a href={ templ.SafeURL(inspectorURL(d.Shot.ID)) } class="underline hover:text-neutral-100">Inspector</a>
+				<span>{ secondsText(d.Shot.Duration) }</span>
+				if d.Shot.State == domain.ShotGenerating {
+					@atoms.Spinner("生成中")
+				}
+				if d.Shot.State == domain.ShotJudging {
+					@atoms.Spinner("Judge 中")
+				}
+				if d.Shot.State == domain.ShotRepairing {
+					@atoms.Spinner("Repair 中")
+				}
+				@atoms.Badge(atoms.BadgeNeutral, shotStateLabel(d.Shot.State))
+			</span>
+		</div>
+		if d.Selected && d.Storyboard != nil {
+			<dl class="mt-2 grid grid-cols-[4rem_1fr] gap-x-2 gap-y-1 text-sm">
+				for _, row := range storyboardRows(*d.Storyboard) {
+					<dt class="text-neutral-400">{ row[0] }</dt>
+					<dd class="whitespace-pre-wrap break-words">{ row[1] }</dd>
+				}
+			</dl>
+		}
+		if d.Selected && d.Shot.State != domain.ShotGenerating {
+			@ShotActions(d.Shot.ID)
+		}
+		if d.Shot.State == domain.ShotGenerating || d.Shot.State == domain.ShotJudging {
+			<mam-video-player class="mt-2 block" ws-url={ shotProgressURL(d.Shot.ID) }></mam-video-player>
+		}
+		if len(d.Takes) > 0 {
+			<ul class="mt-2 flex flex-col gap-1 border-t border-neutral-800 pt-2" aria-label="Take 一覧">
+				for _, t := range d.Takes {
+					@TakeRow(t)
+				}
+			</ul>
+			if len(d.Takes) > 1 {
+				<a href={ templ.SafeURL(takeComparisonURL(d.Shot.ID)) } class="mt-1 inline-block text-xs text-neutral-400 underline hover:text-neutral-100">Take 比較</a>
+			}
+		} else if d.Selected {
+			<p class="mt-2 text-xs text-neutral-500">Take はまだありません。</p>
+		}
+	</li>
+}

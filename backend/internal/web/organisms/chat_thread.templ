@@ -1,0 +1,82 @@
+package organisms
+
+import (
+	"context"
+	"io"
+
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules"
+)
+
+// ProjectStateBadge shows the Core State Machine state. As an out-of-band fragment it
+// updates the badge in the header whenever messages are fetched.
+templ ProjectStateBadge(state domain.ProjectState, oob bool) {
+	<span
+		id="project-state"
+		class={ stateClass(state) }
+		data-state={ string(state) }
+		if oob {
+			hx-swap-oob="true"
+		}
+	>{ stateLabel(state) }</span>
+}
+
+// MessageItem renders a thread entry as text or as the card of its kind.
+templ MessageItem(m domain.ThreadMessage) {
+	switch m.Kind {
+		case domain.KindQuestion:
+			@molecules.QuestionCard(m)
+		case domain.KindApproval:
+			@molecules.ApprovalCard(m)
+		case domain.KindKeyframe:
+			@molecules.KeyframeCard(m)
+		case domain.KindTake:
+			@molecules.TakeCard(m)
+		case domain.KindProgress:
+			@molecules.ProgressCard(m)
+		case domain.KindEscalation:
+			@molecules.EscalationCard(m)
+		default:
+			@molecules.TextMessage(m)
+	}
+}
+
+// OOBCard renders a card that replaces the same card already on the page.
+func OOBCard(m domain.ThreadMessage) templ.Component {
+	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		return MessageItem(m).Render(molecules.WithOOB(ctx), w)
+	})
+}
+
+// MessageFragment is the response of GET /projects/:id/messages and POST /projects/:id/messages:
+// the messages, the cards they answered (replaced in place) and the refreshed state badge.
+templ MessageFragment(p domain.Project, msgs []domain.ThreadMessage, updated []domain.ThreadMessage) {
+	for _, m := range msgs {
+		@MessageItem(m)
+	}
+	for _, m := range updated {
+		@OOBCard(m)
+	}
+	@ProjectStateBadge(p.State, true)
+}
+
+// CardFragment is a single card that changed in place (progress update, answered approval).
+templ CardFragment(p domain.Project, m domain.ThreadMessage) {
+	@MessageItem(m)
+	@ProjectStateBadge(p.State, true)
+}
+
+// ChatThread is the scrolling thread. #chat-thread is the swap target of every message action.
+templ ChatThread(msgs []domain.ThreadMessage) {
+	<div
+		id="chat-thread"
+		class="flex flex-1 flex-col gap-3 overflow-y-auto px-4 py-4"
+		role="log"
+		aria-live="polite"
+		aria-label="チャットスレッド"
+	>
+		for _, m := range msgs {
+			@MessageItem(m)
+		}
+	</div>
+}

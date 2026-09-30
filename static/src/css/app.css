@@ -1,0 +1,7 @@
+@import "tailwindcss";
+
+/* Tailwind must see class names used in Templ templates. */
+@source "../../../backend/internal/web";
+
+/* ...and the classes of the Lit components, which render into the light DOM. */
+@source "../components";

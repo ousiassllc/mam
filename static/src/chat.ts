@@ -1,0 +1,169 @@
+/**
+ * Behaviour of the Chat Workspace (F-30). The server renders everything; this module
+ * only listens to /ws/projects/:id and asks for HTML fragments when told something changed
+ * (the socket never carries a body), and handles the composer (reply target, attachments, Enter to send).
+ */
+import htmx from 'htmx.org';
+import { connect, socketUrl } from './components/lib/ws';
+import {
+  cardUrl,
+  isSendKey,
+  messagesUrl,
+  removeDuplicateIds,
+  type ProjectEvent,
+} from './components/lib/thread';
+
+const THREAD = '#chat-thread';
+
+export function initChatWorkspaces(root: ParentNode = document): void {
+  for (const el of root.querySelectorAll<HTMLElement>('#chat-workspace:not([data-chat-ready])')) {
+    el.dataset.chatReady = 'true';
+    new ChatWorkspace(el);
+  }
+}
+
+class ChatWorkspace {
+  private readonly projectId: string;
+  private readonly thread: HTMLElement;
+  private readonly composer: HTMLFormElement;
+  private readonly content: HTMLTextAreaElement;
+  private readonly files: HTMLInputElement;
+  private stickToBottom = true; // is the thread scrolled to the bottom (so new messages should be followed)?
+  private syncing = false;
+  private syncAgain = false;
+
+  constructor(private readonly root: HTMLElement) {
+    this.projectId = root.dataset.projectId ?? '';
+    this.thread = root.querySelector<HTMLElement>(THREAD)!;
+    this.composer = root.querySelector<HTMLFormElement>('#chat-composer')!;
+    this.content = this.composer.querySelector<HTMLTextAreaElement>('#composer-content')!;
+    this.files = this.composer.querySelector<HTMLInputElement>('#composer-files')!;
+
+    this.bindThread();
+    this.bindComposer();
+    this.scrollToBottom();
+    connect<ProjectEvent>({
+      url: socketUrl(root.dataset.wsUrl ?? '', location),
+      onMessage: (event) => this.onEvent(event),
+      // After a reconnect, events may have been missed: catch up.
+      onOpen: (reconnected) => reconnected && void this.syncNew(),
+    });
+  }
+
+  private onEvent(event: ProjectEvent): void {
+    if (event.type === 'card.updated') {
+      const card = this.thread.querySelector(`#msg-${CSS.escape(event.message_id)}`);
+      if (card) {
+        void htmx.ajax('get', cardUrl(this.projectId, event.message_id), { target: `#msg-${CSS.escape(event.message_id)}`, swap: 'outerHTML' });
+        return;
+      }
+    }
+    void this.syncNew();
+  }
+
+  /** Fetches the messages after the last one shown. Concurrent calls are merged. */
+  private async syncNew(): Promise<void> {
+    if (this.syncing) {
+      this.syncAgain = true;
+      return;
+    }
+    this.syncing = true;
+    try {
+      do {
+        this.syncAgain = false;
+        await htmx.ajax('get', messagesUrl(this.projectId, this.lastMessageId()), { target: THREAD, swap: 'beforeend' });
+      } while (this.syncAgain);
+    } finally {
+      this.syncing = false;
+    }
+  }
+
+  private lastMessageId(): string {
+    const items = this.thread.querySelectorAll<HTMLElement>('[data-message-id]');
+    return items.item(items.length - 1)?.dataset.messageId ?? '';
+  }
+
+  private bindThread(): void {
+    // htmx swaps into the thread from actions and from syncNew: keep it duplicate-free and scrolled.
+    // Only the user's scrolling (and our own scrollToBottom) changes the stickiness: a layout
+    // shift elsewhere on the page must not make the thread stop following new messages.
+    this.thread.addEventListener('scroll', () => (this.stickToBottom = this.isNearBottom()));
+    this.thread.addEventListener('htmx:afterSwap', () => this.afterThreadChange());
+    this.root.addEventListener('chat:refresh', () => void this.syncNew());
+    this.thread.addEventListener('click', (event) => {
+      const button = (event.target as HTMLElement).closest<HTMLElement>('[data-reply-to]');
+      if (button) this.setReplyTarget(button.dataset.replyTo ?? '', button.dataset.replyLabel ?? '');
+    });
+  }
+
+  private afterThreadChange(): void {
+    removeDuplicateIds(this.thread.querySelectorAll<HTMLElement>('[data-message-id]'));
+    if (this.stickToBottom) this.scrollToBottom();
+  }
+
+  private bindComposer(): void {
+    this.content.addEventListener('keydown', (event) => {
+      if (isSendKey(event)) {
+        event.preventDefault();
+        this.composer.requestSubmit();
+      }
+    });
+    this.files.addEventListener('change', () => this.showAttachments());
+    this.composer.querySelector('#reply-cancel')?.addEventListener('click', () => this.setReplyTarget('', ''));
+
+    this.composer.addEventListener('dragover', (event) => event.preventDefault());
+    this.composer.addEventListener('drop', (event) => {
+      event.preventDefault();
+      const dropped = event.dataTransfer?.files;
+      if (!dropped?.length) return;
+      const merged = new DataTransfer();
+      for (const f of [...this.files.files!, ...dropped]) merged.items.add(f);
+      this.files.files = merged.files;
+      this.showAttachments();
+    });
+
+    // After a successful send the composer is cleared; a failed one keeps the user's input.
+    this.composer.addEventListener('htmx:afterRequest', (event) => {
+      if (event.target === this.composer && (event as CustomEvent<{ successful: boolean }>).detail.successful) {
+        this.content.value = '';
+        this.files.value = '';
+        this.showAttachments();
+        this.setReplyTarget('', '');
+      }
+    });
+    // Card buttons post replies on their own (not the refetches of syncNew): clear the pending reply target with them.
+    this.thread.addEventListener('htmx:afterRequest', (event) => {
+      if ((event.target as HTMLElement).hasAttribute('hx-post')) this.setReplyTarget('', '');
+    });
+  }
+
+  private setReplyTarget(messageId: string, label: string): void {
+    this.composer.querySelector<HTMLInputElement>('#reply-to')!.value = messageId;
+    const chip = this.composer.querySelector<HTMLElement>('#reply-chip')!;
+    chip.classList.toggle('hidden', messageId === '');
+    chip.classList.toggle('flex', messageId !== '');
+    this.composer.querySelector<HTMLElement>('#reply-label')!.textContent = label;
+    if (messageId) this.content.focus();
+  }
+
+  private showAttachments(): void {
+    const list = this.composer.querySelector<HTMLElement>('#attachment-names')!;
+    list.replaceChildren(
+      ...[...this.files.files!].map((file) => {
+        const li = document.createElement('li');
+        li.textContent = file.name;
+        li.className = 'rounded bg-neutral-800 px-2 py-0.5';
+        return li;
+      }),
+    );
+  }
+
+  private isNearBottom(): boolean {
+    const t = this.thread;
+    return t.scrollHeight - t.scrollTop - t.clientHeight < 80;
+  }
+
+  private scrollToBottom(): void {
+    this.thread.scrollTop = this.thread.scrollHeight;
+  }
+}

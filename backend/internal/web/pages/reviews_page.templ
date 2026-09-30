@@ -1,0 +1,47 @@
+package pages
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/layout"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+)
+
+// ReviewsPage is GET /projects/:id/reviews: the owner's review screen in an auxiliary view.
+templ ReviewsPage(csrfToken string, project domain.Project, d organisms.ReviewListData) {
+	@layout.AppLayout("レビュー: "+project.Name, csrfToken) {
+		<main class="mx-auto max-w-4xl p-8">
+			<a href={ templ.SafeURL("/projects/" + project.ID) } class="text-sm text-neutral-400 hover:text-neutral-100">← チャットに戻る</a>
+			<h1 class="mb-1 mt-3 text-xl font-semibold">レビュー</h1>
+			<p class="mb-2 text-sm text-neutral-400">{ project.Name }</p>
+			<p class="mb-6 text-xs text-neutral-400">
+				完成した動画をメンバーに見てもらい、コメントと承認をもらいます。やり取りはファイルの受け渡しだけで、アカウントもサーバーも使いません。レビュアーは自分の mam に Review Package を読み込み、応答ファイルを返します。
+			</p>
+			@organisms.ReviewList(d)
+		</main>
+	}
+}
+
+// ReviewInboxPage is GET /reviews: the reviewer's entrance. A reviewer has no Project, only the
+// Review Packages they imported.
+templ ReviewInboxPage(csrfToken string, d organisms.ReviewInboxData) {
+	@layout.AppLayout("レビュー", csrfToken) {
+		<main class="mx-auto max-w-3xl p-8">
+			<a href="/" class="text-sm text-neutral-400 hover:text-neutral-100">← プロジェクト一覧</a>
+			<h1 class="mb-1 mt-3 text-xl font-semibold">レビュー</h1>
+			<p class="mb-6 text-xs text-neutral-400">受け取った Review Package を読み込み、動画を見てコメントと判定を書き、応答ファイルをオーナーに返します。</p>
+			@organisms.ReviewInboxList(d)
+		</main>
+	}
+}
+
+// ReviewPage is GET /reviews/:id: the review screen of one imported package.
+templ ReviewPage(csrfToken string, i domain.ReviewInbox) {
+	@layout.AppLayout("レビュー: "+i.ProjectName, csrfToken) {
+		<main class="mx-auto max-w-3xl p-8">
+			<a href="/reviews" class="text-sm text-neutral-400 hover:text-neutral-100">← レビュー一覧</a>
+			<h1 class="mb-1 mt-3 text-xl font-semibold">{ i.ProjectName }</h1>
+			<p class="mb-6 text-xs text-neutral-400">{ i.Video.Resolution } / { i.Video.AspectRatio } / { i.Video.Codec }</p>
+			@organisms.ReviewWorkspace(i)
+		</main>
+	}
+}

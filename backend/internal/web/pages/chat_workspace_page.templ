@@ -1,0 +1,14 @@
+package pages
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/layout"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+)
+
+// ChatWorkspacePage is GET /projects/:id: the Chat Workspace as a full page.
+templ ChatWorkspacePage(csrfToken string, p domain.Project, msgs []domain.ThreadMessage) {
+	@layout.AppLayout(p.Name, csrfToken) {
+		@organisms.ChatWorkspace(p, msgs)
+	}
+}

@@ -1,0 +1,96 @@
+package atoms
+
+import "github.com/ousiassllc/mam/backend/internal/domain"
+
+// HiddenField is a hidden input of a form.
+type HiddenField struct{ Name, Value string }
+
+// LockToggleData is one AUTO / MANUAL / LOCK switch (spec/spec.md §6).
+type LockToggleData struct {
+	// DOMID is the id of the form; it is the swap target of the request.
+	DOMID string
+	// URL receives PUT with the form's parameter, mode and value.
+	URL       string
+	Parameter domain.LockParameter
+	Mode      domain.LockMode
+	// Models, when set, adds the choice of the Video Model kept with MANUAL and LOCK; Model is the current one.
+	Models []domain.ModelName
+	Model  string
+	// The World State switches (spec/spec.md §9.3) differ: Label names the attribute, Modes limits the
+	// choice (AUTO / LOCK), Hidden are further fields of the request (target_type, target_id) and
+	// Target is the selector the response replaces (the whole view) instead of the form itself.
+	Label  string
+	Modes  []domain.LockMode
+	Hidden []HiddenField
+	Target string
+}
+
+func (d LockToggleData) label() string {
+	if d.Label != "" {
+		return d.Label
+	}
+	return d.Parameter.Label()
+}
+
+func (d LockToggleData) modes() []domain.LockMode {
+	if len(d.Modes) > 0 {
+		return d.Modes
+	}
+	return domain.LockModes()
+}
+
+func (d LockToggleData) target() string {
+	if d.Target != "" {
+		return d.Target
+	}
+	return "this"
+}
+
+func lockModeClass(active bool, m domain.LockMode) string {
+	base := "px-2 py-1 text-xs font-medium transition "
+	if !active {
+		return base + "text-neutral-300 hover:bg-neutral-800"
+	}
+	if m == domain.LockLocked {
+		return base + "bg-amber-500/30 text-amber-100"
+	}
+	return base + "bg-indigo-500/30 text-indigo-100"
+}
+
+// LockToggle is the three-value switch of a parameter. Each button saves at once (no save button):
+// the server answers with the switch in its new state, so the page never shows a value that was not stored.
+templ LockToggle(d LockToggleData) {
+	<form
+		id={ d.DOMID }
+		class="flex flex-wrap items-center gap-2 text-sm"
+		hx-put={ d.URL }
+		hx-target={ d.target() }
+		hx-swap="outerHTML"
+	>
+		<input type="hidden" name="parameter" value={ string(d.Parameter) }/>
+		for _, h := range d.Hidden {
+			<input type="hidden" name={ h.Name } value={ h.Value }/>
+		}
+		<span class="w-40 shrink-0 text-neutral-300">{ d.label() }</span>
+		<span role="group" aria-label={ d.label() + " の制御" } class="inline-flex overflow-hidden rounded-md border border-neutral-600">
+			for _, m := range d.modes() {
+				<button type="submit" name="mode" value={ string(m) } aria-pressed={ boolText(d.Mode == m) } class={ lockModeClass(d.Mode == m, m) }>{ m.Label() }</button>
+			}
+		</span>
+		if len(d.Models) > 0 {
+			<select name="value" aria-label="Video Model" class="rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-xs">
+				<option value="" selected?={ d.Model == "" }>（現在のモデル）</option>
+				for _, m := range d.Models {
+					<option value={ string(m) } selected?={ d.Model == string(m) }>{ string(m) }</option>
+				}
+			</select>
+		}
+	</form>
+}
+
+func boolText(b bool) string {
+	if b {
+		return "true"
+	}
+	return "false"
+}

@@ -1,0 +1,24 @@
+package molecules
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+)
+
+// ProgressCard shows the live status of a background job. It has no controls; the
+// client replaces it when the server reports a change over WebSocket (no polling).
+templ ProgressCard(m domain.ThreadMessage) {
+	{{ tone, label, active := progressView(m.Job) }}
+	@MessageFrame(m) {
+		<p class="flex items-center gap-2">
+			if active {
+				@atoms.Spinner(label)
+			}
+			<span>{ m.Content }</span>
+			@atoms.Badge(tone, label)
+		</p>
+		if m.Job != nil && m.Job.Status == domain.JobFailed && m.Job.Error != "" {
+			<p class="mt-1 text-xs text-red-300">{ m.Job.Error }</p>
+		}
+	}
+}

@@ -1,0 +1,42 @@
+package molecules
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+)
+
+// TakeCard shows a Take with its player, judge summary and status.
+templ TakeCard(m domain.ThreadMessage) {
+	{{ body := domain.DecodeTakeCardBody(m.Content) }}
+	@MessageFrame(m) {
+		<p class="mb-2 flex items-center gap-2 font-medium">
+			<span>{ body.Title }</span>
+			if body.Badge != "" {
+				@atoms.Badge(atoms.BadgeInfo, body.Badge)
+			}
+			if body.Score != nil {
+				<span class="text-xs text-neutral-400">{ "score " + scorePercent(*body.Score) }</span>
+			}
+		</p>
+		if isLocalPath(body.VideoURL) {
+			<mam-video-player
+				class="block"
+				video-src={ body.VideoURL }
+				api-url={ takeJudgeResultURL(m.RefID) }
+				if isLocalPath(body.PosterURL) {
+					poster={ body.PosterURL }
+				}
+				data-take-id={ m.RefID }
+			></mam-video-player>
+		}
+		if body.Summary != "" {
+			<p class="mt-2 whitespace-pre-wrap break-words text-neutral-300">{ body.Summary }</p>
+		}
+		<div class="mt-1 flex items-center gap-3">
+			@ReplyButton(m)
+			if body.ShotID != "" {
+				<a href={ templ.SafeURL(takeComparisonURL(body.ShotID)) } class="text-xs text-neutral-400 underline hover:text-neutral-200">Take 比較</a>
+			}
+		</div>
+	}
+}

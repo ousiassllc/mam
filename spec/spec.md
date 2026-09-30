@@ -485,6 +485,14 @@ Next Shot
 
 ユーザーがLOCKしたStateは自動更新禁止とする。
 
+**M1 の範囲**: 上記のうち Character の `hairstyle/wardrobe/emotion/position/current_action`、Product の `orientation/condition`、Camera、Story を State Extractor が更新する。次の Shot の Prompt Planner は最新の World State（前 Shot が残した状態）を入力に使う。Location State（時間帯・照明・天気の自動更新）と LOCK 強化は M2。保持形式・diff 形式は `spec/architecture/er.md` §4 を参照。
+
+**M2 の範囲（Location State・属性単位の LOCK、Issue #15）**:
+
+- **Location State**: `time`（時間帯）・`lighting_state`・`weather` は State Extractor が Shot 完了ごとに更新する（更新対象は、その Shot の Canonical Shot Spec が指す Location のみ）。次の Shot の Prompt Planner が最新の World State を入力にすることで Shot・Scene をまたいで引き継がれる。`layout_reference` はライブラリ（§10.1）の画像をユーザーが割り当てる項目で、AI は変更しない。いずれもユーザーが編集・LOCK できる
+- **属性単位の LOCK**: World State の項目ごとに AUTO / LOCK を切り替える（MANUAL は使わない。ユーザーが直接編集した値を守りたいときは LOCK）。LOCK 対象は、Character が編集項目（`hairstyle/wardrobe/voice/personality/emotion/position/current_action`）と `identity`、Product が編集項目（`material/orientation/condition`）と `geometry`・`label`、Location が編集項目（`time/lighting_state/weather`）と `layout_reference`、Camera（`lens/position/angle/movement`）と Story（`scene/character_goal/known_information/previous_event`）の全項目。LOCK 項目は State Extractor が diff に含めず、`ApplyStateDiff` も書き込まず、ユーザー編集は 423 になる
+- **LOCK 違反の判定**: AI Video Judge は、Shot が使う Character / Product / Location の LOCK を次の評価軸に対応付け、その軸の Issue が severity medium 以上なら LOCK 違反とし、スコア・確信度に関係なく Take を FAIL にする（§13）。`identity` → `character_identity`・`face`、`wardrobe/hairstyle` → `character_consistency`、`geometry` → `product_geometry`、`label` → `logo_text_accuracy`、`orientation/material/condition` → `product_accuracy`、Location の `time/lighting_state` → `lighting`、`weather/layout_reference` → `background_consistency`
+
 ## 9.4 Notes（制作メモ、M2）
 
 World State（構造化状態）に収まらない文脈（登場人物の背景・世界観・口調・トーン・伏せておきたい情報など）を、自由記述で保持する。
@@ -492,6 +500,7 @@ World State（構造化状態）に収まらない文脈（登場人物の背景
 - **位置づけ**: Notes は Source of Truth ではない（§29.2）。構造化状態（World State / Shot Spec / Constraints / References）を置き換えず、Reasoning LLM に渡す補助的な文脈として使う
 - **スコープ**: Project 単位と Series 単位。Series のメモは Episode 開始時に Project へコピーし（`origin_id` で由来を保持）、Series 側の更新は既存 Episode へ自動伝播しない（F-29 と同じ規則）
 - **登録**: チャットの発言（§24 Example 5）または補助ビューの Notes。チャットからの登録は Project スコープ。Series スコープは Series 側の Notes 画面で登録する。メモは追記のみのバージョンで保持し、以前のバージョンへ復元できる（§29.4）
+- **チャットからの登録の判定**: 「覚えておいて」「メモして」「remember」などの依頼語を含む発言は、AUTO / DIRECTOR のどちらのモードでも Command Interpreter が読み、`create_note` を Project メモとして作成する（`source=chat`）。AUTO MODE ではこの操作だけを実行し、Shot への指示は実行しない。依頼語を含まない発言はメモにしない
 - **参照先**: Writer / Director / Prompt Planner のみ。ピン留めしたメモは常に、それ以外は推論 LLM のコンテキスト予算の範囲で関連度順に渡す。アーカイブ済みのメモは渡さない
 - **渡さない先**: 画像/動画生成モデル（モデル非依存の Canonical Shot Spec 経由でのみ影響する、§29.1）、AI Video Judge、Final QC。メモは判定基準にならない。守らせたいルールは Brand Constraint（§26）に登録する
 - **Traceability**: Prompt Version に、Shot Spec 生成時に参照したメモのバージョンを記録する（§29.3）
@@ -544,11 +553,38 @@ KEYFRAME
 
 これらをShot Generation時に自動利用する。
 
+## 10.1 Reference Library（M2）
+
+Reference Pack の素材を Shot・Scene をまたいで再利用するための、Project 単位の参照画像の保管庫。`asset.type=reference` の画像に、種別・名前・タグを付けて保持する。
+
+### 登録
+
+- **自動登録**: Art Director が Reference Pack のために生成した Character / Product / Location / Style / Lighting Reference の画像は、生成時にライブラリへ登録される（`source=generated`、由来の Shot を記録）。Keyframe は Shot 固有なので登録しない
+- **アップロード**: ユーザーが画像（jpg / png / webp / gif、1枚 20MB まで）に種別（character / product / location / style / lighting）と名前（必須、100文字以内）、タグ（任意、最大10個、各30文字以内）を付けて登録する（`source=uploaded`）
+
+### 検索
+
+名前とタグの部分一致（`q`、大文字小文字を区別しない）、種別（`kind`）、タグの完全一致（`tag`）で絞り込む。新しい登録順に並べる。
+
+### 再利用
+
+- **Shot への追加（ピン留め）**: ライブラリの画像を Shot の Reference Pack に加える。同じ種別・同じ名前の参照が Pack にあれば置き換える。ピン留めした参照は Reference Pack の再生成でも残り、再生成しない（Art Director が同じ種別・名前の参照を計画しても新たに生成せず、ピン留めした画像を使う。コストは発生しない）
+- **World State への割り当て**: Character の `face_reference` / `body_reference`、Product の `geometry_reference` / `label_reference`、Location の `layout_reference` に、同じ種別のライブラリ画像を割り当てる。割り当てた画像は、同じ名前の Character / Product / Location の Reference Pack 生成で（`face` / `geometry` / `layout` を）新たに生成せずに使い、AI Video Judge の顔参照と画像生成の入力にも使う。対応する LOCK（後述）が掛かっている項目への割り当ては拒否する
+- **削除**: ライブラリから外す。画像そのものと、すでに Shot に付いた参照は残る
+
+Series をまたぐ再利用は F-29 の範囲（本節は Project 内）。
+
+### World State の LOCK との対応（M2）
+
+`face_reference` / `body_reference` は `identity`、`geometry_reference` は `geometry`、`label_reference` は `label`、`layout_reference` は `layout_reference` の LOCK に従う。
+
 ---
 
 # 11. Video Generation Engine
 
 Generation OrchestratorがShot Spec、Reference、World State、コスト、モデル能力をもとに使用モデルと生成戦略を決定する。
+
+M3のMulti-model routingでは、これに加えてShotの性質とProject内の過去のJudge実績（モデルごとの点数・合格率）を使い、Quality Policyの割り当てを出発点にShotごとに動画モデルを入れ替える（`spec/architecture/model-adapters.md` §13）。選択理由はTake単位で保存する（§29.3）。
 
 入力：
 
@@ -704,6 +740,30 @@ PASS
 
 重大なLOCK違反はスコアに関係なくFAILとする。
 
+### Retry Policy の適用（M1）
+
+- Max retries per Shot は、新しい Take を作った再生成系の Repair の数で数える。Max cost per Shot は Shot の予算上限（`shot_budget_ceiling`）で、次の再生成の見積りが上限を超えるなら再生成しない。上限に達したら Escalation（チャットのカード）で人間に判断を求める
+- Minimum acceptance score は、Judge が付けた Production Template の軸別点数の総合点と各軸の最低点に適用する。LOCK 違反・Critical constraints・上限判定は決定的ルールで行い、LLM や Jev を経由しない
+- 戦略は決定的ルールで候補を絞り、決まらないときだけ Repair Agent（LLM）が選ぶ（`face_identity_drift` は Reference Reinforcement を優先）。Jev は M1 ではシャドー実行のみ（`spec/architecture/model-adapters.md` §4.5・§11）
+- Partial Regeneration は、Judge の `preserve`（良かった部分）とLOCK された部分を保ったまま Shot 全体を作り直す（M1・実装済み）。M2 ではこれに、問題のあった時間範囲だけを差し替える「つなぎ込み」を加える。動画生成モデルはクリップ全体しか作れないため、区間だけの再生成は「Shot 全体を新しい Take として作る → 修復元の Take の問題区間だけをその Take の同じ区間に差し替えた Take を、もう 1 本新しい Take として足す」ことで実現する。判定は §13 の下の「Partial Regeneration の範囲（M1 と M2）」を正とする
+
+### Partial Regeneration の範囲（M1 と M2）
+
+| | M1（F-14） | M2（F-14 の Partial Regeneration の拡張） |
+|---|---|---|
+| 新しい Take | Shot 全体を作り直した 1 本 | 同左に加え、問題区間だけを差し替えてつないだ 1 本（`take.model_parameters.kind = partial_take`、`source = partial_regeneration`、`regenerated_take_id`）。区間を差し替えない条件（下）のときは足さない |
+| 保持するもの | Judge の `preserve` と LOCK された部分（Shot Spec の該当部分を Prompt Planner が固定する） | 同左に加え、問題区間の外側は修復元の Take の映像そのもの |
+| 起動 | Repair Agent が戦略として選ぶ（AUTO は自動、DIRECTOR は `POST /takes/:id/repair`） | 同左。加えて DIRECTOR MODE の自然言語指示（「2〜3秒目のカメラだけ直して」→ `partial_regenerate`） |
+| 既存 Take | 変えない | 変えない（修復元・再生成した Take・つないだ Take は別々の行）。つないだ Take は候補で、Shot の選択 Take を置き換えない。ユーザーは Partial Take Use（§14）でさらに区間を組み替えられる |
+
+つなぎ込みの規則（決定的。LLM を使わない）:
+
+- 差し替える区間は、Judge の Issue の `time_range` を前後 0.2 秒ずつ広げたもの（クロスフェードの境目が問題の映像にかからないようにする）。**すべての Issue が `time_range` を持つとき**だけつなぐ。Shot 全体の Issue が 1 つでもあれば、つながずに Shot 全体の Take だけを残す
+- 区間は 0.3 秒未満にならないよう広げ、0.3 秒未満の間隔しかない区間は 1 つにまとめる。先頭・末尾に 0.3 秒未満しか元の映像が残らないときはその部分も再生成した映像にする。区間が Shot のほとんどを占めて元の映像が残らないとき、Take が短すぎるとき、必要な部品が 8 個（Partial Take Use の上限）を超えるときは、つながずに Shot 全体の Take だけを残す
+- ffmpeg が無いときはつなぎ込めない。Repair は Shot 全体の Take だけを作り（M1 と同じ）、DIRECTOR MODE の区間指定の再生成は「ffmpeg が必要」と返して何も作らない
+- つないだ Take は自動で Judge される（AUTO MODE の Repair / Retake Loop はそれも含めて続ける）
+- DIRECTOR MODE の区間指定の再生成は、ユーザーが求めた操作なので Retry Policy の再試行回数には数えない（予算上限は適用する）。元の Take は、ユーザーが選んだ Take、なければ AI Pick、なければ最新の（除外されていない）Take
+
 ---
 
 # 14. Take System
@@ -729,6 +789,8 @@ DIRECTOR MODEではユーザーがTakeを選択・比較・部分採用できる
 > Take Aの0〜2秒 + Take Bの2〜4秒
 
 Editor / Repair Agentが自然な接続を試みる。
+
+Partial Regeneration（§13）が作るつなぎ込みも同じ合成（区間の境目をクロスフェードする）を使う。
 
 ---
 
@@ -1170,6 +1232,19 @@ State Extractor: propose promotion
 口調・「火事の話は序盤では出さない」はメモのまま保持し、Writer / Director が参照する
 ```
 
+### Example 6（M2）
+
+> 2〜3秒目のカメラの揺れだけ直して。他はそのままで。
+
+```text
+Action:
+Partial Regeneration of the current take, range 2.0-3.0s
+Update Shot.camera.movement
+Preserve character / acting / environment
+```
+
+区間を名指しした再生成は `partial_regenerate` になる。区間を言わない「カメラ動かしすぎ」は Shot 全体の再生成（Example 2）のまま。
+
 ---
 
 # 25. Quality / Cost Controls
@@ -1208,9 +1283,9 @@ State Extractor: propose promotion
 
 # 26. Safety and Brand Constraints
 
-Project / Organization単位で制作制約を登録可能とする。
+Project単位で制作制約を登録可能とする（`functional.md` UC-9 と `er.md` に合わせる。Organization エンティティは持たないため、Organization 単位の制約は設けない。複数の Project で同じ制約を使いたい場合は Project ごとに登録する）。
 
-例：
+種類（`brand_constraint.type`）：
 
 - Brand Guidelines
 - Forbidden Expressions
@@ -1222,6 +1297,25 @@ Project / Organization単位で制作制約を登録可能とする。
 - Platform Rules
 
 これらはPrompt生成だけでなくJudge / Final QCにも適用する。
+
+## 26.1 強制レベルと適用の仕方
+
+各制約は `enforcement_level` を持つ。
+
+- **`lock`**（既定）: 違反した Take・成果物は、スコアや Judge のモデルの verdict に関係なく FAIL とする。違反の操作は HTTP 403 で拒否する
+- **`advisory`**: 警告扱い。違反を Issue／指摘として記録・表示するが、FAIL にも 403 にもしない
+
+制約の内容は自由記述（`value` の `text`）。`forbidden_expression` は 1 行に 1 つの禁止表現（大文字小文字・空白の違いを無視した部分一致）、`required_disclaimer` は表示すべき文言をそのまま書く。他の種類は文章のルールとしてモデルへ渡す。
+
+適用箇所：
+
+| 段階 | 適用 |
+|---|---|
+| Prompt Planner | 全制約を英語の指示として入力に含める（各制約の ID 付き）。生成した Canonical Shot Spec に `lock` の禁止表現が含まれれば 403（Take を作らない）。ユーザーの指示文に `lock` の禁止表現が含まれる場合も、生成・再生成・候補生成を開始する前に 403 で拒否する |
+| AI Video Judge | 全制約をモデルへ渡し、違反は `type=brand_constraint_violation`・`brand_constraint_id` 付きの Issue にする。`lock` の違反は `lock_violation=true`（severity は high）で Take を FAIL、`advisory` の違反は severity low の警告で FAIL にしない。Shot Spec に `lock` の禁止表現があれば、モデルの判断に依らず決定的に `lock_violation` の Issue にする |
+| Final QC | セリフ・ナレーションと各クリップの Shot Spec に、`lock` の禁止表現があれば FAIL（セリフ → AUDIO、Shot Spec → EDITING に差し戻し）。必須の免責表記がセリフ・Shot Spec のどこにも無ければ FAIL（EDITING）。各クリップの Take の Judge が出した Brand 違反 Issue（`lock_violation`）も FAIL（EDITING）。`advisory` の違反はすべて警告として指摘に残し、FAIL にしない |
+
+Shot Spec は英語で書かれるため、Shot Spec に対する禁止表現の一致は、英語で登録された表現・ロゴ等の固有名に対して働く。日本語の禁止表現は、ユーザーの指示文、セリフ・ナレーション、映像のフレーム（Judge のモデル）に対して働く。
 
 ---
 
@@ -1258,7 +1352,7 @@ Project / Organization単位で制作制約を登録可能とする。
 - Continue
 - Branch
 - Reference Library
-- Partial Regeneration
+- Partial Regeneration（時間範囲の再生成とつなぎ込み、§13。M1 の Retake Loop が実装した「Judge の `preserve` を保つ Shot 全体の再生成」を、問題の区間だけを差し替える形に広げる）
 - Series / Episode Memory
 - Notes（制作メモ、§9.4）
 
@@ -1269,10 +1363,74 @@ Project / Organization単位で制作制約を登録可能とする。
 - Advanced Editor Agent
 - Editor → Reshoot Loop
 - Audio Director
-- Multi-model routing
+- Multi-model routing（Shot の性質・Project 内の Judge 実績・コストに応じて、Shot ごとに使う動画モデルを Quality Policy の割り当てから入れ替える。実績が無ければ M1 のポリシー別ルーティングと同じ。判断基準・切り替え条件は `spec/architecture/model-adapters.md` §13）
 - Brand Templates
-- Team Collaboration
+- Team Collaboration（Review Package によるレビュー・承認、§27.1）
 - Production Analytics
+
+## 27.1 Team Collaboration（MVP 3）
+
+複数のメンバーで 1 本の動画をレビューし、承認できるようにする。**同時編集も、サーバー・アカウントも使わない**: 制作の書き込みは常に Project を持つ 1 つのインスタンス（オーナー）だけが行い、共有はファイルの受け渡し（非同期）で行う。各メンバーは自分のデバイスで自分のインスタンスを動かすので、「1 デバイス・1 ユーザー」の前提は変わらない。
+
+### スコープの判定（`spec/overview.md` の「含まないもの」との関係）
+
+| 除外項目 | 本設計での扱い |
+|---|---|
+| SaaS マルチテナント化・サーバー運用基盤 | 超えない。共有用のサーバー・クラウド保存・ネットワーク送受信を持たない。共有物は利用者が自分で選んだ経路（メール・チャット・共有ドライブ等）で渡すファイル 1 つ |
+| リアルタイム同時共同編集 | 超えない。Project を編集できるのはオーナーだけで、レビュアーは動画の閲覧・コメント・判定だけができる。オーナーとレビュアーの状態は同期されず、レビュアーの応答はファイルで取り込む |
+
+したがってスコープの改訂は不要で、「チーム利用は MVP3 の Team Collaboration まで対象外」の文言は「チーム利用は、非同期のファイル受け渡しによるレビュー・承認（本節）だけを対象とし、それ以外は対象外」と明確にする。
+
+### 役割
+
+| 役割 | できること | できないこと |
+|---|---|---|
+| オーナー | Project の全操作。書き出しからレビュー依頼（Review Package）を作る。レビュアーの応答（Review Response）を取り込み、コメントを解決済みにする | - |
+| レビュアー | Review Package を自分のインスタンスに読み込み、動画を視聴し、時刻付きコメントを付け、判定（承認 / 修正依頼）を書き、Review Response を書き出してオーナーに返す | Project の中身（Brief・チャット・Shot・アセット等）を見ること、Project を編集すること |
+
+同じインスタンスをオーナーとレビュアーの両方に使ってもよい（自分のレビュー依頼を自分で読み込める）。
+
+### 認証モデル
+
+- アカウント・ログイン・トークンを持たない。ローカルサーバーは引き続き `127.0.0.1` のみで待ち受け、CSRF トークンも維持する（`spec/requirements/non-functional.md` §5）
+- レビュアーの識別は**自己申告の表示名**（1〜50 文字）。検証せず、信頼の根拠にしない。Review Response が本人のものかを確かめる署名は設けない（受け渡し経路の信頼は利用者に委ねる）
+- Review Response は `review_id` でオーナー側のレビュー依頼に結び付ける。これは取り違え防止の整合性チェックであり、認証ではない。オーナーのインスタンスに存在しない `review_id`、別 Project のレビュー依頼、取り込み済みの応答（`response_id` 重複）は取り込まない
+
+### Review Package（オーナー → レビュアー）
+
+ZIP ファイル 1 つ。中身は次の 2 エントリだけ（allowlist）。
+
+- `manifest.json`: `format=mam-review-package`・`version`（1）・`review_id`・`project_name`・`note`（オーナーがレビュアーに向けて書いたメモ、1000 文字以内）・`exported_at`・`video`（`file_name`・`resolution`・`aspect_ratio`・`codec`）
+- `video.mp4` または `video.webm`: レビュー対象の Final Export 1 本（Final QC PASS 後の書き出しのうちオーナーが選んだもの）
+
+### Review Response（レビュアー → オーナー）
+
+JSON ファイル 1 つ（`format=mam-review-response`・`version`・`response_id`・`review_id`・`reviewer_name`・`decision`（`approved` / `changes_requested`）・`comment`（全体コメント、2000 文字以内）・`comments`（最大 200 件。`timecode_ms`（省略可、動画内の位置）・`body`（1〜2000 文字））・`created_at`）。判定を書いた後にだけ書き出せる。コメントや判定を変えると `response_id` が変わり、変更前のファイルとは別の応答として取り込まれる。
+
+### レビューの状態
+
+レビュー依頼の状態は、レビュアー表示名ごとの最新の応答から決める: 応答が無ければ `pending`（未回答）、全員の最新が `approved` なら `approved`（承認済み）、1 人でも `changes_requested` なら `changes_requested`（修正依頼あり）。承認はオーナーへの意思表示であり、Project の状態遷移（§22）や Final Export をブロック/解除しない。応答を取り込むと、Chat Workspace のスレッドに AI の発言として「レビュー結果（表示名・判定・コメント件数）」が記録される（§23.3）。
+
+### 共有物に含めないもの（`spec/requirements/non-functional.md` §5）
+
+Review Package と Review Response は、DB の行やファイルをそのまま渡さず、上記の項目だけを固定の構造体から組み立てる。次のものは**入らない**（テストで検証する）。
+
+- 外部モデル API キー・認証情報（OS のセキュアストレージにだけ保存され、DB にもバンドルにも書かれない）
+- 顔データ: Character の顔基準画像（`face_reference_asset_id`）・Series 正本の顔基準・Reference Library の参照画像・アップロードされた参照画像/動画・Judge の顔同一性指標。動画そのものに映る人物はレビュー対象の成果物であり、ここでいう顔データではない
+- Brief・チャット履歴・Notes・World State・Shot Spec・Prompt・Brand Constraints・コスト台帳・Take・他の Export・Project ID・ファイルシステムの絶対パス
+
+動画は `video.mp4|webm` の固定名で入れ、元のパスを名前に残さない。共有されるのは Project 名とオーナーのメモ・動画・レビュアーの応答だけである（UI で共有される内容を明示する）。
+
+読み込み側は、allowlist 以外のエントリを含むアーカイブ、サイズ上限（動画 2GB、応答 1MB）を超えるもの、形式・バージョンが違うもの、動画の署名（MP4 の `ftyp` / WebM の EBML ヘッダー）が合わないものを拒否し、何も残さない。
+
+### プロジェクトバンドルとの違い
+
+プロジェクトバンドル（`spec/requirements/non-functional.md` §8）は、自分の端末間の移行・バックアップのために Project 全体（顔基準画像・アップロード素材を含む）を書き出す。**他のメンバーに渡すためのものではない**。チームでの共有には Review Package を使う。
+
+### 画面
+
+- オーナー: 補助ビュー「レビュー」（`/projects/:id/reviews`）でレビュー依頼の作成・パッケージのダウンロード・応答の取り込み・コメントの解決済み切替を行う
+- レビュアー: プロジェクト一覧から入る「レビュー」（`/reviews`）でパッケージの読み込み、動画の視聴、コメント・判定、応答の書き出しを行う（Project を持たないので Project の画面には入らない）
 
 ---
 
@@ -1280,7 +1438,7 @@ Project / Organization単位で制作制約を登録可能とする。
 
 単なる生成回数ではなく「完成作品まで到達する能力」を測定する。
 
-主要指標：
+主要指標（計算式は §28.2、表示は §28.4）：
 
 - First-pass Shot Acceptance Rate
 - Final Shot Acceptance Rate
@@ -1299,6 +1457,68 @@ Project / Organization単位で制作制約を登録可能とする。
 特に重要なNorth Star候補：
 
 > **人間の細かな生成操作なしで、採用可能な完成動画に到達した割合**
+
+### 28.1 集計の対象と用語
+
+指標は Project 単位、またはすべての Project の合計として算出する（Project が 0 件、または分母が 0 の指標は「—」と表示し、0% とは区別する）。
+
+| 用語 | 定義 |
+|------|------|
+| 着手済み Project | 状態が `DRAFT` 以外の Project |
+| 完成した動画 | 状態が `READY` / `EXPORTED` の Project、または書き出し（`export`）がある Project |
+| 書き出し済み | `export` 行がある Project |
+| 計測対象の Shot | Take を 1 つ以上持つ Shot |
+| 採用された Shot | `shot.selected_take_id` がある Shot（AUTO では Judge を通過した AI Pick、DIRECTOR ではユーザーの選択） |
+| 最初の Take | Shot の最も古い Take。その最初の Judge 結果を「最初の判定」とする |
+| 最新の判定 | Take の最も新しい `judge_result` |
+| 人間の介入（Human Intervention） | ユーザーが生成の中身を手で操作した記録（§28.3）。承認カードの「承認」、モード切替、閲覧は含まない |
+| 上書き（Override） | 人間の介入のうち、AI の判断に反するもの（§28.3） |
+| 引き継ぎ | AUTO の Project を DIRECTOR MODE に切り替えたこと（`switch_to_director`）。人間の介入には数えないが、AUTO Completion Rate と North Star が見る |
+
+### 28.2 計算式
+
+| 指標 | 計算式 | 出どころ |
+|------|-------|---------|
+| First-pass Shot Acceptance Rate | 最初の判定が `pass` で、最初の Take が除外されていない Shot ÷ 最初の Take が判定された Shot | `take` / `judge_result` |
+| Final Shot Acceptance Rate | 採用された Shot ÷ 計測対象の Shot | `shot.selected_take_id` |
+| Average Retakes per Shot | （Repair が作った Take（`repair_action.resulting_take_id`）＋ユーザーが依頼した再生成（`human_intervention.kind=regenerate`））÷ 計測対象の Shot | `repair_action` / `human_intervention` |
+| Human Interventions per Finished Video | 完成した動画の人間の介入の数 ÷ 完成した動画の数（引き継ぎは数えない） | `human_intervention` / `project` / `export` |
+| Time to First Rough Cut | Project 作成から最初の Edit Timeline（Rough Cut）の保存までの秒数の平均（Rough Cut がある Project） | `project.created_at` / `edit_timeline_version` |
+| Time to Final Video | Project 作成から最初の書き出しまでの秒数の平均（書き出し済みの Project） | `project.created_at` / `export` |
+| Cost per Accepted Second | Cost Ledger の合計（`actual_cost` があればそれ、なければ `estimated_cost`。採用されなかった Take の費用も含む）÷ 採用された Shot の秒数の合計（採用 Take の `duration_seconds`、なければ Shot の長さ） | `cost_ledger_entry` / `take` / `shot` |
+| Character Continuity Failure Rate | 最新の判定に `severity` が medium / high で `dimension` が `character_identity` / `character_consistency` / `face` の Issue がある Take ÷ 判定された Take | `judge_result.issues` |
+| Product Accuracy Failure Rate | 同様に `dimension` が `product_accuracy` / `product_geometry` / `logo_text_accuracy` / `object_consistency` の Issue がある Take ÷ 判定された Take | `judge_result.issues` |
+| Prompt Adherence Rate | 最新の判定に `prompt_adherence` の medium / high の Issue が**ない** Take ÷ 判定された Take | `judge_result.issues` |
+| AUTO Completion Rate | AUTO で着手し（現在も AUTO、または引き継ぎ済み）、引き継がれずに完成した Project ÷ AUTO で着手した Project | `project` / `human_intervention` |
+| User Override Rate | 上書きが 1 回以上ある Shot ÷ 計測対象の Shot | `human_intervention.override` |
+| Export / Completion Rate | 書き出し済みの Project ÷ 完成した動画の数 | `export` / `project` |
+| **North Star** | 完成し、引き継がれず、人間の介入が 1 件もない Project ÷ 着手済み Project | `project` / `human_intervention` |
+
+### 28.3 記録する人間の介入
+
+既存のテーブルから読み取れない「人間が手で操作した」事実は `human_intervention`（`spec/architecture/er.md`）に 1 操作 1 行で追記する。記録は操作の成功後に行い、記録に失敗してもユーザーの操作は失敗させない。
+
+| `kind` | 記録するタイミング | 上書き（`override`） |
+|-------|------------------|---------------------|
+| `generate` | ユーザーが Take のない Shot の生成を依頼した（`POST /shots/:id/generate` ほか、DIRECTOR の指示） | しない |
+| `regenerate` | ユーザーが Take のある Shot の再生成を依頼した | Judge を通過した（除外されていない）Take が既にあるとき |
+| `repair` | ユーザーが Take の Repair を依頼した（`POST /takes/:id/repair`、DIRECTOR の部分再生成） | しない |
+| `select_take` | ユーザーが Take を選んだ | AI Pick が別の Take のとき |
+| `reject_take` | ユーザーが Take を除外した | 除外した Take が AI Pick のとき |
+| `partial_take` | Partial Take Use で Take を合成した | しない |
+| `edit_shot_spec` | Shot Spec を手で編集した | する |
+| `lock_change` | パラメータを MANUAL / LOCK にした（AUTO に戻す操作は記録しない） | しない |
+| `edit_timeline` | Edit Timeline を手で保存した | する |
+| `request_changes` | 承認カード（チェックポイント）で「変更を依頼」した | する |
+| `switch_to_director` | AUTO の Project を DIRECTOR MODE に切り替えた | しない（人間の介入にも数えない） |
+
+AUTO のパイプラインが自分で行う生成・Judge・Repair・選択は記録しない（`repair_action` / `take` から読み取る）。
+
+### 28.4 表示と外部送信
+
+- 画面: `GET /projects/:id/analytics`（Project 単位）と `GET /analytics`（すべての Project の合計）。Project 一覧と Project のメニューからリンクする。
+- 最上段に North Star（割合・分子/分母）、その下に Shot / 人間の介入 / 時間・コスト / 品質 / 完成の各指標を、名称・値・根拠（分子/分母や件数）の組で表示する。
+- 集計はローカルの SQLite だけから行い、外部へ送信しない（`spec/requirements/non-functional.md` §5）。
 
 ---
 
@@ -1333,6 +1553,7 @@ Promptはそれらから生成される一時的な実行形式とする。
 - Prompt version
 - Model
 - Model parameters
+- Model routing（選択理由、M3）
 - References
 - Output
 - Judge result
