@@ -37,7 +37,7 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 | GET | `/projects/:id/bundle` | プロジェクトバンドルのエクスポート（`spec/requirements/non-functional.md` §8）。ZIP（`Content-Disposition: attachment`）: `manifest.json`（`format=mam-project-bundle`・`version`・`project_id`・`exported_at`）、`data.json`（Project の全テーブルの行。`job` は実行時状態のため含めない。Series 所属の Episode は Series から切り離して出力し、`series_id` などの Series 由来の参照を空にする）、`assets/<asset 相対パス>`（Asset・Take・Export のファイル。既にアーカイブされて無いファイルは含めず、行だけ残る）。存在しない Project は 404 | ファイル |
 | GET | `/shots/:id/takes` | Take比較ページ（`mam-take-comparator` を埋め込み） | フルページ（Lit埋め込みのため常にフルページ） |
 | GET | `/projects/:id/edit` | AI Editor / Rough Cut編集ページ（`mam-timeline-editor` を埋め込み） | フルページ |
-| GET | `/projects/:id/branches` | Branch ツリーページ（`mam-branch-tree` を埋め込み） | フルページ |
+| GET | `/projects/:id/branches` | Branch ツリーページ（ツリーは `branch_tree` をサーバー描画） | フルページ |
 | GET | `/projects/:id/export` | Final Export ページ | フルページ / フラグメント |
 | GET | `/projects/:id/settings` | Production Template・Quality/Cost Policy・予算上限・コスト（`cost_summary_panel`）・ディスク使用量と不要 Take のアーカイブ・Brand Constraints・APIキー設定。Chat Workspace の補助ビュー一覧と入力欄の「設定」から開く | フルページ / フラグメント |
 | GET | `/projects/:id/analytics` | Production Analytics（M3、`spec/spec.md` §28）。Project の MVP Success Metrics（North Star・Shot・人間の介入・時間・コスト・品質・完成）を `analytics_panel` で表示する。計算式と記録する人間の介入は §28.2・§28.3。集計はローカル DB のみで外部へ送信しない。存在しない Project は 404。Project のメニューの「制作指標」から開く | フルページ / フラグメント |
@@ -136,8 +136,8 @@ M1 の入出力契約（Issue #12）:
 M2 の入出力契約（Issue #18 Branch）:
 
 - `POST /shots/:id/branch`: Body は `application/x-www-form-urlencoded`。`point_type`（`scene|shot|frame`、省略時 `shot`）、`offset_seconds`（`frame` のときのみ。0 以上・Shot の長さ以内、外れれば 422）、`name`（省略時は指示文、なければ「Branch N」。100 文字以内）、`direction`（省略可。指定すると Continue Agent が Branch 最初の Shot を計画して生成する。生成が未設定なら 503）。分岐点の World State を Snapshot として Branch 独自の `world_state_version` v1 に保存し、201 と `HX-Redirect: /branches/:id` を返す。分岐点が Branch 内の Shot なら、その Branch の子 Branch になる
-- `GET /branches/:id`: `HX-Request` で詳細フラグメント（`mam-branch-tree` の `branch-selected` が `#branch-detail` へ差し込む。分岐点・親 Branch・Branch 独自の Scene/Shot・バージョン履歴・`/projects/:id/world-state?branch_id=` への導線）、なければ Branch ツリー付きのフルページ。`GET /projects/:id/branches` は選択なしのツリーページ
-- `PUT /branches/:id`: `name` と `world_state_version`（その Branch 自身の World State 系列の番号）の少なくとも一方。応答は詳細フラグメントと `HX-Trigger: branches-changed`。変更があれば `branch_version` に 1 行追記する（変化なしは追記しない）。系列にない番号・空の名前は 422、不明な ID は 404
+- `GET /branches/:id`: `HX-Request` で詳細フラグメント（`branch_tree` の各項目が `hx-get` で取得して `#branch-detail` へ差し込む。応答には選択中の Branch を示したツリーを `hx-swap-oob` で同梱する。分岐点・親 Branch・Branch 独自の Scene/Shot・バージョン履歴・`/projects/:id/world-state?branch_id=` への導線）、なければ Branch ツリー付きのフルページ。`GET /projects/:id/branches` は選択なしのツリーページ
+- `PUT /branches/:id`: `name` と `world_state_version`（その Branch 自身の World State 系列の番号）の少なくとも一方。応答は詳細フラグメントと、新しい名前を反映した Branch ツリー（`hx-swap-oob` で `#branch-tree` を置換）。変更があれば `branch_version` に 1 行追記する（変化なしは追記しない）。系列にない番号・空の名前は 422、不明な ID は 404
 - Branch は `scene` / `character` / `product` / `location` / `world_state_version` を独自に持ち（`branch_id`）、Branch の Shot の生成・State Extractor・編集はその Branch の行だけを更新する。トランクや他の Branch には影響しない。チャットスレッドは Project に 1 本で Branch では分けない
 - チャット（DIRECTOR MODE）の「このカットから別展開を3つ作って」は Command Interpreter の `create_branch`（`count` 1〜5、`point_type` は `scene|shot`、`directions`）となり、指示のない分は Continue Agent の NEXT 候補で埋め、各 Branch の最初の Shot を生成する
 - `GET /api/v1/projects/:id/branches`: `branches[]` に親子（`children`）、`branch_point_type`、`scene_number` / `shot_number`（親系列内の番号）、`offset_seconds`、`snapshot_version`、`version`、`detail_url`、`world_state_url` を含む
@@ -286,7 +286,6 @@ Lit Web Components 専用。HTMX リクエストは発行しない（`spec/archi
 | GET | `/api/v1/repair/jev-shadow-report` | Jev のシャドー実行の集計（`runs`/`errors`/`agreed`/`agreement_rate`（失敗を除く一致率）/`mean_confidence`/`mean_latency_ms`/`total_cost_usd`/`confidence_histogram`（0.1 刻み 10 区間）/`confidence_agreed`）。Jev による前段選別を有効にするかどうかの判断材料（`spec/architecture/model-adapters.md` §4.5・§11） | Repair Agent（F-14） |
 | GET | `/api/v1/projects/:id/edit-timeline` | 現在の Edit Timeline（Shot順序/Cut Point/Transition）と最新の Editor Judge。Rough Cut がなければ 404。クエリ `branch_id`（省略時=主系列トランク）で Branch ごとの版を返す。クリップに `kind`・`caption`、判定の指摘に `need_shot`、応答に `request_shot_url` と `limits.max_caption_runes` を含む | `mam-timeline-editor` |
 | — | `PUT /edit-timelines/:id`（アクションルート、§2.6） | Edit Timeline 保存（ドラッグ&ドロップ操作の反映）。`/api/v1` では提供せず、JSON API の GET が返す `save_url` へ PUT する（Lit は API クライアント経由で CSRF トークン付きで送る）。`branch_id` は M2 | `mam-timeline-editor` |
-| GET | `/api/v1/projects/:id/branches` | Branch ツリー構造（親子関係、Snapshot参照） | `mam-branch-tree` |
 | GET | `/api/v1/openapi.json` | OpenAPI 3.1 スペック（Huma自動生成） | - |
 
 ### リクエスト/レスポンス例
@@ -415,3 +414,4 @@ Notes:
 | 1.39 | 2026-09-30 | §2.6 に M3 の Audio Director 契約（`POST /projects/:id/audio/generate` の Quality Policy ごとの層・`branch_id`・予算・エラー、`POST /projects/:id/audio/voices`）を追記 | M3「Audio Director（フル機能）」（Issue #25）の実装に合わせるため |
 | 1.40 | 2026-10-01 | §3 の `GET /api/v1/shots/:id` の応答項目と 404 を明記（実装を追加） | 仕様にあるが未実装だった（#31） |
 | 1.41 | 2026-10-01 | §4 の `/ws/projects/:id` を実装の現状（チャット通知のみ。状態遷移・コスト・Reshoot の専用イベントは配信せず、コストは Cost Summary パネルのポーリングで更新）に合わせた | 仕様は状態遷移・コスト更新・Reshoot 発火のプロジェクトイベントを列挙していたが、実装は `message.created` / `card.updated` しか配信していなかったため（Issue #96） |
+| 1.42 | 2026-10-01 | `mam-branch-tree` を廃止し Branch ツリーを Templ（`branch_tree`）でサーバー描画に変更。`GET /api/v1/projects/:id/branches` を削除し、`GET /branches/:id`・`PUT /branches/:id` の HTMX 応答にツリーの `hx-swap-oob` を同梱、`HX-Trigger: branches-changed` を廃止 | Branch ツリーは D&D・Canvas・WebSocket を使わず HALT の Lit 使用基準に該当しないため（Issue #40） |

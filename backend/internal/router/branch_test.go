@@ -1,10 +1,10 @@
 package router_test
 
 import (
-	"encoding/json"
 	"net/http"
 	"net/url"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -41,13 +41,14 @@ func TestBranch_PostSavesTheBranchPointAndRedirectsToTheBranch(t *testing.T) {
 	page := a.get(loc, false)
 	require.Equal(t, http.StatusOK, page.Code)
 	assert.Contains(t, page.Body.String(), "<html")
-	assert.Contains(t, page.Body.String(), `<mam-branch-tree api-url="/api/v1/projects/`+project+`/branches"`)
+	assert.Contains(t, page.Body.String(), `<nav id="branch-tree"`)
+	assert.Contains(t, page.Body.String(), `hx-get="/branches/`+id+`"`)
 	assert.Contains(t, page.Body.String(), "逃げる")
 	assert.Contains(t, page.Body.String(), "1.5 秒地点", "the Frame Branch Point is shown")
 	assert.Contains(t, page.Body.String(), `href="/projects/`+project+`/world-state?branch_id=`+id+`"`, "the way to the World State of the Branch")
 
 	frag := a.get("/branches/"+id, true)
-	assert.NotContains(t, frag.Body.String(), "<html", "HTMX (branch-selected) gets the detail only")
+	assert.NotContains(t, frag.Body.String(), "<html", "HTMX gets the detail and the tree only")
 	assert.Contains(t, frag.Body.String(), `data-branch-detail="`+id+`"`)
 
 	list := a.get("/projects/"+project+"/branches", false)
@@ -79,7 +80,9 @@ func TestBranch_PutRenamesAndMovesTheWorldStateReferenceIntoBranchVersions(t *te
 	rec = a.form(http.MethodPut, "/branches/"+id, url.Values{"name": {"B"}})
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	assert.Contains(t, rec.Body.String(), "B")
-	assert.Equal(t, "branches-changed", rec.Header().Get("HX-Trigger"), "the tree redraws itself")
+	assert.Contains(t, rec.Body.String(), `hx-swap-oob="true"`, "the tree redraws itself with the new name")
+	assert.Contains(t, rec.Body.String(), `data-branch="`+id+`">B（`, "the tree shows the new name")
+	assert.Empty(t, rec.Header().Get("HX-Trigger"))
 	assert.Equal(t, 2, a.branchVersions(id), "the rename is appended")
 
 	assert.Equal(t, http.StatusUnprocessableEntity, a.form(http.MethodPut, "/branches/"+id, url.Values{}).Code)
@@ -95,39 +98,30 @@ func (a *app) branchVersions(id string) int {
 	return n
 }
 
-func TestBranch_APIReturnsTheTreeWithNestedChildrenAndUrls(t *testing.T) {
+func TestBranch_HTMXSelectionRedrawsTheServerRenderedTreeWithTheBranchSelected(t *testing.T) {
 	a, project, shot := branchApp(t)
-	rec := a.form(http.MethodPost, "/shots/"+shot+"/branch", url.Values{"name": {"A"}, "point_type": {"scene"}})
-	require.Equal(t, http.StatusCreated, rec.Code)
-	id := branchLocationRe.FindStringSubmatch(rec.Header().Get("HX-Redirect"))[1]
+	first := a.form(http.MethodPost, "/shots/"+shot+"/branch", url.Values{"name": {"A"}, "point_type": {"scene"}})
+	require.Equal(t, http.StatusCreated, first.Code)
+	idA := branchLocationRe.FindStringSubmatch(first.Header().Get("HX-Redirect"))[1]
+	second := a.form(http.MethodPost, "/shots/"+shot+"/branch", url.Values{"name": {"B"}})
+	require.Equal(t, http.StatusCreated, second.Code)
+	idB := branchLocationRe.FindStringSubmatch(second.Header().Get("HX-Redirect"))[1]
 
-	rec = a.get("/api/v1/projects/"+project+"/branches", false)
-	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-	var body struct {
-		ProjectID string `json:"project_id"`
-		Branches  []struct {
-			ID              string  `json:"id"`
-			Name            string  `json:"name"`
-			BranchPointType string  `json:"branch_point_type"`
-			SceneNumber     int     `json:"scene_number"`
-			SnapshotVersion int     `json:"snapshot_version"`
-			DetailURL       string  `json:"detail_url"`
-			WorldStateURL   string  `json:"world_state_url"`
-			Children        []any   `json:"children"`
-			OffsetSeconds   float64 `json:"offset_seconds"`
-		} `json:"branches"`
+	list := a.get("/projects/"+project+"/branches", true)
+	require.Equal(t, http.StatusOK, list.Code)
+	for _, id := range []string{idA, idB} {
+		assert.Contains(t, list.Body.String(), `hx-get="/branches/`+id+`"`, "every Branch loads its detail on choosing")
 	}
-	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
-	require.Len(t, body.Branches, 1)
-	b := body.Branches[0]
-	assert.Equal(t, project, body.ProjectID)
-	assert.Equal(t, id, b.ID)
-	assert.Equal(t, "scene", b.BranchPointType)
-	assert.Equal(t, 1, b.SceneNumber)
-	assert.Equal(t, 1, b.SnapshotVersion)
-	assert.Equal(t, "/branches/"+id, b.DetailURL)
-	assert.Equal(t, "/projects/"+project+"/world-state?branch_id="+id, b.WorldStateURL)
-	assert.NotNil(t, b.Children, "children is an array, never null")
+	assert.Contains(t, list.Body.String(), `hx-target="#branch-detail"`)
+	assert.NotContains(t, list.Body.String(), `aria-selected="true"`, "nothing is selected on the list")
+	assert.NotContains(t, list.Body.String(), "<mam-branch-tree")
 
-	assert.Equal(t, http.StatusNotFound, a.get("/api/v1/projects/nope/branches", false).Code)
+	rec := a.get("/branches/"+idA, true)
+	require.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), `data-branch-detail="`+idA+`"`)
+	assert.Contains(t, rec.Body.String(), `hx-swap-oob="true"`, "the tree is redrawn along with the detail")
+	assert.Equal(t, 1, strings.Count(rec.Body.String(), `aria-selected="true"`), "only the chosen Branch is selected")
+	assert.Regexp(t, `aria-selected="true"[^>]*>\s*<a[^>]*data-branch="`+idA+`"`, rec.Body.String())
+
+	assert.Equal(t, http.StatusNotFound, a.get("/api/v1/projects/"+project+"/branches", false).Code, "the tree has no JSON twin")
 }

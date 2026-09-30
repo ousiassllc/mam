@@ -52,6 +52,5 @@ func registerAPIRoutes(api huma.API, services *service.Services) {
 	registerRepairAPI(api, services)
 	registerShotAPI(api, services)
 	registerTakeAPI(api, services)
-	registerBranchAPI(api, services)
 	registerEditorAPI(api, services)
 }

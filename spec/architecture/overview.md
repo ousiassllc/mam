@@ -20,7 +20,7 @@
 | API フレームワーク | Huma | OpenAPI 3.1 自動生成、`/api/v1` 配下の JSON API の入出力バリデーション |
 | テンプレートエンジン | Templ | 型安全な Go HTML テンプレート（atoms/molecules/organisms/pages） |
 | インタラクション | HTMX | サーバー駆動の DOM 更新 |
-| リッチUI | Lit (Web Components) | Video Player / Timeline Editor / Take Comparator / Branch Tree のみ |
+| リッチUI | Lit (Web Components) | Video Player / Timeline Editor / Take Comparator のみ |
 | スタイリング | Tailwind CSS | ユーティリティファースト CSS |
 | ビルド | esbuild | TypeScript バンドル |
 | 永続化 | SQLite (WAL mode) | Project Data Model の永続化。単一ユーザー・単一バイナリ運用に最適 |
@@ -136,7 +136,6 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
         │   ├── video-player/         # mam-video-player
         │   ├── timeline-editor/      # mam-timeline-editor
         │   ├── take-comparator/      # mam-take-comparator
-        │   ├── branch-tree/          # mam-branch-tree
         │   └── lib/
         │       ├── api.ts            # CSRFトークン自動付与のHTTPクライアント
         │       ├── ws.ts
@@ -197,18 +196,17 @@ HALT の3パターン（ページルート/アクションルート/APIルート
 | アクションルート | `POST /shots/:id/generate`, `POST /takes/:id/select`, `PUT /shots/:id/locks` | しない | フラグメントのみ | Gin |
 | APIルート | `GET /api/v1/projects/:id`, `POST /api/v1/shots/:id/generate` | しない | JSON（Lit Web Components向け） | Huma |
 
-Lit Web Components（Video Player/Timeline Editor/Take Comparator/Branch Tree）は `/api/v1` の JSON API のみを利用し、HTMX リクエストをトリガーしない（HALTの境界ルールに従う）。生成進捗は WebSocket（`/ws/shots/:id`）で配信する。チャット画面は、WebSocket（`/ws/projects/:id`）の新着通知を受けて `GET /projects/:id/messages?after=` のフラグメントを HTMX で取得・追記する（WebSocket では本文を配信しない）。
+Lit Web Components（Video Player/Timeline Editor/Take Comparator）は `/api/v1` の JSON API のみを利用し、HTMX リクエストをトリガーしない（HALTの境界ルールに従う）。生成進捗は WebSocket（`/ws/shots/:id`）で配信する。チャット画面は、WebSocket（`/ws/projects/:id`）の新着通知を受けて `GET /projects/:id/messages?after=` のフラグメントを HTMX で取得・追記する（WebSocket では本文を配信しない）。
 
 ## 8. Lit Web Components 一覧
 
-アプリ名プレフィックス: `mam-`。HALT の使用基準（リアルタイム編集/複雑なD&D/Canvas描画/WebSocket同期）に該当する4コンポーネントのみ実装する。それ以外（Brief フォーム、Inspector、AUTO/MANUAL/LOCKトグル、Branchの一覧表示等）は HTMX + Templ で実装する。
+アプリ名プレフィックス: `mam-`。HALT の使用基準（リアルタイム編集/複雑なD&D/Canvas描画/WebSocket同期）に該当する3コンポーネントのみ実装する。それ以外（Brief フォーム、Inspector、AUTO/MANUAL/LOCKトグル、Branch ツリー等）は HTMX + Templ で実装する。
 
 | コンポーネント | 用途 | 該当基準 |
 |--------------|------|---------|
 | `<mam-video-player>` | Take/Rough Cutのフレーム精度プレビュー、Judge Issueのフレームマーカー重畳表示 | Canvas描画、WebSocketでの生成進捗同期 |
 | `<mam-timeline-editor>` | AI Editorのカット点・尺・トランジション編集 | 複雑なドラッグ＆ドロップ |
 | `<mam-take-comparator>` | 複数Takeのスコア比較、区間指定によるPartial Take合成 | 複雑なドラッグ＆ドロップ（区間指定） |
-| `<mam-branch-tree>` | Scene/Shot配下のBranch階層可視化・切替 | Canvas/SVG描画 |
 
 ## 9. ビルド / 開発ワークフロー
 
@@ -261,3 +259,4 @@ HALT のレイヤー別テスト方針を踏襲する。
 | 1.6 | 2026-09-29 | §5 に `agent/briefing`（Brief 抽出）を追加。ジョブ状態変化の通知フック（`jobqueue.Queue.OnChange`）でチャットの進捗カードを更新する構成を追記 | M1「Project とチャット画面」（Issue #5）の実装で確定した構成を仕様へ反映するため |
 | 1.7 | 2026-09-29 | §5 に `agent/llm`（Reasoning LLM Adapter）・`agent/planning`・`agent/orchestrator` を追加。AUTO パイプラインの企画〜Shot 計画は `plan` ジョブ（再開可能）として実行し、遷移は `repository.ProjectRepository.Transition`（`domain.CanTransition` で検証）で永続化する構成を追記 | M1「Reasoning LLM Adapter と AUTO パイプライン」（Issue #6）の実装で確定した構成を仕様へ反映するため |
 | 1.8 | 2026-09-30 | §5 に `media`（ffmpeg / ffprobe）を追加。Lit コンポーネントのテストは `*.wtest.ts` を `@web/test-runner` で実行し、`lib` の純関数は vitest で検証する | M1「Take システムと補助ビュー」（Issue #11）でプレビュー用プロキシ・部分採用の合成と Lit コンポーネントのテスト方式を実装したため |
+| 1.9 | 2026-10-01 | §8 の Lit コンポーネントから `<mam-branch-tree>` を除き 4 → 3 に変更（Branch ツリーは Templ + HTMX でサーバー描画）。`static/src/components/branch-tree/` を削除 | Branch ツリーは HALT の Lit 使用基準に該当しないため（Issue #40） |
