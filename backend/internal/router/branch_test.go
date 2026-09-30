@@ -125,3 +125,10 @@ func TestBranch_HTMXSelectionRedrawsTheServerRenderedTreeWithTheBranchSelected(t
 
 	assert.Equal(t, http.StatusNotFound, a.get("/api/v1/projects/"+project+"/branches", false).Code, "the tree has no JSON twin")
 }
+
+func TestBranch_TheWorkspaceMenuAndTheShotInspectorLeadToTheBranchPage(t *testing.T) {
+	a, project, shot := branchApp(t)
+	list := `href="/projects/` + project + `/branches"`
+	assert.Contains(t, a.get("/projects/"+project, false).Body.String(), list, "⋯ 補助ビュー")
+	assert.Contains(t, a.get("/shots/"+shot, true).Body.String(), list, "Inspector of a Shot")
+}

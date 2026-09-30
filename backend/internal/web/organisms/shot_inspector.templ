@@ -91,6 +91,7 @@ templ ShotInspector(d ShotInspectorData) {
 				· { string(d.Shot.State) }
 				· MODE { strings.ToUpper(string(d.Project.Mode)) }
 			</p>
+			<a href={ templ.SafeURL("/projects/" + d.Project.ID + "/branches") } class="mt-1 inline-block text-xs text-neutral-400 underline hover:text-neutral-100">Branch を作る</a>
 		</header>
 		<section aria-label="AUTO / MANUAL / LOCK" class="flex flex-col gap-2">
 			<h3 class="text-sm font-semibold">Locks</h3>
