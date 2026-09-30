@@ -9,7 +9,8 @@ Go（`go.mod` のバージョン）、Node.js、`templ`、`golangci-lint`、`lin
 | コマンド | 内容 |
 |---|---|
 | `make generate` | `templ generate` |
-| `make fmt` / `make fmt-check` | gofmt・`templ fmt`（check は未整形で失敗） |
+| `make fmt` | `templ fmt backend` と `golangci-lint fmt ./...`（`.golangci.yml` の formatter は gofmt と goimports） |
+| `make fmt-check` | `gofmt -l backend static` が空であることと `templ fmt -fail backend`（goimports は見ない。未整形で失敗） |
 | `make lint` | `golangci-lint`（`.golangci.yml`）と `tsc --noEmit` |
 | `make test` | `go test -race ./...` と `npm test --prefix static` |
 | `make build` | `scripts/build.sh`（templ → esbuild/tailwind minify → go build） |
@@ -27,4 +28,4 @@ Go（`go.mod` のバージョン）、Node.js、`templ`、`golangci-lint`、`lin
 `lefthook.yml`（`lefthook install` で有効化）。
 
 - pre-commit: コミット対象ファイルの行数（`scripts/linterly-staged.sh`。`linterly check` は 1 パスしか受け取れないため全体結果をコミット対象に絞る）、`make fmt-check`、`make lint-go`、`make lint-static`（対象ファイルがある場合）
-- pre-push: `go build` / `go vet` と `make test`
+- pre-push: `go build ./...` と `go vet ./...`、それに `make test`
