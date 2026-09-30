@@ -706,6 +706,13 @@ PASS
 
 重大なLOCK違反はスコアに関係なくFAILとする。
 
+### Retry Policy の適用（M1）
+
+- Max retries per Shot は、新しい Take を作った再生成系の Repair の数で数える。Max cost per Shot は Shot の予算上限（`shot_budget_ceiling`）で、次の再生成の見積りが上限を超えるなら再生成しない。上限に達したら Escalation（チャットのカード）で人間に判断を求める
+- Minimum acceptance score は、Judge が付けた Production Template の軸別点数の総合点と各軸の最低点に適用する。LOCK 違反・Critical constraints・上限判定は決定的ルールで行い、LLM や Jev を経由しない
+- 戦略は決定的ルールで候補を絞り、決まらないときだけ Repair Agent（LLM）が選ぶ（`face_identity_drift` は Reference Reinforcement を優先）。Jev は M1 ではシャドー実行のみ（`spec/architecture/model-adapters.md` §4.5・§11）
+- Partial Regeneration は M1 では、Judge の `preserve`（良かった部分）を保ったまま Shot 全体を作り直す。時間範囲だけを再生成してつなぐ処理は MVP 2（§27）
+
 ---
 
 # 14. Take System
@@ -1260,7 +1267,7 @@ Project / Organization単位で制作制約を登録可能とする。
 - Continue
 - Branch
 - Reference Library
-- Partial Regeneration
+- Partial Regeneration（時間範囲の再生成とつなぎ込み。M1 の Retake Loop では Judge の `preserve` を保つ Shot 全体の再生成として実装済み、§13）
 - Series / Episode Memory
 - Notes（制作メモ、§9.4）
 

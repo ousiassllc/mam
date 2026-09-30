@@ -40,7 +40,8 @@ erDiagram
 
     PROMPT_VERSION ||--o{ TAKE : generates
     TAKE ||--o{ JUDGE_RESULT : evaluated_by
-    JUDGE_RESULT ||--o| REPAIR_ACTION : triggers
+    JUDGE_RESULT ||--o{ REPAIR_ACTION : triggers
+    REPAIR_ACTION ||--o{ REPAIR_SHADOW : measured_by
     REPAIR_ACTION }o--o| TAKE : produces_next
 
     STATE_DIFF }o--|| WORLD_STATE_VERSION : creates
@@ -102,7 +103,8 @@ erDiagram
     SHOT }o--o| TAKE : selected_take_ref
     PROMPT_VERSION ||--o{ TAKE : generates
     TAKE ||--o{ JUDGE_RESULT : evaluated_by
-    JUDGE_RESULT ||--o| REPAIR_ACTION : triggers
+    JUDGE_RESULT ||--o{ REPAIR_ACTION : triggers
+    REPAIR_ACTION ||--o{ REPAIR_SHADOW : measured_by
     REPAIR_ACTION }o--o| TAKE : produces_next
 
     SCENE {
@@ -154,6 +156,7 @@ erDiagram
         json metrics
         json preserve
         json repair_strategy
+        json scores
         datetime created_at
     }
     REPAIR_ACTION {
@@ -162,6 +165,22 @@ erDiagram
         string action_type
         json instructions
         string resulting_take_id FK
+        datetime created_at
+    }
+    REPAIR_SHADOW {
+        string id PK
+        string repair_action_id FK
+        string model
+        string jev_choice
+        float confidence
+        json probabilities
+        string decided_action
+        boolean agreed
+        int latency_ms
+        int input_tokens
+        int output_tokens
+        float cost_usd
+        string error
         datetime created_at
     }
 ```
@@ -414,8 +433,9 @@ erDiagram
 | `shot` | `scene_id` FK。`selected_take_id` は `take.id` への FK（NULL許容）。`state` は Core State Machine のサブ状態のみ許可 | `idx_shot_scene_order (scene_id, order_index)` |
 | `prompt_version` | `shot_id` FK。`(shot_id, version_number)` UNIQUE。`note_refs` は Shot Spec 生成時に Prompt Planner へ渡した制作メモのバージョンの JSON 配列（`[{note_id, version_number}]`、M2。メモを使わなかった場合は空配列） | `idx_prompt_version_shot (shot_id)` |
 | `take` | `prompt_version_id` FK。`status` は `candidate/ai_pick/selected/rejected` のいずれか | `idx_take_prompt_version (prompt_version_id)`, `idx_take_status (status)` |
-| `judge_result` | `take_id` FK（UNIQUEではない、同一Takeへの複数回Judge実行履歴を保持）。`result` は `pass/fail`。`metrics` は Face Identity Similarity 等の数値指標（JSON、`spec/spec.md` §12.4。`face_identity_status`（`measured/not_applicable/unavailable`）と Character 別の `face_identity`）。`issues` は JSON 配列（`type`/`severity`/`dimension`/`time_range`/`frames`/`character_id`/`lock_violation` 等）、`preserve` は JSON 配列（既定 `[]`）、`repair_strategy` は JSON（`action` + `instructions`、NULL許容 = 推奨なし） | `idx_judge_result_take (take_id, created_at)` |
-| `repair_action` | `judge_result_id` FK。`resulting_take_id` は次に生成された `take.id`（NULL許容 = 未生成） | `idx_repair_action_judge_result (judge_result_id)` |
+| `judge_result` | `take_id` FK（UNIQUEではない、同一Takeへの複数回Judge実行履歴を保持）。`result` は `pass/fail`。`metrics` は Face Identity Similarity 等の数値指標（JSON、`spec/spec.md` §12.4。`face_identity_status`（`measured/not_applicable/unavailable`）と Character 別の `face_identity`）。`issues` は JSON 配列（`type`/`severity`/`dimension`/`time_range`/`frames`/`character_id`/`lock_violation` 等）、`preserve` は JSON 配列（既定 `[]`）、`repair_strategy` は JSON（`action` + `instructions`、NULL許容 = 推奨なし）、`scores` は Production Template の評価軸ごとの 0〜100 の点数の JSON（例 `{"acting": 82.5}`、Judge が点数を付けなかったとき NULL。Minimum acceptance score（総合・軸別）はこの点数に適用する） | `idx_judge_result_take (take_id, created_at)` |
+| `repair_action` | `judge_result_id` FK（1 つの Judge 結果に複数行ありうる: 上限を引き上げてからの再実行）。`action_type` は §13 の 6 種（`prompt_repair/partial_regeneration/full_retake/different_model/reference_reinforcement/edit_level_repair`）。`instructions` は JSON `{"instructions": [snake_case の修復指示], "reason", "decided_by": "rule"または"llm", "source_take_id": 修復元の Take}`。`resulting_take_id` は次に生成された `take.id`（NULL許容 = 未生成。Edit-Level Repair は Take を作らないため常に NULL）。Retry Policy の Max retries は「`resulting_take_id` が非NULLの再生成系 Repair の数」で数える | `idx_repair_action_judge_result (judge_result_id)` |
+| `repair_shadow` | Jev のシャドー実行の記録（`spec/architecture/model-adapters.md` §11）。`repair_action_id` FK。Repair Agent（LLM）が戦略を選んだときだけ 1 行追加し、Repair の結果には影響しない。`model` は使った Jev の固定バージョン、`jev_choice` は Jev の選択、`decided_action` は Repair Agent の選択、`agreed`（0/1）は一致、`confidence`/`probabilities`（JSON）は Jev の確信度、`latency_ms`/`input_tokens`/`output_tokens`/`cost_usd` は遅延とコスト。呼び出しが失敗したときは `error` に理由を入れ、他の結果列は空 | `idx_repair_shadow_action (repair_action_id)` |
 | `world_state_version` | `project_id` FK。`branch_id` FK（NULL許容、NULL=主系列、非NULL=当該Branchが独立して持つバージョン系列）。`(project_id, branch_id, version_number)` UNIQUE、Branch単位で`version_number`は独立して単調増加 | `idx_world_state_version_project (project_id, branch_id, version_number)` |
 | `state_diff` | `shot_id` FK、`take_id` FK、`world_state_version_id` FK | `idx_state_diff_shot (shot_id)` |
 | `branch` | `project_id` FK。`branch_point_type` は `scene/shot/frame` のいずれか（CHECK制約）。`branch_point_scene_id`（type=scene時）/`branch_point_shot_id`（type=shot/frame時）はいずれかNULL許容。`branch_point_offset_seconds`（type=frame時のみ使用、他はNULL）。`world_state_version_id` FK（Snapshot） | `idx_branch_project (project_id)` |
@@ -485,3 +505,4 @@ erDiagram
 | 1.24 | 2026-09-29 | `project_policy` テーブルを追加。`cost_ledger_entry.actual_cost` の意味（ベンダー報告額）を明記。設計メモに Quality/Cost Policy の適用と不要 Take のアーカイブを追記 | M1「Production Template・Quality/Cost Policy・コスト可視化」（Issue #13）で、Max retries・Max generation time・Minimum quality thresholds（UC-8）を保存する場所が未定義だったため |
 | 1.25 | 2026-09-29 | `judge_result` に `repair_strategy`（JSON、NULL許容）を追加。`issues`/`metrics`/`preserve` の JSON 構造を明記。マイグレーションは `20260929210909_judge_result_repair_strategy.sql` | M1「AI Video Judge（Face Identity Similarity 含む）」（Issue #9）で、Judge Result の `repair_strategy`（`spec/spec.md` §12.3）を保存する場所が無かったため |
 | 1.26 | 2026-09-29 | 設計メモに LOCK の保持形式（`lock` の行の作り方、Shot/Project のパラメータ、判定箇所）を追記 | M1「AUTO/MANUAL/LOCK と DIRECTOR MODE」（Issue #12）で、`target_type`/`parameter_name` に入れる値と LOCK 判定の責務が「属性単位」としか定義されていなかったため |
+| 1.27 | 2026-09-29 | `judge_result` に `scores`（JSON、NULL許容）を追加。`repair_action` の `instructions` の JSON 構造と `repair_shadow` テーブル（Jev のシャドー実行）を追加。`JUDGE_RESULT` と `REPAIR_ACTION` の関係を 1:0..N へ修正。マイグレーションは `20260929220000_repair_loop.sql` | M1「Repair/Retake Loop」（Issue #10）で、Minimum acceptance score を適用する軸別スコアの保存先、Repair の判断内容・判断者の記録、Jev の一致率・confidence・遅延・コストの記録先が無かったため。同じ Judge 結果から上限引き上げ後にもう一度 Repair できるため 1:0..1 では足りない |

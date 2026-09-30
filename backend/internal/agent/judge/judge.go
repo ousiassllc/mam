@@ -156,8 +156,9 @@ type answer struct {
 	Issues            []answerIssue `json:"issues"`
 	Preserve          []string      `json:"preserve"`
 	RepairStrategy    *answerRepair `json:"repair_strategy"`
-	// Scores are 0-100 per axis of the Production Template (optional).
-	Scores map[string]float64 `json:"scores"`
+	// Scores are 0-100 per axis of the Production Template (optional). Values are kept untyped so that
+	// a malformed score is dropped instead of invalidating the whole judgement.
+	Scores map[string]any `json:"scores"`
 }
 
 type answerIssue struct {
@@ -230,7 +231,7 @@ func (a answer) result(clip Clip, locked map[domain.JudgeDimension]bool, skipFac
 func (a answer) axisScores(template domain.ProductionTemplate) map[domain.EvaluationAxis]float64 {
 	var out map[domain.EvaluationAxis]float64
 	for _, axis := range template.Axes() {
-		s, ok := a.Scores[string(axis)]
+		s, ok := a.Scores[string(axis)].(float64)
 		if !ok || math.IsNaN(s) || s < 0 || s > domain.MaxScore {
 			continue
 		}

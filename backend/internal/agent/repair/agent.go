@@ -76,6 +76,9 @@ type Deps struct {
 // Agent is the Repair Agent. It is safe for concurrent use.
 type Agent struct {
 	Deps
+	// escalated holds the Judge results the automatic loop has already asked the user about: the loop
+	// is looked at again by every job that ends, and must not ask twice for the same state.
+	escalated sync.Map
 }
 
 // New returns an Agent.
@@ -86,7 +89,7 @@ func New(d Deps) *Agent {
 	if d.Notify == nil {
 		d.Notify = func(generation.Progress) {}
 	}
-	return &Agent{d}
+	return &Agent{Deps: d}
 }
 
 // payload is the payload of a repair job.
@@ -247,33 +250,47 @@ func (a *Agent) Handle(ctx context.Context, job domain.Job) error {
 	if err != nil {
 		return err
 	}
-	defer a.release(ctx, p.ShotID)
+	released := false
+	defer func() {
+		if !released {
+			a.release(ctx, p.ShotID)
+		}
+	}()
 	// The Shot may have been reset by Recover while this job waited in the queue.
 	if err := a.Generations.SetShotState(ctx, p.ShotID, domain.ShotRepairing); err != nil {
 		return err
 	}
 	a.Notify(generation.Progress{ShotID: p.ShotID, Action: generation.ActionRepair, Stage: generation.StageRepairing, Message: "修復戦略を選んでいます"})
 
-	if err := a.run(ctx, shot, p); err != nil {
+	madeTake, err := a.run(ctx, shot, p)
+	if err != nil {
 		return a.fail(ctx, shot, err)
 	}
 	a.Notify(generation.Progress{ShotID: p.ShotID, Action: generation.ActionRepair, Stage: generation.StageDone})
+	if madeTake {
+		// The new Take is judged by its own job, which may end before this one releases the Shot: look
+		// at the Shot again once it is free, so that the loop goes on whichever ends last.
+		a.release(ctx, p.ShotID)
+		released = true
+		a.Continue(context.WithoutCancel(ctx), p.ShotID)
+	}
 	return nil
 }
 
-// run is one step of the loop: the Retry Policy, the strategy, the new Take.
-func (a *Agent) run(ctx context.Context, shot repository.ShotRef, p payload) error {
+// run is one step of the loop: the Retry Policy, the strategy, the new Take. It reports whether a
+// new Take was made.
+func (a *Agent) run(ctx context.Context, shot repository.ShotRef, p payload) (bool, error) {
 	take, err := a.Judges.GetTake(ctx, p.TakeID)
 	if err != nil {
-		return err
+		return false, err
 	}
 	res, err := a.Judges.Get(ctx, p.JudgeResultID)
 	if err != nil {
-		return err
+		return false, err
 	}
 	policy, err := a.Policies.Get(ctx, shot.ProjectID)
 	if err != nil {
-		return err
+		return false, err
 	}
 	eff := policy.Effective()
 	source := domain.ModelName(take.Take.ModelName)
@@ -281,18 +298,18 @@ func (a *Agent) run(ctx context.Context, shot repository.ShotRef, p payload) err
 
 	history, err := a.Repairs.ShotActions(ctx, shot.Shot.ID)
 	if err != nil {
-		return err
+		return false, err
 	}
 	retries := domain.RetriesDone(history)
 
 	// The Retry Policy (deterministic): Max retries per Shot, Max cost per Shot, the Project budget.
-	if ok, err := a.withinPolicy(ctx, shot, eff, retries, regen, res, take.Take.ID); err != nil || !ok {
-		return err
+	if ok, err := a.withinPolicy(ctx, shot, eff, p.Auto, retries, regen, res, take.Take.ID); err != nil || !ok {
+		return false, err
 	}
 
 	locks, err := a.Generations.ShotLocks(ctx, shot.Shot.ID)
 	if err != nil {
-		return err
+		return false, err
 	}
 	_, otherErr := a.Regenerator.RegenerationStrategy(ctx, shot, generation.Regeneration{Action: domain.RepairDifferentModel, SourceModel: source})
 	situation := Situation{
@@ -307,8 +324,8 @@ func (a *Agent) run(ctx context.Context, shot repository.ShotRef, p payload) err
 	regen.Instructions = mergeInstructions(res, extra)
 	if action.Regenerates() && action != domain.RepairFullRetake {
 		// The cost of the chosen strategy can differ (another model): apply the Retry Policy to it.
-		if ok, err := a.withinPolicy(ctx, shot, eff, retries, regen, res, take.Take.ID); err != nil || !ok {
-			return err
+		if ok, err := a.withinPolicy(ctx, shot, eff, p.Auto, retries, regen, res, take.Take.ID); err != nil || !ok {
+			return false, err
 		}
 	}
 
@@ -316,7 +333,7 @@ func (a *Agent) run(ctx context.Context, shot repository.ShotRef, p payload) err
 		Instructions: regen.Instructions, Reason: reason, DecidedBy: decider, SourceTakeID: take.Take.ID,
 	})
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	var shadowDone sync.WaitGroup
@@ -330,15 +347,15 @@ func (a *Agent) run(ctx context.Context, shot repository.ShotRef, p payload) err
 	defer shadowDone.Wait()
 
 	if action == domain.RepairEditLevel {
-		return a.announceEditLevel(ctx, shot, take.Take.ID, res)
+		return false, a.announceEditLevel(ctx, shot, take.Take.ID, res)
 	}
 	a.Notify(generation.Progress{ShotID: shot.Shot.ID, Action: generation.ActionRepair, Stage: generation.StageRepairing, Message: action.Label() + " で新しい Take を作成しています"})
 	newTake, err := a.Regenerator.Regenerate(ctx, shot, regen)
 	if err != nil {
-		return err
+		return false, err
 	}
 	if err := a.Repairs.SetResultingTake(context.WithoutCancel(ctx), rec.ID, newTake); err != nil {
-		return err
+		return false, err
 	}
 	notice := domain.ChatMessage{
 		Role: domain.RoleAssistant, Kind: domain.KindText,
@@ -348,18 +365,21 @@ func (a *Agent) run(ctx context.Context, shot repository.ShotRef, p payload) err
 	if err := a.Chat.Announce(context.WithoutCancel(ctx), shot.ProjectID, notice); err != nil {
 		a.Logger.Error("post repair notice failed", "shot_id", shot.Shot.ID, "err", err)
 	}
-	return nil
+	return true, nil
 }
 
 // withinPolicy applies the Retry Policy to the next regeneration of regen.Action. It returns false
-// (after asking the user) when the policy stops the loop.
-func (a *Agent) withinPolicy(ctx context.Context, shot repository.ShotRef, eff domain.EffectivePolicy, retries int, regen generation.Regeneration, res domain.JudgeResult, takeID string) (bool, error) {
+// (after asking the user, unless the automatic loop already did) when the policy stops the loop.
+func (a *Agent) withinPolicy(ctx context.Context, shot repository.ShotRef, eff domain.EffectivePolicy, auto bool, retries int, regen generation.Regeneration, res domain.JudgeResult, takeID string) (bool, error) {
 	verdict, err := a.verdict(ctx, shot, eff, retries, regen)
 	if err != nil {
 		return false, err
 	}
 	if verdict == domain.RetryAllowed {
 		return true, nil
+	}
+	if _, asked := a.escalated.LoadOrStore(res.ID, struct{}{}); asked && auto {
+		return false, nil // the user was already asked about this result; a manual Repair always asks again
 	}
 	return false, a.escalate(ctx, shot, takeID, res, verdict)
 }

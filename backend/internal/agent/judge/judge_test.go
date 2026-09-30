@@ -342,3 +342,17 @@ func TestDecide_LeavesAPassingTakeWithoutARepairStrategy(t *testing.T) {
 	assert.Equal(t, domain.JudgeFail, res.Result)
 	assert.Nil(t, res.RepairStrategy, "an action-less strategy is no strategy")
 }
+
+func TestEvaluate_ScoresOfTheTemplatesAxesAreKeptAndTheRestIsDropped(t *testing.T) {
+	r := newRig(t, `{"result":"pass","overall_confidence":0.9,"issues":[],"scores":{"acting":82.5,"story":120,"camera":-3,"emotion":"high","product_accuracy":90}}`, false)
+	in := faceInput(t)
+	in.Template = domain.TemplateDrama
+	res := r.evaluate(t, in)
+
+	assert.Equal(t, map[domain.EvaluationAxis]float64{domain.AxisActing: 82.5}, res.Scores,
+		"out of range, non-numeric and foreign axes are dropped")
+	assert.Contains(t, r.llm.requests[0].User, "acting", "the axes of the template are asked for")
+
+	in.Template = ""
+	assert.Empty(t, r.evaluate(t, in).Scores, "no template: no scores")
+}

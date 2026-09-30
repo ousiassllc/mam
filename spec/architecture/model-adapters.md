@@ -176,6 +176,43 @@ M1 Issue #9（F-13）の実装仕様。
 - **ジョブ**: Take を作るたびに `job.kind = judge` のジョブを起動する（`payload = {take_id, shot_id}`）。再開可能ジョブ（低コストで再実行できるため、異常終了後は再実行する）。実行中は Shot を `JUDGING` にし（GENERATING 中の Shot の状態は変えない）、`/ws/shots/:id` に `action = judge` の `queued` / `judging` / `done` / `failed` を流す。結果は `judge_result` に追記し（上書きしない）、チャットに PASS/FAIL・Issue・LOCK 違反・数値評価が使えなかった理由を投稿する。同じ Take の Judge が queued/running なら `POST /takes/:id/judge` は 409
 - **エラー**: ffmpeg 未導入は「ffmpeg / ffprobe が見つかりません」、API キー未設定・レート制限・タイムアウト・AI 出力不正は生成と同じ分類（`generation.FailureReason`）で通知する。顔モデルの推論エラーは Judge を失敗させず、その Take を定性評価のみで判定する（`face_identity_status = unavailable`）
 
+## 11. Repair Agent と Jev のシャドー実行の実装（`internal/agent/repair`、`internal/agent/jev`）
+
+M1（F-14、Issue #10）で実装する Repair / Retake Loop の判断部分。§4.5 の導入手順に従い、前段選別は有効にせず Jev はシャドー実行のみ行う。
+
+### 11.1 戦略の選択
+
+- **決定的ルール（Jev を経由しない）**: (1) Retry Policy の上限判定（Max retries per Shot・Max cost per Shot・Project 予算。`domain.EffectivePolicy.CanRetry`）、(2) LOCK 違反・Critical constraints（LOCK 違反のある Take は点数に関係なく不合格。`JudgeResult.Accepted`）、(3) 実行できない戦略の除外（`repair.Candidates`: Prompt が LOCK なら Prompt Repair / Partial Regeneration は除外、Reference が無ければ Reference Reinforcement、別モデルが無ければ Different Model、時間範囲を切れない Issue・high の Issue・LOCK 違反があれば Edit-Level Repair を除外。すでに試した戦略は繰り返さないが Full Retake は毎回新しい生成なので残す）、(4) `face_identity_drift` があり Reference Reinforcement が候補にあれば、それを選ぶ（`repair.Rule`）。候補が 1 つのときもルールで決める
+- **Repair Agent（Reasoning LLM、`llm.AgentRepair`）**: ルールで決まらないときだけ、残った候補の中から選ぶ。候補外の答えは採用しない。LLM が答えられないとき（キー無し・レート制限・不正な出力）は、Judge の `repair_strategy` が候補にあればそれを、無ければ Full Retake を使う。誰が決めたかは `repair_action.instructions.decided_by`（`rule` / `llm`）に残す
+- **不合格の判定**: Judge の結果が `fail`、LOCK 違反あり、または Judge が点数（`judge_result.scores`）を付けていて Minimum acceptance score（総合。Production Template の重みで軸別点数を平均）か軸別の最低点（Production Template の各軸）に届かないときに Repair の対象になる
+
+### 11.2 Retry Policy と Escalation
+
+- Max retries は「新しい Take を作った再生成系の Repair の数」で数える（失敗して Take を作らなかった Repair と Edit-Level Repair は数えない）。次の再生成の見積りコストは Max cost per Shot（`project.shot_budget_ceiling`）と Project の予算上限に対して検査する。Different Model は別モデルの見積りで検査し直す
+- 上限に達したら Take を作らず、チャットに Escalation カードを出して人間に判断を求める（Confirmation Level に関係なく出す）。AUTO MODE の自動ループは同じ Judge 結果について 1 度だけ尋ねる。手動の Repair は毎回尋ねる
+- **AUTO MODE**: Take の生成・Judge・Repair のジョブが成功するたびに Shot を見て、Shot のすべての Take が Judge 済みで 1 つも合格していなければ、最良の Take（LOCK 違反なし → 総合点が高い → high の Issue が少ない → 新しい方）から Repair を始める。合格した Take が 1 つでもあれば止まる。DIRECTOR MODE では自動で始めず、ユーザーが `POST /takes/:id/repair` を呼ぶ
+
+### 11.3 戦略ごとの再生成
+
+いずれも新しい `take` 行を作り（既存 Take は変えない）、作った Take を Judge する。Shot は再生成中 `REPAIRING` になり、GENERATING / REPAIRING の Shot は二重に始められない。
+
+| 戦略 | 実装 |
+|------|------|
+| Prompt Repair | Prompt Planner が Issue と修復指示に沿って Shot Spec を修正して再生成する。LOCK された部分は変えない（Prompt が LOCK なら選べない） |
+| Partial Regeneration | Prompt Repair に加え、Judge の `preserve`（良かった部分）を保つ。**M1 では新しい Take は Shot 全体を作り直す**。時間範囲だけを再生成してつなぐ処理は MVP 2（`spec/spec.md` §27）で実装する |
+| Full Retake | 同じ Shot Spec で新しく生成し直す |
+| Different Model | Quality Policy の primary / fallback の**もう一方**のモデルで生成する（Kling 3.0 ↔ Seedance 2.0 の自動フォールバック、§4）。ユーザーが Video Model を固定していたとき（AUTO 以外）は選べない |
+| Reference Reinforcement | Reference に基づく制約を Shot Spec に足し、失敗した種類の Reference を先頭にする。自由な Reference 画像を受け取れるモデルでは、Keyframe の代わりにそれを使う |
+| Edit-Level Repair | 動画モデルを呼ばない。該当区間をチャットで知らせ、編集で直すことにする（Take は作らず、Retry の回数にも数えない） |
+
+### 11.4 Jev のシャドー実行
+
+- **対象**: Repair Agent（LLM）が戦略を選んだときだけ、同じ質問（候補から 1 つを選ぶ Choice）を Jev にも投げる。ルールや LOCK・Retry Policy で決めたときは呼ばない。Jev の答えは記録するだけで、Repair には使わない。Jev の失敗・タイムアウトも Repair に影響しない
+- **送るもの**: Issue の構造化フィールド（`type` / `severity` / `dimension` / `time_range`）と候補の識別子のみ。日本語の自由記述・Character ID・フレーム番号・Brief・画像は送らない
+- **バージョン固定**: 既定は `jev-1.13.0`。`jev-latest` などの別名は起動時に拒否する（`jev-<major>.<minor>.<patch>` のみ）。`--jev-config`（`MAM_JEV_CONFIG`）の JSON ファイル（`base_url` / `model` / `timeout_seconds` / `input_cost_per_million_usd`）で上書きできる。未知のキーはエラー
+- **API キー**: `internal/credential` のプロバイダー `typesafe` に保存する。キーが無いときは呼ばず、何も記録しない
+- **記録**: `repair_shadow`（`spec/architecture/er.md`）に、Jev の選択・確率・confidence・Repair Agent の選択・一致の有無・遅延・トークン数・コスト（入力トークン × 単価）・失敗時の理由を 1 呼び出し 1 行で残す。集計（`RepairRepository.ShadowReport`）は一致率（失敗を除く）・confidence の平均と 10 区間の分布（各区間での一致数つき）・平均遅延・合計コストを返す。前段選別を有効にするかどうかは、この集計を見て §4.5 の導入手順に従って決める
+
 ## 改訂履歴
 
 | 版 | 日付 | 変更内容 | 変更理由 |
@@ -185,3 +222,4 @@ M1 Issue #9（F-13）の実装仕様。
 | 1.2 | 2026-09-29 | §2.1（Reasoning LLM Adapter の実装仕様: 設定・再試行・サーキットブレーカー・出力検証）を追加 | M1「Reasoning LLM Adapter と AUTO パイプライン」（Issue #6）で設定項目と耐障害動作の具体値が未定義だったため |
 | 1.3 | 2026-09-29 | §9（画像・動画生成 Model Adapter と Generation Orchestrator の実装仕様）を追加。M1 で実装する画像プロバイダーは §3 の 4 種すべてと決定 | M1「Prompt Autopilot・Model Adapter・Reference Pack・生成オーケストレーション」（Issue #7）で画像プロバイダーの範囲と設定・耐障害動作の具体値が未定義だったため |
 | 1.4 | 2026-09-29 | §10（AI Video Judge と Face Identity Similarity の実装仕様、顔モデル・ONNX Runtime のライセンスと単一バイナリ両立の検証結果、閾値のキャリブレーション、LOCK 連動）を追加。§8 の Face Identity Similarity の未確定事項を検証済みの内容に更新 | M1「AI Video Judge（Face Identity Similarity 含む）」（Issue #9）で、埋め込みモデルの商用ライセンス・推論ランタイム・閾値の決め方・欠測の扱いが名称レベルで未確定だったため |
+| 1.5 | 2026-09-29 | §11（Repair Agent の戦略選択・Retry Policy・戦略ごとの再生成・Jev のシャドー実行の実装仕様）を追加。Partial Regeneration は M1 では「Judge の `preserve` を保つ Shot 全体の再生成」とし、時間範囲の再生成とつなぎ込みは MVP 2 と確定 | M1「Repair/Retake Loop」（Issue #10）で、Partial Regeneration の M1 での範囲（`spec/spec.md` §27 は MVP 2 に列挙）、決定的ルールと LLM の分担、Jev のシャドー記録項目が未確定だったため |
