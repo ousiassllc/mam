@@ -81,6 +81,7 @@ flowchart TB
 | API 仕様 | `spec/api/endpoints.md` | ページルート/アクションルート（HTMX）と `/api/v1` JSON API（Huma/OpenAPI）のエンドポイント仕様 |
 | コンポーネント設計 | `spec/components/overview.md` | Agent 群（Producer/Director/Editor 等）とHALT側コンポーネント（atoms/molecules/organisms/Lit）の責務分割 |
 | Model Adapter 選定 | `spec/architecture/model-adapters.md` | エージェント推論LLM・画像/動画生成モデル・音声プロバイダーの具体的な選定とルーティング表（Claude/GPT-5/Gemini、Imagen4/Nano Banana/FLUX.2/GPT Image 2、Kling/Seedance/Runway、ElevenLabs/Sync Labs） |
+| 環境構築 | `spec/environment/setup.md` | 開発ツール、Makefile タスク、CI、Linterly、Git Hooks（Lefthook） |
 
 ## マイルストーン / リリース計画
 

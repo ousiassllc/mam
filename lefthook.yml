@@ -1,0 +1,24 @@
+# Git Hooks (https://lefthook.dev). Install: `lefthook install`.
+# pre-commit: コミット対象ファイルの行数・format・lint。pre-push: build と test。
+# linterly は1パスしか受け取れないので、scripts/linterly-staged.sh が全体チェック結果をコミット対象に絞る。
+pre-commit:
+  parallel: false
+  commands:
+    linterly:
+      run: ./scripts/linterly-staged.sh {staged_files}
+    fmt:
+      glob: "*.{go,templ}"
+      run: make fmt-check
+    lint:
+      glob: "*.{go,templ}"
+      run: make lint-go
+    typecheck:
+      glob: "static/**/*.ts"
+      run: make lint-static
+
+pre-push:
+  commands:
+    build:
+      run: go build ./... && go vet ./...
+    test:
+      run: make test
