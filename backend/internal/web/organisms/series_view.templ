@@ -5,6 +5,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // SeriesViewData is the state of the Series page (series_page): the canon and the Episodes.
@@ -109,7 +110,7 @@ templ SeriesView(d SeriesViewData) {
 			<ul class="flex flex-col gap-1 text-sm">
 				for _, p := range d.Episodes {
 					<li>
-						<a class="text-indigo-300 underline" href={ templ.SafeURL("/projects/" + p.ID) }>{ episodeLabel(p) }: { p.Name }</a>
+						<a class="text-indigo-300 underline" href={ templ.SafeURL(paths.Project(p.ID)) }>{ episodeLabel(p) }: { p.Name }</a>
 					</li>
 				}
 			</ul>

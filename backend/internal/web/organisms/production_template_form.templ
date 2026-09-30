@@ -3,6 +3,7 @@ package organisms
 import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // PolicyFormData is the state of a settings form. Errors are keyed by form field name; Typed holds the
@@ -22,7 +23,7 @@ templ ProductionTemplateForm(d PolicyFormData) {
 	<form
 		id="production-template-form"
 		class="flex flex-col gap-3"
-		hx-put={ "/projects/" + d.Project.ID + "/production-template" }
+		hx-put={ paths.Project(d.Project.ID, "production-template") }
 		hx-trigger="change"
 		hx-target="this"
 		hx-swap="outerHTML"

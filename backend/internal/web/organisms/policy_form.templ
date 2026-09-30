@@ -3,6 +3,7 @@ package organisms
 import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // PolicyForm sets the Quality Policy and, on top of it, Max retries, Max generation time and the
@@ -12,7 +13,7 @@ templ PolicyForm(d PolicyFormData) {
 	<form
 		id="policy-form"
 		class="flex flex-col gap-4"
-		hx-put={ "/projects/" + d.Project.ID + "/quality-policy" }
+		hx-put={ paths.Project(d.Project.ID, "quality-policy") }
 		hx-target="this"
 		hx-swap="outerHTML"
 	>
@@ -73,7 +74,7 @@ templ BudgetForm(d PolicyFormData) {
 	<form
 		id="budget-form"
 		class="flex flex-col gap-4"
-		hx-put={ "/projects/" + d.Project.ID + "/budget" }
+		hx-put={ paths.Project(d.Project.ID, "budget") }
 		hx-target="this"
 		hx-swap="outerHTML"
 	>

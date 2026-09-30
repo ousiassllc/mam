@@ -3,6 +3,7 @@ package organisms
 import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // BrandConstraintListData is the Brand / Safety Constraints of a Project. Typed and Errors are what
@@ -49,7 +50,7 @@ templ BrandConstraintList(d BrandConstraintListData) {
 		}
 		<form
 			class="flex flex-col gap-3 rounded-md border border-neutral-700 p-3"
-			hx-post={ "/projects/" + d.ProjectID + "/brand-constraints" }
+			hx-post={ paths.Project(d.ProjectID, "brand-constraints") }
 			hx-target="#brand-constraint-list"
 			hx-swap="outerHTML"
 		>

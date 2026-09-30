@@ -3,6 +3,7 @@ package molecules
 import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // ModeControl switches AUTO ⇄ DIRECTOR at any time (F-02). The choice is saved at once and the
@@ -12,7 +13,7 @@ templ ModeControl(p domain.Project) {
 	<form
 		id="mode-control"
 		class="flex items-center gap-2"
-		hx-put={ "/projects/" + p.ID + "/mode" }
+		hx-put={ paths.Project(p.ID, "mode") }
 		hx-trigger="change"
 		hx-target="this"
 		hx-swap="outerHTML"

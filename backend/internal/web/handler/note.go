@@ -9,11 +9,12 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
 	"github.com/ousiassllc/mam/backend/internal/web/pages"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 func noteListData(v service.NotesView) organisms.NoteListData {
 	if v.Project.ID != "" {
-		return organisms.NoteListData{BasePath: "/projects/" + v.Project.ID + "/notes", Notes: v.Notes}
+		return organisms.NoteListData{BasePath: paths.Project(v.Project.ID, "notes"), Notes: v.Notes}
 	}
 	return organisms.NoteListData{BasePath: "/series/" + v.Series.ID + "/notes", Series: true, Notes: v.Notes}
 }
@@ -21,7 +22,7 @@ func noteListData(v service.NotesView) organisms.NoteListData {
 func notesPageData(v service.NotesView) pages.NotesPageData {
 	if v.Project.ID != "" {
 		return pages.NotesPageData{
-			Title: "Notes", Owner: v.Project.Name, BackHref: "/projects/" + v.Project.ID, BackLabel: "← チャットに戻る",
+			Title: "Notes", Owner: v.Project.Name, BackHref: paths.Project(v.Project.ID), BackLabel: "← チャットに戻る",
 			Lead:  "自由記述の制作メモです。ピン留めしたメモは常に、それ以外は関連度の高い順に、脚本・Scene/Shot 計画・Shot Spec の作成に渡されます（アーカイブしたメモは渡されません）。構造化できる内容は、チャットの承認カードで World State への反映を提案します。",
 			Notes: noteListData(v),
 		}

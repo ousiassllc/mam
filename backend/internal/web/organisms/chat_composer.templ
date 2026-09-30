@@ -4,6 +4,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 type qualityOption struct {
@@ -25,7 +26,7 @@ templ ChatComposer(p domain.Project) {
 	<div class="border-t border-neutral-800 px-4 py-3">
 		<form
 			id="chat-composer"
-			hx-post={ "/projects/" + p.ID + "/messages" }
+			hx-post={ paths.Project(p.ID, "messages") }
 			hx-encoding="multipart/form-data"
 			hx-target="#chat-thread"
 			hx-swap="beforeend"
@@ -62,7 +63,7 @@ templ ChatComposer(p domain.Project) {
 				Quality
 				@atoms.Select(atoms.FieldMd, "", templ.Attributes{
 					"name":        "quality_policy",
-					"hx-put":      "/projects/" + p.ID + "/quality-policy",
+					"hx-put":      paths.Project(p.ID, "quality-policy"),
 					"hx-trigger":  "change",
 					"hx-params":   "quality_policy",
 					"hx-encoding": "application/x-www-form-urlencoded",
@@ -73,7 +74,7 @@ templ ChatComposer(p domain.Project) {
 					}
 				}
 			</label>
-			<a href={ templ.SafeURL("/projects/" + p.ID + "/settings") } class="hover:text-neutral-100">設定</a>
+			<a href={ templ.SafeURL(paths.Project(p.ID, "settings")) } class="hover:text-neutral-100">設定</a>
 		</div>
 	</div>
 }

@@ -3,6 +3,7 @@ package molecules
 import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 type levelOption struct {
@@ -31,7 +32,7 @@ templ ConfirmationControl(p domain.Project) {
 	<form
 		id="confirmation-control"
 		class="flex flex-wrap items-center gap-2 text-xs"
-		hx-put={ "/projects/" + p.ID + "/confirmation-level" }
+		hx-put={ paths.Project(p.ID, "confirmation-level") }
 		hx-trigger="change"
 		hx-target="this"
 		hx-swap="outerHTML"

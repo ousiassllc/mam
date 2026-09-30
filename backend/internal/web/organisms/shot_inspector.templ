@@ -6,6 +6,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // ShotInspectorData is the state of the Shot Inspector (GET /shots/:id).
@@ -78,7 +79,7 @@ func LockToggleFor(shotID string, p domain.LockParameter, locks domain.Parameter
 
 // ProjectLockToggle is the AUTO / MANUAL / LOCK switch of Story or Music.
 func ProjectLockToggle(projectID string, p domain.LockParameter, locks domain.ParameterLocks) atoms.LockToggleData {
-	return atoms.LockToggleData{DOMID: "lock-" + projectID + "-" + string(p), URL: "/projects/" + projectID + "/locks", Parameter: p, Mode: locks.Mode(p)}
+	return atoms.LockToggleData{DOMID: "lock-" + projectID + "-" + string(p), URL: paths.Project(projectID, "locks"), Parameter: p, Mode: locks.Mode(p)}
 }
 
 // specRows lists the parts of the Canonical Shot Spec as label / value rows.
@@ -130,7 +131,7 @@ templ ShotInspector(d ShotInspectorData) {
 				· { string(d.Shot.State) }
 				· MODE { strings.ToUpper(string(d.Project.Mode)) }
 			</p>
-			<a href={ templ.SafeURL("/projects/" + d.Project.ID + "/branches") } class="mt-1 inline-block text-xs text-neutral-400 underline hover:text-neutral-100">Branch を作る</a>
+			<a href={ templ.SafeURL(paths.Project(d.Project.ID, "branches")) } class="mt-1 inline-block text-xs text-neutral-400 underline hover:text-neutral-100">Branch を作る</a>
 		</header>
 		<section aria-label="AUTO / MANUAL / LOCK" class="flex flex-col gap-2">
 			<h3 class="text-sm font-semibold">Locks</h3>

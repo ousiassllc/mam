@@ -8,6 +8,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // WorldStateData is the state of the World State view (world_state_page).
@@ -50,7 +51,7 @@ func (d WorldStateData) branchQuery() string {
 }
 
 func (d WorldStateData) entityURL(plural, id string) string {
-	return "/projects/" + d.Project.ID + "/" + plural + "/" + id
+	return paths.Project(d.Project.ID, plural, id)
 }
 
 func (d WorldStateData) field(target domain.WorldTarget, id, name, value string) molecules.WorldStateFieldData {
@@ -97,7 +98,7 @@ func (d WorldStateData) fieldLockToggle(target domain.WorldTarget, id, field str
 		hidden = append(hidden, atoms.HiddenField{Name: "target_id", Value: id})
 	}
 	return atoms.LockToggleData{
-		DOMID: "lock-" + string(target) + "-" + id + "-" + field, URL: "/projects/" + d.Project.ID + "/world-state/locks" + d.branchQuery(),
+		DOMID: "lock-" + string(target) + "-" + id + "-" + field, URL: paths.Project(d.Project.ID, "world-state", "locks") + d.branchQuery(),
 		Parameter: domain.LockParameter(field), Label: lockLabel(field), Mode: mode,
 		Modes: []domain.LockMode{domain.LockAuto, domain.LockLocked}, Hidden: hidden,
 		Target: "#world-state-view",
@@ -217,7 +218,7 @@ templ referenceSlotForm(d WorldStateData, plural, id string, sf slotForm) {
 			}
 		}
 		if sf.Current != "" {
-			<a class="text-xs text-indigo-300 underline" href={ templ.SafeURL("/projects/" + d.Project.ID + "/assets/" + sf.Current) } target="_blank" rel="noopener">現在の画像</a>
+			<a class="text-xs text-indigo-300 underline" href={ templ.SafeURL(paths.Project(d.Project.ID, "assets", sf.Current)) } target="_blank" rel="noopener">現在の画像</a>
 		}
 		@atoms.Button(atoms.ToneNeutral, "割り当て", templ.Attributes{"type": "submit"})
 	</form>
@@ -282,7 +283,7 @@ templ WorldStateView(d WorldStateData) {
 			@singletonLocks(d, domain.TargetStory)
 		</section>
 		@VersionHistoryPanel(VersionHistoryData{
-			DOMID: "version-history-world", Title: "World State のバージョン", BasePath: "/projects/" + d.Project.ID + "/world-state",
+			DOMID: "version-history-world", Title: "World State のバージョン", BasePath: paths.Project(d.Project.ID, "world-state"),
 			Target: "#world-state-view", Entries: d.Versions,
 		})
 	</div>

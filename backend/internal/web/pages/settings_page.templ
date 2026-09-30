@@ -2,8 +2,10 @@ package pages
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/layout"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // SettingsPageData is everything the settings screen shows.
@@ -23,7 +25,7 @@ templ SettingsPage(csrfToken string, d SettingsPageData) {
 	@layout.AppLayout("設定: "+d.Policy.Project.Name, csrfToken) {
 		<main class="mx-auto flex max-w-3xl flex-col gap-8 p-8">
 			<div>
-				<a href={ templ.SafeURL("/projects/" + d.Policy.Project.ID) } class="text-sm text-neutral-400 hover:text-neutral-100">← チャットに戻る</a>
+				@atoms.ChatBackLink(d.Policy.Project.ID)
 				<h1 class="mb-1 mt-3 text-xl font-semibold">設定</h1>
 				<p class="text-sm text-neutral-400">{ d.Policy.Project.Name }</p>
 			</div>
@@ -62,7 +64,7 @@ templ SettingsBody(d SettingsPageData) {
 		@SettingsSection("プロジェクトバンドル", "プロジェクトのデータとアセットを 1 つの ZIP に書き出します。プロジェクト一覧の読み込みフォームから、この端末でも別の端末でも復元できます。") {
 			<div>
 				<a
-					href={ templ.SafeURL("/projects/" + d.Policy.Project.ID + "/bundle") }
+					href={ templ.SafeURL(paths.Project(d.Policy.Project.ID, "bundle")) }
 					download
 					hx-boost="false"
 					class="inline-flex items-center justify-center rounded-md border border-neutral-600 px-3 py-1.5 text-sm font-medium text-neutral-200 hover:bg-neutral-800"
