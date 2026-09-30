@@ -19,7 +19,7 @@ func TestEditorService_AssetPathNeverLeavesTheAssetsDirectory(t *testing.T) {
 
 	assert.Equal(t, filepath.Join(assets, "p1", "a.mp4"), s.assetPath("p1/a.mp4"))
 	assert.True(t, s.fileExists("p1/a.mp4"))
-	for _, rel := range []string{"../secret.mp4", "p1/../../secret.mp4", "../../../etc/passwd", ".."} {
+	for _, rel := range []string{"", ".", "../secret.mp4", "p1/../../secret.mp4", "../../../etc/passwd", ".."} {
 		assert.Empty(t, s.assetPath(rel), rel)
 		assert.False(t, s.fileExists(rel), rel)
 	}

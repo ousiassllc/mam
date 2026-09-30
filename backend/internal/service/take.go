@@ -73,8 +73,8 @@ func (s *TakeService) Compare(ctx context.Context, shotID string) (Comparison, e
 	out := Comparison{Project: project, Shot: ref.Shot, Takes: make([]TakeView, len(takes))}
 	for i, t := range takes {
 		v := TakeView{TakeInfo: t, Label: domain.TakeLabel(i)}
-		if s.tools != nil && t.FilePath != "" {
-			if info, err := s.tools.Probe(ctx, s.assetPath(t.FilePath)); err == nil {
+		if abs := s.assetPath(t.FilePath); s.tools != nil && abs != "" {
+			if info, err := s.tools.Probe(ctx, abs); err == nil {
 				v.FPS = info.FPS
 				if v.Resolution == "" && info.Height > 0 {
 					v.Resolution = fmt.Sprintf("%dp", info.Height)
@@ -87,10 +87,6 @@ func (s *TakeService) Compare(ctx context.Context, shotID string) (Comparison, e
 		out.Takes[i] = v
 	}
 	return out, nil
-}
-
-func (s *TakeService) assetPath(rel string) string {
-	return filepath.Join(s.assetsDir, filepath.FromSlash(rel))
 }
 
 // Select makes the Take the one the Shot uses (POST /takes/:id/select). It is the user's choice
@@ -206,7 +202,11 @@ func (s *TakeService) composeTake(ctx context.Context, ref repository.ShotRef, t
 		byID[t.ID] = t
 	}
 	for i, seg := range segs {
-		parts[i] = media.Segment{Path: s.assetPath(byID[seg.TakeID].FilePath), Start: seg.Start, End: seg.End}
+		path := s.assetPath(byID[seg.TakeID].FilePath)
+		if path == "" {
+			return "", invalid("", "Take のファイルがないため、合成できません")
+		}
+		parts[i] = media.Segment{Path: path, Start: seg.Start, End: seg.End}
 	}
 	info, err := s.tools.Compose(ctx, parts, dst)
 	if err != nil {
@@ -283,7 +283,11 @@ func (s *TakeService) SpliceRegenerated(ctx context.Context, shotID, baseTakeID,
 		return "", invalid("", "Take のファイルがないため、部分再生成をつなぎ込めません")
 	}
 	length := func(t domain.TakeInfo) float64 {
-		info, err := s.tools.Probe(ctx, s.assetPath(t.FilePath))
+		path := s.assetPath(t.FilePath)
+		if path == "" {
+			return 0
+		}
+		info, err := s.tools.Probe(ctx, path)
 		if err != nil {
 			return 0
 		}
@@ -330,6 +334,9 @@ func (s *TakeService) Video(ctx context.Context, takeID string) (MediaFile, erro
 		return MediaFile{}, ErrNotFound // archived
 	}
 	src := s.assetPath(d.FilePath)
+	if src == "" {
+		return MediaFile{}, ErrNotFound // outside the assets directory
+	}
 	mime := "video/mp4"
 	if a, err := s.assets.Get(ctx, d.ProjectID, d.AssetID); err == nil && a.MimeType != "" {
 		mime = a.MimeType
@@ -367,6 +374,9 @@ func (s *TakeService) Thumbnail(ctx context.Context, takeID string) (MediaFile, 
 		return MediaFile{}, ErrUnavailable
 	}
 	src := s.assetPath(d.FilePath)
+	if src == "" {
+		return MediaFile{}, ErrNotFound // outside the assets directory
+	}
 	dst := filepath.Join(s.assetsDir, previewDir, takeID+".jpg")
 	if err := s.makePreview(dst, func() error { return s.tools.Thumbnail(ctx, src, dst, 0) }); err != nil {
 		return MediaFile{}, fmt.Errorf("make thumbnail: %w", err)

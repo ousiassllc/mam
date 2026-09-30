@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"path/filepath"
+	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/briefing"
 	"github.com/ousiassllc/mam/backend/internal/agent/orchestrator"
@@ -124,4 +126,20 @@ func userText(content, replyTo string, attachments []string) domain.ChatMessage 
 		Role: domain.RoleUser, Kind: domain.KindText, Content: content,
 		ReplyToMessageID: replyTo, AttachmentAssetIDs: attachments,
 	}
+}
+
+// assetPath resolves a path stored in the database (relative to the assets directory, slash
+// separated) to a file path inside the assets directory. It returns "" for an empty path and for a
+// path that leaves the directory (a stored "../x"): callers treat "" as a file that is not there, so
+// such a file is never read, served, probed or removed.
+func (c *core) assetPath(rel string) string {
+	if rel == "" || c.assetsDir == "" {
+		return ""
+	}
+	abs := filepath.Join(c.assetsDir, filepath.FromSlash(rel))
+	within, err := filepath.Rel(c.assetsDir, abs)
+	if err != nil || within == "." || within == ".." || strings.HasPrefix(within, ".."+string(filepath.Separator)) {
+		return ""
+	}
+	return abs
 }
