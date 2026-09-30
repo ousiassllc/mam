@@ -301,11 +301,13 @@ func TestApprovalCard_AnsweredOnceProjectWaitsUntilThen(t *testing.T) {
 	assert.Contains(t, body, ">修正を依頼<")
 	assert.Contains(t, body, "確認待ち")
 	assert.Contains(t, body, `data-state="AWAITING_APPROVAL"`, "the project waits while the card is unanswered")
+	assert.Contains(t, body, `data-card-pending="true"`, "the client refetches an unanswered card after a reconnect")
 	card := lastID(t, a.get("/projects/"+id+"/messages", true).Body.String()) // the newest message is the card
 
 	rec := a.form(http.MethodPost, "/projects/"+id+"/approvals/"+card, url.Values{"decision": {"approve"}, "comment": {"OK"}})
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	assert.Contains(t, rec.Body.String(), "承認済み")
+	assert.NotContains(t, rec.Body.String(), "data-card-pending", "an answered card is final")
 	assert.NotContains(t, rec.Body.String(), ">修正を依頼<", "an answered card has no buttons")
 	assert.Contains(t, rec.Body.String(), `data-state="VISUAL_DESIGN"`, "the badge shows the new state")
 	assert.Equal(t, "chat:refresh", rec.Header().Get("HX-Trigger"), "the thread fetches the follow-up messages")

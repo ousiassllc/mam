@@ -10,6 +10,7 @@ import { createSyncer } from './components/lib/sync';
 import { connect, socketUrl } from './components/lib/ws';
 import {
   cardUrl,
+  catchUpAfterReconnect,
   isSendKey,
   messagesUrl,
   removeDuplicateIds,
@@ -51,8 +52,8 @@ class ChatWorkspace {
     connect<ProjectEvent>({
       url: socketUrl(root.dataset.wsUrl ?? '', location),
       onMessage: (event) => this.onEvent(event),
-      // After a reconnect, events may have been missed: catch up.
-      onOpen: (reconnected) => reconnected && this.syncNew(),
+      // After a reconnect, events may have been missed: catch up on new messages and on cards that can still change.
+      onOpen: (reconnected) => reconnected && void this.catchUp(),
     });
   }
 
@@ -60,11 +61,24 @@ class ChatWorkspace {
     if (event.type === 'card.updated') {
       const card = this.thread.querySelector(`#msg-${CSS.escape(event.message_id)}`);
       if (card) {
-        void ajaxGet(cardUrl(this.projectId, event.message_id), { target: `#msg-${CSS.escape(event.message_id)}`, swap: 'outerHTML' });
+        void this.refetchCard(event.message_id);
         return;
       }
     }
     this.syncNew();
+  }
+
+  private refetchCard(messageId: string): Promise<boolean> {
+    return ajaxGet(cardUrl(this.projectId, messageId), { target: `#msg-${CSS.escape(messageId)}`, swap: 'outerHTML' });
+  }
+
+  private catchUp(): Promise<unknown> {
+    return catchUpAfterReconnect({
+      pendingMessageIds: () =>
+        Array.from(this.thread.querySelectorAll<HTMLElement>('[data-card-pending]'), (el) => el.dataset.messageId ?? '').filter(Boolean),
+      refetchCard: (id) => this.refetchCard(id),
+      syncNew: () => this.syncer.request(),
+    });
   }
 
   private syncNew(): void {

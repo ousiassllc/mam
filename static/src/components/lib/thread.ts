@@ -41,6 +41,25 @@ export function cardUrl(projectId: string, messageId: string): string {
   return `/projects/${encodeURIComponent(projectId)}/messages/${encodeURIComponent(messageId)}`;
 }
 
+/** What the client does after the WebSocket came back; the DOM and htmx are behind it (chat.ts). */
+export interface CatchUp {
+  /** IDs of the cards shown that can still change (the server marks them data-card-pending). */
+  pendingMessageIds(): string[];
+  /** Replaces the card in place with the server's current one. */
+  refetchCard(messageId: string): Promise<unknown>;
+  /** Appends the messages newer than the last one shown. */
+  syncNew(): Promise<unknown>;
+}
+
+/**
+ * After a reconnect, events may have been missed: a message.created is covered by fetching what is
+ * newer, a card.updated by fetching every card that could still change again (a card that was
+ * final when the socket dropped cannot have changed).
+ */
+export function catchUpAfterReconnect(io: CatchUp): Promise<unknown[]> {
+  return Promise.all([io.syncNew(), ...io.pendingMessageIds().map((id) => io.refetchCard(id))]);
+}
+
 /** Enter sends, Shift+Enter breaks the line, and Enter that confirms an IME conversion does nothing. */
 export function isSendKey(event: { key: string; shiftKey: boolean; isComposing: boolean }): boolean {
   return event.key === 'Enter' && !event.shiftKey && !event.isComposing;

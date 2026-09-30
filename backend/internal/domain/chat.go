@@ -141,3 +141,20 @@ type ThreadMessage struct {
 	// Job is the live job of a progress card (nil when unknown).
 	Job *Job
 }
+
+// Pending reports whether the card can still change in place (card.updated): a question or
+// escalation waiting for an answer, an approval not yet answered, a progress card whose job has not
+// finished (or is unknown). The client fetches such cards again after a reconnect, when the
+// notification that they changed may have been missed.
+func (m ThreadMessage) Pending() bool {
+	switch m.Kind {
+	case KindApproval:
+		return m.ApprovalStatus == ApprovalPending
+	case KindProgress:
+		return m.Job == nil || m.Job.Status == JobQueued || m.Job.Status == JobRunning
+	case KindQuestion, KindEscalation:
+		return m.Open
+	default:
+		return false
+	}
+}

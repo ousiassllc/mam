@@ -12,6 +12,9 @@ templ MessageFrame(m domain.ThreadMessage) {
 		if m.Open {
 			data-card-open="true"
 		}
+		if m.Pending() {
+			data-card-pending="true"
+		}
 		if isOOB(ctx) {
 			hx-swap-oob="outerHTML"
 		}

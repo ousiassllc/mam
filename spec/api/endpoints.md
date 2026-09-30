@@ -368,7 +368,7 @@ Notes:
 | `/ws/shots/:id` | 生成中Shotの進捗（キュー待ち/生成中/Judge中/完了/失敗）をプッシュ通知。メッセージは JSON `{"shot_id","action"?:"generate\|reference_pack\|judge\|repair","stage":"idle\|queued\|generating\|judging\|repairing\|done\|failed","message"?,"takes_done"?,"takes_total"?}`。接続直後に生成中でなければ `stage=idle` を 1 通送る。同一オリジンの接続のみ受理し、存在しない Shot は 404。Judge 中は `action=judge` で `stage=queued\|judging\|done\|failed`（`stage` に `judging` を追加）。Repair 中は `action=repair` で `stage=queued\|repairing\|done\|failed`（`stage` に `repairing` を追加。Retry Policy の上限で止めたときは `done` とその理由の `message`） |
 | `/ws/projects/:id` | チャットの通知のみを配信する（Core State Machine 遷移・コスト更新・Editor→Reshoot ループの発火のための専用イベントは配信しない。これらの変化はチャットに投稿されたメッセージ・カードとして `message.created` / `card.updated` で届くか、画面が HTTP で取得する。コストは Cost Summary パネルが 15 秒間隔の HTMX ポーリングで更新する）。通知は本文を含まない JSON `{"type":"message.created","message_id":"<最新メッセージID>"}`（新着あり。クライアントは `GET /projects/:id/messages?after=` で取得）と `{"type":"card.updated","message_id":"<カードID>"}`（進捗カード等の更新。`GET /projects/:id/messages/:messageId` で取得）。同一オリジンの接続のみ受理する |
 
-`lib/ws.ts` 経由で接続し、自動再接続（指数バックオフ、最大10回）を行う（`spec/architecture/overview.md` 参照元 HALT 標準パターン）。
+`lib/ws.ts` 経由で接続し、自動再接続（指数バックオフ、最大10回）を行う。チャット画面は再接続後、新着メッセージに加えて、まだ変わりうるカード（未回答の承認・質問・エスカレーション、未完了ジョブの進行カード。サーバーが `data-card-pending` を付ける）を `GET /projects/:id/messages/:messageId` で取り直す（切断中の `card.updated` の取りこぼしを補う）（`spec/architecture/overview.md` 参照元 HALT 標準パターン）。
 
 ## 改訂履歴
 
@@ -419,3 +419,4 @@ Notes:
 | 1.42 | 2026-10-01 | `mam-branch-tree` を廃止し Branch ツリーを Templ（`branch_tree`）でサーバー描画に変更。`GET /api/v1/projects/:id/branches` を削除し、`GET /branches/:id`・`PUT /branches/:id` の HTMX 応答にツリーの `hx-swap-oob` を同梱、`HX-Trigger: branches-changed` を廃止 | Branch ツリーは D&D・Canvas・WebSocket を使わず HALT の Lit 使用基準に該当しないため（Issue #40） |
 | 1.43 | 2026-10-01 | `PUT /projects/:id/confirmation-level` の `checkpoints` を `script`/`rough_cut`/`final` に限定（それ以外は 422） | 他の確認ポイントは承認カードを出す段が無く、選んでも要求されないため（#87） |
 | 1.44 | 2026-10-01 | `POST /projects/import` の展開を、`data.json` が参照するファイルだけ・合計 32 GB と空き容量の範囲内・一時ディレクトリ経由に限定することを追記 | 参照されない大きなエントリでディスクを埋められたこと、並行インポートが先行 Project のファイルを消すことを防ぐため（Issue #51、#52） |
+| 1.45 | 2026-10-01 | チャット画面の再接続後の補完に、`data-card-pending` が付いたカードの再取得を追記 | 切断中の `card.updated` を取りこぼすと承認・進行カードが古いままになるため（Issue #75） |
