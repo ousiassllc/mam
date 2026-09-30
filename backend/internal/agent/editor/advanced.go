@@ -234,7 +234,8 @@ func shortageFindings(in JudgeInput, p Profile) []domain.EditorFinding {
 	if p.MinProductShare > 0 {
 		total, product, lastProduct := in.Timeline.Duration(), 0.0, 0
 		for i, c := range clips {
-			if in.Shots[c.ShotID].HasProduct {
+			// An insert shot is the product hero shot the Editor Judge asked for.
+			if in.Shots[c.ShotID].HasProduct || c.Kind == domain.ClipInsert {
 				product += c.Length()
 				lastProduct = i + 1
 			}

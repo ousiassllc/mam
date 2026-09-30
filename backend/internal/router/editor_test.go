@@ -58,6 +58,8 @@ func newEditorApp(t *testing.T) *editorApp {
 	})
 	e := &editorApp{takeApp: ta, llm: l}
 	e.setLevel(domain.ConfirmFullAuto) // no approval card unless a test asks for one
+	// DRAMA asks nothing of a one-clip cut that a test could trip over (PRODUCT / CM wants the product on screen).
+	e.execSQL(`UPDATE project SET production_template = 'drama' WHERE id = ?`, e.project)
 	return e
 }
 
