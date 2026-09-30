@@ -101,30 +101,82 @@ func tail(s string) string {
 
 func num(v float64) string { return strconv.FormatFloat(v, 'f', -1, 64) }
 
-// Voice is a spoken line to mix in, starting at Start seconds.
-type Voice struct {
+// Track is a sound to mix in, starting at Start seconds.
+type Track struct {
 	Path  string
 	Start float64
+	// Length is how long the sound plays (0: the whole file). A Loop track needs it.
+	Length float64
+	// Loop repeats a shorter file until Length.
+	Loop bool
+	// GainDB is the level relative to the file.
+	GainDB float64
+	// Fade fades the sound in and out over that many seconds (shortened to a quarter of Length).
+	Fade float64
 }
 
-// Master mixes the sound of base (a video file; "" for none) and the voices into one stereo track
+// chain is the filter chain that shapes the track before it is placed: trim, fade, level, delay.
+func (tr Track) chain() string {
+	var f []string
+	if tr.Length > 0 {
+		f = append(f, "atrim=duration="+sec(tr.Length))
+		if fade := min(tr.Fade, tr.Length/4); fade > 0 {
+			f = append(f, "afade=t=in:d="+sec(fade), "afade=t=out:st="+sec(tr.Length-fade)+":d="+sec(fade))
+		}
+	}
+	if tr.GainDB != 0 {
+		f = append(f, "volume="+num(tr.GainDB)+"dB")
+	}
+	if ms := int(math.Round(max(tr.Start, 0) * 1000)); ms > 0 {
+		f = append(f, fmt.Sprintf("adelay=%d|%d", ms, ms))
+	}
+	if len(f) == 0 {
+		return ""
+	}
+	return "," + strings.Join(f, ",")
+}
+
+// PlaceVoices writes a mono WAV of the given length with every voice at its Start and silence
+// around them: the audio a Lip Sync of a clip follows.
+func (t Tools) PlaceVoices(ctx context.Context, voices []Track, seconds float64, dst string) error {
+	if len(voices) == 0 {
+		return errors.New("place voices: no voice")
+	}
+	var args, parts, labels []string
+	for i, v := range voices {
+		v.Length, v.Loop, v.GainDB, v.Fade = 0, false, 0, 0
+		args = append(args, "-i", v.Path)
+		parts = append(parts, fmt.Sprintf("[%d:a]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=mono%s[v%d]", i, v.chain(), i))
+		labels = append(labels, fmt.Sprintf("[v%d]", i))
+	}
+	mix := strings.Join(labels, "") + fmt.Sprintf("amix=inputs=%d:duration=longest:normalize=0,apad=whole_dur=%s,atrim=end=%s[out]", len(labels), sec(seconds), sec(seconds))
+	graph := strings.Join(append(parts, mix), ";")
+	return t.write(ctx, dst, "wav", append(args, "-filter_complex", graph, "-map", "[out]", "-c:a", "pcm_s16le"))
+}
+
+// Master mixes the sound of base (a video file; "" for none) and the tracks into one stereo track
 // of the given length, normalizes it to targetLUFS with a two-pass loudnorm (local DSP) and writes
 // it as AAC at dst. It returns the loudness of the written file. ErrSilent when there is no sound
 // at all.
-func (t Tools) Master(ctx context.Context, base string, voices []Voice, seconds, targetLUFS float64, dst string) (Loudness, error) {
+func (t Tools) Master(ctx context.Context, base string, tracks []Track, seconds, targetLUFS float64, dst string) (Loudness, error) {
 	var args, parts, labels []string
-	add := func(path, chain string) {
+	add := func(path, chain string, loop bool) {
 		i := len(labels)
+		if loop {
+			args = append(args, "-stream_loop", "-1")
+		}
 		args = append(args, "-i", path)
 		parts = append(parts, fmt.Sprintf("[%d:a]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo%s[m%d]", i, chain, i))
 		labels = append(labels, fmt.Sprintf("[m%d]", i))
 	}
 	if base != "" {
-		add(base, "")
+		add(base, "", false)
 	}
-	for _, v := range voices {
-		ms := strconv.Itoa(int(math.Round(max(v.Start, 0) * 1000)))
-		add(v.Path, ",adelay="+ms+"|"+ms)
+	for _, tr := range tracks {
+		if tr.Loop && tr.Length <= 0 {
+			return Loudness{}, fmt.Errorf("master: looped track %s has no length", filepath.Base(tr.Path))
+		}
+		add(tr.Path, tr.chain(), tr.Loop)
 	}
 	if len(labels) == 0 {
 		return Loudness{}, ErrSilent

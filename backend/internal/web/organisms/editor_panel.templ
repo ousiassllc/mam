@@ -23,8 +23,10 @@ type EditorPanelData struct {
 	Duration   float64
 	Judge      *domain.EditorJudgeResult
 	Audio      *domain.AudioTimelineVersion
-	QC         *domain.FinalQCResult
-	Exports    []domain.Export
+	// Voices are the cloned voices of the Project's speakers.
+	Voices  []domain.VoiceClone
+	QC      *domain.FinalQCResult
+	Exports []domain.Export
 	// Defaults are the export options preselected.
 	Defaults domain.ExportOptions
 	// CanRender is false without ffmpeg.
@@ -198,21 +200,63 @@ templ EditorActions(d EditorPanelData) {
 			}
 		</section>
 		<section class="flex flex-col gap-2" aria-label="Audio">
-			<h3 class="text-sm font-semibold">3. 音声（簡易版）</h3>
-			<p class="text-xs text-neutral-400">脚本のセリフ・ナレーションを ElevenLabs で音声化し、Take の音声とミックスして −14 LUFS に整えます。</p>
+			<h3 class="text-sm font-semibold">3. 音声（Audio Director）</h3>
+			<p class="text-xs text-neutral-400">
+				Scene の感情と編集テンポに合わせて、セリフ・ナレーション（ElevenLabs TTS）に加えて Quality Policy の範囲で BGM・Ambience・SE・Foley（ElevenLabs）と Lip Sync（Sync Labs。MAX QUALITY のみ）を作り、
+				Take の音声とミックスして −14 LUFS に整えます。作るたびに新しい版になり、Branch ごとに版を管理します。
+			</p>
 			<div class="flex items-center gap-3">
 				@atoms.Button(atoms.ToneNeutral, "音声を作成", templ.Attributes{
-					"type": "button", "hx-post": projectURL(d.Project.ID) + "/audio/generate",
+					"type": "button", "hx-post": projectURL(d.Project.ID) + "/audio/generate", "hx-vals": branchVals(d.BranchID),
 					"hx-target": "#editor-actions", "hx-swap": "outerHTML", "hx-disabled-elt": "this", "disabled": !d.CanAudio(),
 				})
 				if d.Audio != nil {
-					<span class="text-xs text-neutral-400" data-audio-summary>
-						{ fmt.Sprintf("セリフ %d 行 / %.1f 秒 / %.1f LUFS", len(d.Audio.Timeline.Clips), d.Audio.Timeline.DurationSeconds, d.Audio.Timeline.MeasuredLUFS) }
-					</span>
+					<span class="text-xs text-neutral-400" data-audio-summary>{ audioSummary(d.Audio) }</span>
 				}
 			</div>
+			if d.Audio != nil && len(d.Audio.Timeline.Scenes) > 0 {
+				<ul class="flex flex-col gap-1 text-xs text-neutral-300" data-audio-scenes>
+					for _, s := range d.Audio.Timeline.Scenes {
+						<li>{ audioSceneText(s) }</li>
+					}
+				</ul>
+			}
+			if d.Audio != nil && len(d.Audio.Timeline.Skipped) > 0 {
+				<ul class="flex flex-col gap-1 text-xs text-amber-300" data-audio-skipped>
+					for _, s := range d.Audio.Timeline.Skipped {
+						<li>{ audioSkippedText(s) }</li>
+					}
+				</ul>
+			}
 			if !d.CanRender {
 				<p class="text-xs text-amber-300">ffmpeg / ffprobe が見つからないため、音声と書き出しは使えません。</p>
+			}
+			<form
+				hx-post={ projectURL(d.Project.ID) + "/audio/voices" }
+				hx-encoding="multipart/form-data"
+				hx-target="#editor-actions"
+				hx-swap="outerHTML"
+				hx-disabled-elt="find button"
+				hx-vals={ branchVals(d.BranchID) }
+				class="flex flex-wrap items-end gap-3"
+				aria-label="音声クローン"
+			>
+				<label class="flex flex-col gap-1 text-xs text-neutral-400">
+					話者名（脚本の「話者: セリフ」の話者）
+					<input type="text" name="speaker" required maxlength="20" class="rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm text-neutral-100"/>
+				</label>
+				<label class="flex flex-col gap-1 text-xs text-neutral-400">
+					声のサンプル（10 MB 以下。数十秒の録音）
+					<input type="file" name="sample" required accept="audio/*" class="text-sm text-neutral-100"/>
+				</label>
+				@atoms.Button(atoms.ToneNeutral, "声をクローン", templ.Attributes{"type": "submit"})
+			</form>
+			if len(d.Voices) > 0 {
+				<ul class="flex flex-col gap-1 text-xs text-neutral-300" data-audio-voices>
+					for _, v := range d.Voices {
+						<li>{ v.Speaker + "（クローン音声）" }</li>
+					}
+				</ul>
 			}
 		</section>
 		<section class="flex flex-col gap-2" aria-label="Final QC">

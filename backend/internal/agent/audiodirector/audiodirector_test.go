@@ -5,12 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"mime"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"os/exec"
-	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -19,7 +19,6 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector"
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/domain"
-	"github.com/ousiassllc/mam/backend/internal/media"
 )
 
 func keys(t *testing.T, withKey bool) credential.Store {
@@ -97,78 +96,223 @@ func TestElevenLabs_Failures(t *testing.T) {
 	})
 }
 
-// fakeTTS answers every line with a tone of one second, and remembers the lines.
-type fakeTTS struct {
-	t     *testing.T
-	tools string
-	lines []domain.VoiceLine
+func TestElevenLabs_ASpeakerWithAClonedVoiceIsSpokenByIt(t *testing.T) {
+	var path string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path = r.URL.Path
+		_, _ = w.Write([]byte("ID3"))
+	}))
+	defer srv.Close()
+	tts := audiodirector.NewElevenLabs(audiodirector.Config{BaseURL: srv.URL, DialogueVoiceID: "voice-d"}, keys(t, true), nil)
+
+	_, err := tts.Synthesize(context.Background(), domain.VoiceLine{Kind: domain.VoiceDialogue, Speaker: "美咲", Text: "a", VoiceID: "cloned-1"})
+
+	require.NoError(t, err)
+	assert.Equal(t, "/v1/text-to-speech/cloned-1", path)
 }
 
-func (f *fakeTTS) Synthesize(ctx context.Context, line domain.VoiceLine) (audiodirector.Speech, error) {
-	f.lines = append(f.lines, line)
-	out := filepath.Join(f.t.TempDir(), "tone.mp3")
-	cmd := exec.CommandContext(ctx, f.tools, "-v", "error", "-y", "-f", "lavfi", "-i", "sine=frequency=300:duration=1", "-af", "volume=0.3", out)
-	if b, err := cmd.CombinedOutput(); err != nil {
-		f.t.Fatalf("make tone: %v: %s", err, b)
+func TestElevenLabs_MusicAndSoundEffectsSendTheirRequests(t *testing.T) {
+	type call struct {
+		path, key string
+		body      map[string]any
 	}
-	data, err := os.ReadFile(out)
-	return audiodirector.Speech{Data: data, Ext: "mp3"}, err
+	var calls []call
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		raw, _ := io.ReadAll(r.Body)
+		c := call{path: r.URL.Path, key: r.Header.Get("xi-api-key")}
+		_ = json.Unmarshal(raw, &c.body)
+		calls = append(calls, c)
+		_, _ = w.Write([]byte("ID3"))
+	}))
+	defer srv.Close()
+	el := audiodirector.NewElevenLabs(audiodirector.Config{BaseURL: srv.URL}, keys(t, true), nil)
+
+	music, err := el.Compose(context.Background(), "calm piano", 12.5)
+	require.NoError(t, err)
+	sfx, err := el.Generate(context.Background(), "door slam", 1.5, false)
+	require.NoError(t, err)
+	_, err = el.Generate(context.Background(), "rain", 20, true)
+	require.NoError(t, err)
+
+	require.Len(t, calls, 3)
+	assert.Equal(t, "/v1/music", calls[0].path)
+	assert.Equal(t, "sk-test-key", calls[0].key)
+	assert.Equal(t, "calm piano", calls[0].body["prompt"])
+	assert.EqualValues(t, 12500, calls[0].body["music_length_ms"])
+	assert.Equal(t, "music_v2", calls[0].body["model_id"])
+	assert.Equal(t, true, calls[0].body["force_instrumental"])
+	assert.Equal(t, "/v1/sound-generation", calls[1].path)
+	assert.Equal(t, "door slam", calls[1].body["text"])
+	assert.EqualValues(t, 1.5, calls[1].body["duration_seconds"])
+	assert.Equal(t, false, calls[1].body["loop"])
+	assert.Equal(t, true, calls[2].body["loop"])
+	assert.Equal(t, "mp3", music.Ext)
+	assert.Equal(t, []byte("ID3"), sfx.Data)
 }
 
-func TestDirector_PlacesLinesAfterEachOtherAndNormalizesTheMix(t *testing.T) {
-	tools, err := media.Look()
-	if err != nil {
-		t.Skip("ffmpeg / ffprobe are not installed")
-	}
-	root := t.TempDir()
-	tts := &fakeTTS{t: t, tools: "ffmpeg"}
-	d := audiodirector.New(tts, tools, root)
+func TestElevenLabs_SoundLengthsOutsideTheApiBoundsAreRefusedBeforeTheCall(t *testing.T) {
+	calls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { calls++ }))
+	defer srv.Close()
+	el := audiodirector.NewElevenLabs(audiodirector.Config{BaseURL: srv.URL}, keys(t, true), nil)
 
-	got, err := d.Produce(context.Background(), audiodirector.Input{
-		ProjectID: "p1", EditTimelineID: "e1", Seconds: 6,
-		Cues: []audiodirector.Cue{
-			{Start: 0.5, Lines: []string{"美咲: こんにちは", "ナレーション: 朝が来た"}},
-			{Start: 1.0, Lines: []string{"健: おはよう"}}, // its Scene starts before the previous lines end
-		},
+	_, err1 := el.Compose(context.Background(), "x", 2)
+	_, err2 := el.Compose(context.Background(), "x", 601)
+	_, err3 := el.Generate(context.Background(), "x", 0.2, false)
+	_, err4 := el.Generate(context.Background(), "x", 31, false)
+
+	for _, err := range []error{err1, err2, err3, err4} {
+		assert.Error(t, err)
+	}
+	assert.Zero(t, calls)
+}
+
+func TestElevenLabs_CloneUploadsTheSampleAndReturnsTheVoiceID(t *testing.T) {
+	var name, filename, ctype string
+	var sample []byte
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctype = r.Header.Get("Content-Type")
+		require.Equal(t, "/v1/voices/add", r.URL.Path)
+		require.Equal(t, "sk-test-key", r.Header.Get("xi-api-key"))
+		_, params, _ := mime.ParseMediaType(ctype)
+		mr := multipart.NewReader(r.Body, params["boundary"])
+		for {
+			part, err := mr.NextPart()
+			if err != nil {
+				break
+			}
+			data, _ := io.ReadAll(part)
+			switch part.FormName() {
+			case "name":
+				name = string(data)
+			case "files":
+				filename, sample = part.FileName(), data
+			}
+		}
+		_, _ = w.Write([]byte(`{"voice_id":"voice-42","requires_verification":false}`))
+	}))
+	defer srv.Close()
+	el := audiodirector.NewElevenLabs(audiodirector.Config{BaseURL: srv.URL}, keys(t, true), nil)
+
+	id, err := el.Clone(context.Background(), "美咲", audiodirector.Sample{Filename: "misaki.mp3", Data: []byte("sample-bytes")})
+
+	require.NoError(t, err)
+	assert.Equal(t, "voice-42", id)
+	assert.Equal(t, "美咲", name)
+	assert.Equal(t, "misaki.mp3", filename)
+	assert.Equal(t, []byte("sample-bytes"), sample)
+	assert.Contains(t, ctype, "multipart/form-data")
+}
+
+func TestElevenLabs_CloneWithoutAVoiceIDInTheAnswerFails(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte(`{}`)) }))
+	defer srv.Close()
+	el := audiodirector.NewElevenLabs(audiodirector.Config{BaseURL: srv.URL}, keys(t, true), nil)
+
+	_, err := el.Clone(context.Background(), "x", audiodirector.Sample{Data: []byte("a")})
+
+	var perr *audiodirector.ProviderError
+	assert.True(t, errors.As(err, &perr))
+}
+
+func syncKeys(t *testing.T, withKey bool) credential.Store {
+	t.Helper()
+	keyring.MockInit()
+	store := credential.NewKeyring()
+	if withKey {
+		require.NoError(t, store.Set(audiodirector.SyncCredentialProvider, "sync-test-key"))
+	}
+	return store
+}
+
+func TestSyncLabs_UploadsThenPollsUntilCompletedAndDownloadsTheVideo(t *testing.T) {
+	var model, key string
+	var files []string
+	polls := 0
+	var srv *httptest.Server
+	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/generate":
+			key = r.Header.Get("x-api-key")
+			require.NoError(t, r.ParseMultipartForm(1<<20))
+			model = r.FormValue("model")
+			for field := range r.MultipartForm.File {
+				files = append(files, field)
+			}
+			_, _ = w.Write([]byte(`{"id":"gen-1","status":"PENDING"}`))
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/generate/gen-1":
+			polls++
+			if polls < 2 {
+				_, _ = w.Write([]byte(`{"id":"gen-1","status":"PROCESSING"}`))
+				return
+			}
+			_, _ = w.Write([]byte(`{"id":"gen-1","status":"COMPLETED","outputUrl":"` + srv.URL + `/out.mp4"}`))
+		case r.URL.Path == "/out.mp4":
+			assert.Empty(t, r.Header.Get("x-api-key"), "the key is not sent to the storage link")
+			_, _ = w.Write([]byte("lip-synced-video"))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+	sl := audiodirector.NewSyncLabs(audiodirector.SyncLabsConfig{BaseURL: srv.URL, PollInterval: time.Millisecond}, syncKeys(t, true), nil)
+
+	out, err := sl.Sync(context.Background(), audiodirector.LipSyncRequest{
+		Model: "sync-3", Video: audiodirector.Sample{Filename: "v.mp4", Data: []byte("v")}, Audio: audiodirector.Sample{Filename: "a.wav", Data: []byte("a")},
 	})
 
 	require.NoError(t, err)
-	require.Len(t, got.Clips, 3)
-	assert.Equal(t, []domain.VoiceKind{domain.VoiceDialogue, domain.VoiceNarration, domain.VoiceDialogue}, []domain.VoiceKind{got.Clips[0].Kind, got.Clips[1].Kind, got.Clips[2].Kind})
-	assert.InDelta(t, 0.5, got.Clips[0].StartSeconds, 1e-9)
-	assert.Greater(t, got.Clips[1].StartSeconds, got.Clips[0].End(), "lines do not overlap")
-	assert.Greater(t, got.Clips[2].StartSeconds, got.Clips[1].End(), "the next Scene waits for the speech to end")
-	assert.True(t, got.SpeechExpected)
-	assert.Equal(t, "p1/audio/e1/mix.m4a", got.MixPath)
-	assert.InDelta(t, domain.DefaultTargetLUFS, got.MeasuredLUFS, 1.0)
-	_, statErr := os.Stat(filepath.Join(root, filepath.FromSlash(got.MixPath)))
-	assert.NoError(t, statErr)
-	assert.Equal(t, "こんにちは", tts.lines[0].Text)
+	assert.Equal(t, []byte("lip-synced-video"), out)
+	assert.Equal(t, "sync-3", model)
+	assert.Equal(t, "sync-test-key", key)
+	assert.ElementsMatch(t, []string{"video", "audio"}, files)
+	assert.Equal(t, 2, polls)
 }
 
-func TestDirector_NoLinesAndNoSoundMakesNoMix(t *testing.T) {
-	tools, err := media.Look()
-	if err != nil {
-		t.Skip("ffmpeg / ffprobe are not installed")
-	}
-	d := audiodirector.New(nil, tools, t.TempDir())
+func TestSyncLabs_Failures(t *testing.T) {
+	t.Run("no API key", func(t *testing.T) {
+		sl := audiodirector.NewSyncLabs(audiodirector.SyncLabsConfig{BaseURL: "http://127.0.0.1:1"}, syncKeys(t, false), nil)
 
-	got, err := d.Produce(context.Background(), audiodirector.Input{ProjectID: "p1", EditTimelineID: "e1", Seconds: 3})
+		_, err := sl.Sync(context.Background(), audiodirector.LipSyncRequest{})
 
-	require.NoError(t, err)
-	assert.False(t, got.SpeechExpected)
-	assert.Empty(t, got.MixPath)
-	assert.Empty(t, got.Clips)
-}
+		assert.ErrorIs(t, err, audiodirector.ErrNoSyncLabsKey)
+	})
+	t.Run("a failed generation reports the vendor and the reason", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = w.Write([]byte(`{"id":"g","status":"FAILED","error":"no face found"}`))
+		}))
+		defer srv.Close()
+		sl := audiodirector.NewSyncLabs(audiodirector.SyncLabsConfig{BaseURL: srv.URL}, syncKeys(t, true), nil)
 
-func TestDirector_LinesWithoutASynthesizerFail(t *testing.T) {
-	tools, err := media.Look()
-	if err != nil {
-		t.Skip("ffmpeg / ffprobe are not installed")
-	}
-	d := audiodirector.New(nil, tools, t.TempDir())
+		_, err := sl.Sync(context.Background(), audiodirector.LipSyncRequest{Model: "lipsync-2"})
 
-	_, err = d.Produce(context.Background(), audiodirector.Input{ProjectID: "p1", EditTimelineID: "e1", Seconds: 3, Cues: []audiodirector.Cue{{Lines: []string{"a: b"}}}})
+		var perr *audiodirector.ProviderError
+		require.True(t, errors.As(err, &perr))
+		assert.Equal(t, audiodirector.VendorSyncLabs, perr.Vendor)
+		assert.Contains(t, perr.Message, "no face found")
+	})
+	t.Run("HTTP error keeps the status and the key is not leaked", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			http.Error(w, `{"message":"invalid key sync-test-key"}`, http.StatusUnauthorized)
+		}))
+		defer srv.Close()
+		sl := audiodirector.NewSyncLabs(audiodirector.SyncLabsConfig{BaseURL: srv.URL}, syncKeys(t, true), nil)
 
-	assert.ErrorIs(t, err, audiodirector.ErrNoAPIKey)
+		_, err := sl.Sync(context.Background(), audiodirector.LipSyncRequest{Model: "lipsync-2"})
+
+		var perr *audiodirector.ProviderError
+		require.True(t, errors.As(err, &perr))
+		assert.Equal(t, http.StatusUnauthorized, perr.Status)
+	})
+	t.Run("the timeout ends a generation that never completes", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = w.Write([]byte(`{"id":"g","status":"PROCESSING"}`))
+		}))
+		defer srv.Close()
+		sl := audiodirector.NewSyncLabs(audiodirector.SyncLabsConfig{BaseURL: srv.URL, Timeout: 50 * time.Millisecond, PollInterval: 5 * time.Millisecond}, syncKeys(t, true), nil)
+
+		_, err := sl.Sync(context.Background(), audiodirector.LipSyncRequest{Model: "lipsync-2"})
+
+		require.Error(t, err)
+	})
 }

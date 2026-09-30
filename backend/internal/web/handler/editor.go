@@ -14,7 +14,7 @@ import (
 
 func editorPanelData(v service.EditorView) organisms.EditorPanelData {
 	d := organisms.EditorPanelData{
-		Project: v.Project, BranchID: v.BranchID, Audio: v.Audio, QC: v.QC, Exports: v.Exports, Defaults: v.Defaults, CanRender: v.CanRender,
+		Project: v.Project, BranchID: v.BranchID, Audio: v.Audio, Voices: v.Voices, QC: v.QC, Exports: v.Exports, Defaults: v.Defaults, CanRender: v.CanRender,
 	}
 	if t := v.Timeline; t != nil {
 		d.TimelineID, d.Clips, d.Duration, d.Judge = t.ID, len(t.Clips), t.Duration, t.Judge
@@ -101,10 +101,34 @@ func RequestAdditionalShot(svc *service.EditorService) gin.HandlerFunc {
 	}, "")
 }
 
-// GenerateAudio makes the simple Audio Timeline (POST /projects/:id/audio/generate).
+// GenerateAudio makes the Audio Timeline of the trunk or of the Branch in branch_id (POST
+// /projects/:id/audio/generate).
 func GenerateAudio(svc *service.EditorService) gin.HandlerFunc {
 	return editorStage(func(c *gin.Context) (service.EditorView, error) {
-		return svc.GenerateAudio(c.Request.Context(), c.Param("id"))
+		var in roughCutForm
+		if err := c.ShouldBind(&in); err != nil {
+			return service.EditorView{}, &service.ValidationError{Field: "branch_id", Message: "Branch の指定を読み取れませんでした"}
+		}
+		return svc.GenerateAudio(c.Request.Context(), c.Param("id"), in.BranchID)
+	}, "")
+}
+
+// CloneVoice clones the voice of a speaker from an uploaded sample (POST /projects/:id/audio/voices,
+// multipart speaker / sample; optional branch_id selects the panel that is answered).
+func CloneVoice(svc *service.EditorService) gin.HandlerFunc {
+	return editorStage(func(c *gin.Context) (service.EditorView, error) {
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, service.MaxVoiceSampleBytes+1<<20)
+		if err := c.Request.ParseMultipartForm(multipartMemory); err != nil {
+			return service.EditorView{}, &service.ValidationError{Field: "sample", Message: "送信内容が大きすぎるか、形式が正しくありません"}
+		}
+		var sample service.Upload
+		if files := c.Request.MultipartForm.File["sample"]; len(files) > 0 && files[0].Filename != "" {
+			sample = uploadOf(files[0])
+		}
+		if _, err := svc.CloneVoice(c.Request.Context(), c.Param("id"), c.PostForm("speaker"), c.PostForm("name"), sample); err != nil {
+			return service.EditorView{}, err
+		}
+		return svc.View(c.Request.Context(), c.Param("id"), c.PostForm("branch_id"))
 	}, "")
 }
 

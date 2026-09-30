@@ -282,11 +282,13 @@ const (
 	VoiceNarration VoiceKind = "narration"
 )
 
-// VoiceLine is one spoken line of the script: who says it and what.
+// VoiceLine is one spoken line of the script: who says it and what. VoiceID is the cloned voice
+// that speaks it ("" selects the default voice of the line's kind).
 type VoiceLine struct {
-	Kind    VoiceKind `json:"kind"`
+	Kind    VoiceKind `json:"kind,omitempty"`
 	Speaker string    `json:"speaker,omitempty"`
-	Text    string    `json:"text"`
+	Text    string    `json:"text,omitempty"`
+	VoiceID string    `json:"voice_id,omitempty"`
 }
 
 // ParseVoiceLine reads a script dialogue entry: "speaker: line", or a bare line, or
@@ -314,29 +316,63 @@ func ParseVoiceLine(entry string) (VoiceLine, bool) {
 	return VoiceLine{Kind: VoiceDialogue, Speaker: speaker, Text: text}, true
 }
 
-// AudioClip is a synthesized line placed on the Audio Timeline.
+// AudioClip is one sound placed on the Audio Timeline: a spoken line (Layer dialogue / narration;
+// empty Layer is a line of the simple Audio Production of M1) or a sound the Audio Director made.
 type AudioClip struct {
 	VoiceLine
+	Layer AudioLayer `json:"layer,omitempty"`
+	// Prompt is what the sound was generated from (BGM, SE, Foley, Ambience).
+	Prompt string    `json:"prompt,omitempty"`
+	Model  ModelName `json:"model,omitempty"`
 	// Path is the audio file, relative to the assets directory.
-	Path            string  `json:"path"`
-	StartSeconds    float64 `json:"start_seconds"`
+	Path         string  `json:"path"`
+	StartSeconds float64 `json:"start_seconds"`
+	// DurationSeconds is how long the clip plays on the timeline.
 	DurationSeconds float64 `json:"duration_seconds"`
+	// Loop repeats a shorter file until DurationSeconds (Ambience).
+	Loop bool `json:"loop,omitempty"`
+	// GainDB is the level of the clip in the mix relative to its file.
+	GainDB float64 `json:"gain_db,omitempty"`
 }
 
 // End is the second the clip stops at.
 func (c AudioClip) End() float64 { return c.StartSeconds + c.DurationSeconds }
 
+// LayerOf is the layer of the clip; a line of M1 (no layer) is named by its kind.
+func (c AudioClip) LayerOf() AudioLayer {
+	switch {
+	case c.Layer != "":
+		return c.Layer
+	case c.Kind == VoiceNarration:
+		return LayerNarration
+	}
+	return LayerDialogue
+}
+
 // DefaultTargetLUFS is the integrated loudness the mix is normalized to (SNS delivery).
 const DefaultTargetLUFS = -14.0
 
-// AudioTimeline is what audio_timeline_version.timeline stores for the simple Audio Production
-// (F-20 Simple): the spoken lines and the mastered mix.
+// AudioTimeline is what audio_timeline_version.timeline stores: the clips of every layer, what the
+// Audio Director read of the Scenes, and the mastered mix. A timeline of the simple Audio Production
+// of M1 (Mode "") holds only the spoken lines.
 type AudioTimeline struct {
+	// Mode is AudioModeDirector for a timeline the Audio Director made.
+	Mode string `json:"mode,omitempty"`
 	// EditTimelineID is the Edit Timeline version the audio was made for.
 	EditTimelineID string      `json:"edit_timeline_id"`
 	Clips          []AudioClip `json:"clips"`
 	// SpeechExpected is true when the script has lines to speak.
 	SpeechExpected bool `json:"speech_expected"`
+	// Quality is the Quality Policy the layers were chosen under.
+	Quality QualityPolicy `json:"quality,omitempty"`
+	// Scenes is what the Audio Director read of each Scene (emotion, tempo).
+	Scenes []AudioScene `json:"scenes,omitempty"`
+	// LipSync are the clips whose picture was redone by Lip Sync.
+	LipSync []LipSyncClip `json:"lip_sync,omitempty"`
+	// Skipped are the optional layers and steps that were left out, and why.
+	Skipped []SkippedAudio `json:"skipped,omitempty"`
+	// EstimatedCost is what the Audio Director's provider calls cost in USD (the cost ledger holds the entries).
+	EstimatedCost float64 `json:"estimated_cost,omitempty"`
 	// MixPath is the mastered audio, relative to the assets directory ("" when there is no sound).
 	MixPath         string  `json:"mix_path,omitempty"`
 	DurationSeconds float64 `json:"duration_seconds"`
@@ -346,10 +382,26 @@ type AudioTimeline struct {
 	TruePeakDB   float64 `json:"true_peak_db,omitempty"`
 }
 
-// AudioTimelineVersion is one row of audio_timeline_version.
+// Count is the number of clips of the layer.
+func (t AudioTimeline) Count(l AudioLayer) int {
+	n := 0
+	for _, c := range t.Clips {
+		if c.LayerOf() == l {
+			n++
+		}
+	}
+	return n
+}
+
+// SpeechLines is the number of spoken lines (Dialogue and Narration).
+func (t AudioTimeline) SpeechLines() int { return t.Count(LayerDialogue) + t.Count(LayerNarration) }
+
+// AudioTimelineVersion is one row of audio_timeline_version. BranchID is the Branch the timeline
+// belongs to ("" for the trunk).
 type AudioTimelineVersion struct {
 	ID            string
 	ProjectID     string
+	BranchID      string
 	VersionNumber int
 	Timeline      AudioTimeline
 	CreatedAt     time.Time

@@ -48,7 +48,7 @@ func TestEditorRepository_NotFound(t *testing.T) {
 	assert.ErrorIs(t, err, repository.ErrNotFound)
 	_, err = repo.LatestEditTimeline(ctx, "nope", "")
 	assert.ErrorIs(t, err, repository.ErrNotFound)
-	_, err = repo.LatestAudioTimeline(ctx, "nope")
+	_, err = repo.LatestAudioTimeline(ctx, "nope", "")
 	assert.ErrorIs(t, err, repository.ErrNotFound)
 	_, err = repo.LatestFinalQC(ctx, "nope")
 	assert.ErrorIs(t, err, repository.ErrNotFound)
@@ -73,7 +73,7 @@ func TestEditorRepository_JudgeQCAndExportHistory(t *testing.T) {
 	assert.Equal(t, domain.EditorPass, judge.Verdict)
 	assert.Empty(t, judge.Findings)
 
-	at, err := repo.SaveAudioTimeline(ctx, "p1", domain.AudioTimeline{EditTimelineID: et.ID, DurationSeconds: 4, TargetLUFS: -14})
+	at, err := repo.SaveAudioTimeline(ctx, "p1", "", domain.AudioTimeline{EditTimelineID: et.ID, DurationSeconds: 4, TargetLUFS: -14})
 	require.NoError(t, err)
 	fail, err := repo.SaveFinalQC(ctx, "p1", at.ID, domain.FinalQCFail, []domain.QCFinding{{Check: "length", Message: "ずれ", Stage: domain.StateAudio}})
 	require.NoError(t, err)
