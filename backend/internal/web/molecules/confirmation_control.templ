@@ -42,7 +42,7 @@ templ ConfirmationControl(p domain.Project) {
 		if p.ConfirmationLevel == domain.ConfirmCustomCheck {
 			<fieldset class="flex flex-wrap gap-x-3 gap-y-1">
 				<legend class="sr-only">確認ポイント</legend>
-				for _, c := range domain.Checkpoints() {
+				for _, c := range domain.SelectableCheckpoints() {
 					<label class="flex items-center gap-1">
 						<input type="checkbox" name="checkpoints" value={ string(c) } checked?={ hasCheckpoint(p, c) }/>
 						{ c.Label() }

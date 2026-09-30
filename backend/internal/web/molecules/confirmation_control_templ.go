@@ -121,7 +121,7 @@ func ConfirmationControl(p domain.Project) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			for _, c := range domain.Checkpoints() {
+			for _, c := range domain.SelectableCheckpoints() {
 				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<label class=\"flex items-center gap-1\"><input type=\"checkbox\" name=\"checkpoints\" value=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err

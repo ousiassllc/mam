@@ -11,8 +11,8 @@
 - **フロー**:
   1. ユーザーがチャットで作りたい動画を伝える。AI が発言から Creative Brief（Content Type / Objective / Subject / Target / Duration / Aspect Ratio / Mood / Assets / References）を抽出し、不足項目は質問する（「AIに任せる」を選べる）。添付した画像・動画は Assets/References として取り込む
   2. Confirmation Level（FULL AUTO / KEY CHECK / CUSTOM CHECK）を選択する
-  3. Producer → Writer → Director → Storyboard → Art Director → Prompt Planner → Video Generation → AI Video Judge → (Repair/Retake) → AI Editor → Audio Production → Final QC の順に自動実行される
-  4. 設定した確認ポイントでのみ、承認カードとしてチャットに提示される。ユーザーはボタンまたは返信で承認/差し戻しを行う
+  3. Producer → Writer → Director → Storyboard → Art Director → Prompt Planner → Video Generation → AI Video Judge → (Repair/Retake) → AI Editor → Audio Production → Final QC の順に進む。ただし自動実行されるのは Scene/Shot 計画（Storyboard）までで、Art Director 以降（Reference Pack・Keyframe・Video Generation）は Shot 単位でユーザーが起動する（起動した Shot では Judge → Repair → AI Pick が連鎖する）。Rough Cut 以降（Editor・Audio・Final QC・Export）もユーザーの操作で進める
+  4. 設定した確認ポイント（脚本・Rough Cut・Final）でのみ、承認カードとしてチャットに提示される。ユーザーはボタンまたは返信で承認/差し戻しを行う
 - **事後条件**: Final QC を PASS した動画が Export 可能な状態になる
 
 ### UC-2: DIRECTOR MODE で特定 Shot の演技/カメラを修正する
@@ -270,3 +270,4 @@ Editor Agent は Production Template（`spec/spec.md` §19）が評価軸に持�
 | 1.11 | 2026-09-30 | UC-9 に Brand Templates（M3）の保存単位・適用範囲・Series との関係・更新の非伝播ルールを追記し、F-23 を更新 | M3「Brand Templates」（Issue #27）。要件が未定義だったため保守的に確定（Organization が無いのでテンプレートはグローバル、適用はコピー、テンプレート編集は持たない） |
 | 1.12 | 2026-09-30 | UC-11（チームでのレビューと承認）と F-32（Team Collaboration）を追加 | M3「Team Collaboration」（Issue #28）の要件が未定義だったため。スコープ外（同時編集・SaaS）を超えない範囲で確定した（`spec/overview.md` 1.6） |
 | 1.13 | 2026-09-30 | §3.8 に M3 の Audio Director の範囲を追加。F-20 簡易版の M3 送りの記述を §3.8 への参照に更新 | M3「Audio Director（フル機能）」（Issue #25）の実装に合わせるため |
+| 1.14 | 2026-10-01 | UC-1 に、AUTO の自動実行範囲が Scene/Shot 計画までで Art Director 以降は Shot 単位の手動起動であること、確認ポイントが脚本・Rough Cut・Final であることを明記 | 実装は Orchestrator が Storyboard までを自動実行し、Reference Pack 以降は `POST /shots/:id/reference-pack\|generate\|generate-candidates` の起動で進むため（#85, #87） |
