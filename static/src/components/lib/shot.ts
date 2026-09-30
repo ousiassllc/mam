@@ -3,7 +3,7 @@
 /** Message of WebSocket /ws/shots/:id. */
 export interface ShotProgress {
   shot_id: string;
-  action?: 'generate' | 'reference_pack' | 'judge' | 'repair';
+  action?: 'generate' | 'candidates' | 'reference_pack' | 'judge' | 'repair';
   stage: 'idle' | 'queued' | 'generating' | 'judging' | 'repairing' | 'done' | 'failed';
   message?: string;
   takes_done?: number;
