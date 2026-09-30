@@ -3,8 +3,6 @@ package judge
 import (
 	"bytes"
 	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"math"
 	"os"
@@ -13,10 +11,12 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/ousiassllc/mam/backend/internal/media"
 )
 
 // ErrNoFFmpeg means ffmpeg / ffprobe are not installed, so no frame can be taken from a Take.
-var ErrNoFFmpeg = errors.New("judge: ffmpeg and ffprobe are required to sample frames")
+var ErrNoFFmpeg = fmt.Errorf("judge: ffmpeg and ffprobe are required to sample frames: %w", media.ErrUnavailable)
 
 // Frame is one sampled frame of a Take.
 type Frame struct {
@@ -58,78 +58,28 @@ type FrameSource interface {
 	Sample(ctx context.Context, videoPath string, spec SampleSpec) (Clip, error)
 }
 
-// FFmpeg is the FrameSource that runs ffmpeg and ffprobe.
-type FFmpeg struct{ ffmpeg, ffprobe string }
+// FFmpeg is the FrameSource that runs ffmpeg; the video is probed through media.Tools.
+type FFmpeg struct {
+	tools  media.Tools
+	ffmpeg string
+}
 
 // LookFFmpeg finds ffmpeg and ffprobe on the PATH. It returns ErrNoFFmpeg when either is missing.
 func LookFFmpeg() (FFmpeg, error) {
-	ffmpeg, err1 := exec.LookPath("ffmpeg")
-	ffprobe, err2 := exec.LookPath("ffprobe")
-	if err1 != nil || err2 != nil {
+	tools, err := media.Look()
+	if err != nil {
 		return FFmpeg{}, ErrNoFFmpeg
 	}
-	return FFmpeg{ffmpeg: ffmpeg, ffprobe: ffprobe}, nil
-}
-
-type probeOutput struct {
-	Streams []struct {
-		RFrameRate string `json:"r_frame_rate"`
-		Duration   string `json:"duration"`
-	} `json:"streams"`
-	Format struct {
-		Duration string `json:"duration"`
-	} `json:"format"`
-}
-
-// probe returns the duration (seconds) and frame rate of the first video stream.
-func (f FFmpeg) probe(ctx context.Context, path string) (duration, fps float64, err error) {
-	cmd := exec.CommandContext(ctx, f.ffprobe, "-v", "error", "-select_streams", "v:0", // #nosec G204 -- fixed arguments; path is an asset file
-		"-show_entries", "stream=r_frame_rate,duration:format=duration", "-of", "json", path)
-	out, err := cmd.Output()
-	if err != nil {
-		return 0, 0, fmt.Errorf("ffprobe: %w", err)
-	}
-	var p probeOutput
-	if err := json.Unmarshal(out, &p); err != nil || len(p.Streams) == 0 {
-		return 0, 0, fmt.Errorf("ffprobe: %s has no video stream", filepath.Base(path))
-	}
-	duration, _ = strconv.ParseFloat(p.Format.Duration, 64)
-	if duration <= 0 {
-		duration, _ = strconv.ParseFloat(p.Streams[0].Duration, 64)
-	}
-	if duration <= 0 {
-		return 0, 0, fmt.Errorf("ffprobe: %s has no duration", filepath.Base(path))
-	}
-	fps = parseRate(p.Streams[0].RFrameRate)
-	if fps <= 0 {
-		fps = 24
-	}
-	return duration, fps, nil
-}
-
-// parseRate reads "30000/1001" or "24".
-func parseRate(s string) float64 {
-	num, den, ok := strings.Cut(s, "/")
-	n, err := strconv.ParseFloat(num, 64)
-	if err != nil {
-		return 0
-	}
-	if !ok {
-		return n
-	}
-	d, err := strconv.ParseFloat(den, 64)
-	if err != nil || d == 0 {
-		return 0
-	}
-	return n / d
+	return FFmpeg{tools: tools, ffmpeg: tools.FFmpeg()}, nil
 }
 
 // Sample implements FrameSource.
 func (f FFmpeg) Sample(ctx context.Context, videoPath string, spec SampleSpec) (Clip, error) {
-	duration, fps, err := f.probe(ctx, videoPath)
+	info, err := f.tools.Probe(ctx, videoPath)
 	if err != nil {
 		return Clip{}, err
 	}
+	duration, fps := info.Duration, info.FPS
 	rate := min(spec.FPS, float64(spec.MaxFrames)/duration)
 	clip := Clip{Duration: duration, FPS: fps, Interval: 1 / rate}
 
