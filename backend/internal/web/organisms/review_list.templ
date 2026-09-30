@@ -1,0 +1,168 @@
+package organisms
+
+import (
+	"strconv"
+
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+)
+
+// ReviewListItem is a review request with the Export it carries.
+type ReviewListItem struct {
+	Item   domain.ReviewItem
+	Export domain.Export
+}
+
+// ReviewListData is the state of the owner's review screen (reviews_page).
+type ReviewListData struct {
+	ProjectID string
+	// Exports are the Exports a review can be requested for, newest first.
+	Exports []domain.Export
+	Items   []ReviewListItem
+}
+
+func reviewStatusTone(s domain.ReviewStatus) atoms.BadgeTone {
+	switch s {
+	case domain.ReviewApproved:
+		return atoms.BadgeOK
+	case domain.ReviewChangesRequested:
+		return atoms.BadgeWarn
+	}
+	return atoms.BadgeNeutral
+}
+
+func reviewDecisionTone(d domain.ReviewDecision) atoms.BadgeTone {
+	if d == domain.DecisionApproved {
+		return atoms.BadgeOK
+	}
+	return atoms.BadgeWarn
+}
+
+func exportLabel(e domain.Export) string {
+	return e.Resolution + " / " + e.AspectRatio + " / " + e.Codec + "（" + e.ExportedAt.Local().Format("2006-01-02 15:04") + "）"
+}
+
+func timecodeLabel(ms *int64) string {
+	if ms == nil {
+		return "全体"
+	}
+	return domain.FormatReviewTimecode(*ms)
+}
+
+func resolvedValue(resolved bool) string {
+	if resolved {
+		return "false"
+	}
+	return "true"
+}
+
+func resolvedLabel(resolved bool) string {
+	if resolved {
+		return "未解決に戻す"
+	}
+	return "解決済みにする"
+}
+
+// ReviewList is the owner's review screen (Team Collaboration, spec/spec.md §27.1): the form that
+// makes a Review Package from an Export, the form that imports a Review Response, and per review
+// request its status, the download link of the package and the responses with their comments.
+templ ReviewList(d ReviewListData) {
+	<div id="review-list" class="flex flex-col gap-6">
+		<section class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3">
+			<h2 class="text-sm font-semibold">レビューを依頼する</h2>
+			<p class="text-xs text-neutral-400">
+				選んだ書き出し（動画 1 本）とメモだけを ZIP（Review Package）にして渡します。Project の内容（Brief・チャット・Notes・参照画像・顔データ・設定）と API キーは含まれません。共有される名前は Project 名です。
+			</p>
+			if len(d.Exports) == 0 {
+				<p class="text-sm text-neutral-400">書き出しがまだありません。編集 / 書き出しで Final Export を作ると、レビューを依頼できます。</p>
+			} else {
+				<form class="flex flex-col gap-2" hx-post={ "/projects/" + d.ProjectID + "/reviews" } hx-target="#review-list" hx-swap="outerHTML">
+					<label class="flex flex-col gap-1 text-xs text-neutral-400" for="review-export">
+						書き出し
+						<select id="review-export" name="export_id" required class="rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm text-neutral-100">
+							for _, e := range d.Exports {
+								<option value={ e.ID }>{ exportLabel(e) }</option>
+							}
+						</select>
+					</label>
+					<label class="flex flex-col gap-1 text-xs text-neutral-400" for="review-note">
+						レビュアーへのメモ（任意、1000 文字まで）
+						<textarea id="review-note" name="note" rows="3" maxlength="1000" class="rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm text-neutral-100"></textarea>
+					</label>
+					<div>
+						@atoms.Button(atoms.TonePrimary, "レビュー依頼を作る", templ.Attributes{"type": "submit"})
+					</div>
+				</form>
+			}
+		</section>
+		<section class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3">
+			<h2 class="text-sm font-semibold">レビュアーの応答を取り込む</h2>
+			<p class="text-xs text-neutral-400">レビュアーから届いた応答ファイル（JSON）を選びます。レビュアーの名前は本人の自己申告で、確認はされません。</p>
+			<form class="flex flex-wrap items-center gap-2" hx-post={ "/projects/" + d.ProjectID + "/reviews/feedback" } hx-encoding="multipart/form-data" hx-target="#review-list" hx-swap="outerHTML">
+				<input id="review-response-file" type="file" name="response" required accept=".json,application/json" aria-label="応答ファイル" class="text-xs"/>
+				@atoms.Button(atoms.ToneNeutral, "取り込む", templ.Attributes{"type": "submit"})
+			</form>
+		</section>
+		if len(d.Items) == 0 {
+			<p class="text-sm text-neutral-400">レビュー依頼はまだありません。</p>
+		}
+		for _, it := range d.Items {
+			@reviewItem(d.ProjectID, it)
+		}
+	</div>
+}
+
+templ reviewItem(projectID string, it ReviewListItem) {
+	<article class="flex flex-col gap-3 rounded-md border border-neutral-700 p-3" aria-label={ "レビュー依頼 " + it.Item.Request.CreatedAt.Local().Format("2006-01-02 15:04") }>
+		<header class="flex flex-wrap items-center gap-3">
+			@atoms.Badge(reviewStatusTone(it.Item.Status()), it.Item.Status().Label())
+			<span class="text-sm">{ exportLabel(it.Export) }</span>
+			<span class="text-xs text-neutral-400">依頼: { it.Item.Request.CreatedAt.Local().Format("2006-01-02 15:04") }</span>
+			if n := it.Item.OpenComments(); n > 0 {
+				<span class="text-xs text-amber-300">未解決のコメント { strconv.Itoa(n) } 件</span>
+			}
+			<a
+				href={ templ.SafeURL("/projects/" + projectID + "/reviews/" + it.Item.Request.ID + "/package") }
+				download
+				hx-boost="false"
+				class="ml-auto inline-flex items-center justify-center rounded-md border border-neutral-600 px-3 py-1.5 text-sm font-medium text-neutral-200 hover:bg-neutral-800"
+			>パッケージをダウンロード（ZIP）</a>
+		</header>
+		if it.Item.Request.Note != "" {
+			<p class="whitespace-pre-wrap text-sm text-neutral-300">{ it.Item.Request.Note }</p>
+		}
+		if len(it.Item.Responses) == 0 {
+			<p class="text-xs text-neutral-400">応答はまだ取り込まれていません。</p>
+		}
+		for _, r := range it.Item.Responses {
+			<section class="flex flex-col gap-2 rounded-md bg-neutral-900 p-3" aria-label={ "応答 " + r.ReviewerName }>
+				<div class="flex flex-wrap items-center gap-2">
+					<span class="text-sm font-medium">{ r.ReviewerName }</span>
+					@atoms.Badge(reviewDecisionTone(r.Decision), r.Decision.Label())
+					<span class="text-xs text-neutral-400">{ r.CreatedAt.Local().Format("2006-01-02 15:04") }</span>
+				</div>
+				if r.Comment != "" {
+					<p class="whitespace-pre-wrap text-sm">{ r.Comment }</p>
+				}
+				if len(r.Comments) > 0 {
+					<ul class="flex flex-col gap-2">
+						for _, c := range r.Comments {
+							<li class="flex flex-wrap items-start gap-2 text-sm">
+								<span class="w-14 shrink-0 font-mono text-xs text-neutral-400">{ timecodeLabel(c.TimecodeMs) }</span>
+								if c.Resolved {
+									<span class="min-w-0 flex-1 whitespace-pre-wrap text-neutral-500 line-through">{ c.Body }</span>
+								} else {
+									<span class="min-w-0 flex-1 whitespace-pre-wrap">{ c.Body }</span>
+								}
+								<form hx-put={ "/projects/" + projectID + "/review-comments/" + c.ID } hx-target="#review-list" hx-swap="outerHTML">
+									<input type="hidden" name="resolved" value={ resolvedValue(c.Resolved) }/>
+									@atoms.Button(atoms.ToneNeutral, resolvedLabel(c.Resolved), templ.Attributes{"type": "submit"})
+								</form>
+							</li>
+						}
+					</ul>
+				}
+			</section>
+		}
+	</article>
+}

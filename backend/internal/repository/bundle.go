@@ -71,6 +71,9 @@ var bundleTables = []bundleTable{
 	{name: "note", where: byProject, detach: []string{"origin_id"}},
 	{name: "note_version", where: `note_id IN (SELECT id FROM note WHERE project_id = :pid)`},
 	{name: "note_promotion", where: `note_version_id IN (SELECT v.id FROM note_version v JOIN note n ON n.id = v.note_id WHERE n.project_id = :pid)`},
+	{name: "review_request", where: byProject},
+	{name: "review_response", where: `review_request_id IN (SELECT id FROM review_request WHERE project_id = :pid)`},
+	{name: "review_comment", where: `review_response_id IN (SELECT s.id FROM review_response s JOIN review_request q ON q.id = s.review_request_id WHERE q.project_id = :pid)`},
 }
 
 // unbundledTables are the tables a bundle leaves out, with the reason.
@@ -82,6 +85,8 @@ var unbundledTables = map[string]string{
 	"job":                       "background job queue: runtime state of this instance (a progress card whose job is gone is shown as finished)",
 	"goose_db_version":          "migration bookkeeping of this instance",
 	"sqlite_sequence":           "SQLite internal",
+	"review_inbox":              "the Review Packages this instance imported as a reviewer (spec/spec.md §27.1): another team's videos, not part of any Project of this instance",
+	"review_inbox_comment":      "the reviewer's comments on review_inbox",
 }
 
 // BundleRepository reads the Project Data Model of a Project out of the database and writes it into

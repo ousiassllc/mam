@@ -47,6 +47,12 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 | GET | `/projects/:id/notes` | Notes 一覧・編集（補助ビュー、M2。ピン留め・カテゴリ・アーカイブの表示、`version_history_panel` でバージョン復元） | フルページ / フラグメント |
 | GET | `/series/:id` | Series（M2。正本の Style・Character・Product・Location、Episode 一覧と次の Episode 作成、正本の更新履歴。Character の編集と Style の保存フォームを持つ） | フルページ / フラグメント |
 | GET | `/series/:id/notes` | Series 正本 Notes の一覧・編集（M2） | フルページ / フラグメント |
+| GET | `/projects/:id/reviews` | レビュー（補助ビュー、M3。オーナー側）: 書き出しからレビュー依頼を作るフォーム、依頼ごとの状態（未回答/承認済み/修正依頼あり）・パッケージのダウンロード・取り込んだ応答（判定・コメント、解決済み切替）、応答の取り込みフォーム | フルページ / フラグメント |
+| GET | `/projects/:id/reviews/:reviewId/package` | Review Package のダウンロード（ZIP。`Content-Disposition: attachment`、`manifest.json` と `video.mp4|webm` だけ。`spec/spec.md` §27.1）。当該 Project の依頼でなければ 404、書き出しファイルが無ければ 409 | ファイル |
+| GET | `/reviews` | レビュアー側の入口（M3）: Review Package の読み込みフォームと、読み込み済みのレビュー一覧（判定済みか）。Project を持たないので Project の画面に依存しない | フルページ / フラグメント |
+| GET | `/reviews/:id` | レビュー画面（M3）: 動画プレーヤー、オーナーのメモ、コメント追加フォーム・一覧、判定フォーム、応答の書き出しリンク。存在しなければ 404 | フルページ / フラグメント |
+| GET | `/reviews/:id/video` | 読み込んだ動画の配信（`X-Content-Type-Options: nosniff`、`Content-Security-Policy: sandbox`） | ファイル |
+| GET | `/reviews/:id/response` | Review Response（JSON、`Content-Disposition: attachment`）のダウンロード。判定を書いていなければ 409 | ファイル |
 
 ## 2. アクションルート（Gin, フラグメントのみ）
 
@@ -238,6 +244,26 @@ M2 の入出力契約（Issue #15）:
 - `POST /projects/:id/references`: 成功時は更新後のライブラリ（201）。ファイルなし・拡張子と内容の不一致・サイズ超過・不正な `kind`・名前が空か長すぎる・タグが多すぎる／長すぎるは 422（何も保存しない）、存在しない Project は 404
 - `DELETE /projects/:id/references/:referenceId`: 更新後のライブラリ（200）。当該 Project に無ければ 404
 - `POST /shots/:id/references`: 応答は更新後のライブラリ相当ではなく Shot カード（200）。同じ種別・同じ名前の参照があれば置き換え、`library_item` に登録 ID を記録する。Reference Pack の再生成ではピン留めした参照を残し、再生成しない。`reference_id` が空は 422、Shot または `reference_id`（同じ Project のもの）が無ければ 404、生成中の Shot は 409
+
+### 2.12 Team Collaboration（M3）
+
+| Method | Path | 概要 | 対応機能 |
+|---|---|---|---|
+| POST | `/projects/:id/reviews` | レビュー依頼の作成。Body（フォーム）`export_id`（当該 Project の Final Export）、`note`（任意、1000 文字以内） | F-32 |
+| POST | `/projects/:id/reviews/feedback` | Review Response の取り込み。`multipart/form-data`、フィールド `response`（JSON ファイル） | F-32 |
+| PUT | `/projects/:id/review-comments/:commentId` | 取り込んだコメントの解決済み切替。Body `resolved=true\|false` | F-32 |
+| POST | `/reviews/import` | Review Package の読み込み（レビュアー側）。`multipart/form-data`、フィールド `package` | F-32 |
+| POST | `/reviews/:id/comments` | コメントの追加。Body `timecode`（動画内の位置、秒。空なら位置なし）、`body`（1〜2000 文字） | F-32 |
+| DELETE | `/reviews/:id/comments/:commentId` | コメントの削除 | F-32 |
+| PUT | `/reviews/:id/decision` | 判定を書く。Body `reviewer_name`（1〜50 文字）、`decision=approved\|changes_requested`、`comment`（任意、2000 文字以内） | F-32 |
+
+入出力契約（認証は行わない。共有物の中身と除外は `spec/spec.md` §27.1、`spec/requirements/non-functional.md` §5）:
+
+- `POST /projects/:id/reviews`: 成功時は更新後のレビュー一覧（201）。`export_id` が空・当該 Project の書き出しでない（存在しない Project も）は 404、書き出しファイルが無ければ 409、`note` が長すぎるは 422
+- `POST /projects/:id/reviews/feedback`: 成功時は更新後のレビュー一覧（201）。ファイルなし・JSON として読めない・`format`/`version` が違う・判定やコメントが不正・1MB 超過は 422（何も保存しない）、`review_id` がこの Project のレビュー依頼でなければ 422、`response_id` が取り込み済みなら 409。取り込むと Chat Workspace のスレッドに AI の発言（表示名・判定・コメント件数）を追加する
+- `PUT /projects/:id/review-comments/:commentId`: 更新後のレビュー一覧（200）。当該 Project のコメントでなければ 404
+- `POST /reviews/import`: 成功時は `HX-Redirect: /reviews/:id`（201）。ZIP として読めない・`manifest.json` と `video.mp4|webm` 以外のエントリがある・形式やバージョンが違う・動画の署名が合わない・サイズ超過は 422（何も保存しない）、同じ `review_id` を読み込み済みなら 409
+- `POST /reviews/:id/comments`・`DELETE /reviews/:id/comments/:commentId`・`PUT /reviews/:id/decision`: 更新後のレビュー画面のフラグメント（201 / 200）。コメントは 1 レビュー 200 件まで（超過は 422）、`timecode` が負・数値でない・24 時間超は 422、`decision` が不正・`reviewer_name` が空か長すぎるは 422。コメントや判定を変えると、書き出す応答の `response_id` が新しくなる
 
 ## 3. API ルート（Huma, JSON, `/api/v1`）
 

@@ -5,6 +5,7 @@ package service
 import (
 	"context"
 	"log/slog"
+	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector"
 	"github.com/ousiassllc/mam/backend/internal/agent/briefing"
@@ -85,6 +86,7 @@ type Services struct {
 	Takes       *TakeService
 	Notes       *NoteService
 	Branch      *BranchService
+	Review      *ReviewService
 	Editor      *EditorService
 	Brand       *BrandService
 	Analytics   *AnalyticsService
@@ -254,6 +256,7 @@ func New(deps Deps) *Services {
 		Branch:    branch,
 		Editor:    editors,
 		Brand:     &BrandService{core: c, brands: brands},
+		Review:    &ReviewService{core: c, reviews: repository.NewReviewRepository(deps.DB), editors: editors.editors, chatSvc: chat, now: time.Now},
 		Analytics: &AnalyticsService{c},
 	}
 }
