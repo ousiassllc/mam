@@ -117,7 +117,7 @@ M1 の入出力契約（Issue #12）:
 | Method | Path | 概要 | 対応機能 |
 |---|---|---|---|
 | POST | `/takes/:id/select` | Take を Selected として確定（DIRECTOR MODEでの手動選択。AI Pick や以前の選択より優先され、以前の Selected は Candidate に戻る）。アーカイブ済み Take は 422、存在しなければ 404。応答は Shot カード（200） | F-15 |
-| POST | `/shots/:id/takes/partial` | 複数Takeの区間指定による部分合成。Body は JSON `{"segments":[{"take_id","start","end"}]}`（秒）または `{"instruction":"Take A の 0-2秒 + Take B の 2-4秒"}`（フォームの `segments`（JSON 配列）/`instruction` も可、`segments` 優先）。区間は 2〜8 個・各 0.3 秒以上・Take の長さ内・除外/アーカイブ済み Take 不可（違反は 422）。つなぎ目は 0.25 秒のクロスフェード（音声も）で、映像は先頭区間の解像度・フレームレートに揃える。新 Take を作って Selected にし、チャットに Take カードを投稿。ffmpeg が無いとき 503。応答は Shot カード（200） | F-15 |
+| POST | `/shots/:id/takes/partial` | 複数Takeの区間指定による部分合成。Body は JSON `{"segments":[{"take_id","start","end"}]}`（秒）または `{"instruction":"Take A の 0-2秒 + Take B の 2-4秒"}`（フォームの `segments`（JSON 配列）/`instruction` も可、`segments` 優先）。区間は 2〜8 個・各 0.3 秒以上・Take の長さ内・除外/アーカイブ済み Take 不可（違反は 422）。つなぎ目のクロスフェードは 0.25 秒で、最短区間の 1/3 の方が短いときはその長さに縮める（区間が 1 つのときは無い）。音声は全区間に音声があるときだけ同じ長さでクロスフェードし、1 本でも音声が無い Take が混ざると出力は無音になる。映像は先頭区間の解像度・フレームレートに揃える。新 Take を作って Selected にし、チャットに Take カードを投稿。ffmpeg が無いとき 503。応答は Shot カード（200） | F-15 |
 | DELETE | `/takes/:id` | Take を Rejected として除外（ファイルと履歴は残す。Shot の選択中 Take だった場合は選択なしに戻る）。応答は Shot カード（200） | F-15 |
 | GET | `/takes/:id/video` | Take のプレビュー動画（Range 対応）。高さ 1080 超（4K）のときは 1080p プロキシを初回に生成して配信し、原本は変えない。ffmpeg が無いときは原本を配信。アーカイブ済みは 404 | `mam-video-player` |
 | GET | `/takes/:id/thumbnail` | Take の先頭フレームの JPEG（ffmpeg が無いとき 503） | `mam-video-player`（poster） |
@@ -435,3 +435,4 @@ Notes:
 | 1.53 | 2026-10-01 | `POST /shots/:id/continue` の解析が、起点の Take の最終フレーム画像を Continue Agent に渡すことを明記（ffmpeg が無いときはテキストのみ）。`spec/spec.md` §15 にも追記 | 実装はテキストだけから State を推測しており、仕様の「最終フレームを解析」と食い違っていたため、最終フレームの抽出を実装した（Issue #110） |
 | 1.54 | 2026-10-01 | `POST /edit-timelines/:id/request-additional-shot` は、全 Shot の生成開始に成功したときだけ `reshoot_request` を `requested` にして GENERATING へ進む。開始失敗時はラウンドを残さず EDIT_JUDGING のままエラーを返す | 開始失敗が未完了ラウンドを残し、同じ版への再要求が拒否されていたため（Issue #120） |
 | 1.55 | 2026-10-01 | `MaxBody` の 1MiB は Content-Type ではなくルートで外す。アップロード以外（`PUT /edit-timelines/:id`、`POST /shots/:id/branch` を含む）は `multipart/form-data` でも 1MiB を超えれば本文を読まず 413 | Content-Type を multipart と偽ると本文上限が外れていたため（Issue #125） |
+| 1.56 | 2026-10-01 | `POST /shots/:id/takes/partial` のつなぎ目を、`media.Compose` に合わせて「0.25 秒。最短区間の 1/3 の方が短いときは短縮。音声は全区間にあるときだけクロスフェードし、1 本でも無音なら出力は無音」と明記 | 仕様は常に 0.25 秒（音声も）だったが、短い区間では縮み、音声の無い Take が混ざると無音にしていたため（Issue #127） |
