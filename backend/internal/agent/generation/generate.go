@@ -95,7 +95,7 @@ func (o *Orchestrator) generate(ctx context.Context, ref repository.ShotRef, ins
 	if err != nil {
 		return Progress{}, err
 	}
-	strategy, err := o.decide(ctx, policy.Quality, shot, budget)
+	strategy, err := o.decide(ctx, ref, policy, &spec, budget)
 	if err != nil {
 		return Progress{}, err
 	}
@@ -246,6 +246,8 @@ type takeParameters struct {
 	Prompt          string               `json:"prompt"`
 	// Candidate is the strategy of the Prompt Candidate the Take was made for.
 	Candidate domain.CandidateStrategy `json:"candidate_strategy,omitempty"`
+	// Routing is why the Take's video model was chosen (Multi-model routing, F-27).
+	Routing *domain.RoutingDecision `json:"routing,omitempty"`
 }
 
 // makeTake generates one Take, stores its file, the Take row and cost, and posts its card, whose
@@ -269,6 +271,7 @@ func (o *Orchestrator) makeTake(ctx context.Context, ref repository.ShotRef, pv 
 	params, err := json.Marshal(takeParameters{
 		Policy: s.Policy, Resolution: out.Resolution, DurationSeconds: out.DurationSeconds,
 		AspectRatio: out.Request.AspectRatio, FellBack: out.FellBack, Prompt: out.Request.Prompt, Candidate: candidate, TakeLineage: lineage,
+		Routing: s.routing(),
 	})
 	if err != nil {
 		o.files.remove(asset)

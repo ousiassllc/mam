@@ -94,3 +94,37 @@ func TestTraceRepository_ArchivedTakeHasNoOutput(t *testing.T) {
 	assert.Nil(t, tr.Output)
 	assert.Empty(t, tr.Take.FilePath)
 }
+
+func TestTraceRepository_TakeTraceReadsTheRoutingDecisionOfTheTake(t *testing.T) {
+	ctx := context.Background()
+	f := newGenRepoFixture(t)
+	pv, err := f.repo.SavePromptedSpec(ctx, f.shotID, wideSpec("run"), nil)
+	require.NoError(t, err)
+	decision := domain.RoutingDecision{
+		Mode: domain.RoutingAdaptive, Reason: "kling-3.0 replaces seedance-2.0",
+		PolicyPrimary: domain.RoutingModel{Model: domain.ModelSeedance2, Resolution: "720p"},
+		Primary:       domain.RoutingModel{Model: domain.ModelKling3, Resolution: "720p"},
+		Candidates:    []domain.RoutingCandidate{{Model: domain.ModelKling3, Resolution: "720p", Samples: 6, Score: 0.9}},
+	}
+	params, err := json.Marshal(map[string]any{"routing": decision})
+	require.NoError(t, err)
+	routed, err := f.repo.CreateTake(ctx, repository.NewTake{
+		ProjectID: f.projectID, ShotID: f.shotID, PromptVersionID: pv.ID, Model: domain.ModelKling3, Parameters: params,
+		Asset: domain.Asset{ID: "r1", ProjectID: f.projectID, Type: domain.AssetVideo, FilePath: "p/r1.mp4"},
+	})
+	require.NoError(t, err)
+	old, err := f.repo.CreateTake(ctx, repository.NewTake{
+		ProjectID: f.projectID, ShotID: f.shotID, PromptVersionID: pv.ID, Model: domain.ModelKling3, Parameters: json.RawMessage(`{"resolution":"720p"}`),
+		Asset: domain.Asset{ID: "r2", ProjectID: f.projectID, Type: domain.AssetVideo, FilePath: "p/r2.mp4"},
+	})
+	require.NoError(t, err)
+
+	tr, err := repository.NewTraceRepository(f.db).TakeTrace(ctx, routed)
+	require.NoError(t, err)
+	oldTr, err := repository.NewTraceRepository(f.db).TakeTrace(ctx, old)
+	require.NoError(t, err)
+
+	require.NotNil(t, tr.Routing)
+	assert.Equal(t, decision, *tr.Routing)
+	assert.Nil(t, oldTr.Routing, "a Take that predates Multi-model routing has no record")
+}
