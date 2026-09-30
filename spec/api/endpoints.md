@@ -40,6 +40,8 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 | GET | `/projects/:id/branches` | Branch ツリーページ（`mam-branch-tree` を埋め込み） | フルページ |
 | GET | `/projects/:id/export` | Final Export ページ | フルページ / フラグメント |
 | GET | `/projects/:id/settings` | Production Template・Quality/Cost Policy・予算上限・コスト（`cost_summary_panel`）・ディスク使用量と不要 Take のアーカイブ・Brand Constraints・APIキー設定。Chat Workspace の補助ビュー一覧と入力欄の「設定」から開く | フルページ / フラグメント |
+| GET | `/projects/:id/analytics` | Production Analytics（M3、`spec/spec.md` §28）。Project の MVP Success Metrics（North Star・Shot・人間の介入・時間・コスト・品質・完成）を `analytics_panel` で表示する。計算式と記録する人間の介入は §28.2・§28.3。集計はローカル DB のみで外部へ送信しない。存在しない Project は 404。Project のメニューの「制作指標」から開く | フルページ / フラグメント |
+| GET | `/analytics` | すべての Project の合計の MVP Success Metrics（`/projects/:id/analytics` と同じ画面、Project 名の代わりに「すべてのプロジェクト」）。Project 一覧の「制作指標」から開く | フルページ / フラグメント |
 | GET | `/projects/:id/world-state` | World State 一覧（Character/Product/Location/Camera/Story の現在値表示） | フルページ / フラグメント |
 | GET | `/projects/:id/references` | Reference Library（補助ビュー、M2。登録済みの参照画像の検索・アップロード・Shot への追加・削除）。クエリ `q`・`kind`・`tag` で絞り込む | フルページ / フラグメント |
 | GET | `/projects/:id/notes` | Notes 一覧・編集（補助ビュー、M2。ピン留め・カテゴリ・アーカイブの表示、`version_history_panel` でバージョン復元） | フルページ / フラグメント |
@@ -394,3 +396,4 @@ Notes:
 | 1.33 | 2026-09-30 | §2.4 に M2 の Branch 契約（`POST /shots/:id/branch`・`GET/PUT /branches/:id`・`GET /api/v1/projects/:id/branches`・チャットの `create_branch`）を追記。§2.8 の `branch_id` は Branch が存在すれば有効とした | M2「Branch（別展開の並行生成）」（Issue #18）で Branch を実装したため |
 | 1.34 | 2026-09-30 | §2.6 に M1 の Editor / Audio / Final QC / Export の挙動（Rough Cut・タイムライン保存の版管理と 409/422・プレビュー・Editor Judge・音声・Final QC・書き出し・ダウンロード）を追記。Edit Timeline の保存を `PUT /edit-timelines/:id`（アクションルート）に確定し、`GET /api/v1/projects/:id/edit-timeline` の応答例を更新（旧 `PUT /api/v1/projects/:id/edit-timeline` は提供しない） | M1「簡易 Editor・簡易 Audio・Final QC・Export」（Issue #14）の実装に合わせるため |
 | 1.35 | 2026-09-30 | §2.7 の `POST /projects/:id/brand-constraints`・`DELETE /brand-constraints/:id` の入出力・エラー（422/404）と、Brand 違反の 403 の扱い、Judge Issue の `brand_constraint_id` を追記 | M2「Safety / Brand Constraints」（Issue #23）の実装に合わせるため。403 の意味は `spec/spec.md` §26.1 |
+| 1.36 | 2026-09-30 | ページルートに `GET /projects/:id/analytics`・`GET /analytics`（Production Analytics）を追加。人間の介入の記録は既存のアクションルート（Take の選択・除外・Repair・生成・Shot Spec 編集・LOCK 変更・Timeline 保存・承認の変更依頼・モード切替）が成功時に `human_intervention` へ追記する（新しいアクションルートは無い） | M3「Production Analytics」（Issue #29）の MVP Success Metrics の表示と、既存テーブルにない人間の介入・上書きの記録のため |

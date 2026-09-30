@@ -255,6 +255,9 @@ func (s *ChatService) commit(ctx context.Context, turn repository.Turn) error {
 		return notFound(err)
 	}
 	s.publishCreated(turn.ProjectID, turn.Messages)
+	if turn.Approval != nil && turn.Approval.Status == domain.ApprovalChangesRequested {
+		s.recordIntervention(ctx, domain.Intervention{ProjectID: turn.ProjectID, Kind: domain.InterventionRequestChanges, Override: true})
+	}
 	return nil
 }
 

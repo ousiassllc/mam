@@ -19,6 +19,7 @@ templ ProjectsPage(csrfToken string, projects []domain.Project, form organisms.N
 			</p>
 			<h2 class="mt-8 text-sm font-medium text-neutral-300">プロジェクト</h2>
 			@organisms.ProjectList(projects)
+			<p class="mt-4 text-sm"><a href="/analytics" class="text-neutral-400 hover:text-neutral-100">制作指標（すべてのプロジェクト）</a></p>
 		</main>
 	}
 }
