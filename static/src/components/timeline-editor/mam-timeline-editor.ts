@@ -19,8 +19,8 @@ import {
   type EditLimits,
   type TransitionType,
 } from '../lib/edit-model';
+import { errorMessage } from '../lib/errors';
 import { createLogger } from '../lib/logger';
-import { errorMessage } from '../take-comparator/mam-take-comparator';
 import '../video-player/mam-video-player';
 
 const log = createLogger('timeline-editor');
