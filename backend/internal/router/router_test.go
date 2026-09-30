@@ -196,6 +196,20 @@ func TestHealth_PageRouteAndHumaAPIRoute(t *testing.T) {
 	assert.JSONEq(t, `{"ok":true,"database":"ok"}`, rec.Body.String())
 }
 
+func TestHealth_DatabaseFailureIs503WithOKFalseOnBothRoutes(t *testing.T) {
+	keyring.MockInit()
+	db, err := repository.Open(context.Background(), filepath.Join(t.TempDir(), "mam.db"), nil)
+	require.NoError(t, err)
+	engine := router.New(service.New(service.Deps{DB: db, Credentials: credential.NewKeyring()}), router.Options{})
+	require.NoError(t, db.Close()) // Ping now fails
+
+	for _, path := range []string{"/healthz", "/api/v1/health"} {
+		rec := do(engine, httptest.NewRequest(http.MethodGet, path, nil))
+		assert.Equal(t, http.StatusServiceUnavailable, rec.Code, path)
+		assert.JSONEq(t, `{"ok":false,"database":"unavailable"}`, rec.Body.String(), path)
+	}
+}
+
 func TestAPI_ServesOpenAPIButNoExternalDocsPage(t *testing.T) {
 	engine := newEngine(t)
 
