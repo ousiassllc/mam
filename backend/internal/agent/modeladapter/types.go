@@ -133,9 +133,33 @@ func unavailable(err error) bool {
 	return false
 }
 
-// retryable is unavailable without timeouts: after a timeout the job may still be running (and
-// billed) at the vendor, so it is not submitted a second time; the alternative model is used instead.
-func retryable(err error) bool { return unavailable(err) && !errors.Is(err, ErrTimeout) }
+// errAfterSubmit marks an error that happened after the vendor accepted the job (while waiting
+// for it or downloading its result).
+var errAfterSubmit = errors.New("after the job was submitted")
+
+type submittedError struct{ err error }
+
+func (e *submittedError) Error() string { return e.err.Error() }
+func (e *submittedError) Unwrap() error { return e.err }
+
+// Is lets errors.Is(err, errAfterSubmit) recognise the marker; the wrapped error stays reachable
+// through Unwrap, so it still counts for the circuit breaker.
+func (e *submittedError) Is(target error) bool { return target == errAfterSubmit }
+
+// afterSubmit marks err as one that happened after the job was submitted (nil stays nil).
+func afterSubmit(err error) error {
+	if err == nil {
+		return nil
+	}
+	return &submittedError{err: err}
+}
+
+// retryable is unavailable without the cases where submitting the job again would be billed twice:
+// after a timeout the job may still be running at the vendor, and after the vendor accepted the job
+// (errAfterSubmit) it is running there already. The alternative model is used instead.
+func retryable(err error) bool {
+	return unavailable(err) && !errors.Is(err, ErrTimeout) && !errors.Is(err, errAfterSubmit)
+}
 
 func retryAfter(err error) time.Duration {
 	var pe *ProviderError
