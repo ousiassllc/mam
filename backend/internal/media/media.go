@@ -36,6 +36,10 @@ func Look() (Tools, error) {
 	return Tools{ffmpeg: ffmpeg, ffprobe: ffprobe}, nil
 }
 
+// FFmpeg returns the path of the ffmpeg executable, for callers that run their own ffmpeg command
+// (the frame sampling of the Judge Agent).
+func (t Tools) FFmpeg() string { return t.ffmpeg }
+
 // Info describes the first video stream of a file.
 type Info struct {
 	// Duration is the length in seconds.
