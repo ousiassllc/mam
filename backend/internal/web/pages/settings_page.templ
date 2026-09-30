@@ -13,6 +13,8 @@ type SettingsPageData struct {
 	Storage   organisms.StoragePanelData
 	Brand     organisms.BrandConstraintListData
 	Templates organisms.BrandTemplatePanelData
+	// Credentials is which provider has an API key; never a key.
+	Credentials organisms.CredentialPanelData
 }
 
 // SettingsPage is GET /projects/:id/settings: Production Template, Quality/Cost Policy, budget, the
@@ -53,6 +55,9 @@ templ SettingsBody(d SettingsPageData) {
 		}
 		@SettingsSection("Brand Templates", "制約のセットをテンプレートとして保存し、別の Project や Series の Episode を作るときに適用します。適用は制約のコピーで、テンプレートを更新・削除しても既存の Project には反映されません。") {
 			@organisms.BrandTemplatePanel(d.Templates)
+		}
+		@SettingsSection("API キー", "外部モデルの API キーを登録します。キーは OS のセキュアストレージに保存され、画面には設定済みかどうかだけが表示されます。保存したキーは再起動なしで次の呼び出しから使われます。") {
+			@organisms.CredentialPanel(d.Credentials)
 		}
 		@SettingsSection("プロジェクトバンドル", "プロジェクトのデータとアセットを 1 つの ZIP に書き出します。プロジェクト一覧の読み込みフォームから、この端末でも別の端末でも復元できます。") {
 			<div>
