@@ -362,8 +362,12 @@ func (s *DirectorService) Chat(ctx context.Context, project domain.Project, targ
 	if cmd.Question != "" {
 		return assistantText(cmd.Question), nil
 	}
-	if shot := shotNamed(shots, cmd.Scene, cmd.Shot); shot != nil {
-		ref = shot
+	// Reply to a Take card outranks Scene/Shot numbers in the message. Numbers, then the latest
+	// Take card, then the Project's only Shot (both from contextShot) apply only without that reply.
+	if target == nil || target.Kind != domain.KindTake {
+		if shot := shotNamed(shots, cmd.Scene, cmd.Shot); shot != nil {
+			ref = shot
+		}
 	}
 	res, err := s.execute(ctx, project, ref, cmd, false)
 	if err != nil {
