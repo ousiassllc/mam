@@ -9,6 +9,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -343,4 +344,26 @@ func TestSyncLabs_RefusesAnOutputURLThatIsNotHTTPSOrPointsToTheLocalNetwork(t *t
 			assert.Zero(t, outputHits)
 		})
 	}
+}
+
+func TestDefaultClientsDoNotForwardTheKeyOnARedirectToAnotherHost(t *testing.T) {
+	var foreignHits atomic.Int32
+	foreign := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { foreignHits.Add(1) }))
+	defer foreign.Close()
+	vendor := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, foreign.URL+"/steal", http.StatusFound)
+	}))
+	defer vendor.Close()
+
+	tts := audiodirector.NewElevenLabs(audiodirector.Config{BaseURL: vendor.URL}, keys(t, true), nil)
+	_, err := tts.Synthesize(context.Background(), domain.VoiceLine{Kind: domain.VoiceNarration, Text: "a"})
+	require.Error(t, err)
+
+	sl := audiodirector.NewSyncLabs(audiodirector.SyncLabsConfig{BaseURL: vendor.URL}, syncKeys(t, true), nil)
+	_, err = sl.Sync(context.Background(), audiodirector.LipSyncRequest{
+		Model: "sync-3", Video: audiodirector.Sample{Filename: "v.mp4", Data: []byte("v")}, Audio: audiodirector.Sample{Filename: "a.wav", Data: []byte("a")},
+	})
+	require.Error(t, err)
+
+	assert.Zero(t, foreignHits.Load())
 }
