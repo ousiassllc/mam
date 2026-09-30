@@ -60,7 +60,7 @@ func ProjectsPage(csrfToken string, projects []domain.Project, form organisms.Ne
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<h2 class=\"mt-8 text-sm font-medium text-neutral-300\">プロジェクト</h2>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<p class=\"mt-2 text-sm text-neutral-400\"><a href=\"/reviews\" class=\"underline hover:text-neutral-100\">受け取ったレビューパッケージを開く（レビュアー向け）</a></p><h2 class=\"mt-8 text-sm font-medium text-neutral-300\">プロジェクト</h2>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

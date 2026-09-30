@@ -77,4 +77,12 @@ func registerActions(engine *gin.Engine, services *service.Services) {
 	engine.PUT("/notes/:id", handler.UpdateNote(services.Notes))
 	engine.DELETE("/notes/:id", handler.ArchiveNote(services.Notes))
 	engine.POST("/notes/:id/versions/:versionNumber/restore", handler.RestoreNoteVersion(services.Notes))
+
+	engine.POST("/projects/:id/reviews", handler.CreateReview(services.Review))
+	engine.POST("/projects/:id/reviews/feedback", handler.ImportReviewResponse(services.Review))
+	engine.PUT("/projects/:id/review-comments/:commentId", handler.SetReviewCommentResolved(services.Review))
+	engine.POST("/reviews/import", handler.ImportReviewPackage(services.Review))
+	engine.POST("/reviews/:id/comments", handler.AddReviewComment(services.Review))
+	engine.DELETE("/reviews/:id/comments/:commentId", handler.DeleteReviewComment(services.Review))
+	engine.PUT("/reviews/:id/decision", handler.DecideReview(services.Review))
 }

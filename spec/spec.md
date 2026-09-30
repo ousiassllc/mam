@@ -1365,8 +1365,72 @@ Shot Spec は英語で書かれるため、Shot Spec に対する禁止表現の
 - Audio Director
 - Multi-model routing（Shot の性質・Project 内の Judge 実績・コストに応じて、Shot ごとに使う動画モデルを Quality Policy の割り当てから入れ替える。実績が無ければ M1 のポリシー別ルーティングと同じ。判断基準・切り替え条件は `spec/architecture/model-adapters.md` §13）
 - Brand Templates
-- Team Collaboration
+- Team Collaboration（Review Package によるレビュー・承認、§27.1）
 - Production Analytics
+
+## 27.1 Team Collaboration（MVP 3）
+
+複数のメンバーで 1 本の動画をレビューし、承認できるようにする。**同時編集も、サーバー・アカウントも使わない**: 制作の書き込みは常に Project を持つ 1 つのインスタンス（オーナー）だけが行い、共有はファイルの受け渡し（非同期）で行う。各メンバーは自分のデバイスで自分のインスタンスを動かすので、「1 デバイス・1 ユーザー」の前提は変わらない。
+
+### スコープの判定（`spec/overview.md` の「含まないもの」との関係）
+
+| 除外項目 | 本設計での扱い |
+|---|---|
+| SaaS マルチテナント化・サーバー運用基盤 | 超えない。共有用のサーバー・クラウド保存・ネットワーク送受信を持たない。共有物は利用者が自分で選んだ経路（メール・チャット・共有ドライブ等）で渡すファイル 1 つ |
+| リアルタイム同時共同編集 | 超えない。Project を編集できるのはオーナーだけで、レビュアーは動画の閲覧・コメント・判定だけができる。オーナーとレビュアーの状態は同期されず、レビュアーの応答はファイルで取り込む |
+
+したがってスコープの改訂は不要で、「チーム利用は MVP3 の Team Collaboration まで対象外」の文言は「チーム利用は、非同期のファイル受け渡しによるレビュー・承認（本節）だけを対象とし、それ以外は対象外」と明確にする。
+
+### 役割
+
+| 役割 | できること | できないこと |
+|---|---|---|
+| オーナー | Project の全操作。書き出しからレビュー依頼（Review Package）を作る。レビュアーの応答（Review Response）を取り込み、コメントを解決済みにする | - |
+| レビュアー | Review Package を自分のインスタンスに読み込み、動画を視聴し、時刻付きコメントを付け、判定（承認 / 修正依頼）を書き、Review Response を書き出してオーナーに返す | Project の中身（Brief・チャット・Shot・アセット等）を見ること、Project を編集すること |
+
+同じインスタンスをオーナーとレビュアーの両方に使ってもよい（自分のレビュー依頼を自分で読み込める）。
+
+### 認証モデル
+
+- アカウント・ログイン・トークンを持たない。ローカルサーバーは引き続き `127.0.0.1` のみで待ち受け、CSRF トークンも維持する（`spec/requirements/non-functional.md` §5）
+- レビュアーの識別は**自己申告の表示名**（1〜50 文字）。検証せず、信頼の根拠にしない。Review Response が本人のものかを確かめる署名は設けない（受け渡し経路の信頼は利用者に委ねる）
+- Review Response は `review_id` でオーナー側のレビュー依頼に結び付ける。これは取り違え防止の整合性チェックであり、認証ではない。オーナーのインスタンスに存在しない `review_id`、別 Project のレビュー依頼、取り込み済みの応答（`response_id` 重複）は取り込まない
+
+### Review Package（オーナー → レビュアー）
+
+ZIP ファイル 1 つ。中身は次の 2 エントリだけ（allowlist）。
+
+- `manifest.json`: `format=mam-review-package`・`version`（1）・`review_id`・`project_name`・`note`（オーナーがレビュアーに向けて書いたメモ、1000 文字以内）・`exported_at`・`video`（`file_name`・`resolution`・`aspect_ratio`・`codec`）
+- `video.mp4` または `video.webm`: レビュー対象の Final Export 1 本（Final QC PASS 後の書き出しのうちオーナーが選んだもの）
+
+### Review Response（レビュアー → オーナー）
+
+JSON ファイル 1 つ（`format=mam-review-response`・`version`・`response_id`・`review_id`・`reviewer_name`・`decision`（`approved` / `changes_requested`）・`comment`（全体コメント、2000 文字以内）・`comments`（最大 200 件。`timecode_ms`（省略可、動画内の位置）・`body`（1〜2000 文字））・`created_at`）。判定を書いた後にだけ書き出せる。コメントや判定を変えると `response_id` が変わり、変更前のファイルとは別の応答として取り込まれる。
+
+### レビューの状態
+
+レビュー依頼の状態は、レビュアー表示名ごとの最新の応答から決める: 応答が無ければ `pending`（未回答）、全員の最新が `approved` なら `approved`（承認済み）、1 人でも `changes_requested` なら `changes_requested`（修正依頼あり）。承認はオーナーへの意思表示であり、Project の状態遷移（§22）や Final Export をブロック/解除しない。応答を取り込むと、Chat Workspace のスレッドに AI の発言として「レビュー結果（表示名・判定・コメント件数）」が記録される（§23.3）。
+
+### 共有物に含めないもの（`spec/requirements/non-functional.md` §5）
+
+Review Package と Review Response は、DB の行やファイルをそのまま渡さず、上記の項目だけを固定の構造体から組み立てる。次のものは**入らない**（テストで検証する）。
+
+- 外部モデル API キー・認証情報（OS のセキュアストレージにだけ保存され、DB にもバンドルにも書かれない）
+- 顔データ: Character の顔基準画像（`face_reference_asset_id`）・Series 正本の顔基準・Reference Library の参照画像・アップロードされた参照画像/動画・Judge の顔同一性指標。動画そのものに映る人物はレビュー対象の成果物であり、ここでいう顔データではない
+- Brief・チャット履歴・Notes・World State・Shot Spec・Prompt・Brand Constraints・コスト台帳・Take・他の Export・Project ID・ファイルシステムの絶対パス
+
+動画は `video.mp4|webm` の固定名で入れ、元のパスを名前に残さない。共有されるのは Project 名とオーナーのメモ・動画・レビュアーの応答だけである（UI で共有される内容を明示する）。
+
+読み込み側は、allowlist 以外のエントリを含むアーカイブ、サイズ上限（動画 2GB、応答 1MB）を超えるもの、形式・バージョンが違うもの、動画の署名（MP4 の `ftyp` / WebM の EBML ヘッダー）が合わないものを拒否し、何も残さない。
+
+### プロジェクトバンドルとの違い
+
+プロジェクトバンドル（`spec/requirements/non-functional.md` §8）は、自分の端末間の移行・バックアップのために Project 全体（顔基準画像・アップロード素材を含む）を書き出す。**他のメンバーに渡すためのものではない**。チームでの共有には Review Package を使う。
+
+### 画面
+
+- オーナー: 補助ビュー「レビュー」（`/projects/:id/reviews`）でレビュー依頼の作成・パッケージのダウンロード・応答の取り込み・コメントの解決済み切替を行う
+- レビュアー: プロジェクト一覧から入る「レビュー」（`/reviews`）でパッケージの読み込み、動画の視聴、コメント・判定、応答の書き出しを行う（Project を持たないので Project の画面には入らない）
 
 ---
 
