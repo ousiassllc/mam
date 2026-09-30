@@ -288,44 +288,6 @@ func (s *EditorService) toEditing(ctx context.Context, p domain.Project) error {
 	return nil
 }
 
-// cutSource is what a clip needs of its Take.
-type cutSource struct {
-	takeID  string
-	path    string // relative to the assets directory
-	seconds float64
-}
-
-// selectedSource reads the Selected Take of the Shot and its length. The second result is false
-// when the Shot has none or its file is gone.
-func (s *EditorService) selectedSource(ctx context.Context, sh domain.Shot) (cutSource, bool, error) {
-	if sh.SelectedTakeID == "" {
-		return cutSource{}, false, nil
-	}
-	return s.takeSource(ctx, sh.SelectedTakeID)
-}
-
-func (s *EditorService) takeSource(ctx context.Context, takeID string) (cutSource, bool, error) {
-	d, err := s.takes.Get(ctx, takeID)
-	if errors.Is(err, repository.ErrNotFound) {
-		return cutSource{}, false, nil
-	}
-	if err != nil {
-		return cutSource{}, false, err
-	}
-	src := cutSource{takeID: takeID, path: d.FilePath, seconds: d.DurationSeconds}
-	if !s.fileExists(d.FilePath) {
-		return src, false, nil
-	}
-	if s.tools != nil {
-		info, err := s.tools.Probe(ctx, s.assetPath(d.FilePath))
-		if err != nil {
-			return src, false, nil // unreadable: as good as gone
-		}
-		src.seconds = info.Duration
-	}
-	return src, true, nil
-}
-
 // RoughCut makes the Rough Cut from the Selected Takes of every Shot of the trunk of the Project,
 // or of its Branch (POST /projects/:id/edit/rough-cut), and starts EDITING. Every Shot needs a
 // Selected Take with a file. The Editor Agent then edits what the Production Template ranks (Pace,
@@ -363,13 +325,14 @@ func (s *EditorService) RoughCut(ctx context.Context, projectID, branchID string
 	if len(story) == 0 {
 		return EditorView{}, invalid("", "Shot がまだありません。Scene / Shot を作成してから Rough Cut を作ってください")
 	}
+	sources, err := s.loadSources(ctx, selectedTakeIDs(idx.order))
+	if err != nil {
+		return EditorView{}, err
+	}
 	cuts := make([]editor.ShotCut, 0, len(story))
 	var missing []string
 	for _, r := range story {
-		src, ok, err := s.selectedSource(ctx, r.Shot)
-		if err != nil {
-			return EditorView{}, err
-		}
+		src, ok := sources.selected(ctx, r.Shot)
 		if !ok {
 			missing = append(missing, idx.labels[r.Shot.ID])
 			continue
@@ -385,10 +348,7 @@ func (s *EditorService) RoughCut(ctx context.Context, projectID, branchID string
 		if !known || r.Status != domain.ReshootApplied {
 			continue
 		}
-		src, ok, err := s.selectedSource(ctx, ref.Shot)
-		if err != nil {
-			return EditorView{}, err
-		}
+		src, ok := sources.selected(ctx, ref.Shot)
 		if !ok {
 			continue // the additional Shot has no usable Take now: the cut goes on without it
 		}
@@ -448,14 +408,16 @@ func (s *EditorService) keepFixedClips(ctx context.Context, idx shotIndex, proje
 	if err != nil {
 		return domain.EditTimeline{}, err
 	}
+	sources, err := s.loadSources(ctx, clipTakeIDs(prev.Timeline.Clips))
+	if err != nil {
+		return domain.EditTimeline{}, err
+	}
 	usable := make(map[string]bool, len(fixed))
 	for _, c := range prev.Timeline.Clips {
 		if !fixed[c.ShotID] {
 			continue
 		}
-		if _, ok, err := s.takeSource(ctx, c.TakeID); err != nil {
-			return domain.EditTimeline{}, err
-		} else if ok {
+		if _, ok := sources.take(ctx, c.TakeID); ok {
 			usable[c.ShotID] = true
 		}
 	}
@@ -535,22 +497,21 @@ func (s *EditorService) SaveTimeline(ctx context.Context, id string, tl domain.E
 	if err != nil {
 		return TimelineView{}, err
 	}
+	sources, err := s.loadSources(ctx, clipTakeIDs(tl.Clips))
+	if err != nil {
+		return TimelineView{}, err
+	}
 	for i := range tl.Clips {
 		c := &tl.Clips[i]
 		r, ok := idx.byID[c.ShotID]
 		if !ok {
 			return TimelineView{}, invalid("clips", "クリップ %d の Shot がこの Project にありません", i+1)
 		}
-		src, ok, err := s.takeSource(ctx, c.TakeID)
-		if err != nil {
-			return TimelineView{}, err
-		}
+		src, ok := sources.take(ctx, c.TakeID)
 		if !ok {
 			return TimelineView{}, invalid("clips", "クリップ %d（%s）の Take のファイルが見つかりません", i+1, idx.labels[r.Shot.ID])
 		}
-		if own, err := s.takes.ShotTakes(ctx, r.Shot.ID); err != nil {
-			return TimelineView{}, err
-		} else if !slices.ContainsFunc(own, func(t domain.TakeInfo) bool { return t.ID == c.TakeID }) {
+		if sources.shotOf(c.TakeID) != r.Shot.ID {
 			return TimelineView{}, invalid("clips", "クリップ %d の Take は %s の Take ではありません", i+1, idx.labels[r.Shot.ID])
 		}
 		c.SourceSeconds = src.seconds // the file decides; the client's value is not trusted
@@ -585,6 +546,10 @@ func (s *EditorService) shotFacts(ctx context.Context, idx shotIndex, tl domain.
 	if err != nil {
 		return nil, err
 	}
+	sources, err := s.loadSources(ctx, clipTakeIDs(tl.Clips)) // a failed read is not a missing file: the Editor Judge must not report one
+	if err != nil {
+		return nil, err
+	}
 	for _, c := range tl.Clips {
 		r, ok := idx.byID[c.ShotID]
 		if !ok {
@@ -597,9 +562,7 @@ func (s *EditorService) shotFacts(ctx context.Context, idx shotIndex, tl domain.
 		if spec, ok := r.Shot.CanonicalSpec(); ok {
 			f.HasProduct = spec.Product != nil
 		}
-		if _, f.TakeReady, err = s.takeSource(ctx, c.TakeID); err != nil {
-			return nil, err // a failed read is not a missing file: the Editor Judge must not report one
-		}
+		_, f.TakeReady = sources.take(ctx, c.TakeID)
 		facts[c.ShotID] = f
 	}
 	return facts, nil
@@ -748,12 +711,13 @@ var transitionNames = map[domain.TransitionType]string{
 // cuts turns the Edit Timeline into what Render takes. A clip whose Take file is gone fails the
 // stage. A clip that Lip Sync redid (lipSync) plays that picture instead of its Take's.
 func (s *EditorService) cuts(ctx context.Context, tl domain.EditTimeline, lipSync []domain.LipSyncClip) ([]media.Cut, error) {
+	sources, err := s.loadSources(ctx, clipTakeIDs(tl.Clips))
+	if err != nil {
+		return nil, err
+	}
 	cuts := make([]media.Cut, len(tl.Clips))
 	for i, c := range tl.Clips {
-		src, ok, err := s.takeSource(ctx, c.TakeID)
-		if err != nil {
-			return nil, err
-		}
+		src, ok := sources.take(ctx, c.TakeID)
 		if !ok {
 			return nil, conflict("クリップ %d の Take のファイルが見つかりません。編集し直してください", i+1)
 		}
@@ -811,10 +775,12 @@ func (s *EditorService) FinalQC(ctx context.Context, projectID string) (EditorVi
 		return EditorView{}, err
 	}
 	in := finalqc.Input{Edit: edit, Audio: audio, MixFileExists: s.fileExists(audio.Timeline.MixPath)}
+	sources, err := s.loadSources(ctx, clipTakeIDs(edit.Timeline.Clips))
+	if err != nil {
+		return EditorView{}, err
+	}
 	for i, c := range edit.Timeline.Clips {
-		if _, ok, err := s.takeSource(ctx, c.TakeID); err != nil {
-			return EditorView{}, err
-		} else if !ok {
+		if _, ok := sources.take(ctx, c.TakeID); !ok {
 			in.MissingClips = append(in.MissingClips, i+1)
 		}
 	}
@@ -1253,16 +1219,21 @@ func (s *EditorService) applyRound(ctx context.Context, projectID, branchID stri
 	if err != nil {
 		return err
 	}
-	sources := make([]cutSource, len(reqs))
-	for i, r := range reqs {
+	shots := make([]repository.ShotRef, 0, len(reqs))
+	for _, r := range reqs {
 		ref, known := idx.byID[r.ShotID]
 		if !known {
 			return nil
 		}
-		src, ok, err := s.selectedSource(ctx, ref.Shot)
-		if err != nil {
-			return err
-		}
+		shots = append(shots, ref)
+	}
+	found, err := s.loadSources(ctx, selectedTakeIDs(shots))
+	if err != nil {
+		return err
+	}
+	sources := make([]cutSource, len(reqs))
+	for i, ref := range shots {
+		src, ok := found.selected(ctx, ref.Shot)
 		if !ok {
 			return nil // still being made
 		}

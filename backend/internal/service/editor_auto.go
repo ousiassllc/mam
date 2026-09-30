@@ -75,9 +75,13 @@ func (s *EditorService) autoRoughCut(ctx context.Context, projectID string) (boo
 	if err != nil || len(idx.order) == 0 {
 		return false, err
 	}
+	sources, err := s.loadSources(ctx, selectedTakeIDs(idx.order))
+	if err != nil {
+		return false, err
+	}
 	for _, r := range idx.order {
-		if _, ok, err := s.selectedSource(ctx, r.Shot); err != nil || !ok {
-			return false, err
+		if _, ok := sources.selected(ctx, r.Shot); !ok {
+			return false, nil
 		}
 	}
 	if _, err := s.RoughCut(ctx, projectID, ""); err != nil {
