@@ -32,6 +32,9 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 | GET | `/projects/:id/scenes` | Scene / Shot / Take 階層（先頭 Scene を選択。Scene がなければ追加フォームのみ）。補助ビュー | フルページ / 階層フラグメント |
 | GET | `/projects/:id/scenes/:sceneId` | Scene詳細（Shot一覧、各 Shot の絵コンテと Take）。クエリ `shot` で 1 つの Shot を選択。他 Project の Scene は 404 | フルページ / 階層フラグメント |
 | GET | `/shots/:id` | Shot Inspector（Objective/Duration/Character/Acting/Camera/Lighting/Product/Continuity/References/Prompt/Model/Take List/Judge Results/Locks） | フルページ / Inspectorフラグメント |
+| GET | `/takes/:id/trace` | Take の Generation Trace（F-27）: Prompt version・Source Shot Spec（Prompt version のスナップショット）・World State version・Model・Model parameters・References・Output（動画へのリンク。アーカイブ済みなら「アーカイブ済み」）・Judge results（新しい順）・Repair history（この Take への Repair と、この Take を作った Repair）。Shot Inspector の Take 一覧の「生成の経緯」から `hx-get` で読み込む。存在しない Take は 404 | フラグメントのみ（`take_trace_panel`） |
+| GET | `/branches/:id/versions` | Branch のバージョン履歴（`version_history_panel` を 2 つ: Branch 自体の `branch_version` と、当該 Branch 独自の World State バージョン系列。復元ボタン付き）。存在しない Branch は 404 | フラグメントのみ |
+| GET | `/projects/:id/bundle` | プロジェクトバンドルのエクスポート（`spec/requirements/non-functional.md` §8）。ZIP（`Content-Disposition: attachment`）: `manifest.json`（`format=mam-project-bundle`・`version`・`project_id`・`exported_at`）、`data.json`（Project の全テーブルの行。`job` は実行時状態のため含めない）、`assets/<asset 相対パス>`（Asset・Take・Export のファイル。既にアーカイブされて無いファイルは含めず、行だけ残る）。存在しない Project は 404 | ファイル |
 | GET | `/shots/:id/takes` | Take比較ページ（`mam-take-comparator` を埋め込み） | フルページ（Lit埋め込みのため常にフルページ） |
 | GET | `/projects/:id/edit` | AI Editor / Rough Cut編集ページ（`mam-timeline-editor` を埋め込み） | フルページ |
 | GET | `/projects/:id/branches` | Branch ツリーページ（`mam-branch-tree` を埋め込み） | フルページ |
@@ -48,6 +51,7 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 
 | Method | Path | 概要 | 対応機能 |
 |---|---|---|---|
+| POST | `/projects/import` | プロジェクトバンドルのインポート（`multipart/form-data`、フィールド `bundle`＝`GET /projects/:id/bundle` の ZIP。`spec/requirements/non-functional.md` §8）。バンドルの Project を ID・ファイルパスのまま新規に作る（1 トランザクション。失敗時は行もファイルも残さない）。成功は 201 と `HX-Redirect: /projects/:id`。ファイルがない・ZIP でない・`manifest.json`/`data.json` が読めない・`format`/`version` が違う・未知のテーブル/カラム・他 Project の行・外部キーが壊れている・Project ディレクトリ外を指すパスは 422（インポートフォームをエラー付きで再描画）。同じ ID の Project が既にあれば 409（既存を変更しない）。取り込んだ Project に実行中のジョブは無いので、生成中だった Shot は PLANNING に戻す | non-functional.md §8 |
 | POST | `/projects` | 新規プロジェクト作成。Body（`multipart/form-data`）に最初の発言（`content`）と添付（`attachments`、画像 jpg/png/webp/gif ≤20MB・動画 mp4/mov/webm ≤300MB、最大8件。拡張子と内容の署名を検証し不正は 422）を指定でき、Brief はその発言から抽出してチャットで補完する。成功時は `HX-Redirect: /projects/:id`（201）。既存アセットの再利用は `POST /projects/:id/messages` の `attachment_asset_ids`。Series 作成後の Episode は `POST /series/:id/episodes` を使う | F-01, F-25, F-30 |
 | PUT | `/projects/:id/brief` | Brief 更新 | F-01 |
 | PUT | `/projects/:id/mode` | AUTO ⇄ DIRECTOR 切替 | F-02 |
@@ -106,10 +110,10 @@ M1 の入出力契約（Issue #12）:
 | POST | `/shots/:id/branch` | Branch Point 保存 + Snapshot 生成（Body: `branch_point_type`=`scene\|shot\|frame`、`frame`時は`offset_seconds`を指定。`scene`指定時は当該Shotの所属Sceneを分岐点とする） | F-17 |
 | GET | `/branches/:id` | Branch 詳細（フラグメント） | F-17 |
 | PUT | `/branches/:id` | Branch 名称変更・World State参照更新（`branch_version` に新規バージョン行を追記） | F-17, F-28 |
-| POST | `/shots/:id/versions/:versionNumber/restore` | Shot/Take（`prompt_version`）の指定バージョンへ復元 | F-28 |
-| POST | `/projects/:id/world-state/versions/:versionNumber/restore` | 主系列（トランク、`branch_id`=NULL）World State の指定バージョンへ復元 | F-28 |
-| POST | `/branches/:branchId/world-state/versions/:versionNumber/restore` | 当該Branchが独立して持つ World State バージョン系列の指定バージョンへ復元 | F-28 |
-| POST | `/branches/:id/versions/:versionNumber/restore` | Branch自体（`branch_version`）の指定バージョンへ復元 | F-28 |
+| POST | `/shots/:id/versions/:versionNumber/restore` | Shot/Take（`prompt_version`）の指定バージョンの Canonical Shot Spec を Shot の現在の Spec に戻し、新しい `prompt_version` として追記する（既存バージョンとその Take は変えない。復元自体も戻せる）。応答は 200 と Shot Inspector。バージョン番号が 1 以上の整数でなければ 422、存在しない Shot/バージョンは 404、生成中の Shot は 409、復元で LOCK 中の部分が変わるなら 423（何も書かない） | F-28 |
+| POST | `/projects/:id/world-state/versions/:versionNumber/restore` | 主系列（トランク、`branch_id`=NULL）World State の指定バージョンへ復元。そのバージョンに載っている Character/Product/Location の各フィールド値を行へ書き戻し（バージョンに無い、後から追加された行は変えない）、Camera/Story はそのバージョンの値にして、結果を新しい `world_state_version` として追記する。応答は 200 と World State ビュー。422（番号）/404（Project・バージョン）/423（復元で LOCK 中のフィールドが変わる。何も書かない） | F-28 |
+| POST | `/branches/:id/world-state/versions/:versionNumber/restore` | 当該Branchが独立して持つ World State バージョン系列の指定バージョンへ復元。Branch の系列は状態のスナップショットのみを持つので、指定バージョンの内容をその系列の末尾へ新バージョンとして複製する。応答は 200 と Branch のバージョン履歴。422/404（Branch・バージョン）。パスの Branch ID は他の `/branches/:id/...` と同じく `:id`（Gin は同じパス位置のワイルドカード名を 1 つしか許さない） | F-28 |
+| POST | `/branches/:id/versions/:versionNumber/restore` | Branch自体（`branch_version`）の指定バージョンへ復元。その名称・World State 参照を Branch に戻し、新しい `branch_version` として追記する。応答は 200 と Branch のバージョン履歴。422/404 | F-28 |
 
 ### 2.5 Director Command
 
@@ -317,3 +321,4 @@ Notes:
 | 1.26 | 2026-09-29 | §2.2 に M1 の入出力契約（mode / locks / shot-spec / Inspector / director-command / チャットの DIRECTOR 解釈）を追記。`POST /shots/:id/generate` の LOCK・Video Model 固定時の挙動を追記 | M1「AUTO/MANUAL/LOCK と DIRECTOR MODE」（Issue #12）で、Body・応答・423/422/409/202 の条件、対象 Shot の解決順、LOCK の判定範囲が名称レベルでしか定義されていなかったため |
 | 1.27 | 2026-09-30 | §2.8 に M2 の契約（`PUT /projects/:id/world-state/locks`、`PUT …/:entityId/reference`）を追記。`GET /projects/:id/references` と §2.11 Reference Library（`POST/DELETE /projects/:id/references`、`POST /shots/:id/references`）を追加 | M2「Character/Product Lock・Location State・Reference Library」（Issue #15）で、World State の属性単位 LOCK の切替とライブラリの登録・検索・再利用の API が定義されていなかったため。ライブラリは Project 内の画像を対象とし、Reference Pack への追加は Shot 単位のピン留めにした |
 | 1.28 | 2026-09-30 | `POST /takes/:id/repair` の応答・エラー（202/404/409/503）・Retry Policy の適用・AUTO MODE の自動ループ、`/ws/shots/:id` の Repair 通知（`action=repair`・`stage=repairing`）、`GET /api/v1/repair/jev-shadow-report` を明記 | M1「Repair/Retake Loop」（Issue #10）で Repair の API 契約と進捗通知が未定義だったため |
+| 1.29 | 2026-09-30 | 復元エンドポイント（§2.4）の入出力・エラー・LOCK との関係を定義。`GET /takes/:id/trace`・`GET /branches/:id/versions`・`GET /projects/:id/bundle`・`POST /projects/import` を追加。Branch 系の復元パスの Branch ID を `:id` に統一 | F-27/F-28 とデータポータビリティ（Issue #20）の入出力契約が未定義だった。Gin は同じパス位置のワイルドカード名を 1 つしか許さず、`/branches/:branchId/...` と `/branches/:id/...` を併存できないため |

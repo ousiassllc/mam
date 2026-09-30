@@ -22,6 +22,8 @@ type ShotInspectorData struct {
 	// SpecText is the spec as the edit form shows it; SpecError is why a manual edit was rejected.
 	SpecText  string
 	SpecError string
+	// Versions are the saved versions of the spec, newest first (F-28).
+	Versions []domain.VersionEntry
 }
 
 func shotURL(id string) string { return "/shots/" + id }
@@ -159,6 +161,10 @@ templ ShotInspector(d ShotInspectorData) {
 				</div>
 			</form>
 		</section>
+		@VersionHistoryPanel(VersionHistoryData{
+			DOMID: "version-history-shot-" + d.Shot.ID, Title: "Shot Spec のバージョン", BasePath: shotURL(d.Shot.ID),
+			Target: "#shot-inspector", Entries: d.Versions,
+		})
 		<section aria-label="Take 一覧" class="flex flex-col gap-2">
 			<h3 class="text-sm font-semibold">Take List</h3>
 			if len(d.Takes) == 0 {
@@ -166,10 +172,16 @@ templ ShotInspector(d ShotInspectorData) {
 			} else {
 				<ol class="flex flex-col gap-1 text-sm">
 					for i, t := range d.Takes {
-						<li class="flex items-center gap-2">
-							<span>{ fmt.Sprintf("Take %d", i+1) }</span>
-							@atoms.Badge(atoms.BadgeNeutral, string(t.Status))
-							<span class="text-xs text-neutral-400">{ t.ModelName }</span>
+						<li class="flex flex-col gap-2">
+							<div class="flex items-center gap-2">
+								<span>{ fmt.Sprintf("Take %d", i+1) }</span>
+								@atoms.Badge(atoms.BadgeNeutral, string(t.Status))
+								<span class="text-xs text-neutral-400">{ t.ModelName }</span>
+								@atoms.Button(atoms.ToneNeutral, "生成の経緯", templ.Attributes{
+									"type": "button", "hx-get": "/takes/" + t.ID + "/trace", "hx-target": "#take-trace-slot-" + t.ID, "hx-swap": "innerHTML",
+								})
+							</div>
+							<div id={ "take-trace-slot-" + t.ID }></div>
 						</li>
 					}
 				</ol>

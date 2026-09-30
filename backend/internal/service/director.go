@@ -21,8 +21,9 @@ import (
 // Command Interpreter that turns a direction into operations on one Shot.
 type DirectorService struct {
 	*core
-	gens  *repository.GenerationRepository
-	locks *repository.LockRepository
+	gens     *repository.GenerationRepository
+	locks    *repository.LockRepository
+	versions *repository.VersionRepository
 	// orch starts the regeneration of a Shot; nil when generation is not configured.
 	orch *generation.Orchestrator
 	// interpreter reads directions; nil when no Reasoning LLM is configured.
@@ -138,6 +139,8 @@ type Inspector struct {
 	// SpecInput and SpecError hold a rejected manual edit of the spec.
 	SpecInput string
 	SpecError string
+	// Versions are the saved versions of the Shot's spec, newest first (F-28).
+	Versions []domain.VersionEntry
 }
 
 // SpecText is the Canonical Shot Spec as the edit form shows it (indented JSON).
@@ -177,7 +180,11 @@ func (s *DirectorService) Inspector(ctx context.Context, shotID string) (Inspect
 	if err != nil {
 		return Inspector{}, err
 	}
-	view := Inspector{Project: project, Scene: ref.Scene, Shot: ref.Shot, Takes: takes[shotID], Locks: locks, Pack: ref.Shot.References(), Library: library}
+	versions, err := s.versions.ShotVersions(ctx, shotID)
+	if err != nil {
+		return Inspector{}, notFound(err)
+	}
+	view := Inspector{Project: project, Scene: ref.Scene, Shot: ref.Shot, Takes: takes[shotID], Locks: locks, Pack: ref.Shot.References(), Library: library, Versions: versions}
 	if spec, ok := ref.Shot.CanonicalSpec(); ok {
 		view.Spec = &spec
 	}

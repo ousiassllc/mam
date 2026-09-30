@@ -121,7 +121,7 @@ func readWorld(ctx context.Context, q queryer, projectID string) (domain.WorldCo
 
 	var state string
 	err = q.QueryRowContext(ctx,
-		`SELECT version_number, state FROM world_state_version WHERE project_id = ? ORDER BY version_number DESC LIMIT 1`, projectID).
+		`SELECT version_number, state FROM world_state_version WHERE project_id = ? AND branch_id IS NULL ORDER BY version_number DESC LIMIT 1`, projectID).
 		Scan(&w.Version, &state)
 	if errors.Is(err, sql.ErrNoRows) {
 		return w, nil
@@ -166,7 +166,7 @@ func (r *WorldRepository) appendVersion(ctx context.Context, tx *sql.Tx, project
 		return "", 0, err
 	}
 	var next int
-	if err := tx.QueryRowContext(ctx, `SELECT COALESCE(MAX(version_number), 0) + 1 FROM world_state_version WHERE project_id = ?`, projectID).Scan(&next); err != nil {
+	if err := tx.QueryRowContext(ctx, `SELECT COALESCE(MAX(version_number), 0) + 1 FROM world_state_version WHERE project_id = ? AND branch_id IS NULL`, projectID).Scan(&next); err != nil {
 		return "", 0, err
 	}
 	id := domain.NewID()

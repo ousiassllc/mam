@@ -68,6 +68,9 @@ type Services struct {
 	Repair      *RepairService
 	Continue    *ContinueService
 	Reference   *ReferenceService
+	Trace       *TraceService
+	Versions    *VersionService
+	Bundle      *BundleService
 }
 
 // Recover puts Shots left GENERATING by an abnormal termination back to PLANNING. It MUST run
@@ -163,7 +166,8 @@ func New(deps Deps) *Services {
 			jobFinished = func(jobID string) { go repairs.agent.JobChanged(context.Background(), jobID) }
 		}
 	}
-	director := &DirectorService{core: c, gens: gens, locks: repository.NewLockRepository(deps.DB), orch: generations.gen}
+	versions := repository.NewVersionRepository(deps.DB)
+	director := &DirectorService{core: c, gens: gens, locks: repository.NewLockRepository(deps.DB), versions: versions, orch: generations.gen}
 	if deps.LLM != nil {
 		director.interpreter = commandinterpreter.New(deps.LLM)
 	}
@@ -173,6 +177,7 @@ func New(deps Deps) *Services {
 		continues.agent = continuation.New(deps.LLM)
 	}
 	c.continuer = continues
+	worlds := &WorldService{core: c, world: world, versions: versions}
 	return &Services{
 		Health:      NewHealthService(deps.DB),
 		Credentials: NewCredentialService(deps.Credentials),
@@ -180,7 +185,7 @@ func New(deps Deps) *Services {
 		Chat:        chat,
 		Plans:       &PlanService{c},
 		Generation:  generations,
-		World:       &WorldService{core: c, world: world},
+		World:       worlds,
 		Director:    director,
 		Policy: &PolicyService{
 			core: c, freeBytes: deps.FreeBytes, policies: policies, costs: repository.NewCostRepository(deps.DB), storage: repository.NewStorageRepository(deps.DB),
@@ -189,5 +194,8 @@ func New(deps Deps) *Services {
 		Repair:    repairs,
 		Continue:  continues,
 		Reference: &ReferenceService{c},
+		Trace:     &TraceService{traces: repository.NewTraceRepository(deps.DB)},
+		Versions:  &VersionService{core: c, versions: versions, director: director, world: worlds},
+		Bundle:    &BundleService{core: c, bundles: repository.NewBundleRepository(deps.DB)},
 	}
 }

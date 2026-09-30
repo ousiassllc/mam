@@ -1,0 +1,101 @@
+package organisms
+
+import (
+	"fmt"
+
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+)
+
+// TakeTracePanel is the Generation Traceability of a Take (F-27, GET /takes/:id/trace): what led
+// to it, from the Source Shot Spec to the Judge results and the Repair history.
+templ TakeTracePanel(t domain.TakeTrace) {
+	<section id={ "take-trace-" + t.Take.ID } aria-label="Generation Trace" class="flex flex-col gap-3 rounded-md border border-neutral-700 p-3 text-sm">
+		<dl class="grid gap-x-4 gap-y-1 md:grid-cols-[10rem_1fr]">
+			<dt class="text-xs text-neutral-400">Prompt version</dt>
+			<dd>{ fmt.Sprintf("v%d", t.PromptVersion.VersionNumber) }</dd>
+			<dt class="text-xs text-neutral-400">World State version</dt>
+			<dd>{ worldVersionText(t.WorldStateVersion) }</dd>
+			<dt class="text-xs text-neutral-400">Model</dt>
+			<dd>{ t.Take.ModelName }</dd>
+			<dt class="text-xs text-neutral-400">Output</dt>
+			<dd>
+				if t.Output == nil {
+					アーカイブ済み（動画ファイルは削除されています）
+				} else {
+					<a class="underline" href={ templ.SafeURL("/projects/" + t.ProjectID + "/assets/" + t.Output.AssetID) }>{ t.Output.FilePath }</a>
+					<span class="text-xs text-neutral-400">{ t.Output.MimeType } · { fmt.Sprintf("%d bytes", t.Output.SizeBytes) }</span>
+				}
+			</dd>
+			<dt class="text-xs text-neutral-400">Repair 元</dt>
+			<dd>
+				if t.ProducedBy == nil {
+					初回生成
+				} else {
+					{ t.ProducedBy.Action.Label() }
+				}
+			</dd>
+		</dl>
+		<div>
+			<h4 class="text-xs font-semibold">References</h4>
+			if len(t.References) == 0 {
+				<p class="text-xs text-neutral-400">参照画像なし</p>
+			} else {
+				<ul class="flex flex-col gap-1">
+					for _, r := range t.References {
+						<li class="flex flex-wrap items-center gap-2">
+							@atoms.Badge(atoms.BadgeNeutral, r.Kind.Label())
+							<span>{ r.Name }</span>
+							<span class="text-xs text-neutral-400">{ string(r.Model) }</span>
+						</li>
+					}
+				</ul>
+			}
+		</div>
+		<details>
+			<summary class="cursor-pointer text-xs font-semibold">Source Shot Spec（Prompt version のスナップショット）</summary>
+			<pre class="mt-1 overflow-x-auto rounded bg-neutral-950 p-2 text-xs">{ prettyJSON(t.PromptVersion.SpecSnapshot) }</pre>
+		</details>
+		<details>
+			<summary class="cursor-pointer text-xs font-semibold">Model parameters</summary>
+			<pre class="mt-1 overflow-x-auto rounded bg-neutral-950 p-2 text-xs">{ prettyJSON(t.ModelParameters) }</pre>
+		</details>
+		<details>
+			<summary class="cursor-pointer text-xs font-semibold">Model Adapter output</summary>
+			<pre class="mt-1 overflow-x-auto rounded bg-neutral-950 p-2 text-xs">{ prettyJSON(t.PromptVersion.AdapterOutput) }</pre>
+		</details>
+		<div>
+			<h4 class="text-xs font-semibold">Judge results</h4>
+			if len(t.Judgements) == 0 {
+				<p class="text-xs text-neutral-400">まだ Judge されていません。</p>
+			} else {
+				<ol class="flex flex-col gap-1">
+					for _, j := range t.Judgements {
+						<li class="flex flex-wrap items-center gap-2">
+							@atoms.Badge(judgeTone(j.Result), string(j.Result))
+							<span class="text-xs">{ fmt.Sprintf("confidence %.2f · Issue %d", j.OverallConfidence, len(j.Issues)) }</span>
+							<time class="text-xs text-neutral-400" datetime={ j.CreatedAt.Format("2006-01-02T15:04:05Z07:00") }>{ j.CreatedAt.Local().Format("2006/01/02 15:04:05") }</time>
+						</li>
+					}
+				</ol>
+			}
+		</div>
+		<div>
+			<h4 class="text-xs font-semibold">Repair history</h4>
+			if len(t.Repairs) == 0 {
+				<p class="text-xs text-neutral-400">Repair はありません。</p>
+			} else {
+				<ol class="flex flex-col gap-1">
+					for _, r := range t.Repairs {
+						<li class="text-xs">
+							{ r.Action.Label() }
+							if r.ResultingTakeID != "" {
+								{ " → 新しい Take " + r.ResultingTakeID }
+							}
+						</li>
+					}
+				</ol>
+			}
+		</div>
+	</section>
+}

@@ -116,7 +116,7 @@ func (o *Orchestrator) generate(ctx context.Context, ref repository.ShotRef, ins
 	o.notify(Progress{ShotID: shot.ID, Action: ActionGenerate, Stage: StageGenerating, Message: "動画を生成しています", TakesTotal: strategy.Takes})
 	var made counter
 	errs := parallel(strategy.Takes, func(i int) error {
-		takeID, err := o.makeTake(ctx, ref, pv, strategy, job, fmt.Sprintf("Shot %d · Take %d", shot.OrderIndex+1, i+1), policy.Effective().MaxGenerationTime, "")
+		takeID, err := o.makeTake(ctx, ref, pv, strategy, job, domain.TakeLineage{WorldStateVersion: sc.world.Version, References: references}, fmt.Sprintf("Shot %d · Take %d", shot.OrderIndex+1, i+1), policy.Effective().MaxGenerationTime, "")
 		if err != nil {
 			return err
 		}
@@ -236,6 +236,8 @@ func recordOf(s Strategy, job modeladapter.VideoJob, candidate domain.CandidateS
 
 // takeParameters is the content of take.model_parameters.
 type takeParameters struct {
+	// TakeLineage records what the Take was generated from besides the Shot Spec (F-27).
+	domain.TakeLineage
 	Policy          domain.QualityPolicy `json:"quality_policy"`
 	Resolution      string               `json:"resolution"`
 	DurationSeconds float64              `json:"duration_seconds"`
@@ -250,7 +252,7 @@ type takeParameters struct {
 // title is title. The time spent on the model is bounded by limit (Max generation time of the
 // Quality/Cost Policy). candidate is the Prompt Candidate strategy the Take is made for ("" for a
 // plain generation or a repair).
-func (o *Orchestrator) makeTake(ctx context.Context, ref repository.ShotRef, pv domain.PromptVersion, s Strategy, job modeladapter.VideoJob, title string, limit time.Duration, candidate domain.CandidateStrategy) (string, error) {
+func (o *Orchestrator) makeTake(ctx context.Context, ref repository.ShotRef, pv domain.PromptVersion, s Strategy, job modeladapter.VideoJob, lineage domain.TakeLineage, title string, limit time.Duration, candidate domain.CandidateStrategy) (string, error) {
 	callCtx, cancel := context.WithTimeout(ctx, limit)
 	defer cancel()
 	out, err := o.adapter.GenerateVideo(callCtx, s.Primary, s.Fallback, job)
@@ -266,7 +268,7 @@ func (o *Orchestrator) makeTake(ctx context.Context, ref repository.ShotRef, pv 
 	}
 	params, err := json.Marshal(takeParameters{
 		Policy: s.Policy, Resolution: out.Resolution, DurationSeconds: out.DurationSeconds,
-		AspectRatio: out.Request.AspectRatio, FellBack: out.FellBack, Prompt: out.Request.Prompt, Candidate: candidate,
+		AspectRatio: out.Request.AspectRatio, FellBack: out.FellBack, Prompt: out.Request.Prompt, Candidate: candidate, TakeLineage: lineage,
 	})
 	if err != nil {
 		o.files.remove(asset)

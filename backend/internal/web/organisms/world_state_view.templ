@@ -18,6 +18,8 @@ type WorldStateData struct {
 	ProjectLocks domain.ParameterLocks
 	// Library is the Reference Library of the Project (images a reference slot can hold).
 	Library []domain.ReferenceItem
+	// Versions are the saved World State versions of the trunk, newest first (F-28).
+	Versions []domain.VersionEntry
 }
 
 var fieldLabels = map[string]string{
@@ -259,6 +261,10 @@ templ WorldStateView(d WorldStateData) {
 			</dl>
 			@singletonLocks(d, domain.TargetStory)
 		</section>
+		@VersionHistoryPanel(VersionHistoryData{
+			DOMID: "version-history-world", Title: "World State のバージョン", BasePath: "/projects/" + d.Project.ID + "/world-state",
+			Target: "#world-state-view", Entries: d.Versions,
+		})
 	</div>
 }
 

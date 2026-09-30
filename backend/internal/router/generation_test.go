@@ -102,7 +102,7 @@ func newGenApp(t *testing.T, withModels bool) *genApp {
 	jobs.Start(ctx)
 	t.Cleanup(func() { cancel(); jobs.Stop() })
 
-	a := &app{t: t, db: db, engine: router.New(svc, router.Options{}), svc: svc}
+	a := &app{t: t, db: db, engine: router.New(svc, router.Options{}), svc: svc, assets: filepath.Join(dir, "assets")}
 	a.cookie, a.token = bootstrap(t, a.engine)
 	g := &genApp{app: a, video: video}
 	g.project = a.createProject("美容液のCMを作りたい")
