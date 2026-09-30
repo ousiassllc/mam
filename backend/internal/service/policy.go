@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -271,7 +270,11 @@ func (s *PolicyService) ArchiveUnneeded(ctx context.Context, projectID string) (
 // an orphan file, which is logged.
 func (s *PolicyService) removeFiles(assets []domain.Asset) {
 	for _, a := range assets {
-		path := filepath.Join(s.assetsDir, filepath.FromSlash(a.FilePath))
+		path := s.assetPath(a.FilePath)
+		if path == "" {
+			s.logger.Error("skip archived take file outside the assets directory", "asset_id", a.ID, "file_path", a.FilePath)
+			continue
+		}
 		if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
 			s.logger.Error("remove archived take file failed", "asset_id", a.ID, "err", err)
 		}

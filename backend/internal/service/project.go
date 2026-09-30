@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
@@ -277,7 +276,11 @@ func (s *ProjectService) Asset(ctx context.Context, projectID, assetID string) (
 	if err != nil {
 		return AssetFile{}, notFound(err)
 	}
-	return AssetFile{Asset: a, Path: filepath.Join(s.assetsDir, filepath.FromSlash(a.FilePath))}, nil
+	path := s.assetPath(a.FilePath)
+	if path == "" {
+		return AssetFile{}, ErrNotFound // a stored path outside the assets directory is never served
+	}
+	return AssetFile{Asset: a, Path: path}, nil
 }
 
 func validateMessage(content string, hasAttachments bool) error {
