@@ -244,7 +244,60 @@ func (s *EditorService) resumeReshoots(ctx context.Context) {
 	}
 }
 
+// reshootRound is the additional Shots one Reshoot round of a trunk / Branch asked for.
+type reshootRound struct {
+	branch string
+	reqs   []domain.ReshootRequest
+}
+
+// pendingRounds groups the pending requests of the Project by round, in the order they were asked.
+func (s *EditorService) pendingRounds(ctx context.Context, projectID string) ([]reshootRound, error) {
+	pending, err := s.editors.PendingReshoots(ctx, projectID)
+	if err != nil {
+		return nil, err
+	}
+	type key struct {
+		branch string
+		number int
+	}
+	index := map[key]int{}
+	var rounds []reshootRound
+	for _, r := range pending {
+		k := key{r.BranchID, r.Round}
+		i, seen := index[k]
+		if !seen {
+			i = len(rounds)
+			index[k] = i
+			rounds = append(rounds, reshootRound{branch: r.BranchID})
+		}
+		rounds[i].reqs = append(rounds[i].reqs, r)
+	}
+	return rounds, nil
+}
+
+// anyRoundReady tells whether a round has all its Shots selected. It does not hold the editing
+// stage: a round that still waits must not make a stage of the user (Final QC, a preview) busy.
+func (s *EditorService) anyRoundReady(ctx context.Context, projectID string) (bool, error) {
+	rounds, err := s.pendingRounds(ctx, projectID)
+	if err != nil {
+		return false, err
+	}
+	for _, k := range rounds {
+		sources, err := s.roundSources(ctx, projectID, k.branch, k.reqs)
+		if err != nil {
+			return false, err
+		}
+		if sources != nil {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func (s *EditorService) applyReshoots(ctx context.Context, projectID string) error {
+	if ready, err := s.anyRoundReady(ctx, projectID); err != nil || !ready {
+		return err // every round still waits: the selection of its last Take wakes the worker again
+	}
 	release, err := s.acquire(projectID)
 	if err != nil {
 		// Another stage runs. Nothing else would bring us back (the last job may already be done), so
@@ -257,25 +310,12 @@ func (s *EditorService) applyReshoots(ctx context.Context, projectID string) err
 		s.missed.Delete(projectID)
 	}
 	defer release()
-	pending, err := s.editors.PendingReshoots(ctx, projectID)
+	rounds, err := s.pendingRounds(ctx, projectID)
 	if err != nil {
 		return err
 	}
-	type round struct {
-		branch string
-		number int
-	}
-	groups := map[round][]domain.ReshootRequest{}
-	var order []round
-	for _, r := range pending {
-		k := round{r.BranchID, r.Round}
-		if _, seen := groups[k]; !seen {
-			order = append(order, k)
-		}
-		groups[k] = append(groups[k], r)
-	}
-	for _, k := range order {
-		if err := s.applyRound(ctx, projectID, k.branch, groups[k]); err != nil {
+	for _, k := range rounds {
+		if err := s.applyRound(ctx, projectID, k.branch, k.reqs); err != nil {
 			return err
 		}
 	}
