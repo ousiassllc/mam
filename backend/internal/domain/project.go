@@ -45,7 +45,7 @@ var stateTransitions = map[ProjectState][]ProjectState{
 	StateRepairing:        {StateGenerating, StateAwaitingApproval},
 	StateEditing:          {StateEditJudging, StateAwaitingApproval},
 	StateEditJudging:      {StatePlanning, StateGenerating, StateEditing, StateAudio, StateAwaitingApproval},
-	StateAudio:            {StateFinalQC},
+	StateAudio:            {StateFinalQC, StateEditing}, // EDITING: the user changed the edit once the audio was being made
 	StateFinalQC:          {StatePlanning, StateVisualDesign, StateGenerating, StateEditing, StateAudio, StateReady, StateAwaitingApproval},
 	StateReady:            {StateExported},
 }

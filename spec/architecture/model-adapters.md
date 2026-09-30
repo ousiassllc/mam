@@ -213,6 +213,15 @@ M1（F-14、Issue #10）で実装する Repair / Retake Loop の判断部分。�
 - **API キー**: `internal/credential` のプロバイダー `typesafe` に保存する。キーが無いときは呼ばず、何も記録しない
 - **記録**: `repair_shadow`（`spec/architecture/er.md`）に、Jev の選択・確率・confidence・Repair Agent の選択・一致の有無・遅延・トークン数・コスト（入力トークン × 単価）・失敗時の理由を 1 呼び出し 1 行で残す。集計（`RepairRepository.ShadowReport`）は一致率（失敗を除く）・confidence の平均と 10 区間の分布（各区間での一致数つき）・平均遅延・合計コストを返す。前段選別を有効にするかどうかは、この集計を見て §4.5 の導入手順に従って決める
 
+## 12. 音声（M1 簡易版）の実装（`internal/agent/audiodirector`）
+
+M1 は §5 のうち ElevenLabs の TTS（Dialogue / Narration）とローカル DSP（ffmpeg）のみを実装する。BGM・SE・Foley・Ambience・Lip Sync・音声クローンは M3。
+
+- **認証**: 設定画面の API キー（`credential.Store` のプロバイダー名 `elevenlabs`）。ヘッダー `xi-api-key`。キーがなければ音声生成は 502（「ElevenLabs の API キーが設定されていません」）
+- **TTS**: `POST {base}/v1/text-to-speech/{voice_id}`（既定 base `https://api.elevenlabs.io`、モデル `eleven_multilingual_v2`、日本語対応）。Dialogue と Narration はそれぞれ別の voice ID（既定は ElevenLabs の premade voice）。応答の音声（mp3）をそのままファイルにし、ffmpeg で扱う。429 はレート制限として利用者に伝え、リトライは行わない
+- **ミキシング・ラウドネス正規化**: すべてローカルの ffmpeg（外部 API を呼ばない）。TTS の行を `adelay` で Scene の開始時刻に置き、Take 自体の音声と `amix` で 1 本にし、`loudnorm` を 2 パス（測定 → 測定値を渡して線形補正）で −14 LUFS / −1.5 dBTP に揃える。測定値を Audio Timeline に保存する
+- **コスト**: TTS は `cost_ledger_entry` に記録しない（M1 の予算管理は動画 Take が対象。音声のコスト管理は M3）
+
 ## 改訂履歴
 
 | 版 | 日付 | 変更内容 | 変更理由 |
@@ -225,3 +234,4 @@ M1（F-14、Issue #10）で実装する Repair / Retake Loop の判断部分。�
 | 1.5 | 2026-09-29 | §11（Repair Agent の戦略選択・Retry Policy・戦略ごとの再生成・Jev のシャドー実行の実装仕様）を追加。Partial Regeneration は M1 では「Judge の `preserve` を保つ Shot 全体の再生成」とし、時間範囲の再生成とつなぎ込みは MVP 2 と確定 | M1「Repair/Retake Loop」（Issue #10）で、Partial Regeneration の M1 での範囲（`spec/spec.md` §27 は MVP 2 に列挙）、決定的ルールと LLM の分担、Jev のシャドー記録項目が未確定だったため |
 | 1.6 | 2026-09-30 | §11.3 の Partial Regeneration に M2 の時間範囲つなぎ込み（Shot 全体の Take + 問題区間だけを差し替えた候補 Take、`repair.Splicer`）を追記 | M2「Partial Regeneration」（Issue #16）で、動画モデルが区間だけを生成できない前提での実現方法と新しい Take の扱いを確定するため |
 | 1.7 | 2026-09-30 | §10.2 の参照顔に Series 正本の `face_reference` を追加 | M2「Series / Episode Memory」（Issue #21）で、顔同一性を Episode をまたいで Series 正本の顔を基準に計測する契約を定めるため |
+| 1.8 | 2026-09-30 | §12（M1 の音声: ElevenLabs TTS とローカル DSP の実装仕様）を追加 | M1「簡易 Editor・簡易 Audio・Final QC・Export」（Issue #14）の実装に合わせるため |

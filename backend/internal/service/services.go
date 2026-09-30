@@ -6,9 +6,11 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector"
 	"github.com/ousiassllc/mam/backend/internal/agent/briefing"
 	"github.com/ousiassllc/mam/backend/internal/agent/commandinterpreter"
 	"github.com/ousiassllc/mam/backend/internal/agent/continuation"
+	"github.com/ousiassllc/mam/backend/internal/agent/editor"
 	"github.com/ousiassllc/mam/backend/internal/agent/generation"
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
 	"github.com/ousiassllc/mam/backend/internal/agent/judge"
@@ -54,6 +56,9 @@ type Deps struct {
 	Judge judge.Config
 	// Jev is the TypeSafe Jev client of the Repair Agent's shadow run. Nil: no shadow run.
 	Jev repair.Shadow
+	// Speech is the text-to-speech of the simple Audio Director (ElevenLabs). Nil: audio production is
+	// unavailable. It also needs Media.
+	Speech audiodirector.Synthesizer
 }
 
 // Services is the DI root handed to router.New. Each feature adds one field
@@ -78,6 +83,7 @@ type Services struct {
 	Series      *SeriesService
 	Takes       *TakeService
 	Branch      *BranchService
+	Editor      *EditorService
 }
 
 // Recover puts Shots left GENERATING by an abnormal termination back to PLANNING. It MUST run
@@ -195,6 +201,14 @@ func New(deps Deps) *Services {
 	branch := &BranchService{core: c, shots: gens, continues: continues}
 	director.branch = branch
 	worlds := &WorldService{core: c, world: world, versions: versions}
+	// Without a Reasoning LLM the Editor Judge runs its deterministic checks alone.
+	editors := &EditorService{
+		core: c, editors: repository.NewEditorRepository(deps.DB), shots: gens, takes: takes, chatSvc: chat, tools: deps.Media,
+		judge: editor.NewJudge(deps.LLM),
+	}
+	if deps.Media != nil && deps.Speech != nil {
+		editors.audio = audiodirector.New(deps.Speech, *deps.Media, deps.AssetsDir)
+	}
 	return &Services{
 		Health:      NewHealthService(deps.DB),
 		Credentials: NewCredentialService(deps.Credentials),
@@ -217,5 +231,6 @@ func New(deps Deps) *Services {
 		Series:    &SeriesService{core: c, series: repository.NewSeriesRepository(deps.DB)},
 		Takes:     takeService,
 		Branch:    branch,
+		Editor:    editors,
 	}
 }

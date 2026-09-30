@@ -44,10 +44,11 @@ document.addEventListener('htmx:load', (event) => {
   initShotProgress(event.target as ParentNode);
 });
 
-// Lit components (mam-timeline-editor is imported here as it is implemented).
+// Lit components.
 import './components/video-player/mam-video-player';
 import './components/take-comparator/mam-take-comparator';
 import './components/branch-tree/mam-branch-tree';
+import './components/timeline-editor/mam-timeline-editor';
 
 // mam-branch-tree: choosing a Branch loads its detail (with the link to its World State) into
 // #branch-detail; a rename (HX-Trigger: branches-changed) redraws the tree.

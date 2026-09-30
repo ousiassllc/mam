@@ -61,6 +61,8 @@ erDiagram
     BRANCH_VERSION }o--o| WORLD_STATE_VERSION : version_snapshot
 
     EDIT_TIMELINE_VERSION ||--o{ EDITOR_JUDGE_RESULT : evaluated_by
+    AUDIO_TIMELINE_VERSION ||--o{ FINAL_QC_RESULT : checked_by
+    PROJECT ||--o{ FINAL_QC_RESULT : project_final_qc
 
     PROJECT {
         string id PK
@@ -326,6 +328,8 @@ erDiagram
 erDiagram
     PROJECT ||--o{ EDIT_TIMELINE_VERSION : has
     EDIT_TIMELINE_VERSION ||--o{ EDITOR_JUDGE_RESULT : evaluated_by
+    AUDIO_TIMELINE_VERSION ||--o{ FINAL_QC_RESULT : checked_by
+    PROJECT ||--o{ FINAL_QC_RESULT : project_final_qc
     PROJECT ||--o{ AUDIO_TIMELINE_VERSION : has
     PROJECT ||--o{ EXPORT : produces
     BRANCH ||--o{ EDIT_TIMELINE_VERSION : branch_edit_timelines
@@ -353,6 +357,14 @@ erDiagram
         string branch_id FK
         int version_number
         json timeline
+        datetime created_at
+    }
+    FINAL_QC_RESULT {
+        string id PK
+        string project_id FK
+        string audio_timeline_version_id FK
+        string result
+        json findings
         datetime created_at
     }
     EXPORT {
@@ -469,6 +481,7 @@ erDiagram
 | `branch_version` | `branch_id` FK。`(branch_id, version_number)` UNIQUE、`version_number` は単調増加。Branch自体の主要変更（名称変更・World State参照更新等）を追記のみで履歴化する | `idx_branch_version_branch (branch_id, version_number)` |
 | `edit_timeline_version` / `audio_timeline_version` | `project_id` FK。`branch_id` FK（NULL許容、NULL=主系列トランク、非NULL=当該BranchのTimeline）。`(project_id, branch_id, version_number)` UNIQUE | `idx_edit_timeline_project (project_id, branch_id, version_number)` |
 | `editor_judge_result` | `edit_timeline_version_id` FK。`result` は `pass/re_edit/need_shot` | `idx_editor_judge_result_timeline (edit_timeline_version_id)` |
+| `final_qc_result` | `project_id` FK。`audio_timeline_version_id` FK（チェックした Audio Timeline の版）。`result` は `pass/fail`（CHECK制約）。`findings`（JSON 配列。`check`/`message`/`stage`（差し戻し先の Project 状態））。実行のたびに 1 行追加し履歴を残す（Final QC の M1、F-26） | `idx_final_qc_result_project (project_id, created_at)` |
 | `export` | `project_id` FK。`branch_id` FK（NULL許容、NULL=主系列トランクからの書き出し） | `idx_export_project (project_id, branch_id)` |
 | `lock` | `project_id` FK。`(project_id, target_type, target_id, parameter_name)` UNIQUE。`mode` は `auto/manual/lock`。`target_type` は `story/music/character/product/location/shot` 等、`parameter_name` は `wardrobe`/`orientation`/`lighting_state` 等の属性単位。Character/Product/LocationのLOCK判定は本テーブルに一元化し、エンティティ側に専用カラムは持たない | `idx_lock_project_target (project_id, target_type, target_id)` |
 | `cost_ledger_entry` | `project_id` FK。`shot_id`/`take_id` は NULL 許容（プロジェクト全体コストの場合）。`estimated_cost` は生成時の見積り、`actual_cost` はベンダーが報告した金額（USD、報告が無い呼び出しは NULL）。動画 Take と Reference Pack の画像で 1 呼び出し 1 行 | `idx_cost_ledger_project (project_id)` |
@@ -509,6 +522,13 @@ erDiagram
 - **マイグレーション**: `backend/internal/repository/migrations/` に goose 形式の SQL（`<UTC timestamp>_<name>.sql`、`go:embed`）として置き、起動時に自動適用する。連番ではなくタイムスタンプ版とし、並行ブランチで追加されたマイグレーションが衝突しない（`WithAllowOutofOrder`）。M1 の初期スキーマは M2 専用のテーブル・カラム（`series` / `note*` / `branch*` / `brand_constraint`、各テーブルの `branch_id`/`series_id`/`origin_id`、`project.episode_number` 等）を含めず、M2 の各 Issue が自身のマイグレーションで追加する。そのため M1 時点の `character`/`product`/`location` は `project_id` NOT NULL、`scene` は `(project_id, order_index)` UNIQUE とし、M2 で §3 の制約へ拡張する（SQLite の制約変更はテーブル再作成で行う）
 - **書き込みの直列化**: 書き込みは `repository.DB.Write`（単一ゴルーチン・単一コネクション）だけを通し、読み取りは query-only の別プールで行う（WAL により読み取りは書き込みをブロックしない）。日時は UTC の ISO-8601 文字列（`YYYY-MM-DDTHH:MM:SS.mmmZ`）で保存する
 
+### 4.x 編集・音声・書き出しの保持形式（M1）
+
+- `edit_timeline_version.timeline`: `{"clips":[{"shot_id","take_id","source_seconds"?,"in_point","out_point","transition":{"type":"cut|fade|fade_black|dissolve","seconds"}}]}`。クリップの並びが再生順。`in_point`/`out_point` は Take 内の秒で、区間は 0.5 秒以上。先頭クリップの `transition` は常に `cut`。`transition` は前のクリップとの重なり（前後の短いほうの半分が上限）を作る。総尺 = 各クリップの長さの合計 − 重なりの合計
+- `audio_timeline_version.timeline`: `{"edit_timeline_id","clips":[{"path","start_seconds","duration_seconds",...}],"speech_expected","mix_path","duration_seconds","target_lufs","measured_lufs","true_peak_db"}`。`edit_timeline_id` は音声を作った Edit Timeline の版で、Final QC が最新の編集と一致するかを判定するのに使う。`mix_path` はアセットディレクトリからの相対パス
+- 保存は追記のみ（`version_number` は Project 内の最大値 + 1）。Edit Timeline の保存は、呼び出し側が表示していた版が最新のときだけ成功する（別の版が保存済みなら拒否）
+- `export.file_path` はアセットディレクトリからの相対パス（`<project_id>/exports/<export_id>.mp4|webm`）
+
 ## 改訂履歴
 
 | 版 | 日付 | 変更内容 | 変更理由 |
@@ -545,3 +565,4 @@ erDiagram
 | 1.29 | 2026-09-30 | `series` に `style`/`style_reference_asset_id`（Style の正本）を追加。`series_version`（正本の追記専用の履歴）と `project.inherited_series_version_id` を追加。`character`/`product`/`location` の `project_id` を NULL 許容にして `series_id`/`origin_id` を追加（どちらか一方のみ非NULL）。設計メモに正本の項目・Episode の継承・顔同一性の基準を追記。マイグレーションは `20260930020000_series.sql` | M2「Series / Episode Memory」（Issue #21）で、正本の更新履歴のバージョン化と Style の保持方法が `er.md` に未定義だったため |
 | 1.30 | 2026-09-30 | `branch`・`branch_version` テーブルを実装（Issue #20。Branch 機能本体は別 Issue #18。#18 の `20260930030000_branch.sql` に統合し、Issue #20 の `20260930100000_versioning.sql` は削除した）。`world_state_version.branch_id` と `UNIQUE (project_id, branch_id, version_number)`＋トランク用部分ユニークインデックスを実装。`take.model_parameters` に `world_state_version`/`references` を記録。設計メモに Traceability・追記のみの復元・プロジェクトバンドルを追記 | F-27/F-28 と `spec/requirements/non-functional.md` §8 の実装に、Branch 系の復元対象テーブルと、Take ごとの World State version・References の記録先が必要だったため |
 | 1.31 | 2026-09-30 | `branch` / `branch_version` を追加（マイグレーション `20260930030000_branch.sql`）。`scene` / `world_state_version` / `edit_timeline_version` / `audio_timeline_version` は UNIQUE を `(project_id, COALESCE(branch_id, ''), …)` として作り直し、`character` / `product` / `location` / `export` に `branch_id` を追加。Branch の親は `branch_point_shot_id` の所属 Scene の `branch_id` から導出し、列は持たない。Branch 作成時、分岐点の World State（`scene` は直前の Shot、`shot` / `frame` は当該 Shot の `state_diff` が指す版）を Branch 独自の版 v1 と実体の行としてコピーする | M2「Branch（別展開の並行生成）」（Issue #18）の実装 |
+| 1.32 | 2026-09-30 | `final_qc_result` テーブルを追加。設計メモに `edit_timeline_version.timeline` / `audio_timeline_version.timeline` の JSON 構造と保存の規則（追記のみ・古い版からの保存は拒否）を追記 | M1「簡易 Editor・簡易 Audio・Final QC・Export」（Issue #14）の Final QC 結果を履歴として保持するため |
