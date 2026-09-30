@@ -9,7 +9,8 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 // ToastOOB appends a toast to #toast-region (out-of-band swap). Business errors
-// (403/409/423, ...) are shown this way instead of replacing the target.
+// (403/409/423, ...) are shown this way instead of replacing the target. A toast stays until its
+// close button is pressed (static/src/components/lib/toast.ts handles the click).
 func ToastOOB(message string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -31,20 +32,20 @@ func ToastOOB(message string) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div id=\"toast-region\" hx-swap-oob=\"beforeend\"><div class=\"pointer-events-auto rounded-md border border-red-500/50 bg-neutral-900 px-4 py-2 text-sm text-red-200 shadow-lg\" role=\"alert\" data-toast>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div id=\"toast-region\" hx-swap-oob=\"beforeend\"><div class=\"pointer-events-auto flex items-start gap-3 rounded-md border border-red-500/50 bg-neutral-900 px-4 py-2 text-sm text-red-200 shadow-lg\" role=\"alert\" data-toast><span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(message)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/atoms/toast.templ`, Line: 7, Col: 160}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/atoms/toast.templ`, Line: 9, Col: 18}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "</div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "</span> <button type=\"button\" class=\"ml-auto leading-none hover:text-red-100\" aria-label=\"閉じる\" data-toast-close>×</button></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

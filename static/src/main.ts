@@ -2,7 +2,9 @@ import htmx from 'htmx.org';
 import { initChatWorkspaces } from './chat';
 import { initShotProgress } from './shot';
 import { CSRF_HEADER, csrfToken } from './components/lib/api';
+import { lockDownHtmx } from './components/lib/htmx-config';
 import { swapsErrorResponse } from './components/lib/thread';
+import { dismissToastsOnClick } from './components/lib/toast';
 
 // Attach the CSRF token (from <meta name="csrf-token">) to every HTMX request.
 document.addEventListener('htmx:configRequest', (event) => {
@@ -20,19 +22,10 @@ document.addEventListener('htmx:beforeSwap', (event) => {
   }
 });
 
-// The front end is served by the app itself: never let htmx call external hosts.
-htmx.config.selfRequestsOnly = true;
+lockDownHtmx(htmx.config);
 
-// Toasts disappear by themselves.
-new MutationObserver((records) => {
-  for (const record of records) {
-    for (const node of record.addedNodes) {
-      if (node instanceof HTMLElement && node.hasAttribute('data-toast')) {
-        setTimeout(() => node.remove(), 6000);
-      }
-    }
-  }
-}).observe(document.documentElement, { childList: true, subtree: true });
+// Error toasts stay until their close button is pressed.
+dismissToastsOnClick();
 
 // The Chat Workspace can arrive as a full page or as an HTMX fragment.
 document.addEventListener('DOMContentLoaded', () => {
