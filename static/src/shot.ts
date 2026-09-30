@@ -5,7 +5,9 @@
  */
 import htmx from 'htmx.org';
 import { connect, socketUrl, type Connection } from './components/lib/ws';
-import { isFinished, type ShotProgress } from './components/lib/shot';
+import { createRefreshGuard, isFinished, type ShotProgress } from './components/lib/shot';
+
+const mayRefresh = createRefreshGuard();
 
 export function initShotProgress(root: ParentNode = document): void {
   for (const el of root.querySelectorAll<HTMLElement>('[data-shot-progress]:not([data-shot-ready])')) {
@@ -30,7 +32,7 @@ function watch(el: HTMLElement): void {
       }
       if (isFinished(progress)) {
         connection?.close();
-        if (refreshUrl) void htmx.ajax('get', refreshUrl, { target: '#scene-shot-view', swap: 'outerHTML' });
+        if (refreshUrl && mayRefresh(refreshUrl)) void htmx.ajax('get', refreshUrl, { target: '#scene-shot-view', swap: 'outerHTML' });
       }
     },
   });

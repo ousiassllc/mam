@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { describeProgress, isFinished, progressFraction } from './shot';
+import { createRefreshGuard, describeProgress, isFinished, progressFraction } from './shot';
 
 describe('isFinished', () => {
   it('is true once the work is over or nothing is running', () => {
@@ -31,5 +31,18 @@ describe('progressFraction', () => {
     expect(progressFraction({ stage: 'done' })).toBe(1);
     expect(progressFraction({ stage: 'queued' })).toBeNull();
     expect(progressFraction(null)).toBeNull();
+  });
+});
+
+describe('createRefreshGuard', () => {
+  it('lets a card URL refresh once per window so an idle/re-render cycle cannot loop', () => {
+    let t = 1000;
+    const mayRefresh = createRefreshGuard(3000, () => t);
+    expect(mayRefresh('/shots/a')).toBe(true);
+    t += 100;
+    expect(mayRefresh('/shots/a')).toBe(false);
+    expect(mayRefresh('/shots/b')).toBe(true);
+    t += 3000;
+    expect(mayRefresh('/shots/a')).toBe(true);
   });
 });

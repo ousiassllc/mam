@@ -15,6 +15,22 @@ export function isFinished(progress: Pick<ShotProgress, 'stage'>): boolean {
   return progress.stage === 'done' || progress.stage === 'failed' || progress.stage === 'idle';
 }
 
+/**
+ * Guard against refresh loops: the same card URL is refreshed at most once per windowMs. A card
+ * that keeps being re-rendered in a progress state while the server says "idle" would otherwise
+ * reconnect and refetch without end.
+ */
+export function createRefreshGuard(windowMs = 3000, now: () => number = Date.now): (url: string) => boolean {
+  const last = new Map<string, number>();
+  return (url) => {
+    const t = now();
+    const prev = last.get(url);
+    if (prev !== undefined && t - prev < windowMs) return false;
+    last.set(url, t);
+    return true;
+  };
+}
+
 /** What the placeholder of a Shot that has no video (yet) says about its progress. */
 export function describeProgress(progress: Pick<ShotProgress, 'stage' | 'action' | 'message' | 'takes_done' | 'takes_total'> | null): string {
   if (!progress || progress.stage === 'idle') return '動画はまだありません';
