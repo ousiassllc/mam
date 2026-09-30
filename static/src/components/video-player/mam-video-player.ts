@@ -14,7 +14,7 @@ import {
   type JudgeIssue,
   type TimeRange,
 } from '../lib/video';
-import { connect, socketUrl, type Connection } from '../lib/ws';
+import { CONNECTION_LOST_MESSAGE, connect, socketUrl, type Connection } from '../lib/ws';
 
 const log = createLogger('video-player');
 
@@ -68,6 +68,7 @@ export class MamVideoPlayer extends LitElement {
   @state() private playing = false;
   @state() private progress: ShotProgress | null = null;
   @state() private failed = false;
+  @state() private connectionLost = false;
 
   private connection: Connection | null = null;
   private loadToken = 0;
@@ -141,9 +142,16 @@ export class MamVideoPlayer extends LitElement {
     this.connection?.close();
     this.connection = null;
     this.progress = null;
+    this.connectionLost = false;
     if (!this.wsUrl) return;
     this.connection = connect<ShotProgress>({
       url: socketUrl(this.wsUrl, location),
+      onOpen: () => {
+        this.connectionLost = false;
+      },
+      onGiveUp: () => {
+        this.connectionLost = true;
+      },
       onMessage: (progress) => {
         this.progress = progress;
         if (isFinished(progress)) {
@@ -259,6 +267,19 @@ export class MamVideoPlayer extends LitElement {
   }
 
   protected override render() {
+    return html`${this.renderBody()}${this.connectionLost ? this.renderConnectionLost() : nothing}`;
+  }
+
+  private renderConnectionLost() {
+    return html`<p class="mt-1 flex items-center gap-2 text-xs text-amber-200" role="alert" data-connection-lost>
+      <span>${CONNECTION_LOST_MESSAGE}生成の進捗が自動で更新されなくなりました。</span>
+      <button type="button" class="rounded border border-amber-500/50 px-2 py-0.5 hover:bg-neutral-800" data-action="reconnect" @click=${() => this.connection?.retry()}>
+        再接続
+      </button>
+    </p>`;
+  }
+
+  private renderBody() {
     const stage = this.progress?.stage;
     const generating = stage === 'queued' || stage === 'generating' || stage === 'repairing';
     if (!this.videoSrc || generating) return this.renderPlaceholder();

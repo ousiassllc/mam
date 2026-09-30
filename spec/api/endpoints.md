@@ -370,7 +370,7 @@ Notes:
 | `/ws/shots/:id` | 生成中Shotの進捗（キュー待ち/生成中/Judge中/完了/失敗）をプッシュ通知。メッセージは JSON `{"shot_id","action"?:"generate\|reference_pack\|judge\|repair","stage":"idle\|queued\|generating\|judging\|repairing\|done\|failed","message"?,"takes_done"?,"takes_total"?}`。接続直後に生成中でなければ `stage=idle` を 1 通送る。同一オリジンの接続のみ受理し、存在しない Shot は 404。Judge 中は `action=judge` で `stage=queued\|judging\|done\|failed`（`stage` に `judging` を追加）。Repair 中は `action=repair` で `stage=queued\|repairing\|done\|failed`（`stage` に `repairing` を追加。Retry Policy の上限で止めたときは `done` とその理由の `message`） |
 | `/ws/projects/:id` | チャットの通知のみを配信する（Core State Machine 遷移・コスト更新・Editor→Reshoot ループの発火のための専用イベントは配信しない。これらの変化はチャットに投稿されたメッセージ・カードとして `message.created` / `card.updated` で届くか、画面が HTTP で取得する。コストは Cost Summary パネルが 15 秒間隔の HTMX ポーリングで更新する）。通知は本文を含まない JSON `{"type":"message.created","message_id":"<最新メッセージID>"}`（新着あり。クライアントは `GET /projects/:id/messages?after=` で取得）と `{"type":"card.updated","message_id":"<カードID>"}`（進捗カード等の更新。`GET /projects/:id/messages/:messageId` で取得）。同一オリジンの接続のみ受理する |
 
-`lib/ws.ts` 経由で接続し、自動再接続（指数バックオフ、最大10回）を行う。チャット画面は再接続後、新着メッセージに加えて、まだ変わりうるカード（未回答の承認・質問・エスカレーション、未完了ジョブの進行カード。サーバーが `data-card-pending` を付ける）を `GET /projects/:id/messages/:messageId` で取り直す（切断中の `card.updated` の取りこぼしを補う）（`spec/architecture/overview.md` 参照元 HALT 標準パターン）。
+`lib/ws.ts` 経由で接続し、自動再接続（指数バックオフ、最大10回）を行う。接続してから 1 秒以内に閉じた接続は失敗として数える（開いてすぐ閉じるサーバーを 500ms 間隔で繰り返さず、10回で断念する）。断念した後、および再接続待ちの間は、ブラウザの `online`・`visibilitychange`（表示）または画面の「再接続」で直ちに再試行する。断念するとチャット・生成進捗（Shot カード・`mam-video-player`）は「接続が切れました」の通知（「再接続」「再読み込み」ボタン付き）を表示する。チャット画面は再接続後、新着メッセージに加えて、まだ変わりうるカード（未回答の承認・質問・エスカレーション、未完了ジョブの進行カード。サーバーが `data-card-pending` を付ける）を `GET /projects/:id/messages/:messageId` で取り直す（切断中の `card.updated` の取りこぼしを補う）（`spec/architecture/overview.md` 参照元 HALT 標準パターン）。
 
 ## 改訂履歴
 
@@ -423,3 +423,4 @@ Notes:
 | 1.44 | 2026-10-01 | `POST /projects/import` の展開を、`data.json` が参照するファイルだけ・合計 32 GB と空き容量の範囲内・一時ディレクトリ経由に限定することを追記 | 参照されない大きなエントリでディスクを埋められたこと、並行インポートが先行 Project のファイルを消すことを防ぐため（Issue #51、#52） |
 | 1.45 | 2026-10-01 | チャット画面の再接続後の補完に、`data-card-pending` が付いたカードの再取得を追記 | 切断中の `card.updated` を取りこぼすと承認・進行カードが古いままになるため（Issue #75） |
 | 1.46 | 2026-10-01 | `PUT`・`DELETE /credentials/:provider` を追加し、設定画面の `credential_panel`（API キーの設定済み/未設定表示・保存・削除）を仕様化 | 仕様（設定画面の API キー設定）に実装が無かった（#90） |
+| 1.47 | 2026-10-01 | WebSocket の再接続仕様に、開いてすぐ閉じる接続を失敗として数えること、断念時の通知と再試行手段（再接続ボタン・`online`・`visibilitychange`）を追記 | 断念しても利用者に知らされず更新が止まること、即閉じるサーバーへ永久に再接続することを防ぐため（Issue #76） |
