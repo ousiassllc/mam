@@ -130,6 +130,45 @@ func TestNotes_PromotionCardIsNonBlockingAndApprovingWritesTheWorldState(t *test
 	assert.ErrorIs(t, err, service.ErrConflict, "a card is answered once")
 }
 
+func TestNotes_AllLockedFieldsStillPostACardThatWritesNothing(t *testing.T) {
+	f := newGenFixture(t, true)
+	f.llm.extractor = promotionAnswer("hairstyle", "personality")
+	f.buildReferencePack(t)
+	c := f.character(t)
+	for _, field := range []string{"hairstyle", "personality"} {
+		_, err := f.svc.World.SetFieldLock(context.Background(), f.projectID, "", domain.TargetCharacter, c.ID, field, domain.LockLocked)
+		require.NoError(t, err)
+	}
+	worldVersions := f.count(t, `SELECT COUNT(*) FROM world_state_version WHERE branch_id IS NULL`)
+
+	_, err := f.svc.Notes.CreateProjectNote(context.Background(), f.projectID, service.NoteInput{Title: "Mio", Content: "黒髪ロングで落ち着いた性格"})
+	require.NoError(t, err)
+	card := f.waitPromotionCard(t)
+	assert.Equal(t, domain.KindApproval, card.Kind)
+	assert.Equal(t, domain.ApprovalPending, card.ApprovalStatus)
+	assert.Contains(t, card.Content, "LOCK 中のため未反映")
+	assert.Contains(t, card.Content, "hairstyle")
+	assert.Contains(t, card.Content, "personality")
+	assert.Equal(t, c, f.character(t))
+
+	_, _, err = f.svc.Chat.RespondApproval(context.Background(), f.projectID, card.ID, service.DecisionApprove, "")
+	require.NoError(t, err)
+	assert.Equal(t, c, f.character(t), "approving a card of only LOCKed fields writes nothing")
+	assert.Equal(t, worldVersions, f.count(t, `SELECT COUNT(*) FROM world_state_version WHERE branch_id IS NULL`))
+}
+
+func TestNotes_AVersionWithNothingStructurablePostsNoCard(t *testing.T) {
+	f := newGenFixture(t, true)
+	f.llm.extractor = func(string) string { return `{"changes":[]}` }
+	f.buildReferencePack(t)
+
+	_, err := f.svc.Notes.CreateProjectNote(context.Background(), f.projectID, service.NoteInput{Title: "経緯", Content: "過去の火事の話は序盤では出さない"})
+	require.NoError(t, err)
+	time.Sleep(50 * time.Millisecond)
+	assert.Empty(t, f.promotionCards(t))
+	assert.Zero(t, f.count(t, `SELECT COUNT(*) FROM note_promotion`))
+}
+
 func TestNotes_LockedFieldsAreLeftOutOfTheProposalAndOfTheApproval(t *testing.T) {
 	f := newGenFixture(t, true)
 	f.llm.extractor = promotionAnswer("hairstyle", "personality")
