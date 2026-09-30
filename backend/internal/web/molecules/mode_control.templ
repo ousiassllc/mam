@@ -1,6 +1,9 @@
 package molecules
 
-import "github.com/ousiassllc/mam/backend/internal/domain"
+import (
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+)
 
 // ModeControl switches AUTO ⇄ DIRECTOR at any time (F-02). The choice is saved at once and the
 // state is kept: in DIRECTOR the AI only changes what the user directs and waits; back in AUTO
@@ -18,11 +21,21 @@ templ ModeControl(p domain.Project) {
 			<legend class="sr-only">MODE</legend>
 			<span>MODE</span>
 			<label class="flex items-center gap-1">
-				<input type="radio" name="mode" value="auto" checked?={ p.Mode == domain.ModeAuto }/>
+				@atoms.Choice("", templ.Attributes{
+					"type":    "radio",
+					"name":    "mode",
+					"value":   "auto",
+					"checked": p.Mode == domain.ModeAuto,
+				})
 				AUTO
 			</label>
 			<label class="flex items-center gap-1">
-				<input type="radio" name="mode" value="director" checked?={ p.Mode == domain.ModeDirector }/>
+				@atoms.Choice("", templ.Attributes{
+					"type":    "radio",
+					"name":    "mode",
+					"value":   "director",
+					"checked": p.Mode == domain.ModeDirector,
+				})
 				DIRECTOR
 			</label>
 		</fieldset>

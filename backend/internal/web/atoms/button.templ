@@ -10,8 +10,13 @@ const (
 	ToneDanger  ButtonTone = "danger"
 )
 
-func buttonClass(tone ButtonTone) string {
-	base := "inline-flex items-center justify-center rounded-md px-3 py-1.5 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50 "
+func buttonClass(tone ButtonTone, small bool) string {
+	base := "inline-flex items-center justify-center rounded-md font-medium transition disabled:cursor-not-allowed disabled:opacity-50 "
+	if small {
+		base += "px-2 py-1 text-xs "
+	} else {
+		base += "px-3 py-1.5 text-sm "
+	}
 	switch tone {
 	case TonePrimary:
 		return base + "bg-indigo-500 text-white hover:bg-indigo-400"
@@ -23,5 +28,21 @@ func buttonClass(tone ButtonTone) string {
 
 // Button is a button element. attrs carry the HTMX attributes, type, name and value.
 templ Button(tone ButtonTone, label string, attrs templ.Attributes) {
-	<button class={ buttonClass(tone) } { attrs... }>{ label }</button>
+	<button class={ buttonClass(tone, false) } { attrs... }>{ label }</button>
+}
+
+// SmallButton is the compact Button for actions inside a list row or card.
+templ SmallButton(tone ButtonTone, label string, attrs templ.Attributes) {
+	<button class={ buttonClass(tone, true) } { attrs... }>{ label }</button>
+}
+
+// LinkButton is a text-only button rendered like a link (for example "返信", "除外").
+templ LinkButton(label string, attrs templ.Attributes) {
+	<button class="text-xs text-neutral-400 underline hover:text-neutral-200" { attrs... }>{ label }</button>
+}
+
+// IconButton is a bare glyph button (for example the × that cancels a reply); label goes in
+// attrs as aria-label because the glyph is not a name.
+templ IconButton(glyph string, attrs templ.Attributes) {
+	<button class="text-neutral-400 hover:text-neutral-100" { attrs... }>{ glyph }</button>
 }

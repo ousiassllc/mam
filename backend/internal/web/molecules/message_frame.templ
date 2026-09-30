@@ -1,6 +1,9 @@
 package molecules
 
-import "github.com/ousiassllc/mam/backend/internal/domain"
+import (
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+)
 
 // MessageFrame is the common shell of every thread entry. The element id
 // (msg-<id>) lets the client replace a card in place and skip messages it already shows.
@@ -49,5 +52,5 @@ templ AttachmentStrip(projectID string, assets []domain.Asset) {
 
 // ReplyButton lets the user reply to a card so the instruction targets it (spec/spec.md §23.2).
 templ ReplyButton(m domain.ThreadMessage) {
-	<button class="text-xs text-neutral-400 underline hover:text-neutral-200" { replyAttrs(m)... }>返信</button>
+	@atoms.LinkButton("返信", replyAttrs(m))
 }

@@ -79,15 +79,24 @@ templ ReviewList(d ReviewListData) {
 				<form class="flex flex-col gap-2" hx-post={ "/projects/" + d.ProjectID + "/reviews" } hx-target="#review-list" hx-swap="outerHTML">
 					<label class="flex flex-col gap-1 text-xs text-neutral-400" for="review-export">
 						書き出し
-						<select id="review-export" name="export_id" required class="rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm text-neutral-100">
+						@atoms.Select(atoms.FieldMd, "", templ.Attributes{
+							"id":       "review-export",
+							"name":     "export_id",
+							"required": true,
+						}) {
 							for _, e := range d.Exports {
 								<option value={ e.ID }>{ exportLabel(e) }</option>
 							}
-						</select>
+						}
 					</label>
 					<label class="flex flex-col gap-1 text-xs text-neutral-400" for="review-note">
 						レビュアーへのメモ（任意、1000 文字まで）
-						<textarea id="review-note" name="note" rows="3" maxlength="1000" class="rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm text-neutral-100"></textarea>
+						@atoms.Textarea(atoms.FieldMd, "", templ.Attributes{
+							"id":        "review-note",
+							"name":      "note",
+							"rows":      "3",
+							"maxlength": "1000",
+						}, "")
 					</label>
 					<div>
 						@atoms.Button(atoms.TonePrimary, "レビュー依頼を作る", templ.Attributes{"type": "submit"})

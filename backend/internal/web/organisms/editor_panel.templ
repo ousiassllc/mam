@@ -243,7 +243,12 @@ templ EditorActions(d EditorPanelData) {
 			>
 				<label class="flex flex-col gap-1 text-xs text-neutral-400">
 					話者名（脚本の「話者: セリフ」の話者）
-					<input type="text" name="speaker" required maxlength="20" class="rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm text-neutral-100"/>
+					@atoms.Input(atoms.FieldMd, "", templ.Attributes{
+						"type":      "text",
+						"name":      "speaker",
+						"required":  true,
+						"maxlength": "20",
+					})
 				</label>
 				<label class="flex flex-col gap-1 text-xs text-neutral-400">
 					声のサンプル（10 MB 以下。数十秒の録音）
@@ -289,27 +294,33 @@ templ EditorActions(d EditorPanelData) {
 			>
 				<label class="flex flex-col gap-1 text-xs text-neutral-400">
 					Aspect Ratio
-					<select name="aspect_ratio" class="rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm text-neutral-100">
+					@atoms.Select(atoms.FieldMd, "", templ.Attributes{
+						"name": "aspect_ratio",
+					}) {
 						for _, o := range aspectOptions() {
 							<option value={ o } selected?={ o == d.Defaults.AspectRatio }>{ o }</option>
 						}
-					</select>
+					}
 				</label>
 				<label class="flex flex-col gap-1 text-xs text-neutral-400">
 					解像度
-					<select name="resolution" class="rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm text-neutral-100">
+					@atoms.Select(atoms.FieldMd, "", templ.Attributes{
+						"name": "resolution",
+					}) {
 						for _, o := range resolutionOptions() {
 							<option value={ o } selected?={ o == d.Defaults.Resolution }>{ o }</option>
 						}
-					</select>
+					}
 				</label>
 				<label class="flex flex-col gap-1 text-xs text-neutral-400">
 					コーデック
-					<select name="codec" class="rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm text-neutral-100">
+					@atoms.Select(atoms.FieldMd, "", templ.Attributes{
+						"name": "codec",
+					}) {
 						for _, o := range codecOptions() {
 							<option value={ o } selected?={ o == d.Defaults.Codec }>{ o }</option>
 						}
-					</select>
+					}
 				</label>
 				@atoms.Button(atoms.TonePrimary, "書き出す", templ.Attributes{"type": "submit", "disabled": !d.CanExport()})
 			</form>

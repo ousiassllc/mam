@@ -22,7 +22,12 @@ templ ApprovalCard(m domain.ThreadMessage) {
 				hx-target={ "#msg-" + m.ID }
 				hx-swap="outerHTML"
 			>
-				<input type="text" name="comment" maxlength="500" placeholder="コメント（任意）" class="min-w-0 flex-1 rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm"/>
+				@atoms.Input(atoms.FieldMd, "min-w-0 flex-1", templ.Attributes{
+					"type":        "text",
+					"name":        "comment",
+					"maxlength":   "500",
+					"placeholder": "コメント（任意）",
+				})
 				@atoms.Button(atoms.TonePrimary, "承認", submitAttrs("approve"))
 				@atoms.Button(atoms.ToneNeutral, "修正を依頼", submitAttrs("request_changes"))
 			</form>

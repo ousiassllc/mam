@@ -74,14 +74,13 @@ templ ShotActions(shotID string) {
 		hx-swap="outerHTML"
 	>
 		<label class="sr-only" for={ "instruction-" + shotID }>追加の指示</label>
-		<input
-			id={ "instruction-" + shotID }
-			name="additional_instruction"
-			type="text"
-			maxlength="1000"
-			placeholder="追加の指示（任意。例: もう少しカメラを寄せて）"
-			class="min-w-0 flex-1 rounded-md border border-neutral-700 bg-neutral-950 px-2 py-1.5 text-sm"
-		/>
+		@atoms.Input(atoms.FieldMd, "min-w-0 flex-1", templ.Attributes{
+			"id":          "instruction-" + shotID,
+			"name":        "additional_instruction",
+			"type":        "text",
+			"maxlength":   "1000",
+			"placeholder": "追加の指示（任意。例: もう少しカメラを寄せて）",
+		})
 		@atoms.Button(atoms.TonePrimary, "生成", templ.Attributes{"type": "submit"})
 		@atoms.Button(atoms.ToneNeutral, "Reference Pack", templ.Attributes{
 			"type":      "button",
@@ -105,22 +104,20 @@ templ TakeRow(t domain.Take) {
 		<span class="flex shrink-0 items-center gap-2">
 			if t.Status != domain.TakeRejected && t.FilePath != "" {
 				if t.Status != domain.TakeSelected {
-					<button
-						type="button"
-						class="underline hover:text-neutral-100"
-						hx-post={ takeActionURL(t.ID, "select") }
-						hx-target={ "#shot-" + t.ShotID }
-						hx-swap="outerHTML"
-					>選択</button>
+					@atoms.LinkButton("選択", templ.Attributes{
+						"type":      "button",
+						"hx-post":   takeActionURL(t.ID, "select"),
+						"hx-target": "#shot-" + t.ShotID,
+						"hx-swap":   "outerHTML",
+					})
 				}
-				<button
-					type="button"
-					class="underline hover:text-neutral-100"
-					hx-delete={ "/takes/" + t.ID }
-					hx-target={ "#shot-" + t.ShotID }
-					hx-swap="outerHTML"
-					hx-confirm="この Take を除外しますか？"
-				>除外</button>
+				@atoms.LinkButton("除外", templ.Attributes{
+					"type":       "button",
+					"hx-delete":  "/takes/" + t.ID,
+					"hx-target":  "#shot-" + t.ShotID,
+					"hx-swap":    "outerHTML",
+					"hx-confirm": "この Take を除外しますか？",
+				})
 			}
 			{{ tone, label := takeStatusLabel(t.Status) }}
 			@atoms.Badge(tone, label)
