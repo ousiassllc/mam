@@ -12,8 +12,15 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 )
 
-// isHTMX reports whether the request comes from HTMX (page routes branch on it).
-func isHTMX(c *gin.Context) bool { return c.GetHeader("HX-Request") == "true" }
+// isHTMX reports whether a page route should answer with the fragment only. A history
+// restore (back/forward after htmx's cache missed) is an HX-Request too, but htmx swaps
+// the whole <body> with the response, so it needs the full page. The answer depends on
+// these request headers, so they are declared in Vary to keep caches from mixing the two.
+func isHTMX(c *gin.Context) bool {
+	h := c.Writer.Header()
+	h.Add("Vary", "HX-Request, HX-History-Restore-Request")
+	return c.GetHeader("HX-Request") == "true" && c.GetHeader("HX-History-Restore-Request") != "true"
+}
 
 // statusOf maps a service error to an HTTP status and the message shown to the user.
 // Unexpected errors are attached to the context (logged by the logging middleware)
