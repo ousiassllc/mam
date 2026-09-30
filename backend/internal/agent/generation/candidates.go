@@ -212,7 +212,7 @@ func (r *candidateRun) take(ctx context.Context, s Strategy, strategy domain.Can
 	if err != nil {
 		return judged{}, err
 	}
-	takeID, err := o.makeTake(ctx, r.ref, pv, s, job, fmt.Sprintf("Shot %d · Take %d", r.ref.Shot.OrderIndex+1, number), r.sc.policy.Effective().MaxGenerationTime, strategy)
+	takeID, err := o.makeTake(ctx, r.ref, pv, s, job, domain.TakeLineage{WorldStateVersion: r.sc.world.Version, References: r.sc.references}, fmt.Sprintf("Shot %d · Take %d", r.ref.Shot.OrderIndex+1, number), r.sc.policy.Effective().MaxGenerationTime, strategy)
 	if err != nil {
 		return judged{}, err
 	}

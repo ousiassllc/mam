@@ -69,6 +69,10 @@ type WorldCharacter struct {
 	CurrentAction        string `json:"current_action,omitempty"`
 	FaceReferenceAssetID string `json:"face_reference,omitempty"`
 	BodyReferenceAssetID string `json:"body_reference,omitempty"`
+	// SeriesFaceReferenceAssetID is the face_reference of the Series canon row this Character was
+	// copied from ("" outside a Series). The Face Identity Similarity is measured against it, so
+	// the face stays the same across Episodes (F-29). It is not part of the World State snapshot.
+	SeriesFaceReferenceAssetID string `json:"-"`
 }
 
 // WorldProduct is a row of product.

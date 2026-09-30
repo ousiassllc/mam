@@ -32,6 +32,9 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 | GET | `/projects/:id/scenes` | Scene / Shot / Take 階層（先頭 Scene を選択。Scene がなければ追加フォームのみ）。補助ビュー | フルページ / 階層フラグメント |
 | GET | `/projects/:id/scenes/:sceneId` | Scene詳細（Shot一覧、各 Shot の絵コンテと Take）。クエリ `shot` で 1 つの Shot を選択。他 Project の Scene は 404 | フルページ / 階層フラグメント |
 | GET | `/shots/:id` | Shot Inspector（Objective/Duration/Character/Acting/Camera/Lighting/Product/Continuity/References/Prompt/Model/Take List/Judge Results/Locks） | フルページ / Inspectorフラグメント |
+| GET | `/takes/:id/trace` | Take の Generation Trace（F-27）: Prompt version・Source Shot Spec（Prompt version のスナップショット）・World State version・Model・Model parameters・References・Output（動画へのリンク。アーカイブ済みなら「アーカイブ済み」）・Judge results（新しい順）・Repair history（この Take への Repair と、この Take を作った Repair）。Shot Inspector の Take 一覧の「生成の経緯」から `hx-get` で読み込む。存在しない Take は 404 | フラグメントのみ（`take_trace_panel`） |
+| GET | `/branches/:id/versions` | Branch のバージョン履歴（`version_history_panel` を 2 つ: Branch 自体の `branch_version` と、当該 Branch 独自の World State バージョン系列。復元ボタン付き）。存在しない Branch は 404 | フラグメントのみ |
+| GET | `/projects/:id/bundle` | プロジェクトバンドルのエクスポート（`spec/requirements/non-functional.md` §8）。ZIP（`Content-Disposition: attachment`）: `manifest.json`（`format=mam-project-bundle`・`version`・`project_id`・`exported_at`）、`data.json`（Project の全テーブルの行。`job` は実行時状態のため含めない。Series 所属の Episode は Series から切り離して出力し、`series_id` などの Series 由来の参照を空にする）、`assets/<asset 相対パス>`（Asset・Take・Export のファイル。既にアーカイブされて無いファイルは含めず、行だけ残る）。存在しない Project は 404 | ファイル |
 | GET | `/shots/:id/takes` | Take比較ページ（`mam-take-comparator` を埋め込み） | フルページ（Lit埋め込みのため常にフルページ） |
 | GET | `/projects/:id/edit` | AI Editor / Rough Cut編集ページ（`mam-timeline-editor` を埋め込み） | フルページ |
 | GET | `/projects/:id/branches` | Branch ツリーページ（`mam-branch-tree` を埋め込み） | フルページ |
@@ -40,6 +43,7 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 | GET | `/projects/:id/world-state` | World State 一覧（Character/Product/Location/Camera/Story の現在値表示） | フルページ / フラグメント |
 | GET | `/projects/:id/references` | Reference Library（補助ビュー、M2。登録済みの参照画像の検索・アップロード・Shot への追加・削除）。クエリ `q`・`kind`・`tag` で絞り込む | フルページ / フラグメント |
 | GET | `/projects/:id/notes` | Notes 一覧・編集（補助ビュー、M2。ピン留め・カテゴリ・アーカイブの表示、`version_history_panel` でバージョン復元） | フルページ / フラグメント |
+| GET | `/series/:id` | Series（M2。正本の Style・Character・Product・Location、Episode 一覧と次の Episode 作成、正本の更新履歴。Character の編集と Style の保存フォームを持つ） | フルページ / フラグメント |
 | GET | `/series/:id/notes` | Series 正本 Notes の一覧・編集（M2） | フルページ / フラグメント |
 
 ## 2. アクションルート（Gin, フラグメントのみ）
@@ -48,6 +52,7 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 
 | Method | Path | 概要 | 対応機能 |
 |---|---|---|---|
+| POST | `/projects/import` | プロジェクトバンドルのインポート（`multipart/form-data`、フィールド `bundle`＝`GET /projects/:id/bundle` の ZIP。`spec/requirements/non-functional.md` §8）。バンドルの Project を ID・ファイルパスのまま新規に作る（1 トランザクション。失敗時は行もファイルも残さない）。成功は 201 と `HX-Redirect: /projects/:id`。ファイルがない・ZIP でない・`manifest.json`/`data.json` が読めない・`format`/`version` が違う・未知のテーブル/カラム・他 Project の行・外部キーが壊れている・Project ディレクトリ外を指すパスは 422（インポートフォームをエラー付きで再描画）。同じ ID の Project が既にあれば 409（既存を変更しない）。取り込んだ Project に実行中のジョブは無いので、生成中だった Shot は PLANNING に戻す | non-functional.md §8 |
 | POST | `/projects` | 新規プロジェクト作成。Body（`multipart/form-data`）に最初の発言（`content`）と添付（`attachments`、画像 jpg/png/webp/gif ≤20MB・動画 mp4/mov/webm ≤300MB、最大8件。拡張子と内容の署名を検証し不正は 422）を指定でき、Brief はその発言から抽出してチャットで補完する。成功時は `HX-Redirect: /projects/:id`（201）。既存アセットの再利用は `POST /projects/:id/messages` の `attachment_asset_ids`。Series 作成後の Episode は `POST /series/:id/episodes` を使う | F-01, F-25, F-30 |
 | PUT | `/projects/:id/brief` | Brief 更新 | F-01 |
 | PUT | `/projects/:id/mode` | AUTO ⇄ DIRECTOR 切替 | F-02 |
@@ -80,7 +85,7 @@ M1 の入出力契約（Issue #12）:
 - `PUT /projects/:id/locks`: Body `target_type`（または `parameter`）=`story|music` と `mode`。Story を LOCK すると State Extractor は Story の全項目を変更しない。Shot のパラメータは 422、存在しない Project は 404
 - `PUT /shots/:id/shot-spec`: Body `shot_spec` は Canonical Shot Spec の JSON（未知のキーは 422。`duration` は Shot の長さに固定）。`domain.ShotSpec.Validate` を満たさない入力は 422 でフォームを入力値と理由付きで再描画。LOCK 中のパラメータの部分を変える編集は 423 で何も書かず（Prompt を LOCK した Shot は Spec のどの部分も変えられない）、生成中の Shot は 409。成功時は新しい `prompt_version` を追記して Inspector を返す
 - `GET /shots/:id`: `HX-Request` でフラグメント、なければフルページ（`shot_inspector_page`）。Canonical Shot Spec・Take List・全パラメータの AUTO/MANUAL/LOCK 切替・Spec の手動編集フォーム・自然言語の指示フォームを表示する
-- `POST /shots/:id/director-command`: Body `content`（必須、`POST /projects/:id/messages` と同じ上限）。Command Interpreter が返した操作を実行する。順序は LOCK 設定 → 再生成 → モード切替。再生成は対象 Shot だけを起動し（202、他は 200）、変更する部分以外（Character/Acting/Environment 等）と LOCK 中の部分は Shot Spec に引き継ぐ。LOCK 中の部分を変える再生成を含む指示は 423 で、発言も記録せず何も実行しない（同じ指示の中で LOCK を外していれば許可）。LLM 未構成は 503。発言と結果は AI 発言としてスレッドに記録される
+- `POST /shots/:id/director-command`: Body `content`（必須、`POST /projects/:id/messages` と同じ上限）。Command Interpreter が返した操作を実行する。順序は LOCK 設定 → 再生成 → モード切替。再生成は対象 Shot だけを起動し（202、他は 200）、変更する部分以外（Character/Acting/Environment 等）と LOCK 中の部分は Shot Spec に引き継ぐ。LOCK 中の部分を変える再生成を含む指示は 423 で、発言も記録せず何も実行しない（同じ指示の中で LOCK を外していれば許可）。LLM 未構成は 503。発言と結果は AI 発言としてスレッドに記録される。時間範囲を名指しした指示（`partial_regenerate`、M2）は `job.kind=repair` を起動する（202）: Shot 全体を新しい Take として作り、その区間だけを Shot の選択 Take（なければ AI Pick、なければ最新の除外されていない Take）に差し替えた候補 Take をもう 1 本足す。既存の Take は変わらず、Retry Policy の再試行回数には数えない（予算上限は適用）。ffmpeg が無い・元にできる Take が無い・Shot が生成中のときは何も作らず、その旨を AI 発言に記録して 200
 - `POST /projects/:id/messages`: DIRECTOR MODE で Brief 確定後（DRAFT 以外）の発言は Command Interpreter が解釈する（Approval / Question / Escalation カードへの返信は従来どおりその回答）。対象 Shot は「Take カードへの返信 → 発言中の Scene/Shot 番号 → スレッドの直近の Take カード → Shot が 1 つだけの Project」の順で解決し、解決できなければ AI が聞き返して何も実行しない。LOCK 中の部分を変える再生成は実行せず、AI 発言でその旨を伝える。Branch 作成の指示は M2 まで「未対応」と返す
 - `POST /shots/:id/generate`: `additional_instruction` を伴う要求は、Prompt が LOCK された Shot では 423。LOCK / 指示で保持する部分は Shot Spec を作り直す際にも変更されず、`video_model` が MANUAL/LOCK の Shot はそのモデルだけで生成する（長さやコストによる別モデルへの切替は行わない）
 
@@ -92,7 +97,7 @@ M1 の入出力契約（Issue #12）:
 | POST | `/shots/:id/generate` | Prompt Autopilot → Model Adapter → Video Generation を実行（非同期ジョブ起動、202+進捗はWSで通知）。Body `additional_instruction`（任意、1000 文字以内）。予算上限に 1 Take も収まらなければ 402、生成中の Shot は 409、存在しない Shot は 404、生成機能が未構成（Model Adapter / LLM / ジョブキューなし）は 503。完了した Take は Take カードとしてチャットに追記され、`take.model_name` と `cost_ledger_entry.provider` は `spec/architecture/model-adapters.md` §6 の正規識別子で保存される | F-06, F-07, F-12 |
 | POST | `/shots/:id/generate/candidates` | Prompt Candidate Generation（Quality/Balanced/Economy Mode）。Prompt Planner が Stability First / Acting First / Dynamic Camera の Candidate（Prompt Version）を作り、Take を生成して AI Video Judge が Best Take（`take.status=ai_pick`）を選ぶ。非同期ジョブ（`job.kind` は generation と同じ）を起動し、`/shots/:id/generate` と同じく 202 と GENERATING の Shot カードを返す。Body `additional_instruction`（任意）。モードは Quality/Cost Policy で決まる: MAX QUALITY→Quality（全 Candidate を並列生成し Judge が選ぶ）、BALANCED→Balanced（第一候補のみ。Judge が FAIL の間、Retry Policy と予算の範囲で次の Candidate を追加）、FAST→Economy（1 Take。LOCK 違反または high の Issue があるときだけ Retake）。Take の `model_parameters.candidate_strategy` に戦略を保存する。エラーは `/shots/:id/generate` と同じ（402 / 404 / 409 / 503）で、Judge が未構成でも 503 | F-08 |
 | POST | `/takes/:id/judge` | AI Video Judge を明示的に再実行。非同期ジョブ（`job.kind=judge`）を起動し、202 と JUDGING の Shot カードを返す。結果は `judge_result` に追記され（過去の結果は残る）、チャットに投稿される。Take を作るたびに自動でも実行される。エラー: 404（Take が存在しない）、409（この Take の Judge がすでに実行待ち/実行中）、503（ffmpeg / LLM 未設定で Judge が無効） | F-13 |
-| POST | `/takes/:id/repair` | Judge 結果に基づく Repair 実行。最新の Judge 結果から Repair Agent が戦略（Prompt Repair/Partial Regeneration/Full Retake/Different Model/Reference Reinforcement/Edit-Level Repair）を選び、Retry Policy の範囲内で新しい Take を作る。非同期ジョブ（`job.kind=repair`）を起動し、202 と REPAIRING の Shot カードを返す。新しい Take は `take` の新しい行で、修復元の Take は変わらない（`repair_action.resulting_take_id` で追跡）。作られた Take は自動で Judge される。Retry Policy（Max retries / Max cost per Shot / Project 予算）の上限に達していたときはジョブが Take を作らず、チャットに Escalation カードを出す。AUTO MODE では Judge のあと全 Take が不合格なら最良の Take から自動で繰り返す（DIRECTOR MODE では自動で繰り返さない）。エラー: 404（Take が存在しない）、409（まだ Judge されていない／Judge に合格していて Repair 不要／Shot が生成中または Repair 中）、503（ジョブキュー・LLM 未設定で Repair が無効） | F-14 |
+| POST | `/takes/:id/repair` | Judge 結果に基づく Repair 実行。最新の Judge 結果から Repair Agent が戦略（Prompt Repair/Partial Regeneration/Full Retake/Different Model/Reference Reinforcement/Edit-Level Repair）を選び、Retry Policy の範囲内で新しい Take を作る。非同期ジョブ（`job.kind=repair`）を起動し、202 と REPAIRING の Shot カードを返す。新しい Take は `take` の新しい行で、修復元の Take は変わらない（`repair_action.resulting_take_id` で追跡）。作られた Take は自動で Judge される。Partial Regeneration は、Judge のすべての Issue が `time_range` を持ち ffmpeg があるとき、Shot 全体の新しい Take に加えて、その区間だけを新しい Take の映像に差し替えた候補 Take（`model_parameters.kind=partial_take`、`source=partial_regeneration`。Shot の選択 Take は置き換えない）をもう 1 本作り、これも Judge する（`spec/spec.md` §13）。Retry Policy（Max retries / Max cost per Shot / Project 予算）の上限に達していたときはジョブが Take を作らず、チャットに Escalation カードを出す。AUTO MODE では Judge のあと全 Take が不合格なら最良の Take から自動で繰り返す（DIRECTOR MODE では自動で繰り返さない）。エラー: 404（Take が存在しない）、409（まだ Judge されていない／Judge に合格していて Repair 不要／Shot が生成中または Repair 中）、503（ジョブキュー・LLM 未設定で Repair が無効） | F-14 |
 
 ### 2.4 Take / Continue / Branch
 
@@ -108,10 +113,10 @@ M1 の入出力契約（Issue #12）:
 | POST | `/shots/:id/branch` | Branch Point 保存 + Snapshot 生成（Body: `branch_point_type`=`scene\|shot\|frame`、`frame`時は`offset_seconds`を指定。`scene`指定時は当該Shotの所属Sceneを分岐点とする） | F-17 |
 | GET | `/branches/:id` | Branch 詳細（フラグメント） | F-17 |
 | PUT | `/branches/:id` | Branch 名称変更・World State参照更新（`branch_version` に新規バージョン行を追記） | F-17, F-28 |
-| POST | `/shots/:id/versions/:versionNumber/restore` | Shot/Take（`prompt_version`）の指定バージョンへ復元 | F-28 |
-| POST | `/projects/:id/world-state/versions/:versionNumber/restore` | 主系列（トランク、`branch_id`=NULL）World State の指定バージョンへ復元 | F-28 |
-| POST | `/branches/:branchId/world-state/versions/:versionNumber/restore` | 当該Branchが独立して持つ World State バージョン系列の指定バージョンへ復元 | F-28 |
-| POST | `/branches/:id/versions/:versionNumber/restore` | Branch自体（`branch_version`）の指定バージョンへ復元 | F-28 |
+| POST | `/shots/:id/versions/:versionNumber/restore` | Shot/Take（`prompt_version`）の指定バージョンの Canonical Shot Spec を Shot の現在の Spec に戻し、新しい `prompt_version` として追記する（既存バージョンとその Take は変えない。復元自体も戻せる）。応答は 200 と Shot Inspector。バージョン番号が 1 以上の整数でなければ 422、存在しない Shot/バージョンは 404、生成中の Shot は 409、復元で LOCK 中の部分が変わるなら 423（何も書かない） | F-28 |
+| POST | `/projects/:id/world-state/versions/:versionNumber/restore` | 主系列（トランク、`branch_id`=NULL）World State の指定バージョンへ復元。そのバージョンに載っている Character/Product/Location の各フィールド値を行へ書き戻し（バージョンに無い、後から追加された行は変えない）、Camera/Story はそのバージョンの値にして、結果を新しい `world_state_version` として追記する。応答は 200 と World State ビュー。422（番号）/404（Project・バージョン）/423（復元で LOCK 中のフィールドが変わる。何も書かない） | F-28 |
+| POST | `/branches/:id/world-state/versions/:versionNumber/restore` | 当該Branchが独立して持つ World State バージョン系列の指定バージョンへ復元。Branch の系列は状態のスナップショットのみを持つので、指定バージョンの内容をその系列の末尾へ新バージョンとして複製する。応答は 200 と Branch のバージョン履歴。422/404（Branch・バージョン）。パスの Branch ID は他の `/branches/:id/...` と同じく `:id`（Gin は同じパス位置のワイルドカード名を 1 つしか許さない） | F-28 |
+| POST | `/branches/:id/versions/:versionNumber/restore` | Branch自体（`branch_version`）の指定バージョンへ復元。その名称・World State 参照を Branch に戻し、新しい `branch_version` として追記する。応答は 200 と Branch のバージョン履歴。422/404 | F-28 |
 
 
 **Take System の動作（M1）**
@@ -189,9 +194,10 @@ M2 の入出力契約（Issue #15）:
 
 | Method | Path | 概要 | 対応機能 |
 |---|---|---|---|
-| POST | `/series` | Series 作成。Body `from_project_id`（任意）で既存 Project の Character/Product/Location と有効な Notes を Series 正本として登録 | F-29, F-31 |
-| POST | `/series/:id/episodes` | Series 正本を継承した Episode（Project）を作成（Character/Product/Location/Notes をコピー）。Body `previous_episode_id`（任意）で前 Episode の最終 World State を開始状態にする | F-29, F-25, F-31 |
-| PUT | `/series/:id/characters/:characterId` | Series 正本の Character 更新。既存 Episode には自動伝播しない | F-29 |
+| POST | `/series` | Series 作成。Body（フォーム）`name`（1〜100 文字。`from_project_id` があれば省略可で、その Project 名になる）、`from_project_id`（任意）で既存 Project の Character/Product/Location と有効な Notes を Series 正本として登録し、その Project を Episode 1 にする。正本はバージョン 1（`series_version`）。成功は 201 と `HX-Redirect: /series/:id`。名前が空・長すぎる／`from_project_id` がすでに Series に属している場合は 422、`from_project_id` が存在しない場合は 404 | F-29, F-31 |
+| POST | `/series/:id/episodes` | Series 正本を継承した Episode（Project）を作成（Character/Product/Location/Notes を project 側の行へコピーし `origin_id` で由来を保持。参照画像は Project の `asset`・Reference Library にも複製し、Style は Brief の `style` に入れる）。`episode_number` は最大値+1（`(series_id, episode_number)` UNIQUE）。Body `previous_episode_id`（任意、同じ Series の Episode）で前 Episode の最終 World State を開始状態にし、`inherited_world_state_version_id` に記録する。成功は 201 と `HX-Redirect: /projects/:id`。Series が無ければ 404、`previous_episode_id` が同じ Series の Episode でなければ 422 | F-29, F-25, F-31 |
+| PUT | `/series/:id/characters/:characterId` | Series 正本の Character 更新。Body（フォーム）`hairstyle`/`wardrobe`/`voice`/`personality`（送った項目だけ更新）。応答は更新後の Series ビュー（200）で、新しい `series_version` を追記する。既存 Episode には自動伝播しない（次の Episode から適用）。項目が無い／長すぎる場合は 422、Series・Character が無ければ 404 | F-29 |
+| PUT | `/series/:id/style` | Series の Style 正本（テキスト、500 文字以内）の更新。Body `style`。応答は更新後の Series ビュー（200）で、新しい `series_version` を追記する。既存 Episode には自動伝播しない | F-29 |
 
 ### 2.10 Notes（M2）
 
@@ -347,4 +353,7 @@ Notes:
 | 1.27 | 2026-09-30 | §2.8 に M2 の契約（`PUT /projects/:id/world-state/locks`、`PUT …/:entityId/reference`）を追記。`GET /projects/:id/references` と §2.11 Reference Library（`POST/DELETE /projects/:id/references`、`POST /shots/:id/references`）を追加 | M2「Character/Product Lock・Location State・Reference Library」（Issue #15）で、World State の属性単位 LOCK の切替とライブラリの登録・検索・再利用の API が定義されていなかったため。ライブラリは Project 内の画像を対象とし、Reference Pack への追加は Shot 単位のピン留めにした |
 | 1.28 | 2026-09-30 | `POST /takes/:id/repair` の応答・エラー（202/404/409/503）・Retry Policy の適用・AUTO MODE の自動ループ、`/ws/shots/:id` の Repair 通知（`action=repair`・`stage=repairing`）、`GET /api/v1/repair/jev-shadow-report` を明記 | M1「Repair/Retake Loop」（Issue #10）で Repair の API 契約と進捗通知が未定義だったため |
 | 1.29 | 2026-09-30 | §2.4 の Take 選択・除外・部分採用の入出力とエラー、`/takes/:id/video`・`/thumbnail`、`GET /api/v1/shots/:id/takes` の項目、AI Pick の動作を追記 | M1「Take システムと補助ビュー」（Issue #11）で Body・エラー・スコア算出・AUTO/DIRECTOR の扱いが名称レベルでしか定義されていなかったため |
-| 1.30 | 2026-09-30 | §2.6 に M1 の Editor / Audio / Final QC / Export の挙動（Rough Cut・タイムライン保存の版管理と 409/422・プレビュー・Editor Judge・音声・Final QC・書き出し・ダウンロード）を追記。Edit Timeline の保存を `PUT /edit-timelines/:id`（アクションルート）に確定し、`GET /api/v1/projects/:id/edit-timeline` の応答例を更新（旧 `PUT /api/v1/projects/:id/edit-timeline` は提供しない） | M1「簡易 Editor・簡易 Audio・Final QC・Export」（Issue #14）の実装に合わせるため |
+| 1.30 | 2026-09-30 | `POST /takes/:id/repair` の Partial Regeneration がすべての Issue に時間範囲があるとき、区間をつなぎ込んだ候補 Take も足すことを追記。`POST /shots/:id/director-command` に時間範囲を名指しした再生成（`partial_regenerate`）の動作・エラーを追記 | M2「Partial Regeneration」（Issue #16）で、新しい Take の数・選択への影響・DIRECTOR MODE からの起動が名称レベルでしか定義されていなかったため |
+| 1.31 | 2026-09-30 | §2.9 に `POST /series`・`POST /series/:id/episodes`・`PUT /series/:id/characters/:characterId` の入出力とエラー、`PUT /series/:id/style` を追記。`GET /series/:id`（Series ページ）を追加 | M2「Series / Episode Memory」（Issue #21）で、Series の入出力契約・Style の更新経路・画面が未定義だったため |
+| 1.32 | 2026-09-30 | 復元エンドポイント（§2.4）の入出力・エラー・LOCK との関係を定義。`GET /takes/:id/trace`・`GET /branches/:id/versions`・`GET /projects/:id/bundle`・`POST /projects/import` を追加。Branch 系の復元パスの Branch ID を `:id` に統一 | F-27/F-28 とデータポータビリティ（Issue #20）の入出力契約が未定義だった。Gin は同じパス位置のワイルドカード名を 1 つしか許さず、`/branches/:branchId/...` と `/branches/:id/...` を併存できないため |
+| 1.33 | 2026-09-30 | §2.6 に M1 の Editor / Audio / Final QC / Export の挙動（Rough Cut・タイムライン保存の版管理と 409/422・プレビュー・Editor Judge・音声・Final QC・書き出し・ダウンロード）を追記。Edit Timeline の保存を `PUT /edit-timelines/:id`（アクションルート）に確定し、`GET /api/v1/projects/:id/edit-timeline` の応答例を更新（旧 `PUT /api/v1/projects/:id/edit-timeline` は提供しない） | M1「簡易 Editor・簡易 Audio・Final QC・Export」（Issue #14）の実装に合わせるため |

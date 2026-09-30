@@ -165,7 +165,7 @@ M1 Issue #9（F-13）の実装仕様。
 ### 10.2 動作
 
 - **フレームサンプリング**: `ffmpeg` / `ffprobe`（PATH）でフレームを抜き出す。数値評価用は `face_sample_fps`（既定 4 fps）で最大 `max_face_frames`（48）枚（長い Take は間引く）、定性評価用は等間隔に `review_frames`（12）枚。ffmpeg が無いと Judge 自体が無効になる（起動時に警告）
-- **顔照合**: 各フレームで顔検出 → 埋め込み → Character の参照顔とのコサイン類似度。1 フレームに複数の顔があるときは、全ペアの類似度が高い順に「1 顔 = 1 Character」で割り当てる。参照顔は Character の `face_reference_asset_id` と、Reference Pack の Character 画像のうち名前が一致するもの。検出できない参照画像は使わず、どの参照画像にも顔が無い Character は測定対象から外す（`face_identity_status = not_applicable`）
+- **顔照合**: 各フレームで顔検出 → 埋め込み → Character の参照顔とのコサイン類似度。1 フレームに複数の顔があるときは、全ペアの類似度が高い順に「1 顔 = 1 Character」で割り当てる。参照顔は、Episode の Character が Series 正本から作られたもの（`origin_id`）ならその正本の `face_reference_asset_id`（F-29。Episode をまたいで同じ顔を基準にする）、Character 自身の `face_reference_asset_id`、Reference Pack の Character 画像のうち名前が一致するもの（同じファイルは 1 枚に数える）。検出できない参照画像は使わず、どの参照画像にも顔が無い Character は測定対象から外す（`face_identity_status = not_applicable`）
 - **欠測**: 顔を検出できない（または割り当てられなかった）フレームは `undetected_ratio` にだけ数え、類似度の平均・最小・drift 判定・FAIL 判定に含めない。`undetected_ratio` が `max_undetected_ratio`（0.5）を超える、または検出フレームが `min_detected_frames`（3）未満なら `evaluated = false` とし、その Take は定性評価だけで判定する（`face_identity_drift` は出さない）
 - **閾値（設定値）**: 警告 `warn` と FAIL `fail` の 2 段階。Character の参照画像が 2 枚以上あり、参照画像同士の平均類似度 $m$ が `min_calibration_similarity`（0.4）以上のとき、`warn = calibration_warn_scale × m`（0.85）、`fail = calibration_fail_scale × m`（0.65）にキャリブレーションする（`calibrated = true`）。それ以外は固定値 `warn_similarity`（0.5）・`fail_similarity`（0.363、SFace 公開の照合閾値）を使う。適用した閾値は `metrics.face_identity[].warn_threshold` / `fail_threshold` に記録する。値はすべて `--judge-config`（`MAM_JUDGE_CONFIG`、JSON、未知のキーはエラー）で上書きでき、既定値は実測で見直す出発点である
 - **drift Issue**: 連続する `min_run_frames`（2）フレーム以上が `warn` を下回った区間を `face_identity_drift` Issue にする（`time_range`・`frames` 付き、`dimension = character_identity`）。区間内に `min_run_frames` フレーム連続で `fail` を下回る箇所があれば `severity = high`、なければ `medium`（警告）。顔が検出できないフレームは区間を切る
@@ -199,7 +199,7 @@ M1（F-14、Issue #10）で実装する Repair / Retake Loop の判断部分。�
 | 戦略 | 実装 |
 |------|------|
 | Prompt Repair | Prompt Planner が Issue と修復指示に沿って Shot Spec を修正して再生成する。LOCK された部分は変えない（Prompt が LOCK なら選べない） |
-| Partial Regeneration | Prompt Repair に加え、Judge の `preserve`（良かった部分）を保つ。**M1 では新しい Take は Shot 全体を作り直す**。時間範囲だけを再生成してつなぐ処理は MVP 2（`spec/spec.md` §27）で実装する |
+| Partial Regeneration | Prompt Repair に加え、Judge の `preserve`（良かった部分）を保つ。新しい Take は Shot 全体を作り直す（M1）。**M2**: Judge のすべての Issue が `time_range` を持ち、ffmpeg があるときは、それに加えて修復元の Take の問題区間（前後 0.2 秒を足し、0.3 秒未満は広げる）だけを新しい Take の同じ区間に差し替えた Take（`repair.Splicer` = `TakeService.SpliceRegenerated`、`media.Compose` でクロスフェード）を候補として 1 本足し、Judge する。区間の決め方と足さない条件は `spec/spec.md` §13 の「Partial Regeneration の範囲（M1 と M2）」が正 |
 | Full Retake | 同じ Shot Spec で新しく生成し直す |
 | Different Model | Quality Policy の primary / fallback の**もう一方**のモデルで生成する（Kling 3.0 ↔ Seedance 2.0 の自動フォールバック、§4）。ユーザーが Video Model を固定していたとき（AUTO 以外）は選べない |
 | Reference Reinforcement | Reference に基づく制約を Shot Spec に足し、失敗した種類の Reference を先頭にする。自由な Reference 画像を受け取れるモデルでは、Keyframe の代わりにそれを使う |
@@ -232,4 +232,6 @@ M1 は §5 のうち ElevenLabs の TTS（Dialogue / Narration）とローカル
 | 1.3 | 2026-09-29 | §9（画像・動画生成 Model Adapter と Generation Orchestrator の実装仕様）を追加。M1 で実装する画像プロバイダーは §3 の 4 種すべてと決定 | M1「Prompt Autopilot・Model Adapter・Reference Pack・生成オーケストレーション」（Issue #7）で画像プロバイダーの範囲と設定・耐障害動作の具体値が未定義だったため |
 | 1.4 | 2026-09-29 | §10（AI Video Judge と Face Identity Similarity の実装仕様、顔モデル・ONNX Runtime のライセンスと単一バイナリ両立の検証結果、閾値のキャリブレーション、LOCK 連動）を追加。§8 の Face Identity Similarity の未確定事項を検証済みの内容に更新 | M1「AI Video Judge（Face Identity Similarity 含む）」（Issue #9）で、埋め込みモデルの商用ライセンス・推論ランタイム・閾値の決め方・欠測の扱いが名称レベルで未確定だったため |
 | 1.5 | 2026-09-29 | §11（Repair Agent の戦略選択・Retry Policy・戦略ごとの再生成・Jev のシャドー実行の実装仕様）を追加。Partial Regeneration は M1 では「Judge の `preserve` を保つ Shot 全体の再生成」とし、時間範囲の再生成とつなぎ込みは MVP 2 と確定 | M1「Repair/Retake Loop」（Issue #10）で、Partial Regeneration の M1 での範囲（`spec/spec.md` §27 は MVP 2 に列挙）、決定的ルールと LLM の分担、Jev のシャドー記録項目が未確定だったため |
-| 1.6 | 2026-09-30 | §12（M1 の音声: ElevenLabs TTS とローカル DSP の実装仕様）を追加 | M1「簡易 Editor・簡易 Audio・Final QC・Export」（Issue #14）の実装に合わせるため |
+| 1.6 | 2026-09-30 | §11.3 の Partial Regeneration に M2 の時間範囲つなぎ込み（Shot 全体の Take + 問題区間だけを差し替えた候補 Take、`repair.Splicer`）を追記 | M2「Partial Regeneration」（Issue #16）で、動画モデルが区間だけを生成できない前提での実現方法と新しい Take の扱いを確定するため |
+| 1.7 | 2026-09-30 | §10.2 の参照顔に Series 正本の `face_reference` を追加 | M2「Series / Episode Memory」（Issue #21）で、顔同一性を Episode をまたいで Series 正本の顔を基準に計測する契約を定めるため |
+| 1.8 | 2026-09-30 | §12（M1 の音声: ElevenLabs TTS とローカル DSP の実装仕様）を追加 | M1「簡易 Editor・簡易 Audio・Final QC・Export」（Issue #14）の実装に合わせるため |

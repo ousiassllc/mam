@@ -40,6 +40,13 @@ type Regeneration struct {
 	Preserve []string
 	// SourceModel is the model of the Take that is repaired: Different Model goes to another one.
 	SourceModel domain.ModelName
+	// Ranges are the time ranges of the Take that are being fixed. They are set for a Partial
+	// Regeneration whose new Take is spliced into the repaired one: only these ranges of the new Take
+	// are used, so the Prompt Planner is told to change little else.
+	Ranges []domain.TimeRange
+	// Direction is a free-text direction of the director (English), for a regeneration the director
+	// asked for in DIRECTOR MODE (there are no Issues then).
+	Direction string
 }
 
 // RegenerationStrategy plans the single Take of a repair: the strategy of the Quality Policy, with
@@ -98,7 +105,8 @@ func (o *Orchestrator) RegenerationStrategy(ctx context.Context, ref repository.
 //
 //   - Prompt Repair: the Prompt Planner revises the Shot Spec for the Issues; LOCKed parts stay as they are.
 //   - Partial Regeneration: the same, and the parts the Judge asked to preserve stay as they are too. The
-//     new Take covers the whole Shot; regenerating and splicing only a time range is MVP 2 (spec/spec.md §27).
+//     new Take covers the whole Shot (video models make whole clips); splicing only the problem time
+//     range of it into the repaired Take is the caller's job (repair.Agent, with Splicer).
 //   - Full Retake: the same Shot Spec, a new generation.
 //   - Different Model: the same Shot Spec for the other video model of the Quality Policy.
 //   - Reference Reinforcement: the constraints that protect what the References show are added to the
@@ -145,6 +153,10 @@ func (o *Orchestrator) Regenerate(ctx context.Context, ref repository.ShotRef, r
 	if err != nil {
 		return "", err
 	}
+	world, err := o.gens.WorldContext(ctx, ref.ProjectID)
+	if err != nil {
+		return "", err
+	}
 	job, err := o.videoJob(ctx, ref.ProjectID, spec, brief, strategy.DurationSeconds, references)
 	if err != nil {
 		return "", err
@@ -158,7 +170,7 @@ func (o *Orchestrator) Regenerate(ctx context.Context, ref repository.ShotRef, r
 		return "", err
 	}
 	title := fmt.Sprintf("Shot %d · %s", shot.OrderIndex+1, r.Action.Label())
-	takeID, err := o.makeTake(ctx, ref, pv, strategy, job, title, policy.Effective().MaxGenerationTime, "")
+	takeID, err := o.makeTake(ctx, ref, pv, strategy, job, domain.TakeLineage{WorldStateVersion: world.Version, References: references}, title, policy.Effective().MaxGenerationTime, "")
 	if err != nil {
 		return "", err
 	}
@@ -201,7 +213,11 @@ func (o *Orchestrator) reviseSpec(ctx context.Context, ref repository.ShotRef, p
 // form and the repair instructions, in English.
 func repairInstruction(r Regeneration) string {
 	var b strings.Builder
-	b.WriteString("The previous take of this shot failed the video judge. Revise the spec so the next take fixes these issues:")
+	if len(r.Issues) == 0 {
+		b.WriteString("The director wants a new take of this shot with a change.")
+	} else {
+		b.WriteString("The previous take of this shot failed the video judge. Revise the spec so the next take fixes these issues:")
+	}
 	for _, is := range r.Issues {
 		fmt.Fprintf(&b, "\n- %s (%s)", is.Type, is.Severity)
 		if is.TimeRange != "" {
@@ -210,6 +226,16 @@ func repairInstruction(r Regeneration) string {
 		if is.Description != "" {
 			fmt.Fprintf(&b, ": %s", is.Description)
 		}
+	}
+	if r.Direction != "" {
+		b.WriteString("\nDirector's instruction: " + r.Direction)
+	}
+	if len(r.Ranges) > 0 {
+		texts := make([]string, len(r.Ranges))
+		for i, tr := range r.Ranges {
+			texts[i] = fmt.Sprintf("%.1f-%.1fs", tr.From, tr.To)
+		}
+		b.WriteString("\nOnly " + strings.Join(texts, ", ") + " of the new take will be used, spliced into the previous take: change only what happens there and keep everything else as it was.")
 	}
 	if len(r.Instructions) > 0 {
 		b.WriteString("\nRepair instructions: " + strings.Join(r.Instructions, ", ") + ".")
