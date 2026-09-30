@@ -615,4 +615,3 @@ func TestEditor_AutoChainStopsAtAReEditVerdict(t *testing.T) {
 	_, err := repository.NewEditorRepository(e.db).LatestAudioTimeline(context.Background(), e.project, "")
 	assert.ErrorIs(t, err, repository.ErrNotFound)
 }
-
