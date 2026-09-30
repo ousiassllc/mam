@@ -353,6 +353,12 @@ func TestRespondApproval_RequestChangesSendsTheProjectBack(t *testing.T) {
 	assert.Equal(t, domain.ApprovalChangesRequested, updated.ApprovalStatus)
 	assert.Equal(t, domain.StatePlanning, project.State)
 	assert.Contains(t, f.thread(t, p.ID)[len(f.thread(t, p.ID))-2].Content, "もっと短く")
+
+	var n, override int
+	require.NoError(t, f.db.Reader().QueryRow(
+		`SELECT COUNT(*), COALESCE(SUM(override), 0) FROM human_intervention WHERE project_id = ? AND kind = 'request_changes'`, p.ID).Scan(&n, &override))
+	assert.Equal(t, 1, n, "only a checkpoint request for changes is a human intervention")
+	assert.Equal(t, 1, override)
 }
 
 func TestRespondApproval_ValidatesTheRequest(t *testing.T) {

@@ -2,6 +2,7 @@ package service_test
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"strings"
 	"testing"
@@ -162,6 +163,7 @@ func TestNotes_RequestingChangesRejectsThePromotionAndKeepsTheNote(t *testing.T)
 	_, err := f.svc.Notes.CreateProjectNote(context.Background(), f.projectID, service.NoteInput{Title: "Mio", Content: "黒髪ロング"})
 	require.NoError(t, err)
 	card := f.waitPromotionCard(t)
+	interventions := f.count(t, `SELECT COUNT(*) FROM human_intervention WHERE project_id = ? AND kind <> 'switch_to_director'`, f.projectID)
 	_, answered, err := f.svc.Chat.RespondApproval(context.Background(), f.projectID, card.ID, service.DecisionRequestChanges, "違う")
 	require.NoError(t, err)
 	assert.Equal(t, domain.ApprovalChangesRequested, answered.ApprovalStatus)
@@ -170,6 +172,20 @@ func TestNotes_RequestingChangesRejectsThePromotionAndKeepsTheNote(t *testing.T)
 	view, err := f.svc.Notes.ProjectNotes(context.Background(), f.projectID)
 	require.NoError(t, err)
 	assert.Len(t, view.Notes, 1)
+	// Rejecting a promotion does not change World State, so it is not a human intervention
+	// and must not enter North Star or Human Interventions per Finished Video (spec §28.3).
+	assert.Equal(t, interventions, f.count(t, `SELECT COUNT(*) FROM human_intervention WHERE project_id = ? AND kind <> 'switch_to_director'`, f.projectID))
+	assert.Zero(t, f.count(t, `SELECT COUNT(*) FROM human_intervention WHERE project_id = ? AND kind = 'request_changes'`, f.projectID))
+	require.NoError(t, f.db.Write(context.Background(), func(ctx context.Context, tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, `UPDATE project SET state = 'READY' WHERE id = ?`, f.projectID)
+		return err
+	}))
+	metrics, err := f.svc.Analytics.Metrics(context.Background(), f.projectID)
+	require.NoError(t, err)
+	assert.Equal(t, float64(interventions), metrics.Metrics.InterventionsPerFinished.Numerator)
+	if interventions == 0 {
+		assert.Equal(t, 1.0, metrics.Metrics.NorthStar.Numerator)
+	}
 }
 
 func TestNotes_SeriesNotesProposeNothing(t *testing.T) {

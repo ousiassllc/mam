@@ -120,6 +120,10 @@ type Turn struct {
 	// ResumeState, when set, moves the Project out of AWAITING_APPROVAL into that state
 	// after the other changes, but only if no blocking card is left unanswered.
 	ResumeState *domain.ProjectState
+	// CheckpointChanges is set when the user asked for changes on a checkpoint Approval
+	// card. Rejecting a Notes promotion (ref_type=note_promotion) is not a checkpoint and
+	// must not be recorded as human_intervention (spec/spec.md §28.3).
+	CheckpointChanges bool
 }
 
 // Apply runs the Turn in one transaction. It returns ErrNotFound when the Project does
