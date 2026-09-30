@@ -259,7 +259,8 @@ export class MamVideoPlayer extends LitElement {
   }
 
   protected override render() {
-    const generating = this.progress?.stage === 'queued' || this.progress?.stage === 'generating';
+    const stage = this.progress?.stage;
+    const generating = stage === 'queued' || stage === 'generating' || stage === 'repairing';
     if (!this.videoSrc || generating) return this.renderPlaceholder();
     if (this.failed) {
       return html`<div class="flex aspect-video items-center justify-center rounded border border-neutral-700 bg-neutral-900 text-xs text-neutral-400" role="alert" data-placeholder>

@@ -21,12 +21,16 @@ export function describeProgress(progress: Pick<ShotProgress, 'stage' | 'action'
   const judge = progress.action === 'judge';
   switch (progress.stage) {
     case 'queued':
+      if (progress.action === 'repair') return '修正の順番を待っています';
       return judge ? 'Judge の順番を待っています' : '生成の順番を待っています';
+    case 'repairing':
+      return progress.message ? `修正中: ${progress.message}` : '修正中';
     case 'generating':
       return progress.takes_total ? `生成中 ${progress.takes_done ?? 0} / ${progress.takes_total} Take` : '生成中';
     case 'judging':
       return 'AI Video Judge が評価しています';
     case 'done':
+      if (progress.action === 'repair') return '修正が完了しました';
       return judge ? '評価が完了しました' : '生成が完了しました';
     case 'failed':
       return progress.message ? `失敗しました: ${progress.message}` : '失敗しました';
