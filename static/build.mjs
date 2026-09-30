@@ -41,24 +41,46 @@ const tailwindArgs = [
   ...(watch ? ['--watch'] : []),
 ];
 
+// The Tailwind process is part of the build: if it dies (crash, killed, failed build) the build
+// fails, in watch mode too, where an unnoticed dead Tailwind would leave the CSS stale while esbuild
+// keeps rebuilding (make dev runs this under `concurrently -k`, so exiting non-zero stops the rest).
 const tailwind = spawn('npx', ['--no-install', ...tailwindArgs], { cwd: root, stdio: 'inherit' });
+let stopping = false;
 const tailwindDone = new Promise((resolve, reject) => {
-  tailwind.on('exit', (code) => (code === 0 || watch ? resolve() : reject(new Error(`tailwind exited with ${code}`))));
+  tailwind.on('exit', (code, signal) => {
+    if (code === 0 || stopping) resolve();
+    else reject(new Error(`tailwind exited with ${signal ?? code}`));
+  });
   tailwind.on('error', reject);
 });
 
-if (watch) {
-  const ctx = await esbuild.context(jsOptions);
-  await ctx.watch();
-  const stop = async () => {
-    tailwind.kill();
-    await ctx.dispose();
-    process.exit(0);
-  };
-  process.on('SIGINT', stop);
-  process.on('SIGTERM', stop);
-  await tailwindDone;
-} else {
-  await esbuild.build(jsOptions);
-  await tailwindDone;
+let ctx;
+try {
+  if (watch) {
+    ctx = await esbuild.context(jsOptions);
+    await ctx.watch();
+    const stop = async () => {
+      stopping = true;
+      tailwind.kill();
+      await ctx.dispose();
+      process.exit(0);
+    };
+    process.on('SIGINT', stop);
+    process.on('SIGTERM', stop);
+    await tailwindDone;
+    // stop() is shutting down (it calls process.exit); otherwise Tailwind's watch mode, which never
+    // ends on its own, exited with 0, and that is a failure too.
+    if (stopping) await new Promise(() => {});
+    throw new Error('tailwind stopped');
+  }
+  // Wait for both, so a failing esbuild does not abandon a running Tailwind (and vice versa).
+  const results = await Promise.allSettled([esbuild.build(jsOptions), tailwindDone]);
+  const failed = results.find((r) => r.status === 'rejected');
+  if (failed) throw failed.reason;
+} catch (err) {
+  console.error(`build failed: ${err.message}`);
+  stopping = true;
+  tailwind.kill();
+  await ctx?.dispose();
+  process.exit(1);
 }
