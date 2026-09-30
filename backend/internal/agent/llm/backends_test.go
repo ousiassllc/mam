@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -245,4 +246,30 @@ func TestBackends_TextOnlyRequestsKeepThePlainUserMessage(t *testing.T) {
 	require.NoError(t, err)
 	msgs, _ := ps.body["messages"].([]any)
 	assert.Equal(t, "usr", msgs[0].(map[string]any)["content"])
+}
+
+func TestDefaultClientDoesNotForwardTheKeyOnARedirectToAnotherHost(t *testing.T) {
+	var foreignHits atomic.Int32
+	foreign := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { foreignHits.Add(1) }))
+	defer foreign.Close()
+	vendor := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, foreign.URL+"/steal", http.StatusFound)
+	}))
+	defer vendor.Close()
+	keyring.MockInit()
+	store := credential.NewKeyring()
+	for _, p := range []llm.Provider{llm.ProviderAnthropic, llm.ProviderOpenAI, llm.ProviderGoogle} {
+		require.NoError(t, store.Set(string(p), "secret-key"))
+	}
+	cfg := llm.DefaultConfig()
+	for p := range cfg.Providers {
+		cfg.Providers[p] = llm.ProviderConfig{BaseURL: vendor.URL}
+	}
+	backends := llm.NewBackends(cfg, store, nil)
+
+	for p, b := range backends {
+		_, err := b.Complete(context.Background(), "m", llm.Request{System: "s", User: "u", MaxTokens: 10})
+		require.Error(t, err, p)
+	}
+	assert.Zero(t, foreignHits.Load())
 }

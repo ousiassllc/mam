@@ -15,6 +15,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/httpclient"
 	"github.com/ousiassllc/mam/backend/internal/safefetch"
 )
 
@@ -24,11 +25,6 @@ const (
 	// maxDownloadBytes bounds a downloaded image or video (the upload limit for videos, non-functional.md §5).
 	maxDownloadBytes = 300 << 20
 )
-
-// Doer is the part of *http.Client the backends use.
-type Doer interface {
-	Do(*http.Request) (*http.Response, error)
-}
 
 // Backends are the HTTP backends of every model.
 type Backends struct {
@@ -41,9 +37,9 @@ type api struct {
 	vendor  Vendor
 	baseURL string
 	keys    credential.Store
-	client  Doer
+	client  httpclient.Doer
 	// fetcher downloads the result files (their URLs come from the vendor's answers).
-	fetcher Doer
+	fetcher httpclient.Doer
 	// localDownloads lets a result URL be plain http and point to a local address (tests).
 	localDownloads bool
 	// pollEvery is the wait between two status requests of an asynchronous job.

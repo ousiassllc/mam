@@ -597,3 +597,26 @@ func TestDownloadRefusesPlainHTTPAndNonPublicAddressesWithoutConnecting(t *testi
 		})
 	}
 }
+
+func TestDefaultClientDoesNotForwardTheKeyOnARedirectToAnotherHost(t *testing.T) {
+	var foreignHits atomic.Int32
+	foreign := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { foreignHits.Add(1) }))
+	defer foreign.Close()
+	vendor := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, foreign.URL+"/steal", http.StatusFound)
+	}))
+	defer vendor.Close()
+	cfg := modeladapter.DefaultConfig()
+	for v, vc := range cfg.Vendors {
+		vc.BaseURL = vendor.URL
+		cfg.Vendors[v] = vc
+	}
+	b := modeladapter.NewBackends(cfg, memKeys{"flux": "secret", "seedance": "secret"}, nil, time.Millisecond)
+
+	_, err := b.Image[domain.ModelFlux2].GenerateImage(context.Background(), "flux-2-pro", modeladapter.ImageRequest{Prompt: "p"})
+	require.Error(t, err)
+	_, err = b.Video[domain.ModelSeedance2].GenerateVideo(context.Background(), "m", seedanceReq)
+	require.Error(t, err)
+
+	assert.Zero(t, foreignHits.Load())
+}

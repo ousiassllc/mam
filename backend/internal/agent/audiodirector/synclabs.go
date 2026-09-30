@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/credential"
+	"github.com/ousiassllc/mam/backend/internal/httpclient"
 	"github.com/ousiassllc/mam/backend/internal/safefetch"
 )
 
@@ -63,15 +64,15 @@ const maxLipSyncBytes = 512 << 20
 type SyncLabs struct {
 	cfg    SyncLabsConfig
 	keys   credential.Store
-	client Doer
+	client httpclient.Doer
 	// fetcher downloads the output, whose URL comes from the vendor's answer.
-	fetcher Doer
+	fetcher httpclient.Doer
 }
 
 // NewSyncLabs returns a SyncLabs adapter. A nil client selects a plain http.Client for the API and
 // a client that connects to public addresses only (safefetch.NewClient) for the download; a given
 // client serves both. Zero fields of cfg take the DefaultSyncLabsConfig values.
-func NewSyncLabs(cfg SyncLabsConfig, keys credential.Store, client Doer) *SyncLabs {
+func NewSyncLabs(cfg SyncLabsConfig, keys credential.Store, client httpclient.Doer) *SyncLabs {
 	def := DefaultSyncLabsConfig()
 	if cfg.BaseURL == "" {
 		cfg.BaseURL = def.BaseURL
@@ -84,7 +85,7 @@ func NewSyncLabs(cfg SyncLabsConfig, keys credential.Store, client Doer) *SyncLa
 	}
 	fetcher := client
 	if client == nil {
-		client = &http.Client{}
+		client = httpclient.New()
 		fetcher = client
 		if !cfg.LocalDownloads {
 			fetcher = safefetch.NewClient()

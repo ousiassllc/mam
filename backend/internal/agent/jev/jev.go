@@ -22,6 +22,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/httpclient"
 )
 
 // CredentialProvider is the credential.Store key of the TypeSafe API key.
@@ -148,7 +149,7 @@ func New(cfg Config, keys credential.Store, httpClient *http.Client) (*Client, e
 		return nil, err
 	}
 	if httpClient == nil {
-		httpClient = &http.Client{}
+		httpClient = httpclient.New()
 	}
 	return &Client{cfg: cfg, keys: keys, http: httpClient, now: time.Now}, nil
 }

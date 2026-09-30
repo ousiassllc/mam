@@ -15,6 +15,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/httpclient"
 	"github.com/ousiassllc/mam/backend/internal/safefetch"
 )
 
@@ -350,14 +351,14 @@ func WithLocalDownloads() BackendOption { return func(o *backendOptions) { o.loc
 // between two status requests of an asynchronous job (zero selects 5 seconds). Result files are
 // downloaded with a client that connects to public addresses only (safefetch.NewClient) when
 // client is nil, otherwise with client; either way the URL must be https (see WithLocalDownloads).
-func NewBackends(cfg Config, keys credential.Store, client Doer, pollEvery time.Duration, opts ...BackendOption) Backends {
+func NewBackends(cfg Config, keys credential.Store, client httpclient.Doer, pollEvery time.Duration, opts ...BackendOption) Backends {
 	var o backendOptions
 	for _, opt := range opts {
 		opt(&o)
 	}
 	fetcher := client
 	if client == nil {
-		client = &http.Client{}
+		client = httpclient.New()
 		fetcher = client
 		if !o.localDownloads {
 			fetcher = safefetch.NewClient()

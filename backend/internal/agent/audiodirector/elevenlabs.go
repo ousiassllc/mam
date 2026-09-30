@@ -20,6 +20,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/httpclient"
 )
 
 // CredentialProvider is the credential.Store key of the ElevenLabs API key. One key serves the
@@ -155,21 +156,16 @@ const (
 // maxSpeechBytes bounds one generated audio file.
 const maxSpeechBytes = 32 << 20
 
-// Doer is the part of *http.Client the adapters use.
-type Doer interface {
-	Do(*http.Request) (*http.Response, error)
-}
-
 // ElevenLabs is the ElevenLabs adapter: TTS, voice cloning, Music and Sound Effects.
 type ElevenLabs struct {
 	cfg    Config
 	keys   credential.Store
-	client Doer
+	client httpclient.Doer
 }
 
 // NewElevenLabs returns an ElevenLabs adapter. A nil client selects a plain http.Client; zero
 // fields of cfg take the DefaultConfig values.
-func NewElevenLabs(cfg Config, keys credential.Store, client Doer) *ElevenLabs {
+func NewElevenLabs(cfg Config, keys credential.Store, client httpclient.Doer) *ElevenLabs {
 	def := DefaultConfig()
 	fill := func(v *string, d string) {
 		if *v == "" {
@@ -189,7 +185,7 @@ func NewElevenLabs(cfg Config, keys credential.Store, client Doer) *ElevenLabs {
 		cfg.MusicTimeout = def.MusicTimeout
 	}
 	if client == nil {
-		client = &http.Client{}
+		client = httpclient.New()
 	}
 	return &ElevenLabs{cfg: cfg, keys: keys, client: client}
 }
