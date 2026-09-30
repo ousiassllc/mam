@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/web/handler"
 )
 
 // APIPrefix is the base path of the JSON API used by Lit components.
@@ -30,23 +31,18 @@ func registerAPI(engine *gin.Engine, services *service.Services) {
 // registerAPIRoutes is where each feature registers its Huma operations.
 func registerAPIRoutes(api huma.API, services *service.Services) {
 	type healthOutput struct {
-		Body struct {
-			OK       bool   `json:"ok"`
-			Database string `json:"database"`
-		}
+		Status int
+		Body   handler.HealthBody
 	}
 	huma.Register(api, huma.Operation{
 		OperationID: "get-health",
 		Method:      "GET",
 		Path:        APIPrefix + "/health",
-		Summary:     "Local server health",
+		Summary:     "Local server health (503 when the database is unavailable)",
 		Tags:        []string{"system"},
 	}, func(ctx context.Context, _ *struct{}) (*healthOutput, error) {
-		st := services.Health.Check(ctx)
-		out := &healthOutput{}
-		out.Body.OK = st.OK
-		out.Body.Database = st.Database
-		return out, nil
+		status, body := handler.HealthResponse(services.Health.Check(ctx))
+		return &healthOutput{Status: status, Body: body}, nil
 	})
 	registerJudgeAPI(api, services)
 	registerRepairAPI(api, services)
