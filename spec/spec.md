@@ -190,6 +190,8 @@ Final QC
 Delivery
 ```
 
+> **実装の範囲**: Orchestrator が自動で進めるのは Brief → Producer → Writer → Director → Storyboard（Scene / Shot Planning、Project は PLANNING → VISUAL_DESIGN）までである。Art Director 以降（Reference Pack・Keyframe・Image / Video Generation）は Shot 単位でユーザーが起動し、起動した Shot では AI Video Judge → Repair / Retake → AI Pick が AUTO MODE で連鎖する。AI Editor 以降（Rough Cut・Audio・Final QC・Delivery）もユーザーの操作で進める。Project 全体を一括で生成する段は持たない。
+
 ---
 
 ## 4.4 Confirmation Levels
@@ -207,21 +209,22 @@ AUTO MODEでは、人間が確認する頻度を選択できる。
 標準ポイント：
 
 1. Concept / Script
-2. Main Visual / Character / Product
-3. Rough Cut
-4. Final
+2. Rough Cut
+3. Final
+
+> Main Visual / Character / Product の確認は、Art Director 以降が Shot 単位の手動起動であり、承認カードを出す箇所が無いため標準ポイントに含めない。
 
 ### CUSTOM CHECK
 
-ユーザーが確認ポイントを自由設定する。
+ユーザーが確認ポイントを自由設定する。選べるのは、パイプラインが承認カードを出す Script・Rough Cut・Final（`script` / `rough_cut` / `final`）。
 
 例：
 
-- キャラクターデザインのみ確認
 - Scriptのみ確認
-- 商品Key Visualのみ確認
+- Rough Cutのみ確認
 - Finalのみ確認
-- 各Scene完成時に確認
+
+> キャラクターデザイン・商品Key Visual・各Scene完成時の確認（`character_design` / `product_key_visual` / `scene_complete`）と Main Visual（`main_visual`）は、該当する成果物の完了を検知して承認を求める段が無いため、選択肢に出さない。Art Director 以降の自動実行を実装する際に追加する。
 
 ---
 
@@ -1154,7 +1157,7 @@ AWAITING_APPROVAL に遷移するのは、確認ポイントの Approval カー�
 ```
 
 - **Brief は会話で作る**: 最初の発言から Creative Brief を抽出し、不足項目は AI が質問する（選択肢ボタンと「AIに任せる」を併記）。確定した Brief は補助ビューで確認・編集できる
-- **確認ポイントはスレッド内カード**: Confirmation Level で設定した確認ポイント（脚本/Main Visual/Rough Cut/Final 等）と Escalation は、承認カードとして表示する。ボタン（承認 / 修正を依頼）か、自然言語の返答で応答できる。応答があるまで Core State Machine は AWAITING_APPROVAL に留まる（§22。Notes の昇格提案カードを除く）
+- **確認ポイントはスレッド内カード**: Confirmation Level で設定した確認ポイント（脚本/Rough Cut/Final）と Escalation は、承認カードとして表示する。ボタン（承認 / 修正を依頼）か、自然言語の返答で応答できる。応答があるまで Core State Machine は AWAITING_APPROVAL に留まる（§22。Notes の昇格提案カードを除く）
 - **発言の対象**: 指示の対象 Scene/Shot/Take は、カードへの返信（引用）で明示するか、直前の文脈から AI が解決する。解決できない場合は AI が聞き返す。§24 の Command Interpreter がこの解決を含めて構造化操作へ変換する
 - **MODE / Quality**: 入力欄の下に小さく置く。AUTO では AI が主導し、DIRECTOR では指示した箇所だけを直して待機する。切替はいつでも可能で、状態は保持される
 - **添付**: 画像・動画をドラッグ&ドロップまたは［＋］で添付でき、Assets/References として Brief に取り込まれる
@@ -1165,7 +1168,7 @@ AWAITING_APPROVAL に遷移するのは、確認ポイントの Approval カー�
 | カード | 内容 | 操作 |
 |--------|------|------|
 | Question | Brief 補完・曖昧な指示の聞き返し | 選択肢ボタン / 自由入力 / 「AIに任せる」 |
-| Approval | 確認ポイントの成果物（脚本・Main Visual・Rough Cut・Final 等）。M2 では Notes の World State 昇格提案（§9.4）も同じカードで提示する。昇格提案は非ブロッキング | 承認 / 修正を依頼（昇格提案では「修正を依頼」は却下） |
+| Approval | 確認ポイントの成果物（脚本・Rough Cut・Final）。M2 では Notes の World State 昇格提案（§9.4）も同じカードで提示する。昇格提案は非ブロッキング | 承認 / 修正を依頼（昇格提案では「修正を依頼」は却下） |
 | Keyframe | Keyframe / Reference Pack 画像 | 拡大、返信で修正指示 |
 | Take | 動画プレーヤー、Judge 要約、Take 状態（AI Pick 等） | 再生、返信で指示、Take比較を開く |
 | Progress | 生成・Judge・Repair の進捗 | なし（自動更新） |

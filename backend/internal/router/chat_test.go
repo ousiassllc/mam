@@ -343,13 +343,14 @@ func TestConfirmationLevel_ChangesWhichCheckpointsAsk(t *testing.T) {
 	assert.Contains(t, body, `value="key_check" selected`)
 	assert.NotContains(t, body, `name="checkpoints"`, "the selection appears only for CUSTOM CHECK")
 
-	rec := a.form(http.MethodPut, "/projects/"+id+"/confirmation-level", url.Values{"level": {"custom_check"}, "checkpoints": {"scene_complete"}})
+	rec := a.form(http.MethodPut, "/projects/"+id+"/confirmation-level", url.Values{"level": {"custom_check"}, "checkpoints": {"rough_cut"}})
 	require.Equal(t, http.StatusOK, rec.Code)
 	assert.Contains(t, rec.Body.String(), `value="custom_check" selected`)
-	assert.Contains(t, rec.Body.String(), `name="checkpoints" value="scene_complete" checked`)
+	assert.NotContains(t, rec.Body.String(), `value="scene_complete"`, "only checkpoints the pipeline asks at are offered")
+	assert.Contains(t, rec.Body.String(), `name="checkpoints" value="rough_cut" checked`)
 	assert.NotContains(t, rec.Body.String(), `value="script" checked`)
 
-	posted, err := a.svc.Chat.RequestApproval(ctx, id, domain.CheckpointSceneComplete, "Scene 1", "s1")
+	posted, err := a.svc.Chat.RequestApproval(ctx, id, domain.CheckpointRoughCut, "Rough Cut", "s1")
 	require.NoError(t, err)
 	assert.True(t, posted)
 	posted, err = a.svc.Chat.RequestApproval(ctx, id, domain.CheckpointFinal, "Final", "e1")

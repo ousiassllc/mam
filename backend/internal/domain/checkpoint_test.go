@@ -18,7 +18,7 @@ func TestConfirmationLevel_RequiresApproval(t *testing.T) {
 		{domain.ConfirmFullAuto, domain.CheckpointFinal, false},
 		{domain.ConfirmFullAuto, domain.CheckpointScript, false},
 		{domain.ConfirmKeyCheck, domain.CheckpointScript, true},
-		{domain.ConfirmKeyCheck, domain.CheckpointMainVisual, true},
+		{domain.ConfirmKeyCheck, domain.CheckpointMainVisual, false},
 		{domain.ConfirmKeyCheck, domain.CheckpointRoughCut, true},
 		{domain.ConfirmKeyCheck, domain.CheckpointFinal, true},
 		{domain.ConfirmKeyCheck, domain.CheckpointSceneComplete, false},
@@ -51,4 +51,12 @@ func TestCardBody_DecodeFallsBackToPlainText(t *testing.T) {
 	b := domain.CardBody{Text: "誰向け？", Options: []string{"A", "B"}}
 	assert.Equal(t, b, domain.DecodeCardBody(domain.EncodeCardBody(b)))
 	assert.Equal(t, domain.CardBody{Text: "just text"}, domain.DecodeCardBody("just text"))
+}
+
+func TestKeyCheckpoints_AreOnlyPointsThePipelineAsksAt(t *testing.T) {
+	for _, cp := range domain.KeyCheckpoints() {
+		assert.True(t, cp.Selectable(), "%s is in KEY CHECK but nothing would ask there", cp)
+	}
+	assert.False(t, domain.CheckpointSceneComplete.Selectable())
+	assert.True(t, domain.CheckpointFinal.Selectable())
 }

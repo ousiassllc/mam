@@ -297,6 +297,9 @@ func TestRequestApproval_FollowsTheConfirmationLevel(t *testing.T) {
 	posted, err = f.svc.Chat.RequestApproval(ctx, p.ID, domain.CheckpointSceneComplete, "Scene 1", "sc1")
 	require.NoError(t, err)
 	assert.False(t, posted, "KEY CHECK does not ask at each Scene")
+	posted, err = f.svc.Chat.RequestApproval(ctx, p.ID, domain.CheckpointMainVisual, "Main Visual", "mv1")
+	require.NoError(t, err)
+	assert.False(t, posted, "nothing in the pipeline produces a Main Visual to ask about, so KEY CHECK does not promise it")
 
 	_, err = f.svc.Projects.SetConfirmationLevel(ctx, p.ID, domain.ConfirmFullAuto, nil)
 	require.NoError(t, err)
@@ -304,9 +307,9 @@ func TestRequestApproval_FollowsTheConfirmationLevel(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, posted, "FULL AUTO never asks for approval")
 
-	_, err = f.svc.Projects.SetConfirmationLevel(ctx, p.ID, domain.ConfirmCustomCheck, []domain.Checkpoint{domain.CheckpointSceneComplete})
+	_, err = f.svc.Projects.SetConfirmationLevel(ctx, p.ID, domain.ConfirmCustomCheck, []domain.Checkpoint{domain.CheckpointRoughCut})
 	require.NoError(t, err)
-	posted, err = f.svc.Chat.RequestApproval(ctx, p.ID, domain.CheckpointSceneComplete, "Scene 1", "sc1")
+	posted, err = f.svc.Chat.RequestApproval(ctx, p.ID, domain.CheckpointRoughCut, "Rough Cut", "e1")
 	require.NoError(t, err)
 	assert.True(t, posted, "CUSTOM CHECK asks at the selected checkpoint")
 	posted, err = f.svc.Chat.RequestApproval(ctx, p.ID, domain.CheckpointScript, "脚本 v2", "sv2")
@@ -389,7 +392,7 @@ func TestPostMessage_ReplyingToApprovalCardInWordsAnswersIt(t *testing.T) {
 	assert.Equal(t, domain.StatePlanning, project.State)
 
 	// A second card, answered with an approval word.
-	_, err = f.svc.Chat.RequestApproval(ctx, p.ID, domain.CheckpointMainVisual, "Main Visual", "mv1")
+	_, err = f.svc.Chat.RequestApproval(ctx, p.ID, domain.CheckpointRoughCut, "Rough Cut", "e1")
 	require.NoError(t, err)
 	card2 := lastMessage(t, f.thread(t, p.ID))
 	_, err = f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "承認します。", ReplyToMessageID: card2.ID})
@@ -397,7 +400,7 @@ func TestPostMessage_ReplyingToApprovalCardInWordsAnswersIt(t *testing.T) {
 	project, updated2, err := f.svc.Chat.Card(ctx, p.ID, card2.ID)
 	require.NoError(t, err)
 	assert.Equal(t, domain.ApprovalApproved, updated2.ApprovalStatus)
-	assert.Equal(t, domain.StateGenerating, project.State)
+	assert.Equal(t, domain.StateAudio, project.State)
 }
 
 func TestEscalation_AnyReplyResumesTheProject(t *testing.T) {
@@ -539,9 +542,12 @@ func TestSetConfirmationLevel_ValidatesAndRemembersCustomSelection(t *testing.T)
 	assert.Equal(t, []domain.Checkpoint{domain.CheckpointScript, domain.CheckpointFinal}, got.CustomCheckpoints, "an empty selection falls back to script + final")
 
 	got, err = f.svc.Projects.SetConfirmationLevel(ctx, p.ID, domain.ConfirmCustomCheck,
-		[]domain.Checkpoint{domain.CheckpointRoughCut, domain.CheckpointCharacterDesign})
+		[]domain.Checkpoint{domain.CheckpointRoughCut, domain.CheckpointScript})
 	require.NoError(t, err)
-	assert.Equal(t, []domain.Checkpoint{domain.CheckpointCharacterDesign, domain.CheckpointRoughCut}, got.CustomCheckpoints, "stored in pipeline order")
+	assert.Equal(t, []domain.Checkpoint{domain.CheckpointScript, domain.CheckpointRoughCut}, got.CustomCheckpoints, "stored in pipeline order")
+
+	_, err = f.svc.Projects.SetConfirmationLevel(ctx, p.ID, domain.ConfirmCustomCheck, []domain.Checkpoint{domain.CheckpointCharacterDesign})
+	require.ErrorAs(t, err, &invalid, "a checkpoint nothing in the pipeline asks at cannot be selected")
 
 	got, err = f.svc.Projects.SetConfirmationLevel(ctx, p.ID, domain.ConfirmFullAuto, nil)
 	require.NoError(t, err)
