@@ -142,7 +142,9 @@ func TestPartialRegeneration_AnIssueOfTheWholeTakeIsNotSpliced(t *testing.T) {
 	require.Equal(t, http.StatusAccepted, j.form(http.MethodPost, "/takes/"+ids[0]+"/repair", nil).Code)
 	j.waitTakes(4)
 
-	assert.Eventually(t, func() bool { return j.count(`SELECT COUNT(*) FROM repair_action WHERE resulting_take_id IS NOT NULL`) == 1 }, 30*time.Second, 10*time.Millisecond)
+	assert.Eventually(t, func() bool {
+		return j.count(`SELECT COUNT(*) FROM repair_action WHERE resulting_take_id IS NOT NULL`) == 1
+	}, 30*time.Second, 10*time.Millisecond)
 	assert.Empty(t, j.splices(), "only a Judge Issue with a time range can be fixed by regenerating that range")
 }
 
