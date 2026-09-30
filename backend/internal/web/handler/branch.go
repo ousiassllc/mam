@@ -6,7 +6,6 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
-	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
@@ -109,10 +108,10 @@ func branchDetailData(d service.BranchDetail) organisms.BranchDetailData {
 	}
 }
 
-func branchShotItems(refs []repository.ShotRef) []organisms.BranchShotItem {
-	items := make([]organisms.BranchShotItem, len(refs))
-	for i, r := range refs {
-		items[i] = organisms.BranchShotItem{ShotID: r.Shot.ID, Scene: r.Scene.OrderIndex + 1, Shot: r.Shot.OrderIndex + 1, Objective: r.Shot.Objective}
+func branchShotItems(shots []service.BranchShot) []organisms.BranchShotItem {
+	items := make([]organisms.BranchShotItem, len(shots))
+	for i, s := range shots {
+		items[i] = organisms.BranchShotItem{ShotID: s.Shot.ID, Scene: s.Scene, Shot: s.Shot.OrderIndex + 1, Objective: s.Shot.Objective}
 	}
 	return items
 }

@@ -39,7 +39,7 @@ func TestSchema_M1TablesExistAndM2TablesDoNot(t *testing.T) {
 	} {
 		assert.True(t, tables[name], "missing M1 table %s", name)
 	}
-	for _, name := range []string{"series", "note", "note_version", "note_promotion", "branch", "branch_version", "brand_constraint"} {
+	for _, name := range []string{"series", "note", "note_version", "note_promotion", "brand_constraint"} {
 		assert.False(t, tables[name], "M2 table %s must not be in the M1 schema", name)
 	}
 }

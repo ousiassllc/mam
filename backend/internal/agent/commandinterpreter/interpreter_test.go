@@ -102,3 +102,14 @@ func TestInterpret_UnusableAnswerIsAnError(t *testing.T) {
 	_, err := commandinterpreter.New(&fakeLLM{answer: "cannot help"}).Interpret(context.Background(), commandinterpreter.Input{Message: "x"})
 	assert.ErrorIs(t, err, llm.ErrInvalidOutput)
 }
+
+func TestInterpret_CreateBranchKeepsANumberedRequestWithinTheLimitAndAShotOrSceneStart(t *testing.T) {
+	cmd, _ := interpret(t, `{"operations":[{"type":"create_branch","count":9,"point_type":"frame","directions":["ドアを開ける"," ","逃げる"]},
+		{"type":"create_branch","point_type":"scene"}]}`, commandinterpreter.Input{Message: "このカットから別展開を作って"})
+
+	require.Len(t, cmd.Operations, 2)
+	assert.Equal(t, commandinterpreter.Operation{
+		Type: commandinterpreter.OpCreateBranch, Count: domain.MaxBranchesPerRequest, PointType: domain.BranchAtShot, Directions: []string{"ドアを開ける", "逃げる"},
+	}, cmd.Operations[0], "the count is capped, a frame becomes a shot (a message gives no offset) and blank directions are dropped")
+	assert.Equal(t, commandinterpreter.Operation{Type: commandinterpreter.OpCreateBranch, Count: 1, PointType: domain.BranchAtScene}, cmd.Operations[1])
+}

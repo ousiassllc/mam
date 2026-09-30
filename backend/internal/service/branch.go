@@ -55,6 +55,12 @@ type BranchShotOption struct {
 	Label string
 }
 
+// BranchShot is a Shot of the derived tree of a Branch; Scene is the 1-based number of its Scene.
+type BranchShot struct {
+	Shot  domain.Shot
+	Scene int
+}
+
 // BranchDetail is the branch_page: the Branch, where it hangs, its own derived tree and its versions.
 type BranchDetail struct {
 	Project domain.Project
@@ -63,8 +69,8 @@ type BranchDetail struct {
 	Parent *domain.Branch
 	Scenes []domain.Scene
 	// Shots are the Shots of the Branch's own Scenes in story order.
-	Shots []repository.ShotRef
-	Versions   []domain.BranchVersion
+	Shots    []BranchShot
+	Versions []domain.BranchVersion
 	// LatestWorldVersion is the newest version of the Branch's own World State series: the versions
 	// the Branch can refer to are 1 to LatestWorldVersion.
 	LatestWorldVersion int
@@ -152,7 +158,7 @@ func (s *BranchService) detail(ctx context.Context, branch domain.Branch) (Branc
 	d := BranchDetail{Project: project, Branch: branch, Scenes: scenes, Versions: versions, LatestWorldVersion: latest}
 	for _, sh := range all {
 		if sh.Scene.BranchID == branch.ID {
-			d.Shots = append(d.Shots, sh)
+			d.Shots = append(d.Shots, BranchShot{Shot: sh.Shot, Scene: sh.Scene.OrderIndex + 1})
 		}
 	}
 	if branch.ParentID != "" {
@@ -367,7 +373,7 @@ func (s *BranchService) Fork(ctx context.Context, ref repository.ShotRef, typ do
 }
 
 func forkLine(d BranchDetail) string {
-	line := fmt.Sprintf("Branch「%s」を Scene %d / Shot %d の%sから作成しました。", d.Branch.Name, d.Branch.PointSceneNumber, max(d.Branch.PointShotNumber, 1), d.Branch.PointType.Label())
+	line := fmt.Sprintf("Branch「%s」を %s から作成しました。", d.Branch.Name, d.Branch.PointText())
 	if d.Started {
 		return line + "最初の Shot の生成を始めました。"
 	}

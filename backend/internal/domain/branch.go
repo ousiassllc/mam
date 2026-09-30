@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"fmt"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -33,18 +34,6 @@ func (t BranchPointType) Valid() bool {
 		}
 	}
 	return false
-}
-
-// Label is the type as the user reads it.
-func (t BranchPointType) Label() string {
-	switch t {
-	case BranchAtScene:
-		return "Scene"
-	case BranchAtFrame:
-		return "Frame"
-	default:
-		return "Shot"
-	}
 }
 
 // MaxBranchNameRunes bounds the name of a Branch.
@@ -90,6 +79,17 @@ type BranchVersion struct {
 	// WorldStateVersion is the number of the referenced world_state_version (0 when none).
 	WorldStateVersion int
 	CreatedAt         time.Time
+}
+
+// PointText says where the Branch starts, in the numbers of the series it hangs from ("Scene 2 / Shot 1 の後").
+func (b Branch) PointText() string {
+	switch b.PointType {
+	case BranchAtScene:
+		return fmt.Sprintf("Scene %d の頭", b.PointSceneNumber)
+	case BranchAtFrame:
+		return fmt.Sprintf("Scene %d / Shot %d の %.1f 秒", b.PointSceneNumber, b.PointShotNumber, b.PointOffsetSeconds)
+	}
+	return fmt.Sprintf("Scene %d / Shot %d の後", b.PointSceneNumber, b.PointShotNumber)
 }
 
 // CleanBranchName trims a Branch name and reports whether it is usable: not empty and at most
