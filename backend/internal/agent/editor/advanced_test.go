@@ -157,3 +157,34 @@ func TestJudge_MissingFootageDecidesTheVerdictAndTheEditFindingsStayListed(t *te
 	assert.Nil(t, findings[0].Need, "the edit finding carries no Shot")
 	assert.NotNil(t, findings[1].Need)
 }
+
+func TestAdvance_LeavesTheClipsTheUserFixedAlone(t *testing.T) {
+	in := input(domain.TemplateSNSShort, "", clip("a", 6), clip("b", 8))
+	in.Shots["a"] = editor.ShotFacts{Label: "a", Dialogue: "今日は特別な日", SelectedTakeID: "t-a", TakeReady: true, EditingFixed: true}
+	in.Shots["b"] = editor.ShotFacts{Label: "b", SelectedTakeID: "t-b", TakeReady: true, EditingFixed: true}
+
+	got, notes := editor.Advance(in)
+
+	assert.Equal(t, in.Timeline.Clips, got.Clips, "Editing MANUAL / LOCK: neither the pace, nor the caption touches the clips")
+	assert.Empty(t, notes)
+
+	in.Shots["b"] = editor.ShotFacts{Label: "b", SelectedTakeID: "t-b", TakeReady: true}
+	got, _ = editor.Advance(in)
+	assert.InDelta(t, editor.FastClipSeconds, got.Clips[1].Length(), 1e-9, "a clip that is not fixed is still edited")
+	assert.InDelta(t, 6.0, got.Clips[0].Length(), 1e-9)
+}
+
+func TestKeepFixedClips_BringsBackTheUsersClipInPlace(t *testing.T) {
+	mine := clip("b", 4)
+	mine.In, mine.Caption = 1, "my caption"
+	previous := domain.EditTimeline{Clips: []domain.EditClip{clip("a", 9), mine}}
+	fresh := domain.EditTimeline{Clips: []domain.EditClip{clip("x", 5), clip("b", 7), clip("a", 7)}}
+
+	got := editor.KeepFixedClips(fresh, previous, map[string]bool{"b": true, "x": true})
+
+	require.Len(t, got.Clips, 3)
+	assert.Equal(t, fresh.Clips[0], got.Clips[0], "a fixed Shot without a previous clip keeps the fresh one")
+	assert.Equal(t, mine, got.Clips[1])
+	assert.Equal(t, fresh.Clips[2], got.Clips[2], "a Shot that is not fixed is cut afresh")
+	assert.Equal(t, 7.0, fresh.Clips[1].Out, "the fresh timeline is not modified")
+}

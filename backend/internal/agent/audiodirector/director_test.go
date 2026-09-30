@@ -558,3 +558,47 @@ func TestPlanner_ModelFailureIsReturned(t *testing.T) {
 
 	assert.ErrorIs(t, err, boom)
 }
+
+func TestDirector_FixedMusicCarriesTheEarlierBGMOverInsteadOfMakingNewOne(t *testing.T) {
+	v := &fakeVendors{t: t}
+	ledger := &fakeLedger{}
+	d, root := newDirector(t, v, ledger, nil)
+	in := audiodirector.Input{ProjectID: "p1", EditTimelineID: "e1", Quality: domain.QualityFast, Scenes: twoScenes(), Seconds: 10}
+	first, err := d.Produce(context.Background(), in)
+	require.NoError(t, err)
+	var earlier []domain.AudioClip
+	for _, c := range first.Clips {
+		if c.LayerOf() == domain.LayerBGM {
+			earlier = append(earlier, c)
+		}
+	}
+	require.Len(t, earlier, 2)
+	v.music, ledger.entries = nil, nil
+
+	in.MusicFixed, in.FixedBGM = true, earlier
+	got, err := d.Produce(context.Background(), in)
+
+	require.NoError(t, err)
+	assert.Empty(t, v.music, "Music MANUAL / LOCK: no new BGM is composed")
+	assert.Equal(t, earlier, bgmOf(got), "the earlier BGM is carried over as it was")
+	assert.NotContains(t, ledger.providers(), domain.ModelElevenLabsMusic, "nothing is paid for music")
+	assert.Equal(t, 1, got.Count(domain.LayerDialogue), "the rest is made as usual")
+	_, statErr := os.Stat(filepath.Join(root, filepath.FromSlash(got.MixPath)))
+	assert.NoError(t, statErr)
+
+	in.FixedBGM = nil // fixed, but there was no music to keep
+	got, err = d.Produce(context.Background(), in)
+	require.NoError(t, err)
+	assert.Empty(t, v.music)
+	assert.Zero(t, got.Count(domain.LayerBGM))
+}
+
+func bgmOf(tl domain.AudioTimeline) []domain.AudioClip {
+	var out []domain.AudioClip
+	for _, c := range tl.Clips {
+		if c.LayerOf() == domain.LayerBGM {
+			out = append(out, c)
+		}
+	}
+	return out
+}

@@ -127,6 +127,9 @@ func paceCuts(in JudgeInput, p Profile) []cut {
 	}
 	var out []cut
 	for i, c := range in.Timeline.Clips {
+		if in.Shots[c.ShotID].EditingFixed {
+			continue // the user fixed this clip (Editing MANUAL / LOCK)
+		}
 		limit, criteria := p.MaxClipSeconds, "Pace"
 		if i == 0 && p.HookSeconds > 0 && (limit == 0 || p.HookSeconds < limit) {
 			limit, criteria = p.HookSeconds, "Hook"
@@ -166,7 +169,7 @@ func Advance(in JudgeInput) (domain.EditTimeline, []string) {
 		clip.Out = round3(clip.In + c.to)
 		notes = append(notes, fmt.Sprintf("クリップ %d を %.1f 秒から %.1f 秒に短縮（%s）", c.index+1, was, clip.Length(), c.criteria))
 	}
-	if last := len(out.Clips) - 1; last >= 0 && p.MinCTASeconds > 0 {
+	if last := len(out.Clips) - 1; last >= 0 && p.MinCTASeconds > 0 && !in.Shots[out.Clips[last].ShotID].EditingFixed {
 		c := &out.Clips[last]
 		if want := c.In + p.MinCTASeconds; c.Length() < p.MinCTASeconds && (c.SourceSeconds == 0 || want <= c.SourceSeconds+1e-9) {
 			was := c.Length()
@@ -177,6 +180,9 @@ func Advance(in JudgeInput) (domain.EditTimeline, []string) {
 	if p.Captions {
 		for i := range out.Clips {
 			c := &out.Clips[i]
+			if in.Shots[c.ShotID].EditingFixed {
+				continue
+			}
 			if text := spoken(in.Shots[c.ShotID]); c.Caption == "" && text != "" {
 				c.Caption = captionOf(text)
 				notes = append(notes, fmt.Sprintf("クリップ %d にセリフの字幕を追加（Caption）", i+1))
@@ -203,7 +209,7 @@ func advancedFindings(in JudgeInput) []domain.EditorFinding {
 			Action:    fmt.Sprintf("クリップ %d を %.1f 秒に短くする", c.index+1, c.to),
 		})
 	}
-	if last := len(clips) - 1; p.MinCTASeconds > 0 && clips[last].Length() < p.MinCTASeconds-1e-9 {
+	if last := len(clips) - 1; p.MinCTASeconds > 0 && clips[last].Length() < p.MinCTASeconds-1e-9 && !in.Shots[clips[last].ShotID].EditingFixed {
 		out = append(out, domain.EditorFinding{
 			ClipIndex: last + 1,
 			Issue:     fmt.Sprintf("最後のクリップが %.1f 秒で、CTA を読み切れません（CTA Timing）", clips[last].Length()),
@@ -212,7 +218,7 @@ func advancedFindings(in JudgeInput) []domain.EditorFinding {
 	}
 	if p.Captions {
 		for i, c := range clips {
-			if c.Caption == "" && spoken(in.Shots[c.ShotID]) != "" {
+			if c.Caption == "" && !in.Shots[c.ShotID].EditingFixed && spoken(in.Shots[c.ShotID]) != "" {
 				out = append(out, domain.EditorFinding{
 					ClipIndex: i + 1,
 					Issue:     fmt.Sprintf("セリフのあるクリップ %d に字幕がありません（Caption）", i+1),
