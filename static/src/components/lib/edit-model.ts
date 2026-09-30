@@ -1,6 +1,6 @@
 /**
- * The Edit Timeline of mam-timeline-editor as pure functions (F-18 Simple: Shot Selection, Cut Point,
- * Timing, Transition). The server has the last word (domain.EditTimeline.Normalize); these functions
+ * The Edit Timeline of mam-timeline-editor as pure functions (F-18: Shot Selection, Cut Point,
+ * Timing, Transition, and the Advanced items Caption, Reaction Shot and Insert Shot). The server has the last word (domain.EditTimeline.Normalize); these functions
  * keep the editor from offering what it would refuse.
  */
 
@@ -11,11 +11,23 @@ export interface EditTransition {
   seconds: number;
 }
 
+/** What a clip is: the story, or a cutaway added in editing (Insert Shot / Reaction Shot). */
+export type ClipKind = 'main' | 'insert' | 'reaction';
+
+export const CLIP_KIND_LABEL: Record<ClipKind, string> = {
+  main: '',
+  insert: 'インサート',
+  reaction: 'リアクション',
+};
+
 /** A clip of GET /api/v1/projects/:id/edit-timeline. */
 export interface EditClip {
   shot_id: string;
   take_id: string;
   label: string;
+  kind?: ClipKind;
+  /** The text drawn over the clip (Caption). */
+  caption?: string;
   objective?: string;
   source_seconds?: number;
   in_point: number;
@@ -30,6 +42,7 @@ export interface EditLimits {
   min_clip_seconds: number;
   max_transition_seconds: number;
   max_clips: number;
+  max_caption_runes: number;
 }
 
 export const TRANSITION_LABEL: Record<TransitionType, string> = {
@@ -124,12 +137,33 @@ export function setTransition(clips: EditClip[], index: number, type: Transition
   return withStarts(next);
 }
 
+/** Why a caption is not acceptable ('' when it is). Line breaks are the server's to tidy; only the length is checked. */
+export function captionProblem(text: string, limits: EditLimits): string {
+  const length = [...text.trim()].length;
+  return length > limits.max_caption_runes ? `字幕は ${limits.max_caption_runes} 文字以内にしてください（現在 ${length} 文字）` : '';
+}
+
+/** Sets the caption of a clip ('' removes it). Returns `clips` itself when the text is too long. */
+export function setCaption(clips: EditClip[], index: number, text: string, limits: EditLimits): EditClip[] {
+  const clip = clips[index];
+  if (!clip || captionProblem(text, limits) !== '') return clips;
+  const caption = text.trim();
+  if ((clip.caption ?? '') === caption) return clips;
+  const next = clips.slice();
+  next[index] = { ...clip, caption };
+  return next;
+}
+
 /** The body of PUT /edit-timelines/:id. */
-export function toPayload(clips: EditClip[]): { clips: Array<Pick<EditClip, 'shot_id' | 'take_id' | 'in_point' | 'out_point' | 'transition'>> } {
+export function toPayload(clips: EditClip[]): {
+  clips: Array<Pick<EditClip, 'shot_id' | 'take_id' | 'in_point' | 'out_point' | 'transition'> & { kind: ClipKind; caption: string }>;
+} {
   return {
     clips: clips.map((c, i) => ({
       shot_id: c.shot_id,
       take_id: c.take_id,
+      kind: c.kind ?? 'main',
+      caption: (c.caption ?? '').trim(),
       in_point: c.in_point,
       out_point: c.out_point,
       transition: i === 0 ? { type: 'cut', seconds: 0 } : c.transition,

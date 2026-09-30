@@ -4,16 +4,18 @@ import {
   isDirty,
   moveClip,
   removeClip,
+  setCaption,
   setTransition,
   setTrim,
   timelineSeconds,
   toPayload,
+  captionProblem,
   trimProblem,
   type EditClip,
   type EditLimits,
 } from './edit-model';
 
-const limits: EditLimits = { min_clip_seconds: 0.5, max_transition_seconds: 2, max_clips: 200 };
+const limits: EditLimits = { min_clip_seconds: 0.5, max_transition_seconds: 2, max_clips: 200, max_caption_runes: 10 };
 
 function clip(shot: string, inPoint: number, outPoint: number, over: Partial<EditClip> = {}): EditClip {
   return {
@@ -104,7 +106,7 @@ describe('setTransition', () => {
 describe('save', () => {
   it('sends what the server needs and nothing derived', () => {
     const payload = toPayload(moveClip(three(), 1, 0));
-    expect(Object.keys(payload.clips[0]!).sort()).toEqual(['in_point', 'out_point', 'shot_id', 'take_id', 'transition']);
+    expect(Object.keys(payload.clips[0]!).sort()).toEqual(['caption', 'in_point', 'kind', 'out_point', 'shot_id', 'take_id', 'transition']);
     expect(payload.clips[0]!.transition).toEqual({ type: 'cut', seconds: 0 }); // the new first clip
   });
 
@@ -112,5 +114,35 @@ describe('save', () => {
     const saved = three();
     expect(isDirty(saved, three())).toBe(false);
     expect(isDirty(saved, moveClip(three(), 0, 1))).toBe(true);
+  });
+});
+
+describe('caption and clip kind', () => {
+  it('sets, trims and clears the caption of one clip only', () => {
+    const set = setCaption(three(), 1, '  朝が来た ', limits);
+    expect(set[1]!.caption).toBe('朝が来た');
+    expect(set[0]!.caption).toBeUndefined();
+    expect(setCaption(set, 1, '', limits)[1]!.caption).toBe('');
+  });
+
+  it('refuses a caption that is too long and keeps the clips as they are', () => {
+    const clips = three();
+    const text = 'あ'.repeat(11);
+    expect(captionProblem(text, limits)).toContain('10 文字以内');
+    expect(setCaption(clips, 0, text, limits)).toBe(clips);
+    expect(captionProblem('あ'.repeat(10), limits)).toBe('');
+  });
+
+  it('keeps the kind and caption of a clip through a reorder and a save', () => {
+    const clips = three();
+    clips[2] = { ...clips[2]!, kind: 'reaction', caption: 'えっ？' };
+    const payload = toPayload(moveClip(clips, 2, 0));
+    expect(payload.clips[0]).toMatchObject({ shot_id: 'c', kind: 'reaction', caption: 'えっ？' });
+    expect(payload.clips[1]).toMatchObject({ kind: 'main', caption: '' });
+  });
+
+  it('is dirty when only a caption changed', () => {
+    const saved = three();
+    expect(isDirty(saved, setCaption(saved, 0, 'こんにちは', limits))).toBe(true);
   });
 });

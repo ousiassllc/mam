@@ -58,6 +58,8 @@ func newEditorApp(t *testing.T) *editorApp {
 	})
 	e := &editorApp{takeApp: ta, llm: l}
 	e.setLevel(domain.ConfirmFullAuto) // no approval card unless a test asks for one
+	// DRAMA asks nothing of a one-clip cut that a test could trip over (PRODUCT / CM wants the product on screen).
+	e.execSQL(`UPDATE project SET production_template = 'drama' WHERE id = ?`, e.project)
 	return e
 }
 
@@ -100,6 +102,8 @@ type timelineBody struct {
 		ShotID     string  `json:"shot_id"`
 		TakeID     string  `json:"take_id"`
 		Label      string  `json:"label"`
+		Kind       string  `json:"kind"`
+		Caption    string  `json:"caption"`
 		In         float64 `json:"in_point"`
 		Out        float64 `json:"out_point"`
 		Transition struct {
@@ -331,4 +335,101 @@ func TestEditor_RoughCutCheckpointHoldsTheProjectUntilTheCardIsApproved(t *testi
 	rec = e.form(http.MethodPost, "/projects/"+e.project+"/approvals/"+card, url.Values{"decision": {"approve"}})
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	assert.Equal(t, "AUDIO", e.state())
+}
+
+// timelineOn is GET /api/v1/projects/:id/edit-timeline for a Branch ("" is the trunk).
+func (e *editorApp) timelineOn(branchID string) (timelineBody, int) {
+	e.t.Helper()
+	rec := e.get("/api/v1/projects/"+e.project+"/edit-timeline?branch_id="+branchID, false)
+	var b timelineBody
+	if rec.Code == http.StatusOK {
+		require.NoError(e.t, json.Unmarshal(rec.Body.Bytes(), &b))
+	}
+	return b, rec.Code
+}
+
+func TestEditor_EachBranchKeepsItsOwnTimelineAndCaptionsSurviveTheSave(t *testing.T) {
+	e := newEditorApp(t)
+	e.setState("VISUAL_DESIGN")
+	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/takes/t1/select", nil).Code)
+	require.Equal(t, http.StatusOK, e.roughCut().Code)
+	trunk := e.timeline()
+
+	rec := e.form(http.MethodPost, "/shots/"+e.shotID+"/branch", url.Values{"name": {"逃げる"}})
+	require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
+	branchID := strings.TrimPrefix(rec.Header().Get("HX-Redirect"), "/branches/")
+	_, code := e.timelineOn(branchID)
+	assert.Equal(t, http.StatusNotFound, code, "a new Branch has no edit yet")
+
+	// The Branch makes its own Rough Cut: its own version series, the trunk stays as it was.
+	rec = e.form(http.MethodPost, "/projects/"+e.project+"/edit/rough-cut", url.Values{"branch_id": {branchID}})
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	onBranch, code := e.timelineOn(branchID)
+	require.Equal(t, http.StatusOK, code)
+	assert.Equal(t, 1, onBranch.Version)
+	assert.NotEqual(t, trunk.ID, onBranch.ID)
+	assert.Contains(t, onBranch.SaveURL, onBranch.ID)
+
+	// Editing the Branch (a caption, a shorter cut) appends to the Branch's series only.
+	body := `{"clips":[{"shot_id":"` + e.shotID + `","take_id":"t1","kind":"main","caption":"  朝が来た ","in_point":0,"out_point":2,"transition":{"type":"cut","seconds":0}}]}`
+	require.Equal(t, http.StatusNoContent, e.request(http.MethodPut, onBranch.SaveURL, []byte(body), "application/json", false).Code)
+	edited, _ := e.timelineOn(branchID)
+	assert.Equal(t, 2, edited.Version)
+	assert.Equal(t, "朝が来た", edited.Clips[0].Caption)
+	assert.Equal(t, "main", edited.Clips[0].Kind)
+	assert.InDelta(t, 2, edited.Duration, 0.01)
+	stillTrunk := e.timeline()
+	assert.Equal(t, trunk.ID, stillTrunk.ID, "the trunk's latest version is untouched")
+	assert.InDelta(t, trunk.Duration, stillTrunk.Duration, 1e-9)
+
+	// A caption over the limit is refused and nothing is saved.
+	tooLong := strings.Replace(body, "  朝が来た ", strings.Repeat("あ", domain.MaxCaptionRunes+1), 1)
+	rec = e.request(http.MethodPut, edited.SaveURL, []byte(tooLong), "application/json", false)
+	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
+	unchanged, _ := e.timelineOn(branchID)
+	assert.Equal(t, 2, unchanged.Version)
+
+	_, code = e.timelineOn("nope")
+	assert.Equal(t, http.StatusNotFound, code)
+}
+
+func TestEditor_NeedShotVerdictIsReportedWithTheShotToMakeAndAwaitsTheDirector(t *testing.T) {
+	e := newEditorApp(t)
+	e.setState("VISUAL_DESIGN")
+	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/takes/t1/select", nil).Code)
+	require.Equal(t, http.StatusOK, e.roughCut().Code)
+	id := e.timeline().ID
+
+	// Not judged yet: nothing to act on.
+	assert.Equal(t, http.StatusConflict, e.form(http.MethodPost, "/edit-timelines/"+id+"/request-additional-shot", nil).Code)
+
+	e.llm.answer = `{"verdict":"need_shot","findings":[{"clip_index":1,"issue":"リアクションがない","action":"足す",` +
+		`"need_shot":{"kind":"reaction","after_clip":1,"objective":"驚く","duration_seconds":2}}]}`
+	rec := e.form(http.MethodPost, "/edit-timelines/"+id+"/judge", nil)
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.Equal(t, "EDIT_JUDGING", e.state(), "the Project waits for the additional Shot")
+	assert.Contains(t, rec.Body.String(), "data-need-shot")
+
+	var body struct {
+		Judge struct {
+			Verdict  string `json:"verdict"`
+			Findings []struct {
+				Need struct {
+					Kind      string  `json:"kind"`
+					AfterClip int     `json:"after_clip"`
+					Seconds   float64 `json:"duration_seconds"`
+				} `json:"need_shot"`
+			} `json:"findings"`
+		} `json:"judge"`
+		RequestShotURL string `json:"request_shot_url"`
+	}
+	require.NoError(t, json.Unmarshal(e.get("/api/v1/projects/"+e.project+"/edit-timeline", false).Body.Bytes(), &body))
+	assert.Equal(t, "need_shot", body.Judge.Verdict)
+	require.Len(t, body.Judge.Findings, 1)
+	assert.Equal(t, "reaction", body.Judge.Findings[0].Need.Kind)
+	assert.Equal(t, 1, body.Judge.Findings[0].Need.AfterClip)
+	assert.Equal(t, "/edit-timelines/"+id+"/request-additional-shot", body.RequestShotURL)
+
+	// Without generation configured (no video model) the Director cannot be asked.
+	assert.Equal(t, http.StatusServiceUnavailable, e.form(http.MethodPost, body.RequestShotURL, nil).Code)
 }
