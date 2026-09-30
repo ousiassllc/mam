@@ -255,7 +255,7 @@ func New(deps Deps) *Services {
 		Reference: &ReferenceService{c},
 		Trace:     &TraceService{traces: repository.NewTraceRepository(deps.DB)},
 		Versions:  &VersionService{core: c, versions: versions, director: director, world: worlds},
-		Bundle:    &BundleService{core: c, bundles: repository.NewBundleRepository(deps.DB)},
+		Bundle:    &BundleService{core: c, bundles: repository.NewBundleRepository(deps.DB), freeBytes: deps.FreeBytes},
 		Series:    &SeriesService{core: c, series: repository.NewSeriesRepository(deps.DB)},
 		Takes:     takeService,
 		Notes:     notes,
