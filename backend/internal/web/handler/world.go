@@ -14,14 +14,11 @@ import (
 )
 
 // WorldStatePage renders the current World State (GET /projects/:id/world-state): the full page,
-// or the view fragment for HTMX. Branches are M2, so a branch_id addresses nothing yet (404).
+// or the view fragment for HTMX. The query branch_id selects the World State of that Branch
+// (404 when the Branch is not in the Project); without it the trunk is shown.
 func WorldStatePage(svc *service.WorldService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if c.Query("branch_id") != "" {
-			pageError(c, service.ErrNotFound)
-			return
-		}
-		view, err := svc.View(c.Request.Context(), c.Param("id"))
+		view, err := svc.View(c.Request.Context(), c.Param("id"), c.Query("branch_id"))
 		if err != nil {
 			pageError(c, err)
 			return
@@ -54,17 +51,13 @@ func UpdateLocation(svc *service.WorldService) gin.HandlerFunc {
 
 func updateEntity(svc *service.WorldService, target domain.WorldTarget, param string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if c.Query("branch_id") != "" {
-			toast(c, service.ErrNotFound)
-			return
-		}
 		fields := map[string]string{}
 		for _, name := range domain.EditableFields(target) {
 			if v, ok := c.GetPostForm(name); ok {
 				fields[name] = strings.TrimSpace(v)
 			}
 		}
-		view, err := svc.UpdateEntity(c.Request.Context(), c.Param("id"), target, c.Param(param), fields)
+		view, err := svc.UpdateEntity(c.Request.Context(), c.Param("id"), c.Query("branch_id"), target, c.Param(param), fields)
 		if err != nil {
 			toast(c, err)
 			return
@@ -77,7 +70,7 @@ func updateEntity(svc *service.WorldService, target domain.WorldTarget, param st
 // (PUT /projects/:id/world-state/locks) and answers with the updated view.
 func SetWorldLock(svc *service.WorldService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		view, err := svc.SetFieldLock(c.Request.Context(), c.Param("id"), domain.WorldTarget(c.PostForm("target_type")),
+		view, err := svc.SetFieldLock(c.Request.Context(), c.Param("id"), c.Query("branch_id"), domain.WorldTarget(c.PostForm("target_type")),
 			c.PostForm("target_id"), c.PostForm("parameter"), domain.LockMode(c.PostForm("mode")))
 		if err != nil {
 			toast(c, err)
@@ -106,7 +99,7 @@ func AssignLocationReference(svc *service.WorldService) gin.HandlerFunc {
 
 func assignReference(svc *service.WorldService, target domain.WorldTarget, param string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		view, err := svc.AssignReference(c.Request.Context(), c.Param("id"), target, c.Param(param), c.PostForm("slot"), c.PostForm("reference_id"))
+		view, err := svc.AssignReference(c.Request.Context(), c.Param("id"), c.Query("branch_id"), target, c.Param(param), c.PostForm("slot"), c.PostForm("reference_id"))
 		if err != nil {
 			toast(c, err)
 			return
@@ -116,5 +109,5 @@ func assignReference(svc *service.WorldService, target domain.WorldTarget, param
 }
 
 func worldStateData(v service.WorldView) organisms.WorldStateData {
-	return organisms.WorldStateData{Project: v.Project, World: v.World, Locks: v.Locks, ProjectLocks: v.ProjectLocks, Library: v.Library, Versions: v.Versions}
+	return organisms.WorldStateData{Project: v.Project, Branch: v.Branch, World: v.World, Locks: v.Locks, ProjectLocks: v.ProjectLocks, Library: v.Library, Versions: v.Versions}
 }

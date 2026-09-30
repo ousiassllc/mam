@@ -415,12 +415,12 @@ func TestChat_DirectorModeAsksWhenTheShotCannotBeResolved(t *testing.T) {
 	assert.Equal(t, 1, f.lockRows(t))
 }
 
-func TestChat_DirectorModeCanSwitchBackToAutoAndBranchIsNotYetSupported(t *testing.T) {
+func TestChat_DirectorModeCanSwitchBackToAutoAndReportsWhatIsNotSupported(t *testing.T) {
 	f := newGenFixture(t, true)
 	f.startDirecting(t)
-	f.llm.interpreter = opsJSON(`{"type":"unsupported","reason":"Branch の作成はまだ利用できません"}`)
-	ws := f.say(t, "ここから別展開を3つ作って", "")
-	assert.Contains(t, ws.Messages[1].Content, "Branch")
+	f.llm.interpreter = opsJSON(`{"type":"unsupported","reason":"書き出しはまだ指示できません"}`)
+	ws := f.say(t, "これを書き出して", "")
+	assert.Contains(t, ws.Messages[1].Content, "書き出し")
 
 	f.llm.interpreter = opsJSON(`{"type":"set_mode","project_mode":"auto"}`)
 	f.say(t, "あとはお任せ", "")
@@ -448,7 +448,7 @@ func TestProjectLock_LockedStoryIsNotChangedByTheStateExtractor(t *testing.T) {
 
 	f.generateAndWait(t, f.shotID, 2)
 
-	world, err := f.svc.World.View(context.Background(), f.projectID)
+	world, err := f.svc.World.View(context.Background(), f.projectID, "")
 	require.NoError(t, err)
 	assert.Empty(t, world.World.Story.PreviousEvent, "the Story is frozen")
 	assert.Zero(t, world.World.Story.Scene)

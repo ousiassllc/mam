@@ -49,7 +49,7 @@ func (s *VersionService) RestoreWorldState(ctx context.Context, projectID string
 	if _, err := s.versions.RestoreWorldStateVersion(ctx, projectID, "", number); err != nil {
 		return WorldView{}, lockedOrNotFound(err)
 	}
-	return s.world.View(ctx, projectID)
+	return s.world.View(ctx, projectID, "")
 }
 
 func lockedOrNotFound(err error) error {

@@ -21,8 +21,10 @@ type WorldService struct {
 // WorldView is the world_state_page: the current World State with the fields the user has LOCKed.
 type WorldView struct {
 	Project domain.Project
-	World   domain.WorldContext
-	Locks   domain.LockSet
+	// Branch is the Branch the view shows; nil for the trunk.
+	Branch *domain.Branch
+	World  domain.WorldContext
+	Locks  domain.LockSet
 	// ProjectLocks is the AUTO / MANUAL / LOCK setting of Story and Music.
 	ProjectLocks domain.ParameterLocks
 	// Library is the Reference Library of the Project: the images a reference slot can hold.
@@ -31,13 +33,14 @@ type WorldView struct {
 	Versions []domain.VersionEntry
 }
 
-// View returns the current World State of the Project.
-func (s *WorldService) View(ctx context.Context, projectID string) (WorldView, error) {
+// View returns the current World State of the trunk of the Project, or of its Branch when
+// branchID is set. A Branch that is not in the Project is ErrNotFound.
+func (s *WorldService) View(ctx context.Context, projectID, branchID string) (WorldView, error) {
 	project, err := s.getProject(ctx, projectID)
 	if err != nil {
 		return WorldView{}, err
 	}
-	world, err := s.world.World(ctx, projectID)
+	world, err := s.world.World(ctx, projectID, branchID)
 	if err != nil {
 		return WorldView{}, notFound(err)
 	}
@@ -53,17 +56,26 @@ func (s *WorldService) View(ctx context.Context, projectID string) (WorldView, e
 	if err != nil {
 		return WorldView{}, err
 	}
-	versions, err := s.versions.WorldStateVersions(ctx, projectID, "")
+	versions, err := s.versions.WorldStateVersions(ctx, projectID, branchID)
 	if err != nil {
 		return WorldView{}, notFound(err)
 	}
-	return WorldView{Project: project, World: world, Locks: locks, ProjectLocks: projectLocks, Library: library, Versions: versions}, nil
+	view := WorldView{Project: project, World: world, Locks: locks, ProjectLocks: projectLocks, Library: library, Versions: versions}
+	if branchID != "" {
+		branch, err := s.branches.Get(ctx, branchID)
+		if err != nil {
+			return WorldView{}, notFound(err)
+		}
+		view.Branch = &branch
+	}
+	return view, nil
 }
 
 // UpdateEntity sets the given fields (domain.EditableFields) of a Character, Product or Location
-// and returns the new view. A LOCKed field is ErrLocked and nothing is written; a value that is
-// too long, or an unknown field, is a ValidationError.
-func (s *WorldService) UpdateEntity(ctx context.Context, projectID string, target domain.WorldTarget, id string, fields map[string]string) (WorldView, error) {
+// of the trunk (or of the Branch when branchID is set) and returns the new view. A LOCKed field is
+// ErrLocked and nothing is written; a value that is too long, or an unknown field, is a
+// ValidationError.
+func (s *WorldService) UpdateEntity(ctx context.Context, projectID, branchID string, target domain.WorldTarget, id string, fields map[string]string) (WorldView, error) {
 	if _, err := s.getProject(ctx, projectID); err != nil {
 		return WorldView{}, err
 	}
@@ -82,21 +94,21 @@ func (s *WorldService) UpdateEntity(ctx context.Context, projectID string, targe
 		}
 		clean[name] = value
 	}
-	err := s.world.UpdateEntity(ctx, projectID, target, id, clean)
+	err := s.world.UpdateEntity(ctx, projectID, branchID, target, id, clean)
 	switch {
 	case errors.Is(err, repository.ErrLocked):
 		return WorldView{}, ErrLocked
 	case err != nil:
 		return WorldView{}, notFound(err)
 	}
-	return s.View(ctx, projectID)
+	return s.View(ctx, projectID, branchID)
 }
 
 // SetFieldLock switches one attribute of the World State between AUTO and LOCK (F-09, spec/spec.md
 // §9.3) and returns the new view. id is the Character, Product or Location; Camera and Story have
 // none. An unknown target, attribute or mode is a ValidationError; a LOCKed attribute is not
 // updated by the State Extractor and cannot be edited.
-func (s *WorldService) SetFieldLock(ctx context.Context, projectID string, target domain.WorldTarget, id, field string, mode domain.LockMode) (WorldView, error) {
+func (s *WorldService) SetFieldLock(ctx context.Context, projectID, branchID string, target domain.WorldTarget, id, field string, mode domain.LockMode) (WorldView, error) {
 	if _, err := s.getProject(ctx, projectID); err != nil {
 		return WorldView{}, err
 	}
@@ -109,17 +121,17 @@ func (s *WorldService) SetFieldLock(ctx context.Context, projectID string, targe
 	if mode != domain.LockAuto && mode != domain.LockLocked {
 		return WorldView{}, invalid("mode", "AUTO か LOCK を指定してください")
 	}
-	if err := s.world.SetFieldLock(ctx, projectID, target, id, field, mode); err != nil {
+	if err := s.world.SetFieldLock(ctx, projectID, branchID, target, id, field, mode); err != nil {
 		return WorldView{}, notFound(err)
 	}
-	return s.View(ctx, projectID)
+	return s.View(ctx, projectID, branchID)
 }
 
 // AssignReference puts the Reference Library image on a reference slot of a Character, Product or
 // Location (referenceID "" empties the slot) and returns the new view (spec/spec.md §10.1). A slot
 // the target has none of, or an image of the wrong kind, is a ValidationError; a slot whose LOCK is
 // set is ErrLocked.
-func (s *WorldService) AssignReference(ctx context.Context, projectID string, target domain.WorldTarget, id, slotName, referenceID string) (WorldView, error) {
+func (s *WorldService) AssignReference(ctx context.Context, projectID, branchID string, target domain.WorldTarget, id, slotName, referenceID string) (WorldView, error) {
 	if _, err := s.getProject(ctx, projectID); err != nil {
 		return WorldView{}, err
 	}
@@ -138,12 +150,12 @@ func (s *WorldService) AssignReference(ctx context.Context, projectID string, ta
 		}
 		assetID = item.AssetID
 	}
-	err := s.world.AssignReference(ctx, projectID, slot, id, assetID)
+	err := s.world.AssignReference(ctx, projectID, branchID, slot, id, assetID)
 	switch {
 	case errors.Is(err, repository.ErrLocked):
 		return WorldView{}, ErrLocked
 	case err != nil:
 		return WorldView{}, notFound(err)
 	}
-	return s.View(ctx, projectID)
+	return s.View(ctx, projectID, branchID)
 }

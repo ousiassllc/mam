@@ -194,22 +194,22 @@ func TestWorldAssignReference_ChecksKindSlotLockAndAppliesToTheNextReferencePack
 	face := f.upload(t, "character", "Mio face", "")
 	street := f.upload(t, "location", "Street layout", "")
 
-	view, err := f.svc.World.AssignReference(ctx, f.projectID, domain.TargetCharacter, "c1", "face", face.ID)
+	view, err := f.svc.World.AssignReference(ctx, f.projectID, "", domain.TargetCharacter, "c1", "face", face.ID)
 	require.NoError(t, err)
 	assert.Equal(t, face.AssetID, view.World.Characters[0].FaceReferenceAssetID)
-	_, err = f.svc.World.AssignReference(ctx, f.projectID, domain.TargetLocation, "l1", "layout", street.ID)
+	_, err = f.svc.World.AssignReference(ctx, f.projectID, "", domain.TargetLocation, "l1", "layout", street.ID)
 	require.NoError(t, err)
 
 	var invalid *service.ValidationError
-	_, err = f.svc.World.AssignReference(ctx, f.projectID, domain.TargetCharacter, "c1", "body", street.ID)
+	_, err = f.svc.World.AssignReference(ctx, f.projectID, "", domain.TargetCharacter, "c1", "body", street.ID)
 	require.ErrorAs(t, err, &invalid, "a Location image does not fit a Character slot")
 	assert.Equal(t, "reference_id", invalid.Field)
-	_, err = f.svc.World.AssignReference(ctx, f.projectID, domain.TargetCharacter, "c1", "layout", face.ID)
+	_, err = f.svc.World.AssignReference(ctx, f.projectID, "", domain.TargetCharacter, "c1", "layout", face.ID)
 	require.ErrorAs(t, err, &invalid, "a Character has no layout slot")
 	assert.Equal(t, "slot", invalid.Field)
-	_, err = f.svc.World.AssignReference(ctx, f.projectID, domain.TargetCharacter, "c1", "face", "missing")
+	_, err = f.svc.World.AssignReference(ctx, f.projectID, "", domain.TargetCharacter, "c1", "face", "missing")
 	assert.ErrorIs(t, err, service.ErrNotFound)
-	_, err = f.svc.World.AssignReference(ctx, f.projectID, domain.TargetCharacter, "nobody", "face", face.ID)
+	_, err = f.svc.World.AssignReference(ctx, f.projectID, "", domain.TargetCharacter, "nobody", "face", face.ID)
 	assert.ErrorIs(t, err, service.ErrNotFound)
 
 	f.buildPack(t)
@@ -227,9 +227,9 @@ func TestWorldAssignReference_ChecksKindSlotLockAndAppliesToTheNextReferencePack
 	}
 
 	// LOCK freezes the slot: no assigning, no clearing.
-	_, err = f.svc.World.SetFieldLock(ctx, f.projectID, domain.TargetCharacter, "c1", "identity", domain.LockLocked)
+	_, err = f.svc.World.SetFieldLock(ctx, f.projectID, "", domain.TargetCharacter, "c1", "identity", domain.LockLocked)
 	require.NoError(t, err)
-	_, err = f.svc.World.AssignReference(ctx, f.projectID, domain.TargetCharacter, "c1", "face", "")
+	_, err = f.svc.World.AssignReference(ctx, f.projectID, "", domain.TargetCharacter, "c1", "face", "")
 	assert.ErrorIs(t, err, service.ErrLocked)
 }
 
@@ -238,13 +238,13 @@ func TestWorldSetFieldLock_ValidatesTargetParameterAndMode(t *testing.T) {
 	ctx := context.Background()
 	f.seedWorld(t)
 
-	view, err := f.svc.World.SetFieldLock(ctx, f.projectID, domain.TargetLocation, "l1", "lighting_state", domain.LockLocked)
+	view, err := f.svc.World.SetFieldLock(ctx, f.projectID, "", domain.TargetLocation, "l1", "lighting_state", domain.LockLocked)
 	require.NoError(t, err)
 	assert.True(t, view.Locks.Locked(domain.TargetLocation, "l1", "lighting_state"))
-	view, err = f.svc.World.SetFieldLock(ctx, f.projectID, domain.TargetCamera, "", "lens", domain.LockLocked)
+	view, err = f.svc.World.SetFieldLock(ctx, f.projectID, "", domain.TargetCamera, "", "lens", domain.LockLocked)
 	require.NoError(t, err)
 	assert.True(t, view.Locks.Locked(domain.TargetCamera, "", "lens"))
-	view, err = f.svc.World.SetFieldLock(ctx, f.projectID, domain.TargetLocation, "l1", "lighting_state", domain.LockAuto)
+	view, err = f.svc.World.SetFieldLock(ctx, f.projectID, "", domain.TargetLocation, "l1", "lighting_state", domain.LockAuto)
 	require.NoError(t, err)
 	assert.False(t, view.Locks.Locked(domain.TargetLocation, "l1", "lighting_state"))
 
@@ -262,13 +262,13 @@ func TestWorldSetFieldLock_ValidatesTargetParameterAndMode(t *testing.T) {
 		{domain.TargetLocation, "l1", "time", "", "mode"},
 	}
 	for _, b := range bad {
-		_, err := f.svc.World.SetFieldLock(ctx, f.projectID, b.target, b.id, b.field, b.mode)
+		_, err := f.svc.World.SetFieldLock(ctx, f.projectID, "", b.target, b.id, b.field, b.mode)
 		var invalid *service.ValidationError
 		require.ErrorAs(t, err, &invalid, b)
 		assert.Equal(t, b.want, invalid.Field, b)
 	}
-	_, err = f.svc.World.SetFieldLock(ctx, f.projectID, domain.TargetLocation, "nope", "time", domain.LockLocked)
+	_, err = f.svc.World.SetFieldLock(ctx, f.projectID, "", domain.TargetLocation, "nope", "time", domain.LockLocked)
 	assert.ErrorIs(t, err, service.ErrNotFound)
-	_, err = f.svc.World.SetFieldLock(ctx, "nope", domain.TargetCamera, "", "lens", domain.LockLocked)
+	_, err = f.svc.World.SetFieldLock(ctx, "nope", "", domain.TargetCamera, "", "lens", domain.LockLocked)
 	assert.ErrorIs(t, err, service.ErrNotFound)
 }

@@ -248,7 +248,7 @@ func (r *Runner) input(ctx context.Context, ref repository.TakeRef) (Input, erro
 		in.Template = policy.Template
 	}
 
-	shots, err := r.Generations.ListProjectShots(ctx, ref.ProjectID)
+	shots, err := r.Generations.StoryShots(ctx, ref.ProjectID, ref.BranchID)
 	if err != nil {
 		return Input{}, err
 	}
@@ -265,7 +265,7 @@ func (r *Runner) input(ctx context.Context, ref repository.TakeRef) (Input, erro
 	if err != nil {
 		return Input{}, err
 	}
-	world, err := r.Generations.WorldContext(ctx, ref.ProjectID)
+	world, err := r.Generations.WorldContext(ctx, ref.ProjectID, ref.BranchID)
 	if err != nil {
 		return Input{}, err
 	}

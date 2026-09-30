@@ -33,6 +33,8 @@ type core struct {
 	director *DirectorService
 	// continuer answers the replies to Continue cards; set by New.
 	continuer *ContinueService
+	// branches are the Branches of the Project (F-17).
+	branches *repository.BranchRepository
 }
 
 // getProject maps repository.ErrNotFound to ErrNotFound.

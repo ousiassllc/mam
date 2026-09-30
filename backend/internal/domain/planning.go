@@ -105,8 +105,10 @@ type Storyboard struct {
 // Scene is a row of scene: one scene of the video. State is the sub-state within the
 // Core State Machine.
 type Scene struct {
-	ID         string
-	ProjectID  string
+	ID        string
+	ProjectID string
+	// BranchID is the Branch whose derived tree the Scene belongs to; "" for the trunk (F-17).
+	BranchID   string
 	OrderIndex int
 	Title      string
 	Location   string // name of the Location, "" when unknown
