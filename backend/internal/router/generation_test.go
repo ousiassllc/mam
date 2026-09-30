@@ -240,6 +240,12 @@ func TestContinue_ProposesACardInTheChatAndConfirmAddsAndGeneratesTheNextShot(t 
 		var state string
 		return g.db.Reader().QueryRow(`SELECT state FROM shot WHERE id = ?`, g.shotID).Scan(&state) == nil && state == "PLANNING"
 	}, 30*time.Second, 10*time.Millisecond)
+	generates := func() (n int) {
+		require.NoError(t, g.db.Reader().QueryRow(
+			`SELECT COUNT(*) FROM human_intervention WHERE project_id = ? AND kind = 'generate'`, g.project).Scan(&n))
+		return n
+	}
+	require.Equal(t, 1, generates(), "the user's Generate on the first Shot")
 
 	rec := g.form(http.MethodPost, "/shots/"+g.shotID+"/continue", nil)
 	require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
@@ -255,6 +261,7 @@ func TestContinue_ProposesACardInTheChatAndConfirmAddsAndGeneratesTheNextShot(t 
 	assert.Equal(t, "chat:refresh", rec.Header().Get("HX-Trigger"))
 	assert.Contains(t, rec.Body.String(), "Shot 2: ドアを開ける")
 	assert.Contains(t, rec.Body.String(), "生成中")
+	assert.Equal(t, 2, generates(), "confirming the direction is the user asking for the new Shot: a generate intervention")
 }
 
 func TestContinue_MissingConfigurationIs503(t *testing.T) {

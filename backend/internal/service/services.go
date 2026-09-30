@@ -209,7 +209,7 @@ func New(deps Deps) *Services {
 		}
 	}
 	versions := repository.NewVersionRepository(deps.DB)
-	director := &DirectorService{core: c, gens: gens, locks: repository.NewLockRepository(deps.DB), versions: versions, orch: generations.gen, takes: takes, repair: repairs.agent}
+	director := &DirectorService{core: c, gens: gens, locks: repository.NewLockRepository(deps.DB), versions: versions, orch: generations.gen, takes: takes, repair: repairs.agent, judges: repository.NewJudgeRepository(deps.DB)}
 	if deps.LLM != nil {
 		director.interpreter = commandinterpreter.New(deps.LLM)
 	}

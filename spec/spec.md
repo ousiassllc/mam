@@ -1519,7 +1519,7 @@ Review Package と Review Response は、DB の行やファイルをそのまま
 
 | `kind` | 記録するタイミング | 上書き（`override`） |
 |-------|------------------|---------------------|
-| `generate` | ユーザーが Take のない Shot の生成を依頼した（`POST /shots/:id/generate` ほか、DIRECTOR の指示） | しない |
+| `generate` | ユーザーが Take のない Shot の生成を依頼した（`POST /shots/:id/generate` ほか、DIRECTOR の指示、Continue の確認で追加した Shot、Branch の最初の Shot） | しない |
 | `regenerate` | ユーザーが Take のある Shot の再生成を依頼した | Judge を通過した（除外されていない）Take が既にあるとき |
 | `repair` | ユーザーが Take の Repair を依頼した（`POST /takes/:id/repair`、DIRECTOR の部分再生成） | しない |
 | `select_take` | ユーザーが Take を選んだ | AI Pick が別の Take のとき |

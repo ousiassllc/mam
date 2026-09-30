@@ -194,6 +194,9 @@ func (s *ContinueService) Confirm(ctx context.Context, shotID string, in Confirm
 	if _, err := s.generation.gen.Start(ctx, shot.ID, direction); err != nil {
 		return ShotFragment{}, mapGenerationError(err)
 	}
+	// the user asked for this Shot (by choosing or confirming the direction): a generate, as if
+	// they had pressed Generate on it (spec/spec.md §28.3)
+	s.recordIntervention(ctx, domain.Intervention{ShotID: shot.ID, Kind: domain.InterventionGenerate})
 	return s.generation.Shot(ctx, shot.ID)
 }
 
