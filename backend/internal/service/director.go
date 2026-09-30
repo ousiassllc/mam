@@ -37,6 +37,8 @@ type DirectorService struct {
 	repair *repair.Agent
 	// judges gives the Inspector the latest Judge result of each Take.
 	judges *repository.JudgeRepository
+	// brands are the Safety / Brand Constraints checked before a regeneration is queued.
+	brands *repository.BrandRepository
 }
 
 // SetMode switches the Project between AUTO and DIRECTOR (PUT /projects/:id/mode) and tells the
@@ -299,12 +301,15 @@ func (s *DirectorService) DirectorCommand(ctx context.Context, shotID, message s
 	if err := lockedRegeneration(locks, cmd.Operations); err != nil {
 		return DirectorCommandResult{}, err // nothing is recorded or done
 	}
-	user := assignIDs([]domain.ChatMessage{userText(message, "", nil)})
-	if err := s.commitMessages(ctx, project.ID, user); err != nil {
-		return DirectorCommandResult{}, err
+	if err := s.refuseBrand(ctx, project.ID, message, cmd); err != nil {
+		return DirectorCommandResult{}, err // a LOCK brand violation is 403; nothing is recorded or queued
 	}
 	res, err := s.execute(ctx, project, &ref, cmd, true)
 	if err != nil {
+		return DirectorCommandResult{}, err
+	}
+	user := assignIDs([]domain.ChatMessage{userText(message, "", nil)})
+	if err := s.commitMessages(ctx, project.ID, user); err != nil {
 		return DirectorCommandResult{}, err
 	}
 	if err := s.commitMessages(ctx, project.ID, assignIDs([]domain.ChatMessage{assistantText(res.text())})); err != nil {
@@ -368,6 +373,9 @@ func (s *DirectorService) Chat(ctx context.Context, project domain.Project, targ
 		if shot := shotNamed(shots, cmd.Scene, cmd.Shot); shot != nil {
 			ref = shot
 		}
+	}
+	if err := s.refuseBrand(ctx, project.ID, content, cmd); err != nil {
+		return domain.ChatMessage{}, err
 	}
 	res, err := s.execute(ctx, project, ref, cmd, false)
 	if err != nil {
@@ -634,6 +642,32 @@ func (s *DirectorService) setLock(ctx context.Context, projectID string, ref *re
 	return fmt.Sprintf("Scene %d / Shot %d の %s を %s にしました。", ref.Scene.OrderIndex+1, ref.Shot.OrderIndex+1, op.Parameter.Label(), op.Mode.Label()), nil
 }
 
+// refuseBrand returns ErrBrandViolation when a regeneration's instruction (the user's words, or the
+// English direction the interpreter produced) contains a forbidden expression of a LOCK constraint.
+// Advisory constraints are not an error. The Shot Spec is checked again inside the generation that
+// would be queued, still before the job exists.
+func (s *DirectorService) refuseBrand(ctx context.Context, projectID, message string, cmd commandinterpreter.Command) error {
+	if s.brands == nil || !slices.ContainsFunc(cmd.Operations, func(op commandinterpreter.Operation) bool { return op.Regenerates() }) {
+		return nil
+	}
+	list, err := s.brands.List(ctx, projectID)
+	if err != nil {
+		return err
+	}
+	if err := list.CheckText(message); err != nil {
+		return err
+	}
+	for _, op := range cmd.Operations {
+		if !op.Regenerates() {
+			continue
+		}
+		if err := list.CheckText(op.Instruction); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (s *DirectorService) regenerate(ctx context.Context, ref *repository.ShotRef, locks domain.ParameterLocks, op commandinterpreter.Operation) (string, bool, error) {
 	label := fmt.Sprintf("Scene %d / Shot %d", ref.Scene.OrderIndex+1, ref.Shot.OrderIndex+1)
 	if hit := lockedParameters(locks, op); len(hit) > 0 {
@@ -677,7 +711,7 @@ func (s *DirectorService) regenerate(ctx context.Context, ref *repository.ShotRe
 		case errors.Is(err, ErrBudgetExceeded):
 			return label + " は予算上限を超えるため再生成できません。", false, nil
 		case errors.Is(err, ErrBrandViolation):
-			return label + " は Brand / Safety Constraint に違反するため再生成できません。指示を見直してください。", false, nil
+			return "", false, err
 		}
 		return "", false, err
 	}

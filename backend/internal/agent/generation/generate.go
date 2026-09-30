@@ -60,9 +60,51 @@ type adapterRecord struct {
 	Requests  map[domain.ModelName]recordedRequest `json:"requests"`
 }
 
+// prepareGenerate is the Canonical Shot Spec a generate job will use, checked against LOCK brand
+// constraints before the job is queued. A nil spec means the job should plan (or keep) it itself:
+// the planner failed for a reason other than a brand violation, which the job reports.
+// A brand violation is returned so nothing is queued.
+func (o *Orchestrator) prepareGenerate(ctx context.Context, ref repository.ShotRef, instruction string, preserve []domain.SpecPart) (*domain.ShotSpec, []domain.NoteRef, error) {
+	shot := ref.Shot
+	current, hasSpec := shot.CanonicalSpec()
+	locks, err := o.gens.ShotLocks(ctx, shot.ID)
+	if err != nil {
+		return nil, nil, err
+	}
+	if hasSpec && (instruction == "" || locks.Locked(domain.ParamPrompt)) {
+		brand, err := o.brandConstraints(ctx, ref.ProjectID)
+		if err != nil {
+			return nil, nil, err
+		}
+		if err := brand.CheckText(current.BrandText()); err != nil {
+			return nil, nil, err
+		}
+		return nil, nil, nil
+	}
+	sc, err := o.loadShotContext(ctx, ref, instruction)
+	if err != nil {
+		return nil, nil, err
+	}
+	in := sc.plannerInput(ref, instruction)
+	if hasSpec {
+		in.Current = &current
+		in.Fixed = slices.Concat(locks.LockedParts(), preserve)
+		in.Manual = locks.PartsWith(domain.LockManual)
+	}
+	spec, err := o.planner.Plan(ctx, in)
+	if err != nil {
+		if errors.Is(err, domain.ErrBrandViolation) {
+			return nil, nil, err
+		}
+		return nil, nil, nil
+	}
+	return &spec, domain.NoteRefs(sc.notes), nil
+}
+
 // generate runs Prompt Autopilot and the Model Adapter for a Shot: it writes the Canonical Shot
-// Spec, decides the strategy, and makes the Takes.
-func (o *Orchestrator) generate(ctx context.Context, ref repository.ShotRef, instruction string, preserve []domain.SpecPart) (Progress, error) {
+// Spec, decides the strategy, and makes the Takes. planned, when set, is the spec prepareGenerate
+// already checked; the planner is not called again.
+func (o *Orchestrator) generate(ctx context.Context, ref repository.ShotRef, instruction string, preserve []domain.SpecPart, planned *domain.ShotSpec, plannedNotes []domain.NoteRef) (Progress, error) {
 	shot := ref.Shot
 	sc, err := o.loadShotContext(ctx, ref, instruction)
 	if err != nil {
@@ -83,7 +125,10 @@ func (o *Orchestrator) generate(ctx context.Context, ref repository.ShotRef, ins
 	current, hasSpec := shot.CanonicalSpec()
 	spec := current
 	var noteRefs []domain.NoteRef // the notes the Planner was given; none when the spec is kept
-	if !hasSpec || (instruction != "" && !locks.Locked(domain.ParamPrompt)) {
+	switch {
+	case planned != nil:
+		spec, noteRefs = *planned, plannedNotes
+	case !hasSpec || (instruction != "" && !locks.Locked(domain.ParamPrompt)):
 		in := sc.plannerInput(ref, instruction)
 		if hasSpec {
 			in.Current = &current
