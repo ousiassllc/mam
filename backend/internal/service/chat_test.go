@@ -640,3 +640,56 @@ func TestPostMessage_ReturnsTheQuestionCardsItClosed(t *testing.T) {
 	assert.Equal(t, open.ID, ws.Updated[0].ID)
 	assert.False(t, ws.Updated[0].Open)
 }
+
+func TestMessages_ManyProgressCardsAndRepliesOutsideTheBatchAreAllResolved(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	p := f.createProject(t, "動画")
+	jobs := repository.NewJobRepository(f.db)
+	running := map[string]bool{}
+	for i := range 100 {
+		job, err := jobs.Create(ctx, domain.JobGenerate, nil)
+		require.NoError(t, err)
+		if i%2 == 0 {
+			require.NoError(t, jobs.MarkRunning(ctx, job.ID))
+			running[job.ID] = true
+		}
+		require.NoError(t, f.svc.Chat.Announce(ctx, p.ID, domain.ChatMessage{Kind: domain.KindProgress, RefID: job.ID, Content: "生成中"}))
+	}
+	// a card whose job no longer exists still renders, without a job
+	require.NoError(t, f.svc.Chat.Announce(ctx, p.ID, domain.ChatMessage{Kind: domain.KindProgress, RefID: "gone", Content: "生成中"}))
+
+	progress := 0
+	for _, m := range f.thread(t, p.ID) {
+		if m.Kind != domain.KindProgress {
+			continue
+		}
+		progress++
+		if m.RefID == "gone" {
+			assert.Nil(t, m.Job)
+			continue
+		}
+		require.NotNil(t, m.Job, m.RefID)
+		assert.Equal(t, m.RefID, m.Job.ID)
+		want := domain.JobQueued
+		if running[m.RefID] {
+			want = domain.JobRunning
+		}
+		assert.Equal(t, want, m.Job.Status)
+	}
+	assert.Equal(t, 101, progress)
+
+	// the reply target of a message after the cursor lies outside the returned batch
+	thread := f.thread(t, p.ID)
+	q := thread[0]
+	ws, err := f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "返信", ReplyToMessageID: q.ID})
+	require.NoError(t, err)
+	var reply domain.ThreadMessage
+	for _, m := range ws.Messages {
+		if m.Content == "返信" {
+			reply = m
+		}
+	}
+	require.NotNil(t, reply.ReplyTo)
+	assert.Equal(t, q.ID, reply.ReplyTo.ID)
+}

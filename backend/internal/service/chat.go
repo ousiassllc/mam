@@ -532,13 +532,30 @@ func (s *ChatService) views(ctx context.Context, projectID string, msgs []domain
 	if len(msgs) == 0 {
 		return nil, nil
 	}
-	var attachmentIDs []string
+	var attachmentIDs, jobIDs []string
 	byID := make(map[string]domain.ChatMessage, len(msgs))
 	needsAnswer := false
 	for _, m := range msgs {
 		byID[m.ID] = m
 		attachmentIDs = append(attachmentIDs, m.AttachmentAssetIDs...)
 		needsAnswer = needsAnswer || m.Kind == domain.KindQuestion || m.Kind == domain.KindEscalation
+		if m.Kind == domain.KindProgress {
+			jobIDs = append(jobIDs, m.RefID)
+		}
+	}
+	var parentIDs []string // reply targets outside this batch (the batch is the whole thread, or only what is new)
+	for _, m := range msgs {
+		if _, ok := byID[m.ReplyToMessageID]; m.ReplyToMessageID != "" && !ok {
+			parentIDs = append(parentIDs, m.ReplyToMessageID)
+		}
+	}
+	parents, err := s.chat.ListByIDs(ctx, projectID, parentIDs)
+	if err != nil {
+		return nil, err
+	}
+	jobs, err := s.jobs.ListByIDs(ctx, jobIDs)
+	if err != nil {
+		return nil, err
 	}
 	assets, err := s.assets.ListByIDs(ctx, projectID, attachmentIDs)
 	if err != nil {
@@ -571,11 +588,9 @@ func (s *ChatService) views(ctx context.Context, projectID string, msgs []domain
 		if m.ReplyToMessageID != "" {
 			parent, ok := byID[m.ReplyToMessageID]
 			if !ok {
-				p, err := s.chat.Get(ctx, projectID, m.ReplyToMessageID)
-				if err != nil {
-					return nil, notFound(err)
+				if parent, ok = parents[m.ReplyToMessageID]; !ok {
+					return nil, notFound(repository.ErrNotFound)
 				}
-				parent = p
 			}
 			v.ReplyTo = &parent
 		}
@@ -590,10 +605,8 @@ func (s *ChatService) views(ctx context.Context, projectID string, msgs []domain
 		case domain.KindEscalation:
 			v.Open = !replied[m.ID]
 		case domain.KindProgress:
-			if job, err := s.jobs.Get(ctx, m.RefID); err == nil {
+			if job, ok := jobs[m.RefID]; ok {
 				v.Job = &job
-			} else if !errors.Is(err, repository.ErrNotFound) {
-				return nil, err
 			}
 		}
 		views[i] = v

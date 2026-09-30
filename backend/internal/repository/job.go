@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -64,6 +65,29 @@ func (r *JobRepository) Get(ctx context.Context, id string) (domain.Job, error) 
 		return domain.Job{}, fmt.Errorf("get job: %w", err)
 	}
 	return job, nil
+}
+
+// ListByIDs returns the jobs with the given ids keyed by id in one query. Ids without a job are
+// absent from the result.
+func (r *JobRepository) ListByIDs(ctx context.Context, ids []string) (map[string]domain.Job, error) {
+	jobs := make(map[string]domain.Job, len(ids))
+	if len(ids) == 0 {
+		return jobs, nil
+	}
+	rows, err := r.db.Reader().QueryContext(ctx,
+		jobSelect+` WHERE id IN (`+placeholders(len(ids))+`)`, toAny(ids)...)
+	if err != nil {
+		return nil, fmt.Errorf("list jobs by ids: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		job, err := scanJob(rows)
+		if err != nil {
+			return nil, fmt.Errorf("scan job: %w", err)
+		}
+		jobs[job.ID] = job
+	}
+	return jobs, rows.Err()
 }
 
 // ListByStatus returns jobs in the given status, oldest first.
@@ -200,4 +224,15 @@ func parseNullTime(s sql.NullString) (*time.Time, error) {
 		return nil, err
 	}
 	return &t, nil
+}
+
+// placeholders returns n comma-separated "?" for an IN list.
+func placeholders(n int) string { return strings.TrimSuffix(strings.Repeat("?,", n), ",") }
+
+func toAny(ids []string) []any {
+	args := make([]any, len(ids))
+	for i, id := range ids {
+		args[i] = id
+	}
+	return args
 }
