@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector"
@@ -252,7 +253,7 @@ func audioError(err error) error {
 		return &AIError{Reason: "ElevenLabs の API キーが設定されていません（設定画面で elevenlabs のキーを登録してください）", Err: err}
 	case errors.As(err, &be):
 		return conflict("セリフの音声合成に約 $%.2f かかりますが、残りの予算が $%.2f です。予算上限を引き上げてから再実行してください", be.Needed, be.Remaining)
-	case errors.As(err, &pe) && pe.Status == 429:
+	case errors.As(err, &pe) && pe.Status == http.StatusTooManyRequests:
 		return &AIError{Reason: "ElevenLabs のレート制限に達しました。しばらく待ってから再実行してください", Err: err}
 	case errors.As(err, &pe):
 		return &AIError{Reason: "ElevenLabs の呼び出しに失敗しました", Err: err}

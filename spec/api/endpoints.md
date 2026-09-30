@@ -19,7 +19,7 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
   | 403 | Brand/Safety Constraint 違反、または LOCK 対象への変更試行 |
   | 409 | 対象 Shot が既に生成中（多重実行防止） |
   | 423 | LOCK されたパラメータ/State への更新要求 |
-  | 429 | 外部生成モデル API のレート制限（Model Adapter からの伝播） |
+  | 429 | 外部モデル API（Model Adapter・Reasoning LLM・ElevenLabs 等）のレート制限。同期で応答できる経路では `service.ErrRateLimited`（`AIError` が 429 を包んでいれば一致）が 429 になる。生成ジョブ内の 429 はチャットの失敗理由として通知する |
 
 ## 1. ページルート（Gin, HX-Request 分岐）
 

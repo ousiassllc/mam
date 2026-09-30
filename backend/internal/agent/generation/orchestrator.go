@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"runtime/debug"
 	"slices"
 	"strings"
@@ -439,6 +440,9 @@ func FailureReason(err error) string {
 	}
 	var api *llm.APIError
 	if errors.As(err, &api) {
+		if api.Status == http.StatusTooManyRequests {
+			return "AI サービスのレート制限に達しました。しばらく待ってから再実行してください"
+		}
 		return "AI サービスの呼び出しに失敗しました"
 	}
 	return "内部エラーが発生しました"

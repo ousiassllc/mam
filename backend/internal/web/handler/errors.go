@@ -47,6 +47,11 @@ func statusOf(c *gin.Context, err error) (int, string) {
 			names[i] = p.Label()
 		}
 		return http.StatusLocked, strings.Join(names, " / ") + " は LOCK されているため変更できません。LOCK を解除してから指示してください"
+	case errors.Is(err, service.ErrRateLimited):
+		if errors.As(err, &ai) {
+			return http.StatusTooManyRequests, ai.Reason
+		}
+		return http.StatusTooManyRequests, "外部の生成モデル API のレート制限に達しました。しばらく待ってから再実行してください"
 	case errors.As(err, &ai):
 		return http.StatusBadGateway, ai.Reason
 	case errors.As(err, &invalid):
