@@ -73,15 +73,23 @@ func (s *EditorService) acquire(projectID string) (release func(), err error) {
 	return l.Unlock, nil
 }
 
+// assetPath resolves an asset-relative path inside the assets directory. A path that leaves it
+// (a stored "../x") resolves to "", which fileExists rejects: every caller that reads a stored
+// path checks fileExists first, so such a file never reaches ffmpeg or the file server.
 func (s *EditorService) assetPath(rel string) string {
-	return filepath.Join(s.assetsDir, filepath.FromSlash(rel))
+	abs := filepath.Join(s.assetsDir, filepath.FromSlash(rel))
+	if within, err := filepath.Rel(s.assetsDir, abs); err != nil || within == ".." || strings.HasPrefix(within, ".."+string(filepath.Separator)) {
+		return ""
+	}
+	return abs
 }
 
 func (s *EditorService) fileExists(rel string) bool {
-	if rel == "" {
+	abs := s.assetPath(rel)
+	if rel == "" || abs == "" {
 		return false
 	}
-	st, err := os.Stat(s.assetPath(rel))
+	st, err := os.Stat(abs)
 	return err == nil && st.Mode().IsRegular()
 }
 

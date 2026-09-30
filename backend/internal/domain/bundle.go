@@ -1,6 +1,9 @@
 package domain
 
 import (
+	"encoding/json"
+	"errors"
+	"fmt"
 	"path"
 	"strings"
 	"time"
@@ -62,6 +65,43 @@ func (d BundleData) FilePaths() []string {
 		}
 	}
 	return out
+}
+
+// AudioTimelinePaths returns the asset-relative paths the Audio Timelines of the data name (the mix,
+// the audio clips and the Lip Sync pictures; the timeline is JSON inside audio_timeline_version), each
+// once, in a stable order. It fails when a timeline is not a JSON Audio Timeline.
+func (d BundleData) AudioTimelinePaths() ([]string, error) {
+	var out []string
+	seen := map[string]bool{}
+	add := func(p string) {
+		if p != "" && !seen[p] {
+			seen[p] = true
+			out = append(out, p)
+		}
+	}
+	for _, t := range d.Tables {
+		if t.Name != "audio_timeline_version" {
+			continue
+		}
+		for _, row := range t.Rows {
+			raw, ok := row["timeline"].(string)
+			if !ok {
+				return nil, errors.New("audio timeline is not a JSON string")
+			}
+			var tl AudioTimeline
+			if err := json.Unmarshal([]byte(raw), &tl); err != nil {
+				return nil, fmt.Errorf("audio timeline: %w", err)
+			}
+			add(tl.MixPath)
+			for _, c := range tl.Clips {
+				add(c.Path)
+			}
+			for _, l := range tl.LipSync {
+				add(l.Path)
+			}
+		}
+	}
+	return out, nil
 }
 
 // ValidBundleFilePath reports whether p is a safe asset-relative path of the Project: slash
