@@ -4,6 +4,7 @@ import { initShotProgress } from './shot';
 import { CSRF_HEADER, csrfToken } from './components/lib/api';
 import { lockDownHtmx } from './components/lib/htmx-config';
 import { swapsErrorResponse } from './components/lib/thread';
+import { installHistorySnapshotHygiene } from './components/lib/history';
 import { dismissToastsOnClick } from './components/lib/toast';
 
 // Attach the CSRF token (from <meta name="csrf-token">) to every HTMX request.
@@ -26,6 +27,9 @@ lockDownHtmx(htmx.config);
 
 // Error toasts stay until their close button is pressed.
 dismissToastsOnClick();
+
+// A history snapshot must not keep init markers or the connection notice (issue 112).
+installHistorySnapshotHygiene();
 
 // The Chat Workspace can arrive as a full page or as an HTMX fragment.
 document.addEventListener('DOMContentLoaded', () => {
