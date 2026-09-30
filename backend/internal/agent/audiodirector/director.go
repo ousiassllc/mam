@@ -223,11 +223,12 @@ func (r *run) speak(ctx context.Context, lines []domain.VoiceLine, sceneOfLine m
 		if line.Kind == domain.VoiceNarration {
 			layer = domain.LayerNarration
 		}
-		rel, length, err := r.save(ctx, fmt.Sprintf("line-%02d", i+1), speech)
-		if err != nil {
+		// The provider has charged for the line: the ledger gets it before the local work can fail.
+		if err := r.spend.record(ctx, domain.ModelElevenLabsTTS, r.d.Prices.TTS(line.Text)); err != nil {
 			return err
 		}
-		if err := r.spend.record(ctx, domain.ModelElevenLabsTTS, r.d.Prices.TTS(line.Text)); err != nil {
+		rel, length, err := r.save(ctx, fmt.Sprintf("line-%02d", i+1), speech)
+		if err != nil {
 			return err
 		}
 		r.tl.Clips = append(r.tl.Clips, domain.AudioClip{
@@ -368,14 +369,15 @@ func (r *run) make(ctx context.Context, j job) error {
 		r.skip(j.layer, j.prompt, domain.SkipError, err.Error())
 		return nil
 	}
+	// The provider has charged for the sound: the ledger gets it before the local work can fail.
+	if err := r.spend.record(ctx, j.model, j.cost); err != nil {
+		return err
+	}
 	n := len(r.tl.Clips) + 1
 	rel, length, err := r.save(ctx, fmt.Sprintf("%s-%02d", j.layer, n), speech)
 	if err != nil {
 		r.skip(j.layer, j.prompt, domain.SkipError, err.Error())
 		return nil
-	}
-	if err := r.spend.record(ctx, j.model, j.cost); err != nil {
-		return err
 	}
 	clip := domain.AudioClip{
 		Layer: j.layer, Prompt: j.prompt, Model: j.model, Path: rel, StartSeconds: j.start,
@@ -435,14 +437,11 @@ func (r *run) lipSync(ctx context.Context) error {
 			r.skip(domain.LayerLipSync, lines[0].Text, domain.SkipBudget, fmt.Sprintf("見積 $%.2f に対し残り予算が $%.2f です", cost, r.spend.remaining()))
 			continue
 		}
-		out, stop, err := r.syncClip(ctx, vc, lines, model)
+		out, stop, err := r.syncClip(ctx, vc, lines, model, cost)
 		if err != nil {
 			return err
 		}
 		if out != nil {
-			if err := r.spend.record(ctx, domain.ModelSyncLabs, cost); err != nil {
-				return err
-			}
 			r.tl.LipSync = append(r.tl.LipSync, *out)
 		}
 		if stop {
@@ -453,8 +452,9 @@ func (r *run) lipSync(ctx context.Context) error {
 }
 
 // syncClip lip-syncs one clip. The clip is nil when it was left out (listed in Skipped); stop is
-// true when the following clips cannot be lip-synced either (no key).
-func (r *run) syncClip(ctx context.Context, vc VideoClip, lines []domain.AudioClip, model string) (out *domain.LipSyncClip, stop bool, err error) {
+// true when the following clips cannot be lip-synced either (no key). A call Sync Labs accepted is
+// recorded at cost before its result is stored, so a local failure afterwards still counts.
+func (r *run) syncClip(ctx context.Context, vc VideoClip, lines []domain.AudioClip, model string, cost float64) (out *domain.LipSyncClip, stop bool, err error) {
 	dir := filepath.Join(r.d.Root, filepath.FromSlash(r.rel), fmt.Sprintf("lipsync-%02d-work", vc.Index))
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return nil, false, fmt.Errorf("create audio directory: %w", err)
@@ -492,6 +492,9 @@ func (r *run) syncClip(ctx context.Context, vc VideoClip, lines []domain.AudioCl
 	if err != nil {
 		r.skip(domain.LayerLipSync, label, domain.SkipError, err.Error())
 		return nil, false, nil
+	}
+	if err := r.spend.record(ctx, domain.ModelSyncLabs, cost); err != nil {
+		return nil, false, err
 	}
 	rel := path.Join(r.rel, fmt.Sprintf("lipsync-%02d.mp4", vc.Index))
 	if err := fsutil.WriteFileAtomic(r.abs(rel), data, 0o600); err != nil {

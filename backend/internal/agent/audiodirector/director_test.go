@@ -65,12 +65,20 @@ type fakeVendors struct {
 	syncs   []audiodirector.LipSyncRequest
 	failMu  bool // the music call fails
 	failSFX bool
+	// unreadable makes the speech, music and sound calls answer with bytes that are not audio, so
+	// the local work after a paid call (measuring the file) fails.
+	unreadable bool
 }
+
+var notMedia = []byte("this is not audio")
 
 func (f *fakeVendors) Synthesize(_ context.Context, line domain.VoiceLine) (audiodirector.Speech, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.lines = append(f.lines, line)
+	if f.unreadable {
+		return audiodirector.Speech{Data: notMedia, Ext: "mp3"}, nil
+	}
 	return audiodirector.Speech{Data: tone(f.t, 1), Ext: "mp3"}, nil
 }
 
@@ -80,6 +88,9 @@ func (f *fakeVendors) Compose(_ context.Context, prompt string, seconds float64)
 	f.music = append(f.music, prompt)
 	if f.failMu {
 		return audiodirector.Speech{}, &audiodirector.ProviderError{Status: 500, Message: "boom"}
+	}
+	if f.unreadable {
+		return audiodirector.Speech{Data: notMedia, Ext: "mp3"}, nil
 	}
 	return audiodirector.Speech{Data: tone(f.t, seconds), Ext: "mp3"}, nil
 }
@@ -91,6 +102,9 @@ func (f *fakeVendors) Generate(_ context.Context, prompt string, seconds float64
 	f.loops = append(f.loops, loop)
 	if f.failSFX {
 		return audiodirector.Speech{}, &audiodirector.ProviderError{Status: 500, Message: "boom"}
+	}
+	if f.unreadable {
+		return audiodirector.Speech{Data: notMedia, Ext: "mp3"}, nil
 	}
 	return audiodirector.Speech{Data: tone(f.t, seconds), Ext: "mp3"}, nil
 }
@@ -601,4 +615,91 @@ func bgmOf(tl domain.AudioTimeline) []domain.AudioClip {
 		}
 	}
 	return out
+}
+
+// A provider call that was charged counts against the budget even when the local work on its
+// result (saving, measuring, probing) fails afterwards.
+func TestDirector_ACostThePaidCallIncurredIsRecordedWhenTheLocalWorkFails(t *testing.T) {
+	t.Run("speech", func(t *testing.T) {
+		v := &fakeVendors{t: t, unreadable: true}
+		ledger := &fakeLedger{}
+		d, _ := newDirector(t, v, ledger, nil)
+
+		_, err := d.Produce(context.Background(), audiodirector.Input{
+			ProjectID: "p1", EditTimelineID: "e1", Quality: domain.QualityFast, Scenes: twoScenes(), Seconds: 10,
+		})
+
+		require.Error(t, err)
+		assert.Equal(t, []domain.ModelName{domain.ModelElevenLabsTTS}, ledger.providers(), "the first line was paid for")
+		assert.Greater(t, ledger.spent, 0.0)
+	})
+
+	t.Run("sound", func(t *testing.T) {
+		v := &fakeVendors{t: t}
+		ledger := &fakeLedger{}
+		d, _ := newDirector(t, v, ledger, nil)
+		in := audiodirector.Input{ProjectID: "p1", EditTimelineID: "e1", Quality: domain.QualityFast, Scenes: twoScenes(), Seconds: 10}
+		base, err := d.Produce(context.Background(), in)
+		require.NoError(t, err)
+		bgm := base.Count(domain.LayerBGM)
+		require.Positive(t, bgm)
+		speech := len(ledger.entries) - bgm
+
+		// Only the sounds are unreadable: speech is made as usual.
+		v2 := &soundsOnly{fakeVendors: &fakeVendors{t: t}}
+		ledger2 := &fakeLedger{}
+		d2 := audiodirector.New(audiodirector.Deps{Providers: audiodirector.Providers{Speech: v2.fakeVendors, Music: v2, Sounds: v2}, Ledger: ledger2, Tools: tools(t), Root: t.TempDir()})
+		got, err := d2.Produce(context.Background(), in)
+
+		require.NoError(t, err)
+		assert.Zero(t, got.Count(domain.LayerBGM), "the unreadable music is left out")
+		assert.Contains(t, skippedLayers(got, domain.SkipError), domain.LayerBGM)
+		assert.Len(t, ledger2.entries, len(ledger.entries), "all %d calls (%d speech, %d music) are in the ledger", len(ledger.entries), speech, bgm)
+		assert.InDelta(t, ledger.spent, ledger2.spent, 1e-9)
+	})
+
+	t.Run("lip sync", func(t *testing.T) {
+		v := &fakeVendors{t: t}
+		ledger := &fakeLedger{}
+		d, _ := newDirector(t, v, ledger, nil)
+		take := testVideo(t, 4)
+		clips := []audiodirector.VideoClip{{Index: 1, TakeID: "t1", Path: take, In: 0, Out: 4, Start: 0}, {Index: 2, TakeID: "t2", Path: take, In: 0, Out: 4, Start: 4}}
+		in := audiodirector.Input{ProjectID: "p1", EditTimelineID: "e1", Quality: domain.QualityMaxQuality, Scenes: twoScenes(), Clips: clips, Seconds: 10}
+		_, err := d.Produce(context.Background(), in)
+		require.NoError(t, err)
+		paid := ledger.spent
+
+		v2 := &unreadableSync{fakeVendors: &fakeVendors{t: t}}
+		ledger2 := &fakeLedger{}
+		d2 := audiodirector.New(audiodirector.Deps{Providers: v2.fakeVendors.providersWith(v2), Ledger: ledger2, Tools: tools(t), Root: t.TempDir()})
+		got, err := d2.Produce(context.Background(), in)
+
+		require.NoError(t, err)
+		assert.Empty(t, got.LipSync, "the picture could not be read")
+		assert.Contains(t, skippedLayers(got, domain.SkipError), domain.LayerLipSync)
+		assert.Contains(t, ledger2.providers(), domain.ModelSyncLabs, "Sync Labs has charged for the clip")
+		assert.InDelta(t, paid, ledger2.spent, 1e-9)
+	})
+}
+
+// soundsOnly answers the music and sound calls with bytes that are not audio.
+type soundsOnly struct{ *fakeVendors }
+
+func (s *soundsOnly) Compose(context.Context, string, float64) (audiodirector.Speech, error) {
+	return audiodirector.Speech{Data: notMedia, Ext: "mp3"}, nil
+}
+
+func (s *soundsOnly) Generate(context.Context, string, float64, bool) (audiodirector.Speech, error) {
+	return audiodirector.Speech{Data: notMedia, Ext: "mp3"}, nil
+}
+
+// unreadableSync answers Sync Labs with bytes that are not a video.
+type unreadableSync struct{ *fakeVendors }
+
+func (unreadableSync) Sync(context.Context, audiodirector.LipSyncRequest) ([]byte, error) {
+	return notMedia, nil
+}
+
+func (f *fakeVendors) providersWith(sync audiodirector.LipSyncer) audiodirector.Providers {
+	return audiodirector.Providers{Speech: f, Music: f, Sounds: f, LipSync: sync}
 }
