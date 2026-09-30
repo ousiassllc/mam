@@ -172,8 +172,8 @@ M1（F-18 Simple / F-20 簡易版 / F-26。範囲は `spec/requirements/function
 
 | Method | Path | 概要 | 対応機能 |
 |---|---|---|---|
-| POST | `/projects/:id/brand-constraints` | Brand Guideline/禁止表現/Disclaimer/Product Claims/Logo Rules/Character Restrictions/Rights/Platform Rules 登録 | F-23 |
-| DELETE | `/brand-constraints/:id` | 制約削除 | F-23 |
+| POST | `/projects/:id/brand-constraints` | Brand Guideline/禁止表現/Disclaimer/Product Claims/Logo Rules/Character Restrictions/Rights/Platform Rules 登録。フォーム `type`（`brand_guideline`/`forbidden_expression`/`required_disclaimer`/`product_claim`/`logo_rule`/`character_restriction`/`asset_rights`/`platform_rule`）・`level`（`lock`/`advisory`、省略時 `lock`）・`text`（1〜1000 文字。禁止表現は 1 行に 1 つ）。成功は 200 で `brand_constraint_list` を返す。入力不備は 422（入力とエラーを載せた `brand_constraint_list`）、Project が無ければ 404。Prompt 生成・AI Video Judge・Final QC の適用は `spec/spec.md` §26.1。`lock` の禁止表現を含む指示での生成・再生成・候補生成は 403（Take を作らない）、生成した Shot Spec が違反する場合は生成ジョブが失敗して理由をチャットに残す | F-23 |
+| DELETE | `/brand-constraints/:id` | 制約削除。200 で `brand_constraint_list` を返す。無ければ 404。設定画面（`GET /projects/:id/settings`）の `brand_constraint_list` から登録・削除できる | F-23 |
 | GET | `/projects/:id/cost-summary` | Shot/Scene/Project 別の推定コスト・実コスト集計（`cost_summary_panel`向けフラグメント）。推定コストは生成時の見積り、実コストはベンダーが報告した金額（`cost_ledger_entry.actual_cost`。報告が無い呼び出しがあれば合計に `*` を付ける）。予算上限に対する消化率を併せて表示し、フラグメントは 15 秒ごとに自己更新する | F-22 |
 | POST | `/projects/:id/takes/:takeId/archive` | Take の動画ファイルを削除して Rejected にする（Take 行・Judge/Repair 履歴・コスト記録は残す）。Selected Take は 409、当該 Project に無い Take・ファイルを既に手放した Take は 404。ディスク使用量パネルのフラグメントを返す | non-functional.md §4 |
 | POST | `/projects/:id/storage/archive-unneeded` | 不要な Take（Rejected、または同じ Shot の別 Take が Selected）をまとめてアーカイブする。ディスク使用量パネルのフラグメントを返す | non-functional.md §4 |
@@ -315,7 +315,7 @@ Response 200:
 Notes:
   metrics.face_identity_status: "measured" | "not_applicable"（顔参照を持つ Character が Shot にいない）| "unavailable"（顔モデル未配置・推論エラーで定性評価のみ）
   metrics.face_identity[]: 上記に加え evaluated（数値評価が成立したか。false は undetected_ratio が高い等で定性評価のみ）/ warn_threshold / fail_threshold / calibrated（参照画像でキャリブレーションした閾値か）
-  issues[]: 上記に加え dimension（評価軸）/ character_id（face_identity_drift）/ description / lock_violation（LOCK 違反。true の Take は score に関係なく FAIL）
+  issues[]: 上記に加え dimension（評価軸）/ character_id（face_identity_drift）/ description / lock_violation（LOCK 違反。true の Take は score に関係なく FAIL）/ brand_constraint_id（Brand / Safety Constraint の違反。`type=brand_constraint_violation`。`lock` の制約は lock_violation=true、`advisory` は severity low の警告）
   time_range: "開始-終了s"（秒）。frames: [開始フレーム, 終了フレーム]（ソース動画のフレーム番号、両端を含む）
 ```
 
@@ -367,3 +367,4 @@ Notes:
 | 1.32 | 2026-09-30 | 復元エンドポイント（§2.4）の入出力・エラー・LOCK との関係を定義。`GET /takes/:id/trace`・`GET /branches/:id/versions`・`GET /projects/:id/bundle`・`POST /projects/import` を追加。Branch 系の復元パスの Branch ID を `:id` に統一 | F-27/F-28 とデータポータビリティ（Issue #20）の入出力契約が未定義だった。Gin は同じパス位置のワイルドカード名を 1 つしか許さず、`/branches/:branchId/...` と `/branches/:id/...` を併存できないため |
 | 1.33 | 2026-09-30 | §2.4 に M2 の Branch 契約（`POST /shots/:id/branch`・`GET/PUT /branches/:id`・`GET /api/v1/projects/:id/branches`・チャットの `create_branch`）を追記。§2.8 の `branch_id` は Branch が存在すれば有効とした | M2「Branch（別展開の並行生成）」（Issue #18）で Branch を実装したため |
 | 1.34 | 2026-09-30 | §2.6 に M1 の Editor / Audio / Final QC / Export の挙動（Rough Cut・タイムライン保存の版管理と 409/422・プレビュー・Editor Judge・音声・Final QC・書き出し・ダウンロード）を追記。Edit Timeline の保存を `PUT /edit-timelines/:id`（アクションルート）に確定し、`GET /api/v1/projects/:id/edit-timeline` の応答例を更新（旧 `PUT /api/v1/projects/:id/edit-timeline` は提供しない） | M1「簡易 Editor・簡易 Audio・Final QC・Export」（Issue #14）の実装に合わせるため |
+| 1.35 | 2026-09-30 | §2.7 の `POST /projects/:id/brand-constraints`・`DELETE /brand-constraints/:id` の入出力・エラー（422/404）と、Brand 違反の 403 の扱い、Judge Issue の `brand_constraint_id` を追記 | M2「Safety / Brand Constraints」（Issue #23）の実装に合わせるため。403 の意味は `spec/spec.md` §26.1 |

@@ -29,6 +29,8 @@ var (
 	ErrUnavailable = errors.New("service: generation is not available")
 	// ErrLocked means the change would touch a field the user has LOCKed. HTTP 423.
 	ErrLocked = errors.New("service: field is locked")
+	// ErrBrandViolation means the request breaks a LOCK Brand / Safety Constraint of the Project. HTTP 403.
+	ErrBrandViolation = domain.ErrBrandViolation
 )
 
 // LockedError is ErrLocked with the LOCKed parameters the change touched.

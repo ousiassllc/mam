@@ -69,6 +69,8 @@ func registerActions(engine *gin.Engine, services *service.Services) {
 	engine.POST("/projects/:id/approvals/:messageId", handler.RespondApproval(services.Chat))
 	engine.POST("/shots/:id/branch", handler.CreateBranch(services.Branch))
 	engine.PUT("/branches/:id", handler.UpdateBranch(services.Branch))
+	engine.POST("/projects/:id/brand-constraints", handler.AddBrandConstraint(services.Brand))
+	engine.DELETE("/brand-constraints/:id", handler.DeleteBrandConstraint(services.Brand))
 
 	engine.POST("/projects/:id/notes", handler.CreateProjectNote(services.Notes))
 	engine.POST("/series/:id/notes", handler.CreateSeriesNote(services.Notes))

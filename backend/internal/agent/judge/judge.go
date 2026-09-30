@@ -76,6 +76,10 @@ type Input struct {
 	// Template is the Production Template of the Project. When set, the Judge scores its evaluation
 	// axes (0-100), which the Retry Policy's Minimum acceptance score is applied to.
 	Template domain.ProductionTemplate
+	// Brand are the Safety / Brand Constraints of the Project (F-23). The Reasoning LLM is asked to
+	// check the Take against them; a broken LOCK constraint fails the Take whatever the score is,
+	// a broken Advisory one is only a low severity warning.
+	Brand domain.BrandConstraints
 }
 
 // Evaluate judges a Take. The returned result has no ID, TakeID or CreatedAt yet.
@@ -96,7 +100,7 @@ func (j *Judge) Evaluate(ctx context.Context, in Input) (domain.JudgeResult, err
 	if err != nil {
 		return domain.JudgeResult{}, err
 	}
-	result, err := ans.result(review, in.Locked, hasEvaluated(metrics), in.Template)
+	result, err := ans.result(review, in, hasEvaluated(metrics))
 	if err != nil {
 		return domain.JudgeResult{}, err
 	}
@@ -106,6 +110,7 @@ func (j *Judge) Evaluate(ctx context.Context, in Input) (domain.JudgeResult, err
 		}
 	}
 	result.Issues = append(result.Issues, faceIssues...)
+	result.Issues = append(result.Issues, specBrandIssues(in)...)
 	result.Metrics = metrics
 	Decide(&result, ans.verdict())
 	return result, nil
@@ -168,6 +173,8 @@ type answerIssue struct {
 	TimeRange   string `json:"time_range"`
 	CharacterID string `json:"character_id"`
 	Description string `json:"description"`
+	// BrandConstraintID is the id of the Brand / Safety Constraint the Issue reports as broken.
+	BrandConstraintID string `json:"brand_constraint_id"`
 }
 
 type answerRepair struct {
@@ -183,8 +190,10 @@ func (a answer) verdict() domain.JudgeVerdict {
 // ranges are checked against the clip and given source frame numbers, unknown dimensions are
 // dropped. skipFaceDrift drops the model's own face_identity_drift Issues when the numeric
 // measurement produced the authoritative ones. Scores of axes outside the Production Template, or
-// outside 0-100, are dropped.
-func (a answer) result(clip Clip, locked map[domain.JudgeDimension]bool, skipFaceDrift bool, template domain.ProductionTemplate) (domain.JudgeResult, error) {
+// outside 0-100, are dropped. An Issue that names a Brand constraint is a violation of it: of a LOCK
+// constraint it fails the Take, of an Advisory one it stays a low severity warning.
+func (a answer) result(clip Clip, in Input, skipFaceDrift bool) (domain.JudgeResult, error) {
+	locked, template := in.Locked, in.Template
 	if v := a.verdict(); v != domain.JudgePass && v != domain.JudgeFail {
 		return domain.JudgeResult{}, fmt.Errorf("%w: result %q is neither pass nor fail", ErrInvalidJudgement, a.Result)
 	}
@@ -215,6 +224,9 @@ func (a answer) result(clip Clip, locked map[domain.JudgeDimension]bool, skipFac
 			issue.Frames = []int{first, last}
 		}
 		issue.LockViolation = issue.Dimension != "" && locked[issue.Dimension] && sev.Rank() >= domain.SeverityMedium.Rank()
+		if c, ok := in.Brand.ByID(strings.TrimSpace(ai.BrandConstraintID)); ok {
+			applyBrand(&issue, c)
+		}
 		res.Issues = append(res.Issues, issue)
 	}
 	res.Scores = a.axisScores(template)
@@ -225,6 +237,32 @@ func (a answer) result(clip Clip, locked map[domain.JudgeDimension]bool, skipFac
 		}
 	}
 	return res, nil
+}
+
+// applyBrand makes the Issue a violation of the Brand constraint c: a LOCK constraint fails the
+// Take whatever the severity or the score is; an Advisory one is a warning that cannot fail the Take.
+func applyBrand(issue *domain.JudgeIssue, c domain.BrandConstraint) {
+	issue.Type, issue.BrandConstraintID = domain.BrandIssueType, c.ID
+	if c.Level == domain.EnforceLock {
+		issue.LockViolation = true
+		issue.Severity = domain.SeverityHigh
+		return
+	}
+	issue.LockViolation = false
+	issue.Severity = domain.SeverityLow
+}
+
+// specBrandIssues are the forbidden expressions of the Project's Brand constraints found in the
+// Canonical Shot Spec the Take was made from. This check is deterministic: it does not depend on
+// what the Reasoning LLM notices, and it catches constraints registered after the spec was written.
+func specBrandIssues(in Input) []domain.JudgeIssue {
+	var out []domain.JudgeIssue
+	for _, v := range in.Brand.ForbiddenIn(in.Spec.BrandText()) {
+		is := domain.JudgeIssue{Description: v.Message()}
+		applyBrand(&is, v.Constraint)
+		out = append(out, is)
+	}
+	return out
 }
 
 // axisScores keeps the scores of the axes of the template that are numbers in 0-100.
@@ -369,6 +407,10 @@ func userPrompt(in Input, clip Clip, metrics domain.JudgeMetrics) string {
 		}
 		fmt.Fprintf(&b, "\nAlso give \"scores\": a number from 0 to 100 for each of these axes of the %s template, in priority order: %s.", in.Template.Label(), strings.Join(names, ", "))
 	}
+	if section := in.Brand.PromptSection(); section != "" {
+		b.WriteString("\n\nBRAND / SAFETY CONSTRAINTS of this project (check the frames against every one; text shown on screen counts):\n" + section)
+		b.WriteString("For each broken constraint report an issue with \"type\": \"" + domain.BrandIssueType + "\" and \"brand_constraint_id\" set to its id. A LOCKED constraint that is broken fails the Take whatever else is good; an ADVISORY one is only a warning.")
+	}
 	b.WriteString("\nReference images (if any) come first, then the video frames.")
 	return b.String()
 }
@@ -409,6 +451,7 @@ Return ONLY one JSON object:
      "severity": "low" | "medium" | "high",
      "dimension": "one of the dimension identifiers",
      "time_range": "2.1-2.8s" (seconds from the start of the Take; omit if it concerns the whole Take),
+     "brand_constraint_id": "the id of the broken Brand / Safety Constraint, only for a constraint listed in the request",
      "description": "one short English sentence"}
   ],
   "scores": {"axis_identifier": a number from 0 to 100, ...} (only the axes named in the request; omit when none are named),

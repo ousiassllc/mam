@@ -86,6 +86,7 @@ type Services struct {
 	Notes       *NoteService
 	Branch      *BranchService
 	Editor      *EditorService
+	Brand       *BrandService
 }
 
 // Recover puts Shots left GENERATING by an abnormal termination back to PLANNING. It MUST run
@@ -143,6 +144,7 @@ func New(deps Deps) *Services {
 	notesRepo := repository.NewNoteRepository(deps.DB)
 	world := repository.NewWorldRepository(deps.DB)
 	policies := repository.NewPolicyRepository(deps.DB)
+	brands := repository.NewBrandRepository(deps.DB)
 	generations := &GenerationService{core: c, shots: gens, progress: newBroker[generation.Progress]()}
 	judges := &JudgeService{core: c, judges: repository.NewJudgeRepository(deps.DB), generations: generations}
 	repairs := &RepairService{core: c, repairs: repository.NewRepairRepository(deps.DB), judges: judges.judges, generations: generations}
@@ -156,7 +158,7 @@ func New(deps Deps) *Services {
 		}
 		judges.runner = judge.NewRunner(judge.Deps{
 			Generations: gens, Judges: judges.judges, Assets: c.assets, Policies: policies, Chat: chat, Jobs: deps.Jobs,
-			Takes: takes, Projects: c.projects,
+			Takes: takes, Projects: c.projects, Brands: brands,
 			Judge:     judge.New(deps.LLM, deps.Frames, deps.Faces, cfg, logger),
 			AssetsDir: deps.AssetsDir, Logger: logger,
 			Notify: func(p generation.Progress) { generations.progress.Publish(p.ShotID, p) },
@@ -168,7 +170,7 @@ func New(deps Deps) *Services {
 	if deps.Jobs != nil && deps.LLM != nil && deps.Models != nil {
 		generations.gen = generation.New(generation.Deps{
 			Generations: gens, World: world, Notes: notesRepo, Projects: c.projects, Policies: policies, FreeBytes: deps.FreeBytes, Assets: c.assets, Chat: chat, Jobs: deps.Jobs,
-			LLM: deps.LLM, Adapter: deps.Models, AssetsDir: deps.AssetsDir, Logger: logger, Judge: takeJudge,
+			LLM: deps.LLM, Adapter: deps.Models, AssetsDir: deps.AssetsDir, Logger: logger, Judge: takeJudge, Brands: brands,
 			Notify: func(p generation.Progress) { generations.progress.Publish(p.ShotID, p) },
 		})
 		// Not resumable: a generation costs money, so an interrupted one is failed, not repeated.
@@ -212,7 +214,7 @@ func New(deps Deps) *Services {
 	// Without a Reasoning LLM the Editor Judge runs its deterministic checks alone.
 	editors := &EditorService{
 		core: c, editors: repository.NewEditorRepository(deps.DB), shots: gens, takes: takes, chatSvc: chat, tools: deps.Media,
-		judge: editor.NewJudge(deps.LLM),
+		judge: editor.NewJudge(deps.LLM), brands: brands, judges: judges.judges,
 	}
 	if deps.Media != nil && deps.Speech != nil {
 		editors.audio = audiodirector.New(deps.Speech, *deps.Media, deps.AssetsDir)
@@ -241,5 +243,6 @@ func New(deps Deps) *Services {
 		Notes:     notes,
 		Branch:    branch,
 		Editor:    editors,
+		Brand:     &BrandService{core: c, brands: brands},
 	}
 }

@@ -45,6 +45,10 @@ type Input struct {
 	Fixed []domain.SpecPart
 	// Manual are the parts of Current the user specified (MANUAL): kept unless the instruction changes them.
 	Manual []domain.SpecPart
+	// Brand are the Safety / Brand Constraints of the Project (F-23). The spec MUST follow them; a
+	// spec that contains a forbidden expression of a LOCK constraint is refused with
+	// domain.ErrBrandViolation.
+	Brand domain.BrandConstraints
 	// Notes are the production notes the Planner may use as context (spec/spec.md §9.4). The caller
 	// records their versions in prompt_version.note_refs.
 	Notes []domain.NoteView
@@ -106,6 +110,9 @@ func (p *Planner) Plan(ctx context.Context, in Input) (domain.ShotSpec, error) {
 	if err := spec.Validate(in.Shot.Duration); err != nil {
 		return domain.ShotSpec{}, fmt.Errorf("prompt planner: %w", planning.Invalidf("%v", err))
 	}
+	if err := in.Brand.CheckText(spec.BrandText()); err != nil {
+		return domain.ShotSpec{}, fmt.Errorf("prompt planner: the spec breaks a brand constraint: %w", err)
+	}
 	return spec, nil
 }
 
@@ -142,6 +149,9 @@ func userPrompt(in Input) string {
 	}
 	if in.Current != nil && len(in.Manual) > 0 {
 		b.WriteString("\n## Parts the user specified himself (keep them unless the instruction explicitly changes them)\n" + partNames(in.Manual) + "\n")
+	}
+	if section := in.Brand.PromptSection(); section != "" {
+		b.WriteString("\n## Brand / Safety constraints (the spec MUST follow every LOCKED one; follow ADVISORY ones where possible)\n" + section)
 	}
 	if len(in.References) > 0 {
 		b.WriteString("\n## Reference images available\n")
