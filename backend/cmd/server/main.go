@@ -9,6 +9,7 @@ import (
 	"io"
 	"io/fs"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -77,10 +78,50 @@ func run(ctx context.Context, args []string, getenv func(string) string, stderr 
 }
 
 func serve(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
+	services, cleanup, err := buildServices(ctx, cfg, logger)
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+
+	gin.SetMode(gin.ReleaseMode)
+	engine := router.New(services, router.Options{Logger: logger, Static: staticFS(cfg)})
+
+	ln, err := listenLoopback(cfg.Port)
+	if err != nil {
+		return err
+	}
+	return runHTTP(ctx, engine, ln, logger, func(url string) {
+		logger.Info("server started", "url", url, "data_dir", cfg.DataDir)
+		if cfg.OpenBrowser {
+			if err := openBrowser(url); err != nil {
+				logger.Warn("could not open the browser; open the URL manually", "url", url, "err", err)
+			}
+		}
+	})
+}
+
+// buildServices opens the database, builds every dependency of the services, recovers the work an
+// abnormal termination left behind and starts the job queue. cleanup stops and closes all of it in
+// the reverse order of construction (queue, services, Judge, database). It is nil on error, where
+// buildServices has already released everything it had built.
+func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger) (_ *service.Services, _ func(), err error) {
+	var closers []func()
+	release := func() {
+		for i := len(closers) - 1; i >= 0; i-- {
+			closers[i]()
+		}
+	}
+	defer func() {
+		if err != nil {
+			release()
+		}
+	}()
+
 	// Leftovers of interrupted atomic writes must not be mistaken for finished assets.
 	removed, err := fsutil.RemoveStaleTemp(cfg.AssetsDir())
 	if err != nil {
-		return fmt.Errorf("clean stale temp files: %w", err)
+		return nil, nil, fmt.Errorf("clean stale temp files: %w", err)
 	}
 	if len(removed) > 0 {
 		logger.Warn("removed stale temp files", "count", len(removed))
@@ -88,32 +129,32 @@ func serve(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 
 	db, err := repository.Open(ctx, cfg.DBPath(), logger)
 	if err != nil {
-		return fmt.Errorf("open database: %w", err)
+		return nil, nil, fmt.Errorf("open database: %w", err)
 	}
-	defer func() {
+	closers = append(closers, func() {
 		if err := db.Close(); err != nil {
 			logger.Error("close database", "err", err)
 		}
-	}()
+	})
 
 	llmCfg, err := llm.LoadConfig(cfg.LLMConfigPath)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	keys := credential.NewKeyring()
 	reasoning := llm.NewClient(llmCfg, llm.NewBackends(llmCfg, keys, nil), llm.WithLogger(logger))
 
 	modelCfg, err := modeladapter.LoadConfig(cfg.ModelConfigPath)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	models := modeladapter.New(modelCfg, modeladapter.NewBackends(modelCfg, keys, nil, 0, modeladapter.WithStagingDir(filepath.Join(cfg.AssetsDir(), ".staging"))), modeladapter.WithLogger(logger))
 
 	judging, err := newJudgeSetup(cfg, logger)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
-	defer judging.close()
+	closers = append(closers, judging.close)
 
 	var previews *media.Tools // ffmpeg for the Take previews and Partial Take Use; nil when missing
 	if tools, err := media.Look(); err != nil {
@@ -124,12 +165,12 @@ func serve(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 
 	jevCfg, err := jev.LoadConfig(cfg.JevConfigPath)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	// The Jev shadow run of the Repair Agent works once a TypeSafe API key is stored (credential provider "typesafe").
 	shadow, err := jev.New(jevCfg, keys, nil)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
 	jobs := jobqueue.New(repository.NewJobRepository(db), jobqueue.Options{Logger: logger})
@@ -150,8 +191,18 @@ func serve(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 		Media:       previews,
 		Audio:       audioProviders(keys),
 	})
-	defer services.Close() // runs after jobs.Stop: no job change wakes the workers any more
-	// Shots left GENERATING by an abnormal termination are released before their jobs are failed.
+	closers = append(closers, services.Close) // runs after jobs.Stop: no job change wakes the workers any more
+	if err := recoverWork(ctx, services, jobs, logger); err != nil {
+		return nil, nil, err
+	}
+	jobs.Start(ctx)
+	closers = append(closers, jobs.Stop)
+	return services, release, nil
+}
+
+// recoverWork cleans up after an abnormal termination: Shots left GENERATING are released before
+// their jobs are failed.
+func recoverWork(ctx context.Context, services *service.Services, jobs *jobqueue.Queue, logger *slog.Logger) error {
 	released, err := services.Recover(ctx)
 	if err != nil {
 		return fmt.Errorf("recover shots: %w", err)
@@ -166,18 +217,15 @@ func serve(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	if resumed+failed > 0 {
 		logger.Warn("recovered unfinished jobs after abnormal termination", "resumed", resumed, "failed", failed)
 	}
-	jobs.Start(ctx)
-	defer jobs.Stop()
+	return nil
+}
 
-	gin.SetMode(gin.ReleaseMode)
-	engine := router.New(services, router.Options{Logger: logger, Static: staticFS(cfg)})
-
-	ln, err := listenLoopback(cfg.Port)
-	if err != nil {
-		return err
-	}
+// runHTTP serves handler on ln until ctx is cancelled, then shuts the server down gracefully
+// (in-flight requests get shutdownTimeout to finish). onReady, when not nil, is called with the
+// base URL once the server is accepting connections.
+func runHTTP(ctx context.Context, handler http.Handler, ln net.Listener, logger *slog.Logger, onReady func(url string)) error {
 	srv := &http.Server{
-		Handler:           engine,
+		Handler:           handler,
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       5 * time.Minute, // the largest upload (a video bundle) must arrive within it
 		IdleTimeout:       2 * time.Minute,
@@ -186,13 +234,8 @@ func serve(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 
 	serveErr := make(chan error, 1)
 	go func() { serveErr <- srv.Serve(ln) }()
-
-	url := baseURL(ln)
-	logger.Info("server started", "url", url, "data_dir", cfg.DataDir)
-	if cfg.OpenBrowser {
-		if err := openBrowser(url); err != nil {
-			logger.Warn("could not open the browser; open the URL manually", "url", url, "err", err)
-		}
+	if onReady != nil {
+		onReady(baseURL(ln))
 	}
 
 	select {
