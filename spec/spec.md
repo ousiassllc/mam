@@ -579,7 +579,7 @@ Reference Pack の素材を Shot・Scene をまたいで再利用するための
 
 ### 再利用
 
-- **Shot への追加（ピン留め）**: ライブラリの画像を Shot の Reference Pack に加える。同じ種別・同じ名前の参照が Pack にあれば置き換える。ピン留めした参照は Reference Pack の再生成でも残り、再生成しない（Art Director が同じ種別・名前の参照を計画しても新たに生成せず、ピン留めした画像を使う。コストは発生しない）
+- **Shot への追加（ピン留め）**: ライブラリの画像を Shot の Reference Pack に加える。同じ種別・同じ名前の参照が Pack にあれば置き換える。ただし Pack には Style と Lighting が各 1 枚なので、この 2 種別は名前に関係なく種別だけで置き換える（Art Director の Style は名前を持たない）。ピン留めした参照は Reference Pack の再生成でも残り、再生成しない（Art Director が同じ種別・名前の参照（Style / Lighting は種別だけ）を計画しても新たに生成せず、ピン留めした画像を使う。コストは発生しない）
 - **World State への割り当て**: Character の `face_reference` / `body_reference`、Product の `geometry_reference` / `label_reference`、Location の `layout_reference` に、同じ種別のライブラリ画像を割り当てる。割り当てた画像は、同じ名前の Character / Product / Location の Reference Pack 生成で（`face` / `geometry` / `layout` を）新たに生成せずに使い、AI Video Judge の顔参照と画像生成の入力にも使う。対応する LOCK（後述）が掛かっている項目への割り当ては拒否する
 - **削除**: ライブラリから外す。画像そのものと、すでに Shot に付いた参照は残る
 

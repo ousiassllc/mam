@@ -94,3 +94,14 @@ func ParseTags(input string) ([]string, error) {
 func SameReferenceName(a, b string) bool {
 	return strings.EqualFold(strings.TrimSpace(a), strings.TrimSpace(b))
 }
+
+// SameReference reports whether two references take the same place in a Reference Pack: the same
+// kind and, for Character / Product / Location, the same name. A Pack has one Style and one
+// Lighting image, so those are the same by kind alone. Pinning from the Library and rebuilding
+// the Pack both use this rule (spec/spec.md §10.1).
+func SameReference(a, b Reference) bool {
+	if a.Kind != b.Kind {
+		return false
+	}
+	return a.Kind == RefStyle || a.Kind == RefLighting || SameReferenceName(a.Name, b.Name)
+}
