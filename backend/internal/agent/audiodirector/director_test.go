@@ -727,3 +727,49 @@ func (unreadableSync) Sync(context.Context, audiodirector.LipSyncRequest) ([]byt
 func (f *fakeVendors) providersWith(sync audiodirector.LipSyncer) audiodirector.Providers {
 	return audiodirector.Providers{Speech: f, Music: f, Sounds: f, LipSync: sync}
 }
+
+// failOnLine speaks the lines until the nth, which fails.
+type failOnLine struct {
+	*fakeVendors
+	n, calls int
+}
+
+func (f *failOnLine) Synthesize(ctx context.Context, line domain.VoiceLine) (audiodirector.Speech, error) {
+	f.calls++
+	if f.calls == f.n {
+		return audiodirector.Speech{}, &audiodirector.ProviderError{Status: 500, Message: "boom"}
+	}
+	return f.fakeVendors.Synthesize(ctx, line)
+}
+
+func TestDirector_AFailedRunLeavesNoFilesBehindButTheLedgerKeepsTheCost(t *testing.T) {
+	v := &failOnLine{fakeVendors: &fakeVendors{t: t}, n: 2}
+	ledger := &fakeLedger{}
+	root := t.TempDir()
+	d := audiodirector.New(audiodirector.Deps{Providers: audiodirector.Providers{Speech: v}, Ledger: ledger, Tools: tools(t), Root: root})
+
+	_, err := d.Produce(context.Background(), audiodirector.Input{
+		ProjectID: "p1", EditTimelineID: "e1", Quality: domain.QualityFast, Scenes: twoScenes(), Seconds: 10, RunID: "run1",
+	})
+
+	require.Error(t, err)
+	assert.Equal(t, 2, v.calls)
+	assert.Len(t, ledger.entries, 1, "the first line was paid for")
+	_, statErr := os.Stat(filepath.Join(root, "p1", "audio", "e1", "run1"))
+	assert.True(t, os.IsNotExist(statErr), "the run directory is removed")
+}
+
+func TestDirector_DiscardRunRemovesTheRunOfASuccessfulProduce(t *testing.T) {
+	v := &fakeVendors{t: t}
+	d, root := newDirector(t, v, nil, nil)
+	in := audiodirector.Input{ProjectID: "p1", EditTimelineID: "e1", Quality: domain.QualityFast, Scenes: twoScenes(), Seconds: 10, RunID: "run1"}
+	got, err := d.Produce(context.Background(), in)
+	require.NoError(t, err)
+	require.FileExists(t, filepath.Join(root, filepath.FromSlash(got.MixPath)))
+
+	require.NoError(t, d.DiscardRun(in))
+
+	_, statErr := os.Stat(filepath.Join(root, "p1", "audio", "e1", "run1"))
+	assert.True(t, os.IsNotExist(statErr))
+	assert.ErrorIs(t, d.DiscardRun(audiodirector.Input{ProjectID: "p1", EditTimelineID: "..", RunID: "x"}), audiodirector.ErrUnsafePath)
+}

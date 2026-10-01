@@ -636,3 +636,22 @@ func TestEditor_JudgeStopsOnADatabaseErrorInsteadOfReportingAMissingTakeFile(t *
 	assert.Equal(t, "EDITING", e.state())
 	assert.Nil(t, e.timeline().Judge, "no false Re-edit finding is stored")
 }
+
+func TestEditor_AudioFilesAreRemovedWhenTheTimelineCannotBeSaved(t *testing.T) {
+	e := newEditorApp(t)
+	e.setState("VISUAL_DESIGN")
+	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/takes/t1/select", nil).Code)
+	require.Equal(t, http.StatusOK, e.roughCut().Code)
+	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/edit-timelines/"+e.timeline().ID+"/judge", nil).Code)
+	e.execSQL(`CREATE TRIGGER refuse_audio BEFORE INSERT ON audio_timeline_version BEGIN SELECT RAISE(ABORT, 'disk full'); END`)
+
+	rec := e.form(http.MethodPost, "/projects/"+e.project+"/audio/generate", nil)
+
+	assert.NotEqual(t, http.StatusOK, rec.Code)
+	var paid int
+	require.NoError(t, e.db.Reader().QueryRowContext(context.Background(), `SELECT COUNT(*) FROM cost_ledger_entry WHERE project_id = ? AND provider LIKE 'elevenlabs-%'`, e.project).Scan(&paid))
+	assert.Positive(t, paid, "the audio was made and paid for before the save failed; the ledger keeps it")
+	runs, err := filepath.Glob(filepath.Join(e.dir, "assets", e.project, "audio", e.timeline().ID, "*"))
+	require.NoError(t, err)
+	assert.Empty(t, runs, "no run directory is left")
+}
