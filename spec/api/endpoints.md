@@ -268,7 +268,7 @@ M2 の入出力契約（Issue #15）:
 | POST | `/projects/:id/reviews/feedback` | Review Response の取り込み。`multipart/form-data`、フィールド `response`（JSON ファイル） | F-32 |
 | PUT | `/projects/:id/review-comments/:commentId` | 取り込んだコメントの解決済み切替。Body `resolved=true\|false` | F-32 |
 | POST | `/reviews/import` | Review Package の読み込み（レビュアー側）。`multipart/form-data`、フィールド `package` | F-32 |
-| POST | `/reviews/:id/comments` | コメントの追加。Body `timecode`（動画内の位置、秒。空なら位置なし）、`body`（1〜2000 文字） | F-32 |
+| POST | `/reviews/:id/comments` | コメントの追加。Body `timecode`（動画内の位置。秒（`83.5`）または 分:秒（`1:23`）。空なら位置なし）、`body`（1〜2000 文字） | F-32 |
 | DELETE | `/reviews/:id/comments/:commentId` | コメントの削除 | F-32 |
 | PUT | `/reviews/:id/decision` | 判定を書く。Body `reviewer_name`（1〜50 文字）、`decision=approved\|changes_requested`、`comment`（任意、2000 文字以内） | F-32 |
 
@@ -278,7 +278,7 @@ M2 の入出力契約（Issue #15）:
 - `POST /projects/:id/reviews/feedback`: 成功時は更新後のレビュー一覧（201）。ファイルなし・JSON として読めない・`format`/`version` が違う・判定やコメントが不正・1MB 超過は 422（何も保存しない）、`review_id` がこの Project のレビュー依頼でなければ 422、`response_id` が取り込み済みなら 409。取り込むと Chat Workspace のスレッドに AI の発言（表示名・判定・コメント件数）を追加する
 - `PUT /projects/:id/review-comments/:commentId`: 更新後のレビュー一覧（200）。当該 Project のコメントでなければ 404
 - `POST /reviews/import`: 成功時は `HX-Redirect: /reviews/:id`（201）。ZIP として読めない・`manifest.json` と `video.mp4|webm` 以外のエントリがある・形式やバージョンが違う・動画の署名が合わない・サイズ超過は 422（何も保存しない）、同じ `review_id` を読み込み済みなら 409
-- `POST /reviews/:id/comments`・`DELETE /reviews/:id/comments/:commentId`・`PUT /reviews/:id/decision`: 更新後のレビュー画面のフラグメント（201 / 200）。コメントは 1 レビュー 200 件まで（超過は 422）、`timecode` が負・数値でない・24 時間超は 422、`decision` が不正・`reviewer_name` が空か長すぎるは 422。コメントや判定を変えると、書き出す応答の `response_id` が新しくなる
+- `POST /reviews/:id/comments`・`DELETE /reviews/:id/comments/:commentId`・`PUT /reviews/:id/decision`: 更新後のレビュー画面のフラグメント（201 / 200）。コメントは 1 レビュー 200 件まで（超過は 422）、`timecode` が負・秒でも 分:秒 でもない・24 時間超は 422、`decision` が不正・`reviewer_name` が空か長すぎるは 422。コメントや判定を変えると、書き出す応答の `response_id` が新しくなる
 
 ## 3. API ルート（Huma, JSON, `/api/v1`）
 
@@ -450,3 +450,4 @@ Notes:
 | 1.63 | 2026-10-01 | `POST /projects/import` のサイズ上限（本文 8 GB + 1 MiB は 413、アーカイブ 8 GB・1 ファイル 2 GB は 422）を §0 の 413 行と §2.1 に追記 | 実装の `MaxBundleBytes`・`maxBundleFileBytes` が仕様になかったため（Issue #169） |
 | 1.64 | 2026-10-01 | §2.1 の `GET /shots/:id/takes`・`GET /projects/:id/edit`・`GET /projects/:id/branches` の返却を「フルページ / フラグメント」に直し、「常にフルページ」を削除。`GET /projects/:id/bundle` の `assets/` に Audio Timeline の音声・Lip Sync 画像を追記 | 実装（`web/handler/{take,editor,branch}.go` の `isHTMX` 分岐、`service/bundle.go` の書き出し）との乖離（#167・#155） |
 | 1.65 | 2026-10-01 | §3 の `GET /api/v1/shots/:id` の利用コンポーネントを「現状なし」に直した | `mam-video-player`・`mam-timeline-editor` はこの API を呼ばず、`static/`・`web/` にも呼び出しが無かったため（Issue #189） |
+| 1.66 | 2026-10-01 | `POST /reviews/:id/comments` の `timecode` に 分:秒（`1:23`）形式を追記し、422 の条件を「秒でも 分:秒 でもない」に直した | 実装（`domain.ParseReviewTimecode`）とレビュー画面のフォームが 分:秒 も受け付けていたため（Issue #207） |
