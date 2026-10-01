@@ -56,6 +56,14 @@ func shotURL(projectID, sceneID, shotID string) string {
 // inspectorURL is the Shot Inspector page.
 func inspectorURL(shotID string) string { return paths.Shot(shotID) }
 
+// SelectedParam is the request value in which a Take button says whether its Shot card is the selected one.
+const SelectedParam = "selected"
+
+// selectedVals is the hx-vals that make a Take button send SelectedParam.
+func selectedVals(selected bool) string {
+	return fmt.Sprintf(`{"%s":"%t"}`, SelectedParam, selected)
+}
+
 func shotActionURL(shotID, action string) string { return paths.Shot(shotID, action) }
 
 func shotProgressURL(shotID string) string { return paths.ShotProgress(shotID) }
@@ -106,8 +114,10 @@ templ ShotActions(shotID string) {
 }
 
 // TakeRow is one Take under a Shot: its status, and the buttons that select it (the user's choice
-// replaces the AI Pick) or exclude it. Both answer with the Shot card.
-templ TakeRow(t domain.Take) {
+// replaces the AI Pick) or exclude it, and the one that repairs it. They answer with the Shot card,
+// which has to be drawn as selected or not like the card they replace: the buttons send that in
+// "selected" (selected is whether the card they sit on is the selected one).
+templ TakeRow(t domain.Take, selected bool) {
 	<li class="flex items-center justify-between gap-2 text-xs text-neutral-300">
 		<span class="truncate">{ t.ModelName }</span>
 		<span class="flex shrink-0 items-center gap-2">
@@ -118,6 +128,7 @@ templ TakeRow(t domain.Take) {
 						"hx-post":   takeActionURL(t.ID, "select"),
 						"hx-target": "#shot-" + t.ShotID,
 						"hx-swap":   "outerHTML",
+						"hx-vals":   selectedVals(selected),
 					})
 				}
 				@atoms.LinkButton("除外", templ.Attributes{
@@ -126,6 +137,7 @@ templ TakeRow(t domain.Take) {
 					"hx-target":  "#shot-" + t.ShotID,
 					"hx-swap":    "outerHTML",
 					"hx-confirm": "この Take を除外しますか？",
+					"hx-vals":    selectedVals(selected),
 				})
 			}
 			{{ tone, label := takeStatusLabel(t.Status) }}
@@ -135,6 +147,7 @@ templ TakeRow(t domain.Take) {
 				"hx-post":   paths.Take(t.ID, "repair"),
 				"hx-target": "#shot-" + t.ShotID,
 				"hx-swap":   "outerHTML",
+				"hx-vals":   selectedVals(selected),
 			})
 		</span>
 	</li>
@@ -212,7 +225,7 @@ templ ShotCard(d ShotCardData) {
 		if len(d.Takes) > 0 {
 			<ul class="mt-2 flex flex-col gap-1 border-t border-neutral-800 pt-2" aria-label="Take 一覧">
 				for _, t := range d.Takes {
-					@TakeRow(t)
+					@TakeRow(t, d.Selected)
 				}
 			</ul>
 			if len(d.Takes) > 1 {

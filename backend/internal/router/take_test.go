@@ -200,6 +200,32 @@ func TestTakes_SelectMakesTheTakeTheShotsAndRejectExcludesIt(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, ta.form(http.MethodDelete, "/takes/nope", nil).Code)
 }
 
+// A Take button answers with the card it sits on: a card that was not selected stays unselected (no
+// aria-current, no storyboard / generate form), so the Shot being viewed keeps its page (#257).
+func TestTakes_SelectAndRejectAnswerWithTheCardAsSelectedOrNotLikeTheOneTheyReplace(t *testing.T) {
+	ta := newTakeApp(t)
+	const current = `aria-current="true"`
+
+	rec := ta.form(http.MethodPost, "/takes/t1/select", url.Values{"selected": {"false"}})
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.Contains(t, rec.Body.String(), `id="shot-`+ta.shotID+`"`)
+	assert.NotContains(t, rec.Body.String(), current)
+	assert.NotContains(t, rec.Body.String(), "/generate", "no generate form on an unselected card")
+	assert.Equal(t, "selected", ta.statusOf("t1"), "the Take is selected all the same")
+
+	rec = ta.form(http.MethodPost, "/takes/t2/select", url.Values{"selected": {"true"}})
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.Contains(t, rec.Body.String(), current)
+
+	rec = ta.form(http.MethodDelete, "/takes/t2?selected=false", nil)
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.NotContains(t, rec.Body.String(), current)
+
+	rec = ta.form(http.MethodDelete, "/takes/t1?selected=true", nil)
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.Contains(t, rec.Body.String(), current)
+}
+
 func TestTakes_PartialUseJoinsPartsIntoANewSelectedTakeAndAnnouncesItInTheChat(t *testing.T) {
 	ta := newTakeApp(t)
 
