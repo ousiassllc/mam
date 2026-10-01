@@ -438,6 +438,37 @@ func TestDirector_MaxQualityLipSyncsTheClipWhereACharacterSpeaks(t *testing.T) {
 	assert.Empty(t, entries, "the working files of the Lip Sync are removed")
 }
 
+func TestDirector_ALineThatCrossesAClipBoundaryGivesUpTheLipSyncOfThatWholeClip(t *testing.T) {
+	v := &fakeVendors{t: t}
+	ledger := &fakeLedger{}
+	d, _ := newDirector(t, v, ledger, nil)
+	take := testVideo(t, 4)
+	clips := []audiodirector.VideoClip{{Index: 1, TakeID: "t1", Path: take, In: 0, Out: 4, Start: 0}, {Index: 2, TakeID: "t2", Path: take, In: 0, Out: 4, Start: 4}}
+	// Two lines start in clip 1 (4 s): the first ends inside it, the second runs into clip 2.
+	scenes := []audiodirector.Scene{{Index: 1, Start: 2.5, End: 8, Clips: 2, Lines: []string{"美咲: こんにちは", "美咲: 今日はいい天気ですね"}}}
+
+	got, err := d.Produce(context.Background(), audiodirector.Input{
+		ProjectID: "p1", EditTimelineID: "e1", Quality: domain.QualityMaxQuality, Scenes: scenes, Clips: clips, Seconds: 8,
+	})
+
+	require.NoError(t, err)
+	var spoken []domain.AudioClip
+	for _, c := range got.Clips {
+		if c.LayerOf() == domain.LayerDialogue {
+			spoken = append(spoken, c)
+		}
+	}
+	require.Len(t, spoken, 2, "both lines are in the mix")
+	require.Less(t, spoken[0].End(), 4.0, "the first line ends inside clip 1")
+	require.Greater(t, spoken[1].End(), 4.1, "the second line runs past the end of clip 1")
+	require.Less(t, spoken[1].StartSeconds, 4.0, "and starts inside it")
+	assert.Empty(t, v.syncs, "a clip with a line across its boundary is not lip-synced")
+	assert.Empty(t, got.LipSync)
+	assert.NotContains(t, ledger.providers(), domain.ModelSyncLabs, "and not paid for")
+	assert.Contains(t, skippedLayers(got, domain.SkipError), domain.LayerLipSync)
+	assert.NotEmpty(t, got.MixPath, "the audio is still made")
+}
+
 func TestDirector_LipSyncIsSkippedBelowMaxQualityWithoutAProviderAndOnAMissingKey(t *testing.T) {
 	take := testVideo(t, 4)
 	clips := []audiodirector.VideoClip{{Index: 1, TakeID: "t1", Path: take, In: 0, Out: 4, Start: 0}}
