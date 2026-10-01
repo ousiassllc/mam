@@ -3,6 +3,7 @@ package service_test
 import (
 	"context"
 	"database/sql"
+	"strings"
 	"testing"
 	"time"
 
@@ -19,12 +20,19 @@ const needReaction = `{"verdict":"need_shot","findings":[{"clip_index":1,"issue"
 // editedFixture is a Project whose only Shot has a Selected Take and a Rough Cut, judged NEED_SHOT.
 func editedFixture(t *testing.T) (genFixture, domain.EditTimelineVersion) {
 	t.Helper()
+	return editedFixtureJudging(t, needReaction, func(string) string { return additionalSpec }, nil)
+}
+
+const additionalSpec = `{"shot_objective":"Character looks back, surprised","duration":"2.0s","camera":{"lens":"35mm","framing":"close"},"lighting":{"mood":"cold blue"},"continuity":{"start_from_previous_final_state":true}}`
+
+// editedFixtureJudging is editedFixture with the answer of the Editor Judge and of the Prompt Planner
+// chosen by the caller (the Planner answers the first Shot before the Judge runs); before, when set,
+// runs just before the Judge.
+func editedFixtureJudging(t *testing.T, judge string, planner func(string) string, before func(genFixture)) (genFixture, domain.EditTimelineVersion) {
+	t.Helper()
 	f := newGenFixture(t, true)
 	f.llm.extractor = extractAnswer
-	// The additional Shot is shorter than the canned spec's acting.
-	f.llm.planner = func(string) string {
-		return `{"shot_objective":"Character looks back, surprised","duration":"2.0s","camera":{"lens":"35mm","framing":"close"},"lighting":{"mood":"cold blue"},"continuity":{"start_from_previous_final_state":true}}`
-	}
+	f.llm.planner = planner
 	f.buildReferencePack(t)
 	f.generateAndWait(t, f.shotID, 2)
 	f.selectTakeOf(t, f.shotID)
@@ -33,7 +41,10 @@ func editedFixture(t *testing.T) (genFixture, domain.EditTimelineVersion) {
 	view, err := f.svc.Editor.RoughCut(ctx, f.projectID, "")
 	require.NoError(t, err)
 	require.NotNil(t, view.Timeline)
-	f.llm.editor = needReaction
+	if before != nil {
+		before(f)
+	}
+	f.llm.editor = judge
 	view, err = f.svc.Editor.JudgeTimeline(ctx, view.Timeline.ID)
 	require.NoError(t, err)
 	return f, view.Timeline.EditTimelineVersion
@@ -194,4 +205,34 @@ func TestEditorReshootLoop_StartFailureDoesNotLeaveAPendingRound(t *testing.T) {
 	require.NoError(t, err, "the same timeline can ask again after the start failure")
 	assert.Equal(t, domain.StateGenerating, f.state(t))
 	assert.Equal(t, 1, f.count(t, `SELECT COUNT(*) FROM reshoot_request WHERE project_id = ? AND status = 'requested'`, f.projectID))
+}
+
+// When only some of the additional Shots can start (here the second one's spec breaks a LOCK Brand
+// constraint),
+// the one that started belongs to the round and the one that did not is removed: no Shot is left
+// outside a round, and asking again is refused instead of making the started Shot a second time.
+func TestEditorReshootLoop_PartialStartKeepsTheStartedShotInTheRound(t *testing.T) {
+	const twoNeeds = `{"verdict":"need_shot","findings":[` +
+		`{"clip_index":1,"issue":"a","action":"a","need_shot":{"kind":"reaction","after_clip":1,"objective":"驚いて振り返る","duration_seconds":2}},` +
+		`{"clip_index":1,"issue":"b","action":"b","need_shot":{"kind":"insert","after_clip":1,"objective":"BROKEN-PLAN","duration_seconds":2}}]}`
+	f, judged := editedFixtureJudging(t, twoNeeds, func(user string) string {
+		if strings.Contains(user, "BROKEN-PLAN") {
+			return strings.Replace(additionalSpec, "Character looks back, surprised", "a BANNED word", 1)
+		}
+		return additionalSpec
+	}, func(f genFixture) {
+		_, err := f.svc.Brand.Add(context.Background(), f.projectID, service.BrandForm{Type: string(domain.BrandForbidden), Text: "BANNED"})
+		require.NoError(t, err)
+	})
+	ctx := context.Background()
+
+	assert.Equal(t, 2, f.trunkShots(t), "the Shot that started stays, the one that did not is removed")
+	assert.Equal(t, domain.StateGenerating, f.state(t))
+	var started string
+	require.NoError(t, f.query(t, `SELECT id FROM shot WHERE id <> ?`, f.shotID).Scan(&started))
+	assert.Equal(t, 1, f.count(t, `SELECT COUNT(*) FROM reshoot_request WHERE shot_id = ? AND status = 'requested'`, started), "the started Shot is part of the round")
+
+	_, err := f.svc.Editor.RequestAdditionalShot(ctx, judged.ID)
+	require.ErrorIs(t, err, service.ErrConflict)
+	assert.Equal(t, 2, f.trunkShots(t), "asking again does not make the started Shot a second time")
 }
