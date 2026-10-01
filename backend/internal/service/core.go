@@ -143,3 +143,14 @@ func (c *core) assetPath(rel string) string {
 	}
 	return abs
 }
+
+// previewPath is the cache file name of a preview directly inside the preview directory. It returns
+// "" when name (built from a row ID, which an imported bundle or a URL can make hostile) would put
+// the file anywhere else.
+func (c *core) previewPath(name string) string {
+	abs := c.assetPath(previewDir + "/" + name)
+	if abs == "" || filepath.Dir(abs) != filepath.Join(c.assetsDir, previewDir) {
+		return ""
+	}
+	return abs
+}

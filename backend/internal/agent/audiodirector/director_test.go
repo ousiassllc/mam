@@ -503,6 +503,30 @@ func TestDirector_LinesWithoutASynthesizerFail(t *testing.T) {
 	assert.ErrorIs(t, err, audiodirector.ErrNoAPIKey)
 }
 
+func TestDirector_AnEditTimelineIDThatLeavesTheProjectDirectoryIsRefusedBeforeAnythingIsMadeOrPaid(t *testing.T) {
+	for _, id := range []string{"x/../../../y", "x/../../y", "../y", "x/../../../../etc"} {
+		v := &fakeVendors{t: t}
+		ledger := &fakeLedger{}
+		parent := t.TempDir()
+		root := filepath.Join(parent, "assets")
+		require.NoError(t, os.MkdirAll(root, 0o750))
+		d := audiodirector.New(audiodirector.Deps{Providers: v.providers(), Ledger: ledger, Tools: tools(t), Root: root})
+
+		_, err := d.Produce(context.Background(), audiodirector.Input{
+			ProjectID: "p1", EditTimelineID: id, Quality: domain.QualityFast, Scenes: twoScenes(), Seconds: 10,
+		})
+
+		assert.ErrorIs(t, err, audiodirector.ErrUnsafePath, id)
+		assert.Zero(t, ledger.spent, id)
+		var written []string
+		require.NoError(t, filepath.WalkDir(parent, func(p string, _ os.DirEntry, err error) error {
+			written = append(written, p)
+			return err
+		}))
+		assert.ElementsMatch(t, []string{parent, root}, written, "%q leaves no file or directory", id)
+	}
+}
+
 func TestDirector_TheMixIsMadeFromTheRoughCutSoundAndEveryLayer(t *testing.T) {
 	v := &fakeVendors{t: t}
 	d, root := newDirector(t, v, nil, nil)

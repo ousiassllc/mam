@@ -353,7 +353,10 @@ func (s *TakeService) Video(ctx context.Context, takeID string) (MediaFile, erro
 	if !proxied {
 		return MediaFile{Path: src, MimeType: mime}, nil
 	}
-	dst := filepath.Join(s.assetsDir, previewDir, takeID+".mp4")
+	dst := s.previewPath(takeID + ".mp4")
+	if dst == "" {
+		return MediaFile{Path: src, MimeType: mime}, nil // the ID is not a safe file name: no proxy is made
+	}
 	if err := s.makePreview(dst, func() error { return s.tools.Proxy(ctx, src, dst) }); err != nil {
 		s.logger.Error("make proxy failed; playing the original", "take_id", takeID, "err", err)
 		return MediaFile{Path: src, MimeType: mime}, nil
@@ -377,7 +380,10 @@ func (s *TakeService) Thumbnail(ctx context.Context, takeID string) (MediaFile, 
 	if src == "" {
 		return MediaFile{}, ErrNotFound // outside the assets directory
 	}
-	dst := filepath.Join(s.assetsDir, previewDir, takeID+".jpg")
+	dst := s.previewPath(takeID + ".jpg")
+	if dst == "" {
+		return MediaFile{}, ErrNotFound // the ID is not a safe file name
+	}
 	if err := s.makePreview(dst, func() error { return s.tools.Thumbnail(ctx, src, dst, 0) }); err != nil {
 		return MediaFile{}, fmt.Errorf("make thumbnail: %w", err)
 	}
