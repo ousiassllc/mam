@@ -46,7 +46,7 @@
 | ローカルサーバー公開範囲 | Go バックエンド（Gin/Huma）は `127.0.0.1` のみにバインドし、外部ネットワークからアクセス不可とする |
 | API キー管理 | 外部生成モデル API のキーは OS のセキュアストレージ（Windows Credential Manager / macOS Keychain / Linux Secret Service）に保存し、平文設定ファイルに書かない |
 | CSRF | ループバック限定であっても HALT 標準の CSRF トークン付与（meta タグ + 全リクエストへの付与）は維持する |
-| 入力検証 | ユーザーアップロード画像/参照動画はサイズ・拡張子・MIME 検証を行い、Huma の Input バリデーションで拒否する |
+| 入力検証 | ユーザーアップロード画像/参照動画は、サービス層（`service/upload.go`）で拡張子・ファイル内容の署名（先頭バイト。MIME は拡張子から決める）・サイズ・件数を検証し、違反は 422 で拒否する。上限は画像 20 MB・動画 300 MB・一度の添付 8 件。アップロードは Gin の multipart ハンドラ（`POST /projects/:id/references` など）で受け、Huma（`/api/v1`）の Input バリデーションは通らない |
 | Brand/Safety 制約 | Safety and Brand Constraints（禁止表現・権利メタデータ等）は Prompt 生成・AI Video Judge・Final QC の全段階で強制適用し、LOCK 違反はスコアに関係なく FAIL とする（F-23 と対応） |
 | テレメトリ | デフォルトで外部への利用状況送信は行わない。診断ログはローカルファイルにのみ出力する |
 | チーム共有物の漏えい防止 | 他のメンバーに渡すもの（Review Package・Review Response、F-32）には、外部モデル API キー・認証情報、顔データ（Character / Series の顔基準画像・参照画像・アップロード素材・顔同一性指標）、Brief・チャット・Notes・World State・Prompt・Brand Constraints・コスト・Project ID・絶対パスを含めない。渡すのは allowlist の項目（Project 名・オーナーのメモ・レビュー対象の Final Export 1 本、レビュアーの表示名・判定・コメント）だけで、固定の構造体から組み立てる。読み込み側は allowlist 外のエントリ・サイズ超過・署名不一致を拒否する（`spec/spec.md` §27.1） |
@@ -100,3 +100,4 @@
 | 1.8 | 2026-10-01 | §4 プロジェクト規模の「ページネーション/遅延読み込みを UI に適用」を、全件描画＋画像の遅延読み込みという実装の現状と計測結果に改めた | 一覧系クエリにページングは無く、ローカル SQLite で 1,000 件規模でも目標を大きく下回るため、ページングは不要と判断（Issue #91） |
 | 1.9 | 2026-10-01 | §1 の「x64 / arm64」に、6 構成を一括ビルドする `make build-all` と出力名、自動リリースが無いこと、Windows では顔同一性の定量評価が使えないことを明記 | ビルド手段が実行ホスト向けの 1 個だけで、Windows 向けは ONNX Runtime バインディングがビルドできなかったため、build-all と Windows 用のフォールバックを実装した（Issue #93） |
 | 1.10 | 2026-10-01 | §2 の起動時間の対象を、存在しない Main Workspace から標準画面の Chat Workspace（`GET /projects/:id`）に改めた | 標準画面は Chat Workspace に変わったが、起動時間だけが古い画面名のままだったため（Issue #137） |
+| 1.11 | 2026-10-01 | §5 入力検証を、サービス層（`service/upload.go`）での拡張子・内容の署名・サイズ・件数の検証と 422 に直し、上限（画像 20 MB・動画 300 MB・8 件）を明記 | アップロードは Gin の multipart ハンドラ経由で Huma を通らず、「Huma の Input バリデーションで拒否する」は実装と乖離していたため（Issue #175） |
