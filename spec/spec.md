@@ -716,7 +716,7 @@ Judge の Face / Character Identity 評価を補うローカル計測。Shot 間
 - **LOCK 連動**: Character Identity が LOCK のとき、FAIL 閾値を割った Take は総合スコアに関係なく FAIL とする（§13）
 - **Repair**: `face_identity_drift` は Reference Reinforcement を優先候補とする
 - **Series**: Episode をまたいでも Series 正本の `face_reference` を基準に計測する（F-29）
-- **実行**: ローカル実行。顔画像は外部へ送信しない。モデルのライセンス（商用利用可否）と Go 単一バイナリでの推論ランタイムは実装時に確認する（`spec/architecture/model-adapters.md` §4.5, §8）
+- **実行**: ローカル実行。顔画像は外部へ送信しない。YuNet / SFace と ONNX Runtime（purego、CGO なしの Go 単一バイナリ）は M1 で検証済み（`spec/architecture/model-adapters.md` §10.1）。残る確認は SFace の学習データの権利関係（同 §8）。Windows では ONNX Runtime のバインディングが対応しないため数値評価は使えず、定性評価にフォールバックする（`spec/requirements/non-functional.md` §1）
 
 ---
 
