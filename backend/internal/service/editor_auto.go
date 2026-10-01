@@ -186,7 +186,7 @@ func (s *EditorService) autoAudioOrQC(ctx context.Context, projectID string) (bo
 	if err != nil && !errors.Is(err, repository.ErrNotFound) {
 		return false, err
 	}
-	if _, err := s.FinalQC(ctx, projectID); err != nil {
+	if _, err := s.FinalQC(ctx, projectID, ""); err != nil {
 		return false, err
 	}
 	return true, nil

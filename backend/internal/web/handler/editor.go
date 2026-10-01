@@ -128,10 +128,15 @@ func CloneVoice(svc *service.EditorService) gin.HandlerFunc {
 	}, "")
 }
 
-// FinalQC runs Final QC (POST /projects/:id/final-qc).
+// FinalQC runs Final QC (POST /projects/:id/final-qc). It inspects the trunk; the optional branch_id
+// only keeps the editor panel of the Branch it was pressed in.
 func FinalQC(svc *service.EditorService) gin.HandlerFunc {
 	return editorStage(func(c *gin.Context) (service.EditorView, error) {
-		return svc.FinalQC(c.Request.Context(), c.Param("id"))
+		var in roughCutForm
+		if err := c.ShouldBind(&in); err != nil {
+			return service.EditorView{}, unreadable(c, err, "branch_id", "Branch の指定を読み取れませんでした")
+		}
+		return svc.FinalQC(c.Request.Context(), c.Param("id"), in.BranchID)
 	}, "timeline-reload")
 }
 
