@@ -207,6 +207,41 @@ func TestEditorReshootLoop_StartFailureDoesNotLeaveAPendingRound(t *testing.T) {
 	assert.Equal(t, 1, f.count(t, `SELECT COUNT(*) FROM reshoot_request WHERE project_id = ? AND status = 'requested'`, f.projectID))
 }
 
+// On a Branch whose anchor Shot lies in the trunk the additional Shot gets a Scene of its own. When
+// no Shot can start, that Scene is removed with it: asking again must not pile up empty Scenes.
+func TestEditorReshootLoop_StartFailureOnABranchLeavesNoEmptyScene(t *testing.T) {
+	f := newGenFixture(t, true)
+	f.llm.extractor = extractAnswer
+	f.llm.planner = func(string) string { return additionalSpec }
+	f.llm.director = directorFor(sameSceneAnswer)
+	f.buildReferencePack(t)
+	f.generateAndWait(t, f.shotID, 2)
+	f.selectTakeOf(t, f.shotID)
+	f.execSQL(t, `UPDATE project SET production_template = 'drama', state = 'VISUAL_DESIGN' WHERE id = ?`, f.projectID)
+	ctx := context.Background()
+	branchID := f.branch(t, service.BranchInput{}).Branch.ID
+	view, err := f.svc.Editor.RoughCut(ctx, f.projectID, branchID)
+	require.NoError(t, err)
+	require.NotNil(t, view.Timeline)
+	timelineID := view.Timeline.ID
+	f.llm.editor = needReaction
+
+	tiny := 0.01
+	f.setBudget(t, nil, &tiny)
+	_, err = f.svc.Editor.JudgeTimeline(ctx, timelineID)
+	require.ErrorIs(t, err, service.ErrBudgetExceeded)
+	_, err = f.svc.Editor.RequestAdditionalShot(ctx, timelineID)
+	require.ErrorIs(t, err, service.ErrBudgetExceeded)
+
+	assert.Zero(t, f.count(t, `SELECT COUNT(*) FROM scene WHERE branch_id = ?`, branchID), "the Scene made for the failed additional Shot is removed")
+	assert.Equal(t, 1, f.count(t, `SELECT COUNT(*) FROM shot`))
+
+	f.setBudget(t, nil, nil)
+	_, err = f.svc.Editor.RequestAdditionalShot(ctx, timelineID)
+	require.NoError(t, err)
+	assert.Equal(t, 1, f.count(t, `SELECT COUNT(*) FROM scene WHERE branch_id = ?`, branchID), "the successful retry makes exactly one Scene")
+}
+
 // When only some of the additional Shots can start (here the second one's spec breaks a LOCK Brand
 // constraint),
 // the one that started belongs to the round and the one that did not is removed: no Shot is left
