@@ -65,10 +65,9 @@ func (c Config) FaceModels() string {
 
 // Load parses args (without the program name). Each flag defaults to its MAM_* environment variable.
 func Load(args []string, getenv func(string) string, output io.Writer) (Config, error) {
-	defaultDir, err := defaultDataDir()
-	if err != nil && getenv("MAM_DATA_DIR") == "" {
-		return Config{}, err
-	}
+	// An unresolvable default is an error only when neither --data-dir nor MAM_DATA_DIR replaces it
+	// (checked after the flags are parsed, so --help works everywhere).
+	defaultDir, defaultErr := defaultDataDir()
 
 	envPort, err := envInt(getenv, "MAM_PORT", DefaultPort)
 	if err != nil {
@@ -98,6 +97,9 @@ func Load(args []string, getenv func(string) string, output io.Writer) (Config, 
 	}
 	if *port < 0 || *port > 65535 {
 		return Config{}, fmt.Errorf("invalid port %d", *port)
+	}
+	if *dataDir == "" && defaultErr != nil {
+		return Config{}, defaultErr
 	}
 	if *dataDir == "" {
 		return Config{}, fmt.Errorf("data directory must not be empty")
