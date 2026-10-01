@@ -43,3 +43,23 @@ func TestProjects_ServiceFailureIsLoggedAndRendersErrorPage(t *testing.T) {
 	assert.Equal(t, "none", rec.Header().Get("HX-Reswap"))
 	assert.Contains(t, rec.Body.String(), "内部エラーが発生しました")
 }
+
+// An unexpected error of a JSON API handler is a generic 500: the cause is logged, not sent to the client.
+func TestAPI_ServiceFailureIsAGeneric500WhoseCauseIsLogged(t *testing.T) {
+	keyring.MockInit()
+	db, err := repository.Open(context.Background(), filepath.Join(t.TempDir(), "mam.db"), nil)
+	require.NoError(t, err)
+	svc := service.New(service.Deps{DB: db, Credentials: credential.NewKeyring()})
+	var logs bytes.Buffer
+	engine := router.New(svc, router.Options{Logger: slog.New(slog.NewTextHandler(&logs, nil))})
+	require.NoError(t, db.Close()) // every query now fails with "database is closed"
+
+	rec := do(engine, httptest.NewRequest(http.MethodGet, "/api/v1/shots/x/takes", nil))
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Equal(t, "application/problem+json", rec.Header().Get("Content-Type"))
+	assert.NotContains(t, rec.Body.String(), "database is closed")
+	assert.Contains(t, rec.Body.String(), "Internal Server Error")
+	assert.Contains(t, logs.String(), "level=ERROR")
+	assert.Contains(t, logs.String(), "database is closed")
+}
