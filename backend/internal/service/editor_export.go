@@ -129,7 +129,7 @@ func (s *EditorService) Export(ctx context.Context, projectID string, in ExportI
 		}
 	}
 	s.announce(ctx, projectID, fmt.Sprintf("書き出しが完了しました（%s / %s / %s）。ダウンロード: /projects/%s/exports/%s/video", opts.AspectRatio, opts.Resolution, opts.Codec, projectID, rec.ID))
-	return s.View(ctx, projectID, "")
+	return s.View(ctx, projectID, in.BranchID)
 }
 
 // exportOptions are the Brief's export options with the user's choices applied and checked.
