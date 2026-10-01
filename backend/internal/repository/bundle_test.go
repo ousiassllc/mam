@@ -260,3 +260,31 @@ func TestBundleRepository_ImportKeepsGeneratedStyleRowIDs(t *testing.T) {
 	require.NoError(t, r.Import(ctx, data))
 	assert.Equal(t, 1, countRows(t, db, "scene")["scene"])
 }
+
+func TestBundleRepository_ImportRejectsATakeCardThatLoadsFromAnotherHost(t *testing.T) {
+	for name, content := range map[string]string{
+		"video on another host":       `{"title":"T","video_url":"/\\evil.example/x.mp4"}`,
+		"poster on another host":      `{"title":"T","video_url":"/takes/t/video","poster_url":"//evil.example/p.jpg"}`,
+		"absolute video URL":          `{"title":"T","video_url":"https://evil.example/x.mp4"}`,
+		"escaped backslash in poster": `{"title":"T","video_url":"/takes/t/video","poster_url":"/%5Cevil.example/p.jpg"}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			ctx := context.Background()
+			db := openTestDB(t)
+			seedDeepProject(t, db, "a")
+			r := repository.NewBundleRepository(db)
+			data, err := r.Export(ctx, "a")
+			require.NoError(t, err)
+			require.NoError(t, exec(t, db, `DELETE FROM project WHERE id = 'a'`))
+			for i := range data.Tables {
+				if data.Tables[i].Name == "chat_message" {
+					data.Tables[i].Rows = append(data.Tables[i].Rows, domain.BundleRow{
+						"id": "m-take", "project_id": "a", "role": "assistant", "kind": "take", "content": content, "attachment_asset_ids": "[]",
+					})
+				}
+			}
+			assert.ErrorIs(t, r.Import(ctx, data), repository.ErrInvalidBundle)
+			assert.Equal(t, 0, countRows(t, db, "chat_message")["chat_message"])
+		})
+	}
+}

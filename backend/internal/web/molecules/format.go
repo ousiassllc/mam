@@ -125,9 +125,6 @@ func progressView(job *domain.Job) (atoms.BadgeTone, string, bool) {
 
 func scorePercent(score float64) string { return fmt.Sprintf("%.2f", score) }
 
-// isLocalPath accepts only same-origin absolute paths as video sources.
-func isLocalPath(p string) bool { return strings.HasPrefix(p, "/") && !strings.HasPrefix(p, "//") }
-
 func frameClass(m domain.ThreadMessage) string {
 	base := "max-w-[85%] rounded-lg px-4 py-3 text-sm "
 	if m.Role == domain.RoleUser {

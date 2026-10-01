@@ -247,6 +247,11 @@ func checkBundle(data domain.BundleData) error {
 			if pid, ok := row["project_id"]; ok && pid != data.ProjectID {
 				return fmt.Errorf("%w: %s has a row of another project", ErrInvalidBundle, t.Name)
 			}
+			if t.Name == "chat_message" && row["kind"] == string(domain.KindTake) {
+				if err := checkTakeCardURLs(row); err != nil {
+					return err
+				}
+			}
 			for _, c := range detachColumns[t.Name] {
 				if row[c] != nil {
 					return fmt.Errorf("%w: %s.%s points outside the bundle", ErrInvalidBundle, t.Name, c)
@@ -260,6 +265,19 @@ func checkBundle(data domain.BundleData) error {
 		}
 	}
 	return fmt.Errorf("%w: exactly one project row is required", ErrInvalidBundle)
+}
+
+// checkTakeCardURLs refuses a take card whose video or poster is not a same-origin path: the
+// player would load it from another host.
+func checkTakeCardURLs(row domain.BundleRow) error {
+	content, _ := row["content"].(string)
+	body := domain.DecodeTakeCardBody(content)
+	for _, u := range []string{body.VideoURL, body.PosterURL} {
+		if u != "" && !domain.IsLocalPath(u) {
+			return fmt.Errorf("%w: a take card points outside the app", ErrInvalidBundle)
+		}
+	}
+	return nil
 }
 
 // checkBundleOwnership runs inside the import transaction, after the rows are in. The Project is new

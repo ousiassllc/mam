@@ -18,12 +18,12 @@ templ TakeCard(m domain.ThreadMessage) {
 				<span class="text-xs text-neutral-400">{ "score " + scorePercent(*body.Score) }</span>
 			}
 		</p>
-		if isLocalPath(body.VideoURL) {
+		if domain.IsLocalPath(body.VideoURL) {
 			<mam-video-player
 				class="block"
 				video-src={ body.VideoURL }
 				api-url={ takeJudgeResultURL(m.RefID) }
-				if isLocalPath(body.PosterURL) {
+				if domain.IsLocalPath(body.PosterURL) {
 					poster={ body.PosterURL }
 				}
 				data-take-id={ m.RefID }

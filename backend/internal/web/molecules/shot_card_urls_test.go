@@ -25,3 +25,16 @@ func TestShotCard_EscapesImportedShotAndTakeIDsInEveryURL(t *testing.T) {
 	assert.Contains(t, html, `/projects/p/scenes/sc?shot=s%3F1%23x`)
 	assert.NotContains(t, html, `?shot=s?1`)
 }
+
+func TestTakeCard_DoesNotLoadAVideoOrPosterFromAnotherHost(t *testing.T) {
+	card := func(content string) string {
+		return render(t, molecules.TakeCard(domain.ThreadMessage{ChatMessage: domain.ChatMessage{ID: "m", Kind: domain.KindTake, RefID: "t1", Content: content}}))
+	}
+	local := card(`{"title":"T","video_url":"/takes/t1/video","poster_url":"/takes/t1/thumbnail"}`)
+	assert.Contains(t, local, `video-src="/takes/t1/video"`)
+	assert.Contains(t, local, `poster="/takes/t1/thumbnail"`)
+
+	assert.NotContains(t, card(`{"title":"T","video_url":"/\\evil.example/x.mp4"}`), "evil.example")
+	assert.NotContains(t, card(`{"title":"T","video_url":"/takes/t1/video","poster_url":"/\\evil.example/p.jpg"}`), "evil.example")
+	assert.NotContains(t, card(`{"title":"T","video_url":"/%5Cevil.example/x.mp4"}`), "evil.example")
+}

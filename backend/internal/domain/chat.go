@@ -2,6 +2,8 @@ package domain
 
 import (
 	"encoding/json"
+	"net/url"
+	"strings"
 	"time"
 )
 
@@ -128,6 +130,22 @@ func DecodeTakeCardBody(content string) TakeCardBody {
 		return TakeCardBody{Title: content}
 	}
 	return b
+}
+
+// IsLocalPath reports whether p is a same-origin absolute path: the only kind of URL a card may
+// make the browser load. A backslash (browsers read /\host as "//host"), an escaped one, a
+// control character, a scheme or a host is refused.
+func IsLocalPath(p string) bool {
+	if !strings.HasPrefix(p, "/") || strings.HasPrefix(p, "//") || strings.Contains(strings.ToLower(p), "%5c") {
+		return false
+	}
+	for _, r := range p {
+		if r == '\\' || r < 0x20 || r == 0x7f {
+			return false
+		}
+	}
+	u, err := url.Parse(p)
+	return err == nil && u.Scheme == "" && u.Host == ""
 }
 
 // ThreadMessage is a chat message prepared for rendering: the message plus what the
