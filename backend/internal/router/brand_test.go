@@ -188,10 +188,29 @@ func TestDirectorCommand_APlannedSpecThatBreaksALockConstraintIs403(t *testing.T
 	j.addBrand("brand-lock", "forbidden_expression", "lock", "runs")
 	j.llm.command = `{"operations":[{"type":"regenerate","changes":["acting"],"instruction":"Make her nervous."}]}`
 
+	before := j.count(`SELECT COUNT(*) FROM chat_message`)
+
 	rec := j.form(http.MethodPost, "/shots/"+j.shotID+"/director-command", url.Values{"content": {"少し慌てさせて"}})
 	require.Equal(t, http.StatusForbidden, rec.Code, rec.Body.String())
 	assert.Zero(t, j.count(`SELECT COUNT(*) FROM job`))
 	assert.Empty(t, j.takeIDs())
+
+	// The direction was recorded before the Planner ran; the refusal is answered in the thread.
+	assert.Equal(t, before+2, j.count(`SELECT COUNT(*) FROM chat_message`))
+	rows, err := j.db.Reader().Query(`SELECT role, content FROM chat_message ORDER BY rowid DESC LIMIT 2`)
+	require.NoError(t, err)
+	defer rows.Close()
+	var roles, contents []string
+	for rows.Next() {
+		var role, content string
+		require.NoError(t, rows.Scan(&role, &content))
+		roles, contents = append(roles, role), append(contents, content)
+	}
+	require.NoError(t, rows.Err())
+	require.Equal(t, []string{"assistant", "user"}, roles)
+	assert.Contains(t, contents[0], "指示を実行できませんでした")
+	assert.Contains(t, contents[0], "Brand / Safety Constraint")
+	assert.Equal(t, "少し慌てさせて", contents[1])
 }
 
 func TestDirectorCommand_PartialRegenerateThatBreaksALockConstraintIs403(t *testing.T) {

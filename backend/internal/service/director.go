@@ -313,6 +313,7 @@ func (s *DirectorService) DirectorCommand(ctx context.Context, shotID, message s
 	}
 	res, err := s.execute(ctx, project, &ref, cmd, message, true)
 	if err != nil {
+		s.reportCommandFailure(ctx, project.ID, res, err)
 		return DirectorCommandResult{}, err
 	}
 	if err := s.commitMessages(ctx, project.ID, assignIDs([]domain.ChatMessage{assistantText(res.text())})); err != nil {
@@ -320,6 +321,23 @@ func (s *DirectorService) DirectorCommand(ctx context.Context, shotID, message s
 	}
 	view, err := s.Inspector(ctx, shotID)
 	return DirectorCommandResult{Inspector: view, Started: res.started}, err
+}
+
+// reportCommandFailure answers a direction that failed after it was recorded (a Planner spec that
+// breaks a LOCK Brand constraint, an unexpected error), so that the thread does not end with the
+// director's words alone. What was done before the failure is told too. The error is still returned
+// to the caller. A failure to record the answer is only logged.
+func (s *DirectorService) reportCommandFailure(ctx context.Context, projectID string, done outcome, cause error) {
+	reason := generation.FailureReason(cause)
+	if errors.Is(cause, ErrLocked) {
+		reason = "LOCK されているパラメータを変える指示のため実行しませんでした"
+	}
+	lines := append(slices.Clone(done.lines), "指示を実行できませんでした: "+reason)
+	msg := assignIDs([]domain.ChatMessage{assistantText(strings.Join(lines, "\n"))})
+	// The request may be the very thing that ended (a closed client): the notice is recorded anyway.
+	if err := s.commitMessages(context.WithoutCancel(ctx), projectID, msg); err != nil {
+		s.logger.Error("post director command failure notice failed", "project_id", projectID, "err", err)
+	}
 }
 
 func (s *DirectorService) commitMessages(ctx context.Context, projectID string, msgs []domain.ChatMessage) error {
