@@ -15,7 +15,7 @@ Go（`go.mod` のバージョン）、Node.js、`templ`、`golangci-lint`、`lin
 | `make lint-go` | `make generate` のあと `golangci-lint run ./...`（`.golangci.yml`） |
 | `make lint-static` | `tsc --noEmit`（`npm run typecheck --prefix static`） |
 | `make test` | `make test-go` と `make test-static` |
-| `make test-go` | `make generate` のあと `go test -race ./...` |
+| `make test-go` | `make generate` のあと `go test -race -timeout 30m ./...`（`-race` の逐次テストが長く、既定の 10 分では負荷時に足りない） |
 | `make test-static` | `npm test --prefix static` |
 | `make build` | `scripts/build.sh`（templ → esbuild/tailwind minify → go build）。`bin/mam` を作る |
 | `make build-all` | `scripts/build.sh --all`。windows / darwin / linux × amd64 / arm64 の 6 構成を `bin/mam-<os>-<arch>[.exe]`（Windows は `.exe` 付き）に出力する（`spec/requirements/non-functional.md` §1） |
