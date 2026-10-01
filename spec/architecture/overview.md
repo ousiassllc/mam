@@ -90,8 +90,11 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 ├── Makefile                # dev / build / test / lint / fmt（§9）
 ├── .air.toml               # make dev のホットリロード設定
 ├── .golangci.yml           # lint。depguard でレイヤー依存ルールを強制
+├── lefthook.yml            # pre-commit フック（linterly を scripts/linterly-staged.sh 経由で実行）
 ├── scripts/
-│   └── build.sh            # 本番ビルド（templ → esbuild/tailwind → go build）
+│   ├── build.sh            # 本番ビルド（templ → esbuild/tailwind → go build）。`--all` で全プラットフォーム
+│   ├── fetch-face-models.sh # 顔検出・埋め込みモデル（YuNet / SFace）の取得と SHA-256 検証（§9 / model-adapters.md §10.1）
+│   └── linterly-staged.sh  # コミット対象ファイルの行数上限チェック（pre-commit）
 ├── backend/
 │   ├── cmd/
 │   │   └── server/
@@ -102,6 +105,9 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 │       ├── config/         # フラグ / 環境変数（MAM_*）からの設定解決（データディレクトリ・ポート等）
 │       ├── logging/        # 構造化ログ（slog、レベル別、ローカルファイルへローテーション出力）
 │       ├── fsutil/         # 一時ファイル→リネームのアトミック書き込み、異常終了時の一時ファイル掃除
+│       ├── httpclient/     # ベンダー API アダプターが共通で使う HTTP クライアント（別ホストへのリダイレクトでは独自認証ヘッダーを引き継がない）
+│       ├── safefetch/      # ベンダー API が返したダウンロード URL の検証（http・ループバック・リンクローカル・プライベート宛先を拒否）
+│       ├── facesim/        # 顔の同一性の局所計測（ONNX Runtime で YuNet / SFace をプロセス内実行、外部送信なし。§10.1）
 │       ├── media/          # ffmpeg / ffprobe（Take の解像度・フレームレート取得、4K プロキシ・サムネイル、部分採用の合成）
 │       ├── domain/         # Project/Scene/Shot/Take/WorldState等のドメインモデル
 │       ├── repository/     # SQLite アクセス層（domainのみに依存）
@@ -110,6 +116,11 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 │       ├── agent/          # Producer/Writer/Director/Storyboard/ArtDirector/
 │       │   │               # PromptPlanner/ModelAdapter/VideoJudge/RepairAgent/
 │       │   │               # EditorAgent/AudioDirector/FinalQC/Orchestrator
+│       │   ├── artdirector/ audiodirector/ commandinterpreter/ continuation/ editor/ finalqc/
+│       │   │   generation/ judge/ modeladapter/ promptplanner/ repair/ stateextractor/
+│       │   │               # 同名の Agent / Orchestrator（Art Director、Audio Director、Command Interpreter、Continue Agent、Editor Agent + Editor Judge、Final QC、Generation Orchestrator、AI Video Judge、Model Adapter、Prompt Planner、Repair Agent、State Extractor）
+│       │   ├── jev/        # TypeSafe Jev クライアント（Repair Agent のシャドー実行、model-adapters.md §4.5）
+│       │   ├── resilience/ # LLM Adapter と Model Adapter が共有するサーキットブレーカーと指数バックオフ再試行
 │       │   ├── briefing/   # チャット発言からの Creative Brief 抽出（Extractor インターフェース。M1 はルールベース、LLM 版は Reasoning LLM Adapter の Issue で差し替え）
 │       │   ├── llm/        # Reasoning LLM Adapter（Agent ごとのプライマリ/代替プロバイダーを設定値から解決。指数バックオフ再試行・プロバイダー単位サーキットブレーカー・代替へのルーティング。Anthropic/OpenAI/Google の HTTP バックエンド）
 │       │   ├── planning/   # 企画〜Shot 計画の Agent（Producer/Writer/Director/Storyboard）。llm.Completer 経由で推論し、構造化出力を検証する
@@ -118,13 +129,14 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 │       ├── service/        # アプリケーションサービス層（agentを利用しユースケースを実装）。services.go が DI ルート
 │       ├── router/         # ページ(pages.go)/アクション(actions.go)/API(api.go, Huma)ルート定義
 │       └── web/
-│           ├── handler/    # brief.go, scene.go, shot.go, take.go, director.go,
-│           │                # branch.go, export.go, settings.go ...
+│           ├── handler/    # projects.go, chat.go, scenes.go, generation.go, take.go, director.go,
+│           │                # editor.go, branch.go, settings.go ...（機能ごと）
 │           ├── middleware/  # CSRF、ループバック限定ガード、ロギング/リカバリ
-│           ├── atoms/       # button, input, badge, spinner, toast, slider(AUTO/MANUAL/LOCK) 等
-│           ├── molecules/   # shot_card, take_row, world_state_field, brief_form 等
-│           ├── organisms/   # main_workspace, inspector, scene_tabs, take_comparison_table 等
-│           ├── pages/       # projects_page, brief_page, editor_page 等
+│           ├── paths/       # ルート URL の組み立て（ハンドラーとテンプレートで共有）
+│           ├── atoms/       # button, badge, field, spinner, toast, lock_toggle(AUTO/MANUAL/LOCK) 等
+│           ├── molecules/   # shot_card, take_card, world_state_field, approval_card, escalation_card 等
+│           ├── organisms/   # chat_workspace, shot_inspector, take_comparison, brief_form, editor_panel 等
+│           ├── pages/       # projects_page, chat_workspace_page, brief_page, editor_page 等
 │           └── layout/      # レイアウトラッパー
 └── static/
     ├── embed.go            # src/dist を go:embed（`static.Dist()`）
@@ -132,16 +144,22 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
     ├── build.mjs           # esbuild（JS）+ Tailwind（CSS）のビルド・ウォッチ
     └── src/
         ├── main.ts         # エントリーポイント。htmx へ CSRF トークンを付与、Lit コンポーネントを import
+        ├── chat.ts         # Chat Workspace の挙動（WebSocket で更新通知を受け、フラグメントを再取得）
+        ├── shot.ts         # 生成中 Shot の進捗表示
+        ├── ajax.ts         # chat.ts / shot.ts 用の htmx.ajax ラッパー
         ├── components/
         │   ├── video-player/         # mam-video-player
         │   ├── timeline-editor/      # mam-timeline-editor
         │   ├── take-comparator/      # mam-take-comparator
         │   └── lib/
         │       ├── api.ts            # CSRFトークン自動付与のHTTPクライアント
+        │       ├── ajax.ts / errors.ts / toast.ts / connection-notice.ts # フラグメント再取得・エラー表示
+        │       ├── history.ts / htmx-config.ts / sync.ts / thread.ts / shot.ts # htmx 履歴・設定・直列再取得・スレッド操作
         │       ├── ws.ts
         │       ├── logger.ts
         │       ├── video.ts          # フレーム精度シーク・タイムコード変換
-        │       └── timeline-model.ts # タイムライン共通データモデル
+        │       ├── timeline-model.ts # タイムライン共通データモデル
+        │       └── edit-model.ts     # 編集画面のクリップ操作モデル
         ├── css/
         └── dist/                     # ビルド成果物（git 管理外。.gitkeep のみコミット）
 ```
@@ -230,7 +248,7 @@ dev:
 - `.ts` 編集 → esbuild がバンドル → ブラウザリロードで反映
 - `.css` 編集 → Tailwind がビルド → ブラウザリロードで反映
 - `make dev` は `MAM_STATIC_DIR=static/src/dist` を設定し、再ビルドのたびにバイナリを作り直さずディスク上のアセットを配信する
-- 本番ビルド: `make build`（`scripts/build.sh`）が `templ generate` → `esbuild`（minify） → `tailwind`（minify） → `go build`（`go:embed`で静的アセット同梱、`CGO_ENABLED=0`）を一括実行し `bin/mam` を生成する。SQLite は純 Go ドライバ（modernc.org/sqlite）のため各 OS/arch へクロスコンパイル可能
+- 本番ビルド: `make build`（`scripts/build.sh`）が `templ generate` → `esbuild`（minify） → `tailwind`（minify） → `go build`（`go:embed`で静的アセット同梱、`CGO_ENABLED=0`）を一括実行し `bin/mam` を生成する（`make build-all` = `scripts/build.sh --all` は windows / darwin / linux × amd64 / arm64 の全プラットフォームを `bin/mam-<os>-<arch>` に生成する）。SQLite は純 Go ドライバ（modernc.org/sqlite）のため各 OS/arch へクロスコンパイル可能
 - その他のターゲット: `make test`（Go `-race` + フロントの vitest）、`make lint`（golangci-lint + `tsc --noEmit`）、`make fmt` / `make fmt-check`
 
 ## 10. テスト戦略
