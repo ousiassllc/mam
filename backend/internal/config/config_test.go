@@ -1,8 +1,10 @@
 package config_test
 
 import (
+	"flag"
 	"io"
 	"log/slog"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -93,4 +95,42 @@ func TestLoad_JudgeAndFaceModelSettings(t *testing.T) {
 	assert.Equal(t, "/x.json", cfg.JudgeConfigPath, "a flag beats the environment")
 	assert.Equal(t, "/y", cfg.FaceModels())
 	assert.Equal(t, "/z.so", cfg.ONNXRuntimeLib)
+}
+
+// noUserConfigDir makes os.UserConfigDir fail: no XDG_CONFIG_HOME, no HOME (a systemd unit, a minimal container).
+func noUserConfigDir(t *testing.T) {
+	t.Helper()
+	for _, k := range []string{"XDG_CONFIG_HOME", "HOME", "AppData"} {
+		t.Setenv(k, "")
+	}
+	if _, err := os.UserConfigDir(); err == nil {
+		t.Skip("the OS resolves a config directory without these variables")
+	}
+}
+
+func TestLoad_ADataDirGivenByFlagOrEnvironmentNeedsNoDefault(t *testing.T) {
+	noUserConfigDir(t)
+
+	cfg, err := config.Load([]string{"--data-dir", "/var/lib/mam"}, env(nil), io.Discard)
+	require.NoError(t, err)
+	assert.Equal(t, "/var/lib/mam", cfg.DataDir)
+
+	cfg, err = config.Load(nil, env(map[string]string{"MAM_DATA_DIR": "/env"}), io.Discard)
+	require.NoError(t, err)
+	assert.Equal(t, "/env", cfg.DataDir)
+
+	cfg, err = config.Load([]string{"--data-dir", "/flag"}, env(map[string]string{"MAM_DATA_DIR": "/env"}), io.Discard)
+	require.NoError(t, err)
+	assert.Equal(t, "/flag", cfg.DataDir, "the flag wins")
+}
+
+func TestLoad_WithoutADataDirAndWithoutADefaultItFailsButHelpStillWorks(t *testing.T) {
+	noUserConfigDir(t)
+
+	_, err := config.Load(nil, env(nil), io.Discard)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "user config dir")
+
+	_, err = config.Load([]string{"--help"}, env(nil), io.Discard)
+	assert.ErrorIs(t, err, flag.ErrHelp)
 }
