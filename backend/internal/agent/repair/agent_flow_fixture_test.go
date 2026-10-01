@@ -334,6 +334,16 @@ func (f *fx) usedRetries(t *testing.T, n int) {
 	}
 }
 
+// usedCandidates records that Prompt Candidate Generation made n Takes of the Shot: take t1 and n-1
+// more, all carrying a candidate strategy as the candidate run writes it.
+func (f *fx) usedCandidates(t *testing.T, n int) {
+	t.Helper()
+	for i := 1; i < n; i++ {
+		f.addTake(t, fmt.Sprintf("cand-%d", i+1), "p1/cand.mp4")
+	}
+	execAll(t, f.db, `UPDATE take SET model_parameters = '{"candidate_strategy":"stability_first"}' WHERE id = 't1' OR id LIKE 'cand-%'`)
+}
+
 func (f *fx) setProject(t *testing.T, set string) {
 	t.Helper()
 	execAll(t, f.db, `UPDATE project SET `+set+` WHERE id = 'p1'`)

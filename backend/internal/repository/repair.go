@@ -114,6 +114,19 @@ func (r *RepairRepository) ShotActions(ctx context.Context, shotID string) ([]do
 	return out, rows.Err()
 }
 
+// CandidateTakeCount is how many Takes Prompt Candidate Generation made for the Shot, rejected ones
+// included: they were paid for and count against the Retry Policy (domain.CandidateRetries).
+func (r *RepairRepository) CandidateTakeCount(ctx context.Context, shotID string) (int, error) {
+	var n int
+	err := r.db.Reader().QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM take t JOIN prompt_version pv ON pv.id = t.prompt_version_id
+		 WHERE pv.shot_id = ? AND COALESCE(json_extract(t.model_parameters, '$.candidate_strategy'), '') <> ''`, shotID).Scan(&n)
+	if err != nil {
+		return 0, fmt.Errorf("count candidate takes: %w", err)
+	}
+	return n, nil
+}
+
 // TakeVerdict is a Take of a Shot with its newest Judge result.
 type TakeVerdict struct {
 	Take domain.Take

@@ -186,6 +186,39 @@ func TestHandle_AtTheRetryLimitTheUserIsAskedInsteadOfMakingATake(t *testing.T) 
 	assert.Contains(t, f.progress.stages(), generation.StageDone)
 }
 
+// The candidate run already spent the retries (one Take per strategy up to the limit) and judged
+// them all FAIL: the loop that #269 starts after it escalates instead of making another Take.
+func TestHandle_TheTakesOfCandidateGenerationCountAgainstTheRetryLimit(t *testing.T) {
+	f := newFx(t) // balanced: 2 retries
+	f.usedCandidates(t, 3)
+
+	require.NoError(t, f.run(t, true))
+
+	assert.Empty(t, f.regen.regenCalls, "no Take is made past the limit")
+	require.Len(t, f.chat.escalations, 1)
+	assert.Contains(t, f.chat.escalations[0].Text, domain.RetryMaxRetries.Reason())
+	assert.Empty(t, f.history(t), "no repair action is recorded")
+	assert.Equal(t, domain.ShotPlanning, f.shotState(t))
+}
+
+// The candidate run stopped below the limit: the loop spends only what is left.
+func TestHandle_TheLoopSpendsTheRetriesCandidateGenerationLeft(t *testing.T) {
+	f := newFx(t) // balanced: 2 retries
+	f.usedCandidates(t, 2)
+
+	require.NoError(t, f.run(t, true))
+
+	assert.Len(t, f.regen.regenCalls, 1, "one retry is left")
+	assert.Empty(t, f.chat.escalations)
+	assert.Contains(t, f.chat.texts()[len(f.chat.texts())-1], "再試行 2/2 回目")
+
+	// The new Take fails too: the retries of both flows are used up.
+	f.judge(t, "new-take-1", failing(domain.JudgeIssue{Type: "flicker", Severity: domain.SeverityMedium}))
+	require.NoError(t, f.run(t, true))
+	assert.Len(t, f.regen.regenCalls, 1, "no Take past the limit")
+	assert.Len(t, f.chat.escalations, 1)
+}
+
 func TestHandle_ARaisedRetryLimitAllowsAnotherRetry(t *testing.T) {
 	f := newFx(t)
 	f.usedRetries(t, 2)
