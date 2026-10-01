@@ -157,6 +157,35 @@ func TestReferenceRepository_PinReplacesSameKindAndNameAndRefusesBusyShots(t *te
 	assert.ErrorIs(t, f.refs.Pin(ctx, f.shotID, it.ID), repository.ErrShotBusy)
 }
 
+func TestReferenceRepository_PinReplacesTheStyleAndLightingOfThePackWhateverTheirNames(t *testing.T) {
+	ctx := context.Background()
+	f := newLibraryFixture(t)
+	generated := []domain.Reference{{Kind: domain.RefStyle, AssetID: "style-asset"}, {Kind: domain.RefLighting, AssetID: "light-asset"}, {Kind: domain.RefProduct, Name: "Serum", AssetID: "prod-asset"}}
+	require.NoError(t, f.repo.SaveReferencePack(ctx, repository.NewReferencePack{ProjectID: f.projectID, ShotID: f.shotID, References: generated,
+		Assets: []domain.Asset{
+			{ID: "style-asset", ProjectID: f.projectID, Type: domain.AssetReference, FilePath: "p/s.png", MimeType: "image/png"},
+			{ID: "light-asset", ProjectID: f.projectID, Type: domain.AssetReference, FilePath: "p/l.png", MimeType: "image/png"},
+			{ID: "prod-asset", ProjectID: f.projectID, Type: domain.AssetReference, FilePath: "p/p.png", MimeType: "image/png"},
+		}}))
+	style := f.upload(t, domain.RefStyle, "Noir")
+	light := f.upload(t, domain.RefLighting, "Golden hour")
+	serum := f.upload(t, domain.RefProduct, "Other product")
+
+	for _, it := range []domain.ReferenceItem{style, light, serum} {
+		require.NoError(t, f.refs.Pin(ctx, f.shotID, it.ID))
+	}
+
+	byKind := map[domain.ReferenceKind][]domain.Reference{}
+	for _, r := range shotReferences(t, f, f.shotID) {
+		byKind[r.Kind] = append(byKind[r.Kind], r)
+	}
+	require.Len(t, byKind[domain.RefStyle], 1, "a Pack has one Style image: the pinned one replaces the generated one")
+	assert.Equal(t, style.ID, byKind[domain.RefStyle][0].LibraryItem)
+	require.Len(t, byKind[domain.RefLighting], 1)
+	assert.Equal(t, light.ID, byKind[domain.RefLighting][0].LibraryItem)
+	assert.Len(t, byKind[domain.RefProduct], 2, "Products are told apart by name")
+}
+
 func shotReferences(t *testing.T, f libraryFixture, shotID string) []domain.Reference {
 	t.Helper()
 	var spec string

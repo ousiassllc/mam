@@ -266,14 +266,10 @@ func pinnedReferences(shot domain.Shot) []domain.Reference {
 	return out
 }
 
-// matchesPlan reports whether the pinned reference takes the place of the planned image: the same
-// kind and, for Character / Product / Location, the same name (a Pack has one Style and one
-// Lighting image, so those match by kind).
+// matchesPlan reports whether the pinned reference takes the place of the planned image
+// (domain.SameReference: the same kind and, for Character / Product / Location, the same name).
 func matchesPlan(r domain.Reference, p artdirector.Plan) bool {
-	if r.Kind != p.Kind {
-		return false
-	}
-	return r.Kind == domain.RefStyle || r.Kind == domain.RefLighting || domain.SameReferenceName(r.Name, p.Name)
+	return domain.SameReference(r, domain.Reference{Kind: p.Kind, Name: p.Name})
 }
 
 // reusable returns the image that already exists for the planned reference, so that it is not

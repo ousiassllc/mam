@@ -204,13 +204,14 @@ func (r *ReferenceRepository) Pin(ctx context.Context, shotID, itemID string) er
 		spec := json.RawMessage(raw)
 		refs := domain.Shot{ShotSpec: spec}.References()
 		kept := make([]domain.Reference, 0, len(refs)+1)
+		pinned := domain.Reference{Kind: item.Kind, Name: item.Name, AssetID: item.AssetID, LibraryItem: item.ID}
 		for _, ref := range refs {
-			if ref.Kind == item.Kind && domain.SameReferenceName(ref.Name, item.Name) {
+			if domain.SameReference(ref, pinned) {
 				continue
 			}
 			kept = append(kept, ref)
 		}
-		kept = append(kept, domain.Reference{Kind: item.Kind, Name: item.Name, AssetID: item.AssetID, LibraryItem: item.ID})
+		kept = append(kept, pinned)
 		next, err := domain.WithReferences(spec, kept)
 		if err != nil {
 			return err
