@@ -153,6 +153,12 @@ func newGenFixture(t *testing.T, withModels bool) genFixture {
 
 func newGenFixtureWithFreeBytes(t *testing.T, withModels bool, freeBytes func(string) (uint64, error)) genFixture {
 	t.Helper()
+	return newGenFixtureWithDeps(t, withModels, freeBytes, nil)
+}
+
+// newGenFixtureWithDeps is newGenFixtureWithFreeBytes with a last look at the Deps (nil: none).
+func newGenFixtureWithDeps(t *testing.T, withModels bool, freeBytes func(string) (uint64, error), tweak func(*service.Deps)) genFixture {
+	t.Helper()
 	dir := t.TempDir()
 	db, err := repository.Open(context.Background(), filepath.Join(dir, "mam.db"), nil)
 	require.NoError(t, err)
@@ -172,6 +178,9 @@ func newGenFixtureWithFreeBytes(t *testing.T, withModels bool, freeBytes func(st
 	deps.Jobs = jobs
 	if withModels {
 		deps.Models = modeladapter.New(modeladapter.DefaultConfig(), backends, modeladapter.WithSleep(noSleep))
+	}
+	if tweak != nil {
+		tweak(&deps)
 	}
 	svc := service.New(deps)
 	ctx, cancel := context.WithCancel(context.Background())

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -19,7 +20,9 @@ const autoStages = 3
 // QC (spec/requirements/functional.md UC-1). The chain ends at READY, where the export is the
 // user's action, and it stops at whatever needs a person: an Approval card, an Editor Judge
 // verdict of Re-edit, a Final QC FAIL or a stage that cannot run. A stage never repeats for the
-// same input, so a verdict that failed is not retried in a loop.
+// same input: one that failed is neither retried nor announced again until the user does something
+// (RetryAuto: an answered card) or the input changes (a saved timeline, another Selected Take), so
+// a job of another Project cannot make it run, and spend, again.
 //
 // It runs whenever a job finished, a Take was selected or an Approval card was answered, and does
 // nothing for a DIRECTOR Project or a Project that has nothing to do yet.
@@ -47,19 +50,73 @@ func (s *EditorService) AdvanceAuto(ctx context.Context, projectID string) {
 	}
 }
 
-// autoStep runs the stage the Project is waiting for; it reports whether a stage ran.
+// RetryAuto forgets the stage of the Project that failed, because the user did something (answered
+// a card): the chain looks at the Project again.
+func (s *EditorService) RetryAuto(projectID string) {
+	s.autoStopped.Delete(projectID)
+	go s.AdvanceAuto(context.Background(), projectID)
+}
+
+// autoStep runs the stage the Project is waiting for; it reports whether a stage ran. A stage that
+// failed on the same input before does not run again (see AdvanceAuto).
 func (s *EditorService) autoStep(ctx context.Context, projectID string) (bool, error) {
 	project, err := s.getProject(ctx, projectID)
 	if err != nil || project.Mode != domain.ModeAuto {
 		return false, err
 	}
+	input, err := s.autoInput(ctx, project)
+	if err != nil || input == "" {
+		return false, err
+	}
+	if last, ok := s.autoStopped.Load(projectID); ok && last == input {
+		return false, nil
+	}
+	var progressed bool
+	switch project.State {
+	case domain.StateAudio:
+		progressed, err = s.autoAudioOrQC(ctx, projectID)
+	default:
+		progressed, err = s.autoRoughCut(ctx, projectID)
+	}
+	switch {
+	case err == nil:
+		if progressed {
+			s.autoStopped.Delete(projectID)
+		}
+	case !errors.Is(err, ErrStageBusy) && !errors.Is(err, ErrNotFound):
+		s.autoStopped.Store(projectID, input)
+	}
+	return progressed, err
+}
+
+// autoInput identifies what the stage of the Project works on, "" when there is no stage: the
+// Selected Takes before the Rough Cut, the latest Edit and Audio Timelines after it.
+func (s *EditorService) autoInput(ctx context.Context, project domain.Project) (string, error) {
 	switch project.State {
 	case domain.StateVisualDesign, domain.StateGenerating, domain.StateJudging:
-		return s.autoRoughCut(ctx, projectID)
+		idx, err := s.shotIndex(ctx, project.ID, "")
+		if err != nil {
+			return "", err
+		}
+		return "cut:" + strings.Join(selectedTakeIDs(idx.order), ","), nil
 	case domain.StateAudio:
-		return s.autoAudioOrQC(ctx, projectID)
+		edit, err := s.editors.LatestEditTimeline(ctx, project.ID, "")
+		if errors.Is(err, repository.ErrNotFound) {
+			return "", nil
+		}
+		if err != nil {
+			return "", err
+		}
+		input := "audio:" + edit.ID
+		audio, err := s.editors.LatestAudioTimeline(ctx, project.ID, "")
+		if err == nil {
+			input += ":" + audio.ID
+		} else if !errors.Is(err, repository.ErrNotFound) {
+			return "", err
+		}
+		return input, nil
 	}
-	return false, nil
+	return "", nil
 }
 
 // autoRoughCut makes the first Rough Cut of the trunk and has it judged, when every Shot has a

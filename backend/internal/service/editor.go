@@ -60,8 +60,10 @@ type EditorService struct {
 	tools *media.Tools
 	stage sync.Map // project ID -> *sync.Mutex
 	// auto guards the AUTO chain of a Project (AdvanceAuto): project ID -> *sync.Mutex.
-	auto    sync.Map
-	preview sync.Map // preview file -> *sync.Mutex
+	auto sync.Map
+	// autoStopped is the input (autoInput) each Project's AUTO stage last failed on: project ID -> string.
+	autoStopped sync.Map
+	preview     sync.Map // preview file -> *sync.Mutex
 	// resume is the single worker behind ResumeEditing; missed marks Projects whose Reshoot round
 	// found the stage busy, so the release of the stage wakes the worker again.
 	resume *resumer
