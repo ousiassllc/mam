@@ -391,7 +391,7 @@ func newFixture(t *testing.T, opt options) *fixture {
 	}
 	deps := generation.Deps{
 		Generations: gens, World: repository.NewWorldRepository(db), Projects: projects, Policies: policies,
-		Assets: repository.NewAssetRepository(db), Chat: f.chat, Jobs: f.jobs, LLM: f.llm,
+		Assets: repository.NewAssetRepository(db), Repairs: repository.NewRepairRepository(db), Chat: f.chat, Jobs: f.jobs, LLM: f.llm,
 		Adapter:   modeladapter.New(modeladapter.DefaultConfig(), backends, modeladapter.WithSleep(noSleep)),
 		AssetsDir: f.assetsDir, FreeBytes: freeBytes, Notify: f.progress.add,
 	}

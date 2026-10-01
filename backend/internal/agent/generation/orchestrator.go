@@ -76,6 +76,9 @@ type Deps struct {
 	Projects    *repository.ProjectRepository
 	Policies    *repository.PolicyRepository
 	Assets      *repository.AssetRepository
+	// Repairs hold the Repair history of a Shot: Prompt Candidate Generation counts it against the
+	// Max retries per Shot together with its own Takes (domain.RetriesDone, domain.CandidateRetries).
+	Repairs *repository.RepairRepository
 	// Brands gives the Safety / Brand Constraints the Prompt Planner follows (F-23). Optional.
 	Brands *repository.BrandRepository
 	// World holds the World State the State Extractor updates after each Shot.
@@ -105,6 +108,7 @@ type Orchestrator struct {
 	projects  *repository.ProjectRepository
 	policies  *repository.PolicyRepository
 	assets    *repository.AssetRepository
+	repairs   *repository.RepairRepository
 	brands    *repository.BrandRepository
 	chat      Chat
 	jobs      Jobs
@@ -124,7 +128,7 @@ type Orchestrator struct {
 // New returns an Orchestrator.
 func New(d Deps) *Orchestrator {
 	o := &Orchestrator{
-		gens: d.Generations, projects: d.Projects, policies: d.Policies, assets: d.Assets, brands: d.Brands, chat: d.Chat, jobs: d.Jobs, adapter: d.Adapter,
+		gens: d.Generations, projects: d.Projects, policies: d.Policies, assets: d.Assets, repairs: d.Repairs, brands: d.Brands, chat: d.Chat, jobs: d.Jobs, adapter: d.Adapter,
 		planner: promptplanner.New(d.LLM), art: artdirector.New(d.LLM),
 		files: fileStore{root: d.AssetsDir}, freeDisk: d.FreeBytes, judge: d.Judge, notify: d.Notify, logger: d.Logger,
 	}

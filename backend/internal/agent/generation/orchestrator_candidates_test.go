@@ -131,6 +131,51 @@ func TestOrchestrator_BalancedModeMakesNoMoreTakesThanTheRetryPolicyAllows(t *te
 	assert.Equal(t, 1, f.count(t, `SELECT COUNT(*) FROM take WHERE status = 'ai_pick'`))
 }
 
+// The Max retries per Shot is one limit over the retaking Repairs and the Takes of Prompt Candidate
+// Generation (spec/spec.md §8): a Shot that used its retries on Repair gets the first Take of a
+// candidate run and no more.
+func TestOrchestrator_BalancedModeCountsRepairsAlreadyDoneAgainstTheRetryPolicy(t *testing.T) {
+	f := newFixture(t, options{withJudge: true, limits: &domain.PolicyLimits{MaxRetries: new(2)}})
+	ctx := context.Background()
+	require.NoError(t, f.candidates(t, "")) // the first run: one passing Take
+	var takeID string
+	require.NoError(t, f.db.Reader().QueryRow(`SELECT id FROM take`).Scan(&takeID))
+	judged, err := repository.NewJudgeRepository(f.db).Save(ctx, domain.JudgeResult{TakeID: takeID, Result: domain.JudgeFail})
+	require.NoError(t, err)
+	repairs := repository.NewRepairRepository(f.db)
+	for range 2 { // two retaking Repairs that made a Take
+		rec, err := repairs.CreateAction(ctx, judged.ID, domain.RepairFullRetake, domain.RepairInstructions{})
+		require.NoError(t, err)
+		require.NoError(t, repairs.SetResultingTake(ctx, rec.ID, takeID))
+	}
+	before := f.count(t, `SELECT COUNT(*) FROM take`)
+	f.judge.verdicts = func(int) (domain.JudgeResult, error) { return failing(), nil }
+
+	require.NoError(t, f.candidates(t, ""))
+
+	assert.Equal(t, before+1, f.count(t, `SELECT COUNT(*) FROM take`), "only the first Take of the run: the Repairs used the retries")
+	summary := f.chat.ofKind(domain.KindText)
+	require.Len(t, summary, 2)
+	assert.Contains(t, summary[1].Content, "リトライ上限")
+}
+
+func TestOrchestrator_CandidateRunsShareOneRetryLimit(t *testing.T) {
+	for _, quality := range []domain.QualityPolicy{domain.QualityBalanced, domain.QualityFast} {
+		t.Run(string(quality), func(t *testing.T) {
+			f := newFixture(t, options{withJudge: true, quality: quality, limits: &domain.PolicyLimits{MaxRetries: new(2)}})
+			f.judge.verdicts = func(int) (domain.JudgeResult, error) {
+				return failing(domain.JudgeIssue{Type: "face_identity_drift", Severity: domain.SeverityHigh}), nil
+			}
+
+			require.NoError(t, f.candidates(t, ""))
+			require.Equal(t, 3, f.count(t, `SELECT COUNT(*) FROM take`), "the first run spends both retries")
+			require.NoError(t, f.candidates(t, ""))
+
+			assert.Equal(t, 4, f.count(t, `SELECT COUNT(*) FROM take`), "the second run makes its first Take and counts the earlier ones")
+		})
+	}
+}
+
 func TestOrchestrator_BalancedModeStopsWhenTheBudgetIsSpent(t *testing.T) {
 	f := newFixture(t, options{withJudge: true})
 	cfg := modeladapter.DefaultConfig()

@@ -186,7 +186,7 @@ func New(deps Deps) *Services {
 	if deps.Jobs != nil && deps.LLM != nil && deps.Models != nil {
 		generations.gen = generation.New(generation.Deps{
 			Generations: gens, World: world, Notes: notesRepo, Projects: c.projects, Policies: policies, FreeBytes: deps.FreeBytes, Assets: c.assets, Chat: chat, Jobs: deps.Jobs,
-			LLM: deps.LLM, Adapter: deps.Models, AssetsDir: deps.AssetsDir, Logger: logger, Judge: takeJudge, Brands: brands,
+			Repairs: repairs.repairs, LLM: deps.LLM, Adapter: deps.Models, AssetsDir: deps.AssetsDir, Logger: logger, Judge: takeJudge, Brands: brands,
 			Notify: func(p generation.Progress) { generations.progress.Publish(p.ShotID, p) },
 		})
 		// Not resumable: a generation costs money, so an interrupted one is failed, not repeated.
