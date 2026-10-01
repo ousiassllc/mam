@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"encoding/json"
+	"io"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -297,4 +298,30 @@ func TestBundle_ARefusedImportLeavesNoDirectoryInTheAssetsDirectory(t *testing.T
 		return
 	}
 	assert.Empty(t, entries, "neither the Project's directories nor a staging directory remain")
+}
+
+// A bundle that fails after the download started (a file that cannot be read) must not end like a
+// finished download: the connection is cut, so the client sees a failed transfer instead of a
+// truncated ZIP that looks complete.
+func TestBundle_ExportThatFailsMidStreamIsNotDeliveredAsASuccess(t *testing.T) {
+	src := newGenApp(t, true)
+	src.generateAndWait()
+	var filePath string
+	require.NoError(t, src.db.Reader().QueryRow(`SELECT file_path FROM asset WHERE type = 'video' LIMIT 1`).Scan(&filePath))
+	full := filepath.Join(src.assets, filepath.FromSlash(filePath))
+	// Opening a directory works, reading it fails: the failure comes after the first bytes are written.
+	require.NoError(t, os.Remove(full))
+	require.NoError(t, os.Mkdir(full, 0o750))
+
+	server := httptest.NewServer(src.engine)
+	defer server.Close()
+	req, err := http.NewRequest(http.MethodGet, server.URL+"/projects/"+src.project+"/bundle", http.NoBody)
+	require.NoError(t, err)
+	req.AddCookie(src.cookie)
+	resp, err := http.DefaultClient.Do(req)
+	if err == nil {
+		defer func() { _ = resp.Body.Close() }()
+		_, err = io.ReadAll(resp.Body)
+	}
+	assert.Error(t, err, "the client must see the export fail")
 }

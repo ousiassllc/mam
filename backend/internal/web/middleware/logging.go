@@ -43,11 +43,17 @@ func Logger(logger *slog.Logger) gin.HandlerFunc {
 	}
 }
 
-// Recovery turns a handler panic into a logged 500 instead of crashing the process.
+// Recovery turns a handler panic into a logged 500 instead of crashing the process. The
+// http.ErrAbortHandler panic is passed on to net/http, which drops the connection quietly.
 func Recovery(logger *slog.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		defer func() {
 			if r := recover(); r != nil {
+				// net/http's way for a handler to drop the connection (a download that failed after it
+				// started): not a crash, so neither logged as one nor answered with a 500.
+				if r == http.ErrAbortHandler { //nolint:errorlint // net/http compares the panic value by identity
+					panic(r)
+				}
 				logger.Error("http handler panicked",
 					"method", c.Request.Method, "path", c.Request.URL.Path,
 					"panic", r, "stack", string(debug.Stack()))
