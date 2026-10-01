@@ -206,3 +206,16 @@ func countRows(t *testing.T, db *repository.DB, tables ...string) map[string]int
 	}
 	return out
 }
+
+func TestBundleRepository_ImportRejectsProjectIDsThatCollideWithServerDirectories(t *testing.T) {
+	for _, id := range []string{".previews", ".staging", `a"b`, "a?b"} {
+		ctx := context.Background()
+		db := openTestDB(t)
+		seedDeepProject(t, db, "a")
+		r := repository.NewBundleRepository(db)
+		data, err := r.Export(ctx, "a")
+		require.NoError(t, err)
+		data.ProjectID = id
+		assert.ErrorIs(t, r.Import(ctx, data), repository.ErrInvalidBundle, id)
+	}
+}

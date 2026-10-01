@@ -114,7 +114,19 @@ func ValidBundleFilePath(projectID, p string) bool {
 		!strings.Contains(p, "/../") && !strings.HasSuffix(p, "/..")
 }
 
-// ValidBundleProjectID reports whether id can be the name of the Project's file directory.
+// ValidBundleProjectID reports whether id can be the name of the Project's file directory and an ID
+// the pages can use: the generated form (a UUID) or [A-Za-z0-9_-]{1,64}. Anything else (a leading ".",
+// ".previews" or ".staging" inside the assets directory, quotes, control characters, URL syntax)
+// would collide with the server's own directories or break headers and URLs.
 func ValidBundleProjectID(id string) bool {
-	return id != "" && id != "." && id != ".." && !strings.ContainsAny(id, "/\\:\x00")
+	if id == "" || len(id) > 64 {
+		return false
+	}
+	for _, r := range id {
+		ok := r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '_' || r == '-'
+		if !ok {
+			return false
+		}
+	}
+	return true
 }
