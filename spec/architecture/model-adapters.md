@@ -28,6 +28,8 @@
 | State Extractor | Google Gemini 3.1 Pro | Claude Opus系 | World State全体からの差分抽出は大コンテキスト窓が有利 |
 | Final QC | Claude Opus系 | Google Gemini 3.1 Pro | Brand/Safety制約適合の厳格判定における一貫性を優先 |
 
+注記: 現在の実装では、Orchestrator Agent と Final QC のモデル割り当て（`orchestrator` / `final_qc`）はどのコードからも参照されない。Orchestrator は Core State Machine の遷移を決定的に進め（Producer 以降の LLM 呼び出しは各 Agent の割り当てに従う）、Final QC は決定的なチェックのみを行う（`spec/components/overview.md`）。この 2 行は将来 LLM 判定を導入するための予約で、設定ファイルでこの 2 つの Agent のモデルを変えても動作は変わらない。
+
 補足: 上表は各モデルの相対的な強み（Claude=長時間エージェントタスク・構造化出力の一貫性、GPT-5系=クリエイティブライティング・マルチモーダルツール利用、Gemini 3.1 Pro=長尺コンテキスト・マルチモーダル解析・価格対性能）に基づく初期割当であり、実装後のベンチマーク結果に応じて調整可能な設定値として扱う（ハードコード禁止）。
 
 ## 3. 画像生成 Model Adapter（Keyframe / Reference Pack）
