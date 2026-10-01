@@ -110,14 +110,15 @@ func (s *spending) remaining() float64 {
 // fits reports whether the cost keeps the Project within its budget ceiling.
 func (s *spending) fits(cost float64) bool { return cost <= s.remaining() }
 
-// record writes the cost of a finished call to the ledger.
+// record writes the cost of a finished call to the ledger. The provider has already charged, so the
+// write does not depend on ctx: a client that went away must not leave the spend uncounted.
 func (s *spending) record(ctx context.Context, model domain.ModelName, cost float64) error {
 	s.spent += cost
 	s.estimated += cost
 	if s.ledger == nil {
 		return nil
 	}
-	if err := s.ledger.AddCost(ctx, domain.CostEntry{ProjectID: s.projectID, Provider: model, EstimatedCost: cost}); err != nil {
+	if err := s.ledger.AddCost(context.WithoutCancel(ctx), domain.CostEntry{ProjectID: s.projectID, Provider: model, EstimatedCost: cost}); err != nil {
 		return fmt.Errorf("record cost: %w", err)
 	}
 	return nil
