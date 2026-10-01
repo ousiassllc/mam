@@ -19,6 +19,13 @@ import (
 // small in the archive.
 func bundleZip(t *testing.T, files map[string][]byte) []byte {
 	t.Helper()
+	return bundleZipWithTables(t, "", files)
+}
+
+// bundleZipWithTables is bundleZip with more tables: extraTables is JSON table objects, each
+// preceded by a comma, added after the asset table.
+func bundleZipWithTables(t *testing.T, extraTables string, files map[string][]byte) []byte {
+	t.Helper()
 	var buf bytes.Buffer
 	zw := zip.NewWriter(&buf)
 	add := func(name string, content []byte) {
@@ -30,7 +37,7 @@ func bundleZip(t *testing.T, files map[string][]byte) []byte {
 	add("manifest.json", []byte(`{"format":"mam-project-bundle","version":1,"project_id":"proj1"}`))
 	add("data.json", []byte(`{"project_id":"proj1","tables":[
 		{"name":"project","rows":[{"id":"proj1","state":"DRAFT","mode":"auto","confirmation_level":"key_check","production_template":"product_cm","quality_policy":"balanced"}]},
-		{"name":"asset","rows":[{"id":"a1","project_id":"proj1","type":"image","file_path":"proj1/named.bin"}]}]}`))
+		{"name":"asset","rows":[{"id":"a1","project_id":"proj1","type":"image","file_path":"proj1/named.bin"}]}`+extraTables+`]}`))
 	for rel, content := range files {
 		add("assets/"+rel, content)
 	}
@@ -110,4 +117,33 @@ func TestRemoveStaleImports_MissingAssetsDirectoryIsNotAnError(t *testing.T) {
 	removed, err := service.RemoveStaleImports(filepath.Join(t.TempDir(), "absent"))
 	require.NoError(t, err)
 	assert.Empty(t, removed)
+}
+
+// An exported bundle carries the files only the Audio Timeline names (mix, clips, Lip Sync
+// pictures), so a Project that was exported and imported again can still be exported to video.
+func TestBundleExport_RoundTripKeepsTheAudioTimelineFiles(t *testing.T) {
+	timeline := `{\"edit_timeline_id\":\"e1\",\"clips\":[{\"path\":\"proj1/audio/clip.wav\"}],` +
+		`\"lip_sync\":[{\"clip_index\":1,\"take_id\":\"t1\",\"path\":\"proj1/audio/lip.png\"}],\"mix_path\":\"proj1/audio/mix.wav\"}`
+	src := bundleZipWithTables(t, `,{"name":"audio_timeline_version","rows":[{"id":"at1","project_id":"proj1","version_number":1,"timeline":"`+timeline+`"}]}`,
+		map[string][]byte{
+			"proj1/named.bin":      []byte("named"),
+			"proj1/audio/mix.wav":  []byte("mix"),
+			"proj1/audio/clip.wav": []byte("clip"),
+			"proj1/audio/lip.png":  []byte("lip"),
+		})
+	first := newGenFixture(t, false)
+	require.NoError(t, importBundle(first, src))
+
+	exp, err := first.svc.Bundle.Prepare(context.Background(), "proj1")
+	require.NoError(t, err)
+	var out bytes.Buffer
+	require.NoError(t, exp.Write(&out))
+
+	second := newGenFixture(t, false)
+	require.NoError(t, importBundle(second, out.Bytes()))
+	for rel, want := range map[string]string{"named.bin": "named", "audio/mix.wav": "mix", "audio/clip.wav": "clip", "audio/lip.png": "lip"} {
+		got, err := os.ReadFile(filepath.Join(second.assetsDir, "proj1", filepath.FromSlash(rel)))
+		require.NoError(t, err, rel)
+		assert.Equal(t, want, string(got), rel)
+	}
 }
