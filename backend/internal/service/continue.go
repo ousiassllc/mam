@@ -287,11 +287,17 @@ func aiError(err error) error { return &AIError{Reason: generation.FailureReason
 // answered again. When the Shot was added but its generation could not start (budget), the card
 // closes as well, so that a second answer does not make a second Shot. The reply gets its id before
 // Confirm, so it stays ahead of the notes Confirm writes in the thread. It is called by
-// PostMessage before anything is written.
+// PostMessage before anything is written. A card answers one reply at a time: the reply that
+// arrives while another one to the same card is still being handled is a conflict (the closing reply
+// is only recorded after Confirm, so the thread alone cannot tell).
 func (s *ChatService) answerContinue(ctx context.Context, project domain.Project, card domain.ChatMessage, content string, hasAttachments bool) (Workspace, error) {
 	if hasAttachments {
 		return Workspace{}, invalid("attachment_asset_ids", "この質問には添付できません")
 	}
+	if _, busy := s.answering.LoadOrStore(card.ID, struct{}{}); busy {
+		return Workspace{}, ErrConflict
+	}
+	defer s.answering.Delete(card.ID)
 	replied, err := s.chat.RepliedMessageIDs(ctx, project.ID)
 	if err != nil {
 		return Workspace{}, err
