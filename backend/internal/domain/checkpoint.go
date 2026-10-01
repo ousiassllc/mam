@@ -122,7 +122,8 @@ func (c Checkpoint) ChangesRequestedState() ProjectState {
 }
 
 // EscalationResumeState is where the Project continues once an Escalation card is
-// answered: the Repair Agent applies the user's decision.
+// answered. The answer is recorded only: the user carries the decision out by hand (raising a
+// limit, adopting a Take, fixing the Shot), and the Editor Judge or an edit brings the Project back to EDITING.
 const EscalationResumeState = StateRepairing
 
 // RequiresApproval reports whether an approval card is shown at cp for this level.

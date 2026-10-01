@@ -1198,7 +1198,7 @@ EXPORTED
 | Keyframe | Keyframe / Reference Pack 画像 | 拡大、返信で修正指示 |
 | Take | 動画プレーヤー、Judge 要約、Take 状態（AI Pick 等） | 再生、返信で指示、Take比較を開く |
 | Progress | 生成・Judge・Repair の進捗 | なし（自動更新） |
-| Escalation | Retry Policy 上限到達などで AI が判断を求める内容 | 選択肢ボタン / 自由入力 |
+| Escalation | Retry Policy 上限到達などで AI が判断を求める内容。回答（選択肢ボタン / 自由入力）は記録されるだけで自動実行されない。回答後は Project が REPAIRING に戻り、AI は「この判断は自動では実行されません」と返すので、ユーザーが設定の変更・Take の採用・Shot の指示の修正を画面から行う | 選択肢ボタン / 自由入力 |
 
 ## 23.3 補助ビュー
 
