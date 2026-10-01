@@ -64,6 +64,17 @@ func run(ctx context.Context, args []string, getenv func(string) string, stderr 
 		return err
 	}
 
+	// One instance per data directory: a second one would delete the temporary files and import
+	// directories the running instance is writing (startup cleanup) and race it on the database.
+	lock, err := fsutil.LockDir(cfg.DataDir)
+	if errors.Is(err, fsutil.ErrDirLocked) {
+		return fmt.Errorf("another mam is already using the data directory %s; stop it first or choose another with --data-dir", cfg.DataDir)
+	}
+	if err != nil {
+		return err
+	}
+	defer lock.Unlock()
+
 	logger, closeLog, err := logging.New(cfg.LogDir(), cfg.LogLevel, stderr)
 	if err != nil {
 		return err

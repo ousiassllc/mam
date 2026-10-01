@@ -5,6 +5,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -14,6 +15,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/zalando/go-keyring"
+
+	"github.com/ousiassllc/mam/backend/internal/fsutil"
 )
 
 func TestListenLoopback_BindsOnlyLoopbackAndFallsBackWhenBusy(t *testing.T) {
@@ -108,4 +111,44 @@ func startedURL(log string) string {
 		}
 	}
 	return ""
+}
+
+func TestRun_RefusesASecondInstanceOnTheSameDataDirAndLeavesTheFirstOnesWorkAlone(t *testing.T) {
+	keyring.MockInit()
+	dataDir := t.TempDir()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	var out syncBuffer
+	done := make(chan error, 1)
+	go func() {
+		done <- run(ctx, []string{"-data-dir", dataDir, "-port", "0", "-no-browser"}, func(string) string { return "" }, &out)
+	}()
+	require.Eventually(t, func() bool { return startedURL(out.String()) != "" }, 15*time.Second, 20*time.Millisecond, "log: %s", out.String())
+
+	// A staging file of the running instance: the startup cleanup of a second one would delete it.
+	require.NoError(t, os.MkdirAll(filepath.Join(dataDir, "assets"), 0o750))
+	staging, err := fsutil.CreateStagingTemp(filepath.Join(dataDir, "assets"))
+	require.NoError(t, err)
+	defer func() { _ = staging.Close() }()
+
+	// Bounded, so that a second instance that wrongly starts ends the run instead of serving forever.
+	secondCtx, stopSecond := context.WithTimeout(ctx, 3*time.Second)
+	defer stopSecond()
+	var second syncBuffer
+	err = run(secondCtx, []string{"-data-dir", dataDir, "-port", "0", "-no-browser"}, func(string) string { return "" }, &second)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "already using the data directory")
+	assert.FileExists(t, staging.Name(), "the running instance's work was not cleaned up")
+
+	cancel()
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(15 * time.Second):
+		t.Fatal("server did not shut down")
+	}
+	lock, err := fsutil.LockDir(dataDir)
+	require.NoError(t, err, "the directory is free again once the first instance stopped")
+	lock.Unlock()
 }
