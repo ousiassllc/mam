@@ -406,6 +406,13 @@ func TestBrandTemplates_InvalidRequestsAreRejected(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, a.form(http.MethodPost, "/projects/"+id+"/brand-templates/nope/apply", nil).Code)
 	assert.Equal(t, http.StatusNotFound, a.form(http.MethodDelete, "/projects/"+id+"/brand-templates/nope", nil).Code)
 
+	// An unknown settings Project is a 404 that leaves the template alone.
+	tpl := a.saveTemplate(id, "Keep")
+	assert.Equal(t, http.StatusNotFound, a.form(http.MethodDelete, "/projects/missing/brand-templates/"+tpl, nil).Code)
+	var kept int
+	require.NoError(t, a.db.Reader().QueryRow(`SELECT COUNT(*) FROM brand_template WHERE id = ?`, tpl).Scan(&kept))
+	assert.Equal(t, 1, kept, "the template is not deleted by a request that answers 404")
+
 	// An unknown template on creation is a form error and creates nothing.
 	rec = a.multipart(http.MethodPost, "/projects", map[string]string{"content": "別のCM", "brand_template_id": "nope"})
 	require.Equal(t, http.StatusUnprocessableEntity, rec.Code)

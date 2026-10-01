@@ -121,8 +121,12 @@ func (s *BrandService) SaveTemplate(ctx context.Context, projectID, name string)
 }
 
 // DeleteTemplate removes a Brand Template (DELETE /brand-templates/:id). Projects that used it keep
-// their constraints. projectID is the settings screen the answer is rendered for.
+// their constraints. projectID is the settings screen the answer is rendered for: an unknown
+// Project is ErrNotFound and deletes nothing.
 func (s *BrandService) DeleteTemplate(ctx context.Context, projectID, templateID string) (TemplatesView, error) {
+	if _, err := s.getProject(ctx, projectID); err != nil {
+		return TemplatesView{}, err
+	}
 	if err := s.brandTemplates.Delete(ctx, templateID); err != nil {
 		return TemplatesView{}, notFound(err)
 	}
