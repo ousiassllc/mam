@@ -65,6 +65,11 @@ type TakeJudge interface {
 	Start(ctx context.Context, takeID string) (domain.Job, error)
 }
 
+// TakeSelector makes a Take the one its Shot uses. *repository.TakeRepository implements it.
+type TakeSelector interface {
+	Select(ctx context.Context, takeID string) (string, error)
+}
+
 // Deps are the collaborators of an Agent.
 type Deps struct {
 	Generations *repository.GenerationRepository
@@ -73,6 +78,9 @@ type Deps struct {
 	JobRepo     *repository.JobRepository
 	Policies    *repository.PolicyRepository
 	Projects    *repository.ProjectRepository
+	// Takes, when set, lets an Edit-Level Repair in AUTO mode make the repaired Take the Shot's
+	// Selected Take, so that the AUTO editing chain can take it into the Rough Cut.
+	Takes       TakeSelector
 	Regenerator Regenerator
 	Chat        Chat
 	Jobs        generation.Jobs
@@ -368,7 +376,11 @@ func (a *Agent) run(ctx context.Context, shot repository.ShotRef, p payload) (bo
 	defer shadowDone.Wait()
 
 	if action == domain.RepairEditLevel {
-		return false, a.announceEditLevel(ctx, shot, take.Take.ID, res)
+		adopted, err := a.adoptForEdit(ctx, shot, take.Take.ID, locks)
+		if err != nil {
+			return false, err
+		}
+		return false, a.announceEditLevel(ctx, shot, take.Take.ID, res, adopted)
 	}
 	a.Notify(generation.Progress{ShotID: shot.Shot.ID, Action: generation.ActionRepair, Stage: generation.StageRepairing, Message: action.Label() + " で新しい Take を作成しています"})
 	// A Partial Regeneration whose Issues all name a time range is spliced into the failed Take: only
@@ -537,18 +549,44 @@ func (a *Agent) escalate(ctx context.Context, shot repository.ShotRef, takeID st
 	return a.Chat.RaiseEscalation(context.WithoutCancel(ctx), shot.ProjectID, text, options, shot.Shot.ID)
 }
 
-// announceEditLevel tells the user which ranges of the Take to fix in the edit. Edit-Level Repair
-// makes no new Take, so there is nothing to judge again.
-func (a *Agent) announceEditLevel(ctx context.Context, shot repository.ShotRef, takeID string, res domain.JudgeResult) error {
+// adoptForEdit makes the Take the Shot's Selected Take when an Edit-Level Repair keeps it and the AI
+// owns the Shot's Take (AUTO mode, Take Selection AUTO, no Take selected yet). Edit-Level Repair makes
+// no new Take, so without this the Shot would stay without a Selected Take and the AUTO editing chain
+// (Rough Cut once every Shot has one) would wait for ever. It reports whether the Take was selected.
+func (a *Agent) adoptForEdit(ctx context.Context, shot repository.ShotRef, takeID string, locks domain.ParameterLocks) (bool, error) {
+	if a.Takes == nil || shot.Shot.SelectedTakeID != "" || locks.Mode(domain.ParamTakeSelection) != domain.LockAuto {
+		return false, nil
+	}
+	project, err := a.Projects.Get(ctx, shot.ProjectID)
+	if err != nil {
+		return false, err
+	}
+	if project.Mode != domain.ModeAuto {
+		return false, nil
+	}
+	if _, err := a.Takes.Select(context.WithoutCancel(ctx), takeID); err != nil {
+		if errors.Is(err, repository.ErrConflict) {
+			return false, nil // its file was archived: the user has to look at the Shot
+		}
+		return false, err
+	}
+	return true, nil
+}
+
+// announceEditLevel tells the user which ranges of the Take to fix in the edit (and that the Take
+// goes into the Rough Cut as it is when it was selected). Edit-Level Repair makes no new Take, so
+// there is nothing to judge again.
+func (a *Agent) announceEditLevel(ctx context.Context, shot repository.ShotRef, takeID string, res domain.JudgeResult, adopted bool) error {
 	var ranges []string
 	for _, is := range res.Issues {
 		ranges = append(ranges, fmt.Sprintf("%s（%s）", is.TimeRange, is.Type))
 	}
-	notice := domain.ChatMessage{
-		Role: domain.RoleAssistant, Kind: domain.KindText,
-		Content: fmt.Sprintf("Shot %d の Take %s は再生成せず、編集で直します（Edit-Level Repair）。該当区間: %s",
-			shot.Shot.OrderIndex+1, shortID(takeID), strings.Join(ranges, "、")),
+	content := fmt.Sprintf("Shot %d の Take %s は再生成せず、編集で直します（Edit-Level Repair）。該当区間: %s",
+		shot.Shot.OrderIndex+1, shortID(takeID), strings.Join(ranges, "、"))
+	if adopted {
+		content += "\nこの Take を採用し、Rough Cut に載せます。"
 	}
+	notice := domain.ChatMessage{Role: domain.RoleAssistant, Kind: domain.KindText, Content: content}
 	return a.Chat.Announce(context.WithoutCancel(ctx), shot.ProjectID, notice)
 }
 

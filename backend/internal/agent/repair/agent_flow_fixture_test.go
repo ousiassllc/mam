@@ -279,7 +279,7 @@ func newFx(t *testing.T, opts ...fxOption) *fx {
 	}
 	deps := repair.Deps{
 		Generations: f.gens, Judges: f.judges, Repairs: f.repairs, JobRepo: f.jobs.repo,
-		Policies: repository.NewPolicyRepository(db), Projects: repository.NewProjectRepository(db),
+		Policies: repository.NewPolicyRepository(db), Projects: repository.NewProjectRepository(db), Takes: repository.NewTakeRepository(db),
 		Regenerator: f.regen, Chat: f.chat, Jobs: f.jobs, LLM: f.llm, Notify: f.progress.add,
 		Logger: slog.New(slog.NewTextHandler(f.logs, nil)),
 	}

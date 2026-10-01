@@ -193,7 +193,7 @@ func New(deps Deps) *Services {
 		deps.Jobs.Register(domain.JobGenerate, generations.gen.Handle, false)
 		if judges.runner != nil {
 			repairDeps := repair.Deps{
-				Generations: gens, Judges: judges.judges, Repairs: repairs.repairs, JobRepo: c.jobs, Policies: policies, Projects: c.projects,
+				Generations: gens, Judges: judges.judges, Repairs: repairs.repairs, JobRepo: c.jobs, Policies: policies, Projects: c.projects, Takes: takes,
 				Regenerator: generations.gen, Chat: chat, Jobs: deps.Jobs, LLM: deps.LLM, Shadow: deps.Jev, Logger: logger,
 				Notify: func(p generation.Progress) { generations.progress.Publish(p.ShotID, p) },
 			}

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -384,6 +385,41 @@ func TestHandle_EditLevelRepairMakesNoTakeAndNamesTheRanges(t *testing.T) {
 	assert.Zero(t, domain.RetriesDone(history), "Edit-Level Repair is no retry")
 	assert.Equal(t, domain.ShotPlanning, f.shotState(t))
 	assert.Len(t, f.jobs.enqueued(), 1, "no new Take: nothing to judge and nothing to continue")
+}
+
+func TestHandle_EditLevelRepairSelectsTheTakeSoThatTheAutoEditingChainCanGoOn(t *testing.T) {
+	editable := failing(domain.JudgeIssue{Type: "flicker", Severity: domain.SeverityLow, TimeRange: "1.0-1.5s"})
+	tests := []struct {
+		name         string
+		setup        func(t *testing.T, f *fx)
+		wantSelected string
+		wantNotice   bool
+	}{
+		{"AUTO: the kept Take becomes the Selected Take", func(*testing.T, *fx) {}, "t1", true},
+		{"DIRECTOR: the director chooses", func(t *testing.T, f *fx) { f.setProject(t, "mode = 'director'") }, "", false},
+		{"Take Selection MANUAL: the AI keeps its hands off", func(t *testing.T, f *fx) {
+			execAll(t, f.db, fmt.Sprintf(`INSERT INTO lock (id, project_id, target_type, target_id, parameter_name, mode) VALUES ('l1', 'p1', '%s', 'sh1', '%s', 'manual')`, domain.LockTargetShot, domain.ParamTakeSelection))
+		}, "", false},
+		{"a Take chosen earlier stands", func(t *testing.T, f *fx) {
+			f.addTake(t, "chosen", "p1/chosen.mp4")
+			execAll(t, f.db, `UPDATE shot SET selected_take_id = 'chosen' WHERE id = 'sh1'`)
+		}, "chosen", false},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newFx(t)
+			tc.setup(t, f)
+			f.judged = f.judge(t, "t1", editable)
+			f.llm.text = answer(domain.RepairEditLevel)
+
+			require.NoError(t, f.run(t, true))
+
+			ref, err := f.gens.GetShot(context.Background(), "sh1")
+			require.NoError(t, err)
+			assert.Equal(t, tc.wantSelected, ref.Shot.SelectedTakeID)
+			assert.Equal(t, tc.wantNotice, strings.Contains(f.chat.texts()[len(f.chat.texts())-1], "Rough Cut に載せます"))
+		})
+	}
 }
 
 func TestHandle_WhenTheRepairAgentCannotAnswerTheFallbackIsUsed(t *testing.T) {

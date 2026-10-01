@@ -204,7 +204,7 @@ M1（F-14、Issue #10）で実装する Repair / Retake Loop の判断部分。�
 | Full Retake | 同じ Shot Spec で新しく生成し直す |
 | Different Model | Quality Policy の primary / fallback の**もう一方**のモデルで生成する（Kling 3.0 ↔ Seedance 2.0 の自動フォールバック、§4）。ユーザーが Video Model を固定していたとき（AUTO 以外）は選べない |
 | Reference Reinforcement | Reference に基づく制約を Shot Spec に足し、失敗した種類の Reference を先頭にする。Keyframe は First Frame のまま残し、自由な Reference 画像を受け取れるモデルには他の画像も同時に渡す |
-| Edit-Level Repair | 動画モデルを呼ばない。該当区間をチャットで知らせ、編集で直すことにする（Take は作らず、Retry の回数にも数えない） |
+| Edit-Level Repair | 動画モデルを呼ばない。該当区間をチャットで知らせ、編集で直すことにする（Take は作らず、Retry の回数にも数えない）。AUTO MODE で Shot の Take Selection が AUTO かつ Selected Take が無いときは、直す対象の Take を Selected Take にして Rough Cut に載せる（AUTO の編集チェーンが止まらないようにする）。DIRECTOR MODE ではユーザーが Take を選ぶ |
 
 ### 11.4 Jev のシャドー実行
 
