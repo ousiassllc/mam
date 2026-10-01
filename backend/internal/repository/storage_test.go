@@ -114,3 +114,63 @@ func TestStorageRepository_ArchiveUnneededKeepsSelectedAndUndecidedTakes(t *test
 	_, err = repo.Usage(ctx, "missing")
 	assert.ErrorIs(t, err, repository.ErrNotFound)
 }
+
+// A clip of the Edit Timeline (trunk or Branch) and a Lip Sync clip of the Audio Timeline keep pointing at
+// their Take when another Take of the Shot is chosen: the file stays, or export would fail.
+func TestStorageRepository_NeverArchivesATakeATimelineStillUses(t *testing.T) {
+	ctx := context.Background()
+	f := newGenRepoFixture(t)
+	shots, _ := f.repo.ListProjectShots(ctx, f.projectID)
+	other := shots[1].Shot.ID
+	repo := repository.NewStorageRepository(f.db)
+	editors := repository.NewEditorRepository(f.db)
+	branch, err := repository.NewBranchRepository(f.db).Create(ctx, repository.NewBranch{ShotID: f.shotID, PointType: domain.BranchAtShot, Name: "Alt"})
+	require.NoError(t, err)
+
+	old := newTake(t, f, f.shotID, "old.mp4", 100, 1, nil)         // only an outdated trunk version used it
+	trunk := newTake(t, f, f.shotID, "trunk.mp4", 200, 1, nil)     // the latest trunk Edit Timeline
+	onBranch := newTake(t, f, f.shotID, "branch.mp4", 300, 1, nil) // the latest Edit Timeline of a Branch
+	synced := newTake(t, f, f.shotID, "synced.mp4", 400, 1, nil)   // a Lip Sync clip of the Audio Timeline
+	free := newTake(t, f, f.shotID, "free.mp4", 500, 1, nil)
+	chosen := newTake(t, f, f.shotID, "chosen.mp4", 600, 1, nil)
+	rejected := newTake(t, f, other, "rejected.mp4", 700, 1, nil) // Rejected after the cut used it
+	f.setTake(t, chosen, domain.TakeSelected)
+	f.setTake(t, rejected, domain.TakeRejected)
+	clip := func(take string) domain.EditTimeline {
+		return domain.EditTimeline{Clips: []domain.EditClip{{ShotID: f.shotID, TakeID: take, Out: 1}}}
+	}
+	first, err := editors.SaveEditTimeline(ctx, f.projectID, "", "", clip(old))
+	require.NoError(t, err)
+	_, err = editors.SaveEditTimeline(ctx, f.projectID, "", first.ID, clip(trunk))
+	require.NoError(t, err)
+	_, err = editors.SaveEditTimeline(ctx, f.projectID, branch.ID, "", clip(onBranch))
+	require.NoError(t, err)
+	latest, err := editors.LatestEditTimeline(ctx, f.projectID, "")
+	require.NoError(t, err)
+	_, err = editors.SaveEditTimeline(ctx, f.projectID, "", latest.ID, domain.EditTimeline{Clips: []domain.EditClip{
+		{ShotID: f.shotID, TakeID: trunk, Out: 1}, {ShotID: other, TakeID: rejected, Out: 1}}})
+	require.NoError(t, err)
+	_, err = editors.SaveAudioTimeline(ctx, f.projectID, "", domain.AudioTimeline{LipSync: []domain.LipSyncClip{{ClipIndex: 1, TakeID: synced, Path: "p/lip.mp4"}}})
+	require.NoError(t, err)
+
+	sum, err := repo.Usage(ctx, f.projectID)
+	require.NoError(t, err)
+	unneeded := map[string]bool{}
+	for _, tk := range sum.Takes {
+		unneeded[tk.TakeID] = tk.Unneeded
+	}
+	assert.Equal(t, map[string]bool{old: true, trunk: false, onBranch: false, synced: false, free: true, chosen: false, rejected: false}, unneeded,
+		"a Take a latest Timeline refers to is in use, an older version does not count")
+
+	for _, id := range []string{trunk, onBranch, synced, rejected} {
+		_, err = repo.ArchiveTake(ctx, f.projectID, id)
+		assert.ErrorIs(t, err, repository.ErrConflict, id)
+	}
+	removed, err := repo.ArchiveUnneeded(ctx, f.projectID)
+	require.NoError(t, err)
+	var paths []string
+	for _, a := range removed {
+		paths = append(paths, a.FilePath)
+	}
+	assert.ElementsMatch(t, []string{"old.mp4", "free.mp4"}, paths, "only the Takes no Timeline uses are archived")
+}

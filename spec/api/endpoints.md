@@ -202,8 +202,8 @@ Audio Timeline の版は Branch ごとに 1 から振る追記のみの系列で
 | PUT | `/credentials/:provider` | 外部モデル API キーの保存・置き換え（Form `api_key`）。`provider` は `anthropic` / `openai` / `google` / `flux` / `kling` / `seedance` / `runway` / `elevenlabs` / `synclabs` / `typesafe`。キーは前後の空白を除いて OS のセキュアストレージ（`credential.Store`）へ保存し、再起動なしで次の呼び出しから有効になる。200 で `credential_panel`（設定済み/未設定のみ。キーの値は返さない）。空・空白を含む・長すぎるキーと未対応の `provider` は 422（既存のキーは変えない） | フラグメント |
 | DELETE | `/credentials/:provider` | API キーの削除。未設定でもエラーにならず 200 で `credential_panel` を返す。未対応の `provider` は 422 | フラグメント |
 | GET | `/projects/:id/cost-summary` | Shot/Scene/Project 別の推定コスト・実コスト集計（`cost_summary_panel`向けフラグメント）。推定コストは生成時の見積り、実コストはベンダーが報告した金額（`cost_ledger_entry.actual_cost`。報告が無い呼び出しがあれば合計に `*` を付ける）。予算上限に対する消化率を併せて表示し、フラグメントは 15 秒ごとに自己更新する | F-22 |
-| POST | `/projects/:id/takes/:takeId/archive` | Take の動画ファイルを削除して Rejected にする（Take 行・Judge/Repair 履歴・コスト記録は残す）。Selected Take は 409、当該 Project に無い Take・ファイルを既に手放した Take は 404。ディスク使用量パネルのフラグメントを返す | non-functional.md §4 |
-| POST | `/projects/:id/storage/archive-unneeded` | 不要な Take（Rejected、または同じ Shot の別 Take が Selected）をまとめてアーカイブする。ディスク使用量パネルのフラグメントを返す | non-functional.md §4 |
+| POST | `/projects/:id/takes/:takeId/archive` | Take の動画ファイルを削除して Rejected にする（Take 行・Judge/Repair 履歴・コスト記録は残す）。Selected Take と、Edit Timeline（トランク・Branch の最新版）のクリップまたは Audio Timeline の Lip Sync が使っている Take は 409、当該 Project に無い Take・ファイルを既に手放した Take は 404。ディスク使用量パネルのフラグメントを返す | non-functional.md §4 |
+| POST | `/projects/:id/storage/archive-unneeded` | 不要な Take（Rejected、または同じ Shot の別 Take が Selected）をまとめてアーカイブする（Edit Timeline のクリップ・Lip Sync が使っている Take は書き出しに要るため残す）。ディスク使用量パネルのフラグメントを返す | non-functional.md §4 |
 
 ### 2.8 World State
 
