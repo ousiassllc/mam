@@ -104,6 +104,10 @@ type candidateRun struct {
 	current     *domain.ShotSpec // the spec the Shot has, which the Candidates revise
 	locks       domain.ParameterLocks
 	total       int // most Takes this run makes (progress)
+	// repaired is the retries the Repair history of the Shot counts (domain.RetriesDone) and earlier
+	// is how many Takes Prompt Candidate Generation made for the Shot before this run: both count
+	// against the Max retries per Shot together with the Takes of this run (retries).
+	repaired, earlier int
 
 	mu       sync.Mutex
 	outcomes []judged
@@ -182,6 +186,9 @@ func (o *Orchestrator) generateCandidates(ctx context.Context, ref repository.Sh
 	if current, ok := ref.Shot.CanonicalSpec(); ok {
 		run.current = &current
 	}
+	if run.repaired, run.earlier, err = run.priorTakes(ctx); err != nil {
+		return Progress{}, err
+	}
 	first, err := run.strategy(ctx)
 	if err != nil {
 		return Progress{}, err
@@ -208,6 +215,26 @@ func (o *Orchestrator) generateCandidates(ctx context.Context, ref repository.Sh
 	pick := run.finish(ctx, mode)
 	o.updateWorldState(ctx, ref, pick.spec, pick.takeID)
 	return Progress{TakesDone: len(run.outcomes), TakesTotal: run.total}, nil
+}
+
+// priorTakes reads what the Shot has already spent on retries before this run: the retaking Repairs
+// and the Takes of earlier Prompt Candidate Generation.
+func (r *candidateRun) priorTakes(ctx context.Context) (repaired, earlier int, err error) {
+	history, err := r.o.repairs.ShotActions(ctx, r.ref.Shot.ID)
+	if err != nil {
+		return 0, 0, err
+	}
+	earlier, err = r.o.repairs.CandidateTakeCount(ctx, r.ref.Shot.ID)
+	if err != nil {
+		return 0, 0, err
+	}
+	return domain.RetriesDone(history), earlier, nil
+}
+
+// retries is how many retries the Retry Policy counts for the Shot once this run has made `made`
+// Takes: the same count the Repair loop uses (domain.RetriesDone + domain.CandidateRetries).
+func (r *candidateRun) retries(made int) int {
+	return r.repaired + domain.CandidateRetries(r.earlier+made)
 }
 
 // strategy decides the generation plan from the current budget.
@@ -296,7 +323,7 @@ func (r *candidateRun) balanced(ctx context.Context, s Strategy, eff domain.Effe
 	for i := range r.total {
 		if i > 0 {
 			var ok bool
-			if s, ok = r.mayRetry(ctx, eff, domain.CandidateRetries(i)); !ok {
+			if s, ok = r.mayRetry(ctx, eff, r.retries(i)); !ok {
 				return nil
 			}
 		}
@@ -331,14 +358,14 @@ func (r *candidateRun) economy(ctx context.Context, s Strategy, eff domain.Effec
 			return nil
 		}
 		var ok bool
-		if s, ok = r.mayRetry(ctx, eff, domain.CandidateRetries(retakes+1)); !ok {
+		if s, ok = r.mayRetry(ctx, eff, r.retries(retakes+1)); !ok {
 			return nil
 		}
 	}
 }
 
 // mayRetry applies the Retry Policy and the budget before one more Take. When it says no, the reason
-// is kept for the summary. retriesDone is the number of extra Takes made so far.
+// is kept for the summary. retriesDone is the retries the Shot has used so far (retries).
 func (r *candidateRun) mayRetry(ctx context.Context, eff domain.EffectivePolicy, retriesDone int) (Strategy, bool) {
 	budget, err := r.o.gens.Budget(ctx, r.ref.ProjectID, r.ref.Shot.ID)
 	if err != nil {
