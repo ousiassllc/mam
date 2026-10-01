@@ -276,16 +276,18 @@ func (a *Agent) Handle(ctx context.Context, job domain.Job) error {
 	if err := json.Unmarshal(job.Payload, &p); err != nil || p.TakeID == "" || p.ShotID == "" || (p.JudgeResultID == "" && p.Partial == nil) {
 		return fmt.Errorf("repair job %s: invalid payload", job.ID)
 	}
-	shot, err := a.Generations.GetShot(ctx, p.ShotID)
-	if err != nil {
-		return err
-	}
+	// The Shot was claimed (REPAIRING) before this job was queued: give it back whichever way the
+	// handler ends, a failed read of the Shot or a panic included.
 	released := false
 	defer func() {
 		if !released {
 			a.release(ctx, p.ShotID)
 		}
 	}()
+	shot, err := a.Generations.GetShot(ctx, p.ShotID)
+	if err != nil {
+		return err
+	}
 	// The Shot may have been reset by Recover while this job waited in the queue.
 	if err := a.Generations.SetShotState(ctx, p.ShotID, domain.ShotRepairing); err != nil {
 		return err

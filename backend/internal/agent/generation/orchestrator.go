@@ -399,6 +399,15 @@ func (o *Orchestrator) Handle(ctx context.Context, job domain.Job) error {
 	if err := json.Unmarshal(job.Payload, &p); err != nil || p.ShotID == "" || (p.Action != ActionGenerate && p.Action != ActionReferencePack && p.Action != ActionCandidates) {
 		return fmt.Errorf("generate job %s: invalid payload", job.ID)
 	}
+	// The Shot was claimed (GENERATING) before this job was queued. Whichever way the handler ends, an
+	// error before the work starts or a panic included, it gives the Shot back: only a restart
+	// would release it otherwise, and every new generation of it would be refused as busy.
+	released := false
+	defer func() {
+		if !released {
+			o.release(ctx, p.ShotID)
+		}
+	}()
 	ref, err := o.gens.GetShot(ctx, p.ShotID)
 	if err != nil {
 		return err
@@ -418,6 +427,7 @@ func (o *Orchestrator) Handle(ctx context.Context, job domain.Job) error {
 	default:
 		done, err = o.generate(ctx, ref, p.Instruction, p.Preserve, p.Spec, p.NoteRefs)
 	}
+	released = true // fail and the success path give the Shot back themselves, before they tell the user
 	if err != nil {
 		return o.fail(ctx, ref, p.Action, err)
 	}

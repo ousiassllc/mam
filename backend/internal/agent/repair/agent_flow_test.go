@@ -88,6 +88,21 @@ func TestStart_ALostJobGivesTheShotBack(t *testing.T) {
 	assert.Equal(t, domain.ShotPlanning, f.shotState(t), "the shot is not left REPAIRING")
 }
 
+// A job that ends before its work starts (here the Shot cannot be read) must give the claimed Shot
+// back, or every new repair is refused as busy until the app restarts.
+func TestHandle_ReleasesTheShotWhenItCannotBeRead(t *testing.T) {
+	f := newFx(t)
+	job, err := f.agent.Start(context.Background(), "t1", false)
+	require.NoError(t, err)
+	require.Equal(t, domain.ShotRepairing, f.shotState(t))
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	require.Error(t, f.agent.Handle(ctx, job))
+
+	assert.Equal(t, domain.ShotPlanning, f.shotState(t))
+}
+
 func TestStart_AFailedChatPostDoesNotStopTheRepair(t *testing.T) {
 	f := newFx(t)
 	f.chat.announceErr = errors.New("chat down")
