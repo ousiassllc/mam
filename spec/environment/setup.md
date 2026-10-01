@@ -18,7 +18,7 @@ Go（`go.mod` のバージョン）、Node.js、`templ`、`golangci-lint`、`lin
 | `make test-go` | `make generate` のあと `go test -race ./...` |
 | `make test-static` | `npm test --prefix static` |
 | `make build` | `scripts/build.sh`（templ → esbuild/tailwind minify → go build）。`bin/mam` を作る |
-| `make build-all` | `scripts/build.sh --all`。windows / darwin / linux × amd64 / arm64 の 6 構成を `bin/mam-<os>-<arch>` に出力する（`spec/requirements/non-functional.md` §1） |
+| `make build-all` | `scripts/build.sh --all`。windows / darwin / linux × amd64 / arm64 の 6 構成を `bin/mam-<os>-<arch>[.exe]`（Windows は `.exe` 付き）に出力する（`spec/requirements/non-functional.md` §1） |
 | `make clean` | `bin`・`tmp`・`static/src/dist/app.*` を削除する |
 
 ## CI
