@@ -68,9 +68,7 @@ func DownloadReviewPackage(svc *service.ReviewService) gin.HandlerFunc {
 		c.Header("X-Content-Type-Options", "nosniff")
 		c.Status(http.StatusOK)
 		if err := pkg.Write(c.Writer); err != nil {
-			// The status is sent already: log it and cut the download short (the archive is incomplete).
-			_ = c.Error(err)
-			c.Abort()
+			abortDownload(c, err)
 		}
 	}
 }

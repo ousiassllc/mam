@@ -3,6 +3,7 @@ package router_test
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -422,4 +423,31 @@ func TestReview_ScreensAreOnTheirPages(t *testing.T) {
 	assert.Contains(t, inbox.Body.String(), `hx-post="/reviews/import"`)
 	assert.Contains(t, inbox.Body.String(), `name="package"`)
 	assert.Contains(t, o.get("/projects", false).Body.String(), `href="/reviews"`)
+}
+
+// A package whose video cannot be read after the first bytes are sent must not arrive as a finished
+// download: the connection is cut, so the client sees a failed transfer instead of a truncated ZIP.
+func TestReview_PackageThatFailsMidStreamIsNotDeliveredAsASuccess(t *testing.T) {
+	o := newOwner(t)
+	id := o.requestReview("")
+	video := filepath.Join(o.assets, filepath.FromSlash(o.project+"/exports/final.mp4"))
+	// The file still exists (so the package is prepared) but cannot be opened: the failure comes
+	// after the manifest is written.
+	if os.Geteuid() == 0 {
+		t.Skip("root opens unreadable files")
+	}
+	require.NoError(t, os.Chmod(video, 0o000))
+	t.Cleanup(func() { _ = os.Chmod(video, 0o600) })
+
+	server := httptest.NewServer(o.engine)
+	defer server.Close()
+	req, err := http.NewRequest(http.MethodGet, server.URL+"/projects/"+o.project+"/reviews/"+id+"/package", http.NoBody)
+	require.NoError(t, err)
+	req.AddCookie(o.cookie)
+	resp, err := http.DefaultClient.Do(req)
+	if err == nil {
+		defer func() { _ = resp.Body.Close() }()
+		_, err = io.ReadAll(resp.Body)
+	}
+	assert.Error(t, err, "the client must see the download fail")
 }
