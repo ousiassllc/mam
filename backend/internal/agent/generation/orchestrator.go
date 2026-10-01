@@ -323,13 +323,35 @@ func (o *Orchestrator) warnLowDisk(ctx context.Context, ref repository.ShotRef, 
 	}
 }
 
-// StartReferencePack begins building (or rebuilding) the Reference Pack of the Shot.
+// StartReferencePack begins building (or rebuilding) the Reference Pack of the Shot. It fails with
+// ErrBudgetExceeded when not even one image fits the budget ceiling of the Project or the Shot (F-22):
+// how many images the Art Director plans is only known while the job runs, so the cheapest image
+// model is the least the pack costs.
 func (o *Orchestrator) StartReferencePack(ctx context.Context, shotID string) (domain.Job, error) {
 	ref, err := o.gens.GetShot(ctx, shotID)
 	if err != nil {
 		return domain.Job{}, err
 	}
+	budget, err := o.gens.Budget(ctx, ref.ProjectID, shotID)
+	if err != nil {
+		return domain.Job{}, err
+	}
+	if affordable(remainingBudget(budget), o.cheapestImageCost()) == 0 {
+		return domain.Job{}, ErrBudgetExceeded
+	}
 	return o.enqueue(ctx, ref, payload{Action: ActionReferencePack, ShotID: shotID})
+}
+
+// cheapestImageCost is the estimated cost of one image of the cheapest priced image model (0 when
+// none is priced).
+func (o *Orchestrator) cheapestImageCost() float64 {
+	cfg, cheapest := o.adapter.Config(), 0.0
+	for _, m := range domain.ImageModels() {
+		if c := cfg.ImageCost(m); c > 0 && (cheapest == 0 || c < cheapest) {
+			cheapest = c
+		}
+	}
+	return cheapest
 }
 
 func (o *Orchestrator) enqueue(ctx context.Context, ref repository.ShotRef, p payload) (domain.Job, error) {
