@@ -98,7 +98,7 @@ func (s *EditorService) autoStep(ctx context.Context, projectID string) (bool, e
 // Selected Takes before the Rough Cut, the latest Edit and Audio Timelines after it.
 func (s *EditorService) autoInput(ctx context.Context, project domain.Project) (string, error) {
 	switch project.State {
-	case domain.StateVisualDesign, domain.StateGenerating, domain.StateJudging:
+	case domain.StateVisualDesign, domain.StateGenerating, domain.StateJudging, domain.StateRepairing:
 		idx, err := s.shotIndex(ctx, project.ID, "")
 		if err != nil {
 			return "", err
@@ -210,7 +210,7 @@ func (s *EditorService) resumeAuto(ctx context.Context) {
 // autoWaiting tells the states in which AdvanceAuto has something to start.
 func autoWaiting(state domain.ProjectState) bool {
 	switch state {
-	case domain.StateVisualDesign, domain.StateGenerating, domain.StateJudging, domain.StateAudio:
+	case domain.StateVisualDesign, domain.StateGenerating, domain.StateJudging, domain.StateRepairing, domain.StateAudio:
 		return true
 	}
 	return false

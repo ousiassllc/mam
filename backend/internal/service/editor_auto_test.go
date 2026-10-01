@@ -86,6 +86,17 @@ func TestAdvanceAuto_AFailedStageIsNotRetriedOrAnnouncedAgainByUnrelatedUpdates(
 	assert.Equal(t, planned, f.llm.calls(llm.AgentAudioDirector), "the Audio Director is not paid again")
 }
 
+func TestAdvanceAuto_ARepairingProjectStartsTheRoughCutWhenTheLastTakeIsSelected(t *testing.T) {
+	f := autoFixture(t)
+	// An answered Escalation card leaves the Project in REPAIRING (domain.EscalationResumeState).
+	f.execSQL(t, `UPDATE project SET state = 'REPAIRING' WHERE id = ?`, f.projectID)
+
+	f.selectTakeOf(t, f.shotID)
+
+	require.Eventually(t, func() bool { return f.countNotices(t) == 1 }, 15*time.Second, 10*time.Millisecond, "the chain ran: Rough Cut, Editor Judge, then the audio that cannot be made")
+	assert.Equal(t, domain.StateAudio, f.state(t))
+}
+
 func TestAdvanceAuto_TheUsersAnswerRunsTheFailedStageAgain(t *testing.T) {
 	f := autoAudioFixture(t)
 
