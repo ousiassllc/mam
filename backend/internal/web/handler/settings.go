@@ -45,8 +45,9 @@ func SettingsPage(svc *service.PolicyService, brands *service.BrandService, keys
 		}
 		credentials, err := credentialPanelData(keys)
 		if err != nil {
-			pageError(c, err)
-			return
+			// Without a usable key store only this panel is lost: the rest of the screen needs no key.
+			_ = c.Error(err)
+			credentials = organisms.CredentialPanelData{Unavailable: true}
 		}
 		data := pages.SettingsPageData{
 			Policy: policyFormData(view.PolicyView, nil, nil, false), Cost: view.Cost, Storage: storagePanelData(view.Storage),
