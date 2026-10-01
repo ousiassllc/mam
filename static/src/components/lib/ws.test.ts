@@ -81,6 +81,16 @@ describe('connect', () => {
     expect(onOpen.mock.calls).toEqual([[false], [true]]);
   });
 
+  it('reports a first successful connection after failed attempts as a reconnection', () => {
+    const h = harness();
+    const onOpen = vi.fn();
+    connect({ ...h.options, onMessage: vi.fn(), onOpen });
+    h.sockets[0]!.onclose?.(); // the first attempt failed
+    h.timers[0]!.fn();
+    h.sockets[1]!.onopen?.();
+    expect(onOpen.mock.calls).toEqual([[true]]);
+  });
+
   it('gives up after MAX_RETRIES consecutive failures', () => {
     const h = harness();
     const onGiveUp = vi.fn();
@@ -145,7 +155,7 @@ describe('connect', () => {
     h.resumers[0]!();
     expect(h.sockets).toHaveLength(MAX_RETRIES + 1);
     h.sockets[MAX_RETRIES]!.onopen?.();
-    expect(onOpen).toHaveBeenCalledWith(false);
+    expect(onOpen).toHaveBeenCalledWith(true); // never opened before, but events may have been missed
 
     h.resumers[0]!(); // connected: nothing to do
     conn.retry();

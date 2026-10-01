@@ -28,7 +28,7 @@ export interface SocketLike {
 export interface ConnectOptions<T> {
   url: string;
   onMessage: (message: T) => void;
-  /** Called on every successful connection; `reconnected` is false for the first one. */
+  /** Called on every successful connection; `reconnected` is false only for the very first attempt: any connection that follows an earlier attempt (a failed one included) may have missed events the caller has to catch up on. */
   onOpen?: (reconnected: boolean) => void;
   /** Called once the retries are exhausted. */
   onGiveUp?: () => void;
@@ -81,19 +81,20 @@ export function connect<T>(options: ConnectOptions<T>): Connection {
   let socket: SocketLike | null = null;
   let timer: unknown = null;
   let failures = 0;
-  let opened = false;
+  let attempted = false; // has any socket been created before (it opened and dropped, or never opened)?
   let closed = false;
   let waiting = false; // no socket: waiting for the next attempt, or given up
 
   const open = () => {
     waiting = false;
+    const reconnected = attempted;
+    attempted = true;
     const current = createSocket(options.url);
     socket = current;
     let openedAt: number | null = null;
     current.onopen = () => {
       openedAt = now();
-      options.onOpen?.(opened);
-      opened = true;
+      options.onOpen?.(reconnected);
     };
     current.onmessage = (event) => {
       try {
