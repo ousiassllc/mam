@@ -272,6 +272,31 @@ func TestDirectorCommand_RegeneratesOnlyThisShotAndKeepsWhatIsNotChanged(t *test
 	assert.Contains(t, texts[len(texts)-1], "Shot 1 だけを再生成")
 }
 
+func TestDirectorCommand_DirectionPrecedesTheProgressCardInTheThread(t *testing.T) {
+	f := newGenFixture(t, true)
+	f.firstGeneration(t)
+	f.llm.planner = func(string) string { return plannerRewrite }
+	f.llm.interpreter = opsJSON(`{"type":"regenerate","changes":["camera"],"instruction":"Move the camera closer and keep it steady."}`)
+
+	_, err := f.svc.Director.DirectorCommand(context.Background(), f.shotID, "もう少し寄って")
+
+	require.NoError(t, err)
+	f.waitTakeCount(t, 6)
+	thread := f.thread(t, f.projectID)
+	direction, card := -1, -1
+	for i, m := range thread {
+		if m.Role == domain.RoleUser && m.Content == "もう少し寄って" {
+			direction = i
+		}
+		if m.Kind == domain.KindProgress {
+			card = i
+		}
+	}
+	require.NotEqual(t, -1, direction, "the direction is in the thread")
+	require.NotEqual(t, -1, card, "the progress card is in the thread")
+	assert.Less(t, direction, card, "the direction is listed before the progress card it caused")
+}
+
 func TestDirectorCommand_LockedPartsSurviveWhateverThePlannerAnswers(t *testing.T) {
 	f := newGenFixture(t, true)
 	f.firstGeneration(t)
