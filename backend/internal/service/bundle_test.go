@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"database/sql"
 	"os"
 	"path/filepath"
 	"testing"
@@ -146,4 +147,45 @@ func TestBundleExport_RoundTripKeepsTheAudioTimelineFiles(t *testing.T) {
 		require.NoError(t, err, rel)
 		assert.Equal(t, want, string(got), rel)
 	}
+}
+
+// An Episode's copy of a canon image shares the file of the Series' first Project. The bundle of
+// the Episode carries that file under the Episode's own directory, so it imports into another
+// instance and the image is there.
+func TestBundleExport_RoundTripRelocatesAFileSharedWithAnotherProject(t *testing.T) {
+	src := bundleZip(t, map[string][]byte{"proj1/named.bin": []byte("named")})
+	first := newGenFixture(t, false)
+	require.NoError(t, importBundle(first, src))
+	shared := filepath.Join(first.assetsDir, "series-first", "face.png")
+	require.NoError(t, os.MkdirAll(filepath.Dir(shared), 0o755))
+	require.NoError(t, os.WriteFile(shared, []byte("face"), 0o600))
+	require.NoError(t, first.db.Write(context.Background(), func(ctx context.Context, tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, `UPDATE asset SET file_path = 'series-first/face.png' WHERE id = 'a1'`)
+		return err
+	}))
+
+	exp, err := first.svc.Bundle.Prepare(context.Background(), "proj1")
+	require.NoError(t, err)
+	var out bytes.Buffer
+	require.NoError(t, exp.Write(&out))
+
+	second := newGenFixture(t, false)
+	require.NoError(t, importBundle(second, out.Bytes()))
+	var filePath string
+	require.NoError(t, second.db.Reader().QueryRow(`SELECT file_path FROM asset WHERE id = 'a1'`).Scan(&filePath))
+	assert.Equal(t, "proj1/a1.png", filePath)
+	got, err := os.ReadFile(filepath.Join(second.assetsDir, filepath.FromSlash(filePath)))
+	require.NoError(t, err)
+	assert.Equal(t, "face", string(got))
+}
+
+func TestBundlePrepare_RefusesAFilePathItCannotCarry(t *testing.T) {
+	first := newGenFixture(t, false)
+	require.NoError(t, importBundle(first, bundleZip(t, map[string][]byte{"proj1/named.bin": []byte("named")})))
+	require.NoError(t, first.db.Write(context.Background(), func(ctx context.Context, tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, `UPDATE asset SET file_path = '../../etc/passwd' WHERE id = 'a1'`)
+		return err
+	}))
+	_, err := first.svc.Bundle.Prepare(context.Background(), "proj1")
+	assert.Error(t, err)
 }
