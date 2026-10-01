@@ -296,7 +296,7 @@ func (r *candidateRun) balanced(ctx context.Context, s Strategy, eff domain.Effe
 	for i := range r.total {
 		if i > 0 {
 			var ok bool
-			if s, ok = r.mayRetry(ctx, eff, i-1); !ok {
+			if s, ok = r.mayRetry(ctx, eff, domain.CandidateRetries(i)); !ok {
 				return nil
 			}
 		}
@@ -331,7 +331,7 @@ func (r *candidateRun) economy(ctx context.Context, s Strategy, eff domain.Effec
 			return nil
 		}
 		var ok bool
-		if s, ok = r.mayRetry(ctx, eff, retakes); !ok {
+		if s, ok = r.mayRetry(ctx, eff, domain.CandidateRetries(retakes+1)); !ok {
 			return nil
 		}
 	}

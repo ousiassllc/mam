@@ -129,3 +129,27 @@ func TestGenerationRepository_ARepairAndAGenerationExcludeEachOther(t *testing.T
 	require.NoError(t, err)
 	assert.Equal(t, 1, n, "an interrupted repair is released at start-up")
 }
+
+func TestRepairRepository_CandidateTakeCountCountsOnlyTakesOfCandidateGeneration(t *testing.T) {
+	db := openTestDB(t)
+	_, shot, _ := seedTake(t, db)
+	ctx := context.Background()
+	r := repository.NewRepairRepository(db)
+	write := func(q string) {
+		require.NoError(t, db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
+			_, err := tx.ExecContext(ctx, q)
+			return err
+		}))
+	}
+
+	n, err := r.CandidateTakeCount(ctx, shot)
+	require.NoError(t, err)
+	assert.Zero(t, n, "a plain Take is no candidate")
+
+	write(`INSERT INTO take (id, prompt_version_id, model_name, model_parameters, status) VALUES ('c1', 'pv1', 'kling-3.0', '{"candidate_strategy":"stability_first"}', 'candidate')`)
+	write(`INSERT INTO take (id, prompt_version_id, model_name, model_parameters, status) VALUES ('c2', 'pv1', 'kling-3.0', '{"candidate_strategy":"acting_first"}', 'rejected')`)
+	write(`INSERT INTO take (id, prompt_version_id, model_name, model_parameters, status) VALUES ('p2', 'pv1', 'kling-3.0', '{"prompt":"x"}', 'candidate')`)
+	n, err = r.CandidateTakeCount(ctx, shot)
+	require.NoError(t, err)
+	assert.Equal(t, 2, n, "a rejected candidate was paid for and counts; a repair's Take does not")
+}

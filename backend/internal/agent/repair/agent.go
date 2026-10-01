@@ -333,7 +333,12 @@ func (a *Agent) run(ctx context.Context, shot repository.ShotRef, p payload) (bo
 	if err != nil {
 		return false, err
 	}
-	retries := domain.RetriesDone(history)
+	candidateTakes, err := a.Repairs.CandidateTakeCount(ctx, shot.Shot.ID)
+	if err != nil {
+		return false, err
+	}
+	// The Takes of Prompt Candidate Generation are retries too: the limit is over both flows.
+	retries := domain.RetriesDone(history) + domain.CandidateRetries(candidateTakes)
 
 	// The Retry Policy (deterministic): Max retries per Shot, Max cost per Shot, the Project budget.
 	if ok, err := a.withinPolicy(ctx, shot, eff, p.Auto, retries, regen, res, take.Take.ID); err != nil || !ok {
