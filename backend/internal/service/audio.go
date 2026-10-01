@@ -311,8 +311,11 @@ func (s *EditorService) CloneVoice(ctx context.Context, projectID, speaker, name
 	if err != nil {
 		return domain.VoiceClone{}, audioError(err)
 	}
-	clone, err := s.voices.Save(ctx, projectID, speaker, name, voiceID)
+	// The voice is billed once the vendor created it: it is stored even when the request is gone, and
+	// a failed save leaves its voice_id in the log (the vendor keeps the voice; it is not lost silently).
+	clone, err := s.voices.Save(context.WithoutCancel(ctx), projectID, speaker, name, voiceID)
 	if err != nil {
+		s.logger.Error("save the cloned voice failed", "project_id", projectID, "speaker", speaker, "voice_id", voiceID, "err", err)
 		return domain.VoiceClone{}, notFound(err)
 	}
 	return clone, nil
