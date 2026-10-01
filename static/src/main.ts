@@ -7,7 +7,7 @@ import { swapsErrorResponse } from './components/lib/thread';
 import { requestFailureMessage, type RequestFailure } from './components/lib/errors';
 import { showToast } from './ajax';
 import { installHistorySnapshotHygiene } from './components/lib/history';
-import { dismissToastsOnClick } from './components/lib/toast';
+import { dedupeToastsOnSwap, dismissToastsOnClick } from './components/lib/toast';
 
 // Attach the CSRF token (from <meta name="csrf-token">) to every HTMX request.
 document.addEventListener('htmx:configRequest', (event) => {
@@ -38,6 +38,7 @@ lockDownHtmx(htmx.config);
 
 // Error toasts stay until their close button is pressed.
 dismissToastsOnClick();
+dedupeToastsOnSwap();
 
 // A history snapshot must not keep init markers or the connection notice (issue 112).
 installHistorySnapshotHygiene();

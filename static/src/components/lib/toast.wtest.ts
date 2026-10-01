@@ -1,5 +1,5 @@
 import { aTimeout, expect } from '@open-wc/testing';
-import { createToast, dismissToastsOnClick } from './toast';
+import { appendToast, createToast, dedupeToastsOnSwap, dismissToastsOnClick } from './toast';
 
 // The markup of atoms/toast.templ, as AppLayout embeds it in #toast-template.
 const TOAST =
@@ -18,6 +18,7 @@ describe('error toast', () => {
     root.append(region, template);
     document.body.append(root);
     dismissToastsOnClick(root);
+    dedupeToastsOnSwap(root);
   });
   afterEach(() => root.remove());
 
@@ -61,5 +62,24 @@ describe('error toast', () => {
     region.innerHTML = TOAST;
     (region.querySelector('[data-toast-close]') as HTMLButtonElement).click();
     expect(region.children.length).to.equal(0);
+  });
+
+  it('appends a message once however often it is raised, and again after the toast was closed', () => {
+    for (let i = 0; i < 5; i++) appendToast(region, '通信に失敗しました');
+    appendToast(region, '別のエラー');
+    expect(region.querySelectorAll('[data-toast]').length).to.equal(2);
+
+    (region.querySelector('[data-toast-close]') as HTMLButtonElement).click();
+    appendToast(region, '通信に失敗しました');
+    expect(Array.from(region.querySelectorAll('[data-toast-message]')).map((m) => m.textContent)).to.deep.equal(['別のエラー', '通信に失敗しました']);
+  });
+
+  it('drops a server-sent toast that the region already shows', () => {
+    region.id = 'toast-region';
+    appendToast(region, 'LOCK されています');
+    const oob = document.createElement('div');
+    for (const message of ['LOCK されています', '予算を超えています', '予算を超えています']) oob.append(createToast(message)!);
+    root.dispatchEvent(new CustomEvent('htmx:oobBeforeSwap', { bubbles: true, detail: { target: region, fragment: oob } }));
+    expect(Array.from(oob.querySelectorAll('[data-toast-message]')).map((m) => m.textContent)).to.deep.equal(['予算を超えています']);
   });
 });
