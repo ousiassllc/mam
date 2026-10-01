@@ -346,7 +346,7 @@ MAX QUALITY のみ。話者付きの Dialogue の行（Narration は対象外）
 
 - M1 の簡易音声（`mode` なし、セリフの行だけのクリップ）の Audio Timeline は **移行せずそのまま読める**。`clips` の `layer` が空のクリップは話者の種別（`kind`）から Dialogue / Narration として扱い、Final QC・Export・画面表示は従来どおり動く。スキーマの変更は `branch_id`（#18 で追加済み）のみで、既存データの書き換えは行わない
 - `POST /projects/:id/audio/generate` は、以後は常に Audio Director で作り、`mode: "director"` の版を追記する。M1 の簡易版だけを作る経路は残さない（FAST は「セリフ + BGM」まで）
-- Audio Timeline の版は `(project_id, branch_id)` ごとに `version_number` を 1 から振り、追記のみ（Edit Timeline と同じ）。Branch の音声は、その Branch の最新の Edit Timeline を元に、Branch 自身の系列へ保存する。Final QC と書き出しが使うのは主系列トランクの最新版
+- Audio Timeline の版は `(project_id, branch_id)` ごとに `version_number` を 1 から振り、追記のみ（Edit Timeline と同じ）。Branch の音声は、その Branch の最新の Edit Timeline を元に、Branch 自身の系列へ保存する。Final QC が検査するのは主系列トランクの最新版で、書き出し（`POST /projects/:id/export`）は `branch_id`（省略時=主系列トランク）で指定した Branch の最新の Edit Timeline と Audio Timeline を使う
 
 ### 14.7 音声クローン
 
@@ -380,3 +380,4 @@ MAX QUALITY のみ。話者付きの Dialogue の行（Narration は対象外）
 | 1.21 | 2026-10-01 | §2 と §9.3 の再試行の待ち時間を、「`Retry-After` があれば優先」から「`Retry-After` をバックオフの下限として加味し `max_delay_ms` で頭打ち」に修正 | 実装（`resilience.Do`）は `min(max(バックオフ, Retry-After), MaxDelay)` で待つ。上限なしだと過大な指示で呼び出しが止まるため仕様を実装に合わせた（Issue #195） |
 | 1.22 | 2026-10-01 | §12 のコストの記述を、「TTS は `cost_ledger_entry` に記録しない」から「Audio Director が TTS を含む音声の呼び出しを見積額で記録する（§14.5）」に直した | 実装（`audiodirector/cost.go` の `spending.record`）は TTS・Music・SFX・Lip Sync の呼び出しごとに台帳へ書き、§6・§14.5 の記述と矛盾していたため（Issue #217） |
 | 1.23 | 2026-10-01 | §14.4 の Lip Sync 動画の保存先を `audio/<edit_timeline_id>/…` から `<project_id>/audio/<edit_timeline_id>/<run>/lipsync-NN.mp4`（assets 直下からの相対パス）に直した | 実装（`audiodirector/director.go` の `rel: path.Join(in.ProjectID, "audio", …)`）は Project ID を先頭に付けており、`er.md` の `<project_id>/exports/…` と同じ流儀のため（Issue #219） |
+| 1.24 | 2026-10-02 | §14.6 の「Final QC と書き出しが使うのは主系列トランクの最新版」を、「Final QC は主系列トランクの最新版を検査し、書き出しは `branch_id`（省略時=主系列トランク）の Edit / Audio Timeline を使う」に直した | 書き出しは `branch_id` で指定した Branch のタイムラインを書き出す実装（`spec/api/endpoints.md` §2.6、変更履歴 1.48）で、Final QC だけがトランク固定のため（Issue #244） |
