@@ -140,7 +140,7 @@ DELIVERY
 | References | URL / Image / Video |
 | Additional Instruction | 任意 |
 
-入力項目が不足している場合、AIは可能な範囲で自動補完する。
+必須 7 項目（Content Type / Objective / Subject / Target / Duration / Aspect Ratio / Mood）が不足している場合、AI は自動補完せず 1 つずつ質問し、ユーザーが値を答えるか「AIに任せる」を選ぶまで PLANNING は始まらない。Assets / References / Additional Instruction は任意（§23.1）。
 
 ## 4.3 AUTO Pipeline
 
