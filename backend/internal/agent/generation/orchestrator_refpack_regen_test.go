@@ -93,6 +93,30 @@ func TestOrchestrator_ReferencePackFailureKeepsNothing(t *testing.T) {
 	}
 }
 
+func TestOrchestrator_StartReferencePackRefusesWhenNoImageFitsTheBudget(t *testing.T) {
+	cases := []struct {
+		name    string
+		project *float64
+		shot    *float64
+	}{
+		{"project ceiling", new(0.0001), nil},
+		{"shot ceiling", nil, new(0.0001)},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			f := newFixture(t, options{})
+			require.NoError(t, f.policies.SetBudget(context.Background(), f.projectID, c.project, c.shot))
+
+			_, err := f.orch.StartReferencePack(context.Background(), f.shotID)
+
+			assert.ErrorIs(t, err, generation.ErrBudgetExceeded)
+			assert.Zero(t, f.jobs.count(), "nothing is queued")
+			assert.Equal(t, domain.ShotPlanning, f.shotState(t), "the Shot is not claimed")
+			assert.Zero(t, f.image.callCount())
+		})
+	}
+}
+
 func TestOrchestrator_ReferencePackArtDirectorFailure(t *testing.T) {
 	f := newFixture(t, options{})
 	f.llm.errs = map[llm.Agent]error{llm.AgentArtDirector: llm.ErrNoAPIKey}
