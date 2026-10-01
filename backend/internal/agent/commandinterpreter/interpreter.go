@@ -124,7 +124,24 @@ type Command struct {
 	Operations []Operation
 }
 
-const system = `You are the Command Interpreter of an AI video production team. The director talks to the team in chat.
+// system is the system prompt; systemTemplate with the video models filled in from domain.VideoModels.
+var system = strings.Replace(systemTemplate, videoModelsPlaceholder, quotedChoices(domain.VideoModels()), 1)
+
+const videoModelsPlaceholder = "{{video_models}}"
+
+// quotedChoices renders models as `"a", "b" or "c"`.
+func quotedChoices(models []domain.ModelName) string {
+	quoted := make([]string, len(models))
+	for i, m := range models {
+		quoted[i] = `"` + string(m) + `"`
+	}
+	if len(quoted) < 2 {
+		return strings.Join(quoted, "")
+	}
+	return strings.Join(quoted[:len(quoted)-1], ", ") + " or " + quoted[len(quoted)-1]
+}
+
+const systemTemplate = `You are the Command Interpreter of an AI video production team. The director talks to the team in chat.
 Convert the director's message into structured operations. Return ONLY one JSON object:
 {
   "scene": 2, "shot": 1,
@@ -142,7 +159,7 @@ Convert the director's message into structured operations. Return ONLY one JSON 
 }
 
 Operations:
-- "set_lock": set one parameter to "auto" (the AI decides), "manual" (the user specified it) or "lock" (freeze the current value, no change by the AI). Parameters: ` + "`story`, `music`" + ` (the whole project) and, for one shot: ` + "`dialogue`, `character_identity`, `acting`, `camera`, `lighting`, `product_geometry`, `prompt`, `video_model`, `take_selection`, `editing`" + `. "Fix / keep / do not change X" (固定・変えないで) is "lock". "value" is only for video_model: "kling-3.0" or "seedance-2.0".
+- "set_lock": set one parameter to "auto" (the AI decides), "manual" (the user specified it) or "lock" (freeze the current value, no change by the AI). Parameters: ` + "`story`, `music`" + ` (the whole project) and, for one shot: ` + "`dialogue`, `character_identity`, `acting`, `camera`, `lighting`, `product_geometry`, `prompt`, `video_model`, `take_selection`, `editing`" + `. "Fix / keep / do not change X" (固定・変えないで) is "lock". "value" is only for video_model: {{video_models}}.
 - "regenerate": the director wants this shot changed. "changes" lists the parts that change: ` + "`character`, `product`, `location`, `acting`, `camera`, `lighting`" + ` ("location" is the environment). "preserve" lists parts the director explicitly asks to keep although the change might touch them; leave it empty otherwise, everything not in "changes" is preserved anyway. "instruction" is one or two English sentences directing the change, without restating what stays.
 - "partial_regenerate": like "regenerate" (same "changes", "preserve", "instruction"), but only for the time ranges of the current take named in "time_ranges"; the rest of the take is kept as it is.
 - "set_mode": "auto" or "director": the director wants the team to lead again (auto) or to only change what is told (director).

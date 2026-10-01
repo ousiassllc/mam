@@ -2,6 +2,7 @@ package domain
 
 import (
 	"encoding/json"
+	"strings"
 	"time"
 )
 
@@ -32,6 +33,15 @@ func ImageModels() []ModelName {
 
 // VideoModels lists the video models that have an adapter.
 func VideoModels() []ModelName { return []ModelName{ModelKling3, ModelSeedance2, ModelRunwayGen45} }
+
+// JoinModels renders models separated by sep ("kling-3.0 / seedance-2.0 / runway-gen-4.5" for " / ").
+func JoinModels(models []ModelName, sep string) string {
+	names := make([]string, len(models))
+	for i, m := range models {
+		names[i] = string(m)
+	}
+	return strings.Join(names, sep)
+}
 
 // PromptVersion is a row of prompt_version: the Shot Spec a generation started from and what the
 // Model Adapter derived from it.
