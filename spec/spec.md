@@ -1544,7 +1544,7 @@ Review Package と Review Response は、DB の行やファイルをそのまま
 | `request_changes` | 承認カード（チェックポイント）で「変更を依頼」した | する |
 | `switch_to_director` | AUTO の Project を DIRECTOR MODE に切り替えた | しない（人間の介入にも数えない） |
 
-AUTO のパイプラインが自分で行う生成・Judge・Repair・選択は記録しない（`repair_action` / `take` から読み取る）。
+AUTO のパイプラインが自分で行う生成・Judge・Repair・選択は記録しない（`repair_action` / `take` から読み取る）。`lock_change` は Shot / Project のパラメータの LOCK だけを数え、World State の属性の LOCK と World State・Shot Spec の過去版への復元（§29.4）は、この表に無いので記録しない（介入数の対象外）。
 
 ### 28.4 表示と外部送信
 
