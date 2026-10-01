@@ -875,7 +875,7 @@ Shot 12
 - 商品違い
 - ターゲット別クリエイティブ
 
-Branch作成時点のWorld StateをSnapshotとして保存する。
+Branch作成時ではなく分岐点（Branch Point）のWorld StateをSnapshotとして保存し、Branch専用のWorld Stateの版として持つ。
 
 ---
 

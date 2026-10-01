@@ -54,7 +54,7 @@
 - **事前条件**: Branch Point としたい Scene/Shot/Frame が存在する
 - **フロー**:
   1. ユーザーが Branch Point を指定する
-  2. Branch 作成時点の World State を Snapshot として保存する
+  2. 分岐点（Branch Point）の World State を Snapshot として保存し、Branch 専用の World State の版として持つ
   3. 複数 Branch（例: ドアを開ける / 逃げる / 電話する）を並行して生成し、Branch ツリーで切り替えて見比べる（2 つの Branch を並べる専用の比較画面は設けない）
 - **事後条件**: 各 Branch が独立した派生プロジェクトツリーとして保持される
 
@@ -278,3 +278,4 @@ Editor Agent は Production Template（`spec/spec.md` §19）が評価軸に持�
 | 1.19 | 2026-10-01 | Final QC（F-26）の M1 の判定の列挙に、各クリップの Take ファイルの存在（欠落は EDITING へ戻す）・True Peak ≤ −1.0 dBTP・ミックスファイルの存在を追記 | 実装（`internal/agent/finalqc`）と `spec/components/overview.md` が既に持つチェックが、この節の列挙に無かったため（Issue #172） |
 | 1.20 | 2026-10-01 | 改訂 1.14 の変更理由のルート名 `generate-candidates` を実在の `generate/candidates` に訂正 | 存在しないルート名を参照していたため（Issue #176） |
 | 1.21 | 2026-10-01 | UC-7 に、Production Template は作成時の最初の発言の Content Type から導出し（規則を明記）、後からの Brief の変更では再導出せず、設定画面で切り替えることを明記 | 実装は作成時の 1 回だけ導出し、Brief 更新はテンプレートに触れない。ユーザーの明示選択を上書きしないため、再導出ではなく仕様を実装に合わせた（Issue #198） |
+| 1.22 | 2026-10-01 | UC-5 の手順 2 を「Branch 作成時点」から「分岐点の World State を Snapshot として保存し Branch 専用の版として持つ」に改めた | 実装は分岐点の状態から Branch 専用の版を作り、他の仕様も「分岐点」と書いていたため（Issue #204） |
