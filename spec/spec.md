@@ -1172,8 +1172,10 @@ EXPORTED
 │                                                    │
 │ AI: Scene 02 を生成しました。                       │
 │     ┌──────────────────────────────┐              │
-│     │ ▶ Take 2（AI Pick / 0.91）    │              │
+│     │ ▶ Take 2（動画プレーヤー）    │              │
 │     └──────────────────────────────┘              │
+│ AI: Take 2 の Judge 結果: PASS（信頼度 0.91）       │
+│     AI Pick: Take 2 を採用しました。               │
 │                                                    │
 │ あなた（上のカードに返信）: 商品に寄って。          │
 │   ラベルは固定して、高級感を強めて                  │
@@ -1197,7 +1199,7 @@ EXPORTED
 | Question | Brief 補完・曖昧な指示の聞き返し | 選択肢ボタン / 自由入力 / 「AIに任せる」 |
 | Approval | 確認ポイントの成果物（脚本・Rough Cut・Final）。M2 では Notes の World State 昇格提案（§9.4）も同じカードで提示する。昇格提案は非ブロッキング | 承認 / 修正を依頼（昇格提案では「修正を依頼」は却下） |
 | Keyframe | Keyframe / Reference Pack 画像 | 拡大、返信で修正指示 |
-| Take | 動画プレーヤー、Judge 要約、Take 状態（AI Pick 等） | 再生、返信で指示、Take比較を開く |
+| Take | 動画プレーヤー（Judge の Issue を時間軸のマーカーで表示）と生成の要約（モデル・解像度・秒数）。スレッドは追記のみなので、Judge 要約と Take 状態（AI Pick / 採用 / 除外）はカードには載せず、Judge が結果を保存するたびに別の発言として投稿する（「Shot N · Take X の Judge 結果: PASS/FAIL（信頼度）」と、AI Pick が変わったときの「AI Pick: Take X を採用/おすすめ」）。Take ごとの最新の状態は Take 比較で確認する | 再生、返信で指示、Take比較を開く |
 | Progress | 生成・Judge・Repair の進捗 | なし（自動更新） |
 | Escalation | Retry Policy 上限到達などで AI が判断を求める内容。回答（選択肢ボタン / 自由入力）は記録されるだけで自動実行されない。回答後は Project が REPAIRING に戻り、AI は「この判断は自動では実行されません」と返すので、ユーザーが設定の変更・Take の採用・Shot の指示の修正を画面から行う | 選択肢ボタン / 自由入力 |
 
