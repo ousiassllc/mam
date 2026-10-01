@@ -72,7 +72,7 @@
 ### UC-7: Production Template を切り替える
 
 - **Actor**: エンドユーザー
-- **フロー**: プロジェクト作成時またはブリーフ入力時に PRODUCT/CM・DRAMA・ANIME・SNS/SHORT VIDEO のいずれかを選択する。選択に応じて Judge/Editor の評価軸優先度（例: PRODUCT/CM は Product Accuracy 最優先、DRAMA は Story/Acting 最優先）が切り替わる
+- **フロー**: プロジェクト作成時に、最初の発言から抽出した Content Type で Production Template が決まる（「ドラマ」→ DRAMA、「アニメ」→ ANIME、「SNS/ショート動画」→ SNS/SHORT VIDEO、それ以外・不明は PRODUCT/CM）。その後に Brief の Content Type を答えたり編集したりしても、テンプレートは自動では変わらない。変えるときは設定画面（`PUT /projects/:id/production-template`）で PRODUCT/CM・DRAMA・ANIME・SNS/SHORT VIDEO のいずれかを選択する。選択に応じて Judge/Editor の評価軸優先度（例: PRODUCT/CM は Product Accuracy 最優先、DRAMA は Story/Acting 最優先）が切り替わる
 - **事後条件**: 以降の Judge/Editor 評価が選択テンプレートの優先度に従う
 
 ### UC-8: Quality/Cost ポリシーを選択する
@@ -277,3 +277,4 @@ Editor Agent は Production Template（`spec/spec.md` §19）が評価軸に持�
 | 1.18 | 2026-10-01 | §3.2 の Inspector に、Take List が Take ごとの最新 Judge Result を表示すること、Generation Model の決まり方、Prompt は Generation Trace で見ることを明記 | 実装は Judge Results と Generation Model を表示していなかったため Inspector に追加し、Prompt の置き場所を仕様に書き分けた（Issue #104） |
 | 1.19 | 2026-10-01 | Final QC（F-26）の M1 の判定の列挙に、各クリップの Take ファイルの存在（欠落は EDITING へ戻す）・True Peak ≤ −1.0 dBTP・ミックスファイルの存在を追記 | 実装（`internal/agent/finalqc`）と `spec/components/overview.md` が既に持つチェックが、この節の列挙に無かったため（Issue #172） |
 | 1.20 | 2026-10-01 | 改訂 1.14 の変更理由のルート名 `generate-candidates` を実在の `generate/candidates` に訂正 | 存在しないルート名を参照していたため（Issue #176） |
+| 1.21 | 2026-10-01 | UC-7 に、Production Template は作成時の最初の発言の Content Type から導出し（規則を明記）、後からの Brief の変更では再導出せず、設定画面で切り替えることを明記 | 実装は作成時の 1 回だけ導出し、Brief 更新はテンプレートに触れない。ユーザーの明示選択を上書きしないため、再導出ではなく仕様を実装に合わせた（Issue #198） |
