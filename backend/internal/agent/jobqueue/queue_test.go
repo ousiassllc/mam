@@ -207,6 +207,27 @@ func TestQueue_StopRequeuesInterruptedJobSoNextStartResumesIt(t *testing.T) {
 	assert.Equal(t, 2, done.Attempts)
 }
 
+func TestQueue_StopFailsInterruptedNonResumableJobInsteadOfRequeueing(t *testing.T) {
+	_, repo := newRepo(t)
+	started := make(chan struct{})
+	q := jobqueue.New(repo, jobqueue.Options{})
+	q.Register(domain.JobGenerate, func(ctx context.Context, _ domain.Job) error {
+		close(started)
+		<-ctx.Done()
+		return ctx.Err()
+	}, false)
+	q.Start(context.Background())
+	job, err := q.Enqueue(context.Background(), domain.JobGenerate, nil)
+	require.NoError(t, err)
+	<-started
+	q.Stop()
+
+	got, err := repo.Get(context.Background(), job.ID)
+	require.NoError(t, err)
+	assert.Equal(t, domain.JobFailed, got.Status, "a billed, non-resumable job must not run again on the next start")
+	assert.Equal(t, jobqueue.ShutdownReason, got.Error)
+}
+
 func TestQueue_OnChangeNotifiesAfterTheFinalStatusIsPersisted(t *testing.T) {
 	_, repo := newRepo(t)
 	q := jobqueue.New(repo, jobqueue.Options{})

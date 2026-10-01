@@ -36,8 +36,12 @@ const (
 // InterruptedReason is recorded on jobs that were running when the app terminated abnormally.
 const InterruptedReason = "interrupted by abnormal termination"
 
+// ShutdownReason is recorded on non-resumable jobs that were running when the queue was stopped:
+// running them again could charge the vendor twice.
+const ShutdownReason = "interrupted by shutdown"
+
 // Handler executes one job. It returns nil on success. When ctx is canceled
-// (shutdown) it SHOULD return promptly; the job is then queued again.
+// (shutdown) it SHOULD return promptly; a resumable job is then queued again, any other job fails.
 type Handler func(ctx context.Context, job domain.Job) error
 
 // Options configures a Queue.
@@ -203,7 +207,8 @@ func (q *Queue) Start(ctx context.Context) {
 }
 
 // Stop cancels running handlers, waits for the workers to finish and
-// returns interrupted jobs to the queue so the next start resumes them.
+// returns interrupted resumable jobs to the queue so the next start resumes them.
+// Interrupted non-resumable jobs are failed (ShutdownReason).
 func (q *Queue) Stop() {
 	q.mu.Lock()
 	cancel := q.cancel
@@ -280,6 +285,10 @@ func (q *Queue) run(ctx context.Context, job domain.Job) {
 			q.logger.Error("mark job succeeded failed", "job_id", job.ID, "err", err)
 		}
 	case ctx.Err() != nil && errors.Is(err, ctx.Err()):
+		if !reg.resumable {
+			q.fail(settle, job, ShutdownReason)
+			return
+		}
 		if err := q.repo.Requeue(settle, job.ID); err != nil {
 			q.logger.Error("requeue interrupted job failed", "job_id", job.ID, "err", err)
 		}
