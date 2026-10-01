@@ -473,7 +473,16 @@ func (s *DirectorService) interpret(ctx context.Context, message string, shots [
 		}
 		in.Locks = locks
 	}
-	return s.interpreter.Interpret(ctx, in)
+	cmd, err := s.interpreter.Interpret(ctx, in)
+	if err != nil {
+		return cmd, err
+	}
+	if !domain.AsksToRemember(message) {
+		// A note is made only when the message asks for it (spec/spec.md §9.4): the model's
+		// word alone is not enough in any mode.
+		cmd.Operations = slices.DeleteFunc(cmd.Operations, func(op commandinterpreter.Operation) bool { return op.Type == commandinterpreter.OpCreateNote })
+	}
+	return cmd, nil
 }
 
 func optionOf(sh repository.ShotRef) commandinterpreter.ShotOption {
