@@ -474,7 +474,7 @@ project_world:
 
 各Shot完了後にAIが最終状態を抽出し、World Stateとの差分を更新する。
 
-実装では「Shot 完了」を「Shot の Take を生成し終えた時点」とし、抽出は AI Video Judge の判定を待たない。State Extractor の入力は Take の映像ではなく、その Take を生成した Canonical Shot Spec・Scene 情報・現在の World State（と LOCK）である。したがって World State は、採用された Take の映像から読み取った最終状態ではなく、生成を要求した Spec から推定した「その Shot が終わったときの状態」になる。
+実装では「Shot 完了」を「Shot の Take を生成し終えた時点」とし、通常の生成と Repair の再生成では抽出は AI Video Judge の判定を待たない（Candidate Generation は Best Take を選ぶために Judge を待ち、その後に抽出する）。State Extractor の入力は Take の映像ではなく、その Take を生成した Canonical Shot Spec・Scene 情報・現在の World State（と LOCK）である。したがって World State は、採用された Take の映像から読み取った最終状態ではなく、生成を要求した Spec から推定した「その Shot が終わったときの状態」になる。
 
 - 通常の生成では、Take を 1 本以上作れた時点で 1 回抽出する。Candidate Generation（Quality / Balanced）では、選ばれた Candidate の Spec から抽出する。
 - Judge が FAIL にして撮り直す場合（Repair）は、Shot Spec が変わる Repair（Prompt 修正・Partial Regeneration）の Take を生成した直後にもう一度抽出し、新しい `world_state_version` を追記する。Judge で FAIL になった Take の Spec から追記された版も消さない（World State は追記のみで、版は履歴として残る。`spec/architecture/er.md` §3）。
