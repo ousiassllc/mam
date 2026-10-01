@@ -318,6 +318,8 @@ func TestApprovalCard_AnsweredOnceProjectWaitsUntilThen(t *testing.T) {
 
 	bad := a.form(http.MethodPost, "/projects/"+id+"/approvals/"+card, url.Values{"decision": {"later"}})
 	assert.Equal(t, http.StatusUnprocessableEntity, bad.Code)
+	implicit := a.form(http.MethodPost, "/projects/"+id+"/approvals/"+card, url.Values{"comment": {"ここを直して"}})
+	assert.Equal(t, http.StatusUnprocessableEntity, implicit.Code, "a submit without a pressed button is not an approval")
 	missing := a.form(http.MethodPost, "/projects/"+id+"/approvals/missing", url.Values{"decision": {"approve"}})
 	assert.Equal(t, http.StatusNotFound, missing.Code)
 }
