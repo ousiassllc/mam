@@ -1108,9 +1108,9 @@ DRAFT
  ↓
 PLANNING
  ↓
-VISUAL_DESIGN
+AWAITING_APPROVAL (optional: 脚本の確認ポイント)
  ↓
-AWAITING_APPROVAL (optional)
+VISUAL_DESIGN
  ↓
 GENERATING
  ↓
@@ -1125,11 +1125,15 @@ EDIT_JUDGING
  ├ RE_EDIT → EDITING
  └ PASS
       ↓
+AWAITING_APPROVAL (optional: Rough Cut の確認ポイント)
+      ↓
 AUDIO
       ↓
 FINAL_QC
  ├ FAIL → Relevant Stage
  └ PASS
+      ↓
+AWAITING_APPROVAL (optional: Final の確認ポイント)
       ↓
 READY
       ↓
@@ -1140,7 +1144,7 @@ EXPORTED
 
 > **Project 状態と Shot 状態（実装の範囲）**: 上の状態遷移のうち、Project の状態として実際に遷移するのは DRAFT → PLANNING → VISUAL_DESIGN（Orchestrator）、確認ポイントでの AWAITING_APPROVAL、および EDITING 以降（EDIT_JUDGING・AUDIO・FINAL_QC・READY・EXPORTED）である。EDITING の開始は `POST /projects/:id/edit/rough-cut` だけではない。ユーザーが Rough Cut を作る／編集したときに加え、AUTO MODE ではトランクの全 Shot に Selected Take が揃った時点で Rough Cut と Editor Judge が自動で始まり EDITING に入る。開始時、VISUAL_DESIGN からは GENERATING → JUDGING → EDITING を一括で辿る（全 Shot に Selected Take があることが前提）。確認ポイント通過後の AUDIO と Final QC も AUTO MODE では自動で進み、Export はユーザー操作である。GENERATING / JUDGING / REPAIRING は Shot 単位（`shot.state`、§13）で進み、Shot の生成・Judge・Repair は Shot ごとに並行して起動されるため、Project 全体の状態としては遷移させない（Project は VISUAL_DESIGN のまま）。例外は Reshoot Loop の追加 Shot（Project を GENERATING にする）と、Escalation への回答後（Project は REPAIRING になり、Editor Judge／編集操作で EDITING へ戻る）である。
 
-AWAITING_APPROVAL に遷移するのは、確認ポイントの Approval カードと Escalation カードのみとする。Notes の昇格提案カード（`ref_type=note_promotion`、§9.4）は非ブロッキングで、Core State Machine の状態を変えない。
+図の AWAITING_APPROVAL は確認ポイント（脚本・Rough Cut・Final）の位置を示す。AWAITING_APPROVAL に遷移するのは、確認ポイントの Approval カードと Escalation カードのみとする。Notes の昇格提案カード（`ref_type=note_promotion`、§9.4）は非ブロッキングで、Core State Machine の状態を変えない。
 
 ---
 
