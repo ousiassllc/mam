@@ -51,6 +51,31 @@ type Runner struct {
 
 	mu      sync.Mutex
 	running map[string]int // Shot ID -> judge jobs whose handler is executing
+
+	startMu  sync.Mutex
+	starting map[string]struct{} // Take IDs whose Start is between its pending check and its enqueue
+}
+
+// beginStart claims the Take for one Start call. The pending check and the enqueue of Start are two
+// separate transactions, so without the claim two concurrent calls could both pass the check and
+// queue a Judge job each. It reports false while another Start holds the Take.
+func (r *Runner) beginStart(takeID string) bool {
+	r.startMu.Lock()
+	defer r.startMu.Unlock()
+	if _, busy := r.starting[takeID]; busy {
+		return false
+	}
+	if r.starting == nil {
+		r.starting = make(map[string]struct{})
+	}
+	r.starting[takeID] = struct{}{}
+	return true
+}
+
+func (r *Runner) endStart(takeID string) {
+	r.startMu.Lock()
+	defer r.startMu.Unlock()
+	delete(r.starting, takeID)
 }
 
 func (r *Runner) enter(shotID string) {
@@ -93,13 +118,18 @@ type payload struct {
 	ShotID string `json:"shot_id"`
 }
 
-// Start queues a Judge run on the Take (ErrBusy when one is already queued or running,
-// repository.ErrNotFound for an unknown Take). Every run adds a result; earlier ones are kept.
+// Start queues a Judge run on the Take (ErrBusy when one is already queued or running or being
+// queued by a concurrent Start, repository.ErrNotFound for an unknown Take). Every run adds a
+// result; earlier ones are kept.
 func (r *Runner) Start(ctx context.Context, takeID string) (domain.Job, error) {
 	ref, err := r.Judges.GetTake(ctx, takeID)
 	if err != nil {
 		return domain.Job{}, err
 	}
+	if !r.beginStart(takeID) {
+		return domain.Job{}, ErrBusy
+	}
+	defer r.endStart(takeID)
 	pending, err := r.Judges.JudgePending(ctx, takeID)
 	if err != nil {
 		return domain.Job{}, err
