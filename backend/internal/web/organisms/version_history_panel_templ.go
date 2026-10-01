@@ -27,12 +27,14 @@ type VersionHistoryData struct {
 	BasePath string
 	// Target is the CSS selector of what the restore response replaces: the view that shows the
 	// restored content. Empty replaces the panel itself.
-	Target  string
+	Target string
+	// Query is appended to the restore URL ("?branch_id=B" scopes a World State restore to a Branch).
+	Query   string
 	Entries []domain.VersionEntry
 }
 
 func (d VersionHistoryData) restoreURL(number int) string {
-	return d.BasePath + "/versions/" + strconv.Itoa(number) + "/restore"
+	return d.BasePath + "/versions/" + strconv.Itoa(number) + "/restore" + d.Query
 }
 
 func (d VersionHistoryData) target() string {
@@ -73,7 +75,7 @@ func VersionHistoryPanel(d VersionHistoryData) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.ResolveAttributeValue(d.DOMID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/version_history_panel.templ`, Line: 41, Col: 22}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/version_history_panel.templ`, Line: 43, Col: 22}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
 		if templ_7745c5c3_Err != nil {
@@ -86,7 +88,7 @@ func VersionHistoryPanel(d VersionHistoryData) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(d.Title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/version_history_panel.templ`, Line: 41, Col: 45}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/version_history_panel.templ`, Line: 43, Col: 45}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
 		if templ_7745c5c3_Err != nil {
@@ -99,7 +101,7 @@ func VersionHistoryPanel(d VersionHistoryData) templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(d.Title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/version_history_panel.templ`, Line: 42, Col: 45}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/version_history_panel.templ`, Line: 44, Col: 45}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -127,7 +129,7 @@ func VersionHistoryPanel(d VersionHistoryData) templ.Component {
 				var templ_7745c5c3_Var5 string
 				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("v%d", e.Number))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/version_history_panel.templ`, Line: 49, Col: 68}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/version_history_panel.templ`, Line: 51, Col: 68}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 				if templ_7745c5c3_Err != nil {
@@ -140,7 +142,7 @@ func VersionHistoryPanel(d VersionHistoryData) templ.Component {
 				var templ_7745c5c3_Var6 string
 				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue(e.CreatedAt.Format("2006-01-02T15:04:05Z07:00"))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/version_history_panel.templ`, Line: 50, Col: 103}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/version_history_panel.templ`, Line: 52, Col: 103}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
 				if templ_7745c5c3_Err != nil {
@@ -153,7 +155,7 @@ func VersionHistoryPanel(d VersionHistoryData) templ.Component {
 				var templ_7745c5c3_Var7 string
 				templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(e.CreatedAt.Local().Format("2006/01/02 15:04:05"))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/version_history_panel.templ`, Line: 50, Col: 157}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/version_history_panel.templ`, Line: 52, Col: 157}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 				if templ_7745c5c3_Err != nil {
@@ -171,7 +173,7 @@ func VersionHistoryPanel(d VersionHistoryData) templ.Component {
 					var templ_7745c5c3_Var8 string
 					templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(e.Summary)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/version_history_panel.templ`, Line: 52, Col: 49}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/version_history_panel.templ`, Line: 54, Col: 49}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 					if templ_7745c5c3_Err != nil {

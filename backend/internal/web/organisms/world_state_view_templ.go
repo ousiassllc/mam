@@ -627,7 +627,7 @@ func WorldStateView(d WorldStateData) templ.Component {
 		}
 		templ_7745c5c3_Err = VersionHistoryPanel(VersionHistoryData{
 			DOMID: "version-history-world", Title: "World State のバージョン", BasePath: paths.Project(d.Project.ID, "world-state"),
-			Target: "#world-state-view", Entries: d.Versions,
+			Target: "#world-state-view", Query: d.branchQuery(), Entries: d.Versions,
 		}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
