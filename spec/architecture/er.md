@@ -497,6 +497,7 @@ erDiagram
         string type
         string enforcement_level
         json value
+        datetime created_at
     }
     BRAND_TEMPLATE ||--o{ BRAND_TEMPLATE_CONSTRAINT : contains
     BRAND_TEMPLATE {
