@@ -83,6 +83,33 @@ func TestOrchestrator_QualityModeGeneratesEveryCandidateAndMarksTheBestTake(t *t
 	assert.Equal(t, domain.ShotPlanning, f.shotState(t))
 }
 
+// The Take AUTO MODE selects is chosen among the Takes the Retry Policy accepts; the AI Pick of a
+// candidate run must be that Take, not a pass that scores best by its Issues but under the minimum.
+func TestOrchestrator_QualityModeRecommendsATakeTheRetryPolicyAccepts(t *testing.T) {
+	f := newFixture(t, options{withJudge: true, quality: domain.QualityMaxQuality})
+	template := domain.TemplateProductCM
+	f.judge.verdicts = func(n int) (domain.JudgeResult, error) {
+		res := domain.JudgeResult{Result: domain.JudgePass, OverallConfidence: 0.9, Scores: map[domain.EvaluationAxis]float64{}}
+		score := 100.0
+		if n == 1 { // no Issue (the best Take score) but a score under every minimum
+			score = 1
+		} else {
+			res.Issues = []domain.JudgeIssue{{Type: "flicker", Severity: domain.SeverityLow, Dimension: domain.DimFlicker}}
+		}
+		for _, a := range template.Axes() {
+			res.Scores[a] = score
+		}
+		return res, nil
+	}
+
+	require.NoError(t, f.candidates(t, ""))
+
+	var picked string
+	require.NoError(t, f.db.Reader().QueryRow(`SELECT id FROM take WHERE status = 'ai_pick'`).Scan(&picked))
+	res := f.judge.results()[picked]
+	assert.Equal(t, 100.0, res.Scores[template.Axes()[0]], "the AI Pick is a Take that reaches the Minimum acceptance score")
+}
+
 func TestOrchestrator_BalancedModeAddsACandidateOnlyWhileTheJudgeFailsTheTake(t *testing.T) {
 	cases := []struct {
 		name      string

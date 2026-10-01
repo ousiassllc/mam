@@ -83,9 +83,23 @@ func better(a, b judged) bool {
 }
 
 // bestTake returns the Best Take among the judged ones. ok is false when none could be judged.
-func bestTake(all []judged) (best judged, ok bool) {
+//
+// accepted tells whether the Retry Policy accepts a judged Take (a pass that reaches the Minimum
+// acceptance scores). Like TakeRepository.PickBest, which chooses the Take AUTO MODE selects, the Best
+// Take is the best of the accepted Takes when there are any; with none, it is the best of all. A nil
+// accepted counts every Take as accepted.
+func bestTake(all []judged, accepted func(domain.JudgeResult) bool) (best judged, ok bool) {
+	anyAccepted := false
+	if accepted != nil {
+		for _, j := range all {
+			if j.result != nil && accepted(*j.result) {
+				anyAccepted = true
+				break
+			}
+		}
+	}
 	for _, j := range all {
-		if j.result == nil {
+		if j.result == nil || (anyAccepted && !accepted(*j.result)) {
 			continue
 		}
 		if !ok || better(j, best) {
@@ -405,7 +419,8 @@ func (r *candidateRun) finish(ctx context.Context, mode domain.GenerationMode) j
 	all := append([]judged(nil), r.outcomes...)
 	slices.SortFunc(all, func(a, b judged) int { return a.number - b.number })
 
-	pick, judgedAny := bestTake(all)
+	eff, template := r.sc.policy.Effective(), r.sc.policy.Template
+	pick, judgedAny := bestTake(all, func(res domain.JudgeResult) bool { return res.Accepted(eff, template) })
 	if !judgedAny {
 		pick = all[0]
 	} else if err := o.gens.MarkAIPick(bg, shot.ID, pick.takeID); err != nil {
