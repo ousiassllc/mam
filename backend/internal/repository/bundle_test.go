@@ -228,20 +228,23 @@ func TestBundleRepository_ImportRejectsRowIDsThatCouldEscapeAsFilePaths(t *testi
 		"x/../y", "x/../../y", "x/../../../../y", "..", ".", ".hidden", `a\b`, `..\..\x`, "a/b", "a%2Fb", "a\x00b", "a\nb",
 		"", strings.Repeat("x", 65),
 	}
+	ctx := context.Background()
+	// Only Export and Import run per case: a bundle is exported from a seeded database and imported
+	// into an empty one, which must stay empty because every bundle is refused whole.
+	source := openTestDB(t)
+	seedDeepProject(t, source, "a")
+	exporter := repository.NewBundleRepository(source)
+	target := openTestDB(t)
+	importer := repository.NewBundleRepository(target)
 	for _, table := range tables {
 		for _, id := range ids {
-			ctx := context.Background()
-			db := openTestDB(t)
-			seedDeepProject(t, db, "a")
-			r := repository.NewBundleRepository(db)
-			data, err := r.Export(ctx, "a")
+			data, err := exporter.Export(ctx, "a")
 			require.NoError(t, err)
-			require.NoError(t, exec(t, db, `DELETE FROM project WHERE id = 'a'`)) // foreign keys cascade
 			setBundleField(t, data, table, "id", id)
 
-			assert.ErrorIs(t, r.Import(ctx, data), repository.ErrInvalidBundle, "%s.id %q", table, id)
+			assert.ErrorIs(t, importer.Import(ctx, data), repository.ErrInvalidBundle, "%s.id %q", table, id)
 			assert.Equal(t, map[string]int{"project": 0, "take": 0, "edit_timeline_version": 0},
-				countRows(t, db, "project", "take", "edit_timeline_version"), "nothing is written")
+				countRows(t, target, "project", "take", "edit_timeline_version"), "nothing is written")
 		}
 	}
 }
