@@ -9,7 +9,7 @@ import { ajaxGet } from './ajax';
 import { createConnectionNotice } from './components/lib/connection-notice';
 import { connect, socketUrl, type Connection } from './components/lib/ws';
 import { selfAndDescendants } from './components/lib/query';
-import { createRefreshGuard, isFinished, type ShotProgress } from './components/lib/shot';
+import { createRefreshGuard, isFinished, planCardRefresh, type ShotProgress } from './components/lib/shot';
 
 const mayRefresh = createRefreshGuard();
 
@@ -20,15 +20,21 @@ export function initShotProgress(root: ParentNode = document): void {
   }
 }
 
-function refresh(refreshUrl: string): void {
-  if (refreshUrl && mayRefresh(refreshUrl)) void ajaxGet(refreshUrl, { target: '#scene-shot-view', swap: 'outerHTML' });
+function refresh(card: HTMLElement): void {
+  const refreshUrl = card.dataset.refreshUrl ?? '';
+  if (!refreshUrl || !mayRefresh(refreshUrl)) return;
+  const selectedLink = document.querySelector('#scene-shot-view li[id^="shot-"][aria-current="true"] a[href]');
+  const plan = planCardRefresh(
+    { id: card.id, refreshUrl, selected: card.getAttribute('aria-current') === 'true' },
+    selectedLink?.getAttribute('href') ?? null,
+  );
+  void ajaxGet(plan.url, { target: plan.target, swap: plan.swap, select: plan.select });
 }
 
 function watch(el: HTMLElement): void {
-  const refreshUrl = el.dataset.refreshUrl ?? '';
   if (!el.dataset.wsUrl) {
     // The card's mam-video-player follows the progress and says when it is over.
-    el.addEventListener('progress-finished', () => refresh(refreshUrl), { once: true });
+    el.addEventListener('progress-finished', () => refresh(el), { once: true });
     return;
   }
   let connection: Connection | null = null;
@@ -60,7 +66,7 @@ function watch(el: HTMLElement): void {
       if (isFinished(progress)) {
         notice.hide();
         connection?.close();
-        refresh(refreshUrl);
+        refresh(el);
       }
     },
   });

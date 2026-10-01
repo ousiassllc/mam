@@ -15,6 +15,27 @@ export function isFinished(progress: Pick<ShotProgress, 'stage'>): boolean {
   return progress.stage === 'done' || progress.stage === 'failed' || progress.stage === 'idle';
 }
 
+/** The request that brings a finished Shot card up to date. */
+export interface CardRefresh {
+  url: string;
+  target: string;
+  swap: 'outerHTML';
+  select?: string;
+}
+
+/**
+ * What to fetch when the work on a card is over. The selected Shot's card refreshes the whole Shot
+ * view (its actions and Takes change). Any other card refreshes only itself, from the page of the Shot
+ * that is selected, so the Shot being viewed and the text typed into it stay as they are.
+ */
+export function planCardRefresh(card: { id: string; refreshUrl: string; selected: boolean }, selectedShotUrl: string | null): CardRefresh {
+  if (card.selected) return { url: card.refreshUrl, target: '#scene-shot-view', swap: 'outerHTML' };
+  const selector = `#${card.id}`;
+  // Without a selected Shot the Scene page (no ?shot=) is the one that leaves every card unselected.
+  const url = selectedShotUrl ?? card.refreshUrl.split('?')[0] ?? card.refreshUrl;
+  return { url, target: selector, swap: 'outerHTML', select: selector };
+}
+
 /**
  * Guard against refresh loops: the same card URL is refreshed at most once per windowMs. A card
  * that keeps being re-rendered in a progress state while the server says "idle" would otherwise
