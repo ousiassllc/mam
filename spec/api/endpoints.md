@@ -127,7 +127,7 @@ M1 の入出力契約（Issue #12）:
 | GET | `/branches/:id` | Branch 詳細（フラグメント） | F-17 |
 | PUT | `/branches/:id` | Branch 名称変更・World State参照更新（`branch_version` に新規バージョン行を追記） | F-17, F-28 |
 | POST | `/shots/:id/versions/:versionNumber/restore` | Shot/Take（`prompt_version`）の指定バージョンの Canonical Shot Spec を Shot の現在の Spec に戻し、新しい `prompt_version` として追記する（既存バージョンとその Take は変えない。復元自体も戻せる）。応答は 200 と Shot Inspector。バージョン番号が 1 以上の整数でなければ 422、存在しない Shot/バージョンは 404、生成中の Shot は 409、復元で LOCK 中の部分が変わるなら 423（何も書かない） | F-28 |
-| POST | `/projects/:id/world-state/versions/:versionNumber/restore` | 主系列（トランク、`branch_id`=NULL）World State の指定バージョンへ復元。そのバージョンに載っている Character/Product/Location の各フィールド値を行へ書き戻し（バージョンに無い、後から追加された行は変えない）、Camera/Story はそのバージョンの値にして、結果を新しい `world_state_version` として追記する。応答は 200 と World State ビュー。422（番号）/404（Project・バージョン）/423（復元で LOCK 中のフィールドが変わる。何も書かない） | F-28 |
+| POST | `/projects/:id/world-state/versions/:versionNumber/restore` | 主系列（トランク、`branch_id`=NULL）World State の指定バージョンへ復元。クエリ `branch_id`（省略時=主系列トランク）を付けると当該 Branch の World State 系列を復元し、応答はその Branch の World State ビュー（当該 Project の Branch でなければ 404）。そのバージョンに載っている Character/Product/Location の各フィールド値を行へ書き戻し（バージョンに無い、後から追加された行は変えない）、Camera/Story はそのバージョンの値にして、結果を新しい `world_state_version` として追記する。応答は 200 と World State ビュー。422（番号）/404（Project・バージョン）/423（復元で LOCK 中のフィールドが変わる。何も書かない） | F-28 |
 | POST | `/branches/:id/world-state/versions/:versionNumber/restore` | 当該Branchが独立して持つ World State バージョン系列の指定バージョンへ復元。Branch はトランクと同じく自身の Character / Product / Location 行に状態を持つので（Issue #18）、指定バージョンの内容をその Branch の行へ書き戻し、結果をその系列の末尾へ新バージョンとして追記する（LOCK 中の項目が変わる復元は 423 で何も書かない）。応答は 200 と Branch のバージョン履歴。422/404（Branch・バージョン）。パスの Branch ID は他の `/branches/:id/...` と同じく `:id`（Gin は同じパス位置のワイルドカード名を 1 つしか許さない） | F-28 |
 | POST | `/branches/:id/versions/:versionNumber/restore` | Branch自体（`branch_version`）の指定バージョンへ復元。その名称・World State 参照を Branch に戻し、新しい `branch_version` として追記する。応答は 200 と Branch のバージョン履歴。422/404 | F-28 |
 
@@ -218,7 +218,7 @@ M1 の入出力契約（Issue #8）:
 
 - `PUT /projects/:id/characters|products|locations/:entityId`: Body は `application/x-www-form-urlencoded`。編集できる項目は Character が `hairstyle/wardrobe/voice/personality/emotion/position/current_action`、Product が `material/orientation/condition`、Location が `time/lighting_state/weather`（各 200 文字以内、前後の空白は除去）。送った項目だけを更新し、空文字は項目のクリア。応答は更新後の World State ビュー（`#world-state-view` フラグメント、200）で、新しい `world_state_version` を追記する。エラーはトースト（`HX-Reswap: none`）: LOCK 対象を1項目でも含むと **423** で全体を拒否（何も書き込まない）、更新項目なし・未知の項目・長すぎる値は 422、Project または当該 Project のエンティティが無ければ 404
 - `GET /projects/:id/world-state`: `HX-Request` でフラグメント、なければフルページ（`world_state_page`）。LOCK 中の項目は「LOCK」バッジ付きで編集不可。Camera/Story は Shot 完了ごとに State Extractor が更新するため参照専用
-- `branch_id` クエリは、当該 Project の Branch を指すときだけ有効で（Issue #18）、存在しない Branch は 404。省略時は主系列（トランク）
+- `branch_id` クエリ（`GET /projects/:id/world-state` と `POST /projects/:id/world-state/versions/:versionNumber/restore`）は、当該 Project の Branch を指すときだけ有効で（Issue #18）、存在しない Branch は 404。省略時は主系列（トランク）
 
 M2 の入出力契約（Issue #15）:
 
@@ -458,3 +458,4 @@ Notes:
 | 1.71 | 2026-10-02 | §2.1 の `GET /projects/:id/bundle`・`POST /projects/import` に、他 Project のディレクトリにある共有画像（Series の Episode の正本参照画像）はエクスポート時に `<project_id>/<asset_id><拡張子>` へ再配置され `data.json` の `file_path` も書き換わることを追記した | 実装（`service/bundle.go` の `relocateSharedAssets`）は他 Project の asset 行のパスを書き換えて元の場所のファイルを `assets/` に入れ、「パスのまま」は共有画像に当てはまらないため（Issue #251） |
 | 1.72 | 2026-10-02 | §2.1 の `POST /projects/import` の 422 条件に、全テーブルの行 ID の文字種・Take カードの動画/ポスター URL が同一オリジンの絶対パスであること・切り離し列が空であることを加えた | 実装（`repository/bundle.go` の `checkBundle`）はこれらも `ErrInvalidBundle`（422）にするため（Issue #252） |
 | 1.73 | 2026-10-02 | §0 の 413 行にアップロードルートごとの本文上限（参照画像 20 MB + 1 MiB・音声サンプル 10 MB + 1 MiB・Review Response 1 MiB + 1 MiB・Review Package 2 GiB + 2 MiB）を列挙し、各ルートの「サイズ超過は 422」を「本文全体が上限内でファイルだけが上限超のときだけ 422、本文全体が上限超なら 413」と書き分けた | 実装（`handler.readMultipart`）は本文全体に `MaxBytesReader` を掛け、超過は 413 になり、サービス層のファイル検証の 422 は狭い帯だけであるため（Issue #253） |
+| 1.74 | 2026-10-02 | §2.4 の `POST /projects/:id/world-state/versions/:versionNumber/restore` が `branch_id` クエリで当該 Branch の World State 系列を復元し、その Branch の World State ビューを返すこと（他 Project の Branch は 404）と、`branch_id` クエリの記述の対象に復元ルートを含めることを明記 | 実装（#221）は Branch の World State も `?branch_id=` で復元するが、仕様は主系列専用と書いていたため（Issue #248） |
