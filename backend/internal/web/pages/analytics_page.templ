@@ -32,12 +32,7 @@ templ AnalyticsPage(csrfToken string, d AnalyticsPageData) {
 					<p class="text-sm text-neutral-400">すべてのプロジェクト</p>
 				}
 			</div>
-			@AnalyticsBody(d)
+			@organisms.AnalyticsPanel(d.Metrics)
 		</main>
 	}
-}
-
-// AnalyticsBody is the metrics without the page frame (HTMX requests).
-templ AnalyticsBody(d AnalyticsPageData) {
-	@organisms.AnalyticsPanel(d.Metrics)
 }
