@@ -17,9 +17,48 @@ export function createToast(message: string): HTMLElement | null {
     log.warn('#toast-template is missing; cannot show', message);
     return null;
   }
-  const text = toast.querySelector('[data-toast-message]');
+  const text = toast.querySelector(MESSAGE);
   if (text) text.textContent = message;
   return toast;
+}
+
+const MESSAGE = '[data-toast-message]';
+
+function messageOf(toast: Element): string {
+  return toast.querySelector(MESSAGE)?.textContent ?? '';
+}
+
+/** Whether `region` already shows a toast with this message. */
+export function hasToast(region: Element, message: string): boolean {
+  return Array.from(region.querySelectorAll('[data-toast]')).some((toast) => messageOf(toast) === message);
+}
+
+/**
+ * Appends an error toast for `message` unless the region already shows one with the same message: a
+ * failure that repeats (the 15s Cost Summary poll while the server is down) must not pile up toasts that
+ * stay until closed one by one.
+ */
+export function appendToast(region: Element | null, message: string): void {
+  if (!region || hasToast(region, message)) return;
+  const toast = createToast(message);
+  if (toast) region.append(toast);
+}
+
+/**
+ * Drops, from an out-of-band response about to be swapped into #toast-region, the toasts that the
+ * region already shows (same rule as appendToast, for toasts the server sends).
+ */
+export function dedupeToastsOnSwap(root: Document | HTMLElement = document): void {
+  root.addEventListener('htmx:oobBeforeSwap', (event) => {
+    const { target, fragment } = (event as CustomEvent<{ target?: Element; fragment?: ParentNode }>).detail;
+    if (target?.id !== 'toast-region' || !fragment) return;
+    const seen = new Set(Array.from(target.querySelectorAll('[data-toast]')).map(messageOf));
+    for (const toast of Array.from(fragment.querySelectorAll('[data-toast]'))) {
+      const message = messageOf(toast);
+      if (seen.has(message)) toast.remove();
+      else seen.add(message);
+    }
+  });
 }
 
 /** Makes the close button of any toast, present or added later, remove that toast. */
