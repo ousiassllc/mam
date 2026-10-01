@@ -1,6 +1,7 @@
 package generation
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,7 +15,7 @@ func verdict(result domain.JudgeVerdict, confidence float64, issues ...domain.Ju
 }
 
 func issue(severity domain.IssueSeverity) domain.JudgeIssue {
-	return domain.JudgeIssue{Severity: severity}
+	return domain.JudgeIssue{Severity: severity, Dimension: domain.DimProductAccuracy}
 }
 
 func TestBestTake_APassingTakeBeatsAFailingOneWhateverTheConfidence(t *testing.T) {
@@ -27,8 +28,7 @@ func TestBestTake_APassingTakeBeatsAFailingOneWhateverTheConfidence(t *testing.T
 	assert.Equal(t, 2, best.number)
 }
 
-func TestBestTake_AmongEqualVerdictsTheLighterIssuesThenTheHigherConfidenceThenTheEarlierTakeWin(t *testing.T) {
-	lock := domain.JudgeIssue{Severity: domain.SeverityHigh, LockViolation: true}
+func TestBestTake_AmongEqualVerdictsTheHigherTakeScoreThenTheEarlierTakeWins(t *testing.T) {
 	cases := map[string]struct {
 		all  []judged
 		want int
@@ -37,14 +37,10 @@ func TestBestTake_AmongEqualVerdictsTheLighterIssuesThenTheHigherConfidenceThenT
 			{number: 1, result: verdict(domain.JudgeFail, 0.9, issue(domain.SeverityHigh))},
 			{number: 2, result: verdict(domain.JudgeFail, 0.5, issue(domain.SeverityLow))},
 		}, 2},
-		"a LOCK violation is worse than a plain high severity issue": {[]judged{
-			{number: 1, result: verdict(domain.JudgeFail, 0.9, lock)},
-			{number: 2, result: verdict(domain.JudgeFail, 0.5, issue(domain.SeverityHigh))},
-		}, 2},
-		"same issues, higher confidence": {[]judged{
+		"the confidence does not rank Takes": {[]judged{
 			{number: 1, result: verdict(domain.JudgePass, 0.7)},
 			{number: 2, result: verdict(domain.JudgePass, 0.9)},
-		}, 2},
+		}, 1},
 		"a full tie keeps the earlier take": {[]judged{
 			{number: 3, result: verdict(domain.JudgePass, 0.8)},
 			{number: 2, result: verdict(domain.JudgePass, 0.8)},
@@ -54,6 +50,37 @@ func TestBestTake_AmongEqualVerdictsTheLighterIssuesThenTheHigherConfidenceThenT
 		best, ok := bestTake(tc.all)
 		require.True(t, ok, name)
 		assert.Equal(t, tc.want, best.number, name)
+	}
+}
+
+// The Judge picks the AI Pick (and in AUTO MODE the Selected Take) with domain.PickTake: the Best
+// Take of a Candidate run must be the same Take, or the Shot's Take and its adopted Spec part ways.
+func TestBestTake_ChoosesTheTakeDomainPickTakeChooses(t *testing.T) {
+	cases := map[string][]judged{
+		"two passing Takes, the later more confident": {
+			{number: 1, result: verdict(domain.JudgePass, 0.6)},
+			{number: 2, result: verdict(domain.JudgePass, 0.9)},
+		},
+		"two passing Takes, the later one with the lighter issue": {
+			{number: 1, result: verdict(domain.JudgePass, 0.9, issue(domain.SeverityMedium))},
+			{number: 2, result: verdict(domain.JudgePass, 0.5, issue(domain.SeverityLow))},
+		},
+		"a pass beats a more confident fail": {
+			{number: 1, result: verdict(domain.JudgeFail, 0.99)},
+			{number: 2, result: verdict(domain.JudgePass, 0.1, issue(domain.SeverityMedium))},
+		},
+	}
+	for name, all := range cases {
+		var takes []domain.TakeInfo
+		for _, j := range all {
+			scores := domain.ScoreTake(j.result.Issues)
+			takes = append(takes, domain.TakeInfo{Take: domain.Take{ID: fmt.Sprint(j.number)}, Scores: &scores, Verdict: j.result.Result})
+		}
+		want, _, ok := domain.PickTake(takes)
+		require.True(t, ok, name)
+		best, ok := bestTake(all)
+		require.True(t, ok, name)
+		assert.Equal(t, want, fmt.Sprint(best.number), name)
 	}
 }
 
