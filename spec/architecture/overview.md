@@ -124,7 +124,7 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 │           ├── atoms/       # button, input, badge, spinner, toast, slider(AUTO/MANUAL/LOCK) 等
 │           ├── molecules/   # shot_card, take_row, world_state_field, brief_form 等
 │           ├── organisms/   # main_workspace, inspector, scene_tabs, take_comparison_table 等
-│           ├── pages/       # project_page, brief_page, export_page 等
+│           ├── pages/       # projects_page, brief_page, editor_page 等
 │           └── layout/      # レイアウトラッパー
 └── static/
     ├── embed.go            # src/dist を go:embed（`static.Dist()`）
