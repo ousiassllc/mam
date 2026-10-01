@@ -145,7 +145,7 @@ API キーは `credential.Store` のベンダー名（`google` / `openai` / `flu
 - **Generation Orchestrator（F-12）**: Quality Policy でモデル・解像度・Take 数を決め、(1) Shot が主モデルの最長クリップを超え代替モデルなら収まる場合は入れ替え、(2) Shot/Project の予算上限（残額）に Take 数が収まらなければ Take 数を減らし、主モデルが 1 Take も収まらず代替なら収まるなら代替を主にし、(3) 1 Take も収まらなければ 402 で開始しない。決定理由は `prompt_version.model_adapter_output`（`reasons`）に残る。Take は並列に生成し、1 つ以上成功すれば成功とする
 - **Prompt Autopilot（F-06）**: Prompt Planner（Reasoning LLM）が Shot の指示と World State・直前 Shot の Spec・Reference Pack から Canonical Shot Spec（JSON、英語）を作る。検証（目的・フレーミングあり、Acting が Shot 内で時系列順、日本語などを含まない）に失敗した回答は保存しない。既存 Spec は、追加指示がある場合だけ改訂し、無ければ再利用する。生成のたびに `prompt_version` が 1 行増え、`shot_spec_snapshot` に保存時点の Spec、`model_adapter_output` に各モデルへ渡す内容（プロンプト・解像度・参照枚数）を記録する
 - **Reference Pack（F-11）**: Art Director（Reasoning LLM）が Character/Product/Location/Style/Lighting/Keyframe の各画像のプロンプトを決め、画像 Model Adapter が生成する。Character/Product/Location/Style/Lighting を先に並列生成し、Keyframe は先行する 3 種を入力にして最後に生成する。全画像が揃ったときだけ `shot.shot_spec.references` を置き換え（途中で失敗したら旧 Pack を残し、作成済みファイルも削除する）。Keyframe は動画生成の First Frame になる
-- **ジョブ**: 生成・Reference Pack 作成は `job.kind = generate` の非再開ジョブ（課金を伴うため、異常終了後は失敗として扱い、Shot を PLANNING へ戻す）。開始時に Shot を GENERATING にし、同じ Shot の二重実行は 409 とする。進捗は `/ws/shots/:id`、チャットの進捗カードと Take/Keyframe カードで通知する
+- **ジョブ**: 生成・Reference Pack 作成は `job.kind = generate` の非再開ジョブ（課金を伴うため、異常終了後と、シャットダウン（Ctrl+C など）で実行中に中断された場合は、キューに戻さず失敗として扱い、Shot を PLANNING へ戻す）。開始時に Shot を GENERATING にし、同じ Shot の二重実行は 409 とする。進捗は `/ws/shots/:id`、チャットの進捗カードと Take/Keyframe カードで通知する
 
 ## 10. AI Video Judge と Face Identity Similarity の実装（`internal/agent/judge`、`internal/facesim`）
 
@@ -373,3 +373,4 @@ MAX QUALITY のみ。話者付きの Dialogue の行（Narration は対象外）
 | 1.16 | 2026-10-01 | §10.1 のモデル取得スクリプトの説明に、取得元コミットの固定・検証コマンドの自動選択・配置先の決定順を追記 | スクリプトが `shasum` のみに依存し、取得元が可変ブランチで、`MAM_FACE_MODEL_DIR` を見ていなかったため（Issue #77） |
 | 1.17 | 2026-10-01 | §10.2 の顔同一性の閾値から、未校正時の固定値 `warn_similarity` / `fail_similarity` を外した。参照が 1 枚、または分布が使えないときは数値の警告 / FAIL を出さない | 固定値がソース定数のままだったため（Issue #133）。`spec/spec.md` §12.4 と同じ |
 | 1.18 | 2026-10-01 | §9.1 に、`gpt-image-2` の既定 API モデル ID が `gpt-image-1` であること（設定で差し替え可）を明記 | 実装の既定値と仕様の選定名が食い違って見えたため（Issue #165） |
+| 1.19 | 2026-10-01 | §9.3 のジョブに、シャットダウン（Ctrl+C など）で実行中に中断された非再開ジョブも失敗として扱う（キューに戻さない）ことを明記 | 実装が中断ジョブを queued に戻し、次回起動で再実行して二重課金になり得たため（Issue #194）。コードも失敗扱いに修正 |
