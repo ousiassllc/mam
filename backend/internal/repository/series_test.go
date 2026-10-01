@@ -207,6 +207,34 @@ func TestSeriesRepository_CreateEpisodeStartsFromPreviousWorldState(t *testing.T
 	assert.Equal(t, "wsv-1", inherited)
 }
 
+func TestSeriesRepository_CreateEpisodeInheritsTheTrunkWorldStateNotABranchs(t *testing.T) {
+	ctx := context.Background()
+	f := newSeriesFixture(t)
+	s := f.createFromSource(t)
+
+	// The previous Episode has a trunk version 1 and a Branch whose own numbering reaches 3.
+	require.NoError(t, exec(t, f.db, `INSERT INTO scene (id, project_id, order_index) VALUES ('sc-src', 'proj-src', 0)`))
+	require.NoError(t, exec(t, f.db, `INSERT INTO shot (id, scene_id, order_index) VALUES ('sh-src', 'sc-src', 0)`))
+	require.NoError(t, exec(t, f.db, `INSERT INTO branch (id, project_id, branch_point_type, branch_point_shot_id, name) VALUES ('br-src', 'proj-src', 'shot', 'sh-src', 'alt')`))
+	require.NoError(t, exec(t, f.db, `INSERT INTO world_state_version (id, project_id, branch_id, version_number, state) VALUES ('wsv-trunk', 'proj-src', NULL, 1, ?)`,
+		`{"characters":[],"products":[],"locations":[],"camera":{"lens":"35mm"},"story":{"scene":4,"character_goal":"find the letter"}}`))
+	for i, id := range []string{"wsv-br-1", "wsv-br-2", "wsv-br-3"} {
+		require.NoError(t, exec(t, f.db, `INSERT INTO world_state_version (id, project_id, branch_id, version_number, state) VALUES (?, 'proj-src', 'br-src', ?, ?)`,
+			id, i+1, `{"characters":[],"products":[],"locations":[],"camera":{"lens":"85mm"},"story":{"scene":9,"character_goal":"leave town"}}`))
+	}
+
+	_, err := f.series.CreateEpisode(ctx, s.ID, f.source, "", newEpisodeProject("ep2"))
+	require.NoError(t, err)
+
+	w, err := f.world.World(ctx, "ep2", "")
+	require.NoError(t, err)
+	assert.Equal(t, "35mm", w.Camera.Lens, "the Branch's Camera is not inherited")
+	assert.Equal(t, "find the letter", w.Story.CharacterGoal, "the Branch's Story is not inherited")
+	var inherited string
+	require.NoError(t, f.db.Reader().QueryRow(`SELECT inherited_world_state_version_id FROM project WHERE id = 'ep2'`).Scan(&inherited))
+	assert.Equal(t, "wsv-trunk", inherited)
+}
+
 func TestSeriesRepository_CreateEpisodeRejectsUnknownSeriesAndForeignPrevious(t *testing.T) {
 	ctx := context.Background()
 	f := newSeriesFixture(t)
