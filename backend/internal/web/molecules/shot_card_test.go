@@ -29,3 +29,17 @@ func TestShotCard_OnlyOneElementFollowsTheProgressSocket(t *testing.T) {
 		assert.Equal(t, wantSockets == 1, strings.Contains(html, "data-shot-progress"), string(state))
 	}
 }
+
+// The buttons of a Take row say whether their card is the selected one, so that the card they answer
+// with is drawn the same way (#257).
+func TestShotCard_TakeButtonsSendWhetherTheCardIsSelected(t *testing.T) {
+	takes := []domain.Take{{ID: "t1", ShotID: "s1", ModelName: "m", FilePath: "a.mp4", Status: domain.TakeCandidate}}
+	for _, selected := range []bool{true, false} {
+		html := render(t, molecules.ShotCard(molecules.ShotCardData{ProjectID: "p", Shot: domain.Shot{ID: "s1", SceneID: "sc"}, Takes: takes, Selected: selected}))
+		want := `hx-vals="{&#34;selected&#34;:&#34;false&#34;}"`
+		if selected {
+			want = `hx-vals="{&#34;selected&#34;:&#34;true&#34;}"`
+		}
+		assert.Equal(t, 3, strings.Count(html, want), "select, exclude and Repair of selected=%v", selected)
+	}
+}

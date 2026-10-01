@@ -41,7 +41,7 @@ func SelectTake(svc *service.TakeService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusOK, molecules.ShotCard(shotCardData(frag)))
+		render(c, http.StatusOK, molecules.ShotCard(takeActionCard(c, frag)))
 	}
 }
 
@@ -53,7 +53,7 @@ func RejectTake(svc *service.TakeService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusOK, molecules.ShotCard(shotCardData(frag)))
+		render(c, http.StatusOK, molecules.ShotCard(takeActionCard(c, frag)))
 	}
 }
 
