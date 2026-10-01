@@ -3,6 +3,7 @@ package service_test
 import (
 	"context"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -235,4 +236,52 @@ func TestContinueConfirm_AFailedReplyLeavesTheCardOpenForAnotherAnswer(t *testin
 	f.waitGenerateJobs(t, 3)
 	_, err = f.svc.Chat.PostMessage(context.Background(), f.projectID, service.PostMessageInput{Content: "C. 突然照明が消える", ReplyToMessageID: card.ID})
 	assert.ErrorIs(t, err, service.ErrConflict)
+}
+
+// Two replies to the same Continue card that overlap (a double click, a client retry) must make one
+// Shot and start one paid generation: the one that arrives while the first is still planning is
+// refused with a conflict.
+func TestContinueConfirm_AConcurrentSecondReplyToTheSameCardIsRefused(t *testing.T) {
+	f := completedShotFixture(t, sameSceneAnswer)
+	card := f.propose(t)
+	entered, release := make(chan struct{}), make(chan struct{})
+	var once sync.Once
+	f.llm.director = func(system, _ string) string {
+		if strings.Contains(system, `"candidates"`) {
+			return proposeAnswer
+		}
+		once.Do(func() { close(entered) })
+		<-release
+		return sameSceneAnswer
+	}
+	ctx := context.Background()
+
+	first := make(chan error, 1)
+	go func() {
+		_, err := f.svc.Chat.PostMessage(ctx, f.projectID, service.PostMessageInput{Content: "A. 彼女がドアを開ける", ReplyToMessageID: card.ID})
+		first <- err
+	}()
+	select {
+	case <-entered:
+	case <-time.After(10 * time.Second):
+		t.Fatal("the first reply never reached the Continue Agent")
+	}
+	second := make(chan error, 1)
+	go func() {
+		_, err := f.svc.Chat.PostMessage(ctx, f.projectID, service.PostMessageInput{Content: "B. 背後から声が聞こえる", ReplyToMessageID: card.ID})
+		second <- err
+	}()
+	select {
+	case err := <-second:
+		assert.ErrorIs(t, err, service.ErrConflict, "the card is being answered")
+	case <-time.After(2 * time.Second):
+		t.Error("the second reply was not refused while the first one was planning")
+	}
+
+	close(release)
+	require.NoError(t, <-first)
+	f.waitGenerateJobs(t, 3)
+	assert.Len(t, f.shotObjectives(t), 2, "one new Shot")
+	assert.Equal(t, 1, f.count(t, `SELECT COUNT(*) FROM chat_message WHERE reply_to_message_id = ?`, card.ID))
+	assert.Equal(t, 3, f.count(t, `SELECT COUNT(*) FROM job WHERE kind = 'generate'`), "one generation was started for the new Shot")
 }

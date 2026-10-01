@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/briefing"
 	"github.com/ousiassllc/mam/backend/internal/agent/orchestrator"
@@ -45,6 +46,10 @@ type core struct {
 	brandTemplates *repository.BrandTemplateRepository
 	// analytics records the human interventions the MVP Success Metrics count (spec/spec.md §28).
 	analytics *repository.AnalyticsRepository
+	// answering holds the Continue cards that are being answered (card message ID -> struct{}), so
+	// that a reply that overlaps another one to the same card is refused instead of making a second
+	// Shot and a second paid generation.
+	answering sync.Map
 }
 
 // getProject maps repository.ErrNotFound to ErrNotFound.
