@@ -8,6 +8,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // takeScoresBody is the four scores of a Take, each 0-100, and their mean.
@@ -53,9 +54,9 @@ func newTakeBody(v service.TakeView) takeBody {
 		ID: v.ID, Label: v.Label, Status: string(v.Status), Adopted: v.Adopted, ModelName: v.ModelName,
 		Resolution: v.Resolution, FPS: v.FPS, DurationSeconds: v.DurationSeconds, Verdict: string(v.Verdict),
 		Proxied:        v.Proxied(),
-		JudgeResultURL: APIPrefix + "/takes/" + v.ID + "/judge-result",
-		SelectURL:      "/takes/" + v.ID + "/select",
-		RejectURL:      "/takes/" + v.ID,
+		JudgeResultURL: paths.APITake(v.ID, "judge-result"),
+		SelectURL:      paths.Take(v.ID, "select"),
+		RejectURL:      paths.Take(v.ID),
 		CreatedAt:      v.CreatedAt,
 	}
 	if v.FilePath != "" {
@@ -91,7 +92,7 @@ func registerTakeAPI(api huma.API, services *service.Services) {
 			return nil, err
 		}
 		body := takeComparisonBody{
-			ShotID: cmp.Shot.ID, DurationSeconds: cmp.Shot.Duration, PartialURL: "/shots/" + cmp.Shot.ID + "/takes/partial",
+			ShotID: cmp.Shot.ID, DurationSeconds: cmp.Shot.Duration, PartialURL: paths.Shot(cmp.Shot.ID, "takes", "partial"),
 			Takes: make([]takeBody, len(cmp.Takes)),
 		}
 		for i, t := range cmp.Takes {

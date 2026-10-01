@@ -51,13 +51,13 @@ type BranchPageData struct {
 	Selected *BranchDetailData
 }
 
-func branchURL(id string) string { return "/branches/" + id }
+func branchURL(id string) string { return paths.Branch(id) }
 
 func branchWorldStateURL(projectID, branchID string) string {
 	return paths.Project(projectID, "world-state") + "?branch_id=" + url.QueryEscape(branchID)
 }
 
-func branchShotURL(shotID string) string { return "/shots/" + shotID + "/branch" }
+func branchShotURL(shotID string) string { return paths.Shot(shotID, "branch") }
 
 func selectedBranchID(d BranchPageData) string {
 	if d.Selected == nil {
@@ -157,7 +157,7 @@ templ BranchDetail(d BranchDetailData) {
 						<ul class="ml-4 list-disc">
 							for _, sh := range d.Shots {
 								if sh.Scene == sc.OrderIndex+1 {
-									<li><a class="text-indigo-300 underline" href={ templ.SafeURL("/shots/" + sh.ShotID) }>Shot { strconv.Itoa(sh.Shot) }</a>: { sh.Objective }</li>
+									<li><a class="text-indigo-300 underline" href={ templ.SafeURL(paths.Shot(sh.ShotID)) }>Shot { strconv.Itoa(sh.Shot) }</a>: { sh.Objective }</li>
 								}
 							}
 						</ul>

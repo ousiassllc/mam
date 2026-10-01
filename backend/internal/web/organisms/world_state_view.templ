@@ -231,7 +231,7 @@ templ WorldStateView(d WorldStateData) {
 		if d.Branch != nil {
 			<p class="text-sm text-indigo-300">
 				Branch「{ d.Branch.Name }」の World State です。ここでの変更はトランクや他の Branch には影響しません。
-				<a class="underline" href={ templ.SafeURL("/branches/" + d.Branch.ID) }>Branch の詳細へ</a>
+				<a class="underline" href={ templ.SafeURL(paths.Branch(d.Branch.ID)) }>Branch の詳細へ</a>
 			</p>
 		}
 		<p class="text-xs text-neutral-400">{ versionText(d.World.Version) }。LOCK した項目は Shot 完了時にも自動更新されません。</p>

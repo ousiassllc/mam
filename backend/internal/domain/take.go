@@ -3,6 +3,7 @@ package domain
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -226,7 +227,7 @@ func ValidateTakeSegments(segs []TakeSegment, takes []TakeInfo) error {
 
 // TakeVideoURL is the same-origin URL of the preview video of a Take: the file itself, or a 1080p
 // proxy of a 4K one.
-func TakeVideoURL(takeID string) string { return "/takes/" + takeID + "/video" }
+func TakeVideoURL(takeID string) string { return "/takes/" + url.PathEscape(takeID) + "/video" }
 
 // TakeThumbnailURL is the same-origin URL of a still of the first frame of a Take.
-func TakeThumbnailURL(takeID string) string { return "/takes/" + takeID + "/thumbnail" }
+func TakeThumbnailURL(takeID string) string { return "/takes/" + url.PathEscape(takeID) + "/thumbnail" }

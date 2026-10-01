@@ -2,6 +2,7 @@ package molecules
 
 import (
 	"fmt"
+	"net/url"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
@@ -49,15 +50,15 @@ func secondsText(d float64) string { return fmt.Sprintf("%.1f 秒", d) }
 
 // shotURL selects the Shot on the Scene page.
 func shotURL(projectID, sceneID, shotID string) string {
-	return paths.Project(projectID, "scenes", sceneID) + "?shot=" + shotID
+	return paths.Project(projectID, "scenes", sceneID) + "?shot=" + url.QueryEscape(shotID)
 }
 
 // inspectorURL is the Shot Inspector page.
-func inspectorURL(shotID string) string { return "/shots/" + shotID }
+func inspectorURL(shotID string) string { return paths.Shot(shotID) }
 
-func shotActionURL(shotID, action string) string { return "/shots/" + shotID + "/" + action }
+func shotActionURL(shotID, action string) string { return paths.Shot(shotID, action) }
 
-func shotProgressURL(shotID string) string { return "/ws/shots/" + shotID }
+func shotProgressURL(shotID string) string { return paths.ShotProgress(shotID) }
 
 // showsProgressPlayer reports whether the card carries a mam-video-player that follows the Shot's
 // progress itself. That player is then the card's only /ws/shots/:id connection; shot.ts waits for its
@@ -66,11 +67,11 @@ func showsProgressPlayer(s domain.Shot) bool {
 	return s.State == domain.ShotGenerating || s.State == domain.ShotJudging
 }
 
-func takeComparisonURL(shotID string) string { return "/shots/" + shotID + "/takes" }
+func takeComparisonURL(shotID string) string { return paths.Shot(shotID, "takes") }
 
-func takeJudgeResultURL(takeID string) string { return "/api/v1/takes/" + takeID + "/judge-result" }
+func takeJudgeResultURL(takeID string) string { return paths.APITake(takeID, "judge-result") }
 
-func takeActionURL(takeID, action string) string { return "/takes/" + takeID + "/" + action }
+func takeActionURL(takeID, action string) string { return paths.Take(takeID, action) }
 
 // ShotActions starts the generation of a Shot (optionally with an additional direction) or the
 // building of its Reference Pack. Both answer with the Shot card in the GENERATING state.
@@ -121,7 +122,7 @@ templ TakeRow(t domain.Take) {
 				}
 				@atoms.LinkButton("除外", templ.Attributes{
 					"type":       "button",
-					"hx-delete":  "/takes/" + t.ID,
+					"hx-delete":  paths.Take(t.ID),
 					"hx-target":  "#shot-" + t.ShotID,
 					"hx-swap":    "outerHTML",
 					"hx-confirm": "この Take を除外しますか？",
@@ -131,7 +132,7 @@ templ TakeRow(t domain.Take) {
 			@atoms.Badge(tone, label)
 			@atoms.Button(atoms.ToneNeutral, "Repair", templ.Attributes{
 				"type":      "button",
-				"hx-post":   "/takes/" + t.ID + "/repair",
+				"hx-post":   paths.Take(t.ID, "repair"),
 				"hx-target": "#shot-" + t.ShotID,
 				"hx-swap":   "outerHTML",
 			})

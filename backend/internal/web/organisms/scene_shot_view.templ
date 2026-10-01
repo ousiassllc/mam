@@ -175,7 +175,7 @@ templ sceneForm(d SceneShotData) {
 templ shotForm(d SceneShotData) {
 	<form
 		class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3"
-		hx-post={ "/scenes/" + d.Scene.ID + "/shots" }
+		hx-post={ paths.Scene(d.Scene.ID, "shots") }
 		hx-target="#scene-shot-view"
 		hx-swap="outerHTML"
 	>
