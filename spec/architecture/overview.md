@@ -203,7 +203,7 @@ HALT の3パターン（ページルート/アクションルート/APIルート
 | アクションルート | `POST /shots/:id/generate`, `POST /takes/:id/select`, `PUT /shots/:id/locks` | しない | フラグメントのみ | Gin |
 | APIルート | `GET /api/v1/projects/:id`, `POST /api/v1/shots/:id/generate` | しない | JSON（Lit Web Components向け） | Huma |
 
-Lit Web Components（Video Player/Timeline Editor/Take Comparator）は `/api/v1` の JSON API のみを利用し、HTMX リクエストをトリガーしない（HALTの境界ルールに従う）。生成進捗は WebSocket（`/ws/shots/:id`）で配信する。チャット画面は、WebSocket（`/ws/projects/:id`）の新着通知を受けて `GET /projects/:id/messages?after=` のフラグメントを HTMX で取得・追記する（WebSocket では本文を配信しない）。
+Lit Web Components（Video Player/Timeline Editor/Take Comparator）はデータ取得を `/api/v1` の JSON API（GET）で行い、保存・選択などの更新は JSON API の応答がサーバー側から渡すアクションルート（`save_url` / `select_url` など。`PUT /edit-timelines/:id`、`POST /takes/:id/select` 等）へ API クライアント経由の CSRF トークン付き `fetch` で送る。HTMX リクエストはトリガーしない（HALTの境界ルールに従う）。生成進捗は WebSocket（`/ws/shots/:id`）で配信する。チャット画面は、WebSocket（`/ws/projects/:id`）の新着通知を受けて `GET /projects/:id/messages?after=` のフラグメントを HTMX で取得・追記する（WebSocket では本文を配信しない）。
 
 ## 8. Lit Web Components 一覧
 
@@ -268,3 +268,4 @@ HALT のレイヤー別テスト方針を踏襲する。
 | 1.8 | 2026-09-30 | §5 に `media`（ffmpeg / ffprobe）を追加。Lit コンポーネントのテストは `*.wtest.ts` を `@web/test-runner` で実行し、`lib` の純関数は vitest で検証する | M1「Take システムと補助ビュー」（Issue #11）でプレビュー用プロキシ・部分採用の合成と Lit コンポーネントのテスト方式を実装したため |
 | 1.9 | 2026-10-01 | §8 の Lit コンポーネントから `<mam-branch-tree>` を除き 4 → 3 に変更（Branch ツリーは Templ + HTMX でサーバー描画）。`static/src/components/branch-tree/` を削除 | Branch ツリーは HALT の Lit 使用基準に該当しないため（Issue #40） |
 | 1.10 | 2026-10-01 | §6 の `LoopbackOnly` の説明に、状態変更リクエスト・WebSocket では `Origin` の host:port が `Host` と一致することを求める規則を追記 | 実装が `Origin` のホストがループバックかだけを見ており、同一ホスト上の別ポートのページが通る状態だったため（Issue #70） |
+| 1.11 | 2026-10-01 | §7 の Lit の通信範囲を「`/api/v1` の GET + サーバーが渡すアクションルートへの CSRF 付き `fetch`（HTMX は使わない）」に修正 | 実装の Timeline Editor・Take Comparator が `save_url` / `select_url` 等のアクションルートへ PUT/POST/DELETE しており、「JSON API のみ」の記述と乖離していたため（Issue #163） |
