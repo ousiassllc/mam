@@ -36,7 +36,7 @@ class ChatWorkspace {
   private stickToBottom = true; // is the thread scrolled to the bottom (so new messages should be followed)?
   /** Fetches the messages after the last one shown; requests are merged and a failure is retried. */
   private readonly syncer = createSyncer({
-    run: () => htmx.ajax('get', messagesUrl(this.projectId, this.lastMessageId()), { target: THREAD, swap: 'beforeend' }),
+    run: () => htmx.ajax('get', messagesUrl(this.projectId, this.lastMessageId()), { target: THREAD, swap: 'beforeend', source: THREAD }),
     onGiveUp: () => showToast(AJAX_FAILED_MESSAGE),
   });
 
