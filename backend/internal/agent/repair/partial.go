@@ -56,6 +56,24 @@ func (a *Agent) StartPartial(ctx context.Context, takeID string, req PartialRequ
 	if err != nil {
 		return domain.Job{}, err
 	}
+	// What can be refused without the Prompt Planner (a paid LLM call) is refused first: StartRepair
+	// below still decides who owns the Shot.
+	if a.Splicer == nil {
+		return domain.Job{}, ErrSpliceUnavailable
+	}
+	if shot.Shot.State == domain.ShotGenerating || shot.Shot.State == domain.ShotRepairing {
+		return domain.Job{}, ErrBusy // the claim below decides for good; this one spares the Planner
+	}
+	locks, err := a.Generations.ShotLocks(ctx, shot.Shot.ID)
+	if err != nil {
+		return domain.Job{}, err
+	}
+	if locks.Locked(domain.ParamPrompt) {
+		return domain.Job{}, &repository.LockedParametersError{Parameters: []domain.LockParameter{domain.ParamPrompt}}
+	}
+	if _, err := a.Regenerator.RegenerationStrategy(ctx, shot, generation.Regeneration{Action: domain.RepairPartialRegeneration}); err != nil {
+		return domain.Job{}, err
+	}
 	if prep, ok := a.Regenerator.(partialPreparer); ok {
 		preserve := make([]string, len(req.Preserve))
 		for i, part := range req.Preserve {
@@ -71,19 +89,6 @@ func (a *Agent) StartPartial(ctx context.Context, takeID string, req PartialRequ
 		if checked {
 			req.Spec, req.NoteRefs = &spec, notes
 		}
-	}
-	if a.Splicer == nil {
-		return domain.Job{}, ErrSpliceUnavailable
-	}
-	locks, err := a.Generations.ShotLocks(ctx, shot.Shot.ID)
-	if err != nil {
-		return domain.Job{}, err
-	}
-	if locks.Locked(domain.ParamPrompt) {
-		return domain.Job{}, &repository.LockedParametersError{Parameters: []domain.LockParameter{domain.ParamPrompt}}
-	}
-	if _, err := a.Regenerator.RegenerationStrategy(ctx, shot, generation.Regeneration{Action: domain.RepairPartialRegeneration}); err != nil {
-		return domain.Job{}, err
 	}
 	claimed, err := a.Generations.StartRepair(ctx, shot.Shot.ID)
 	if err != nil {

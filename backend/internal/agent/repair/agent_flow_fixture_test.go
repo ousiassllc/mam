@@ -35,6 +35,7 @@ type fakeRegen struct {
 	// beforeRegenerate runs at the start of Regenerate (a test cancels the context there).
 	beforeRegenerate func()
 	strategyCalls    []domain.RepairAction
+	prepareCalls     int // PreparePartial calls: each one is a Prompt Planner call in production
 	regenCalls       []generation.Regeneration
 	made             []string
 }
@@ -47,6 +48,14 @@ func (f *fakeRegen) RegenerationStrategy(_ context.Context, _ repository.ShotRef
 		return generation.Strategy{}, err
 	}
 	return generation.Strategy{CostPerTake: f.cost[r.Action]}, nil
+}
+
+// PreparePartial stands for the Prompt Planner call of a Partial Regeneration; it prepares nothing.
+func (f *fakeRegen) PreparePartial(context.Context, repository.ShotRef, generation.Regeneration) (domain.ShotSpec, []domain.NoteRef, bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.prepareCalls++
+	return domain.ShotSpec{}, nil, false, nil
 }
 
 func (f *fakeRegen) Regenerate(ctx context.Context, _ repository.ShotRef, r generation.Regeneration) (string, error) {

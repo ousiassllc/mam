@@ -704,8 +704,10 @@ func TestStartPartial_RefusesWhatCannotBeRegeneratedByRange(t *testing.T) {
 		take    string
 		req     repair.PartialRequest
 		check   func(t *testing.T, err error)
+		// noPlanner marks the refusals that do not depend on the Planner's work.
+		noPlanner bool
 	}{
-		{name: "no ffmpeg", take: "t1", req: repair.PartialRequest{Ranges: ranges},
+		{name: "no ffmpeg", noPlanner: true, take: "t1", req: repair.PartialRequest{Ranges: ranges},
 			check: func(t *testing.T, err error) { assert.ErrorIs(t, err, repair.ErrSpliceUnavailable) }},
 		{name: "no range", splicer: true, take: "t1",
 			check: func(t *testing.T, err error) { assert.ErrorContains(t, err, "needs a time range") }},
@@ -714,7 +716,7 @@ func TestStartPartial_RefusesWhatCannotBeRegeneratedByRange(t *testing.T) {
 		{name: "take without a file", splicer: true, take: "t2", req: repair.PartialRequest{Ranges: ranges},
 			setup: func(t *testing.T, f *fx) { f.addTake(t, "t2", "") },
 			check: func(t *testing.T, err error) { assert.ErrorContains(t, err, "no file") }},
-		{name: "prompt is LOCKed", splicer: true, take: "t1", req: repair.PartialRequest{Ranges: ranges},
+		{name: "prompt is LOCKed", noPlanner: true, splicer: true, take: "t1", req: repair.PartialRequest{Ranges: ranges},
 			setup: func(t *testing.T, f *fx) {
 				execAll(t, f.db, fmt.Sprintf(`INSERT INTO lock (id, project_id, target_type, target_id, parameter_name, mode) VALUES ('l1', 'p1', '%s', 'sh1', '%s', 'lock')`, domain.LockTargetShot, domain.ParamPrompt))
 			},
@@ -723,12 +725,12 @@ func TestStartPartial_RefusesWhatCannotBeRegeneratedByRange(t *testing.T) {
 				require.ErrorAs(t, err, &locked)
 				assert.Equal(t, []domain.LockParameter{domain.ParamPrompt}, locked.Parameters)
 			}},
-		{name: "budget exceeded", splicer: true, take: "t1", req: repair.PartialRequest{Ranges: ranges},
+		{name: "budget exceeded", noPlanner: true, splicer: true, take: "t1", req: repair.PartialRequest{Ranges: ranges},
 			setup: func(_ *testing.T, f *fx) {
 				f.regen.strategyErr = map[domain.RepairAction]error{domain.RepairPartialRegeneration: generation.ErrBudgetExceeded}
 			},
 			check: func(t *testing.T, err error) { assert.ErrorIs(t, err, generation.ErrBudgetExceeded) }},
-		{name: "shot busy", splicer: true, take: "t1", req: repair.PartialRequest{Ranges: ranges},
+		{name: "shot busy", noPlanner: true, splicer: true, take: "t1", req: repair.PartialRequest{Ranges: ranges},
 			setup: func(t *testing.T, f *fx) {
 				require.NoError(t, f.gens.SetShotState(context.Background(), "sh1", domain.ShotGenerating))
 			},
@@ -752,6 +754,9 @@ func TestStartPartial_RefusesWhatCannotBeRegeneratedByRange(t *testing.T) {
 			tt.check(t, err)
 			assert.Empty(t, f.jobs.enqueued())
 			assert.Equal(t, before, f.shotState(t), "a refused request leaves the shot as it was")
+			if tt.noPlanner {
+				assert.Zero(t, f.regen.prepareCalls, "a request that is refused anyway does not pay for the Prompt Planner")
+			}
 		})
 	}
 }
