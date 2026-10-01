@@ -334,7 +334,7 @@ Dialogue と Narration は常に作る。
 
 ### 14.4 Lip Sync
 
-MAX QUALITY のみ。話者付きの Dialogue の行（Narration は対象外）が入っているクリップごとに、そのクリップの Take の該当範囲を切り出した動画と、そのクリップの行を本来の時刻に置いた音声（ffmpeg で作る）を Sync Labs に渡し、返った動画を `audio/<edit_timeline_id>/<run>/lipsync-NN.mp4` に保存して Audio Timeline の `lip_sync` に記録する。書き出し（Export）はそのクリップの映像を Take の代わりにこの動画から切り出す。行がクリップをまたぐ・どのクリップにも入らない場合と、失敗した場合は、そのクリップの Lip Sync だけ諦めて `skipped` に残す（音声は作る）。Sync Labs のキーがなければ、残りのクリップも試さない。
+MAX QUALITY のみ。話者付きの Dialogue の行（Narration は対象外）が入っているクリップごとに、そのクリップの Take の該当範囲を切り出した動画と、そのクリップの行を本来の時刻に置いた音声（ffmpeg で作る）を Sync Labs に渡し、返った動画を `<project_id>/audio/<edit_timeline_id>/<run>/lipsync-NN.mp4`（assets ディレクトリ直下からの相対パス）に保存して Audio Timeline の `lip_sync` に記録する。書き出し（Export）はそのクリップの映像を Take の代わりにこの動画から切り出す。行がクリップをまたぐ・どのクリップにも入らない場合と、失敗した場合は、そのクリップの Lip Sync だけ諦めて `skipped` に残す（音声は作る）。Sync Labs のキーがなければ、残りのクリップも試さない。
 
 ### 14.5 コストと予算（F-22）
 
@@ -379,3 +379,4 @@ MAX QUALITY のみ。話者付きの Dialogue の行（Narration は対象外）
 | 1.20 | 2026-10-01 | §4.5・§10 の `§12.2`・`§12.4`・`§13` に `spec/spec.md` を付けた | model-adapters.md 自身の §12（音声）・§13（Multi-model routing）と読み違えられたため（Issue #185） |
 | 1.21 | 2026-10-01 | §2 と §9.3 の再試行の待ち時間を、「`Retry-After` があれば優先」から「`Retry-After` をバックオフの下限として加味し `max_delay_ms` で頭打ち」に修正 | 実装（`resilience.Do`）は `min(max(バックオフ, Retry-After), MaxDelay)` で待つ。上限なしだと過大な指示で呼び出しが止まるため仕様を実装に合わせた（Issue #195） |
 | 1.22 | 2026-10-01 | §12 のコストの記述を、「TTS は `cost_ledger_entry` に記録しない」から「Audio Director が TTS を含む音声の呼び出しを見積額で記録する（§14.5）」に直した | 実装（`audiodirector/cost.go` の `spending.record`）は TTS・Music・SFX・Lip Sync の呼び出しごとに台帳へ書き、§6・§14.5 の記述と矛盾していたため（Issue #217） |
+| 1.23 | 2026-10-01 | §14.4 の Lip Sync 動画の保存先を `audio/<edit_timeline_id>/…` から `<project_id>/audio/<edit_timeline_id>/<run>/lipsync-NN.mp4`（assets 直下からの相対パス）に直した | 実装（`audiodirector/director.go` の `rel: path.Join(in.ProjectID, "audio", …)`）は Project ID を先頭に付けており、`er.md` の `<project_id>/exports/…` と同じ流儀のため（Issue #219） |
