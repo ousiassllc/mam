@@ -3,8 +3,7 @@
  * only listens to /ws/projects/:id and asks for HTML fragments when told something changed
  * (the socket never carries a body), and handles the composer (reply target, attachments, Enter to send).
  */
-import htmx from 'htmx.org';
-import { ajaxGet, showToast } from './ajax';
+import { ajaxChecked, ajaxGet, showToast } from './ajax';
 import { createConnectionNotice } from './components/lib/connection-notice';
 import { AJAX_FAILED_MESSAGE } from './components/lib/ajax';
 import { selfAndDescendants } from './components/lib/query';
@@ -42,7 +41,7 @@ class ChatWorkspace {
   private stickToBottom = true; // is the thread scrolled to the bottom (so new messages should be followed)?
   /** Fetches the messages after the last one shown; requests are merged and a failure is retried. */
   private readonly syncer = createSyncer({
-    run: () => htmx.ajax('get', messagesUrl(this.projectId, this.lastMessageId()), { target: THREAD, swap: 'beforeend', source: THREAD }),
+    run: () => ajaxChecked('get', messagesUrl(this.projectId, this.lastMessageId()), { target: THREAD, swap: 'beforeend', source: THREAD }),
     onGiveUp: () => showToast(AJAX_FAILED_MESSAGE),
   });
 

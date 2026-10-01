@@ -4,6 +4,7 @@
  * not happen. The wrapper logs it, tells the user and returns whether the request went through.
  */
 import { createLogger } from './logger';
+import { isSuccessResponse } from './thread';
 
 export interface AjaxContext {
   target: string;
@@ -21,6 +22,30 @@ export interface AjaxContext {
 
 /** htmx.ajax, as far as this module uses it. */
 export type AjaxFn = (verb: 'get', url: string, context: AjaxContext) => Promise<unknown>;
+
+/**
+ * Wraps htmx.ajax so that a non-2xx response rejects as well. htmx.ajax resolves for 4xx/5xx (only a
+ * network error, a timeout or an abort reject), and main.ts clears `isError` for HTML error responses, so
+ * the status is read from the `htmx:afterRequest` of the request's source element, which fires before the
+ * promise settles. `findSource` resolves the context's source/target selector to that element.
+ */
+export function failOnHttpError(ajax: AjaxFn, findSource: (selector: string) => EventTarget | null): AjaxFn {
+  return async (verb, url, context) => {
+    const source = findSource(context.source ?? context.target);
+    let status: number | undefined;
+    const onAfterRequest = (event: Event) => {
+      const detail = (event as CustomEvent<{ xhr?: { status: number }; pathInfo?: { requestPath?: string } }>).detail;
+      if (detail?.pathInfo?.requestPath === url) status = detail.xhr?.status;
+    };
+    source?.addEventListener('htmx:afterRequest', onAfterRequest);
+    try {
+      await ajax(verb, url, context);
+    } finally {
+      source?.removeEventListener('htmx:afterRequest', onAfterRequest);
+    }
+    if (status !== undefined && !isSuccessResponse({ status })) throw new Error(`${verb.toUpperCase()} ${url} responded ${status}`);
+  };
+}
 
 export const AJAX_FAILED_MESSAGE = '通信に失敗しました。しばらくしてからもう一度お試しください。';
 
