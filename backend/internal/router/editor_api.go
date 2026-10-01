@@ -8,6 +8,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 type transitionBody struct {
@@ -79,9 +80,9 @@ func newEditTimelineBody(v service.TimelineView) editTimelineBody {
 		ID: v.ID, VersionNumber: v.VersionNumber, CreatedAt: v.CreatedAt, Duration: v.Duration,
 		Clips:          make([]editClipBody, len(v.Clips)),
 		BranchID:       v.BranchID,
-		SaveURL:        "/edit-timelines/" + v.ID,
-		RequestShotURL: "/edit-timelines/" + v.ID + "/request-additional-shot",
-		PreviewURL:     "/edit-timelines/" + v.ID + "/preview",
+		SaveURL:        paths.EditTimeline(v.ID),
+		RequestShotURL: paths.EditTimeline(v.ID, "request-additional-shot"),
+		PreviewURL:     paths.EditTimeline(v.ID, "preview"),
 		Limits:         editorLimitsBody{MinClipSeconds: domain.MinClipSeconds, MaxTransitionSeconds: domain.MaxTransitionSeconds, MaxClips: domain.MaxClips, MaxCaptionRunes: domain.MaxCaptionRunes},
 		Readonly:       !v.Editable,
 	}

@@ -5,9 +5,8 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
-
-func noteURL(id string) string { return "/notes/" + id }
 
 func sourceNoteLabel(s domain.NoteSource) string {
 	if s == domain.NoteSourceChat {
@@ -36,7 +35,7 @@ templ NoteCard(n domain.NoteView) {
 				@atoms.Badge(atoms.BadgeNeutral, "アーカイブ済み")
 			}
 		</div>
-		<form class="flex flex-col gap-2" hx-put={ noteURL(n.ID) } hx-target="#note-list" hx-swap="outerHTML">
+		<form class="flex flex-col gap-2" hx-put={ paths.Note(n.ID) } hx-target="#note-list" hx-swap="outerHTML">
 			<label class="flex flex-col gap-1 text-xs text-neutral-400" for={ "note-title-" + n.ID }>
 				タイトル
 				@atoms.Input(atoms.FieldMd, "", templ.Attributes{
@@ -87,7 +86,7 @@ templ NoteCard(n domain.NoteView) {
 			if n.Archived() {
 				@atoms.Button(atoms.ToneNeutral, "アーカイブを解除", templ.Attributes{
 					"type":      "button",
-					"hx-put":    noteURL(n.ID),
+					"hx-put":    paths.Note(n.ID),
 					"hx-vals":   hxVals(map[string]string{"archived": "false"}),
 					"hx-target": "#note-list",
 					"hx-swap":   "outerHTML",
@@ -95,7 +94,7 @@ templ NoteCard(n domain.NoteView) {
 			} else {
 				@atoms.Button(atoms.ToneDanger, "アーカイブ", templ.Attributes{
 					"type":       "button",
-					"hx-delete":  noteURL(n.ID),
+					"hx-delete":  paths.Note(n.ID),
 					"hx-target":  "#note-list",
 					"hx-swap":    "outerHTML",
 					"hx-confirm": "アーカイブしますか？（メモは残りますが、以降の推論には渡されません）",
