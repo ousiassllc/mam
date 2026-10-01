@@ -307,14 +307,20 @@ func (r *PlanRepository) AppendContinuation(ctx context.Context, projectID strin
 }
 
 // RemoveShots deletes Shots that were added for a Reshoot round whose generation never started.
-// A Shot that is no longer PLANNING is left alone (its job is already running).
-func (r *PlanRepository) RemoveShots(ctx context.Context, ids []string) error {
+// A Shot that is no longer PLANNING is left alone (its job is already running). sceneIDs are the
+// Scenes that request created for them: the ones left without a Shot are deleted too.
+func (r *PlanRepository) RemoveShots(ctx context.Context, ids, sceneIDs []string) error {
 	if len(ids) == 0 {
 		return nil
 	}
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		for _, id := range ids {
 			if _, err := tx.ExecContext(ctx, `DELETE FROM shot WHERE id = ? AND state = ?`, id, domain.ShotPlanning); err != nil {
+				return err
+			}
+		}
+		for _, id := range sceneIDs {
+			if _, err := tx.ExecContext(ctx, `DELETE FROM scene WHERE id = ? AND NOT EXISTS (SELECT 1 FROM shot WHERE scene_id = scene.id)`, id); err != nil {
 				return err
 			}
 		}

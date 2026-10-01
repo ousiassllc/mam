@@ -57,7 +57,7 @@ func (s *EditorService) requestShots(ctx context.Context, ver domain.EditTimelin
 	if verdict := policy.Effective().CanRetry(rounds, 0, 0, 0); verdict != domain.RetryAllowed {
 		return s.escalateReshoot(ctx, ver, res, rounds, verdict)
 	}
-	reqs, err := s.addReshootShots(ctx, ver, res.Findings)
+	reqs, newScenes, err := s.addReshootShots(ctx, ver, res.Findings)
 	if err != nil {
 		return EditorView{}, err
 	}
@@ -84,7 +84,7 @@ func (s *EditorService) requestShots(ctx context.Context, ver domain.EditTimelin
 		for i, r := range failed {
 			ids[i] = r.ShotID
 		}
-		if err := s.plans.RemoveShots(ctx, ids); err != nil {
+		if err := s.plans.RemoveShots(ctx, ids, newScenes); err != nil {
 			s.logger.Error("remove additional shots that failed to start", "err", err)
 		}
 	}
@@ -160,17 +160,18 @@ func (s *EditorService) readyToRequestShots(ctx context.Context, ver domain.Edit
 }
 
 // addReshootShots adds, as Shots of the Project, the Shots the findings ask for, each anchored to
-// the clip it follows.
-func (s *EditorService) addReshootShots(ctx context.Context, ver domain.EditTimelineVersion, findings []domain.EditorFinding) ([]repository.NewReshoot, error) {
+// the clip it follows. It also returns the Scenes it created for them.
+func (s *EditorService) addReshootShots(ctx context.Context, ver domain.EditTimelineVersion, findings []domain.EditorFinding) ([]repository.NewReshoot, []string, error) {
 	projectID, branchID := ver.ProjectID, ver.BranchID
 	idx, err := s.shotIndex(ctx, projectID, branchID)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	clips := ver.Timeline.Clips
 	var (
 		reqs       []repository.NewReshoot
 		extraScene string
+		newScenes  []string
 	)
 	for _, f := range findings {
 		need := f.Need
@@ -194,17 +195,18 @@ func (s *EditorService) addReshootShots(ctx context.Context, ver domain.EditTime
 			}
 		}
 		if shot, err = s.plans.AppendContinuation(ctx, projectID, newScene, shot); err != nil {
-			return nil, notFound(err)
+			return nil, nil, notFound(err)
 		}
 		if newScene != nil {
 			extraScene = shot.SceneID
+			newScenes = append(newScenes, extraScene)
 		}
 		reqs = append(reqs, repository.NewReshoot{ShotID: shot.ID, AfterShotID: anchor.ShotID, Kind: need.Kind, Objective: shot.Objective, DurationSeconds: shot.Duration})
 	}
 	if len(reqs) == 0 {
-		return nil, conflict("追加できる Shot がありません（判定に追加 Shot の指定がありません）")
+		return nil, nil, conflict("追加できる Shot がありません（判定に追加 Shot の指定がありません）")
 	}
-	return reqs, nil
+	return reqs, newScenes, nil
 }
 
 func clipKindLabel(k domain.ClipKind) string {
