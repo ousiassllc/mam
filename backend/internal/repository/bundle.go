@@ -215,9 +215,10 @@ func (r *BundleRepository) Import(ctx context.Context, data domain.BundleData) e
 }
 
 // checkBundle verifies what can be verified without the database: known tables, one Project row
-// with the bundle's ID, and that every row that names a Project names this one.
+// with the bundle's ID, that every row ID is path-safe, and that every row that names a Project
+// names this one.
 func checkBundle(data domain.BundleData) error {
-	if !domain.ValidBundleProjectID(data.ProjectID) {
+	if !domain.ValidBundleID(data.ProjectID) {
 		return fmt.Errorf("%w: project id", ErrInvalidBundle)
 	}
 	known := map[string]bool{}
@@ -233,6 +234,13 @@ func checkBundle(data domain.BundleData) error {
 		}
 		seen[t.Name] = true
 		for _, row := range t.Rows {
+			// Row IDs are joined into file paths (take previews, audio directories, edit previews), so every
+			// one is held to the Project ID's character set.
+			if id, ok := row["id"]; ok {
+				if s, isString := id.(string); !isString || !domain.ValidBundleID(s) {
+					return fmt.Errorf("%w: %s has an unsafe id", ErrInvalidBundle, t.Name)
+				}
+			}
 			if t.Name == "project" && row["id"] != data.ProjectID {
 				return fmt.Errorf("%w: a project row of another project", ErrInvalidBundle)
 			}

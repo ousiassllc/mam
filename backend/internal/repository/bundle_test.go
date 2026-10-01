@@ -219,3 +219,44 @@ func TestBundleRepository_ImportRejectsProjectIDsThatCollideWithServerDirectorie
 		assert.ErrorIs(t, r.Import(ctx, data), repository.ErrInvalidBundle, id)
 	}
 }
+
+// The ID of a row is joined into file paths (audio directory, previews), so a bundle with an ID
+// that is not [A-Za-z0-9_-]{1,64} is refused whole.
+func TestBundleRepository_ImportRejectsRowIDsThatCouldEscapeAsFilePaths(t *testing.T) {
+	tables := []string{"take", "edit_timeline_version", "editor_judge_result", "state_diff", "repair_shadow", "lock", "scene"}
+	ids := []string{
+		"x/../y", "x/../../y", "x/../../../../y", "..", ".", ".hidden", `a\b`, `..\..\x`, "a/b", "a%2Fb", "a\x00b", "a\nb",
+		"", strings.Repeat("x", 65),
+	}
+	for _, table := range tables {
+		for _, id := range ids {
+			ctx := context.Background()
+			db := openTestDB(t)
+			seedDeepProject(t, db, "a")
+			r := repository.NewBundleRepository(db)
+			data, err := r.Export(ctx, "a")
+			require.NoError(t, err)
+			require.NoError(t, exec(t, db, `DELETE FROM project WHERE id = 'a'`)) // foreign keys cascade
+			setBundleField(t, data, table, "id", id)
+
+			assert.ErrorIs(t, r.Import(ctx, data), repository.ErrInvalidBundle, "%s.id %q", table, id)
+			assert.Equal(t, map[string]int{"project": 0, "take": 0, "edit_timeline_version": 0},
+				countRows(t, db, "project", "take", "edit_timeline_version"), "nothing is written")
+		}
+	}
+}
+
+func TestBundleRepository_ImportKeepsGeneratedStyleRowIDs(t *testing.T) {
+	ctx := context.Background()
+	db := openTestDB(t)
+	seedDeepProject(t, db, "a")
+	r := repository.NewBundleRepository(db)
+	data, err := r.Export(ctx, "a")
+	require.NoError(t, err)
+	require.NoError(t, exec(t, db, `DELETE FROM project WHERE id = 'a'`))
+	setBundleField(t, data, "scene", "id", "0b9f1a52-3c44-4e7e-9d6a-1c2d3e4f5a6b")
+	setBundleField(t, data, "shot", "scene_id", "0b9f1a52-3c44-4e7e-9d6a-1c2d3e4f5a6b")
+
+	require.NoError(t, r.Import(ctx, data))
+	assert.Equal(t, 1, countRows(t, db, "scene")["scene"])
+}

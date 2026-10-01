@@ -107,18 +107,19 @@ func (d BundleData) AudioTimelinePaths() ([]string, error) {
 // ValidBundleFilePath reports whether p is a safe asset-relative path of the Project: slash
 // separated, clean, below the Project's own directory, with no ".." and no absolute or drive part.
 func ValidBundleFilePath(projectID, p string) bool {
-	if !ValidBundleProjectID(projectID) || p == "" || strings.ContainsAny(p, "\\:\x00") {
+	if !ValidBundleID(projectID) || p == "" || strings.ContainsAny(p, "\\:\x00") {
 		return false
 	}
 	return path.Clean(p) == p && strings.HasPrefix(p, projectID+"/") && len(p) > len(projectID)+1 &&
 		!strings.Contains(p, "/../") && !strings.HasSuffix(p, "/..")
 }
 
-// ValidBundleProjectID reports whether id can be the name of the Project's file directory and an ID
-// the pages can use: the generated form (a UUID) or [A-Za-z0-9_-]{1,64}. Anything else (a leading ".",
-// ".previews" or ".staging" inside the assets directory, quotes, control characters, URL syntax)
-// would collide with the server's own directories or break headers and URLs.
-func ValidBundleProjectID(id string) bool {
+// ValidBundleID reports whether id can be the name of the Project's file directory, a row ID that the
+// server joins into a file path, and an ID the pages can use: the generated form (a UUID) or
+// [A-Za-z0-9_-]{1,64}. Anything else (a leading ".", ".previews" or ".staging" inside the assets
+// directory, path separators, "..", quotes, control characters, URL syntax) would collide with the
+// server's own directories, escape the assets directory, or break headers and URLs.
+func ValidBundleID(id string) bool {
 	if id == "" || len(id) > 64 {
 		return false
 	}

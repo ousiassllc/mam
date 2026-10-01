@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"path/filepath"
 	"slices"
 	"strings"
 
@@ -19,7 +18,10 @@ func (s *EditorService) rough(ctx context.Context, ver domain.EditTimelineVersio
 	if s.tools == nil {
 		return "", media.Info{}, ErrUnavailable
 	}
-	dst := filepath.Join(s.assetsDir, previewDir, "edit-"+ver.ID+".mp4")
+	dst := s.previewPath("edit-" + ver.ID + ".mp4")
+	if dst == "" {
+		return "", media.Info{}, ErrNotFound
+	}
 	unlock := lockFor(&s.preview, dst)
 	defer unlock()
 	if info, err := s.tools.Probe(ctx, dst); err == nil {

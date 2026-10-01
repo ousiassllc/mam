@@ -8,6 +8,7 @@ import (
 	"path"
 	"path/filepath"
 	"slices"
+	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
@@ -107,6 +108,10 @@ func New(deps Deps) *Director {
 // listed in Skipped. Everything is then mixed with the sound of the Rough Cut and normalized with
 // local DSP. A cut without lines and without sound gets no mix.
 func (d *Director) Produce(ctx context.Context, in Input) (domain.AudioTimeline, error) {
+	rel := path.Join(in.ProjectID, "audio", in.EditTimelineID, domain.NewID())
+	if err := d.checkRunDir(in.ProjectID, rel); err != nil {
+		return domain.AudioTimeline{}, err
+	}
 	target := in.TargetLUFS
 	if target == 0 {
 		target = domain.DefaultTargetLUFS
@@ -144,7 +149,7 @@ func (d *Director) Produce(ctx context.Context, in Input) (domain.AudioTimeline,
 		return domain.AudioTimeline{}, &BudgetError{Needed: speechCost, Remaining: spend.remaining()}
 	}
 
-	r := &run{d: d, in: in, tl: &tl, spend: spend, scope: scope, rel: path.Join(in.ProjectID, "audio", in.EditTimelineID, domain.NewID())}
+	r := &run{d: d, in: in, tl: &tl, spend: spend, scope: scope, rel: rel}
 	// The plan costs nothing outside: a planner failure ends the run before any provider is paid.
 	if err := r.planScenes(ctx); err != nil {
 		return domain.AudioTimeline{}, err
@@ -175,6 +180,23 @@ func (d *Director) Produce(ctx context.Context, in Input) (domain.AudioTimeline,
 	}
 	tl.MixPath, tl.MeasuredLUFS, tl.TruePeakDB = mixRel, loud.Integrated, loud.TruePeak
 	return tl, nil
+}
+
+// ErrUnsafePath is returned when the ID of the Project or the Edit Timeline would put the audio of
+// the run outside the Project's own audio directory (a row ID of an imported bundle is not trusted).
+var ErrUnsafePath = errors.New("audiodirector: the audio directory would be outside the Project's directory")
+
+// checkRunDir makes sure rel, the directory of a run, lies below <projectID>/audio/ inside Root.
+// It runs before anything is paid for.
+func (d *Director) checkRunDir(projectID, rel string) error {
+	if !strings.HasPrefix(rel, projectID+"/audio/") {
+		return ErrUnsafePath
+	}
+	within, err := filepath.Rel(d.Root, filepath.Join(d.Root, filepath.FromSlash(rel)))
+	if err != nil || within == ".." || strings.HasPrefix(within, ".."+string(filepath.Separator)) || filepath.IsAbs(within) {
+		return ErrUnsafePath
+	}
+	return nil
 }
 
 // run is one Produce.
