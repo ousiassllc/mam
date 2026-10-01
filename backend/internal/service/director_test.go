@@ -297,6 +297,37 @@ func TestDirectorCommand_DirectionPrecedesTheProgressCardInTheThread(t *testing.
 	assert.Less(t, direction, card, "the direction is listed before the progress card it caused")
 }
 
+func TestDirectorCommand_DirectionIsCommittedBeforeTheProgressCardItCauses(t *testing.T) {
+	f := newGenFixture(t, true)
+	f.firstGeneration(t)
+	f.llm.planner = func(string) string { return plannerRewrite }
+	f.llm.interpreter = opsJSON(`{"type":"regenerate","changes":["camera"],"instruction":"Move the camera closer and keep it steady."}`)
+
+	_, err := f.svc.Director.DirectorCommand(context.Background(), f.shotID, "もう少し寄って")
+
+	require.NoError(t, err)
+	f.waitTakeCount(t, 6)
+	// A chat that is open asks only for the messages after the last one it shows; a direction committed
+	// after the progress card would be left out of every such sync, whatever its ID.
+	rows, err := f.db.Reader().QueryContext(context.Background(), `SELECT role, kind, content FROM chat_message WHERE project_id = ? ORDER BY rowid`, f.projectID)
+	require.NoError(t, err)
+	defer func() { _ = rows.Close() }()
+	direction, card := -1, -1
+	for i := 0; rows.Next(); i++ {
+		var role, kind, content string
+		require.NoError(t, rows.Scan(&role, &kind, &content))
+		if role == string(domain.RoleUser) && content == "もう少し寄って" {
+			direction = i
+		}
+		if kind == string(domain.KindProgress) {
+			card = i
+		}
+	}
+	require.NoError(t, rows.Err())
+	require.NotEqual(t, -1, card, "the progress card is in the thread")
+	assert.Less(t, direction, card, "the direction was committed before the progress card")
+}
+
 func TestDirectorCommand_LockedPartsSurviveWhateverThePlannerAnswers(t *testing.T) {
 	f := newGenFixture(t, true)
 	f.firstGeneration(t)
