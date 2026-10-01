@@ -7,6 +7,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms"
 	"github.com/ousiassllc/mam/backend/internal/web/pages"
 )
 
@@ -22,7 +23,7 @@ func AnalyticsPage(svc *service.AnalyticsService) gin.HandlerFunc {
 		}
 		data := pages.AnalyticsPageData{Project: view.Project, Metrics: view.Metrics}
 		if isHTMX(c) {
-			render(c, http.StatusOK, pages.AnalyticsBody(data))
+			render(c, http.StatusOK, organisms.AnalyticsPanel(data.Metrics))
 			return
 		}
 		render(c, http.StatusOK, pages.AnalyticsPage(middleware.CSRFToken(c), data))
