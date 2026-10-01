@@ -356,6 +356,14 @@ func (o *Orchestrator) makeTake(ctx context.Context, ref repository.ShotRef, pv 
 		}
 		return "", err
 	}
+	// The provider has charged for the video. Unless CreateTake writes it with the Take, the cost
+	// goes to the ledger by itself, so a local failure never leaves the spend uncounted.
+	taken := false
+	defer func() {
+		if !taken {
+			o.recordPaid(ctx, ref.ProjectID, ref.Shot.ID, out.Model, out.EstimatedCost, out.ActualCost)
+		}
+	}()
 	asset, err := o.files.store(ref.ProjectID, domain.AssetVideo, out.MimeType, out.File)
 	if err != nil {
 		return "", err
@@ -377,6 +385,7 @@ func (o *Orchestrator) makeTake(ctx context.Context, ref repository.ShotRef, pv 
 		o.files.remove(asset)
 		return "", err
 	}
+	taken = true
 	if candidate != "" {
 		title += " · " + candidate.Label()
 	}
@@ -392,6 +401,18 @@ func (o *Orchestrator) makeTake(ctx context.Context, ref repository.ShotRef, pv 
 		o.logger.Error("post take card failed", "take_id", takeID, "err", err)
 	}
 	return takeID, nil
+}
+
+// recordPaid writes the cost of an output the provider has charged for to the ledger when no Take
+// or Pack row will carry it. It does not depend on ctx: a client that went away must not leave
+// the spend uncounted (#243). A failed write is logged; the generation error stays the result.
+func (o *Orchestrator) recordPaid(ctx context.Context, projectID, shotID string, model domain.ModelName, estimated float64, actual *float64) {
+	err := o.gens.AddCost(context.WithoutCancel(ctx), domain.CostEntry{
+		ProjectID: projectID, ShotID: shotID, Provider: model, EstimatedCost: estimated, ActualCost: actual,
+	})
+	if err != nil {
+		o.logger.Error("record cost failed", "shot_id", shotID, "model", model, "err", err)
+	}
 }
 
 // counter counts finished Takes from concurrent goroutines and remembers the first one.
