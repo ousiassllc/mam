@@ -223,7 +223,7 @@ M1 は §5 のうち ElevenLabs の TTS（Dialogue / Narration）とローカル
 - **認証**: 設定画面の API キー（`credential.Store` のプロバイダー名 `elevenlabs`）。ヘッダー `xi-api-key`。キーがなければ音声生成は 502（「ElevenLabs の API キーが設定されていません」）
 - **TTS**: `POST {base}/v1/text-to-speech/{voice_id}`（既定 base `https://api.elevenlabs.io`、モデル `eleven_multilingual_v2`、日本語対応）。Dialogue と Narration はそれぞれ別の voice ID（既定は ElevenLabs の premade voice）。応答の音声（mp3）をそのままファイルにし、ffmpeg で扱う。429 はレート制限として利用者に伝え、リトライは行わない
 - **ミキシング・ラウドネス正規化**: すべてローカルの ffmpeg（外部 API を呼ばない）。TTS の行を `adelay` で Scene の開始時刻に置き、Take 自体の音声と `amix` で 1 本にし、`loudnorm` を 2 パス（測定 → 測定値を渡して線形補正）で −14 LUFS / −1.5 dBTP に揃える。測定値を Audio Timeline に保存する
-- **コスト**: TTS は `cost_ledger_entry` に記録しない（M1 の予算管理は動画 Take が対象。音声のコスト管理は M3）
+- **コスト**: M3 以降は Audio Director が TTS を含む音声の呼び出しを見積額で `cost_ledger_entry` に記録する（§14.5）
 
 ## 13. Multi-model routing（M3、`internal/agent/generation`）
 
@@ -378,3 +378,4 @@ MAX QUALITY のみ。話者付きの Dialogue の行（Narration は対象外）
 | 1.19 | 2026-10-01 | §9.3 のジョブに、シャットダウン（Ctrl+C など）で実行中に中断された非再開ジョブも失敗として扱う（キューに戻さない）ことを明記 | 実装が中断ジョブを queued に戻し、次回起動で再実行して二重課金になり得たため（Issue #194）。コードも失敗扱いに修正 |
 | 1.20 | 2026-10-01 | §4.5・§10 の `§12.2`・`§12.4`・`§13` に `spec/spec.md` を付けた | model-adapters.md 自身の §12（音声）・§13（Multi-model routing）と読み違えられたため（Issue #185） |
 | 1.21 | 2026-10-01 | §2 と §9.3 の再試行の待ち時間を、「`Retry-After` があれば優先」から「`Retry-After` をバックオフの下限として加味し `max_delay_ms` で頭打ち」に修正 | 実装（`resilience.Do`）は `min(max(バックオフ, Retry-After), MaxDelay)` で待つ。上限なしだと過大な指示で呼び出しが止まるため仕様を実装に合わせた（Issue #195） |
+| 1.22 | 2026-10-01 | §12 のコストの記述を、「TTS は `cost_ledger_entry` に記録しない」から「Audio Director が TTS を含む音声の呼び出しを見積額で記録する（§14.5）」に直した | 実装（`audiodirector/cost.go` の `spending.record`）は TTS・Music・SFX・Lip Sync の呼び出しごとに台帳へ書き、§6・§14.5 の記述と矛盾していたため（Issue #217） |
