@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createRefreshGuard, describeProgress, isFinished, progressFraction } from './shot';
+import { createRefreshGuard, describeProgress, isFinished, planCardRefresh, progressFraction } from './shot';
 
 describe('isFinished', () => {
   it('is true once the work is over or nothing is running', () => {
@@ -46,5 +46,30 @@ describe('createRefreshGuard', () => {
     expect(mayRefresh('/shots/b')).toBe(true);
     t += 3000;
     expect(mayRefresh('/shots/a')).toBe(true);
+  });
+});
+
+describe('planCardRefresh', () => {
+  const card = { id: 'shot-b', refreshUrl: '/projects/p/scenes/s?shot=b' };
+
+  it('refreshes the whole Shot view when the selected Shot finished', () => {
+    expect(planCardRefresh({ ...card, selected: true }, '/projects/p/scenes/s?shot=b')).toEqual({
+      url: '/projects/p/scenes/s?shot=b',
+      target: '#scene-shot-view',
+      swap: 'outerHTML',
+    });
+  });
+
+  it('refreshes only the finished card, from the selected Shot page, when another Shot is viewed', () => {
+    expect(planCardRefresh({ ...card, selected: false }, '/projects/p/scenes/s?shot=a')).toEqual({
+      url: '/projects/p/scenes/s?shot=a',
+      target: '#shot-b',
+      swap: 'outerHTML',
+      select: '#shot-b',
+    });
+  });
+
+  it('asks for the Scene page without ?shot= when no Shot is selected, so the card is not rendered as selected', () => {
+    expect(planCardRefresh({ ...card, selected: false }, null).url).toBe('/projects/p/scenes/s');
   });
 });

@@ -279,7 +279,7 @@ describe('Shot card: one WebSocket per card (shot.ts)', () => {
     const root = await fixture(html`<div>
       <div id="scene-shot-view"></div>
       <ul>
-        <li data-shot-progress data-refresh-url="/refresh/player">
+        <li id="shot-player" aria-current="true" data-shot-progress data-refresh-url="/refresh/player">
           <mam-video-player ws-url="/ws/shots/s1"></mam-video-player>
         </li>
       </ul>
@@ -304,7 +304,7 @@ describe('Shot card: one WebSocket per card (shot.ts)', () => {
     const root = await fixture(html`<div>
       <div id="scene-shot-view"></div>
       <ul>
-        <li data-shot-progress data-refresh-url="/refresh/socket" data-ws-url="/ws/shots/s2"></li>
+        <li id="shot-socket" aria-current="true" data-shot-progress data-refresh-url="/refresh/socket" data-ws-url="/ws/shots/s2"></li>
       </ul>
     </div>`);
     initShotProgress(root);

@@ -15,6 +15,8 @@ export interface AjaxContext {
    * Defaults to the target, which gives each swapped region its own queue.
    */
   source?: string;
+  /** Selector of the part of the response to swap in (htmx `select`); the whole response when absent. */
+  select?: string;
 }
 
 /** htmx.ajax, as far as this module uses it. */
