@@ -322,8 +322,13 @@ func snippet(b []byte) string {
 	return s
 }
 
-// redact keeps the API key out of an error message.
+// redact keeps the API key and the request URL out of an error message: a transport error carries
+// the full URL (a signed output link, for one), which must not reach the saved skip detail or the chat.
 func redact(err error, key string) error {
+	var ue *url.Error
+	if errors.As(err, &ue) {
+		err = ue.Err
+	}
 	if key == "" {
 		return err
 	}
