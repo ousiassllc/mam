@@ -338,3 +338,31 @@ func TestSeriesRepository_EpisodesListsByNumber(t *testing.T) {
 	assert.Equal(t, f.source, eps[0].ID)
 	assert.Equal(t, "ep2", eps[1].ID)
 }
+
+func TestSeriesRepository_ABranchOfAnEpisodeKeepsTheCanonOfItsCharacters(t *testing.T) {
+	ctx := context.Background()
+	f := newSeriesFixture(t)
+	s := f.createFromSource(t)
+	_, err := f.series.CreateEpisode(ctx, s.ID, "", "", newEpisodeProject("ep2"))
+	require.NoError(t, err)
+
+	plans := repository.NewPlanRepository(f.db)
+	scene, err := plans.CreateScene(ctx, domain.Scene{ProjectID: "ep2", Title: "A", Location: "Cafe"})
+	require.NoError(t, err)
+	shot, err := plans.CreateShot(ctx, domain.Shot{SceneID: scene.ID, Objective: "one", Duration: 2})
+	require.NoError(t, err)
+
+	b, err := repository.NewBranchRepository(f.db).Create(ctx, repository.NewBranch{ShotID: shot.ID, PointType: domain.BranchAtShot, Name: "Alt"})
+	require.NoError(t, err)
+
+	w, err := f.world.World(ctx, "ep2", b.ID)
+	require.NoError(t, err)
+	require.Len(t, w.Characters, 1)
+	assert.Equal(t, "face-1", w.Characters[0].SeriesFaceReferenceAssetID, "the Branch is measured against the canon face like the trunk")
+	for table, n := range map[string]int{"character": 1, "product": 1, "location": 1} {
+		var withOrigin int
+		require.NoError(t, f.db.Reader().QueryRow(
+			`SELECT COUNT(*) FROM `+table+` WHERE project_id = 'ep2' AND branch_id = ? AND origin_id IS NOT NULL`, b.ID).Scan(&withOrigin))
+		assert.Equal(t, n, withOrigin, table)
+	}
+}
