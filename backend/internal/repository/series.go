@@ -554,15 +554,16 @@ func copyCanon(ctx context.Context, tx *sql.Tx, canon domain.SeriesCanon, projec
 }
 
 // stateUpdates copy, from the previous Episode's row with the same origin, the columns of each
-// entity table that a Shot changes (the complement of the canon fields). The parameters are the
+// entity table that a Shot changes (the complement of the canon fields), from the trunk row only: a
+// Branch holds copies with the same origin. The parameters are the
 // new Project and the previous Episode.
 var stateUpdates = []string{
 	`UPDATE character SET emotion = prev.emotion, position = prev.position, current_action = prev.current_action
-	 FROM character AS prev WHERE character.project_id = ? AND prev.project_id = ? AND prev.origin_id = character.origin_id`,
+	 FROM character AS prev WHERE character.project_id = ? AND prev.project_id = ? AND prev.branch_id IS NULL AND prev.origin_id = character.origin_id`,
 	`UPDATE product SET orientation = prev.orientation
-	 FROM product AS prev WHERE product.project_id = ? AND prev.project_id = ? AND prev.origin_id = product.origin_id`,
+	 FROM product AS prev WHERE product.project_id = ? AND prev.project_id = ? AND prev.branch_id IS NULL AND prev.origin_id = product.origin_id`,
 	`UPDATE location SET time = prev.time, lighting_state = prev.lighting_state, weather = prev.weather
-	 FROM location AS prev WHERE location.project_id = ? AND prev.project_id = ? AND prev.origin_id = location.origin_id`,
+	 FROM location AS prev WHERE location.project_id = ? AND prev.project_id = ? AND prev.branch_id IS NULL AND prev.origin_id = location.origin_id`,
 }
 
 // inheritWorldState starts the Project from the final World State of the previous Episode: its trunk
