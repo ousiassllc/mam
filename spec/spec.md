@@ -1500,7 +1500,7 @@ Review Package と Review Response は、DB の行やファイルをそのまま
 | 完成した動画 | 状態が `READY` / `EXPORTED` の Project、または書き出し（`export`）がある Project |
 | 書き出し済み | `export` 行がある Project |
 | 計測対象の Shot | Take を 1 つ以上持つ Shot |
-| 採用された Shot | `shot.selected_take_id` がある Shot（AUTO では Judge を通過した AI Pick、DIRECTOR ではユーザーの選択） |
+| 採用された Shot | `shot.selected_take_id` がある Shot（AUTO では Judge を通過し Minimum acceptance score を満たした AI Pick、DIRECTOR ではユーザーの選択） |
 | 最初の Take | Shot の最も古い Take。その最初の Judge 結果を「最初の判定」とする |
 | 最新の判定 | Take の最も新しい `judge_result` |
 | 人間の介入（Human Intervention） | ユーザーが生成の中身を手で操作した記録（§28.3）。承認カードの「承認」、モード切替、閲覧は含まない |
