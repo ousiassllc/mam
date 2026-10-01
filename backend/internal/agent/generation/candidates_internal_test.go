@@ -23,7 +23,7 @@ func TestBestTake_APassingTakeBeatsAFailingOneWhateverTheConfidence(t *testing.T
 		{number: 1, result: verdict(domain.JudgeFail, 0.99)},
 		{number: 2, result: verdict(domain.JudgePass, 0.6)},
 	}
-	best, ok := bestTake(all)
+	best, ok := bestTake(all, nil)
 	require.True(t, ok)
 	assert.Equal(t, 2, best.number)
 }
@@ -47,7 +47,7 @@ func TestBestTake_AmongEqualVerdictsTheHigherTakeScoreThenTheEarlierTakeWins(t *
 		}, 2},
 	}
 	for name, tc := range cases {
-		best, ok := bestTake(tc.all)
+		best, ok := bestTake(tc.all, nil)
 		require.True(t, ok, name)
 		assert.Equal(t, tc.want, best.number, name)
 	}
@@ -78,18 +78,43 @@ func TestBestTake_ChoosesTheTakeDomainPickTakeChooses(t *testing.T) {
 		}
 		want, _, ok := domain.PickTake(takes)
 		require.True(t, ok, name)
-		best, ok := bestTake(all)
+		best, ok := bestTake(all, nil)
 		require.True(t, ok, name)
 		assert.Equal(t, want, fmt.Sprint(best.number), name)
 	}
 }
 
+// A pass whose scores are under the Minimum acceptance score is not accepted by the Retry Policy, so
+// PickBest never selects it while some other Take is accepted: the Best Take must not be it either.
+func TestBestTake_PrefersTheTakesTheRetryPolicyAcceptsLikePickBest(t *testing.T) {
+	template := domain.TemplateProductCM
+	eff := domain.ProjectPolicy{Quality: domain.QualityBalanced, Template: template}.Effective()
+	weak := verdict(domain.JudgePass, 0.9) // no Issue: the best Take score, but the Judge scored it low
+	weak.Scores = map[domain.EvaluationAxis]float64{}
+	strong := verdict(domain.JudgePass, 0.9, issue(domain.SeverityLow)) // a minor Issue: a lower Take score
+	strong.Scores = map[domain.EvaluationAxis]float64{}
+	for _, a := range template.Axes() {
+		weak.Scores[a], strong.Scores[a] = 1, 100
+	}
+	require.False(t, weak.Accepted(eff, template))
+	require.True(t, strong.Accepted(eff, template))
+	accepted := func(res domain.JudgeResult) bool { return res.Accepted(eff, template) }
+
+	best, ok := bestTake([]judged{{number: 1, result: weak}, {number: 2, result: strong}}, accepted)
+	require.True(t, ok)
+	assert.Equal(t, 2, best.number, "the accepted Take wins although the other scores higher by its Issues")
+
+	best, ok = bestTake([]judged{{number: 1, result: weak}, {number: 2, result: verdict(domain.JudgeFail, 0.9)}}, accepted)
+	require.True(t, ok)
+	assert.Equal(t, 1, best.number, "when none is accepted the best of all stands")
+}
+
 func TestBestTake_ATakeThatCouldNotBeJudgedIsNeverPreferredAndNoneJudgedMeansNoPick(t *testing.T) {
-	best, ok := bestTake([]judged{{number: 1}, {number: 2, result: verdict(domain.JudgeFail, 0.1, issue(domain.SeverityHigh))}})
+	best, ok := bestTake([]judged{{number: 1}, {number: 2, result: verdict(domain.JudgeFail, 0.1, issue(domain.SeverityHigh))}}, nil)
 	require.True(t, ok)
 	assert.Equal(t, 2, best.number, "even a bad verdict beats no verdict")
 
-	_, ok = bestTake([]judged{{number: 1}, {number: 2}})
+	_, ok = bestTake([]judged{{number: 1}, {number: 2}}, nil)
 	assert.False(t, ok)
 }
 
