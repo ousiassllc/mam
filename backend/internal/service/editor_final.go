@@ -14,7 +14,9 @@ import (
 // FinalQC runs Final QC on the latest Edit and Audio Timelines (POST /projects/:id/final-qc). The
 // Project must be in AUDIO. PASS moves it to READY (through the Final checkpoint when the
 // Confirmation Level asks for it); FAIL sends it back to the stage that has the problem.
-func (s *EditorService) FinalQC(ctx context.Context, projectID string) (EditorView, error) {
+// Final QC always inspects the trunk; viewBranchID only picks the Branch whose editor panel is
+// answered ("" is the trunk), so that the panel the button was pressed in keeps its scope.
+func (s *EditorService) FinalQC(ctx context.Context, projectID, viewBranchID string) (EditorView, error) {
 	release, err := s.acquire(projectID)
 	if err != nil {
 		return EditorView{}, err
@@ -49,7 +51,7 @@ func (s *EditorService) FinalQC(ctx context.Context, projectID string) (EditorVi
 		s.backTo(ctx, projectID, domain.StateAudio)
 		return EditorView{}, err
 	}
-	return s.View(ctx, projectID, "")
+	return s.View(ctx, projectID, viewBranchID)
 }
 
 // finalQCInput gathers what Final QC checks: the latest Edit and Audio Timelines, whether the mix

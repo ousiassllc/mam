@@ -267,13 +267,16 @@ templ EditorActions(d EditorPanelData) {
 			<h3 class="text-sm font-semibold">4. Final QC</h3>
 			<div class="flex items-center gap-3">
 				@atoms.Button(atoms.ToneNeutral, "Final QC を実行", templ.Attributes{
-					"type": "button", "hx-post": paths.Project(d.Project.ID, "final-qc"),
+					"type": "button", "hx-post": paths.Project(d.Project.ID, "final-qc"), "hx-vals": branchVals(d.BranchID),
 					"hx-target": "#editor-actions", "hx-swap": "outerHTML", "hx-disabled-elt": "this", "disabled": !d.CanFinalQC(),
 				})
 				if d.QC != nil {
 					@atoms.Badge(verdictTone(d.QC.Verdict == domain.FinalQCPass), qcLabel(d.QC.Verdict))
 				}
 			</div>
+			if d.BranchID != "" {
+				<p class="text-xs text-neutral-400" data-qc-trunk-note>Final QC は Branch ではなく、主系列（トランク）の最新版を検査します。</p>
+			}
 			if d.QC != nil && len(d.QC.Findings) > 0 {
 				<ul class="flex flex-col gap-1 text-sm" data-qc-findings>
 					for _, f := range d.QC.Findings {

@@ -224,3 +224,37 @@ func TestExport_TheBranchEditorPageExportsItsBranchAndKeepsTheScope(t *testing.T
 	assert.Equal(t, branchID, exports[0].BranchID)
 	assert.Contains(t, rec.Body.String(), `hx-get="/projects/`+e.project+`/edit/actions?branch_id=`+branchID+`"`, "the response keeps the Branch scope")
 }
+
+func TestFinalQC_TheBranchEditorPageKeepsItsBranchScopeInTheAnswer(t *testing.T) {
+	e := toAudio(t)
+	rec := e.form(http.MethodPost, "/shots/"+e.shotID+"/branch", url.Values{"name": {"逃げる"}})
+	require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
+	branchID := strings.TrimPrefix(rec.Header().Get("HX-Redirect"), "/branches/")
+	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/projects/"+e.project+"/edit/rough-cut", url.Values{"branch_id": {branchID}}).Code)
+	e.setState("AUDIO")
+	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/projects/"+e.project+"/audio/generate", nil).Code)
+	e.setState("AUDIO")
+	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/projects/"+e.project+"/audio/generate", url.Values{"branch_id": {branchID}}).Code)
+	e.setState("AUDIO")
+
+	// What htmx sends: the button's hx-vals.
+	page := e.get("/projects/"+e.project+"/edit?branch_id="+branchID, false).Body.String()
+	tag := regexp.MustCompile(`<button[^>]*hx-post="/projects/` + e.project + `/final-qc"[^>]*>`).FindString(page)
+	require.NotEmpty(t, tag, "the Final QC button is on the page")
+	vals := regexp.MustCompile(`hx-vals="([^"]*)"`).FindStringSubmatch(tag)
+	require.NotNil(t, vals, "the Final QC button sends hx-vals: %s", tag)
+	var sent map[string]string
+	require.NoError(t, json.Unmarshal([]byte(html.UnescapeString(vals[1])), &sent))
+	require.Equal(t, map[string]string{"branch_id": branchID}, sent)
+	assert.Contains(t, page, "data-qc-trunk-note", "the Branch panel says Final QC checks the trunk")
+
+	rec = e.form(http.MethodPost, "/projects/"+e.project+"/final-qc", url.Values{"branch_id": {sent["branch_id"]}})
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	body := rec.Body.String()
+	assert.Contains(t, body, `hx-get="/projects/`+e.project+`/edit/actions?branch_id=`+branchID+`"`, "the response keeps the Branch scope")
+	assert.Contains(t, body, `hx-post="/projects/`+e.project+`/audio/generate"`)
+	assert.NotContains(t, body, `hx-vals="{&#34;branch_id&#34;:&#34;&#34;}"`, "no later button falls back to the trunk")
+
+	trunk := e.get("/projects/"+e.project+"/edit", false).Body.String()
+	assert.NotContains(t, trunk, "data-qc-trunk-note")
+}
