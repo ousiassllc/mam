@@ -686,7 +686,7 @@ func (s *DirectorService) setLock(ctx context.Context, projectID string, ref *re
 		return fmt.Sprintf("%s を %s にしました。", op.Parameter.Label(), op.Mode.Label()), nil
 	}
 	if op.Parameter == domain.ParamVideoModel && op.Mode == domain.LockManual && op.Value == "" {
-		return "Video Model を MANUAL にするにはモデル名（kling-3.0 / seedance-2.0）を指定してください。", nil
+		return "Video Model を MANUAL にするにはモデル名（" + domain.JoinModels(domain.VideoModels(), " / ") + "）を指定してください。", nil
 	}
 	if _, err := s.SetShotLock(ctx, ref.Shot.ID, op.Parameter, op.Mode, op.Value); err != nil {
 		if errors.Is(err, ErrLocked) {

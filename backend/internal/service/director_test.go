@@ -398,6 +398,24 @@ func TestDirectorCommand_SetsLocksFromWordsAndNeedsAnInterpreter(t *testing.T) {
 	assert.ErrorIs(t, err, service.ErrNotFound, "an unknown Shot is 404")
 }
 
+func TestDirectorCommand_PinsTheVideoModelToRunwayAndAsksForAnyModelWithoutAName(t *testing.T) {
+	f := newGenFixture(t, true)
+	f.llm.interpreter = opsJSON(`{"type":"set_lock","parameter":"video_model","mode":"manual","value":"runway-gen-4.5"}`)
+
+	res, err := f.svc.Director.DirectorCommand(context.Background(), f.shotID, "この Shot の動画モデルを Runway に固定して")
+
+	require.NoError(t, err)
+	assert.Equal(t, domain.LockManual, res.Inspector.Locks[domain.ParamVideoModel].Mode)
+	assert.Equal(t, "runway-gen-4.5", res.Inspector.Locks.Text(domain.ParamVideoModel))
+
+	f.llm.interpreter = opsJSON(`{"type":"set_lock","parameter":"video_model","mode":"manual"}`)
+	_, err = f.svc.Director.DirectorCommand(context.Background(), f.shotID, "動画モデルは手動にして")
+	require.NoError(t, err)
+	ws, err := f.svc.Chat.Workspace(context.Background(), f.projectID)
+	require.NoError(t, err)
+	assert.Contains(t, lastMessage(t, ws.Messages).Content, "kling-3.0 / seedance-2.0 / runway-gen-4.5")
+}
+
 func (f genFixture) startDirecting(t *testing.T) {
 	t.Helper()
 	require.NoError(t, f.db.Write(context.Background(), func(ctx context.Context, tx *sql.Tx) error {
