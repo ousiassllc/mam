@@ -40,9 +40,9 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 | GET | `/takes/:id/trace` | Take の Generation Trace（F-27）: Prompt version・Source Shot Spec（Prompt version のスナップショット）・World State version・Model・Model routing（Multi-model routing の選択理由: 方式・Quality Policy の割り当て・選んだモデル・候補ごとの実績/コスト/適合/score・除外理由。旧 Take や失敗時は「記録なし」）・Model parameters・References・Output（動画へのリンク。アーカイブ済みなら「アーカイブ済み」）・Judge results（新しい順）・Repair history（この Take への Repair と、この Take を作った Repair）。Shot Inspector の Take 一覧の「生成の経緯」から `hx-get` で読み込む。存在しない Take は 404 | フラグメントのみ（`take_trace_panel`） |
 | GET | `/branches/:id/versions` | Branch のバージョン履歴（`version_history_panel` を 2 つ: Branch 自体の `branch_version` と、当該 Branch 独自の World State バージョン系列。復元ボタン付き）。存在しない Branch は 404 | フラグメントのみ |
 | GET | `/projects/:id/bundle` | プロジェクトバンドルのエクスポート（`spec/requirements/non-functional.md` §8）。ZIP（`Content-Disposition: attachment`）: `manifest.json`（`format=mam-project-bundle`・`version`・`project_id`・`exported_at`）、`data.json`（Project の全テーブルの行。`job` は実行時状態のため含めない。Series 所属の Episode は Series から切り離して出力し、`series_id` などの Series 由来の参照を空にする）、`assets/<asset 相対パス>`（Asset・Take・Export のファイルと、Audio Timeline が指す音声（ミックス・クリップ）・Lip Sync 画像。既にアーカイブされて無いファイルは含めず、行だけ残る）。存在しない Project は 404 | ファイル |
-| GET | `/shots/:id/takes` | Take比較ページ（`mam-take-comparator` を埋め込み） | フルページ（Lit埋め込みのため常にフルページ） |
-| GET | `/projects/:id/edit` | AI Editor / Rough Cut編集ページ（`mam-timeline-editor` を埋め込み） | フルページ |
-| GET | `/projects/:id/branches` | Branch ツリーページ（ツリーは `branch_tree` をサーバー描画） | フルページ |
+| GET | `/shots/:id/takes` | Take比較ページ（`mam-take-comparator` を埋め込み）。`HX-Request` では `take_comparison` のフラグメントを返す | フルページ / フラグメント |
+| GET | `/projects/:id/edit` | AI Editor / Rough Cut編集ページ（`mam-timeline-editor` を埋め込み）。`HX-Request` では編集画面の本体（`EditorWorkspace`）のフラグメントを返す | フルページ / フラグメント |
+| GET | `/projects/:id/branches` | Branch ツリーページ（ツリーは `branch_tree` をサーバー描画）。`HX-Request` では `BranchView` のフラグメントを返す | フルページ / フラグメント |
 | GET | `/projects/:id/export` | Final Export ページ | フルページ / フラグメント |
 | GET | `/projects/:id/settings` | Production Template・Quality/Cost Policy・予算上限・コスト（`cost_summary_panel`）・ディスク使用量と不要 Take のアーカイブ・Brand Constraints・APIキー設定。Chat Workspace の補助ビュー一覧と入力欄の「設定」から開く | フルページ / フラグメント |
 | GET | `/projects/:id/analytics` | Production Analytics（M3、`spec/spec.md` §28）。Project の MVP Success Metrics（North Star・Shot・人間の介入・時間・コスト・品質・完成）を `analytics_panel` で表示する。計算式と記録する人間の介入は §28.2・§28.3。集計はローカル DB のみで外部へ送信しない。存在しない Project は 404。Project のメニューの「制作指標」から開く | フルページ / フラグメント |
@@ -448,3 +448,4 @@ Notes:
 | 1.61 | 2026-10-01 | MAX QUALITY の候補生成は、予算が 3 Take 分あるとき 3 戦略すべてを並列生成し、1〜2 本だけ収まるときはその本数を 202 で、1 本も収まらなければ 402 と書いた | 仕様は常に全 Candidate だったが、実装は予算に収まる本数だけ作っていたため（Issue #126） |
 | 1.62 | 2026-10-01 | `GET /takes/:id/judge-result` の応答項目に `created_at` と `scores`（評価軸別の 0-100。Judge が出さなければ省略）を追記 | 実装（`domain.JudgeResult`）が返す項目が仕様の列挙・例に無かったため（Issue #166） |
 | 1.63 | 2026-10-01 | `POST /projects/import` のサイズ上限（本文 8 GB + 1 MiB は 413、アーカイブ 8 GB・1 ファイル 2 GB は 422）を §0 の 413 行と §2.1 に追記 | 実装の `MaxBundleBytes`・`maxBundleFileBytes` が仕様になかったため（Issue #169） |
+| 1.64 | 2026-10-01 | §2.1 の `GET /shots/:id/takes`・`GET /projects/:id/edit`・`GET /projects/:id/branches` の返却を「フルページ / フラグメント」に直し、「常にフルページ」を削除。`GET /projects/:id/bundle` の `assets/` に Audio Timeline の音声・Lip Sync 画像を追記 | 実装（`web/handler/{take,editor,branch}.go` の `isHTMX` 分岐、`service/bundle.go` の書き出し）との乖離（#167・#155） |
