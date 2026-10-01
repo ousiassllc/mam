@@ -65,7 +65,7 @@ Reasoning LLM Adapter にも動画/画像生成 Model Adapter にも属さない
 Jev の利用ルール:
 
 - **テキスト専用**: 画像・動画・音声は入力できない。顔や映像の判定には使わず、Judge が出した Issue の構造化データのみを入力とする
-- **前段選別**: Choice で Repair 戦略（§13 の6種）から1つを選ぶ。confidence が閾値以上なら採用、閾値未満なら Repair Agent（Claude Opus 系）へ回す
+- **前段選別**: Choice で Repair 戦略（`spec/spec.md` §13 の6種）から1つを選ぶ。confidence が閾値以上なら採用、閾値未満なら Repair Agent（Claude Opus 系）へ回す
 - **決定的ルールを優先**: LOCK 違反・Critical constraints・Retry Policy の上限判定は決定的ルールで行い、Jev を経由しない
 - **言語**: Jev の主学習言語は英語で、日本語を含む CJK は精度が低い。`type` / `severity` 等の英語スキーマ値のみを渡し、日本語の自由記述は渡さない
 - **送信範囲**: Issue の構造化フィールドのみ。Brief・脚本・画像・動画は送らない。API キーは `internal/credential` で管理する
@@ -172,10 +172,10 @@ M1 Issue #9（F-13）の実装仕様。
 - **欠測**: 顔を検出できない（または割り当てられなかった）フレームは `undetected_ratio` にだけ数え、類似度の平均・最小・drift 判定・FAIL 判定に含めない。`undetected_ratio` が `max_undetected_ratio`（0.5）を超える、または検出フレームが `min_detected_frames`（3）未満なら `evaluated = false` とし、その Take は定性評価だけで判定する（`face_identity_drift` は出さない）
 - **閾値**: 警告 `warn` と FAIL `fail` は、その Character の参照画像同士の類似度分布から決める（ソースの固定類似度は持たない）。顔が取れた参照が 2 枚以上あり、参照同士の平均類似度 $m$ が `min_calibration_similarity`（0.4）以上のとき、`warn = calibration_warn_scale × m`（既定 0.85）、`fail = calibration_fail_scale × m`（既定 0.65）とし `calibrated = true` にする。適用した閾値は `metrics.face_identity[].warn_threshold` / `fail_threshold` に記録する。参照が 1 枚、または平均が下限未満のときは数値の警告 / FAIL を出さない（`calibrated = false`、`evaluated = false`、閾値は 0）。類似度は記録し、合否は定性評価に任せる。スケールと下限は `--judge-config`（`MAM_JUDGE_CONFIG`、JSON、未知のキーはエラー）で上書きできる
 - **drift Issue**: 連続する `min_run_frames`（2）フレーム以上が `warn` を下回った区間を `face_identity_drift` Issue にする（`time_range`・`frames` 付き、`dimension = character_identity`）。区間内に `min_run_frames` フレーム連続で `fail` を下回る箇所があれば `severity = high`、なければ `medium`（警告）。顔が検出できないフレームは区間を切る
-- **定性評価**: Reasoning LLM（`AgentVideoJudge`、既定 Gemini → GPT）に、Canonical Shot Spec・前後 Shot の Spec・LOCK 中の評価軸・Reference Pack（`max_reference_images` 枚まで）・サンプルフレームを渡し、§12.2 の評価軸（識別子は `domain.JudgeDimensions`）で JSON を返させる。数値評価が成立している Character については、モデル自身の `face_identity_drift` は採用しない（数値が正本）。`time_range` は Take の長さに収め、ソースのフレーム番号（`frames`）を付ける。時間範囲を読めない Issue は範囲なしで残す
-- **判定（決定的ルール、`judge.Decide`）**: (1) LOCK 違反（LOCK 中の評価軸の medium 以上の Issue、または Character Identity が LOCK のときの FAIL 閾値割れ = high の `face_identity_drift`）があれば、モデルの判定・信頼度に関係なく FAIL（§13）。(2) それ以外は、モデルが fail を返す、または severity `high` の Issue があれば FAIL、なければ PASS。警告（medium）だけでは FAIL にしない。`overall_confidence` はモデルの値をそのまま保存する
+- **定性評価**: Reasoning LLM（`AgentVideoJudge`、既定 Gemini → GPT）に、Canonical Shot Spec・前後 Shot の Spec・LOCK 中の評価軸・Reference Pack（`max_reference_images` 枚まで）・サンプルフレームを渡し、`spec/spec.md` §12.2 の評価軸（識別子は `domain.JudgeDimensions`）で JSON を返させる。数値評価が成立している Character については、モデル自身の `face_identity_drift` は採用しない（数値が正本）。`time_range` は Take の長さに収め、ソースのフレーム番号（`frames`）を付ける。時間範囲を読めない Issue は範囲なしで残す
+- **判定（決定的ルール、`judge.Decide`）**: (1) LOCK 違反（LOCK 中の評価軸の medium 以上の Issue、または Character Identity が LOCK のときの FAIL 閾値割れ = high の `face_identity_drift`）があれば、モデルの判定・信頼度に関係なく FAIL（`spec/spec.md` §13）。(2) それ以外は、モデルが fail を返す、または severity `high` の Issue があれば FAIL、なければ PASS。警告（medium）だけでは FAIL にしない。`overall_confidence` はモデルの値をそのまま保存する
 - **LOCK の解決**: Shot Spec の `character.identity` / `product.geometry` が `locked`、または `lock` テーブルの `(character, <id>, identity)`・`(product, <id>, geometry|label)` が `mode = lock` のとき、Character Identity + Face / Product Geometry / Logo・Text Accuracy が LOCK 扱い
-- **Repair Strategy**: モデルの `repair_strategy`（`action` は §13 の 6 種）を保存する。high の `face_identity_drift` があるとき、`action` が無い・`prompt_repair` なら `reference_reinforcement` に置き換え、`increase_face_reference_strength` を `instructions` に足す（§12.4）。PASS で戦略が無い Take は `repair_strategy` なし
+- **Repair Strategy**: モデルの `repair_strategy`（`action` は `spec/spec.md` §13 の 6 種）を保存する。high の `face_identity_drift` があるとき、`action` が無い・`prompt_repair` なら `reference_reinforcement` に置き換え、`increase_face_reference_strength` を `instructions` に足す（`spec/spec.md` §12.4）。PASS で戦略が無い Take は `repair_strategy` なし
 - **ジョブ**: Take を作るたびに `job.kind = judge` のジョブを起動する（`payload = {take_id, shot_id}`）。再開可能ジョブ（低コストで再実行できるため、異常終了後は再実行する）。実行中は Shot を `JUDGING` にし（GENERATING 中の Shot の状態は変えない）、`/ws/shots/:id` に `action = judge` の `queued` / `judging` / `done` / `failed` を流す。結果は `judge_result` に追記し（上書きしない）、チャットに PASS/FAIL・Issue・LOCK 違反・数値評価が使えなかった理由を投稿する。同じ Take の Judge が queued/running なら `POST /takes/:id/judge` は 409
 - **エラー**: ffmpeg 未導入は「ffmpeg / ffprobe が見つかりません」、API キー未設定・レート制限・タイムアウト・AI 出力不正は生成と同じ分類（`generation.FailureReason`）で通知する。顔モデルの推論エラーは Judge を失敗させず、その Take を定性評価のみで判定する（`face_identity_status = unavailable`）
 
@@ -376,3 +376,4 @@ MAX QUALITY のみ。話者付きの Dialogue の行（Narration は対象外）
 | 1.17 | 2026-10-01 | §10.2 の顔同一性の閾値から、未校正時の固定値 `warn_similarity` / `fail_similarity` を外した。参照が 1 枚、または分布が使えないときは数値の警告 / FAIL を出さない | 固定値がソース定数のままだったため（Issue #133）。`spec/spec.md` §12.4 と同じ |
 | 1.18 | 2026-10-01 | §9.1 に、`gpt-image-2` の既定 API モデル ID が `gpt-image-1` であること（設定で差し替え可）を明記 | 実装の既定値と仕様の選定名が食い違って見えたため（Issue #165） |
 | 1.19 | 2026-10-01 | §9.3 のジョブに、シャットダウン（Ctrl+C など）で実行中に中断された非再開ジョブも失敗として扱う（キューに戻さない）ことを明記 | 実装が中断ジョブを queued に戻し、次回起動で再実行して二重課金になり得たため（Issue #194）。コードも失敗扱いに修正 |
+| 1.20 | 2026-10-01 | §4.5・§10 の `§12.2`・`§12.4`・`§13` に `spec/spec.md` を付けた | model-adapters.md 自身の §12（音声）・§13（Multi-model routing）と読み違えられたため（Issue #185） |
