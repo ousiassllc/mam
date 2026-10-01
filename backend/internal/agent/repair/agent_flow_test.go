@@ -816,6 +816,29 @@ func TestJobChanged_AGenerateJobStartsTheLoopToo(t *testing.T) {
 	assert.Len(t, f.jobs.enqueued(), 1)
 }
 
+// Prompt Candidate Generation judges its Takes in the job itself (no judge job follows), so its
+// generate job is the only point where the loop can notice that no Candidate passed.
+func TestJobChanged_ACandidateJobStartsTheLoopOnlyInAuto(t *testing.T) {
+	for _, tt := range []struct {
+		mode string
+		want int
+	}{{"auto", 1}, {"director", 0}} {
+		t.Run(tt.mode, func(t *testing.T) {
+			f := newFx(t)
+			f.setProject(t, fmt.Sprintf(`mode = '%s'`, tt.mode))
+			jobID := f.jobOf(t, domain.JobGenerate, `{"action":"candidates","shot_id":"sh1"}`, domain.JobSucceeded)
+
+			f.agent.JobChanged(context.Background(), jobID)
+
+			enqueued := f.jobs.enqueued()
+			require.Len(t, enqueued, tt.want)
+			if tt.want > 0 {
+				assert.Equal(t, domain.JobRepair, enqueued[0].Kind)
+			}
+		})
+	}
+}
+
 func TestJobChanged_DoesNothingWhenThereIsNothingToRepairYet(t *testing.T) {
 	tests := []struct {
 		name  string
