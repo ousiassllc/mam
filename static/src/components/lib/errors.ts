@@ -5,7 +5,9 @@ export function errorMessage(error: unknown): string {
   if (error instanceof ApiError) {
     const body = error.body;
     if (typeof body === 'string') {
-      const text = new DOMParser().parseFromString(body, 'text/html').body.textContent?.trim();
+      // A toast fragment also holds the close button ("×"): take the message element alone.
+      const { body: doc } = new DOMParser().parseFromString(body, 'text/html');
+      const text = (doc.querySelector('[data-toast-message]') ?? doc).textContent?.trim();
       if (text) return text;
     } else if (body && typeof body === 'object' && 'detail' in body && typeof body.detail === 'string') {
       return body.detail;
