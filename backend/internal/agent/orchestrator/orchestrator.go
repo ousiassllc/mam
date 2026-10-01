@@ -128,7 +128,7 @@ func (o *Orchestrator) Kick(ctx context.Context, projectID string) error {
 
 	job, err := o.jobs.Enqueue(ctx, domain.JobPlan, planPayload{ProjectID: projectID})
 	if err != nil {
-		o.finish(projectID)
+		o.release(projectID)
 		return fmt.Errorf("enqueue plan job: %w", err)
 	}
 	card := domain.ChatMessage{Role: domain.RoleAssistant, Kind: domain.KindProgress, Content: progressText, RefID: job.ID}
@@ -170,6 +170,17 @@ func (o *Orchestrator) finish(projectID string) (again bool) {
 	}
 	delete(o.active, projectID)
 	return false
+}
+
+// release drops the claim of a Kick whose job was never queued. A rerun a concurrent Kick asked
+// for is dropped too: no job exists to serve it, and keeping the claim would turn every later
+// Kick into a rerun request nobody answers. The Project state is persisted, so the next Kick
+// sees the same work.
+func (o *Orchestrator) release(projectID string) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	delete(o.rerun, projectID)
+	delete(o.active, projectID)
 }
 
 func (o *Orchestrator) lockFor(projectID string) *sync.Mutex {

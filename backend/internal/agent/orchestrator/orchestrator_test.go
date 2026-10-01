@@ -151,9 +151,16 @@ type fakeJobs struct {
 	mu       sync.Mutex
 	payloads []any
 	err      error
+	// onEnqueue, when set, runs first in every Enqueue (without the lock) and may fail it.
+	onEnqueue func() error
 }
 
 func (j *fakeJobs) Enqueue(_ context.Context, kind domain.JobKind, payload any) (domain.Job, error) {
+	if j.onEnqueue != nil {
+		if err := j.onEnqueue(); err != nil {
+			return domain.Job{}, err
+		}
+	}
 	j.mu.Lock()
 	defer j.mu.Unlock()
 	if j.err != nil {
@@ -399,6 +406,25 @@ func TestKick_EnqueueFailureReleasesTheClaimAndIsReported(t *testing.T) {
 	f.jobs.err = nil
 	require.NoError(t, f.orch.Kick(context.Background(), id))
 	assert.Equal(t, 1, f.jobs.count(), "the failed attempt did not leave the Project claimed")
+}
+
+func TestKick_EnqueueFailureWithAConcurrentKickDoesNotStrandTheClaim(t *testing.T) {
+	t.Parallel()
+	f := newFixture(t)
+	id := f.project(t, seed{brief: completeBrief()})
+
+	// Kick A fails to queue its job; Kick B arrives while A is still inside Enqueue and
+	// therefore only asks for a rerun. Neither may leave the Project claimed without a job.
+	f.jobs.onEnqueue = func() error {
+		f.jobs.onEnqueue = nil
+		require.NoError(t, f.orch.Kick(context.Background(), id)) // Kick B
+		return errors.New("database is locked")
+	}
+	require.Error(t, f.orch.Kick(context.Background(), id)) // Kick A
+	require.Zero(t, f.jobs.count())
+
+	require.NoError(t, f.orch.Kick(context.Background(), id))
+	assert.Equal(t, 1, f.jobs.count(), "a later Kick queues the plan job again")
 }
 
 func TestKick_AFailingProgressCardDoesNotFailTheKick(t *testing.T) {
