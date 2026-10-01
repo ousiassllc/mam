@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { catchUpAfterReconnect, cardUrl, isSendKey, messagesUrl, isSuccessResponse, removeDuplicateIds, swapsErrorResponse } from './thread';
+import { catchUpAfterReconnect, cardUrl, fieldsToClear, fileKey, isSendKey, messagesUrl, isSuccessResponse, removeDuplicateIds, swapsErrorResponse } from './thread';
 
 function el(id: string) {
   return { id, removed: false, remove() { this.removed = true; } };
@@ -68,5 +68,32 @@ describe('isSuccessResponse', () => {
     expect(isSuccessResponse({ status: 204 })).toBe(true);
     for (const status of [0, 302, 400, 403, 409, 422, 429, 500, 502]) expect(isSuccessResponse({ status })).toBe(false);
     expect(isSuccessResponse(undefined)).toBe(false);
+  });
+});
+
+describe('fieldsToClear', () => {
+  const sent = { content: '最初のメッセージ', files: ['a.png:10:1'], replyTo: 'm1' };
+
+  it('clears everything that is still what was sent', () => {
+    expect(fieldsToClear(sent, { ...sent })).toEqual({ content: true, files: true, replyTo: true });
+  });
+
+  it('keeps the next message typed while the request was running', () => {
+    const typed = { ...sent, content: '最初のメッセージ。続き' };
+    expect(fieldsToClear(sent, typed)).toEqual({ content: false, files: true, replyTo: true });
+    expect(fieldsToClear(sent, { ...sent, content: '' }).content).toBe(false);
+  });
+
+  it('keeps attachments and the reply target changed meanwhile', () => {
+    expect(fieldsToClear(sent, { ...sent, files: ['a.png:10:1', 'b.png:20:2'] }).files).toBe(false);
+    expect(fieldsToClear(sent, { ...sent, files: [] }).files).toBe(false);
+    expect(fieldsToClear(sent, { ...sent, replyTo: 'm2' }).replyTo).toBe(false);
+    expect(fieldsToClear({ content: 'x', files: [], replyTo: '' }, { content: 'x', files: [], replyTo: '' }).files).toBe(true);
+  });
+});
+
+describe('fileKey', () => {
+  it('tells two picks of the same name apart', () => {
+    expect(fileKey({ name: 'a.png', size: 1, lastModified: 2 })).not.toBe(fileKey({ name: 'a.png', size: 1, lastModified: 3 }));
   });
 });

@@ -10,8 +10,11 @@ import { selfAndDescendants } from './components/lib/query';
 import { createSyncer } from './components/lib/sync';
 import { connect, socketUrl } from './components/lib/ws';
 import {
+  type ComposerSnapshot,
   cardUrl,
   catchUpAfterReconnect,
+  fieldsToClear,
+  fileKey,
   isSendKey,
   isSuccessResponse,
   messagesUrl,
@@ -140,20 +143,37 @@ class ChatWorkspace {
       this.showAttachments();
     });
 
-    // After a successful (2xx) send the composer is cleared; a failed one keeps the user's input. detail.successful
-    // is not used: main.ts swaps HTML error responses (toasts), so htmx reports those as successful too.
+    // After a successful (2xx) send the composer is cleared; a failed one keeps the user's input. Only what was
+    // sent is cleared: the input stays editable while the request runs, and the next message typed meanwhile
+    // is kept. detail.successful is not used: main.ts swaps HTML error responses (toasts), so htmx reports
+    // those as successful too.
+    let sent: ComposerSnapshot | undefined;
+    this.composer.addEventListener('htmx:beforeRequest', (event) => {
+      if (event.target === this.composer) sent = this.snapshot();
+    });
     this.composer.addEventListener('htmx:afterRequest', (event) => {
-      if (event.target === this.composer && isSuccessResponse(requestXhr(event))) {
-        this.content.value = '';
+      if (event.target !== this.composer || !sent || !isSuccessResponse(requestXhr(event))) return;
+      const clear = fieldsToClear(sent, this.snapshot());
+      sent = undefined;
+      if (clear.content) this.content.value = '';
+      if (clear.files) {
         this.files.value = '';
         this.showAttachments();
-        this.setReplyTarget('', '');
       }
+      if (clear.replyTo) this.setReplyTarget('', '');
     });
     // Card buttons post replies on their own (not the refetches of syncNew): clear the pending reply target with them.
     this.thread.addEventListener('htmx:afterRequest', (event) => {
       if ((event.target as HTMLElement).hasAttribute('hx-post') && isSuccessResponse(requestXhr(event))) this.setReplyTarget('', '');
     });
+  }
+
+  private snapshot(): ComposerSnapshot {
+    return {
+      content: this.content.value,
+      files: [...this.files.files!].map(fileKey),
+      replyTo: this.composer.querySelector<HTMLInputElement>('#reply-to')!.value,
+    };
   }
 
   private setReplyTarget(messageId: string, label: string): void {
