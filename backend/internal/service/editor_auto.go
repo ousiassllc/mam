@@ -33,13 +33,18 @@ func (s *EditorService) AdvanceAuto(ctx context.Context, projectID string) {
 		return // a run is going on; it looks at the Project again when it ends
 	}
 	defer l.Unlock()
-	ctx = context.WithoutCancel(ctx)
+	// ctx stays cancelable, so that Close does not wait for the stages of the chain: what a stage
+	// stores and announces survives it (EditorService.announce, backTo), and the one that was
+	// cut short is not reported, since it stopped for the shutdown.
 	for range autoStages {
+		if ctx.Err() != nil {
+			return
+		}
 		progressed, err := s.autoStep(ctx, projectID)
 		switch {
 		case err == nil && progressed:
 			continue
-		case err == nil, errors.Is(err, ErrStageBusy), errors.Is(err, ErrNotFound):
+		case err == nil, errors.Is(err, ErrStageBusy), errors.Is(err, ErrNotFound), ctx.Err() != nil:
 		case errors.Is(err, ErrUnavailable):
 			s.logger.Warn("AUTO editing stage is unavailable", "project_id", projectID, "err", err)
 		default:
@@ -54,7 +59,7 @@ func (s *EditorService) AdvanceAuto(ctx context.Context, projectID string) {
 // a card): the chain looks at the Project again.
 func (s *EditorService) RetryAuto(projectID string) {
 	s.autoStopped.Delete(projectID)
-	go s.AdvanceAuto(context.Background(), projectID)
+	s.resume.Wake() // the worker, so that Close stops and waits for what this starts
 }
 
 // autoStep runs the stage the Project is waiting for; it reports whether a stage ran. A stage that
@@ -83,7 +88,7 @@ func (s *EditorService) autoStep(ctx context.Context, projectID string) (bool, e
 		if progressed {
 			s.autoStopped.Delete(projectID)
 		}
-	case !errors.Is(err, ErrStageBusy) && !errors.Is(err, ErrNotFound):
+	case !errors.Is(err, ErrStageBusy) && !errors.Is(err, ErrNotFound) && ctx.Err() == nil:
 		s.autoStopped.Store(projectID, input)
 	}
 	return progressed, err
