@@ -210,7 +210,7 @@ func (a *Agent) JobChanged(ctx context.Context, jobID string) {
 	if err := json.Unmarshal(job.Payload, &p); err != nil || p.ShotID == "" {
 		return
 	}
-	if job.Kind == domain.JobGenerate && p.Action != generation.ActionGenerate {
+	if job.Kind == domain.JobGenerate && p.Action == generation.ActionReferencePack {
 		return // a Reference Pack made no Take
 	}
 	a.Continue(ctx, p.ShotID)
