@@ -41,3 +41,16 @@ func TestApprovalCard_CommentInputHasAnAccessibleName(t *testing.T) {
 	require.NotEmpty(t, input, html)
 	assert.Contains(t, input, `aria-label="コメント"`)
 }
+
+func TestApprovalCard_EnterInTheCommentFieldDoesNotApprove(t *testing.T) {
+	html := render(t, molecules.ApprovalCard(domain.ThreadMessage{
+		ChatMessage: domain.ChatMessage{ID: "m1", ProjectID: "p1", Kind: domain.KindApproval, RefID: "r1", ApprovalStatus: domain.ApprovalPending},
+	}))
+
+	// Implicit submission (Enter) presses the form's first submit button; it must be an inert one.
+	first := regexp.MustCompile(`<button[^>]*type="submit"[^>]*>`).FindString(html)
+	require.NotEmpty(t, first, html)
+	assert.Contains(t, first, "disabled")
+	assert.NotContains(t, first, `name="decision"`)
+	assert.Less(t, strings.Index(html, first), strings.Index(html, `value="approve"`))
+}
