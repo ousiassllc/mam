@@ -318,6 +318,23 @@ func TestSyncLabs_Failures(t *testing.T) {
 	})
 }
 
+func TestSyncLabs_ADownloadFailureDoesNotLeakTheSignedOutputURL(t *testing.T) {
+	storage := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+	storageURL := storage.URL
+	storage.Close()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"id":"g","status":"COMPLETED","outputUrl":"` + storageURL + `/out.mp4?X-Signature=signed-secret"}`))
+	}))
+	defer srv.Close()
+	sl := audiodirector.NewSyncLabs(audiodirector.SyncLabsConfig{BaseURL: srv.URL, LocalDownloads: true}, syncKeys(t, true), nil)
+
+	_, err := sl.Sync(context.Background(), audiodirector.LipSyncRequest{Model: "sync-3"})
+
+	require.Error(t, err)
+	assert.NotContains(t, err.Error(), "signed-secret")
+	assert.NotContains(t, err.Error(), storageURL)
+}
+
 func TestSyncLabs_RefusesAnOutputURLThatIsNotHTTPSOrPointsToTheLocalNetwork(t *testing.T) {
 	for name, output := range map[string]string{
 		"plain http": "http://cdn.example.com/out.mp4",
