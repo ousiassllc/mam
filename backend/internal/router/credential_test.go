@@ -1,6 +1,7 @@
 package router_test
 
 import (
+	"errors"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -8,6 +9,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/zalando/go-keyring"
 
 	"github.com/ousiassllc/mam/backend/internal/credential"
 )
@@ -72,4 +75,25 @@ func regexpFind(t *testing.T, pattern, body string) string {
 	m := regexp.MustCompile(pattern).FindString(body)
 	require.NotEmpty(t, m, "no match for %s", pattern)
 	return m
+}
+
+// Without a usable OS key store (no Secret Service, locked) only the API key panel is lost: the rest
+// of the settings screen, which needs no key, still renders.
+func TestSettings_RendersWithoutAKeyStore(t *testing.T) {
+	a := newApp(t)
+	project := a.createProject("CM")
+	keyring.MockInitWithError(errors.New("secret service is not available"))
+	t.Cleanup(keyring.MockInit)
+
+	rec := a.get("/projects/"+project+"/settings", false)
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	body := rec.Body.String()
+	assert.Contains(t, body, `data-testid="credential-unavailable"`)
+	assert.NotContains(t, body, `data-testid="credential-row"`)
+	assert.Contains(t, body, `id="policy-`, "the policy form is still there")
+
+	// The HTMX fragment degrades the same way.
+	rec = a.get("/projects/"+project+"/settings", true)
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.Contains(t, rec.Body.String(), `data-testid="credential-unavailable"`)
 }
