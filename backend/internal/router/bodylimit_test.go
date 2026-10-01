@@ -67,3 +67,30 @@ func TestBodyLimit_OversizedMultipartOnNonUploadRoutesIs413Unread(t *testing.T) 
 	require.NoError(t, err)
 	assert.Empty(t, entries, "the oversized body was not spilled to a temp file")
 }
+
+// An upload route is exempt from the cap only for the multipart body its handler limits itself: a
+// urlencoded body on POST /projects/:id/messages is capped like any other route.
+func TestBodyLimit_OversizedUrlencodedOnUploadRouteIs413Unread(t *testing.T) {
+	a := newApp(t)
+	id := a.createProject("美容液の縦型15秒CMを作りたい")
+	payload := []byte("content=" + strings.Repeat("a", middleware.MaxBodyBytes))
+
+	body := &countReader{r: bytes.NewReader(payload)}
+	req := httptest.NewRequest(http.MethodPost, "/projects/"+id+"/messages", body)
+	req.ContentLength = int64(len(payload))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.AddCookie(a.cookie)
+	req.Header.Set(middleware.CSRFHeaderName, a.token)
+	rec := do(a.engine, req)
+	assert.Equal(t, http.StatusRequestEntityTooLarge, rec.Code, rec.Body.String())
+	assert.Zero(t, body.n, "the body was read")
+
+	// Chunked (unknown length): the limit still stops the read.
+	req = httptest.NewRequest(http.MethodPost, "/projects/"+id+"/messages", io.NopCloser(bytes.NewReader(payload)))
+	req.ContentLength = -1
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.AddCookie(a.cookie)
+	req.Header.Set(middleware.CSRFHeaderName, a.token)
+	rec = do(a.engine, req)
+	assert.Equal(t, http.StatusRequestEntityTooLarge, rec.Code, rec.Body.String())
+}

@@ -14,8 +14,9 @@ const MaxBodyBytes = 1 << 20
 
 const tooLargeMessage = "送信内容が大きすぎます"
 
-// uploadRoutes are the routes whose handlers call readMultipart and therefore apply their own,
-// larger MaxBytesReader. Every other route keeps MaxBodyBytes no matter the Content-Type.
+// uploadRoutes are the routes whose handlers call readMultipart for a multipart/form-data body and
+// therefore apply their own, larger MaxBytesReader to it. Any other body on these routes (a
+// urlencoded form, JSON) is not read by readMultipart and keeps MaxBodyBytes.
 var uploadRoutes = map[string]struct{}{
 	"POST /projects":                      {},
 	"POST /projects/:id/messages":         {},
@@ -31,13 +32,19 @@ func isUploadRoute(c *gin.Context) bool {
 	return ok
 }
 
-// MaxBody caps the request body at MaxBodyBytes. Upload routes are the exception: they limit the
-// body themselves. A declared length over the cap is refused before the body is read, so it is not
-// parsed into memory or a temp file. A urlencoded form within the cap is parsed here, because gin
-// ignores a form parse error and a too-long form would silently arrive empty.
+// MaxBody caps the request body at MaxBodyBytes. A multipart body on an upload route is the
+// exception: the handler limits it itself. A declared length over the cap is refused before the
+// body is read, so it is not parsed into memory or a temp file. A urlencoded form within the cap is
+// parsed here, because gin ignores a form parse error and a too-long form would silently arrive
+// empty.
 func MaxBody() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if c.Request.Body == nil || c.Request.Body == http.NoBody || isUploadRoute(c) {
+		if c.Request.Body == nil || c.Request.Body == http.NoBody {
+			c.Next()
+			return
+		}
+		mediaType, _, _ := mime.ParseMediaType(c.GetHeader("Content-Type"))
+		if mediaType == "multipart/form-data" && isUploadRoute(c) {
 			c.Next()
 			return
 		}
@@ -46,7 +53,6 @@ func MaxBody() gin.HandlerFunc {
 			return
 		}
 		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, MaxBodyBytes)
-		mediaType, _, _ := mime.ParseMediaType(c.GetHeader("Content-Type"))
 		if mediaType == "application/x-www-form-urlencoded" {
 			if err := c.Request.ParseForm(); err != nil {
 				if isTooLarge(err) {
