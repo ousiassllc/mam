@@ -120,7 +120,7 @@ M1 Issue #7（F-06/F-07/F-11/F-12）の実装仕様。Reasoning LLM Adapter（§
 
 - **画像**: §3 の 4 種すべて（Imagen 4 / Nano Banana / FLUX.2 / GPT Image 2）を実装する。用途→プライマリ/代替は §3 の表どおり（`new_reference` / `edit_reference` / `preview` / `unified_openai`）。Reference Pack の Character/Product/Location は新規生成として `new_reference`（アップロード素材や World State の参照画像がある場合は参照ベース編集として `edit_reference`）、Style/Lighting/Keyframe は `edit_reference` を使う。`prefer_openai` を有効にすると新規参照を `unified_openai` へ回す
 - **動画**: Kling 3.0 / Seedance 2.0（M1）と Runway Gen-4.5（M2）の 3 アダプタ（§4）。Runway Gen-4.5 は `POST /v1/text_to_video`（Shot に先頭フレームがなければ）または `POST /v1/image_to_video`（先頭フレームのみ）を非同期タスクとして起動して `GET /v1/tasks/:id` をポーリングし、`X-Runway-Version` ヘッダーを付ける。出力は 720p のみ、長さは 2〜10 秒、ネガティブプロンプトはなく（Avoid は本文に含める）プロンプトは 1000 文字まで、自由な参照画像は取れない。価格はクレジット（12 クレジット/秒、1 クレジット = 0.01 USD）から USD に換算して見積る
-- **`model_name` / `provider`**: `take.model_name`・`cost_ledger_entry.provider` は §6 の正規識別子（`imagen-4` / `nano-banana` / `flux-2` / `gpt-image-2` / `kling-3.0` / `seedance-2.0` / `runway-gen-4.5`）で保存する。API のモデル ID（`imagen-4.0-generate-001` など）は設定値で、保存値には使わない
+- **`model_name` / `provider`**: `take.model_name`・`cost_ledger_entry.provider` は §6 の正規識別子（`imagen-4` / `nano-banana` / `flux-2` / `gpt-image-2` / `kling-3.0` / `seedance-2.0` / `runway-gen-4.5`）で保存する。API のモデル ID（`imagen-4.0-generate-001` など）は設定値で、保存値には使わない。`gpt-image-2` の既定 API モデル ID は、現時点で公開 API として確認できている `gpt-image-1`（`models.gpt-image-2.model` で差し替え可能。公開されたら設定で `gpt-image-2` に切り替える）
 
 ### 9.2 設定
 
@@ -372,3 +372,4 @@ MAX QUALITY のみ。話者付きの Dialogue の行（Narration は対象外）
 | 1.15 | 2026-10-01 | §9.3 に、動画のダウンロードを一時ファイルへのストリーム書き込みにし、保存をリネームにすることを追記 | Take の同時生成時に最大 300 MB の動画を複数メモリへ載せていたため（Issue #48） |
 | 1.16 | 2026-10-01 | §10.1 のモデル取得スクリプトの説明に、取得元コミットの固定・検証コマンドの自動選択・配置先の決定順を追記 | スクリプトが `shasum` のみに依存し、取得元が可変ブランチで、`MAM_FACE_MODEL_DIR` を見ていなかったため（Issue #77） |
 | 1.17 | 2026-10-01 | §10.2 の顔同一性の閾値から、未校正時の固定値 `warn_similarity` / `fail_similarity` を外した。参照が 1 枚、または分布が使えないときは数値の警告 / FAIL を出さない | 固定値がソース定数のままだったため（Issue #133）。`spec/spec.md` §12.4 と同じ |
+| 1.18 | 2026-10-01 | §9.1 に、`gpt-image-2` の既定 API モデル ID が `gpt-image-1` であること（設定で差し替え可）を明記 | 実装の既定値と仕様の選定名が食い違って見えたため（Issue #165） |
