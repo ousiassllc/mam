@@ -565,7 +565,8 @@ var stateUpdates = []string{
 	 FROM location AS prev WHERE location.project_id = ? AND prev.project_id = ? AND prev.origin_id = location.origin_id`,
 }
 
-// inheritWorldState starts the Project from the final World State of the previous Episode.
+// inheritWorldState starts the Project from the final World State of the previous Episode: its trunk
+// (branch_id IS NULL), never a Branch, whose version numbers are counted separately.
 func (r *SeriesRepository) inheritWorldState(ctx context.Context, tx *sql.Tx, previousID, projectID string) error {
 	for _, q := range stateUpdates {
 		if _, err := tx.ExecContext(ctx, q, projectID, previousID); err != nil {
@@ -576,7 +577,7 @@ func (r *SeriesRepository) inheritWorldState(ctx context.Context, tx *sql.Tx, pr
 		prevVersionID, state string
 	)
 	err := tx.QueryRowContext(ctx,
-		`SELECT id, state FROM world_state_version WHERE project_id = ? ORDER BY version_number DESC LIMIT 1`, previousID).Scan(&prevVersionID, &state)
+		`SELECT id, state FROM world_state_version WHERE project_id = ? AND branch_id IS NULL ORDER BY version_number DESC LIMIT 1`, previousID).Scan(&prevVersionID, &state)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil // the previous Episode has completed no Shot: no Camera or Story to inherit
 	}
