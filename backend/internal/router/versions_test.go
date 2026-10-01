@@ -91,6 +91,34 @@ func TestWorldStateVersions_ViewListsThemAndRestoreBringsTheValuesBack(t *testin
 	assert.Equal(t, http.StatusLocked, rec.Code, "restoring would change a LOCKed field")
 }
 
+func TestWorldStateVersions_BranchPageRestoresTheBranchSeriesNotTheTrunk(t *testing.T) {
+	a := newApp(t)
+	id := a.createProject("美容液の縦型15秒CMを作りたい")
+	a.execSQL(`INSERT INTO scene (id, project_id, order_index) VALUES ('sc', ?, 0)`, id)
+	a.execSQL(`INSERT INTO shot (id, scene_id, order_index) VALUES ('sh', 'sc', 0)`)
+	a.execSQL(`INSERT INTO branch (id, project_id, branch_point_type, branch_point_shot_id, name) VALUES ('b1', ?, 'shot', 'sh', 'alt')`, id)
+	a.execSQL(`INSERT INTO character (id, project_id, name) VALUES ('c1', ?, 'Mio')`, id)
+	a.execSQL(`INSERT INTO character (id, project_id, branch_id, name) VALUES ('c1b', ?, 'b1', 'Mio')`, id)
+	require.Equal(t, http.StatusOK, a.form(http.MethodPut, "/projects/"+id+"/characters/c1", url.Values{"wardrobe": {"trunk_coat"}}).Code)
+	require.Equal(t, http.StatusOK, a.form(http.MethodPut, "/projects/"+id+"/characters/c1b?branch_id=b1", url.Values{"wardrobe": {"red_dress"}}).Code)
+	require.Equal(t, http.StatusOK, a.form(http.MethodPut, "/projects/"+id+"/characters/c1b?branch_id=b1", url.Values{"wardrobe": {"blue_coat"}}).Code)
+
+	page := a.get("/projects/"+id+"/world-state?branch_id=b1", false).Body.String()
+	assert.Contains(t, page, `hx-post="/projects/`+id+`/world-state/versions/1/restore?branch_id=b1"`, "the restore button is scoped to the Branch")
+	assert.NotContains(t, page, `/versions/1/restore"`)
+
+	rec := a.form(http.MethodPost, "/projects/"+id+"/world-state/versions/1/restore?branch_id=b1", nil)
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.Contains(t, rec.Body.String(), `value="red_dress"`, "the Branch view is the response")
+	assert.NotContains(t, rec.Body.String(), "trunk_coat")
+	assert.Contains(t, rec.Body.String(), `/versions/2/restore?branch_id=b1"`, "the response keeps the Branch scope and the restore was appended as a Branch version")
+
+	var trunk int
+	require.NoError(t, a.db.Reader().QueryRow(`SELECT COUNT(*) FROM world_state_version WHERE project_id = ? AND branch_id IS NULL`, id).Scan(&trunk))
+	assert.Equal(t, 1, trunk, "the trunk series is untouched (one version from its own edit)")
+	assert.Equal(t, http.StatusNotFound, a.form(http.MethodPost, "/projects/"+id+"/world-state/versions/1/restore?branch_id=nope", nil).Code)
+}
+
 func TestBranchVersions_HistoryAndRestores(t *testing.T) {
 	a := newApp(t)
 	id := a.createProject("美容液の縦型15秒CMを作りたい")

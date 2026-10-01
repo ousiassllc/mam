@@ -284,7 +284,7 @@ templ WorldStateView(d WorldStateData) {
 		</section>
 		@VersionHistoryPanel(VersionHistoryData{
 			DOMID: "version-history-world", Title: "World State のバージョン", BasePath: paths.Project(d.Project.ID, "world-state"),
-			Target: "#world-state-view", Entries: d.Versions,
+			Target: "#world-state-view", Query: d.branchQuery(), Entries: d.Versions,
 		})
 	</div>
 }

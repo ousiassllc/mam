@@ -42,14 +42,15 @@ func (s *VersionService) RestoreShot(ctx context.Context, shotID string, number 
 	return s.director.Inspector(ctx, shotID)
 }
 
-// RestoreWorldState restores the World State of the Project's trunk to version number and returns
-// the refreshed view (POST /projects/:id/world-state/versions/:versionNumber/restore). A LOCKed
-// field that would change is ErrLocked and nothing is written.
-func (s *VersionService) RestoreWorldState(ctx context.Context, projectID string, number int) (WorldView, error) {
-	if _, err := s.versions.RestoreWorldStateVersion(ctx, projectID, "", number); err != nil {
+// RestoreWorldState restores the World State of the Project's trunk (branchID "") or of the Branch
+// to version number and returns the refreshed view of that same scope
+// (POST /projects/:id/world-state/versions/:versionNumber/restore[?branch_id=B]). A LOCKed field
+// that would change is ErrLocked and nothing is written.
+func (s *VersionService) RestoreWorldState(ctx context.Context, projectID, branchID string, number int) (WorldView, error) {
+	if _, err := s.versions.RestoreWorldStateVersion(ctx, projectID, branchID, number); err != nil {
 		return WorldView{}, lockedOrNotFound(err)
 	}
-	return s.world.View(ctx, projectID, "")
+	return s.world.View(ctx, projectID, branchID)
 }
 
 func lockedOrNotFound(err error) error {
