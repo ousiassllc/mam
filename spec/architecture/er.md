@@ -46,7 +46,7 @@ erDiagram
     REPAIR_ACTION }o--o| TAKE : produces_next
 
     STATE_DIFF }o--|| WORLD_STATE_VERSION : creates
-    BRANCH }o--|| WORLD_STATE_VERSION : snapshot_of
+    BRANCH }o--o| WORLD_STATE_VERSION : snapshot_of
     BRANCH }o--o| SHOT : branch_point
     BRANCH }o--o| SCENE : scene_branch_point
     BRANCH ||--o{ BRANCH_VERSION : has
@@ -230,7 +230,7 @@ erDiagram
     PROJECT ||--o{ WORLD_STATE_VERSION : tracks
     SHOT ||--o{ STATE_DIFF : produces
     STATE_DIFF }o--|| WORLD_STATE_VERSION : creates
-    BRANCH }o--|| WORLD_STATE_VERSION : snapshot_of
+    BRANCH }o--o| WORLD_STATE_VERSION : snapshot_of
     BRANCH }o--o| SHOT : branch_point
     BRANCH }o--o| SCENE : scene_branch_point
     BRANCH ||--o{ BRANCH_VERSION : has
@@ -636,7 +636,7 @@ erDiagram
 | `repair_shadow` | Jev のシャドー実行の記録（`spec/architecture/model-adapters.md` §11）。`repair_action_id` FK。Repair Agent（LLM）が戦略を選んだときだけ 1 行追加し、Repair の結果には影響しない。`model` は使った Jev の固定バージョン、`jev_choice` は Jev の選択、`decided_action` は Repair Agent の選択、`agreed`（0/1）は一致、`confidence`/`probabilities`（JSON）は Jev の確信度、`latency_ms`/`input_tokens`/`output_tokens`/`cost_usd` は遅延とコスト。呼び出しが失敗したときは `error` に理由を入れ、他の結果列は空 | `idx_repair_shadow_action (repair_action_id)` |
 | `world_state_version` | `project_id` FK。`branch_id` FK（NULL許容、NULL=主系列、非NULL=当該Branchが独立して持つバージョン系列）。`(project_id, COALESCE(branch_id, ''), version_number)` の式 UNIQUE INDEX（トランクも同じ式で一意。トランク専用の部分ユニークインデックスは持たない）、Branch単位で`version_number`は独立して単調増加 | `idx_world_state_version_project (project_id, COALESCE(branch_id, ''), version_number)`（UNIQUE） |
 | `state_diff` | `shot_id` FK、`take_id` FK、`world_state_version_id` FK | `idx_state_diff_shot (shot_id)` |
-| `branch` | `project_id` FK。`branch_point_type` は `scene/shot/frame` のいずれか（CHECK制約）。`branch_point_scene_id`（type=scene時）/`branch_point_shot_id`（type=shot/frame時）はいずれかNULL許容。`branch_point_offset_seconds`（type=frame時のみ使用、他はNULL）。`world_state_version_id` FK（Snapshot） | `idx_branch_project (project_id)` |
+| `branch` | `project_id` FK。`branch_point_type` は `scene/shot/frame` のいずれか（CHECK制約）。`branch_point_scene_id`（type=scene時）/`branch_point_shot_id`（type=shot/frame時）はいずれかNULL許容。`branch_point_offset_seconds`（type=frame時のみ使用、他はNULL）。`world_state_version_id` FK（Snapshot、NULL許容。行の挿入後に設定し、参照先が消えると NULL になる＝ON DELETE SET NULL） | `idx_branch_project (project_id)` |
 | `branch_version` | `branch_id` FK。`(branch_id, version_number)` UNIQUE、`version_number` は単調増加。Branch自体の主要変更（名称変更・World State参照更新等）を追記のみで履歴化する | `idx_branch_version_branch (branch_id, version_number)` |
 | `reshoot_request` | Editor → Reshoot Loop（F-19）が Director に求めた追加 Shot。`project_id` FK、`branch_id` FK（NULL許容、NULL=主系列トランク）、`edit_timeline_version_id` FK（判定した版）、`round`（`(project_id, branch_id)` ごとの要求ラウンド。Retry Policy が数える）、`shot_id` FK（作らせた Shot）、`after_shot_id` FK（クリップを足す位置の Shot）、`kind`（`insert/reaction`）、`objective`、`duration_seconds`、`status`（`requested/applied`）、`applied_edit_timeline_version_id` FK（足した版） | `idx_reshoot_request_project (project_id, branch_id, round)`, `idx_reshoot_request_status (status)` |
 | `edit_timeline_version` / `audio_timeline_version` | `project_id` FK。`branch_id` FK（NULL許容、NULL=主系列トランク、非NULL=当該BranchのTimeline）。`(project_id, COALESCE(branch_id, ''), version_number)` の式 UNIQUE INDEX（トランクでも一意） | `idx_edit_timeline_project (project_id, COALESCE(branch_id, ''), version_number)`（UNIQUE）。`audio_timeline_version` は `idx_audio_timeline_project`（同じ式） |
@@ -751,3 +751,4 @@ erDiagram
 | 1.45 | 2026-10-01 | 設計メモのバージョン復元から、存在しないトランク専用の部分ユニーク索引と、そのマイグレーション名を外し、`idx_world_state_version_project` の式 UNIQUE INDEX だけに揃えた | §3 の表は式インデックスなのに、設計メモだけ別索引を残していたため（Issue #119） |
 | 1.46 | 2026-10-01 | §3 の `editor_judge_result.findings` の要素構造と、§4.x の `edit_timeline_version.timeline` のクリップの `kind`・`caption` を本文に追記した | 改訂履歴 1.35 が追記済みとしていたが本文に無かったため（Issue #171）。`domain.EditorFinding` / `EditClip` に合わせた |
 | 1.47 | 2026-10-01 | `chat_message.ref_type/ref_id` と Approval カードの説明に、Final の Approval カード（`ref_type=export`）の `ref_id` が `final_qc_result.id` であることを追記した | Final 承認カードは Final QC PASS の時点（Export 作成前）に出るため、`ref_id` は `export.id` ではない（Issue #208）。`service/editor_final.go` の `RequestApproval(..., CheckpointFinal, summary, res.ID)` |
+| 1.48 | 2026-10-01 | §1・§2.2 の `BRANCH` と `WORLD_STATE_VERSION` の関係を zero-or-one（`}o--o|`）に直し、§3 の `branch.world_state_version_id` が NULL 許容であることを追記 | 実スキーマ（NOT NULL なし、ON DELETE SET NULL）と同種の `BRANCH_VERSION` の表記に合わせるため（Issue #187） |
