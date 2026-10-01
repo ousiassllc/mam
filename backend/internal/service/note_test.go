@@ -95,6 +95,23 @@ func TestChat_WithoutRememberWordsAutoModeDoesNotCallTheInterpreter(t *testing.T
 	assert.Empty(t, view.Notes)
 }
 
+func TestChat_DirectorModeMakesNoNoteWhenTheInterpreterReturnsOneWithoutARememberWord(t *testing.T) {
+	f := newGenFixture(t, false)
+	f.startDirecting(t)
+	f.llm.interpreter = opsJSON(`{"type":"create_note","content":"主人公は黒髪ロング","category":"tone"}`)
+
+	f.say(t, "主人公は黒髪ロングにしたい", "")
+	assert.Equal(t, 1, f.llm.calls(llm.AgentCommandInterpreter), "DIRECTOR MODE reads every message")
+	view, err := f.svc.Notes.ProjectNotes(context.Background(), f.projectID)
+	require.NoError(t, err)
+	assert.Empty(t, view.Notes, "no request word: no note, whatever the model returned")
+
+	f.say(t, "主人公は黒髪ロングにしたい。覚えておいて", "")
+	view, err = f.svc.Notes.ProjectNotes(context.Background(), f.projectID)
+	require.NoError(t, err)
+	assert.Len(t, view.Notes, 1)
+}
+
 func TestNotes_PromotionCardIsNonBlockingAndApprovingWritesTheWorldState(t *testing.T) {
 	f := newGenFixture(t, true)
 	f.llm.extractor = promotionAnswer("hairstyle", "personality")
