@@ -75,6 +75,53 @@ func TestGenerationRepository_ResetStaleShotsReleasesOnlyGeneratingShots(t *test
 	assert.ErrorIs(t, err, repository.ErrNotFound)
 }
 
+func TestGenerationRepository_ResetStaleShotsKeepsShotsWithAQueuedGenerateOrRepairJob(t *testing.T) {
+	ctx := context.Background()
+	f := newGenRepoFixture(t)
+	scenes, err := repository.NewPlanRepository(f.db).ListScenes(ctx, f.projectID)
+	require.NoError(t, err)
+	shots, err := repository.NewPlanRepository(f.db).ListShots(ctx, scenes[0].ID)
+	require.NoError(t, err)
+	queuedGen, queuedRepair := shots[0].ID, shots[1].ID
+	jobs := repository.NewJobRepository(f.db)
+	queue := func(kind domain.JobKind, shotID string) domain.Job {
+		j, err := jobs.Create(ctx, kind, json.RawMessage(`{"shot_id":"`+shotID+`"}`))
+		require.NoError(t, err)
+		return j
+	}
+	queue(domain.JobGenerate, queuedGen)
+	queue(domain.JobRepair, queuedRepair)
+	require.NoError(t, f.repo.SetShotState(ctx, queuedGen, domain.ShotGenerating))
+	require.NoError(t, f.repo.SetShotState(ctx, queuedRepair, domain.ShotRepairing))
+
+	n, err := f.repo.ResetStaleShots(ctx)
+	require.NoError(t, err)
+	assert.Zero(t, n, "a Shot whose job is waiting in the queue is not released")
+	for id, want := range map[string]domain.ShotState{queuedGen: domain.ShotGenerating, queuedRepair: domain.ShotRepairing} {
+		ref, err := f.repo.GetShot(ctx, id)
+		require.NoError(t, err)
+		assert.Equal(t, want, ref.Shot.State)
+	}
+	ok, err := f.repo.StartShot(ctx, queuedGen)
+	require.NoError(t, err)
+	assert.False(t, ok, "so no second generation can be claimed for it")
+}
+
+func TestGenerationRepository_ResetStaleShotsReleasesShotsWhoseJobWasRunning(t *testing.T) {
+	ctx := context.Background()
+	f := newGenRepoFixture(t)
+	jobs := repository.NewJobRepository(f.db)
+	j, err := jobs.Create(ctx, domain.JobGenerate, json.RawMessage(`{"shot_id":"`+f.shotID+`"}`))
+	require.NoError(t, err)
+	_, err = f.repo.StartShot(ctx, f.shotID)
+	require.NoError(t, err)
+	require.NoError(t, jobs.MarkRunning(ctx, j.ID))
+
+	n, err := f.repo.ResetStaleShots(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 1, n, "the interrupted job is failed by the queue, so its Shot has to be released")
+}
+
 func TestGenerationRepository_ListProjectShotsIsInStoryOrder(t *testing.T) {
 	f := newGenRepoFixture(t)
 	shots, err := f.repo.ListProjectShots(context.Background(), f.projectID)
