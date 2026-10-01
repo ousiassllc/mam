@@ -292,19 +292,47 @@ type NewComposite struct {
 	Candidate bool
 }
 
+// inheritLineage copies what the base Take was generated from (the World State version and the
+// References, domain.TakeLineage) into the parameters of a composed Take, which is made from the
+// base Take's prompt version and so from the same World State and References. A base Take that predates
+// the record has none to copy: the Generation Trace falls back as it does for that Take.
+func inheritLineage(params json.RawMessage, base string) (json.RawMessage, error) {
+	var from, to map[string]json.RawMessage
+	if json.Unmarshal([]byte(base), &from) != nil {
+		return params, nil
+	}
+	if err := json.Unmarshal(params, &to); err != nil {
+		return nil, fmt.Errorf("decode composite parameters: %w", err)
+	}
+	for _, key := range []string{"world_state_version", "references"} {
+		if v, ok := from[key]; ok {
+			to[key] = v
+		}
+	}
+	out, err := json.Marshal(to)
+	if err != nil {
+		return nil, fmt.Errorf("encode composite parameters: %w", err)
+	}
+	return out, nil
+}
+
 // CreateComposite stores the composed Take with its video asset. Unless it is a Candidate it is the
 // user's choice: it becomes the Shot's selected Take with the status "selected". It returns the Take
 // ID, or ErrNotFound when the base Take does not belong to the Shot.
 func (r *TakeRepository) CreateComposite(ctx context.Context, nc NewComposite) (string, error) {
 	takeID := domain.NewID()
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
-		var promptVersionID, model string
+		var promptVersionID, model, baseParams string
 		err := tx.QueryRowContext(ctx,
-			`SELECT t.prompt_version_id, t.model_name FROM take t JOIN prompt_version pv ON pv.id = t.prompt_version_id
-			 WHERE t.id = ? AND pv.shot_id = ?`, nc.BaseTakeID, nc.ShotID).Scan(&promptVersionID, &model)
+			`SELECT t.prompt_version_id, t.model_name, COALESCE(t.model_parameters, '') FROM take t JOIN prompt_version pv ON pv.id = t.prompt_version_id
+			 WHERE t.id = ? AND pv.shot_id = ?`, nc.BaseTakeID, nc.ShotID).Scan(&promptVersionID, &model, &baseParams)
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrNotFound
 		}
+		if err != nil {
+			return err
+		}
+		params, err := inheritLineage(nc.Parameters, baseParams)
 		if err != nil {
 			return err
 		}
@@ -314,7 +342,7 @@ func (r *TakeRepository) CreateComposite(ctx context.Context, nc NewComposite) (
 		}
 		if _, err := tx.ExecContext(ctx,
 			`INSERT INTO take (id, prompt_version_id, model_name, model_parameters, file_path, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-			takeID, promptVersionID, model, string(nc.Parameters), nc.Asset.FilePath, domain.TakeCandidate, now); err != nil {
+			takeID, promptVersionID, model, string(params), nc.Asset.FilePath, domain.TakeCandidate, now); err != nil {
 			return fmt.Errorf("insert take: %w", err)
 		}
 		if nc.Candidate {
