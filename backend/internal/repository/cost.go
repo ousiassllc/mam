@@ -41,9 +41,11 @@ func (r *CostRepository) Summary(ctx context.Context, projectID string) (domain.
 	sum.Project = unassigned
 
 	rows, err := r.db.Reader().QueryContext(ctx,
-		`SELECT s.id, s.order_index, s.title, COALESCE(sh.id, ''), COALESCE(sh.order_index, 0), COALESCE(sh.objective, '')
-		 FROM scene s LEFT JOIN shot sh ON sh.scene_id = s.id
-		 WHERE s.project_id = ? ORDER BY s.order_index, sh.order_index`, projectID)
+		`SELECT s.id, COALESCE(s.branch_id, ''), COALESCE(b.name, ''), s.order_index, s.title,
+		        COALESCE(sh.id, ''), COALESCE(sh.order_index, 0), COALESCE(sh.objective, '')
+		 FROM scene s LEFT JOIN branch b ON b.id = s.branch_id LEFT JOIN shot sh ON sh.scene_id = s.id
+		 WHERE s.project_id = ?
+		 ORDER BY COALESCE(s.branch_id, ''), s.order_index, s.id, sh.order_index`, projectID)
 	if err != nil {
 		return domain.CostSummary{}, fmt.Errorf("list scenes: %w", err)
 	}
@@ -51,7 +53,7 @@ func (r *CostRepository) Summary(ctx context.Context, projectID string) (domain.
 	for rows.Next() {
 		var sc domain.SceneCost
 		var sh domain.ShotCost
-		if err := rows.Scan(&sc.SceneID, &sc.OrderIndex, &sc.Title, &sh.ShotID, &sh.OrderIndex, &sh.Objective); err != nil {
+		if err := rows.Scan(&sc.SceneID, &sc.BranchID, &sc.BranchName, &sc.OrderIndex, &sc.Title, &sh.ShotID, &sh.OrderIndex, &sh.Objective); err != nil {
 			return domain.CostSummary{}, fmt.Errorf("scan scene: %w", err)
 		}
 		if n := len(sum.Scenes); n == 0 || sum.Scenes[n-1].SceneID != sc.SceneID {

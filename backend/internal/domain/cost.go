@@ -25,7 +25,10 @@ type ShotCost struct {
 
 // SceneCost is the cost of one Scene with its Shots.
 type SceneCost struct {
-	SceneID    string
+	SceneID string
+	// BranchID and BranchName are empty for a Scene of the trunk; a Branch numbers its own Scenes from the first.
+	BranchID   string
+	BranchName string
 	OrderIndex int
 	Title      string
 	Totals     CostTotals
