@@ -173,6 +173,29 @@ func TestExport_ABranchIsExportedFromItsOwnTimelinesAndTheRecordSaysSo(t *testin
 	assert.Equal(t, branchID, exports[0].BranchID)
 }
 
+func TestExport_ABranchWhoseAudioWasMadeForAnOlderEditIsRefused(t *testing.T) {
+	e := toAudio(t)
+	rec := e.form(http.MethodPost, "/shots/"+e.shotID+"/branch", url.Values{"name": {"逃げる"}})
+	require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
+	branchID := strings.TrimPrefix(rec.Header().Get("HX-Redirect"), "/branches/")
+	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/projects/"+e.project+"/edit/rough-cut", url.Values{"branch_id": {branchID}}).Code)
+	e.setState("AUDIO")
+	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/projects/"+e.project+"/audio/generate", url.Values{"branch_id": {branchID}}).Code)
+
+	// The Branch's edit is saved again after its audio was made: the audio belongs to the older edit.
+	onBranch, code := e.timelineOn(branchID)
+	require.Equal(t, http.StatusOK, code)
+	body := `{"clips":[{"shot_id":"` + e.shotID + `","take_id":"t1","kind":"main","in_point":0,"out_point":2,"transition":{"type":"cut","seconds":0}}]}`
+	require.Equal(t, http.StatusNoContent, e.request(http.MethodPut, onBranch.SaveURL, []byte(body), "application/json", false).Code)
+	e.setState("READY")
+
+	rec = e.form(http.MethodPost, "/projects/"+e.project+"/export", url.Values{"branch_id": {branchID}})
+	assert.Equal(t, http.StatusConflict, rec.Code, rec.Body.String())
+	exports, err := repository.NewEditorRepository(e.db).ListExports(context.Background(), e.project)
+	require.NoError(t, err)
+	assert.Empty(t, exports, "no video is written from a stale audio")
+}
+
 func TestExport_TheBranchEditorPageExportsItsBranchAndKeepsTheScope(t *testing.T) {
 	e := toAudio(t)
 	rec := e.form(http.MethodPost, "/shots/"+e.shotID+"/branch", url.Values{"name": {"逃げる"}})

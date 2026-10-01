@@ -174,6 +174,9 @@ func (s *EditorService) renderExport(ctx context.Context, projectID, branchID st
 	if err != nil {
 		return domain.Export{}, notFound(err)
 	}
+	if branchID != "" && audio.Timeline.EditTimelineID != edit.ID {
+		return domain.Export{}, conflict("Branch の音声が最新の編集に対して作られていません。音声を作り直してください")
+	}
 	cuts, err := s.cuts(ctx, edit.Timeline, audio.Timeline.LipSync)
 	if err != nil {
 		return domain.Export{}, err
