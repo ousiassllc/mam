@@ -33,7 +33,8 @@ func CSRF() gin.HandlerFunc {
 		if fresh {
 			token, err = newToken()
 			if err != nil {
-				_ = c.AbortWithError(http.StatusInternalServerError, err)
+				_ = c.Error(err)
+				abortWith(c, http.StatusInternalServerError, "", "内部エラーが発生しました")
 				return
 			}
 			setCSRFCookie(c, token)
@@ -45,7 +46,7 @@ func CSRF() gin.HandlerFunc {
 			return
 		}
 		if fresh || !tokensEqual(token, c.GetHeader(CSRFHeaderName)) {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "invalid or missing CSRF token"})
+			abortWith(c, http.StatusForbidden, "invalid or missing CSRF token", "送信を確認できませんでした。画面を再読み込みしてからやり直してください")
 			return
 		}
 		c.Next()

@@ -9,6 +9,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const forbiddenMessage = "このアドレスからはアクセスできません"
+
 // LoopbackOnly rejects requests that did not come from the local machine or that
 // address the server by a non-loopback name. The listener is already bound to
 // 127.0.0.1; this is defence in depth against DNS rebinding (a remote page whose
@@ -23,14 +25,14 @@ import (
 func LoopbackOnly() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if !isLoopbackAddr(c.Request.RemoteAddr) || !isLoopbackHost(c.Request.Host) {
-			c.AbortWithStatus(http.StatusForbidden)
+			abortWith(c, http.StatusForbidden, "", forbiddenMessage)
 			return
 		}
 		if origin := c.GetHeader("Origin"); origin != "" && !isLoopbackOrigin(origin) {
-			c.AbortWithStatus(http.StatusForbidden)
+			abortWith(c, http.StatusForbidden, "", forbiddenMessage)
 			return
 		} else if origin != "" && needsSameOrigin(c.Request) && !isSameOrigin(origin, c.Request.Host) {
-			c.AbortWithStatus(http.StatusForbidden)
+			abortWith(c, http.StatusForbidden, "", forbiddenMessage)
 			return
 		}
 		c.Next()

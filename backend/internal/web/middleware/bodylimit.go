@@ -12,6 +12,8 @@ import (
 // limit in readMultipart. It matches Huma's default limit, so the gin routes and /api/v1 agree.
 const MaxBodyBytes = 1 << 20
 
+const tooLargeMessage = "送信内容が大きすぎます"
+
 // uploadRoutes are the routes whose handlers call readMultipart and therefore apply their own,
 // larger MaxBytesReader. Every other route keeps MaxBodyBytes no matter the Content-Type.
 var uploadRoutes = map[string]struct{}{
@@ -40,18 +42,18 @@ func MaxBody() gin.HandlerFunc {
 			return
 		}
 		if c.Request.ContentLength > MaxBodyBytes {
-			c.AbortWithStatusJSON(http.StatusRequestEntityTooLarge, gin.H{"error": "送信内容が大きすぎます"})
+			abortWith(c, http.StatusRequestEntityTooLarge, tooLargeMessage, tooLargeMessage)
 			return
 		}
 		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, MaxBodyBytes)
 		mediaType, _, _ := mime.ParseMediaType(c.GetHeader("Content-Type"))
 		if mediaType == "application/x-www-form-urlencoded" {
 			if err := c.Request.ParseForm(); err != nil {
-				status := http.StatusBadRequest
 				if isTooLarge(err) {
-					status = http.StatusRequestEntityTooLarge
+					abortWith(c, http.StatusRequestEntityTooLarge, tooLargeMessage, tooLargeMessage)
+					return
 				}
-				c.AbortWithStatusJSON(status, gin.H{"error": http.StatusText(status)})
+				abortWith(c, http.StatusBadRequest, http.StatusText(http.StatusBadRequest), "送信内容を読み取れませんでした")
 				return
 			}
 		}

@@ -14,3 +14,18 @@ export function errorMessage(error: unknown): string {
   }
   return '通信に失敗しました';
 }
+
+/** The htmx events that report a request that produced no swappable response. */
+export type RequestFailure = 'htmx:responseError' | 'htmx:sendError' | 'htmx:timeout';
+
+/** What to tell the user about a failed htmx request: the server was unreachable, too slow, or answered with something that is not a toast. */
+export function requestFailureMessage(event: RequestFailure, status?: number): string {
+  switch (event) {
+    case 'htmx:sendError':
+      return '通信に失敗しました。接続を確認してからやり直してください';
+    case 'htmx:timeout':
+      return '応答に時間がかかっています。しばらくしてからやり直してください';
+    case 'htmx:responseError':
+      return status ? `操作に失敗しました（${status}）` : '操作に失敗しました';
+  }
+}
