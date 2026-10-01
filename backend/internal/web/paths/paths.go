@@ -21,3 +21,8 @@ func Project(id string, segments ...string) string {
 	}
 	return sb.String()
 }
+
+// ProjectEvents is the WebSocket path of a Project's chat events, "/ws/projects/<id>".
+func ProjectEvents(id string) string {
+	return "/ws/projects/" + url.PathEscape(id)
+}
