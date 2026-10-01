@@ -304,14 +304,15 @@ func (s *DirectorService) DirectorCommand(ctx context.Context, shotID, message s
 	if err := s.refuseBrand(ctx, project.ID, message, cmd); err != nil {
 		return DirectorCommandResult{}, err // a LOCK brand violation is 403; nothing is recorded or queued
 	}
-	// The direction's ID is taken before execute: execute announces the progress card (which takes an ID),
-	// and the thread is ordered by ID, so the direction must come first.
+	// The direction is committed before execute: execute announces the progress card, which a chat that
+	// is open shows at once and then asks only for what comes after it (`after`), so a direction
+	// committed later would never reach it.
 	user := assignIDs([]domain.ChatMessage{userText(message, "", nil)})
-	res, err := s.execute(ctx, project, &ref, cmd, message, true)
-	if err != nil {
+	if err := s.commitMessages(ctx, project.ID, user); err != nil {
 		return DirectorCommandResult{}, err
 	}
-	if err := s.commitMessages(ctx, project.ID, user); err != nil {
+	res, err := s.execute(ctx, project, &ref, cmd, message, true)
+	if err != nil {
 		return DirectorCommandResult{}, err
 	}
 	if err := s.commitMessages(ctx, project.ID, assignIDs([]domain.ChatMessage{assistantText(res.text())})); err != nil {
