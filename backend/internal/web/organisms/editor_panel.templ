@@ -166,7 +166,7 @@ templ EditorActions(d EditorPanelData) {
 			<h3 class="text-sm font-semibold">2. Editor Judge</h3>
 			<div class="flex items-center gap-3">
 				@atoms.Button(atoms.ToneNeutral, "Editor Judge を実行", templ.Attributes{
-					"type": "button", "hx-post": "/edit-timelines/" + d.TimelineID + "/judge",
+					"type": "button", "hx-post": paths.EditTimeline(d.TimelineID, "judge"),
 					"hx-target": "#editor-actions", "hx-swap": "outerHTML", "hx-disabled-elt": "this", "disabled": !d.CanJudge(),
 				})
 				if d.Judge != nil {
@@ -188,7 +188,7 @@ templ EditorActions(d EditorPanelData) {
 			if d.CanRequestShots() {
 				<div class="flex items-center gap-3">
 					@atoms.Button(atoms.TonePrimary, "追加 Shot を要求（Director へ差し戻し）", templ.Attributes{
-						"type": "button", "hx-post": "/edit-timelines/" + d.TimelineID + "/request-additional-shot",
+						"type": "button", "hx-post": paths.EditTimeline(d.TimelineID, "request-additional-shot"),
 						"hx-target": "#editor-actions", "hx-swap": "outerHTML", "hx-disabled-elt": "this",
 					})
 					<span class="text-xs text-neutral-400">足りない素材を Director に作らせ、できたら編集に戻ります。</span>

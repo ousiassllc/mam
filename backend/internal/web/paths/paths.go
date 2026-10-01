@@ -1,7 +1,8 @@
-// Package paths builds the URL paths of the pages and actions of a Project, Scene, Shot, Take and
-// Branch. Their IDs come from outside (a bundle import keeps the ID of every row it finds, and
-// allows characters that mean something in a URL), so every segment is path-escaped here and nowhere
-// else builds "/projects/…", "/scenes/…", "/shots/…", "/takes/…" or "/branches/…" by hand.
+// Package paths builds the URL paths of the pages and actions of a Project, Scene, Shot, Take,
+// Branch, Note, Brand Constraint and Edit Timeline. Their IDs come from outside (a bundle import
+// keeps the ID of every row it finds, and allows characters that mean something in a URL), so every
+// segment is path-escaped here and nowhere else builds "/projects/…", "/scenes/…", "/shots/…",
+// "/takes/…", "/branches/…", "/notes/…", "/brand-constraints/…" or "/edit-timelines/…" by hand.
 package paths
 
 import (
@@ -44,6 +45,21 @@ func Take(id string, segments ...string) string {
 // Branch is "/branches/<id>" followed by the segments: Branch(id, "world-state").
 func Branch(id string, segments ...string) string {
 	return join("/branches", append([]string{id}, segments...)...)
+}
+
+// Note is "/notes/<id>" followed by the segments: Note(id, "versions", "2", "restore").
+func Note(id string, segments ...string) string {
+	return join("/notes", append([]string{id}, segments...)...)
+}
+
+// BrandConstraint is "/brand-constraints/<id>" followed by the segments.
+func BrandConstraint(id string, segments ...string) string {
+	return join("/brand-constraints", append([]string{id}, segments...)...)
+}
+
+// EditTimeline is "/edit-timelines/<id>" followed by the segments: EditTimeline(id, "judge").
+func EditTimeline(id string, segments ...string) string {
+	return join("/edit-timelines", append([]string{id}, segments...)...)
 }
 
 // APIShot is the JSON API path "/api/v1/shots/<id>" followed by the segments.

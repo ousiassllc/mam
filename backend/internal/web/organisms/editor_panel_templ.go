@@ -268,7 +268,7 @@ func EditorActions(d EditorPanelData) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		templ_7745c5c3_Err = atoms.Button(atoms.ToneNeutral, "Editor Judge を実行", templ.Attributes{
-			"type": "button", "hx-post": "/edit-timelines/" + d.TimelineID + "/judge",
+			"type": "button", "hx-post": paths.EditTimeline(d.TimelineID, "judge"),
 			"hx-target": "#editor-actions", "hx-swap": "outerHTML", "hx-disabled-elt": "this", "disabled": !d.CanJudge(),
 		}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
@@ -368,7 +368,7 @@ func EditorActions(d EditorPanelData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			templ_7745c5c3_Err = atoms.Button(atoms.TonePrimary, "追加 Shot を要求（Director へ差し戻し）", templ.Attributes{
-				"type": "button", "hx-post": "/edit-timelines/" + d.TimelineID + "/request-additional-shot",
+				"type": "button", "hx-post": paths.EditTimeline(d.TimelineID, "request-additional-shot"),
 				"hx-target": "#editor-actions", "hx-swap": "outerHTML", "hx-disabled-elt": "this",
 			}).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {

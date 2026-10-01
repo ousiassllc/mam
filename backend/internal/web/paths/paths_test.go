@@ -33,3 +33,14 @@ func TestShotTakeBranchSceneAPIAndSocketPaths_EscapeEverySegment(t *testing.T) {
 	assert.Equal(t, "/ws/shots/"+esc, paths.ShotProgress(id))
 	assert.Equal(t, "/shots/plain", paths.Shot("plain"))
 }
+
+func TestNoteBrandConstraintEditTimeline_EscapeEverySegment(t *testing.T) {
+	id := "a?b#c%d e/f"
+	esc := "a%3Fb%23c%25d%20e%2Ff"
+	assert.Equal(t, "/notes/"+esc, paths.Note(id))
+	assert.Equal(t, "/notes/"+esc+"/versions/2/restore", paths.Note(id, "versions", "2", "restore"))
+	assert.Equal(t, "/brand-constraints/"+esc, paths.BrandConstraint(id))
+	assert.Equal(t, "/edit-timelines/"+esc, paths.EditTimeline(id))
+	assert.Equal(t, "/edit-timelines/"+esc+"/request-additional-shot", paths.EditTimeline(id, "request-additional-shot"))
+	assert.Equal(t, "/edit-timelines/e1/preview", paths.EditTimeline("e1", "preview"))
+}

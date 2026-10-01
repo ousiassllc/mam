@@ -6,6 +6,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // NoteListData is the state of the note list (notes_page): the notes of a Project or of a Series.
@@ -133,7 +134,7 @@ templ noteWithHistory(n domain.NoteView) {
 			<summary class="cursor-pointer text-xs text-neutral-400">バージョン履歴</summary>
 			<div class="mt-2">
 				@VersionHistoryPanel(VersionHistoryData{
-					DOMID: "note-history-" + n.ID, Title: "メモのバージョン", BasePath: "/notes/" + n.ID,
+					DOMID: "note-history-" + n.ID, Title: "メモのバージョン", BasePath: paths.Note(n.ID),
 					Target: "#note-list", Entries: n.Versions,
 				})
 			</div>

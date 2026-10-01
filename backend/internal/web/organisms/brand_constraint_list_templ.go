@@ -109,7 +109,7 @@ func BrandConstraintList(d BrandConstraintListData) templ.Component {
 				}
 				templ_7745c5c3_Err = atoms.SmallButton(atoms.ToneNeutral, "削除", templ.Attributes{
 					"type":       "button",
-					"hx-delete":  "/brand-constraints/" + c.ID,
+					"hx-delete":  paths.BrandConstraint(c.ID),
 					"hx-target":  "#brand-constraint-list",
 					"hx-swap":    "outerHTML",
 					"hx-confirm": "この制約を削除します。よろしいですか？",
