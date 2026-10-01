@@ -368,3 +368,20 @@ func TestFailureReason(t *testing.T) {
 func TestFixedModel(t *testing.T) {
 	assert.Empty(t, generation.FixedModel(domain.ParameterLocks{}), "AUTO leaves the model to the routing")
 }
+
+// The Shot is claimed before the job is queued: a job that ends before its work starts (here the
+// Shot cannot be read) must still give the Shot back, or every new generation is refused as busy.
+func TestHandle_ReleasesTheShotWhenTheJobEndsBeforeItsWorkStarts(t *testing.T) {
+	f := newFixture(t, options{})
+	job, err := f.orch.Start(context.Background(), f.shotID, "")
+	require.NoError(t, err)
+	require.Equal(t, domain.ShotGenerating, f.shotState(t))
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	require.Error(t, f.orch.Handle(ctx, job))
+
+	assert.Equal(t, domain.ShotPlanning, f.shotState(t))
+	_, err = f.orch.Start(context.Background(), f.shotID, "")
+	assert.NoError(t, err, "the Shot accepts the next generation")
+}
