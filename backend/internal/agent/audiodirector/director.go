@@ -457,13 +457,15 @@ func (r *run) make(ctx context.Context, j job) error {
 
 // lipSync redoes the mouth of the clips where a character speaks (MAX QUALITY): a clip whose
 // Dialogue lines all start and end inside it gets the lines placed at their moments as the audio
-// Sync Labs follows. The new picture replaces the Take's at export.
+// Sync Labs follows. A clip with a line across its end is given up as a whole (a mouth redone
+// without that line would not match the mix). The new picture replaces the Take's at export.
 func (r *run) lipSync(ctx context.Context) error {
 	if !r.scope.LipSync {
 		r.skip(domain.LayerLipSync, "", domain.SkipPolicy, r.in.Quality.Label()+" では作りません")
 		return nil
 	}
 	groups := map[int][]domain.AudioClip{} // clip index -> its lines
+	crossed := map[int]bool{}              // clip index -> a line runs over its end
 	for _, c := range r.tl.Clips {
 		if c.LayerOf() != domain.LayerDialogue || c.Speaker == "" {
 			continue
@@ -476,10 +478,14 @@ func (r *run) lipSync(ctx context.Context) error {
 			r.skip(domain.LayerLipSync, c.Text, domain.SkipError, "セリフがどのクリップにも入っていません")
 		case c.End() > r.in.Clips[vi].Start+r.in.Clips[vi].Length()+lineTolerance:
 			r.skip(domain.LayerLipSync, c.Text, domain.SkipError, "セリフがクリップの境目をまたぎます")
+			crossed[r.in.Clips[vi].Index] = true
 		default:
 			idx := r.in.Clips[vi].Index
 			groups[idx] = append(groups[idx], c)
 		}
+	}
+	for idx := range crossed {
+		delete(groups, idx)
 	}
 	if len(groups) == 0 {
 		return nil
