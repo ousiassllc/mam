@@ -13,12 +13,17 @@ import {
   cardUrl,
   catchUpAfterReconnect,
   isSendKey,
+  isSuccessResponse,
   messagesUrl,
   removeDuplicateIds,
   type ProjectEvent,
 } from './components/lib/thread';
 
 const THREAD = '#chat-thread';
+
+function requestXhr(event: Event): { status: number } | undefined {
+  return (event as CustomEvent<{ xhr?: { status: number } }>).detail.xhr;
+}
 
 export function initChatWorkspaces(root: ParentNode = document): void {
   for (const el of root.querySelectorAll<HTMLElement>('#chat-workspace:not([data-chat-ready])')) {
@@ -135,9 +140,10 @@ class ChatWorkspace {
       this.showAttachments();
     });
 
-    // After a successful send the composer is cleared; a failed one keeps the user's input.
+    // After a successful (2xx) send the composer is cleared; a failed one keeps the user's input. detail.successful
+    // is not used: main.ts swaps HTML error responses (toasts), so htmx reports those as successful too.
     this.composer.addEventListener('htmx:afterRequest', (event) => {
-      if (event.target === this.composer && (event as CustomEvent<{ successful: boolean }>).detail.successful) {
+      if (event.target === this.composer && isSuccessResponse(requestXhr(event))) {
         this.content.value = '';
         this.files.value = '';
         this.showAttachments();
@@ -146,7 +152,7 @@ class ChatWorkspace {
     });
     // Card buttons post replies on their own (not the refetches of syncNew): clear the pending reply target with them.
     this.thread.addEventListener('htmx:afterRequest', (event) => {
-      if ((event.target as HTMLElement).hasAttribute('hx-post')) this.setReplyTarget('', '');
+      if ((event.target as HTMLElement).hasAttribute('hx-post') && isSuccessResponse(requestXhr(event))) this.setReplyTarget('', '');
     });
   }
 

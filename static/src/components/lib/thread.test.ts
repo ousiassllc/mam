@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { catchUpAfterReconnect, cardUrl, isSendKey, messagesUrl, removeDuplicateIds, swapsErrorResponse } from './thread';
+import { catchUpAfterReconnect, cardUrl, isSendKey, messagesUrl, isSuccessResponse, removeDuplicateIds, swapsErrorResponse } from './thread';
 
 function el(id: string) {
   return { id, removed: false, remove() { this.removed = true; } };
@@ -59,5 +59,14 @@ describe('catchUpAfterReconnect', () => {
     let synced = 0;
     await catchUpAfterReconnect({ pendingMessageIds: () => [], refetchCard, syncNew: async () => void (synced += 1) });
     expect(synced).toBe(1);
+  });
+});
+
+describe('isSuccessResponse', () => {
+  it('is true for 2xx only', () => {
+    expect(isSuccessResponse({ status: 200 })).toBe(true);
+    expect(isSuccessResponse({ status: 204 })).toBe(true);
+    for (const status of [0, 302, 400, 403, 409, 422, 429, 500, 502]) expect(isSuccessResponse({ status })).toBe(false);
+    expect(isSuccessResponse(undefined)).toBe(false);
   });
 });

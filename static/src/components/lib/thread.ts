@@ -69,3 +69,11 @@ export function isSendKey(event: { key: string; shiftKey: boolean; isComposing: 
 export function swapsErrorResponse(status: number, contentType: string | null): boolean {
   return status >= 400 && (contentType ?? '').toLowerCase().startsWith('text/html');
 }
+
+/**
+ * Whether a finished htmx request succeeded. htmx's own `detail.successful` cannot be used: main.ts clears
+ * `isError` for HTML error responses so their toast is swapped, which makes a 4xx/5xx count as successful.
+ */
+export function isSuccessResponse(xhr: { status: number } | null | undefined): boolean {
+  return !!xhr && xhr.status >= 200 && xhr.status < 300;
+}
