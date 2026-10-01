@@ -286,7 +286,7 @@ Lit Web Components 専用。HTMX リクエストは発行しない（`spec/archi
 
 | Method | Path | 概要 | 利用コンポーネント |
 |---|---|---|---|
-| GET | `/api/v1/shots/:id` | Shot詳細（`id`/`scene_id`/`project_id`/`order_index`/`objective`/`duration_seconds`/`shot_spec`/`state`/`selected_take_id`（未選択なら省略））。存在しない Shot は 404 | `mam-video-player`, `mam-timeline-editor` |
+| GET | `/api/v1/shots/:id` | Shot詳細（`id`/`scene_id`/`project_id`/`order_index`/`objective`/`duration_seconds`/`shot_spec`/`state`/`selected_take_id`（未選択なら省略））。存在しない Shot は 404 | 現状なし（Lit は使わない。`mam-video-player` は Take の `judge-result`、`mam-timeline-editor` は `edit-timeline` を読む） |
 | GET | `/api/v1/shots/:id/takes` | Take一覧（古い順。`label`（A, B, …）・`status`（candidate/ai_pick/selected/rejected）・`adopted`（Shot が使う Take）・`scores`（product/acting/camera/continuity/overall、各 0-100。最新 Judge の Issue から算出: 各軸 100 から high 35・medium 15・low 5 を Issue ごとに引く。未 Judge は null）・`verdict`・`resolution`/`fps`/`duration_seconds`・`proxied`・`video_url`/`thumbnail_url`/`judge_result_url`/`select_url`/`reject_url`、および Shot の `partial_url`） | `mam-take-comparator` |
 | GET | `/api/v1/takes/:id/judge-result` | 最新のJudge Result（`result`/`overall_confidence`/`metrics`/`issues`（`time_range`/`frames`付き）/`preserve`/`repair_strategy`/`created_at`/`scores`）。`scores` は Production Template の評価軸ごとの 0-100 のスコアで、Judge が出さなかったときは省略する（Take 一覧の `scores` 4 軸とは別）。同一Takeの過去Judge履歴は含まない（最新1件）。Take が存在しない、または一度も Judge されていないとき 404 | `mam-video-player`（フレームマーカー重畳） |
 | GET | `/api/v1/repair/jev-shadow-report` | Jev のシャドー実行の集計（`runs`/`errors`/`agreed`/`agreement_rate`（失敗を除く一致率）/`mean_confidence`/`mean_latency_ms`/`total_cost_usd`/`confidence_histogram`（0.1 刻み 10 区間）/`confidence_agreed`）。Jev による前段選別を有効にするかどうかの判断材料（`spec/architecture/model-adapters.md` §4.5・§11） | Repair Agent（F-14） |
@@ -449,3 +449,4 @@ Notes:
 | 1.62 | 2026-10-01 | `GET /takes/:id/judge-result` の応答項目に `created_at` と `scores`（評価軸別の 0-100。Judge が出さなければ省略）を追記 | 実装（`domain.JudgeResult`）が返す項目が仕様の列挙・例に無かったため（Issue #166） |
 | 1.63 | 2026-10-01 | `POST /projects/import` のサイズ上限（本文 8 GB + 1 MiB は 413、アーカイブ 8 GB・1 ファイル 2 GB は 422）を §0 の 413 行と §2.1 に追記 | 実装の `MaxBundleBytes`・`maxBundleFileBytes` が仕様になかったため（Issue #169） |
 | 1.64 | 2026-10-01 | §2.1 の `GET /shots/:id/takes`・`GET /projects/:id/edit`・`GET /projects/:id/branches` の返却を「フルページ / フラグメント」に直し、「常にフルページ」を削除。`GET /projects/:id/bundle` の `assets/` に Audio Timeline の音声・Lip Sync 画像を追記 | 実装（`web/handler/{take,editor,branch}.go` の `isHTMX` 分岐、`service/bundle.go` の書き出し）との乖離（#167・#155） |
+| 1.65 | 2026-10-01 | §3 の `GET /api/v1/shots/:id` の利用コンポーネントを「現状なし」に直した | `mam-video-player`・`mam-timeline-editor` はこの API を呼ばず、`static/`・`web/` にも呼び出しが無かったため（Issue #189） |
