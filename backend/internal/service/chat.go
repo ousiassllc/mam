@@ -280,7 +280,7 @@ func (s *ChatService) planTurn(ctx context.Context, project domain.Project, targ
 	if target != nil && target.Kind == domain.KindEscalation && !replied[target.ID] {
 		resume := domain.EscalationResumeState
 		turn.ResumeState = &resume
-		turn.Messages = append(turn.Messages, assistantText("判断を受け付けました。この内容で続行します。"))
+		turn.Messages = append(turn.Messages, assistantText("判断を受け付けました。この判断は自動では実行されません。内容に沿って、設定の変更・Take の採用・Shot の指示の修正などを画面から行ってください。"))
 		return turn, nil, nil
 	}
 
