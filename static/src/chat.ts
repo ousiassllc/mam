@@ -7,6 +7,7 @@ import htmx from 'htmx.org';
 import { ajaxGet, showToast } from './ajax';
 import { createConnectionNotice } from './components/lib/connection-notice';
 import { AJAX_FAILED_MESSAGE } from './components/lib/ajax';
+import { selfAndDescendants } from './components/lib/query';
 import { createSyncer } from './components/lib/sync';
 import { connect, socketUrl } from './components/lib/ws';
 import {
@@ -26,7 +27,7 @@ function requestXhr(event: Event): { status: number } | undefined {
 }
 
 export function initChatWorkspaces(root: ParentNode = document): void {
-  for (const el of root.querySelectorAll<HTMLElement>('#chat-workspace:not([data-chat-ready])')) {
+  for (const el of selfAndDescendants<HTMLElement>(root, '#chat-workspace:not([data-chat-ready])')) {
     el.dataset.chatReady = 'true';
     new ChatWorkspace(el);
   }

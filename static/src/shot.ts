@@ -8,12 +8,13 @@
 import { ajaxGet } from './ajax';
 import { createConnectionNotice } from './components/lib/connection-notice';
 import { connect, socketUrl, type Connection } from './components/lib/ws';
+import { selfAndDescendants } from './components/lib/query';
 import { createRefreshGuard, isFinished, type ShotProgress } from './components/lib/shot';
 
 const mayRefresh = createRefreshGuard();
 
 export function initShotProgress(root: ParentNode = document): void {
-  for (const el of root.querySelectorAll<HTMLElement>('[data-shot-progress]:not([data-shot-ready])')) {
+  for (const el of selfAndDescendants<HTMLElement>(root, '[data-shot-progress]:not([data-shot-ready])')) {
     el.dataset.shotReady = 'true';
     watch(el);
   }
