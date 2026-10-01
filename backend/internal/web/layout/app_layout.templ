@@ -6,7 +6,8 @@ import "github.com/ousiassllc/mam/backend/internal/web/atoms"
 // static/src/main.ts reads it and attaches it to every HTMX request, and
 // components/lib/api.ts attaches it to every fetch. #toast-region receives the
 // out-of-band toasts of failed actions; #toast-template is the markup that toast.ts clones for
-// the toasts it raises itself, so the toast is defined only in atoms.Toast.
+// the toasts it raises itself, so the toast is defined only in atoms.Toast. The same goes for
+// #connection-notice-template (atoms.ConnectionNotice), cloned by connection-notice.ts.
 templ AppLayout(title string, csrfToken string) {
 	<!DOCTYPE html>
 	<html lang="ja">
@@ -23,6 +24,9 @@ templ AppLayout(title string, csrfToken string) {
 			<div id="toast-region" class="pointer-events-none fixed bottom-4 right-4 z-50 flex max-w-sm flex-col gap-2" aria-live="assertive"></div>
 			<template id="toast-template">
 				@atoms.Toast("")
+			</template>
+			<template id="connection-notice-template">
+				@atoms.ConnectionNotice()
 			</template>
 		</body>
 	</html>

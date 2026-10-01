@@ -76,3 +76,20 @@ export function stubWebSocket(): () => void {
     window.WebSocket = original;
   };
 }
+
+/**
+ * Puts #connection-notice-template (the markup of atoms/connection_notice.templ, which AppLayout
+ * embeds) into the document, as the page shell does. Returns a function that removes it and the
+ * notice region.
+ */
+export function installConnectionNoticeTemplate(): () => void {
+  const template = document.createElement('template');
+  template.id = 'connection-notice-template';
+  template.innerHTML =
+    '<div class="notice" role="alert" data-connection-lost=""><span data-connection-lost-message></span><button type="button" data-action="reconnect">再接続</button><button type="button" data-action="reload">再読み込み</button></div>';
+  document.body.append(template);
+  return () => {
+    template.remove();
+    document.getElementById('connection-lost-region')?.remove();
+  };
+}

@@ -30,3 +30,16 @@ func TestAppLayout_ToastTemplateHoldsTheServerToastMarkup(t *testing.T) {
 	assert.Contains(t, page, `<template id="toast-template">`+toast+`</template>`)
 	assert.Contains(t, page, `id="toast-region"`)
 }
+
+// The "connection lost" notice is cloned by connection-notice.ts (the chat, the Shot card and the
+// video player all show it): its markup is defined only in atoms.ConnectionNotice.
+func TestAppLayout_ConnectionNoticeTemplateHoldsTheAtomMarkup(t *testing.T) {
+	ctx := templ.WithChildren(context.Background(), templ.Raw("<main></main>"))
+	page := render(ctx, t, layout.AppLayout("t", "csrf"))
+	notice := render(context.Background(), t, atoms.ConnectionNotice())
+
+	assert.Contains(t, page, `<template id="connection-notice-template">`+notice+`</template>`)
+	assert.Contains(t, notice, `data-action="reconnect"`)
+	assert.Contains(t, notice, `data-action="reload"`)
+	assert.Contains(t, notice, `role="alert"`)
+}
