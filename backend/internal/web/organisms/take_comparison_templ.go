@@ -12,6 +12,7 @@ import (
 	"fmt"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // TakeComparisonData is the Take comparison of a Shot (GET /shots/:id/takes).
@@ -20,7 +21,7 @@ type TakeComparisonData struct {
 	Shot    domain.Shot
 }
 
-func takesAPIURL(shotID string) string { return "/api/v1/shots/" + shotID + "/takes" }
+func takesAPIURL(shotID string) string { return paths.APIShot(shotID, "takes") }
 
 // TakeComparison hosts mam-take-comparator: the score table of the Takes of the Shot and the
 // selection of the parts to join. The component loads the Takes from the JSON API.
@@ -52,7 +53,7 @@ func TakeComparison(d TakeComparisonData) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("Shot %d の Take 比較", d.Shot.OrderIndex+1))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/take_comparison.templ`, Line: 21, Col: 97}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/take_comparison.templ`, Line: 22, Col: 97}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -65,7 +66,7 @@ func TakeComparison(d TakeComparisonData) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(takesAPIURL(d.Shot.ID))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/take_comparison.templ`, Line: 25, Col: 55}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/take_comparison.templ`, Line: 26, Col: 55}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
 		if templ_7745c5c3_Err != nil {

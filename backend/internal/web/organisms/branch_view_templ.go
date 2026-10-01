@@ -59,13 +59,13 @@ type BranchPageData struct {
 	Selected *BranchDetailData
 }
 
-func branchURL(id string) string { return "/branches/" + id }
+func branchURL(id string) string { return paths.Branch(id) }
 
 func branchWorldStateURL(projectID, branchID string) string {
 	return paths.Project(projectID, "world-state") + "?branch_id=" + url.QueryEscape(branchID)
 }
 
-func branchShotURL(shotID string) string { return "/shots/" + shotID + "/branch" }
+func branchShotURL(shotID string) string { return paths.Shot(shotID, "branch") }
 
 func selectedBranchID(d BranchPageData) string {
 	if d.Selected == nil {
@@ -424,7 +424,7 @@ func BranchDetail(d BranchDetailData) templ.Component {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var16 templ.SafeURL
-					templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/shots/" + sh.ShotID))
+					templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(paths.Shot(sh.ShotID)))
 					if templ_7745c5c3_Err != nil {
 						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/branch_view.templ`, Line: 160, Col: 93}
 					}

@@ -32,3 +32,13 @@ func TestBranchTree_SaysSoWhenThereIsNoBranch(t *testing.T) {
 	require.NoError(t, organisms.BranchTree(organisms.BranchTreeData{}, false).Render(context.Background(), &sb))
 	assert.Contains(t, sb.String(), "data-empty")
 }
+
+func TestBranchTree_EscapesAnImportedBranchIDInItsLink(t *testing.T) {
+	root := organisms.BranchTreeNode{Branch: domain.Branch{ID: "b?1#x%", Name: "親", PointType: domain.BranchAtScene}}
+
+	var sb strings.Builder
+	require.NoError(t, organisms.BranchTree(organisms.BranchTreeData{Roots: []organisms.BranchTreeNode{root}}, false).Render(context.Background(), &sb))
+
+	assert.Contains(t, sb.String(), `href="/branches/b%3F1%23x%25"`)
+	assert.Contains(t, sb.String(), `hx-get="/branches/b%3F1%23x%25"`)
+}

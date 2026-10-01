@@ -6,6 +6,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // VersionHistoryData is one version list of Reversible Decisions (F-28): the saved versions of a
@@ -80,11 +81,11 @@ type BranchHistoryData struct {
 templ BranchVersionHistory(d BranchHistoryData) {
 	<div id="branch-version-history" class="flex flex-col gap-4">
 		@VersionHistoryPanel(VersionHistoryData{
-			DOMID: "version-history-branch", Title: "Branch のバージョン", BasePath: "/branches/" + d.BranchID,
+			DOMID: "version-history-branch", Title: "Branch のバージョン", BasePath: paths.Branch(d.BranchID),
 			Target: "#branch-version-history", Entries: d.Versions,
 		})
 		@VersionHistoryPanel(VersionHistoryData{
-			DOMID: "version-history-branch-world", Title: "Branch の World State バージョン", BasePath: "/branches/" + d.BranchID + "/world-state",
+			DOMID: "version-history-branch-world", Title: "Branch の World State バージョン", BasePath: paths.Branch(d.BranchID, "world-state"),
 			Target: "#branch-version-history", Entries: d.World,
 		})
 	</div>

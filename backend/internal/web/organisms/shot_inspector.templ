@@ -66,11 +66,9 @@ func issueLine(is domain.JudgeIssue) string {
 	return b.String()
 }
 
-func shotURL(id string) string { return "/shots/" + id }
-
 // LockToggleFor is the AUTO / MANUAL / LOCK switch of a parameter of the Shot.
 func LockToggleFor(shotID string, p domain.LockParameter, locks domain.ParameterLocks) atoms.LockToggleData {
-	d := atoms.LockToggleData{DOMID: "lock-" + shotID + "-" + string(p), URL: shotURL(shotID) + "/locks", Parameter: p, Mode: locks.Mode(p)}
+	d := atoms.LockToggleData{DOMID: "lock-" + shotID + "-" + string(p), URL: paths.Shot(shotID, "locks"), Parameter: p, Mode: locks.Mode(p)}
 	if p == domain.ParamVideoModel {
 		d.Models, d.Model = domain.VideoModels(), locks.Text(p)
 	}
@@ -152,7 +150,7 @@ templ ShotInspector(d ShotInspectorData) {
 					}
 				</dl>
 			}
-			<form hx-put={ shotURL(d.Shot.ID) + "/shot-spec" } hx-target="#shot-inspector" hx-swap="outerHTML" class="flex flex-col gap-2">
+			<form hx-put={ paths.Shot(d.Shot.ID, "shot-spec") } hx-target="#shot-inspector" hx-swap="outerHTML" class="flex flex-col gap-2">
 				<label for="shot-spec-text" class="text-xs text-neutral-400">Shot Spec を直接編集（JSON。英語で記述。LOCK 中の項目は変更できません）</label>
 				@atoms.Textarea(atoms.FieldSm, "font-mono", templ.Attributes{
 					"id":   "shot-spec-text",
@@ -185,7 +183,7 @@ templ ShotInspector(d ShotInspectorData) {
 				</ul>
 			}
 			if len(d.Library) > 0 {
-				<form hx-post={ shotURL(d.Shot.ID) + "/references" } hx-target="#shot-inspector" hx-swap="outerHTML" class="flex flex-wrap items-center gap-2">
+				<form hx-post={ paths.Shot(d.Shot.ID, "references") } hx-target="#shot-inspector" hx-swap="outerHTML" class="flex flex-wrap items-center gap-2">
 					<label for="pin-reference" class="text-xs text-neutral-400">ライブラリの参照画像を追加</label>
 					@atoms.Select(atoms.FieldSm, "", templ.Attributes{
 						"id":       "pin-reference",
@@ -202,7 +200,7 @@ templ ShotInspector(d ShotInspectorData) {
 		</section>
 		<section aria-label="演出指示" class="flex flex-col gap-2">
 			<h3 class="text-sm font-semibold">演出指示</h3>
-			<form hx-post={ shotURL(d.Shot.ID) + "/director-command" } hx-target="#shot-inspector" hx-swap="outerHTML" class="flex flex-col gap-2">
+			<form hx-post={ paths.Shot(d.Shot.ID, "director-command") } hx-target="#shot-inspector" hx-swap="outerHTML" class="flex flex-col gap-2">
 				<label for="director-command" class="text-xs text-neutral-400">自然言語で指示（例: もう少し寄って。ラベルは固定して）。この Shot だけが再生成されます</label>
 				@atoms.Textarea(atoms.FieldMd, "", templ.Attributes{
 					"id":        "director-command",
@@ -217,7 +215,7 @@ templ ShotInspector(d ShotInspectorData) {
 			</form>
 		</section>
 		@VersionHistoryPanel(VersionHistoryData{
-			DOMID: "version-history-shot-" + d.Shot.ID, Title: "Shot Spec のバージョン", BasePath: shotURL(d.Shot.ID),
+			DOMID: "version-history-shot-" + d.Shot.ID, Title: "Shot Spec のバージョン", BasePath: paths.Shot(d.Shot.ID),
 			Target: "#shot-inspector", Entries: d.Versions,
 		})
 		<section aria-label="Generation Model" class="flex flex-col gap-2">
@@ -238,7 +236,7 @@ templ ShotInspector(d ShotInspectorData) {
 								@atoms.Badge(atoms.BadgeNeutral, string(t.Status))
 								<span class="text-xs text-neutral-400">{ t.ModelName }</span>
 								@atoms.Button(atoms.ToneNeutral, "生成の経緯", templ.Attributes{
-									"type": "button", "hx-get": "/takes/" + t.ID + "/trace", "hx-target": "#take-trace-slot-" + t.ID, "hx-swap": "innerHTML",
+									"type": "button", "hx-get": paths.Take(t.ID, "trace"), "hx-target": "#take-trace-slot-" + t.ID, "hx-swap": "innerHTML",
 								})
 							</div>
 							if res, ok := d.Judged[t.ID]; ok {

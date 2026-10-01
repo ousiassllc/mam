@@ -10,6 +10,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
 	"github.com/ousiassllc/mam/backend/internal/web/pages"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // BranchTreePage renders the Branch page without a selection (GET /projects/:id/branches).
@@ -67,7 +68,7 @@ func CreateBranch(svc *service.BranchService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		c.Header("HX-Redirect", "/branches/"+detail.Branch.ID)
+		c.Header("HX-Redirect", paths.Branch(detail.Branch.ID))
 		c.Status(http.StatusCreated)
 	}
 }
