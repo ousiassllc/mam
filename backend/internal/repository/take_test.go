@@ -151,20 +151,20 @@ func TestTakeRepository_PickBestInAutoAdoptsThePassedTakeAndMovesThePickWhenABet
 	r := repository.NewTakeRepository(db)
 	ctx := context.Background()
 
-	none, err := r.PickBest(ctx, "sh1", true)
+	none, err := r.PickBest(ctx, "sh1", true, nil)
 	require.NoError(t, err)
 	assert.Empty(t, none.TakeID, "nothing judged yet")
 
 	judged(t, db, "t1", domain.JudgePass, domain.JudgeIssue{Type: "x", Severity: domain.SeverityMedium, Dimension: domain.DimActing})
-	first, err := r.PickBest(ctx, "sh1", true)
+	first, err := r.PickBest(ctx, "sh1", true, nil)
 	require.NoError(t, err)
 	assert.Equal(t, repository.AIPick{TakeID: "t1", Passed: true, Changed: true, Adopted: true}, first)
-	again, err := r.PickBest(ctx, "sh1", true)
+	again, err := r.PickBest(ctx, "sh1", true, nil)
 	require.NoError(t, err)
 	assert.False(t, again.Changed, "the same pick is not a change")
 
 	judged(t, db, "t2", domain.JudgePass)
-	second, err := r.PickBest(ctx, "sh1", true)
+	second, err := r.PickBest(ctx, "sh1", true, nil)
 	require.NoError(t, err)
 
 	assert.True(t, second.Changed)
@@ -181,7 +181,7 @@ func TestTakeRepository_PickBestInDirectorRecommendsWithoutAdoptingAndNeverAdopt
 	ctx := context.Background()
 	judged(t, db, "t1", domain.JudgePass)
 
-	director, err := r.PickBest(ctx, "sh1", false)
+	director, err := r.PickBest(ctx, "sh1", false, nil)
 	require.NoError(t, err)
 	assert.Equal(t, "t1", director.TakeID)
 	assert.False(t, director.Adopted)
@@ -190,7 +190,7 @@ func TestTakeRepository_PickBestInDirectorRecommendsWithoutAdoptingAndNeverAdopt
 	failedDB := openTestDB(t)
 	seedTake(t, failedDB)
 	judged(t, failedDB, "t1", domain.JudgeFail)
-	failed, err := repository.NewTakeRepository(failedDB).PickBest(ctx, "sh1", true)
+	failed, err := repository.NewTakeRepository(failedDB).PickBest(ctx, "sh1", true, nil)
 	require.NoError(t, err)
 	assert.Equal(t, "t1", failed.TakeID, "a failed Take is still recommended")
 	assert.False(t, failed.Passed)
@@ -208,7 +208,7 @@ func TestTakeRepository_PickBestLeavesTheUsersSelectionAlone(t *testing.T) {
 	_, err := r.Select(ctx, "t1")
 	require.NoError(t, err)
 
-	pick, err := r.PickBest(ctx, "sh1", true)
+	pick, err := r.PickBest(ctx, "sh1", true, nil)
 
 	require.NoError(t, err)
 	assert.Empty(t, pick.TakeID)

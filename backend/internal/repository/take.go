@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -224,10 +225,15 @@ type AIPick struct {
 }
 
 // PickBest marks the best judged Take of the Shot as its AI Pick (domain.PickTake). With adopt, a
-// Take that passed the Judge also becomes the Shot's selected Take (AUTO); otherwise the AI Pick is
+// Take that is acceptable also becomes the Shot's selected Take (AUTO); otherwise the AI Pick is
 // only a recommendation (DIRECTOR). A Shot with a Take the user selected is left alone. The Takes
 // are read and marked in one transaction, so Takes judged at the same time cannot leave a stale pick.
-func (r *TakeRepository) PickBest(ctx context.Context, shotID string, adopt bool) (AIPick, error) {
+//
+// accepted tells whether a Take meets the Retry Policy (the Minimum acceptance scores, the same rule
+// the Repair loop applies): the Take AUTO adopts must be one, and when some Take is, the pick is the
+// best of those. A Take that passed with scores under the minimum is only recommended, as the Repair
+// loop treats it as not good enough. A nil accepted counts every Take that passed as acceptable.
+func (r *TakeRepository) PickBest(ctx context.Context, shotID string, adopt bool, accepted func(takeID string) bool) (AIPick, error) {
 	var pick AIPick
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		pick = AIPick{}
@@ -240,10 +246,17 @@ func (r *TakeRepository) PickBest(ctx context.Context, shotID string, adopt bool
 				return nil // the user's choice stands
 			}
 		}
-		id, passed, ok := domain.PickTake(takes)
+		pool := takes
+		if accepted != nil {
+			if ok := slices.DeleteFunc(slices.Clone(takes), func(t domain.TakeInfo) bool { return !accepted(t.ID) }); len(ok) > 0 {
+				pool = ok
+			}
+		}
+		id, passed, ok := domain.PickTake(pool)
 		if !ok {
 			return nil
 		}
+		adoptable := passed && (accepted == nil || accepted(id))
 		pick = AIPick{TakeID: id, Passed: passed}
 		adopted := ""
 		for _, t := range takes {
@@ -262,7 +275,7 @@ func (r *TakeRepository) PickBest(ctx context.Context, shotID string, adopt bool
 		if _, err := tx.ExecContext(ctx, `UPDATE take SET status = ? WHERE id = ?`, domain.TakeAIPick, id); err != nil {
 			return err
 		}
-		if adopt && passed {
+		if adopt && adoptable {
 			if adopted != id {
 				pick.Changed = true
 			}
