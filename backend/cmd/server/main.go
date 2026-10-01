@@ -118,6 +118,15 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger) 
 		}
 	}()
 
+	// Leftovers of interrupted imports (tens of GB at most) go first, so the sweep below does not walk them.
+	staleImports, err := service.RemoveStaleImports(cfg.AssetsDir())
+	if err != nil {
+		return nil, nil, fmt.Errorf("clean stale import directories: %w", err)
+	}
+	if len(staleImports) > 0 {
+		logger.Warn("removed stale import directories", "count", len(staleImports))
+	}
+
 	// Leftovers of interrupted atomic writes must not be mistaken for finished assets.
 	removed, err := fsutil.RemoveStaleTemp(cfg.AssetsDir())
 	if err != nil {

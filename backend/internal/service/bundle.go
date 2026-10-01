@@ -279,6 +279,33 @@ func (s *BundleService) checkRoom(files []bundleFile) error {
 	return nil
 }
 
+// importStagingPrefix starts the name of the directory an import extracts into, inside the assets directory.
+const importStagingPrefix = ".import-"
+
+// RemoveStaleImports deletes the extraction directories (assets/.import-*) an import that was killed
+// halfway left behind, and returns their paths. Call it at startup, when no import can be running.
+func RemoveStaleImports(assetsDir string) ([]string, error) {
+	entries, err := os.ReadDir(assetsDir)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	var removed []string
+	for _, e := range entries {
+		if !e.IsDir() || !strings.HasPrefix(e.Name(), importStagingPrefix) {
+			continue
+		}
+		dir := filepath.Join(assetsDir, e.Name())
+		if err := os.RemoveAll(dir); err != nil {
+			return removed, err
+		}
+		removed = append(removed, dir)
+	}
+	return removed, nil
+}
+
 // writeProject puts the Project of the bundle in place. The files are extracted into a staging
 // directory first; moving the Project's directory into the assets directory is what claims it, so of
 // two imports of the same Project only one gets there (the other is ErrConflict and removes nothing
@@ -286,7 +313,7 @@ func (s *BundleService) checkRoom(files []bundleFile) error {
 func (s *BundleService) writeProject(ctx context.Context, data domain.BundleData, files []bundleFile) error {
 	var moved string
 	if len(files) > 0 {
-		staging := filepath.Join(s.assetsDir, ".import-"+uuid.NewString())
+		staging := filepath.Join(s.assetsDir, importStagingPrefix+uuid.NewString())
 		defer func() { _ = os.RemoveAll(staging) }()
 		if err := extractFiles(staging, files); err != nil {
 			return err
