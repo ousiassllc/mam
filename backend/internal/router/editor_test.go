@@ -655,3 +655,38 @@ func TestEditor_AudioFilesAreRemovedWhenTheTimelineCannotBeSaved(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, runs, "no run directory is left")
 }
+
+func TestEditor_ABranchRoughCutFadesAtTheSceneBoundaryAndNumbersTheScenesOfTheStory(t *testing.T) {
+	e := newEditorApp(t)
+	e.setState("VISUAL_DESIGN")
+	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/takes/t1/select", nil).Code)
+	rec := e.form(http.MethodPost, "/shots/"+e.shotID+"/branch", url.Values{"name": {"逃げる"}})
+	require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
+	branchID := strings.TrimPrefix(rec.Header().Get("HX-Redirect"), "/branches/")
+
+	// The Branch's own first Scene counts from 0 again, like the trunk's first Scene does.
+	ctx := context.Background()
+	plans := repository.NewPlanRepository(e.db)
+	scene, err := plans.CreateScene(ctx, domain.Scene{ProjectID: e.project, BranchID: branchID, Title: "Door"})
+	require.NoError(t, err)
+	require.Equal(t, 0, scene.OrderIndex)
+	shot, err := plans.CreateShot(ctx, domain.Shot{SceneID: scene.ID, Objective: "扉を開ける", Duration: 2})
+	require.NoError(t, err)
+	e.video("b1", "1920x1080", 4)
+	e.execSQL(`INSERT INTO prompt_version (id, shot_id, version_number, shot_spec_snapshot) VALUES ('pvb', ?, 1, '{}')`, shot.ID)
+	e.execSQL(`INSERT INTO asset (id, project_id, type, file_path, mime_type) VALUES ('a-b1', ?, 'video', ?, 'video/mp4')`, e.project, e.project+"/b1.mp4")
+	e.execSQL(`INSERT INTO take (id, prompt_version_id, model_name, model_parameters, file_path, created_at) VALUES ('b1', 'pvb', 'kling-3.0', '{"resolution":"1080p","duration_seconds":4}', ?, '2026-01-01T00:00:09.000Z')`, e.project+"/b1.mp4")
+	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/takes/b1/select", nil).Code)
+
+	rec = e.form(http.MethodPost, "/projects/"+e.project+"/edit/rough-cut", url.Values{"branch_id": {branchID}})
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	tl, code := e.timelineOn(branchID)
+	require.Equal(t, http.StatusOK, code)
+	require.Len(t, tl.Clips, 2)
+	assert.Equal(t, e.shotID, tl.Clips[0].ShotID, "the inherited Shot comes first")
+	assert.Equal(t, shot.ID, tl.Clips[1].ShotID)
+	assert.Equal(t, "fade", tl.Clips[1].Transition.Type, "the Branch's first Scene is a Scene boundary")
+	assert.InDelta(t, domain.DefaultTransitionSeconds, tl.Clips[1].Transition.Seconds, 1e-9)
+	assert.NotEqual(t, tl.Clips[0].Label, tl.Clips[1].Label, "the two Scenes are told apart")
+	assert.Equal(t, "Scene 2 · Shot 1", tl.Clips[1].Label)
+}
