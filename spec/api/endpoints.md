@@ -16,7 +16,7 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
   | 400 | multipart の本文が読み取れない（multipart ではない・途中で切断された） |
   | 413 | リクエスト本文が上限を超えた（`MaxBody` ミドルウェアが 1MiB。`readMultipart` を呼ぶアップロードルートの `multipart/form-data` の本文だけが各上限で（`POST /projects/import` は 8 GB + 1 MiB、§2.1）、アップロードルートでも multipart 以外（urlencoded など）の本文は 1MiB のまま。Content-Type を `multipart/form-data` にしてもそれ以外のルートの上限は外れない。宣言された長さが上限を超える本文は読まずに 413） |
   | 402 | Project/Shot budget ceiling 超過（F-22） |
-  | 403 | Brand/Safety Constraint 違反、または LOCK 対象への変更試行 |
+  | 403 | Brand/Safety Constraint 違反、CSRF トークンの不正、または非ループバックからのアクセス |
   | 409 | 対象 Shot が既に生成中（多重実行防止） |
   | 423 | LOCK されたパラメータ/State への更新要求 |
   | 429 | 外部モデル API（Model Adapter・Reasoning LLM・ElevenLabs 等）のレート制限。同期で応答できる経路では `service.ErrRateLimited`（`AIError` が 429 を包んでいれば一致）が 429 になる。生成ジョブ内の 429 はチャットの失敗理由として通知する |
@@ -452,3 +452,4 @@ Notes:
 | 1.65 | 2026-10-01 | §3 の `GET /api/v1/shots/:id` の利用コンポーネントを「現状なし」に直した | `mam-video-player`・`mam-timeline-editor` はこの API を呼ばず、`static/`・`web/` にも呼び出しが無かったため（Issue #189） |
 | 1.66 | 2026-10-01 | `POST /reviews/:id/comments` の `timecode` に 分:秒（`1:23`）形式を追記し、422 の条件を「秒でも 分:秒 でもない」に直した | 実装（`domain.ParseReviewTimecode`）とレビュー画面のフォームが 分:秒 も受け付けていたため（Issue #207） |
 | 1.67 | 2026-10-01 | §2.4 `POST /shots/:id/continue/confirm` に、Continue カードへの返信は次 Shot を作れた後に記録し、Shot を作る前に失敗した返信ではカードを開いたままにすることを追記 | 実装が返信を先に記録していたため、Confirm の失敗後もカードが回答済みになり再回答できなかった（Issue #199） |
+| 1.68 | 2026-10-01 | §0 の 403 行から「LOCK 対象への変更試行」を外し、CSRF トークン不正・非ループバックのアクセスを併記した | LOCK は 423 を返す（同表の 423 行・§2.2 / §2.4 / §2.8、）ため、403 行が仕様内でも矛盾していた（Issue #215） |
