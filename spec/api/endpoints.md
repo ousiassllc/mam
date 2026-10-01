@@ -288,7 +288,7 @@ Lit Web Components 専用。HTMX リクエストは発行しない（`spec/archi
 |---|---|---|---|
 | GET | `/api/v1/shots/:id` | Shot詳細（`id`/`scene_id`/`project_id`/`order_index`/`objective`/`duration_seconds`/`shot_spec`/`state`/`selected_take_id`（未選択なら省略））。存在しない Shot は 404 | `mam-video-player`, `mam-timeline-editor` |
 | GET | `/api/v1/shots/:id/takes` | Take一覧（古い順。`label`（A, B, …）・`status`（candidate/ai_pick/selected/rejected）・`adopted`（Shot が使う Take）・`scores`（product/acting/camera/continuity/overall、各 0-100。最新 Judge の Issue から算出: 各軸 100 から high 35・medium 15・low 5 を Issue ごとに引く。未 Judge は null）・`verdict`・`resolution`/`fps`/`duration_seconds`・`proxied`・`video_url`/`thumbnail_url`/`judge_result_url`/`select_url`/`reject_url`、および Shot の `partial_url`） | `mam-take-comparator` |
-| GET | `/api/v1/takes/:id/judge-result` | 最新のJudge Result（`result`/`overall_confidence`/`metrics`/`issues`（`time_range`/`frames`付き）/`preserve`/`repair_strategy`）。同一Takeの過去Judge履歴は含まない（最新1件）。Take が存在しない、または一度も Judge されていないとき 404 | `mam-video-player`（フレームマーカー重畳） |
+| GET | `/api/v1/takes/:id/judge-result` | 最新のJudge Result（`result`/`overall_confidence`/`metrics`/`issues`（`time_range`/`frames`付き）/`preserve`/`repair_strategy`/`created_at`/`scores`）。`scores` は Production Template の評価軸ごとの 0-100 のスコアで、Judge が出さなかったときは省略する（Take 一覧の `scores` 4 軸とは別）。同一Takeの過去Judge履歴は含まない（最新1件）。Take が存在しない、または一度も Judge されていないとき 404 | `mam-video-player`（フレームマーカー重畳） |
 | GET | `/api/v1/repair/jev-shadow-report` | Jev のシャドー実行の集計（`runs`/`errors`/`agreed`/`agreement_rate`（失敗を除く一致率）/`mean_confidence`/`mean_latency_ms`/`total_cost_usd`/`confidence_histogram`（0.1 刻み 10 区間）/`confidence_agreed`）。Jev による前段選別を有効にするかどうかの判断材料（`spec/architecture/model-adapters.md` §4.5・§11） | Repair Agent（F-14） |
 | GET | `/api/v1/projects/:id/edit-timeline` | 現在の Edit Timeline（Shot順序/Cut Point/Transition）と最新の Editor Judge。Rough Cut がなければ 404。クエリ `branch_id`（省略時=主系列トランク）で Branch ごとの版を返す。クリップに `kind`・`caption`、判定の指摘に `need_shot`、応答に `request_shot_url` と `limits.max_caption_runes` を含む | `mam-timeline-editor` |
 | — | `PUT /edit-timelines/:id`（アクションルート、§2.6） | Edit Timeline 保存（ドラッグ&ドロップ操作の反映）。`/api/v1` では提供せず、JSON API の GET が返す `save_url` へ PUT する（Lit は API クライアント経由で CSRF トークン付きで送る）。`branch_id` は M2 | `mam-timeline-editor` |
@@ -359,10 +359,15 @@ Response 200:
       instructions:
         - "increase_product_reference_strength"
         - "preserve_logo_geometry"
+    scores:                     # Judge が評価軸別のスコアを出さなかったときは省略
+      product_accuracy: 88
+      product_exposure: 72
+    created_at: "2026-09-30T12:34:56Z"
 Notes:
   metrics.face_identity_status: "measured" | "not_applicable"（顔参照を持つ Character が Shot にいない）| "unavailable"（顔モデル未配置・推論エラーで定性評価のみ）
   metrics.face_identity[]: 上記に加え evaluated（数値評価が成立したか。false は undetected_ratio が高い等で定性評価のみ）/ warn_threshold / fail_threshold / calibrated（参照画像でキャリブレーションした閾値か）
   issues[]: 上記に加え dimension（評価軸）/ character_id（face_identity_drift）/ description / lock_violation（LOCK 違反。true の Take は score に関係なく FAIL）/ brand_constraint_id（Brand / Safety Constraint の違反。`type=brand_constraint_violation`。`lock` の制約は lock_violation=true、`advisory` は severity low の警告）
+  scores: Production Template の評価軸（`product_accuracy` / `hook` など）→ 0-100。Retry Policy の Minimum acceptance score の判定に使う。created_at: この Judge Result を記録した時刻（RFC 3339）
   time_range: "開始-終了s"（秒）。frames: [開始フレーム, 終了フレーム]（ソース動画のフレーム番号、両端を含む）
 ```
 
@@ -441,3 +446,4 @@ Notes:
 | 1.59 | 2026-10-01 | §2.2 の `POST /projects/:id/messages` から「Branch 作成は M2 まで未対応」を外し、`create_branch` を実行する §2.4 の契約に揃えた | チャットの Branch 作成は実装済みで、M1 契約の文だけが M2 契約と食い違っていたため（Issue #117） |
 | 1.60 | 2026-10-01 | `/ws/shots/:id` の `action` に `candidates` を加えた。候補生成の `stage` は既存の列挙のまま | 進捗は `action=candidates` を送るが、仕様とフロントの型が `generate\|reference_pack\|judge\|repair` だけだったため（Issue #124） |
 | 1.61 | 2026-10-01 | MAX QUALITY の候補生成は、予算が 3 Take 分あるとき 3 戦略すべてを並列生成し、1〜2 本だけ収まるときはその本数を 202 で、1 本も収まらなければ 402 と書いた | 仕様は常に全 Candidate だったが、実装は予算に収まる本数だけ作っていたため（Issue #126） |
+| 1.62 | 2026-10-01 | `GET /takes/:id/judge-result` の応答項目に `created_at` と `scores`（評価軸別の 0-100。Judge が出さなければ省略）を追記 | 実装（`domain.JudgeResult`）が返す項目が仕様の列挙・例に無かったため（Issue #166） |
