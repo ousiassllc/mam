@@ -4,6 +4,8 @@ import { initShotProgress } from './shot';
 import { CSRF_HEADER, csrfToken } from './components/lib/api';
 import { lockDownHtmx } from './components/lib/htmx-config';
 import { swapsErrorResponse } from './components/lib/thread';
+import { requestFailureMessage, type RequestFailure } from './components/lib/errors';
+import { showToast } from './ajax';
 import { installHistorySnapshotHygiene } from './components/lib/history';
 import { dismissToastsOnClick } from './components/lib/toast';
 
@@ -22,6 +24,15 @@ document.addEventListener('htmx:beforeSwap', (event) => {
     detail.isError = false;
   }
 });
+
+// A request that got no swappable response (server down, timeout, a non-HTML error) would leave the
+// screen unchanged: say so.
+for (const type of ['htmx:responseError', 'htmx:sendError', 'htmx:timeout'] as const satisfies readonly RequestFailure[]) {
+  document.addEventListener(type, (event) => {
+    const xhr = (event as CustomEvent<{ xhr?: XMLHttpRequest }>).detail?.xhr;
+    showToast(requestFailureMessage(type, xhr?.status));
+  });
+}
 
 lockDownHtmx(htmx.config);
 

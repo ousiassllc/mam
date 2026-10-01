@@ -51,7 +51,7 @@ func Recovery(logger *slog.Logger) gin.HandlerFunc {
 				logger.Error("http handler panicked",
 					"method", c.Request.Method, "path", c.Request.URL.Path,
 					"panic", r, "stack", string(debug.Stack()))
-				c.AbortWithStatus(http.StatusInternalServerError)
+				abortWith(c, http.StatusInternalServerError, "", "内部エラーが発生しました")
 			}
 		}()
 		c.Next()
