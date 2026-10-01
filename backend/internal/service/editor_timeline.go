@@ -131,7 +131,7 @@ func storyCuts(ctx context.Context, idx shotIndex, reshoots []domain.ReshootRequ
 			missing = append(missing, idx.labels[r.Shot.ID])
 			continue
 		}
-		cuts = append(cuts, editor.ShotCut{ShotID: r.Shot.ID, TakeID: src.takeID, SceneIndex: r.Scene.OrderIndex, Planned: r.Shot.Duration, TakeSeconds: src.seconds})
+		cuts = append(cuts, editor.ShotCut{ShotID: r.Shot.ID, TakeID: src.takeID, SceneIndex: idx.scene[r.Shot.ID], Planned: r.Shot.Duration, TakeSeconds: src.seconds})
 	}
 	if len(missing) > 0 {
 		return nil, invalid("", "Selected Take（ファイルのある採用 Take）がない Shot があります: %s", strings.Join(missing, "、"))

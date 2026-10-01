@@ -205,11 +205,15 @@ func (s *EditorService) View(ctx context.Context, projectID, branchID string) (E
 	return v, nil
 }
 
-// shotLabels names every Shot of the Project ("Scene 1 · Shot 2") and remembers what the clips need.
+// shotIndex names every Shot of the series ("Scene 1 · Shot 2") and remembers what the clips need.
+// Scenes are numbered by their place in the story: a Branch's own Scenes count from 0 again, so
+// Scene.OrderIndex alone cannot tell them from the Scenes it inherits.
 type shotIndex struct {
 	byID   map[string]repository.ShotRef
 	labels map[string]string
-	order  []repository.ShotRef
+	// scene is the 0-based place of the Shot's Scene in the story (by shot ID).
+	scene map[string]int
+	order []repository.ShotRef
 }
 
 func (s *EditorService) shotIndex(ctx context.Context, projectID, branchID string) (shotIndex, error) {
@@ -217,10 +221,15 @@ func (s *EditorService) shotIndex(ctx context.Context, projectID, branchID strin
 	if err != nil {
 		return shotIndex{}, notFound(err)
 	}
-	idx := shotIndex{byID: make(map[string]repository.ShotRef, len(refs)), labels: make(map[string]string, len(refs)), order: refs}
+	idx := shotIndex{byID: make(map[string]repository.ShotRef, len(refs)), labels: make(map[string]string, len(refs)), scene: make(map[string]int, len(refs)), order: refs}
+	place, lastScene := -1, ""
 	for _, r := range refs {
+		if r.Scene.ID != lastScene {
+			place, lastScene = place+1, r.Scene.ID
+		}
 		idx.byID[r.Shot.ID] = r
-		idx.labels[r.Shot.ID] = fmt.Sprintf("Scene %d · Shot %d", r.Scene.OrderIndex+1, r.Shot.OrderIndex+1)
+		idx.scene[r.Shot.ID] = place
+		idx.labels[r.Shot.ID] = fmt.Sprintf("Scene %d · Shot %d", place+1, r.Shot.OrderIndex+1)
 	}
 	return idx, nil
 }
