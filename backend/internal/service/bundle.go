@@ -86,7 +86,18 @@ func (e BundleExport) Write(w io.Writer) error {
 	if err := writeZipEntry(zw, domain.BundleDataName, zip.Deflate, e.now, bytes.NewReader(raw)); err != nil {
 		return err
 	}
-	for _, rel := range e.data.FilePaths() {
+	timelinePaths, err := e.data.AudioTimelinePaths()
+	if err != nil {
+		return fmt.Errorf("audio timeline: %w", err)
+	}
+	// The mix, clips and Lip Sync pictures live in the Audio Timeline JSON only; without them an
+	// imported Project cannot be exported to video.
+	seen := map[string]bool{}
+	for _, rel := range append(e.data.FilePaths(), timelinePaths...) {
+		if seen[rel] {
+			continue
+		}
+		seen[rel] = true
 		if !domain.ValidBundleFilePath(e.data.ProjectID, rel) || e.root == "" {
 			continue
 		}
