@@ -15,7 +15,7 @@ describe('outerHTML swap of a top-level node', () => {
   afterEach(() => host.remove());
 
   function swapOuter(targetId: string, html: string): void {
-    htmx.swap(`#${targetId}`, html, { swapStyle: 'outerHTML' });
+    htmx.swap(`#${targetId}`, html, { swapStyle: 'outerHTML', swapDelay: 0, settleDelay: 0 });
   }
 
   it('initialises a swapped Shot card, which then refreshes when its player finishes', async () => {
