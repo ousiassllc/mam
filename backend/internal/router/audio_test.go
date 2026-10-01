@@ -3,9 +3,12 @@ package router_test
 import (
 	"bytes"
 	"context"
+	"encoding/json"
+	"html"
 	"mime/multipart"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -168,4 +171,33 @@ func TestExport_ABranchIsExportedFromItsOwnTimelinesAndTheRecordSaysSo(t *testin
 	require.NoError(t, err)
 	require.Len(t, exports, 1)
 	assert.Equal(t, branchID, exports[0].BranchID)
+}
+
+func TestExport_TheBranchEditorPageExportsItsBranchAndKeepsTheScope(t *testing.T) {
+	e := toAudio(t)
+	rec := e.form(http.MethodPost, "/shots/"+e.shotID+"/branch", url.Values{"name": {"逃げる"}})
+	require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
+	branchID := strings.TrimPrefix(rec.Header().Get("HX-Redirect"), "/branches/")
+	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/projects/"+e.project+"/edit/rough-cut", url.Values{"branch_id": {branchID}}).Code)
+	e.setState("AUDIO")
+	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/projects/"+e.project+"/audio/generate", url.Values{"branch_id": {branchID}}).Code)
+	e.setState("READY")
+
+	// What htmx sends: the form's hx-vals on top of its fields.
+	page := e.get("/projects/"+e.project+"/edit?branch_id="+branchID, false).Body.String()
+	tag := regexp.MustCompile(`<form[^>]*hx-post="/projects/` + e.project + `/export"[^>]*>`).FindString(page)
+	require.NotEmpty(t, tag, "the Export form is on the page")
+	vals := regexp.MustCompile(`hx-vals="([^"]*)"`).FindStringSubmatch(tag)
+	require.NotNil(t, vals, "the Export form sends hx-vals: %s", tag)
+	var sent map[string]string
+	require.NoError(t, json.Unmarshal([]byte(html.UnescapeString(vals[1])), &sent))
+	require.Equal(t, map[string]string{"branch_id": branchID}, sent)
+
+	rec = e.form(http.MethodPost, "/projects/"+e.project+"/export", url.Values{"branch_id": {sent["branch_id"]}})
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	exports, err := repository.NewEditorRepository(e.db).ListExports(context.Background(), e.project)
+	require.NoError(t, err)
+	require.Len(t, exports, 1)
+	assert.Equal(t, branchID, exports[0].BranchID)
+	assert.Contains(t, rec.Body.String(), `hx-get="/projects/`+e.project+`/edit/actions?branch_id=`+branchID+`"`, "the response keeps the Branch scope")
 }

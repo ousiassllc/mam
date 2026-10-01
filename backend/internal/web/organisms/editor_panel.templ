@@ -289,6 +289,7 @@ templ EditorActions(d EditorPanelData) {
 				hx-target="#editor-actions"
 				hx-swap="outerHTML"
 				hx-disabled-elt="find button"
+				hx-vals={ branchVals(d.BranchID) }
 				class="flex flex-wrap items-end gap-3"
 			>
 				<label class="flex flex-col gap-1 text-xs text-neutral-400">
