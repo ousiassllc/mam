@@ -421,16 +421,19 @@ func (r *run) make(ctx context.Context, j job) error {
 		return nil
 	}
 	speech, err := j.call(ctx)
+	if err == nil {
+		// The provider has charged for the sound: the ledger gets it before the local work or a
+		// cancelled run can lose it.
+		if err := r.spend.record(ctx, j.model, j.cost); err != nil {
+			return err
+		}
+	}
 	if ctxErr := ctx.Err(); ctxErr != nil {
 		return ctxErr
 	}
 	if err != nil {
 		r.skip(j.layer, j.prompt, domain.SkipError, err.Error())
 		return nil
-	}
-	// The provider has charged for the sound: the ledger gets it before the local work can fail.
-	if err := r.spend.record(ctx, j.model, j.cost); err != nil {
-		return err
 	}
 	n := len(r.tl.Clips) + 1
 	rel, length, err := r.save(ctx, fmt.Sprintf("%s-%02d", j.layer, n), speech)
@@ -541,6 +544,12 @@ func (r *run) syncClip(ctx context.Context, vc VideoClip, lines []domain.AudioCl
 		return nil, false, fmt.Errorf("read voice: %w", err)
 	}
 	data, err := r.d.Providers.LipSync.Sync(ctx, LipSyncRequest{Model: model, Video: Sample{Filename: "clip.mp4", Data: vb}, Audio: Sample{Filename: "voice.wav", Data: ab}})
+	if err == nil {
+		// Sync Labs has charged for the clip: the ledger gets it even when the run was cancelled meanwhile.
+		if err := r.spend.record(ctx, domain.ModelSyncLabs, cost); err != nil {
+			return nil, false, err
+		}
+	}
 	if ctxErr := ctx.Err(); ctxErr != nil {
 		return nil, false, ctxErr
 	}
@@ -551,9 +560,6 @@ func (r *run) syncClip(ctx context.Context, vc VideoClip, lines []domain.AudioCl
 	if err != nil {
 		r.skip(domain.LayerLipSync, label, domain.SkipError, err.Error())
 		return nil, false, nil
-	}
-	if err := r.spend.record(ctx, domain.ModelSyncLabs, cost); err != nil {
-		return nil, false, err
 	}
 	rel := path.Join(r.rel, fmt.Sprintf("lipsync-%02d.mp4", vc.Index))
 	if err := fsutil.WriteFileAtomic(r.abs(rel), data, 0o600); err != nil {
