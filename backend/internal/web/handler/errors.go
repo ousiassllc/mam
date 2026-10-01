@@ -12,6 +12,16 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 )
 
+// abortDownload ends a download whose body failed after the status was sent: the archive is
+// incomplete, so the cause is attached to the context (logged by the logging middleware) and the
+// connection is dropped (net/http's ErrAbortHandler). The client sees a failed transfer instead of
+// a truncated file that looks like a finished download.
+func abortDownload(c *gin.Context, err error) {
+	_ = c.Error(err)
+	c.Abort()
+	panic(http.ErrAbortHandler)
+}
+
 // isHTMX reports whether a page route should answer with the fragment only. A history
 // restore (back/forward after htmx's cache missed) is an HX-Request too, but htmx swaps
 // the whole <body> with the response, so it needs the full page. The answer depends on

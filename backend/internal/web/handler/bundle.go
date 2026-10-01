@@ -27,12 +27,7 @@ func ExportBundle(svc *service.BundleService) gin.HandlerFunc {
 		c.Header("X-Content-Type-Options", "nosniff")
 		c.Status(http.StatusOK)
 		if err := bundle.Write(c.Writer); err != nil {
-			// The status is sent already and the archive is incomplete: log it and drop the connection
-			// (net/http's ErrAbortHandler) so the client sees a failed transfer instead of a
-			// truncated ZIP that looks like a finished download.
-			_ = c.Error(err)
-			c.Abort()
-			panic(http.ErrAbortHandler)
+			abortDownload(c, err)
 		}
 	}
 }
