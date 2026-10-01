@@ -221,26 +221,34 @@ func directionOf(card domain.CardBody, reply string) ConfirmInput {
 // the GENERATING state. A generation that cannot start (budget) leaves the new Shot in the Project,
 // ready to be generated later.
 func (s *ContinueService) Confirm(ctx context.Context, shotID string, in ConfirmInput) (ShotFragment, error) {
+	frag, _, err := s.confirm(ctx, shotID, in)
+	return frag, err
+}
+
+// confirm is Confirm that also reports whether the new Shot was added to the Project: after that
+// the continuation cannot be asked for again without making a second Shot, even if starting its
+// generation failed.
+func (s *ContinueService) confirm(ctx context.Context, shotID string, in ConfirmInput) (frag ShotFragment, added bool, err error) {
 	direction := strings.TrimSpace(in.Instruction)
 	if in.Delegate {
 		direction = ""
 	} else if direction == "" {
-		return ShotFragment{}, invalid("instruction", "続きの展開を選ぶか、指示を入力してください")
+		return ShotFragment{}, false, invalid("instruction", "続きの展開を選ぶか、指示を入力してください")
 	}
 	if utf8.RuneCountInString(direction) > maxInstructionRunes {
-		return ShotFragment{}, invalid("instruction", "%d 文字以内で入力してください", maxInstructionRunes)
+		return ShotFragment{}, false, invalid("instruction", "%d 文字以内で入力してください", maxInstructionRunes)
 	}
 	ref, err := s.check(ctx, shotID)
 	if err != nil {
-		return ShotFragment{}, err
+		return ShotFragment{}, false, err
 	}
 	agentIn, err := s.input(ctx, ref)
 	if err != nil {
-		return ShotFragment{}, err
+		return ShotFragment{}, false, err
 	}
 	plan, err := s.agent.Plan(ctx, agentIn, direction)
 	if err != nil {
-		return ShotFragment{}, aiError(err)
+		return ShotFragment{}, false, aiError(err)
 	}
 	var newScene *domain.Scene
 	shot := domain.Shot{SceneID: ref.Shot.SceneID, Objective: plan.Shot.Objective, Duration: plan.Shot.DurationSeconds}
@@ -249,11 +257,11 @@ func (s *ContinueService) Confirm(ctx context.Context, shotID string, in Confirm
 	}
 	shot, err = s.plans.AppendContinuation(ctx, ref.ProjectID, newScene, shot)
 	if err != nil {
-		return ShotFragment{}, notFound(err)
+		return ShotFragment{}, false, notFound(err)
 	}
 	scene, err := s.plans.GetSceneByID(ctx, shot.SceneID)
 	if err != nil {
-		return ShotFragment{}, notFound(err)
+		return ShotFragment{}, true, notFound(err)
 	}
 	chat := &ChatService{s.core}
 	note := fmt.Sprintf("続きを追加しました: Scene %d「%s」 Shot %d: %s", scene.OrderIndex+1, scene.Title, shot.OrderIndex+1, shot.Objective)
@@ -261,20 +269,24 @@ func (s *ContinueService) Confirm(ctx context.Context, shotID string, in Confirm
 		s.logger.Error("record continuation in the thread failed", "project_id", ref.ProjectID, "err", err)
 	}
 	if _, err := s.generation.gen.Start(ctx, shot.ID, direction); err != nil {
-		return ShotFragment{}, mapGenerationError(err)
+		return ShotFragment{}, true, mapGenerationError(err)
 	}
 	// the user asked for this Shot (by choosing or confirming the direction): a generate, as if
 	// they had pressed Generate on it (spec/spec.md §28.3)
 	s.recordIntervention(ctx, domain.Intervention{ShotID: shot.ID, Kind: domain.InterventionGenerate})
-	return s.generation.Shot(ctx, shot.ID)
+	frag, err = s.generation.Shot(ctx, shot.ID)
+	return frag, true, err
 }
 
 // aiError reports a failed Continue Agent call with the reason the user can act on.
 func aiError(err error) error { return &AIError{Reason: generation.FailureReason(err), Err: err} }
 
 // answerContinue handles a reply to a Continue card (an option button, "AIに任せる", or the user's
-// own words). The reply is recorded first, which closes the card, and then the next Shot is made;
-// when that fails the error is returned and the user asks for a new card. It is called by
+// own words). The next Shot is made first and the reply, which closes the card, is recorded after
+// it: a Confirm that fails before the Shot is added (Plan, AI error) leaves the card open to be
+// answered again. When the Shot was added but its generation could not start (budget), the card
+// closes as well, so that a second answer does not make a second Shot. The reply gets its id before
+// Confirm, so it stays ahead of the notes Confirm writes in the thread. It is called by
 // PostMessage before anything is written.
 func (s *ChatService) answerContinue(ctx context.Context, project domain.Project, card domain.ChatMessage, content string, hasAttachments bool) (Workspace, error) {
 	if hasAttachments {
@@ -292,11 +304,15 @@ func (s *ChatService) answerContinue(ctx context.Context, project domain.Project
 	}
 	choice := directionOf(domain.DecodeCardBody(card.Content), content)
 	turn := repository.Turn{ProjectID: project.ID, Messages: assignIDs([]domain.ChatMessage{userText(content, card.ID, nil)})}
+	_, added, confirmErr := s.continuer.confirm(ctx, card.RefID, choice)
+	if confirmErr != nil && !added {
+		return Workspace{}, confirmErr
+	}
 	if err := s.commit(ctx, turn); err != nil {
 		return Workspace{}, err
 	}
-	if _, err := s.continuer.Confirm(ctx, card.RefID, choice); err != nil {
-		return Workspace{}, err
+	if confirmErr != nil {
+		return Workspace{}, confirmErr
 	}
 	return s.workspaceOf(ctx, project.ID, turn.Messages)
 }

@@ -214,3 +214,25 @@ func TestContinueConfirm_AnUnusablePlanLeavesTheProjectUnchanged(t *testing.T) {
 	assert.Len(t, f.shotObjectives(t), 1)
 	assert.Equal(t, 1, f.count(t, `SELECT COUNT(*) FROM scene WHERE project_id = ?`, f.projectID))
 }
+
+// A reply whose Confirm fails before the next Shot exists leaves the card open: the user answers
+// the same card again, and only the answer that worked is recorded as its reply.
+func TestContinueConfirm_AFailedReplyLeavesTheCardOpenForAnotherAnswer(t *testing.T) {
+	f := completedShotFixture(t, `{"new_scene":true,"scene":{"title":""},"shot":{"objective":"x"}}`)
+	card := f.propose(t)
+	_, err := f.svc.Chat.PostMessage(context.Background(), f.projectID, service.PostMessageInput{Content: "A. 彼女がドアを開ける", ReplyToMessageID: card.ID})
+	var ai *service.AIError
+	require.ErrorAs(t, err, &ai)
+	assert.Equal(t, 0, f.count(t, `SELECT COUNT(*) FROM chat_message WHERE reply_to_message_id = ?`, card.ID), "the failed answer is not a reply")
+	assert.Len(t, f.shotObjectives(t), 1)
+
+	f.llm.director = directorFor(sameSceneAnswer)
+	ws, err := f.svc.Chat.PostMessage(context.Background(), f.projectID, service.PostMessageInput{Content: "B. 背後から声が聞こえる", ReplyToMessageID: card.ID})
+	require.NoError(t, err)
+	require.NotEmpty(t, ws.Messages)
+	assert.Equal(t, 1, f.count(t, `SELECT COUNT(*) FROM chat_message WHERE reply_to_message_id = ?`, card.ID))
+	assert.Len(t, f.shotObjectives(t), 2)
+	f.waitGenerateJobs(t, 3)
+	_, err = f.svc.Chat.PostMessage(context.Background(), f.projectID, service.PostMessageInput{Content: "C. 突然照明が消える", ReplyToMessageID: card.ID})
+	assert.ErrorIs(t, err, service.ErrConflict)
+}
