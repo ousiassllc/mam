@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -18,6 +19,25 @@ import (
 
 func rejected() error {
 	return &modeladapter.ProviderError{Vendor: "fake", Status: 400, Message: "content policy"}
+}
+
+func TestOrchestrator_GenerateKeepsThePaidCostWhenTheVideoCannotBeStored(t *testing.T) {
+	f := newFixture(t, options{})
+	// A regular file where the assets directory should be: the provider charges, the local store fails.
+	require.NoError(t, os.WriteFile(f.assetsDir, []byte("x"), 0o600))
+
+	err := f.generate(t, "")
+
+	require.Error(t, err)
+	assert.Zero(t, f.count(t, `SELECT COUNT(*) FROM take`), "no Take was kept")
+	paid := f.video.callCount()
+	require.Positive(t, paid)
+	assert.Equal(t, paid, f.count(t, `SELECT COUNT(*) FROM cost_ledger_entry WHERE shot_id = ? AND take_id IS NULL AND estimated_cost > 0`, f.shotID),
+		"every video the provider made is on the ledger")
+	b, err := f.gens.Budget(context.Background(), f.projectID, f.shotID)
+	require.NoError(t, err)
+	assert.Positive(t, b.ShotSpent)
+	assert.Positive(t, b.ProjectSpent)
 }
 
 func TestOrchestrator_GenerateMakesEveryTakeAndRecordsThem(t *testing.T) {

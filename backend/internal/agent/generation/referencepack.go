@@ -88,6 +88,9 @@ func (o *Orchestrator) buildReferencePack(ctx context.Context, ref repository.Sh
 		if err != nil {
 			return fmt.Errorf("%s: %w", p.Kind, err)
 		}
+		// The provider has charged for the image: the ledger gets it before a later failure (this
+		// image's file, a sibling image, the Keyframe or the Pack) can lose it.
+		o.recordPaid(ctx, ref.ProjectID, shot.ID, out.Model, out.EstimatedCost, out.ActualCost)
 		asset, err := o.files.write(ref.ProjectID, domain.AssetReference, out.MimeType, out.Data)
 		if err != nil {
 			return err
@@ -155,9 +158,6 @@ func (o *Orchestrator) buildReferencePack(ctx context.Context, ref repository.Sh
 			Kind: r.plan.Kind, Name: r.plan.Name, AssetID: r.asset.ID, Prompt: r.plan.Prompt, Model: r.output.Model,
 		})
 		pack.Assets = append(pack.Assets, r.asset)
-		pack.Costs = append(pack.Costs, domain.CostEntry{
-			ProjectID: ref.ProjectID, ShotID: shot.ID, Provider: r.output.Model, EstimatedCost: r.output.EstimatedCost, ActualCost: r.output.ActualCost,
-		})
 	}
 	// A pinned image the Art Director did not plan stays in the Pack.
 	for _, p := range pinned {

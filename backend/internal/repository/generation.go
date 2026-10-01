@@ -350,6 +350,13 @@ func (r *GenerationRepository) CreateTake(ctx context.Context, nt NewTake) (stri
 	return takeID, nil
 }
 
+// AddCost appends an entry to the cost ledger for a paid output that no Take or Pack row holds:
+// the provider has charged, so the spend stays on the ledger.
+func (r *GenerationRepository) AddCost(ctx context.Context, c domain.CostEntry) error {
+	now := formatTime(r.now())
+	return r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error { return insertCost(ctx, tx, c, now) })
+}
+
 func insertCost(ctx context.Context, tx *sql.Tx, c domain.CostEntry, now string) error {
 	_, err := tx.ExecContext(ctx,
 		`INSERT INTO cost_ledger_entry (id, project_id, shot_id, take_id, provider, estimated_cost, actual_cost, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -360,7 +367,8 @@ func insertCost(ctx context.Context, tx *sql.Tx, c domain.CostEntry, now string)
 	return nil
 }
 
-// NewReferencePack is the Reference Pack of a Shot with the image assets and their cost. References
+// NewReferencePack is the Reference Pack of a Shot with the image assets. Their cost is on the
+// ledger already (AddCost, written when each image was paid for). References
 // may include images that already exist (pinned from the Reference Library, or the images a World
 // State reference slot holds): only the images in Assets are new.
 type NewReferencePack struct {
@@ -368,10 +376,9 @@ type NewReferencePack struct {
 	ShotID     string
 	References []domain.Reference
 	Assets     []domain.Asset // the new image assets (type reference)
-	Costs      []domain.CostEntry
 }
 
-// SaveReferencePack replaces the Reference Pack of the Shot: the assets and costs are inserted,
+// SaveReferencePack replaces the Reference Pack of the Shot: the assets are inserted,
 // the new images join the Project's Reference Library (spec/spec.md §10.1; the Keyframe stays
 // with its Shot), the Characters and Products it names join the World State (when not already
 // there) and the "references" key of shot.shot_spec is rewritten, in one transaction.
@@ -388,11 +395,6 @@ func (r *GenerationRepository) SaveReferencePack(ctx context.Context, p NewRefer
 		}
 		for _, a := range p.Assets {
 			if err := insertAsset(ctx, tx, a, now); err != nil {
-				return err
-			}
-		}
-		for _, c := range p.Costs {
-			if err := insertCost(ctx, tx, c, now); err != nil {
 				return err
 			}
 		}

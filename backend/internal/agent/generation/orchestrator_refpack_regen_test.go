@@ -62,6 +62,7 @@ func TestOrchestrator_ReferencePackFailureKeepsNothing(t *testing.T) {
 		name       string
 		failOn     func(n int) error
 		wantReason string
+		wantPaid   int // images the provider charged for before the failure
 	}{
 		// The five references are made first (calls 1-5), then the Keyframe (6), whose alternative model is call 7.
 		{"the Keyframe is rejected after the references were made", func(n int) error {
@@ -69,8 +70,8 @@ func TestOrchestrator_ReferencePackFailureKeepsNothing(t *testing.T) {
 				return rejected()
 			}
 			return nil
-		}, "拒否"},
-		{"every image fails", func(int) error { return modeladapter.ErrNoAPIKey }, "API キー"},
+		}, "拒否", 5},
+		{"every image fails", func(int) error { return modeladapter.ErrNoAPIKey }, "API キー", 0},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -83,7 +84,12 @@ func TestOrchestrator_ReferencePackFailureKeepsNothing(t *testing.T) {
 			assert.Contains(t, err.Error(), c.wantReason)
 			assert.Empty(t, f.ref(t).Shot.References(), "no half-built Pack is saved")
 			assert.Zero(t, f.storedFiles(t), "images made before the failure are removed")
-			assert.Zero(t, f.count(t, `SELECT COUNT(*) FROM cost_ledger_entry`))
+			assert.Equal(t, c.wantPaid, f.count(t, `SELECT COUNT(*) FROM cost_ledger_entry WHERE shot_id = ? AND estimated_cost > 0`, f.shotID),
+				"images the provider charged for stay on the ledger even though the Pack is dropped")
+			assert.Equal(t, c.wantPaid, f.count(t, `SELECT COUNT(*) FROM cost_ledger_entry`))
+			b, berr := f.gens.Budget(context.Background(), f.projectID, f.shotID)
+			require.NoError(t, berr)
+			assert.Equal(t, c.wantPaid > 0, b.ShotSpent > 0 && b.ProjectSpent > 0, "the Budget counts the lost Pack")
 			assert.Equal(t, domain.ShotPlanning, f.shotState(t))
 			notices := f.chat.ofKind(domain.KindText)
 			require.Len(t, notices, 1)

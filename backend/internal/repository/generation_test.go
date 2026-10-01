@@ -221,7 +221,6 @@ func TestGenerationRepository_SaveReferencePackReplacesThePackAndKeepsTheSpec(t 
 			ProjectID: f.projectID, ShotID: f.shotID,
 			References: []domain.Reference{{Kind: domain.RefKeyframe, AssetID: assetID, Prompt: "p", Model: domain.ModelNanoBanana}},
 			Assets:     []domain.Asset{{ID: assetID, ProjectID: f.projectID, Type: domain.AssetReference, FilePath: "p/" + assetID + ".png", MimeType: "image/png"}},
-			Costs:      []domain.CostEntry{{ProjectID: f.projectID, ShotID: f.shotID, Provider: domain.ModelNanoBanana, EstimatedCost: 0.04}},
 		}
 	}
 	require.NoError(t, f.repo.SaveReferencePack(ctx, pack("r1")))
@@ -235,10 +234,21 @@ func TestGenerationRepository_SaveReferencePackReplacesThePackAndKeepsTheSpec(t 
 	_, ok := ref.Shot.CanonicalSpec()
 	assert.True(t, ok, "the Canonical Shot Spec is untouched")
 	var n int
-	require.NoError(t, f.db.Reader().QueryRow(`SELECT COUNT(*) FROM cost_ledger_entry WHERE provider = 'nano-banana'`).Scan(&n))
-	assert.Equal(t, 2, n, "both packs were paid for")
+	require.NoError(t, f.db.Reader().QueryRow(`SELECT COUNT(*) FROM cost_ledger_entry`).Scan(&n))
+	assert.Zero(t, n, "the cost is written when an image is paid for (AddCost), not with the Pack")
 
 	assert.ErrorIs(t, f.repo.SaveReferencePack(ctx, repository.NewReferencePack{ShotID: "missing"}), repository.ErrNotFound)
+}
+
+func TestGenerationRepository_AddCostCountsInTheBudget(t *testing.T) {
+	ctx := context.Background()
+	f := newGenRepoFixture(t)
+	require.NoError(t, f.repo.AddCost(ctx, domain.CostEntry{ProjectID: f.projectID, ShotID: f.shotID, Provider: domain.ModelNanoBanana, EstimatedCost: 0.04}))
+
+	b, err := f.repo.Budget(ctx, f.projectID, f.shotID)
+	require.NoError(t, err)
+	assert.InDelta(t, 0.04, b.ShotSpent, 1e-9)
+	assert.InDelta(t, 0.04, b.ProjectSpent, 1e-9)
 }
 
 func TestGenerationRepository_BudgetSumsTheLedgerPerProjectAndShot(t *testing.T) {
