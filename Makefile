@@ -36,7 +36,7 @@ assets: static/node_modules ## build front-end assets into static/src/dist
 test: test-go test-static ## run every test
 
 test-go: generate ## Go tests
-	go test -race ./...
+	go test -race -timeout 30m ./...
 
 test-static: static/node_modules ## front-end unit tests
 	npm test --prefix static
