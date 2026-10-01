@@ -14,7 +14,7 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
   | HTTPステータス | 意味 |
   |---|---|
   | 400 | multipart の本文が読み取れない（multipart ではない・途中で切断された） |
-  | 413 | リクエスト本文が上限を超えた（`MaxBody` ミドルウェアが 1MiB。`readMultipart` を呼ぶアップロードルートの `multipart/form-data` の本文だけが各上限で（`POST /projects/import` は 8 GB + 1 MiB、§2.1）、アップロードルートでも multipart 以外（urlencoded など）の本文は 1MiB のまま。Content-Type を `multipart/form-data` にしてもそれ以外のルートの上限は外れない。宣言された長さが上限を超える本文は読まずに 413） |
+  | 413 | リクエスト本文が上限を超えた（`MaxBody` ミドルウェアが 1MiB。`readMultipart` を呼ぶアップロードルートの `multipart/form-data` の本文だけが各上限で（`POST /projects/import` は 8 GB + 1 MiB、§2.1。参照画像 `POST /projects/:id/references` は 20 MB + 1 MiB、音声サンプル `POST /projects/:id/audio/voices` は 10 MB + 1 MiB、Review Response `POST /projects/:id/reviews/feedback` は 1 MiB + 1 MiB、Review Package `POST /reviews/import` は 2 GiB + 2 MiB。つまり「ファイルが各ファイルの上限を超え、本文全体は上限内」のときだけ各ルートの 422 になり、本文全体が上限を超えれば 413 になる）、アップロードルートでも multipart 以外（urlencoded など）の本文は 1MiB のまま。Content-Type を `multipart/form-data` にしてもそれ以外のルートの上限は外れない。宣言された長さが上限を超える本文は読まずに 413） |
   | 402 | Project/Shot budget ceiling 超過（F-22） |
   | 403 | Brand/Safety Constraint 違反、CSRF トークンの不正、または非ループバックからのアクセス |
   | 409 | 対象 Shot が既に生成中（多重実行防止） |
@@ -186,7 +186,7 @@ M3（F-20 Audio Director）の実装は次のとおり。
 | Method | Path | M3 の挙動 |
 |---|---|---|
 | POST | `/projects/:id/audio/generate` | Project が AUDIO でなければ 409。Branch がこの Project のものでなければ 404（Branch に Edit Timeline がなければ 404）。①Edit Timeline の Scene ごとに編集テンポ（`fast`/`medium`/`slow`）と Scene Emotion（Reasoning LLM が判定。LLM 未設定時は規則）を読み、②脚本の `dialogue` 行を ElevenLabs TTS（`elevenlabs-tts`）で話し（話者に音声クローンがあればその声）、③Quality Policy に応じて BGM（`elevenlabs-music`）・Ambience / SE / Foley（`elevenlabs-sfx`）・Lip Sync（`sync-labs`）を作り、④ローカル ffmpeg でミックスして −14 LUFS に正規化する。**FAST** はセリフ + BGM、**BALANCED** は + Ambience・SE、**MAX QUALITY** は + Foley・Lip Sync。プロバイダー呼び出しごとの見積を `cost_ledger_entry` に記録し、Project の予算上限に収まらない層は作らず（`skipped`）、セリフの合成だけで上限を超えるときは 409 で何も呼ばない。プランの LLM 出力が使えないときは 502（何も課金しない）。作れなかった層とその理由はチャットの投稿と画面に出る（個別のプロバイダーの失敗は実行全体を失敗にしない。TTS の失敗は 502）。`HX-Trigger` なし。応答はステージボタンのフラグメント |
-| POST | `/projects/:id/audio/voices` | multipart の `speaker`（1〜20 文字）・`sample`（音声ファイル、1 バイト以上 10 MB 以下）・任意の `name`・`branch_id`（応答の画面用）。ElevenLabs で音声クローンを作り（`elevenlabs` のキーが必要。未設定 502、クローン未対応の構成 503）、`voice_clone` に保存する（話者ごとに 1 件。再クローンは置き換え）。入力不備は 422 |
+| POST | `/projects/:id/audio/voices` | multipart の `speaker`（1〜20 文字）・`sample`（音声ファイル、1 バイト以上 10 MB 以下。10 MB 超でも本文全体が 10 MB + 1 MiB 以内なら 422、それを超えれば §0 の 413）・任意の `name`・`branch_id`（応答の画面用）。ElevenLabs で音声クローンを作り（`elevenlabs` のキーが必要。未設定 502、クローン未対応の構成 503）、`voice_clone` に保存する（話者ごとに 1 件。再クローンは置き換え）。入力不備は 422 |
 
 Audio Timeline の版は Branch ごとに 1 から振る追記のみの系列で、M1 の簡易音声の版（`mode` なし）はそのまま読める（`spec/architecture/model-adapters.md` §14.6）。
 
@@ -256,7 +256,7 @@ M2 の入出力契約（Issue #15）:
 入出力契約:
 
 - `GET /projects/:id/references`: `HX-Request` でフラグメント（`#reference-library`）、なければフルページ（`reference_library_page`）。`q`（名前・タグの部分一致）、`kind`、`tag`（完全一致）は AND で絞り込み、新しい登録順。不正な `kind` は 422
-- `POST /projects/:id/references`: 成功時は更新後のライブラリ（201）。ファイルなし・拡張子と内容の不一致・サイズ超過・不正な `kind`・名前が空か長すぎる・タグが多すぎる／長すぎるは 422（何も保存しない）、存在しない Project は 404
+- `POST /projects/:id/references`: 成功時は更新後のライブラリ（201）。ファイルなし・拡張子と内容の不一致・サイズ超過・不正な `kind`・名前が空か長すぎる・タグが多すぎる／長すぎるは 422（何も保存しない。サイズ超過は本文全体が 20 MB + 1 MiB 以内のときだけで、超えれば §0 の 413）、存在しない Project は 404
 - `DELETE /projects/:id/references/:referenceId`: 更新後のライブラリ（200）。当該 Project に無ければ 404
 - `POST /shots/:id/references`: 応答は更新後の Shot Inspector（`GET /shots/:id` と同じ、Reference Pack にピン留めした参照を含む。200）。同じ種別・同じ名前の参照があれば置き換え、`library_item` に登録 ID を記録する。Reference Pack の再生成ではピン留めした参照を残し、再生成しない。`reference_id` が空は 422、Shot または `reference_id`（同じ Project のもの）が無ければ 404、生成中の Shot は 409
 
@@ -275,9 +275,9 @@ M2 の入出力契約（Issue #15）:
 入出力契約（認証は行わない。共有物の中身と除外は `spec/spec.md` §27.1、`spec/requirements/non-functional.md` §5）:
 
 - `POST /projects/:id/reviews`: 成功時は更新後のレビュー一覧（201）。`export_id` が空・当該 Project の書き出しでない（存在しない Project も）は 404、書き出しファイルが無ければ 409、`note` が長すぎるは 422
-- `POST /projects/:id/reviews/feedback`: 成功時は更新後のレビュー一覧（201）。ファイルなし・JSON として読めない・`format`/`version` が違う・判定やコメントが不正・1MB 超過は 422（何も保存しない）、`review_id` がこの Project のレビュー依頼でなければ 422、`response_id` が取り込み済みなら 409。取り込むと Chat Workspace のスレッドに AI の発言（表示名・判定・コメント件数）を追加する
+- `POST /projects/:id/reviews/feedback`: 成功時は更新後のレビュー一覧（201）。ファイルなし・JSON として読めない・`format`/`version` が違う・判定やコメントが不正・ファイルが 1MB 超過（本文全体が 2 MiB 以内のとき。超えれば §0 の 413）は 422（何も保存しない）、`review_id` がこの Project のレビュー依頼でなければ 422、`response_id` が取り込み済みなら 409。取り込むと Chat Workspace のスレッドに AI の発言（表示名・判定・コメント件数）を追加する
 - `PUT /projects/:id/review-comments/:commentId`: 更新後のレビュー一覧（200）。当該 Project のコメントでなければ 404
-- `POST /reviews/import`: 成功時は `HX-Redirect: /reviews/:id`（201）。ZIP として読めない・`manifest.json` と `video.mp4|webm` 以外のエントリがある・形式やバージョンが違う・動画の署名が合わない・サイズ超過は 422（何も保存しない）、同じ `review_id` を読み込み済みなら 409
+- `POST /reviews/import`: 成功時は `HX-Redirect: /reviews/:id`（201）。ZIP として読めない・`manifest.json` と `video.mp4|webm` 以外のエントリがある・形式やバージョンが違う・動画の署名が合わない・サイズ超過（本文全体が 2 GiB + 2 MiB 以内のとき。超えれば §0 の 413）は 422（何も保存しない）、同じ `review_id` を読み込み済みなら 409
 - `POST /reviews/:id/comments`・`DELETE /reviews/:id/comments/:commentId`・`PUT /reviews/:id/decision`: 更新後のレビュー画面のフラグメント（201 / 200）。コメントは 1 レビュー 200 件まで（超過は 422）、`timecode` が負・秒でも 分:秒 でもない・24 時間超は 422、`decision` が不正・`reviewer_name` が空か長すぎるは 422。コメントや判定を変えると、書き出す応答の `response_id` が新しくなる
 
 ## 3. API ルート（Huma, JSON, `/api/v1`）
@@ -457,3 +457,4 @@ Notes:
 | 1.70 | 2026-10-01 | §2.1 の `GET /projects/:id/bundle` の `assets/` に入る Lip Sync のファイルを「画像」から「動画」に直した（改訂履歴 1.64 の記述も同様） | Audio Timeline の Lip Sync クリップ（`LipSyncClip.Path`）は Lip Sync 済みの動画（`lipsync-NN.mp4`）で、`model-adapters.md` も「Lip Sync 動画」と書いているため（Issue #234） |
 | 1.71 | 2026-10-02 | §2.1 の `GET /projects/:id/bundle`・`POST /projects/import` に、他 Project のディレクトリにある共有画像（Series の Episode の正本参照画像）はエクスポート時に `<project_id>/<asset_id><拡張子>` へ再配置され `data.json` の `file_path` も書き換わることを追記した | 実装（`service/bundle.go` の `relocateSharedAssets`）は他 Project の asset 行のパスを書き換えて元の場所のファイルを `assets/` に入れ、「パスのまま」は共有画像に当てはまらないため（Issue #251） |
 | 1.72 | 2026-10-02 | §2.1 の `POST /projects/import` の 422 条件に、全テーブルの行 ID の文字種・Take カードの動画/ポスター URL が同一オリジンの絶対パスであること・切り離し列が空であることを加えた | 実装（`repository/bundle.go` の `checkBundle`）はこれらも `ErrInvalidBundle`（422）にするため（Issue #252） |
+| 1.73 | 2026-10-02 | §0 の 413 行にアップロードルートごとの本文上限（参照画像 20 MB + 1 MiB・音声サンプル 10 MB + 1 MiB・Review Response 1 MiB + 1 MiB・Review Package 2 GiB + 2 MiB）を列挙し、各ルートの「サイズ超過は 422」を「本文全体が上限内でファイルだけが上限超のときだけ 422、本文全体が上限超なら 413」と書き分けた | 実装（`handler.readMultipart`）は本文全体に `MaxBytesReader` を掛け、超過は 413 になり、サービス層のファイル検証の 422 は狭い帯だけであるため（Issue #253） |
