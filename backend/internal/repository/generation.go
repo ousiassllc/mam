@@ -128,10 +128,17 @@ func (r *GenerationRepository) SetShotState(ctx context.Context, shotID string, 
 
 // ResetStaleShots puts Shots that are GENERATING or REPAIRING back to PLANNING. It is called at
 // start-up, before any job runs: after an abnormal termination no generation or repair is in flight.
+// A Shot with a queued generate or repair job keeps its state: that job did not start before the
+// restart and will run, and releasing the Shot would let a second one be queued for it (a double
+// paid generation). The jobs that were running are failed afterwards (they are not resumable), so
+// their Shots are released here.
 func (r *GenerationRepository) ResetStaleShots(ctx context.Context) (int, error) {
 	var n int64
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
-		res, err := tx.ExecContext(ctx, `UPDATE shot SET state = ? WHERE state IN (?, ?)`, domain.ShotPlanning, domain.ShotGenerating, domain.ShotRepairing)
+		res, err := tx.ExecContext(ctx,
+			`UPDATE shot SET state = ? WHERE state IN (?, ?)
+			   AND NOT EXISTS (SELECT 1 FROM job WHERE kind IN (?, ?) AND status = ? AND json_extract(payload, '$.shot_id') = shot.id)`,
+			domain.ShotPlanning, domain.ShotGenerating, domain.ShotRepairing, domain.JobGenerate, domain.JobRepair, domain.JobQueued)
 		if err != nil {
 			return err
 		}
