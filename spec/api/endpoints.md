@@ -135,7 +135,7 @@ M1 の入出力契約（Issue #12）:
 **Take System の動作（M1）**
 
 - AI Pick: Judge が結果を保存するたびに、その Shot の Take のうち Judge 済みで除外されていないものから最良を `ai_pick` にする（PASS が FAIL より先、次に 4 スコアの平均、同点は古い方）。ユーザーが Selected にした Take があれば何もしない。AUTO MODE では PASS した AI Pick を Shot の Take（`selected_take_id`）にもする。DIRECTOR MODE では推奨のみで、確定はユーザー（`POST /takes/:id/select`）。変更があったときは Judge のチャット通知に「AI Pick: …」を追記する。
-- Take カード（`ref_type=take`）の本文 JSON は `video_url`（`/takes/:id/video`）・`poster_url`・`shot_id` を持ち、`mam-video-player` を埋め込む。カードには返信と Take 比較（`GET /shots/:id/takes`）への導線がある。
+- Take カード（`ref_type=take`）の本文 JSON は `video_url`（`/takes/:id/video`）・`poster_url`・`shot_id` を持ち、`mam-video-player` を埋め込む。Judge 要約と Take 状態（AI Pick / 採用 / 除外）はカードに載せない（スレッドは追記のみのため）。Judge が結果を保存するたびに別のテキスト発言として投稿される。カードには返信と Take 比較（`GET /shots/:id/takes`）への導線がある。
 - `GET /shots/:id/takes` は `mam-take-comparator`（`api-url` に `GET /api/v1/shots/:id/takes`）を置くページ。部分採用が確定するとコンポーネントが `partial-take-confirmed` を発火する。
 
 M2 の入出力契約（Issue #18 Branch）:
@@ -460,3 +460,4 @@ Notes:
 | 1.73 | 2026-10-02 | §0 の 413 行にアップロードルートごとの本文上限（参照画像 20 MB + 1 MiB・音声サンプル 10 MB + 1 MiB・Review Response 1 MiB + 1 MiB・Review Package 2 GiB + 2 MiB）を列挙し、各ルートの「サイズ超過は 422」を「本文全体が上限内でファイルだけが上限超のときだけ 422、本文全体が上限超なら 413」と書き分けた | 実装（`handler.readMultipart`）は本文全体に `MaxBytesReader` を掛け、超過は 413 になり、サービス層のファイル検証の 422 は狭い帯だけであるため（Issue #253） |
 | 1.74 | 2026-10-02 | §2.4 の `POST /projects/:id/world-state/versions/:versionNumber/restore` が `branch_id` クエリで当該 Branch の World State 系列を復元し、その Branch の World State ビューを返すこと（他 Project の Branch は 404）と、`branch_id` クエリの記述の対象に復元ルートを含めることを明記 | 実装（#221）は Branch の World State も `?branch_id=` で復元するが、仕様は主系列専用と書いていたため（Issue #248） |
 | 1.75 | 2026-10-02 | §2.3 の `POST /shots/:id/reference-pack` に、画像が 1 枚も予算上限に収まらなければ 402 を返すことを追記した | 実装を直し、`StartReferencePack` が `/shots/:id/generate` と同じく Project / Shot の予算上限を確認するようにしたため（Issue #256） |
+| 1.76 | 2026-10-02 | §2.4 の Take System の動作に、Take カードには Judge 要約と Take 状態（AI Pick / 採用 / 除外）を載せず、Judge が結果を保存するたびに別のテキスト発言として投稿されることを追記した（`spec/spec.md` §23.2・ワイヤーフレームも同様） | スレッドは追記のみで Take カードは後から更新できず、実装は Judge 要約と AI Pick を別発言で出しているため。最新の Take 状態は Take 比較で確認する（Issue #289） |
