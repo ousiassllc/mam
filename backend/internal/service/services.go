@@ -236,7 +236,7 @@ func New(deps Deps) *Services {
 	editors.resume = newResumer(editors.resumeAll)
 	takeService.afterSelect = editors.ResumeEditing
 	// An Approval card answered in the editing half (Rough Cut, Final) lets the AUTO chain go on.
-	c.afterAnswer = func(projectID string) { go editors.AdvanceAuto(context.Background(), projectID) }
+	c.afterAnswer = editors.RetryAuto
 	if deps.Media != nil && deps.Audio.Speech != nil {
 		// Without a Reasoning LLM the Audio Director plans its layers by rule (tempo, Brief mood, location).
 		editors.audio = audiodirector.New(audiodirector.Deps{
