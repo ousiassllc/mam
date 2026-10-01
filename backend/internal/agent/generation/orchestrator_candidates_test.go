@@ -46,9 +46,13 @@ func TestOrchestrator_StartCandidatesNeedsTheJudge(t *testing.T) {
 
 func TestOrchestrator_QualityModeGeneratesEveryCandidateAndMarksTheBestTake(t *testing.T) {
 	f := newFixture(t, options{withJudge: true, quality: domain.QualityMaxQuality})
-	// Every Take passes; the third judgement is the most confident one.
+	// Every Take passes; the third judgement is the only one without an Issue, so its Take scores highest.
 	f.judge.verdicts = func(n int) (domain.JudgeResult, error) {
-		return domain.JudgeResult{Result: domain.JudgePass, OverallConfidence: 0.5 + 0.1*float64(n)}, nil
+		res := domain.JudgeResult{Result: domain.JudgePass, OverallConfidence: 0.9}
+		if n != 3 {
+			res.Issues = []domain.JudgeIssue{{Type: "flicker", Severity: domain.SeverityLow, Dimension: domain.DimFlicker}}
+		}
+		return res, nil
 	}
 
 	require.NoError(t, f.candidates(t, ""))
@@ -63,12 +67,12 @@ func TestOrchestrator_QualityModeGeneratesEveryCandidateAndMarksTheBestTake(t *t
 	require.Len(t, results, len(strategies))
 	var best string
 	for id, r := range results {
-		if best == "" || r.OverallConfidence > results[best].OverallConfidence {
+		if len(r.Issues) == 0 {
 			best = id
 		}
 	}
 	assert.Equal(t, 1, f.count(t, `SELECT COUNT(*) FROM take WHERE status = 'ai_pick'`))
-	assert.Equal(t, domain.TakeAIPick, f.statusOf(t, best), "the most confident passing Take is the AI pick")
+	assert.Equal(t, domain.TakeAIPick, f.statusOf(t, best), "the highest scoring passing Take is the AI pick")
 
 	summary := f.chat.ofKind(domain.KindText)
 	require.Len(t, summary, 1)

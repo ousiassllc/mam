@@ -64,32 +64,20 @@ func severe(r domain.JudgeResult) bool {
 	return false
 }
 
-// penalty is the weight of the Issues of a verdict: the sum of their severity ranks, a LOCK
-// violation counting as much as a high severity Issue plus one.
-func penalty(r domain.JudgeResult) int {
-	n := 0
-	for _, is := range r.Issues {
-		n += is.Severity.Rank()
-		if is.LockViolation {
-			n += domain.SeverityHigh.Rank() + 1
-		}
-	}
-	return n
-}
-
-// better reports whether a is the better Take than b: a Take that passed beats one that failed, then
-// the one with the lighter Issues wins, then the one the Judge is more confident about, then the
-// earlier one. A Take that could not be judged is worse than any judged one.
+// better reports whether a is the better Take than b. It ranks like domain.PickTake, which the
+// Judge uses for the AI Pick and for the Take AUTO MODE selects: a Take that passed beats one that
+// failed, then the one with the higher mean of the four Take scores wins, then the earlier one. One
+// order for both keeps the Selected Take, the AI Pick and the adopted Spec on the same Take. A Take
+// that could not be judged is worse than any judged one.
 func better(a, b judged) bool {
 	switch {
 	case a.result == nil || b.result == nil:
 		return a.result != nil && b.result == nil
 	case (a.result.Result == domain.JudgePass) != (b.result.Result == domain.JudgePass):
 		return a.result.Result == domain.JudgePass
-	case penalty(*a.result) != penalty(*b.result):
-		return penalty(*a.result) < penalty(*b.result)
-	case a.result.OverallConfidence != b.result.OverallConfidence:
-		return a.result.OverallConfidence > b.result.OverallConfidence
+	}
+	if sa, sb := domain.ScoreTake(a.result.Issues).Overall(), domain.ScoreTake(b.result.Issues).Overall(); sa != sb {
+		return sa > sb
 	}
 	return a.number < b.number
 }
