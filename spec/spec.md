@@ -190,7 +190,7 @@ Final QC
 Delivery
 ```
 
-> **実装の範囲**: Orchestrator が自動で進めるのは Brief → Producer → Writer → Director → Storyboard（Scene / Shot Planning、Project は PLANNING → VISUAL_DESIGN）までである。Art Director 以降（Reference Pack・Keyframe・Image / Video Generation）は Shot 単位でユーザーが起動し、起動した Shot では AI Video Judge → Repair / Retake → AI Pick が AUTO MODE で連鎖する。AUTO MODE では、トランクの全 Shot にファイル付き Selected Take が揃うと Rough Cut の作成と Editor Judge が自動で始まる。確認ポイントを通過したあと（承認カードの回答後、または確認不要の設定で AUDIO に入ったあと）は Audio と Final QC まで自動で進む。承認カードが未応答のとき、Editor Judge が Re-edit のとき、Final QC が FAIL のときはそこで止まり、Export は READY の動画に対するユーザーの操作である。Project 全体を一括で生成する段は持たない。
+> **実装の範囲**: Orchestrator が自動で進めるのは Brief → Producer → Writer → Director → Storyboard（Scene / Shot Planning、Project は PLANNING → VISUAL_DESIGN）までである。Art Director 以降（Reference Pack・Keyframe・Image / Video Generation）は Shot 単位でユーザーが起動し、起動した Shot では AI Video Judge → Repair / Retake → AI Pick が AUTO MODE で連鎖する。AUTO MODE では、トランクの全 Shot にファイル付き Selected Take が揃うと Rough Cut の作成と Editor Judge が自動で始まる。確認ポイントを通過したあと（承認カードの回答後、または確認不要の設定で AUDIO に入ったあと）は Audio と Final QC まで自動で進む。承認カードが未応答のとき、Editor Judge が Re-edit のとき、Final QC が FAIL のときはそこで止まる（Editor Judge が `need_shot` のときは、AUTO MODE では追加 Shot の要求が自動で始まり、Retry Policy の範囲で繰り返し、上限に達したら Escalation で止まる。MANUAL ではユーザーが要求する）。Export は READY の動画に対するユーザーの操作である。Project 全体を一括で生成する段は持たない。
 
 ---
 
