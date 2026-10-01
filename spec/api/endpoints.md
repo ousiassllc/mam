@@ -14,7 +14,7 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
   | HTTPステータス | 意味 |
   |---|---|
   | 400 | multipart の本文が読み取れない（multipart ではない・途中で切断された） |
-  | 413 | リクエスト本文が上限を超えた（`MaxBody` ミドルウェアが 1MiB。`readMultipart` を呼ぶアップロードルートの `multipart/form-data` の本文だけが各上限で、アップロードルートでも multipart 以外（urlencoded など）の本文は 1MiB のまま。Content-Type を `multipart/form-data` にしてもそれ以外のルートの上限は外れない。宣言された長さが上限を超える本文は読まずに 413） |
+  | 413 | リクエスト本文が上限を超えた（`MaxBody` ミドルウェアが 1MiB。`readMultipart` を呼ぶアップロードルートの `multipart/form-data` の本文だけが各上限で（`POST /projects/import` は 8 GB + 1 MiB、§2.1）、アップロードルートでも multipart 以外（urlencoded など）の本文は 1MiB のまま。Content-Type を `multipart/form-data` にしてもそれ以外のルートの上限は外れない。宣言された長さが上限を超える本文は読まずに 413） |
   | 402 | Project/Shot budget ceiling 超過（F-22） |
   | 403 | Brand/Safety Constraint 違反、または LOCK 対象への変更試行 |
   | 409 | 対象 Shot が既に生成中（多重実行防止） |
@@ -65,7 +65,7 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 
 | Method | Path | 概要 | 対応機能 |
 |---|---|---|---|
-| POST | `/projects/import` | プロジェクトバンドルのインポート（`multipart/form-data`、フィールド `bundle`＝`GET /projects/:id/bundle` の ZIP。`spec/requirements/non-functional.md` §8）。バンドルの Project を ID・ファイルパスのまま新規に作る（1 トランザクション。失敗時は行もファイルも残さない）。成功は 201 と `HX-Redirect: /projects/:id`。ファイルがない・ZIP でない・`manifest.json`/`data.json` が読めない・`format`/`version` が違う・未知のテーブル/カラム・他 Project の行・外部キーが壊れている・Project ディレクトリ外を指すパスは 422（インポートフォームをエラー付きで再描画）。`data.json` が参照していない `assets/` のエントリは展開しない。展開するファイルの合計が 32 GB を超える、または assets ディレクトリのあるディスクの空き容量を超える場合も 422 で、何も書かない。ファイルは assets 直下の一時ディレクトリ（`.import-*`）に展開し、Project のディレクトリへ移して確定するため、同じバンドルを同時にインポートしても先に成功した Project のファイルは消えない。同じ ID の Project が既にあれば 409（既存を変更しない）。取り込んだ Project に実行中のジョブは無いので、生成中だった Shot は PLANNING に戻す | non-functional.md §8 |
+| POST | `/projects/import` | プロジェクトバンドルのインポート（`multipart/form-data`、フィールド `bundle`＝`GET /projects/:id/bundle` の ZIP。`spec/requirements/non-functional.md` §8）。バンドルの Project を ID・ファイルパスのまま新規に作る（1 トランザクション。失敗時は行もファイルも残さない）。成功は 201 と `HX-Redirect: /projects/:id`。ファイルがない・ZIP でない・`manifest.json`/`data.json` が読めない・`format`/`version` が違う・未知のテーブル/カラム・他 Project の行・外部キーが壊れている・Project ディレクトリ外を指すパスは 422（インポートフォームをエラー付きで再描画）。サイズの上限は、本文（multipart 全体）が 8 GB + 1 MiB を超えると 413、アーカイブ（ZIP）が 0 バイトまたは 8 GB を超える・1 ファイルが 2 GB を超える場合は 422。`data.json` が参照していない `assets/` のエントリは展開しない。展開するファイルの合計が 32 GB を超える、または assets ディレクトリのあるディスクの空き容量を超える場合も 422 で、何も書かない。ファイルは assets 直下の一時ディレクトリ（`.import-*`）に展開し、Project のディレクトリへ移して確定するため、同じバンドルを同時にインポートしても先に成功した Project のファイルは消えない。同じ ID の Project が既にあれば 409（既存を変更しない）。取り込んだ Project に実行中のジョブは無いので、生成中だった Shot は PLANNING に戻す | non-functional.md §8 |
 | POST | `/projects` | 新規プロジェクト作成。Body（`multipart/form-data`）に最初の発言（`content`、4000 文字以内。超過は 422）と添付（`attachments`、画像 jpg/png/webp/gif ≤20MB・動画 mp4/mov/webm ≤300MB、最大8件。拡張子と内容の署名を検証し不正は 422）を指定でき、Brief はその発言から抽出してチャットで補完する。成功時は `HX-Redirect: /projects/:id`（201）。既存アセットの再利用は `POST /projects/:id/messages` の `attachment_asset_ids`。Series 作成後の Episode は `POST /series/:id/episodes` を使う。任意のフォーム項目 `brand_template_id` を指定すると、その Brand Template の制約を新しい Project にコピーする（存在しなければ 422 で何も作らない。F-23） | F-01, F-25, F-30 |
 | PUT | `/projects/:id/brief` | Brief 更新 | F-01 |
 | PUT | `/projects/:id/mode` | AUTO ⇄ DIRECTOR 切替 | F-02 |
@@ -447,3 +447,4 @@ Notes:
 | 1.60 | 2026-10-01 | `/ws/shots/:id` の `action` に `candidates` を加えた。候補生成の `stage` は既存の列挙のまま | 進捗は `action=candidates` を送るが、仕様とフロントの型が `generate\|reference_pack\|judge\|repair` だけだったため（Issue #124） |
 | 1.61 | 2026-10-01 | MAX QUALITY の候補生成は、予算が 3 Take 分あるとき 3 戦略すべてを並列生成し、1〜2 本だけ収まるときはその本数を 202 で、1 本も収まらなければ 402 と書いた | 仕様は常に全 Candidate だったが、実装は予算に収まる本数だけ作っていたため（Issue #126） |
 | 1.62 | 2026-10-01 | `GET /takes/:id/judge-result` の応答項目に `created_at` と `scores`（評価軸別の 0-100。Judge が出さなければ省略）を追記 | 実装（`domain.JudgeResult`）が返す項目が仕様の列挙・例に無かったため（Issue #166） |
+| 1.63 | 2026-10-01 | `POST /projects/import` のサイズ上限（本文 8 GB + 1 MiB は 413、アーカイブ 8 GB・1 ファイル 2 GB は 422）を §0 の 413 行と §2.1 に追記 | 実装の `MaxBundleBytes`・`maxBundleFileBytes` が仕様になかったため（Issue #169） |
