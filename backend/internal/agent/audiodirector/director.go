@@ -52,6 +52,9 @@ type Input struct {
 	Seconds float64
 	// TargetLUFS is the loudness of the mix (0 selects domain.DefaultTargetLUFS).
 	TargetLUFS float64
+	// RunID names the directory of the run below <project>/audio/<edit timeline>/. Empty selects a
+	// new ID; a caller that may have to DiscardRun the files after Produce succeeded sets it.
+	RunID string
 }
 
 // VideoClip is a clip of the Edit Timeline with the file of its Take.
@@ -107,11 +110,45 @@ func New(deps Deps) *Director {
 // that the budget ceiling, a missing key or a provider failure does not allow is left out and
 // listed in Skipped. Everything is then mixed with the sound of the Rough Cut and normalized with
 // local DSP. A cut without lines and without sound gets no mix.
+//
+// A run that does not succeed removes its directory; the cost ledger keeps what was paid.
 func (d *Director) Produce(ctx context.Context, in Input) (domain.AudioTimeline, error) {
-	rel := path.Join(in.ProjectID, "audio", in.EditTimelineID, domain.NewID())
+	rel := runRel(in)
 	if err := d.checkRunDir(in.ProjectID, rel); err != nil {
 		return domain.AudioTimeline{}, err
 	}
+	tl, err := d.produce(ctx, in, rel)
+	if err != nil {
+		_ = os.RemoveAll(filepath.Join(d.Root, filepath.FromSlash(rel)))
+		return domain.AudioTimeline{}, err
+	}
+	return tl, nil
+}
+
+// DiscardRun removes the files of the run that Produce made for in (in.RunID must be the one given
+// to Produce). It is for the caller whose own step after a successful Produce failed, so that the
+// files no Audio Timeline refers to do not pile up.
+func (d *Director) DiscardRun(in Input) error {
+	if in.RunID == "" {
+		return nil
+	}
+	rel := runRel(in)
+	if err := d.checkRunDir(in.ProjectID, rel); err != nil {
+		return err
+	}
+	return os.RemoveAll(filepath.Join(d.Root, filepath.FromSlash(rel)))
+}
+
+// runRel is the directory of the run of in, relative to the assets directory.
+func runRel(in Input) string {
+	id := in.RunID
+	if id == "" {
+		id = domain.NewID()
+	}
+	return path.Join(in.ProjectID, "audio", in.EditTimelineID, id)
+}
+
+func (d *Director) produce(ctx context.Context, in Input, rel string) (domain.AudioTimeline, error) {
 	target := in.TargetLUFS
 	if target == 0 {
 		target = domain.DefaultTargetLUFS

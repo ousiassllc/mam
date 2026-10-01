@@ -78,11 +78,14 @@ func (s *EditorService) GenerateAudio(ctx context.Context, projectID, branchID s
 		in.Voices[c.Speaker] = c.VoiceID
 	}
 
+	in.RunID = domain.NewID()
 	tl, err := s.audio.Produce(ctx, in)
 	if err != nil {
 		return EditorView{}, audioError(err)
 	}
 	if _, err := s.editors.SaveAudioTimeline(context.WithoutCancel(ctx), projectID, branchID, tl); err != nil {
+		// No Audio Timeline refers to the files of the run: they are not kept (the cost ledger is).
+		_ = s.audio.DiscardRun(in)
 		return EditorView{}, notFound(err)
 	}
 	s.announce(ctx, projectID, audioSummary(tl, branchID != ""))
