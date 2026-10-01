@@ -169,7 +169,7 @@ func (s *ChatService) PostMessage(ctx context.Context, projectID string, in Post
 	user := userText(content, in.ReplyToMessageID, assetIDs(attached))
 
 	if s.director.wants(project, target, content) {
-		return s.postDirection(ctx, project, target, user, stored)
+		return s.postDirection(ctx, project, target, user, stored, attached)
 	}
 	turn, decided, err := s.planTurn(ctx, project, target, user, attached)
 	if err != nil {
@@ -193,9 +193,13 @@ func (s *ChatService) PostMessage(ctx context.Context, projectID string, in Post
 // postDirection handles a message of DIRECTOR MODE: it is stored first, then the Command Interpreter
 // reads it, resolves the Shot it is about and carries it out, and the AI's answer (what was done,
 // refused or asked) follows it in the thread.
-func (s *ChatService) postDirection(ctx context.Context, project domain.Project, target *domain.ChatMessage, user domain.ChatMessage, stored []storedUpload) (Workspace, error) {
+func (s *ChatService) postDirection(ctx context.Context, project domain.Project, target *domain.ChatMessage, user domain.ChatMessage, stored []storedUpload, attached []domain.Asset) (Workspace, error) {
 	user.ID = domain.NewID()
 	turn := repository.Turn{ProjectID: project.ID, Messages: []domain.ChatMessage{user}, Assets: assetsOf(stored)}
+	if err := s.attachToBrief(ctx, &turn, attached); err != nil {
+		discardUploads(stored)
+		return Workspace{}, err
+	}
 	if err := s.commit(ctx, turn); err != nil {
 		discardUploads(stored)
 		return Workspace{}, err
@@ -270,6 +274,9 @@ func (s *ChatService) planTurn(ctx context.Context, project domain.Project, targ
 		if err := s.settlePromotion(ctx, *target, &turn); err != nil {
 			return turn, nil, err
 		}
+		if err := s.attachToBrief(ctx, &turn, attached); err != nil {
+			return turn, nil, err
+		}
 		return turn, nil, nil
 	}
 
@@ -281,6 +288,9 @@ func (s *ChatService) planTurn(ctx context.Context, project domain.Project, targ
 		resume := domain.EscalationResumeState
 		turn.ResumeState = &resume
 		turn.Messages = append(turn.Messages, assistantText("判断を受け付けました。この判断は自動では実行されません。内容に沿って、設定の変更・Take の採用・Shot の指示の修正などを画面から行ってください。"))
+		if err := s.attachToBrief(ctx, &turn, attached); err != nil {
+			return turn, nil, err
+		}
 		return turn, nil, nil
 	}
 
@@ -307,6 +317,25 @@ func (s *ChatService) planTurn(ctx context.Context, project domain.Project, targ
 	}
 	decided := slices.DeleteFunc(slices.Clone(beforeMissing), func(f domain.BriefField) bool { return slices.Contains(nowMissing, f) })
 	return turn, decided, nil
+}
+
+// attachToBrief puts the files a message carries into the Brief (images into Assets, videos into
+// References) in the same turn, whatever the message answers: a direction, an Approval card or an
+// Escalation. A message that answers a question of the Brief takes them in planTurn instead.
+func (s *ChatService) attachToBrief(ctx context.Context, turn *repository.Turn, attached []domain.Asset) error {
+	if len(attached) == 0 {
+		return nil
+	}
+	brief, err := s.projects.GetBrief(ctx, turn.ProjectID)
+	if err != nil {
+		return notFound(err)
+	}
+	before := brief
+	brief.AttachAssets(attached)
+	if briefChanged(before, brief) {
+		turn.Brief = &brief
+	}
+	return nil
 }
 
 // answerBrief applies a message received while the Brief is incomplete.

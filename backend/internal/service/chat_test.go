@@ -270,6 +270,29 @@ func TestPostMessage_AttachmentsSentLaterJoinTheBrief(t *testing.T) {
 	assert.Len(t, f.brief(t, p.ID).Assets, 1)
 }
 
+func TestPostMessage_AttachmentsOfAnApprovalOrEscalationReplyJoinTheBrief(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	p := f.createProject(t, "動画")
+
+	_, err := f.svc.Chat.RequestApproval(ctx, p.ID, domain.CheckpointScript, "脚本 v1", "sv1")
+	require.NoError(t, err)
+	card := lastMessage(t, f.thread(t, p.ID))
+	_, err = f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "この雰囲気で", ReplyToMessageID: card.ID,
+		Uploads: []service.Upload{upload("look.png", pngBytes), upload("ref.mp4", mp4Bytes)}})
+	require.NoError(t, err)
+	brief := f.brief(t, p.ID)
+	assert.Len(t, brief.Assets, 1, "an image attached to an Approval reply is an Asset")
+	assert.Len(t, brief.References, 1, "a video attached to an Approval reply is a Reference")
+
+	require.NoError(t, f.svc.Chat.RaiseEscalation(ctx, p.ID, "リトライ上限に達しました", []string{"続行", "中止"}, "shot1"))
+	esc := lastMessage(t, f.thread(t, p.ID))
+	_, err = f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "続行", ReplyToMessageID: esc.ID,
+		Uploads: []service.Upload{upload("other.png", pngBytes)}})
+	require.NoError(t, err)
+	assert.Len(t, f.brief(t, p.ID).Assets, 2, "an image attached to an Escalation reply is an Asset")
+}
+
 func setState(t *testing.T, f fixture, projectID string, state domain.ProjectState) {
 	t.Helper()
 	err := f.db.Write(context.Background(), func(ctx context.Context, tx *sql.Tx) error {

@@ -413,6 +413,22 @@ func (f genFixture) say(t *testing.T, content, replyTo string) service.Workspace
 	return ws
 }
 
+func TestChat_DirectorModeDirectionAttachmentsJoinTheBrief(t *testing.T) {
+	f := newGenFixture(t, true)
+	f.startDirecting(t)
+	f.llm.interpreter = opsJSON(`{"type":"unsupported","reason":"書き出しはまだ指示できません"}`)
+	before, err := f.svc.Projects.Brief(context.Background(), f.projectID)
+	require.NoError(t, err)
+
+	_, err = f.svc.Chat.PostMessage(context.Background(), f.projectID, service.PostMessageInput{
+		Content: "この画像の雰囲気で", Uploads: []service.Upload{upload("look.png", pngBytes)}})
+	require.NoError(t, err)
+
+	after, err := f.svc.Projects.Brief(context.Background(), f.projectID)
+	require.NoError(t, err)
+	assert.Len(t, after.Brief.Assets, len(before.Brief.Assets)+1)
+}
+
 func TestChat_DirectorModeResolvesTheShotFromAReplyToATakeCard(t *testing.T) {
 	f := newGenFixture(t, true)
 	second, err := f.svc.Plans.CreateShot(context.Background(), f.sceneID, service.ShotForm{Objective: "ドアを開ける", DurationSeconds: "4"})
