@@ -78,8 +78,15 @@ func TestSummary_SaysWhyTheNumbersAreMissing(t *testing.T) {
 	assert.Contains(t, s, "[high] face_identity_drift 1.0-2.0s（LOCK 違反）")
 	assert.Contains(t, s, "定性評価のみ")
 
-	res.Metrics = domain.JudgeMetrics{FaceIdentityStatus: domain.FaceMeasured, FaceIdentity: []domain.FaceIdentityMetric{{Evaluated: false}}}
-	assert.Contains(t, Summary(1, "x", res), "顔を検出できないフレームが多い")
+	res.Metrics = domain.JudgeMetrics{FaceIdentityStatus: domain.FaceMeasured, FaceIdentity: []domain.FaceIdentityMetric{{Calibrated: true, Evaluated: false}}}
+	s = Summary(1, "x", res)
+	assert.Contains(t, s, "顔を検出できないフレームが多い")
+	assert.NotContains(t, s, "参照画像が足りず")
+
+	res.Metrics = domain.JudgeMetrics{FaceIdentityStatus: domain.FaceMeasured, FaceIdentity: []domain.FaceIdentityMetric{{Calibrated: false, Evaluated: false}}}
+	s = Summary(1, "x", res)
+	assert.Contains(t, s, "参照画像が足りず")
+	assert.NotContains(t, s, "顔を検出できないフレームが多い")
 }
 
 func TestLockedDimensions_ParametersLockedOnTheShotReachTheJudge(t *testing.T) {

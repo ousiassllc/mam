@@ -575,11 +575,20 @@ func Summary(shotNumber int, takeID string, res domain.JudgeResult) string {
 	case domain.FaceUnavailable:
 		b.WriteString("\n顔の同一性の数値評価は利用できないため、定性評価のみで判定しました。")
 	case domain.FaceMeasured:
+		var uncalibrated, undetected bool
 		for _, f := range res.Metrics.FaceIdentity {
-			if !f.Evaluated {
-				b.WriteString("\n顔を検出できないフレームが多いため、顔の同一性は定性評価のみで判定しました。")
-				break
+			switch {
+			case !f.Calibrated:
+				uncalibrated = true
+			case !f.Evaluated:
+				undetected = true
 			}
+		}
+		if uncalibrated {
+			b.WriteString("\n参照画像が足りず（顔が取れた参照が 2 枚未満、または参照同士が似ていない）顔の同一性の数値評価を行えないため、定性評価のみで判定しました。")
+		}
+		if undetected {
+			b.WriteString("\n顔を検出できないフレームが多いため、顔の同一性は定性評価のみで判定しました。")
 		}
 	}
 	if rs := res.RepairStrategy; rs != nil {
