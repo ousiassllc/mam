@@ -77,3 +77,28 @@ export function swapsErrorResponse(status: number, contentType: string | null): 
 export function isSuccessResponse(xhr: { status: number } | null | undefined): boolean {
   return !!xhr && xhr.status >= 200 && xhr.status < 300;
 }
+
+/** What the composer held when a message was sent (files as one comparable key each). */
+export interface ComposerSnapshot {
+  content: string;
+  files: readonly string[];
+  replyTo: string;
+}
+
+/** Comparable key of a file: two different picks of the same name are told apart by size and date. */
+export function fileKey(file: { name: string; size: number; lastModified: number }): string {
+  return `${file.name}:${file.size}:${file.lastModified}`;
+}
+
+/**
+ * Which composer fields to clear once a send has succeeded. The input stays editable while the
+ * request runs, so only a field still holding what was sent is cleared; anything typed, attached or
+ * replied to in the meantime is the next message and is kept.
+ */
+export function fieldsToClear(sent: ComposerSnapshot, current: ComposerSnapshot): { content: boolean; files: boolean; replyTo: boolean } {
+  return {
+    content: current.content === sent.content,
+    files: current.files.length === sent.files.length && current.files.every((key, i) => key === sent.files[i]),
+    replyTo: current.replyTo === sent.replyTo,
+  };
+}

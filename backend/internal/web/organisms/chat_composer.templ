@@ -30,6 +30,7 @@ templ ChatComposer(p domain.Project) {
 			hx-encoding="multipart/form-data"
 			hx-target="#chat-thread"
 			hx-swap="beforeend"
+			hx-sync="this:drop"
 		>
 			<div id="reply-chip" class="mb-2 hidden items-center gap-2 text-xs text-neutral-300">
 				<span>返信先:</span>
