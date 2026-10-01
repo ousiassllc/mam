@@ -8,12 +8,18 @@ Go（`go.mod` のバージョン）、Node.js、`templ`、`golangci-lint`、`lin
 
 | コマンド | 内容 |
 |---|---|
-| `make generate` | `templ generate` |
+| `make generate` | `templ generate ./backend/...` |
 | `make fmt` | `templ fmt backend` と `golangci-lint fmt ./...`（`.golangci.yml` の formatter は gofmt と goimports） |
 | `make fmt-check` | `gofmt -l backend static` が空であることと `templ fmt -fail backend`（goimports は見ない。未整形で失敗） |
-| `make lint` | `golangci-lint`（`.golangci.yml`）と `tsc --noEmit` |
-| `make test` | `go test -race ./...` と `npm test --prefix static` |
-| `make build` | `scripts/build.sh`（templ → esbuild/tailwind minify → go build） |
+| `make lint` | `make lint-go` と `make lint-static` |
+| `make lint-go` | `make generate` のあと `golangci-lint run ./...`（`.golangci.yml`） |
+| `make lint-static` | `tsc --noEmit`（`npm run typecheck --prefix static`） |
+| `make test` | `make test-go` と `make test-static` |
+| `make test-go` | `make generate` のあと `go test -race ./...` |
+| `make test-static` | `npm test --prefix static` |
+| `make build` | `scripts/build.sh`（templ → esbuild/tailwind minify → go build）。`bin/mam` を作る |
+| `make build-all` | `scripts/build.sh --all`。windows / darwin / linux × amd64 / arm64 の 6 構成を `bin/mam-<os>-<arch>` に出力する（`spec/requirements/non-functional.md` §1） |
+| `make clean` | `bin`・`tmp`・`static/src/dist/app.*` を削除する |
 
 ## CI
 
