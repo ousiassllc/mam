@@ -89,3 +89,13 @@ func shotLabel(objective string) string {
 	}
 	return ": " + objective
 }
+
+// sceneCostLabel names a Scene row of the cost table; a Branch's Scene carries the Branch name because its
+// Scene numbers restart from 1 and would otherwise read like a duplicate of a trunk Scene.
+func sceneCostLabel(sc domain.SceneCost) string {
+	label := "Scene " + intText(sc.OrderIndex+1) + ": " + sc.Title
+	if sc.BranchID == "" {
+		return label
+	}
+	return "Branch " + sc.BranchName + " / " + label
+}
