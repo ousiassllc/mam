@@ -8,6 +8,13 @@ import { createLogger } from './logger';
 export interface AjaxContext {
   target: string;
   swap: string;
+  /**
+   * Element (selector) the request is issued from. htmx runs one request per element and replaces
+   * a queued one with the next: without a source every request shares <body>, so concurrent
+   * refetches silently drop each other (and their promises resolve as if they had succeeded).
+   * Defaults to the target, which gives each swapped region its own queue.
+   */
+  source?: string;
 }
 
 /** htmx.ajax, as far as this module uses it. */
@@ -20,7 +27,7 @@ const log = createLogger('ajax');
 export function createAjaxGet(ajax: AjaxFn, notify: (message: string) => void): (url: string, context: AjaxContext) => Promise<boolean> {
   return async (url, context) => {
     try {
-      await ajax('get', url, context);
+      await ajax('get', url, { source: context.target, ...context });
       return true;
     } catch (error) {
       log.warn(`GET ${url} failed`, error);
