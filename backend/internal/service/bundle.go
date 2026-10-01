@@ -50,6 +50,9 @@ type BundleExport struct {
 	data     domain.BundleData
 	root     string
 	now      time.Time
+	// sources maps a bundle path that does not exist on disk under that name to the file it is read
+	// from: an Episode's copy of a canon image shares the file of the Series' first Project.
+	sources map[string]string
 }
 
 // Prepare reads the Project's data (ErrNotFound for an unknown Project). Write then streams the
@@ -59,11 +62,48 @@ func (s *BundleService) Prepare(ctx context.Context, projectID string) (BundleEx
 	if err != nil {
 		return BundleExport{}, notFound(err)
 	}
+	sources := relocateSharedAssets(&data)
+	// A file that cannot be written under assets/<project>/ would make a bundle that does not import:
+	// refuse to export it rather than leave the file out without a word.
+	timelinePaths, err := data.AudioTimelinePaths()
+	if err != nil {
+		return BundleExport{}, fmt.Errorf("audio timeline: %w", err)
+	}
+	for _, rel := range append(data.FilePaths(), timelinePaths...) {
+		if !domain.ValidBundleFilePath(projectID, rel) {
+			return BundleExport{}, fmt.Errorf("export bundle: %q is not a file path of the project", rel)
+		}
+	}
 	now := time.Now().UTC()
 	return BundleExport{
 		FileName: fmt.Sprintf("mam-project-%s-%s.zip", now.Format("20060102"), projectID),
-		data:     data, root: s.assetsDir, now: now,
+		data:     data, root: s.assetsDir, now: now, sources: sources,
 	}, nil
+}
+
+// relocateSharedAssets gives the asset rows whose file lives in another Project's directory (the
+// canon images an Episode of a Series shares with the Series' first Project) a path of the exported
+// Project: <project>/<asset id><extension>. It returns the new path to the original one, for the
+// files to be read from there.
+func relocateSharedAssets(data *domain.BundleData) map[string]string {
+	sources := map[string]string{}
+	for _, t := range data.Tables {
+		if t.Name != "asset" {
+			continue
+		}
+		for _, row := range t.Rows {
+			old, _ := row["file_path"].(string)
+			id, _ := row["id"].(string)
+			owner, _, _ := strings.Cut(old, "/")
+			if old == "" || owner == data.ProjectID || !domain.ValidBundleFilePath(owner, old) || !domain.ValidBundleID(id) {
+				continue
+			}
+			moved := data.ProjectID + "/" + id + path.Ext(old)
+			row["file_path"] = moved
+			sources[moved] = old
+		}
+	}
+	return sources
 }
 
 // Write writes the bundle as a ZIP to w. Files that no longer exist (an archived Take) are left
@@ -101,7 +141,11 @@ func (e BundleExport) Write(w io.Writer) error {
 		if !domain.ValidBundleFilePath(e.data.ProjectID, rel) || e.root == "" {
 			continue
 		}
-		f, err := os.Open(filepath.Join(e.root, filepath.FromSlash(rel))) //nolint:gosec // rel was checked by ValidBundleFilePath
+		from := rel
+		if src, ok := e.sources[rel]; ok {
+			from = src
+		}
+		f, err := os.Open(filepath.Join(e.root, filepath.FromSlash(from))) //nolint:gosec // from was checked by ValidBundleFilePath
 		if errors.Is(err, os.ErrNotExist) {
 			continue
 		}
