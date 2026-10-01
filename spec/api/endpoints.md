@@ -5,7 +5,7 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 ## 0. 認証・共通仕様
 
 - 単一ユーザー・ループバック限定（`127.0.0.1`）のため外部向け認証は行わない。すべてのリクエストに CSRF トークン（meta タグ由来）を付与する（`spec/requirements/non-functional.md` §5）
-- 外部生成モデル API のキーはサーバー側（`agent/model_adapter`）でのみ保持し、フロントエンドには一切露出しない
+- 外部生成モデル API のキーはサーバー側（`agent/modeladapter`）でのみ保持し、フロントエンドには一切露出しない
 - エラーレスポンスは HALT の方針（`spec/architecture/overview.md` 参照元 `skill://halt`）に従う:
   - ページ/アクションルートのバリデーションエラー（422）: フォームをエラー付きで再レンダリング
   - ビジネスエラー（403/409/423等）: OOBスワップでトースト表示
@@ -452,4 +452,5 @@ Notes:
 | 1.65 | 2026-10-01 | §3 の `GET /api/v1/shots/:id` の利用コンポーネントを「現状なし」に直した | `mam-video-player`・`mam-timeline-editor` はこの API を呼ばず、`static/`・`web/` にも呼び出しが無かったため（Issue #189） |
 | 1.66 | 2026-10-01 | `POST /reviews/:id/comments` の `timecode` に 分:秒（`1:23`）形式を追記し、422 の条件を「秒でも 分:秒 でもない」に直した | 実装（`domain.ParseReviewTimecode`）とレビュー画面のフォームが 分:秒 も受け付けていたため（Issue #207） |
 | 1.67 | 2026-10-01 | §2.4 `POST /shots/:id/continue/confirm` に、Continue カードへの返信は次 Shot を作れた後に記録し、Shot を作る前に失敗した返信ではカードを開いたままにすることを追記 | 実装が返信を先に記録していたため、Confirm の失敗後もカードが回答済みになり再回答できなかった（Issue #199） |
-| 1.68 | 2026-10-01 | §0 の 403 行から「LOCK 対象への変更試行」を外し、CSRF トークン不正・非ループバックのアクセスを併記した | LOCK は 423 を返す（同表の 423 行・§2.2 / §2.4 / §2.8、）ため、403 行が仕様内でも矛盾していた（Issue #215） |
+| 1.68 | 2026-10-01 | §0 の 403 行から「LOCK 対象への変更試行」を外し、CSRF トークン不正・非ループバックのアクセスを併記した | LOCK は 423 を返す（同表の 423 行・§2.2 / §2.4 / §2.8、`handler/errors.go`）ため、403 行が仕様内でも矛盾していた（Issue #215） |
+| 1.69 | 2026-10-01 | §0 の API キー保持先のパッケージ名を `agent/model_adapter` から `agent/modeladapter` に直した | 実体は `backend/internal/agent/modeladapter` で、`model-adapters.md` もこの名前を使っていたため（Issue #216） |
