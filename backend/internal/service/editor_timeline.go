@@ -91,10 +91,12 @@ func (s *EditorService) RoughCut(ctx context.Context, projectID, branchID string
 	if err != nil {
 		return EditorView{}, err
 	}
-	if err := s.toEditing(ctx, project); err != nil {
+	// The state change and the stored version go together, even when the caller stops meanwhile.
+	persist := context.WithoutCancel(ctx)
+	if err := s.toEditing(persist, project); err != nil {
 		return EditorView{}, err
 	}
-	if _, err := s.editors.SaveEditTimeline(ctx, projectID, branchID, "", tl); err != nil {
+	if _, err := s.editors.SaveEditTimeline(persist, projectID, branchID, "", tl); err != nil {
 		return EditorView{}, notFound(err)
 	}
 	text := fmt.Sprintf("Rough Cut を作成しました（%d クリップ / %.1f 秒）。タイムラインで並べ替え・Cut Point・Transition・字幕を編集できます。", len(tl.Clips), tl.Duration())

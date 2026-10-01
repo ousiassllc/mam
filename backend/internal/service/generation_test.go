@@ -54,9 +54,16 @@ type genReasoner struct {
 	director func(system, user string) string
 	// editor answers the Editor Judge; nil means an empty answer.
 	editor string
+	// editorHold, when set, runs before the Editor Judge is answered; its error is the call's.
+	editorHold func(ctx context.Context) error
 }
 
-func (g *genReasoner) Complete(_ context.Context, agent llm.Agent, req llm.Request) (llm.Response, error) {
+func (g *genReasoner) Complete(ctx context.Context, agent llm.Agent, req llm.Request) (llm.Response, error) {
+	if agent == llm.AgentEditor && g.editorHold != nil {
+		if err := g.editorHold(ctx); err != nil {
+			return llm.Response{}, err
+		}
+	}
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.users == nil {
