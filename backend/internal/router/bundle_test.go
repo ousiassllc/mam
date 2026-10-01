@@ -5,16 +5,20 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"log/slog"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/ousiassllc/mam/backend/internal/router"
 )
 
 func (a *app) importBundle(data []byte) *httptest.ResponseRecorder {
@@ -324,4 +328,56 @@ func TestBundle_ExportThatFailsMidStreamIsNotDeliveredAsASuccess(t *testing.T) {
 		_, err = io.ReadAll(resp.Body)
 	}
 	assert.Error(t, err, "the client must see the export fail")
+}
+
+// syncBuffer is a log sink the server goroutine writes while the test reads it.
+type syncBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *syncBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *syncBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
+}
+
+// The connection cut of a failed export leaves its trace: one error line with the request and the
+// cause of the failure (the panic that drops the connection bypasses net/http's own logging).
+func TestBundle_ExportThatFailsMidStreamIsLoggedWithItsCause(t *testing.T) {
+	src := newGenApp(t, true)
+	src.generateAndWait()
+	var filePath string
+	require.NoError(t, src.db.Reader().QueryRow(`SELECT file_path FROM asset WHERE type = 'video' LIMIT 1`).Scan(&filePath))
+	full := filepath.Join(src.assets, filepath.FromSlash(filePath))
+	require.NoError(t, os.Remove(full))
+	require.NoError(t, os.Mkdir(full, 0o750)) // opening works, reading fails
+
+	var logs syncBuffer
+	engine := router.New(src.svc, router.Options{Logger: slog.New(slog.NewTextHandler(&logs, nil))})
+	server := httptest.NewServer(engine)
+	defer server.Close()
+	path := "/projects/" + src.project + "/bundle"
+	req, err := http.NewRequest(http.MethodGet, server.URL+path, http.NoBody)
+	require.NoError(t, err)
+	req.AddCookie(src.cookie)
+	resp, err := http.DefaultClient.Do(req)
+	if err == nil {
+		defer func() { _ = resp.Body.Close() }()
+		_, err = io.ReadAll(resp.Body)
+	}
+	require.Error(t, err, "the client still sees the export fail")
+
+	out := logs.String()
+	assert.Equal(t, 1, strings.Count(out, "http request"), out)
+	assert.Contains(t, out, "level=ERROR")
+	assert.Contains(t, out, "method=GET")
+	assert.Contains(t, out, "path="+path)
+	assert.Contains(t, out, "is a directory", "the cause of the failed file")
 }
