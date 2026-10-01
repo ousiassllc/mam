@@ -56,7 +56,7 @@ type StoredTake struct {
 	ModelName  string
 	SizeBytes  int64
 	// Unneeded is true when the Take can be archived without losing a choice: it is Rejected, or
-	// another Take of its Shot is Selected.
+	// another Take of its Shot is Selected, and no Edit Timeline or Lip Sync refers to it.
 	Unneeded bool
 }
 

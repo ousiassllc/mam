@@ -242,11 +242,12 @@ func (s *PolicyService) Storage(ctx context.Context, projectID string) (StorageV
 }
 
 // ArchiveTake gives up the video file of one Take that is not the Selected Take of its Shot. The
-// Take stays as Rejected with its history. ErrConflict is returned for a Selected Take.
+// Take stays as Rejected with its history. ErrConflict is returned for a Selected Take and for a Take
+// a Timeline still refers to (its file is needed to export).
 func (s *PolicyService) ArchiveTake(ctx context.Context, projectID, takeID string) (StorageView, error) {
 	removed, err := s.storage.ArchiveTake(ctx, projectID, takeID)
 	if errors.Is(err, repository.ErrConflict) {
-		return StorageView{}, fmt.Errorf("%w: the Take is selected", ErrConflict)
+		return StorageView{}, fmt.Errorf("%w: the Take is selected or used by a Timeline", ErrConflict)
 	}
 	if err != nil {
 		return StorageView{}, notFound(err)
