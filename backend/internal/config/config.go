@@ -69,15 +69,10 @@ func Load(args []string, getenv func(string) string, output io.Writer) (Config, 
 	// (checked after the flags are parsed, so --help works everywhere).
 	defaultDir, defaultErr := defaultDataDir()
 
-	envPort, err := envInt(getenv, "MAM_PORT", DefaultPort)
-	if err != nil {
-		return Config{}, err
-	}
-
 	fs := flag.NewFlagSet("mam", flag.ContinueOnError)
 	fs.SetOutput(output)
 	dataDir := fs.String("data-dir", envOr(getenv, "MAM_DATA_DIR", defaultDir), "directory for the database, logs and assets (MAM_DATA_DIR)")
-	port := fs.Int("port", envPort, "preferred loopback port; a free port is used if it is busy (MAM_PORT)")
+	port := fs.Int("port", DefaultPort, "preferred loopback port; a free port is used if it is busy (MAM_PORT)")
 	noBrowser := fs.Bool("no-browser", getenv("MAM_NO_BROWSER") != "", "do not open the default browser (MAM_NO_BROWSER)")
 	level := fs.String("log-level", envOr(getenv, "MAM_LOG_LEVEL", "info"), "log level: debug, info, warn, error (MAM_LOG_LEVEL)")
 	staticDir := fs.String("static-dir", getenv("MAM_STATIC_DIR"), "serve static assets from this directory instead of the embedded copy (MAM_STATIC_DIR)")
@@ -89,6 +84,16 @@ func Load(args []string, getenv func(string) string, output io.Writer) (Config, 
 	onnxRuntime := fs.String("onnxruntime-lib", getenv("MAM_ONNXRUNTIME_LIB"), "ONNX Runtime shared library (1.23.x) for the face models (MAM_ONNXRUNTIME_LIB)")
 	if err := fs.Parse(args); err != nil {
 		return Config{}, err
+	}
+
+	// MAM_PORT is read only when --port is absent, and only after the parse, so a malformed value
+	// breaks neither --help nor a command line that overrides it.
+	if !flagSet(fs, "port") {
+		envPort, err := envInt(getenv, "MAM_PORT", DefaultPort)
+		if err != nil {
+			return Config{}, err
+		}
+		*port = envPort
 	}
 
 	var lvl slog.Level
@@ -117,6 +122,13 @@ func Load(args []string, getenv func(string) string, output io.Writer) (Config, 
 		FaceModelDir:    *faceModels,
 		ONNXRuntimeLib:  *onnxRuntime,
 	}, nil
+}
+
+// flagSet reports whether the flag name was given on the command line.
+func flagSet(fs *flag.FlagSet, name string) bool {
+	set := false
+	fs.Visit(func(f *flag.Flag) { set = set || f.Name == name })
+	return set
 }
 
 func defaultDataDir() (string, error) {
