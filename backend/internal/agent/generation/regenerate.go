@@ -166,7 +166,7 @@ func (o *Orchestrator) Regenerate(ctx context.Context, ref repository.ShotRef, r
 		if reinforced := reinforce(current, boost); len(domain.LockedChanges(locks, current, reinforced)) == 0 {
 			spec = reinforced
 		}
-		references = reinforceReferences(references, boost, strategy.Primary.Model)
+		references = reinforceReferences(references, boost)
 	}
 
 	if err := brand.CheckText(spec.BrandText()); err != nil {
@@ -184,6 +184,7 @@ func (o *Orchestrator) Regenerate(ctx context.Context, ref repository.ShotRef, r
 	if err != nil {
 		return "", err
 	}
+	job.PreferReferences = r.Action == domain.RepairReferenceReinforce
 	record, err := recordOf(strategy, job, "")
 	if err != nil {
 		return "", err
@@ -397,20 +398,10 @@ func reinforce(spec domain.ShotSpec, boost []domain.ReferenceKind) domain.ShotSp
 }
 
 // reinforceReferences puts the References of the boosted kinds first (the model keeps the first ones
-// when it accepts fewer). A model that takes free reference images gets no Keyframe as first frame:
-// it reads either the frames or the references, and the references are what is being reinforced.
-func reinforceReferences(refs []domain.Reference, boost []domain.ReferenceKind, model domain.ModelName) []domain.Reference {
-	out := make([]domain.Reference, 0, len(refs))
-	dropKeyframe := false
-	if caps, ok := modeladapter.Capabilities(model); ok && caps.MaxReferenceImages > 0 {
-		dropKeyframe = slices.ContainsFunc(refs, func(r domain.Reference) bool { return r.Kind != domain.RefKeyframe })
-	}
-	for _, r := range refs {
-		if dropKeyframe && r.Kind == domain.RefKeyframe {
-			continue
-		}
-		out = append(out, r)
-	}
+// when it accepts fewer). Whether the Keyframe is left out is decided per model in modeladapter.Prepare
+// (VideoJob.PreferReferences), so a fail over model keeps the input it can use.
+func reinforceReferences(refs []domain.Reference, boost []domain.ReferenceKind) []domain.Reference {
+	out := slices.Clone(refs)
 	rank := func(k domain.ReferenceKind) int {
 		if i := slices.Index(boost, k); i >= 0 {
 			return i
