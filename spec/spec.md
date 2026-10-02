@@ -831,7 +831,7 @@ AIは最終フレームだけでなく以下を解析する。
 - Dialogue
 - Music State
 
-実装では、Continue Agent への入力は Brief・Scene/Shot の目的・Storyboard・Canonical Shot Spec・World State のテキストに加え、ffmpeg が使えるときは起点にする Take（選択済みの Take、なければ AI Pick、なければ最新の却下されていない Take）の**実際の最終フレーム**の画像である。画像と Shot Spec が食い違うときは画像を正とする。ffmpeg が無い、または最終フレームを取り出せないときは、Shot Spec と World State のテキストだけから解析する（Continue は失敗させない）。次の Shot の First Frame は、この最終フレームではなく Art Director の Keyframe のままである（§11）。
+実装では、Continue Agent への入力は Brief・Scene/Shot の目的・Storyboard・Canonical Shot Spec・World State のテキストに加え、ffmpeg が使えるときは起点にする Take（選択済みの Take、なければ AI Pick、なければ最新の却下されていない Take）の**実際の最終フレーム**の画像である。画像と Shot Spec が食い違うときは画像を正とする。ffmpeg が無い、または最終フレームを取り出せないときは、Shot Spec と World State のテキストだけから解析する（Continue は失敗させない）。次の Shot の First Frame は、この最終フレームにはならない。Continue は追加した Shot の Reference Pack を作らないので、First Frame は他の Shot と同じく、その Shot で Reference Pack を作って Art Director の Keyframe ができたときだけ送られる（§11）。
 
 その上で次の展開候補を提示できる。
 
