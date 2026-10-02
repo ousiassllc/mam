@@ -62,31 +62,34 @@ func Prepare(target VideoTarget, job VideoJob) (VideoRequest, error) {
 		req.References = job.References[:n]
 	}
 
-	main, avoid := describe(job.Spec, req.DurationSeconds, len(req.References) > 0 || req.FirstFrame != nil)
+	body, constraints, avoid := describe(job.Spec, req.DurationSeconds, len(req.References) > 0 || req.FirstFrame != nil)
 	switch target.Model {
 	case domain.ModelKling3:
-		req.Prompt = clip(main, 2400)
+		req.Prompt = fit(body, constraints, 2400)
 		req.NegativePrompt = clip(strings.Join(avoid, ", "), 400)
-	case domain.ModelRunwayGen45: // no negative prompt, and a 1000 character limit: the avoid list is kept whole
-		req.Prompt = promptWithAvoid(main, avoid, 1000)
+	case domain.ModelRunwayGen45: // no negative prompt, and a 1000 character limit: Constraints and the avoid list are kept whole
+		req.Prompt = fit(body, constraints+avoidSentence(avoid), 1000)
 	default: // models without a negative prompt get the constraints as part of the prompt
-		req.Prompt = promptWithAvoid(main, avoid, 2400)
+		req.Prompt = fit(body, constraints+avoidSentence(avoid), 2400)
 	}
 	return req, nil
 }
 
-// promptWithAvoid appends the avoid list to the prompt. When the result would exceed limit, the
-// prompt is shortened and the avoid list is kept.
-func promptWithAvoid(main string, avoid []string, limit int) string {
-	tail := " Avoid: " + strings.Join(avoid, ", ") + "."
+// fit joins body and tail and keeps the tail whole: when the result would exceed limit, the body is
+// shortened. The tail holds what the model must not lose (the Constraints, the Avoid list); the
+// body, whose last sentences are the least specific, is what gives way.
+func fit(body, tail string, limit int) string {
 	if n := limit - len([]rune(tail)); n > 0 {
-		return clip(main, n) + tail
+		return clip(body, n) + tail
 	}
-	return clip(main+tail, limit)
+	return clip(strings.TrimSpace(tail), limit)
 }
 
-// describe writes the spec as prose. It returns the prompt and the things to avoid.
-func describe(s domain.ShotSpec, seconds float64, hasImages bool) (string, []string) {
+func avoidSentence(avoid []string) string { return " Avoid: " + strings.Join(avoid, ", ") + "." }
+
+// describe writes the spec as prose. It returns the prompt without its Constraints, the Constraints
+// sentence (empty when there is none; " Constraints: ..." with its leading space) and the things to avoid.
+func describe(s domain.ShotSpec, seconds float64, hasImages bool) (body, constraints string, avoid []string) {
 	var b strings.Builder
 	fmt.Fprintf(&b, "%s.", strings.TrimRight(strings.TrimSpace(s.ShotObjective), ". "))
 	if s.Style != "" {
@@ -151,7 +154,7 @@ func describe(s domain.ShotSpec, seconds float64, hasImages bool) (string, []str
 		b.WriteString(" Follow the provided reference images for identity, product shape and environment.")
 	}
 	var must []string
-	avoid := append([]string(nil), negativeTerms...)
+	avoid = append([]string(nil), negativeTerms...)
 	for _, c := range s.Constraints {
 		if term, ok := strings.CutPrefix(c, "do_not_"); ok {
 			if phrase, known := constraintPhrases[c]; known {
@@ -169,9 +172,9 @@ func describe(s domain.ShotSpec, seconds float64, hasImages bool) (string, []str
 		}
 	}
 	if len(must) > 0 {
-		fmt.Fprintf(&b, " Constraints: %s.", strings.Join(must, "; "))
+		constraints = fmt.Sprintf(" Constraints: %s.", strings.Join(must, "; "))
 	}
-	return b.String(), avoid
+	return b.String(), constraints, avoid
 }
 
 func humanize(s string) string { return strings.TrimSpace(strings.ReplaceAll(s, "_", " ")) }
