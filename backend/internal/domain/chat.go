@@ -79,6 +79,9 @@ func (m ChatMessage) IsBlockingApproval() bool {
 type CardBody struct {
 	Text    string   `json:"text"`
 	Options []string `json:"options,omitempty"`
+	// NonBlocking marks an Escalation that was posted without holding the Project (ProjectState.EscalationBlocks
+	// was false): the card is answered like any other, but neither waits for the answer nor resumes the Project.
+	NonBlocking bool `json:"non_blocking,omitempty"`
 }
 
 // EncodeCardBody serialises a question / escalation card body.

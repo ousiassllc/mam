@@ -316,8 +316,10 @@ func (s *ChatService) planTurn(ctx context.Context, project domain.Project, targ
 		return turn, nil, ErrConflict
 	}
 	if target != nil && target.Kind == domain.KindEscalation && !replied[target.ID] {
-		resume := domain.EscalationResumeState
-		turn.ResumeState = &resume
+		if !domain.DecodeCardBody(target.Content).NonBlocking {
+			resume := domain.EscalationResumeState
+			turn.ResumeState = &resume
+		}
 		turn.Messages = append(turn.Messages, assistantText("判断を受け付けました。この判断は自動では実行されません。内容に沿って、設定の変更・Take の採用・Shot の指示の修正などを画面から行ってください。"))
 		if err := s.attachToBrief(ctx, &turn, attached); err != nil {
 			return turn, nil, err
@@ -567,22 +569,24 @@ func (s *ChatService) RaiseEscalation(ctx context.Context, projectID, text strin
 	if strings.TrimSpace(text) == "" {
 		return invalid("text", "相談内容が空です")
 	}
-	card := domain.ChatMessage{
-		Role: domain.RoleAssistant, Kind: domain.KindEscalation,
-		Content: domain.EncodeCardBody(domain.CardBody{Text: text, Options: options}),
-	}
-	if shotID != "" {
-		card.RefType, card.RefID = domain.RefShot, shotID
-	}
 	project, err := s.getProject(ctx, projectID)
 	if err != nil {
 		return err
 	}
-	if !project.State.CanAwaitApproval() {
+	blocks := project.State.EscalationBlocks()
+	card := domain.ChatMessage{
+		Role: domain.RoleAssistant, Kind: domain.KindEscalation,
+		Content: domain.EncodeCardBody(domain.CardBody{Text: text, Options: options, NonBlocking: !blocks}),
+	}
+	if shotID != "" {
+		card.RefType, card.RefID = domain.RefShot, shotID
+	}
+	if !blocks {
 		// A Repair of a Shot can end in an Escalation while the Project is past that stage (AUDIO /
 		// READY / EXPORTED): the card is posted, but the Project keeps its state, as the Core State
-		// Machine has no move from there to AWAITING_APPROVAL and the reply (ResumeState) only
-		// resumes a Project that is waiting.
+		// Machine has no move from there to AWAITING_APPROVAL. The card is marked non-blocking, so
+		// that it neither keeps a later approval from resuming the Project nor sends it to REPAIRING
+		// when it is answered.
 		return s.commit(ctx, repository.Turn{ProjectID: projectID, Messages: assignIDs([]domain.ChatMessage{card})})
 	}
 	return s.postBlocking(ctx, projectID, card)

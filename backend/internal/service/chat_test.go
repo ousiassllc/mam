@@ -795,6 +795,50 @@ func TestEscalation_KeepsTheStateOfAProjectThatCannotWaitForApproval(t *testing.
 	}
 }
 
+// An Escalation posted without holding the Project is only a card: it does not keep the Final approval
+// from taking the Project to READY, and answering it later does not send the approved Project to REPAIRING.
+func TestEscalation_PostedWithoutHoldingTheProjectNeitherBlocksTheFinalApprovalNorResumesIt(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	p := f.createProject(t, "動画")
+	setState(t, f, p.ID, domain.StateAudio)
+	require.NoError(t, f.svc.Chat.RaiseEscalation(ctx, p.ID, "リトライ上限に達しました", []string{"続行"}, "shot1"))
+	esc := lastMessage(t, f.thread(t, p.ID))
+	setState(t, f, p.ID, domain.StateFinalQC)
+	posted, err := f.svc.Chat.RequestApproval(ctx, p.ID, domain.CheckpointFinal, "Final", "e1")
+	require.NoError(t, err)
+	require.True(t, posted)
+	card := lastMessage(t, f.thread(t, p.ID))
+
+	project, _, err := f.svc.Chat.RespondApproval(ctx, p.ID, card.ID, service.DecisionApprove, "")
+	require.NoError(t, err)
+	assert.Equal(t, domain.StateReady, project.State, "the unanswered Shot Escalation does not hold the Project")
+
+	_, err = f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "続行", ReplyToMessageID: esc.ID})
+	require.NoError(t, err)
+	got, _ := f.svc.Projects.Get(ctx, p.ID)
+	assert.Equal(t, domain.StateReady, got.State, "answering it does not undo the approval")
+}
+
+// An Escalation that held the Project (it was in AWAITING_APPROVAL) still blocks until answered, and the
+// answer moves it to REPAIRING.
+func TestEscalation_HoldingTheProjectStillResumesToRepairingWhenAnswered(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	p := f.createProject(t, "動画")
+	setState(t, f, p.ID, domain.StateEditing)
+	require.NoError(t, f.svc.Chat.RaiseEscalation(ctx, p.ID, "リトライ上限に達しました", []string{"続行"}, "shot1"))
+	got, _ := f.svc.Projects.Get(ctx, p.ID)
+	require.Equal(t, domain.StateAwaitingApproval, got.State)
+	esc := lastMessage(t, f.thread(t, p.ID))
+
+	_, err := f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "続行", ReplyToMessageID: esc.ID})
+	require.NoError(t, err)
+
+	got, _ = f.svc.Projects.Get(ctx, p.ID)
+	assert.Equal(t, domain.StateRepairing, got.State)
+}
+
 // A Take card is posted before its Judge result exists: when the result is saved, the card in the
 // live thread is told to redraw (its player draws the Issues as markers); other cards stay as they are.
 func TestChatService_TakeJudgedRefreshesOnlyTheCardsOfThatTake(t *testing.T) {
