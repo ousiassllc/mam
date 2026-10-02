@@ -149,6 +149,9 @@ type candidateRun struct {
 // it will shoot; other modes plan only the first, because the rest depend on the Judge.
 // A nil slice means the job should plan them itself (the planner failed for another reason).
 func (o *Orchestrator) prepareCandidates(ctx context.Context, ref repository.ShotRef, instruction string, strategy Strategy) ([]domain.ShotSpec, error) {
+	if err := refuseBusy(ref); err != nil {
+		return nil, err // before the Prompt Planner is paid for
+	}
 	sc, err := o.loadShotContext(ctx, ref, instruction)
 	if err != nil {
 		return nil, err

@@ -385,3 +385,32 @@ func TestHandle_ReleasesTheShotWhenTheJobEndsBeforeItsWorkStarts(t *testing.T) {
 	_, err = f.orch.Start(context.Background(), f.shotID, "")
 	assert.NoError(t, err, "the Shot accepts the next generation")
 }
+
+// A Shot that is already being generated or repaired is refused before the Prompt Planner (a paid
+// LLM call) writes a spec that would be thrown away.
+func TestOrchestrator_StartOfABusyShotSparesThePromptPlanner(t *testing.T) {
+	for _, state := range []domain.ShotState{domain.ShotGenerating, domain.ShotRepairing} {
+		for name, start := range map[string]func(f *fixture) error{
+			"Start": func(f *fixture) error { _, err := f.orch.Start(context.Background(), f.shotID, ""); return err },
+			"StartDirected": func(f *fixture) error {
+				_, err := f.orch.StartDirected(context.Background(), f.shotID, "slower", nil)
+				return err
+			},
+			"StartCandidates": func(f *fixture) error {
+				_, err := f.orch.StartCandidates(context.Background(), f.shotID, "")
+				return err
+			},
+		} {
+			t.Run(string(state)+"/"+name, func(t *testing.T) {
+				f := newFixture(t, options{withJudge: true})
+				require.NoError(t, f.gens.SetShotState(context.Background(), f.shotID, state))
+
+				err := start(f)
+
+				assert.ErrorIs(t, err, generation.ErrShotBusy)
+				assert.Zero(t, f.llm.calls(llm.AgentPromptPlanner), "the Planner is not paid for a Shot that is busy")
+				assert.Zero(t, f.jobs.count())
+			})
+		}
+	}
+}
