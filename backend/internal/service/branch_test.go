@@ -264,3 +264,17 @@ func mustShotRef(t *testing.T, f genFixture) repository.ShotRef {
 	require.NoError(t, err)
 	return ref
 }
+
+// Without generation a direction only names its Branch: a long one is cut to the name length, as
+// the name made from a Direction is, instead of failing the whole fork after the first Branch exists.
+func TestBranchFork_WithoutGenerationALongDirectionNamesItsBranchTruncated(t *testing.T) {
+	f := newGenFixture(t, false)
+	long := strings.Repeat("あ", 150)
+
+	lines, err := f.svc.Branch.Fork(context.Background(), mustShotRef(t, f), domain.BranchAtShot, 3, []string{"ドアを開ける", long, "窓を見る"})
+
+	require.NoError(t, err)
+	assert.Len(t, lines, 3)
+	assert.Equal(t, 3, f.count(t, `SELECT COUNT(*) FROM branch WHERE project_id = ?`, f.projectID))
+	assert.Equal(t, 1, f.count(t, `SELECT COUNT(*) FROM branch WHERE name = ?`, domain.TruncateBranchName(long)))
+}
