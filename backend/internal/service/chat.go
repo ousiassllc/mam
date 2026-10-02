@@ -77,6 +77,11 @@ func (s *ChatService) workspaceOf(ctx context.Context, projectID string, msgs []
 	return ws, nil
 }
 
+// isBriefQuestion reports whether m is the question card of a Brief item.
+func isBriefQuestion(m domain.ChatMessage) bool {
+	return m.Kind == domain.KindQuestion && m.RefType == domain.RefBriefField
+}
+
 func isAnswerable(k domain.MessageKind) bool {
 	return k == domain.KindQuestion || k == domain.KindEscalation || k == domain.KindApproval
 }
@@ -153,6 +158,14 @@ func (s *ChatService) PostMessage(ctx context.Context, projectID string, in Post
 	}
 	if target != nil && target.Kind == domain.KindQuestion && target.RefType == domain.RefContinue {
 		return s.answerContinue(ctx, project, *target, content, len(in.Uploads)+len(in.AttachmentAssetIDs) > 0)
+	}
+	if target != nil && isBriefQuestion(*target) {
+		// A card takes one answer at a time: the reply that arrives while another one to the same
+		// card is being recorded (a double click) is a conflict, like a reply to an answered card.
+		if _, busy := s.answering.LoadOrStore(target.ID, struct{}{}); busy {
+			return Workspace{}, ErrConflict
+		}
+		defer s.answering.Delete(target.ID)
 	}
 	existing, err := s.assets.ListByIDs(ctx, projectID, in.AttachmentAssetIDs)
 	if err != nil {
@@ -283,6 +296,11 @@ func (s *ChatService) planTurn(ctx context.Context, project domain.Project, targ
 	replied, err := s.chat.RepliedMessageIDs(ctx, project.ID)
 	if err != nil {
 		return turn, nil, err
+	}
+	if target != nil && isBriefQuestion(*target) && replied[target.ID] {
+		// Answered already: applying the text again would put it into the next open item. An
+		// Approval card is refused the same way (RespondApproval).
+		return turn, nil, ErrConflict
 	}
 	if target != nil && target.Kind == domain.KindEscalation && !replied[target.ID] {
 		resume := domain.EscalationResumeState

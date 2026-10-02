@@ -51,14 +51,18 @@ func approvalURL(projectID, messageID string) string {
 	return paths.Project(projectID, "approvals", messageID)
 }
 
-// answerAttrs makes a button post `answer` as a reply to the card.
+// answerAttrs makes a button post `answer` as a reply to the card. The buttons of a card
+// (data-options) share one in-flight request: a second click is dropped until the first one
+// answers, and the clicked button is disabled meanwhile.
 func answerAttrs(m domain.ThreadMessage, answer string) templ.Attributes {
 	return templ.Attributes{
-		"type":      "button",
-		"hx-post":   messagesURL(m.ProjectID),
-		"hx-vals":   hxVals(map[string]string{"content": answer, "reply_to_message_id": m.ID}),
-		"hx-target": "#chat-thread",
-		"hx-swap":   "beforeend",
+		"type":            "button",
+		"hx-post":         messagesURL(m.ProjectID),
+		"hx-vals":         hxVals(map[string]string{"content": answer, "reply_to_message_id": m.ID}),
+		"hx-target":       "#chat-thread",
+		"hx-swap":         "beforeend",
+		"hx-sync":         "closest [data-options]:drop",
+		"hx-disabled-elt": "this",
 	}
 }
 

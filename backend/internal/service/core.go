@@ -46,9 +46,10 @@ type core struct {
 	brandTemplates *repository.BrandTemplateRepository
 	// analytics records the human interventions the MVP Success Metrics count (spec/spec.md §28).
 	analytics *repository.AnalyticsRepository
-	// answering holds the Continue cards that are being answered (card message ID -> struct{}), so
-	// that a reply that overlaps another one to the same card is refused instead of making a second
-	// Shot and a second paid generation.
+	// answering holds the Continue and Brief question cards that are being answered (card message
+	// ID -> struct{}), so that a reply that overlaps another one to the same card is refused
+	// instead of making a second Shot and a second paid generation, or putting the answer into
+	// the next item of the Brief.
 	answering sync.Map
 }
 
