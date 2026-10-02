@@ -6,7 +6,7 @@
  * module listens to it.
  */
 import { ajaxGet } from './ajax';
-import { createConnectionNotice } from './components/lib/connection-notice';
+import { createConnectionNotice, releaseIfDetached } from './components/lib/connection-notice';
 import { connect, socketUrl, type Connection } from './components/lib/ws';
 import { selfAndDescendants } from './components/lib/query';
 import { createRefreshGuard, isFinished, planCardRefresh, type ShotProgress } from './components/lib/shot';
@@ -44,22 +44,14 @@ function watch(el: HTMLElement): void {
     onOpen: () => notice.hide(),
     onGiveUp: () => {
       // The card was replaced meanwhile: nobody is waiting for this socket any more.
-      if (!el.isConnected) return;
+      if (releaseIfDetached(el, notice, connection)) return;
       notice.show(() => {
-        if (el.isConnected) connection?.retry();
-        else {
-          notice.hide();
-          connection?.close();
-        }
+        if (!releaseIfDetached(el, notice, connection)) connection?.retry();
       });
     },
     onMessage: (progress) => {
       // The card was replaced (another swap): this socket is no longer needed.
-      if (!el.isConnected) {
-        notice.hide();
-        connection?.close();
-        return;
-      }
+      if (releaseIfDetached(el, notice, connection)) return;
       if (progress.stage === 'generating' && progress.takes_total) {
         el.setAttribute('aria-label', `${progress.takes_done ?? 0}/${progress.takes_total}`);
       }
