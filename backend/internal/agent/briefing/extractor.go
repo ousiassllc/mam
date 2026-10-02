@@ -141,8 +141,13 @@ func duration(text string) string {
 }
 
 func aspectRatio(text string) string {
-	if m := ratioRe.FindStringSubmatch(text); m != nil {
-		return m[1] + ":" + m[2]
+	// Only ratios generation supports are taken; a clock time ("10:30") or another ratio ("4:3")
+	// falls through to the keywords instead of silently becoming a 16:9 generation.
+	for _, m := range ratioRe.FindAllStringSubmatch(text, -1) {
+		switch ratio := m[1] + ":" + m[2]; ratio {
+		case "16:9", "9:16", "1:1":
+			return ratio
+		}
 	}
 	for _, r := range ratioKeywords {
 		for _, k := range r.keywords {
