@@ -1188,7 +1188,7 @@ EXPORTED
 - **Brief は会話で作る**: 最初の発言から Creative Brief を抽出し、不足項目は AI が質問する（選択肢ボタンと「AIに任せる」を併記）。確定した Brief は補助ビューで確認・編集できる
 - **確認ポイントはスレッド内カード**: Confirmation Level で設定した確認ポイント（脚本/Rough Cut/Final）は、承認カードとして表示する（Escalation は承認カードではなく、§23.2 の別カードである）。ボタン（承認 / 修正を依頼）か、自然言語の返答で応答できる。返答が承認になるのは、前後の空白と句読点（。 . ! ！）を除き大文字小文字を区別せず、承認の語（「承認」「承認します」「承認です」「OK」「okay」「はい」「いいね」「いいです」「問題ない」「問題なし」「LGTM」「お願いします」）に全文が一致するときだけで、それ以外の返答は本文を添えた修正依頼になる（「いいけどもう少し明るく」も修正依頼）。応答があるまで Core State Machine は AWAITING_APPROVAL に留まる（§22。Notes の昇格提案カードを除く）
 - **発言の対象**: 指示の対象 Scene/Shot/Take は、カードへの返信（引用）で明示するか、直前の文脈から AI が解決する。解決できない場合は AI が聞き返す。§24 の Command Interpreter がこの解決を含めて構造化操作へ変換する
-- **MODE / Quality**: 入力欄の下に小さく置く。AUTO では AI が主導し、DIRECTOR では指示した箇所だけを直して待機する（DRAFT の間の発言は Brief への回答としてだけ扱う）。切替はいつでも可能で、状態は保持される
+- **MODE / Quality**: 入力欄の下に小さく置く。AUTO では AI が主導し、DIRECTOR では指示した箇所だけを直して待機する（DRAFT の間の発言は、メモの依頼を除き Brief への回答として扱う）。切替はいつでも可能で、状態は保持される
 - **添付**: 画像・動画をドラッグ&ドロップまたは［＋］で添付でき、Assets/References として Brief に取り込まれる
 - **非同期**: 生成・Repair の進捗はスレッド内の進捗カードにリアルタイム表示される。Judge は Take ごとに自動で走るため進捗カードは出さず、実行中は Shot カードの JUDGING 表示（Shot 進捗 WebSocket）で示し、完了時に結果を発言として投稿する。入力は生成中も可能
 
@@ -1196,7 +1196,7 @@ EXPORTED
 
 | カード | 内容 | 操作 |
 |--------|------|------|
-| Question | Brief 補完・曖昧な指示の聞き返し | 選択肢ボタン / 自由入力 / 「AIに任せる」 |
+| Question | Brief 補完・Continue の次の方向の確認。DIRECTOR MODE の曖昧な指示の聞き返し（対象 Shot が決まらないなど）は Question カードにせず通常のテキストで返し、ユーザーは Take カードへの返信か「Scene 1 の Shot 2」のような次の発言で答える | 選択肢ボタン / 自由入力 / 「AIに任せる」 |
 | Approval | 確認ポイントの成果物（脚本・Rough Cut・Final）。M2 では Notes の World State 昇格提案（§9.4）も同じカードで提示する。昇格提案は非ブロッキング | 承認 / 修正を依頼（昇格提案では「修正を依頼」は却下） |
 | Keyframe | Keyframe / Reference Pack 画像 | 拡大、返信で修正指示 |
 | Take | 動画プレーヤー（Judge の Issue を時間軸のマーカーで表示）と生成の要約（モデル・解像度・秒数）。スレッドは追記のみなので、Judge が結果を保存するとサーバーはその Take のカードの更新（`card.updated`）を通知して、ライブ中のスレッドでもマーカーを描き直す。Judge 要約と Take 状態（AI Pick / 採用 / 除外）はカードには載せず、Judge が結果を保存するたびに別の発言として投稿する（「Shot N · Take X の Judge 結果: PASS/FAIL（信頼度）」と、AI Pick が変わったときの「AI Pick: Take X を採用/おすすめ」）。Take ごとの最新の状態は Take 比較で確認する | 再生、返信で指示、Take比較を開く |
@@ -1214,7 +1214,7 @@ EXPORTED
 
 # 24. Natural Language Director Commands
 
-自然言語入力をCommand Interpreterが構造化操作へ変換する。入力はチャット画面（§23.1）の発言で、対象 Scene/Shot/Take はカードへの返信または直前の文脈から解決し、解決できない場合は聞き返す。チャットの発言を解釈するのは DIRECTOR MODE（企画が始まった後 = Project の状態が DRAFT でないとき。DRAFT の間は対象になる Scene/Shot が無いので解釈せず、Brief が揃っても DIRECTOR のままなら AUTO に切り替えるまで企画は始まらない）と、どのモードでもメモの依頼語を含む発言だけで、AUTO MODE の指示は受けない（AI は返信しない。DIRECTOR MODE への切替は画面のモード切替から行う）。
+自然言語入力をCommand Interpreterが構造化操作へ変換する。入力はチャット画面（§23.1）の発言で、対象 Scene/Shot/Take はカードへの返信または直前の文脈から解決し、解決できない場合は聞き返す（通常のテキストで返す。§23.2）。チャットの発言を解釈するのは DIRECTOR MODE（企画が始まった後 = Project の状態が DRAFT でないとき。DRAFT の間は対象になる Scene/Shot が無いので解釈せず、Brief が揃っても DIRECTOR のままなら AUTO に切り替えるまで企画は始まらない）と、どのモードでもメモの依頼語を含む発言だけで、AUTO MODE の指示は受けない（AI は返信しない。DIRECTOR MODE への切替は画面のモード切替から行う）。
 
 ### Example 1
 
