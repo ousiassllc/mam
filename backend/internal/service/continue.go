@@ -40,7 +40,7 @@ type ConfirmInput struct {
 }
 
 // check verifies that Continue can start from the Shot: generation is configured, the Shot is not
-// being generated and it has a Take that was not rejected.
+// being generated or repaired and it has a Take that was not rejected.
 func (s *ContinueService) check(ctx context.Context, shotID string) (repository.ShotRef, error) {
 	if s.agent == nil || s.generation.gen == nil {
 		return repository.ShotRef{}, ErrUnavailable
@@ -49,19 +49,17 @@ func (s *ContinueService) check(ctx context.Context, shotID string) (repository.
 	if err != nil {
 		return repository.ShotRef{}, notFound(err)
 	}
-	if ref.Shot.State == domain.ShotGenerating {
+	if ref.Shot.State.Busy() {
 		return repository.ShotRef{}, ErrBusy
 	}
 	takes, err := s.plans.ListTakes(ctx, ref.Scene.ID)
 	if err != nil {
 		return repository.ShotRef{}, err
 	}
-	for _, t := range takes[shotID] {
-		if t.Status != domain.TakeRejected {
-			return ref, nil
-		}
+	if !domain.CanContinue(ref.Shot.State, takes[shotID]) {
+		return repository.ShotRef{}, ErrConflict // nothing has been completed to continue from
 	}
-	return repository.ShotRef{}, ErrConflict // nothing has been completed to continue from
+	return ref, nil
 }
 
 // input gathers what the Continue Agent reads: the Shot, its spec, the World State after it and

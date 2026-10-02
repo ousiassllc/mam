@@ -2,6 +2,7 @@ package service_test
 
 import (
 	"context"
+	"database/sql"
 	"strings"
 	"sync"
 	"testing"
@@ -331,4 +332,17 @@ func TestContinueConfirm_AReplyIsRecordedWhenTheRequestIsCancelledAfterTheShotWa
 	_, err = f.svc.Chat.PostMessage(context.Background(), f.projectID, service.PostMessageInput{Content: "C. 突然照明が消える", ReplyToMessageID: card.ID})
 	assert.ErrorIs(t, err, service.ErrConflict)
 	assert.Len(t, f.shotObjectives(t), 2, "no second Shot")
+}
+
+// A Shot that is being repaired is refused like one being generated (the card leaves the button out).
+func TestContinuePropose_AShotBeingRepairedIsBusy(t *testing.T) {
+	f := completedShotFixture(t, sameSceneAnswer)
+	require.NoError(t, f.db.Write(context.Background(), func(ctx context.Context, tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, `UPDATE shot SET state = 'REPAIRING' WHERE id = ?`, f.shotID)
+		return err
+	}))
+
+	_, _, err := f.svc.Continue.Propose(context.Background(), f.shotID)
+
+	assert.ErrorIs(t, err, service.ErrBusy)
 }
