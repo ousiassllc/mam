@@ -363,7 +363,9 @@ func (s *DirectorService) wants(project domain.Project, target *domain.ChatMessa
 
 // Chat interprets a message of the thread (already stored) and carries it out. The result is the AI
 // message to append to the thread: what was done, what was refused, or what to ask. Failures the user
-// can act on are reported in the message; only unexpected errors are returned.
+// can act on are reported in the message; an error that is returned (a Brand violation, an
+// unexpected failure) has already been answered in the thread (reportCommandFailure), so that the
+// thread does not end with the user's words alone.
 func (s *DirectorService) Chat(ctx context.Context, project domain.Project, target *domain.ChatMessage, content string) (domain.ChatMessage, error) {
 	if s.interpreter == nil {
 		return assistantText("LLM が設定されていないため、指示を解釈できません（設定画面で API キーを登録してください）。"), nil
@@ -396,10 +398,12 @@ func (s *DirectorService) Chat(ctx context.Context, project domain.Project, targ
 		}
 	}
 	if err := s.refuseBrand(ctx, project.ID, content, cmd); err != nil {
+		s.reportCommandFailure(ctx, project.ID, outcome{}, err)
 		return domain.ChatMessage{}, err
 	}
 	res, err := s.execute(ctx, project, ref, cmd, content, false)
 	if err != nil {
+		s.reportCommandFailure(ctx, project.ID, res, err)
 		return domain.ChatMessage{}, err
 	}
 	return assistantText(res.text()), nil
@@ -413,6 +417,7 @@ func (s *DirectorService) rememberOnly(ctx context.Context, project domain.Proje
 	}
 	res, err := s.execute(ctx, project, nil, cmd, "", false)
 	if err != nil {
+		s.reportCommandFailure(ctx, project.ID, res, err)
 		return domain.ChatMessage{}, err
 	}
 	return assistantText(res.text()), nil
