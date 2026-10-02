@@ -415,3 +415,55 @@ func TestLoadConfigOverridesRoutingAndKeepsTheRestOfTheDefaults(t *testing.T) {
 	_, err = modeladapter.LoadConfig(path)
 	assert.ErrorContains(t, err, "unknown field")
 }
+
+func TestLoadConfigMergesAnEntryThatNamesOnlySomeOfItsFields(t *testing.T) {
+	def := modeladapter.DefaultConfig()
+	load := func(t *testing.T, body string) modeladapter.Config {
+		t.Helper()
+		path := filepath.Join(t.TempDir(), "models.json")
+		require.NoError(t, os.WriteFile(path, []byte(body), 0o600))
+		cfg, err := modeladapter.LoadConfig(path)
+		require.NoError(t, err)
+		return cfg
+	}
+
+	t.Run("a model keeps its price", func(t *testing.T) {
+		cfg := load(t, `{"models":{"gpt-image-2":{"model":"gpt-image-2"}}}`)
+		assert.Equal(t, "gpt-image-2", cfg.Models[domain.ModelGPTImage2].Model)
+		assert.Equal(t, def.Models[domain.ModelGPTImage2].CostPerImage, cfg.Models[domain.ModelGPTImage2].CostPerImage)
+		assert.Equal(t, def.ImageCost(domain.ModelGPTImage2), cfg.ImageCost(domain.ModelGPTImage2), "the estimate still counts in the ledger")
+	})
+	t.Run("a model's video prices are merged by resolution", func(t *testing.T) {
+		cfg := load(t, `{"models":{"kling-3.0":{"cost_per_second_usd":{"720p":0.5}}}}`)
+		assert.Equal(t, map[string]float64{"720p": 0.5, "1080p": 0.14}, cfg.Models[domain.ModelKling3].CostPerSecond)
+		assert.Equal(t, "kling-v3", cfg.Models[domain.ModelKling3].Model)
+	})
+	t.Run("a policy keeps its models", func(t *testing.T) {
+		cfg := load(t, `{"policies":{"fast":{"takes":3}}}`)
+		want := def.Policies[domain.QualityFast]
+		want.Takes = 3
+		assert.Equal(t, want, cfg.Policies[domain.QualityFast])
+	})
+	t.Run("a policy's route keeps the fields it does not name", func(t *testing.T) {
+		cfg := load(t, `{"policies":{"fast":{"primary":{"resolution":"1080p"}}}}`)
+		assert.Equal(t, modeladapter.VideoTarget{Model: domain.ModelKling3, Resolution: "1080p"}, cfg.Policies[domain.QualityFast].Primary)
+		assert.Equal(t, def.Policies[domain.QualityFast].Fallback, cfg.Policies[domain.QualityFast].Fallback)
+	})
+	t.Run("a vendor keeps its URL and concurrency", func(t *testing.T) {
+		cfg := load(t, `{"vendors":{"kling":{"timeout_seconds":300}}}`)
+		want := def.Vendors[modeladapter.VendorKling]
+		want.TimeoutSeconds = 300
+		assert.Equal(t, want, cfg.Vendors[modeladapter.VendorKling])
+	})
+	t.Run("an image route keeps its fallback", func(t *testing.T) {
+		cfg := load(t, `{"images":{"preview":{"primary":{"model":"nano-banana"}}}}`)
+		assert.Equal(t, modeladapter.ImageTarget{Model: domain.ModelNanoBanana}, cfg.Images[modeladapter.PurposePreview].Primary)
+		assert.Equal(t, def.Images[modeladapter.PurposePreview].Fallback, cfg.Images[modeladapter.PurposePreview].Fallback)
+	})
+	t.Run("an unknown field of an entry is still rejected", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "models.json")
+		require.NoError(t, os.WriteFile(path, []byte(`{"vendors":{"kling":{"bogus":1}}}`), 0o600))
+		_, err := modeladapter.LoadConfig(path)
+		assert.ErrorContains(t, err, "unknown field")
+	})
+}
