@@ -546,6 +546,17 @@ func (s *ChatService) RaiseEscalation(ctx context.Context, projectID, text strin
 	if shotID != "" {
 		card.RefType, card.RefID = domain.RefShot, shotID
 	}
+	project, err := s.getProject(ctx, projectID)
+	if err != nil {
+		return err
+	}
+	if !project.State.CanAwaitApproval() {
+		// A Repair of a Shot can end in an Escalation while the Project is past that stage (AUDIO /
+		// READY / EXPORTED): the card is posted, but the Project keeps its state, as the Core State
+		// Machine has no move from there to AWAITING_APPROVAL and the reply (ResumeState) only
+		// resumes a Project that is waiting.
+		return s.commit(ctx, repository.Turn{ProjectID: projectID, Messages: assignIDs([]domain.ChatMessage{card})})
+	}
 	return s.postBlocking(ctx, projectID, card)
 }
 
