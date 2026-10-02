@@ -192,6 +192,7 @@ func (o *Orchestrator) Regenerate(ctx context.Context, ref repository.ShotRef, r
 	if err != nil {
 		return "", err
 	}
+	o.warnLowDisk(ctx, ref, strategy) // the repair's Take is made without start(), which warns for the other paths
 	title := fmt.Sprintf("Shot %d · %s", shot.OrderIndex+1, r.Action.Label())
 	takeID, err := o.makeTake(ctx, ref, pv, strategy, job, domain.TakeLineage{WorldStateVersion: world.Version, References: references}, title, policy.Effective().MaxGenerationTime, "")
 	if err != nil {
