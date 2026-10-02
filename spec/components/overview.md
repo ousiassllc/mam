@@ -99,7 +99,7 @@ export class MamVideoPlayer extends LitElement {
 @customElement('mam-timeline-editor')
 export class MamTimelineEditor extends LitElement {
   @property({ type: String, attribute: 'api-url' }) apiUrl = '';   // GET /api/v1/projects/:id/edit-timeline（保存は応答の save_url へ PUT /edit-timelines/:id）
-  @property({ type: Boolean }) readonly = false;                   // 権限に応じてサーバーが注入
+  @property({ type: Boolean }) readonly = false;                   // 編集可否は GET の応答の readonly で決まる（属性はテスト・上書き用）
   @state() private timeline: EditTimelineShot[] = [];
 
   // イベント: 'timeline-updated'（HTMX側がhx-triggerで受信しRough Cutプレビューを更新）
