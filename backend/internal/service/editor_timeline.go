@@ -74,7 +74,7 @@ func (s *EditorService) RoughCut(ctx context.Context, projectID, branchID string
 	if err != nil {
 		return EditorView{}, err
 	}
-	reshoots, err := s.editors.ListReshoots(ctx, projectID, branchID)
+	reshoots, err := s.editors.ListReshoots(ctx, projectID)
 	if err != nil {
 		return EditorView{}, err
 	}

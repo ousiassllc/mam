@@ -103,10 +103,11 @@ func (r *EditorRepository) queryReshoots(ctx context.Context, where string, args
 	return out, rows.Err()
 }
 
-// ListReshoots returns every additional Shot request of the trunk of the Project (branchID "") or
-// its Branch, oldest first.
-func (r *EditorRepository) ListReshoots(ctx context.Context, projectID, branchID string) ([]domain.ReshootRequest, error) {
-	return r.queryReshoots(ctx, ` WHERE project_id = ? AND branch_id IS ?`, projectID, nullIfEmpty(branchID))
+// ListReshoots returns every additional Shot request of the Project (trunk and every Branch),
+// oldest first. A Branch inherits the additional Shots of the series it split from, so the Shots of
+// one series are the ones of this list that its story contains.
+func (r *EditorRepository) ListReshoots(ctx context.Context, projectID string) ([]domain.ReshootRequest, error) {
+	return r.queryReshoots(ctx, ` WHERE project_id = ?`, projectID)
 }
 
 // PendingReshoots returns the requests of the Project (every Branch) that have not been put into
