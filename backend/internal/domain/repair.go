@@ -136,8 +136,10 @@ type ShadowReport struct {
 	Errors int `json:"errors"`
 	Agreed int `json:"agreed"`
 	// AgreementRate is Agreed / (Runs - Errors); 0 when nothing succeeded.
-	AgreementRate     float64 `json:"agreement_rate"`
-	MeanConfidence    float64 `json:"mean_confidence"`
+	AgreementRate  float64 `json:"agreement_rate"`
+	MeanConfidence float64 `json:"mean_confidence"`
+	// MeanLatencyMillis is over the successful runs, like the rate and the confidence (a failed run
+	// stores no latency).
 	MeanLatencyMillis float64 `json:"mean_latency_ms"`
 	TotalCostUSD      float64 `json:"total_cost_usd"`
 	// Confidence[i] counts the successful runs with confidence in [i/10, (i+1)/10) (1.0 is in the
