@@ -23,6 +23,9 @@ type VersionHistoryData struct {
 	// Query is appended to the restore URL ("?branch_id=B" scopes a World State restore to a Branch).
 	Query   string
 	Entries []domain.VersionEntry
+	// RestoreBlocked is why a restore is refused in the state the page was loaded in ("" when it is
+	// not): the list then says so in place of the restore buttons the server would answer with 409.
+	RestoreBlocked string
 }
 
 func (d VersionHistoryData) restoreURL(number int) string {
@@ -55,7 +58,7 @@ templ VersionHistoryPanel(d VersionHistoryData) {
 						}
 						if i == 0 {
 							@atoms.Badge(atoms.BadgeNeutral, "現在")
-						} else {
+						} else if d.RestoreBlocked == "" {
 							@atoms.Button(atoms.ToneNeutral, "このバージョンに復元", templ.Attributes{
 								"type":       "button",
 								"hx-post":    d.restoreURL(e.Number),
@@ -67,6 +70,9 @@ templ VersionHistoryPanel(d VersionHistoryData) {
 					</li>
 				}
 			</ol>
+			if d.RestoreBlocked != "" && len(d.Entries) > 1 {
+				<p class="text-xs text-neutral-400">{ d.RestoreBlocked }</p>
+			}
 		}
 	</section>
 }

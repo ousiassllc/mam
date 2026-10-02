@@ -362,7 +362,7 @@ func (o *Orchestrator) cheapestImageCost() float64 {
 // the authority on who owns the Shot; this check lets the callers refuse before they pay for the
 // Prompt Planner a spec that would be thrown away.
 func refuseBusy(ref repository.ShotRef) error {
-	if st := ref.Shot.State; st == domain.ShotGenerating || st == domain.ShotRepairing {
+	if ref.Shot.State.Busy() {
 		return ErrShotBusy
 	}
 	return nil
