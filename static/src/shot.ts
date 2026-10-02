@@ -34,7 +34,7 @@ function refresh(card: HTMLElement, stage: ShotProgress['stage']): void {
 function watch(el: HTMLElement): void {
   if (!el.dataset.wsUrl) {
     // The card's mam-video-player follows the progress and says when it is over.
-    el.addEventListener('progress-finished', (event) => refresh(el, (event as CustomEvent<ShotProgress>).detail.stage), { once: true });
+    el.addEventListener('progress-finished', (event) => refresh(el, (event as CustomEvent<ShotProgress | undefined>).detail?.stage ?? 'done'), { once: true });
     return;
   }
   let connection: Connection | null = null;
