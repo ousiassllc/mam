@@ -249,6 +249,51 @@ func TestBundleRepository_ImportRejectsRowIDsThatCouldEscapeAsFilePaths(t *testi
 	}
 }
 
+// A row without an id would be inserted with a NULL primary key, which neither the id check nor the
+// ownership check (fk NOT IN (parent ids)) sees: a missing or null id refuses the bundle in every table
+// that has an id column, and a policy row without its project_id likewise.
+func TestBundleRepository_ImportRejectsRowsWithoutAnID(t *testing.T) {
+	ctx := context.Background()
+	source := openTestDB(t)
+	seedDeepProject(t, source, "a")
+	require.NoError(t, exec(t, source, `INSERT INTO asset (id, project_id, type, file_path) VALUES ('a-as', 'a', 'image', 'x.png')`))
+	require.NoError(t, exec(t, source, `INSERT INTO character (id, project_id, name, face_reference_asset_id) VALUES ('a-ch', 'a', 'Mio', 'a-as')`))
+	require.NoError(t, exec(t, source, `INSERT INTO project_policy (project_id) VALUES ('a')`))
+	exporter := repository.NewBundleRepository(source)
+	target := openTestDB(t)
+	importer := repository.NewBundleRepository(target)
+	probe, err := exporter.Export(ctx, "a")
+	require.NoError(t, err)
+	checked := 0
+	for _, tb := range probe.Tables {
+		if len(tb.Rows) == 0 {
+			continue
+		}
+		column := "id"
+		if tb.Name == "project_policy" {
+			column = "project_id"
+		}
+		for _, omit := range []string{"absent", "null"} {
+			data, err := exporter.Export(ctx, "a")
+			require.NoError(t, err)
+			for _, t2 := range data.Tables {
+				if t2.Name != tb.Name {
+					continue
+				}
+				if omit == "absent" {
+					delete(t2.Rows[0], column)
+				} else {
+					t2.Rows[0][column] = nil
+				}
+			}
+			assert.ErrorIs(t, importer.Import(ctx, data), repository.ErrInvalidBundle, "%s without %s (%s)", tb.Name, column, omit)
+			assert.Equal(t, map[string]int{"project": 0, "asset": 0}, countRows(t, target, "project", "asset"), "nothing is written")
+		}
+		checked++
+	}
+	assert.Greater(t, checked, 10, "the seeded project fills most tables")
+}
+
 func TestBundleRepository_ImportKeepsGeneratedStyleRowIDs(t *testing.T) {
 	ctx := context.Background()
 	db := openTestDB(t)
