@@ -23,6 +23,8 @@ type bundleTable struct {
 	// detach are columns that point outside the Project (at its Series, at another Episode's World
 	// State). The bundle is self-contained, so they are exported empty: the imported Project stands alone.
 	detach []string
+	// noID marks a table whose primary key is not an id column (project_policy: its project_id).
+	noID bool
 }
 
 const (
@@ -36,7 +38,7 @@ const (
 // here, or in unbundledTables with the reason (TestBundle_EveryTableIsBundledOrHasAReasonNotToBe enforces it).
 var bundleTables = []bundleTable{
 	{name: "project", where: `id = :pid`, detach: []string{"series_id", "episode_number", "inherited_series_version_id", "inherited_world_state_version_id"}},
-	{name: "project_policy", where: byProject},
+	{name: "project_policy", where: byProject, noID: true},
 	{name: "brief", where: byProject},
 	{name: "asset", where: byProject},
 	{name: "chat_message", where: byProject},
@@ -223,9 +225,11 @@ func checkBundle(data domain.BundleData) error {
 	}
 	known := map[string]bool{}
 	detachColumns := map[string][]string{}
+	noID := map[string]bool{}
 	for _, t := range bundleTables {
 		known[t.name] = true
 		detachColumns[t.name] = t.detach
+		noID[t.name] = t.noID
 	}
 	seen := map[string]bool{}
 	for _, t := range data.Tables {
@@ -235,16 +239,18 @@ func checkBundle(data domain.BundleData) error {
 		seen[t.Name] = true
 		for _, row := range t.Rows {
 			// Row IDs are joined into file paths (take previews, audio directories, edit previews), so every
-			// one is held to the Project ID's character set.
-			if id, ok := row["id"]; ok {
-				if s, isString := id.(string); !isString || !domain.ValidBundleID(s) {
-					return fmt.Errorf("%w: %s has an unsafe id", ErrInvalidBundle, t.Name)
+			// one is held to the Project ID's character set. A row without an id would be inserted with a NULL
+			// primary key (SQLite does not make "TEXT PRIMARY KEY" NOT NULL), which no ID check or ownership
+			// query sees, so every table with an id column requires one.
+			if !noID[t.Name] {
+				if s, isString := row["id"].(string); !isString || !domain.ValidBundleID(s) {
+					return fmt.Errorf("%w: %s has a missing or unsafe id", ErrInvalidBundle, t.Name)
 				}
 			}
 			if t.Name == "project" && row["id"] != data.ProjectID {
 				return fmt.Errorf("%w: a project row of another project", ErrInvalidBundle)
 			}
-			if pid, ok := row["project_id"]; ok && pid != data.ProjectID {
+			if pid, ok := row["project_id"]; (ok || noID[t.Name]) && pid != data.ProjectID {
 				return fmt.Errorf("%w: %s has a row of another project", ErrInvalidBundle, t.Name)
 			}
 			if t.Name == "chat_message" && row["kind"] == string(domain.KindTake) {
@@ -312,7 +318,7 @@ func checkBundleOwnership(ctx context.Context, tx *sql.Tx, data domain.BundleDat
 		for _, fk := range fks {
 			inParent := `NULL` // a parent outside the bundle (a Series, a Brand Template, a review inbox) is never one of the Project's
 			if parent, ok := byName[fk.parent]; ok {
-				inParent = `SELECT id FROM ` + parent.name + ` WHERE ` + parent.where
+				inParent = `SELECT id FROM ` + parent.name + ` WHERE id IS NOT NULL AND (` + parent.where + `)` // a NULL in the set would make NOT IN never true
 			}
 			var n int
 			q := `SELECT count(*) FROM ` + t.name + ` WHERE (` + t.where + `) AND ` + fk.column + ` IS NOT NULL AND ` + fk.column + ` NOT IN (` + inParent + `)` //nolint:gosec // names come from bundleTables and the schema

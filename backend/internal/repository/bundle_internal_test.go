@@ -33,3 +33,16 @@ func TestBundle_EveryTableIsBundledOrHasAReasonNotToBe(t *testing.T) {
 	}
 	assert.Empty(t, bundled, "bundleTables names tables that do not exist")
 }
+
+// TestBundle_NoIDMarksExactlyTheTablesWithoutAnIDColumn keeps checkBundle's "every row has an id"
+// rule honest: a bundled table whose primary key is not "id" must say so.
+func TestBundle_NoIDMarksExactlyTheTablesWithoutAnIDColumn(t *testing.T) {
+	db, err := Open(context.Background(), filepath.Join(t.TempDir(), "mam.db"), nil)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = db.Close() })
+	for _, b := range bundleTables {
+		var hasID int
+		require.NoError(t, db.Reader().QueryRow(`SELECT count(*) FROM pragma_table_info(?) WHERE name = 'id' AND pk = 1`, b.name).Scan(&hasID))
+		assert.Equal(t, hasID == 0, b.noID, "table %s", b.name)
+	}
+}
