@@ -47,14 +47,33 @@ func TestOrchestrator_ReferencePackMakesEveryReferenceAndFeedsTheNextGeneration(
 	assert.Equal(t, generation.StageDone, last.Stage)
 	assert.Equal(t, 6, last.TakesDone)
 
-	// The Keyframe goes to the video model as the first frame, the other references as references.
+	// The Keyframe goes to the video model as the first frame; Seedance reads either frames or references,
+	// so the other references are not sent with it.
 	require.NoError(t, f.generate(t, ""))
 	sent := f.video.sent()
 	require.NotEmpty(t, sent)
 	for _, req := range sent {
 		assert.NotNil(t, req.FirstFrame, "the Keyframe is the first frame")
-		assert.NotEmpty(t, req.References, "Seedance also receives the other Reference Pack images")
+		assert.Empty(t, req.References, "frames and reference images are exclusive")
 	}
+}
+
+func TestOrchestrator_ReferenceReinforcementSendsReferencesInsteadOfTheKeyframe(t *testing.T) {
+	f := newFixture(t, options{})
+	require.NoError(t, f.referencePack(t))
+	require.NoError(t, f.generate(t, ""))
+	before := len(f.video.sent())
+
+	_, err := f.orch.Regenerate(context.Background(), f.ref(t), generation.Regeneration{
+		Action: domain.RepairReferenceReinforce, Issues: []domain.JudgeIssue{{Type: domain.IssueTypeFaceIdentityDrift, Severity: domain.SeverityHigh}},
+	})
+
+	require.NoError(t, err)
+	sent := f.video.sent()
+	require.Greater(t, len(sent), before)
+	req := sent[len(sent)-1]
+	assert.Nil(t, req.FirstFrame, "the references are what is reinforced")
+	assert.NotEmpty(t, req.References)
 }
 
 func TestOrchestrator_ReferencePackFailureKeepsNothing(t *testing.T) {

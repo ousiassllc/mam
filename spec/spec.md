@@ -611,7 +611,7 @@ Cost Policy
 
 Previous Final Frame / Target First / Last Frame は、現状では次のように扱う（実装の現状に合わせた記述）。
 
-- **First Frame**: Reference Pack の Keyframe（Art Director が用意した生成画像）だけを動画モデルの First Frame として渡す。ユーザーが選んだ画像を First Frame にする経路は無い。Model Adapter がモデルごとに送信する（Kling 3.0 `image`、Seedance 2.0 `first_frame`）。Keyframe があるときも、自由な参照画像を受け取れるモデル（Seedance 2.0）には Reference Pack の他画像（Character / Product / Location / Style / Lighting）を First Frame と同時に渡す（上限 9 枚、`reference_image`）。Kling 3.0 と Runway Gen-4.5 は自由な参照画像を受け取らないので、First Frame（Kling は Last Frame も）だけを送る。Generation Orchestrator のモデル選択は、Keyframe があるとき First Frame に対応するモデルを適合（fit）で優先する。
+- **First Frame**: Reference Pack の Keyframe（Art Director が用意した生成画像）だけを動画モデルの First Frame として渡す。ユーザーが選んだ画像を First Frame にする経路は無い。Model Adapter がモデルごとに送信する（Kling 3.0 `image`、Seedance 2.0 `first_frame`）。Seedance 2.0 の API は First Frame（と Last Frame）と自由な参照画像（`reference_image`、上限 9 枚）を同じリクエストに混在させられない（排他のシナリオ）ので、Keyframe があるときは First Frame だけを送り、Reference Pack の他画像は送らない。Reference Reinforcement だけは Keyframe を外して他画像（`reference_image`）を送る。Kling 3.0 と Runway Gen-4.5 は自由な参照画像を受け取らないので、First Frame（Kling は Last Frame も）だけを送る。Generation Orchestrator のモデル選択は、Keyframe があるとき First Frame に対応するモデルを適合（fit）で優先する。
 - **Previous Final Frame**: 前の Shot の最終フレームを ffmpeg で取り出して次の Shot の First Frame にする処理は行わない。`continuity.start_from_previous_final_state: true` は、Prompt に「前の Shot の最終状態から始まる」という文を加え、World State（前 Shot までの変化）と Judge の `scene_continuity` 評価で連続性を担保する。また、この指定がある Shot ではモデル選択の Continuity 軸の重みを上げる。
 - **Last Frame**: モデル側（Kling 3.0 `image_tail`・Seedance 2.0 `last_frame`）は送信に対応しているが、Shot Spec に Last Frame 指定の項目がないため、現状は渡さない。
 
