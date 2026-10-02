@@ -191,7 +191,7 @@ M1（F-14、Issue #10）で実装する Repair / Retake Loop の判断部分。�
 
 ### 11.2 Retry Policy と Escalation
 
-- Max retries は「新しい Take を作った再生成系の Repair の数」に、Prompt Candidate Generation が Shot で作った Take の数から最初の 1 本を除いた数を足して数える（失敗して Take を作らなかった Repair と Edit-Level Repair は数えない）。候補生成も Repair も同じ上限を使うので、候補生成が上限まで Take を作った後の自動ループは Take を作らず Escalation に進む。次の再生成の見積りコストは Max cost per Shot（`project.shot_budget_ceiling`）と Project の予算上限に対して検査する。Different Model は別モデルの見積りで検査し直す
+- Max retries は「新しい Take を作った再生成系の Repair の数」に、Prompt Candidate Generation が Shot で作った Take の数から最初の 1 本を除いた数を足して数える（失敗して Take を作らなかった Repair と Edit-Level Repair は数えない）。候補生成も Repair も同じ上限を使うので、候補生成が上限まで Take を作った後の自動ループは Take を作らず Escalation に進む。次の再生成の見積りコストは、Shot の累計コスト（台帳）に足した額を Max cost per Shot（`project.shot_budget_ceiling`）に対して、Project の累計に足した額を Project の予算上限に対して検査する。Different Model は別モデルの見積りで検査し直す
 - 上限に達したら Take を作らず、チャットに Escalation カードを出して人間に判断を求める（Confirmation Level に関係なく出す）。AUTO MODE の自動ループは同じ Judge 結果について 1 度だけ尋ねる。手動の Repair は毎回尋ねる
 - **AUTO MODE**: Take の生成・Judge・Repair のジョブが成功するたびに Shot を見て、Shot のすべての Take が Judge 済みで 1 つも合格していなければ、最良の Take（LOCK 違反なし → 総合点が高い → high の Issue が少ない → 新しい方）から Repair を始める。合格した Take が 1 つでもあれば止まる。DIRECTOR MODE では自動で始めず、ユーザーが `POST /takes/:id/repair` を呼ぶ
 
