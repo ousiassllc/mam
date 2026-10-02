@@ -93,6 +93,8 @@ func TestParseVoiceLine(t *testing.T) {
 	}{
 		{"美咲: 今日もいい天気ね", domain.VoiceLine{Kind: domain.VoiceDialogue, Speaker: "美咲", Text: "今日もいい天気ね"}, true},
 		{"美咲：全角コロンでも読める", domain.VoiceLine{Kind: domain.VoiceDialogue, Speaker: "美咲", Text: "全角コロンでも読める"}, true},
+		{"美咲：今日は10:30に出発するね", domain.VoiceLine{Kind: domain.VoiceDialogue, Speaker: "美咲", Text: "今日は10:30に出発するね"}, true},
+		{"A：note: foo", domain.VoiceLine{Kind: domain.VoiceDialogue, Speaker: "A", Text: "note: foo"}, true},
 		{"ナレーション: 朝が来た", domain.VoiceLine{Kind: domain.VoiceNarration, Text: "朝が来た"}, true},
 		{"NA: it begins", domain.VoiceLine{Kind: domain.VoiceNarration, Text: "it begins"}, true},
 		{"話者のいない一文。", domain.VoiceLine{Kind: domain.VoiceNarration, Text: "話者のいない一文。"}, true},
