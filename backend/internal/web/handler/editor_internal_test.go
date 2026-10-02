@@ -37,3 +37,13 @@ func TestEditorPanelData_CarriesThePendingAdditionalShots(t *testing.T) {
 	assert.Contains(t, body, "追加 Shot を 2 件生成中です")
 	assert.NotContains(t, body, "request-additional-shot", "a request is refused while the last round is not done")
 }
+
+// A stage may move the Project: the answer carries the state badge of the page header (#348).
+func TestEditorActionsFragment_RefreshesTheStateBadge(t *testing.T) {
+	var sb strings.Builder
+	d := editorPanelData(service.EditorView{Project: domain.Project{ID: "p", State: domain.StateEditJudging}})
+	require.NoError(t, organisms.EditorActionsFragment(d).Render(context.Background(), &sb))
+	body := sb.String()
+	assert.Contains(t, body, `id="editor-actions"`)
+	assert.Regexp(t, `<span[^>]*id="project-state"[^>]*hx-swap-oob="true"[^>]*data-state="EDIT_JUDGING"|<span[^>]*id="project-state"[^>]*data-state="EDIT_JUDGING"[^>]*hx-swap-oob="true"`, body)
+}
