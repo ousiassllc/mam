@@ -614,3 +614,30 @@ func TestInspector_ShowsEveryParameterSetting(t *testing.T) {
 	_, err = f.svc.Director.Inspector(context.Background(), "nope")
 	assert.ErrorIs(t, err, service.ErrNotFound)
 }
+
+// A direction of the chat that fails after part of it was done (a LOCK was set, then the planned
+// spec broke a LOCK Brand constraint) is answered in the thread with what was and was not done, as
+// the director-command path does: the thread does not end with the user's words alone.
+func TestChat_DirectorModeAFailedDirectionIsAnsweredWithWhatWasDone(t *testing.T) {
+	f := newGenFixture(t, true)
+	f.firstGeneration(t)
+	f.startDirecting(t)
+	_, err := f.svc.Brand.Add(context.Background(), f.projectID, service.BrandForm{Type: string(domain.BrandForbidden), Text: "BANNED"})
+	require.NoError(t, err)
+	f.llm.planner = func(string) string {
+		return strings.Replace(plannerRewrite, "Character notices something behind her", "a BANNED word notices something", 1)
+	}
+	f.llm.interpreter = opsJSON(`{"type":"set_lock","parameter":"camera","mode":"lock"}`,
+		`{"type":"regenerate","changes":["acting"],"instruction":"Make her nervous."}`)
+
+	_, err = f.svc.Chat.PostMessage(context.Background(), f.projectID, service.PostMessageInput{Content: "カメラを固定して、もっと不安そうに"})
+	require.ErrorIs(t, err, domain.ErrBrandViolation)
+
+	ws, err := f.svc.Chat.Workspace(context.Background(), f.projectID)
+	require.NoError(t, err)
+	last := lastMessage(t, ws.Messages)
+	assert.Equal(t, domain.RoleAssistant, last.Role)
+	assert.Contains(t, last.Content, "指示を実行できませんでした")
+	assert.Contains(t, last.Content, "Brand / Safety Constraint")
+	assert.Contains(t, last.Content, "Camera を LOCK にしました", "what was done before the failure is told")
+}
