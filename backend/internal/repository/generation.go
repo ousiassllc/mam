@@ -234,7 +234,8 @@ func (r *GenerationRepository) MarkAIPick(ctx context.Context, shotID, takeID st
 // new prompt_version. LOCK is judged on the data being written: it returns ErrLocked (wrapping the
 // names of the LOCKed parameters the edit touches) and writes nothing when a LOCKed part or, with
 // Prompt LOCKed, any part of the current spec would change; ErrConflict while the Shot is being
-// generated; ErrNotFound for an unknown Shot. A Shot without a spec has nothing to be LOCKed.
+// generated or repaired (the Repair saves its own spec at its end and would overwrite the edit);
+// ErrNotFound for an unknown Shot. A Shot without a spec has nothing to be LOCKed.
 func (r *GenerationRepository) SaveEditedSpec(ctx context.Context, shotID string, spec domain.ShotSpec) (domain.PromptVersion, error) {
 	var pv domain.PromptVersion
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
@@ -242,7 +243,7 @@ func (r *GenerationRepository) SaveEditedSpec(ctx context.Context, shotID string
 		if err != nil {
 			return err
 		}
-		if state == domain.ShotGenerating {
+		if state == domain.ShotGenerating || state == domain.ShotRepairing {
 			return ErrConflict
 		}
 		if old, ok := (domain.Shot{ShotSpec: json.RawMessage(current)}).CanonicalSpec(); ok {

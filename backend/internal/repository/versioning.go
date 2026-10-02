@@ -147,7 +147,7 @@ func scopeExists(ctx context.Context, q queryer, projectID, branchID string) err
 
 // RestoreShotVersion makes the Canonical Shot Spec of prompt version number the spec of the Shot
 // again, as a new prompt version (the Takes of the old version stay with it) and returns that
-// version. ErrNotFound: unknown Shot or version; ErrConflict: the Shot is being generated;
+// version. ErrNotFound: unknown Shot or version; ErrConflict: the Shot is being generated or repaired;
 // *LockedParametersError (Is ErrLocked): the restore would change a LOCKed part of the spec.
 func (r *VersionRepository) RestoreShotVersion(ctx context.Context, shotID string, number int) (domain.PromptVersion, error) {
 	var pv domain.PromptVersion
@@ -156,7 +156,7 @@ func (r *VersionRepository) RestoreShotVersion(ctx context.Context, shotID strin
 		if err != nil {
 			return err
 		}
-		if state == domain.ShotGenerating {
+		if state == domain.ShotGenerating || state == domain.ShotRepairing {
 			return ErrConflict
 		}
 		var snapshot string
