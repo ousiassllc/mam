@@ -59,6 +59,8 @@ func branchWorldStateURL(projectID, branchID string) string {
 
 func branchShotURL(shotID string) string { return paths.Shot(shotID, "branch") }
 
+func branchVersionsURL(id string) string { return paths.Branch(id, "versions") }
+
 func selectedBranchID(d BranchPageData) string {
 	if d.Selected == nil {
 		return ""
@@ -96,7 +98,7 @@ func versionOptions(latest int) []int {
 // World State reference forms, and the link to its World State (branch_id scoped). It is swapped into
 // #branch-detail when a Branch is selected in the Branch tree.
 templ BranchDetail(d BranchDetailData) {
-	<article class="flex flex-col gap-4 rounded-md border border-neutral-700 p-4" aria-label="Branch の詳細" data-branch-detail={ d.Branch.ID }>
+	<article class="flex flex-col gap-4 rounded-md border border-neutral-700 p-4" aria-label="Branch の詳細" data-branch-detail={ d.Branch.ID } hx-get={ branchURL(d.Branch.ID) } hx-trigger="branch-reload from:body" hx-target="#branch-detail" hx-swap="innerHTML">
 		<header class="flex flex-col gap-1">
 			<h2 class="text-lg font-semibold">{ d.Branch.Name }</h2>
 			<p class="text-sm text-neutral-400">
@@ -172,6 +174,15 @@ templ BranchDetail(d BranchDetailData) {
 					<li>v{ strconv.Itoa(v.Number) } · { v.Name } · World State: { branchWorldText(v.WorldStateVersion) } · { v.CreatedAt.Local().Format("2006-01-02 15:04") }</li>
 				}
 			</ol>
+			<div id="branch-history-slot">
+				<button
+					type="button"
+					class="text-xs text-indigo-300 underline"
+					hx-get={ branchVersionsURL(d.Branch.ID) }
+					hx-target="#branch-history-slot"
+					hx-swap="innerHTML"
+				>履歴を開いて復元する</button>
+			</div>
 		</section>
 	</article>
 }

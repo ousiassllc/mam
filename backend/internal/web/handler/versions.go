@@ -47,6 +47,10 @@ func RestoreWorldStateVersion(svc *service.VersionService) gin.HandlerFunc {
 	}
 }
 
+// branchReloadTrigger is the HX-Trigger event that makes the Branch detail on the page load again
+// (organisms.BranchDetail listens for it).
+const branchReloadTrigger = "branch-reload"
+
 func branchHistoryData(h service.BranchHistory) organisms.BranchHistoryData {
 	return organisms.BranchHistoryData{BranchID: h.BranchID, Versions: h.Versions, World: h.World}
 }
@@ -89,6 +93,9 @@ func restoreBranch(restore branchRestore) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
+		// The Branch page's detail (name, World State reference, versions) and tree show what was
+		// restored; they reload on this event.
+		c.Header("HX-Trigger", branchReloadTrigger)
 		render(c, http.StatusOK, organisms.BranchVersionHistory(branchHistoryData(h)))
 	}
 }

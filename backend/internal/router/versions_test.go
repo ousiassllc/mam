@@ -128,6 +128,10 @@ func TestBranchVersions_HistoryAndRestores(t *testing.T) {
 	a.execSQL(`INSERT INTO branch_version (id, branch_id, version_number, name) VALUES ('v1', 'b1', 1, 'original'), ('v2', 'b1', 2, 'renamed')`)
 	a.execSQL(`INSERT INTO world_state_version (id, project_id, branch_id, version_number, state) VALUES ('w1', ?, 'b1', 1, '{"characters":[{"id":"x","name":"A"}]}'), ('w2', ?, 'b1', 2, '{}')`, id, id)
 
+	detail := a.get("/branches/b1", true).Body.String()
+	assert.Contains(t, detail, `hx-get="/branches/b1/versions"`, "the Branch page reaches the history and its restore buttons")
+	assert.Contains(t, detail, `hx-trigger="branch-reload from:body"`, "the detail reloads after a restore")
+
 	page := a.get("/branches/b1/versions", true).Body.String()
 	assert.Contains(t, page, `id="branch-version-history"`)
 	assert.Contains(t, page, `hx-post="/branches/b1/versions/1/restore"`)
@@ -138,6 +142,7 @@ func TestBranchVersions_HistoryAndRestores(t *testing.T) {
 	rec := a.form(http.MethodPost, "/branches/b1/versions/1/restore", nil)
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	assert.Contains(t, rec.Body.String(), `/branches/b1/versions/2/restore"`, "history refreshed with the new version 3")
+	assert.Equal(t, "branch-reload", rec.Header().Get("HX-Trigger"), "the Branch detail shown on the page reloads")
 	var name string
 	require.NoError(t, a.db.Reader().QueryRow(`SELECT name FROM branch WHERE id = 'b1'`).Scan(&name))
 	assert.Equal(t, "original", name)
