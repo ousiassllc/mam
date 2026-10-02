@@ -25,6 +25,15 @@ const SyncCredentialProvider = "synclabs"
 // ErrNoSyncLabsKey means no Sync Labs API key is stored.
 var ErrNoSyncLabsKey = errors.New("audiodirector: Sync Labs API key is not configured")
 
+// ChargedError wraps the failure of a Lip Sync that Sync Labs had already accepted: the vendor
+// runs (and bills) the generation, so the caller records its cost although there is no video. A
+// failure before the job exists (no key, create refused) and a FAILED / REJECTED generation are
+// not charged and are returned unwrapped.
+type ChargedError struct{ Err error }
+
+func (e *ChargedError) Error() string { return e.Err.Error() }
+func (e *ChargedError) Unwrap() error { return e.Err }
+
 // LipSyncRequest is one Lip Sync: the video whose mouth is redone and the speech it must follow.
 type LipSyncRequest struct {
 	// Model is the Sync Labs model ("lipsync-2", "sync-3", ...).
@@ -34,7 +43,7 @@ type LipSyncRequest struct {
 }
 
 // LipSyncer redoes the mouth of a video to a speech and returns the new video (mp4).
-// *SyncLabs implements it.
+// *SyncLabs implements it. A failure after Sync Labs accepted the job is a *ChargedError.
 type LipSyncer interface {
 	Sync(ctx context.Context, req LipSyncRequest) ([]byte, error)
 }
@@ -132,19 +141,19 @@ func (s *SyncLabs) Sync(ctx context.Context, req LipSyncRequest) ([]byte, error)
 		}
 		select {
 		case <-ctx.Done():
-			return nil, fail(ctx.Err())
+			return nil, &ChargedError{Err: fail(ctx.Err())}
 		case <-time.After(s.cfg.PollInterval):
 		}
 		if gen, err = s.status(ctx, key, gen.ID); err != nil {
-			return nil, fail(err)
+			return nil, &ChargedError{Err: fail(err)}
 		}
 	}
 	if gen.OutputURL == "" {
-		return nil, &ProviderError{Vendor: VendorSyncLabs, Message: "the generation has no outputUrl"}
+		return nil, &ChargedError{Err: &ProviderError{Vendor: VendorSyncLabs, Message: "the generation has no outputUrl"}}
 	}
 	video, err := s.download(ctx, gen.OutputURL)
 	if err != nil {
-		return nil, fail(err)
+		return nil, &ChargedError{Err: fail(err)}
 	}
 	return video, nil
 }
