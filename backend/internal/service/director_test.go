@@ -641,3 +641,49 @@ func TestChat_DirectorModeAFailedDirectionIsAnsweredWithWhatWasDone(t *testing.T
 	assert.Contains(t, last.Content, "Brand / Safety Constraint")
 	assert.Contains(t, last.Content, "Camera を LOCK にしました", "what was done before the failure is told")
 }
+
+// A reply to a Keyframe card is a direction about the Shot whose Reference Pack holds that image,
+// as a reply to a Take card is, not about the Shot of the latest Take card; and a Keyframe whose
+// Shot is not known is asked about instead of being applied to another Shot.
+func TestChat_DirectorModeResolvesTheShotFromAReplyToAKeyframeCard(t *testing.T) {
+	ctx := context.Background()
+	f := newGenFixture(t, true)
+	f.firstGeneration(t) // Shot 1 has the latest Take card
+	second, err := f.svc.Plans.CreateShot(ctx, f.sceneID, service.ShotForm{Objective: "ドアを開ける", DurationSeconds: "4"})
+	require.NoError(t, err)
+	shot2ID := second.Shots[1].ID
+	f.execSQL(t, `UPDATE shot SET shot_spec = json_set(shot_spec, '$.references', json('[{"kind":"keyframe","asset_id":"kf-2","prompt":"p","model":"m"}]')) WHERE id = ?`, shot2ID)
+	require.NoError(t, f.svc.Chat.Announce(ctx, f.projectID, domain.ChatMessage{Role: domain.RoleAssistant, Kind: domain.KindKeyframe, RefID: "kf-2", Content: "Shot 2: Keyframe"}))
+	require.NoError(t, f.svc.Chat.Announce(ctx, f.projectID, domain.ChatMessage{Role: domain.RoleAssistant, Kind: domain.KindKeyframe, RefID: "kf-unknown", Content: "Shot ?: Keyframe"}))
+	var known, unknown domain.ThreadMessage
+	for _, m := range f.thread(t, f.projectID) {
+		if m.Kind == domain.KindKeyframe && m.RefID == "kf-2" {
+			known = m
+		}
+		if m.Kind == domain.KindKeyframe && m.RefID == "kf-unknown" {
+			unknown = m
+		}
+	}
+	require.NotEmpty(t, known.ID)
+	f.startDirecting(t)
+	f.llm.interpreter = opsJSON(`{"type":"set_lock","parameter":"camera","mode":"lock"}`)
+
+	ws := f.say(t, "カメラは固定", known.ID)
+
+	assert.Contains(t, ws.Messages[len(ws.Messages)-1].Content, "Shot 2")
+	locks2, err := f.svc.Director.Inspector(ctx, shot2ID)
+	require.NoError(t, err)
+	assert.True(t, locks2.Locks.Locked(domain.ParamCamera), "the Keyframe's Shot is the target")
+	locks1, err := f.svc.Director.Inspector(ctx, f.shotID)
+	require.NoError(t, err)
+	assert.False(t, locks1.Locks.Locked(domain.ParamCamera))
+
+	f.llm.interpreter = opsJSON(`{"type":"set_lock","parameter":"lighting","mode":"lock"}`)
+	f.say(t, "照明は固定", unknown.ID)
+	locks1, err = f.svc.Director.Inspector(ctx, f.shotID)
+	require.NoError(t, err)
+	assert.False(t, locks1.Locks.Locked(domain.ParamLighting), "no other Shot is directed when the Keyframe's Shot is unknown")
+	locks2, err = f.svc.Director.Inspector(ctx, shot2ID)
+	require.NoError(t, err)
+	assert.False(t, locks2.Locks.Locked(domain.ParamLighting))
+}
