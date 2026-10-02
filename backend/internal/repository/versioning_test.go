@@ -217,3 +217,28 @@ func TestVersionRepository_RestoreBranchVersionAppendsACopyAndResetsTheBranch(t 
 	_, err = versions.BranchVersions(ctx, "missing")
 	assert.ErrorIs(t, err, repository.ErrNotFound)
 }
+
+// A Shot being repaired is as busy as one being generated: the Repair saves its own spec at the end
+// (SavePromptedSpec) and would silently overwrite a hand edit or a restore made meanwhile.
+func TestSpecEdits_AreRefusedWhileTheShotIsBeingRepaired(t *testing.T) {
+	ctx := context.Background()
+	f := newGenRepoFixture(t)
+	versions := repository.NewVersionRepository(f.db)
+	_, err := f.repo.SavePromptedSpec(ctx, f.shotID, wideSpec("first"), nil, nil)
+	require.NoError(t, err)
+	_, err = f.repo.SavePromptedSpec(ctx, f.shotID, wideSpec("second"), nil, nil)
+	require.NoError(t, err)
+	started, err := f.repo.StartRepair(ctx, f.shotID)
+	require.NoError(t, err)
+	require.True(t, started)
+
+	_, err = f.repo.SaveEditedSpec(ctx, f.shotID, wideSpec("edited"))
+	assert.ErrorIs(t, err, repository.ErrConflict, "a hand edit would be overwritten by the Repair")
+	_, err = versions.RestoreShotVersion(ctx, f.shotID, 1)
+	assert.ErrorIs(t, err, repository.ErrConflict, "a restore would be overwritten by the Repair")
+
+	assert.Equal(t, "second", shotObjective(t, f))
+	list, err := versions.ShotVersions(ctx, f.shotID)
+	require.NoError(t, err)
+	assert.Len(t, list, 2, "refused edits write nothing")
+}
