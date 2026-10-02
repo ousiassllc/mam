@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -396,6 +397,33 @@ func TestDirectorCommand_SetsLocksFromWordsAndNeedsAnInterpreter(t *testing.T) {
 
 	_, err = f.svc.Director.DirectorCommand(context.Background(), "nope", "x")
 	assert.ErrorIs(t, err, service.ErrNotFound, "an unknown Shot is 404")
+}
+
+func TestDirectorCommand_AFailedReasoningLLMHasTheDocumentedStatus(t *testing.T) {
+	f := newGenFixture(t, true)
+	ctx := context.Background()
+	for name, tc := range map[string]struct {
+		err   error
+		check func(t *testing.T, err error)
+	}{
+		"no API key is 503": {llm.ErrNoAPIKey, func(t *testing.T, err error) { assert.ErrorIs(t, err, service.ErrUnavailable) }},
+		"a 429 is rate limited": {&llm.APIError{Provider: llm.ProviderAnthropic, Status: 429}, func(t *testing.T, err error) {
+			assert.ErrorIs(t, err, service.ErrRateLimited)
+		}},
+		"an unusable answer is an AI error": {fmt.Errorf("%w (x)", llm.ErrInvalidOutput), func(t *testing.T, err error) {
+			var ai *service.AIError
+			assert.ErrorAs(t, err, &ai)
+			assert.NotErrorIs(t, err, service.ErrRateLimited)
+		}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			f.llm.interpreterErr = tc.err
+			_, err := f.svc.Director.DirectorCommand(ctx, f.shotID, "カメラを寄せて")
+			require.Error(t, err)
+			tc.check(t, err)
+			assert.Zero(t, f.takes(t))
+		})
+	}
 }
 
 func TestDirectorCommand_PinsTheVideoModelToRunwayAndAsksForAnyModelWithoutAName(t *testing.T) {

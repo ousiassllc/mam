@@ -12,6 +12,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/commandinterpreter"
 	"github.com/ousiassllc/mam/backend/internal/agent/generation"
+	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/agent/repair"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
@@ -297,7 +298,7 @@ func (s *DirectorService) DirectorCommand(ctx context.Context, shotID, message s
 	}
 	cmd, err := s.interpret(ctx, message, shots, &ref)
 	if err != nil {
-		return DirectorCommandResult{}, err
+		return DirectorCommandResult{}, interpretError(err)
 	}
 	locks, err := s.locks.ShotLocks(ctx, shotID)
 	if err != nil {
@@ -525,6 +526,21 @@ func (s *DirectorService) interpret(ctx context.Context, message string, shots [
 		cmd.Operations = slices.DeleteFunc(cmd.Operations, func(op commandinterpreter.Operation) bool { return op.Type == commandinterpreter.OpCreateNote })
 	}
 	return cmd, nil
+}
+
+// interpretError gives a failure of the Command Interpreter's LLM call the status the API
+// documents: no API key is 503 (ErrUnavailable), a 429 is ErrRateLimited (through the AIError), and a
+// timeout, a failing API or an answer that is not the expected JSON is 502. Errors of other origin
+// (the repository) are returned as they are.
+func interpretError(err error) error {
+	var api *llm.APIError
+	switch {
+	case errors.Is(err, llm.ErrNoAPIKey):
+		return ErrUnavailable
+	case errors.Is(err, llm.ErrInvalidOutput), errors.Is(err, llm.ErrTimeout), errors.As(err, &api):
+		return aiError(err)
+	}
+	return err
 }
 
 func optionOf(sh repository.ShotRef) commandinterpreter.ShotOption {
