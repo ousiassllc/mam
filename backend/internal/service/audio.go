@@ -128,6 +128,7 @@ func audioSummary(tl domain.AudioTimeline, branch bool) string {
 	}
 	if tl.MixPath == "" {
 		sb.WriteString("（セリフも Take の音声もなく、足す音もないため、無音の動画になります）。")
+		writeSkippedAudio(&sb, tl.Skipped)
 		return sb.String()
 	}
 	var layers []string
@@ -150,19 +151,22 @@ func audioSummary(tl domain.AudioTimeline, branch bool) string {
 		fmt.Fprintf(&sb, "、見積コスト $%.2f", tl.EstimatedCost)
 	}
 	sb.WriteString("）。")
-	if n := len(tl.Skipped); n > 0 {
-		var notes []string
-		for _, sk := range tl.Skipped {
-			if sk.Reason == domain.SkipPolicy {
-				continue
-			}
+	writeSkippedAudio(&sb, tl.Skipped)
+	return sb.String()
+}
+
+// writeSkippedAudio lists the layers the Audio Director could not make and why (spec/api/endpoints.md);
+// the layers the Quality Policy chose not to pay for are not failures and stay out.
+func writeSkippedAudio(sb *strings.Builder, skipped []domain.SkippedAudio) {
+	var notes []string
+	for _, sk := range skipped {
+		if sk.Reason != domain.SkipPolicy {
 			notes = append(notes, skippedText(sk))
 		}
-		if len(notes) > 0 {
-			sb.WriteString("\n作れなかった音:\n・" + strings.Join(notes, "\n・"))
-		}
 	}
-	return sb.String()
+	if len(notes) > 0 {
+		sb.WriteString("\n作れなかった音:\n・" + strings.Join(notes, "\n・"))
+	}
 }
 
 func skippedText(sk domain.SkippedAudio) string {
