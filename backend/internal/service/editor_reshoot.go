@@ -79,6 +79,10 @@ func (s *EditorService) requestShots(ctx context.Context, ver domain.EditTimelin
 		}
 		queued = append(queued, r)
 	}
+	// From here on the bookkeeping must not depend on the request: a Shot whose generation started
+	// has to be put into the round, and one that did not has to go, even if the client has left
+	// (or AUTO is shutting down) while the loop was running.
+	ctx = context.WithoutCancel(ctx)
 	if len(failed) > 0 {
 		ids := make([]string, len(failed))
 		for i, r := range failed {
