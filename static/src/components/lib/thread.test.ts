@@ -27,6 +27,11 @@ describe('isSendKey', () => {
     expect(isSendKey({ key: 'Enter', shiftKey: true, isComposing: false })).toBe(false);
     expect(isSendKey({ key: 'Enter', shiftKey: false, isComposing: true })).toBe(false);
     expect(isSendKey({ key: 'a', shiftKey: false, isComposing: false })).toBe(false);
+    expect(isSendKey({ key: 'Enter', shiftKey: false, isComposing: false, keyCode: 13 })).toBe(true);
+  });
+
+  it('ignores the Enter that confirms an IME conversion on Safari (keydown after compositionend: isComposing false, keyCode 229)', () => {
+    expect(isSendKey({ key: 'Enter', shiftKey: false, isComposing: false, keyCode: 229 })).toBe(false);
   });
 });
 

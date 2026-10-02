@@ -60,9 +60,16 @@ export function catchUpAfterReconnect(io: CatchUp): Promise<unknown[]> {
   return Promise.all([io.syncNew(), ...io.pendingMessageIds().map((id) => io.refetchCard(id))]);
 }
 
-/** Enter sends, Shift+Enter breaks the line, and Enter that confirms an IME conversion does nothing. */
-export function isSendKey(event: { key: string; shiftKey: boolean; isComposing: boolean }): boolean {
-  return event.key === 'Enter' && !event.shiftKey && !event.isComposing;
+/** The keyCode of a keydown the IME handled. */
+const IME_KEY_CODE = 229;
+
+/**
+ * Enter sends, Shift+Enter breaks the line, and Enter that confirms an IME conversion does nothing.
+ * Safari/WebKit fires that Enter's keydown after compositionend, so `isComposing` is already false;
+ * it is told by `keyCode` 229 (the IME handled the key), which a real Enter never has (it is 13).
+ */
+export function isSendKey(event: { key: string; shiftKey: boolean; isComposing: boolean; keyCode?: number }): boolean {
+  return event.key === 'Enter' && !event.shiftKey && !event.isComposing && event.keyCode !== IME_KEY_CODE;
 }
 
 /** Whether an error response carries an HTML fragment htmx should swap (a toast or a re-rendered form). */
