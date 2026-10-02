@@ -403,6 +403,35 @@ func TestRespondApproval_RequestChangesSendsTheProjectBack(t *testing.T) {
 	assert.Equal(t, 1, override)
 }
 
+// The answer to a request for changes says what happens: only the script is redone from the comment.
+// A Rough Cut or Final goes back to EDITING and nothing reads the comment, so the answer says so
+// instead of promising that it is applied.
+func TestRespondApproval_RequestChangesAnswerSaysWhatHappens(t *testing.T) {
+	ctx := context.Background()
+	for cp, want := range map[domain.Checkpoint]string{
+		domain.CheckpointScript:   "脚本を作り直します",
+		domain.CheckpointRoughCut: "自動では反映されない",
+		domain.CheckpointFinal:    "自動では反映されない",
+	} {
+		t.Run(string(cp), func(t *testing.T) {
+			f := newFixture(t)
+			p := f.createProject(t, "動画")
+			_, err := f.svc.Chat.RequestApproval(ctx, p.ID, cp, "確認", "x1")
+			require.NoError(t, err)
+			card := lastMessage(t, f.thread(t, p.ID))
+
+			_, _, err = f.svc.Chat.RespondApproval(ctx, p.ID, card.ID, service.DecisionRequestChanges, "短く")
+			require.NoError(t, err)
+
+			answer := lastMessage(t, f.thread(t, p.ID)).Content
+			assert.Contains(t, answer, want)
+			if cp != domain.CheckpointScript {
+				assert.NotContains(t, answer, "やり直します")
+			}
+		})
+	}
+}
+
 func TestRespondApproval_ValidatesTheRequest(t *testing.T) {
 	ctx := context.Background()
 	f := newFixture(t)
