@@ -189,6 +189,25 @@ func TestPostMessage_AnswersTheOpenQuestionAndAsksTheNextOne(t *testing.T) {
 	assert.True(t, thread[len(thread)-1].Open)
 }
 
+// A stale screen (or a double click) answers a card that was answered already: the text must not
+// be written to the next open item of the Brief.
+func TestPostMessage_ReplyToAnAnsweredQuestionIsAConflictAndWritesNothing(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	p := f.createProject(t, "美容液の縦型15秒CMを作りたい。上品な雰囲気で")
+	q := lastMessage(t, f.thread(t, p.ID)) // Objective
+	_, err := f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "Instagram広告", ReplyToMessageID: q.ID})
+	require.NoError(t, err)
+	before := f.brief(t, p.ID)
+	messages := len(f.thread(t, p.ID))
+
+	_, err = f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "YouTube広告", ReplyToMessageID: q.ID})
+
+	assert.ErrorIs(t, err, service.ErrConflict)
+	assert.Equal(t, before, f.brief(t, p.ID), "the Brief is unchanged")
+	assert.Len(t, f.thread(t, p.ID), messages, "nothing is added to the thread")
+}
+
 func TestPostMessage_FreeInputAnswersTheNewestOpenQuestionAndExtractsOtherItems(t *testing.T) {
 	ctx := context.Background()
 	f := newFixture(t)

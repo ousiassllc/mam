@@ -56,3 +56,14 @@ func TestShotCard_StartButtonsAreLeftOutWhileTheShotIsBusy(t *testing.T) {
 		}
 	}
 }
+
+// The answer buttons of a card share one in-flight request, so that a double click does not send
+// two replies to the same card (#309).
+func TestQuestionCard_AnswerButtonsShareOneInFlightRequest(t *testing.T) {
+	html := render(t, molecules.QuestionCard(domain.ThreadMessage{
+		ChatMessage: domain.ChatMessage{ID: "q1", ProjectID: "p", Kind: domain.KindQuestion, Content: `{"text":"目的は？","options":["A","B"]}`},
+		Open:        true,
+	}))
+	assert.Equal(t, 3, strings.Count(html, `hx-sync="closest [data-options]:drop"`), "A, B and the delegate button")
+	assert.Equal(t, 3, strings.Count(html, `hx-disabled-elt="this"`))
+}
