@@ -26,7 +26,7 @@ type ContinueService struct {
 	// brands are the Safety / Brand Constraints the user's direction is checked against before the
 	// Plan is paid for or a Shot is added.
 	brands *repository.BrandRepository
-	agent      *continuation.Agent // nil when the Reasoning LLM is not configured
+	agent  *continuation.Agent // nil when the Reasoning LLM is not configured
 	// tools takes the final frame of the Take the next Shot continues from; nil without ffmpeg (the
 	// Agent then reads the States from the text only).
 	tools *media.Tools
