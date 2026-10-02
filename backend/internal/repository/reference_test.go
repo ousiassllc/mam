@@ -157,6 +157,19 @@ func TestReferenceRepository_PinReplacesSameKindAndNameAndRefusesBusyShots(t *te
 	assert.ErrorIs(t, f.refs.Pin(ctx, f.shotID, it.ID), repository.ErrShotBusy)
 }
 
+// A Repair reads the Reference Pack when it starts and saves a prompt_version with whatever the spec
+// holds when it ends, so a pin during REPAIRING would be in the prompt_version but not in the Take (#345).
+func TestReferenceRepository_PinIsRefusedWhileTheShotIsRepairing(t *testing.T) {
+	ctx := context.Background()
+	f := newLibraryFixture(t)
+	it := f.upload(t, domain.RefCharacter, "Mio")
+	ok, err := f.repo.StartRepair(ctx, f.shotID)
+	require.NoError(t, err)
+	require.True(t, ok)
+	assert.ErrorIs(t, f.refs.Pin(ctx, f.shotID, it.ID), repository.ErrShotBusy)
+	assert.Empty(t, shotReferences(t, f, f.shotID), "nothing is written")
+}
+
 func TestReferenceRepository_PinReplacesTheStyleAndLightingOfThePackWhateverTheirNames(t *testing.T) {
 	ctx := context.Background()
 	f := newLibraryFixture(t)
