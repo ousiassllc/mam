@@ -14,7 +14,7 @@ import (
 
 func editorPanelData(v service.EditorView) organisms.EditorPanelData {
 	d := organisms.EditorPanelData{
-		Project: v.Project, BranchID: v.BranchID, Audio: v.Audio, Voices: v.Voices, QC: v.QC, Exports: v.Exports, Defaults: v.Defaults, CanRender: v.CanRender,
+		Project: v.Project, BranchID: v.BranchID, PendingShots: v.PendingShots, Audio: v.Audio, Voices: v.Voices, QC: v.QC, Exports: v.Exports, Defaults: v.Defaults, CanRender: v.CanRender,
 	}
 	if t := v.Timeline; t != nil {
 		d.TimelineID, d.Clips, d.Duration, d.Judge = t.ID, len(t.Clips), t.Duration, t.Judge
