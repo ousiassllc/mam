@@ -144,18 +144,53 @@ func (s *SyncLabs) Sync(ctx context.Context, req LipSyncRequest) ([]byte, error)
 			return nil, &ChargedError{Err: fail(ctx.Err())}
 		case <-time.After(s.cfg.PollInterval):
 		}
-		if gen, err = s.status(ctx, key, gen.ID); err != nil {
+		id := gen.ID
+		if err = s.repeat(ctx, func() (err error) { gen, err = s.status(ctx, key, id); return err }); err != nil {
 			return nil, &ChargedError{Err: fail(err)}
 		}
 	}
 	if gen.OutputURL == "" {
 		return nil, &ChargedError{Err: &ProviderError{Vendor: VendorSyncLabs, Message: "the generation has no outputUrl"}}
 	}
-	video, err := s.download(ctx, gen.OutputURL)
-	if err != nil {
+	var video []byte
+	if err = s.repeat(ctx, func() (err error) { video, err = s.download(ctx, gen.OutputURL); return err }); err != nil {
 		return nil, &ChargedError{Err: fail(err)}
 	}
 	return video, nil
+}
+
+// maxTransientAttempts bounds how often one status request or download is tried when the vendor
+// answers 429 / 5xx or the connection breaks. The job was accepted (and is billed) already, so a
+// single transient failure must not lose its output.
+const maxTransientAttempts = 3
+
+// repeat runs fn, repeating it up to maxTransientAttempts times (waiting PollInterval between the
+// tries) while it fails with a transient error. fn must be safe to repeat: a GET of a job that
+// was already accepted.
+func (s *SyncLabs) repeat(ctx context.Context, fn func() error) error {
+	for attempt := 1; ; attempt++ {
+		err := fn()
+		if err == nil || attempt >= maxTransientAttempts || ctx.Err() != nil || !transient(err) {
+			return err
+		}
+		select {
+		case <-time.After(s.cfg.PollInterval):
+		case <-ctx.Done():
+			return err
+		}
+	}
+}
+
+// transient reports whether err is a 429, a 5xx or a network failure (a retry can succeed).
+func transient(err error) bool {
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return false
+	}
+	var pe *ProviderError
+	if errors.As(err, &pe) {
+		return pe.Status == http.StatusTooManyRequests || pe.Status >= 500 || (pe.Status == 0 && pe.Err != nil)
+	}
+	return true // the HTTP client could not complete the request
 }
 
 func (s *SyncLabs) create(ctx context.Context, key string, req LipSyncRequest) (generation, error) {
