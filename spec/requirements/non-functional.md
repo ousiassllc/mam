@@ -7,7 +7,7 @@
 | 項目 | 要件 |
 |------|------|
 | OS | Windows 10 以降 / macOS 12 以降 / Ubuntu 22.04 以降（Go バイナリの対応OS） |
-| ブラウザ | 各ブラウザ（Chrome/Edge/Firefox/Safari）の安定版最新2バージョンをサポート対象とする。HALT の HTMX + Lit（ES2022, Shadow DOM, Custom Elements v1）が動作すること |
+| ブラウザ | 各ブラウザ（Chrome/Edge/Firefox/Safari）の安定版最新2バージョンをサポート対象とする。HALT の HTMX + Lit（ES2022, Custom Elements v1。Lit コンポーネントは Shadow DOM を使わず Light DOM に描画する）が動作すること |
 | アーキテクチャ | x64 / arm64。`make build-all`（`scripts/build.sh --all`）が Windows・macOS・Linux × x64・arm64 の 6 構成を `bin/mam-<os>-<arch>[.exe]` に生成する（単一バイナリは `make build`）。配布用の自動リリース（CI）は持たない。Windows では ONNX Runtime のバインディングが対応しないため顔同一性の定量評価（Face Identity Similarity）は使えず、AI Video Judge は定性評価にフォールバックする |
 | ネットワーク | 外部生成モデル API 呼び出しにはインターネット接続が必須。ブラウザ ↔ バックエンド通信はローカルループバック（127.0.0.1）のみで完結し、オフラインでも UI 操作・既存プロジェクト閲覧は可能 |
 
