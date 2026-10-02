@@ -287,6 +287,41 @@ func TestGenerationRepository_SaveReferencePackReplacesThePackAndKeepsTheSpec(t 
 	assert.ErrorIs(t, f.repo.SaveReferencePack(ctx, repository.NewReferencePack{ShotID: "missing"}), repository.ErrNotFound)
 }
 
+// The Character a Reference names is the one the World State already has when the names differ
+// only in case or surrounding blanks (domain.SameReferenceName), so a second row is not added.
+func TestGenerationRepository_SaveReferencePackMatchesWorldEntityNamesIgnoringCase(t *testing.T) {
+	ctx := context.Background()
+	f := newGenRepoFixture(t)
+	_, err := f.repo.SavePromptedSpec(ctx, f.shotID, domain.ShotSpec{ShotObjective: "x", Camera: domain.SpecCamera{Framing: "wide"}}, nil, nil)
+	require.NoError(t, err)
+	require.NoError(t, f.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, `INSERT INTO character (id, project_id, name) VALUES ('c1', ?, 'Mio')`, f.projectID)
+		return err
+	}))
+
+	save := func(id, name string) {
+		require.NoError(t, f.repo.SaveReferencePack(ctx, repository.NewReferencePack{
+			ProjectID: f.projectID, ShotID: f.shotID,
+			References: []domain.Reference{{Kind: domain.RefCharacter, Name: name, AssetID: id, Prompt: "p", Model: domain.ModelNanoBanana}},
+			Assets:     []domain.Asset{{ID: id, ProjectID: f.projectID, Type: domain.AssetReference, FilePath: "p/" + id + ".png", MimeType: "image/png"}},
+		}))
+	}
+	save("r1", "mio")
+	save("r2", " MIO ")
+	save("r3", "Ren")
+
+	var names []string
+	rows, err := f.db.Reader().QueryContext(ctx, `SELECT name FROM character WHERE project_id = ? ORDER BY name`, f.projectID)
+	require.NoError(t, err)
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var n string
+		require.NoError(t, rows.Scan(&n))
+		names = append(names, n)
+	}
+	assert.Equal(t, []string{"Mio", "Ren"}, names)
+}
+
 func TestGenerationRepository_AddCostCountsInTheBudget(t *testing.T) {
 	ctx := context.Background()
 	f := newGenRepoFixture(t)

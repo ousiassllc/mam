@@ -353,12 +353,26 @@ func ensureWorldEntity(ctx context.Context, tx *sql.Tx, projectID, branchID stri
 	if name == "" {
 		return nil
 	}
-	var one int
-	err := tx.QueryRowContext(ctx, `SELECT 1 FROM `+table+` WHERE project_id = ? AND branch_id IS ? AND name = ? LIMIT 1`, projectID, nullIfEmpty(branchID), name).Scan(&one) //nolint:gosec // table is from worldTables
-	if err == nil {
-		return nil
+	// "Mio" and "mio " name the same entity (domain.SameReferenceName): SQLite's = and NOCASE would
+	// tell them apart (and only fold ASCII), so the names are compared here.
+	rows, err := tx.QueryContext(ctx, `SELECT name FROM `+table+` WHERE project_id = ? AND branch_id IS ?`, projectID, nullIfEmpty(branchID)) //nolint:gosec // table is from worldTables
+	if err != nil {
+		return err
 	}
-	if !errors.Is(err, sql.ErrNoRows) {
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var existing string
+		if err := rows.Scan(&existing); err != nil {
+			return err
+		}
+		if domain.SameReferenceName(existing, name) {
+			return nil
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	if err := rows.Close(); err != nil {
 		return err
 	}
 	_, err = tx.ExecContext(ctx, `INSERT INTO `+table+` (id, project_id, branch_id, name) VALUES (?, ?, ?, ?)`, domain.NewID(), projectID, nullIfEmpty(branchID), name) //nolint:gosec // table is from worldTables
