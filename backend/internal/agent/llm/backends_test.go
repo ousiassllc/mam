@@ -171,11 +171,13 @@ func TestLoadConfig_FileOverridesOnlyWhatItSets(t *testing.T) {
 
 func TestLoadConfig_RejectsBadFiles(t *testing.T) {
 	for name, content := range map[string]string{
-		"unknown key":      `{"route": {}}`,
-		"unknown provider": `{"routes": {"writer": {"primary": {"provider": "acme", "model": "m"}, "fallback": {"provider": "openai", "model": "m"}}}}`,
-		"empty model":      `{"routes": {"writer": {"primary": {"provider": "openai", "model": ""}, "fallback": {"provider": "google", "model": "m"}}}}`,
-		"bad retry":        `{"retry": {"max_attempts": 0, "base_delay_ms": 1, "max_delay_ms": 1}}`,
-		"not json":         `nope`,
+		"unknown key":          `{"route": {}}`,
+		"unknown provider":     `{"routes": {"writer": {"primary": {"provider": "acme", "model": "m"}, "fallback": {"provider": "openai", "model": "m"}}}}`,
+		"empty model":          `{"routes": {"writer": {"primary": {"provider": "openai", "model": ""}, "fallback": {"provider": "google", "model": "m"}}}}`,
+		"unknown agent":        `{"routes": {"writter": {"primary": {"provider": "openai", "model": "m"}, "fallback": {"provider": "google", "model": "m"}}}}`,
+		"unknown provider key": `{"providers": {"opneai": {"base_url": "http://x"}}}`,
+		"bad retry":            `{"retry": {"max_attempts": 0, "base_delay_ms": 1, "max_delay_ms": 1}}`,
+		"not json":             `nope`,
 	} {
 		path := filepath.Join(t.TempDir(), "llm.json")
 		require.NoError(t, os.WriteFile(path, []byte(content), 0o600))

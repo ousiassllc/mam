@@ -263,6 +263,38 @@ func (c Config) Validate() error {
 			errs = append(errs, fmt.Errorf("vendor %s: base_url, max_concurrency and timeout_seconds must be set", v))
 		}
 	}
+	// A typo in the key of a map entry would otherwise change nothing without a word.
+	for m, mc := range c.Models {
+		caps, video := Capabilities(m)
+		if !slices.Contains(domain.ImageModels(), m) && !video {
+			errs = append(errs, fmt.Errorf("models: %q is not an image or video model", m))
+		}
+		for res := range mc.CostPerSecond {
+			if video && !caps.SupportsResolution(res) {
+				errs = append(errs, fmt.Errorf("models %s: cost_per_second_usd: %q is not a resolution of the model", m, res))
+			}
+		}
+	}
+	for p := range c.Images {
+		if !slices.Contains(ImagePurposes(), p) {
+			errs = append(errs, fmt.Errorf("images: %q is not an image purpose", p))
+		}
+	}
+	for q := range c.Policies {
+		if !q.Valid() {
+			errs = append(errs, fmt.Errorf("policies: %q is not a Quality Policy", q))
+		}
+	}
+	for q := range c.Routing.Weights {
+		if !q.Valid() {
+			errs = append(errs, fmt.Errorf("routing weights: %q is not a Quality Policy", q))
+		}
+	}
+	for q := range c.Routing.Candidates {
+		if !q.Valid() {
+			errs = append(errs, fmt.Errorf("routing candidates: %q is not a Quality Policy", q))
+		}
+	}
 	image := func(where string, t ImageTarget) {
 		mc, ok := c.Models[t.Model]
 		if !slices.Contains(domain.ImageModels(), t.Model) || !ok || mc.Model == "" {
