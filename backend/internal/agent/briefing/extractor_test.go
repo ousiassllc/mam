@@ -35,6 +35,22 @@ func TestRuleExtractor_Duration(t *testing.T) {
 	}
 }
 
+func TestRuleExtractor_AspectRatio(t *testing.T) {
+	tests := []struct{ text, want string }{
+		{"10:30 に公開する縦型15秒", "9:16"},
+		{"10:30 に公開する動画", ""},
+		{"4:3 の横型", "16:9"},
+		{"21:9 で作りたい", ""},
+		{"公開は10:30、比率は1:1", "1:1"},
+		{"16:9 のCM", "16:9"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.text, func(t *testing.T) {
+			assert.Equal(t, tt.want, briefing.RuleExtractor{}.Extract(tt.text).AspectRatio)
+		})
+	}
+}
+
 func TestRuleExtractor_Extract(t *testing.T) {
 	tests := []struct {
 		name string
