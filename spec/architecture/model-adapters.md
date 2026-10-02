@@ -221,7 +221,7 @@ M1（F-14、Issue #10）で実装する Repair / Retake Loop の判断部分。�
 
 M1 は §5 のうち ElevenLabs の TTS（Dialogue / Narration）とローカル DSP（ffmpeg）のみを実装した。BGM・SE・Foley・Ambience・Lip Sync・音声クローンは M3 で追加した（§14）。M1 の簡易音声から M3 の Audio Director への移行は §14.6。
 
-- **認証**: 設定画面の API キー（`credential.Store` のプロバイダー名 `elevenlabs`）。ヘッダー `xi-api-key`。キーがなければ音声生成は 502（「ElevenLabs の API キーが設定されていません」）
+- **認証**: 設定画面の API キー（`credential.Store` のプロバイダー名 `elevenlabs`）。ヘッダー `xi-api-key`。キーがなければ、台詞行があるときの音声生成は 502（「ElevenLabs の API キーが設定されていません」。Planner の前に確認する）。台詞行が無いときは確認せず、キーが要る層を skip（`SkipError`）して Audio Timeline を保存し 200 を返す
 - **TTS**: `POST {base}/v1/text-to-speech/{voice_id}`（既定 base `https://api.elevenlabs.io`、モデル `eleven_multilingual_v2`、日本語対応）。Dialogue と Narration はそれぞれ別の voice ID（既定は ElevenLabs の premade voice）。応答の音声（mp3）をそのままファイルにし、ffmpeg で扱う。429 はレート制限として利用者に伝え、リトライは行わない
 - **ミキシング・ラウドネス正規化**: すべてローカルの ffmpeg（外部 API を呼ばない）。TTS の行を `adelay` で Scene の開始時刻に置き、Take 自体の音声と `amix` で 1 本にし、`loudnorm` を 2 パス（測定 → 測定値を渡して線形補正）で −14 LUFS / −1.5 dBTP に揃える。測定値を Audio Timeline に保存する
 - **コスト**: M3 以降は Audio Director が TTS を含む音声の呼び出しを見積額で `cost_ledger_entry` に記録する（§14.5）
@@ -382,3 +382,4 @@ MAX QUALITY のみ。話者付きの Dialogue の行（Narration は対象外）
 | 1.22 | 2026-10-01 | §12 のコストの記述を、「TTS は `cost_ledger_entry` に記録しない」から「Audio Director が TTS を含む音声の呼び出しを見積額で記録する（§14.5）」に直した | 実装（`audiodirector/cost.go` の `spending.record`）は TTS・Music・SFX・Lip Sync の呼び出しごとに台帳へ書き、§6・§14.5 の記述と矛盾していたため（Issue #217） |
 | 1.23 | 2026-10-01 | §14.4 の Lip Sync 動画の保存先を `audio/<edit_timeline_id>/…` から `<project_id>/audio/<edit_timeline_id>/<run>/lipsync-NN.mp4`（assets 直下からの相対パス）に直した | 実装（`audiodirector/director.go` の `rel: path.Join(in.ProjectID, "audio", …)`）は Project ID を先頭に付けており、`er.md` の `<project_id>/exports/…` と同じ流儀のため（Issue #219） |
 | 1.24 | 2026-10-02 | §14.6 の「Final QC と書き出しが使うのは主系列トランクの最新版」を、「Final QC は主系列トランクの最新版を検査し、書き出しは `branch_id`（省略時=主系列トランク）の Edit / Audio Timeline を使う」に直した | 書き出しは `branch_id` で指定した Branch のタイムラインを書き出す実装（`spec/api/endpoints.md` §2.6、変更履歴 1.48）で、Final QC だけがトランク固定のため（Issue #244） |
+| 1.25 | 2026-10-02 | §14 の ElevenLabs 認証に、キー未設定の 502 は台詞行があるときだけで、台詞行が無ければキーが要る層を skip して 200 を返すことを明記した | 実装（`audiodirector.Director`）に合わせるため（Issue #379） |
