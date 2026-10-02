@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -28,8 +27,8 @@ func NewReferenceRepository(db *DB) *ReferenceRepository {
 	return &ReferenceRepository{db: db, now: time.Now}
 }
 
-// ReferenceFilter narrows a Library listing. Every set field must match. Query is a case-insensitive
-// part of the name or of a tag, Tag is one whole tag (ignoring case).
+// ReferenceFilter narrows a Library listing. Every set field must match. Query is a part of the name
+// or of a tag, Tag is one whole tag, both ignoring case (domain.ReferenceItem.Matches).
 type ReferenceFilter struct {
 	Query string
 	Kind  domain.ReferenceKind
@@ -58,11 +57,6 @@ func scanReferenceItem(row rowScanner) (domain.ReferenceItem, error) {
 	return it, nil
 }
 
-// escapeLike escapes the wildcards of a LIKE pattern (used with ESCAPE '\').
-func escapeLike(s string) string {
-	return strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(s)
-}
-
 // List returns the Library of the Project matching the filter, newest first.
 func (r *ReferenceRepository) List(ctx context.Context, projectID string, f ReferenceFilter) ([]domain.ReferenceItem, error) {
 	q := referenceSelect + ` WHERE project_id = ?`
@@ -70,15 +64,6 @@ func (r *ReferenceRepository) List(ctx context.Context, projectID string, f Refe
 	if f.Kind != "" {
 		q += ` AND kind = ?`
 		args = append(args, string(f.Kind))
-	}
-	if f.Tag != "" {
-		q += ` AND EXISTS (SELECT 1 FROM json_each(reference_item.tags) WHERE value = ? COLLATE NOCASE)`
-		args = append(args, f.Tag)
-	}
-	if f.Query != "" {
-		like := "%" + escapeLike(f.Query) + "%"
-		q += ` AND (name LIKE ? ESCAPE '\' OR EXISTS (SELECT 1 FROM json_each(reference_item.tags) WHERE value LIKE ? ESCAPE '\'))`
-		args = append(args, like, like)
 	}
 	q += ` ORDER BY created_at DESC, id DESC`
 	rows, err := r.db.Reader().QueryContext(ctx, q, args...) //nolint:gosec // q is assembled from constants; only the arguments are data
@@ -92,7 +77,10 @@ func (r *ReferenceRepository) List(ctx context.Context, projectID string, f Refe
 		if err != nil {
 			return nil, err
 		}
-		items = append(items, it)
+		// Query and Tag are matched here: SQLite folds the case of ASCII only.
+		if it.Matches(f.Query, f.Tag) {
+			items = append(items, it)
+		}
 	}
 	return items, rows.Err()
 }

@@ -89,6 +89,21 @@ func ParseTags(input string) ([]string, error) {
 	return tags, nil
 }
 
+// Matches reports whether the entry passes the Library search: query is a part of the name or of a
+// tag, tag is one whole tag. Both ignore case by Unicode simple folding (the rule ParseTags uses to
+// drop repeated tags), not only for ASCII. An empty query or tag matches everything.
+func (it ReferenceItem) Matches(query, tag string) bool {
+	if tag != "" && !slices.ContainsFunc(it.Tags, func(t string) bool { return strings.EqualFold(t, tag) }) {
+		return false
+	}
+	if query == "" {
+		return true
+	}
+	q := strings.ToLower(query)
+	return strings.Contains(strings.ToLower(it.Name), q) ||
+		slices.ContainsFunc(it.Tags, func(t string) bool { return strings.Contains(strings.ToLower(t), q) })
+}
+
 // SameReferenceName compares the names of two references the way the Reference Pack matches them:
 // ignoring case and surrounding space.
 func SameReferenceName(a, b string) bool {
