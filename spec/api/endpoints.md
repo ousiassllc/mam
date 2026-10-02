@@ -240,8 +240,8 @@ M2 の入出力契約（Issue #15）:
 
 | Method | Path | 概要 | 対応機能 |
 |---|---|---|---|
-| POST | `/projects/:id/notes` | Project メモ作成。Body `title`、`content`、`category`（任意、省略時は AI が分類）、`pinned`（任意）。チャットからは `POST /projects/:id/messages` の Command Interpreter が同じ処理を呼ぶ（`source=chat`）。作成後、State Extractor が昇格提案を非同期で生成する | F-31 |
-| POST | `/series/:id/notes` | Series 正本メモ作成（昇格提案は生成しない） | F-31, F-29 |
+| POST | `/projects/:id/notes` | Project メモ作成。Body `title`（任意、100 文字以内。空なら本文 1 行目の先頭 30 文字、超えれば省略記号付き）、`content`（必須、4000 文字以内）、`category`（任意、省略時は AI が分類）、`pinned`（任意）。title の超過、content の空・超過、不正な `category` は 422。チャットからは `POST /projects/:id/messages` の Command Interpreter が同じ処理を呼ぶ（`source=chat`）。作成後、State Extractor が昇格提案を非同期で生成する | F-31 |
+| POST | `/series/:id/notes` | Series 正本メモ作成（Body と 422 は `POST /projects/:id/notes` と同じ。昇格提案は生成しない） | F-31, F-29 |
 | PUT | `/notes/:id` | メモ更新。`title`/`content` が変わる場合は新しい `note_version` を追記する（Project スコープは昇格提案を再生成）。`category`/`pinned`/`archived`（`false` でアーカイブ解除）は行を更新し、バージョンは増えない。Series 正本の更新はコピー済みの Episode へ伝播しない | F-31, F-28 |
 | DELETE | `/notes/:id` | メモをアーカイブ（`archived_at` を設定。以降の推論文脈には渡さない） | F-31 |
 | POST | `/notes/:id/versions/:versionNumber/restore` | 指定バージョンの内容を新しい `note_version` として追記して復元 | F-31, F-28 |
@@ -466,3 +466,4 @@ Notes:
 | 1.78 | 2026-10-02 | §0 のエラー方針に、共通ミドルウェア（Loopback・CSRF・MaxBody）が先に返す 400 / 403 / 413 は `/api/v1` でも JSON `{"error": string}`（理由が無ければ空本文）で、RFC 7807 はハンドラ内の Huma エラーだけであることを追記した | 実装（`middleware.abortWith`）は Huma より前に全ルートへ掛かり、非 HTMX には `{"error": ...}` を返すが、仕様は API ルートのエラーを一律 RFC 7807 と書いていたため（Issue #393） |
 | 1.79 | 2026-10-02 | §2.11 の `POST /shots/:id/references` に、Style / Lighting は名前に関係なく種別だけで置き換えることと、409 は GENERATING / REPAIRING / JUDGING の Shot であることを明記した | 実装（`domain.SameReference` と `ShotState.CanPinReference`）は仕様の「同じ種別・同じ名前」「生成中」より広く置換・拒否しており、`spec/spec.md` §10.1 の規則が endpoints.md に無かったため（Issue #345 / #390） |
 | 1.80 | 2026-10-02 | §2.3 の `POST /takes/:id/repair` に、Edit-Level Repair だけは新しい Take を作らず Judge もしない（`resulting_take_id` は NULL のまま）例外を明記した | 実装は Edit-Level Repair で動画モデルを呼ばず、チャットの案内と Selected Take の採用だけを行う（`model-adapters.md` §11.3、`er.md`）のに、この行は全戦略が Take を作ると読めた（Issue #378） |
+| 1.81 | 2026-10-02 | §2.10 の `POST /projects/:id/notes`（と Series 版）に、title は任意で空なら本文 1 行目から作ること、title 100 文字・content 1〜4000 文字の上限と 422 を追記した | 実装（`NoteService.create`、`domain.MaxNoteTitleRunes` / `MaxNoteContentRunes`）が title の省略を許し上限で 422 にしているのに仕様に無かったため（Issue #387） |
