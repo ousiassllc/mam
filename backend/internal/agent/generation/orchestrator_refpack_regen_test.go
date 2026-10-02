@@ -224,6 +224,36 @@ func TestOrchestrator_RegenerateMakesOneNewTakeWithoutTouchingTheOld(t *testing.
 	}
 }
 
+func TestOrchestrator_RegenerateWarnsAboutLowDiskButStillMakesTheTake(t *testing.T) {
+	cases := []struct {
+		name     string
+		free     func(string) (uint64, error)
+		wantWarn bool
+	}{
+		{"not enough space", func(string) (uint64, error) { return 1024, nil }, true},
+		{"plenty of space", func(string) (uint64, error) { return 1 << 40, nil }, false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			f := newFixture(t, options{freeBytes: c.free})
+			require.NoError(t, f.generate(t, ""))
+			before := len(f.chat.ofKind(domain.KindText))
+
+			id, err := f.orch.Regenerate(context.Background(), f.ref(t), generation.Regeneration{Action: domain.RepairFullRetake})
+
+			require.NoError(t, err, "a low disk warns, it does not stop the repair")
+			require.NotEmpty(t, id)
+			warnings := f.chat.ofKind(domain.KindText)
+			if !c.wantWarn {
+				assert.Len(t, warnings, before)
+				return
+			}
+			require.Len(t, warnings, before+1)
+			assert.Contains(t, warnings[before].Content, "ディスクの空き容量")
+		})
+	}
+}
+
 func TestOrchestrator_RegeneratePromptGetsTheIssuesAndInstructions(t *testing.T) {
 	f := generated(t, options{})
 
