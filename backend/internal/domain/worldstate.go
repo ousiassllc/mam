@@ -220,6 +220,10 @@ type ReferenceSlot struct {
 	Column string        // the column of the entity table
 }
 
+// Field is the name of the slot in the World State snapshot (world_state_version.state): "face_reference",
+// "body_reference", "geometry_reference", "label_reference" or "layout_reference".
+func (s ReferenceSlot) Field() string { return s.Name + "_reference" }
+
 // ReferenceSlots lists every slot.
 func ReferenceSlots() []ReferenceSlot {
 	return []ReferenceSlot{

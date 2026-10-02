@@ -274,3 +274,56 @@ func TestWorldRepository_AssignReferenceHonoursLockAndAppendsAVersion(t *testing
 	layout, _ := domain.FindReferenceSlot(domain.TargetLocation, "layout")
 	assert.ErrorIs(t, f.world.AssignReference(ctx, f.projectID, "", layout, "missing", x), repository.ErrNotFound)
 }
+
+// A World State version carries the reference image slots (face_reference ... layout_reference), so the
+// restore puts them back too, honours the LOCK of the attribute the slot belongs to, and a version whose
+// image is gone leaves the slot as it is (#359).
+func TestVersionRepository_RestoreWorldStateBringsTheReferenceSlotsBack(t *testing.T) {
+	ctx := context.Background()
+	f := newLibraryFixture(t)
+	versions := repository.NewVersionRepository(f.db)
+	face, _ := domain.FindReferenceSlot(domain.TargetCharacter, "face")
+	layout, _ := domain.FindReferenceSlot(domain.TargetLocation, "layout")
+	x := f.upload(t, domain.RefCharacter, "Mio").AssetID
+	y := f.upload(t, domain.RefCharacter, "Mio 2").AssetID
+	l1 := f.upload(t, domain.RefLocation, "Street").AssetID
+
+	require.NoError(t, f.world.AssignReference(ctx, f.projectID, "", face, f.charID, x))
+	require.NoError(t, f.world.AssignReference(ctx, f.projectID, "", layout, f.locID, l1)) // version 2: face x, layout l1
+	require.NoError(t, f.world.AssignReference(ctx, f.projectID, "", face, f.charID, y))
+	require.NoError(t, f.world.AssignReference(ctx, f.projectID, "", layout, f.locID, ""))
+	slots := func() (string, string) {
+		w, err := f.world.World(ctx, f.projectID, "")
+		require.NoError(t, err)
+		return w.Characters[0].FaceReferenceAssetID, w.Locations[0].LayoutReferenceAssetID
+	}
+	gotFace, gotLayout := slots()
+	require.Equal(t, y, gotFace)
+	require.Empty(t, gotLayout)
+
+	// A LOCKed identity refuses the restore and nothing is written.
+	require.NoError(t, f.world.SetFieldLock(ctx, f.projectID, "", domain.TargetCharacter, f.charID, "identity", domain.LockLocked))
+	_, err := versions.RestoreWorldStateVersion(ctx, f.projectID, "", 2)
+	assert.ErrorIs(t, err, repository.ErrLocked)
+	gotFace, gotLayout = slots()
+	assert.Equal(t, y, gotFace)
+	assert.Empty(t, gotLayout)
+	require.NoError(t, f.world.SetFieldLock(ctx, f.projectID, "", domain.TargetCharacter, f.charID, "identity", domain.LockAuto))
+
+	n, err := versions.RestoreWorldStateVersion(ctx, f.projectID, "", 2)
+	require.NoError(t, err)
+	gotFace, gotLayout = slots()
+	assert.Equal(t, x, gotFace)
+	assert.Equal(t, l1, gotLayout)
+	w, _ := f.world.World(ctx, f.projectID, "")
+	assert.Equal(t, n, w.Version, "the restore is a new version that carries the slots")
+	assert.Equal(t, x, w.Characters[0].FaceReferenceAssetID)
+
+	// An image that no longer exists is not pointed at again.
+	require.NoError(t, f.world.AssignReference(ctx, f.projectID, "", face, f.charID, y))
+	require.NoError(t, exec(t, f.db, `DELETE FROM asset WHERE id = ?`, x))
+	_, err = versions.RestoreWorldStateVersion(ctx, f.projectID, "", 2)
+	require.NoError(t, err)
+	gotFace, _ = slots()
+	assert.Equal(t, y, gotFace)
+}
