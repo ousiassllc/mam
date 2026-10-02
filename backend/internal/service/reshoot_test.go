@@ -312,6 +312,44 @@ func TestEditorReshootLoop_APartialTakeUseOfTheLastShotReturnsToTheEditor(t *tes
 	assert.Equal(t, newShot, view.Timeline.Clips[1].ShotID)
 }
 
+// A Branch that hangs from an additional Shot of the trunk inherits it. Its Rough Cut treats it as an
+// additional Shot all the same: while its round is open it is not a story Shot that needs a Selected
+// Take (no 422 for the whole cut), and once applied it follows its anchor with the kind of its request
+// (#326).
+func TestRoughCut_ABranchTreatsAnInheritedAdditionalShotAsAdditional(t *testing.T) {
+	f, _ := editedFixture(t)
+	ctx := context.Background()
+	require.Eventually(t, func() bool { return f.trunkShots(t) == 2 }, 10*time.Second, 10*time.Millisecond)
+	f.execSQL(t, `UPDATE project SET mode = 'director' WHERE id = ?`, f.projectID)
+	f.waitJobsDone(t)
+	var newShot string
+	require.NoError(t, f.query(t, `SELECT id FROM shot WHERE id <> ?`, f.shotID).Scan(&newShot))
+	require.Eventually(t, func() bool {
+		return f.count(t, `SELECT COUNT(*) FROM take t JOIN prompt_version pv ON pv.id = t.prompt_version_id WHERE pv.shot_id = ?`, newShot) > 0
+	}, 30*time.Second, 10*time.Millisecond)
+	branch, err := f.svc.Branch.Create(ctx, newShot, service.BranchInput{})
+	require.NoError(t, err)
+	branchID := branch.Branch.ID
+	f.execSQL(t, `UPDATE project SET state = 'VISUAL_DESIGN' WHERE id = ?`, f.projectID)
+
+	// The round of the trunk is still open: the additional Shot has no Selected Take.
+	view, err := f.svc.Editor.RoughCut(ctx, f.projectID, branchID)
+	require.NoError(t, err, "an open round of the series it hangs from does not refuse the Branch's Rough Cut")
+	require.Len(t, view.Timeline.Clips, 1)
+	assert.Equal(t, f.shotID, view.Timeline.Clips[0].ShotID)
+
+	// The round is applied on the trunk: the Branch's Rough Cut places the Shot after its anchor, as a reaction.
+	f.selectTakeOf(t, newShot)
+	require.Eventually(t, func() bool { return f.count(t, `SELECT COUNT(*) FROM reshoot_request WHERE status = 'applied'`) == 1 }, 10*time.Second, 10*time.Millisecond)
+	f.execSQL(t, `UPDATE project SET state = 'VISUAL_DESIGN' WHERE id = ?`, f.projectID)
+	view, err = f.svc.Editor.RoughCut(ctx, f.projectID, branchID)
+	require.NoError(t, err)
+	require.Len(t, view.Timeline.Clips, 2)
+	assert.Equal(t, f.shotID, view.Timeline.Clips[0].ShotID)
+	assert.Equal(t, newShot, view.Timeline.Clips[1].ShotID)
+	assert.Equal(t, domain.ClipReaction, view.Timeline.Clips[1].Kind)
+}
+
 func TestEditorReshootLoop_StartFailureDoesNotLeaveAPendingRound(t *testing.T) {
 	f := newGenFixture(t, true)
 	f.llm.extractor = extractAnswer
