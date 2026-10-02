@@ -371,8 +371,9 @@ func (s *EditorService) autoJudgeReshot(ctx context.Context, projectID string, v
 }
 
 // applyRound puts the Shots of one round into the latest Edit Timeline of the series, each after
-// the Shot it follows, as one new version. A round whose Shots are not all ready waits; the version
-// is nil when nothing was applied.
+// the Shot it follows, as one new version, and takes the Project back to EDITING. A round whose
+// Shots are not all ready waits, and so does a round of a Project that cannot be edited (READY,
+// EXPORTED, AWAITING_APPROVAL); the version is nil when nothing was applied.
 func (s *EditorService) applyRound(ctx context.Context, projectID, branchID string, reqs []domain.ReshootRequest) (*domain.EditTimelineVersion, error) {
 	sources, err := s.roundSources(ctx, projectID, branchID, reqs)
 	if err != nil || sources == nil {
@@ -393,15 +394,24 @@ func (s *EditorService) applyRound(ctx context.Context, projectID, branchID stri
 	for i, r := range reqs {
 		ids[i] = r.ID
 	}
+	// The state goes first, as in Rough Cut and SaveTimeline: a Project that cannot be edited (READY /
+	// EXPORTED were judged, mixed and checked for the version they have; AWAITING_APPROVAL waits for the
+	// user) keeps its Edit Timeline, and the round waits for the Project to be edited again.
+	project, err := s.getProject(ctx, projectID)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.toEditing(ctx, project); err != nil {
+		if errors.Is(err, ErrConflict) {
+			return nil, nil
+		}
+		return nil, err
+	}
 	ver, err := s.editors.SaveReshootApplied(ctx, projectID, branchID, latest.ID, tl, ids)
 	if err != nil {
 		if errors.Is(err, repository.ErrStale) || errors.Is(err, repository.ErrConflict) {
 			return nil, nil // edited or applied meanwhile: the next trigger looks again
 		}
-		return nil, err
-	}
-	project, err := s.getProject(ctx, projectID)
-	if err != nil {
 		return nil, err
 	}
 	msg := fmt.Sprintf("追加 Shot %d 件を編集タイムラインに入れました。編集に戻ります。", len(reqs))
@@ -411,7 +421,7 @@ func (s *EditorService) applyRound(ctx context.Context, projectID, branchID stri
 		msg += "タイムラインを確認して、もう一度 Editor Judge を実行してください。"
 	}
 	s.announce(ctx, projectID, msg)
-	return &ver, s.toEditing(ctx, project)
+	return &ver, nil
 }
 
 // roundSources reads the Selected Take of every Shot of the round. It is nil (and the error nil)

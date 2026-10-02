@@ -238,6 +238,45 @@ func TestEditorReshootLoop_DirectorProjectIsNotJudgedAutomatically(t *testing.T)
 
 // A generation that cannot start (the Shot ceiling cannot buy one Take) must not leave the round
 // pending: the same timeline can be asked again once the budget allows it.
+// A Project that went on to READY / EXPORTED with a round still open (the user edited the timeline
+// meanwhile) is not touched when the round's last Take is selected: a new Edit Timeline version would
+// leave the Audio Timeline and the export on the old edit. The round waits until the Project is
+// edited again.
+func TestEditorReshootLoop_AReadyOrExportedProjectKeepsItsEditTimeline(t *testing.T) {
+	for _, state := range []domain.ProjectState{domain.StateReady, domain.StateExported, domain.StateAwaitingApproval} {
+		t.Run(string(state), func(t *testing.T) {
+			f, judged := editedFixture(t)
+			ctx := context.Background()
+			require.Eventually(t, func() bool { return f.trunkShots(t) == 2 }, 10*time.Second, 10*time.Millisecond)
+			f.execSQL(t, `UPDATE project SET mode = 'director' WHERE id = ?`, f.projectID)
+			f.waitJobsDone(t)
+			var newShot string
+			require.NoError(t, f.query(t, `SELECT id FROM shot WHERE id <> ?`, f.shotID).Scan(&newShot))
+			require.Eventually(t, func() bool {
+				return f.count(t, `SELECT COUNT(*) FROM take t JOIN prompt_version pv ON pv.id = t.prompt_version_id WHERE pv.shot_id = ?`, newShot) > 0
+			}, 30*time.Second, 10*time.Millisecond)
+			f.execSQL(t, `UPDATE project SET state = ? WHERE id = ?`, string(state), f.projectID)
+
+			f.selectTakeOf(t, newShot)
+			time.Sleep(300 * time.Millisecond)
+
+			assert.Equal(t, state, f.state(t))
+			view, err := f.svc.Editor.View(ctx, f.projectID, "")
+			require.NoError(t, err)
+			assert.Equal(t, judged.VersionNumber, view.Timeline.VersionNumber, "no new version is saved")
+			assert.Equal(t, 1, f.count(t, `SELECT COUNT(*) FROM reshoot_request WHERE status = 'requested'`), "the round stays open")
+
+			f.execSQL(t, `UPDATE project SET state = 'EDITING' WHERE id = ?`, f.projectID)
+			f.svc.Editor.ResumeEditing()
+			require.Eventually(t, func() bool {
+				v, err := f.svc.Editor.View(ctx, f.projectID, "")
+				return err == nil && v.Timeline.VersionNumber == judged.VersionNumber+1
+			}, 10*time.Second, 10*time.Millisecond, "the round goes into the timeline once the Project is edited again")
+			assert.Zero(t, f.count(t, `SELECT COUNT(*) FROM reshoot_request WHERE status = 'requested'`))
+		})
+	}
+}
+
 func TestEditorReshootLoop_StartFailureDoesNotLeaveAPendingRound(t *testing.T) {
 	f := newGenFixture(t, true)
 	f.llm.extractor = extractAnswer
