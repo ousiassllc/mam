@@ -277,3 +277,28 @@ func TestFinalQC_TheBranchEditorPageKeepsItsBranchScopeInTheAnswer(t *testing.T)
 	trunk := e.get("/projects/"+e.project+"/edit", false).Body.String()
 	assert.NotContains(t, trunk, "data-qc-trunk-note")
 }
+
+// A Branch panel offers Final QC by the audio of the trunk, which is what the server inspects (#340).
+func TestFinalQC_TheBranchPanelFollowsTheAudioOfTheTrunk(t *testing.T) {
+	e := toAudio(t)
+	rec := e.form(http.MethodPost, "/shots/"+e.shotID+"/branch", url.Values{"name": {"逃げる"}})
+	require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
+	branchID := strings.TrimPrefix(rec.Header().Get("HX-Redirect"), "/branches/")
+	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/projects/"+e.project+"/edit/rough-cut", url.Values{"branch_id": {branchID}}).Code)
+	e.setState("AUDIO")
+	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/projects/"+e.project+"/audio/generate", url.Values{"branch_id": {branchID}}).Code)
+	e.setState("AUDIO")
+
+	finalQC := regexp.MustCompile(`<button[^>]*hx-post="/projects/` + e.project + `/final-qc"[^>]*>`)
+	disabled := regexp.MustCompile(`\sdisabled[\s=>]`)
+	page := e.get("/projects/"+e.project+"/edit?branch_id="+branchID, false).Body.String()
+	assert.Regexp(t, disabled, finalQC.FindString(page), "the Branch has audio, the trunk has none: Final QC would be refused")
+	assert.Contains(t, page, "data-qc-trunk-missing")
+	assert.Equal(t, http.StatusConflict, e.form(http.MethodPost, "/projects/"+e.project+"/final-qc", url.Values{"branch_id": {branchID}}).Code)
+
+	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/projects/"+e.project+"/audio/generate", nil).Code)
+	e.setState("AUDIO")
+	page = e.get("/projects/"+e.project+"/edit?branch_id="+branchID, false).Body.String()
+	assert.NotRegexp(t, disabled, finalQC.FindString(page))
+	assert.NotContains(t, page, "data-qc-trunk-missing")
+}

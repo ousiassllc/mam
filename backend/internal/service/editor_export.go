@@ -108,7 +108,7 @@ func (s *EditorService) Export(ctx context.Context, projectID string, in ExportI
 	if err != nil {
 		return EditorView{}, err
 	}
-	if project.State != domain.StateReady && project.State != domain.StateExported {
+	if !project.State.CanExport() {
 		return EditorView{}, conflict("書き出せるのは Final QC に合格した後（READY）です（現在: %s）", project.State)
 	}
 	opts, err := s.exportOptions(ctx, projectID, in)
@@ -174,7 +174,7 @@ func (s *EditorService) renderExport(ctx context.Context, projectID, branchID st
 	if err != nil {
 		return domain.Export{}, notFound(err)
 	}
-	if audio.Timeline.EditTimelineID != edit.ID {
+	if !audio.CurrentFor(edit.ID) {
 		return domain.Export{}, conflict("音声が最新の編集に対して作られていません。音声を作り直してください")
 	}
 	cuts, err := s.cuts(ctx, edit.Timeline, audio.Timeline.LipSync)

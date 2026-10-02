@@ -407,6 +407,13 @@ type AudioTimelineVersion struct {
 	CreatedAt     time.Time
 }
 
+// CurrentFor reports whether the audio was made for the Edit Timeline version editID, the latest one
+// of its series. A nil audio (none made) is not current. An export of the series is refused (409)
+// unless it holds, and the export button of the editor panel is drawn from the same answer.
+func (a *AudioTimelineVersion) CurrentFor(editID string) bool {
+	return a != nil && editID != "" && a.Timeline.EditTimelineID == editID
+}
+
 // FinalQCVerdict is the result of Final QC.
 type FinalQCVerdict string
 
