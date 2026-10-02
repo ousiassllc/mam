@@ -100,3 +100,57 @@ func TestHandle_TheShotIsGivenBackBeforeDoneOrFailedIsAnnounced(t *testing.T) {
 		})
 	}
 }
+
+// The Take card is already in the thread when the result is saved: the runner says so after the
+// result and its announcement are stored (and not at all when judging fails and nothing is saved).
+func TestHandle_TellsWhichTakeWasJudgedOnlyWhenAResultWasSaved(t *testing.T) {
+	tests := []struct {
+		name     string
+		frameErr error
+		want     []string
+	}{
+		{"judged", nil, []string{"t1"}},
+		{"failed", errors.New("ffprobe exploded"), nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			db, err := repository.Open(ctx, filepath.Join(t.TempDir(), "mam.db"), nil)
+			require.NoError(t, err)
+			t.Cleanup(func() { _ = db.Close() })
+			require.NoError(t, db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
+				for _, q := range []string{
+					`INSERT INTO project (id, mode, confirmation_level, production_template, quality_policy) VALUES ('p1', 'auto', 'full_auto', 'product_cm', 'balanced')`,
+					`INSERT INTO scene (id, project_id, title, order_index) VALUES ('sc1', 'p1', 'S', 0)`,
+					`INSERT INTO shot (id, scene_id, objective, duration_seconds, order_index) VALUES ('sh1', 'sc1', 'run', 4, 0)`,
+					`INSERT INTO prompt_version (id, shot_id, version_number, shot_spec_snapshot) VALUES ('pv1', 'sh1', 1, '{"shot_objective":"A woman runs","camera":{"framing":"medium"}}')`,
+					`INSERT INTO take (id, prompt_version_id, model_name, file_path) VALUES ('t1', 'pv1', 'kling-3.0', 'p1/a.mp4')`,
+				} {
+					if _, err := tx.ExecContext(ctx, q); err != nil {
+						return err
+					}
+				}
+				return nil
+			}))
+			assets := t.TempDir()
+			require.NoError(t, os.MkdirAll(filepath.Join(assets, "p1"), 0o750))
+			require.NoError(t, os.WriteFile(filepath.Join(assets, "p1", "a.mp4"), []byte("video"), 0o600))
+
+			rig := newRig(t, passAnswer, false, steady()...)
+			rig.frames.err = tt.frameErr
+			judges := repository.NewJudgeRepository(db)
+			var judged []string
+			runner := judge.NewRunner(judge.Deps{
+				Generations: repository.NewGenerationRepository(db), Judges: judges, Chat: silentChat{}, Judge: rig.judge, AssetsDir: assets,
+				TakeJudged: func(_ context.Context, takeID string) { judged = append(judged, takeID) },
+			})
+			require.NoError(t, judges.BeginJudging(ctx, "sh1"))
+
+			raw, err := json.Marshal(map[string]string{"take_id": "t1", "shot_id": "sh1"})
+			require.NoError(t, err)
+			_ = runner.Handle(ctx, domain.Job{ID: "j1", Kind: domain.JobJudge, Payload: raw})
+
+			assert.Equal(t, tt.want, judged)
+		})
+	}
+}

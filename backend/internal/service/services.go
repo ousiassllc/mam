@@ -178,7 +178,8 @@ func New(deps Deps) *Services {
 			Takes: takes, Projects: c.projects, Brands: brands,
 			Judge:     judge.New(deps.LLM, deps.Frames, deps.Faces, cfg, logger),
 			AssetsDir: deps.AssetsDir, Logger: logger,
-			Notify: func(p generation.Progress) { generations.progress.Publish(p.ShotID, p) },
+			Notify:     func(p generation.Progress) { generations.progress.Publish(p.ShotID, p) },
+			TakeJudged: chat.TakeJudged,
 		})
 		// Resumable: judging is repeatable and cheap, so an interrupted run is run again.
 		deps.Jobs.Register(domain.JobJudge, judges.runner.Handle, true)

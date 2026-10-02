@@ -41,7 +41,10 @@ type Deps struct {
 	AssetsDir string
 	// Notify receives every progress notification. It MUST NOT block.
 	Notify func(generation.Progress)
-	Logger *slog.Logger
+	// TakeJudged is called with the Take ID after a result is saved and announced, so that the Take
+	// card already in the thread can redraw its Judge Issue markers. Optional.
+	TakeJudged func(ctx context.Context, takeID string)
+	Logger     *slog.Logger
 }
 
 // Runner runs the AI Video Judge as background jobs: it gathers what the Judge needs about a Take,
@@ -219,6 +222,9 @@ func (r *Runner) store(ctx context.Context, ref repository.TakeRef, res domain.J
 	notice := domain.ChatMessage{Role: domain.RoleAssistant, Kind: domain.KindText, Content: content}
 	if err := r.Chat.Announce(context.WithoutCancel(ctx), ref.ProjectID, notice); err != nil {
 		r.Logger.Error("post judge result failed", "take_id", ref.Take.ID, "err", err)
+	}
+	if r.TakeJudged != nil {
+		r.TakeJudged(context.WithoutCancel(ctx), ref.Take.ID)
 	}
 	return saved, nil
 }
