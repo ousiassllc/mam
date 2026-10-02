@@ -564,10 +564,17 @@ func TestChat_DirectorModeCanSwitchBackToAutoAndReportsWhatIsNotSupported(t *tes
 	assert.Contains(t, ws.Messages[1].Content, "書き出し")
 
 	f.llm.interpreter = opsJSON(`{"type":"set_mode","project_mode":"auto"}`)
-	f.say(t, "あとはお任せ", "")
+	ws = f.say(t, "あとはお任せ", "")
 	p, err := f.svc.Projects.Get(context.Background(), f.projectID)
 	require.NoError(t, err)
 	assert.Equal(t, domain.ModeAuto, p.Mode)
+	var thread []string
+	for _, m := range ws.Messages {
+		thread = append(thread, m.Content)
+	}
+	all := strings.Join(thread, "\n")
+	assert.Equal(t, 1, strings.Count(all, "AUTO MODE に戻しました"), "the switch is told once")
+	assert.NotContains(t, all, "見つかりませんでした", "a switch alone is an executable direction")
 
 	ws = f.say(t, "こんにちは", "")
 	assert.Len(t, ws.Messages, 1, "in AUTO the message is not a direction")

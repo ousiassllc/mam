@@ -55,7 +55,7 @@ func (s *DirectorService) SetMode(ctx context.Context, projectID string, mode do
 	if project.Mode == mode {
 		return project, nil
 	}
-	if err := s.applyMode(ctx, projectID, mode); err != nil {
+	if err := s.applyMode(ctx, projectID, mode, true); err != nil {
 		return domain.Project{}, err
 	}
 	if mode == domain.ModeAuto {
@@ -71,8 +71,13 @@ func modeNotice(mode domain.Mode) string {
 	return "AUTO MODE に戻しました。この先の工程は AI が続けます。"
 }
 
-func (s *DirectorService) applyMode(ctx context.Context, projectID string, mode domain.Mode) error {
-	msgs := assignIDs([]domain.ChatMessage{assistantText(modeNotice(mode))})
+// applyMode switches the mode and, when announce, posts the notice of it. A direction that carries
+// the switch reports it in its own reply instead (announce false), so that the thread says it once.
+func (s *DirectorService) applyMode(ctx context.Context, projectID string, mode domain.Mode, announce bool) error {
+	var msgs []domain.ChatMessage
+	if announce {
+		msgs = assignIDs([]domain.ChatMessage{assistantText(modeNotice(mode))})
+	}
 	if err := s.projects.Apply(ctx, repository.Turn{ProjectID: projectID, Messages: msgs, Mode: &mode}); err != nil {
 		return notFound(err)
 	}
@@ -646,9 +651,10 @@ func (s *DirectorService) execute(ctx context.Context, project domain.Project, r
 	}
 	for _, op := range cmd.Operations {
 		if op.Type == commandinterpreter.OpSetMode {
-			if err := s.applyMode(ctx, project.ID, op.ProjectMode); err != nil {
+			if err := s.applyMode(ctx, project.ID, op.ProjectMode, false); err != nil {
 				return out, err
 			}
+			out.lines = append(out.lines, modeNotice(op.ProjectMode))
 			if op.ProjectMode == domain.ModeAuto {
 				s.kick(ctx, project.ID)
 			}
