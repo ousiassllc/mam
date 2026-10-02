@@ -240,12 +240,12 @@ func (r *RepairRepository) ShadowReport(ctx context.Context) (domain.ShadowRepor
 		}
 		rep.Runs++
 		rep.TotalCostUSD += cost
-		latencySum += float64(latency)
 		if failure != "" || !confidence.Valid {
 			rep.Errors++
 			continue
 		}
 		succeeded++
+		latencySum += float64(latency) // a failed call records no latency: it would pull the mean down
 		confidenceSum += confidence.Float64
 		bucket := min(int(confidence.Float64*domain.ConfidenceBuckets), domain.ConfidenceBuckets-1)
 		bucket = max(bucket, 0)
@@ -261,9 +261,7 @@ func (r *RepairRepository) ShadowReport(ctx context.Context) (domain.ShadowRepor
 	if succeeded > 0 {
 		rep.AgreementRate = float64(rep.Agreed) / float64(succeeded)
 		rep.MeanConfidence = confidenceSum / float64(succeeded)
-	}
-	if rep.Runs > 0 {
-		rep.MeanLatencyMillis = latencySum / float64(rep.Runs)
+		rep.MeanLatencyMillis = latencySum / float64(succeeded)
 	}
 	return rep, nil
 }
