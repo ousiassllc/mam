@@ -56,10 +56,15 @@ func Prepare(target VideoTarget, job VideoJob) (VideoRequest, error) {
 	if caps.LastFrame {
 		req.LastFrame = job.LastFrame
 	}
-	// MaxReferenceImages is how many free references the model takes besides the first and last
-	// frame. Zero means the model only takes frames (Kling, Runway).
-	if n := min(caps.MaxReferenceImages, len(job.References)); n > 0 {
-		req.References = job.References[:n]
+	// A model reads either the frames or the free references, never both: Seedance 2.0 treats first
+	// frame, first-and-last frame and reference-to-video as mutually exclusive scenarios and rejects
+	// a request that mixes them. The frames win here; a caller that wants the references to be used
+	// (Reference Reinforcement) leaves the frames out of the job. MaxReferenceImages zero means the
+	// model only takes frames (Kling, Runway).
+	if req.FirstFrame == nil {
+		if n := min(caps.MaxReferenceImages, len(job.References)); n > 0 {
+			req.References = job.References[:n]
+		}
 	}
 
 	body, constraints, avoid := describe(job.Spec, req.DurationSeconds, len(req.References) > 0 || req.FirstFrame != nil)

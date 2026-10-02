@@ -446,7 +446,7 @@ func TestBuildReferencePack_MakesEveryReferenceAndTheKeyframeThenGenerationUsesT
 	for _, req := range f.models.videoRequests() {
 		require.NotNil(t, req.FirstFrame, "the Keyframe is the first frame")
 		assert.Equal(t, pngBytes, req.FirstFrame.Data)
-		assert.NotEmpty(t, req.References, "Seedance also receives the other Reference Pack images")
+		assert.Empty(t, req.References, "frames and reference images are exclusive")
 	}
 	var stored string
 	require.NoError(t, f.query(t, `SELECT shot_spec FROM shot WHERE id = ?`, f.shotID).Scan(&stored))

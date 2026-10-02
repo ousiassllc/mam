@@ -72,12 +72,13 @@ func TestPrepareForSeedanceKeepsReferencesWithinTheModelLimitAndFoldsTheNegative
 	assert.Equal(t, "720p", req.Resolution)
 }
 
-func TestPrepareKeepsFramesAndReferencesForSeedance(t *testing.T) {
+func TestPrepareNeverMixesFramesAndReferencesInOneRequest(t *testing.T) {
+	// Seedance 2.0 rejects a request that has a first frame and reference images: the frames win.
 	req, err := modeladapter.Prepare(seedanceTarget, fullJob())
 	require.NoError(t, err)
 	assert.NotNil(t, req.FirstFrame)
 	assert.NotNil(t, req.LastFrame)
-	assert.Len(t, req.References, 9, "Seedance takes the first frame and up to 9 other reference images")
+	assert.Empty(t, req.References, "the references are left out when a first frame is sent")
 
 	kling, err := modeladapter.Prepare(klingTarget, fullJob())
 	require.NoError(t, err)

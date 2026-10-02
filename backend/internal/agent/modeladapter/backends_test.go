@@ -202,7 +202,7 @@ func TestSeedanceBackendSubmitsPollsAndDownloads(t *testing.T) {
 	assert.Equal(t, "reference_image", content[1].(map[string]any)["role"])
 }
 
-func TestSeedanceSendsTheFirstFrameAndReferenceImagesTogether(t *testing.T) {
+func TestSeedanceNeverSendsTheFirstFrameAndReferenceImagesTogether(t *testing.T) {
 	var submitted map[string]any
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/v3/contents/generations/tasks", func(w http.ResponseWriter, r *http.Request) {
@@ -228,7 +228,7 @@ func TestSeedanceSendsTheFirstFrameAndReferenceImagesTogether(t *testing.T) {
 	for i, item := range content[1:] {
 		roles[i] = item.(map[string]any)["role"].(string)
 	}
-	assert.Equal(t, []string{"first_frame", "last_frame", "reference_image"}, roles)
+	assert.Equal(t, []string{"first_frame", "last_frame"}, roles, "the API treats frames and reference images as exclusive scenarios")
 }
 
 func TestSeedanceFailedJobIsARejectionNotARetry(t *testing.T) {

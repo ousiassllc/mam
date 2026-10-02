@@ -13,7 +13,8 @@ type VideoCapabilities struct {
 	Durations []float64
 	// Resolutions the model can produce.
 	Resolutions []string
-	// MaxReferenceImages is how many reference images the model accepts besides the first and last frame.
+	// MaxReferenceImages is how many free reference images the model accepts. They cannot be combined
+	// with the first and last frame in one request (Prepare keeps one of the two).
 	MaxReferenceImages int
 	FirstFrame         bool
 	LastFrame          bool
