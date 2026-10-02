@@ -24,6 +24,8 @@ type EditorPanelData struct {
 	Duration   float64
 	Judge      *domain.EditorJudgeResult
 	Audio      *domain.AudioTimelineVersion
+	// TrunkAudio is the latest Audio Timeline of the trunk: Final QC inspects it, not the Branch shown.
+	TrunkAudio *domain.AudioTimelineVersion
 	// Voices are the cloned voices of the Project's speakers.
 	Voices  []domain.VoiceClone
 	QC      *domain.FinalQCResult
@@ -78,14 +80,22 @@ func (d EditorPanelData) CanJudge() bool {
 	return d.TimelineID != "" && (d.Project.State == domain.StateEditing || d.Project.State == domain.StateEditJudging || d.Project.State == domain.StateRepairing)
 }
 
-// CanAudio reports whether the audio can be made now.
+// CanAudio reports whether the audio can be made now: the series shown has an Edit Timeline to make
+// it for (the server refuses with 404 without one).
 func (d EditorPanelData) CanAudio() bool {
-	return d.CanRender && d.Project.State == domain.StateAudio
+	return d.CanRender && d.Project.State == domain.StateAudio && d.TimelineID != ""
 }
 
-// CanFinalQC reports whether Final QC can be run now.
+// CanFinalQC reports whether Final QC can be run now. It inspects the trunk whatever series is
+// shown, so the audio it needs is the trunk's (TrunkAudio), not the Branch's.
 func (d EditorPanelData) CanFinalQC() bool {
-	return d.Audio != nil && (d.Project.State == domain.StateAudio || d.Project.State == domain.StateFinalQC)
+	return d.TrunkAudio != nil && (d.Project.State == domain.StateAudio || d.Project.State == domain.StateFinalQC)
+}
+
+// FinalQCBlockedByTrunk is true when only the missing audio of the trunk keeps Final QC from running
+// from a Branch's panel.
+func (d EditorPanelData) FinalQCBlockedByTrunk() bool {
+	return d.BranchID != "" && d.TrunkAudio == nil && (d.Project.State == domain.StateAudio || d.Project.State == domain.StateFinalQC)
 }
 
 // CanExport reports whether the video can be exported now: the Project is in a state it can be
@@ -294,6 +304,9 @@ templ EditorActions(d EditorPanelData) {
 					@atoms.Badge(verdictTone(d.QC.Verdict == domain.FinalQCPass), qcLabel(d.QC.Verdict))
 				}
 			</div>
+			if d.FinalQCBlockedByTrunk() {
+				<p class="text-xs text-amber-300" data-qc-trunk-missing>トランクの音声を先に作成してください。Final QC はトランクの音声を検査します。</p>
+			}
 			if d.BranchID != "" {
 				<p class="text-xs text-neutral-400" data-qc-trunk-note>Final QC は Branch ではなく、主系列（トランク）の最新版を検査します。</p>
 			}

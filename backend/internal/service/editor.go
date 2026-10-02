@@ -128,6 +128,9 @@ type EditorView struct {
 	PendingShots int
 	Timeline     *TimelineView
 	Audio        *domain.AudioTimelineVersion
+	// TrunkAudio is the latest Audio Timeline of the trunk, which Final QC inspects whatever series is
+	// shown (the same as Audio on the trunk).
+	TrunkAudio *domain.AudioTimelineVersion
 	// Voices are the cloned voices of the Project's speakers.
 	Voices  []domain.VoiceClone
 	QC      *domain.FinalQCResult
@@ -180,6 +183,16 @@ func (s *EditorService) View(ctx context.Context, projectID, branchID string) (E
 		v.Audio = &a
 	} else if !errors.Is(err, repository.ErrNotFound) {
 		return EditorView{}, err
+	}
+	// Final QC always inspects the trunk: the audio it needs is the trunk's, not the Branch shown.
+	v.TrunkAudio = v.Audio
+	if branchID != "" {
+		v.TrunkAudio = nil
+		if a, err := s.editors.LatestAudioTimeline(ctx, projectID, ""); err == nil {
+			v.TrunkAudio = &a
+		} else if !errors.Is(err, repository.ErrNotFound) {
+			return EditorView{}, err
+		}
 	}
 	if v.Voices, err = s.voices.List(ctx, projectID); err != nil {
 		return EditorView{}, err
