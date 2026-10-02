@@ -114,4 +114,14 @@ func TestWorldState_PutRejectsBadInput(t *testing.T) {
 		long[i] = 'a'
 	}
 	assert.Equal(t, http.StatusUnprocessableEntity, a.form(http.MethodPut, "/projects/"+id+"/characters/c1", url.Values{"wardrobe": {string(long)}}).Code)
+
+	// An unknown field next to a valid one is a 422 for the whole update (never a silent 200), for
+	// every entity kind (#365, #380).
+	a.execSQL(`INSERT INTO product (id, project_id, name) VALUES ('p1', ?, 'Serum')`, id)
+	a.execSQL(`INSERT INTO location (id, project_id, name) VALUES ('l1', ?, 'Street')`, id)
+	for _, path := range []string{"/characters/c1", "/products/p1", "/locations/l1"} {
+		field := map[string]string{"/characters/c1": "wardrobe", "/products/p1": "condition", "/locations/l1": "weather"}[path]
+		assert.Equal(t, http.StatusUnprocessableEntity, a.form(http.MethodPut, "/projects/"+id+path, url.Values{field: {"kept?"}, "wardorbe": {"typo"}}).Code, path)
+		assert.NotContains(t, a.get("/projects/"+id+"/world-state", false).Body.String(), "kept?", "nothing is written")
+	}
 }
