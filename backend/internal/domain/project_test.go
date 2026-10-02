@@ -37,3 +37,15 @@ func TestCanTransition_EveryCheckpointMoveIsAllowed(t *testing.T) {
 		assert.True(t, domain.CanTransition(domain.StateAwaitingApproval, cp.ChangesRequestedState()), "%s changes requested", cp)
 	}
 }
+
+// A Project can take an edit exactly in the states EditorService.toEditing carries to EDITING.
+func TestProjectState_CanEditIsTheStatesAnEditCanStartFrom(t *testing.T) {
+	for _, state := range domain.ProjectStates() {
+		switch state {
+		case domain.StateDraft, domain.StatePlanning, domain.StateAwaitingApproval, domain.StateReady, domain.StateExported:
+			assert.False(t, state.CanEdit(), state)
+		default:
+			assert.True(t, state.CanEdit(), state)
+		}
+	}
+}

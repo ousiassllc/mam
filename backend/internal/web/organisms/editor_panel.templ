@@ -68,6 +68,11 @@ func needLabel(n *domain.ShotNeed) string {
 	return fmt.Sprintf("%s %.1f 秒（クリップ %d の後）", kind, n.Seconds(), n.AfterClip)
 }
 
+// CanRoughCut reports whether a Rough Cut can be made (or made again) now: the Project is in a state
+// it can take an edit in (domain.ProjectState.CanEdit, the one the server refuses by with 409 and the
+// editor's read-only flag follows).
+func (d EditorPanelData) CanRoughCut() bool { return d.Project.State.CanEdit() }
+
 // CanJudge reports whether the Editor Judge can be run now.
 func (d EditorPanelData) CanJudge() bool {
 	return d.TimelineID != "" && (d.Project.State == domain.StateEditing || d.Project.State == domain.StateEditJudging || d.Project.State == domain.StateRepairing)
@@ -150,13 +155,13 @@ templ EditorActions(d EditorPanelData) {
 				if d.TimelineID == "" {
 					@atoms.Button(atoms.TonePrimary, "Rough Cut を作成", templ.Attributes{
 						"type": "button", "hx-post": paths.Project(d.Project.ID, "edit", "rough-cut"), "hx-vals": branchVals(d.BranchID),
-						"hx-target": "#editor-actions", "hx-swap": "outerHTML", "hx-disabled-elt": "this",
+						"hx-target": "#editor-actions", "hx-swap": "outerHTML", "hx-disabled-elt": "this", "disabled": !d.CanRoughCut(),
 					})
 				} else {
 					@atoms.Button(atoms.ToneNeutral, "Rough Cut を作り直す", templ.Attributes{
 						"type": "button", "hx-post": paths.Project(d.Project.ID, "edit", "rough-cut"), "hx-vals": branchVals(d.BranchID),
 						"hx-target": "#editor-actions", "hx-swap": "outerHTML", "hx-disabled-elt": "this",
-						"hx-confirm": "Rough Cut を作り直します。手動の編集は新しい版に置き換わります。よろしいですか？",
+						"hx-confirm": "Rough Cut を作り直します。手動の編集は新しい版に置き換わります。よろしいですか？", "disabled": !d.CanRoughCut(),
 					})
 					<span class="text-xs text-neutral-400">{ fmt.Sprintf("%d クリップ / %.1f 秒", d.Clips, d.Duration) }</span>
 				}
