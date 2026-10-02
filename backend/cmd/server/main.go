@@ -221,7 +221,7 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger) 
 }
 
 // recoverWork cleans up after an abnormal termination: Shots left GENERATING are released before
-// their jobs are failed.
+// their jobs are failed, and the editing follow-ups that the stop left undone are woken.
 func recoverWork(ctx context.Context, services *service.Services, jobs *jobqueue.Queue, logger *slog.Logger) error {
 	released, err := services.Recover(ctx)
 	if err != nil {
@@ -237,6 +237,9 @@ func recoverWork(ctx context.Context, services *service.Services, jobs *jobqueue
 	if resumed+failed > 0 {
 		logger.Warn("recovered unfinished jobs after abnormal termination", "resumed", resumed, "failed", failed)
 	}
+	// A Reshoot round that was ready, or an AUTO Project that waits for its editing stage, when the
+	// process stopped has no job change or Take selection left to wake the worker.
+	services.Editor.ResumeEditing()
 	return nil
 }
 
