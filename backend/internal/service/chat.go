@@ -124,6 +124,19 @@ func (s *ChatService) JobChanged(ctx context.Context, jobID string) {
 	}
 }
 
+// TakeJudged refreshes the Take cards of a Take after a Judge result was saved: the card draws the
+// Issues of the latest result as markers on the player and has to be fetched again to show them.
+func (s *ChatService) TakeJudged(ctx context.Context, takeID string) {
+	msgs, err := s.chat.ListByRef(ctx, domain.RefTake, takeID)
+	if err != nil {
+		s.logger.Error("find take cards failed", "take_id", takeID, "err", err)
+		return
+	}
+	for _, m := range msgs {
+		s.hub.Publish(m.ProjectID, Event{Type: EventCardUpdated, MessageID: m.ID})
+	}
+}
+
 // PostMessageInput is one user message (POST /projects/:id/messages).
 type PostMessageInput struct {
 	Content            string

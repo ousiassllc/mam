@@ -765,3 +765,39 @@ func TestEscalation_KeepsTheStateOfAProjectThatCannotWaitForApproval(t *testing.
 		})
 	}
 }
+
+// A Take card is posted before its Judge result exists: when the result is saved, the card in the
+// live thread is told to redraw (its player draws the Issues as markers); other cards stay as they are.
+func TestChatService_TakeJudgedRefreshesOnlyTheCardsOfThatTake(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	p := f.createProject(t, "動画")
+	for _, takeID := range []string{"take1", "take2"} {
+		require.NoError(t, f.svc.Chat.Announce(ctx, p.ID, domain.ChatMessage{Kind: domain.KindTake, RefID: takeID,
+			Content: domain.EncodeTakeCardBody(domain.TakeCardBody{Title: takeID})}))
+	}
+	var take1 domain.ThreadMessage
+	for _, m := range f.thread(t, p.ID) {
+		if m.RefID == "take1" {
+			take1 = m
+		}
+	}
+	require.NotEmpty(t, take1.ID)
+
+	events, cancel, err := f.svc.Chat.Subscribe(ctx, p.ID)
+	require.NoError(t, err)
+	defer cancel()
+	f.svc.Chat.TakeJudged(ctx, "take1")
+
+	select {
+	case e := <-events:
+		assert.Equal(t, service.Event{Type: service.EventCardUpdated, MessageID: take1.ID}, e)
+	case <-time.After(time.Second):
+		t.Fatal("no card.updated for the Take card")
+	}
+	select {
+	case e := <-events:
+		t.Fatalf("unexpected second event %+v", e)
+	case <-time.After(50 * time.Millisecond):
+	}
+}
