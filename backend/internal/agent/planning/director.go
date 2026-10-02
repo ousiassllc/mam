@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -51,6 +52,14 @@ const durationTolerance = 0.1
 // minShotSeconds is the shortest Shot the rescaling produces.
 const minShotSeconds = 0.5
 
+// The limits a Scene / Shot has everywhere else (service.PlanService, the Continue Agent).
+const (
+	maxShotSeconds     = 60
+	sceneTitleMaxRunes = 100
+	sceneMetaMaxRunes  = 100
+	objectiveMaxRunes  = 300
+)
+
 // Plan returns the Scene / Shot plan. When the Brief has a Duration the Shot durations are
 // rescaled to it, since a model cannot be trusted to add up.
 func (d *Director) Plan(ctx context.Context, in PlanInput) (domain.ScenePlan, error) {
@@ -65,7 +74,10 @@ func (d *Director) Plan(ctx context.Context, in PlanInput) (domain.ScenePlan, er
 	}
 	for i := range plan.Scenes {
 		sc := &plan.Scenes[i]
-		sc.Title = strings.TrimSpace(sc.Title)
+		sc.Title = clip(sc.Title, sceneTitleMaxRunes)
+		sc.Location = clip(sc.Location, sceneMetaMaxRunes)
+		sc.Time = clip(sc.Time, sceneMetaMaxRunes)
+		sc.Objective = clip(sc.Objective, objectiveMaxRunes)
 		if sc.Title == "" {
 			return domain.ScenePlan{}, fmt.Errorf("director: %w", invalidf("scene %d has no title", i+1))
 		}
@@ -74,7 +86,7 @@ func (d *Director) Plan(ctx context.Context, in PlanInput) (domain.ScenePlan, er
 		}
 		for j := range sc.Shots {
 			sh := &sc.Shots[j]
-			sh.Objective = strings.TrimSpace(sh.Objective)
+			sh.Objective = clip(sh.Objective, objectiveMaxRunes)
 			if sh.Objective == "" || sh.DurationSeconds <= 0 || math.IsNaN(sh.DurationSeconds) || math.IsInf(sh.DurationSeconds, 0) {
 				return domain.ScenePlan{}, fmt.Errorf("director: %w", invalidf("scene %d shot %d has no objective or a non-positive duration", i+1, j+1))
 			}
@@ -83,7 +95,28 @@ func (d *Director) Plan(ctx context.Context, in PlanInput) (domain.ScenePlan, er
 	if target, ok := ParseSeconds(in.Brief.Duration); ok {
 		fitDuration(&plan, target)
 	}
+	capShotSeconds(&plan)
 	return plan, nil
+}
+
+// capShotSeconds keeps every Shot at or under maxShotSeconds, the longest a Shot may be, even
+// when rescaling to a long Brief Duration would stretch it further; the total then falls short
+// of that Duration.
+func capShotSeconds(plan *domain.ScenePlan) {
+	for i := range plan.Scenes {
+		for j := range plan.Scenes[i].Shots {
+			sh := &plan.Scenes[i].Shots[j]
+			sh.DurationSeconds = min(sh.DurationSeconds, maxShotSeconds)
+		}
+	}
+}
+
+func clip(s string, max int) string {
+	s = strings.TrimSpace(s)
+	if utf8.RuneCountInString(s) <= max {
+		return s
+	}
+	return string([]rune(s)[:max])
 }
 
 // fitDuration scales every Shot so that the total is target seconds (to 0.1 s), unless the
