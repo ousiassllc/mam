@@ -20,9 +20,9 @@ export function initShotProgress(root: ParentNode = document): void {
   }
 }
 
-function refresh(card: HTMLElement): void {
+function refresh(card: HTMLElement, stage: ShotProgress['stage']): void {
   const refreshUrl = card.dataset.refreshUrl ?? '';
-  if (!refreshUrl || !mayRefresh(refreshUrl)) return;
+  if (!refreshUrl || !mayRefresh(refreshUrl, stage)) return;
   const selectedLink = document.querySelector('#scene-shot-view li[id^="shot-"][aria-current="true"] a[href]');
   const plan = planCardRefresh(
     { id: card.id, refreshUrl, selected: card.getAttribute('aria-current') === 'true' },
@@ -34,7 +34,7 @@ function refresh(card: HTMLElement): void {
 function watch(el: HTMLElement): void {
   if (!el.dataset.wsUrl) {
     // The card's mam-video-player follows the progress and says when it is over.
-    el.addEventListener('progress-finished', () => refresh(el), { once: true });
+    el.addEventListener('progress-finished', (event) => refresh(el, (event as CustomEvent<ShotProgress>).detail.stage), { once: true });
     return;
   }
   let connection: Connection | null = null;
@@ -66,7 +66,7 @@ function watch(el: HTMLElement): void {
       if (isFinished(progress)) {
         notice.hide();
         connection?.close();
-        refresh(el);
+        refresh(el, progress.stage);
       }
     },
   });

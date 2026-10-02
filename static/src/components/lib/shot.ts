@@ -37,16 +37,18 @@ export function planCardRefresh(card: { id: string; refreshUrl: string; selected
 }
 
 /**
- * Guard against refresh loops: the same card URL is refreshed at most once per windowMs. A card
- * that keeps being re-rendered in a progress state while the server says "idle" would otherwise
- * reconnect and refetch without end.
+ * Guard against refresh loops: a card that keeps being re-rendered in a progress state while the
+ * server says "idle" would reconnect and refetch without end, so an idle-triggered refresh of the same
+ * card URL is allowed at most once per windowMs (counted from the last refresh of any kind). A refresh
+ * for work that really ended (done / failed) is never dropped: the re-rendered card may be judging
+ * or repairing and finish within the window, and a dropped refresh would leave it stuck in progress.
  */
-export function createRefreshGuard(windowMs = 3000, now: () => number = Date.now): (url: string) => boolean {
+export function createRefreshGuard(windowMs = 3000, now: () => number = Date.now): (url: string, stage: ShotProgress['stage']) => boolean {
   const last = new Map<string, number>();
-  return (url) => {
+  return (url, stage) => {
     const t = now();
     const prev = last.get(url);
-    if (prev !== undefined && t - prev < windowMs) return false;
+    if (stage === 'idle' && prev !== undefined && t - prev < windowMs) return false;
     last.set(url, t);
     return true;
   };
