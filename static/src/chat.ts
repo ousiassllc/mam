@@ -4,7 +4,7 @@
  * (the socket never carries a body), and handles the composer (reply target, attachments, Enter to send).
  */
 import { ajaxChecked, ajaxGet, showToast } from './ajax';
-import { createConnectionNotice } from './components/lib/connection-notice';
+import { createConnectionNotice, releaseIfDetached } from './components/lib/connection-notice';
 import { AJAX_FAILED_MESSAGE } from './components/lib/ajax';
 import { selfAndDescendants } from './components/lib/query';
 import { createSyncer } from './components/lib/sync';
@@ -61,13 +61,21 @@ class ChatWorkspace {
     const notice = createConnectionNotice('チャット');
     const connection = connect<ProjectEvent>({
       url: socketUrl(root.dataset.wsUrl ?? '', location),
-      onMessage: (event) => this.onEvent(event),
+      onMessage: (event) => {
+        if (!releaseIfDetached(root, notice, connection)) this.onEvent(event);
+      },
       // After a reconnect, events may have been missed: catch up on new messages and on cards that can still change.
       onOpen: (reconnected) => {
+        if (releaseIfDetached(root, notice, connection)) return;
         notice.hide();
         if (reconnected) void this.catchUp();
       },
-      onGiveUp: () => notice.show(() => connection.retry()),
+      onGiveUp: () => {
+        if (releaseIfDetached(root, notice, connection)) return;
+        notice.show(() => {
+          if (!releaseIfDetached(root, notice, connection)) connection.retry();
+        });
+      },
     });
   }
 

@@ -1,7 +1,7 @@
 /** The notice shown when a WebSocket has given up reconnecting: what stopped updating and how to get it back. */
 
 import { createLogger } from './logger';
-import { CONNECTION_LOST_MESSAGE } from './ws';
+import { CONNECTION_LOST_MESSAGE, type Connection } from './ws';
 
 const REGION_ID = 'connection-lost-region';
 const TEMPLATE_ID = 'connection-notice-template';
@@ -54,4 +54,17 @@ export function createConnectionNotice(what: string): ConnectionNotice {
       notice = null;
     },
   };
+}
+
+/**
+ * Lets go of a connection whose owner element left the document (replaced by a swap or a page
+ * navigation): nobody waits for it, and an open connection would keep its resume listeners
+ * (online / visibilitychange) and reopen sockets for a card that is gone. Returns whether the owner
+ * was detached, so the callers can stop there.
+ */
+export function releaseIfDetached(owner: Element, notice: ConnectionNotice, connection: Connection | null): boolean {
+  if (owner.isConnected) return false;
+  notice.hide();
+  connection?.close();
+  return true;
 }
