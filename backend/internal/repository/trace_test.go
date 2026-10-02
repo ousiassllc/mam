@@ -17,10 +17,12 @@ func TestTraceRepository_TakeTraceGathersEverythingThatLedToTheTake(t *testing.T
 	f := newGenRepoFixture(t)
 	spec := wideSpec("run")
 	refs := []domain.Reference{{Kind: domain.RefCharacter, Name: "Mio", AssetID: "ref-1", Prompt: "portrait", Model: domain.ModelNanoBanana}}
+	decision := domain.RoutingDecision{Mode: domain.RoutingAdaptive, Reason: "kling-3.0 replaces seedance-2.0", Primary: domain.RoutingModel{Model: domain.ModelKling3, Resolution: "720p"}}
 	params, err := json.Marshal(struct {
 		domain.TakeLineage
-		Resolution string `json:"resolution"`
-	}{domain.TakeLineage{WorldStateVersion: 4, References: refs}, "1080p"})
+		Resolution string                  `json:"resolution"`
+		Routing    *domain.RoutingDecision `json:"routing"`
+	}{domain.TakeLineage{WorldStateVersion: 4, References: refs}, "1080p", &decision})
 	require.NoError(t, err)
 	pv, err := f.repo.SavePromptedSpec(ctx, f.shotID, spec, json.RawMessage(`{"requests":{}}`), nil)
 	require.NoError(t, err)
@@ -129,14 +131,16 @@ func TestTraceRepository_TakeTraceReadsTheRoutingDecisionOfTheTake(t *testing.T)
 	assert.Nil(t, oldTr.Routing, "a Take that predates Multi-model routing has no record")
 }
 
-func TestTraceRepository_ACompositeTakeTracesToTheWorldStateAndReferencesOfItsBaseTake(t *testing.T) {
+func TestTraceRepository_ACompositeTakeTracesToTheWorldStateReferencesAndRoutingOfItsBaseTake(t *testing.T) {
 	ctx := context.Background()
 	f := newGenRepoFixture(t)
 	refs := []domain.Reference{{Kind: domain.RefCharacter, Name: "Mio", AssetID: "ref-1", Prompt: "portrait", Model: domain.ModelNanoBanana}}
+	decision := domain.RoutingDecision{Mode: domain.RoutingAdaptive, Reason: "kling-3.0 replaces seedance-2.0", Primary: domain.RoutingModel{Model: domain.ModelKling3, Resolution: "720p"}}
 	params, err := json.Marshal(struct {
 		domain.TakeLineage
-		Resolution string `json:"resolution"`
-	}{domain.TakeLineage{WorldStateVersion: 4, References: refs}, "1080p"})
+		Resolution string                  `json:"resolution"`
+		Routing    *domain.RoutingDecision `json:"routing"`
+	}{domain.TakeLineage{WorldStateVersion: 4, References: refs}, "1080p", &decision})
 	require.NoError(t, err)
 	pv, err := f.repo.SavePromptedSpec(ctx, f.shotID, wideSpec("run"), json.RawMessage(`{"requests":{}}`), nil)
 	require.NoError(t, err)
@@ -157,6 +161,8 @@ func TestTraceRepository_ACompositeTakeTracesToTheWorldStateAndReferencesOfItsBa
 	require.NoError(t, err)
 	assert.Equal(t, 4, tr.WorldStateVersion)
 	assert.Equal(t, refs, tr.References)
+	require.NotNil(t, tr.Routing, "the composed Take has the base Take's model, so the base Take's routing decision")
+	assert.Equal(t, decision, *tr.Routing)
 	assert.Contains(t, string(tr.ModelParameters), "partial_take", "its own parameters stay")
 	assert.NotContains(t, string(tr.ModelParameters), "1080p", "only the lineage is inherited")
 }

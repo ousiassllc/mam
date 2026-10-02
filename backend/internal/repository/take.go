@@ -306,9 +306,10 @@ type NewComposite struct {
 }
 
 // inheritLineage copies what the base Take was generated from (the World State version and the
-// References, domain.TakeLineage) into the parameters of a composed Take, which is made from the
-// base Take's prompt version and so from the same World State and References. A base Take that predates
-// the record has none to copy: the Generation Trace falls back as it does for that Take.
+// References, domain.TakeLineage) and how its model was chosen (the Multi-model routing decision)
+// into the parameters of a composed Take, which is made from the base Take's prompt version and model
+// and so from the same World State, References and routing. A base Take that predates a record has
+// none to copy: the Generation Trace falls back as it does for that Take.
 func inheritLineage(params json.RawMessage, base string) (json.RawMessage, error) {
 	var from, to map[string]json.RawMessage
 	if json.Unmarshal([]byte(base), &from) != nil {
@@ -317,7 +318,7 @@ func inheritLineage(params json.RawMessage, base string) (json.RawMessage, error
 	if err := json.Unmarshal(params, &to); err != nil {
 		return nil, fmt.Errorf("decode composite parameters: %w", err)
 	}
-	for _, key := range []string{"world_state_version", "references"} {
+	for _, key := range []string{"world_state_version", "references", "routing"} {
 		if v, ok := from[key]; ok {
 			to[key] = v
 		}
