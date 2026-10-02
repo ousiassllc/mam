@@ -233,6 +233,7 @@ func TestEditor_FullFlowFromRoughCutToExport(t *testing.T) {
 	// Editor Judge: PASS moves the Project to AUDIO (the default level asks for no Rough Cut card).
 	rec = e.form(http.MethodPost, "/edit-timelines/"+saved.ID+"/judge", nil)
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.Equal(t, "timeline-reload", rec.Header().Get("HX-Trigger"), "the timeline editor shows the new Judge result")
 	assert.Equal(t, "AUDIO", e.state())
 	assert.Equal(t, "pass", e.timeline().Judge.Verdict)
 
