@@ -247,7 +247,7 @@ func runHTTP(ctx context.Context, handler http.Handler, ln net.Listener, logger 
 	srv := &http.Server{
 		Handler:           handler,
 		ReadHeaderTimeout: 10 * time.Second,
-		ReadTimeout:       5 * time.Minute, // the largest upload (a video bundle) must arrive within it
+		ReadTimeout:       5 * time.Minute, // the default for a request body; uploads are held to an idle time instead (web/handler/multipart.go)
 		IdleTimeout:       2 * time.Minute,
 		// No WriteTimeout: media is streamed and can take arbitrarily long.
 	}

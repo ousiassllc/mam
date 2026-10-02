@@ -5,6 +5,7 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -23,10 +24,33 @@ type requestError struct {
 
 func (e *requestError) Error() string { return e.message }
 
+// uploadIdleTimeout is how long an upload may stall between two reads. The server's ReadTimeout is
+// an absolute deadline for the whole body, which an 8 GiB bundle can exceed on a slow link or disk
+// even though it is within the limit; an upload is held to this idle time instead.
+var uploadIdleTimeout = time.Minute
+
+// idleDeadlineBody gives every read of an upload body a fresh read deadline of uploadIdleTimeout,
+// replacing the absolute one of the server.
+type idleDeadlineBody struct {
+	io.ReadCloser
+	rc *http.ResponseController
+}
+
+func (b idleDeadlineBody) Read(p []byte) (int, error) {
+	// Not every ResponseWriter supports deadlines; the server's own deadline then stays.
+	_ = b.rc.SetReadDeadline(time.Now().Add(uploadIdleTimeout))
+	return b.ReadCloser.Read(p)
+}
+
 // readMultipart reads a multipart request of at most limit bytes. It is the only place that
-// applies the upload limit and parses the form; see unreadable for the errors.
+// applies the upload limit and parses the form; see unreadable for the errors. A request that
+// declares more than limit is refused before a byte of it is read.
 func readMultipart(c *gin.Context, limit int64) (*multipart.Form, error) {
-	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, limit)
+	if c.Request.ContentLength > limit {
+		return nil, &requestError{status: http.StatusRequestEntityTooLarge, message: "送信内容が大きすぎます"}
+	}
+	body := idleDeadlineBody{ReadCloser: c.Request.Body, rc: http.NewResponseController(c.Writer)}
+	c.Request.Body = http.MaxBytesReader(c.Writer, body, limit)
 	if err := c.Request.ParseMultipartForm(multipartMemory); err != nil {
 		return nil, unreadable(c, err, "", "")
 	}
