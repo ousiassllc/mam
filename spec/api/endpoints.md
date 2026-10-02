@@ -259,7 +259,7 @@ M2 の入出力契約（Issue #15）:
 - `GET /projects/:id/references`: `HX-Request` でフラグメント（`#reference-library`）、なければフルページ（`reference_library_page`）。`q`（名前・タグの部分一致）、`kind`、`tag`（完全一致）は AND で絞り込み、新しい登録順。不正な `kind` は 422
 - `POST /projects/:id/references`: 成功時は更新後のライブラリ（201）。ファイルなし・拡張子と内容の不一致・サイズ超過・不正な `kind`・名前が空か長すぎる・タグが多すぎる／長すぎるは 422（何も保存しない。サイズ超過は本文全体が 20 MB + 1 MiB 以内のときだけで、超えれば §0 の 413）、存在しない Project は 404
 - `DELETE /projects/:id/references/:referenceId`: 更新後のライブラリ（200）。当該 Project に無ければ 404
-- `POST /shots/:id/references`: 応答は更新後の Shot Inspector（`GET /shots/:id` と同じ、Reference Pack にピン留めした参照を含む。200）。同じ種別・同じ名前の参照があれば置き換え、`library_item` に登録 ID を記録する。Reference Pack の再生成ではピン留めした参照を残し、再生成しない。`reference_id` が空は 422、Shot または `reference_id`（同じ Project のもの）が無ければ 404、生成中の Shot は 409
+- `POST /shots/:id/references`: 応答は更新後の Shot Inspector（`GET /shots/:id` と同じ、Reference Pack にピン留めした参照を含む。200）。同じ種別・同じ名前の参照があれば置き換え、`library_item` に登録 ID を記録する。Reference Pack の再生成ではピン留めした参照を残し、再生成しない。`reference_id` が空は 422、Shot または `reference_id`（同じ Project のもの）が無ければ 404、生成中・Repair 中・Judge 中の Shot（GENERATING / REPAIRING / JUDGING）は 409（`domain.ShotState.CanPinReference`。Shot Inspector は同じ述語で追加フォームを出さない）
 
 ### 2.12 Team Collaboration（M3）
 

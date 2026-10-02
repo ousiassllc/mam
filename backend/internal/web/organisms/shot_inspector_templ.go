@@ -417,7 +417,7 @@ func ShotInspector(d ShotInspectorData) templ.Component {
 			}
 		}
 		if !d.Shot.State.CanPinReference() {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "<p class=\"text-sm text-neutral-400\" data-pin-reference-blocked>生成・Judge 中は Reference Pack に追加できません。終わってから開き直してください。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "<p class=\"text-sm text-neutral-400\" data-pin-reference-blocked>生成・Repair・Judge 中は Reference Pack に追加できません。終わってから開き直してください。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

@@ -15,7 +15,7 @@ import (
 
 // The Inspector draws a form only in the Shot states in which the server accepts it (#334): the spec
 // save and the version restore are refused (409) while the Shot is generated or repaired, the Reference
-// Pack add while it is generated or judged.
+// Pack add while it is generated, repaired or judged.
 func TestShotInspector_LeavesOutTheFormsTheServerRefusesInTheShotState(t *testing.T) {
 	now := time.Now()
 	for _, state := range domain.ShotStates() {
@@ -32,7 +32,7 @@ func TestShotInspector_LeavesOutTheFormsTheServerRefusesInTheShotState(t *testin
 		html := sb.String()
 
 		specBlocked := state == domain.ShotGenerating || state == domain.ShotRepairing
-		pinBlocked := state == domain.ShotGenerating || state == domain.ShotJudging
+		pinBlocked := state != domain.ShotPlanning && state != domain.ShotEditing
 		assert.Equal(t, !specBlocked, strings.Contains(html, `hx-put="/shots/s1/shot-spec"`), "spec form in %s", state)
 		assert.Equal(t, !specBlocked, strings.Contains(html, `/shots/s1/versions/1/restore`), "restore button in %s", state)
 		assert.Equal(t, !pinBlocked, strings.Contains(html, `hx-post="/shots/s1/references"`), "reference form in %s", state)

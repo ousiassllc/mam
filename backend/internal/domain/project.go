@@ -94,10 +94,11 @@ func (s ShotState) Busy() bool { return s == ShotGenerating || s == ShotRepairin
 func (s ShotState) CanEditSpec() bool { return !s.Busy() }
 
 // CanPinReference reports whether a Reference Library image may be added to the Shot's Reference Pack:
-// the pack is read by the generation and the Judge, so it is refused (409) while the Shot is being
-// generated or judged. The Shot Inspector draws the form only when it holds; the repository refuses
-// with the same predicate.
-func (s ShotState) CanPinReference() bool { return s != ShotGenerating && s != ShotJudging }
+// the pack is read by the generation, the Repair and the Judge (a Repair reads it when it starts and
+// saves the prompt_version, which carries it, when it ends), so it is refused (409) while the Shot is
+// being generated, repaired or judged. The Shot Inspector draws the form only when it holds; the
+// repository refuses with the same predicate.
+func (s ShotState) CanPinReference() bool { return !s.Busy() && s != ShotJudging }
 
 // ShotStates lists every valid ShotState.
 func ShotStates() []ShotState {
