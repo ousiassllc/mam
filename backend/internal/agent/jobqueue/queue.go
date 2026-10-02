@@ -284,7 +284,9 @@ func (q *Queue) run(ctx context.Context, job domain.Job) {
 		if err := q.repo.MarkSucceeded(settle, job.ID); err != nil {
 			q.logger.Error("mark job succeeded failed", "job_id", job.ID, "err", err)
 		}
-	case ctx.Err() != nil && errors.Is(err, ctx.Err()):
+	case ctx.Err() != nil:
+		// Shutting down: whatever the handler returned, it was cut short. A killed subprocess
+		// (ffprobe: "signal: killed") does not wrap the context's error, yet is an interruption too.
 		if !reg.resumable {
 			q.fail(settle, job, ShutdownReason)
 			return

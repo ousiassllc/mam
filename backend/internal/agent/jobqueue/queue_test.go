@@ -296,3 +296,38 @@ func TestQueue_TransientClaimErrorDoesNotStrandQueuedJobs(t *testing.T) {
 	}
 	waitStatus(t, repo, job.ID, domain.JobSucceeded)
 }
+
+// A subprocess killed by the shutdown (ffprobe: "signal: killed") returns an error that does not
+// wrap the context's: the job was still interrupted, not failed.
+func TestQueue_StopTreatsAnUnwrappedErrorOfAnInterruptedHandlerAsAnInterruption(t *testing.T) {
+	for _, tt := range []struct {
+		name      string
+		resumable bool
+		status    domain.JobStatus
+		reason    string
+	}{
+		{"resumable goes back to the queue", true, domain.JobQueued, ""},
+		{"non-resumable fails with the shutdown reason", false, domain.JobFailed, jobqueue.ShutdownReason},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			_, repo := newRepo(t)
+			started := make(chan struct{})
+			q := jobqueue.New(repo, jobqueue.Options{})
+			q.Register(domain.JobJudge, func(ctx context.Context, _ domain.Job) error {
+				close(started)
+				<-ctx.Done()
+				return errors.New("ffprobe a.mp4: signal: killed")
+			}, tt.resumable)
+			q.Start(context.Background())
+			job, err := q.Enqueue(context.Background(), domain.JobJudge, nil)
+			require.NoError(t, err)
+			<-started
+			q.Stop()
+
+			got, err := repo.Get(context.Background(), job.ID)
+			require.NoError(t, err)
+			assert.Equal(t, tt.status, got.Status)
+			assert.Equal(t, tt.reason, got.Error)
+		})
+	}
+}
