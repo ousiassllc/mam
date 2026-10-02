@@ -2,6 +2,7 @@ package service_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -180,4 +181,19 @@ func TestChat_DirectorModeMakesSeveralBranchesFromAFreeDirection(t *testing.T) {
 	assert.Equal(t, 3, f.count(t, `SELECT COUNT(*) FROM branch WHERE name IN (?, ?, ?, ?)`, "ドアを開ける", "彼女がドアを開ける", "背後から声が聞こえる", "突然照明が消える"),
 		"the team proposes the developments the director left open")
 	assert.Zero(t, f.count(t, `SELECT COUNT(*) FROM pragma_table_info('chat_message') WHERE name = 'branch_id'`), "one thread per Project: chat is not split by Branch")
+}
+
+func TestChat_DirectorModeGivesEveryBranchItsFirstShotEvenWhenFewerDevelopmentsAreProposed(t *testing.T) {
+	f := completedShotFixture(t, sameSceneAnswer)
+	f.startDirecting(t)
+	f.llm.interpreter = opsJSON(`{"type":"create_branch","count":5,"point_type":"shot"}`)
+	f.llm.director = directorFor(sameSceneAnswer)
+
+	ws := f.say(t, "このカットから別展開を5つ作って", "")
+
+	msg := ws.Messages[len(ws.Messages)-1].Content
+	assert.Equal(t, 5, f.count(t, `SELECT COUNT(*) FROM branch WHERE project_id = ?`, f.projectID))
+	assert.Equal(t, 5, f.count(t, `SELECT COUNT(DISTINCT s.branch_id) FROM scene s JOIN shot sh ON sh.scene_id = s.id WHERE s.branch_id <> ''`),
+		"the three proposed developments and the two left to the AI each have a first Shot")
+	assert.Equal(t, 5, strings.Count(msg, "最初の Shot の生成を始めました"))
 }

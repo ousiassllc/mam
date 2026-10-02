@@ -177,6 +177,12 @@ func (s *BranchService) detail(ctx context.Context, branch domain.Branch) (Branc
 // anything is made). An unknown Shot is ErrNotFound; an unusable type, offset or name is a
 // ValidationError.
 func (s *BranchService) Create(ctx context.Context, shotID string, in BranchInput) (BranchDetail, error) {
+	return s.create(ctx, shotID, in, false)
+}
+
+// create is Create; aiChoice has the AI plan and generate the first Shot even without a Direction
+// (the development is left to it).
+func (s *BranchService) create(ctx context.Context, shotID string, in BranchInput, aiChoice bool) (BranchDetail, error) {
 	ref, err := s.shots.GetShot(ctx, shotID)
 	if err != nil {
 		return BranchDetail{}, notFound(err)
@@ -186,7 +192,8 @@ func (s *BranchService) Create(ctx context.Context, shotID string, in BranchInpu
 		return BranchDetail{}, err
 	}
 	direction := strings.TrimSpace(in.Direction)
-	if direction != "" && !s.canContinue() {
+	generate := direction != "" || aiChoice
+	if generate && !s.canContinue() {
 		return BranchDetail{}, ErrUnavailable
 	}
 	branch, err := s.branches.Create(ctx, spec)
@@ -194,7 +201,7 @@ func (s *BranchService) Create(ctx context.Context, shotID string, in BranchInpu
 		return BranchDetail{}, notFound(err)
 	}
 	started := false
-	if direction != "" {
+	if generate {
 		if err := s.continueBranch(ctx, ref, branch, direction); err != nil {
 			return BranchDetail{}, err
 		}
@@ -325,8 +332,8 @@ func (s *BranchService) Update(ctx context.Context, branchID string, name, world
 // Fork makes count Branches at the Shot for a direction of the chat ("このカットから別展開を3つ作って")
 // and reports what happened, one line per Branch. directions are the developments the user named;
 // the AI proposes the rest (the NEXT candidates of Continue). With generation configured every
-// Branch gets its first Shot planned and generated; without it the Branches are made empty. count
-// is capped at domain.MaxBranchesPerRequest.
+// Branch gets its first Shot planned and generated (one the AI could propose no development for is
+// left to its own choice); without it the Branches are made empty. count is capped at domain.MaxBranchesPerRequest.
 func (s *BranchService) Fork(ctx context.Context, ref repository.ShotRef, typ domain.BranchPointType, count int, directions []string) ([]string, error) {
 	count = min(max(count, 1), domain.MaxBranchesPerRequest)
 	if !typ.Valid() {
@@ -359,7 +366,7 @@ func (s *BranchService) Fork(ctx context.Context, ref repository.ShotRef, typ do
 				in.Name = directions[i] // nothing can be generated: the direction only names the Branch
 			}
 		}
-		d, err := s.Create(ctx, ref.Shot.ID, in)
+		d, err := s.create(ctx, ref.Shot.ID, in, s.canContinue())
 		if err != nil {
 			line, fatal := forkFailure(err)
 			if fatal != nil {
