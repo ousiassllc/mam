@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 )
 
 // DefaultPort is the preferred listen port. The server falls back to a free port if it is taken.
@@ -73,7 +74,7 @@ func Load(args []string, getenv func(string) string, output io.Writer) (Config, 
 	fs.SetOutput(output)
 	dataDir := fs.String("data-dir", envOr(getenv, "MAM_DATA_DIR", defaultDir), "directory for the database, logs and assets (MAM_DATA_DIR)")
 	port := fs.Int("port", DefaultPort, "preferred loopback port; a free port is used if it is busy (MAM_PORT)")
-	noBrowser := fs.Bool("no-browser", getenv("MAM_NO_BROWSER") != "", "do not open the default browser (MAM_NO_BROWSER)")
+	noBrowser := fs.Bool("no-browser", false, "do not open the default browser (MAM_NO_BROWSER)")
 	level := fs.String("log-level", envOr(getenv, "MAM_LOG_LEVEL", "info"), "log level: debug, info, warn, error (MAM_LOG_LEVEL)")
 	staticDir := fs.String("static-dir", getenv("MAM_STATIC_DIR"), "serve static assets from this directory instead of the embedded copy (MAM_STATIC_DIR)")
 	llmConfig := fs.String("llm-config", getenv("MAM_LLM_CONFIG"), "JSON file with the Reasoning LLM provider assignment per agent (MAM_LLM_CONFIG)")
@@ -94,6 +95,15 @@ func Load(args []string, getenv func(string) string, output io.Writer) (Config, 
 			return Config{}, err
 		}
 		*port = envPort
+	}
+
+	// MAM_NO_BROWSER is read only when --no-browser is absent, for the same reason as MAM_PORT.
+	if !flagSet(fs, "no-browser") {
+		envNoBrowser, err := envBool(getenv, "MAM_NO_BROWSER")
+		if err != nil {
+			return Config{}, err
+		}
+		*noBrowser = envNoBrowser
 	}
 
 	var lvl slog.Level
@@ -159,4 +169,18 @@ func envInt(getenv func(string) string, key string, fallback int) (int, error) {
 		return 0, fmt.Errorf("invalid %s %q: not an integer", key, v)
 	}
 	return n, nil
+}
+
+// envBool is the boolean in the environment variable key: 1, true, yes, on are true and unset, empty,
+// 0, false, no, off are false (case-insensitive). Any other value is an error: "MAM_NO_BROWSER=0"
+// must not count as set, and a typo must not silently pick a side.
+func envBool(getenv func(string) string, key string) (bool, error) {
+	v := getenv(key)
+	switch strings.ToLower(strings.TrimSpace(v)) {
+	case "", "0", "false", "no", "off":
+		return false, nil
+	case "1", "true", "yes", "on":
+		return true, nil
+	}
+	return false, fmt.Errorf("invalid %s %q: not a boolean (1/true/yes/on or 0/false/no/off)", key, v)
 }
