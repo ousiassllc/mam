@@ -43,3 +43,16 @@ func TestShotCard_TakeButtonsSendWhetherTheCardIsSelected(t *testing.T) {
 		assert.Equal(t, 3, strings.Count(html, want), "select, exclude and Repair of selected=%v", selected)
 	}
 }
+
+// The buttons that start a generation or a repair are drawn only for a Shot the server accepts them
+// for: GENERATING and REPAIRING are refused with 409, JUDGING and the rest are not (#294).
+func TestShotCard_StartButtonsAreLeftOutWhileTheShotIsBusy(t *testing.T) {
+	takes := []domain.Take{{ID: "t1", ShotID: "s1", ModelName: "m", FilePath: "a.mp4", Status: domain.TakeCandidate}}
+	for _, state := range domain.ShotStates() {
+		busy := state == domain.ShotGenerating || state == domain.ShotRepairing
+		html := render(t, molecules.ShotCard(molecules.ShotCardData{ProjectID: "p", Shot: domain.Shot{ID: "s1", SceneID: "sc", State: state}, Takes: takes, Selected: true}))
+		for _, button := range []string{`hx-post="/shots/s1/generate"`, "Reference Pack", "続きを作る", `/takes/t1/repair"`} {
+			assert.Equal(t, !busy, strings.Contains(html, button), "%s in %s", button, state)
+		}
+	}
+}
