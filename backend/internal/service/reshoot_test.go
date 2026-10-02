@@ -31,7 +31,13 @@ const additionalSpec = `{"shot_objective":"Character looks back, surprised","dur
 // runs just before the Judge.
 func editedFixtureJudging(t *testing.T, judge string, planner func(string) string, before func(genFixture)) (genFixture, domain.EditTimelineVersion) {
 	t.Helper()
-	f := newGenFixture(t, true)
+	return editedFixtureWith(t, judge, planner, before, nil)
+}
+
+// editedFixtureWith is editedFixtureJudging with a last look at the Deps (nil: none).
+func editedFixtureWith(t *testing.T, judge string, planner func(string) string, before func(genFixture), tweak func(*service.Deps)) (genFixture, domain.EditTimelineVersion) {
+	t.Helper()
+	f := newGenFixtureWithDeps(t, true, func(string) (uint64, error) { return 1 << 40, nil }, tweak)
 	f.llm.extractor = extractAnswer
 	f.llm.planner = planner
 	f.buildReferencePack(t)
@@ -275,6 +281,35 @@ func TestEditorReshootLoop_AReadyOrExportedProjectKeepsItsEditTimeline(t *testin
 			assert.Zero(t, f.count(t, `SELECT COUNT(*) FROM reshoot_request WHERE status = 'requested'`))
 		})
 	}
+}
+
+// A Partial Take Use makes the joined Take the Shot's Selected Take: like Select, it must wake the
+// Editor → Reshoot Loop, or the round whose last Shot was finished that way waits for an unrelated
+// trigger (#327).
+func TestEditorReshootLoop_APartialTakeUseOfTheLastShotReturnsToTheEditor(t *testing.T) {
+	f, judged := editedFixtureWith(t, needReaction, func(string) string { return additionalSpec }, nil, useStubMedia(t))
+	ctx := context.Background()
+	require.Eventually(t, func() bool { return f.trunkShots(t) == 2 }, 10*time.Second, 10*time.Millisecond)
+	f.execSQL(t, `UPDATE project SET mode = 'director' WHERE id = ?`, f.projectID)
+	f.waitJobsDone(t)
+	var newShot string
+	require.NoError(t, f.query(t, `SELECT id FROM shot WHERE id <> ?`, f.shotID).Scan(&newShot))
+	var take string
+	require.Eventually(t, func() bool {
+		err := f.query(t, `SELECT t.id FROM take t JOIN prompt_version pv ON pv.id = t.prompt_version_id WHERE pv.shot_id = ? ORDER BY t.rowid LIMIT 1`, newShot).Scan(&take)
+		return err == nil
+	}, 30*time.Second, 10*time.Millisecond)
+	require.Equal(t, domain.StateGenerating, f.state(t))
+
+	_, err := f.svc.Takes.UsePartial(ctx, newShot, service.PartialInput{Segments: []domain.TakeSegment{{TakeID: take, Start: 0, End: 1}, {TakeID: take, Start: 1, End: 2}}})
+	require.NoError(t, err)
+
+	require.Eventually(t, func() bool { return f.state(t) == domain.StateEditing }, 10*time.Second, 10*time.Millisecond, "back to EDITING")
+	view, err := f.svc.Editor.View(ctx, f.projectID, "")
+	require.NoError(t, err)
+	assert.Equal(t, judged.VersionNumber+1, view.Timeline.VersionNumber)
+	require.Len(t, view.Timeline.Clips, 2)
+	assert.Equal(t, newShot, view.Timeline.Clips[1].ShotID)
 }
 
 func TestEditorReshootLoop_StartFailureDoesNotLeaveAPendingRound(t *testing.T) {

@@ -53,16 +53,7 @@ func autoAudioFixture(t *testing.T) genFixture {
 func autoFixture(t *testing.T) genFixture {
 	t.Helper()
 	f := newGenFixtureWithDeps(t, true, func(string) (uint64, error) { return 1 << 40, nil }, func(d *service.Deps) {
-		// Takes of the fake models are not video files: ffprobe is a script that finds 4 seconds in anything.
-		bin := t.TempDir()
-		for _, name := range []string{"ffmpeg", "ffprobe"} {
-			script := "#!/bin/sh\necho '{\"format\":{\"duration\":\"4\"},\"streams\":[{\"codec_type\":\"video\",\"width\":1280,\"height\":720,\"r_frame_rate\":\"24\"}]}'\n"
-			require.NoError(t, os.WriteFile(filepath.Join(bin, name), []byte(script), 0o700)) // #nosec G306 -- a test executable
-		}
-		t.Setenv("PATH", bin)
-		tools, err := media.Look()
-		require.NoError(t, err)
-		d.Media = &tools
+		useStubMedia(t)(d)
 		d.Audio = audiodirector.Providers{Speech: noKeySpeech{}}
 	})
 	f.llm.extractor = extractAnswer
@@ -71,6 +62,26 @@ func autoFixture(t *testing.T) genFixture {
 	f.generateAndWait(t, f.shotID, 2)
 	f.execSQL(t, `UPDATE project SET mode = 'auto', production_template = 'drama', confirmation_level = 'full_auto', state = 'VISUAL_DESIGN' WHERE id = ?`, f.projectID)
 	return f
+}
+
+// useStubMedia puts ffmpeg tools on the Deps whose binaries are scripts: Takes of the fake models are
+// not video files, so ffprobe finds 4 seconds in anything and ffmpeg writes an empty output file.
+func useStubMedia(t *testing.T) func(*service.Deps) {
+	t.Helper()
+	return func(d *service.Deps) {
+		bin := t.TempDir()
+		scripts := map[string]string{
+			"ffprobe": "#!/bin/sh\necho '{\"format\":{\"duration\":\"4\"},\"streams\":[{\"codec_type\":\"video\",\"width\":1280,\"height\":720,\"r_frame_rate\":\"24\"}]}'\n",
+			"ffmpeg":  "#!/bin/sh\nfor last; do :; done\n: > \"$last\"\n",
+		}
+		for name, script := range scripts {
+			require.NoError(t, os.WriteFile(filepath.Join(bin, name), []byte(script), 0o700)) // #nosec G306 -- a test executable
+		}
+		t.Setenv("PATH", bin)
+		tools, err := media.Look()
+		require.NoError(t, err)
+		d.Media = &tools
+	}
 }
 
 func TestAdvanceAuto_AFailedStageIsNotRetriedOrAnnouncedAgainByUnrelatedUpdates(t *testing.T) {

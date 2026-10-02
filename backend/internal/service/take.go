@@ -101,10 +101,17 @@ func (s *TakeService) Select(ctx context.Context, takeID string) (ShotFragment, 
 		return ShotFragment{}, notFound(err)
 	}
 	s.recordIntervention(ctx, domain.Intervention{ShotID: shotID, TakeID: takeID, Kind: domain.InterventionSelectTake, Override: override})
+	s.takeSelected()
+	return s.generations.Shot(ctx, shotID)
+}
+
+// takeSelected wakes the editing follow-ups (the Editor → Reshoot Loop, the AUTO chain) that may
+// have been waiting for a Selected Take. Every path that makes a Take the Shot's Selected Take
+// (Select, UsePartial) calls it; a Candidate Take (a Partial Regeneration splice) selects nothing.
+func (s *TakeService) takeSelected() {
 	if s.afterSelect != nil {
 		s.afterSelect()
 	}
-	return s.generations.Shot(ctx, shotID)
 }
 
 // overridesAIPick tells whether selecting the Take contradicts the AI Pick of its Shot. A Take it
@@ -177,6 +184,7 @@ func (s *TakeService) UsePartial(ctx context.Context, shotID string, in PartialI
 		return ShotFragment{}, err
 	}
 	s.recordIntervention(ctx, domain.Intervention{ShotID: shotID, Kind: domain.InterventionPartialTake})
+	s.takeSelected() // the joined Take is the Shot's Selected Take now, as after Select
 	return s.generations.Shot(ctx, shotID)
 }
 
