@@ -384,3 +384,67 @@ func TestDefaultClientsDoNotForwardTheKeyOnARedirectToAnotherHost(t *testing.T) 
 
 	assert.Zero(t, foreignHits.Load())
 }
+
+// Sync Labs bills a generation it accepted: a failure after the job exists is a ChargedError, a
+// failure before it (or a FAILED / REJECTED generation) is not.
+func TestSyncLabs_AFailureAfterTheJobWasAcceptedIsMarkedCharged(t *testing.T) {
+	tests := []struct {
+		name    string
+		handler func(storageURL string) http.HandlerFunc
+		timeout time.Duration
+		charged bool
+	}{
+		{"output download fails", func(storage string) http.HandlerFunc {
+			return func(w http.ResponseWriter, r *http.Request) {
+				if r.Method == http.MethodPost {
+					_, _ = w.Write([]byte(`{"id":"g","status":"PENDING"}`))
+					return
+				}
+				_, _ = w.Write([]byte(`{"id":"g","status":"COMPLETED","outputUrl":"` + storage + `/out.mp4"}`))
+			}
+		}, 0, true},
+		{"completed without an outputUrl", func(string) http.HandlerFunc {
+			return func(w http.ResponseWriter, _ *http.Request) {
+				_, _ = w.Write([]byte(`{"id":"g","status":"COMPLETED"}`))
+			}
+		}, 0, true},
+		{"polling fails", func(string) http.HandlerFunc {
+			return func(w http.ResponseWriter, r *http.Request) {
+				if r.Method == http.MethodPost {
+					_, _ = w.Write([]byte(`{"id":"g","status":"PENDING"}`))
+					return
+				}
+				http.Error(w, "boom", http.StatusInternalServerError)
+			}
+		}, 0, true},
+		{"timeout while polling", func(string) http.HandlerFunc {
+			return func(w http.ResponseWriter, _ *http.Request) {
+				_, _ = w.Write([]byte(`{"id":"g","status":"PROCESSING"}`))
+			}
+		}, 50 * time.Millisecond, true},
+		{"create is refused", func(string) http.HandlerFunc {
+			return func(w http.ResponseWriter, _ *http.Request) { http.Error(w, "no", http.StatusBadRequest) }
+		}, 0, false},
+		{"generation FAILED", func(string) http.HandlerFunc {
+			return func(w http.ResponseWriter, _ *http.Request) {
+				_, _ = w.Write([]byte(`{"id":"g","status":"FAILED","error":"x"}`))
+			}
+		}, 0, false},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			storage := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+			storageURL := storage.URL
+			storage.Close() // the link of the output cannot be downloaded
+			srv := httptest.NewServer(tc.handler(storageURL))
+			defer srv.Close()
+			sl := audiodirector.NewSyncLabs(audiodirector.SyncLabsConfig{BaseURL: srv.URL, Timeout: tc.timeout, PollInterval: 5 * time.Millisecond, LocalDownloads: true}, syncKeys(t, true), nil)
+
+			_, err := sl.Sync(context.Background(), audiodirector.LipSyncRequest{Model: "sync-3"})
+
+			require.Error(t, err)
+			var ce *audiodirector.ChargedError
+			assert.Equal(t, tc.charged, errors.As(err, &ce))
+		})
+	}
+}

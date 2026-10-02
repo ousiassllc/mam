@@ -550,8 +550,10 @@ func (r *run) syncClip(ctx context.Context, vc VideoClip, lines []domain.AudioCl
 		return nil, false, fmt.Errorf("read voice: %w", err)
 	}
 	data, err := r.d.Providers.LipSync.Sync(ctx, LipSyncRequest{Model: model, Video: Sample{Filename: "clip.mp4", Data: vb}, Audio: Sample{Filename: "voice.wav", Data: ab}})
-	if err == nil {
-		// Sync Labs has charged for the clip: the ledger gets it even when the run was cancelled meanwhile.
+	var charged *ChargedError
+	if err == nil || errors.As(err, &charged) {
+		// Sync Labs has accepted (and bills) the clip, whether or not a video came back: the ledger
+		// gets it even when the download failed, the job timed out or the run was cancelled meanwhile.
 		if err := r.spend.record(ctx, domain.ModelSyncLabs, cost); err != nil {
 			return nil, false, err
 		}

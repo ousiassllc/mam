@@ -891,3 +891,76 @@ func TestDirector_ACostTheProviderChargedIsRecordedWhenTheRunIsCancelledAfterThe
 		})
 	}
 }
+
+// failingSync fails after Sync Labs accepted the job (or before, when err is not a ChargedError).
+type failingSync struct {
+	*fakeVendors
+	err    error
+	cancel context.CancelFunc
+	calls  int
+}
+
+func (f *failingSync) Sync(context.Context, audiodirector.LipSyncRequest) ([]byte, error) {
+	f.calls++
+	if f.cancel != nil {
+		f.cancel()
+	}
+	return nil, f.err
+}
+
+// A Lip Sync that Sync Labs accepted is billed even when no video came back (download failure,
+// timeout, cancelled run): its estimate is in the ledger once, and the clip is listed in Skipped.
+func TestDirector_ALipSyncSyncLabsAcceptedButFailedLaterIsRecordedOncePerJob(t *testing.T) {
+	charged := &audiodirector.ChargedError{Err: &audiodirector.ProviderError{Vendor: audiodirector.VendorSyncLabs, Status: 404, Message: "download of the output failed"}}
+	take := testVideo(t, 4)
+	clips := []audiodirector.VideoClip{{Index: 1, TakeID: "t1", Path: take, In: 0, Out: 4, Start: 0}, {Index: 2, TakeID: "t2", Path: take, In: 0, Out: 4, Start: 4}}
+	in := audiodirector.Input{ProjectID: "p1", EditTimelineID: "e1", Quality: domain.QualityMaxQuality, Scenes: twoScenes(), Clips: clips, Seconds: 10}
+	// lipSyncEntries counts the Sync Labs entries of the ledger.
+	lipSyncEntries := func(l *fakeLedger) (n int) {
+		for _, p := range l.providers() {
+			if p == domain.ModelSyncLabs {
+				n++
+			}
+		}
+		return n
+	}
+
+	t.Run("accepted then the output cannot be downloaded", func(t *testing.T) {
+		v := &failingSync{fakeVendors: &fakeVendors{t: t}, err: charged}
+		ledger := &fakeLedger{}
+		d := audiodirector.New(audiodirector.Deps{Providers: v.providersWith(v), Ledger: ledger, Tools: tools(t), Root: t.TempDir()})
+
+		got, err := d.Produce(context.Background(), in)
+
+		require.NoError(t, err)
+		assert.Empty(t, got.LipSync)
+		assert.Contains(t, skippedLayers(got, domain.SkipError), domain.LayerLipSync)
+		assert.Equal(t, v.calls, lipSyncEntries(ledger), "one entry per accepted job")
+		assert.Positive(t, v.calls)
+		assert.InDelta(t, ledger.spent, got.EstimatedCost, 1e-9, "the cost is part of the estimate")
+	})
+
+	t.Run("refused before the job exists", func(t *testing.T) {
+		v := &failingSync{fakeVendors: &fakeVendors{t: t}, err: &audiodirector.ProviderError{Vendor: audiodirector.VendorSyncLabs, Status: 400, Message: "no"}}
+		ledger := &fakeLedger{}
+		d := audiodirector.New(audiodirector.Deps{Providers: v.providersWith(v), Ledger: ledger, Tools: tools(t), Root: t.TempDir()})
+
+		_, err := d.Produce(context.Background(), in)
+
+		require.NoError(t, err)
+		assert.Zero(t, lipSyncEntries(ledger))
+	})
+
+	t.Run("the run is cancelled while the job runs", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		v := &failingSync{fakeVendors: &fakeVendors{t: t}, err: &audiodirector.ChargedError{Err: context.Canceled}, cancel: cancel}
+		ledger := &liveLedger{}
+		d := audiodirector.New(audiodirector.Deps{Providers: v.providersWith(v), Ledger: ledger, Tools: tools(t), Root: t.TempDir()})
+
+		_, err := d.Produce(ctx, in)
+
+		require.ErrorIs(t, err, context.Canceled)
+		assert.Equal(t, domain.ModelSyncLabs, ledger.providers()[len(ledger.entries)-1])
+	})
+}
