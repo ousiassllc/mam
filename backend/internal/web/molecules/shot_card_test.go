@@ -95,3 +95,17 @@ func TestQuestionCard_OnlyTheContinueQuestionCanBeRepliedTo(t *testing.T) {
 	assert.Contains(t, card(domain.RefContinue), `data-reply-to="q1"`)
 	assert.NotContains(t, card(""), "data-reply-to")
 }
+
+// "続きを作る" is drawn only for a Shot the server continues from (domain.CanContinue): one with a Take
+// that was not rejected. Without one the request is always refused with 409.
+func TestShotCard_ContinueButtonNeedsATakeThatWasNotRejected(t *testing.T) {
+	take := func(status domain.TakeStatus) []domain.Take {
+		return []domain.Take{{ID: "t1", ShotID: "s1", ModelName: "m", FilePath: "a.mp4", Status: status}}
+	}
+	card := func(takes []domain.Take) string {
+		return render(t, molecules.ShotCard(molecules.ShotCardData{ProjectID: "p", Shot: domain.Shot{ID: "s1", SceneID: "sc", State: domain.ShotEditing}, Takes: takes, Selected: true}))
+	}
+	assert.NotContains(t, card(nil), "続きを作る", "no Take")
+	assert.NotContains(t, card(take(domain.TakeRejected)), "続きを作る", "every Take is excluded")
+	assert.Contains(t, card(take(domain.TakeCandidate)), "続きを作る")
+}

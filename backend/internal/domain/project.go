@@ -105,6 +105,13 @@ func (s ShotState) CanEditSpec() bool { return !s.Busy() }
 // repository refuses with the same predicate.
 func (s ShotState) CanPinReference() bool { return !s.Busy() && s != ShotJudging }
 
+// CanContinue reports whether Continue may start from the Shot: it is not being generated or repaired
+// and it has a Take that was not rejected (the completed Shot the next one grows from). The Shot card
+// draws the "続きを作る" button only when it holds; the service refuses (409) with the same predicate.
+func CanContinue(state ShotState, takes []Take) bool {
+	return !state.Busy() && slices.ContainsFunc(takes, func(t Take) bool { return t.Status != TakeRejected })
+}
+
 // ShotStates lists every valid ShotState.
 func ShotStates() []ShotState {
 	return []ShotState{ShotPlanning, ShotGenerating, ShotJudging, ShotRepairing, ShotEditing}

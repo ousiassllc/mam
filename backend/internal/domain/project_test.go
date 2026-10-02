@@ -49,3 +49,13 @@ func TestProjectState_CanEditIsTheStatesAnEditCanStartFrom(t *testing.T) {
 		}
 	}
 }
+
+func TestCanContinue(t *testing.T) {
+	take := func(s domain.TakeStatus) []domain.Take { return []domain.Take{{Status: s}} }
+	assert.True(t, domain.CanContinue(domain.ShotEditing, take(domain.TakeCandidate)))
+	assert.True(t, domain.CanContinue(domain.ShotJudging, append(take(domain.TakeRejected), take(domain.TakeSelected)...)))
+	assert.False(t, domain.CanContinue(domain.ShotPlanning, nil), "no Take yet")
+	assert.False(t, domain.CanContinue(domain.ShotEditing, take(domain.TakeRejected)), "every Take is excluded")
+	assert.False(t, domain.CanContinue(domain.ShotGenerating, take(domain.TakeCandidate)))
+	assert.False(t, domain.CanContinue(domain.ShotRepairing, take(domain.TakeCandidate)))
+}
