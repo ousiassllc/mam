@@ -460,6 +460,13 @@ func TestLoadConfigMergesAnEntryThatNamesOnlySomeOfItsFields(t *testing.T) {
 		assert.Equal(t, modeladapter.ImageTarget{Model: domain.ModelNanoBanana}, cfg.Images[modeladapter.PurposePreview].Primary)
 		assert.Equal(t, def.Images[modeladapter.PurposePreview].Fallback, cfg.Images[modeladapter.PurposePreview].Fallback)
 	})
+	t.Run("a policy's routing weights keep the fields they do not name", func(t *testing.T) {
+		cfg := load(t, `{"routing":{"weights":{"fast":{"quality":0.9}}}}`)
+		assert.Equal(t, modeladapter.RoutingWeights{Quality: 0.9, Cost: 0.5, Fit: 0.1}, cfg.Routing.Weights[domain.QualityFast])
+		assert.Equal(t, def.Routing.Weights[domain.QualityBalanced], cfg.Routing.Weights[domain.QualityBalanced])
+		assert.Equal(t, def.Routing.MinSamples, cfg.Routing.MinSamples)
+		assert.Equal(t, def.Routing.Candidates, cfg.Routing.Candidates)
+	})
 	t.Run("an unknown field of an entry is still rejected", func(t *testing.T) {
 		path := filepath.Join(t.TempDir(), "models.json")
 		require.NoError(t, os.WriteFile(path, []byte(`{"vendors":{"kling":{"bogus":1}}}`), 0o600))

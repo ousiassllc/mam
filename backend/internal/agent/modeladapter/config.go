@@ -197,25 +197,34 @@ func LoadConfig(path string) (Config, error) {
 	if err != nil {
 		return Config{}, fmt.Errorf("read model config: %w", err)
 	}
-	// The four maps are decoded per entry on top of the default entry, so that an entry that names
-	// only some of its fields keeps the defaults of the others (encoding/json would rebuild the whole
-	// entry from the zero value). The embedded Config shares the default maps.
+	// The maps of entries are decoded per entry on top of the default entry, so that an entry that
+	// names only some of its fields keeps the defaults of the others (encoding/json would rebuild the
+	// whole entry from the zero value): vendors, models, images, policies and routing.weights. The
+	// embedded Config shares the default maps; Routing shadows its Config field so that the weights
+	// stay raw until they are overlaid.
 	file := struct {
 		Config
 		Vendors  map[Vendor]json.RawMessage               `json:"vendors"`
 		Models   map[domain.ModelName]json.RawMessage     `json:"models"`
 		Images   map[ImagePurpose]json.RawMessage         `json:"images"`
 		Policies map[domain.QualityPolicy]json.RawMessage `json:"policies"`
+		Routing  struct {
+			RoutingConfig
+			Weights map[domain.QualityPolicy]json.RawMessage `json:"weights"`
+		} `json:"routing"`
 	}{Config: cfg}
+	file.Routing.RoutingConfig = cfg.Routing
 	dec := json.NewDecoder(bytes.NewReader(data))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&file); err != nil {
 		return Config{}, fmt.Errorf("decode model config %s: %w", path, err)
 	}
 	cfg = file.Config
+	cfg.Routing = file.Routing.RoutingConfig
 	for _, err := range []error{
 		overlayEntries(cfg.Vendors, file.Vendors), overlayEntries(cfg.Models, file.Models),
 		overlayEntries(cfg.Images, file.Images), overlayEntries(cfg.Policies, file.Policies),
+		overlayEntries(cfg.Routing.Weights, file.Routing.Weights),
 	} {
 		if err != nil {
 			return Config{}, fmt.Errorf("decode model config %s: %w", path, err)
