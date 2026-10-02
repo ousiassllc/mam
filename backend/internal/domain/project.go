@@ -67,6 +67,10 @@ const (
 	ShotEditing    ShotState = "EDITING"
 )
 
+// Busy reports whether a generation or a repair is writing the Shot: a start of either is refused
+// (409) while it is. The Shot card draws the buttons that start one only when it is not.
+func (s ShotState) Busy() bool { return s == ShotGenerating || s == ShotRepairing }
+
 // ShotStates lists every valid ShotState.
 func ShotStates() []ShotState {
 	return []ShotState{ShotPlanning, ShotGenerating, ShotJudging, ShotRepairing, ShotEditing}

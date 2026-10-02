@@ -82,7 +82,8 @@ func takeJudgeResultURL(takeID string) string { return paths.APITake(takeID, "ju
 func takeActionURL(takeID, action string) string { return paths.Take(takeID, action) }
 
 // ShotActions starts the generation of a Shot (optionally with an additional direction) or the
-// building of its Reference Pack. Both answer with the Shot card in the GENERATING state.
+// building of its Reference Pack. Both answer with the Shot card in the GENERATING state. The card
+// draws them only while the Shot is not busy (domain.ShotState.Busy): the server refuses them then.
 templ ShotActions(shotID string) {
 	<form
 		class="mt-2 flex flex-wrap items-center gap-2"
@@ -116,8 +117,9 @@ templ ShotActions(shotID string) {
 // TakeRow is one Take under a Shot: its status, and the buttons that select it (the user's choice
 // replaces the AI Pick) or exclude it, and the one that repairs it. They answer with the Shot card,
 // which has to be drawn as selected or not like the card they replace: the buttons send that in
-// "selected" (selected is whether the card they sit on is the selected one).
-templ TakeRow(t domain.Take, selected bool) {
+// "selected" (selected is whether the card they sit on is the selected one). The Repair button is
+// left out while the Shot is busy (generating or repairing): the server refuses it then.
+templ TakeRow(t domain.Take, selected bool, shotBusy bool) {
 	<li class="flex items-center justify-between gap-2 text-xs text-neutral-300">
 		<span class="truncate">{ t.ModelName }</span>
 		<span class="flex shrink-0 items-center gap-2">
@@ -142,13 +144,15 @@ templ TakeRow(t domain.Take, selected bool) {
 			}
 			{{ tone, label := takeStatusLabel(t.Status) }}
 			@atoms.Badge(tone, label)
-			@atoms.Button(atoms.ToneNeutral, "Repair", templ.Attributes{
-				"type":      "button",
-				"hx-post":   paths.Take(t.ID, "repair"),
-				"hx-target": "#shot-" + t.ShotID,
-				"hx-swap":   "outerHTML",
-				"hx-vals":   selectedVals(selected),
-			})
+			if !shotBusy {
+				@atoms.Button(atoms.ToneNeutral, "Repair", templ.Attributes{
+					"type":      "button",
+					"hx-post":   paths.Take(t.ID, "repair"),
+					"hx-target": "#shot-" + t.ShotID,
+					"hx-swap":   "outerHTML",
+					"hx-vals":   selectedVals(selected),
+				})
+			}
 		</span>
 	</li>
 }
@@ -216,7 +220,7 @@ templ ShotCard(d ShotCardData) {
 				}
 			</dl>
 		}
-		if d.Selected && d.Shot.State != domain.ShotGenerating {
+		if d.Selected && !d.Shot.State.Busy() {
 			@ShotActions(d.Shot.ID)
 		}
 		if showsProgressPlayer(d.Shot) {
@@ -225,7 +229,7 @@ templ ShotCard(d ShotCardData) {
 		if len(d.Takes) > 0 {
 			<ul class="mt-2 flex flex-col gap-1 border-t border-neutral-800 pt-2" aria-label="Take 一覧">
 				for _, t := range d.Takes {
-					@TakeRow(t, d.Selected)
+					@TakeRow(t, d.Selected, d.Shot.State.Busy())
 				}
 			</ul>
 			if len(d.Takes) > 1 {
