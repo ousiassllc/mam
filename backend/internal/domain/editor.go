@@ -298,9 +298,13 @@ func ParseVoiceLine(entry string) (VoiceLine, bool) {
 	if entry == "" {
 		return VoiceLine{}, false
 	}
-	speaker, text, found := strings.Cut(entry, ":")
-	if !found {
-		speaker, text, found = strings.Cut(entry, "：")
+	// Split on the first colon of either kind, so a later one (a time "10:30") stays in the text.
+	i := strings.IndexAny(entry, ":：")
+	found := i >= 0
+	var speaker, text string
+	if found {
+		_, sepLen := utf8.DecodeRuneInString(entry[i:])
+		speaker, text = entry[:i], entry[i+sepLen:]
 	}
 	if !found || strings.ContainsAny(speaker, "。.!?！？0123456789０１２３４５６７８９") || len([]rune(speaker)) > 20 {
 		return VoiceLine{Kind: VoiceNarration, Text: entry}, true
