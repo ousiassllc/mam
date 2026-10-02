@@ -4,6 +4,8 @@ tmp_dir = "tmp"
 [build]
   cmd = "go build -o ./tmp/server ./backend/cmd/server"
   bin = "./tmp/server"
+  # air restarts the server on every save: do not open a browser tab each time (the URL is logged).
+  args_bin = ["-no-browser"]
   include_ext = ["go"]
   exclude_dir = ["tmp", "static", "spec", "bin"]
   exclude_regex = ["_test\\.go$"]
