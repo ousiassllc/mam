@@ -55,6 +55,11 @@ func CanTransition(from, to ProjectState) bool {
 	return slices.Contains(stateTransitions[from], to)
 }
 
+// CanExport reports whether a Project in the state can be exported: it passed Final QC (READY) or has
+// been exported already. The export is refused (409) from any other state and the panel draws the
+// export button from the same answer.
+func (s ProjectState) CanExport() bool { return s == StateReady || s == StateExported }
+
 // CanAwaitApproval reports whether a card that blocks the Project (an Escalation) can put it in
 // AWAITING_APPROVAL: the Core State Machine has no such move from DRAFT, AUDIO, READY or EXPORTED.
 func (s ProjectState) CanAwaitApproval() bool { return CanTransition(s, StateAwaitingApproval) }

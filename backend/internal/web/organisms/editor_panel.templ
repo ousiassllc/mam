@@ -88,9 +88,24 @@ func (d EditorPanelData) CanFinalQC() bool {
 	return d.Audio != nil && (d.Project.State == domain.StateAudio || d.Project.State == domain.StateFinalQC)
 }
 
-// CanExport reports whether the video can be exported now.
+// CanExport reports whether the video can be exported now: the Project is in a state it can be
+// exported from (domain.ProjectState.CanExport) and the series shown (the trunk or the Branch) has
+// audio made for its latest Edit Timeline (domain.AudioTimelineVersion.CurrentFor): the server
+// refuses an export with 404 / 409 otherwise.
 func (d EditorPanelData) CanExport() bool {
-	return d.CanRender && (d.Project.State == domain.StateReady || d.Project.State == domain.StateExported)
+	return d.CanRender && d.Project.State.CanExport() && d.Audio.CurrentFor(d.TimelineID)
+}
+
+// ExportBlocker is the reason the export button is disabled although the Project can be exported
+// from its state ("" when the button is enabled, or the state or ffmpeg is what disables it).
+func (d EditorPanelData) ExportBlocker() string {
+	switch {
+	case !d.CanRender || !d.Project.State.CanExport() || d.CanExport():
+		return ""
+	case d.Audio == nil:
+		return "この系列にはまだ音声がないため、書き出せません。"
+	}
+	return "この系列の音声が最新の編集に対応していないため、書き出せません。"
 }
 
 func verdictLabel(v domain.EditorVerdict) string {
@@ -332,6 +347,9 @@ templ EditorActions(d EditorPanelData) {
 				</label>
 				@atoms.Button(atoms.TonePrimary, "書き出す", templ.Attributes{"type": "submit", "disabled": !d.CanExport()})
 			</form>
+			if d.ExportBlocker() != "" {
+				<p class="text-xs text-amber-300" data-export-blocked>{ d.ExportBlocker() }</p>
+			}
 			if len(d.Exports) > 0 {
 				<ul class="flex flex-col gap-1 text-sm" data-exports>
 					for _, e := range d.Exports {

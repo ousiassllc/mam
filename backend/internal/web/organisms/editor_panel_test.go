@@ -35,3 +35,52 @@ func TestEditorPanel_RoughCutButtonFollowsTheStatesTheServerEditsIn(t *testing.T
 		}
 	}
 }
+
+// exportButton is the opening tag of the export button of the panel.
+var exportButton = regexp.MustCompile(`<button[^>]*type="submit"[^>]*>\s*書き出す`)
+
+func renderPanelActions(t *testing.T, d organisms.EditorPanelData) string {
+	t.Helper()
+	var sb strings.Builder
+	require.NoError(t, organisms.EditorActions(d).Render(context.Background(), &sb))
+	return sb.String()
+}
+
+// The export button can be pressed only when the server accepts the export (#339): the Project is
+// READY / EXPORTED and the series shown has audio made for its latest Edit Timeline. A Branch without
+// audio (404) or with audio of an older edit (409) gets a disabled button and says why.
+func TestEditorPanel_ExportButtonFollowsWhatTheServerExports(t *testing.T) {
+	current := &domain.AudioTimelineVersion{Timeline: domain.AudioTimeline{EditTimelineID: "tl2"}}
+	stale := &domain.AudioTimelineVersion{Timeline: domain.AudioTimeline{EditTimelineID: "tl1"}}
+	cases := []struct {
+		name    string
+		state   domain.ProjectState
+		audio   *domain.AudioTimelineVersion
+		render  bool
+		enabled bool
+		blocker string
+	}{
+		{"current audio", domain.StateReady, current, true, true, ""},
+		{"exported again", domain.StateExported, current, true, true, ""},
+		{"no audio", domain.StateReady, nil, true, false, "音声がない"},
+		{"audio of an older edit", domain.StateReady, stale, true, false, "最新の編集に対応していない"},
+		{"not exportable state", domain.StateAudio, current, true, false, ""},
+		{"no ffmpeg", domain.StateReady, current, false, false, ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			body := renderPanelActions(t, organisms.EditorPanelData{
+				Project: domain.Project{ID: "p", State: tc.state}, BranchID: "b1", TimelineID: "tl2", Audio: tc.audio, CanRender: tc.render,
+			})
+			button := exportButton.FindString(body)
+			require.NotEmpty(t, button)
+			assert.Equal(t, !tc.enabled, disabledAttr.MatchString(button), button)
+			if tc.blocker == "" {
+				assert.NotContains(t, body, "data-export-blocked")
+			} else {
+				assert.Contains(t, body, "data-export-blocked")
+				assert.Contains(t, body, tc.blocker)
+			}
+		})
+	}
+}
