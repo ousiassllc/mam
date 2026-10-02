@@ -10,6 +10,7 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
   - ページ/アクションルートのバリデーションエラー（422）: フォームをエラー付きで再レンダリング
   - ビジネスエラー（403/409/423等）: OOBスワップでトースト表示
   - APIルートのエラー: Huma による RFC 7807 Problem Details
+  - 共通ミドルウェアが Huma より前に返すエラー（非ループバック・CSRF 不一致の 403、本文上限の 413、読めない multipart の 400）は `/api/v1` でも RFC 7807 ではなく JSON `{"error": string}`（理由が無いときは空本文）。RFC 7807 はハンドラ内の Huma エラーだけ。HTMX リクエストにはトーストを返す
 - 共通ビジネスエラーコード:
   | HTTPステータス | 意味 |
   |---|---|
@@ -462,3 +463,4 @@ Notes:
 | 1.75 | 2026-10-02 | §2.3 の `POST /shots/:id/reference-pack` に、画像が 1 枚も予算上限に収まらなければ 402 を返すことを追記した | 実装を直し、`StartReferencePack` が `/shots/:id/generate` と同じく Project / Shot の予算上限を確認するようにしたため（Issue #256） |
 | 1.76 | 2026-10-02 | §2.4 の Take System の動作に、Take カードには Judge 要約と Take 状態（AI Pick / 採用 / 除外）を載せず、Judge が結果を保存するたびに別のテキスト発言として投稿されることを追記した（`spec/spec.md` §23.2・ワイヤーフレームも同様） | スレッドは追記のみで Take カードは後から更新できず、実装は Judge 要約と AI Pick を別発言で出しているため。最新の Take 状態は Take 比較で確認する（Issue #289） |
 | 1.77 | 2026-10-02 | §2.3 の `POST /takes/:id/repair` の 503 の条件を「ジョブキュー・LLM・Model Adapter・ffmpeg のいずれかが未設定」に直した | 実装（`service.New`）は Repair Agent を Judge（ジョブキュー・LLM・ffmpeg）と生成（ジョブキュー・LLM・Model Adapter）の両方が揃うときだけ作り、無ければ 503 にするため（Issue #388） |
+| 1.78 | 2026-10-02 | §0 のエラー方針に、共通ミドルウェア（Loopback・CSRF・MaxBody）が先に返す 400 / 403 / 413 は `/api/v1` でも JSON `{"error": string}`（理由が無ければ空本文）で、RFC 7807 はハンドラ内の Huma エラーだけであることを追記した | 実装（`middleware.abortWith`）は Huma より前に全ルートへ掛かり、非 HTMX には `{"error": ...}` を返すが、仕様は API ルートのエラーを一律 RFC 7807 と書いていたため（Issue #393） |
