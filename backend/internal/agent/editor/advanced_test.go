@@ -2,6 +2,7 @@ package editor_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -77,9 +78,42 @@ func TestAdvance_ExtendsATooShortClosingClipForCTATimingAsFarAsItsTakeReaches(t 
 	assert.InDelta(t, editor.MinCTASeconds, got.Clips[1].Length(), 1e-9)
 	assert.Contains(t, notes[len(notes)-1], "CTA Timing")
 
-	short.SourceSeconds = 1.2 // the Take ends before the CTA can be read
+	short.SourceSeconds = 1.2 // the Take ends before the CTA can be read: the clip runs to its end
+	got, notes = editor.Advance(input(domain.TemplateProductCM, "", clip("a", 3), short))
+	assert.InDelta(t, 1.2, got.Clips[1].Length(), 1e-9)
+	assert.Contains(t, notes[len(notes)-1], "CTA Timing")
+
+	short.In, short.Out, short.SourceSeconds = 4.0, 4.8, 5.0
 	got, _ = editor.Advance(input(domain.TemplateProductCM, "", clip("a", 3), short))
 	assert.InDelta(t, 1.0, got.Clips[1].Length(), 1e-9)
+	assert.InDelta(t, 5.0, got.Clips[1].Out, 1e-9)
+
+	whole := clip("b", 1)
+	whole.SourceSeconds = 1 // nothing left to extend into
+	got, notes = editor.Advance(input(domain.TemplateProductCM, "", clip("a", 3), whole))
+	assert.InDelta(t, 1.0, got.Clips[1].Length(), 1e-9)
+	assert.Empty(t, notes, "no extension was possible")
+}
+
+func TestJudge_CTATimingAsksForAnEditOnlyWhereTheTakeHasMoreToGive(t *testing.T) {
+	closing := clip("b", 1)
+	closing.SourceSeconds = 5
+	_, findings, err := editor.NewJudge(nil).Judge(context.Background(), input(domain.TemplateProductCM, "", clip("a", 3), closing))
+	require.NoError(t, err)
+	assert.Contains(t, findingIssues(findings), "CTA Timing")
+
+	closing.SourceSeconds = 1 // the clip already runs to the end of its Take
+	_, findings, err = editor.NewJudge(nil).Judge(context.Background(), input(domain.TemplateProductCM, "", clip("a", 3), closing))
+	require.NoError(t, err)
+	assert.NotContains(t, findingIssues(findings), "CTA Timing", "re-editing cannot fix a Take that is too short")
+}
+
+func findingIssues(fs []domain.EditorFinding) string {
+	var b strings.Builder
+	for _, f := range fs {
+		b.WriteString(f.Issue)
+	}
+	return b.String()
 }
 
 func TestAdvance_CaptionsTheSpokenLineOnlyWhereThereIsNoCaptionYet(t *testing.T) {
