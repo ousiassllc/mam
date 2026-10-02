@@ -48,6 +48,8 @@ type genReasoner struct {
 	extractor func(user string) string
 	// interpreter answers the Command Interpreter from its prompt; nil means no operation.
 	interpreter func(user string) string
+	// interpreterErr, when set, is the Command Interpreter's failed call.
+	interpreterErr error
 	// planner, when set, answers the Prompt Planner instead of specAnswer.
 	planner func(user string) string
 	// director answers the Director Agent (Continue) from its prompt; nil means an empty answer.
@@ -78,6 +80,9 @@ func (g *genReasoner) Complete(ctx context.Context, agent llm.Agent, req llm.Req
 		text = g.planner(req.User)
 	}
 	if agent == llm.AgentCommandInterpreter {
+		if g.interpreterErr != nil {
+			return llm.Response{}, g.interpreterErr
+		}
 		text = `{"operations":[]}`
 		if g.interpreter != nil {
 			text = g.interpreter(req.User)
