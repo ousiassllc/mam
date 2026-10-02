@@ -64,6 +64,7 @@ export class MamVideoPlayer extends LitElement {
 
   @state() private issues: JudgeIssue[] = [];
   @state() private measuredFps = 0;
+  private probing: Promise<void> | null = null;
   @state() private currentTime = 0;
   @state() private duration = 0;
   @state() private playing = false;
@@ -217,8 +218,17 @@ export class MamVideoPlayer extends LitElement {
     video.requestVideoFrameCallback(onFrame);
   }
 
-  /** Plays the video muted for a moment to measure its frame rate, then puts it back where it was. */
-  private async probeFrameRate(video: HTMLVideoElement): Promise<void> {
+  /**
+   * Plays the video muted for a moment to measure its frame rate, then puts it back where it was.
+   * Callers during a probe share it: a second probe would take the state the first one made (muted,
+   * advanced time) for the original and restore that.
+   */
+  private probeFrameRate(video: HTMLVideoElement): Promise<void> {
+    this.probing ??= this.runFrameRateProbe(video).finally(() => (this.probing = null));
+    return this.probing;
+  }
+
+  private async runFrameRateProbe(video: HTMLVideoElement): Promise<void> {
     if (typeof video.requestVideoFrameCallback !== 'function') return;
     const time = video.currentTime;
     const muted = video.muted;
