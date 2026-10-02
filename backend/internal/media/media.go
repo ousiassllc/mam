@@ -126,10 +126,33 @@ func parseRate(s string) float64 {
 }
 
 // Thumbnail writes the frame of src at the given second (clamped into the video) as a JPEG at most
-// 960 pixels wide.
+// 960 pixels wide. A second past the last video frame (an audio track longer than the picture makes
+// the container longer than the video) is no error of ffmpeg, which exits 0 and writes nothing: the
+// frame is then taken from further back, and at last from the first frame, so a frame always comes
+// out of a video.
 func (t Tools) Thumbnail(ctx context.Context, src, dst string, at float64) error {
+	at = max(at, 0)
+	for _, back := range thumbnailBackoff {
+		err := t.thumbnailAt(ctx, src, dst, max(at-back, 0))
+		if !errors.Is(err, errNoOutput) {
+			return err
+		}
+		if at-back <= 0 {
+			return fmt.Errorf("ffmpeg: no frame in %s: %w", filepath.Base(src), err)
+		}
+	}
+	return t.thumbnailAt(ctx, src, dst, 0)
+}
+
+// thumbnailBackoff are the distances in seconds before the requested time that Thumbnail retries.
+var thumbnailBackoff = []float64{0, 0.1, 0.25, 0.5, 1, 2, 4, 8}
+
+// errNoOutput means ffmpeg succeeded and wrote no file.
+var errNoOutput = errors.New("ffmpeg wrote no output")
+
+func (t Tools) thumbnailAt(ctx context.Context, src, dst string, at float64) error {
 	return t.write(ctx, dst, "image2", []string{
-		"-ss", strconv.FormatFloat(max(at, 0), 'f', 3, 64), "-i", src,
+		"-ss", strconv.FormatFloat(at, 'f', 3, 64), "-i", src,
 		"-frames:v", "1", "-vf", "scale='min(960,iw)':-2", "-q:v", "3",
 	})
 }
@@ -166,6 +189,9 @@ func (t Tools) write(ctx context.Context, dst, format string, args []string) err
 			return ctx.Err()
 		}
 		return fmt.Errorf("ffmpeg: %w: %s", err, strings.TrimSpace(stderr.String()))
+	}
+	if _, err := os.Stat(tmp); errors.Is(err, os.ErrNotExist) {
+		return errNoOutput // ffmpeg exited 0 but wrote nothing (a seek past the last frame)
 	}
 	if err := os.Rename(tmp, dst); err != nil {
 		_ = os.Remove(tmp)
