@@ -3,6 +3,7 @@ package router_test
 import (
 	"errors"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"regexp"
 	"testing"
@@ -96,4 +97,21 @@ func TestSettings_RendersWithoutAKeyStore(t *testing.T) {
 	rec = a.get("/projects/"+project+"/settings", true)
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	assert.Contains(t, rec.Body.String(), `data-testid="credential-unavailable"`)
+}
+
+// Saving or deleting a key with an unusable OS key store answers the panel that says so (503), not
+// the generic internal error (#324).
+func TestSettings_SavingAndDeletingKeysWithoutAKeyStoreAnswersThePanelWith503(t *testing.T) {
+	a := newApp(t)
+	keyring.MockInitWithError(errors.New("secret service is not available"))
+	t.Cleanup(keyring.MockInit)
+
+	for _, rec := range []*httptest.ResponseRecorder{
+		a.form(http.MethodPut, "/credentials/kling", url.Values{"api_key": {"sk-abc"}}),
+		a.form(http.MethodDelete, "/credentials/kling", nil),
+	} {
+		assert.Equal(t, http.StatusServiceUnavailable, rec.Code, rec.Body.String())
+		assert.Contains(t, rec.Body.String(), `data-testid="credential-unavailable"`)
+		assert.NotContains(t, rec.Body.String(), "内部エラー")
+	}
 }
