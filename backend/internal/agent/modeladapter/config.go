@@ -197,15 +197,49 @@ func LoadConfig(path string) (Config, error) {
 	if err != nil {
 		return Config{}, fmt.Errorf("read model config: %w", err)
 	}
+	// The four maps are decoded per entry on top of the default entry, so that an entry that names
+	// only some of its fields keeps the defaults of the others (encoding/json would rebuild the whole
+	// entry from the zero value). The embedded Config shares the default maps.
+	file := struct {
+		Config
+		Vendors  map[Vendor]json.RawMessage               `json:"vendors"`
+		Models   map[domain.ModelName]json.RawMessage     `json:"models"`
+		Images   map[ImagePurpose]json.RawMessage         `json:"images"`
+		Policies map[domain.QualityPolicy]json.RawMessage `json:"policies"`
+	}{Config: cfg}
 	dec := json.NewDecoder(bytes.NewReader(data))
 	dec.DisallowUnknownFields()
-	if err := dec.Decode(&cfg); err != nil {
+	if err := dec.Decode(&file); err != nil {
 		return Config{}, fmt.Errorf("decode model config %s: %w", path, err)
+	}
+	cfg = file.Config
+	for _, err := range []error{
+		overlayEntries(cfg.Vendors, file.Vendors), overlayEntries(cfg.Models, file.Models),
+		overlayEntries(cfg.Images, file.Images), overlayEntries(cfg.Policies, file.Policies),
+	} {
+		if err != nil {
+			return Config{}, fmt.Errorf("decode model config %s: %w", path, err)
+		}
 	}
 	if err := cfg.Validate(); err != nil {
 		return Config{}, fmt.Errorf("model config %s: %w", path, err)
 	}
 	return cfg, nil
+}
+
+// overlayEntries applies the JSON of each entry on top of the entry of dst with the same key (the
+// zero value for a new key); fields the JSON does not name keep their value. Unknown fields are rejected.
+func overlayEntries[K comparable, V any](dst map[K]V, raw map[K]json.RawMessage) error {
+	for k, r := range raw {
+		v := dst[k]
+		dec := json.NewDecoder(bytes.NewReader(r))
+		dec.DisallowUnknownFields()
+		if err := dec.Decode(&v); err != nil {
+			return fmt.Errorf("%v: %w", k, err)
+		}
+		dst[k] = v
+	}
+	return nil
 }
 
 // Validate checks that every route names a model that has an adapter and settings, that video
