@@ -73,6 +73,9 @@ type ShotFacts struct {
 // KeepFixedClips puts back the clips the user fixed (Editing MANUAL / LOCK) when a Rough Cut is
 // made again: a clip of a Shot in fixed replaces the fresh clip of that Shot with the one of the
 // previous timeline, in place. A Shot without a clip in the previous timeline keeps its fresh clip.
+// When the Shot's Selected Take changed since, the clip keeps the user's cut (In / Out, Caption,
+// Transition) but plays the Selected Take of the fresh clip, with the cut held within its length:
+// the Rough Cut of a Shot is the Take the Shot uses now, fixed Editing or not.
 func KeepFixedClips(fresh, previous domain.EditTimeline, fixed map[string]bool) domain.EditTimeline {
 	out := domain.EditTimeline{Clips: slices.Clone(fresh.Clips)}
 	for i, c := range out.Clips {
@@ -80,10 +83,26 @@ func KeepFixedClips(fresh, previous domain.EditTimeline, fixed map[string]bool) 
 			continue
 		}
 		if j := slices.IndexFunc(previous.Clips, func(p domain.EditClip) bool { return p.ShotID == c.ShotID }); j >= 0 {
-			out.Clips[i] = previous.Clips[j]
+			out.Clips[i] = onTake(previous.Clips[j], c)
 		}
 	}
 	return out
+}
+
+// onTake is the user's clip played on the Take of the fresh clip: the same clip when that is its
+// Take already, else the cut moved to the new Take and held within the Take's length.
+func onTake(mine, fresh domain.EditClip) domain.EditClip {
+	if mine.TakeID == fresh.TakeID {
+		return mine
+	}
+	mine.TakeID, mine.SourceSeconds = fresh.TakeID, fresh.SourceSeconds
+	if mine.SourceSeconds > 0 && mine.Out > mine.SourceSeconds {
+		mine.Out = mine.SourceSeconds
+		if mine.Out-mine.In < domain.MinClipSeconds {
+			mine.In = max(0, mine.Out-domain.MinClipSeconds)
+		}
+	}
+	return mine
 }
 
 // JudgeInput is what the Editor Judge looks at.

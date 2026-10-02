@@ -368,3 +368,36 @@ func TestEditorReshootLoop_ACancelledRequestStillRecordsTheRoundOfTheStartedShot
 	assert.Equal(t, 2, f.trunkShots(t), "the Shot that could not start is removed")
 	assert.Equal(t, domain.StateGenerating, f.state(t))
 }
+
+// The Selected Take of a Shot whose Editing is fixed changes: the Rough Cut made again plays the
+// new Take with the user's cut, so that the Editor Judge's "the Take changed" finding goes away.
+func TestRoughCut_AFixedShotFollowsItsNewSelectedTake(t *testing.T) {
+	ctx := context.Background()
+	f := newGenFixture(t, true)
+	f.llm.extractor = extractAnswer
+	f.buildReferencePack(t)
+	f.generateAndWait(t, f.shotID, 2)
+	f.selectTakeOf(t, f.shotID)
+	f.execSQL(t, `UPDATE project SET production_template = 'drama', state = 'VISUAL_DESIGN' WHERE id = ?`, f.projectID)
+	view, err := f.svc.Editor.RoughCut(ctx, f.projectID, "")
+	require.NoError(t, err)
+	oldTake := view.Timeline.Clips[0].TakeID
+	f.execSQL(t, `INSERT INTO lock (id, project_id, target_type, target_id, parameter_name, mode) VALUES ('l-edit', ?, 'shot', ?, 'editing', 'lock')`, f.projectID, f.shotID)
+	var newTake string
+	require.NoError(t, f.query(t, `SELECT t.id FROM take t JOIN prompt_version pv ON pv.id = t.prompt_version_id WHERE pv.shot_id = ? AND t.id <> ? ORDER BY t.rowid LIMIT 1`, f.shotID, oldTake).Scan(&newTake))
+	_, err = f.svc.Takes.Select(ctx, newTake)
+	require.NoError(t, err)
+
+	again, err := f.svc.Editor.RoughCut(ctx, f.projectID, "")
+	require.NoError(t, err)
+
+	require.Len(t, again.Timeline.Clips, 1)
+	assert.Equal(t, newTake, again.Timeline.Clips[0].TakeID)
+	f.llm.editor = `{"verdict":"pass","findings":[]}`
+	judged, err := f.svc.Editor.JudgeTimeline(ctx, again.Timeline.ID)
+	require.NoError(t, err)
+	require.NotNil(t, judged.Timeline.Judge)
+	for _, finding := range judged.Timeline.Judge.Findings {
+		assert.NotContains(t, finding.Issue, "採用 Take が編集後に変わっています")
+	}
+}
