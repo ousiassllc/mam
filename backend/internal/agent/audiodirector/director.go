@@ -174,6 +174,12 @@ func (d *Director) produce(ctx context.Context, in Input, rel string) (domain.Au
 	if len(lines) > 0 && d.Providers.Speech == nil {
 		return domain.AudioTimeline{}, ErrNoAPIKey
 	}
+	// A missing key is known without a call: it is refused before the Planner's paid model call.
+	if kc, ok := d.Providers.Speech.(KeyChecker); ok && len(lines) > 0 {
+		if err := kc.CheckKey(); err != nil {
+			return domain.AudioTimeline{}, err
+		}
+	}
 	spend, err := newSpending(ctx, d.Ledger, in.ProjectID)
 	if err != nil {
 		return domain.AudioTimeline{}, err

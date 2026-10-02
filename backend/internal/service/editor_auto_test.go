@@ -140,3 +140,5 @@ func TestEditorClose_AnAnswerAfterCloseStartsNothing(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 	assert.Equal(t, 1, f.countNotices(t), "the chain does not run after Close")
 }
+
+func (noKeySpeech) CheckKey() error { return audiodirector.ErrNoAPIKey }

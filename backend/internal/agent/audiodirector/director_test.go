@@ -964,3 +964,21 @@ func TestDirector_ALipSyncSyncLabsAcceptedButFailedLaterIsRecordedOncePerJob(t *
 		assert.Equal(t, domain.ModelSyncLabs, ledger.providers()[len(ledger.entries)-1])
 	})
 }
+
+// A missing ElevenLabs key is known without a call: Produce refuses before the Planner's paid model call.
+func TestDirector_ALineWithoutAnElevenLabsKeyIsRefusedBeforeThePlannerRuns(t *testing.T) {
+	model := &fakePlanner{answer: `{"scenes":[]}`}
+	el := audiodirector.NewElevenLabs(audiodirector.Config{BaseURL: "http://127.0.0.1:1"}, keys(t, false), nil)
+	ledger := &fakeLedger{}
+	d := audiodirector.New(audiodirector.Deps{
+		Providers: audiodirector.ElevenLabsProviders(el), Planner: audiodirector.NewPlanner(model), Ledger: ledger, Tools: tools(t), Root: t.TempDir(),
+	})
+
+	_, err := d.Produce(context.Background(), audiodirector.Input{
+		ProjectID: "p1", EditTimelineID: "e1", Quality: domain.QualityFast, Scenes: twoScenes(), Seconds: 10,
+	})
+
+	assert.ErrorIs(t, err, audiodirector.ErrNoAPIKey)
+	assert.Zero(t, model.calls, "the Planner (a paid model call) is not called")
+	assert.Empty(t, ledger.entries)
+}
