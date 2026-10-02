@@ -88,10 +88,17 @@ func (s *ContinueService) input(ctx context.Context, ref repository.ShotRef) (co
 		in.Spec = &spec
 	}
 	in.FinalFrame = s.finalFrame(ctx, ref)
-	for _, sh := range shots {
-		in.Story = append(in.Story, fmt.Sprintf("Scene %d / Shot %d: %s", sh.Scene.OrderIndex+1, sh.Shot.OrderIndex+1, sh.Shot.Objective))
-	}
+	in.Story = storyLines(shots)
 	return in, nil
+}
+
+// storyLines are the Shots as the "story so far" of the Continue Agent's prompt.
+func storyLines(shots []repository.ShotRef) []string {
+	lines := make([]string, 0, len(shots))
+	for _, sh := range shots {
+		lines = append(lines, fmt.Sprintf("Scene %d / Shot %d: %s", sh.Scene.OrderIndex+1, sh.Shot.OrderIndex+1, sh.Shot.Objective))
+	}
+	return lines
 }
 
 // finalFrame returns the last frame of the Take the next Shot continues from (the selected Take,

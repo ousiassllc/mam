@@ -274,6 +274,13 @@ func (s *BranchService) continueBranch(ctx context.Context, ref repository.ShotR
 	if err != nil {
 		return err
 	}
+	// the story so far is the Branch's: the Shots up to its Branch Point, not the Shots of the series
+	// that follow it (generation works from the same series)
+	story, err := s.shots.StoryShots(ctx, ref.ProjectID, branch.ID)
+	if err != nil {
+		return err
+	}
+	in.Story = storyLines(story)
 	plan, err := s.continues.agent.Plan(ctx, in, direction)
 	if err != nil {
 		return branchMadeError(aiError(err))
@@ -351,6 +358,12 @@ func (s *BranchService) Fork(ctx context.Context, ref repository.ShotRef, typ do
 		if err != nil {
 			return nil, err
 		}
+		// the Branches continue from the fork: later Shots of the series are not part of their story
+		story, err := s.shots.StoryShots(ctx, ref.ProjectID, ref.Scene.BranchID)
+		if err != nil {
+			return nil, err
+		}
+		in.Story = storyLines(repository.CutAtBranchPoint(story, typ, ref.Scene.ID, ref.Shot.ID))
 		proposal, err := s.continues.agent.Propose(ctx, in)
 		if err != nil {
 			return nil, aiError(err)

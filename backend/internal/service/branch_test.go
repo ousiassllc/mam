@@ -8,7 +8,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/service"
 )
 
@@ -234,4 +236,31 @@ func TestChat_DirectorModeABranchDirectionWithAForbiddenExpressionMakesNothing(t
 	_, err = f.svc.Chat.PostMessage(context.Background(), f.projectID, service.PostMessageInput{Content: "最高の別展開を作って"})
 	require.ErrorIs(t, err, domain.ErrBrandViolation, "the words of the message too")
 	assert.Zero(t, f.count(t, `SELECT COUNT(*) FROM branch WHERE project_id = ?`, f.projectID))
+}
+
+// A Branch is planned from the story up to its Branch Point: the Shots of the trunk after the fork
+// are not part of it (generation works from the same cut series).
+func TestBranch_ThePlanOfTheFirstShotDoesNotSeeTheTrunkShotsAfterTheFork(t *testing.T) {
+	f := completedShotFixture(t, sameSceneAnswer)
+	_, err := f.svc.Plans.CreateShot(context.Background(), f.sceneID, service.ShotForm{Objective: "トランクだけの後続カット", DurationSeconds: "4"})
+	require.NoError(t, err)
+
+	f.branch(t, service.BranchInput{Direction: "ドアを開ける"})
+	plan := f.llm.users[llm.AgentDirector][len(f.llm.users[llm.AgentDirector])-1]
+	assert.Contains(t, plan, "主人公が振り返って走り出す", "the Shots up to the fork are the story so far")
+	assert.NotContains(t, plan, "トランクだけの後続カット")
+
+	f.llm.users[llm.AgentDirector] = nil
+	_, err = f.svc.Branch.Fork(context.Background(), mustShotRef(t, f), domain.BranchAtShot, 2, nil)
+	require.NoError(t, err)
+	for _, p := range f.llm.users[llm.AgentDirector] {
+		assert.NotContains(t, p, "トランクだけの後続カット", "the proposal for the Branches is cut at the fork as well")
+	}
+}
+
+func mustShotRef(t *testing.T, f genFixture) repository.ShotRef {
+	t.Helper()
+	ref, err := repository.NewGenerationRepository(f.db).GetShot(context.Background(), f.shotID)
+	require.NoError(t, err)
+	return ref
 }
