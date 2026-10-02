@@ -65,6 +65,13 @@ func (a api) key() (string, error) {
 	return key, nil
 }
 
+// Configured reports whether an API key is stored for the vendor. A store that cannot answer counts
+// as configured: the call itself reports the real error.
+func (a api) Configured() bool {
+	has, err := a.keys.Has(string(a.vendor))
+	return err != nil || has
+}
+
 // request sends a request and returns the body of a 2xx answer. url is absolute.
 func (a api) request(ctx context.Context, method, target string, header map[string]string, body []byte, limit int64) ([]byte, error) {
 	var rd io.Reader

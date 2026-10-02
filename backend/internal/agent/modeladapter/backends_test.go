@@ -658,3 +658,17 @@ func fileBytes(t *testing.T, b modeladapter.Blob) []byte {
 	b.Discard()
 	return data
 }
+
+func TestUnavailableOfARealBackendFollowsTheStoredAPIKey(t *testing.T) {
+	srv := httptest.NewServer(http.NewServeMux())
+	defer srv.Close()
+	keys := memKeys{"seedance": "k"}
+	a := modeladapter.New(modeladapter.DefaultConfig(), backendsFor(t, srv, keys))
+
+	assert.Empty(t, a.Unavailable(domain.ModelSeedance2))
+	assert.Equal(t, domain.ExcludedNoBackend, a.Unavailable(domain.ModelKling3), "no Kling key is stored")
+	assert.Equal(t, domain.ExcludedNoBackend, a.Unavailable(domain.ModelRunwayGen45))
+
+	keys["kling"] = "k" // keys are added while the server runs
+	assert.Empty(t, a.Unavailable(domain.ModelKling3))
+}

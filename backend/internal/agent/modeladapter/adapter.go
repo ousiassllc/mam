@@ -76,10 +76,15 @@ func New(cfg Config, backends Backends, opts ...Option) *Adapter {
 func (a *Adapter) Config() Config { return a.cfg }
 
 // Unavailable says why the video model cannot be called now (domain.ExcludedNoBackend: it has no
-// backend; domain.ExcludedCircuitOpen: its vendor's circuit breaker is open), or "" when it can. It
-// does not consume the breaker's probe call.
+// backend or no API key is stored for its vendor; domain.ExcludedCircuitOpen: its vendor's circuit
+// breaker is open), or "" when it can. It does not consume the breaker's probe call.
 func (a *Adapter) Unavailable(m domain.ModelName) string {
-	if a.backends.Video[m] == nil {
+	backend := a.backends.Video[m]
+	if backend == nil {
+		return domain.ExcludedNoBackend
+	}
+	// Keys are added at run time, so the stored key is looked up on every call.
+	if c, ok := backend.(interface{ Configured() bool }); ok && !c.Configured() {
 		return domain.ExcludedNoBackend
 	}
 	if b := a.breakers[VendorOf(m)]; b == nil || b.IsOpen() {
