@@ -263,9 +263,12 @@ func (s *ContinueService) confirm(ctx context.Context, shotID string, in Confirm
 	if err != nil {
 		return ShotFragment{}, true, notFound(err)
 	}
+	// the Shot is in the Project: what follows is recorded even if the client goes away, or the
+	// card would stay open and a second answer would make a second Shot (and a paid generation)
+	done := context.WithoutCancel(ctx)
 	chat := &ChatService{s.core}
 	note := fmt.Sprintf("続きを追加しました: Scene %d「%s」 Shot %d: %s", scene.OrderIndex+1, scene.Title, shot.OrderIndex+1, shot.Objective)
-	if err := chat.Announce(ctx, ref.ProjectID, assistantText(note)); err != nil {
+	if err := chat.Announce(done, ref.ProjectID, assistantText(note)); err != nil {
 		s.logger.Error("record continuation in the thread failed", "project_id", ref.ProjectID, "err", err)
 	}
 	if _, err := s.generation.gen.Start(ctx, shot.ID, direction); err != nil {
@@ -273,7 +276,7 @@ func (s *ContinueService) confirm(ctx context.Context, shotID string, in Confirm
 	}
 	// the user asked for this Shot (by choosing or confirming the direction): a generate, as if
 	// they had pressed Generate on it (spec/spec.md §28.3)
-	s.recordIntervention(ctx, domain.Intervention{ShotID: shot.ID, Kind: domain.InterventionGenerate})
+	s.recordIntervention(done, domain.Intervention{ShotID: shot.ID, Kind: domain.InterventionGenerate})
 	frag, err = s.generation.Shot(ctx, shot.ID)
 	return frag, true, err
 }
@@ -314,7 +317,8 @@ func (s *ChatService) answerContinue(ctx context.Context, project domain.Project
 	if confirmErr != nil && !added {
 		return Workspace{}, confirmErr
 	}
-	if err := s.commit(ctx, turn); err != nil {
+	// the Shot was added, so the reply that closes the card is recorded whatever happened to ctx
+	if err := s.commit(context.WithoutCancel(ctx), turn); err != nil {
 		return Workspace{}, err
 	}
 	if confirmErr != nil {
