@@ -135,7 +135,7 @@ M1 の入出力契約（Issue #12）:
 
 **Take System の動作（M1）**
 
-- AI Pick: Judge が結果を保存するたびに、その Shot の Take のうち Judge 済みで除外されていないものから最良を `ai_pick` にする（PASS が FAIL より先、次に 4 スコアの平均、同点は古い方）。ユーザーが Selected にした Take があれば何もしない。AUTO MODE では PASS した AI Pick を Shot の Take（`selected_take_id`）にもする。DIRECTOR MODE では推奨のみで、確定はユーザー（`POST /takes/:id/select`）。変更があったときは Judge のチャット通知に「AI Pick: …」を追記する。
+- AI Pick: Judge が結果を保存するたびに、その Shot の Take のうち Judge 済みで除外されていないものから最良を `ai_pick` にする（PASS が FAIL より先、次に 4 スコアの平均、同点は古い方。Retry Policy の Minimum acceptance score を満たす Take が 1 本でもあれば、候補はその Take だけで、基準未達の Take は平均が高くても AI Pick にならない）。ユーザーが Selected にした Take があれば何もしない。AUTO MODE で Shot の Take Selection が AUTO のときは、PASS かつ Minimum acceptance score を満たした AI Pick を Shot の Take（`selected_take_id`）にもする（PASS でも基準未達なら AI Pick にはなるが採用しない）。DIRECTOR MODE、または Take Selection が MANUAL / LOCK の Shot では推奨のみで、確定はユーザー（`POST /takes/:id/select`）。変更があったときは Judge のチャット通知に「AI Pick: …」を追記する。
 - Take カード（`ref_type=take`）の本文 JSON は `video_url`（`/takes/:id/video`）・`poster_url`・`shot_id` を持ち、`mam-video-player` を埋め込む。Judge 要約と Take 状態（AI Pick / 採用 / 除外）はカードに載せない（スレッドは追記のみのため）。Judge が結果を保存するたびに別のテキスト発言として投稿される。カードには返信と Take 比較（`GET /shots/:id/takes`）への導線がある。
 - `GET /shots/:id/takes` は `mam-take-comparator`（`api-url` に `GET /api/v1/shots/:id/takes`）を置くページ。部分採用が確定するとコンポーネントが `partial-take-confirmed` を発火する。
 
@@ -467,4 +467,5 @@ Notes:
 | 1.79 | 2026-10-02 | §2.11 の `POST /shots/:id/references` に、Style / Lighting は名前に関係なく種別だけで置き換えることと、409 は GENERATING / REPAIRING / JUDGING の Shot であることを明記した | 実装（`domain.SameReference` と `ShotState.CanPinReference`）は仕様の「同じ種別・同じ名前」「生成中」より広く置換・拒否しており、`spec/spec.md` §10.1 の規則が endpoints.md に無かったため（Issue #345 / #390） |
 | 1.80 | 2026-10-02 | §2.3 の `POST /takes/:id/repair` に、Edit-Level Repair だけは新しい Take を作らず Judge もしない（`resulting_take_id` は NULL のまま）例外を明記した | 実装は Edit-Level Repair で動画モデルを呼ばず、チャットの案内と Selected Take の採用だけを行う（`model-adapters.md` §11.3、`er.md`）のに、この行は全戦略が Take を作ると読めた（Issue #378） |
 | 1.81 | 2026-10-02 | §2.10 の `POST /projects/:id/notes`（と Series 版）に、title は任意で空なら本文 1 行目から作ること、title 100 文字・content 1〜4000 文字の上限と 422 を追記した | 実装（`NoteService.create`、`domain.MaxNoteTitleRunes` / `MaxNoteContentRunes`）が title の省略を許し上限で 422 にしているのに仕様に無かったため（Issue #387） |
-| 1.82 | 2026-10-02 | §2.1 の `POST /projects/:id/scenes` に、`location` / `time` は 100 文字、`objective` は 300 文字までで、超過は 422 になることを追記した | 実装（`validateScene` の `sceneMetaMaxRunes` / `textMaxRunes`）が上限で 422 にしているのに、仕様は title の上限しか書いていなかったため（Issue #386） |
+| 1.82 | 2026-10-02 | §2.2 の `POST /projects/:id/scenes` に、`location` / `time` は 100 文字、`objective` は 300 文字までで、超過は 422 になることを追記した | 実装（`validateScene` の `sceneMetaMaxRunes` / `textMaxRunes`）が上限で 422 にしているのに、仕様は title の上限しか書いていなかったため（Issue #386） |
+| 1.83 | 2026-10-02 | §2.4 の AI Pick に、候補は Minimum acceptance score を満たす Take を優先すること、`selected_take_id` への採用は AUTO MODE かつ Take Selection=AUTO で PASS かつ基準を満たすときだけであることを追記した。あわせて 1.82 の節番号を §2.2 に直した | 実装（`judge.Runner.pick`、`TakeRepository.PickBest`）と `spec/spec.md` の「採用された Shot」の定義に合わせるため。コード側の足切りは変えない（Issue #377） |
