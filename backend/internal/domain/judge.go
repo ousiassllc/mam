@@ -243,6 +243,33 @@ func (r JudgeResult) Accepted(p EffectivePolicy, t ProductionTemplate) bool {
 	return p.Accepts(overall, axes)
 }
 
+// RepairBlock is why a Take cannot be repaired now; RepairAllowed (the zero value) is "it can".
+type RepairBlock int
+
+// The reasons a Repair of a Take is refused (409).
+const (
+	RepairAllowed   RepairBlock = iota
+	RepairNotJudged             // the Take has no Judge result to repair from
+	RepairAccepted              // the Take passed the Judge and the Retry Policy: nothing to repair
+	RepairBusy                  // the Shot is being generated or repaired
+)
+
+// CheckRepair is the one decision whether a Take may be repaired: it needs a Judge result (latest; nil
+// when the Take was never judged) that the Retry Policy does not accept, and its Shot must not be Busy.
+// The Repair Agent refuses with it (POST /takes/:id/repair is 409 otherwise) and the Shot card draws
+// the Repair button only when it returns RepairAllowed.
+func CheckRepair(latest *JudgeResult, p EffectivePolicy, t ProductionTemplate, shot ShotState) RepairBlock {
+	switch {
+	case latest == nil:
+		return RepairNotJudged
+	case latest.Accepted(p, t):
+		return RepairAccepted
+	case shot.Busy():
+		return RepairBusy
+	}
+	return RepairAllowed
+}
+
 // EncodeScores returns the JSON of Scores; nil when there are none.
 func (r JudgeResult) EncodeScores() ([]byte, error) {
 	if len(r.Scores) == 0 {

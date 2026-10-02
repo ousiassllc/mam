@@ -52,7 +52,7 @@ func BuildReferencePack(svc *service.GenerationService) gin.HandlerFunc {
 }
 
 func shotCardData(f service.ShotFragment) molecules.ShotCardData {
-	return molecules.ShotCardData{ProjectID: f.ProjectID, Shot: f.Shot, Storyboard: f.Storyboard, Takes: f.Takes, Selected: f.Selected}
+	return molecules.ShotCardData{ProjectID: f.ProjectID, Shot: f.Shot, Storyboard: f.Storyboard, Takes: f.Takes, Selected: f.Selected, Repairable: f.Repairable}
 }
 
 // takeActionCard is the Shot card that answers an action of a Take button. The card replaces the one the

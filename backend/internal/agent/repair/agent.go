@@ -141,22 +141,29 @@ func (a *Agent) Start(ctx context.Context, takeID string, auto bool) (domain.Job
 		return domain.Job{}, err
 	}
 	res, err := a.Judges.Latest(ctx, takeID)
-	if errors.Is(err, repository.ErrNotFound) {
-		return domain.Job{}, ErrNotJudged
-	}
-	if err != nil {
+	var latest *domain.JudgeResult
+	switch {
+	case err == nil:
+		latest = &res
+	case !errors.Is(err, repository.ErrNotFound):
 		return domain.Job{}, err
 	}
 	policy, err := a.Policies.Get(ctx, ref.ProjectID)
 	if err != nil {
 		return domain.Job{}, err
 	}
-	if res.Accepted(policy.Effective(), policy.Template) {
-		return domain.Job{}, ErrAccepted
-	}
 	shot, err := a.Generations.GetShot(ctx, ref.Take.ShotID)
 	if err != nil {
 		return domain.Job{}, err
+	}
+	// The claim below decides who owns the Shot; this is the decision the Shot card draws its Repair button by.
+	switch domain.CheckRepair(latest, policy.Effective(), policy.Template, shot.Shot.State) {
+	case domain.RepairNotJudged:
+		return domain.Job{}, ErrNotJudged
+	case domain.RepairAccepted:
+		return domain.Job{}, ErrAccepted
+	case domain.RepairBusy:
+		return domain.Job{}, ErrBusy
 	}
 	claimed, err := a.Generations.StartRepair(ctx, shot.Shot.ID)
 	if err != nil {

@@ -83,7 +83,7 @@ func sceneShotData(v service.SceneView) organisms.SceneShotData {
 	}
 	for _, sh := range v.Shots {
 		d.Shots = append(d.Shots, molecules.ShotCardData{
-			ProjectID: v.Project.ID, Shot: sh.Shot, Storyboard: sh.Storyboard, Takes: sh.Takes, Selected: sh.Selected,
+			ProjectID: v.Project.ID, Shot: sh.Shot, Storyboard: sh.Storyboard, Takes: sh.Takes, Selected: sh.Selected, Repairable: sh.Repairable,
 		})
 	}
 	return d

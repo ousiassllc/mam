@@ -89,6 +89,9 @@ func (s *GenerationService) Shot(ctx context.Context, shotID string) (ShotFragme
 	if frame, ok := ref.Shot.Storyboard(); ok {
 		view.Storyboard = &frame
 	}
+	if err := s.repairable.mark(ctx, ref.ProjectID, []*ShotView{&view}); err != nil {
+		return ShotFragment{}, err
+	}
 	return ShotFragment{ProjectID: ref.ProjectID, ShotView: view}, nil
 }
 
