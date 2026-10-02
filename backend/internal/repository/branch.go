@@ -364,6 +364,21 @@ func (r *BranchRepository) Scenes(ctx context.Context, branchID string) ([]domai
 	return scenes, rows.Err()
 }
 
+// CutAtBranchPoint returns the Shots of a story (in order) that a Branch made at the point inherits:
+// up to and including the Branch Point's Shot, or for a Branch at a Scene the Shots before that
+// Scene. A point that is not in the story keeps all of it.
+func CutAtBranchPoint(story []ShotRef, typ domain.BranchPointType, sceneID, shotID string) []ShotRef {
+	for i, s := range story {
+		if typ == domain.BranchAtScene && s.Shot.SceneID == sceneID {
+			return story[:i]
+		}
+		if typ != domain.BranchAtScene && s.Shot.ID == shotID {
+			return story[:i+1]
+		}
+	}
+	return story
+}
+
 // StoryShots returns the Shots of the story of the trunk (branchID "") or of the Branch in story
 // order: for a Branch, the Shots of the series it hangs from up to its Branch Point, then the Shots
 // of its own derived tree.
@@ -394,23 +409,13 @@ func (r *GenerationRepository) StoryShots(ctx context.Context, projectID, branch
 	if err != nil {
 		return nil, err
 	}
-	keep := len(inherited)
-	for i, s := range inherited {
-		if typ == domain.BranchAtScene && s.Shot.SceneID == sceneID {
-			keep = i
-			break
-		}
-		if typ != domain.BranchAtScene && s.Shot.ID == shotID {
-			keep = i + 1
-			break
-		}
-	}
+	inherited = CutAtBranchPoint(inherited, typ, sceneID, shotID)
 	rows, err := point.QueryContext(ctx, shotRefSelect+` WHERE s.project_id = ? AND s.branch_id = ? ORDER BY s.order_index, sh.order_index`, projectID, branchID)
 	if err != nil {
 		return nil, fmt.Errorf("list branch shots: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
-	out := append([]ShotRef{}, inherited[:keep]...)
+	out := append([]ShotRef{}, inherited...)
 	for rows.Next() {
 		ref, err := scanShotRef(rows)
 		if err != nil {
