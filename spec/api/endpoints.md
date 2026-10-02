@@ -87,7 +87,7 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 
 | Method | Path | 概要 | 対応機能 |
 |---|---|---|---|
-| POST | `/projects/:id/scenes` | Scene 作成。Body `title`（必須、100文字以内）、`location`/`time`/`objective`（任意）。成功時は追加した Scene を選択した階層フラグメント（201）、入力不正は入力値を保ったまま再描画（422）。スレッドに AI 発言として記録される | F-04 |
+| POST | `/projects/:id/scenes` | Scene 作成。Body `title`（必須、100文字以内）、`location`/`time`（任意、各 100 文字以内）、`objective`（任意、300 文字以内）。成功時は追加した Scene を選択した階層フラグメント（201）、入力不正は入力値を保ったまま再描画（422）。スレッドに AI 発言として記録される | F-04 |
 | POST | `/scenes/:id/shots` | Shot 作成。Body `objective`（必須、300文字以内）、`duration_seconds`（必須、0 より大きく 60 以下）。成功時は階層フラグメント（201）、入力不正は 422、存在しない Scene は 404 | F-04 |
 | PUT | `/shots/:id/locks` | パラメータ単位の AUTO/MANUAL/LOCK 設定（Character Identity/Camera/Product Geometry 等） | F-05 |
 | PUT | `/shots/:id/shot-spec` | Canonical Shot Spec の手動編集（DIRECTOR MODE） | F-06 |
@@ -467,3 +467,4 @@ Notes:
 | 1.79 | 2026-10-02 | §2.11 の `POST /shots/:id/references` に、Style / Lighting は名前に関係なく種別だけで置き換えることと、409 は GENERATING / REPAIRING / JUDGING の Shot であることを明記した | 実装（`domain.SameReference` と `ShotState.CanPinReference`）は仕様の「同じ種別・同じ名前」「生成中」より広く置換・拒否しており、`spec/spec.md` §10.1 の規則が endpoints.md に無かったため（Issue #345 / #390） |
 | 1.80 | 2026-10-02 | §2.3 の `POST /takes/:id/repair` に、Edit-Level Repair だけは新しい Take を作らず Judge もしない（`resulting_take_id` は NULL のまま）例外を明記した | 実装は Edit-Level Repair で動画モデルを呼ばず、チャットの案内と Selected Take の採用だけを行う（`model-adapters.md` §11.3、`er.md`）のに、この行は全戦略が Take を作ると読めた（Issue #378） |
 | 1.81 | 2026-10-02 | §2.10 の `POST /projects/:id/notes`（と Series 版）に、title は任意で空なら本文 1 行目から作ること、title 100 文字・content 1〜4000 文字の上限と 422 を追記した | 実装（`NoteService.create`、`domain.MaxNoteTitleRunes` / `MaxNoteContentRunes`）が title の省略を許し上限で 422 にしているのに仕様に無かったため（Issue #387） |
+| 1.82 | 2026-10-02 | §2.1 の `POST /projects/:id/scenes` に、`location` / `time` は 100 文字、`objective` は 300 文字までで、超過は 422 になることを追記した | 実装（`validateScene` の `sceneMetaMaxRunes` / `textMaxRunes`）が上限で 422 にしているのに、仕様は title の上限しか書いていなかったため（Issue #386） |
