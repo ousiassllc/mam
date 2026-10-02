@@ -77,6 +77,21 @@ func TestLoad_MalformedPortEnvironmentIsAnErrorNotTheDefault(t *testing.T) {
 	assert.Equal(t, 9001, cfg.Port)
 }
 
+func TestLoad_MalformedPortEnvironmentDoesNotBreakHelpOrThePortFlag(t *testing.T) {
+	bad := env(map[string]string{"MAM_DATA_DIR": "/data", "MAM_PORT": "abc"})
+
+	_, err := config.Load([]string{"--help"}, bad, io.Discard)
+	assert.ErrorIs(t, err, flag.ErrHelp)
+
+	cfg, err := config.Load([]string{"--port", "9000"}, bad, io.Discard)
+	require.NoError(t, err)
+	assert.Equal(t, 9000, cfg.Port, "an explicit --port wins over the environment, valid or not")
+
+	cfg, err = config.Load([]string{"--port", "0"}, bad, io.Discard)
+	require.NoError(t, err)
+	assert.Zero(t, cfg.Port, "--port 0 is explicit too")
+}
+
 func TestLoad_JudgeAndFaceModelSettings(t *testing.T) {
 	cfg, err := config.Load([]string{"--data-dir", "/d"}, func(string) string { return "" }, io.Discard)
 	require.NoError(t, err)
