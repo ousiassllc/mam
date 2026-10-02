@@ -267,7 +267,7 @@ func audioError(err error) error {
 		return &AIError{Reason: "ElevenLabs の呼び出しに失敗しました", Err: err}
 	case errors.Is(err, media.ErrUnavailable):
 		return ErrUnavailable
-	case errors.Is(err, llm.ErrInvalidOutput), errors.Is(err, llm.ErrNoAPIKey), errors.Is(err, llm.ErrTimeout), errors.As(err, &api):
+	case errors.Is(err, llm.ErrInvalidOutput), errors.Is(err, llm.ErrNoAPIKey), errors.Is(err, llm.ErrTimeout), errors.Is(err, llm.ErrCircuitOpen), errors.As(err, &api):
 		return aiError(err) // the Audio Director's planner
 	}
 	return &AIError{Reason: "音声のミキシングに失敗しました: " + err.Error(), Err: err}

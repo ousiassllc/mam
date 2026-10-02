@@ -260,6 +260,8 @@ func failureReason(err error) string {
 		return "AI の出力を制作に使える形で受け取れませんでした"
 	case errors.Is(err, llm.ErrTimeout):
 		return "AI の応答がタイムアウトしました"
+	case errors.Is(err, llm.ErrCircuitOpen):
+		return "AI サービスが一時的に利用できません。しばらく待ってから再実行してください"
 	case errors.As(err, &api) && api.Status == 429:
 		return "AI サービスのレート制限に達しました"
 	case errors.As(err, &api):

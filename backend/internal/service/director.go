@@ -541,14 +541,14 @@ func (s *DirectorService) interpret(ctx context.Context, message string, shots [
 
 // interpretError gives a failure of the Command Interpreter's LLM call the status the API
 // documents: no API key is 503 (ErrUnavailable), a 429 is ErrRateLimited (through the AIError), and a
-// timeout, a failing API or an answer that is not the expected JSON is 502. Errors of other origin
+// timeout, an open circuit breaker, a failing API or an answer that is not the expected JSON is 502. Errors of other origin
 // (the repository) are returned as they are.
 func interpretError(err error) error {
 	var api *llm.APIError
 	switch {
 	case errors.Is(err, llm.ErrNoAPIKey):
 		return ErrUnavailable
-	case errors.Is(err, llm.ErrInvalidOutput), errors.Is(err, llm.ErrTimeout), errors.As(err, &api):
+	case errors.Is(err, llm.ErrInvalidOutput), errors.Is(err, llm.ErrTimeout), errors.Is(err, llm.ErrCircuitOpen), errors.As(err, &api):
 		return aiError(err)
 	}
 	return err
