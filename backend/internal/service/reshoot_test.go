@@ -271,3 +271,36 @@ func TestEditorReshootLoop_PartialStartKeepsTheStartedShotInTheRound(t *testing.
 	require.ErrorIs(t, err, service.ErrConflict)
 	assert.Equal(t, 2, f.trunkShots(t), "asking again does not make the started Shot a second time")
 }
+
+// The request going away while the additional Shots start (the client left, AUTO is shutting down)
+// must not leave a generation that has started outside a round, nor the Shot that could not start
+// in the Project: the bookkeeping after the loop does not depend on the request.
+func TestEditorReshootLoop_ACancelledRequestStillRecordsTheRoundOfTheStartedShots(t *testing.T) {
+	const twoNeeds = `{"verdict":"need_shot","findings":[` +
+		`{"clip_index":1,"issue":"a","action":"a","need_shot":{"kind":"reaction","after_clip":1,"objective":"FIRST-SHOT","duration_seconds":2}},` +
+		`{"clip_index":1,"issue":"b","action":"b","need_shot":{"kind":"insert","after_clip":1,"objective":"SECOND-SHOT","duration_seconds":2}}]}`
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	f := newGenFixture(t, true)
+	f.llm.extractor = extractAnswer
+	f.llm.planner = func(user string) string {
+		if strings.Contains(user, "SECOND-SHOT") {
+			cancel() // the client leaves while the second generation starts, after the first one did
+		}
+		return additionalSpec
+	}
+	f.buildReferencePack(t)
+	f.generateAndWait(t, f.shotID, 2)
+	f.selectTakeOf(t, f.shotID)
+	f.execSQL(t, `UPDATE project SET production_template = 'drama', state = 'VISUAL_DESIGN' WHERE id = ?`, f.projectID)
+	view, err := f.svc.Editor.RoughCut(context.Background(), f.projectID, "")
+	require.NoError(t, err)
+	require.NotNil(t, view.Timeline)
+	f.llm.editor = twoNeeds
+
+	_, _ = f.svc.Editor.JudgeTimeline(ctx, view.Timeline.ID)
+
+	require.Equal(t, 1, f.count(t, `SELECT COUNT(*) FROM reshoot_request WHERE status = 'requested'`), "the Shot that started is in a round")
+	assert.Equal(t, 2, f.trunkShots(t), "the Shot that could not start is removed")
+	assert.Equal(t, domain.StateGenerating, f.state(t))
+}
