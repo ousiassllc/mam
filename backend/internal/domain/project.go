@@ -71,6 +71,18 @@ const (
 // (409) while it is. The Shot card draws the buttons that start one only when it is not.
 func (s ShotState) Busy() bool { return s == ShotGenerating || s == ShotRepairing }
 
+// CanEditSpec reports whether the Shot's spec may be saved by hand or restored from a version: the
+// generation and the Repair write the spec at their end and would overwrite the edit, so both are
+// refused (409) while the Shot is Busy. The Shot Inspector draws the spec form and the restore buttons
+// only when it holds; the repositories refuse with the same predicate.
+func (s ShotState) CanEditSpec() bool { return !s.Busy() }
+
+// CanPinReference reports whether a Reference Library image may be added to the Shot's Reference Pack:
+// the pack is read by the generation and the Judge, so it is refused (409) while the Shot is being
+// generated or judged. The Shot Inspector draws the form only when it holds; the repository refuses
+// with the same predicate.
+func (s ShotState) CanPinReference() bool { return s != ShotGenerating && s != ShotJudging }
+
 // ShotStates lists every valid ShotState.
 func ShotStates() []ShotState {
 	return []ShotState{ShotPlanning, ShotGenerating, ShotJudging, ShotRepairing, ShotEditing}

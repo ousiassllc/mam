@@ -227,7 +227,7 @@ func (a *Agent) Continue(ctx context.Context, shotID string) {
 		a.Logger.Error("repair loop: read project failed", "project_id", shot.ProjectID, "err", err)
 		return
 	}
-	if project.Mode != domain.ModeAuto || shot.Shot.State == domain.ShotGenerating || shot.Shot.State == domain.ShotRepairing {
+	if project.Mode != domain.ModeAuto || shot.Shot.State.Busy() {
 		return
 	}
 	policy, err := a.Policies.Get(ctx, shot.ProjectID)

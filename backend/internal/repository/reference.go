@@ -194,7 +194,7 @@ func (r *ReferenceRepository) Pin(ctx context.Context, shotID, itemID string) er
 		if err != nil {
 			return err
 		}
-		if s := domain.ShotState(state); s == domain.ShotGenerating || s == domain.ShotJudging {
+		if !domain.ShotState(state).CanPinReference() {
 			return ErrShotBusy
 		}
 		item, err := getReferenceItem(ctx, tx, projectID, itemID)

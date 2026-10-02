@@ -29,6 +29,16 @@ type ShotInspectorData struct {
 	Judged map[string]domain.JudgeResult
 }
 
+// restoreBlocked is why the Shot's spec cannot be restored from a version now ("" when it can). The
+// Inspector shows the state of the moment it was loaded: the actions the server refuses in that state
+// (domain.ShotState.CanEditSpec / CanPinReference, the predicates the repositories use) are not drawn.
+func (d ShotInspectorData) restoreBlocked() string {
+	if d.Shot.State.CanEditSpec() {
+		return ""
+	}
+	return "生成・Repair 中は復元できません。終わってから開き直してください。"
+}
+
 // generationModel is the model the next Take is made with: the one LOCKed for the Shot, otherwise
 // the one of its latest Take, otherwise the Orchestrator's choice.
 func (d ShotInspectorData) generationModel() string {
@@ -150,20 +160,24 @@ templ ShotInspector(d ShotInspectorData) {
 					}
 				</dl>
 			}
-			<form hx-put={ paths.Shot(d.Shot.ID, "shot-spec") } hx-target="#shot-inspector" hx-swap="outerHTML" class="flex flex-col gap-2">
-				<label for="shot-spec-text" class="text-xs text-neutral-400">Shot Spec を直接編集（JSON。英語で記述。LOCK 中の項目は変更できません）</label>
-				@atoms.Textarea(atoms.FieldSm, "font-mono", templ.Attributes{
-					"id":   "shot-spec-text",
-					"name": "shot_spec",
-					"rows": "12",
-				}, d.SpecText)
-				if d.SpecError != "" {
-					<p class="text-sm text-red-300" role="alert">{ d.SpecError }</p>
-				}
-				<div>
-					@atoms.Button(atoms.TonePrimary, "Shot Spec を保存", templ.Attributes{"type": "submit"})
-				</div>
-			</form>
+			if d.Shot.State.CanEditSpec() {
+				<form hx-put={ paths.Shot(d.Shot.ID, "shot-spec") } hx-target="#shot-inspector" hx-swap="outerHTML" class="flex flex-col gap-2">
+					<label for="shot-spec-text" class="text-xs text-neutral-400">Shot Spec を直接編集（JSON。英語で記述。LOCK 中の項目は変更できません）</label>
+					@atoms.Textarea(atoms.FieldSm, "font-mono", templ.Attributes{
+						"id":   "shot-spec-text",
+						"name": "shot_spec",
+						"rows": "12",
+					}, d.SpecText)
+					if d.SpecError != "" {
+						<p class="text-sm text-red-300" role="alert">{ d.SpecError }</p>
+					}
+					<div>
+						@atoms.Button(atoms.TonePrimary, "Shot Spec を保存", templ.Attributes{"type": "submit"})
+					</div>
+				</form>
+			} else {
+				<p class="text-sm text-neutral-400" data-spec-edit-blocked>生成・Repair 中は Shot Spec を編集できません。終わってから開き直してください。</p>
+			}
 		</section>
 		<section aria-label="Reference Pack" class="flex flex-col gap-2">
 			<h3 class="text-sm font-semibold">Reference Pack</h3>
@@ -182,7 +196,9 @@ templ ShotInspector(d ShotInspectorData) {
 					}
 				</ul>
 			}
-			if len(d.Library) > 0 {
+			if !d.Shot.State.CanPinReference() {
+				<p class="text-sm text-neutral-400" data-pin-reference-blocked>生成・Judge 中は Reference Pack に追加できません。終わってから開き直してください。</p>
+			} else if len(d.Library) > 0 {
 				<form hx-post={ paths.Shot(d.Shot.ID, "references") } hx-target="#shot-inspector" hx-swap="outerHTML" class="flex flex-wrap items-center gap-2">
 					<label for="pin-reference" class="text-xs text-neutral-400">ライブラリの参照画像を追加</label>
 					@atoms.Select(atoms.FieldSm, "", templ.Attributes{
@@ -216,7 +232,7 @@ templ ShotInspector(d ShotInspectorData) {
 		</section>
 		@VersionHistoryPanel(VersionHistoryData{
 			DOMID: "version-history-shot-" + d.Shot.ID, Title: "Shot Spec のバージョン", BasePath: paths.Shot(d.Shot.ID),
-			Target: "#shot-inspector", Entries: d.Versions,
+			Target: "#shot-inspector", Entries: d.Versions, RestoreBlocked: d.restoreBlocked(),
 		})
 		<section aria-label="Generation Model" class="flex flex-col gap-2">
 			<h3 class="text-sm font-semibold">Generation Model</h3>

@@ -156,7 +156,7 @@ func (r *VersionRepository) RestoreShotVersion(ctx context.Context, shotID strin
 		if err != nil {
 			return err
 		}
-		if state == domain.ShotGenerating || state == domain.ShotRepairing {
+		if !state.CanEditSpec() {
 			return ErrConflict
 		}
 		var snapshot string

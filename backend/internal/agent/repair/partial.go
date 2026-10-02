@@ -61,7 +61,7 @@ func (a *Agent) StartPartial(ctx context.Context, takeID string, req PartialRequ
 	if a.Splicer == nil {
 		return domain.Job{}, ErrSpliceUnavailable
 	}
-	if shot.Shot.State == domain.ShotGenerating || shot.Shot.State == domain.ShotRepairing {
+	if shot.Shot.State.Busy() {
 		return domain.Job{}, ErrBusy // the claim below decides for good; this one spares the Planner
 	}
 	locks, err := a.Generations.ShotLocks(ctx, shot.Shot.ID)

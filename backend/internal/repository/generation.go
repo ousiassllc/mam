@@ -243,7 +243,7 @@ func (r *GenerationRepository) SaveEditedSpec(ctx context.Context, shotID string
 		if err != nil {
 			return err
 		}
-		if state == domain.ShotGenerating || state == domain.ShotRepairing {
+		if !state.CanEditSpec() {
 			return ErrConflict
 		}
 		if old, ok := (domain.Shot{ShotSpec: json.RawMessage(current)}).CanonicalSpec(); ok {
