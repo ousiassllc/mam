@@ -425,7 +425,7 @@ func (s *ChatService) planApprovalReply(project domain.Project, card, user domai
 func approvalTurn(project domain.Project, card domain.ChatMessage, decision Decision, user domain.ChatMessage) repository.Turn {
 	status, ack := domain.ApprovalApproved, "承認されました。次の工程に進みます。"
 	if decision == DecisionRequestChanges {
-		status, ack = domain.ApprovalChangesRequested, "修正依頼を受け付けました。内容を反映してやり直します。"
+		status, ack = domain.ApprovalChangesRequested, changesRequestedAck(card)
 	}
 	turn := repository.Turn{
 		ProjectID: project.ID,
@@ -440,6 +440,21 @@ func approvalTurn(project domain.Project, card domain.ChatMessage, decision Deci
 		}
 	}
 	return turn
+}
+
+// changesRequestedAck tells what a request for changes does at the card's checkpoint, and no more:
+// only the script is redone from the comment (the Writer reads the reply). A Rough Cut or Final sends
+// the Project back to EDITING and nothing reads the comment or runs the Editor again, so the user is
+// told to edit (spec/spec.md §4.4).
+func changesRequestedAck(card domain.ChatMessage) string {
+	cp, _ := domain.CheckpointForRefType(card.RefType)
+	switch cp {
+	case domain.CheckpointScript:
+		return "修正依頼を受け付けました。コメントを反映して脚本を作り直します。"
+	case domain.CheckpointRoughCut, domain.CheckpointFinal:
+		return "修正依頼を受け付けました。EDITING に戻しました。コメントは自動では反映されないので、タイムラインエディタで編集してから進めてください。"
+	}
+	return "修正依頼を受け付けました。"
 }
 
 func resumeStateAfter(card domain.ChatMessage, decision Decision) domain.ProjectState {
