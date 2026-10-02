@@ -1190,7 +1190,7 @@ EXPORTED
 - **発言の対象**: 指示の対象 Scene/Shot/Take は、カードへの返信（引用）で明示するか、直前の文脈から AI が解決する。解決できない場合は AI が聞き返す。§24 の Command Interpreter がこの解決を含めて構造化操作へ変換する
 - **MODE / Quality**: 入力欄の下に小さく置く。AUTO では AI が主導し、DIRECTOR では指示した箇所だけを直して待機する。切替はいつでも可能で、状態は保持される
 - **添付**: 画像・動画をドラッグ&ドロップまたは［＋］で添付でき、Assets/References として Brief に取り込まれる
-- **非同期**: 生成・Judge・Repair の進捗はスレッド内の進捗カードにリアルタイム表示される。入力は生成中も可能
+- **非同期**: 生成・Repair の進捗はスレッド内の進捗カードにリアルタイム表示される。Judge は Take ごとに自動で走るため進捗カードは出さず、実行中は Shot カードの JUDGING 表示（Shot 進捗 WebSocket）で示し、完了時に結果を発言として投稿する。入力は生成中も可能
 
 ## 23.2 スレッド内カード
 
@@ -1200,7 +1200,7 @@ EXPORTED
 | Approval | 確認ポイントの成果物（脚本・Rough Cut・Final）。M2 では Notes の World State 昇格提案（§9.4）も同じカードで提示する。昇格提案は非ブロッキング | 承認 / 修正を依頼（昇格提案では「修正を依頼」は却下） |
 | Keyframe | Keyframe / Reference Pack 画像 | 拡大、返信で修正指示 |
 | Take | 動画プレーヤー（Judge の Issue を時間軸のマーカーで表示）と生成の要約（モデル・解像度・秒数）。スレッドは追記のみなので、Judge 要約と Take 状態（AI Pick / 採用 / 除外）はカードには載せず、Judge が結果を保存するたびに別の発言として投稿する（「Shot N · Take X の Judge 結果: PASS/FAIL（信頼度）」と、AI Pick が変わったときの「AI Pick: Take X を採用/おすすめ」）。Take ごとの最新の状態は Take 比較で確認する | 再生、返信で指示、Take比較を開く |
-| Progress | 生成・Judge・Repair の進捗 | なし（自動更新） |
+| Progress | 生成・Repair の進捗（Judge の進捗は Shot カード側、結果は発言で通知） | なし（自動更新） |
 | Escalation | Retry Policy 上限到達などで AI が判断を求める内容。回答（選択肢ボタン / 自由入力）は記録されるだけで自動実行されない。回答後は Project が REPAIRING に戻り、AI は「この判断は自動では実行されません」と返すので、ユーザーが設定の変更・Take の採用・Shot の指示の修正を画面から行う | 選択肢ボタン / 自由入力 |
 
 ## 23.3 補助ビュー
