@@ -53,7 +53,7 @@ func ShotInspectorPage(csrfToken string, d organisms.ShotInspectorData) templ.Co
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = atoms.BackLink(paths.Project(d.Project.ID, "scenes", d.Scene.ID), "← Scene / Shot に戻る").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = atoms.BackLink(shotInspectorBack(d)).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -90,6 +90,15 @@ func ShotInspectorPage(csrfToken string, d organisms.ShotInspectorData) templ.Co
 		}
 		return nil
 	})
+}
+
+// shotInspectorBack is where "back" goes from the Inspector: the Scene page for a trunk Shot, the Branch
+// page for a Branch Shot (a Branch's Scenes are not on the trunk's Scene pages, so that link is a 404).
+func shotInspectorBack(d organisms.ShotInspectorData) (string, string) {
+	if d.Scene.BranchID != "" {
+		return paths.Branch(d.Scene.BranchID), "← Branch に戻る"
+	}
+	return paths.Project(d.Project.ID, "scenes", d.Scene.ID), "← Scene / Shot に戻る"
 }
 
 var _ = templruntime.GeneratedTemplate
