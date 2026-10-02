@@ -474,3 +474,20 @@ func TestLoadConfigMergesAnEntryThatNamesOnlySomeOfItsFields(t *testing.T) {
 		assert.ErrorContains(t, err, "unknown field")
 	})
 }
+
+func TestLoadConfigRejectsAnUnknownMapKey(t *testing.T) {
+	for name, content := range map[string]string{
+		"policy":            `{"policies":{"balance":{"takes":1}}}`,
+		"image purpose":     `{"images":{"previw":{"primary":{"model":"flux-2"}}}}`,
+		"model":             `{"models":{"kling-3":{"model":"x"}}}`,
+		"cost resolution":   `{"models":{"kling-3.0":{"cost_per_second_usd":{"1080P":0.2}}}}`,
+		"routing weights":   `{"routing":{"weights":{"max-quality":{"quality":1}}}}`,
+		"routing candidate": `{"routing":{"candidates":{"fastt":[]}}}`,
+		"vendor":            `{"vendors":{"klingg":{"base_url":"http://x","max_concurrency":1,"timeout_seconds":1}}}`,
+	} {
+		path := filepath.Join(t.TempDir(), "models.json")
+		require.NoError(t, os.WriteFile(path, []byte(content), 0o600))
+		_, err := modeladapter.LoadConfig(path)
+		assert.Error(t, err, name)
+	}
+}
