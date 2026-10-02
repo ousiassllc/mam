@@ -448,6 +448,44 @@ func TestEditorReshootLoop_PartialStartKeepsTheStartedShotInTheRound(t *testing.
 	assert.Equal(t, 2, f.trunkShots(t), "asking again does not make the started Shot a second time")
 }
 
+// On a Branch whose anchor Shot lies in the trunk the additional Shots share one Scene of the Branch.
+// When only some of them can start, the Scene stays with the one that did: it must not be removed
+// together with the Shot that failed (#333).
+func TestEditorReshootLoop_PartialStartOnABranchKeepsTheSceneOfTheStartedShot(t *testing.T) {
+	const twoNeeds = `{"verdict":"need_shot","findings":[` +
+		`{"clip_index":1,"issue":"a","action":"a","need_shot":{"kind":"reaction","after_clip":1,"objective":"驚いて振り返る","duration_seconds":2}},` +
+		`{"clip_index":1,"issue":"b","action":"b","need_shot":{"kind":"insert","after_clip":1,"objective":"BROKEN-PLAN","duration_seconds":2}}]}`
+	f := newGenFixture(t, true)
+	f.llm.extractor = extractAnswer
+	f.llm.planner = func(user string) string {
+		if strings.Contains(user, "BROKEN-PLAN") {
+			return strings.Replace(additionalSpec, "Character looks back, surprised", "a BANNED word", 1)
+		}
+		return additionalSpec
+	}
+	f.llm.director = directorFor(sameSceneAnswer)
+	f.buildReferencePack(t)
+	f.generateAndWait(t, f.shotID, 2)
+	f.selectTakeOf(t, f.shotID)
+	f.execSQL(t, `UPDATE project SET production_template = 'drama', state = 'VISUAL_DESIGN' WHERE id = ?`, f.projectID)
+	ctx := context.Background()
+	branchID := f.branch(t, service.BranchInput{}).Branch.ID
+	view, err := f.svc.Editor.RoughCut(ctx, f.projectID, branchID)
+	require.NoError(t, err)
+	_, err = f.svc.Brand.Add(ctx, f.projectID, service.BrandForm{Type: string(domain.BrandForbidden), Text: "BANNED"})
+	require.NoError(t, err)
+	f.llm.editor = twoNeeds
+	_, err = f.svc.Editor.JudgeTimeline(ctx, view.Timeline.ID)
+	require.NoError(t, err)
+
+	var started string
+	require.NoError(t, f.query(t, `SELECT shot_id FROM reshoot_request WHERE status = 'requested'`).Scan(&started), "the Shot that started is in the round")
+	assert.Equal(t, 1, f.count(t, `SELECT COUNT(*) FROM reshoot_request`))
+	assert.Equal(t, 1, f.count(t, `SELECT COUNT(*) FROM shot sh JOIN scene s ON s.id = sh.scene_id WHERE sh.id = ? AND s.branch_id = ?`, started, branchID), "the started Shot still belongs to a Scene of the Branch")
+	assert.Equal(t, 1, f.count(t, `SELECT COUNT(*) FROM scene WHERE branch_id = ?`, branchID))
+	assert.Equal(t, 2, f.count(t, `SELECT COUNT(*) FROM shot`), "the Shot that could not start is gone")
+}
+
 // The request going away while the additional Shots start (the client left, AUTO is shutting down)
 // must not leave a generation that has started outside a round, nor the Shot that could not start
 // in the Project: the bookkeeping after the loop does not depend on the request.
