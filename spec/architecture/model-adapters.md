@@ -281,7 +281,7 @@ Shot の性質による軸の重み: 4 軸とも基準 1 に、Shot Spec に Pro
 
 ### 13.6 トレーサビリティ（F-27）
 
-決定は `take.model_parameters.routing` に Take ごとに保存する: 方式（`adaptive`: 13.4 で挑戦者に切り替えた / `policy_default`: 比べたが Quality Policy のまま / `fixed`: ユーザーが固定 / `disabled`: 設定で無効）、Quality Policy のプライマリ/代替、選んだプライマリ/代替、理由（1 文）、候補ごとの quality・実績数・平均点・合格率・コスト・cost・fit・score・除外理由（`circuit_open` / `no_backend` / `insufficient_evidence` / `below_minimum_score` / `margin` など）、Shot の性質から決めた軸の重み。実際に使われたモデル（`fell_back`）は従来どおり `model_name` / `fell_back` で分かる。`GET /takes/:id/trace` の「Model routing」に表示する。Take を作らずに失敗したときは Take がないので記録しない（決定理由は `prompt_version.model_adapter_output.reasons` に従来どおり残る）。
+決定は `take.model_parameters.routing` に Take ごとに保存する: 方式（`adaptive`: 13.4 で挑戦者に切り替えた / `policy_default`: 比べたが Quality Policy のまま / `fixed`: ユーザーが固定 / `disabled`: 設定で無効）、Quality Policy のプライマリ/代替、選んだプライマリ/代替、理由（1 文）、候補ごとの quality・実績数・平均点・合格率・コスト・cost・fit・score・除外理由（`circuit_open` / `no_backend` / `insufficient_evidence` / `below_minimum_score` / `margin` など）、Shot の性質から決めた軸の重み。実際に使われたモデル（`fell_back`）は従来どおり `model_name` / `fell_back` で分かる。`GET /takes/:id/trace` の「Model routing」に表示する。Take を作らずに失敗したときは Take がないので記録しない（決定理由は `prompt_version.model_adapter_output.reasons` に従来どおり残る）。区間を繋いだ Take（Partial Take Use / Partial Regeneration）は基底 Take のモデルをそのまま使うので、`routing` も基底 Take のものを引き継ぐ。
 
 ### 13.7 設定
 
