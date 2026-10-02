@@ -44,6 +44,7 @@ func assertToast(t *testing.T, rec *httptest.ResponseRecorder, status int) {
 	assert.Equal(t, status, rec.Code)
 	assert.Contains(t, rec.Header().Get("Content-Type"), "text/html")
 	assert.Equal(t, "none", rec.Header().Get("HX-Reswap"))
+	assert.Equal(t, "false", rec.Header().Get("HX-Push-Url"), "a failed request must not push its URL into the history")
 	assert.Contains(t, rec.Body.String(), `id="toast-region"`)
 	assert.Contains(t, rec.Body.String(), "data-toast-message")
 }

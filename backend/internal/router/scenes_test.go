@@ -28,6 +28,27 @@ func TestScenes_EmptyProjectShowsTheFormsAndUnknownIDsAre404(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, a.form(http.MethodPost, "/scenes/nope/shots", url.Values{"objective": {"x"}, "duration_seconds": {"3"}}).Code)
 }
 
+// main.ts swaps the toast of a 404/5xx, and htmx then pushes the URL of an hx-push-url link even with
+// HX-Reswap: none: the server must tell it not to (a toast answer never changes the address bar).
+func TestScenes_FailedHTMXNavigationAndActionDoNotPushTheURL(t *testing.T) {
+	a := newApp(t)
+	id := a.createProject("美容液の縦型15秒CMを作りたい")
+
+	page := a.get("/projects/"+id+"/scenes/nope", true)
+	require.Equal(t, http.StatusNotFound, page.Code)
+	assert.Equal(t, "none", page.Header().Get("HX-Reswap"))
+	assert.Equal(t, "false", page.Header().Get("HX-Push-Url"))
+
+	action := a.form(http.MethodPost, "/scenes/nope/shots", url.Values{"objective": {"x"}, "duration_seconds": {"3"}})
+	require.Equal(t, http.StatusNotFound, action.Code)
+	assert.Equal(t, "none", action.Header().Get("HX-Reswap"))
+	assert.Equal(t, "false", action.Header().Get("HX-Push-Url"))
+
+	ok := a.get("/projects/"+id+"/scenes", true)
+	require.Equal(t, http.StatusOK, ok.Code)
+	assert.Empty(t, ok.Header().Get("HX-Push-Url"), "a page that loaded keeps hx-push-url's behaviour")
+}
+
 func TestScenes_CreateSceneAndShotThenSelectThem(t *testing.T) {
 	a := newApp(t)
 	id := a.createProject("美容液の縦型15秒CMを作りたい")
