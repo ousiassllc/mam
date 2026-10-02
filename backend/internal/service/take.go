@@ -179,7 +179,7 @@ func (s *TakeService) UsePartial(ctx context.Context, shotID string, in PartialI
 	}
 
 	if _, err := s.composeTake(ctx, ref, takes, segs, composeOptions{
-		Title: fmt.Sprintf("Shot %d · 部分採用 Take", ref.Shot.OrderIndex+1), Badge: "採用",
+		Title: fmt.Sprintf("Shot %d · 部分採用 Take", ref.Shot.OrderIndex+1),
 	}); err != nil {
 		return ShotFragment{}, err
 	}
@@ -190,7 +190,7 @@ func (s *TakeService) UsePartial(ctx context.Context, shotID string, in PartialI
 
 // composeOptions is how composeTake records the Take it makes.
 type composeOptions struct {
-	Title, Badge string
+	Title string
 	// Candidate adds the Take without selecting it (a Partial Regeneration splice).
 	Candidate bool
 	// Source and RegeneratedTakeID say in the model parameters how the Take came to be.
@@ -248,7 +248,6 @@ func (s *TakeService) composeTake(ctx context.Context, ref repository.ShotRef, t
 		Role: domain.RoleAssistant, Kind: domain.KindTake, RefID: takeID,
 		Content: domain.EncodeTakeCardBody(domain.TakeCardBody{
 			Title:     o.Title,
-			Badge:     o.Badge,
 			Summary:   describeSegments(segs, takes),
 			ShotID:    ref.Shot.ID,
 			VideoURL:  domain.TakeVideoURL(takeID),

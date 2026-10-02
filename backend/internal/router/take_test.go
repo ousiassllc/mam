@@ -249,6 +249,11 @@ func TestTakes_PartialUseJoinsPartsIntoANewSelectedTakeAndAnnouncesItInTheChat(t
 	assert.Contains(t, chat, "部分採用 Take")
 	assert.Contains(t, chat, "Take A 0.0-2.0秒 + Take B 2.0-4.0秒")
 	assert.Contains(t, chat, `video-src="`+composed.VideoURL+`"`)
+
+	var content string
+	require.NoError(t, ta.db.Reader().QueryRowContext(context.Background(),
+		`SELECT content FROM chat_message WHERE ref_type = 'take' AND ref_id = ?`, composed.ID).Scan(&content))
+	assert.Empty(t, domain.DecodeTakeCardBody(content).Badge, "the thread is append-only: the card carries no Take state that excluding the Take would leave stale")
 }
 
 func TestTakes_PartialUseAcceptsSegmentsAsJSONAndRefusesWhatCannotBeJoined(t *testing.T) {
