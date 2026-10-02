@@ -166,7 +166,7 @@ func SetConfirmationLevel(svc *service.ProjectService) gin.HandlerFunc {
 func pageError(c *gin.Context, err error) {
 	status, message := statusOf(c, err)
 	if isHTMX(c) {
-		c.Header("HX-Reswap", "none")
+		middleware.ToastOnly(c)
 		render(c, status, atoms.ToastOOB(message))
 		return
 	}

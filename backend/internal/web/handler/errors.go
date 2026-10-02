@@ -10,6 +10,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 )
 
 // abortDownload ends a download whose body failed after the status was sent: the archive is
@@ -92,9 +93,9 @@ func statusOf(c *gin.Context, err error) (int, string) {
 }
 
 // toast answers an action with an out-of-band toast and leaves the swap target untouched
-// (HX-Reswap: none). The business errors of spec/api/endpoints.md §0 are reported this way.
+// (HX-Reswap: none, no URL push). The business errors of spec/api/endpoints.md §0 are reported this way.
 func toast(c *gin.Context, err error) {
 	status, message := statusOf(c, err)
-	c.Header("HX-Reswap", "none")
+	middleware.ToastOnly(c)
 	render(c, status, atoms.ToastOOB(message))
 }
