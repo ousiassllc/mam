@@ -149,3 +149,22 @@ func TestLoad_WithoutADataDirAndWithoutADefaultItFailsButHelpStillWorks(t *testi
 	_, err = config.Load([]string{"--help"}, env(nil), io.Discard)
 	assert.ErrorIs(t, err, flag.ErrHelp)
 }
+
+func TestLoad_NoBrowserEnvironmentIsParsedAsABoolean(t *testing.T) {
+	for value, wantOpen := range map[string]bool{
+		"": true, "0": true, "false": true, "FALSE": true, "no": true, "off": true,
+		"1": false, "true": false, "True": false, "yes": false, "on": false,
+	} {
+		cfg, err := config.Load(nil, env(map[string]string{"MAM_DATA_DIR": "/data", "MAM_NO_BROWSER": value}), io.Discard)
+		require.NoError(t, err, value)
+		assert.Equal(t, wantOpen, cfg.OpenBrowser, "MAM_NO_BROWSER=%q", value)
+	}
+
+	_, err := config.Load(nil, env(map[string]string{"MAM_DATA_DIR": "/data", "MAM_NO_BROWSER": "maybe"}), io.Discard)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "MAM_NO_BROWSER")
+
+	cfg, err := config.Load([]string{"--no-browser"}, env(map[string]string{"MAM_DATA_DIR": "/data", "MAM_NO_BROWSER": "maybe"}), io.Discard)
+	require.NoError(t, err)
+	assert.False(t, cfg.OpenBrowser, "an explicit flag wins over the environment")
+}
