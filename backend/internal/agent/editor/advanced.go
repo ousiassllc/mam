@@ -154,7 +154,8 @@ func paceCuts(in JudgeInput, p Profile) []cut {
 // with a note for each change.
 //
 //   - Pace, Retention, Hook: a clip longer than the template allows is cut short from its end.
-//   - CTA Timing: a closing clip that is too short is extended, as far as its Take reaches.
+//   - CTA Timing: a closing clip that is too short is extended, as far as its Take reaches (to its end when it
+//     cannot get the full length).
 //   - Caption: a clip whose Shot speaks gets the spoken line as its caption.
 //
 // Product Exposure, Reaction Shot and Insert Shot need footage the cut may not have; the Editor
@@ -171,9 +172,9 @@ func Advance(in JudgeInput) (domain.EditTimeline, []string) {
 	}
 	if last := len(out.Clips) - 1; last >= 0 && p.MinCTASeconds > 0 && !in.Shots[out.Clips[last].ShotID].EditingFixed {
 		c := &out.Clips[last]
-		if want := c.In + p.MinCTASeconds; c.Length() < p.MinCTASeconds && (c.SourceSeconds == 0 || want <= c.SourceSeconds+1e-9) {
+		if c.Length() < p.MinCTASeconds && canExtend(*c) {
 			was := c.Length()
-			c.Out = round3(want)
+			c.Out = round3(extendedOut(*c, p.MinCTASeconds))
 			notes = append(notes, fmt.Sprintf("最後のクリップを %.1f 秒から %.1f 秒に延長（CTA Timing）", was, c.Length()))
 		}
 	}
@@ -190,6 +191,19 @@ func Advance(in JudgeInput) (domain.EditTimeline, []string) {
 		}
 	}
 	return out, notes
+}
+
+// canExtend tells whether the clip can run longer: its Take goes on after its Out (a Take of an
+// unknown length is taken to).
+func canExtend(c domain.EditClip) bool { return c.SourceSeconds == 0 || c.Out < c.SourceSeconds-1e-9 }
+
+// extendedOut is the Out that gives the clip want seconds, or the end of its Take when that comes first.
+func extendedOut(c domain.EditClip, want float64) float64 {
+	out := c.In + want
+	if c.SourceSeconds > 0 {
+		out = math.Min(out, c.SourceSeconds)
+	}
+	return out
 }
 
 // advancedFindings are the checks of the items the Production Template ranks. Findings an edit
@@ -209,7 +223,9 @@ func advancedFindings(in JudgeInput) []domain.EditorFinding {
 			Action:    fmt.Sprintf("クリップ %d を %.1f 秒に短くする", c.index+1, c.to),
 		})
 	}
-	if last := len(clips) - 1; p.MinCTASeconds > 0 && clips[last].Length() < p.MinCTASeconds-1e-9 && !in.Shots[clips[last].ShotID].EditingFixed {
+	// A closing clip that already runs to the end of its Take cannot be made longer by an edit, so
+	// asking for it again would never end: the Take is too short and that is not reported here.
+	if last := len(clips) - 1; p.MinCTASeconds > 0 && clips[last].Length() < p.MinCTASeconds-1e-9 && canExtend(clips[last]) && !in.Shots[clips[last].ShotID].EditingFixed {
 		out = append(out, domain.EditorFinding{
 			ClipIndex: last + 1,
 			Issue:     fmt.Sprintf("最後のクリップが %.1f 秒で、CTA を読み切れません（CTA Timing）", clips[last].Length()),
