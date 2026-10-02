@@ -2,6 +2,7 @@ package service_test
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 	"testing"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector"
+	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/service"
 )
@@ -40,4 +42,15 @@ func TestCloneVoice_ABilledVoiceIsStoredEvenWhenTheRequestIsCancelled(t *testing
 	require.NoError(t, err)
 	require.Len(t, voices, 1)
 	assert.Equal(t, "billed-voice-1", voices[0].VoiceID)
+}
+
+// The Audio Director's planner runs on the Reasoning LLM: its open circuit breaker is a 502 with a
+// reason, like its timeout, not an "audio mixing failed" with the internal error text.
+func TestAudioError_AnOpenLLMCircuitBreakerIsAnAIErrorWithItsReason(t *testing.T) {
+	err := service.AudioError(fmt.Errorf("plan: %w", llm.ErrCircuitOpen))
+
+	var ai *service.AIError
+	require.ErrorAs(t, err, &ai)
+	assert.Contains(t, ai.Reason, "一時的に利用できません")
+	assert.NotContains(t, ai.Reason, "ミキシング")
 }

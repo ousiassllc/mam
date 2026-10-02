@@ -348,6 +348,7 @@ func TestFailureReason(t *testing.T) {
 		{"time limit", fmt.Errorf("%w (1s)", generation.ErrGenerationTimeLimit), "制限時間"},
 		{"rate limit", &modeladapter.ProviderError{Status: 429}, "レート制限"},
 		{"circuit open", fmt.Errorf("x: %w", modeladapter.ErrCircuitOpen), "一時的に利用できません"},
+		{"llm circuit open", fmt.Errorf("x: %w", llm.ErrCircuitOpen), "AI サービスが一時的に利用できません"},
 		{"rejected", modeladapter.ErrRejected, "拒否"},
 		{"model timeout", modeladapter.ErrTimeout, "タイムアウト"},
 		{"llm timeout", llm.ErrTimeout, "タイムアウト"},

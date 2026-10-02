@@ -682,6 +682,11 @@ func TestHandle_FailureLeavesTheStateAndTellsTheUser(t *testing.T) {
 			wantText: "タイムアウト",
 		},
 		{
+			name: "Producer's circuit breaker is open", agent: llm.AgentProducer, err: fmt.Errorf("producer: %w", llm.ErrCircuitOpen),
+			wantState: domain.StatePlanning, wantCalls: []llm.Agent{llm.AgentProducer},
+			wantText: "AI サービスが一時的に利用できません",
+		},
+		{
 			name: "Director fails", agent: llm.AgentDirector, err: apiErr(503),
 			wantState: domain.StateVisualDesign, wantCalls: []llm.Agent{llm.AgentProducer, llm.AgentWriter, llm.AgentDirector},
 			wantText: "AI サービスの呼び出しに失敗しました",

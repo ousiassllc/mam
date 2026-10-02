@@ -495,6 +495,8 @@ func FailureReason(err error) string {
 		return "生成モデルのレート制限に達しました。しばらく待ってから再実行してください"
 	case errors.Is(err, modeladapter.ErrCircuitOpen):
 		return "生成モデルが一時的に利用できません。しばらく待ってから再実行してください"
+	case errors.Is(err, llm.ErrCircuitOpen):
+		return "AI サービスが一時的に利用できません。しばらく待ってから再実行してください"
 	case errors.Is(err, modeladapter.ErrRejected):
 		return "生成モデルがリクエストを拒否しました（コンテンツポリシー等）。指示を変えて再実行してください"
 	case errors.Is(err, modeladapter.ErrTimeout), errors.Is(err, llm.ErrTimeout):

@@ -410,6 +410,11 @@ func TestDirectorCommand_AFailedReasoningLLMHasTheDocumentedStatus(t *testing.T)
 		"a 429 is rate limited": {&llm.APIError{Provider: llm.ProviderAnthropic, Status: 429}, func(t *testing.T, err error) {
 			assert.ErrorIs(t, err, service.ErrRateLimited)
 		}},
+		"an open circuit breaker is an AI error": {fmt.Errorf("interpret: %w", llm.ErrCircuitOpen), func(t *testing.T, err error) {
+			var ai *service.AIError
+			require.ErrorAs(t, err, &ai)
+			assert.Contains(t, ai.Reason, "一時的に利用できません")
+		}},
 		"an unusable answer is an AI error": {fmt.Errorf("%w (x)", llm.ErrInvalidOutput), func(t *testing.T, err error) {
 			var ai *service.AIError
 			assert.ErrorAs(t, err, &ai)
