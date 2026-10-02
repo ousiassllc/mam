@@ -81,6 +81,9 @@ func (o *Orchestrator) prepareGenerate(ctx context.Context, ref repository.ShotR
 		}
 		return nil, nil, nil
 	}
+	if err := refuseBusy(ref); err != nil {
+		return nil, nil, err // before the Prompt Planner is paid for
+	}
 	sc, err := o.loadShotContext(ctx, ref, instruction)
 	if err != nil {
 		return nil, nil, err

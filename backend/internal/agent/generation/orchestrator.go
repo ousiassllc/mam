@@ -358,6 +358,16 @@ func (o *Orchestrator) cheapestImageCost() float64 {
 	return cheapest
 }
 
+// refuseBusy is ErrShotBusy for a Shot that is being generated or repaired. enqueue's claim stays
+// the authority on who owns the Shot; this check lets the callers refuse before they pay for the
+// Prompt Planner a spec that would be thrown away.
+func refuseBusy(ref repository.ShotRef) error {
+	if st := ref.Shot.State; st == domain.ShotGenerating || st == domain.ShotRepairing {
+		return ErrShotBusy
+	}
+	return nil
+}
+
 func (o *Orchestrator) enqueue(ctx context.Context, ref repository.ShotRef, p payload) (domain.Job, error) {
 	claimed, err := o.gens.StartShot(ctx, ref.Shot.ID)
 	if err != nil {
