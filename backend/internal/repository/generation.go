@@ -498,6 +498,22 @@ func (r *GenerationRepository) ShotLocks(ctx context.Context, shotID string) (do
 	return readParameterLocks(ctx, r.db.Reader(), `target_type = ? AND target_id = ?`, domain.LockTargetShot, shotID)
 }
 
+// ShotOfKeyframe returns the Shot whose Reference Pack holds the image asset (the Shot a Keyframe
+// card is about), when the Shot is in the Project. An image that several Packs hold (a pinned one)
+// belongs to the first Shot in story order.
+func (r *GenerationRepository) ShotOfKeyframe(ctx context.Context, projectID, assetID string) (ShotRef, error) {
+	ref, err := scanShotRef(r.db.Reader().QueryRowContext(ctx,
+		shotRefSelect+` WHERE s.project_id = ? AND EXISTS (SELECT 1 FROM json_each(sh.shot_spec, '$.references') j WHERE json_extract(j.value, '$.asset_id') = ?)
+ORDER BY s.order_index, sh.order_index LIMIT 1`, projectID, assetID))
+	if errors.Is(err, sql.ErrNoRows) {
+		return ShotRef{}, ErrNotFound
+	}
+	if err != nil {
+		return ShotRef{}, fmt.Errorf("get shot of keyframe: %w", err)
+	}
+	return ref, nil
+}
+
 // ShotOfTake returns the Shot that the Take belongs to, when the Shot is in the Project
 // (ErrNotFound otherwise).
 func (r *GenerationRepository) ShotOfTake(ctx context.Context, projectID, takeID string) (ShotRef, error) {

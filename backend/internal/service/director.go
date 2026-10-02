@@ -390,9 +390,10 @@ func (s *DirectorService) Chat(ctx context.Context, project domain.Project, targ
 	if cmd.Question != "" {
 		return assistantText(cmd.Question), nil
 	}
-	// Reply to a Take card outranks Scene/Shot numbers in the message. Numbers, then the latest
-	// Take card, then the Project's only Shot (both from contextShot) apply only without that reply.
-	if target == nil || target.Kind != domain.KindTake {
+	// Reply to a Take or Keyframe card outranks Scene/Shot numbers in the message. Numbers, then the
+	// latest Take card, then the Project's only Shot (both from contextShot) apply only without
+	// that reply.
+	if target == nil || (target.Kind != domain.KindTake && target.Kind != domain.KindKeyframe) {
 		if shot := shotNamed(shots, cmd.Scene, cmd.Shot); shot != nil {
 			ref = shot
 		}
@@ -437,9 +438,21 @@ func (s *DirectorService) remember(ctx context.Context, projectID string, op com
 	return fmt.Sprintf("メモに残しました:「%s」（%s）。以降の脚本・構成・Shot の設計で参照します。", n.Version.Title, n.Category.Label()), nil
 }
 
-// contextShot resolves the Shot a message is about without the words of the message: the Take card
-// it replies to, else the latest Take card of the thread, else the only Shot of the Project.
+// contextShot resolves the Shot a message is about without the words of the message: the Take or
+// Keyframe card it replies to, else the latest Take card of the thread, else the only Shot of the
+// Project. A reply to a card whose Shot is not known resolves to none (the Director asks), never to
+// another Shot.
 func (s *DirectorService) contextShot(ctx context.Context, projectID string, target *domain.ChatMessage, shots []repository.ShotRef) (*repository.ShotRef, error) {
+	if target != nil && target.Kind == domain.KindKeyframe {
+		ref, err := s.gens.ShotOfKeyframe(ctx, projectID, target.RefID)
+		if errors.Is(err, repository.ErrNotFound) {
+			return nil, nil
+		}
+		if err != nil {
+			return nil, err
+		}
+		return &ref, nil
+	}
 	cards := []*domain.ChatMessage{target}
 	if target == nil || target.Kind != domain.KindTake {
 		latest, err := s.chat.LatestOfKind(ctx, projectID, domain.KindTake)
