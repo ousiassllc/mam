@@ -285,6 +285,9 @@ func (r *VersionRepository) restoreWorld(ctx context.Context, tx *sql.Tx, projec
 				return 0, err
 			}
 		}
+		if err := restoreReferenceSlots(ctx, tx, projectID, before, snapshot, locks, e.target, e.id); err != nil {
+			return 0, err
+		}
 	}
 	camStory := before
 	for _, target := range []domain.WorldTarget{domain.TargetCamera, domain.TargetStory} {
@@ -310,6 +313,47 @@ func (r *VersionRepository) restoreWorld(ctx context.Context, tx *sql.Tx, projec
 	wr := &WorldRepository{db: r.db, now: r.now}
 	_, number, err := wr.appendVersion(ctx, tx, projectID, branchID, after)
 	return number, err
+}
+
+// restoreReferenceSlots writes the reference images of the entity's slots (face / body, geometry /
+// label, layout) back from the snapshot: assigning one appends a World State version of its own
+// (WorldRepository.AssignReference), so a restore that left them out could not take it back. A slot
+// whose image is LOCKed is ErrLocked. An image whose asset is gone (the Project's files were cleaned
+// up) cannot be pointed at again, and its slot keeps what it holds now.
+func restoreReferenceSlots(ctx context.Context, tx *sql.Tx, projectID string, before, snapshot domain.WorldContext, locks domain.LockSet, target domain.WorldTarget, id string) error {
+	for _, slot := range domain.ReferenceSlots() {
+		if slot.Target != target {
+			continue
+		}
+		old, present := before.Current(target, id, slot.Field())
+		if !present {
+			return nil // deleted since: nothing to write back
+		}
+		want, _ := snapshot.Current(target, id, slot.Field())
+		if domain.SameValue(old, want) {
+			continue
+		}
+		if locks.Locked(target, id, slot.Lock) {
+			return ErrLocked
+		}
+		var assetID string
+		if len(want) > 0 {
+			if err := json.Unmarshal(want, &assetID); err != nil {
+				return fmt.Errorf("decode %s.%s: %w", target, slot.Field(), err)
+			}
+		}
+		if assetID != "" {
+			if err := exists(ctx, tx, `SELECT 1 FROM asset WHERE id = ? AND project_id = ?`, assetID, projectID); errors.Is(err, ErrNotFound) {
+				continue
+			} else if err != nil {
+				return err
+			}
+		}
+		if _, err := tx.ExecContext(ctx, `UPDATE `+worldTables[target]+` SET `+slot.Column+` = ? WHERE id = ?`, nullIfEmpty(assetID), id); err != nil { //nolint:gosec // table and column are constants of worldTables and domain.ReferenceSlots; only the values are data
+			return err
+		}
+	}
+	return nil
 }
 
 // RestoreBranchVersion makes the name and World State reference of branch version number those of
