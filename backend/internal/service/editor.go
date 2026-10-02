@@ -119,16 +119,6 @@ type TimelineView struct {
 	Editable bool
 }
 
-// editable reports whether a Project in the state can take an edit (see toEditing).
-func editable(state domain.ProjectState) bool {
-	switch state {
-	case domain.StateEditing, domain.StateVisualDesign, domain.StateGenerating, domain.StateJudging, domain.StateRepairing,
-		domain.StateEditJudging, domain.StateAudio, domain.StateFinalQC:
-		return true
-	}
-	return false
-}
-
 // EditorView is the editing state of a Project: what the panel shows.
 type EditorView struct {
 	Project domain.Project
@@ -238,6 +228,12 @@ func (s *EditorService) shotIndex(ctx context.Context, projectID, branchID strin
 // pipeline sets JUDGING for the Project as a whole, so a Project whose Shots are done is
 // carried along. Other states cannot be edited from.
 func (s *EditorService) toEditing(ctx context.Context, p domain.Project) error {
+	if !p.State.CanEdit() {
+		if p.State == domain.StateAwaitingApproval {
+			return conflict("承認待ちのカードがあります。チャットで応答してから編集してください")
+		}
+		return conflict("この状態（%s）では編集できません", p.State)
+	}
 	var path []domain.ProjectState
 	switch p.State {
 	case domain.StateEditing:
@@ -250,9 +246,7 @@ func (s *EditorService) toEditing(ctx context.Context, p domain.Project) error {
 		path = []domain.ProjectState{domain.StateGenerating, domain.StateJudging, domain.StateEditing}
 	case domain.StateJudging, domain.StateEditJudging, domain.StateAudio, domain.StateFinalQC:
 		path = []domain.ProjectState{domain.StateEditing}
-	case domain.StateAwaitingApproval:
-		return conflict("承認待ちのカードがあります。チャットで応答してから編集してください")
-	default:
+	default: // CanEdit names a state this switch has no path for
 		return conflict("この状態（%s）では編集できません", p.State)
 	}
 	for _, next := range path {

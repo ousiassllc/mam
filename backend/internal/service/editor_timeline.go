@@ -34,7 +34,7 @@ func (s *EditorService) timelineView(ctx context.Context, ver domain.EditTimelin
 	if err != nil {
 		return TimelineView{}, err
 	}
-	v := TimelineView{EditTimelineVersion: ver, Editable: editable(project.State), Clips: make([]ClipView, len(ver.Timeline.Clips)), Duration: ver.Timeline.Duration()}
+	v := TimelineView{EditTimelineVersion: ver, Editable: project.State.CanEdit(), Clips: make([]ClipView, len(ver.Timeline.Clips)), Duration: ver.Timeline.Duration()}
 	starts := ver.Timeline.Starts()
 	for i, c := range ver.Timeline.Clips {
 		cv := ClipView{EditClip: c, Start: starts[i], Label: idx.labels[c.ShotID], VideoURL: domain.TakeVideoURL(c.TakeID), ThumbnailURL: domain.TakeThumbnailURL(c.TakeID)}

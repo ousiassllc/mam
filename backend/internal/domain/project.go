@@ -55,6 +55,18 @@ func CanTransition(from, to ProjectState) bool {
 	return slices.Contains(stateTransitions[from], to)
 }
 
+// CanEdit reports whether a Project in the state can take an edit: a Rough Cut or a change of the
+// Edit Timeline moves it to EDITING (EditorService.toEditing) from these states and is refused (409)
+// from any other (a card waits, or it is DRAFT / PLANNING / READY / EXPORTED). The editor's
+// read-only flag and the Rough Cut button are drawn from the same answer.
+func (s ProjectState) CanEdit() bool {
+	switch s {
+	case StateEditing, StateVisualDesign, StateGenerating, StateJudging, StateRepairing, StateEditJudging, StateAudio, StateFinalQC:
+		return true
+	}
+	return false
+}
+
 // ShotState is the sub-state of a Shot within the Core State Machine.
 type ShotState string
 
