@@ -6,8 +6,34 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/briefing"
+	"github.com/ousiassllc/mam/backend/internal/agent/planning"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
+
+func TestRuleExtractor_Duration(t *testing.T) {
+	tests := []struct {
+		text     string
+		duration string
+		seconds  float64
+	}{
+		{"美容液の縦型1分30秒のCMを作りたい", "1分30秒", 90},
+		{"2分15秒のドラマ", "2分15秒", 135},
+		{"2分 15秒のドラマ", "2分15秒", 135},
+		{"1.5秒のカット", "1.5秒", 1.5},
+		{"15秒のCM", "15秒", 15},
+		{"2分のドラマ", "2分", 120},
+		{"1分と30秒のCM", "1分", 60},
+	}
+	for _, tt := range tests {
+		t.Run(tt.text, func(t *testing.T) {
+			got := briefing.RuleExtractor{}.Extract(tt.text).Duration
+			assert.Equal(t, tt.duration, got)
+			secs, ok := planning.ParseSeconds(got)
+			assert.True(t, ok)
+			assert.InDelta(t, tt.seconds, secs, 1e-9)
+		})
+	}
+}
 
 func TestRuleExtractor_Extract(t *testing.T) {
 	tests := []struct {
