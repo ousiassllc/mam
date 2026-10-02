@@ -76,6 +76,14 @@ type Synthesizer interface {
 	Synthesize(ctx context.Context, line domain.VoiceLine) (Speech, error)
 }
 
+// KeyChecker is implemented by a provider that can tell without calling the vendor whether its
+// API key is stored. The Director asks before the Planner's paid model call, so a missing key
+// does not cost one on every attempt. *ElevenLabs implements it.
+type KeyChecker interface {
+	// CheckKey returns ErrNoAPIKey when no key is stored.
+	CheckKey() error
+}
+
 // Composer makes instrumental music of the given length from a prompt (ElevenLabs Music).
 type Composer interface {
 	Compose(ctx context.Context, prompt string, seconds float64) (Speech, error)
@@ -190,6 +198,24 @@ func NewElevenLabs(cfg Config, keys credential.Store, client httpclient.Doer) *E
 	return &ElevenLabs{cfg: cfg, keys: keys, client: client}
 }
 
+// CheckKey implements KeyChecker.
+func (e *ElevenLabs) CheckKey() error {
+	_, err := e.key()
+	return err
+}
+
+// key reads the API key: ErrNoAPIKey when none is stored.
+func (e *ElevenLabs) key() (string, error) {
+	key, err := e.keys.Get(CredentialProvider)
+	if errors.Is(err, credential.ErrNotFound) {
+		return "", ErrNoAPIKey
+	}
+	if err != nil {
+		return "", fmt.Errorf("read ElevenLabs API key: %w", err)
+	}
+	return key, nil
+}
+
 // Synthesize implements Synthesizer (model identifier elevenlabs-tts). A line with a VoiceID is
 // spoken by that (cloned) voice.
 func (e *ElevenLabs) Synthesize(ctx context.Context, line domain.VoiceLine) (Speech, error) {
@@ -279,12 +305,9 @@ func (e *ElevenLabs) audio(ctx context.Context, timeout time.Duration, path stri
 
 // do posts body to the API and returns the answer of at most limit bytes.
 func (e *ElevenLabs) do(ctx context.Context, timeout time.Duration, path, contentType, accept string, body []byte, limit int64) ([]byte, error) {
-	key, err := e.keys.Get(CredentialProvider)
-	if errors.Is(err, credential.ErrNotFound) {
-		return nil, ErrNoAPIKey
-	}
+	key, err := e.key()
 	if err != nil {
-		return nil, fmt.Errorf("read ElevenLabs API key: %w", err)
+		return nil, err
 	}
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
