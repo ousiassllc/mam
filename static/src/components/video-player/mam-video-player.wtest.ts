@@ -88,6 +88,26 @@ describe('mam-video-player: seeking', () => {
 
     expect(el.frameRate).to.equal(25);
   });
+
+  it('probes the frame rate once when frame steps are asked for while it is unknown, and leaves the sound on', async () => {
+    const el = await player({ src: CLIP });
+    const video = await loaded(el);
+    let plays = 0;
+    const play = video.play.bind(video);
+    video.play = () => {
+      plays += 1;
+      return play();
+    };
+    const frames: number[] = [];
+    el.addEventListener('seek-requested', (e) => frames.push((e as CustomEvent<SeekRequestedDetail>).detail.frame));
+
+    await Promise.all([el.step(1), el.step(1)]);
+
+    expect(plays).to.equal(1);
+    expect(video.muted).to.equal(false);
+    // Both steps count from the position the video was at, not from where the probe left it.
+    expect(frames).to.deep.equal([1, 2]);
+  });
 });
 
 describe('mam-video-player: Judge Issue markers', () => {
