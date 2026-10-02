@@ -748,3 +748,24 @@ func TestChat_DirectorModeANumberedShotOfABranchIsNotTheTrunkShotWithTheSameNumb
 	require.NoError(t, err)
 	assert.False(t, onTrunk.Locks.Locked(domain.ParamCamera), "the trunk Shot with the same numbers is left alone")
 }
+
+// switch_to_director counts the switches AUTO -> DIRECTOR. Asking for DIRECTOR MODE while in it switches
+// nothing: it is neither recorded nor told as a switch (spec/spec.md §28.3).
+func TestChat_AskingForTheModeTheProjectIsAlreadyInRecordsNoSwitch(t *testing.T) {
+	f := newGenFixture(t, true)
+	f.startDirecting(t)
+	switches := func() int {
+		return f.count(t, `SELECT COUNT(*) FROM human_intervention WHERE project_id = ? AND kind = 'switch_to_director'`, f.projectID)
+	}
+
+	f.llm.interpreter = opsJSON(`{"type":"set_mode","project_mode":"director"}`)
+	ws := f.say(t, "DIRECTOR にして", "")
+
+	assert.Zero(t, switches())
+	assert.Contains(t, ws.Messages[len(ws.Messages)-1].Content, "すでに DIRECTOR MODE です")
+	assert.NotContains(t, ws.Messages[len(ws.Messages)-1].Content, "にしました")
+
+	f.llm.interpreter = opsJSON(`{"type":"set_mode","project_mode":"auto"}`, `{"type":"set_mode","project_mode":"director"}`)
+	f.say(t, "AUTO にして、やっぱり DIRECTOR", "")
+	assert.Equal(t, 1, switches(), "a real switch back to DIRECTOR is recorded")
+}

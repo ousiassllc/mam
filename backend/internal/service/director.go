@@ -677,8 +677,15 @@ func (s *DirectorService) execute(ctx context.Context, project domain.Project, r
 		}
 		out.lines = append(out.lines, line)
 	}
+	mode := project.Mode
 	for _, op := range cmd.Operations {
 		if op.Type == commandinterpreter.OpSetMode {
+			if op.ProjectMode == mode {
+				// nothing is switched: no switch_to_director is recorded, no pipeline is kicked
+				out.lines = append(out.lines, "すでに "+strings.ToUpper(string(mode))+" MODE です。")
+				continue
+			}
+			mode = op.ProjectMode
 			if err := s.applyMode(ctx, project.ID, op.ProjectMode, false); err != nil {
 				return out, err
 			}
