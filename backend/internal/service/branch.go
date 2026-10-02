@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -19,6 +20,8 @@ type BranchService struct {
 	*core
 	shots     *repository.GenerationRepository
 	continues *ContinueService
+	// brands are the Safety / Brand Constraints a Direction is checked against before anything is made.
+	brands *repository.BrandRepository
 }
 
 // BranchInput is the request to branch at a Shot (POST /shots/:id/branch).
@@ -174,8 +177,9 @@ func (s *BranchService) detail(ctx context.Context, branch domain.Branch) (Branc
 // Create saves the Branch Point at the Shot and snapshots the World State there (POST
 // /shots/:id/branch). With a Direction the AI also plans the first Shot of the Branch and starts
 // generating it; a Direction needs generation to be configured (ErrUnavailable otherwise, before
-// anything is made). An unknown Shot is ErrNotFound; an unusable type, offset or name is a
-// ValidationError.
+// anything is made), and one with a forbidden expression of a LOCK Brand constraint is
+// ErrBrandViolation, also before anything is made. An unknown Shot is ErrNotFound; an unusable type,
+// offset or name is a ValidationError.
 func (s *BranchService) Create(ctx context.Context, shotID string, in BranchInput) (BranchDetail, error) {
 	return s.create(ctx, shotID, in, false)
 }
@@ -195,6 +199,9 @@ func (s *BranchService) create(ctx context.Context, shotID string, in BranchInpu
 	generate := direction != "" || aiChoice
 	if generate && !s.canContinue() {
 		return BranchDetail{}, ErrUnavailable
+	}
+	if err := s.checkDirections(ctx, ref.ProjectID, direction); err != nil {
+		return BranchDetail{}, err
 	}
 	branch, err := s.branches.Create(ctx, spec)
 	if err != nil {
@@ -356,6 +363,12 @@ func (s *BranchService) Fork(ctx context.Context, ref repository.ShotRef, typ do
 			directions = append(directions, c)
 		}
 	}
+	if s.canContinue() {
+		// the directions the AI proposed too: a forbidden one stops the request before the first Branch
+		if err := s.checkDirections(ctx, ref.ProjectID, directions...); err != nil {
+			return nil, err
+		}
+	}
 	var lines []string
 	for i := range count {
 		in := BranchInput{PointType: typ}
@@ -378,6 +391,24 @@ func (s *BranchService) Fork(ctx context.Context, ref repository.ShotRef, typ do
 		lines = append(lines, forkLine(d))
 	}
 	return lines, nil
+}
+
+// checkDirections returns ErrBrandViolation when a direction contains a forbidden expression of a
+// LOCK Brand constraint (spec §23: before anything is generated or made).
+func (s *BranchService) checkDirections(ctx context.Context, projectID string, directions ...string) error {
+	if s.brands == nil || !slices.ContainsFunc(directions, func(d string) bool { return strings.TrimSpace(d) != "" }) {
+		return nil
+	}
+	list, err := s.brands.List(ctx, projectID)
+	if err != nil {
+		return err
+	}
+	for _, d := range directions {
+		if err := list.CheckText(d); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func forkLine(d BranchDetail) string {

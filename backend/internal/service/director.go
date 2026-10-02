@@ -722,11 +722,15 @@ func (s *DirectorService) setLock(ctx context.Context, projectID string, ref *re
 }
 
 // refuseBrand returns ErrBrandViolation when a regeneration's instruction (the user's words, or the
-// English direction the interpreter produced) contains a forbidden expression of a LOCK constraint.
+// English direction the interpreter produced) or the direction of a Branch to create contains a
+// forbidden expression of a LOCK constraint.
 // Advisory constraints are not an error. The Shot Spec is checked again inside the generation that
 // would be queued, still before the job exists.
 func (s *DirectorService) refuseBrand(ctx context.Context, projectID, message string, cmd commandinterpreter.Command) error {
-	if s.brands == nil || !slices.ContainsFunc(cmd.Operations, func(op commandinterpreter.Operation) bool { return op.Regenerates() }) {
+	generates := func(op commandinterpreter.Operation) bool {
+		return op.Regenerates() || op.Type == commandinterpreter.OpCreateBranch
+	}
+	if s.brands == nil || !slices.ContainsFunc(cmd.Operations, generates) {
 		return nil
 	}
 	list, err := s.brands.List(ctx, projectID)
@@ -737,11 +741,13 @@ func (s *DirectorService) refuseBrand(ctx context.Context, projectID, message st
 		return err
 	}
 	for _, op := range cmd.Operations {
-		if !op.Regenerates() {
+		if !generates(op) {
 			continue
 		}
-		if err := list.CheckText(op.Instruction); err != nil {
-			return err
+		for _, text := range append([]string{op.Instruction}, op.Directions...) {
+			if err := list.CheckText(text); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
