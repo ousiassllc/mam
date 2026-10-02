@@ -463,25 +463,33 @@ func (a *Agent) verdict(ctx context.Context, shot repository.ShotRef, eff domain
 		return domain.RetryMaxRetries, nil // decided before any cost is estimated
 	}
 	strategy, err := a.Regenerator.RegenerationStrategy(ctx, shot, regen)
-	if errors.Is(err, generation.ErrBudgetExceeded) {
-		return budgetVerdict(eff), nil
-	}
-	if err != nil {
+	exceeded := errors.Is(err, generation.ErrBudgetExceeded)
+	if err != nil && !exceeded {
 		return "", err
 	}
 	budget, err := a.Generations.Budget(ctx, shot.ProjectID, shot.Shot.ID)
 	if err != nil {
 		return "", err
 	}
+	if exceeded {
+		return budgetVerdict(eff, budget), nil
+	}
 	return eff.CanRetry(retries, budget.ShotSpent, budget.ProjectSpent, strategy.CostPerTake), nil
 }
 
-// budgetVerdict names the ceiling that ends the loop when not even one Take fits the budget.
-func budgetVerdict(eff domain.EffectivePolicy) domain.RetryVerdict {
-	if eff.ShotBudgetCeiling != nil {
+// budgetVerdict names the ceiling that ends the loop when not even one Take fits the budget: the one
+// with the least money left (the Shot's on a tie), so the Escalation does not blame the Shot's
+// ceiling when the Project's budget is what ran out.
+func budgetVerdict(eff domain.EffectivePolicy, b repository.Budget) domain.RetryVerdict {
+	switch {
+	case eff.ShotBudgetCeiling == nil:
+		return domain.RetryProjectBudget
+	case eff.ProjectBudgetCeiling == nil:
 		return domain.RetryShotBudget
+	case *eff.ProjectBudgetCeiling-b.ProjectSpent < *eff.ShotBudgetCeiling-b.ShotSpent:
+		return domain.RetryProjectBudget
 	}
-	return domain.RetryProjectBudget
+	return domain.RetryShotBudget
 }
 
 // decide chooses the strategy: the deterministic rules first, then the Repair Agent (LLM) among the
