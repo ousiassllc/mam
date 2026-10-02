@@ -422,7 +422,13 @@ func (r *GenerationRepository) SaveReferencePack(ctx context.Context, p NewRefer
 				return err
 			}
 		}
+		// Only an image generated for this Pack, under a name the Art Director gave, adds an entity: a
+		// pinned library item or a reused reference keeps the name it was saved with (a library item is
+		// named after its image, "Mio（全身）", not after a Character), and was ensured when it was made.
 		for _, ref := range p.References {
+			if !added[ref.AssetID] {
+				continue
+			}
 			if err := ensureWorldEntity(ctx, tx, p.ProjectID, branchID, ref); err != nil {
 				return err
 			}

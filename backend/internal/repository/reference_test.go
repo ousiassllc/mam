@@ -118,6 +118,32 @@ func TestGenerationRepository_SaveReferencePackRegistersNewImagesInTheLibraryBut
 	}
 }
 
+// A pinned library item is named after its image ("Mio (full body)"), not after a Character, so a
+// Pack regeneration that carries it must not add a Character or Product of that name to the World
+// State; an image generated for the Pack under an Art Director's name still does (#364).
+func TestGenerationRepository_SaveReferencePackAddsWorldEntitiesOnlyForNewlyGeneratedReferences(t *testing.T) {
+	ctx := context.Background()
+	f := newLibraryFixture(t)
+	pinnedChar := f.upload(t, domain.RefCharacter, "Mio (full body)")
+	pinnedProduct := f.upload(t, domain.RefProduct, "Serum (label)")
+	p := repository.NewReferencePack{ProjectID: f.projectID, ShotID: f.shotID, References: []domain.Reference{
+		{Kind: domain.RefCharacter, Name: pinnedChar.Name, AssetID: pinnedChar.AssetID, LibraryItem: pinnedChar.ID},
+		{Kind: domain.RefProduct, Name: pinnedProduct.Name, AssetID: pinnedProduct.AssetID, LibraryItem: pinnedProduct.ID},
+		{Kind: domain.RefCharacter, Name: "Ren", AssetID: "gen-ren"},
+	}, Assets: []domain.Asset{{ID: "gen-ren", ProjectID: f.projectID, Type: domain.AssetReference, FilePath: "p/ren.png", MimeType: "image/png"}}}
+	require.NoError(t, f.repo.SaveReferencePack(ctx, p))
+
+	w, err := f.world.World(ctx, f.projectID, "")
+	require.NoError(t, err)
+	var chars []string
+	for _, c := range w.Characters {
+		chars = append(chars, c.Name)
+	}
+	assert.ElementsMatch(t, []string{"Mio", "Ren"}, chars, "Mio is the fixture's; the pinned item adds none, the generated Ren does")
+	require.Len(t, w.Products, 1, "the pinned product item adds no Product")
+	assert.Equal(t, "Serum", w.Products[0].Name, "the fixture's own")
+}
+
 func TestReferenceRepository_PinReplacesSameKindAndNameAndRefusesBusyShots(t *testing.T) {
 	ctx := context.Background()
 	f := newLibraryFixture(t)
