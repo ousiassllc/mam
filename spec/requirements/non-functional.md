@@ -46,7 +46,7 @@
 | ローカルサーバー公開範囲 | Go バックエンド（Gin/Huma）は `127.0.0.1` のみにバインドし、外部ネットワークからアクセス不可とする |
 | API キー管理 | 外部生成モデル API のキーは OS のセキュアストレージ（Windows Credential Manager / macOS Keychain / Linux Secret Service）に保存し、平文設定ファイルに書かない |
 | CSRF | ループバック限定であっても HALT 標準の CSRF トークン付与（meta タグ + 全リクエストへの付与）は維持する |
-| 入力検証 | ユーザーアップロード画像/参照動画は、サービス層（`service/upload.go`）で拡張子・ファイル内容の署名（先頭バイト。MIME は拡張子から決める）・サイズ・件数を検証し、違反は 422 で拒否する。上限は画像 20 MB・動画 300 MB・一度の添付 8 件。アップロードは Gin の multipart ハンドラ（`POST /projects/:id/references` など）で受け、Huma（`/api/v1`）の Input バリデーションは通らない |
+| 入力検証 | ユーザーアップロード画像/参照動画は、サービス層（`service/upload.go`）で拡張子・ファイル内容の署名（先頭バイト。MIME は拡張子から決める）・サイズ・件数を検証し、違反は 422 で拒否する。上限は画像 20 MB・動画 300 MB・一度の添付 8 件。アップロードは Gin の multipart ハンドラ（`POST /projects/:id/references` など）で受け、Huma（`/api/v1`）の Input バリデーションは通らない。サーバーの `ReadTimeout`（5 分）は絶対期限で 8 GiB のバンドルが遅い回線・ディスクで収まらないため、アップロードの本文は 1 回の読み取りごとに 1 分のアイドル期限へ延ばす（受信が続く限り打ち切らない） |
 | Brand/Safety 制約 | Safety and Brand Constraints（禁止表現・権利メタデータ等）は Prompt 生成・AI Video Judge・Final QC の全段階で強制適用し、LOCK 違反はスコアに関係なく FAIL とする（F-23 と対応） |
 | テレメトリ | デフォルトで外部への利用状況送信は行わない。診断ログはローカルファイルにのみ出力する |
 | チーム共有物の漏えい防止 | 他のメンバーに渡すもの（Review Package・Review Response、F-32）には、外部モデル API キー・認証情報、顔データ（Character / Series の顔基準画像・参照画像・アップロード素材・顔同一性指標）、Brief・チャット・Notes・World State・Prompt・Brand Constraints・コスト・Project ID・絶対パスを含めない。渡すのは allowlist の項目（Project 名・オーナーのメモ・レビュー対象の Final Export 1 本、レビュアーの表示名・判定・コメント）だけで、固定の構造体から組み立てる。読み込み側は allowlist 外のエントリ・サイズ超過・署名不一致を拒否する（`spec/spec.md` §27.1） |
