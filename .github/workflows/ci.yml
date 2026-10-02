@@ -36,6 +36,14 @@ jobs:
       - name: Generate
         run: make generate
 
+      - name: Committed templ output is up to date
+        run: |
+          if [ -n "$(git status --porcelain -- '*_templ.go')" ]; then
+            git status --short -- '*_templ.go'
+            echo "::error::the committed *_templ.go differ from the .templ sources: run 'make generate' and commit"
+            exit 1
+          fi
+
       - name: Format check
         run: make fmt-check
 
