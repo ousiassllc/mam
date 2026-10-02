@@ -147,7 +147,7 @@ func scopeExists(ctx context.Context, q queryer, projectID, branchID string) err
 
 // RestoreShotVersion makes the Canonical Shot Spec of prompt version number the spec of the Shot
 // again, as a new prompt version (the Takes of the old version stay with it) and returns that
-// version. ErrNotFound: unknown Shot or version; ErrConflict: the Shot is being generated or repaired;
+// version. The rest of shot_spec (pinned references, Keyframe, storyboard) stays as it is now. ErrNotFound: unknown Shot or version; ErrConflict: the Shot is being generated or repaired;
 // *LockedParametersError (Is ErrLocked): the restore would change a LOCKed part of the spec.
 func (r *VersionRepository) RestoreShotVersion(ctx context.Context, shotID string, number int) (domain.PromptVersion, error) {
 	var pv domain.PromptVersion
@@ -180,17 +180,11 @@ func (r *VersionRepository) RestoreShotVersion(ctx context.Context, shotID strin
 				return &LockedParametersError{Parameters: hit}
 			}
 		}
-		if _, err := tx.ExecContext(ctx, `UPDATE shot SET shot_spec = ? WHERE id = ?`, snapshot, shotID); err != nil {
-			return err
-		}
-		var next int
-		if err := tx.QueryRowContext(ctx, `SELECT COALESCE(MAX(version_number), 0) + 1 FROM prompt_version WHERE shot_id = ?`, shotID).Scan(&next); err != nil {
-			return err
-		}
-		pv = domain.PromptVersion{ID: domain.NewID(), ShotID: shotID, VersionNumber: next, SpecSnapshot: json.RawMessage(snapshot)}
-		_, err = tx.ExecContext(ctx,
-			`INSERT INTO prompt_version (id, shot_id, version_number, shot_spec_snapshot, created_at) VALUES (?, ?, ?, ?, ?)`,
-			pv.ID, shotID, next, snapshot, formatTime(r.now()))
+		// Only the Canonical Shot Spec goes back: the pinned references and the Keyframe (shot_spec.references)
+		// and the storyboard are not part of it, change without a prompt_version, and are kept as they are
+		// now, the way a hand edit (SaveEditedSpec) keeps them.
+		gr := &GenerationRepository{db: r.db, now: r.now}
+		pv, err = gr.writeSpec(ctx, tx, shotID, current, restored, nil, nil, true)
 		return err
 	})
 	if errors.Is(err, ErrNotFound) || errors.Is(err, ErrConflict) || errors.Is(err, ErrLocked) {

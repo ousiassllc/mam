@@ -51,6 +51,36 @@ func TestVersionRepository_RestoreShotVersionAppendsACopyAndKeepsHistory(t *test
 	assert.JSONEq(t, `{"n":2}`, output.String, "the old version keeps what it recorded")
 }
 
+// The restore puts back the Canonical Shot Spec only: a reference pinned after the version was
+// written (shot_spec.references, which no prompt_version records) must survive it (#357).
+func TestVersionRepository_RestoreShotVersionKeepsTheReferencesAndStoryboardOfTheCurrentSpec(t *testing.T) {
+	ctx := context.Background()
+	f := newGenRepoFixture(t)
+	versions := repository.NewVersionRepository(f.db)
+	_, err := f.repo.SavePromptedSpec(ctx, f.shotID, wideSpec("first"), nil, nil)
+	require.NoError(t, err)
+	var raw string
+	require.NoError(t, f.db.Reader().QueryRow(`SELECT shot_spec FROM shot WHERE id = ?`, f.shotID).Scan(&raw))
+	withRefs, err := domain.WithReferences(json.RawMessage(raw), []domain.Reference{
+		{Kind: domain.RefCharacter, Name: "Mio", AssetID: "a1", LibraryItem: "lib1"},
+		{Kind: domain.RefKeyframe, AssetID: "kf"},
+	})
+	require.NoError(t, err)
+	require.NoError(t, exec(t, f.db, `UPDATE shot SET shot_spec = ? WHERE id = ?`, string(withRefs), f.shotID))
+	_, err = f.repo.SavePromptedSpec(ctx, f.shotID, wideSpec("second"), nil, nil)
+	require.NoError(t, err)
+
+	pv, err := versions.RestoreShotVersion(ctx, f.shotID, 1)
+	require.NoError(t, err)
+
+	assert.Equal(t, "first", shotObjective(t, f))
+	got, err := f.repo.GetShot(ctx, f.shotID)
+	require.NoError(t, err)
+	require.Len(t, got.Shot.References(), 2, "the references stay on the Shot")
+	assert.Equal(t, "lib1", got.Shot.References()[0].LibraryItem)
+	assert.Len(t, (domain.Shot{ShotSpec: pv.SpecSnapshot}).References(), 2, "and in the new version's snapshot")
+}
+
 func TestVersionRepository_RestoreShotVersionRefusals(t *testing.T) {
 	ctx := context.Background()
 	f := newGenRepoFixture(t)
