@@ -23,6 +23,9 @@ type ContinueService struct {
 	*core
 	generation *GenerationService
 	shots      *repository.GenerationRepository
+	// brands are the Safety / Brand Constraints the user's direction is checked against before the
+	// Plan is paid for or a Shot is added.
+	brands *repository.BrandRepository
 	agent      *continuation.Agent // nil when the Reasoning LLM is not configured
 	// tools takes the final frame of the Take the next Shot continues from; nil without ffmpeg (the
 	// Agent then reads the States from the text only).
@@ -241,6 +244,9 @@ func (s *ContinueService) confirm(ctx context.Context, shotID string, in Confirm
 	ref, err := s.check(ctx, shotID)
 	if err != nil {
 		return ShotFragment{}, false, err
+	}
+	if err := checkBrandTexts(ctx, s.brands, ref.ProjectID, direction); err != nil {
+		return ShotFragment{}, false, err // a forbidden expression: no Plan, no Shot, the card stays open
 	}
 	agentIn, err := s.input(ctx, ref)
 	if err != nil {

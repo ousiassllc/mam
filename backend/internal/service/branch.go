@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"slices"
 	"strconv"
 	"strings"
 
@@ -396,19 +395,7 @@ func (s *BranchService) Fork(ctx context.Context, ref repository.ShotRef, typ do
 // checkDirections returns ErrBrandViolation when a direction contains a forbidden expression of a
 // LOCK Brand constraint (spec §23: before anything is generated or made).
 func (s *BranchService) checkDirections(ctx context.Context, projectID string, directions ...string) error {
-	if s.brands == nil || !slices.ContainsFunc(directions, func(d string) bool { return strings.TrimSpace(d) != "" }) {
-		return nil
-	}
-	list, err := s.brands.List(ctx, projectID)
-	if err != nil {
-		return err
-	}
-	for _, d := range directions {
-		if err := list.CheckText(d); err != nil {
-			return err
-		}
-	}
-	return nil
+	return checkBrandTexts(ctx, s.brands, projectID, directions...)
 }
 
 func forkLine(d BranchDetail) string {

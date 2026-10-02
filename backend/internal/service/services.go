@@ -215,7 +215,7 @@ func New(deps Deps) *Services {
 		director.interpreter = commandinterpreter.New(deps.LLM)
 	}
 	c.director = director
-	continues := &ContinueService{core: c, generation: generations, shots: gens, tools: deps.Media}
+	continues := &ContinueService{core: c, generation: generations, shots: gens, brands: brands, tools: deps.Media}
 	if deps.LLM != nil {
 		continues.agent = continuation.New(deps.LLM)
 	}
