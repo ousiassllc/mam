@@ -224,7 +224,7 @@ func New(deps Deps) *Services {
 		notes.extractor = stateextractor.New(deps.LLM)
 	}
 	c.notes = notes
-	branch := &BranchService{core: c, shots: gens, continues: continues}
+	branch := &BranchService{core: c, shots: gens, continues: continues, brands: brands}
 	director.branch = branch
 	worlds := &WorldService{core: c, world: world, versions: versions}
 	// Without a Reasoning LLM the Editor Judge runs its deterministic checks alone.

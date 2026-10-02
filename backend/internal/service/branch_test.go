@@ -197,3 +197,41 @@ func TestChat_DirectorModeGivesEveryBranchItsFirstShotEvenWhenFewerDevelopmentsA
 		"the three proposed developments and the two left to the AI each have a first Shot")
 	assert.Equal(t, 5, strings.Count(msg, "最初の Shot の生成を始めました"))
 }
+
+func (f genFixture) forbid(t *testing.T, text string) {
+	t.Helper()
+	_, err := f.svc.Brand.Add(context.Background(), f.projectID, service.BrandForm{Type: string(domain.BrandForbidden), Text: text})
+	require.NoError(t, err)
+}
+
+// A Direction with a forbidden expression of a LOCK Brand constraint is refused before the Branch
+// or its Shot exists (spec §23), not after they were committed.
+func TestBranchCreate_ADirectionWithAForbiddenExpressionMakesNothing(t *testing.T) {
+	f := completedShotFixture(t, sameSceneAnswer)
+	f.forbid(t, "最高")
+	trunkBefore := f.trunkShots(t)
+
+	_, err := f.svc.Branch.Create(context.Background(), f.shotID, service.BranchInput{Direction: "最高の展開"})
+
+	require.ErrorIs(t, err, domain.ErrBrandViolation)
+	assert.Zero(t, f.count(t, `SELECT COUNT(*) FROM branch WHERE project_id = ?`, f.projectID))
+	assert.Equal(t, trunkBefore, f.trunkShots(t))
+	assert.Zero(t, f.count(t, `SELECT COUNT(*) FROM scene WHERE project_id = ? AND branch_id IS NOT NULL`, f.projectID))
+}
+
+func TestChat_DirectorModeABranchDirectionWithAForbiddenExpressionMakesNothing(t *testing.T) {
+	f := completedShotFixture(t, sameSceneAnswer)
+	f.forbid(t, "最高")
+	f.startDirecting(t)
+	f.llm.director = directorFor(sameSceneAnswer)
+
+	f.llm.interpreter = opsJSON(`{"type":"create_branch","count":2,"point_type":"shot","directions":["ドアを開ける","最高の別展開"]}`)
+	_, err := f.svc.Chat.PostMessage(context.Background(), f.projectID, service.PostMessageInput{Content: "このカットから別展開を2つ作って"})
+	require.ErrorIs(t, err, domain.ErrBrandViolation)
+	assert.Zero(t, f.count(t, `SELECT COUNT(*) FROM branch WHERE project_id = ?`, f.projectID), "not even the clean direction's Branch")
+
+	f.llm.interpreter = opsJSON(`{"type":"create_branch","count":1,"point_type":"shot","directions":["ドアを開ける"]}`)
+	_, err = f.svc.Chat.PostMessage(context.Background(), f.projectID, service.PostMessageInput{Content: "最高の別展開を作って"})
+	require.ErrorIs(t, err, domain.ErrBrandViolation, "the words of the message too")
+	assert.Zero(t, f.count(t, `SELECT COUNT(*) FROM branch WHERE project_id = ?`, f.projectID))
+}
