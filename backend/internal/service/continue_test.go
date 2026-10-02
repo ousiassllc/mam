@@ -216,6 +216,30 @@ func TestContinueConfirm_AnUnusablePlanLeavesTheProjectUnchanged(t *testing.T) {
 	assert.Equal(t, 1, f.count(t, `SELECT COUNT(*) FROM scene WHERE project_id = ?`, f.projectID))
 }
 
+// A direction with a forbidden expression of a LOCK Brand constraint is refused before the Plan is
+// paid for and before a Shot is added; a reply to the card leaves the card open (spec §23).
+func TestContinueConfirm_AForbiddenExpressionIsRefusedBeforeAnythingIsMade(t *testing.T) {
+	f := completedShotFixture(t, sameSceneAnswer)
+	ctx := context.Background()
+	f.forbid(t, "BANNED")
+	card := f.propose(t)
+	planCalls := f.llm.calls(llm.AgentDirector)
+
+	_, err := f.svc.Continue.Confirm(ctx, f.shotID, service.ConfirmInput{Instruction: "彼女が BANNED を持つ"})
+	assert.ErrorIs(t, err, service.ErrBrandViolation)
+	_, err = f.svc.Chat.PostMessage(ctx, f.projectID, service.PostMessageInput{Content: "BANNED な展開", ReplyToMessageID: card.ID})
+	assert.ErrorIs(t, err, service.ErrBrandViolation)
+
+	assert.Len(t, f.shotObjectives(t), 1, "no Shot is added")
+	assert.Equal(t, planCalls, f.llm.calls(llm.AgentDirector), "the Plan is not called")
+	assert.Zero(t, f.count(t, `SELECT COUNT(*) FROM chat_message WHERE reply_to_message_id = ?`, card.ID), "the card stays open")
+	assert.NotContains(t, f.thread(t, f.projectID)[len(f.thread(t, f.projectID))-1].Content, "続きを追加しました")
+
+	_, err = f.svc.Continue.Confirm(ctx, f.shotID, service.ConfirmInput{Instruction: "彼女がドアを開ける"})
+	require.NoError(t, err, "a direction without the expression goes on")
+	assert.Len(t, f.shotObjectives(t), 2)
+}
+
 // A reply whose Confirm fails before the next Shot exists leaves the card open: the user answers
 // the same card again, and only the answer that worked is recorded as its reply.
 func TestContinueConfirm_AFailedReplyLeavesTheCardOpenForAnotherAnswer(t *testing.T) {

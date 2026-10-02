@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"slices"
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -151,4 +152,24 @@ func (s *BrandService) ApplyTemplate(ctx context.Context, projectID, templateID 
 // invalidTemplate is the error of a creation that names a Brand Template that does not exist.
 func invalidTemplate() error {
 	return invalid("brand_template_id", "選んだ Brand Template が見つかりません")
+}
+
+// checkBrandTexts returns ErrBrandViolation when one of the texts (a user's instruction or direction)
+// contains a forbidden expression of a LOCK constraint of the Project. Spec §23: this runs before
+// anything is generated or made (a Shot added, a Branch created, a paid Plan called). Blank texts
+// are not looked at, and nothing is read when the repository is not wired.
+func checkBrandTexts(ctx context.Context, brands *repository.BrandRepository, projectID string, texts ...string) error {
+	if brands == nil || !slices.ContainsFunc(texts, func(t string) bool { return strings.TrimSpace(t) != "" }) {
+		return nil
+	}
+	list, err := brands.List(ctx, projectID)
+	if err != nil {
+		return err
+	}
+	for _, t := range texts {
+		if err := list.CheckText(t); err != nil {
+			return err
+		}
+	}
+	return nil
 }
