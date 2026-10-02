@@ -214,10 +214,11 @@ func TestDirectorCommand_APlannedSpecThatBreaksALockConstraintIs403(t *testing.T
 }
 
 func TestDirectorCommand_PartialRegenerateThatBreaksALockConstraintIs403(t *testing.T) {
-	j := newJudgeApp(t, goodVerdict, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95)
+	// With ffmpeg (a Partial Regeneration can be spliced) the refusal comes from the Brand check of
+	// the planned spec; without it the director is told that ffmpeg is needed and nothing is made.
+	j := newPartialApp(t, goodVerdict, partialCommand)
 	require.NotEmpty(t, j.generateAndJudge())
 	j.addBrand("brand-lock", "forbidden_expression", "lock", "runs")
-	j.llm.command = partialCommand
 	jobs := j.count(`SELECT COUNT(*) FROM job`)
 	takes := len(j.takeIDs())
 
