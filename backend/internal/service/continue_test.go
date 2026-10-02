@@ -285,3 +285,26 @@ func TestContinueConfirm_AConcurrentSecondReplyToTheSameCardIsRefused(t *testing
 	assert.Equal(t, 1, f.count(t, `SELECT COUNT(*) FROM chat_message WHERE reply_to_message_id = ?`, card.ID))
 	assert.Equal(t, 3, f.count(t, `SELECT COUNT(*) FROM job WHERE kind = 'generate'`), "one generation was started for the new Shot")
 }
+
+// The client going away while the new Shot's generation starts (the Prompt Planner call) must not
+// leave the card open: the reply is recorded, so a second answer is a conflict and makes no second
+// Shot.
+func TestContinueConfirm_AReplyIsRecordedWhenTheRequestIsCancelledAfterTheShotWasAdded(t *testing.T) {
+	f := completedShotFixture(t, sameSceneAnswer)
+	card := f.propose(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	f.llm.planner = func(string) string {
+		cancel()
+		return specAnswer
+	}
+
+	_, err := f.svc.Chat.PostMessage(ctx, f.projectID, service.PostMessageInput{Content: "B. 背後から声が聞こえる", ReplyToMessageID: card.ID})
+	require.Error(t, err, "the generation could not be started")
+	assert.Len(t, f.shotObjectives(t), 2, "the Shot was added")
+	assert.Equal(t, 1, f.count(t, `SELECT COUNT(*) FROM chat_message WHERE reply_to_message_id = ?`, card.ID), "the reply is recorded")
+
+	_, err = f.svc.Chat.PostMessage(context.Background(), f.projectID, service.PostMessageInput{Content: "C. 突然照明が消える", ReplyToMessageID: card.ID})
+	assert.ErrorIs(t, err, service.ErrConflict)
+	assert.Len(t, f.shotObjectives(t), 2, "no second Shot")
+}
