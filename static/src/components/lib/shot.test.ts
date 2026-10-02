@@ -37,15 +37,27 @@ describe('progressFraction', () => {
 });
 
 describe('createRefreshGuard', () => {
-  it('lets a card URL refresh once per window so an idle/re-render cycle cannot loop', () => {
+  it('lets an idle-triggered refresh of a card URL through once per window so an idle/re-render cycle cannot loop', () => {
     let t = 1000;
     const mayRefresh = createRefreshGuard(3000, () => t);
-    expect(mayRefresh('/shots/a')).toBe(true);
+    expect(mayRefresh('/shots/a', 'idle')).toBe(true);
     t += 100;
-    expect(mayRefresh('/shots/a')).toBe(false);
-    expect(mayRefresh('/shots/b')).toBe(true);
+    expect(mayRefresh('/shots/a', 'idle')).toBe(false);
+    expect(mayRefresh('/shots/b', 'idle')).toBe(true);
     t += 3000;
-    expect(mayRefresh('/shots/a')).toBe(true);
+    expect(mayRefresh('/shots/a', 'idle')).toBe(true);
+  });
+
+  it('never drops the refresh of work that ended, even right after another refresh (a fast Judge / Repair)', () => {
+    let t = 1000;
+    const mayRefresh = createRefreshGuard(3000, () => t);
+    expect(mayRefresh('/shots/a', 'done')).toBe(true);
+    t += 1000;
+    expect(mayRefresh('/shots/a', 'done')).toBe(true);
+    t += 10;
+    expect(mayRefresh('/shots/a', 'failed')).toBe(true);
+    t += 10;
+    expect(mayRefresh('/shots/a', 'idle')).toBe(false);
   });
 });
 
