@@ -164,6 +164,14 @@ templ EditorWorkspace(d EditorPanelData) {
 	</section>
 }
 
+// EditorActionsFragment is what a stage action or the reload of #editor-actions answers with: the
+// stage buttons and, out of band, the Project state badge of the page header, which the stage
+// (Rough Cut, Final QC, an additional Shot request, ...) may have moved.
+templ EditorActionsFragment(d EditorPanelData) {
+	@EditorActions(d)
+	@ProjectStateBadge(d.Project.State, true)
+}
+
 // EditorActions is the row of stages. It reloads itself when the timeline editor saved.
 templ EditorActions(d EditorPanelData) {
 	<div

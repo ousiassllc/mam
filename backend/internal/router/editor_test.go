@@ -217,6 +217,9 @@ func TestEditor_FullFlowFromRoughCutToExport(t *testing.T) {
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	assert.Equal(t, "timeline-reload", rec.Header().Get("HX-Trigger"))
 	assert.Equal(t, "EDITING", e.state())
+	// The stage moved the Project: the answer refreshes the state badge of the page header too.
+	assert.Regexp(t, `<span[^>]*id="project-state"[^>]*hx-swap-oob="true"|<span[^>]*hx-swap-oob="true"[^>]*id="project-state"`, rec.Body.String())
+	assert.Contains(t, rec.Body.String(), `data-state="EDITING"`)
 	tl := e.timeline()
 	require.Len(t, tl.Clips, 1)
 	assert.Equal(t, "t1", tl.Clips[0].TakeID)

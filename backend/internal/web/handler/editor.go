@@ -49,7 +49,7 @@ func EditorActions(svc *service.EditorService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusOK, organisms.EditorActions(editorPanelData(v)))
+		render(c, http.StatusOK, organisms.EditorActionsFragment(editorPanelData(v)))
 	}
 }
 
@@ -64,7 +64,7 @@ func editorStage(run func(c *gin.Context) (service.EditorView, error), trigger s
 		if trigger != "" {
 			c.Header("HX-Trigger", trigger)
 		}
-		render(c, http.StatusOK, organisms.EditorActions(editorPanelData(v)))
+		render(c, http.StatusOK, organisms.EditorActionsFragment(editorPanelData(v)))
 	}
 }
 
