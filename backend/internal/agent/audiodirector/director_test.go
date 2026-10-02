@@ -982,3 +982,17 @@ func TestDirector_ALineWithoutAnElevenLabsKeyIsRefusedBeforeThePlannerRuns(t *te
 	assert.Zero(t, model.calls, "the Planner (a paid model call) is not called")
 	assert.Empty(t, ledger.entries)
 }
+
+func TestPlanner_EffectShorterThanTheFloorIsDroppedNotStretched(t *testing.T) {
+	fake := &fakePlanner{answer: `{"scenes":[{"index":1,"effects":[
+		{"layer":"se","at_seconds":1,"duration_seconds":0.3,"prompt":"too short"},
+		{"layer":"se","at_seconds":2,"duration_seconds":0,"prompt":"no length"},
+		{"layer":"se","at_seconds":3,"duration_seconds":0.5,"prompt":"exactly the floor"}]}]}`}
+
+	plan, err := audiodirector.NewPlanner(fake).Plan(context.Background(), audiodirector.PlanInput{Scenes: []audiodirector.Scene{{Index: 1, Start: 0, End: 10, Clips: 4}}, Scope: domain.AudioScopeOf(domain.QualityBalanced)})
+
+	require.NoError(t, err)
+	require.Len(t, plan[1].Effects, 1)
+	assert.Equal(t, "exactly the floor", plan[1].Effects[0].Prompt)
+	assert.InDelta(t, audiodirector.MinEffectSeconds, plan[1].Effects[0].Seconds, 1e-9)
+}
