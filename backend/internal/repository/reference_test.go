@@ -70,6 +70,13 @@ func TestReferenceRepository_ListFiltersByQueryKindAndTagNewestFirst(t *testing.
 	assert.Equal(t, []string{"Serum bottle"}, names(got), "filters are ANDed")
 	got, _ = f.refs.List(ctx, f.projectID, repository.ReferenceFilter{Query: "%"})
 	assert.Equal(t, []string{"100%_street"}, names(got), "LIKE wildcards in the query are literal")
+	f.upload(t, domain.RefStyle, "Café noir", "Éclair", "Мир")
+	got, _ = f.refs.List(ctx, f.projectID, repository.ReferenceFilter{Query: "CAFÉ"})
+	assert.Equal(t, []string{"Café noir"}, names(got), "a name part ignores the case of non-ASCII letters")
+	got, _ = f.refs.List(ctx, f.projectID, repository.ReferenceFilter{Query: "мир"})
+	assert.Equal(t, []string{"Café noir"}, names(got), "a tag part ignores the case of non-ASCII letters")
+	got, _ = f.refs.List(ctx, f.projectID, repository.ReferenceFilter{Tag: "éCLAIR"})
+	assert.Equal(t, []string{"Café noir"}, names(got), "a whole tag ignores the case of non-ASCII letters")
 	got, _ = f.refs.List(ctx, "other-project", repository.ReferenceFilter{})
 	assert.Empty(t, got, "another Project's Library")
 }
