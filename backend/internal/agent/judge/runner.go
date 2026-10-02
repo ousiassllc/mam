@@ -161,7 +161,16 @@ func (r *Runner) Handle(ctx context.Context, job domain.Job) error {
 	}
 	shotID := ref.Take.ShotID
 	r.enter(shotID)
-	defer r.leave(context.WithoutCancel(ctx), shotID)
+	// The Shot is released before done / failed is announced (the client reads the Shot again on
+	// it and must not find it JUDGING), and exactly once however the handler ends.
+	left := false
+	leave := func() {
+		if !left {
+			left = true
+			r.leave(context.WithoutCancel(ctx), shotID)
+		}
+	}
+	defer leave()
 	if err := r.Judges.BeginJudging(ctx, shotID); err != nil {
 		return err
 	}
@@ -169,11 +178,12 @@ func (r *Runner) Handle(ctx context.Context, job domain.Job) error {
 
 	res, err := r.judge(ctx, ref)
 	if err != nil {
-		return r.fail(ctx, ref, err)
+		return r.fail(ctx, ref, err, leave)
 	}
 	if _, err := r.store(ctx, ref, res); err != nil {
 		return err
 	}
+	leave()
 	r.Notify(generation.Progress{ShotID: shotID, Action: generation.ActionJudge, Stage: generation.StageDone})
 	return nil
 }
@@ -294,8 +304,9 @@ func (r *Runner) judge(ctx context.Context, ref repository.TakeRef) (domain.Judg
 	return res, nil
 }
 
-// fail tells the user why judging stopped and returns the error for the job record.
-func (r *Runner) fail(ctx context.Context, ref repository.TakeRef, err error) error {
+// fail tells the user why judging stopped and returns the error for the job record. The Shot is
+// released (leave) before the failure is announced: the client reads the Shot again on it.
+func (r *Runner) fail(ctx context.Context, ref repository.TakeRef, err error, leave func()) error {
 	shotID := ref.Take.ShotID
 	if ctx.Err() != nil {
 		return err // shutting down: nobody is told
@@ -303,6 +314,7 @@ func (r *Runner) fail(ctx context.Context, ref repository.TakeRef, err error) er
 	if errors.Is(err, repository.ErrNotFound) {
 		return err
 	}
+	leave()
 	r.Logger.Error("judge failed", "take_id", ref.Take.ID, "err", err)
 	reason := FailureReason(err)
 	notice := domain.ChatMessage{

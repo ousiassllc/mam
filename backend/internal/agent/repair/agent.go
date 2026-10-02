@@ -277,13 +277,17 @@ func (a *Agent) Handle(ctx context.Context, job domain.Job) error {
 		return fmt.Errorf("repair job %s: invalid payload", job.ID)
 	}
 	// The Shot was claimed (REPAIRING) before this job was queued: give it back whichever way the
-	// handler ends, a failed read of the Shot or a panic included.
+	// handler ends, a failed read of the Shot or a panic included. It is given back before done /
+	// failed is announced (the client reads the Shot again on it and must not find it REPAIRING),
+	// and exactly once.
 	released := false
-	defer func() {
+	release := func() {
 		if !released {
+			released = true
 			a.release(ctx, p.ShotID)
 		}
-	}()
+	}
+	defer release()
 	shot, err := a.Generations.GetShot(ctx, p.ShotID)
 	if err != nil {
 		return err
@@ -294,20 +298,26 @@ func (a *Agent) Handle(ctx context.Context, job domain.Job) error {
 	}
 	a.Notify(generation.Progress{ShotID: p.ShotID, Action: generation.ActionRepair, Stage: generation.StageRepairing, Message: "修復戦略を選んでいます"})
 
-	madeTake, err := a.run(ctx, shot, p)
+	note := &doneNote{}
+	madeTake, err := a.run(context.WithValue(ctx, doneNoteKey{}, note), shot, p)
 	if err != nil {
-		return a.fail(ctx, shot, err)
+		return a.fail(ctx, shot, err, release)
 	}
-	a.Notify(generation.Progress{ShotID: p.ShotID, Action: generation.ActionRepair, Stage: generation.StageDone})
+	release()
+	a.Notify(generation.Progress{ShotID: p.ShotID, Action: generation.ActionRepair, Stage: generation.StageDone, Message: note.message})
 	if madeTake {
 		// The new Take is judged by its own job, which may end before this one releases the Shot: look
 		// at the Shot again once it is free, so that the loop goes on whichever ends last.
-		a.release(ctx, p.ShotID)
-		released = true
 		a.Continue(context.WithoutCancel(ctx), p.ShotID)
 	}
 	return nil
 }
+
+// doneNote carries what run has to say in the done notification (an Escalation's reason) up to
+// Handle, which announces it once the Shot is released.
+type doneNote struct{ message string }
+
+type doneNoteKey struct{}
 
 // run is one step of the loop: the Retry Policy, the strategy, the new Take. It reports whether a
 // new Take was made.
@@ -552,8 +562,13 @@ func (a *Agent) escalate(ctx context.Context, shot repository.ShotRef, takeID st
 		"最も良い Take をそのまま採用する",
 		"Shot の指示を手動で修正して生成し直す",
 	}
-	a.Notify(generation.Progress{ShotID: shot.Shot.ID, Action: generation.ActionRepair, Stage: generation.StageDone, Message: verdict.Reason()})
-	return a.Chat.RaiseEscalation(context.WithoutCancel(ctx), shot.ProjectID, text, options, shot.Shot.ID)
+	if err := a.Chat.RaiseEscalation(context.WithoutCancel(ctx), shot.ProjectID, text, options, shot.Shot.ID); err != nil {
+		return err
+	}
+	if note, ok := ctx.Value(doneNoteKey{}).(*doneNote); ok {
+		note.message = verdict.Reason() // announced by Handle once the Shot is released
+	}
+	return nil
 }
 
 // adoptForEdit makes the Take the Shot's Selected Take when an Edit-Level Repair keeps it and the AI
@@ -597,14 +612,16 @@ func (a *Agent) announceEditLevel(ctx context.Context, shot repository.ShotRef, 
 	return a.Chat.Announce(context.WithoutCancel(ctx), shot.ProjectID, notice)
 }
 
-// fail tells the user why the repair stopped and returns the error for the job record.
-func (a *Agent) fail(ctx context.Context, shot repository.ShotRef, err error) error {
+// fail tells the user why the repair stopped and returns the error for the job record. The Shot is
+// released (release) before the failure is announced: the client reads the Shot again on it.
+func (a *Agent) fail(ctx context.Context, shot repository.ShotRef, err error, release func()) error {
 	if ctx.Err() != nil {
 		return err // shutting down: nobody is told
 	}
 	if errors.Is(err, repository.ErrNotFound) {
 		return err
 	}
+	release()
 	a.Logger.Error("repair failed", "shot_id", shot.Shot.ID, "err", err)
 	reason := FailureReason(err)
 	notice := domain.ChatMessage{
