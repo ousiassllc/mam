@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/service"
 )
@@ -81,6 +82,7 @@ func TestEditorReshootLoop_AdditionalShotIsMadeAndPutIntoTheTimelineAfterItsAnch
 	// The NEED_SHOT verdict in AUTO asks the Director by itself: a new Shot is generated.
 	require.Eventually(t, func() bool { return f.trunkShots(t) == 2 }, 10*time.Second, 10*time.Millisecond, "the Director makes the additional Shot")
 	assert.Equal(t, domain.StateGenerating, f.state(t))
+	f.execSQL(t, `UPDATE project SET mode = 'director' WHERE id = ?`, f.projectID) // the AUTO Judge of the round is tested below
 	var newShot string
 	require.NoError(t, f.query(t, `SELECT id FROM shot WHERE id <> ?`, f.shotID).Scan(&newShot))
 	f.waitJobsDone(t)
@@ -116,6 +118,7 @@ func TestEditorReshootLoop_AdditionalShotIsMadeAndPutIntoTheTimelineAfterItsAnch
 func TestEditorReshootLoop_AFinishedShotWaitsForTheBusyStageAndIsPutInWhenItEnds(t *testing.T) {
 	f, _ := editedFixture(t)
 	require.Eventually(t, func() bool { return f.trunkShots(t) == 2 }, 10*time.Second, 10*time.Millisecond)
+	f.execSQL(t, `UPDATE project SET mode = 'director' WHERE id = ?`, f.projectID) // the AUTO Judge of the round is tested below
 	f.waitJobsDone(t)
 	var newShot string
 	require.NoError(t, f.query(t, `SELECT id FROM shot WHERE id <> ?`, f.shotID).Scan(&newShot))
@@ -153,23 +156,84 @@ func TestEditorReshootLoop_StopsAtTheRetryPolicyLimitAndEscalates(t *testing.T) 
 	require.Eventually(t, func() bool {
 		return f.count(t, `SELECT COUNT(*) FROM take t JOIN prompt_version pv ON pv.id = t.prompt_version_id WHERE pv.shot_id = ?`, newShot) > 0
 	}, 30*time.Second, 10*time.Millisecond)
-	f.selectTakeOf(t, newShot)
-	require.Eventually(t, func() bool { return f.state(t) == domain.StateEditing }, 10*time.Second, 10*time.Millisecond)
 
-	// One round is the whole budget of Retry Policy "max retries = 1".
+	// One round is the whole budget of Retry Policy "max retries = 1": the Judge that follows the
+	// round (it still finds a Shot missing) does not ask a second one.
 	_, err := f.svc.Policy.SetQualityPolicy(ctx, f.projectID, domain.QualityBalanced, &service.PolicyForm{MaxRetries: "1"})
 	require.NoError(t, err)
-	view, err := f.svc.Editor.View(ctx, f.projectID, "")
-	require.NoError(t, err)
-	view, err = f.svc.Editor.JudgeTimeline(ctx, view.Timeline.ID)
-	require.NoError(t, err)
+	f.selectTakeOf(t, newShot)
 
+	require.Eventually(t, func() bool { return f.count(t, `SELECT COUNT(*) FROM chat_message WHERE kind = 'escalation'`) == 1 }, 10*time.Second, 10*time.Millisecond)
 	assert.Equal(t, domain.StateAwaitingApproval, f.state(t), "no second round: the Project waits for the user's decision")
 	assert.Equal(t, 2, f.trunkShots(t), "no further Shot was made")
-	assert.Equal(t, 1, f.count(t, `SELECT COUNT(*) FROM chat_message WHERE kind = 'escalation'`))
+	view, err := f.svc.Editor.View(ctx, f.projectID, "")
+	require.NoError(t, err)
 	_, err = f.svc.Editor.RequestAdditionalShot(ctx, view.Timeline.ID)
 	assert.ErrorIs(t, err, service.ErrConflict, "the escalation has to be answered first")
 	assert.Equal(t, 2, f.trunkShots(t))
+}
+
+// reshotFixture is an AUTO Project whose additional Shot is made and whose Take is about to be
+// selected; the Editor Judge answers answer from then on.
+func reshotFixture(t *testing.T, answer string) (genFixture, string) {
+	t.Helper()
+	f, _ := editedFixture(t)
+	require.Eventually(t, func() bool { return f.trunkShots(t) == 2 }, 10*time.Second, 10*time.Millisecond)
+	f.waitJobsDone(t)
+	var newShot string
+	require.NoError(t, f.query(t, `SELECT id FROM shot WHERE id <> ?`, f.shotID).Scan(&newShot))
+	require.Eventually(t, func() bool {
+		return f.count(t, `SELECT COUNT(*) FROM take t JOIN prompt_version pv ON pv.id = t.prompt_version_id WHERE pv.shot_id = ?`, newShot) > 0
+	}, 30*time.Second, 10*time.Millisecond)
+	f.llm.editor = answer
+	return f, newShot
+}
+
+func TestEditorReshootLoop_AutoJudgesTheTimelineWithTheAdditionalShotsAndGoesOnOnPass(t *testing.T) {
+	f, newShot := reshotFixture(t, `{"verdict":"pass","findings":[]}`)
+
+	f.selectTakeOf(t, newShot)
+
+	require.Eventually(t, func() bool { return f.state(t) != domain.StateGenerating && f.state(t) != domain.StateEditing }, 10*time.Second, 10*time.Millisecond, "the Judge ran by itself and passed")
+	assert.Equal(t, 2, f.llm.calls(llm.AgentEditor), "once for the Rough Cut, once for the version with the additional Shot")
+	assert.Equal(t, 2, f.trunkShots(t))
+	view, err := f.svc.Editor.View(context.Background(), f.projectID, "")
+	require.NoError(t, err)
+	require.NotNil(t, view.Timeline.Judge)
+	assert.Equal(t, domain.EditorPass, view.Timeline.Judge.Verdict)
+	assert.Equal(t, view.Timeline.ID, view.Timeline.Judge.EditTimelineVersionID, "the Judge looked at the latest version")
+}
+
+func TestEditorReshootLoop_AutoStopsAtReEditAfterTheAdditionalShotsAreJudged(t *testing.T) {
+	f, newShot := reshotFixture(t, `{"verdict":"re_edit","findings":[{"clip_index":1,"issue":"長い","action":"短くする"}]}`)
+
+	f.selectTakeOf(t, newShot)
+
+	require.Eventually(t, func() bool { return f.llm.calls(llm.AgentEditor) == 2 }, 10*time.Second, 10*time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
+	assert.Equal(t, 2, f.llm.calls(llm.AgentEditor), "Re-edit is the user's: the Judge does not run again")
+	assert.Equal(t, domain.StateEditing, f.state(t))
+}
+
+func TestEditorReshootLoop_AutoAsksTheNextRoundWhenTheJudgeStillFindsAShotMissing(t *testing.T) {
+	f, newShot := reshotFixture(t, needReaction)
+
+	f.selectTakeOf(t, newShot)
+
+	require.Eventually(t, func() bool { return f.trunkShots(t) == 3 }, 10*time.Second, 10*time.Millisecond, "the second round was asked by itself")
+	require.Eventually(t, func() bool { return f.state(t) == domain.StateGenerating }, 10*time.Second, 10*time.Millisecond)
+}
+
+func TestEditorReshootLoop_DirectorProjectIsNotJudgedAutomatically(t *testing.T) {
+	f, newShot := reshotFixture(t, `{"verdict":"pass","findings":[]}`)
+	f.execSQL(t, `UPDATE project SET mode = 'director' WHERE id = ?`, f.projectID)
+
+	f.selectTakeOf(t, newShot)
+
+	require.Eventually(t, func() bool { return f.state(t) == domain.StateEditing }, 10*time.Second, 10*time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
+	assert.Equal(t, 1, f.llm.calls(llm.AgentEditor), "only the Judge of the Rough Cut ran")
+	assert.Equal(t, domain.StateEditing, f.state(t))
 }
 
 // A generation that cannot start (the Shot ceiling cannot buy one Take) must not leave the round

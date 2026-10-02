@@ -323,53 +323,95 @@ func (s *EditorService) applyReshoots(ctx context.Context, projectID string) err
 		}
 		s.missed.Delete(projectID)
 	}
+	trunk, err := s.applyPendingRounds(ctx, projectID, release)
+	if err != nil || trunk == nil {
+		return err
+	}
+	return s.autoJudgeReshot(ctx, projectID, *trunk)
+}
+
+// applyPendingRounds applies every ready round with the stage held and releases it. It returns
+// the version the trunk's round made, nil when there is none.
+func (s *EditorService) applyPendingRounds(ctx context.Context, projectID string, release func()) (*domain.EditTimelineVersion, error) {
 	defer release()
 	rounds, err := s.pendingRounds(ctx, projectID)
 	if err != nil {
+		return nil, err
+	}
+	var trunk *domain.EditTimelineVersion
+	for _, k := range rounds {
+		ver, err := s.applyRound(ctx, projectID, k.branch, k.reqs)
+		if err != nil {
+			return nil, err
+		}
+		if ver != nil && k.branch == "" {
+			trunk = ver
+		}
+	}
+	return trunk, nil
+}
+
+// autoJudgeReshot has the Editor Judge look at the trunk version that holds the additional Shots
+// when the Project is AUTO, as it did for the Rough Cut: PASS goes on to AUDIO, NEED_SHOT asks the
+// next round within the Retry Policy (and escalates at its limit), Re-edit stops for the user. A
+// DIRECTOR Project waits for the user to run the Judge.
+func (s *EditorService) autoJudgeReshot(ctx context.Context, projectID string, ver domain.EditTimelineVersion) error {
+	project, err := s.getProject(ctx, projectID)
+	if err != nil || project.Mode != domain.ModeAuto || project.State != domain.StateEditing {
 		return err
 	}
-	for _, k := range rounds {
-		if err := s.applyRound(ctx, projectID, k.branch, k.reqs); err != nil {
-			return err
+	if _, err := s.JudgeTimeline(ctx, ver.ID); err != nil {
+		if errors.Is(err, ErrStageBusy) || errors.Is(err, ErrNotFound) || ctx.Err() != nil {
+			return nil
 		}
+		s.announce(ctx, projectID, fmt.Sprintf("追加 Shot を入れた編集の Editor Judge を自動で実行できませんでした: %s\n編集画面から Editor Judge を実行してください。", err))
+		return err
 	}
 	return nil
 }
 
 // applyRound puts the Shots of one round into the latest Edit Timeline of the series, each after
-// the Shot it follows, as one new version. A round whose Shots are not all ready waits.
-func (s *EditorService) applyRound(ctx context.Context, projectID, branchID string, reqs []domain.ReshootRequest) error {
+// the Shot it follows, as one new version. A round whose Shots are not all ready waits; the version
+// is nil when nothing was applied.
+func (s *EditorService) applyRound(ctx context.Context, projectID, branchID string, reqs []domain.ReshootRequest) (*domain.EditTimelineVersion, error) {
 	sources, err := s.roundSources(ctx, projectID, branchID, reqs)
 	if err != nil || sources == nil {
-		return err
+		return nil, err
 	}
 	latest, err := s.editors.LatestEditTimeline(ctx, projectID, branchID)
 	if errors.Is(err, repository.ErrNotFound) {
-		return nil
+		return nil, nil
 	}
 	if err != nil {
-		return err
+		return nil, err
 	}
 	tl, err := domain.EditTimeline{Clips: insertRound(latest.Timeline.Clips, reqs, sources)}.Normalize()
 	if err != nil {
-		return fmt.Errorf("additional shots do not fit the timeline: %w", err)
+		return nil, fmt.Errorf("additional shots do not fit the timeline: %w", err)
 	}
 	ids := make([]string, len(reqs))
 	for i, r := range reqs {
 		ids[i] = r.ID
 	}
-	if _, err := s.editors.SaveReshootApplied(ctx, projectID, branchID, latest.ID, tl, ids); err != nil {
+	ver, err := s.editors.SaveReshootApplied(ctx, projectID, branchID, latest.ID, tl, ids)
+	if err != nil {
 		if errors.Is(err, repository.ErrStale) || errors.Is(err, repository.ErrConflict) {
-			return nil // edited or applied meanwhile: the next trigger looks again
+			return nil, nil // edited or applied meanwhile: the next trigger looks again
 		}
-		return err
+		return nil, err
 	}
 	project, err := s.getProject(ctx, projectID)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	s.announce(ctx, projectID, fmt.Sprintf("追加 Shot %d 件を編集タイムラインに入れました。編集に戻ります。タイムラインを確認して、もう一度 Editor Judge を実行してください。", len(reqs)))
-	return s.toEditing(ctx, project)
+	msg := fmt.Sprintf("追加 Shot %d 件を編集タイムラインに入れました。編集に戻ります。", len(reqs))
+	if project.Mode == domain.ModeAuto && branchID == "" {
+		msg += "Editor Judge をもう一度実行します。"
+	} else {
+		msg += "タイムラインを確認して、もう一度 Editor Judge を実行してください。"
+	}
+	s.announce(ctx, projectID, msg)
+	return &ver, s.toEditing(ctx, project)
 }
 
 // roundSources reads the Selected Take of every Shot of the round. It is nil (and the error nil)
