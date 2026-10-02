@@ -709,8 +709,8 @@ repair_strategy:
 Judge の Face / Character Identity 評価を補うローカル計測。Shot 間・Episode 間の顔のブレを、定性評価の見逃しなく検知するために用いる。
 
 - **基準**: World State の Character の `face_reference`（Reference Pack）
-- **手順**: Take のフレームをサンプリング → 顔検出 → 顔埋め込み → 参照顔とのコサイン類似度を算出。1フレームに複数の顔がある場合は各 Character の参照顔と照合して割り当てる
-- **出力**: Judge Result の `metrics.face_identity`（Character 別の `similarity_mean` / `similarity_min` / `sampled_frames` / `undetected_ratio`）。閾値割れが連続した区間は `face_identity_drift` Issue（`time_range` / `frames` 付き）として出力する
+- **手順**: Take のフレームをサンプリング → 顔検出 → 顔埋め込み → 参照顔とのコサイン類似度を算出。計測対象は Shot Spec の Character（`shot_spec.character`）1 人で、Shot の他の Character の顔は計測しない。1フレームに複数の顔がある場合は、対象の Character の参照顔に最も近い顔を割り当てる
+- **出力**: Judge Result の `metrics.face_identity`（対象 Character の `similarity_mean` / `similarity_min` / `sampled_frames` / `undetected_ratio`。配列だが現状の要素は 1 つ）。閾値割れが連続した区間は `face_identity_drift` Issue（`time_range` / `frames` 付き）として出力する
 - **欠測**: 顔を検出できないフレーム（後ろ向き・遮蔽・極小）は欠測として扱い、FAIL 判定に含めない。`undetected_ratio` が高く数値評価が成立しない Take は、定性評価（Gemini）のみで判定する
 - **閾値**: 警告 / FAIL は、その Character の参照画像同士の類似度分布から決める（ソースコードの固定値では決めない）。顔が取れた参照が 2 枚以上あり、参照同士の平均コサイン類似度がキャリブレーション下限（Judge 設定 `min_calibration_similarity`）以上のとき、警告閾値は平均 × `calibration_warn_scale`、FAIL 閾値は平均 × `calibration_fail_scale` とする（スケールは Judge 設定で、閾値そのものは分布から出る）。参照が 1 枚、または分布が使えない（参照が 2 枚未満、または平均が下限未満）ときは数値の警告 / FAIL を出さない（`calibrated = false`、`evaluated = false`）。類似度は記録し、合否は定性評価に任せる
 - **LOCK 連動**: Character Identity が LOCK のとき、FAIL 閾値を割った Take は総合スコアに関係なく FAIL とする（§13）
