@@ -190,7 +190,8 @@ func (s *EditorService) editRoughCut(ctx context.Context, project domain.Project
 
 // keepFixedClips puts back, into a Rough Cut that is made again, the clips of the Shots whose
 // Editing is MANUAL or LOCK (spec/spec.md §6): the AI does not re-cut what the user cut. A clip
-// whose Take file is gone is not brought back, since it could not be played.
+// whose Take file is gone is not brought back, since it could not be played, unless the Shot has
+// another Selected Take now: the cut is then moved to that Take.
 func (s *EditorService) keepFixedClips(ctx context.Context, idx shotIndex, projectID, branchID string, fresh domain.EditTimeline) (domain.EditTimeline, error) {
 	fixed, err := s.editingFixed(ctx, idx, fresh)
 	if err != nil || len(fixed) == 0 {
@@ -207,12 +208,16 @@ func (s *EditorService) keepFixedClips(ctx context.Context, idx shotIndex, proje
 	if err != nil {
 		return domain.EditTimeline{}, err
 	}
+	freshTake := make(map[string]string, len(fresh.Clips))
+	for _, c := range fresh.Clips {
+		freshTake[c.ShotID] = c.TakeID
+	}
 	usable := make(map[string]bool, len(fixed))
 	for _, c := range prev.Timeline.Clips {
 		if !fixed[c.ShotID] {
 			continue
 		}
-		if _, ok := sources.take(ctx, c.TakeID); ok {
+		if _, ok := sources.take(ctx, c.TakeID); ok || freshTake[c.ShotID] != c.TakeID {
 			usable[c.ShotID] = true
 		}
 	}

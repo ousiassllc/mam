@@ -188,3 +188,30 @@ func TestKeepFixedClips_BringsBackTheUsersClipInPlace(t *testing.T) {
 	assert.Equal(t, fresh.Clips[2], got.Clips[2], "a Shot that is not fixed is cut afresh")
 	assert.Equal(t, 7.0, fresh.Clips[1].Out, "the fresh timeline is not modified")
 }
+
+func TestKeepFixedClips_MovesTheUsersCutToTheShotsNewSelectedTake(t *testing.T) {
+	mine := clip("b", 9)
+	mine.In, mine.Caption = 3, "my caption"
+	mine.Transition = domain.Transition{Type: domain.TransitionFade, Seconds: 0.5}
+	previous := domain.EditTimeline{Clips: []domain.EditClip{mine}}
+	freshClip := clip("b", 4)
+	freshClip.TakeID, freshClip.SourceSeconds = "t-new", 4
+	fresh := domain.EditTimeline{Clips: []domain.EditClip{freshClip}}
+
+	got := editor.KeepFixedClips(fresh, previous, map[string]bool{"b": true})
+
+	require.Len(t, got.Clips, 1)
+	c := got.Clips[0]
+	assert.Equal(t, "t-new", c.TakeID, "the Shot's Selected Take plays")
+	assert.Equal(t, 4.0, c.SourceSeconds)
+	assert.Equal(t, 4.0, c.Out, "the cut is held within the new Take")
+	assert.Equal(t, 3.0, c.In)
+	assert.Equal(t, "my caption", c.Caption)
+	assert.Equal(t, mine.Transition, c.Transition)
+
+	short := freshClip
+	short.SourceSeconds = 3.2
+	got = editor.KeepFixedClips(domain.EditTimeline{Clips: []domain.EditClip{short}}, previous, map[string]bool{"b": true})
+	assert.InDelta(t, domain.MinClipSeconds, got.Clips[0].Length(), 1e-9, "a cut that no longer fits starts earlier")
+	assert.InDelta(t, 3.2, got.Clips[0].Out, 1e-9)
+}
