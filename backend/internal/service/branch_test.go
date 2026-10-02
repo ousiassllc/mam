@@ -221,6 +221,32 @@ func TestBranchCreate_ADirectionWithAForbiddenExpressionMakesNothing(t *testing.
 	assert.Zero(t, f.count(t, `SELECT COUNT(*) FROM scene WHERE project_id = ? AND branch_id IS NOT NULL`, f.projectID))
 }
 
+// The Direction is bounded like the one of Generate / Continue (1000 characters): an overlong one is a
+// 422 before the Branch exists, and the chat's Fork cuts it instead of refusing the whole request.
+func TestBranchCreate_AnOverlongDirectionIsRefusedBeforeTheBranchExists(t *testing.T) {
+	f := completedShotFixture(t, sameSceneAnswer)
+
+	_, err := f.svc.Branch.Create(context.Background(), f.shotID, service.BranchInput{Direction: strings.Repeat("あ", 1001)})
+
+	var verr *service.ValidationError
+	require.ErrorAs(t, err, &verr)
+	assert.Equal(t, "direction", verr.Field)
+	assert.Zero(t, f.count(t, `SELECT COUNT(*) FROM branch WHERE project_id = ?`, f.projectID))
+	d := f.branch(t, service.BranchInput{Direction: strings.Repeat("あ", 1000)})
+	assert.True(t, d.Started, "1000 characters are accepted")
+}
+
+func TestBranchFork_ALongDirectionIsCutAndStillStartsTheBranch(t *testing.T) {
+	f := completedShotFixture(t, sameSceneAnswer)
+
+	lines, err := f.svc.Branch.Fork(context.Background(), mustShotRef(t, f), domain.BranchAtShot, 1, []string{strings.Repeat("あ", 1500)})
+
+	require.NoError(t, err)
+	require.Len(t, lines, 1)
+	assert.Contains(t, lines[0], "最初の Shot の生成を始めました")
+	assert.Equal(t, 1, f.count(t, `SELECT COUNT(*) FROM branch WHERE project_id = ?`, f.projectID))
+}
+
 func TestChat_DirectorModeABranchDirectionWithAForbiddenExpressionMakesNothing(t *testing.T) {
 	f := completedShotFixture(t, sameSceneAnswer)
 	f.forbid(t, "最高")

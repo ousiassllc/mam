@@ -7,6 +7,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
@@ -195,6 +196,9 @@ func (s *BranchService) create(ctx context.Context, shotID string, in BranchInpu
 		return BranchDetail{}, err
 	}
 	direction := strings.TrimSpace(in.Direction)
+	if utf8.RuneCountInString(direction) > maxInstructionRunes {
+		return BranchDetail{}, invalid("direction", "%d 文字以内で入力してください", maxInstructionRunes)
+	}
 	generate := direction != "" || aiChoice
 	if generate && !s.canContinue() {
 		return BranchDetail{}, ErrUnavailable
@@ -353,6 +357,9 @@ func (s *BranchService) Fork(ctx context.Context, ref repository.ShotRef, typ do
 		typ = domain.BranchAtShot
 	}
 	directions = append([]string{}, directions[:min(len(directions), count)]...)
+	for i := range directions {
+		directions[i] = clipInstruction(directions[i]) // the chat's text is not a form field: cut, as the single-Shot commands do
+	}
 	if len(directions) < count && s.canContinue() {
 		in, err := s.continues.input(ctx, ref)
 		if err != nil {
@@ -372,7 +379,7 @@ func (s *BranchService) Fork(ctx context.Context, ref repository.ShotRef, typ do
 			if len(directions) == count {
 				break
 			}
-			directions = append(directions, c)
+			directions = append(directions, clipInstruction(c))
 		}
 	}
 	if s.canContinue() {

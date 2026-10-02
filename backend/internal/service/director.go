@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"slices"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/commandinterpreter"
 	"github.com/ousiassllc/mam/backend/internal/agent/generation"
@@ -805,10 +804,7 @@ func (s *DirectorService) regenerate(ctx context.Context, ref *repository.ShotRe
 				label, ref.Shot.Duration, domain.FormatTimeRanges(op.Ranges[i:i+1])), false, nil
 		}
 	}
-	instruction := op.Instruction
-	if utf8.RuneCountInString(instruction) > maxInstructionRunes {
-		instruction = string([]rune(instruction)[:maxInstructionRunes])
-	}
+	instruction := clipInstruction(op.Instruction)
 	partial := op.Type == commandinterpreter.OpPartialRegenerate
 	var err error
 	switch {

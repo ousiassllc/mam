@@ -13,6 +13,15 @@ import (
 // maxInstructionRunes bounds the additional instruction of a generation.
 const maxInstructionRunes = 1000
 
+// clipInstruction cuts a direction the user did not type into a form (the chat's, the AI's) to
+// maxInstructionRunes, where a form field is refused with 422 instead.
+func clipInstruction(s string) string {
+	if utf8.RuneCountInString(s) <= maxInstructionRunes {
+		return s
+	}
+	return string([]rune(s)[:maxInstructionRunes])
+}
+
 // GenerationService starts the generation of a Shot (Prompt Autopilot → Model Adapter → Takes, F-06,
 // F-07, F-12) and the building of its Reference Pack (F-11), and streams their progress.
 type GenerationService struct {
