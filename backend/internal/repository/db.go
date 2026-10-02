@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	_ "modernc.org/sqlite" // registers the pure-Go "sqlite" driver
 )
@@ -88,9 +89,16 @@ func dsnFor(path string) string {
 // Reader returns the read-only connection pool. Writes through it fail (query_only).
 func (d *DB) Reader() *sql.DB { return d.read }
 
+// pingTimeout bounds Ping when the caller's ctx has no earlier deadline (an HTTP request has none:
+// the server sets no WriteTimeout), so a health check answers "unavailable" instead of hanging.
+var pingTimeout = 3 * time.Second
+
 // Ping verifies both pools can reach the database. The writer has one connection: while a
-// transaction holds it the ping waits, so a writer that is stuck shows as ctx's deadline.
+// transaction holds it the ping waits, so a writer that is stuck shows as a deadline error after
+// at most pingTimeout (or ctx's earlier deadline).
 func (d *DB) Ping(ctx context.Context) error {
+	ctx, cancel := context.WithTimeout(ctx, pingTimeout)
+	defer cancel()
 	if err := d.read.PingContext(ctx); err != nil {
 		return fmt.Errorf("ping read db: %w", err)
 	}

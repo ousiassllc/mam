@@ -48,3 +48,27 @@ func TestPing_FailsAtTheDeadlineWhileTheWriterIsStuck(t *testing.T) {
 	require.NoError(t, <-done)
 	assert.NoError(t, db.Ping(context.Background()), "healthy again once the writer is free")
 }
+
+func TestPing_GivesUpAfterTheOwnTimeoutWhenTheCallerSetsNoDeadline(t *testing.T) {
+	old := pingTimeout
+	pingTimeout = 50 * time.Millisecond
+	t.Cleanup(func() { pingTimeout = old })
+	db := openInternal(t)
+	entered, release := make(chan struct{}), make(chan struct{})
+	done := make(chan error, 1)
+	go func() {
+		done <- db.Write(context.Background(), func(context.Context, *sql.Tx) error {
+			close(entered)
+			<-release
+			return nil
+		})
+	}()
+	<-entered
+
+	start := time.Now()
+	assert.ErrorIs(t, db.Ping(context.Background()), context.DeadlineExceeded)
+	assert.Less(t, time.Since(start), 2*time.Second)
+
+	close(release)
+	require.NoError(t, <-done)
+}
