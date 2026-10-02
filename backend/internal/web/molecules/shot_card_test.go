@@ -82,3 +82,16 @@ func TestQuestionCard_AnswerButtonsShareOneInFlightRequest(t *testing.T) {
 	assert.Equal(t, 3, strings.Count(html, `hx-sync="closest [data-options]:drop"`), "A, B and the delegate button")
 	assert.Equal(t, 3, strings.Count(html, `hx-disabled-elt="this"`))
 }
+
+// A free direction of Continue is sent as a reply to its Question card, so only that card has the reply
+// button; a Brief question is answered by any message.
+func TestQuestionCard_OnlyTheContinueQuestionCanBeRepliedTo(t *testing.T) {
+	card := func(ref string) string {
+		return render(t, molecules.QuestionCard(domain.ThreadMessage{
+			ChatMessage: domain.ChatMessage{ID: "q1", ProjectID: "p", Kind: domain.KindQuestion, RefType: ref, Content: `{"text":"次は？","options":["A"]}`},
+			Open:        true,
+		}))
+	}
+	assert.Contains(t, card(domain.RefContinue), `data-reply-to="q1"`)
+	assert.NotContains(t, card(""), "data-reply-to")
+}
