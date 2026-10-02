@@ -388,7 +388,7 @@ func (s *BranchService) Fork(ctx context.Context, ref repository.ShotRef, typ do
 			if s.canContinue() {
 				in.Direction = directions[i]
 			} else {
-				in.Name = directions[i] // nothing can be generated: the direction only names the Branch
+				in.Name = domain.TruncateBranchName(directions[i]) // nothing can be generated: the direction only names the Branch (cut to length like a Direction)
 			}
 		}
 		d, err := s.create(ctx, ref.Shot.ID, in, s.canContinue())
