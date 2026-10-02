@@ -17,7 +17,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector"
+	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/repository"
@@ -85,6 +87,12 @@ func (c voiceCloner) Clone(_ context.Context, _ string, s audiodirector.Sample) 
 
 func newEditorApp(t *testing.T) *editorApp {
 	t.Helper()
+	return newEditorAppWith(t, nil)
+}
+
+// newEditorAppWith is newEditorApp with a last look at the Deps (nil: none).
+func newEditorAppWith(t *testing.T, tweak func(*service.Deps)) *editorApp {
+	t.Helper()
 	l := &editorLLM{answer: `{"verdict":"pass","findings":[]}`, audioPlan: defaultAudioPlan}
 	spoken := &[]domain.VoiceLine{}
 	sample := &audiodirector.Sample{}
@@ -99,6 +107,9 @@ func newEditorApp(t *testing.T) *editorApp {
 		require.NoError(t, err)
 		d.LLM, d.Media = l, &tools
 		d.Audio = audiodirector.Providers{Speech: speech, Music: speech, Sounds: speech, Cloner: voiceCloner{id: "cloned-voice-1", sample: sample}}
+		if tweak != nil {
+			tweak(d)
+		}
 	})
 	e := &editorApp{takeApp: ta, llm: l, spoken: spoken}
 	e.setLevel(domain.ConfirmFullAuto) // no approval card unless a test asks for one
@@ -460,6 +471,36 @@ func TestEditor_EachBranchKeepsItsOwnTimelineAndCaptionsSurviveTheSave(t *testin
 
 	_, code = e.timelineOn("nope")
 	assert.Equal(t, http.StatusNotFound, code)
+}
+
+// The additional Shot request that stops at the limit of the Retry Policy raises an Escalation card and
+// moves the Project to AWAITING_APPROVAL, where the timeline editor is readonly: the response carries
+// timeline-reload so that the editor on the page does not stay editable (#335).
+func TestEditor_RequestAdditionalShotAtTheRetryLimitEscalatesAndReloadsTheTimeline(t *testing.T) {
+	// The generation is available (it is checked before the Retry Policy); no Shot is ever generated here.
+	e := newEditorAppWith(t, func(d *service.Deps) {
+		d.Jobs = jobqueue.New(repository.NewJobRepository(d.DB), jobqueue.Options{})
+		d.Models = modeladapter.New(modeladapter.DefaultConfig(), modeladapter.Backends{})
+	})
+	e.setState("VISUAL_DESIGN")
+	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/takes/t1/select", nil).Code)
+	require.Equal(t, http.StatusOK, e.roughCut().Code)
+	id := e.timeline().ID
+	e.llm.answer = `{"verdict":"need_shot","findings":[{"clip_index":1,"issue":"リアクションがない","action":"足す",` +
+		`"need_shot":{"kind":"reaction","after_clip":1,"objective":"驚く","duration_seconds":2}}]}`
+	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/edit-timelines/"+id+"/judge", nil).Code)
+	e.execSQL(`INSERT INTO project_policy (project_id, max_retries) VALUES (?, 0) ON CONFLICT (project_id) DO UPDATE SET max_retries = 0`, e.project)
+
+	rec := e.form(http.MethodPost, "/edit-timelines/"+id+"/request-additional-shot", nil)
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.Equal(t, "AWAITING_APPROVAL", e.state())
+	assert.Equal(t, "timeline-reload", rec.Header().Get("HX-Trigger"))
+
+	var body struct {
+		Readonly bool `json:"readonly"`
+	}
+	require.NoError(t, json.Unmarshal(e.get("/api/v1/projects/"+e.project+"/edit-timeline", false).Body.Bytes(), &body))
+	assert.True(t, body.Readonly, "the reload the event causes gets a readonly timeline")
 }
 
 func TestEditor_NeedShotVerdictIsReportedWithTheShotToMakeAndAwaitsTheDirector(t *testing.T) {
