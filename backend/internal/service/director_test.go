@@ -722,3 +722,29 @@ func TestChat_DirectorModeResolvesTheShotFromAReplyToAKeyframeCard(t *testing.T)
 	require.NoError(t, err)
 	assert.False(t, locks2.Locks.Locked(domain.ParamLighting))
 }
+
+// A message sent without a reply is about the latest Take card's Shot. When that Shot is on a Branch the
+// Scene/Shot numbers are those of the Branch's story: the trunk Shot that has the same numbers (a Branch
+// Scene counts from 1 again) is not the one to direct.
+func TestChat_DirectorModeANumberedShotOfABranchIsNotTheTrunkShotWithTheSameNumbers(t *testing.T) {
+	f := completedShotFixture(t, sameSceneAnswer)
+	ctx := context.Background()
+	d := f.branch(t, service.BranchInput{Direction: "彼女がドアを開ける"})
+	require.Len(t, d.Shots, 1)
+	branchShotID := d.Shots[0].Shot.ID
+	f.waitGenerateJobs(t, 3)
+	f.startDirecting(t)
+	scene, shot := d.Scenes[0].OrderIndex+1, d.Shots[0].Shot.OrderIndex+1
+	f.llm.interpreter = func(string) string {
+		return fmt.Sprintf(`{"scene":%d,"shot":%d,"operations":[{"type":"set_lock","parameter":"camera","mode":"lock"}]}`, scene, shot)
+	}
+
+	f.say(t, "カメラは固定して", "")
+
+	inBranch, err := f.svc.Director.Inspector(ctx, branchShotID)
+	require.NoError(t, err)
+	assert.True(t, inBranch.Locks.Locked(domain.ParamCamera), "the Shot of the latest Take card is the one directed")
+	onTrunk, err := f.svc.Director.Inspector(ctx, f.shotID)
+	require.NoError(t, err)
+	assert.False(t, onTrunk.Locks.Locked(domain.ParamCamera), "the trunk Shot with the same numbers is left alone")
+}

@@ -384,6 +384,13 @@ func (s *DirectorService) Chat(ctx context.Context, project domain.Project, targ
 	if err != nil {
 		return domain.ChatMessage{}, err
 	}
+	if ref != nil && ref.Scene.BranchID != "" {
+		// The Shot is on a Branch: the numbers of the message and of the Interpreter's answer are those
+		// of that Branch's story, not of the trunk (whose Scene 1 / Shot 1 is another Shot).
+		if shots, err = s.gens.StoryShots(ctx, project.ID, ref.Scene.BranchID); err != nil {
+			return domain.ChatMessage{}, err
+		}
+	}
 	cmd, err := s.interpret(ctx, content, shots, ref)
 	if err != nil {
 		return assistantText("指示を読み取れませんでした: " + generation.FailureReason(err)), nil
@@ -400,7 +407,7 @@ func (s *DirectorService) Chat(ctx context.Context, project domain.Project, targ
 	// latest Take card, then the Project's only Shot (both from contextShot) apply only without
 	// that reply.
 	if target == nil || (target.Kind != domain.KindTake && target.Kind != domain.KindKeyframe) {
-		if shot := shotNamed(shots, cmd.Scene, cmd.Shot); shot != nil {
+		if shot := shotNamed(shots, ref, cmd.Scene, cmd.Shot); shot != nil {
 			ref = shot
 		}
 	}
@@ -486,10 +493,15 @@ func (s *DirectorService) contextShot(ctx context.Context, projectID string, tar
 	return nil, nil
 }
 
-// shotNamed finds the Shot by the numbers a message names (1-based); nil when it names none.
-func shotNamed(shots []repository.ShotRef, scene, shot int) *repository.ShotRef {
+// shotNamed finds the Shot by the numbers a message names (1-based); nil when it names none. The
+// numbers of a Branch's story are not unique (a Branch Scene counts from 1 again), so the Shot the
+// context already resolved (target) is the answer when it has those numbers.
+func shotNamed(shots []repository.ShotRef, target *repository.ShotRef, scene, shot int) *repository.ShotRef {
 	if scene < 1 || shot < 1 {
 		return nil
+	}
+	if target != nil && target.Scene.OrderIndex+1 == scene && target.Shot.OrderIndex+1 == shot {
+		return target
 	}
 	for i := range shots {
 		if shots[i].Scene.OrderIndex+1 == scene && shots[i].Shot.OrderIndex+1 == shot {
