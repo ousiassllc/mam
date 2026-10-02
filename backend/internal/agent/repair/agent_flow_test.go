@@ -271,6 +271,11 @@ func TestHandle_TheBudgetStopsTheLoopAndAsksTheUser(t *testing.T) {
 			f.setProject(t, `shot_budget_ceiling = 3`)
 			f.regen.strategyErr = map[domain.RepairAction]error{domain.RepairFullRetake: generation.ErrBudgetExceeded}
 		}, domain.RetryShotBudget},
+		{"the project budget is what ran out although the shot has a ceiling", func(t *testing.T, f *fx) {
+			f.setProject(t, `shot_budget_ceiling = 100, project_budget_ceiling = 10`)
+			f.regen.strategyErr = map[domain.RepairAction]error{domain.RepairFullRetake: generation.ErrBudgetExceeded}
+			execAll(t, f.db, `INSERT INTO cost_ledger_entry (id, project_id, shot_id, provider, estimated_cost) VALUES ('c1', 'p1', 'sh1', 'kling', 9)`)
+		}, domain.RetryProjectBudget},
 		{"the shot has spent its ceiling", func(t *testing.T, f *fx) {
 			f.setProject(t, `shot_budget_ceiling = 10`)
 			f.regen.cost = map[domain.RepairAction]float64{domain.RepairFullRetake: 2}
