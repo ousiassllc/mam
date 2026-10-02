@@ -51,6 +51,8 @@ type core struct {
 	// instead of making a second Shot and a second paid generation, or putting the answer into
 	// the next item of the Brief.
 	answering sync.Map
+	// repairable decides which Takes may be repaired (domain.CheckRepair); set by New.
+	repairable repairability
 }
 
 // getProject maps repository.ErrNotFound to ErrNotFound.

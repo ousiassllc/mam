@@ -16,6 +16,9 @@ type ShotCardData struct {
 	Storyboard *domain.ShotStoryboard // nil when the Shot has no storyboard frame
 	Takes      []domain.Take
 	Selected   bool
+	// Repairable holds the Takes (by ID) whose Repair the server accepts now (domain.CheckRepair):
+	// only they get a Repair button.
+	Repairable map[string]bool
 }
 
 func takeStatusLabel(s domain.TakeStatus) (atoms.BadgeTone, string) {
@@ -118,8 +121,9 @@ templ ShotActions(shotID string) {
 // replaces the AI Pick) or exclude it, and the one that repairs it. They answer with the Shot card,
 // which has to be drawn as selected or not like the card they replace: the buttons send that in
 // "selected" (selected is whether the card they sit on is the selected one). The Repair button is
-// left out while the Shot is busy (generating or repairing): the server refuses it then.
-templ TakeRow(t domain.Take, selected bool, shotBusy bool) {
+// left out unless the server accepts it (domain.CheckRepair): the Take is judged and not accepted, and
+// the Shot is not busy (generating or repairing).
+templ TakeRow(t domain.Take, selected bool, repairable bool) {
 	<li class="flex items-center justify-between gap-2 text-xs text-neutral-300">
 		<span class="truncate">{ t.ModelName }</span>
 		<span class="flex shrink-0 items-center gap-2">
@@ -144,7 +148,7 @@ templ TakeRow(t domain.Take, selected bool, shotBusy bool) {
 			}
 			{{ tone, label := takeStatusLabel(t.Status) }}
 			@atoms.Badge(tone, label)
-			if !shotBusy {
+			if repairable {
 				@atoms.Button(atoms.ToneNeutral, "Repair", templ.Attributes{
 					"type":      "button",
 					"hx-post":   paths.Take(t.ID, "repair"),
@@ -229,7 +233,7 @@ templ ShotCard(d ShotCardData) {
 		if len(d.Takes) > 0 {
 			<ul class="mt-2 flex flex-col gap-1 border-t border-neutral-800 pt-2" aria-label="Take 一覧">
 				for _, t := range d.Takes {
-					@TakeRow(t, d.Selected, d.Shot.State.Busy())
+					@TakeRow(t, d.Selected, d.Repairable[t.ID])
 				}
 			</ul>
 			if len(d.Takes) > 1 {

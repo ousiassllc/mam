@@ -161,6 +161,7 @@ func New(deps Deps) *Services {
 	world := repository.NewWorldRepository(deps.DB)
 	policies := repository.NewPolicyRepository(deps.DB)
 	brands := repository.NewBrandRepository(deps.DB)
+	c.repairable = repairability{judges: repository.NewJudgeRepository(deps.DB), policies: policies}
 	generations := &GenerationService{core: c, shots: gens, progress: newBroker[generation.Progress]()}
 	judges := &JudgeService{core: c, judges: repository.NewJudgeRepository(deps.DB), generations: generations}
 	repairs := &RepairService{core: c, repairs: repository.NewRepairRepository(deps.DB), judges: judges.judges, generations: generations}

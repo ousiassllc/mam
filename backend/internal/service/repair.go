@@ -48,3 +48,45 @@ func (s *RepairService) Repair(ctx context.Context, takeID string) (ShotFragment
 func (s *RepairService) ShadowReport(ctx context.Context) (domain.ShadowReport, error) {
 	return s.repairs.ShadowReport(ctx)
 }
+
+// repairability answers "may this Take be repaired now" for the pages that draw a Repair button. The
+// decision is domain.CheckRepair, the one the Repair Agent refuses by (POST /takes/:id/repair is 409
+// otherwise), so that a button is drawn exactly when the server accepts the request.
+type repairability struct {
+	judges   *repository.JudgeRepository
+	policies *repository.PolicyRepository
+}
+
+// mark fills Repairable of the views of one Project. The Retry Policy is read once, and only when a
+// Shot has Takes.
+func (r repairability) mark(ctx context.Context, projectID string, views []*ShotView) error {
+	var policy *domain.ProjectPolicy
+	for _, v := range views {
+		v.Repairable = nil
+		for _, t := range v.Takes {
+			if policy == nil {
+				p, err := r.policies.Get(ctx, projectID)
+				if err != nil {
+					return err
+				}
+				policy = &p
+			}
+			var latest *domain.JudgeResult
+			res, err := r.judges.Latest(ctx, t.ID)
+			switch {
+			case err == nil:
+				latest = &res
+			case !errors.Is(err, repository.ErrNotFound):
+				return err
+			}
+			if domain.CheckRepair(latest, policy.Effective(), policy.Template, v.State) != domain.RepairAllowed {
+				continue
+			}
+			if v.Repairable == nil {
+				v.Repairable = map[string]bool{}
+			}
+			v.Repairable[t.ID] = true
+		}
+	}
+	return nil
+}

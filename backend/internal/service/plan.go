@@ -26,6 +26,8 @@ type ShotView struct {
 	Storyboard *domain.ShotStoryboard // nil when the Shot has no storyboard frame
 	Takes      []domain.Take
 	Selected   bool
+	// Repairable holds the Takes (by ID) whose Repair is accepted now (domain.CheckRepair).
+	Repairable map[string]bool
 }
 
 // SceneView is the hierarchy page: the Project's Scenes, the selected Scene with its Shots and Takes.
@@ -84,6 +86,13 @@ func (s *PlanService) Hierarchy(ctx context.Context, projectID, sceneID, shotID 
 			v.Storyboard = &frame
 		}
 		view.Shots = append(view.Shots, v)
+	}
+	views := make([]*ShotView, len(view.Shots))
+	for i := range view.Shots {
+		views[i] = &view.Shots[i]
+	}
+	if err := s.repairable.mark(ctx, projectID, views); err != nil {
+		return SceneView{}, err
 	}
 	return view, nil
 }

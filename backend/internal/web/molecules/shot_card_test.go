@@ -35,7 +35,7 @@ func TestShotCard_OnlyOneElementFollowsTheProgressSocket(t *testing.T) {
 func TestShotCard_TakeButtonsSendWhetherTheCardIsSelected(t *testing.T) {
 	takes := []domain.Take{{ID: "t1", ShotID: "s1", ModelName: "m", FilePath: "a.mp4", Status: domain.TakeCandidate}}
 	for _, selected := range []bool{true, false} {
-		html := render(t, molecules.ShotCard(molecules.ShotCardData{ProjectID: "p", Shot: domain.Shot{ID: "s1", SceneID: "sc"}, Takes: takes, Selected: selected}))
+		html := render(t, molecules.ShotCard(molecules.ShotCardData{ProjectID: "p", Shot: domain.Shot{ID: "s1", SceneID: "sc"}, Takes: takes, Selected: selected, Repairable: map[string]bool{"t1": true}}))
 		want := `hx-vals="{&#34;selected&#34;:&#34;false&#34;}"`
 		if selected {
 			want = `hx-vals="{&#34;selected&#34;:&#34;true&#34;}"`
@@ -51,10 +51,25 @@ func TestShotCard_StartButtonsAreLeftOutWhileTheShotIsBusy(t *testing.T) {
 	for _, state := range domain.ShotStates() {
 		busy := state == domain.ShotGenerating || state == domain.ShotRepairing
 		html := render(t, molecules.ShotCard(molecules.ShotCardData{ProjectID: "p", Shot: domain.Shot{ID: "s1", SceneID: "sc", State: state}, Takes: takes, Selected: true}))
-		for _, button := range []string{`hx-post="/shots/s1/generate"`, "Reference Pack", "続きを作る", `/takes/t1/repair"`} {
+		for _, button := range []string{`hx-post="/shots/s1/generate"`, "Reference Pack", "続きを作る"} {
 			assert.Equal(t, !busy, strings.Contains(html, button), "%s in %s", button, state)
 		}
 	}
+}
+
+// The Repair button of a Take is drawn only for a Take the server accepts a Repair of (#336): the
+// service marks them (domain.CheckRepair: judged, not accepted, Shot not busy), the card does not
+// decide it by itself.
+func TestShotCard_RepairButtonIsDrawnOnlyForRepairableTakes(t *testing.T) {
+	takes := []domain.Take{
+		{ID: "t1", ShotID: "s1", ModelName: "m", FilePath: "a.mp4", Status: domain.TakeCandidate},
+		{ID: "t2", ShotID: "s1", ModelName: "m", FilePath: "b.mp4", Status: domain.TakeCandidate},
+	}
+	html := render(t, molecules.ShotCard(molecules.ShotCardData{
+		ProjectID: "p", Shot: domain.Shot{ID: "s1", SceneID: "sc"}, Takes: takes, Selected: true, Repairable: map[string]bool{"t1": true},
+	}))
+	assert.Contains(t, html, `/takes/t1/repair"`)
+	assert.NotContains(t, html, `/takes/t2/repair"`)
 }
 
 // The answer buttons of a card share one in-flight request, so that a double click does not send
