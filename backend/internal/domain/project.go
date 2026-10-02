@@ -55,6 +55,10 @@ func CanTransition(from, to ProjectState) bool {
 	return slices.Contains(stateTransitions[from], to)
 }
 
+// CanAwaitApproval reports whether a card that blocks the Project (an Escalation) can put it in
+// AWAITING_APPROVAL: the Core State Machine has no such move from DRAFT, AUDIO, READY or EXPORTED.
+func (s ProjectState) CanAwaitApproval() bool { return CanTransition(s, StateAwaitingApproval) }
+
 // CanEdit reports whether a Project in the state can take an edit: a Rough Cut or a change of the
 // Edit Timeline moves it to EDITING (EditorService.toEditing) from these states and is refused (409)
 // from any other (a card waits, or it is DRAFT / PLANNING / READY / EXPORTED). The editor's

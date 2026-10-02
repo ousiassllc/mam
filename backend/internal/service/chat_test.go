@@ -455,6 +455,7 @@ func TestEscalation_AnyReplyResumesTheProject(t *testing.T) {
 	ctx := context.Background()
 	f := newFixture(t)
 	p := f.createProject(t, "動画")
+	setState(t, f, p.ID, domain.StateRepairing) // a Repair of a Shot raised it
 
 	require.NoError(t, f.svc.Chat.RaiseEscalation(ctx, p.ID, "リトライ上限に達しました", []string{"続行", "中止"}, "shot1"))
 	got, _ := f.svc.Projects.Get(ctx, p.ID)
@@ -740,4 +741,27 @@ func TestMessages_ManyProgressCardsAndRepliesOutsideTheBatchAreAllResolved(t *te
 	}
 	require.NotNil(t, reply.ReplyTo)
 	assert.Equal(t, q.ID, reply.ReplyTo.ID)
+}
+
+func TestEscalation_KeepsTheStateOfAProjectThatCannotWaitForApproval(t *testing.T) {
+	for _, state := range []domain.ProjectState{domain.StateAudio, domain.StateReady, domain.StateExported} {
+		t.Run(string(state), func(t *testing.T) {
+			ctx := context.Background()
+			f := newFixture(t)
+			p := f.createProject(t, "動画")
+			setState(t, f, p.ID, state)
+
+			require.NoError(t, f.svc.Chat.RaiseEscalation(ctx, p.ID, "リトライ上限に達しました", []string{"続行"}, "shot1"))
+			got, err := f.svc.Projects.Get(ctx, p.ID)
+			require.NoError(t, err)
+			assert.Equal(t, state, got.State, "the state machine has no move to AWAITING_APPROVAL from here")
+			esc := lastMessage(t, f.thread(t, p.ID))
+			assert.Equal(t, domain.KindEscalation, esc.Kind, "the card is still posted")
+
+			_, err = f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "続行", ReplyToMessageID: esc.ID})
+			require.NoError(t, err)
+			got, _ = f.svc.Projects.Get(ctx, p.ID)
+			assert.Equal(t, state, got.State, "the reply does not push the Project into REPAIRING")
+		})
+	}
 }
