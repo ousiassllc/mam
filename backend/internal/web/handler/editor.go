@@ -96,11 +96,13 @@ func JudgeTimeline(svc *service.EditorService) gin.HandlerFunc {
 }
 
 // RequestAdditionalShot asks the Director for the additional Shots the Editor Judge found missing
-// (POST /edit-timelines/:id/request-additional-shot): the Editor → Reshoot Loop.
+// (POST /edit-timelines/:id/request-additional-shot): the Editor → Reshoot Loop. The Project moves
+// on to GENERATING, or, at the limit of the Retry Policy, to AWAITING_APPROVAL (an Escalation card),
+// where the timeline editor is readonly: it reloads on the timeline-reload event the response carries.
 func RequestAdditionalShot(svc *service.EditorService) gin.HandlerFunc {
 	return editorStage(func(c *gin.Context) (service.EditorView, error) {
 		return svc.RequestAdditionalShot(c.Request.Context(), c.Param("id"))
-	}, "")
+	}, "timeline-reload")
 }
 
 // GenerateAudio makes the Audio Timeline of the trunk or of the Branch in branch_id (POST
