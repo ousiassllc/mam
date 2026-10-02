@@ -113,3 +113,30 @@ func TestPrepareForRunwayUsesTheFirstFrameAndKeepsTheAvoidListWithinTheLimit(t *
 	assert.Contains(t, req.Prompt, "distorted face", "the avoid list survives the cut")
 	assert.Equal(t, 4.0, req.DurationSeconds, "any whole second from 2 to 10 is available")
 }
+
+func TestPrepareKeepsTheConstraintsWhenTheLimitCutsTheProse(t *testing.T) {
+	for _, tt := range []struct {
+		name   string
+		target modeladapter.VideoTarget
+		limit  int
+	}{
+		{"Runway (1000 characters)", runwayTarget, 1000},
+		{"Kling (2400 characters)", klingTarget, 2400},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			job := fullJob()
+			job.Spec.Acting = nil
+			for i := range 60 {
+				job.Spec.Acting = append(job.Spec.Acting, domain.ActingBeat{Time: "0.0-0.5", Action: "slowly_turns_the_head_towards_the_window_" + strings.Repeat("x", i%7)})
+			}
+			job.Spec.Constraints = []string{"do_not_add_characters", "preserve_face_identity", "preserve_logo"}
+			req, err := modeladapter.Prepare(tt.target, job)
+			require.NoError(t, err)
+
+			assert.LessOrEqual(t, len([]rune(req.Prompt)), tt.limit)
+			assert.Contains(t, req.Prompt, "keep the character's face identical to the reference images", "a long Acting does not push the constraints out")
+			assert.Contains(t, req.Prompt, "keep the logo and label text sharp and undistorted")
+			assert.Contains(t, req.Prompt, "no additional people appear")
+		})
+	}
+}
