@@ -762,6 +762,14 @@ func (s *DirectorService) regenerate(ctx context.Context, ref *repository.ShotRe
 		}
 		return fmt.Sprintf("%s の %s は LOCK されているため変更しませんでした。変えたい場合は LOCK を解除するよう指示してください。", label, strings.Join(names, " / ")), false, nil
 	}
+	// The interpreter does not know the Shot's length: a range that starts after the Shot ends is
+	// refused here, before a whole new Take is paid for.
+	if op.Type == commandinterpreter.OpPartialRegenerate && ref.Shot.Duration > 0 {
+		if i := slices.IndexFunc(op.Ranges, func(r domain.TimeRange) bool { return r.From >= ref.Shot.Duration }); i >= 0 {
+			return fmt.Sprintf("%s は %.1f 秒の Shot で、%s は Shot の長さを超えているため再生成しませんでした。Shot の長さ以内の時間範囲で指示してください。",
+				label, ref.Shot.Duration, domain.FormatTimeRanges(op.Ranges[i:i+1])), false, nil
+		}
+	}
 	instruction := op.Instruction
 	if utf8.RuneCountInString(instruction) > maxInstructionRunes {
 		instruction = string([]rune(instruction)[:maxInstructionRunes])
