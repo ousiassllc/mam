@@ -491,3 +491,24 @@ func TestLoadConfigRejectsAnUnknownMapKey(t *testing.T) {
 		assert.Error(t, err, name)
 	}
 }
+
+func TestGenerateVideoFailOverModelGetsItsOwnInputWhenReferencesArePreferred(t *testing.T) {
+	first := modeladapter.Input{Data: []byte("key"), MimeType: "image/png"}
+	job := baseJob()
+	job.FirstFrame = &first
+	job.References = []modeladapter.Input{{Data: []byte("ref"), MimeType: "image/png"}}
+	job.PreferReferences = true
+	primary := &fakeVideo{results: []error{modeladapter.ErrTimeout}}
+	fallback := &fakeVideo{results: []error{nil}}
+	a := newAdapter(modeladapter.DefaultConfig(), modeladapter.Backends{Video: map[domain.ModelName]modeladapter.VideoBackend{
+		domain.ModelSeedance2: primary, domain.ModelKling3: fallback,
+	}})
+
+	out, err := a.GenerateVideo(context.Background(), seedanceTarget, klingTarget, job)
+
+	require.NoError(t, err)
+	assert.True(t, out.FellBack)
+	assert.Nil(t, primary.requests[0].FirstFrame)
+	assert.NotEmpty(t, primary.requests[0].References)
+	assert.NotNil(t, fallback.requests[0].FirstFrame, "Kling has no free references: the Keyframe is its input")
+}

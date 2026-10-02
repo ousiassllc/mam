@@ -356,3 +356,29 @@ func mustLocks(t *testing.T, f *fixture) domain.ParameterLocks {
 	require.NoError(t, err)
 	return l
 }
+
+func TestOrchestrator_ReferenceReinforcementFailOverModelKeepsTheKeyframe(t *testing.T) {
+	f := newFixture(t, options{})
+	require.NoError(t, f.referencePack(t))
+	require.NoError(t, f.generate(t, ""))
+	before := f.video.callCount()
+	// The primary (Seedance, free references) times out; the alternative (Kling, frames only) takes over.
+	f.video.failOn = func(n int) error {
+		if n == before+1 {
+			return modeladapter.ErrTimeout
+		}
+		return nil
+	}
+
+	_, err := f.orch.Regenerate(context.Background(), f.ref(t), generation.Regeneration{
+		Action: domain.RepairReferenceReinforce, Issues: []domain.JudgeIssue{{Type: domain.IssueTypeFaceIdentityDrift, Severity: domain.SeverityHigh}},
+	})
+
+	require.NoError(t, err)
+	sent := f.video.sent()
+	require.Len(t, sent, before+2)
+	assert.Nil(t, sent[before].FirstFrame)
+	assert.NotEmpty(t, sent[before].References, "the primary reads the reinforced references")
+	assert.NotNil(t, sent[before+1].FirstFrame, "the alternative cannot use references: it keeps the Keyframe")
+	assert.Empty(t, sent[before+1].References)
+}

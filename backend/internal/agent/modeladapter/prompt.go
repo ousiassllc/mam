@@ -18,6 +18,11 @@ type VideoJob struct {
 	// References are the Reference Pack images in priority order (the first ones are kept when
 	// the model accepts fewer).
 	References []Input
+	// PreferReferences asks for the References instead of the frames (Reference Reinforcement,
+	// where the references are what is being reinforced). Prepare decides per model: a model that
+	// takes free reference images reads them and leaves the frames out, any other model keeps
+	// its frames, so the fail over model gets the input it can use.
+	PreferReferences bool
 }
 
 // constraintPhrases are the wording of the constraints the Prompt Planner uses most.
@@ -50,17 +55,17 @@ func Prepare(target VideoTarget, job VideoJob) (VideoRequest, error) {
 	if req.AspectRatio == "" {
 		req.AspectRatio = "16:9"
 	}
-	if caps.FirstFrame {
+	useReferences := job.PreferReferences && caps.MaxReferenceImages > 0 && len(job.References) > 0
+	if caps.FirstFrame && !useReferences {
 		req.FirstFrame = job.FirstFrame
 	}
-	if caps.LastFrame {
+	if caps.LastFrame && !useReferences {
 		req.LastFrame = job.LastFrame
 	}
 	// A model reads either the frames or the free references, never both: Seedance 2.0 treats first
 	// frame, first-and-last frame and reference-to-video as mutually exclusive scenarios and rejects
-	// a request that mixes them. The frames win here; a caller that wants the references to be used
-	// (Reference Reinforcement) leaves the frames out of the job. MaxReferenceImages zero means the
-	// model only takes frames (Kling, Runway).
+	// a request that mixes them. The frames win here unless the job prefers the references (Reference
+	// Reinforcement). MaxReferenceImages zero means the model only takes frames (Kling, Runway).
 	if req.FirstFrame == nil {
 		if n := min(caps.MaxReferenceImages, len(job.References)); n > 0 {
 			req.References = job.References[:n]

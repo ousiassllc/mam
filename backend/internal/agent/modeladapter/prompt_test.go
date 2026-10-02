@@ -141,3 +141,24 @@ func TestPrepareKeepsTheConstraintsWhenTheLimitCutsTheProse(t *testing.T) {
 		})
 	}
 }
+
+func TestPrepareWithPreferReferencesDecidesPerModel(t *testing.T) {
+	job := fullJob()
+	job.PreferReferences = true
+
+	seedance, err := modeladapter.Prepare(seedanceTarget, job)
+	require.NoError(t, err)
+	assert.Nil(t, seedance.FirstFrame, "a model with free reference images reads the references being reinforced")
+	assert.Nil(t, seedance.LastFrame)
+	assert.Len(t, seedance.References, 9)
+
+	kling, err := modeladapter.Prepare(klingTarget, job)
+	require.NoError(t, err)
+	assert.NotNil(t, kling.FirstFrame, "a frames-only model keeps the Keyframe: it cannot use the references")
+	assert.Empty(t, kling.References)
+
+	job.References = nil
+	bare, err := modeladapter.Prepare(seedanceTarget, job)
+	require.NoError(t, err)
+	assert.NotNil(t, bare.FirstFrame, "without references to prefer the frames are kept")
+}
