@@ -61,8 +61,18 @@ func CanTransition(from, to ProjectState) bool {
 func (s ProjectState) CanExport() bool { return s == StateReady || s == StateExported }
 
 // CanAwaitApproval reports whether a card that blocks the Project (an Escalation) can put it in
-// AWAITING_APPROVAL: the Core State Machine has no such move from DRAFT, AUDIO, READY or EXPORTED.
+// AWAITING_APPROVAL: the Core State Machine has no such move from DRAFT, AUDIO, READY or EXPORTED
+// (see EscalationBlocks).
 func (s ProjectState) CanAwaitApproval() bool { return CanTransition(s, StateAwaitingApproval) }
+
+// EscalationBlocks reports whether an Escalation posted in the state holds the Project: it waits in
+// AWAITING_APPROVAL until the card is answered, and the answer moves it on (EscalationResumeState).
+// That is every state that can enter AWAITING_APPROVAL, and AWAITING_APPROVAL itself. From DRAFT, AUDIO,
+// READY and EXPORTED the Core State Machine has no such move: the Escalation of a Shot is only a card
+// there (CardBody.NonBlocking) and the Project keeps its state, before and after the answer.
+func (s ProjectState) EscalationBlocks() bool {
+	return s == StateAwaitingApproval || s.CanAwaitApproval()
+}
 
 // CanEdit reports whether a Project in the state can take an edit: a Rough Cut or a change of the
 // Edit Timeline moves it to EDITING (EditorService.toEditing) from these states and is refused (409)

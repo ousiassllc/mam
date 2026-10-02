@@ -1145,7 +1145,7 @@ EXPORTED
 
 > **Project 状態と Shot 状態（実装の範囲）**: 上の状態遷移のうち、Project の状態として実際に遷移するのは DRAFT → PLANNING → VISUAL_DESIGN（Orchestrator）、確認ポイントでの AWAITING_APPROVAL、および EDITING 以降（EDIT_JUDGING・AUDIO・FINAL_QC・READY・EXPORTED）である。EDITING の開始は `POST /projects/:id/edit/rough-cut` だけではない。ユーザーが Rough Cut を作る／編集したときに加え、AUTO MODE ではトランクの全 Shot に Selected Take が揃った時点で Rough Cut と Editor Judge が自動で始まり EDITING に入る。開始時、VISUAL_DESIGN からは GENERATING → JUDGING → EDITING を一括で辿る（全 Shot に Selected Take があることが前提）。確認ポイント通過後の AUDIO と Final QC も AUTO MODE では自動で進み、Export はユーザー操作である。GENERATING / JUDGING / REPAIRING は Shot 単位（`shot.state`、§13）で進み、Shot の生成・Judge・Repair は Shot ごとに並行して起動されるため、Project 全体の状態としては遷移させない（Project は VISUAL_DESIGN のまま）。例外は Reshoot Loop の追加 Shot（Project を GENERATING にする）と、Escalation への回答後（Project は REPAIRING になり、Editor Judge／編集操作で EDITING へ戻る）である。
 
-図の AWAITING_APPROVAL は確認ポイント（脚本・Rough Cut・Final）の位置を示す。AWAITING_APPROVAL に遷移するのは、確認ポイントの Approval カードと Escalation カードのみとする。Notes の昇格提案カード（`ref_type=note_promotion`、§9.4）は非ブロッキングで、Core State Machine の状態を変えない。
+図の AWAITING_APPROVAL は確認ポイント（脚本・Rough Cut・Final）の位置を示す。AWAITING_APPROVAL に遷移するのは、確認ポイントの Approval カードと Escalation カードのみとする。ただし Escalation カードで AWAITING_APPROVAL に入れるのは、状態遷移表にその遷移がある状態（PLANNING〜EDITING 系・FINAL_QC など）のときだけである。DRAFT・AUDIO・READY・EXPORTED で出た Shot 単位の Escalation（書き出し後の Repair 上限到達など）はカードを投稿するだけで Project の状態を変えず、そのカードは確認ポイントを待たせず、回答しても REPAIRING にはならない。Notes の昇格提案カード（`ref_type=note_promotion`、§9.4）は非ブロッキングで、Core State Machine の状態を変えない。
 
 ---
 
@@ -1201,7 +1201,7 @@ EXPORTED
 | Keyframe | Keyframe / Reference Pack 画像 | 拡大、返信で修正指示 |
 | Take | 動画プレーヤー（Judge の Issue を時間軸のマーカーで表示）と生成の要約（モデル・解像度・秒数）。スレッドは追記のみなので、Judge が結果を保存するとサーバーはその Take のカードの更新（`card.updated`）を通知して、ライブ中のスレッドでもマーカーを描き直す。Judge 要約と Take 状態（AI Pick / 採用 / 除外）はカードには載せず、Judge が結果を保存するたびに別の発言として投稿する（「Shot N · Take X の Judge 結果: PASS/FAIL（信頼度）」と、AI Pick が変わったときの「AI Pick: Take X を採用/おすすめ」）。Take ごとの最新の状態は Take 比較で確認する | 再生、返信で指示、Take比較を開く |
 | Progress | 生成・Repair の進捗（Judge の進捗は Shot カード側、結果は発言で通知） | なし（自動更新） |
-| Escalation | Retry Policy 上限到達などで AI が判断を求める内容。回答（選択肢ボタン / 自由入力）は記録されるだけで自動実行されない。回答後は Project が REPAIRING に戻り、AI は「この判断は自動では実行されません」と返すので、ユーザーが設定の変更・Take の採用・Shot の指示の修正を画面から行う | 選択肢ボタン / 自由入力 |
+| Escalation | Retry Policy 上限到達などで AI が判断を求める内容。回答（選択肢ボタン / 自由入力）は記録されるだけで自動実行されない。回答後は（Project がこの回答待ちで AWAITING_APPROVAL にいたとき）REPAIRING に戻り、AI は「この判断は自動では実行されません」と返すので、ユーザーが設定の変更・Take の採用・Shot の指示の修正を画面から行う | 選択肢ボタン / 自由入力 |
 
 ## 23.3 補助ビュー
 

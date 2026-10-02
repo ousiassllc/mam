@@ -50,6 +50,17 @@ func TestProjectState_CanEditIsTheStatesAnEditCanStartFrom(t *testing.T) {
 	}
 }
 
+func TestProjectState_EscalationBlocksIsTheStatesTheProjectCanWaitInForTheAnswer(t *testing.T) {
+	for _, state := range domain.ProjectStates() {
+		switch state {
+		case domain.StateDraft, domain.StateAudio, domain.StateReady, domain.StateExported:
+			assert.False(t, state.EscalationBlocks(), state)
+		default:
+			assert.True(t, state.EscalationBlocks(), state)
+		}
+	}
+}
+
 func TestCanContinue(t *testing.T) {
 	take := func(s domain.TakeStatus) []domain.Take { return []domain.Take{{Status: s}} }
 	assert.True(t, domain.CanContinue(domain.ShotEditing, take(domain.TakeCandidate)))

@@ -209,11 +209,14 @@ func (r *ProjectRepository) Apply(ctx context.Context, t Turn) error {
 }
 
 // noBlockingCard is true for a project row without an unanswered approval card or
-// escalation card. An escalation is answered by any reply to it.
+// escalation card. An escalation is answered by any reply to it; one posted without holding the
+// Project (CardBody.NonBlocking) never blocks.
 const noBlockingCard = `NOT EXISTS (
 	SELECT 1 FROM chat_message m WHERE m.project_id = project.id AND (
 		(m.kind = 'approval' AND m.approval_status = 'pending' AND COALESCE(m.ref_type, '') <> 'note_promotion')
-		OR (m.kind = 'escalation' AND NOT EXISTS (SELECT 1 FROM chat_message r WHERE r.reply_to_message_id = m.id))))`
+		OR (m.kind = 'escalation'
+			AND COALESCE(CASE WHEN json_valid(m.content) THEN json_extract(m.content, '$.non_blocking') END, 0) = 0
+			AND NOT EXISTS (SELECT 1 FROM chat_message r WHERE r.reply_to_message_id = m.id))))`
 
 const projectSelect = `
 SELECT p.id, p.state, p.mode, p.confirmation_level, p.custom_checkpoints, p.production_template, p.quality_policy, p.created_at,
