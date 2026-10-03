@@ -320,3 +320,66 @@ func TestOrchestrator_StartCandidatesRefusesALockedPrompt(t *testing.T) {
 	assert.Contains(t, err.Error(), "prompt")
 	assert.Equal(t, domain.ShotPlanning, f.shotState(t))
 }
+
+// Every generation the system starts for the user (the Shot card, Continue, Branch, the editor's
+// reshoot, the director) goes through StartByPolicy, which makes Prompt Candidates whenever the Quality
+// Policy can (#437); the single generation stays the explicit Start.
+func TestOrchestrator_StartByPolicyGeneratesCandidatesAndOnlyFallsBackToASingleTakeWhenItMust(t *testing.T) {
+	byPolicy := func(f *fixture, t *testing.T, preserve []domain.SpecPart) error {
+		return f.run(context.Background(), t, func() (domain.Job, error) {
+			return f.orch.StartByPolicy(context.Background(), f.shotID, "", preserve)
+		})
+	}
+
+	t.Run("MAX QUALITY makes a Candidate per strategy", func(t *testing.T) {
+		f := newFixture(t, options{withJudge: true, quality: domain.QualityMaxQuality})
+		uses, err := f.orch.UsesCandidates(context.Background(), f.ref(t).Shot)
+		require.NoError(t, err)
+		assert.True(t, uses)
+
+		require.NoError(t, byPolicy(f, t, nil))
+
+		assert.Equal(t, len(domain.CandidateStrategies()), f.count(t, `SELECT COUNT(*) FROM take WHERE model_parameters LIKE '%candidate_strategy%'`))
+		assert.Equal(t, generation.ActionCandidates, f.progress.last().Action)
+	})
+	t.Run("without the Judge nothing could pick the Best Take: a single generation", func(t *testing.T) {
+		f := newFixture(t, options{quality: domain.QualityMaxQuality})
+		uses, err := f.orch.UsesCandidates(context.Background(), f.ref(t).Shot)
+		require.NoError(t, err)
+		assert.False(t, uses)
+
+		require.NoError(t, byPolicy(f, t, nil))
+
+		assert.Zero(t, f.count(t, `SELECT COUNT(*) FROM take WHERE model_parameters LIKE '%candidate_strategy%'`))
+		assert.Positive(t, f.count(t, `SELECT COUNT(*) FROM take`))
+	})
+	t.Run("a LOCKed Prompt cannot be rewritten: a single generation from the spec the Shot has", func(t *testing.T) {
+		f := newFixture(t, options{withJudge: true, quality: domain.QualityMaxQuality})
+		require.NoError(t, f.generate(t, ""))
+		require.NoError(t, repository.NewLockRepository(f.db).SetShotLock(context.Background(), f.shotID, domain.ParamPrompt, domain.LockLocked, nil))
+		uses, err := f.orch.UsesCandidates(context.Background(), f.ref(t).Shot)
+		require.NoError(t, err)
+		assert.False(t, uses)
+		takes := f.count(t, `SELECT COUNT(*) FROM take`)
+
+		require.NoError(t, byPolicy(f, t, nil))
+
+		assert.Greater(t, f.count(t, `SELECT COUNT(*) FROM take`), takes)
+		assert.Equal(t, generation.ActionGenerate, f.progress.last().Action)
+	})
+	t.Run("the explicit generate is still the single generation", func(t *testing.T) {
+		f := newFixture(t, options{withJudge: true, quality: domain.QualityMaxQuality})
+		require.NoError(t, f.generate(t, ""))
+		assert.Zero(t, f.count(t, `SELECT COUNT(*) FROM take WHERE model_parameters LIKE '%candidate_strategy%'`))
+	})
+	t.Run("the parts the director preserves reach the Prompt Planner of every Candidate", func(t *testing.T) {
+		f := newFixture(t, options{withJudge: true, quality: domain.QualityMaxQuality})
+		require.NoError(t, f.generate(t, "")) // the Shot has a spec now
+		planner := f.llm.calls(llm.AgentPromptPlanner)
+
+		require.NoError(t, byPolicy(f, t, []domain.SpecPart{domain.PartCharacter}))
+
+		assert.Equal(t, len(domain.CandidateStrategies()), f.llm.calls(llm.AgentPromptPlanner)-planner)
+		assert.Contains(t, f.llm.lastUser(llm.AgentPromptPlanner), string(domain.PartCharacter))
+	})
+}

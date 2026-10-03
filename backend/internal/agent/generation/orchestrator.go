@@ -197,6 +197,46 @@ func (o *Orchestrator) StartCandidates(ctx context.Context, shotID, instruction 
 	return o.start(ctx, shotID, ActionCandidates, instruction, nil)
 }
 
+// UsesCandidates reports whether the generation the Quality Policy calls for is Prompt Candidate
+// Generation for the Shot. Every Generation Mode of spec/spec.md §8 (Quality / Balanced / Economy, from
+// MAX QUALITY / BALANCED / FAST) generates through Candidates and the Judge, so it is the case unless
+// the Judge is off (nothing could pick the Best Take) or the Prompt is LOCKed (Candidates rewrite the
+// spec, so StartCandidates refuses with a 423 and the Shot is made from the spec it has).
+func (o *Orchestrator) UsesCandidates(ctx context.Context, shot domain.Shot) (bool, error) {
+	if o.judge == nil {
+		return false, nil
+	}
+	if _, hasSpec := shot.CanonicalSpec(); !hasSpec {
+		return true, nil
+	}
+	locks, err := o.gens.ShotLocks(ctx, shot.ID)
+	if err != nil {
+		return false, err
+	}
+	return !locks.Locked(domain.ParamPrompt), nil
+}
+
+// StartByPolicy begins generating the Shot the way the Quality Policy of its Project calls for: Prompt
+// Candidate Generation (StartCandidates) when UsesCandidates, else the single generation (StartDirected).
+// It is the one entry the generation the system starts for the user goes through (the Shot card's
+// 生成, Continue, Branch, the editor's reshoot, the director's regenerate), so that MAX QUALITY is
+// honoured everywhere. preserve is as for StartDirected. The explicit POST /shots/:id/generate is the
+// single generation (Start).
+func (o *Orchestrator) StartByPolicy(ctx context.Context, shotID, instruction string, preserve []domain.SpecPart) (domain.Job, error) {
+	ref, err := o.gens.GetShot(ctx, shotID)
+	if err != nil {
+		return domain.Job{}, err
+	}
+	byCandidates, err := o.UsesCandidates(ctx, ref.Shot)
+	if err != nil {
+		return domain.Job{}, err
+	}
+	if byCandidates {
+		return o.start(ctx, shotID, ActionCandidates, instruction, preserve)
+	}
+	return o.StartDirected(ctx, shotID, instruction, preserve)
+}
+
 func (o *Orchestrator) start(ctx context.Context, shotID string, action Action, instruction string, preserve []domain.SpecPart) (domain.Job, error) {
 	ref, err := o.gens.GetShot(ctx, shotID)
 	if err != nil {
@@ -238,7 +278,7 @@ func (o *Orchestrator) start(ctx context.Context, shotID string, action Action, 
 	p := payload{Action: action, ShotID: shotID, Instruction: instruction, Preserve: preserve}
 	switch action {
 	case ActionCandidates:
-		p.CandidateSpecs, err = o.prepareCandidates(ctx, ref, instruction, strategy)
+		p.CandidateSpecs, err = o.prepareCandidates(ctx, ref, instruction, preserve, strategy)
 	default:
 		p.Spec, p.NoteRefs, err = o.prepareGenerate(ctx, ref, instruction, preserve)
 	}
@@ -427,7 +467,7 @@ func (o *Orchestrator) Handle(ctx context.Context, job domain.Job) error {
 	case ActionReferencePack:
 		done, err = o.buildReferencePack(ctx, ref)
 	case ActionCandidates:
-		done, err = o.generateCandidates(ctx, ref, p.Instruction, p.CandidateSpecs)
+		done, err = o.generateCandidates(ctx, ref, p.Instruction, p.Preserve, p.CandidateSpecs)
 	default:
 		done, err = o.generate(ctx, ref, p.Instruction, p.Preserve, p.Spec, p.NoteRefs)
 	}

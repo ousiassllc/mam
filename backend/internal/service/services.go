@@ -193,6 +193,7 @@ func New(deps Deps) *Services {
 		})
 		// Not resumable: a generation costs money, so an interrupted one is failed, not repeated.
 		deps.Jobs.Register(domain.JobGenerate, generations.gen.Handle, false)
+		c.takeActions.gen = generations.gen
 		if judges.runner != nil {
 			repairDeps := repair.Deps{
 				Generations: gens, Judges: judges.judges, Repairs: repairs.repairs, JobRepo: c.jobs, Policies: policies, Projects: c.projects, Takes: takes,

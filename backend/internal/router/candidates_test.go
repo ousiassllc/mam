@@ -141,3 +141,27 @@ func TestCandidates_ALockedPromptRulesOutRewritingTheSpec(t *testing.T) {
 	assert.Equal(t, http.StatusLocked, rec.Code, rec.Body.String())
 	assert.Equal(t, takes, j.count(`SELECT COUNT(*) FROM take`))
 }
+
+// The 生成 button of a Shot card posts to the Candidate flow wherever it can run (the Judge is on and
+// the Prompt is not LOCKed); everywhere else it is the single generation (#437).
+func TestCandidates_TheCardGenerateButtonPostsToTheCandidateFlowWhereItCanRun(t *testing.T) {
+	j := newJudgeApp(t, goodVerdict, steadyFaces...)
+	page := func() string {
+		return j.get("/projects/"+j.project+"/scenes/"+j.sceneID+"?shot="+j.shotID, true).Body.String()
+	}
+	assert.Contains(t, page(), `hx-post="/shots/`+j.shotID+`/generate/candidates"`)
+	assert.NotContains(t, page(), `hx-post="/shots/`+j.shotID+`/generate"`)
+
+	j.generateAndJudge() // the Shot has a spec now
+	j.setQuality("max_quality")
+	assert.Contains(t, page(), `hx-post="/shots/`+j.shotID+`/generate/candidates"`)
+	require.Equal(t, http.StatusOK, j.form(http.MethodPut, "/shots/"+j.shotID+"/locks", url.Values{"parameter": {"prompt"}, "mode": {"lock"}}).Code)
+	html := page()
+	assert.Contains(t, html, `hx-post="/shots/`+j.shotID+`/generate"`, "a LOCKed Prompt: the server would refuse the Candidates with 423")
+	assert.NotContains(t, html, "/generate/candidates")
+
+	off := newGenApp(t, true) // no Frames: the Judge is off
+	html = off.get("/projects/"+off.project+"/scenes/"+off.sceneID+"?shot="+off.shotID, true).Body.String()
+	assert.Contains(t, html, `hx-post="/shots/`+off.shotID+`/generate"`, "without the Judge the server answers /generate/candidates with 503")
+	assert.NotContains(t, html, "/generate/candidates")
+}
