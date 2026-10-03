@@ -431,6 +431,34 @@ func TestDirectorCommand_AFailedReasoningLLMHasTheDocumentedStatus(t *testing.T)
 	}
 }
 
+// A partial regeneration needs the Repair Agent, which this fixture (no Frames) does not have: the
+// thread tells that the feature is not set up, in DirectorCommand and in the chat alike, not an
+// "internal error".
+func TestDirectorFailures_TheThreadTellsAServiceErrorNotAnInternalError(t *testing.T) {
+	const partial = `{"type":"partial_regenerate","time_ranges":["1.0-2.0"],"changes":["camera"],"instruction":"Zoom in."}`
+	f := newGenFixture(t, true)
+	f.firstGeneration(t)
+	f.llm.interpreter = opsJSON(partial)
+
+	_, err := f.svc.Director.DirectorCommand(context.Background(), f.shotID, "最初の1秒だけ寄って")
+	require.ErrorIs(t, err, service.ErrUnavailable)
+	f.startDirecting(t)
+	_, err = f.svc.Chat.PostMessage(context.Background(), f.projectID, service.PostMessageInput{Content: "最初の1秒だけ寄って"})
+	require.ErrorIs(t, err, service.ErrUnavailable)
+
+	var notices []string
+	for _, m := range f.thread(t, f.projectID) {
+		if m.Kind == domain.KindText && m.Role == domain.RoleAssistant && strings.Contains(m.Content, "指示を実行できませんでした") {
+			notices = append(notices, m.Content)
+		}
+	}
+	require.Len(t, notices, 2)
+	for _, n := range notices {
+		assert.Contains(t, n, "機能が有効になっていません")
+		assert.NotContains(t, n, "内部エラー")
+	}
+}
+
 // A failure of the repository while the Command Interpreter's input is gathered (not a failure of
 // the model) is an error of the message, as DirectorCommand returns it; it is not reported as a
 // successful assistant message that "the direction could not be read". An error of the model is.

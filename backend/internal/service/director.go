@@ -333,16 +333,53 @@ func (s *DirectorService) DirectorCommand(ctx context.Context, shotID, message s
 // director's words alone. What was done before the failure is told too. The error is still returned
 // to the caller. A failure to record the answer is only logged.
 func (s *DirectorService) reportCommandFailure(ctx context.Context, projectID string, done outcome, cause error) {
-	reason := generation.FailureReason(cause)
-	if errors.Is(cause, ErrLocked) {
-		reason = "LOCK されているパラメータを変える指示のため実行しませんでした"
-	}
+	reason := commandFailureReason(cause)
 	lines := append(slices.Clone(done.lines), "指示を実行できませんでした: "+reason)
 	msg := assignIDs([]domain.ChatMessage{assistantText(strings.Join(lines, "\n"))})
 	// The request may be the very thing that ended (a closed client): the notice is recorded anyway.
 	if err := s.commitMessages(context.WithoutCancel(ctx), projectID, msg); err != nil {
 		s.logger.Error("post director command failure notice failed", "project_id", projectID, "err", err)
 	}
+}
+
+// commandFailureReason is the one line the thread gives for why a direction (or the reading of it)
+// failed: the same classification the HTTP layer gives the status of. The errors of the service
+// layer (a feature that is not set up, invalid input, a state that changed) are told here; the
+// failures of the generation pipeline and the models are told by generation.FailureReason, and
+// what is neither is an internal error (logged by whoever returns it).
+func commandFailureReason(err error) string {
+	var (
+		ai       *AIError
+		invalid  *ValidationError
+		conflict *ConflictError
+	)
+	switch {
+	case errors.As(err, &ai):
+		return ai.Reason
+	case errors.Is(err, ErrLocked):
+		return "LOCK されているパラメータを変える指示のため実行しませんでした"
+	case errors.As(err, &invalid):
+		return invalid.Message
+	case errors.Is(err, ErrUnavailable):
+		return "この操作に必要な機能が有効になっていません（API キーと設定を確認してください）"
+	case errors.As(err, &conflict):
+		return conflict.Message
+	case errors.Is(err, ErrNotFound):
+		return "対象が見つかりません"
+	case errors.Is(err, ErrBusy):
+		return "この Shot はすでに生成中です"
+	case errors.Is(err, ErrStageBusy):
+		return "別の編集処理が実行中です。終わってからやり直してください"
+	case errors.Is(err, ErrJudgeBusy):
+		return "この Take はすでに Judge 中です"
+	case errors.Is(err, ErrNotJudged):
+		return "この Take はまだ Judge されていません。Judge が終わってから指示してください"
+	case errors.Is(err, ErrAccepted):
+		return "この Take は Judge に合格しているため Repair は不要です"
+	case errors.Is(err, ErrConflict):
+		return "状態が変わっています。画面を更新してください"
+	}
+	return generation.FailureReason(err) // includes the budget and the Brand violations
 }
 
 func (s *DirectorService) commitMessages(ctx context.Context, projectID string, msgs []domain.ChatMessage) error {
@@ -399,7 +436,7 @@ func (s *DirectorService) Chat(ctx context.Context, project domain.Project, targ
 			s.reportCommandFailure(ctx, project.ID, outcome{}, err)
 			return domain.ChatMessage{}, err
 		}
-		return assistantText("指示を読み取れませんでした: " + generation.FailureReason(err)), nil
+		return assistantText("指示を読み取れませんでした: " + commandFailureReason(err)), nil
 	}
 	if project.Mode != domain.ModeDirector {
 		// Outside DIRECTOR MODE only a request to remember something is carried out: AUTO MODE does
