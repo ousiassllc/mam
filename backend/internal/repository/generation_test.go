@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -400,4 +401,61 @@ func TestGenerationRepository_BudgetSumsTheLedgerPerProjectAndShot(t *testing.T)
 
 	_, err = f.repo.Budget(ctx, "missing", f.shotID)
 	assert.ErrorIs(t, err, repository.ErrNotFound)
+}
+
+func TestGenerationRepository_ReserveHoldsTheEstimateOfInFlightGenerations(t *testing.T) {
+	ctx := context.Background()
+	f := newGenRepoFixture(t)
+	require.NoError(t, repository.NewPolicyRepository(f.db).SetBudget(ctx, f.projectID, new(1.0), nil))
+
+	// Ten generations of 0.3 start at the same time: only three fit under the ceiling of 1.0.
+	var (
+		wg       sync.WaitGroup
+		mu       sync.Mutex
+		releases []func()
+	)
+	for range 10 {
+		wg.Go(func() {
+			release, ok, err := f.repo.Reserve(ctx, f.projectID, f.shotID, 0.3)
+			assert.NoError(t, err)
+			if ok {
+				mu.Lock()
+				releases = append(releases, release)
+				mu.Unlock()
+			}
+		})
+	}
+	wg.Wait()
+	require.Len(t, releases, 3, "the estimates of the generations in flight count against the ceiling")
+
+	b, err := f.repo.Budget(ctx, f.projectID, f.shotID)
+	require.NoError(t, err)
+	assert.InDelta(t, 0.9, b.ProjectSpent, 1e-9, "the Budget every decision reads includes what is in flight")
+	assert.InDelta(t, 0.9, b.ShotSpent, 1e-9)
+
+	// The cost reaches the ledger, then the hold goes: it is counted once.
+	require.NoError(t, f.repo.AddCost(ctx, domain.CostEntry{ProjectID: f.projectID, ShotID: f.shotID, Provider: domain.ModelNanoBanana, EstimatedCost: 0.3}))
+	releases[0]()
+	releases[0]() // releasing twice is harmless
+	b, err = f.repo.Budget(ctx, f.projectID, f.shotID)
+	require.NoError(t, err)
+	assert.InDelta(t, 0.9, b.ProjectSpent, 1e-9)
+
+	// A generation that ended without a cost gives its hold back.
+	releases[1]()
+	releases[2]()
+	b, err = f.repo.Budget(ctx, f.projectID, f.shotID)
+	require.NoError(t, err)
+	assert.InDelta(t, 0.3, b.ProjectSpent, 1e-9)
+	_, ok, err := f.repo.Reserve(ctx, f.projectID, f.shotID, 0.7)
+	require.NoError(t, err)
+	assert.True(t, ok)
+}
+
+func TestGenerationRepository_ReserveWithoutACeilingAlwaysFits(t *testing.T) {
+	f := newGenRepoFixture(t)
+	release, ok, err := f.repo.Reserve(context.Background(), f.projectID, f.shotID, 1e6)
+	require.NoError(t, err)
+	assert.True(t, ok)
+	release()
 }

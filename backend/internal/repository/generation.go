@@ -474,15 +474,28 @@ func (r *GenerationRepository) WorldContext(ctx context.Context, projectID, bran
 }
 
 // Budget is the money side of a Shot: the ceilings of the Project and the Shot (nil when unset,
-// F-22) and what the cost ledger holds so far.
+// F-22) and what has been spent: the cost ledger plus the estimates of generations in flight.
 type Budget struct {
 	ProjectCeiling, ShotCeiling *float64
 	ProjectSpent, ShotSpent     float64
 }
 
 // Budget returns the ceilings of the Project and the estimated cost recorded so far for the
-// Project and for the Shot.
+// Project and for the Shot, plus what generations in flight have reserved (Reserve): their cost
+// reaches the ledger only when the vendor returns the output.
 func (r *GenerationRepository) Budget(ctx context.Context, projectID, shotID string) (Budget, error) {
+	reservedProject, reservedShot := r.db.inflight.reserved(projectID, shotID) // before the ledger: see inflightSpend.reserved
+	b, err := r.ledgerBudget(ctx, projectID, shotID)
+	if err != nil {
+		return Budget{}, err
+	}
+	b.ProjectSpent += reservedProject
+	b.ShotSpent += reservedShot
+	return b, nil
+}
+
+// ledgerBudget is Budget without the reservations.
+func (r *GenerationRepository) ledgerBudget(ctx context.Context, projectID, shotID string) (Budget, error) {
 	var (
 		b                   Budget
 		projectCap, shotCap sql.NullFloat64

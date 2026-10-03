@@ -350,6 +350,17 @@ type takeParameters struct {
 // Quality/Cost Policy). candidate is the Prompt Candidate strategy the Take is made for ("" for a
 // plain generation or a repair).
 func (o *Orchestrator) makeTake(ctx context.Context, ref repository.ShotRef, pv domain.PromptVersion, s Strategy, job modeladapter.VideoJob, lineage domain.TakeLineage, title string, limit time.Duration, candidate domain.CandidateStrategy) (string, error) {
+	// The ledger gets the cost only when the video comes back, minutes from now. Until then the
+	// estimate is held, so that Takes of other Shots, Repairs and Candidates that start at the same
+	// time see it and cannot together spend more than the budget ceilings allow (F-22).
+	release, ok, err := o.gens.Reserve(ctx, ref.ProjectID, ref.Shot.ID, s.CostPerTake)
+	if err != nil {
+		return "", err
+	}
+	if !ok {
+		return "", ErrBudgetExceeded
+	}
+	defer release() // also when the generation fails or the cost was written by recordPaid below
 	callCtx, cancel := context.WithTimeout(ctx, limit)
 	defer cancel()
 	out, err := o.adapter.GenerateVideo(callCtx, s.Primary, s.Fallback, job)
@@ -389,6 +400,7 @@ func (o *Orchestrator) makeTake(ctx context.Context, ref repository.ShotRef, pv 
 		return "", err
 	}
 	taken = true
+	release() // the cost is in the ledger now
 	if candidate != "" {
 		title += " · " + candidate.Label()
 	}

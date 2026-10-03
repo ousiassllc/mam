@@ -432,3 +432,32 @@ func TestOrchestrator_StartOfABusyShotSparesThePromptPlanner(t *testing.T) {
 		}
 	}
 }
+
+func TestOrchestrator_TakeInFlightCountsAgainstTheBudgetUntilItIsRecorded(t *testing.T) {
+	f := newFixture(t, options{})
+	cfg := modeladapter.DefaultConfig()
+	perTake := cfg.VideoCost(cfg.Policies[domain.QualityBalanced].Primary, 4)
+	// One Take fits, a second does not: the first is not on the ledger while the vendor is working.
+	require.NoError(t, f.policies.SetBudget(context.Background(), f.projectID, new(perTake*1.5), nil))
+	f.video.block = make(chan struct{})
+	f.video.entered = make(chan struct{}, 8)
+	job, err := f.orch.Start(context.Background(), f.shotID, "")
+	require.NoError(t, err)
+	done := make(chan error, 1)
+	go func() { done <- f.orch.Handle(context.Background(), job) }()
+	<-f.video.entered // the Take is being made
+
+	b, err := f.gens.Budget(context.Background(), f.projectID, f.shotID)
+	require.NoError(t, err)
+	assert.InDelta(t, perTake, b.ProjectSpent, 1e-9, "the estimate of the Take in flight is held")
+	other, cancel := context.WithTimeout(context.Background(), 2*time.Second) // bounds it where the budget is not held
+	defer cancel()
+	_, err = f.orch.Regenerate(other, f.ref(t), generation.Regeneration{Action: domain.RepairFullRetake})
+	assert.ErrorIs(t, err, generation.ErrBudgetExceeded, "another generation does not see the whole budget as free")
+
+	close(f.video.block)
+	require.NoError(t, <-done)
+	b, err = f.gens.Budget(context.Background(), f.projectID, f.shotID)
+	require.NoError(t, err)
+	assert.InDelta(t, perTake, b.ProjectSpent, 1e-9, "counted once, from the ledger, after the Take is recorded")
+}
