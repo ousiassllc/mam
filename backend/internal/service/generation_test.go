@@ -97,6 +97,24 @@ func (g *genReasoner) Complete(ctx context.Context, agent llm.Agent, req llm.Req
 	return llm.Response{Text: text, Provider: llm.ProviderAnthropic, Model: "fake"}, nil
 }
 
+// prompts is a copy of the user prompts the agent received: Jobs still run in the background, so a
+// test must not read g.users directly.
+func (g *genReasoner) prompts(agent llm.Agent) []string {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return append([]string(nil), g.users[agent]...)
+}
+
+// reset forgets what the agent received so far.
+func (g *genReasoner) reset(agent llm.Agent) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.users == nil {
+		g.users = map[llm.Agent][]string{}
+	}
+	g.users[agent] = nil
+}
+
 func (g *genReasoner) calls(agent llm.Agent) int {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -336,7 +354,7 @@ func TestGenerateShot_KeepsTheSpecUnlessThereIsANewInstruction(t *testing.T) {
 	require.NoError(t, err)
 	require.Eventually(t, func() bool { return f.count(t, `SELECT COUNT(*) FROM take`) == 9 }, 30*time.Second, 10*time.Millisecond)
 	assert.Equal(t, 2, f.llm.calls(llm.AgentPromptPlanner), "an instruction makes the Prompt Planner revise the spec")
-	assert.Contains(t, f.llm.users[llm.AgentPromptPlanner][1], "もう少しカメラを寄せて")
+	assert.Contains(t, f.llm.prompts(llm.AgentPromptPlanner)[1], "もう少しカメラを寄せて")
 }
 
 func TestGenerateShot_RejectsASecondRunWhileTheShotIsBeingGenerated(t *testing.T) {
@@ -648,7 +666,7 @@ func TestGenerateShot_StateExtractorAppendsWorldStateVersionAndTheNextShotStarts
 	shot2, err := f.svc.Plans.CreateShot(context.Background(), f.sceneID, service.ShotForm{Objective: "ドアを開ける", DurationSeconds: "4"})
 	require.NoError(t, err)
 	f.generateAndWait(t, shot2.Shots[1].ID, 3)
-	planner := f.llm.users[llm.AgentPromptPlanner]
+	planner := f.llm.prompts(llm.AgentPromptPlanner)
 	require.Len(t, planner, 2)
 	for _, want := range []string{`emotion="anxious"`, `position="hallway_door"`, `movement="static"`, "phone_call_ended"} {
 		assert.Contains(t, planner[1], want)

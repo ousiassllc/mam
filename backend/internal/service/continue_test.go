@@ -93,7 +93,7 @@ func TestContinuePropose_PostsAQuestionCardWithTheAnalysisAndNextCandidates(t *t
 	assert.NotContains(t, body.Text, "オブジェクト", "a State the Shot does not show is left out")
 
 	// The analysis reads the World State the completed Shot left (F-16).
-	prompts := f.llm.users[llm.AgentDirector]
+	prompts := f.llm.prompts(llm.AgentDirector)
 	require.Len(t, prompts, 1)
 	assert.Contains(t, prompts[0], `emotion="anxious"`)
 	assert.Contains(t, prompts[0], "phone_call_ended")
@@ -139,11 +139,11 @@ func TestContinue_ChoosingACandidateAddsTheNextShotToTheSceneAndGeneratesItFromT
 	assert.Equal(t, []string{"主人公が振り返って走り出す", "ドアを開けて廊下を見る"}, f.shotObjectives(t))
 	f.waitGenerateJobs(t, 3)
 	// The chosen candidate (without its letter) and the World State reach the planners.
-	plan := f.llm.users[llm.AgentDirector][1]
+	plan := f.llm.prompts(llm.AgentDirector)[1]
 	assert.Contains(t, plan, "背後から声が聞こえる")
 	assert.NotContains(t, plan, "B. ")
 	assert.Contains(t, plan, `position="hallway_door"`)
-	planner := f.llm.users[llm.AgentPromptPlanner]
+	planner := f.llm.prompts(llm.AgentPromptPlanner)
 	require.Len(t, planner, 2)
 	assert.Contains(t, planner[1], "背後から声が聞こえる", "the direction is the additional instruction of the new Shot")
 	assert.Contains(t, planner[1], `emotion="anxious"`)
@@ -161,7 +161,7 @@ func TestContinue_LeavingItToTheAIOrWritingAFreeDirection(t *testing.T) {
 	_, err := f.svc.Chat.PostMessage(context.Background(), f.projectID, service.PostMessageInput{Content: domain.DelegateOption, ReplyToMessageID: card.ID})
 	require.NoError(t, err)
 	f.waitGenerateJobs(t, 3)
-	plan := f.llm.users[llm.AgentDirector][1]
+	plan := f.llm.prompts(llm.AgentDirector)[1]
 	assert.Contains(t, plan, "AI に任せる", "the AI is told to choose by itself")
 	assert.Len(t, f.shotObjectives(t), 2)
 
@@ -169,7 +169,7 @@ func TestContinue_LeavingItToTheAIOrWritingAFreeDirection(t *testing.T) {
 	card = free.propose(t)
 	_, err = free.svc.Chat.PostMessage(context.Background(), free.projectID, service.PostMessageInput{Content: "  主人公が窓の外を見る ", ReplyToMessageID: card.ID})
 	require.NoError(t, err)
-	assert.Contains(t, free.llm.users[llm.AgentDirector][1], "主人公が窓の外を見る")
+	assert.Contains(t, free.llm.prompts(llm.AgentDirector)[1], "主人公が窓の外を見る")
 }
 
 func TestContinueConfirm_TheStoryMovingOnCreatesANewSceneAndCapsTheDuration(t *testing.T) {
