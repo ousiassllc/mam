@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -30,9 +31,30 @@ func NewBrandTemplateRepository(db *DB) *BrandTemplateRepository {
 	return &BrandTemplateRepository{db: db, now: time.Now}
 }
 
+// templateNameFree returns ErrConflict when a template already has the name, ignoring case by Unicode
+// simple folding (like the Reference Library's search and tags). The column's COLLATE NOCASE folds
+// ASCII only, so it stays as a backstop and the comparison is made here.
+func templateNameFree(ctx context.Context, tx *sql.Tx, name string) error {
+	rows, err := tx.QueryContext(ctx, `SELECT name FROM brand_template`)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var taken string
+		if err := rows.Scan(&taken); err != nil {
+			return err
+		}
+		if strings.EqualFold(taken, name) {
+			return ErrConflict
+		}
+	}
+	return rows.Err()
+}
+
 // SaveFromProject stores a snapshot of the Project's constraints as a template with the (already
 // validated) name. An unknown Project is ErrNotFound, a Project without constraints ErrEmpty, a name
-// that is taken (case-insensitively) ErrConflict. Later changes to the Project's constraints do not
+// that is taken (templateNameFree) ErrConflict. Later changes to the Project's constraints do not
 // reach the template.
 func (r *BrandTemplateRepository) SaveFromProject(ctx context.Context, name, projectID string) (domain.BrandTemplate, error) {
 	t := domain.BrandTemplate{ID: domain.NewID(), Name: name, CreatedAt: r.now().UTC()}
@@ -40,12 +62,7 @@ func (r *BrandTemplateRepository) SaveFromProject(ctx context.Context, name, pro
 		if err := projectExists(ctx, tx, projectID); err != nil {
 			return err
 		}
-		var taken int
-		err := tx.QueryRowContext(ctx, `SELECT 1 FROM brand_template WHERE name = ?`, name).Scan(&taken)
-		if err == nil {
-			return ErrConflict
-		}
-		if !errors.Is(err, sql.ErrNoRows) {
+		if err := templateNameFree(ctx, tx, name); err != nil {
 			return err
 		}
 		constraints, err := projectConstraints(ctx, tx, projectID)
