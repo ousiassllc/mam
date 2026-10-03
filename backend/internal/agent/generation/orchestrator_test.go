@@ -305,19 +305,6 @@ func TestOrchestrator_StartRefusesASecondRunAndReleasesOnQueueFailure(t *testing
 	assert.ErrorIs(t, err, repository.ErrNotFound)
 }
 
-func TestOrchestrator_RecoverReleasesShotsLeftGenerating(t *testing.T) {
-	f := newFixture(t, options{})
-	_, err := f.orch.Start(context.Background(), f.shotID, "")
-	require.NoError(t, err)
-	require.Equal(t, domain.ShotGenerating, f.shotState(t))
-
-	n, err := f.orch.Recover(context.Background())
-
-	require.NoError(t, err)
-	assert.Equal(t, 1, n)
-	assert.Equal(t, domain.ShotPlanning, f.shotState(t))
-}
-
 func TestOrchestrator_HandleRejectsAnInvalidPayload(t *testing.T) {
 	f := newFixture(t, options{})
 	for name, payload := range map[string]string{

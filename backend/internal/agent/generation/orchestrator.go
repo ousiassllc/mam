@@ -396,12 +396,6 @@ func (o *Orchestrator) release(ctx context.Context, shotID string) {
 	}
 }
 
-// Recover puts Shots that were being generated when the app terminated abnormally back to PLANNING.
-// Call it at start-up, before the job queue starts: the generate jobs of those Shots are failed by
-// the queue (they are not resumable, so no paid call is repeated silently). A Shot whose job is still
-// queued keeps its state, so that no second job can be started for it.
-func (o *Orchestrator) Recover(ctx context.Context) (int, error) { return o.gens.ResetStaleShots(ctx) }
-
 // Handle is the job handler of domain.JobGenerate. Register it as NOT resumable: a generation
 // costs money, so an interrupted one is failed and the user starts it again.
 func (o *Orchestrator) Handle(ctx context.Context, job domain.Job) error {

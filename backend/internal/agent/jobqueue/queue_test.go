@@ -179,6 +179,29 @@ func TestQueue_RecoverFailsJobsWithoutHandler(t *testing.T) {
 	waitStatus(t, repo, job.ID, domain.JobFailed)
 }
 
+// A queued job of a kind nobody handles would be failed by the first worker that claims it; Recover
+// fails it already, so that whoever waits for its work (a Shot) can be released before Start (#436).
+func TestQueue_RecoverFailsQueuedJobsWithoutHandlerAndKeepsTheOthers(t *testing.T) {
+	_, repo := newRepo(t)
+	q := jobqueue.New(repo, jobqueue.Options{})
+	q.Register(domain.JobGenerate, func(context.Context, domain.Job) error { return nil }, false)
+	orphan, err := repo.Create(context.Background(), domain.JobJudge, nil)
+	require.NoError(t, err)
+	handled, err := repo.Create(context.Background(), domain.JobGenerate, nil)
+	require.NoError(t, err)
+
+	_, failed, err := q.Recover(context.Background())
+
+	require.NoError(t, err)
+	assert.Equal(t, 1, failed)
+	got, err := repo.Get(context.Background(), orphan.ID)
+	require.NoError(t, err)
+	assert.Equal(t, domain.JobFailed, got.Status)
+	got, err = repo.Get(context.Background(), handled.ID)
+	require.NoError(t, err)
+	assert.Equal(t, domain.JobQueued, got.Status)
+}
+
 func TestQueue_StopRequeuesInterruptedJobSoNextStartResumesIt(t *testing.T) {
 	_, repo := newRepo(t)
 	started := make(chan struct{})

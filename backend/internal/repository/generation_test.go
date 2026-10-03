@@ -122,6 +122,38 @@ func TestGenerationRepository_ResetStaleShotsReleasesShotsWhoseJobWasRunning(t *
 	assert.Equal(t, 1, n, "the interrupted job is failed by the queue, so its Shot has to be released")
 }
 
+// A JUDGING Shot has no handler of its own to release it when its judge job ends without running one
+// (attempts used up, no Judge configured): ResetStaleShots releases it once no judge job is waiting
+// or running (#436).
+func TestGenerationRepository_ResetStaleShotsReleasesJudgingShotsOnlyWhenNoJudgeJobCanStillRelease(t *testing.T) {
+	ctx := context.Background()
+	f := newGenRepoFixture(t)
+	jobs := repository.NewJobRepository(f.db)
+	judging := func() domain.ShotState {
+		ref, err := f.repo.GetShot(ctx, f.shotID)
+		require.NoError(t, err)
+		return ref.Shot.State
+	}
+	require.NoError(t, f.repo.SetShotState(ctx, f.shotID, domain.ShotJudging))
+	j, err := jobs.Create(ctx, domain.JobJudge, json.RawMessage(`{"take_id":"t","shot_id":"`+f.shotID+`"}`))
+	require.NoError(t, err)
+
+	n, err := f.repo.ResetStaleShots(ctx)
+	require.NoError(t, err)
+	assert.Zero(t, n, "a queued judge job will run and release the Shot")
+	require.NoError(t, jobs.MarkRunning(ctx, j.ID))
+	n, err = f.repo.ResetStaleShots(ctx)
+	require.NoError(t, err)
+	assert.Zero(t, n, "a running judge job is requeued or failed by the queue afterwards")
+	assert.Equal(t, domain.ShotJudging, judging())
+
+	require.NoError(t, jobs.MarkFailed(ctx, j.ID, "interrupted by abnormal termination"))
+	n, err = f.repo.ResetStaleShots(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 1, n, "the job failed without its handler: the Shot is released")
+	assert.Equal(t, domain.ShotPlanning, judging())
+}
+
 func TestGenerationRepository_ListProjectShotsIsInStoryOrder(t *testing.T) {
 	f := newGenRepoFixture(t)
 	shots, err := f.repo.ListProjectShots(context.Background(), f.projectID)

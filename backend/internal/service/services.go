@@ -97,13 +97,12 @@ type Services struct {
 // stopped.
 func (s *Services) Close() { s.Editor.Close() }
 
-// Recover puts Shots left GENERATING by an abnormal termination back to PLANNING. It MUST run
-// after New and before the job queue starts (their generate jobs are then failed by the queue).
+// Recover puts Shots left GENERATING, REPAIRING or JUDGING by an abnormal termination back to PLANNING.
+// It MUST run after New and before the job queue starts, twice: before the queue resolves its running
+// jobs (their generate jobs are then failed by it) and after (a judge job it failed leaves its Shot
+// JUDGING with no handler to release it). A Shot with a job that will still run keeps its state.
 func (s *Services) Recover(ctx context.Context) (int, error) {
-	if s.Generation.gen == nil {
-		return 0, nil
-	}
-	return s.Generation.gen.Recover(ctx)
+	return s.Generation.shots.ResetStaleShots(ctx)
 }
 
 // New builds every service from deps. When deps.Jobs is set, job status changes refresh
