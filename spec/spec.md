@@ -248,6 +248,8 @@ AUTO MODEでは、人間が確認する頻度を選択できる。
 
 > 最初の2秒はこのTakeを使って、その後だけ撮り直して。
 
+> **実装の範囲**: 4 つ目の例（「Take B の演技は残して、カメラだけ Take C に近づけて」）のように、別々の Take の要素（演技とカメラなど）を取り出して組み合わせる指示は未対応。Command Interpreter は Take を参照できず、Shot の現行 Spec からの再生成になる（Take を組み合わせる操作は §14 の Partial Take Use による区間の合成だけ。DIRECTOR の指示で構造化できる操作は §24 Example 4）。
+
 ## 5.2 Scene / Shot / Take Hierarchy
 
 ```text
