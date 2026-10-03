@@ -126,10 +126,15 @@ export class MamTimelineEditor extends LitElement {
       this.error = '';
     } catch (error) {
       if (token !== this.loadToken) return;
-      this.body = null;
-      this.clips = [];
-      // 404: there is no Rough Cut yet, which is not an error to shout about.
-      this.error = (error as { status?: number }).status === 404 ? '' : errorMessage(error);
+      if ((error as { status?: number }).status === 404) {
+        // There is no Rough Cut (any more), which is not an error to shout about.
+        this.body = null;
+        this.clips = [];
+        this.error = '';
+      } else {
+        // Any other failure says nothing about the timeline: keep the one on screen (and its unsaved edits).
+        this.error = errorMessage(error);
+      }
       log.warn('could not load the Edit Timeline', error);
     } finally {
       if (token === this.loadToken) this.loaded = true;
@@ -213,7 +218,9 @@ export class MamTimelineEditor extends LitElement {
     if (!this.loaded) return html`<p class="text-sm text-neutral-400" role="status">読み込み中…</p>`;
     const body = this.body;
     if (!body) {
-      return html`${this.renderError()}<p class="text-sm text-neutral-400" data-empty>
+      // Only a 404 (no error) means "no Rough Cut yet"; a failed first load shows its error alone.
+      if (this.error) return this.renderError();
+      return html`<p class="text-sm text-neutral-400" data-empty>
           Rough Cut がまだありません。各 Shot の採用 Take を選んでから「Rough Cut を作成」を押してください。
         </p>`;
     }
