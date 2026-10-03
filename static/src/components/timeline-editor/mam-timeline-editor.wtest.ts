@@ -238,6 +238,62 @@ describe('mam-timeline-editor', () => {
     expect((el.querySelector('[data-action="save"]') as HTMLButtonElement).disabled).to.equal(true);
   });
 
+  it('puts the accepted value back into a caption that was refused, and drops the refused text on a reload', async () => {
+    stub = stubFetch({ [`GET ${API}`]: { body: timeline('e1', three()) } });
+    const el = await editor();
+    const box = el.querySelector('[data-clip="a"] [data-field="caption"]') as HTMLTextAreaElement;
+
+    type(box as unknown as HTMLInputElement, 'あ'.repeat(11));
+    await waitUntil(() => el.querySelector('[data-error]') !== null);
+    await el.updateComplete;
+    expect(box.value).to.equal('あ'.repeat(11)); // stays in the box so it can be shortened
+
+    (el.querySelector('[data-action="revert"]') as HTMLButtonElement | null)?.click();
+    document.dispatchEvent(new CustomEvent('timeline-reload'));
+    await waitUntil(() => el.querySelector('[data-error]') === null);
+    await el.updateComplete;
+    expect(box.value).to.equal(''); // the model's caption
+  });
+
+  it('writes the clamped transition length back into the input, also when the model does not change', async () => {
+    stub = stubFetch({ [`GET ${API}`]: { body: timeline('e1', [clip('a', 0, 4), clip('b', 0, 3, { transition: { type: 'fade', seconds: 1 } }), clip('c', 0, 2)]) } });
+    const el = await editor();
+    const seconds = el.querySelector('[data-clip="b"] [data-field="transition-seconds"]') as HTMLInputElement;
+
+    type(seconds, '5'); // max_transition_seconds = 2
+    await waitUntil(() => seconds.value === '2');
+    type(seconds, '5'); // the model is already 2: no change, the input still has to go back
+    await waitUntil(() => seconds.value === '2');
+    type(seconds, '0');
+    await waitUntil(() => seconds.value === '0.1');
+    type(seconds, '');
+    await waitUntil(() => seconds.value === '0.5');
+  });
+
+  it('keeps every transition select on its own clip after the user changed one and the clips were reordered', async () => {
+    const fade = { transition: { type: 'fade' as const, seconds: 0.5 } };
+    stub = stubFetch({ [`GET ${API}`]: { body: timeline('e1', [clip('a', 0, 4), clip('b', 0, 3), clip('c', 0, 2, fade)]) } });
+    const el = await editor();
+    const select = (shot: string) => el.querySelector(`[data-clip="${shot}"] [data-field="transition"]`) as HTMLSelectElement;
+    const shown = () => [...el.querySelectorAll<HTMLSelectElement>('[data-field="transition"]')].map((s) => s.value);
+
+    type(select('b'), 'fade'); // b: cut → fade (the option is dirty now)
+    await waitUntil(() => el.querySelector('[data-clip="b"] [data-field="transition-seconds"]') !== null);
+    type(select('b'), 'cut');
+    await waitUntil(() => el.querySelector('[data-clip="b"] [data-field="transition-seconds"]') === null);
+    expect(shown()).to.deep.equal(['cut', 'fade']);
+
+    (el.querySelector('[data-clip="c"] [data-action="up"]') as HTMLButtonElement).click(); // a c b
+    await waitUntil(() => order(el).join() === 'a,c,b');
+    await el.updateComplete;
+    expect(shown()).to.deep.equal(['fade', 'cut']);
+
+    (el.querySelector('[data-clip="c"] [data-action="remove"]') as HTMLButtonElement).click(); // a b
+    await waitUntil(() => order(el).join() === 'a,b');
+    await el.updateComplete;
+    expect(shown()).to.deep.equal(['cut']);
+  });
+
   it('shows the additional Shot a need_shot verdict asks the Director for', async () => {
     const judge = {
       verdict: 'need_shot' as const,
