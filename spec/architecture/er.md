@@ -8,9 +8,9 @@
 erDiagram
     PROJECT ||--|| BRIEF : has
     PROJECT ||--o{ ASSET : owns
-    PROJECT ||--o{ CHARACTER : owns
-    PROJECT ||--o{ PRODUCT : owns
-    PROJECT ||--o{ LOCATION : owns
+    PROJECT |o--o{ CHARACTER : owns
+    PROJECT |o--o{ PRODUCT : owns
+    PROJECT |o--o{ LOCATION : owns
     PROJECT ||--o{ SCRIPT_VERSION : has
     PROJECT ||--o{ SCENE : contains
     PROJECT ||--o{ WORLD_STATE_VERSION : tracks
@@ -22,14 +22,14 @@ erDiagram
     PROJECT ||--o{ COST_LEDGER_ENTRY : accrues
     PROJECT ||--o{ BRAND_CONSTRAINT : enforces
     PROJECT ||--o{ CHAT_MESSAGE : thread
-    CHAT_MESSAGE ||--o{ CHAT_MESSAGE : replies
-    SERIES ||--o{ PROJECT : episodes
-    SERIES ||--o{ CHARACTER : canonical_characters
-    SERIES ||--o{ PRODUCT : canonical_products
-    SERIES ||--o{ LOCATION : canonical_locations
+    CHAT_MESSAGE |o--o{ CHAT_MESSAGE : replies
+    SERIES |o--o{ PROJECT : episodes
+    SERIES |o--o{ CHARACTER : canonical_characters
+    SERIES |o--o{ PRODUCT : canonical_products
+    SERIES |o--o{ LOCATION : canonical_locations
     SERIES ||--o{ SERIES_VERSION : canon_history
-    PROJECT ||--o{ NOTE : owns
-    SERIES ||--o{ NOTE : canonical_notes
+    PROJECT |o--o{ NOTE : owns
+    SERIES |o--o{ NOTE : canonical_notes
     NOTE ||--o{ NOTE_VERSION : has
     NOTE_VERSION ||--o| NOTE_PROMOTION : proposes
     NOTE_PROMOTION }o--o| WORLD_STATE_VERSION : creates
@@ -50,14 +50,14 @@ erDiagram
     BRANCH }o--o| SHOT : branch_point
     BRANCH }o--o| SCENE : scene_branch_point
     BRANCH ||--o{ BRANCH_VERSION : has
-    BRANCH ||--o{ SCENE : branch_scenes
-    BRANCH ||--o{ WORLD_STATE_VERSION : branch_versions
-    BRANCH ||--o{ CHARACTER : branch_characters
-    BRANCH ||--o{ PRODUCT : branch_products
-    BRANCH ||--o{ LOCATION : branch_locations
-    BRANCH ||--o{ EDIT_TIMELINE_VERSION : branch_edit_timelines
-    BRANCH ||--o{ AUDIO_TIMELINE_VERSION : branch_audio_timelines
-    BRANCH ||--o{ EXPORT : branch_exports
+    BRANCH |o--o{ SCENE : branch_scenes
+    BRANCH |o--o{ WORLD_STATE_VERSION : branch_versions
+    BRANCH |o--o{ CHARACTER : branch_characters
+    BRANCH |o--o{ PRODUCT : branch_products
+    BRANCH |o--o{ LOCATION : branch_locations
+    BRANCH |o--o{ EDIT_TIMELINE_VERSION : branch_edit_timelines
+    BRANCH |o--o{ AUDIO_TIMELINE_VERSION : branch_audio_timelines
+    BRANCH |o--o{ EXPORT : branch_exports
     BRANCH_VERSION }o--o| WORLD_STATE_VERSION : version_snapshot
 
     EDIT_TIMELINE_VERSION ||--o{ EDITOR_JUDGE_RESULT : evaluated_by
@@ -219,13 +219,13 @@ erDiagram
 
 ```mermaid
 erDiagram
-    PROJECT ||--o{ CHARACTER : owns
-    PROJECT ||--o{ PRODUCT : owns
-    PROJECT ||--o{ LOCATION : owns
-    SERIES ||--o{ PROJECT : episodes
-    SERIES ||--o{ CHARACTER : canonical_characters
-    SERIES ||--o{ PRODUCT : canonical_products
-    SERIES ||--o{ LOCATION : canonical_locations
+    PROJECT |o--o{ CHARACTER : owns
+    PROJECT |o--o{ PRODUCT : owns
+    PROJECT |o--o{ LOCATION : owns
+    SERIES |o--o{ PROJECT : episodes
+    SERIES |o--o{ CHARACTER : canonical_characters
+    SERIES |o--o{ PRODUCT : canonical_products
+    SERIES |o--o{ LOCATION : canonical_locations
     SERIES ||--o{ SERIES_VERSION : canon_history
     PROJECT ||--o{ WORLD_STATE_VERSION : tracks
     SHOT ||--o{ STATE_DIFF : produces
@@ -234,12 +234,12 @@ erDiagram
     BRANCH }o--o| SHOT : branch_point
     BRANCH }o--o| SCENE : scene_branch_point
     BRANCH ||--o{ BRANCH_VERSION : has
-    BRANCH ||--o{ WORLD_STATE_VERSION : branch_versions
-    BRANCH ||--o{ SCENE : branch_scenes
+    BRANCH |o--o{ WORLD_STATE_VERSION : branch_versions
+    BRANCH |o--o{ SCENE : branch_scenes
     BRANCH_VERSION }o--o| WORLD_STATE_VERSION : version_snapshot
-    BRANCH ||--o{ CHARACTER : branch_characters
-    BRANCH ||--o{ PRODUCT : branch_products
-    BRANCH ||--o{ LOCATION : branch_locations
+    BRANCH |o--o{ CHARACTER : branch_characters
+    BRANCH |o--o{ PRODUCT : branch_products
+    BRANCH |o--o{ LOCATION : branch_locations
 
     CHARACTER {
         string id PK
@@ -334,7 +334,7 @@ erDiagram
     }
     PROJECT ||--o{ REFERENCE_ITEM : library
     ASSET ||--o| REFERENCE_ITEM : registered_as
-    SHOT ||--o{ REFERENCE_ITEM : made_for
+    SHOT |o--o{ REFERENCE_ITEM : made_for
     REFERENCE_ITEM {
         string id PK
         string project_id FK
@@ -359,11 +359,11 @@ erDiagram
     PROJECT ||--o{ AUDIO_TIMELINE_VERSION : has
     PROJECT ||--o{ VOICE_CLONE : has
     PROJECT ||--o{ EXPORT : produces
-    BRANCH ||--o{ EDIT_TIMELINE_VERSION : branch_edit_timelines
-    BRANCH ||--o{ AUDIO_TIMELINE_VERSION : branch_audio_timelines
-    BRANCH ||--o{ EXPORT : branch_exports
+    BRANCH |o--o{ EDIT_TIMELINE_VERSION : branch_edit_timelines
+    BRANCH |o--o{ AUDIO_TIMELINE_VERSION : branch_audio_timelines
+    BRANCH |o--o{ EXPORT : branch_exports
     PROJECT ||--o{ RESHOOT_REQUEST : requests
-    BRANCH ||--o{ RESHOOT_REQUEST : branch_reshoots
+    BRANCH |o--o{ RESHOOT_REQUEST : branch_reshoots
     EDIT_TIMELINE_VERSION ||--o{ RESHOOT_REQUEST : judged_version
     EDIT_TIMELINE_VERSION |o--o{ RESHOOT_REQUEST : applied_version
     SHOT ||--o{ RESHOOT_REQUEST : requested_shot
@@ -518,8 +518,8 @@ erDiagram
 
 ```mermaid
 erDiagram
-    PROJECT ||--o{ NOTE : owns
-    SERIES ||--o{ NOTE : canonical_notes
+    PROJECT |o--o{ NOTE : owns
+    SERIES |o--o{ NOTE : canonical_notes
     NOTE ||--o{ NOTE_VERSION : has
     NOTE_VERSION ||--o| NOTE_PROMOTION : proposes
     NOTE_PROMOTION }o--o| WORLD_STATE_VERSION : creates
@@ -766,3 +766,4 @@ erDiagram
 | 1.59 | 2026-10-03 | §4 の不要 Take のアーカイブに、Selected Take に加えて最新の Edit / Audio Timeline（主系列トランクと各 Branch）が参照する Take も保護されることを追記 | 実装（`takeInUse`）は Timeline が参照する Take もアーカイブ対象から外し、仕様の「Selected Take のみ」と食い違っていたため（Issue #412） |
 | 1.60 | 2026-10-03 | §4 のプロジェクトバンドルの `assets/` に、Audio Timeline が指す音声（ミックス・クリップ）と Lip Sync 動画も入ることを追記 | 実装（`domain.AudioTimelinePaths` と `service/bundle.go`）と endpoints.md §2.1 はこれらも同梱するが、er.md は「Asset/Take/Export のファイル」だけと読めたため（Issue #413） |
 | 1.61 | 2026-10-03 | §4 の `repair_action` の Retry Policy の Max retries を、「`resulting_take_id` が非NULLの再生成系 Repair の数」だけから、Prompt Candidate Generation が作った Take の数（最初の 1 本を除く）を足した定義（spec.md §9.4 と同じ）に直した | 実装（`domain.RetriesDone` + `domain.CandidateRetries`）は候補生成の Take も数えるが、`repair_action` の行数だけでは再現できなかったため（Issue #409） |
+| 1.62 | 2026-10-03 | §1・§2.2・§2.3・§2.5 の関係線のうち、NULL 許容の FK を `||--o{`（exactly-one）で描いていたものを `|o--o{`（zero-or-one）に直した（`PROJECT`→`CHARACTER` / `PRODUCT` / `LOCATION` / `NOTE`、`SERIES`→`PROJECT` / `CHARACTER` / `PRODUCT` / `LOCATION` / `NOTE`、`BRANCH`→`SCENE` / `WORLD_STATE_VERSION` / `CHARACTER` / `PRODUCT` / `LOCATION` / `EDIT_TIMELINE_VERSION` / `AUDIO_TIMELINE_VERSION` / `EXPORT` / `RESHOOT_REQUEST`、`CHAT_MESSAGE`→`CHAT_MESSAGE`、`SHOT`→`REFERENCE_ITEM`）。`project_id` / `series_id` のどちらか一方が非NULLという排他は §3 の CHECK 制約の説明に任せる | 実スキーマ（マイグレーションの `project.series_id`、`character` / `product` / `location` の `project_id` / `series_id` / `branch_id`、`scene` ほかの `branch_id`、`chat_message.reply_to_message_id`、`reference_item.source_shot_id` はいずれも NOT NULL なし）と §3 の本文に合わせ、改訂履歴 1.4 / 1.48 と同じ表記にするため（Issue #428） |
