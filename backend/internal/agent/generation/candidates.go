@@ -175,7 +175,7 @@ func (o *Orchestrator) prepareCandidates(ctx context.Context, ref repository.Sho
 		in := sc.plannerInput(ref, instruction)
 		in.Current, in.Strategy = current, s
 		if current != nil {
-			in.Fixed, in.Manual = slices.Concat(locks.LockedParts(), preserve), locks.PartsWith(domain.LockManual)
+			in.Fixed, in.Manual = candidateParts(locks, preserve, instruction)
 		}
 		spec, err := o.planner.Plan(ctx, in)
 		if err != nil {
@@ -265,6 +265,19 @@ func (r *candidateRun) strategy(ctx context.Context) (Strategy, error) {
 	return r.o.decide(ctx, r.ref, r.sc.policy, specOf(r.ref.Shot), budget)
 }
 
+// candidateParts are the parts of the Shot's spec a Prompt Candidate must keep (fixed) and the parts
+// the user specified that it should keep (manual) when the Prompt Planner writes it. The strategy of a
+// Candidate rewrites the spec, so the parts the user set himself (MANUAL) are carried like the single
+// generation carries them: with no instruction the spec is not rewritten there, so they stay exactly
+// as they are, and they are fixed here too; an instruction may change them, so they are only a hint.
+func candidateParts(locks domain.ParameterLocks, preserve []domain.SpecPart, instruction string) (fixed, manual []domain.SpecPart) {
+	fixed, manual = slices.Concat(locks.LockedParts(), preserve), locks.PartsWith(domain.LockManual)
+	if strings.TrimSpace(instruction) == "" {
+		return slices.Concat(fixed, manual), nil
+	}
+	return fixed, manual
+}
+
 // plan has the Prompt Planner write the Candidate of the strategy.
 func (r *candidateRun) plan(ctx context.Context, strategy domain.CandidateStrategy) (domain.ShotSpec, error) {
 	for i, s := range domain.CandidateStrategies() {
@@ -275,7 +288,7 @@ func (r *candidateRun) plan(ctx context.Context, strategy domain.CandidateStrate
 	in := r.sc.plannerInput(r.ref, r.instruction)
 	in.Current, in.Strategy = r.current, strategy
 	if r.current != nil {
-		in.Fixed, in.Manual = slices.Concat(r.locks.LockedParts(), r.preserve), r.locks.PartsWith(domain.LockManual)
+		in.Fixed, in.Manual = candidateParts(r.locks, r.preserve, r.instruction)
 	}
 	return r.o.planner.Plan(ctx, in)
 }
