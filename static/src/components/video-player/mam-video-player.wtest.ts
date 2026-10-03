@@ -63,6 +63,26 @@ describe('mam-video-player: seeking', () => {
     expect(timecode()).to.equal('00:00:00');
   });
 
+  it('leaves the arrow keys with a modifier (Alt/Cmd/Ctrl + arrow: browser back/forward) to the browser', async () => {
+    const el = await player({ src: CLIP, fps: 25 });
+    await loaded(el);
+    const timecode = () => el.querySelector('[data-timecode]')?.textContent;
+    const video = el.querySelector('video')!;
+
+    for (const modifier of [{ altKey: true }, { metaKey: true }, { ctrlKey: true }]) {
+      const event = new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true, ...modifier });
+      video.dispatchEvent(event);
+      expect(event.defaultPrevented, JSON.stringify(modifier)).to.equal(false);
+    }
+    await aTimeout(100);
+    expect(timecode()).to.equal('00:00:00');
+
+    const plain = new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true });
+    video.dispatchEvent(plain);
+    expect(plain.defaultPrevented).to.equal(true);
+    await waitUntil(() => timecode() === '00:00:01');
+  });
+
   it('seeks from the time bar', async () => {
     const el = await player({ src: CLIP, fps: 25 });
     await loaded(el);
