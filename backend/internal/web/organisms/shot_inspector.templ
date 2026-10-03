@@ -39,7 +39,7 @@ func (d ShotInspectorData) restoreBlocked() string {
 	return "生成・Repair 中は復元できません。終わってから開き直してください。"
 }
 
-// generationModel is the model the next Take is made with: the one LOCKed for the Shot, otherwise
+// generationModel is the model the next Take is made with: the one LOCKed or set MANUAL for the Shot (not AUTO), otherwise
 // the one of its latest Take, otherwise the Orchestrator's choice.
 func (d ShotInspectorData) generationModel() string {
 	if m := d.Locks.Text(domain.ParamVideoModel); m != "" && d.Locks.Mode(domain.ParamVideoModel) != domain.LockAuto {
