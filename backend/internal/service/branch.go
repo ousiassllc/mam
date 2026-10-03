@@ -290,7 +290,7 @@ func (s *BranchService) continueBranch(ctx context.Context, ref repository.ShotR
 	if err != nil {
 		return notFound(err)
 	}
-	if _, err := s.continues.generation.gen.Start(ctx, shot.ID, direction); err != nil {
+	if _, err := s.continues.generation.gen.StartByPolicy(ctx, shot.ID, direction, nil); err != nil {
 		return branchMadeError(mapGenerationError(err))
 	}
 	s.recordIntervention(ctx, domain.Intervention{ShotID: shot.ID, Kind: domain.InterventionGenerate}) // the user asked for the Branch's first Shot

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/generation"
 	"github.com/ousiassllc/mam/backend/internal/agent/repair"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
@@ -56,11 +57,14 @@ func (s *RepairService) ShadowReport(ctx context.Context) (domain.ShadowReport, 
 type takeActions struct {
 	judges   *repository.JudgeRepository
 	policies *repository.PolicyRepository
+	// gen decides how the card's 生成 button generates (generation.Orchestrator.UsesCandidates); nil when
+	// generation is not configured.
+	gen *generation.Orchestrator
 	// judgeEnabled is whether the Judge is configured; without it POST /takes/:id/judge is always 503.
 	judgeEnabled bool
 }
 
-// mark fills Repairable and Judgeable of the views of one Project. The Retry Policy is read once, and
+// mark fills Candidates, Repairable and Judgeable of the views of one Project. The Retry Policy is read once, and
 // only when a Shot has Takes. Judgeable holds the Takes that were never judged (a failed run stores no
 // result) and may be judged now: a judged Take is evaluated, so offering the run again would only
 // crowd the row.
@@ -68,6 +72,13 @@ func (r takeActions) mark(ctx context.Context, projectID string, views []*ShotVi
 	var policy *domain.ProjectPolicy
 	for _, v := range views {
 		v.Repairable, v.Judgeable = nil, nil
+		if r.gen != nil {
+			by, err := r.gen.UsesCandidates(ctx, v.Shot)
+			if err != nil {
+				return err
+			}
+			v.Candidates = by
+		}
 		for _, t := range v.Takes {
 			if policy == nil {
 				p, err := r.policies.Get(ctx, projectID)

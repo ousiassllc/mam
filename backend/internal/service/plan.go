@@ -28,6 +28,9 @@ type ShotView struct {
 	Selected   bool
 	// Repairable holds the Takes (by ID) whose Repair is accepted now (domain.CheckRepair).
 	Repairable map[string]bool
+	// Candidates is whether the card's 生成 starts Prompt Candidate Generation (the Quality Policy calls
+	// for it, generation.Orchestrator.UsesCandidates) instead of a single generation.
+	Candidates bool
 	// Judgeable holds the unjudged Takes (by ID) whose Judge run is accepted now (domain.CheckJudge).
 	Judgeable map[string]bool
 }

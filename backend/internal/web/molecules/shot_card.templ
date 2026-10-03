@@ -19,6 +19,8 @@ type ShotCardData struct {
 	// Repairable holds the Takes (by ID) whose Repair the server accepts now (domain.CheckRepair):
 	// only they get a Repair button.
 	Repairable map[string]bool
+	// Candidates is whether 生成 starts Prompt Candidate Generation (the Quality Policy calls for it).
+	Candidates bool
 	// Judgeable holds the unjudged Takes (by ID) whose Judge run the server accepts now (domain.CheckJudge).
 	Judgeable map[string]bool
 }
@@ -69,7 +71,16 @@ func selectedVals(selected bool) string {
 	return fmt.Sprintf(`{"%s":"%t"}`, SelectedParam, selected)
 }
 
-func shotActionURL(shotID, action string) string { return paths.Shot(shotID, action) }
+func shotActionURL(shotID string, action ...string) string { return paths.Shot(shotID, action...) }
+
+// generateURL is where the 生成 button of a Shot posts: Prompt Candidate Generation when the Quality
+// Policy calls for it (domain-side decision, service marks it), the single generation otherwise.
+func generateURL(shotID string, candidates bool) string {
+	if candidates {
+		return shotActionURL(shotID, "generate", "candidates")
+	}
+	return shotActionURL(shotID, "generate")
+}
 
 func shotProgressURL(shotID string) string { return paths.ShotProgress(shotID) }
 
@@ -90,10 +101,10 @@ func takeActionURL(takeID, action string) string { return paths.Take(takeID, act
 // building of its Reference Pack. Both answer with the Shot card in the GENERATING state. The card
 // draws them only while the Shot is not busy (domain.ShotState.Busy): the server refuses them then.
 // "続きを作る" is drawn only when Continue is accepted (domain.CanContinue: a Take that was not rejected).
-templ ShotActions(shotID string, canContinue bool) {
+templ ShotActions(shotID string, canContinue bool, candidates bool) {
 	<form
 		class="mt-2 flex flex-wrap items-center gap-2"
-		hx-post={ shotActionURL(shotID, "generate") }
+		hx-post={ generateURL(shotID, candidates) }
 		hx-target={ "#shot-" + shotID }
 		hx-swap="outerHTML"
 	>
@@ -240,7 +251,7 @@ templ ShotCard(d ShotCardData) {
 			</dl>
 		}
 		if d.Selected && !d.Shot.State.Busy() {
-			@ShotActions(d.Shot.ID, domain.CanContinue(d.Shot.State, d.Takes))
+			@ShotActions(d.Shot.ID, domain.CanContinue(d.Shot.State, d.Takes), d.Candidates)
 		}
 		if showsProgressPlayer(d.Shot) {
 			<mam-video-player class="mt-2 block" ws-url={ shotProgressURL(d.Shot.ID) }></mam-video-player>

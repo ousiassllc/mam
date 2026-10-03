@@ -311,7 +311,7 @@ func TestJudge_EveryGeneratedTakeIsJudgedAndTheAPIReturnsTheResult(t *testing.T)
 	// The Shot is released when the last Judge job finishes, a moment after its result is stored.
 	require.Eventually(t, func() bool {
 		page := j.get("/projects/"+j.project+"/scenes/"+j.sceneID+"?shot="+j.shotID, true).Body.String()
-		return strings.Contains(page, `hx-post="/shots/`+j.shotID+`/generate"`)
+		return strings.Contains(page, `hx-post="/shots/`+j.shotID+`/generate`)
 	}, 10*time.Second, 10*time.Millisecond, "the Shot is free again once every Take is judged")
 }
 

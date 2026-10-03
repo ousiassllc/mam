@@ -871,7 +871,7 @@ func (s *DirectorService) regenerate(ctx context.Context, ref *repository.ShotRe
 		return "", false, ErrUnavailable
 	default:
 		record := s.generationRecorder(ctx, ref.Shot.ID)
-		if _, err = s.orch.StartDirected(ctx, ref.Shot.ID, instruction, op.Preserve); err == nil {
+		if _, err = s.orch.StartByPolicy(ctx, ref.Shot.ID, instruction, op.Preserve); err == nil {
 			record()
 		}
 	}

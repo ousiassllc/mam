@@ -321,7 +321,7 @@ func (s *ContinueService) confirm(ctx context.Context, shotID string, in Confirm
 	if err := chat.Announce(done, ref.ProjectID, assistantText(note)); err != nil {
 		s.logger.Error("record continuation in the thread failed", "project_id", ref.ProjectID, "err", err)
 	}
-	if _, err := s.generation.gen.Start(ctx, shot.ID, direction); err != nil {
+	if _, err := s.generation.gen.StartByPolicy(ctx, shot.ID, direction, nil); err != nil {
 		return ShotFragment{}, true, mapGenerationError(err)
 	}
 	// the user asked for this Shot (by choosing or confirming the direction): a generate, as if

@@ -70,7 +70,7 @@ func (s *EditorService) requestShots(ctx context.Context, ver domain.EditTimelin
 		startErr error
 	)
 	for _, r := range reqs {
-		if _, err := s.generation.gen.Start(ctx, r.ShotID, ""); err != nil {
+		if _, err := s.generation.gen.StartByPolicy(ctx, r.ShotID, "", nil); err != nil {
 			failed = append(failed, r)
 			if startErr == nil {
 				startErr = err

@@ -141,3 +141,46 @@ func TestCandidates_ALockedPromptRulesOutRewritingTheSpec(t *testing.T) {
 	assert.Equal(t, http.StatusLocked, rec.Code, rec.Body.String())
 	assert.Equal(t, takes, j.count(`SELECT COUNT(*) FROM take`))
 }
+
+// The 生成 button of a Shot card posts to the Candidate flow wherever it can run (the Judge is on and
+// the Prompt is not LOCKed); everywhere else it is the single generation (#437).
+func TestCandidates_TheCardGenerateButtonPostsToTheCandidateFlowWhereItCanRun(t *testing.T) {
+	j := newJudgeApp(t, goodVerdict, steadyFaces...)
+	page := func() string {
+		return j.get("/projects/"+j.project+"/scenes/"+j.sceneID+"?shot="+j.shotID, true).Body.String()
+	}
+	assert.Contains(t, page(), `hx-post="/shots/`+j.shotID+`/generate/candidates"`)
+	assert.NotContains(t, page(), `hx-post="/shots/`+j.shotID+`/generate"`)
+
+	j.generateAndJudge() // the Shot has a spec now
+	j.setQuality("max_quality")
+	assert.Contains(t, page(), `hx-post="/shots/`+j.shotID+`/generate/candidates"`)
+	require.Equal(t, http.StatusOK, j.form(http.MethodPut, "/shots/"+j.shotID+"/locks", url.Values{"parameter": {"prompt"}, "mode": {"lock"}}).Code)
+	html := page()
+	assert.Contains(t, html, `hx-post="/shots/`+j.shotID+`/generate"`, "a LOCKed Prompt: the server would refuse the Candidates with 423")
+	assert.NotContains(t, html, "/generate/candidates")
+
+	off := newGenApp(t, true) // no Frames: the Judge is off
+	html = off.get("/projects/"+off.project+"/scenes/"+off.sceneID+"?shot="+off.shotID, true).Body.String()
+	assert.Contains(t, html, `hx-post="/shots/`+off.shotID+`/generate"`, "without the Judge the server answers /generate/candidates with 503")
+	assert.NotContains(t, html, "/generate/candidates")
+}
+
+// The director's "regenerate" goes through the same entry as the card: under MAX QUALITY it makes a
+// Candidate per strategy, not a single Take (#437).
+func TestCandidates_DirectorRegenerateHonoursMaxQuality(t *testing.T) {
+	const regenerate = `{"scene":1,"shot":1,"operations":[{"type":"regenerate","changes":["camera"],"preserve":[],"instruction":"camera movement: static"}]}`
+	j := newJudgeAppOpts(t, judgeOpts{verdict: goodVerdict, command: regenerate}, steadyFaces...)
+	j.director()
+	j.generateAndJudge()
+	j.setQuality("max_quality")
+	before := j.count(`SELECT COUNT(*) FROM take`)
+
+	rec := j.form(http.MethodPost, "/shots/"+j.shotID+"/director-command", url.Values{"content": {"カメラを固定して"}})
+	require.Equal(t, http.StatusAccepted, rec.Code, rec.Body.String())
+
+	require.Eventually(t, func() bool {
+		return j.count(`SELECT COUNT(*) FROM take WHERE json_extract(model_parameters, '$.candidate_strategy') IS NOT NULL`) == 3
+	}, 30*time.Second, 10*time.Millisecond, "a Candidate per strategy")
+	assert.Equal(t, before+3, j.count(`SELECT COUNT(*) FROM take`), "and no single Take besides")
+}

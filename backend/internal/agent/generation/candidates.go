@@ -115,9 +115,11 @@ type candidateRun struct {
 	ref         repository.ShotRef
 	sc          shotContext
 	instruction string
-	current     *domain.ShotSpec // the spec the Shot has, which the Candidates revise
-	locks       domain.ParameterLocks
-	total       int // most Takes this run makes (progress)
+	// preserve are the parts of the spec the director asked to keep as they are (with the LOCKed ones).
+	preserve []domain.SpecPart
+	current  *domain.ShotSpec // the spec the Shot has, which the Candidates revise
+	locks    domain.ParameterLocks
+	total    int // most Takes this run makes (progress)
 	// repaired is the retries the Repair history of the Shot counts (domain.RetriesDone) and earlier
 	// is how many Takes Prompt Candidate Generation made for the Shot before this run: both count
 	// against the Max retries per Shot together with the Takes of this run (retries).
@@ -148,7 +150,7 @@ type candidateRun struct {
 // and refuses a LOCK brand violation before the job is queued. Quality Mode plans every strategy
 // it will shoot; other modes plan only the first, because the rest depend on the Judge.
 // A nil slice means the job should plan them itself (the planner failed for another reason).
-func (o *Orchestrator) prepareCandidates(ctx context.Context, ref repository.ShotRef, instruction string, strategy Strategy) ([]domain.ShotSpec, error) {
+func (o *Orchestrator) prepareCandidates(ctx context.Context, ref repository.ShotRef, instruction string, preserve []domain.SpecPart, strategy Strategy) ([]domain.ShotSpec, error) {
 	if err := refuseBusy(ref); err != nil {
 		return nil, err // before the Prompt Planner is paid for
 	}
@@ -173,7 +175,7 @@ func (o *Orchestrator) prepareCandidates(ctx context.Context, ref repository.Sho
 		in := sc.plannerInput(ref, instruction)
 		in.Current, in.Strategy = current, s
 		if current != nil {
-			in.Fixed, in.Manual = locks.LockedParts(), locks.PartsWith(domain.LockManual)
+			in.Fixed, in.Manual = slices.Concat(locks.LockedParts(), preserve), locks.PartsWith(domain.LockManual)
 		}
 		spec, err := o.planner.Plan(ctx, in)
 		if err != nil {
@@ -187,7 +189,7 @@ func (o *Orchestrator) prepareCandidates(ctx context.Context, ref repository.Sho
 	return prepared, nil
 }
 
-func (o *Orchestrator) generateCandidates(ctx context.Context, ref repository.ShotRef, instruction string, prepared []domain.ShotSpec) (Progress, error) {
+func (o *Orchestrator) generateCandidates(ctx context.Context, ref repository.ShotRef, instruction string, preserve []domain.SpecPart, prepared []domain.ShotSpec) (Progress, error) {
 	sc, err := o.loadShotContext(ctx, ref, instruction)
 	if err != nil {
 		return Progress{}, err
@@ -199,7 +201,7 @@ func (o *Orchestrator) generateCandidates(ctx context.Context, ref repository.Sh
 	if err != nil {
 		return Progress{}, err
 	}
-	run := &candidateRun{o: o, ref: ref, sc: sc, instruction: instruction, locks: locks, prepared: prepared}
+	run := &candidateRun{o: o, ref: ref, sc: sc, instruction: instruction, preserve: preserve, locks: locks, prepared: prepared}
 	if current, ok := ref.Shot.CanonicalSpec(); ok {
 		run.current = &current
 	}
@@ -273,7 +275,7 @@ func (r *candidateRun) plan(ctx context.Context, strategy domain.CandidateStrate
 	in := r.sc.plannerInput(r.ref, r.instruction)
 	in.Current, in.Strategy = r.current, strategy
 	if r.current != nil {
-		in.Fixed, in.Manual = r.locks.LockedParts(), r.locks.PartsWith(domain.LockManual)
+		in.Fixed, in.Manual = slices.Concat(r.locks.LockedParts(), r.preserve), r.locks.PartsWith(domain.LockManual)
 	}
 	return r.o.planner.Plan(ctx, in)
 }
