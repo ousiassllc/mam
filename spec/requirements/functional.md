@@ -183,7 +183,7 @@
 
 チャットの横、または別ページで開く。スレッド内カードと［⋯］メニューから到達でき、操作結果は同じ Project の状態とスレッドに反映される。
 
-- **Inspector**（選択中 Shot の詳細）: Shot Objective / Duration / Character / Acting / Camera / Lighting / Product / Continuity / References / Prompt / Generation Model / Take List / Judge Results / Locks。Take List は Take ごとに最新の Judge Result（pass/fail・確信度・Issue の一覧、LOCK 違反の印）を並べ、Generation Model は Shot に LOCK または MANUAL で指定したモデル（AUTO のときは使わない）、なければ最新 Take のモデル、なければ「自動選択」を示す。Prompt（モデル別プロンプト）は Shot のインスペクターには常設せず、各 Take の「生成の経緯」（Generation Trace）で確認する。各項目には AUTO / MANUAL / LOCK の切替コントロールを持つ
+- **Inspector**（選択中 Shot の詳細）: Shot Objective / Duration / Character / Acting / Camera / Lighting / Product / Continuity / References / Prompt / Generation Model / Take List / Judge Results / Locks。Take List は Take ごとに最新の Judge Result（pass/fail・確信度・Issue の一覧、LOCK 違反の印）を並べ、Generation Model は Shot に LOCK または MANUAL で指定したモデル（AUTO のときは使わない）、なければ最新 Take のモデル、なければ「自動選択」を示す。Prompt（モデル別プロンプト）は Shot のインスペクターには常設せず、各 Take の「生成の経緯」（Generation Trace）で確認する。AUTO / MANUAL / LOCK の切替は Locks セクションだけにあり、Shot 単位のパラメータ（`spec/spec.md` §6 の Dialogue / Character Identity / Acting / Camera / Lighting / Product Geometry / Prompt / Video Model / Take Selection / Editing）ごとに切り替える。その他の項目（Shot Objective・Duration・Continuity・References・Take List・Judge Results）は表示のみ
 - Take 比較（§3.4）、Timeline、Branch ツリー（§3.5）、World State、Notes（M2）、Cost、Settings
 
 ### 3.3 典型的な操作フロー（モード遷移）
