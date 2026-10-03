@@ -79,6 +79,9 @@ var ErrNoAPIKey = errors.New("modeladapter: API key is not configured")
 // ErrTimeout means a model call exceeded the vendor's timeout.
 var ErrTimeout = errors.New("modeladapter: model call timed out")
 
+// ErrTimeLimit means the model calls of a job together exceeded VideoJob.MaxTime.
+var ErrTimeLimit = errors.New("modeladapter: the time limit of the job was exceeded")
+
 // ErrCircuitOpen means the model was skipped because its circuit breaker is open. The error of a whole
 // route matches it only when every model of the route was skipped.
 var ErrCircuitOpen = errors.New("modeladapter: circuit breaker is open")

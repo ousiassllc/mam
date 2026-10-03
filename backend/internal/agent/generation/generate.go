@@ -361,11 +361,12 @@ func (o *Orchestrator) makeTake(ctx context.Context, ref repository.ShotRef, pv 
 		return "", ErrBudgetExceeded
 	}
 	defer release() // also when the generation fails or the cost was written by recordPaid below
-	callCtx, cancel := context.WithTimeout(ctx, limit)
-	defer cancel()
-	out, err := o.adapter.GenerateVideo(callCtx, s.Primary, s.Fallback, job)
+	// The limit counts model time: the Adapter starts it when a vendor slot is held, not while the
+	// Take waits for other generations to free one.
+	job.MaxTime = limit
+	out, err := o.adapter.GenerateVideo(ctx, s.Primary, s.Fallback, job)
 	if err != nil {
-		if ctx.Err() == nil && errors.Is(callCtx.Err(), context.DeadlineExceeded) {
+		if ctx.Err() == nil && errors.Is(err, modeladapter.ErrTimeLimit) {
 			return "", fmt.Errorf("%w (%s): %w", ErrGenerationTimeLimit, limit, err)
 		}
 		return "", err

@@ -3,6 +3,7 @@ package modeladapter
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
@@ -23,6 +24,10 @@ type VideoJob struct {
 	// takes free reference images reads them and leaves the frames out, any other model keeps
 	// its frames, so the fail over model gets the input it can use.
 	PreferReferences bool
+	// MaxTime bounds the time the model calls of the job take (Max generation time of the Quality/Cost
+	// Policy; 0: no bound). The time starts when the first vendor concurrency slot is held: waiting for
+	// a slot is not time the model spent. When it runs out GenerateVideo fails with ErrTimeLimit.
+	MaxTime time.Duration
 }
 
 // constraintPhrases are the wording of the constraints the Prompt Planner uses most.
