@@ -10,11 +10,11 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
   - ページ/アクションルートのバリデーションエラー（422）: フォームをエラー付きで再レンダリング
   - ビジネスエラー（403/409/423等）: OOBスワップでトースト表示
   - APIルートのエラー: Huma による RFC 7807 Problem Details
-  - 共通ミドルウェアが Huma より前に返すエラー（非ループバック・CSRF 不一致の 403、本文上限の 413、読めない multipart・urlencoded フォームの 400）は `/api/v1` でも RFC 7807 ではなく JSON `{"error": string}`（理由が無いときは空本文）。RFC 7807 はハンドラ内の Huma エラーだけ。HTMX リクエストにはトーストを返す
+  - 共通ミドルウェアが Huma より前に返すエラー（非ループバック・CSRF 不一致の 403、本文上限の 413、読めない urlencoded フォームの 400）は `/api/v1` でも RFC 7807 ではなく JSON `{"error": string}`（理由が無いときは空本文）。RFC 7807 はハンドラ内の Huma エラーだけ。HTMX リクエストにはトーストを返す。読めない `multipart/form-data` の 400 と、アップロードルートの multipart の 413 はこのミドルウェアではなく、`readMultipart` を呼ぶ各ハンドラが他のビジネスエラーと同じ表示（トースト、フォームを持つルートはエラー付きの再描画。JSON ではない）で返す
 - 共通ビジネスエラーコード:
   | HTTPステータス | 意味 |
   |---|---|
-  | 400 | 本文が読み取れない: multipart ではない・途中で切断された multipart（`readMultipart`）、または不正なパーセントエンコードなどで解析できない `application/x-www-form-urlencoded` フォーム（`MaxBody` ミドルウェアが全ルートで返す。非 HTMX は JSON `{"error":"Bad Request"}`、HTMX はトースト） |
+  | 400 | 本文が読み取れない。(1) 不正なパーセントエンコードなどで解析できない `application/x-www-form-urlencoded` フォーム: `MaxBody` ミドルウェアが全ルートで返す（非 HTMX は JSON `{"error":"Bad Request"}`、HTMX はトースト）。(2) multipart ではない・途中で切断された `multipart/form-data`: `MaxBody` はアップロードルートの multipart をそのまま通すので、`readMultipart` を呼ぶアップロードルートのハンドラが「送信内容の形式が正しくありません」としてトースト／フォーム再描画で返す（JSON ではない） |
   | 413 | リクエスト本文が上限を超えた（`MaxBody` ミドルウェアが 1MiB。`readMultipart` を呼ぶアップロードルートの `multipart/form-data` の本文だけが各上限で（`POST /projects/import` は 8 GB + 1 MiB、§2.1。参照画像 `POST /projects/:id/references` は 20 MB + 1 MiB、音声サンプル `POST /projects/:id/audio/voices` は 10 MB + 1 MiB、Review Response `POST /projects/:id/reviews/feedback` は 1 MiB + 1 MiB、Review Package `POST /reviews/import` は 2 GiB + 2 MiB、チャット作成 `POST /projects` とチャット発言 `POST /projects/:id/messages` は添付 8 件 × 動画上限 300 MB + 1 MiB（約 2.34 GiB）。つまり「ファイルが各ファイルの上限を超え、本文全体は上限内」のときだけ各ルートの 422 になり、本文全体が上限を超えれば 413 になる）。`Content-Length` が上限を超えていれば本文を読む前に 413 にする、アップロードルートでも multipart 以外（urlencoded など）の本文は 1MiB のまま。Content-Type を `multipart/form-data` にしてもそれ以外のルートの上限は外れない。宣言された長さが上限を超える本文は読まずに 413） |
   | 402 | Project/Shot budget ceiling 超過（F-22） |
   | 403 | Brand/Safety Constraint 違反、CSRF トークンの不正、または非ループバックからのアクセス |
