@@ -527,7 +527,7 @@ func TestSubscribeShot_SaysIdleWhenNothingRunsAndStreamsProgressUntilDone(t *tes
 	assert.Contains(t, stages, generation.StageGenerating)
 }
 
-func TestSubscribeShot_RepairingShotIsNotToldIdle(t *testing.T) {
+func TestSubscribeShot_RepairingShotIsToldItIsRepairing(t *testing.T) {
 	f := newGenFixture(t, true)
 	ctx := context.Background()
 	require.NoError(t, f.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
@@ -541,8 +541,10 @@ func TestSubscribeShot_RepairingShotIsNotToldIdle(t *testing.T) {
 
 	select {
 	case p := <-ch:
-		t.Fatalf("a Shot being repaired must not start with a message, got stage %q", p.Stage)
-	case <-time.After(200 * time.Millisecond):
+		assert.Equal(t, generation.StageRepairing, p.Stage, "a Shot being repaired starts with its stage, not idle")
+		assert.Equal(t, generation.ActionRepair, p.Action)
+	case <-time.After(5 * time.Second):
+		t.Fatal("no first message")
 	}
 }
 
