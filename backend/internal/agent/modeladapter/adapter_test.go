@@ -554,3 +554,46 @@ func TestGenerateVideoIsCircuitOpenWhenEveryModelOfTheRouteIsSkipped(t *testing.
 
 	assert.ErrorIs(t, err, modeladapter.ErrCircuitOpen)
 }
+
+func TestGenerateVideoTimeLimitStartsOnceTheVendorSlotIsHeld(t *testing.T) {
+	cfg := modeladapter.DefaultConfig()
+	vc := cfg.Vendors[modeladapter.VendorSeedance]
+	vc.MaxConcurrency = 1
+	cfg.Vendors[modeladapter.VendorSeedance] = vc
+	f := &fakeVideo{results: []error{nil}, block: make(chan struct{})}
+	a := newAdapter(cfg, modeladapter.Backends{Video: map[domain.ModelName]modeladapter.VideoBackend{domain.ModelSeedance2: f}})
+
+	var wg sync.WaitGroup
+	wg.Go(func() { // takes the only slot
+		_, err := a.GenerateVideo(context.Background(), seedanceTarget, seedanceTarget, baseJob())
+		assert.NoError(t, err)
+	})
+	require.Eventually(t, func() bool { return f.inflight.Load() == 1 }, 2*time.Second, 5*time.Millisecond)
+
+	job := baseJob()
+	job.MaxTime = 100 * time.Millisecond
+	errc := make(chan error, 1)
+	go func() {
+		_, err := a.GenerateVideo(context.Background(), seedanceTarget, seedanceTarget, job)
+		errc <- err
+	}()
+	time.Sleep(300 * time.Millisecond) // three times its limit, all of it spent waiting for the slot
+	close(f.block)
+
+	assert.NoError(t, <-errc, "the wait for a slot is not model time")
+	wg.Wait()
+}
+
+func TestGenerateVideoFailsWithTheTimeLimitWhenTheModelIsTooSlowAndSkipsTheAlternative(t *testing.T) {
+	f := &fakeVideo{results: []error{nil}, block: make(chan struct{})}
+	a := newAdapter(modeladapter.DefaultConfig(), modeladapter.Backends{Video: map[domain.ModelName]modeladapter.VideoBackend{
+		domain.ModelSeedance2: f, domain.ModelKling3: f,
+	}})
+	job := baseJob()
+	job.MaxTime = 50 * time.Millisecond
+
+	_, err := a.GenerateVideo(context.Background(), seedanceTarget, klingTarget, job)
+
+	require.ErrorIs(t, err, modeladapter.ErrTimeLimit)
+	assert.NotContains(t, err.Error(), string(domain.ModelKling3), "the alternative is not tried with no time left")
+}
