@@ -180,6 +180,31 @@ describe('mam-timeline-editor', () => {
     expect(order(el)).to.deep.equal(['a', 'c', 'b']);
   });
 
+  it('says the save is done but the reload failed, without "saved" or timeline-updated, when the reload after a save fails', async () => {
+    let gets = 0;
+    stub = stubFetch({
+      [`GET ${API}`]: () => {
+        gets += 1;
+        return gets === 1 ? { body: timeline('e1', three()) } : { status: 503, body: { title: 'Service Unavailable' } };
+      },
+      'PUT /edit-timelines/e1': { status: 200 },
+    });
+    const el = await editor();
+    let updated = false;
+    el.addEventListener('timeline-updated', () => (updated = true));
+    (el.querySelector('[data-clip="c"] [data-action="up"]') as HTMLButtonElement).click();
+    await waitUntil(() => order(el).join() === 'a,c,b');
+
+    (el.querySelector('[data-action="save"]') as HTMLButtonElement).click();
+    await waitUntil(() => el.querySelector('[data-error]') !== null);
+    await el.updateComplete;
+
+    expect(text(el, '[data-error]')).to.contain('再読込に失敗しました');
+    expect(el.querySelector('[data-notice]')).to.equal(null);
+    expect(updated).to.equal(false);
+    expect(text(el, '[data-total]')).to.contain('未保存');
+  });
+
   it('cannot be edited once the server says the timeline is read-only', async () => {
     stub = stubFetch({ [`GET ${API}`]: { body: timeline('e1', three(), { readonly: true }) } });
     const el = await editor();

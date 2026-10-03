@@ -116,19 +116,23 @@ export class MamTimelineEditor extends LitElement {
     if (changed.has('apiUrl')) void this.load();
   }
 
-  /** Loads the latest timeline again, dropping unsaved changes. */
-  async load(): Promise<void> {
+  /**
+   * Loads the latest timeline again, dropping unsaved changes. Resolves false when the request failed (the timeline
+   * on screen is then the old one); a load that a newer one superseded, or a 404 (no Rough Cut), is not a failure.
+   */
+  async load(): Promise<boolean> {
     const token = ++this.loadToken;
-    if (!this.apiUrl) return;
+    if (!this.apiUrl) return true;
+    let ok = true;
     try {
       const body = await get<EditTimelineBody>(this.apiUrl);
-      if (token !== this.loadToken) return;
+      if (token !== this.loadToken) return true;
       this.body = body;
       this.clips = withStarts(body.clips);
       this.captionDraft = null;
       this.error = '';
     } catch (error) {
-      if (token !== this.loadToken) return;
+      if (token !== this.loadToken) return true;
       if ((error as { status?: number }).status === 404) {
         // There is no Rough Cut (any more), which is not an error to shout about.
         this.body = null;
@@ -138,11 +142,13 @@ export class MamTimelineEditor extends LitElement {
       } else {
         // Any other failure says nothing about the timeline: keep the one on screen (and its unsaved edits).
         this.error = errorMessage(error);
+        ok = false;
       }
       log.warn('could not load the Edit Timeline', error);
     } finally {
       if (token === this.loadToken) this.loaded = true;
     }
+    return ok;
   }
 
   private get locked(): boolean {
@@ -217,7 +223,11 @@ export class MamTimelineEditor extends LitElement {
     try {
       await put(body.save_url, toPayload(this.clips));
       this.busy = false;
-      await this.load();
+      if (!(await this.load())) {
+        // Saved, but the screen still shows the old version (unsaved changes, a save from it would be refused as stale): not "updated".
+        this.error = `保存は完了しましたが、最新の版の再読込に失敗しました。「変更を戻す」で再読込してください（${this.error}）`;
+        return;
+      }
       this.notice = '保存しました';
       this.dispatchEvent(new CustomEvent(TIMELINE_UPDATED_EVENT, { detail: { id: this.body?.id ?? '' }, bubbles: true, composed: true }));
     } catch (error) {
