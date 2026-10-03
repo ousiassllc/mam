@@ -72,6 +72,20 @@ func TestShotCard_RepairButtonIsDrawnOnlyForRepairableTakes(t *testing.T) {
 	assert.NotContains(t, html, `/takes/t2/repair"`)
 }
 
+// The Judge button of a Take is drawn only for a Take the server accepts a Judge run of (#438): the
+// service marks them (domain.CheckJudge), the card does not decide it by itself.
+func TestShotCard_JudgeButtonIsDrawnOnlyForJudgeableTakes(t *testing.T) {
+	takes := []domain.Take{
+		{ID: "t1", ShotID: "s1", ModelName: "m", FilePath: "a.mp4", Status: domain.TakeCandidate},
+		{ID: "t2", ShotID: "s1", ModelName: "m", FilePath: "b.mp4", Status: domain.TakeCandidate},
+	}
+	html := render(t, molecules.ShotCard(molecules.ShotCardData{
+		ProjectID: "p", Shot: domain.Shot{ID: "s1", SceneID: "sc"}, Takes: takes, Selected: true, Judgeable: map[string]bool{"t1": true},
+	}))
+	assert.Contains(t, html, `hx-post="/takes/t1/judge"`)
+	assert.NotContains(t, html, `/takes/t2/judge"`)
+}
+
 // The answer buttons of a card share one in-flight request, so that a double click does not send
 // two replies to the same card (#309).
 func TestQuestionCard_AnswerButtonsShareOneInFlightRequest(t *testing.T) {

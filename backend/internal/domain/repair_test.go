@@ -60,3 +60,13 @@ func TestRepairAction_EditLevelIsTheOnlyOneThatDoesNotRegenerate(t *testing.T) {
 	}
 	assert.False(t, domain.RepairAction("unknown").Regenerates())
 }
+
+func TestCheckJudge_NeedsAVideoNoRunInFlightAndAShotThatIsNotBusy(t *testing.T) {
+	take := domain.Take{ID: "t", FilePath: "a.mp4"}
+	assert.Equal(t, domain.JudgeAllowed, domain.CheckJudge(take, false, domain.ShotPlanning))
+	assert.Equal(t, domain.JudgeAllowed, domain.CheckJudge(take, false, domain.ShotJudging), "JUDGING is not busy")
+	assert.Equal(t, domain.JudgeNoVideo, domain.CheckJudge(domain.Take{ID: "t"}, false, domain.ShotPlanning))
+	assert.Equal(t, domain.JudgePending, domain.CheckJudge(take, true, domain.ShotPlanning))
+	assert.Equal(t, domain.JudgeBusy, domain.CheckJudge(take, false, domain.ShotGenerating))
+	assert.Equal(t, domain.JudgeBusy, domain.CheckJudge(take, false, domain.ShotRepairing))
+}

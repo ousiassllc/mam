@@ -449,6 +449,61 @@ func TestJudge_AJudgeRunThatIsQueuedOrRunningCannotBeStartedTwice(t *testing.T) 
 	assert.True(t, strings.Contains(rec.Body.String(), "Judge 中"), rec.Body.String())
 }
 
+// The Shot card draws a Judge button only for a Take the server accepts a Judge run of (#438): one that
+// was never judged (or whose run failed) and is not being judged, on a Shot that is not busy.
+func TestJudge_ButtonIsDrawnOnlyForUnjudgedTakesTheServerAccepts(t *testing.T) {
+	j := newJudgeApp(t, goodVerdict, 0.95, 0.95, 0.95, 0.95)
+	j.director()
+	ids := j.generateAndJudge()
+	page := func() string {
+		return j.get("/projects/"+j.project+"/scenes/"+j.sceneID+"?shot="+j.shotID, true).Body.String()
+	}
+	button := func(html, take string) bool { return strings.Contains(html, "/takes/"+take+"/judge\"") }
+
+	assert.False(t, button(page(), ids[0]), "judged: no button")
+	assert.False(t, button(page(), ids[1]), "judged: no button")
+
+	j.execSQL(`DELETE FROM judge_result WHERE take_id = ?`, ids[1])
+	html := page()
+	assert.True(t, button(html, ids[1]), "never judged")
+	assert.False(t, button(html, ids[0]))
+
+	// A judge run of the Take in flight: the server answers 409, so there is no button.
+	j.execSQL(`INSERT INTO job (id, kind, payload, status) VALUES ('stuck', 'judge', ?, 'queued')`, `{"take_id":"`+ids[1]+`","shot_id":"`+j.shotID+`"}`)
+	assert.False(t, button(page(), ids[1]))
+	assert.Equal(t, http.StatusConflict, j.form(http.MethodPost, "/takes/"+ids[1]+"/judge", nil).Code)
+	j.execSQL(`DELETE FROM job WHERE id = 'stuck'`)
+
+	// A Shot that is being generated: 409 too.
+	j.execSQL(`UPDATE shot SET state = 'GENERATING' WHERE id = ?`, j.shotID)
+	assert.False(t, button(page(), ids[1]))
+	assert.Equal(t, http.StatusConflict, j.form(http.MethodPost, "/takes/"+ids[1]+"/judge", nil).Code)
+	j.execSQL(`UPDATE shot SET state = 'PLANNING' WHERE id = ?`, j.shotID)
+
+	// A Take without a video cannot be judged.
+	var file string
+	require.NoError(t, j.db.Reader().QueryRow(`SELECT file_path FROM take WHERE id = ?`, ids[1]).Scan(&file))
+	j.execSQL(`UPDATE take SET file_path = NULL WHERE id = ?`, ids[1])
+	assert.False(t, button(page(), ids[1]))
+	assert.Equal(t, http.StatusConflict, j.form(http.MethodPost, "/takes/"+ids[1]+"/judge", nil).Code)
+	j.execSQL(`UPDATE take SET file_path = ? WHERE id = ?`, file, ids[1])
+
+	rec := j.form(http.MethodPost, "/takes/"+ids[1]+"/judge", nil)
+	require.Equal(t, http.StatusAccepted, rec.Code, rec.Body.String())
+	require.Eventually(t, func() bool { return j.results(ids[1]) == 1 }, 30*time.Second, 10*time.Millisecond)
+	assert.False(t, button(page(), ids[1]), "judged again")
+}
+
+// Without the Judge POST /takes/:id/judge is always 503, so no card offers it.
+func TestJudge_NoButtonWithoutTheJudge(t *testing.T) {
+	g := newGenApp(t, true)
+	require.Equal(t, http.StatusAccepted, g.form(http.MethodPost, "/shots/"+g.shotID+"/generate", nil).Code)
+	g.waitTakes(3)
+	html := g.get("/projects/"+g.project+"/scenes/"+g.sceneID+"?shot="+g.shotID, true).Body.String()
+	assert.Contains(t, html, "/takes/", "the Takes are listed")
+	assert.NotContains(t, html, "/judge\"")
+}
+
 func TestJudge_IsUnavailableWithoutFrameSampling(t *testing.T) {
 	g := newGenApp(t, true) // the generation app has no Frames: the Judge is off
 	assert.Equal(t, http.StatusServiceUnavailable, g.form(http.MethodPost, "/takes/anything/judge", nil).Code)

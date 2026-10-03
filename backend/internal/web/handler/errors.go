@@ -77,6 +77,8 @@ func statusOf(c *gin.Context, err error) (int, string) {
 		return http.StatusConflict, "別の編集処理（Rough Cut・判定・音声・Final QC・書き出し）が実行中です。終わってからやり直してください"
 	case errors.Is(err, service.ErrJudgeBusy):
 		return http.StatusConflict, "この Take はすでに Judge 中です"
+	case errors.Is(err, service.ErrNoVideo):
+		return http.StatusConflict, "この Take には動画ファイルがないため Judge できません"
 	case errors.Is(err, service.ErrNotJudged):
 		return http.StatusConflict, "この Take はまだ Judge されていません。Judge が終わってから Repair してください"
 	case errors.Is(err, service.ErrAccepted):
