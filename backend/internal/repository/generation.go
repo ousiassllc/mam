@@ -126,19 +126,27 @@ func (r *GenerationRepository) SetShotState(ctx context.Context, shotID string, 
 	})
 }
 
-// ResetStaleShots puts Shots that are GENERATING or REPAIRING back to PLANNING. It is called at
-// start-up, before any job runs: after an abnormal termination no generation or repair is in flight.
-// A Shot with a queued generate or repair job keeps its state: that job did not start before the
-// restart and will run, and releasing the Shot would let a second one be queued for it (a double
-// paid generation). The jobs that were running are failed afterwards (they are not resumable), so
-// their Shots are released here.
+// ResetStaleShots puts Shots that are GENERATING, REPAIRING or JUDGING back to PLANNING. It is called
+// at start-up, before any job runs: after an abnormal termination no generation, repair or judging is
+// in flight. A Shot with a queued generate or repair job keeps its state: that job did not start
+// before the restart and will run, and releasing the Shot would let a second one be queued for it (a
+// double paid generation). The generate and repair jobs that were running are failed afterwards (they
+// are not resumable), so their Shots are released here. A JUDGING Shot also keeps its state while a
+// judge job is running, because the queue runs a judge job again (it is resumable) or fails it.
+//
+// It MUST run twice: before the job queue resolves the running jobs (Queue.Recover) and after. The
+// second run releases the Shots whose judge job the queue failed (attempts used up, no handler) or
+// whose queued job it failed for lack of a handler: no handler of theirs runs to release them.
 func (r *GenerationRepository) ResetStaleShots(ctx context.Context) (int, error) {
 	var n int64
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		res, err := tx.ExecContext(ctx,
-			`UPDATE shot SET state = ? WHERE state IN (?, ?)
-			   AND NOT EXISTS (SELECT 1 FROM job WHERE kind IN (?, ?) AND status = ? AND json_extract(payload, '$.shot_id') = shot.id)`,
-			domain.ShotPlanning, domain.ShotGenerating, domain.ShotRepairing, domain.JobGenerate, domain.JobRepair, domain.JobQueued)
+			`UPDATE shot SET state = ?
+			  WHERE (state IN (?, ?) AND NOT EXISTS (SELECT 1 FROM job WHERE kind IN (?, ?) AND status = ? AND json_extract(payload, '$.shot_id') = shot.id))
+			     OR (state = ? AND NOT EXISTS (SELECT 1 FROM job WHERE kind = ? AND status IN (?, ?) AND json_extract(payload, '$.shot_id') = shot.id))`,
+			domain.ShotPlanning,
+			domain.ShotGenerating, domain.ShotRepairing, domain.JobGenerate, domain.JobRepair, domain.JobQueued,
+			domain.ShotJudging, domain.JobJudge, domain.JobQueued, domain.JobRunning)
 		if err != nil {
 			return err
 		}

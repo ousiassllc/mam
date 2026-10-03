@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"database/sql"
+	"encoding/json"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -56,6 +58,57 @@ func TestBuildServices_AFailureLateInTheBuildReleasesTheDatabase(t *testing.T) {
 	_, cleanup, err = buildServices(context.Background(), cfg, slog.New(slog.DiscardHandler))
 	require.NoError(t, err)
 	cleanup()
+}
+
+// A Shot left JUDGING whose judge job the queue fails at start-up (its attempts are used up) has no
+// handler left to release it: the start releases it itself (#436).
+func TestBuildServices_ARestartReleasesAJudgingShotWhoseJudgeJobFailedAtRecovery(t *testing.T) {
+	cfg := testConfig(t)
+	ctx := context.Background()
+	_, cleanup, err := buildServices(ctx, cfg, slog.New(slog.DiscardHandler)) // creates the database
+	require.NoError(t, err)
+	cleanup()
+
+	db, err := repository.Open(ctx, cfg.DBPath(), slog.New(slog.DiscardHandler))
+	require.NoError(t, err)
+	const projectID = "p-judging"
+	require.NoError(t, repository.NewProjectRepository(db).Create(ctx, repository.NewProject{
+		Project: domain.Project{
+			ID: projectID, State: domain.StatePlanning, Mode: domain.ModeDirector, ConfirmationLevel: domain.ConfirmKeyCheck,
+			ProductionTemplate: domain.TemplateProductCM, QualityPolicy: domain.QualityBalanced,
+		},
+		Brief: domain.Brief{Subject: "美容液"},
+	}))
+	plans := repository.NewPlanRepository(db)
+	require.NoError(t, plans.SavePlan(ctx, projectID,
+		domain.ScenePlan{Scenes: []domain.PlannedScene{{Title: "A", Shots: []domain.PlannedShot{{Objective: "one", DurationSeconds: 3}}}}},
+		domain.Storyboard{Shots: [][]domain.ShotStoryboard{{{Description: "x"}}}}))
+	scenes, err := plans.ListScenes(ctx, projectID)
+	require.NoError(t, err)
+	shots, err := plans.ListShots(ctx, scenes[0].ID)
+	require.NoError(t, err)
+	shotID := shots[0].ID
+	gens := repository.NewGenerationRepository(db)
+	require.NoError(t, gens.SetShotState(ctx, shotID, domain.ShotJudging))
+	jobs := repository.NewJobRepository(db)
+	job, err := jobs.Create(ctx, domain.JobJudge, json.RawMessage(`{"take_id":"t","shot_id":"`+shotID+`"}`))
+	require.NoError(t, err)
+	require.NoError(t, db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, `UPDATE job SET status = 'running', attempts = 3 WHERE id = ?`, job.ID)
+		return err
+	}))
+	require.NoError(t, db.Close())
+
+	_, cleanup, err = buildServices(ctx, cfg, slog.New(slog.DiscardHandler))
+	require.NoError(t, err)
+	cleanup()
+
+	db, err = repository.Open(ctx, cfg.DBPath(), slog.New(slog.DiscardHandler))
+	require.NoError(t, err)
+	defer func() { _ = db.Close() }()
+	got, err := repository.NewGenerationRepository(db).GetShot(ctx, shotID)
+	require.NoError(t, err)
+	assert.Equal(t, domain.ShotPlanning, got.Shot.State)
 }
 
 // After a restart nothing else wakes the editing worker: an AUTO Project that waits in AUDIO for its

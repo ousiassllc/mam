@@ -220,8 +220,10 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger) 
 	return services, release, nil
 }
 
-// recoverWork cleans up after an abnormal termination: Shots left GENERATING are released before
-// their jobs are failed, and the editing follow-ups that the stop left undone are woken.
+// recoverWork cleans up after an abnormal termination: Shots left GENERATING / REPAIRING are released
+// before their jobs are failed, the Shots whose job the queue then failed (a judge job out of attempts,
+// a job without handler) are released after it, and the editing follow-ups that the stop left undone are
+// woken.
 func recoverWork(ctx context.Context, services *service.Services, jobs *jobqueue.Queue, logger *slog.Logger) error {
 	released, err := services.Recover(ctx)
 	if err != nil {
@@ -233,6 +235,14 @@ func recoverWork(ctx context.Context, services *service.Services, jobs *jobqueue
 	resumed, failed, err := jobs.Recover(ctx)
 	if err != nil {
 		return fmt.Errorf("recover jobs: %w", err)
+	}
+	// A job the queue failed will never run its handler, which is what releases its Shot.
+	released, err = services.Recover(ctx)
+	if err != nil {
+		return fmt.Errorf("recover shots of failed jobs: %w", err)
+	}
+	if released > 0 {
+		logger.Warn("released shots whose job failed at recovery", "count", released)
 	}
 	if resumed+failed > 0 {
 		logger.Warn("recovered unfinished jobs after abnormal termination", "resumed", resumed, "failed", failed)
