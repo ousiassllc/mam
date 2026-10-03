@@ -198,6 +198,24 @@ func TestTakeRepository_PickBestInDirectorRecommendsWithoutAdoptingAndNeverAdopt
 	assert.Empty(t, selectedTake(t, failedDB))
 }
 
+func TestTakeRepository_PickBestIgnoresARejectedTakeEvenWhenItIsTheOnlyAcceptedOne(t *testing.T) {
+	db := openTestDB(t)
+	seedTake(t, db)
+	addTakes(t, db, 2)
+	r := repository.NewTakeRepository(db)
+	ctx := context.Background()
+	judged(t, db, "t1", domain.JudgePass)
+	judged(t, db, "t2", domain.JudgeFail)
+	_, err := r.Reject(ctx, "t1")
+	require.NoError(t, err)
+
+	pick, err := r.PickBest(ctx, "sh1", false, func(id string) bool { return id == "t1" })
+
+	require.NoError(t, err)
+	assert.Equal(t, repository.AIPick{TakeID: "t2", Changed: true}, pick, "the rejected Take must not empty the pool of the others")
+	assert.Equal(t, map[string]domain.TakeStatus{"t1": domain.TakeRejected, "t2": domain.TakeAIPick}, statuses(t, r))
+}
+
 func TestTakeRepository_PickBestLeavesTheUsersSelectionAlone(t *testing.T) {
 	db := openTestDB(t)
 	seedTake(t, db)

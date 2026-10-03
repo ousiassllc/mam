@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -114,7 +115,7 @@ func PickTake(takes []TakeInfo) (id string, passed, ok bool) {
 	var best *TakeInfo
 	for i := range takes {
 		t := &takes[i]
-		if t.Status == TakeRejected || t.Scores == nil {
+		if !pickable(*t) {
 			continue
 		}
 		if best == nil || betterTake(*t, *best) {
@@ -125,6 +126,23 @@ func PickTake(takes []TakeInfo) (id string, passed, ok bool) {
 		return "", false, false
 	}
 	return best.ID, best.Verdict == JudgePass, true
+}
+
+// pickable is true for a Take the AI Pick may choose: judged and not rejected.
+func pickable(t TakeInfo) bool { return t.Status != TakeRejected && t.Scores != nil }
+
+// PickAcceptedTake is PickTake restricted by the Retry Policy: accepted tells whether a Take meets
+// it, and when some Take that could be picked does, the pick is the best of those. A Take the user
+// rejected counts for neither (it can neither be picked nor make the others fall short of the
+// policy). A nil accepted accepts every Take.
+func PickAcceptedTake(takes []TakeInfo, accepted func(takeID string) bool) (id string, passed, ok bool) {
+	pool := slices.DeleteFunc(slices.Clone(takes), func(t TakeInfo) bool { return !pickable(t) })
+	if accepted != nil {
+		if meets := slices.DeleteFunc(slices.Clone(pool), func(t TakeInfo) bool { return !accepted(t.ID) }); len(meets) > 0 {
+			pool = meets
+		}
+	}
+	return PickTake(pool)
 }
 
 func betterTake(a, b TakeInfo) bool {
