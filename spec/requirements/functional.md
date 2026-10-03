@@ -9,7 +9,7 @@
 - **Actor**: エンドユーザー（クリエイター/マーケター）
 - **事前条件**: プロジェクト未作成、またはドラフト状態
 - **フロー**:
-  1. ユーザーがチャットで作りたい動画を伝える。AI が発言から Creative Brief（Content Type / Objective / Subject / Target / Duration / Aspect Ratio / Mood / Assets / References）を抽出し、不足項目は質問する（「AIに任せる」を選べる）。添付した画像・動画は Assets/References として取り込む
+  1. ユーザーがチャットで作りたい動画を伝える。発言から Creative Brief（Content Type / Objective / Subject / Target / Duration / Aspect Ratio / Mood / Assets / References）をルールベース（キーワード・正規表現。LLM による抽出は未実装）で抽出し、不足項目は質問する（「AIに任せる」を選べる）。添付した画像・動画は Assets/References として取り込む
   2. Confirmation Level（FULL AUTO / KEY CHECK / CUSTOM CHECK）を選択する
   3. Producer → Writer → Director → Storyboard → Art Director → Prompt Planner → Video Generation → AI Video Judge → (Repair/Retake) → AI Editor → Audio Production → Final QC の順に進む。ただし自動実行されるのは Scene/Shot 計画（Storyboard）までで、Art Director 以降（Reference Pack・Keyframe・Video Generation）は Shot 単位でユーザーが起動する（起動した Shot では Judge → Repair → AI Pick が連鎖する）。全 Shot に Selected Take が揃うと Rough Cut の作成と Editor Judge が自動で始まり、承認カードの回答後（または確認不要の設定）に Audio Production と Final QC が続く。Editor Judge の Re-edit 判定と Final QC の FAIL はユーザーの対応を待って止まる（Editor Judge が `need_shot` のときは、AUTO では追加 Shot の要求が自動で始まり、Retry Policy の範囲で繰り返して上限で Escalation に止まる。MANUAL ではユーザーが要求する）。Export は Final QC を PASS した（READY の）動画へのユーザーの操作で行う
   4. 設定した確認ポイント（脚本・Rough Cut・Final）でのみ、承認カードとしてチャットに提示される。ユーザーはボタンまたは返信で承認/差し戻しを行う
@@ -123,7 +123,7 @@
 
 | ID | カテゴリ | 機能 | 概要 | MVP |
 |----|---------|------|------|-----|
-| F-01 | Brief | Creative Brief 入力 | チャットでの発言・添付から Content Type/Objective/Subject/Target/Duration/Aspect Ratio/Mood/Assets/References を抽出し、不足を質問して補完する。「AIに任せる」を選択可 | M1 |
+| F-01 | Brief | Creative Brief 入力 | チャットでの発言・添付から Content Type/Objective/Subject/Target/Duration/Aspect Ratio/Mood/Assets/References をルールベース（キーワード・正規表現。LLM 抽出は未実装）で抽出し、不足を質問して補完する。「AIに任せる」を選択可 | M1 |
 | F-02 | Mode | AUTO ⇄ DIRECTOR 切替 | 同一プロジェクト上でモードをいつでも切替 | M1 |
 | F-03 | Confirmation | Confirmation Level 設定 | FULL AUTO / KEY CHECK / CUSTOM CHECK | M1 |
 | F-04 | Hierarchy | Scene/Shot/Take 階層管理 | 階層構造の表示・選択・生成状態管理 | M1 |
