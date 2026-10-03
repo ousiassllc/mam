@@ -1448,7 +1448,7 @@ JSON ファイル 1 つ（`format=mam-review-response`・`version`・`response_i
 
 ### レビューの状態
 
-レビュー依頼の状態は、レビュアー表示名ごとの最新の応答から決める: 応答が無ければ `pending`（未回答）、全員の最新が `approved` なら `approved`（承認済み）、1 人でも `changes_requested` なら `changes_requested`（修正依頼あり）。承認はオーナーへの意思表示であり、Project の状態遷移（§22）や Final Export をブロック/解除しない。応答を取り込むと、Chat Workspace のスレッドに AI の発言として「レビュー結果（表示名・判定・コメント件数）」が記録される（§23.3）。
+レビュー依頼の状態は、レビュアー表示名（前後の空白は無視する）ごとの最新の応答から決める。最新とは応答の作成日時（`created_at`、レビュアーが書いた順）が最も新しいもので、同時刻なら後に取り込んだもの（取り込む順序が前後しても、古い版が新しい版を上書きしない）。応答が無ければ `pending`（未回答）、全員の最新が `approved` なら `approved`（承認済み）、1 人でも `changes_requested` なら `changes_requested`（修正依頼あり）。承認はオーナーへの意思表示であり、Project の状態遷移（§22）や Final Export をブロック/解除しない。応答を取り込むと、Chat Workspace のスレッドに AI の発言として「レビュー結果（表示名・判定・コメント件数）」が記録される（§23.3）。
 
 ### 共有物に含めないもの（`spec/requirements/non-functional.md` §5）
 

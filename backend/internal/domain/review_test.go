@@ -10,8 +10,12 @@ import (
 )
 
 func TestReviewItem_StatusFollowsTheLatestAnswerOfEveryReviewer(t *testing.T) {
+	at := time.Date(2026, 1, 1, 10, 0, 0, 0, time.UTC)
 	resp := func(name string, d ReviewDecision) ReviewResponseRecord {
-		return ReviewResponseRecord{ReviewerName: name, Decision: d}
+		return ReviewResponseRecord{ReviewerName: name, Decision: d, CreatedAt: at}
+	}
+	sent := func(name string, d ReviewDecision, minutes int) ReviewResponseRecord {
+		return ReviewResponseRecord{ReviewerName: name, Decision: d, CreatedAt: at.Add(time.Duration(minutes) * time.Minute)}
 	}
 	tests := []struct {
 		name      string
@@ -25,6 +29,9 @@ func TestReviewItem_StatusFollowsTheLatestAnswerOfEveryReviewer(t *testing.T) {
 		{"one of two asks for changes", []ReviewResponseRecord{resp("A", DecisionApproved), resp("B", DecisionChangesRequested)}, ReviewChangesRequested},
 		{"a later approval replaces the request", []ReviewResponseRecord{resp("A", DecisionChangesRequested), resp("A", DecisionApproved)}, ReviewApproved},
 		{"a later request replaces the approval", []ReviewResponseRecord{resp("A", DecisionApproved), resp("A", DecisionChangesRequested)}, ReviewChangesRequested},
+		{"an older answer imported later does not win", []ReviewResponseRecord{sent("A", DecisionApproved, 5), sent("A", DecisionChangesRequested, 0)}, ReviewApproved},
+		{"a newer answer imported later wins", []ReviewResponseRecord{sent("A", DecisionChangesRequested, 0), sent("A", DecisionApproved, 5)}, ReviewApproved},
+		{"the same name with surrounding spaces is the same reviewer", []ReviewResponseRecord{sent("Taro", DecisionChangesRequested, 0), sent("Taro ", DecisionApproved, 5)}, ReviewApproved},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
