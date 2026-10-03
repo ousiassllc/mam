@@ -392,6 +392,13 @@ func (s *DirectorService) Chat(ctx context.Context, project domain.Project, targ
 	}
 	cmd, err := s.interpret(ctx, content, shots, ref)
 	if err != nil {
+		if !isInterpreterAIError(err) {
+			// A failure of ours (the repository), not of the model: it is an error, logged and answered
+			// in the thread like any other failure of a direction, never a "success" with a message.
+			s.logger.Error("interpret director message failed", "project_id", project.ID, "err", err)
+			s.reportCommandFailure(ctx, project.ID, outcome{}, err)
+			return domain.ChatMessage{}, err
+		}
 		return assistantText("指示を読み取れませんでした: " + generation.FailureReason(err)), nil
 	}
 	if project.Mode != domain.ModeDirector {
@@ -544,14 +551,21 @@ func (s *DirectorService) interpret(ctx context.Context, message string, shots [
 // timeout, an open circuit breaker, a failing API or an answer that is not the expected JSON is 502. Errors of other origin
 // (the repository) are returned as they are.
 func interpretError(err error) error {
-	var api *llm.APIError
 	switch {
 	case errors.Is(err, llm.ErrNoAPIKey):
 		return ErrUnavailable
-	case errors.Is(err, llm.ErrInvalidOutput), errors.Is(err, llm.ErrTimeout), errors.Is(err, llm.ErrCircuitOpen), errors.As(err, &api):
+	case isInterpreterAIError(err):
 		return aiError(err)
 	}
 	return err
+}
+
+// isInterpreterAIError reports whether err is a failure of the Command Interpreter's LLM call (as
+// opposed to one of the repository reads around it).
+func isInterpreterAIError(err error) bool {
+	var api *llm.APIError
+	return errors.Is(err, llm.ErrNoAPIKey) || errors.Is(err, llm.ErrInvalidOutput) || errors.Is(err, llm.ErrTimeout) ||
+		errors.Is(err, llm.ErrCircuitOpen) || errors.As(err, &api)
 }
 
 func optionOf(sh repository.ShotRef) commandinterpreter.ShotOption {

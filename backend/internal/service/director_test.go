@@ -431,6 +431,37 @@ func TestDirectorCommand_AFailedReasoningLLMHasTheDocumentedStatus(t *testing.T)
 	}
 }
 
+// A failure of the repository while the Command Interpreter's input is gathered (not a failure of
+// the model) is an error of the message, as DirectorCommand returns it; it is not reported as a
+// successful assistant message that "the direction could not be read". An error of the model is.
+func TestChat_DirectorModeARepositoryFailureOfInterpretIsAnErrorNotAMessage(t *testing.T) {
+	f := newGenFixture(t, true)
+	f.startDirecting(t)
+	f.llm.interpreter = opsJSON(`{"type":"unsupported","reason":"x"}`)
+	f.execSQL(t, `ALTER TABLE lock RENAME TO lock_gone`)
+
+	_, err := f.svc.Chat.PostMessage(context.Background(), f.projectID, service.PostMessageInput{Content: "カメラを寄せて"})
+
+	require.Error(t, err)
+	assert.NotErrorIs(t, err, service.ErrUnavailable)
+	ws, err := f.svc.Chat.Workspace(context.Background(), f.projectID)
+	require.NoError(t, err)
+	last := lastMessage(t, ws.Messages)
+	assert.Equal(t, domain.RoleAssistant, last.Role)
+	assert.Contains(t, last.Content, "指示を実行できませんでした", "the thread does not end with the user's words alone")
+	assert.NotContains(t, last.Content, "指示を読み取れませんでした")
+}
+
+func TestChat_DirectorModeAFailedModelCallIsAMessage(t *testing.T) {
+	f := newGenFixture(t, true)
+	f.startDirecting(t)
+	f.llm.interpreterErr = fmt.Errorf("interpret: %w", llm.ErrCircuitOpen)
+
+	ws := f.say(t, "カメラを寄せて", "")
+
+	assert.Contains(t, lastMessage(t, ws.Messages).Content, "指示を読み取れませんでした: AI サービスが一時的に利用できません")
+}
+
 func TestDirectorCommand_PinsTheVideoModelToRunwayAndAsksForAnyModelWithoutAName(t *testing.T) {
 	f := newGenFixture(t, true)
 	f.llm.interpreter = opsJSON(`{"type":"set_lock","parameter":"video_model","mode":"manual","value":"runway-gen-4.5"}`)
