@@ -272,14 +272,14 @@ func TestBranch_ThePlanOfTheFirstShotDoesNotSeeTheTrunkShotsAfterTheFork(t *test
 	require.NoError(t, err)
 
 	f.branch(t, service.BranchInput{Direction: "ドアを開ける"})
-	plan := f.llm.users[llm.AgentDirector][len(f.llm.users[llm.AgentDirector])-1]
+	plan := f.llm.prompts(llm.AgentDirector)[len(f.llm.prompts(llm.AgentDirector))-1]
 	assert.Contains(t, plan, "主人公が振り返って走り出す", "the Shots up to the fork are the story so far")
 	assert.NotContains(t, plan, "トランクだけの後続カット")
 
-	f.llm.users[llm.AgentDirector] = nil
+	f.llm.reset(llm.AgentDirector)
 	_, err = f.svc.Branch.Fork(context.Background(), mustShotRef(t, f), domain.BranchAtShot, 2, nil)
 	require.NoError(t, err)
-	for _, p := range f.llm.users[llm.AgentDirector] {
+	for _, p := range f.llm.prompts(llm.AgentDirector) {
 		assert.NotContains(t, p, "トランクだけの後続カット", "the proposal for the Branches is cut at the fork as well")
 	}
 }
@@ -295,21 +295,21 @@ func TestBranchAtAScene_ThePlanContinuesFromTheLastShotBeforeTheSceneNotTheClick
 	require.NoError(t, err)
 	clickedID := clicked.Shots[len(clicked.Shots)-1].ID
 
-	f.llm.users[llm.AgentDirector] = nil
+	f.llm.reset(llm.AgentDirector)
 	_, err = f.svc.Branch.Create(ctx, clickedID, service.BranchInput{PointType: domain.BranchAtScene, Direction: "別の決着"})
 	require.NoError(t, err)
-	plan := f.llm.users[llm.AgentDirector][len(f.llm.users[llm.AgentDirector])-1]
+	plan := f.llm.prompts(llm.AgentDirector)[len(f.llm.prompts(llm.AgentDirector))-1]
 	require.Contains(t, plan, "完成した Shot（続きの起点）")
 	start := plan[strings.Index(plan, "完成した Shot（続きの起点）"):]
 	assert.Contains(t, start, "主人公が振り返って走り出す", "the Shot before the Scene is where the Branch continues from")
 	assert.NotContains(t, plan, "クリックしたシーン内のカット", "the clicked Shot lies after the fork")
 
-	f.llm.users[llm.AgentDirector] = nil
+	f.llm.reset(llm.AgentDirector)
 	ref, err := repository.NewGenerationRepository(f.db).GetShot(ctx, clickedID)
 	require.NoError(t, err)
 	_, err = f.svc.Branch.Fork(ctx, ref, domain.BranchAtScene, 2, nil)
 	require.NoError(t, err)
-	for _, p := range f.llm.users[llm.AgentDirector] {
+	for _, p := range f.llm.prompts(llm.AgentDirector) {
 		assert.NotContains(t, p, "クリックしたシーン内のカット", "the proposal for the Branches does not start from the clicked Shot either")
 	}
 }
@@ -321,10 +321,10 @@ func TestBranchAtTheFirstScene_ThePlanHasNoShotToContinueFrom(t *testing.T) {
 	ctx := context.Background()
 	ref := mustShotRef(t, f)
 
-	f.llm.users[llm.AgentDirector] = nil
+	f.llm.reset(llm.AgentDirector)
 	_, err := f.svc.Branch.Create(ctx, f.shotID, service.BranchInput{PointType: domain.BranchAtScene, Direction: "最初から別展開"})
 	require.NoError(t, err)
-	plan := f.llm.users[llm.AgentDirector][len(f.llm.users[llm.AgentDirector])-1]
+	plan := f.llm.prompts(llm.AgentDirector)[len(f.llm.prompts(llm.AgentDirector))-1]
 	assert.Contains(t, plan, "これより前に完成した Shot はありません")
 	assert.NotContains(t, plan, "完成した Shot（続きの起点）")
 	assert.NotContains(t, plan, ref.Shot.Objective, "the clicked Shot is not the Shot before the fork")

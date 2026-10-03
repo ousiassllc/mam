@@ -31,6 +31,9 @@ func tools(t *testing.T) media.Tools {
 // tone is an mp3 tone of the given length.
 func tone(t *testing.T, seconds float64) []byte {
 	t.Helper()
+	if _, err := exec.LookPath("ffmpeg"); err != nil {
+		t.Skip("ffmpeg is not installed")
+	}
 	out := filepath.Join(t.TempDir(), "tone.mp3")
 	cmd := exec.Command("ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", fmt.Sprintf("sine=frequency=300:duration=%g", seconds), "-af", "volume=0.3", out)
 	if b, err := cmd.CombinedOutput(); err != nil {
@@ -44,6 +47,9 @@ func tone(t *testing.T, seconds float64) []byte {
 // testVideo writes a silent video of the given length.
 func testVideo(t *testing.T, seconds float64) string {
 	t.Helper()
+	if _, err := exec.LookPath("ffmpeg"); err != nil {
+		t.Skip("ffmpeg is not installed")
+	}
 	out := filepath.Join(t.TempDir(), "take.mp4")
 	cmd := exec.Command("ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", fmt.Sprintf("color=c=blue:s=160x90:r=10:d=%g", seconds), "-pix_fmt", "yuv420p", out)
 	if b, err := cmd.CombinedOutput(); err != nil {

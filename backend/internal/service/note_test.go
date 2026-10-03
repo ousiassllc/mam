@@ -275,14 +275,14 @@ func TestNotes_OnlyThePlannerGetsTheNotesAndItsVersionsAreRecorded(t *testing.T)
 
 	f.firstGeneration(t)
 
-	planner := strings.Join(f.llm.users[llm.AgentPromptPlanner], "\n")
+	planner := strings.Join(f.llm.prompts(llm.AgentPromptPlanner), "\n")
 	assert.Contains(t, planner, "主人公は落ち着いた口調で話す")
 	assert.NotContains(t, planner, "SECRETMEMO", "archived notes are not given")
 	for _, req := range f.models.videoRequests() {
 		assert.NotContains(t, req.Prompt, "落ち着いた口調", "the video model never sees a note")
 	}
 	for _, agent := range []llm.Agent{llm.AgentVideoJudge, llm.AgentArtDirector} {
-		assert.NotContains(t, strings.Join(f.llm.users[agent], "\n"), "落ち着いた口調", string(agent))
+		assert.NotContains(t, strings.Join(f.llm.prompts(agent), "\n"), "落ち着いた口調", string(agent))
 	}
 
 	var raw string

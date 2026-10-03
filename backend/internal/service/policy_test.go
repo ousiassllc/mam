@@ -38,7 +38,7 @@ func TestSetProductionTemplate_ChangesTheAxesTheAgentsAreToldAndIsRecordedInTheT
 	assert.Contains(t, lastMessage(t, f.thread(t, f.projectID)).Content, "Story > Acting")
 
 	f.generate(t)
-	prompt := f.llm.users[llm.AgentPromptPlanner][0]
+	prompt := f.llm.prompts(llm.AgentPromptPlanner)[0]
 	assert.Contains(t, prompt, "Story > Acting > Character Identity", "the Prompt Planner is told the DRAMA priorities")
 	assert.NotContains(t, prompt, "Product Accuracy")
 

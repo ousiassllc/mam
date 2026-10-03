@@ -261,7 +261,7 @@ func TestDirectorCommand_RegeneratesOnlyThisShotAndKeepsWhatIsNotChanged(t *test
 	assert.Equal(t, before.Acting, after.Acting, "Acting is preserved")
 	assert.Equal(t, before.Lighting, after.Lighting, "the environment is preserved")
 	assert.Zero(t, f.count(t, `SELECT COUNT(*) FROM take t JOIN prompt_version pv ON pv.id = t.prompt_version_id WHERE pv.shot_id = ?`, other.Shots[1].ID), "the other Shot is untouched")
-	assert.Contains(t, f.llm.users[llm.AgentPromptPlanner][1], "Fixed parts")
+	assert.Contains(t, f.llm.prompts(llm.AgentPromptPlanner)[1], "Fixed parts")
 	var texts []string
 	for _, m := range f.thread(t, f.projectID) {
 		if m.Kind == domain.KindText {
@@ -625,7 +625,7 @@ func TestChat_DirectorModeResolvesTheShotFromAReplyToATakeCard(t *testing.T) {
 
 	require.Len(t, ws.Messages, 2)
 	assert.Contains(t, ws.Messages[1].Content, "Shot 2 だけを再生成")
-	last := f.llm.users[llm.AgentCommandInterpreter]
+	last := f.llm.prompts(llm.AgentCommandInterpreter)
 	assert.Contains(t, last[len(last)-1], "about Scene 1 / Shot 2", "the reply target resolved the Shot")
 	require.Eventually(t, func() bool {
 		return f.count(t, `SELECT COUNT(*) FROM job WHERE status = 'succeeded' AND kind = 'generate'`) == 2
