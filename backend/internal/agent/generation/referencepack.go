@@ -84,7 +84,18 @@ func (o *Orchestrator) buildReferencePack(ctx context.Context, ref repository.Sh
 		}
 		inputs = append(inputs, o.worldInputs(ctx, ref.ProjectID, p.Kind, world)...)
 		inputs = append(inputs, extra...)
-		out, err := o.adapter.GenerateImage(ctx, purposeOf(p, len(inputs) > 0), modeladapter.ImageRequest{Prompt: p.Prompt, AspectRatio: ratio, Inputs: inputs})
+		purpose := purposeOf(p, len(inputs) > 0)
+		// The estimate is held until the image is on the ledger, so images that run at the same time
+		// (here and in other jobs) cannot together pass the budget ceilings.
+		release, ok, err := o.gens.Reserve(ctx, ref.ProjectID, shot.ID, o.adapter.EstimateImage(purpose))
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return fmt.Errorf("%s: %w", p.Kind, ErrBudgetExceeded)
+		}
+		defer release()
+		out, err := o.adapter.GenerateImage(ctx, purpose, modeladapter.ImageRequest{Prompt: p.Prompt, AspectRatio: ratio, Inputs: inputs})
 		if err != nil {
 			return fmt.Errorf("%s: %w", p.Kind, err)
 		}

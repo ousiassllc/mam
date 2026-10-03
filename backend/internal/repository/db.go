@@ -42,6 +42,9 @@ type DB struct {
 	closing   chan struct{}
 	closeOnce sync.Once
 	loopDone  chan struct{}
+
+	// inflight is the cost of generations ordered but not yet in the cost ledger (spend.go).
+	inflight inflightSpend
 }
 
 // Open opens (creating if needed) the database at path, applies pending

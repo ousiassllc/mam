@@ -103,6 +103,13 @@ func (a *Adapter) EstimateVideo(t VideoTarget, seconds float64) float64 {
 	return a.cfg.VideoCost(t, caps.SnapDuration(seconds))
 }
 
+// EstimateImage is the most one image of the purpose can cost: the dearer of the primary model and
+// the alternative the call falls back to. It is what a budget check holds before the call.
+func (a *Adapter) EstimateImage(purpose ImagePurpose) float64 {
+	route := a.cfg.ImageRouteFor(purpose)
+	return max(a.cfg.ImageCost(route.Primary.Model), a.cfg.ImageCost(route.Fallback.Model))
+}
+
 // GenerateImage makes an image with the primary model of the purpose, and with the alternative
 // when the primary is unavailable (its breaker is open, or it failed after the retries).
 func (a *Adapter) GenerateImage(ctx context.Context, purpose ImagePurpose, req ImageRequest) (ImageOutput, error) {

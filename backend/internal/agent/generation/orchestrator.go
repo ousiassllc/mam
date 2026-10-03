@@ -380,7 +380,7 @@ func (o *Orchestrator) StartReferencePack(ctx context.Context, shotID string) (d
 	if err != nil {
 		return domain.Job{}, err
 	}
-	if affordable(remainingBudget(budget), o.cheapestImageCost()) == 0 {
+	if affordable(budget.Remaining(), o.cheapestImageCost()) == 0 {
 		return domain.Job{}, ErrBudgetExceeded
 	}
 	return o.enqueue(ctx, ref, payload{Action: ActionReferencePack, ShotID: shotID})

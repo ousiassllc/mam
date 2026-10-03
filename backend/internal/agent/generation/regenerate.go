@@ -97,7 +97,7 @@ func (o *Orchestrator) RegenerationStrategy(ctx context.Context, ref repository.
 	s.Primary, s.Fallback = primary, fallback
 	s.DurationSeconds = caps.SnapDuration(ref.Shot.Duration)
 	s.CostPerTake = cfg.VideoCost(primary, s.DurationSeconds)
-	if affordable(remainingBudget(budget), s.CostPerTake) == 0 {
+	if affordable(budget.Remaining(), s.CostPerTake) == 0 {
 		return Strategy{}, ErrBudgetExceeded
 	}
 	reason := fmt.Sprintf("different model: %s instead of %s", primary.Model, r.SourceModel)

@@ -104,8 +104,16 @@ func (r *CostRepository) ledgerByShot(ctx context.Context, projectID string) (ma
 
 // ProjectBudget returns the Project budget ceiling in USD (nil when none is set) and the money the
 // cost ledger holds for the Project: the actual cost of an entry when the vendor reported one, else
-// the estimate. It is what the Audio Director checks its spending against (F-22).
+// the estimate; plus what generations in flight have reserved (Reserve). It is what the Audio
+// Director checks its spending against (F-22).
 func (r *CostRepository) ProjectBudget(ctx context.Context, projectID string) (*float64, float64, error) {
+	reserved, _ := r.db.inflight.reserved(projectID, "") // before the ledger: see inflightSpend.reserved
+	ceiling, spent, err := r.ledgerProjectBudget(ctx, projectID)
+	return ceiling, spent + reserved, err
+}
+
+// ledgerProjectBudget is ProjectBudget without the reservations.
+func (r *CostRepository) ledgerProjectBudget(ctx context.Context, projectID string) (*float64, float64, error) {
 	var ceiling sql.NullFloat64
 	err := r.db.Reader().QueryRowContext(ctx, `SELECT project_budget_ceiling FROM project WHERE id = ?`, projectID).Scan(&ceiling)
 	if errors.Is(err, sql.ErrNoRows) {
