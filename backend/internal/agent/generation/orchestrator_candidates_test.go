@@ -383,3 +383,33 @@ func TestOrchestrator_StartByPolicyGeneratesCandidatesAndOnlyFallsBackToASingleT
 		assert.Contains(t, f.llm.lastUser(llm.AgentPromptPlanner), string(domain.PartCharacter))
 	})
 }
+
+// The Shooting strategy of a Candidate rewrites the spec, so the parts the user specified himself
+// (MANUAL) must survive it: with no instruction the single generation keeps the spec as it is, and a
+// Candidate does too for those parts. An instruction may change them.
+func TestOrchestrator_CandidatesKeepTheManualPartsOfTheSpecUnlessTheInstructionChangesThem(t *testing.T) {
+	const orbit = `{"shot_objective":"Character notices something behind her and starts running","duration":"4.0s",
+		"character":{"id":"Character_A","identity":"locked","wardrobe":"inherit_previous","hair":"inherit_previous"},
+		"acting":[{"time":"0.0-2.0","action":"turn head right"},{"time":"2.0-4.0","action":"begin running"}],
+		"camera":{"lens":"35mm","framing":"medium","movement":"orbit"},"lighting":{"mood":"cold blue"},
+		"continuity":{"start_from_previous_final_state":true},"constraints":["preserve_face_identity"]}`
+	for _, c := range []struct {
+		name, instruction, wantMovement string
+	}{
+		{"no instruction", "", "slow_push_in"},
+		{"an instruction", "カメラを回して", "orbit"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			f := newFixture(t, options{withJudge: true, quality: domain.QualityBalanced})
+			require.NoError(t, f.generate(t, "")) // the Shot has a spec: camera slow_push_in
+			require.NoError(t, repository.NewLockRepository(f.db).SetShotLock(context.Background(), f.shotID, domain.ParamCamera, domain.LockManual, nil))
+			f.llm.texts = map[llm.Agent]string{llm.AgentPromptPlanner: orbit}
+
+			require.NoError(t, f.candidates(t, c.instruction))
+
+			spec, ok := f.ref(t).Shot.CanonicalSpec()
+			require.True(t, ok)
+			assert.Equal(t, c.wantMovement, spec.Camera.Movement)
+		})
+	}
+}

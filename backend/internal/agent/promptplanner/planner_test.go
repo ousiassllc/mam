@@ -210,3 +210,22 @@ func TestPlan_NotesAreGivenToTheModelAsContext(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotContains(t, g.user, "Production notes")
 }
+
+func TestPlan_AStrategyIsToldNotToChangeThePartsTheUserSpecified(t *testing.T) {
+	current := domain.ShotSpec{ShotObjective: "She runs", Duration: "4.0s", Camera: domain.SpecCamera{Framing: "wide", Movement: "static"}}
+	in := input()
+	in.Current, in.Strategy = &current, domain.CandidateDynamicCamera
+	in.Manual = []domain.SpecPart{domain.PartCamera}
+	f := &fakeLLM{answer: good}
+
+	_, err := promptplanner.New(f).Plan(context.Background(), in)
+
+	require.NoError(t, err)
+	assert.Contains(t, f.user, "everything except the parts the user specified himself (camera)")
+
+	f = &fakeLLM{answer: good}
+	in.Manual = nil
+	_, err = promptplanner.New(f).Plan(context.Background(), in)
+	require.NoError(t, err)
+	assert.NotContains(t, f.user, "everything except the parts the user specified himself")
+}

@@ -48,6 +48,8 @@ type reasoner struct {
 	users map[llm.Agent][]string
 	// errs makes an agent fail.
 	errs map[llm.Agent]error
+	// texts replaces the canned answer of an agent.
+	texts map[llm.Agent]string
 }
 
 func (r *reasoner) Complete(_ context.Context, agent llm.Agent, req llm.Request) (llm.Response, error) {
@@ -65,6 +67,9 @@ func (r *reasoner) Complete(_ context.Context, agent llm.Agent, req llm.Request)
 		llm.AgentArtDirector:    directorPlan,
 		llm.AgentStateExtractor: extractorDiff,
 	}[agent]
+	if t, ok := r.texts[agent]; ok {
+		text = t
+	}
 	return llm.Response{Text: text, Provider: llm.ProviderAnthropic, Model: "fake"}, nil
 }
 
