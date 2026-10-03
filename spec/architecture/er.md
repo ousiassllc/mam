@@ -33,6 +33,22 @@ erDiagram
     NOTE ||--o{ NOTE_VERSION : has
     NOTE_VERSION ||--o| NOTE_PROMOTION : proposes
     NOTE_PROMOTION }o--o| WORLD_STATE_VERSION : creates
+    ASSET |o--o{ SERIES : style_reference
+    ASSET |o--o{ CHARACTER : face_body_reference
+    ASSET |o--o{ PRODUCT : geometry_label_reference
+    ASSET |o--o{ LOCATION : layout_reference
+    CHARACTER |o--o{ CHARACTER : origin
+    PRODUCT |o--o{ PRODUCT : origin
+    LOCATION |o--o{ LOCATION : origin
+    NOTE |o--o{ NOTE : origin
+    SERIES_VERSION |o--o{ PROJECT : inherited_series_version
+    WORLD_STATE_VERSION |o--o{ PROJECT : inherited_world_state
+    LOCATION |o--o{ SCENE : scene_location
+    TAKE ||--o{ STATE_DIFF : extracted_from
+    SHOT |o--o{ COST_LEDGER_ENTRY : shot_costs
+    TAKE |o--o{ COST_LEDGER_ENTRY : take_costs
+    SHOT |o--o{ HUMAN_INTERVENTION : shot_interventions
+    TAKE |o--o{ HUMAN_INTERVENTION : take_interventions
 
     SCENE ||--o{ SHOT : contains
     SHOT ||--o{ PROMPT_VERSION : has
@@ -227,6 +243,17 @@ erDiagram
     SERIES |o--o{ PRODUCT : canonical_products
     SERIES |o--o{ LOCATION : canonical_locations
     SERIES ||--o{ SERIES_VERSION : canon_history
+    ASSET |o--o{ SERIES : style_reference
+    ASSET |o--o{ CHARACTER : face_body_reference
+    ASSET |o--o{ PRODUCT : geometry_label_reference
+    ASSET |o--o{ LOCATION : layout_reference
+    CHARACTER |o--o{ CHARACTER : origin
+    PRODUCT |o--o{ PRODUCT : origin
+    LOCATION |o--o{ LOCATION : origin
+    SERIES_VERSION |o--o{ PROJECT : inherited_series_version
+    WORLD_STATE_VERSION |o--o{ PROJECT : inherited_world_state
+    LOCATION |o--o{ SCENE : scene_location
+    TAKE ||--o{ STATE_DIFF : extracted_from
     PROJECT ||--o{ WORLD_STATE_VERSION : tracks
     SHOT ||--o{ STATE_DIFF : produces
     STATE_DIFF }o--|| WORLD_STATE_VERSION : creates
@@ -442,6 +469,10 @@ erDiagram
     PROJECT ||--o{ LOCK : configures
     PROJECT ||--o{ COST_LEDGER_ENTRY : accrues
     PROJECT ||--o{ HUMAN_INTERVENTION : records
+    SHOT |o--o{ COST_LEDGER_ENTRY : shot_costs
+    TAKE |o--o{ COST_LEDGER_ENTRY : take_costs
+    SHOT |o--o{ HUMAN_INTERVENTION : shot_interventions
+    TAKE |o--o{ HUMAN_INTERVENTION : take_interventions
     PROJECT ||--o{ BRAND_CONSTRAINT : enforces
     PROJECT ||--o| PROJECT_POLICY : overrides
 
@@ -520,6 +551,7 @@ erDiagram
 erDiagram
     PROJECT |o--o{ NOTE : owns
     SERIES |o--o{ NOTE : canonical_notes
+    NOTE |o--o{ NOTE : origin
     NOTE ||--o{ NOTE_VERSION : has
     NOTE_VERSION ||--o| NOTE_PROMOTION : proposes
     NOTE_PROMOTION }o--o| WORLD_STATE_VERSION : creates
@@ -771,3 +803,4 @@ erDiagram
 | 1.64 | 2026-10-03 | §3 の `job` に、`queued` のまま残りハンドラが登録されていない種別のジョブも起動時に `failed`（`error`=`no handler registered for "<kind>"`）にし、その Shot を `PLANNING` へ解放することを追記 | 実装（`jobqueue.Queue.Recover` の queued 走査と、その後の 2 回目の `GenerationRepository.ResetStaleShots`）が行う経路で、仕様の起動時リカバリの記述は `running` のジョブだけを述べていた。実装を仕様に合わせる必要はなく、記述の漏れを補った（Issue #471） |
 | 1.65 | 2026-10-03 | §3 の `note` 行の索引欄に `idx_note_origin (origin_id)` を追記 | 実装（`20260930120000_notes.sql`）は `character` / `product` / `location` と同じく `origin_id` の索引を持つが、`note` 行だけ載っていなかった（Issue #464） |
 | 1.66 | 2026-10-03 | §3 の `chat_message` 行の `ref_type` の列挙に `job`（Progress カード、`ref_id` は job ID）と `shot`（Escalation カード、`ref_id` は Shot ID で任意）を追記 | 実装（`domain.RefJob` / `RefShot`、`ChatService.Announce` と Escalation カードの投稿）が書き込む値で、列挙に載っていなかった（Issue #465） |
+| 1.67 | 2026-10-03 | §1・§2.2・§2.4・§2.5 の関係線に、スキーマにある FK のうち線が無かったものを足した（`COST_LEDGER_ENTRY` / `HUMAN_INTERVENTION` → `SHOT` / `TAKE`、`STATE_DIFF` → `TAKE`、`SCENE` → `LOCATION`、`PROJECT` → `SERIES_VERSION` / `WORLD_STATE_VERSION`（引き継ぎ元）、`SERIES` / `CHARACTER` / `PRODUCT` / `LOCATION` → `ASSET`（参照画像）、`CHARACTER` / `PRODUCT` / `LOCATION` / `NOTE` の `origin_id`（同じテーブルへの自己参照））。NULL 許容の FK は `|o--o{`、`state_diff.take_id` は NOT NULL なので `||--o{` | 改訂 1.9 / 1.62 と同じく、図の線が実スキーマ（マイグレーションの `pragma_foreign_key_list`）と一致していなかったため。属性ブロックの FK 注記は元から正しかった（Issue #466） |
