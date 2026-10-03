@@ -416,6 +416,8 @@ Dynamic Camera
 
 最小生成回数を優先し、重大問題のみRetake。
 
+> **起動の経路（実装）**: モードは Quality Policy で決まる（MAX QUALITY→Quality、BALANCED→Balanced、FAST→Economy）。Shot カードの「生成」、Continue、Branch、追加撮影（Editor）、Director の再生成は、AI Video Judge が構成済みで Prompt が LOCK されていなければ Candidate 生成（`POST /shots/:id/generate/candidates` と同じ処理）を起動する。Judge が無い、または Spec 済みの Shot の Prompt が LOCK されているときは、Best Take を選べない／Spec を作り直せないため単発の生成（`POST /shots/:id/generate`）になる。`/shots/:id/generate` を直接呼ぶと、常に単発の生成である。
+
 ---
 
 # 9. World State / Continuity Memory
