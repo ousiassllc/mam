@@ -3,6 +3,7 @@ package repository
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"slices"
 	"strings"
 
@@ -74,7 +75,8 @@ var rawJSONColumns = map[string][]string{
 	"take":           {"model_parameters"}, // another shape only loses the resolution and the length
 }
 
-// checkBundleColumns holds one row of table to the format of its timestamp and JSON columns.
+// checkBundleColumns holds one row of table to the format of its timestamp and JSON columns (the
+// types of the numeric columns are held in insertBundleTable, which has the schema).
 func checkBundleColumns(table string, row domain.BundleRow) error {
 	for column, v := range row {
 		if v == nil {
@@ -102,4 +104,78 @@ func checkBundleColumns(table string, row domain.BundleRow) error {
 		}
 	}
 	return nil
+}
+
+// columnClass is what a column of a declared type holds, by SQLite's rules for the affinity of a
+// declared type (https://sqlite.org/datatype3.html#determination_of_column_affinity). Only the
+// numeric classes constrain the value: SQLite keeps TEXT in a number column as it is (the schema
+// has no CHECK or STRICT), and the readers then fail to Scan it.
+type columnClass int
+
+const (
+	anyClass columnClass = iota
+	integerClass
+	numberClass
+)
+
+func classOf(declared string) columnClass {
+	d := strings.ToUpper(declared)
+	switch {
+	case strings.Contains(d, "INT"):
+		return integerClass
+	case strings.Contains(d, "CHAR"), strings.Contains(d, "CLOB"), strings.Contains(d, "TEXT"),
+		strings.Contains(d, "BLOB"), d == "":
+		return anyClass
+	default: // REAL, FLOAT, DOUBLE and NUMERIC affinity
+		return numberClass
+	}
+}
+
+// checkBundleColumnTypes holds each value of row to the declared type of its column (declared maps
+// the column names of the table to them, from the schema): an INTEGER column takes an integer and a
+// REAL or NUMERIC column takes a number. A NULL is the schema's to accept or refuse.
+func checkBundleColumnTypes(table string, declared map[string]string, row domain.BundleRow) error {
+	for column, v := range row {
+		if v == nil {
+			continue
+		}
+		switch classOf(declared[column]) {
+		case integerClass:
+			if !isInteger(v) {
+				return fmt.Errorf("%w: %s.%s is not an integer", ErrInvalidBundle, table, column)
+			}
+		case numberClass:
+			if !isNumber(v) {
+				return fmt.Errorf("%w: %s.%s is not a number", ErrInvalidBundle, table, column)
+			}
+		}
+	}
+	return nil
+}
+
+// isInteger reports whether v is a whole number that fits an int64: a decoded data.json number
+// (json.Number) or a Go integer.
+func isInteger(v any) bool {
+	switch n := v.(type) {
+	case json.Number:
+		_, err := n.Int64()
+		return err == nil
+	case int, int8, int16, int32, int64, uint8, uint16, uint32:
+		return true
+	}
+	return false
+}
+
+// isNumber reports whether v is a finite number.
+func isNumber(v any) bool {
+	switch n := v.(type) {
+	case json.Number:
+		f, err := n.Float64()
+		return err == nil && !math.IsInf(f, 0)
+	case float32:
+		return !math.IsInf(float64(n), 0) && !math.IsNaN(float64(n))
+	case float64:
+		return !math.IsInf(n, 0) && !math.IsNaN(n)
+	}
+	return isInteger(v)
 }

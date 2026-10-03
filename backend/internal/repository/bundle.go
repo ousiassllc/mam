@@ -9,6 +9,9 @@ import (
 	"slices"
 	"strings"
 
+	"modernc.org/sqlite"
+	sqlitelib "modernc.org/sqlite/lib"
+
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
@@ -161,8 +164,9 @@ func readBundleRows(ctx context.Context, tx *sql.Tx, t bundleTable, projectID st
 
 // Import writes the Project into the database in one transaction. It returns ErrConflict when the
 // database already has a Project with that ID and ErrInvalidBundle (nothing written) when the data
-// is not importable: an unknown table or column, a row of another Project, or a row the schema or
-// a foreign key rejects.
+// is not importable: an unknown table or column, a value of the wrong type, a row of another
+// Project, or a row the schema or a foreign key rejects. Any other failure (a full disk, a locked
+// database, a cancelled context) is not the bundle's fault and is returned as an internal error.
 func (r *BundleRepository) Import(ctx context.Context, data domain.BundleData) error {
 	if err := checkBundle(data); err != nil {
 		return err
@@ -180,7 +184,7 @@ func (r *BundleRepository) Import(ctx context.Context, data domain.BundleData) e
 		}
 		for _, t := range data.Tables {
 			if err := insertBundleTable(ctx, tx, t); err != nil {
-				return fmt.Errorf("%w: %s: %w", ErrInvalidBundle, t.Name, err)
+				return err
 			}
 		}
 		// An imported Project has no running job: what was in flight when it was exported is not.
@@ -366,22 +370,37 @@ func insertBundleTable(ctx context.Context, tx *sql.Tx, t domain.BundleTable) er
 	for _, row := range t.Rows {
 		cols := make([]string, 0, len(row))
 		for c := range row {
-			if !slices.Contains(known, c) {
-				return fmt.Errorf("unknown column %q", c)
+			if _, ok := known[c]; !ok {
+				return fmt.Errorf("%w: %s: unknown column %q", ErrInvalidBundle, t.Name, c)
 			}
 			cols = append(cols, c)
 		}
 		slices.Sort(cols)
+		if err := checkBundleColumnTypes(t.Name, known, row); err != nil {
+			return err
+		}
 		args := make([]any, len(cols))
 		for i, c := range cols {
 			args[i] = bundleArg(row[c])
 		}
 		q := `INSERT INTO ` + t.Name + ` (` + strings.Join(cols, ", ") + `) VALUES (` + strings.TrimSuffix(strings.Repeat("?, ", len(cols)), ", ") + `)` //nolint:gosec // the table is one of bundleTables and every column was checked against the schema
 		if _, err := tx.ExecContext(ctx, q, args...); err != nil {
-			return err
+			return insertError(t.Name, err)
 		}
 	}
 	return nil
+}
+
+// insertError says why an INSERT of a bundle row failed: the schema refused the row (NOT NULL,
+// CHECK, UNIQUE, a trigger, a foreign key: a SQLITE_CONSTRAINT) and the bundle is invalid, or the
+// database could not take any row (a full disk, a lock, a cancelled context) and the import can be
+// retried.
+func insertError(table string, err error) error {
+	var se *sqlite.Error
+	if errors.As(err, &se) && se.Code()&0xff == sqlitelib.SQLITE_CONSTRAINT {
+		return fmt.Errorf("%w: %s: %w", ErrInvalidBundle, table, err)
+	}
+	return fmt.Errorf("insert %s: %w", table, err)
 }
 
 // bundleArg turns a value decoded from data.json (numbers arrive as json.Number) into a SQL argument.
@@ -399,19 +418,20 @@ func bundleArg(v any) any {
 	return n.String()
 }
 
-func tableColumns(ctx context.Context, tx *sql.Tx, table string) ([]string, error) {
-	rows, err := tx.QueryContext(ctx, `SELECT name FROM pragma_table_info(?)`, table)
+// tableColumns maps the name of each column of table to its declared type.
+func tableColumns(ctx context.Context, tx *sql.Tx, table string) (map[string]string, error) {
+	rows, err := tx.QueryContext(ctx, `SELECT name, type FROM pragma_table_info(?)`, table)
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = rows.Close() }()
-	var cols []string
+	cols := map[string]string{}
 	for rows.Next() {
-		var c string
-		if err := rows.Scan(&c); err != nil {
+		var name, declared string
+		if err := rows.Scan(&name, &declared); err != nil {
 			return nil, err
 		}
-		cols = append(cols, c)
+		cols[name] = declared
 	}
 	return cols, rows.Err()
 }

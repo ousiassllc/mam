@@ -355,6 +355,10 @@ func TestBundleRepository_ImportRejectsColumnsTheReadersCannotDecode(t *testing.
 		{"a timeline that is not an object", "edit_timeline_version", "timeline", `"x"`},
 		{"findings that are not a list", "editor_judge_result", "findings", `7`},
 		{"a shot spec that is not an object", "shot", "shot_spec", `[]`},
+		{"a shot order that is text", "shot", "order_index", "x"},
+		{"a shot order that is a fraction", "shot", "order_index", json.Number("1.5")},
+		{"a scene order that is text", "scene", "order_index", "a"},
+		{"a shot duration that is text", "shot", "duration_seconds", "abc"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
