@@ -49,20 +49,25 @@ func (s *RepairService) ShadowReport(ctx context.Context) (domain.ShadowReport, 
 	return s.repairs.ShadowReport(ctx)
 }
 
-// repairability answers "may this Take be repaired now" for the pages that draw a Repair button. The
-// decision is domain.CheckRepair, the one the Repair Agent refuses by (POST /takes/:id/repair is 409
-// otherwise), so that a button is drawn exactly when the server accepts the request.
-type repairability struct {
+// takeActions answers "may this Take be repaired / judged now" for the pages that draw a Repair or a
+// Judge button. The decisions are domain.CheckRepair and domain.CheckJudge, the ones the server refuses
+// by (POST /takes/:id/repair and /judge are 409 otherwise), so that a button is drawn exactly when the
+// server accepts the request.
+type takeActions struct {
 	judges   *repository.JudgeRepository
 	policies *repository.PolicyRepository
+	// judgeEnabled is whether the Judge is configured; without it POST /takes/:id/judge is always 503.
+	judgeEnabled bool
 }
 
-// mark fills Repairable of the views of one Project. The Retry Policy is read once, and only when a
-// Shot has Takes.
-func (r repairability) mark(ctx context.Context, projectID string, views []*ShotView) error {
+// mark fills Repairable and Judgeable of the views of one Project. The Retry Policy is read once, and
+// only when a Shot has Takes. Judgeable holds the Takes that were never judged (a failed run stores no
+// result) and may be judged now: a judged Take is evaluated, so offering the run again would only
+// crowd the row.
+func (r takeActions) mark(ctx context.Context, projectID string, views []*ShotView) error {
 	var policy *domain.ProjectPolicy
 	for _, v := range views {
-		v.Repairable = nil
+		v.Repairable, v.Judgeable = nil, nil
 		for _, t := range v.Takes {
 			if policy == nil {
 				p, err := r.policies.Get(ctx, projectID)
@@ -79,13 +84,25 @@ func (r repairability) mark(ctx context.Context, projectID string, views []*Shot
 			case !errors.Is(err, repository.ErrNotFound):
 				return err
 			}
-			if domain.CheckRepair(latest, policy.Effective(), policy.Template, v.State) != domain.RepairAllowed {
+			if domain.CheckRepair(latest, policy.Effective(), policy.Template, v.State) == domain.RepairAllowed {
+				if v.Repairable == nil {
+					v.Repairable = map[string]bool{}
+				}
+				v.Repairable[t.ID] = true
+			}
+			if latest != nil || !r.judgeEnabled || t.Status == domain.TakeRejected { // an excluded Take is not offered a run
 				continue
 			}
-			if v.Repairable == nil {
-				v.Repairable = map[string]bool{}
+			pending, err := r.judges.JudgePending(ctx, t.ID)
+			if err != nil {
+				return err
 			}
-			v.Repairable[t.ID] = true
+			if domain.CheckJudge(t, pending, v.State) == domain.JudgeAllowed {
+				if v.Judgeable == nil {
+					v.Judgeable = map[string]bool{}
+				}
+				v.Judgeable[t.ID] = true
+			}
 		}
 	}
 	return nil

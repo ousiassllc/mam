@@ -28,6 +28,8 @@ type ShotView struct {
 	Selected   bool
 	// Repairable holds the Takes (by ID) whose Repair is accepted now (domain.CheckRepair).
 	Repairable map[string]bool
+	// Judgeable holds the unjudged Takes (by ID) whose Judge run is accepted now (domain.CheckJudge).
+	Judgeable map[string]bool
 }
 
 // SceneView is the hierarchy page: the Project's Scenes, the selected Scene with its Shots and Takes.
@@ -91,7 +93,7 @@ func (s *PlanService) Hierarchy(ctx context.Context, projectID, sceneID, shotID 
 	for i := range view.Shots {
 		views[i] = &view.Shots[i]
 	}
-	if err := s.repairable.mark(ctx, projectID, views); err != nil {
+	if err := s.takeActions.mark(ctx, projectID, views); err != nil {
 		return SceneView{}, err
 	}
 	return view, nil

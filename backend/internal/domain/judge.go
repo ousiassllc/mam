@@ -270,6 +270,32 @@ func CheckRepair(latest *JudgeResult, p EffectivePolicy, t ProductionTemplate, s
 	return RepairAllowed
 }
 
+// JudgeBlock is why a Take cannot be judged now; JudgeAllowed (the zero value) is "it can".
+type JudgeBlock int
+
+// The reasons an explicit Judge run of a Take is refused (409).
+const (
+	JudgeAllowed JudgeBlock = iota
+	JudgeNoVideo            // the Take has no video file to evaluate
+	JudgePending            // a Judge run of the Take is already queued or running
+	JudgeBusy               // the Shot is being generated or repaired
+)
+
+// CheckJudge is the one decision whether a Take may be judged now (POST /takes/:id/judge): it needs a
+// video, no Judge run of its own in flight (pending) and a Shot that is not Busy. The route refuses with
+// it (409 otherwise) and the Shot card draws the Judge button only when it returns JudgeAllowed.
+func CheckJudge(t Take, pending bool, shot ShotState) JudgeBlock {
+	switch {
+	case t.FilePath == "":
+		return JudgeNoVideo
+	case pending:
+		return JudgePending
+	case shot.Busy():
+		return JudgeBusy
+	}
+	return JudgeAllowed
+}
+
 // EncodeScores returns the JSON of Scores; nil when there are none.
 func (r JudgeResult) EncodeScores() ([]byte, error) {
 	if len(r.Scores) == 0 {

@@ -18,7 +18,8 @@ type JudgeService struct {
 }
 
 // Judge queues a Judge run on the Take and returns its Shot in the JUDGING state (202). Every run
-// adds a result; the earlier ones are kept.
+// adds a result; the earlier ones are kept. domain.CheckJudge refuses (409) a Take without a video,
+// one that is being judged and a Shot that is being generated or repaired.
 func (s *JudgeService) Judge(ctx context.Context, takeID string) (ShotFragment, error) {
 	if s.runner == nil {
 		return ShotFragment{}, ErrUnavailable
@@ -26,6 +27,23 @@ func (s *JudgeService) Judge(ctx context.Context, takeID string) (ShotFragment, 
 	ref, err := s.judges.GetTake(ctx, takeID)
 	if err != nil {
 		return ShotFragment{}, notFound(err)
+	}
+	pending, err := s.judges.JudgePending(ctx, takeID)
+	if err != nil {
+		return ShotFragment{}, err
+	}
+	shot, err := s.generations.shots.GetShot(ctx, ref.Take.ShotID)
+	if err != nil {
+		return ShotFragment{}, notFound(err)
+	}
+	// The decision the Shot card draws its Judge button by.
+	switch domain.CheckJudge(ref.Take, pending, shot.Shot.State) {
+	case domain.JudgeNoVideo:
+		return ShotFragment{}, ErrNoVideo
+	case domain.JudgePending:
+		return ShotFragment{}, ErrJudgeBusy
+	case domain.JudgeBusy:
+		return ShotFragment{}, ErrBusy
 	}
 	if _, err := s.runner.Start(ctx, takeID); err != nil {
 		if errors.Is(err, judge.ErrBusy) {

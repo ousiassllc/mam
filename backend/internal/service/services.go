@@ -161,7 +161,7 @@ func New(deps Deps) *Services {
 	world := repository.NewWorldRepository(deps.DB)
 	policies := repository.NewPolicyRepository(deps.DB)
 	brands := repository.NewBrandRepository(deps.DB)
-	c.repairable = repairability{judges: repository.NewJudgeRepository(deps.DB), policies: policies}
+	c.takeActions = takeActions{judges: repository.NewJudgeRepository(deps.DB), policies: policies}
 	generations := &GenerationService{core: c, shots: gens, progress: newBroker[generation.Progress]()}
 	judges := &JudgeService{core: c, judges: repository.NewJudgeRepository(deps.DB), generations: generations}
 	repairs := &RepairService{core: c, repairs: repository.NewRepairRepository(deps.DB), judges: judges.judges, generations: generations}
@@ -183,6 +183,7 @@ func New(deps Deps) *Services {
 		})
 		// Resumable: judging is repeatable and cheap, so an interrupted run is run again.
 		deps.Jobs.Register(domain.JobJudge, judges.runner.Handle, true)
+		c.takeActions.judgeEnabled = true
 		takeJudge = judges.runner
 	}
 	if deps.Jobs != nil && deps.LLM != nil && deps.Models != nil {
