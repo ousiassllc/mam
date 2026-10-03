@@ -258,6 +258,9 @@ func checkBundle(data domain.BundleData) error {
 					return err
 				}
 			}
+			if err := checkBundleColumns(t.Name, row); err != nil {
+				return err
+			}
 			for _, c := range detachColumns[t.Name] {
 				if row[c] != nil {
 					return fmt.Errorf("%w: %s.%s points outside the bundle", ErrInvalidBundle, t.Name, c)
