@@ -311,7 +311,7 @@ DIRECTOR MODEでも、すべてをユーザーが操作する必要はない。
 
 これにより、例えば「カメラだけ自分で決めて、残りはAI」という制作が可能になる。
 
-> **実装の対応範囲（Editing / Music / Dialogue）**: Editing が MANUAL / LOCK の Shot は、Rough Cut を作り直しても（`POST /projects/:id/edit/rough-cut`）ユーザーが編集したクリップ（In / Out・字幕・Transition）をそのまま残し、Editor Agent の Pace / Hook / CTA Timing / Caption の調整もそのクリップには行わない。Music が MANUAL / LOCK の Project は、音声を作り直しても（`POST /projects/:id/audio/generate`）直前の Audio Timeline の BGM を引き継ぎ、BGM の再計画・再生成（と課金）をしない。Dialogue は Writer が PLANNING で書く脚本のセリフであり、Shot が存在した後に AI がセリフを書き換える経路が無いため、常に変更されない（Audio Director は脚本のセリフをそのまま読む）。
+> **実装の対応範囲（Editing / Music / Dialogue）**: Editing が MANUAL / LOCK の Shot は、Rough Cut を作り直しても（`POST /projects/:id/edit/rough-cut`）ユーザーが編集したクリップ（In / Out・字幕・Transition）をそのまま残し、Editor Agent の Pace / Hook / CTA Timing / Caption の調整もそのクリップには行わない。Music が MANUAL / LOCK の Project は、音声を作り直しても（`POST /projects/:id/audio/generate`）直前の Audio Timeline の BGM を引き継ぎ、BGM の再計画・再生成（と課金）をしない。Story が MANUAL / LOCK の Project は、Shot の完了後も State Extractor が World State の Story（`scene/character_goal/known_information/previous_event`）を更新しない（MANUAL は AI による更新だけを止める）。Dialogue は Writer が PLANNING で書く脚本のセリフであり、Shot が存在した後に AI がセリフを書き換える経路が無いため、常に変更されない（Audio Director は脚本のセリフをそのまま読む）。
 
 ---
 

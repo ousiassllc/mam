@@ -73,9 +73,15 @@ func branchExists(ctx context.Context, q queryer, projectID, branchID string) er
 	return nil
 }
 
-// Locks returns the fields of the Project that are LOCKed.
+// Locks returns the fields of the Project that are LOCKed: the ones the user cannot edit either.
 func (r *WorldRepository) Locks(ctx context.Context, projectID string) (domain.LockSet, error) {
 	return readLocks(ctx, r.db.Reader(), projectID)
+}
+
+// AgentLocks returns the fields of the Project the State Extractor must not change: the LOCKed ones
+// and the ones the user set MANUAL (the Story parameter can be MANUAL, spec/spec.md §6).
+func (r *WorldRepository) AgentLocks(ctx context.Context, projectID string) (domain.LockSet, error) {
+	return readLockRows(ctx, r.db.Reader(), projectID, domain.LockMode.KeepsTheAgentsOut)
 }
 
 // readWorld reads the entity rows and the Camera and Story of the latest world_state_version of the
@@ -161,18 +167,29 @@ func readWorld(ctx context.Context, q queryer, projectID, branchID string) (doma
 	return w, nil
 }
 
-// readLocks reads lock rows in mode 'lock'. The singleton Camera and Story are locked regardless of target_id.
+// readLocks reads the lock rows in mode 'lock'. The singleton Camera and Story are locked regardless of target_id.
 func readLocks(ctx context.Context, q queryer, projectID string) (domain.LockSet, error) {
-	rows, err := q.QueryContext(ctx, `SELECT target_type, target_id, parameter_name FROM lock WHERE project_id = ? AND mode = 'lock'`, projectID)
+	return readLockRows(ctx, q, projectID, func(m domain.LockMode) bool { return m == domain.LockLocked })
+}
+
+// readLockRows reads the lock rows whose mode holds.
+func readLockRows(ctx context.Context, q queryer, projectID string, holds func(domain.LockMode) bool) (domain.LockSet, error) {
+	rows, err := q.QueryContext(ctx, `SELECT target_type, target_id, parameter_name, mode FROM lock WHERE project_id = ? AND mode <> 'auto'`, projectID)
 	if err != nil {
 		return nil, fmt.Errorf("list locks: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
 	locks := domain.LockSet{}
 	for rows.Next() {
-		var k domain.LockKey
-		if err := rows.Scan(&k.Target, &k.ID, &k.Field); err != nil {
+		var (
+			k    domain.LockKey
+			mode domain.LockMode
+		)
+		if err := rows.Scan(&k.Target, &k.ID, &k.Field, &mode); err != nil {
 			return nil, err
+		}
+		if !holds(mode) {
+			continue
 		}
 		if k.Target.IsSingleton() {
 			k.ID = ""
@@ -267,7 +284,7 @@ func setField(ctx context.Context, tx *sql.Tx, table, id, name, value string) er
 // ApplyStateDiff applies the State Diff of a completed Shot and appends the resulting World State
 // as a new version, in one transaction (F-10). branchID is the Branch the Shot's Scene belongs to
 // ("" for the trunk): the diff changes that Branch's own entities and version series only. Changes
-// that hit a LOCKed field, a missing Character/Product or a field the State Extractor may not
+// that hit a LOCKed field (or a MANUAL one: the Story the user specified), a missing Character/Product or a field the State Extractor may not
 // change are left out, whatever the caller checked before: the LOCK is judged here, on the data
 // being written. Each change's From is filled with the value it replaced. It returns the changes
 // that were applied and the number of the new version. A diff with no applicable change still
@@ -280,7 +297,7 @@ func (r *WorldRepository) ApplyStateDiff(ctx context.Context, projectID, branchI
 		if err != nil {
 			return err
 		}
-		locks, err := readLocks(ctx, tx, projectID)
+		locks, err := readLockRows(ctx, tx, projectID, domain.LockMode.KeepsTheAgentsOut)
 		if err != nil {
 			return err
 		}

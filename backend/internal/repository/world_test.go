@@ -186,3 +186,36 @@ func TestGenerationRepository_SaveReferencePackRegistersCharactersAndProductsOnc
 	require.Len(t, w.Products, 2)
 	assert.Empty(t, w.Locations)
 }
+
+// The Story parameter can be MANUAL (spec/spec.md §6: the value the user specified): the State
+// Extractor leaves it alone, like a LOCKed one, while the user's own edits are not blocked by it.
+func TestWorldRepository_ManualStoryIsNotOverwrittenByTheStateExtractor(t *testing.T) {
+	ctx := context.Background()
+	f := newWorldFixture(t)
+	require.NoError(t, repository.NewLockRepository(f.db).SetProjectLock(ctx, f.projectID, domain.ParamStory, domain.LockManual))
+
+	locks, err := f.world.AgentLocks(ctx, f.projectID)
+	require.NoError(t, err)
+	assert.True(t, locks.Locked(domain.TargetStory, "", "previous_event"), "the Extractor is told the Story is the user's")
+	plain, err := f.world.Locks(ctx, f.projectID)
+	require.NoError(t, err)
+	assert.False(t, plain.Locked(domain.TargetStory, "", "previous_event"), "MANUAL does not block the user")
+
+	applied, _, err := f.world.ApplyStateDiff(ctx, f.projectID, "", f.shotID, f.takeID, domain.StateDiff{Changes: []domain.StateChange{
+		{Target: domain.TargetStory, Field: "previous_event", To: raw(`"door_opened"`)},
+		{Target: domain.TargetProduct, ID: f.prodID, Field: "condition", To: raw(`"opened"`)},
+	}})
+	require.NoError(t, err)
+	require.Len(t, applied.Changes, 1)
+	assert.Equal(t, "condition", applied.Changes[0].Field, "the rest of the World State still follows the Shot")
+	w, err := f.world.World(ctx, f.projectID, "")
+	require.NoError(t, err)
+	assert.Empty(t, w.Story.PreviousEvent)
+
+	require.NoError(t, repository.NewLockRepository(f.db).SetProjectLock(ctx, f.projectID, domain.ParamStory, domain.LockAuto))
+	applied, _, err = f.world.ApplyStateDiff(ctx, f.projectID, "", f.shotID, f.takeID, domain.StateDiff{Changes: []domain.StateChange{
+		{Target: domain.TargetStory, Field: "previous_event", To: raw(`"door_opened"`)},
+	}})
+	require.NoError(t, err)
+	assert.Len(t, applied.Changes, 1, "AUTO lets the Extractor write it")
+}
