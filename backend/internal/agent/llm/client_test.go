@@ -292,3 +292,39 @@ func TestClient_MissingBackendIsSkipped(t *testing.T) {
 	assert.True(t, res.Fallback)
 	assert.Equal(t, llm.ProviderAnthropic, res.Provider)
 }
+
+func TestClient_ASkippedPrimaryDoesNotHideWhyTheAlternativeFailed(t *testing.T) {
+	f := newFixture(t, []error{status(llm.ProviderOpenAI, 500)}, []error{nil})
+	ctx := context.Background()
+	for range 2 { // opens the breaker of the primary
+		_, err := f.client.Complete(ctx, llm.AgentProducer, llm.Request{})
+		require.NoError(t, err)
+	}
+	f.fallback.mu.Lock()
+	f.fallback.results = []error{status(llm.ProviderAnthropic, 400)}
+	f.fallback.mu.Unlock()
+
+	_, err := f.client.Complete(ctx, llm.AgentProducer, llm.Request{})
+
+	require.Error(t, err)
+	assert.NotErrorIs(t, err, llm.ErrCircuitOpen, "the alternative was tried: its own failure is the reason, not 'wait and retry'")
+	var api *llm.APIError
+	require.ErrorAs(t, err, &api)
+	assert.Equal(t, llm.ProviderAnthropic, api.Provider)
+	assert.Contains(t, err.Error(), "circuit breaker", "the skip stays in the message")
+}
+
+func TestClient_ARouteWhoseProvidersAreAllSkippedIsACircuitOpen(t *testing.T) {
+	f := newFixture(t, []error{status(llm.ProviderOpenAI, 500)}, []error{status(llm.ProviderAnthropic, 500)})
+	ctx := context.Background()
+	for range 2 { // opens both breakers
+		_, err := f.client.Complete(ctx, llm.AgentProducer, llm.Request{})
+		require.Error(t, err)
+	}
+	before := f.primary.callCount() + f.fallback.callCount()
+
+	_, err := f.client.Complete(ctx, llm.AgentProducer, llm.Request{})
+
+	assert.ErrorIs(t, err, llm.ErrCircuitOpen)
+	assert.Equal(t, before, f.primary.callCount()+f.fallback.callCount(), "nobody was called")
+}
