@@ -396,7 +396,6 @@ func (o *Orchestrator) release(ctx context.Context, shotID string) {
 	}
 }
 
-
 // Handle is the job handler of domain.JobGenerate. Register it as NOT resumable: a generation
 // costs money, so an interrupted one is failed and the user starts it again.
 func (o *Orchestrator) Handle(ctx context.Context, job domain.Job) error {
