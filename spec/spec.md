@@ -1099,6 +1099,8 @@ Project
 └── Exports[]
 ```
 
+利用者の好みや運用方針は、「User Preferences」という別の項目としては持たない。確認の好みは Confirmation Policy（§4）が、予算・品質・リトライの好みは Budget / Quality Policy（§25）が保持する。
+
 ---
 
 # 22. Core State Machine
