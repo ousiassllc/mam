@@ -155,6 +155,7 @@
 | F-30 | UI | Chat Workspace | 1プロジェクト＝1チャットスレッドを標準画面とし、Brief 入力・確認ポイントの承認・演出指示・進捗確認・Take 視聴をスレッド内で完結できる。Inspector/Take比較/Timeline/Branch/World State は補助ビュー（`spec/spec.md` §23） | M1 |
 | F-31 | Continuity | Notes（制作メモ） | Project / Series 単位の自由記述メモ（登場人物の背景・世界観・トーン等）。チャット発言（「覚えておいて」）または補助ビューから登録し、バージョン管理する。Writer/Director/Prompt Planner が推論の文脈として参照し（ピン留めは常時、他は関連度順）、画像/動画生成モデルには渡さない。Series メモは Episode 開始時にコピーし、自動伝播しない。State Extractor が構造化可能な内容を World State への昇格として非ブロッキングの承認カードで提案し、LOCK 項目は除外する。守らせたいルールは Brand Constraint（F-23）に登録する（`spec/spec.md` §9.4） | M2 |
 | F-32 | Collaboration | Team Collaboration（Review Package） | 完成動画のレビュー・承認をファイル受け渡しで行う。オーナーが Final Export 1 本から Review Package を作り、レビュアーが自分のインスタンスで視聴・時刻付きコメント・判定（承認 / 修正依頼）を書いて Review Response を返し、オーナーが取り込む。アカウント・サーバー・同時編集は持たず、認証は自己申告の表示名（検証しない）。共有物は allowlist の項目だけで、API キー・顔データ・Brief 等を含まない（`spec/spec.md` §27.1、`spec/requirements/non-functional.md` §5） | M3 |
+| F-33 | Distribution | Windows デスクトップ版（Wails ウィンドウ + インストーラー） | Windows では Wails のネイティブウィンドウ（WebView2）で本アプリを開く。ウィンドウは `127.0.0.1` のサーバー（既定ブラウザ版と同一）の URL を表示し、画面・操作・データはブラウザ版と同じ。起動すると既に起動中のインスタンスがあれば新しいウィンドウは開かずそのウィンドウを前面に出し、ウィンドウを閉じるとアプリ全体が（ブラウザ版の終了と同じグレースフルシャットダウンで）終了する。NSIS インストーラー exe とポータブル `mam.exe`（Windows x64）を GitHub Releases から入手できる（`spec/requirements/non-functional.md` §1、`spec/architecture/overview.md` §11、`spec/environment/setup.md`） | M1 |
 
 ## 3. 画面・操作フロー
 
@@ -282,3 +283,4 @@ Editor Agent は Production Template（`spec/spec.md` §19）が評価軸に持�
 | 1.23 | 2026-10-03 | F-25 から「Preferences」を外し、利用者の好みは Confirmation / Quality / Budget / Retry の各 Policy が保持すると書いた。spec.md §21 の Project Data Model からも「User Preferences」を削除した | 項目の定義がなく、実装にも対応する実体が無かった。確認の好みや品質・予算の好みは既存の Policy で保持しているため（Issue #444） |
 | 1.24 | 2026-10-03 | F-08 に、Candidate 生成を Shot カードの「生成」・Continue・Branch・追加撮影・Director の再生成から起動すること、単発生成になる条件（Judge 未構成・Prompt が LOCK）を追記した | 導線が無く Quality Policy の生成方針が画面から使えなかったため（Issue #437） |
 | 1.25 | 2026-10-03 | UC-7 に、Series の次の Episode は Content Type を持たないため Production Template が常に PRODUCT/CM で始まり、変更は設定画面で行う（Series から継承しない）ことを追記 | 実装（`SeriesService.CreateEpisode`）は Template を PRODUCT/CM に固定し、Episode の Brief は Content Type を持たない。Series に Template を持たせる要件はなく、導出規則の記述が Episode の経路に触れていなかったため仕様を実装に合わせた（Issue #463） |
+| 1.26 | 2026-10-03 | 機能一覧に F-33（Windows デスクトップ版: Wails ウィンドウ + インストーラー）を追加 | Issue #480。Windows 向けにインストーラー exe を GitHub Releases で配布する要望。表示・操作は変えず、起動と終了の挙動（単一インスタンス・ウィンドウを閉じると終了）だけが新規の要件 |

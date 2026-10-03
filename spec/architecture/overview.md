@@ -15,7 +15,7 @@
 
 | レイヤー | 技術 | 役割 |
 |---------|------|------|
-| 実行方式 | Go net/http（Gin） + ブラウザ | ローカルループバック（127.0.0.1）で SSR+HTMX を配信し、起動時に既定ブラウザを自動オープンする。将来的にネイティブシェル（Wails等）へ移行可能な `http.Handler` 設計を維持する |
+| 実行方式 | Go net/http（Gin） + ブラウザ または Wails ウィンドウ（Windows 版） | ローカルループバック（127.0.0.1）で SSR+HTMX を配信する。ブラウザ版は起動時に既定ブラウザを自動オープンし、Windows 版（Wails v3、WebView2）は同じ URL をネイティブウィンドウで表示する（§11）。サーバーは独立した `http.Handler` として動く |
 | サーバーフレームワーク | Go + Gin | ルーティング + SSR。独立した `http.Handler` として起動する |
 | API フレームワーク | Huma | OpenAPI 3.1 自動生成、`/api/v1` 配下の JSON API の入出力バリデーション |
 | テンプレートエンジン | Templ | 型安全な Go HTML テンプレート（atoms/molecules/organisms/pages） |
@@ -93,16 +93,19 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 ├── lefthook.yml            # Git フック。pre-commit は linterly（scripts/linterly-staged.sh 経由）・fmt-check・lint-go・typecheck（lint-static）、pre-push は build/vet と make test
 ├── scripts/
 │   ├── build.sh            # 本番ビルド（templ → esbuild/tailwind → go build）。`--all` で全プラットフォーム
+│   ├── package-windows.sh  # Windows 版のパッケージング（フロント → Wails ウィンドウ版 exe → NSIS インストーラー。§11）
 │   ├── fetch-face-models.sh # 顔検出・埋め込みモデル（YuNet / SFace）の取得と SHA-256 検証（§9 / model-adapters.md §10.1）
 │   └── linterly-staged.sh  # コミット対象ファイルの行数上限チェック（pre-commit）
+├── build/                  # Wails v3 のパッケージング設定（`config.yml`・`Taskfile.yml`・`windows/`: アイコン・マニフェスト・`info.json`・`nsis/project.nsi`。§11）
 ├── backend/
 │   ├── cmd/
-│   │   └── server/
-│   │       ├── main.go     # エントリーポイント。配線（DI）・起動・グレースフルシャットダウン
-│   │       ├── judge.go    # AI Video Judge の起動時の準備（`newJudgeSetup`。ffmpeg と顔モデル・ONNX Runtime を探し、無ければ縮退して警告ログ。model-adapters.md §10）
-│   │       ├── listen.go   # 127.0.0.1 の空きポート確保（使用中なら別ポートへフォールバック）
-│   │       └── browser.go  # OS別のブラウザ自動オープン
+│   │   ├── server/         # ブラウザ版（全 OS）のエントリーポイント
+│   │   │   ├── main.go     # `app.Run` を呼び、起動完了で `openBrowser` する
+│   │   │   └── browser.go  # OS別のブラウザ自動オープン
+│   │   └── wails/          # Windows 版のエントリーポイント（`//go:build windows`。Wails ウィンドウ。§11）
+│   │       └── main.go     # Wails アプリ・ウィンドウ・単一インスタンス。`app.Run` を別 goroutine で動かし、起動完了で URL を開く
 │   └── internal/
+│       ├── app/            # 配線（DI）・起動・グレースフルシャットダウン。`cmd/server/main.go` から移した起動処理（設定読込・データディレクトリのロック・ロガー・`buildServices`・ジョブ復旧・`runHTTP`）、`listen.go`（127.0.0.1 の空きポート確保。使用中なら別ポートへフォールバック）、`judge.go`（AI Video Judge の起動時の準備。`newJudgeSetup`。ffmpeg と顔モデル・ONNX Runtime を探し、無ければ縮退して警告ログ。model-adapters.md §10）。`Run(ctx, Options)` は待ち受けが始まった時点で `Options.OnReady(url)` を呼ぶ
 │       ├── config/         # フラグ / 環境変数（MAM_*）からの設定解決（データディレクトリ・ポート等）
 │       ├── logging/        # 構造化ログ（slog、レベル別、ローカルファイルへローテーション出力）
 │       ├── fsutil/         # 一時ファイル→リネームのアトミック書き込み、異常終了時の一時ファイル掃除
@@ -185,7 +188,7 @@ handler → service → agent → repository → domain
 
 ## 6. 起動方式（ローカル Web サーバー）
 
-`backend/cmd/server/main.go` が Gin サーバーを `127.0.0.1:<port>` で起動し、既定ブラウザで `http://127.0.0.1:<port>` を自動的に開く。ネイティブ WebView は用いず、OS標準のブラウザ（Chrome/Edge/Firefox/Safari）でHALTのSSR+HTMX+Lit UIを表示する。
+`backend/cmd/server/main.go`（ブラウザ版）は `internal/app` で Gin サーバーを `127.0.0.1:<port>` で起動し、既定ブラウザで `http://127.0.0.1:<port>` を自動的に開く。OS標準のブラウザ（Chrome/Edge/Firefox/Safari）でHALTのSSR+HTMX+Lit UIを表示する。Windows 版（`backend/cmd/wails`）は同じサーバーをネイティブ WebView2 ウィンドウで開く（§11）。
 
 ```go
 // backend/cmd/server/main.go（概念コード）
@@ -201,9 +204,10 @@ waitForShutdownSignal()
 
 - HTMX のフラグメント swap・`hx-boost`・WebSocket はすべて `127.0.0.1` へのループバック HTTP リクエストとして処理する
 - 本番ビルドでは `static/src/dist` を `go:embed` し、単一バイナリに同梱する（サーバー・アセットとも1バイナリで完結）
-- `internal/router`, `internal/web`, `internal/agent` 等はすべて `http.Handler` 単位で完結しており、実行方式（標準サーバー起動 or 将来のネイティブシェル埋め込み）に依存しない
+- `internal/router`, `internal/web`, `internal/agent` 等はすべて `http.Handler` 単位で完結しており、実行方式（ブラウザで開く or Wails ウィンドウで開く）に依存しない
 - サーバーは `127.0.0.1` のみにバインドし、加えて `LoopbackOnly` ミドルウェアがループバック以外のクライアント・`Host`（DNSリバインディング対策）・`Origin` を 403 で拒否する（`Origin` はループバックのホストであること。さらに `GET/HEAD/OPTIONS` 以外のリクエストと WebSocket のハンドシェイクでは、`Origin` の host:port が `Host` と一致する、つまりこのサーバー自身のオリジンであることを求め、同じループバック上の別ポートのページからのリクエストも拒否する）。CSRF は Cookie（`mam_csrf`、HttpOnly/SameSite=Strict）と `<meta name="csrf-token">` の二重送信方式で、`GET/HEAD/OPTIONS` 以外は `X-CSRF-Token` ヘッダ（htmx・`lib/api.ts`が付与）の一致を必須とする（ボディは読まない。フォームフィールドでの送信は受け付けない）。これらのミドルウェア（`LoopbackOnly`・CSRF・`MaxBody`・`Recovery`）の拒否は、`HX-Request` のリクエストには他のエラーと同じ `text/html` のトースト（`HX-Reswap: none`）で返し、それ以外には JSON（または空ボディ）で返す。htmx がレスポンスを得られなかった場合（`htmx:sendError`/`htmx:timeout`/`htmx:responseError`）は `main.ts` がトーストを表示する
 - 設定は `--data-dir`（既定: OS のユーザー設定ディレクトリ配下の `mam`）・`--port`（既定 8787、使用中なら空きポート）・`--no-browser`・`--log-level`・`--static-dir`（開発時のみ、ディスクから静的アセットを配信）に加え、モデル関連の次の設定を、対応する `MAM_*` 環境変数（フラグ名を大文字・`_` 区切りにした `MAM_LLM_CONFIG` 等）で指定する。フラグは環境変数より優先される。
+- 起動処理は `internal/app` が持ち、`cmd/server` と `cmd/wails` は表示の仕方（ブラウザを開く／ウィンドウに URL を読み込む）だけが違う。どちらも同じ `127.0.0.1` のサーバーを起動し、設定（フラグ・`MAM_*`）、データディレクトリのロック、ジョブ復旧、グレースフルシャットダウンは共通である
 - データディレクトリは起動時に排他ロック（`<data-dir>/.mam.lock`、OS のファイルロック。プロセスが死ねば OS が解放する）を取る。同じディレクトリで 2 つ目のインスタンスを起動するとエラーで終了し、実行中のインスタンスの一時ファイルやインポート途中のディレクトリを起動時の掃除（`RemoveStaleTemp` / `RemoveStaleImports`）で消すことはない。別の `--data-dir` を指定すれば並行して起動できる。
   - `--llm-config`: Reasoning LLM の Agent ごとのプロバイダー割り当て JSON（`model-adapters.md` §2.1）
   - `--model-config`: 画像・動画生成 Model Adapter の設定 JSON（`model-adapters.md` §9.2。Multi-model routing も同じ JSON、`model-adapters.md` §13）
@@ -252,6 +256,7 @@ dev:
 - `.css` 編集 → Tailwind がビルド → ブラウザリロードで反映
 - `make dev` は `MAM_STATIC_DIR=static/src/dist` を設定し、再ビルドのたびにバイナリを作り直さずディスク上のアセットを配信する
 - 本番ビルド: `make build`（`scripts/build.sh`）が `templ generate` → `esbuild`（minify） → `tailwind`（minify） → `go build`（`go:embed`で静的アセット同梱、`CGO_ENABLED=0`）を一括実行し `bin/mam` を生成する（`make build-all` = `scripts/build.sh --all` は windows / darwin / linux × amd64 / arm64 の全プラットフォームを `bin/mam-<os>-<arch>` に生成する）。SQLite は純 Go ドライバ（modernc.org/sqlite）のため各 OS/arch へクロスコンパイル可能
+- Windows 版: `scripts/package-windows.sh` が上の本番ビルドと同じフロントエンド工程の後に `wails3 package GOOS=windows` を実行し、ポータブル `mam.exe` と NSIS インストーラーを作る（§11.3）。ローカルの確認は Windows 上で行う（Wails v3 の `wails3` CLI と NSIS（`makensis`）が必要）
 - その他のターゲット: `make test`（Go `-race` + フロントの vitest + web-test-runner の Lit コンポーネントテスト（Chrome が必要））、`make lint`（golangci-lint + `tsc --noEmit`）、`make fmt` / `make fmt-check`
 
 ## 10. テスト戦略
@@ -266,13 +271,37 @@ HALT のレイヤー別テスト方針を踏襲する。
 | Lit コンポーネント | `@open-wc/testing` + `@web/test-runner` | 単体の振る舞い |
 | E2E | 未導入（方針: Playwright で Gin サーバーを直接起動してブラウザから検証する） | HTMXインタラクション込みのユーザーフロー。現状は Go ハンドラ（`internal/router` の `httptest`、HTMX ヘッダ込み）と Lit のブラウザ内テストで層別に検証しており、ブラウザ通しのフローは自動検証されない |
 
-## 11. 将来拡張: Wails によるネイティブデスクトップ化
+## 11. Windows デスクトップ版（Wails v3）
 
-現段階ではローカル Web サーバー + ブラウザ構成とするが、以下の設計により将来 Wails（またはTauri等）でのネイティブパッケージング化を低コストで行えるようにしておく。
+Windows では Wails v3 のネイティブウィンドウ（WebView2）でアプリを開く。バージョンは `go.mod` と CI の `wails3` CLI で同じ版（v3 はベータのため破壊的変更を避ける）に固定する。
 
-- `internal/router` が返す Gin の `*gin.Engine` は標準の `http.Handler` であり、Wails v3 の `application.AssetOptions.Handler` へそのまま渡せる
-- ブラウザ自動オープン処理（`openBrowser()`）は `backend/cmd/server/browser.go`（`main.go` ではなく同じ `cmd/server` パッケージの別ファイル）にあり、`main.go` が起動後に呼ぶだけである。Wails採用時は `cmd/server` のエントリーポイント（`main.go` と `browser.go`）のみ `backend/cmd/wails/main.go` 等に差し替えれば良く、`internal/` 配下（domain/repository/agent/service/web）は変更不要
-- Wails化のトリガー例: OSネイティブの通知・トレイアイコン・自動更新・単一実行ファイルへのアイコン付与などデスクトップ体験の強化が必要になった時点で着手する
+### 11.1 方式: サーバーを維持し、ウィンドウはその URL を開く
+
+- `cmd/wails` は `internal/app` のサーバーを `127.0.0.1:<port>` で起動し、起動完了の通知（`OnReady(url)`）でウィンドウに `http://127.0.0.1:<port>` を読み込む（`WebviewWindow.SetURL`）。Wails の AssetServer（`application.AssetOptions.Handler`）へ Gin の `http.Handler` を直接渡す方式は採らない
+- 理由: ① Wails v3 の AssetServer は WebSocket のハンドシェイクを 501 で拒否する（`v3/internal/assetserver/assetserver.go`、v3.0.0-beta.27 のソースで確認）。チャット（`/ws/projects/:id`）と生成進捗（`/ws/shots/:id`）は WebSocket で、ポーリングは禁止（non-functional.md §2）。② AssetServer 経由の Host は `wails.localhost` で、`LoopbackOnly` のループバック限定（§6）と食い違う。サーバーを維持すれば WebSocket・CSRF・`LoopbackOnly`・大容量アップロード・動画の Range 配信・Content-Disposition によるダウンロードを変えずに使える
+- ウィンドウはサーバーの URL 以外に移動しない。Wails のバインディング・イベントは使わない（Go 側の API を WebView に公開しない）
+
+### 11.2 `cmd/wails` の挙動
+
+- ビルドタグ `//go:build windows`（Wails v3 の Linux/macOS ビルドは CGO と GTK/WebKit を要し、`go build ./...`・`go vet ./...`・golangci-lint を Ubuntu の CI で通すため。`CGO_ENABLED=0` の Windows ビルドで動くこと）
+- ウィンドウ: タイトル `MAM`、既定 1440×900、最小 1024×700。サーバーが起動するまでは背景色だけの空ページを出し、起動完了で URL を読み込む
+- 単一インスタンス: `application.Options.SingleInstance`（`UniqueID: "com.ousiassllc.mam"`）。2 つ目の起動は新しいウィンドウを作らず、先のウィンドウを復元して前面に出して終了する（データディレクトリのロック `.mam.lock` に到達しない）。Windows 版は `--data-dir` が違っても同時に 1 つしか起動できない（並行起動はブラウザ版 `cmd/server` を使う）
+- 終了: ウィンドウを閉じるとアプリ全体を終了する（トレイ常駐なし）。`app.Run` の `ctx` を取り消してグレースフルシャットダウン（`shutdownTimeout` 10 秒）を行い、サーバーが止まってから Wails アプリを終了する。実行中のジョブはクラッシュ復旧（non-functional.md §3）と同じ経路で次回起動時に再開または安全に失敗として扱う
+- 起動エラー（設定の誤り・データディレクトリが別プロセスで使用中・リッスン失敗）はコンソールが無い（`-H windowsgui`）ためネイティブのエラーダイアログに出して終了コード 1 で終わる。`--help` と引数の誤りもダイアログに出す
+- 設定は `cmd/server` と同じ `config.Load`（フラグ・`MAM_*`）。`--no-browser` は無視する（ウィンドウを開く）。インストーラーのショートカットは引数なしで起動する（`--data-dir` の既定は OS のユーザー設定ディレクトリ配下の `mam`）
+- `target="_blank"` のリンクとダウンロード（`Content-Disposition: attachment` / `<a download>`。Final Export・プロジェクトバンドル・Review Package/Response）は、利用者が目的（画像・動画を見る、ファイルを保存する）を果たせること。WebView2 の既定の挙動で足りない場合は、新しいウィンドウを作らず既定ブラウザで開く（`application.BrowserManager.OpenURL`）。実機で確認して実装を決める
+- ブラウザ版と異なる点: Windows 版でも ONNX Runtime のバインディングが無いため顔同一性の定量評価は使えない（non-functional.md §1）。ffmpeg は PATH から探す（同梱しない）
+
+### 11.3 パッケージングと配布
+
+- ビルド・パッケージングは `scripts/package-windows.sh`（`build.sh` と同じ templ → esbuild → tailwind の後、`wails3 package GOOS=windows`）。設定は `build/`（Wails v3 の既定配置。Taskfile のフロントエンド工程は本リポジトリの `static/` のビルドへ置き換える。Go のビルドは `./backend/cmd/wails`、`-tags production`、`-ldflags "-s -w -H windowsgui"`、`-trimpath`、`CGO_ENABLED=0`、`GOOS=windows GOARCH=amd64`）
+- 成果物: ポータブル `mam.exe`（Wails ウィンドウ版）と、それを入れる NSIS インストーラー exe。インストーラーは WebView2 ブートストラッパーを含み、Start メニューとデスクトップにショートカットを作り、アンインストーラーを登録する。インストール先は `%ProgramFiles%\MAM`（Wails v3 の NSIS 既定の管理者権限）。アンインストールでデータディレクトリは消さない。完了画面に ffmpeg の導入案内（PATH に `ffmpeg` / `ffprobe` を置くと Judge・プレビュー・Export などが使える。無くても起動する）を出す
+- バージョンは Git タグ `vX.Y.Z` の `X.Y.Z`。`build/windows/info.json`（ファイルバージョン・ProductVersion）と NSIS の `INFO_PRODUCTVERSION`、ファイル名に反映する
+- 配布は GitHub Actions の `release.yml`（`windows-latest`、`v*` タグの push）が `gh release create` でリリースを作り、2 つの成果物を添付する（`spec/environment/setup.md`）。コード署名はしない
+
+### 11.4 拡張の余地
+
+トレイ常駐・自動更新・コード署名・Windows arm64・macOS/Linux のネイティブ版は対象外。必要になった時点で別 Issue とする。
 
 ## 改訂履歴
 
@@ -292,3 +321,4 @@ HALT のレイヤー別テスト方針を踏襲する。
 | 1.11 | 2026-10-01 | §7 の Lit の通信範囲を「`/api/v1` の GET + サーバーが渡すアクションルートへの CSRF 付き `fetch`（HTMX は使わない）」に修正 | 実装の Timeline Editor・Take Comparator が `save_url` / `select_url` 等のアクションルートへ PUT/POST/DELETE しており、「JSON API のみ」の記述と乖離していたため（Issue #163） |
 | 1.12 | 2026-10-01 | §2 の設定フラグ説明と `facesim/` の節番号参照に `model-adapters.md` を付けた | 文書名のない `§9.2`・`§10`・`§11.4`・`§13` が overview.md 自身の節（ビルド・テスト戦略・Wails 等）と読み違えられたため（Issue #185） |
 | 1.13 | 2026-10-03 | §5 の構成図に `cmd/server/judge.go` と `lib/query.ts` を追加し、§11 の Wails 化の記述の `openBrowser()` の所在を `main.go` から `browser.go` に直した | 実装（`backend/cmd/server/judge.go`・`browser.go`、`static/src/components/lib/query.ts`）に構成図と記述が追従していなかったため（Issue #441） |
+| 1.14 | 2026-10-03 | §2 の実行方式、§5 のディレクトリ構成（`internal/app`・`cmd/wails`・`build/`・`scripts/package-windows.sh`）、§6 の起動処理の共有、§11 を「将来拡張」から「Windows デスクトップ版（Wails v3）」に書き換えた。Gin の Handler を AssetServer へ直接渡す方針をやめ、サーバーを維持してウィンドウが URL を開く方式にした | Issue #480。インストーラー配布の要望。Wails v3 の AssetServer が WebSocket を処理しない（501）ため、元の方針ではチャットと生成進捗が動かない。単一インスタンス・終了・起動エラー・ダウンロードの扱いも定義した |

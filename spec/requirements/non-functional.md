@@ -1,14 +1,15 @@
 # 非機能要件
 
-`spec/overview.md` のスコープ（ローカル起動型 Web アプリ、シングルユーザー前提。将来的なネイティブデスクトップパッケージング(Wails等)は対象外）に基づく非機能要件。
+`spec/overview.md` のスコープ（ローカル起動型 Web アプリ、シングルユーザー前提。Windows 版は Wails ウィンドウで同じサーバーを開く）に基づく非機能要件。
 
 ## 1. 実行環境 / 互換性
 
 | 項目 | 要件 |
 |------|------|
 | OS | Windows 10 以降 / macOS 12 以降 / Ubuntu 22.04 以降（Go バイナリの対応OS） |
-| ブラウザ | 各ブラウザ（Chrome/Edge/Firefox/Safari）の安定版最新2バージョンをサポート対象とする。HALT の HTMX + Lit（ES2022, Custom Elements v1。Lit コンポーネントは Shadow DOM を使わず Light DOM に描画する）が動作すること |
-| アーキテクチャ | x64 / arm64。`make build-all`（`scripts/build.sh --all`）が Windows・macOS・Linux × x64・arm64 の 6 構成を `bin/mam-<os>-<arch>[.exe]` に生成する（単一バイナリは `make build`）。配布用の自動リリース（CI）は持たない。Windows では ONNX Runtime のバインディングが対応しないため顔同一性の定量評価（Face Identity Similarity）は使えず、AI Video Judge は定性評価にフォールバックする |
+| ブラウザ | 各ブラウザ（Chrome/Edge/Firefox/Safari）の安定版最新2バージョンをサポート対象とする。HALT の HTMX + Lit（ES2022, Custom Elements v1。Lit コンポーネントは Shadow DOM を使わず Light DOM に描画する）が動作すること。Windows の Wails ウィンドウ版は WebView2（Evergreen。Chromium 系で Edge と同じエンジン）で表示し、同じ要件を満たすこと |
+| アーキテクチャ | x64 / arm64。`make build-all`（`scripts/build.sh --all`）が Windows・macOS・Linux × x64・arm64 の 6 構成のブラウザ版を `bin/mam-<os>-<arch>[.exe]` に生成する（単一バイナリは `make build`）。Windows では ONNX Runtime のバインディングが対応しないため顔同一性の定量評価（Face Identity Similarity）は使えず、AI Video Judge は定性評価にフォールバックする |
+| 配布 | GitHub Releases に Windows x64 の成果物 2 つだけを載せる: ① NSIS インストーラー exe（`mam-<version>-windows-amd64-setup.exe`）、② Wails ウィンドウ版のポータブル `mam.exe`（`mam-<version>-windows-amd64.exe`）。`v*` タグの push で GitHub Actions（`.github/workflows/release.yml`）が自動で作る。コード署名はしない（SmartScreen の警告が出る。README に手順を書く）。macOS・Linux・Windows arm64 の成果物は載せない。インストーラーは WebView2 ブートストラッパーを含み、WebView2 が無い Windows 10 では取得して入れる（インターネット接続が必要。ポータブル版は含まないため、WebView2 が無い環境ではインストーラー版を使う）。ffmpeg は同梱せず（実行時に任意）、README とインストーラー完了画面で PATH への導入を案内する。アンインストールではデータディレクトリ（既定: `%AppData%\mam`）を削除しない |
 | ネットワーク | 外部生成モデル API 呼び出しにはインターネット接続が必須。ブラウザ ↔ バックエンド通信はローカルループバック（127.0.0.1）のみで完結し、オフラインでも UI 操作・既存プロジェクト閲覧は可能 |
 
 ## 2. 性能
@@ -102,3 +103,4 @@
 | 1.10 | 2026-10-01 | §2 の起動時間の対象を、存在しない Main Workspace から標準画面の Chat Workspace（`GET /projects/:id`）に改めた | 標準画面は Chat Workspace に変わったが、起動時間だけが古い画面名のままだったため（Issue #137） |
 | 1.11 | 2026-10-01 | §5 入力検証を、サービス層（`service/upload.go`）での拡張子・内容の署名・サイズ・件数の検証と 422 に直し、上限（画像 20 MB・動画 300 MB・8 件）を明記 | アップロードは Gin の multipart ハンドラ経由で Huma を通らず、「Huma の Input バリデーションで拒否する」は実装と乖離していたため（Issue #175） |
 | 1.12 | 2026-10-02 | §8 のエクスポート/インポートで ID の制限を「Project ID」から「Project ID と全テーブルの行 ID」に広げた | 実装（`checkBundle` の `ValidBundleID`）は全テーブルの行 `id` を `[A-Za-z0-9_-]{1,64}` に限るため（Issue #252） |
+| 1.13 | 2026-10-03 | §1 に配布の行を追加（Windows x64 のインストーラー exe とポータブル `mam.exe` を GitHub Releases へ、`v*` タグで自動、署名なし、ffmpeg 非同梱、データディレクトリ保持）。ブラウザ行に Wails ウィンドウ版（WebView2）を追記。アーキテクチャ行から「配布用の自動リリース（CI）は持たない」を削除。冒頭のスコープ文から「Wails 等は対象外」を外した | Issue #480。Windows 向けの配布手段（インストーラー）の要望に応える。従来は自動リリースを持たなかった |
