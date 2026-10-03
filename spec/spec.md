@@ -1210,7 +1210,7 @@ EXPORTED
 
 ## 23.3 補助ビュー
 
-チャットの横に開く/別ページで開くビューで、スレッド内カードや［⋯］メニューから到達する。いずれも操作結果は同じ Project の状態に反映される。スレッドに発言またはカードとして記録されるのは、Scene・Shot の追加、Brief の更新と Confirmation Level の設定、Quality Policy・予算上限・Production Template の変更、編集・音声・書き出しの各工程（Editor / Audio / Export）、Review Response の取り込み、Take の部分採用（つなぎ込み）、DIRECTOR の指示、Continue による次の Shot・Scene の作成で、Take の採用/除外、LOCK の変更、Shot Spec の手動編集、World State の編集・復元、Branch の作成・改名、Notes、Brand Constraint の操作はスレッドには記録されない（各ビューの表示と履歴で確認する）。
+チャットの横に開く/別ページで開くビューで、スレッド内カードや［⋯］メニューから到達する。いずれも操作結果は同じ Project の状態に反映される。スレッドに発言またはカードとして記録されるのは、Scene・Shot の追加、Brief の更新と Confirmation Level の設定、Quality Policy・予算上限・Production Template の変更、編集・音声・書き出しの各工程（Editor / Audio / Export）、Review Response の取り込み、Take の部分採用（つなぎ込み）、DIRECTOR の指示、AUTO ⇄ DIRECTOR のモード切替（通知の発言）、Continue による次の Shot・Scene の作成で、Take の採用/除外、LOCK の変更、Shot Spec の手動編集、World State の編集・復元、Branch の作成・改名、Notes、Brand Constraint の操作はスレッドには記録されない（各ビューの表示と履歴で確認する）。
 
 - **Inspector**（選択中 Shot の詳細）: Shot Objective / Duration / Character / Acting / Camera / Lighting / Product / Continuity / References / Generation Model / Take List / Judge Results / Locks。モデル別プロンプトは Inspector に常設せず、各 Take の「生成の経緯」（Generation Trace、`GET /takes/:id/trace`）で確認する。各項目は AUTO / MANUAL / LOCK を切替可能
 - Take 比較、Timeline、Branch ツリー、World State、Notes（M2、§9.4）、Cost、Settings
