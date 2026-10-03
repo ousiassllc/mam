@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"slices"
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -232,7 +231,9 @@ type AIPick struct {
 // accepted tells whether a Take meets the Retry Policy (the Minimum acceptance scores, the same rule
 // the Repair loop applies): the Take AUTO adopts must be one, and when some Take is, the pick is the
 // best of those. A Take that passed with scores under the minimum is only recommended, as the Repair
-// loop treats it as not good enough. A nil accepted counts every Take that passed as acceptable.
+// loop treats it as not good enough. A Take the user rejected is out of the pool before accepted is
+// asked (domain.PickAcceptedTake), so it cannot make the others fall short of the policy. A nil
+// accepted counts every Take that passed as acceptable.
 func (r *TakeRepository) PickBest(ctx context.Context, shotID string, adopt bool, accepted func(takeID string) bool) (AIPick, error) {
 	var pick AIPick
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
@@ -246,13 +247,7 @@ func (r *TakeRepository) PickBest(ctx context.Context, shotID string, adopt bool
 				return nil // the user's choice stands
 			}
 		}
-		pool := takes
-		if accepted != nil {
-			if ok := slices.DeleteFunc(slices.Clone(takes), func(t domain.TakeInfo) bool { return !accepted(t.ID) }); len(ok) > 0 {
-				pool = ok
-			}
-		}
-		id, passed, ok := domain.PickTake(pool)
+		id, passed, ok := domain.PickAcceptedTake(takes, accepted)
 		if !ok {
 			return nil
 		}
