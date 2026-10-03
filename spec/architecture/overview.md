@@ -90,7 +90,7 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 ├── Makefile                # dev / build / test / lint / fmt（§9）
 ├── .air.toml               # make dev のホットリロード設定
 ├── .golangci.yml           # lint。depguard でレイヤー依存ルールを強制
-├── lefthook.yml            # pre-commit フック（linterly を scripts/linterly-staged.sh 経由で実行）
+├── lefthook.yml            # Git フック。pre-commit は linterly（scripts/linterly-staged.sh 経由）・fmt-check・lint-go・typecheck（lint-static）、pre-push は build/vet と make test
 ├── scripts/
 │   ├── build.sh            # 本番ビルド（templ → esbuild/tailwind → go build）。`--all` で全プラットフォーム
 │   ├── fetch-face-models.sh # 顔検出・埋め込みモデル（YuNet / SFace）の取得と SHA-256 検証（§9 / model-adapters.md §10.1）
@@ -252,7 +252,7 @@ dev:
 - `.css` 編集 → Tailwind がビルド → ブラウザリロードで反映
 - `make dev` は `MAM_STATIC_DIR=static/src/dist` を設定し、再ビルドのたびにバイナリを作り直さずディスク上のアセットを配信する
 - 本番ビルド: `make build`（`scripts/build.sh`）が `templ generate` → `esbuild`（minify） → `tailwind`（minify） → `go build`（`go:embed`で静的アセット同梱、`CGO_ENABLED=0`）を一括実行し `bin/mam` を生成する（`make build-all` = `scripts/build.sh --all` は windows / darwin / linux × amd64 / arm64 の全プラットフォームを `bin/mam-<os>-<arch>` に生成する）。SQLite は純 Go ドライバ（modernc.org/sqlite）のため各 OS/arch へクロスコンパイル可能
-- その他のターゲット: `make test`（Go `-race` + フロントの vitest）、`make lint`（golangci-lint + `tsc --noEmit`）、`make fmt` / `make fmt-check`
+- その他のターゲット: `make test`（Go `-race` + フロントの vitest + web-test-runner の Lit コンポーネントテスト（Chrome が必要））、`make lint`（golangci-lint + `tsc --noEmit`）、`make fmt` / `make fmt-check`
 
 ## 10. テスト戦略
 
