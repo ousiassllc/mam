@@ -191,14 +191,14 @@ handler → service → agent → repository → domain
 `backend/cmd/server/main.go`（ブラウザ版）は `internal/app` で Gin サーバーを `127.0.0.1:<port>` で起動し、既定ブラウザで `http://127.0.0.1:<port>` を自動的に開く。OS標準のブラウザ（Chrome/Edge/Firefox/Safari）でHALTのSSR+HTMX+Lit UIを表示する。Windows 版（`backend/cmd/wails`）は同じサーバーをネイティブ WebView2 ウィンドウで開く（§11）。
 
 ```go
-// backend/cmd/server/main.go（概念コード）
+// backend/internal/app（概念コード。cmd/server も cmd/wails も同じ起動処理を呼ぶ）
 ginEngine := router.New(services) // Gin *gin.Engine（HALTのSSR+HTMXルート+Huma APIを登録済み）
 
-port := findAvailablePort(preferredPort) // 使用中なら空きポートへフォールバック
-srv := &http.Server{Addr: fmt.Sprintf("127.0.0.1:%d", port), Handler: ginEngine}
+ln := listenLoopback(preferredPort) // 使用中なら空きポートへフォールバック
+srv := &http.Server{Handler: ginEngine}
 
-go srv.ListenAndServe()
-openBrowser(fmt.Sprintf("http://127.0.0.1:%d", port)) // OS別のブラウザ起動コマンドを実行
+go srv.Serve(ln)
+opts.OnReady(baseURL(ln)) // cmd/server: openBrowser(url) / cmd/wails: window.SetURL(url)
 waitForShutdownSignal()
 ```
 
@@ -273,35 +273,7 @@ HALT のレイヤー別テスト方針を踏襲する。
 
 ## 11. Windows デスクトップ版（Wails v3）
 
-Windows では Wails v3 のネイティブウィンドウ（WebView2）でアプリを開く。バージョンは `go.mod` と CI の `wails3` CLI で同じ版（v3 はベータのため破壊的変更を避ける）に固定する。
-
-### 11.1 方式: サーバーを維持し、ウィンドウはその URL を開く
-
-- `cmd/wails` は `internal/app` のサーバーを `127.0.0.1:<port>` で起動し、起動完了の通知（`OnReady(url)`）でウィンドウに `http://127.0.0.1:<port>` を読み込む（`WebviewWindow.SetURL`）。Wails の AssetServer（`application.AssetOptions.Handler`）へ Gin の `http.Handler` を直接渡す方式は採らない
-- 理由: ① Wails v3 の AssetServer は WebSocket のハンドシェイクを 501 で拒否する（`v3/internal/assetserver/assetserver.go`、v3.0.0-beta.27 のソースで確認）。チャット（`/ws/projects/:id`）と生成進捗（`/ws/shots/:id`）は WebSocket で、ポーリングは禁止（non-functional.md §2）。② AssetServer 経由の Host は `wails.localhost` で、`LoopbackOnly` のループバック限定（§6）と食い違う。サーバーを維持すれば WebSocket・CSRF・`LoopbackOnly`・大容量アップロード・動画の Range 配信・Content-Disposition によるダウンロードを変えずに使える
-- ウィンドウはサーバーの URL 以外に移動しない。Wails のバインディング・イベントは使わない（Go 側の API を WebView に公開しない）
-
-### 11.2 `cmd/wails` の挙動
-
-- ビルドタグ `//go:build windows`（Wails v3 の Linux/macOS ビルドは CGO と GTK/WebKit を要し、`go build ./...`・`go vet ./...`・golangci-lint を Ubuntu の CI で通すため。`CGO_ENABLED=0` の Windows ビルドで動くこと）
-- ウィンドウ: タイトル `MAM`、既定 1440×900、最小 1024×700。サーバーが起動するまでは背景色だけの空ページを出し、起動完了で URL を読み込む
-- 単一インスタンス: `application.Options.SingleInstance`（`UniqueID: "com.ousiassllc.mam"`）。2 つ目の起動は新しいウィンドウを作らず、先のウィンドウを復元して前面に出して終了する（データディレクトリのロック `.mam.lock` に到達しない）。Windows 版は `--data-dir` が違っても同時に 1 つしか起動できない（並行起動はブラウザ版 `cmd/server` を使う）
-- 終了: ウィンドウを閉じるとアプリ全体を終了する（トレイ常駐なし）。`app.Run` の `ctx` を取り消してグレースフルシャットダウン（`shutdownTimeout` 10 秒）を行い、サーバーが止まってから Wails アプリを終了する。実行中のジョブはクラッシュ復旧（non-functional.md §3）と同じ経路で次回起動時に再開または安全に失敗として扱う
-- 起動エラー（設定の誤り・データディレクトリが別プロセスで使用中・リッスン失敗）はコンソールが無い（`-H windowsgui`）ためネイティブのエラーダイアログに出して終了コード 1 で終わる。`--help` と引数の誤りもダイアログに出す
-- 設定は `cmd/server` と同じ `config.Load`（フラグ・`MAM_*`）。`--no-browser` は無視する（ウィンドウを開く）。インストーラーのショートカットは引数なしで起動する（`--data-dir` の既定は OS のユーザー設定ディレクトリ配下の `mam`）
-- `target="_blank"` のリンクとダウンロード（`Content-Disposition: attachment` / `<a download>`。Final Export・プロジェクトバンドル・Review Package/Response）は、利用者が目的（画像・動画を見る、ファイルを保存する）を果たせること。WebView2 の既定の挙動で足りない場合は、新しいウィンドウを作らず既定ブラウザで開く（`application.BrowserManager.OpenURL`）。実機で確認して実装を決める
-- ブラウザ版と異なる点: Windows 版でも ONNX Runtime のバインディングが無いため顔同一性の定量評価は使えない（non-functional.md §1）。ffmpeg は PATH から探す（同梱しない）
-
-### 11.3 パッケージングと配布
-
-- ビルド・パッケージングは `scripts/package-windows.sh`（`build.sh` と同じ templ → esbuild → tailwind の後、`wails3 package GOOS=windows`）。設定は `build/`（Wails v3 の既定配置。Taskfile のフロントエンド工程は本リポジトリの `static/` のビルドへ置き換える。Go のビルドは `./backend/cmd/wails`、`-tags production`、`-ldflags "-s -w -H windowsgui"`、`-trimpath`、`CGO_ENABLED=0`、`GOOS=windows GOARCH=amd64`）
-- 成果物: ポータブル `mam.exe`（Wails ウィンドウ版）と、それを入れる NSIS インストーラー exe。インストーラーは WebView2 ブートストラッパーを含み、Start メニューとデスクトップにショートカットを作り、アンインストーラーを登録する。インストール先は `%ProgramFiles%\MAM`（Wails v3 の NSIS 既定の管理者権限）。アンインストールでデータディレクトリは消さない。完了画面に ffmpeg の導入案内（PATH に `ffmpeg` / `ffprobe` を置くと Judge・プレビュー・Export などが使える。無くても起動する）を出す
-- バージョンは Git タグ `vX.Y.Z` の `X.Y.Z`。`build/windows/info.json`（ファイルバージョン・ProductVersion）と NSIS の `INFO_PRODUCTVERSION`、ファイル名に反映する
-- 配布は GitHub Actions の `release.yml`（`windows-latest`、`v*` タグの push）が `gh release create` でリリースを作り、2 つの成果物を添付する（`spec/environment/setup.md`）。コード署名はしない
-
-### 11.4 拡張の余地
-
-トレイ常駐・自動更新・コード署名・Windows arm64・macOS/Linux のネイティブ版は対象外。必要になった時点で別 Issue とする。
+Windows では、ブラウザ版と同じ `127.0.0.1` のサーバーを `internal/app` で起動し、Wails v3 のネイティブウィンドウ（WebView2）がその URL を開く。Gin の `http.Handler` を Wails の AssetServer へ直接渡す方式は、AssetServer が WebSocket を 501 で拒否するため採らない。`LoopbackOnly`・CSRF・WebSocket・Range・アップロードは変更しない。単一インスタンス・終了・起動エラー・パッケージング（NSIS インストーラー）・GitHub Releases への配布・実装時に検証する項目は `spec/architecture/desktop.md` に書く。ブラウザ版の `cmd/server` は全 OS で残す。
 
 ## 改訂履歴
 
@@ -321,4 +293,4 @@ Windows では Wails v3 のネイティブウィンドウ（WebView2）でアプ
 | 1.11 | 2026-10-01 | §7 の Lit の通信範囲を「`/api/v1` の GET + サーバーが渡すアクションルートへの CSRF 付き `fetch`（HTMX は使わない）」に修正 | 実装の Timeline Editor・Take Comparator が `save_url` / `select_url` 等のアクションルートへ PUT/POST/DELETE しており、「JSON API のみ」の記述と乖離していたため（Issue #163） |
 | 1.12 | 2026-10-01 | §2 の設定フラグ説明と `facesim/` の節番号参照に `model-adapters.md` を付けた | 文書名のない `§9.2`・`§10`・`§11.4`・`§13` が overview.md 自身の節（ビルド・テスト戦略・Wails 等）と読み違えられたため（Issue #185） |
 | 1.13 | 2026-10-03 | §5 の構成図に `cmd/server/judge.go` と `lib/query.ts` を追加し、§11 の Wails 化の記述の `openBrowser()` の所在を `main.go` から `browser.go` に直した | 実装（`backend/cmd/server/judge.go`・`browser.go`、`static/src/components/lib/query.ts`）に構成図と記述が追従していなかったため（Issue #441） |
-| 1.14 | 2026-10-03 | §2 の実行方式、§5 のディレクトリ構成（`internal/app`・`cmd/wails`・`build/`・`scripts/package-windows.sh`）、§6 の起動処理の共有、§11 を「将来拡張」から「Windows デスクトップ版（Wails v3）」に書き換えた。Gin の Handler を AssetServer へ直接渡す方針をやめ、サーバーを維持してウィンドウが URL を開く方式にした | Issue #480。インストーラー配布の要望。Wails v3 の AssetServer が WebSocket を処理しない（501）ため、元の方針ではチャットと生成進捗が動かない。単一インスタンス・終了・起動エラー・ダウンロードの扱いも定義した |
+| 1.14 | 2026-10-03 | §2 の実行方式、§5 のディレクトリ構成（`internal/app`・`cmd/wails`・`build/`・`scripts/package-windows.sh`）、§6 の起動処理と概念コード、§11 を「将来拡張」から Windows デスクトップ版の要約に書き換え、詳細を `desktop.md` に新設した | Issue #480。インストーラー配布の要望。Wails v3 の AssetServer が WebSocket を処理しない（501）ため、元の Handler 直渡しの方針ではチャットと生成進捗が動かず、サーバーを維持してウィンドウが URL を開く方式にした |
