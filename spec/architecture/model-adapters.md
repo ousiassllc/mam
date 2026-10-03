@@ -37,9 +37,11 @@
 | 用途 | プライマリ | 代替 | 選定理由 |
 |------|-----------|------|---------|
 | Character / Product / Location Reference（新規生成、テキスト正確性が必要な素材） | Google Imagen 4 | OpenAI GPT Image 2 | テキストレンダリング精度・製品写実性が高く、ラベル/ロゴ等 Brand Constraints 適合の素材生成に強い |
-| Style / Lighting Reference、既存素材の参照ベース編集・差分変更 | Google Nano Banana（Gemini Image） | Imagen 4 | 編集・変換・参照ベース変更・キャラクター一貫性維持に強く、World State継承の再生成に向く |
+| Style / Lighting Reference、既存素材の参照ベース編集・差分変更 | Google Nano Banana（Gemini Image） | Imagen 4（参照画像は使えない。下の注） | 編集・変換・参照ベース変更・キャラクター一貫性維持に強く、World State継承の再生成に向く |
 | 高速反復・低コストプレビュー生成 | Black Forest Labs FLUX.2 | Imagen 4 Fast | オープンウェイトでセルフホスト可能（ベンダーロックイン回避の保険）、生成速度重視のCandidate Generation向き |
 | OpenAI系LLM（GPT-5）と認証・請求を統合したい場合 | OpenAI GPT Image 2 | Imagen 4 | 品質ベンチマーク最上位、GPT-5系のAgentと同一ベンダーで運用しやすい |
+
+> **注（Imagen 4 は参照画像を受け取れない）**: Imagen 4 が受け取るのはプロンプトとアスペクト比だけで、画像入力（`Inputs`）は取れない（参照画像を受け取れるのは Nano Banana・GPT Image 2・FLUX.2 のみ）。そのため参照画像つきの呼び出しが代替の Imagen 4 に回ると、参照画像は警告ログを残して**黙って捨てられ**、プロンプトだけの新規生成になる（利用者への通知や失敗扱いはなく、画像の結果にも代替に回ったことは残らない）。Style / Lighting / Keyframe とアップロード素材・World State の参照つき Character / Product / Location は `edit_reference` の代替でこうなり、**その画像ではアップロード素材・World State の見た目やキャラクターの同一性は保たれない**（その Reference Pack / Keyframe を拠り所にする以降の Judge の Identity 評価も、参照なしで作られた画像が基準になる）。同一性を保ちたい用途で代替にも参照画像を持たせたいときは、`images.edit_reference` の `fallback.model` に GPT Image 2 または FLUX.2 を指定する。
 
 ## 4. 動画生成 Model Adapter（Take生成）
 
@@ -384,3 +386,4 @@ MAX QUALITY のみ。話者付きの Dialogue の行（Narration は対象外）
 | 1.24 | 2026-10-02 | §14.6 の「Final QC と書き出しが使うのは主系列トランクの最新版」を、「Final QC は主系列トランクの最新版を検査し、書き出しは `branch_id`（省略時=主系列トランク）の Edit / Audio Timeline を使う」に直した | 書き出しは `branch_id` で指定した Branch のタイムラインを書き出す実装（`spec/api/endpoints.md` §2.6、変更履歴 1.48）で、Final QC だけがトランク固定のため（Issue #244） |
 | 1.25 | 2026-10-02 | §14 の ElevenLabs 認証に、キー未設定の 502 は台詞行があるときだけで、台詞行が無ければキーが要る層を skip して 200 を返すことを明記した | 実装（`audiodirector.Director`）に合わせるため（Issue #379） |
 | 1.26 | 2026-10-03 | §9.1 の画像に、`preview`（FLUX.2 の高速プレビュー）はアダプターと設定だけがあり、現状どの機能からも呼ばれない予約ルートであることを明記 | 実装の呼び出し元（`referencepack.go` の `purposeOf`）は `new_reference` / `edit_reference` だけで、「4 種すべて実装」と読めたため（Issue #419） |
+| 1.27 | 2026-10-03 | §3 の表の下に、Imagen 4 は参照画像を受け取れず、参照つきの呼び出しが代替の Imagen 4 に回ると参照が黙って捨てられ同一性が保たれないことの注を追加 | `adapter.go` の `GenerateImage` は代替が参照画像を取れないとき警告ログだけで `Inputs` を捨てるが、仕様は Imagen 4 を参照ベース編集の代替として表にするだけだった（#434） |
