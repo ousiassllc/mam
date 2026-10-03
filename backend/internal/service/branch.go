@@ -270,21 +270,12 @@ func (s *BranchService) canContinue() bool {
 // story on) and starts generating it from the Branch's World State. When the Branch was made but
 // this fails, the Branch stays and the error says so.
 func (s *BranchService) continueBranch(ctx context.Context, ref repository.ShotRef, branch domain.Branch, direction string) error {
-	in, err := s.continues.input(ctx, ref)
-	if err != nil {
-		return err
-	}
-	in.World, err = s.shots.WorldContext(ctx, ref.ProjectID, branch.ID)
-	if err != nil {
-		return err
-	}
 	// the story so far is the Branch's: the Shots up to its Branch Point, not the Shots of the series
-	// that follow it (generation works from the same series)
-	story, err := s.shots.StoryShots(ctx, ref.ProjectID, branch.ID)
+	// that follow it (generation works from the same series); the Shot continued from lies in it too
+	in, err := s.continues.branchInput(ctx, ref, branch.PointType, branch.ID)
 	if err != nil {
 		return err
 	}
-	in.Story = storyLines(story)
 	plan, err := s.continues.agent.Plan(ctx, in, direction)
 	if err != nil {
 		return branchMadeError(aiError(err))
@@ -361,16 +352,12 @@ func (s *BranchService) Fork(ctx context.Context, ref repository.ShotRef, typ do
 		directions[i] = clipInstruction(directions[i]) // the chat's text is not a form field: cut, as the single-Shot commands do
 	}
 	if len(directions) < count && s.canContinue() {
-		in, err := s.continues.input(ctx, ref)
+		// the Branches continue from the fork: the Shot proposed from is the last one at or before it, and
+		// later Shots of the series are not part of their story
+		in, err := s.continues.branchInput(ctx, ref, typ, ref.Scene.BranchID)
 		if err != nil {
 			return nil, err
 		}
-		// the Branches continue from the fork: later Shots of the series are not part of their story
-		story, err := s.shots.StoryShots(ctx, ref.ProjectID, ref.Scene.BranchID)
-		if err != nil {
-			return nil, err
-		}
-		in.Story = storyLines(repository.CutAtBranchPoint(story, typ, ref.Scene.ID, ref.Shot.ID))
 		proposal, err := s.continues.agent.Propose(ctx, in)
 		if err != nil {
 			return nil, aiError(err)

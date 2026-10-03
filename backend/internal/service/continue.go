@@ -65,29 +65,68 @@ func (s *ContinueService) check(ctx context.Context, shotID string) (repository.
 // input gathers what the Continue Agent reads: the Shot, its spec, the World State after it and
 // the story so far.
 func (s *ContinueService) input(ctx context.Context, ref repository.ShotRef) (continuation.Input, error) {
+	in, story, err := s.gather(ctx, ref, ref.Scene.BranchID)
+	if err != nil {
+		return continuation.Input{}, err
+	}
+	in.Story = storyLines(story)
+	s.fromShot(ctx, &in, ref)
+	return in, nil
+}
+
+// branchInput gathers what the Continue Agent reads to plan the first Shot of a Branch made at ref
+// (typ) from the series (trunk or Branch) series: the Shot it continues from is the last Shot at or
+// before the Branch Point, so for a Branch at a Scene it is the last Shot before that Scene (none
+// when nothing precedes it: NoShot) and not the clicked Shot, which lies after the fork and is not
+// part of the Branch's story. The story is cut at the Branch Point the same way.
+func (s *ContinueService) branchInput(ctx context.Context, ref repository.ShotRef, typ domain.BranchPointType, series string) (continuation.Input, error) {
+	in, story, err := s.gather(ctx, ref, series)
+	if err != nil {
+		return continuation.Input{}, err
+	}
+	story = repository.CutAtBranchPoint(story, typ, ref.Scene.ID, ref.Shot.ID)
+	in.Story = storyLines(story)
+	from := ref
+	if typ == domain.BranchAtScene {
+		if len(story) == 0 {
+			in.NoShot = true
+			return in, nil
+		}
+		from = story[len(story)-1]
+		in.Scene = from.Scene
+	}
+	s.fromShot(ctx, &in, from)
+	return in, nil
+}
+
+// gather reads what does not depend on the Shot: the Brief, the World State and the story of series.
+func (s *ContinueService) gather(ctx context.Context, ref repository.ShotRef, series string) (continuation.Input, []repository.ShotRef, error) {
 	project, err := s.projects.Get(ctx, ref.ProjectID)
 	if err != nil {
-		return continuation.Input{}, notFound(err)
+		return continuation.Input{}, nil, notFound(err)
 	}
 	brief, err := s.projects.GetBrief(ctx, ref.ProjectID)
 	if err != nil {
-		return continuation.Input{}, notFound(err)
+		return continuation.Input{}, nil, notFound(err)
 	}
-	world, err := s.shots.WorldContext(ctx, ref.ProjectID, ref.Scene.BranchID)
+	world, err := s.shots.WorldContext(ctx, ref.ProjectID, series)
 	if err != nil {
-		return continuation.Input{}, err
+		return continuation.Input{}, nil, err
 	}
-	shots, err := s.shots.StoryShots(ctx, ref.ProjectID, ref.Scene.BranchID)
+	shots, err := s.shots.StoryShots(ctx, ref.ProjectID, series)
 	if err != nil {
-		return continuation.Input{}, err
+		return continuation.Input{}, nil, err
 	}
-	in := continuation.Input{Brief: brief, Template: project.ProductionTemplate, Scene: ref.Scene, Shot: ref.Shot, World: world}
+	return continuation.Input{Brief: brief, Template: project.ProductionTemplate, Scene: ref.Scene, World: world}, shots, nil
+}
+
+// fromShot sets the Shot the next one continues from: the Shot, its spec and its final frame.
+func (s *ContinueService) fromShot(ctx context.Context, in *continuation.Input, ref repository.ShotRef) {
+	in.Shot = ref.Shot
 	if spec, ok := ref.Shot.CanonicalSpec(); ok {
 		in.Spec = &spec
 	}
 	in.FinalFrame = s.finalFrame(ctx, ref)
-	in.Story = storyLines(shots)
-	return in, nil
 }
 
 // storyLines are the Shots as the "story so far" of the Continue Agent's prompt.
