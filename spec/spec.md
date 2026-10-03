@@ -1074,7 +1074,6 @@ Orchestratorは制作全体の状態機械として機能する。
 Project
 ├── Brief
 ├── Production Template
-├── User Preferences
 ├── Confirmation Policy
 ├── Budget / Quality Policy
 ├── World State
