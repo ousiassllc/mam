@@ -105,20 +105,45 @@ func (s *GenerationService) Shot(ctx context.Context, shotID string) (ShotFragme
 }
 
 // SubscribeShot streams the progress of the Shot (WebSocket /ws/shots/:id). The first message says
-// whether something is running now (a client that connects after the work ended must not wait for it).
+// what the Shot is doing now: a Shot being generated, judged or repaired gets its stage (a client that
+// connects mid-work missed the earlier messages), any other Shot gets "idle" (a client that connects
+// after the work ended must not wait for it).
+//
+// The subscription is made before the state is read, so a done / failed message published in between
+// is received, not lost. A snapshot of a running Shot is queued only when no message has arrived
+// since (that one is newer); "idle" goes behind them, as the last word on a Shot that is not running.
 func (s *GenerationService) SubscribeShot(ctx context.Context, shotID string) (<-chan generation.Progress, func(), error) {
-	ref, err := s.shots.GetShot(ctx, shotID)
+	return s.subscribeShot(ctx, shotID, s.shots.GetShot)
+}
+
+// subscribeShot is SubscribeShot reading the Shot through getShot (a seam for the test of the ordering).
+func (s *GenerationService) subscribeShot(ctx context.Context, shotID string, getShot func(context.Context, string) (repository.ShotRef, error)) (<-chan generation.Progress, func(), error) {
+	ch, cancel := s.progress.subscribe(shotID)
+	ref, err := getShot(ctx, shotID)
 	if err != nil {
+		cancel()
 		return nil, nil, notFound(err)
 	}
-	ch, cancel := s.progress.Subscribe(shotID)
-	switch ref.Shot.State {
-	case domain.ShotGenerating, domain.ShotJudging, domain.ShotRepairing:
-		// Work is in progress: the card keeps listening for its messages.
-	default:
-		s.progress.Publish(shotID, generation.Progress{ShotID: shotID, Stage: generation.StageIdle})
-	}
+	snapshot, running := progressSnapshot(ref.Shot)
+	s.progress.sendTo(ch, snapshot, running)
 	return ch, cancel, nil
+}
+
+// progressSnapshot is the progress message that matches the state of a Shot, and whether work is
+// running on it. It uses the states the Shot card draws a Spinner for.
+func progressSnapshot(shot domain.Shot) (generation.Progress, bool) {
+	p := generation.Progress{ShotID: shot.ID, Stage: generation.StageIdle}
+	switch shot.State {
+	case domain.ShotGenerating:
+		p.Stage = generation.StageGenerating
+	case domain.ShotJudging:
+		p.Action, p.Stage = generation.ActionJudge, generation.StageJudging
+	case domain.ShotRepairing:
+		p.Action, p.Stage = generation.ActionRepair, generation.StageRepairing
+	default:
+		return p, false
+	}
+	return p, true
 }
 
 func mapGenerationError(err error) error {
