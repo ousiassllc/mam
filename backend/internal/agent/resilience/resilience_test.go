@@ -3,6 +3,7 @@ package resilience_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -122,4 +123,17 @@ func TestDo_CancelledContextReleasesTheProbeWithoutCountingAFailure(t *testing.T
 	})
 	assert.ErrorIs(t, err, context.Canceled)
 	assert.True(t, b.Allow(), "the probe slot was given back")
+}
+
+func TestRouteFailure_ASkipOnlyKeepsItsIdentityWhenEveryTargetWasSkipped(t *testing.T) {
+	other := errors.New("rejected")
+	isOpen := func(err error) bool { return errors.Is(err, resilience.ErrOpen) }
+	skip := fmt.Errorf("a: %w", resilience.ErrOpen)
+
+	assert.ErrorIs(t, resilience.RouteFailure([]error{skip, fmt.Errorf("b: %w", resilience.ErrOpen)}, isOpen), resilience.ErrOpen)
+
+	mixed := resilience.RouteFailure([]error{skip, other}, isOpen)
+	assert.NotErrorIs(t, mixed, resilience.ErrOpen)
+	assert.ErrorIs(t, mixed, other)
+	assert.Contains(t, mixed.Error(), "a: circuit breaker is open")
 }

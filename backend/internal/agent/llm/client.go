@@ -173,7 +173,10 @@ func (c *Client) Complete(ctx context.Context, agent Agent, req Request) (Respon
 				"agent", agent, "provider", t.Provider, "next_provider", targets[i+1].Provider, "err", err)
 		}
 	}
-	return Response{}, fmt.Errorf("llm: every provider failed for agent %s: %w", agent, errors.Join(failures...))
+	// Only a route whose providers were all skipped by their breakers is an ErrCircuitOpen: when the
+	// alternative was tried and failed for its own reason, that reason is what the caller must see.
+	return Response{}, fmt.Errorf("llm: every provider failed for agent %s: %w", agent,
+		resilience.RouteFailure(failures, func(err error) bool { return errors.Is(err, ErrCircuitOpen) }))
 }
 
 // callTarget makes the call on one target with retries. The breaker of the provider is
