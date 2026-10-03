@@ -99,6 +99,7 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 │   ├── cmd/
 │   │   └── server/
 │   │       ├── main.go     # エントリーポイント。配線（DI）・起動・グレースフルシャットダウン
+│   │       ├── judge.go    # AI Video Judge の起動時の準備（`newJudgeSetup`。ffmpeg と顔モデル・ONNX Runtime を探し、無ければ縮退して警告ログ。model-adapters.md §10）
 │   │       ├── listen.go   # 127.0.0.1 の空きポート確保（使用中なら別ポートへフォールバック）
 │   │       └── browser.go  # OS別のブラウザ自動オープン
 │   └── internal/
@@ -156,6 +157,7 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
         │       ├── ajax.ts / errors.ts / toast.ts / connection-notice.ts # フラグメント再取得・エラー表示
         │       ├── history.ts / htmx-config.ts / sync.ts / thread.ts / shot.ts # htmx 履歴・設定・直列再取得・スレッド操作
         │       ├── ws.ts
+        │       ├── query.ts          # `selfAndDescendants`: htmx の outerHTML swap で `htmx:load` が届く最上位ノード自身も含めて要素を探す
         │       ├── logger.ts
         │       ├── video.ts          # フレーム精度シーク・タイムコード変換
         │       ├── timeline-model.ts # タイムライン共通データモデル
@@ -269,7 +271,7 @@ HALT のレイヤー別テスト方針を踏襲する。
 現段階ではローカル Web サーバー + ブラウザ構成とするが、以下の設計により将来 Wails（またはTauri等）でのネイティブパッケージング化を低コストで行えるようにしておく。
 
 - `internal/router` が返す Gin の `*gin.Engine` は標準の `http.Handler` であり、Wails v3 の `application.AssetOptions.Handler` へそのまま渡せる
-- ブラウザ自動オープン処理（`openBrowser()`）は `backend/cmd/server/main.go` に閉じているため、Wails採用時はこのエントリーポイントのみ `backend/cmd/wails/main.go` 等に差し替えれば良く、`internal/` 配下（domain/repository/agent/service/web）は変更不要
+- ブラウザ自動オープン処理（`openBrowser()`）は `backend/cmd/server/browser.go`（`main.go` ではなく同じ `cmd/server` パッケージの別ファイル）にあり、`main.go` が起動後に呼ぶだけである。Wails採用時は `cmd/server` のエントリーポイント（`main.go` と `browser.go`）のみ `backend/cmd/wails/main.go` 等に差し替えれば良く、`internal/` 配下（domain/repository/agent/service/web）は変更不要
 - Wails化のトリガー例: OSネイティブの通知・トレイアイコン・自動更新・単一実行ファイルへのアイコン付与などデスクトップ体験の強化が必要になった時点で着手する
 
 ## 改訂履歴
@@ -289,3 +291,4 @@ HALT のレイヤー別テスト方針を踏襲する。
 | 1.10 | 2026-10-01 | §6 の `LoopbackOnly` の説明に、状態変更リクエスト・WebSocket では `Origin` の host:port が `Host` と一致することを求める規則を追記 | 実装が `Origin` のホストがループバックかだけを見ており、同一ホスト上の別ポートのページが通る状態だったため（Issue #70） |
 | 1.11 | 2026-10-01 | §7 の Lit の通信範囲を「`/api/v1` の GET + サーバーが渡すアクションルートへの CSRF 付き `fetch`（HTMX は使わない）」に修正 | 実装の Timeline Editor・Take Comparator が `save_url` / `select_url` 等のアクションルートへ PUT/POST/DELETE しており、「JSON API のみ」の記述と乖離していたため（Issue #163） |
 | 1.12 | 2026-10-01 | §2 の設定フラグ説明と `facesim/` の節番号参照に `model-adapters.md` を付けた | 文書名のない `§9.2`・`§10`・`§11.4`・`§13` が overview.md 自身の節（ビルド・テスト戦略・Wails 等）と読み違えられたため（Issue #185） |
+| 1.13 | 2026-10-03 | §5 の構成図に `cmd/server/judge.go` と `lib/query.ts` を追加し、§11 の Wails 化の記述の `openBrowser()` の所在を `main.go` から `browser.go` に直した | 実装（`backend/cmd/server/judge.go`・`browser.go`、`static/src/components/lib/query.ts`）に構成図と記述が追従していなかったため（Issue #441） |
