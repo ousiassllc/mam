@@ -967,6 +967,8 @@ Audio Director AgentはScene Emotionと編集テンポを参照する。
 
 映像尺変更時には必要に応じて音楽・Narration・SEを再構成する。
 
+Loudness は全プラットフォーム共通で −14 LUFS / −1.5 dBTP 固定で正規化する。Brief の配信先に応じたプラットフォーム別の目標（Platform Optimization）は未実装（将来の拡張）。
+
 ---
 
 # 19. Production Templates
