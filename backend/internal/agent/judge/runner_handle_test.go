@@ -154,3 +154,77 @@ func TestHandle_TellsWhichTakeWasJudgedOnlyWhenAResultWasSaved(t *testing.T) {
 		})
 	}
 }
+
+// Whichever step of a judge job breaks, the client is told (StageFailed) and the thread gets a
+// notice, like the generation and repair jobs do: the job record alone reaches nobody.
+func TestHandle_EveryFailureAfterTheShotIsEnteredIsAnnounced(t *testing.T) {
+	tests := []struct {
+		name    string
+		trigger string // makes one write fail
+	}{
+		{"marking the Shot judging", `CREATE TRIGGER no_judging BEFORE UPDATE OF state ON shot WHEN NEW.state = 'JUDGING' BEGIN SELECT RAISE(ABORT, 'disk is full'); END`},
+		{"storing the result", `CREATE TRIGGER no_result BEFORE INSERT ON judge_result BEGIN SELECT RAISE(ABORT, 'disk is full'); END`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			db, err := repository.Open(ctx, filepath.Join(t.TempDir(), "mam.db"), nil)
+			require.NoError(t, err)
+			t.Cleanup(func() { _ = db.Close() })
+			require.NoError(t, db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
+				for _, q := range []string{
+					`INSERT INTO project (id, mode, confirmation_level, production_template, quality_policy) VALUES ('p1', 'auto', 'full_auto', 'product_cm', 'balanced')`,
+					`INSERT INTO scene (id, project_id, title, order_index) VALUES ('sc1', 'p1', 'S', 0)`,
+					`INSERT INTO shot (id, scene_id, objective, duration_seconds, order_index) VALUES ('sh1', 'sc1', 'run', 4, 0)`,
+					`INSERT INTO prompt_version (id, shot_id, version_number, shot_spec_snapshot) VALUES ('pv1', 'sh1', 1, '{"shot_objective":"A woman runs","camera":{"framing":"medium"}}')`,
+					`INSERT INTO take (id, prompt_version_id, model_name, file_path) VALUES ('t1', 'pv1', 'kling-3.0', 'p1/a.mp4')`,
+					tt.trigger,
+				} {
+					if _, err := tx.ExecContext(ctx, q); err != nil {
+						return err
+					}
+				}
+				return nil
+			}))
+			assets := t.TempDir()
+			require.NoError(t, os.MkdirAll(filepath.Join(assets, "p1"), 0o750))
+			require.NoError(t, os.WriteFile(filepath.Join(assets, "p1", "a.mp4"), []byte("video"), 0o600))
+
+			rig := newRig(t, passAnswer, false, steady()...)
+			chat := &noticeChat{}
+			var (
+				mu     sync.Mutex
+				stages []generation.Stage
+			)
+			runner := judge.NewRunner(judge.Deps{
+				Generations: repository.NewGenerationRepository(db), Judges: repository.NewJudgeRepository(db), Chat: chat, Judge: rig.judge, AssetsDir: assets,
+				Notify: func(p generation.Progress) {
+					mu.Lock()
+					defer mu.Unlock()
+					stages = append(stages, p.Stage)
+				},
+			})
+
+			raw, err := json.Marshal(map[string]string{"take_id": "t1", "shot_id": "sh1"})
+			require.NoError(t, err)
+			err = runner.Handle(ctx, domain.Job{ID: "j1", Kind: domain.JobJudge, Payload: raw})
+
+			require.Error(t, err)
+			mu.Lock()
+			defer mu.Unlock()
+			assert.Contains(t, stages, generation.StageFailed, "the client gets a terminal event")
+			require.Len(t, chat.notices, 1, "the thread says that judging failed")
+			assert.Contains(t, chat.notices[0], "Judge に失敗しました")
+		})
+	}
+}
+
+type noticeChat struct {
+	silentChat
+	notices []string
+}
+
+func (c *noticeChat) Announce(_ context.Context, _ string, m domain.ChatMessage) error {
+	c.notices = append(c.notices, m.Content)
+	return nil
+}

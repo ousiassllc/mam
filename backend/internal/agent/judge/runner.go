@@ -174,8 +174,10 @@ func (r *Runner) Handle(ctx context.Context, job domain.Job) error {
 		}
 	}
 	defer leave()
+	// From here on every error goes through fail, so the client gets StageFailed and the thread a
+	// notice whichever step broke (the Judge, the database).
 	if err := r.Judges.BeginJudging(ctx, shotID); err != nil {
-		return err
+		return r.fail(ctx, ref, err, leave)
 	}
 	r.Notify(generation.Progress{ShotID: shotID, Action: generation.ActionJudge, Stage: generation.StageJudging, Message: "Take を評価しています"})
 
@@ -184,7 +186,7 @@ func (r *Runner) Handle(ctx context.Context, job domain.Job) error {
 		return r.fail(ctx, ref, err, leave)
 	}
 	if _, err := r.store(ctx, ref, res); err != nil {
-		return err
+		return r.fail(ctx, ref, err, leave)
 	}
 	leave()
 	r.Notify(generation.Progress{ShotID: shotID, Action: generation.ActionJudge, Stage: generation.StageDone})
