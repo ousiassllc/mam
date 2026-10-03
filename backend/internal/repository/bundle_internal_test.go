@@ -3,6 +3,8 @@ package repository
 import (
 	"context"
 	"path/filepath"
+	"regexp"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -44,5 +46,28 @@ func TestBundle_NoIDMarksExactlyTheTablesWithoutAnIDColumn(t *testing.T) {
 		var hasID int
 		require.NoError(t, db.Reader().QueryRow(`SELECT count(*) FROM pragma_table_info(?) WHERE name = 'id' AND pk = 1`, b.name).Scan(&hasID))
 		assert.Equal(t, hasID == 0, b.noID, "table %s", b.name)
+	}
+}
+
+// TestBundle_EveryJSONColumnHasAShapeOrIsKeptRaw makes a new json_valid column of a bundled table
+// fail here until its author says what the reader decodes it into (bundleJSONColumns) or that any
+// JSON will do (rawJSONColumns): checkBundle refuses a bundle row the readers cannot decode.
+func TestBundle_EveryJSONColumnHasAShapeOrIsKeptRaw(t *testing.T) {
+	db, err := Open(context.Background(), filepath.Join(t.TempDir(), "mam.db"), nil)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = db.Close() })
+	jsonColumn := regexp.MustCompile(`json_valid\((\w+)\)`)
+	for _, b := range bundleTables {
+		var ddl string
+		require.NoError(t, db.Reader().QueryRow(`SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?`, b.name).Scan(&ddl))
+		for _, m := range jsonColumn.FindAllStringSubmatch(ddl, -1) {
+			_, shaped := bundleJSONColumns[b.name][m[1]]
+			assert.True(t, shaped || slices.Contains(rawJSONColumns[b.name], m[1]), "%s.%s is neither in bundleJSONColumns nor in rawJSONColumns", b.name, m[1])
+		}
+	}
+	for table, columns := range bundleJSONColumns {
+		for column := range columns {
+			assert.NotContains(t, rawJSONColumns[table], column, "%s.%s is in both lists", table, column)
+		}
 	}
 }

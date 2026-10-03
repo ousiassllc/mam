@@ -336,3 +336,53 @@ func TestBundleRepository_ImportRejectsATakeCardThatLoadsFromAnotherHost(t *test
 		})
 	}
 }
+
+// The readers decode the JSON columns into typed values and parse the timestamps: a bundle row that
+// does not fit would import and then break every read of the Project (the list, the Workspace).
+func TestBundleRepository_ImportRejectsColumnsTheReadersCannotDecode(t *testing.T) {
+	cases := []struct {
+		name, table, column string
+		value               any
+	}{
+		{"custom checkpoints that are not a list", "project", "custom_checkpoints", `{"script":true}`},
+		{"a checkpoint nobody asks at", "project", "custom_checkpoints", `["script","nowhere"]`},
+		{"a project created at no time", "project", "created_at", "yesterday"},
+		{"a project created at a time of another format", "project", "created_at", "2026-01-02 03:04:05"},
+		{"a take created at no time", "take", "created_at", ""},
+		{"a timestamp that is a number", "take", "created_at", float64(1)},
+		{"issues that are not a list", "judge_result", "issues", `{"a":1}`},
+		{"a world state that is not an object", "world_state_version", "state", `[]`},
+		{"a timeline that is not an object", "edit_timeline_version", "timeline", `"x"`},
+		{"findings that are not a list", "editor_judge_result", "findings", `7`},
+		{"a shot spec that is not an object", "shot", "shot_spec", `[]`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			src := openTestDB(t)
+			seedDeepProject(t, src, "a")
+			data, err := repository.NewBundleRepository(src).Export(ctx, "a")
+			require.NoError(t, err)
+			setBundleField(t, data, tc.table, tc.column, tc.value)
+
+			dst := openTestDB(t)
+			assert.ErrorIs(t, repository.NewBundleRepository(dst).Import(ctx, data), repository.ErrInvalidBundle)
+			assert.Equal(t, 0, countRows(t, dst, "project")["project"], "nothing is written")
+		})
+	}
+}
+
+func TestBundleRepository_ImportKeepsCustomCheckpoints(t *testing.T) {
+	ctx := context.Background()
+	src := openTestDB(t)
+	seedDeepProject(t, src, "a")
+	require.NoError(t, exec(t, src, `UPDATE project SET custom_checkpoints = '["script","final"]'`))
+	data, err := repository.NewBundleRepository(src).Export(ctx, "a")
+	require.NoError(t, err)
+
+	dst := openTestDB(t)
+	require.NoError(t, repository.NewBundleRepository(dst).Import(ctx, data))
+	var cps string
+	require.NoError(t, dst.Reader().QueryRow(`SELECT custom_checkpoints FROM project WHERE id = 'a'`).Scan(&cps))
+	assert.JSONEq(t, `["script","final"]`, cps)
+}
