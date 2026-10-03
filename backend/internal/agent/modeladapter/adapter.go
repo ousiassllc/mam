@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/resilience"
@@ -142,7 +143,7 @@ func (a *Adapter) GenerateImage(ctx context.Context, purpose ImagePurpose, req I
 		failures = append(failures, fmt.Errorf("%s: %w", t.Model, err))
 		a.logFailover(t.Model, i, len(targets), err)
 	}
-	return ImageOutput{}, fmt.Errorf("modeladapter: every image model failed for %s: %w", purpose, errors.Join(failures...))
+	return ImageOutput{}, fmt.Errorf("modeladapter: every image model failed for %s: %w", purpose, routeFailure(failures))
 }
 
 // GenerateVideo makes one Take. It renders the job for the primary target and calls it; when the
@@ -180,7 +181,25 @@ func (a *Adapter) GenerateVideo(ctx context.Context, primary, fallback VideoTarg
 		failures = append(failures, fmt.Errorf("%s: %w", t.Model, err))
 		a.logFailover(t.Model, i, len(targets), err)
 	}
-	return VideoOutput{}, fmt.Errorf("modeladapter: every video model failed: %w", errors.Join(failures...))
+	return VideoOutput{}, fmt.Errorf("modeladapter: every video model failed: %w", routeFailure(failures))
+}
+
+// routeFailure joins what every model of a route failed with. A model skipped because its breaker is
+// open is a failure of the route only when every model was skipped (ErrCircuitOpen: "wait and retry");
+// when another model was tried and failed for its own reason, that reason is what the caller must see
+// (ErrRejected, ErrTimeout, ...), so the skip stays in the message but no longer matches ErrCircuitOpen.
+func routeFailure(failures []error) error {
+	if !slices.ContainsFunc(failures, func(err error) bool { return !errors.Is(err, ErrCircuitOpen) }) {
+		return errors.Join(failures...)
+	}
+	joined := make([]error, len(failures))
+	for i, err := range failures {
+		joined[i] = err
+		if errors.Is(err, ErrCircuitOpen) {
+			joined[i] = errors.New(err.Error()) // keeps the text, not the identity
+		}
+	}
+	return errors.Join(joined...)
 }
 
 func (a *Adapter) logFailover(m domain.ModelName, i, n int, err error) {

@@ -512,3 +512,45 @@ func TestGenerateVideoFailOverModelGetsItsOwnInputWhenReferencesArePreferred(t *
 	assert.NotEmpty(t, primary.requests[0].References)
 	assert.NotNil(t, fallback.requests[0].FirstFrame, "Kling has no free references: the Keyframe is its input")
 }
+
+// A vendor skipped for its open breaker makes the whole route ErrCircuitOpen ("wait and retry") only when
+// every model was skipped; when the alternative was tried and failed for its own reason, that reason is
+// what the caller sees (#439).
+func TestGenerateVideoNamesTheAlternativesRealFailureWhenThePrimaryIsSkipped(t *testing.T) {
+	cfg := modeladapter.DefaultConfig()
+	cfg.Retry.MaxAttempts = 1
+	cfg.Breaker.FailureThreshold = 1
+	primary := &fakeVideo{results: []error{perr(modeladapter.VendorSeedance, http.StatusBadGateway)}}
+	fallback := &fakeVideo{results: []error{perr(modeladapter.VendorKling, http.StatusUnprocessableEntity)}}
+	a := newAdapter(cfg, modeladapter.Backends{Video: map[domain.ModelName]modeladapter.VideoBackend{
+		domain.ModelSeedance2: primary, domain.ModelKling3: fallback,
+	}})
+	_, err := a.GenerateVideo(context.Background(), seedanceTarget, seedanceTarget, baseJob()) // opens the Seedance breaker
+	require.Error(t, err)
+
+	_, err = a.GenerateVideo(context.Background(), seedanceTarget, klingTarget, baseJob())
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, modeladapter.ErrRejected)
+	assert.NotErrorIs(t, err, modeladapter.ErrCircuitOpen)
+	assert.Contains(t, err.Error(), "circuit breaker is open", "the skip stays in the message for the log")
+	assert.Equal(t, 1, primary.callCount(), "the open breaker kept the primary from being called")
+}
+
+func TestGenerateVideoIsCircuitOpenWhenEveryModelOfTheRouteIsSkipped(t *testing.T) {
+	cfg := modeladapter.DefaultConfig()
+	cfg.Retry.MaxAttempts = 1
+	cfg.Breaker.FailureThreshold = 1
+	bad := func(v modeladapter.Vendor) *fakeVideo {
+		return &fakeVideo{results: []error{perr(v, http.StatusBadGateway)}}
+	}
+	a := newAdapter(cfg, modeladapter.Backends{Video: map[domain.ModelName]modeladapter.VideoBackend{
+		domain.ModelSeedance2: bad(modeladapter.VendorSeedance), domain.ModelKling3: bad(modeladapter.VendorKling),
+	}})
+	_, err := a.GenerateVideo(context.Background(), seedanceTarget, klingTarget, baseJob()) // opens both breakers
+	require.Error(t, err)
+
+	_, err = a.GenerateVideo(context.Background(), seedanceTarget, klingTarget, baseJob())
+
+	assert.ErrorIs(t, err, modeladapter.ErrCircuitOpen)
+}

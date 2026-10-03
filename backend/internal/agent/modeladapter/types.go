@@ -79,7 +79,8 @@ var ErrNoAPIKey = errors.New("modeladapter: API key is not configured")
 // ErrTimeout means a model call exceeded the vendor's timeout.
 var ErrTimeout = errors.New("modeladapter: model call timed out")
 
-// ErrCircuitOpen means every model of the route was skipped because its circuit breaker is open.
+// ErrCircuitOpen means the model was skipped because its circuit breaker is open. The error of a whole
+// route matches it only when every model of the route was skipped.
 var ErrCircuitOpen = errors.New("modeladapter: circuit breaker is open")
 
 // ErrRejected means the vendor refused the request itself (a 4xx other than 429), for example a
