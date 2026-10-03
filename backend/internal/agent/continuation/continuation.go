@@ -43,6 +43,9 @@ type Input struct {
 	Template domain.ProductionTemplate
 	Scene    domain.Scene
 	Shot     domain.Shot
+	// NoShot is set when the next Shot starts a Branch made at the head of a Scene that nothing
+	// precedes: there is no completed Shot, and Scene is the Scene of the Branch Point.
+	NoShot bool
 	// Spec is the Canonical Shot Spec the Shot was generated from; nil when it has none.
 	Spec *domain.ShotSpec
 	// World is the World State after the Shot; the next Shot starts from it.
@@ -178,19 +181,14 @@ func userPrompt(in Input, plan bool, direction string) string {
 			b.WriteString("- " + s + "\n")
 		}
 	}
-	fmt.Fprintf(&b, "\n## 完成した Shot（続きの起点）\nScene %d「%s」 場所: %s / 時間: %s / 狙い: %s\n", in.Scene.OrderIndex+1, in.Scene.Title, in.Scene.Location, in.Scene.Time, in.Scene.Objective)
-	fmt.Fprintf(&b, "Shot %d: %s（%s）\n", in.Shot.OrderIndex+1, in.Shot.Objective, domain.FormatDuration(in.Shot.Duration))
-	if f, ok := in.Shot.Storyboard(); ok {
-		for _, r := range [][2]string{{"画", f.Description}, {"サイズ", f.Framing}, {"カメラ", f.Camera}, {"動き", f.Action}, {"セリフ", f.Dialogue}} {
-			if r[1] != "" {
-				fmt.Fprintf(&b, "- 絵コンテ %s: %s\n", r[0], r[1])
-			}
-		}
+	worldHeader := "この Shot の完了後"
+	if in.NoShot {
+		fmt.Fprintf(&b, "\n## 分岐点（Scene の頭・これより前に完成した Shot はありません）\nScene %d「%s」 場所: %s / 時間: %s / 狙い: %s\n", in.Scene.OrderIndex+1, in.Scene.Title, in.Scene.Location, in.Scene.Time, in.Scene.Objective)
+		worldHeader = "分岐点"
+	} else {
+		writeCompletedShot(&b, in)
 	}
-	if in.Spec != nil {
-		b.WriteString("\n## この Shot の Canonical Shot Spec（英語）\n" + specJSON(*in.Spec) + "\n")
-	}
-	b.WriteString("\n## World State（この Shot の完了後）\n")
+	b.WriteString("\n## World State（" + worldHeader + "）\n")
 	if w := in.World.Text(); w != "" {
 		b.WriteString(w)
 	} else {
@@ -203,6 +201,23 @@ func userPrompt(in Input, plan bool, direction string) string {
 		b.WriteString("\n## 続きの指示\n" + direction + "\n")
 	}
 	return b.String()
+}
+
+// writeCompletedShot renders the Shot the next one continues from: its Scene, objective, storyboard
+// and Canonical Shot Spec.
+func writeCompletedShot(b *strings.Builder, in Input) {
+	fmt.Fprintf(b, "\n## 完成した Shot（続きの起点）\nScene %d「%s」 場所: %s / 時間: %s / 狙い: %s\n", in.Scene.OrderIndex+1, in.Scene.Title, in.Scene.Location, in.Scene.Time, in.Scene.Objective)
+	fmt.Fprintf(b, "Shot %d: %s（%s）\n", in.Shot.OrderIndex+1, in.Shot.Objective, domain.FormatDuration(in.Shot.Duration))
+	if f, ok := in.Shot.Storyboard(); ok {
+		for _, r := range [][2]string{{"画", f.Description}, {"サイズ", f.Framing}, {"カメラ", f.Camera}, {"動き", f.Action}, {"セリフ", f.Dialogue}} {
+			if r[1] != "" {
+				fmt.Fprintf(b, "- 絵コンテ %s: %s\n", r[0], r[1])
+			}
+		}
+	}
+	if in.Spec != nil {
+		b.WriteString("\n## この Shot の Canonical Shot Spec（英語）\n" + specJSON(*in.Spec) + "\n")
+	}
 }
 
 func clip(s string, max int) string {
