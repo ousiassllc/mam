@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -364,6 +365,35 @@ func TestFailureReason(t *testing.T) {
 			assert.NotContains(t, got, "sql:", "internal details are not shown to the user")
 		})
 	}
+}
+
+type failingVideo struct{ err error }
+
+func (f failingVideo) GenerateVideo(context.Context, string, modeladapter.VideoRequest) (modeladapter.VideoResult, error) {
+	return modeladapter.VideoResult{}, f.err
+}
+
+// A primary model skipped for its open breaker must not make the user wait and retry when the alternative
+// refused the request: the reason of the alternative is what is reported (#439).
+func TestFailureReason_NamesTheAlternativesRejectionWhenThePrimaryIsSkippedByItsBreaker(t *testing.T) {
+	cfg := modeladapter.DefaultConfig()
+	cfg.Retry.MaxAttempts = 1
+	cfg.Breaker.FailureThreshold = 1
+	a := modeladapter.New(cfg, modeladapter.Backends{Video: map[domain.ModelName]modeladapter.VideoBackend{
+		domain.ModelSeedance2: failingVideo{&modeladapter.ProviderError{Vendor: string(modeladapter.VendorSeedance), Status: 502}},
+		domain.ModelKling3:    failingVideo{rejected()},
+	}}, modeladapter.WithSleep(func(context.Context, time.Duration) error { return nil }))
+	seedance := modeladapter.VideoTarget{Model: domain.ModelSeedance2, Resolution: "720p"}
+	kling := modeladapter.VideoTarget{Model: domain.ModelKling3, Resolution: "720p"}
+	job := modeladapter.VideoJob{Spec: domain.ShotSpec{ShotObjective: "run", Camera: domain.SpecCamera{Framing: "medium"}}, DurationSeconds: 4}
+	_, err := a.GenerateVideo(context.Background(), seedance, seedance, job) // opens the Seedance breaker
+	require.Error(t, err)
+
+	_, err = a.GenerateVideo(context.Background(), seedance, kling, job)
+
+	require.Error(t, err)
+	assert.Contains(t, generation.FailureReason(err), "拒否")
+	assert.NotContains(t, generation.FailureReason(err), "一時的に利用できません")
 }
 
 func TestFixedModel(t *testing.T) {
