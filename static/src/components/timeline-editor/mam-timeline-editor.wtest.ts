@@ -76,6 +76,48 @@ describe('mam-timeline-editor', () => {
     expect(el.querySelector('[data-error]')).to.equal(null);
   });
 
+  it('shows the error, not "no Rough Cut yet", when the first load fails with something other than 404', async () => {
+    stub = stubFetch({ [`GET ${API}`]: { status: 503, body: { title: 'Service Unavailable' } } });
+    const el = await editor();
+    expect(el.querySelector('[data-error]')).to.not.equal(null);
+    expect(el.querySelector('[data-empty]')).to.equal(null);
+  });
+
+  it('keeps the timeline and the unsaved edits and shows an error when a reload fails', async () => {
+    let fail = false;
+    stub = stubFetch({ [`GET ${API}`]: () => (fail ? { status: 503, body: { title: 'Service Unavailable' } } : { body: timeline('e1', three()) }) });
+    const el = await editor();
+    (el.querySelector('[data-clip="c"] [data-action="up"]') as HTMLButtonElement).click();
+    await waitUntil(() => order(el).join() === 'a,c,b');
+
+    fail = true;
+    document.dispatchEvent(new CustomEvent('timeline-reload')); // a Rough Cut was made: the page asks for the timeline again
+    await waitUntil(() => el.querySelector('[data-error]') !== null);
+    expect(order(el)).to.deep.equal(['a', 'c', 'b']);
+    expect(el.querySelector('[data-empty]')).to.equal(null);
+
+    (el.querySelector('[data-action="revert"]') as HTMLButtonElement).click(); // 変更を戻す fails as well
+    await waitUntil(() => stub.requests.filter((r) => r.method === 'GET').length === 3);
+    await el.updateComplete;
+    expect(order(el)).to.deep.equal(['a', 'c', 'b']);
+    expect(el.querySelector('[data-error]')).to.not.equal(null);
+
+    fail = false;
+    (el.querySelector('[data-action="revert"]') as HTMLButtonElement).click();
+    await waitUntil(() => order(el).join() === 'a,b,c' && el.querySelector('[data-error]') === null);
+  });
+
+  it('reloads to the empty state when the timeline is gone (404)', async () => {
+    let gone = false;
+    stub = stubFetch({ [`GET ${API}`]: () => (gone ? { status: 404, body: { title: 'Not Found' } } : { body: timeline('e1', three()) }) });
+    const el = await editor();
+    gone = true;
+    document.dispatchEvent(new CustomEvent('timeline-reload'));
+    await waitUntil(() => el.querySelector('[data-empty]') !== null);
+    expect(el.querySelector('[data-clips]')).to.equal(null);
+    expect(el.querySelector('[data-error]')).to.equal(null);
+  });
+
   it('reorders with the arrows, sets a Cut Point and a Transition, and saves the clips to the server URL', async () => {
     let gets = 0;
     stub = stubFetch({
