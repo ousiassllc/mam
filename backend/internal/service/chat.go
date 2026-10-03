@@ -235,7 +235,9 @@ func (s *ChatService) postDirection(ctx context.Context, project domain.Project,
 		return Workspace{}, err
 	}
 	msgs := assignIDs([]domain.ChatMessage{reply})
-	if err := s.commit(ctx, repository.Turn{ProjectID: project.ID, Messages: msgs}); err != nil {
+	// The direction was carried out (a regeneration may be queued and paid for): the answer is recorded
+	// whatever happened to the request since, as DirectorCommand's is.
+	if err := s.commit(context.WithoutCancel(ctx), repository.Turn{ProjectID: project.ID, Messages: msgs}); err != nil {
 		return Workspace{}, err
 	}
 	return s.workspaceOf(ctx, project.ID, append([]domain.ChatMessage{user}, msgs...))

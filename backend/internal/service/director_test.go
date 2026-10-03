@@ -273,6 +273,73 @@ func TestDirectorCommand_RegeneratesOnlyThisShotAndKeepsWhatIsNotChanged(t *test
 	assert.Contains(t, texts[len(texts)-1], "Shot 1 だけを再生成")
 }
 
+// requestEndedByTheQueuedJob returns the context of a request that is cancelled, as a closed client
+// does, as soon as the job its direction queued has announced its progress card (the second message
+// of the thread after the call: the direction itself is the first).
+func (f genFixture) requestEndedByTheQueuedJob(t *testing.T) context.Context {
+	t.Helper()
+	ctx, cancelRequest := context.WithCancel(context.Background())
+	t.Cleanup(cancelRequest)
+	events, unsubscribe, err := f.svc.Chat.Subscribe(context.Background(), f.projectID)
+	require.NoError(t, err)
+	t.Cleanup(unsubscribe)
+	go func() {
+		created := 0
+		for e := range events {
+			if e.Type == service.EventMessageCreated {
+				if created++; created == 2 {
+					cancelRequest()
+					return
+				}
+			}
+		}
+	}()
+	return ctx
+}
+
+// answers lists the text the assistant gave to the direction in the thread.
+func (f genFixture) answers(t *testing.T) []string {
+	t.Helper()
+	var texts []string
+	for _, m := range f.thread(t, f.projectID) {
+		if m.Kind == domain.KindText && m.Role == domain.RoleAssistant && strings.Contains(m.Content, "だけを再生成します") {
+			texts = append(texts, m.Content)
+		}
+	}
+	return texts
+}
+
+// A regeneration was queued (and is paid for) before the client went away: its answer is recorded
+// anyway, or the thread would end with the direction alone and a retry would pay a second time.
+func TestDirectorCommand_TheAnswerOfAQueuedRegenerationIsRecordedAfterTheRequestEnded(t *testing.T) {
+	f := newGenFixture(t, true)
+	f.firstGeneration(t)
+	f.llm.planner = func(string) string { return plannerRewrite }
+	f.llm.interpreter = opsJSON(`{"type":"regenerate","changes":["camera"],"instruction":"Move the camera closer and keep it steady."}`)
+	ctx := f.requestEndedByTheQueuedJob(t)
+
+	_, _ = f.svc.Director.DirectorCommand(ctx, f.shotID, "もう少し寄って")
+
+	require.Error(t, ctx.Err(), "the request ended while the direction was carried out")
+	assert.Len(t, f.answers(t), 1, "the answer is in the thread")
+	f.waitTakeCount(t, 6)
+}
+
+func TestChat_DirectorModeTheAnswerOfAQueuedRegenerationIsRecordedAfterTheRequestEnded(t *testing.T) {
+	f := newGenFixture(t, true)
+	f.firstGeneration(t)
+	f.startDirecting(t)
+	f.llm.planner = func(string) string { return plannerRewrite }
+	f.llm.interpreter = opsJSON(`{"type":"regenerate","changes":["camera"],"instruction":"Move the camera closer and keep it steady."}`)
+	ctx := f.requestEndedByTheQueuedJob(t)
+
+	_, _ = f.svc.Chat.PostMessage(ctx, f.projectID, service.PostMessageInput{Content: "もう少し寄って"})
+
+	require.Error(t, ctx.Err(), "the request ended while the direction was carried out")
+	assert.Len(t, f.answers(t), 1, "the answer is in the thread")
+	f.waitTakeCount(t, 6)
+}
+
 func TestDirectorCommand_DirectionPrecedesTheProgressCardInTheThread(t *testing.T) {
 	f := newGenFixture(t, true)
 	f.firstGeneration(t)
