@@ -267,6 +267,8 @@ export class MamVideoPlayer extends LitElement {
   }
 
   private onKey(event: KeyboardEvent): void {
+    // Alt+← / Cmd+← / Ctrl+← … are the browser's (back, forward, word jump): leave them alone. Shift alone steps ten frames.
+    if (event.altKey || event.ctrlKey || event.metaKey) return;
     const keys: Record<string, number> = { ArrowLeft: -1, ArrowRight: 1 };
     const delta = keys[event.key];
     if (delta === undefined) return;
