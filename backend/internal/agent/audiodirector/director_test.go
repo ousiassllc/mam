@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -126,18 +127,42 @@ func (f *fakeVendors) providers() audiodirector.Providers {
 	return audiodirector.Providers{Speech: f, Music: f, Sounds: f, LipSync: f}
 }
 
-// fakeLedger is an in-memory cost ledger with a budget.
+// fakeLedger is an in-memory cost ledger with a budget. Like the repository, it counts what is
+// reserved next to what is recorded.
 type fakeLedger struct {
-	ceiling *float64
-	spent   float64
-	entries []domain.CostEntry
+	mu       sync.Mutex
+	ceiling  *float64
+	spent    float64
+	reserved float64
+	entries  []domain.CostEntry
 }
 
 func (l *fakeLedger) ProjectBudget(context.Context, string) (*float64, float64, error) {
-	return l.ceiling, l.spent, nil
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.ceiling, l.spent + l.reserved, nil
+}
+
+func (l *fakeLedger) Reserve(_ context.Context, _ string, cost float64) (func(), bool, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.ceiling != nil && *l.ceiling-l.spent-l.reserved < cost-1e-9 {
+		return nil, false, nil
+	}
+	l.reserved += cost
+	var once sync.Once
+	return func() {
+		once.Do(func() {
+			l.mu.Lock()
+			defer l.mu.Unlock()
+			l.reserved -= cost
+		})
+	}, true, nil
 }
 
 func (l *fakeLedger) AddCost(_ context.Context, e domain.CostEntry) error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
 	l.entries = append(l.entries, e)
 	l.spent += e.EstimatedCost
 	return nil
@@ -1001,4 +1026,99 @@ func TestPlanner_EffectShorterThanTheFloorIsDroppedNotStretched(t *testing.T) {
 	require.Len(t, plan[1].Effects, 1)
 	assert.Equal(t, "exactly the floor", plan[1].Effects[0].Prompt)
 	assert.InDelta(t, audiodirector.MinEffectSeconds, plan[1].Effects[0].Seconds, 1e-9)
+}
+
+// gatedVendors holds the first music call until the test lets it go, so that a run can be stopped
+// with its estimate reserved and not yet in the ledger.
+type gatedVendors struct {
+	*fakeVendors
+	entered chan struct{}
+	proceed chan struct{}
+	first   atomic.Bool
+}
+
+func (g *gatedVendors) Compose(ctx context.Context, prompt string, seconds float64) (audiodirector.Speech, error) {
+	if g.first.CompareAndSwap(false, true) { // later calls pass
+		close(g.entered)
+		<-g.proceed
+	}
+	return g.fakeVendors.Compose(ctx, prompt, seconds)
+}
+
+// gatedSpeech holds the first speech call.
+type gatedSpeech struct {
+	*fakeVendors
+	entered chan struct{}
+	proceed chan struct{}
+	first   atomic.Bool
+}
+
+func (g *gatedSpeech) Synthesize(ctx context.Context, line domain.VoiceLine) (audiodirector.Speech, error) {
+	if g.first.CompareAndSwap(false, true) { // later calls pass
+		close(g.entered)
+		<-g.proceed
+	}
+	return g.fakeVendors.Synthesize(ctx, line)
+}
+
+func TestDirector_RunsOfOneProjectCannotTogetherPassTheCeilingWithTheirSpeech(t *testing.T) {
+	prices := audiodirector.DefaultPrices()
+	speech := prices.TTS("こんにちは") + prices.TTS("夕暮れ")
+	ceiling := speech * 1.5 // one run's speech fits, two do not
+	v := &fakeVendors{t: t}
+	gate := &gatedSpeech{fakeVendors: v, entered: make(chan struct{}), proceed: make(chan struct{})}
+	ledger := &fakeLedger{ceiling: &ceiling}
+	d := audiodirector.New(audiodirector.Deps{
+		Providers: audiodirector.Providers{Speech: gate, Music: v, Sounds: v, LipSync: v}, Ledger: ledger, Tools: tools(t), Root: t.TempDir(),
+	})
+	input := func(editTimelineID string) audiodirector.Input {
+		return audiodirector.Input{ProjectID: "p1", EditTimelineID: editTimelineID, Quality: domain.QualityFast, Scenes: twoScenes(), Seconds: 10}
+	}
+
+	first := make(chan error, 1)
+	go func() {
+		_, err := d.Produce(context.Background(), input("e1"))
+		first <- err
+	}()
+	<-gate.entered // the first run is in its first TTS call: nothing is in the ledger yet
+
+	_, err := d.Produce(context.Background(), input("e2"))
+	close(gate.proceed)
+	require.NoError(t, <-first)
+
+	var be *audiodirector.BudgetError
+	require.True(t, errors.As(err, &be), "the second run is refused: the first one holds the budget")
+	assert.LessOrEqual(t, ledger.spent, ceiling, "the ledger never passes the ceiling")
+	assert.Zero(t, ledger.reserved, "every reservation is released")
+}
+
+func TestDirector_RunsOfOneProjectCannotTogetherPassTheCeilingWithTheirBGM(t *testing.T) {
+	prices := audiodirector.DefaultPrices()
+	speech := prices.TTS("こんにちは") + prices.TTS("夕暮れ")
+	ceiling := 2*speech + prices.Music(4) + 0.001 // both runs' speech fits, but only one BGM
+	v := &fakeVendors{t: t}
+	gate := &gatedVendors{fakeVendors: v, entered: make(chan struct{}), proceed: make(chan struct{})}
+	ledger := &fakeLedger{ceiling: &ceiling}
+	d := audiodirector.New(audiodirector.Deps{
+		Providers: audiodirector.Providers{Speech: v, Music: gate, Sounds: v, LipSync: v}, Ledger: ledger, Tools: tools(t), Root: t.TempDir(),
+	})
+	input := func(editTimelineID string) audiodirector.Input {
+		return audiodirector.Input{ProjectID: "p1", EditTimelineID: editTimelineID, Quality: domain.QualityBalanced, Scenes: twoScenes(), Seconds: 10}
+	}
+
+	first := make(chan error, 1)
+	go func() {
+		_, err := d.Produce(context.Background(), input("e1"))
+		first <- err
+	}()
+	<-gate.entered // the first run is in its BGM call: the BGM is reserved, not yet in the ledger
+
+	got, err := d.Produce(context.Background(), input("e2"))
+	close(gate.proceed)
+	require.NoError(t, err)
+	require.NoError(t, <-first)
+
+	assert.Contains(t, skippedLayers(got, domain.SkipBudget), domain.LayerBGM, "the second run's BGM is left out: the first one holds the budget")
+	assert.LessOrEqual(t, ledger.spent, ceiling, "the ledger never passes the ceiling")
+	assert.Zero(t, ledger.reserved, "every reservation is released")
 }
