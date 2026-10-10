@@ -180,17 +180,18 @@ func (d *Director) produce(ctx context.Context, in Input, rel string) (domain.Au
 			return domain.AudioTimeline{}, err
 		}
 	}
-	spend, err := newSpending(ctx, d.Ledger, in.ProjectID)
-	if err != nil {
-		return domain.AudioTimeline{}, err
-	}
+	spend := &spending{ledger: d.Ledger, projectID: in.ProjectID}
 	var speechCost float64
 	for _, l := range lines {
 		speechCost += d.Prices.TTS(l.Text)
 	}
-	if !spend.fits(speechCost) {
-		return domain.AudioTimeline{}, &BudgetError{Needed: speechCost, Remaining: spend.remaining()}
+	// The speech is held up front, so that runs of the Project that start at the same time cannot
+	// together pass the ceiling; it is released once the lines are in the ledger.
+	releaseSpeech, err := spend.reserve(ctx, speechCost)
+	if err != nil {
+		return domain.AudioTimeline{}, err
 	}
+	defer releaseSpeech()
 
 	r := &run{d: d, in: in, tl: &tl, spend: spend, scope: scope, rel: rel}
 	// The plan costs nothing outside: a planner failure ends the run before any provider is paid.
@@ -200,6 +201,7 @@ func (d *Director) produce(ctx context.Context, in Input, rel string) (domain.Au
 	if err := r.speak(ctx, lines, sceneOfLine); err != nil {
 		return domain.AudioTimeline{}, err
 	}
+	releaseSpeech() // the lines are in the ledger now
 	tl.SpeechExpected = len(tl.Clips) > 0
 	if err := r.makeLayers(ctx); err != nil {
 		return domain.AudioTimeline{}, err
@@ -418,14 +420,15 @@ func (r *run) jobs(layer domain.AudioLayer) []job {
 // over budget, the provider failed) is listed in Skipped; only a cancelled run or a failure of the
 // local side (disk, ledger) is an error.
 func (r *run) make(ctx context.Context, j job) error {
-	switch {
-	case j.call == nil:
+	if j.call == nil {
 		r.skip(j.layer, j.prompt, domain.SkipError, "プロバイダーが設定されていません")
 		return nil
-	case !r.spend.fits(j.cost):
-		r.skip(j.layer, j.prompt, domain.SkipBudget, fmt.Sprintf("見積 $%.2f に対し残り予算が $%.2f です", j.cost, r.spend.remaining()))
-		return nil
 	}
+	release, ok, err := r.reserve(ctx, j.layer, j.prompt, j.cost)
+	if err != nil || !ok {
+		return err
+	}
+	defer release() // after the cost is in the ledger, or when the call was not paid
 	speech, err := j.call(ctx)
 	if err == nil {
 		// The provider has charged for the sound: the ledger gets it before the local work or a
@@ -507,11 +510,15 @@ func (r *run) lipSync(ctx context.Context) error {
 			continue
 		}
 		cost := r.d.Prices.LipSync(model, vc.Length())
-		if !r.spend.fits(cost) {
-			r.skip(domain.LayerLipSync, lines[0].Text, domain.SkipBudget, fmt.Sprintf("見積 $%.2f に対し残り予算が $%.2f です", cost, r.spend.remaining()))
+		release, ok, err := r.reserve(ctx, domain.LayerLipSync, lines[0].Text, cost)
+		if err != nil {
+			return err
+		}
+		if !ok {
 			continue
 		}
 		out, stop, err := r.syncClip(ctx, vc, lines, model, cost)
+		release() // the cost is in the ledger now, or the call was not paid
 		if err != nil {
 			return err
 		}
@@ -611,4 +618,16 @@ func (r *run) tracks() []media.Track {
 		out = append(out, tr)
 	}
 	return out
+}
+
+// reserve holds the estimate of a call under the budget ceiling before the call is paid. A call that
+// does not fit is listed in Skipped (ok=false, no error).
+func (r *run) reserve(ctx context.Context, layer domain.AudioLayer, prompt string, cost float64) (release func(), ok bool, err error) {
+	release, err = r.spend.reserve(ctx, cost)
+	var be *BudgetError
+	if errors.As(err, &be) {
+		r.skip(layer, prompt, domain.SkipBudget, fmt.Sprintf("見積 $%.2f に対し残り予算が $%.2f です", be.Needed, be.Remaining))
+		return nil, false, nil
+	}
+	return release, err == nil, err
 }

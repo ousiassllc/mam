@@ -2,6 +2,7 @@ package repository_test
 
 import (
 	"context"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -122,5 +123,60 @@ func TestCostRepository_ProjectBudgetSumsTheLedgerAndAddCostAppendsToIt(t *testi
 	assert.Zero(t, spent)
 	assert.ErrorIs(t, repo.AddCost(ctx, domain.CostEntry{ProjectID: "nope", Provider: domain.ModelElevenLabsTTS}), repository.ErrNotFound)
 	_, _, err = repo.ProjectBudget(ctx, "nope")
+	assert.ErrorIs(t, err, repository.ErrNotFound)
+}
+
+func TestCostRepository_ReserveHoldsTheEstimateUnderTheProjectCeilingUntilReleased(t *testing.T) {
+	ctx := context.Background()
+	db := openTestDB(t)
+	seedProject(t, db, "p1")
+	require.NoError(t, exec(t, db, `UPDATE project SET project_budget_ceiling = 1 WHERE id = 'p1'`))
+	repo := repository.NewCostRepository(db)
+
+	// Of several runs that reserve at the same time, only as many as the ceiling allows get through.
+	const runs = 8
+	var (
+		mu       sync.Mutex
+		releases []func()
+		wg       sync.WaitGroup
+	)
+	for range runs {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			release, ok, err := repo.Reserve(ctx, "p1", 0.3)
+			assert.NoError(t, err)
+			if ok {
+				mu.Lock()
+				releases = append(releases, release)
+				mu.Unlock()
+			}
+		}()
+	}
+	wg.Wait()
+	assert.Len(t, releases, 3, "0.3 fits three times under 1")
+	_, spent, err := repo.ProjectBudget(ctx, "p1")
+	require.NoError(t, err)
+	assert.InDelta(t, 0.9, spent, 1e-9, "the budget counts what is reserved")
+
+	// The cost reaches the ledger, then the reservation goes: counted once.
+	require.NoError(t, repo.AddCost(ctx, domain.CostEntry{ProjectID: "p1", Provider: domain.ModelElevenLabsTTS, EstimatedCost: 0.3}))
+	releases[0]()
+	releases[0]() // safe to call twice
+	_, spent, err = repo.ProjectBudget(ctx, "p1")
+	require.NoError(t, err)
+	assert.InDelta(t, 0.9, spent, 1e-9)
+
+	releases[1]()
+	releases[2]()
+	_, ok, err := repo.Reserve(ctx, "p1", 0.8)
+	require.NoError(t, err)
+	assert.False(t, ok, "0.3 is spent: 0.8 does not fit")
+	release, ok, err := repo.Reserve(ctx, "p1", 0.7)
+	require.NoError(t, err)
+	assert.True(t, ok)
+	release()
+
+	_, _, err = repo.Reserve(ctx, "nope", 0.1)
 	assert.ErrorIs(t, err, repository.ErrNotFound)
 }

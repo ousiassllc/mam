@@ -103,3 +103,19 @@ func (r *GenerationRepository) Reserve(ctx context.Context, projectID, shotID st
 		return b.Remaining(), nil
 	})
 }
+
+// Reserve holds cost (the estimate of one Audio Director call about to be paid) for the Project
+// until release is called, and reports ok=false when it does not fit under the Project budget
+// ceiling next to the ledger and the other reservations (those of generations included). Like
+// GenerationRepository.Reserve, the check and the reservation are one step, so audio runs of one
+// Project that go on at the same time cannot together pass the ceiling. Call release once the cost
+// is in the ledger or the call has ended without one; it is safe to call more than once.
+func (r *CostRepository) Reserve(ctx context.Context, projectID string, cost float64) (release func(), ok bool, err error) {
+	return r.db.inflight.reserve(projectID, "", cost, func(reservedProject, _ float64) (float64, error) {
+		ceiling, spent, err := r.ledgerProjectBudget(ctx, projectID)
+		if err != nil {
+			return 0, err
+		}
+		return Budget{ProjectCeiling: ceiling, ProjectSpent: spent + reservedProject}.Remaining(), nil
+	})
+}
