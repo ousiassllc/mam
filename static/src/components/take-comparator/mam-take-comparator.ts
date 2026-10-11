@@ -4,7 +4,6 @@ import { del, get, post } from '../lib/api';
 import { errorMessage } from '../lib/errors';
 import { createLogger } from '../lib/logger';
 import {
-  MAX_SEGMENTS,
   addSegment,
   describeSegments,
   dragToSegment,
@@ -12,8 +11,10 @@ import {
   totalSeconds,
   type Clip,
   type Segment,
+  type SegmentLimits,
 } from '../lib/timeline-model';
 import '../video-player/mam-video-player';
+import { STATUS_CLASS, STATUS_LABEL, type TakeStatus } from './take-status';
 
 const log = createLogger('take-comparator');
 
@@ -21,7 +22,7 @@ const log = createLogger('take-comparator');
 export interface TakeScore {
   id: string;
   label: string;
-  status: 'candidate' | 'ai_pick' | 'selected' | 'rejected';
+  status: TakeStatus;
   adopted: boolean;
   model_name: string;
   resolution?: string;
@@ -42,22 +43,9 @@ interface TakesBody {
   shot_id: string;
   duration_seconds?: number;
   partial_url?: string;
+  limits: SegmentLimits;
   takes: TakeScore[];
 }
-
-const STATUS_LABEL: Record<TakeScore['status'], string> = {
-  candidate: 'Candidate',
-  ai_pick: 'AI Pick',
-  selected: 'Selected',
-  rejected: 'Rejected',
-};
-
-const STATUS_CLASS: Record<TakeScore['status'], string> = {
-  candidate: 'border-neutral-600 text-neutral-300',
-  ai_pick: 'border-sky-500 text-sky-300',
-  selected: 'border-emerald-500 text-emerald-300',
-  rejected: 'border-neutral-700 text-neutral-500 line-through',
-};
 
 /** A drag on a lane in progress. */
 interface Drag {
@@ -94,6 +82,7 @@ export class MamTakeComparator extends LitElement {
 
   private shotDuration = 0;
   private partialUrl = '';
+  private limits: SegmentLimits | null = null;
   private loadToken = 0;
 
   protected override createRenderRoot(): HTMLElement {
@@ -119,6 +108,7 @@ export class MamTakeComparator extends LitElement {
       this.takes = body.takes;
       this.shotDuration = body.duration_seconds ?? 0;
       this.partialUrl = body.partial_url ?? '';
+      this.limits = body.limits;
       const usable = new Set(body.takes.filter((t) => t.partial_usable).map((t) => t.id));
       this.selection = this.selection.filter((s) => usable.has(s.take_id));
       this.error = '';
@@ -187,14 +177,14 @@ export class MamTakeComparator extends LitElement {
   private onLaneUp(): void {
     const drag = this.drag;
     this.drag = null;
-    if (!drag) return;
+    if (!drag || !this.limits) return;
     const segment = dragToSegment(drag.clip, drag.fromX, drag.toX, drag.width);
-    const next = addSegment(this.selection, segment, this.clips());
+    const next = addSegment(this.selection, segment, this.clips(), this.limits);
     if (next === this.selection) {
       this.error =
-        this.selection.length >= MAX_SEGMENTS
-          ? `区間は最大 ${MAX_SEGMENTS} 個までです`
-          : '0.3 秒以上の区間をドラッグしてください';
+        this.selection.length >= this.limits.max_segments
+          ? `区間は最大 ${this.limits.max_segments} 個までです`
+          : `${this.limits.min_segment_seconds} 秒以上の区間をドラッグしてください`;
       return;
     }
     this.error = '';

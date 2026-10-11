@@ -36,3 +36,14 @@ func TestTakes_RefuseWhatTheyDoNotOfferAndRecordNoIntervention(t *testing.T) {
 	assert.Equal(t, "rejected", ta.statusOf("t2"), "the excluded Take stays excluded")
 	assert.Equal(t, "selected", ta.statusOf("t1"))
 }
+
+func (ta *takeApp) statusOf(id string) string {
+	ta.t.Helper()
+	for _, tk := range ta.takes().Takes {
+		if tk.ID == id {
+			return tk.Status
+		}
+	}
+	ta.t.Fatalf("no take %s", id)
+	return ""
+}

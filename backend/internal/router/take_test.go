@@ -105,25 +105,24 @@ func (ta *takeApp) video(name, size string, seconds int) {
 }
 
 type takeListBody struct {
-	ShotID     string `json:"shot_id"`
-	PartialURL string `json:"partial_url"`
+	ShotID     string             `json:"shot_id"`
+	PartialURL string             `json:"partial_url"`
+	Limits     map[string]float64 `json:"limits"`
 	Takes      []struct {
-		ID            string  `json:"id"`
-		Label         string  `json:"label"`
-		Status        string  `json:"status"`
-		Adopted       bool    `json:"adopted"`
-		Resolution    string  `json:"resolution"`
-		FPS           float64 `json:"fps"`
-		Duration      float64 `json:"duration_seconds"`
-		Proxied       bool    `json:"proxied"`
-		VideoURL      string  `json:"video_url"`
-		ThumbnailURL  string  `json:"thumbnail_url"`
-		SelectURL     string  `json:"select_url"`
-		RejectURL     string  `json:"reject_url"`
-		PartialUsable bool    `json:"partial_usable"`
-		Scores        *struct {
-			Product, Acting, Camera, Continuity, Overall float64
-		} `json:"scores"`
+		ID            string                                                          `json:"id"`
+		Label         string                                                          `json:"label"`
+		Status        string                                                          `json:"status"`
+		Adopted       bool                                                            `json:"adopted"`
+		Resolution    string                                                          `json:"resolution"`
+		FPS           float64                                                         `json:"fps"`
+		Duration      float64                                                         `json:"duration_seconds"`
+		Proxied       bool                                                            `json:"proxied"`
+		VideoURL      string                                                          `json:"video_url"`
+		ThumbnailURL  string                                                          `json:"thumbnail_url"`
+		SelectURL     string                                                          `json:"select_url"`
+		RejectURL     string                                                          `json:"reject_url"`
+		PartialUsable bool                                                            `json:"partial_usable"`
+		Scores        *struct{ Product, Acting, Camera, Continuity, Overall float64 } `json:"scores"`
 	} `json:"takes"`
 }
 
@@ -134,17 +133,6 @@ func (ta *takeApp) takes() takeListBody {
 	var b takeListBody
 	require.NoError(ta.t, json.Unmarshal(rec.Body.Bytes(), &b))
 	return b
-}
-
-func (ta *takeApp) statusOf(id string) string {
-	ta.t.Helper()
-	for _, tk := range ta.takes().Takes {
-		if tk.ID == id {
-			return tk.Status
-		}
-	}
-	ta.t.Fatalf("no take %s", id)
-	return ""
 }
 
 func TestTakeAPI_ListsTakesOldestFirstWithLabelsLinksAndScores(t *testing.T) {
@@ -158,6 +146,7 @@ func TestTakeAPI_ListsTakesOldestFirstWithLabelsLinksAndScores(t *testing.T) {
 	b := ta.takes()
 	assert.Equal(t, ta.shotID, b.ShotID)
 	assert.Equal(t, "/shots/"+ta.shotID+"/takes/partial", b.PartialURL)
+	assert.Equal(t, map[string]float64{"max_segments": domain.MaxTakeSegments, "min_segment_seconds": domain.MinTakeSegmentSeconds}, b.Limits)
 	require.Len(t, b.Takes, 3)
 	assert.Equal(t, []string{"A", "B", "C"}, []string{b.Takes[0].Label, b.Takes[1].Label, b.Takes[2].Label})
 	assert.Equal(t, "candidate", b.Takes[0].Status)
