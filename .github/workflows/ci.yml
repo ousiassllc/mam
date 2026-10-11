@@ -50,6 +50,11 @@ jobs:
       - name: Lint
         run: make lint
 
+      # Known vulnerabilities reachable from the code: the Go standard library of the toolchain
+      # pinned by go.mod's `toolchain` line, and the required modules. A new advisory fails CI.
+      - name: Vulnerability check
+        run: make vuln
+
       # Files / directories already over the linterly limit are recorded in .linterly-baseline: fail
       # only when something got longer or a new one went over (spec/environment/setup.md).
       - name: Line limit (no regression)
