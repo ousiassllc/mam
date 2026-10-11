@@ -236,7 +236,7 @@ func New(deps Deps) *Services {
 		judge: editor.NewJudge(deps.LLM), brands: brands, judges: judges.judges,
 		voices: repository.NewVoiceRepository(deps.DB), cloner: deps.Audio.Cloner,
 	}
-	editors.resume = newResumer(editors.resumeAll)
+	editors.resume = newResumer(logger, editors.resumeAll)
 	takeService.afterSelect = editors.ResumeEditing
 	// An Approval card answered in the editing half (Rough Cut, Final) lets the AUTO chain go on.
 	c.afterAnswer = editors.RetryAuto

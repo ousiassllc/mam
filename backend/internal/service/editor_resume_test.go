@@ -1,7 +1,9 @@
 package service
 
 import (
+	"bytes"
 	"context"
+	"log/slog"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -15,7 +17,7 @@ func TestResumer_WakesCoalesceIntoOneRunAtATime(t *testing.T) {
 	var running, peak, runs atomic.Int32
 	started := make(chan struct{}, 8)
 	gate := make(chan struct{})
-	r := newResumer(func(context.Context) {
+	r := newResumer(slog.New(slog.DiscardHandler), func(context.Context) {
 		n := running.Add(1)
 		for {
 			p := peak.Load()
@@ -50,18 +52,40 @@ func TestResumer_WakesCoalesceIntoOneRunAtATime(t *testing.T) {
 
 func TestResumer_CloseStopsTheWorkerAndLaterWakesDoNothing(t *testing.T) {
 	var runs atomic.Int32
-	r := newResumer(func(context.Context) { runs.Add(1) })
+	r := newResumer(slog.New(slog.DiscardHandler), func(context.Context) { runs.Add(1) })
 	r.Close() // never started: returns at once
 
 	r.Wake()
 	time.Sleep(20 * time.Millisecond)
 	assert.Zero(t, runs.Load())
 
-	r = newResumer(func(context.Context) { runs.Add(1) })
+	r = newResumer(slog.New(slog.DiscardHandler), func(context.Context) { runs.Add(1) })
 	r.Wake()
 	require.Eventually(t, func() bool { return runs.Load() == 1 }, time.Second, time.Millisecond)
 	r.Close()
 	r.Wake()
 	time.Sleep(20 * time.Millisecond)
 	assert.Equal(t, int32(1), runs.Load())
+}
+
+func TestResumer_APanickingRunIsLoggedAndTheWorkerGoesOn(t *testing.T) {
+	var runs atomic.Int32
+	r := newResumer(slog.New(slog.DiscardHandler), func(context.Context) {
+		runs.Add(1)
+		panic("boom")
+	})
+	defer r.Close()
+
+	r.Wake()
+	require.Eventually(t, func() bool { return runs.Load() == 1 }, time.Second, time.Millisecond)
+	r.Wake()
+	require.Eventually(t, func() bool { return runs.Load() == 2 }, time.Second, time.Millisecond, "the worker survives the panic")
+}
+
+func TestRunSafely_LogsThePanicWithItsStack(t *testing.T) {
+	var buf bytes.Buffer
+	runSafely(slog.New(slog.NewTextHandler(&buf, nil)), "some work", func() { panic("boom") })
+	assert.Contains(t, buf.String(), "some work panicked")
+	assert.Contains(t, buf.String(), "boom")
+	assert.Contains(t, buf.String(), "stack=")
 }
