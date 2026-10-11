@@ -23,6 +23,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 	"github.com/ousiassllc/mam/backend/internal/router"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
@@ -50,9 +51,7 @@ func newTakeAppWith(t *testing.T, mutate func(*service.Deps)) *takeApp {
 	}
 	keyring.MockInit()
 	dir := t.TempDir()
-	db, err := repository.Open(context.Background(), filepath.Join(dir, "mam.db"), nil)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = db.Close() })
+	db := testdb.Open(t)
 	deps := service.Deps{DB: db, Credentials: credential.NewKeyring(), AssetsDir: filepath.Join(dir, "assets"), Media: &tools}
 	if mutate != nil {
 		mutate(&deps)

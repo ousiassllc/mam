@@ -2,11 +2,9 @@ package router_test
 
 import (
 	"bytes"
-	"context"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,7 +12,7 @@ import (
 	"github.com/zalando/go-keyring"
 
 	"github.com/ousiassllc/mam/backend/internal/credential"
-	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 	"github.com/ousiassllc/mam/backend/internal/router"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
@@ -23,8 +21,7 @@ import (
 // A failing service must leave its cause in the log and show the error page, not a blank 500.
 func TestProjects_ServiceFailureIsLoggedAndRendersErrorPage(t *testing.T) {
 	keyring.MockInit()
-	db, err := repository.Open(context.Background(), filepath.Join(t.TempDir(), "mam.db"), nil)
-	require.NoError(t, err)
+	db := testdb.Open(t)
 	svc := servicetest.New(t, service.Deps{DB: db, Credentials: credential.NewKeyring()})
 	var logs bytes.Buffer
 	engine := router.New(svc, router.Options{Logger: slog.New(slog.NewTextHandler(&logs, nil))})
@@ -48,8 +45,7 @@ func TestProjects_ServiceFailureIsLoggedAndRendersErrorPage(t *testing.T) {
 // An unexpected error of a JSON API handler is a generic 500: the cause is logged, not sent to the client.
 func TestAPI_ServiceFailureIsAGeneric500WhoseCauseIsLogged(t *testing.T) {
 	keyring.MockInit()
-	db, err := repository.Open(context.Background(), filepath.Join(t.TempDir(), "mam.db"), nil)
-	require.NoError(t, err)
+	db := testdb.Open(t)
 	svc := servicetest.New(t, service.Deps{DB: db, Credentials: credential.NewKeyring()})
 	var logs bytes.Buffer
 	engine := router.New(svc, router.Options{Logger: slog.New(slog.NewTextHandler(&logs, nil))})

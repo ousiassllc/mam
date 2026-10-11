@@ -33,6 +33,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/facesim"
 	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 	"github.com/ousiassllc/mam/backend/internal/router"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
@@ -147,9 +148,7 @@ func newJudgeAppOpts(t *testing.T, o judgeOpts, sims ...float64) *judgeApp {
 	t.Helper()
 	keyring.MockInit()
 	dir := t.TempDir()
-	db, err := repository.Open(context.Background(), filepath.Join(dir, "mam.db"), nil)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = db.Close() })
+	db := testdb.Open(t)
 
 	l := &judgeLLM{verdict: o.verdict, specs: cmp.Or(o.spec, lockedSpecAnswer), command: o.command}
 	video := &videoFake{}

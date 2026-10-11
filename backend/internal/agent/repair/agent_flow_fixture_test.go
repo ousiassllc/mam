@@ -21,6 +21,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/repair"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 )
 
 // fakeRegen is the Regenerator: it plans with a per-action cost or error and "generates" by inserting
@@ -383,29 +384,23 @@ func (f *fx) run(t *testing.T, auto bool) error {
 var errProvider = errors.New("video provider exploded")
 
 var (
-	templateOnce sync.Once
-	templatePath string
-	templateErr  error
+	seedOnce sync.Once
+	seeded   []byte
+	seedErr  error
 )
 
 // seededCopy returns a private copy of a migrated database holding project p1 / scene sc1 / shot sh1 /
-// prompt version pv1 / take t1. Migrating once and copying keeps the many tests here fast.
+// prompt version pv1 / take t1. Seeding once and copying keeps the many tests here fast.
 func seededCopy(t *testing.T) string {
 	t.Helper()
-	templateOnce.Do(func() {
-		dir, err := os.MkdirTemp("", "repair-template-")
+	seedOnce.Do(func() {
+		path := testdb.Path(t)
+		db, err := repository.Open(context.Background(), path, nil)
 		if err != nil {
-			templateErr = err
+			seedErr = err
 			return
 		}
-		templateDir = dir
-		templatePath = filepath.Join(dir, "template.db")
-		db, err := repository.Open(context.Background(), templatePath, nil)
-		if err != nil {
-			templateErr = err
-			return
-		}
-		templateErr = db.Write(context.Background(), func(ctx context.Context, tx *sql.Tx) error {
+		seedErr = db.Write(context.Background(), func(ctx context.Context, tx *sql.Tx) error {
 			for _, q := range []string{
 				`INSERT INTO project (id, mode, confirmation_level, production_template, quality_policy) VALUES ('p1', 'auto', 'full_auto', 'product_cm', 'balanced')`,
 				`INSERT INTO scene (id, project_id, title, order_index) VALUES ('sc1', 'p1', 'S', 0)`,
@@ -419,24 +414,15 @@ func seededCopy(t *testing.T) string {
 			}
 			return nil
 		})
-		if cerr := db.Close(); templateErr == nil {
-			templateErr = cerr
+		if cerr := db.Close(); seedErr == nil {
+			seedErr = cerr
+		}
+		if seedErr == nil {
+			seeded, seedErr = os.ReadFile(path)
 		}
 	})
-	require.NoError(t, templateErr)
-	raw, err := os.ReadFile(templatePath)
-	require.NoError(t, err)
+	require.NoError(t, seedErr)
 	dst := filepath.Join(t.TempDir(), "mam.db")
-	require.NoError(t, os.WriteFile(dst, raw, 0o600))
+	require.NoError(t, os.WriteFile(dst, seeded, 0o600))
 	return dst
-}
-
-var templateDir string
-
-func TestMain(m *testing.M) {
-	code := m.Run()
-	if templateDir != "" {
-		_ = os.RemoveAll(templateDir)
-	}
-	os.Exit(code)
 }

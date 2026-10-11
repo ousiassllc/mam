@@ -3,18 +3,17 @@ package service_test
 import (
 	"context"
 	"errors"
-	"path/filepath"
 	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
 	"github.com/ousiassllc/mam/backend/internal/agent/judge"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
 )
@@ -47,9 +46,7 @@ func TestNew_RegistersJobKindsByDeps(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			db, err := repository.Open(context.Background(), filepath.Join(t.TempDir(), "mam.db"), nil)
-			require.NoError(t, err)
-			t.Cleanup(func() { _ = db.Close() })
+			db := testdb.Open(t)
 			jobs := jobqueue.New(repository.NewJobRepository(db), jobqueue.Options{})
 			deps := service.Deps{
 				DB: db, Jobs: jobs, LLM: &genReasoner{}, Frames: noFrames{}, AssetsDir: t.TempDir(),
@@ -68,12 +65,10 @@ func TestNew_RegistersJobKindsByDeps(t *testing.T) {
 
 // TestNew_NoJobsWiresNoAgent: without a queue no agent is wired (the Judge is unavailable), and New still builds.
 func TestNew_NoJobsWiresNoAgent(t *testing.T) {
-	db, err := repository.Open(context.Background(), filepath.Join(t.TempDir(), "mam.db"), nil)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = db.Close() })
+	db := testdb.Open(t)
 
 	svc := servicetest.New(t, service.Deps{DB: db, LLM: &genReasoner{}, Frames: noFrames{}, AssetsDir: t.TempDir()})
 
-	_, err = svc.Judge.Judge(context.Background(), "missing")
+	_, err := svc.Judge.Judge(context.Background(), "missing")
 	assert.ErrorIs(t, err, service.ErrUnavailable)
 }

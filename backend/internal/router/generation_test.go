@@ -27,6 +27,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 	"github.com/ousiassllc/mam/backend/internal/router"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
@@ -100,9 +101,7 @@ func newGenAppOpts(t *testing.T, withModels bool, o genOpts) *genApp {
 	t.Helper()
 	keyring.MockInit()
 	dir := t.TempDir()
-	db, err := repository.Open(context.Background(), filepath.Join(dir, "mam.db"), nil)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = db.Close() })
+	db := testdb.Open(t)
 
 	video := &videoFake{}
 	deps := service.Deps{DB: db, Credentials: credential.NewKeyring(), AssetsDir: filepath.Join(dir, "assets"), Media: o.media}

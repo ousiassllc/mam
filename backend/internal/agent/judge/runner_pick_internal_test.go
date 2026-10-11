@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"io"
 	"log/slog"
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,6 +12,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 )
 
 // scoresOf gives every axis of the product_cm template the same score.
@@ -29,9 +29,7 @@ func scoresOf(s float64) map[domain.EvaluationAxis]float64 {
 func pickRig(t *testing.T) (*Runner, repository.TakeRef) {
 	t.Helper()
 	ctx := context.Background()
-	db, err := repository.Open(ctx, filepath.Join(t.TempDir(), "mam.db"), nil)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = db.Close() })
+	db := testdb.Open(t)
 	require.NoError(t, db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		for _, q := range []string{
 			`INSERT INTO project (id, mode, confirmation_level, production_template, quality_policy) VALUES ('p1', 'auto', 'full_auto', 'product_cm', 'balanced')`,

@@ -19,6 +19,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 )
 
 var (
@@ -340,9 +341,7 @@ func newFixture(t *testing.T, opt options) *fixture {
 	t.Helper()
 	ctx := context.Background()
 	dir := t.TempDir()
-	db, err := repository.Open(ctx, filepath.Join(dir, "mam.db"), nil)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = db.Close() })
+	db := testdb.Open(t)
 
 	projects := repository.NewProjectRepository(db)
 	plans := repository.NewPlanRepository(db)
