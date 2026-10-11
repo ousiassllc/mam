@@ -232,9 +232,8 @@ func (s *ContinueService) Propose(ctx context.Context, shotID string) (domain.Pr
 
 // Confirm adds the next Shot after the completed one (in a new Scene when the AI says the story
 // moves on) and starts generating it. The Shot is generated from the World State the completed
-// Shots left, so characters, products, camera and story carry over. It returns the new Shot in
-// the GENERATING state. A generation that cannot start (budget) leaves the new Shot in the Project,
-// ready to be generated later.
+// Shots left, so characters, products, camera and story carry over. It returns the new Shot in the
+// GENERATING state. A generation that cannot start (budget) leaves it in the Project, to be generated later.
 func (s *ContinueService) Confirm(ctx context.Context, shotID string, in ConfirmInput) (ShotFragment, error) {
 	frag, _, err := s.confirm(ctx, shotID, in)
 	return frag, err
@@ -242,7 +241,7 @@ func (s *ContinueService) Confirm(ctx context.Context, shotID string, in Confirm
 
 // confirm is Confirm that also reports whether the new Shot was added to the Project: after that
 // the continuation cannot be asked for again without making a second Shot, even if starting its
-// generation failed.
+// generation failed. A Shot continues one request at a time (Propose's key), else Plan is paid twice.
 func (s *ContinueService) confirm(ctx context.Context, shotID string, in ConfirmInput) (frag ShotFragment, added bool, err error) {
 	direction := strings.TrimSpace(in.Instruction)
 	if in.Delegate {
@@ -253,6 +252,10 @@ func (s *ContinueService) confirm(ctx context.Context, shotID string, in Confirm
 	if utf8.RuneCountInString(direction) > maxInstructionRunes {
 		return ShotFragment{}, false, invalid("instruction", "%d 文字以内で入力してください", maxInstructionRunes)
 	}
+	if _, busy := s.answering.LoadOrStore(shotID, struct{}{}); busy {
+		return ShotFragment{}, false, ErrConflict
+	}
+	defer s.answering.Delete(shotID)
 	ref, err := s.check(ctx, shotID)
 	if err != nil {
 		return ShotFragment{}, false, err
@@ -292,8 +295,7 @@ func (s *ContinueService) confirm(ctx context.Context, shotID string, in Confirm
 	if _, err := s.generation.gen.StartByPolicy(ctx, shot.ID, direction, nil); err != nil {
 		return ShotFragment{}, true, mapGenerationError(err)
 	}
-	// the user asked for this Shot (by choosing or confirming the direction): a generate, as if
-	// they had pressed Generate on it (spec/spec.md §28.3)
+	// the user asked for this Shot: a generate, as if they had pressed Generate (spec/spec.md §28.3)
 	s.recordIntervention(done, domain.Intervention{ShotID: shot.ID, Kind: domain.InterventionGenerate})
 	frag, err = s.generation.Shot(ctx, shot.ID)
 	return frag, true, err
@@ -304,13 +306,11 @@ func aiError(err error) error { return &AIError{Reason: generation.FailureReason
 
 // answerContinue handles a reply to a Continue card (an option button, "AIに任せる", or the user's
 // own words). The next Shot is made first and the reply, which closes the card, is recorded after
-// it: a Confirm that fails before the Shot is added (Plan, AI error) leaves the card open to be
-// answered again. When the Shot was added but its generation could not start (budget), the card
-// closes as well, so that a second answer does not make a second Shot. The reply gets its id before
-// Confirm, so it stays ahead of the notes Confirm writes in the thread. It is called by
-// PostMessage before anything is written. A card answers one reply at a time: the reply that
-// arrives while another one to the same card is still being handled is a conflict (the closing reply
-// is only recorded after Confirm, so the thread alone cannot tell).
+// it: a Confirm that fails before the Shot is added leaves the card open to be answered again; one
+// that added the Shot closes it even if its generation could not start, so a second answer makes no
+// second Shot. The reply gets its id before Confirm, so it stays ahead of Confirm's notes. A card
+// answers one reply at a time: an overlapping one is a conflict (the reply is only recorded after
+// Confirm, so the thread alone cannot tell). Called by PostMessage before anything is written.
 func (s *ChatService) answerContinue(ctx context.Context, project domain.Project, card domain.ChatMessage, content string, hasAttachments bool) (Workspace, error) {
 	if hasAttachments {
 		return Workspace{}, invalid("attachment_asset_ids", "この質問には添付できません")
