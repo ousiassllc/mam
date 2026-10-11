@@ -44,6 +44,28 @@ func TestShotCard_TakeButtonsSendWhetherTheCardIsSelected(t *testing.T) {
 	}
 }
 
+// The select and exclude buttons of a Take row follow domain.Take.Selectable / Usable, the rule the
+// API offers select_url / reject_url by and the server holds to: a rejected or archived Take has
+// neither, the selected Take can only be excluded.
+func TestShotCard_TakeButtonsFollowTheRuleOfSelectableAndUsable(t *testing.T) {
+	cases := []struct {
+		name string
+		take domain.Take
+	}{
+		{"candidate", domain.Take{Status: domain.TakeCandidate, FilePath: "a.mp4"}},
+		{"ai pick", domain.Take{Status: domain.TakeAIPick, FilePath: "a.mp4"}},
+		{"selected", domain.Take{Status: domain.TakeSelected, FilePath: "a.mp4"}},
+		{"rejected", domain.Take{Status: domain.TakeRejected, FilePath: "a.mp4"}},
+		{"archived", domain.Take{Status: domain.TakeCandidate}},
+	}
+	for _, c := range cases {
+		c.take.ID, c.take.ShotID, c.take.ModelName = "t1", "s1", "m"
+		html := render(t, molecules.ShotCard(molecules.ShotCardData{ProjectID: "p", Shot: domain.Shot{ID: "s1", SceneID: "sc"}, Takes: []domain.Take{c.take}, Selected: true}))
+		assert.Equal(t, c.take.Selectable(), strings.Contains(html, `hx-post="/takes/t1/select"`), "select button of %s", c.name)
+		assert.Equal(t, c.take.Usable(), strings.Contains(html, `hx-delete="/takes/t1"`), "exclude button of %s", c.name)
+	}
+}
+
 // The buttons that start a generation or a repair are drawn only for a Shot the server accepts them
 // for: GENERATING and REPAIRING are refused with 409, JUDGING and the rest are not (#294).
 func TestShotCard_StartButtonsAreLeftOutWhileTheShotIsBusy(t *testing.T) {

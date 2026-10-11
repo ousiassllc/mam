@@ -144,8 +144,8 @@ templ TakeRow(t domain.Take, selected bool, repairable bool, judgeable bool) {
 	<li class="flex items-center justify-between gap-2 text-xs text-neutral-300">
 		<span class="truncate">{ t.ModelName }</span>
 		<span class="flex shrink-0 items-center gap-2">
-			if t.Status != domain.TakeRejected && t.FilePath != "" {
-				if t.Status != domain.TakeSelected {
+			if t.Usable() {
+				if t.Selectable() {
 					@atoms.LinkButton("選択", templ.Attributes{
 						"type":      "button",
 						"hx-post":   takeActionURL(t.ID, "select"),

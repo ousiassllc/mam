@@ -139,22 +139,18 @@ func (r *TakeRepository) GetMany(ctx context.Context, takeIDs []string) (map[str
 }
 
 // Select adopts the Take for its Shot as the user's choice: it becomes "selected" and the Shot's
-// selected Take, and the Take that was selected before goes back to being a candidate. A Take whose
-// file was archived cannot be selected (ErrConflict). It returns the Shot ID.
+// selected Take, and the Take that was selected before goes back to being a candidate. A Take that
+// domain.Take.Selectable refuses (rejected, file archived, already selected) is left as it is
+// (ErrConflict). It returns the Shot ID.
 func (r *TakeRepository) Select(ctx context.Context, takeID string) (string, error) {
 	var shotID string
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
-		var path string
-		err := tx.QueryRowContext(ctx,
-			`SELECT pv.shot_id, COALESCE(t.file_path, '') FROM take t JOIN prompt_version pv ON pv.id = t.prompt_version_id WHERE t.id = ?`,
-			takeID).Scan(&shotID, &path)
-		if errors.Is(err, sql.ErrNoRows) {
-			return ErrNotFound
-		}
+		take, err := loadActionTake(ctx, tx, takeID)
 		if err != nil {
 			return err
 		}
-		if path == "" {
+		shotID = take.ShotID
+		if !take.Selectable() {
 			return ErrConflict
 		}
 		return adoptTake(ctx, tx, shotID, takeID, domain.TakeSelected)
@@ -166,6 +162,20 @@ func (r *TakeRepository) Select(ctx context.Context, takeID string) (string, err
 		return "", fmt.Errorf("select take: %w", err)
 	}
 	return shotID, nil
+}
+
+// loadActionTake reads what domain.Take.Usable and Selectable decide on (the Shot, the status and
+// the file of the Take), so that the repository refuses an action by the rule the API and the pages
+// show it by. It returns ErrNotFound for a Take that does not exist.
+func loadActionTake(ctx context.Context, tx *sql.Tx, takeID string) (domain.Take, error) {
+	t := domain.Take{ID: takeID}
+	err := tx.QueryRowContext(ctx,
+		`SELECT pv.shot_id, t.status, COALESCE(t.file_path, '') FROM take t JOIN prompt_version pv ON pv.id = t.prompt_version_id WHERE t.id = ?`,
+		takeID).Scan(&t.ShotID, &t.Status, &t.FilePath)
+	if errors.Is(err, sql.ErrNoRows) {
+		return domain.Take{}, ErrNotFound
+	}
+	return t, err
 }
 
 // adoptTake makes the Take the Shot's selected Take with the status, and puts the Take that was
@@ -184,17 +194,18 @@ func adoptTake(ctx context.Context, tx *sql.Tx, shotID, takeID string, status do
 }
 
 // Reject excludes the Take (status "rejected"). When it was the Shot's selected Take the Shot has
-// none afterwards. Its file and history are kept. It returns the Shot ID.
+// none afterwards. Its file and history are kept. A Take that is not usable (already rejected, or
+// its file archived) is left as it is (ErrConflict). It returns the Shot ID.
 func (r *TakeRepository) Reject(ctx context.Context, takeID string) (string, error) {
 	var shotID string
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
-		err := tx.QueryRowContext(ctx,
-			`SELECT pv.shot_id FROM take t JOIN prompt_version pv ON pv.id = t.prompt_version_id WHERE t.id = ?`, takeID).Scan(&shotID)
-		if errors.Is(err, sql.ErrNoRows) {
-			return ErrNotFound
-		}
+		take, err := loadActionTake(ctx, tx, takeID)
 		if err != nil {
 			return err
+		}
+		shotID = take.ShotID
+		if !take.Usable() {
+			return ErrConflict
 		}
 		if _, err := tx.ExecContext(ctx, `UPDATE take SET status = ? WHERE id = ?`, domain.TakeRejected, takeID); err != nil {
 			return err
@@ -202,7 +213,7 @@ func (r *TakeRepository) Reject(ctx context.Context, takeID string) (string, err
 		_, err = tx.ExecContext(ctx, `UPDATE shot SET selected_take_id = NULL WHERE id = ? AND selected_take_id = ?`, shotID, takeID)
 		return err
 	})
-	if errors.Is(err, ErrNotFound) {
+	if errors.Is(err, ErrNotFound) || errors.Is(err, ErrConflict) {
 		return "", err
 	}
 	if err != nil {
