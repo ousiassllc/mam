@@ -315,7 +315,7 @@ Response 200:
     save_url: "/edit-timelines/et_01"
     preview_url: "/edit-timelines/et_01/preview"
     transitions: ["cut", "fade", "fade_black", "dissolve"]
-    limits: { min_clip_seconds: 0.5, max_transition_seconds: 2, max_caption_runes: 10 }
+    limits: { min_clip_seconds: 0.5, max_transition_seconds: 2, max_caption_runes: 60 }
     judge: { verdict: "re_edit", findings: [{ clip_index: 2, issue: "...", action: "..." }] }   # 省略あり
     clips:
       - shot_id: "shot_003"
@@ -470,3 +470,4 @@ Notes:
 | 1.86 | 2026-10-03 | §2.3 の `POST /shots/:id/generate/candidates` に、Shot カードの「生成」・Continue・Branch・追加撮影・Director の再生成がこの Candidate 生成を起動する条件（Judge 構成済みかつ Prompt が LOCK でない）と、それ以外は単発の `/shots/:id/generate` になることを追記した | Candidate 生成を起動する導線が HTTP 直叩きしか無く、MAX QUALITY でも画面からは 1 Take だった（Issue #437） |
 | 1.87 | 2026-10-11 | §3 の `GET /api/v1/shots/:id/takes` の説明に、`select_url`（選択可能な Take のみ）・`reject_url`（除外可能な Take のみ）が操作可能なときだけ返ること、各 Take の `partial_usable`、区間指定が可能なときだけ返る Shot の `partial_url`、区間指定の上限を渡す `limits` を追記した | Take のアクション可否をクライアントの `status` 判定からサーバー判定へ移したため。実装は `domain.TakeInfo.Usable`/`Selectable`、`router/take_api.go` の `newTakeBody`、`service.TakeService.Compare`（Issue #482）、`takeLimitsBody`（Issue #519: 区間数・最短秒数をクライアントの定数から外した） |
 | 1.88 | 2026-10-11 | §2.4 の `POST /takes/:id/select` に、除外済み・すでに選択済み・ファイルがアーカイブ済みの Take は 422 で何も変えず人間の介入も記録しないこと、`DELETE /takes/:id` に、すでに除外済み・ファイルがアーカイブ済みの Take は 422（以前の冪等な 200 ではない）で介入を記録しないことを追記した。両ルートの 404（存在しない Take）も明記した | 「選択」「除外」ボタン・`select_url` / `reject_url` を出す条件とサーバーの拒否を `domain.Take.Usable` / `Selectable` の 1 つの判定にしたため（1.87 の `select_url` / `reject_url` は操作可能なときだけ返す記述の裏側）。実装は `service.TakeService.Select` / `Reject`、`repository` の `ErrConflict`（→ 422）、回帰テストは `router/take_test.go` の `TestTakes_RefuseWhatTheyDoNotOfferAndRecordNoIntervention`（Issue #482・#502・#506・#512・#517） |
+| 1.89 | 2026-10-12 | §3 の `GET /api/v1/projects/:id/edit-timeline` の応答例の `limits.max_caption_runes` を 10 から 60 に直した | 実装（`domain.MaxCaptionRunes = 60`、`router/editor_api.go` の `newEditTimelineBody`）と同ファイルの `PUT /edit-timelines/:id` の説明（字幕は最大 60 文字）はどちらも 60 で、例だけが 10 だった。#520 で例を差し替えたときに値が違ったまま入った（Issue #524） |
