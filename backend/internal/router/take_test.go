@@ -25,6 +25,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/router"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/testenv"
 )
 
 type takeApp struct {
@@ -44,7 +45,7 @@ func newTakeAppWith(t *testing.T, mutate func(*service.Deps)) *takeApp {
 	t.Helper()
 	tools, err := media.Look()
 	if err != nil {
-		t.Skip("ffmpeg / ffprobe are not installed")
+		testenv.MissingFFmpeg(t, "ffmpeg / ffprobe are not installed")
 	}
 	keyring.MockInit()
 	dir := t.TempDir()
