@@ -11,13 +11,11 @@ import { createSyncer } from './components/lib/sync';
 import { connect, socketUrl } from './components/lib/ws';
 import {
   type ComposerSnapshot,
-  cardUrl,
   catchUpAfterReconnect,
   fieldsToClear,
   fileKey,
   isSendKey,
   isSuccessResponse,
-  messagesUrl,
   removeDuplicateIds,
   type ProjectEvent,
 } from './components/lib/thread';
@@ -36,7 +34,7 @@ export function initChatWorkspaces(root: ParentNode = document): void {
 }
 
 class ChatWorkspace {
-  private readonly projectId: string;
+  private readonly messagesUrl: string;
   private readonly thread: HTMLElement;
   private readonly composer: HTMLFormElement;
   private readonly content: HTMLTextAreaElement;
@@ -44,12 +42,12 @@ class ChatWorkspace {
   private stickToBottom = true; // is the thread scrolled to the bottom (so new messages should be followed)?
   /** Fetches the messages after the last one shown; requests are merged and a failure is retried. */
   private readonly syncer = createSyncer({
-    run: () => ajaxChecked('get', messagesUrl(this.projectId, this.lastMessageId()), { target: THREAD, swap: 'beforeend', source: THREAD }),
+    run: () => ajaxChecked('get', this.nextMessagesUrl(), { target: THREAD, swap: 'beforeend', source: THREAD }),
     onGiveUp: () => showToast(AJAX_FAILED_MESSAGE),
   });
 
   constructor(private readonly root: HTMLElement) {
-    this.projectId = root.dataset.projectId ?? '';
+    this.messagesUrl = root.dataset.messagesUrl ?? '';
     this.thread = root.querySelector<HTMLElement>(THREAD)!;
     this.composer = root.querySelector<HTMLFormElement>('#chat-composer')!;
     this.content = this.composer.querySelector<HTMLTextAreaElement>('#composer-content')!;
@@ -90,8 +88,11 @@ class ChatWorkspace {
     this.syncNew();
   }
 
+  /** Replaces the card with the server's current one, from the URL the server put on it (data-card-url). */
   private refetchCard(messageId: string): Promise<boolean> {
-    return ajaxGet(cardUrl(this.projectId, messageId), { target: `#msg-${CSS.escape(messageId)}`, swap: 'outerHTML' });
+    const target = `#msg-${CSS.escape(messageId)}`;
+    const url = this.thread.querySelector<HTMLElement>(target)?.dataset.cardUrl;
+    return url ? ajaxGet(url, { target, swap: 'outerHTML' }) : Promise.resolve(false);
   }
 
   private catchUp(): Promise<unknown> {
@@ -107,9 +108,10 @@ class ChatWorkspace {
     void this.syncer.request();
   }
 
-  private lastMessageId(): string {
+  /** Where the messages newer than the last one shown are: the server put it on that message (data-next-url), else the whole thread. */
+  private nextMessagesUrl(): string {
     const items = this.thread.querySelectorAll<HTMLElement>('[data-message-id]');
-    return items.item(items.length - 1)?.dataset.messageId ?? '';
+    return items.item(items.length - 1)?.dataset.nextUrl || this.messagesUrl;
   }
 
   private bindThread(): void {

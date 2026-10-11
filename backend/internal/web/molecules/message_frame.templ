@@ -13,6 +13,8 @@ templ MessageFrame(m domain.ThreadMessage) {
 	<article
 		id={ "msg-" + m.ID }
 		data-message-id={ m.ID }
+		data-card-url={ cardURL(m.ProjectID, m.ID) }
+		data-next-url={ messagesAfterURL(m.ProjectID, m.ID) }
 		data-kind={ string(m.Kind) }
 		if m.Open {
 			data-card-open="true"

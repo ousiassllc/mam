@@ -12,7 +12,7 @@ templ ChatWorkspace(p domain.Project, msgs []domain.ThreadMessage) {
 	<div
 		id="chat-workspace"
 		class="mx-auto flex h-screen max-w-3xl flex-col"
-		data-project-id={ p.ID }
+		data-messages-url={ paths.Project(p.ID, "messages") }
 		data-ws-url={ paths.ProjectEvents(p.ID) }
 	>
 		<header class="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-800 px-4 py-3">

@@ -57,7 +57,7 @@ describe('connections of elements that left the document', () => {
   });
 
   it('stops following a Chat Workspace that left the page', async () => {
-    host.innerHTML = `<section id="chat-workspace" data-project-id="p1" data-ws-url="/ws/projects/p1">
+    host.innerHTML = `<section id="chat-workspace" data-messages-url="/projects/p1/messages" data-ws-url="/ws/projects/p1">
       <div id="chat-thread"></div>
       <form id="chat-composer"><textarea id="composer-content"></textarea><input id="composer-files" type="file" /></form>
     </section>`;
@@ -70,7 +70,7 @@ describe('connections of elements that left the document', () => {
   });
 
   it('closes the socket of a Chat Workspace that left the page when a message arrives', async () => {
-    host.innerHTML = `<section id="chat-workspace" data-project-id="p1" data-ws-url="/ws/projects/p1">
+    host.innerHTML = `<section id="chat-workspace" data-messages-url="/projects/p1/messages" data-ws-url="/ws/projects/p1">
       <div id="chat-thread"></div>
       <form id="chat-composer"><textarea id="composer-content"></textarea><input id="composer-files" type="file" /></form>
     </section>`;
