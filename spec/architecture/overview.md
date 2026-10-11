@@ -104,7 +104,8 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 │   │   │   ├── main.go     # `app.Run` を呼び、起動完了で `openBrowser` する
 │   │   │   └── browser.go  # OS別のブラウザ自動オープン
 │   │   └── wails/          # Windows 版のエントリーポイント（`//go:build windows`。Wails ウィンドウ。§11）
-│   │       └── main.go     # Wails アプリ・ウィンドウ・単一インスタンス。`app.Run` を別 goroutine で動かし、起動完了で URL を開く
+│   │       ├── main.go     # Wails アプリ・ウィンドウ・単一インスタンス。`app.Run` を別 goroutine で動かし、起動完了で URL を開く
+│   │       └── dialog.go   # 起動エラーの Win32 MessageBox（コンソールが無いため。Wails のダイアログはイベントループが要るので使わない）
 │   └── internal/
 │       ├── app/            # 配線（DI）・起動・グレースフルシャットダウン。`cmd/server/main.go` から移した起動処理（設定読込・データディレクトリのロック・ロガー・`buildServices`・ジョブ復旧・`runHTTP`）、`listen.go`（127.0.0.1 の空きポート確保。使用中なら別ポートへフォールバック）、`judge.go`（AI Video Judge の起動時の準備。`newJudgeSetup`。ffmpeg と顔モデル・ONNX Runtime を探し、無ければ縮退して警告ログ。model-adapters.md §10）。`Run(ctx, Options)` は待ち受けが始まった時点で `Options.OnReady(url)` を呼ぶ。`args.go`（`ValidateArgs`。コンソールの無い `cmd/wails` が `--help`・引数の誤りをダイアログ用の文字列で受け取る）
 │       ├── desktop/        # `cmd/wails` のうち Wails に依存しない部分（OS 非依存でテストする）: `Navigator`（サーバーの URL とウィンドウの準備完了を待ち合わせて読み込む）、`Server`（`app.Run` のバックグラウンド実行と停止）
@@ -185,7 +186,7 @@ handler → service → agent → repository → domain
 - `service/`: `domain/`, `repository/`, `agent/` に依存。ユースケース単位のオーケストレーション
 - `web/handler/`: `service/`, `domain/` に依存。`repository/`・`agent/` を直接使わない
 - `router/`: `handler/` を参照してルートを定義
-- `service/Services`（`service/services.go`）が DI ルート。`cmd/server/main.go` がインフラ（DB・ジョブキュー・認証情報ストア・ロガー）を生成して `service.New(Deps)` に渡し、`router.New(services, opts)` が `services` を各ルート登録関数へ渡す。新機能は「サービス追加 → `Services` にフィールド追加 → ルートを `pages.go`/`actions.go`/`api.go` に追加」の追記だけで組み込める
+- `service/Services`（`service/services.go`）が DI ルート。`internal/app`（`app.Run` → `buildServices`）がインフラ（DB・ジョブキュー・認証情報ストア・ロガー）を生成して `service.New(Deps)` に渡し、`router.New(services, opts)` が `services` を各ルート登録関数へ渡す。新機能は「サービス追加 → `Services` にフィールド追加 → ルートを `pages.go`/`actions.go`/`api.go` に追加」の追記だけで組み込める
 - レイヤー依存ルールは `.golangci.yml` の depguard で機械的に検査する（違反はlintエラー）
 
 ## 6. 起動方式（ローカル Web サーバー）
@@ -258,7 +259,7 @@ dev:
 - `.css` 編集 → Tailwind がビルド → ブラウザリロードで反映
 - `make dev` は `MAM_STATIC_DIR=static/src/dist` を設定し、再ビルドのたびにバイナリを作り直さずディスク上のアセットを配信する
 - 本番ビルド: `make build`（`scripts/build.sh`）が `templ generate` → `esbuild`（minify） → `tailwind`（minify） → `go build`（`go:embed`で静的アセット同梱、`CGO_ENABLED=0`）を一括実行し `bin/mam` を生成する（`make build-all` = `scripts/build.sh --all` は windows / darwin / linux × amd64 / arm64 の全プラットフォームを `bin/mam-<os>-<arch>` に生成する）。SQLite は純 Go ドライバ（modernc.org/sqlite）のため各 OS/arch へクロスコンパイル可能
-- Windows 版: `scripts/package-windows.sh` が上の本番ビルドと同じフロントエンド工程の後に `wails3 package GOOS=windows` を実行し、ポータブル `mam.exe` と NSIS インストーラーを作る（§11.3）。ローカルの確認は Windows 上で行う（Wails v3 の `wails3` CLI と NSIS（`makensis`）が必要）
+- Windows 版: `scripts/package-windows.sh` が上の本番ビルドと同じフロントエンド工程の後に `wails3 package GOOS=windows` を実行し、ポータブル `mam.exe` と NSIS インストーラーを作る（`desktop.md` §4）。ローカルの確認は Windows 上で行う（Wails v3 の `wails3` CLI と NSIS（`makensis`）が必要）
 - その他のターゲット: `make test`（Go `-race` + フロントの vitest + web-test-runner の Lit コンポーネントテスト（Chrome が必要））、`make lint`（golangci-lint + `tsc --noEmit`）、`make fmt` / `make fmt-check`
 
 ## 10. テスト戦略
@@ -297,3 +298,4 @@ Windows では、ブラウザ版と同じ `127.0.0.1` のサーバーを `intern
 | 1.13 | 2026-10-03 | §5 の構成図に `cmd/server/judge.go` と `lib/query.ts` を追加し、§11 の Wails 化の記述の `openBrowser()` の所在を `main.go` から `browser.go` に直した | 実装（`backend/cmd/server/judge.go`・`browser.go`、`static/src/components/lib/query.ts`）に構成図と記述が追従していなかったため（Issue #441） |
 | 1.14 | 2026-10-03 | §2 の実行方式、§5 のディレクトリ構成（`internal/app`・`cmd/wails`・`build/`・`scripts/package-windows.sh`）、§6 の起動処理と概念コード、§11 を「将来拡張」から Windows デスクトップ版の要約に書き換え、詳細を `desktop.md` に新設した | Issue #480。インストーラー配布の要望。Wails v3 の AssetServer が WebSocket を処理しない（501）ため、元の Handler 直渡しの方針ではチャットと生成進捗が動かず、サーバーを維持してウィンドウが URL を開く方式にした |
 | 1.15 | 2026-10-11 | §5 に `internal/desktop`（`cmd/wails` の Wails 非依存部分）・`internal/app/args.go`・`scripts/smoke-windows.sh` を追加 | Issue #480 の実装。`cmd/wails` は windows タグで Linux のテストに載らないため、待ち合わせと停止の処理を OS 非依存のパッケージへ出した |
+| 1.16 | 2026-10-11 | §5 の `cmd/wails/` に `dialog.go` を追加し、§6 の DI ルートの説明を `cmd/server/main.go` から `internal/app`（`app.Run` → `buildServices`）に直し、§9 の「§11.3」を `desktop.md` §4 に直した | 配線を `internal/app/services.go` へ移した実装と、起動エラーを MessageBox で出す `cmd/wails/dialog.go` に仕様が追随していなかったため。§11.3 は存在しない節だった |
