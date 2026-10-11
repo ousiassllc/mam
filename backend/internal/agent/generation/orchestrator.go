@@ -19,6 +19,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/stateextractor"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
+	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
 
@@ -483,13 +484,9 @@ func (o *Orchestrator) Handle(ctx context.Context, job domain.Job) error {
 
 // fail tells the user why the job stopped and returns the error for the job record.
 func (o *Orchestrator) fail(ctx context.Context, ref repository.ShotRef, a Action, err error) error {
-	if ctx.Err() != nil {
-		o.release(ctx, ref.Shot.ID)
-		return err // shutting down: nobody is told
-	}
 	o.release(ctx, ref.Shot.ID)
-	if errors.Is(err, repository.ErrNotFound) {
-		return err // the Shot is gone
+	if ctx.Err() != nil || errors.Is(err, repository.ErrNotFound) {
+		return err // shutting down (nobody is told) or the Shot is gone
 	}
 	o.logger.Error("generation failed", "shot_id", ref.Shot.ID, "action", a, "err", err)
 	reason := FailureReason(err)
@@ -535,6 +532,8 @@ func FailureReason(err error) string {
 		return "生成モデルがリクエストを拒否しました（コンテンツポリシー等）。指示を変えて再実行してください"
 	case errors.Is(err, modeladapter.ErrTimeout), errors.Is(err, llm.ErrTimeout):
 		return "生成モデルの応答がタイムアウトしました"
+	case errors.Is(err, media.ErrTimeout):
+		return "動画・音声の処理（ffmpeg）が制限時間を超えました。素材ファイルを確認して再実行してください"
 	case errors.Is(err, llm.ErrInvalidOutput), errors.Is(err, errInvalidPlan):
 		return "AI の出力を制作に使える形で受け取れませんでした"
 	}
