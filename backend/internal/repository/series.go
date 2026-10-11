@@ -158,43 +158,29 @@ func (r *SeriesRepository) CanonAt(ctx context.Context, id string, version int) 
 
 // Versions returns the history of the canon, newest first.
 func (r *SeriesRepository) Versions(ctx context.Context, id string) ([]domain.SeriesVersion, error) {
-	rows, err := r.db.Reader().QueryContext(ctx,
-		`SELECT version_number, created_at FROM series_version WHERE series_id = ? ORDER BY version_number DESC`, id)
-	if err != nil {
-		return nil, fmt.Errorf("list series versions: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-	var out []domain.SeriesVersion
-	for rows.Next() {
+	out, err := queryAll(ctx, r.db.Reader(), func(row rowScanner) (domain.SeriesVersion, error) {
 		var (
 			v       domain.SeriesVersion
 			created string
 		)
-		if err := rows.Scan(&v.Number, &created); err != nil {
-			return nil, err
+		if err := row.Scan(&v.Number, &created); err != nil {
+			return v, err
 		}
-		if v.CreatedAt, err = ParseTime(created); err != nil {
-			return nil, err
-		}
-		out = append(out, v)
+		var err error
+		v.CreatedAt, err = ParseTime(created)
+		return v, err
+	}, `SELECT version_number, created_at FROM series_version WHERE series_id = ? ORDER BY version_number DESC`, id)
+	if err != nil {
+		return nil, fmt.Errorf("list series versions: %w", err)
 	}
-	return out, rows.Err()
+	return out, nil
 }
 
 // Episodes returns the Projects of the Series by episode number.
 func (r *SeriesRepository) Episodes(ctx context.Context, id string) ([]domain.Project, error) {
-	rows, err := r.db.Reader().QueryContext(ctx, projectSelect+` WHERE p.series_id = ? ORDER BY p.episode_number`, id)
+	out, err := queryAll(ctx, r.db.Reader(), scanProject, projectSelect+` WHERE p.series_id = ? ORDER BY p.episode_number`, id)
 	if err != nil {
 		return nil, fmt.Errorf("list episodes: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
-	var out []domain.Project
-	for rows.Next() {
-		p, err := scanProject(rows)
-		if err != nil {
-			return nil, fmt.Errorf("scan episode: %w", err)
-		}
-		out = append(out, p)
-	}
-	return out, rows.Err()
+	return out, nil
 }

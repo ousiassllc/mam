@@ -66,20 +66,11 @@ func (r *GenerationRepository) GetShot(ctx context.Context, shotID string) (Shot
 // ListProjectShots returns every Shot of the trunk of the Project in story order (Scene, then
 // Shot). The Shots of a Branch are read with StoryShots.
 func (r *GenerationRepository) ListProjectShots(ctx context.Context, projectID string) ([]ShotRef, error) {
-	rows, err := r.db.Reader().QueryContext(ctx, shotRefSelect+` WHERE s.project_id = ? AND s.branch_id IS NULL ORDER BY s.order_index, sh.order_index`, projectID)
+	out, err := queryAll(ctx, r.db.Reader(), scanShotRef, shotRefSelect+` WHERE s.project_id = ? AND s.branch_id IS NULL ORDER BY s.order_index, sh.order_index`, projectID)
 	if err != nil {
 		return nil, fmt.Errorf("list project shots: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
-	var out []ShotRef
-	for rows.Next() {
-		ref, err := scanShotRef(rows)
-		if err != nil {
-			return nil, fmt.Errorf("scan shot: %w", err)
-		}
-		out = append(out, ref)
-	}
-	return out, rows.Err()
+	return out, nil
 }
 
 // StartShot moves the Shot to GENERATING unless it already is (or is being repaired). It reports

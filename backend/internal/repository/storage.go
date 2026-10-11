@@ -62,8 +62,13 @@ func (r *StorageRepository) Usage(ctx context.Context, projectID string) (domain
 		return domain.StorageSummary{}, fmt.Errorf("sum assets: %w", err)
 	}
 
-	rows, err := r.db.Reader().QueryContext(ctx,
-		`SELECT t.id, pv.shot_id, s.title, s.order_index, sh.order_index, t.status, t.model_name, COALESCE(a.size_bytes, 0), `+takeUnneeded+`, `+takeArchivable+`
+	takes, err := queryAll(ctx, r.db.Reader(), func(row rowScanner) (domain.StoredTake, error) {
+		var t domain.StoredTake
+		if err := row.Scan(&t.TakeID, &t.ShotID, &t.SceneTitle, &t.SceneIndex, &t.ShotIndex, &t.Status, &t.ModelName, &t.SizeBytes, &t.Unneeded, &t.Archivable); err != nil {
+			return t, fmt.Errorf("scan stored take: %w", err)
+		}
+		return t, nil
+	}, `SELECT t.id, pv.shot_id, s.title, s.order_index, sh.order_index, t.status, t.model_name, COALESCE(a.size_bytes, 0), `+takeUnneeded+`, `+takeArchivable+`
 		 FROM take t
 		 JOIN prompt_version pv ON pv.id = t.prompt_version_id
 		 JOIN shot sh ON sh.id = pv.shot_id
@@ -74,17 +79,7 @@ func (r *StorageRepository) Usage(ctx context.Context, projectID string) (domain
 	if err != nil {
 		return domain.StorageSummary{}, fmt.Errorf("list stored takes: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
-	for rows.Next() {
-		var t domain.StoredTake
-		if err := rows.Scan(&t.TakeID, &t.ShotID, &t.SceneTitle, &t.SceneIndex, &t.ShotIndex, &t.Status, &t.ModelName, &t.SizeBytes, &t.Unneeded, &t.Archivable); err != nil {
-			return domain.StorageSummary{}, fmt.Errorf("scan stored take: %w", err)
-		}
-		sum.Takes = append(sum.Takes, t)
-	}
-	if err := rows.Err(); err != nil {
-		return domain.StorageSummary{}, err
-	}
+	sum.Takes = takes
 	slices.SortStableFunc(sum.Takes, func(a, b domain.StoredTake) int {
 		switch {
 		case a.Unneeded && !b.Unneeded:
@@ -134,28 +129,15 @@ func (r *StorageRepository) ArchiveTake(ctx context.Context, projectID, takeID s
 func (r *StorageRepository) ArchiveUnneeded(ctx context.Context, projectID string) ([]domain.Asset, error) {
 	var removed []domain.Asset
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
-		rows, err := tx.QueryContext(ctx,
-			`SELECT t.id, t.file_path FROM take t
+		files, err := queryAll(ctx, tx, func(row rowScanner) (takeFile, error) {
+			var f takeFile
+			return f, row.Scan(&f.takeID, &f.path)
+		}, `SELECT t.id, t.file_path FROM take t
 			 JOIN prompt_version pv ON pv.id = t.prompt_version_id
 			 JOIN shot sh ON sh.id = pv.shot_id JOIN scene s ON s.id = sh.scene_id
 			 WHERE s.project_id = ? AND COALESCE(t.file_path, '') <> '' AND `+takeUnneeded+`
 			   AND COALESCE(sh.selected_take_id, '') <> t.id`, projectID)
 		if err != nil {
-			return err
-		}
-		var files []takeFile
-		for rows.Next() {
-			var f takeFile
-			if err := rows.Scan(&f.takeID, &f.path); err != nil {
-				_ = rows.Close()
-				return err
-			}
-			files = append(files, f)
-		}
-		if err := rows.Close(); err != nil {
-			return err
-		}
-		if err := rows.Err(); err != nil {
 			return err
 		}
 		removed, err = archive(ctx, tx, projectID, files)
@@ -177,24 +159,14 @@ func archive(ctx context.Context, tx *sql.Tx, projectID string, files []takeFile
 		if _, err := tx.ExecContext(ctx, `UPDATE take SET status = 'rejected', file_path = NULL WHERE id = ?`, f.takeID); err != nil {
 			return nil, err
 		}
-		rows, err := tx.QueryContext(ctx, `DELETE FROM asset WHERE project_id = ? AND file_path = ? RETURNING id, type, file_path, COALESCE(size_bytes, 0)`, projectID, f.path)
+		assets, err := queryAll(ctx, tx, func(row rowScanner) (domain.Asset, error) {
+			a := domain.Asset{ProjectID: projectID}
+			return a, row.Scan(&a.ID, &a.Type, &a.FilePath, &a.SizeBytes)
+		}, `DELETE FROM asset WHERE project_id = ? AND file_path = ? RETURNING id, type, file_path, COALESCE(size_bytes, 0)`, projectID, f.path)
 		if err != nil {
 			return nil, err
 		}
-		for rows.Next() {
-			a := domain.Asset{ProjectID: projectID}
-			if err := rows.Scan(&a.ID, &a.Type, &a.FilePath, &a.SizeBytes); err != nil {
-				_ = rows.Close()
-				return nil, err
-			}
-			removed = append(removed, a)
-		}
-		if err := rows.Close(); err != nil {
-			return nil, err
-		}
-		if err := rows.Err(); err != nil {
-			return nil, err
-		}
+		removed = append(removed, assets...)
 	}
 	return removed, nil
 }
