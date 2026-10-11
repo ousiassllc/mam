@@ -249,3 +249,19 @@ func TestKeepFixedClips_MovesTheUsersCutToTheShotsNewSelectedTake(t *testing.T) 
 	assert.InDelta(t, domain.MinClipSeconds, got.Clips[0].Length(), 1e-9, "a cut that no longer fits starts earlier")
 	assert.InDelta(t, 3.2, got.Clips[0].Out, 1e-9)
 }
+
+func TestKeepFixedClips_ACutHeldAtTheMinimumStaysSavable(t *testing.T) {
+	for i := range 1000 {
+		source := 0.5 + float64(i)/1000
+		mine := clip("b", 9)
+		mine.In = 8
+		previous := domain.EditTimeline{Clips: []domain.EditClip{mine}}
+		freshClip := clip("b", source)
+		freshClip.TakeID, freshClip.SourceSeconds = "t-new", source
+
+		got := editor.KeepFixedClips(domain.EditTimeline{Clips: []domain.EditClip{freshClip}}, previous, map[string]bool{"b": true})
+		_, err := got.Normalize()
+
+		require.NoError(t, err, "source=%v", source)
+	}
+}
