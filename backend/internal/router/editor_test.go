@@ -534,17 +534,16 @@ func TestEditor_NeedShotVerdictIsReportedWithTheShotToMakeAndAwaitsTheDirector(t
 				} `json:"need_shot"`
 			} `json:"findings"`
 		} `json:"judge"`
-		RequestShotURL string `json:"request_shot_url"`
 	}
 	require.NoError(t, json.Unmarshal(e.get("/api/v1/projects/"+e.project+"/edit-timeline", false).Body.Bytes(), &body))
 	assert.Equal(t, "need_shot", body.Judge.Verdict)
 	require.Len(t, body.Judge.Findings, 1)
 	assert.Equal(t, "reaction", body.Judge.Findings[0].Need.Kind)
 	assert.Equal(t, 1, body.Judge.Findings[0].Need.AfterClip)
-	assert.Equal(t, "/edit-timelines/"+id+"/request-additional-shot", body.RequestShotURL)
+	assert.NotContains(t, e.get("/api/v1/projects/"+e.project+"/edit-timeline", false).Body.String(), "request_shot_url", "the button is Templ's (hx-post), not an API field")
 
 	// Without generation configured (no video model) the Director cannot be asked.
-	assert.Equal(t, http.StatusServiceUnavailable, e.form(http.MethodPost, body.RequestShotURL, nil).Code)
+	assert.Equal(t, http.StatusServiceUnavailable, e.form(http.MethodPost, "/edit-timelines/"+id+"/request-additional-shot", nil).Code)
 }
 
 func TestEditor_RoughCutKeepsTheClipOfAShotWhoseEditingIsFixed(t *testing.T) {

@@ -37,7 +37,7 @@ type EditorPanelData struct {
 }
 
 func editorAPIURL(projectID, branchID string) string {
-	return "/api/v1" + paths.Project(projectID, "edit-timeline") + branchQuery(branchID)
+	return paths.APIProject(projectID, "edit-timeline") + branchQuery(branchID)
 }
 
 func branchQuery(branchID string) string {

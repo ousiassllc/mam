@@ -15,7 +15,7 @@ import {
   type EditLimits,
 } from './edit-model';
 
-const limits: EditLimits = { min_clip_seconds: 0.5, max_transition_seconds: 2, max_clips: 200, max_caption_runes: 10 };
+const limits: EditLimits = { min_clip_seconds: 0.5, max_transition_seconds: 2, max_caption_runes: 10 };
 
 function clip(shot: string, inPoint: number, outPoint: number, over: Partial<EditClip> = {}): EditClip {
   return {

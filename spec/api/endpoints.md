@@ -289,7 +289,7 @@ Lit Web Components 専用。HTMX リクエストは発行しない（`spec/archi
 | GET | `/api/v1/shots/:id/takes` | Take一覧（古い順。`label`（A, B, …）・`status`（candidate/ai_pick/selected/rejected）・`adopted`（Shot が使う Take）・`scores`（product/acting/camera/continuity/overall、各 0-100。最新 Judge の Issue から算出: 各軸 100 から high 35・medium 15・low 5 を Issue ごとに引く。未 Judge は null）・`verdict`・`resolution`/`fps`/`duration_seconds`・`proxied`・`video_url`/`thumbnail_url`/`judge_result_url`、操作可能なときだけ返る `select_url`（選択可能な Take のみ）/`reject_url`（除外可能な Take のみ）、区間指定に使える Take を示す `partial_usable`、および区間指定が可能なときだけ返る Shot の `partial_url`） | `mam-take-comparator` |
 | GET | `/api/v1/takes/:id/judge-result` | 最新のJudge Result（`result`/`overall_confidence`/`metrics`/`issues`（`time_range`/`frames`付き）/`preserve`/`repair_strategy`/`created_at`/`scores`）。`scores` は Production Template の評価軸ごとの 0-100 のスコアで、Judge が出さなかったときは省略する（Take 一覧の `scores` 4 軸とは別）。同一Takeの過去Judge履歴は含まない（最新1件）。Take が存在しない、または一度も Judge されていないとき 404 | `mam-video-player`（フレームマーカー重畳） |
 | GET | `/api/v1/repair/jev-shadow-report` | Jev のシャドー実行の集計（`runs`/`errors`/`agreed`/`agreement_rate`（失敗を除く一致率）/`mean_confidence`/`mean_latency_ms`（失敗を除く平均）/`total_cost_usd`/`confidence_histogram`（0.1 刻み 10 区間）/`confidence_agreed`）。Jev による前段選別を有効にするかどうかの判断材料（`spec/architecture/model-adapters.md` §4.5・§11） | Repair Agent（F-14） |
-| GET | `/api/v1/projects/:id/edit-timeline` | 現在の Edit Timeline（Shot順序/Cut Point/Transition）と最新の Editor Judge。Rough Cut がなければ 404。クエリ `branch_id`（省略時=主系列トランク）で Branch ごとの版を返す。クリップに `kind`・`caption`、判定の指摘に `need_shot`、応答に `request_shot_url` と `limits.max_caption_runes` を含む | `mam-timeline-editor` |
+| GET | `/api/v1/projects/:id/edit-timeline` | 現在の Edit Timeline（Shot順序/Cut Point/Transition）と最新の Editor Judge。Rough Cut がなければ 404。クエリ `branch_id`（省略時=主系列トランク）で Branch ごとの版を返す。クリップに `kind`・`caption`、判定の指摘に `need_shot`、応答に `limits.max_caption_runes` を含む（追加 Shot の依頼は Templ の `hx-post`（`/edit-timelines/:id/request-additional-shot`）で、Lit は URL を受け取らない） | `mam-timeline-editor` |
 | — | `PUT /edit-timelines/:id`（アクションルート、§2.6） | Edit Timeline 保存（ドラッグ&ドロップ操作の反映）。`/api/v1` では提供せず、JSON API の GET が返す `save_url` へ PUT する（Lit は API クライアント経由で CSRF トークン付きで送る）。`branch_id` は M2 | `mam-timeline-editor` |
 | GET | `/api/v1/health` | ヘルスチェック。`/healthz` と同一の応答（`ok`/`database`、DB 障害時は 503） | 外形監視（Lit は使わない） |
 | GET | `/api/v1/openapi.json` | OpenAPI 3.1 スペック（Huma自動生成）。`/api/v1/openapi.yaml`・`/api/v1/openapi-3.0.json`・`/api/v1/openapi-3.0.yaml` は同内容の別形式、`/api/v1/schemas/:schema` は各型の JSON Schema | - |
@@ -315,7 +315,7 @@ Response 200:
     save_url: "/edit-timelines/et_01"
     preview_url: "/edit-timelines/et_01/preview"
     transitions: ["cut", "fade", "fade_black", "dissolve"]
-    limits: { min_clip_seconds: 0.5, max_transition_seconds: 2, max_clips: 200 }
+    limits: { min_clip_seconds: 0.5, max_transition_seconds: 2, max_caption_runes: 10 }
     judge: { verdict: "re_edit", findings: [{ clip_index: 2, issue: "...", action: "..." }] }   # 省略あり
     clips:
       - shot_id: "shot_003"

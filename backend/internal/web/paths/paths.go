@@ -3,7 +3,9 @@
 // outside (a bundle import keeps the ID of every row it finds, and allows characters that mean
 // something in a URL), so every segment is path-escaped here and nowhere else builds "/projects/…",
 // "/scenes/…", "/shots/…", "/takes/…", "/branches/…", "/notes/…", "/brand-constraints/…",
-// "/edit-timelines/…", "/series/…", "/reviews/…" or "/credentials/…" by hand.
+// "/edit-timelines/…", "/series/…", "/reviews/…", "/credentials/…" or "/api/v1/…" by hand. The same goes for
+// the Take video and thumbnail URLs of domain (domain cannot import this package; paths_test pins
+// them to Take(id, "video") and Take(id, "thumbnail")).
 package paths
 
 import (
@@ -63,14 +65,24 @@ func EditTimeline(id string, segments ...string) string {
 	return join("/edit-timelines", append([]string{id}, segments...)...)
 }
 
+// APIPrefix is the base path of the JSON API used by Lit components; the router mounts the API
+// under it and every API URL handed to a component starts with it.
+const APIPrefix = "/api/v1"
+
+// APIProject is the JSON API path "/api/v1/projects/<id>" followed by the segments:
+// APIProject(id, "edit-timeline").
+func APIProject(id string, segments ...string) string {
+	return join(APIPrefix+"/projects", append([]string{id}, segments...)...)
+}
+
 // APIShot is the JSON API path "/api/v1/shots/<id>" followed by the segments.
 func APIShot(id string, segments ...string) string {
-	return join("/api/v1/shots", append([]string{id}, segments...)...)
+	return join(APIPrefix+"/shots", append([]string{id}, segments...)...)
 }
 
 // APITake is the JSON API path "/api/v1/takes/<id>" followed by the segments.
 func APITake(id string, segments ...string) string {
-	return join("/api/v1/takes", append([]string{id}, segments...)...)
+	return join(APIPrefix+"/takes", append([]string{id}, segments...)...)
 }
 
 // ProjectEvents is the WebSocket path of a Project's chat events, "/ws/projects/<id>".

@@ -1,10 +1,12 @@
 package paths_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -30,8 +32,25 @@ func TestShotTakeBranchSceneAPIAndSocketPaths_EscapeEverySegment(t *testing.T) {
 	assert.Equal(t, "/scenes/"+esc+"/shots", paths.Scene(id, "shots"))
 	assert.Equal(t, "/api/v1/shots/"+esc+"/takes", paths.APIShot(id, "takes"))
 	assert.Equal(t, "/api/v1/takes/"+esc+"/judge-result", paths.APITake(id, "judge-result"))
+	assert.Equal(t, "/api/v1/projects/"+esc+"/edit-timeline", paths.APIProject(id, "edit-timeline"))
 	assert.Equal(t, "/ws/shots/"+esc, paths.ShotProgress(id))
 	assert.Equal(t, "/shots/plain", paths.Shot("plain"))
+}
+
+func TestAPIPrefix_IsTheOneBaseOfEveryAPIPath(t *testing.T) {
+	assert.Equal(t, "/api/v1", paths.APIPrefix)
+	for _, p := range []string{paths.APIProject("x"), paths.APIShot("x"), paths.APITake("x")} {
+		assert.True(t, strings.HasPrefix(p, paths.APIPrefix+"/"), p)
+	}
+}
+
+// domain builds the Take video and thumbnail URLs it stores in the Take cards, and cannot import
+// paths: the two must stay the same route.
+func TestDomainTakeURLs_AreTheTakeRoutes(t *testing.T) {
+	for _, id := range []string{"t1", "a?b#c%d e/f"} {
+		assert.Equal(t, paths.Take(id, "video"), domain.TakeVideoURL(id))
+		assert.Equal(t, paths.Take(id, "thumbnail"), domain.TakeThumbnailURL(id))
+	}
 }
 
 func TestNoteBrandConstraintEditTimeline_EscapeEverySegment(t *testing.T) {

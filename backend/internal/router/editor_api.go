@@ -53,38 +53,35 @@ type editorJudgeBody struct {
 }
 
 type editTimelineBody struct {
-	ID             string           `json:"id" doc:"The version shown; the editor saves against it"`
-	VersionNumber  int              `json:"version_number"`
-	CreatedAt      time.Time        `json:"created_at"`
-	Duration       float64          `json:"duration_seconds"`
-	Clips          []editClipBody   `json:"clips"`
-	Judge          *editorJudgeBody `json:"judge,omitempty" doc:"Latest Editor Judge result of this version"`
-	BranchID       string           `json:"branch_id,omitempty" doc:"The Branch this timeline belongs to; empty for the trunk"`
-	SaveURL        string           `json:"save_url" doc:"PUT the clips here (action route)"`
-	RequestShotURL string           `json:"request_shot_url" doc:"POST here to ask the Director for the additional Shots (verdict need_shot)"`
-	PreviewURL     string           `json:"preview_url" doc:"The rendered Rough Cut (video/mp4)"`
-	Transitions    []string         `json:"transitions"`
-	Limits         editorLimitsBody `json:"limits"`
-	Readonly       bool             `json:"readonly" doc:"true once the Project has moved past editing"`
+	ID            string           `json:"id" doc:"The version shown; the editor saves against it"`
+	VersionNumber int              `json:"version_number"`
+	CreatedAt     time.Time        `json:"created_at"`
+	Duration      float64          `json:"duration_seconds"`
+	Clips         []editClipBody   `json:"clips"`
+	Judge         *editorJudgeBody `json:"judge,omitempty" doc:"Latest Editor Judge result of this version"`
+	BranchID      string           `json:"branch_id,omitempty" doc:"The Branch this timeline belongs to; empty for the trunk"`
+	SaveURL       string           `json:"save_url" doc:"PUT the clips here (action route)"`
+	PreviewURL    string           `json:"preview_url" doc:"The rendered Rough Cut (video/mp4)"`
+	Transitions   []string         `json:"transitions"`
+	Limits        editorLimitsBody `json:"limits"`
+	Readonly      bool             `json:"readonly" doc:"true once the Project has moved past editing"`
 }
 
 type editorLimitsBody struct {
 	MinClipSeconds       float64 `json:"min_clip_seconds"`
 	MaxTransitionSeconds float64 `json:"max_transition_seconds"`
-	MaxClips             int     `json:"max_clips"`
 	MaxCaptionRunes      int     `json:"max_caption_runes"`
 }
 
 func newEditTimelineBody(v service.TimelineView) editTimelineBody {
 	b := editTimelineBody{
 		ID: v.ID, VersionNumber: v.VersionNumber, CreatedAt: v.CreatedAt, Duration: v.Duration,
-		Clips:          make([]editClipBody, len(v.Clips)),
-		BranchID:       v.BranchID,
-		SaveURL:        paths.EditTimeline(v.ID),
-		RequestShotURL: paths.EditTimeline(v.ID, "request-additional-shot"),
-		PreviewURL:     paths.EditTimeline(v.ID, "preview"),
-		Limits:         editorLimitsBody{MinClipSeconds: domain.MinClipSeconds, MaxTransitionSeconds: domain.MaxTransitionSeconds, MaxClips: domain.MaxClips, MaxCaptionRunes: domain.MaxCaptionRunes},
-		Readonly:       !v.Editable,
+		Clips:      make([]editClipBody, len(v.Clips)),
+		BranchID:   v.BranchID,
+		SaveURL:    paths.EditTimeline(v.ID),
+		PreviewURL: paths.EditTimeline(v.ID, "preview"),
+		Limits:     editorLimitsBody{MinClipSeconds: domain.MinClipSeconds, MaxTransitionSeconds: domain.MaxTransitionSeconds, MaxCaptionRunes: domain.MaxCaptionRunes},
+		Readonly:   !v.Editable,
 	}
 	for _, t := range domain.TransitionTypes() {
 		b.Transitions = append(b.Transitions, string(t))

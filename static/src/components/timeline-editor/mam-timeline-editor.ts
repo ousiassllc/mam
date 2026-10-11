@@ -50,8 +50,6 @@ export interface EditTimelineBody {
   judge?: { verdict: 'pass' | 're_edit' | 'need_shot'; findings: EditorFinding[] };
   branch_id?: string;
   save_url: string;
-  /** POST here (an action route) to ask the Director for the additional Shots of a need_shot verdict. */
-  request_shot_url: string;
   preview_url: string;
   transitions: TransitionType[];
   limits: EditLimits;
