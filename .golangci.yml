@@ -8,11 +8,17 @@ linters:
   enable:
     - depguard
     - errorlint
+    - gocognit
+    - gocyclo
     - gosec
     - misspell
     - revive
     - unconvert
   settings:
+    gocyclo:
+      min-complexity: 25
+    gocognit:
+      min-complexity: 50
     depguard:
       # Layer rules: handler -> service -> agent -> repository -> domain (overview.md §5).
       rules:
@@ -59,7 +65,15 @@ linters:
       - std-error-handling
     rules:
       - path: _test\.go
-        linters: [gosec]
+        linters: [gosec, gocognit, gocyclo]
+      # Complexity ratchet: gocyclo (25) / gocognit (50) stop NEW or WORSENED functions.
+      # The functions below already exceed the limits; each entry is a temporary allowance
+      # (like .linterly-baseline). Remove the entry when the function is split, and lower the
+      # thresholds (gocyclo 20 / gocognit 40) once the list is empty. See #534.
+      - linters: [gocognit]
+        text: 'of func `\(\*ProjectRepository\)\.Apply` '
+      - linters: [gocyclo]
+        text: 'of func `(clean|describe|\(\*ChatService\)\.views|\(\*DirectorService\)\.execute)` '
 
 formatters:
   enable:
