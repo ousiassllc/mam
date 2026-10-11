@@ -1,0 +1,61 @@
+# MAM
+
+AI Video Production Agent。企画・脚本・演出・撮影・品質判定・撮り直し・編集・音声・最終 QC までを AI が自律的に進める、ローカル動作の AI Production Studio です。サーバーは自分の PC の `127.0.0.1` だけで待ち受け、画面は既定ブラウザ、または Windows ではネイティブウィンドウで開きます。
+
+仕様は [`spec/`](spec/overview.md) にあります。
+
+## Windows でインストールする
+
+[GitHub Releases](https://github.com/ousiassllc/mam/releases) の最新版から、次のどちらかをダウンロードします（Windows 10 / 11、x64）。
+
+| ファイル | 内容 |
+|---|---|
+| `mam-<version>-windows-amd64-setup.exe` | インストーラー。Start メニューとデスクトップにショートカットを作ります。アンインストールは「設定 > アプリ」から行います |
+| `mam-<version>-windows-amd64.exe` | ポータブル版。インストール不要で、置いた場所からそのまま起動できます |
+
+インストーラーは `C:\Program Files\MAM` に入れるため、管理者権限の確認が出ます。WebView2 ランタイムが無い Windows 10 では、インストール中にダウンロードします（インターネット接続が必要）。ポータブル版も WebView2 ランタイムを使います（Windows 11 と最近の Windows 10 には入っています）。
+
+起動するとウィンドウが開きます。ウィンドウを閉じるとアプリ全体が終了します。すでに起動中のときは、新しいウィンドウは開かず、先のウィンドウが前面に出ます。
+
+プロジェクト・設定・生成物は `%AppData%\mam` に保存します。アンインストールしても消えません。
+
+### SmartScreen の警告が出たとき
+
+配布物にはコード署名をしていないため、初めて実行すると Windows SmartScreen が「Windows によって PC が保護されました」と警告することがあります。
+
+1. 警告の画面で「詳細情報」をクリックします
+2. 「実行」をクリックします
+
+ダウンロードしたファイルが Releases のものか不安なときは、実行前にファイルを右クリックして「プロパティ」を開き、全般タブ下部の「許可する」にチェックを入れて「OK」を押しても、警告は出なくなります。
+
+### ffmpeg を PATH に入れる
+
+ffmpeg は同梱していません。無くても起動はできますが、Judge（品質判定）、動画のプレビュー、部分採用の合成、Export は ffmpeg と ffprobe を使うので、使うなら入れてください。
+
+1. PowerShell で `winget install Gyan.FFmpeg` を実行します（または [ffmpeg.org](https://ffmpeg.org/download.html) から Windows ビルドを展開します）
+2. `ffmpeg.exe` と `ffprobe.exe` があるフォルダを環境変数 `PATH` に追加します（winget で入れたときは自動で追加されます）
+3. MAM を起動し直します（PATH はプロセスの起動時に読むため、起動中の MAM には反映されません）
+4. 確認: PowerShell で `ffmpeg -version` と `ffprobe -version` が動けば使えます
+
+## macOS / Linux、ブラウザで使う
+
+Windows 以外、および Windows でもブラウザで使いたいときは、ソースからビルドします（Go と Node.js 24 が要ります）。
+
+```sh
+make tools    # templ・air・golangci-lint と npm 依存を入れる
+make build    # bin/mam を作る
+bin/mam       # サーバーを起動して既定ブラウザを開く
+```
+
+`bin/mam --help` で `--data-dir`・`--port`・`--no-browser` などの設定を表示します（それぞれ `MAM_DATA_DIR` などの環境変数でも指定できます）。`make build-all` は Windows / macOS / Linux × amd64 / arm64 の 6 構成を `bin/` に作ります。
+
+## 開発
+
+```sh
+make dev          # air + templ --watch + esbuild/tailwind --watch
+make test         # Go と front-end のテスト
+make lint         # golangci-lint と tsc
+make fmt          # 整形
+```
+
+Windows 版（Wails ウィンドウ + NSIS インストーラー）は `scripts/package-windows.sh <version>`（`X.Y.Z`）で作ります。`wails3`（`go.mod` の `github.com/wailsapp/wails/v3` と同じ版）と NSIS（`makensis`）が要ります。リリースは `v<version>` タグを push すると GitHub Actions（`.github/workflows/release.yml`）が作ります。詳しくは [`spec/architecture/desktop.md`](spec/architecture/desktop.md) と [`spec/environment/setup.md`](spec/environment/setup.md) を参照してください。

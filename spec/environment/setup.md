@@ -38,7 +38,7 @@ Go（`go.mod` のバージョン）、Node.js（24。CI は `.github/workflows/c
 1. checkout → setup-go（`go.mod`）→ setup-node（24、npm キャッシュ）
 2. ツール: `templ`（`go.mod` の版）、`wails3`（`go.mod` の版）、`choco install nsis`
 3. `bash scripts/package-windows.sh "${GITHUB_REF_NAME#v}"`（タグが `vX.Y.Z` でなければ失敗）
-4. スモーク: インストーラーを `/S` で `RUNNER_TEMP` 配下へ静かにインストールし（`/D=`）、そのディレクトリの `mam.exe` を `--data-dir`（一時ディレクトリ）・`--port` 固定で起動して `GET /` が 200 を返すことを確認してから停止する。失敗したらリリースを作らない
+4. スモーク（`bash scripts/smoke-windows.sh bin/mam-<version>-windows-amd64-setup.exe`）: インストーラーを `/S` で `RUNNER_TEMP` 配下へ静かにインストールし（`/D=`）、そのディレクトリの `mam.exe` を `--data-dir`（一時ディレクトリ）・`--port` 固定で起動して `GET /` が 200 を返すことを確認してから停止する。失敗したらリリースを作らない
 5. `gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --generate-notes --verify-tag bin/mam-<version>-windows-amd64-setup.exe bin/mam-<version>-windows-amd64.exe`
 
 成果物はこの 2 つだけ（`spec/requirements/non-functional.md` §1）。コード署名はしない（署名の手順を足す場合は別 Issue）。リリースノートは GitHub の自動生成に任せる。同じタグのリリースが既にあれば `gh release create` が失敗するため、作り直すときはタグとリリースを削除してから push し直す。
@@ -59,3 +59,4 @@ Go（`go.mod` のバージョン）、Node.js（24。CI は `.github/workflows/c
 | 版 | 日付 | 変更内容 | 変更理由 |
 |----|------|---------|---------|
 | 1.1 | 2026-10-03 | Wails v3 CLI・NSIS を開発ツールに、`scripts/package-windows.sh` をタスクに、Windows 向けの CI ステップと `release.yml`（リリース）の節を追加。この表を新設した（以前の版の履歴は無い） | Issue #480。Windows インストーラー exe を GitHub Releases で配布するため |
+| 1.2 | 2026-10-11 | `scripts/smoke-windows.sh`（リリースのスモーク）を `release.yml` の手順 4 に明記 | Issue #480 の実装。スモークの手順をスクリプトに切り出し、手元でも shellcheck できるようにした |
