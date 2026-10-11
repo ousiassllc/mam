@@ -115,28 +115,6 @@ func (q *Queue) Register(kind domain.JobKind, handler Handler, resumable bool) {
 	q.handlers[kind] = registration{handle: handler, resumable: resumable}
 }
 
-// OnChange installs a callback invoked after every status change of a job (queued,
-// running, succeeded, failed, requeued) with the job ID; the chat uses it to refresh
-// progress cards. fn runs on the caller's goroutine and MUST NOT block. It MUST be
-// called before Start.
-func (q *Queue) OnChange(fn func(jobID string)) {
-	q.mu.Lock()
-	defer q.mu.Unlock()
-	if q.started {
-		panic("jobqueue: OnChange called after Start")
-	}
-	q.onChange = fn
-}
-
-func (q *Queue) changed(jobID string) {
-	q.mu.Lock()
-	fn := q.onChange
-	q.mu.Unlock()
-	if fn != nil {
-		fn(jobID)
-	}
-}
-
 // Enqueue persists a new job and wakes a worker. It fails if no handler is registered for kind.
 func (q *Queue) Enqueue(ctx context.Context, kind domain.JobKind, payload any) (domain.Job, error) {
 	q.mu.Lock()

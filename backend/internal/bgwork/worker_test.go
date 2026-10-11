@@ -91,3 +91,16 @@ func TestRunSafely_LogsThePanicWithItsStack(t *testing.T) {
 	assert.Contains(t, buf.String(), "boom")
 	assert.Contains(t, buf.String(), "stack=")
 }
+
+func TestAsync_RunsOnItsOwnGoroutineAndSurvivesAPanic(t *testing.T) {
+	got := make(chan int, 1)
+	run := bgwork.Async(slog.New(slog.DiscardHandler), "some loop", func(n int) {
+		if n == 0 {
+			panic("boom") // an unrecovered panic here would end the test binary
+		}
+		got <- n
+	})
+	run(0)
+	run(7)
+	assert.Equal(t, 7, <-got)
+}
