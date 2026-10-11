@@ -1,7 +1,8 @@
 // Package safefetch guards the download of a file whose URL a vendor API answered with: the URL
 // comes from outside, so it must not lead to a plain-http endpoint or to an address of the
 // machine's own network (loopback, link-local such as the cloud metadata service, private ranges,
-// including those embedded in 6to4 or well-known NAT64).
+// including those embedded in IPv4-compatible, 6to4 or well-known NAT64 addresses, and the
+// special-purpose ranges such as Teredo, local-use NAT64 and documentation).
 package safefetch
 
 import (
@@ -21,27 +22,40 @@ import (
 const maxRedirects = 5
 
 // blocked lists the ranges netip.Addr has no predicate for: "this" network, carrier-grade NAT,
-// IETF protocol assignments, benchmarking and the reserved class E.
+// IETF protocol assignments, benchmarking, the reserved class E, the documentation ranges, the
+// deprecated 6to4 relay anycast, and the IPv6 ranges that embed IPv4 addresses of a tunnel (Teredo),
+// are set aside for local NAT64 (RFC 8215), are for documentation or are the discard-only prefix.
+// The source is the IANA IPv4 / IPv6 Special-Purpose Address Registries.
 var blocked = []netip.Prefix{
 	netip.MustParsePrefix("0.0.0.0/8"),
 	netip.MustParsePrefix("100.64.0.0/10"),
 	netip.MustParsePrefix("192.0.0.0/24"),
+	netip.MustParsePrefix("192.0.2.0/24"),
+	netip.MustParsePrefix("192.88.99.0/24"),
 	netip.MustParsePrefix("198.18.0.0/15"),
+	netip.MustParsePrefix("198.51.100.0/24"),
+	netip.MustParsePrefix("203.0.113.0/24"),
 	netip.MustParsePrefix("240.0.0.0/4"),
+	netip.MustParsePrefix("100::/64"),
+	netip.MustParsePrefix("2001::/32"),
+	netip.MustParsePrefix("2001:db8::/32"),
+	netip.MustParsePrefix("64:ff9b:1::/48"),
 }
 
-// translated lists the IPv6 prefixes that embed an IPv4 address: 6to4 (RFC 3056) and the
-// well-known NAT64 prefix (RFC 6052). The embedded address is judged on its own.
+// translated lists the IPv6 prefixes that embed an IPv4 address: the deprecated IPv4-compatible
+// range (::/96), 6to4 (RFC 3056) and the well-known NAT64 prefix (RFC 6052). The embedded address
+// is judged on its own.
 var translated = []struct {
 	prefix netip.Prefix
 	at     int // index of the embedded IPv4 in the 16-byte form
 }{
+	{netip.MustParsePrefix("::/96"), 12},
 	{netip.MustParsePrefix("2002::/16"), 2},
 	{netip.MustParsePrefix("64:ff9b::/96"), 12},
 }
 
 // IsPublic reports whether ip is an address of the public internet. An IPv4 address embedded in
-// 6to4 or well-known NAT64 is public only when that IPv4 address is.
+// an IPv4-compatible, 6to4 or well-known NAT64 address is public only when that IPv4 address is.
 func IsPublic(ip netip.Addr) bool {
 	ip = ip.Unmap()
 	if v4, ok := embeddedIPv4(ip); ok {
@@ -59,7 +73,8 @@ func IsPublic(ip netip.Addr) bool {
 	return true
 }
 
-// embeddedIPv4 returns the IPv4 address carried by a 6to4 or well-known NAT64 address.
+// embeddedIPv4 returns the IPv4 address carried by an IPv4-compatible, 6to4 or well-known NAT64
+// address.
 func embeddedIPv4(ip netip.Addr) (netip.Addr, bool) {
 	if !ip.Is6() {
 		return netip.Addr{}, false
