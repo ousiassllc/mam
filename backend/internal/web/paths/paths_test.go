@@ -10,6 +10,8 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
+// The IDs of these tests could not come from a bundle import (domain.ValidBundleID refuses them): they pin
+// the escape that keeps a URL intact were that limit ever relaxed.
 func TestProject_EscapesEverySegmentSoAnIDCannotChangeTheRoute(t *testing.T) {
 	assert.Equal(t, "/projects/p1", paths.Project("p1"))
 	assert.Equal(t, "/projects/p1/scenes/sc1", paths.Project("p1", "scenes", "sc1"))
@@ -75,4 +77,18 @@ func TestSeriesReviewCredential_EscapeEverySegment(t *testing.T) {
 	assert.Equal(t, "/reviews/r1/video", paths.Review("r1", "video"))
 	assert.Equal(t, "/credentials/"+esc, paths.Credential(id))
 	assert.Equal(t, "/credentials/openai", paths.Credential("openai"))
+}
+
+func TestCollectionRoutes_AreTheFixedPathsOfTheirResources(t *testing.T) {
+	assert.Equal(t, "/projects", paths.Projects())
+	assert.Equal(t, "/projects/import", paths.ProjectImport())
+	assert.Equal(t, "/series", paths.SeriesList())
+	assert.Equal(t, "/reviews", paths.Reviews())
+	assert.Equal(t, "/reviews/import", paths.ReviewImport())
+	assert.Equal(t, "/static/app.css", paths.StaticCSS)
+	assert.Equal(t, "/static/app.js", paths.StaticApp)
+	// The ID routes extend the collections: the same prefix, so a rename moves both.
+	assert.Equal(t, paths.Projects()+"/p1", paths.Project("p1"))
+	assert.Equal(t, paths.Reviews()+"/r1", paths.Review("r1"))
+	assert.Equal(t, paths.SeriesList()+"/s1", paths.Series("s1"))
 }

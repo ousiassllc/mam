@@ -1,7 +1,6 @@
 package organisms
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/url"
 
@@ -45,11 +44,7 @@ func branchQuery(branchID string) string {
 
 // branchVals is the hx-vals that tell a stage action which Branch it works on.
 func branchVals(branchID string) string {
-	raw, err := json.Marshal(map[string]string{"branch_id": branchID})
-	if err != nil { // only strings: Marshal cannot fail
-		panic(err)
-	}
-	return string(raw)
+	return atoms.HxVals(map[string]string{"branch_id": branchID})
 }
 
 // CanRequestShots reports whether the Director can be asked for the additional Shots the Editor

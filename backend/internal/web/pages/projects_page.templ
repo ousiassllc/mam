@@ -4,6 +4,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/layout"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // ProjectsPage is the landing page: start a new Project from a first message, or open an existing one.
@@ -15,7 +16,7 @@ templ ProjectsPage(csrfToken string, projects []domain.Project, form organisms.N
 			@organisms.NewProjectForm(form)
 			@organisms.ProjectImportForm(organisms.ProjectImportFormData{})
 			<p class="mt-2 text-sm text-neutral-400">
-				<a href="/reviews" class="underline hover:text-neutral-100">受け取ったレビューパッケージを開く（レビュアー向け）</a>
+				<a href={ templ.SafeURL(paths.Reviews()) } class="underline hover:text-neutral-100">受け取ったレビューパッケージを開く（レビュアー向け）</a>
 			</p>
 			<h2 class="mt-8 text-sm font-medium text-neutral-300">プロジェクト</h2>
 			@organisms.ProjectList(projects)

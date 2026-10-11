@@ -11,6 +11,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // Options are the non-service inputs of New.
@@ -55,5 +56,5 @@ func registerStatic(engine *gin.Engine, static fs.FS) {
 	if static == nil {
 		return
 	}
-	engine.StaticFS("/static", httpFS(static))
+	engine.StaticFS(paths.StaticPrefix, httpFS(static))
 }

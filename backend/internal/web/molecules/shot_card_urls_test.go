@@ -10,7 +10,9 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
 )
 
-func TestShotCard_EscapesImportedShotAndTakeIDsInEveryURL(t *testing.T) {
+// The IDs here are not reachable today (domain.ValidBundleID refuses them); the test pins the escape
+// that keeps every URL intact were that limit ever relaxed.
+func TestShotCard_EscapesShotAndTakeIDsInEveryURL(t *testing.T) {
 	html := render(t, molecules.ShotCard(molecules.ShotCardData{
 		ProjectID: "p",
 		Shot:      domain.Shot{ID: "s?1#x", SceneID: "sc", State: domain.ShotGenerating},

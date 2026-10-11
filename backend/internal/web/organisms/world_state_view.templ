@@ -88,16 +88,16 @@ func entityFields(d WorldStateData, target domain.WorldTarget, id string, values
 
 // fieldLockToggle is the AUTO / LOCK switch of one attribute (PUT /projects/:id/world-state/locks).
 // The response is the whole view, so the switch replaces #world-state-view.
-func (d WorldStateData) fieldLockToggle(target domain.WorldTarget, id, field string) atoms.LockToggleData {
+func (d WorldStateData) fieldLockToggle(target domain.WorldTarget, id, field string) molecules.LockToggleData {
 	mode := domain.LockAuto
 	if d.Locks.Locked(target, id, field) {
 		mode = domain.LockLocked
 	}
-	hidden := []atoms.HiddenField{{Name: "target_type", Value: string(target)}}
+	hidden := []molecules.HiddenField{{Name: "target_type", Value: string(target)}}
 	if id != "" {
-		hidden = append(hidden, atoms.HiddenField{Name: "target_id", Value: id})
+		hidden = append(hidden, molecules.HiddenField{Name: "target_id", Value: id})
 	}
-	return atoms.LockToggleData{
+	return molecules.LockToggleData{
 		DOMID: "lock-" + string(target) + "-" + id + "-" + field, URL: paths.Project(d.Project.ID, "world-state", "locks") + d.branchQuery(),
 		Parameter: domain.LockParameter(field), Label: lockLabel(field), Mode: mode,
 		Modes: []domain.LockMode{domain.LockAuto, domain.LockLocked}, Hidden: hidden,
@@ -190,7 +190,7 @@ templ entityForm(d WorldStateData, target domain.WorldTarget, plural, id, name s
 			<summary class="cursor-pointer text-xs text-neutral-400">LOCK 設定（AUTO: AI が更新 / LOCK: 更新しない）</summary>
 			<div class="mt-2 flex flex-col gap-1">
 				for _, f := range domain.LockableFields(target) {
-					@atoms.LockToggle(d.fieldLockToggle(target, id, f))
+					@molecules.LockToggle(d.fieldLockToggle(target, id, f))
 				}
 			</div>
 		</details>
@@ -238,7 +238,7 @@ templ WorldStateView(d WorldStateData) {
 		<section aria-label="Story / Music" class="flex flex-col gap-2">
 			<h2 class="text-sm font-semibold text-neutral-200">Story / Music</h2>
 			for _, p := range domain.ProjectLockParameters() {
-				@atoms.LockToggle(ProjectLockToggle(d.Project.ID, p, d.ProjectLocks))
+				@molecules.LockToggle(ProjectLockToggle(d.Project.ID, p, d.ProjectLocks))
 			}
 		</section>
 		if d.empty() {
@@ -295,7 +295,7 @@ templ singletonLocks(d WorldStateData, target domain.WorldTarget) {
 		<summary class="cursor-pointer text-xs text-neutral-400">LOCK 設定（AUTO: AI が更新 / LOCK: 更新しない）</summary>
 		<div class="mt-2 flex flex-col gap-1">
 			for _, f := range domain.LockableFields(target) {
-				@atoms.LockToggle(d.fieldLockToggle(target, "", f))
+				@molecules.LockToggle(d.fieldLockToggle(target, "", f))
 			}
 		</div>
 	</details>

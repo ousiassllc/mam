@@ -6,6 +6,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -77,8 +78,8 @@ func issueLine(is domain.JudgeIssue) string {
 }
 
 // LockToggleFor is the AUTO / MANUAL / LOCK switch of a parameter of the Shot.
-func LockToggleFor(shotID string, p domain.LockParameter, locks domain.ParameterLocks) atoms.LockToggleData {
-	d := atoms.LockToggleData{DOMID: "lock-" + shotID + "-" + string(p), URL: paths.Shot(shotID, "locks"), Parameter: p, Mode: locks.Mode(p)}
+func LockToggleFor(shotID string, p domain.LockParameter, locks domain.ParameterLocks) molecules.LockToggleData {
+	d := molecules.LockToggleData{DOMID: "lock-" + shotID + "-" + string(p), URL: paths.Shot(shotID, "locks"), Parameter: p, Mode: locks.Mode(p)}
 	if p == domain.ParamVideoModel {
 		d.Models, d.Model = domain.VideoModels(), locks.Text(p)
 	}
@@ -86,8 +87,8 @@ func LockToggleFor(shotID string, p domain.LockParameter, locks domain.Parameter
 }
 
 // ProjectLockToggle is the AUTO / MANUAL / LOCK switch of Story or Music.
-func ProjectLockToggle(projectID string, p domain.LockParameter, locks domain.ParameterLocks) atoms.LockToggleData {
-	return atoms.LockToggleData{DOMID: "lock-" + projectID + "-" + string(p), URL: paths.Project(projectID, "locks"), Parameter: p, Mode: locks.Mode(p)}
+func ProjectLockToggle(projectID string, p domain.LockParameter, locks domain.ParameterLocks) molecules.LockToggleData {
+	return molecules.LockToggleData{DOMID: "lock-" + projectID + "-" + string(p), URL: paths.Project(projectID, "locks"), Parameter: p, Mode: locks.Mode(p)}
 }
 
 // specRows lists the parts of the Canonical Shot Spec as label / value rows.
@@ -145,7 +146,7 @@ templ ShotInspector(d ShotInspectorData) {
 			<h3 class="text-sm font-semibold">Locks</h3>
 			<p class="text-xs text-neutral-400">AUTO は AI が決定、MANUAL はあなたの指定、LOCK は現在値を固定して AI の変更を禁止します。</p>
 			for _, p := range domain.ShotLockParameters() {
-				@atoms.LockToggle(LockToggleFor(d.Shot.ID, p, d.Locks))
+				@molecules.LockToggle(LockToggleFor(d.Shot.ID, p, d.Locks))
 			}
 		</section>
 		<section aria-label="Canonical Shot Spec" class="flex flex-col gap-2">
