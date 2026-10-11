@@ -6,6 +6,7 @@ import (
 	"go/token"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -29,6 +30,20 @@ func TestCredentialPanel_RendersTheProviderRowsFromTheViewType(t *testing.T) {
 	assert.Contains(t, html, "未設定")
 	assert.Contains(t, html, `hx-delete="/credentials/kling"`)
 	assert.NotContains(t, html, `hx-delete="/credentials/runway"`)
+}
+
+// The delete button sits inside the <form> that holds the password input. htmx would send the form's values with a
+// DELETE as URL query parameters, leaking a pasted-but-unsaved API key into the URL (#504); hx-params="none" stops it.
+func TestCredentialPanel_DeleteButtonSendsNoFormValues(t *testing.T) {
+	var sb strings.Builder
+	err := organisms.CredentialPanel(organisms.CredentialPanelData{Providers: []organisms.CredentialProviderView{
+		{Provider: "kling", Label: "Kling", Configured: true},
+	}}).Render(context.Background(), &sb)
+	require.NoError(t, err)
+
+	button := regexp.MustCompile(`<button[^>]*\shx-delete=[^>]*>`).FindString(sb.String())
+	require.NotEmpty(t, button, "the configured provider renders a delete button")
+	assert.Contains(t, button, `hx-params="none"`)
 }
 
 // The presentation layer only knows what the handler hands it: no package of it imports the service layer (#484).
