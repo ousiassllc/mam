@@ -17,6 +17,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/media"
+	"github.com/ousiassllc/mam/backend/internal/testenv"
 )
 
 // mp4Video is a video model that makes a real 4 s test video, so that ffmpeg can splice it.
@@ -50,7 +51,7 @@ func newPartialApp(t *testing.T, verdict, command string) *judgeApp {
 	t.Helper()
 	tools, err := media.Look()
 	if err != nil {
-		t.Skip("ffmpeg / ffprobe are not installed")
+		testenv.MissingFFmpeg(t, "ffmpeg / ffprobe are not installed")
 	}
 	j := newJudgeAppOpts(t, judgeOpts{verdict: verdict, video: newMP4Video(t), media: &tools, command: command}, 0.95, 0.95, 0.95)
 	j.director()

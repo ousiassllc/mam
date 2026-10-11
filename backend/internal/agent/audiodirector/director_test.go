@@ -18,13 +18,14 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/media"
+	"github.com/ousiassllc/mam/backend/internal/testenv"
 )
 
 func tools(t *testing.T) media.Tools {
 	t.Helper()
 	tools, err := media.Look()
 	if err != nil {
-		t.Skip("ffmpeg / ffprobe are not installed")
+		testenv.MissingFFmpeg(t, "ffmpeg / ffprobe are not installed")
 	}
 	return tools
 }
@@ -33,7 +34,7 @@ func tools(t *testing.T) media.Tools {
 func tone(t *testing.T, seconds float64) []byte {
 	t.Helper()
 	if _, err := exec.LookPath("ffmpeg"); err != nil {
-		t.Skip("ffmpeg is not installed")
+		testenv.MissingFFmpeg(t, "ffmpeg is not installed")
 	}
 	out := filepath.Join(t.TempDir(), "tone.mp3")
 	cmd := exec.Command("ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", fmt.Sprintf("sine=frequency=300:duration=%g", seconds), "-af", "volume=0.3", out)
@@ -49,7 +50,7 @@ func tone(t *testing.T, seconds float64) []byte {
 func testVideo(t *testing.T, seconds float64) string {
 	t.Helper()
 	if _, err := exec.LookPath("ffmpeg"); err != nil {
-		t.Skip("ffmpeg is not installed")
+		testenv.MissingFFmpeg(t, "ffmpeg is not installed")
 	}
 	out := filepath.Join(t.TempDir(), "take.mp4")
 	cmd := exec.Command("ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", fmt.Sprintf("color=c=blue:s=160x90:r=10:d=%g", seconds), "-pix_fmt", "yuv420p", out)

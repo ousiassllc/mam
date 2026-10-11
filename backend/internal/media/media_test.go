@@ -10,6 +10,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/ousiassllc/mam/backend/internal/testenv"
 )
 
 // lookOrSkip returns the tools, or skips the test on a machine without ffmpeg.
@@ -17,7 +19,7 @@ func lookOrSkip(t *testing.T) Tools {
 	t.Helper()
 	tools, err := Look()
 	if err != nil {
-		t.Skip("ffmpeg / ffprobe are not installed")
+		testenv.MissingFFmpeg(t, "ffmpeg / ffprobe are not installed")
 	}
 	return tools
 }
