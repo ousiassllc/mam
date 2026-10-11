@@ -85,9 +85,9 @@ type Services struct {
 	Analytics   *AnalyticsService
 }
 
-// Close stops the background workers of the services. Call it on shutdown, after the job queue
-// stopped.
-func (s *Services) Close() { s.Editor.Close() }
+// Close stops the background workers of the services and kills the Take preview conversions that
+// are running. Call it on shutdown, after the job queue stopped.
+func (s *Services) Close() { s.Takes.previews.Close(); s.Editor.Close() }
 
 // Recover puts Shots left GENERATING, REPAIRING or JUDGING by an abnormal termination back to PLANNING.
 // It MUST run after New and before the job queue starts, twice: before the queue resolves its running

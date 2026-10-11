@@ -14,7 +14,10 @@ import (
 // directory. They are made on demand and can be deleted at any time.
 const previewDir = ".previews"
 
-const proxyRetryAfter = 10 * time.Minute // a failure costs minutes (media.ErrTimeout); every Range request would pay it
+// previewRetryAfter is how long a preview that failed to be made (a proxy, a thumbnail) is not made
+// again. A failure costs minutes (media.ErrTimeout) and the browser asks again on every Range
+// request and every card.
+const previewRetryAfter = 10 * time.Minute
 
 // MediaFile is a file to serve.
 type MediaFile struct {
@@ -63,9 +66,12 @@ func (s *TakeService) Video(ctx context.Context, takeID string) (MediaFile, erro
 	if dst == "" {
 		return original, nil // the ID is not a safe file name: no proxy is made
 	}
-	err = s.previews.Make(ctx, dst, proxyRetryAfter, func(ctx context.Context) error { return s.tools.Proxy(ctx, src, dst) })
+	err = s.previews.Make(ctx, dst, previewRetryAfter, func(ctx context.Context) error { return s.tools.Proxy(ctx, src, dst) })
 	if err == nil {
 		return MediaFile{Path: dst, MimeType: "video/mp4"}, nil
+	}
+	if ctx.Err() != nil {
+		return MediaFile{}, ctx.Err() // the client went away (a seek, a page change): not a failure, and nobody to play the original to
 	}
 	if !errors.Is(err, previewcache.ErrFailedRecently) { // a recent failure was logged when it happened
 		s.logger.Error("make proxy failed; playing the original", "take_id", takeID, "err", err)
@@ -93,7 +99,11 @@ func (s *TakeService) Thumbnail(ctx context.Context, takeID string) (MediaFile, 
 	if dst == "" {
 		return MediaFile{}, ErrNotFound // the ID is not a safe file name
 	}
-	if err := s.previews.Make(ctx, dst, 0, func(ctx context.Context) error { return s.tools.Thumbnail(ctx, src, dst, 0) }); err != nil {
+	err = s.previews.Make(ctx, dst, previewRetryAfter, func(ctx context.Context) error { return s.tools.Thumbnail(ctx, src, dst, 0) })
+	switch {
+	case errors.Is(err, previewcache.ErrFailedRecently):
+		return MediaFile{}, ErrNotFound // no thumbnail for this Take for now; the failure was reported when it happened
+	case err != nil:
 		return MediaFile{}, fmt.Errorf("make thumbnail: %w", err)
 	}
 	return MediaFile{Path: dst, MimeType: "image/jpeg"}, nil
