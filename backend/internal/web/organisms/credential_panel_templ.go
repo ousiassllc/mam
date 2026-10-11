@@ -193,6 +193,7 @@ func CredentialPanel(d CredentialPanelData) templ.Component {
 				templ_7745c5c3_Err = atoms.Button(atoms.ToneNeutral, "削除", templ.Attributes{
 					"type":       "button",
 					"hx-delete":  paths.Credential(p.Provider),
+					"hx-params":  "none", // inside the api_key form: never send its values (the key) in the DELETE URL
 					"hx-target":  "#credential-panel",
 					"hx-swap":    "outerHTML",
 					"hx-confirm": p.Label + " の API キーを削除します。よろしいですか？",
@@ -213,7 +214,7 @@ func CredentialPanel(d CredentialPanelData) templ.Component {
 				var templ_7745c5c3_Var8 string
 				templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(d.Error)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/credential_panel.templ`, Line: 77, Col: 60}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/credential_panel.templ`, Line: 78, Col: 60}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 				if templ_7745c5c3_Err != nil {
