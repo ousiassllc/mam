@@ -1,14 +1,15 @@
-package service
+// Package keylock is a mutex per key whose waiters can give up.
+package keylock
 
 import (
 	"context"
 	"sync"
 )
 
-// keyedLock is a mutex per key. An entry lives only while someone holds or waits for its key, so
+// Locker is a mutex per key. An entry lives only while someone holds or waits for its key, so
 // the map does not grow with the number of keys used, and a waiter gives up when its context ends.
 // The zero value is ready to use.
-type keyedLock struct {
+type Locker struct {
 	mu      sync.Mutex
 	entries map[string]*keyedEntry
 }
@@ -18,8 +19,8 @@ type keyedEntry struct {
 	refs int           // holders and waiters
 }
 
-// lock waits for the lock of key and returns its unlock, or ctx's error when ctx ends first.
-func (k *keyedLock) lock(ctx context.Context, key string) (func(), error) {
+// Lock waits for the lock of key and returns its unlock, or ctx's error when ctx ends first.
+func (k *Locker) Lock(ctx context.Context, key string) (func(), error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -47,7 +48,7 @@ func (k *keyedLock) lock(ctx context.Context, key string) (func(), error) {
 	}
 }
 
-func (k *keyedLock) release(key string, e *keyedEntry) {
+func (k *Locker) release(key string, e *keyedEntry) {
 	k.mu.Lock()
 	defer k.mu.Unlock()
 	if e.refs--; e.refs == 0 {

@@ -89,7 +89,7 @@ func (s *TakeService) Thumbnail(ctx context.Context, takeID string) (MediaFile, 
 // makePreview runs make unless the preview file already exists; concurrent calls for one file wait
 // for the first, and stop waiting when ctx ends.
 func (s *TakeService) makePreview(ctx context.Context, dst string, make func() error) error {
-	unlock, err := s.preview.lock(ctx, dst)
+	unlock, err := s.preview.Lock(ctx, dst)
 	if err != nil {
 		return err
 	}
