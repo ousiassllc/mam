@@ -29,6 +29,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/router"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
 	"github.com/ousiassllc/mam/backend/internal/testenv"
 )
 
@@ -119,7 +120,7 @@ func newGenAppOpts(t *testing.T, withModels bool, o genOpts) *genApp {
 		backends := modeladapter.Backends{Video: map[domain.ModelName]modeladapter.VideoBackend{domain.ModelKling3: backend, domain.ModelSeedance2: backend}}
 		deps.Models = modeladapter.New(modeladapter.DefaultConfig(), backends)
 	}
-	svc := service.New(deps)
+	svc := servicetest.New(t, deps)
 	ctx, cancel := context.WithCancel(context.Background())
 	jobs.Start(ctx)
 	t.Cleanup(func() { cancel(); jobs.Stop() })

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"sync"
 
 	"github.com/ousiassllc/mam/backend/internal/media"
 )
@@ -54,7 +53,7 @@ func (s *TakeService) Video(ctx context.Context, takeID string) (MediaFile, erro
 	if dst == "" {
 		return MediaFile{Path: src, MimeType: mime}, nil // the ID is not a safe file name: no proxy is made
 	}
-	if err := s.makePreview(dst, func() error { return s.tools.Proxy(ctx, src, dst) }); err != nil {
+	if err := s.makePreview(ctx, dst, func() error { return s.tools.Proxy(ctx, src, dst) }); err != nil {
 		s.logger.Error("make proxy failed; playing the original", "take_id", takeID, "err", err)
 		return MediaFile{Path: src, MimeType: mime}, nil
 	}
@@ -81,27 +80,22 @@ func (s *TakeService) Thumbnail(ctx context.Context, takeID string) (MediaFile, 
 	if dst == "" {
 		return MediaFile{}, ErrNotFound // the ID is not a safe file name
 	}
-	if err := s.makePreview(dst, func() error { return s.tools.Thumbnail(ctx, src, dst, 0) }); err != nil {
+	if err := s.makePreview(ctx, dst, func() error { return s.tools.Thumbnail(ctx, src, dst, 0) }); err != nil {
 		return MediaFile{}, fmt.Errorf("make thumbnail: %w", err)
 	}
 	return MediaFile{Path: dst, MimeType: "image/jpeg"}, nil
 }
 
 // makePreview runs make unless the preview file already exists; concurrent calls for one file wait
-// for the first.
-func (s *TakeService) makePreview(dst string, make func() error) error {
-	unlock := lockFor(&s.preview, dst)
+// for the first, and stop waiting when ctx ends.
+func (s *TakeService) makePreview(ctx context.Context, dst string, make func() error) error {
+	unlock, err := s.preview.Lock(ctx, dst)
+	if err != nil {
+		return err
+	}
 	defer unlock()
 	if _, err := os.Stat(dst); err == nil {
 		return nil
 	}
 	return make()
-}
-
-// lockFor locks the mutex of key in m (created on first use) and returns its unlock.
-func lockFor(m *sync.Map, key string) func() {
-	mu, _ := m.LoadOrStore(key, &sync.Mutex{})
-	l := mu.(*sync.Mutex)
-	l.Lock()
-	return l.Unlock
 }
