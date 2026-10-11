@@ -66,23 +66,18 @@ func (r *ReferenceRepository) List(ctx context.Context, projectID string, f Refe
 		args = append(args, string(f.Kind))
 	}
 	q += ` ORDER BY created_at DESC, id DESC`
-	rows, err := r.db.Reader().QueryContext(ctx, q, args...) //nolint:gosec // q is assembled from constants; only the arguments are data
+	all, err := queryAll(ctx, r.db.Reader(), scanReferenceItem, q, args...) //nolint:gosec // q is assembled from constants; only the arguments are data
 	if err != nil {
 		return nil, fmt.Errorf("list reference library: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
 	items := []domain.ReferenceItem{}
-	for rows.Next() {
-		it, err := scanReferenceItem(rows)
-		if err != nil {
-			return nil, err
-		}
+	for _, it := range all {
 		// Query and Tag are matched here: SQLite folds the case of ASCII only.
 		if it.Matches(f.Query, f.Tag) {
 			items = append(items, it)
 		}
 	}
-	return items, rows.Err()
+	return items, nil
 }
 
 // Get returns an entry of the Project's Library or ErrNotFound.

@@ -31,32 +31,27 @@ func (r *VersionRepository) ShotVersions(ctx context.Context, shotID string) ([]
 	if err := Exists(ctx, r.db.Reader(), `SELECT 1 FROM shot WHERE id = ?`, shotID); err != nil {
 		return nil, err
 	}
-	rows, err := r.db.Reader().QueryContext(ctx,
-		`SELECT version_number, shot_spec_snapshot, created_at FROM prompt_version WHERE shot_id = ? ORDER BY version_number DESC`, shotID)
-	if err != nil {
-		return nil, fmt.Errorf("list prompt versions: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-	var out []domain.VersionEntry
-	for rows.Next() {
+	out, err := queryAll(ctx, r.db.Reader(), func(row rowScanner) (domain.VersionEntry, error) {
 		var (
 			e            domain.VersionEntry
 			snapshot, at string
 		)
-		if err := rows.Scan(&e.Number, &snapshot, &at); err != nil {
-			return nil, err
+		if err := row.Scan(&e.Number, &snapshot, &at); err != nil {
+			return e, err
 		}
 		var probe struct {
 			Objective string `json:"shot_objective"`
 		}
 		_ = json.Unmarshal([]byte(snapshot), &probe) // a snapshot without a spec has no summary
 		e.Summary = probe.Objective
-		if e.CreatedAt, err = ParseTime(at); err != nil {
-			return nil, err
-		}
-		out = append(out, e)
+		var err error
+		e.CreatedAt, err = ParseTime(at)
+		return e, err
+	}, `SELECT version_number, shot_spec_snapshot, created_at FROM prompt_version WHERE shot_id = ? ORDER BY version_number DESC`, shotID)
+	if err != nil {
+		return nil, fmt.Errorf("list prompt versions: %w", err)
 	}
-	return out, rows.Err()
+	return out, nil
 }
 
 // WorldStateVersions returns the World State versions of the Project's trunk (branchID "") or of
@@ -65,32 +60,27 @@ func (r *VersionRepository) WorldStateVersions(ctx context.Context, projectID, b
 	if err := scopeExists(ctx, r.db.Reader(), projectID, branchID); err != nil {
 		return nil, err
 	}
-	rows, err := r.db.Reader().QueryContext(ctx,
-		`SELECT version_number, state, created_at FROM world_state_version WHERE project_id = ? AND branch_id IS ? ORDER BY version_number DESC`,
-		projectID, nullIfEmpty(branchID))
-	if err != nil {
-		return nil, fmt.Errorf("list world state versions: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-	var out []domain.VersionEntry
-	for rows.Next() {
+	out, err := queryAll(ctx, r.db.Reader(), func(row rowScanner) (domain.VersionEntry, error) {
 		var (
 			e         domain.VersionEntry
 			state, at string
 		)
-		if err := rows.Scan(&e.Number, &state, &at); err != nil {
-			return nil, err
+		if err := row.Scan(&e.Number, &state, &at); err != nil {
+			return e, err
 		}
 		var w domain.WorldContext
 		if err := json.Unmarshal([]byte(state), &w); err == nil {
 			e.Summary = fmt.Sprintf("Character %d / Product %d / Location %d", len(w.Characters), len(w.Products), len(w.Locations))
 		}
-		if e.CreatedAt, err = ParseTime(at); err != nil {
-			return nil, err
-		}
-		out = append(out, e)
+		var err error
+		e.CreatedAt, err = ParseTime(at)
+		return e, err
+	}, `SELECT version_number, state, created_at FROM world_state_version WHERE project_id = ? AND branch_id IS ? ORDER BY version_number DESC`,
+		projectID, nullIfEmpty(branchID))
+	if err != nil {
+		return nil, fmt.Errorf("list world state versions: %w", err)
 	}
-	return out, rows.Err()
+	return out, nil
 }
 
 // BranchVersions returns the versions of the Branch, newest first (ErrNotFound for an unknown Branch).
@@ -98,27 +88,22 @@ func (r *VersionRepository) BranchVersions(ctx context.Context, branchID string)
 	if err := Exists(ctx, r.db.Reader(), `SELECT 1 FROM branch WHERE id = ?`, branchID); err != nil {
 		return nil, err
 	}
-	rows, err := r.db.Reader().QueryContext(ctx,
-		`SELECT version_number, name, created_at FROM branch_version WHERE branch_id = ? ORDER BY version_number DESC`, branchID)
-	if err != nil {
-		return nil, fmt.Errorf("list branch versions: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-	var out []domain.VersionEntry
-	for rows.Next() {
+	out, err := queryAll(ctx, r.db.Reader(), func(row rowScanner) (domain.VersionEntry, error) {
 		var (
 			e  domain.VersionEntry
 			at string
 		)
-		if err := rows.Scan(&e.Number, &e.Summary, &at); err != nil {
-			return nil, err
+		if err := row.Scan(&e.Number, &e.Summary, &at); err != nil {
+			return e, err
 		}
-		if e.CreatedAt, err = ParseTime(at); err != nil {
-			return nil, err
-		}
-		out = append(out, e)
+		var err error
+		e.CreatedAt, err = ParseTime(at)
+		return e, err
+	}, `SELECT version_number, name, created_at FROM branch_version WHERE branch_id = ? ORDER BY version_number DESC`, branchID)
+	if err != nil {
+		return nil, fmt.Errorf("list branch versions: %w", err)
 	}
-	return out, rows.Err()
+	return out, nil
 }
 
 // Exists returns ErrNotFound when the query (SELECT 1 ... WHERE id = ?) finds no row.

@@ -181,20 +181,11 @@ func scanScene(row rowScanner) (domain.Scene, error) {
 // ListScenes returns the Scenes of the trunk of the Project in order (the Scenes of a Branch are
 // listed by BranchRepository.Scenes).
 func (r *PlanRepository) ListScenes(ctx context.Context, projectID string) ([]domain.Scene, error) {
-	rows, err := r.db.Reader().QueryContext(ctx, sceneSelect+` WHERE s.project_id = ? AND s.branch_id IS NULL ORDER BY s.order_index`, projectID)
+	scenes, err := queryAll(ctx, r.db.Reader(), scanScene, sceneSelect+` WHERE s.project_id = ? AND s.branch_id IS NULL ORDER BY s.order_index`, projectID)
 	if err != nil {
 		return nil, fmt.Errorf("list scenes: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
-	var scenes []domain.Scene
-	for rows.Next() {
-		s, err := scanScene(rows)
-		if err != nil {
-			return nil, fmt.Errorf("scan scene: %w", err)
-		}
-		scenes = append(scenes, s)
-	}
-	return scenes, rows.Err()
+	return scenes, nil
 }
 
 // GetScene returns a Scene of the Project or ErrNotFound.
@@ -334,74 +325,72 @@ func (r *PlanRepository) RemoveShots(ctx context.Context, ids, sceneIDs []string
 
 // ListShots returns the Shots of the Scene in order.
 func (r *PlanRepository) ListShots(ctx context.Context, sceneID string) ([]domain.Shot, error) {
-	rows, err := r.db.Reader().QueryContext(ctx,
-		`SELECT id, scene_id, order_index, COALESCE(objective, ''), COALESCE(duration_seconds, 0), shot_spec, state, COALESCE(selected_take_id, '')
-		 FROM shot WHERE scene_id = ? ORDER BY order_index`, sceneID)
-	if err != nil {
-		return nil, fmt.Errorf("list shots: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-	var shots []domain.Shot
-	for rows.Next() {
+	shots, err := queryAll(ctx, r.db.Reader(), func(row rowScanner) (domain.Shot, error) {
 		var (
 			sh   domain.Shot
 			spec string
 		)
-		if err := rows.Scan(&sh.ID, &sh.SceneID, &sh.OrderIndex, &sh.Objective, &sh.Duration, &spec, &sh.State, &sh.SelectedTakeID); err != nil {
-			return nil, fmt.Errorf("scan shot: %w", err)
+		if err := row.Scan(&sh.ID, &sh.SceneID, &sh.OrderIndex, &sh.Objective, &sh.Duration, &spec, &sh.State, &sh.SelectedTakeID); err != nil {
+			return sh, fmt.Errorf("scan shot: %w", err)
 		}
 		sh.ShotSpec = json.RawMessage(spec)
-		shots = append(shots, sh)
+		return sh, nil
+	}, `SELECT id, scene_id, order_index, COALESCE(objective, ''), COALESCE(duration_seconds, 0), shot_spec, state, COALESCE(selected_take_id, '')
+		 FROM shot WHERE scene_id = ? ORDER BY order_index`, sceneID)
+	if err != nil {
+		return nil, fmt.Errorf("list shots: %w", err)
 	}
-	return shots, rows.Err()
+	return shots, nil
 }
 
 // ListTakes returns the Takes of the Scene's Shots (through their prompt versions), oldest
 // first, grouped by Shot ID.
 func (r *PlanRepository) ListTakes(ctx context.Context, sceneID string) (map[string][]domain.Take, error) {
-	rows, err := r.db.Reader().QueryContext(ctx,
-		`SELECT t.id, pv.shot_id, t.prompt_version_id, t.model_name, COALESCE(t.file_path, ''), t.status, t.created_at
-		 FROM take t
-		 JOIN prompt_version pv ON pv.id = t.prompt_version_id
-		 JOIN shot sh ON sh.id = pv.shot_id
-		 WHERE sh.scene_id = ? ORDER BY t.created_at, t.id`, sceneID)
+	list, err := queryAll(ctx, r.db.Reader(), scanTake,
+		takeSelect+` JOIN shot sh ON sh.id = pv.shot_id WHERE sh.scene_id = ? ORDER BY t.created_at, t.id`, sceneID)
 	if err != nil {
 		return nil, fmt.Errorf("list takes: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
 	takes := map[string][]domain.Take{}
-	for rows.Next() {
-		var (
-			t       domain.Take
-			created string
-		)
-		if err := rows.Scan(&t.ID, &t.ShotID, &t.PromptVersionID, &t.ModelName, &t.FilePath, &t.Status, &created); err != nil {
-			return nil, fmt.Errorf("scan take: %w", err)
-		}
-		if t.CreatedAt, err = ParseTime(created); err != nil {
-			return nil, err
-		}
+	for _, t := range list {
 		takes[t.ShotID] = append(takes[t.ShotID], t)
 	}
-	return takes, rows.Err()
+	return takes, nil
+}
+
+// takeSelect reads the columns scanTake scans; the caller adds what it filters on (JOIN, WHERE).
+const takeSelect = `SELECT t.id, pv.shot_id, t.prompt_version_id, t.model_name, COALESCE(t.file_path, ''), t.status, t.created_at
+	FROM take t JOIN prompt_version pv ON pv.id = t.prompt_version_id`
+
+func scanTake(row rowScanner) (domain.Take, error) {
+	var (
+		t       domain.Take
+		created string
+	)
+	if err := row.Scan(&t.ID, &t.ShotID, &t.PromptVersionID, &t.ModelName, &t.FilePath, &t.Status, &created); err != nil {
+		return t, fmt.Errorf("scan take: %w", err)
+	}
+	var err error
+	t.CreatedAt, err = ParseTime(created)
+	return t, err
 }
 
 // ShotCounts returns the number of Shots of every Scene of the Project, by Scene ID.
 func (r *PlanRepository) ShotCounts(ctx context.Context, projectID string) (map[string]int, error) {
-	rows, err := r.db.Reader().QueryContext(ctx,
-		`SELECT sh.scene_id, COUNT(*) FROM shot sh JOIN scene s ON s.id = sh.scene_id WHERE s.project_id = ? GROUP BY sh.scene_id`, projectID)
+	type sceneCount struct {
+		sceneID string
+		n       int
+	}
+	rows, err := queryAll(ctx, r.db.Reader(), func(row rowScanner) (sceneCount, error) {
+		var c sceneCount
+		return c, row.Scan(&c.sceneID, &c.n)
+	}, `SELECT sh.scene_id, COUNT(*) FROM shot sh JOIN scene s ON s.id = sh.scene_id WHERE s.project_id = ? GROUP BY sh.scene_id`, projectID)
 	if err != nil {
 		return nil, fmt.Errorf("count shots: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
-	counts := map[string]int{}
-	for rows.Next() {
-		var id string
-		var n int
-		if err := rows.Scan(&id, &n); err != nil {
-			return nil, fmt.Errorf("scan shot count: %w", err)
-		}
-		counts[id] = n
+	counts := make(map[string]int, len(rows))
+	for _, c := range rows {
+		counts[c.sceneID] = c.n
 	}
-	return counts, rows.Err()
+	return counts, nil
 }

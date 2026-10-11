@@ -118,7 +118,7 @@ func (a *Adapter) GenerateImage(ctx context.Context, purpose ImagePurpose, req I
 		targets = append(targets, route.Fallback)
 	}
 	if req.AspectRatio == "" {
-		req.AspectRatio = "16:9"
+		req.AspectRatio = domain.DefaultAspectRatio
 	}
 	var failures []error
 	for i, t := range targets {

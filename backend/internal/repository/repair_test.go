@@ -3,6 +3,7 @@ package repository_test
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -152,4 +153,47 @@ func TestRepairRepository_CandidateTakeCountCountsOnlyTakesOfCandidateGeneration
 	n, err = r.CandidateTakeCount(ctx, shot)
 	require.NoError(t, err)
 	assert.Equal(t, 2, n, "a rejected candidate was paid for and counts; a repair's Take does not")
+}
+
+func TestRepairRepository_ShotVerdictsPairsEachTakeWithItsNewestResultAndItsJudgeJob(t *testing.T) {
+	db := openTestDB(t)
+	_, shot, judgedTake := seedTake(t, db)
+	ctx := context.Background()
+	require.NoError(t, db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
+		for _, q := range []string{
+			`INSERT INTO take (id, prompt_version_id, model_name, file_path) VALUES ('t2', 'pv1', 'kling-3.0', 'p1/b.mp4')`,
+			`INSERT INTO take (id, prompt_version_id, model_name, file_path) VALUES ('t3', 'pv1', 'kling-3.0', 'p1/c.mp4')`,
+			`INSERT INTO take (id, prompt_version_id, model_name, file_path, status) VALUES ('t4', 'pv1', 'kling-3.0', 'p1/d.mp4', 'rejected')`,
+		} {
+			if _, err := tx.ExecContext(ctx, q); err != nil {
+				return err
+			}
+		}
+		return nil
+	}))
+	judges := repository.NewJudgeRepository(db)
+	_, err := judges.Save(ctx, domain.JudgeResult{TakeID: judgedTake, Result: domain.JudgeFail})
+	require.NoError(t, err)
+	newest, err := judges.Save(ctx, domain.JudgeResult{TakeID: judgedTake, Result: domain.JudgePass})
+	require.NoError(t, err)
+	_, err = judges.Save(ctx, domain.JudgeResult{TakeID: "t4", Result: domain.JudgeFail})
+	require.NoError(t, err)
+	_, err = repository.NewJobRepository(db).Create(ctx, domain.JobJudge, json.RawMessage(`{"take_id":"t3"}`))
+	require.NoError(t, err)
+
+	got, err := repository.NewRepairRepository(db).ShotVerdicts(ctx, shot)
+	require.NoError(t, err)
+	require.Len(t, got, 3, "the rejected Take is out")
+	assert.Equal(t, []string{judgedTake, "t2", "t3"}, []string{got[0].Take.ID, got[1].Take.ID, got[2].Take.ID})
+	require.NotNil(t, got[0].Result)
+	assert.Equal(t, newest.ID, got[0].Result.ID, "the newest Judge result")
+	assert.False(t, got[0].Pending)
+	assert.Nil(t, got[1].Result, "never judged")
+	assert.False(t, got[1].Pending)
+	assert.Nil(t, got[2].Result)
+	assert.True(t, got[2].Pending, "a judge job is queued for it")
+
+	none, err := repository.NewRepairRepository(db).ShotVerdicts(ctx, "nope")
+	require.NoError(t, err)
+	assert.Empty(t, none)
 }

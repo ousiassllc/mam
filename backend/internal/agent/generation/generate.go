@@ -23,16 +23,12 @@ var errInvalidPlan = planning.ErrInvalidPlan
 
 var ratioRe = regexp.MustCompile(`(\d+)\s*[:：]\s*(\d+)`)
 
-// aspectRatio reads the Brief's aspect ratio ("9:16", "縦 9:16") and falls back to 16:9. Only
-// ratios the image and video models accept are returned.
+// aspectRatio reads the Brief's aspect ratio ("9:16", "縦 9:16"); an unsupported or missing one is the default.
 func aspectRatio(brief domain.Brief) string {
-	if m := ratioRe.FindStringSubmatch(brief.AspectRatio); m != nil {
-		switch r := m[1] + ":" + m[2]; r {
-		case "16:9", "9:16", "1:1":
-			return r
-		}
+	if m := ratioRe.FindStringSubmatch(brief.AspectRatio); m != nil && domain.IsBriefAspectRatio(m[1]+":"+m[2]) {
+		return m[1] + ":" + m[2]
 	}
-	return "16:9"
+	return domain.DefaultAspectRatio
 }
 
 // recordedRequest is what prompt_version.model_adapter_output keeps of a request: the prompt of the

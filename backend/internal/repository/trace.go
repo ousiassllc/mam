@@ -100,35 +100,17 @@ func (r *TraceRepository) TakeTrace(ctx context.Context, takeID string) (domain.
 }
 
 func (r *TraceRepository) judgements(ctx context.Context, takeID string) ([]domain.JudgeResult, error) {
-	rows, err := r.db.Reader().QueryContext(ctx, judgeSelect+` WHERE take_id = ? ORDER BY created_at DESC, rowid DESC`, takeID)
+	out, err := queryAll(ctx, r.db.Reader(), scanJudge, judgeSelect+` WHERE take_id = ? ORDER BY created_at DESC, rowid DESC`, takeID)
 	if err != nil {
 		return nil, fmt.Errorf("list judge results: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
-	var out []domain.JudgeResult
-	for rows.Next() {
-		res, err := scanJudge(rows)
-		if err != nil {
-			return nil, fmt.Errorf("scan judge result: %w", err)
-		}
-		out = append(out, res)
-	}
-	return out, rows.Err()
+	return out, nil
 }
 
 func (r *TraceRepository) repairs(ctx context.Context, query string, args ...any) ([]domain.RepairRecord, error) {
-	rows, err := r.db.Reader().QueryContext(ctx, query, args...)
+	out, err := queryAll(ctx, r.db.Reader(), scanRepair, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("list repair actions: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
-	var out []domain.RepairRecord
-	for rows.Next() {
-		rec, err := scanRepair(rows)
-		if err != nil {
-			return nil, fmt.Errorf("scan repair action: %w", err)
-		}
-		out = append(out, rec)
-	}
-	return out, rows.Err()
+	return out, nil
 }

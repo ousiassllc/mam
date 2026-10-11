@@ -48,23 +48,18 @@ func (r *VoiceRepository) Save(ctx context.Context, projectID, speaker, name, vo
 
 // List returns the cloned voices of the Project, by speaker.
 func (r *VoiceRepository) List(ctx context.Context, projectID string) ([]domain.VoiceClone, error) {
-	rows, err := r.db.Reader().QueryContext(ctx,
-		`SELECT id, speaker, name, voice_id, created_at FROM voice_clone WHERE project_id = ? ORDER BY speaker`, projectID)
+	out, err := queryAll(ctx, r.db.Reader(), func(row rowScanner) (domain.VoiceClone, error) {
+		c := domain.VoiceClone{ProjectID: projectID}
+		var created string
+		if err := row.Scan(&c.ID, &c.Speaker, &c.Name, &c.VoiceID, &created); err != nil {
+			return c, fmt.Errorf("scan voice clone: %w", err)
+		}
+		var err error
+		c.CreatedAt, err = ParseTime(created)
+		return c, err
+	}, `SELECT id, speaker, name, voice_id, created_at FROM voice_clone WHERE project_id = ? ORDER BY speaker`, projectID)
 	if err != nil {
 		return nil, fmt.Errorf("list voice clones: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
-	var out []domain.VoiceClone
-	for rows.Next() {
-		c := domain.VoiceClone{ProjectID: projectID}
-		var created string
-		if err := rows.Scan(&c.ID, &c.Speaker, &c.Name, &c.VoiceID, &created); err != nil {
-			return nil, fmt.Errorf("scan voice clone: %w", err)
-		}
-		if c.CreatedAt, err = ParseTime(created); err != nil {
-			return nil, err
-		}
-		out = append(out, c)
-	}
-	return out, rows.Err()
+	return out, nil
 }

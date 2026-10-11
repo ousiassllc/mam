@@ -138,3 +138,38 @@ func TestBrandTemplateRepository_ProjectAndEpisodeCreationCopyTheTemplateAtomica
 	_, err = f.projects.Get(ctx, "np2")
 	assert.ErrorIs(t, err, repository.ErrNotFound)
 }
+
+func TestBrandTemplateRepository_ListKeepsEachTemplatesOwnConstraintsInOrder(t *testing.T) {
+	ctx := context.Background()
+	db := openTestDB(t)
+	seedProject(t, db, "p1")
+	seedProject(t, db, "p2")
+	brands := repository.NewBrandRepository(db)
+	templates := repository.NewBrandTemplateRepository(db)
+
+	empty, err := templates.List(ctx)
+	require.NoError(t, err)
+	assert.Empty(t, empty)
+
+	for projectID, texts := range map[string][]string{"p1": {"A1", "A2"}, "p2": {"B1"}} {
+		for _, text := range texts {
+			_, err := brands.Create(ctx, domain.BrandConstraint{ProjectID: projectID, Type: domain.BrandForbidden, Level: domain.EnforceLock, Text: text})
+			require.NoError(t, err)
+		}
+	}
+	_, err = templates.SaveFromProject(ctx, "ブランドA", "p1")
+	require.NoError(t, err)
+	_, err = templates.SaveFromProject(ctx, "ブランドB", "p2")
+	require.NoError(t, err)
+
+	list, err := templates.List(ctx)
+	require.NoError(t, err)
+	require.Len(t, list, 2)
+	assert.Equal(t, "ブランドA", list[0].Name)
+	require.Len(t, list[0].Constraints, 2)
+	assert.Equal(t, "A1", list[0].Constraints[0].Text)
+	assert.Equal(t, "A2", list[0].Constraints[1].Text)
+	assert.Equal(t, "ブランドB", list[1].Name)
+	require.Len(t, list[1].Constraints, 1)
+	assert.Equal(t, "B1", list[1].Constraints[0].Text)
+}

@@ -255,21 +255,12 @@ func (r *EditorRepository) LatestAudioTimeline(ctx context.Context, projectID, b
 // ListAudioTimelines returns every Audio Timeline version of the trunk of the Project (branchID
 // "") or of its Branch, newest first.
 func (r *EditorRepository) ListAudioTimelines(ctx context.Context, projectID, branchID string) ([]domain.AudioTimelineVersion, error) {
-	rows, err := r.db.Reader().QueryContext(ctx,
+	out, err := queryAll(ctx, r.db.Reader(), scanAudioTimeline,
 		audioTimelineSelect+` WHERE project_id = ? AND branch_id IS ? ORDER BY version_number DESC`, projectID, nullIfEmpty(branchID))
 	if err != nil {
 		return nil, fmt.Errorf("list audio timelines: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
-	var out []domain.AudioTimelineVersion
-	for rows.Next() {
-		v, err := scanAudioTimeline(rows)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, v)
-	}
-	return out, rows.Err()
+	return out, nil
 }
 
 // SaveFinalQC stores the result of a Final QC run.
@@ -353,18 +344,9 @@ func (r *EditorRepository) GetExport(ctx context.Context, projectID, id string) 
 
 // ListExports returns the Exports of the Project, newest first.
 func (r *EditorRepository) ListExports(ctx context.Context, projectID string) ([]domain.Export, error) {
-	rows, err := r.db.Reader().QueryContext(ctx, exportSelect+` WHERE project_id = ? ORDER BY exported_at DESC, rowid DESC`, projectID)
+	out, err := queryAll(ctx, r.db.Reader(), scanExport, exportSelect+` WHERE project_id = ? ORDER BY exported_at DESC, rowid DESC`, projectID)
 	if err != nil {
 		return nil, fmt.Errorf("list exports: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
-	var out []domain.Export
-	for rows.Next() {
-		e, err := scanExport(rows)
-		if err != nil {
-			return nil, fmt.Errorf("scan export: %w", err)
-		}
-		out = append(out, e)
-	}
-	return out, rows.Err()
+	return out, nil
 }
