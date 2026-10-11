@@ -8,6 +8,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/textutil"
 )
 
 // Director plans the Scenes and Shots of the Script (Scene / Shot Planning).
@@ -73,10 +74,10 @@ func (d *Director) Plan(ctx context.Context, in PlanInput) (domain.ScenePlan, er
 	}
 	for i := range plan.Scenes {
 		sc := &plan.Scenes[i]
-		sc.Title = domain.TruncateRunes(strings.TrimSpace(sc.Title), sceneTitleMaxRunes)
-		sc.Location = domain.TruncateRunes(strings.TrimSpace(sc.Location), sceneMetaMaxRunes)
-		sc.Time = domain.TruncateRunes(strings.TrimSpace(sc.Time), sceneMetaMaxRunes)
-		sc.Objective = domain.TruncateRunes(strings.TrimSpace(sc.Objective), objectiveMaxRunes)
+		sc.Title = textutil.TruncateRunes(strings.TrimSpace(sc.Title), sceneTitleMaxRunes)
+		sc.Location = textutil.TruncateRunes(strings.TrimSpace(sc.Location), sceneMetaMaxRunes)
+		sc.Time = textutil.TruncateRunes(strings.TrimSpace(sc.Time), sceneMetaMaxRunes)
+		sc.Objective = textutil.TruncateRunes(strings.TrimSpace(sc.Objective), objectiveMaxRunes)
 		if sc.Title == "" {
 			return domain.ScenePlan{}, fmt.Errorf("director: %w", invalidf("scene %d has no title", i+1))
 		}
@@ -85,7 +86,7 @@ func (d *Director) Plan(ctx context.Context, in PlanInput) (domain.ScenePlan, er
 		}
 		for j := range sc.Shots {
 			sh := &sc.Shots[j]
-			sh.Objective = domain.TruncateRunes(strings.TrimSpace(sh.Objective), objectiveMaxRunes)
+			sh.Objective = textutil.TruncateRunes(strings.TrimSpace(sh.Objective), objectiveMaxRunes)
 			if sh.Objective == "" || sh.DurationSeconds <= 0 || math.IsNaN(sh.DurationSeconds) || math.IsInf(sh.DurationSeconds, 0) {
 				return domain.ScenePlan{}, fmt.Errorf("director: %w", invalidf("scene %d shot %d has no objective or a non-positive duration", i+1, j+1))
 			}

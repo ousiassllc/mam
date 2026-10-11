@@ -94,3 +94,4 @@ pre-commit（`scripts/linterly-staged.sh`）は従来どおり、コミット対
 | 1.4 | 2026-10-11 | CI 節に、顔同一性の実モデルのテストは環境変数が未設定で Skip し CI・`make test`・pre-push では動かさないこと、手元での実行方法を明記 | Issue #486。実モデルのテストが常に Skip されているのに、環境構築の仕様に存在も実行方法も書かれていなかった |
 | 1.5 | 2026-10-11 | Linterly 節を、既存の超過を `.linterly-baseline` に記録して CI（`make lint-lines`）で悪化を止める運用に書き換え。ディレクトリ上限の方針を明記。`make tools` に linterly、`make test` に `test-scripts` を追加 | Issue #495。超過は CI で検出されず、増えても気づけず、減らす圧力もなかった |
 | 1.6 | 2026-10-11 | フロントエンドの TypeScript に Biome（format + lint）を導入し、`make fmt` / `make fmt-check` / `make lint-static`・lefthook の pre-commit に組み込んだ。「フロントエンドの整形・lint」節を追加 | Issue #505。`static/src` の約 4,800 行に formatter / linter が無く、`tsc` だけで CI・pre-commit を通っていた（未使用 import・`no-floating-promises`・`==`・インデントの崩れがレビューまで検出されなかった） |
+| 1.7 | 2026-10-11 | Linterly 節の基準値を、統合済みの各修正後の行数に合わせて更新（減った分は下げ、悪化した分は新しいパッケージへの移動・ファイル分割で戻した。基準値を上げたエントリは無い） | Issue #496・#500・#501。基準値が #482〜#484・#494 などの統合前に採られ、統合ブランチで `make lint-lines` が失敗していた |

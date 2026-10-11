@@ -132,7 +132,6 @@ M1 の入出力契約（Issue #12）:
 | POST | `/branches/:id/world-state/versions/:versionNumber/restore` | 当該Branchが独立して持つ World State バージョン系列の指定バージョンへ復元。Branch はトランクと同じく自身の Character / Product / Location 行に状態を持つので（Issue #18）、指定バージョンの内容をその Branch の行へ書き戻し、結果をその系列の末尾へ新バージョンとして追記する（LOCK 中の項目が変わる復元は 423 で何も書かない）。応答は 200 と Branch のバージョン履歴。422/404（Branch・バージョン）。パスの Branch ID は他の `/branches/:id/...` と同じく `:id`（Gin は同じパス位置のワイルドカード名を 1 つしか許さない） | F-28 |
 | POST | `/branches/:id/versions/:versionNumber/restore` | Branch自体（`branch_version`）の指定バージョンへ復元。その名称・World State 参照を Branch に戻し、新しい `branch_version` として追記する。応答は 200 と Branch のバージョン履歴。422/404 | F-28 |
 
-
 **Take System の動作（M1）**
 
 - AI Pick: Judge が結果を保存するたびに、その Shot の Take のうち Judge 済みで除外されていないものから最良を `ai_pick` にする（PASS が FAIL より先、次に 4 スコアの平均、同点は古い方。Retry Policy の Minimum acceptance score を満たす Take が 1 本でもあれば、候補はその Take だけで、基準未達の Take は平均が高くても AI Pick にならない）。ユーザーが Selected にした Take があれば何もしない。AUTO MODE で Shot の Take Selection が AUTO のときは、PASS かつ Minimum acceptance score を満たした AI Pick を Shot の Take（`selected_take_id`）にもする（PASS でも基準未達なら AI Pick にはなるが採用しない）。DIRECTOR MODE、または Take Selection が MANUAL / LOCK の Shot では推奨のみで、確定はユーザー（`POST /takes/:id/select`）。変更があったときは Judge のチャット通知に「AI Pick: …」を追記する。
@@ -180,7 +179,6 @@ M1（F-18 Simple / F-20 簡易版 / F-26。範囲は `spec/requirements/function
 | POST | `/projects/:id/export` | READY（または再書き出しの EXPORTED）のときのみ。フォーム／JSON の `aspect_ratio`（`16:9`/`9:16`/`1:1`/`4:5`）・`resolution`（`720p`/`1080p`/`1440p`/`2160p`）・`codec`（`h264`/`h265`/`vp9`）を指定（省略時は Brief のアスペクト比・1080p・h264）。`branch_id`（省略時=主系列トランク）の Edit Timeline と Audio Timeline を書き出し、その Branch が無い・そのタイムラインが無いときは 404、Audio Timeline が最新の Edit Timeline に対して作られていない（`edit_timeline_id` が違う）ときは 409。一時ファイルへ書いて完了後にリネームし（アトミック）、`export`（`branch_id` も記録）に記録して EXPORTED にする |
 | GET | `/projects/:id/exports/:exportId/video` | 書き出した動画のダウンロード（`video/mp4` / `video/webm`） |
 | POST | `/edit-timelines/:id/request-additional-shot` | M3。Editor Judge が `need_shot` と判定した最新版に限る（EDIT_JUDGING のとき。判定前は 409、生成が未設定なら 503）。判定の `need_shot` ごとに追加 Shot（Branch の系列では Branch 側の Scene）を作り、各 Shot の生成を始める。生成を enqueue できた Shot だけを `reshoot_request`（1 回の呼び出し = 1 ラウンド、status `requested`）として記録して GENERATING へ進む。予算超過などで開始に失敗した Shot は行を消してラウンドから外し（見送った旨をチャットに通知する）、開始済みの Shot が round 外に残ることはない。1 件も開始できなければラウンドを作らず（`requested` を残さない）、Project は EDIT_JUDGING のままエラーを返すので、同じ版を再要求できる。ラウンド数が Retry Policy の Max retries（Repair Loop と共通）に達しているときは要求せず、Escalation カードを投稿して AWAITING_APPROVAL にする（応答後は REPAIRING から Editor Judge をやり直せる）。追加 Shot の Selected Take が揃うと、`need_shot` の `after_clip` の Shot の後にそのクリップ（`kind` は `insert`/`reaction`）を足した新しい版を保存し、EDITING へ戻る（Take の選択・ジョブ完了のたびに確認する）。Project が編集できない状態（READY / EXPORTED / AWAITING_APPROVAL）のときは版を保存せず、ラウンドは `requested` のまま、編集に戻った後の次の確認で入れる（書き出し済みの Edit Timeline を黙って替えない）。もう一度 Editor Judge を実行して Loop を続ける |
-
 
 M3（F-20 Audio Director）の実装は次のとおり。
 
@@ -331,7 +329,6 @@ Response 200:
 Errors:
   404: "Rough Cut がまだない"
 ```
-
 
 ```yaml
 # GET /api/v1/takes/:id/judge-result

@@ -1,4 +1,4 @@
-package repository
+package bundle
 
 import (
 	"encoding/json"
@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/repository"
 )
 
 // What the schema leaves open in a bundle row: json_valid() accepts any JSON, and a timestamp
@@ -60,7 +61,7 @@ var bundleJSONColumns = map[string]map[string]jsonShape{
 	"audio_timeline_version": {"timeline": shapeOf[domain.AudioTimeline]()},
 	"final_qc_result":        {"findings": shapeOf[[]domain.QCFinding]()},
 	"reference_item":         {"tags": shapeOf[[]string]()},
-	"brand_constraint":       {"value": shapeOf[brandValue]()},
+	"brand_constraint":       {"value": shapeOf[repository.BrandValue]()},
 	"note_promotion":         {"proposed_diff": shapeOf[domain.StateDiff](), "locked_conflicts": shapeOf[domain.StateDiff]()},
 }
 
@@ -85,10 +86,10 @@ func checkBundleColumns(table string, row domain.BundleRow) error {
 		if strings.HasSuffix(column, "_at") {
 			s, ok := v.(string)
 			if !ok {
-				return fmt.Errorf("%w: %s.%s is not a timestamp", ErrInvalidBundle, table, column)
+				return fmt.Errorf("%w: %s.%s is not a timestamp", ErrInvalid, table, column)
 			}
-			if _, err := parseTime(s); err != nil {
-				return fmt.Errorf("%w: %s.%s: %w", ErrInvalidBundle, table, column, err)
+			if _, err := repository.ParseTime(s); err != nil {
+				return fmt.Errorf("%w: %s.%s: %w", ErrInvalid, table, column, err)
 			}
 		}
 		shape, ok := bundleJSONColumns[table][column]
@@ -97,10 +98,10 @@ func checkBundleColumns(table string, row domain.BundleRow) error {
 		}
 		s, isString := v.(string)
 		if !isString {
-			return fmt.Errorf("%w: %s.%s is not JSON text", ErrInvalidBundle, table, column)
+			return fmt.Errorf("%w: %s.%s is not JSON text", ErrInvalid, table, column)
 		}
 		if err := shape(s); err != nil {
-			return fmt.Errorf("%w: %s.%s is not of the expected shape: %w", ErrInvalidBundle, table, column, err)
+			return fmt.Errorf("%w: %s.%s is not of the expected shape: %w", ErrInvalid, table, column, err)
 		}
 	}
 	return nil
@@ -142,11 +143,11 @@ func checkBundleColumnTypes(table string, declared map[string]string, row domain
 		switch classOf(declared[column]) {
 		case integerClass:
 			if !isInteger(v) {
-				return fmt.Errorf("%w: %s.%s is not an integer", ErrInvalidBundle, table, column)
+				return fmt.Errorf("%w: %s.%s is not an integer", ErrInvalid, table, column)
 			}
 		case numberClass:
 			if !isNumber(v) {
-				return fmt.Errorf("%w: %s.%s is not a number", ErrInvalidBundle, table, column)
+				return fmt.Errorf("%w: %s.%s is not a number", ErrInvalid, table, column)
 			}
 		}
 	}

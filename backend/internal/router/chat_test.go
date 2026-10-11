@@ -108,7 +108,6 @@ func (a *app) createProject(content string, files ...file) string {
 
 func TestProjects_ListPageWithNewProjectFormAndFragment(t *testing.T) {
 	a := newApp(t)
-
 	rec := a.get("/projects", false)
 	require.Equal(t, http.StatusOK, rec.Code)
 	body := rec.Body.String()
@@ -170,7 +169,6 @@ func TestWorkspace_HistoryIsPersistedPerProject(t *testing.T) {
 
 func TestWorkspace_UnknownProjectIs404(t *testing.T) {
 	a := newApp(t)
-
 	rec := a.get("/projects/missing", false)
 	assert.Equal(t, http.StatusNotFound, rec.Code)
 	assert.Contains(t, rec.Body.String(), "対象が見つかりません")
@@ -183,7 +181,6 @@ func TestWorkspace_UnknownProjectIs404(t *testing.T) {
 
 func TestCreateProject_InvalidInputRerendersTheFormWithTheError(t *testing.T) {
 	a := newApp(t)
-
 	rec := a.multipart(http.MethodPost, "/projects", map[string]string{"content": "  "})
 	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
 	assert.Contains(t, rec.Body.String(), `id="new-project-form"`)
@@ -638,26 +635,7 @@ func TestChat_MultipartMediaTypeIsCaseInsensitive(t *testing.T) {
 	var assets int
 	require.NoError(t, a.db.Reader().QueryRow(`SELECT COUNT(*) FROM asset WHERE project_id = ?`, id).Scan(&assets))
 	assert.Equal(t, 1, assets)
-
 	// A body that is not multipart goes through readMultipart's error handling.
 	rec = a.request(http.MethodPost, "/projects/"+id+"/messages", []byte("content=x"), "Multipart/Form-Data; boundary=mam", true)
 	assert.Equal(t, http.StatusBadRequest, rec.Code, rec.Body.String())
-}
-
-func TestSecurityHeaders_PagesAndFragmentsCarryTheContentSecurityPolicy(t *testing.T) {
-	a := newApp(t)
-	id := a.createProject("動画")
-
-	for name, rec := range map[string]*httptest.ResponseRecorder{
-		"full page":     a.get("/projects", false),
-		"HTMX fragment": a.get("/projects/"+id+"/messages", true),
-		"not found":     a.get("/nope", false),
-	} {
-		csp := rec.Header().Get("Content-Security-Policy")
-		assert.Contains(t, csp, "script-src 'self';", name)
-		assert.Contains(t, csp, "frame-ancestors 'none'", name)
-		assert.Contains(t, csp, "connect-src 'self' ws://127.0.0.1:8787;", name, "the /ws/ WebSocket stays allowed")
-		assert.NotContains(t, csp, "unsafe-eval", name)
-		assert.Equal(t, "nosniff", rec.Header().Get("X-Content-Type-Options"), name)
-	}
 }

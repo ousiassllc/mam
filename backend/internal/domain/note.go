@@ -56,7 +56,11 @@ func (c NoteCategory) Label() string {
 // NoteTitleFrom derives a title from the text of a note: its first line, cut to a short length.
 func NoteTitleFrom(content string) string {
 	line, _, _ := strings.Cut(strings.TrimSpace(content), "\n")
-	return TruncateRunesEllipsis(strings.TrimSpace(line), noteDerivedTitleRunes)
+	runes := []rune(strings.TrimSpace(line))
+	if len(runes) > noteDerivedTitleRunes {
+		runes = append(runes[:noteDerivedTitleRunes], '…')
+	}
+	return string(runes)
 }
 
 const noteDerivedTitleRunes = 30

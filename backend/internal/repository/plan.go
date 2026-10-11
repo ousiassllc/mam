@@ -70,7 +70,7 @@ func (r *PlanRepository) LatestScript(ctx context.Context, projectID string) (do
 	if err := json.Unmarshal([]byte(content), &v.Doc); err != nil {
 		return domain.ScriptVersion{}, fmt.Errorf("decode script: %w", err)
 	}
-	if v.CreatedAt, err = parseTime(created); err != nil {
+	if v.CreatedAt, err = ParseTime(created); err != nil {
 		return domain.ScriptVersion{}, err
 	}
 	return v, nil
@@ -378,7 +378,7 @@ func (r *PlanRepository) ListTakes(ctx context.Context, sceneID string) (map[str
 		if err := rows.Scan(&t.ID, &t.ShotID, &t.PromptVersionID, &t.ModelName, &t.FilePath, &t.Status, &created); err != nil {
 			return nil, fmt.Errorf("scan take: %w", err)
 		}
-		if t.CreatedAt, err = parseTime(created); err != nil {
+		if t.CreatedAt, err = ParseTime(created); err != nil {
 			return nil, err
 		}
 		takes[t.ShotID] = append(takes[t.ShotID], t)

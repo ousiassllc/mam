@@ -44,7 +44,7 @@ func (r *ReviewRepository) GetRequest(ctx context.Context, projectID, id string)
 	if err != nil {
 		return q, notFoundOr(err, "get review request")
 	}
-	q.CreatedAt, err = parseTime(created)
+	q.CreatedAt, err = ParseTime(created)
 	return q, err
 }
 
@@ -68,7 +68,7 @@ func (r *ReviewRepository) ListItems(ctx context.Context, projectID string) ([]d
 			_ = rows.Close()
 			return nil, fmt.Errorf("scan review request: %w", err)
 		}
-		if q.CreatedAt, err = parseTime(created); err != nil {
+		if q.CreatedAt, err = ParseTime(created); err != nil {
 			_ = rows.Close()
 			return nil, err
 		}
@@ -104,11 +104,11 @@ func (r *ReviewRepository) ListItems(ctx context.Context, projectID string) ([]d
 			return nil, fmt.Errorf("scan review response: %w", err)
 		}
 		s.Decision = domain.ReviewDecision(decision)
-		if s.CreatedAt, err = parseTime(created); err != nil {
+		if s.CreatedAt, err = ParseTime(created); err != nil {
 			_ = resps.Close()
 			return nil, err
 		}
-		if s.ImportedAt, err = parseTime(importedAt); err != nil {
+		if s.ImportedAt, err = ParseTime(importedAt); err != nil {
 			_ = resps.Close()
 			return nil, err
 		}
@@ -156,7 +156,7 @@ func (r *ReviewRepository) ListItems(ctx context.Context, projectID string) ([]d
 // was imported already. Nothing is written in either case.
 func (r *ReviewRepository) ImportResponse(ctx context.Context, projectID string, resp domain.ReviewResponse) error {
 	return r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
-		if err := exists(ctx, tx, `SELECT 1 FROM review_request WHERE id = ? AND project_id = ?`, resp.ReviewID, projectID); err != nil {
+		if err := Exists(ctx, tx, `SELECT 1 FROM review_request WHERE id = ? AND project_id = ?`, resp.ReviewID, projectID); err != nil {
 			return err
 		}
 		var n int
@@ -223,10 +223,10 @@ func scanInbox(row rowScanner) (domain.ReviewInbox, error) {
 	}
 	i.Decision = domain.ReviewDecision(decision.String)
 	var err error
-	if i.CreatedAt, err = parseTime(created); err != nil {
+	if i.CreatedAt, err = ParseTime(created); err != nil {
 		return i, err
 	}
-	i.UpdatedAt, err = parseTime(updated)
+	i.UpdatedAt, err = ParseTime(updated)
 	return i, err
 }
 
@@ -252,7 +252,7 @@ func readInbox(ctx context.Context, q queryer, id string) (domain.ReviewInbox, e
 		if tc.Valid {
 			c.TimecodeMs = &tc.Int64
 		}
-		if c.CreatedAt, err = parseTime(created); err != nil {
+		if c.CreatedAt, err = ParseTime(created); err != nil {
 			return i, err
 		}
 		i.Comments = append(i.Comments, c)
@@ -324,7 +324,7 @@ func (r *ReviewRepository) touchInbox(ctx context.Context, tx *sql.Tx, id string
 func (r *ReviewRepository) AddInboxComment(ctx context.Context, inboxID string, c domain.ReviewCommentInput) (domain.ReviewInbox, error) {
 	var out domain.ReviewInbox
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
-		if err := exists(ctx, tx, `SELECT 1 FROM review_inbox WHERE id = ?`, inboxID); err != nil {
+		if err := Exists(ctx, tx, `SELECT 1 FROM review_inbox WHERE id = ?`, inboxID); err != nil {
 			return err
 		}
 		var n int

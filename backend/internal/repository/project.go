@@ -11,8 +11,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
-// ErrConflict is returned when a row is not in the state the write requires
-// (for example, an approval card that was already answered).
+// ErrConflict is returned when a row is not in the state the write requires (e.g. an answered card).
 var ErrConflict = errors.New("repository: conflict")
 
 // ProjectRepository persists Projects with their Brief, Assets and chat thread.
@@ -239,7 +238,7 @@ func scanProject(row rowScanner) (domain.Project, error) {
 	if err := json.Unmarshal([]byte(checkpoints), &p.CustomCheckpoints); err != nil {
 		return domain.Project{}, fmt.Errorf("decode custom_checkpoints: %w", err)
 	}
-	t, err := parseTime(created)
+	t, err := ParseTime(created)
 	if err != nil {
 		return domain.Project{}, err
 	}
@@ -305,7 +304,8 @@ func nonNilCheckpoints(c []domain.Checkpoint) []domain.Checkpoint {
 	return c
 }
 
-func parseTime(s string) (time.Time, error) {
+// ParseTime reads a timestamp in the format the tables store (see formatTime).
+func ParseTime(s string) (time.Time, error) {
 	t, err := time.Parse(timeLayout, s)
 	if err != nil {
 		return time.Time{}, fmt.Errorf("parse time %q: %w", s, err)

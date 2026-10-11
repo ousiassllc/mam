@@ -66,7 +66,6 @@ func DownloadReviewPackage(svc *service.ReviewService) gin.HandlerFunc {
 		}
 		c.Header("Content-Type", "application/zip")
 		c.Header("Content-Disposition", `attachment; filename="`+pkg.FileName+`"`)
-		c.Header("X-Content-Type-Options", "nosniff")
 		c.Status(http.StatusOK)
 		if err := pkg.Write(c.Writer); err != nil {
 			abortDownload(c, err)
@@ -168,7 +167,6 @@ func DownloadReviewResponse(svc *service.ReviewService) gin.HandlerFunc {
 			return
 		}
 		c.Header("Content-Disposition", `attachment; filename="`+file.FileName+`"`)
-		c.Header("X-Content-Type-Options", "nosniff")
 		c.Data(http.StatusOK, "application/json", file.Data)
 	}
 }

@@ -6,6 +6,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/textutil"
 )
 
 // pick marks the best judged Take of the Shot as its AI Pick: in AUTO a Take that the Retry Policy
@@ -43,9 +44,9 @@ func (r *Runner) pick(ctx context.Context, ref repository.TakeRef) string {
 		return ""
 	}
 	if pick.Adopted {
-		return fmt.Sprintf("\nAI Pick: Take %s を採用しました。", domain.ShortID(pick.TakeID))
+		return fmt.Sprintf("\nAI Pick: Take %s を採用しました。", textutil.ShortID(pick.TakeID))
 	}
-	return fmt.Sprintf("\nAI Pick: Take %s がおすすめです（Take 比較から選択できます）。", domain.ShortID(pick.TakeID))
+	return fmt.Sprintf("\nAI Pick: Take %s がおすすめです（Take 比較から選択できます）。", textutil.ShortID(pick.TakeID))
 }
 
 // acceptance tells which Takes of the Shot the Retry Policy of the Project accepts (the latest

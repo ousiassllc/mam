@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/textutil"
 )
 
 // snippetRunes is how many runes of an error body Snippet keeps.
@@ -16,7 +16,7 @@ const snippetRunes = 300
 // Snippet is the start of a vendor error body, for an error message: whitespace runs (newlines
 // included) collapse to one space, and a body cut at snippetRunes runes ends with "…".
 func Snippet(b []byte) string {
-	return domain.TruncateRunesEllipsis(strings.Join(strings.Fields(string(b)), " "), snippetRunes)
+	return textutil.TruncateRunesEllipsis(strings.Join(strings.Fields(string(b)), " "), snippetRunes)
 }
 
 // RedactURL drops the request URL from a transport error: it must not leak into logs or the chat.

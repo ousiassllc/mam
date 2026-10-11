@@ -7,6 +7,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/generation"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/textutil"
 )
 
 // FailureReason is the user-facing cause of a failed Judge run. Details stay in the log.
@@ -24,7 +25,7 @@ func Summary(shotNumber int, takeID string, res domain.JudgeResult) string {
 	if res.Result == domain.JudgeFail {
 		verdict = "FAIL"
 	}
-	fmt.Fprintf(&b, "Shot %d · Take %s の Judge 結果: %s（信頼度 %.2f）", shotNumber, domain.ShortID(takeID), verdict, res.OverallConfidence)
+	fmt.Fprintf(&b, "Shot %d · Take %s の Judge 結果: %s（信頼度 %.2f）", shotNumber, textutil.ShortID(takeID), verdict, res.OverallConfidence)
 	for _, is := range res.Issues {
 		fmt.Fprintf(&b, "\n・[%s] %s", is.Severity, is.Type)
 		if is.TimeRange != "" {

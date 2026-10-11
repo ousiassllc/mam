@@ -117,7 +117,6 @@ func serveMedia(c *gin.Context, file service.MediaFile, err error) {
 		return
 	}
 	c.Header("Content-Type", file.MimeType)
-	c.Header("X-Content-Type-Options", "nosniff")
 	c.Header("Content-Security-Policy", "sandbox")
 	c.File(file.Path)
 }

@@ -20,11 +20,13 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/orchestrator"
 	"github.com/ousiassllc/mam/backend/internal/agent/repair"
 	"github.com/ousiassllc/mam/backend/internal/agent/stateextractor"
+	"github.com/ousiassllc/mam/backend/internal/bgwork"
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/facesim"
 	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/repository/bundle"
 )
 
 // Deps are the infrastructure dependencies wired once in cmd/server.
@@ -236,7 +238,7 @@ func New(deps Deps) *Services {
 		judge: editor.NewJudge(deps.LLM), brands: brands, judges: judges.judges,
 		voices: repository.NewVoiceRepository(deps.DB), cloner: deps.Audio.Cloner,
 	}
-	editors.resume = newResumer(logger, editors.resumeAll)
+	editors.resume = bgwork.NewWorker(logger, "editor resume", editors.resumeAll)
 	takeService.afterSelect = editors.ResumeEditing
 	// An Approval card answered in the editing half (Rough Cut, Final) lets the AUTO chain go on.
 	c.afterAnswer = editors.RetryAuto
@@ -265,7 +267,7 @@ func New(deps Deps) *Services {
 		Reference: &ReferenceService{c},
 		Trace:     &TraceService{traces: repository.NewTraceRepository(deps.DB)},
 		Versions:  &VersionService{core: c, versions: versions, director: director, world: worlds},
-		Bundle:    &BundleService{core: c, bundles: repository.NewBundleRepository(deps.DB), freeBytes: deps.FreeBytes},
+		Bundle:    &BundleService{core: c, bundles: bundle.New(deps.DB), freeBytes: deps.FreeBytes},
 		Series:    &SeriesService{core: c, series: repository.NewSeriesRepository(deps.DB)},
 		Takes:     takeService,
 		Notes:     notes,

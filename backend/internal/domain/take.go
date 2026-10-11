@@ -72,8 +72,7 @@ func ScoreTake(issues []JudgeIssue) TakeScores {
 }
 
 // Usable tells whether the Take can still be acted on: it is not rejected and its file was not
-// archived. It is the rule behind every Take action (select, reject, Partial Take Use), in the API,
-// in the pages and in the repository that refuses what it does not allow.
+// archived. It is the rule behind every Take action, in the API, the pages and the repository.
 func (t Take) Usable() bool { return t.Status != TakeRejected && t.FilePath != "" }
 
 // Selectable tells whether the Take can be selected: it is usable and not already the selected one.

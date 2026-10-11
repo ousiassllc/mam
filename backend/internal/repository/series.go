@@ -128,7 +128,7 @@ func (r *SeriesRepository) Get(ctx context.Context, id string) (domain.Series, e
 	if err != nil {
 		return domain.Series{}, fmt.Errorf("get series: %w", err)
 	}
-	if s.CreatedAt, err = parseTime(created); err != nil {
+	if s.CreatedAt, err = ParseTime(created); err != nil {
 		return domain.Series{}, err
 	}
 	return s, nil
@@ -173,7 +173,7 @@ func (r *SeriesRepository) Versions(ctx context.Context, id string) ([]domain.Se
 		if err := rows.Scan(&v.Number, &created); err != nil {
 			return nil, err
 		}
-		if v.CreatedAt, err = parseTime(created); err != nil {
+		if v.CreatedAt, err = ParseTime(created); err != nil {
 			return nil, err
 		}
 		out = append(out, v)

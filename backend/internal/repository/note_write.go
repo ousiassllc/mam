@@ -22,10 +22,10 @@ func (r *NoteRepository) Create(ctx context.Context, n NewNote) (domain.NoteView
 	now := formatTime(r.now())
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		if n.ProjectID != "" {
-			if err := exists(ctx, tx, `SELECT 1 FROM project WHERE id = ?`, n.ProjectID); err != nil {
+			if err := Exists(ctx, tx, `SELECT 1 FROM project WHERE id = ?`, n.ProjectID); err != nil {
 				return err
 			}
-		} else if err := exists(ctx, tx, `SELECT 1 FROM series WHERE id = ?`, n.SeriesID); err != nil {
+		} else if err := Exists(ctx, tx, `SELECT 1 FROM series WHERE id = ?`, n.SeriesID); err != nil {
 			return err
 		}
 		if _, err := tx.ExecContext(ctx, `INSERT INTO note (id, project_id, series_id, category, pinned, created_at) VALUES (?, ?, ?, ?, ?, ?)`,

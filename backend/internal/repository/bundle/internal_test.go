@@ -1,4 +1,4 @@
-package repository
+package bundle
 
 import (
 	"context"
@@ -13,13 +13,14 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/repository"
 )
 
 // TestBundle_EveryTableIsBundledOrHasAReasonNotToBe makes a new table fail here until its author
 // decides whether the Project bundle carries it: a table silently missing from bundleTables would
 // make exported Projects lose data.
 func TestBundle_EveryTableIsBundledOrHasAReasonNotToBe(t *testing.T) {
-	db, err := Open(context.Background(), filepath.Join(t.TempDir(), "mam.db"), nil)
+	db, err := repository.Open(context.Background(), filepath.Join(t.TempDir(), "mam.db"), nil)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = db.Close() })
 	rows, err := db.Reader().Query(`SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'`)
@@ -43,7 +44,7 @@ func TestBundle_EveryTableIsBundledOrHasAReasonNotToBe(t *testing.T) {
 // TestBundle_NoIDMarksExactlyTheTablesWithoutAnIDColumn keeps checkBundle's "every row has an id"
 // rule honest: a bundled table whose primary key is not "id" must say so.
 func TestBundle_NoIDMarksExactlyTheTablesWithoutAnIDColumn(t *testing.T) {
-	db, err := Open(context.Background(), filepath.Join(t.TempDir(), "mam.db"), nil)
+	db, err := repository.Open(context.Background(), filepath.Join(t.TempDir(), "mam.db"), nil)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = db.Close() })
 	for _, b := range bundleTables {
@@ -57,7 +58,7 @@ func TestBundle_NoIDMarksExactlyTheTablesWithoutAnIDColumn(t *testing.T) {
 // fail here until its author says what the reader decodes it into (bundleJSONColumns) or that any
 // JSON will do (rawJSONColumns): checkBundle refuses a bundle row the readers cannot decode.
 func TestBundle_EveryJSONColumnHasAShapeOrIsKeptRaw(t *testing.T) {
-	db, err := Open(context.Background(), filepath.Join(t.TempDir(), "mam.db"), nil)
+	db, err := repository.Open(context.Background(), filepath.Join(t.TempDir(), "mam.db"), nil)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = db.Close() })
 	jsonColumn := regexp.MustCompile(`json_valid\((\w+)\)`)
@@ -81,7 +82,7 @@ func TestBundle_EveryJSONColumnHasAShapeOrIsKeptRaw(t *testing.T) {
 // the readers fail to Scan) is refused, and a number is not. A new numeric column is covered
 // without being listed.
 func TestBundle_EveryNumericColumnRefusesText(t *testing.T) {
-	db, err := Open(context.Background(), filepath.Join(t.TempDir(), "mam.db"), nil)
+	db, err := repository.Open(context.Background(), filepath.Join(t.TempDir(), "mam.db"), nil)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = db.Close() })
 	numeric := 0
@@ -101,11 +102,11 @@ func TestBundle_EveryNumericColumnRefusesText(t *testing.T) {
 			}
 			numeric++
 			for _, bad := range []any{"x", "1", true, json.Number("1e999")} {
-				assert.ErrorIs(t, checkBundleColumnTypes(b.name, declared, domain.BundleRow{column: bad}), ErrInvalidBundle, "%s.%s (%s) = %#v", b.name, column, typ, bad)
+				assert.ErrorIs(t, checkBundleColumnTypes(b.name, declared, domain.BundleRow{column: bad}), ErrInvalid, "%s.%s (%s) = %#v", b.name, column, typ, bad)
 			}
 			fraction := checkBundleColumnTypes(b.name, declared, domain.BundleRow{column: json.Number("1.5")})
 			if classOf(typ) == integerClass {
-				assert.ErrorIs(t, fraction, ErrInvalidBundle, "%s.%s", b.name, column)
+				assert.ErrorIs(t, fraction, ErrInvalid, "%s.%s", b.name, column)
 			} else {
 				assert.NoError(t, fraction, "%s.%s", b.name, column)
 			}
@@ -120,7 +121,7 @@ func TestBundle_EveryNumericColumnRefusesText(t *testing.T) {
 // bundle; a failure of the database itself (here a cancelled context) is not, so that the caller
 // does not tell the user their data is unreadable.
 func TestInsertBundleTable_OnlyTheBundlesFaultIsInvalidBundle(t *testing.T) {
-	db, err := Open(context.Background(), filepath.Join(t.TempDir(), "mam.db"), nil)
+	db, err := repository.Open(context.Background(), filepath.Join(t.TempDir(), "mam.db"), nil)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = db.Close() })
 	insert := func(ctx context.Context, table domain.BundleTable) error {
@@ -130,14 +131,14 @@ func TestInsertBundleTable_OnlyTheBundlesFaultIsInvalidBundle(t *testing.T) {
 	}
 	// project.mode is CHECKed: the schema refuses the row.
 	refused := domain.BundleTable{Name: "project", Rows: []domain.BundleRow{{"id": "p", "mode": "bogus"}}}
-	assert.ErrorIs(t, insert(context.Background(), refused), ErrInvalidBundle)
-	assert.ErrorIs(t, insert(context.Background(), domain.BundleTable{Name: "project", Rows: []domain.BundleRow{{"nope": "x"}}}), ErrInvalidBundle)
+	assert.ErrorIs(t, insert(context.Background(), refused), ErrInvalid)
+	assert.ErrorIs(t, insert(context.Background(), domain.BundleTable{Name: "project", Rows: []domain.BundleRow{{"nope": "x"}}}), ErrInvalid)
 
 	cancelled, cancel := context.WithCancel(context.Background())
 	cancel()
 	err = insert(cancelled, domain.BundleTable{Name: "project", Rows: []domain.BundleRow{{"id": "p", "mode": "auto"}}})
 	require.Error(t, err)
-	assert.NotErrorIs(t, err, ErrInvalidBundle)
+	assert.NotErrorIs(t, err, ErrInvalid)
 	assert.ErrorIs(t, err, context.Canceled)
-	assert.NotErrorIs(t, insertError("project", context.Canceled), ErrInvalidBundle)
+	assert.NotErrorIs(t, insertError("project", context.Canceled), ErrInvalid)
 }

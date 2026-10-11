@@ -9,13 +9,14 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/generation"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/textutil"
 )
 
 // escalate asks the user for a decision when the Retry Policy stops the loop: an Escalation card,
 // posted at every Confirmation Level.
 func (a *Agent) escalate(ctx context.Context, shot repository.ShotRef, takeID string, res domain.JudgeResult, verdict domain.RetryVerdict) error {
 	text := fmt.Sprintf("Shot %d の Repair を止めました: %s。\n最新の Judge 結果（Take %s）: %s",
-		shot.Shot.OrderIndex+1, verdict.Reason(), domain.ShortID(takeID), Summarize(res))
+		shot.Shot.OrderIndex+1, verdict.Reason(), textutil.ShortID(takeID), Summarize(res))
 	options := []string{
 		"設定で上限を引き上げてから、もう一度 Repair を実行する",
 		"最も良い Take をそのまま採用する",
@@ -51,7 +52,7 @@ func (a *Agent) announceEditLevel(ctx context.Context, shot repository.ShotRef, 
 		ranges = append(ranges, fmt.Sprintf("%s（%s）", is.TimeRange, is.Type))
 	}
 	content := fmt.Sprintf("Shot %d の Take %s は再生成せず、編集で直します（Edit-Level Repair）。該当区間: %s",
-		shot.Shot.OrderIndex+1, domain.ShortID(takeID), strings.Join(ranges, "、"))
+		shot.Shot.OrderIndex+1, textutil.ShortID(takeID), strings.Join(ranges, "、"))
 	if adopted {
 		content += "\nこの Take を採用し、Rough Cut に載せます。"
 	}

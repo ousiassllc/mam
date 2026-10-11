@@ -69,14 +69,14 @@ func scanNoteView(row rowScanner) (domain.NoteView, error) {
 	v.Category, v.Pinned = domain.NoteCategory(category), pinned == 1
 	v.Version.ID, v.Version.NoteID, v.Version.Source = versionID, noteID, domain.NoteSource(versionS)
 	var err error
-	if v.CreatedAt, err = parseTime(createdAt); err != nil {
+	if v.CreatedAt, err = ParseTime(createdAt); err != nil {
 		return v, err
 	}
-	if v.Version.CreatedAt, err = parseTime(versionAt); err != nil {
+	if v.Version.CreatedAt, err = ParseTime(versionAt); err != nil {
 		return v, err
 	}
 	if archived.Valid {
-		t, err := parseTime(archived.String)
+		t, err := ParseTime(archived.String)
 		if err != nil {
 			return v, err
 		}
@@ -119,7 +119,7 @@ func (r *NoteRepository) GetVersion(ctx context.Context, id string, number int) 
 	if err != nil {
 		return domain.NoteView{}, fmt.Errorf("get note version: %w", err)
 	}
-	if v.Version.CreatedAt, err = parseTime(at); err != nil {
+	if v.Version.CreatedAt, err = ParseTime(at); err != nil {
 		return domain.NoteView{}, err
 	}
 	return v, nil
@@ -142,7 +142,7 @@ func (r *NoteRepository) GetWithHistory(ctx context.Context, id string) (domain.
 // ListProject returns every note of the Project, archived ones included, each with its history:
 // pinned first, then the most recently changed first (ErrNotFound for an unknown Project).
 func (r *NoteRepository) ListProject(ctx context.Context, projectID string) ([]domain.NoteView, error) {
-	if err := exists(ctx, r.db.Reader(), `SELECT 1 FROM project WHERE id = ?`, projectID); err != nil {
+	if err := Exists(ctx, r.db.Reader(), `SELECT 1 FROM project WHERE id = ?`, projectID); err != nil {
 		return nil, err
 	}
 	return listNotes(ctx, r.db.Reader(), `n.project_id = ?`, projectID, true)
@@ -151,7 +151,7 @@ func (r *NoteRepository) ListProject(ctx context.Context, projectID string) ([]d
 // ListSeries returns every canonical note of the Series like ListProject (ErrNotFound for an
 // unknown Series).
 func (r *NoteRepository) ListSeries(ctx context.Context, seriesID string) ([]domain.NoteView, error) {
-	if err := exists(ctx, r.db.Reader(), `SELECT 1 FROM series WHERE id = ?`, seriesID); err != nil {
+	if err := Exists(ctx, r.db.Reader(), `SELECT 1 FROM series WHERE id = ?`, seriesID); err != nil {
 		return nil, err
 	}
 	return listNotes(ctx, r.db.Reader(), `n.series_id = ?`, seriesID, true)
@@ -210,7 +210,7 @@ func noteHistories(ctx context.Context, q queryer, where, id string) (map[string
 		if err := rows.Scan(&noteID, &e.Number, &e.Summary, &at); err != nil {
 			return nil, err
 		}
-		if e.CreatedAt, err = parseTime(at); err != nil {
+		if e.CreatedAt, err = ParseTime(at); err != nil {
 			return nil, err
 		}
 		out[noteID] = append(out[noteID], e)

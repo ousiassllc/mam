@@ -61,7 +61,7 @@ func (r *VoiceRepository) List(ctx context.Context, projectID string) ([]domain.
 		if err := rows.Scan(&c.ID, &c.Speaker, &c.Name, &c.VoiceID, &created); err != nil {
 			return nil, fmt.Errorf("scan voice clone: %w", err)
 		}
-		if c.CreatedAt, err = parseTime(created); err != nil {
+		if c.CreatedAt, err = ParseTime(created); err != nil {
 			return nil, err
 		}
 		out = append(out, c)

@@ -1,0 +1,38 @@
+package router_test
+
+import (
+	"context"
+	"net/http"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+// The server holds to the actions it offers (select_url / reject_url): an excluded Take cannot be
+// brought back by a direct POST, and a Take that is already selected or excluded is refused again, so
+// none of them adds a human intervention.
+func TestTakes_RefuseWhatTheyDoNotOfferAndRecordNoIntervention(t *testing.T) {
+	ta := newTakeApp(t)
+	interventions := func() int {
+		var n int
+		require.NoError(t, ta.db.Reader().QueryRowContext(context.Background(), `SELECT COUNT(*) FROM human_intervention`).Scan(&n))
+		return n
+	}
+	require.Equal(t, http.StatusOK, ta.form(http.MethodPost, "/takes/t1/select", nil).Code)
+	require.Equal(t, http.StatusOK, ta.form(http.MethodDelete, "/takes/t2", nil).Code)
+	before := interventions()
+
+	for _, c := range []struct{ method, path string }{
+		{http.MethodPost, "/takes/t2/select"}, // excluded
+		{http.MethodPost, "/takes/t1/select"}, // already selected
+		{http.MethodDelete, "/takes/t2"},      // already excluded
+	} {
+		rec := ta.form(c.method, c.path, nil)
+		assert.Equal(t, http.StatusUnprocessableEntity, rec.Code, c.method+" "+c.path+": "+rec.Body.String())
+	}
+
+	assert.Equal(t, before, interventions())
+	assert.Equal(t, "rejected", ta.statusOf("t2"), "the excluded Take stays excluded")
+	assert.Equal(t, "selected", ta.statusOf("t1"))
+}

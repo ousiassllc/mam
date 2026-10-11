@@ -95,7 +95,7 @@ func (r *EditorRepository) queryReshoots(ctx context.Context, where string, args
 			&q.Kind, &q.Objective, &q.DurationSeconds, &q.Status, &q.AppliedEditTimelineVersionID, &created); err != nil {
 			return nil, fmt.Errorf("scan reshoot request: %w", err)
 		}
-		if q.CreatedAt, err = parseTime(created); err != nil {
+		if q.CreatedAt, err = ParseTime(created); err != nil {
 			return nil, err
 		}
 		out = append(out, q)

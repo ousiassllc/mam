@@ -11,6 +11,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector"
 	"github.com/ousiassllc/mam/backend/internal/agent/editor"
+	"github.com/ousiassllc/mam/backend/internal/bgwork"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/repository"
@@ -66,7 +67,7 @@ type EditorService struct {
 	preview     sync.Map // preview file -> *sync.Mutex
 	// resume is the single worker behind ResumeEditing; missed marks Projects whose Reshoot round
 	// found the stage busy, so the release of the stage wakes the worker again.
-	resume *resumer
+	resume *bgwork.Worker
 	missed sync.Map // project ID -> struct{}
 }
 

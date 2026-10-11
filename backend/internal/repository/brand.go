@@ -21,14 +21,14 @@ type BrandRepository struct {
 // NewBrandRepository returns a BrandRepository backed by db.
 func NewBrandRepository(db *DB) *BrandRepository { return &BrandRepository{db: db, now: time.Now} }
 
-// brandValue is brand_constraint.value.
-type brandValue struct {
+// BrandValue is brand_constraint.value.
+type BrandValue struct {
 	Text string `json:"text"`
 }
 
 // Create registers a constraint of the Project, or returns ErrNotFound when the Project does not exist.
 func (r *BrandRepository) Create(ctx context.Context, c domain.BrandConstraint) (domain.BrandConstraint, error) {
-	raw, err := json.Marshal(brandValue{Text: c.Text})
+	raw, err := json.Marshal(BrandValue{Text: c.Text})
 	if err != nil {
 		return domain.BrandConstraint{}, fmt.Errorf("marshal brand constraint: %w", err)
 	}
@@ -92,12 +92,12 @@ func (r *BrandRepository) List(ctx context.Context, projectID string) (domain.Br
 		if err := rows.Scan(&c.ID, &c.ProjectID, &c.Type, &c.Level, &value, &added); err != nil {
 			return nil, fmt.Errorf("scan brand constraint: %w", err)
 		}
-		var v brandValue
+		var v BrandValue
 		if err := json.Unmarshal([]byte(value), &v); err != nil {
 			return nil, fmt.Errorf("decode brand constraint %s: %w", c.ID, err)
 		}
 		c.Text = v.Text
-		if c.CreatedAt, err = parseTime(added); err != nil {
+		if c.CreatedAt, err = ParseTime(added); err != nil {
 			return nil, err
 		}
 		out = append(out, c)

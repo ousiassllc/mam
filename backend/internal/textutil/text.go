@@ -1,4 +1,6 @@
-package domain
+// Package textutil holds small string helpers shared by the agents and the services (cutting a text
+// to a number of runes, shortening an ID).
+package textutil
 
 import "unicode/utf8"
 
