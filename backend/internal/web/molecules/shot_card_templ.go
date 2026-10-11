@@ -259,8 +259,8 @@ func TakeRow(t domain.Take, selected bool, repairable bool, judgeable bool) temp
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		if t.Status != domain.TakeRejected && t.FilePath != "" {
-			if t.Status != domain.TakeSelected {
+		if t.Usable() {
+			if t.Selectable() {
 				templ_7745c5c3_Err = atoms.LinkButton("選択", templ.Attributes{
 					"type":      "button",
 					"hx-post":   takeActionURL(t.ID, "select"),

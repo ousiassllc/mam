@@ -71,6 +71,14 @@ func ScoreTake(issues []JudgeIssue) TakeScores {
 	return TakeScores{Product: score("product"), Acting: score("acting"), Camera: score("camera"), Continuity: score("continuity")}
 }
 
+// Usable tells whether the Take can still be acted on: it is not rejected and its file was not
+// archived. It is the rule behind every Take action (select, reject, Partial Take Use), in the API,
+// in the pages and in the repository that refuses what it does not allow.
+func (t Take) Usable() bool { return t.Status != TakeRejected && t.FilePath != "" }
+
+// Selectable tells whether the Take can be selected: it is usable and not already the selected one.
+func (t Take) Selectable() bool { return t.Usable() && t.Status != TakeSelected }
+
 // TakeInfo is a Take with what the comparison of the Takes of a Shot shows.
 type TakeInfo struct {
 	Take
@@ -86,13 +94,6 @@ type TakeInfo struct {
 	// Adopted is true for the Take the Shot uses (shot.selected_take_id).
 	Adopted bool
 }
-
-// Usable tells whether the Take can still be acted on: it is not rejected and its file was not
-// archived. It is the rule behind every Take action the API offers (select, reject, Partial Take Use).
-func (t TakeInfo) Usable() bool { return t.Status != TakeRejected && t.FilePath != "" }
-
-// Selectable tells whether the Take can be selected: it is usable and not already the selected one.
-func (t TakeInfo) Selectable() bool { return t.Usable() && t.Status != TakeSelected }
 
 // ResolutionHeight is the number of lines of "1080p", "2160p" or "4K" (0 when unknown).
 func ResolutionHeight(res string) int {
