@@ -5,8 +5,9 @@
 TEMPL_VERSION := $(shell go list -m -f '{{.Version}}' github.com/a-h/templ)
 AIR_VERSION ?= v1.64.5
 GOLANGCI_LINT_VERSION ?= v2.12.2
+LINTERLY_VERSION ?= v0.3.3
 
-.PHONY: help dev build generate assets test test-go test-static lint lint-go lint-static fmt fmt-check tools clean
+.PHONY: help dev build generate assets test test-go test-static test-scripts lint lint-go lint-static lint-lines linterly-baseline fmt fmt-check tools clean
 
 help: ## show targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -33,13 +34,16 @@ generate: ## templ generate
 assets: static/node_modules ## build front-end assets into static/src/dist
 	npm run build --prefix static
 
-test: test-go test-static ## run every test
+test: test-go test-static test-scripts ## run every test
 
 test-go: generate ## Go tests
 	go test -race -timeout 30m ./...
 
 test-static: static/node_modules ## front-end unit tests
 	npm test --prefix static
+
+test-scripts: ## shell script tests
+	bash scripts/linterly-baseline_test.sh
 
 lint: lint-go lint-static ## golangci-lint + tsc
 
@@ -49,6 +53,12 @@ lint-go: generate
 lint-static: static/node_modules
 	npm run typecheck --prefix static
 
+lint-lines: ## fail when a file / directory got over the linterly line limit beyond .linterly-baseline
+	./scripts/linterly-baseline.sh check
+
+linterly-baseline: ## rewrite .linterly-baseline from the current linterly result (after splitting files)
+	./scripts/linterly-baseline.sh update
+
 fmt: ## format Go code and templ templates
 	templ fmt backend
 	golangci-lint fmt ./...
@@ -57,10 +67,11 @@ fmt-check: ## fail when Go code or templates are not formatted
 	@test -z "$$(gofmt -l backend static)" || (gofmt -l backend static; exit 1)
 	@templ fmt -fail backend
 
-tools: ## install the pinned dev tools (templ, air, golangci-lint) and the npm deps
+tools: ## install the pinned dev tools (templ, air, golangci-lint, linterly) and the npm deps
 	go install github.com/a-h/templ/cmd/templ@$(TEMPL_VERSION)
 	go install github.com/air-verse/air@$(AIR_VERSION)
 	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
+	go install github.com/ousiassllc/linterly/cmd/linterly@$(LINTERLY_VERSION)
 	$(MAKE) --no-print-directory static/node_modules
 
 clean:
