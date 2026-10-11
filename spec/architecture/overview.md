@@ -94,8 +94,9 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 ├── .linterly-baseline      # 行数上限（300 行 / 2000 行）を超えている既存のファイル・ディレクトリの行数。CI は悪化だけを止める（環境構築 spec の Linterly 節）
 ├── lefthook.yml            # Git フック。pre-commit は linterly（scripts/linterly-staged.sh 経由）・fmt-check（Go / templ / TS）・lint-go・lint-static（tsc + Biome lint）、pre-push は build/vet と make test
 ├── .github/
+│   ├── dependabot.yml      # 依存の更新 PR を週次で作る（gomod・npm（`/static`）・github-actions。環境構築 spec の CI 節）
 │   └── workflows/
-│       ├── ci.yml          # CI（lint・テスト・ビルド・行数上限の基準値チェック。環境構築 spec の CI 節）
+│       ├── ci.yml          # CI（lint・脆弱性検査（`make vuln`）・テスト・ビルド・行数上限の基準値チェック。環境構築 spec の CI 節）
 │       └── release.yml     # タグ push で Windows インストーラーをビルドして GitHub Releases へ公開（§11）
 ├── scripts/
 │   ├── build.sh            # 本番ビルド（templ → esbuild/tailwind → go build）。`--all` で全プラットフォーム
@@ -145,7 +146,7 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 │       │   ├── planning/   # 企画〜Shot 計画の Agent（Producer/Writer/Director/Storyboard）。llm.Completer 経由で推論し、構造化出力を検証する
 │       │   ├── orchestrator/ # Orchestrator Agent。Core State Machine の遷移を永続化し、plan ジョブとして Producer → Writer →（承認）→ Director → Storyboard を実行する
 │       │   └── jobqueue/   # 内部ジョブキュー（goroutineワーカー。ジョブは job テーブルに永続化し、再起動時に復旧）
-│       ├── service/        # アプリケーションサービス層（agentを利用しユースケースを実装）。services.go が DI ルート
+│       ├── service/        # アプリケーションサービス層（agentを利用しユースケースを実装）。services.go が DI ルート、wiring.go が機能ごとの `wire*`（plan → judge → generation → repair → director → continuity → editor の順）とジョブキューの `OnChange` を最後に 1 つだけ登録する `watchJobs`
 │       ├── router/         # ページ(pages.go)/アクション(actions.go)/API(api.go, Huma)ルート定義（`router/stack/` はミドルウェア〜ルート全体の配線だけを確かめるテスト専用）
 │       └── web/
 │           ├── handler/    # projects.go, chat.go, scenes.go, generation.go, take.go, director.go,
@@ -199,7 +200,7 @@ handler → service → agent → repository → domain
 - `service/`: `domain/`, `repository/`, `agent/` に依存。ユースケース単位のオーケストレーション
 - `web/handler/`: `service/`, `domain/` に依存。`repository/`・`agent/` を直接使わない
 - `router/`: `handler/` を参照してルートを定義
-- `service/Services`（`service/services.go`）が DI ルート。`internal/app`（`app.Run` → `buildServices`）がインフラ（DB・ジョブキュー・認証情報ストア・ロガー）を生成して `service.New(Deps)` に渡し、`router.New(services, opts)` が `services` を各ルート登録関数へ渡す。新機能は「サービス追加 → `Services` にフィールド追加 → ルートを `pages.go`/`actions.go`/`api.go` に追加」の追記だけで組み込める
+- `service/Services`（`service/services.go`）が DI ルート。`internal/app`（`app.Run` → `buildServices`）がインフラ（DB・ジョブキュー・認証情報ストア・ロガー）を生成して `service.New(Deps)` に渡し、`router.New(services, opts)` が `services` を各ルート登録関数へ渡す。`service.New` は `newWiring(deps)` を作り、`service/wiring.go` の `wirePlan` → `wireJudge` → `wireGeneration` → `wireRepair` → `wireDirector` → `wireContinuity` → `wireEditor` → `watchJobs` をこの順に呼ぶ。各 `wire*` は前の `wire*` が設定したものだけを読み、ジョブキューの `OnChange` は `watchJobs` が最後に 1 つだけ登録する（呼び出すエージェントが揃ってから。`Queue` の開始後に登録すると panic する）。新機能は「サービス追加 → Reasoning LLM・ジョブキュー・Model Adapter が要るなら、前提のエージェントより後ろになる `wire*`（無ければ新設）に組み込んで順序の制約を守る → ジョブ状態の変化でチャットを更新するなら `watchJobs` から呼ぶ → `Services` にフィールド追加 → ルートを `pages.go`/`actions.go`/`api.go` に追加」で組み込む。インフラに依存しないサービスは `Services` へのフィールド追加と `wiring.services` の 1 行で済む
 - レイヤー依存ルールは `.golangci.yml` の depguard で機械的に検査する（違反はlintエラー）
 
 ## 6. 起動方式（ローカル Web サーバー）
@@ -274,7 +275,7 @@ dev:
 - `make dev` は `MAM_STATIC_DIR=static/src/dist` を設定し、再ビルドのたびにバイナリを作り直さずディスク上のアセットを配信する
 - 本番ビルド: `make build`（`scripts/build.sh`）が `templ generate` → `esbuild`（minify） → `tailwind`（minify） → `go build`（`go:embed`で静的アセット同梱、`CGO_ENABLED=0`）を一括実行し `bin/mam` を生成する（`make build-all` = `scripts/build.sh --all` は windows / darwin / linux × amd64 / arm64 の全プラットフォームを `bin/mam-<os>-<arch>` に生成する）。SQLite は純 Go ドライバ（modernc.org/sqlite）のため各 OS/arch へクロスコンパイル可能
 - Windows 版: `scripts/package-windows.sh` が上の本番ビルドと同じフロントエンド工程の後に `wails3 package GOOS=windows` を実行し、ポータブル `mam.exe` と NSIS インストーラーを作る（`desktop.md` §4）。ローカルの確認は Windows 上で行う（Wails v3 の `wails3` CLI と NSIS（`makensis`）が必要）
-- その他のターゲット: `make test`（Go `-race` + フロントの vitest + web-test-runner の Lit コンポーネントテスト（Chrome が必要）+ `make test-scripts`（`bash scripts/linterly-baseline_test.sh`。行数基準値のスクリプトのテスト。`jq` が要る））、`make lint`（golangci-lint + `tsc --noEmit` + Biome lint）、`make lint-lines`（`scripts/linterly-baseline.sh check`。`.linterly-baseline` より悪化した行数超過があれば失敗する。CI の「Line limit (no regression)」ステップ）、`make linterly-baseline`（同 `update`。基準値の書き換え。`spec/environment/setup.md` の Linterly 節）、`make fmt` / `make fmt-check`（Go・templ に加えてフロントの TypeScript を Biome で整形・検査）
+- その他のターゲット: `make test`（Go `-race` + フロントの vitest + web-test-runner の Lit コンポーネントテスト（Chrome が必要）+ `make test-scripts`（`bash scripts/linterly-baseline_test.sh`。行数基準値のスクリプトのテスト。`jq` が要る））、`make lint`（golangci-lint + `tsc --noEmit` + Biome lint）、`make vuln`（`govulncheck ./...`。コードから到達できる既知の脆弱性（標準ライブラリ・依存モジュール）があれば失敗する。`make tools` が入れる `govulncheck` が要る。CI の「Vulnerability check」ステップ。`spec/environment/setup.md` の CI 節）、`make lint-lines`（`scripts/linterly-baseline.sh check`。`.linterly-baseline` より悪化した行数超過があれば失敗する。CI の「Line limit (no regression)」ステップ）、`make linterly-baseline`（同 `update`。基準値の書き換え。`spec/environment/setup.md` の Linterly 節）、`make fmt` / `make fmt-check`（Go・templ に加えてフロントの TypeScript を Biome で整形・検査）
 
 ## 10. テスト戦略
 
@@ -321,3 +322,5 @@ Windows では、ブラウザ版と同じ `127.0.0.1` のサーバーを `intern
 | 1.21 | 2026-10-11 | §5 の構成図に `textutil/`・`bgwork/`・`repository/bundle/`・`router/stack/` を追加した | Issue #496・#500・#501。超過パッケージ（`domain/`・`service/`・`repository/`）へ足したヘルパー・panic 回収・バンドル処理を新しいパッケージへ置き、行数ラチェット（`.linterly-baseline`）を悪化させないため |
 | 1.22 | 2026-10-11 | §9 の「その他のターゲット」に、`make test` が `make test-scripts`（`scripts/linterly-baseline_test.sh`）も実行すること、`make lint-lines` / `make linterly-baseline`（行数の基準値）を追記。§10 のテスト戦略の表にシェルスクリプトの層を追加 | Issue #511。#495 の `test-scripts`・`lint-lines` を `spec/environment/setup.md`・`README.md` は反映済みなのに、同じ `make` ターゲットを列挙する §9 だけが反映しておらず、`make test` がシェルスクリプトのテストを含まず、行数の悪化を止めるターゲットも無いように読めたため |
 | 1.23 | 2026-10-11 | §7 に、チャット画面の再取得 URL（全履歴・新着・カード 1 枚）はサーバーが `data-messages-url` / `data-next-url` / `data-card-url` で注入し、`chat.ts` は組み立てずに読むだけであることを追記 | Issue #513。#507 で URL の組み立てをクライアントからサーバーへ移した契約が、`spec/components/overview.md` §5 の `thread.ts` の行にしか書かれていなかったため。実装は `chat_workspace.templ`・`message_frame.templ`・`static/src/chat.ts` |
+| 1.24 | 2026-10-12 | §5 の構成図に `.github/dependabot.yml` を足し、`ci.yml` の説明に脆弱性検査（`make vuln`）を加えた。§9 の「その他のターゲット」に `make vuln` を追加 | Issue #525。#523 が `make vuln`・CI の「Vulnerability check」ステップ・`dependabot.yml` を `spec/environment/setup.md` と `README.md` には反映したのに、同じ構成・ターゲットを列挙する overview.md だけが反映していなかった（#511 と同じ種類の抜け） |
+| 1.25 | 2026-10-12 | §5 の構成図の `service/` に `wiring.go`（機能ごとの `wire*` と、`OnChange` を最後に登録する `watchJobs`）を足し、DI ルートの項の新機能を組み込む手順を「`Services` にフィールドを足すだけ」から `wire*` への組み込みと順序の制約を含む手順に直した | Issue #526。#522 が `service.New` を `wiring.go` の `wire*` に分け、`OnChange` の登録を `watchJobs` の 1 か所にまとめたのに、構成図の `service/` の説明と「追記だけで組み込める」という手順は更新されていなかった。実装は `backend/internal/service/wiring.go`・`services.go` |
