@@ -108,7 +108,7 @@ func getReferenceItem(ctx context.Context, q queryer, projectID, id string) (dom
 // Add registers an uploaded image: the asset (type reference) and its Library entry are written
 // together. An unknown Project is ErrNotFound. item.ID and item.AssetID are set by the caller.
 func (r *ReferenceRepository) Add(ctx context.Context, item domain.ReferenceItem, asset domain.Asset) error {
-	now := formatTime(r.now())
+	now := FormatTime(r.now())
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		if err := projectExists(ctx, tx, item.ProjectID); err != nil {
 			return err

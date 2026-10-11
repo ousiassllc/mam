@@ -36,7 +36,7 @@ func NewSeriesRepository(db *DB) *SeriesRepository {
 // unknown Project is ErrNotFound; one that already belongs to a Series is ErrConflict.
 func (r *SeriesRepository) Create(ctx context.Context, name, fromProjectID string) (domain.Series, error) {
 	id := domain.NewID()
-	now := formatTime(r.now())
+	now := FormatTime(r.now())
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		var style, styleAsset string
 		if fromProjectID != "" {

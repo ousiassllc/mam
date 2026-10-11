@@ -39,7 +39,7 @@ func (r *BrandRepository) Create(ctx context.Context, c domain.BrandConstraint) 
 		}
 		_, err := tx.ExecContext(ctx,
 			`INSERT INTO brand_constraint (id, project_id, type, enforcement_level, value, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
-			c.ID, c.ProjectID, c.Type, c.Level, string(raw), formatTime(c.CreatedAt))
+			c.ID, c.ProjectID, c.Type, c.Level, string(raw), FormatTime(c.CreatedAt))
 		return err
 	})
 	if err != nil {

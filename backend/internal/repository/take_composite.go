@@ -68,7 +68,7 @@ func (r *TakeRepository) CreateComposite(ctx context.Context, nc NewComposite) (
 		if err != nil {
 			return err
 		}
-		now := formatTime(r.now())
+		now := FormatTime(r.now())
 		if err := insertAsset(ctx, tx, nc.Asset, now); err != nil {
 			return err
 		}

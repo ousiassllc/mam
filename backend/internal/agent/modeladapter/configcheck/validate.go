@@ -1,4 +1,7 @@
-package modeladapter
+// Package configcheck checks a modeladapter.Config: every route names a model that has an adapter
+// and settings, and the numbers are sane. It sits beside modeladapter (which only reads the
+// settings) so that the package, already over the line limit, does not grow.
+package configcheck
 
 import (
 	"errors"
@@ -6,28 +9,42 @@ import (
 	"maps"
 	"slices"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
+
+// Load is modeladapter.LoadConfig followed by Validate: the Config of the settings file, or an
+// error that says what is wrong with it. An empty path selects the (valid) defaults.
+func Load(path string) (modeladapter.Config, error) {
+	cfg, err := modeladapter.LoadConfig(path)
+	if err != nil {
+		return modeladapter.Config{}, err
+	}
+	if err := Validate(cfg); err != nil {
+		return modeladapter.Config{}, fmt.Errorf("model config %s: %w", path, err)
+	}
+	return cfg, nil
+}
 
 // Validate checks that every route names a model that has an adapter and settings, that video
 // targets use a resolution the model supports and that the numbers are positive. Entries of a map
 // are checked in key order, so the joined error lists the problems in the same order on every call.
-func (c Config) Validate() error {
+func Validate(c modeladapter.Config) error {
 	var errs []error
-	for _, check := range []func() []error{
-		c.validateVendors, c.validateModels, c.validateImageRoutes,
-		c.validatePolicies, c.validateRouting, c.validateRetry,
+	for _, check := range []func(modeladapter.Config) []error{
+		validateVendors, validateModels, validateImageRoutes,
+		validatePolicies, validateRouting, validateRetry,
 	} {
-		errs = append(errs, check()...)
+		errs = append(errs, check(c)...)
 	}
 	return errors.Join(errs...)
 }
 
-func (c Config) validateVendors() []error {
+func validateVendors(c modeladapter.Config) []error {
 	var errs []error
 	for _, v := range slices.Sorted(maps.Keys(c.Vendors)) {
 		vc := c.Vendors[v]
-		if !slices.Contains(Vendors(), v) {
+		if !slices.Contains(modeladapter.Vendors(), v) {
 			errs = append(errs, fmt.Errorf("vendor %q is unknown", v))
 		}
 		if vc.BaseURL == "" || vc.MaxConcurrency <= 0 || vc.TimeoutSeconds <= 0 {
@@ -39,10 +56,10 @@ func (c Config) validateVendors() []error {
 
 // validateModels also catches a typo in the key of a map entry, which would otherwise change
 // nothing without a word.
-func (c Config) validateModels() []error {
+func validateModels(c modeladapter.Config) []error {
 	var errs []error
 	for _, m := range slices.Sorted(maps.Keys(c.Models)) {
-		caps, video := Capabilities(m)
+		caps, video := modeladapter.Capabilities(m)
 		if !slices.Contains(domain.ImageModels(), m) && !video {
 			errs = append(errs, fmt.Errorf("models: %q is not an image or video model", m))
 		}
@@ -55,26 +72,26 @@ func (c Config) validateModels() []error {
 	return errs
 }
 
-func (c Config) validateImageRoutes() []error {
+func validateImageRoutes(c modeladapter.Config) []error {
 	var errs []error
 	for _, p := range slices.Sorted(maps.Keys(c.Images)) {
-		if !slices.Contains(ImagePurposes(), p) {
+		if !slices.Contains(modeladapter.ImagePurposes(), p) {
 			errs = append(errs, fmt.Errorf("images: %q is not an image purpose", p))
 		}
 	}
-	for _, p := range ImagePurposes() {
+	for _, p := range modeladapter.ImagePurposes() {
 		r, ok := c.Images[p]
 		if !ok {
 			errs = append(errs, fmt.Errorf("images: no route for %s", p))
 			continue
 		}
-		errs = append(errs, c.checkImageTarget("images "+string(p)+" primary", r.Primary)...)
-		errs = append(errs, c.checkImageTarget("images "+string(p)+" fallback", r.Fallback)...)
+		errs = append(errs, checkImageTarget(c, "images "+string(p)+" primary", r.Primary)...)
+		errs = append(errs, checkImageTarget(c, "images "+string(p)+" fallback", r.Fallback)...)
 	}
 	return errs
 }
 
-func (c Config) validatePolicies() []error {
+func validatePolicies(c modeladapter.Config) []error {
 	var errs []error
 	for _, q := range slices.Sorted(maps.Keys(c.Policies)) {
 		if !q.Valid() {
@@ -90,13 +107,13 @@ func (c Config) validatePolicies() []error {
 		if r.Takes <= 0 {
 			errs = append(errs, fmt.Errorf("policies %s: takes must be positive", q))
 		}
-		errs = append(errs, c.checkVideoTarget("policies "+string(q)+" primary", r.Primary)...)
-		errs = append(errs, c.checkVideoTarget("policies "+string(q)+" fallback", r.Fallback)...)
+		errs = append(errs, checkVideoTarget(c, "policies "+string(q)+" primary", r.Primary)...)
+		errs = append(errs, checkVideoTarget(c, "policies "+string(q)+" fallback", r.Fallback)...)
 	}
 	return errs
 }
 
-func (c Config) validateRouting() []error {
+func validateRouting(c modeladapter.Config) []error {
 	var errs []error
 	for _, q := range slices.Sorted(maps.Keys(c.Routing.Weights)) {
 		if !q.Valid() {
@@ -110,7 +127,7 @@ func (c Config) validateRouting() []error {
 	}
 	for _, q := range domain.QualityPolicies() {
 		for i, t := range c.Routing.Candidates[q] {
-			errs = append(errs, c.checkVideoTarget(fmt.Sprintf("routing candidates %s[%d]", q, i), t)...)
+			errs = append(errs, checkVideoTarget(c, fmt.Sprintf("routing candidates %s[%d]", q, i), t)...)
 		}
 		w := c.Routing.Weights[q]
 		if w.Quality < 0 || w.Cost < 0 || w.Fit < 0 || w.Quality+w.Cost+w.Fit <= 0 {
@@ -123,7 +140,7 @@ func (c Config) validateRouting() []error {
 	return errs
 }
 
-func (c Config) validateRetry() []error {
+func validateRetry(c modeladapter.Config) []error {
 	if c.Retry.MaxAttempts <= 0 || c.Retry.BaseDelayMillis <= 0 || c.Retry.MaxDelayMillis < c.Retry.BaseDelayMillis ||
 		c.Breaker.FailureThreshold <= 0 || c.Breaker.OpenSeconds <= 0 {
 		return []error{errors.New("retry and breaker settings must be positive (max_delay_ms >= base_delay_ms)")}
@@ -132,7 +149,7 @@ func (c Config) validateRetry() []error {
 }
 
 // checkImageTarget checks one image model of a route; where names the route in the messages.
-func (c Config) checkImageTarget(where string, t ImageTarget) []error {
+func checkImageTarget(c modeladapter.Config, where string, t modeladapter.ImageTarget) []error {
 	var errs []error
 	mc, ok := c.Models[t.Model]
 	if !slices.Contains(domain.ImageModels(), t.Model) || !ok || mc.Model == "" {
@@ -141,13 +158,13 @@ func (c Config) checkImageTarget(where string, t ImageTarget) []error {
 	if t.Fast && mc.FastModel == "" {
 		errs = append(errs, fmt.Errorf("%s: %q has no fast_model", where, t.Model))
 	}
-	return append(errs, c.checkVendorSettings(where, t.Model)...)
+	return append(errs, checkVendorSettings(c, where, t.Model)...)
 }
 
 // checkVideoTarget checks one video model at one resolution; where names the route in the messages.
-func (c Config) checkVideoTarget(where string, t VideoTarget) []error {
+func checkVideoTarget(c modeladapter.Config, where string, t modeladapter.VideoTarget) []error {
 	var errs []error
-	caps, ok := Capabilities(t.Model)
+	caps, ok := modeladapter.Capabilities(t.Model)
 	mc := c.Models[t.Model]
 	switch {
 	case !ok || mc.Model == "":
@@ -157,12 +174,12 @@ func (c Config) checkVideoTarget(where string, t VideoTarget) []error {
 	case mc.CostPerSecond[t.Resolution] <= 0:
 		errs = append(errs, fmt.Errorf("%s: no cost_per_second_usd for %s at %s", where, t.Model, t.Resolution))
 	}
-	return append(errs, c.checkVendorSettings(where, t.Model)...)
+	return append(errs, checkVendorSettings(c, where, t.Model)...)
 }
 
-func (c Config) checkVendorSettings(where string, m domain.ModelName) []error {
-	if _, ok := c.Vendors[VendorOf(m)]; !ok {
-		return []error{fmt.Errorf("%s: no vendor settings for %q", where, VendorOf(m))}
+func checkVendorSettings(c modeladapter.Config, where string, m domain.ModelName) []error {
+	if _, ok := c.Vendors[modeladapter.VendorOf(m)]; !ok {
+		return []error{fmt.Errorf("%s: no vendor settings for %q", where, modeladapter.VendorOf(m))}
 	}
 	return nil
 }

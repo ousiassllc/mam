@@ -148,8 +148,7 @@ func TestCostSummary_ShowsCostByShotAfterGenerationAndTheBudgetBlocksWith402(t *
 	assert.Contains(t, rec.Body.String(), "予算上限")
 
 	require.Equal(t, http.StatusOK, g.form(http.MethodPut, "/projects/"+g.project+"/budget", url.Values{"project_budget": {"10"}}).Code)
-	require.Equal(t, http.StatusAccepted, g.form(http.MethodPost, "/shots/"+g.shotID+"/generate", nil).Code)
-	g.waitTakes(3)
+	g.generateTakes()
 
 	after := g.get("/projects/"+g.project+"/cost-summary", true).Body.String()
 	assert.Contains(t, after, `data-testid="project-estimated">$0.960<`, "3 Takes x 4 s x 0.08 USD/s")
@@ -162,18 +161,7 @@ func TestCostSummary_ShowsCostByShotAfterGenerationAndTheBudgetBlocksWith402(t *
 
 func TestStorage_ArchiveEndpointsFreeTakesAndRefuseTheSelectedOne(t *testing.T) {
 	g := newGenApp(t, true)
-	require.Equal(t, http.StatusAccepted, g.form(http.MethodPost, "/shots/"+g.shotID+"/generate", nil).Code)
-	g.waitTakes(3)
-	rows, err := g.db.Reader().Query(`SELECT id FROM take ORDER BY id`)
-	require.NoError(t, err)
-	var ids []string
-	for rows.Next() {
-		var id string
-		require.NoError(t, rows.Scan(&id))
-		ids = append(ids, id)
-	}
-	require.NoError(t, rows.Close())
-	require.Len(t, ids, 3)
+	ids := g.generateTakes()
 	selectTake(t, g, ids[0])
 
 	panel := g.get("/projects/"+g.project+"/settings", false).Body.String()
@@ -196,23 +184,12 @@ func TestStorage_ArchiveEndpointsFreeTakesAndRefuseTheSelectedOne(t *testing.T) 
 
 func TestStorage_OffersArchiveOnlyForTakesTheServerWouldArchive(t *testing.T) {
 	g := newGenApp(t, true)
-	require.Equal(t, http.StatusAccepted, g.form(http.MethodPost, "/shots/"+g.shotID+"/generate", nil).Code)
-	g.waitTakes(3)
-	rows, err := g.db.Reader().Query(`SELECT id FROM take ORDER BY id`)
-	require.NoError(t, err)
-	var ids []string
-	for rows.Next() {
-		var id string
-		require.NoError(t, rows.Scan(&id))
-		ids = append(ids, id)
-	}
-	require.NoError(t, rows.Close())
-	require.Len(t, ids, 3)
+	ids := g.generateTakes()
 	used, chosen, free := ids[0], ids[1], ids[2]
 
 	// The Rough Cut used Take A, then Take B was chosen: A is no longer Selected, but the Edit
 	// Timeline still points at it.
-	_, err = repository.NewEditorRepository(g.db).SaveEditTimeline(context.Background(), g.project, "", "",
+	_, err := repository.NewEditorRepository(g.db).SaveEditTimeline(context.Background(), g.project, "", "",
 		domain.EditTimeline{Clips: []domain.EditClip{{ShotID: g.shotID, TakeID: used, Out: 1}}})
 	require.NoError(t, err)
 	selectTake(t, g, chosen)
@@ -232,18 +209,7 @@ func TestStorage_OffersArchiveOnlyForTakesTheServerWouldArchive(t *testing.T) {
 
 func TestStorage_ATakeWhoseStoredPathLeavesTheAssetsDirectoryIsNeitherServedNorDeleted(t *testing.T) {
 	g := newGenApp(t, true)
-	require.Equal(t, http.StatusAccepted, g.form(http.MethodPost, "/shots/"+g.shotID+"/generate", nil).Code)
-	g.waitTakes(3)
-	rows, err := g.db.Reader().Query(`SELECT id FROM take ORDER BY id`)
-	require.NoError(t, err)
-	var ids []string
-	for rows.Next() {
-		var id string
-		require.NoError(t, rows.Scan(&id))
-		ids = append(ids, id)
-	}
-	require.NoError(t, rows.Close())
-	require.Len(t, ids, 3)
+	ids := g.generateTakes()
 	selectTake(t, g, ids[0])
 
 	outside := filepath.Join(filepath.Dir(g.assets), "outside")

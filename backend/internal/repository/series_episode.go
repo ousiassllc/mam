@@ -22,7 +22,7 @@ import (
 // is ErrNotFound and nothing is created).
 func (r *SeriesRepository) CreateEpisode(ctx context.Context, seriesID, previousEpisodeID, brandTemplateID string, p domain.Project) (int, error) {
 	var number int
-	now := formatTime(r.now())
+	now := FormatTime(r.now())
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		canon, err := readCanon(ctx, tx, seriesID)
 		if err != nil {

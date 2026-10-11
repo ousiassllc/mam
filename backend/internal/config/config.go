@@ -30,7 +30,7 @@ type Config struct {
 	// LLMConfigPath is a JSON file overriding the Reasoning LLM Adapter routes (agent.llm.LoadConfig);
 	// empty selects the built-in assignment of spec/architecture/model-adapters.md §2.
 	LLMConfigPath string
-	// ModelConfigPath is a JSON file overriding the Model Adapter setting (agent.modeladapter.LoadConfig):
+	// ModelConfigPath is a JSON file overriding the Model Adapter setting (agent/modeladapter/configcheck.Load):
 	// image/video model routes, prices, rate limits; empty selects spec/architecture/model-adapters.md §3, §4.
 	ModelConfigPath string
 	// JudgeConfigPath is a JSON file overriding the AI Video Judge setting (agent.judge.LoadConfig):

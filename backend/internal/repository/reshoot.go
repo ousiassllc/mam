@@ -48,7 +48,7 @@ func (r *EditorRepository) CreateReshootRound(ctx context.Context, timelineID st
 				`INSERT INTO reshoot_request (id, project_id, branch_id, edit_timeline_version_id, round, shot_id, after_shot_id, kind, objective, duration_seconds, status, created_at)
 				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 				req.ID, projectID, nullIfEmpty(branchID), timelineID, round, n.ShotID, nullIfEmpty(n.AfterShotID), n.Kind, n.Objective, n.DurationSeconds,
-				req.Status, formatTime(req.CreatedAt)); err != nil {
+				req.Status, FormatTime(req.CreatedAt)); err != nil {
 				return err
 			}
 			out = append(out, req)

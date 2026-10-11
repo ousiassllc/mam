@@ -243,8 +243,7 @@ func TestChat_RegenerateThatBreaksALockConstraintIs403(t *testing.T) {
 
 func TestGenerate_AnExistingSpecThatBreaksALockConstraintIs403BeforeTheJob(t *testing.T) {
 	j := newJudgeApp(t, goodVerdict, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95)
-	require.Equal(t, http.StatusAccepted, j.form(http.MethodPost, "/shots/"+j.shotID+"/generate", nil).Code)
-	j.waitTakes(3)
+	j.generateTakes()
 	j.addBrand("brand-lock", "forbidden_expression", "lock", "runs")
 	jobs := j.count(`SELECT COUNT(*) FROM job WHERE kind = 'generate'`)
 

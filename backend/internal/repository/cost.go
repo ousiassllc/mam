@@ -136,7 +136,7 @@ func (r *CostRepository) AddCost(ctx context.Context, e domain.CostEntry) error 
 		if err := projectExists(ctx, tx, e.ProjectID); err != nil {
 			return err
 		}
-		return insertCost(ctx, tx, e, formatTime(time.Now()))
+		return insertCost(ctx, tx, e, FormatTime(time.Now()))
 	})
 	if errors.Is(err, ErrNotFound) {
 		return err

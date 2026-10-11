@@ -39,7 +39,7 @@ type NewProject struct {
 
 // Create inserts the Project, its Brief, its uploaded Assets and its first messages.
 func (r *ProjectRepository) Create(ctx context.Context, np NewProject) error {
-	now := formatTime(r.now())
+	now := FormatTime(r.now())
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		p := np.Project
 		if err := insertProject(ctx, tx, p, np.Brief, now); err != nil {
@@ -140,7 +140,7 @@ func (r *ProjectRepository) Apply(ctx context.Context, t Turn) error {
 			return fmt.Errorf("marshal checkpoints: %w", err)
 		}
 	}
-	now := formatTime(r.now())
+	now := FormatTime(r.now())
 	err = r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		var exists int
 		if err := tx.QueryRowContext(ctx, `SELECT 1 FROM project WHERE id = ?`, t.ProjectID).Scan(&exists); errors.Is(err, sql.ErrNoRows) {
@@ -304,7 +304,7 @@ func nonNilCheckpoints(c []domain.Checkpoint) []domain.Checkpoint {
 	return c
 }
 
-// ParseTime reads a timestamp in the format the tables store (see formatTime).
+// ParseTime reads a timestamp in the format the tables store (see FormatTime).
 func ParseTime(s string) (time.Time, error) {
 	t, err := time.Parse(timeLayout, s)
 	if err != nil {

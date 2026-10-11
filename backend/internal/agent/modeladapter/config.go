@@ -186,6 +186,7 @@ func DefaultConfig() Config {
 
 // LoadConfig returns DefaultConfig with the settings of the JSON file applied on top. An empty
 // path selects the defaults. Unknown keys are rejected so a typo does not silently change nothing.
+// The result is not checked: configcheck.Load does that.
 func LoadConfig(path string) (Config, error) {
 	cfg := DefaultConfig()
 	if path == "" {
@@ -227,9 +228,6 @@ func LoadConfig(path string) (Config, error) {
 		if err != nil {
 			return Config{}, fmt.Errorf("decode model config %s: %w", path, err)
 		}
-	}
-	if err := cfg.Validate(); err != nil {
-		return Config{}, fmt.Errorf("model config %s: %w", path, err)
 	}
 	return cfg, nil
 }

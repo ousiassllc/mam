@@ -1,4 +1,4 @@
-package repository
+package review
 
 import (
 	"context"
@@ -6,11 +6,12 @@ import (
 	"fmt"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/repository"
 )
 
 // ListItems returns the review requests of the Project, newest first, each with its responses (in
 // import order) and their comments (in the order the reviewer wrote them).
-func (r *ReviewRepository) ListItems(ctx context.Context, projectID string) ([]domain.ReviewItem, error) {
+func (r *Repository) ListItems(ctx context.Context, projectID string) ([]domain.ReviewItem, error) {
 	db := r.db.Reader()
 	requests, err := listReviewRequests(ctx, db, projectID)
 	if err != nil || len(requests) == 0 {
@@ -44,7 +45,7 @@ func listReviewRequests(ctx context.Context, q queryer, projectID string) ([]dom
 		if err := rows.Scan(&req.ID, &req.ProjectID, &req.ExportID, &req.Note, &created); err != nil {
 			return nil, fmt.Errorf("scan review request: %w", err)
 		}
-		if req.CreatedAt, err = ParseTime(created); err != nil {
+		if req.CreatedAt, err = repository.ParseTime(created); err != nil {
 			return nil, err
 		}
 		requests = append(requests, req)
@@ -73,10 +74,10 @@ func listReviewResponses(ctx context.Context, q queryer, projectID string) ([]do
 			return nil, fmt.Errorf("scan review response: %w", err)
 		}
 		s.Decision = domain.ReviewDecision(decision)
-		if s.CreatedAt, err = ParseTime(created); err != nil {
+		if s.CreatedAt, err = repository.ParseTime(created); err != nil {
 			return nil, err
 		}
-		if s.ImportedAt, err = ParseTime(importedAt); err != nil {
+		if s.ImportedAt, err = repository.ParseTime(importedAt); err != nil {
 			return nil, err
 		}
 		responses = append(responses, s)

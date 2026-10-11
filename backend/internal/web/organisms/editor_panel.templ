@@ -36,10 +36,6 @@ type EditorPanelData struct {
 	CanRender bool
 }
 
-func editorAPIURL(projectID, branchID string) string {
-	return paths.APIProject(projectID, "edit-timeline") + branchQuery(branchID)
-}
-
 func branchQuery(branchID string) string {
 	if branchID == "" {
 		return ""
@@ -159,7 +155,7 @@ templ EditorWorkspace(d EditorPanelData) {
 			<h2 class="text-lg font-semibold">編集・音声・書き出し</h2>
 			@ProjectStateBadge(d.Project.State, false)
 		</div>
-		<mam-timeline-editor api-url={ editorAPIURL(d.Project.ID, d.BranchID) }></mam-timeline-editor>
+		<mam-timeline-editor api-url={ paths.APIProject(d.Project.ID, "edit-timeline") + branchQuery(d.BranchID) }></mam-timeline-editor>
 		@EditorActions(d)
 	</section>
 }

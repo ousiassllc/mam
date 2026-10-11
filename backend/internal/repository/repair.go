@@ -35,7 +35,7 @@ func (r *RepairRepository) CreateAction(ctx context.Context, judgeResultID strin
 	err = r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		_, err := tx.ExecContext(ctx,
 			`INSERT INTO repair_action (id, judge_result_id, action_type, instructions, created_at) VALUES (?, ?, ?, ?, ?)`,
-			rec.ID, judgeResultID, action, string(raw), formatTime(rec.CreatedAt))
+			rec.ID, judgeResultID, action, string(raw), FormatTime(rec.CreatedAt))
 		return err
 	})
 	if err != nil {
@@ -206,7 +206,7 @@ func (r *RepairRepository) SaveShadow(ctx context.Context, s domain.RepairShadow
 			                            latency_ms, input_tokens, output_tokens, cost_usd, error, created_at)
 			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			domain.NewID(), s.RepairActionID, s.Model, s.JevChoice, confidence, string(probs), s.DecidedAction, s.Agreed,
-			s.LatencyMillis, s.InputTokens, s.OutputTokens, s.CostUSD, s.Error, formatTime(r.now()))
+			s.LatencyMillis, s.InputTokens, s.OutputTokens, s.CostUSD, s.Error, FormatTime(r.now()))
 		if err != nil {
 			return fmt.Errorf("save repair shadow: %w", err)
 		}

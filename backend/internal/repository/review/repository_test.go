@@ -1,7 +1,8 @@
-package repository_test
+package review_test
 
 import (
 	"context"
+	"database/sql"
 	"testing"
 	"time"
 
@@ -10,19 +11,38 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/repository/review"
+	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 )
 
-func seedReviewRequest(t *testing.T, r *repository.ReviewRepository, projectID, id, exportID string, created time.Time) {
+func ptr[T any](v T) *T { return &v }
+
+func exec(t *testing.T, db *repository.DB, query string, args ...any) error {
+	t.Helper()
+	return db.Write(context.Background(), func(ctx context.Context, tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, query, args...)
+		return err
+	})
+}
+
+func seedProject(t *testing.T, db *repository.DB, id string) {
+	t.Helper()
+	require.NoError(t, exec(t, db,
+		`INSERT INTO project (id, mode, confirmation_level, production_template, quality_policy)
+		 VALUES (?, 'auto', 'key_check', 'product_cm', 'balanced')`, id))
+}
+
+func seedReviewRequest(t *testing.T, r *review.Repository, projectID, id, exportID string, created time.Time) {
 	t.Helper()
 	require.NoError(t, r.CreateRequest(context.Background(), domain.ReviewRequest{
 		ID: id, ProjectID: projectID, ExportID: exportID, Note: "note " + id, CreatedAt: created,
 	}))
 }
 
-func TestReviewRepository_ListItems_OrdersAndAttachesChildren(t *testing.T) {
+func TestRepository_ListItems_OrdersAndAttachesChildren(t *testing.T) {
 	ctx := context.Background()
-	db := openTestDB(t)
-	r := repository.NewReviewRepository(db)
+	db := testdb.Open(t)
+	r := review.New(db)
 	base := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	for _, p := range []string{"p1", "p2"} {
 		seedProject(t, db, p)
@@ -102,10 +122,10 @@ func TestReviewRepository_ListItems_OrdersAndAttachesChildren(t *testing.T) {
 	assert.Empty(t, items[0].Responses[0].Comments)
 }
 
-func TestReviewRepository_ListItems_NoRequests(t *testing.T) {
-	db := openTestDB(t)
+func TestRepository_ListItems_NoRequests(t *testing.T) {
+	db := testdb.Open(t)
 	seedProject(t, db, "p1")
-	items, err := repository.NewReviewRepository(db).ListItems(context.Background(), "p1")
+	items, err := review.New(db).ListItems(context.Background(), "p1")
 	require.NoError(t, err)
 	assert.Empty(t, items)
 }

@@ -73,7 +73,7 @@ func (r *BrandTemplateRepository) SaveFromProject(ctx context.Context, name, pro
 			return ErrEmpty
 		}
 		if _, err := tx.ExecContext(ctx, `INSERT INTO brand_template (id, name, created_at) VALUES (?, ?, ?)`,
-			t.ID, t.Name, formatTime(t.CreatedAt)); err != nil {
+			t.ID, t.Name, FormatTime(t.CreatedAt)); err != nil {
 			return err
 		}
 		for _, c := range constraints {
@@ -163,7 +163,7 @@ func (r *BrandTemplateRepository) Apply(ctx context.Context, templateID, project
 		if err := projectExists(ctx, tx, projectID); err != nil {
 			return err
 		}
-		return applyBrandTemplate(ctx, tx, templateID, projectID, formatTime(r.now()))
+		return applyBrandTemplate(ctx, tx, templateID, projectID, FormatTime(r.now()))
 	})
 	if errors.Is(err, ErrNotFound) || errors.Is(err, ErrTemplateNotFound) {
 		return err

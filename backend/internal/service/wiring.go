@@ -19,6 +19,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/bundle"
+	"github.com/ousiassllc/mam/backend/internal/repository/review"
 )
 
 // repos are the repositories more than one service uses. Each is built once, so that a repository
@@ -302,7 +303,7 @@ func (w *wiring) services() *Services {
 		Branch:    w.branch,
 		Editor:    w.editors,
 		Brand:     &BrandService{core: c, brands: w.r.brands},
-		Review:    &ReviewService{core: c, reviews: repository.NewReviewRepository(d.DB), editors: w.editors.editors, chatSvc: w.chat, now: time.Now},
+		Review:    &ReviewService{core: c, reviews: review.New(d.DB), editors: w.editors.editors, chatSvc: w.chat, now: time.Now},
 		Analytics: &AnalyticsService{c},
 	}
 }

@@ -82,7 +82,7 @@ func (r *EditorRepository) saveEditTimeline(ctx context.Context, projectID, bran
 		}
 		if _, err := tx.ExecContext(ctx,
 			`INSERT INTO edit_timeline_version (id, project_id, branch_id, version_number, timeline, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
-			v.ID, projectID, nullIfEmpty(branchID), v.VersionNumber, string(raw), formatTime(v.CreatedAt)); err != nil {
+			v.ID, projectID, nullIfEmpty(branchID), v.VersionNumber, string(raw), FormatTime(v.CreatedAt)); err != nil {
 			return err
 		}
 		if after != nil {
@@ -118,7 +118,7 @@ const editTimelineSelect = `SELECT id, project_id, COALESCE(branch_id, ''), vers
 // GetEditTimeline returns an Edit Timeline version or ErrNotFound.
 func (r *EditorRepository) GetEditTimeline(ctx context.Context, id string) (domain.EditTimelineVersion, error) {
 	v, err := scanEditTimeline(r.db.Reader().QueryRowContext(ctx, editTimelineSelect+` WHERE id = ?`, id))
-	return v, notFoundOr(err, "get edit timeline")
+	return v, NotFoundOr(err, "get edit timeline")
 }
 
 // LatestEditTimeline returns the newest Edit Timeline version of the trunk of the Project (branchID
@@ -126,11 +126,11 @@ func (r *EditorRepository) GetEditTimeline(ctx context.Context, id string) (doma
 func (r *EditorRepository) LatestEditTimeline(ctx context.Context, projectID, branchID string) (domain.EditTimelineVersion, error) {
 	v, err := scanEditTimeline(r.db.Reader().QueryRowContext(ctx,
 		editTimelineSelect+` WHERE project_id = ? AND branch_id IS ? ORDER BY version_number DESC LIMIT 1`, projectID, nullIfEmpty(branchID)))
-	return v, notFoundOr(err, "get latest edit timeline")
+	return v, NotFoundOr(err, "get latest edit timeline")
 }
 
-// notFoundOr maps sql.ErrNoRows to ErrNotFound and wraps any other error.
-func notFoundOr(err error, what string) error {
+// NotFoundOr maps sql.ErrNoRows to ErrNotFound and wraps any other error.
+func NotFoundOr(err error, what string) error {
 	switch {
 	case err == nil:
 		return nil
@@ -153,7 +153,7 @@ func (r *EditorRepository) SaveEditorJudge(ctx context.Context, editTimelineID s
 	err = r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		_, err := tx.ExecContext(ctx,
 			`INSERT INTO editor_judge_result (id, edit_timeline_version_id, result, findings, created_at) VALUES (?, ?, ?, ?, ?)`,
-			res.ID, editTimelineID, verdict, string(raw), formatTime(res.CreatedAt))
+			res.ID, editTimelineID, verdict, string(raw), FormatTime(res.CreatedAt))
 		return err
 	})
 	if err != nil {
@@ -174,7 +174,7 @@ func (r *EditorRepository) LatestEditorJudge(ctx context.Context, editTimelineID
 		 WHERE edit_timeline_version_id = ? ORDER BY created_at DESC, rowid DESC LIMIT 1`, editTimelineID).
 		Scan(&res.ID, &res.EditTimelineVersionID, &res.Verdict, &raw, &created)
 	if err != nil {
-		return domain.EditorJudgeResult{}, notFoundOr(err, "get editor judge result")
+		return domain.EditorJudgeResult{}, NotFoundOr(err, "get editor judge result")
 	}
 	if err := json.Unmarshal([]byte(raw), &res.Findings); err != nil {
 		return domain.EditorJudgeResult{}, fmt.Errorf("decode findings: %w", err)
@@ -213,7 +213,7 @@ func (r *EditorRepository) SaveAudioTimeline(ctx context.Context, projectID, bra
 		}
 		_, err := tx.ExecContext(ctx,
 			`INSERT INTO audio_timeline_version (id, project_id, branch_id, version_number, timeline, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
-			v.ID, projectID, nullIfEmpty(branchID), v.VersionNumber, string(raw), formatTime(v.CreatedAt))
+			v.ID, projectID, nullIfEmpty(branchID), v.VersionNumber, string(raw), FormatTime(v.CreatedAt))
 		return err
 	})
 	if err != nil {
@@ -249,7 +249,7 @@ const audioTimelineSelect = `SELECT id, project_id, COALESCE(branch_id, ''), ver
 func (r *EditorRepository) LatestAudioTimeline(ctx context.Context, projectID, branchID string) (domain.AudioTimelineVersion, error) {
 	v, err := scanAudioTimeline(r.db.Reader().QueryRowContext(ctx,
 		audioTimelineSelect+` WHERE project_id = ? AND branch_id IS ? ORDER BY version_number DESC LIMIT 1`, projectID, nullIfEmpty(branchID)))
-	return v, notFoundOr(err, "get latest audio timeline")
+	return v, NotFoundOr(err, "get latest audio timeline")
 }
 
 // ListAudioTimelines returns every Audio Timeline version of the trunk of the Project (branchID
@@ -285,7 +285,7 @@ func (r *EditorRepository) SaveFinalQC(ctx context.Context, projectID, audioTime
 	err = r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		_, err := tx.ExecContext(ctx,
 			`INSERT INTO final_qc_result (id, project_id, audio_timeline_version_id, result, findings, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
-			res.ID, projectID, audioTimelineID, verdict, string(raw), formatTime(res.CreatedAt))
+			res.ID, projectID, audioTimelineID, verdict, string(raw), FormatTime(res.CreatedAt))
 		return err
 	})
 	if err != nil {
@@ -306,7 +306,7 @@ func (r *EditorRepository) LatestFinalQC(ctx context.Context, projectID string) 
 		 WHERE project_id = ? ORDER BY created_at DESC, rowid DESC LIMIT 1`, projectID).
 		Scan(&res.ID, &res.ProjectID, &res.AudioTimelineVersionID, &res.Verdict, &raw, &created)
 	if err != nil {
-		return domain.FinalQCResult{}, notFoundOr(err, "get final qc result")
+		return domain.FinalQCResult{}, NotFoundOr(err, "get final qc result")
 	}
 	if err := json.Unmarshal([]byte(raw), &res.Findings); err != nil {
 		return domain.FinalQCResult{}, fmt.Errorf("decode findings: %w", err)
@@ -321,7 +321,7 @@ func (r *EditorRepository) CreateExport(ctx context.Context, e domain.Export) (d
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		_, err := tx.ExecContext(ctx,
 			`INSERT INTO export (id, project_id, branch_id, file_path, resolution, aspect_ratio, codec, exported_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-			e.ID, e.ProjectID, nullIfEmpty(e.BranchID), e.FilePath, e.Resolution, e.AspectRatio, e.Codec, formatTime(e.ExportedAt))
+			e.ID, e.ProjectID, nullIfEmpty(e.BranchID), e.FilePath, e.Resolution, e.AspectRatio, e.Codec, FormatTime(e.ExportedAt))
 		return err
 	})
 	if err != nil {
@@ -348,7 +348,7 @@ const exportSelect = `SELECT id, project_id, COALESCE(branch_id, ''), file_path,
 // GetExport returns an Export of the Project or ErrNotFound.
 func (r *EditorRepository) GetExport(ctx context.Context, projectID, id string) (domain.Export, error) {
 	e, err := scanExport(r.db.Reader().QueryRowContext(ctx, exportSelect+` WHERE project_id = ? AND id = ?`, projectID, id))
-	return e, notFoundOr(err, "get export")
+	return e, NotFoundOr(err, "get export")
 }
 
 // ListExports returns the Exports of the Project, newest first.
