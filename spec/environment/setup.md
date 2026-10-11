@@ -23,7 +23,7 @@ Go（`go.mod` のバージョン）、Node.js（24。CI は `.github/workflows/c
 | `make lint-go` | `make generate` のあと `golangci-lint run ./...`（`.golangci.yml`。`gocyclo` 25 / `gocognit` 50 の複雑度上限を含む。「関数の複雑度」節） |
 | `make lint-static` | `tsc --noEmit`（`npm run typecheck --prefix static`）と `biome lint`（`npm run lint --prefix static`） |
 | `make test` | `make test-go` と `make test-static` と `make test-scripts` |
-| `make test-scripts` | `bash scripts/linterly-baseline_test.sh`（行数基準値のスクリプトのテスト。`jq` が要る） |
+| `make test-scripts` | `bash scripts/linterly-baseline_test.sh`（行数基準値のスクリプトのテスト。`jq` が要る）、`bash scripts/makefile_test.sh`（`Makefile` の全ターゲットが `.PHONY` と `make help` にあるか）、`bash scripts/complexity-ratchet_test.sh`（複雑度の許可リストの判定。`golangci-lint` が要る） |
 | `make test-go` | `make generate` のあと `go test -race -timeout 30m ./...`（`-race` の逐次テストが長く、既定の 10 分では負荷時に足りない） |
 | `make test-static` | `npm test --prefix static` |
 | `make build` | `scripts/build.sh`（templ → esbuild/tailwind minify → go build）。`bin/mam` を作る |
@@ -98,7 +98,7 @@ pre-commit（`scripts/linterly-staged.sh`）は従来どおり、コミット対
 
 `.golangci.yml` の `gocyclo`（循環的複雑度 25 超）と `gocognit`（認知的複雑度 50 超）が、関数単位の複雑度の悪化を `make lint-go`（`make lint`・pre-commit・CI の `Lint` ステップ）で止める。テストコード（`_test.go`）は対象外。
 
-既存の超過関数は `linters.exclusions.rules` の `text`（`of func \`<関数名>\` `）で個別に許可している（`//nolint` は使わない）。許可リストに無い関数が上限を超えれば lint エラーになるので、新規の超過は止まる。一方、許可済みの関数自体がさらに複雑になっても検出できないため、レビューで止める。関数を分割して上限以内になったら、同じ PR で許可エントリを削除する。許可リストが空になったら閾値を `gocyclo` 20 / `gocognit` 40 に下げる（別 Issue）。
+既存の超過関数は `linters.exclusions.rules` で 1 関数ずつ許可している（`//nolint` は使わない）。各エントリは `path`（関数のあるファイル）と `text`（`cyclomatic complexity (<上限+1>..<現在値>) of func \`<関数名>\` ` の形で、複雑度は上限の次の値から現在値までを正規表現で列挙する）の AND で、`linters` も `gocyclo` / `gocognit` のどちらか 1 つに絞る。このため、許可済みの関数がさらに複雑になる（現在値を超える）、同名の関数が別のファイルにある、許可リストに無い関数が上限を超える、のいずれも lint エラーになり、新規の超過と悪化の両方が止まる。関数を分割して複雑度が下がる分には、エントリはそのまま通る。上限以内に戻ったときは golangci-lint が消し忘れを知らせないため、同じ PR で許可エントリを削除する（レビューで確認する）。`scripts/complexity-ratchet_test.sh`（`make test-scripts`）が、許可済みの関数の現在値は通り、現在値を超える・同名の別ファイルの関数・新しい関数は失敗することを、使い捨てのモジュールで検査する。許可リストが空になったら閾値を `gocyclo` 20 / `gocognit` 40 に下げる（別 Issue）。
 
 ## Git Hooks
 
@@ -122,3 +122,4 @@ pre-commit（`scripts/linterly-staged.sh`）は従来どおり、コミット対
 | 1.9 | 2026-10-12 | 「開発ツール」に `govulncheck`（`make tools` が入れる）を加え、CI の実行順を `lint` → `make vuln` → `make lint-lines` に直した | Issue #525。1.8（#523）が `make vuln`・タスク表・脆弱性の段落・README には反映したのに、同じ内容を持つ「開発ツール」の列挙と CI の実行順の段落が更新されておらず、次の段落（`lint` の次に `make vuln`）・`.github/workflows/ci.yml`（`Lint` → `Vulnerability check` → `Line limit (no regression)`）・Makefile の `tools` ターゲットと食い違っていた |
 | 1.10 | 2026-10-12 | `make lint-go` に `gocyclo`（25）・`gocognit`（50）の複雑度上限を追加し、既存の超過関数 5 個を除外ルールで許可する「関数の複雑度」節を追加 | Issue #534。行数は Linterly で縛っていたが関数単位の複雑度は未管理で、CI で悪化を検出できなかった |
 | 1.11 | 2026-10-12 | リリース節を `verify`（main の履歴・CI 成功・`make vuln`）→ `build`（`contents: read`）→ `release`（`contents: write`、`gh release create` だけ）の 3 ジョブ構成に書き換え、NSIS の版固定と `uses:` の SHA 固定を明記 | Issue #541。リリースがタグの push だけで CI を通らず公開され、ビルドの全工程が書き込み権限付きの `GITHUB_TOKEN` を持っていた |
+| 1.12 | 2026-10-12 | 「関数の複雑度」節を、許可エントリが `path` と複雑度の範囲まで固定し、悪化・同名の別関数も止める記述に改め、`make test-scripts` に `scripts/complexity-ratchet_test.sh` と `scripts/makefile_test.sh` を加えた。`make lint-go` / `lint-static` / `clean` の `##` 説明と `.PHONY` の `build-all` を足した | Issue #537・#540・#544。許可リストが関数名だけで一致し、許可済みの関数の悪化も同名の別関数も通していた。`make help` に出ないターゲットと `.PHONY` の抜けもあった |

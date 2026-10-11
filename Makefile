@@ -8,7 +8,7 @@ GOLANGCI_LINT_VERSION ?= v2.12.2
 LINTERLY_VERSION ?= v0.3.3
 GOVULNCHECK_VERSION ?= v1.8.0
 
-.PHONY: help dev build generate assets test test-go test-static test-scripts lint lint-go lint-static lint-lines linterly-baseline vuln fmt fmt-check tools clean
+.PHONY: help dev build build-all generate assets test test-go test-static test-scripts lint lint-go lint-static lint-lines linterly-baseline vuln fmt fmt-check tools clean
 
 help: ## show targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -45,13 +45,15 @@ test-static: static/node_modules ## front-end unit tests
 
 test-scripts: ## shell script tests
 	bash scripts/linterly-baseline_test.sh
+	bash scripts/makefile_test.sh
+	bash scripts/complexity-ratchet_test.sh
 
 lint: lint-go lint-static ## golangci-lint + tsc + biome lint
 
-lint-go: generate
+lint-go: generate ## golangci-lint
 	golangci-lint run ./...
 
-lint-static: static/node_modules
+lint-static: static/node_modules ## tsc + biome lint
 	npm run typecheck --prefix static
 	npm run lint --prefix static
 
@@ -82,5 +84,5 @@ tools: ## install the pinned dev tools (templ, air, golangci-lint, linterly, gov
 	go install golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION)
 	$(MAKE) --no-print-directory static/node_modules
 
-clean:
+clean: ## remove bin, tmp and the built front-end assets
 	rm -rf bin tmp static/src/dist/app.*
