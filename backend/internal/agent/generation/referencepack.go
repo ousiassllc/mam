@@ -25,142 +25,193 @@ var kindLabel = map[domain.ReferenceKind]string{
 	domain.RefKeyframe:  "Keyframe",
 }
 
+// madeReference is one planned image of the Reference Pack once it has been resolved.
+type madeReference struct {
+	plan   artdirector.Plan
+	output modeladapter.ImageOutput
+	asset  domain.Asset
+	// reused is set when the image already exists (a pinned Library image or the image of a
+	// World State reference slot): nothing was generated, so nothing is paid or stored.
+	reused  bool
+	pinning domain.Reference // the reference kept for a reused image
+}
+
+// packBuild is the state of one buildReferencePack run: the design and what each plan became.
+// results has one slot per plan; images made at the same time write distinct slots.
+type packBuild struct {
+	ref      repository.ShotRef
+	plans    []artdirector.Plan
+	world    domain.WorldContext
+	uploaded []modeladapter.Input
+	ratio    string
+	pinned   []domain.Reference
+	results  []madeReference
+}
+
 // buildReferencePack has the Art Director design the Reference Pack of the Shot and makes the
 // images (F-11). Character / Product / Location / Style / Lighting References come first; the
 // Keyframe is made last, from those references, so that it shows the same character and product.
 // The old Reference Pack is replaced only when every image was made.
 func (o *Orchestrator) buildReferencePack(ctx context.Context, ref repository.ShotRef) (Progress, error) {
-	shot := ref.Shot
-	project, err := o.projects.Get(ctx, ref.ProjectID)
+	in, err := o.designInput(ctx, ref)
 	if err != nil {
 		return Progress{}, err
-	}
-	brief, err := o.projects.GetBrief(ctx, ref.ProjectID)
-	if err != nil {
-		return Progress{}, err
-	}
-	world, err := o.gens.WorldContext(ctx, ref.ProjectID, ref.Scene.BranchID)
-	if err != nil {
-		return Progress{}, err
-	}
-	in := artdirector.Input{
-		Brief: brief, Template: project.ProductionTemplate, Scene: ref.Scene, Shot: shot, World: world,
-		UploadedImages: len(brief.Assets),
-	}
-	if spec, ok := shot.CanonicalSpec(); ok {
-		in.Spec = &spec
 	}
 	plans, err := o.art.Design(ctx, in)
 	if err != nil {
 		return Progress{}, err
 	}
-	uploaded := o.loadInputs(ctx, ref.ProjectID, brief.Assets, maxUploadedInputs)
-	ratio := aspectRatio(brief)
-
-	type made struct {
-		plan   artdirector.Plan
-		output modeladapter.ImageOutput
-		asset  domain.Asset
-		// reused is set when the image already exists (a pinned Library image or the image of a
-		// World State reference slot): nothing was generated, so nothing is paid or stored.
-		reused  bool
-		pinning domain.Reference // the reference kept for a reused image
+	b := &packBuild{
+		ref: ref, plans: plans, world: in.World,
+		uploaded: o.loadInputs(ctx, ref.ProjectID, in.Brief.Assets, maxUploadedInputs),
+		ratio:    aspectRatio(in.Brief),
+		pinned:   pinnedReferences(ref.Shot),
+		results:  make([]madeReference, len(plans)),
 	}
-	results := make([]made, len(plans))
-	pinned := pinnedReferences(shot)
 	for i, p := range plans {
 		if p.Kind == domain.RefKeyframe {
 			continue
 		}
-		if r, asset, ok := o.reusable(ctx, ref.ProjectID, p, pinned, world); ok {
-			results[i] = made{plan: p, asset: asset, reused: true, pinning: r}
+		if r, asset, ok := o.reusable(ctx, ref.ProjectID, p, b.pinned, b.world); ok {
+			b.results[i] = madeReference{plan: p, asset: asset, reused: true, pinning: r}
 		}
-	}
-	generate := func(i int, extra []modeladapter.Input) error {
-		p := plans[i]
-		var inputs []modeladapter.Input
-		if p.UseUploaded {
-			inputs = append(inputs, uploaded...)
-		}
-		inputs = append(inputs, o.worldInputs(ctx, ref.ProjectID, p.Kind, world)...)
-		inputs = append(inputs, extra...)
-		purpose := purposeOf(p, len(inputs) > 0)
-		// The estimate is held until the image is on the ledger, so images that run at the same time
-		// (here and in other jobs) cannot together pass the budget ceilings.
-		release, ok, err := o.gens.Reserve(ctx, ref.ProjectID, shot.ID, o.adapter.EstimateImage(purpose))
-		if err != nil {
-			return err
-		}
-		if !ok {
-			return fmt.Errorf("%s: %w", p.Kind, ErrBudgetExceeded)
-		}
-		defer release()
-		out, err := o.adapter.GenerateImage(ctx, purpose, modeladapter.ImageRequest{Prompt: p.Prompt, AspectRatio: ratio, Inputs: inputs})
-		if err != nil {
-			return fmt.Errorf("%s: %w", p.Kind, err)
-		}
-		// The provider has charged for the image: the ledger gets it before a later failure (this
-		// image's file, a sibling image, the Keyframe or the Pack) can lose it.
-		o.recordPaid(ctx, ref.ProjectID, shot.ID, out.Model, out.EstimatedCost, out.ActualCost)
-		asset, err := o.files.write(ref.ProjectID, domain.AssetReference, out.MimeType, out.Data)
-		if err != nil {
-			return err
-		}
-		results[i] = made{plan: p, output: out, asset: asset}
-		return nil
 	}
 
-	// References first, at the same time; then the Keyframe with them as input. An image that
-	// exists already is not made again but still goes to the Keyframe.
+	if failed := o.generateImages(ctx, b); len(failed) > 0 {
+		o.removeMade(b)
+		return Progress{}, errors.Join(failed...)
+	}
+
+	pack := b.assemblePack()
+	if err := o.gens.SaveReferencePack(context.WithoutCancel(ctx), pack); err != nil {
+		for _, a := range pack.Assets {
+			o.files.remove(a)
+		}
+		return Progress{}, err
+	}
+	o.announceKeyframes(ctx, b)
+	return Progress{TakesDone: len(plans), TakesTotal: len(plans)}, nil
+}
+
+// designInput collects what the Art Director designs the Reference Pack from.
+func (o *Orchestrator) designInput(ctx context.Context, ref repository.ShotRef) (artdirector.Input, error) {
+	project, err := o.projects.Get(ctx, ref.ProjectID)
+	if err != nil {
+		return artdirector.Input{}, err
+	}
+	brief, err := o.projects.GetBrief(ctx, ref.ProjectID)
+	if err != nil {
+		return artdirector.Input{}, err
+	}
+	world, err := o.gens.WorldContext(ctx, ref.ProjectID, ref.Scene.BranchID)
+	if err != nil {
+		return artdirector.Input{}, err
+	}
+	in := artdirector.Input{
+		Brief: brief, Template: project.ProductionTemplate, Scene: ref.Scene, Shot: ref.Shot, World: world,
+		UploadedImages: len(brief.Assets),
+	}
+	if spec, ok := ref.Shot.CanonicalSpec(); ok {
+		in.Spec = &spec
+	}
+	return in, nil
+}
+
+// generateImages makes the images that do not exist yet and returns the errors of those that
+// failed. References are made first, at the same time; then the Keyframe with them as input. An
+// image that exists already is not made again but still goes to the Keyframe.
+func (o *Orchestrator) generateImages(ctx context.Context, b *packBuild) []error {
 	var first, keyframes, existing []int
-	for i, p := range plans {
+	for i, p := range b.plans {
 		switch {
 		case p.Kind == domain.RefKeyframe:
 			keyframes = append(keyframes, i)
-		case results[i].reused:
+		case b.results[i].reused:
 			existing = append(existing, i)
 		default:
 			first = append(first, i)
 		}
 	}
-	o.notify(Progress{ShotID: shot.ID, Action: ActionReferencePack, Stage: StageGenerating, Message: "参照画像を生成しています", TakesTotal: len(plans)})
-	errs := parallel(o.logger, len(first), func(k int) error { return generate(first[k], nil) })
+	shotID := b.ref.Shot.ID
+	o.notify(Progress{ShotID: shotID, Action: ActionReferencePack, Stage: StageGenerating, Message: "参照画像を生成しています", TakesTotal: len(b.plans)})
+	errs := parallel(o.logger, len(first), func(k int) error { return o.generateOne(ctx, b, first[k], nil) })
 	var failed []error
 	for _, e := range errs {
 		if e != nil {
 			failed = append(failed, e)
 		}
 	}
-	if len(failed) == 0 {
-		var inputs []modeladapter.Input
-		for _, i := range append(slices.Clone(existing), first...) {
-			if k := plans[i].Kind; k == domain.RefCharacter || k == domain.RefProduct || k == domain.RefLocation {
-				if data, err := o.files.read(results[i].asset); err == nil {
-					inputs = append(inputs, modeladapter.Input{Data: data, MimeType: results[i].asset.MimeType})
-				}
-			}
-		}
-		o.notify(Progress{ShotID: shot.ID, Action: ActionReferencePack, Stage: StageGenerating, Message: "Keyframe を生成しています", TakesDone: len(first), TakesTotal: len(plans)})
-		for _, i := range keyframes {
-			if err := generate(i, inputs); err != nil {
-				failed = append(failed, err)
-			}
-		}
-	}
 	if len(failed) > 0 {
-		removeMade := func() {
-			for _, r := range results {
-				if r.asset.ID != "" && !r.reused {
-					o.files.remove(r.asset)
-				}
+		return failed
+	}
+	var inputs []modeladapter.Input
+	for _, i := range append(slices.Clone(existing), first...) {
+		if k := b.plans[i].Kind; k == domain.RefCharacter || k == domain.RefProduct || k == domain.RefLocation {
+			if data, err := o.files.read(b.results[i].asset); err == nil {
+				inputs = append(inputs, modeladapter.Input{Data: data, MimeType: b.results[i].asset.MimeType})
 			}
 		}
-		removeMade()
-		return Progress{}, errors.Join(failed...)
 	}
+	o.notify(Progress{ShotID: shotID, Action: ActionReferencePack, Stage: StageGenerating, Message: "Keyframe を生成しています", TakesDone: len(first), TakesTotal: len(b.plans)})
+	for _, i := range keyframes {
+		if err := o.generateOne(ctx, b, i, inputs); err != nil {
+			failed = append(failed, err)
+		}
+	}
+	return failed
+}
 
-	pack := repository.NewReferencePack{ProjectID: ref.ProjectID, ShotID: shot.ID}
-	for _, r := range results {
+// generateOne makes the image of plan i: reserves its estimate, generates it, puts it on the
+// ledger and stores the file. extra are further model inputs (the references of the Keyframe).
+func (o *Orchestrator) generateOne(ctx context.Context, b *packBuild, i int, extra []modeladapter.Input) error {
+	p := b.plans[i]
+	projectID, shotID := b.ref.ProjectID, b.ref.Shot.ID
+	var inputs []modeladapter.Input
+	if p.UseUploaded {
+		inputs = append(inputs, b.uploaded...)
+	}
+	inputs = append(inputs, o.worldInputs(ctx, projectID, p.Kind, b.world)...)
+	inputs = append(inputs, extra...)
+	purpose := purposeOf(p, len(inputs) > 0)
+	// The estimate is held until the image is on the ledger, so images that run at the same time
+	// (here and in other jobs) cannot together pass the budget ceilings.
+	release, ok, err := o.gens.Reserve(ctx, projectID, shotID, o.adapter.EstimateImage(purpose))
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return fmt.Errorf("%s: %w", p.Kind, ErrBudgetExceeded)
+	}
+	defer release()
+	out, err := o.adapter.GenerateImage(ctx, purpose, modeladapter.ImageRequest{Prompt: p.Prompt, AspectRatio: b.ratio, Inputs: inputs})
+	if err != nil {
+		return fmt.Errorf("%s: %w", p.Kind, err)
+	}
+	// The provider has charged for the image: the ledger gets it before a later failure (this
+	// image's file, a sibling image, the Keyframe or the Pack) can lose it.
+	o.recordPaid(ctx, projectID, shotID, out.Model, out.EstimatedCost, out.ActualCost)
+	asset, err := o.files.write(projectID, domain.AssetReference, out.MimeType, out.Data)
+	if err != nil {
+		return err
+	}
+	b.results[i] = madeReference{plan: p, output: out, asset: asset}
+	return nil
+}
+
+// removeMade deletes the files of the images this run generated (a reused image is not ours).
+func (o *Orchestrator) removeMade(b *packBuild) {
+	for _, r := range b.results {
+		if r.asset.ID != "" && !r.reused {
+			o.files.remove(r.asset)
+		}
+	}
+}
+
+// assemblePack builds the new Reference Pack from the resolved images. A pinned image the Art
+// Director did not plan stays in the Pack.
+func (b *packBuild) assemblePack() repository.NewReferencePack {
+	pack := repository.NewReferencePack{ProjectID: b.ref.ProjectID, ShotID: b.ref.Shot.ID}
+	for _, r := range b.results {
 		if r.reused {
 			pack.References = append(pack.References, r.pinning)
 			continue
@@ -170,19 +221,17 @@ func (o *Orchestrator) buildReferencePack(ctx context.Context, ref repository.Sh
 		})
 		pack.Assets = append(pack.Assets, r.asset)
 	}
-	// A pinned image the Art Director did not plan stays in the Pack.
-	for _, p := range pinned {
-		if !slices.ContainsFunc(plans, func(pl artdirector.Plan) bool { return matchesPlan(p, pl) }) {
+	for _, p := range b.pinned {
+		if !slices.ContainsFunc(b.plans, func(pl artdirector.Plan) bool { return matchesPlan(p, pl) }) {
 			pack.References = append(pack.References, p)
 		}
 	}
-	if err := o.gens.SaveReferencePack(context.WithoutCancel(ctx), pack); err != nil {
-		for _, a := range pack.Assets {
-			o.files.remove(a)
-		}
-		return Progress{}, err
-	}
-	for _, r := range results {
+	return pack
+}
+
+// announceKeyframes posts a card to the chat for each image this run generated.
+func (o *Orchestrator) announceKeyframes(ctx context.Context, b *packBuild) {
+	for _, r := range b.results {
 		if r.reused {
 			continue
 		}
@@ -192,13 +241,12 @@ func (o *Orchestrator) buildReferencePack(ctx context.Context, ref repository.Sh
 		}
 		card := domain.ChatMessage{
 			Role: domain.RoleAssistant, Kind: domain.KindKeyframe, RefID: r.asset.ID,
-			Content: fmt.Sprintf("Shot %d: %s", shot.OrderIndex+1, label),
+			Content: fmt.Sprintf("Shot %d: %s", b.ref.Shot.OrderIndex+1, label),
 		}
-		if err := o.chat.Announce(context.WithoutCancel(ctx), ref.ProjectID, card); err != nil {
+		if err := o.chat.Announce(context.WithoutCancel(ctx), b.ref.ProjectID, card); err != nil {
 			o.logger.Error("post keyframe card failed", "asset_id", r.asset.ID, "err", err)
 		}
 	}
-	return Progress{TakesDone: len(plans), TakesTotal: len(plans)}, nil
 }
 
 // purposeOf picks the image model row of model-adapters.md §3: material the user provided and
