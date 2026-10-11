@@ -38,6 +38,21 @@ export function stubFetch(routes: Record<string, Reply | ((req: RecordedRequest)
   };
 }
 
+/**
+ * Holds the answers of the current window.fetch (call it after stubFetch) until the returned function is called,
+ * so a test can change the DOM while a request is in flight. stubFetch's restore puts the original fetch back.
+ */
+export function holdFetch(): () => void {
+  const inner = window.fetch;
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => (release = resolve));
+  window.fetch = (async (...args: Parameters<typeof fetch>) => {
+    await gate;
+    return inner(...args);
+  }) as typeof window.fetch;
+  return release;
+}
+
 function tryParse(text: string): unknown {
   try {
     return JSON.parse(text);

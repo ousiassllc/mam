@@ -70,12 +70,11 @@ export const TIMELINE_RELOAD_EVENT = 'timeline-reload';
  * - Transition: how a clip follows the one before it (cut / fade / fade to black / dissolve).
  * - A preview player of the rendered Rough Cut of the saved version.
  *
- * `api-url` is GET /api/v1/projects/:id/edit-timeline. Saving PUTs the clips to the `save_url` of the
- * response; the server keeps every save as a new version. Once saved the component fires
- * `timeline-updated` (bubbles, composed; detail: {id}) so that HTMX refreshes what depends on the
- * timeline, and reloads. It also reloads on `timeline-reload`, which the server's actions send when
- * they replaced the timeline (a new Rough Cut). It renders into the light DOM so that the page's
- * Tailwind classes apply.
+ * `api-url` is GET /api/v1/projects/:id/edit-timeline. Saving PUTs the clips to the `save_url` of the response; the
+ * server keeps every save as a new version. Once saved the component fires `timeline-updated` (bubbles, composed;
+ * detail: {id}) so that HTMX refreshes what depends on the timeline, and reloads. It also reloads on `timeline-reload`,
+ * which the server's actions send when they replaced the timeline (a new Rough Cut). It renders into the light DOM so
+ * that the page's Tailwind classes apply.
  */
 @customElement('mam-timeline-editor')
 export class MamTimelineEditor extends LitElement {
@@ -102,6 +101,7 @@ export class MamTimelineEditor extends LitElement {
   override connectedCallback(): void {
     super.connectedCallback();
     document.addEventListener(TIMELINE_RELOAD_EVENT, this.onReload);
+    if (this.hasUpdated) this.onReload(); // moved in the DOM: apiUrl did not change, so reload
   }
 
   override disconnectedCallback(): void {

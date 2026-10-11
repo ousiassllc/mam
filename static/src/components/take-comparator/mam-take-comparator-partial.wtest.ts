@@ -1,4 +1,5 @@
 import { aTimeout, expect, oneEvent, waitUntil } from '@open-wc/testing';
+import { snapToFrame, DEFAULT_FPS } from '../lib/video';
 import { stubFetch, type RecordedRequest } from '../testdata/fakes';
 import { API, body, comparator, dragLane, take, text } from './testkit';
 
@@ -125,5 +126,16 @@ describe('mam-take-comparator: Partial Take Use', () => {
 
     expect(text(el, '[data-error]')).to.contain('有効になっていません');
     expect(el.querySelectorAll('[data-segment]').length).to.equal(2);
+  });
+
+  it('snaps a drag on a Take that reports no frame rate to the default frame rate', async () => {
+    stub = stubFetch({ [`GET ${API}`]: body([take('t1', 'A', { fps: undefined })]) });
+    const el = await comparator();
+
+    dragLane(el, 't1', 0.1234, 0.6); // 0.4936 s: a different frame at 25 fps than at DEFAULT_FPS
+    await waitUntil(() => el.querySelectorAll('[data-picked]').length === 1);
+
+    const left = parseFloat((el.querySelector('[data-picked]') as HTMLElement).style.left);
+    expect(left).to.be.closeTo((snapToFrame(0.4936, DEFAULT_FPS) / 4) * 100, 0.01);
   });
 });

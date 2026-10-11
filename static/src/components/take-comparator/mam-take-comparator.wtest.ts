@@ -1,5 +1,5 @@
 import { expect, fixture, html, waitUntil } from '@open-wc/testing';
-import { stubFetch } from '../testdata/fakes';
+import { holdFetch, stubFetch } from '../testdata/fakes';
 import type { MamTakeComparator } from './mam-take-comparator';
 import { API, body, comparator, scored, stubConfirm, take, text } from './testkit';
 
@@ -160,5 +160,28 @@ describe('mam-take-comparator: choosing a Take', () => {
 
     expect(text(el, '[data-error]')).to.contain('アーカイブされている');
     expect(el.querySelector('[data-scores]')).to.not.equal(null);
+  });
+
+  it('loads again when it is moved in the DOM while the Takes are loading', async () => {
+    stub = stubFetch({ [`GET ${API}`]: body([take('t1', 'A')]) });
+    const release = holdFetch();
+    const parent = document.createElement('div');
+    document.body.append(parent);
+    try {
+      const el = document.createElement('mam-take-comparator') as MamTakeComparator;
+      el.setAttribute('api-url', API);
+      parent.append(el);
+      await el.updateComplete;
+      expect(text(el, '[role="status"]')).to.contain('読み込み中');
+
+      el.remove();
+      parent.append(el);
+      release();
+
+      await waitUntil(() => el.querySelector('[data-scores]') !== null, 'the Takes were not shown after the move');
+    } finally {
+      release();
+      parent.remove();
+    }
   });
 });
