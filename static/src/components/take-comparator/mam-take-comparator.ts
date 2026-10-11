@@ -13,7 +13,9 @@ import {
   type Segment,
   type SegmentLimits,
 } from '../lib/timeline-model';
+import { DEFAULT_FPS } from '../lib/video';
 import '../video-player/mam-video-player';
+import { describeTake, renderScore } from './take-cells';
 import { STATUS_CLASS, STATUS_LABEL, type TakeStatus } from './take-status';
 
 const log = createLogger('take-comparator');
@@ -92,6 +94,11 @@ export class MamTakeComparator extends LitElement {
     return this;
   }
 
+  override connectedCallback(): void {
+    super.connectedCallback();
+    if (this.hasUpdated) void this.load(); // moved in the DOM: the properties did not change, so reload
+  }
+
   protected override updated(changed: Map<string, unknown>): void {
     if (changed.has('apiUrl')) void this.load();
   }
@@ -130,7 +137,7 @@ export class MamTakeComparator extends LitElement {
         id: t.id,
         label: t.label,
         duration: t.duration_seconds ?? 0,
-        fps: t.fps && t.fps > 0 ? t.fps : 30,
+        fps: t.fps && t.fps > 0 ? t.fps : DEFAULT_FPS,
       }));
   }
 
@@ -205,6 +212,7 @@ export class MamTakeComparator extends LitElement {
       return html`${this.renderError()}<p class="text-sm text-neutral-400" data-empty>この Shot にはまだ Take がありません</p>`;
     }
     const clips = this.clips();
+    const clipById = new Map(clips.map((c) => [c.id, c]));
     const canMerge = this.selection.length >= 2 && !this.busy;
     return html`
       <div class="flex flex-col gap-4">
@@ -214,7 +222,7 @@ export class MamTakeComparator extends LitElement {
           this.partialUrl
             ? html`<section class="flex flex-col gap-3" aria-label="区間指定">
           <h3 class="text-sm font-semibold">区間で採用（Partial Take Use）</h3>
-          ${this.takes.map((t) => this.renderLane(t))}
+          ${this.takes.map((t) => this.renderLane(t, clipById))}
           <div class="flex flex-col gap-2 rounded border border-neutral-700 p-3" data-selection>
             ${
               this.selection.length === 0
@@ -289,27 +297,15 @@ export class MamTakeComparator extends LitElement {
   }
 
   private renderRow(t: TakeScore) {
-    const score = (value: number | undefined) =>
-      value === undefined
-        ? html`<span class="text-neutral-500">—</span>`
-        : html`<span class=${value < 60 ? 'text-red-300' : ''}>${Math.round(value)}</span>`;
-    const detail = [
-      t.model_name,
-      t.resolution,
-      t.fps ? `${t.fps.toFixed(0)}fps` : '',
-      t.proxied ? '4K（プロキシで再生）' : '',
-    ]
-      .filter(Boolean)
-      .join(' · ');
     return html`<tr class="border-t border-neutral-800 ${t.status === 'rejected' ? 'opacity-60' : ''}" data-take=${t.id}>
       <th scope="row" class="px-2 py-2 font-medium">
         Take ${t.label}${t.adopted ? html` <span class="text-xs text-emerald-300" data-adopted>（使用中）</span>` : nothing}
-        <div class="text-xs font-normal text-neutral-400">${detail}</div>
+        <div class="text-xs font-normal text-neutral-400">${describeTake(t)}</div>
       </th>
-      <td class="px-2 py-2" data-score="product">${score(t.scores?.product)}</td>
-      <td class="px-2 py-2" data-score="acting">${score(t.scores?.acting)}</td>
-      <td class="px-2 py-2" data-score="camera">${score(t.scores?.camera)}</td>
-      <td class="px-2 py-2" data-score="continuity">${score(t.scores?.continuity)}</td>
+      <td class="px-2 py-2" data-score="product">${renderScore(t.scores?.product)}</td>
+      <td class="px-2 py-2" data-score="acting">${renderScore(t.scores?.acting)}</td>
+      <td class="px-2 py-2" data-score="camera">${renderScore(t.scores?.camera)}</td>
+      <td class="px-2 py-2" data-score="continuity">${renderScore(t.scores?.continuity)}</td>
       <td class="px-2 py-2">
         <span class="rounded border px-2 py-0.5 text-xs ${STATUS_CLASS[t.status]}" data-status=${t.status}>${STATUS_LABEL[t.status]}</span>
         ${t.verdict ? html`<span class="ml-1 text-xs text-neutral-400">${t.verdict.toUpperCase()}</span>` : nothing}
@@ -335,11 +331,11 @@ export class MamTakeComparator extends LitElement {
     </tr>`;
   }
 
-  private renderLane(t: TakeScore) {
-    if (!t.partial_usable || !t.video_url) return nothing;
-    const clip = this.clips().find((c) => c.id === t.id);
-    const duration = clip?.duration ?? 0;
-    const axis = Math.max(...this.clips().map((c) => c.duration), this.shotDuration, 0.1);
+  private renderLane(t: TakeScore, clipById: Map<string, Clip>) {
+    const clip = clipById.get(t.id);
+    if (!clip || !t.video_url) return nothing;
+    const duration = clip.duration;
+    const axis = Math.max(...[...clipById.values()].map((c) => c.duration), this.shotDuration, 0.1);
     const widthPercent = duration > 0 ? Math.min(duration / axis, 1) * 100 : 100;
     const drag = this.drag && this.drag.clip.id === t.id ? this.drag : null;
     const preview = drag ? dragToSegment(drag.clip, drag.fromX, drag.toX, drag.width) : null;
@@ -360,7 +356,7 @@ export class MamTakeComparator extends LitElement {
         role="group"
         aria-label="Take ${t.label} の区間を選ぶ"
         data-track
-        @pointerdown=${(e: PointerEvent) => this.onLaneDown(e, clip ?? { id: t.id, label: t.label, duration, fps: 30 })}
+        @pointerdown=${(e: PointerEvent) => this.onLaneDown(e, clip)}
         @pointermove=${this.onLaneMove}
         @pointerup=${this.onLaneUp}
         @pointercancel=${() => (this.drag = null)}
