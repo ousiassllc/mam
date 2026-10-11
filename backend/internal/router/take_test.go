@@ -107,19 +107,20 @@ type takeListBody struct {
 	ShotID     string `json:"shot_id"`
 	PartialURL string `json:"partial_url"`
 	Takes      []struct {
-		ID           string  `json:"id"`
-		Label        string  `json:"label"`
-		Status       string  `json:"status"`
-		Adopted      bool    `json:"adopted"`
-		Resolution   string  `json:"resolution"`
-		FPS          float64 `json:"fps"`
-		Duration     float64 `json:"duration_seconds"`
-		Proxied      bool    `json:"proxied"`
-		VideoURL     string  `json:"video_url"`
-		ThumbnailURL string  `json:"thumbnail_url"`
-		SelectURL    string  `json:"select_url"`
-		RejectURL    string  `json:"reject_url"`
-		Scores       *struct {
+		ID            string  `json:"id"`
+		Label         string  `json:"label"`
+		Status        string  `json:"status"`
+		Adopted       bool    `json:"adopted"`
+		Resolution    string  `json:"resolution"`
+		FPS           float64 `json:"fps"`
+		Duration      float64 `json:"duration_seconds"`
+		Proxied       bool    `json:"proxied"`
+		VideoURL      string  `json:"video_url"`
+		ThumbnailURL  string  `json:"thumbnail_url"`
+		SelectURL     string  `json:"select_url"`
+		RejectURL     string  `json:"reject_url"`
+		PartialUsable bool    `json:"partial_usable"`
+		Scores        *struct {
 			Product, Acting, Camera, Continuity, Overall float64
 		} `json:"scores"`
 	} `json:"takes"`
@@ -169,11 +170,51 @@ func TestTakeAPI_ListsTakesOldestFirstWithLabelsLinksAndScores(t *testing.T) {
 	assert.Equal(t, "/takes/t1/thumbnail", first.ThumbnailURL)
 	assert.Equal(t, "/takes/t1/select", first.SelectURL)
 	assert.Equal(t, "/takes/t1", first.RejectURL)
+	assert.True(t, first.PartialUsable)
 	assert.InDelta(t, 10, first.FPS, 0.01, "read from the file")
 	assert.False(t, first.Proxied)
 	assert.True(t, b.Takes[2].Proxied, "4K is played through a proxy")
 
 	assert.Equal(t, http.StatusNotFound, ta.get("/api/v1/shots/nope/takes", false).Code)
+}
+
+// The links are the server's decision: a Take carries select_url / reject_url only while that action
+// is allowed, and the Shot carries partial_url only while a Take can be cut (HATEOAS, #482).
+func TestTakeAPI_OffersAnActionOnlyWhileTheServerAllowsIt(t *testing.T) {
+	ta := newTakeApp(t)
+
+	b := ta.takes()
+	assert.NotEmpty(t, b.PartialURL)
+	for _, tk := range b.Takes {
+		assert.NotEmpty(t, tk.SelectURL, tk.ID)
+		assert.NotEmpty(t, tk.RejectURL, tk.ID)
+		assert.True(t, tk.PartialUsable, tk.ID)
+	}
+
+	require.Equal(t, http.StatusOK, ta.form(http.MethodPost, "/takes/t1/select", nil).Code)
+	selected := ta.takes().Takes[0]
+	assert.Empty(t, selected.SelectURL, "the selected Take cannot be selected again")
+	assert.Equal(t, "/takes/t1", selected.RejectURL)
+
+	require.Equal(t, http.StatusOK, ta.form(http.MethodDelete, "/takes/t2", nil).Code)
+	rejected := ta.takes().Takes[1]
+	assert.Empty(t, rejected.SelectURL, "a rejected Take cannot be selected")
+	assert.Empty(t, rejected.RejectURL, "a rejected Take cannot be rejected again")
+	assert.False(t, rejected.PartialUsable)
+	assert.NotEmpty(t, ta.takes().PartialURL, "other Takes can still be cut")
+
+	for _, id := range []string{"t1", "t3"} {
+		require.Equal(t, http.StatusOK, ta.form(http.MethodDelete, "/takes/"+id, nil).Code)
+	}
+	assert.Empty(t, ta.takes().PartialURL, "no Take is left to cut")
+}
+
+func TestTakeAPI_OffersNoPartialUseWithoutFFmpeg(t *testing.T) {
+	ta := newTakeAppWith(t, func(d *service.Deps) { d.Media = nil })
+
+	b := ta.takes()
+	assert.Empty(t, b.PartialURL)
+	assert.NotEmpty(t, b.Takes[0].SelectURL, "selecting needs no ffmpeg")
 }
 
 func TestTakes_SelectMakesTheTakeTheShotsAndRejectExcludesIt(t *testing.T) {

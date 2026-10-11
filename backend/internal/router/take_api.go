@@ -21,7 +21,8 @@ type takeScoresBody struct {
 }
 
 // takeBody is a Take of the comparison. The URLs are the ones the component uses: it never builds
-// one itself (HATEOAS).
+// one itself (HATEOAS). The action links (select_url, reject_url) and partial_usable exist only while
+// the server allows that action on the Take: the component shows an action iff its link is there.
 type takeBody struct {
 	ID              string          `json:"id"`
 	Label           string          `json:"label" doc:"Name in the comparison: A, B, ..."`
@@ -37,15 +38,16 @@ type takeBody struct {
 	VideoURL        string          `json:"video_url,omitempty" doc:"empty when the file was archived"`
 	ThumbnailURL    string          `json:"thumbnail_url,omitempty"`
 	JudgeResultURL  string          `json:"judge_result_url"`
-	SelectURL       string          `json:"select_url"`
-	RejectURL       string          `json:"reject_url"`
+	SelectURL       string          `json:"select_url,omitempty" doc:"POST here to select the Take; present only while it can be selected (not rejected, not archived, not already selected)"`
+	RejectURL       string          `json:"reject_url,omitempty" doc:"DELETE here to reject the Take; present only while it can be rejected (not rejected, not archived)"`
+	PartialUsable   bool            `json:"partial_usable" doc:"true when parts of this Take can be picked for Partial Take Use"`
 	CreatedAt       time.Time       `json:"created_at"`
 }
 
 type takeComparisonBody struct {
 	ShotID          string     `json:"shot_id"`
 	DurationSeconds float64    `json:"duration_seconds,omitempty" doc:"Length planned for the Shot"`
-	PartialURL      string     `json:"partial_url" doc:"POST here to join parts of the Takes (Partial Take Use)"`
+	PartialURL      string     `json:"partial_url,omitempty" doc:"POST here to join parts of the Takes (Partial Take Use); present only while the Shot can be composed"`
 	Takes           []takeBody `json:"takes"`
 }
 
@@ -55,9 +57,14 @@ func newTakeBody(v service.TakeView) takeBody {
 		Resolution: v.Resolution, FPS: v.FPS, DurationSeconds: v.DurationSeconds, Verdict: string(v.Verdict),
 		Proxied:        v.Proxied(),
 		JudgeResultURL: paths.APITake(v.ID, "judge-result"),
-		SelectURL:      paths.Take(v.ID, "select"),
-		RejectURL:      paths.Take(v.ID),
 		CreatedAt:      v.CreatedAt,
+		PartialUsable:  v.Usable(),
+	}
+	if v.Selectable() {
+		b.SelectURL = paths.Take(v.ID, "select")
+	}
+	if v.Usable() {
+		b.RejectURL = paths.Take(v.ID)
 	}
 	if v.FilePath != "" {
 		b.VideoURL, b.ThumbnailURL = domain.TakeVideoURL(v.ID), domain.TakeThumbnailURL(v.ID)
@@ -92,8 +99,11 @@ func registerTakeAPI(api huma.API, services *service.Services) {
 			return nil, err
 		}
 		body := takeComparisonBody{
-			ShotID: cmp.Shot.ID, DurationSeconds: cmp.Shot.Duration, PartialURL: paths.Shot(cmp.Shot.ID, "takes", "partial"),
+			ShotID: cmp.Shot.ID, DurationSeconds: cmp.Shot.Duration,
 			Takes: make([]takeBody, len(cmp.Takes)),
+		}
+		if cmp.PartialUse {
+			body.PartialURL = paths.Shot(cmp.Shot.ID, "takes", "partial")
 		}
 		for i, t := range cmp.Takes {
 			body.Takes[i] = newTakeBody(t)

@@ -53,6 +53,8 @@ type Comparison struct {
 	Project domain.Project
 	Shot    domain.Shot
 	Takes   []TakeView
+	// PartialUse tells whether Partial Take Use is offered: ffmpeg is installed and a Take can be cut.
+	PartialUse bool
 }
 
 // Compare returns the Takes of the Shot, oldest first. The size, length and frame rate of a file
@@ -85,6 +87,7 @@ func (s *TakeService) Compare(ctx context.Context, shotID string) (Comparison, e
 			}
 		}
 		out.Takes[i] = v
+		out.PartialUse = out.PartialUse || (s.tools != nil && t.Usable())
 	}
 	return out, nil
 }

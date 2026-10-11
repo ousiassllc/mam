@@ -87,6 +87,13 @@ type TakeInfo struct {
 	Adopted bool
 }
 
+// Usable tells whether the Take can still be acted on: it is not rejected and its file was not
+// archived. It is the rule behind every Take action the API offers (select, reject, Partial Take Use).
+func (t TakeInfo) Usable() bool { return t.Status != TakeRejected && t.FilePath != "" }
+
+// Selectable tells whether the Take can be selected: it is usable and not already the selected one.
+func (t TakeInfo) Selectable() bool { return t.Usable() && t.Status != TakeSelected }
+
 // ResolutionHeight is the number of lines of "1080p", "2160p" or "4K" (0 when unknown).
 func ResolutionHeight(res string) int {
 	res = strings.ToLower(strings.TrimSpace(res))
