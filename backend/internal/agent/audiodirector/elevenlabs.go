@@ -328,7 +328,7 @@ func (e *ElevenLabs) do(ctx context.Context, timeout time.Duration, path, conten
 		return nil, &ProviderError{Err: err}
 	}
 	if res.StatusCode/100 != 2 {
-		return nil, &ProviderError{Status: res.StatusCode, Message: snippet(data)}
+		return nil, &ProviderError{Status: res.StatusCode, Message: httpclient.Snippet(data)}
 	}
 	if len(data) == 0 || int64(len(data)) > limit {
 		return nil, &ProviderError{Status: res.StatusCode, Message: "the answer is empty or too large"}
@@ -336,22 +336,10 @@ func (e *ElevenLabs) do(ctx context.Context, timeout time.Duration, path, conten
 	return data, nil
 }
 
-// snippet is the start of an error body, for the message.
-func snippet(b []byte) string {
-	s := strings.TrimSpace(string(b))
-	if len(s) > 300 {
-		s = s[:300]
-	}
-	return s
-}
-
 // redact keeps the API key and the request URL out of an error message: a transport error carries
 // the full URL (a signed output link, for one), which must not reach the saved skip detail or the chat.
 func redact(err error, key string) error {
-	var ue *url.Error
-	if errors.As(err, &ue) {
-		err = ue.Err
-	}
+	err = httpclient.RedactURL(err)
 	if key == "" {
 		return err
 	}

@@ -10,9 +10,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
-	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/httpclient"
@@ -80,7 +78,7 @@ func (h httpBackend) post(ctx context.Context, path string, headers map[string]s
 	}
 	res, err := h.client.Do(req)
 	if err != nil {
-		return nil, &APIError{Provider: h.provider, Err: redactURL(err)}
+		return nil, &APIError{Provider: h.provider, Err: httpclient.RedactURL(err)}
 	}
 	defer func() { _ = res.Body.Close() }()
 	data, err := io.ReadAll(io.LimitReader(res.Body, maxResponseBytes))
@@ -89,35 +87,11 @@ func (h httpBackend) post(ctx context.Context, path string, headers map[string]s
 	}
 	if res.StatusCode/100 != 2 {
 		return nil, &APIError{
-			Provider: h.provider, Status: res.StatusCode, Message: snippet(data),
-			RetryAfter: parseRetryAfter(res.Header.Get("Retry-After")),
+			Provider: h.provider, Status: res.StatusCode, Message: httpclient.Snippet(data),
+			RetryAfter: httpclient.ParseRetryAfter(res.Header.Get("Retry-After")),
 		}
 	}
 	return data, nil
-}
-
-// redactURL drops the request URL from a transport error: it must not leak into logs or the chat.
-func redactURL(err error) error {
-	var ue *url.Error
-	if errors.As(err, &ue) {
-		return ue.Err
-	}
-	return err
-}
-
-func snippet(b []byte) string {
-	s := strings.Join(strings.Fields(string(b)), " ")
-	if r := []rune(s); len(r) > 300 {
-		return string(r[:300]) + "…"
-	}
-	return s
-}
-
-func parseRetryAfter(v string) time.Duration {
-	if secs, err := strconv.Atoi(strings.TrimSpace(v)); err == nil && secs > 0 {
-		return time.Duration(secs) * time.Second
-	}
-	return 0
 }
 
 func (h httpBackend) emptyAnswer() error {

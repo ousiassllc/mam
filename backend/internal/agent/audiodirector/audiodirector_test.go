@@ -9,9 +9,11 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -214,6 +216,25 @@ func TestElevenLabs_CloneWithoutAVoiceIDInTheAnswerFails(t *testing.T) {
 
 	var perr *audiodirector.ProviderError
 	assert.True(t, errors.As(err, &perr))
+}
+
+func TestElevenLabs_ErrorBodyIsCollapsedAndCutOnARuneBoundary(t *testing.T) {
+	body := "声の\n\n   クローンに失敗しました。" + strings.Repeat("あ", 400)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(body))
+	}))
+	defer srv.Close()
+	el := audiodirector.NewElevenLabs(audiodirector.Config{BaseURL: srv.URL}, keys(t, true), nil)
+
+	_, err := el.Clone(context.Background(), "x", audiodirector.Sample{Data: []byte("a")})
+
+	var perr *audiodirector.ProviderError
+	require.True(t, errors.As(err, &perr))
+	assert.Equal(t, http.StatusBadRequest, perr.Status)
+	assert.True(t, utf8.ValidString(perr.Message))
+	assert.True(t, strings.HasPrefix(perr.Message, "声の クローンに失敗しました。"))
+	assert.True(t, strings.HasSuffix(perr.Message, "…"))
 }
 
 func syncKeys(t *testing.T, withKey bool) credential.Store {

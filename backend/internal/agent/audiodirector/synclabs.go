@@ -246,7 +246,7 @@ func (s *SyncLabs) send(r *http.Request, key string) (generation, error) {
 		return generation{}, err
 	}
 	if res.StatusCode/100 != 2 {
-		return generation{}, &ProviderError{Vendor: VendorSyncLabs, Status: res.StatusCode, Message: snippet(data)}
+		return generation{}, &ProviderError{Vendor: VendorSyncLabs, Status: res.StatusCode, Message: httpclient.Snippet(data)}
 	}
 	var g generation
 	if err := json.Unmarshal(data, &g); err != nil || g.ID == "" {

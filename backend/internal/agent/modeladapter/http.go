@@ -11,7 +11,6 @@ import (
 	"net/netip"
 	"net/url"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -87,7 +86,7 @@ func (a api) request(ctx context.Context, method, target string, header map[stri
 	}
 	res, err := a.client.Do(req)
 	if err != nil {
-		return nil, &ProviderError{Vendor: string(a.vendor), Err: redactURL(err)}
+		return nil, &ProviderError{Vendor: string(a.vendor), Err: httpclient.RedactURL(err)}
 	}
 	defer func() { _ = res.Body.Close() }()
 	data, err := io.ReadAll(io.LimitReader(res.Body, limit+1))
@@ -99,8 +98,8 @@ func (a api) request(ctx context.Context, method, target string, header map[stri
 	}
 	if res.StatusCode/100 != 2 {
 		return nil, &ProviderError{
-			Vendor: string(a.vendor), Status: res.StatusCode, Message: snippet(data),
-			RetryAfter: parseRetryAfter(res.Header.Get("Retry-After")),
+			Vendor: string(a.vendor), Status: res.StatusCode, Message: httpclient.Snippet(data),
+			RetryAfter: httpclient.ParseRetryAfter(res.Header.Get("Retry-After")),
 		}
 	}
 	return data, nil
@@ -156,7 +155,7 @@ func (a api) fetchOnce(ctx context.Context, fileURL string, into sink) (Blob, st
 	}
 	res, err := a.fetcher.Do(req)
 	if err != nil {
-		return Blob{}, "", &ProviderError{Vendor: string(a.vendor), Err: redactURL(err)}
+		return Blob{}, "", &ProviderError{Vendor: string(a.vendor), Err: httpclient.RedactURL(err)}
 	}
 	defer func() { _ = res.Body.Close() }()
 	if res.StatusCode/100 != 2 {
@@ -314,30 +313,6 @@ func (a api) poll(ctx context.Context, check func(ctx context.Context) (done boo
 // failed reports a job that the vendor finished without a result (content policy, internal error).
 func (a api) failed(reason string) error {
 	return &ProviderError{Vendor: string(a.vendor), Status: http.StatusUnprocessableEntity, Message: reason}
-}
-
-// redactURL drops the request URL from a transport error: it must not leak into logs or the chat.
-func redactURL(err error) error {
-	var ue *url.Error
-	if errors.As(err, &ue) {
-		return ue.Err
-	}
-	return err
-}
-
-func snippet(b []byte) string {
-	s := strings.Join(strings.Fields(string(b)), " ")
-	if r := []rune(s); len(r) > 300 {
-		return string(r[:300]) + "…"
-	}
-	return s
-}
-
-func parseRetryAfter(v string) time.Duration {
-	if secs, err := strconv.Atoi(strings.TrimSpace(v)); err == nil && secs > 0 {
-		return time.Duration(secs) * time.Second
-	}
-	return 0
 }
 
 func (a api) empty(what string) error {
