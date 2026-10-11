@@ -4,16 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"time"
 
-	"github.com/ousiassllc/mam/backend/internal/bgwork"
 	"github.com/ousiassllc/mam/backend/internal/media"
+	"github.com/ousiassllc/mam/backend/internal/previewcache"
 )
 
 // previewDir is where the previews of Takes (proxies and thumbnails) are cached, under the assets
 // directory. They are made on demand and can be deleted at any time.
 const previewDir = ".previews"
+
+const proxyRetryAfter = 10 * time.Minute // a failure costs minutes (media.ErrTimeout); every Range request would pay it
 
 // MediaFile is a file to serve.
 type MediaFile struct {
@@ -23,7 +24,8 @@ type MediaFile struct {
 
 // Video returns the file the preview plays for the Take: the file itself, or, when the picture is
 // taller than 1080 lines (4K), a 1080p proxy made on first use so that playback does not drop
-// frames (spec/requirements/non-functional.md §2). Without ffmpeg the file itself is played.
+// frames (spec/requirements/non-functional.md §2). Without ffmpeg, or while the proxy cannot be
+// made, the file itself is played.
 func (s *TakeService) Video(ctx context.Context, takeID string) (MediaFile, error) {
 	d, err := s.takes.Get(ctx, takeID)
 	if err != nil {
@@ -40,59 +42,35 @@ func (s *TakeService) Video(ctx context.Context, takeID string) (MediaFile, erro
 	if a, err := s.assets.Get(ctx, d.ProjectID, d.AssetID); err == nil && a.MimeType != "" {
 		mime = a.MimeType
 	}
+	original := MediaFile{Path: src, MimeType: mime}
 	if s.tools == nil {
-		return MediaFile{Path: src, MimeType: mime}, nil
+		return original, nil
 	}
 	proxied := d.Proxied()
-	if d.Resolution == "" { // not reported by the model: look at the file (once: the file never changes)
-		proxied = s.looksTall(ctx, takeID, src, proxied)
+	if d.Resolution == "" { // not reported by the model: look at the file
+		tall, err := s.previews.Tall(takeID, func() (bool, error) {
+			info, err := s.tools.Probe(ctx, src)
+			return info.Height > media.MaxPreviewHeight, err
+		})
+		if err == nil {
+			proxied = tall
+		}
 	}
 	if !proxied {
-		return MediaFile{Path: src, MimeType: mime}, nil
+		return original, nil
 	}
 	dst := s.previewPath(takeID + ".mp4")
 	if dst == "" {
-		return MediaFile{Path: src, MimeType: mime}, nil // the ID is not a safe file name: no proxy is made
+		return original, nil // the ID is not a safe file name: no proxy is made
 	}
-	if _, err := os.Stat(dst); err != nil && s.proxyFailedRecently(takeID) {
-		return MediaFile{Path: src, MimeType: mime}, nil // it failed a moment ago: a Range request must not retry it
+	err = s.previews.Make(ctx, dst, proxyRetryAfter, func(ctx context.Context) error { return s.tools.Proxy(ctx, src, dst) })
+	if err == nil {
+		return MediaFile{Path: dst, MimeType: "video/mp4"}, nil
 	}
-	if err := s.makePreview(ctx, dst, func(ctx context.Context) error {
-		err := s.tools.Proxy(ctx, src, dst)
-		if err != nil {
-			s.proxyFailed.Store(takeID, time.Now())
-		}
-		return err
-	}); err != nil {
+	if !errors.Is(err, previewcache.ErrFailedRecently) { // a recent failure was logged when it happened
 		s.logger.Error("make proxy failed; playing the original", "take_id", takeID, "err", err)
-		return MediaFile{Path: src, MimeType: mime}, nil
 	}
-	return MediaFile{Path: dst, MimeType: "video/mp4"}, nil
-}
-
-// proxyRetryAfter is how long a failed proxy is not tried again: the failure of a broken file or a
-// hung mount costs minutes (media.ErrTimeout), and every Range request of a <video> would pay it.
-const proxyRetryAfter = 10 * time.Minute
-
-// looksTall tells whether the picture of the file at src is taller than the preview plays, by
-// probing it the first time only. When ffprobe fails, fallback is returned and nothing is kept.
-func (s *TakeService) looksTall(ctx context.Context, takeID, src string, fallback bool) bool {
-	if tall, ok := s.tall.Load(takeID); ok {
-		return tall.(bool)
-	}
-	info, err := s.tools.Probe(ctx, src)
-	if err != nil {
-		return fallback
-	}
-	tall := info.Height > media.MaxPreviewHeight
-	s.tall.Store(takeID, tall)
-	return tall
-}
-
-// proxyFailedRecently is true when the proxy of the Take failed less than proxyRetryAfter ago.
-func (s *TakeService) proxyFailedRecently(takeID string) bool {
-	at, ok := s.proxyFailed.Load(takeID)
-	return ok && time.Since(at.(time.Time)) < proxyRetryAfter
+	return original, nil
 }
 
 // Thumbnail returns a JPEG of the first frame of the Take (ErrUnavailable without ffmpeg).
@@ -115,38 +93,8 @@ func (s *TakeService) Thumbnail(ctx context.Context, takeID string) (MediaFile, 
 	if dst == "" {
 		return MediaFile{}, ErrNotFound // the ID is not a safe file name
 	}
-	if err := s.makePreview(ctx, dst, func(ctx context.Context) error { return s.tools.Thumbnail(ctx, src, dst, 0) }); err != nil {
+	if err := s.previews.Make(ctx, dst, 0, func(ctx context.Context) error { return s.tools.Thumbnail(ctx, src, dst, 0) }); err != nil {
 		return MediaFile{}, fmt.Errorf("make thumbnail: %w", err)
 	}
 	return MediaFile{Path: dst, MimeType: "image/jpeg"}, nil
 }
-
-// makePreview runs build unless the preview file already exists; concurrent calls for one file wait
-// for the first, and stop waiting when ctx ends. build is not bound to ctx: a client that gives up
-// (a seek, a page change) must not kill a conversion that takes minutes and make the next request
-// start over; ffmpeg's own time limit (media.ErrTimeout) is what ends a hung one. The file lock is
-// held until build returns, whether or not the caller still waits.
-func (s *TakeService) makePreview(ctx context.Context, dst string, build func(ctx context.Context) error) error {
-	unlock, err := s.preview.Lock(ctx, dst)
-	if err != nil {
-		return err
-	}
-	if _, err := os.Stat(dst); err == nil {
-		unlock()
-		return nil
-	}
-	done := make(chan error, 1)
-	go bgwork.RunSafely(s.logger, "make preview", func() {
-		err := errPreviewPanicked
-		defer func() { unlock(); done <- err }() // also when build panics
-		err = build(context.WithoutCancel(ctx))
-	})
-	select {
-	case err := <-done:
-		return err
-	case <-ctx.Done():
-		return ctx.Err()
-	}
-}
-
-var errPreviewPanicked = errors.New("make preview panicked")
