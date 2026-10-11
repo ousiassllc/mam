@@ -51,6 +51,14 @@ func TestRuleExtractor_AspectRatio(t *testing.T) {
 	}
 }
 
+func TestRuleExtractor_AspectRatioTakesEveryBriefAspectRatio(t *testing.T) {
+	for _, r := range domain.BriefAspectRatios() {
+		t.Run(r, func(t *testing.T) {
+			assert.Equal(t, r, briefing.RuleExtractor{}.Extract("比率は"+r+"で").AspectRatio)
+		})
+	}
+}
+
 func TestRuleExtractor_Extract(t *testing.T) {
 	tests := []struct {
 		name string

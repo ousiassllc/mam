@@ -19,10 +19,7 @@ func issue(severity domain.IssueSeverity) domain.JudgeIssue {
 }
 
 func TestBestTake_APassingTakeBeatsAFailingOneWhateverTheConfidence(t *testing.T) {
-	all := []judged{
-		{number: 1, result: verdict(domain.JudgeFail, 0.99)},
-		{number: 2, result: verdict(domain.JudgePass, 0.6)},
-	}
+	all := []judged{{number: 1, result: verdict(domain.JudgeFail, 0.99)}, {number: 2, result: verdict(domain.JudgePass, 0.6)}}
 	best, ok := bestTake(all, nil)
 	require.True(t, ok)
 	assert.Equal(t, 2, best.number)
@@ -145,4 +142,10 @@ func TestModeOf_TiesTheGenerationModeToTheQualityPolicy(t *testing.T) {
 	assert.Equal(t, domain.ModeQuality, domain.ModeOf(domain.QualityMaxQuality))
 	assert.Equal(t, domain.ModeBalanced, domain.ModeOf(domain.QualityBalanced))
 	assert.Equal(t, domain.ModeEconomy, domain.ModeOf(domain.QualityFast))
+}
+
+func TestAspectRatio_TakesEveryBriefAspectRatio(t *testing.T) {
+	for _, r := range domain.BriefAspectRatios() {
+		assert.Equal(t, r, aspectRatio(domain.Brief{AspectRatio: "縦 " + r}))
+	}
 }
