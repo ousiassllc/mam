@@ -86,9 +86,9 @@ func RoughCut(svc *service.EditorService) gin.HandlerFunc {
 	}, "timeline-reload")
 }
 
-// JudgeTimeline runs the Editor Judge (POST /edit-timelines/:id/judge). The timeline editor shows
-// the Judge result and is readonly once the Project moved on, so it reloads on the timeline-reload
-// event the response carries.
+// JudgeTimeline runs the Editor Judge (POST /edit-timelines/:id/judge). The Judge result is drawn
+// once, by the stage buttons (EditorActions), which the response replaces. The timeline editor is
+// readonly once the Project moved on, so it reloads on the timeline-reload event the response carries.
 func JudgeTimeline(svc *service.EditorService) gin.HandlerFunc {
 	return editorStage(func(c *gin.Context) (service.EditorView, error) {
 		return svc.JudgeTimeline(c.Request.Context(), c.Param("id"))

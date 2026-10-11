@@ -27,7 +27,9 @@ type ShotCardData struct {
 	Judgeable map[string]bool
 }
 
-func takeStatusLabel(s domain.TakeStatus) (atoms.BadgeTone, string) {
+// TakeStatusBadge is the tone and the name of a Take's status on screen. The Shot card draws it and
+// GET /shots/:id/takes returns the name as status_label, so the Take comparison says the same.
+func TakeStatusBadge(s domain.TakeStatus) (atoms.BadgeTone, string) {
 	switch s {
 	case domain.TakeAIPick:
 		return atoms.BadgeInfo, "AI Pick"
@@ -169,7 +171,7 @@ templ TakeRow(t domain.Take, selected bool, repairable bool, judgeable bool) {
 					"hx-vals":    selectedVals(selected),
 				})
 			}
-			{{ tone, label := takeStatusLabel(t.Status) }}
+			{{ tone, label := TakeStatusBadge(t.Status) }}
 			@atoms.Badge(tone, label)
 			if judgeable {
 				@atoms.Button(atoms.ToneNeutral, "Judge", templ.Attributes{

@@ -9,6 +9,7 @@ export function take(id: string, label: string, over: Partial<TakeScore> = {}): 
     id,
     label,
     status: 'candidate',
+    status_label: '候補',
     adopted: false,
     model_name: 'kling-3.0',
     resolution: '1080p',
