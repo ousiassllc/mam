@@ -33,7 +33,7 @@ func (r *NoteRepository) CreatePromotion(ctx context.Context, p NewPromotion, ca
 		return domain.NotePromotion{}, domain.ChatMessage{}, err
 	}
 	id := domain.NewID()
-	now := formatTime(r.now())
+	now := FormatTime(r.now())
 	err = r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		var projectID string
 		err := tx.QueryRowContext(ctx,
@@ -126,7 +126,7 @@ func readPromotion(ctx context.Context, q queryer, id string) (domain.NotePromot
 // ErrNotFound for an unknown promotion and ErrConflict for one that was answered already.
 func (r *NoteRepository) ResolvePromotion(ctx context.Context, id string, approve bool) (domain.PromotionResult, error) {
 	var res domain.PromotionResult
-	now := formatTime(r.now())
+	now := FormatTime(r.now())
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		p, err := readPromotion(ctx, tx, id)
 		if err != nil {

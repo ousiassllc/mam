@@ -380,7 +380,7 @@ func (r *VersionRepository) RestoreBranchVersion(ctx context.Context, branchID s
 		}
 		_, err = tx.ExecContext(ctx,
 			`INSERT INTO branch_version (id, branch_id, version_number, name, world_state_version_id, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
-			domain.NewID(), branchID, next, name, wsv, formatTime(r.now()))
+			domain.NewID(), branchID, next, name, wsv, FormatTime(r.now()))
 		return err
 	})
 	if errors.Is(err, ErrNotFound) {

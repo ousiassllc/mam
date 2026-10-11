@@ -30,8 +30,7 @@ type fixture struct {
 func newFixture(t *testing.T) fixture {
 	t.Helper()
 	testenv.Parallel(t)
-	db := testdb.Open(t)
-	assets := filepath.Join(t.TempDir(), "assets")
+	db, assets := testdb.Open(t), filepath.Join(t.TempDir(), "assets")
 	return fixture{svc: servicetest.New(t, service.Deps{DB: db, AssetsDir: assets}), db: db, assetsDir: assets}
 }
 

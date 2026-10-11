@@ -98,7 +98,6 @@ func newPipelineFixture(t *testing.T) pipelineFixture {
 	t.Helper()
 	testenv.Parallel(t)
 	db := testdb.Open(t)
-
 	jobs := jobqueue.New(repository.NewJobRepository(db), jobqueue.Options{})
 	fake := newFakeReasoner()
 	assets := filepath.Join(t.TempDir(), "assets")

@@ -52,7 +52,7 @@ func (r *AnalyticsRepository) Record(ctx context.Context, in domain.Intervention
 		}
 		_, err := tx.ExecContext(ctx,
 			`INSERT INTO human_intervention (id, project_id, shot_id, take_id, kind, override, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-			domain.NewID(), projectID, nullIfEmpty(shotID), nullIfEmpty(in.TakeID), in.Kind, in.Override, formatTime(r.now()))
+			domain.NewID(), projectID, nullIfEmpty(shotID), nullIfEmpty(in.TakeID), in.Kind, in.Override, FormatTime(r.now()))
 		return err
 	})
 	if errors.Is(err, ErrNotFound) {

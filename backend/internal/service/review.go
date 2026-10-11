@@ -13,9 +13,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ousiassllc/mam/backend/internal/bundlezip"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/repository/review"
 )
 
 // Team Collaboration limits (spec/spec.md §27.1). The files come from other people, so what is read
@@ -34,7 +36,7 @@ const (
 // reviewer imports a package, comments, decides and writes the response. Files are the only channel.
 type ReviewService struct {
 	*core
-	reviews *repository.ReviewRepository
+	reviews *review.Repository
 	editors *repository.EditorRepository
 	chatSvc *ChatService
 	now     func() time.Time
@@ -162,11 +164,7 @@ func (s *ReviewService) Package(ctx context.Context, projectID, reviewID string)
 // Write writes the package as a ZIP of manifest.json and the video.
 func (p ReviewPackage) Write(w io.Writer) error {
 	zw := zip.NewWriter(w)
-	raw, err := json.Marshal(p.manifest)
-	if err != nil {
-		return err
-	}
-	if err := writeZipEntry(zw, domain.ReviewManifestName, zip.Deflate, p.manifest.ExportedAt, bytes.NewReader(raw)); err != nil {
+	if err := bundlezip.WriteJSON(zw, domain.ReviewManifestName, p.manifest.ExportedAt, p.manifest); err != nil {
 		return err
 	}
 	f, err := os.Open(p.videoPath)
@@ -175,7 +173,7 @@ func (p ReviewPackage) Write(w io.Writer) error {
 	}
 	defer func() { _ = f.Close() }()
 	// The video is compressed already.
-	if err := writeZipEntry(zw, p.manifest.Video.FileName, zip.Store, p.manifest.ExportedAt, f); err != nil {
+	if err := bundlezip.WriteEntry(zw, p.manifest.Video.FileName, zip.Store, p.manifest.ExportedAt, f); err != nil {
 		return err
 	}
 	return zw.Close()

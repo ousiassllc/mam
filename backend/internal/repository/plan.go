@@ -41,7 +41,7 @@ func (r *PlanRepository) SaveScript(ctx context.Context, projectID string, doc d
 		}
 		_, err := tx.ExecContext(ctx,
 			`INSERT INTO script_version (id, project_id, version_number, content, created_at) VALUES (?, ?, ?, ?, ?)`,
-			v.ID, projectID, v.VersionNumber, string(raw), formatTime(v.CreatedAt))
+			v.ID, projectID, v.VersionNumber, string(raw), FormatTime(v.CreatedAt))
 		return err
 	})
 	if err != nil {

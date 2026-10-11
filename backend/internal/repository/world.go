@@ -214,7 +214,7 @@ func (r *WorldRepository) appendVersion(ctx context.Context, tx *sql.Tx, project
 	id := domain.NewID()
 	if _, err := tx.ExecContext(ctx,
 		`INSERT INTO world_state_version (id, project_id, branch_id, version_number, state, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
-		id, projectID, nullIfEmpty(branchID), next, string(state), formatTime(r.now())); err != nil {
+		id, projectID, nullIfEmpty(branchID), next, string(state), FormatTime(r.now())); err != nil {
 		return "", 0, err
 	}
 	return id, next, nil
@@ -343,7 +343,7 @@ func (r *WorldRepository) ApplyStateDiff(ctx context.Context, projectID, branchI
 		}
 		_, err = tx.ExecContext(ctx,
 			`INSERT INTO state_diff (id, shot_id, take_id, diff, world_state_version_id, applied_at) VALUES (?, ?, ?, ?, ?, ?)`,
-			domain.NewID(), shotID, takeID, string(raw), versionID, formatTime(r.now()))
+			domain.NewID(), shotID, takeID, string(raw), versionID, FormatTime(r.now()))
 		return err
 	})
 	if err != nil {

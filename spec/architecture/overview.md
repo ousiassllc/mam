@@ -130,15 +130,16 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 │       ├── media/          # ffmpeg / ffprobe（Take の解像度・フレームレート取得、4K プロキシ・サムネイル、部分採用の合成）
 │       ├── domain/         # Project/Scene/Shot/Take/WorldState等のドメインモデル
 │       ├── repository/     # SQLite アクセス層（domainのみに依存）
-│       │   ├── bundle/     # Project バンドルの書き出し・取り込み（行の検証と全テーブル一覧を持つ。`repository` の接続・エラーに依存）
+│       │   ├── bundle/ review/ # bundle: Project バンドルの書き出し・取り込み（行の検証と全テーブル一覧を持つ）。review: チームコラボレーション（レビュー依頼・返答・コメント）の永続化。どちらも `repository` の接続・エラーに依存
 │       │   └── migrations/ # goose 形式の SQL マイグレーション（タイムスタンプ版、go:embed、起動時に自動適用）
+│       ├── bundlezip/      # Project バンドルの ZIP（`manifest.json`・`data.json`・`assets/`）の書き出し・読み取り・検証（サイズ・パス）・アセットディレクトリへの展開。DB は触らない（`service.BundleService` が `repository/bundle` と組み合わせる）
 │       ├── credential/     # OSセキュアストレージ（Keychain/Credential Manager/Secret Service）経由の外部モデルAPIキー保存・取得
 │       ├── agent/          # Producer/Writer/Director/Storyboard/ArtDirector/
 │       │   │               # PromptPlanner/ModelAdapter/VideoJudge/RepairAgent/
 │       │   │               # EditorAgent/AudioDirector/FinalQC/Orchestrator
 │       │   ├── artdirector/ audiodirector/ commandinterpreter/ continuation/ editor/ finalqc/
 │       │   │   generation/ judge/ modeladapter/ promptplanner/ repair/ stateextractor/
-│       │   │               # 同名の Agent / Orchestrator（Art Director、Audio Director、Command Interpreter、Continue Agent、Editor Agent + Editor Judge、Final QC、Generation Orchestrator、AI Video Judge、Model Adapter、Prompt Planner、Repair Agent、State Extractor）
+│       │   │               # 同名の Agent / Orchestrator（Art Director、Audio Director、Command Interpreter、Continue Agent、Editor Agent + Editor Judge、Final QC、Generation Orchestrator、AI Video Judge、Model Adapter、Prompt Planner、Repair Agent、State Extractor）。`modeladapter/configcheck/` は Model Adapter 設定（`modeladapter.Config`）の整合性検査（`Validate`）と、読み込んで検査する `Load`
 │       │   ├── jev/        # TypeSafe Jev クライアント（Repair Agent のシャドー実行、model-adapters.md §4.5）
 │       │   ├── resilience/ # LLM Adapter と Model Adapter が共有するサーキットブレーカーと指数バックオフ再試行
 │       │   ├── briefing/   # チャット発言からの Creative Brief 抽出（Extractor インターフェース。M1 はルールベース、LLM 版は Reasoning LLM Adapter の Issue で差し替え）
@@ -326,3 +327,4 @@ Windows では、ブラウザ版と同じ `127.0.0.1` のサーバーを `intern
 | 1.24 | 2026-10-12 | §5 の構成図に `.github/dependabot.yml` を足し、`ci.yml` の説明に脆弱性検査（`make vuln`）を加えた。§9 の「その他のターゲット」に `make vuln` を追加 | Issue #525。#523 が `make vuln`・CI の「Vulnerability check」ステップ・`dependabot.yml` を `spec/environment/setup.md` と `README.md` には反映したのに、同じ構成・ターゲットを列挙する overview.md だけが反映していなかった（#511 と同じ種類の抜け） |
 | 1.25 | 2026-10-12 | §5 の構成図の `service/` に `wiring.go`（機能ごとの `wire*` と、`OnChange` を最後に登録する `watchJobs`）を足し、DI ルートの項の新機能を組み込む手順を「`Services` にフィールドを足すだけ」から `wire*` への組み込みと順序の制約を含む手順に直した | Issue #526。#522 が `service.New` を `wiring.go` の `wire*` に分け、`OnChange` の登録を `watchJobs` の 1 か所にまとめたのに、構成図の `service/` の説明と「追記だけで組み込める」という手順は更新されていなかった。実装は `backend/internal/service/wiring.go`・`services.go` |
 | 1.26 | 2026-10-12 | §5 の構成図の `.golangci.yml` の説明と、レイヤー依存ルールの項に、`gocyclo` / `gocognit` による関数の複雑度の検査を追記 | Issue #534。関数単位の複雑度が lint で管理されていなかった |
+| 1.27 | 2026-10-12 | §5 の構成図に `bundlezip/`・`repository/review/`・`agent/modeladapter/configcheck/` を追加した | Issue #529。#522・#518 の分割が、2000 行を超えている `service/`・`modeladapter/` の行数を増やして CI の行数チェックを落としていた。バンドルの ZIP 処理・レビューの永続化・Model Adapter 設定の検査を、超過していない新しいパッケージへ移した |

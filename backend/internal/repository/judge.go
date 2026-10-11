@@ -94,7 +94,7 @@ func (r *JudgeRepository) Save(ctx context.Context, res domain.JudgeResult) (dom
 			`INSERT INTO judge_result (id, take_id, result, overall_confidence, issues, metrics, preserve, repair_strategy, scores, created_at)
 			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			res.ID, res.TakeID, res.Result, res.OverallConfidence, string(issues), string(metrics), string(preserve), repairColumn, scoresColumn,
-			formatTime(res.CreatedAt)); err != nil {
+			FormatTime(res.CreatedAt)); err != nil {
 			return err
 		}
 		_, err := tx.ExecContext(ctx, `UPDATE take SET scores = ? WHERE id = ?`, string(takeScores), res.TakeID)

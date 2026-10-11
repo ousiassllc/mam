@@ -34,7 +34,7 @@ func (r *VoiceRepository) Save(ctx context.Context, projectID, speaker, name, vo
 		}
 		_, err := tx.ExecContext(ctx,
 			`INSERT INTO voice_clone (id, project_id, speaker, name, voice_id, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
-			clone.ID, projectID, speaker, name, voiceID, formatTime(clone.CreatedAt))
+			clone.ID, projectID, speaker, name, voiceID, FormatTime(clone.CreatedAt))
 		return err
 	})
 	if err != nil {

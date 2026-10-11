@@ -19,7 +19,7 @@ func (r *NoteRepository) Create(ctx context.Context, n NewNote) (domain.NoteView
 		n.Category = domain.NoteCategoryOther
 	}
 	id := domain.NewID()
-	now := formatTime(r.now())
+	now := FormatTime(r.now())
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		if n.ProjectID != "" {
 			if err := Exists(ctx, tx, `SELECT 1 FROM project WHERE id = ?`, n.ProjectID); err != nil {
@@ -72,7 +72,7 @@ func appendNoteVersion(ctx context.Context, tx *sql.Tx, noteID, title, content s
 // a version was appended. It returns ErrNotFound for an unknown note.
 func (r *NoteRepository) Update(ctx context.Context, id string, u NoteUpdate) (domain.NoteView, bool, error) {
 	newVersion := false
-	now := formatTime(r.now())
+	now := FormatTime(r.now())
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		cur, err := readNote(ctx, tx, id)
 		if err != nil {
@@ -129,7 +129,7 @@ func updateNoteRow(ctx context.Context, tx *sql.Tx, cur domain.NoteView, u NoteU
 // Restore appends the title and content of version number as the newest version of the note and
 // returns the note (F-28). It returns ErrNotFound for an unknown note or version.
 func (r *NoteRepository) Restore(ctx context.Context, id string, number int) (domain.NoteView, error) {
-	now := formatTime(r.now())
+	now := FormatTime(r.now())
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		var title, content string
 		var source domain.NoteSource

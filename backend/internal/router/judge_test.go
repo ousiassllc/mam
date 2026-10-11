@@ -198,20 +198,6 @@ func newJudgeAppOpts(t *testing.T, o judgeOpts, sims ...float64) *judgeApp {
 	return &judgeApp{genApp: g, llm: l, dir: dir}
 }
 
-func (j *judgeApp) takeIDs() []string {
-	j.t.Helper()
-	rows, err := j.db.Reader().Query(`SELECT id FROM take ORDER BY created_at, id`)
-	require.NoError(j.t, err)
-	defer func() { _ = rows.Close() }()
-	var ids []string
-	for rows.Next() {
-		var id string
-		require.NoError(j.t, rows.Scan(&id))
-		ids = append(ids, id)
-	}
-	return ids
-}
-
 func (j *judgeApp) results(takeID string) int {
 	var n int
 	require.NoError(j.t, j.db.Reader().QueryRow(`SELECT COUNT(*) FROM judge_result WHERE take_id = ?`, takeID).Scan(&n))
@@ -221,9 +207,7 @@ func (j *judgeApp) results(takeID string) int {
 // generateAndJudge generates the Shot's Takes and waits until each of them has been judged.
 func (j *judgeApp) generateAndJudge() []string {
 	j.t.Helper()
-	require.Equal(j.t, http.StatusAccepted, j.form(http.MethodPost, "/shots/"+j.shotID+"/generate", nil).Code)
-	j.waitTakes(3)
-	ids := j.takeIDs()
+	ids := j.generateTakes()
 	require.Eventually(j.t, func() bool {
 		for _, id := range ids {
 			if j.results(id) == 0 {
@@ -497,8 +481,7 @@ func TestJudge_ButtonIsDrawnOnlyForUnjudgedTakesTheServerAccepts(t *testing.T) {
 // Without the Judge POST /takes/:id/judge is always 503, so no card offers it.
 func TestJudge_NoButtonWithoutTheJudge(t *testing.T) {
 	g := newGenApp(t, true)
-	require.Equal(t, http.StatusAccepted, g.form(http.MethodPost, "/shots/"+g.shotID+"/generate", nil).Code)
-	g.waitTakes(3)
+	g.generateTakes()
 	html := g.get("/projects/"+g.project+"/scenes/"+g.sceneID+"?shot="+g.shotID, true).Body.String()
 	assert.Contains(t, html, "/takes/", "the Takes are listed")
 	assert.NotContains(t, html, "/judge\"")
@@ -508,8 +491,7 @@ func TestJudge_IsUnavailableWithoutFrameSampling(t *testing.T) {
 	g := newGenApp(t, true) // the generation app has no Frames: the Judge is off
 	assert.Equal(t, http.StatusServiceUnavailable, g.form(http.MethodPost, "/takes/anything/judge", nil).Code)
 
-	require.Equal(t, http.StatusAccepted, g.form(http.MethodPost, "/shots/"+g.shotID+"/generate", nil).Code)
-	g.waitTakes(3)
+	g.generateTakes()
 	var id string
 	require.NoError(t, g.db.Reader().QueryRow(`SELECT id FROM take LIMIT 1`).Scan(&id))
 	assert.Equal(t, http.StatusServiceUnavailable, g.form(http.MethodPost, "/takes/"+id+"/judge", nil).Code)

@@ -131,7 +131,7 @@ func (r *SeriesRepository) UpdateCharacter(ctx context.Context, seriesID, charac
 			return fmt.Errorf("update series character: field %q is not editable", name)
 		}
 	}
-	now := formatTime(r.now())
+	now := FormatTime(r.now())
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		var one int
 		err := tx.QueryRowContext(ctx, `SELECT 1 FROM character WHERE id = ? AND series_id = ?`, characterID, seriesID).Scan(&one)
@@ -161,7 +161,7 @@ func (r *SeriesRepository) UpdateCharacter(ctx context.Context, seriesID, charac
 // UpdateStyle sets the canonical Style text and appends the canon as a new version. Episodes keep
 // the Style they inherited. An unknown Series is ErrNotFound.
 func (r *SeriesRepository) UpdateStyle(ctx context.Context, seriesID, style string) error {
-	now := formatTime(r.now())
+	now := FormatTime(r.now())
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		res, err := tx.ExecContext(ctx, `UPDATE series SET style = ? WHERE id = ?`, style, seriesID)
 		if err != nil {

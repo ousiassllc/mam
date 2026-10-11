@@ -108,7 +108,7 @@ func (r *BranchRepository) Create(ctx context.Context, in NewBranch) (domain.Bra
 		if _, err := tx.ExecContext(ctx,
 			`INSERT INTO branch (id, project_id, branch_point_type, branch_point_scene_id, branch_point_shot_id, branch_point_offset_seconds, name, created_at)
 			 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-			id, projectID, in.PointType, pointScene, pointShot, offset, in.Name, formatTime(r.now())); err != nil {
+			id, projectID, in.PointType, pointScene, pointShot, offset, in.Name, FormatTime(r.now())); err != nil {
 			return err
 		}
 		if err := copyWorldInto(ctx, tx, projectID, id, snapshot); err != nil {
@@ -229,7 +229,7 @@ func (r *BranchRepository) appendBranchVersion(ctx context.Context, tx *sql.Tx, 
 	}
 	_, err := tx.ExecContext(ctx,
 		`INSERT INTO branch_version (id, branch_id, version_number, name, world_state_version_id, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
-		domain.NewID(), branchID, next, name, nullIfEmpty(worldStateVersionID), formatTime(r.now()))
+		domain.NewID(), branchID, next, name, nullIfEmpty(worldStateVersionID), FormatTime(r.now()))
 	return err
 }
 

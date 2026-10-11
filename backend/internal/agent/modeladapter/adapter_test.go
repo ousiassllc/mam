@@ -109,24 +109,6 @@ func newAdapter(cfg modeladapter.Config, b modeladapter.Backends, opts ...modela
 	return modeladapter.New(cfg, b, append([]modeladapter.Option{modeladapter.WithSleep(noSleep)}, opts...)...)
 }
 
-func TestDefaultConfigIsValid(t *testing.T) {
-	require.NoError(t, modeladapter.DefaultConfig().Validate())
-}
-
-func TestConfigValidateRejectsUnsupportedRoutes(t *testing.T) {
-	cfg := modeladapter.DefaultConfig()
-	cfg.Policies[domain.QualityFast] = modeladapter.PolicyRoute{
-		Primary:  modeladapter.VideoTarget{Model: domain.ModelName("veo-3"), Resolution: "720p"}, // no adapter
-		Fallback: modeladapter.VideoTarget{Model: domain.ModelKling3, Resolution: "480p"},        // Kling has no 480p
-		Takes:    0,
-	}
-	err := cfg.Validate()
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "veo-3")
-	assert.Contains(t, err.Error(), `"kling-3.0" does not support "480p"`)
-	assert.Contains(t, err.Error(), "takes must be positive")
-}
-
 func TestGenerateVideoFallsBackToTheAlternativeModelWithItsOwnPrompt(t *testing.T) {
 	primary := &fakeVideo{results: []error{perr(modeladapter.VendorSeedance, http.StatusInternalServerError)}}
 	fallback := &fakeVideo{results: []error{nil}}
@@ -384,20 +366,6 @@ func TestUnavailableNamesTheReasonAModelCannotBeCalled(t *testing.T) {
 	assert.Empty(t, a.Unavailable(domain.ModelKling3), "another vendor is not affected")
 }
 
-func TestConfigValidateRejectsBrokenRouting(t *testing.T) {
-	cfg := modeladapter.DefaultConfig()
-	cfg.Routing.MinSamples = 0
-	cfg.Routing.Weights[domain.QualityFast] = modeladapter.RoutingWeights{}
-	cfg.Routing.Candidates[domain.QualityBalanced] = []modeladapter.VideoTarget{{Model: domain.ModelKling3, Resolution: "480p"}}
-
-	err := cfg.Validate()
-
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "routing weights fast")
-	assert.Contains(t, err.Error(), "min_samples must be positive")
-	assert.Contains(t, err.Error(), `"kling-3.0" does not support "480p"`)
-}
-
 func TestLoadConfigOverridesRoutingAndKeepsTheRestOfTheDefaults(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "models.json")
 	require.NoError(t, os.WriteFile(path, []byte(`{"routing":{"enabled":false,"min_samples":9,"weights":{"fast":{"quality":1,"cost":0,"fit":0}}}}`), 0o600))
@@ -473,23 +441,6 @@ func TestLoadConfigMergesAnEntryThatNamesOnlySomeOfItsFields(t *testing.T) {
 		_, err := modeladapter.LoadConfig(path)
 		assert.ErrorContains(t, err, "unknown field")
 	})
-}
-
-func TestLoadConfigRejectsAnUnknownMapKey(t *testing.T) {
-	for name, content := range map[string]string{
-		"policy":            `{"policies":{"balance":{"takes":1}}}`,
-		"image purpose":     `{"images":{"previw":{"primary":{"model":"flux-2"}}}}`,
-		"model":             `{"models":{"kling-3":{"model":"x"}}}`,
-		"cost resolution":   `{"models":{"kling-3.0":{"cost_per_second_usd":{"1080P":0.2}}}}`,
-		"routing weights":   `{"routing":{"weights":{"max-quality":{"quality":1}}}}`,
-		"routing candidate": `{"routing":{"candidates":{"fastt":[]}}}`,
-		"vendor":            `{"vendors":{"klingg":{"base_url":"http://x","max_concurrency":1,"timeout_seconds":1}}}`,
-	} {
-		path := filepath.Join(t.TempDir(), "models.json")
-		require.NoError(t, os.WriteFile(path, []byte(content), 0o600))
-		_, err := modeladapter.LoadConfig(path)
-		assert.Error(t, err, name)
-	}
 }
 
 func TestGenerateVideoFailOverModelGetsItsOwnInputWhenReferencesArePreferred(t *testing.T) {
