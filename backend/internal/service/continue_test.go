@@ -256,36 +256,37 @@ func TestContinueConfirm_AFailedReplyLeavesTheCardOpenForAnotherAnswer(t *testin
 	assert.ErrorIs(t, err, service.ErrConflict)
 }
 
-// Two replies to the same Continue card that overlap (a double click, a client retry) must make one
-// Shot and start one paid generation: the one that arrives while the first is still planning (the
-// overlap is made from inside the first one's Agent call) is refused with a conflict.
-func TestContinueConfirm_AConcurrentSecondReplyToTheSameCardIsRefused(t *testing.T) {
-	f := completedShotFixture(t, sameSceneAnswer)
-	card := f.propose(t)
-	var refused error
-	f.llm.director = func(system, _ string) string {
-		if strings.Contains(system, `"candidates"`) {
-			return proposeAnswer
+// Requests for the same card / Shot that overlap (a double click, a reply and a direct Confirm) make one
+// Shot and one paid generation: the one that arrives while the first is planning is a conflict.
+func TestContinueConfirm_OverlappingRequestsForTheSameShotMakeOneShot(t *testing.T) {
+	do := func(f genFixture, cardID string, viaReply bool) (err error) {
+		if viaReply {
+			_, err = f.svc.Chat.PostMessage(context.Background(), f.projectID, service.PostMessageInput{Content: "B. 背後から声が聞こえる", ReplyToMessageID: cardID})
+		} else {
+			_, err = f.svc.Continue.Confirm(context.Background(), f.shotID, service.ConfirmInput{Delegate: true})
 		}
-		refused = f.overlap(func() error {
-			_, err := f.svc.Chat.PostMessage(context.Background(), f.projectID, service.PostMessageInput{Content: "B. 背後から声が聞こえる", ReplyToMessageID: card.ID})
-			return err
-		})
-		return sameSceneAnswer
+		return err
 	}
-
-	f.say(t, "A. 彼女がドアを開ける", card.ID)
-
-	assert.ErrorIs(t, refused, service.ErrConflict, "the card is being answered")
-	f.waitGenerateJobs(t, 3)
-	assert.Len(t, f.shotObjectives(t), 2, "one new Shot")
-	assert.Equal(t, 1, f.count(t, `SELECT COUNT(*) FROM chat_message WHERE reply_to_message_id = ?`, card.ID))
-	assert.Equal(t, 3, f.count(t, `SELECT COUNT(*) FROM job WHERE kind = 'generate'`), "one generation was started for the new Shot")
+	for name, viaReply := range map[string][2]bool{"reply, reply": {true, true}, "confirm, confirm": {false, false}, "reply, confirm": {true, false}, "confirm, reply": {false, true}} {
+		t.Run(name, func(t *testing.T) {
+			f := completedShotFixture(t, sameSceneAnswer)
+			card := f.propose(t)
+			var refused error
+			f.llm.director = func(string, string) string { // only the Plan is left to ask for
+				refused = f.overlap(func() error { return do(f, card.ID, viaReply[1]) })
+				return sameSceneAnswer
+			}
+			require.NoError(t, do(f, card.ID, viaReply[0]))
+			assert.ErrorIs(t, refused, service.ErrConflict)
+			f.waitGenerateJobs(t, 3)
+			assert.Len(t, f.shotObjectives(t), 2, "one new Shot")
+			assert.Equal(t, viaReply[0], f.count(t, `SELECT COUNT(*) FROM chat_message WHERE reply_to_message_id = ?`, card.ID) == 1, "only the first reply is recorded")
+		})
+	}
 }
 
-// overlap runs call while an Agent call of the fixture is in flight and returns its error. A call
-// that is not refused has to wait for the fake Agent, which the one in flight holds, so it is given up
-// after a moment (and reported as no error).
+// overlap runs call while an Agent call of the fixture is in flight and returns its error. A call that
+// is not refused waits for the fake Agent, which the one in flight holds: it is given up after a moment.
 func (f genFixture) overlap(call func() error) (err error) {
 	done := make(chan error, 1)
 	go func() { done <- call() }()
@@ -297,8 +298,7 @@ func (f genFixture) overlap(call func() error) (err error) {
 }
 
 // The client going away while the new Shot's generation starts (the Prompt Planner call) must not
-// leave the card open: the reply is recorded, so a second answer is a conflict and makes no second
-// Shot.
+// leave the card open: the reply is recorded, so a second answer is a conflict and makes no Shot.
 func TestContinueConfirm_AReplyIsRecordedWhenTheRequestIsCancelledAfterTheShotWasAdded(t *testing.T) {
 	f := completedShotFixture(t, sameSceneAnswer)
 	card := f.propose(t)
