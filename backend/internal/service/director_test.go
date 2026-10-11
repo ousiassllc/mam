@@ -2,7 +2,6 @@ package service_test
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -577,15 +576,17 @@ func TestDirectorCommand_PinsTheVideoModelToRunwayAndAsksForAnyModelWithoutAName
 
 func (f genFixture) startDirecting(t *testing.T) {
 	t.Helper()
-	require.NoError(t, f.db.Write(context.Background(), func(ctx context.Context, tx *sql.Tx) error {
-		_, err := tx.ExecContext(ctx, `UPDATE project SET mode = 'director', state = 'GENERATING' WHERE id = ?`, f.projectID)
-		return err
-	}))
+	f.execSQL(t, `UPDATE project SET mode = 'director', state = 'GENERATING' WHERE id = ?`, f.projectID)
 }
 
 func (f genFixture) say(t *testing.T, content, replyTo string) service.Workspace {
 	t.Helper()
-	ws, err := f.svc.Chat.PostMessage(context.Background(), f.projectID, service.PostMessageInput{Content: content, ReplyToMessageID: replyTo})
+	return postMessage(t, f.svc, f.projectID, service.PostMessageInput{Content: content, ReplyToMessageID: replyTo})
+}
+
+func postMessage(t *testing.T, svc *service.Services, projectID string, in service.PostMessageInput) service.Workspace {
+	t.Helper()
+	ws, err := svc.Chat.PostMessage(context.Background(), projectID, in)
 	require.NoError(t, err)
 	return ws
 }
@@ -597,9 +598,7 @@ func TestChat_DirectorModeDirectionAttachmentsJoinTheBrief(t *testing.T) {
 	before, err := f.svc.Projects.Brief(context.Background(), f.projectID)
 	require.NoError(t, err)
 
-	_, err = f.svc.Chat.PostMessage(context.Background(), f.projectID, service.PostMessageInput{
-		Content: "この画像の雰囲気で", Uploads: []service.Upload{upload("look.png", pngBytes)}})
-	require.NoError(t, err)
+	postMessage(t, f.svc, f.projectID, service.PostMessageInput{Content: "この画像の雰囲気で", Uploads: []service.Upload{upload("look.png", pngBytes)}})
 
 	after, err := f.svc.Projects.Brief(context.Background(), f.projectID)
 	require.NoError(t, err)

@@ -49,7 +49,7 @@ type core struct {
 	// answering holds the Continue and Brief question cards that are being answered (card message
 	// ID -> struct{}), so that a reply that overlaps another one to the same card is refused
 	// instead of making a second Shot and a second paid generation, or putting the answer into
-	// the next item of the Brief.
+	// the next item of the Brief. It also holds the Shots a Continue card is being proposed for (Shot ID).
 	answering sync.Map
 	// takeActions decides which Takes may be repaired (domain.CheckRepair) or judged (domain.CheckJudge); set by New.
 	takeActions takeActions

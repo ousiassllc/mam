@@ -2,9 +2,7 @@ package service_test
 
 import (
 	"context"
-	"database/sql"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -131,8 +129,7 @@ func TestContinue_ChoosingACandidateAddsTheNextShotToTheSceneAndGeneratesItFromT
 	f := completedShotFixture(t, sameSceneAnswer)
 	card := f.propose(t)
 
-	ws, err := f.svc.Chat.PostMessage(context.Background(), f.projectID, service.PostMessageInput{Content: "B. 背後から声が聞こえる", ReplyToMessageID: card.ID})
-	require.NoError(t, err)
+	ws := postMessage(t, f.svc, f.projectID, service.PostMessageInput{Content: "B. 背後から声が聞こえる", ReplyToMessageID: card.ID})
 	require.NotEmpty(t, ws.Messages)
 
 	// The next Shot is linked into the existing Scene, after the completed one.
@@ -158,8 +155,7 @@ func TestContinue_ChoosingACandidateAddsTheNextShotToTheSceneAndGeneratesItFromT
 func TestContinue_LeavingItToTheAIOrWritingAFreeDirection(t *testing.T) {
 	f := completedShotFixture(t, sameSceneAnswer)
 	card := f.propose(t)
-	_, err := f.svc.Chat.PostMessage(context.Background(), f.projectID, service.PostMessageInput{Content: domain.DelegateOption, ReplyToMessageID: card.ID})
-	require.NoError(t, err)
+	postMessage(t, f.svc, f.projectID, service.PostMessageInput{Content: domain.DelegateOption, ReplyToMessageID: card.ID})
 	f.waitGenerateJobs(t, 3)
 	plan := f.llm.prompts(llm.AgentDirector)[1]
 	assert.Contains(t, plan, "AI に任せる", "the AI is told to choose by itself")
@@ -167,8 +163,7 @@ func TestContinue_LeavingItToTheAIOrWritingAFreeDirection(t *testing.T) {
 
 	free := completedShotFixture(t, sameSceneAnswer)
 	card = free.propose(t)
-	_, err = free.svc.Chat.PostMessage(context.Background(), free.projectID, service.PostMessageInput{Content: "  主人公が窓の外を見る ", ReplyToMessageID: card.ID})
-	require.NoError(t, err)
+	postMessage(t, free.svc, free.projectID, service.PostMessageInput{Content: "  主人公が窓の外を見る ", ReplyToMessageID: card.ID})
 	assert.Contains(t, free.llm.prompts(llm.AgentDirector)[1], "主人公が窓の外を見る")
 }
 
@@ -200,8 +195,7 @@ func TestContinueConfirm_RejectsMissingInputAndAnAlreadyAnsweredCard(t *testing.
 	assert.Len(t, f.shotObjectives(t), 1, "nothing was added")
 
 	card := f.propose(t)
-	_, err = f.svc.Chat.PostMessage(context.Background(), f.projectID, service.PostMessageInput{Content: "A. 彼女がドアを開ける", ReplyToMessageID: card.ID})
-	require.NoError(t, err)
+	postMessage(t, f.svc, f.projectID, service.PostMessageInput{Content: "A. 彼女がドアを開ける", ReplyToMessageID: card.ID})
 	f.waitGenerateJobs(t, 3)
 	_, err = f.svc.Chat.PostMessage(context.Background(), f.projectID, service.PostMessageInput{Content: "C. 突然照明が消える", ReplyToMessageID: card.ID})
 	assert.ErrorIs(t, err, service.ErrConflict)
@@ -253,8 +247,7 @@ func TestContinueConfirm_AFailedReplyLeavesTheCardOpenForAnotherAnswer(t *testin
 	assert.Len(t, f.shotObjectives(t), 1)
 
 	f.llm.director = directorFor(sameSceneAnswer)
-	ws, err := f.svc.Chat.PostMessage(context.Background(), f.projectID, service.PostMessageInput{Content: "B. 背後から声が聞こえる", ReplyToMessageID: card.ID})
-	require.NoError(t, err)
+	ws := postMessage(t, f.svc, f.projectID, service.PostMessageInput{Content: "B. 背後から声が聞こえる", ReplyToMessageID: card.ID})
 	require.NotEmpty(t, ws.Messages)
 	assert.Equal(t, 1, f.count(t, `SELECT COUNT(*) FROM chat_message WHERE reply_to_message_id = ?`, card.ID))
 	assert.Len(t, f.shotObjectives(t), 2)
@@ -264,51 +257,43 @@ func TestContinueConfirm_AFailedReplyLeavesTheCardOpenForAnotherAnswer(t *testin
 }
 
 // Two replies to the same Continue card that overlap (a double click, a client retry) must make one
-// Shot and start one paid generation: the one that arrives while the first is still planning is
-// refused with a conflict.
+// Shot and start one paid generation: the one that arrives while the first is still planning (the
+// overlap is made from inside the first one's Agent call) is refused with a conflict.
 func TestContinueConfirm_AConcurrentSecondReplyToTheSameCardIsRefused(t *testing.T) {
 	f := completedShotFixture(t, sameSceneAnswer)
 	card := f.propose(t)
-	entered, release := make(chan struct{}), make(chan struct{})
-	var once sync.Once
+	var refused error
 	f.llm.director = func(system, _ string) string {
 		if strings.Contains(system, `"candidates"`) {
 			return proposeAnswer
 		}
-		once.Do(func() { close(entered) })
-		<-release
+		refused = f.overlap(func() error {
+			_, err := f.svc.Chat.PostMessage(context.Background(), f.projectID, service.PostMessageInput{Content: "B. 背後から声が聞こえる", ReplyToMessageID: card.ID})
+			return err
+		})
 		return sameSceneAnswer
 	}
-	ctx := context.Background()
 
-	first := make(chan error, 1)
-	go func() {
-		_, err := f.svc.Chat.PostMessage(ctx, f.projectID, service.PostMessageInput{Content: "A. 彼女がドアを開ける", ReplyToMessageID: card.ID})
-		first <- err
-	}()
-	select {
-	case <-entered:
-	case <-time.After(10 * time.Second):
-		t.Fatal("the first reply never reached the Continue Agent")
-	}
-	second := make(chan error, 1)
-	go func() {
-		_, err := f.svc.Chat.PostMessage(ctx, f.projectID, service.PostMessageInput{Content: "B. 背後から声が聞こえる", ReplyToMessageID: card.ID})
-		second <- err
-	}()
-	select {
-	case err := <-second:
-		assert.ErrorIs(t, err, service.ErrConflict, "the card is being answered")
-	case <-time.After(2 * time.Second):
-		t.Error("the second reply was not refused while the first one was planning")
-	}
+	f.say(t, "A. 彼女がドアを開ける", card.ID)
 
-	close(release)
-	require.NoError(t, <-first)
+	assert.ErrorIs(t, refused, service.ErrConflict, "the card is being answered")
 	f.waitGenerateJobs(t, 3)
 	assert.Len(t, f.shotObjectives(t), 2, "one new Shot")
 	assert.Equal(t, 1, f.count(t, `SELECT COUNT(*) FROM chat_message WHERE reply_to_message_id = ?`, card.ID))
 	assert.Equal(t, 3, f.count(t, `SELECT COUNT(*) FROM job WHERE kind = 'generate'`), "one generation was started for the new Shot")
+}
+
+// overlap runs call while an Agent call of the fixture is in flight and returns its error. A call
+// that is not refused has to wait for the fake Agent, which the one in flight holds, so it is given up
+// after a moment (and reported as no error).
+func (f genFixture) overlap(call func() error) (err error) {
+	done := make(chan error, 1)
+	go func() { done <- call() }()
+	select {
+	case err = <-done:
+	case <-time.After(2 * time.Second):
+	}
+	return err
 }
 
 // The client going away while the new Shot's generation starts (the Prompt Planner call) must not
@@ -337,12 +322,27 @@ func TestContinueConfirm_AReplyIsRecordedWhenTheRequestIsCancelledAfterTheShotWa
 // A Shot that is being repaired is refused like one being generated (the card leaves the button out).
 func TestContinuePropose_AShotBeingRepairedIsBusy(t *testing.T) {
 	f := completedShotFixture(t, sameSceneAnswer)
-	require.NoError(t, f.db.Write(context.Background(), func(ctx context.Context, tx *sql.Tx) error {
-		_, err := tx.ExecContext(ctx, `UPDATE shot SET state = 'REPAIRING' WHERE id = ?`, f.shotID)
-		return err
-	}))
+	f.execSQL(t, `UPDATE shot SET state = 'REPAIRING' WHERE id = ?`, f.shotID)
 
 	_, _, err := f.svc.Continue.Propose(context.Background(), f.shotID)
 
 	assert.ErrorIs(t, err, service.ErrBusy)
+}
+
+// Propose does not change the Shot, so one that overlaps another for the same Shot (a double click, a
+// second tab) must be refused: it would pay for a second Continue Agent call and post a second card.
+func TestContinuePropose_AnOverlappingProposeForTheSameShotIsRefused(t *testing.T) {
+	f := completedShotFixture(t, sameSceneAnswer)
+	var refused error
+	f.llm.director = func(string, string) string {
+		refused = f.overlap(func() error { _, _, err := f.svc.Continue.Propose(context.Background(), f.shotID); return err })
+		return proposeAnswer
+	}
+
+	f.propose(t)
+
+	assert.ErrorIs(t, refused, service.ErrConflict, "the Shot is being proposed for")
+	assert.Equal(t, 1, f.count(t, `SELECT COUNT(*) FROM chat_message WHERE ref_type = ?`, domain.RefContinue), "one card")
+	f.llm.director = directorFor(sameSceneAnswer)
+	f.propose(t) // the Shot can be proposed for again
 }

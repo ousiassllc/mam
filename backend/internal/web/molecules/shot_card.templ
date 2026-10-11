@@ -133,9 +133,10 @@ templ ShotActions(shotID string, canContinue bool, candidates bool) {
 		})
 		if canContinue {
 			@atoms.Button(atoms.ToneNeutral, "続きを作る", templ.Attributes{
-				"type":    "button",
-				"hx-post": shotActionURL(shotID, "continue"),
-				"hx-swap": "none",
+				"type":            "button",
+				"hx-post":         shotActionURL(shotID, "continue"),
+				"hx-swap":         "none",
+				"hx-disabled-elt": "this",
 			})
 		}
 	</form>
