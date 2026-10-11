@@ -1,3 +1,8 @@
+//go:build !windows
+
+// The ONNX Runtime bindings (onnxruntime-purego) load the library with dlopen and do not build for
+// Windows; onnx_windows.go answers ErrUnavailable there, so the Judge falls back to qualitative judging.
+
 package facesim
 
 import (
@@ -14,12 +19,6 @@ import (
 	ort "github.com/shota3506/onnxruntime-purego/onnxruntime"
 )
 
-// Default file names of the models, looked up in ONNXConfig.ModelDir.
-const (
-	DetectorFile   = "face_detection_yunet_2023mar.onnx"
-	RecognizerFile = "face_recognition_sface_2021dec.onnx"
-)
-
 // ortAPIVersion is the ONNX Runtime C API version the bindings use (ONNX Runtime 1.23.x).
 const ortAPIVersion = 23
 
@@ -31,20 +30,6 @@ const (
 	// maxImageSide bounds the raster the detector works from (larger images are box-reduced first).
 	maxImageSide = 2 * detectorSize
 )
-
-// ONNXConfig locates the models and the ONNX Runtime library.
-type ONNXConfig struct {
-	// ModelDir holds DetectorFile and RecognizerFile.
-	ModelDir string
-	// DetectorPath / RecognizerPath override the default file names when set.
-	DetectorPath   string
-	RecognizerPath string
-	// RuntimeLibrary is the ONNX Runtime shared library (libonnxruntime.so, .dylib or onnxruntime.dll,
-	// version 1.23.x). Empty lets the system search its standard library locations.
-	RuntimeLibrary string
-	// MinScore is the detection confidence a face needs (YuNet score, 0..1).
-	MinScore float32
-}
 
 func (c ONNXConfig) detector() string {
 	if c.DetectorPath != "" {

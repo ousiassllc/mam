@@ -28,8 +28,9 @@ func RestoreShotVersion(svc *service.VersionService) gin.HandlerFunc {
 	}
 }
 
-// RestoreWorldStateVersion restores the trunk World State to a saved version
-// (POST /projects/:id/world-state/versions/:versionNumber/restore) and answers with the view.
+// RestoreWorldStateVersion restores the trunk World State, or that of the Branch named by the query
+// branch_id, to a saved version (POST /projects/:id/world-state/versions/:versionNumber/restore)
+// and answers with the view of the same scope.
 func RestoreWorldStateVersion(svc *service.VersionService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		number, err := service.ParseVersionNumber(c.Param("versionNumber"))
@@ -37,7 +38,7 @@ func RestoreWorldStateVersion(svc *service.VersionService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		view, err := svc.RestoreWorldState(c.Request.Context(), c.Param("id"), number)
+		view, err := svc.RestoreWorldState(c.Request.Context(), c.Param("id"), c.Query("branch_id"), number)
 		if err != nil {
 			toast(c, err)
 			return
@@ -45,6 +46,10 @@ func RestoreWorldStateVersion(svc *service.VersionService) gin.HandlerFunc {
 		render(c, http.StatusOK, organisms.WorldStateView(worldStateData(view)))
 	}
 }
+
+// branchReloadTrigger is the HX-Trigger event that makes the Branch detail on the page load again
+// (organisms.BranchDetail listens for it).
+const branchReloadTrigger = "branch-reload"
 
 func branchHistoryData(h service.BranchHistory) organisms.BranchHistoryData {
 	return organisms.BranchHistoryData{BranchID: h.BranchID, Versions: h.Versions, World: h.World}
@@ -88,6 +93,9 @@ func restoreBranch(restore branchRestore) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
+		// The Branch page's detail (name, World State reference, versions) and tree show what was
+		// restored; they reload on this event.
+		c.Header("HX-Trigger", branchReloadTrigger)
 		render(c, http.StatusOK, organisms.BranchVersionHistory(branchHistoryData(h)))
 	}
 }

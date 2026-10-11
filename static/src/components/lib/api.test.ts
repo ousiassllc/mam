@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ApiError, CSRF_HEADER, csrfToken, get, post, uploadFile } from './api';
+import { ApiError, CSRF_HEADER, csrfToken, get, post } from './api';
 
 function stubDocument(token: string | null) {
   vi.stubGlobal('document', {
@@ -42,15 +42,6 @@ describe('api client', () => {
     expect(init.method).toBe('POST');
     expect(init.body).toBe('{"count":2}');
     expect(headers['Content-Type']).toBe('application/json');
-    expect(headers[CSRF_HEADER]).toBe('tok-123');
-  });
-
-  it('does not set a content type for multipart uploads', async () => {
-    const fetchMock = stubFetch(200, '{}');
-    await uploadFile('/api/v1/assets', new File(['x'], 'a.png'));
-    const { init, headers } = lastCall(fetchMock);
-    expect(init.body).toBeInstanceOf(FormData);
-    expect(headers['Content-Type']).toBeUndefined();
     expect(headers[CSRF_HEADER]).toBe('tok-123');
   });
 

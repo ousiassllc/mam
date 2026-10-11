@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"slices"
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -121,8 +122,12 @@ func (s *BrandService) SaveTemplate(ctx context.Context, projectID, name string)
 }
 
 // DeleteTemplate removes a Brand Template (DELETE /brand-templates/:id). Projects that used it keep
-// their constraints. projectID is the settings screen the answer is rendered for.
+// their constraints. projectID is the settings screen the answer is rendered for: an unknown
+// Project is ErrNotFound and deletes nothing.
 func (s *BrandService) DeleteTemplate(ctx context.Context, projectID, templateID string) (TemplatesView, error) {
+	if _, err := s.getProject(ctx, projectID); err != nil {
+		return TemplatesView{}, err
+	}
 	if err := s.brandTemplates.Delete(ctx, templateID); err != nil {
 		return TemplatesView{}, notFound(err)
 	}
@@ -147,4 +152,24 @@ func (s *BrandService) ApplyTemplate(ctx context.Context, projectID, templateID 
 // invalidTemplate is the error of a creation that names a Brand Template that does not exist.
 func invalidTemplate() error {
 	return invalid("brand_template_id", "選んだ Brand Template が見つかりません")
+}
+
+// checkBrandTexts returns ErrBrandViolation when one of the texts (a user's instruction or direction)
+// contains a forbidden expression of a LOCK constraint of the Project. Spec §23: this runs before
+// anything is generated or made (a Shot added, a Branch created, a paid Plan called). Blank texts
+// are not looked at, and nothing is read when the repository is not wired.
+func checkBrandTexts(ctx context.Context, brands *repository.BrandRepository, projectID string, texts ...string) error {
+	if brands == nil || !slices.ContainsFunc(texts, func(t string) bool { return strings.TrimSpace(t) != "" }) {
+		return nil
+	}
+	list, err := brands.List(ctx, projectID)
+	if err != nil {
+		return err
+	}
+	for _, t := range texts {
+		if err := list.CheckText(t); err != nil {
+			return err
+		}
+	}
+	return nil
 }

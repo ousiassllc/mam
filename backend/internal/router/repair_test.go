@@ -71,6 +71,29 @@ func TestRepair_UnknownJudgedAndAcceptedTakesAreRefused(t *testing.T) {
 	assert.Zero(t, j.count(`SELECT COUNT(*) FROM repair_action`))
 }
 
+// The Shot card draws a Repair button only for a Take the server accepts a Repair of (#336): a Take
+// that passed the Judge or was never judged is refused with 409, so it gets no button.
+func TestRepair_ButtonIsDrawnOnlyForTakesTheServerAccepts(t *testing.T) {
+	page := func(j *judgeApp) string {
+		return j.get("/projects/"+j.project+"/scenes/"+j.sceneID+"?shot="+j.shotID, true).Body.String()
+	}
+
+	passed := newJudgeApp(t, goodVerdict, 0.95, 0.95, 0.95)
+	passed.director()
+	ids := passed.generateAndJudge()
+	assert.NotContains(t, page(passed), "/repair\"", "every Take passed: nothing to repair")
+	assert.Equal(t, http.StatusConflict, passed.form(http.MethodPost, "/takes/"+ids[0]+"/repair", nil).Code)
+
+	failed := newJudgeApp(t, failVerdict, 0.95, 0.95, 0.95, 0.95)
+	failed.director()
+	ids = failed.generateAndJudge()
+	failed.execSQL(`DELETE FROM judge_result WHERE take_id = ?`, ids[1])
+	html := page(failed)
+	assert.Contains(t, html, "/takes/"+ids[0]+"/repair\"", "judged and failed")
+	assert.NotContains(t, html, "/takes/"+ids[1]+"/repair\"", "never judged: 409")
+	assert.Equal(t, http.StatusConflict, failed.form(http.MethodPost, "/takes/"+ids[1]+"/repair", nil).Code)
+}
+
 func TestRepair_ALowScoreFailsAPassAndStartsARepair(t *testing.T) {
 	// The Judge says pass, but the drama Take scores 50 on every axis: under the Minimum acceptance score.
 	scored := `{"result":"pass","overall_confidence":0.9,"issues":[],"scores":{"story":50,"acting":50,"character_identity":50,"continuity":50,"dialogue":50,"emotion":50,"camera":50,"editing_rhythm":50}}`

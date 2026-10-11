@@ -7,6 +7,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
@@ -19,6 +20,8 @@ type BranchService struct {
 	*core
 	shots     *repository.GenerationRepository
 	continues *ContinueService
+	// brands are the Safety / Brand Constraints a Direction is checked against before anything is made.
+	brands *repository.BrandRepository
 }
 
 // BranchInput is the request to branch at a Shot (POST /shots/:id/branch).
@@ -174,9 +177,16 @@ func (s *BranchService) detail(ctx context.Context, branch domain.Branch) (Branc
 // Create saves the Branch Point at the Shot and snapshots the World State there (POST
 // /shots/:id/branch). With a Direction the AI also plans the first Shot of the Branch and starts
 // generating it; a Direction needs generation to be configured (ErrUnavailable otherwise, before
-// anything is made). An unknown Shot is ErrNotFound; an unusable type, offset or name is a
-// ValidationError.
+// anything is made), and one with a forbidden expression of a LOCK Brand constraint is
+// ErrBrandViolation, also before anything is made. An unknown Shot is ErrNotFound; an unusable type,
+// offset or name is a ValidationError.
 func (s *BranchService) Create(ctx context.Context, shotID string, in BranchInput) (BranchDetail, error) {
+	return s.create(ctx, shotID, in, false)
+}
+
+// create is Create; aiChoice has the AI plan and generate the first Shot even without a Direction
+// (the development is left to it).
+func (s *BranchService) create(ctx context.Context, shotID string, in BranchInput, aiChoice bool) (BranchDetail, error) {
 	ref, err := s.shots.GetShot(ctx, shotID)
 	if err != nil {
 		return BranchDetail{}, notFound(err)
@@ -186,15 +196,22 @@ func (s *BranchService) Create(ctx context.Context, shotID string, in BranchInpu
 		return BranchDetail{}, err
 	}
 	direction := strings.TrimSpace(in.Direction)
-	if direction != "" && !s.canContinue() {
+	if utf8.RuneCountInString(direction) > maxInstructionRunes {
+		return BranchDetail{}, invalid("direction", "%d 文字以内で入力してください", maxInstructionRunes)
+	}
+	generate := direction != "" || aiChoice
+	if generate && !s.canContinue() {
 		return BranchDetail{}, ErrUnavailable
+	}
+	if err := s.checkDirections(ctx, ref.ProjectID, direction); err != nil {
+		return BranchDetail{}, err
 	}
 	branch, err := s.branches.Create(ctx, spec)
 	if err != nil {
 		return BranchDetail{}, notFound(err)
 	}
 	started := false
-	if direction != "" {
+	if generate {
 		if err := s.continueBranch(ctx, ref, branch, direction); err != nil {
 			return BranchDetail{}, err
 		}
@@ -212,7 +229,7 @@ func (s *BranchService) newBranch(ctx context.Context, ref repository.ShotRef, i
 		typ = domain.BranchAtShot
 	}
 	if !typ.Valid() {
-		return repository.NewBranch{}, invalid("branch_point_type", "分岐点の種類は scene / shot / frame のいずれかです")
+		return repository.NewBranch{}, invalid("point_type", "分岐点の種類は scene / shot / frame のいずれかです")
 	}
 	spec := repository.NewBranch{ShotID: ref.Shot.ID, PointType: typ}
 	if typ == domain.BranchAtFrame {
@@ -253,11 +270,9 @@ func (s *BranchService) canContinue() bool {
 // story on) and starts generating it from the Branch's World State. When the Branch was made but
 // this fails, the Branch stays and the error says so.
 func (s *BranchService) continueBranch(ctx context.Context, ref repository.ShotRef, branch domain.Branch, direction string) error {
-	in, err := s.continues.input(ctx, ref)
-	if err != nil {
-		return err
-	}
-	in.World, err = s.shots.WorldContext(ctx, ref.ProjectID, branch.ID)
+	// the story so far is the Branch's: the Shots up to its Branch Point, not the Shots of the series
+	// that follow it (generation works from the same series); the Shot continued from lies in it too
+	in, err := s.continues.branchInput(ctx, ref, branch.PointType, branch.ID)
 	if err != nil {
 		return err
 	}
@@ -275,9 +290,10 @@ func (s *BranchService) continueBranch(ctx context.Context, ref repository.ShotR
 	if err != nil {
 		return notFound(err)
 	}
-	if _, err := s.continues.generation.gen.Start(ctx, shot.ID, direction); err != nil {
+	if _, err := s.continues.generation.gen.StartByPolicy(ctx, shot.ID, direction, nil); err != nil {
 		return branchMadeError(mapGenerationError(err))
 	}
+	s.recordIntervention(ctx, domain.Intervention{ShotID: shot.ID, Kind: domain.InterventionGenerate}) // the user asked for the Branch's first Shot
 	return nil
 }
 
@@ -324,16 +340,21 @@ func (s *BranchService) Update(ctx context.Context, branchID string, name, world
 // Fork makes count Branches at the Shot for a direction of the chat ("このカットから別展開を3つ作って")
 // and reports what happened, one line per Branch. directions are the developments the user named;
 // the AI proposes the rest (the NEXT candidates of Continue). With generation configured every
-// Branch gets its first Shot planned and generated; without it the Branches are made empty. count
-// is capped at domain.MaxBranchesPerRequest.
+// Branch gets its first Shot planned and generated (one the AI could propose no development for is
+// left to its own choice); without it the Branches are made empty. count is capped at domain.MaxBranchesPerRequest.
 func (s *BranchService) Fork(ctx context.Context, ref repository.ShotRef, typ domain.BranchPointType, count int, directions []string) ([]string, error) {
 	count = min(max(count, 1), domain.MaxBranchesPerRequest)
 	if !typ.Valid() {
 		typ = domain.BranchAtShot
 	}
 	directions = append([]string{}, directions[:min(len(directions), count)]...)
+	for i := range directions {
+		directions[i] = clipInstruction(directions[i]) // the chat's text is not a form field: cut, as the single-Shot commands do
+	}
 	if len(directions) < count && s.canContinue() {
-		in, err := s.continues.input(ctx, ref)
+		// the Branches continue from the fork: the Shot proposed from is the last one at or before it, and
+		// later Shots of the series are not part of their story
+		in, err := s.continues.branchInput(ctx, ref, typ, ref.Scene.BranchID)
 		if err != nil {
 			return nil, err
 		}
@@ -345,7 +366,13 @@ func (s *BranchService) Fork(ctx context.Context, ref repository.ShotRef, typ do
 			if len(directions) == count {
 				break
 			}
-			directions = append(directions, c)
+			directions = append(directions, clipInstruction(c))
+		}
+	}
+	if s.canContinue() {
+		// the directions the AI proposed too: a forbidden one stops the request before the first Branch
+		if err := s.checkDirections(ctx, ref.ProjectID, directions...); err != nil {
+			return nil, err
 		}
 	}
 	var lines []string
@@ -355,10 +382,10 @@ func (s *BranchService) Fork(ctx context.Context, ref repository.ShotRef, typ do
 			if s.canContinue() {
 				in.Direction = directions[i]
 			} else {
-				in.Name = directions[i] // nothing can be generated: the direction only names the Branch
+				in.Name = domain.TruncateBranchName(directions[i]) // nothing can be generated: the direction only names the Branch (cut to length like a Direction)
 			}
 		}
-		d, err := s.Create(ctx, ref.Shot.ID, in)
+		d, err := s.create(ctx, ref.Shot.ID, in, s.canContinue())
 		if err != nil {
 			line, fatal := forkFailure(err)
 			if fatal != nil {
@@ -370,6 +397,12 @@ func (s *BranchService) Fork(ctx context.Context, ref repository.ShotRef, typ do
 		lines = append(lines, forkLine(d))
 	}
 	return lines, nil
+}
+
+// checkDirections returns ErrBrandViolation when a direction contains a forbidden expression of a
+// LOCK Brand constraint (spec §23: before anything is generated or made).
+func (s *BranchService) checkDirections(ctx context.Context, projectID string, directions ...string) error {
+	return checkBrandTexts(ctx, s.brands, projectID, directions...)
 }
 
 func forkLine(d BranchDetail) string {

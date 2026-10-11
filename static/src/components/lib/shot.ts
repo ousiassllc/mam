@@ -3,7 +3,7 @@
 /** Message of WebSocket /ws/shots/:id. */
 export interface ShotProgress {
   shot_id: string;
-  action?: 'generate' | 'reference_pack' | 'judge' | 'repair';
+  action?: 'generate' | 'candidates' | 'reference_pack' | 'judge' | 'repair';
   stage: 'idle' | 'queued' | 'generating' | 'judging' | 'repairing' | 'done' | 'failed';
   message?: string;
   takes_done?: number;
@@ -13,6 +13,45 @@ export interface ShotProgress {
 /** Work on the Shot is over (or nothing is running): the card must be refreshed and the socket closed. */
 export function isFinished(progress: Pick<ShotProgress, 'stage'>): boolean {
   return progress.stage === 'done' || progress.stage === 'failed' || progress.stage === 'idle';
+}
+
+/** The request that brings a finished Shot card up to date. */
+export interface CardRefresh {
+  url: string;
+  target: string;
+  swap: 'outerHTML';
+  select?: string;
+}
+
+/**
+ * What to fetch when the work on a card is over. The selected Shot's card refreshes the whole Shot
+ * view (its actions and Takes change). Any other card refreshes only itself, from the page of the Shot
+ * that is selected, so the Shot being viewed and the text typed into it stay as they are.
+ */
+export function planCardRefresh(card: { id: string; refreshUrl: string; selected: boolean }, selectedShotUrl: string | null): CardRefresh {
+  if (card.selected) return { url: card.refreshUrl, target: '#scene-shot-view', swap: 'outerHTML' };
+  const selector = `#${card.id}`;
+  // Without a selected Shot the Scene page (no ?shot=) is the one that leaves every card unselected.
+  const url = selectedShotUrl ?? card.refreshUrl.split('?')[0] ?? card.refreshUrl;
+  return { url, target: selector, swap: 'outerHTML', select: selector };
+}
+
+/**
+ * Guard against refresh loops: a card that keeps being re-rendered in a progress state while the
+ * server says "idle" would reconnect and refetch without end, so an idle-triggered refresh of the same
+ * card URL is allowed at most once per windowMs (counted from the last refresh of any kind). A refresh
+ * for work that really ended (done / failed) is never dropped: the re-rendered card may be judging
+ * or repairing and finish within the window, and a dropped refresh would leave it stuck in progress.
+ */
+export function createRefreshGuard(windowMs = 3000, now: () => number = Date.now): (url: string, stage: ShotProgress['stage']) => boolean {
+  const last = new Map<string, number>();
+  return (url, stage) => {
+    const t = now();
+    const prev = last.get(url);
+    if (stage === 'idle' && prev !== undefined && t - prev < windowMs) return false;
+    last.set(url, t);
+    return true;
+  };
 }
 
 /** What the placeholder of a Shot that has no video (yet) says about its progress. */

@@ -43,12 +43,29 @@ type Input struct {
 	Template domain.ProductionTemplate
 	Scene    domain.Scene
 	Shot     domain.Shot
+	// NoShot is set when the next Shot starts a Branch made at the head of a Scene that nothing
+	// precedes: there is no completed Shot, and Scene is the Scene of the Branch Point.
+	NoShot bool
 	// Spec is the Canonical Shot Spec the Shot was generated from; nil when it has none.
 	Spec *domain.ShotSpec
 	// World is the World State after the Shot; the next Shot starts from it.
 	World domain.WorldContext
 	// Story lists the objectives of the Shots of the Project in story order ("Scene 1 / Shot 1: ...").
 	Story []string
+	// FinalFrame is the last frame of the Take the next Shot continues from; nil when it could not be
+	// taken (no ffmpeg, no file), in which case the States are inferred from the text alone.
+	FinalFrame *llm.Image
+}
+
+// request is the LLM request for the Input: the text, and the final frame when there is one.
+func (in Input) request(system string, plan bool, direction string) llm.Request {
+	req := llm.Request{System: system, User: userPrompt(in, plan, direction)}
+	if in.FinalFrame != nil {
+		img := *in.FinalFrame
+		img.Caption = "完成した Shot の最終フレーム（実際の映像から取り出した画像）。状態はこの画像を優先して読み取る"
+		req.Images = []llm.Image{img}
+	}
+	return req
 }
 
 // Proposal is the analysis of the completed Shot and the NEXT candidates.
@@ -69,6 +86,7 @@ const proposeSystem = `あなたは AI 動画制作チームの Director Agent �
   "candidates": ["彼女がドアを開ける", "背後から声が聞こえる", "突然照明が消える"]
 }
 ルール:
+- 最終フレームの画像が付いているときは、final_frame・character・position・emotion・object・camera・lighting・motion を画像から読み取る。画像と Shot Spec が食い違うときは画像を正とする。
 - candidates は 3 つ。互いに異なる方向の展開にし、最終フレームの状態から自然につながるものにする。1 つ 100 文字以内。
 - Creative Brief と World State に反する展開、Brief に無い事実（商品の効能・価格・受賞歴など）を作る展開は出さない。`
 
@@ -92,7 +110,7 @@ func (a *Agent) Propose(ctx context.Context, in Input) (Proposal, error) {
 		Analysis   domain.StateAnalysis `json:"analysis"`
 		Candidates []string             `json:"candidates"`
 	}
-	out, err := llm.CompleteJSON[answer](ctx, a.llm, llm.AgentDirector, llm.Request{System: proposeSystem, User: userPrompt(in, false, "")})
+	out, err := llm.CompleteJSON[answer](ctx, a.llm, llm.AgentDirector, in.request(proposeSystem, false, ""))
 	if err != nil {
 		return Proposal{}, fmt.Errorf("continue: %w", err)
 	}
@@ -123,7 +141,7 @@ func (a *Agent) Plan(ctx context.Context, in Input, direction string) (domain.Co
 		Scene    domain.PlannedScene `json:"scene"`
 		Shot     domain.PlannedShot  `json:"shot"`
 	}
-	out, err := llm.CompleteJSON[answer](ctx, a.llm, llm.AgentDirector, llm.Request{System: planSystem, User: userPrompt(in, true, direction)})
+	out, err := llm.CompleteJSON[answer](ctx, a.llm, llm.AgentDirector, in.request(planSystem, true, direction))
 	if err != nil {
 		return domain.ContinuePlan{}, fmt.Errorf("continue: %w", err)
 	}
@@ -163,19 +181,14 @@ func userPrompt(in Input, plan bool, direction string) string {
 			b.WriteString("- " + s + "\n")
 		}
 	}
-	fmt.Fprintf(&b, "\n## 完成した Shot（続きの起点）\nScene %d「%s」 場所: %s / 時間: %s / 狙い: %s\n", in.Scene.OrderIndex+1, in.Scene.Title, in.Scene.Location, in.Scene.Time, in.Scene.Objective)
-	fmt.Fprintf(&b, "Shot %d: %s（%s）\n", in.Shot.OrderIndex+1, in.Shot.Objective, domain.FormatDuration(in.Shot.Duration))
-	if f, ok := in.Shot.Storyboard(); ok {
-		for _, r := range [][2]string{{"画", f.Description}, {"サイズ", f.Framing}, {"カメラ", f.Camera}, {"動き", f.Action}, {"セリフ", f.Dialogue}} {
-			if r[1] != "" {
-				fmt.Fprintf(&b, "- 絵コンテ %s: %s\n", r[0], r[1])
-			}
-		}
+	worldHeader := "この Shot の完了後"
+	if in.NoShot {
+		fmt.Fprintf(&b, "\n## 分岐点（Scene の頭・これより前に完成した Shot はありません）\nScene %d「%s」 場所: %s / 時間: %s / 狙い: %s\n", in.Scene.OrderIndex+1, in.Scene.Title, in.Scene.Location, in.Scene.Time, in.Scene.Objective)
+		worldHeader = "分岐点"
+	} else {
+		writeCompletedShot(&b, in)
 	}
-	if in.Spec != nil {
-		b.WriteString("\n## この Shot の Canonical Shot Spec（英語）\n" + specJSON(*in.Spec) + "\n")
-	}
-	b.WriteString("\n## World State（この Shot の完了後）\n")
+	b.WriteString("\n## World State（" + worldHeader + "）\n")
 	if w := in.World.Text(); w != "" {
 		b.WriteString(w)
 	} else {
@@ -188,6 +201,23 @@ func userPrompt(in Input, plan bool, direction string) string {
 		b.WriteString("\n## 続きの指示\n" + direction + "\n")
 	}
 	return b.String()
+}
+
+// writeCompletedShot renders the Shot the next one continues from: its Scene, objective, storyboard
+// and Canonical Shot Spec.
+func writeCompletedShot(b *strings.Builder, in Input) {
+	fmt.Fprintf(b, "\n## 完成した Shot（続きの起点）\nScene %d「%s」 場所: %s / 時間: %s / 狙い: %s\n", in.Scene.OrderIndex+1, in.Scene.Title, in.Scene.Location, in.Scene.Time, in.Scene.Objective)
+	fmt.Fprintf(b, "Shot %d: %s（%s）\n", in.Shot.OrderIndex+1, in.Shot.Objective, domain.FormatDuration(in.Shot.Duration))
+	if f, ok := in.Shot.Storyboard(); ok {
+		for _, r := range [][2]string{{"画", f.Description}, {"サイズ", f.Framing}, {"カメラ", f.Camera}, {"動き", f.Action}, {"セリフ", f.Dialogue}} {
+			if r[1] != "" {
+				fmt.Fprintf(b, "- 絵コンテ %s: %s\n", r[0], r[1])
+			}
+		}
+	}
+	if in.Spec != nil {
+		b.WriteString("\n## この Shot の Canonical Shot Spec（英語）\n" + specJSON(*in.Spec) + "\n")
+	}
 }
 
 func clip(s string, max int) string {

@@ -78,3 +78,19 @@ func TestRemoveStaleTemp_MissingRootIsNotAnError(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Empty(t, removed)
 }
+
+func TestRemoveStaleTemp_RemovesAStagingFileLeftByACrash(t *testing.T) {
+	root := t.TempDir()
+	f, err := fsutil.CreateStagingTemp(filepath.Join(root, ".staging"))
+	if err != nil {
+		require.NoError(t, os.MkdirAll(filepath.Join(root, ".staging"), 0o700))
+		f, err = fsutil.CreateStagingTemp(filepath.Join(root, ".staging"))
+	}
+	require.NoError(t, err)
+	require.NoError(t, f.Close())
+
+	removed, err := fsutil.RemoveStaleTemp(root)
+
+	require.NoError(t, err)
+	assert.Equal(t, []string{f.Name()}, removed)
+}

@@ -1,0 +1,57 @@
+package atoms
+
+// FieldSize selects the padding and text size of a form field.
+type FieldSize string
+
+// Field sizes.
+const (
+	FieldSm FieldSize = "sm" // dense rows (filters, inline edits)
+	FieldMd FieldSize = "md" // the default form field
+	FieldLg FieldSize = "lg" // the roomy fields of a main form
+)
+
+// fieldClass is the shared look of Input, Select and Textarea; layout adds placement classes
+// (width, flex) and nothing that changes colours or borders.
+func fieldClass(size FieldSize, layout string) string {
+	base := "rounded-md border border-neutral-600 bg-neutral-950 text-neutral-100 "
+	switch size {
+	case FieldSm:
+		base += "px-2 py-1 text-xs"
+	case FieldLg:
+		base += "px-3 py-2 text-sm"
+	default:
+		base += "px-2 py-1 text-sm"
+	}
+	if layout == "" {
+		return base
+	}
+	return base + " " + layout
+}
+
+// Input is a text-like <input> (text, number, search). attrs carry id, name, type, value and
+// the validation attributes. File and hidden inputs have no shared look and stay raw.
+templ Input(size FieldSize, layout string, attrs templ.Attributes) {
+	<input class={ fieldClass(size, layout) } { attrs... }/>
+}
+
+// Select is a <select>; its <option>s are the children.
+templ Select(size FieldSize, layout string, attrs templ.Attributes) {
+	<select class={ fieldClass(size, layout) } { attrs... }>
+		{ children... }
+	</select>
+}
+
+// Textarea is a <textarea> holding value.
+templ Textarea(size FieldSize, layout string, attrs templ.Attributes, value string) {
+	<textarea class={ fieldClass(size, layout) } { attrs... }>{ value }</textarea>
+}
+
+// Choice is a checkbox or radio <input>; type, name, value and checked go in attrs.
+templ Choice(layout string, attrs templ.Attributes) {
+	<input
+		if layout != "" {
+			class={ layout }
+		}
+		{ attrs... }
+	/>
+}

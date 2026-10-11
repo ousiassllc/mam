@@ -1,0 +1,13 @@
+package atoms
+
+// ConnectionNotice is the one definition of the "connection lost" notice's markup, shown when a
+// WebSocket has used up its reconnection attempts. The page shell embeds it once as
+// <template id="connection-notice-template">; static/src/components/lib/connection-notice.ts clones
+// it, fills data-connection-lost-message and wires the two buttons (data-action).
+templ ConnectionNotice() {
+	<div class="pointer-events-auto flex items-center gap-3 rounded-md border border-amber-500/50 bg-neutral-900 px-4 py-2 text-sm text-amber-200 shadow-lg" role="alert" data-connection-lost="">
+		<span data-connection-lost-message></span>
+		<button type="button" class="rounded border border-amber-500/50 px-2 py-1 hover:bg-neutral-800" data-action="reconnect">再接続</button>
+		<button type="button" class="rounded border border-amber-500/50 px-2 py-1 hover:bg-neutral-800" data-action="reload">再読み込み</button>
+	</div>
+}

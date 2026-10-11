@@ -43,7 +43,8 @@ type Input struct {
 	// Fixed are the parts of Current that MUST stay as they are: the LOCKed parameters and what the
 	// director asked to preserve. Plan copies them from Current whatever the model answered.
 	Fixed []domain.SpecPart
-	// Manual are the parts of Current the user specified (MANUAL): kept unless the instruction changes them.
+	// Manual are the parts of Current the user specified (MANUAL): kept unless the instruction changes them,
+	// and a shooting Strategy never changes them.
 	Manual []domain.SpecPart
 	// Brand are the Safety / Brand Constraints of the Project (F-23). The spec MUST follow them; a
 	// spec that contains a forbidden expression of a LOCK constraint is refused with
@@ -134,6 +135,9 @@ func userPrompt(in Input) string {
 	}
 	if d, ok := strategyDirectives[in.Strategy]; ok {
 		b.WriteString("\n## Shooting strategy of this candidate (must be reflected)\n" + d + "\n")
+		if in.Current != nil && len(in.Manual) > 0 {
+			b.WriteString("The strategy applies to everything except the parts the user specified himself (" + partNames(in.Manual) + "): keep those as they are.\n")
+		}
 	}
 	if w := in.World.Text(); w != "" {
 		b.WriteString("\n## World state\n" + w)

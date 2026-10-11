@@ -5,6 +5,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // SeriesViewData is the state of the Series page (series_page): the canon and the Episodes.
@@ -42,14 +43,13 @@ templ SeriesView(d SeriesViewData) {
 			<form class="flex flex-wrap items-end gap-2" hx-put={ "/series/" + d.Series.ID + "/style" } hx-target="#series-view" hx-swap="outerHTML">
 				<label class="flex min-w-64 flex-1 flex-col gap-1 text-xs text-neutral-400" for="series-style">
 					スタイル（絵柄・色調・質感など）
-					<input
-						id="series-style"
-						name="style"
-						type="text"
-						value={ d.Series.Style }
-						maxlength="500"
-						class="rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm text-neutral-100"
-					/>
+					@atoms.Input(atoms.FieldMd, "", templ.Attributes{
+						"id":        "series-style",
+						"name":      "style",
+						"type":      "text",
+						"value":     d.Series.Style,
+						"maxlength": "500",
+					})
 				</label>
 				@atoms.Button(atoms.TonePrimary, "保存", templ.Attributes{"type": "submit"})
 			</form>
@@ -74,14 +74,13 @@ templ SeriesView(d SeriesViewData) {
 						for _, name := range domain.SeriesCharacterFields() {
 							<label class="flex flex-col gap-1 text-xs text-neutral-400" for={ "series-" + c.ID + "-" + name }>
 								{ seriesFieldLabels[name] }
-								<input
-									id={ "series-" + c.ID + "-" + name }
-									name={ name }
-									type="text"
-									value={ seriesCharacterValues(c)[name] }
-									maxlength="200"
-									class="rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm text-neutral-100"
-								/>
+								@atoms.Input(atoms.FieldMd, "", templ.Attributes{
+									"id":        "series-" + c.ID + "-" + name,
+									"name":      name,
+									"type":      "text",
+									"value":     seriesCharacterValues(c)[name],
+									"maxlength": "200",
+								})
 							</label>
 						}
 					</div>
@@ -111,19 +110,22 @@ templ SeriesView(d SeriesViewData) {
 			<ul class="flex flex-col gap-1 text-sm">
 				for _, p := range d.Episodes {
 					<li>
-						<a class="text-indigo-300 underline" href={ templ.SafeURL("/projects/" + p.ID) }>{ episodeLabel(p) }: { p.Name }</a>
+						<a class="text-indigo-300 underline" href={ templ.SafeURL(paths.Project(p.ID)) }>{ episodeLabel(p) }: { p.Name }</a>
 					</li>
 				}
 			</ul>
 			<form class="flex flex-wrap items-end gap-2" hx-post={ "/series/" + d.Series.ID + "/episodes" }>
 				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="series-previous-episode">
 					前の話（最終 World State を開始状態にする）
-					<select id="series-previous-episode" name="previous_episode_id" class="rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm text-neutral-100">
+					@atoms.Select(atoms.FieldMd, "", templ.Attributes{
+						"id":   "series-previous-episode",
+						"name": "previous_episode_id",
+					}) {
 						<option value="">（引き継がない）</option>
 						for _, p := range d.Episodes {
 							<option value={ p.ID }>{ episodeLabel(p) }</option>
 						}
-					</select>
+					}
 				</label>
 				@BrandTemplateSelect("series-brand-template", d.Templates)
 				@atoms.Button(atoms.TonePrimary, "次の Episode を作成", templ.Attributes{"type": "submit"})
@@ -152,14 +154,13 @@ templ SeriesMembership(p domain.Project) {
 				<input type="hidden" name="from_project_id" value={ p.ID }/>
 				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="series-name">
 					Series 名（この Project の Character / Product / Location を正本として登録します）
-					<input
-						id="series-name"
-						name="name"
-						type="text"
-						maxlength="100"
-						placeholder={ p.Name }
-						class="rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm text-neutral-100"
-					/>
+					@atoms.Input(atoms.FieldMd, "", templ.Attributes{
+						"id":          "series-name",
+						"name":        "name",
+						"type":        "text",
+						"maxlength":   "100",
+						"placeholder": p.Name,
+					})
 				</label>
 				@atoms.Button(atoms.ToneNeutral, "Series にする", templ.Attributes{"type": "submit"})
 			</form>

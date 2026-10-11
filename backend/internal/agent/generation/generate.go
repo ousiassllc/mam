@@ -60,9 +60,54 @@ type adapterRecord struct {
 	Requests  map[domain.ModelName]recordedRequest `json:"requests"`
 }
 
+// prepareGenerate is the Canonical Shot Spec a generate job will use, checked against LOCK brand
+// constraints before the job is queued. A nil spec means the job should plan (or keep) it itself:
+// the planner failed for a reason other than a brand violation, which the job reports.
+// A brand violation is returned so nothing is queued.
+func (o *Orchestrator) prepareGenerate(ctx context.Context, ref repository.ShotRef, instruction string, preserve []domain.SpecPart) (*domain.ShotSpec, []domain.NoteRef, error) {
+	shot := ref.Shot
+	current, hasSpec := shot.CanonicalSpec()
+	locks, err := o.gens.ShotLocks(ctx, shot.ID)
+	if err != nil {
+		return nil, nil, err
+	}
+	if hasSpec && (instruction == "" || locks.Locked(domain.ParamPrompt)) {
+		brand, err := o.brandConstraints(ctx, ref.ProjectID)
+		if err != nil {
+			return nil, nil, err
+		}
+		if err := brand.CheckText(current.BrandText()); err != nil {
+			return nil, nil, err
+		}
+		return nil, nil, nil
+	}
+	if err := refuseBusy(ref); err != nil {
+		return nil, nil, err // before the Prompt Planner is paid for
+	}
+	sc, err := o.loadShotContext(ctx, ref, instruction)
+	if err != nil {
+		return nil, nil, err
+	}
+	in := sc.plannerInput(ref, instruction)
+	if hasSpec {
+		in.Current = &current
+		in.Fixed = slices.Concat(locks.LockedParts(), preserve)
+		in.Manual = locks.PartsWith(domain.LockManual)
+	}
+	spec, err := o.planner.Plan(ctx, in)
+	if err != nil {
+		if errors.Is(err, domain.ErrBrandViolation) {
+			return nil, nil, err
+		}
+		return nil, nil, nil
+	}
+	return &spec, domain.NoteRefs(sc.notes), nil
+}
+
 // generate runs Prompt Autopilot and the Model Adapter for a Shot: it writes the Canonical Shot
-// Spec, decides the strategy, and makes the Takes.
-func (o *Orchestrator) generate(ctx context.Context, ref repository.ShotRef, instruction string, preserve []domain.SpecPart) (Progress, error) {
+// Spec, decides the strategy, and makes the Takes. planned, when set, is the spec prepareGenerate
+// already checked; the planner is not called again.
+func (o *Orchestrator) generate(ctx context.Context, ref repository.ShotRef, instruction string, preserve []domain.SpecPart, planned *domain.ShotSpec, plannedNotes []domain.NoteRef) (Progress, error) {
 	shot := ref.Shot
 	sc, err := o.loadShotContext(ctx, ref, instruction)
 	if err != nil {
@@ -83,7 +128,10 @@ func (o *Orchestrator) generate(ctx context.Context, ref repository.ShotRef, ins
 	current, hasSpec := shot.CanonicalSpec()
 	spec := current
 	var noteRefs []domain.NoteRef // the notes the Planner was given; none when the spec is kept
-	if !hasSpec || (instruction != "" && !locks.Locked(domain.ParamPrompt)) {
+	switch {
+	case planned != nil:
+		spec, noteRefs = *planned, plannedNotes
+	case !hasSpec || (instruction != "" && !locks.Locked(domain.ParamPrompt)):
 		in := sc.plannerInput(ref, instruction)
 		if hasSpec {
 			in.Current = &current
@@ -126,7 +174,7 @@ func (o *Orchestrator) generate(ctx context.Context, ref repository.ShotRef, ins
 	// Takes (F-12). They run at the same time; the Model Adapter limits calls per vendor.
 	o.notify(Progress{ShotID: shot.ID, Action: ActionGenerate, Stage: StageGenerating, Message: "動画を生成しています", TakesTotal: strategy.Takes})
 	var made counter
-	errs := parallel(strategy.Takes, func(i int) error {
+	errs := parallel(o.logger, strategy.Takes, func(i int) error {
 		takeID, err := o.makeTake(ctx, ref, pv, strategy, job, domain.TakeLineage{WorldStateVersion: sc.world.Version, References: references}, fmt.Sprintf("Shot %d · Take %d", shot.OrderIndex+1, i+1), policy.Effective().MaxGenerationTime, "")
 		if err != nil {
 			return err
@@ -302,16 +350,36 @@ type takeParameters struct {
 // Quality/Cost Policy). candidate is the Prompt Candidate strategy the Take is made for ("" for a
 // plain generation or a repair).
 func (o *Orchestrator) makeTake(ctx context.Context, ref repository.ShotRef, pv domain.PromptVersion, s Strategy, job modeladapter.VideoJob, lineage domain.TakeLineage, title string, limit time.Duration, candidate domain.CandidateStrategy) (string, error) {
-	callCtx, cancel := context.WithTimeout(ctx, limit)
-	defer cancel()
-	out, err := o.adapter.GenerateVideo(callCtx, s.Primary, s.Fallback, job)
+	// The ledger gets the cost only when the video comes back, minutes from now. Until then the
+	// estimate is held, so that Takes of other Shots, Repairs and Candidates that start at the same
+	// time see it and cannot together spend more than the budget ceilings allow (F-22).
+	release, ok, err := o.gens.Reserve(ctx, ref.ProjectID, ref.Shot.ID, s.CostPerTake)
 	if err != nil {
-		if ctx.Err() == nil && errors.Is(callCtx.Err(), context.DeadlineExceeded) {
+		return "", err
+	}
+	if !ok {
+		return "", ErrBudgetExceeded
+	}
+	defer release() // also when the generation fails or the cost was written by recordPaid below
+	// The limit counts model time: the Adapter starts it when a vendor slot is held, not while the
+	// Take waits for other generations to free one.
+	job.MaxTime = limit
+	out, err := o.adapter.GenerateVideo(ctx, s.Primary, s.Fallback, job)
+	if err != nil {
+		if ctx.Err() == nil && errors.Is(err, modeladapter.ErrTimeLimit) {
 			return "", fmt.Errorf("%w (%s): %w", ErrGenerationTimeLimit, limit, err)
 		}
 		return "", err
 	}
-	asset, err := o.files.write(ref.ProjectID, domain.AssetVideo, out.MimeType, out.Data)
+	// The provider has charged for the video. Unless CreateTake writes it with the Take, the cost
+	// goes to the ledger by itself, so a local failure never leaves the spend uncounted.
+	taken := false
+	defer func() {
+		if !taken {
+			o.recordPaid(ctx, ref.ProjectID, ref.Shot.ID, out.Model, out.EstimatedCost, out.ActualCost)
+		}
+	}()
+	asset, err := o.files.store(ref.ProjectID, domain.AssetVideo, out.MimeType, out.File)
 	if err != nil {
 		return "", err
 	}
@@ -332,6 +400,8 @@ func (o *Orchestrator) makeTake(ctx context.Context, ref repository.ShotRef, pv 
 		o.files.remove(asset)
 		return "", err
 	}
+	taken = true
+	release() // the cost is in the ledger now
 	if candidate != "" {
 		title += " · " + candidate.Label()
 	}
@@ -347,6 +417,18 @@ func (o *Orchestrator) makeTake(ctx context.Context, ref repository.ShotRef, pv 
 		o.logger.Error("post take card failed", "take_id", takeID, "err", err)
 	}
 	return takeID, nil
+}
+
+// recordPaid writes the cost of an output the provider has charged for to the ledger when no Take
+// or Pack row will carry it. It does not depend on ctx: a client that went away must not leave
+// the spend uncounted (#243). A failed write is logged; the generation error stays the result.
+func (o *Orchestrator) recordPaid(ctx context.Context, projectID, shotID string, model domain.ModelName, estimated float64, actual *float64) {
+	err := o.gens.AddCost(context.WithoutCancel(ctx), domain.CostEntry{
+		ProjectID: projectID, ShotID: shotID, Provider: model, EstimatedCost: estimated, ActualCost: actual,
+	})
+	if err != nil {
+		o.logger.Error("record cost failed", "shot_id", shotID, "model", model, "err", err)
+	}
 }
 
 // counter counts finished Takes from concurrent goroutines and remembers the first one.

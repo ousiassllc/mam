@@ -3,9 +3,12 @@ package router_test
 import (
 	"bytes"
 	"context"
+	"encoding/json"
+	"html"
 	"mime/multipart"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -142,4 +145,160 @@ func TestAudio_CloneVoiceValidatesTheRequest(t *testing.T) {
 	assert.Equal(t, http.StatusUnprocessableEntity, post("ユイ", nil), "a sample is required")
 	assert.Equal(t, http.StatusUnprocessableEntity, post("ユイ", []byte{}), "an empty sample is refused")
 	assert.Equal(t, http.StatusUnprocessableEntity, post(strings.Repeat("あ", 21), []byte("x")), "a long speaker name is refused")
+}
+
+func TestExport_ABranchIsExportedFromItsOwnTimelinesAndTheRecordSaysSo(t *testing.T) {
+	e := toAudio(t)
+	rec := e.form(http.MethodPost, "/shots/"+e.shotID+"/branch", url.Values{"name": {"逃げる"}})
+	require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
+	branchID := strings.TrimPrefix(rec.Header().Get("HX-Redirect"), "/branches/")
+	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/projects/"+e.project+"/edit/rough-cut", url.Values{"branch_id": {branchID}}).Code)
+	e.setState("AUDIO")
+	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/projects/"+e.project+"/audio/generate", url.Values{"branch_id": {branchID}}).Code)
+	e.setState("READY")
+	exportURL := "/projects/" + e.project + "/export"
+
+	// Only the Branch has an Audio Timeline: the trunk cannot be exported, an unknown Branch neither.
+	assert.Equal(t, http.StatusNotFound, e.form(http.MethodPost, exportURL, nil).Code)
+	assert.Equal(t, http.StatusNotFound, e.form(http.MethodPost, exportURL, url.Values{"branch_id": {"no-such-branch"}}).Code)
+	exports, err := repository.NewEditorRepository(e.db).ListExports(context.Background(), e.project)
+	require.NoError(t, err)
+	assert.Empty(t, exports)
+
+	rec = e.form(http.MethodPost, exportURL, url.Values{"branch_id": {branchID}})
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	exports, err = repository.NewEditorRepository(e.db).ListExports(context.Background(), e.project)
+	require.NoError(t, err)
+	require.Len(t, exports, 1)
+	assert.Equal(t, branchID, exports[0].BranchID)
+}
+
+func TestExport_ABranchWhoseAudioWasMadeForAnOlderEditIsRefused(t *testing.T) {
+	e := toAudio(t)
+	rec := e.form(http.MethodPost, "/shots/"+e.shotID+"/branch", url.Values{"name": {"逃げる"}})
+	require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
+	branchID := strings.TrimPrefix(rec.Header().Get("HX-Redirect"), "/branches/")
+	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/projects/"+e.project+"/edit/rough-cut", url.Values{"branch_id": {branchID}}).Code)
+	e.setState("AUDIO")
+	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/projects/"+e.project+"/audio/generate", url.Values{"branch_id": {branchID}}).Code)
+
+	// The Branch's edit is saved again after its audio was made: the audio belongs to the older edit.
+	onBranch, code := e.timelineOn(branchID)
+	require.Equal(t, http.StatusOK, code)
+	body := `{"clips":[{"shot_id":"` + e.shotID + `","take_id":"t1","kind":"main","in_point":0,"out_point":2,"transition":{"type":"cut","seconds":0}}]}`
+	require.Equal(t, http.StatusNoContent, e.request(http.MethodPut, onBranch.SaveURL, []byte(body), "application/json", false).Code)
+	e.setState("READY")
+
+	rec = e.form(http.MethodPost, "/projects/"+e.project+"/export", url.Values{"branch_id": {branchID}})
+	assert.Equal(t, http.StatusConflict, rec.Code, rec.Body.String())
+	exports, err := repository.NewEditorRepository(e.db).ListExports(context.Background(), e.project)
+	require.NoError(t, err)
+	assert.Empty(t, exports, "no video is written from a stale audio")
+}
+
+func TestExport_TheTrunkWhoseAudioWasMadeForAnOlderEditIsRefused(t *testing.T) {
+	e := toAudio(t)
+	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/projects/"+e.project+"/audio/generate", nil).Code)
+
+	// The trunk's edit is saved again after its audio was made (a Reshoot round put in late): the
+	// audio belongs to the older edit, and the Project is READY all the same.
+	onTrunk, code := e.timelineOn("")
+	require.Equal(t, http.StatusOK, code)
+	body := `{"clips":[{"shot_id":"` + e.shotID + `","take_id":"t1","kind":"main","in_point":0,"out_point":2,"transition":{"type":"cut","seconds":0}}]}`
+	require.Equal(t, http.StatusNoContent, e.request(http.MethodPut, onTrunk.SaveURL, []byte(body), "application/json", false).Code)
+	e.setState("READY")
+
+	rec := e.form(http.MethodPost, "/projects/"+e.project+"/export", nil)
+	assert.Equal(t, http.StatusConflict, rec.Code, rec.Body.String())
+	exports, err := repository.NewEditorRepository(e.db).ListExports(context.Background(), e.project)
+	require.NoError(t, err)
+	assert.Empty(t, exports, "no video is written from a stale audio")
+}
+
+func TestExport_TheBranchEditorPageExportsItsBranchAndKeepsTheScope(t *testing.T) {
+	e := toAudio(t)
+	rec := e.form(http.MethodPost, "/shots/"+e.shotID+"/branch", url.Values{"name": {"逃げる"}})
+	require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
+	branchID := strings.TrimPrefix(rec.Header().Get("HX-Redirect"), "/branches/")
+	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/projects/"+e.project+"/edit/rough-cut", url.Values{"branch_id": {branchID}}).Code)
+	e.setState("AUDIO")
+	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/projects/"+e.project+"/audio/generate", url.Values{"branch_id": {branchID}}).Code)
+	e.setState("READY")
+
+	// What htmx sends: the form's hx-vals on top of its fields.
+	page := e.get("/projects/"+e.project+"/edit?branch_id="+branchID, false).Body.String()
+	tag := regexp.MustCompile(`<form[^>]*hx-post="/projects/` + e.project + `/export"[^>]*>`).FindString(page)
+	require.NotEmpty(t, tag, "the Export form is on the page")
+	vals := regexp.MustCompile(`hx-vals="([^"]*)"`).FindStringSubmatch(tag)
+	require.NotNil(t, vals, "the Export form sends hx-vals: %s", tag)
+	var sent map[string]string
+	require.NoError(t, json.Unmarshal([]byte(html.UnescapeString(vals[1])), &sent))
+	require.Equal(t, map[string]string{"branch_id": branchID}, sent)
+
+	rec = e.form(http.MethodPost, "/projects/"+e.project+"/export", url.Values{"branch_id": {sent["branch_id"]}})
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	exports, err := repository.NewEditorRepository(e.db).ListExports(context.Background(), e.project)
+	require.NoError(t, err)
+	require.Len(t, exports, 1)
+	assert.Equal(t, branchID, exports[0].BranchID)
+	assert.Contains(t, rec.Body.String(), `hx-get="/projects/`+e.project+`/edit/actions?branch_id=`+branchID+`"`, "the response keeps the Branch scope")
+}
+
+func TestFinalQC_TheBranchEditorPageKeepsItsBranchScopeInTheAnswer(t *testing.T) {
+	e := toAudio(t)
+	rec := e.form(http.MethodPost, "/shots/"+e.shotID+"/branch", url.Values{"name": {"逃げる"}})
+	require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
+	branchID := strings.TrimPrefix(rec.Header().Get("HX-Redirect"), "/branches/")
+	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/projects/"+e.project+"/edit/rough-cut", url.Values{"branch_id": {branchID}}).Code)
+	e.setState("AUDIO")
+	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/projects/"+e.project+"/audio/generate", nil).Code)
+	e.setState("AUDIO")
+	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/projects/"+e.project+"/audio/generate", url.Values{"branch_id": {branchID}}).Code)
+	e.setState("AUDIO")
+
+	// What htmx sends: the button's hx-vals.
+	page := e.get("/projects/"+e.project+"/edit?branch_id="+branchID, false).Body.String()
+	tag := regexp.MustCompile(`<button[^>]*hx-post="/projects/` + e.project + `/final-qc"[^>]*>`).FindString(page)
+	require.NotEmpty(t, tag, "the Final QC button is on the page")
+	vals := regexp.MustCompile(`hx-vals="([^"]*)"`).FindStringSubmatch(tag)
+	require.NotNil(t, vals, "the Final QC button sends hx-vals: %s", tag)
+	var sent map[string]string
+	require.NoError(t, json.Unmarshal([]byte(html.UnescapeString(vals[1])), &sent))
+	require.Equal(t, map[string]string{"branch_id": branchID}, sent)
+	assert.Contains(t, page, "data-qc-trunk-note", "the Branch panel says Final QC checks the trunk")
+
+	rec = e.form(http.MethodPost, "/projects/"+e.project+"/final-qc", url.Values{"branch_id": {sent["branch_id"]}})
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	body := rec.Body.String()
+	assert.Contains(t, body, `hx-get="/projects/`+e.project+`/edit/actions?branch_id=`+branchID+`"`, "the response keeps the Branch scope")
+	assert.Contains(t, body, `hx-post="/projects/`+e.project+`/audio/generate"`)
+	assert.NotContains(t, body, `hx-vals="{&#34;branch_id&#34;:&#34;&#34;}"`, "no later button falls back to the trunk")
+
+	trunk := e.get("/projects/"+e.project+"/edit", false).Body.String()
+	assert.NotContains(t, trunk, "data-qc-trunk-note")
+}
+
+// A Branch panel offers Final QC by the audio of the trunk, which is what the server inspects (#340).
+func TestFinalQC_TheBranchPanelFollowsTheAudioOfTheTrunk(t *testing.T) {
+	e := toAudio(t)
+	rec := e.form(http.MethodPost, "/shots/"+e.shotID+"/branch", url.Values{"name": {"逃げる"}})
+	require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
+	branchID := strings.TrimPrefix(rec.Header().Get("HX-Redirect"), "/branches/")
+	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/projects/"+e.project+"/edit/rough-cut", url.Values{"branch_id": {branchID}}).Code)
+	e.setState("AUDIO")
+	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/projects/"+e.project+"/audio/generate", url.Values{"branch_id": {branchID}}).Code)
+	e.setState("AUDIO")
+
+	finalQC := regexp.MustCompile(`<button[^>]*hx-post="/projects/` + e.project + `/final-qc"[^>]*>`)
+	disabled := regexp.MustCompile(`\sdisabled[\s=>]`)
+	page := e.get("/projects/"+e.project+"/edit?branch_id="+branchID, false).Body.String()
+	assert.Regexp(t, disabled, finalQC.FindString(page), "the Branch has audio, the trunk has none: Final QC would be refused")
+	assert.Contains(t, page, "data-qc-trunk-missing")
+	assert.Equal(t, http.StatusConflict, e.form(http.MethodPost, "/projects/"+e.project+"/final-qc", url.Values{"branch_id": {branchID}}).Code)
+
+	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/projects/"+e.project+"/audio/generate", nil).Code)
+	e.setState("AUDIO")
+	page = e.get("/projects/"+e.project+"/edit?branch_id="+branchID, false).Body.String()
+	assert.NotRegexp(t, disabled, finalQC.FindString(page))
+	assert.NotContains(t, page, "data-qc-trunk-missing")
 }

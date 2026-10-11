@@ -1,6 +1,10 @@
 package organisms
 
-import "github.com/ousiassllc/mam/backend/internal/domain"
+import (
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
 
 // StoragePanelData is the disk usage of a Project.
 type StoragePanelData struct {
@@ -45,12 +49,14 @@ templ StoragePanel(d StoragePanelData) {
 		</dl>
 		if hasUnneeded(d.Storage) {
 			<form
-				hx-post={ "/projects/" + d.ProjectID + "/storage/archive-unneeded" }
+				hx-post={ paths.Project(d.ProjectID, "storage", "archive-unneeded") }
 				hx-target="#storage-panel"
 				hx-swap="outerHTML"
 				hx-confirm="不要な Take の動画ファイルを削除します。よろしいですか？"
 			>
-				<button type="submit" class="rounded-md border border-red-500/60 px-3 py-1.5 text-sm text-red-300 hover:bg-red-500/10">不要な Take をまとめてアーカイブ</button>
+				@atoms.Button(atoms.ToneDanger, "不要な Take をまとめてアーカイブ", templ.Attributes{
+					"type": "submit",
+				})
 			</form>
 		}
 		if len(d.Storage.Takes) == 0 {
@@ -67,14 +73,13 @@ templ StoragePanel(d StoragePanelData) {
 							}
 						</span>
 						if t.Status != domain.TakeSelected {
-							<button
-								type="button"
-								class="rounded-md border border-neutral-600 px-2 py-1 text-xs hover:bg-neutral-800"
-								hx-post={ "/projects/" + d.ProjectID + "/takes/" + t.TakeID + "/archive" }
-								hx-target="#storage-panel"
-								hx-swap="outerHTML"
-								hx-confirm="この Take の動画ファイルを削除します。よろしいですか？"
-							>アーカイブ</button>
+							@atoms.SmallButton(atoms.ToneNeutral, "アーカイブ", templ.Attributes{
+								"type":       "button",
+								"hx-post":    paths.Project(d.ProjectID, "takes", t.TakeID, "archive"),
+								"hx-target":  "#storage-panel",
+								"hx-swap":    "outerHTML",
+								"hx-confirm": "この Take の動画ファイルを削除します。よろしいですか？",
+							})
 						}
 					</li>
 				}

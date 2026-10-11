@@ -207,6 +207,68 @@ func TestSeriesRepository_CreateEpisodeStartsFromPreviousWorldState(t *testing.T
 	assert.Equal(t, "wsv-1", inherited)
 }
 
+func TestSeriesRepository_CreateEpisodeInheritsTheTrunkWorldStateNotABranchs(t *testing.T) {
+	ctx := context.Background()
+	f := newSeriesFixture(t)
+	s := f.createFromSource(t)
+
+	// The previous Episode has a trunk version 1 and a Branch whose own numbering reaches 3.
+	require.NoError(t, exec(t, f.db, `INSERT INTO scene (id, project_id, order_index) VALUES ('sc-src', 'proj-src', 0)`))
+	require.NoError(t, exec(t, f.db, `INSERT INTO shot (id, scene_id, order_index) VALUES ('sh-src', 'sc-src', 0)`))
+	require.NoError(t, exec(t, f.db, `INSERT INTO branch (id, project_id, branch_point_type, branch_point_shot_id, name) VALUES ('br-src', 'proj-src', 'shot', 'sh-src', 'alt')`))
+	require.NoError(t, exec(t, f.db, `INSERT INTO world_state_version (id, project_id, branch_id, version_number, state) VALUES ('wsv-trunk', 'proj-src', NULL, 1, ?)`,
+		`{"characters":[],"products":[],"locations":[],"camera":{"lens":"35mm"},"story":{"scene":4,"character_goal":"find the letter"}}`))
+	for i, id := range []string{"wsv-br-1", "wsv-br-2", "wsv-br-3"} {
+		require.NoError(t, exec(t, f.db, `INSERT INTO world_state_version (id, project_id, branch_id, version_number, state) VALUES (?, 'proj-src', 'br-src', ?, ?)`,
+			id, i+1, `{"characters":[],"products":[],"locations":[],"camera":{"lens":"85mm"},"story":{"scene":9,"character_goal":"leave town"}}`))
+	}
+
+	_, err := f.series.CreateEpisode(ctx, s.ID, f.source, "", newEpisodeProject("ep2"))
+	require.NoError(t, err)
+
+	w, err := f.world.World(ctx, "ep2", "")
+	require.NoError(t, err)
+	assert.Equal(t, "35mm", w.Camera.Lens, "the Branch's Camera is not inherited")
+	assert.Equal(t, "find the letter", w.Story.CharacterGoal, "the Branch's Story is not inherited")
+	var inherited string
+	require.NoError(t, f.db.Reader().QueryRow(`SELECT inherited_world_state_version_id FROM project WHERE id = 'ep2'`).Scan(&inherited))
+	assert.Equal(t, "wsv-trunk", inherited)
+}
+
+func TestSeriesRepository_CreateEpisodeInheritsEntityStateFromTrunkRowsNotBranchCopies(t *testing.T) {
+	ctx := context.Background()
+	f := newSeriesFixture(t)
+	s := f.createFromSource(t)
+
+	// The previous Episode has a Branch whose copies of the entity rows share the trunk rows' origin_id
+	// but carry a different state. Two Branches, so a single "first match" cannot be the trunk row by luck.
+	require.NoError(t, exec(t, f.db, `INSERT INTO scene (id, project_id, order_index) VALUES ('sc-src', 'proj-src', 0)`))
+	require.NoError(t, exec(t, f.db, `INSERT INTO shot (id, scene_id, order_index) VALUES ('sh-src', 'sc-src', 0)`))
+	for _, b := range []string{"br-1", "br-2"} {
+		require.NoError(t, exec(t, f.db, `INSERT INTO branch (id, project_id, branch_point_type, branch_point_shot_id, name) VALUES (?, 'proj-src', 'shot', 'sh-src', 'alt')`, b))
+		require.NoError(t, exec(t, f.db, `INSERT INTO character (id, project_id, branch_id, origin_id, name, emotion, position, current_action)
+			SELECT 'c-'||?, project_id, ?, origin_id, name, 'sad', 'right', 'running' FROM character WHERE id = 'c-src'`, b, b))
+		require.NoError(t, exec(t, f.db, `INSERT INTO product (id, project_id, branch_id, origin_id, name, orientation)
+			SELECT 'p-'||?, project_id, ?, origin_id, name, 'label_back' FROM product WHERE id = 'p-src'`, b, b))
+		require.NoError(t, exec(t, f.db, `INSERT INTO location (id, project_id, branch_id, origin_id, name, time, lighting_state, weather)
+			SELECT 'l-'||?, project_id, ?, origin_id, name, 'noon', 'flat', 'snow' FROM location WHERE id = 'l-src'`, b, b))
+	}
+
+	_, err := f.series.CreateEpisode(ctx, s.ID, f.source, "", newEpisodeProject("ep2"))
+	require.NoError(t, err)
+
+	w, err := f.world.World(ctx, "ep2", "")
+	require.NoError(t, err)
+	require.Len(t, w.Characters, 1)
+	assert.Equal(t, "angry", w.Characters[0].Emotion)
+	assert.Equal(t, "left", w.Characters[0].Position)
+	assert.Empty(t, w.Characters[0].CurrentAction)
+	assert.Equal(t, "label_front", w.Products[0].Orientation)
+	assert.Equal(t, "night", w.Locations[0].Time)
+	assert.Equal(t, "rain", w.Locations[0].Weather)
+	assert.Empty(t, w.Locations[0].LightingState)
+}
+
 func TestSeriesRepository_CreateEpisodeRejectsUnknownSeriesAndForeignPrevious(t *testing.T) {
 	ctx := context.Background()
 	f := newSeriesFixture(t)
@@ -309,4 +371,32 @@ func TestSeriesRepository_EpisodesListsByNumber(t *testing.T) {
 	require.Len(t, eps, 2)
 	assert.Equal(t, f.source, eps[0].ID)
 	assert.Equal(t, "ep2", eps[1].ID)
+}
+
+func TestSeriesRepository_ABranchOfAnEpisodeKeepsTheCanonOfItsCharacters(t *testing.T) {
+	ctx := context.Background()
+	f := newSeriesFixture(t)
+	s := f.createFromSource(t)
+	_, err := f.series.CreateEpisode(ctx, s.ID, "", "", newEpisodeProject("ep2"))
+	require.NoError(t, err)
+
+	plans := repository.NewPlanRepository(f.db)
+	scene, err := plans.CreateScene(ctx, domain.Scene{ProjectID: "ep2", Title: "A", Location: "Cafe"})
+	require.NoError(t, err)
+	shot, err := plans.CreateShot(ctx, domain.Shot{SceneID: scene.ID, Objective: "one", Duration: 2})
+	require.NoError(t, err)
+
+	b, err := repository.NewBranchRepository(f.db).Create(ctx, repository.NewBranch{ShotID: shot.ID, PointType: domain.BranchAtShot, Name: "Alt"})
+	require.NoError(t, err)
+
+	w, err := f.world.World(ctx, "ep2", b.ID)
+	require.NoError(t, err)
+	require.Len(t, w.Characters, 1)
+	assert.Equal(t, "face-1", w.Characters[0].SeriesFaceReferenceAssetID, "the Branch is measured against the canon face like the trunk")
+	for table, n := range map[string]int{"character": 1, "product": 1, "location": 1} {
+		var withOrigin int
+		require.NoError(t, f.db.Reader().QueryRow(
+			`SELECT COUNT(*) FROM `+table+` WHERE project_id = 'ep2' AND branch_id = ? AND origin_id IS NOT NULL`, b.ID).Scan(&withOrigin))
+		assert.Equal(t, n, withOrigin, table)
+	}
 }

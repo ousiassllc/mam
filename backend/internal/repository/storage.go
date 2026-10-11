@@ -17,11 +17,29 @@ type StorageRepository struct{ db *DB }
 // NewStorageRepository returns a StorageRepository backed by db.
 func NewStorageRepository(db *DB) *StorageRepository { return &StorageRepository{db: db} }
 
-// takeUnneeded is the SQL condition (on take t, prompt_version pv) of a Take that can be archived
-// without losing a choice: it is Rejected, or another Take of its Shot is Selected.
-const takeUnneeded = `(t.status = 'rejected' OR (t.status <> 'selected' AND EXISTS (
+// takeInUse is the SQL condition (on take t, scene s of its Shot) of a Take that the editing still
+// refers to: a clip of the latest Edit Timeline of the trunk or of a Branch, or a clip the latest Audio
+// Timeline of the trunk or of a Branch redid by Lip Sync. Choosing another Take of the Shot does not
+// move such a clip, and export needs the file, so the file must stay.
+const takeInUse = `t.id IN (
+	SELECT json_extract(c.value, '$.take_id')
+	FROM edit_timeline_version e, json_each(e.timeline, '$.clips') c
+	WHERE e.project_id = s.project_id AND e.version_number = (
+		SELECT MAX(e2.version_number) FROM edit_timeline_version e2
+		WHERE e2.project_id = e.project_id AND COALESCE(e2.branch_id, '') = COALESCE(e.branch_id, ''))
+	UNION
+	SELECT json_extract(l.value, '$.take_id')
+	FROM audio_timeline_version a, json_each(a.timeline, '$.lip_sync') l
+	WHERE a.project_id = s.project_id AND a.version_number = (
+		SELECT MAX(a2.version_number) FROM audio_timeline_version a2
+		WHERE a2.project_id = a.project_id AND COALESCE(a2.branch_id, '') = COALESCE(a.branch_id, '')))`
+
+// takeUnneeded is the SQL condition (on take t, prompt_version pv, scene s) of a Take that can be
+// archived without losing a choice or a file the editing uses: it is Rejected, or another Take of its
+// Shot is Selected, and no Timeline refers to it.
+const takeUnneeded = `((t.status = 'rejected' OR (t.status <> 'selected' AND EXISTS (
 	SELECT 1 FROM take t2 JOIN prompt_version pv2 ON pv2.id = t2.prompt_version_id
-	WHERE pv2.shot_id = pv.shot_id AND t2.status = 'selected')))`
+	WHERE pv2.shot_id = pv.shot_id AND t2.status = 'selected'))) AND NOT ` + takeInUse + `)`
 
 // Usage returns the size of the files of the Project and its stored Takes, the unneeded ones first.
 func (r *StorageRepository) Usage(ctx context.Context, projectID string) (domain.StorageSummary, error) {
@@ -77,24 +95,24 @@ func (r *StorageRepository) Usage(ctx context.Context, projectID string) (domain
 // ArchiveTake archives one Take of the Project: its video file is given up, the Take stays as a
 // Rejected row with its Judge and Repair history (F-27 traceability). It returns the removed assets
 // so that the caller can delete their files. It returns ErrNotFound for a Take that is not stored in the
-// Project and ErrConflict for the Selected Take of a Shot.
+// Project and ErrConflict for the Selected Take of a Shot and for a Take a Timeline still refers to.
 func (r *StorageRepository) ArchiveTake(ctx context.Context, projectID, takeID string) ([]domain.Asset, error) {
 	var removed []domain.Asset
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		var status, path string
-		var selected bool
+		var selected, inUse bool
 		err := tx.QueryRowContext(ctx,
-			`SELECT t.status, COALESCE(t.file_path, ''), COALESCE(sh.selected_take_id, '') = t.id
+			`SELECT t.status, COALESCE(t.file_path, ''), COALESCE(sh.selected_take_id, '') = t.id, `+takeInUse+`
 			 FROM take t JOIN prompt_version pv ON pv.id = t.prompt_version_id
 			 JOIN shot sh ON sh.id = pv.shot_id JOIN scene s ON s.id = sh.scene_id
-			 WHERE t.id = ? AND s.project_id = ?`, takeID, projectID).Scan(&status, &path, &selected)
+			 WHERE t.id = ? AND s.project_id = ?`, takeID, projectID).Scan(&status, &path, &selected, &inUse)
 		if errors.Is(err, sql.ErrNoRows) || (err == nil && path == "") {
 			return ErrNotFound
 		}
 		if err != nil {
 			return err
 		}
-		if status == string(domain.TakeSelected) || selected {
+		if status == string(domain.TakeSelected) || selected || inUse {
 			return ErrConflict
 		}
 		removed, err = archive(ctx, tx, projectID, []takeFile{{takeID, path}})

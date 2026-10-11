@@ -5,6 +5,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // ReferenceLibraryData is the state of the Reference Library view (reference_library_page).
@@ -16,7 +17,7 @@ type ReferenceLibraryData struct {
 }
 
 func referenceURL(projectID, id string) string {
-	return "/projects/" + projectID + "/references/" + id
+	return paths.Project(projectID, "references", id)
 }
 
 func sourceLabel(s domain.ReferenceSource) string {
@@ -32,26 +33,39 @@ templ ReferenceLibrary(d ReferenceLibraryData) {
 	<div id="reference-library" class="flex flex-col gap-6">
 		<form
 			class="flex flex-wrap items-end gap-2"
-			hx-get={ "/projects/" + d.Project.ID + "/references" }
+			hx-get={ paths.Project(d.Project.ID, "references") }
 			hx-target="#reference-library"
 			hx-swap="outerHTML"
 		>
 			<div>
 				<label for="ref-q" class="mb-1 block text-xs text-neutral-400">名前・タグ</label>
-				<input id="ref-q" name="q" type="search" value={ d.Q } class="rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm"/>
+				@atoms.Input(atoms.FieldMd, "", templ.Attributes{
+					"id":    "ref-q",
+					"name":  "q",
+					"type":  "search",
+					"value": d.Q,
+				})
 			</div>
 			<div>
 				<label for="ref-kind" class="mb-1 block text-xs text-neutral-400">種別</label>
-				<select id="ref-kind" name="kind" class="rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm">
+				@atoms.Select(atoms.FieldMd, "", templ.Attributes{
+					"id":   "ref-kind",
+					"name": "kind",
+				}) {
 					<option value="">すべて</option>
 					for _, k := range domain.LibraryKinds() {
 						<option value={ string(k) } selected?={ string(k) == d.Kind }>{ k.Label() }</option>
 					}
-				</select>
+				}
 			</div>
 			<div>
 				<label for="ref-tag" class="mb-1 block text-xs text-neutral-400">タグ（完全一致）</label>
-				<input id="ref-tag" name="tag" type="text" value={ d.Tag } class="rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm"/>
+				@atoms.Input(atoms.FieldMd, "", templ.Attributes{
+					"id":    "ref-tag",
+					"name":  "tag",
+					"type":  "text",
+					"value": d.Tag,
+				})
 			</div>
 			@atoms.Button(atoms.ToneNeutral, "検索", templ.Attributes{"type": "submit"})
 		</form>
@@ -62,7 +76,7 @@ templ ReferenceLibrary(d ReferenceLibraryData) {
 				for _, it := range d.Items {
 					<li class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3">
 						<img
-							src={ "/projects/" + d.Project.ID + "/assets/" + it.AssetID }
+							src={ paths.Project(d.Project.ID, "assets", it.AssetID) }
 							alt={ it.Name }
 							loading="lazy"
 							class="aspect-video w-full rounded object-contain bg-neutral-900"
@@ -91,7 +105,7 @@ templ ReferenceLibrary(d ReferenceLibraryData) {
 		}
 		<form
 			class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3"
-			hx-post={ "/projects/" + d.Project.ID + "/references" }
+			hx-post={ paths.Project(d.Project.ID, "references") }
 			hx-encoding="multipart/form-data"
 			hx-target="#reference-library"
 			hx-swap="outerHTML"
@@ -104,19 +118,33 @@ templ ReferenceLibrary(d ReferenceLibraryData) {
 				</div>
 				<div>
 					<label for="ref-new-kind" class="mb-1 block text-xs text-neutral-400">種別</label>
-					<select id="ref-new-kind" name="kind" required class="w-full rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm">
+					@atoms.Select(atoms.FieldMd, "w-full", templ.Attributes{
+						"id":       "ref-new-kind",
+						"name":     "kind",
+						"required": true,
+					}) {
 						for _, k := range domain.LibraryKinds() {
 							<option value={ string(k) }>{ k.Label() }</option>
 						}
-					</select>
+					}
 				</div>
 				<div>
 					<label for="ref-new-name" class="mb-1 block text-xs text-neutral-400">名前（100 文字以内。Character / Product / Location は登場する名前と揃える）</label>
-					<input id="ref-new-name" name="name" type="text" required maxlength="100" class="w-full rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm"/>
+					@atoms.Input(atoms.FieldMd, "w-full", templ.Attributes{
+						"id":        "ref-new-name",
+						"name":      "name",
+						"type":      "text",
+						"required":  true,
+						"maxlength": "100",
+					})
 				</div>
 				<div>
 					<label for="ref-new-tags" class="mb-1 block text-xs text-neutral-400">タグ（カンマ区切り、10 個まで）</label>
-					<input id="ref-new-tags" name="tags" type="text" class="w-full rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm"/>
+					@atoms.Input(atoms.FieldMd, "w-full", templ.Attributes{
+						"id":   "ref-new-tags",
+						"name": "tags",
+						"type": "text",
+					})
 				</div>
 			</div>
 			<div>

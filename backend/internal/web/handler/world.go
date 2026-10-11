@@ -51,11 +51,12 @@ func UpdateLocation(svc *service.WorldService) gin.HandlerFunc {
 
 func updateEntity(svc *service.WorldService, target domain.WorldTarget, param string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		fields := map[string]string{}
-		for _, name := range domain.EditableFields(target) {
-			if v, ok := c.GetPostForm(name); ok {
-				fields[name] = strings.TrimSpace(v)
-			}
+		// Every posted field goes to the service, which refuses (422) one that is not editable: picking
+		// only the editable names here would drop a typo or a stale form field with a silent 200.
+		c.GetPostForm("") // parses the body (urlencoded or multipart) into c.Request.PostForm
+		fields := make(map[string]string, len(c.Request.PostForm))
+		for name, values := range c.Request.PostForm {
+			fields[name] = strings.TrimSpace(values[0])
 		}
 		view, err := svc.UpdateEntity(c.Request.Context(), c.Param("id"), c.Query("branch_id"), target, c.Param(param), fields)
 		if err != nil {

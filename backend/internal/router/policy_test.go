@@ -5,6 +5,9 @@ import (
 	"database/sql"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -29,7 +32,7 @@ func TestSettingsPage_ShowsTemplatePolicyBudgetCostAndStorage(t *testing.T) {
 	} {
 		assert.Contains(t, body, want)
 	}
-	assert.Contains(t, body, `value="product_cm" checked`, "the current template is selected")
+	assertChecked(t, body, "product_cm", "the current template is selected")
 
 	frag := a.get("/projects/"+id+"/settings", true).Body.String()
 	assert.NotContains(t, frag, "<html")
@@ -45,7 +48,7 @@ func TestProductionTemplate_PutSwitchesTheTemplateAndRejectsUnknownOnes(t *testi
 
 	rec := a.form(http.MethodPut, "/projects/"+id+"/production-template", url.Values{"production_template": {"drama"}})
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-	assert.Contains(t, rec.Body.String(), `value="drama" checked`)
+	assertChecked(t, rec.Body.String(), "drama")
 	var got string
 	require.NoError(t, a.db.Reader().QueryRow(`SELECT production_template FROM project WHERE id = ?`, id).Scan(&got))
 	assert.Equal(t, "drama", got)
@@ -185,6 +188,41 @@ func TestStorage_ArchiveEndpointsFreeTakesAndRefuseTheSelectedOne(t *testing.T) 
 
 	assert.Equal(t, http.StatusNotFound, g.form(http.MethodPost, "/projects/"+g.project+"/takes/missing/archive", nil).Code)
 	assert.Equal(t, http.StatusNotFound, g.form(http.MethodPost, "/projects/missing/storage/archive-unneeded", nil).Code)
+}
+
+func TestStorage_ATakeWhoseStoredPathLeavesTheAssetsDirectoryIsNeitherServedNorDeleted(t *testing.T) {
+	g := newGenApp(t, true)
+	require.Equal(t, http.StatusAccepted, g.form(http.MethodPost, "/shots/"+g.shotID+"/generate", nil).Code)
+	g.waitTakes(3)
+	rows, err := g.db.Reader().Query(`SELECT id FROM take ORDER BY id`)
+	require.NoError(t, err)
+	var ids []string
+	for rows.Next() {
+		var id string
+		require.NoError(t, rows.Scan(&id))
+		ids = append(ids, id)
+	}
+	require.NoError(t, rows.Close())
+	require.Len(t, ids, 3)
+	selectTake(t, g, ids[0])
+
+	outside := filepath.Join(filepath.Dir(g.assets), "outside")
+	require.NoError(t, os.MkdirAll(outside, 0o750))
+	for i, id := range ids[1:] {
+		name := "keep" + strconv.Itoa(i) + ".mp4"
+		require.NoError(t, os.WriteFile(filepath.Join(outside, name), []byte("precious"), 0o600))
+		g.execSQL(`UPDATE asset SET file_path = ? WHERE file_path = (SELECT file_path FROM take WHERE id = ?)`, "../outside/"+name, id)
+		g.execSQL(`UPDATE take SET file_path = ? WHERE id = ?`, "../outside/"+name, id)
+	}
+
+	assert.Equal(t, http.StatusNotFound, g.get("/takes/"+ids[1]+"/video", false).Code, "a file outside the assets directory is not served")
+
+	require.Equal(t, http.StatusOK, g.form(http.MethodPost, "/projects/"+g.project+"/takes/"+ids[1]+"/archive", nil).Code)
+	require.Equal(t, http.StatusOK, g.form(http.MethodPost, "/projects/"+g.project+"/storage/archive-unneeded", nil).Code)
+	for i := range 2 {
+		_, err := os.Stat(filepath.Join(outside, "keep"+strconv.Itoa(i)+".mp4"))
+		assert.NoError(t, err, "the archive never removes a file outside the assets directory")
+	}
 }
 
 // selectTake makes the Take the Selected Take of its Shot, as the Take system does.

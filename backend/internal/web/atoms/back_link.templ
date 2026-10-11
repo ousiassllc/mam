@@ -1,0 +1,13 @@
+package atoms
+
+import "github.com/ousiassllc/mam/backend/internal/web/paths"
+
+// BackLink is the link at the top of an auxiliary view that leads back to the page it was opened from.
+templ BackLink(href, label string) {
+	<a href={ templ.SafeURL(href) } class="text-sm text-neutral-400 hover:text-neutral-100">{ label }</a>
+}
+
+// ChatBackLink leads back to the chat of a Project, where every auxiliary view is opened from.
+templ ChatBackLink(projectID string) {
+	@BackLink(paths.Project(projectID), "← チャットに戻る")
+}

@@ -6,6 +6,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // ShotInspectorData is the state of the Shot Inspector (GET /shots/:id).
@@ -24,13 +25,60 @@ type ShotInspectorData struct {
 	SpecError string
 	// Versions are the saved versions of the spec, newest first (F-28).
 	Versions []domain.VersionEntry
+	// Judged is the latest Judge result of each Take that was judged, by Take ID.
+	Judged map[string]domain.JudgeResult
 }
 
-func shotURL(id string) string { return "/shots/" + id }
+// restoreBlocked is why the Shot's spec cannot be restored from a version now ("" when it can). The
+// Inspector shows the state of the moment it was loaded: the actions the server refuses in that state
+// (domain.ShotState.CanEditSpec / CanPinReference, the predicates the repositories use) are not drawn.
+func (d ShotInspectorData) restoreBlocked() string {
+	if d.Shot.State.CanEditSpec() {
+		return ""
+	}
+	return "生成・Repair 中は復元できません。終わってから開き直してください。"
+}
+
+// generationModel is the model the next Take is made with: the one LOCKed or set MANUAL for the Shot (not AUTO), otherwise
+// the one of its latest Take, otherwise the Orchestrator's choice.
+func (d ShotInspectorData) generationModel() string {
+	if m := d.Locks.Text(domain.ParamVideoModel); m != "" && d.Locks.Mode(domain.ParamVideoModel) != domain.LockAuto {
+		return m
+	}
+	if n := len(d.Takes); n > 0 && d.Takes[n-1].ModelName != "" {
+		return d.Takes[n-1].ModelName
+	}
+	return "自動選択（生成時に決定）"
+}
+
+// judgeSummary is the one line of a Take's latest Judge result: the verdict and confidence.
+func judgeSummary(r domain.JudgeResult) (atoms.BadgeTone, string) {
+	label := fmt.Sprintf("Judge: %s（確信度 %.0f%%）", r.Result, r.OverallConfidence*100)
+	if r.Result == domain.JudgePass {
+		return atoms.BadgeOK, label
+	}
+	return atoms.BadgeError, label
+}
+
+// issueLine is one Issue of a Judge result as the Take List shows it.
+func issueLine(is domain.JudgeIssue) string {
+	var b strings.Builder
+	if is.LockViolation {
+		b.WriteString("LOCK 違反 / ")
+	}
+	b.WriteString(string(is.Severity) + " / " + is.Type)
+	if is.TimeRange != "" {
+		b.WriteString(" / " + is.TimeRange)
+	}
+	if is.Description != "" {
+		b.WriteString(": " + is.Description)
+	}
+	return b.String()
+}
 
 // LockToggleFor is the AUTO / MANUAL / LOCK switch of a parameter of the Shot.
 func LockToggleFor(shotID string, p domain.LockParameter, locks domain.ParameterLocks) atoms.LockToggleData {
-	d := atoms.LockToggleData{DOMID: "lock-" + shotID + "-" + string(p), URL: shotURL(shotID) + "/locks", Parameter: p, Mode: locks.Mode(p)}
+	d := atoms.LockToggleData{DOMID: "lock-" + shotID + "-" + string(p), URL: paths.Shot(shotID, "locks"), Parameter: p, Mode: locks.Mode(p)}
 	if p == domain.ParamVideoModel {
 		d.Models, d.Model = domain.VideoModels(), locks.Text(p)
 	}
@@ -39,7 +87,7 @@ func LockToggleFor(shotID string, p domain.LockParameter, locks domain.Parameter
 
 // ProjectLockToggle is the AUTO / MANUAL / LOCK switch of Story or Music.
 func ProjectLockToggle(projectID string, p domain.LockParameter, locks domain.ParameterLocks) atoms.LockToggleData {
-	return atoms.LockToggleData{DOMID: "lock-" + projectID + "-" + string(p), URL: "/projects/" + projectID + "/locks", Parameter: p, Mode: locks.Mode(p)}
+	return atoms.LockToggleData{DOMID: "lock-" + projectID + "-" + string(p), URL: paths.Project(projectID, "locks"), Parameter: p, Mode: locks.Mode(p)}
 }
 
 // specRows lists the parts of the Canonical Shot Spec as label / value rows.
@@ -91,6 +139,7 @@ templ ShotInspector(d ShotInspectorData) {
 				· { string(d.Shot.State) }
 				· MODE { strings.ToUpper(string(d.Project.Mode)) }
 			</p>
+			<a href={ templ.SafeURL(paths.Project(d.Project.ID, "branches")) } class="mt-1 inline-block text-xs text-neutral-400 underline hover:text-neutral-100">Branch を作る</a>
 		</header>
 		<section aria-label="AUTO / MANUAL / LOCK" class="flex flex-col gap-2">
 			<h3 class="text-sm font-semibold">Locks</h3>
@@ -111,16 +160,24 @@ templ ShotInspector(d ShotInspectorData) {
 					}
 				</dl>
 			}
-			<form hx-put={ shotURL(d.Shot.ID) + "/shot-spec" } hx-target="#shot-inspector" hx-swap="outerHTML" class="flex flex-col gap-2">
-				<label for="shot-spec-text" class="text-xs text-neutral-400">Shot Spec を直接編集（JSON。英語で記述。LOCK 中の項目は変更できません）</label>
-				<textarea id="shot-spec-text" name="shot_spec" rows="12" class="rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 font-mono text-xs">{ d.SpecText }</textarea>
-				if d.SpecError != "" {
-					<p class="text-sm text-red-300" role="alert">{ d.SpecError }</p>
-				}
-				<div>
-					@atoms.Button(atoms.TonePrimary, "Shot Spec を保存", templ.Attributes{"type": "submit"})
-				</div>
-			</form>
+			if d.Shot.State.CanEditSpec() {
+				<form hx-put={ paths.Shot(d.Shot.ID, "shot-spec") } hx-target="#shot-inspector" hx-swap="outerHTML" class="flex flex-col gap-2">
+					<label for="shot-spec-text" class="text-xs text-neutral-400">Shot Spec を直接編集（JSON。英語で記述。LOCK 中の項目は変更できません）</label>
+					@atoms.Textarea(atoms.FieldSm, "font-mono", templ.Attributes{
+						"id":   "shot-spec-text",
+						"name": "shot_spec",
+						"rows": "12",
+					}, d.SpecText)
+					if d.SpecError != "" {
+						<p class="text-sm text-red-300" role="alert">{ d.SpecError }</p>
+					}
+					<div>
+						@atoms.Button(atoms.TonePrimary, "Shot Spec を保存", templ.Attributes{"type": "submit"})
+					</div>
+				</form>
+			} else {
+				<p class="text-sm text-neutral-400" data-spec-edit-blocked>生成・Repair 中は Shot Spec を編集できません。終わってから開き直してください。</p>
+			}
 		</section>
 		<section aria-label="Reference Pack" class="flex flex-col gap-2">
 			<h3 class="text-sm font-semibold">Reference Pack</h3>
@@ -139,34 +196,51 @@ templ ShotInspector(d ShotInspectorData) {
 					}
 				</ul>
 			}
-			if len(d.Library) > 0 {
-				<form hx-post={ shotURL(d.Shot.ID) + "/references" } hx-target="#shot-inspector" hx-swap="outerHTML" class="flex flex-wrap items-center gap-2">
+			if !d.Shot.State.CanPinReference() {
+				<p class="text-sm text-neutral-400" data-pin-reference-blocked>生成・Repair・Judge 中は Reference Pack に追加できません。終わってから開き直してください。</p>
+			} else if len(d.Library) > 0 {
+				<form hx-post={ paths.Shot(d.Shot.ID, "references") } hx-target="#shot-inspector" hx-swap="outerHTML" class="flex flex-wrap items-center gap-2">
 					<label for="pin-reference" class="text-xs text-neutral-400">ライブラリの参照画像を追加</label>
-					<select id="pin-reference" name="reference_id" required class="rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-xs">
+					@atoms.Select(atoms.FieldSm, "", templ.Attributes{
+						"id":       "pin-reference",
+						"name":     "reference_id",
+						"required": true,
+					}) {
 						for _, it := range d.Library {
 							<option value={ it.ID }>{ it.Kind.Label() + " / " + it.Name }</option>
 						}
-					</select>
+					}
 					@atoms.Button(atoms.ToneNeutral, "Reference Pack に追加", templ.Attributes{"type": "submit"})
 				</form>
 			}
 		</section>
 		<section aria-label="演出指示" class="flex flex-col gap-2">
 			<h3 class="text-sm font-semibold">演出指示</h3>
-			<form hx-post={ shotURL(d.Shot.ID) + "/director-command" } hx-target="#shot-inspector" hx-swap="outerHTML" class="flex flex-col gap-2">
+			<form hx-post={ paths.Shot(d.Shot.ID, "director-command") } hx-target="#shot-inspector" hx-swap="outerHTML" class="flex flex-col gap-2">
 				<label for="director-command" class="text-xs text-neutral-400">自然言語で指示（例: もう少し寄って。ラベルは固定して）。この Shot だけが再生成されます</label>
-				<textarea id="director-command" name="content" rows="2" maxlength="4000" required class="rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm"></textarea>
+				@atoms.Textarea(atoms.FieldMd, "", templ.Attributes{
+					"id":        "director-command",
+					"name":      "content",
+					"rows":      "2",
+					"maxlength": "4000",
+					"required":  true,
+				}, "")
 				<div>
 					@atoms.Button(atoms.TonePrimary, "指示する", templ.Attributes{"type": "submit"})
 				</div>
 			</form>
 		</section>
 		@VersionHistoryPanel(VersionHistoryData{
-			DOMID: "version-history-shot-" + d.Shot.ID, Title: "Shot Spec のバージョン", BasePath: shotURL(d.Shot.ID),
-			Target: "#shot-inspector", Entries: d.Versions,
+			DOMID: "version-history-shot-" + d.Shot.ID, Title: "Shot Spec のバージョン", BasePath: paths.Shot(d.Shot.ID),
+			Target: "#shot-inspector", Entries: d.Versions, RestoreBlocked: d.restoreBlocked(),
 		})
+		<section aria-label="Generation Model" class="flex flex-col gap-2">
+			<h3 class="text-sm font-semibold">Generation Model</h3>
+			<p class="text-sm">{ d.generationModel() }</p>
+			<p class="text-xs text-neutral-400">モデル別のプロンプトは各 Take の「生成の経緯」で確認できます。</p>
+		</section>
 		<section aria-label="Take 一覧" class="flex flex-col gap-2">
-			<h3 class="text-sm font-semibold">Take List</h3>
+			<h3 class="text-sm font-semibold">Take List / Judge Results</h3>
 			if len(d.Takes) == 0 {
 				<p class="text-sm text-neutral-400">Take はまだありません。</p>
 			} else {
@@ -178,9 +252,22 @@ templ ShotInspector(d ShotInspectorData) {
 								@atoms.Badge(atoms.BadgeNeutral, string(t.Status))
 								<span class="text-xs text-neutral-400">{ t.ModelName }</span>
 								@atoms.Button(atoms.ToneNeutral, "生成の経緯", templ.Attributes{
-									"type": "button", "hx-get": "/takes/" + t.ID + "/trace", "hx-target": "#take-trace-slot-" + t.ID, "hx-swap": "innerHTML",
+									"type": "button", "hx-get": paths.Take(t.ID, "trace"), "hx-target": "#take-trace-slot-" + t.ID, "hx-swap": "innerHTML",
 								})
 							</div>
+							if res, ok := d.Judged[t.ID]; ok {
+								<div class="flex flex-col gap-1" data-judge-result>
+									{{ tone, label := judgeSummary(res) }}
+									@atoms.Badge(tone, label)
+									if len(res.Issues) > 0 {
+										<ul class="list-disc pl-5 text-xs text-neutral-300">
+											for _, is := range res.Issues {
+												<li>{ issueLine(is) }</li>
+											}
+										</ul>
+									}
+								</div>
+							}
 							<div id={ "take-trace-slot-" + t.ID }></div>
 						</li>
 					}

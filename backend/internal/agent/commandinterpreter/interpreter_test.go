@@ -15,11 +15,12 @@ import (
 type fakeLLM struct {
 	answer string
 	agent  llm.Agent
+	system string
 	user   string
 }
 
 func (f *fakeLLM) Complete(_ context.Context, agent llm.Agent, req llm.Request) (llm.Response, error) {
-	f.agent, f.user = agent, req.User
+	f.agent, f.system, f.user = agent, req.System, req.User
 	return llm.Response{Text: f.answer, Provider: llm.ProviderAnthropic, Model: "fake"}, nil
 }
 
@@ -152,4 +153,15 @@ func TestInterpret_RememberBecomesACreateNoteOperation(t *testing.T) {
 	second := cmd.Operations[1]
 	assert.Equal(t, "黒髪ロング", second.Title, "a missing title is the first line of the text")
 	assert.Empty(t, second.Category, "an unknown category is left for the service to classify")
+}
+
+func TestInterpret_PromptOffersEveryVideoModelForPinning(t *testing.T) {
+	cmd, f := interpret(t, `{"operations":[{"type":"set_lock","parameter":"video_model","mode":"manual","value":"runway-gen-4.5"}]}`,
+		commandinterpreter.Input{Message: "この Shot の動画モデルを Runway に固定して"})
+
+	for _, m := range domain.VideoModels() {
+		assert.Contains(t, f.system, `"`+string(m)+`"`, "the interpreter is told it may pin %s", m)
+	}
+	require.Len(t, cmd.Operations, 1)
+	assert.Equal(t, "runway-gen-4.5", cmd.Operations[0].Value)
 }

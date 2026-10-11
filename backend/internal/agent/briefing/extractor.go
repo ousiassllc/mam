@@ -24,12 +24,14 @@ type Extractor interface {
 type RuleExtractor struct{}
 
 var (
-	durationRe = regexp.MustCompile(`(\d{1,3})\s*(秒|分)`)
-	ratioRe    = regexp.MustCompile(`(\d{1,2})\s*[:：]\s*(\d{1,2})`)
-	targetRe   = regexp.MustCompile(`(\d{1,2})(?:\s*[〜~～\-ー]\s*(\d{1,2}))?代(男性|女性|男女|層)?`)
-	subjectRe  = regexp.MustCompile(`(?:^|[\s、。,を])([^\s、。,！!？?「」のを]{1,30})の(?:縦型|横型|縦長|横長|正方形|\d+\s*秒|CM|動画|広告|PV|ショート|アニメ|ドラマ|ムービー)`)
-	urlRe      = regexp.MustCompile(`https?://[^\s、。」）)]+`)
-	platformRe = regexp.MustCompile(`\b(Instagram|YouTube|TikTok|Facebook|LINE|Twitter)\s*(広告|投稿|リール|ショート|CM)?`)
+	// durationRe reads "15秒", "1.5秒", "2分" and the compound "1分30秒" as one value.
+	durationRe   = regexp.MustCompile(`\d{1,3}(?:\.\d+)?\s*分(?:\s*\d{1,3}(?:\.\d+)?\s*秒)?|\d{1,3}(?:\.\d+)?\s*秒`)
+	ratioRe      = regexp.MustCompile(`(\d{1,2})\s*[:：]\s*(\d{1,2})`)
+	targetRe     = regexp.MustCompile(`(\d{1,2})(?:\s*[〜~～\-ー]\s*(\d{1,2}))?代(男性|女性|男女|層)?`)
+	subjectRe    = regexp.MustCompile(`(?:^|[\s、。,を])([^\s、。,！!？?「」のを]{1,30})の(?:縦型|横型|縦長|横長|正方形|\d+\s*秒|CM|動画|広告|PV|ショート|アニメ|ドラマ|ムービー)`)
+	whitespaceRe = regexp.MustCompile(`\s+`)
+	urlRe        = regexp.MustCompile(`https?://[^\s、。」）)]+`)
+	platformRe   = regexp.MustCompile(`\b(Instagram|YouTube|TikTok|Facebook|LINE|Twitter)\s*(広告|投稿|リール|ショート|CM)?`)
 )
 
 type keywordRule struct {
@@ -135,15 +137,17 @@ func target(text string) string {
 }
 
 func duration(text string) string {
-	if m := durationRe.FindStringSubmatch(text); m != nil {
-		return m[1] + m[2]
-	}
-	return ""
+	return whitespaceRe.ReplaceAllString(durationRe.FindString(text), "")
 }
 
 func aspectRatio(text string) string {
-	if m := ratioRe.FindStringSubmatch(text); m != nil {
-		return m[1] + ":" + m[2]
+	// Only ratios generation supports are taken; a clock time ("10:30") or another ratio ("4:3")
+	// falls through to the keywords instead of silently becoming a 16:9 generation.
+	for _, m := range ratioRe.FindAllStringSubmatch(text, -1) {
+		switch ratio := m[1] + ":" + m[2]; ratio {
+		case "16:9", "9:16", "1:1":
+			return ratio
+		}
 	}
 	for _, r := range ratioKeywords {
 		for _, k := range r.keywords {

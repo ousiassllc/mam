@@ -146,3 +146,99 @@ func TestProxy_ScalesA4KVideoDownTo1080AndThumbnailWritesAJPEG(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, []byte{0xff, 0xd8}, jpg[:2])
 }
+
+// makeVideoWithLongerAudio is a video of videoSeconds with a tone of audioSeconds, so the container
+// is longer than the picture.
+func makeVideoWithLongerAudio(t *testing.T, tools Tools, name string, videoSeconds, audioSeconds float64) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), name)
+	out, err := exec.Command(tools.ffmpeg, "-v", "error", "-y",
+		"-f", "lavfi", "-i", "testsrc=size=64x64:rate=10:duration="+strconv.FormatFloat(videoSeconds, 'f', -1, 64),
+		"-f", "lavfi", "-i", "sine=frequency=440:duration="+strconv.FormatFloat(audioSeconds, 'f', -1, 64),
+		"-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", path).CombinedOutput()
+	require.NoError(t, err, string(out))
+	return path
+}
+
+// ffmpeg exits 0 and writes nothing when -ss is past the last video frame, which is where
+// Info.Duration - 0.1 lies for a Take whose audio is longer than its picture (the final frame of
+// the Continue Agent).
+func TestThumbnail_AFrameIsFoundWhenTheSecondIsPastTheLastVideoFrame(t *testing.T) {
+	tools := lookOrSkip(t)
+	src := makeVideoWithLongerAudio(t, tools, "long-audio.mp4", 1, 2)
+	info, err := tools.Probe(context.Background(), src)
+	require.NoError(t, err)
+	require.Greater(t, info.Duration, 1.5, "the container is longer than the picture")
+
+	for _, at := range []float64{info.Duration - 0.1, 5, 1000, -3} {
+		dst := filepath.Join(t.TempDir(), "final.jpg")
+		require.NoError(t, tools.Thumbnail(context.Background(), src, dst, at), "at %v", at)
+		jpg, err := os.ReadFile(dst)
+		require.NoError(t, err)
+		assert.Equal(t, []byte{0xff, 0xd8}, jpg[:2], "at %v", at)
+	}
+}
+
+func TestThumbnail_ASecondInsideTheVideoStillTakesThatFrame(t *testing.T) {
+	tools := lookOrSkip(t)
+	src := makeVideo(t, tools, "a.mp4", 64, 64, 10, 2, false)
+	dst := filepath.Join(t.TempDir(), "mid.jpg")
+
+	require.NoError(t, tools.Thumbnail(context.Background(), src, dst, 1))
+	_, err := os.Stat(dst)
+	assert.NoError(t, err)
+}
+
+// makeChangingVideo is a 1 s, 10 fps video whose every frame differs (a zooming Mandelbrot set),
+// with a tone of audioSeconds when that is more than 0.
+func makeChangingVideo(t *testing.T, tools Tools, name string, audioSeconds float64) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), name)
+	args := []string{"-v", "error", "-y", "-f", "lavfi", "-t", "1", "-i", "mandelbrot=size=64x64:rate=10"}
+	if audioSeconds > 0 {
+		args = append(args, "-f", "lavfi", "-i", "sine=frequency=440:duration="+strconv.FormatFloat(audioSeconds, 'f', -1, 64), "-c:a", "aac")
+	}
+	args = append(args, "-c:v", "libx264", "-pix_fmt", "yuv420p", path)
+	out, err := exec.Command(tools.ffmpeg, args...).CombinedOutput()
+	require.NoError(t, err, string(out))
+	return path
+}
+
+func thumbnailBytes(t *testing.T, tools Tools, src string, at float64) []byte {
+	t.Helper()
+	dst := filepath.Join(t.TempDir(), "frame.jpg")
+	require.NoError(t, tools.Thumbnail(context.Background(), src, dst, at), "at %v", at)
+	jpg, err := os.ReadFile(dst)
+	require.NoError(t, err)
+	return jpg
+}
+
+// A second past the end is the last frame of the picture, not the first one, however much longer
+// the audio is than the picture (a back-off of a few seconds never reaches the picture of a Take
+// whose audio is 20 s long).
+func TestThumbnail_ASecondPastTheEndTakesTheLastVideoFrame(t *testing.T) {
+	tools := lookOrSkip(t)
+	for name, audioSeconds := range map[string]float64{"audio as long as the video": 1, "audio longer than 8 s": 20} {
+		t.Run(name, func(t *testing.T) {
+			src := makeChangingVideo(t, tools, "past-end.mp4", audioSeconds)
+			last := thumbnailBytes(t, tools, src, 0.85) // the last frame of the 10 fps picture is at 0.9, the first one from 0.85 on
+			first := thumbnailBytes(t, tools, src, 0)
+			require.NotEqual(t, first, last, "the first and the last frame of the test video differ")
+
+			for _, at := range []float64{audioSeconds - 0.1, audioSeconds + 5, 1000} {
+				assert.Equal(t, last, thumbnailBytes(t, tools, src, at), "at %v", at)
+			}
+		})
+	}
+}
+
+// A container with no length of its own for the picture (Matroska) is cut at the last frame by
+// -sseof.
+func TestThumbnail_ASecondPastTheEndTakesTheLastFrameOfAMatroskaVideo(t *testing.T) {
+	tools := lookOrSkip(t)
+	src := makeChangingVideo(t, tools, "v.mkv", 0)
+	last := thumbnailBytes(t, tools, src, 0.85)
+	require.NotEqual(t, thumbnailBytes(t, tools, src, 0), last)
+
+	assert.Equal(t, last, thumbnailBytes(t, tools, src, 1000))
+}

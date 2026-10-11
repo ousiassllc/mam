@@ -9,6 +9,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // ExportBundle downloads the Project as a portable bundle (GET /projects/:id/bundle): a ZIP with
@@ -26,9 +27,7 @@ func ExportBundle(svc *service.BundleService) gin.HandlerFunc {
 		c.Header("X-Content-Type-Options", "nosniff")
 		c.Status(http.StatusOK)
 		if err := bundle.Write(c.Writer); err != nil {
-			// The status is sent already: log it and cut the download short (the archive is incomplete).
-			_ = c.Error(err)
-			c.Abort()
+			abortDownload(c, err)
 		}
 	}
 }
@@ -47,24 +46,24 @@ func ImportBundle(svc *service.BundleService) gin.HandlerFunc {
 			render(c, status, organisms.ProjectImportForm(organisms.ProjectImportFormData{Error: message}))
 			return
 		}
-		c.Header("HX-Redirect", "/projects/"+project.ID)
+		c.Header("HX-Redirect", paths.Project(project.ID))
 		c.Status(http.StatusCreated)
 	}
 }
 
 func importBundle(c *gin.Context, svc *service.BundleService) (domain.Project, error) {
-	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, service.MaxBundleBytes+1<<20)
-	if err := c.Request.ParseMultipartForm(multipartMemory); err != nil {
-		return domain.Project{}, &service.ValidationError{Field: "bundle", Message: "送信内容が大きすぎるか、形式が正しくありません"}
+	form, err := readMultipart(c, service.MaxBundleBytes+1<<20)
+	if err != nil {
+		return domain.Project{}, err
 	}
-	files := c.Request.MultipartForm.File["bundle"]
-	if len(files) == 0 || files[0].Filename == "" {
-		return domain.Project{}, &service.ValidationError{Field: "bundle", Message: "バンドルファイルを選んでください"}
+	fh, err := firstFile(form, "bundle", "バンドルファイルを選んでください")
+	if err != nil {
+		return domain.Project{}, err
 	}
-	f, err := files[0].Open()
+	f, err := fh.Open()
 	if err != nil {
 		return domain.Project{}, err
 	}
 	defer func() { _ = f.Close() }()
-	return svc.Import(c.Request.Context(), f, files[0].Size)
+	return svc.Import(c.Request.Context(), f, fh.Size)
 }

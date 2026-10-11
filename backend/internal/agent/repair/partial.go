@@ -23,6 +23,15 @@ type PartialRequest struct {
 	Instruction string `json:"instruction,omitempty"`
 	// Preserve are the parts of the Shot Spec that must stay as they are.
 	Preserve []domain.SpecPart `json:"preserve,omitempty"`
+	// Spec is the revised Canonical Shot Spec, already checked against LOCK brand constraints.
+	// NoteRefs are the production notes that spec was planned from.
+	Spec     *domain.ShotSpec `json:"spec,omitempty"`
+	NoteRefs []domain.NoteRef `json:"note_refs,omitempty"`
+}
+
+// partialPreparer checks a Partial Regeneration against LOCK brand constraints before it is queued.
+type partialPreparer interface {
+	PreparePartial(context.Context, repository.ShotRef, generation.Regeneration) (domain.ShotSpec, []domain.NoteRef, bool, error)
 }
 
 // StartPartial queues a Partial Regeneration of the Take: a new Take of the whole Shot is made under
@@ -33,9 +42,6 @@ type PartialRequest struct {
 // one Take fits the budget, a *repository.LockedParametersError when the Prompt is LOCKed, and
 // repository.ErrNotFound for an unknown Take.
 func (a *Agent) StartPartial(ctx context.Context, takeID string, req PartialRequest) (domain.Job, error) {
-	if a.Splicer == nil {
-		return domain.Job{}, ErrSpliceUnavailable
-	}
 	if len(req.Ranges) == 0 {
 		return domain.Job{}, errors.New("repair: partial regeneration needs a time range")
 	}
@@ -50,6 +56,14 @@ func (a *Agent) StartPartial(ctx context.Context, takeID string, req PartialRequ
 	if err != nil {
 		return domain.Job{}, err
 	}
+	// What can be refused without the Prompt Planner (a paid LLM call) is refused first: StartRepair
+	// below still decides who owns the Shot.
+	if a.Splicer == nil {
+		return domain.Job{}, ErrSpliceUnavailable
+	}
+	if shot.Shot.State.Busy() {
+		return domain.Job{}, ErrBusy // the claim below decides for good; this one spares the Planner
+	}
 	locks, err := a.Generations.ShotLocks(ctx, shot.Shot.ID)
 	if err != nil {
 		return domain.Job{}, err
@@ -59,6 +73,22 @@ func (a *Agent) StartPartial(ctx context.Context, takeID string, req PartialRequ
 	}
 	if _, err := a.Regenerator.RegenerationStrategy(ctx, shot, generation.Regeneration{Action: domain.RepairPartialRegeneration}); err != nil {
 		return domain.Job{}, err
+	}
+	if prep, ok := a.Regenerator.(partialPreparer); ok {
+		preserve := make([]string, len(req.Preserve))
+		for i, part := range req.Preserve {
+			preserve[i] = string(part)
+		}
+		spec, notes, checked, err := prep.PreparePartial(ctx, shot, generation.Regeneration{
+			Action: domain.RepairPartialRegeneration, Direction: req.Instruction,
+			Ranges: req.Ranges, Preserve: preserve,
+		})
+		if err != nil {
+			return domain.Job{}, err
+		}
+		if checked {
+			req.Spec, req.NoteRefs = &spec, notes
+		}
 	}
 	claimed, err := a.Generations.StartRepair(ctx, shot.Shot.ID)
 	if err != nil {
@@ -97,7 +127,7 @@ func (a *Agent) runPartial(ctx context.Context, shot repository.ShotRef, p paylo
 	a.Notify(generation.Progress{ShotID: shot.Shot.ID, Action: generation.ActionRepair, Stage: generation.StageRepairing, Message: domain.FormatTimeRanges(req.Ranges) + " を再生成して新しい Take を作成しています"})
 	newTake, err := a.Regenerator.Regenerate(ctx, shot, generation.Regeneration{
 		Action: domain.RepairPartialRegeneration, Preserve: preserve, SourceModel: domain.ModelName(take.Take.ModelName),
-		Ranges: req.Ranges, Direction: req.Instruction,
+		Ranges: req.Ranges, Direction: req.Instruction, Prepared: req.Spec, NoteRefs: req.NoteRefs,
 	})
 	if err != nil {
 		return false, err

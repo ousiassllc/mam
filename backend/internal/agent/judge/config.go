@@ -9,8 +9,8 @@ import (
 )
 
 // Config is the AI Video Judge setting. DefaultConfig holds the initial values; a JSON file
-// (LoadConfig, --judge-config) overrides any part of it. The Face Identity Similarity thresholds are
-// configuration, never code: they are measured, not derived (spec/spec.md §12.4).
+// (LoadConfig, --judge-config) overrides any part of it. Face Identity warn / FAIL thresholds are
+// not stored here: they come from each Character's reference-image similarity (spec/spec.md §12.4).
 type Config struct {
 	Frames FrameConfig `json:"frames"`
 	Face   FaceConfig  `json:"face"`
@@ -34,18 +34,16 @@ type FrameConfig struct {
 
 // FaceConfig is the Face Identity Similarity setting. Similarities are cosine similarities
 // between the SFace embedding of a Take's face and of the Character's reference faces.
+// Warn / FAIL thresholds are not fields: a Character with two or more usable references gets
+// them from that distribution, and a Character that cannot be calibrated is not threshold-judged.
 type FaceConfig struct {
-	// WarnSimilarity and FailSimilarity are the two thresholds used when a Character's thresholds
-	// cannot be calibrated (fewer than two usable reference images, or references that do not
-	// resemble each other). A frame below WarnSimilarity is a warning, below FailSimilarity a failure.
-	WarnSimilarity float64 `json:"warn_similarity"`
-	FailSimilarity float64 `json:"fail_similarity"`
 	// CalibrationWarnScale and CalibrationFailScale calibrate the thresholds on the Reference Pack:
 	// threshold = scale × the mean pairwise similarity of the Character's reference images.
 	CalibrationWarnScale float64 `json:"calibration_warn_scale"`
 	CalibrationFailScale float64 `json:"calibration_fail_scale"`
 	// MinCalibrationSimilarity is the mean pairwise similarity the references must reach for the
-	// calibration to be trusted; below it the fixed thresholds are used.
+	// calibration to be trusted. Below it, or with fewer than two faces, no numeric warn / FAIL
+	// is applied.
 	MinCalibrationSimilarity float64 `json:"min_calibration_similarity"`
 	// MinRunFrames is how many consecutive sampled frames below a threshold make a face_identity_drift Issue.
 	MinRunFrames int `json:"min_run_frames"`
@@ -56,8 +54,8 @@ type FaceConfig struct {
 	MinDetectedFrames int `json:"min_detected_frames"`
 }
 
-// DefaultConfig is the initial setting. The similarity values are starting points (SFace's
-// published verification threshold is 0.363), to be replaced by measurement on real Takes.
+// DefaultConfig is the initial setting. Scales multiply a Character's own reference similarity;
+// they are not the warn / FAIL thresholds (spec/spec.md §12.4).
 func DefaultConfig() Config {
 	return Config{
 		Frames: FrameConfig{
@@ -65,7 +63,6 @@ func DefaultConfig() Config {
 			ReviewFrames: 12, ReviewMaxWidth: 768, MaxReferenceImages: 4,
 		},
 		Face: FaceConfig{
-			WarnSimilarity: 0.5, FailSimilarity: 0.363,
 			CalibrationWarnScale: 0.85, CalibrationFailScale: 0.65, MinCalibrationSimilarity: 0.4,
 			MinRunFrames: 2, MaxUndetectedRatio: 0.5, MinDetectedFrames: 3,
 		},
@@ -100,9 +97,6 @@ func (c Config) Validate() error {
 	f, s := c.Frames, c.Face
 	if f.FaceSampleFPS <= 0 || f.MaxFaceFrames <= 0 || f.FaceMaxWidth <= 0 || f.ReviewFrames <= 0 || f.ReviewMaxWidth <= 0 || f.MaxReferenceImages < 0 {
 		errs = append(errs, errors.New("frames: every value must be positive (max_reference_images may be 0)"))
-	}
-	if !(0 < s.FailSimilarity && s.FailSimilarity < s.WarnSimilarity && s.WarnSimilarity <= 1) {
-		errs = append(errs, errors.New("face: need 0 < fail_similarity < warn_similarity <= 1"))
 	}
 	if !(0 < s.CalibrationFailScale && s.CalibrationFailScale < s.CalibrationWarnScale && s.CalibrationWarnScale <= 1) {
 		errs = append(errs, errors.New("face: need 0 < calibration_fail_scale < calibration_warn_scale <= 1"))

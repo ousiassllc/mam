@@ -1,6 +1,7 @@
 import { LitElement, html, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import { ApiError, del, get, post } from '../lib/api';
+import { del, get, post } from '../lib/api';
+import { errorMessage } from '../lib/errors';
 import { createLogger } from '../lib/logger';
 import {
   MAX_SEGMENTS,
@@ -56,21 +57,6 @@ const STATUS_CLASS: Record<TakeScore['status'], string> = {
   selected: 'border-emerald-500 text-emerald-300',
   rejected: 'border-neutral-700 text-neutral-500 line-through',
 };
-
-/** The message of an action's error response: a toast fragment (HTML) or a JSON problem. */
-export function errorMessage(error: unknown): string {
-  if (error instanceof ApiError) {
-    const body = error.body;
-    if (typeof body === 'string') {
-      const text = new DOMParser().parseFromString(body, 'text/html').body.textContent?.trim();
-      if (text) return text;
-    } else if (body && typeof body === 'object' && 'detail' in body && typeof body.detail === 'string') {
-      return body.detail;
-    }
-    return `操作に失敗しました（${error.status}）`;
-  }
-  return '通信に失敗しました';
-}
 
 /** A drag on a lane in progress. */
 interface Drag {

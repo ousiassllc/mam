@@ -14,6 +14,8 @@ import (
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/credential"
+	"github.com/ousiassllc/mam/backend/internal/httpclient"
+	"github.com/ousiassllc/mam/backend/internal/safefetch"
 )
 
 // SyncCredentialProvider is the credential.Store key of the Sync Labs API key (model identifier
@@ -22,6 +24,15 @@ const SyncCredentialProvider = "synclabs"
 
 // ErrNoSyncLabsKey means no Sync Labs API key is stored.
 var ErrNoSyncLabsKey = errors.New("audiodirector: Sync Labs API key is not configured")
+
+// ChargedError wraps the failure of a Lip Sync that Sync Labs had already accepted: the vendor
+// runs (and bills) the generation, so the caller records its cost although there is no video. A
+// failure before the job exists (no key, create refused) and a FAILED / REJECTED generation are
+// not charged and are returned unwrapped.
+type ChargedError struct{ Err error }
+
+func (e *ChargedError) Error() string { return e.Err.Error() }
+func (e *ChargedError) Unwrap() error { return e.Err }
 
 // LipSyncRequest is one Lip Sync: the video whose mouth is redone and the speech it must follow.
 type LipSyncRequest struct {
@@ -32,7 +43,7 @@ type LipSyncRequest struct {
 }
 
 // LipSyncer redoes the mouth of a video to a speech and returns the new video (mp4).
-// *SyncLabs implements it.
+// *SyncLabs implements it. A failure after Sync Labs accepted the job is a *ChargedError.
 type LipSyncer interface {
 	Sync(ctx context.Context, req LipSyncRequest) ([]byte, error)
 }
@@ -44,6 +55,10 @@ type SyncLabsConfig struct {
 	Timeout time.Duration
 	// PollInterval is the pause between two status requests.
 	PollInterval time.Duration
+	// LocalDownloads lets the output be downloaded from a plain http URL or a local address. It
+	// exists for tests against httptest servers; by default the output URL must be https and
+	// the download only connects to public addresses.
+	LocalDownloads bool
 }
 
 // DefaultSyncLabsConfig is the setting used unless the caller changes it.
@@ -58,12 +73,15 @@ const maxLipSyncBytes = 512 << 20
 type SyncLabs struct {
 	cfg    SyncLabsConfig
 	keys   credential.Store
-	client Doer
+	client httpclient.Doer
+	// fetcher downloads the output, whose URL comes from the vendor's answer.
+	fetcher httpclient.Doer
 }
 
-// NewSyncLabs returns a SyncLabs adapter. A nil client selects a plain http.Client; zero fields
-// of cfg take the DefaultSyncLabsConfig values.
-func NewSyncLabs(cfg SyncLabsConfig, keys credential.Store, client Doer) *SyncLabs {
+// NewSyncLabs returns a SyncLabs adapter. A nil client selects a plain http.Client for the API and
+// a client that connects to public addresses only (safefetch.NewClient) for the download; a given
+// client serves both. Zero fields of cfg take the DefaultSyncLabsConfig values.
+func NewSyncLabs(cfg SyncLabsConfig, keys credential.Store, client httpclient.Doer) *SyncLabs {
 	def := DefaultSyncLabsConfig()
 	if cfg.BaseURL == "" {
 		cfg.BaseURL = def.BaseURL
@@ -74,10 +92,15 @@ func NewSyncLabs(cfg SyncLabsConfig, keys credential.Store, client Doer) *SyncLa
 	if cfg.PollInterval <= 0 {
 		cfg.PollInterval = def.PollInterval
 	}
+	fetcher := client
 	if client == nil {
-		client = &http.Client{}
+		client = httpclient.New()
+		fetcher = client
+		if !cfg.LocalDownloads {
+			fetcher = safefetch.NewClient()
+		}
 	}
-	return &SyncLabs{cfg: cfg, keys: keys, client: client}
+	return &SyncLabs{cfg: cfg, keys: keys, client: client, fetcher: fetcher}
 }
 
 // generation is the part of the Sync Labs generation object the adapter reads.
@@ -118,21 +141,56 @@ func (s *SyncLabs) Sync(ctx context.Context, req LipSyncRequest) ([]byte, error)
 		}
 		select {
 		case <-ctx.Done():
-			return nil, fail(ctx.Err())
+			return nil, &ChargedError{Err: fail(ctx.Err())}
 		case <-time.After(s.cfg.PollInterval):
 		}
-		if gen, err = s.status(ctx, key, gen.ID); err != nil {
-			return nil, fail(err)
+		id := gen.ID
+		if err = s.repeat(ctx, func() (err error) { gen, err = s.status(ctx, key, id); return err }); err != nil {
+			return nil, &ChargedError{Err: fail(err)}
 		}
 	}
 	if gen.OutputURL == "" {
-		return nil, &ProviderError{Vendor: VendorSyncLabs, Message: "the generation has no outputUrl"}
+		return nil, &ChargedError{Err: &ProviderError{Vendor: VendorSyncLabs, Message: "the generation has no outputUrl"}}
 	}
-	video, err := s.download(ctx, gen.OutputURL)
-	if err != nil {
-		return nil, fail(err)
+	var video []byte
+	if err = s.repeat(ctx, func() (err error) { video, err = s.download(ctx, gen.OutputURL); return err }); err != nil {
+		return nil, &ChargedError{Err: fail(err)}
 	}
 	return video, nil
+}
+
+// maxTransientAttempts bounds how often one status request or download is tried when the vendor
+// answers 429 / 5xx or the connection breaks. The job was accepted (and is billed) already, so a
+// single transient failure must not lose its output.
+const maxTransientAttempts = 3
+
+// repeat runs fn, repeating it up to maxTransientAttempts times (waiting PollInterval between the
+// tries) while it fails with a transient error. fn must be safe to repeat: a GET of a job that
+// was already accepted.
+func (s *SyncLabs) repeat(ctx context.Context, fn func() error) error {
+	for attempt := 1; ; attempt++ {
+		err := fn()
+		if err == nil || attempt >= maxTransientAttempts || ctx.Err() != nil || !transient(err) {
+			return err
+		}
+		select {
+		case <-time.After(s.cfg.PollInterval):
+		case <-ctx.Done():
+			return err
+		}
+	}
+}
+
+// transient reports whether err is a 429, a 5xx or a network failure (a retry can succeed).
+func transient(err error) bool {
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return false
+	}
+	var pe *ProviderError
+	if errors.As(err, &pe) {
+		return pe.Status == http.StatusTooManyRequests || pe.Status >= 500 || (pe.Status == 0 && pe.Err != nil)
+	}
+	return true // the HTTP client could not complete the request
 }
 
 func (s *SyncLabs) create(ctx context.Context, key string, req LipSyncRequest) (generation, error) {
@@ -199,11 +257,14 @@ func (s *SyncLabs) send(r *http.Request, key string) (generation, error) {
 
 // download fetches the output video. The API key is not sent: the URL is a signed link of the vendor's storage.
 func (s *SyncLabs) download(ctx context.Context, link string) ([]byte, error) {
+	if err := s.checkOutputURL(link); err != nil {
+		return nil, &ProviderError{Vendor: VendorSyncLabs, Message: err.Error()}
+	}
 	r, err := http.NewRequestWithContext(ctx, http.MethodGet, link, nil)
 	if err != nil {
 		return nil, err
 	}
-	res, err := s.client.Do(r)
+	res, err := s.fetcher.Do(r)
 	if err != nil {
 		return nil, err
 	}
@@ -219,4 +280,18 @@ func (s *SyncLabs) download(ctx context.Context, link string) ([]byte, error) {
 		return nil, &ProviderError{Vendor: VendorSyncLabs, Status: res.StatusCode, Message: "the output is empty or too large"}
 	}
 	return data, nil
+}
+
+// checkOutputURL refuses an output URL that is not an https URL of a public host.
+func (s *SyncLabs) checkOutputURL(link string) error {
+	if s.cfg.LocalDownloads {
+		if u, err := url.Parse(link); err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" {
+			return errors.New("the output URL is not an http(s) URL")
+		}
+		return nil
+	}
+	if err := safefetch.CheckURL(link); err != nil {
+		return errors.New(strings.Replace(err.Error(), "result URL", "output URL", 1))
+	}
+	return nil
 }

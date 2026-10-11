@@ -8,10 +8,10 @@ import (
 	"fmt"
 	"slices"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/commandinterpreter"
 	"github.com/ousiassllc/mam/backend/internal/agent/generation"
+	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/agent/repair"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
@@ -35,6 +35,10 @@ type DirectorService struct {
 	// or Model Adapter).
 	takes  *repository.TakeRepository
 	repair *repair.Agent
+	// judges gives the Inspector the latest Judge result of each Take.
+	judges *repository.JudgeRepository
+	// brands are the Safety / Brand Constraints checked before a regeneration is queued.
+	brands *repository.BrandRepository
 }
 
 // SetMode switches the Project between AUTO and DIRECTOR (PUT /projects/:id/mode) and tells the
@@ -51,7 +55,7 @@ func (s *DirectorService) SetMode(ctx context.Context, projectID string, mode do
 	if project.Mode == mode {
 		return project, nil
 	}
-	if err := s.applyMode(ctx, projectID, mode); err != nil {
+	if err := s.applyMode(ctx, projectID, mode, true); err != nil {
 		return domain.Project{}, err
 	}
 	if mode == domain.ModeAuto {
@@ -67,8 +71,13 @@ func modeNotice(mode domain.Mode) string {
 	return "AUTO MODE に戻しました。この先の工程は AI が続けます。"
 }
 
-func (s *DirectorService) applyMode(ctx context.Context, projectID string, mode domain.Mode) error {
-	msgs := assignIDs([]domain.ChatMessage{assistantText(modeNotice(mode))})
+// applyMode switches the mode and, when announce, posts the notice of it. A direction that carries
+// the switch reports it in its own reply instead (announce false), so that the thread says it once.
+func (s *DirectorService) applyMode(ctx context.Context, projectID string, mode domain.Mode, announce bool) error {
+	var msgs []domain.ChatMessage
+	if announce {
+		msgs = assignIDs([]domain.ChatMessage{assistantText(modeNotice(mode))})
+	}
 	if err := s.projects.Apply(ctx, repository.Turn{ProjectID: projectID, Messages: msgs, Mode: &mode}); err != nil {
 		return notFound(err)
 	}
@@ -157,6 +166,8 @@ type Inspector struct {
 	SpecError string
 	// Versions are the saved versions of the Shot's spec, newest first (F-28).
 	Versions []domain.VersionEntry
+	// Judged is the latest Judge result of each Take that was judged, by Take ID.
+	Judged map[string]domain.JudgeResult
 }
 
 // SpecText is the Canonical Shot Spec as the edit form shows it (indented JSON).
@@ -200,7 +211,17 @@ func (s *DirectorService) Inspector(ctx context.Context, shotID string) (Inspect
 	if err != nil {
 		return Inspector{}, notFound(err)
 	}
-	view := Inspector{Project: project, Scene: ref.Scene, Shot: ref.Shot, Takes: takes[shotID], Locks: locks, Pack: ref.Shot.References(), Library: library, Versions: versions}
+	view := Inspector{Project: project, Scene: ref.Scene, Shot: ref.Shot, Takes: takes[shotID], Locks: locks, Pack: ref.Shot.References(), Library: library, Versions: versions, Judged: map[string]domain.JudgeResult{}}
+	for _, t := range view.Takes {
+		res, err := s.judges.Latest(ctx, t.ID)
+		if errors.Is(err, repository.ErrNotFound) {
+			continue
+		}
+		if err != nil {
+			return Inspector{}, err
+		}
+		view.Judged[t.ID] = res
+	}
 	if spec, ok := ref.Shot.CanonicalSpec(); ok {
 		view.Spec = &spec
 	}
@@ -276,7 +297,7 @@ func (s *DirectorService) DirectorCommand(ctx context.Context, shotID, message s
 	}
 	cmd, err := s.interpret(ctx, message, shots, &ref)
 	if err != nil {
-		return DirectorCommandResult{}, err
+		return DirectorCommandResult{}, interpretError(err)
 	}
 	locks, err := s.locks.ShotLocks(ctx, shotID)
 	if err != nil {
@@ -285,19 +306,83 @@ func (s *DirectorService) DirectorCommand(ctx context.Context, shotID, message s
 	if err := lockedRegeneration(locks, cmd.Operations); err != nil {
 		return DirectorCommandResult{}, err // nothing is recorded or done
 	}
+	if err := s.refuseBrand(ctx, project.ID, message, cmd); err != nil {
+		return DirectorCommandResult{}, err // a LOCK brand violation is 403; nothing is recorded or queued
+	}
+	// The direction is committed before execute: execute announces the progress card, which a chat that
+	// is open shows at once and then asks only for what comes after it (`after`), so a direction
+	// committed later would never reach it.
 	user := assignIDs([]domain.ChatMessage{userText(message, "", nil)})
 	if err := s.commitMessages(ctx, project.ID, user); err != nil {
 		return DirectorCommandResult{}, err
 	}
-	res, err := s.execute(ctx, project, &ref, cmd, true)
+	res, err := s.execute(ctx, project, &ref, cmd, message, true)
 	if err != nil {
+		s.reportCommandFailure(ctx, project.ID, res, err)
 		return DirectorCommandResult{}, err
 	}
-	if err := s.commitMessages(ctx, project.ID, assignIDs([]domain.ChatMessage{assistantText(res.text())})); err != nil {
+	// The direction was carried out (a regeneration may be queued and paid for): its answer is recorded
+	// whatever happened to the request since (a closed client), as the failure notice is, so that a retry
+	// does not run it a second time for want of seeing it in the thread.
+	if err := s.commitMessages(context.WithoutCancel(ctx), project.ID, assignIDs([]domain.ChatMessage{assistantText(res.text())})); err != nil {
 		return DirectorCommandResult{}, err
 	}
 	view, err := s.Inspector(ctx, shotID)
 	return DirectorCommandResult{Inspector: view, Started: res.started}, err
+}
+
+// reportCommandFailure answers a direction that failed after it was recorded (a Planner spec that
+// breaks a LOCK Brand constraint, an unexpected error), so that the thread does not end with the
+// director's words alone. What was done before the failure is told too. The error is still returned
+// to the caller. A failure to record the answer is only logged.
+func (s *DirectorService) reportCommandFailure(ctx context.Context, projectID string, done outcome, cause error) {
+	reason := commandFailureReason(cause)
+	lines := append(slices.Clone(done.lines), "指示を実行できませんでした: "+reason)
+	msg := assignIDs([]domain.ChatMessage{assistantText(strings.Join(lines, "\n"))})
+	// The request may be the very thing that ended (a closed client): the notice is recorded anyway.
+	if err := s.commitMessages(context.WithoutCancel(ctx), projectID, msg); err != nil {
+		s.logger.Error("post director command failure notice failed", "project_id", projectID, "err", err)
+	}
+}
+
+// commandFailureReason is the one line the thread gives for why a direction (or the reading of it)
+// failed: the same classification the HTTP layer gives the status of. The errors of the service
+// layer (a feature that is not set up, invalid input, a state that changed) are told here; the
+// failures of the generation pipeline and the models are told by generation.FailureReason, and
+// what is neither is an internal error (logged by whoever returns it).
+func commandFailureReason(err error) string {
+	var (
+		ai       *AIError
+		invalid  *ValidationError
+		conflict *ConflictError
+	)
+	switch {
+	case errors.As(err, &ai):
+		return ai.Reason
+	case errors.Is(err, ErrLocked):
+		return "LOCK されているパラメータを変える指示のため実行しませんでした"
+	case errors.As(err, &invalid):
+		return invalid.Message
+	case errors.Is(err, ErrUnavailable):
+		return "この操作に必要な機能が有効になっていません（API キーと設定を確認してください）"
+	case errors.As(err, &conflict):
+		return conflict.Message
+	case errors.Is(err, ErrNotFound):
+		return "対象が見つかりません"
+	case errors.Is(err, ErrBusy):
+		return "この Shot はすでに生成中です"
+	case errors.Is(err, ErrStageBusy):
+		return "別の編集処理が実行中です。終わってからやり直してください"
+	case errors.Is(err, ErrJudgeBusy):
+		return "この Take はすでに Judge 中です"
+	case errors.Is(err, ErrNotJudged):
+		return "この Take はまだ Judge されていません。Judge が終わってから指示してください"
+	case errors.Is(err, ErrAccepted):
+		return "この Take は Judge に合格しているため Repair は不要です"
+	case errors.Is(err, ErrConflict):
+		return "状態が変わっています。画面を更新してください"
+	}
+	return generation.FailureReason(err) // includes the budget and the Brand violations
 }
 
 func (s *DirectorService) commitMessages(ctx context.Context, projectID string, msgs []domain.ChatMessage) error {
@@ -323,7 +408,9 @@ func (s *DirectorService) wants(project domain.Project, target *domain.ChatMessa
 
 // Chat interprets a message of the thread (already stored) and carries it out. The result is the AI
 // message to append to the thread: what was done, what was refused, or what to ask. Failures the user
-// can act on are reported in the message; only unexpected errors are returned.
+// can act on are reported in the message; an error that is returned (a Brand violation, an
+// unexpected failure) has already been answered in the thread (reportCommandFailure), so that the
+// thread does not end with the user's words alone.
 func (s *DirectorService) Chat(ctx context.Context, project domain.Project, target *domain.ChatMessage, content string) (domain.ChatMessage, error) {
 	if s.interpreter == nil {
 		return assistantText("LLM が設定されていないため、指示を解釈できません（設定画面で API キーを登録してください）。"), nil
@@ -336,9 +423,23 @@ func (s *DirectorService) Chat(ctx context.Context, project domain.Project, targ
 	if err != nil {
 		return domain.ChatMessage{}, err
 	}
+	if ref != nil && ref.Scene.BranchID != "" {
+		// The Shot is on a Branch: the numbers of the message and of the Interpreter's answer are those
+		// of that Branch's story, not of the trunk (whose Scene 1 / Shot 1 is another Shot).
+		if shots, err = s.gens.StoryShots(ctx, project.ID, ref.Scene.BranchID); err != nil {
+			return domain.ChatMessage{}, err
+		}
+	}
 	cmd, err := s.interpret(ctx, content, shots, ref)
 	if err != nil {
-		return assistantText("指示を読み取れませんでした: " + generation.FailureReason(err)), nil
+		if !isInterpreterAIError(err) {
+			// A failure of ours (the repository), not of the model: it is an error, logged and answered
+			// in the thread like any other failure of a direction, never a "success" with a message.
+			s.logger.Error("interpret director message failed", "project_id", project.ID, "err", err)
+			s.reportCommandFailure(ctx, project.ID, outcome{}, err)
+			return domain.ChatMessage{}, err
+		}
+		return assistantText("指示を読み取れませんでした: " + commandFailureReason(err)), nil
 	}
 	if project.Mode != domain.ModeDirector {
 		// Outside DIRECTOR MODE only a request to remember something is carried out: AUTO MODE does
@@ -348,11 +449,21 @@ func (s *DirectorService) Chat(ctx context.Context, project domain.Project, targ
 	if cmd.Question != "" {
 		return assistantText(cmd.Question), nil
 	}
-	if shot := shotNamed(shots, cmd.Scene, cmd.Shot); shot != nil {
-		ref = shot
+	// Reply to a Take or Keyframe card outranks Scene/Shot numbers in the message. Numbers, then the
+	// latest Take card, then the Project's only Shot (both from contextShot) apply only without
+	// that reply.
+	if target == nil || (target.Kind != domain.KindTake && target.Kind != domain.KindKeyframe) {
+		if shot := shotNamed(shots, ref, cmd.Scene, cmd.Shot); shot != nil {
+			ref = shot
+		}
 	}
-	res, err := s.execute(ctx, project, ref, cmd, false)
+	if err := s.refuseBrand(ctx, project.ID, content, cmd); err != nil {
+		s.reportCommandFailure(ctx, project.ID, outcome{}, err)
+		return domain.ChatMessage{}, err
+	}
+	res, err := s.execute(ctx, project, ref, cmd, content, false)
 	if err != nil {
+		s.reportCommandFailure(ctx, project.ID, res, err)
 		return domain.ChatMessage{}, err
 	}
 	return assistantText(res.text()), nil
@@ -364,8 +475,9 @@ func (s *DirectorService) rememberOnly(ctx context.Context, project domain.Proje
 	if len(cmd.Operations) == 0 {
 		return assistantText("メモとして残せる内容が見つかりませんでした。覚えておきたい内容を、もう一度教えてください。"), nil
 	}
-	res, err := s.execute(ctx, project, nil, cmd, false)
+	res, err := s.execute(ctx, project, nil, cmd, "", false)
 	if err != nil {
+		s.reportCommandFailure(ctx, project.ID, res, err)
 		return domain.ChatMessage{}, err
 	}
 	return assistantText(res.text()), nil
@@ -385,9 +497,21 @@ func (s *DirectorService) remember(ctx context.Context, projectID string, op com
 	return fmt.Sprintf("メモに残しました:「%s」（%s）。以降の脚本・構成・Shot の設計で参照します。", n.Version.Title, n.Category.Label()), nil
 }
 
-// contextShot resolves the Shot a message is about without the words of the message: the Take card
-// it replies to, else the latest Take card of the thread, else the only Shot of the Project.
+// contextShot resolves the Shot a message is about without the words of the message: the Take or
+// Keyframe card it replies to, else the latest Take card of the thread, else the only Shot of the
+// Project. A reply to a card whose Shot is not known resolves to none (the Director asks), never to
+// another Shot.
 func (s *DirectorService) contextShot(ctx context.Context, projectID string, target *domain.ChatMessage, shots []repository.ShotRef) (*repository.ShotRef, error) {
+	if target != nil && target.Kind == domain.KindKeyframe {
+		ref, err := s.gens.ShotOfKeyframe(ctx, projectID, target.RefID)
+		if errors.Is(err, repository.ErrNotFound) {
+			return nil, nil
+		}
+		if err != nil {
+			return nil, err
+		}
+		return &ref, nil
+	}
 	cards := []*domain.ChatMessage{target}
 	if target == nil || target.Kind != domain.KindTake {
 		latest, err := s.chat.LatestOfKind(ctx, projectID, domain.KindTake)
@@ -415,10 +539,15 @@ func (s *DirectorService) contextShot(ctx context.Context, projectID string, tar
 	return nil, nil
 }
 
-// shotNamed finds the Shot by the numbers a message names (1-based); nil when it names none.
-func shotNamed(shots []repository.ShotRef, scene, shot int) *repository.ShotRef {
+// shotNamed finds the Shot by the numbers a message names (1-based); nil when it names none. The
+// numbers of a Branch's story are not unique (a Branch Scene counts from 1 again), so the Shot the
+// context already resolved (target) is the answer when it has those numbers.
+func shotNamed(shots []repository.ShotRef, target *repository.ShotRef, scene, shot int) *repository.ShotRef {
 	if scene < 1 || shot < 1 {
 		return nil
+	}
+	if target != nil && target.Scene.OrderIndex+1 == scene && target.Shot.OrderIndex+1 == shot {
+		return target
 	}
 	for i := range shots {
 		if shots[i].Scene.OrderIndex+1 == scene && shots[i].Shot.OrderIndex+1 == shot {
@@ -445,7 +574,38 @@ func (s *DirectorService) interpret(ctx context.Context, message string, shots [
 		}
 		in.Locks = locks
 	}
-	return s.interpreter.Interpret(ctx, in)
+	cmd, err := s.interpreter.Interpret(ctx, in)
+	if err != nil {
+		return cmd, err
+	}
+	if !domain.AsksToRemember(message) {
+		// A note is made only when the message asks for it (spec/spec.md §9.4): the model's
+		// word alone is not enough in any mode.
+		cmd.Operations = slices.DeleteFunc(cmd.Operations, func(op commandinterpreter.Operation) bool { return op.Type == commandinterpreter.OpCreateNote })
+	}
+	return cmd, nil
+}
+
+// interpretError gives a failure of the Command Interpreter's LLM call the status the API
+// documents: no API key is 503 (ErrUnavailable), a 429 is ErrRateLimited (through the AIError), and a
+// timeout, an open circuit breaker, a failing API or an answer that is not the expected JSON is 502. Errors of other origin
+// (the repository) are returned as they are.
+func interpretError(err error) error {
+	switch {
+	case errors.Is(err, llm.ErrNoAPIKey):
+		return ErrUnavailable
+	case isInterpreterAIError(err):
+		return aiError(err)
+	}
+	return err
+}
+
+// isInterpreterAIError reports whether err is a failure of the Command Interpreter's LLM call (as
+// opposed to one of the repository reads around it).
+func isInterpreterAIError(err error) bool {
+	var api *llm.APIError
+	return errors.Is(err, llm.ErrNoAPIKey) || errors.Is(err, llm.ErrInvalidOutput) || errors.Is(err, llm.ErrTimeout) ||
+		errors.Is(err, llm.ErrCircuitOpen) || errors.As(err, &api)
 }
 
 func optionOf(sh repository.ShotRef) commandinterpreter.ShotOption {
@@ -467,11 +627,40 @@ func (o outcome) text() string {
 
 const askWhichShot = "どの Shot への指示ですか？ Take カードに返信するか、「Scene 1 の Shot 2」のように指定してください。"
 
+// unsupportedFixed is the reply to Example 4 (spec/spec.md): a timeline edit or an extra Shot asked
+// for in chat. The model's own reason is not used for those.
+const unsupportedFixed = "その操作にはまだ対応していません"
+
+// unsupportedReply is what the thread shows for an unsupported direction. A request to change the
+// Edit Timeline or to add a Shot always gets unsupportedFixed, even when the interpreter wrote
+// another sentence. Other unsupported directions keep that sentence, or the fixed one when it is empty.
+func unsupportedReply(message, reason string) string {
+	if isTimelineOrExtraShot(message) || strings.TrimSpace(reason) == "" {
+		return unsupportedFixed
+	}
+	return strings.TrimSpace(reason)
+}
+
+// isTimelineOrExtraShot reports whether the director asked to change a clip's length (Example 4) or
+// to add a Shot. Chat does not do either.
+func isTimelineOrExtraShot(message string) bool {
+	m := strings.ToLower(message)
+	if strings.Contains(m, "タイムライン") || strings.Contains(m, "timeline") || strings.Contains(m, "尺") {
+		return true
+	}
+	if strings.Contains(m, "秒") && (strings.Contains(m, "長") || strings.Contains(m, "短")) {
+		return true
+	}
+	aboutShot := strings.Contains(m, "ショット") || strings.Contains(m, "shot") || strings.Contains(m, "カット")
+	asksMore := strings.Contains(m, "追加") || strings.Contains(m, "足して") || strings.Contains(m, "増や")
+	return aboutShot && asksMore
+}
+
 // execute carries out the operations of a Command: settings first (so that "カメラは固定して、表情だけ
 // 変えて" locks before it regenerates), then regenerations, then the mode switch. strict makes a
 // regeneration that would change a LOCKed parameter fail with ErrLocked before anything is done;
 // otherwise it is left out and reported.
-func (s *DirectorService) execute(ctx context.Context, project domain.Project, ref *repository.ShotRef, cmd commandinterpreter.Command, strict bool) (outcome, error) {
+func (s *DirectorService) execute(ctx context.Context, project domain.Project, ref *repository.ShotRef, cmd commandinterpreter.Command, message string, strict bool) (outcome, error) {
 	var out outcome
 	if cmd.Question != "" {
 		return outcome{lines: []string{cmd.Question}}, nil
@@ -528,11 +717,7 @@ func (s *DirectorService) execute(ctx context.Context, project domain.Project, r
 				return out, err
 			}
 		case commandinterpreter.OpUnsupported:
-			reason := op.Reason
-			if reason == "" {
-				reason = "その操作にはまだ対応していません"
-			}
-			out.lines = append(out.lines, reason)
+			out.lines = append(out.lines, unsupportedReply(message, op.Reason))
 		}
 	}
 	for _, op := range cmd.Operations {
@@ -545,11 +730,19 @@ func (s *DirectorService) execute(ctx context.Context, project domain.Project, r
 		}
 		out.lines = append(out.lines, line)
 	}
+	mode := project.Mode
 	for _, op := range cmd.Operations {
 		if op.Type == commandinterpreter.OpSetMode {
-			if err := s.applyMode(ctx, project.ID, op.ProjectMode); err != nil {
+			if op.ProjectMode == mode {
+				// nothing is switched: no switch_to_director is recorded, no pipeline is kicked
+				out.lines = append(out.lines, "すでに "+strings.ToUpper(string(mode))+" MODE です。")
+				continue
+			}
+			mode = op.ProjectMode
+			if err := s.applyMode(ctx, project.ID, op.ProjectMode, false); err != nil {
 				return out, err
 			}
+			out.lines = append(out.lines, modeNotice(op.ProjectMode))
 			if op.ProjectMode == domain.ModeAuto {
 				s.kick(ctx, project.ID)
 			}
@@ -605,7 +798,7 @@ func (s *DirectorService) setLock(ctx context.Context, projectID string, ref *re
 		return fmt.Sprintf("%s を %s にしました。", op.Parameter.Label(), op.Mode.Label()), nil
 	}
 	if op.Parameter == domain.ParamVideoModel && op.Mode == domain.LockManual && op.Value == "" {
-		return "Video Model を MANUAL にするにはモデル名（kling-3.0 / seedance-2.0）を指定してください。", nil
+		return "Video Model を MANUAL にするにはモデル名（" + domain.JoinModels(domain.VideoModels(), " / ") + "）を指定してください。", nil
 	}
 	if _, err := s.SetShotLock(ctx, ref.Shot.ID, op.Parameter, op.Mode, op.Value); err != nil {
 		if errors.Is(err, ErrLocked) {
@@ -614,6 +807,38 @@ func (s *DirectorService) setLock(ctx context.Context, projectID string, ref *re
 		return "", err
 	}
 	return fmt.Sprintf("Scene %d / Shot %d の %s を %s にしました。", ref.Scene.OrderIndex+1, ref.Shot.OrderIndex+1, op.Parameter.Label(), op.Mode.Label()), nil
+}
+
+// refuseBrand returns ErrBrandViolation when a regeneration's instruction (the user's words, or the
+// English direction the interpreter produced) or the direction of a Branch to create contains a
+// forbidden expression of a LOCK constraint.
+// Advisory constraints are not an error. The Shot Spec is checked again inside the generation that
+// would be queued, still before the job exists.
+func (s *DirectorService) refuseBrand(ctx context.Context, projectID, message string, cmd commandinterpreter.Command) error {
+	generates := func(op commandinterpreter.Operation) bool {
+		return op.Regenerates() || op.Type == commandinterpreter.OpCreateBranch
+	}
+	if s.brands == nil || !slices.ContainsFunc(cmd.Operations, generates) {
+		return nil
+	}
+	list, err := s.brands.List(ctx, projectID)
+	if err != nil {
+		return err
+	}
+	if err := list.CheckText(message); err != nil {
+		return err
+	}
+	for _, op := range cmd.Operations {
+		if !generates(op) {
+			continue
+		}
+		for _, text := range append([]string{op.Instruction}, op.Directions...) {
+			if err := list.CheckText(text); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func (s *DirectorService) regenerate(ctx context.Context, ref *repository.ShotRef, locks domain.ParameterLocks, op commandinterpreter.Operation) (string, bool, error) {
@@ -625,10 +850,15 @@ func (s *DirectorService) regenerate(ctx context.Context, ref *repository.ShotRe
 		}
 		return fmt.Sprintf("%s の %s は LOCK されているため変更しませんでした。変えたい場合は LOCK を解除するよう指示してください。", label, strings.Join(names, " / ")), false, nil
 	}
-	instruction := op.Instruction
-	if utf8.RuneCountInString(instruction) > maxInstructionRunes {
-		instruction = string([]rune(instruction)[:maxInstructionRunes])
+	// The interpreter does not know the Shot's length: a range that starts after the Shot ends is
+	// refused here, before a whole new Take is paid for.
+	if op.Type == commandinterpreter.OpPartialRegenerate && ref.Shot.Duration > 0 {
+		if i := slices.IndexFunc(op.Ranges, func(r domain.TimeRange) bool { return r.From >= ref.Shot.Duration }); i >= 0 {
+			return fmt.Sprintf("%s は %.1f 秒の Shot で、%s は Shot の長さを超えているため再生成しませんでした。Shot の長さ以内の時間範囲で指示してください。",
+				label, ref.Shot.Duration, domain.FormatTimeRanges(op.Ranges[i:i+1])), false, nil
+		}
 	}
+	instruction := clipInstruction(op.Instruction)
 	partial := op.Type == commandinterpreter.OpPartialRegenerate
 	var err error
 	switch {
@@ -641,7 +871,7 @@ func (s *DirectorService) regenerate(ctx context.Context, ref *repository.ShotRe
 		return "", false, ErrUnavailable
 	default:
 		record := s.generationRecorder(ctx, ref.Shot.ID)
-		if _, err = s.orch.StartDirected(ctx, ref.Shot.ID, instruction, op.Preserve); err == nil {
+		if _, err = s.orch.StartByPolicy(ctx, ref.Shot.ID, instruction, op.Preserve); err == nil {
 			record()
 		}
 	}
@@ -659,7 +889,7 @@ func (s *DirectorService) regenerate(ctx context.Context, ref *repository.ShotRe
 		case errors.Is(err, ErrBudgetExceeded):
 			return label + " は予算上限を超えるため再生成できません。", false, nil
 		case errors.Is(err, ErrBrandViolation):
-			return label + " は Brand / Safety Constraint に違反するため再生成できません。指示を見直してください。", false, nil
+			return "", false, err
 		}
 		return "", false, err
 	}

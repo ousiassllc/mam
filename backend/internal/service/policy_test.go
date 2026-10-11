@@ -38,7 +38,7 @@ func TestSetProductionTemplate_ChangesTheAxesTheAgentsAreToldAndIsRecordedInTheT
 	assert.Contains(t, lastMessage(t, f.thread(t, f.projectID)).Content, "Story > Acting")
 
 	f.generate(t)
-	prompt := f.llm.users[llm.AgentPromptPlanner][0]
+	prompt := f.llm.prompts(llm.AgentPromptPlanner)[0]
 	assert.Contains(t, prompt, "Story > Acting > Character Identity", "the Prompt Planner is told the DRAMA priorities")
 	assert.NotContains(t, prompt, "Product Accuracy")
 
@@ -149,7 +149,7 @@ func TestGenerateShot_StopsAtMaxGenerationTimeAndReportsIt(t *testing.T) {
 	f := newGenFixture(t, true)
 	f.models.block = make(chan struct{}) // the model never answers
 	require.NoError(t, f.db.Write(context.Background(), func(ctx context.Context, tx *sql.Tx) error {
-		_, err := tx.ExecContext(ctx, `INSERT INTO project_policy (project_id, max_generation_seconds) VALUES (?, 1)`, f.projectID)
+		_, err := tx.ExecContext(ctx, `INSERT INTO project_policy (project_id, max_generation_seconds) VALUES (?, ?)`, f.projectID, domain.MinGenerationSeconds)
 		return err
 	}))
 

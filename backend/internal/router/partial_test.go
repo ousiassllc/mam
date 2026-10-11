@@ -34,7 +34,7 @@ func newMP4Video(t *testing.T) *mp4Video {
 }
 
 func (v *mp4Video) GenerateVideo(context.Context, string, modeladapter.VideoRequest) (modeladapter.VideoResult, error) {
-	return modeladapter.VideoResult{Data: v.data, MimeType: "video/mp4"}, nil
+	return modeladapter.VideoResult{File: modeladapter.BlobOf(v.data), MimeType: "video/mp4"}, nil
 }
 
 // Judge answers: one camera Issue at 1.5-2.5 s, or the same Issue about the whole Take.
@@ -179,4 +179,18 @@ func TestPartialRegeneration_DirectorCommandWithoutFfmpegSaysSoAndMakesNothing(t
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	assert.Equal(t, 3, j.count(`SELECT COUNT(*) FROM take`))
 	assert.Contains(t, j.get("/projects/"+j.project, false).Body.String(), "ffmpeg")
+}
+
+func TestPartialRegeneration_DirectorCommandBeyondTheShotLengthMakesNothingAndSaysTheLength(t *testing.T) {
+	const beyond = `{"scene":1,"shot":1,"operations":[{"type":"partial_regenerate","time_ranges":["50.0-60.0"],"changes":["camera"],"preserve":[],"instruction":"camera movement: static"}]}`
+	j := newPartialApp(t, wholeVerdict, beyond)
+	j.generateAndJudge()
+	takes, jobs := j.count(`SELECT COUNT(*) FROM take`), j.count(`SELECT COUNT(*) FROM job`)
+
+	rec := j.form(http.MethodPost, "/shots/"+j.shotID+"/director-command", url.Values{"content": {"50〜60秒目だけ直して"}})
+
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.Equal(t, takes, j.count(`SELECT COUNT(*) FROM take`), "no Take is paid for")
+	assert.Equal(t, jobs, j.count(`SELECT COUNT(*) FROM job`), "no job is queued")
+	assert.Contains(t, j.get("/projects/"+j.project, false).Body.String(), "4.0 秒の Shot")
 }

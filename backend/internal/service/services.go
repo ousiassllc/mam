@@ -93,13 +93,16 @@ type Services struct {
 	Analytics   *AnalyticsService
 }
 
-// Recover puts Shots left GENERATING by an abnormal termination back to PLANNING. It MUST run
-// after New and before the job queue starts (their generate jobs are then failed by the queue).
+// Close stops the background workers of the services. Call it on shutdown, after the job queue
+// stopped.
+func (s *Services) Close() { s.Editor.Close() }
+
+// Recover puts Shots left GENERATING, REPAIRING or JUDGING by an abnormal termination back to PLANNING.
+// It MUST run after New and before the job queue starts, twice: before the queue resolves its running
+// jobs (their generate jobs are then failed by it) and after (a judge job it failed leaves its Shot
+// JUDGING with no handler to release it). A Shot with a job that will still run keeps its state.
 func (s *Services) Recover(ctx context.Context) (int, error) {
-	if s.Generation.gen == nil {
-		return 0, nil
-	}
-	return s.Generation.gen.Recover(ctx)
+	return s.Generation.shots.ResetStaleShots(ctx)
 }
 
 // New builds every service from deps. When deps.Jobs is set, job status changes refresh
@@ -141,7 +144,7 @@ func New(deps Deps) *Services {
 			}
 			// A finished generation / judge job may complete an additional Shot of the Editor → Reshoot Loop.
 			if editors != nil {
-				go editors.ResumeReshoots(context.Background())
+				editors.ResumeEditing()
 			}
 		})
 		if deps.LLM != nil {
@@ -157,6 +160,7 @@ func New(deps Deps) *Services {
 	world := repository.NewWorldRepository(deps.DB)
 	policies := repository.NewPolicyRepository(deps.DB)
 	brands := repository.NewBrandRepository(deps.DB)
+	c.takeActions = takeActions{judges: repository.NewJudgeRepository(deps.DB), policies: policies}
 	generations := &GenerationService{core: c, shots: gens, progress: newBroker[generation.Progress]()}
 	judges := &JudgeService{core: c, judges: repository.NewJudgeRepository(deps.DB), generations: generations}
 	repairs := &RepairService{core: c, repairs: repository.NewRepairRepository(deps.DB), judges: judges.judges, generations: generations}
@@ -173,23 +177,26 @@ func New(deps Deps) *Services {
 			Takes: takes, Projects: c.projects, Brands: brands,
 			Judge:     judge.New(deps.LLM, deps.Frames, deps.Faces, cfg, logger),
 			AssetsDir: deps.AssetsDir, Logger: logger,
-			Notify: func(p generation.Progress) { generations.progress.Publish(p.ShotID, p) },
+			Notify:     func(p generation.Progress) { generations.progress.Publish(p.ShotID, p) },
+			TakeJudged: chat.TakeJudged,
 		})
 		// Resumable: judging is repeatable and cheap, so an interrupted run is run again.
 		deps.Jobs.Register(domain.JobJudge, judges.runner.Handle, true)
+		c.takeActions.judgeEnabled = true
 		takeJudge = judges.runner
 	}
 	if deps.Jobs != nil && deps.LLM != nil && deps.Models != nil {
 		generations.gen = generation.New(generation.Deps{
 			Generations: gens, World: world, Notes: notesRepo, Projects: c.projects, Policies: policies, FreeBytes: deps.FreeBytes, Assets: c.assets, Chat: chat, Jobs: deps.Jobs,
-			LLM: deps.LLM, Adapter: deps.Models, AssetsDir: deps.AssetsDir, Logger: logger, Judge: takeJudge, Brands: brands,
+			Repairs: repairs.repairs, LLM: deps.LLM, Adapter: deps.Models, AssetsDir: deps.AssetsDir, Logger: logger, Judge: takeJudge, Brands: brands,
 			Notify: func(p generation.Progress) { generations.progress.Publish(p.ShotID, p) },
 		})
 		// Not resumable: a generation costs money, so an interrupted one is failed, not repeated.
 		deps.Jobs.Register(domain.JobGenerate, generations.gen.Handle, false)
+		c.takeActions.gen = generations.gen
 		if judges.runner != nil {
 			repairDeps := repair.Deps{
-				Generations: gens, Judges: judges.judges, Repairs: repairs.repairs, JobRepo: c.jobs, Policies: policies, Projects: c.projects,
+				Generations: gens, Judges: judges.judges, Repairs: repairs.repairs, JobRepo: c.jobs, Policies: policies, Projects: c.projects, Takes: takes,
 				Regenerator: generations.gen, Chat: chat, Jobs: deps.Jobs, LLM: deps.LLM, Shadow: deps.Jev, Logger: logger,
 				Notify: func(p generation.Progress) { generations.progress.Publish(p.ShotID, p) },
 			}
@@ -205,12 +212,12 @@ func New(deps Deps) *Services {
 		}
 	}
 	versions := repository.NewVersionRepository(deps.DB)
-	director := &DirectorService{core: c, gens: gens, locks: repository.NewLockRepository(deps.DB), versions: versions, orch: generations.gen, takes: takes, repair: repairs.agent}
+	director := &DirectorService{core: c, gens: gens, locks: repository.NewLockRepository(deps.DB), versions: versions, orch: generations.gen, takes: takes, repair: repairs.agent, judges: repository.NewJudgeRepository(deps.DB), brands: brands}
 	if deps.LLM != nil {
 		director.interpreter = commandinterpreter.New(deps.LLM)
 	}
 	c.director = director
-	continues := &ContinueService{core: c, generation: generations, shots: gens}
+	continues := &ContinueService{core: c, generation: generations, shots: gens, brands: brands, tools: deps.Media}
 	if deps.LLM != nil {
 		continues.agent = continuation.New(deps.LLM)
 	}
@@ -220,16 +227,19 @@ func New(deps Deps) *Services {
 		notes.extractor = stateextractor.New(deps.LLM)
 	}
 	c.notes = notes
-	branch := &BranchService{core: c, shots: gens, continues: continues}
+	branch := &BranchService{core: c, shots: gens, continues: continues, brands: brands}
 	director.branch = branch
 	worlds := &WorldService{core: c, world: world, versions: versions}
 	// Without a Reasoning LLM the Editor Judge runs its deterministic checks alone.
 	editors = &EditorService{
-		core: c, editors: repository.NewEditorRepository(deps.DB), shots: gens, generation: generations, policies: policies, takes: takes, chatSvc: chat, tools: deps.Media,
+		core: c, editors: repository.NewEditorRepository(deps.DB), shots: gens, generation: generations, policies: policies, takes: takes, locks: repository.NewLockRepository(deps.DB), chatSvc: chat, tools: deps.Media,
 		judge: editor.NewJudge(deps.LLM), brands: brands, judges: judges.judges,
 		voices: repository.NewVoiceRepository(deps.DB), cloner: deps.Audio.Cloner,
 	}
-	takeService.afterSelect = func() { go editors.ResumeReshoots(context.Background()) }
+	editors.resume = newResumer(editors.resumeAll)
+	takeService.afterSelect = editors.ResumeEditing
+	// An Approval card answered in the editing half (Rough Cut, Final) lets the AUTO chain go on.
+	c.afterAnswer = editors.RetryAuto
 	if deps.Media != nil && deps.Audio.Speech != nil {
 		// Without a Reasoning LLM the Audio Director plans its layers by rule (tempo, Brief mood, location).
 		editors.audio = audiodirector.New(audiodirector.Deps{
@@ -255,7 +265,7 @@ func New(deps Deps) *Services {
 		Reference: &ReferenceService{c},
 		Trace:     &TraceService{traces: repository.NewTraceRepository(deps.DB)},
 		Versions:  &VersionService{core: c, versions: versions, director: director, world: worlds},
-		Bundle:    &BundleService{core: c, bundles: repository.NewBundleRepository(deps.DB)},
+		Bundle:    &BundleService{core: c, bundles: repository.NewBundleRepository(deps.DB), freeBytes: deps.FreeBytes},
 		Series:    &SeriesService{core: c, series: repository.NewSeriesRepository(deps.DB)},
 		Takes:     takeService,
 		Notes:     notes,

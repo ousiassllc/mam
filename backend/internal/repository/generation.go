@@ -126,12 +126,27 @@ func (r *GenerationRepository) SetShotState(ctx context.Context, shotID string, 
 	})
 }
 
-// ResetStaleShots puts Shots that are GENERATING or REPAIRING back to PLANNING. It is called at
-// start-up, before any job runs: after an abnormal termination no generation or repair is in flight.
+// ResetStaleShots puts Shots that are GENERATING, REPAIRING or JUDGING back to PLANNING. It is called
+// at start-up, before any job runs: after an abnormal termination no generation, repair or judging is
+// in flight. A Shot with a queued generate or repair job keeps its state: that job did not start
+// before the restart and will run, and releasing the Shot would let a second one be queued for it (a
+// double paid generation). The generate and repair jobs that were running are failed afterwards (they
+// are not resumable), so their Shots are released here. A JUDGING Shot also keeps its state while a
+// judge job is running, because the queue runs a judge job again (it is resumable) or fails it.
+//
+// It MUST run twice: before the job queue resolves the running jobs (Queue.Recover) and after. The
+// second run releases the Shots whose judge job the queue failed (attempts used up, no handler) or
+// whose queued job it failed for lack of a handler: no handler of theirs runs to release them.
 func (r *GenerationRepository) ResetStaleShots(ctx context.Context) (int, error) {
 	var n int64
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
-		res, err := tx.ExecContext(ctx, `UPDATE shot SET state = ? WHERE state IN (?, ?)`, domain.ShotPlanning, domain.ShotGenerating, domain.ShotRepairing)
+		res, err := tx.ExecContext(ctx,
+			`UPDATE shot SET state = ?
+			  WHERE (state IN (?, ?) AND NOT EXISTS (SELECT 1 FROM job WHERE kind IN (?, ?) AND status = ? AND json_extract(payload, '$.shot_id') = shot.id))
+			     OR (state = ? AND NOT EXISTS (SELECT 1 FROM job WHERE kind = ? AND status IN (?, ?) AND json_extract(payload, '$.shot_id') = shot.id))`,
+			domain.ShotPlanning,
+			domain.ShotGenerating, domain.ShotRepairing, domain.JobGenerate, domain.JobRepair, domain.JobQueued,
+			domain.ShotJudging, domain.JobJudge, domain.JobQueued, domain.JobRunning)
 		if err != nil {
 			return err
 		}
@@ -227,7 +242,8 @@ func (r *GenerationRepository) MarkAIPick(ctx context.Context, shotID, takeID st
 // new prompt_version. LOCK is judged on the data being written: it returns ErrLocked (wrapping the
 // names of the LOCKed parameters the edit touches) and writes nothing when a LOCKed part or, with
 // Prompt LOCKed, any part of the current spec would change; ErrConflict while the Shot is being
-// generated; ErrNotFound for an unknown Shot. A Shot without a spec has nothing to be LOCKed.
+// generated or repaired (the Repair saves its own spec at its end and would overwrite the edit);
+// ErrNotFound for an unknown Shot. A Shot without a spec has nothing to be LOCKed.
 func (r *GenerationRepository) SaveEditedSpec(ctx context.Context, shotID string, spec domain.ShotSpec) (domain.PromptVersion, error) {
 	var pv domain.PromptVersion
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
@@ -235,7 +251,7 @@ func (r *GenerationRepository) SaveEditedSpec(ctx context.Context, shotID string
 		if err != nil {
 			return err
 		}
-		if state == domain.ShotGenerating {
+		if !state.CanEditSpec() {
 			return ErrConflict
 		}
 		if old, ok := (domain.Shot{ShotSpec: json.RawMessage(current)}).CanonicalSpec(); ok {
@@ -350,6 +366,13 @@ func (r *GenerationRepository) CreateTake(ctx context.Context, nt NewTake) (stri
 	return takeID, nil
 }
 
+// AddCost appends an entry to the cost ledger for a paid output that no Take or Pack row holds:
+// the provider has charged, so the spend stays on the ledger.
+func (r *GenerationRepository) AddCost(ctx context.Context, c domain.CostEntry) error {
+	now := formatTime(r.now())
+	return r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error { return insertCost(ctx, tx, c, now) })
+}
+
 func insertCost(ctx context.Context, tx *sql.Tx, c domain.CostEntry, now string) error {
 	_, err := tx.ExecContext(ctx,
 		`INSERT INTO cost_ledger_entry (id, project_id, shot_id, take_id, provider, estimated_cost, actual_cost, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -360,7 +383,8 @@ func insertCost(ctx context.Context, tx *sql.Tx, c domain.CostEntry, now string)
 	return nil
 }
 
-// NewReferencePack is the Reference Pack of a Shot with the image assets and their cost. References
+// NewReferencePack is the Reference Pack of a Shot with the image assets. Their cost is on the
+// ledger already (AddCost, written when each image was paid for). References
 // may include images that already exist (pinned from the Reference Library, or the images a World
 // State reference slot holds): only the images in Assets are new.
 type NewReferencePack struct {
@@ -368,10 +392,9 @@ type NewReferencePack struct {
 	ShotID     string
 	References []domain.Reference
 	Assets     []domain.Asset // the new image assets (type reference)
-	Costs      []domain.CostEntry
 }
 
-// SaveReferencePack replaces the Reference Pack of the Shot: the assets and costs are inserted,
+// SaveReferencePack replaces the Reference Pack of the Shot: the assets are inserted,
 // the new images join the Project's Reference Library (spec/spec.md §10.1; the Keyframe stays
 // with its Shot), the Characters and Products it names join the World State (when not already
 // there) and the "references" key of shot.shot_spec is rewritten, in one transaction.
@@ -391,11 +414,6 @@ func (r *GenerationRepository) SaveReferencePack(ctx context.Context, p NewRefer
 				return err
 			}
 		}
-		for _, c := range p.Costs {
-			if err := insertCost(ctx, tx, c, now); err != nil {
-				return err
-			}
-		}
 		added := make(map[string]bool, len(p.Assets))
 		for _, a := range p.Assets {
 			added[a.ID] = true
@@ -412,7 +430,13 @@ func (r *GenerationRepository) SaveReferencePack(ctx context.Context, p NewRefer
 				return err
 			}
 		}
+		// Only an image generated for this Pack, under a name the Art Director gave, adds an entity: a
+		// pinned library item or a reused reference keeps the name it was saved with (a library item is
+		// named after its image, "Mio（全身）", not after a Character), and was ensured when it was made.
 		for _, ref := range p.References {
+			if !added[ref.AssetID] {
+				continue
+			}
 			if err := ensureWorldEntity(ctx, tx, p.ProjectID, branchID, ref); err != nil {
 				return err
 			}
@@ -450,15 +474,28 @@ func (r *GenerationRepository) WorldContext(ctx context.Context, projectID, bran
 }
 
 // Budget is the money side of a Shot: the ceilings of the Project and the Shot (nil when unset,
-// F-22) and what the cost ledger holds so far.
+// F-22) and what has been spent: the cost ledger plus the estimates of generations in flight.
 type Budget struct {
 	ProjectCeiling, ShotCeiling *float64
 	ProjectSpent, ShotSpent     float64
 }
 
 // Budget returns the ceilings of the Project and the estimated cost recorded so far for the
-// Project and for the Shot.
+// Project and for the Shot, plus what generations in flight have reserved (Reserve): their cost
+// reaches the ledger only when the vendor returns the output.
 func (r *GenerationRepository) Budget(ctx context.Context, projectID, shotID string) (Budget, error) {
+	reservedProject, reservedShot := r.db.inflight.reserved(projectID, shotID) // before the ledger: see inflightSpend.reserved
+	b, err := r.ledgerBudget(ctx, projectID, shotID)
+	if err != nil {
+		return Budget{}, err
+	}
+	b.ProjectSpent += reservedProject
+	b.ShotSpent += reservedShot
+	return b, nil
+}
+
+// ledgerBudget is Budget without the reservations.
+func (r *GenerationRepository) ledgerBudget(ctx context.Context, projectID, shotID string) (Budget, error) {
 	var (
 		b                   Budget
 		projectCap, shotCap sql.NullFloat64
@@ -487,6 +524,22 @@ func (r *GenerationRepository) Budget(ctx context.Context, projectID, shotID str
 // ShotLocks returns the AUTO / MANUAL / LOCK setting of the parameters of the Shot.
 func (r *GenerationRepository) ShotLocks(ctx context.Context, shotID string) (domain.ParameterLocks, error) {
 	return readParameterLocks(ctx, r.db.Reader(), `target_type = ? AND target_id = ?`, domain.LockTargetShot, shotID)
+}
+
+// ShotOfKeyframe returns the Shot whose Reference Pack holds the image asset (the Shot a Keyframe
+// card is about), when the Shot is in the Project. An image that several Packs hold (a pinned one)
+// belongs to the first Shot in story order.
+func (r *GenerationRepository) ShotOfKeyframe(ctx context.Context, projectID, assetID string) (ShotRef, error) {
+	ref, err := scanShotRef(r.db.Reader().QueryRowContext(ctx,
+		shotRefSelect+` WHERE s.project_id = ? AND EXISTS (SELECT 1 FROM json_each(sh.shot_spec, '$.references') j WHERE json_extract(j.value, '$.asset_id') = ?)
+ORDER BY s.order_index, sh.order_index LIMIT 1`, projectID, assetID))
+	if errors.Is(err, sql.ErrNoRows) {
+		return ShotRef{}, ErrNotFound
+	}
+	if err != nil {
+		return ShotRef{}, fmt.Errorf("get shot of keyframe: %w", err)
+	}
+	return ref, nil
 }
 
 // ShotOfTake returns the Shot that the Take belongs to, when the Shot is in the Project

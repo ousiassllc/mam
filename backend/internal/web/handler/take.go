@@ -41,7 +41,7 @@ func SelectTake(svc *service.TakeService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusOK, molecules.ShotCard(shotCardData(frag)))
+		render(c, http.StatusOK, molecules.ShotCard(takeActionCard(c, frag)))
 	}
 }
 
@@ -53,7 +53,7 @@ func RejectTake(svc *service.TakeService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusOK, molecules.ShotCard(shotCardData(frag)))
+		render(c, http.StatusOK, molecules.ShotCard(takeActionCard(c, frag)))
 	}
 }
 
@@ -72,7 +72,7 @@ func UsePartialTakes(svc *service.TakeService) gin.HandlerFunc {
 		var in partialForm
 		if strings.HasPrefix(c.ContentType(), "application/json") {
 			if err := c.ShouldBindJSON(&in); err != nil {
-				toast(c, &service.ValidationError{Field: "segments", Message: "区間の指定を読み取れませんでした"})
+				toast(c, unreadable(c, err, "segments", "区間の指定を読み取れませんでした"))
 				return
 			}
 		} else {

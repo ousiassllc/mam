@@ -5,9 +5,8 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
-
-func noteURL(id string) string { return "/notes/" + id }
 
 func sourceNoteLabel(s domain.NoteSource) string {
 	if s == domain.NoteSourceChat {
@@ -36,42 +35,48 @@ templ NoteCard(n domain.NoteView) {
 				@atoms.Badge(atoms.BadgeNeutral, "アーカイブ済み")
 			}
 		</div>
-		<form class="flex flex-col gap-2" hx-put={ noteURL(n.ID) } hx-target="#note-list" hx-swap="outerHTML">
+		<form class="flex flex-col gap-2" hx-put={ paths.Note(n.ID) } hx-target="#note-list" hx-swap="outerHTML">
 			<label class="flex flex-col gap-1 text-xs text-neutral-400" for={ "note-title-" + n.ID }>
 				タイトル
-				<input
-					id={ "note-title-" + n.ID }
-					name="title"
-					type="text"
-					value={ n.Version.Title }
-					maxlength="100"
-					required
-					class="rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm text-neutral-100"
-				/>
+				@atoms.Input(atoms.FieldMd, "", templ.Attributes{
+					"id":        "note-title-" + n.ID,
+					"name":      "title",
+					"type":      "text",
+					"value":     n.Version.Title,
+					"maxlength": "100",
+					"required":  true,
+				})
 			</label>
 			<label class="flex flex-col gap-1 text-xs text-neutral-400" for={ "note-content-" + n.ID }>
 				本文
-				<textarea
-					id={ "note-content-" + n.ID }
-					name="content"
-					rows="4"
-					maxlength="4000"
-					required
-					class="rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm text-neutral-100"
-				>{ n.Version.Content }</textarea>
+				@atoms.Textarea(atoms.FieldMd, "", templ.Attributes{
+					"id":        "note-content-" + n.ID,
+					"name":      "content",
+					"rows":      "4",
+					"maxlength": "4000",
+					"required":  true,
+				}, n.Version.Content)
 			</label>
 			<div class="flex flex-wrap items-end gap-3">
 				<label class="flex flex-col gap-1 text-xs text-neutral-400" for={ "note-category-" + n.ID }>
 					カテゴリ
-					<select id={ "note-category-" + n.ID } name="category" class="rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm text-neutral-100">
+					@atoms.Select(atoms.FieldMd, "", templ.Attributes{
+						"id":   "note-category-" + n.ID,
+						"name": "category",
+					}) {
 						for _, c := range domain.NoteCategories() {
 							<option value={ string(c) } selected?={ c == n.Category }>{ c.Label() }</option>
 						}
-					</select>
+					}
 				</label>
 				<label class="flex items-center gap-1 text-sm">
 					<input type="hidden" name="pinned" value="false"/>
-					<input type="checkbox" name="pinned" value="true" checked?={ n.Pinned }/>
+					@atoms.Choice("", templ.Attributes{
+						"type":    "checkbox",
+						"name":    "pinned",
+						"value":   "true",
+						"checked": n.Pinned,
+					})
 					ピン留め（常に推論の文脈に渡す）
 				</label>
 				@atoms.Button(atoms.TonePrimary, "保存", templ.Attributes{"type": "submit"})
@@ -81,7 +86,7 @@ templ NoteCard(n domain.NoteView) {
 			if n.Archived() {
 				@atoms.Button(atoms.ToneNeutral, "アーカイブを解除", templ.Attributes{
 					"type":      "button",
-					"hx-put":    noteURL(n.ID),
+					"hx-put":    paths.Note(n.ID),
 					"hx-vals":   hxVals(map[string]string{"archived": "false"}),
 					"hx-target": "#note-list",
 					"hx-swap":   "outerHTML",
@@ -89,7 +94,7 @@ templ NoteCard(n domain.NoteView) {
 			} else {
 				@atoms.Button(atoms.ToneDanger, "アーカイブ", templ.Attributes{
 					"type":       "button",
-					"hx-delete":  noteURL(n.ID),
+					"hx-delete":  paths.Note(n.ID),
 					"hx-target":  "#note-list",
 					"hx-swap":    "outerHTML",
 					"hx-confirm": "アーカイブしますか？（メモは残りますが、以降の推論には渡されません）",

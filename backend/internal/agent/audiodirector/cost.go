@@ -62,8 +62,14 @@ func (p Prices) LipSync(model string, seconds float64) float64 {
 // Ledger is the cost ledger (cost_ledger_entry) and the budget of the Project: what Audio
 // Production spends is recorded, and the budget ceiling limits it (F-22).
 type Ledger interface {
-	// ProjectBudget returns the Project budget ceiling in USD (nil: none) and what the ledger holds.
+	// ProjectBudget returns the Project budget ceiling in USD (nil: none) and what the ledger holds
+	// plus what is reserved.
 	ProjectBudget(ctx context.Context, projectID string) (ceiling *float64, spent float64, err error)
+	// Reserve holds cost for the Project until release is called (safe to call more than once) and
+	// reports ok=false when it does not fit under the ceiling next to the ledger and the other
+	// reservations. The check and the hold are one step: of several runs of the Project that spend
+	// at the same time, only those that fit under the ceiling go on.
+	Reserve(ctx context.Context, projectID string, cost float64) (release func(), ok bool, err error)
 	// AddCost appends an entry.
 	AddCost(ctx context.Context, e domain.CostEntry) error
 }
@@ -77,47 +83,48 @@ func (e *BudgetError) Error() string {
 	return fmt.Sprintf("audiodirector: the speech costs about $%.2f but $%.2f of the budget is left", e.Needed, e.Remaining)
 }
 
-// spending tracks what one run spends against the budget ceiling.
+// spending tracks what one run spends against the budget ceiling. A provider call is paid for only
+// after its estimate is reserved in the Ledger, so runs that go on at the same time cannot together
+// pass the ceiling (F-22).
 type spending struct {
 	ledger    Ledger
 	projectID string
-	ceiling   *float64
-	spent     float64 // in the ledger before the run plus what the run recorded
 	estimated float64 // what the run recorded
 }
 
-func newSpending(ctx context.Context, ledger Ledger, projectID string) (*spending, error) {
-	s := &spending{ledger: ledger, projectID: projectID}
-	if ledger == nil {
-		return s, nil
+// reserve holds the cost under the Project budget ceiling until release is called. It returns a
+// *BudgetError when the cost does not fit. Release only after the cost is recorded (or the call
+// ended without one).
+func (s *spending) reserve(ctx context.Context, cost float64) (release func(), err error) {
+	if s.ledger == nil {
+		return func() {}, nil
 	}
-	ceiling, spent, err := ledger.ProjectBudget(ctx, projectID)
+	release, ok, err := s.ledger.Reserve(ctx, s.projectID, cost)
+	if err != nil {
+		return nil, fmt.Errorf("reserve budget: %w", err)
+	}
+	if ok {
+		return release, nil
+	}
+	ceiling, spent, err := s.ledger.ProjectBudget(ctx, s.projectID)
 	if err != nil {
 		return nil, fmt.Errorf("read budget: %w", err)
 	}
-	s.ceiling, s.spent = ceiling, spent
-	return s, nil
-}
-
-// remaining is what the budget still allows (+Inf without a ceiling).
-func (s *spending) remaining() float64 {
-	if s.ceiling == nil {
-		return math.Inf(1)
+	left := math.Inf(1)
+	if ceiling != nil {
+		left = max(*ceiling-spent, 0)
 	}
-	return max(*s.ceiling-s.spent, 0)
+	return nil, &BudgetError{Needed: cost, Remaining: left}
 }
 
-// fits reports whether the cost keeps the Project within its budget ceiling.
-func (s *spending) fits(cost float64) bool { return cost <= s.remaining() }
-
-// record writes the cost of a finished call to the ledger.
+// record writes the cost of a finished call to the ledger. The provider has already charged, so the
+// write does not depend on ctx: a client that went away must not leave the spend uncounted.
 func (s *spending) record(ctx context.Context, model domain.ModelName, cost float64) error {
-	s.spent += cost
 	s.estimated += cost
 	if s.ledger == nil {
 		return nil
 	}
-	if err := s.ledger.AddCost(ctx, domain.CostEntry{ProjectID: s.projectID, Provider: model, EstimatedCost: cost}); err != nil {
+	if err := s.ledger.AddCost(context.WithoutCancel(ctx), domain.CostEntry{ProjectID: s.projectID, Provider: model, EstimatedCost: cost}); err != nil {
 		return fmt.Errorf("record cost: %w", err)
 	}
 	return nil

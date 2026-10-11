@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -73,6 +74,85 @@ func TestGenerationRepository_ResetStaleShotsReleasesOnlyGeneratingShots(t *test
 	assert.Zero(t, n)
 	_, err = f.repo.GetShot(ctx, "missing")
 	assert.ErrorIs(t, err, repository.ErrNotFound)
+}
+
+func TestGenerationRepository_ResetStaleShotsKeepsShotsWithAQueuedGenerateOrRepairJob(t *testing.T) {
+	ctx := context.Background()
+	f := newGenRepoFixture(t)
+	scenes, err := repository.NewPlanRepository(f.db).ListScenes(ctx, f.projectID)
+	require.NoError(t, err)
+	shots, err := repository.NewPlanRepository(f.db).ListShots(ctx, scenes[0].ID)
+	require.NoError(t, err)
+	queuedGen, queuedRepair := shots[0].ID, shots[1].ID
+	jobs := repository.NewJobRepository(f.db)
+	queue := func(kind domain.JobKind, shotID string) domain.Job {
+		j, err := jobs.Create(ctx, kind, json.RawMessage(`{"shot_id":"`+shotID+`"}`))
+		require.NoError(t, err)
+		return j
+	}
+	queue(domain.JobGenerate, queuedGen)
+	queue(domain.JobRepair, queuedRepair)
+	require.NoError(t, f.repo.SetShotState(ctx, queuedGen, domain.ShotGenerating))
+	require.NoError(t, f.repo.SetShotState(ctx, queuedRepair, domain.ShotRepairing))
+
+	n, err := f.repo.ResetStaleShots(ctx)
+	require.NoError(t, err)
+	assert.Zero(t, n, "a Shot whose job is waiting in the queue is not released")
+	for id, want := range map[string]domain.ShotState{queuedGen: domain.ShotGenerating, queuedRepair: domain.ShotRepairing} {
+		ref, err := f.repo.GetShot(ctx, id)
+		require.NoError(t, err)
+		assert.Equal(t, want, ref.Shot.State)
+	}
+	ok, err := f.repo.StartShot(ctx, queuedGen)
+	require.NoError(t, err)
+	assert.False(t, ok, "so no second generation can be claimed for it")
+}
+
+func TestGenerationRepository_ResetStaleShotsReleasesShotsWhoseJobWasRunning(t *testing.T) {
+	ctx := context.Background()
+	f := newGenRepoFixture(t)
+	jobs := repository.NewJobRepository(f.db)
+	j, err := jobs.Create(ctx, domain.JobGenerate, json.RawMessage(`{"shot_id":"`+f.shotID+`"}`))
+	require.NoError(t, err)
+	_, err = f.repo.StartShot(ctx, f.shotID)
+	require.NoError(t, err)
+	require.NoError(t, jobs.MarkRunning(ctx, j.ID))
+
+	n, err := f.repo.ResetStaleShots(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 1, n, "the interrupted job is failed by the queue, so its Shot has to be released")
+}
+
+// A JUDGING Shot has no handler of its own to release it when its judge job ends without running one
+// (attempts used up, no Judge configured): ResetStaleShots releases it once no judge job is waiting
+// or running (#436).
+func TestGenerationRepository_ResetStaleShotsReleasesJudgingShotsOnlyWhenNoJudgeJobCanStillRelease(t *testing.T) {
+	ctx := context.Background()
+	f := newGenRepoFixture(t)
+	jobs := repository.NewJobRepository(f.db)
+	judging := func() domain.ShotState {
+		ref, err := f.repo.GetShot(ctx, f.shotID)
+		require.NoError(t, err)
+		return ref.Shot.State
+	}
+	require.NoError(t, f.repo.SetShotState(ctx, f.shotID, domain.ShotJudging))
+	j, err := jobs.Create(ctx, domain.JobJudge, json.RawMessage(`{"take_id":"t","shot_id":"`+f.shotID+`"}`))
+	require.NoError(t, err)
+
+	n, err := f.repo.ResetStaleShots(ctx)
+	require.NoError(t, err)
+	assert.Zero(t, n, "a queued judge job will run and release the Shot")
+	require.NoError(t, jobs.MarkRunning(ctx, j.ID))
+	n, err = f.repo.ResetStaleShots(ctx)
+	require.NoError(t, err)
+	assert.Zero(t, n, "a running judge job is requeued or failed by the queue afterwards")
+	assert.Equal(t, domain.ShotJudging, judging())
+
+	require.NoError(t, jobs.MarkFailed(ctx, j.ID, "interrupted by abnormal termination"))
+	n, err = f.repo.ResetStaleShots(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 1, n, "the job failed without its handler: the Shot is released")
+	assert.Equal(t, domain.ShotPlanning, judging())
 }
 
 func TestGenerationRepository_ListProjectShotsIsInStoryOrder(t *testing.T) {
@@ -221,7 +301,6 @@ func TestGenerationRepository_SaveReferencePackReplacesThePackAndKeepsTheSpec(t 
 			ProjectID: f.projectID, ShotID: f.shotID,
 			References: []domain.Reference{{Kind: domain.RefKeyframe, AssetID: assetID, Prompt: "p", Model: domain.ModelNanoBanana}},
 			Assets:     []domain.Asset{{ID: assetID, ProjectID: f.projectID, Type: domain.AssetReference, FilePath: "p/" + assetID + ".png", MimeType: "image/png"}},
-			Costs:      []domain.CostEntry{{ProjectID: f.projectID, ShotID: f.shotID, Provider: domain.ModelNanoBanana, EstimatedCost: 0.04}},
 		}
 	}
 	require.NoError(t, f.repo.SaveReferencePack(ctx, pack("r1")))
@@ -235,10 +314,56 @@ func TestGenerationRepository_SaveReferencePackReplacesThePackAndKeepsTheSpec(t 
 	_, ok := ref.Shot.CanonicalSpec()
 	assert.True(t, ok, "the Canonical Shot Spec is untouched")
 	var n int
-	require.NoError(t, f.db.Reader().QueryRow(`SELECT COUNT(*) FROM cost_ledger_entry WHERE provider = 'nano-banana'`).Scan(&n))
-	assert.Equal(t, 2, n, "both packs were paid for")
+	require.NoError(t, f.db.Reader().QueryRow(`SELECT COUNT(*) FROM cost_ledger_entry`).Scan(&n))
+	assert.Zero(t, n, "the cost is written when an image is paid for (AddCost), not with the Pack")
 
 	assert.ErrorIs(t, f.repo.SaveReferencePack(ctx, repository.NewReferencePack{ShotID: "missing"}), repository.ErrNotFound)
+}
+
+// The Character a Reference names is the one the World State already has when the names differ
+// only in case or surrounding blanks (domain.SameReferenceName), so a second row is not added.
+func TestGenerationRepository_SaveReferencePackMatchesWorldEntityNamesIgnoringCase(t *testing.T) {
+	ctx := context.Background()
+	f := newGenRepoFixture(t)
+	_, err := f.repo.SavePromptedSpec(ctx, f.shotID, domain.ShotSpec{ShotObjective: "x", Camera: domain.SpecCamera{Framing: "wide"}}, nil, nil)
+	require.NoError(t, err)
+	require.NoError(t, f.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, `INSERT INTO character (id, project_id, name) VALUES ('c1', ?, 'Mio')`, f.projectID)
+		return err
+	}))
+
+	save := func(id, name string) {
+		require.NoError(t, f.repo.SaveReferencePack(ctx, repository.NewReferencePack{
+			ProjectID: f.projectID, ShotID: f.shotID,
+			References: []domain.Reference{{Kind: domain.RefCharacter, Name: name, AssetID: id, Prompt: "p", Model: domain.ModelNanoBanana}},
+			Assets:     []domain.Asset{{ID: id, ProjectID: f.projectID, Type: domain.AssetReference, FilePath: "p/" + id + ".png", MimeType: "image/png"}},
+		}))
+	}
+	save("r1", "mio")
+	save("r2", " MIO ")
+	save("r3", "Ren")
+
+	var names []string
+	rows, err := f.db.Reader().QueryContext(ctx, `SELECT name FROM character WHERE project_id = ? ORDER BY name`, f.projectID)
+	require.NoError(t, err)
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var n string
+		require.NoError(t, rows.Scan(&n))
+		names = append(names, n)
+	}
+	assert.Equal(t, []string{"Mio", "Ren"}, names)
+}
+
+func TestGenerationRepository_AddCostCountsInTheBudget(t *testing.T) {
+	ctx := context.Background()
+	f := newGenRepoFixture(t)
+	require.NoError(t, f.repo.AddCost(ctx, domain.CostEntry{ProjectID: f.projectID, ShotID: f.shotID, Provider: domain.ModelNanoBanana, EstimatedCost: 0.04}))
+
+	b, err := f.repo.Budget(ctx, f.projectID, f.shotID)
+	require.NoError(t, err)
+	assert.InDelta(t, 0.04, b.ShotSpent, 1e-9)
+	assert.InDelta(t, 0.04, b.ProjectSpent, 1e-9)
 }
 
 func TestGenerationRepository_BudgetSumsTheLedgerPerProjectAndShot(t *testing.T) {
@@ -276,4 +401,61 @@ func TestGenerationRepository_BudgetSumsTheLedgerPerProjectAndShot(t *testing.T)
 
 	_, err = f.repo.Budget(ctx, "missing", f.shotID)
 	assert.ErrorIs(t, err, repository.ErrNotFound)
+}
+
+func TestGenerationRepository_ReserveHoldsTheEstimateOfInFlightGenerations(t *testing.T) {
+	ctx := context.Background()
+	f := newGenRepoFixture(t)
+	require.NoError(t, repository.NewPolicyRepository(f.db).SetBudget(ctx, f.projectID, new(1.0), nil))
+
+	// Ten generations of 0.3 start at the same time: only three fit under the ceiling of 1.0.
+	var (
+		wg       sync.WaitGroup
+		mu       sync.Mutex
+		releases []func()
+	)
+	for range 10 {
+		wg.Go(func() {
+			release, ok, err := f.repo.Reserve(ctx, f.projectID, f.shotID, 0.3)
+			assert.NoError(t, err)
+			if ok {
+				mu.Lock()
+				releases = append(releases, release)
+				mu.Unlock()
+			}
+		})
+	}
+	wg.Wait()
+	require.Len(t, releases, 3, "the estimates of the generations in flight count against the ceiling")
+
+	b, err := f.repo.Budget(ctx, f.projectID, f.shotID)
+	require.NoError(t, err)
+	assert.InDelta(t, 0.9, b.ProjectSpent, 1e-9, "the Budget every decision reads includes what is in flight")
+	assert.InDelta(t, 0.9, b.ShotSpent, 1e-9)
+
+	// The cost reaches the ledger, then the hold goes: it is counted once.
+	require.NoError(t, f.repo.AddCost(ctx, domain.CostEntry{ProjectID: f.projectID, ShotID: f.shotID, Provider: domain.ModelNanoBanana, EstimatedCost: 0.3}))
+	releases[0]()
+	releases[0]() // releasing twice is harmless
+	b, err = f.repo.Budget(ctx, f.projectID, f.shotID)
+	require.NoError(t, err)
+	assert.InDelta(t, 0.9, b.ProjectSpent, 1e-9)
+
+	// A generation that ended without a cost gives its hold back.
+	releases[1]()
+	releases[2]()
+	b, err = f.repo.Budget(ctx, f.projectID, f.shotID)
+	require.NoError(t, err)
+	assert.InDelta(t, 0.3, b.ProjectSpent, 1e-9)
+	_, ok, err := f.repo.Reserve(ctx, f.projectID, f.shotID, 0.7)
+	require.NoError(t, err)
+	assert.True(t, ok)
+}
+
+func TestGenerationRepository_ReserveWithoutACeilingAlwaysFits(t *testing.T) {
+	f := newGenRepoFixture(t)
+	release, ok, err := f.repo.Reserve(context.Background(), f.projectID, f.shotID, 1e6)
+	require.NoError(t, err)
+	assert.True(t, ok)
+	release()
 }

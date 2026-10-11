@@ -14,6 +14,7 @@ import {
   type JudgeIssue,
   type TimeRange,
 } from '../lib/video';
+import { createConnectionNotice } from '../lib/connection-notice';
 import { connect, socketUrl, type Connection } from '../lib/ws';
 
 const log = createLogger('video-player');
@@ -63,6 +64,7 @@ export class MamVideoPlayer extends LitElement {
 
   @state() private issues: JudgeIssue[] = [];
   @state() private measuredFps = 0;
+  private probing: Promise<void> | null = null;
   @state() private currentTime = 0;
   @state() private duration = 0;
   @state() private playing = false;
@@ -70,6 +72,7 @@ export class MamVideoPlayer extends LitElement {
   @state() private failed = false;
 
   private connection: Connection | null = null;
+  private readonly notice = createConnectionNotice('生成の進捗');
   private loadToken = 0;
 
   protected override createRenderRoot(): HTMLElement {
@@ -94,6 +97,7 @@ export class MamVideoPlayer extends LitElement {
     super.disconnectedCallback();
     this.connection?.close();
     this.connection = null;
+    this.notice.hide();
     this.loadToken += 1;
   }
 
@@ -141,9 +145,12 @@ export class MamVideoPlayer extends LitElement {
     this.connection?.close();
     this.connection = null;
     this.progress = null;
+    this.notice.hide();
     if (!this.wsUrl) return;
     this.connection = connect<ShotProgress>({
       url: socketUrl(this.wsUrl, location),
+      onOpen: () => this.notice.hide(),
+      onGiveUp: () => this.notice.show(() => this.connection?.retry()),
       onMessage: (progress) => {
         this.progress = progress;
         if (isFinished(progress)) {
@@ -211,8 +218,17 @@ export class MamVideoPlayer extends LitElement {
     video.requestVideoFrameCallback(onFrame);
   }
 
-  /** Plays the video muted for a moment to measure its frame rate, then puts it back where it was. */
-  private async probeFrameRate(video: HTMLVideoElement): Promise<void> {
+  /**
+   * Plays the video muted for a moment to measure its frame rate, then puts it back where it was.
+   * Callers during a probe share it: a second probe would take the state the first one made (muted,
+   * advanced time) for the original and restore that.
+   */
+  private probeFrameRate(video: HTMLVideoElement): Promise<void> {
+    this.probing ??= this.runFrameRateProbe(video).finally(() => (this.probing = null));
+    return this.probing;
+  }
+
+  private async runFrameRateProbe(video: HTMLVideoElement): Promise<void> {
     if (typeof video.requestVideoFrameCallback !== 'function') return;
     const time = video.currentTime;
     const muted = video.muted;
@@ -251,6 +267,8 @@ export class MamVideoPlayer extends LitElement {
   }
 
   private onKey(event: KeyboardEvent): void {
+    // Alt+← / Cmd+← / Ctrl+← … are the browser's (back, forward, word jump): leave them alone. Shift alone steps ten frames.
+    if (event.altKey || event.ctrlKey || event.metaKey) return;
     const keys: Record<string, number> = { ArrowLeft: -1, ArrowRight: 1 };
     const delta = keys[event.key];
     if (delta === undefined) return;
@@ -259,6 +277,10 @@ export class MamVideoPlayer extends LitElement {
   }
 
   protected override render() {
+    return this.renderBody();
+  }
+
+  private renderBody() {
     const stage = this.progress?.stage;
     const generating = stage === 'queued' || stage === 'generating' || stage === 'repairing';
     if (!this.videoSrc || generating) return this.renderPlaceholder();

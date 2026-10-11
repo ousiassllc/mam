@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/coder/websocket"
 	"github.com/coder/websocket/wsjson"
@@ -51,7 +52,23 @@ func BuildReferencePack(svc *service.GenerationService) gin.HandlerFunc {
 }
 
 func shotCardData(f service.ShotFragment) molecules.ShotCardData {
-	return molecules.ShotCardData{ProjectID: f.ProjectID, Shot: f.Shot, Storyboard: f.Storyboard, Takes: f.Takes, Selected: f.Selected}
+	return molecules.ShotCardData{ProjectID: f.ProjectID, Shot: f.Shot, Storyboard: f.Storyboard, Takes: f.Takes, Selected: f.Selected, Repairable: f.Repairable, Judgeable: f.Judgeable, Candidates: f.Candidates}
+}
+
+// takeActionCard is the Shot card that answers an action of a Take button. The card replaces the one the
+// button sits on, so it is drawn as selected only if that one was: the button says so in the "selected"
+// value (htmx puts it in the query of a DELETE, in the body of a POST). Without it the Shot is the
+// selected one, as the service reports.
+func takeActionCard(c *gin.Context, f service.ShotFragment) molecules.ShotCardData {
+	d := shotCardData(f)
+	raw, ok := c.GetQuery(molecules.SelectedParam)
+	if !ok {
+		raw, ok = c.GetPostForm(molecules.SelectedParam)
+	}
+	if selected, err := strconv.ParseBool(raw); ok && err == nil {
+		d.Selected = selected
+	}
+	return d
 }
 
 // ShotProgress streams the progress of a Shot (WebSocket /ws/shots/:id): queued, generating, done,

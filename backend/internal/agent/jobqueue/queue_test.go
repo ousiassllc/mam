@@ -179,6 +179,29 @@ func TestQueue_RecoverFailsJobsWithoutHandler(t *testing.T) {
 	waitStatus(t, repo, job.ID, domain.JobFailed)
 }
 
+// A queued job of a kind nobody handles would be failed by the first worker that claims it; Recover
+// fails it already, so that whoever waits for its work (a Shot) can be released before Start (#436).
+func TestQueue_RecoverFailsQueuedJobsWithoutHandlerAndKeepsTheOthers(t *testing.T) {
+	_, repo := newRepo(t)
+	q := jobqueue.New(repo, jobqueue.Options{})
+	q.Register(domain.JobGenerate, func(context.Context, domain.Job) error { return nil }, false)
+	orphan, err := repo.Create(context.Background(), domain.JobJudge, nil)
+	require.NoError(t, err)
+	handled, err := repo.Create(context.Background(), domain.JobGenerate, nil)
+	require.NoError(t, err)
+
+	_, failed, err := q.Recover(context.Background())
+
+	require.NoError(t, err)
+	assert.Equal(t, 1, failed)
+	got, err := repo.Get(context.Background(), orphan.ID)
+	require.NoError(t, err)
+	assert.Equal(t, domain.JobFailed, got.Status)
+	got, err = repo.Get(context.Background(), handled.ID)
+	require.NoError(t, err)
+	assert.Equal(t, domain.JobQueued, got.Status)
+}
+
 func TestQueue_StopRequeuesInterruptedJobSoNextStartResumesIt(t *testing.T) {
 	_, repo := newRepo(t)
 	started := make(chan struct{})
@@ -205,6 +228,27 @@ func TestQueue_StopRequeuesInterruptedJobSoNextStartResumesIt(t *testing.T) {
 	defer q2.Stop()
 	done := waitStatus(t, repo, job.ID, domain.JobSucceeded)
 	assert.Equal(t, 2, done.Attempts)
+}
+
+func TestQueue_StopFailsInterruptedNonResumableJobInsteadOfRequeueing(t *testing.T) {
+	_, repo := newRepo(t)
+	started := make(chan struct{})
+	q := jobqueue.New(repo, jobqueue.Options{})
+	q.Register(domain.JobGenerate, func(ctx context.Context, _ domain.Job) error {
+		close(started)
+		<-ctx.Done()
+		return ctx.Err()
+	}, false)
+	q.Start(context.Background())
+	job, err := q.Enqueue(context.Background(), domain.JobGenerate, nil)
+	require.NoError(t, err)
+	<-started
+	q.Stop()
+
+	got, err := repo.Get(context.Background(), job.ID)
+	require.NoError(t, err)
+	assert.Equal(t, domain.JobFailed, got.Status, "a billed, non-resumable job must not run again on the next start")
+	assert.Equal(t, jobqueue.ShutdownReason, got.Error)
 }
 
 func TestQueue_OnChangeNotifiesAfterTheFinalStatusIsPersisted(t *testing.T) {
@@ -236,4 +280,77 @@ func TestQueue_OnChangeNotifiesAfterTheFinalStatusIsPersisted(t *testing.T) {
 	mu.Lock()
 	defer mu.Unlock()
 	assert.Equal(t, domain.JobSucceeded, seen[len(seen)-1], "the last notification already sees the final status")
+}
+
+func TestQueue_TransientClaimErrorDoesNotStrandQueuedJobs(t *testing.T) {
+	_, repo := newRepo(t)
+	q := jobqueue.New(repo, jobqueue.Options{Workers: 1})
+	ran := make(chan struct{}, 1)
+	q.Register(domain.JobGenerate, func(context.Context, domain.Job) error {
+		ran <- struct{}{}
+		return nil
+	}, false)
+
+	// Persist the job before the workers start so that no later Enqueue/signal can rescue the worker.
+	job, err := repo.Create(context.Background(), domain.JobGenerate, []byte(`{}`))
+	require.NoError(t, err)
+
+	realClaim := q.ClaimFunc()
+	var calls atomic.Int32
+	q.SetClaim(func(ctx context.Context) (domain.Job, error) {
+		switch calls.Add(1) {
+		case 1:
+			// Uses up the wake-up Start sends, so only a retry can reach the job afterwards.
+			return domain.Job{}, repository.ErrNotFound
+		case 2:
+			return domain.Job{}, errors.New("database is locked")
+		default:
+			return realClaim(ctx)
+		}
+	})
+	q.SetClaimBackoff(5 * time.Millisecond)
+	q.Start(context.Background())
+	defer q.Stop()
+
+	select {
+	case <-ran:
+	case <-time.After(5 * time.Second):
+		t.Fatal("queued job was not run after a transient ClaimNext error")
+	}
+	waitStatus(t, repo, job.ID, domain.JobSucceeded)
+}
+
+// A subprocess killed by the shutdown (ffprobe: "signal: killed") returns an error that does not
+// wrap the context's: the job was still interrupted, not failed.
+func TestQueue_StopTreatsAnUnwrappedErrorOfAnInterruptedHandlerAsAnInterruption(t *testing.T) {
+	for _, tt := range []struct {
+		name      string
+		resumable bool
+		status    domain.JobStatus
+		reason    string
+	}{
+		{"resumable goes back to the queue", true, domain.JobQueued, ""},
+		{"non-resumable fails with the shutdown reason", false, domain.JobFailed, jobqueue.ShutdownReason},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			_, repo := newRepo(t)
+			started := make(chan struct{})
+			q := jobqueue.New(repo, jobqueue.Options{})
+			q.Register(domain.JobJudge, func(ctx context.Context, _ domain.Job) error {
+				close(started)
+				<-ctx.Done()
+				return errors.New("ffprobe a.mp4: signal: killed")
+			}, tt.resumable)
+			q.Start(context.Background())
+			job, err := q.Enqueue(context.Background(), domain.JobJudge, nil)
+			require.NoError(t, err)
+			<-started
+			q.Stop()
+
+			got, err := repo.Get(context.Background(), job.ID)
+			require.NoError(t, err)
+			assert.Equal(t, tt.status, got.Status)
+			assert.Equal(t, tt.reason, got.Error)
+		})
+	}
 }

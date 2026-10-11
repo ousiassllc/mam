@@ -61,7 +61,8 @@ func (a RepairAction) Label() string {
 
 // RetriesDone is how many retries the Retry Policy counts in a Shot's repair history: the repairs
 // that made a new Take. A repair that failed before it made a Take cost nothing, and Edit-Level
-// Repair regenerates nothing.
+// Repair regenerates nothing. Takes of Prompt Candidate Generation count as well (CandidateRetries):
+// a Shot's retries are RetriesDone(history) + CandidateRetries(candidate Takes of the Shot).
 func RetriesDone(history []RepairRecord) int {
 	n := 0
 	for _, r := range history {
@@ -71,6 +72,12 @@ func RetriesDone(history []RepairRecord) int {
 	}
 	return n
 }
+
+// CandidateRetries is how many retries the Retry Policy counts for the Takes that Prompt Candidate
+// Generation made: every one but the first is a retry, as a repair's new Take is. Both the candidate
+// run (before it adds a Take) and the Repair loop (before it regenerates) use it, so that the Max
+// retries per Shot is one limit over the Takes of both.
+func CandidateRetries(takes int) int { return max(0, takes-1) }
 
 // TriedActions are the strategies the Shot's repair history already carried out: those that made a
 // new Take, and Edit-Level Repair (which makes none). A repair that failed before it made a Take
@@ -129,8 +136,10 @@ type ShadowReport struct {
 	Errors int `json:"errors"`
 	Agreed int `json:"agreed"`
 	// AgreementRate is Agreed / (Runs - Errors); 0 when nothing succeeded.
-	AgreementRate     float64 `json:"agreement_rate"`
-	MeanConfidence    float64 `json:"mean_confidence"`
+	AgreementRate  float64 `json:"agreement_rate"`
+	MeanConfidence float64 `json:"mean_confidence"`
+	// MeanLatencyMillis is over the successful runs, like the rate and the confidence (a failed run
+	// stores no latency).
 	MeanLatencyMillis float64 `json:"mean_latency_ms"`
 	TotalCostUSD      float64 `json:"total_cost_usd"`
 	// Confidence[i] counts the successful runs with confidence in [i/10, (i+1)/10) (1.0 is in the

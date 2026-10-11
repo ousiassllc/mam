@@ -68,9 +68,7 @@ func DownloadReviewPackage(svc *service.ReviewService) gin.HandlerFunc {
 		c.Header("X-Content-Type-Options", "nosniff")
 		c.Status(http.StatusOK)
 		if err := pkg.Write(c.Writer); err != nil {
-			// The status is sent already: log it and cut the download short (the archive is incomplete).
-			_ = c.Error(err)
-			c.Abort()
+			abortDownload(c, err)
 		}
 	}
 }
@@ -79,17 +77,17 @@ func DownloadReviewPackage(svc *service.ReviewService) gin.HandlerFunc {
 // field "response") and answers with the list (201).
 func ImportReviewResponse(svc *service.ReviewService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 2<<20)
-		if err := c.Request.ParseMultipartForm(multipartMemory); err != nil {
-			toast(c, &service.ValidationError{Field: "response", Message: "送信内容が大きすぎるか、形式が正しくありません"})
+		form, err := readMultipart(c, service.MaxReviewResponseRequestBytes)
+		if err != nil {
+			toast(c, err)
 			return
 		}
-		files := c.Request.MultipartForm.File["response"]
-		if len(files) == 0 || files[0].Filename == "" {
-			toast(c, &service.ValidationError{Field: "response", Message: "応答ファイルを選んでください"})
+		fh, err := firstFile(form, "response", "応答ファイルを選んでください")
+		if err != nil {
+			toast(c, err)
 			return
 		}
-		f, err := files[0].Open()
+		f, err := fh.Open()
 		if err != nil {
 			toast(c, err)
 			return
@@ -189,20 +187,20 @@ func ImportReviewPackage(svc *service.ReviewService) gin.HandlerFunc {
 }
 
 func importReviewPackage(c *gin.Context, svc *service.ReviewService) (domain.ReviewInbox, error) {
-	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, service.MaxReviewPackageBytes+1<<20)
-	if err := c.Request.ParseMultipartForm(multipartMemory); err != nil {
-		return domain.ReviewInbox{}, &service.ValidationError{Field: "package", Message: "送信内容が大きすぎるか、形式が正しくありません"}
+	form, err := readMultipart(c, service.MaxReviewPackageBytes+1<<20)
+	if err != nil {
+		return domain.ReviewInbox{}, err
 	}
-	files := c.Request.MultipartForm.File["package"]
-	if len(files) == 0 || files[0].Filename == "" {
-		return domain.ReviewInbox{}, &service.ValidationError{Field: "package", Message: "レビューパッケージを選んでください"}
+	fh, err := firstFile(form, "package", "レビューパッケージを選んでください")
+	if err != nil {
+		return domain.ReviewInbox{}, err
 	}
-	f, err := files[0].Open()
+	f, err := fh.Open()
 	if err != nil {
 		return domain.ReviewInbox{}, err
 	}
 	defer func() { _ = f.Close() }()
-	return svc.ImportPackage(c.Request.Context(), f, files[0].Size)
+	return svc.ImportPackage(c.Request.Context(), f, fh.Size)
 }
 
 // AddReviewComment adds a comment of the reviewer (POST /reviews/:id/comments) and answers with the

@@ -88,7 +88,7 @@ func TestRepairRepository_ShadowReportSummarisesAgreementConfidenceLatencyAndCos
 		{Confidence: conf(0.95), Agreed: true, LatencyMillis: 100, CostUSD: 0.001},
 		{Confidence: conf(1.0), Agreed: true, LatencyMillis: 200, CostUSD: 0.001},
 		{Confidence: conf(0.15), Agreed: false, LatencyMillis: 300, CostUSD: 0.002},
-		{Error: "jev: status 500", LatencyMillis: 400},
+		{Error: "jev: status 500"}, // a failed call records no latency
 	} {
 		s.RepairActionID, s.Model, s.DecidedAction = rec.ID, "jev-1.13.0", domain.RepairFullRetake
 		require.NoError(t, r.SaveShadow(ctx, s))
@@ -101,7 +101,7 @@ func TestRepairRepository_ShadowReportSummarisesAgreementConfidenceLatencyAndCos
 	assert.Equal(t, 2, rep.Agreed)
 	assert.InDelta(t, 2.0/3.0, rep.AgreementRate, 1e-9, "failed runs are left out of the rate")
 	assert.InDelta(t, (0.95+1.0+0.15)/3, rep.MeanConfidence, 1e-9)
-	assert.InDelta(t, 250, rep.MeanLatencyMillis, 1e-9)
+	assert.InDelta(t, 200, rep.MeanLatencyMillis, 1e-9, "failed runs are left out of the mean")
 	assert.InDelta(t, 0.004, rep.TotalCostUSD, 1e-9)
 	assert.Equal(t, 1, rep.Confidence[1])
 	assert.Equal(t, 2, rep.Confidence[domain.ConfidenceBuckets-1], "1.0 belongs to the last bucket")
@@ -128,4 +128,28 @@ func TestGenerationRepository_ARepairAndAGenerationExcludeEachOther(t *testing.T
 	n, err := g.ResetStaleShots(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, 1, n, "an interrupted repair is released at start-up")
+}
+
+func TestRepairRepository_CandidateTakeCountCountsOnlyTakesOfCandidateGeneration(t *testing.T) {
+	db := openTestDB(t)
+	_, shot, _ := seedTake(t, db)
+	ctx := context.Background()
+	r := repository.NewRepairRepository(db)
+	write := func(q string) {
+		require.NoError(t, db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
+			_, err := tx.ExecContext(ctx, q)
+			return err
+		}))
+	}
+
+	n, err := r.CandidateTakeCount(ctx, shot)
+	require.NoError(t, err)
+	assert.Zero(t, n, "a plain Take is no candidate")
+
+	write(`INSERT INTO take (id, prompt_version_id, model_name, model_parameters, status) VALUES ('c1', 'pv1', 'kling-3.0', '{"candidate_strategy":"stability_first"}', 'candidate')`)
+	write(`INSERT INTO take (id, prompt_version_id, model_name, model_parameters, status) VALUES ('c2', 'pv1', 'kling-3.0', '{"candidate_strategy":"acting_first"}', 'rejected')`)
+	write(`INSERT INTO take (id, prompt_version_id, model_name, model_parameters, status) VALUES ('p2', 'pv1', 'kling-3.0', '{"prompt":"x"}', 'candidate')`)
+	n, err = r.CandidateTakeCount(ctx, shot)
+	require.NoError(t, err)
+	assert.Equal(t, 2, n, "a rejected candidate was paid for and counts; a repair's Take does not")
 }

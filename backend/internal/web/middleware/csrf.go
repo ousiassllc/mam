@@ -15,8 +15,6 @@ const (
 	CSRFCookieName = "mam_csrf"
 	// CSRFHeaderName carries the token on HTMX, fetch and Huma API requests.
 	CSRFHeaderName = "X-CSRF-Token"
-	// CSRFFormField carries the token on plain HTML form posts.
-	CSRFFormField = "csrf_token"
 
 	csrfContextKey = "mam.csrf_token"
 	tokenBytes     = 32
@@ -25,7 +23,8 @@ const (
 // CSRF implements HALT's token model: every response sets the token cookie if
 // missing and exposes the token to templates (rendered into a <meta> tag), and
 // every state-changing request (anything but GET/HEAD/OPTIONS) MUST echo the
-// token in the X-CSRF-Token header or the csrf_token form field.
+// token in the X-CSRF-Token header. Only the header is read, never the body: parsing a
+// form here would buffer an unbounded upload before the handler can limit it.
 // Requests without a matching token are rejected with 403.
 func CSRF() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -34,7 +33,8 @@ func CSRF() gin.HandlerFunc {
 		if fresh {
 			token, err = newToken()
 			if err != nil {
-				_ = c.AbortWithError(http.StatusInternalServerError, err)
+				_ = c.Error(err)
+				abortWith(c, http.StatusInternalServerError, "", "内部エラーが発生しました")
 				return
 			}
 			setCSRFCookie(c, token)
@@ -45,8 +45,8 @@ func CSRF() gin.HandlerFunc {
 			c.Next()
 			return
 		}
-		if fresh || !tokensEqual(token, requestToken(c)) {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "invalid or missing CSRF token"})
+		if fresh || !tokensEqual(token, c.GetHeader(CSRFHeaderName)) {
+			abortWith(c, http.StatusForbidden, "invalid or missing CSRF token", "送信を確認できませんでした。画面を再読み込みしてからやり直してください")
 			return
 		}
 		c.Next()
@@ -56,13 +56,6 @@ func CSRF() gin.HandlerFunc {
 // CSRFToken returns the token for the current request, for the <meta name="csrf-token"> tag.
 func CSRFToken(c *gin.Context) string {
 	return c.GetString(csrfContextKey)
-}
-
-func requestToken(c *gin.Context) string {
-	if v := c.GetHeader(CSRFHeaderName); v != "" {
-		return v
-	}
-	return c.PostForm(CSRFFormField)
 }
 
 func isSafeMethod(m string) bool {

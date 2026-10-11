@@ -1,6 +1,7 @@
 package generation
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,7 +15,7 @@ func verdict(result domain.JudgeVerdict, confidence float64, issues ...domain.Ju
 }
 
 func issue(severity domain.IssueSeverity) domain.JudgeIssue {
-	return domain.JudgeIssue{Severity: severity}
+	return domain.JudgeIssue{Severity: severity, Dimension: domain.DimProductAccuracy}
 }
 
 func TestBestTake_APassingTakeBeatsAFailingOneWhateverTheConfidence(t *testing.T) {
@@ -22,13 +23,12 @@ func TestBestTake_APassingTakeBeatsAFailingOneWhateverTheConfidence(t *testing.T
 		{number: 1, result: verdict(domain.JudgeFail, 0.99)},
 		{number: 2, result: verdict(domain.JudgePass, 0.6)},
 	}
-	best, ok := bestTake(all)
+	best, ok := bestTake(all, nil)
 	require.True(t, ok)
 	assert.Equal(t, 2, best.number)
 }
 
-func TestBestTake_AmongEqualVerdictsTheLighterIssuesThenTheHigherConfidenceThenTheEarlierTakeWin(t *testing.T) {
-	lock := domain.JudgeIssue{Severity: domain.SeverityHigh, LockViolation: true}
+func TestBestTake_AmongEqualVerdictsTheHigherTakeScoreThenTheEarlierTakeWins(t *testing.T) {
 	cases := map[string]struct {
 		all  []judged
 		want int
@@ -37,32 +37,84 @@ func TestBestTake_AmongEqualVerdictsTheLighterIssuesThenTheHigherConfidenceThenT
 			{number: 1, result: verdict(domain.JudgeFail, 0.9, issue(domain.SeverityHigh))},
 			{number: 2, result: verdict(domain.JudgeFail, 0.5, issue(domain.SeverityLow))},
 		}, 2},
-		"a LOCK violation is worse than a plain high severity issue": {[]judged{
-			{number: 1, result: verdict(domain.JudgeFail, 0.9, lock)},
-			{number: 2, result: verdict(domain.JudgeFail, 0.5, issue(domain.SeverityHigh))},
-		}, 2},
-		"same issues, higher confidence": {[]judged{
+		"the confidence does not rank Takes": {[]judged{
 			{number: 1, result: verdict(domain.JudgePass, 0.7)},
 			{number: 2, result: verdict(domain.JudgePass, 0.9)},
-		}, 2},
+		}, 1},
 		"a full tie keeps the earlier take": {[]judged{
 			{number: 3, result: verdict(domain.JudgePass, 0.8)},
 			{number: 2, result: verdict(domain.JudgePass, 0.8)},
 		}, 2},
 	}
 	for name, tc := range cases {
-		best, ok := bestTake(tc.all)
+		best, ok := bestTake(tc.all, nil)
 		require.True(t, ok, name)
 		assert.Equal(t, tc.want, best.number, name)
 	}
 }
 
+// The Judge picks the AI Pick (and in AUTO MODE the Selected Take) with domain.PickTake: the Best
+// Take of a Candidate run must be the same Take, or the Shot's Take and its adopted Spec part ways.
+func TestBestTake_ChoosesTheTakeDomainPickTakeChooses(t *testing.T) {
+	cases := map[string][]judged{
+		"two passing Takes, the later more confident": {
+			{number: 1, result: verdict(domain.JudgePass, 0.6)},
+			{number: 2, result: verdict(domain.JudgePass, 0.9)},
+		},
+		"two passing Takes, the later one with the lighter issue": {
+			{number: 1, result: verdict(domain.JudgePass, 0.9, issue(domain.SeverityMedium))},
+			{number: 2, result: verdict(domain.JudgePass, 0.5, issue(domain.SeverityLow))},
+		},
+		"a pass beats a more confident fail": {
+			{number: 1, result: verdict(domain.JudgeFail, 0.99)},
+			{number: 2, result: verdict(domain.JudgePass, 0.1, issue(domain.SeverityMedium))},
+		},
+	}
+	for name, all := range cases {
+		var takes []domain.TakeInfo
+		for _, j := range all {
+			scores := domain.ScoreTake(j.result.Issues)
+			takes = append(takes, domain.TakeInfo{Take: domain.Take{ID: fmt.Sprint(j.number)}, Scores: &scores, Verdict: j.result.Result})
+		}
+		want, _, ok := domain.PickTake(takes)
+		require.True(t, ok, name)
+		best, ok := bestTake(all, nil)
+		require.True(t, ok, name)
+		assert.Equal(t, want, fmt.Sprint(best.number), name)
+	}
+}
+
+// A pass whose scores are under the Minimum acceptance score is not accepted by the Retry Policy, so
+// PickBest never selects it while some other Take is accepted: the Best Take must not be it either.
+func TestBestTake_PrefersTheTakesTheRetryPolicyAcceptsLikePickBest(t *testing.T) {
+	template := domain.TemplateProductCM
+	eff := domain.ProjectPolicy{Quality: domain.QualityBalanced, Template: template}.Effective()
+	weak := verdict(domain.JudgePass, 0.9) // no Issue: the best Take score, but the Judge scored it low
+	weak.Scores = map[domain.EvaluationAxis]float64{}
+	strong := verdict(domain.JudgePass, 0.9, issue(domain.SeverityLow)) // a minor Issue: a lower Take score
+	strong.Scores = map[domain.EvaluationAxis]float64{}
+	for _, a := range template.Axes() {
+		weak.Scores[a], strong.Scores[a] = 1, 100
+	}
+	require.False(t, weak.Accepted(eff, template))
+	require.True(t, strong.Accepted(eff, template))
+	accepted := func(res domain.JudgeResult) bool { return res.Accepted(eff, template) }
+
+	best, ok := bestTake([]judged{{number: 1, result: weak}, {number: 2, result: strong}}, accepted)
+	require.True(t, ok)
+	assert.Equal(t, 2, best.number, "the accepted Take wins although the other scores higher by its Issues")
+
+	best, ok = bestTake([]judged{{number: 1, result: weak}, {number: 2, result: verdict(domain.JudgeFail, 0.9)}}, accepted)
+	require.True(t, ok)
+	assert.Equal(t, 1, best.number, "when none is accepted the best of all stands")
+}
+
 func TestBestTake_ATakeThatCouldNotBeJudgedIsNeverPreferredAndNoneJudgedMeansNoPick(t *testing.T) {
-	best, ok := bestTake([]judged{{number: 1}, {number: 2, result: verdict(domain.JudgeFail, 0.1, issue(domain.SeverityHigh))}})
+	best, ok := bestTake([]judged{{number: 1}, {number: 2, result: verdict(domain.JudgeFail, 0.1, issue(domain.SeverityHigh))}}, nil)
 	require.True(t, ok)
 	assert.Equal(t, 2, best.number, "even a bad verdict beats no verdict")
 
-	_, ok = bestTake([]judged{{number: 1}, {number: 2}})
+	_, ok = bestTake([]judged{{number: 1}, {number: 2}}, nil)
 	assert.False(t, ok)
 }
 

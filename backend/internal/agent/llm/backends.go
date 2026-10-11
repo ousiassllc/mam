@@ -15,22 +15,18 @@ import (
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/credential"
+	"github.com/ousiassllc/mam/backend/internal/httpclient"
 )
 
 // maxResponseBytes bounds what is read from a provider.
 const maxResponseBytes = 8 << 20
 
-// Doer is the part of *http.Client the backends use.
-type Doer interface {
-	Do(*http.Request) (*http.Response, error)
-}
-
 // NewBackends returns the HTTP backend of every provider in cfg. API keys are read from keys
 // at call time, so a key stored in the settings screen takes effect without a restart.
 // client may be nil (a client without an overall timeout: the Client bounds every call).
-func NewBackends(cfg Config, keys credential.Store, client Doer) map[Provider]Backend {
+func NewBackends(cfg Config, keys credential.Store, client httpclient.Doer) map[Provider]Backend {
 	if client == nil {
-		client = &http.Client{}
+		client = httpclient.New()
 	}
 	h := httpBackend{keys: keys, client: client}
 	out := make(map[Provider]Backend, len(cfg.Providers))
@@ -54,7 +50,7 @@ type httpBackend struct {
 	provider Provider
 	baseURL  string
 	keys     credential.Store
-	client   Doer
+	client   httpclient.Doer
 }
 
 func (h httpBackend) apiKey() (string, error) {

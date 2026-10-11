@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"time"
 )
 
@@ -36,6 +37,15 @@ const (
 	AgentStateExtractor     Agent = "state_extractor"
 	AgentFinalQC            Agent = "final_qc"
 )
+
+// Agents lists every Agent that has a route.
+func Agents() []Agent {
+	return []Agent{
+		AgentOrchestrator, AgentProducer, AgentWriter, AgentDirector, AgentStoryboard, AgentArtDirector,
+		AgentPromptPlanner, AgentVideoJudge, AgentRepair, AgentEditor, AgentAudioDirector,
+		AgentCommandInterpreter, AgentStateExtractor, AgentFinalQC,
+	}
+}
 
 // Provider names an LLM vendor. It is also the credential.Store key of the vendor's API key.
 type Provider string
@@ -183,6 +193,9 @@ func LoadConfig(path string) (Config, error) {
 func (c Config) Validate() error {
 	var errs []error
 	for agent, r := range c.Routes {
+		if !slices.Contains(Agents(), agent) {
+			errs = append(errs, fmt.Errorf("routes: %q is not an Agent", agent))
+		}
 		for role, t := range map[string]Target{"primary": r.Primary, "fallback": r.Fallback} {
 			if _, ok := c.Providers[t.Provider]; !ok {
 				errs = append(errs, fmt.Errorf("route %s %s: unknown provider %q", agent, role, t.Provider))
@@ -193,6 +206,9 @@ func (c Config) Validate() error {
 		}
 	}
 	for p, pc := range c.Providers {
+		if !slices.Contains(Providers(), p) {
+			errs = append(errs, fmt.Errorf("providers: %q is not a provider", p))
+		}
 		if pc.BaseURL == "" {
 			errs = append(errs, fmt.Errorf("provider %s: base_url is empty", p))
 		}

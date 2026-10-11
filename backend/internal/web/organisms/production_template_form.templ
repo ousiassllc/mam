@@ -1,6 +1,10 @@
 package organisms
 
-import "github.com/ousiassllc/mam/backend/internal/domain"
+import (
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
 
 // PolicyFormData is the state of a settings form. Errors are keyed by form field name; Typed holds the
 // values of a rejected submission.
@@ -19,7 +23,7 @@ templ ProductionTemplateForm(d PolicyFormData) {
 	<form
 		id="production-template-form"
 		class="flex flex-col gap-3"
-		hx-put={ "/projects/" + d.Project.ID + "/production-template" }
+		hx-put={ paths.Project(d.Project.ID, "production-template") }
 		hx-trigger="change"
 		hx-target="this"
 		hx-swap="outerHTML"
@@ -28,7 +32,12 @@ templ ProductionTemplateForm(d PolicyFormData) {
 			<legend class="sr-only">Production Template</legend>
 			for _, t := range domain.ProductionTemplates() {
 				<label class="flex cursor-pointer gap-3 rounded-md border border-neutral-700 p-3 has-[:checked]:border-indigo-400">
-					<input type="radio" name="production_template" value={ string(t) } checked?={ t == d.Policy.Template } class="mt-1"/>
+					@atoms.Choice("mt-1", templ.Attributes{
+						"type":    "radio",
+						"name":    "production_template",
+						"value":   string(t),
+						"checked": t == d.Policy.Template,
+					})
 					<span class="flex flex-col gap-1">
 						<span class="text-sm font-medium">{ t.Label() }</span>
 						<ol class="flex flex-wrap gap-x-3 gap-y-1 text-xs text-neutral-400">

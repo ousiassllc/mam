@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -170,11 +171,13 @@ func TestLoadConfig_FileOverridesOnlyWhatItSets(t *testing.T) {
 
 func TestLoadConfig_RejectsBadFiles(t *testing.T) {
 	for name, content := range map[string]string{
-		"unknown key":      `{"route": {}}`,
-		"unknown provider": `{"routes": {"writer": {"primary": {"provider": "acme", "model": "m"}, "fallback": {"provider": "openai", "model": "m"}}}}`,
-		"empty model":      `{"routes": {"writer": {"primary": {"provider": "openai", "model": ""}, "fallback": {"provider": "google", "model": "m"}}}}`,
-		"bad retry":        `{"retry": {"max_attempts": 0, "base_delay_ms": 1, "max_delay_ms": 1}}`,
-		"not json":         `nope`,
+		"unknown key":          `{"route": {}}`,
+		"unknown provider":     `{"routes": {"writer": {"primary": {"provider": "acme", "model": "m"}, "fallback": {"provider": "openai", "model": "m"}}}}`,
+		"empty model":          `{"routes": {"writer": {"primary": {"provider": "openai", "model": ""}, "fallback": {"provider": "google", "model": "m"}}}}`,
+		"unknown agent":        `{"routes": {"writter": {"primary": {"provider": "openai", "model": "m"}, "fallback": {"provider": "google", "model": "m"}}}}`,
+		"unknown provider key": `{"providers": {"opneai": {"base_url": "http://x"}}}`,
+		"bad retry":            `{"retry": {"max_attempts": 0, "base_delay_ms": 1, "max_delay_ms": 1}}`,
+		"not json":             `nope`,
 	} {
 		path := filepath.Join(t.TempDir(), "llm.json")
 		require.NoError(t, os.WriteFile(path, []byte(content), 0o600))
@@ -245,4 +248,30 @@ func TestBackends_TextOnlyRequestsKeepThePlainUserMessage(t *testing.T) {
 	require.NoError(t, err)
 	msgs, _ := ps.body["messages"].([]any)
 	assert.Equal(t, "usr", msgs[0].(map[string]any)["content"])
+}
+
+func TestDefaultClientDoesNotForwardTheKeyOnARedirectToAnotherHost(t *testing.T) {
+	var foreignHits atomic.Int32
+	foreign := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { foreignHits.Add(1) }))
+	defer foreign.Close()
+	vendor := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, foreign.URL+"/steal", http.StatusFound)
+	}))
+	defer vendor.Close()
+	keyring.MockInit()
+	store := credential.NewKeyring()
+	for _, p := range []llm.Provider{llm.ProviderAnthropic, llm.ProviderOpenAI, llm.ProviderGoogle} {
+		require.NoError(t, store.Set(string(p), "secret-key"))
+	}
+	cfg := llm.DefaultConfig()
+	for p := range cfg.Providers {
+		cfg.Providers[p] = llm.ProviderConfig{BaseURL: vendor.URL}
+	}
+	backends := llm.NewBackends(cfg, store, nil)
+
+	for p, b := range backends {
+		_, err := b.Complete(context.Background(), "m", llm.Request{System: "s", User: "u", MaxTokens: 10})
+		require.Error(t, err, p)
+	}
+	assert.Zero(t, foreignHits.Load())
 }

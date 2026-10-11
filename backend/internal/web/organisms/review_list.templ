@@ -5,6 +5,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // ReviewListItem is a review request with the Export it carries.
@@ -76,18 +77,27 @@ templ ReviewList(d ReviewListData) {
 			if len(d.Exports) == 0 {
 				<p class="text-sm text-neutral-400">書き出しがまだありません。編集 / 書き出しで Final Export を作ると、レビューを依頼できます。</p>
 			} else {
-				<form class="flex flex-col gap-2" hx-post={ "/projects/" + d.ProjectID + "/reviews" } hx-target="#review-list" hx-swap="outerHTML">
+				<form class="flex flex-col gap-2" hx-post={ paths.Project(d.ProjectID, "reviews") } hx-target="#review-list" hx-swap="outerHTML">
 					<label class="flex flex-col gap-1 text-xs text-neutral-400" for="review-export">
 						書き出し
-						<select id="review-export" name="export_id" required class="rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm text-neutral-100">
+						@atoms.Select(atoms.FieldMd, "", templ.Attributes{
+							"id":       "review-export",
+							"name":     "export_id",
+							"required": true,
+						}) {
 							for _, e := range d.Exports {
 								<option value={ e.ID }>{ exportLabel(e) }</option>
 							}
-						</select>
+						}
 					</label>
 					<label class="flex flex-col gap-1 text-xs text-neutral-400" for="review-note">
 						レビュアーへのメモ（任意、1000 文字まで）
-						<textarea id="review-note" name="note" rows="3" maxlength="1000" class="rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm text-neutral-100"></textarea>
+						@atoms.Textarea(atoms.FieldMd, "", templ.Attributes{
+							"id":        "review-note",
+							"name":      "note",
+							"rows":      "3",
+							"maxlength": "1000",
+						}, "")
 					</label>
 					<div>
 						@atoms.Button(atoms.TonePrimary, "レビュー依頼を作る", templ.Attributes{"type": "submit"})
@@ -98,7 +108,7 @@ templ ReviewList(d ReviewListData) {
 		<section class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3">
 			<h2 class="text-sm font-semibold">レビュアーの応答を取り込む</h2>
 			<p class="text-xs text-neutral-400">レビュアーから届いた応答ファイル（JSON）を選びます。レビュアーの名前は本人の自己申告で、確認はされません。</p>
-			<form class="flex flex-wrap items-center gap-2" hx-post={ "/projects/" + d.ProjectID + "/reviews/feedback" } hx-encoding="multipart/form-data" hx-target="#review-list" hx-swap="outerHTML">
+			<form class="flex flex-wrap items-center gap-2" hx-post={ paths.Project(d.ProjectID, "reviews", "feedback") } hx-encoding="multipart/form-data" hx-target="#review-list" hx-swap="outerHTML">
 				<input id="review-response-file" type="file" name="response" required accept=".json,application/json" aria-label="応答ファイル" class="text-xs"/>
 				@atoms.Button(atoms.ToneNeutral, "取り込む", templ.Attributes{"type": "submit"})
 			</form>
@@ -122,7 +132,7 @@ templ reviewItem(projectID string, it ReviewListItem) {
 				<span class="text-xs text-amber-300">未解決のコメント { strconv.Itoa(n) } 件</span>
 			}
 			<a
-				href={ templ.SafeURL("/projects/" + projectID + "/reviews/" + it.Item.Request.ID + "/package") }
+				href={ templ.SafeURL(paths.Project(projectID, "reviews", it.Item.Request.ID, "package")) }
 				download
 				hx-boost="false"
 				class="ml-auto inline-flex items-center justify-center rounded-md border border-neutral-600 px-3 py-1.5 text-sm font-medium text-neutral-200 hover:bg-neutral-800"
@@ -154,7 +164,7 @@ templ reviewItem(projectID string, it ReviewListItem) {
 								} else {
 									<span class="min-w-0 flex-1 whitespace-pre-wrap">{ c.Body }</span>
 								}
-								<form hx-put={ "/projects/" + projectID + "/review-comments/" + c.ID } hx-target="#review-list" hx-swap="outerHTML">
+								<form hx-put={ paths.Project(projectID, "review-comments", c.ID) } hx-target="#review-list" hx-swap="outerHTML">
 									<input type="hidden" name="resolved" value={ resolvedValue(c.Resolved) }/>
 									@atoms.Button(atoms.ToneNeutral, resolvedLabel(c.Resolved), templ.Attributes{"type": "submit"})
 								</form>

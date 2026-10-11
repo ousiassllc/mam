@@ -4,7 +4,9 @@ import (
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // BriefFormData is the state of the Brief editing form. Errors are keyed by form field name.
@@ -37,7 +39,7 @@ templ BriefForm(d BriefFormData) {
 	<form
 		id="brief-form"
 		class="flex flex-col gap-4"
-		hx-put={ "/projects/" + d.Project.ID + "/brief" }
+		hx-put={ paths.Project(d.Project.ID, "brief") }
 		hx-target="this"
 		hx-swap="outerHTML"
 	>
@@ -49,13 +51,12 @@ templ BriefForm(d BriefFormData) {
 						<span class="rounded-full bg-neutral-700 px-2 py-0.5 text-xs font-normal text-neutral-300">AIに任せる</span>
 					}
 				</label>
-				<input
-					id={ "brief-" + string(f) }
-					name={ string(f) }
-					type="text"
-					value={ d.Brief.Get(f) }
-					class="w-full rounded-md border border-neutral-600 bg-neutral-950 px-3 py-2 text-sm"
-				/>
+				@atoms.Input(atoms.FieldLg, "w-full", templ.Attributes{
+					"id":    "brief-" + string(f),
+					"name":  string(f),
+					"type":  "text",
+					"value": d.Brief.Get(f),
+				})
 				if msg := d.Errors[string(f)]; msg != "" {
 					<p class="mt-1 text-sm text-red-300" role="alert">{ msg }</p>
 				}
@@ -66,24 +67,22 @@ templ BriefForm(d BriefFormData) {
 		}
 		<div>
 			<label for="brief-additional-instruction" class="mb-1 block text-sm font-medium">Additional Instruction</label>
-			<textarea
-				id="brief-additional-instruction"
-				name="additional_instruction"
-				rows="3"
-				class="w-full rounded-md border border-neutral-600 bg-neutral-950 px-3 py-2 text-sm"
-			>{ d.Brief.AdditionalInstruction }</textarea>
+			@atoms.Textarea(atoms.FieldLg, "w-full", templ.Attributes{
+				"id":   "brief-additional-instruction",
+				"name": "additional_instruction",
+				"rows": "3",
+			}, d.Brief.AdditionalInstruction)
 			if msg := d.Errors["additional_instruction"]; msg != "" {
 				<p class="mt-1 text-sm text-red-300" role="alert">{ msg }</p>
 			}
 		</div>
 		<div>
 			<label for="brief-references" class="mb-1 block text-sm font-medium">References（URL、1行に1件）</label>
-			<textarea
-				id="brief-references"
-				name="references"
-				rows="3"
-				class="w-full rounded-md border border-neutral-600 bg-neutral-950 px-3 py-2 text-sm"
-			>{ referencesText(d) }</textarea>
+			@atoms.Textarea(atoms.FieldLg, "w-full", templ.Attributes{
+				"id":   "brief-references",
+				"name": "references",
+				"rows": "3",
+			}, referencesText(d))
 			if msg := d.Errors["references"]; msg != "" {
 				<p class="mt-1 text-sm text-red-300" role="alert">{ msg }</p>
 			}
@@ -95,7 +94,9 @@ templ BriefForm(d BriefFormData) {
 			</div>
 		}
 		<div class="flex items-center gap-3">
-			<button type="submit" class="rounded-md bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-400">保存</button>
+			@atoms.Button(atoms.TonePrimary, "保存", templ.Attributes{
+				"type": "submit",
+			})
 			if d.Saved {
 				<span class="text-sm text-emerald-300" role="status">保存しました</span>
 			}

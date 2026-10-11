@@ -298,9 +298,13 @@ func ParseVoiceLine(entry string) (VoiceLine, bool) {
 	if entry == "" {
 		return VoiceLine{}, false
 	}
-	speaker, text, found := strings.Cut(entry, ":")
-	if !found {
-		speaker, text, found = strings.Cut(entry, "：")
+	// Split on the first colon of either kind, so a later one (a time "10:30") stays in the text.
+	i := strings.IndexAny(entry, ":：")
+	found := i >= 0
+	var speaker, text string
+	if found {
+		_, sepLen := utf8.DecodeRuneInString(entry[i:])
+		speaker, text = entry[:i], entry[i+sepLen:]
 	}
 	if !found || strings.ContainsAny(speaker, "。.!?！？0123456789０１２３４５６７８９") || len([]rune(speaker)) > 20 {
 		return VoiceLine{Kind: VoiceNarration, Text: entry}, true
@@ -407,6 +411,13 @@ type AudioTimelineVersion struct {
 	CreatedAt     time.Time
 }
 
+// CurrentFor reports whether the audio was made for the Edit Timeline version editID, the latest one
+// of its series. A nil audio (none made) is not current. An export of the series is refused (409)
+// unless it holds, and the export button of the editor panel is drawn from the same answer.
+func (a *AudioTimelineVersion) CurrentFor(editID string) bool {
+	return a != nil && editID != "" && a.Timeline.EditTimelineID == editID
+}
+
 // FinalQCVerdict is the result of Final QC.
 type FinalQCVerdict string
 
@@ -492,6 +503,7 @@ func (o ExportOptions) Size() (width, height int, err error) {
 type Export struct {
 	ID          string
 	ProjectID   string
+	BranchID    string // "" for an export of the trunk
 	FilePath    string // relative to the assets directory
 	Resolution  string
 	AspectRatio string

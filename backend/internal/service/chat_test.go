@@ -189,6 +189,25 @@ func TestPostMessage_AnswersTheOpenQuestionAndAsksTheNextOne(t *testing.T) {
 	assert.True(t, thread[len(thread)-1].Open)
 }
 
+// A stale screen (or a double click) answers a card that was answered already: the text must not
+// be written to the next open item of the Brief.
+func TestPostMessage_ReplyToAnAnsweredQuestionIsAConflictAndWritesNothing(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	p := f.createProject(t, "美容液の縦型15秒CMを作りたい。上品な雰囲気で")
+	q := lastMessage(t, f.thread(t, p.ID)) // Objective
+	_, err := f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "Instagram広告", ReplyToMessageID: q.ID})
+	require.NoError(t, err)
+	before := f.brief(t, p.ID)
+	messages := len(f.thread(t, p.ID))
+
+	_, err = f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "YouTube広告", ReplyToMessageID: q.ID})
+
+	assert.ErrorIs(t, err, service.ErrConflict)
+	assert.Equal(t, before, f.brief(t, p.ID), "the Brief is unchanged")
+	assert.Len(t, f.thread(t, p.ID), messages, "nothing is added to the thread")
+}
+
 func TestPostMessage_FreeInputAnswersTheNewestOpenQuestionAndExtractsOtherItems(t *testing.T) {
 	ctx := context.Background()
 	f := newFixture(t)
@@ -270,6 +289,29 @@ func TestPostMessage_AttachmentsSentLaterJoinTheBrief(t *testing.T) {
 	assert.Len(t, f.brief(t, p.ID).Assets, 1)
 }
 
+func TestPostMessage_AttachmentsOfAnApprovalOrEscalationReplyJoinTheBrief(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	p := f.createProject(t, "動画")
+
+	_, err := f.svc.Chat.RequestApproval(ctx, p.ID, domain.CheckpointScript, "脚本 v1", "sv1")
+	require.NoError(t, err)
+	card := lastMessage(t, f.thread(t, p.ID))
+	_, err = f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "この雰囲気で", ReplyToMessageID: card.ID,
+		Uploads: []service.Upload{upload("look.png", pngBytes), upload("ref.mp4", mp4Bytes)}})
+	require.NoError(t, err)
+	brief := f.brief(t, p.ID)
+	assert.Len(t, brief.Assets, 1, "an image attached to an Approval reply is an Asset")
+	assert.Len(t, brief.References, 1, "a video attached to an Approval reply is a Reference")
+
+	require.NoError(t, f.svc.Chat.RaiseEscalation(ctx, p.ID, "リトライ上限に達しました", []string{"続行", "中止"}, "shot1"))
+	esc := lastMessage(t, f.thread(t, p.ID))
+	_, err = f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "続行", ReplyToMessageID: esc.ID,
+		Uploads: []service.Upload{upload("other.png", pngBytes)}})
+	require.NoError(t, err)
+	assert.Len(t, f.brief(t, p.ID).Assets, 2, "an image attached to an Escalation reply is an Asset")
+}
+
 func setState(t *testing.T, f fixture, projectID string, state domain.ProjectState) {
 	t.Helper()
 	err := f.db.Write(context.Background(), func(ctx context.Context, tx *sql.Tx) error {
@@ -297,6 +339,9 @@ func TestRequestApproval_FollowsTheConfirmationLevel(t *testing.T) {
 	posted, err = f.svc.Chat.RequestApproval(ctx, p.ID, domain.CheckpointSceneComplete, "Scene 1", "sc1")
 	require.NoError(t, err)
 	assert.False(t, posted, "KEY CHECK does not ask at each Scene")
+	posted, err = f.svc.Chat.RequestApproval(ctx, p.ID, domain.CheckpointMainVisual, "Main Visual", "mv1")
+	require.NoError(t, err)
+	assert.False(t, posted, "nothing in the pipeline produces a Main Visual to ask about, so KEY CHECK does not promise it")
 
 	_, err = f.svc.Projects.SetConfirmationLevel(ctx, p.ID, domain.ConfirmFullAuto, nil)
 	require.NoError(t, err)
@@ -304,9 +349,9 @@ func TestRequestApproval_FollowsTheConfirmationLevel(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, posted, "FULL AUTO never asks for approval")
 
-	_, err = f.svc.Projects.SetConfirmationLevel(ctx, p.ID, domain.ConfirmCustomCheck, []domain.Checkpoint{domain.CheckpointSceneComplete})
+	_, err = f.svc.Projects.SetConfirmationLevel(ctx, p.ID, domain.ConfirmCustomCheck, []domain.Checkpoint{domain.CheckpointRoughCut})
 	require.NoError(t, err)
-	posted, err = f.svc.Chat.RequestApproval(ctx, p.ID, domain.CheckpointSceneComplete, "Scene 1", "sc1")
+	posted, err = f.svc.Chat.RequestApproval(ctx, p.ID, domain.CheckpointRoughCut, "Rough Cut", "e1")
 	require.NoError(t, err)
 	assert.True(t, posted, "CUSTOM CHECK asks at the selected checkpoint")
 	posted, err = f.svc.Chat.RequestApproval(ctx, p.ID, domain.CheckpointScript, "脚本 v2", "sv2")
@@ -350,6 +395,41 @@ func TestRespondApproval_RequestChangesSendsTheProjectBack(t *testing.T) {
 	assert.Equal(t, domain.ApprovalChangesRequested, updated.ApprovalStatus)
 	assert.Equal(t, domain.StatePlanning, project.State)
 	assert.Contains(t, f.thread(t, p.ID)[len(f.thread(t, p.ID))-2].Content, "もっと短く")
+
+	var n, override int
+	require.NoError(t, f.db.Reader().QueryRow(
+		`SELECT COUNT(*), COALESCE(SUM(override), 0) FROM human_intervention WHERE project_id = ? AND kind = 'request_changes'`, p.ID).Scan(&n, &override))
+	assert.Equal(t, 1, n, "only a checkpoint request for changes is a human intervention")
+	assert.Equal(t, 1, override)
+}
+
+// The answer to a request for changes says what happens: only the script is redone from the comment.
+// A Rough Cut or Final goes back to EDITING and nothing reads the comment, so the answer says so
+// instead of promising that it is applied.
+func TestRespondApproval_RequestChangesAnswerSaysWhatHappens(t *testing.T) {
+	ctx := context.Background()
+	for cp, want := range map[domain.Checkpoint]string{
+		domain.CheckpointScript:   "脚本を作り直します",
+		domain.CheckpointRoughCut: "自動では反映されない",
+		domain.CheckpointFinal:    "自動では反映されない",
+	} {
+		t.Run(string(cp), func(t *testing.T) {
+			f := newFixture(t)
+			p := f.createProject(t, "動画")
+			_, err := f.svc.Chat.RequestApproval(ctx, p.ID, cp, "確認", "x1")
+			require.NoError(t, err)
+			card := lastMessage(t, f.thread(t, p.ID))
+
+			_, _, err = f.svc.Chat.RespondApproval(ctx, p.ID, card.ID, service.DecisionRequestChanges, "短く")
+			require.NoError(t, err)
+
+			answer := lastMessage(t, f.thread(t, p.ID)).Content
+			assert.Contains(t, answer, want)
+			if cp != domain.CheckpointScript {
+				assert.NotContains(t, answer, "やり直します")
+			}
+		})
+	}
 }
 
 func TestRespondApproval_ValidatesTheRequest(t *testing.T) {
@@ -389,7 +469,7 @@ func TestPostMessage_ReplyingToApprovalCardInWordsAnswersIt(t *testing.T) {
 	assert.Equal(t, domain.StatePlanning, project.State)
 
 	// A second card, answered with an approval word.
-	_, err = f.svc.Chat.RequestApproval(ctx, p.ID, domain.CheckpointMainVisual, "Main Visual", "mv1")
+	_, err = f.svc.Chat.RequestApproval(ctx, p.ID, domain.CheckpointRoughCut, "Rough Cut", "e1")
 	require.NoError(t, err)
 	card2 := lastMessage(t, f.thread(t, p.ID))
 	_, err = f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "承認します。", ReplyToMessageID: card2.ID})
@@ -397,13 +477,14 @@ func TestPostMessage_ReplyingToApprovalCardInWordsAnswersIt(t *testing.T) {
 	project, updated2, err := f.svc.Chat.Card(ctx, p.ID, card2.ID)
 	require.NoError(t, err)
 	assert.Equal(t, domain.ApprovalApproved, updated2.ApprovalStatus)
-	assert.Equal(t, domain.StateGenerating, project.State)
+	assert.Equal(t, domain.StateAudio, project.State)
 }
 
 func TestEscalation_AnyReplyResumesTheProject(t *testing.T) {
 	ctx := context.Background()
 	f := newFixture(t)
 	p := f.createProject(t, "動画")
+	setState(t, f, p.ID, domain.StateRepairing) // a Repair of a Shot raised it
 
 	require.NoError(t, f.svc.Chat.RaiseEscalation(ctx, p.ID, "リトライ上限に達しました", []string{"続行", "中止"}, "shot1"))
 	got, _ := f.svc.Projects.Get(ctx, p.ID)
@@ -539,9 +620,12 @@ func TestSetConfirmationLevel_ValidatesAndRemembersCustomSelection(t *testing.T)
 	assert.Equal(t, []domain.Checkpoint{domain.CheckpointScript, domain.CheckpointFinal}, got.CustomCheckpoints, "an empty selection falls back to script + final")
 
 	got, err = f.svc.Projects.SetConfirmationLevel(ctx, p.ID, domain.ConfirmCustomCheck,
-		[]domain.Checkpoint{domain.CheckpointRoughCut, domain.CheckpointCharacterDesign})
+		[]domain.Checkpoint{domain.CheckpointRoughCut, domain.CheckpointScript})
 	require.NoError(t, err)
-	assert.Equal(t, []domain.Checkpoint{domain.CheckpointCharacterDesign, domain.CheckpointRoughCut}, got.CustomCheckpoints, "stored in pipeline order")
+	assert.Equal(t, []domain.Checkpoint{domain.CheckpointScript, domain.CheckpointRoughCut}, got.CustomCheckpoints, "stored in pipeline order")
+
+	_, err = f.svc.Projects.SetConfirmationLevel(ctx, p.ID, domain.ConfirmCustomCheck, []domain.Checkpoint{domain.CheckpointCharacterDesign})
+	require.ErrorAs(t, err, &invalid, "a checkpoint nothing in the pipeline asks at cannot be selected")
 
 	got, err = f.svc.Projects.SetConfirmationLevel(ctx, p.ID, domain.ConfirmFullAuto, nil)
 	require.NoError(t, err)
@@ -633,4 +717,160 @@ func TestPostMessage_ReturnsTheQuestionCardsItClosed(t *testing.T) {
 	require.Len(t, ws.Updated, 1)
 	assert.Equal(t, open.ID, ws.Updated[0].ID)
 	assert.False(t, ws.Updated[0].Open)
+}
+
+func TestMessages_ManyProgressCardsAndRepliesOutsideTheBatchAreAllResolved(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	p := f.createProject(t, "動画")
+	jobs := repository.NewJobRepository(f.db)
+	running := map[string]bool{}
+	for i := range 100 {
+		job, err := jobs.Create(ctx, domain.JobGenerate, nil)
+		require.NoError(t, err)
+		if i%2 == 0 {
+			require.NoError(t, jobs.MarkRunning(ctx, job.ID))
+			running[job.ID] = true
+		}
+		require.NoError(t, f.svc.Chat.Announce(ctx, p.ID, domain.ChatMessage{Kind: domain.KindProgress, RefID: job.ID, Content: "生成中"}))
+	}
+	// a card whose job no longer exists still renders, without a job
+	require.NoError(t, f.svc.Chat.Announce(ctx, p.ID, domain.ChatMessage{Kind: domain.KindProgress, RefID: "gone", Content: "生成中"}))
+
+	progress := 0
+	for _, m := range f.thread(t, p.ID) {
+		if m.Kind != domain.KindProgress {
+			continue
+		}
+		progress++
+		if m.RefID == "gone" {
+			assert.Nil(t, m.Job)
+			continue
+		}
+		require.NotNil(t, m.Job, m.RefID)
+		assert.Equal(t, m.RefID, m.Job.ID)
+		want := domain.JobQueued
+		if running[m.RefID] {
+			want = domain.JobRunning
+		}
+		assert.Equal(t, want, m.Job.Status)
+	}
+	assert.Equal(t, 101, progress)
+
+	// the reply target of a message after the cursor lies outside the returned batch
+	thread := f.thread(t, p.ID)
+	q := thread[0]
+	ws, err := f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "返信", ReplyToMessageID: q.ID})
+	require.NoError(t, err)
+	var reply domain.ThreadMessage
+	for _, m := range ws.Messages {
+		if m.Content == "返信" {
+			reply = m
+		}
+	}
+	require.NotNil(t, reply.ReplyTo)
+	assert.Equal(t, q.ID, reply.ReplyTo.ID)
+}
+
+func TestEscalation_KeepsTheStateOfAProjectThatCannotWaitForApproval(t *testing.T) {
+	for _, state := range []domain.ProjectState{domain.StateAudio, domain.StateReady, domain.StateExported} {
+		t.Run(string(state), func(t *testing.T) {
+			ctx := context.Background()
+			f := newFixture(t)
+			p := f.createProject(t, "動画")
+			setState(t, f, p.ID, state)
+
+			require.NoError(t, f.svc.Chat.RaiseEscalation(ctx, p.ID, "リトライ上限に達しました", []string{"続行"}, "shot1"))
+			got, err := f.svc.Projects.Get(ctx, p.ID)
+			require.NoError(t, err)
+			assert.Equal(t, state, got.State, "the state machine has no move to AWAITING_APPROVAL from here")
+			esc := lastMessage(t, f.thread(t, p.ID))
+			assert.Equal(t, domain.KindEscalation, esc.Kind, "the card is still posted")
+
+			_, err = f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "続行", ReplyToMessageID: esc.ID})
+			require.NoError(t, err)
+			got, _ = f.svc.Projects.Get(ctx, p.ID)
+			assert.Equal(t, state, got.State, "the reply does not push the Project into REPAIRING")
+		})
+	}
+}
+
+// An Escalation posted without holding the Project is only a card: it does not keep the Final approval
+// from taking the Project to READY, and answering it later does not send the approved Project to REPAIRING.
+func TestEscalation_PostedWithoutHoldingTheProjectNeitherBlocksTheFinalApprovalNorResumesIt(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	p := f.createProject(t, "動画")
+	setState(t, f, p.ID, domain.StateAudio)
+	require.NoError(t, f.svc.Chat.RaiseEscalation(ctx, p.ID, "リトライ上限に達しました", []string{"続行"}, "shot1"))
+	esc := lastMessage(t, f.thread(t, p.ID))
+	setState(t, f, p.ID, domain.StateFinalQC)
+	posted, err := f.svc.Chat.RequestApproval(ctx, p.ID, domain.CheckpointFinal, "Final", "e1")
+	require.NoError(t, err)
+	require.True(t, posted)
+	card := lastMessage(t, f.thread(t, p.ID))
+
+	project, _, err := f.svc.Chat.RespondApproval(ctx, p.ID, card.ID, service.DecisionApprove, "")
+	require.NoError(t, err)
+	assert.Equal(t, domain.StateReady, project.State, "the unanswered Shot Escalation does not hold the Project")
+
+	_, err = f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "続行", ReplyToMessageID: esc.ID})
+	require.NoError(t, err)
+	got, _ := f.svc.Projects.Get(ctx, p.ID)
+	assert.Equal(t, domain.StateReady, got.State, "answering it does not undo the approval")
+}
+
+// An Escalation that held the Project (it was in AWAITING_APPROVAL) still blocks until answered, and the
+// answer moves it to REPAIRING.
+func TestEscalation_HoldingTheProjectStillResumesToRepairingWhenAnswered(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	p := f.createProject(t, "動画")
+	setState(t, f, p.ID, domain.StateEditing)
+	require.NoError(t, f.svc.Chat.RaiseEscalation(ctx, p.ID, "リトライ上限に達しました", []string{"続行"}, "shot1"))
+	got, _ := f.svc.Projects.Get(ctx, p.ID)
+	require.Equal(t, domain.StateAwaitingApproval, got.State)
+	esc := lastMessage(t, f.thread(t, p.ID))
+
+	_, err := f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "続行", ReplyToMessageID: esc.ID})
+	require.NoError(t, err)
+
+	got, _ = f.svc.Projects.Get(ctx, p.ID)
+	assert.Equal(t, domain.StateRepairing, got.State)
+}
+
+// A Take card is posted before its Judge result exists: when the result is saved, the card in the
+// live thread is told to redraw (its player draws the Issues as markers); other cards stay as they are.
+func TestChatService_TakeJudgedRefreshesOnlyTheCardsOfThatTake(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	p := f.createProject(t, "動画")
+	for _, takeID := range []string{"take1", "take2"} {
+		require.NoError(t, f.svc.Chat.Announce(ctx, p.ID, domain.ChatMessage{Kind: domain.KindTake, RefID: takeID,
+			Content: domain.EncodeTakeCardBody(domain.TakeCardBody{Title: takeID})}))
+	}
+	var take1 domain.ThreadMessage
+	for _, m := range f.thread(t, p.ID) {
+		if m.RefID == "take1" {
+			take1 = m
+		}
+	}
+	require.NotEmpty(t, take1.ID)
+
+	events, cancel, err := f.svc.Chat.Subscribe(ctx, p.ID)
+	require.NoError(t, err)
+	defer cancel()
+	f.svc.Chat.TakeJudged(ctx, "take1")
+
+	select {
+	case e := <-events:
+		assert.Equal(t, service.Event{Type: service.EventCardUpdated, MessageID: take1.ID}, e)
+	case <-time.After(time.Second):
+		t.Fatal("no card.updated for the Take card")
+	}
+	select {
+	case e := <-events:
+		t.Fatalf("unexpected second event %+v", e)
+	case <-time.After(50 * time.Millisecond):
+	}
 }

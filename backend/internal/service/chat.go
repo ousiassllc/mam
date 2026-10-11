@@ -77,6 +77,11 @@ func (s *ChatService) workspaceOf(ctx context.Context, projectID string, msgs []
 	return ws, nil
 }
 
+// isBriefQuestion reports whether m is the question card of a Brief item.
+func isBriefQuestion(m domain.ChatMessage) bool {
+	return m.Kind == domain.KindQuestion && m.RefType == domain.RefBriefField
+}
+
 func isAnswerable(k domain.MessageKind) bool {
 	return k == domain.KindQuestion || k == domain.KindEscalation || k == domain.KindApproval
 }
@@ -119,6 +124,19 @@ func (s *ChatService) JobChanged(ctx context.Context, jobID string) {
 	}
 }
 
+// TakeJudged refreshes the Take cards of a Take after a Judge result was saved: the card draws the
+// Issues of the latest result as markers on the player and has to be fetched again to show them.
+func (s *ChatService) TakeJudged(ctx context.Context, takeID string) {
+	msgs, err := s.chat.ListByRef(ctx, domain.RefTake, takeID)
+	if err != nil {
+		s.logger.Error("find take cards failed", "take_id", takeID, "err", err)
+		return
+	}
+	for _, m := range msgs {
+		s.hub.Publish(m.ProjectID, Event{Type: EventCardUpdated, MessageID: m.ID})
+	}
+}
+
 // PostMessageInput is one user message (POST /projects/:id/messages).
 type PostMessageInput struct {
 	Content            string
@@ -154,6 +172,14 @@ func (s *ChatService) PostMessage(ctx context.Context, projectID string, in Post
 	if target != nil && target.Kind == domain.KindQuestion && target.RefType == domain.RefContinue {
 		return s.answerContinue(ctx, project, *target, content, len(in.Uploads)+len(in.AttachmentAssetIDs) > 0)
 	}
+	if target != nil && isBriefQuestion(*target) {
+		// A card takes one answer at a time: the reply that arrives while another one to the same
+		// card is being recorded (a double click) is a conflict, like a reply to an answered card.
+		if _, busy := s.answering.LoadOrStore(target.ID, struct{}{}); busy {
+			return Workspace{}, ErrConflict
+		}
+		defer s.answering.Delete(target.ID)
+	}
 	existing, err := s.assets.ListByIDs(ctx, projectID, in.AttachmentAssetIDs)
 	if err != nil {
 		return Workspace{}, err
@@ -169,7 +195,7 @@ func (s *ChatService) PostMessage(ctx context.Context, projectID string, in Post
 	user := userText(content, in.ReplyToMessageID, assetIDs(attached))
 
 	if s.director.wants(project, target, content) {
-		return s.postDirection(ctx, project, target, user, stored)
+		return s.postDirection(ctx, project, target, user, stored, attached)
 	}
 	turn, decided, err := s.planTurn(ctx, project, target, user, attached)
 	if err != nil {
@@ -193,9 +219,13 @@ func (s *ChatService) PostMessage(ctx context.Context, projectID string, in Post
 // postDirection handles a message of DIRECTOR MODE: it is stored first, then the Command Interpreter
 // reads it, resolves the Shot it is about and carries it out, and the AI's answer (what was done,
 // refused or asked) follows it in the thread.
-func (s *ChatService) postDirection(ctx context.Context, project domain.Project, target *domain.ChatMessage, user domain.ChatMessage, stored []storedUpload) (Workspace, error) {
+func (s *ChatService) postDirection(ctx context.Context, project domain.Project, target *domain.ChatMessage, user domain.ChatMessage, stored []storedUpload, attached []domain.Asset) (Workspace, error) {
 	user.ID = domain.NewID()
 	turn := repository.Turn{ProjectID: project.ID, Messages: []domain.ChatMessage{user}, Assets: assetsOf(stored)}
+	if err := s.attachToBrief(ctx, &turn, attached); err != nil {
+		discardUploads(stored)
+		return Workspace{}, err
+	}
 	if err := s.commit(ctx, turn); err != nil {
 		discardUploads(stored)
 		return Workspace{}, err
@@ -205,7 +235,9 @@ func (s *ChatService) postDirection(ctx context.Context, project domain.Project,
 		return Workspace{}, err
 	}
 	msgs := assignIDs([]domain.ChatMessage{reply})
-	if err := s.commit(ctx, repository.Turn{ProjectID: project.ID, Messages: msgs}); err != nil {
+	// The direction was carried out (a regeneration may be queued and paid for): the answer is recorded
+	// whatever happened to the request since, as DirectorCommand's is.
+	if err := s.commit(context.WithoutCancel(ctx), repository.Turn{ProjectID: project.ID, Messages: msgs}); err != nil {
 		return Workspace{}, err
 	}
 	return s.workspaceOf(ctx, project.ID, append([]domain.ChatMessage{user}, msgs...))
@@ -255,7 +287,7 @@ func (s *ChatService) commit(ctx context.Context, turn repository.Turn) error {
 		return notFound(err)
 	}
 	s.publishCreated(turn.ProjectID, turn.Messages)
-	if turn.Approval != nil && turn.Approval.Status == domain.ApprovalChangesRequested {
+	if turn.CheckpointChanges {
 		s.recordIntervention(ctx, domain.Intervention{ProjectID: turn.ProjectID, Kind: domain.InterventionRequestChanges, Override: true})
 	}
 	return nil
@@ -270,6 +302,9 @@ func (s *ChatService) planTurn(ctx context.Context, project domain.Project, targ
 		if err := s.settlePromotion(ctx, *target, &turn); err != nil {
 			return turn, nil, err
 		}
+		if err := s.attachToBrief(ctx, &turn, attached); err != nil {
+			return turn, nil, err
+		}
 		return turn, nil, nil
 	}
 
@@ -277,10 +312,20 @@ func (s *ChatService) planTurn(ctx context.Context, project domain.Project, targ
 	if err != nil {
 		return turn, nil, err
 	}
+	if target != nil && isBriefQuestion(*target) && replied[target.ID] {
+		// Answered already: applying the text again would put it into the next open item. An
+		// Approval card is refused the same way (RespondApproval).
+		return turn, nil, ErrConflict
+	}
 	if target != nil && target.Kind == domain.KindEscalation && !replied[target.ID] {
-		resume := domain.EscalationResumeState
-		turn.ResumeState = &resume
-		turn.Messages = append(turn.Messages, assistantText("判断を受け付けました。この内容で続行します。"))
+		if !domain.DecodeCardBody(target.Content).NonBlocking {
+			resume := domain.EscalationResumeState
+			turn.ResumeState = &resume
+		}
+		turn.Messages = append(turn.Messages, assistantText("判断を受け付けました。この判断は自動では実行されません。内容に沿って、設定の変更・Take の採用・Shot の指示の修正などを画面から行ってください。"))
+		if err := s.attachToBrief(ctx, &turn, attached); err != nil {
+			return turn, nil, err
+		}
 		return turn, nil, nil
 	}
 
@@ -307,6 +352,25 @@ func (s *ChatService) planTurn(ctx context.Context, project domain.Project, targ
 	}
 	decided := slices.DeleteFunc(slices.Clone(beforeMissing), func(f domain.BriefField) bool { return slices.Contains(nowMissing, f) })
 	return turn, decided, nil
+}
+
+// attachToBrief puts the files a message carries into the Brief (images into Assets, videos into
+// References) in the same turn, whatever the message answers: a direction, an Approval card or an
+// Escalation. A message that answers a question of the Brief takes them in planTurn instead.
+func (s *ChatService) attachToBrief(ctx context.Context, turn *repository.Turn, attached []domain.Asset) error {
+	if len(attached) == 0 {
+		return nil
+	}
+	brief, err := s.projects.GetBrief(ctx, turn.ProjectID)
+	if err != nil {
+		return notFound(err)
+	}
+	before := brief
+	brief.AttachAssets(attached)
+	if briefChanged(before, brief) {
+		turn.Brief = &brief
+	}
+	return nil
 }
 
 // answerBrief applies a message received while the Brief is incomplete.
@@ -365,7 +429,7 @@ func (s *ChatService) planApprovalReply(project domain.Project, card, user domai
 func approvalTurn(project domain.Project, card domain.ChatMessage, decision Decision, user domain.ChatMessage) repository.Turn {
 	status, ack := domain.ApprovalApproved, "承認されました。次の工程に進みます。"
 	if decision == DecisionRequestChanges {
-		status, ack = domain.ApprovalChangesRequested, "修正依頼を受け付けました。内容を反映してやり直します。"
+		status, ack = domain.ApprovalChangesRequested, changesRequestedAck(card)
 	}
 	turn := repository.Turn{
 		ProjectID: project.ID,
@@ -375,8 +439,26 @@ func approvalTurn(project domain.Project, card domain.ChatMessage, decision Deci
 	if card.IsBlockingApproval() {
 		next := resumeStateAfter(card, decision)
 		turn.ResumeState = &next
+		if decision == DecisionRequestChanges {
+			turn.CheckpointChanges = true
+		}
 	}
 	return turn
+}
+
+// changesRequestedAck tells what a request for changes does at the card's checkpoint, and no more:
+// only the script is redone from the comment (the Writer reads the reply). A Rough Cut or Final sends
+// the Project back to EDITING and nothing reads the comment or runs the Editor again, so the user is
+// told to edit (spec/spec.md §4.4).
+func changesRequestedAck(card domain.ChatMessage) string {
+	cp, _ := domain.CheckpointForRefType(card.RefType)
+	switch cp {
+	case domain.CheckpointScript:
+		return "修正依頼を受け付けました。コメントを反映して脚本を作り直します。"
+	case domain.CheckpointRoughCut, domain.CheckpointFinal:
+		return "修正依頼を受け付けました。EDITING に戻しました。コメントは自動では反映されないので、タイムラインエディタで編集してから進めてください。"
+	}
+	return "修正依頼を受け付けました。"
 }
 
 func resumeStateAfter(card domain.ChatMessage, decision Decision) domain.ProjectState {
@@ -489,12 +571,25 @@ func (s *ChatService) RaiseEscalation(ctx context.Context, projectID, text strin
 	if strings.TrimSpace(text) == "" {
 		return invalid("text", "相談内容が空です")
 	}
+	project, err := s.getProject(ctx, projectID)
+	if err != nil {
+		return err
+	}
+	blocks := project.State.EscalationBlocks()
 	card := domain.ChatMessage{
 		Role: domain.RoleAssistant, Kind: domain.KindEscalation,
-		Content: domain.EncodeCardBody(domain.CardBody{Text: text, Options: options}),
+		Content: domain.EncodeCardBody(domain.CardBody{Text: text, Options: options, NonBlocking: !blocks}),
 	}
 	if shotID != "" {
 		card.RefType, card.RefID = domain.RefShot, shotID
+	}
+	if !blocks {
+		// A Repair of a Shot can end in an Escalation while the Project is past that stage (AUDIO /
+		// READY / EXPORTED): the card is posted, but the Project keeps its state, as the Core State
+		// Machine has no move from there to AWAITING_APPROVAL. The card is marked non-blocking, so
+		// that it neither keeps a later approval from resuming the Project nor sends it to REPAIRING
+		// when it is answered.
+		return s.commit(ctx, repository.Turn{ProjectID: projectID, Messages: assignIDs([]domain.ChatMessage{card})})
 	}
 	return s.postBlocking(ctx, projectID, card)
 }
@@ -532,13 +627,30 @@ func (s *ChatService) views(ctx context.Context, projectID string, msgs []domain
 	if len(msgs) == 0 {
 		return nil, nil
 	}
-	var attachmentIDs []string
+	var attachmentIDs, jobIDs []string
 	byID := make(map[string]domain.ChatMessage, len(msgs))
 	needsAnswer := false
 	for _, m := range msgs {
 		byID[m.ID] = m
 		attachmentIDs = append(attachmentIDs, m.AttachmentAssetIDs...)
 		needsAnswer = needsAnswer || m.Kind == domain.KindQuestion || m.Kind == domain.KindEscalation
+		if m.Kind == domain.KindProgress {
+			jobIDs = append(jobIDs, m.RefID)
+		}
+	}
+	var parentIDs []string // reply targets outside this batch (the batch is the whole thread, or only what is new)
+	for _, m := range msgs {
+		if _, ok := byID[m.ReplyToMessageID]; m.ReplyToMessageID != "" && !ok {
+			parentIDs = append(parentIDs, m.ReplyToMessageID)
+		}
+	}
+	parents, err := s.chat.ListByIDs(ctx, projectID, parentIDs)
+	if err != nil {
+		return nil, err
+	}
+	jobs, err := s.jobs.ListByIDs(ctx, jobIDs)
+	if err != nil {
+		return nil, err
 	}
 	assets, err := s.assets.ListByIDs(ctx, projectID, attachmentIDs)
 	if err != nil {
@@ -571,11 +683,9 @@ func (s *ChatService) views(ctx context.Context, projectID string, msgs []domain
 		if m.ReplyToMessageID != "" {
 			parent, ok := byID[m.ReplyToMessageID]
 			if !ok {
-				p, err := s.chat.Get(ctx, projectID, m.ReplyToMessageID)
-				if err != nil {
-					return nil, notFound(err)
+				if parent, ok = parents[m.ReplyToMessageID]; !ok {
+					return nil, notFound(repository.ErrNotFound)
 				}
-				parent = p
 			}
 			v.ReplyTo = &parent
 		}
@@ -590,10 +700,8 @@ func (s *ChatService) views(ctx context.Context, projectID string, msgs []domain
 		case domain.KindEscalation:
 			v.Open = !replied[m.ID]
 		case domain.KindProgress:
-			if job, err := s.jobs.Get(ctx, m.RefID); err == nil {
+			if job, ok := jobs[m.RefID]; ok {
 				v.Job = &job
-			} else if !errors.Is(err, repository.ErrNotFound) {
-				return nil, err
 			}
 		}
 		views[i] = v

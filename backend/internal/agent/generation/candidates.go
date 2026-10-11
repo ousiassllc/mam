@@ -64,40 +64,42 @@ func severe(r domain.JudgeResult) bool {
 	return false
 }
 
-// penalty is the weight of the Issues of a verdict: the sum of their severity ranks, a LOCK
-// violation counting as much as a high severity Issue plus one.
-func penalty(r domain.JudgeResult) int {
-	n := 0
-	for _, is := range r.Issues {
-		n += is.Severity.Rank()
-		if is.LockViolation {
-			n += domain.SeverityHigh.Rank() + 1
-		}
-	}
-	return n
-}
-
-// better reports whether a is the better Take than b: a Take that passed beats one that failed, then
-// the one with the lighter Issues wins, then the one the Judge is more confident about, then the
-// earlier one. A Take that could not be judged is worse than any judged one.
+// better reports whether a is the better Take than b. It ranks like domain.PickTake, which the
+// Judge uses for the AI Pick and for the Take AUTO MODE selects: a Take that passed beats one that
+// failed, then the one with the higher mean of the four Take scores wins, then the earlier one. One
+// order for both keeps the Selected Take, the AI Pick and the adopted Spec on the same Take. A Take
+// that could not be judged is worse than any judged one.
 func better(a, b judged) bool {
 	switch {
 	case a.result == nil || b.result == nil:
 		return a.result != nil && b.result == nil
 	case (a.result.Result == domain.JudgePass) != (b.result.Result == domain.JudgePass):
 		return a.result.Result == domain.JudgePass
-	case penalty(*a.result) != penalty(*b.result):
-		return penalty(*a.result) < penalty(*b.result)
-	case a.result.OverallConfidence != b.result.OverallConfidence:
-		return a.result.OverallConfidence > b.result.OverallConfidence
+	}
+	if sa, sb := domain.ScoreTake(a.result.Issues).Overall(), domain.ScoreTake(b.result.Issues).Overall(); sa != sb {
+		return sa > sb
 	}
 	return a.number < b.number
 }
 
 // bestTake returns the Best Take among the judged ones. ok is false when none could be judged.
-func bestTake(all []judged) (best judged, ok bool) {
+//
+// accepted tells whether the Retry Policy accepts a judged Take (a pass that reaches the Minimum
+// acceptance scores). Like TakeRepository.PickBest, which chooses the Take AUTO MODE selects, the Best
+// Take is the best of the accepted Takes when there are any; with none, it is the best of all. A nil
+// accepted counts every Take as accepted.
+func bestTake(all []judged, accepted func(domain.JudgeResult) bool) (best judged, ok bool) {
+	anyAccepted := false
+	if accepted != nil {
+		for _, j := range all {
+			if j.result != nil && accepted(*j.result) {
+				anyAccepted = true
+				break
+			}
+		}
+	}
 	for _, j := range all {
-		if j.result == nil {
+		if j.result == nil || (anyAccepted && !accepted(*j.result)) {
 			continue
 		}
 		if !ok || better(j, best) {
@@ -113,14 +115,22 @@ type candidateRun struct {
 	ref         repository.ShotRef
 	sc          shotContext
 	instruction string
-	current     *domain.ShotSpec // the spec the Shot has, which the Candidates revise
-	locks       domain.ParameterLocks
-	total       int // most Takes this run makes (progress)
+	// preserve are the parts of the spec the director asked to keep as they are (with the LOCKed ones).
+	preserve []domain.SpecPart
+	current  *domain.ShotSpec // the spec the Shot has, which the Candidates revise
+	locks    domain.ParameterLocks
+	total    int // most Takes this run makes (progress)
+	// repaired is the retries the Repair history of the Shot counts (domain.RetriesDone) and earlier
+	// is how many Takes Prompt Candidate Generation made for the Shot before this run: both count
+	// against the Max retries per Shot together with the Takes of this run (retries).
+	repaired, earlier int
 
 	mu       sync.Mutex
 	outcomes []judged
 	// stopped says why the run made fewer Takes than it could (shown to the user).
 	stopped string
+	// prepared are Candidate specs already checked before the job was queued, in CandidateStrategies order.
+	prepared []domain.ShotSpec
 }
 
 // generateCandidates runs Prompt Candidate Generation for a Shot (spec/spec.md §8). The mode follows
@@ -136,7 +146,50 @@ type candidateRun struct {
 // Calls to the video models run in parallel; the Model Adapter limits how many are in flight per
 // vendor according to its rate limit. The Best Take becomes the AI pick of the Shot and its spec
 // the spec of the Shot.
-func (o *Orchestrator) generateCandidates(ctx context.Context, ref repository.ShotRef, instruction string) (Progress, error) {
+// prepareCandidates plans the Prompt Candidate specs that are known before any Take is judged,
+// and refuses a LOCK brand violation before the job is queued. Quality Mode plans every strategy
+// it will shoot; other modes plan only the first, because the rest depend on the Judge.
+// A nil slice means the job should plan them itself (the planner failed for another reason).
+func (o *Orchestrator) prepareCandidates(ctx context.Context, ref repository.ShotRef, instruction string, preserve []domain.SpecPart, strategy Strategy) ([]domain.ShotSpec, error) {
+	if err := refuseBusy(ref); err != nil {
+		return nil, err // before the Prompt Planner is paid for
+	}
+	sc, err := o.loadShotContext(ctx, ref, instruction)
+	if err != nil {
+		return nil, err
+	}
+	locks, err := o.gens.ShotLocks(ctx, ref.Shot.ID)
+	if err != nil {
+		return nil, err
+	}
+	n := 1
+	if mode := domain.ModeOf(sc.policy.Quality); mode == domain.ModeQuality {
+		n = min(len(domain.CandidateStrategies()), plannedTakes(mode, sc.policy.Effective(), strategy))
+	}
+	var current *domain.ShotSpec
+	if spec, ok := ref.Shot.CanonicalSpec(); ok {
+		current = &spec
+	}
+	var prepared []domain.ShotSpec
+	for _, s := range domain.CandidateStrategies()[:n] {
+		in := sc.plannerInput(ref, instruction)
+		in.Current, in.Strategy = current, s
+		if current != nil {
+			in.Fixed, in.Manual = candidateParts(locks, preserve, instruction)
+		}
+		spec, err := o.planner.Plan(ctx, in)
+		if err != nil {
+			if errors.Is(err, domain.ErrBrandViolation) {
+				return nil, err
+			}
+			return nil, nil
+		}
+		prepared = append(prepared, spec)
+	}
+	return prepared, nil
+}
+
+func (o *Orchestrator) generateCandidates(ctx context.Context, ref repository.ShotRef, instruction string, preserve []domain.SpecPart, prepared []domain.ShotSpec) (Progress, error) {
 	sc, err := o.loadShotContext(ctx, ref, instruction)
 	if err != nil {
 		return Progress{}, err
@@ -148,9 +201,12 @@ func (o *Orchestrator) generateCandidates(ctx context.Context, ref repository.Sh
 	if err != nil {
 		return Progress{}, err
 	}
-	run := &candidateRun{o: o, ref: ref, sc: sc, instruction: instruction, locks: locks}
+	run := &candidateRun{o: o, ref: ref, sc: sc, instruction: instruction, preserve: preserve, locks: locks, prepared: prepared}
 	if current, ok := ref.Shot.CanonicalSpec(); ok {
 		run.current = &current
+	}
+	if run.repaired, run.earlier, err = run.priorTakes(ctx); err != nil {
+		return Progress{}, err
 	}
 	first, err := run.strategy(ctx)
 	if err != nil {
@@ -180,6 +236,26 @@ func (o *Orchestrator) generateCandidates(ctx context.Context, ref repository.Sh
 	return Progress{TakesDone: len(run.outcomes), TakesTotal: run.total}, nil
 }
 
+// priorTakes reads what the Shot has already spent on retries before this run: the retaking Repairs
+// and the Takes of earlier Prompt Candidate Generation.
+func (r *candidateRun) priorTakes(ctx context.Context) (repaired, earlier int, err error) {
+	history, err := r.o.repairs.ShotActions(ctx, r.ref.Shot.ID)
+	if err != nil {
+		return 0, 0, err
+	}
+	earlier, err = r.o.repairs.CandidateTakeCount(ctx, r.ref.Shot.ID)
+	if err != nil {
+		return 0, 0, err
+	}
+	return domain.RetriesDone(history), earlier, nil
+}
+
+// retries is how many retries the Retry Policy counts for the Shot once this run has made `made`
+// Takes: the same count the Repair loop uses (domain.RetriesDone + domain.CandidateRetries).
+func (r *candidateRun) retries(made int) int {
+	return r.repaired + domain.CandidateRetries(r.earlier+made)
+}
+
 // strategy decides the generation plan from the current budget.
 func (r *candidateRun) strategy(ctx context.Context) (Strategy, error) {
 	budget, err := r.o.gens.Budget(ctx, r.ref.ProjectID, r.ref.Shot.ID)
@@ -189,12 +265,30 @@ func (r *candidateRun) strategy(ctx context.Context) (Strategy, error) {
 	return r.o.decide(ctx, r.ref, r.sc.policy, specOf(r.ref.Shot), budget)
 }
 
+// candidateParts are the parts of the Shot's spec a Prompt Candidate must keep (fixed) and the parts
+// the user specified that it should keep (manual) when the Prompt Planner writes it. The strategy of a
+// Candidate rewrites the spec, so the parts the user set himself (MANUAL) are carried like the single
+// generation carries them: with no instruction the spec is not rewritten there, so they stay exactly
+// as they are, and they are fixed here too; an instruction may change them, so they are only a hint.
+func candidateParts(locks domain.ParameterLocks, preserve []domain.SpecPart, instruction string) (fixed, manual []domain.SpecPart) {
+	fixed, manual = slices.Concat(locks.LockedParts(), preserve), locks.PartsWith(domain.LockManual)
+	if strings.TrimSpace(instruction) == "" {
+		return slices.Concat(fixed, manual), nil
+	}
+	return fixed, manual
+}
+
 // plan has the Prompt Planner write the Candidate of the strategy.
 func (r *candidateRun) plan(ctx context.Context, strategy domain.CandidateStrategy) (domain.ShotSpec, error) {
+	for i, s := range domain.CandidateStrategies() {
+		if s == strategy && i < len(r.prepared) {
+			return r.prepared[i], nil
+		}
+	}
 	in := r.sc.plannerInput(r.ref, r.instruction)
 	in.Current, in.Strategy = r.current, strategy
 	if r.current != nil {
-		in.Fixed, in.Manual = r.locks.LockedParts(), r.locks.PartsWith(domain.LockManual)
+		in.Fixed, in.Manual = candidateParts(r.locks, r.preserve, r.instruction)
 	}
 	return r.o.planner.Plan(ctx, in)
 }
@@ -245,7 +339,7 @@ func (r *candidateRun) take(ctx context.Context, s Strategy, strategy domain.Can
 // quality plans every Candidate and generates them at the same time.
 func (r *candidateRun) quality(ctx context.Context, s Strategy) []error {
 	strategies := domain.CandidateStrategies()[:r.total]
-	return parallel(len(strategies), func(i int) error {
+	return parallel(r.o.logger, len(strategies), func(i int) error {
 		spec, err := r.plan(ctx, strategies[i])
 		if err != nil {
 			return err
@@ -261,7 +355,7 @@ func (r *candidateRun) balanced(ctx context.Context, s Strategy, eff domain.Effe
 	for i := range r.total {
 		if i > 0 {
 			var ok bool
-			if s, ok = r.mayRetry(ctx, eff, i-1); !ok {
+			if s, ok = r.mayRetry(ctx, eff, r.retries(i)); !ok {
 				return nil
 			}
 		}
@@ -296,14 +390,14 @@ func (r *candidateRun) economy(ctx context.Context, s Strategy, eff domain.Effec
 			return nil
 		}
 		var ok bool
-		if s, ok = r.mayRetry(ctx, eff, retakes); !ok {
+		if s, ok = r.mayRetry(ctx, eff, r.retries(retakes+1)); !ok {
 			return nil
 		}
 	}
 }
 
 // mayRetry applies the Retry Policy and the budget before one more Take. When it says no, the reason
-// is kept for the summary. retriesDone is the number of extra Takes made so far.
+// is kept for the summary. retriesDone is the retries the Shot has used so far (retries).
 func (r *candidateRun) mayRetry(ctx context.Context, eff domain.EffectivePolicy, retriesDone int) (Strategy, bool) {
 	budget, err := r.o.gens.Budget(ctx, r.ref.ProjectID, r.ref.Shot.ID)
 	if err != nil {
@@ -343,7 +437,8 @@ func (r *candidateRun) finish(ctx context.Context, mode domain.GenerationMode) j
 	all := append([]judged(nil), r.outcomes...)
 	slices.SortFunc(all, func(a, b judged) int { return a.number - b.number })
 
-	pick, judgedAny := bestTake(all)
+	eff, template := r.sc.policy.Effective(), r.sc.policy.Template
+	pick, judgedAny := bestTake(all, func(res domain.JudgeResult) bool { return res.Accepted(eff, template) })
 	if !judgedAny {
 		pick = all[0]
 	} else if err := o.gens.MarkAIPick(bg, shot.ID, pick.takeID); err != nil {

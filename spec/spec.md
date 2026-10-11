@@ -140,7 +140,7 @@ DELIVERY
 | References | URL / Image / Video |
 | Additional Instruction | 任意 |
 
-入力項目が不足している場合、AIは可能な範囲で自動補完する。
+必須 7 項目（Content Type / Objective / Subject / Target / Duration / Aspect Ratio / Mood）が不足している場合、AI は自動補完せず 1 つずつ質問し、ユーザーが値を答えるか「AIに任せる」を選ぶまで PLANNING は始まらない。Assets / References / Additional Instruction は任意（§23.1）。
 
 ## 4.3 AUTO Pipeline
 
@@ -190,6 +190,8 @@ Final QC
 Delivery
 ```
 
+> **実装の範囲**: Orchestrator が自動で進めるのは Brief → Producer → Writer → Director → Storyboard（Scene / Shot Planning、Project は PLANNING → VISUAL_DESIGN）までである。Art Director 以降（Reference Pack・Keyframe・Image / Video Generation）は Shot 単位でユーザーが起動し、起動した Shot では AI Video Judge → Repair / Retake → AI Pick が AUTO MODE で連鎖する。AUTO MODE では、トランクの全 Shot にファイル付き Selected Take が揃うと Rough Cut の作成と Editor Judge が自動で始まる。確認ポイントを通過したあと（承認カードの回答後、または確認不要の設定で AUDIO に入ったあと）は Audio と Final QC まで自動で進む。承認カードが未応答のとき、Editor Judge が Re-edit のとき、Final QC が FAIL のときはそこで止まる（Editor Judge が `need_shot` のときは、AUTO MODE では追加 Shot の要求が自動で始まり、Retry Policy の範囲で繰り返し、上限に達したら Escalation で止まる。MANUAL ではユーザーが要求する）。Export は READY の動画に対するユーザーの操作である。Project 全体を一括で生成する段は持たない。
+
 ---
 
 ## 4.4 Confirmation Levels
@@ -207,21 +209,22 @@ AUTO MODEでは、人間が確認する頻度を選択できる。
 標準ポイント：
 
 1. Concept / Script
-2. Main Visual / Character / Product
-3. Rough Cut
-4. Final
+2. Rough Cut
+3. Final
+
+> Main Visual / Character / Product の確認は、Art Director 以降が Shot 単位の手動起動であり、承認カードを出す箇所が無いため標準ポイントに含めない。
 
 ### CUSTOM CHECK
 
-ユーザーが確認ポイントを自由設定する。
+ユーザーが確認ポイントを自由設定する。選べるのは、パイプラインが承認カードを出す Script・Rough Cut・Final（`script` / `rough_cut` / `final`）。
 
 例：
 
-- キャラクターデザインのみ確認
 - Scriptのみ確認
-- 商品Key Visualのみ確認
+- Rough Cutのみ確認
 - Finalのみ確認
-- 各Scene完成時に確認
+
+> キャラクターデザイン・商品Key Visual・各Scene完成時の確認（`character_design` / `product_key_visual` / `scene_complete`）と Main Visual（`main_visual`）は、該当する成果物の完了を検知して承認を求める段が無いため、選択肢に出さない。Art Director 以降の自動実行を実装する際に追加する。
 
 ---
 
@@ -244,6 +247,8 @@ AUTO MODEでは、人間が確認する頻度を選択できる。
 > Take Bの演技は残して、カメラだけTake Cに近づけて。
 
 > 最初の2秒はこのTakeを使って、その後だけ撮り直して。
+
+> **実装の範囲**: 4 つ目の例（「Take B の演技は残して、カメラだけ Take C に近づけて」）のように、別々の Take の要素（演技とカメラなど）を取り出して組み合わせる指示は未対応。Command Interpreter は Take を参照できず、Shot の現行 Spec からの再生成になる（Take を組み合わせる操作は §14 の Partial Take Use による区間の合成だけ。DIRECTOR の指示で構造化できる操作は §24 Example 4）。
 
 ## 5.2 Scene / Shot / Take Hierarchy
 
@@ -305,6 +310,8 @@ DIRECTOR MODEでも、すべてをユーザーが操作する必要はない。
 | Music | AUTO |
 
 これにより、例えば「カメラだけ自分で決めて、残りはAI」という制作が可能になる。
+
+> **実装の対応範囲（Editing / Music / Dialogue）**: Editing が MANUAL / LOCK の Shot は、Rough Cut を作り直しても（`POST /projects/:id/edit/rough-cut`）ユーザーが編集したクリップ（In / Out・字幕・Transition）をそのまま残し、Editor Agent の Pace / Hook / CTA Timing / Caption の調整もそのクリップには行わない。Music が MANUAL / LOCK の Project は、音声を作り直しても（`POST /projects/:id/audio/generate`）直前の Audio Timeline の BGM を引き継ぎ、BGM の再計画・再生成（と課金）をしない。Story が MANUAL / LOCK の Project は、Shot の完了後も State Extractor が World State の Story（`scene/character_goal/known_information/previous_event`）を更新しない（MANUAL は AI による更新だけを止める）。Dialogue は Writer が PLANNING で書く脚本のセリフであり、Shot が存在した後に AI がセリフを書き換える経路が無いため、常に変更されない（Audio Director は脚本のセリフをそのまま読む）。
 
 ---
 
@@ -401,7 +408,7 @@ Dynamic Camera
 
 **Quality Mode**
 
-複数Candidateを並列生成し、JudgeがBest Takeを選択。
+複数Candidateを並列生成し、JudgeがBest Takeを選択。予算が 3 Take 分あれば Stability First / Acting First / Dynamic Camera の 3 戦略すべて。1〜2 本だけ収まるときは先頭からその本数だけ生成し、1 本も収まらなければ生成しない（402）。
 
 **Balanced Mode**
 
@@ -410,6 +417,8 @@ Dynamic Camera
 **Economy Mode**
 
 最小生成回数を優先し、重大問題のみRetake。
+
+> **起動の経路（実装）**: モードは Quality Policy で決まる（MAX QUALITY→Quality、BALANCED→Balanced、FAST→Economy）。Shot カードの「生成」、Continue、Branch、追加撮影（Editor）、Director の再生成は、AI Video Judge が構成済みで Prompt が LOCK されていなければ Candidate 生成（`POST /shots/:id/generate/candidates` と同じ処理）を起動する。Judge が無い、または Spec 済みの Shot の Prompt が LOCK されているときは、Best Take を選べない／Spec を作り直せないため単発の生成（`POST /shots/:id/generate`）になる。`/shots/:id/generate` を直接呼ぶと、常に単発の生成である。 Candidate は撮影戦略ごとに Spec を書き直すが、LOCK の部分と指示で保持する部分に加えて、指示が無いときは MANUAL の部分（ユーザーが指定した値）も変えない（指示があるときの MANUAL は、指示が変えない限り保持するようプランナーに伝える）。戦略の指示は MANUAL の部分には及ばない。
 
 ---
 
@@ -469,6 +478,12 @@ project_world:
 
 各Shot完了後にAIが最終状態を抽出し、World Stateとの差分を更新する。
 
+実装では「Shot 完了」を「Shot の Take を生成し終えた時点」とし、通常の生成と Repair の再生成では抽出は AI Video Judge の判定を待たない（Candidate Generation は Best Take を選ぶために Judge を待ち、その後に抽出する）。State Extractor の入力は Take の映像ではなく、その Take を生成した Canonical Shot Spec・Scene 情報・現在の World State（と LOCK）である。したがって World State は、採用された Take の映像から読み取った最終状態ではなく、生成を要求した Spec から推定した「その Shot が終わったときの状態」になる。
+
+- 通常の生成では、Take を 1 本以上作れた時点で 1 回抽出する。Candidate Generation（Quality / Balanced）では、選ばれた Candidate の Spec から抽出する。
+- Judge が FAIL にして撮り直す場合（Repair）は、Shot Spec が変わる Repair（Prompt 修正・Partial Regeneration）の Take を生成した直後にもう一度抽出し、新しい `world_state_version` を追記する。Judge で FAIL になった Take の Spec から追記された版も消さない（World State は追記のみで、版は履歴として残る。`spec/architecture/er.md` §4）。
+- 抽出に失敗しても Take の生成は失敗させない（World State は更新されず、次の Shot は現在の World State から始まる）。
+
 ```text
 Previous State
       +
@@ -491,7 +506,7 @@ Next Shot
 
 - **Location State**: `time`（時間帯）・`lighting_state`・`weather` は State Extractor が Shot 完了ごとに更新する（更新対象は、その Shot の Canonical Shot Spec が指す Location のみ）。次の Shot の Prompt Planner が最新の World State を入力にすることで Shot・Scene をまたいで引き継がれる。`layout_reference` はライブラリ（§10.1）の画像をユーザーが割り当てる項目で、AI は変更しない。いずれもユーザーが編集・LOCK できる
 - **属性単位の LOCK**: World State の項目ごとに AUTO / LOCK を切り替える（MANUAL は使わない。ユーザーが直接編集した値を守りたいときは LOCK）。LOCK 対象は、Character が編集項目（`hairstyle/wardrobe/voice/personality/emotion/position/current_action`）と `identity`、Product が編集項目（`material/orientation/condition`）と `geometry`・`label`、Location が編集項目（`time/lighting_state/weather`）と `layout_reference`、Camera（`lens/position/angle/movement`）と Story（`scene/character_goal/known_information/previous_event`）の全項目。LOCK 項目は State Extractor が diff に含めず、`ApplyStateDiff` も書き込まず、ユーザー編集は 423 になる
-- **LOCK 違反の判定**: AI Video Judge は、Shot が使う Character / Product / Location の LOCK を次の評価軸に対応付け、その軸の Issue が severity medium 以上なら LOCK 違反とし、スコア・確信度に関係なく Take を FAIL にする（§13）。`identity` → `character_identity`・`face`、`wardrobe/hairstyle` → `character_consistency`、`geometry` → `product_geometry`、`label` → `logo_text_accuracy`、`orientation/material/condition` → `product_accuracy`、Location の `time/lighting_state` → `lighting`、`weather/layout_reference` → `background_consistency`
+- **LOCK 違反の判定**: AI Video Judge は、Shot が使う Character / Product / Location の LOCK を次の評価軸に対応付け、その軸の Issue が severity medium 以上なら LOCK 違反とし、スコア・確信度に関係なく Take を FAIL にする（§13）。ただし顔の数値評価（`face_identity_drift`）は FAIL 閾値を割った連続（severity high）だけを LOCK 違反とし、警告閾値だけを割った連続（severity medium）は違反にしない（§12.4）。`identity` → `character_identity`・`face`、`wardrobe/hairstyle` → `character_consistency`、`geometry` → `product_geometry`、`label` → `logo_text_accuracy`、`orientation/material/condition` → `product_accuracy`、Location の `time/lighting_state` → `lighting`、`weather/layout_reference` → `background_consistency`。Shot 自身に LOCK したパラメータ（`PUT /shots/:id/locks`）も同様に対応付ける: Character Identity → `character_identity`・`face`、Product Geometry → `product_geometry`、Acting → `acting`、Camera → `camera_motion`、Lighting → `lighting`（Dialogue・Prompt・Video Model・Take Selection・Editing は評価軸を持たないため対象外）
 
 ## 9.4 Notes（制作メモ、M2）
 
@@ -564,11 +579,11 @@ Reference Pack の素材を Shot・Scene をまたいで再利用するための
 
 ### 検索
 
-名前とタグの部分一致（`q`、大文字小文字を区別しない）、種別（`kind`）、タグの完全一致（`tag`）で絞り込む。新しい登録順に並べる。
+名前とタグの部分一致（`q`）、種別（`kind`）、タグの完全一致（`tag`）で絞り込む。`q` と `tag` は大文字小文字を区別しない（ASCII 以外の英字・アクセント付き文字・キリル文字も同様）。新しい登録順に並べる。
 
 ### 再利用
 
-- **Shot への追加（ピン留め）**: ライブラリの画像を Shot の Reference Pack に加える。同じ種別・同じ名前の参照が Pack にあれば置き換える。ピン留めした参照は Reference Pack の再生成でも残り、再生成しない（Art Director が同じ種別・名前の参照を計画しても新たに生成せず、ピン留めした画像を使う。コストは発生しない）
+- **Shot への追加（ピン留め）**: ライブラリの画像を Shot の Reference Pack に加える。同じ種別・同じ名前の参照が Pack にあれば置き換える。ただし Pack には Style と Lighting が各 1 枚なので、この 2 種別は名前に関係なく種別だけで置き換える（Art Director の Style は名前を持たない）。ピン留めした参照は Reference Pack の再生成でも残り、再生成しない（Art Director が同じ種別・名前の参照（Style / Lighting は種別だけ）を計画しても新たに生成せず、ピン留めした画像を使う。コストは発生しない）
 - **World State への割り当て**: Character の `face_reference` / `body_reference`、Product の `geometry_reference` / `label_reference`、Location の `layout_reference` に、同じ種別のライブラリ画像を割り当てる。割り当てた画像は、同じ名前の Character / Product / Location の Reference Pack 生成で（`face` / `geometry` / `layout` を）新たに生成せずに使い、AI Video Judge の顔参照と画像生成の入力にも使う。対応する LOCK（後述）が掛かっている項目への割り当ては拒否する
 - **削除**: ライブラリから外す。画像そのものと、すでに Shot に付いた参照は残る
 
@@ -597,6 +612,14 @@ Target First / Last Frame
 Quality Policy
 Cost Policy
 ```
+
+Previous Final Frame / Target First / Last Frame は、現状では次のように扱う（実装の現状に合わせた記述）。
+
+- **First Frame**: Reference Pack の Keyframe（Art Director が用意した生成画像）だけを動画モデルの First Frame として渡す。ユーザーが選んだ画像を First Frame にする経路は無い。Model Adapter がモデルごとに送信する（Kling 3.0 `image`、Seedance 2.0 `first_frame`）。Seedance 2.0 の API は First Frame（と Last Frame）と自由な参照画像（`reference_image`、上限 9 枚）を同じリクエストに混在させられない（排他のシナリオ）ので、Keyframe があるときは First Frame だけを送り、Reference Pack の他画像は送らない。Reference Reinforcement だけは Keyframe を外して他画像（`reference_image`）を送る。Kling 3.0 と Runway Gen-4.5 は自由な参照画像を受け取らないので、First Frame だけを送る（Last Frame は送らない。下の Last Frame の項）。Generation Orchestrator のモデル選択は、Keyframe があるとき First Frame に対応するモデルを適合（fit）で優先する。
+- **Previous Final Frame**: 前の Shot の最終フレームを ffmpeg で取り出して次の Shot の First Frame にする処理は行わない。`continuity.start_from_previous_final_state: true` は、Prompt に「前の Shot の最終状態から始まる」という文を加え、World State（前 Shot までの変化）と Judge の `scene_continuity` 評価で連続性を担保する。また、この指定がある Shot ではモデル選択の Continuity 軸の重みを上げる。
+- **Last Frame**: モデル側（Kling 3.0 `image_tail`・Seedance 2.0 `last_frame`）は送信に対応しているが、Shot Spec に Last Frame 指定の項目がないため、現状は渡さない。
+
+前の Shot の最終フレームを First Frame にする機能、Last Frame の指定、および First / Last Frame のユーザー指定画像は未実装（将来の拡張）。`kind=keyframe` の画像を Reference Library へ登録することはできない（§10.1）。
 
 出力：
 
@@ -690,14 +713,14 @@ repair_strategy:
 Judge の Face / Character Identity 評価を補うローカル計測。Shot 間・Episode 間の顔のブレを、定性評価の見逃しなく検知するために用いる。
 
 - **基準**: World State の Character の `face_reference`（Reference Pack）
-- **手順**: Take のフレームをサンプリング → 顔検出 → 顔埋め込み → 参照顔とのコサイン類似度を算出。1フレームに複数の顔がある場合は各 Character の参照顔と照合して割り当てる
-- **出力**: Judge Result の `metrics.face_identity`（Character 別の `similarity_mean` / `similarity_min` / `sampled_frames` / `undetected_ratio`）。閾値割れが連続した区間は `face_identity_drift` Issue（`time_range` / `frames` 付き）として出力する
+- **手順**: Take のフレームをサンプリング → 顔検出 → 顔埋め込み → 参照顔とのコサイン類似度を算出。計測対象は Shot Spec の Character（`shot_spec.character`）1 人で、Shot の他の Character の顔は計測しない。1フレームに複数の顔がある場合は、対象の Character の参照顔に最も近い顔を割り当てる
+- **出力**: Judge Result の `metrics.face_identity`（対象 Character の `similarity_mean` / `similarity_min` / `sampled_frames` / `undetected_ratio`。配列だが現状の要素は 1 つ）。閾値割れが連続した区間は `face_identity_drift` Issue（`time_range` / `frames` 付き）として出力する
 - **欠測**: 顔を検出できないフレーム（後ろ向き・遮蔽・極小）は欠測として扱い、FAIL 判定に含めない。`undetected_ratio` が高く数値評価が成立しない Take は、定性評価（Gemini）のみで判定する
-- **閾値**: 警告 / FAIL の2段階の設定値（ハードコード禁止）。Reference Pack 内の参照画像同士の類似度分布を基準にキャリブレーションし、具体値は実測で決定する
+- **閾値**: 警告 / FAIL は、その Character の参照画像同士の類似度分布から決める（ソースコードの固定値では決めない）。顔が取れた参照が 2 枚以上あり、参照同士の平均コサイン類似度がキャリブレーション下限（Judge 設定 `min_calibration_similarity`）以上のとき、警告閾値は平均 × `calibration_warn_scale`、FAIL 閾値は平均 × `calibration_fail_scale` とする（スケールは Judge 設定で、閾値そのものは分布から出る）。参照が 1 枚、または分布が使えない（参照が 2 枚未満、または平均が下限未満）ときは数値の警告 / FAIL を出さない（`calibrated = false`、`evaluated = false`）。類似度は記録し、合否は定性評価に任せる
 - **LOCK 連動**: Character Identity が LOCK のとき、FAIL 閾値を割った Take は総合スコアに関係なく FAIL とする（§13）
 - **Repair**: `face_identity_drift` は Reference Reinforcement を優先候補とする
 - **Series**: Episode をまたいでも Series 正本の `face_reference` を基準に計測する（F-29）
-- **実行**: ローカル実行。顔画像は外部へ送信しない。モデルのライセンス（商用利用可否）と Go 単一バイナリでの推論ランタイムは実装時に確認する（`spec/architecture/model-adapters.md` §4.5, §8）
+- **実行**: ローカル実行。顔画像は外部へ送信しない。YuNet / SFace と ONNX Runtime（purego、CGO なしの Go 単一バイナリ）は M1 で検証済み（`spec/architecture/model-adapters.md` §10.1）。残る確認は SFace の学習データの権利関係（同 §8）。Windows では ONNX Runtime のバインディングが対応しないため数値評価は使えず、定性評価にフォールバックする（`spec/requirements/non-functional.md` §1）
 
 ---
 
@@ -742,7 +765,7 @@ PASS
 
 ### Retry Policy の適用（M1）
 
-- Max retries per Shot は、新しい Take を作った再生成系の Repair の数で数える。Max cost per Shot は Shot の予算上限（`shot_budget_ceiling`）で、次の再生成の見積りが上限を超えるなら再生成しない。上限に達したら Escalation（チャットのカード）で人間に判断を求める
+- Max retries per Shot は、新しい Take を作った再生成系の Repair の数と、Prompt Candidate Generation が作った Take の数（最初の 1 本を除く）の合計で数える。Max cost per Shot は Shot の予算上限（`shot_budget_ceiling`）で、その Shot のコスト台帳の累計（それまでの Take・Reference Pack・Keyframe の分を含む）に次の再生成の見積りを足した額が上限を超えるなら再生成しない（Project の予算上限も、Project の累計に見積りを足した額で同じように検査する）。上限に達したら Escalation（チャットのカード）で人間に判断を求める
 - Minimum acceptance score は、Judge が付けた Production Template の軸別点数の総合点と各軸の最低点に適用する。LOCK 違反・Critical constraints・上限判定は決定的ルールで行い、LLM や Jev を経由しない
 - 戦略は決定的ルールで候補を絞り、決まらないときだけ Repair Agent（LLM）が選ぶ（`face_identity_drift` は Reference Reinforcement を優先）。Jev は M1 ではシャドー実行のみ（`spec/architecture/model-adapters.md` §4.5・§11）
 - Partial Regeneration は、Judge の `preserve`（良かった部分）とLOCK された部分を保ったまま Shot 全体を作り直す（M1・実装済み）。M2 ではこれに、問題のあった時間範囲だけを差し替える「つなぎ込み」を加える。動画生成モデルはクリップ全体しか作れないため、区間だけの再生成は「Shot 全体を新しい Take として作る → 修復元の Take の問題区間だけをその Take の同じ区間に差し替えた Take を、もう 1 本新しい Take として足す」ことで実現する。判定は §13 の下の「Partial Regeneration の範囲（M1 と M2）」を正とする
@@ -762,6 +785,7 @@ PASS
 - 区間は 0.3 秒未満にならないよう広げ、0.3 秒未満の間隔しかない区間は 1 つにまとめる。先頭・末尾に 0.3 秒未満しか元の映像が残らないときはその部分も再生成した映像にする。区間が Shot のほとんどを占めて元の映像が残らないとき、Take が短すぎるとき、必要な部品が 8 個（Partial Take Use の上限）を超えるときは、つながずに Shot 全体の Take だけを残す
 - ffmpeg が無いときはつなぎ込めない。Repair は Shot 全体の Take だけを作り（M1 と同じ）、DIRECTOR MODE の区間指定の再生成は「ffmpeg が必要」と返して何も作らない
 - つないだ Take は自動で Judge される（AUTO MODE の Repair / Retake Loop はそれも含めて続ける）
+- つないだ Take の Prompt version とモデルは、最初の区間の Take のものを引き継ぐ（Partial Take Use も同じ）。Judge はその Prompt version の Shot Spec で判定し、つないだ区間の由来は `model_parameters.segments` と `regenerated_take_id` で辿る。区間ごとの Prompt version は持たない
 - DIRECTOR MODE の区間指定の再生成は、ユーザーが求めた操作なので Retry Policy の再試行回数には数えない（予算上限は適用する）。元の Take は、ユーザーが選んだ Take、なければ AI Pick、なければ最新の（除外されていない）Take
 
 ---
@@ -811,6 +835,8 @@ AIは最終フレームだけでなく以下を解析する。
 - Dialogue
 - Music State
 
+実装では、Continue Agent への入力は Brief・Scene/Shot の目的・Storyboard・Canonical Shot Spec・World State のテキストに加え、ffmpeg が使えるときは起点にする Take（選択済みの Take、なければ AI Pick、なければ最新の却下されていない Take）の**実際の最終フレーム**の画像である。画像と Shot Spec が食い違うときは画像を正とする。ffmpeg が無い、または最終フレームを取り出せないときは、Shot Spec と World State のテキストだけから解析する（Continue は失敗させない）。次の Shot の First Frame は、この最終フレームにはならない。Continue は追加した Shot の Reference Pack を作らないので、First Frame は他の Shot と同じく、その Shot で Reference Pack を作って Art Director の Keyframe ができたときだけ送られる（§11）。
+
 その上で次の展開候補を提示できる。
 
 ```text
@@ -822,6 +848,8 @@ C. 突然照明が消える
 D. 自由に指示する
 E. AIに任せる
 ```
+
+実装では、候補は 1〜3 件で、重複・空・100 文字を超える候補は捨てられるため 3 件に満たないことがある。その場合、自由指示と「AIに任せる」の記号は最後の候補の次の記号から振り直す（候補 2 件なら C が自由指示、D が「AIに任せる」）。
 
 選択後、World Stateを引き継いで次Shot / Sceneを生成する。
 
@@ -852,7 +880,7 @@ Shot 12
 - 商品違い
 - ターゲット別クリエイティブ
 
-Branch作成時点のWorld StateをSnapshotとして保存する。
+Branch作成時ではなく分岐点（Branch Point）のWorld StateをSnapshotとして保存し、Branch専用のWorld Stateの版として持つ。
 
 ---
 
@@ -940,6 +968,8 @@ ACTION
 Audio Director AgentはScene Emotionと編集テンポを参照する。
 
 映像尺変更時には必要に応じて音楽・Narration・SEを再構成する。
+
+Loudness は全プラットフォーム共通で −14 LUFS / −1.5 dBTP 固定で正規化する。Brief の配信先に応じたプラットフォーム別の目標（Platform Optimization）は未実装（将来の拡張）。
 
 ---
 
@@ -1050,7 +1080,6 @@ Orchestratorは制作全体の状態機械として機能する。
 Project
 ├── Brief
 ├── Production Template
-├── User Preferences
 ├── Confirmation Policy
 ├── Budget / Quality Policy
 ├── World State
@@ -1076,6 +1105,8 @@ Project
 └── Exports[]
 ```
 
+利用者の好みや運用方針は、「User Preferences」という別の項目としては持たない。確認の好みは Confirmation Policy（§4）が、予算・品質・リトライの好みは Budget / Quality Policy（§25）が保持する。
+
 ---
 
 # 22. Core State Machine
@@ -1085,9 +1116,9 @@ DRAFT
  ↓
 PLANNING
  ↓
-VISUAL_DESIGN
+AWAITING_APPROVAL (optional: 脚本の確認ポイント)
  ↓
-AWAITING_APPROVAL (optional)
+VISUAL_DESIGN
  ↓
 GENERATING
  ↓
@@ -1102,11 +1133,15 @@ EDIT_JUDGING
  ├ RE_EDIT → EDITING
  └ PASS
       ↓
+AWAITING_APPROVAL (optional: Rough Cut の確認ポイント)
+      ↓
 AUDIO
       ↓
 FINAL_QC
  ├ FAIL → Relevant Stage
  └ PASS
+      ↓
+AWAITING_APPROVAL (optional: Final の確認ポイント)
       ↓
 READY
       ↓
@@ -1115,7 +1150,9 @@ EXPORTED
 
 ユーザーは任意の段階でDIRECTOR MODEに入り、状態を修正できる。
 
-AWAITING_APPROVAL に遷移するのは、確認ポイントの Approval カードと Escalation カードのみとする。Notes の昇格提案カード（`ref_type=note_promotion`、§9.4）は非ブロッキングで、Core State Machine の状態を変えない。
+> **Project 状態と Shot 状態（実装の範囲）**: 上の状態遷移のうち、Project の状態として実際に遷移するのは DRAFT → PLANNING → VISUAL_DESIGN（Orchestrator）、確認ポイントでの AWAITING_APPROVAL、および EDITING 以降（EDIT_JUDGING・AUDIO・FINAL_QC・READY・EXPORTED）である。EDITING の開始は `POST /projects/:id/edit/rough-cut` だけではない。ユーザーが Rough Cut を作る／編集したときに加え、AUTO MODE ではトランクの全 Shot に Selected Take が揃った時点で Rough Cut と Editor Judge が自動で始まり EDITING に入る。開始時、VISUAL_DESIGN からは GENERATING → JUDGING → EDITING を一括で辿る（全 Shot に Selected Take があることが前提）。確認ポイント通過後の AUDIO と Final QC も AUTO MODE では自動で進み、Export はユーザー操作である。GENERATING / JUDGING / REPAIRING は Shot 単位（`shot.state`、§13）で進み、Shot の生成・Judge・Repair は Shot ごとに並行して起動されるため、Project 全体の状態としては遷移させない（Project は VISUAL_DESIGN のまま）。例外は Reshoot Loop の追加 Shot（Project を GENERATING にする）と、Escalation への回答後（Project は REPAIRING になり、Editor Judge／編集操作で EDITING へ戻る）である。
+
+図の AWAITING_APPROVAL は確認ポイント（脚本・Rough Cut・Final）の位置を示す。AWAITING_APPROVAL に遷移するのは、確認ポイントの Approval カードと Escalation カードのみとする。ただし Escalation カードで AWAITING_APPROVAL に入れるのは、状態遷移表にその遷移がある状態（PLANNING〜EDITING 系・FINAL_QC など）のときだけである。DRAFT・AUDIO・READY・EXPORTED で出た Shot 単位の Escalation（書き出し後の Repair 上限到達など）はカードを投稿するだけで Project の状態を変えず、そのカードは確認ポイントを待たせず、回答しても REPAIRING にはならない。Notes の昇格提案カード（`ref_type=note_promotion`、§9.4）は非ブロッキングで、Core State Machine の状態を変えない。
 
 ---
 
@@ -1123,11 +1160,11 @@ AWAITING_APPROVAL に遷移するのは、確認ポイントの Approval カー�
 
 ## 23.1 Chat Workspace（標準画面）
 
-標準画面は1プロジェクト＝1本のチャットスレッドとする。ユーザーの操作は原則すべて、このスレッドへの発言とスレッド内カードへのボタン操作で完結する。Scene/Shot/Take の階層、Inspector、Take比較、タイムライン、Branch は補助ビュー（§23.3）であり、使わなくても最後まで制作できる。
+標準画面は1プロジェクト＝1本のチャットスレッドとする。ユーザーの操作は原則すべて、このスレッドへの発言とスレッド内カードへのボタン操作で完結する。Scene/Shot/Take の階層、Inspector、Take比較、タイムライン、Branch は補助ビュー（§23.3）であり、使わなくても制作を進められる。ただし書き出し（Export）は補助ビュー「編集 / 書き出し」から行う（ヘッダーに Export ボタンはない）。
 
 ```text
 ┌────────────────────────────────────────────────────┐
-│ PROJECT: Serum Commercial     [ ⋯ 補助ビュー ] Export │
+│ PROJECT: Serum Commercial               [ ⋯ 補助ビュー ] │
 ├────────────────────────────────────────────────────┤
 │ あなた: 美容液の縦型15秒CMを作りたい。上品な雰囲気で │
 │                                                    │
@@ -1142,8 +1179,10 @@ AWAITING_APPROVAL に遷移するのは、確認ポイントの Approval カー�
 │                                                    │
 │ AI: Scene 02 を生成しました。                       │
 │     ┌──────────────────────────────┐              │
-│     │ ▶ Take 2（AI Pick / 0.91）    │              │
+│     │ ▶ Take 2（動画プレーヤー）    │              │
 │     └──────────────────────────────┘              │
+│ AI: Take 2 の Judge 結果: PASS（信頼度 0.91）       │
+│     AI Pick: Take 2 を採用しました。               │
 │                                                    │
 │ あなた（上のカードに返信）: 商品に寄って。          │
 │   ラベルは固定して、高級感を強めて                  │
@@ -1154,35 +1193,35 @@ AWAITING_APPROVAL に遷移するのは、確認ポイントの Approval カー�
 ```
 
 - **Brief は会話で作る**: 最初の発言から Creative Brief を抽出し、不足項目は AI が質問する（選択肢ボタンと「AIに任せる」を併記）。確定した Brief は補助ビューで確認・編集できる
-- **確認ポイントはスレッド内カード**: Confirmation Level で設定した確認ポイント（脚本/Main Visual/Rough Cut/Final 等）と Escalation は、承認カードとして表示する。ボタン（承認 / 修正を依頼）か、自然言語の返答で応答できる。応答があるまで Core State Machine は AWAITING_APPROVAL に留まる（§22。Notes の昇格提案カードを除く）
+- **確認ポイントはスレッド内カード**: Confirmation Level で設定した確認ポイント（脚本/Rough Cut/Final）は、承認カードとして表示する（Escalation は承認カードではなく、§23.2 の別カードである）。ボタン（承認 / 修正を依頼）か、自然言語の返答で応答できる。返答が承認になるのは、前後の空白と句読点（。 . ! ！）を除き大文字小文字を区別せず、承認の語（「承認」「承認します」「承認です」「OK」「okay」「はい」「いいね」「いいです」「問題ない」「問題なし」「LGTM」「お願いします」）に全文が一致するときだけで、それ以外の返答は本文を添えた修正依頼になる（「いいけどもう少し明るく」も修正依頼）。応答があるまで Core State Machine は AWAITING_APPROVAL に留まる（§22。Notes の昇格提案カードを除く）
 - **発言の対象**: 指示の対象 Scene/Shot/Take は、カードへの返信（引用）で明示するか、直前の文脈から AI が解決する。解決できない場合は AI が聞き返す。§24 の Command Interpreter がこの解決を含めて構造化操作へ変換する
-- **MODE / Quality**: 入力欄の下に小さく置く。AUTO では AI が主導し、DIRECTOR では指示した箇所だけを直して待機する。切替はいつでも可能で、状態は保持される
+- **MODE / Quality**: 入力欄の下に小さく置く。AUTO では AI が主導し、DIRECTOR では指示した箇所だけを直して待機する（DRAFT の間の発言は、メモの依頼を除き Brief への回答として扱う）。切替はいつでも可能で、状態は保持される
 - **添付**: 画像・動画をドラッグ&ドロップまたは［＋］で添付でき、Assets/References として Brief に取り込まれる
-- **非同期**: 生成・Judge・Repair の進捗はスレッド内の進捗カードにリアルタイム表示される。入力は生成中も可能
+- **非同期**: 生成・Repair の進捗はスレッド内の進捗カードにリアルタイム表示される。Judge は Take ごとに自動で走るため進捗カードは出さず、実行中は Shot カードの JUDGING 表示（Shot 進捗 WebSocket）で示し、完了時に結果を発言として投稿する。入力は生成中も可能
 
 ## 23.2 スレッド内カード
 
 | カード | 内容 | 操作 |
 |--------|------|------|
-| Question | Brief 補完・曖昧な指示の聞き返し | 選択肢ボタン / 自由入力 / 「AIに任せる」 |
-| Approval | 確認ポイントの成果物（脚本・Main Visual・Rough Cut・Final 等）。M2 では Notes の World State 昇格提案（§9.4）も同じカードで提示する。昇格提案は非ブロッキング | 承認 / 修正を依頼（昇格提案では「修正を依頼」は却下） |
+| Question | Brief 補完・Continue の次の方向の確認。DIRECTOR MODE の曖昧な指示の聞き返し（対象 Shot が決まらないなど）は Question カードにせず通常のテキストで返し、ユーザーは Take カードへの返信か「Scene 1 の Shot 2」のような次の発言で答える | 選択肢ボタン / 自由入力 / 「AIに任せる」 |
+| Approval | 確認ポイントの成果物（脚本・Rough Cut・Final）。M2 では Notes の World State 昇格提案（§9.4）も同じカードで提示する。昇格提案は非ブロッキング | 承認 / 修正を依頼（昇格提案では「修正を依頼」は却下） |
 | Keyframe | Keyframe / Reference Pack 画像 | 拡大、返信で修正指示 |
-| Take | 動画プレーヤー、Judge 要約、Take 状態（AI Pick 等） | 再生、返信で指示、Take比較を開く |
-| Progress | 生成・Judge・Repair の進捗 | なし（自動更新） |
-| Escalation | Retry Policy 上限到達などで AI が判断を求める内容 | 選択肢ボタン / 自由入力 |
+| Take | 動画プレーヤー（Judge の Issue を時間軸のマーカーで表示）と生成の要約（モデル・解像度・秒数）。スレッドは追記のみなので、Judge が結果を保存するとサーバーはその Take のカードの更新（`card.updated`）を通知して、ライブ中のスレッドでもマーカーを描き直す。Judge 要約と Take 状態（AI Pick / 採用 / 除外）はカードには載せず、Judge が結果を保存するたびに別の発言として投稿する（「Shot N · Take X の Judge 結果: PASS/FAIL（信頼度）」と、AI Pick が変わったときの「AI Pick: Take X を採用/おすすめ」）。Take ごとの最新の状態は Take 比較で確認する | 再生、返信で指示、Take比較を開く |
+| Progress | 生成・Repair の進捗（Judge の進捗は Shot カード側、結果は発言で通知） | なし（自動更新） |
+| Escalation | Retry Policy 上限到達などで AI が判断を求める内容。回答（選択肢ボタン / 自由入力）は記録されるだけで自動実行されない。回答後は（Project がこの回答待ちで AWAITING_APPROVAL にいたとき）REPAIRING に戻り、AI は「この判断は自動では実行されません」と返すので、ユーザーが設定の変更・Take の採用・Shot の指示の修正を画面から行う | 選択肢ボタン / 自由入力 |
 
 ## 23.3 補助ビュー
 
-チャットの横に開く/別ページで開くビューで、スレッド内カードや［⋯］メニューから到達する。いずれも操作結果は同じ Project の状態に反映され、スレッドにも発言またはカードとして記録される。
+チャットの横に開く/別ページで開くビューで、スレッド内カードや［⋯］メニューから到達する。いずれも操作結果は同じ Project の状態に反映される。スレッドに発言またはカードとして記録されるのは、Scene・Shot の追加、Brief の更新と Confirmation Level の設定、Quality Policy・予算上限・Production Template の変更、編集・音声・書き出しの各工程（Editor / Audio / Export）、Review Response の取り込み、Take の部分採用（つなぎ込み）、DIRECTOR の指示、AUTO ⇄ DIRECTOR のモード切替（通知の発言）、Continue による次の Shot・Scene の作成で、Take の採用/除外、LOCK の変更、Shot Spec の手動編集、World State の編集・復元、Branch の作成・改名、Notes、Brand Constraint の操作はスレッドには記録されない（各ビューの表示と履歴で確認する）。
 
-- **Inspector**（選択中 Shot の詳細）: Shot Objective / Duration / Character / Acting / Camera / Lighting / Product / Continuity / References / Prompt / Generation Model / Take List / Judge Results / Locks。各項目は AUTO / MANUAL / LOCK を切替可能
+- **Inspector**（選択中 Shot の詳細）: Shot Objective / Duration / Character / Acting / Camera / Lighting / Product / Continuity / References / Generation Model / Take List / Judge Results / Locks。モデル別プロンプトは Inspector に常設せず、各 Take の「生成の経緯」（Generation Trace、`GET /takes/:id/trace`）で確認する。各項目は AUTO / MANUAL / LOCK を切替可能
 - Take 比較、Timeline、Branch ツリー、World State、Notes（M2、§9.4）、Cost、Settings
 
 ---
 
 # 24. Natural Language Director Commands
 
-自然言語入力をCommand Interpreterが構造化操作へ変換する。入力はチャット画面（§23.1）の発言で、対象 Scene/Shot/Take はカードへの返信または直前の文脈から解決し、解決できない場合は聞き返す。
+自然言語入力をCommand Interpreterが構造化操作へ変換する。入力はチャット画面（§23.1）の発言で、対象 Scene/Shot/Take はカードへの返信または直前の文脈から解決し、解決できない場合は聞き返す（通常のテキストで返す。§23.2）。チャットの発言を解釈するのは DIRECTOR MODE（企画が始まった後 = Project の状態が DRAFT でないとき。DRAFT の間は対象になる Scene/Shot が無いので解釈せず、Brief が揃っても DIRECTOR のままなら AUTO に切り替えるまで企画は始まらない）と、どのモードでもメモの依頼語を含む発言だけで、AUTO MODE の指示は受けない（AI は返信しない。DIRECTOR MODE への切替は画面のモード切替から行う）。
 
 ### Example 1
 
@@ -1219,6 +1258,8 @@ Generate 3 narrative continuations
 > 商品をあと1秒長く見せて。
 
 AIが文脈から、編集変更で済むか追加Shotが必要かを判断する。
+
+> **実装の範囲**: Command Interpreter が構造化できる操作は、ロック設定・Shot の再生成・部分再生成・モード切替・ノート作成・Branch 作成のみで、チャットの発言から Edit Timeline（クリップの尺など）の変更や追加 Shot の要求は導かない。これらは、タイムラインエディタでの編集（`PUT /edit-timelines/:id`）、Editor Judge の NEED_SHOT が出す追加 Shot の提案（Reshoot Loop、`POST /edit-timelines/:id/request-additional-shot`）から行う。この Example 4 の発言には「その操作にはまだ対応していません」と返す。
 
 ### Example 5（M2）
 
@@ -1409,7 +1450,7 @@ JSON ファイル 1 つ（`format=mam-review-response`・`version`・`response_i
 
 ### レビューの状態
 
-レビュー依頼の状態は、レビュアー表示名ごとの最新の応答から決める: 応答が無ければ `pending`（未回答）、全員の最新が `approved` なら `approved`（承認済み）、1 人でも `changes_requested` なら `changes_requested`（修正依頼あり）。承認はオーナーへの意思表示であり、Project の状態遷移（§22）や Final Export をブロック/解除しない。応答を取り込むと、Chat Workspace のスレッドに AI の発言として「レビュー結果（表示名・判定・コメント件数）」が記録される（§23.3）。
+レビュー依頼の状態は、レビュアー表示名（前後の空白は無視する）ごとの最新の応答から決める。最新とは応答の作成日時（`created_at`、レビュアーが書いた順）が最も新しいもので、同時刻なら後に取り込んだもの（取り込む順序が前後しても、古い版が新しい版を上書きしない）。応答が無ければ `pending`（未回答）、全員の最新が `approved` なら `approved`（承認済み）、1 人でも `changes_requested` なら `changes_requested`（修正依頼あり）。承認はオーナーへの意思表示であり、Project の状態遷移（§22）や Final Export をブロック/解除しない。応答を取り込むと、Chat Workspace のスレッドに AI の発言として「レビュー結果（表示名・判定・コメント件数）」が記録される（§23.3）。
 
 ### 共有物に含めないもの（`spec/requirements/non-functional.md` §5）
 
@@ -1468,7 +1509,7 @@ Review Package と Review Response は、DB の行やファイルをそのまま
 | 完成した動画 | 状態が `READY` / `EXPORTED` の Project、または書き出し（`export`）がある Project |
 | 書き出し済み | `export` 行がある Project |
 | 計測対象の Shot | Take を 1 つ以上持つ Shot |
-| 採用された Shot | `shot.selected_take_id` がある Shot（AUTO では Judge を通過した AI Pick、DIRECTOR ではユーザーの選択） |
+| 採用された Shot | `shot.selected_take_id` がある Shot（AUTO では Judge を通過し Minimum acceptance score を満たした AI Pick、DIRECTOR ではユーザーの選択） |
 | 最初の Take | Shot の最も古い Take。その最初の Judge 結果を「最初の判定」とする |
 | 最新の判定 | Take の最も新しい `judge_result` |
 | 人間の介入（Human Intervention） | ユーザーが生成の中身を手で操作した記録（§28.3）。承認カードの「承認」、モード切替、閲覧は含まない |
@@ -1500,7 +1541,7 @@ Review Package と Review Response は、DB の行やファイルをそのまま
 
 | `kind` | 記録するタイミング | 上書き（`override`） |
 |-------|------------------|---------------------|
-| `generate` | ユーザーが Take のない Shot の生成を依頼した（`POST /shots/:id/generate` ほか、DIRECTOR の指示） | しない |
+| `generate` | ユーザーが Take のない Shot の生成を依頼した（`POST /shots/:id/generate` ほか、DIRECTOR の指示、Continue の確認で追加した Shot、Branch の最初の Shot） | しない |
 | `regenerate` | ユーザーが Take のある Shot の再生成を依頼した | Judge を通過した（除外されていない）Take が既にあるとき |
 | `repair` | ユーザーが Take の Repair を依頼した（`POST /takes/:id/repair`、DIRECTOR の部分再生成） | しない |
 | `select_take` | ユーザーが Take を選んだ | AI Pick が別の Take のとき |
@@ -1512,7 +1553,7 @@ Review Package と Review Response は、DB の行やファイルをそのまま
 | `request_changes` | 承認カード（チェックポイント）で「変更を依頼」した | する |
 | `switch_to_director` | AUTO の Project を DIRECTOR MODE に切り替えた | しない（人間の介入にも数えない） |
 
-AUTO のパイプラインが自分で行う生成・Judge・Repair・選択は記録しない（`repair_action` / `take` から読み取る）。
+AUTO のパイプラインが自分で行う生成・Judge・Repair・選択は記録しない（`repair_action` / `take` から読み取る）。`lock_change` は Shot / Project のパラメータの LOCK だけを数え、World State の属性の LOCK と World State・Shot Spec の過去版への復元（§29.4）は、この表に無いので記録しない（介入数の対象外）。
 
 ### 28.4 表示と外部送信
 

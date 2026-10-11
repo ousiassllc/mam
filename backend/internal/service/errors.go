@@ -3,7 +3,11 @@ package service
 import (
 	"errors"
 	"fmt"
+	"net/http"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector"
+	"github.com/ousiassllc/mam/backend/internal/agent/llm"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
@@ -18,6 +22,8 @@ var (
 	ErrBusy = errors.New("service: shot is being generated")
 	// ErrJudgeBusy means the Take is already being judged. HTTP 409.
 	ErrJudgeBusy = errors.New("service: take is being judged")
+	// ErrNoVideo means the Take has no video file to evaluate. HTTP 409.
+	ErrNoVideo = errors.New("service: take has no video")
 	// ErrNotJudged means the Take has no Judge result to repair from. HTTP 409.
 	ErrNotJudged = errors.New("service: take has not been judged")
 	// ErrAccepted means the Take passed the Judge and the minimum scores of the Retry Policy, so there is
@@ -29,6 +35,9 @@ var (
 	ErrUnavailable = errors.New("service: generation is not available")
 	// ErrLocked means the change would touch a field the user has LOCKed. HTTP 423.
 	ErrLocked = errors.New("service: field is locked")
+	// ErrRateLimited means an external model API answered 429 (a Model Adapter, the Reasoning LLM or the
+	// audio vendors). An *AIError wrapping such an answer matches it. HTTP 429.
+	ErrRateLimited = errors.New("service: external model API rate limit")
 	// ErrBrandViolation means the request breaks a LOCK Brand / Safety Constraint of the Project. HTTP 403.
 	ErrBrandViolation = domain.ErrBrandViolation
 )
@@ -73,6 +82,21 @@ type AIError struct {
 
 func (e *AIError) Error() string { return "ai request failed: " + e.Reason }
 func (e *AIError) Unwrap() error { return e.Err }
+
+// Is makes errors.Is(err, ErrRateLimited) hold when the failure was a 429 from an external model API.
+func (e *AIError) Is(target error) bool { return target == ErrRateLimited && rateLimited(e.Err) }
+
+// rateLimited reports whether err is, or wraps, a 429 answer of the Reasoning LLM, a Model Adapter
+// vendor or an audio vendor.
+func rateLimited(err error) bool {
+	var (
+		api *llm.APIError
+		ap  *audiodirector.ProviderError
+	)
+	return modeladapter.RateLimited(err) ||
+		(errors.As(err, &api) && api.Status == http.StatusTooManyRequests) ||
+		(errors.As(err, &ap) && ap.Status == http.StatusTooManyRequests)
+}
 
 func invalid(field, format string, args ...any) error {
 	return &ValidationError{Field: field, Message: fmt.Sprintf(format, args...)}

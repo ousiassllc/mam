@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector"
@@ -65,6 +66,9 @@ func (s *EditorService) GenerateAudio(ctx context.Context, projectID, branchID s
 			return EditorView{}, err
 		}
 	}
+	if err := s.fixMusic(ctx, projectID, branchID, &in); err != nil {
+		return EditorView{}, err
+	}
 	clones, err := s.voices.List(ctx, projectID)
 	if err != nil {
 		return EditorView{}, err
@@ -74,15 +78,45 @@ func (s *EditorService) GenerateAudio(ctx context.Context, projectID, branchID s
 		in.Voices[c.Speaker] = c.VoiceID
 	}
 
+	in.RunID = domain.NewID()
 	tl, err := s.audio.Produce(ctx, in)
 	if err != nil {
 		return EditorView{}, audioError(err)
 	}
 	if _, err := s.editors.SaveAudioTimeline(context.WithoutCancel(ctx), projectID, branchID, tl); err != nil {
+		// No Audio Timeline refers to the files of the run: they are not kept (the cost ledger is).
+		_ = s.audio.DiscardRun(in)
 		return EditorView{}, notFound(err)
 	}
 	s.announce(ctx, projectID, audioSummary(tl, branchID != ""))
 	return s.View(ctx, projectID, branchID)
+}
+
+// fixMusic holds the BGM when the Project's Music is MANUAL or LOCK (spec/spec.md §6): the Audio
+// Director carries over the BGM of the latest Audio Timeline, whose files are still there, instead
+// of planning and making it again.
+func (s *EditorService) fixMusic(ctx context.Context, projectID, branchID string, in *audiodirector.Input) error {
+	locks, err := s.locks.ProjectLocks(ctx, projectID)
+	if err != nil {
+		return err
+	}
+	if locks.Mode(domain.ParamMusic) == domain.LockAuto {
+		return nil
+	}
+	in.MusicFixed = true
+	prev, err := s.editors.LatestAudioTimeline(ctx, projectID, branchID)
+	if errors.Is(err, repository.ErrNotFound) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	for _, c := range prev.Timeline.Clips {
+		if c.LayerOf() == domain.LayerBGM && s.fileExists(c.Path) {
+			in.FixedBGM = append(in.FixedBGM, c)
+		}
+	}
+	return nil
 }
 
 // audioSummary is the chat message after the Audio Director finished.
@@ -94,6 +128,7 @@ func audioSummary(tl domain.AudioTimeline, branch bool) string {
 	}
 	if tl.MixPath == "" {
 		sb.WriteString("（セリフも Take の音声もなく、足す音もないため、無音の動画になります）。")
+		writeSkippedAudio(&sb, tl.Skipped)
 		return sb.String()
 	}
 	var layers []string
@@ -116,19 +151,22 @@ func audioSummary(tl domain.AudioTimeline, branch bool) string {
 		fmt.Fprintf(&sb, "、見積コスト $%.2f", tl.EstimatedCost)
 	}
 	sb.WriteString("）。")
-	if n := len(tl.Skipped); n > 0 {
-		var notes []string
-		for _, sk := range tl.Skipped {
-			if sk.Reason == domain.SkipPolicy {
-				continue
-			}
+	writeSkippedAudio(&sb, tl.Skipped)
+	return sb.String()
+}
+
+// writeSkippedAudio lists the layers the Audio Director could not make and why (spec/api/endpoints.md);
+// the layers the Quality Policy chose not to pay for are not failures and stay out.
+func writeSkippedAudio(sb *strings.Builder, skipped []domain.SkippedAudio) {
+	var notes []string
+	for _, sk := range skipped {
+		if sk.Reason != domain.SkipPolicy {
 			notes = append(notes, skippedText(sk))
 		}
-		if len(notes) > 0 {
-			sb.WriteString("\n作れなかった音:\n・" + strings.Join(notes, "\n・"))
-		}
 	}
-	return sb.String()
+	if len(notes) > 0 {
+		sb.WriteString("\n作れなかった音:\n・" + strings.Join(notes, "\n・"))
+	}
 }
 
 func skippedText(sk domain.SkippedAudio) string {
@@ -197,11 +235,12 @@ func (s *EditorService) audioScenes(ctx context.Context, projectID, branchID str
 func (s *EditorService) videoClips(ctx context.Context, tl domain.EditTimeline) ([]audiodirector.VideoClip, error) {
 	starts := tl.Starts()
 	clips := make([]audiodirector.VideoClip, 0, len(tl.Clips))
+	sources, err := s.loadSources(ctx, clipTakeIDs(tl.Clips))
+	if err != nil {
+		return nil, err
+	}
 	for i, c := range tl.Clips {
-		src, ok, err := s.takeSource(ctx, c.TakeID)
-		if err != nil {
-			return nil, err
-		}
+		src, ok := sources.take(ctx, c.TakeID)
 		if !ok {
 			return nil, conflict("クリップ %d の Take のファイルが見つかりません。編集し直してください", i+1)
 		}
@@ -222,13 +261,13 @@ func audioError(err error) error {
 		return &AIError{Reason: "ElevenLabs の API キーが設定されていません（設定画面で elevenlabs のキーを登録してください）", Err: err}
 	case errors.As(err, &be):
 		return conflict("セリフの音声合成に約 $%.2f かかりますが、残りの予算が $%.2f です。予算上限を引き上げてから再実行してください", be.Needed, be.Remaining)
-	case errors.As(err, &pe) && pe.Status == 429:
+	case errors.As(err, &pe) && pe.Status == http.StatusTooManyRequests:
 		return &AIError{Reason: "ElevenLabs のレート制限に達しました。しばらく待ってから再実行してください", Err: err}
 	case errors.As(err, &pe):
 		return &AIError{Reason: "ElevenLabs の呼び出しに失敗しました", Err: err}
 	case errors.Is(err, media.ErrUnavailable):
 		return ErrUnavailable
-	case errors.Is(err, llm.ErrInvalidOutput), errors.Is(err, llm.ErrNoAPIKey), errors.Is(err, llm.ErrTimeout), errors.As(err, &api):
+	case errors.Is(err, llm.ErrInvalidOutput), errors.Is(err, llm.ErrNoAPIKey), errors.Is(err, llm.ErrTimeout), errors.Is(err, llm.ErrCircuitOpen), errors.As(err, &api):
 		return aiError(err) // the Audio Director's planner
 	}
 	return &AIError{Reason: "音声のミキシングに失敗しました: " + err.Error(), Err: err}
@@ -276,8 +315,11 @@ func (s *EditorService) CloneVoice(ctx context.Context, projectID, speaker, name
 	if err != nil {
 		return domain.VoiceClone{}, audioError(err)
 	}
-	clone, err := s.voices.Save(ctx, projectID, speaker, name, voiceID)
+	// The voice is billed once the vendor created it: it is stored even when the request is gone, and
+	// a failed save leaves its voice_id in the log (the vendor keeps the voice; it is not lost silently).
+	clone, err := s.voices.Save(context.WithoutCancel(ctx), projectID, speaker, name, voiceID)
 	if err != nil {
+		s.logger.Error("save the cloned voice failed", "project_id", projectID, "speaker", speaker, "voice_id", voiceID, "err", err)
 		return domain.VoiceClone{}, notFound(err)
 	}
 	return clone, nil

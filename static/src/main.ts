@@ -2,7 +2,12 @@ import htmx from 'htmx.org';
 import { initChatWorkspaces } from './chat';
 import { initShotProgress } from './shot';
 import { CSRF_HEADER, csrfToken } from './components/lib/api';
+import { lockDownHtmx } from './components/lib/htmx-config';
 import { swapsErrorResponse } from './components/lib/thread';
+import { requestFailureMessage, type RequestFailure } from './components/lib/errors';
+import { showToast } from './ajax';
+import { installHistorySnapshotHygiene } from './components/lib/history';
+import { dedupeToastsOnSwap, dismissToastsOnClick } from './components/lib/toast';
 
 // Attach the CSRF token (from <meta name="csrf-token">) to every HTMX request.
 document.addEventListener('htmx:configRequest', (event) => {
@@ -20,19 +25,23 @@ document.addEventListener('htmx:beforeSwap', (event) => {
   }
 });
 
-// The front end is served by the app itself: never let htmx call external hosts.
-htmx.config.selfRequestsOnly = true;
+// A request that got no swappable response (server down, timeout, a non-HTML error) would leave the
+// screen unchanged: say so.
+for (const type of ['htmx:responseError', 'htmx:sendError', 'htmx:timeout'] as const satisfies readonly RequestFailure[]) {
+  document.addEventListener(type, (event) => {
+    const xhr = (event as CustomEvent<{ xhr?: XMLHttpRequest }>).detail?.xhr;
+    showToast(requestFailureMessage(type, xhr?.status));
+  });
+}
 
-// Toasts disappear by themselves.
-new MutationObserver((records) => {
-  for (const record of records) {
-    for (const node of record.addedNodes) {
-      if (node instanceof HTMLElement && node.hasAttribute('data-toast')) {
-        setTimeout(() => node.remove(), 6000);
-      }
-    }
-  }
-}).observe(document.documentElement, { childList: true, subtree: true });
+lockDownHtmx(htmx.config);
+
+// Error toasts stay until their close button is pressed.
+dismissToastsOnClick();
+dedupeToastsOnSwap();
+
+// A history snapshot must not keep init markers or the connection notice (issue 112).
+installHistorySnapshotHygiene();
 
 // The Chat Workspace can arrive as a full page or as an HTMX fragment.
 document.addEventListener('DOMContentLoaded', () => {
@@ -47,15 +56,4 @@ document.addEventListener('htmx:load', (event) => {
 // Lit components.
 import './components/video-player/mam-video-player';
 import './components/take-comparator/mam-take-comparator';
-import './components/branch-tree/mam-branch-tree';
 import './components/timeline-editor/mam-timeline-editor';
-
-// mam-branch-tree: choosing a Branch loads its detail (with the link to its World State) into
-// #branch-detail; a rename (HX-Trigger: branches-changed) redraws the tree.
-document.addEventListener('branch-selected', (event) => {
-  const { detail_url: url } = (event as CustomEvent<{ detail_url: string }>).detail;
-  void htmx.ajax('get', url, { target: '#branch-detail', swap: 'innerHTML' });
-});
-document.addEventListener('branches-changed', () => {
-  for (const tree of document.querySelectorAll('mam-branch-tree')) void tree.load();
-});

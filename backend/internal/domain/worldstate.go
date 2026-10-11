@@ -135,7 +135,8 @@ type LockKey struct {
 	Field  string
 }
 
-// LockSet is the set of fields the user has LOCKed (lock.mode = 'lock', spec/spec.md §6).
+// LockSet is the set of fields held back from an editor: the ones the user has LOCKed (lock.mode = 'lock',
+// spec/spec.md §6), or, for what the State Extractor may not change, also the MANUAL Story.
 type LockSet map[LockKey]struct{}
 
 // Locked reports whether the field is LOCKed. The Story parameter of spec/spec.md §6 (the lock row
@@ -219,6 +220,10 @@ type ReferenceSlot struct {
 	Lock   string        // the lock attribute that freezes the slot
 	Column string        // the column of the entity table
 }
+
+// Field is the name of the slot in the World State snapshot (world_state_version.state): "face_reference",
+// "body_reference", "geometry_reference", "label_reference" or "layout_reference".
+func (s ReferenceSlot) Field() string { return s.Name + "_reference" }
 
 // ReferenceSlots lists every slot.
 func ReferenceSlots() []ReferenceSlot {

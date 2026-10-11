@@ -85,7 +85,7 @@ func TestEditorRepository_ReshootRoundsAreCountedPerSeriesAndAppliedOnce(t *test
 	require.NoError(t, err)
 	require.Len(t, pending, 1)
 	assert.Equal(t, second[0].ID, pending[0].ID)
-	all, err := repo.ListReshoots(ctx, f.projectID, "")
+	all, err := repo.ListReshoots(ctx, f.projectID)
 	require.NoError(t, err)
 	assert.Equal(t, domain.ReshootApplied, all[0].Status)
 	assert.Equal(t, ver.ID, all[0].AppliedEditTimelineVersionID)

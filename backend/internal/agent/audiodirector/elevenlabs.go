@@ -20,6 +20,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/httpclient"
 )
 
 // CredentialProvider is the credential.Store key of the ElevenLabs API key. One key serves the
@@ -73,6 +74,14 @@ type Speech struct {
 // Synthesizer turns a line of the script into speech. *ElevenLabs implements it.
 type Synthesizer interface {
 	Synthesize(ctx context.Context, line domain.VoiceLine) (Speech, error)
+}
+
+// KeyChecker is implemented by a provider that can tell without calling the vendor whether its
+// API key is stored. The Director asks before the Planner's paid model call, so a missing key
+// does not cost one on every attempt. *ElevenLabs implements it.
+type KeyChecker interface {
+	// CheckKey returns ErrNoAPIKey when no key is stored.
+	CheckKey() error
 }
 
 // Composer makes instrumental music of the given length from a prompt (ElevenLabs Music).
@@ -155,21 +164,16 @@ const (
 // maxSpeechBytes bounds one generated audio file.
 const maxSpeechBytes = 32 << 20
 
-// Doer is the part of *http.Client the adapters use.
-type Doer interface {
-	Do(*http.Request) (*http.Response, error)
-}
-
 // ElevenLabs is the ElevenLabs adapter: TTS, voice cloning, Music and Sound Effects.
 type ElevenLabs struct {
 	cfg    Config
 	keys   credential.Store
-	client Doer
+	client httpclient.Doer
 }
 
 // NewElevenLabs returns an ElevenLabs adapter. A nil client selects a plain http.Client; zero
 // fields of cfg take the DefaultConfig values.
-func NewElevenLabs(cfg Config, keys credential.Store, client Doer) *ElevenLabs {
+func NewElevenLabs(cfg Config, keys credential.Store, client httpclient.Doer) *ElevenLabs {
 	def := DefaultConfig()
 	fill := func(v *string, d string) {
 		if *v == "" {
@@ -189,9 +193,27 @@ func NewElevenLabs(cfg Config, keys credential.Store, client Doer) *ElevenLabs {
 		cfg.MusicTimeout = def.MusicTimeout
 	}
 	if client == nil {
-		client = &http.Client{}
+		client = httpclient.New()
 	}
 	return &ElevenLabs{cfg: cfg, keys: keys, client: client}
+}
+
+// CheckKey implements KeyChecker.
+func (e *ElevenLabs) CheckKey() error {
+	_, err := e.key()
+	return err
+}
+
+// key reads the API key: ErrNoAPIKey when none is stored.
+func (e *ElevenLabs) key() (string, error) {
+	key, err := e.keys.Get(CredentialProvider)
+	if errors.Is(err, credential.ErrNotFound) {
+		return "", ErrNoAPIKey
+	}
+	if err != nil {
+		return "", fmt.Errorf("read ElevenLabs API key: %w", err)
+	}
+	return key, nil
 }
 
 // Synthesize implements Synthesizer (model identifier elevenlabs-tts). A line with a VoiceID is
@@ -283,12 +305,9 @@ func (e *ElevenLabs) audio(ctx context.Context, timeout time.Duration, path stri
 
 // do posts body to the API and returns the answer of at most limit bytes.
 func (e *ElevenLabs) do(ctx context.Context, timeout time.Duration, path, contentType, accept string, body []byte, limit int64) ([]byte, error) {
-	key, err := e.keys.Get(CredentialProvider)
-	if errors.Is(err, credential.ErrNotFound) {
-		return nil, ErrNoAPIKey
-	}
+	key, err := e.key()
 	if err != nil {
-		return nil, fmt.Errorf("read ElevenLabs API key: %w", err)
+		return nil, err
 	}
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
@@ -326,8 +345,13 @@ func snippet(b []byte) string {
 	return s
 }
 
-// redact keeps the API key out of an error message.
+// redact keeps the API key and the request URL out of an error message: a transport error carries
+// the full URL (a signed output link, for one), which must not reach the saved skip detail or the chat.
 func redact(err error, key string) error {
+	var ue *url.Error
+	if errors.As(err, &ue) {
+		err = ue.Err
+	}
 	if key == "" {
 		return err
 	}

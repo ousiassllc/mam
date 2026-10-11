@@ -1,81 +1,22 @@
 package pages
 
 import (
-	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/layout"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
 )
 
-// SettingsPageData is everything the settings screen shows.
-type SettingsPageData struct {
-	Policy    organisms.PolicyFormData
-	Cost      domain.CostSummary
-	Storage   organisms.StoragePanelData
-	Brand     organisms.BrandConstraintListData
-	Templates organisms.BrandTemplatePanelData
-}
-
 // SettingsPage is GET /projects/:id/settings: Production Template, Quality/Cost Policy, budget, the
 // cost of the Project and its disk usage.
-templ SettingsPage(csrfToken string, d SettingsPageData) {
+templ SettingsPage(csrfToken string, d organisms.SettingsBodyData) {
 	@layout.AppLayout("設定: "+d.Policy.Project.Name, csrfToken) {
 		<main class="mx-auto flex max-w-3xl flex-col gap-8 p-8">
 			<div>
-				<a href={ templ.SafeURL("/projects/" + d.Policy.Project.ID) } class="text-sm text-neutral-400 hover:text-neutral-100">← チャットに戻る</a>
+				@atoms.ChatBackLink(d.Policy.Project.ID)
 				<h1 class="mb-1 mt-3 text-xl font-semibold">設定</h1>
 				<p class="text-sm text-neutral-400">{ d.Policy.Project.Name }</p>
 			</div>
-			@SettingsBody(d)
+			@organisms.SettingsBody(d)
 		</main>
 	}
-}
-
-// SettingsBody is the sections of the settings screen without the page frame.
-templ SettingsBody(d SettingsPageData) {
-	<div id="settings-body" class="flex flex-col gap-8">
-		@SettingsSection("Production Template", "選ぶと Judge / Editor の評価軸の優先度が切り替わります。") {
-			@organisms.ProductionTemplateForm(d.Policy)
-		}
-		@SettingsSection("Quality Policy", "FAST は少ない Take と高速モデル、BALANCED は標準、MAX QUALITY は複数 Take と厳格な判定。空欄の項目は Policy の既定値を使います。") {
-			@organisms.PolicyForm(d.Policy)
-		}
-		@SettingsSection("予算", "") {
-			@organisms.BudgetForm(d.Policy)
-		}
-		@SettingsSection("コスト", "") {
-			@organisms.CostSummaryPanel(d.Policy.Project.ID, d.Cost)
-		}
-		@SettingsSection("ディスク", "生成前に空き容量を見積もり、不足なら警告します。") {
-			@organisms.StoragePanel(d.Storage)
-		}
-		@SettingsSection("Brand / Safety Constraints", "ブランドガイドライン・禁止表現・免責表記などを登録します。Prompt 生成・AI Video Judge・Final QC のすべてで守らせ、LOCK の制約に違反した Take・成果物はスコアに関係なく不合格になります（Advisory は警告のみ）。") {
-			@organisms.BrandConstraintList(d.Brand)
-		}
-		@SettingsSection("Brand Templates", "制約のセットをテンプレートとして保存し、別の Project や Series の Episode を作るときに適用します。適用は制約のコピーで、テンプレートを更新・削除しても既存の Project には反映されません。") {
-			@organisms.BrandTemplatePanel(d.Templates)
-		}
-		@SettingsSection("プロジェクトバンドル", "プロジェクトのデータとアセットを 1 つの ZIP に書き出します。プロジェクト一覧の読み込みフォームから、この端末でも別の端末でも復元できます。") {
-			<div>
-				<a
-					href={ templ.SafeURL("/projects/" + d.Policy.Project.ID + "/bundle") }
-					download
-					hx-boost="false"
-					class="inline-flex items-center justify-center rounded-md border border-neutral-600 px-3 py-1.5 text-sm font-medium text-neutral-200 hover:bg-neutral-800"
-				>バンドルを書き出す（ZIP）</a>
-			</div>
-		}
-	</div>
-}
-
-// SettingsSection is one titled block of the settings screen.
-templ SettingsSection(title, description string) {
-	<section class="flex flex-col gap-3">
-		<div>
-			<h2 class="text-base font-semibold">{ title }</h2>
-			if description != "" {
-				<p class="text-sm text-neutral-400">{ description }</p>
-			}
-		</div>
-		{ children... }
-	</section>
 }

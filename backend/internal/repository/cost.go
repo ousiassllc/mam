@@ -41,9 +41,11 @@ func (r *CostRepository) Summary(ctx context.Context, projectID string) (domain.
 	sum.Project = unassigned
 
 	rows, err := r.db.Reader().QueryContext(ctx,
-		`SELECT s.id, s.order_index, s.title, COALESCE(sh.id, ''), COALESCE(sh.order_index, 0), COALESCE(sh.objective, '')
-		 FROM scene s LEFT JOIN shot sh ON sh.scene_id = s.id
-		 WHERE s.project_id = ? ORDER BY s.order_index, sh.order_index`, projectID)
+		`SELECT s.id, COALESCE(s.branch_id, ''), COALESCE(b.name, ''), s.order_index, s.title,
+		        COALESCE(sh.id, ''), COALESCE(sh.order_index, 0), COALESCE(sh.objective, '')
+		 FROM scene s LEFT JOIN branch b ON b.id = s.branch_id LEFT JOIN shot sh ON sh.scene_id = s.id
+		 WHERE s.project_id = ?
+		 ORDER BY COALESCE(s.branch_id, ''), s.order_index, s.id, sh.order_index`, projectID)
 	if err != nil {
 		return domain.CostSummary{}, fmt.Errorf("list scenes: %w", err)
 	}
@@ -51,7 +53,7 @@ func (r *CostRepository) Summary(ctx context.Context, projectID string) (domain.
 	for rows.Next() {
 		var sc domain.SceneCost
 		var sh domain.ShotCost
-		if err := rows.Scan(&sc.SceneID, &sc.OrderIndex, &sc.Title, &sh.ShotID, &sh.OrderIndex, &sh.Objective); err != nil {
+		if err := rows.Scan(&sc.SceneID, &sc.BranchID, &sc.BranchName, &sc.OrderIndex, &sc.Title, &sh.ShotID, &sh.OrderIndex, &sh.Objective); err != nil {
 			return domain.CostSummary{}, fmt.Errorf("scan scene: %w", err)
 		}
 		if n := len(sum.Scenes); n == 0 || sum.Scenes[n-1].SceneID != sc.SceneID {
@@ -102,8 +104,16 @@ func (r *CostRepository) ledgerByShot(ctx context.Context, projectID string) (ma
 
 // ProjectBudget returns the Project budget ceiling in USD (nil when none is set) and the money the
 // cost ledger holds for the Project: the actual cost of an entry when the vendor reported one, else
-// the estimate. It is what the Audio Director checks its spending against (F-22).
+// the estimate; plus what generations in flight have reserved (Reserve). It is what the Audio
+// Director checks its spending against (F-22).
 func (r *CostRepository) ProjectBudget(ctx context.Context, projectID string) (*float64, float64, error) {
+	reserved, _ := r.db.inflight.reserved(projectID, "") // before the ledger: see inflightSpend.reserved
+	ceiling, spent, err := r.ledgerProjectBudget(ctx, projectID)
+	return ceiling, spent + reserved, err
+}
+
+// ledgerProjectBudget is ProjectBudget without the reservations.
+func (r *CostRepository) ledgerProjectBudget(ctx context.Context, projectID string) (*float64, float64, error) {
 	var ceiling sql.NullFloat64
 	err := r.db.Reader().QueryRowContext(ctx, `SELECT project_budget_ceiling FROM project WHERE id = ?`, projectID).Scan(&ceiling)
 	if errors.Is(err, sql.ErrNoRows) {

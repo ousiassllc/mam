@@ -47,6 +47,10 @@ type Regeneration struct {
 	// Direction is a free-text direction of the director (English), for a regeneration the director
 	// asked for in DIRECTOR MODE (there are no Issues then).
 	Direction string
+	// Prepared is a Shot Spec already checked against LOCK brand constraints. When set, Regenerate
+	// does not ask the Prompt Planner again. NoteRefs are the notes that spec was planned from.
+	Prepared *domain.ShotSpec
+	NoteRefs []domain.NoteRef
 }
 
 // RegenerationStrategy plans the single Take of a repair: the strategy of the Quality Policy, with
@@ -93,7 +97,7 @@ func (o *Orchestrator) RegenerationStrategy(ctx context.Context, ref repository.
 	s.Primary, s.Fallback = primary, fallback
 	s.DurationSeconds = caps.SnapDuration(ref.Shot.Duration)
 	s.CostPerTake = cfg.VideoCost(primary, s.DurationSeconds)
-	if affordable(remainingBudget(budget), s.CostPerTake) == 0 {
+	if affordable(budget.Remaining(), s.CostPerTake) == 0 {
 		return Strategy{}, ErrBudgetExceeded
 	}
 	reason := fmt.Sprintf("different model: %s instead of %s", primary.Model, r.SourceModel)
@@ -150,17 +154,19 @@ func (o *Orchestrator) Regenerate(ctx context.Context, ref repository.ShotRef, r
 	spec := current
 	references := shot.References()
 	var noteRefs []domain.NoteRef // the notes the Planner was given; none when it did not run
-	switch r.Action {
-	case domain.RepairPrompt, domain.RepairPartialRegeneration:
+	switch {
+	case r.Prepared != nil:
+		spec, noteRefs = *r.Prepared, r.NoteRefs
+	case r.Action == domain.RepairPrompt || r.Action == domain.RepairPartialRegeneration:
 		if spec, noteRefs, err = o.reviseSpec(ctx, ref, policy, locks, brand, current, r); err != nil {
 			return "", err
 		}
-	case domain.RepairReferenceReinforce:
+	case r.Action == domain.RepairReferenceReinforce:
 		boost := boostedKinds(r)
 		if reinforced := reinforce(current, boost); len(domain.LockedChanges(locks, current, reinforced)) == 0 {
 			spec = reinforced
 		}
-		references = reinforceReferences(references, boost, strategy.Primary.Model)
+		references = reinforceReferences(references, boost)
 	}
 
 	if err := brand.CheckText(spec.BrandText()); err != nil {
@@ -178,6 +184,7 @@ func (o *Orchestrator) Regenerate(ctx context.Context, ref repository.ShotRef, r
 	if err != nil {
 		return "", err
 	}
+	job.PreferReferences = r.Action == domain.RepairReferenceReinforce
 	record, err := recordOf(strategy, job, "")
 	if err != nil {
 		return "", err
@@ -186,6 +193,7 @@ func (o *Orchestrator) Regenerate(ctx context.Context, ref repository.ShotRef, r
 	if err != nil {
 		return "", err
 	}
+	o.warnLowDisk(ctx, ref, strategy) // the repair's Take is made without start(), which warns for the other paths
 	title := fmt.Sprintf("Shot %d · %s", shot.OrderIndex+1, r.Action.Label())
 	takeID, err := o.makeTake(ctx, ref, pv, strategy, job, domain.TakeLineage{WorldStateVersion: world.Version, References: references}, title, policy.Effective().MaxGenerationTime, "")
 	if err != nil {
@@ -196,6 +204,40 @@ func (o *Orchestrator) Regenerate(ctx context.Context, ref repository.ShotRef, r
 		o.updateWorldState(ctx, ref, spec, takeID) // the Shot Spec changed, and so may the state it leaves
 	}
 	return takeID, nil
+}
+
+// PreparePartial revises the Shot Spec for a director's Partial Regeneration and checks the direction
+// and the spec against LOCK brand constraints. checked is false when the spec was not prepared (there
+// is nothing to revise, or the planner failed for a reason other than a brand violation): the job
+// then plans it and reports that failure. A brand violation is returned so nothing is queued.
+func (o *Orchestrator) PreparePartial(ctx context.Context, ref repository.ShotRef, r Regeneration) (spec domain.ShotSpec, notes []domain.NoteRef, checked bool, err error) {
+	brand, err := o.brandConstraints(ctx, ref.ProjectID)
+	if err != nil {
+		return domain.ShotSpec{}, nil, false, err
+	}
+	if err := brand.CheckText(r.Direction); err != nil {
+		return domain.ShotSpec{}, nil, false, err
+	}
+	current, ok := ref.Shot.CanonicalSpec()
+	if !ok {
+		return domain.ShotSpec{}, nil, false, nil
+	}
+	policy, err := o.policies.Get(ctx, ref.ProjectID)
+	if err != nil {
+		return domain.ShotSpec{}, nil, false, err
+	}
+	locks, err := o.gens.ShotLocks(ctx, ref.Shot.ID)
+	if err != nil {
+		return domain.ShotSpec{}, nil, false, err
+	}
+	spec, notes, err = o.reviseSpec(ctx, ref, policy, locks, brand, current, r)
+	if err != nil {
+		if errors.Is(err, domain.ErrBrandViolation) {
+			return domain.ShotSpec{}, nil, false, err
+		}
+		return domain.ShotSpec{}, nil, false, nil
+	}
+	return spec, notes, true, nil
 }
 
 // reviseSpec has the Prompt Planner revise the spec for the Issues of the failed Take. It also returns
@@ -356,20 +398,10 @@ func reinforce(spec domain.ShotSpec, boost []domain.ReferenceKind) domain.ShotSp
 }
 
 // reinforceReferences puts the References of the boosted kinds first (the model keeps the first ones
-// when it accepts fewer). A model that takes free reference images gets no Keyframe as first frame:
-// it reads either the frames or the references, and the references are what is being reinforced.
-func reinforceReferences(refs []domain.Reference, boost []domain.ReferenceKind, model domain.ModelName) []domain.Reference {
-	out := make([]domain.Reference, 0, len(refs))
-	dropKeyframe := false
-	if caps, ok := modeladapter.Capabilities(model); ok && caps.MaxReferenceImages > 0 {
-		dropKeyframe = slices.ContainsFunc(refs, func(r domain.Reference) bool { return r.Kind != domain.RefKeyframe })
-	}
-	for _, r := range refs {
-		if dropKeyframe && r.Kind == domain.RefKeyframe {
-			continue
-		}
-		out = append(out, r)
-	}
+// when it accepts fewer). Whether the Keyframe is left out is decided per model in modeladapter.Prepare
+// (VideoJob.PreferReferences), so a fail over model keeps the input it can use.
+func reinforceReferences(refs []domain.Reference, boost []domain.ReferenceKind) []domain.Reference {
+	out := slices.Clone(refs)
 	rank := func(k domain.ReferenceKind) int {
 		if i := slices.Index(boost, k); i >= 0 {
 			return i

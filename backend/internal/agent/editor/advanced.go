@@ -127,6 +127,9 @@ func paceCuts(in JudgeInput, p Profile) []cut {
 	}
 	var out []cut
 	for i, c := range in.Timeline.Clips {
+		if in.Shots[c.ShotID].EditingFixed {
+			continue // the user fixed this clip (Editing MANUAL / LOCK)
+		}
 		limit, criteria := p.MaxClipSeconds, "Pace"
 		if i == 0 && p.HookSeconds > 0 && (limit == 0 || p.HookSeconds < limit) {
 			limit, criteria = p.HookSeconds, "Hook"
@@ -151,7 +154,8 @@ func paceCuts(in JudgeInput, p Profile) []cut {
 // with a note for each change.
 //
 //   - Pace, Retention, Hook: a clip longer than the template allows is cut short from its end.
-//   - CTA Timing: a closing clip that is too short is extended, as far as its Take reaches.
+//   - CTA Timing: a closing clip that is too short is extended, as far as its Take reaches (to its end when it
+//     cannot get the full length).
 //   - Caption: a clip whose Shot speaks gets the spoken line as its caption.
 //
 // Product Exposure, Reaction Shot and Insert Shot need footage the cut may not have; the Editor
@@ -166,17 +170,20 @@ func Advance(in JudgeInput) (domain.EditTimeline, []string) {
 		clip.Out = round3(clip.In + c.to)
 		notes = append(notes, fmt.Sprintf("クリップ %d を %.1f 秒から %.1f 秒に短縮（%s）", c.index+1, was, clip.Length(), c.criteria))
 	}
-	if last := len(out.Clips) - 1; last >= 0 && p.MinCTASeconds > 0 {
+	if last := len(out.Clips) - 1; last >= 0 && p.MinCTASeconds > 0 && !in.Shots[out.Clips[last].ShotID].EditingFixed {
 		c := &out.Clips[last]
-		if want := c.In + p.MinCTASeconds; c.Length() < p.MinCTASeconds && (c.SourceSeconds == 0 || want <= c.SourceSeconds+1e-9) {
+		if c.Length() < p.MinCTASeconds && canExtend(*c) {
 			was := c.Length()
-			c.Out = round3(want)
+			c.Out = round3(extendedOut(*c, p.MinCTASeconds))
 			notes = append(notes, fmt.Sprintf("最後のクリップを %.1f 秒から %.1f 秒に延長（CTA Timing）", was, c.Length()))
 		}
 	}
 	if p.Captions {
 		for i := range out.Clips {
 			c := &out.Clips[i]
+			if in.Shots[c.ShotID].EditingFixed {
+				continue
+			}
 			if text := spoken(in.Shots[c.ShotID]); c.Caption == "" && text != "" {
 				c.Caption = captionOf(text)
 				notes = append(notes, fmt.Sprintf("クリップ %d にセリフの字幕を追加（Caption）", i+1))
@@ -184,6 +191,19 @@ func Advance(in JudgeInput) (domain.EditTimeline, []string) {
 		}
 	}
 	return out, notes
+}
+
+// canExtend tells whether the clip can run longer: its Take goes on after its Out (a Take of an
+// unknown length is taken to).
+func canExtend(c domain.EditClip) bool { return c.SourceSeconds == 0 || c.Out < c.SourceSeconds-1e-9 }
+
+// extendedOut is the Out that gives the clip want seconds, or the end of its Take when that comes first.
+func extendedOut(c domain.EditClip, want float64) float64 {
+	out := c.In + want
+	if c.SourceSeconds > 0 {
+		out = math.Min(out, c.SourceSeconds)
+	}
+	return out
 }
 
 // advancedFindings are the checks of the items the Production Template ranks. Findings an edit
@@ -203,7 +223,9 @@ func advancedFindings(in JudgeInput) []domain.EditorFinding {
 			Action:    fmt.Sprintf("クリップ %d を %.1f 秒に短くする", c.index+1, c.to),
 		})
 	}
-	if last := len(clips) - 1; p.MinCTASeconds > 0 && clips[last].Length() < p.MinCTASeconds-1e-9 {
+	// A closing clip that already runs to the end of its Take cannot be made longer by an edit, so
+	// asking for it again would never end: the Take is too short and that is not reported here.
+	if last := len(clips) - 1; p.MinCTASeconds > 0 && clips[last].Length() < p.MinCTASeconds-1e-9 && canExtend(clips[last]) && !in.Shots[clips[last].ShotID].EditingFixed {
 		out = append(out, domain.EditorFinding{
 			ClipIndex: last + 1,
 			Issue:     fmt.Sprintf("最後のクリップが %.1f 秒で、CTA を読み切れません（CTA Timing）", clips[last].Length()),
@@ -212,7 +234,7 @@ func advancedFindings(in JudgeInput) []domain.EditorFinding {
 	}
 	if p.Captions {
 		for i, c := range clips {
-			if c.Caption == "" && spoken(in.Shots[c.ShotID]) != "" {
+			if c.Caption == "" && !in.Shots[c.ShotID].EditingFixed && spoken(in.Shots[c.ShotID]) != "" {
 				out = append(out, domain.EditorFinding{
 					ClipIndex: i + 1,
 					Issue:     fmt.Sprintf("セリフのあるクリップ %d に字幕がありません（Caption）", i+1),

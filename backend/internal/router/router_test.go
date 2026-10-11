@@ -1,10 +1,13 @@
 package router_test
 
 import (
+	"bytes"
 	"context"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -34,9 +37,11 @@ func newEngine(t *testing.T) *gin.Engine {
 	svc := service.New(service.Deps{DB: db, Credentials: credential.NewKeyring()})
 	return router.New(svc, router.Options{
 		Static: fstest.MapFS{
-			"app.js":       {Data: []byte("console.log(1)")},
-			".secret":      {Data: []byte("x")},
-			"sub/inner.js": {Data: []byte("y")},
+			"app.js":           {Data: []byte("console.log(1)")},
+			".secret":          {Data: []byte("x")},
+			".hidden/file.txt": {Data: []byte("z")},
+			"sub/.git/config":  {Data: []byte("z")},
+			"sub/inner.js":     {Data: []byte("y")},
 		},
 	})
 }
@@ -120,15 +125,36 @@ func TestCSRF_RejectsUnsafeRequestsWithoutValidToken(t *testing.T) {
 	}))
 }
 
-func TestCSRF_AcceptsFormFieldForPlainForms(t *testing.T) {
+func TestCSRF_IgnoresTheBodyAndNeverBuffersAnUpload(t *testing.T) {
 	engine := newEngine(t)
 	c, token := bootstrap(t, engine)
+	tmp := t.TempDir()
+	t.Setenv("TMPDIR", tmp)
 
-	form := url.Values{middleware.CSRFFormField: {token}}
+	// The token in a form field is not accepted: the body is not read at all.
+	form := url.Values{"csrf_token": {token}}
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.AddCookie(c)
-	assert.Equal(t, http.StatusMethodNotAllowed, do(engine, req).Code, "passes CSRF; POST / is not routed")
+	assert.Equal(t, http.StatusForbidden, do(engine, req).Code)
+
+	// A multipart upload larger than gin's default 32 MiB form memory, valid cookie, no header:
+	// rejected before any parsing, so nothing is spilled to a temp file.
+	var body bytes.Buffer
+	w := multipart.NewWriter(&body)
+	part, err := w.CreateFormFile("file", "big.bin")
+	require.NoError(t, err)
+	_, err = part.Write(make([]byte, 33<<20))
+	require.NoError(t, err)
+	require.NoError(t, w.WriteField("csrf_token", token))
+	require.NoError(t, w.Close())
+	req = httptest.NewRequest(http.MethodPost, "/projects", &body)
+	req.Header.Set("Content-Type", w.FormDataContentType())
+	req.AddCookie(c)
+	assert.Equal(t, http.StatusForbidden, do(engine, req).Code)
+	entries, err := os.ReadDir(tmp)
+	require.NoError(t, err)
+	assert.Empty(t, entries, "no temp file for a request that failed CSRF")
 }
 
 func TestLoopbackOnly_RejectsForeignHostOriginAndClient(t *testing.T) {
@@ -170,6 +196,20 @@ func TestHealth_PageRouteAndHumaAPIRoute(t *testing.T) {
 	assert.JSONEq(t, `{"ok":true,"database":"ok"}`, rec.Body.String())
 }
 
+func TestHealth_DatabaseFailureIs503WithOKFalseOnBothRoutes(t *testing.T) {
+	keyring.MockInit()
+	db, err := repository.Open(context.Background(), filepath.Join(t.TempDir(), "mam.db"), nil)
+	require.NoError(t, err)
+	engine := router.New(service.New(service.Deps{DB: db, Credentials: credential.NewKeyring()}), router.Options{})
+	require.NoError(t, db.Close()) // Ping now fails
+
+	for _, path := range []string{"/healthz", "/api/v1/health"} {
+		rec := do(engine, httptest.NewRequest(http.MethodGet, path, nil))
+		assert.Equal(t, http.StatusServiceUnavailable, rec.Code, path)
+		assert.JSONEq(t, `{"ok":false,"database":"unavailable"}`, rec.Body.String(), path)
+	}
+}
+
 func TestAPI_ServesOpenAPIButNoExternalDocsPage(t *testing.T) {
 	engine := newEngine(t)
 
@@ -190,4 +230,8 @@ func TestStatic_ServesFilesButNotDotfilesOrListings(t *testing.T) {
 
 	assert.Equal(t, http.StatusNotFound, do(engine, httptest.NewRequest(http.MethodGet, "/static/.secret", nil)).Code)
 	assert.Equal(t, http.StatusNotFound, do(engine, httptest.NewRequest(http.MethodGet, "/static/sub/", nil)).Code)
+	for _, hidden := range []string{"/static/.hidden/file.txt", "/static/sub/.git/config", "/static/sub/../.hidden/file.txt"} {
+		assert.Equal(t, http.StatusNotFound, do(engine, httptest.NewRequest(http.MethodGet, hidden, nil)).Code, hidden)
+	}
+	assert.Equal(t, http.StatusOK, do(engine, httptest.NewRequest(http.MethodGet, "/static/sub/inner.js", nil)).Code)
 }

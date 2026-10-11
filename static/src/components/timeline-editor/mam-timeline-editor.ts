@@ -1,5 +1,6 @@
 import { LitElement, html, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { live } from 'lit/directives/live.js';
 import { get, put } from '../lib/api';
 import {
   CLIP_KIND_LABEL,
@@ -19,8 +20,8 @@ import {
   type EditLimits,
   type TransitionType,
 } from '../lib/edit-model';
+import { errorMessage } from '../lib/errors';
 import { createLogger } from '../lib/logger';
-import { errorMessage } from '../take-comparator/mam-take-comparator';
 import '../video-player/mam-video-player';
 
 const log = createLogger('timeline-editor');
@@ -92,6 +93,7 @@ export class MamTimelineEditor extends LitElement {
   @state() private dragIndex = -1;
   @state() private overIndex = -1;
 
+  private captionDraft: { index: number; text: string } | null = null;
   private loadToken = 0;
   private readonly onReload = () => void this.load();
 
@@ -114,53 +116,75 @@ export class MamTimelineEditor extends LitElement {
     if (changed.has('apiUrl')) void this.load();
   }
 
-  /** Loads the latest timeline again, dropping unsaved changes. */
-  async load(): Promise<void> {
+  /**
+   * Loads the latest timeline again, dropping unsaved changes. Resolves false when the request failed (the timeline
+   * on screen is then the old one); a load that a newer one superseded, or a 404 (no Rough Cut), is not a failure.
+   */
+  async load(): Promise<boolean> {
     const token = ++this.loadToken;
-    if (!this.apiUrl) return;
+    if (!this.apiUrl) return true;
+    let ok = true;
     try {
       const body = await get<EditTimelineBody>(this.apiUrl);
-      if (token !== this.loadToken) return;
+      if (token !== this.loadToken) return true;
       this.body = body;
       this.clips = withStarts(body.clips);
+      this.captionDraft = null;
       this.error = '';
     } catch (error) {
-      if (token !== this.loadToken) return;
-      this.body = null;
-      this.clips = [];
-      // 404: there is no Rough Cut yet, which is not an error to shout about.
-      this.error = (error as { status?: number }).status === 404 ? '' : errorMessage(error);
+      if (token !== this.loadToken) return true;
+      if ((error as { status?: number }).status === 404) {
+        // There is no Rough Cut (any more), which is not an error to shout about.
+        this.body = null;
+        this.clips = [];
+        this.captionDraft = null;
+        this.error = '';
+      } else {
+        // Any other failure says nothing about the timeline: keep the one on screen (and its unsaved edits).
+        this.error = errorMessage(error);
+        ok = false;
+      }
       log.warn('could not load the Edit Timeline', error);
     } finally {
       if (token === this.loadToken) this.loaded = true;
     }
+    return ok;
   }
 
   private get locked(): boolean {
     return this.readonly || (this.body?.readonly ?? true) || this.busy;
   }
 
+  /**
+   * Applies an edit. Every field is bound with `live()` (it compares with the DOM, not with the last render), so a
+   * re-render also writes the model's value back over what the user typed: an input the model clamped or refused
+   * shows the accepted value, whether or not the clips changed.
+   */
   private change(next: EditClip[]): void {
-    if (next === this.clips) return;
-    this.clips = next;
-    this.notice = '';
-    this.error = '';
+    this.captionDraft = null;
+    if (next !== this.clips) {
+      this.clips = next;
+      this.notice = '';
+      this.error = '';
+    }
+    this.requestUpdate();
+  }
+
+  /** Refuses an edit: shows why, and (re-render) puts the last accepted value back into the field. */
+  private refuse(clip: EditClip, problem: string): void {
+    this.error = `${clip.label}: ${problem}`;
+    this.requestUpdate();
   }
 
   private onTrim(index: number, field: 'in' | 'out', input: HTMLInputElement): void {
-    const raw = input.value;
     const body = this.body;
     const clip = this.clips[index];
     if (!body || !clip) return;
-    const value = Number.parseFloat(raw);
+    const value = Number.parseFloat(input.value);
     const inPoint = field === 'in' ? value : clip.in_point;
     const outPoint = field === 'out' ? value : clip.out_point;
     const problem = trimProblem(clip, inPoint, outPoint, body.limits);
-    if (problem) {
-      this.error = `${clip.label}: ${problem}`;
-      input.value = String(field === 'in' ? clip.in_point : clip.out_point); // back to the last accepted value
-      return;
-    }
+    if (problem) return this.refuse(clip, problem);
     this.change(setTrim(this.clips, index, inPoint, outPoint, body.limits));
   }
 
@@ -178,8 +202,8 @@ export class MamTimelineEditor extends LitElement {
     if (!body || !clip) return;
     const problem = captionProblem(input.value, body.limits);
     if (problem) {
-      this.error = `${clip.label}: ${problem}`;
-      return; // the text stays in the box so it can be shortened
+      this.captionDraft = { index, text: input.value }; // the text stays in the box so it can be shortened, until the next edit or load
+      return this.refuse(clip, problem);
     }
     this.change(setCaption(this.clips, index, input.value, body.limits));
   }
@@ -199,7 +223,11 @@ export class MamTimelineEditor extends LitElement {
     try {
       await put(body.save_url, toPayload(this.clips));
       this.busy = false;
-      await this.load();
+      if (!(await this.load())) {
+        // Saved, but the screen still shows the old version (unsaved changes, a save from it would be refused as stale): not "updated".
+        this.error = `保存は完了しましたが、最新の版の再読込に失敗しました。「変更を戻す」で再読込してください（${this.error}）`;
+        return;
+      }
       this.notice = '保存しました';
       this.dispatchEvent(new CustomEvent(TIMELINE_UPDATED_EVENT, { detail: { id: this.body?.id ?? '' }, bubbles: true, composed: true }));
     } catch (error) {
@@ -213,7 +241,9 @@ export class MamTimelineEditor extends LitElement {
     if (!this.loaded) return html`<p class="text-sm text-neutral-400" role="status">読み込み中…</p>`;
     const body = this.body;
     if (!body) {
-      return html`${this.renderError()}<p class="text-sm text-neutral-400" data-empty>
+      // Only a 404 (no error) means "no Rough Cut yet"; a failed first load shows its error alone.
+      if (this.error) return this.renderError();
+      return html`<p class="text-sm text-neutral-400" data-empty>
           Rough Cut がまだありません。各 Shot の採用 Take を選んでから「Rough Cut を作成」を押してください。
         </p>`;
     }
@@ -315,11 +345,11 @@ export class MamTimelineEditor extends LitElement {
       <div class="flex flex-wrap items-end gap-3 text-xs text-neutral-400">
         <label class="flex flex-col gap-1">
           開始（秒）
-          <input type="number" data-field="in" step="0.1" min="0" class="w-24 rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-neutral-100" .value=${String(c.in_point)} ?disabled=${locked} @change=${(e: Event) => this.onTrim(i, 'in', e.target as HTMLInputElement)} />
+          <input type="number" data-field="in" step="0.1" min="0" class="w-24 rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-neutral-100" .value=${live(String(c.in_point))} ?disabled=${locked} @change=${(e: Event) => this.onTrim(i, 'in', e.target as HTMLInputElement)} />
         </label>
         <label class="flex flex-col gap-1">
           終了（秒）
-          <input type="number" data-field="out" step="0.1" min="0" class="w-24 rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-neutral-100" .value=${String(c.out_point)} ?disabled=${locked} @change=${(e: Event) => this.onTrim(i, 'out', e.target as HTMLInputElement)} />
+          <input type="number" data-field="out" step="0.1" min="0" class="w-24 rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-neutral-100" .value=${live(String(c.out_point))} ?disabled=${locked} @change=${(e: Event) => this.onTrim(i, 'out', e.target as HTMLInputElement)} />
         </label>
         ${c.source_seconds ? html`<span>Take の長さ ${c.source_seconds.toFixed(1)} 秒</span>` : nothing}
         ${i === 0
@@ -327,14 +357,14 @@ export class MamTimelineEditor extends LitElement {
           : html`<label class="flex flex-col gap-1">
                 前のクリップからの切り替え
                 <select data-field="transition" class="rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-neutral-100" ?disabled=${locked} @change=${(e: Event) => this.onTransition(i, (e.target as HTMLSelectElement).value as TransitionType)}>
-                  ${body.transitions.map((v) => html`<option value=${v} ?selected=${v === t.type}>${TRANSITION_LABEL[v] ?? v}</option>`)}
+                  ${body.transitions.map((v) => html`<option value=${v} .selected=${live(v === t.type)}>${TRANSITION_LABEL[v] ?? v}</option>`)}
                 </select>
               </label>
               ${t.type === 'cut'
                 ? nothing
                 : html`<label class="flex flex-col gap-1">
                     長さ（秒）
-                    <input type="number" data-field="transition-seconds" step="0.05" min="0.1" max=${body.limits.max_transition_seconds} class="w-24 rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-neutral-100" .value=${String(t.seconds)} ?disabled=${locked} @change=${(e: Event) => this.onTransition(i, t.type, (e.target as HTMLInputElement).value)} />
+                    <input type="number" data-field="transition-seconds" step="0.05" min="0.1" max=${body.limits.max_transition_seconds} class="w-24 rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-neutral-100" .value=${live(String(t.seconds))} ?disabled=${locked} @change=${(e: Event) => this.onTransition(i, t.type, (e.target as HTMLInputElement).value)} />
                   </label>`}`}
       </div>
       <label class="flex flex-col gap-1 text-xs text-neutral-400">
@@ -345,7 +375,7 @@ export class MamTimelineEditor extends LitElement {
           maxlength=${body.limits.max_caption_runes * 2}
           placeholder="この区間に重ねる文字。空なら字幕なし"
           class="rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-neutral-100"
-          .value=${c.caption ?? ''}
+          .value=${live(this.captionDraft?.index === i ? this.captionDraft.text : (c.caption ?? ''))}
           ?disabled=${locked}
           @change=${(e: Event) => this.onCaption(i, e.target as HTMLTextAreaElement)}
         ></textarea>

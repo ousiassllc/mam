@@ -19,7 +19,7 @@ func (o *Orchestrator) updateWorldState(ctx context.Context, ref repository.Shot
 		o.logger.Warn("world state update skipped: read world state", "shot_id", ref.Shot.ID, "err", err)
 		return
 	}
-	locks, err := o.world.Locks(ctx, ref.ProjectID)
+	locks, err := o.world.AgentLocks(ctx, ref.ProjectID)
 	if err != nil {
 		o.logger.Warn("world state update skipped: read locks", "shot_id", ref.Shot.ID, "err", err)
 		return
@@ -29,7 +29,7 @@ func (o *Orchestrator) updateWorldState(ctx context.Context, ref repository.Shot
 		o.logger.Warn("world state update skipped: state extractor failed", "shot_id", ref.Shot.ID, "err", err)
 		return
 	}
-	// ApplyStateDiff judges the LOCKs again on the rows it writes.
+	// ApplyStateDiff judges the LOCKs (and MANUAL values) again on the rows it writes.
 	applied, version, err := o.world.ApplyStateDiff(ctx, ref.ProjectID, ref.Scene.BranchID, ref.Shot.ID, takeID, diff)
 	if err != nil {
 		o.logger.Warn("world state update failed", "shot_id", ref.Shot.ID, "err", err)

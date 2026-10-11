@@ -129,3 +129,25 @@ func TestValidateTakeSegments_RejectsWhatCannotBeComposed(t *testing.T) {
 func TestTakeLabel(t *testing.T) {
 	assert.Equal(t, []string{"A", "B", "Z", "27"}, []string{TakeLabel(0), TakeLabel(1), TakeLabel(25), TakeLabel(26)})
 }
+
+func TestPickAcceptedTake_ARejectedTakeDoesNotMakeTheOthersFallShortOfThePolicy(t *testing.T) {
+	scored := &TakeScores{80, 80, 80, 80}
+	takes := []TakeInfo{
+		{Take: Take{ID: "a", Status: TakeRejected}, Scores: scored, Verdict: JudgePass},
+		{Take: Take{ID: "b"}, Scores: scored, Verdict: JudgeFail},
+		{Take: Take{ID: "c"}, Scores: &TakeScores{90, 90, 90, 90}, Verdict: JudgeFail},
+	}
+	onlyA := func(id string) bool { return id == "a" }
+
+	id, passed, ok := PickAcceptedTake(takes, onlyA)
+	assert.True(t, ok)
+	assert.Equal(t, "c", id)
+	assert.False(t, passed)
+
+	id, _, _ = PickAcceptedTake(takes, func(id string) bool { return id == "b" })
+	assert.Equal(t, "b", id, "an accepted Take that is not rejected still narrows the pool")
+	id, _, _ = PickAcceptedTake(takes, nil)
+	assert.Equal(t, "c", id)
+	_, _, ok = PickAcceptedTake(takes[:1], nil)
+	assert.False(t, ok, "only a rejected Take: nothing to pick")
+}

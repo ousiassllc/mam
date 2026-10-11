@@ -8,6 +8,8 @@ package organisms
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
+import "github.com/ousiassllc/mam/backend/internal/web/atoms"
+
 // ProjectImportFormData is the state of the bundle import form.
 type ProjectImportFormData struct {
 	Error string
@@ -36,7 +38,13 @@ func ProjectImportForm(d ProjectImportFormData) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<form id=\"project-import-form\" class=\"mt-4 flex flex-wrap items-center gap-2 rounded-md border border-neutral-800 p-3 text-sm\" hx-post=\"/projects/import\" hx-encoding=\"multipart/form-data\" hx-target=\"this\" hx-swap=\"outerHTML\"><label for=\"project-import-file\" class=\"text-neutral-300\">プロジェクトバンドルを読み込む</label> <input id=\"project-import-file\" type=\"file\" name=\"bundle\" required accept=\".zip,application/zip\" class=\"text-xs\"> <button type=\"submit\" class=\"rounded-md border border-neutral-600 px-3 py-1.5 text-sm font-medium text-neutral-200 hover:bg-neutral-800\">読み込む</button> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<form id=\"project-import-form\" class=\"mt-4 flex flex-wrap items-center gap-2 rounded-md border border-neutral-800 p-3 text-sm\" hx-post=\"/projects/import\" hx-encoding=\"multipart/form-data\" hx-target=\"this\" hx-swap=\"outerHTML\"><label for=\"project-import-file\" class=\"text-neutral-300\">プロジェクトバンドルを読み込む</label> <input id=\"project-import-file\" type=\"file\" name=\"bundle\" required accept=\".zip,application/zip\" class=\"text-xs\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = atoms.Button(atoms.ToneNeutral, "読み込む", templ.Attributes{
+			"type": "submit",
+		}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -48,7 +56,7 @@ func ProjectImportForm(d ProjectImportFormData) templ.Component {
 			var templ_7745c5c3_Var2 string
 			templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(d.Error)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/project_import_form.templ`, Line: 23, Col: 68}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/project_import_form.templ`, Line: 27, Col: 68}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 			if templ_7745c5c3_Err != nil {

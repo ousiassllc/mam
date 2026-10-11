@@ -2,7 +2,9 @@ package service_test
 
 import (
 	"context"
+	"database/sql"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -91,7 +93,7 @@ func TestContinuePropose_PostsAQuestionCardWithTheAnalysisAndNextCandidates(t *t
 	assert.NotContains(t, body.Text, "オブジェクト", "a State the Shot does not show is left out")
 
 	// The analysis reads the World State the completed Shot left (F-16).
-	prompts := f.llm.users[llm.AgentDirector]
+	prompts := f.llm.prompts(llm.AgentDirector)
 	require.Len(t, prompts, 1)
 	assert.Contains(t, prompts[0], `emotion="anxious"`)
 	assert.Contains(t, prompts[0], "phone_call_ended")
@@ -137,11 +139,11 @@ func TestContinue_ChoosingACandidateAddsTheNextShotToTheSceneAndGeneratesItFromT
 	assert.Equal(t, []string{"主人公が振り返って走り出す", "ドアを開けて廊下を見る"}, f.shotObjectives(t))
 	f.waitGenerateJobs(t, 3)
 	// The chosen candidate (without its letter) and the World State reach the planners.
-	plan := f.llm.users[llm.AgentDirector][1]
+	plan := f.llm.prompts(llm.AgentDirector)[1]
 	assert.Contains(t, plan, "背後から声が聞こえる")
 	assert.NotContains(t, plan, "B. ")
 	assert.Contains(t, plan, `position="hallway_door"`)
-	planner := f.llm.users[llm.AgentPromptPlanner]
+	planner := f.llm.prompts(llm.AgentPromptPlanner)
 	require.Len(t, planner, 2)
 	assert.Contains(t, planner[1], "背後から声が聞こえる", "the direction is the additional instruction of the new Shot")
 	assert.Contains(t, planner[1], `emotion="anxious"`)
@@ -159,7 +161,7 @@ func TestContinue_LeavingItToTheAIOrWritingAFreeDirection(t *testing.T) {
 	_, err := f.svc.Chat.PostMessage(context.Background(), f.projectID, service.PostMessageInput{Content: domain.DelegateOption, ReplyToMessageID: card.ID})
 	require.NoError(t, err)
 	f.waitGenerateJobs(t, 3)
-	plan := f.llm.users[llm.AgentDirector][1]
+	plan := f.llm.prompts(llm.AgentDirector)[1]
 	assert.Contains(t, plan, "AI に任せる", "the AI is told to choose by itself")
 	assert.Len(t, f.shotObjectives(t), 2)
 
@@ -167,7 +169,7 @@ func TestContinue_LeavingItToTheAIOrWritingAFreeDirection(t *testing.T) {
 	card = free.propose(t)
 	_, err = free.svc.Chat.PostMessage(context.Background(), free.projectID, service.PostMessageInput{Content: "  主人公が窓の外を見る ", ReplyToMessageID: card.ID})
 	require.NoError(t, err)
-	assert.Contains(t, free.llm.users[llm.AgentDirector][1], "主人公が窓の外を見る")
+	assert.Contains(t, free.llm.prompts(llm.AgentDirector)[1], "主人公が窓の外を見る")
 }
 
 func TestContinueConfirm_TheStoryMovingOnCreatesANewSceneAndCapsTheDuration(t *testing.T) {
@@ -213,4 +215,134 @@ func TestContinueConfirm_AnUnusablePlanLeavesTheProjectUnchanged(t *testing.T) {
 	require.ErrorAs(t, err, &ai)
 	assert.Len(t, f.shotObjectives(t), 1)
 	assert.Equal(t, 1, f.count(t, `SELECT COUNT(*) FROM scene WHERE project_id = ?`, f.projectID))
+}
+
+// A direction with a forbidden expression of a LOCK Brand constraint is refused before the Plan is
+// paid for and before a Shot is added; a reply to the card leaves the card open (spec §23).
+func TestContinueConfirm_AForbiddenExpressionIsRefusedBeforeAnythingIsMade(t *testing.T) {
+	f := completedShotFixture(t, sameSceneAnswer)
+	ctx := context.Background()
+	f.forbid(t, "BANNED")
+	card := f.propose(t)
+	planCalls := f.llm.calls(llm.AgentDirector)
+
+	_, err := f.svc.Continue.Confirm(ctx, f.shotID, service.ConfirmInput{Instruction: "彼女が BANNED を持つ"})
+	assert.ErrorIs(t, err, service.ErrBrandViolation)
+	_, err = f.svc.Chat.PostMessage(ctx, f.projectID, service.PostMessageInput{Content: "BANNED な展開", ReplyToMessageID: card.ID})
+	assert.ErrorIs(t, err, service.ErrBrandViolation)
+
+	assert.Len(t, f.shotObjectives(t), 1, "no Shot is added")
+	assert.Equal(t, planCalls, f.llm.calls(llm.AgentDirector), "the Plan is not called")
+	assert.Zero(t, f.count(t, `SELECT COUNT(*) FROM chat_message WHERE reply_to_message_id = ?`, card.ID), "the card stays open")
+	assert.NotContains(t, f.thread(t, f.projectID)[len(f.thread(t, f.projectID))-1].Content, "続きを追加しました")
+
+	_, err = f.svc.Continue.Confirm(ctx, f.shotID, service.ConfirmInput{Instruction: "彼女がドアを開ける"})
+	require.NoError(t, err, "a direction without the expression goes on")
+	assert.Len(t, f.shotObjectives(t), 2)
+}
+
+// A reply whose Confirm fails before the next Shot exists leaves the card open: the user answers
+// the same card again, and only the answer that worked is recorded as its reply.
+func TestContinueConfirm_AFailedReplyLeavesTheCardOpenForAnotherAnswer(t *testing.T) {
+	f := completedShotFixture(t, `{"new_scene":true,"scene":{"title":""},"shot":{"objective":"x"}}`)
+	card := f.propose(t)
+	_, err := f.svc.Chat.PostMessage(context.Background(), f.projectID, service.PostMessageInput{Content: "A. 彼女がドアを開ける", ReplyToMessageID: card.ID})
+	var ai *service.AIError
+	require.ErrorAs(t, err, &ai)
+	assert.Equal(t, 0, f.count(t, `SELECT COUNT(*) FROM chat_message WHERE reply_to_message_id = ?`, card.ID), "the failed answer is not a reply")
+	assert.Len(t, f.shotObjectives(t), 1)
+
+	f.llm.director = directorFor(sameSceneAnswer)
+	ws, err := f.svc.Chat.PostMessage(context.Background(), f.projectID, service.PostMessageInput{Content: "B. 背後から声が聞こえる", ReplyToMessageID: card.ID})
+	require.NoError(t, err)
+	require.NotEmpty(t, ws.Messages)
+	assert.Equal(t, 1, f.count(t, `SELECT COUNT(*) FROM chat_message WHERE reply_to_message_id = ?`, card.ID))
+	assert.Len(t, f.shotObjectives(t), 2)
+	f.waitGenerateJobs(t, 3)
+	_, err = f.svc.Chat.PostMessage(context.Background(), f.projectID, service.PostMessageInput{Content: "C. 突然照明が消える", ReplyToMessageID: card.ID})
+	assert.ErrorIs(t, err, service.ErrConflict)
+}
+
+// Two replies to the same Continue card that overlap (a double click, a client retry) must make one
+// Shot and start one paid generation: the one that arrives while the first is still planning is
+// refused with a conflict.
+func TestContinueConfirm_AConcurrentSecondReplyToTheSameCardIsRefused(t *testing.T) {
+	f := completedShotFixture(t, sameSceneAnswer)
+	card := f.propose(t)
+	entered, release := make(chan struct{}), make(chan struct{})
+	var once sync.Once
+	f.llm.director = func(system, _ string) string {
+		if strings.Contains(system, `"candidates"`) {
+			return proposeAnswer
+		}
+		once.Do(func() { close(entered) })
+		<-release
+		return sameSceneAnswer
+	}
+	ctx := context.Background()
+
+	first := make(chan error, 1)
+	go func() {
+		_, err := f.svc.Chat.PostMessage(ctx, f.projectID, service.PostMessageInput{Content: "A. 彼女がドアを開ける", ReplyToMessageID: card.ID})
+		first <- err
+	}()
+	select {
+	case <-entered:
+	case <-time.After(10 * time.Second):
+		t.Fatal("the first reply never reached the Continue Agent")
+	}
+	second := make(chan error, 1)
+	go func() {
+		_, err := f.svc.Chat.PostMessage(ctx, f.projectID, service.PostMessageInput{Content: "B. 背後から声が聞こえる", ReplyToMessageID: card.ID})
+		second <- err
+	}()
+	select {
+	case err := <-second:
+		assert.ErrorIs(t, err, service.ErrConflict, "the card is being answered")
+	case <-time.After(2 * time.Second):
+		t.Error("the second reply was not refused while the first one was planning")
+	}
+
+	close(release)
+	require.NoError(t, <-first)
+	f.waitGenerateJobs(t, 3)
+	assert.Len(t, f.shotObjectives(t), 2, "one new Shot")
+	assert.Equal(t, 1, f.count(t, `SELECT COUNT(*) FROM chat_message WHERE reply_to_message_id = ?`, card.ID))
+	assert.Equal(t, 3, f.count(t, `SELECT COUNT(*) FROM job WHERE kind = 'generate'`), "one generation was started for the new Shot")
+}
+
+// The client going away while the new Shot's generation starts (the Prompt Planner call) must not
+// leave the card open: the reply is recorded, so a second answer is a conflict and makes no second
+// Shot.
+func TestContinueConfirm_AReplyIsRecordedWhenTheRequestIsCancelledAfterTheShotWasAdded(t *testing.T) {
+	f := completedShotFixture(t, sameSceneAnswer)
+	card := f.propose(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	f.llm.planner = func(string) string {
+		cancel()
+		return specAnswer
+	}
+
+	_, err := f.svc.Chat.PostMessage(ctx, f.projectID, service.PostMessageInput{Content: "B. 背後から声が聞こえる", ReplyToMessageID: card.ID})
+	require.Error(t, err, "the generation could not be started")
+	assert.Len(t, f.shotObjectives(t), 2, "the Shot was added")
+	assert.Equal(t, 1, f.count(t, `SELECT COUNT(*) FROM chat_message WHERE reply_to_message_id = ?`, card.ID), "the reply is recorded")
+
+	_, err = f.svc.Chat.PostMessage(context.Background(), f.projectID, service.PostMessageInput{Content: "C. 突然照明が消える", ReplyToMessageID: card.ID})
+	assert.ErrorIs(t, err, service.ErrConflict)
+	assert.Len(t, f.shotObjectives(t), 2, "no second Shot")
+}
+
+// A Shot that is being repaired is refused like one being generated (the card leaves the button out).
+func TestContinuePropose_AShotBeingRepairedIsBusy(t *testing.T) {
+	f := completedShotFixture(t, sameSceneAnswer)
+	require.NoError(t, f.db.Write(context.Background(), func(ctx context.Context, tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, `UPDATE shot SET state = 'REPAIRING' WHERE id = ?`, f.shotID)
+		return err
+	}))
+
+	_, _, err := f.svc.Continue.Propose(context.Background(), f.shotID)
+
+	assert.ErrorIs(t, err, service.ErrBusy)
 }

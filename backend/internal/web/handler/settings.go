@@ -26,7 +26,7 @@ func storagePanelData(v service.StorageView) organisms.StoragePanelData {
 
 // SettingsPage is the Production Template, Quality/Cost Policy, cost and disk usage of a Project
 // (GET /projects/:id/settings). HTMX requests get the policy forms without the page frame.
-func SettingsPage(svc *service.PolicyService, brands *service.BrandService) gin.HandlerFunc {
+func SettingsPage(svc *service.PolicyService, brands *service.BrandService, keys *service.CredentialService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		view, err := svc.Settings(c.Request.Context(), c.Param("id"))
 		if err != nil {
@@ -43,12 +43,18 @@ func SettingsPage(svc *service.PolicyService, brands *service.BrandService) gin.
 			pageError(c, err)
 			return
 		}
-		data := pages.SettingsPageData{
+		credentials, err := credentialPanelData(keys)
+		if err != nil {
+			// Without a usable key store only this panel is lost: the rest of the screen needs no key.
+			_ = c.Error(err)
+			credentials = organisms.CredentialPanelData{Unavailable: true}
+		}
+		data := organisms.SettingsBodyData{
 			Policy: policyFormData(view.PolicyView, nil, nil, false), Cost: view.Cost, Storage: storagePanelData(view.Storage),
-			Brand: brandListData(brand), Templates: brandTemplatePanelData(templates),
+			Brand: brandListData(brand), Templates: brandTemplatePanelData(templates), Credentials: credentials,
 		}
 		if isHTMX(c) {
-			render(c, http.StatusOK, pages.SettingsBody(data))
+			render(c, http.StatusOK, organisms.SettingsBody(data))
 			return
 		}
 		render(c, http.StatusOK, pages.SettingsPage(middleware.CSRFToken(c), data))

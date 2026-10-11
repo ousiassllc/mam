@@ -3,7 +3,9 @@ package planning_test
 import (
 	"context"
 	"strconv"
+	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -169,6 +171,36 @@ func TestDirector_LeavesDurationsAloneWhenBriefHasNone(t *testing.T) {
 	plan, err := planning.NewDirector(&fakeLLM{answers: []string{planJSON(10, 10)}}).Plan(context.Background(), planning.PlanInput{Brief: b})
 	require.NoError(t, err)
 	assert.Equal(t, 10.0, plan.Scenes[0].Shots[0].DurationSeconds)
+}
+
+func TestDirector_NeverPlansAShotLongerThan60Seconds(t *testing.T) {
+	b := brief()
+	b.Duration = "3分"
+	for name, answer := range map[string]string{
+		"rescaled to a long brief": planJSON(4, 4),
+		"returned by the model":    planJSON(90, 5),
+	} {
+		plan, err := planning.NewDirector(&fakeLLM{answers: []string{answer}}).Plan(context.Background(), planning.PlanInput{Brief: b})
+		require.NoError(t, err, name)
+		for _, sh := range plan.Scenes[0].Shots {
+			assert.Greater(t, sh.DurationSeconds, 0.0, name)
+			assert.LessOrEqual(t, sh.DurationSeconds, 60.0, name)
+		}
+	}
+}
+
+func TestDirector_ClipsSceneAndShotTextToTheServiceLimits(t *testing.T) {
+	long := strings.Repeat("あ", 400)
+	answer := `{"scenes":[{"title":"` + long + `","location":"` + long + `","time":"` + long + `","objective":"` + long +
+		`","shots":[{"objective":"` + long + `","duration_seconds":3}]}]}`
+	plan, err := planning.NewDirector(&fakeLLM{answers: []string{answer}}).Plan(context.Background(), planning.PlanInput{Brief: brief()})
+	require.NoError(t, err)
+	sc := plan.Scenes[0]
+	assert.Equal(t, 100, utf8.RuneCountInString(sc.Title))
+	assert.Equal(t, 100, utf8.RuneCountInString(sc.Location))
+	assert.Equal(t, 100, utf8.RuneCountInString(sc.Time))
+	assert.Equal(t, 300, utf8.RuneCountInString(sc.Objective))
+	assert.Equal(t, 300, utf8.RuneCountInString(sc.Shots[0].Objective))
 }
 
 func TestDirector_RejectsUnusablePlans(t *testing.T) {

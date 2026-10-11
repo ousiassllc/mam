@@ -70,6 +70,13 @@ func TestReferenceRepository_ListFiltersByQueryKindAndTagNewestFirst(t *testing.
 	assert.Equal(t, []string{"Serum bottle"}, names(got), "filters are ANDed")
 	got, _ = f.refs.List(ctx, f.projectID, repository.ReferenceFilter{Query: "%"})
 	assert.Equal(t, []string{"100%_street"}, names(got), "LIKE wildcards in the query are literal")
+	f.upload(t, domain.RefStyle, "Café noir", "Éclair", "Мир")
+	got, _ = f.refs.List(ctx, f.projectID, repository.ReferenceFilter{Query: "CAFÉ"})
+	assert.Equal(t, []string{"Café noir"}, names(got), "a name part ignores the case of non-ASCII letters")
+	got, _ = f.refs.List(ctx, f.projectID, repository.ReferenceFilter{Query: "мир"})
+	assert.Equal(t, []string{"Café noir"}, names(got), "a tag part ignores the case of non-ASCII letters")
+	got, _ = f.refs.List(ctx, f.projectID, repository.ReferenceFilter{Tag: "éCLAIR"})
+	assert.Equal(t, []string{"Café noir"}, names(got), "a whole tag ignores the case of non-ASCII letters")
 	got, _ = f.refs.List(ctx, "other-project", repository.ReferenceFilter{})
 	assert.Empty(t, got, "another Project's Library")
 }
@@ -118,6 +125,32 @@ func TestGenerationRepository_SaveReferencePackRegistersNewImagesInTheLibraryBut
 	}
 }
 
+// A pinned library item is named after its image ("Mio (full body)"), not after a Character, so a
+// Pack regeneration that carries it must not add a Character or Product of that name to the World
+// State; an image generated for the Pack under an Art Director's name still does (#364).
+func TestGenerationRepository_SaveReferencePackAddsWorldEntitiesOnlyForNewlyGeneratedReferences(t *testing.T) {
+	ctx := context.Background()
+	f := newLibraryFixture(t)
+	pinnedChar := f.upload(t, domain.RefCharacter, "Mio (full body)")
+	pinnedProduct := f.upload(t, domain.RefProduct, "Serum (label)")
+	p := repository.NewReferencePack{ProjectID: f.projectID, ShotID: f.shotID, References: []domain.Reference{
+		{Kind: domain.RefCharacter, Name: pinnedChar.Name, AssetID: pinnedChar.AssetID, LibraryItem: pinnedChar.ID},
+		{Kind: domain.RefProduct, Name: pinnedProduct.Name, AssetID: pinnedProduct.AssetID, LibraryItem: pinnedProduct.ID},
+		{Kind: domain.RefCharacter, Name: "Ren", AssetID: "gen-ren"},
+	}, Assets: []domain.Asset{{ID: "gen-ren", ProjectID: f.projectID, Type: domain.AssetReference, FilePath: "p/ren.png", MimeType: "image/png"}}}
+	require.NoError(t, f.repo.SaveReferencePack(ctx, p))
+
+	w, err := f.world.World(ctx, f.projectID, "")
+	require.NoError(t, err)
+	var chars []string
+	for _, c := range w.Characters {
+		chars = append(chars, c.Name)
+	}
+	assert.ElementsMatch(t, []string{"Mio", "Ren"}, chars, "Mio is the fixture's; the pinned item adds none, the generated Ren does")
+	require.Len(t, w.Products, 1, "the pinned product item adds no Product")
+	assert.Equal(t, "Serum", w.Products[0].Name, "the fixture's own")
+}
+
 func TestReferenceRepository_PinReplacesSameKindAndNameAndRefusesBusyShots(t *testing.T) {
 	ctx := context.Background()
 	f := newLibraryFixture(t)
@@ -155,6 +188,48 @@ func TestReferenceRepository_PinReplacesSameKindAndNameAndRefusesBusyShots(t *te
 	require.NoError(t, err)
 	require.True(t, ok)
 	assert.ErrorIs(t, f.refs.Pin(ctx, f.shotID, it.ID), repository.ErrShotBusy)
+}
+
+// A Repair reads the Reference Pack when it starts and saves a prompt_version with whatever the spec
+// holds when it ends, so a pin during REPAIRING would be in the prompt_version but not in the Take (#345).
+func TestReferenceRepository_PinIsRefusedWhileTheShotIsRepairing(t *testing.T) {
+	ctx := context.Background()
+	f := newLibraryFixture(t)
+	it := f.upload(t, domain.RefCharacter, "Mio")
+	ok, err := f.repo.StartRepair(ctx, f.shotID)
+	require.NoError(t, err)
+	require.True(t, ok)
+	assert.ErrorIs(t, f.refs.Pin(ctx, f.shotID, it.ID), repository.ErrShotBusy)
+	assert.Empty(t, shotReferences(t, f, f.shotID), "nothing is written")
+}
+
+func TestReferenceRepository_PinReplacesTheStyleAndLightingOfThePackWhateverTheirNames(t *testing.T) {
+	ctx := context.Background()
+	f := newLibraryFixture(t)
+	generated := []domain.Reference{{Kind: domain.RefStyle, AssetID: "style-asset"}, {Kind: domain.RefLighting, AssetID: "light-asset"}, {Kind: domain.RefProduct, Name: "Serum", AssetID: "prod-asset"}}
+	require.NoError(t, f.repo.SaveReferencePack(ctx, repository.NewReferencePack{ProjectID: f.projectID, ShotID: f.shotID, References: generated,
+		Assets: []domain.Asset{
+			{ID: "style-asset", ProjectID: f.projectID, Type: domain.AssetReference, FilePath: "p/s.png", MimeType: "image/png"},
+			{ID: "light-asset", ProjectID: f.projectID, Type: domain.AssetReference, FilePath: "p/l.png", MimeType: "image/png"},
+			{ID: "prod-asset", ProjectID: f.projectID, Type: domain.AssetReference, FilePath: "p/p.png", MimeType: "image/png"},
+		}}))
+	style := f.upload(t, domain.RefStyle, "Noir")
+	light := f.upload(t, domain.RefLighting, "Golden hour")
+	serum := f.upload(t, domain.RefProduct, "Other product")
+
+	for _, it := range []domain.ReferenceItem{style, light, serum} {
+		require.NoError(t, f.refs.Pin(ctx, f.shotID, it.ID))
+	}
+
+	byKind := map[domain.ReferenceKind][]domain.Reference{}
+	for _, r := range shotReferences(t, f, f.shotID) {
+		byKind[r.Kind] = append(byKind[r.Kind], r)
+	}
+	require.Len(t, byKind[domain.RefStyle], 1, "a Pack has one Style image: the pinned one replaces the generated one")
+	assert.Equal(t, style.ID, byKind[domain.RefStyle][0].LibraryItem)
+	require.Len(t, byKind[domain.RefLighting], 1)
+	assert.Equal(t, light.ID, byKind[domain.RefLighting][0].LibraryItem)
+	assert.Len(t, byKind[domain.RefProduct], 2, "Products are told apart by name")
 }
 
 func shotReferences(t *testing.T, f libraryFixture, shotID string) []domain.Reference {
@@ -231,4 +306,57 @@ func TestWorldRepository_AssignReferenceHonoursLockAndAppendsAVersion(t *testing
 
 	layout, _ := domain.FindReferenceSlot(domain.TargetLocation, "layout")
 	assert.ErrorIs(t, f.world.AssignReference(ctx, f.projectID, "", layout, "missing", x), repository.ErrNotFound)
+}
+
+// A World State version carries the reference image slots (face_reference ... layout_reference), so the
+// restore puts them back too, honours the LOCK of the attribute the slot belongs to, and a version whose
+// image is gone leaves the slot as it is (#359).
+func TestVersionRepository_RestoreWorldStateBringsTheReferenceSlotsBack(t *testing.T) {
+	ctx := context.Background()
+	f := newLibraryFixture(t)
+	versions := repository.NewVersionRepository(f.db)
+	face, _ := domain.FindReferenceSlot(domain.TargetCharacter, "face")
+	layout, _ := domain.FindReferenceSlot(domain.TargetLocation, "layout")
+	x := f.upload(t, domain.RefCharacter, "Mio").AssetID
+	y := f.upload(t, domain.RefCharacter, "Mio 2").AssetID
+	l1 := f.upload(t, domain.RefLocation, "Street").AssetID
+
+	require.NoError(t, f.world.AssignReference(ctx, f.projectID, "", face, f.charID, x))
+	require.NoError(t, f.world.AssignReference(ctx, f.projectID, "", layout, f.locID, l1)) // version 2: face x, layout l1
+	require.NoError(t, f.world.AssignReference(ctx, f.projectID, "", face, f.charID, y))
+	require.NoError(t, f.world.AssignReference(ctx, f.projectID, "", layout, f.locID, ""))
+	slots := func() (string, string) {
+		w, err := f.world.World(ctx, f.projectID, "")
+		require.NoError(t, err)
+		return w.Characters[0].FaceReferenceAssetID, w.Locations[0].LayoutReferenceAssetID
+	}
+	gotFace, gotLayout := slots()
+	require.Equal(t, y, gotFace)
+	require.Empty(t, gotLayout)
+
+	// A LOCKed identity refuses the restore and nothing is written.
+	require.NoError(t, f.world.SetFieldLock(ctx, f.projectID, "", domain.TargetCharacter, f.charID, "identity", domain.LockLocked))
+	_, err := versions.RestoreWorldStateVersion(ctx, f.projectID, "", 2)
+	assert.ErrorIs(t, err, repository.ErrLocked)
+	gotFace, gotLayout = slots()
+	assert.Equal(t, y, gotFace)
+	assert.Empty(t, gotLayout)
+	require.NoError(t, f.world.SetFieldLock(ctx, f.projectID, "", domain.TargetCharacter, f.charID, "identity", domain.LockAuto))
+
+	n, err := versions.RestoreWorldStateVersion(ctx, f.projectID, "", 2)
+	require.NoError(t, err)
+	gotFace, gotLayout = slots()
+	assert.Equal(t, x, gotFace)
+	assert.Equal(t, l1, gotLayout)
+	w, _ := f.world.World(ctx, f.projectID, "")
+	assert.Equal(t, n, w.Version, "the restore is a new version that carries the slots")
+	assert.Equal(t, x, w.Characters[0].FaceReferenceAssetID)
+
+	// An image that no longer exists is not pointed at again.
+	require.NoError(t, f.world.AssignReference(ctx, f.projectID, "", face, f.charID, y))
+	require.NoError(t, exec(t, f.db, `DELETE FROM asset WHERE id = ?`, x))
+	_, err = versions.RestoreWorldStateVersion(ctx, f.projectID, "", 2)
+	require.NoError(t, err)
+	gotFace, _ = slots()
+	assert.Equal(t, y, gotFace)
 }

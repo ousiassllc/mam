@@ -238,7 +238,8 @@ func (s *NoteService) proposeInBackground(ctx context.Context, n domain.NoteView
 // ProposePromotion compares the version of a Project note with the World State and, when it says
 // something that fits the structured fields, posts a non-blocking Approval card proposing to write it
 // there (spec/spec.md §9.4). A version is proposed once: a version that was proposed before, a Series
-// note, or a version with nothing to propose (or only LOCKed fields) posts nothing.
+// note, or a version with nothing structurable posts nothing. A version whose structurable fields are
+// all LOCKed still posts one card naming them as left out; approving it writes no World State.
 func (s *NoteService) ProposePromotion(ctx context.Context, noteID string, version int) error {
 	if s.extractor == nil {
 		return nil
@@ -262,7 +263,7 @@ func (s *NoteService) ProposePromotion(ctx context.Context, noteID string, versi
 	if err != nil {
 		return err
 	}
-	if found.Empty() {
+	if found.Empty() && len(found.Conflicts.Changes) == 0 {
 		return nil
 	}
 	_, card, err := s.notes.CreatePromotion(ctx,

@@ -138,7 +138,8 @@ func (r *BranchRepository) Create(ctx context.Context, in NewBranch) (domain.Bra
 }
 
 // copyWorldInto gives the Branch its own Characters, Products and Locations with the values of the
-// snapshot, and the LOCKs the snapshot's entities had.
+// snapshot, and the LOCKs the snapshot's entities had. A row keeps the origin_id of the row it was
+// copied from, so a Branch of a Series Episode is still measured against the canon face.
 func copyWorldInto(ctx context.Context, tx *sql.Tx, projectID, branchID string, w domain.WorldContext) error {
 	copyLocks := func(target domain.WorldTarget, from, to string) error {
 		rows, err := tx.QueryContext(ctx,
@@ -180,9 +181,9 @@ func copyWorldInto(ctx context.Context, tx *sql.Tx, projectID, branchID string, 
 	for _, c := range w.Characters {
 		newID := domain.NewID()
 		if _, err := tx.ExecContext(ctx,
-			`INSERT INTO character (id, project_id, branch_id, name, face_reference_asset_id, body_reference_asset_id, hairstyle, wardrobe, voice, personality, emotion, position, current_action)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			newID, projectID, branchID, c.Name, nullIfEmpty(c.FaceReferenceAssetID), nullIfEmpty(c.BodyReferenceAssetID),
+			`INSERT INTO character (id, project_id, branch_id, origin_id, name, face_reference_asset_id, body_reference_asset_id, hairstyle, wardrobe, voice, personality, emotion, position, current_action)
+			 VALUES (?, ?, ?, (SELECT origin_id FROM character WHERE id = ?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			newID, projectID, branchID, c.ID, c.Name, nullIfEmpty(c.FaceReferenceAssetID), nullIfEmpty(c.BodyReferenceAssetID),
 			nullIfEmpty(c.Hairstyle), nullIfEmpty(c.Wardrobe), nullIfEmpty(c.Voice), nullIfEmpty(c.Personality),
 			nullIfEmpty(c.Emotion), nullIfEmpty(c.Position), nullIfEmpty(c.CurrentAction)); err != nil {
 			return err
@@ -194,9 +195,9 @@ func copyWorldInto(ctx context.Context, tx *sql.Tx, projectID, branchID string, 
 	for _, p := range w.Products {
 		newID := domain.NewID()
 		if _, err := tx.ExecContext(ctx,
-			`INSERT INTO product (id, project_id, branch_id, name, geometry_reference_asset_id, label_reference_asset_id, material, orientation, condition)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			newID, projectID, branchID, p.Name, nullIfEmpty(p.GeometryReferenceAssetID), nullIfEmpty(p.LabelReferenceAssetID),
+			`INSERT INTO product (id, project_id, branch_id, origin_id, name, geometry_reference_asset_id, label_reference_asset_id, material, orientation, condition)
+			 VALUES (?, ?, ?, (SELECT origin_id FROM product WHERE id = ?), ?, ?, ?, ?, ?, ?)`,
+			newID, projectID, branchID, p.ID, p.Name, nullIfEmpty(p.GeometryReferenceAssetID), nullIfEmpty(p.LabelReferenceAssetID),
 			nullIfEmpty(p.Material), nullIfEmpty(p.Orientation), nullIfEmpty(p.Condition)); err != nil {
 			return err
 		}
@@ -207,9 +208,9 @@ func copyWorldInto(ctx context.Context, tx *sql.Tx, projectID, branchID string, 
 	for _, l := range w.Locations {
 		newID := domain.NewID()
 		if _, err := tx.ExecContext(ctx,
-			`INSERT INTO location (id, project_id, branch_id, name, layout_reference_asset_id, time, lighting_state, weather)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-			newID, projectID, branchID, l.Name, nullIfEmpty(l.LayoutReferenceAssetID),
+			`INSERT INTO location (id, project_id, branch_id, origin_id, name, layout_reference_asset_id, time, lighting_state, weather)
+			 VALUES (?, ?, ?, (SELECT origin_id FROM location WHERE id = ?), ?, ?, ?, ?, ?)`,
+			newID, projectID, branchID, l.ID, l.Name, nullIfEmpty(l.LayoutReferenceAssetID),
 			nullIfEmpty(l.Time), nullIfEmpty(l.LightingState), nullIfEmpty(l.Weather)); err != nil {
 			return err
 		}
@@ -363,6 +364,21 @@ func (r *BranchRepository) Scenes(ctx context.Context, branchID string) ([]domai
 	return scenes, rows.Err()
 }
 
+// CutAtBranchPoint returns the Shots of a story (in order) that a Branch made at the point inherits:
+// up to and including the Branch Point's Shot, or for a Branch at a Scene the Shots before that
+// Scene. A point that is not in the story keeps all of it.
+func CutAtBranchPoint(story []ShotRef, typ domain.BranchPointType, sceneID, shotID string) []ShotRef {
+	for i, s := range story {
+		if typ == domain.BranchAtScene && s.Shot.SceneID == sceneID {
+			return story[:i]
+		}
+		if typ != domain.BranchAtScene && s.Shot.ID == shotID {
+			return story[:i+1]
+		}
+	}
+	return story
+}
+
 // StoryShots returns the Shots of the story of the trunk (branchID "") or of the Branch in story
 // order: for a Branch, the Shots of the series it hangs from up to its Branch Point, then the Shots
 // of its own derived tree.
@@ -393,23 +409,13 @@ func (r *GenerationRepository) StoryShots(ctx context.Context, projectID, branch
 	if err != nil {
 		return nil, err
 	}
-	keep := len(inherited)
-	for i, s := range inherited {
-		if typ == domain.BranchAtScene && s.Shot.SceneID == sceneID {
-			keep = i
-			break
-		}
-		if typ != domain.BranchAtScene && s.Shot.ID == shotID {
-			keep = i + 1
-			break
-		}
-	}
+	inherited = CutAtBranchPoint(inherited, typ, sceneID, shotID)
 	rows, err := point.QueryContext(ctx, shotRefSelect+` WHERE s.project_id = ? AND s.branch_id = ? ORDER BY s.order_index, sh.order_index`, projectID, branchID)
 	if err != nil {
 		return nil, fmt.Errorf("list branch shots: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
-	out := append([]ShotRef{}, inherited[:keep]...)
+	out := append([]ShotRef{}, inherited...)
 	for rows.Next() {
 		ref, err := scanShotRef(rows)
 		if err != nil {

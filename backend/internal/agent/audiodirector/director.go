@@ -8,6 +8,7 @@ import (
 	"path"
 	"path/filepath"
 	"slices"
+	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
@@ -37,6 +38,11 @@ type Input struct {
 	Scenes []Scene
 	// Clips are the clips of the Edit Timeline with their Take files (used by Lip Sync).
 	Clips []VideoClip
+	// MusicFixed is true when the Project's Music is MANUAL or LOCK (spec/spec.md §6): the BGM is
+	// not planned or made again, and FixedBGM, the BGM of the previous Audio Timeline, is carried
+	// over as it is (none when there was none).
+	MusicFixed bool
+	FixedBGM   []domain.AudioClip
 	// Voices maps a speaker name to the cloned voice that speaks their lines.
 	Voices map[string]string
 	// Rough is the rendered Rough Cut and HasSound tells whether it has sound of its own.
@@ -46,6 +52,9 @@ type Input struct {
 	Seconds float64
 	// TargetLUFS is the loudness of the mix (0 selects domain.DefaultTargetLUFS).
 	TargetLUFS float64
+	// RunID names the directory of the run below <project>/audio/<edit timeline>/. Empty selects a
+	// new ID; a caller that may have to DiscardRun the files after Produce succeeded sets it.
+	RunID string
 }
 
 // VideoClip is a clip of the Edit Timeline with the file of its Take.
@@ -101,7 +110,45 @@ func New(deps Deps) *Director {
 // that the budget ceiling, a missing key or a provider failure does not allow is left out and
 // listed in Skipped. Everything is then mixed with the sound of the Rough Cut and normalized with
 // local DSP. A cut without lines and without sound gets no mix.
+//
+// A run that does not succeed removes its directory; the cost ledger keeps what was paid.
 func (d *Director) Produce(ctx context.Context, in Input) (domain.AudioTimeline, error) {
+	rel := runRel(in)
+	if err := d.checkRunDir(in.ProjectID, rel); err != nil {
+		return domain.AudioTimeline{}, err
+	}
+	tl, err := d.produce(ctx, in, rel)
+	if err != nil {
+		_ = os.RemoveAll(filepath.Join(d.Root, filepath.FromSlash(rel)))
+		return domain.AudioTimeline{}, err
+	}
+	return tl, nil
+}
+
+// DiscardRun removes the files of the run that Produce made for in (in.RunID must be the one given
+// to Produce). It is for the caller whose own step after a successful Produce failed, so that the
+// files no Audio Timeline refers to do not pile up.
+func (d *Director) DiscardRun(in Input) error {
+	if in.RunID == "" {
+		return nil
+	}
+	rel := runRel(in)
+	if err := d.checkRunDir(in.ProjectID, rel); err != nil {
+		return err
+	}
+	return os.RemoveAll(filepath.Join(d.Root, filepath.FromSlash(rel)))
+}
+
+// runRel is the directory of the run of in, relative to the assets directory.
+func runRel(in Input) string {
+	id := in.RunID
+	if id == "" {
+		id = domain.NewID()
+	}
+	return path.Join(in.ProjectID, "audio", in.EditTimelineID, id)
+}
+
+func (d *Director) produce(ctx context.Context, in Input, rel string) (domain.AudioTimeline, error) {
 	target := in.TargetLUFS
 	if target == 0 {
 		target = domain.DefaultTargetLUFS
@@ -127,19 +174,26 @@ func (d *Director) Produce(ctx context.Context, in Input) (domain.AudioTimeline,
 	if len(lines) > 0 && d.Providers.Speech == nil {
 		return domain.AudioTimeline{}, ErrNoAPIKey
 	}
-	spend, err := newSpending(ctx, d.Ledger, in.ProjectID)
-	if err != nil {
-		return domain.AudioTimeline{}, err
+	// A missing key is known without a call: it is refused before the Planner's paid model call.
+	if kc, ok := d.Providers.Speech.(KeyChecker); ok && len(lines) > 0 {
+		if err := kc.CheckKey(); err != nil {
+			return domain.AudioTimeline{}, err
+		}
 	}
+	spend := &spending{ledger: d.Ledger, projectID: in.ProjectID}
 	var speechCost float64
 	for _, l := range lines {
 		speechCost += d.Prices.TTS(l.Text)
 	}
-	if !spend.fits(speechCost) {
-		return domain.AudioTimeline{}, &BudgetError{Needed: speechCost, Remaining: spend.remaining()}
+	// The speech is held up front, so that runs of the Project that start at the same time cannot
+	// together pass the ceiling; it is released once the lines are in the ledger.
+	releaseSpeech, err := spend.reserve(ctx, speechCost)
+	if err != nil {
+		return domain.AudioTimeline{}, err
 	}
+	defer releaseSpeech()
 
-	r := &run{d: d, in: in, tl: &tl, spend: spend, scope: scope, rel: path.Join(in.ProjectID, "audio", in.EditTimelineID, domain.NewID())}
+	r := &run{d: d, in: in, tl: &tl, spend: spend, scope: scope, rel: rel}
 	// The plan costs nothing outside: a planner failure ends the run before any provider is paid.
 	if err := r.planScenes(ctx); err != nil {
 		return domain.AudioTimeline{}, err
@@ -147,6 +201,7 @@ func (d *Director) Produce(ctx context.Context, in Input) (domain.AudioTimeline,
 	if err := r.speak(ctx, lines, sceneOfLine); err != nil {
 		return domain.AudioTimeline{}, err
 	}
+	releaseSpeech() // the lines are in the ledger now
 	tl.SpeechExpected = len(tl.Clips) > 0
 	if err := r.makeLayers(ctx); err != nil {
 		return domain.AudioTimeline{}, err
@@ -170,6 +225,23 @@ func (d *Director) Produce(ctx context.Context, in Input) (domain.AudioTimeline,
 	}
 	tl.MixPath, tl.MeasuredLUFS, tl.TruePeakDB = mixRel, loud.Integrated, loud.TruePeak
 	return tl, nil
+}
+
+// ErrUnsafePath is returned when the ID of the Project or the Edit Timeline would put the audio of
+// the run outside the Project's own audio directory (a row ID of an imported bundle is not trusted).
+var ErrUnsafePath = errors.New("audiodirector: the audio directory would be outside the Project's directory")
+
+// checkRunDir makes sure rel, the directory of a run, lies below <projectID>/audio/ inside Root.
+// It runs before anything is paid for.
+func (d *Director) checkRunDir(projectID, rel string) error {
+	if !strings.HasPrefix(rel, projectID+"/audio/") {
+		return ErrUnsafePath
+	}
+	within, err := filepath.Rel(d.Root, filepath.Join(d.Root, filepath.FromSlash(rel)))
+	if err != nil || within == ".." || strings.HasPrefix(within, ".."+string(filepath.Separator)) || filepath.IsAbs(within) {
+		return ErrUnsafePath
+	}
+	return nil
 }
 
 // run is one Produce.
@@ -218,11 +290,12 @@ func (r *run) speak(ctx context.Context, lines []domain.VoiceLine, sceneOfLine m
 		if line.Kind == domain.VoiceNarration {
 			layer = domain.LayerNarration
 		}
-		rel, length, err := r.save(ctx, fmt.Sprintf("line-%02d", i+1), speech)
-		if err != nil {
+		// The provider has charged for the line: the ledger gets it before the local work can fail.
+		if err := r.spend.record(ctx, domain.ModelElevenLabsTTS, r.d.Prices.TTS(line.Text)); err != nil {
 			return err
 		}
-		if err := r.spend.record(ctx, domain.ModelElevenLabsTTS, r.d.Prices.TTS(line.Text)); err != nil {
+		rel, length, err := r.save(ctx, fmt.Sprintf("line-%02d", i+1), speech)
+		if err != nil {
 			return err
 		}
 		r.tl.Clips = append(r.tl.Clips, domain.AudioClip{
@@ -282,6 +355,10 @@ func (r *run) planScenes(ctx context.Context) error {
 // comes last.
 func (r *run) makeLayers(ctx context.Context) error {
 	for _, layer := range []domain.AudioLayer{domain.LayerBGM, domain.LayerAmbience, domain.LayerSE, domain.LayerFoley} {
+		if layer == domain.LayerBGM && r.in.MusicFixed {
+			r.tl.Clips = append(r.tl.Clips, r.in.FixedBGM...)
+			continue
+		}
 		for _, j := range r.jobs(layer) {
 			if err := r.make(ctx, j); err != nil {
 				return err
@@ -343,15 +420,23 @@ func (r *run) jobs(layer domain.AudioLayer) []job {
 // over budget, the provider failed) is listed in Skipped; only a cancelled run or a failure of the
 // local side (disk, ledger) is an error.
 func (r *run) make(ctx context.Context, j job) error {
-	switch {
-	case j.call == nil:
+	if j.call == nil {
 		r.skip(j.layer, j.prompt, domain.SkipError, "プロバイダーが設定されていません")
 		return nil
-	case !r.spend.fits(j.cost):
-		r.skip(j.layer, j.prompt, domain.SkipBudget, fmt.Sprintf("見積 $%.2f に対し残り予算が $%.2f です", j.cost, r.spend.remaining()))
-		return nil
 	}
+	release, ok, err := r.reserve(ctx, j.layer, j.prompt, j.cost)
+	if err != nil || !ok {
+		return err
+	}
+	defer release() // after the cost is in the ledger, or when the call was not paid
 	speech, err := j.call(ctx)
+	if err == nil {
+		// The provider has charged for the sound: the ledger gets it before the local work or a
+		// cancelled run can lose it.
+		if err := r.spend.record(ctx, j.model, j.cost); err != nil {
+			return err
+		}
+	}
 	if ctxErr := ctx.Err(); ctxErr != nil {
 		return ctxErr
 	}
@@ -364,9 +449,6 @@ func (r *run) make(ctx context.Context, j job) error {
 	if err != nil {
 		r.skip(j.layer, j.prompt, domain.SkipError, err.Error())
 		return nil
-	}
-	if err := r.spend.record(ctx, j.model, j.cost); err != nil {
-		return err
 	}
 	clip := domain.AudioClip{
 		Layer: j.layer, Prompt: j.prompt, Model: j.model, Path: rel, StartSeconds: j.start,
@@ -384,13 +466,15 @@ func (r *run) make(ctx context.Context, j job) error {
 
 // lipSync redoes the mouth of the clips where a character speaks (MAX QUALITY): a clip whose
 // Dialogue lines all start and end inside it gets the lines placed at their moments as the audio
-// Sync Labs follows. The new picture replaces the Take's at export.
+// Sync Labs follows. A clip with a line across its end is given up as a whole (a mouth redone
+// without that line would not match the mix). The new picture replaces the Take's at export.
 func (r *run) lipSync(ctx context.Context) error {
 	if !r.scope.LipSync {
 		r.skip(domain.LayerLipSync, "", domain.SkipPolicy, r.in.Quality.Label()+" では作りません")
 		return nil
 	}
 	groups := map[int][]domain.AudioClip{} // clip index -> its lines
+	crossed := map[int]bool{}              // clip index -> a line runs over its end
 	for _, c := range r.tl.Clips {
 		if c.LayerOf() != domain.LayerDialogue || c.Speaker == "" {
 			continue
@@ -403,10 +487,14 @@ func (r *run) lipSync(ctx context.Context) error {
 			r.skip(domain.LayerLipSync, c.Text, domain.SkipError, "セリフがどのクリップにも入っていません")
 		case c.End() > r.in.Clips[vi].Start+r.in.Clips[vi].Length()+lineTolerance:
 			r.skip(domain.LayerLipSync, c.Text, domain.SkipError, "セリフがクリップの境目をまたぎます")
+			crossed[r.in.Clips[vi].Index] = true
 		default:
 			idx := r.in.Clips[vi].Index
 			groups[idx] = append(groups[idx], c)
 		}
+	}
+	for idx := range crossed {
+		delete(groups, idx)
 	}
 	if len(groups) == 0 {
 		return nil
@@ -422,18 +510,19 @@ func (r *run) lipSync(ctx context.Context) error {
 			continue
 		}
 		cost := r.d.Prices.LipSync(model, vc.Length())
-		if !r.spend.fits(cost) {
-			r.skip(domain.LayerLipSync, lines[0].Text, domain.SkipBudget, fmt.Sprintf("見積 $%.2f に対し残り予算が $%.2f です", cost, r.spend.remaining()))
+		release, ok, err := r.reserve(ctx, domain.LayerLipSync, lines[0].Text, cost)
+		if err != nil {
+			return err
+		}
+		if !ok {
 			continue
 		}
-		out, stop, err := r.syncClip(ctx, vc, lines, model)
+		out, stop, err := r.syncClip(ctx, vc, lines, model, cost)
+		release() // the cost is in the ledger now, or the call was not paid
 		if err != nil {
 			return err
 		}
 		if out != nil {
-			if err := r.spend.record(ctx, domain.ModelSyncLabs, cost); err != nil {
-				return err
-			}
 			r.tl.LipSync = append(r.tl.LipSync, *out)
 		}
 		if stop {
@@ -444,8 +533,9 @@ func (r *run) lipSync(ctx context.Context) error {
 }
 
 // syncClip lip-syncs one clip. The clip is nil when it was left out (listed in Skipped); stop is
-// true when the following clips cannot be lip-synced either (no key).
-func (r *run) syncClip(ctx context.Context, vc VideoClip, lines []domain.AudioClip, model string) (out *domain.LipSyncClip, stop bool, err error) {
+// true when the following clips cannot be lip-synced either (no key). A call Sync Labs accepted is
+// recorded at cost before its result is stored, so a local failure afterwards still counts.
+func (r *run) syncClip(ctx context.Context, vc VideoClip, lines []domain.AudioClip, model string, cost float64) (out *domain.LipSyncClip, stop bool, err error) {
 	dir := filepath.Join(r.d.Root, filepath.FromSlash(r.rel), fmt.Sprintf("lipsync-%02d-work", vc.Index))
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return nil, false, fmt.Errorf("create audio directory: %w", err)
@@ -473,6 +563,14 @@ func (r *run) syncClip(ctx context.Context, vc VideoClip, lines []domain.AudioCl
 		return nil, false, fmt.Errorf("read voice: %w", err)
 	}
 	data, err := r.d.Providers.LipSync.Sync(ctx, LipSyncRequest{Model: model, Video: Sample{Filename: "clip.mp4", Data: vb}, Audio: Sample{Filename: "voice.wav", Data: ab}})
+	var charged *ChargedError
+	if err == nil || errors.As(err, &charged) {
+		// Sync Labs has accepted (and bills) the clip, whether or not a video came back: the ledger
+		// gets it even when the download failed, the job timed out or the run was cancelled meanwhile.
+		if err := r.spend.record(ctx, domain.ModelSyncLabs, cost); err != nil {
+			return nil, false, err
+		}
+	}
 	if ctxErr := ctx.Err(); ctxErr != nil {
 		return nil, false, ctxErr
 	}
@@ -520,4 +618,16 @@ func (r *run) tracks() []media.Track {
 		out = append(out, tr)
 	}
 	return out
+}
+
+// reserve holds the estimate of a call under the budget ceiling before the call is paid. A call that
+// does not fit is listed in Skipped (ok=false, no error).
+func (r *run) reserve(ctx context.Context, layer domain.AudioLayer, prompt string, cost float64) (release func(), ok bool, err error) {
+	release, err = r.spend.reserve(ctx, cost)
+	var be *BudgetError
+	if errors.As(err, &be) {
+		r.skip(layer, prompt, domain.SkipBudget, fmt.Sprintf("見積 $%.2f に対し残り予算が $%.2f です", be.Needed, be.Remaining))
+		return nil, false, nil
+	}
+	return release, err == nil, err
 }

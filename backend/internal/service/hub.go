@@ -35,6 +35,13 @@ func newBroker[T any]() *broker[T] { return &broker[T]{subs: make(map[string]map
 
 // Subscribe returns a channel of the key's events and a function that ends the subscription.
 func (h *broker[T]) Subscribe(key string) (<-chan T, func()) {
+	ch, cancel := h.subscribe(key)
+	return ch, cancel
+}
+
+// subscribe is Subscribe with the send side of the channel, so the subscriber's own snapshot can be
+// queued into it (sendTo).
+func (h *broker[T]) subscribe(key string) (chan T, func()) {
 	ch := make(chan T, subscriberBuffer)
 	h.mu.Lock()
 	if h.subs[key] == nil {
@@ -53,6 +60,21 @@ func (h *broker[T]) Subscribe(key string) (<-chan T, func()) {
 				delete(h.subs, key)
 			}
 		})
+	}
+}
+
+// sendTo queues e into the subscription ch only, behind what it already holds; with onlyIfEmpty it
+// is skipped when an event has arrived already (that one is newer than a snapshot taken after the
+// subscription began). It runs under the broker lock, so no Publish can interleave with the check.
+func (h *broker[T]) sendTo(ch chan T, e T, onlyIfEmpty bool) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if onlyIfEmpty && len(ch) > 0 {
+		return
+	}
+	select {
+	case ch <- e:
+	default: // full of newer events: the snapshot is stale by now
 	}
 }
 

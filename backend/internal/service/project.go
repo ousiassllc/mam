@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
@@ -205,6 +204,9 @@ func (s *ProjectService) SetConfirmationLevel(ctx context.Context, projectID str
 		if !c.Valid() {
 			return domain.Project{}, invalid("checkpoints", "確認ポイントが正しくありません: %s", c)
 		}
+		if !c.Selectable() {
+			return domain.Project{}, invalid("checkpoints", "この確認ポイントはまだ選べません: %s", c.Label())
+		}
 	}
 	project, err := s.getProject(ctx, projectID)
 	if err != nil {
@@ -236,7 +238,7 @@ func (s *ProjectService) SetConfirmationLevel(ctx context.Context, projectID str
 
 func sortedCheckpoints(in []domain.Checkpoint) []domain.Checkpoint {
 	out := make([]domain.Checkpoint, 0, len(in))
-	for _, c := range domain.Checkpoints() {
+	for _, c := range domain.SelectableCheckpoints() {
 		if slices.Contains(in, c) {
 			out = append(out, c)
 		}
@@ -249,7 +251,7 @@ func confirmationNotice(level domain.ConfirmationLevel, custom []domain.Checkpoi
 	case domain.ConfirmFullAuto:
 		return "確認レベルを FULL AUTO にしました。Final まで原則確認せずに進めます（判断が必要な場合のみ相談します）。"
 	case domain.ConfirmKeyCheck:
-		labels := make([]string, 0, 4)
+		labels := make([]string, 0, len(domain.KeyCheckpoints()))
 		for _, c := range domain.KeyCheckpoints() {
 			labels = append(labels, c.Label())
 		}
@@ -274,7 +276,11 @@ func (s *ProjectService) Asset(ctx context.Context, projectID, assetID string) (
 	if err != nil {
 		return AssetFile{}, notFound(err)
 	}
-	return AssetFile{Asset: a, Path: filepath.Join(s.assetsDir, filepath.FromSlash(a.FilePath))}, nil
+	path := s.assetPath(a.FilePath)
+	if path == "" {
+		return AssetFile{}, ErrNotFound // a stored path outside the assets directory is never served
+	}
+	return AssetFile{Asset: a, Path: path}, nil
 }
 
 func validateMessage(content string, hasAttachments bool) error {

@@ -25,6 +25,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/router"
 	"github.com/ousiassllc/mam/backend/internal/service"
@@ -68,7 +69,7 @@ func (v *videoFake) GenerateVideo(ctx context.Context, _ string, _ modeladapter.
 			return modeladapter.VideoResult{}, ctx.Err()
 		}
 	}
-	return modeladapter.VideoResult{Data: []byte("\x00\x00\x00\x18ftypisom"), MimeType: "video/mp4"}, nil
+	return modeladapter.VideoResult{File: modeladapter.BlobOf([]byte("\x00\x00\x00\x18ftypisom")), MimeType: "video/mp4"}, nil
 }
 
 type genApp struct {
@@ -83,6 +84,18 @@ var shotIDRe = regexp.MustCompile(`id="shot-([0-9a-f-]{36})"`)
 
 func newGenApp(t *testing.T, withModels bool) *genApp {
 	t.Helper()
+	return newGenAppOpts(t, withModels, genOpts{})
+}
+
+// genOpts replaces parts of the generation app: the LLM, the video model and ffmpeg.
+type genOpts struct {
+	llm   llm.Completer
+	video modeladapter.VideoBackend
+	media *media.Tools
+}
+
+func newGenAppOpts(t *testing.T, withModels bool, o genOpts) *genApp {
+	t.Helper()
 	keyring.MockInit()
 	dir := t.TempDir()
 	db, err := repository.Open(context.Background(), filepath.Join(dir, "mam.db"), nil)
@@ -90,11 +103,19 @@ func newGenApp(t *testing.T, withModels bool) *genApp {
 	t.Cleanup(func() { _ = db.Close() })
 
 	video := &videoFake{}
-	deps := service.Deps{DB: db, Credentials: credential.NewKeyring(), AssetsDir: filepath.Join(dir, "assets"), LLM: plannerLLM{}}
+	deps := service.Deps{DB: db, Credentials: credential.NewKeyring(), AssetsDir: filepath.Join(dir, "assets"), Media: o.media}
+	deps.LLM = plannerLLM{}
+	if o.llm != nil {
+		deps.LLM = o.llm
+	}
 	jobs := jobqueue.New(repository.NewJobRepository(db), jobqueue.Options{})
 	deps.Jobs = jobs
 	if withModels {
-		backends := modeladapter.Backends{Video: map[domain.ModelName]modeladapter.VideoBackend{domain.ModelKling3: video, domain.ModelSeedance2: video}}
+		var backend modeladapter.VideoBackend = video
+		if o.video != nil {
+			backend = o.video
+		}
+		backends := modeladapter.Backends{Video: map[domain.ModelName]modeladapter.VideoBackend{domain.ModelKling3: backend, domain.ModelSeedance2: backend}}
 		deps.Models = modeladapter.New(modeladapter.DefaultConfig(), backends)
 	}
 	svc := service.New(deps)
@@ -136,7 +157,10 @@ func TestGenerate_Answers202WithTheGeneratingShotCardAndStartsAJob(t *testing.T)
 	assert.NotContains(t, body, "<html", "a fragment")
 	assert.Contains(t, body, `id="shot-`+g.shotID+`"`)
 	assert.Contains(t, body, "生成中")
-	assert.Contains(t, body, `data-ws-url="/ws/shots/`+g.shotID+`"`, "the card follows its progress over the WebSocket")
+	assert.Equal(t, 1, strings.Count(body, "/ws/shots/"+g.shotID), "one WebSocket per card: the player follows the progress, shot.ts waits for it")
+	assert.Contains(t, body, `<mam-video-player class="mt-2 block" ws-url="/ws/shots/`+g.shotID+`"`)
+	assert.NotContains(t, body, `data-ws-url=`)
+	assert.Contains(t, body, `data-shot-progress`)
 	assert.NotContains(t, body, `hx-post="/shots/`+g.shotID+`/generate"`, "no second run can be started from the card")
 
 	rec = g.form(http.MethodPost, "/shots/"+g.shotID+"/generate", nil)
@@ -237,6 +261,12 @@ func TestContinue_ProposesACardInTheChatAndConfirmAddsAndGeneratesTheNextShot(t 
 		var state string
 		return g.db.Reader().QueryRow(`SELECT state FROM shot WHERE id = ?`, g.shotID).Scan(&state) == nil && state == "PLANNING"
 	}, 30*time.Second, 10*time.Millisecond)
+	generates := func() (n int) {
+		require.NoError(t, g.db.Reader().QueryRow(
+			`SELECT COUNT(*) FROM human_intervention WHERE project_id = ? AND kind = 'generate'`, g.project).Scan(&n))
+		return n
+	}
+	require.Equal(t, 1, generates(), "the user's Generate on the first Shot")
 
 	rec := g.form(http.MethodPost, "/shots/"+g.shotID+"/continue", nil)
 	require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
@@ -252,9 +282,54 @@ func TestContinue_ProposesACardInTheChatAndConfirmAddsAndGeneratesTheNextShot(t 
 	assert.Equal(t, "chat:refresh", rec.Header().Get("HX-Trigger"))
 	assert.Contains(t, rec.Body.String(), "Shot 2: ドアを開ける")
 	assert.Contains(t, rec.Body.String(), "生成中")
+	assert.Equal(t, 2, generates(), "confirming the direction is the user asking for the new Shot: a generate intervention")
 }
 
 func TestContinue_MissingConfigurationIs503(t *testing.T) {
 	off := newGenApp(t, false)
 	assert.Equal(t, http.StatusServiceUnavailable, off.form(http.MethodPost, "/shots/"+off.shotID+"/continue", nil).Code)
+}
+
+// frameSpyLLM records the images of the Continue Agent's requests.
+type frameSpyLLM struct {
+	plannerLLM
+	mu     sync.Mutex
+	images [][]llm.Image
+}
+
+func (f *frameSpyLLM) Complete(ctx context.Context, agent llm.Agent, req llm.Request) (llm.Response, error) {
+	if agent == llm.AgentDirector {
+		f.mu.Lock()
+		f.images = append(f.images, req.Images)
+		f.mu.Unlock()
+	}
+	return f.plannerLLM.Complete(ctx, agent, req)
+}
+
+func TestContinue_TheAgentSeesTheFinalFrameOfTheTakeWhenFfmpegIsAvailable(t *testing.T) {
+	tools, err := media.Look()
+	if err != nil {
+		t.Skip("ffmpeg / ffprobe are not installed")
+	}
+	spy := &frameSpyLLM{}
+	g := newGenAppOpts(t, true, genOpts{llm: spy, video: newMP4Video(t), media: &tools})
+	g.form(http.MethodPost, "/shots/"+g.shotID+"/generate", nil)
+	g.waitTakes(3)
+	require.Eventually(t, func() bool {
+		var state string
+		return g.db.Reader().QueryRow(`SELECT state FROM shot WHERE id = ?`, g.shotID).Scan(&state) == nil && state == "PLANNING"
+	}, 30*time.Second, 10*time.Millisecond)
+
+	require.Equal(t, http.StatusCreated, g.form(http.MethodPost, "/shots/"+g.shotID+"/continue", nil).Code)
+	require.Equal(t, http.StatusAccepted, g.form(http.MethodPost, "/shots/"+g.shotID+"/continue/confirm", url.Values{"delegate": {"true"}}).Code)
+
+	spy.mu.Lock()
+	defer spy.mu.Unlock()
+	require.Len(t, spy.images, 2, "Propose and Plan")
+	for _, imgs := range spy.images {
+		require.Len(t, imgs, 1)
+		assert.Equal(t, "image/jpeg", imgs[0].MimeType)
+		assert.True(t, len(imgs[0].Data) > 3 && imgs[0].Data[0] == 0xFF && imgs[0].Data[1] == 0xD8, "a JPEG taken from the video")
+		assert.Contains(t, imgs[0].Caption, "最終フレーム")
+	}
 }

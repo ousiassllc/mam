@@ -114,6 +114,19 @@ func (r *RepairRepository) ShotActions(ctx context.Context, shotID string) ([]do
 	return out, rows.Err()
 }
 
+// CandidateTakeCount is how many Takes Prompt Candidate Generation made for the Shot, rejected ones
+// included: they were paid for and count against the Retry Policy (domain.CandidateRetries).
+func (r *RepairRepository) CandidateTakeCount(ctx context.Context, shotID string) (int, error) {
+	var n int
+	err := r.db.Reader().QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM take t JOIN prompt_version pv ON pv.id = t.prompt_version_id
+		 WHERE pv.shot_id = ? AND COALESCE(json_extract(t.model_parameters, '$.candidate_strategy'), '') <> ''`, shotID).Scan(&n)
+	if err != nil {
+		return 0, fmt.Errorf("count candidate takes: %w", err)
+	}
+	return n, nil
+}
+
 // TakeVerdict is a Take of a Shot with its newest Judge result.
 type TakeVerdict struct {
 	Take domain.Take
@@ -227,12 +240,12 @@ func (r *RepairRepository) ShadowReport(ctx context.Context) (domain.ShadowRepor
 		}
 		rep.Runs++
 		rep.TotalCostUSD += cost
-		latencySum += float64(latency)
 		if failure != "" || !confidence.Valid {
 			rep.Errors++
 			continue
 		}
 		succeeded++
+		latencySum += float64(latency) // a failed call records no latency: it would pull the mean down
 		confidenceSum += confidence.Float64
 		bucket := min(int(confidence.Float64*domain.ConfidenceBuckets), domain.ConfidenceBuckets-1)
 		bucket = max(bucket, 0)
@@ -248,9 +261,7 @@ func (r *RepairRepository) ShadowReport(ctx context.Context) (domain.ShadowRepor
 	if succeeded > 0 {
 		rep.AgreementRate = float64(rep.Agreed) / float64(succeeded)
 		rep.MeanConfidence = confidenceSum / float64(succeeded)
-	}
-	if rep.Runs > 0 {
-		rep.MeanLatencyMillis = latencySum / float64(rep.Runs)
+		rep.MeanLatencyMillis = latencySum / float64(succeeded)
 	}
 	return rep, nil
 }

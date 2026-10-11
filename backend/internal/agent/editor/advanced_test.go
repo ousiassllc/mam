@@ -2,6 +2,7 @@ package editor_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -77,9 +78,42 @@ func TestAdvance_ExtendsATooShortClosingClipForCTATimingAsFarAsItsTakeReaches(t 
 	assert.InDelta(t, editor.MinCTASeconds, got.Clips[1].Length(), 1e-9)
 	assert.Contains(t, notes[len(notes)-1], "CTA Timing")
 
-	short.SourceSeconds = 1.2 // the Take ends before the CTA can be read
+	short.SourceSeconds = 1.2 // the Take ends before the CTA can be read: the clip runs to its end
+	got, notes = editor.Advance(input(domain.TemplateProductCM, "", clip("a", 3), short))
+	assert.InDelta(t, 1.2, got.Clips[1].Length(), 1e-9)
+	assert.Contains(t, notes[len(notes)-1], "CTA Timing")
+
+	short.In, short.Out, short.SourceSeconds = 4.0, 4.8, 5.0
 	got, _ = editor.Advance(input(domain.TemplateProductCM, "", clip("a", 3), short))
 	assert.InDelta(t, 1.0, got.Clips[1].Length(), 1e-9)
+	assert.InDelta(t, 5.0, got.Clips[1].Out, 1e-9)
+
+	whole := clip("b", 1)
+	whole.SourceSeconds = 1 // nothing left to extend into
+	got, notes = editor.Advance(input(domain.TemplateProductCM, "", clip("a", 3), whole))
+	assert.InDelta(t, 1.0, got.Clips[1].Length(), 1e-9)
+	assert.Empty(t, notes, "no extension was possible")
+}
+
+func TestJudge_CTATimingAsksForAnEditOnlyWhereTheTakeHasMoreToGive(t *testing.T) {
+	closing := clip("b", 1)
+	closing.SourceSeconds = 5
+	_, findings, err := editor.NewJudge(nil).Judge(context.Background(), input(domain.TemplateProductCM, "", clip("a", 3), closing))
+	require.NoError(t, err)
+	assert.Contains(t, findingIssues(findings), "CTA Timing")
+
+	closing.SourceSeconds = 1 // the clip already runs to the end of its Take
+	_, findings, err = editor.NewJudge(nil).Judge(context.Background(), input(domain.TemplateProductCM, "", clip("a", 3), closing))
+	require.NoError(t, err)
+	assert.NotContains(t, findingIssues(findings), "CTA Timing", "re-editing cannot fix a Take that is too short")
+}
+
+func findingIssues(fs []domain.EditorFinding) string {
+	var b strings.Builder
+	for _, f := range fs {
+		b.WriteString(f.Issue)
+	}
+	return b.String()
 }
 
 func TestAdvance_CaptionsTheSpokenLineOnlyWhereThereIsNoCaptionYet(t *testing.T) {
@@ -156,4 +190,62 @@ func TestJudge_MissingFootageDecidesTheVerdictAndTheEditFindingsStayListed(t *te
 	require.Len(t, findings, 2)
 	assert.Nil(t, findings[0].Need, "the edit finding carries no Shot")
 	assert.NotNil(t, findings[1].Need)
+}
+
+func TestAdvance_LeavesTheClipsTheUserFixedAlone(t *testing.T) {
+	in := input(domain.TemplateSNSShort, "", clip("a", 6), clip("b", 8))
+	in.Shots["a"] = editor.ShotFacts{Label: "a", Dialogue: "今日は特別な日", SelectedTakeID: "t-a", TakeReady: true, EditingFixed: true}
+	in.Shots["b"] = editor.ShotFacts{Label: "b", SelectedTakeID: "t-b", TakeReady: true, EditingFixed: true}
+
+	got, notes := editor.Advance(in)
+
+	assert.Equal(t, in.Timeline.Clips, got.Clips, "Editing MANUAL / LOCK: neither the pace, nor the caption touches the clips")
+	assert.Empty(t, notes)
+
+	in.Shots["b"] = editor.ShotFacts{Label: "b", SelectedTakeID: "t-b", TakeReady: true}
+	got, _ = editor.Advance(in)
+	assert.InDelta(t, editor.FastClipSeconds, got.Clips[1].Length(), 1e-9, "a clip that is not fixed is still edited")
+	assert.InDelta(t, 6.0, got.Clips[0].Length(), 1e-9)
+}
+
+func TestKeepFixedClips_BringsBackTheUsersClipInPlace(t *testing.T) {
+	mine := clip("b", 4)
+	mine.In, mine.Caption = 1, "my caption"
+	previous := domain.EditTimeline{Clips: []domain.EditClip{clip("a", 9), mine}}
+	fresh := domain.EditTimeline{Clips: []domain.EditClip{clip("x", 5), clip("b", 7), clip("a", 7)}}
+
+	got := editor.KeepFixedClips(fresh, previous, map[string]bool{"b": true, "x": true})
+
+	require.Len(t, got.Clips, 3)
+	assert.Equal(t, fresh.Clips[0], got.Clips[0], "a fixed Shot without a previous clip keeps the fresh one")
+	assert.Equal(t, mine, got.Clips[1])
+	assert.Equal(t, fresh.Clips[2], got.Clips[2], "a Shot that is not fixed is cut afresh")
+	assert.Equal(t, 7.0, fresh.Clips[1].Out, "the fresh timeline is not modified")
+}
+
+func TestKeepFixedClips_MovesTheUsersCutToTheShotsNewSelectedTake(t *testing.T) {
+	mine := clip("b", 9)
+	mine.In, mine.Caption = 3, "my caption"
+	mine.Transition = domain.Transition{Type: domain.TransitionFade, Seconds: 0.5}
+	previous := domain.EditTimeline{Clips: []domain.EditClip{mine}}
+	freshClip := clip("b", 4)
+	freshClip.TakeID, freshClip.SourceSeconds = "t-new", 4
+	fresh := domain.EditTimeline{Clips: []domain.EditClip{freshClip}}
+
+	got := editor.KeepFixedClips(fresh, previous, map[string]bool{"b": true})
+
+	require.Len(t, got.Clips, 1)
+	c := got.Clips[0]
+	assert.Equal(t, "t-new", c.TakeID, "the Shot's Selected Take plays")
+	assert.Equal(t, 4.0, c.SourceSeconds)
+	assert.Equal(t, 4.0, c.Out, "the cut is held within the new Take")
+	assert.Equal(t, 3.0, c.In)
+	assert.Equal(t, "my caption", c.Caption)
+	assert.Equal(t, mine.Transition, c.Transition)
+
+	short := freshClip
+	short.SourceSeconds = 3.2
+	got = editor.KeepFixedClips(domain.EditTimeline{Clips: []domain.EditClip{short}}, previous, map[string]bool{"b": true})
+	assert.InDelta(t, domain.MinClipSeconds, got.Clips[0].Length(), 1e-9, "a cut that no longer fits starts earlier")
+	assert.InDelta(t, 3.2, got.Clips[0].Out, 1e-9)
 }

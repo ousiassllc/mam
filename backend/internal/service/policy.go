@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -243,11 +242,12 @@ func (s *PolicyService) Storage(ctx context.Context, projectID string) (StorageV
 }
 
 // ArchiveTake gives up the video file of one Take that is not the Selected Take of its Shot. The
-// Take stays as Rejected with its history. ErrConflict is returned for a Selected Take.
+// Take stays as Rejected with its history. ErrConflict is returned for a Selected Take and for a Take
+// a Timeline still refers to (its file is needed to export).
 func (s *PolicyService) ArchiveTake(ctx context.Context, projectID, takeID string) (StorageView, error) {
 	removed, err := s.storage.ArchiveTake(ctx, projectID, takeID)
 	if errors.Is(err, repository.ErrConflict) {
-		return StorageView{}, fmt.Errorf("%w: the Take is selected", ErrConflict)
+		return StorageView{}, fmt.Errorf("%w: the Take is selected or used by a Timeline", ErrConflict)
 	}
 	if err != nil {
 		return StorageView{}, notFound(err)
@@ -271,7 +271,11 @@ func (s *PolicyService) ArchiveUnneeded(ctx context.Context, projectID string) (
 // an orphan file, which is logged.
 func (s *PolicyService) removeFiles(assets []domain.Asset) {
 	for _, a := range assets {
-		path := filepath.Join(s.assetsDir, filepath.FromSlash(a.FilePath))
+		path := s.assetPath(a.FilePath)
+		if path == "" {
+			s.logger.Error("skip archived take file outside the assets directory", "asset_id", a.ID, "file_path", a.FilePath)
+			continue
+		}
 		if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
 			s.logger.Error("remove archived take file failed", "asset_id", a.ID, "err", err)
 		}

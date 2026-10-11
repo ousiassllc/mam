@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // TakeComparisonData is the Take comparison of a Shot (GET /shots/:id/takes).
@@ -12,7 +13,7 @@ type TakeComparisonData struct {
 	Shot    domain.Shot
 }
 
-func takesAPIURL(shotID string) string { return "/api/v1/shots/" + shotID + "/takes" }
+func takesAPIURL(shotID string) string { return paths.APIShot(shotID, "takes") }
 
 // TakeComparison hosts mam-take-comparator: the score table of the Takes of the Shot and the
 // selection of the parts to join. The component loads the Takes from the JSON API.

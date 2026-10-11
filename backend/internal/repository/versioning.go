@@ -147,7 +147,7 @@ func scopeExists(ctx context.Context, q queryer, projectID, branchID string) err
 
 // RestoreShotVersion makes the Canonical Shot Spec of prompt version number the spec of the Shot
 // again, as a new prompt version (the Takes of the old version stay with it) and returns that
-// version. ErrNotFound: unknown Shot or version; ErrConflict: the Shot is being generated;
+// version. The rest of shot_spec (pinned references, Keyframe, storyboard) stays as it is now. ErrNotFound: unknown Shot or version; ErrConflict: the Shot is being generated or repaired;
 // *LockedParametersError (Is ErrLocked): the restore would change a LOCKed part of the spec.
 func (r *VersionRepository) RestoreShotVersion(ctx context.Context, shotID string, number int) (domain.PromptVersion, error) {
 	var pv domain.PromptVersion
@@ -156,7 +156,7 @@ func (r *VersionRepository) RestoreShotVersion(ctx context.Context, shotID strin
 		if err != nil {
 			return err
 		}
-		if state == domain.ShotGenerating {
+		if !state.CanEditSpec() {
 			return ErrConflict
 		}
 		var snapshot string
@@ -180,17 +180,11 @@ func (r *VersionRepository) RestoreShotVersion(ctx context.Context, shotID strin
 				return &LockedParametersError{Parameters: hit}
 			}
 		}
-		if _, err := tx.ExecContext(ctx, `UPDATE shot SET shot_spec = ? WHERE id = ?`, snapshot, shotID); err != nil {
-			return err
-		}
-		var next int
-		if err := tx.QueryRowContext(ctx, `SELECT COALESCE(MAX(version_number), 0) + 1 FROM prompt_version WHERE shot_id = ?`, shotID).Scan(&next); err != nil {
-			return err
-		}
-		pv = domain.PromptVersion{ID: domain.NewID(), ShotID: shotID, VersionNumber: next, SpecSnapshot: json.RawMessage(snapshot)}
-		_, err = tx.ExecContext(ctx,
-			`INSERT INTO prompt_version (id, shot_id, version_number, shot_spec_snapshot, created_at) VALUES (?, ?, ?, ?, ?)`,
-			pv.ID, shotID, next, snapshot, formatTime(r.now()))
+		// Only the Canonical Shot Spec goes back: the pinned references and the Keyframe (shot_spec.references)
+		// and the storyboard are not part of it, change without a prompt_version, and are kept as they are
+		// now, the way a hand edit (SaveEditedSpec) keeps them.
+		gr := &GenerationRepository{db: r.db, now: r.now}
+		pv, err = gr.writeSpec(ctx, tx, shotID, current, restored, nil, nil, true)
 		return err
 	})
 	if errors.Is(err, ErrNotFound) || errors.Is(err, ErrConflict) || errors.Is(err, ErrLocked) {
@@ -291,6 +285,9 @@ func (r *VersionRepository) restoreWorld(ctx context.Context, tx *sql.Tx, projec
 				return 0, err
 			}
 		}
+		if err := restoreReferenceSlots(ctx, tx, projectID, before, snapshot, locks, e.target, e.id); err != nil {
+			return 0, err
+		}
 	}
 	camStory := before
 	for _, target := range []domain.WorldTarget{domain.TargetCamera, domain.TargetStory} {
@@ -316,6 +313,47 @@ func (r *VersionRepository) restoreWorld(ctx context.Context, tx *sql.Tx, projec
 	wr := &WorldRepository{db: r.db, now: r.now}
 	_, number, err := wr.appendVersion(ctx, tx, projectID, branchID, after)
 	return number, err
+}
+
+// restoreReferenceSlots writes the reference images of the entity's slots (face / body, geometry /
+// label, layout) back from the snapshot: assigning one appends a World State version of its own
+// (WorldRepository.AssignReference), so a restore that left them out could not take it back. A slot
+// whose image is LOCKed is ErrLocked. An image whose asset is gone (the Project's files were cleaned
+// up) cannot be pointed at again, and its slot keeps what it holds now.
+func restoreReferenceSlots(ctx context.Context, tx *sql.Tx, projectID string, before, snapshot domain.WorldContext, locks domain.LockSet, target domain.WorldTarget, id string) error {
+	for _, slot := range domain.ReferenceSlots() {
+		if slot.Target != target {
+			continue
+		}
+		old, present := before.Current(target, id, slot.Field())
+		if !present {
+			return nil // deleted since: nothing to write back
+		}
+		want, _ := snapshot.Current(target, id, slot.Field())
+		if domain.SameValue(old, want) {
+			continue
+		}
+		if locks.Locked(target, id, slot.Lock) {
+			return ErrLocked
+		}
+		var assetID string
+		if len(want) > 0 {
+			if err := json.Unmarshal(want, &assetID); err != nil {
+				return fmt.Errorf("decode %s.%s: %w", target, slot.Field(), err)
+			}
+		}
+		if assetID != "" {
+			if err := exists(ctx, tx, `SELECT 1 FROM asset WHERE id = ? AND project_id = ?`, assetID, projectID); errors.Is(err, ErrNotFound) {
+				continue
+			} else if err != nil {
+				return err
+			}
+		}
+		if _, err := tx.ExecContext(ctx, `UPDATE `+worldTables[target]+` SET `+slot.Column+` = ? WHERE id = ?`, nullIfEmpty(assetID), id); err != nil { //nolint:gosec // table and column are constants of worldTables and domain.ReferenceSlots; only the values are data
+			return err
+		}
+	}
+	return nil
 }
 
 // RestoreBranchVersion makes the name and World State reference of branch version number those of

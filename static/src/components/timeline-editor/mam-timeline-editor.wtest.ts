@@ -76,6 +76,48 @@ describe('mam-timeline-editor', () => {
     expect(el.querySelector('[data-error]')).to.equal(null);
   });
 
+  it('shows the error, not "no Rough Cut yet", when the first load fails with something other than 404', async () => {
+    stub = stubFetch({ [`GET ${API}`]: { status: 503, body: { title: 'Service Unavailable' } } });
+    const el = await editor();
+    expect(el.querySelector('[data-error]')).to.not.equal(null);
+    expect(el.querySelector('[data-empty]')).to.equal(null);
+  });
+
+  it('keeps the timeline and the unsaved edits and shows an error when a reload fails', async () => {
+    let fail = false;
+    stub = stubFetch({ [`GET ${API}`]: () => (fail ? { status: 503, body: { title: 'Service Unavailable' } } : { body: timeline('e1', three()) }) });
+    const el = await editor();
+    (el.querySelector('[data-clip="c"] [data-action="up"]') as HTMLButtonElement).click();
+    await waitUntil(() => order(el).join() === 'a,c,b');
+
+    fail = true;
+    document.dispatchEvent(new CustomEvent('timeline-reload')); // a Rough Cut was made: the page asks for the timeline again
+    await waitUntil(() => el.querySelector('[data-error]') !== null);
+    expect(order(el)).to.deep.equal(['a', 'c', 'b']);
+    expect(el.querySelector('[data-empty]')).to.equal(null);
+
+    (el.querySelector('[data-action="revert"]') as HTMLButtonElement).click(); // 変更を戻す fails as well
+    await waitUntil(() => stub.requests.filter((r) => r.method === 'GET').length === 3);
+    await el.updateComplete;
+    expect(order(el)).to.deep.equal(['a', 'c', 'b']);
+    expect(el.querySelector('[data-error]')).to.not.equal(null);
+
+    fail = false;
+    (el.querySelector('[data-action="revert"]') as HTMLButtonElement).click();
+    await waitUntil(() => order(el).join() === 'a,b,c' && el.querySelector('[data-error]') === null);
+  });
+
+  it('reloads to the empty state when the timeline is gone (404)', async () => {
+    let gone = false;
+    stub = stubFetch({ [`GET ${API}`]: () => (gone ? { status: 404, body: { title: 'Not Found' } } : { body: timeline('e1', three()) }) });
+    const el = await editor();
+    gone = true;
+    document.dispatchEvent(new CustomEvent('timeline-reload'));
+    await waitUntil(() => el.querySelector('[data-empty]') !== null);
+    expect(el.querySelector('[data-clips]')).to.equal(null);
+    expect(el.querySelector('[data-error]')).to.equal(null);
+  });
+
   it('reorders with the arrows, sets a Cut Point and a Transition, and saves the clips to the server URL', async () => {
     let gets = 0;
     stub = stubFetch({
@@ -138,6 +180,31 @@ describe('mam-timeline-editor', () => {
     expect(order(el)).to.deep.equal(['a', 'c', 'b']);
   });
 
+  it('says the save is done but the reload failed, without "saved" or timeline-updated, when the reload after a save fails', async () => {
+    let gets = 0;
+    stub = stubFetch({
+      [`GET ${API}`]: () => {
+        gets += 1;
+        return gets === 1 ? { body: timeline('e1', three()) } : { status: 503, body: { title: 'Service Unavailable' } };
+      },
+      'PUT /edit-timelines/e1': { status: 200 },
+    });
+    const el = await editor();
+    let updated = false;
+    el.addEventListener('timeline-updated', () => (updated = true));
+    (el.querySelector('[data-clip="c"] [data-action="up"]') as HTMLButtonElement).click();
+    await waitUntil(() => order(el).join() === 'a,c,b');
+
+    (el.querySelector('[data-action="save"]') as HTMLButtonElement).click();
+    await waitUntil(() => el.querySelector('[data-error]') !== null);
+    await el.updateComplete;
+
+    expect(text(el, '[data-error]')).to.contain('再読込に失敗しました');
+    expect(el.querySelector('[data-notice]')).to.equal(null);
+    expect(updated).to.equal(false);
+    expect(text(el, '[data-total]')).to.contain('未保存');
+  });
+
   it('cannot be edited once the server says the timeline is read-only', async () => {
     stub = stubFetch({ [`GET ${API}`]: { body: timeline('e1', three(), { readonly: true }) } });
     const el = await editor();
@@ -194,6 +261,62 @@ describe('mam-timeline-editor', () => {
 
     expect(text(el, '[data-error]')).to.contain('10 文字以内');
     expect((el.querySelector('[data-action="save"]') as HTMLButtonElement).disabled).to.equal(true);
+  });
+
+  it('puts the accepted value back into a caption that was refused, and drops the refused text on a reload', async () => {
+    stub = stubFetch({ [`GET ${API}`]: { body: timeline('e1', three()) } });
+    const el = await editor();
+    const box = el.querySelector('[data-clip="a"] [data-field="caption"]') as HTMLTextAreaElement;
+
+    type(box as unknown as HTMLInputElement, 'あ'.repeat(11));
+    await waitUntil(() => el.querySelector('[data-error]') !== null);
+    await el.updateComplete;
+    expect(box.value).to.equal('あ'.repeat(11)); // stays in the box so it can be shortened
+
+    (el.querySelector('[data-action="revert"]') as HTMLButtonElement | null)?.click();
+    document.dispatchEvent(new CustomEvent('timeline-reload'));
+    await waitUntil(() => el.querySelector('[data-error]') === null);
+    await el.updateComplete;
+    expect(box.value).to.equal(''); // the model's caption
+  });
+
+  it('writes the clamped transition length back into the input, also when the model does not change', async () => {
+    stub = stubFetch({ [`GET ${API}`]: { body: timeline('e1', [clip('a', 0, 4), clip('b', 0, 3, { transition: { type: 'fade', seconds: 1 } }), clip('c', 0, 2)]) } });
+    const el = await editor();
+    const seconds = el.querySelector('[data-clip="b"] [data-field="transition-seconds"]') as HTMLInputElement;
+
+    type(seconds, '5'); // max_transition_seconds = 2
+    await waitUntil(() => seconds.value === '2');
+    type(seconds, '5'); // the model is already 2: no change, the input still has to go back
+    await waitUntil(() => seconds.value === '2');
+    type(seconds, '0');
+    await waitUntil(() => seconds.value === '0.1');
+    type(seconds, '');
+    await waitUntil(() => seconds.value === '0.5');
+  });
+
+  it('keeps every transition select on its own clip after the user changed one and the clips were reordered', async () => {
+    const fade = { transition: { type: 'fade' as const, seconds: 0.5 } };
+    stub = stubFetch({ [`GET ${API}`]: { body: timeline('e1', [clip('a', 0, 4), clip('b', 0, 3), clip('c', 0, 2, fade)]) } });
+    const el = await editor();
+    const select = (shot: string) => el.querySelector(`[data-clip="${shot}"] [data-field="transition"]`) as HTMLSelectElement;
+    const shown = () => [...el.querySelectorAll<HTMLSelectElement>('[data-field="transition"]')].map((s) => s.value);
+
+    type(select('b'), 'fade'); // b: cut → fade (the option is dirty now)
+    await waitUntil(() => el.querySelector('[data-clip="b"] [data-field="transition-seconds"]') !== null);
+    type(select('b'), 'cut');
+    await waitUntil(() => el.querySelector('[data-clip="b"] [data-field="transition-seconds"]') === null);
+    expect(shown()).to.deep.equal(['cut', 'fade']);
+
+    (el.querySelector('[data-clip="c"] [data-action="up"]') as HTMLButtonElement).click(); // a c b
+    await waitUntil(() => order(el).join() === 'a,c,b');
+    await el.updateComplete;
+    expect(shown()).to.deep.equal(['fade', 'cut']);
+
+    (el.querySelector('[data-clip="c"] [data-action="remove"]') as HTMLButtonElement).click(); // a b
+    await waitUntil(() => order(el).join() === 'a,b');
+    await el.updateComplete;
+    expect(shown()).to.deep.equal(['cut']);
   });
 
   it('shows the additional Shot a need_shot verdict asks the Director for', async () => {

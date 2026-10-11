@@ -26,11 +26,23 @@ func Checkpoints() []Checkpoint {
 	}
 }
 
-// KeyCheckpoints are the standard points of KEY CHECK: Concept/Script, Main Visual,
-// Rough Cut and Final (spec/spec.md §4.4).
-func KeyCheckpoints() []Checkpoint {
-	return []Checkpoint{CheckpointScript, CheckpointMainVisual, CheckpointRoughCut, CheckpointFinal}
+// SelectableCheckpoints are the checkpoints the pipeline actually posts an Approval card at:
+// the script (Orchestrator), the Rough Cut and the Final (Editor). Main Visual, character
+// design, product key visual and Scene completion belong to the stages after the Scene/Shot
+// plan, which are started per Shot by hand, so nothing asks there (spec/spec.md §4.4). Only
+// the selectable ones are offered for CUSTOM CHECK.
+func SelectableCheckpoints() []Checkpoint {
+	return []Checkpoint{CheckpointScript, CheckpointRoughCut, CheckpointFinal}
 }
+
+// KeyCheckpoints are the standard points of KEY CHECK: Concept/Script, Rough Cut and Final
+// (spec/spec.md §4.4).
+func KeyCheckpoints() []Checkpoint {
+	return []Checkpoint{CheckpointScript, CheckpointRoughCut, CheckpointFinal}
+}
+
+// Selectable reports whether c can be chosen for CUSTOM CHECK (see SelectableCheckpoints).
+func (c Checkpoint) Selectable() bool { return slices.Contains(SelectableCheckpoints(), c) }
 
 // Valid reports whether c is a known checkpoint.
 func (c Checkpoint) Valid() bool { return slices.Contains(Checkpoints(), c) }
@@ -110,7 +122,8 @@ func (c Checkpoint) ChangesRequestedState() ProjectState {
 }
 
 // EscalationResumeState is where the Project continues once an Escalation card is
-// answered: the Repair Agent applies the user's decision.
+// answered. The answer is recorded only: the user carries the decision out by hand (raising a
+// limit, adopting a Take, fixing the Shot), and the Editor Judge or an edit brings the Project back to EDITING.
 const EscalationResumeState = StateRepairing
 
 // RequiresApproval reports whether an approval card is shown at cp for this level.

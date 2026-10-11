@@ -89,8 +89,34 @@ func ParseTags(input string) ([]string, error) {
 	return tags, nil
 }
 
+// Matches reports whether the entry passes the Library search: query is a part of the name or of a
+// tag, tag is one whole tag. Both ignore case by Unicode simple folding (the rule ParseTags uses to
+// drop repeated tags), not only for ASCII. An empty query or tag matches everything.
+func (it ReferenceItem) Matches(query, tag string) bool {
+	if tag != "" && !slices.ContainsFunc(it.Tags, func(t string) bool { return strings.EqualFold(t, tag) }) {
+		return false
+	}
+	if query == "" {
+		return true
+	}
+	q := strings.ToLower(query)
+	return strings.Contains(strings.ToLower(it.Name), q) ||
+		slices.ContainsFunc(it.Tags, func(t string) bool { return strings.Contains(strings.ToLower(t), q) })
+}
+
 // SameReferenceName compares the names of two references the way the Reference Pack matches them:
 // ignoring case and surrounding space.
 func SameReferenceName(a, b string) bool {
 	return strings.EqualFold(strings.TrimSpace(a), strings.TrimSpace(b))
+}
+
+// SameReference reports whether two references take the same place in a Reference Pack: the same
+// kind and, for Character / Product / Location, the same name. A Pack has one Style and one
+// Lighting image, so those are the same by kind alone. Pinning from the Library and rebuilding
+// the Pack both use this rule (spec/spec.md §10.1).
+func SameReference(a, b Reference) bool {
+	if a.Kind != b.Kind {
+		return false
+	}
+	return a.Kind == RefStyle || a.Kind == RefLighting || SameReferenceName(a.Name, b.Name)
 }

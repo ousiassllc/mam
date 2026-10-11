@@ -7,41 +7,14 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/fs"
 	"log/slog"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
-	"github.com/gin-gonic/gin"
-
-	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector"
-	"github.com/ousiassllc/mam/backend/internal/agent/jev"
-	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
-	"github.com/ousiassllc/mam/backend/internal/agent/llm"
-	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
+	"github.com/ousiassllc/mam/backend/internal/app"
 	"github.com/ousiassllc/mam/backend/internal/config"
-	"github.com/ousiassllc/mam/backend/internal/credential"
-	"github.com/ousiassllc/mam/backend/internal/fsutil"
-	"github.com/ousiassllc/mam/backend/internal/logging"
-	"github.com/ousiassllc/mam/backend/internal/media"
-	"github.com/ousiassllc/mam/backend/internal/repository"
-	"github.com/ousiassllc/mam/backend/internal/router"
-	"github.com/ousiassllc/mam/backend/internal/service"
-	"github.com/ousiassllc/mam/static"
 )
-
-const shutdownTimeout = 10 * time.Second
-
-// staticFS serves assets from disk when --static-dir is set (make dev), else from the binary.
-func staticFS(cfg config.Config) fs.FS {
-	if cfg.StaticDir != "" {
-		return os.DirFS(cfg.StaticDir)
-	}
-	return static.Dist()
-}
 
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -54,6 +27,8 @@ func main() {
 }
 
 func run(ctx context.Context, args []string, getenv func(string) string, stderr io.Writer) error {
+	// app.Run parses the same arguments again; the parse here only decides whether to open the
+	// browser, and prints --help / a flag error exactly once before app.Run would.
 	cfg, err := config.Load(args, getenv, stderr)
 	if errors.Is(err, flag.ErrHelp) {
 		return nil
@@ -61,154 +36,17 @@ func run(ctx context.Context, args []string, getenv func(string) string, stderr 
 	if err != nil {
 		return err
 	}
-
-	logger, closeLog, err := logging.New(cfg.LogDir(), cfg.LogLevel, stderr)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = closeLog.Close() }()
-
-	if err := serve(ctx, cfg, logger); err != nil {
-		logger.Error("server terminated", "err", err)
-		return err
-	}
-	return nil
-}
-
-func serve(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
-	// Leftovers of interrupted atomic writes must not be mistaken for finished assets.
-	removed, err := fsutil.RemoveStaleTemp(cfg.AssetsDir())
-	if err != nil {
-		return fmt.Errorf("clean stale temp files: %w", err)
-	}
-	if len(removed) > 0 {
-		logger.Warn("removed stale temp files", "count", len(removed))
-	}
-
-	db, err := repository.Open(ctx, cfg.DBPath(), logger)
-	if err != nil {
-		return fmt.Errorf("open database: %w", err)
-	}
-	defer func() {
-		if err := db.Close(); err != nil {
-			logger.Error("close database", "err", err)
-		}
-	}()
-
-	llmCfg, err := llm.LoadConfig(cfg.LLMConfigPath)
-	if err != nil {
-		return err
-	}
-	keys := credential.NewKeyring()
-	reasoning := llm.NewClient(llmCfg, llm.NewBackends(llmCfg, keys, nil), llm.WithLogger(logger))
-
-	modelCfg, err := modeladapter.LoadConfig(cfg.ModelConfigPath)
-	if err != nil {
-		return err
-	}
-	models := modeladapter.New(modelCfg, modeladapter.NewBackends(modelCfg, keys, nil, 0), modeladapter.WithLogger(logger))
-
-	judging, err := newJudgeSetup(cfg, logger)
-	if err != nil {
-		return err
-	}
-	defer judging.close()
-
-	var previews *media.Tools // ffmpeg for the Take previews and Partial Take Use; nil when missing
-	if tools, err := media.Look(); err != nil {
-		logger.Warn("Take previews are limited: ffmpeg / ffprobe not found (4K Takes play as they are, Partial Take Use is off)")
-	} else {
-		previews = &tools
-	}
-
-	jevCfg, err := jev.LoadConfig(cfg.JevConfigPath)
-	if err != nil {
-		return err
-	}
-	// The Jev shadow run of the Repair Agent works once a TypeSafe API key is stored (credential provider "typesafe").
-	shadow, err := jev.New(jevCfg, keys, nil)
-	if err != nil {
-		return err
-	}
-
-	jobs := jobqueue.New(repository.NewJobRepository(db), jobqueue.Options{Logger: logger})
-	// Job handlers are registered by service.New (the plan job) and by the features that add more kinds.
-	// The services are built before the queue starts: they subscribe to job changes.
-	services := service.New(service.Deps{
-		DB:          db,
-		Jobs:        jobs,
-		Credentials: keys,
-		LLM:         reasoning,
-		Models:      models,
-		Logger:      logger,
-		AssetsDir:   cfg.AssetsDir(),
-		Frames:      judging.frames,
-		Faces:       judging.engine(),
-		Judge:       judging.config,
-		Jev:         shadow,
-		Media:       previews,
-		Audio:       audioProviders(keys),
+	return app.Run(ctx, app.Options{
+		Args:   args,
+		Getenv: getenv,
+		Stderr: stderr,
+		OnReady: func(url string) {
+			if !cfg.OpenBrowser {
+				return
+			}
+			if err := openBrowser(url); err != nil {
+				slog.Warn("could not open the browser; open the URL manually", "url", url, "err", err)
+			}
+		},
 	})
-	// Shots left GENERATING by an abnormal termination are released before their jobs are failed.
-	released, err := services.Recover(ctx)
-	if err != nil {
-		return fmt.Errorf("recover shots: %w", err)
-	}
-	if released > 0 {
-		logger.Warn("released shots interrupted while generating", "count", released)
-	}
-	resumed, failed, err := jobs.Recover(ctx)
-	if err != nil {
-		return fmt.Errorf("recover jobs: %w", err)
-	}
-	if resumed+failed > 0 {
-		logger.Warn("recovered unfinished jobs after abnormal termination", "resumed", resumed, "failed", failed)
-	}
-	jobs.Start(ctx)
-	defer jobs.Stop()
-
-	gin.SetMode(gin.ReleaseMode)
-	engine := router.New(services, router.Options{Logger: logger, Static: staticFS(cfg)})
-
-	ln, err := listenLoopback(cfg.Port)
-	if err != nil {
-		return err
-	}
-	srv := &http.Server{
-		Handler:           engine,
-		ReadHeaderTimeout: 10 * time.Second,
-	}
-
-	serveErr := make(chan error, 1)
-	go func() { serveErr <- srv.Serve(ln) }()
-
-	url := baseURL(ln)
-	logger.Info("server started", "url", url, "data_dir", cfg.DataDir)
-	if cfg.OpenBrowser {
-		if err := openBrowser(url); err != nil {
-			logger.Warn("could not open the browser; open the URL manually", "url", url, "err", err)
-		}
-	}
-
-	select {
-	case err := <-serveErr:
-		return fmt.Errorf("serve: %w", err)
-	case <-ctx.Done():
-	}
-
-	logger.Info("shutting down")
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
-	defer cancel()
-	if err := srv.Shutdown(shutdownCtx); err != nil {
-		return fmt.Errorf("shutdown: %w", err)
-	}
-	return nil
-}
-
-// audioProviders are the vendors of the Audio Director: ElevenLabs (TTS, cloned voices, Music,
-// Sound Effects; API key "elevenlabs") and Sync Labs (Lip Sync; API key "synclabs").
-func audioProviders(keys credential.Store) audiodirector.Providers {
-	p := audiodirector.ElevenLabsProviders(audiodirector.NewElevenLabs(audiodirector.Config{}, keys, nil))
-	p.LipSync = audiodirector.NewSyncLabs(audiodirector.SyncLabsConfig{}, keys, nil)
-	return p
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // ProposeContinue analyses a completed Shot and posts the NEXT candidates as a Question card
@@ -21,7 +22,7 @@ func ProposeContinue(svc *service.ContinueService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		c.Header("HX-Redirect", "/projects/"+project.ID) // the card is answered in the chat
+		c.Header("HX-Redirect", paths.Project(project.ID)) // the card is answered in the chat
 		render(c, http.StatusCreated, organisms.MessageFragment(project, []domain.ThreadMessage{card}, nil))
 	}
 }

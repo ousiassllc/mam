@@ -55,6 +55,37 @@ func CanTransition(from, to ProjectState) bool {
 	return slices.Contains(stateTransitions[from], to)
 }
 
+// CanExport reports whether a Project in the state can be exported: it passed Final QC (READY) or has
+// been exported already. The export is refused (409) from any other state and the panel draws the
+// export button from the same answer.
+func (s ProjectState) CanExport() bool { return s == StateReady || s == StateExported }
+
+// CanAwaitApproval reports whether a card that blocks the Project (an Escalation) can put it in
+// AWAITING_APPROVAL: the Core State Machine has no such move from DRAFT, AUDIO, READY or EXPORTED
+// (see EscalationBlocks).
+func (s ProjectState) CanAwaitApproval() bool { return CanTransition(s, StateAwaitingApproval) }
+
+// EscalationBlocks reports whether an Escalation posted in the state holds the Project: it waits in
+// AWAITING_APPROVAL until the card is answered, and the answer moves it on (EscalationResumeState).
+// That is every state that can enter AWAITING_APPROVAL, and AWAITING_APPROVAL itself. From DRAFT, AUDIO,
+// READY and EXPORTED the Core State Machine has no such move: the Escalation of a Shot is only a card
+// there (CardBody.NonBlocking) and the Project keeps its state, before and after the answer.
+func (s ProjectState) EscalationBlocks() bool {
+	return s == StateAwaitingApproval || s.CanAwaitApproval()
+}
+
+// CanEdit reports whether a Project in the state can take an edit: a Rough Cut or a change of the
+// Edit Timeline moves it to EDITING (EditorService.toEditing) from these states and is refused (409)
+// from any other (a card waits, or it is DRAFT / PLANNING / READY / EXPORTED). The editor's
+// read-only flag and the Rough Cut button are drawn from the same answer.
+func (s ProjectState) CanEdit() bool {
+	switch s {
+	case StateEditing, StateVisualDesign, StateGenerating, StateJudging, StateRepairing, StateEditJudging, StateAudio, StateFinalQC:
+		return true
+	}
+	return false
+}
+
 // ShotState is the sub-state of a Shot within the Core State Machine.
 type ShotState string
 
@@ -66,6 +97,30 @@ const (
 	ShotRepairing  ShotState = "REPAIRING"
 	ShotEditing    ShotState = "EDITING"
 )
+
+// Busy reports whether a generation or a repair is writing the Shot: a start of either is refused
+// (409) while it is. The Shot card draws the buttons that start one only when it is not.
+func (s ShotState) Busy() bool { return s == ShotGenerating || s == ShotRepairing }
+
+// CanEditSpec reports whether the Shot's spec may be saved by hand or restored from a version: the
+// generation and the Repair write the spec at their end and would overwrite the edit, so both are
+// refused (409) while the Shot is Busy. The Shot Inspector draws the spec form and the restore buttons
+// only when it holds; the repositories refuse with the same predicate.
+func (s ShotState) CanEditSpec() bool { return !s.Busy() }
+
+// CanPinReference reports whether a Reference Library image may be added to the Shot's Reference Pack:
+// the pack is read by the generation, the Repair and the Judge (a Repair reads it when it starts and
+// saves the prompt_version, which carries it, when it ends), so it is refused (409) while the Shot is
+// being generated, repaired or judged. The Shot Inspector draws the form only when it holds; the
+// repository refuses with the same predicate.
+func (s ShotState) CanPinReference() bool { return !s.Busy() && s != ShotJudging }
+
+// CanContinue reports whether Continue may start from the Shot: it is not being generated or repaired
+// and it has a Take that was not rejected (the completed Shot the next one grows from). The Shot card
+// draws the "続きを作る" button only when it holds; the service refuses (409) with the same predicate.
+func CanContinue(state ShotState, takes []Take) bool {
+	return !state.Busy() && slices.ContainsFunc(takes, func(t Take) bool { return t.Status != TakeRejected })
+}
 
 // ShotStates lists every valid ShotState.
 func ShotStates() []ShotState {

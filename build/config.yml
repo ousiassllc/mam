@@ -1,0 +1,13 @@
+# Wails v3 build configuration of the Windows desktop front (spec/architecture/desktop.md §4).
+# `wails3 update build-assets` regenerates build/windows/* from `info`; scripts/package-windows.sh
+# overrides `version` with the release version (X.Y.Z) and runs it before packaging.
+version: '3'
+
+info:
+  companyName: "ousiassllc"
+  productName: "MAM"
+  productIdentifier: "com.ousiassllc.mam"
+  description: "Multi-agent AI video production studio"
+  copyright: "(c) 2026, ousiassllc"
+  comments: "Windows desktop version of mam. Runs the local server and opens it in a window."
+  version: "0.0.0"

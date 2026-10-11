@@ -2,6 +2,8 @@ package domain
 
 import (
 	"encoding/json"
+	"net/url"
+	"strings"
 	"time"
 )
 
@@ -77,6 +79,9 @@ func (m ChatMessage) IsBlockingApproval() bool {
 type CardBody struct {
 	Text    string   `json:"text"`
 	Options []string `json:"options,omitempty"`
+	// NonBlocking marks an Escalation that was posted without holding the Project (ProjectState.EscalationBlocks
+	// was false): the card is answered like any other, but neither waits for the answer nor resumes the Project.
+	NonBlocking bool `json:"non_blocking,omitempty"`
 }
 
 // EncodeCardBody serialises a question / escalation card body.
@@ -130,6 +135,22 @@ func DecodeTakeCardBody(content string) TakeCardBody {
 	return b
 }
 
+// IsLocalPath reports whether p is a same-origin absolute path: the only kind of URL a card may
+// make the browser load. A backslash (browsers read /\host as "//host"), an escaped one, a
+// control character, a scheme or a host is refused.
+func IsLocalPath(p string) bool {
+	if !strings.HasPrefix(p, "/") || strings.HasPrefix(p, "//") || strings.Contains(strings.ToLower(p), "%5c") {
+		return false
+	}
+	for _, r := range p {
+		if r == '\\' || r < 0x20 || r == 0x7f {
+			return false
+		}
+	}
+	u, err := url.Parse(p)
+	return err == nil && u.Scheme == "" && u.Host == ""
+}
+
 // ThreadMessage is a chat message prepared for rendering: the message plus what the
 // card needs that is not stored on the row.
 type ThreadMessage struct {
@@ -140,4 +161,21 @@ type ThreadMessage struct {
 	Open bool
 	// Job is the live job of a progress card (nil when unknown).
 	Job *Job
+}
+
+// Pending reports whether the card can still change in place (card.updated): a question or
+// escalation waiting for an answer, an approval not yet answered, a progress card whose job has not
+// finished (or is unknown). The client fetches such cards again after a reconnect, when the
+// notification that they changed may have been missed.
+func (m ThreadMessage) Pending() bool {
+	switch m.Kind {
+	case KindApproval:
+		return m.ApprovalStatus == ApprovalPending
+	case KindProgress:
+		return m.Job == nil || m.Job.Status == JobQueued || m.Job.Status == JobRunning
+	case KindQuestion, KindEscalation:
+		return m.Open
+	default:
+		return false
+	}
 }

@@ -7,6 +7,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // EditorPanelData is the editing state of a Project (GET /projects/:id/edit): Rough Cut, Editor
@@ -23,6 +24,8 @@ type EditorPanelData struct {
 	Duration   float64
 	Judge      *domain.EditorJudgeResult
 	Audio      *domain.AudioTimelineVersion
+	// TrunkAudio is the latest Audio Timeline of the trunk: Final QC inspects it, not the Branch shown.
+	TrunkAudio *domain.AudioTimelineVersion
 	// Voices are the cloned voices of the Project's speakers.
 	Voices  []domain.VoiceClone
 	QC      *domain.FinalQCResult
@@ -33,10 +36,8 @@ type EditorPanelData struct {
 	CanRender bool
 }
 
-func projectURL(projectID string) string { return "/projects/" + projectID }
-
 func editorAPIURL(projectID, branchID string) string {
-	return "/api/v1/projects/" + projectID + "/edit-timeline" + branchQuery(branchID)
+	return "/api/v1" + paths.Project(projectID, "edit-timeline") + branchQuery(branchID)
 }
 
 func branchQuery(branchID string) string {
@@ -69,24 +70,52 @@ func needLabel(n *domain.ShotNeed) string {
 	return fmt.Sprintf("%s %.1f 秒（クリップ %d の後）", kind, n.Seconds(), n.AfterClip)
 }
 
+// CanRoughCut reports whether a Rough Cut can be made (or made again) now: the Project is in a state
+// it can take an edit in (domain.ProjectState.CanEdit, the one the server refuses by with 409 and the
+// editor's read-only flag follows).
+func (d EditorPanelData) CanRoughCut() bool { return d.Project.State.CanEdit() }
+
 // CanJudge reports whether the Editor Judge can be run now.
 func (d EditorPanelData) CanJudge() bool {
 	return d.TimelineID != "" && (d.Project.State == domain.StateEditing || d.Project.State == domain.StateEditJudging || d.Project.State == domain.StateRepairing)
 }
 
-// CanAudio reports whether the audio can be made now.
+// CanAudio reports whether the audio can be made now: the series shown has an Edit Timeline to make
+// it for (the server refuses with 404 without one).
 func (d EditorPanelData) CanAudio() bool {
-	return d.CanRender && d.Project.State == domain.StateAudio
+	return d.CanRender && d.Project.State == domain.StateAudio && d.TimelineID != ""
 }
 
-// CanFinalQC reports whether Final QC can be run now.
+// CanFinalQC reports whether Final QC can be run now. It inspects the trunk whatever series is
+// shown, so the audio it needs is the trunk's (TrunkAudio), not the Branch's.
 func (d EditorPanelData) CanFinalQC() bool {
-	return d.Audio != nil && (d.Project.State == domain.StateAudio || d.Project.State == domain.StateFinalQC)
+	return d.TrunkAudio != nil && (d.Project.State == domain.StateAudio || d.Project.State == domain.StateFinalQC)
 }
 
-// CanExport reports whether the video can be exported now.
+// FinalQCBlockedByTrunk is true when only the missing audio of the trunk keeps Final QC from running
+// from a Branch's panel.
+func (d EditorPanelData) FinalQCBlockedByTrunk() bool {
+	return d.BranchID != "" && d.TrunkAudio == nil && (d.Project.State == domain.StateAudio || d.Project.State == domain.StateFinalQC)
+}
+
+// CanExport reports whether the video can be exported now: the Project is in a state it can be
+// exported from (domain.ProjectState.CanExport) and the series shown (the trunk or the Branch) has
+// audio made for its latest Edit Timeline (domain.AudioTimelineVersion.CurrentFor): the server
+// refuses an export with 404 / 409 otherwise.
 func (d EditorPanelData) CanExport() bool {
-	return d.CanRender && (d.Project.State == domain.StateReady || d.Project.State == domain.StateExported)
+	return d.CanRender && d.Project.State.CanExport() && d.Audio.CurrentFor(d.TimelineID)
+}
+
+// ExportBlocker is the reason the export button is disabled although the Project can be exported
+// from its state ("" when the button is enabled, or the state or ffmpeg is what disables it).
+func (d EditorPanelData) ExportBlocker() string {
+	switch {
+	case !d.CanRender || !d.Project.State.CanExport() || d.CanExport():
+		return ""
+	case d.Audio == nil:
+		return "この系列にはまだ音声がないため、書き出せません。"
+	}
+	return "この系列の音声が最新の編集に対応していないため、書き出せません。"
 }
 
 func verdictLabel(v domain.EditorVerdict) string {
@@ -120,7 +149,7 @@ func resolutionOptions() []string { return domain.ExportResolutions() }
 func codecOptions() []string { return domain.ExportCodecs() }
 
 func exportURL(projectID, exportID string) string {
-	return "/projects/" + projectID + "/exports/" + exportID + "/video"
+	return paths.Project(projectID, "exports", exportID, "video")
 }
 
 // EditorWorkspace hosts mam-timeline-editor (loaded from the JSON API) and the stage buttons.
@@ -135,12 +164,20 @@ templ EditorWorkspace(d EditorPanelData) {
 	</section>
 }
 
+// EditorActionsFragment is what a stage action or the reload of #editor-actions answers with: the
+// stage buttons and, out of band, the Project state badge of the page header, which the stage
+// (Rough Cut, Final QC, an additional Shot request, ...) may have moved.
+templ EditorActionsFragment(d EditorPanelData) {
+	@EditorActions(d)
+	@ProjectStateBadge(d.Project.State, true)
+}
+
 // EditorActions is the row of stages. It reloads itself when the timeline editor saved.
 templ EditorActions(d EditorPanelData) {
 	<div
 		id="editor-actions"
 		class="flex flex-col gap-5"
-		hx-get={ projectURL(d.Project.ID) + "/edit/actions" + branchQuery(d.BranchID) }
+		hx-get={ paths.Project(d.Project.ID, "edit", "actions") + branchQuery(d.BranchID) }
 		hx-trigger="timeline-updated from:body"
 		hx-swap="outerHTML"
 	>
@@ -150,14 +187,14 @@ templ EditorActions(d EditorPanelData) {
 			<div class="flex items-center gap-3">
 				if d.TimelineID == "" {
 					@atoms.Button(atoms.TonePrimary, "Rough Cut を作成", templ.Attributes{
-						"type": "button", "hx-post": projectURL(d.Project.ID) + "/edit/rough-cut", "hx-vals": branchVals(d.BranchID),
-						"hx-target": "#editor-actions", "hx-swap": "outerHTML", "hx-disabled-elt": "this",
+						"type": "button", "hx-post": paths.Project(d.Project.ID, "edit", "rough-cut"), "hx-vals": branchVals(d.BranchID),
+						"hx-target": "#editor-actions", "hx-swap": "outerHTML", "hx-disabled-elt": "this", "disabled": !d.CanRoughCut(),
 					})
 				} else {
 					@atoms.Button(atoms.ToneNeutral, "Rough Cut を作り直す", templ.Attributes{
-						"type": "button", "hx-post": projectURL(d.Project.ID) + "/edit/rough-cut", "hx-vals": branchVals(d.BranchID),
+						"type": "button", "hx-post": paths.Project(d.Project.ID, "edit", "rough-cut"), "hx-vals": branchVals(d.BranchID),
 						"hx-target": "#editor-actions", "hx-swap": "outerHTML", "hx-disabled-elt": "this",
-						"hx-confirm": "Rough Cut を作り直します。手動の編集は新しい版に置き換わります。よろしいですか？",
+						"hx-confirm": "Rough Cut を作り直します。手動の編集は新しい版に置き換わります。よろしいですか？", "disabled": !d.CanRoughCut(),
 					})
 					<span class="text-xs text-neutral-400">{ fmt.Sprintf("%d クリップ / %.1f 秒", d.Clips, d.Duration) }</span>
 				}
@@ -167,7 +204,7 @@ templ EditorActions(d EditorPanelData) {
 			<h3 class="text-sm font-semibold">2. Editor Judge</h3>
 			<div class="flex items-center gap-3">
 				@atoms.Button(atoms.ToneNeutral, "Editor Judge を実行", templ.Attributes{
-					"type": "button", "hx-post": "/edit-timelines/" + d.TimelineID + "/judge",
+					"type": "button", "hx-post": paths.EditTimeline(d.TimelineID, "judge"),
 					"hx-target": "#editor-actions", "hx-swap": "outerHTML", "hx-disabled-elt": "this", "disabled": !d.CanJudge(),
 				})
 				if d.Judge != nil {
@@ -189,7 +226,7 @@ templ EditorActions(d EditorPanelData) {
 			if d.CanRequestShots() {
 				<div class="flex items-center gap-3">
 					@atoms.Button(atoms.TonePrimary, "追加 Shot を要求（Director へ差し戻し）", templ.Attributes{
-						"type": "button", "hx-post": "/edit-timelines/" + d.TimelineID + "/request-additional-shot",
+						"type": "button", "hx-post": paths.EditTimeline(d.TimelineID, "request-additional-shot"),
 						"hx-target": "#editor-actions", "hx-swap": "outerHTML", "hx-disabled-elt": "this",
 					})
 					<span class="text-xs text-neutral-400">足りない素材を Director に作らせ、できたら編集に戻ります。</span>
@@ -207,7 +244,7 @@ templ EditorActions(d EditorPanelData) {
 			</p>
 			<div class="flex items-center gap-3">
 				@atoms.Button(atoms.ToneNeutral, "音声を作成", templ.Attributes{
-					"type": "button", "hx-post": projectURL(d.Project.ID) + "/audio/generate", "hx-vals": branchVals(d.BranchID),
+					"type": "button", "hx-post": paths.Project(d.Project.ID, "audio", "generate"), "hx-vals": branchVals(d.BranchID),
 					"hx-target": "#editor-actions", "hx-swap": "outerHTML", "hx-disabled-elt": "this", "disabled": !d.CanAudio(),
 				})
 				if d.Audio != nil {
@@ -232,7 +269,7 @@ templ EditorActions(d EditorPanelData) {
 				<p class="text-xs text-amber-300">ffmpeg / ffprobe が見つからないため、音声と書き出しは使えません。</p>
 			}
 			<form
-				hx-post={ projectURL(d.Project.ID) + "/audio/voices" }
+				hx-post={ paths.Project(d.Project.ID, "audio", "voices") }
 				hx-encoding="multipart/form-data"
 				hx-target="#editor-actions"
 				hx-swap="outerHTML"
@@ -243,7 +280,12 @@ templ EditorActions(d EditorPanelData) {
 			>
 				<label class="flex flex-col gap-1 text-xs text-neutral-400">
 					話者名（脚本の「話者: セリフ」の話者）
-					<input type="text" name="speaker" required maxlength="20" class="rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm text-neutral-100"/>
+					@atoms.Input(atoms.FieldMd, "", templ.Attributes{
+						"type":      "text",
+						"name":      "speaker",
+						"required":  true,
+						"maxlength": "20",
+					})
 				</label>
 				<label class="flex flex-col gap-1 text-xs text-neutral-400">
 					声のサンプル（10 MB 以下。数十秒の録音）
@@ -263,13 +305,19 @@ templ EditorActions(d EditorPanelData) {
 			<h3 class="text-sm font-semibold">4. Final QC</h3>
 			<div class="flex items-center gap-3">
 				@atoms.Button(atoms.ToneNeutral, "Final QC を実行", templ.Attributes{
-					"type": "button", "hx-post": projectURL(d.Project.ID) + "/final-qc",
+					"type": "button", "hx-post": paths.Project(d.Project.ID, "final-qc"), "hx-vals": branchVals(d.BranchID),
 					"hx-target": "#editor-actions", "hx-swap": "outerHTML", "hx-disabled-elt": "this", "disabled": !d.CanFinalQC(),
 				})
 				if d.QC != nil {
 					@atoms.Badge(verdictTone(d.QC.Verdict == domain.FinalQCPass), qcLabel(d.QC.Verdict))
 				}
 			</div>
+			if d.FinalQCBlockedByTrunk() {
+				<p class="text-xs text-amber-300" data-qc-trunk-missing>トランクの音声を先に作成してください。Final QC はトランクの音声を検査します。</p>
+			}
+			if d.BranchID != "" {
+				<p class="text-xs text-neutral-400" data-qc-trunk-note>Final QC は Branch ではなく、主系列（トランク）の最新版を検査します。</p>
+			}
 			if d.QC != nil && len(d.QC.Findings) > 0 {
 				<ul class="flex flex-col gap-1 text-sm" data-qc-findings>
 					for _, f := range d.QC.Findings {
@@ -281,38 +329,48 @@ templ EditorActions(d EditorPanelData) {
 		<section class="flex flex-col gap-2" aria-label="Export">
 			<h3 class="text-sm font-semibold">5. 書き出し</h3>
 			<form
-				hx-post={ projectURL(d.Project.ID) + "/export" }
+				hx-post={ paths.Project(d.Project.ID, "export") }
 				hx-target="#editor-actions"
 				hx-swap="outerHTML"
 				hx-disabled-elt="find button"
+				hx-vals={ branchVals(d.BranchID) }
 				class="flex flex-wrap items-end gap-3"
 			>
 				<label class="flex flex-col gap-1 text-xs text-neutral-400">
 					Aspect Ratio
-					<select name="aspect_ratio" class="rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm text-neutral-100">
+					@atoms.Select(atoms.FieldMd, "", templ.Attributes{
+						"name": "aspect_ratio",
+					}) {
 						for _, o := range aspectOptions() {
 							<option value={ o } selected?={ o == d.Defaults.AspectRatio }>{ o }</option>
 						}
-					</select>
+					}
 				</label>
 				<label class="flex flex-col gap-1 text-xs text-neutral-400">
 					解像度
-					<select name="resolution" class="rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm text-neutral-100">
+					@atoms.Select(atoms.FieldMd, "", templ.Attributes{
+						"name": "resolution",
+					}) {
 						for _, o := range resolutionOptions() {
 							<option value={ o } selected?={ o == d.Defaults.Resolution }>{ o }</option>
 						}
-					</select>
+					}
 				</label>
 				<label class="flex flex-col gap-1 text-xs text-neutral-400">
 					コーデック
-					<select name="codec" class="rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm text-neutral-100">
+					@atoms.Select(atoms.FieldMd, "", templ.Attributes{
+						"name": "codec",
+					}) {
 						for _, o := range codecOptions() {
 							<option value={ o } selected?={ o == d.Defaults.Codec }>{ o }</option>
 						}
-					</select>
+					}
 				</label>
 				@atoms.Button(atoms.TonePrimary, "書き出す", templ.Attributes{"type": "submit", "disabled": !d.CanExport()})
 			</form>
+			if d.ExportBlocker() != "" {
+				<p class="text-xs text-amber-300" data-export-blocked>{ d.ExportBlocker() }</p>
+			}
 			if len(d.Exports) > 0 {
 				<ul class="flex flex-col gap-1 text-sm" data-exports>
 					for _, e := range d.Exports {

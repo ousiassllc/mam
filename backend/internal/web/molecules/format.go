@@ -12,6 +12,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 const replyExcerptRunes = 40
@@ -41,23 +42,27 @@ func excerpt(m domain.ChatMessage) string {
 
 // AssetURL is where an uploaded asset is served (GET /projects/:id/assets/:assetId).
 func AssetURL(projectID, assetID string) templ.SafeURL {
-	return templ.SafeURL(fmt.Sprintf("/projects/%s/assets/%s", projectID, assetID))
+	return templ.SafeURL(paths.Project(projectID, "assets", assetID))
 }
 
-func messagesURL(projectID string) string { return "/projects/" + projectID + "/messages" }
+func messagesURL(projectID string) string { return paths.Project(projectID, "messages") }
 
 func approvalURL(projectID, messageID string) string {
-	return "/projects/" + projectID + "/approvals/" + messageID
+	return paths.Project(projectID, "approvals", messageID)
 }
 
-// answerAttrs makes a button post `answer` as a reply to the card.
+// answerAttrs makes a button post `answer` as a reply to the card. The buttons of a card
+// (data-options) share one in-flight request: a second click is dropped until the first one
+// answers, and the clicked button is disabled meanwhile.
 func answerAttrs(m domain.ThreadMessage, answer string) templ.Attributes {
 	return templ.Attributes{
-		"type":      "button",
-		"hx-post":   messagesURL(m.ProjectID),
-		"hx-vals":   hxVals(map[string]string{"content": answer, "reply_to_message_id": m.ID}),
-		"hx-target": "#chat-thread",
-		"hx-swap":   "beforeend",
+		"type":            "button",
+		"hx-post":         messagesURL(m.ProjectID),
+		"hx-vals":         hxVals(map[string]string{"content": answer, "reply_to_message_id": m.ID}),
+		"hx-target":       "#chat-thread",
+		"hx-swap":         "beforeend",
+		"hx-sync":         "closest [data-options]:drop",
+		"hx-disabled-elt": "this",
 	}
 }
 
@@ -123,9 +128,6 @@ func progressView(job *domain.Job) (atoms.BadgeTone, string, bool) {
 }
 
 func scorePercent(score float64) string { return fmt.Sprintf("%.2f", score) }
-
-// isLocalPath accepts only same-origin absolute paths as video sources.
-func isLocalPath(p string) bool { return strings.HasPrefix(p, "/") && !strings.HasPrefix(p, "//") }
 
 func frameClass(m domain.ThreadMessage) string {
 	base := "max-w-[85%] rounded-lg px-4 py-3 text-sm "

@@ -1,6 +1,9 @@
 package organisms
 
-import "github.com/ousiassllc/mam/backend/internal/domain"
+import (
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
 
 // CostSummaryPanel shows the estimated and the actual cost by Project, Scene and Shot
 // (spec/requirements/non-functional.md §6). It refreshes itself while the page is open.
@@ -8,7 +11,7 @@ templ CostSummaryPanel(projectID string, s domain.CostSummary) {
 	<section
 		id="cost-summary-panel"
 		class="flex flex-col gap-3"
-		hx-get={ "/projects/" + projectID + "/cost-summary" }
+		hx-get={ paths.Project(projectID, "cost-summary") }
 		hx-trigger="every 15s"
 		hx-swap="outerHTML"
 	>
@@ -47,7 +50,7 @@ templ CostSummaryPanel(projectID string, s domain.CostSummary) {
 				<tbody>
 					for _, sc := range s.Scenes {
 						<tr class="border-t border-neutral-800 font-medium">
-							<th scope="row" class="py-1 pr-2 text-left">{ "Scene " + intText(sc.OrderIndex+1) + ": " + sc.Title }</th>
+							<th scope="row" class="py-1 pr-2 text-left">{ sceneCostLabel(sc) }</th>
 							<td class="py-1 pr-2 text-right">{ usd(sc.Totals.Estimated) }</td>
 							<td class="py-1 text-right">{ actualText(sc.Totals) }</td>
 						</tr>

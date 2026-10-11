@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 )
 
 // DefaultPort is the preferred listen port. The server falls back to a free port if it is taken.
@@ -65,16 +66,15 @@ func (c Config) FaceModels() string {
 
 // Load parses args (without the program name). Each flag defaults to its MAM_* environment variable.
 func Load(args []string, getenv func(string) string, output io.Writer) (Config, error) {
-	defaultDir, err := defaultDataDir()
-	if err != nil && getenv("MAM_DATA_DIR") == "" {
-		return Config{}, err
-	}
+	// An unresolvable default is an error only when neither --data-dir nor MAM_DATA_DIR replaces it
+	// (checked after the flags are parsed, so --help works everywhere).
+	defaultDir, defaultErr := defaultDataDir()
 
 	fs := flag.NewFlagSet("mam", flag.ContinueOnError)
 	fs.SetOutput(output)
 	dataDir := fs.String("data-dir", envOr(getenv, "MAM_DATA_DIR", defaultDir), "directory for the database, logs and assets (MAM_DATA_DIR)")
-	port := fs.Int("port", envInt(getenv, "MAM_PORT", DefaultPort), "preferred loopback port; a free port is used if it is busy (MAM_PORT)")
-	noBrowser := fs.Bool("no-browser", getenv("MAM_NO_BROWSER") != "", "do not open the default browser (MAM_NO_BROWSER)")
+	port := fs.Int("port", DefaultPort, "preferred loopback port; a free port is used if it is busy (MAM_PORT)")
+	noBrowser := fs.Bool("no-browser", false, "do not open the default browser (MAM_NO_BROWSER)")
 	level := fs.String("log-level", envOr(getenv, "MAM_LOG_LEVEL", "info"), "log level: debug, info, warn, error (MAM_LOG_LEVEL)")
 	staticDir := fs.String("static-dir", getenv("MAM_STATIC_DIR"), "serve static assets from this directory instead of the embedded copy (MAM_STATIC_DIR)")
 	llmConfig := fs.String("llm-config", getenv("MAM_LLM_CONFIG"), "JSON file with the Reasoning LLM provider assignment per agent (MAM_LLM_CONFIG)")
@@ -87,12 +87,34 @@ func Load(args []string, getenv func(string) string, output io.Writer) (Config, 
 		return Config{}, err
 	}
 
+	// MAM_PORT is read only when --port is absent, and only after the parse, so a malformed value
+	// breaks neither --help nor a command line that overrides it.
+	if !flagSet(fs, "port") {
+		envPort, err := envInt(getenv, "MAM_PORT", DefaultPort)
+		if err != nil {
+			return Config{}, err
+		}
+		*port = envPort
+	}
+
+	// MAM_NO_BROWSER is read only when --no-browser is absent, for the same reason as MAM_PORT.
+	if !flagSet(fs, "no-browser") {
+		envNoBrowser, err := envBool(getenv, "MAM_NO_BROWSER")
+		if err != nil {
+			return Config{}, err
+		}
+		*noBrowser = envNoBrowser
+	}
+
 	var lvl slog.Level
 	if err := lvl.UnmarshalText([]byte(*level)); err != nil {
 		return Config{}, fmt.Errorf("invalid log level %q: %w", *level, err)
 	}
 	if *port < 0 || *port > 65535 {
 		return Config{}, fmt.Errorf("invalid port %d", *port)
+	}
+	if *dataDir == "" && defaultErr != nil {
+		return Config{}, defaultErr
 	}
 	if *dataDir == "" {
 		return Config{}, fmt.Errorf("data directory must not be empty")
@@ -112,6 +134,13 @@ func Load(args []string, getenv func(string) string, output io.Writer) (Config, 
 	}, nil
 }
 
+// flagSet reports whether the flag name was given on the command line.
+func flagSet(fs *flag.FlagSet, name string) bool {
+	set := false
+	fs.Visit(func(f *flag.Flag) { set = set || f.Name == name })
+	return set
+}
+
 func defaultDataDir() (string, error) {
 	base, err := os.UserConfigDir()
 	if err != nil {
@@ -127,14 +156,31 @@ func envOr(getenv func(string) string, key, fallback string) string {
 	return fallback
 }
 
-func envInt(getenv func(string) string, key string, fallback int) int {
+// envInt is the integer in the environment variable key, fallback when it is unset. A value that
+// is not an integer is an error: silently using the default would start the server somewhere the
+// operator did not ask for.
+func envInt(getenv func(string) string, key string, fallback int) (int, error) {
 	v := getenv(key)
 	if v == "" {
-		return fallback
+		return fallback, nil
 	}
 	n, err := strconv.Atoi(v)
 	if err != nil {
-		return fallback
+		return 0, fmt.Errorf("invalid %s %q: not an integer", key, v)
 	}
-	return n
+	return n, nil
+}
+
+// envBool is the boolean in the environment variable key: 1, true, yes, on are true and unset, empty,
+// 0, false, no, off are false (case-insensitive). Any other value is an error: "MAM_NO_BROWSER=0"
+// must not count as set, and a typo must not silently pick a side.
+func envBool(getenv func(string) string, key string) (bool, error) {
+	v := getenv(key)
+	switch strings.ToLower(strings.TrimSpace(v)) {
+	case "", "0", "false", "no", "off":
+		return false, nil
+	case "1", "true", "yes", "on":
+		return true, nil
+	}
+	return false, fmt.Errorf("invalid %s %q: not a boolean (1/true/yes/on or 0/false/no/off)", key, v)
 }

@@ -15,6 +15,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"runtime/debug"
 	"strings"
 	"sync"
 
@@ -64,6 +65,11 @@ type TakeJudge interface {
 	Start(ctx context.Context, takeID string) (domain.Job, error)
 }
 
+// TakeSelector makes a Take the one its Shot uses. *repository.TakeRepository implements it.
+type TakeSelector interface {
+	Select(ctx context.Context, takeID string) (string, error)
+}
+
 // Deps are the collaborators of an Agent.
 type Deps struct {
 	Generations *repository.GenerationRepository
@@ -72,6 +78,9 @@ type Deps struct {
 	JobRepo     *repository.JobRepository
 	Policies    *repository.PolicyRepository
 	Projects    *repository.ProjectRepository
+	// Takes, when set, lets an Edit-Level Repair in AUTO mode make the repaired Take the Shot's
+	// Selected Take, so that the AUTO editing chain can take it into the Rough Cut.
+	Takes       TakeSelector
 	Regenerator Regenerator
 	Chat        Chat
 	Jobs        generation.Jobs
@@ -132,22 +141,29 @@ func (a *Agent) Start(ctx context.Context, takeID string, auto bool) (domain.Job
 		return domain.Job{}, err
 	}
 	res, err := a.Judges.Latest(ctx, takeID)
-	if errors.Is(err, repository.ErrNotFound) {
-		return domain.Job{}, ErrNotJudged
-	}
-	if err != nil {
+	var latest *domain.JudgeResult
+	switch {
+	case err == nil:
+		latest = &res
+	case !errors.Is(err, repository.ErrNotFound):
 		return domain.Job{}, err
 	}
 	policy, err := a.Policies.Get(ctx, ref.ProjectID)
 	if err != nil {
 		return domain.Job{}, err
 	}
-	if res.Accepted(policy.Effective(), policy.Template) {
-		return domain.Job{}, ErrAccepted
-	}
 	shot, err := a.Generations.GetShot(ctx, ref.Take.ShotID)
 	if err != nil {
 		return domain.Job{}, err
+	}
+	// The claim below decides who owns the Shot; this is the decision the Shot card draws its Repair button by.
+	switch domain.CheckRepair(latest, policy.Effective(), policy.Template, shot.Shot.State) {
+	case domain.RepairNotJudged:
+		return domain.Job{}, ErrNotJudged
+	case domain.RepairAccepted:
+		return domain.Job{}, ErrAccepted
+	case domain.RepairBusy:
+		return domain.Job{}, ErrBusy
 	}
 	claimed, err := a.Generations.StartRepair(ctx, shot.Shot.ID)
 	if err != nil {
@@ -201,7 +217,7 @@ func (a *Agent) JobChanged(ctx context.Context, jobID string) {
 	if err := json.Unmarshal(job.Payload, &p); err != nil || p.ShotID == "" {
 		return
 	}
-	if job.Kind == domain.JobGenerate && p.Action != generation.ActionGenerate {
+	if job.Kind == domain.JobGenerate && p.Action == generation.ActionReferencePack {
 		return // a Reference Pack made no Take
 	}
 	a.Continue(ctx, p.ShotID)
@@ -218,7 +234,7 @@ func (a *Agent) Continue(ctx context.Context, shotID string) {
 		a.Logger.Error("repair loop: read project failed", "project_id", shot.ProjectID, "err", err)
 		return
 	}
-	if project.Mode != domain.ModeAuto || shot.Shot.State == domain.ShotGenerating || shot.Shot.State == domain.ShotRepairing {
+	if project.Mode != domain.ModeAuto || shot.Shot.State.Busy() {
 		return
 	}
 	policy, err := a.Policies.Get(ctx, shot.ProjectID)
@@ -267,36 +283,48 @@ func (a *Agent) Handle(ctx context.Context, job domain.Job) error {
 	if err := json.Unmarshal(job.Payload, &p); err != nil || p.TakeID == "" || p.ShotID == "" || (p.JudgeResultID == "" && p.Partial == nil) {
 		return fmt.Errorf("repair job %s: invalid payload", job.ID)
 	}
+	// The Shot was claimed (REPAIRING) before this job was queued: give it back whichever way the
+	// handler ends, a failed read of the Shot or a panic included. It is given back before done /
+	// failed is announced (the client reads the Shot again on it and must not find it REPAIRING),
+	// and exactly once.
+	released := false
+	release := func() {
+		if !released {
+			released = true
+			a.release(ctx, p.ShotID)
+		}
+	}
+	defer release()
 	shot, err := a.Generations.GetShot(ctx, p.ShotID)
 	if err != nil {
 		return err
 	}
-	released := false
-	defer func() {
-		if !released {
-			a.release(ctx, p.ShotID)
-		}
-	}()
 	// The Shot may have been reset by Recover while this job waited in the queue.
 	if err := a.Generations.SetShotState(ctx, p.ShotID, domain.ShotRepairing); err != nil {
 		return err
 	}
 	a.Notify(generation.Progress{ShotID: p.ShotID, Action: generation.ActionRepair, Stage: generation.StageRepairing, Message: "修復戦略を選んでいます"})
 
-	madeTake, err := a.run(ctx, shot, p)
+	note := &doneNote{}
+	madeTake, err := a.run(context.WithValue(ctx, doneNoteKey{}, note), shot, p)
 	if err != nil {
-		return a.fail(ctx, shot, err)
+		return a.fail(ctx, shot, err, release)
 	}
-	a.Notify(generation.Progress{ShotID: p.ShotID, Action: generation.ActionRepair, Stage: generation.StageDone})
+	release()
+	a.Notify(generation.Progress{ShotID: p.ShotID, Action: generation.ActionRepair, Stage: generation.StageDone, Message: note.message})
 	if madeTake {
 		// The new Take is judged by its own job, which may end before this one releases the Shot: look
 		// at the Shot again once it is free, so that the loop goes on whichever ends last.
-		a.release(ctx, p.ShotID)
-		released = true
 		a.Continue(context.WithoutCancel(ctx), p.ShotID)
 	}
 	return nil
 }
+
+// doneNote carries what run has to say in the done notification (an Escalation's reason) up to
+// Handle, which announces it once the Shot is released.
+type doneNote struct{ message string }
+
+type doneNoteKey struct{}
 
 // run is one step of the loop: the Retry Policy, the strategy, the new Take. It reports whether a
 // new Take was made.
@@ -324,7 +352,12 @@ func (a *Agent) run(ctx context.Context, shot repository.ShotRef, p payload) (bo
 	if err != nil {
 		return false, err
 	}
-	retries := domain.RetriesDone(history)
+	candidateTakes, err := a.Repairs.CandidateTakeCount(ctx, shot.Shot.ID)
+	if err != nil {
+		return false, err
+	}
+	// The Takes of Prompt Candidate Generation are retries too: the limit is over both flows.
+	retries := domain.RetriesDone(history) + domain.CandidateRetries(candidateTakes)
 
 	// The Retry Policy (deterministic): Max retries per Shot, Max cost per Shot, the Project budget.
 	if ok, err := a.withinPolicy(ctx, shot, eff, p.Auto, retries, regen, res, take.Take.ID); err != nil || !ok {
@@ -362,16 +395,16 @@ func (a *Agent) run(ctx context.Context, shot repository.ShotRef, p payload) (bo
 
 	var shadowDone sync.WaitGroup
 	if decider == domain.DecidedByLLM && a.Shadow != nil {
-		shadowDone.Add(1)
-		go func() {
-			defer shadowDone.Done()
-			a.runShadow(context.WithoutCancel(ctx), rec.ID, res, candidates, action)
-		}()
+		a.goShadow(context.WithoutCancel(ctx), &shadowDone, rec.ID, res, candidates, action)
 	}
 	defer shadowDone.Wait()
 
 	if action == domain.RepairEditLevel {
-		return false, a.announceEditLevel(ctx, shot, take.Take.ID, res)
+		adopted, err := a.adoptForEdit(ctx, shot, take.Take.ID, locks)
+		if err != nil {
+			return false, err
+		}
+		return false, a.announceEditLevel(ctx, shot, take.Take.ID, res, adopted)
 	}
 	a.Notify(generation.Progress{ShotID: shot.Shot.ID, Action: generation.ActionRepair, Stage: generation.StageRepairing, Message: action.Label() + " で新しい Take を作成しています"})
 	// A Partial Regeneration whose Issues all name a time range is spliced into the failed Take: only
@@ -417,7 +450,11 @@ func (a *Agent) withinPolicy(ctx context.Context, shot repository.ShotRef, eff d
 	if _, asked := a.escalated.LoadOrStore(res.ID, struct{}{}); asked && auto {
 		return false, nil // the user was already asked about this result; a manual Repair always asks again
 	}
-	return false, a.escalate(ctx, shot, takeID, res, verdict)
+	if err := a.escalate(ctx, shot, takeID, res, verdict); err != nil {
+		a.escalated.Delete(res.ID) // the question never reached the user: the next automatic run asks again
+		return false, err
+	}
+	return false, nil
 }
 
 // verdict is the Retry Policy's answer for regen. A retry that no budget covers is a budget verdict.
@@ -426,25 +463,33 @@ func (a *Agent) verdict(ctx context.Context, shot repository.ShotRef, eff domain
 		return domain.RetryMaxRetries, nil // decided before any cost is estimated
 	}
 	strategy, err := a.Regenerator.RegenerationStrategy(ctx, shot, regen)
-	if errors.Is(err, generation.ErrBudgetExceeded) {
-		return budgetVerdict(eff), nil
-	}
-	if err != nil {
+	exceeded := errors.Is(err, generation.ErrBudgetExceeded)
+	if err != nil && !exceeded {
 		return "", err
 	}
 	budget, err := a.Generations.Budget(ctx, shot.ProjectID, shot.Shot.ID)
 	if err != nil {
 		return "", err
 	}
+	if exceeded {
+		return budgetVerdict(eff, budget), nil
+	}
 	return eff.CanRetry(retries, budget.ShotSpent, budget.ProjectSpent, strategy.CostPerTake), nil
 }
 
-// budgetVerdict names the ceiling that ends the loop when not even one Take fits the budget.
-func budgetVerdict(eff domain.EffectivePolicy) domain.RetryVerdict {
-	if eff.ShotBudgetCeiling != nil {
+// budgetVerdict names the ceiling that ends the loop when not even one Take fits the budget: the one
+// with the least money left (the Shot's on a tie), so the Escalation does not blame the Shot's
+// ceiling when the Project's budget is what ran out.
+func budgetVerdict(eff domain.EffectivePolicy, b repository.Budget) domain.RetryVerdict {
+	switch {
+	case eff.ShotBudgetCeiling == nil:
+		return domain.RetryProjectBudget
+	case eff.ProjectBudgetCeiling == nil:
 		return domain.RetryShotBudget
+	case *eff.ProjectBudgetCeiling-b.ProjectSpent < *eff.ShotBudgetCeiling-b.ShotSpent:
+		return domain.RetryProjectBudget
 	}
-	return domain.RetryProjectBudget
+	return domain.RetryShotBudget
 }
 
 // decide chooses the strategy: the deterministic rules first, then the Repair Agent (LLM) among the
@@ -474,6 +519,21 @@ func mergeInstructions(res domain.JudgeResult, extra []string) []string {
 		list = append(list, rs.Instructions...)
 	}
 	return identifiers(append(list, extra...))
+}
+
+// goShadow runs runShadow in the background, counted in done. The measurement is optional, so a
+// panic in it is logged with its stack and stops there: it must not take the server down.
+func (a *Agent) goShadow(ctx context.Context, done *sync.WaitGroup, actionID string, res domain.JudgeResult, candidates []domain.RepairAction, decided domain.RepairAction) {
+	done.Add(1)
+	go func() {
+		defer done.Done()
+		defer func() {
+			if r := recover(); r != nil {
+				a.Logger.Error("repair shadow panicked", "action_id", actionID, "panic", r, "stack", string(debug.Stack()))
+			}
+		}()
+		a.runShadow(ctx, actionID, res, candidates, decided)
+	}()
 }
 
 // runShadow asks Jev the question the Repair Agent just answered and records the outcome. Nothing
@@ -517,33 +577,66 @@ func (a *Agent) escalate(ctx context.Context, shot repository.ShotRef, takeID st
 		"最も良い Take をそのまま採用する",
 		"Shot の指示を手動で修正して生成し直す",
 	}
-	a.Notify(generation.Progress{ShotID: shot.Shot.ID, Action: generation.ActionRepair, Stage: generation.StageDone, Message: verdict.Reason()})
-	return a.Chat.RaiseEscalation(context.WithoutCancel(ctx), shot.ProjectID, text, options, shot.Shot.ID)
+	if err := a.Chat.RaiseEscalation(context.WithoutCancel(ctx), shot.ProjectID, text, options, shot.Shot.ID); err != nil {
+		return err
+	}
+	if note, ok := ctx.Value(doneNoteKey{}).(*doneNote); ok {
+		note.message = verdict.Reason() // announced by Handle once the Shot is released
+	}
+	return nil
 }
 
-// announceEditLevel tells the user which ranges of the Take to fix in the edit. Edit-Level Repair
-// makes no new Take, so there is nothing to judge again.
-func (a *Agent) announceEditLevel(ctx context.Context, shot repository.ShotRef, takeID string, res domain.JudgeResult) error {
+// adoptForEdit makes the Take the Shot's Selected Take when an Edit-Level Repair keeps it and the AI
+// owns the Shot's Take (AUTO mode, Take Selection AUTO, no Take selected yet). Edit-Level Repair makes
+// no new Take, so without this the Shot would stay without a Selected Take and the AUTO editing chain
+// (Rough Cut once every Shot has one) would wait for ever. It reports whether the Take was selected.
+func (a *Agent) adoptForEdit(ctx context.Context, shot repository.ShotRef, takeID string, locks domain.ParameterLocks) (bool, error) {
+	if a.Takes == nil || shot.Shot.SelectedTakeID != "" || locks.Mode(domain.ParamTakeSelection) != domain.LockAuto {
+		return false, nil
+	}
+	project, err := a.Projects.Get(ctx, shot.ProjectID)
+	if err != nil {
+		return false, err
+	}
+	if project.Mode != domain.ModeAuto {
+		return false, nil
+	}
+	if _, err := a.Takes.Select(context.WithoutCancel(ctx), takeID); err != nil {
+		if errors.Is(err, repository.ErrConflict) {
+			return false, nil // its file was archived: the user has to look at the Shot
+		}
+		return false, err
+	}
+	return true, nil
+}
+
+// announceEditLevel tells the user which ranges of the Take to fix in the edit (and that the Take
+// goes into the Rough Cut as it is when it was selected). Edit-Level Repair makes no new Take, so
+// there is nothing to judge again.
+func (a *Agent) announceEditLevel(ctx context.Context, shot repository.ShotRef, takeID string, res domain.JudgeResult, adopted bool) error {
 	var ranges []string
 	for _, is := range res.Issues {
 		ranges = append(ranges, fmt.Sprintf("%s（%s）", is.TimeRange, is.Type))
 	}
-	notice := domain.ChatMessage{
-		Role: domain.RoleAssistant, Kind: domain.KindText,
-		Content: fmt.Sprintf("Shot %d の Take %s は再生成せず、編集で直します（Edit-Level Repair）。該当区間: %s",
-			shot.Shot.OrderIndex+1, shortID(takeID), strings.Join(ranges, "、")),
+	content := fmt.Sprintf("Shot %d の Take %s は再生成せず、編集で直します（Edit-Level Repair）。該当区間: %s",
+		shot.Shot.OrderIndex+1, shortID(takeID), strings.Join(ranges, "、"))
+	if adopted {
+		content += "\nこの Take を採用し、Rough Cut に載せます。"
 	}
+	notice := domain.ChatMessage{Role: domain.RoleAssistant, Kind: domain.KindText, Content: content}
 	return a.Chat.Announce(context.WithoutCancel(ctx), shot.ProjectID, notice)
 }
 
-// fail tells the user why the repair stopped and returns the error for the job record.
-func (a *Agent) fail(ctx context.Context, shot repository.ShotRef, err error) error {
+// fail tells the user why the repair stopped and returns the error for the job record. The Shot is
+// released (release) before the failure is announced: the client reads the Shot again on it.
+func (a *Agent) fail(ctx context.Context, shot repository.ShotRef, err error, release func()) error {
 	if ctx.Err() != nil {
 		return err // shutting down: nobody is told
 	}
 	if errors.Is(err, repository.ErrNotFound) {
 		return err
 	}
+	release()
 	a.Logger.Error("repair failed", "shot_id", shot.Shot.ID, "err", err)
 	reason := FailureReason(err)
 	notice := domain.ChatMessage{

@@ -48,15 +48,24 @@ type genReasoner struct {
 	extractor func(user string) string
 	// interpreter answers the Command Interpreter from its prompt; nil means no operation.
 	interpreter func(user string) string
+	// interpreterErr, when set, is the Command Interpreter's failed call.
+	interpreterErr error
 	// planner, when set, answers the Prompt Planner instead of specAnswer.
 	planner func(user string) string
 	// director answers the Director Agent (Continue) from its prompt; nil means an empty answer.
 	director func(system, user string) string
 	// editor answers the Editor Judge; nil means an empty answer.
 	editor string
+	// editorHold, when set, runs before the Editor Judge is answered; its error is the call's.
+	editorHold func(ctx context.Context) error
 }
 
-func (g *genReasoner) Complete(_ context.Context, agent llm.Agent, req llm.Request) (llm.Response, error) {
+func (g *genReasoner) Complete(ctx context.Context, agent llm.Agent, req llm.Request) (llm.Response, error) {
+	if agent == llm.AgentEditor && g.editorHold != nil {
+		if err := g.editorHold(ctx); err != nil {
+			return llm.Response{}, err
+		}
+	}
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.users == nil {
@@ -71,6 +80,9 @@ func (g *genReasoner) Complete(_ context.Context, agent llm.Agent, req llm.Reque
 		text = g.planner(req.User)
 	}
 	if agent == llm.AgentCommandInterpreter {
+		if g.interpreterErr != nil {
+			return llm.Response{}, g.interpreterErr
+		}
 		text = `{"operations":[]}`
 		if g.interpreter != nil {
 			text = g.interpreter(req.User)
@@ -83,6 +95,24 @@ func (g *genReasoner) Complete(_ context.Context, agent llm.Agent, req llm.Reque
 		text = g.director(req.System, req.User)
 	}
 	return llm.Response{Text: text, Provider: llm.ProviderAnthropic, Model: "fake"}, nil
+}
+
+// prompts is a copy of the user prompts the agent received: Jobs still run in the background, so a
+// test must not read g.users directly.
+func (g *genReasoner) prompts(agent llm.Agent) []string {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return append([]string(nil), g.users[agent]...)
+}
+
+// reset forgets what the agent received so far.
+func (g *genReasoner) reset(agent llm.Agent) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.users == nil {
+		g.users = map[llm.Agent][]string{}
+	}
+	g.users[agent] = nil
 }
 
 func (g *genReasoner) calls(agent llm.Agent) int {
@@ -118,7 +148,7 @@ func (m *modelFake) GenerateVideo(ctx context.Context, _ string, req modeladapte
 	if m.err != nil {
 		return modeladapter.VideoResult{}, m.err
 	}
-	return modeladapter.VideoResult{Data: mp4Bytes, MimeType: "video/mp4", ActualCost: m.actual}, nil
+	return modeladapter.VideoResult{File: modeladapter.BlobOf(mp4Bytes), MimeType: "video/mp4", ActualCost: m.actual}, nil
 }
 
 func (m *modelFake) GenerateImage(_ context.Context, model string, _ modeladapter.ImageRequest) (modeladapter.ImageResult, error) {
@@ -153,6 +183,12 @@ func newGenFixture(t *testing.T, withModels bool) genFixture {
 
 func newGenFixtureWithFreeBytes(t *testing.T, withModels bool, freeBytes func(string) (uint64, error)) genFixture {
 	t.Helper()
+	return newGenFixtureWithDeps(t, withModels, freeBytes, nil)
+}
+
+// newGenFixtureWithDeps is newGenFixtureWithFreeBytes with a last look at the Deps (nil: none).
+func newGenFixtureWithDeps(t *testing.T, withModels bool, freeBytes func(string) (uint64, error), tweak func(*service.Deps)) genFixture {
+	t.Helper()
 	dir := t.TempDir()
 	db, err := repository.Open(context.Background(), filepath.Join(dir, "mam.db"), nil)
 	require.NoError(t, err)
@@ -172,6 +208,9 @@ func newGenFixtureWithFreeBytes(t *testing.T, withModels bool, freeBytes func(st
 	deps.Jobs = jobs
 	if withModels {
 		deps.Models = modeladapter.New(modeladapter.DefaultConfig(), backends, modeladapter.WithSleep(noSleep))
+	}
+	if tweak != nil {
+		tweak(&deps)
 	}
 	svc := service.New(deps)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -315,7 +354,7 @@ func TestGenerateShot_KeepsTheSpecUnlessThereIsANewInstruction(t *testing.T) {
 	require.NoError(t, err)
 	require.Eventually(t, func() bool { return f.count(t, `SELECT COUNT(*) FROM take`) == 9 }, 30*time.Second, 10*time.Millisecond)
 	assert.Equal(t, 2, f.llm.calls(llm.AgentPromptPlanner), "an instruction makes the Prompt Planner revise the spec")
-	assert.Contains(t, f.llm.users[llm.AgentPromptPlanner][1], "もう少しカメラを寄せて")
+	assert.Contains(t, f.llm.prompts(llm.AgentPromptPlanner)[1], "もう少しカメラを寄せて")
 }
 
 func TestGenerateShot_RejectsASecondRunWhileTheShotIsBeingGenerated(t *testing.T) {
@@ -430,6 +469,7 @@ func TestBuildReferencePack_MakesEveryReferenceAndTheKeyframeThenGenerationUsesT
 	for _, req := range f.models.videoRequests() {
 		require.NotNil(t, req.FirstFrame, "the Keyframe is the first frame")
 		assert.Equal(t, pngBytes, req.FirstFrame.Data)
+		assert.Empty(t, req.References, "frames and reference images are exclusive")
 	}
 	var stored string
 	require.NoError(t, f.query(t, `SELECT shot_spec FROM shot WHERE id = ?`, f.shotID).Scan(&stored))
@@ -503,6 +543,27 @@ func TestSubscribeShot_SaysIdleWhenNothingRunsAndStreamsProgressUntilDone(t *tes
 		}
 	}
 	assert.Contains(t, stages, generation.StageGenerating)
+}
+
+func TestSubscribeShot_RepairingShotIsToldItIsRepairing(t *testing.T) {
+	f := newGenFixture(t, true)
+	ctx := context.Background()
+	require.NoError(t, f.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, `UPDATE shot SET state = 'REPAIRING' WHERE id = ?`, f.shotID)
+		return err
+	}))
+
+	ch, cancel, err := f.svc.Generation.SubscribeShot(ctx, f.shotID)
+	require.NoError(t, err)
+	defer cancel()
+
+	select {
+	case p := <-ch:
+		assert.Equal(t, generation.StageRepairing, p.Stage, "a Shot being repaired starts with its stage, not idle")
+		assert.Equal(t, generation.ActionRepair, p.Action)
+	case <-time.After(5 * time.Second):
+		t.Fatal("no first message")
+	}
 }
 
 func TestSubscribeShot_UnknownShotIsNotFound(t *testing.T) {
@@ -605,7 +666,7 @@ func TestGenerateShot_StateExtractorAppendsWorldStateVersionAndTheNextShotStarts
 	shot2, err := f.svc.Plans.CreateShot(context.Background(), f.sceneID, service.ShotForm{Objective: "ドアを開ける", DurationSeconds: "4"})
 	require.NoError(t, err)
 	f.generateAndWait(t, shot2.Shots[1].ID, 3)
-	planner := f.llm.users[llm.AgentPromptPlanner]
+	planner := f.llm.prompts(llm.AgentPromptPlanner)
 	require.Len(t, planner, 2)
 	for _, want := range []string{`emotion="anxious"`, `position="hallway_door"`, `movement="static"`, "phone_call_ended"} {
 		assert.Contains(t, planner[1], want)

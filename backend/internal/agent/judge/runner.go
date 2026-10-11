@@ -41,7 +41,10 @@ type Deps struct {
 	AssetsDir string
 	// Notify receives every progress notification. It MUST NOT block.
 	Notify func(generation.Progress)
-	Logger *slog.Logger
+	// TakeJudged is called with the Take ID after a result is saved and announced, so that the Take
+	// card already in the thread can redraw its Judge Issue markers. Optional.
+	TakeJudged func(ctx context.Context, takeID string)
+	Logger     *slog.Logger
 }
 
 // Runner runs the AI Video Judge as background jobs: it gathers what the Judge needs about a Take,
@@ -51,6 +54,31 @@ type Runner struct {
 
 	mu      sync.Mutex
 	running map[string]int // Shot ID -> judge jobs whose handler is executing
+
+	startMu  sync.Mutex
+	starting map[string]struct{} // Take IDs whose Start is between its pending check and its enqueue
+}
+
+// beginStart claims the Take for one Start call. The pending check and the enqueue of Start are two
+// separate transactions, so without the claim two concurrent calls could both pass the check and
+// queue a Judge job each. It reports false while another Start holds the Take.
+func (r *Runner) beginStart(takeID string) bool {
+	r.startMu.Lock()
+	defer r.startMu.Unlock()
+	if _, busy := r.starting[takeID]; busy {
+		return false
+	}
+	if r.starting == nil {
+		r.starting = make(map[string]struct{})
+	}
+	r.starting[takeID] = struct{}{}
+	return true
+}
+
+func (r *Runner) endStart(takeID string) {
+	r.startMu.Lock()
+	defer r.startMu.Unlock()
+	delete(r.starting, takeID)
 }
 
 func (r *Runner) enter(shotID string) {
@@ -93,13 +121,18 @@ type payload struct {
 	ShotID string `json:"shot_id"`
 }
 
-// Start queues a Judge run on the Take (ErrBusy when one is already queued or running,
-// repository.ErrNotFound for an unknown Take). Every run adds a result; earlier ones are kept.
+// Start queues a Judge run on the Take (ErrBusy when one is already queued or running or being
+// queued by a concurrent Start, repository.ErrNotFound for an unknown Take). Every run adds a
+// result; earlier ones are kept.
 func (r *Runner) Start(ctx context.Context, takeID string) (domain.Job, error) {
 	ref, err := r.Judges.GetTake(ctx, takeID)
 	if err != nil {
 		return domain.Job{}, err
 	}
+	if !r.beginStart(takeID) {
+		return domain.Job{}, ErrBusy
+	}
+	defer r.endStart(takeID)
 	pending, err := r.Judges.JudgePending(ctx, takeID)
 	if err != nil {
 		return domain.Job{}, err
@@ -131,19 +164,31 @@ func (r *Runner) Handle(ctx context.Context, job domain.Job) error {
 	}
 	shotID := ref.Take.ShotID
 	r.enter(shotID)
-	defer r.leave(context.WithoutCancel(ctx), shotID)
+	// The Shot is released before done / failed is announced (the client reads the Shot again on
+	// it and must not find it JUDGING), and exactly once however the handler ends.
+	left := false
+	leave := func() {
+		if !left {
+			left = true
+			r.leave(context.WithoutCancel(ctx), shotID)
+		}
+	}
+	defer leave()
+	// From here on every error goes through fail, so the client gets StageFailed and the thread a
+	// notice whichever step broke (the Judge, the database).
 	if err := r.Judges.BeginJudging(ctx, shotID); err != nil {
-		return err
+		return r.fail(ctx, ref, err, leave)
 	}
 	r.Notify(generation.Progress{ShotID: shotID, Action: generation.ActionJudge, Stage: generation.StageJudging, Message: "Take を評価しています"})
 
 	res, err := r.judge(ctx, ref)
 	if err != nil {
-		return r.fail(ctx, ref, err)
+		return r.fail(ctx, ref, err, leave)
 	}
 	if _, err := r.store(ctx, ref, res); err != nil {
-		return err
+		return r.fail(ctx, ref, err, leave)
 	}
+	leave()
 	r.Notify(generation.Progress{ShotID: shotID, Action: generation.ActionJudge, Stage: generation.StageDone})
 	return nil
 }
@@ -180,11 +225,16 @@ func (r *Runner) store(ctx context.Context, ref repository.TakeRef, res domain.J
 	if err := r.Chat.Announce(context.WithoutCancel(ctx), ref.ProjectID, notice); err != nil {
 		r.Logger.Error("post judge result failed", "take_id", ref.Take.ID, "err", err)
 	}
+	if r.TakeJudged != nil {
+		r.TakeJudged(context.WithoutCancel(ctx), ref.Take.ID)
+	}
 	return saved, nil
 }
 
-// pick marks the best judged Take of the Shot as its AI Pick: in AUTO a Take that passed the Judge
-// also becomes the Shot's Take, in DIRECTOR the pick is only a recommendation. It returns the line
+// pick marks the best judged Take of the Shot as its AI Pick: in AUTO a Take that the Retry Policy
+// accepts (a pass that also reaches the Minimum acceptance scores, the rule the Repair loop applies)
+// also becomes the Shot's Take, in DIRECTOR (or when the Shot's Take Selection is MANUAL / LOCK) the
+// pick is only a recommendation. It returns the line
 // of the chat notice about it ("" when the pick did not change or could not be made).
 func (r *Runner) pick(ctx context.Context, ref repository.TakeRef) string {
 	if r.Takes == nil || r.Projects == nil {
@@ -196,7 +246,18 @@ func (r *Runner) pick(ctx context.Context, ref repository.TakeRef) string {
 		r.Logger.Error("ai pick: read project failed", "project_id", ref.ProjectID, "err", err)
 		return ""
 	}
-	pick, err := r.Takes.PickBest(ctx, ref.Take.ShotID, project.Mode == domain.ModeAuto)
+	// Take Selection MANUAL / LOCK (spec/spec.md §6): the AI keeps its hands off the Shot's Take, so
+	// the pick is only a recommendation, as in DIRECTOR.
+	adopt := project.Mode == domain.ModeAuto
+	if adopt {
+		locks, err := r.Generations.ShotLocks(ctx, ref.Take.ShotID)
+		if err != nil {
+			r.Logger.Error("ai pick: read shot locks failed", "shot_id", ref.Take.ShotID, "err", err)
+			return ""
+		}
+		adopt = locks.Mode(domain.ParamTakeSelection) == domain.LockAuto
+	}
+	pick, err := r.Takes.PickBest(ctx, ref.Take.ShotID, adopt, r.acceptance(ctx, ref))
 	if err != nil {
 		r.Logger.Error("ai pick failed", "shot_id", ref.Take.ShotID, "err", err)
 		return ""
@@ -208,6 +269,33 @@ func (r *Runner) pick(ctx context.Context, ref repository.TakeRef) string {
 		return fmt.Sprintf("\nAI Pick: Take %s を採用しました。", shortID(pick.TakeID))
 	}
 	return fmt.Sprintf("\nAI Pick: Take %s がおすすめです（Take 比較から選択できます）。", shortID(pick.TakeID))
+}
+
+// acceptance tells which Takes of the Shot the Retry Policy of the Project accepts (the latest
+// Judge result of the Take: verdict, LOCK violations and the Minimum acceptance scores). It returns
+// nil, meaning a pass is enough, when the policy or the Takes cannot be read.
+func (r *Runner) acceptance(ctx context.Context, ref repository.TakeRef) func(takeID string) bool {
+	if r.Policies == nil {
+		return nil
+	}
+	policy, err := r.Policies.Get(ctx, ref.ProjectID)
+	if err != nil {
+		r.Logger.Error("ai pick: read policy failed", "project_id", ref.ProjectID, "err", err)
+		return nil
+	}
+	takes, err := r.Takes.ShotTakes(ctx, ref.Take.ShotID)
+	if err != nil {
+		r.Logger.Error("ai pick: read takes failed", "shot_id", ref.Take.ShotID, "err", err)
+		return nil
+	}
+	eff := policy.Effective()
+	accepted := make(map[string]bool, len(takes))
+	for _, t := range takes {
+		if res, err := r.Judges.Latest(ctx, t.ID); err == nil {
+			accepted[t.ID] = res.Accepted(eff, policy.Template)
+		}
+	}
+	return func(takeID string) bool { return accepted[takeID] }
 }
 
 // judge gathers the input of the Take and runs the Judge.
@@ -224,8 +312,9 @@ func (r *Runner) judge(ctx context.Context, ref repository.TakeRef) (domain.Judg
 	return res, nil
 }
 
-// fail tells the user why judging stopped and returns the error for the job record.
-func (r *Runner) fail(ctx context.Context, ref repository.TakeRef, err error) error {
+// fail tells the user why judging stopped and returns the error for the job record. The Shot is
+// released (leave) before the failure is announced: the client reads the Shot again on it.
+func (r *Runner) fail(ctx context.Context, ref repository.TakeRef, err error, leave func()) error {
 	shotID := ref.Take.ShotID
 	if ctx.Err() != nil {
 		return err // shutting down: nobody is told
@@ -233,6 +322,7 @@ func (r *Runner) fail(ctx context.Context, ref repository.TakeRef, err error) er
 	if errors.Is(err, repository.ErrNotFound) {
 		return err
 	}
+	leave()
 	r.Logger.Error("judge failed", "take_id", ref.Take.ID, "err", err)
 	reason := FailureReason(err)
 	notice := domain.ChatMessage{
@@ -303,7 +393,11 @@ func (r *Runner) input(ctx context.Context, ref repository.TakeRef) (Input, erro
 	if err != nil {
 		return Input{}, err
 	}
-	in.Locked = lockedDimensions(spec, world, locks)
+	shotLocks, err := r.Generations.ShotLocks(ctx, ref.Take.ShotID)
+	if err != nil {
+		return Input{}, err
+	}
+	in.Locked = lockedDimensions(spec, world, locks, shotLocks)
 
 	if spec.Character != nil {
 		if subject, ok := r.faceSubject(ctx, ref.ProjectID, *spec.Character, world, references); ok {
@@ -358,12 +452,30 @@ var dimensionsOfLock = map[domain.WorldTarget]map[string][]domain.JudgeDimension
 	},
 }
 
+// dimensionsOfShotLock maps the parameters the user LOCKed on the Shot itself (PUT /shots/:id/locks,
+// spec/spec.md §6) to the Judge dimensions that check them.
+var dimensionsOfShotLock = map[domain.LockParameter][]domain.JudgeDimension{
+	domain.ParamCharacterIdentity: {domain.DimCharacterIdentity, domain.DimFace},
+	domain.ParamProductGeometry:   {domain.DimProductGeometry},
+	domain.ParamActing:            {domain.DimActing},
+	domain.ParamCamera:            {domain.DimCameraMotion},
+	domain.ParamLighting:          {domain.DimLighting},
+}
+
 // lockedDimensions maps the LOCKs that apply to the Shot to Judge dimensions. The Character,
 // Product and Location of the Shot are found in the World State by ID or name (the Shot Spec
 // uses either); an attribute is LOCKed by a lock row of that entity, and Character Identity and
-// Product Geometry also by the Shot Spec itself ("locked").
-func lockedDimensions(spec domain.ShotSpec, world domain.WorldContext, locks domain.LockSet) map[domain.JudgeDimension]bool {
+// Product Geometry also by the Shot Spec itself ("locked"). The parameters LOCKed on the Shot
+// (shotLocks: Character Identity, Product Geometry, Acting, Camera, Lighting) count as well.
+func lockedDimensions(spec domain.ShotSpec, world domain.WorldContext, locks domain.LockSet, shotLocks domain.ParameterLocks) map[domain.JudgeDimension]bool {
 	out := map[domain.JudgeDimension]bool{}
+	for param, dims := range dimensionsOfShotLock {
+		if shotLocks.Locked(param) {
+			for _, d := range dims {
+				out[d] = true
+			}
+		}
+	}
 	mark := func(target domain.WorldTarget, id string) {
 		for field, dims := range dimensionsOfLock[target] {
 			if locks.Locked(target, id, field) {
@@ -541,11 +653,20 @@ func Summary(shotNumber int, takeID string, res domain.JudgeResult) string {
 	case domain.FaceUnavailable:
 		b.WriteString("\n顔の同一性の数値評価は利用できないため、定性評価のみで判定しました。")
 	case domain.FaceMeasured:
+		var uncalibrated, undetected bool
 		for _, f := range res.Metrics.FaceIdentity {
-			if !f.Evaluated {
-				b.WriteString("\n顔を検出できないフレームが多いため、顔の同一性は定性評価のみで判定しました。")
-				break
+			switch {
+			case !f.Calibrated:
+				uncalibrated = true
+			case !f.Evaluated:
+				undetected = true
 			}
+		}
+		if uncalibrated {
+			b.WriteString("\n参照画像が足りず（顔が取れた参照が 2 枚未満、または参照同士が似ていない）顔の同一性の数値評価を行えないため、定性評価のみで判定しました。")
+		}
+		if undetected {
+			b.WriteString("\n顔を検出できないフレームが多いため、顔の同一性は定性評価のみで判定しました。")
 		}
 	}
 	if rs := res.RepairStrategy; rs != nil {

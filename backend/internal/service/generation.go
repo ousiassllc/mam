@@ -13,6 +13,15 @@ import (
 // maxInstructionRunes bounds the additional instruction of a generation.
 const maxInstructionRunes = 1000
 
+// clipInstruction cuts a direction the user did not type into a form (the chat's, the AI's) to
+// maxInstructionRunes, where a form field is refused with 422 instead.
+func clipInstruction(s string) string {
+	if utf8.RuneCountInString(s) <= maxInstructionRunes {
+		return s
+	}
+	return string([]rune(s)[:maxInstructionRunes])
+}
+
 // GenerationService starts the generation of a Shot (Prompt Autopilot → Model Adapter → Takes, F-06,
 // F-07, F-12) and the building of its Reference Pack (F-11), and streams their progress.
 type GenerationService struct {
@@ -89,21 +98,52 @@ func (s *GenerationService) Shot(ctx context.Context, shotID string) (ShotFragme
 	if frame, ok := ref.Shot.Storyboard(); ok {
 		view.Storyboard = &frame
 	}
+	if err := s.takeActions.mark(ctx, ref.ProjectID, []*ShotView{&view}); err != nil {
+		return ShotFragment{}, err
+	}
 	return ShotFragment{ProjectID: ref.ProjectID, ShotView: view}, nil
 }
 
 // SubscribeShot streams the progress of the Shot (WebSocket /ws/shots/:id). The first message says
-// whether something is running now (a client that connects after the work ended must not wait for it).
+// what the Shot is doing now: a Shot being generated, judged or repaired gets its stage (a client that
+// connects mid-work missed the earlier messages), any other Shot gets "idle" (a client that connects
+// after the work ended must not wait for it).
+//
+// The subscription is made before the state is read, so a done / failed message published in between
+// is received, not lost. A snapshot of a running Shot is queued only when no message has arrived
+// since (that one is newer); "idle" goes behind them, as the last word on a Shot that is not running.
 func (s *GenerationService) SubscribeShot(ctx context.Context, shotID string) (<-chan generation.Progress, func(), error) {
-	ref, err := s.shots.GetShot(ctx, shotID)
+	return s.subscribeShot(ctx, shotID, s.shots.GetShot)
+}
+
+// subscribeShot is SubscribeShot reading the Shot through getShot (a seam for the test of the ordering).
+func (s *GenerationService) subscribeShot(ctx context.Context, shotID string, getShot func(context.Context, string) (repository.ShotRef, error)) (<-chan generation.Progress, func(), error) {
+	ch, cancel := s.progress.subscribe(shotID)
+	ref, err := getShot(ctx, shotID)
 	if err != nil {
+		cancel()
 		return nil, nil, notFound(err)
 	}
-	ch, cancel := s.progress.Subscribe(shotID)
-	if ref.Shot.State != domain.ShotGenerating && ref.Shot.State != domain.ShotJudging {
-		s.progress.Publish(shotID, generation.Progress{ShotID: shotID, Stage: generation.StageIdle})
-	}
+	snapshot, running := progressSnapshot(ref.Shot)
+	s.progress.sendTo(ch, snapshot, running)
 	return ch, cancel, nil
+}
+
+// progressSnapshot is the progress message that matches the state of a Shot, and whether work is
+// running on it. It uses the states the Shot card draws a Spinner for.
+func progressSnapshot(shot domain.Shot) (generation.Progress, bool) {
+	p := generation.Progress{ShotID: shot.ID, Stage: generation.StageIdle}
+	switch shot.State {
+	case domain.ShotGenerating:
+		p.Stage = generation.StageGenerating
+	case domain.ShotJudging:
+		p.Action, p.Stage = generation.ActionJudge, generation.StageJudging
+	case domain.ShotRepairing:
+		p.Action, p.Stage = generation.ActionRepair, generation.StageRepairing
+	default:
+		return p, false
+	}
+	return p, true
 }
 
 func mapGenerationError(err error) error {

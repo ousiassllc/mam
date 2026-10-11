@@ -73,8 +73,8 @@ func (s *TakeService) Compare(ctx context.Context, shotID string) (Comparison, e
 	out := Comparison{Project: project, Shot: ref.Shot, Takes: make([]TakeView, len(takes))}
 	for i, t := range takes {
 		v := TakeView{TakeInfo: t, Label: domain.TakeLabel(i)}
-		if s.tools != nil && t.FilePath != "" {
-			if info, err := s.tools.Probe(ctx, s.assetPath(t.FilePath)); err == nil {
+		if abs := s.assetPath(t.FilePath); s.tools != nil && abs != "" {
+			if info, err := s.tools.Probe(ctx, abs); err == nil {
 				v.FPS = info.FPS
 				if v.Resolution == "" && info.Height > 0 {
 					v.Resolution = fmt.Sprintf("%dp", info.Height)
@@ -89,10 +89,6 @@ func (s *TakeService) Compare(ctx context.Context, shotID string) (Comparison, e
 	return out, nil
 }
 
-func (s *TakeService) assetPath(rel string) string {
-	return filepath.Join(s.assetsDir, filepath.FromSlash(rel))
-}
-
 // Select makes the Take the one the Shot uses (POST /takes/:id/select). It is the user's choice
 // and replaces the AI Pick or an earlier choice.
 func (s *TakeService) Select(ctx context.Context, takeID string) (ShotFragment, error) {
@@ -105,10 +101,17 @@ func (s *TakeService) Select(ctx context.Context, takeID string) (ShotFragment, 
 		return ShotFragment{}, notFound(err)
 	}
 	s.recordIntervention(ctx, domain.Intervention{ShotID: shotID, TakeID: takeID, Kind: domain.InterventionSelectTake, Override: override})
+	s.takeSelected()
+	return s.generations.Shot(ctx, shotID)
+}
+
+// takeSelected wakes the editing follow-ups (the Editor → Reshoot Loop, the AUTO chain) that may
+// have been waiting for a Selected Take. Every path that makes a Take the Shot's Selected Take
+// (Select, UsePartial) calls it; a Candidate Take (a Partial Regeneration splice) selects nothing.
+func (s *TakeService) takeSelected() {
 	if s.afterSelect != nil {
 		s.afterSelect()
 	}
-	return s.generations.Shot(ctx, shotID)
 }
 
 // overridesAIPick tells whether selecting the Take contradicts the AI Pick of its Shot. A Take it
@@ -176,17 +179,18 @@ func (s *TakeService) UsePartial(ctx context.Context, shotID string, in PartialI
 	}
 
 	if _, err := s.composeTake(ctx, ref, takes, segs, composeOptions{
-		Title: fmt.Sprintf("Shot %d · 部分採用 Take", ref.Shot.OrderIndex+1), Badge: "採用",
+		Title: fmt.Sprintf("Shot %d · 部分採用 Take", ref.Shot.OrderIndex+1),
 	}); err != nil {
 		return ShotFragment{}, err
 	}
 	s.recordIntervention(ctx, domain.Intervention{ShotID: shotID, Kind: domain.InterventionPartialTake})
+	s.takeSelected() // the joined Take is the Shot's Selected Take now, as after Select
 	return s.generations.Shot(ctx, shotID)
 }
 
 // composeOptions is how composeTake records the Take it makes.
 type composeOptions struct {
-	Title, Badge string
+	Title string
 	// Candidate adds the Take without selecting it (a Partial Regeneration splice).
 	Candidate bool
 	// Source and RegeneratedTakeID say in the model parameters how the Take came to be.
@@ -206,7 +210,11 @@ func (s *TakeService) composeTake(ctx context.Context, ref repository.ShotRef, t
 		byID[t.ID] = t
 	}
 	for i, seg := range segs {
-		parts[i] = media.Segment{Path: s.assetPath(byID[seg.TakeID].FilePath), Start: seg.Start, End: seg.End}
+		path := s.assetPath(byID[seg.TakeID].FilePath)
+		if path == "" {
+			return "", invalid("", "Take のファイルがないため、合成できません")
+		}
+		parts[i] = media.Segment{Path: path, Start: seg.Start, End: seg.End}
 	}
 	info, err := s.tools.Compose(ctx, parts, dst)
 	if err != nil {
@@ -240,7 +248,6 @@ func (s *TakeService) composeTake(ctx context.Context, ref repository.ShotRef, t
 		Role: domain.RoleAssistant, Kind: domain.KindTake, RefID: takeID,
 		Content: domain.EncodeTakeCardBody(domain.TakeCardBody{
 			Title:     o.Title,
-			Badge:     o.Badge,
 			Summary:   describeSegments(segs, takes),
 			ShotID:    ref.Shot.ID,
 			VideoURL:  domain.TakeVideoURL(takeID),
@@ -283,7 +290,11 @@ func (s *TakeService) SpliceRegenerated(ctx context.Context, shotID, baseTakeID,
 		return "", invalid("", "Take のファイルがないため、部分再生成をつなぎ込めません")
 	}
 	length := func(t domain.TakeInfo) float64 {
-		info, err := s.tools.Probe(ctx, s.assetPath(t.FilePath))
+		path := s.assetPath(t.FilePath)
+		if path == "" {
+			return 0
+		}
+		info, err := s.tools.Probe(ctx, path)
 		if err != nil {
 			return 0
 		}
@@ -330,6 +341,9 @@ func (s *TakeService) Video(ctx context.Context, takeID string) (MediaFile, erro
 		return MediaFile{}, ErrNotFound // archived
 	}
 	src := s.assetPath(d.FilePath)
+	if src == "" {
+		return MediaFile{}, ErrNotFound // outside the assets directory
+	}
 	mime := "video/mp4"
 	if a, err := s.assets.Get(ctx, d.ProjectID, d.AssetID); err == nil && a.MimeType != "" {
 		mime = a.MimeType
@@ -346,7 +360,10 @@ func (s *TakeService) Video(ctx context.Context, takeID string) (MediaFile, erro
 	if !proxied {
 		return MediaFile{Path: src, MimeType: mime}, nil
 	}
-	dst := filepath.Join(s.assetsDir, previewDir, takeID+".mp4")
+	dst := s.previewPath(takeID + ".mp4")
+	if dst == "" {
+		return MediaFile{Path: src, MimeType: mime}, nil // the ID is not a safe file name: no proxy is made
+	}
 	if err := s.makePreview(dst, func() error { return s.tools.Proxy(ctx, src, dst) }); err != nil {
 		s.logger.Error("make proxy failed; playing the original", "take_id", takeID, "err", err)
 		return MediaFile{Path: src, MimeType: mime}, nil
@@ -367,7 +384,13 @@ func (s *TakeService) Thumbnail(ctx context.Context, takeID string) (MediaFile, 
 		return MediaFile{}, ErrUnavailable
 	}
 	src := s.assetPath(d.FilePath)
-	dst := filepath.Join(s.assetsDir, previewDir, takeID+".jpg")
+	if src == "" {
+		return MediaFile{}, ErrNotFound // outside the assets directory
+	}
+	dst := s.previewPath(takeID + ".jpg")
+	if dst == "" {
+		return MediaFile{}, ErrNotFound // the ID is not a safe file name
+	}
 	if err := s.makePreview(dst, func() error { return s.tools.Thumbnail(ctx, src, dst, 0) }); err != nil {
 		return MediaFile{}, fmt.Errorf("make thumbnail: %w", err)
 	}

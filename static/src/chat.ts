@@ -3,11 +3,20 @@
  * only listens to /ws/projects/:id and asks for HTML fragments when told something changed
  * (the socket never carries a body), and handles the composer (reply target, attachments, Enter to send).
  */
-import htmx from 'htmx.org';
+import { ajaxChecked, ajaxGet, showToast } from './ajax';
+import { createConnectionNotice, releaseIfDetached } from './components/lib/connection-notice';
+import { AJAX_FAILED_MESSAGE } from './components/lib/ajax';
+import { selfAndDescendants } from './components/lib/query';
+import { createSyncer } from './components/lib/sync';
 import { connect, socketUrl } from './components/lib/ws';
 import {
+  type ComposerSnapshot,
   cardUrl,
+  catchUpAfterReconnect,
+  fieldsToClear,
+  fileKey,
   isSendKey,
+  isSuccessResponse,
   messagesUrl,
   removeDuplicateIds,
   type ProjectEvent,
@@ -15,8 +24,12 @@ import {
 
 const THREAD = '#chat-thread';
 
+function requestXhr(event: Event): { status: number } | undefined {
+  return (event as CustomEvent<{ xhr?: { status: number } }>).detail.xhr;
+}
+
 export function initChatWorkspaces(root: ParentNode = document): void {
-  for (const el of root.querySelectorAll<HTMLElement>('#chat-workspace:not([data-chat-ready])')) {
+  for (const el of selfAndDescendants<HTMLElement>(root, '#chat-workspace:not([data-chat-ready])')) {
     el.dataset.chatReady = 'true';
     new ChatWorkspace(el);
   }
@@ -29,8 +42,11 @@ class ChatWorkspace {
   private readonly content: HTMLTextAreaElement;
   private readonly files: HTMLInputElement;
   private stickToBottom = true; // is the thread scrolled to the bottom (so new messages should be followed)?
-  private syncing = false;
-  private syncAgain = false;
+  /** Fetches the messages after the last one shown; requests are merged and a failure is retried. */
+  private readonly syncer = createSyncer({
+    run: () => ajaxChecked('get', messagesUrl(this.projectId, this.lastMessageId()), { target: THREAD, swap: 'beforeend', source: THREAD }),
+    onGiveUp: () => showToast(AJAX_FAILED_MESSAGE),
+  });
 
   constructor(private readonly root: HTMLElement) {
     this.projectId = root.dataset.projectId ?? '';
@@ -42,11 +58,24 @@ class ChatWorkspace {
     this.bindThread();
     this.bindComposer();
     this.scrollToBottom();
-    connect<ProjectEvent>({
+    const notice = createConnectionNotice('チャット');
+    const connection = connect<ProjectEvent>({
       url: socketUrl(root.dataset.wsUrl ?? '', location),
-      onMessage: (event) => this.onEvent(event),
-      // After a reconnect, events may have been missed: catch up.
-      onOpen: (reconnected) => reconnected && void this.syncNew(),
+      onMessage: (event) => {
+        if (!releaseIfDetached(root, notice, connection)) this.onEvent(event);
+      },
+      // After a reconnect, events may have been missed: catch up on new messages and on cards that can still change.
+      onOpen: (reconnected) => {
+        if (releaseIfDetached(root, notice, connection)) return;
+        notice.hide();
+        if (reconnected) void this.catchUp();
+      },
+      onGiveUp: () => {
+        if (releaseIfDetached(root, notice, connection)) return;
+        notice.show(() => {
+          if (!releaseIfDetached(root, notice, connection)) connection.retry();
+        });
+      },
     });
   }
 
@@ -54,28 +83,28 @@ class ChatWorkspace {
     if (event.type === 'card.updated') {
       const card = this.thread.querySelector(`#msg-${CSS.escape(event.message_id)}`);
       if (card) {
-        void htmx.ajax('get', cardUrl(this.projectId, event.message_id), { target: `#msg-${CSS.escape(event.message_id)}`, swap: 'outerHTML' });
+        void this.refetchCard(event.message_id);
         return;
       }
     }
-    void this.syncNew();
+    this.syncNew();
   }
 
-  /** Fetches the messages after the last one shown. Concurrent calls are merged. */
-  private async syncNew(): Promise<void> {
-    if (this.syncing) {
-      this.syncAgain = true;
-      return;
-    }
-    this.syncing = true;
-    try {
-      do {
-        this.syncAgain = false;
-        await htmx.ajax('get', messagesUrl(this.projectId, this.lastMessageId()), { target: THREAD, swap: 'beforeend' });
-      } while (this.syncAgain);
-    } finally {
-      this.syncing = false;
-    }
+  private refetchCard(messageId: string): Promise<boolean> {
+    return ajaxGet(cardUrl(this.projectId, messageId), { target: `#msg-${CSS.escape(messageId)}`, swap: 'outerHTML' });
+  }
+
+  private catchUp(): Promise<unknown> {
+    return catchUpAfterReconnect({
+      pendingMessageIds: () =>
+        Array.from(this.thread.querySelectorAll<HTMLElement>('[data-card-pending]'), (el) => el.dataset.messageId ?? '').filter(Boolean),
+      refetchCard: (id) => this.refetchCard(id),
+      syncNew: () => this.syncer.request(),
+    });
+  }
+
+  private syncNew(): void {
+    void this.syncer.request();
   }
 
   private lastMessageId(): string {
@@ -89,7 +118,7 @@ class ChatWorkspace {
     // shift elsewhere on the page must not make the thread stop following new messages.
     this.thread.addEventListener('scroll', () => (this.stickToBottom = this.isNearBottom()));
     this.thread.addEventListener('htmx:afterSwap', () => this.afterThreadChange());
-    this.root.addEventListener('chat:refresh', () => void this.syncNew());
+    this.root.addEventListener('chat:refresh', () => this.syncNew());
     this.thread.addEventListener('click', (event) => {
       const button = (event.target as HTMLElement).closest<HTMLElement>('[data-reply-to]');
       if (button) this.setReplyTarget(button.dataset.replyTo ?? '', button.dataset.replyLabel ?? '');
@@ -122,19 +151,37 @@ class ChatWorkspace {
       this.showAttachments();
     });
 
-    // After a successful send the composer is cleared; a failed one keeps the user's input.
+    // After a successful (2xx) send the composer is cleared; a failed one keeps the user's input. Only what was
+    // sent is cleared: the input stays editable while the request runs, and the next message typed meanwhile
+    // is kept. detail.successful is not used: main.ts swaps HTML error responses (toasts), so htmx reports
+    // those as successful too.
+    let sent: ComposerSnapshot | undefined;
+    this.composer.addEventListener('htmx:beforeRequest', (event) => {
+      if (event.target === this.composer) sent = this.snapshot();
+    });
     this.composer.addEventListener('htmx:afterRequest', (event) => {
-      if (event.target === this.composer && (event as CustomEvent<{ successful: boolean }>).detail.successful) {
-        this.content.value = '';
+      if (event.target !== this.composer || !sent || !isSuccessResponse(requestXhr(event))) return;
+      const clear = fieldsToClear(sent, this.snapshot());
+      sent = undefined;
+      if (clear.content) this.content.value = '';
+      if (clear.files) {
         this.files.value = '';
         this.showAttachments();
-        this.setReplyTarget('', '');
       }
+      if (clear.replyTo) this.setReplyTarget('', '');
     });
     // Card buttons post replies on their own (not the refetches of syncNew): clear the pending reply target with them.
     this.thread.addEventListener('htmx:afterRequest', (event) => {
-      if ((event.target as HTMLElement).hasAttribute('hx-post')) this.setReplyTarget('', '');
+      if ((event.target as HTMLElement).hasAttribute('hx-post') && isSuccessResponse(requestXhr(event))) this.setReplyTarget('', '');
     });
+  }
+
+  private snapshot(): ComposerSnapshot {
+    return {
+      content: this.content.value,
+      files: [...this.files.files!].map(fileKey),
+      replyTo: this.composer.querySelector<HTMLInputElement>('#reply-to')!.value,
+    };
   }
 
   private setReplyTarget(messageId: string, label: string): void {

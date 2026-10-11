@@ -1,7 +1,9 @@
 import { aTimeout, expect, fixture, html, oneEvent, waitUntil } from '@open-wc/testing';
 import './mam-video-player';
 import type { MamVideoPlayer, SeekRequestedDetail } from './mam-video-player';
-import { FakeSocket, stubFetch, stubWebSocket } from '../testdata/fakes';
+import { FakeSocket, installConnectionNoticeTemplate, stubFetch, stubWebSocket } from '../testdata/fakes';
+import { sanitizeHistoryHtml } from '../lib/history';
+import { initShotProgress } from '../../shot';
 
 // 2 s, 25 fps, 160x90. The dev server does not answer Range requests, so the file is played from a
 // blob URL: a video that cannot be ranged cannot be seeked.
@@ -61,6 +63,26 @@ describe('mam-video-player: seeking', () => {
     expect(timecode()).to.equal('00:00:00');
   });
 
+  it('leaves the arrow keys with a modifier (Alt/Cmd/Ctrl + arrow: browser back/forward) to the browser', async () => {
+    const el = await player({ src: CLIP, fps: 25 });
+    await loaded(el);
+    const timecode = () => el.querySelector('[data-timecode]')?.textContent;
+    const video = el.querySelector('video')!;
+
+    for (const modifier of [{ altKey: true }, { metaKey: true }, { ctrlKey: true }]) {
+      const event = new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true, ...modifier });
+      video.dispatchEvent(event);
+      expect(event.defaultPrevented, JSON.stringify(modifier)).to.equal(false);
+    }
+    await aTimeout(100);
+    expect(timecode()).to.equal('00:00:00');
+
+    const plain = new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true });
+    video.dispatchEvent(plain);
+    expect(plain.defaultPrevented).to.equal(true);
+    await waitUntil(() => timecode() === '00:00:01');
+  });
+
   it('seeks from the time bar', async () => {
     const el = await player({ src: CLIP, fps: 25 });
     await loaded(el);
@@ -85,6 +107,26 @@ describe('mam-video-player: seeking', () => {
     video.pause();
 
     expect(el.frameRate).to.equal(25);
+  });
+
+  it('probes the frame rate once when frame steps are asked for while it is unknown, and leaves the sound on', async () => {
+    const el = await player({ src: CLIP });
+    const video = await loaded(el);
+    let plays = 0;
+    const play = video.play.bind(video);
+    video.play = () => {
+      plays += 1;
+      return play();
+    };
+    const frames: number[] = [];
+    el.addEventListener('seek-requested', (e) => frames.push((e as CustomEvent<SeekRequestedDetail>).detail.frame));
+
+    await Promise.all([el.step(1), el.step(1)]);
+
+    expect(plays).to.equal(1);
+    expect(video.muted).to.equal(false);
+    // Both steps count from the position the video was at, not from where the probe left it.
+    expect(frames).to.deep.equal([1, 2]);
   });
 });
 
@@ -189,8 +231,129 @@ describe('mam-video-player: generation placeholder', () => {
     expect(socket.closed).to.equal(true);
   });
 
+  it('tells the user when the progress can no longer be followed and reconnects on request', async () => {
+    // The backoff between attempts (500 ms and more) would make this test take minutes: run it at once.
+    const removeTemplate = installConnectionNoticeTemplate();
+    const setTimeoutOriginal = window.setTimeout;
+    window.setTimeout = ((fn: () => void, ms?: number, ...args: unknown[]) =>
+      (ms ?? 0) >= 400 ? setTimeoutOriginal(fn, 0) : setTimeoutOriginal(fn, ms, ...args)) as typeof window.setTimeout;
+    try {
+      const el = await player({ ws: '/ws/shots/s1' });
+      const notice = () => document.querySelector('[data-connection-lost]');
+      expect(notice()).to.equal(null);
+
+      // Every attempt fails until the retries are used up (waitUntil's own timer is slowed down as well: poll by hand).
+      for (let i = 0; i < 20 && notice() === null; i++) {
+        FakeSocket.instances.filter((s) => !s.closed).forEach((s) => ((s.closed = true), s.onclose?.()));
+        await aTimeout(20);
+      }
+      expect(notice()).to.not.equal(null);
+      expect(notice()!.getAttribute('role')).to.equal('alert');
+      expect(notice()!.textContent).to.contain('接続が切れました');
+      expect(notice()!.textContent).to.contain('再読み込み');
+
+      const before = FakeSocket.instances.length;
+      (document.querySelector('[data-action="reconnect"]') as HTMLButtonElement).click();
+      expect(FakeSocket.instances.length).to.equal(before + 1);
+      FakeSocket.instances.at(-1)!.onopen?.();
+      expect(notice()).to.equal(null);
+
+      // Giving up again and then leaving the page takes the notice away with the player.
+      for (let i = 0; i < 20 && notice() === null; i++) {
+        FakeSocket.instances.filter((s) => !s.closed).forEach((s) => ((s.closed = true), s.onclose?.()));
+        await aTimeout(20);
+      }
+      expect(notice()).to.not.equal(null);
+      el.remove();
+      expect(notice()).to.equal(null);
+    } finally {
+      window.setTimeout = setTimeoutOriginal;
+      removeTemplate();
+    }
+  });
+
   it('shows the placeholder when the video cannot be played', async () => {
     const el = await player({ src: '/src/components/testdata/missing.webm' });
     await waitUntil(() => placeholder(el)?.textContent?.includes('再生できません') === true, 'no error shown', { timeout: 5000 });
+  });
+});
+
+// The refresh is an htmx GET into #scene-shot-view: the test only watches it start.
+function refreshes(): { urls: string[]; stop: () => void } {
+  const urls: string[] = [];
+  const on = (e: Event) => urls.push((e as CustomEvent<{ pathInfo: { requestPath: string } }>).detail.pathInfo.requestPath);
+  document.body.addEventListener('htmx:beforeRequest', on);
+  return { urls, stop: () => document.body.removeEventListener('htmx:beforeRequest', on) };
+}
+
+describe('mam-video-player: history restore', () => {
+  it('keeps a single video after an htmx history snapshot is restored', async () => {
+    const el = await player({ src: CLIP, fps: 25 });
+    await loaded(el);
+    expect(el.querySelectorAll('video').length).to.equal(1);
+
+    const saved = sanitizeHistoryHtml(el.outerHTML);
+    const host = document.createElement('div');
+    host.innerHTML = saved;
+    document.body.append(host);
+    try {
+      const restored = host.querySelector('mam-video-player') as MamVideoPlayer;
+      await restored.updateComplete;
+      expect(host.querySelectorAll('video').length).to.equal(1);
+      expect(restored.querySelectorAll('[data-placeholder]').length).to.equal(0);
+    } finally {
+      host.remove();
+    }
+  });
+});
+
+describe('Shot card: one WebSocket per card (shot.ts)', () => {
+  let restoreSocket: () => void;
+  beforeEach(() => {
+    restoreSocket = stubWebSocket();
+  });
+  afterEach(() => restoreSocket());
+
+  it('a card with a player is followed by the player alone, and is refreshed when the player says it is over', async () => {
+    const watch = refreshes();
+    const root = await fixture(html`<div>
+      <div id="scene-shot-view"></div>
+      <ul>
+        <li id="shot-player" aria-current="true" data-shot-progress data-refresh-url="/refresh/player">
+          <mam-video-player ws-url="/ws/shots/s1"></mam-video-player>
+        </li>
+      </ul>
+    </div>`);
+    initShotProgress(root);
+
+    expect(FakeSocket.instances.map((s) => s.url)).to.deep.equal([`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws/shots/s1`]);
+
+    FakeSocket.instances[0]!.emit({ shot_id: 's1', stage: 'generating', takes_done: 1, takes_total: 3 });
+    await aTimeout(20);
+    expect(watch.urls).to.deep.equal([]);
+
+    FakeSocket.instances[0]!.emit({ shot_id: 's1', stage: 'done' });
+    await aTimeout(50);
+    watch.stop();
+    expect(watch.urls).to.deep.equal(['/refresh/player']);
+    expect(FakeSocket.instances.length).to.equal(1);
+  });
+
+  it('a card without a player is followed over data-ws-url, and is refreshed when the work is over', async () => {
+    const watch = refreshes();
+    const root = await fixture(html`<div>
+      <div id="scene-shot-view"></div>
+      <ul>
+        <li id="shot-socket" aria-current="true" data-shot-progress data-refresh-url="/refresh/socket" data-ws-url="/ws/shots/s2"></li>
+      </ul>
+    </div>`);
+    initShotProgress(root);
+    expect(FakeSocket.instances.length).to.equal(1);
+    expect(FakeSocket.instances[0]!.url).to.contain('/ws/shots/s2');
+
+    FakeSocket.instances[0]!.emit({ shot_id: 's2', stage: 'failed' });
+    await aTimeout(50);
+    watch.stop();
+    expect(watch.urls).to.deep.equal(['/refresh/socket']);
   });
 });

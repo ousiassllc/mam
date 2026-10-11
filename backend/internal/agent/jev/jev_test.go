@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -146,4 +147,26 @@ func keys(m map[string]any) []string {
 		out = append(out, k)
 	}
 	return out
+}
+
+func TestDefaultClientDoesNotForwardTheKeyOnARedirectToAnotherHost(t *testing.T) {
+	var foreignHits atomic.Int32
+	foreign := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { foreignHits.Add(1) }))
+	defer foreign.Close()
+	vendor := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, foreign.URL+"/steal", http.StatusFound)
+	}))
+	defer vendor.Close()
+	cfg := jev.DefaultConfig()
+	cfg.BaseURL = vendor.URL
+	c, err := jev.New(cfg, memKeys{jev.CredentialProvider: "secret-key"}, nil)
+	require.NoError(t, err)
+
+	_, err = c.Choose(context.Background(), jev.Input{
+		Issues:     []domain.JudgeIssue{{Type: "camera_speed", Severity: domain.SeverityMedium}},
+		Candidates: []domain.RepairAction{domain.RepairPrompt, domain.RepairFullRetake},
+	})
+
+	require.Error(t, err)
+	assert.Zero(t, foreignHits.Load())
 }

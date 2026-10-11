@@ -151,20 +151,20 @@ func TestTakeRepository_PickBestInAutoAdoptsThePassedTakeAndMovesThePickWhenABet
 	r := repository.NewTakeRepository(db)
 	ctx := context.Background()
 
-	none, err := r.PickBest(ctx, "sh1", true)
+	none, err := r.PickBest(ctx, "sh1", true, nil)
 	require.NoError(t, err)
 	assert.Empty(t, none.TakeID, "nothing judged yet")
 
 	judged(t, db, "t1", domain.JudgePass, domain.JudgeIssue{Type: "x", Severity: domain.SeverityMedium, Dimension: domain.DimActing})
-	first, err := r.PickBest(ctx, "sh1", true)
+	first, err := r.PickBest(ctx, "sh1", true, nil)
 	require.NoError(t, err)
 	assert.Equal(t, repository.AIPick{TakeID: "t1", Passed: true, Changed: true, Adopted: true}, first)
-	again, err := r.PickBest(ctx, "sh1", true)
+	again, err := r.PickBest(ctx, "sh1", true, nil)
 	require.NoError(t, err)
 	assert.False(t, again.Changed, "the same pick is not a change")
 
 	judged(t, db, "t2", domain.JudgePass)
-	second, err := r.PickBest(ctx, "sh1", true)
+	second, err := r.PickBest(ctx, "sh1", true, nil)
 	require.NoError(t, err)
 
 	assert.True(t, second.Changed)
@@ -181,7 +181,7 @@ func TestTakeRepository_PickBestInDirectorRecommendsWithoutAdoptingAndNeverAdopt
 	ctx := context.Background()
 	judged(t, db, "t1", domain.JudgePass)
 
-	director, err := r.PickBest(ctx, "sh1", false)
+	director, err := r.PickBest(ctx, "sh1", false, nil)
 	require.NoError(t, err)
 	assert.Equal(t, "t1", director.TakeID)
 	assert.False(t, director.Adopted)
@@ -190,12 +190,30 @@ func TestTakeRepository_PickBestInDirectorRecommendsWithoutAdoptingAndNeverAdopt
 	failedDB := openTestDB(t)
 	seedTake(t, failedDB)
 	judged(t, failedDB, "t1", domain.JudgeFail)
-	failed, err := repository.NewTakeRepository(failedDB).PickBest(ctx, "sh1", true)
+	failed, err := repository.NewTakeRepository(failedDB).PickBest(ctx, "sh1", true, nil)
 	require.NoError(t, err)
 	assert.Equal(t, "t1", failed.TakeID, "a failed Take is still recommended")
 	assert.False(t, failed.Passed)
 	assert.False(t, failed.Adopted)
 	assert.Empty(t, selectedTake(t, failedDB))
+}
+
+func TestTakeRepository_PickBestIgnoresARejectedTakeEvenWhenItIsTheOnlyAcceptedOne(t *testing.T) {
+	db := openTestDB(t)
+	seedTake(t, db)
+	addTakes(t, db, 2)
+	r := repository.NewTakeRepository(db)
+	ctx := context.Background()
+	judged(t, db, "t1", domain.JudgePass)
+	judged(t, db, "t2", domain.JudgeFail)
+	_, err := r.Reject(ctx, "t1")
+	require.NoError(t, err)
+
+	pick, err := r.PickBest(ctx, "sh1", false, func(id string) bool { return id == "t1" })
+
+	require.NoError(t, err)
+	assert.Equal(t, repository.AIPick{TakeID: "t2", Changed: true}, pick, "the rejected Take must not empty the pool of the others")
+	assert.Equal(t, map[string]domain.TakeStatus{"t1": domain.TakeRejected, "t2": domain.TakeAIPick}, statuses(t, r))
 }
 
 func TestTakeRepository_PickBestLeavesTheUsersSelectionAlone(t *testing.T) {
@@ -208,7 +226,7 @@ func TestTakeRepository_PickBestLeavesTheUsersSelectionAlone(t *testing.T) {
 	_, err := r.Select(ctx, "t1")
 	require.NoError(t, err)
 
-	pick, err := r.PickBest(ctx, "sh1", true)
+	pick, err := r.PickBest(ctx, "sh1", true, nil)
 
 	require.NoError(t, err)
 	assert.Empty(t, pick.TakeID)
@@ -266,4 +284,23 @@ func TestTakeRepository_CandidateCompositeLeavesTheShotsSelectionAlone(t *testin
 	assert.Equal(t, "t2", selectedTake(t, db))
 	assert.Equal(t, domain.TakeCandidate, statuses(t, r)[id])
 	assert.Equal(t, domain.TakeSelected, statuses(t, r)["t2"])
+}
+
+func TestTakeRepository_GetManyReturnsEachKnownTakeOnceAndSkipsTheUnknown(t *testing.T) {
+	db := openTestDB(t)
+	seedTake(t, db)
+	addTakes(t, db, 3)
+	r := repository.NewTakeRepository(db)
+
+	got, err := r.GetMany(context.Background(), []string{"t3", "t1", "t3", "nope"})
+
+	require.NoError(t, err)
+	require.Len(t, got, 2)
+	one, err := r.Get(context.Background(), "t1")
+	require.NoError(t, err)
+	assert.Equal(t, one, got["t1"], "the same detail Get returns")
+	assert.Equal(t, "sh1", got["t3"].ShotID)
+	none, err := r.GetMany(context.Background(), nil)
+	require.NoError(t, err)
+	assert.Empty(t, none)
 }

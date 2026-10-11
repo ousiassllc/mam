@@ -18,7 +18,7 @@ func JudgeTake(svc *service.JudgeService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusAccepted, molecules.ShotCard(shotCardData(frag)))
+		render(c, http.StatusAccepted, molecules.ShotCard(takeActionCard(c, frag)))
 	}
 }
 
@@ -31,6 +31,6 @@ func RepairTake(svc *service.RepairService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusAccepted, molecules.ShotCard(shotCardData(frag)))
+		render(c, http.StatusAccepted, molecules.ShotCard(takeActionCard(c, frag)))
 	}
 }

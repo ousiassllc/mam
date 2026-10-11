@@ -25,7 +25,10 @@ type ShotCost struct {
 
 // SceneCost is the cost of one Scene with its Shots.
 type SceneCost struct {
-	SceneID    string
+	SceneID string
+	// BranchID and BranchName are empty for a Scene of the trunk; a Branch numbers its own Scenes from the first.
+	BranchID   string
+	BranchName string
 	OrderIndex int
 	Title      string
 	Totals     CostTotals
@@ -53,7 +56,7 @@ type StoredTake struct {
 	ModelName  string
 	SizeBytes  int64
 	// Unneeded is true when the Take can be archived without losing a choice: it is Rejected, or
-	// another Take of its Shot is Selected.
+	// another Take of its Shot is Selected, and no Edit Timeline or Lip Sync refers to it.
 	Unneeded bool
 }
 

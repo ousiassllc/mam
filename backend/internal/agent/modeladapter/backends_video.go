@@ -15,6 +15,8 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/httpclient"
+	"github.com/ousiassllc/mam/backend/internal/safefetch"
 )
 
 // klingBackend calls Kling 3.0. Its API key is "ACCESS_KEY:SECRET_KEY" (as issued by Kling); every
@@ -147,7 +149,7 @@ func (b klingBackend) GenerateVideo(ctx context.Context, apiModel string, req Vi
 	if err != nil {
 		return VideoResult{}, err
 	}
-	return VideoResult{Data: file, MimeType: videoMime(mime)}, nil
+	return VideoResult{File: file, MimeType: videoMime(mime)}, nil
 }
 
 // seedanceBackend calls Seedance 2.0 through the BytePlus ModelArk content generation API.
@@ -174,7 +176,7 @@ func (b seedanceBackend) GenerateVideo(ctx context.Context, apiModel string, req
 			image(*req.LastFrame, "last_frame")
 		}
 	}
-	// References cannot be combined with frames: the model reads either the frames or the references.
+	// Frames and reference images are mutually exclusive scenarios of the API (see Prepare).
 	if req.FirstFrame == nil {
 		for _, r := range req.References {
 			image(r, "reference_image")
@@ -233,7 +235,7 @@ func (b seedanceBackend) GenerateVideo(ctx context.Context, apiModel string, req
 	if err != nil {
 		return VideoResult{}, err
 	}
-	return VideoResult{Data: file, MimeType: videoMime(mime)}, nil
+	return VideoResult{File: file, MimeType: videoMime(mime)}, nil
 }
 
 // runwayVersion is the API version header every Runway request must carry.
@@ -322,7 +324,7 @@ func (b runwayBackend) GenerateVideo(ctx context.Context, apiModel string, req V
 	if err != nil {
 		return VideoResult{}, err
 	}
-	return VideoResult{Data: file, MimeType: videoMime(mime)}, nil
+	return VideoResult{File: file, MimeType: videoMime(mime)}, nil
 }
 
 func videoMime(header string) string {
@@ -333,19 +335,50 @@ func videoMime(header string) string {
 	return "video/mp4"
 }
 
+// BackendOption changes how NewBackends builds the backends.
+type BackendOption func(*backendOptions)
+
+type backendOptions struct {
+	localDownloads bool
+	stagingDir     string
+}
+
+// WithLocalDownloads lets result files be downloaded from plain http URLs and local addresses, and
+// through the client given to NewBackends. It exists for tests against httptest servers: without
+// it a result URL must be an https URL of a public host.
+func WithLocalDownloads() BackendOption { return func(o *backendOptions) { o.localDownloads = true } }
+
+// WithStagingDir sets where downloaded videos are staged until the caller stores them (see Blob).
+// It should be on the volume the files are stored on, so that storing is a rename.
+func WithStagingDir(dir string) BackendOption { return func(o *backendOptions) { o.stagingDir = dir } }
+
 // NewBackends returns the HTTP backend of every model. API keys are read from keys at call time,
 // so a key stored in the settings screen takes effect without a restart. client may be nil (a
 // client without an overall timeout: the Adapter bounds every call). pollEvery is the wait
-// between two status requests of an asynchronous job (zero selects 5 seconds).
-func NewBackends(cfg Config, keys credential.Store, client Doer, pollEvery time.Duration) Backends {
+// between two status requests of an asynchronous job (zero selects 5 seconds). Result files are
+// downloaded with a client that connects to public addresses only (safefetch.NewClient) when
+// client is nil, otherwise with client; either way the URL must be https (see WithLocalDownloads).
+func NewBackends(cfg Config, keys credential.Store, client httpclient.Doer, pollEvery time.Duration, opts ...BackendOption) Backends {
+	var o backendOptions
+	for _, opt := range opts {
+		opt(&o)
+	}
+	fetcher := client
 	if client == nil {
-		client = &http.Client{}
+		client = httpclient.New()
+		fetcher = client
+		if !o.localDownloads {
+			fetcher = safefetch.NewClient()
+		}
 	}
 	if pollEvery <= 0 {
 		pollEvery = 5 * time.Second
 	}
 	mk := func(v Vendor) api {
-		return api{vendor: v, baseURL: strings.TrimRight(cfg.Vendors[v].BaseURL, "/"), keys: keys, client: client, pollEvery: pollEvery}
+		return api{
+			vendor: v, baseURL: strings.TrimRight(cfg.Vendors[v].BaseURL, "/"), keys: keys,
+			client: client, fetcher: fetcher, localDownloads: o.localDownloads, pollEvery: pollEvery, stagingDir: o.stagingDir,
+		}
 	}
 	return Backends{
 		Image: map[domain.ModelName]ImageBackend{

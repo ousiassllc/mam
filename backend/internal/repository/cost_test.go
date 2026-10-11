@@ -88,3 +88,48 @@ func TestCostRepository_ListsShotsWithoutCostAndKeepsEntriesOfDeletedShots(t *te
 	_, err = repo.Summary(ctx, "missing")
 	assert.ErrorIs(t, err, repository.ErrNotFound)
 }
+
+func TestCostRepository_KeepsTrunkAndBranchScenesApartWhenTheyShareAnOrderIndex(t *testing.T) {
+	ctx := context.Background()
+	f := newBranchFixture(t)
+	trunkScenes, err := f.plans.ListScenes(ctx, f.projectID)
+	require.NoError(t, err)
+	require.Len(t, trunkScenes, 1)
+	trunkShots, err := repository.NewGenerationRepository(f.db).ListProjectShots(ctx, f.projectID)
+	require.NoError(t, err)
+	require.Len(t, trunkShots, 2)
+
+	b, err := f.branches.Create(ctx, repository.NewBranch{ShotID: f.shotID, PointType: domain.BranchAtShot, Name: "Alt"})
+	require.NoError(t, err)
+	scene, err := f.plans.CreateScene(ctx, domain.Scene{ProjectID: f.projectID, BranchID: b.ID, Title: "Door", Location: "Hall"})
+	require.NoError(t, err)
+	require.Equal(t, trunkScenes[0].OrderIndex, scene.OrderIndex, "the Branch Scene shares the trunk Scene's order_index")
+	var branchShots []string
+	for _, objective := range []string{"open", "close"} {
+		sh, err := f.plans.CreateShot(ctx, domain.Shot{SceneID: scene.ID, Objective: objective, Duration: 2})
+		require.NoError(t, err)
+		branchShots = append(branchShots, sh.ID)
+	}
+
+	gen := f.genRepoFixture
+	newTake(t, gen, trunkShots[0].Shot.ID, "t0.mp4", 10, 1, nil)
+	newTake(t, gen, trunkShots[1].Shot.ID, "t1.mp4", 10, 2, nil)
+	newTake(t, gen, branchShots[0], "b0.mp4", 10, 4, nil)
+	newTake(t, gen, branchShots[1], "b1.mp4", 10, 8, nil)
+
+	sum, err := repository.NewCostRepository(f.db).Summary(ctx, f.projectID)
+	require.NoError(t, err)
+	require.Len(t, sum.Scenes, 2, "one entry per Scene, not one per run of rows")
+	trunk, branch := sum.Scenes[0], sum.Scenes[1]
+	assert.Empty(t, trunk.BranchID)
+	assert.Equal(t, b.ID, branch.BranchID)
+	assert.Equal(t, "Alt", branch.BranchName)
+	require.Len(t, trunk.Shots, 2)
+	require.Len(t, branch.Shots, 2)
+	assert.Equal(t, trunkShots[0].Shot.ID, trunk.Shots[0].ShotID)
+	assert.Equal(t, trunkShots[1].Shot.ID, trunk.Shots[1].ShotID)
+	assert.Equal(t, branchShots, []string{branch.Shots[0].ShotID, branch.Shots[1].ShotID})
+	assert.InDelta(t, 3, trunk.Totals.Estimated, 1e-9)
+	assert.InDelta(t, 12, branch.Totals.Estimated, 1e-9)
+	assert.InDelta(t, 15, sum.Project.Estimated, 1e-9)
+}

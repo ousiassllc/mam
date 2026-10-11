@@ -4,6 +4,8 @@ import (
 	"strconv"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // BrandTemplatePanelData is the Brand Templates on the settings screen of a Project. Typed and Errors
@@ -21,12 +23,15 @@ templ BrandTemplateSelect(id string, templates []domain.BrandTemplate) {
 	if len(templates) > 0 {
 		<label class="flex flex-col gap-1 text-xs text-neutral-400" for={ id }>
 			Brand Template（制約をコピーして開始）
-			<select id={ id } name="brand_template_id" class="rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm text-neutral-100">
+			@atoms.Select(atoms.FieldMd, "", templ.Attributes{
+				"id":   id,
+				"name": "brand_template_id",
+			}) {
 				<option value="">（使わない）</option>
 				for _, t := range templates {
 					<option value={ t.ID }>{ t.Name }（{ strconv.Itoa(len(t.Constraints)) } 件）</option>
 				}
-			</select>
+			}
 		</label>
 	}
 }
@@ -52,22 +57,20 @@ templ BrandTemplatePanel(d BrandTemplatePanelData) {
 							</ul>
 						</div>
 						<div class="flex gap-2">
-							<button
-								type="button"
-								class="rounded-md border border-neutral-600 px-2 py-1 text-xs hover:bg-neutral-800"
-								hx-post={ "/projects/" + d.ProjectID + "/brand-templates/" + t.ID + "/apply" }
-								hx-target="#brand-constraint-list"
-								hx-swap="outerHTML"
-								hx-confirm="このテンプレートの制約をこの Project にコピーします（同じ制約はスキップ）。よろしいですか？"
-							>この Project に適用</button>
-							<button
-								type="button"
-								class="rounded-md border border-neutral-600 px-2 py-1 text-xs hover:bg-neutral-800"
-								hx-delete={ "/projects/" + d.ProjectID + "/brand-templates/" + t.ID }
-								hx-target="#brand-template-panel"
-								hx-swap="outerHTML"
-								hx-confirm="このテンプレートを削除します。適用済みの Project の制約は変わりません。よろしいですか？"
-							>削除</button>
+							@atoms.SmallButton(atoms.ToneNeutral, "この Project に適用", templ.Attributes{
+								"type":       "button",
+								"hx-post":    paths.Project(d.ProjectID, "brand-templates", t.ID, "apply"),
+								"hx-target":  "#brand-constraint-list",
+								"hx-swap":    "outerHTML",
+								"hx-confirm": "このテンプレートの制約をこの Project にコピーします（同じ制約はスキップ）。よろしいですか？",
+							})
+							@atoms.SmallButton(atoms.ToneNeutral, "削除", templ.Attributes{
+								"type":       "button",
+								"hx-delete":  paths.Project(d.ProjectID, "brand-templates", t.ID),
+								"hx-target":  "#brand-template-panel",
+								"hx-swap":    "outerHTML",
+								"hx-confirm": "このテンプレートを削除します。適用済みの Project の制約は変わりません。よろしいですか？",
+							})
 						</div>
 					</li>
 				}
@@ -75,26 +78,27 @@ templ BrandTemplatePanel(d BrandTemplatePanelData) {
 		}
 		<form
 			class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3"
-			hx-post={ "/projects/" + d.ProjectID + "/brand-templates" }
+			hx-post={ paths.Project(d.ProjectID, "brand-templates") }
 			hx-target="#brand-template-panel"
 			hx-swap="outerHTML"
 		>
 			<label for="brand-template-name" class="text-sm font-medium">この Project の制約をテンプレートとして保存</label>
-			<input
-				id="brand-template-name"
-				name="name"
-				type="text"
-				maxlength={ intText(domain.MaxBrandTemplateNameRunes) }
-				value={ d.Typed["name"] }
-				placeholder="例: ブランドA 標準"
-				class="w-full rounded-md border border-neutral-600 bg-neutral-950 px-3 py-2 text-sm"
-			/>
+			@atoms.Input(atoms.FieldLg, "w-full", templ.Attributes{
+				"id":          "brand-template-name",
+				"name":        "name",
+				"type":        "text",
+				"maxlength":   intText(domain.MaxBrandTemplateNameRunes),
+				"value":       d.Typed["name"],
+				"placeholder": "例: ブランドA 標準",
+			})
 			if msg := d.Errors["name"]; msg != "" {
 				<p class="text-sm text-red-300" role="alert">{ msg }</p>
 			}
 			<p class="text-xs text-neutral-400">保存するのは現在の制約のコピーです。以後この Project の制約を変えてもテンプレートは変わらず、テンプレートを削除しても適用済みの Project には影響しません。</p>
 			<div>
-				<button type="submit" class="rounded-md bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-400">テンプレートを保存</button>
+				@atoms.Button(atoms.TonePrimary, "テンプレートを保存", templ.Attributes{
+					"type": "submit",
+				})
 			</div>
 		</form>
 	</section>

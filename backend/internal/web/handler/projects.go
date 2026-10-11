@@ -2,8 +2,6 @@ package handler
 
 import (
 	"errors"
-	"io"
-	"mime/multipart"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -15,13 +13,11 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
 	"github.com/ousiassllc/mam/backend/internal/web/pages"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // maxUploadRequestBytes caps one multipart request: all attachments plus the text.
 const maxUploadRequestBytes = service.MaxAttachments*service.MaxVideoBytes + 1<<20
-
-// multipartMemory is how much of an upload Go keeps in memory before spilling to temp files.
-const multipartMemory = 8 << 20
 
 // Projects renders the project list and the new-project form (GET / and GET /projects).
 // HTMX requests get the list fragment only.
@@ -29,8 +25,7 @@ func Projects(svc *service.ProjectService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		projects, err := svc.List(c.Request.Context())
 		if err != nil {
-			_ = c.Error(err)
-			c.AbortWithStatus(http.StatusInternalServerError)
+			pageError(c, err)
 			return
 		}
 		if isHTMX(c) {
@@ -39,8 +34,7 @@ func Projects(svc *service.ProjectService) gin.HandlerFunc {
 		}
 		templates, err := svc.Templates(c.Request.Context())
 		if err != nil {
-			_ = c.Error(err)
-			c.AbortWithStatus(http.StatusInternalServerError)
+			pageError(c, err)
 			return
 		}
 		render(c, http.StatusOK, pages.ProjectsPage(middleware.CSRFToken(c), projects, organisms.NewProjectFormData{Templates: templates}))
@@ -55,7 +49,7 @@ func CreateProject(svc *service.ProjectService) gin.HandlerFunc {
 		if err == nil {
 			var project domain.Project
 			if project, err = svc.Create(c.Request.Context(), service.CreateProjectInput{Content: content, Uploads: uploads, BrandTemplateID: c.PostForm("brand_template_id")}); err == nil {
-				c.Header("HX-Redirect", "/projects/"+project.ID)
+				c.Header("HX-Redirect", paths.Project(project.ID))
 				c.Status(http.StatusCreated)
 				return
 			}
@@ -68,26 +62,18 @@ func CreateProject(svc *service.ProjectService) gin.HandlerFunc {
 
 // readMessageForm reads the content and the attachments of a multipart message form.
 func readMessageForm(c *gin.Context) (string, []service.Upload, error) {
-	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxUploadRequestBytes)
-	if err := c.Request.ParseMultipartForm(multipartMemory); err != nil {
-		return "", nil, &service.ValidationError{Field: "attachments", Message: "送信内容が大きすぎるか、形式が正しくありません"}
+	form, err := readMultipart(c, maxUploadRequestBytes)
+	if err != nil {
+		return "", nil, err
 	}
 	var uploads []service.Upload
-	for _, fh := range c.Request.MultipartForm.File["attachments"] {
+	for _, fh := range form.File["attachments"] {
 		if fh.Filename == "" { // an empty file input is sent as an unnamed empty part
 			continue
 		}
 		uploads = append(uploads, uploadOf(fh))
 	}
 	return c.PostForm("content"), uploads, nil
-}
-
-func uploadOf(fh *multipart.FileHeader) service.Upload {
-	return service.Upload{
-		Name: fh.Filename,
-		Size: fh.Size,
-		Open: func() (io.ReadCloser, error) { return fh.Open() },
-	}
 }
 
 // ProjectAsset serves an uploaded file of the Project (GET /projects/:id/assets/:assetId).
@@ -180,7 +166,7 @@ func SetConfirmationLevel(svc *service.ProjectService) gin.HandlerFunc {
 func pageError(c *gin.Context, err error) {
 	status, message := statusOf(c, err)
 	if isHTMX(c) {
-		c.Header("HX-Reswap", "none")
+		middleware.ToastOnly(c)
 		render(c, status, atoms.ToastOOB(message))
 		return
 	}

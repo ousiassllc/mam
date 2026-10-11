@@ -60,9 +60,9 @@ type VideoRequest struct {
 	References      []Input
 }
 
-// VideoResult is a generated video file.
+// VideoResult is a generated video file. The caller owns File and MUST store or discard it.
 type VideoResult struct {
-	Data     []byte
+	File     Blob
 	MimeType string
 	// ActualCost is the cost in USD the vendor reported for the call; nil when it reports none.
 	ActualCost *float64
@@ -79,7 +79,11 @@ var ErrNoAPIKey = errors.New("modeladapter: API key is not configured")
 // ErrTimeout means a model call exceeded the vendor's timeout.
 var ErrTimeout = errors.New("modeladapter: model call timed out")
 
-// ErrCircuitOpen means every model of the route was skipped because its circuit breaker is open.
+// ErrTimeLimit means the model calls of a job together exceeded VideoJob.MaxTime.
+var ErrTimeLimit = errors.New("modeladapter: the time limit of the job was exceeded")
+
+// ErrCircuitOpen means the model was skipped because its circuit breaker is open. The error of a whole
+// route matches it only when every model of the route was skipped.
 var ErrCircuitOpen = errors.New("modeladapter: circuit breaker is open")
 
 // ErrRejected means the vendor refused the request itself (a 4xx other than 429), for example a
@@ -133,9 +137,33 @@ func unavailable(err error) bool {
 	return false
 }
 
-// retryable is unavailable without timeouts: after a timeout the job may still be running (and
-// billed) at the vendor, so it is not submitted a second time; the alternative model is used instead.
-func retryable(err error) bool { return unavailable(err) && !errors.Is(err, ErrTimeout) }
+// errAfterSubmit marks an error that happened after the vendor accepted the job (while waiting
+// for it or downloading its result).
+var errAfterSubmit = errors.New("after the job was submitted")
+
+type submittedError struct{ err error }
+
+func (e *submittedError) Error() string { return e.err.Error() }
+func (e *submittedError) Unwrap() error { return e.err }
+
+// Is lets errors.Is(err, errAfterSubmit) recognise the marker; the wrapped error stays reachable
+// through Unwrap, so it still counts for the circuit breaker.
+func (e *submittedError) Is(target error) bool { return target == errAfterSubmit }
+
+// afterSubmit marks err as one that happened after the job was submitted (nil stays nil).
+func afterSubmit(err error) error {
+	if err == nil {
+		return nil
+	}
+	return &submittedError{err: err}
+}
+
+// retryable is unavailable without the cases where submitting the job again would be billed twice:
+// after a timeout the job may still be running at the vendor, and after the vendor accepted the job
+// (errAfterSubmit) it is running there already. The alternative model is used instead.
+func retryable(err error) bool {
+	return unavailable(err) && !errors.Is(err, ErrTimeout) && !errors.Is(err, errAfterSubmit)
+}
 
 func retryAfter(err error) time.Duration {
 	var pe *ProviderError

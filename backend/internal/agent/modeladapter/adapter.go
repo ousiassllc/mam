@@ -76,10 +76,15 @@ func New(cfg Config, backends Backends, opts ...Option) *Adapter {
 func (a *Adapter) Config() Config { return a.cfg }
 
 // Unavailable says why the video model cannot be called now (domain.ExcludedNoBackend: it has no
-// backend; domain.ExcludedCircuitOpen: its vendor's circuit breaker is open), or "" when it can. It
-// does not consume the breaker's probe call.
+// backend or no API key is stored for its vendor; domain.ExcludedCircuitOpen: its vendor's circuit
+// breaker is open), or "" when it can. It does not consume the breaker's probe call.
 func (a *Adapter) Unavailable(m domain.ModelName) string {
-	if a.backends.Video[m] == nil {
+	backend := a.backends.Video[m]
+	if backend == nil {
+		return domain.ExcludedNoBackend
+	}
+	// Keys are added at run time, so the stored key is looked up on every call.
+	if c, ok := backend.(interface{ Configured() bool }); ok && !c.Configured() {
 		return domain.ExcludedNoBackend
 	}
 	if b := a.breakers[VendorOf(m)]; b == nil || b.IsOpen() {
@@ -95,6 +100,13 @@ func (a *Adapter) EstimateVideo(t VideoTarget, seconds float64) float64 {
 		return 0
 	}
 	return a.cfg.VideoCost(t, caps.SnapDuration(seconds))
+}
+
+// EstimateImage is the most one image of the purpose can cost: the dearer of the primary model and
+// the alternative the call falls back to. It is what a budget check holds before the call.
+func (a *Adapter) EstimateImage(purpose ImagePurpose) float64 {
+	route := a.cfg.ImageRouteFor(purpose)
+	return max(a.cfg.ImageCost(route.Primary.Model), a.cfg.ImageCost(route.Fallback.Model))
 }
 
 // GenerateImage makes an image with the primary model of the purpose, and with the alternative
@@ -125,7 +137,7 @@ func (a *Adapter) GenerateImage(ctx context.Context, purpose ImagePurpose, req I
 			a.logger.Warn("image model cannot use reference images, generating from the prompt only", "model", t.Model)
 			treq.Inputs = nil
 		}
-		res, err := call(ctx, a, VendorOf(t.Model), func(ctx context.Context) (ImageResult, error) {
+		res, err := call(ctx, a, VendorOf(t.Model), nil, func(ctx context.Context) (ImageResult, error) {
 			return backend.GenerateImage(ctx, apiModel, treq)
 		}, string(t.Model))
 		if err == nil {
@@ -137,7 +149,7 @@ func (a *Adapter) GenerateImage(ctx context.Context, purpose ImagePurpose, req I
 		failures = append(failures, fmt.Errorf("%s: %w", t.Model, err))
 		a.logFailover(t.Model, i, len(targets), err)
 	}
-	return ImageOutput{}, fmt.Errorf("modeladapter: every image model failed for %s: %w", purpose, errors.Join(failures...))
+	return ImageOutput{}, fmt.Errorf("modeladapter: every image model failed for %s: %w", purpose, routeFailure(failures))
 }
 
 // GenerateVideo makes one Take. It renders the job for the primary target and calls it; when the
@@ -149,6 +161,7 @@ func (a *Adapter) GenerateVideo(ctx context.Context, primary, fallback VideoTarg
 		targets = append(targets, fallback)
 	}
 	var failures []error
+	clock := &limitClock{limit: job.MaxTime}
 	for i, t := range targets {
 		backend := a.backends.Video[t.Model]
 		if backend == nil {
@@ -160,7 +173,7 @@ func (a *Adapter) GenerateVideo(ctx context.Context, primary, fallback VideoTarg
 			return VideoOutput{}, err
 		}
 		apiModel := a.cfg.Models[t.Model].Model
-		res, err := call(ctx, a, VendorOf(t.Model), func(ctx context.Context) (VideoResult, error) {
+		res, err := call(ctx, a, VendorOf(t.Model), clock, func(ctx context.Context) (VideoResult, error) {
 			return backend.GenerateVideo(ctx, apiModel, req)
 		}, string(t.Model))
 		if err == nil {
@@ -172,10 +185,20 @@ func (a *Adapter) GenerateVideo(ctx context.Context, primary, fallback VideoTarg
 		if ctx.Err() != nil {
 			return VideoOutput{}, ctx.Err()
 		}
+		if clock.expired() {
+			// The alternative has no time left either: say that, not what the cut-off call returned.
+			return VideoOutput{}, fmt.Errorf("%w (%s): %w", ErrTimeLimit, job.MaxTime, err)
+		}
 		failures = append(failures, fmt.Errorf("%s: %w", t.Model, err))
 		a.logFailover(t.Model, i, len(targets), err)
 	}
-	return VideoOutput{}, fmt.Errorf("modeladapter: every video model failed: %w", errors.Join(failures...))
+	return VideoOutput{}, fmt.Errorf("modeladapter: every video model failed: %w", routeFailure(failures))
+}
+
+// routeFailure joins what every model of a route failed with (see resilience.RouteFailure): only a
+// route whose models were all skipped by their breakers is an ErrCircuitOpen.
+func routeFailure(failures []error) error {
+	return resilience.RouteFailure(failures, func(err error) bool { return errors.Is(err, ErrCircuitOpen) })
 }
 
 func (a *Adapter) logFailover(m domain.ModelName, i, n int, err error) {
@@ -184,10 +207,41 @@ func (a *Adapter) logFailover(m domain.ModelName, i, n int, err error) {
 	}
 }
 
+// limitClock is the time limit of one job (VideoJob.MaxTime) over all its model calls. It starts at
+// the first vendor concurrency slot the job gets, not when the job asks for it: the time spent
+// waiting for other jobs to free a slot is not model time. A nil clock, or one without a limit,
+// never expires.
+type limitClock struct {
+	limit    time.Duration
+	deadline time.Time
+	// ctx is the context the limit applied to last; it tells an expired limit from a cancelled call.
+	ctx context.Context
+}
+
+// start binds ctx to the limit, starting the clock if it has not started yet. The returned cancel
+// releases the bound context.
+func (c *limitClock) start(ctx context.Context) (context.Context, context.CancelFunc) {
+	if c == nil || c.limit <= 0 {
+		return ctx, func() {}
+	}
+	if c.deadline.IsZero() {
+		c.deadline = time.Now().Add(c.limit)
+	}
+	bound, cancel := context.WithDeadline(ctx, c.deadline)
+	c.ctx = bound
+	return bound, cancel
+}
+
+// expired reports whether the limit ran out (rather than the caller giving up).
+func (c *limitClock) expired() bool {
+	return c != nil && c.ctx != nil && errors.Is(c.ctx.Err(), context.DeadlineExceeded) && !c.deadline.IsZero()
+}
+
 // call runs fn against one vendor: it skips the vendor while its breaker is open, takes a
 // concurrency slot, and retries unavailable answers with exponential backoff. A 429 also lowers
-// the vendor's concurrency limit. The call is bounded by the vendor's timeout.
-func call[T any](ctx context.Context, a *Adapter, v Vendor, fn func(context.Context) (T, error), model string) (T, error) {
+// the vendor's concurrency limit. The call is bounded by the vendor's timeout, and by clock, which
+// starts once the slot is held.
+func call[T any](ctx context.Context, a *Adapter, v Vendor, clock *limitClock, fn func(context.Context) (T, error), model string) (T, error) {
 	var zero T
 	b, lim := a.breakers[v], a.limiters[v]
 	if b == nil || lim == nil {
@@ -202,6 +256,8 @@ func call[T any](ctx context.Context, a *Adapter, v Vendor, fn func(context.Cont
 	}
 	ok := false
 	defer func() { release(ok) }()
+	ctx, cancelLimit := clock.start(ctx)
+	defer cancelLimit()
 
 	policy := resilience.Policy{
 		MaxAttempts: a.cfg.Retry.MaxAttempts,

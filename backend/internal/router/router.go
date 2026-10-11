@@ -40,6 +40,7 @@ func New(services *service.Services, opts Options) *gin.Engine {
 		middleware.Logger(logger),
 		middleware.LoopbackOnly(),
 		middleware.CSRF(),
+		middleware.MaxBody(),
 	)
 
 	registerStatic(engine, opts.Static)

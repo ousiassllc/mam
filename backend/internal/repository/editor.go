@@ -320,8 +320,8 @@ func (r *EditorRepository) CreateExport(ctx context.Context, e domain.Export) (d
 	e.ExportedAt = r.now().UTC()
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		_, err := tx.ExecContext(ctx,
-			`INSERT INTO export (id, project_id, file_path, resolution, aspect_ratio, codec, exported_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-			e.ID, e.ProjectID, e.FilePath, e.Resolution, e.AspectRatio, e.Codec, formatTime(e.ExportedAt))
+			`INSERT INTO export (id, project_id, branch_id, file_path, resolution, aspect_ratio, codec, exported_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+			e.ID, e.ProjectID, nullIfEmpty(e.BranchID), e.FilePath, e.Resolution, e.AspectRatio, e.Codec, formatTime(e.ExportedAt))
 		return err
 	})
 	if err != nil {
@@ -335,7 +335,7 @@ func scanExport(row rowScanner) (domain.Export, error) {
 		e        domain.Export
 		exported string
 	)
-	if err := row.Scan(&e.ID, &e.ProjectID, &e.FilePath, &e.Resolution, &e.AspectRatio, &e.Codec, &exported); err != nil {
+	if err := row.Scan(&e.ID, &e.ProjectID, &e.BranchID, &e.FilePath, &e.Resolution, &e.AspectRatio, &e.Codec, &exported); err != nil {
 		return domain.Export{}, err
 	}
 	var err error
@@ -343,7 +343,7 @@ func scanExport(row rowScanner) (domain.Export, error) {
 	return e, err
 }
 
-const exportSelect = `SELECT id, project_id, file_path, resolution, aspect_ratio, codec, exported_at FROM export`
+const exportSelect = `SELECT id, project_id, COALESCE(branch_id, ''), file_path, resolution, aspect_ratio, codec, exported_at FROM export`
 
 // GetExport returns an Export of the Project or ErrNotFound.
 func (r *EditorRepository) GetExport(ctx context.Context, projectID, id string) (domain.Export, error) {

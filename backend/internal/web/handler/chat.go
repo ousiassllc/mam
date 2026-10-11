@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"mime"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -80,7 +81,9 @@ func PostMessage(svc *service.ChatService) gin.HandlerFunc {
 
 func readPostMessage(c *gin.Context) (service.PostMessageInput, error) {
 	var in service.PostMessageInput
-	if c.ContentType() == "multipart/form-data" {
+	// Media types are case-insensitive; middleware.MaxBody normalises the same way to leave a multipart
+	// body to readMultipart's limit, so the two must agree on what counts as multipart.
+	if mediaType, _, _ := mime.ParseMediaType(c.GetHeader("Content-Type")); mediaType == "multipart/form-data" {
 		content, uploads, err := readMessageForm(c)
 		if err != nil {
 			return in, err

@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
+	"runtime/debug"
 	"slices"
 	"strings"
 	"sync"
@@ -74,6 +76,9 @@ type Deps struct {
 	Projects    *repository.ProjectRepository
 	Policies    *repository.PolicyRepository
 	Assets      *repository.AssetRepository
+	// Repairs hold the Repair history of a Shot: Prompt Candidate Generation counts it against the
+	// Max retries per Shot together with its own Takes (domain.RetriesDone, domain.CandidateRetries).
+	Repairs *repository.RepairRepository
 	// Brands gives the Safety / Brand Constraints the Prompt Planner follows (F-23). Optional.
 	Brands *repository.BrandRepository
 	// World holds the World State the State Extractor updates after each Shot.
@@ -103,6 +108,7 @@ type Orchestrator struct {
 	projects  *repository.ProjectRepository
 	policies  *repository.PolicyRepository
 	assets    *repository.AssetRepository
+	repairs   *repository.RepairRepository
 	brands    *repository.BrandRepository
 	chat      Chat
 	jobs      Jobs
@@ -122,7 +128,7 @@ type Orchestrator struct {
 // New returns an Orchestrator.
 func New(d Deps) *Orchestrator {
 	o := &Orchestrator{
-		gens: d.Generations, projects: d.Projects, policies: d.Policies, assets: d.Assets, brands: d.Brands, chat: d.Chat, jobs: d.Jobs, adapter: d.Adapter,
+		gens: d.Generations, projects: d.Projects, policies: d.Policies, assets: d.Assets, repairs: d.Repairs, brands: d.Brands, chat: d.Chat, jobs: d.Jobs, adapter: d.Adapter,
 		planner: promptplanner.New(d.LLM), art: artdirector.New(d.LLM),
 		files: fileStore{root: d.AssetsDir}, freeDisk: d.FreeBytes, judge: d.Judge, notify: d.Notify, logger: d.Logger,
 	}
@@ -146,6 +152,14 @@ type payload struct {
 	Instruction string `json:"instruction,omitempty"`
 	// Preserve are the parts of the Shot Spec the director asked to keep as they are.
 	Preserve []domain.SpecPart `json:"preserve,omitempty"`
+	// Spec is a Canonical Shot Spec already checked against LOCK brand constraints, so the job
+	// does not plan a second one. Nil when the job keeps the Shot's spec or plans it itself.
+	Spec *domain.ShotSpec `json:"spec,omitempty"`
+	// NoteRefs are the production notes Spec was planned from.
+	NoteRefs []domain.NoteRef `json:"note_refs,omitempty"`
+	// CandidateSpecs are the Prompt Candidate specs already checked, in CandidateStrategies order.
+	// The job uses these instead of planning them again; strategies past the end are planned in the job.
+	CandidateSpecs []domain.ShotSpec `json:"candidate_specs,omitempty"`
 }
 
 // progressText is the content of the progress card of a job.
@@ -183,12 +197,55 @@ func (o *Orchestrator) StartCandidates(ctx context.Context, shotID, instruction 
 	return o.start(ctx, shotID, ActionCandidates, instruction, nil)
 }
 
+// UsesCandidates reports whether the generation the Quality Policy calls for is Prompt Candidate
+// Generation for the Shot. Every Generation Mode of spec/spec.md §8 (Quality / Balanced / Economy, from
+// MAX QUALITY / BALANCED / FAST) generates through Candidates and the Judge, so it is the case unless
+// the Judge is off (nothing could pick the Best Take) or the Prompt is LOCKed (Candidates rewrite the
+// spec, so StartCandidates refuses with a 423 and the Shot is made from the spec it has).
+func (o *Orchestrator) UsesCandidates(ctx context.Context, shot domain.Shot) (bool, error) {
+	if o.judge == nil {
+		return false, nil
+	}
+	if _, hasSpec := shot.CanonicalSpec(); !hasSpec {
+		return true, nil
+	}
+	locks, err := o.gens.ShotLocks(ctx, shot.ID)
+	if err != nil {
+		return false, err
+	}
+	return !locks.Locked(domain.ParamPrompt), nil
+}
+
+// StartByPolicy begins generating the Shot the way the Quality Policy of its Project calls for: Prompt
+// Candidate Generation (StartCandidates) when UsesCandidates, else the single generation (StartDirected).
+// It is the one entry the generation the system starts for the user goes through (the Shot card's
+// 生成, Continue, Branch, the editor's reshoot, the director's regenerate), so that MAX QUALITY is
+// honoured everywhere. preserve is as for StartDirected. The explicit POST /shots/:id/generate is the
+// single generation (Start).
+func (o *Orchestrator) StartByPolicy(ctx context.Context, shotID, instruction string, preserve []domain.SpecPart) (domain.Job, error) {
+	ref, err := o.gens.GetShot(ctx, shotID)
+	if err != nil {
+		return domain.Job{}, err
+	}
+	byCandidates, err := o.UsesCandidates(ctx, ref.Shot)
+	if err != nil {
+		return domain.Job{}, err
+	}
+	if byCandidates {
+		return o.start(ctx, shotID, ActionCandidates, instruction, preserve)
+	}
+	return o.StartDirected(ctx, shotID, instruction, preserve)
+}
+
 func (o *Orchestrator) start(ctx context.Context, shotID string, action Action, instruction string, preserve []domain.SpecPart) (domain.Job, error) {
 	ref, err := o.gens.GetShot(ctx, shotID)
 	if err != nil {
 		return domain.Job{}, err
 	}
+	instruction = strings.TrimSpace(instruction)
 	// A direction that contains a forbidden expression of a LOCK Brand constraint is refused up front.
+	// Advisory constraints are not an error. The spec that will be generated is checked the same way,
+	// before the job is queued, so a violation is HTTP 403 and creates neither a Take nor a progress job.
 	brand, err := o.brandConstraints(ctx, ref.ProjectID)
 	if err != nil {
 		return domain.Job{}, err
@@ -197,7 +254,7 @@ func (o *Orchestrator) start(ctx context.Context, shotID string, action Action, 
 		return domain.Job{}, err
 	}
 	// Candidates always rewrite the spec, so a LOCKed Prompt rules them out even without an instruction.
-	if _, hasSpec := ref.Shot.CanonicalSpec(); hasSpec && (strings.TrimSpace(instruction) != "" || action == ActionCandidates) {
+	if _, hasSpec := ref.Shot.CanonicalSpec(); hasSpec && (instruction != "" || action == ActionCandidates) {
 		locks, err := o.gens.ShotLocks(ctx, shotID)
 		if err != nil {
 			return domain.Job{}, err
@@ -218,7 +275,17 @@ func (o *Orchestrator) start(ctx context.Context, shotID string, action Action, 
 	if err != nil {
 		return domain.Job{}, err
 	}
-	job, err := o.enqueue(ctx, ref, payload{Action: action, ShotID: shotID, Instruction: strings.TrimSpace(instruction), Preserve: preserve})
+	p := payload{Action: action, ShotID: shotID, Instruction: instruction, Preserve: preserve}
+	switch action {
+	case ActionCandidates:
+		p.CandidateSpecs, err = o.prepareCandidates(ctx, ref, instruction, preserve, strategy)
+	default:
+		p.Spec, p.NoteRefs, err = o.prepareGenerate(ctx, ref, instruction, preserve)
+	}
+	if err != nil {
+		return domain.Job{}, err
+	}
+	job, err := o.enqueue(ctx, ref, p)
 	if err != nil {
 		return domain.Job{}, err
 	}
@@ -300,13 +367,45 @@ func (o *Orchestrator) warnLowDisk(ctx context.Context, ref repository.ShotRef, 
 	}
 }
 
-// StartReferencePack begins building (or rebuilding) the Reference Pack of the Shot.
+// StartReferencePack begins building (or rebuilding) the Reference Pack of the Shot. It fails with
+// ErrBudgetExceeded when not even one image fits the budget ceiling of the Project or the Shot (F-22):
+// how many images the Art Director plans is only known while the job runs, so the cheapest image
+// model is the least the pack costs.
 func (o *Orchestrator) StartReferencePack(ctx context.Context, shotID string) (domain.Job, error) {
 	ref, err := o.gens.GetShot(ctx, shotID)
 	if err != nil {
 		return domain.Job{}, err
 	}
+	budget, err := o.gens.Budget(ctx, ref.ProjectID, shotID)
+	if err != nil {
+		return domain.Job{}, err
+	}
+	if affordable(budget.Remaining(), o.cheapestImageCost()) == 0 {
+		return domain.Job{}, ErrBudgetExceeded
+	}
 	return o.enqueue(ctx, ref, payload{Action: ActionReferencePack, ShotID: shotID})
+}
+
+// cheapestImageCost is the estimated cost of one image of the cheapest priced image model (0 when
+// none is priced).
+func (o *Orchestrator) cheapestImageCost() float64 {
+	cfg, cheapest := o.adapter.Config(), 0.0
+	for _, m := range domain.ImageModels() {
+		if c := cfg.ImageCost(m); c > 0 && (cheapest == 0 || c < cheapest) {
+			cheapest = c
+		}
+	}
+	return cheapest
+}
+
+// refuseBusy is ErrShotBusy for a Shot that is being generated or repaired. enqueue's claim stays
+// the authority on who owns the Shot; this check lets the callers refuse before they pay for the
+// Prompt Planner a spec that would be thrown away.
+func refuseBusy(ref repository.ShotRef) error {
+	if ref.Shot.State.Busy() {
+		return ErrShotBusy
+	}
+	return nil
 }
 
 func (o *Orchestrator) enqueue(ctx context.Context, ref repository.ShotRef, p payload) (domain.Job, error) {
@@ -337,11 +436,6 @@ func (o *Orchestrator) release(ctx context.Context, shotID string) {
 	}
 }
 
-// Recover puts Shots that were being generated when the app terminated abnormally back to PLANNING.
-// Call it at start-up, before the job queue starts: the generate jobs of those Shots are failed by
-// the queue (they are not resumable, so no paid call is repeated silently).
-func (o *Orchestrator) Recover(ctx context.Context) (int, error) { return o.gens.ResetStaleShots(ctx) }
-
 // Handle is the job handler of domain.JobGenerate. Register it as NOT resumable: a generation
 // costs money, so an interrupted one is failed and the user starts it again.
 func (o *Orchestrator) Handle(ctx context.Context, job domain.Job) error {
@@ -349,6 +443,15 @@ func (o *Orchestrator) Handle(ctx context.Context, job domain.Job) error {
 	if err := json.Unmarshal(job.Payload, &p); err != nil || p.ShotID == "" || (p.Action != ActionGenerate && p.Action != ActionReferencePack && p.Action != ActionCandidates) {
 		return fmt.Errorf("generate job %s: invalid payload", job.ID)
 	}
+	// The Shot was claimed (GENERATING) before this job was queued. Whichever way the handler ends, an
+	// error before the work starts or a panic included, it gives the Shot back: only a restart
+	// would release it otherwise, and every new generation of it would be refused as busy.
+	released := false
+	defer func() {
+		if !released {
+			o.release(ctx, p.ShotID)
+		}
+	}()
 	ref, err := o.gens.GetShot(ctx, p.ShotID)
 	if err != nil {
 		return err
@@ -364,10 +467,11 @@ func (o *Orchestrator) Handle(ctx context.Context, job domain.Job) error {
 	case ActionReferencePack:
 		done, err = o.buildReferencePack(ctx, ref)
 	case ActionCandidates:
-		done, err = o.generateCandidates(ctx, ref, p.Instruction)
+		done, err = o.generateCandidates(ctx, ref, p.Instruction, p.Preserve, p.CandidateSpecs)
 	default:
-		done, err = o.generate(ctx, ref, p.Instruction, p.Preserve)
+		done, err = o.generate(ctx, ref, p.Instruction, p.Preserve, p.Spec, p.NoteRefs)
 	}
+	released = true // fail and the success path give the Shot back themselves, before they tell the user
 	if err != nil {
 		return o.fail(ctx, ref, p.Action, err)
 	}
@@ -425,6 +529,8 @@ func FailureReason(err error) string {
 		return "生成モデルのレート制限に達しました。しばらく待ってから再実行してください"
 	case errors.Is(err, modeladapter.ErrCircuitOpen):
 		return "生成モデルが一時的に利用できません。しばらく待ってから再実行してください"
+	case errors.Is(err, llm.ErrCircuitOpen):
+		return "AI サービスが一時的に利用できません。しばらく待ってから再実行してください"
 	case errors.Is(err, modeladapter.ErrRejected):
 		return "生成モデルがリクエストを拒否しました（コンテンツポリシー等）。指示を変えて再実行してください"
 	case errors.Is(err, modeladapter.ErrTimeout), errors.Is(err, llm.ErrTimeout):
@@ -438,17 +544,31 @@ func FailureReason(err error) string {
 	}
 	var api *llm.APIError
 	if errors.As(err, &api) {
+		if api.Status == http.StatusTooManyRequests {
+			return "AI サービスのレート制限に達しました。しばらく待ってから再実行してください"
+		}
 		return "AI サービスの呼び出しに失敗しました"
 	}
 	return "内部エラーが発生しました"
 }
 
-// parallel runs fn for i in [0, n) concurrently and returns the errors in order.
-func parallel(n int, fn func(i int) error) []error {
+// parallel runs fn for i in [0, n) concurrently and returns the errors in order. A panic in fn is
+// not propagated (it would end the goroutine, and the whole server, outside the job queue's
+// recover): it is logged with its stack and becomes the error of that index, while the others
+// finish.
+func parallel(logger *slog.Logger, n int, fn func(i int) error) []error {
 	errs := make([]error, n)
 	var wg sync.WaitGroup
 	for i := range n {
-		wg.Go(func() { errs[i] = fn(i) })
+		wg.Go(func() {
+			defer func() {
+				if r := recover(); r != nil {
+					logger.Error("parallel task panicked", "index", i, "panic", r, "stack", string(debug.Stack()))
+					errs[i] = fmt.Errorf("task %d panicked: %v", i, r)
+				}
+			}()
+			errs[i] = fn(i)
+		})
 	}
 	wg.Wait()
 	return errs

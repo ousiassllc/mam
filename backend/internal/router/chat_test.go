@@ -301,11 +301,13 @@ func TestApprovalCard_AnsweredOnceProjectWaitsUntilThen(t *testing.T) {
 	assert.Contains(t, body, ">修正を依頼<")
 	assert.Contains(t, body, "確認待ち")
 	assert.Contains(t, body, `data-state="AWAITING_APPROVAL"`, "the project waits while the card is unanswered")
+	assert.Contains(t, body, `data-card-pending="true"`, "the client refetches an unanswered card after a reconnect")
 	card := lastID(t, a.get("/projects/"+id+"/messages", true).Body.String()) // the newest message is the card
 
 	rec := a.form(http.MethodPost, "/projects/"+id+"/approvals/"+card, url.Values{"decision": {"approve"}, "comment": {"OK"}})
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	assert.Contains(t, rec.Body.String(), "承認済み")
+	assert.NotContains(t, rec.Body.String(), "data-card-pending", "an answered card is final")
 	assert.NotContains(t, rec.Body.String(), ">修正を依頼<", "an answered card has no buttons")
 	assert.Contains(t, rec.Body.String(), `data-state="VISUAL_DESIGN"`, "the badge shows the new state")
 	assert.Equal(t, "chat:refresh", rec.Header().Get("HX-Trigger"), "the thread fetches the follow-up messages")
@@ -316,6 +318,8 @@ func TestApprovalCard_AnsweredOnceProjectWaitsUntilThen(t *testing.T) {
 
 	bad := a.form(http.MethodPost, "/projects/"+id+"/approvals/"+card, url.Values{"decision": {"later"}})
 	assert.Equal(t, http.StatusUnprocessableEntity, bad.Code)
+	implicit := a.form(http.MethodPost, "/projects/"+id+"/approvals/"+card, url.Values{"comment": {"ここを直して"}})
+	assert.Equal(t, http.StatusUnprocessableEntity, implicit.Code, "a submit without a pressed button is not an approval")
 	missing := a.form(http.MethodPost, "/projects/"+id+"/approvals/missing", url.Values{"decision": {"approve"}})
 	assert.Equal(t, http.StatusNotFound, missing.Code)
 }
@@ -343,13 +347,14 @@ func TestConfirmationLevel_ChangesWhichCheckpointsAsk(t *testing.T) {
 	assert.Contains(t, body, `value="key_check" selected`)
 	assert.NotContains(t, body, `name="checkpoints"`, "the selection appears only for CUSTOM CHECK")
 
-	rec := a.form(http.MethodPut, "/projects/"+id+"/confirmation-level", url.Values{"level": {"custom_check"}, "checkpoints": {"scene_complete"}})
+	rec := a.form(http.MethodPut, "/projects/"+id+"/confirmation-level", url.Values{"level": {"custom_check"}, "checkpoints": {"rough_cut"}})
 	require.Equal(t, http.StatusOK, rec.Code)
 	assert.Contains(t, rec.Body.String(), `value="custom_check" selected`)
-	assert.Contains(t, rec.Body.String(), `name="checkpoints" value="scene_complete" checked`)
-	assert.NotContains(t, rec.Body.String(), `value="script" checked`)
+	assert.NotContains(t, rec.Body.String(), `value="scene_complete"`, "only checkpoints the pipeline asks at are offered")
+	assertChecked(t, rec.Body.String(), "rough_cut")
+	assertNotChecked(t, rec.Body.String(), "script")
 
-	posted, err := a.svc.Chat.RequestApproval(ctx, id, domain.CheckpointSceneComplete, "Scene 1", "s1")
+	posted, err := a.svc.Chat.RequestApproval(ctx, id, domain.CheckpointRoughCut, "Rough Cut", "s1")
 	require.NoError(t, err)
 	assert.True(t, posted)
 	posted, err = a.svc.Chat.RequestApproval(ctx, id, domain.CheckpointFinal, "Final", "e1")
@@ -371,7 +376,7 @@ func TestComposer_HasModeAndQualityControlsAndStaysEnabledWhileGenerating(t *tes
 	assert.Contains(t, body, `name="mode"`)
 	assert.Contains(t, body, `name="quality_policy"`)
 	assert.Contains(t, body, `hx-put="/projects/`+id+`/quality-policy"`, "the Quality control switches the policy")
-	assert.Contains(t, body, `value="auto" checked`)
+	assertChecked(t, body, "auto")
 	assert.Contains(t, body, `value="balanced" selected`)
 	assert.Contains(t, body, "Scene 02 を生成中")
 	assert.Contains(t, body, "実行中")
@@ -605,4 +610,32 @@ func TestMessages_AnsweredQuestionCardIsReplacedInPlaceOutOfBand(t *testing.T) {
 	assert.Contains(t, card[:strings.Index(card, "</article>")], `hx-swap-oob="outerHTML"`)
 	assert.Contains(t, card[:strings.Index(card, "</article>")], "回答済み")
 	assert.NotContains(t, card[:strings.Index(card, "</article>")], "data-options", "no buttons are left on an answered card")
+}
+
+// The media type of Content-Type is case-insensitive. MaxBody hands a "Multipart/Form-Data" body of
+// this route to the handler's own limit, so the handler must read it as multipart (and apply that
+// limit) too, not as a plain form that gin parses unbounded and whose attachments are dropped.
+func TestChat_MultipartMediaTypeIsCaseInsensitive(t *testing.T) {
+	a := newApp(t)
+	id := a.createProject("美容液の縦型15秒CMを作りたい")
+	var buf bytes.Buffer
+	w := multipart.NewWriter(&buf)
+	part, err := w.CreateFormFile("attachments", "ref.png")
+	require.NoError(t, err)
+	_, err = part.Write(pngBytes)
+	require.NoError(t, err)
+	require.NoError(t, w.Close())
+	contentType := strings.Replace(w.FormDataContentType(), "multipart/form-data", "Multipart/Form-Data", 1)
+	require.Contains(t, contentType, "Multipart/Form-Data")
+
+	// An attachment alone is a valid message: the file must reach the service.
+	rec := a.request(http.MethodPost, "/projects/"+id+"/messages", buf.Bytes(), contentType, true)
+	assert.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	var assets int
+	require.NoError(t, a.db.Reader().QueryRow(`SELECT COUNT(*) FROM asset WHERE project_id = ?`, id).Scan(&assets))
+	assert.Equal(t, 1, assets)
+
+	// A body that is not multipart goes through readMultipart's error handling.
+	rec = a.request(http.MethodPost, "/projects/"+id+"/messages", []byte("content=x"), "Multipart/Form-Data; boundary=mam", true)
+	assert.Equal(t, http.StatusBadRequest, rec.Code, rec.Body.String())
 }

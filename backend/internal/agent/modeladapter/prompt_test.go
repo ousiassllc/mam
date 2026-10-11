@@ -72,11 +72,18 @@ func TestPrepareForSeedanceKeepsReferencesWithinTheModelLimitAndFoldsTheNegative
 	assert.Equal(t, "720p", req.Resolution)
 }
 
-func TestPrepareUsesFramesInsteadOfReferencesWhenBothAreGiven(t *testing.T) {
+func TestPrepareNeverMixesFramesAndReferencesInOneRequest(t *testing.T) {
+	// Seedance 2.0 rejects a request that has a first frame and reference images: the frames win.
 	req, err := modeladapter.Prepare(seedanceTarget, fullJob())
 	require.NoError(t, err)
 	assert.NotNil(t, req.FirstFrame)
-	assert.Empty(t, req.References)
+	assert.NotNil(t, req.LastFrame)
+	assert.Empty(t, req.References, "the references are left out when a first frame is sent")
+
+	kling, err := modeladapter.Prepare(klingTarget, fullJob())
+	require.NoError(t, err)
+	assert.NotNil(t, kling.FirstFrame)
+	assert.Empty(t, kling.References, "Kling takes frames only")
 }
 
 func TestSnapDurationChoosesTheShortestSupportedLengthThatFits(t *testing.T) {
@@ -106,4 +113,52 @@ func TestPrepareForRunwayUsesTheFirstFrameAndKeepsTheAvoidListWithinTheLimit(t *
 	assert.LessOrEqual(t, len([]rune(req.Prompt)), 1000, "promptText is limited to 1000 characters")
 	assert.Contains(t, req.Prompt, "distorted face", "the avoid list survives the cut")
 	assert.Equal(t, 4.0, req.DurationSeconds, "any whole second from 2 to 10 is available")
+}
+
+func TestPrepareKeepsTheConstraintsWhenTheLimitCutsTheProse(t *testing.T) {
+	for _, tt := range []struct {
+		name   string
+		target modeladapter.VideoTarget
+		limit  int
+	}{
+		{"Runway (1000 characters)", runwayTarget, 1000},
+		{"Kling (2400 characters)", klingTarget, 2400},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			job := fullJob()
+			job.Spec.Acting = nil
+			for i := range 60 {
+				job.Spec.Acting = append(job.Spec.Acting, domain.ActingBeat{Time: "0.0-0.5", Action: "slowly_turns_the_head_towards_the_window_" + strings.Repeat("x", i%7)})
+			}
+			job.Spec.Constraints = []string{"do_not_add_characters", "preserve_face_identity", "preserve_logo"}
+			req, err := modeladapter.Prepare(tt.target, job)
+			require.NoError(t, err)
+
+			assert.LessOrEqual(t, len([]rune(req.Prompt)), tt.limit)
+			assert.Contains(t, req.Prompt, "keep the character's face identical to the reference images", "a long Acting does not push the constraints out")
+			assert.Contains(t, req.Prompt, "keep the logo and label text sharp and undistorted")
+			assert.Contains(t, req.Prompt, "no additional people appear")
+		})
+	}
+}
+
+func TestPrepareWithPreferReferencesDecidesPerModel(t *testing.T) {
+	job := fullJob()
+	job.PreferReferences = true
+
+	seedance, err := modeladapter.Prepare(seedanceTarget, job)
+	require.NoError(t, err)
+	assert.Nil(t, seedance.FirstFrame, "a model with free reference images reads the references being reinforced")
+	assert.Nil(t, seedance.LastFrame)
+	assert.Len(t, seedance.References, 9)
+
+	kling, err := modeladapter.Prepare(klingTarget, job)
+	require.NoError(t, err)
+	assert.NotNil(t, kling.FirstFrame, "a frames-only model keeps the Keyframe: it cannot use the references")
+	assert.Empty(t, kling.References)
+
+	job.References = nil
+	bare, err := modeladapter.Prepare(seedanceTarget, job)
+	require.NoError(t, err)
+	assert.NotNil(t, bare.FirstFrame, "without references to prefer the frames are kept")
 }

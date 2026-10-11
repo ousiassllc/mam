@@ -197,15 +197,58 @@ func LoadConfig(path string) (Config, error) {
 	if err != nil {
 		return Config{}, fmt.Errorf("read model config: %w", err)
 	}
+	// The maps of entries are decoded per entry on top of the default entry, so that an entry that
+	// names only some of its fields keeps the defaults of the others (encoding/json would rebuild the
+	// whole entry from the zero value): vendors, models, images, policies and routing.weights. The
+	// embedded Config shares the default maps; Routing shadows its Config field so that the weights
+	// stay raw until they are overlaid.
+	file := struct {
+		Config
+		Vendors  map[Vendor]json.RawMessage               `json:"vendors"`
+		Models   map[domain.ModelName]json.RawMessage     `json:"models"`
+		Images   map[ImagePurpose]json.RawMessage         `json:"images"`
+		Policies map[domain.QualityPolicy]json.RawMessage `json:"policies"`
+		Routing  struct {
+			RoutingConfig
+			Weights map[domain.QualityPolicy]json.RawMessage `json:"weights"`
+		} `json:"routing"`
+	}{Config: cfg}
+	file.Routing.RoutingConfig = cfg.Routing
 	dec := json.NewDecoder(bytes.NewReader(data))
 	dec.DisallowUnknownFields()
-	if err := dec.Decode(&cfg); err != nil {
+	if err := dec.Decode(&file); err != nil {
 		return Config{}, fmt.Errorf("decode model config %s: %w", path, err)
+	}
+	cfg = file.Config
+	cfg.Routing = file.Routing.RoutingConfig
+	for _, err := range []error{
+		overlayEntries(cfg.Vendors, file.Vendors), overlayEntries(cfg.Models, file.Models),
+		overlayEntries(cfg.Images, file.Images), overlayEntries(cfg.Policies, file.Policies),
+		overlayEntries(cfg.Routing.Weights, file.Routing.Weights),
+	} {
+		if err != nil {
+			return Config{}, fmt.Errorf("decode model config %s: %w", path, err)
+		}
 	}
 	if err := cfg.Validate(); err != nil {
 		return Config{}, fmt.Errorf("model config %s: %w", path, err)
 	}
 	return cfg, nil
+}
+
+// overlayEntries applies the JSON of each entry on top of the entry of dst with the same key (the
+// zero value for a new key); fields the JSON does not name keep their value. Unknown fields are rejected.
+func overlayEntries[K comparable, V any](dst map[K]V, raw map[K]json.RawMessage) error {
+	for k, r := range raw {
+		v := dst[k]
+		dec := json.NewDecoder(bytes.NewReader(r))
+		dec.DisallowUnknownFields()
+		if err := dec.Decode(&v); err != nil {
+			return fmt.Errorf("%v: %w", k, err)
+		}
+		dst[k] = v
+	}
+	return nil
 }
 
 // Validate checks that every route names a model that has an adapter and settings, that video
@@ -218,6 +261,38 @@ func (c Config) Validate() error {
 		}
 		if vc.BaseURL == "" || vc.MaxConcurrency <= 0 || vc.TimeoutSeconds <= 0 {
 			errs = append(errs, fmt.Errorf("vendor %s: base_url, max_concurrency and timeout_seconds must be set", v))
+		}
+	}
+	// A typo in the key of a map entry would otherwise change nothing without a word.
+	for m, mc := range c.Models {
+		caps, video := Capabilities(m)
+		if !slices.Contains(domain.ImageModels(), m) && !video {
+			errs = append(errs, fmt.Errorf("models: %q is not an image or video model", m))
+		}
+		for res := range mc.CostPerSecond {
+			if video && !caps.SupportsResolution(res) {
+				errs = append(errs, fmt.Errorf("models %s: cost_per_second_usd: %q is not a resolution of the model", m, res))
+			}
+		}
+	}
+	for p := range c.Images {
+		if !slices.Contains(ImagePurposes(), p) {
+			errs = append(errs, fmt.Errorf("images: %q is not an image purpose", p))
+		}
+	}
+	for q := range c.Policies {
+		if !q.Valid() {
+			errs = append(errs, fmt.Errorf("policies: %q is not a Quality Policy", q))
+		}
+	}
+	for q := range c.Routing.Weights {
+		if !q.Valid() {
+			errs = append(errs, fmt.Errorf("routing weights: %q is not a Quality Policy", q))
+		}
+	}
+	for q := range c.Routing.Candidates {
+		if !q.Valid() {
+			errs = append(errs, fmt.Errorf("routing candidates: %q is not a Quality Policy", q))
 		}
 	}
 	image := func(where string, t ImageTarget) {

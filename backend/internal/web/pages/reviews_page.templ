@@ -2,6 +2,7 @@ package pages
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/layout"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
 )
@@ -10,7 +11,7 @@ import (
 templ ReviewsPage(csrfToken string, project domain.Project, d organisms.ReviewListData) {
 	@layout.AppLayout("レビュー: "+project.Name, csrfToken) {
 		<main class="mx-auto max-w-4xl p-8">
-			<a href={ templ.SafeURL("/projects/" + project.ID) } class="text-sm text-neutral-400 hover:text-neutral-100">← チャットに戻る</a>
+			@atoms.ChatBackLink(project.ID)
 			<h1 class="mb-1 mt-3 text-xl font-semibold">レビュー</h1>
 			<p class="mb-2 text-sm text-neutral-400">{ project.Name }</p>
 			<p class="mb-6 text-xs text-neutral-400">
@@ -26,7 +27,7 @@ templ ReviewsPage(csrfToken string, project domain.Project, d organisms.ReviewLi
 templ ReviewInboxPage(csrfToken string, d organisms.ReviewInboxData) {
 	@layout.AppLayout("レビュー", csrfToken) {
 		<main class="mx-auto max-w-3xl p-8">
-			<a href="/" class="text-sm text-neutral-400 hover:text-neutral-100">← プロジェクト一覧</a>
+			@atoms.BackLink("/", "← プロジェクト一覧")
 			<h1 class="mb-1 mt-3 text-xl font-semibold">レビュー</h1>
 			<p class="mb-6 text-xs text-neutral-400">受け取った Review Package を読み込み、動画を見てコメントと判定を書き、応答ファイルをオーナーに返します。</p>
 			@organisms.ReviewInboxList(d)
@@ -38,7 +39,7 @@ templ ReviewInboxPage(csrfToken string, d organisms.ReviewInboxData) {
 templ ReviewPage(csrfToken string, i domain.ReviewInbox) {
 	@layout.AppLayout("レビュー: "+i.ProjectName, csrfToken) {
 		<main class="mx-auto max-w-3xl p-8">
-			<a href="/reviews" class="text-sm text-neutral-400 hover:text-neutral-100">← レビュー一覧</a>
+			@atoms.BackLink("/reviews", "← レビュー一覧")
 			<h1 class="mb-1 mt-3 text-xl font-semibold">{ i.ProjectName }</h1>
 			<p class="mb-6 text-xs text-neutral-400">{ i.Video.Resolution } / { i.Video.AspectRatio } / { i.Video.Codec }</p>
 			@organisms.ReviewWorkspace(i)

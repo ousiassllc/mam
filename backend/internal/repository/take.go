@@ -109,6 +109,35 @@ func (r *TakeRepository) Get(ctx context.Context, takeID string) (TakeDetail, er
 	return d, nil
 }
 
+// GetMany returns the Takes with the given IDs, keyed by ID, in one query whatever their number. An
+// ID that matches no Take is left out of the map.
+func (r *TakeRepository) GetMany(ctx context.Context, takeIDs []string) (map[string]TakeDetail, error) {
+	out := make(map[string]TakeDetail, len(takeIDs))
+	if len(takeIDs) == 0 {
+		return out, nil
+	}
+	ids, err := json.Marshal(takeIDs)
+	if err != nil {
+		return nil, fmt.Errorf("get takes: %w", err)
+	}
+	rows, err := r.db.Reader().QueryContext(ctx, takeInfoSelect+` WHERE t.id IN (SELECT value FROM json_each(?))`, string(ids))
+	if err != nil {
+		return nil, fmt.Errorf("get takes: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		d, err := scanTakeDetail(rows)
+		if err != nil {
+			return nil, fmt.Errorf("get takes: %w", err)
+		}
+		out[d.ID] = d
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("get takes: %w", err)
+	}
+	return out, nil
+}
+
 // Select adopts the Take for its Shot as the user's choice: it becomes "selected" and the Shot's
 // selected Take, and the Take that was selected before goes back to being a candidate. A Take whose
 // file was archived cannot be selected (ErrConflict). It returns the Shot ID.
@@ -195,10 +224,17 @@ type AIPick struct {
 }
 
 // PickBest marks the best judged Take of the Shot as its AI Pick (domain.PickTake). With adopt, a
-// Take that passed the Judge also becomes the Shot's selected Take (AUTO); otherwise the AI Pick is
+// Take that is acceptable also becomes the Shot's selected Take (AUTO); otherwise the AI Pick is
 // only a recommendation (DIRECTOR). A Shot with a Take the user selected is left alone. The Takes
 // are read and marked in one transaction, so Takes judged at the same time cannot leave a stale pick.
-func (r *TakeRepository) PickBest(ctx context.Context, shotID string, adopt bool) (AIPick, error) {
+//
+// accepted tells whether a Take meets the Retry Policy (the Minimum acceptance scores, the same rule
+// the Repair loop applies): the Take AUTO adopts must be one, and when some Take is, the pick is the
+// best of those. A Take that passed with scores under the minimum is only recommended, as the Repair
+// loop treats it as not good enough. A Take the user rejected is out of the pool before accepted is
+// asked (domain.PickAcceptedTake), so it cannot make the others fall short of the policy. A nil
+// accepted counts every Take that passed as acceptable.
+func (r *TakeRepository) PickBest(ctx context.Context, shotID string, adopt bool, accepted func(takeID string) bool) (AIPick, error) {
 	var pick AIPick
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		pick = AIPick{}
@@ -211,10 +247,11 @@ func (r *TakeRepository) PickBest(ctx context.Context, shotID string, adopt bool
 				return nil // the user's choice stands
 			}
 		}
-		id, passed, ok := domain.PickTake(takes)
+		id, passed, ok := domain.PickAcceptedTake(takes, accepted)
 		if !ok {
 			return nil
 		}
+		adoptable := passed && (accepted == nil || accepted(id))
 		pick = AIPick{TakeID: id, Passed: passed}
 		adopted := ""
 		for _, t := range takes {
@@ -233,7 +270,7 @@ func (r *TakeRepository) PickBest(ctx context.Context, shotID string, adopt bool
 		if _, err := tx.ExecContext(ctx, `UPDATE take SET status = ? WHERE id = ?`, domain.TakeAIPick, id); err != nil {
 			return err
 		}
-		if adopt && passed {
+		if adopt && adoptable {
 			if adopted != id {
 				pick.Changed = true
 			}
@@ -263,19 +300,48 @@ type NewComposite struct {
 	Candidate bool
 }
 
+// inheritLineage copies what the base Take was generated from (the World State version and the
+// References, domain.TakeLineage) and how its model was chosen (the Multi-model routing decision)
+// into the parameters of a composed Take, which is made from the base Take's prompt version and model
+// and so from the same World State, References and routing. A base Take that predates a record has
+// none to copy: the Generation Trace falls back as it does for that Take.
+func inheritLineage(params json.RawMessage, base string) (json.RawMessage, error) {
+	var from, to map[string]json.RawMessage
+	if json.Unmarshal([]byte(base), &from) != nil {
+		return params, nil
+	}
+	if err := json.Unmarshal(params, &to); err != nil {
+		return nil, fmt.Errorf("decode composite parameters: %w", err)
+	}
+	for _, key := range []string{"world_state_version", "references", "routing"} {
+		if v, ok := from[key]; ok {
+			to[key] = v
+		}
+	}
+	out, err := json.Marshal(to)
+	if err != nil {
+		return nil, fmt.Errorf("encode composite parameters: %w", err)
+	}
+	return out, nil
+}
+
 // CreateComposite stores the composed Take with its video asset. Unless it is a Candidate it is the
 // user's choice: it becomes the Shot's selected Take with the status "selected". It returns the Take
 // ID, or ErrNotFound when the base Take does not belong to the Shot.
 func (r *TakeRepository) CreateComposite(ctx context.Context, nc NewComposite) (string, error) {
 	takeID := domain.NewID()
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
-		var promptVersionID, model string
+		var promptVersionID, model, baseParams string
 		err := tx.QueryRowContext(ctx,
-			`SELECT t.prompt_version_id, t.model_name FROM take t JOIN prompt_version pv ON pv.id = t.prompt_version_id
-			 WHERE t.id = ? AND pv.shot_id = ?`, nc.BaseTakeID, nc.ShotID).Scan(&promptVersionID, &model)
+			`SELECT t.prompt_version_id, t.model_name, COALESCE(t.model_parameters, '') FROM take t JOIN prompt_version pv ON pv.id = t.prompt_version_id
+			 WHERE t.id = ? AND pv.shot_id = ?`, nc.BaseTakeID, nc.ShotID).Scan(&promptVersionID, &model, &baseParams)
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrNotFound
 		}
+		if err != nil {
+			return err
+		}
+		params, err := inheritLineage(nc.Parameters, baseParams)
 		if err != nil {
 			return err
 		}
@@ -285,7 +351,7 @@ func (r *TakeRepository) CreateComposite(ctx context.Context, nc NewComposite) (
 		}
 		if _, err := tx.ExecContext(ctx,
 			`INSERT INTO take (id, prompt_version_id, model_name, model_parameters, file_path, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-			takeID, promptVersionID, model, string(nc.Parameters), nc.Asset.FilePath, domain.TakeCandidate, now); err != nil {
+			takeID, promptVersionID, model, string(params), nc.Asset.FilePath, domain.TakeCandidate, now); err != nil {
 			return fmt.Errorf("insert take: %w", err)
 		}
 		if nc.Candidate {

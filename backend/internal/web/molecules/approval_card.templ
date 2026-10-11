@@ -6,7 +6,9 @@ import (
 )
 
 // ApprovalCard presents the artifact of a checkpoint. It is answered with the
-// buttons (承認 / 修正を依頼) or by replying in words.
+// buttons (承認 / 修正を依頼) or by replying in words. A disabled submit button comes first so
+// that pressing Enter in the comment field is a no-op (the default button of a form is the first
+// submit button; when it is disabled implicit submission does nothing) instead of approving.
 templ ApprovalCard(m domain.ThreadMessage) {
 	@MessageFrame(m) {
 		<p class="mb-1 flex items-center gap-2">
@@ -22,7 +24,14 @@ templ ApprovalCard(m domain.ThreadMessage) {
 				hx-target={ "#msg-" + m.ID }
 				hx-swap="outerHTML"
 			>
-				<input type="text" name="comment" maxlength="500" placeholder="コメント（任意）" class="min-w-0 flex-1 rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-sm"/>
+				<button type="submit" disabled hidden tabindex="-1" aria-hidden="true"></button>
+				@atoms.Input(atoms.FieldMd, "min-w-0 flex-1", templ.Attributes{
+					"type":        "text",
+					"name":        "comment",
+					"maxlength":   "500",
+					"placeholder": "コメント（任意）",
+					"aria-label":  "コメント",
+				})
 				@atoms.Button(atoms.TonePrimary, "承認", submitAttrs("approve"))
 				@atoms.Button(atoms.ToneNeutral, "修正を依頼", submitAttrs("request_changes"))
 			</form>

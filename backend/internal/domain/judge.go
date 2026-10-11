@@ -129,8 +129,8 @@ const (
 // FaceIdentityMetric is the Face Identity Similarity of one Character in a Take (spec/spec.md §12.3).
 // Similarities are cosine similarities to the Character's reference faces. Frames without a
 // detectable face are missing values: they count in UndetectedRatio only. Evaluated is false when
-// too few frames had a face for the numbers to mean anything; the Take is then judged by the
-// qualitative evaluation alone.
+// the thresholds were not calibrated from the reference distribution, or too few frames had a
+// face for the numbers to mean anything; the Take is then judged by the qualitative evaluation alone.
 type FaceIdentityMetric struct {
 	CharacterID     string  `json:"character_id"`
 	SimilarityMean  float64 `json:"similarity_mean"`
@@ -241,6 +241,59 @@ func (r JudgeResult) Accepted(p EffectivePolicy, t ProductionTemplate) bool {
 		}
 	}
 	return p.Accepts(overall, axes)
+}
+
+// RepairBlock is why a Take cannot be repaired now; RepairAllowed (the zero value) is "it can".
+type RepairBlock int
+
+// The reasons a Repair of a Take is refused (409).
+const (
+	RepairAllowed   RepairBlock = iota
+	RepairNotJudged             // the Take has no Judge result to repair from
+	RepairAccepted              // the Take passed the Judge and the Retry Policy: nothing to repair
+	RepairBusy                  // the Shot is being generated or repaired
+)
+
+// CheckRepair is the one decision whether a Take may be repaired: it needs a Judge result (latest; nil
+// when the Take was never judged) that the Retry Policy does not accept, and its Shot must not be Busy.
+// The Repair Agent refuses with it (POST /takes/:id/repair is 409 otherwise) and the Shot card draws
+// the Repair button only when it returns RepairAllowed.
+func CheckRepair(latest *JudgeResult, p EffectivePolicy, t ProductionTemplate, shot ShotState) RepairBlock {
+	switch {
+	case latest == nil:
+		return RepairNotJudged
+	case latest.Accepted(p, t):
+		return RepairAccepted
+	case shot.Busy():
+		return RepairBusy
+	}
+	return RepairAllowed
+}
+
+// JudgeBlock is why a Take cannot be judged now; JudgeAllowed (the zero value) is "it can".
+type JudgeBlock int
+
+// The reasons an explicit Judge run of a Take is refused (409).
+const (
+	JudgeAllowed JudgeBlock = iota
+	JudgeNoVideo            // the Take has no video file to evaluate
+	JudgePending            // a Judge run of the Take is already queued or running
+	JudgeBusy               // the Shot is being generated or repaired
+)
+
+// CheckJudge is the one decision whether a Take may be judged now (POST /takes/:id/judge): it needs a
+// video, no Judge run of its own in flight (pending) and a Shot that is not Busy. The route refuses with
+// it (409 otherwise) and the Shot card draws the Judge button only when it returns JudgeAllowed.
+func CheckJudge(t Take, pending bool, shot ShotState) JudgeBlock {
+	switch {
+	case t.FilePath == "":
+		return JudgeNoVideo
+	case pending:
+		return JudgePending
+	case shot.Busy():
+		return JudgeBusy
+	}
+	return JudgeAllowed
 }
 
 // EncodeScores returns the JSON of Scores; nil when there are none.

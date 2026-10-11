@@ -2,12 +2,15 @@ package router
 
 import (
 	"context"
+	"net/http"
+	"sync"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humagin"
 	"github.com/gin-gonic/gin"
 
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/web/handler"
 )
 
 // APIPrefix is the base path of the JSON API used by Lit components.
@@ -23,34 +26,53 @@ func registerAPI(engine *gin.Engine, services *service.Services) {
 	cfg.SchemasPath = APIPrefix + "/schemas"
 	cfg.CreateHooks = nil // no $schema link headers: clients never fetch them
 
+	hideServerErrors.Do(func() { huma.NewErrorWithContext = apiError })
 	api := humagin.New(engine, cfg)
 	registerAPIRoutes(api, services)
+}
+
+// hideServerErrors installs apiError once: huma.NewErrorWithContext is process-wide, and writing it
+// per router would race with the handlers of another one.
+var hideServerErrors sync.Once
+
+// apiError is huma.NewErrorWithContext with the cause of a server error (5xx, such as the "unexpected
+// error occurred" Huma makes of a handler's plain error) kept out of the response body, which would
+// otherwise carry err.Error() (SQL, paths). The cause goes to the gin context, where the logging
+// middleware writes it like the one of an HTML route (web/handler). Client errors keep their details.
+func apiError(ctx huma.Context, status int, msg string, errs ...error) huma.StatusError {
+	if status < http.StatusInternalServerError {
+		return huma.NewError(status, msg, errs...)
+	}
+	if ctx != nil {
+		c := humagin.Unwrap(ctx)
+		for _, err := range errs {
+			if err != nil {
+				_ = c.Error(err)
+			}
+		}
+	}
+	return huma.NewError(status, msg)
 }
 
 // registerAPIRoutes is where each feature registers its Huma operations.
 func registerAPIRoutes(api huma.API, services *service.Services) {
 	type healthOutput struct {
-		Body struct {
-			OK       bool   `json:"ok"`
-			Database string `json:"database"`
-		}
+		Status int
+		Body   handler.HealthBody
 	}
 	huma.Register(api, huma.Operation{
 		OperationID: "get-health",
 		Method:      "GET",
 		Path:        APIPrefix + "/health",
-		Summary:     "Local server health",
+		Summary:     "Local server health (503 when the database is unavailable)",
 		Tags:        []string{"system"},
 	}, func(ctx context.Context, _ *struct{}) (*healthOutput, error) {
-		st := services.Health.Check(ctx)
-		out := &healthOutput{}
-		out.Body.OK = st.OK
-		out.Body.Database = st.Database
-		return out, nil
+		status, body := handler.HealthResponse(services.Health.Check(ctx))
+		return &healthOutput{Status: status, Body: body}, nil
 	})
 	registerJudgeAPI(api, services)
 	registerRepairAPI(api, services)
+	registerShotAPI(api, services)
 	registerTakeAPI(api, services)
-	registerBranchAPI(api, services)
 	registerEditorAPI(api, services)
 }

@@ -36,6 +36,10 @@ func Look() (Tools, error) {
 	return Tools{ffmpeg: ffmpeg, ffprobe: ffprobe}, nil
 }
 
+// FFmpeg returns the path of the ffmpeg executable, for callers that run their own ffmpeg command
+// (the frame sampling of the Judge Agent).
+func (t Tools) FFmpeg() string { return t.ffmpeg }
+
 // Info describes the first video stream of a file.
 type Info struct {
 	// Duration is the length in seconds.
@@ -46,6 +50,9 @@ type Info struct {
 	Width     int
 	Height    int
 	HasAudio  bool
+	// VideoDuration is the length of the video stream alone, 0 when the container does not tell:
+	// shorter than Duration when an audio track is longer than the picture.
+	VideoDuration float64
 }
 
 type probeOutput struct {
@@ -74,7 +81,6 @@ func (t Tools) Probe(ctx context.Context, path string) (Info, error) {
 		return Info{}, fmt.Errorf("ffprobe %s: %w", filepath.Base(path), err)
 	}
 	var info Info
-	videoDuration := 0.0
 	for _, s := range p.Streams {
 		switch s.CodecType {
 		case "video":
@@ -84,7 +90,7 @@ func (t Tools) Probe(ctx context.Context, path string) (Info, error) {
 			info.Width, info.Height = s.Width, s.Height
 			info.FrameRate = s.RFrameRate
 			info.FPS = parseRate(s.RFrameRate)
-			videoDuration, _ = strconv.ParseFloat(s.Duration, 64)
+			info.VideoDuration, _ = strconv.ParseFloat(s.Duration, 64)
 		case "audio":
 			info.HasAudio = true
 		}
@@ -93,7 +99,7 @@ func (t Tools) Probe(ctx context.Context, path string) (Info, error) {
 		return Info{}, fmt.Errorf("ffprobe: %s has no video stream", filepath.Base(path))
 	}
 	if info.Duration, _ = strconv.ParseFloat(p.Format.Duration, 64); info.Duration <= 0 {
-		info.Duration = videoDuration
+		info.Duration = info.VideoDuration
 	}
 	if info.Duration <= 0 {
 		return Info{}, fmt.Errorf("ffprobe: %s has no duration", filepath.Base(path))
@@ -122,12 +128,51 @@ func parseRate(s string) float64 {
 }
 
 // Thumbnail writes the frame of src at the given second (clamped into the video) as a JPEG at most
-// 960 pixels wide.
+// 960 pixels wide. A second past the last video frame (an audio track longer than the picture makes
+// the container longer than the video) is no error of ffmpeg, which exits 0 and writes nothing: the
+// last frame of the picture is taken then, and at last the first frame, so a frame always comes out
+// of a video.
 func (t Tools) Thumbnail(ctx context.Context, src, dst string, at float64) error {
-	return t.write(ctx, dst, "image2", []string{
-		"-ss", strconv.FormatFloat(max(at, 0), 'f', 3, 64), "-i", src,
-		"-frames:v", "1", "-vf", "scale='min(960,iw)':-2", "-q:v", "3",
-	})
+	at = max(at, 0)
+	err := t.thumbnailAt(ctx, src, dst, "-ss", strconv.FormatFloat(at, 'f', 3, 64))
+	if !errors.Is(err, errNoOutput) {
+		return err
+	}
+	if at <= 0 {
+		return fmt.Errorf("ffmpeg: no frame in %s: %w", filepath.Base(src), err)
+	}
+	err = t.thumbnailAt(ctx, src, dst, t.lastFrameSeek(ctx, src)...)
+	if !errors.Is(err, errNoOutput) {
+		return err
+	}
+	return t.thumbnailAt(ctx, src, dst, "-ss", "0")
+}
+
+// lastFrameSeek are the input options that seek to the last frame of the first video stream:
+// ffmpeg keeps the frames from the seek time on, so the time is one and a half frame periods
+// before the end of the picture, which is the last frame and no earlier one. The stream's own
+// length is used, as -sseof counts from the end of the container, which an audio track longer than
+// the picture moves past the last frame; a stream that has no length of its own (Matroska) is as
+// long as its container, so -sseof is right there.
+func (t Tools) lastFrameSeek(ctx context.Context, src string) []string {
+	info, err := t.Probe(ctx, src)
+	if err != nil {
+		return []string{"-sseof", "-0.1"}
+	}
+	back := 1.5 / info.FPS
+	if info.VideoDuration <= 0 {
+		return []string{"-sseof", strconv.FormatFloat(-back, 'f', 3, 64)}
+	}
+	return []string{"-ss", strconv.FormatFloat(max(info.VideoDuration-back, 0), 'f', 3, 64)}
+}
+
+// errNoOutput means ffmpeg succeeded and wrote no file.
+var errNoOutput = errors.New("ffmpeg wrote no output")
+
+// thumbnailAt writes one frame of src found by the input options seek.
+func (t Tools) thumbnailAt(ctx context.Context, src, dst string, seek ...string) error {
+	return t.write(ctx, dst, "image2", append(append([]string{}, seek...),
+		"-i", src, "-frames:v", "1", "-vf", "scale='min(960,iw)':-2", "-q:v", "3"))
 }
 
 // Proxy writes an H.264 copy of src that is at most 1080 pixels tall: what the preview plays
@@ -162,6 +207,9 @@ func (t Tools) write(ctx context.Context, dst, format string, args []string) err
 			return ctx.Err()
 		}
 		return fmt.Errorf("ffmpeg: %w: %s", err, strings.TrimSpace(stderr.String()))
+	}
+	if _, err := os.Stat(tmp); errors.Is(err, os.ErrNotExist) {
+		return errNoOutput // ffmpeg exited 0 but wrote nothing (a seek past the last frame)
 	}
 	if err := os.Rename(tmp, dst); err != nil {
 		_ = os.Remove(tmp)

@@ -84,10 +84,24 @@ func (o *Orchestrator) buildReferencePack(ctx context.Context, ref repository.Sh
 		}
 		inputs = append(inputs, o.worldInputs(ctx, ref.ProjectID, p.Kind, world)...)
 		inputs = append(inputs, extra...)
-		out, err := o.adapter.GenerateImage(ctx, purposeOf(p, len(inputs) > 0), modeladapter.ImageRequest{Prompt: p.Prompt, AspectRatio: ratio, Inputs: inputs})
+		purpose := purposeOf(p, len(inputs) > 0)
+		// The estimate is held until the image is on the ledger, so images that run at the same time
+		// (here and in other jobs) cannot together pass the budget ceilings.
+		release, ok, err := o.gens.Reserve(ctx, ref.ProjectID, shot.ID, o.adapter.EstimateImage(purpose))
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return fmt.Errorf("%s: %w", p.Kind, ErrBudgetExceeded)
+		}
+		defer release()
+		out, err := o.adapter.GenerateImage(ctx, purpose, modeladapter.ImageRequest{Prompt: p.Prompt, AspectRatio: ratio, Inputs: inputs})
 		if err != nil {
 			return fmt.Errorf("%s: %w", p.Kind, err)
 		}
+		// The provider has charged for the image: the ledger gets it before a later failure (this
+		// image's file, a sibling image, the Keyframe or the Pack) can lose it.
+		o.recordPaid(ctx, ref.ProjectID, shot.ID, out.Model, out.EstimatedCost, out.ActualCost)
 		asset, err := o.files.write(ref.ProjectID, domain.AssetReference, out.MimeType, out.Data)
 		if err != nil {
 			return err
@@ -110,7 +124,7 @@ func (o *Orchestrator) buildReferencePack(ctx context.Context, ref repository.Sh
 		}
 	}
 	o.notify(Progress{ShotID: shot.ID, Action: ActionReferencePack, Stage: StageGenerating, Message: "参照画像を生成しています", TakesTotal: len(plans)})
-	errs := parallel(len(first), func(k int) error { return generate(first[k], nil) })
+	errs := parallel(o.logger, len(first), func(k int) error { return generate(first[k], nil) })
 	var failed []error
 	for _, e := range errs {
 		if e != nil {
@@ -155,9 +169,6 @@ func (o *Orchestrator) buildReferencePack(ctx context.Context, ref repository.Sh
 			Kind: r.plan.Kind, Name: r.plan.Name, AssetID: r.asset.ID, Prompt: r.plan.Prompt, Model: r.output.Model,
 		})
 		pack.Assets = append(pack.Assets, r.asset)
-		pack.Costs = append(pack.Costs, domain.CostEntry{
-			ProjectID: ref.ProjectID, ShotID: shot.ID, Provider: r.output.Model, EstimatedCost: r.output.EstimatedCost, ActualCost: r.output.ActualCost,
-		})
 	}
 	// A pinned image the Art Director did not plan stays in the Pack.
 	for _, p := range pinned {
@@ -266,14 +277,10 @@ func pinnedReferences(shot domain.Shot) []domain.Reference {
 	return out
 }
 
-// matchesPlan reports whether the pinned reference takes the place of the planned image: the same
-// kind and, for Character / Product / Location, the same name (a Pack has one Style and one
-// Lighting image, so those match by kind).
+// matchesPlan reports whether the pinned reference takes the place of the planned image
+// (domain.SameReference: the same kind and, for Character / Product / Location, the same name).
 func matchesPlan(r domain.Reference, p artdirector.Plan) bool {
-	if r.Kind != p.Kind {
-		return false
-	}
-	return r.Kind == domain.RefStyle || r.Kind == domain.RefLighting || domain.SameReferenceName(r.Name, p.Name)
+	return domain.SameReference(r, domain.Reference{Kind: p.Kind, Name: p.Name})
 }
 
 // reusable returns the image that already exists for the planned reference, so that it is not

@@ -25,7 +25,8 @@ AI Video Production Agent は、単一プロンプトで動画を出す「生成
 - **Safety / Brand Constraints**: ブランドガイドライン・禁止表現・権利メタデータの Prompt/Judge 適用
 - 対象コンテンツ種別: 商品PV、TVCM/Web CM、SNS広告・縦型ショート、ドラマ、アニメーション、MV、YouTubeコンテンツ、ブランドムービー、シリーズ/エピソード型コンテンツ
 - **Team Collaboration**（M3）: Review Package（動画とメモの ZIP）を渡してレビュアーからコメント・承認を返してもらう、ファイル受け渡し方式のレビュー・承認。編集できるのは Project を持つインスタンスだけで、同時編集・アカウント・サーバーは持たない
-- 実行基盤: HALT（HTMX + Atomic Design + Lit + Templ）構成のサーバー内蔵型フロントエンドを持つ、ローカル起動型 Web アプリ（Go 単一バイナリ + ブラウザ）。ネイティブデスクトップパッケージング（Wails 等）は将来拡張とする
+- 実行基盤: HALT（HTMX + Atomic Design + Lit + Templ）構成のサーバー内蔵型フロントエンドを持つ、ローカル起動型 Web アプリ（Go 単一バイナリ）。表示は既定ブラウザ（全 OS）、または Windows 版の Wails ネイティブウィンドウ（WebView2）。どちらも同じ `127.0.0.1` のサーバーを開く
+- **Windows デスクトップ版の配布**（F-33）: Wails v3 のウィンドウ版 `mam.exe` と NSIS インストーラー exe を GitHub Releases に載せる（Windows x64、コード署名なし）。macOS・Linux・Windows arm64 の成果物は Releases に載せない（`make build-all` で自前ビルド）
 
 ### 含まないもの
 
@@ -47,7 +48,7 @@ AI Video Production Agent は、単一プロンプトで動画を出す「生成
 ```mermaid
 flowchart TB
     subgraph Local["ローカル環境（Go 単一バイナリ、Windows / macOS / Linux）"]
-        Browser["既定ブラウザ<br/>（アプリ起動時に自動オープン）"]
+        Browser["既定ブラウザ または Wails ウィンドウ（Windows 版）<br/>（アプリ起動時に自動オープン）"]
         UI["HALT フロントエンド<br/>Templ SSR + HTMX + Lit Web Components"]
         Server["Go バックエンド<br/>Gin + Huma（レイヤード: domain/repository/service/web）"]
         Orchestrator["Orchestrator Agent<br/>状態機械 + goroutine ワーカー"]
@@ -66,7 +67,7 @@ flowchart TB
     Server --> FS
 ```
 
-詳細なアーキテクチャ（レイヤー構成、HALT の技術スタック、将来の Wails 拡張方針）は `spec/architecture/overview.md` を参照。
+詳細なアーキテクチャ（レイヤー構成、HALT の技術スタック、Wails ウィンドウ版の構成）は `spec/architecture/overview.md` を参照。
 
 ## ドキュメントマップ
 
@@ -76,11 +77,13 @@ flowchart TB
 |------------|------|------|
 | 機能要件 | `spec/requirements/functional.md` | AUTO/DIRECTOR MODE、Prompt Autopilot、World State、Judge、Repair/Retake、Take/Continue/Branch、Editor、Audio 等のユースケースと機能一覧 |
 | 非機能要件 | `spec/requirements/non-functional.md` | ローカル起動型 Web アプリとしての性能・可用性・データ整合性・セキュリティ・コスト制御要件 |
-| アーキテクチャ設計 | `spec/architecture/overview.md` | HALT（Gin/Huma/Templ/HTMX/Lit）レイヤー構成、Agent Architecture、通信フロー、将来の Wails 拡張方針 |
+| アーキテクチャ設計 | `spec/architecture/overview.md` | HALT（Gin/Huma/Templ/HTMX/Lit）レイヤー構成、Agent Architecture、通信フロー、Wails ウィンドウ版（Windows）の構成 |
+| Windows デスクトップ版 | `spec/architecture/desktop.md` | Wails v3 ウィンドウ版（サーバーを維持して URL を開く方式、単一インスタンス・終了・起動エラー、NSIS インストーラーと GitHub Releases 配布、実装時に検証する項目） |
 | ER / データモデル | `spec/architecture/er.md` | Project Data Model（Scene/Shot/Take/World State 等）の ER 図とテーブル定義 |
 | API 仕様 | `spec/api/endpoints.md` | ページルート/アクションルート（HTMX）と `/api/v1` JSON API（Huma/OpenAPI）のエンドポイント仕様 |
 | コンポーネント設計 | `spec/components/overview.md` | Agent 群（Producer/Director/Editor 等）とHALT側コンポーネント（atoms/molecules/organisms/Lit）の責務分割 |
 | Model Adapter 選定 | `spec/architecture/model-adapters.md` | エージェント推論LLM・画像/動画生成モデル・音声プロバイダーの具体的な選定とルーティング表（Claude/GPT-5/Gemini、Imagen4/Nano Banana/FLUX.2/GPT Image 2、Kling/Seedance/Runway、ElevenLabs/Sync Labs） |
+| 環境構築 | `spec/environment/setup.md` | 開発ツール、Makefile タスク、CI、リリース（Windows インストーラー）、Linterly、Git Hooks（Lefthook） |
 
 ## マイルストーン / リリース計画
 
@@ -113,7 +116,7 @@ flowchart TB
 | Orchestrator Agent | 制作全体を状態機械として管理し、次に実行する Agent や人間確認要否を判断する中枢 Agent |
 | Production Template | コンテンツ種別（PRODUCT/CM・DRAMA・ANIME・SNS/SHORT VIDEO）ごとの評価軸・優先度・Workflow定義 |
 | HALT | HTMX + Atomic Design + Lit + Templ による、フロントエンドが API サーバー内で動くサーバー内蔵型アーキテクチャ |
-| Wails | Go バックエンドとネイティブ WebView を組み合わせてデスクトップアプリを構築するフレームワーク。現段階はローカル Web サーバー + ブラウザ構成とし、Wails 採用は将来のネイティブパッケージング拡張として検討する（同一の `http.Handler` をそのまま AssetServer へ移植可能な設計を維持する） |
+| Wails | Go バックエンドとネイティブ WebView を組み合わせてデスクトップアプリを構築するフレームワーク。本製品の Windows 版は Wails v3 のウィンドウから `127.0.0.1` のサーバー（HALT）の URL を開く「WebView シェル」として使う。Gin の `http.Handler` を Wails の AssetServer へ直接渡す方式は、AssetServer が WebSocket を扱わない（501 を返す）ため採らない |
 
 ## 改訂履歴
 
@@ -126,3 +129,5 @@ flowchart TB
 | 1.4 | 2026-09-29 | M1 に Chat Workspace（チャット中心の標準画面）を追加 | ユーザー要望「基本的にはただのチャット画面にしたい」。詳細は `spec/spec.md` §23、F-30 |
 | 1.5 | 2026-09-29 | M2 に Notes（制作メモ）を追加。用語集に Notes を追加 | 構造化された World State だけでは登場人物の背景・世界観など自由記述の文脈を保持できないため（ユーザー要望、F-31） |
 | 1.6 | 2026-09-30 | M3 に Team Collaboration（Review Package によるレビュー・承認）を追加。「含まないもの」のチーム利用の記述を明確化し、用語集に Review Package を追加 | Issue #28。要件・認証モデル・共有方法が未定義だったため、スコープ外（同時編集・SaaS）を超えない範囲（非同期のファイル受け渡し・アカウント無し）で設計を確定した。スコープの改訂は不要と判断 |
+| 1.7 | 2026-10-03 | スコープと実行基盤に Windows デスクトップ版（Wails v3 ウィンドウ + NSIS インストーラーの GitHub Releases 配布）を追加。Wails を将来拡張から現段階の Windows 版の表示シェルに改め、Handler 直埋め込みを採らない理由を用語集に追記。環境構築の概要にリリースを追加 | Issue #480。「GitHub の Releases にインストーラーの exe を入れたい」というユーザー要望。Wails v3 の AssetServer は WebSocket を処理せず（`assetserver.go` が 501）、本製品はチャット・生成進捗に WebSocket を使うため、サーバーを `127.0.0.1` に維持して URL を開く方式にした |
+| 1.8 | 2026-10-03 | ドキュメントマップに `spec/architecture/desktop.md`（Windows デスクトップ版）を追加 | Issue #480。`spec/architecture/overview.md` が行数上限（300 行）を超えるため、Windows 版の詳細を別ファイルに切り出した |

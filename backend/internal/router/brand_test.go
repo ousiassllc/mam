@@ -6,7 +6,6 @@ import (
 	"net/url"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -138,18 +137,121 @@ func TestJudge_ABrokenAdvisoryBrandConstraintLeavesTheTakePassing(t *testing.T) 
 	assert.Equal(t, "low", body.Issues[0].Severity)
 }
 
-func TestGenerate_APlannedSpecThatBreaksALockConstraintMakesNoTake(t *testing.T) {
+func TestGenerate_APlannedSpecThatBreaksALockConstraintIs403BeforeTheJob(t *testing.T) {
 	// The Prompt Planner's spec says "A woman turns and runs"; running is forbidden.
 	j := newJudgeApp(t, goodVerdict, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95)
 	j.addBrand("brand-lock", "forbidden_expression", "lock", "runs")
 
-	require.Equal(t, http.StatusAccepted, j.form(http.MethodPost, "/shots/"+j.shotID+"/generate", nil).Code)
-	require.Eventually(t, func() bool {
-		var state string
-		return j.db.Reader().QueryRow(`SELECT state FROM shot WHERE id = ?`, j.shotID).Scan(&state) == nil && state == "PLANNING"
-	}, 30*time.Second, 10*time.Millisecond, "the Shot is free again")
+	rec := j.form(http.MethodPost, "/shots/"+j.shotID+"/generate", nil)
+	require.Equal(t, http.StatusForbidden, rec.Code, rec.Body.String())
+	assert.Contains(t, rec.Body.String(), "runs")
 	assert.Empty(t, j.takeIDs(), "nothing is generated from a spec that breaks a LOCK constraint")
-	assert.Contains(t, j.get("/projects/"+j.project, false).Body.String(), "Brand / Safety Constraint")
+	assert.Zero(t, j.count(`SELECT COUNT(*) FROM job`), "the job is refused before it is queued")
+	var state string
+	require.NoError(t, j.db.Reader().QueryRow(`SELECT state FROM shot WHERE id = ?`, j.shotID).Scan(&state))
+	assert.Equal(t, "PLANNING", state)
+
+	rec = j.form(http.MethodPost, "/shots/"+j.shotID+"/generate/candidates", nil)
+	require.Equal(t, http.StatusForbidden, rec.Code, rec.Body.String())
+	assert.Zero(t, j.count(`SELECT COUNT(*) FROM job`))
+	assert.Empty(t, j.takeIDs())
+}
+
+func TestGenerate_AnAdvisoryExpressionInThePlannedSpecDoesNot403(t *testing.T) {
+	j := newJudgeApp(t, goodVerdict, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95)
+	j.addBrand("brand-adv", "forbidden_expression", "advisory", "runs")
+
+	rec := j.form(http.MethodPost, "/shots/"+j.shotID+"/generate", nil)
+	assert.Equal(t, http.StatusAccepted, rec.Code, rec.Body.String())
+}
+
+func TestDirectorCommand_LockBrandViolationIs403BeforeTheJob(t *testing.T) {
+	j := newJudgeApp(t, goodVerdict, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95)
+	j.addBrand("brand-lock", "forbidden_expression", "lock", "最安値")
+	j.addBrand("brand-adv", "forbidden_expression", "advisory", "激安")
+	j.llm.command = `{"operations":[{"type":"regenerate","changes":["acting"],"instruction":"Make her nervous."}]}`
+	before := j.count(`SELECT COUNT(*) FROM chat_message`)
+
+	rec := j.form(http.MethodPost, "/shots/"+j.shotID+"/director-command", url.Values{"content": {"最安値をうたって"}})
+	require.Equal(t, http.StatusForbidden, rec.Code, rec.Body.String())
+	assert.Contains(t, rec.Body.String(), "最安値")
+	assert.Zero(t, j.count(`SELECT COUNT(*) FROM job`))
+	assert.Empty(t, j.takeIDs())
+	assert.Equal(t, before, j.count(`SELECT COUNT(*) FROM chat_message`), "a refused direction is not recorded")
+
+	rec = j.form(http.MethodPost, "/shots/"+j.shotID+"/director-command", url.Values{"content": {"激安感を出して"}})
+	assert.Equal(t, http.StatusAccepted, rec.Code, "an Advisory constraint only warns")
+}
+
+func TestDirectorCommand_APlannedSpecThatBreaksALockConstraintIs403(t *testing.T) {
+	j := newJudgeApp(t, goodVerdict, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95)
+	j.addBrand("brand-lock", "forbidden_expression", "lock", "runs")
+	j.llm.command = `{"operations":[{"type":"regenerate","changes":["acting"],"instruction":"Make her nervous."}]}`
+
+	before := j.count(`SELECT COUNT(*) FROM chat_message`)
+
+	rec := j.form(http.MethodPost, "/shots/"+j.shotID+"/director-command", url.Values{"content": {"少し慌てさせて"}})
+	require.Equal(t, http.StatusForbidden, rec.Code, rec.Body.String())
+	assert.Zero(t, j.count(`SELECT COUNT(*) FROM job`))
+	assert.Empty(t, j.takeIDs())
+
+	// The direction was recorded before the Planner ran; the refusal is answered in the thread.
+	assert.Equal(t, before+2, j.count(`SELECT COUNT(*) FROM chat_message`))
+	rows, err := j.db.Reader().Query(`SELECT role, content FROM chat_message ORDER BY rowid DESC LIMIT 2`)
+	require.NoError(t, err)
+	defer rows.Close()
+	var roles, contents []string
+	for rows.Next() {
+		var role, content string
+		require.NoError(t, rows.Scan(&role, &content))
+		roles, contents = append(roles, role), append(contents, content)
+	}
+	require.NoError(t, rows.Err())
+	require.Equal(t, []string{"assistant", "user"}, roles)
+	assert.Contains(t, contents[0], "指示を実行できませんでした")
+	assert.Contains(t, contents[0], "Brand / Safety Constraint")
+	assert.Equal(t, "少し慌てさせて", contents[1])
+}
+
+func TestDirectorCommand_PartialRegenerateThatBreaksALockConstraintIs403(t *testing.T) {
+	// With ffmpeg (a Partial Regeneration can be spliced) the refusal comes from the Brand check of
+	// the planned spec; without it the director is told that ffmpeg is needed and nothing is made.
+	j := newPartialApp(t, goodVerdict, partialCommand)
+	require.NotEmpty(t, j.generateAndJudge())
+	j.addBrand("brand-lock", "forbidden_expression", "lock", "runs")
+	jobs := j.count(`SELECT COUNT(*) FROM job`)
+	takes := len(j.takeIDs())
+
+	rec := j.form(http.MethodPost, "/shots/"+j.shotID+"/director-command", url.Values{"content": {"1〜2秒目だけ直して"}})
+
+	require.Equal(t, http.StatusForbidden, rec.Code, rec.Body.String())
+	assert.Equal(t, jobs, j.count(`SELECT COUNT(*) FROM job`))
+	assert.Len(t, j.takeIDs(), takes)
+}
+
+func TestChat_RegenerateThatBreaksALockConstraintIs403(t *testing.T) {
+	j := newJudgeApp(t, goodVerdict, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95)
+	j.addBrand("brand-lock", "forbidden_expression", "lock", "最安値")
+	j.execSQL(`UPDATE project SET mode = 'director', state = 'GENERATING' WHERE id = ?`, j.project)
+	j.llm.command = `{"operations":[{"type":"regenerate","changes":["acting"],"instruction":"Make her nervous."}]}`
+
+	rec := j.form(http.MethodPost, "/projects/"+j.project+"/messages", url.Values{"content": {"最安値をうたって"}})
+	require.Equal(t, http.StatusForbidden, rec.Code, rec.Body.String())
+	assert.Zero(t, j.count(`SELECT COUNT(*) FROM job`))
+	assert.Empty(t, j.takeIDs())
+}
+
+func TestGenerate_AnExistingSpecThatBreaksALockConstraintIs403BeforeTheJob(t *testing.T) {
+	j := newJudgeApp(t, goodVerdict, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95)
+	require.Equal(t, http.StatusAccepted, j.form(http.MethodPost, "/shots/"+j.shotID+"/generate", nil).Code)
+	j.waitTakes(3)
+	j.addBrand("brand-lock", "forbidden_expression", "lock", "runs")
+	jobs := j.count(`SELECT COUNT(*) FROM job WHERE kind = 'generate'`)
+
+	rec := j.form(http.MethodPost, "/shots/"+j.shotID+"/generate", nil)
+	require.Equal(t, http.StatusForbidden, rec.Code, rec.Body.String())
+	assert.Equal(t, jobs, j.count(`SELECT COUNT(*) FROM job WHERE kind = 'generate'`), "a retake of a forbidden spec is not queued")
+	assert.Len(t, j.takeIDs(), 3)
 }
 
 // editorToAudio takes the editor flow up to the point where Final QC can run: two script lines
@@ -323,6 +425,13 @@ func TestBrandTemplates_InvalidRequestsAreRejected(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, a.form(http.MethodPost, "/projects/missing/brand-templates", url.Values{"name": {"X"}}).Code)
 	assert.Equal(t, http.StatusNotFound, a.form(http.MethodPost, "/projects/"+id+"/brand-templates/nope/apply", nil).Code)
 	assert.Equal(t, http.StatusNotFound, a.form(http.MethodDelete, "/projects/"+id+"/brand-templates/nope", nil).Code)
+
+	// An unknown settings Project is a 404 that leaves the template alone.
+	tpl := a.saveTemplate(id, "Keep")
+	assert.Equal(t, http.StatusNotFound, a.form(http.MethodDelete, "/projects/missing/brand-templates/"+tpl, nil).Code)
+	var kept int
+	require.NoError(t, a.db.Reader().QueryRow(`SELECT COUNT(*) FROM brand_template WHERE id = ?`, tpl).Scan(&kept))
+	assert.Equal(t, 1, kept, "the template is not deleted by a request that answers 404")
 
 	// An unknown template on creation is a form error and creates nothing.
 	rec = a.multipart(http.MethodPost, "/projects", map[string]string{"content": "別のCM", "brand_template_id": "nope"})

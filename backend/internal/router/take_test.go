@@ -200,6 +200,32 @@ func TestTakes_SelectMakesTheTakeTheShotsAndRejectExcludesIt(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, ta.form(http.MethodDelete, "/takes/nope", nil).Code)
 }
 
+// A Take button answers with the card it sits on: a card that was not selected stays unselected (no
+// aria-current, no storyboard / generate form), so the Shot being viewed keeps its page (#257).
+func TestTakes_SelectAndRejectAnswerWithTheCardAsSelectedOrNotLikeTheOneTheyReplace(t *testing.T) {
+	ta := newTakeApp(t)
+	const current = `aria-current="true"`
+
+	rec := ta.form(http.MethodPost, "/takes/t1/select", url.Values{"selected": {"false"}})
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.Contains(t, rec.Body.String(), `id="shot-`+ta.shotID+`"`)
+	assert.NotContains(t, rec.Body.String(), current)
+	assert.NotContains(t, rec.Body.String(), "/generate", "no generate form on an unselected card")
+	assert.Equal(t, "selected", ta.statusOf("t1"), "the Take is selected all the same")
+
+	rec = ta.form(http.MethodPost, "/takes/t2/select", url.Values{"selected": {"true"}})
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.Contains(t, rec.Body.String(), current)
+
+	rec = ta.form(http.MethodDelete, "/takes/t2?selected=false", nil)
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.NotContains(t, rec.Body.String(), current)
+
+	rec = ta.form(http.MethodDelete, "/takes/t1?selected=true", nil)
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.Contains(t, rec.Body.String(), current)
+}
+
 func TestTakes_PartialUseJoinsPartsIntoANewSelectedTakeAndAnnouncesItInTheChat(t *testing.T) {
 	ta := newTakeApp(t)
 
@@ -223,6 +249,11 @@ func TestTakes_PartialUseJoinsPartsIntoANewSelectedTakeAndAnnouncesItInTheChat(t
 	assert.Contains(t, chat, "部分採用 Take")
 	assert.Contains(t, chat, "Take A 0.0-2.0秒 + Take B 2.0-4.0秒")
 	assert.Contains(t, chat, `video-src="`+composed.VideoURL+`"`)
+
+	var content string
+	require.NoError(t, ta.db.Reader().QueryRowContext(context.Background(),
+		`SELECT content FROM chat_message WHERE ref_type = 'take' AND ref_id = ?`, composed.ID).Scan(&content))
+	assert.Empty(t, domain.DecodeTakeCardBody(content).Badge, "the thread is append-only: the card carries no Take state that excluding the Take would leave stale")
 }
 
 func TestTakes_PartialUseAcceptsSegmentsAsJSONAndRefusesWhatCannotBeJoined(t *testing.T) {
@@ -335,6 +366,21 @@ func TestAIPick_AutoAdoptsTheBestTakeThatPassedTheJudge(t *testing.T) {
 	assert.Contains(t, j.get("/projects/"+j.project, false).Body.String(), "AI Pick: Take ", "the chat says which Take was adopted")
 }
 
+func TestAIPick_TakeSelectionManualOrLockOnlyRecommendsEvenInAuto(t *testing.T) {
+	for _, mode := range []string{"manual", "lock"} {
+		t.Run(mode, func(t *testing.T) {
+			j := newJudgeApp(t, goodVerdict, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95)
+			require.Equal(t, http.StatusOK, j.form(http.MethodPut, "/shots/"+j.shotID+"/locks", url.Values{"parameter": {"take_selection"}, "mode": {mode}}).Code)
+			j.generateAndJudge()
+
+			statuses, adopted := pickState(t, j.app, j.shotID)
+			assert.Equal(t, []string{"ai_pick", "candidate", "candidate"}, statuses, "the Take is still recommended")
+			assert.Equal(t, -1, adopted, "Take Selection %s: the AI does not make the Shot use it", mode)
+			assert.Contains(t, j.get("/projects/"+j.project, false).Body.String(), "がおすすめです")
+		})
+	}
+}
+
 func TestAIPick_DirectorOnlyRecommendsAndAUserChoiceIsNeverReplaced(t *testing.T) {
 	j := newJudgeApp(t, goodVerdict, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95)
 	require.Equal(t, http.StatusOK, j.form(http.MethodPut, "/projects/"+j.project+"/mode", url.Values{"mode": {"director"}}).Code)
@@ -355,8 +401,9 @@ func TestAIPick_DirectorOnlyRecommendsAndAUserChoiceIsNeverReplaced(t *testing.T
 }
 
 func TestAIPick_ATakeThatFailedIsRecommendedButNotAdoptedInAuto(t *testing.T) {
-	// The face drifts while the spec locks it: every Take fails.
+	// The face drifts while the spec locks it: every Take fails. Two references calibrate the threshold.
 	j := newJudgeApp(t, goodVerdict, 0.95, 0.95, 0.95, 0.2, 0.2, 0.2, 0.95, 0.95)
+	j.addMatchingCanonFace(t)
 	j.generateAndJudge()
 
 	statuses, adopted := pickState(t, j.app, j.shotID)

@@ -8,11 +8,14 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
@@ -22,10 +25,13 @@ import (
 // Bundle limits. The bundle is a local file the user chose, but a broken or hostile archive must
 // not fill the disk or memory.
 const (
-	MaxBundleBytes     = 8 << 30   // the archive
-	maxBundleFileBytes = 2 << 30   // one file in it
-	maxBundleDataBytes = 512 << 20 // data.json and manifest.json
-	maxBundleEntries   = 100_000
+	MaxBundleBytes     = 8 << 30 // the archive
+	maxBundleFileBytes = 2 << 30 // one file in it
+	// maxBundleExtractBytes is what an import writes to the assets directory at most, however much
+	// room the disk has: the files the data names, added up.
+	maxBundleExtractBytes = 32 << 30
+	maxBundleDataBytes    = 512 << 20 // data.json and manifest.json
+	maxBundleEntries      = 100_000
 )
 
 // BundleService exports a Project as a portable bundle and imports one
@@ -33,7 +39,8 @@ const (
 // with the Project Data Model as JSON and the asset files.
 type BundleService struct {
 	*core
-	bundles *repository.BundleRepository
+	bundles   *repository.BundleRepository
+	freeBytes func(path string) (uint64, error) // nil selects fsutil.FreeBytes
 }
 
 // BundleExport is a bundle ready to be written.
@@ -43,6 +50,9 @@ type BundleExport struct {
 	data     domain.BundleData
 	root     string
 	now      time.Time
+	// sources maps a bundle path that does not exist on disk under that name to the file it is read
+	// from: an Episode's copy of a canon image shares the file of the Series' first Project.
+	sources map[string]string
 }
 
 // Prepare reads the Project's data (ErrNotFound for an unknown Project). Write then streams the
@@ -52,11 +62,48 @@ func (s *BundleService) Prepare(ctx context.Context, projectID string) (BundleEx
 	if err != nil {
 		return BundleExport{}, notFound(err)
 	}
+	sources := relocateSharedAssets(&data)
+	// A file that cannot be written under assets/<project>/ would make a bundle that does not import:
+	// refuse to export it rather than leave the file out without a word.
+	timelinePaths, err := data.AudioTimelinePaths()
+	if err != nil {
+		return BundleExport{}, fmt.Errorf("audio timeline: %w", err)
+	}
+	for _, rel := range append(data.FilePaths(), timelinePaths...) {
+		if !domain.ValidBundleFilePath(projectID, rel) {
+			return BundleExport{}, fmt.Errorf("export bundle: %q is not a file path of the project", rel)
+		}
+	}
 	now := time.Now().UTC()
 	return BundleExport{
 		FileName: fmt.Sprintf("mam-project-%s-%s.zip", now.Format("20060102"), projectID),
-		data:     data, root: s.assetsDir, now: now,
+		data:     data, root: s.assetsDir, now: now, sources: sources,
 	}, nil
+}
+
+// relocateSharedAssets gives the asset rows whose file lives in another Project's directory (the
+// canon images an Episode of a Series shares with the Series' first Project) a path of the exported
+// Project: <project>/<asset id><extension>. It returns the new path to the original one, for the
+// files to be read from there.
+func relocateSharedAssets(data *domain.BundleData) map[string]string {
+	sources := map[string]string{}
+	for _, t := range data.Tables {
+		if t.Name != "asset" {
+			continue
+		}
+		for _, row := range t.Rows {
+			old, _ := row["file_path"].(string)
+			id, _ := row["id"].(string)
+			owner, _, _ := strings.Cut(old, "/")
+			if old == "" || owner == data.ProjectID || !domain.ValidBundleFilePath(owner, old) || !domain.ValidBundleID(id) {
+				continue
+			}
+			moved := data.ProjectID + "/" + id + path.Ext(old)
+			row["file_path"] = moved
+			sources[moved] = old
+		}
+	}
+	return sources
 }
 
 // Write writes the bundle as a ZIP to w. Files that no longer exist (an archived Take) are left
@@ -79,11 +126,26 @@ func (e BundleExport) Write(w io.Writer) error {
 	if err := writeZipEntry(zw, domain.BundleDataName, zip.Deflate, e.now, bytes.NewReader(raw)); err != nil {
 		return err
 	}
-	for _, rel := range e.data.FilePaths() {
+	timelinePaths, err := e.data.AudioTimelinePaths()
+	if err != nil {
+		return fmt.Errorf("audio timeline: %w", err)
+	}
+	// The mix, clips and Lip Sync pictures live in the Audio Timeline JSON only; without them an
+	// imported Project cannot be exported to video.
+	seen := map[string]bool{}
+	for _, rel := range append(e.data.FilePaths(), timelinePaths...) {
+		if seen[rel] {
+			continue
+		}
+		seen[rel] = true
 		if !domain.ValidBundleFilePath(e.data.ProjectID, rel) || e.root == "" {
 			continue
 		}
-		f, err := os.Open(filepath.Join(e.root, filepath.FromSlash(rel))) //nolint:gosec // rel was checked by ValidBundleFilePath
+		from := rel
+		if src, ok := e.sources[rel]; ok {
+			from = src
+		}
+		f, err := os.Open(filepath.Join(e.root, filepath.FromSlash(from))) //nolint:gosec // from was checked by ValidBundleFilePath
 		if errors.Is(err, os.ErrNotExist) {
 			continue
 		}
@@ -113,8 +175,9 @@ func writeZipEntry(zw *zip.Writer, name string, method uint16, modified time.Tim
 
 // Import creates the Project of the bundle (POST /projects/import) and returns it. The Project
 // keeps its ID and its files keep their paths, so a Project that already exists is ErrConflict and
-// is never touched. A file that is not a bundle of this format, or that holds data this version
-// cannot import, is a ValidationError; nothing is left behind in either case.
+// is never touched, not even by another import of the same bundle running at the same time. A file
+// that is not a bundle of this format, or that holds data this version cannot import, is a
+// ValidationError; nothing is left behind in either case.
 func (s *BundleService) Import(ctx context.Context, src io.ReaderAt, size int64) (domain.Project, error) {
 	if s.assetsDir == "" {
 		return domain.Project{}, errors.New("import is not configured: assets directory is empty")
@@ -134,13 +197,17 @@ func (s *BundleService) Import(ctx context.Context, src io.ReaderAt, size int64)
 	if err != nil {
 		return domain.Project{}, invalid("bundle", "音声タイムラインを読み取れません")
 	}
-	for _, rel := range append(data.FilePaths(), timelinePaths...) {
+	named := append(data.FilePaths(), timelinePaths...)
+	for _, rel := range named {
 		if !domain.ValidBundleFilePath(data.ProjectID, rel) {
 			return domain.Project{}, invalid("bundle", "バンドルに不正なファイルパスがあります")
 		}
 	}
-	files, err := bundleFiles(zr, data.ProjectID)
+	files, err := bundleFiles(zr, data.ProjectID, named)
 	if err != nil {
+		return domain.Project{}, err
+	}
+	if err := s.checkRoom(files); err != nil {
 		return domain.Project{}, err
 	}
 	if _, err := s.projects.Get(ctx, data.ProjectID); err == nil {
@@ -149,20 +216,14 @@ func (s *BundleService) Import(ctx context.Context, src io.ReaderAt, size int64)
 		return domain.Project{}, err
 	}
 
-	written, err := s.extractFiles(files)
-	if err == nil {
-		err = s.bundles.Import(ctx, data)
-	}
-	if err != nil {
-		for _, p := range written {
-			_ = os.Remove(p)
-		}
-		switch {
-		case errors.Is(err, repository.ErrConflict):
-			return domain.Project{}, ErrConflict
-		case errors.Is(err, repository.ErrInvalidBundle):
-			return domain.Project{}, invalid("bundle", "このバージョンでは読み込めないデータです: %s", strings.TrimPrefix(err.Error(), repository.ErrInvalidBundle.Error()+": "))
-		}
+	err = s.writeProject(ctx, data, files)
+	switch {
+	case err == nil:
+	case errors.Is(err, repository.ErrConflict):
+		return domain.Project{}, ErrConflict
+	case errors.Is(err, repository.ErrInvalidBundle):
+		return domain.Project{}, invalid("bundle", "このバージョンでは読み込めないデータです: %s", strings.TrimPrefix(err.Error(), repository.ErrInvalidBundle.Error()+": "))
+	default:
 		return domain.Project{}, err
 	}
 	return s.getProject(ctx, data.ProjectID)
@@ -221,11 +282,17 @@ func readZipJSON(zr *zip.Reader, name string, v any, useNumber bool) error {
 type bundleFile struct {
 	rel  string
 	file *zip.File
+	size int64 // the size the header declares, at most maxBundleFileBytes
 }
 
-// bundleFiles lists the asset entries of the archive, refusing any path that would leave the
-// Project's directory.
-func bundleFiles(zr *zip.Reader, projectID string) ([]bundleFile, error) {
+// bundleFiles lists the asset entries of the archive that the data names (an entry nothing refers to
+// is not extracted), refusing any entry whose path would leave the Project's directory, and any file
+// that is over the size limit.
+func bundleFiles(zr *zip.Reader, projectID string, named []string) ([]bundleFile, error) {
+	wanted := make(map[string]bool, len(named))
+	for _, rel := range named {
+		wanted[rel] = true
+	}
 	var out []bundleFile
 	for _, f := range zr.File {
 		rel, ok := strings.CutPrefix(f.Name, domain.BundleAssetsDir)
@@ -235,22 +302,101 @@ func bundleFiles(zr *zip.Reader, projectID string) ([]bundleFile, error) {
 		if !domain.ValidBundleFilePath(projectID, rel) || path.Clean(rel) != rel {
 			return nil, invalid("bundle", "バンドルに不正なファイルパスがあります")
 		}
+		if !wanted[rel] {
+			continue
+		}
 		if f.UncompressedSize64 > maxBundleFileBytes {
 			return nil, invalid("bundle", "%s が大きすぎます", rel)
 		}
-		out = append(out, bundleFile{rel: rel, file: f})
+		delete(wanted, rel)                                                                 // a name that appears twice is extracted once
+		out = append(out, bundleFile{rel: rel, file: f, size: int64(f.UncompressedSize64)}) //nolint:gosec // checked against maxBundleFileBytes above
 	}
 	return out, nil
 }
 
-// extractFiles writes the files below the assets directory and returns the paths it wrote (so a
-// failed import can remove them).
-func (s *BundleService) extractFiles(files []bundleFile) ([]string, error) {
-	var written []string
+// checkRoom refuses files that add up to more than an import may write, or more than the disk that
+// holds the assets directory has free. Nothing has been written yet.
+func (s *BundleService) checkRoom(files []bundleFile) error {
+	var total uint64
 	for _, bf := range files {
-		abs := filepath.Join(s.assetsDir, filepath.FromSlash(bf.rel))
+		total += bf.file.UncompressedSize64
+	}
+	if total > maxBundleExtractBytes {
+		return invalid("bundle", "バンドルのファイルの合計が大きすぎます（上限 %d GB）", int64(maxBundleExtractBytes)>>30)
+	}
+	freeBytes := s.freeBytes
+	if freeBytes == nil {
+		freeBytes = fsutil.FreeBytes
+	}
+	if free, err := freeBytes(s.assetsDir); err == nil && total > free {
+		return invalid("bundle", "ディスクの空き容量が足りません（必要 %s、空き %s）", domain.FormatBytes(total), domain.FormatBytes(free))
+	}
+	return nil
+}
+
+// importStagingPrefix starts the name of the directory an import extracts into, inside the assets directory.
+const importStagingPrefix = ".import-"
+
+// RemoveStaleImports deletes the extraction directories (assets/.import-*) an import that was killed
+// halfway left behind, and returns their paths. Call it at startup, when no import can be running.
+func RemoveStaleImports(assetsDir string) ([]string, error) {
+	entries, err := os.ReadDir(assetsDir)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	var removed []string
+	for _, e := range entries {
+		if !e.IsDir() || !strings.HasPrefix(e.Name(), importStagingPrefix) {
+			continue
+		}
+		dir := filepath.Join(assetsDir, e.Name())
+		if err := os.RemoveAll(dir); err != nil {
+			return removed, err
+		}
+		removed = append(removed, dir)
+	}
+	return removed, nil
+}
+
+// writeProject puts the Project of the bundle in place. The files are extracted into a staging
+// directory first; moving the Project's directory into the assets directory is what claims it, so of
+// two imports of the same Project only one gets there (the other is ErrConflict and removes nothing
+// but its own staging directory). A database failure removes the directory this import moved.
+func (s *BundleService) writeProject(ctx context.Context, data domain.BundleData, files []bundleFile) error {
+	var moved string
+	if len(files) > 0 {
+		staging := filepath.Join(s.assetsDir, importStagingPrefix+uuid.NewString())
+		defer func() { _ = os.RemoveAll(staging) }()
+		if err := extractFiles(staging, files); err != nil {
+			return err
+		}
+		target := filepath.Join(s.assetsDir, data.ProjectID)
+		if err := os.Rename(filepath.Join(staging, data.ProjectID), target); err != nil {
+			if errors.Is(err, fs.ErrExist) {
+				return repository.ErrConflict
+			}
+			return fmt.Errorf("move imported files: %w", err)
+		}
+		moved = target
+	}
+	if err := s.bundles.Import(ctx, data); err != nil {
+		if moved != "" {
+			_ = os.RemoveAll(moved)
+		}
+		return err
+	}
+	return nil
+}
+
+// extractFiles writes the files below root (the asset-relative paths are kept).
+func extractFiles(root string, files []bundleFile) error {
+	for _, bf := range files {
+		abs := filepath.Join(root, filepath.FromSlash(bf.rel))
 		if err := os.MkdirAll(filepath.Dir(abs), assetDirPerm); err != nil {
-			return written, fmt.Errorf("create asset directory: %w", err)
+			return fmt.Errorf("create asset directory: %w", err)
 		}
 		err := fsutil.WriteAtomic(abs, assetFilePerm, func(w io.Writer) error {
 			rc, err := bf.file.Open()
@@ -258,16 +404,16 @@ func (s *BundleService) extractFiles(files []bundleFile) ([]string, error) {
 				return err
 			}
 			defer func() { _ = rc.Close() }()
-			n, err := io.Copy(w, io.LimitReader(rc, maxBundleFileBytes+1))
-			if err == nil && n > maxBundleFileBytes {
+			// The header's size is what checkRoom counted; an entry that holds more is refused.
+			n, err := io.Copy(w, io.LimitReader(rc, bf.size+1))
+			if err == nil && n > bf.size {
 				err = invalid("bundle", "%s が大きすぎます", bf.rel)
 			}
 			return err
 		})
 		if err != nil {
-			return written, err
+			return err
 		}
-		written = append(written, abs)
 	}
-	return written, nil
+	return nil
 }

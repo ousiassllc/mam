@@ -2,6 +2,7 @@ package service_test
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"strings"
 	"testing"
@@ -94,6 +95,23 @@ func TestChat_WithoutRememberWordsAutoModeDoesNotCallTheInterpreter(t *testing.T
 	assert.Empty(t, view.Notes)
 }
 
+func TestChat_DirectorModeMakesNoNoteWhenTheInterpreterReturnsOneWithoutARememberWord(t *testing.T) {
+	f := newGenFixture(t, false)
+	f.startDirecting(t)
+	f.llm.interpreter = opsJSON(`{"type":"create_note","content":"主人公は黒髪ロング","category":"tone"}`)
+
+	f.say(t, "主人公は黒髪ロングにしたい", "")
+	assert.Equal(t, 1, f.llm.calls(llm.AgentCommandInterpreter), "DIRECTOR MODE reads every message")
+	view, err := f.svc.Notes.ProjectNotes(context.Background(), f.projectID)
+	require.NoError(t, err)
+	assert.Empty(t, view.Notes, "no request word: no note, whatever the model returned")
+
+	f.say(t, "主人公は黒髪ロングにしたい。覚えておいて", "")
+	view, err = f.svc.Notes.ProjectNotes(context.Background(), f.projectID)
+	require.NoError(t, err)
+	assert.Len(t, view.Notes, 1)
+}
+
 func TestNotes_PromotionCardIsNonBlockingAndApprovingWritesTheWorldState(t *testing.T) {
 	f := newGenFixture(t, true)
 	f.llm.extractor = promotionAnswer("hairstyle", "personality")
@@ -130,6 +148,45 @@ func TestNotes_PromotionCardIsNonBlockingAndApprovingWritesTheWorldState(t *test
 	assert.ErrorIs(t, err, service.ErrConflict, "a card is answered once")
 }
 
+func TestNotes_AllLockedFieldsStillPostACardThatWritesNothing(t *testing.T) {
+	f := newGenFixture(t, true)
+	f.llm.extractor = promotionAnswer("hairstyle", "personality")
+	f.buildReferencePack(t)
+	c := f.character(t)
+	for _, field := range []string{"hairstyle", "personality"} {
+		_, err := f.svc.World.SetFieldLock(context.Background(), f.projectID, "", domain.TargetCharacter, c.ID, field, domain.LockLocked)
+		require.NoError(t, err)
+	}
+	worldVersions := f.count(t, `SELECT COUNT(*) FROM world_state_version WHERE branch_id IS NULL`)
+
+	_, err := f.svc.Notes.CreateProjectNote(context.Background(), f.projectID, service.NoteInput{Title: "Mio", Content: "黒髪ロングで落ち着いた性格"})
+	require.NoError(t, err)
+	card := f.waitPromotionCard(t)
+	assert.Equal(t, domain.KindApproval, card.Kind)
+	assert.Equal(t, domain.ApprovalPending, card.ApprovalStatus)
+	assert.Contains(t, card.Content, "LOCK 中のため未反映")
+	assert.Contains(t, card.Content, "hairstyle")
+	assert.Contains(t, card.Content, "personality")
+	assert.Equal(t, c, f.character(t))
+
+	_, _, err = f.svc.Chat.RespondApproval(context.Background(), f.projectID, card.ID, service.DecisionApprove, "")
+	require.NoError(t, err)
+	assert.Equal(t, c, f.character(t), "approving a card of only LOCKed fields writes nothing")
+	assert.Equal(t, worldVersions, f.count(t, `SELECT COUNT(*) FROM world_state_version WHERE branch_id IS NULL`))
+}
+
+func TestNotes_AVersionWithNothingStructurablePostsNoCard(t *testing.T) {
+	f := newGenFixture(t, true)
+	f.llm.extractor = func(string) string { return `{"changes":[]}` }
+	f.buildReferencePack(t)
+
+	_, err := f.svc.Notes.CreateProjectNote(context.Background(), f.projectID, service.NoteInput{Title: "経緯", Content: "過去の火事の話は序盤では出さない"})
+	require.NoError(t, err)
+	time.Sleep(50 * time.Millisecond)
+	assert.Empty(t, f.promotionCards(t))
+	assert.Zero(t, f.count(t, `SELECT COUNT(*) FROM note_promotion`))
+}
+
 func TestNotes_LockedFieldsAreLeftOutOfTheProposalAndOfTheApproval(t *testing.T) {
 	f := newGenFixture(t, true)
 	f.llm.extractor = promotionAnswer("hairstyle", "personality")
@@ -162,6 +219,7 @@ func TestNotes_RequestingChangesRejectsThePromotionAndKeepsTheNote(t *testing.T)
 	_, err := f.svc.Notes.CreateProjectNote(context.Background(), f.projectID, service.NoteInput{Title: "Mio", Content: "黒髪ロング"})
 	require.NoError(t, err)
 	card := f.waitPromotionCard(t)
+	interventions := f.count(t, `SELECT COUNT(*) FROM human_intervention WHERE project_id = ? AND kind <> 'switch_to_director'`, f.projectID)
 	_, answered, err := f.svc.Chat.RespondApproval(context.Background(), f.projectID, card.ID, service.DecisionRequestChanges, "違う")
 	require.NoError(t, err)
 	assert.Equal(t, domain.ApprovalChangesRequested, answered.ApprovalStatus)
@@ -170,6 +228,20 @@ func TestNotes_RequestingChangesRejectsThePromotionAndKeepsTheNote(t *testing.T)
 	view, err := f.svc.Notes.ProjectNotes(context.Background(), f.projectID)
 	require.NoError(t, err)
 	assert.Len(t, view.Notes, 1)
+	// Rejecting a promotion does not change World State, so it is not a human intervention
+	// and must not enter North Star or Human Interventions per Finished Video (spec §28.3).
+	assert.Equal(t, interventions, f.count(t, `SELECT COUNT(*) FROM human_intervention WHERE project_id = ? AND kind <> 'switch_to_director'`, f.projectID))
+	assert.Zero(t, f.count(t, `SELECT COUNT(*) FROM human_intervention WHERE project_id = ? AND kind = 'request_changes'`, f.projectID))
+	require.NoError(t, f.db.Write(context.Background(), func(ctx context.Context, tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, `UPDATE project SET state = 'READY' WHERE id = ?`, f.projectID)
+		return err
+	}))
+	metrics, err := f.svc.Analytics.Metrics(context.Background(), f.projectID)
+	require.NoError(t, err)
+	assert.Equal(t, float64(interventions), metrics.Metrics.InterventionsPerFinished.Numerator)
+	if interventions == 0 {
+		assert.Equal(t, 1.0, metrics.Metrics.NorthStar.Numerator)
+	}
 }
 
 func TestNotes_SeriesNotesProposeNothing(t *testing.T) {
@@ -203,14 +275,14 @@ func TestNotes_OnlyThePlannerGetsTheNotesAndItsVersionsAreRecorded(t *testing.T)
 
 	f.firstGeneration(t)
 
-	planner := strings.Join(f.llm.users[llm.AgentPromptPlanner], "\n")
+	planner := strings.Join(f.llm.prompts(llm.AgentPromptPlanner), "\n")
 	assert.Contains(t, planner, "主人公は落ち着いた口調で話す")
 	assert.NotContains(t, planner, "SECRETMEMO", "archived notes are not given")
 	for _, req := range f.models.videoRequests() {
 		assert.NotContains(t, req.Prompt, "落ち着いた口調", "the video model never sees a note")
 	}
 	for _, agent := range []llm.Agent{llm.AgentVideoJudge, llm.AgentArtDirector} {
-		assert.NotContains(t, strings.Join(f.llm.users[agent], "\n"), "落ち着いた口調", string(agent))
+		assert.NotContains(t, strings.Join(f.llm.prompts(agent), "\n"), "落ち着いた口調", string(agent))
 	}
 
 	var raw string

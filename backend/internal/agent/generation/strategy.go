@@ -89,7 +89,7 @@ func DecideRouted(cfg modeladapter.Config, policy domain.QualityPolicy, shotSeco
 		}
 	}
 
-	remaining := remainingBudget(budget)
+	remaining := budget.Remaining()
 	cost := func(t modeladapter.VideoTarget) float64 {
 		caps, _ := modeladapter.Capabilities(t.Model)
 		return cfg.VideoCost(t, caps.SnapDuration(shotSeconds))
@@ -135,18 +135,6 @@ func longest(m domain.ModelName) float64 {
 		return 0
 	}
 	return caps.Durations[len(caps.Durations)-1]
-}
-
-// remainingBudget is the money left under the tighter of the two ceilings (+Inf when neither is set).
-func remainingBudget(b repository.Budget) float64 {
-	left := math.Inf(1)
-	if b.ProjectCeiling != nil {
-		left = math.Min(left, *b.ProjectCeiling-b.ProjectSpent)
-	}
-	if b.ShotCeiling != nil {
-		left = math.Min(left, *b.ShotCeiling-b.ShotSpent)
-	}
-	return left
 }
 
 // affordable is how many Takes of the given cost fit into remaining.

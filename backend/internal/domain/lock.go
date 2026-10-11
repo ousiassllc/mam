@@ -17,6 +17,12 @@ const (
 	LockLocked LockMode = "lock"
 )
 
+// KeepsTheAgentsOut reports whether the AI must leave a value in this mode alone when it updates it
+// by itself: a LOCKed value is frozen, and a MANUAL one is what the user specified. (The user's own
+// edits are stopped by LOCK only: MANUAL is the user's.) It is the one answer for the State
+// Extractor; the Editing / Music paths ask it for their own parameters.
+func (m LockMode) KeepsTheAgentsOut() bool { return m == LockManual || m == LockLocked }
+
 // LockModes lists every mode in display order.
 func LockModes() []LockMode { return []LockMode{LockAuto, LockManual, LockLocked} }
 

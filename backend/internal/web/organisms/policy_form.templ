@@ -1,6 +1,10 @@
 package organisms
 
-import "github.com/ousiassllc/mam/backend/internal/domain"
+import (
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
 
 // PolicyForm sets the Quality Policy and, on top of it, Max retries, Max generation time and the
 // Minimum quality thresholds (UC-8). An empty field uses the default of the Quality Policy, which
@@ -9,17 +13,20 @@ templ PolicyForm(d PolicyFormData) {
 	<form
 		id="policy-form"
 		class="flex flex-col gap-4"
-		hx-put={ "/projects/" + d.Project.ID + "/quality-policy" }
+		hx-put={ paths.Project(d.Project.ID, "quality-policy") }
 		hx-target="this"
 		hx-swap="outerHTML"
 	>
 		<div>
 			<label for="policy-quality" class="mb-1 block text-sm font-medium">Quality Policy</label>
-			<select id="policy-quality" name="quality_policy" class="rounded-md border border-neutral-600 bg-neutral-950 px-3 py-2 text-sm">
+			@atoms.Select(atoms.FieldLg, "", templ.Attributes{
+				"id":   "policy-quality",
+				"name": "quality_policy",
+			}) {
 				for _, q := range domain.QualityPolicies() {
 					<option value={ string(q) } selected?={ q == d.Policy.Quality }>{ q.Label() }</option>
 				}
-			</select>
+			}
 			if msg := d.Errors["quality_policy"]; msg != "" {
 				<p class="mt-1 text-sm text-red-300" role="alert">{ msg }</p>
 			}
@@ -31,7 +38,9 @@ templ PolicyForm(d PolicyFormData) {
 			@numberField(d, "min_axis_score", "軸ごとの最低スコア（0〜100）", "0", "100", intValue(d.Policy.Limits.MinAxisScore), d.Effective.MinAxisScore)
 		</div>
 		<div class="flex items-center gap-3">
-			<button type="submit" class="rounded-md bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-400">保存</button>
+			@atoms.Button(atoms.TonePrimary, "保存", templ.Attributes{
+				"type": "submit",
+			})
 			if d.Saved {
 				<span class="text-sm text-emerald-300" role="status">保存しました</span>
 			}
@@ -42,18 +51,17 @@ templ PolicyForm(d PolicyFormData) {
 templ numberField(d PolicyFormData, name, label, lo, hi, stored string, effective int) {
 	<div>
 		<label for={ "policy-" + name } class="mb-1 block text-sm font-medium">{ label }</label>
-		<input
-			id={ "policy-" + name }
-			name={ name }
-			type="number"
-			inputmode="numeric"
-			min={ lo }
-			max={ hi }
-			step="1"
-			value={ fieldValue(d.Typed, name, stored) }
-			placeholder={ intValue(&effective) }
-			class="w-full rounded-md border border-neutral-600 bg-neutral-950 px-3 py-2 text-sm"
-		/>
+		@atoms.Input(atoms.FieldLg, "w-full", templ.Attributes{
+			"id":          "policy-" + name,
+			"name":        name,
+			"type":        "number",
+			"inputmode":   "numeric",
+			"min":         lo,
+			"max":         hi,
+			"step":        "1",
+			"value":       fieldValue(d.Typed, name, stored),
+			"placeholder": intValue(&effective),
+		})
 		if msg := d.Errors[name]; msg != "" {
 			<p class="mt-1 text-sm text-red-300" role="alert">{ msg }</p>
 		}
@@ -66,7 +74,7 @@ templ BudgetForm(d PolicyFormData) {
 	<form
 		id="budget-form"
 		class="flex flex-col gap-4"
-		hx-put={ "/projects/" + d.Project.ID + "/budget" }
+		hx-put={ paths.Project(d.Project.ID, "budget") }
 		hx-target="this"
 		hx-swap="outerHTML"
 	>
@@ -76,7 +84,9 @@ templ BudgetForm(d PolicyFormData) {
 		</div>
 		<p class="text-xs text-neutral-400">空欄は上限なし。上限を超える見込みの生成は実行前に拒否されます（402）。Shot の上限は Repair / Retake の Max cost per Shot も兼ねます。</p>
 		<div class="flex items-center gap-3">
-			<button type="submit" class="rounded-md bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-400">保存</button>
+			@atoms.Button(atoms.TonePrimary, "保存", templ.Attributes{
+				"type": "submit",
+			})
 			if d.Saved {
 				<span class="text-sm text-emerald-300" role="status">保存しました</span>
 			}
@@ -87,15 +97,14 @@ templ BudgetForm(d PolicyFormData) {
 templ budgetField(d PolicyFormData, name, label, stored string) {
 	<div>
 		<label for={ "budget-" + name } class="mb-1 block text-sm font-medium">{ label }</label>
-		<input
-			id={ "budget-" + name }
-			name={ name }
-			type="text"
-			inputmode="decimal"
-			value={ fieldValue(d.Typed, name, stored) }
-			placeholder="上限なし"
-			class="w-full rounded-md border border-neutral-600 bg-neutral-950 px-3 py-2 text-sm"
-		/>
+		@atoms.Input(atoms.FieldLg, "w-full", templ.Attributes{
+			"id":          "budget-" + name,
+			"name":        name,
+			"type":        "text",
+			"inputmode":   "decimal",
+			"value":       fieldValue(d.Typed, name, stored),
+			"placeholder": "上限なし",
+		})
 		if msg := d.Errors[name]; msg != "" {
 			<p class="mt-1 text-sm text-red-300" role="alert">{ msg }</p>
 		}

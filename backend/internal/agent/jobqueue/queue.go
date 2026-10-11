@@ -14,6 +14,7 @@ import (
 	"log/slog"
 	"runtime/debug"
 	"sync"
+	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
@@ -25,11 +26,22 @@ const DefaultWorkers = 4
 // DefaultMaxAttempts bounds how often an interrupted resumable job is restarted.
 const DefaultMaxAttempts = 3
 
+// claimBackoffMin and claimBackoffMax bound the wait before a worker claims
+// again after ClaimNext failed with an error other than "no job".
+const (
+	claimBackoffMin = 100 * time.Millisecond
+	claimBackoffMax = 5 * time.Second
+)
+
 // InterruptedReason is recorded on jobs that were running when the app terminated abnormally.
 const InterruptedReason = "interrupted by abnormal termination"
 
+// ShutdownReason is recorded on non-resumable jobs that were running when the queue was stopped:
+// running them again could charge the vendor twice.
+const ShutdownReason = "interrupted by shutdown"
+
 // Handler executes one job. It returns nil on success. When ctx is canceled
-// (shutdown) it SHOULD return promptly; the job is then queued again.
+// (shutdown) it SHOULD return promptly; a resumable job is then queued again, any other job fails.
 type Handler func(ctx context.Context, job domain.Job) error
 
 // Options configures a Queue.
@@ -50,6 +62,10 @@ type Queue struct {
 	logger      *slog.Logger
 	workers     int
 	maxAttempts int
+
+	// claim and claimBackoff are fields so tests can inject a failing claim and a short backoff.
+	claim        func(ctx context.Context) (domain.Job, error)
+	claimBackoff time.Duration
 
 	mu       sync.Mutex
 	handlers map[domain.JobKind]registration
@@ -73,12 +89,14 @@ func New(repo *repository.JobRepository, opts Options) *Queue {
 		opts.Logger = slog.New(slog.DiscardHandler)
 	}
 	return &Queue{
-		repo:        repo,
-		logger:      opts.Logger,
-		workers:     opts.Workers,
-		maxAttempts: opts.MaxAttempts,
-		handlers:    make(map[domain.JobKind]registration),
-		wake:        make(chan struct{}, 1),
+		repo:         repo,
+		logger:       opts.Logger,
+		workers:      opts.Workers,
+		maxAttempts:  opts.MaxAttempts,
+		claim:        repo.ClaimNext,
+		claimBackoff: claimBackoffMin,
+		handlers:     make(map[domain.JobKind]registration),
+		wake:         make(chan struct{}, 1),
 	}
 }
 
@@ -141,8 +159,10 @@ func (q *Queue) Enqueue(ctx context.Context, kind domain.JobKind, payload any) (
 }
 
 // Recover resolves jobs left in the running state by an abnormal termination:
-// resumable ones (below MaxAttempts) are queued again, all others are failed.
-// It returns the number of resumed and failed jobs. Call it before Start.
+// resumable ones (below MaxAttempts) are queued again, all others are failed. A queued job whose kind
+// has no handler is failed too (it would be when a worker claimed it), so that the work its Shot waits
+// for is known to be over before Start. It returns the number of resumed and failed jobs. Call it
+// before Start.
 func (q *Queue) Recover(ctx context.Context) (resumed, failed int, err error) {
 	jobs, err := q.repo.ListByStatus(ctx, domain.JobRunning)
 	if err != nil {
@@ -168,6 +188,23 @@ func (q *Queue) Recover(ctx context.Context) (resumed, failed int, err error) {
 			q.logger.Warn("failed interrupted job", "job_id", job.ID, "kind", job.Kind, "attempts", job.Attempts)
 		}
 	}
+	queued, err := q.repo.ListByStatus(ctx, domain.JobQueued)
+	if err != nil {
+		return resumed, failed, err
+	}
+	for _, job := range queued {
+		q.mu.Lock()
+		_, ok := q.handlers[job.Kind]
+		q.mu.Unlock()
+		if ok {
+			continue
+		}
+		if err := q.repo.MarkFailed(ctx, job.ID, fmt.Sprintf("no handler registered for %q", job.Kind)); err != nil {
+			return resumed, failed, err
+		}
+		failed++
+		q.logger.Warn("failed queued job without handler", "job_id", job.ID, "kind", job.Kind)
+	}
 	return resumed, failed, nil
 }
 
@@ -189,7 +226,8 @@ func (q *Queue) Start(ctx context.Context) {
 }
 
 // Stop cancels running handlers, waits for the workers to finish and
-// returns interrupted jobs to the queue so the next start resumes them.
+// returns interrupted resumable jobs to the queue so the next start resumes them.
+// Interrupted non-resumable jobs are failed (ShutdownReason).
 func (q *Queue) Stop() {
 	q.mu.Lock()
 	cancel := q.cancel
@@ -208,10 +246,12 @@ func (q *Queue) signal() {
 }
 
 func (q *Queue) work(ctx context.Context) {
+	backoff := time.Duration(0)
 	for {
-		job, err := q.repo.ClaimNext(ctx)
+		job, err := q.claim(ctx)
 		switch {
 		case err == nil:
+			backoff = 0
 			// Another worker may also have a job waiting: pass the wake-up on.
 			q.signal()
 			q.changed(job.ID)
@@ -219,16 +259,28 @@ func (q *Queue) work(ctx context.Context) {
 			q.changed(job.ID)
 			continue
 		case errors.Is(err, repository.ErrNotFound):
+			backoff = 0
+			select {
+			case <-q.wake:
+			case <-ctx.Done():
+				return
+			}
 		case ctx.Err() != nil:
 			return
 		default:
-			q.logger.Error("claim job failed", "err", err)
-		}
-
-		select {
-		case <-q.wake:
-		case <-ctx.Done():
-			return
+			// A transient error (e.g. a locked database) must not park the worker:
+			// queued jobs may remain and nobody would signal again. Retry with a bounded backoff.
+			if backoff == 0 {
+				backoff = q.claimBackoff
+			} else {
+				backoff = min(backoff*2, claimBackoffMax)
+			}
+			q.logger.Error("claim job failed", "err", err, "retry_in", backoff)
+			select {
+			case <-time.After(backoff):
+			case <-ctx.Done():
+				return
+			}
 		}
 	}
 }
@@ -251,7 +303,13 @@ func (q *Queue) run(ctx context.Context, job domain.Job) {
 		if err := q.repo.MarkSucceeded(settle, job.ID); err != nil {
 			q.logger.Error("mark job succeeded failed", "job_id", job.ID, "err", err)
 		}
-	case ctx.Err() != nil && errors.Is(err, ctx.Err()):
+	case ctx.Err() != nil:
+		// Shutting down: whatever the handler returned, it was cut short. A killed subprocess
+		// (ffprobe: "signal: killed") does not wrap the context's error, yet is an interruption too.
+		if !reg.resumable {
+			q.fail(settle, job, ShutdownReason)
+			return
+		}
 		if err := q.repo.Requeue(settle, job.ID); err != nil {
 			q.logger.Error("requeue interrupted job failed", "job_id", job.ID, "err", err)
 		}

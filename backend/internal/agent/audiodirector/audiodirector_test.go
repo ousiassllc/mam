@@ -9,6 +9,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -255,7 +256,7 @@ func TestSyncLabs_UploadsThenPollsUntilCompletedAndDownloadsTheVideo(t *testing.
 		}
 	}))
 	defer srv.Close()
-	sl := audiodirector.NewSyncLabs(audiodirector.SyncLabsConfig{BaseURL: srv.URL, PollInterval: time.Millisecond}, syncKeys(t, true), nil)
+	sl := audiodirector.NewSyncLabs(audiodirector.SyncLabsConfig{BaseURL: srv.URL, PollInterval: time.Millisecond, LocalDownloads: true}, syncKeys(t, true), nil)
 
 	out, err := sl.Sync(context.Background(), audiodirector.LipSyncRequest{
 		Model: "sync-3", Video: audiodirector.Sample{Filename: "v.mp4", Data: []byte("v")}, Audio: audiodirector.Sample{Filename: "a.wav", Data: []byte("a")},
@@ -267,6 +268,77 @@ func TestSyncLabs_UploadsThenPollsUntilCompletedAndDownloadsTheVideo(t *testing.
 	assert.Equal(t, "sync-test-key", key)
 	assert.ElementsMatch(t, []string{"video", "audio"}, files)
 	assert.Equal(t, 2, polls)
+}
+
+func TestSyncLabs_RetriesATransientStatusOrDownloadFailureOfAnAcceptedJob(t *testing.T) {
+	var polls, downloads int
+	var srv *httptest.Server
+	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost:
+			_, _ = w.Write([]byte(`{"id":"gen-1","status":"PENDING"}`))
+		case r.URL.Path == "/v2/generate/gen-1":
+			if polls++; polls == 1 {
+				http.Error(w, "bad gateway", http.StatusBadGateway)
+				return
+			}
+			_, _ = w.Write([]byte(`{"id":"gen-1","status":"COMPLETED","outputUrl":"` + srv.URL + `/out.mp4"}`))
+		case r.URL.Path == "/out.mp4":
+			if downloads++; downloads == 1 {
+				http.Error(w, "slow down", http.StatusTooManyRequests)
+				return
+			}
+			_, _ = w.Write([]byte("lip-synced-video"))
+		}
+	}))
+	defer srv.Close()
+	sl := audiodirector.NewSyncLabs(audiodirector.SyncLabsConfig{BaseURL: srv.URL, PollInterval: time.Millisecond, LocalDownloads: true}, syncKeys(t, true), nil)
+
+	out, err := sl.Sync(context.Background(), audiodirector.LipSyncRequest{Model: "sync-3"})
+
+	require.NoError(t, err)
+	assert.Equal(t, []byte("lip-synced-video"), out)
+	assert.Equal(t, 2, polls)
+	assert.Equal(t, 2, downloads)
+}
+
+func TestSyncLabs_GivesUpAfterTheRetriesAsAChargedError(t *testing.T) {
+	var polls int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			_, _ = w.Write([]byte(`{"id":"gen-1","status":"PENDING"}`))
+			return
+		}
+		polls++
+		http.Error(w, "bad gateway", http.StatusBadGateway)
+	}))
+	defer srv.Close()
+	sl := audiodirector.NewSyncLabs(audiodirector.SyncLabsConfig{BaseURL: srv.URL, PollInterval: time.Millisecond}, syncKeys(t, true), nil)
+
+	_, err := sl.Sync(context.Background(), audiodirector.LipSyncRequest{Model: "sync-3"})
+
+	var charged *audiodirector.ChargedError
+	require.ErrorAs(t, err, &charged)
+	assert.Equal(t, 3, polls)
+}
+
+func TestSyncLabs_DoesNotRetryAClientErrorOfTheStatusRequest(t *testing.T) {
+	var polls int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			_, _ = w.Write([]byte(`{"id":"gen-1","status":"PENDING"}`))
+			return
+		}
+		polls++
+		http.Error(w, "gone", http.StatusNotFound)
+	}))
+	defer srv.Close()
+	sl := audiodirector.NewSyncLabs(audiodirector.SyncLabsConfig{BaseURL: srv.URL, PollInterval: time.Millisecond}, syncKeys(t, true), nil)
+
+	_, err := sl.Sync(context.Background(), audiodirector.LipSyncRequest{Model: "sync-3"})
+
+	require.Error(t, err)
+	assert.Equal(t, 1, polls)
 }
 
 func TestSyncLabs_Failures(t *testing.T) {
@@ -315,4 +387,135 @@ func TestSyncLabs_Failures(t *testing.T) {
 
 		require.Error(t, err)
 	})
+}
+
+func TestSyncLabs_ADownloadFailureDoesNotLeakTheSignedOutputURL(t *testing.T) {
+	storage := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+	storageURL := storage.URL
+	storage.Close()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"id":"g","status":"COMPLETED","outputUrl":"` + storageURL + `/out.mp4?X-Signature=signed-secret"}`))
+	}))
+	defer srv.Close()
+	sl := audiodirector.NewSyncLabs(audiodirector.SyncLabsConfig{BaseURL: srv.URL, PollInterval: time.Millisecond, LocalDownloads: true}, syncKeys(t, true), nil)
+
+	_, err := sl.Sync(context.Background(), audiodirector.LipSyncRequest{Model: "sync-3"})
+
+	require.Error(t, err)
+	assert.NotContains(t, err.Error(), "signed-secret")
+	assert.NotContains(t, err.Error(), storageURL)
+}
+
+func TestSyncLabs_RefusesAnOutputURLThatIsNotHTTPSOrPointsToTheLocalNetwork(t *testing.T) {
+	for name, output := range map[string]string{
+		"plain http": "http://cdn.example.com/out.mp4",
+		"loopback":   "https://127.0.0.1/out.mp4",
+		"metadata":   "https://169.254.169.254/latest/meta-data",
+	} {
+		t.Run(name, func(t *testing.T) {
+			var outputHits int
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/out.mp4" {
+					outputHits++
+				}
+				_, _ = w.Write([]byte(`{"id":"g","status":"COMPLETED","outputUrl":"` + output + `"}`))
+			}))
+			defer srv.Close()
+			sl := audiodirector.NewSyncLabs(audiodirector.SyncLabsConfig{BaseURL: srv.URL}, syncKeys(t, true), nil)
+
+			_, err := sl.Sync(context.Background(), audiodirector.LipSyncRequest{
+				Model: "sync-3", Video: audiodirector.Sample{Filename: "v.mp4", Data: []byte("v")}, Audio: audiodirector.Sample{Filename: "a.wav", Data: []byte("a")},
+			})
+
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "output URL")
+			assert.Zero(t, outputHits)
+		})
+	}
+}
+
+func TestDefaultClientsDoNotForwardTheKeyOnARedirectToAnotherHost(t *testing.T) {
+	var foreignHits atomic.Int32
+	foreign := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { foreignHits.Add(1) }))
+	defer foreign.Close()
+	vendor := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, foreign.URL+"/steal", http.StatusFound)
+	}))
+	defer vendor.Close()
+
+	tts := audiodirector.NewElevenLabs(audiodirector.Config{BaseURL: vendor.URL}, keys(t, true), nil)
+	_, err := tts.Synthesize(context.Background(), domain.VoiceLine{Kind: domain.VoiceNarration, Text: "a"})
+	require.Error(t, err)
+
+	sl := audiodirector.NewSyncLabs(audiodirector.SyncLabsConfig{BaseURL: vendor.URL}, syncKeys(t, true), nil)
+	_, err = sl.Sync(context.Background(), audiodirector.LipSyncRequest{
+		Model: "sync-3", Video: audiodirector.Sample{Filename: "v.mp4", Data: []byte("v")}, Audio: audiodirector.Sample{Filename: "a.wav", Data: []byte("a")},
+	})
+	require.Error(t, err)
+
+	assert.Zero(t, foreignHits.Load())
+}
+
+// Sync Labs bills a generation it accepted: a failure after the job exists is a ChargedError, a
+// failure before it (or a FAILED / REJECTED generation) is not.
+func TestSyncLabs_AFailureAfterTheJobWasAcceptedIsMarkedCharged(t *testing.T) {
+	tests := []struct {
+		name    string
+		handler func(storageURL string) http.HandlerFunc
+		timeout time.Duration
+		charged bool
+	}{
+		{"output download fails", func(storage string) http.HandlerFunc {
+			return func(w http.ResponseWriter, r *http.Request) {
+				if r.Method == http.MethodPost {
+					_, _ = w.Write([]byte(`{"id":"g","status":"PENDING"}`))
+					return
+				}
+				_, _ = w.Write([]byte(`{"id":"g","status":"COMPLETED","outputUrl":"` + storage + `/out.mp4"}`))
+			}
+		}, 0, true},
+		{"completed without an outputUrl", func(string) http.HandlerFunc {
+			return func(w http.ResponseWriter, _ *http.Request) {
+				_, _ = w.Write([]byte(`{"id":"g","status":"COMPLETED"}`))
+			}
+		}, 0, true},
+		{"polling fails", func(string) http.HandlerFunc {
+			return func(w http.ResponseWriter, r *http.Request) {
+				if r.Method == http.MethodPost {
+					_, _ = w.Write([]byte(`{"id":"g","status":"PENDING"}`))
+					return
+				}
+				http.Error(w, "boom", http.StatusInternalServerError)
+			}
+		}, 0, true},
+		{"timeout while polling", func(string) http.HandlerFunc {
+			return func(w http.ResponseWriter, _ *http.Request) {
+				_, _ = w.Write([]byte(`{"id":"g","status":"PROCESSING"}`))
+			}
+		}, 50 * time.Millisecond, true},
+		{"create is refused", func(string) http.HandlerFunc {
+			return func(w http.ResponseWriter, _ *http.Request) { http.Error(w, "no", http.StatusBadRequest) }
+		}, 0, false},
+		{"generation FAILED", func(string) http.HandlerFunc {
+			return func(w http.ResponseWriter, _ *http.Request) {
+				_, _ = w.Write([]byte(`{"id":"g","status":"FAILED","error":"x"}`))
+			}
+		}, 0, false},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			storage := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+			storageURL := storage.URL
+			storage.Close() // the link of the output cannot be downloaded
+			srv := httptest.NewServer(tc.handler(storageURL))
+			defer srv.Close()
+			sl := audiodirector.NewSyncLabs(audiodirector.SyncLabsConfig{BaseURL: srv.URL, Timeout: tc.timeout, PollInterval: 5 * time.Millisecond, LocalDownloads: true}, syncKeys(t, true), nil)
+
+			_, err := sl.Sync(context.Background(), audiodirector.LipSyncRequest{Model: "sync-3"})
+
+			require.Error(t, err)
+			var ce *audiodirector.ChargedError
+			assert.Equal(t, tc.charged, errors.As(err, &ce))
+		})
+	}
 }

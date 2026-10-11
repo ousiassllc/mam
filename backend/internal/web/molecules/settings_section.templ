@@ -1,0 +1,14 @@
+package molecules
+
+// SettingsSection is one titled block (title, optional description, content) of the settings screen.
+templ SettingsSection(title, description string) {
+	<section class="flex flex-col gap-3">
+		<div>
+			<h2 class="text-base font-semibold">{ title }</h2>
+			if description != "" {
+				<p class="text-sm text-neutral-400">{ description }</p>
+			}
+		</div>
+		{ children... }
+	</section>
+}

@@ -1,8 +1,10 @@
 package config_test
 
 import (
+	"flag"
 	"io"
 	"log/slog"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -61,6 +63,35 @@ func TestLoad_RejectsInvalidValues(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestLoad_MalformedPortEnvironmentIsAnErrorNotTheDefault(t *testing.T) {
+	for _, bad := range []string{"abc", "80a", "8 787", "1.5"} {
+		_, err := config.Load(nil, env(map[string]string{"MAM_DATA_DIR": "/data", "MAM_PORT": bad}), io.Discard)
+		require.Error(t, err, bad)
+		assert.Contains(t, err.Error(), "MAM_PORT", bad)
+	}
+	cfg, err := config.Load(nil, env(map[string]string{"MAM_DATA_DIR": "/data"}), io.Discard)
+	require.NoError(t, err)
+	assert.Equal(t, config.DefaultPort, cfg.Port, "unset still means the default")
+	cfg, err = config.Load(nil, env(map[string]string{"MAM_DATA_DIR": "/data", "MAM_PORT": "9001"}), io.Discard)
+	require.NoError(t, err)
+	assert.Equal(t, 9001, cfg.Port)
+}
+
+func TestLoad_MalformedPortEnvironmentDoesNotBreakHelpOrThePortFlag(t *testing.T) {
+	bad := env(map[string]string{"MAM_DATA_DIR": "/data", "MAM_PORT": "abc"})
+
+	_, err := config.Load([]string{"--help"}, bad, io.Discard)
+	assert.ErrorIs(t, err, flag.ErrHelp)
+
+	cfg, err := config.Load([]string{"--port", "9000"}, bad, io.Discard)
+	require.NoError(t, err)
+	assert.Equal(t, 9000, cfg.Port, "an explicit --port wins over the environment, valid or not")
+
+	cfg, err = config.Load([]string{"--port", "0"}, bad, io.Discard)
+	require.NoError(t, err)
+	assert.Zero(t, cfg.Port, "--port 0 is explicit too")
+}
+
 func TestLoad_JudgeAndFaceModelSettings(t *testing.T) {
 	cfg, err := config.Load([]string{"--data-dir", "/d"}, func(string) string { return "" }, io.Discard)
 	require.NoError(t, err)
@@ -79,4 +110,61 @@ func TestLoad_JudgeAndFaceModelSettings(t *testing.T) {
 	assert.Equal(t, "/x.json", cfg.JudgeConfigPath, "a flag beats the environment")
 	assert.Equal(t, "/y", cfg.FaceModels())
 	assert.Equal(t, "/z.so", cfg.ONNXRuntimeLib)
+}
+
+// noUserConfigDir makes os.UserConfigDir fail: no XDG_CONFIG_HOME, no HOME (a systemd unit, a minimal container).
+func noUserConfigDir(t *testing.T) {
+	t.Helper()
+	for _, k := range []string{"XDG_CONFIG_HOME", "HOME", "AppData"} {
+		t.Setenv(k, "")
+	}
+	if _, err := os.UserConfigDir(); err == nil {
+		t.Skip("the OS resolves a config directory without these variables")
+	}
+}
+
+func TestLoad_ADataDirGivenByFlagOrEnvironmentNeedsNoDefault(t *testing.T) {
+	noUserConfigDir(t)
+
+	cfg, err := config.Load([]string{"--data-dir", "/var/lib/mam"}, env(nil), io.Discard)
+	require.NoError(t, err)
+	assert.Equal(t, "/var/lib/mam", cfg.DataDir)
+
+	cfg, err = config.Load(nil, env(map[string]string{"MAM_DATA_DIR": "/env"}), io.Discard)
+	require.NoError(t, err)
+	assert.Equal(t, "/env", cfg.DataDir)
+
+	cfg, err = config.Load([]string{"--data-dir", "/flag"}, env(map[string]string{"MAM_DATA_DIR": "/env"}), io.Discard)
+	require.NoError(t, err)
+	assert.Equal(t, "/flag", cfg.DataDir, "the flag wins")
+}
+
+func TestLoad_WithoutADataDirAndWithoutADefaultItFailsButHelpStillWorks(t *testing.T) {
+	noUserConfigDir(t)
+
+	_, err := config.Load(nil, env(nil), io.Discard)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "user config dir")
+
+	_, err = config.Load([]string{"--help"}, env(nil), io.Discard)
+	assert.ErrorIs(t, err, flag.ErrHelp)
+}
+
+func TestLoad_NoBrowserEnvironmentIsParsedAsABoolean(t *testing.T) {
+	for value, wantOpen := range map[string]bool{
+		"": true, "0": true, "false": true, "FALSE": true, "no": true, "off": true,
+		"1": false, "true": false, "True": false, "yes": false, "on": false,
+	} {
+		cfg, err := config.Load(nil, env(map[string]string{"MAM_DATA_DIR": "/data", "MAM_NO_BROWSER": value}), io.Discard)
+		require.NoError(t, err, value)
+		assert.Equal(t, wantOpen, cfg.OpenBrowser, "MAM_NO_BROWSER=%q", value)
+	}
+
+	_, err := config.Load(nil, env(map[string]string{"MAM_DATA_DIR": "/data", "MAM_NO_BROWSER": "maybe"}), io.Discard)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "MAM_NO_BROWSER")
+
+	cfg, err := config.Load([]string{"--no-browser"}, env(map[string]string{"MAM_DATA_DIR": "/data", "MAM_NO_BROWSER": "maybe"}), io.Discard)
+	require.NoError(t, err)
+	assert.False(t, cfg.OpenBrowser, "an explicit flag wins over the environment")
 }
