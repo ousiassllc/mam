@@ -3,6 +3,7 @@ package organisms
 import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // ReviewInboxData is the reviewer's entrance (reviews_page): the packages imported so far.
@@ -28,7 +29,7 @@ templ ReviewInboxList(d ReviewInboxData) {
 		<ul class="flex flex-col gap-2">
 			for _, i := range d.Items {
 				<li class="flex flex-wrap items-center gap-3 rounded-md border border-neutral-700 p-3">
-					<a class="text-sm font-medium hover:underline" href={ templ.SafeURL("/reviews/" + i.ID) }>{ i.ProjectName }</a>
+					<a class="text-sm font-medium hover:underline" href={ templ.SafeURL(paths.Review(i.ID)) }>{ i.ProjectName }</a>
 					@atoms.Badge(reviewDecisionBadge(i.Decision))
 					<span class="text-xs text-neutral-400">{ i.Video.Resolution } / { i.Video.AspectRatio }</span>
 					<span class="text-xs text-neutral-400">読み込み: { i.CreatedAt.Local().Format("2006-01-02 15:04") }</span>
@@ -49,7 +50,7 @@ func reviewDecisionBadge(d domain.ReviewDecision) (atoms.BadgeTone, string) {
 // comments, the form of the decision and the link that downloads the Review Response.
 templ ReviewWorkspace(i domain.ReviewInbox) {
 	<div id="review-workspace" class="flex flex-col gap-6">
-		<video class="w-full rounded-md bg-black" aria-label="レビュー対象の動画" controls preload="metadata" src={ "/reviews/" + i.ID + "/video" }></video>
+		<video class="w-full rounded-md bg-black" aria-label="レビュー対象の動画" controls preload="metadata" src={ paths.Review(i.ID, "video") }></video>
 		if i.Note != "" {
 			<section class="rounded-md border border-neutral-700 p-3" aria-label="オーナーからのメモ">
 				<h2 class="mb-1 text-sm font-semibold">オーナーからのメモ</h2>
@@ -67,12 +68,12 @@ templ ReviewWorkspace(i domain.ReviewInbox) {
 						<span class="w-14 shrink-0 font-mono text-xs text-neutral-400">{ timecodeLabel(c.TimecodeMs) }</span>
 						<span class="min-w-0 flex-1 whitespace-pre-wrap">{ c.Body }</span>
 						@atoms.Button(atoms.ToneDanger, "削除", templ.Attributes{
-							"hx-delete": "/reviews/" + i.ID + "/comments/" + c.ID, "hx-target": "#review-workspace", "hx-swap": "outerHTML", "type": "button",
+							"hx-delete": paths.Review(i.ID, "comments", c.ID), "hx-target": "#review-workspace", "hx-swap": "outerHTML", "type": "button",
 						})
 					</li>
 				}
 			</ul>
-			<form class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3" hx-post={ "/reviews/" + i.ID + "/comments" } hx-target="#review-workspace" hx-swap="outerHTML">
+			<form class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3" hx-post={ paths.Review(i.ID, "comments") } hx-target="#review-workspace" hx-swap="outerHTML">
 				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="review-comment-timecode">
 					位置（秒 または 分:秒。空なら動画全体）
 					@atoms.Input(atoms.FieldMd, "w-32", templ.Attributes{
@@ -102,7 +103,7 @@ templ ReviewWorkspace(i domain.ReviewInbox) {
 		<section class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3" aria-label="判定">
 			<h2 class="text-sm font-semibold">判定</h2>
 			<p class="text-xs text-neutral-400">応答ファイルに入るのは、表示名・判定・全体コメント・上のコメントだけです。表示名は自己申告で、確認はされません。</p>
-			<form class="flex flex-col gap-2" hx-put={ "/reviews/" + i.ID + "/decision" } hx-target="#review-workspace" hx-swap="outerHTML">
+			<form class="flex flex-col gap-2" hx-put={ paths.Review(i.ID, "decision") } hx-target="#review-workspace" hx-swap="outerHTML">
 				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="review-reviewer-name">
 					表示名（1〜50 文字）
 					@atoms.Input(atoms.FieldMd, "w-64", templ.Attributes{
@@ -153,7 +154,7 @@ templ ReviewWorkspace(i domain.ReviewInbox) {
 				<div class="flex flex-wrap items-center gap-3">
 					@atoms.Badge(reviewDecisionBadge(i.Decision))
 					<a
-						href={ templ.SafeURL("/reviews/" + i.ID + "/response") }
+						href={ templ.SafeURL(paths.Review(i.ID, "response")) }
 						download
 						hx-boost="false"
 						class="inline-flex items-center justify-center rounded-md border border-neutral-600 px-3 py-1.5 text-sm font-medium text-neutral-200 hover:bg-neutral-800"

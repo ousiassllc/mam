@@ -44,3 +44,16 @@ func TestNoteBrandConstraintEditTimeline_EscapeEverySegment(t *testing.T) {
 	assert.Equal(t, "/edit-timelines/"+esc+"/request-additional-shot", paths.EditTimeline(id, "request-additional-shot"))
 	assert.Equal(t, "/edit-timelines/e1/preview", paths.EditTimeline("e1", "preview"))
 }
+
+func TestSeriesReviewCredential_EscapeEverySegment(t *testing.T) {
+	id := "a?b#c%d e/f"
+	esc := "a%3Fb%23c%25d%20e%2Ff"
+	assert.Equal(t, "/series/"+esc, paths.Series(id))
+	assert.Equal(t, "/series/"+esc+"/characters/"+esc, paths.Series(id, "characters", id))
+	assert.Equal(t, "/series/s1/episodes", paths.Series("s1", "episodes"))
+	assert.Equal(t, "/reviews/"+esc, paths.Review(id))
+	assert.Equal(t, "/reviews/"+esc+"/comments/"+esc, paths.Review(id, "comments", id))
+	assert.Equal(t, "/reviews/r1/video", paths.Review("r1", "video"))
+	assert.Equal(t, "/credentials/"+esc, paths.Credential(id))
+	assert.Equal(t, "/credentials/openai", paths.Credential("openai"))
+}
