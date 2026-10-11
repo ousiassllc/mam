@@ -267,7 +267,7 @@ func TakeRow(t domain.Take, selected bool, repairable bool, judgeable bool) temp
 		}
 		if t.Usable() {
 			if t.Selectable() {
-				templ_7745c5c3_Err = atoms.LinkButton("選択", templ.Attributes{
+				templ_7745c5c3_Err = atoms.LinkButton(atoms.ToneNeutral, "選択", templ.Attributes{
 					"type":      "button",
 					"hx-post":   takeActionURL(t.ID, "select"),
 					"hx-target": shotTarget(t.ShotID),
@@ -282,7 +282,7 @@ func TakeRow(t domain.Take, selected bool, repairable bool, judgeable bool) temp
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = atoms.LinkButton("除外", templ.Attributes{
+			templ_7745c5c3_Err = atoms.LinkButton(atoms.ToneNeutral, "除外", templ.Attributes{
 				"type":       "button",
 				"hx-delete":  paths.Take(t.ID),
 				"hx-target":  shotTarget(t.ShotID),

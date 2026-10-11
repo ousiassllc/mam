@@ -131,12 +131,9 @@ templ reviewItem(projectID string, it ReviewListItem) {
 			if n := it.Item.OpenComments(); n > 0 {
 				<span class="text-xs text-amber-300">未解決のコメント { strconv.Itoa(n) } 件</span>
 			}
-			<a
-				href={ templ.SafeURL(paths.Project(projectID, "reviews", it.Item.Request.ID, "package")) }
-				download
-				hx-boost="false"
-				class="ml-auto inline-flex items-center justify-center rounded-md border border-neutral-600 px-3 py-1.5 text-sm font-medium text-neutral-200 hover:bg-neutral-800"
-			>パッケージをダウンロード（ZIP）</a>
+			<div class="ml-auto">
+				@atoms.ButtonLink(atoms.ToneNeutral, "パッケージをダウンロード（ZIP）", templ.SafeURL(paths.Project(projectID, "reviews", it.Item.Request.ID, "package")), templ.Attributes{"download": true})
+			</div>
 		</header>
 		if it.Item.Request.Note != "" {
 			<p class="whitespace-pre-wrap text-sm text-neutral-300">{ it.Item.Request.Note }</p>

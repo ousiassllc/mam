@@ -112,6 +112,7 @@ func TestParseTakeSegments_UnreadableTextAndUnknownTakesAreErrors(t *testing.T) 
 func TestValidateTakeSegments_RejectsWhatCannotBeComposed(t *testing.T) {
 	ok := []TakeSegment{{TakeID: "t1", Start: 0, End: 2}, {TakeID: "t2", Start: 2, End: 4}}
 	assert.NoError(t, ValidateTakeSegments(ok, shotTakes()))
+	assert.NoError(t, ValidateTakeSegments([]TakeSegment{ok[0], {TakeID: "t2", Start: 0.4, End: 0.7}}, shotTakes())) // 0.29999999999999993 long
 
 	for name, segs := range map[string][]TakeSegment{
 		"one segment":     ok[:1],
