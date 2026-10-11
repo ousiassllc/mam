@@ -93,6 +93,42 @@ func TestMake_ARequestThatGivesUpDoesNotKillTheConversion(t *testing.T) {
 	assert.NoError(t, c.Make(context.Background(), dst, time.Hour, func(context.Context) error { t.Error("made twice"); return nil }))
 }
 
+func TestClose_CancelsTheRunningConversionAndWaitsForIt(t *testing.T) {
+	c, dst := newCache(), filepath.Join(t.TempDir(), "t1.mp4")
+	started, stopped := make(chan struct{}), make(chan struct{})
+	build := func(ctx context.Context) error {
+		close(started)
+		<-ctx.Done() // ffmpeg is killed with the context
+		close(stopped)
+		return ctx.Err()
+	}
+	go func() { _ = c.Make(context.Background(), dst, time.Hour, build) }()
+	<-started
+
+	closed := make(chan struct{})
+	go func() { c.Close(); close(closed) }()
+
+	select {
+	case <-closed:
+	case <-time.After(5 * time.Second):
+		t.Fatal("Close did not return: build's context was not cancelled")
+	}
+	select {
+	case <-stopped:
+	default:
+		t.Fatal("Close returned before the conversion ended")
+	}
+}
+
+func TestClose_RefusesFurtherConversions(t *testing.T) {
+	c, dst := newCache(), filepath.Join(t.TempDir(), "t1.mp4")
+	c.Close()
+
+	err := c.Make(context.Background(), dst, time.Hour, func(context.Context) error { t.Error("built after Close"); return nil })
+
+	assert.ErrorIs(t, err, previewcache.ErrClosed)
+}
+
 func TestMake_RequestsForOneFileWaitForOneRun(t *testing.T) {
 	c, dst := newCache(), filepath.Join(t.TempDir(), "t1.mp4")
 	var runs atomic.Int32
