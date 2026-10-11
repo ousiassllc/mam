@@ -45,13 +45,14 @@ test-static: static/node_modules ## front-end unit tests
 test-scripts: ## shell script tests
 	bash scripts/linterly-baseline_test.sh
 
-lint: lint-go lint-static ## golangci-lint + tsc
+lint: lint-go lint-static ## golangci-lint + tsc + biome lint
 
 lint-go: generate
 	golangci-lint run ./...
 
 lint-static: static/node_modules
 	npm run typecheck --prefix static
+	npm run lint --prefix static
 
 lint-lines: ## fail when a file / directory got over the linterly line limit beyond .linterly-baseline
 	./scripts/linterly-baseline.sh check
@@ -59,13 +60,15 @@ lint-lines: ## fail when a file / directory got over the linterly line limit bey
 linterly-baseline: ## rewrite .linterly-baseline from the current linterly result (after splitting files)
 	./scripts/linterly-baseline.sh update
 
-fmt: ## format Go code and templ templates
+fmt: static/node_modules ## format Go code, templ templates and front-end TypeScript
 	templ fmt backend
 	golangci-lint fmt ./...
+	npm run format --prefix static
 
-fmt-check: ## fail when Go code or templates are not formatted
+fmt-check: static/node_modules ## fail when Go code, templates or front-end TypeScript are not formatted
 	@test -z "$$(gofmt -l backend static)" || (gofmt -l backend static; exit 1)
 	@templ fmt -fail backend
+	npm run format:check --prefix static
 
 tools: ## install the pinned dev tools (templ, air, golangci-lint, linterly) and the npm deps
 	go install github.com/a-h/templ/cmd/templ@$(TEMPL_VERSION)

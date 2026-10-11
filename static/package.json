@@ -6,6 +6,9 @@
     "dev": "node build.mjs --watch",
     "build": "node build.mjs",
     "typecheck": "tsc --noEmit",
+    "lint": "biome lint .",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
     "test": "vitest run && npm run test:components",
     "test:components": "wtr"
   },
