@@ -138,7 +138,7 @@ func (p *Planner) Plan(ctx context.Context, in PlanInput) (Plan, error) {
 		}
 		used++
 		sp := plan[a.Index]
-		sp.Emotion = truncate(strings.TrimSpace(a.Emotion), maxEmotionRunes)
+		sp.Emotion = domain.TruncateRunes(strings.TrimSpace(a.Emotion), maxEmotionRunes)
 		if s := strings.TrimSpace(a.BGM); s != "" {
 			sp.BGM = s
 		}
@@ -219,12 +219,4 @@ func plannerPrompt(in PlanInput) string {
 		}
 	}
 	return sb.String()
-}
-
-func truncate(s string, runes int) string {
-	r := []rune(s)
-	if len(r) <= runes {
-		return s
-	}
-	return string(r[:runes])
 }

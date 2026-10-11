@@ -102,7 +102,7 @@ func captionOf(text string) string {
 	if utf8.RuneCountInString(text) <= domain.MaxCaptionRunes {
 		return text
 	}
-	return string([]rune(text)[:domain.MaxCaptionRunes-1]) + "…"
+	return domain.TruncateRunes(text, domain.MaxCaptionRunes-1) + "…"
 }
 
 func round3(v float64) float64 { return math.Round(v*1000) / 1000 }

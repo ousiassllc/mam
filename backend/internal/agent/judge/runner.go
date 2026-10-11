@@ -254,7 +254,7 @@ func (r *Runner) fail(ctx context.Context, ref repository.TakeRef, err error, le
 	reason := FailureReason(err)
 	notice := domain.ChatMessage{
 		Role: domain.RoleAssistant, Kind: domain.KindText,
-		Content: fmt.Sprintf("Take %s の Judge に失敗しました: %s\n対処したら、もう一度 Judge を実行してください。", shortID(ref.Take.ID), reason),
+		Content: fmt.Sprintf("Take %s の Judge に失敗しました: %s\n対処したら、もう一度 Judge を実行してください。", domain.ShortID(ref.Take.ID), reason),
 	}
 	if aerr := r.Chat.Announce(context.WithoutCancel(ctx), ref.ProjectID, notice); aerr != nil {
 		r.Logger.Error("post judge failure notice failed", "take_id", ref.Take.ID, "err", aerr)
