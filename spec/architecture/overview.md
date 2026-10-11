@@ -147,7 +147,7 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 │       └── web/
 │           ├── handler/    # projects.go, chat.go, scenes.go, generation.go, take.go, director.go,
 │           │                # editor.go, branch.go, settings.go ...（機能ごと）
-│           ├── middleware/  # CSRF、ループバック限定ガード、ロギング/リカバリ
+│           ├── middleware/  # CSRF、ループバック限定ガード、セキュリティヘッダ（CSP）、ロギング/リカバリ
 │           ├── paths/       # ルート URL の組み立て（ハンドラーとテンプレートで共有）
 │           ├── atoms/       # button, badge, field, spinner, toast, lock_toggle(AUTO/MANUAL/LOCK) 等
 │           ├── molecules/   # shot_card, take_card, world_state_field, approval_card, escalation_card 等
@@ -218,6 +218,7 @@ waitForShutdownSignal()
 - 本番ビルドでは `static/src/dist` を `go:embed` し、単一バイナリに同梱する（サーバー・アセットとも1バイナリで完結）
 - `internal/router`, `internal/web`, `internal/agent` 等はすべて `http.Handler` 単位で完結しており、実行方式（ブラウザで開く or Wails ウィンドウで開く）に依存しない
 - サーバーは `127.0.0.1` のみにバインドし、加えて `LoopbackOnly` ミドルウェアがループバック以外のクライアント・`Host`（DNSリバインディング対策）・`Origin` を 403 で拒否する（`Origin` はループバックのホストであること。さらに `GET/HEAD/OPTIONS` 以外のリクエストと WebSocket のハンドシェイクでは、`Origin` の host:port が `Host` と一致する、つまりこのサーバー自身のオリジンであることを求め、同じループバック上の別ポートのページからのリクエストも拒否する）。CSRF は Cookie（`mam_csrf`、HttpOnly/SameSite=Strict）と `<meta name="csrf-token">` の二重送信方式で、`GET/HEAD/OPTIONS` 以外は `X-CSRF-Token` ヘッダ（htmx・`lib/api.ts`が付与）の一致を必須とする（ボディは読まない。フォームフィールドでの送信は受け付けない）。これらのミドルウェア（`LoopbackOnly`・CSRF・`MaxBody`・`Recovery`）の拒否は、`HX-Request` のリクエストには他のエラーと同じ `text/html` のトースト（`HX-Reswap: none`）で返し、それ以外には JSON（または空ボディ）で返す。htmx がレスポンスを得られなかった場合（`htmx:sendError`/`htmx:timeout`/`htmx:responseError`）は `main.ts` がトーストを表示する
+- `SecurityHeaders` ミドルウェア（`LoopbackOnly` の次）が全応答に `Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' ws://<Host>; img-src 'self' data:; media-src 'self' blob:; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'` と `X-Content-Type-Options: nosniff` を付ける。スクリプトは `/static/app.js` だけで、インライン `<script>`・`eval` は動かない（htmx の `allowScriptTags=false`・`allowEval=false` と二重の防御）。`style-src` が `'unsafe-inline'` なのは Lit の動的な `style` 属性と htmx のインジケーター用 `<style>` のため。`frame-ancestors 'none'` でクリックジャッキングも防ぐ。`ws://<Host>` は古い WebKit が同一オリジンの `ws:` を `'self'` に含めないための明示で、`Host` は `LoopbackOnly` を通ったループバックのホスト:ポートだけを入れる。ハンドラが自分で付ける `Content-Security-Policy`（アセット・動画配信の `sandbox`）は上書きされる
 - 設定は `--data-dir`（既定: OS のユーザー設定ディレクトリ配下の `mam`）・`--port`（既定 8787、使用中なら空きポート）・`--no-browser`・`--log-level`・`--static-dir`（開発時のみ、ディスクから静的アセットを配信）に加え、モデル関連の次の設定を、対応する `MAM_*` 環境変数（フラグ名を大文字・`_` 区切りにした `MAM_LLM_CONFIG` 等）で指定する。フラグは環境変数より優先される。
 - 起動処理は `internal/app` が持ち、`cmd/server` と `cmd/wails` は表示の仕方（ブラウザを開く／ウィンドウに URL を読み込む）だけが違う。どちらも同じ `127.0.0.1` のサーバーを起動し、設定（フラグ・`MAM_*`）、データディレクトリのロック、ジョブ復旧、グレースフルシャットダウンは共通である
 - データディレクトリは起動時に排他ロック（`<data-dir>/.mam.lock`、OS のファイルロック。プロセスが死ねば OS が解放する）を取る。同じディレクトリで 2 つ目のインスタンスを起動するとエラーで終了し、実行中のインスタンスの一時ファイルやインポート途中のディレクトリを起動時の掃除（`RemoveStaleTemp` / `RemoveStaleImports`）で消すことはない。別の `--data-dir` を指定すれば並行して起動できる。
@@ -310,3 +311,4 @@ Windows では、ブラウザ版と同じ `127.0.0.1` のサーバーを `intern
 | 1.16 | 2026-10-11 | §5 の `cmd/wails/` に `dialog.go` を追加し、§6 の DI ルートの説明を `cmd/server/main.go` から `internal/app`（`app.Run` → `buildServices`）に直し、§9 の「§11.3」を `desktop.md` §4 に直した | 配線を `internal/app/services.go` へ移した実装と、起動エラーを MessageBox で出す `cmd/wails/dialog.go` に仕様が追随していなかったため。§11.3 は存在しない節だった |
 | 1.17 | 2026-10-11 | §5 の構成図に `.linterly-baseline`・`scripts/linterly-baseline.sh`・`scripts/linterly-baseline_test.sh` を追加 | Issue #495。行数上限の既存超過を基準値として記録し、CI で悪化だけを止める仕組みを足した |
 | 1.18 | 2026-10-11 | §5 の構成図に `backend/internal/testenv/`・`.github/workflows/`（`ci.yml`・`release.yml`）・ルートの `Taskfile.yml` を追加 | Issue #498。`testenv`（Issue #485）の追加時に構成図が更新されておらず、`internal` 直下で唯一図に無いパッケージになっていた。CI のワークフローとルートの Taskfile（`desktop.md` §4 が前提にする）も図に無かった |
+| 1.19 | 2026-10-11 | §5 の `middleware/` に「セキュリティヘッダ（CSP）」を追加し、§6 に `SecurityHeaders`（全応答への `Content-Security-Policy`・`X-Content-Type-Options: nosniff`）の記述を追加 | Issue #509。htmx・Lit が「自前の `/static/app.js` 以外のスクリプトを実行しない」前提が、ブラウザ側の強制（CSP）では担保されていなかったため |
