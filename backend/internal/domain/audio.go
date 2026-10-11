@@ -11,11 +11,6 @@ const (
 	ModelSyncLabs        ModelName = "sync-labs"
 )
 
-// AudioModels lists the audio models that have an adapter.
-func AudioModels() []ModelName {
-	return []ModelName{ModelElevenLabsTTS, ModelElevenLabsMusic, ModelElevenLabsSFX, ModelSyncLabs}
-}
-
 // AudioLayer is one layer of the Audio Timeline (spec/spec.md §18).
 type AudioLayer string
 
@@ -35,16 +30,6 @@ const (
 // tempo (the spoken layers come from the script).
 func PlannedLayers() []AudioLayer {
 	return []AudioLayer{LayerBGM, LayerSE, LayerAmbience, LayerFoley}
-}
-
-// IsPlanned reports whether l is one of PlannedLayers.
-func (l AudioLayer) IsPlanned() bool {
-	for _, p := range PlannedLayers() {
-		if l == p {
-			return true
-		}
-	}
-	return false
 }
 
 // Model is the model that makes the layer.
