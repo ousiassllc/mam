@@ -43,7 +43,8 @@ export function failOnHttpError(ajax: AjaxFn, findSource: (selector: string) => 
     } finally {
       source?.removeEventListener('htmx:afterRequest', onAfterRequest);
     }
-    if (status !== undefined && !isSuccessResponse({ status })) throw new Error(`${verb.toUpperCase()} ${url} responded ${status}`);
+    if (status !== undefined && !isSuccessResponse({ status }))
+      throw new Error(`${verb.toUpperCase()} ${url} responded ${status}`);
   };
 }
 
@@ -51,7 +52,10 @@ export const AJAX_FAILED_MESSAGE = '通信に失敗しました。しばらく�
 
 const log = createLogger('ajax');
 
-export function createAjaxGet(ajax: AjaxFn, notify: (message: string) => void): (url: string, context: AjaxContext) => Promise<boolean> {
+export function createAjaxGet(
+  ajax: AjaxFn,
+  notify: (message: string) => void,
+): (url: string, context: AjaxContext) => Promise<boolean> {
   return async (url, context) => {
     try {
       await ajax('get', url, { source: context.target, ...context });

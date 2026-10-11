@@ -6,6 +6,9 @@
     "dev": "node build.mjs --watch",
     "build": "node build.mjs",
     "typecheck": "tsc --noEmit",
+    "lint": "biome lint .",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
     "test": "vitest run && npm run test:components",
     "test:components": "wtr"
   },
@@ -14,6 +17,7 @@
     "lit": "^3.3.3"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.5.15",
     "@open-wc/testing": "^5.0.0",
     "@tailwindcss/cli": "^4.1.0",
     "@types/mocha": "^10.0.10",

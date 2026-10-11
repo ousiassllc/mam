@@ -26,7 +26,8 @@ export function stubFetch(routes: Record<string, Reply | ((req: RecordedRequest)
     requests.push(req);
     const route = routes[`${req.method} ${req.url}`];
     const reply = typeof route === 'function' ? route(req) : (route ?? { status: 404, body: { title: 'Not Found' } });
-    const text = reply.body === undefined ? '' : typeof reply.body === 'string' ? reply.body : JSON.stringify(reply.body);
+    const text =
+      reply.body === undefined ? '' : typeof reply.body === 'string' ? reply.body : JSON.stringify(reply.body);
     return new Response(text, { status: reply.status ?? 200 });
   }) as typeof window.fetch;
   return {

@@ -98,7 +98,10 @@ class ChatWorkspace {
   private catchUp(): Promise<unknown> {
     return catchUpAfterReconnect({
       pendingMessageIds: () =>
-        Array.from(this.thread.querySelectorAll<HTMLElement>('[data-card-pending]'), (el) => el.dataset.messageId ?? '').filter(Boolean),
+        Array.from(
+          this.thread.querySelectorAll<HTMLElement>('[data-card-pending]'),
+          (el) => el.dataset.messageId ?? '',
+        ).filter(Boolean),
       refetchCard: (id) => this.refetchCard(id),
       syncNew: () => this.syncer.request(),
     });
@@ -174,7 +177,8 @@ class ChatWorkspace {
     });
     // Card buttons post replies on their own (not the refetches of syncNew): clear the pending reply target with them.
     this.thread.addEventListener('htmx:afterRequest', (event) => {
-      if ((event.target as HTMLElement).hasAttribute('hx-post') && isSuccessResponse(requestXhr(event))) this.setReplyTarget('', '');
+      if ((event.target as HTMLElement).hasAttribute('hx-post') && isSuccessResponse(requestXhr(event)))
+        this.setReplyTarget('', '');
     });
   }
 

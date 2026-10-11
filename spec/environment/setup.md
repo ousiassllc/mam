@@ -2,7 +2,7 @@
 
 ## 開発ツール
 
-Go（`go.mod` のバージョン）、Node.js（24。CI は `.github/workflows/ci.yml` で `node-version: 24` を固定している。`static/package.json` に `engines` は無い）、`templ`、`golangci-lint`、`linterly`、`lefthook`、`jq`、Chrome / Chromium。`make tools` が templ（`go.mod` の版に合わせる）・air・golangci-lint・linterly を版を固定して入れ、npm 依存（`static/node_modules`）も用意する。`make assets` / `make test-static` / `make lint-static` / `make dev` は `static/node_modules` が無ければ（または `package-lock.json` が新しければ）`npm ci` を自動で実行する。フロントエンドのパッケージマネージャは npm（`static/package-lock.json`）。
+Go（`go.mod` のバージョン）、Node.js（24。CI は `.github/workflows/ci.yml` で `node-version: 24` を固定している。`static/package.json` に `engines` は無い）、`templ`、`golangci-lint`、`linterly`、`lefthook`、`jq`、Chrome / Chromium。`make tools` が templ（`go.mod` の版に合わせる）・air・golangci-lint・linterly を版を固定して入れ、npm 依存（`static/node_modules`。Biome を含む）も用意する。`make assets` / `make test-static` / `make lint-static` / `make fmt` / `make fmt-check` / `make dev` は `static/node_modules` が無ければ（または `package-lock.json` が新しければ）`npm ci` を自動で実行する。フロントエンドのパッケージマネージャは npm（`static/package-lock.json`）。
 
 - **`jq`**: pre-commit の `scripts/linterly-staged.sh`（コミット対象ファイルの行数チェック）と `scripts/linterly-baseline.sh`（行数の基準値チェック。`make lint-lines`・CI）が使う。無いと「jq not found」で pre-commit が必ず失敗する（`make tools` では入らない。OS のパッケージマネージャで入れる）。
 - **Chrome / Chromium**: Lit コンポーネントのテスト（`*.wtest.ts`）を実際のブラウザで動かす `@web/test-runner-chrome`（`static/web-test-runner.config.mjs`）が、インストール済みの Chrome を探して使う。`make test-static`（したがって `make test` と pre-push）が必要とし、見つからないときは `CHROME_PATH` で実行ファイルを指定する。CI（`ubuntu-latest`）は GitHub 同梱のものを使う。
@@ -14,13 +14,13 @@ Go（`go.mod` のバージョン）、Node.js（24。CI は `.github/workflows/c
 | コマンド | 内容 |
 |---|---|
 | `make generate` | `templ generate ./backend/...` |
-| `make fmt` | `templ fmt backend` と `golangci-lint fmt ./...`（`.golangci.yml` の formatter は gofmt と goimports） |
-| `make fmt-check` | `gofmt -l backend static` が空であることと `templ fmt -fail backend`（goimports は見ない。未整形で失敗） |
+| `make fmt` | `templ fmt backend`、`golangci-lint fmt ./...`（`.golangci.yml` の formatter は gofmt と goimports）、Biome によるフロントエンド TypeScript の整形（`npm run format --prefix static`） |
+| `make fmt-check` | `gofmt -l backend static` が空であることと `templ fmt -fail backend`（goimports は見ない）、`biome format`（`npm run format:check --prefix static`）。未整形で失敗 |
 | `make lint` | `make lint-go` と `make lint-static` |
 | `make lint-lines` | `scripts/linterly-baseline.sh check`。`.linterly-baseline` より悪化した行数超過があれば失敗（Linterly 節）。`linterly` と `jq` が要る |
 | `make linterly-baseline` | `scripts/linterly-baseline.sh update`。`.linterly-baseline` を現在の `linterly check` の結果で書き換える |
 | `make lint-go` | `make generate` のあと `golangci-lint run ./...`（`.golangci.yml`） |
-| `make lint-static` | `tsc --noEmit`（`npm run typecheck --prefix static`） |
+| `make lint-static` | `tsc --noEmit`（`npm run typecheck --prefix static`）と `biome lint`（`npm run lint --prefix static`） |
 | `make test` | `make test-go` と `make test-static` と `make test-scripts` |
 | `make test-scripts` | `bash scripts/linterly-baseline_test.sh`（行数基準値のスクリプトのテスト。`jq` が要る） |
 | `make test-go` | `make generate` のあと `go test -race -timeout 30m ./...`（`-race` の逐次テストが長く、既定の 10 分では負荷時に足りない） |
@@ -29,6 +29,18 @@ Go（`go.mod` のバージョン）、Node.js（24。CI は `.github/workflows/c
 | `make build-all` | `scripts/build.sh --all`。windows / darwin / linux × amd64 / arm64 の 6 構成を `bin/mam-<os>-<arch>[.exe]`（Windows は `.exe` 付き）に出力する（`spec/requirements/non-functional.md` §1） |
 | `make clean` | `bin`・`tmp`・`static/src/dist/app.*` を削除する |
 | `scripts/package-windows.sh <version>` | Windows 版（Wails ウィンドウ）のパッケージング。templ → esbuild/tailwind → `wails3 package GOOS=windows`（`GOARCH=amd64`）で `bin/mam-<version>-windows-amd64.exe`（ポータブル）と `bin/mam-<version>-windows-amd64-setup.exe`（NSIS インストーラー）を作る。`<version>` は `X.Y.Z` 形式でなければ失敗する。Windows 上（Git Bash）で動かす。`make` のターゲットは無い（Windows に `make` が無いため） |
+
+## フロントエンドの整形・lint
+
+`static/src` の TypeScript（`*.ts`・`*.wtest.ts`・`*.test.ts`）と `static/build.mjs`・`static/web-test-runner.config.mjs` は Biome（`@biomejs/biome`。`static/package.json` に版を固定）で整形・lint する。設定は `static/biome.json`（インデント 2 スペース・シングルクォート・行幅 120・末尾カンマ。`.gitignore` と `static/src/dist` は対象外）。
+
+- 整形: `make fmt`（`npm run format --prefix static`）で書き換え、`make fmt-check`（`npm run format:check --prefix static`）で未整形なら失敗する。
+- lint: `make lint-static` が `tsc --noEmit` のあとに `biome lint` を走らせる。recommended に加えて、未使用の import / 変数（`noUnusedImports`・`noUnusedVariables`）、`==`（`noDoubleEquals`）、`void` を付け忘れた Promise（`nursery/noFloatingPromises`）をエラーにする。`!`（非 null アサーション）は `noUncheckedIndexedAccess` の下で意図して使っているため `noNonNullAssertion` は無効にしている。
+- import の並べ替え（organizeImports）は使わない。
+- 初回の一括整形は 1 コミットに分けてある。以降の差分に整形のノイズを混ぜない。
+- 整形で行数が増えた分は `.linterly-baseline` の該当エントリに反映した（機械的な増加であり、悪化の見逃しではない）。
+
+CI は `make fmt-check` と `make lint` を実行するため、上の検査は追加のステップ無しで CI に入る（`static/node_modules` は `make tools` の `npm ci` で用意される）。
 
 ## CI
 
@@ -69,7 +81,7 @@ pre-commit（`scripts/linterly-staged.sh`）は従来どおり、コミット対
 
 `lefthook.yml`（`lefthook install` で有効化）。
 
-- pre-commit: コミット対象ファイルの行数（`scripts/linterly-staged.sh`。`linterly check` は 1 パスしか受け取れないため全体結果をコミット対象に絞る）、`make fmt-check`、`make lint-go`、`make lint-static`（対象ファイルがある場合）
+- pre-commit: コミット対象ファイルの行数（`scripts/linterly-staged.sh`。`linterly check` は 1 パスしか受け取れないため全体結果をコミット対象に絞る）、`make fmt-check`（`*.go` / `*.templ` / `*.ts`）、`make lint-go`、`make lint-static`（`static/**/*.ts` がある場合。`tsc` と Biome lint）
 - pre-push: `go build ./...` と `go vet ./...`、それに `make test`
 
 ## 改訂履歴
@@ -81,3 +93,4 @@ pre-commit（`scripts/linterly-staged.sh`）は従来どおり、コミット対
 | 1.3 | 2026-10-11 | CI に ffmpeg の導入ステップを追加し、CI では ffmpeg 無しのテストが Skip でなく失敗になることを CI 節に明記 | Issue #485。`ubuntu-latest` に ffmpeg が無く、ffmpeg を使う Go テストが CI で全件 Skip されて緑になっていた |
 | 1.4 | 2026-10-11 | CI 節に、顔同一性の実モデルのテストは環境変数が未設定で Skip し CI・`make test`・pre-push では動かさないこと、手元での実行方法を明記 | Issue #486。実モデルのテストが常に Skip されているのに、環境構築の仕様に存在も実行方法も書かれていなかった |
 | 1.5 | 2026-10-11 | Linterly 節を、既存の超過を `.linterly-baseline` に記録して CI（`make lint-lines`）で悪化を止める運用に書き換え。ディレクトリ上限の方針を明記。`make tools` に linterly、`make test` に `test-scripts` を追加 | Issue #495。超過は CI で検出されず、増えても気づけず、減らす圧力もなかった |
+| 1.6 | 2026-10-11 | フロントエンドの TypeScript に Biome（format + lint）を導入し、`make fmt` / `make fmt-check` / `make lint-static`・lefthook の pre-commit に組み込んだ。「フロントエンドの整形・lint」節を追加 | Issue #505。`static/src` の約 4,800 行に formatter / linter が無く、`tsc` だけで CI・pre-commit を通っていた（未使用 import・`no-floating-promises`・`==`・インデントの崩れがレビューまで検出されなかった） |

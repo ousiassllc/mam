@@ -33,7 +33,10 @@ describe('connections of elements that left the document', () => {
   async function failUntilGiveUp(beforeLast: () => void): Promise<void> {
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       if (attempt === MAX_RETRIES) beforeLast();
-      FakeSocket.instances.filter((s) => !s.closed).forEach((s) => ((s.closed = true), s.onclose?.()));
+      for (const s of FakeSocket.instances.filter((s) => !s.closed)) {
+        s.closed = true;
+        s.onclose?.();
+      }
       await aTimeout(20);
     }
   }
@@ -47,7 +50,8 @@ describe('connections of elements that left the document', () => {
   }
 
   it('stops following a Shot card that was replaced before the socket gave up', async () => {
-    host.innerHTML = '<article id="card" data-shot-progress data-ws-url="/ws/shots/s1" data-refresh-url="/refresh/s1">生成中</article>';
+    host.innerHTML =
+      '<article id="card" data-shot-progress data-ws-url="/ws/shots/s1" data-refresh-url="/refresh/s1">生成中</article>';
     initShotProgress(host);
     expect(FakeSocket.instances.length).to.equal(1);
 

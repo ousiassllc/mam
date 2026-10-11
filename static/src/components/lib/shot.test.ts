@@ -3,10 +3,18 @@ import { createRefreshGuard, describeProgress, isFinished, planCardRefresh, prog
 
 describe('isFinished', () => {
   it('is true once the work is over or nothing is running', () => {
-    expect(['done', 'failed', 'idle'].map((stage) => isFinished({ stage: stage as never }))).toEqual([true, true, true]);
+    expect(['done', 'failed', 'idle'].map((stage) => isFinished({ stage: stage as never }))).toEqual([
+      true,
+      true,
+      true,
+    ]);
   });
   it('is false while the Shot is queued or generating', () => {
-    expect(['queued', 'generating', 'judging'].map((stage) => isFinished({ stage: stage as never }))).toEqual([false, false, false]);
+    expect(['queued', 'generating', 'judging'].map((stage) => isFinished({ stage: stage as never }))).toEqual([
+      false,
+      false,
+      false,
+    ]);
   });
 });
 
@@ -18,7 +26,9 @@ describe('describeProgress', () => {
     expect(describeProgress({ stage: 'queued', action: 'judge' })).toBe('Judge の順番を待っています');
     expect(describeProgress({ stage: 'generating', takes_done: 1, takes_total: 3 })).toBe('生成中 1 / 3 Take');
     expect(describeProgress({ stage: 'queued', action: 'candidates' })).toBe('生成の順番を待っています');
-    expect(describeProgress({ stage: 'generating', action: 'candidates', takes_done: 1, takes_total: 3 })).toBe('生成中 1 / 3 Take');
+    expect(describeProgress({ stage: 'generating', action: 'candidates', takes_done: 1, takes_total: 3 })).toBe(
+      '生成中 1 / 3 Take',
+    );
     expect(describeProgress({ stage: 'generating' })).toBe('生成中');
     expect(describeProgress({ stage: 'queued', action: 'repair' })).toBe('修正の順番を待っています');
     expect(describeProgress({ stage: 'repairing', action: 'repair' })).toBe('修正中');

@@ -92,7 +92,7 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 ├── .air.toml               # make dev のホットリロード設定
 ├── .golangci.yml           # lint。depguard でレイヤー依存ルールを強制
 ├── .linterly-baseline      # 行数上限（300 行 / 2000 行）を超えている既存のファイル・ディレクトリの行数。CI は悪化だけを止める（環境構築 spec の Linterly 節）
-├── lefthook.yml            # Git フック。pre-commit は linterly（scripts/linterly-staged.sh 経由）・fmt-check・lint-go・typecheck（lint-static）、pre-push は build/vet と make test
+├── lefthook.yml            # Git フック。pre-commit は linterly（scripts/linterly-staged.sh 経由）・fmt-check（Go / templ / TS）・lint-go・lint-static（tsc + Biome lint）、pre-push は build/vet と make test
 ├── .github/
 │   └── workflows/
 │       ├── ci.yml          # CI（lint・テスト・ビルド・行数上限の基準値チェック。環境構築 spec の CI 節）
@@ -157,6 +157,7 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 └── static/
     ├── embed.go            # src/dist を go:embed（`static.Dist()`）
     ├── package.json        # esbuild / Tailwind / htmx / Lit / vitest（lib）/ @web/test-runner（Lit コンポーネント、`*.wtest.ts`）
+    ├── biome.json          # TypeScript の整形・lint（Biome）の設定。`make fmt` / `make fmt-check` / `make lint-static` が使う
     ├── build.mjs           # esbuild（JS）+ Tailwind（CSS）のビルド・ウォッチ
     └── src/
         ├── main.ts         # エントリーポイント。htmx へ CSRF トークンを付与、Lit コンポーネントを import
@@ -270,7 +271,7 @@ dev:
 - `make dev` は `MAM_STATIC_DIR=static/src/dist` を設定し、再ビルドのたびにバイナリを作り直さずディスク上のアセットを配信する
 - 本番ビルド: `make build`（`scripts/build.sh`）が `templ generate` → `esbuild`（minify） → `tailwind`（minify） → `go build`（`go:embed`で静的アセット同梱、`CGO_ENABLED=0`）を一括実行し `bin/mam` を生成する（`make build-all` = `scripts/build.sh --all` は windows / darwin / linux × amd64 / arm64 の全プラットフォームを `bin/mam-<os>-<arch>` に生成する）。SQLite は純 Go ドライバ（modernc.org/sqlite）のため各 OS/arch へクロスコンパイル可能
 - Windows 版: `scripts/package-windows.sh` が上の本番ビルドと同じフロントエンド工程の後に `wails3 package GOOS=windows` を実行し、ポータブル `mam.exe` と NSIS インストーラーを作る（`desktop.md` §4）。ローカルの確認は Windows 上で行う（Wails v3 の `wails3` CLI と NSIS（`makensis`）が必要）
-- その他のターゲット: `make test`（Go `-race` + フロントの vitest + web-test-runner の Lit コンポーネントテスト（Chrome が必要））、`make lint`（golangci-lint + `tsc --noEmit`）、`make fmt` / `make fmt-check`
+- その他のターゲット: `make test`（Go `-race` + フロントの vitest + web-test-runner の Lit コンポーネントテスト（Chrome が必要））、`make lint`（golangci-lint + `tsc --noEmit` + Biome lint）、`make fmt` / `make fmt-check`（Go・templ に加えてフロントの TypeScript を Biome で整形・検査）
 
 ## 10. テスト戦略
 
@@ -312,3 +313,4 @@ Windows では、ブラウザ版と同じ `127.0.0.1` のサーバーを `intern
 | 1.17 | 2026-10-11 | §5 の構成図に `.linterly-baseline`・`scripts/linterly-baseline.sh`・`scripts/linterly-baseline_test.sh` を追加 | Issue #495。行数上限の既存超過を基準値として記録し、CI で悪化だけを止める仕組みを足した |
 | 1.18 | 2026-10-11 | §5 の構成図に `backend/internal/testenv/`・`.github/workflows/`（`ci.yml`・`release.yml`）・ルートの `Taskfile.yml` を追加 | Issue #498。`testenv`（Issue #485）の追加時に構成図が更新されておらず、`internal` 直下で唯一図に無いパッケージになっていた。CI のワークフローとルートの Taskfile（`desktop.md` §4 が前提にする）も図に無かった |
 | 1.19 | 2026-10-11 | §5 の `middleware/` に「セキュリティヘッダ（CSP）」を追加し、§6 に `SecurityHeaders`（全応答への `Content-Security-Policy`・`X-Content-Type-Options: nosniff`）の記述を追加 | Issue #509。htmx・Lit が「自前の `/static/app.js` 以外のスクリプトを実行しない」前提が、ブラウザ側の強制（CSP）では担保されていなかったため |
+| 1.20 | 2026-10-11 | §5 の構成図に `static/biome.json` を追加し、`lefthook.yml` の説明（`typecheck` → `lint-static`）と §9 の `make lint` / `make fmt` / `make fmt-check` の説明に Biome を反映 | Issue #505。フロントエンドの TypeScript に formatter / linter が無く、`tsc` だけで CI・pre-commit を通っていた |

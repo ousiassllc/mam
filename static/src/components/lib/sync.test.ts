@@ -10,7 +10,9 @@ function timers() {
       return pending.length;
     },
     clearTimer: () => pending.splice(0),
-    fire: () => pending.splice(0).forEach((t) => t.fn()),
+    fire: () => {
+      for (const t of pending.splice(0)) t.fn();
+    },
   };
 }
 

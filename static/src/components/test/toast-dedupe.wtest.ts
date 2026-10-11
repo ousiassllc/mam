@@ -17,7 +17,8 @@ describe('repeated request failures', () => {
   afterEach(() => host.remove());
 
   it('shows one toast for N htmx:sendError events', () => {
-    for (let i = 0; i < 4; i++) host.dispatchEvent(new CustomEvent('htmx:sendError', { bubbles: true, detail: { xhr: { status: 0 } } }));
+    for (let i = 0; i < 4; i++)
+      host.dispatchEvent(new CustomEvent('htmx:sendError', { bubbles: true, detail: { xhr: { status: 0 } } }));
     expect(host.querySelectorAll('#toast-region [data-toast]').length).to.equal(1);
   });
 });

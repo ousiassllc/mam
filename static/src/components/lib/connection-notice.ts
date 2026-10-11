@@ -36,7 +36,8 @@ export function createConnectionNotice(what: string): ConnectionNotice {
     show(retry) {
       if (notice?.isConnected) return;
       const template = document.getElementById(TEMPLATE_ID);
-      const clone = template instanceof HTMLTemplateElement ? template.content.firstElementChild?.cloneNode(true) : null;
+      const clone =
+        template instanceof HTMLTemplateElement ? template.content.firstElementChild?.cloneNode(true) : null;
       if (!(clone instanceof HTMLElement)) {
         log.warn(`#${TEMPLATE_ID} is missing; cannot show the connection notice`, what);
         return;

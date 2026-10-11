@@ -133,7 +133,12 @@ export class MamTakeComparator extends LitElement {
   private clips(): Clip[] {
     return this.takes
       .filter((t) => t.partial_usable)
-      .map((t) => ({ id: t.id, label: t.label, duration: t.duration_seconds ?? 0, fps: t.fps && t.fps > 0 ? t.fps : 30 }));
+      .map((t) => ({
+        id: t.id,
+        label: t.label,
+        duration: t.duration_seconds ?? 0,
+        fps: t.fps && t.fps > 0 ? t.fps : 30,
+      }));
   }
 
   /** Runs a request to the server, reports its error and reloads the Takes. */
@@ -159,7 +164,9 @@ export class MamTakeComparator extends LitElement {
     const segments = 'segments' in body ? body.segments : [];
     this.selection = [];
     this.instruction = '';
-    this.dispatchEvent(new CustomEvent('partial-take-confirmed', { detail: { segments }, bubbles: true, composed: true }));
+    this.dispatchEvent(
+      new CustomEvent('partial-take-confirmed', { detail: { segments }, bubbles: true, composed: true }),
+    );
   }
 
   private onLaneDown(event: PointerEvent, clip: Clip): void {
@@ -184,7 +191,10 @@ export class MamTakeComparator extends LitElement {
     const segment = dragToSegment(drag.clip, drag.fromX, drag.toX, drag.width);
     const next = addSegment(this.selection, segment, this.clips());
     if (next === this.selection) {
-      this.error = this.selection.length >= MAX_SEGMENTS ? `区間は最大 ${MAX_SEGMENTS} 個までです` : '0.3 秒以上の区間をドラッグしてください';
+      this.error =
+        this.selection.length >= MAX_SEGMENTS
+          ? `区間は最大 ${MAX_SEGMENTS} 個までです`
+          : '0.3 秒以上の区間をドラッグしてください';
       return;
     }
     this.error = '';
@@ -202,13 +212,16 @@ export class MamTakeComparator extends LitElement {
       <div class="flex flex-col gap-4">
         ${this.renderError()}
         <div class="overflow-x-auto">${this.renderTable()}</div>
-        ${this.partialUrl ? html`<section class="flex flex-col gap-3" aria-label="区間指定">
+        ${
+          this.partialUrl
+            ? html`<section class="flex flex-col gap-3" aria-label="区間指定">
           <h3 class="text-sm font-semibold">区間で採用（Partial Take Use）</h3>
           ${this.takes.map((t) => this.renderLane(t))}
           <div class="flex flex-col gap-2 rounded border border-neutral-700 p-3" data-selection>
-            ${this.selection.length === 0
-              ? html`<p class="text-xs text-neutral-400">Take の帯をドラッグして区間を選ぶと、選んだ順につなぎます。</p>`
-              : html`<ol class="flex flex-wrap gap-2 text-xs">
+            ${
+              this.selection.length === 0
+                ? html`<p class="text-xs text-neutral-400">Take の帯をドラッグして区間を選ぶと、選んだ順につなぎます。</p>`
+                : html`<ol class="flex flex-wrap gap-2 text-xs">
                     ${this.selection.map(
                       (s, i) => html`<li class="flex items-center gap-1 rounded bg-neutral-800 px-2 py-1" data-segment>
                         <span>${describeSegments([s], clips)}</span>
@@ -216,7 +229,8 @@ export class MamTakeComparator extends LitElement {
                       </li>`,
                     )}
                   </ol>
-                  <p class="text-xs text-neutral-400">合計 ${totalSeconds(this.selection).toFixed(1)} 秒（つなぎ目はクロスフェード）</p>`}
+                  <p class="text-xs text-neutral-400">合計 ${totalSeconds(this.selection).toFixed(1)} 秒（つなぎ目はクロスフェード）</p>`
+            }
             <div class="flex flex-wrap items-center gap-2">
               <button type="button" data-action="confirm-partial" class="rounded bg-neutral-200 px-3 py-1 text-xs font-medium text-neutral-900 disabled:opacity-40" ?disabled=${!canMerge} @click=${() => void this.confirmPartial({ segments: this.selection })}>
                 この区間で合成
@@ -238,7 +252,9 @@ export class MamTakeComparator extends LitElement {
               </button>
             </form>
           </div>
-        </section>` : nothing}
+        </section>`
+            : nothing
+        }
       </div>
     `;
   }
@@ -250,7 +266,9 @@ export class MamTakeComparator extends LitElement {
   }
 
   private renderError() {
-    return this.error ? html`<p class="rounded border border-red-500/50 bg-red-950/40 px-3 py-2 text-xs text-red-200" role="alert" data-error>${this.error}</p>` : nothing;
+    return this.error
+      ? html`<p class="rounded border border-red-500/50 bg-red-950/40 px-3 py-2 text-xs text-red-200" role="alert" data-error>${this.error}</p>`
+      : nothing;
   }
 
   private renderTable() {
@@ -274,8 +292,17 @@ export class MamTakeComparator extends LitElement {
 
   private renderRow(t: TakeScore) {
     const score = (value: number | undefined) =>
-      value === undefined ? html`<span class="text-neutral-500">—</span>` : html`<span class=${value < 60 ? 'text-red-300' : ''}>${Math.round(value)}</span>`;
-    const detail = [t.model_name, t.resolution, t.fps ? `${t.fps.toFixed(0)}fps` : '', t.proxied ? '4K（プロキシで再生）' : ''].filter(Boolean).join(' · ');
+      value === undefined
+        ? html`<span class="text-neutral-500">—</span>`
+        : html`<span class=${value < 60 ? 'text-red-300' : ''}>${Math.round(value)}</span>`;
+    const detail = [
+      t.model_name,
+      t.resolution,
+      t.fps ? `${t.fps.toFixed(0)}fps` : '',
+      t.proxied ? '4K（プロキシで再生）' : '',
+    ]
+      .filter(Boolean)
+      .join(' · ');
     return html`<tr class="border-t border-neutral-800 ${t.status === 'rejected' ? 'opacity-60' : ''}" data-take=${t.id}>
       <th scope="row" class="px-2 py-2 font-medium">
         Take ${t.label}${t.adopted ? html` <span class="text-xs text-emerald-300" data-adopted>（使用中）</span>` : nothing}
@@ -290,16 +317,22 @@ export class MamTakeComparator extends LitElement {
         ${t.verdict ? html`<span class="ml-1 text-xs text-neutral-400">${t.verdict.toUpperCase()}</span>` : nothing}
       </td>
       <td class="px-2 py-2 text-xs">
-        ${t.select_url || t.reject_url
-          ? html`<span class="flex gap-3">
-              ${t.select_url
-                ? html`<button type="button" class="underline hover:text-neutral-100" data-action="select" ?disabled=${this.busy} @click=${() => void this.act(() => post(t.select_url!))}>選択</button>`
-                : nothing}
-              ${t.reject_url
-                ? html`<button type="button" class="underline hover:text-neutral-100" data-action="reject" ?disabled=${this.busy} @click=${() => void this.act(() => del(t.reject_url!))}>除外</button>`
-                : nothing}
+        ${
+          t.select_url || t.reject_url
+            ? html`<span class="flex gap-3">
+              ${
+                t.select_url
+                  ? html`<button type="button" class="underline hover:text-neutral-100" data-action="select" ?disabled=${this.busy} @click=${() => void this.act(() => post(t.select_url!))}>選択</button>`
+                  : nothing
+              }
+              ${
+                t.reject_url
+                  ? html`<button type="button" class="underline hover:text-neutral-100" data-action="reject" ?disabled=${this.busy} @click=${() => void this.act(() => del(t.reject_url!))}>除外</button>`
+                  : nothing
+              }
             </span>`
-          : nothing}
+            : nothing
+        }
       </td>
     </tr>`;
   }
@@ -312,7 +345,8 @@ export class MamTakeComparator extends LitElement {
     const widthPercent = duration > 0 ? Math.min(duration / axis, 1) * 100 : 100;
     const drag = this.drag && this.drag.clip.id === t.id ? this.drag : null;
     const preview = drag ? dragToSegment(drag.clip, drag.fromX, drag.toX, drag.width) : null;
-    const bar = (s: { start: number; end: number }) => `left:${(s.start / (duration || 1)) * 100}%;width:${((s.end - s.start) / (duration || 1)) * 100}%`;
+    const bar = (s: { start: number; end: number }) =>
+      `left:${(s.start / (duration || 1)) * 100}%;width:${((s.end - s.start) / (duration || 1)) * 100}%`;
     return html`<div class="flex flex-col gap-1" data-lane=${t.id}>
       <div class="text-xs text-neutral-300">Take ${t.label}</div>
       <mam-video-player

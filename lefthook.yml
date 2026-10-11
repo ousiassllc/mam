@@ -7,12 +7,12 @@ pre-commit:
     linterly:
       run: ./scripts/linterly-staged.sh {staged_files}
     fmt:
-      glob: "*.{go,templ}"
+      glob: "*.{go,templ,ts}"
       run: make fmt-check
     lint:
       glob: "*.{go,templ}"
       run: make lint-go
-    typecheck:
+    lint-static:
       glob: "static/**/*.ts"
       run: make lint-static
 

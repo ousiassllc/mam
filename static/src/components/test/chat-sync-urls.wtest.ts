@@ -60,7 +60,9 @@ describe('URLs the Chat Workspace requests', () => {
   });
 
   it('refetches a card from its own data-card-url', async () => {
-    const socket = mount('<article id="msg-m1" data-message-id="m1" data-card-url="/server/card-m1" data-next-url="/server/after-m1"></article>');
+    const socket = mount(
+      '<article id="msg-m1" data-message-id="m1" data-card-url="/server/card-m1" data-next-url="/server/after-m1"></article>',
+    );
     socket.emit({ type: 'card.updated', message_id: 'm1' });
     await waitUntil(() => requested.length > 0, 'no request was made', { timeout: 2000 });
     expect(requested).to.deep.equal(['/server/card-m1']);

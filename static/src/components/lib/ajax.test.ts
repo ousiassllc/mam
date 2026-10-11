@@ -41,7 +41,9 @@ describe('failOnHttpError', () => {
   /** An htmx.ajax stand-in: fires htmx:afterRequest on the source with the given status, then resolves (as htmx does for 4xx/5xx). */
   function htmxLike(source: EventTarget, status: number): AjaxFn {
     return async (_verb, url) => {
-      source.dispatchEvent(new CustomEvent('htmx:afterRequest', { detail: { xhr: { status }, pathInfo: { requestPath: url } } }));
+      source.dispatchEvent(
+        new CustomEvent('htmx:afterRequest', { detail: { xhr: { status }, pathInfo: { requestPath: url } } }),
+      );
     };
   }
 
@@ -62,7 +64,9 @@ describe('failOnHttpError', () => {
   it('ignores the afterRequest of another URL', async () => {
     const source = new EventTarget();
     const ajax: AjaxFn = async () => {
-      source.dispatchEvent(new CustomEvent('htmx:afterRequest', { detail: { xhr: { status: 500 }, pathInfo: { requestPath: '/other' } } }));
+      source.dispatchEvent(
+        new CustomEvent('htmx:afterRequest', { detail: { xhr: { status: 500 }, pathInfo: { requestPath: '/other' } } }),
+      );
     };
     await expect(failOnHttpError(ajax, () => source)('get', '/a', context)).resolves.toBeUndefined();
   });
@@ -74,7 +78,12 @@ describe('failOnHttpError', () => {
     const checked = failOnHttpError(ajax, () => source);
     const timers: (() => void)[] = [];
     const run = vi.fn(() => checked('get', '/messages', context));
-    const syncer = createSyncer({ run, setTimer: (fn) => timers.push(fn), clearTimer: () => undefined, retryDelay: () => 0 });
+    const syncer = createSyncer({
+      run,
+      setTimer: (fn) => timers.push(fn),
+      clearTimer: () => undefined,
+      retryDelay: () => 0,
+    });
     await syncer.request();
     expect(run).toHaveBeenCalledTimes(1);
     expect(timers).toHaveLength(1);

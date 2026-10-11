@@ -43,7 +43,10 @@ const three = () => [clip('a', 0, 4), clip('b', 0, 3), clip('c', 0, 2)];
 
 async function editor(): Promise<MamTimelineEditor> {
   const el = await fixture<MamTimelineEditor>(html`<mam-timeline-editor api-url=${API}></mam-timeline-editor>`);
-  await waitUntil(() => el.querySelector('[data-clips], [data-empty], [data-error]') !== null, 'the timeline was not shown');
+  await waitUntil(
+    () => el.querySelector('[data-clips], [data-empty], [data-error]') !== null,
+    'the timeline was not shown',
+  );
   return el;
 }
 
@@ -85,7 +88,10 @@ describe('mam-timeline-editor', () => {
 
   it('keeps the timeline and the unsaved edits and shows an error when a reload fails', async () => {
     let fail = false;
-    stub = stubFetch({ [`GET ${API}`]: () => (fail ? { status: 503, body: { title: 'Service Unavailable' } } : { body: timeline('e1', three()) }) });
+    stub = stubFetch({
+      [`GET ${API}`]: () =>
+        fail ? { status: 503, body: { title: 'Service Unavailable' } } : { body: timeline('e1', three()) },
+    });
     const el = await editor();
     (el.querySelector('[data-clip="c"] [data-action="up"]') as HTMLButtonElement).click();
     await waitUntil(() => order(el).join() === 'a,c,b');
@@ -109,7 +115,9 @@ describe('mam-timeline-editor', () => {
 
   it('reloads to the empty state when the timeline is gone (404)', async () => {
     let gone = false;
-    stub = stubFetch({ [`GET ${API}`]: () => (gone ? { status: 404, body: { title: 'Not Found' } } : { body: timeline('e1', three()) }) });
+    stub = stubFetch({
+      [`GET ${API}`]: () => (gone ? { status: 404, body: { title: 'Not Found' } } : { body: timeline('e1', three()) }),
+    });
     const el = await editor();
     gone = true;
     document.dispatchEvent(new CustomEvent('timeline-reload'));
@@ -123,9 +131,18 @@ describe('mam-timeline-editor', () => {
     stub = stubFetch({
       [`GET ${API}`]: () => {
         gets += 1;
-        return { body: gets === 1 ? timeline('e1', three()) : timeline('e2', [clip('b', 0, 3), clip('a', 1, 4, { transition: { type: 'fade', seconds: 0.5 } }), clip('c', 0, 2)], { version_number: 2 }) };
+        return {
+          body:
+            gets === 1
+              ? timeline('e1', three())
+              : timeline(
+                  'e2',
+                  [clip('b', 0, 3), clip('a', 1, 4, { transition: { type: 'fade', seconds: 0.5 } }), clip('c', 0, 2)],
+                  { version_number: 2 },
+                ),
+        };
       },
-      'PUT /edit-timelines/e1': { status: 200 } // the server answers 204; the fetch stub cannot build that,
+      'PUT /edit-timelines/e1': { status: 200 }, // the server answers 204; the fetch stub cannot build that,
     });
     const el = await editor();
 
@@ -242,12 +259,16 @@ describe('mam-timeline-editor', () => {
     expect(text(el, '[data-clip="r"] [data-kind]')).to.equal('リアクション');
     expect(el.querySelector('[data-clip="a"] [data-kind]')).to.equal(null);
 
-    type(el.querySelector('[data-clip="a"] [data-field="caption"]') as HTMLTextAreaElement as unknown as HTMLInputElement, '  朝が来た ');
+    type(
+      el.querySelector('[data-clip="a"] [data-field="caption"]') as HTMLTextAreaElement as unknown as HTMLInputElement,
+      '  朝が来た ',
+    );
     await waitUntil(() => text(el, '[data-total]')?.includes('未保存') === true);
     (el.querySelector('[data-action="save"]') as HTMLButtonElement).click();
     await waitUntil(() => stub.requests.some((r) => r.method === 'PUT'));
 
-    const sent = (stub.requests.find((r) => r.method === 'PUT')!.body as { clips: Array<Record<string, unknown>> }).clips;
+    const sent = (stub.requests.find((r) => r.method === 'PUT')!.body as { clips: Array<Record<string, unknown>> })
+      .clips;
     expect(sent[0]).to.deep.include({ shot_id: 'a', kind: 'main', caption: '朝が来た' });
     expect(sent[1]).to.deep.include({ shot_id: 'r', kind: 'reaction', caption: '' });
   });
@@ -256,7 +277,10 @@ describe('mam-timeline-editor', () => {
     stub = stubFetch({ [`GET ${API}`]: { body: timeline('e1', three()) } });
     const el = await editor();
 
-    type(el.querySelector('[data-clip="a"] [data-field="caption"]') as HTMLTextAreaElement as unknown as HTMLInputElement, 'あ'.repeat(11));
+    type(
+      el.querySelector('[data-clip="a"] [data-field="caption"]') as HTMLTextAreaElement as unknown as HTMLInputElement,
+      'あ'.repeat(11),
+    );
     await waitUntil(() => el.querySelector('[data-error]') !== null);
 
     expect(text(el, '[data-error]')).to.contain('10 文字以内');
@@ -281,7 +305,15 @@ describe('mam-timeline-editor', () => {
   });
 
   it('writes the clamped transition length back into the input, also when the model does not change', async () => {
-    stub = stubFetch({ [`GET ${API}`]: { body: timeline('e1', [clip('a', 0, 4), clip('b', 0, 3, { transition: { type: 'fade', seconds: 1 } }), clip('c', 0, 2)]) } });
+    stub = stubFetch({
+      [`GET ${API}`]: {
+        body: timeline('e1', [
+          clip('a', 0, 4),
+          clip('b', 0, 3, { transition: { type: 'fade', seconds: 1 } }),
+          clip('c', 0, 2),
+        ]),
+      },
+    });
     const el = await editor();
     const seconds = el.querySelector('[data-clip="b"] [data-field="transition-seconds"]') as HTMLInputElement;
 
@@ -297,9 +329,12 @@ describe('mam-timeline-editor', () => {
 
   it('keeps every transition select on its own clip after the user changed one and the clips were reordered', async () => {
     const fade = { transition: { type: 'fade' as const, seconds: 0.5 } };
-    stub = stubFetch({ [`GET ${API}`]: { body: timeline('e1', [clip('a', 0, 4), clip('b', 0, 3), clip('c', 0, 2, fade)]) } });
+    stub = stubFetch({
+      [`GET ${API}`]: { body: timeline('e1', [clip('a', 0, 4), clip('b', 0, 3), clip('c', 0, 2, fade)]) },
+    });
     const el = await editor();
-    const select = (shot: string) => el.querySelector(`[data-clip="${shot}"] [data-field="transition"]`) as HTMLSelectElement;
+    const select = (shot: string) =>
+      el.querySelector(`[data-clip="${shot}"] [data-field="transition"]`) as HTMLSelectElement;
     const shown = () => [...el.querySelectorAll<HTMLSelectElement>('[data-field="transition"]')].map((s) => s.value);
 
     type(select('b'), 'fade'); // b: cut → fade (the option is dirty now)

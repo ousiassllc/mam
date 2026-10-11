@@ -40,7 +40,8 @@ export function dragToSegment(clip: Clip, fromX: number, toX: number, width: num
 /** Why a segment cannot be part of a composition, or '' when it can. */
 export function segmentProblem(segment: Segment, clip: Clip | undefined): string {
   if (!clip) return 'Take が見つかりません';
-  if (segment.end - segment.start < MIN_SEGMENT_SECONDS - 1e-9) return `${MIN_SEGMENT_SECONDS} 秒以上の区間を選んでください`;
+  if (segment.end - segment.start < MIN_SEGMENT_SECONDS - 1e-9)
+    return `${MIN_SEGMENT_SECONDS} 秒以上の区間を選んでください`;
   if (clip.duration > 0 && segment.end > clip.duration + 0.001) return 'Take の長さを超えています';
   return '';
 }
@@ -48,7 +49,13 @@ export function segmentProblem(segment: Segment, clip: Clip | undefined): string
 /** `segments` with `segment` appended when it is acceptable, else unchanged. */
 export function addSegment(segments: Segment[], segment: Segment, clips: Clip[]): Segment[] {
   if (segments.length >= MAX_SEGMENTS) return segments;
-  if (segmentProblem(segment, clips.find((c) => c.id === segment.take_id))) return segments;
+  if (
+    segmentProblem(
+      segment,
+      clips.find((c) => c.id === segment.take_id),
+    )
+  )
+    return segments;
   return [...segments, segment];
 }
 

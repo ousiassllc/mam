@@ -27,7 +27,11 @@ document.addEventListener('htmx:beforeSwap', (event) => {
 
 // A request that got no swappable response (server down, timeout, a non-HTML error) would leave the
 // screen unchanged: say so.
-for (const type of ['htmx:responseError', 'htmx:sendError', 'htmx:timeout'] as const satisfies readonly RequestFailure[]) {
+for (const type of [
+  'htmx:responseError',
+  'htmx:sendError',
+  'htmx:timeout',
+] as const satisfies readonly RequestFailure[]) {
   document.addEventListener(type, (event) => {
     const xhr = (event as CustomEvent<{ xhr?: XMLHttpRequest }>).detail?.xhr;
     showToast(requestFailureMessage(type, xhr?.status));

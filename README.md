@@ -54,9 +54,9 @@ bin/mam       # サーバーを起動して既定ブラウザを開く
 ```sh
 make dev          # air + templ --watch + esbuild/tailwind --watch
 make test         # Go・front-end・スクリプトのテスト
-make lint         # golangci-lint と tsc
+make lint         # golangci-lint・tsc・Biome lint
 make lint-lines   # 行数上限の超過が .linterly-baseline より悪化していないか
-make fmt          # 整形
+make fmt          # 整形（Go・templ・TypeScript）
 ```
 
 Windows 版（Wails ウィンドウ + NSIS インストーラー）は `scripts/package-windows.sh <version>`（`X.Y.Z`）で作ります。`wails3`（`go.mod` の `github.com/wailsapp/wails/v3` と同じ版）と NSIS（`makensis`）が要ります。リリースは `v<version>` タグを push すると GitHub Actions（`.github/workflows/release.yml`）が作ります。詳しくは [`spec/architecture/desktop.md`](spec/architecture/desktop.md) と [`spec/environment/setup.md`](spec/environment/setup.md) を参照してください。

@@ -28,7 +28,10 @@ export interface CardRefresh {
  * view (its actions and Takes change). Any other card refreshes only itself, from the page of the Shot
  * that is selected, so the Shot being viewed and the text typed into it stay as they are.
  */
-export function planCardRefresh(card: { id: string; refreshUrl: string; selected: boolean }, selectedShotUrl: string | null): CardRefresh {
+export function planCardRefresh(
+  card: { id: string; refreshUrl: string; selected: boolean },
+  selectedShotUrl: string | null,
+): CardRefresh {
   if (card.selected) return { url: card.refreshUrl, target: '#scene-shot-view', swap: 'outerHTML' };
   const selector = `#${card.id}`;
   // Without a selected Shot the Scene page (no ?shot=) is the one that leaves every card unselected.
@@ -43,7 +46,10 @@ export function planCardRefresh(card: { id: string; refreshUrl: string; selected
  * for work that really ended (done / failed) is never dropped: the re-rendered card may be judging
  * or repairing and finish within the window, and a dropped refresh would leave it stuck in progress.
  */
-export function createRefreshGuard(windowMs = 3000, now: () => number = Date.now): (url: string, stage: ShotProgress['stage']) => boolean {
+export function createRefreshGuard(
+  windowMs = 3000,
+  now: () => number = Date.now,
+): (url: string, stage: ShotProgress['stage']) => boolean {
   const last = new Map<string, number>();
   return (url, stage) => {
     const t = now();
@@ -55,7 +61,9 @@ export function createRefreshGuard(windowMs = 3000, now: () => number = Date.now
 }
 
 /** What the placeholder of a Shot that has no video (yet) says about its progress. */
-export function describeProgress(progress: Pick<ShotProgress, 'stage' | 'action' | 'message' | 'takes_done' | 'takes_total'> | null): string {
+export function describeProgress(
+  progress: Pick<ShotProgress, 'stage' | 'action' | 'message' | 'takes_done' | 'takes_total'> | null,
+): string {
   if (!progress || progress.stage === 'idle') return '動画はまだありません';
   const judge = progress.action === 'judge';
   switch (progress.stage) {
@@ -77,7 +85,9 @@ export function describeProgress(progress: Pick<ShotProgress, 'stage' | 'action'
 }
 
 /** Fraction (0..1) of the work that is done, or null when the progress has no measure. */
-export function progressFraction(progress: Pick<ShotProgress, 'stage' | 'takes_done' | 'takes_total'> | null): number | null {
+export function progressFraction(
+  progress: Pick<ShotProgress, 'stage' | 'takes_done' | 'takes_total'> | null,
+): number | null {
   if (!progress) return null;
   if (progress.stage === 'done') return 1;
   if (progress.stage === 'generating' && progress.takes_total) {

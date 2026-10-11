@@ -43,7 +43,12 @@ async function comparator(): Promise<MamTakeComparator> {
 function dragLane(el: HTMLElement, takeId: string, x0: number, x1: number): void {
   const track = el.querySelector(`[data-lane="${takeId}"] [data-track]`) as HTMLElement;
   const rect = track.getBoundingClientRect();
-  const at = (f: number) => ({ clientX: rect.left + rect.width * f, clientY: rect.top + 3, pointerId: 1, bubbles: true });
+  const at = (f: number) => ({
+    clientX: rect.left + rect.width * f,
+    clientY: rect.top + 3,
+    pointerId: 1,
+    bubbles: true,
+  });
   track.dispatchEvent(new PointerEvent('pointerdown', at(x0)));
   track.dispatchEvent(new PointerEvent('pointermove', at((x0 + x1) / 2)));
   track.dispatchEvent(new PointerEvent('pointermove', at(x1)));
@@ -61,7 +66,13 @@ describe('mam-take-comparator: score table', () => {
       [`GET ${API}`]: body([
         take('t1', 'A', { scores: scored, status: 'ai_pick', verdict: 'fail' }),
         take('t2', 'B', { status: 'selected', adopted: true, select_url: undefined }),
-        take('t3', 'C', { status: 'rejected', video_url: undefined, select_url: undefined, reject_url: undefined, partial_usable: false }),
+        take('t3', 'C', {
+          status: 'rejected',
+          video_url: undefined,
+          select_url: undefined,
+          reject_url: undefined,
+          partial_usable: false,
+        }),
       ]),
     });
     const el = await comparator();
@@ -158,7 +169,10 @@ describe('mam-take-comparator: choosing a Take', () => {
   it('shows why a choice failed and keeps the table', async () => {
     stub = stubFetch({
       [`GET ${API}`]: body([take('t1', 'A')]),
-      'POST /takes/t1/select': { status: 422, body: '<div data-toast>この Take のファイルはアーカイブされているため選択できません</div>' },
+      'POST /takes/t1/select': {
+        status: 422,
+        body: '<div data-toast>この Take のファイルはアーカイブされているため選択できません</div>',
+      },
     });
     const el = await comparator();
 
@@ -202,7 +216,9 @@ describe('mam-take-comparator: Partial Take Use', () => {
 
     const confirmed = oneEvent(el, 'partial-take-confirmed');
     confirm().click();
-    const { detail } = (await confirmed) as CustomEvent<{ segments: { take_id: string; start: number; end: number }[] }>;
+    const { detail } = (await confirmed) as CustomEvent<{
+      segments: { take_id: string; start: number; end: number }[];
+    }>;
 
     expect(posted!.body).to.deep.equal({
       segments: [
