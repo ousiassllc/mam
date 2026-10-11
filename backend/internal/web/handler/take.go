@@ -111,16 +111,12 @@ func TakeThumbnail(svc *service.TakeService) gin.HandlerFunc {
 }
 
 func serveMedia(c *gin.Context, file service.MediaFile, err error) {
-	if err != nil {
-		if c.Request.Context().Err() != nil { // the client went away (a seek, a page change): nobody to answer, nothing to log
-			c.Abort()
-			return
-		}
+	if err == nil {
+		c.Header("Content-Type", file.MimeType)
+		c.Header("Content-Security-Policy", "sandbox")
+		c.File(file.Path)
+	} else if c.Request.Context().Err() == nil { // else the client went away (a seek, a page change): nobody to answer, nothing to log
 		status, _ := statusOf(c, err)
 		c.AbortWithStatus(status)
-		return
 	}
-	c.Header("Content-Type", file.MimeType)
-	c.Header("Content-Security-Policy", "sandbox")
-	c.File(file.Path)
 }
