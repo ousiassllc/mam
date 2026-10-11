@@ -71,9 +71,9 @@
 2986	backend/internal/web/handler/
 4447	backend/internal/web/organisms/
 389	backend/internal/web/organisms/editor_panel.templ
-474	spec/api/endpoints.md
-806	spec/architecture/er.md
-401	spec/architecture/model-adapters.md
+383	spec/api/endpoints.md
+738	spec/architecture/er.md
+367	spec/architecture/model-adapters.md
 1648	spec/spec.md
 2359	static/src/components/lib/
 383	static/src/components/take-comparator/mam-take-comparator.ts
