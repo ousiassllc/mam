@@ -8,7 +8,7 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 - 外部生成モデル API のキーはサーバー側（`agent/modeladapter`）でのみ保持し、フロントエンドには一切露出しない
 - エラーレスポンスは HALT の方針（`spec/architecture/overview.md` 参照元 `skill://halt`）に従う:
   - ページ/アクションルートのバリデーションエラー（422）: フォームをエラー付きで再レンダリング
-  - ビジネスエラー（403/409/423等）: OOBスワップでトースト表示
+  - ビジネスエラー（403/409/423等）: OOBスワップでトースト表示。変更でその場保存するコントロール（`hx-trigger="change"` のラジオ・セレクト: MODE、Production Template、Quality）は送信前に選択が変わっているため、失敗（422・403・5xx・通信断・タイムアウト）の後にクライアント（`static/src/components/save-on-change/`）が `htmx:afterRequest` で保存済みの値に戻す
   - APIルートのエラー: Huma による RFC 7807 Problem Details
   - 共通ミドルウェアが Huma より前に返すエラー（非ループバック・CSRF 不一致の 403、本文上限の 413、読めない urlencoded フォームの 400）は `/api/v1` でも RFC 7807 ではなく JSON `{"error": string}`（理由が無いときは空本文）。RFC 7807 はハンドラ内の Huma エラーだけ。HTMX リクエストにはトーストを返す。読めない `multipart/form-data` の 400 と、アップロードルートの multipart の 413 はこのミドルウェアではなく、`readMultipart` を呼ぶ各ハンドラが他のビジネスエラーと同じ表示（トースト、フォームを持つルートはエラー付きの再描画。JSON ではない）で返す
 - 共通ビジネスエラーコード:
@@ -268,7 +268,7 @@ M2 の入出力契約（Issue #15）:
 | PUT | `/projects/:id/review-comments/:commentId` | 取り込んだコメントの解決済み切替。Body `resolved=true\|false` | F-32 |
 | POST | `/reviews/import` | Review Package の読み込み（レビュアー側）。`multipart/form-data`、フィールド `package` | F-32 |
 | POST | `/reviews/:id/comments` | コメントの追加。Body `timecode`（動画内の位置。秒（`83.5`）または 分:秒（`1:23`）。空なら位置なし）、`body`（1〜2000 文字） | F-32 |
-| DELETE | `/reviews/:id/comments/:commentId` | コメントの削除 | F-32 |
+| DELETE | `/reviews/:id/comments/:commentId` | コメントの削除（取り消せないため、ボタンは `hx-confirm` で確認する） | F-32 |
 | PUT | `/reviews/:id/decision` | 判定を書く。Body `reviewer_name`（1〜50 文字）、`decision=approved\|changes_requested`、`comment`（任意、2000 文字以内） | F-32 |
 
 入出力契約（認証は行わない。共有物の中身と除外は `spec/spec.md` §27.1、`spec/requirements/non-functional.md` §5）:

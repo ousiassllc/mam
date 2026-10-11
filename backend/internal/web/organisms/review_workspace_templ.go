@@ -263,7 +263,7 @@ func ReviewWorkspace(i domain.ReviewInbox) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			templ_7745c5c3_Err = atoms.Button(atoms.ToneDanger, "削除", templ.Attributes{
-				"hx-delete": paths.Review(i.ID, "comments", c.ID), "hx-target": "#review-workspace", "hx-swap": "outerHTML", "type": "button",
+				"hx-delete": paths.Review(i.ID, "comments", c.ID), "hx-target": "#review-workspace", "hx-swap": "outerHTML", "type": "button", "hx-confirm": "このコメントを削除します。よろしいですか？",
 			}).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
