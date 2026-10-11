@@ -115,6 +115,14 @@ func (q *Queue) Register(kind domain.JobKind, handler Handler, resumable bool) {
 	q.handlers[kind] = registration{handle: handler, resumable: resumable}
 }
 
+// Handles reports whether a handler is registered for kind, that is, whether Enqueue accepts it.
+func (q *Queue) Handles(kind domain.JobKind) bool {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	_, ok := q.handlers[kind]
+	return ok
+}
+
 // Enqueue persists a new job and wakes a worker. It fails if no handler is registered for kind.
 func (q *Queue) Enqueue(ctx context.Context, kind domain.JobKind, payload any) (domain.Job, error) {
 	q.mu.Lock()
