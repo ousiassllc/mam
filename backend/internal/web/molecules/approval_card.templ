@@ -3,6 +3,7 @@ package molecules
 import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/selector"
 )
 
 // ApprovalCard presents the artifact of a checkpoint. It is answered with the
@@ -21,7 +22,7 @@ templ ApprovalCard(m domain.ThreadMessage) {
 			<form
 				class="mt-3 flex flex-wrap items-center gap-2"
 				hx-post={ approvalURL(m.ProjectID, m.ID) }
-				hx-target={ "#msg-" + m.ID }
+				hx-target={ selector.ID("msg-", m.ID) }
 				hx-swap="outerHTML"
 			>
 				<button type="submit" disabled hidden tabindex="-1" aria-hidden="true"></button>

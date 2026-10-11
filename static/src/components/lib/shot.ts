@@ -33,7 +33,7 @@ export function planCardRefresh(
   selectedShotUrl: string | null,
 ): CardRefresh {
   if (card.selected) return { url: card.refreshUrl, target: '#scene-shot-view', swap: 'outerHTML' };
-  const selector = `#${card.id}`;
+  const selector = `#${CSS.escape(card.id)}`; // the id holds the Shot ID, which may hold ".", ":" or " "
   // Without a selected Shot the Scene page (no ?shot=) is the one that leaves every card unselected.
   const url = selectedShotUrl ?? card.refreshUrl.split('?')[0] ?? card.refreshUrl;
   return { url, target: selector, swap: 'outerHTML', select: selector };

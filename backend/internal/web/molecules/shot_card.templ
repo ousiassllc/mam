@@ -7,6 +7,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
+	"github.com/ousiassllc/mam/backend/internal/web/selector"
 )
 
 // ShotCardData is a Shot with its storyboard frame and Takes.
@@ -93,6 +94,10 @@ func showsProgressPlayer(s domain.Shot) bool {
 
 func takeComparisonURL(shotID string) string { return paths.Shot(shotID, "takes") }
 
+// shotTarget is the hx-target of the card of a Shot (id "shot-<id>"); the ID is escaped because a
+// bundle import allows characters that mean something in a selector (".", ":", " ").
+func shotTarget(shotID string) string { return selector.ID("shot-", shotID) }
+
 func takeJudgeResultURL(takeID string) string { return paths.APITake(takeID, "judge-result") }
 
 func takeActionURL(takeID, action string) string { return paths.Take(takeID, action) }
@@ -105,7 +110,7 @@ templ ShotActions(shotID string, canContinue bool, candidates bool) {
 	<form
 		class="mt-2 flex flex-wrap items-center gap-2"
 		hx-post={ generateURL(shotID, candidates) }
-		hx-target={ "#shot-" + shotID }
+		hx-target={ shotTarget(shotID) }
 		hx-swap="outerHTML"
 	>
 		<label class="sr-only" for={ "instruction-" + shotID }>追加の指示</label>
@@ -120,7 +125,7 @@ templ ShotActions(shotID string, canContinue bool, candidates bool) {
 		@atoms.Button(atoms.ToneNeutral, "Reference Pack", templ.Attributes{
 			"type":      "button",
 			"hx-post":   shotActionURL(shotID, "reference-pack"),
-			"hx-target": "#shot-" + shotID,
+			"hx-target": shotTarget(shotID),
 			"hx-swap":   "outerHTML",
 		})
 		if canContinue {
@@ -149,7 +154,7 @@ templ TakeRow(t domain.Take, selected bool, repairable bool, judgeable bool) {
 					@atoms.LinkButton("選択", templ.Attributes{
 						"type":      "button",
 						"hx-post":   takeActionURL(t.ID, "select"),
-						"hx-target": "#shot-" + t.ShotID,
+						"hx-target": shotTarget(t.ShotID),
 						"hx-swap":   "outerHTML",
 						"hx-vals":   selectedVals(selected),
 					})
@@ -157,7 +162,7 @@ templ TakeRow(t domain.Take, selected bool, repairable bool, judgeable bool) {
 				@atoms.LinkButton("除外", templ.Attributes{
 					"type":       "button",
 					"hx-delete":  paths.Take(t.ID),
-					"hx-target":  "#shot-" + t.ShotID,
+					"hx-target":  shotTarget(t.ShotID),
 					"hx-swap":    "outerHTML",
 					"hx-confirm": "この Take を除外しますか？",
 					"hx-vals":    selectedVals(selected),
@@ -169,7 +174,7 @@ templ TakeRow(t domain.Take, selected bool, repairable bool, judgeable bool) {
 				@atoms.Button(atoms.ToneNeutral, "Judge", templ.Attributes{
 					"type":      "button",
 					"hx-post":   paths.Take(t.ID, "judge"),
-					"hx-target": "#shot-" + t.ShotID,
+					"hx-target": shotTarget(t.ShotID),
 					"hx-swap":   "outerHTML",
 					"hx-vals":   selectedVals(selected),
 				})
@@ -178,7 +183,7 @@ templ TakeRow(t domain.Take, selected bool, repairable bool, judgeable bool) {
 				@atoms.Button(atoms.ToneNeutral, "Repair", templ.Attributes{
 					"type":      "button",
 					"hx-post":   paths.Take(t.ID, "repair"),
-					"hx-target": "#shot-" + t.ShotID,
+					"hx-target": shotTarget(t.ShotID),
 					"hx-swap":   "outerHTML",
 					"hx-vals":   selectedVals(selected),
 				})
