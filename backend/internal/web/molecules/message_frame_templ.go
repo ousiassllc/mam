@@ -329,7 +329,7 @@ func ReplyButton(m domain.ThreadMessage) templ.Component {
 			templ_7745c5c3_Var16 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = atoms.LinkButton("返信", replyAttrs(m)).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = atoms.LinkButton(atoms.ToneNeutral, "返信", replyAttrs(m)).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
