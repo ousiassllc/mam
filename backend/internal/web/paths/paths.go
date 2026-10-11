@@ -1,8 +1,9 @@
 // Package paths builds the URL paths of the pages and actions of a Project, Scene, Shot, Take,
-// Branch, Note, Brand Constraint and Edit Timeline. Their IDs come from outside (a bundle import
-// keeps the ID of every row it finds, and allows characters that mean something in a URL), so every
-// segment is path-escaped here and nowhere else builds "/projects/…", "/scenes/…", "/shots/…",
-// "/takes/…", "/branches/…", "/notes/…", "/brand-constraints/…" or "/edit-timelines/…" by hand.
+// Branch, Note, Brand Constraint, Edit Timeline, Series, Review and Credential. Their IDs come from
+// outside (a bundle import keeps the ID of every row it finds, and allows characters that mean
+// something in a URL), so every segment is path-escaped here and nowhere else builds "/projects/…",
+// "/scenes/…", "/shots/…", "/takes/…", "/branches/…", "/notes/…", "/brand-constraints/…",
+// "/edit-timelines/…", "/series/…", "/reviews/…" or "/credentials/…" by hand.
 package paths
 
 import (
@@ -77,3 +78,17 @@ func ProjectEvents(id string) string { return join("/ws/projects", id) }
 
 // ShotProgress is the WebSocket path of the progress of a Shot, "/ws/shots/<id>".
 func ShotProgress(id string) string { return join("/ws/shots", id) }
+
+// Series is "/series/<id>" followed by the segments: Series(id, "characters", cid).
+func Series(id string, segments ...string) string {
+	return join("/series", append([]string{id}, segments...)...)
+}
+
+// Review is "/reviews/<id>" (an imported Review Package) followed by the segments:
+// Review(id, "comments", cid).
+func Review(id string, segments ...string) string {
+	return join("/reviews", append([]string{id}, segments...)...)
+}
+
+// Credential is "/credentials/<provider>", the API key of a provider.
+func Credential(provider string) string { return join("/credentials", provider) }

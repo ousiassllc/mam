@@ -80,9 +80,9 @@ func SeriesView(d SeriesViewData) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var3 string
-		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue("/series/" + d.Series.ID + "/style")
+		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(paths.Series(d.Series.ID, "style"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/series_view.templ`, Line: 43, Col: 92}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/series_view.templ`, Line: 43, Col: 91}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
 		if templ_7745c5c3_Err != nil {
@@ -136,9 +136,9 @@ func SeriesView(d SeriesViewData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var4 string
-			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue("/series/" + d.Series.ID + "/characters/" + c.ID)
+			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(paths.Series(d.Series.ID, "characters", c.ID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/series_view.templ`, Line: 68, Col: 62}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/series_view.templ`, Line: 68, Col: 59}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 			if templ_7745c5c3_Err != nil {
@@ -263,9 +263,9 @@ func SeriesView(d SeriesViewData) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var10 templ.SafeURL
-		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/series/" + d.Series.ID + "/notes"))
+		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(paths.Series(d.Series.ID, "notes")))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/series_view.templ`, Line: 106, Col: 105}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/series_view.templ`, Line: 106, Col: 104}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 		if templ_7745c5c3_Err != nil {
@@ -325,9 +325,9 @@ func SeriesView(d SeriesViewData) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var14 string
-		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.ResolveAttributeValue("/series/" + d.Series.ID + "/episodes")
+		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.ResolveAttributeValue(paths.Series(d.Series.ID, "episodes"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/series_view.templ`, Line: 117, Col: 96}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/series_view.templ`, Line: 117, Col: 95}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var14)
 		if templ_7745c5c3_Err != nil {
@@ -483,9 +483,9 @@ func SeriesMembership(p domain.Project) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var21 templ.SafeURL
-			templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/series/" + p.SeriesID))
+			templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(paths.Series(p.SeriesID)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/series_view.templ`, Line: 151, Col: 93}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/series_view.templ`, Line: 151, Col: 94}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 			if templ_7745c5c3_Err != nil {
@@ -498,7 +498,7 @@ func SeriesMembership(p domain.Project) templ.Component {
 			var templ_7745c5c3_Var22 string
 			templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(p.EpisodeNumber))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/series_view.templ`, Line: 151, Col: 188}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/series_view.templ`, Line: 151, Col: 189}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 			if templ_7745c5c3_Err != nil {

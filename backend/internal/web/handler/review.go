@@ -10,6 +10,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
 	"github.com/ousiassllc/mam/backend/internal/web/pages"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // Team Collaboration (spec/spec.md §27.1, spec/api/endpoints.md §2.12). The owner's routes work on a
@@ -181,7 +182,7 @@ func ImportReviewPackage(svc *service.ReviewService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		c.Header("HX-Redirect", "/reviews/"+inbox.ID)
+		c.Header("HX-Redirect", paths.Review(inbox.ID))
 		c.Status(http.StatusCreated)
 	}
 }

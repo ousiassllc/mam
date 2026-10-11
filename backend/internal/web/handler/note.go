@@ -16,7 +16,7 @@ func noteListData(v service.NotesView) organisms.NoteListData {
 	if v.Project.ID != "" {
 		return organisms.NoteListData{BasePath: paths.Project(v.Project.ID, "notes"), Notes: v.Notes}
 	}
-	return organisms.NoteListData{BasePath: "/series/" + v.Series.ID + "/notes", Series: true, Notes: v.Notes}
+	return organisms.NoteListData{BasePath: paths.Series(v.Series.ID, "notes"), Series: true, Notes: v.Notes}
 }
 
 func notesPageData(v service.NotesView) pages.NotesPageData {
@@ -28,7 +28,7 @@ func notesPageData(v service.NotesView) pages.NotesPageData {
 		}
 	}
 	return pages.NotesPageData{
-		Title: "Series Notes", Owner: v.Series.Name, BackHref: "/series/" + v.Series.ID, BackLabel: "← Series に戻る",
+		Title: "Series Notes", Owner: v.Series.Name, BackHref: paths.Series(v.Series.ID), BackLabel: "← Series に戻る",
 		Lead:  "Series の正本メモです。Episode の開始時に Project へコピーされます（アーカイブ済みは除く）。正本を更新しても、すでに作成した Episode には反映されません。",
 		Notes: noteListData(v),
 	}

@@ -40,7 +40,7 @@ templ SeriesView(d SeriesViewData) {
 		</p>
 		<section aria-label="Style" class="flex flex-col gap-2">
 			<h2 class="text-sm font-semibold text-neutral-200">Style</h2>
-			<form class="flex flex-wrap items-end gap-2" hx-put={ "/series/" + d.Series.ID + "/style" } hx-target="#series-view" hx-swap="outerHTML">
+			<form class="flex flex-wrap items-end gap-2" hx-put={ paths.Series(d.Series.ID, "style") } hx-target="#series-view" hx-swap="outerHTML">
 				<label class="flex min-w-64 flex-1 flex-col gap-1 text-xs text-neutral-400" for="series-style">
 					スタイル（絵柄・色調・質感など）
 					@atoms.Input(atoms.FieldMd, "", templ.Attributes{
@@ -65,7 +65,7 @@ templ SeriesView(d SeriesViewData) {
 			for _, c := range d.Canon.Characters {
 				<form
 					class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3"
-					hx-put={ "/series/" + d.Series.ID + "/characters/" + c.ID }
+					hx-put={ paths.Series(d.Series.ID, "characters", c.ID) }
 					hx-target="#series-view"
 					hx-swap="outerHTML"
 				>
@@ -103,7 +103,7 @@ templ SeriesView(d SeriesViewData) {
 		</section>
 		<section aria-label="Notes" class="flex flex-col gap-2">
 			<h2 class="text-sm font-semibold text-neutral-200">Notes</h2>
-			<a class="text-sm text-indigo-300 underline" href={ templ.SafeURL("/series/" + d.Series.ID + "/notes") }>Series の制作メモを開く（Episode 開始時に Project へコピーされます）</a>
+			<a class="text-sm text-indigo-300 underline" href={ templ.SafeURL(paths.Series(d.Series.ID, "notes")) }>Series の制作メモを開く（Episode 開始時に Project へコピーされます）</a>
 		</section>
 		<section aria-label="Episodes" class="flex flex-col gap-2">
 			<h2 class="text-sm font-semibold text-neutral-200">Episodes</h2>
@@ -114,7 +114,7 @@ templ SeriesView(d SeriesViewData) {
 					</li>
 				}
 			</ul>
-			<form class="flex flex-wrap items-end gap-2" hx-post={ "/series/" + d.Series.ID + "/episodes" }>
+			<form class="flex flex-wrap items-end gap-2" hx-post={ paths.Series(d.Series.ID, "episodes") }>
 				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="series-previous-episode">
 					前の話（最終 World State を開始状態にする）
 					@atoms.Select(atoms.FieldMd, "", templ.Attributes{
@@ -148,7 +148,7 @@ templ SeriesMembership(p domain.Project) {
 	<section aria-label="Series" class="mb-6 flex flex-col gap-2 rounded-md border border-neutral-700 p-3">
 		<h2 class="text-sm font-semibold text-neutral-200">Series</h2>
 		if p.SeriesID != "" {
-			<a class="text-sm text-indigo-300 underline" href={ templ.SafeURL("/series/" + p.SeriesID) }>Series の正本と Episode を開く（この Project は第{ strconv.Itoa(p.EpisodeNumber) }話）</a>
+			<a class="text-sm text-indigo-300 underline" href={ templ.SafeURL(paths.Series(p.SeriesID)) }>Series の正本と Episode を開く（この Project は第{ strconv.Itoa(p.EpisodeNumber) }話）</a>
 		} else {
 			<form class="flex flex-wrap items-end gap-2" hx-post="/series">
 				<input type="hidden" name="from_project_id" value={ p.ID }/>

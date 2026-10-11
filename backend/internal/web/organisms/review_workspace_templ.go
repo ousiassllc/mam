@@ -11,6 +11,7 @@ import templruntime "github.com/a-h/templ/runtime"
 import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // ReviewInboxData is the reviewer's entrance (reviews_page): the packages imported so far.
@@ -69,9 +70,9 @@ func ReviewInboxList(d ReviewInboxData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var2 templ.SafeURL
-			templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/reviews/" + i.ID))
+			templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(paths.Review(i.ID)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 31, Col: 92}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 32, Col: 92}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 			if templ_7745c5c3_Err != nil {
@@ -84,7 +85,7 @@ func ReviewInboxList(d ReviewInboxData) templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(i.ProjectName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 31, Col: 110}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 32, Col: 110}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -105,7 +106,7 @@ func ReviewInboxList(d ReviewInboxData) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(i.Video.Resolution)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 33, Col: 64}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 34, Col: 64}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -118,7 +119,7 @@ func ReviewInboxList(d ReviewInboxData) templ.Component {
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(i.Video.AspectRatio)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 33, Col: 90}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 34, Col: 90}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -131,7 +132,7 @@ func ReviewInboxList(d ReviewInboxData) templ.Component {
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(i.CreatedAt.Local().Format("2006-01-02 15:04"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 34, Col: 106}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 35, Col: 106}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -185,9 +186,9 @@ func ReviewWorkspace(i domain.ReviewInbox) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var8 string
-		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue("/reviews/" + i.ID + "/video")
+		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue(paths.Review(i.ID, "video"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 52, Col: 148}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 53, Col: 146}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
 		if templ_7745c5c3_Err != nil {
@@ -205,7 +206,7 @@ func ReviewWorkspace(i domain.ReviewInbox) templ.Component {
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(i.Note)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 56, Col: 68}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 57, Col: 68}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {
@@ -238,7 +239,7 @@ func ReviewWorkspace(i domain.ReviewInbox) templ.Component {
 			var templ_7745c5c3_Var10 string
 			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(timecodeLabel(c.TimecodeMs))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 67, Col: 98}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 68, Col: 98}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {
@@ -251,7 +252,7 @@ func ReviewWorkspace(i domain.ReviewInbox) templ.Component {
 			var templ_7745c5c3_Var11 string
 			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(c.Body)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 68, Col: 63}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 69, Col: 63}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {
@@ -262,7 +263,7 @@ func ReviewWorkspace(i domain.ReviewInbox) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			templ_7745c5c3_Err = atoms.Button(atoms.ToneDanger, "削除", templ.Attributes{
-				"hx-delete": "/reviews/" + i.ID + "/comments/" + c.ID, "hx-target": "#review-workspace", "hx-swap": "outerHTML", "type": "button",
+				"hx-delete": paths.Review(i.ID, "comments", c.ID), "hx-target": "#review-workspace", "hx-swap": "outerHTML", "type": "button",
 			}).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -277,9 +278,9 @@ func ReviewWorkspace(i domain.ReviewInbox) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var12 string
-		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.ResolveAttributeValue("/reviews/" + i.ID + "/comments")
+		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.ResolveAttributeValue(paths.Review(i.ID, "comments"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 75, Col: 120}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 76, Col: 118}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var12)
 		if templ_7745c5c3_Err != nil {
@@ -327,9 +328,9 @@ func ReviewWorkspace(i domain.ReviewInbox) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var13 string
-		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.ResolveAttributeValue("/reviews/" + i.ID + "/decision")
+		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.ResolveAttributeValue(paths.Review(i.ID, "decision"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 105, Col: 78}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 106, Col: 76}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var13)
 		if templ_7745c5c3_Err != nil {
@@ -416,9 +417,9 @@ func ReviewWorkspace(i domain.ReviewInbox) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var14 templ.SafeURL
-			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/reviews/" + i.ID + "/response"))
+			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(paths.Review(i.ID, "response")))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 156, Col: 60}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 157, Col: 58}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 			if templ_7745c5c3_Err != nil {

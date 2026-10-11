@@ -43,7 +43,7 @@ func CreateSeries(svc *service.SeriesService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		c.Header("HX-Redirect", "/series/"+series.ID)
+		c.Header("HX-Redirect", paths.Series(series.ID))
 		c.Status(http.StatusCreated)
 	}
 }
