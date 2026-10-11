@@ -172,13 +172,11 @@ func TestCreateProject_AcceptsEveryAllowedFormat(t *testing.T) {
 }
 
 func TestPostMessage_AnswersTheOpenQuestionAndAsksTheNextOne(t *testing.T) {
-	ctx := context.Background()
 	f := newFixture(t)
 	p := f.createProject(t, "美容液の縦型15秒CMを作りたい。上品な雰囲気で")
 	q := lastMessage(t, f.thread(t, p.ID)) // Objective
 
-	ws, err := f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "Instagram広告", ReplyToMessageID: q.ID})
-	require.NoError(t, err)
+	ws := postMessage(t, f.svc, p.ID, service.PostMessageInput{Content: "Instagram広告", ReplyToMessageID: q.ID})
 	require.Len(t, ws.Messages, 2, "the user's answer and the next question")
 	assert.Equal(t, q.ID, ws.Messages[0].ReplyTo.ID)
 	assert.Equal(t, "Instagram広告", f.brief(t, p.ID).Objective)
@@ -196,12 +194,11 @@ func TestPostMessage_ReplyToAnAnsweredQuestionIsAConflictAndWritesNothing(t *tes
 	f := newFixture(t)
 	p := f.createProject(t, "美容液の縦型15秒CMを作りたい。上品な雰囲気で")
 	q := lastMessage(t, f.thread(t, p.ID)) // Objective
-	_, err := f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "Instagram広告", ReplyToMessageID: q.ID})
-	require.NoError(t, err)
+	postMessage(t, f.svc, p.ID, service.PostMessageInput{Content: "Instagram広告", ReplyToMessageID: q.ID})
 	before := f.brief(t, p.ID)
 	messages := len(f.thread(t, p.ID))
 
-	_, err = f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "YouTube広告", ReplyToMessageID: q.ID})
+	_, err := f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "YouTube広告", ReplyToMessageID: q.ID})
 
 	assert.ErrorIs(t, err, service.ErrConflict)
 	assert.Equal(t, before, f.brief(t, p.ID), "the Brief is unchanged")
@@ -209,12 +206,10 @@ func TestPostMessage_ReplyToAnAnsweredQuestionIsAConflictAndWritesNothing(t *tes
 }
 
 func TestPostMessage_FreeInputAnswersTheNewestOpenQuestionAndExtractsOtherItems(t *testing.T) {
-	ctx := context.Background()
 	f := newFixture(t)
 	p := f.createProject(t, "動画を作りたい") // asks Content Type first
 
-	_, err := f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "美容液のCMで、20〜30代女性向け"})
-	require.NoError(t, err)
+	postMessage(t, f.svc, p.ID, service.PostMessageInput{Content: "美容液のCMで、20〜30代女性向け"})
 
 	b := f.brief(t, p.ID)
 	assert.Equal(t, "商品CM", b.ContentType)
@@ -223,7 +218,6 @@ func TestPostMessage_FreeInputAnswersTheNewestOpenQuestionAndExtractsOtherItems(
 }
 
 func TestPostMessage_DelegatingLeavesTheItemToTheAIAndMovesOn(t *testing.T) {
-	ctx := context.Background()
 	f := newFixture(t)
 	p := f.createProject(t, "動画を作りたい")
 
@@ -233,8 +227,7 @@ func TestPostMessage_DelegatingLeavesTheItemToTheAIAndMovesOn(t *testing.T) {
 		if last.Kind != domain.KindQuestion {
 			break
 		}
-		_, err := f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: domain.DelegateOption, ReplyToMessageID: last.ID})
-		require.NoError(t, err)
+		postMessage(t, f.svc, p.ID, service.PostMessageInput{Content: domain.DelegateOption, ReplyToMessageID: last.ID})
 	}
 
 	brief := f.brief(t, p.ID)
@@ -253,8 +246,7 @@ func TestPostMessage_KeepsWorkingWhileTheProjectIsBusyAndDoesNotTouchTheBrief(t 
 	before := f.brief(t, p.ID)
 	setState(t, f, p.ID, domain.StateGenerating)
 
-	ws, err := f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "10秒にしてほしい"})
-	require.NoError(t, err)
+	ws := postMessage(t, f.svc, p.ID, service.PostMessageInput{Content: "10秒にしてほしい"})
 	assert.Len(t, ws.Messages, 1, "input is accepted during generation; interpreting it is the DIRECTOR MODE feature")
 	assert.Equal(t, before, f.brief(t, p.ID))
 }
@@ -280,12 +272,10 @@ func TestPostMessage_RejectsUnknownReplyTargetsAndAttachments(t *testing.T) {
 }
 
 func TestPostMessage_AttachmentsSentLaterJoinTheBrief(t *testing.T) {
-	ctx := context.Background()
 	f := newFixture(t)
 	p := f.createProject(t, "動画を作りたい")
 
-	_, err := f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "商品画像です", Uploads: []service.Upload{upload("a.png", pngBytes)}})
-	require.NoError(t, err)
+	postMessage(t, f.svc, p.ID, service.PostMessageInput{Content: "商品画像です", Uploads: []service.Upload{upload("a.png", pngBytes)}})
 	assert.Len(t, f.brief(t, p.ID).Assets, 1)
 }
 
@@ -461,8 +451,7 @@ func TestPostMessage_ReplyingToApprovalCardInWordsAnswersIt(t *testing.T) {
 	require.NoError(t, err)
 	card := lastMessage(t, f.thread(t, p.ID))
 
-	_, err = f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "もっと短くしてください", ReplyToMessageID: card.ID})
-	require.NoError(t, err)
+	postMessage(t, f.svc, p.ID, service.PostMessageInput{Content: "もっと短くしてください", ReplyToMessageID: card.ID})
 	project, updated, err := f.svc.Chat.Card(ctx, p.ID, card.ID)
 	require.NoError(t, err)
 	assert.Equal(t, domain.ApprovalChangesRequested, updated.ApprovalStatus, "any answer that is not an approval is feedback")
@@ -472,8 +461,7 @@ func TestPostMessage_ReplyingToApprovalCardInWordsAnswersIt(t *testing.T) {
 	_, err = f.svc.Chat.RequestApproval(ctx, p.ID, domain.CheckpointRoughCut, "Rough Cut", "e1")
 	require.NoError(t, err)
 	card2 := lastMessage(t, f.thread(t, p.ID))
-	_, err = f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "承認します。", ReplyToMessageID: card2.ID})
-	require.NoError(t, err)
+	postMessage(t, f.svc, p.ID, service.PostMessageInput{Content: "承認します。", ReplyToMessageID: card2.ID})
 	project, updated2, err := f.svc.Chat.Card(ctx, p.ID, card2.ID)
 	require.NoError(t, err)
 	assert.Equal(t, domain.ApprovalApproved, updated2.ApprovalStatus)
@@ -492,8 +480,7 @@ func TestEscalation_AnyReplyResumesTheProject(t *testing.T) {
 	esc := lastMessage(t, f.thread(t, p.ID))
 	assert.True(t, esc.Open)
 
-	_, err := f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "続行", ReplyToMessageID: esc.ID})
-	require.NoError(t, err)
+	postMessage(t, f.svc, p.ID, service.PostMessageInput{Content: "続行", ReplyToMessageID: esc.ID})
 	got, _ = f.svc.Projects.Get(ctx, p.ID)
 	assert.Equal(t, domain.EscalationResumeState, got.State)
 	_, again, err := f.svc.Chat.Card(ctx, p.ID, esc.ID)
@@ -561,8 +548,7 @@ func TestEvents_AreNotificationsOnlyAndReachOnlyTheirProject(t *testing.T) {
 	require.NoError(t, err)
 	defer cancelOther()
 
-	ws, err := f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "Instagram広告"})
-	require.NoError(t, err)
+	ws := postMessage(t, f.svc, p.ID, service.PostMessageInput{Content: "Instagram広告"})
 
 	select {
 	case e := <-mine:
@@ -697,14 +683,12 @@ func TestCreateProject_StopsCopyingAnUploadThatIsLargerThanItClaims(t *testing.T
 }
 
 func TestPostMessage_ReturnsTheQuestionCardsItClosed(t *testing.T) {
-	ctx := context.Background()
 	f := newFixture(t)
 	p := f.createProject(t, "動画を作りたい") // asks Content Type
 	q := lastMessage(t, f.thread(t, p.ID))
 
 	// A reply closes the card it targets ...
-	ws, err := f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "商品CM", ReplyToMessageID: q.ID})
-	require.NoError(t, err)
+	ws := postMessage(t, f.svc, p.ID, service.PostMessageInput{Content: "商品CM", ReplyToMessageID: q.ID})
 	require.Len(t, ws.Updated, 1)
 	assert.Equal(t, q.ID, ws.Updated[0].ID)
 	assert.False(t, ws.Updated[0].Open)
@@ -712,8 +696,7 @@ func TestPostMessage_ReturnsTheQuestionCardsItClosed(t *testing.T) {
 	// ... and a free-text answer closes the card of the field it decided, although nothing was replied to.
 	open := lastMessage(t, ws.Messages)
 	require.Equal(t, domain.KindQuestion, open.Kind)
-	ws, err = f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "Instagram広告"})
-	require.NoError(t, err)
+	ws = postMessage(t, f.svc, p.ID, service.PostMessageInput{Content: "Instagram広告"})
 	require.Len(t, ws.Updated, 1)
 	assert.Equal(t, open.ID, ws.Updated[0].ID)
 	assert.False(t, ws.Updated[0].Open)
@@ -760,8 +743,7 @@ func TestMessages_ManyProgressCardsAndRepliesOutsideTheBatchAreAllResolved(t *te
 	// the reply target of a message after the cursor lies outside the returned batch
 	thread := f.thread(t, p.ID)
 	q := thread[0]
-	ws, err := f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "返信", ReplyToMessageID: q.ID})
-	require.NoError(t, err)
+	ws := postMessage(t, f.svc, p.ID, service.PostMessageInput{Content: "返信", ReplyToMessageID: q.ID})
 	var reply domain.ThreadMessage
 	for _, m := range ws.Messages {
 		if m.Content == "返信" {
@@ -787,8 +769,7 @@ func TestEscalation_KeepsTheStateOfAProjectThatCannotWaitForApproval(t *testing.
 			esc := lastMessage(t, f.thread(t, p.ID))
 			assert.Equal(t, domain.KindEscalation, esc.Kind, "the card is still posted")
 
-			_, err = f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "続行", ReplyToMessageID: esc.ID})
-			require.NoError(t, err)
+			postMessage(t, f.svc, p.ID, service.PostMessageInput{Content: "続行", ReplyToMessageID: esc.ID})
 			got, _ = f.svc.Projects.Get(ctx, p.ID)
 			assert.Equal(t, state, got.State, "the reply does not push the Project into REPAIRING")
 		})
@@ -814,8 +795,7 @@ func TestEscalation_PostedWithoutHoldingTheProjectNeitherBlocksTheFinalApprovalN
 	require.NoError(t, err)
 	assert.Equal(t, domain.StateReady, project.State, "the unanswered Shot Escalation does not hold the Project")
 
-	_, err = f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "続行", ReplyToMessageID: esc.ID})
-	require.NoError(t, err)
+	postMessage(t, f.svc, p.ID, service.PostMessageInput{Content: "続行", ReplyToMessageID: esc.ID})
 	got, _ := f.svc.Projects.Get(ctx, p.ID)
 	assert.Equal(t, domain.StateReady, got.State, "answering it does not undo the approval")
 }
@@ -832,8 +812,7 @@ func TestEscalation_HoldingTheProjectStillResumesToRepairingWhenAnswered(t *test
 	require.Equal(t, domain.StateAwaitingApproval, got.State)
 	esc := lastMessage(t, f.thread(t, p.ID))
 
-	_, err := f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "続行", ReplyToMessageID: esc.ID})
-	require.NoError(t, err)
+	postMessage(t, f.svc, p.ID, service.PostMessageInput{Content: "続行", ReplyToMessageID: esc.ID})
 
 	got, _ = f.svc.Projects.Get(ctx, p.ID)
 	assert.Equal(t, domain.StateRepairing, got.State)

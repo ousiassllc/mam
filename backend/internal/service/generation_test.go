@@ -546,10 +546,7 @@ func TestSubscribeShot_SaysIdleWhenNothingRunsAndStreamsProgressUntilDone(t *tes
 func TestSubscribeShot_RepairingShotIsToldItIsRepairing(t *testing.T) {
 	f := newGenFixture(t, true)
 	ctx := context.Background()
-	require.NoError(t, f.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
-		_, err := tx.ExecContext(ctx, `UPDATE shot SET state = 'REPAIRING' WHERE id = ?`, f.shotID)
-		return err
-	}))
+	f.execSQL(t, `UPDATE shot SET state = 'REPAIRING' WHERE id = ?`, f.shotID)
 
 	ch, cancel, err := f.svc.Generation.SubscribeShot(ctx, f.shotID)
 	require.NoError(t, err)
@@ -594,10 +591,7 @@ func TestGenerateShot_RejectsAnOverlongInstruction(t *testing.T) {
 
 func TestRecover_ReleasesShotsThatWereBeingGeneratedWhenTheAppStopped(t *testing.T) {
 	f := newGenFixture(t, true)
-	require.NoError(t, f.db.Write(context.Background(), func(ctx context.Context, tx *sql.Tx) error {
-		_, err := tx.ExecContext(ctx, `UPDATE shot SET state = 'GENERATING' WHERE id = ?`, f.shotID)
-		return err
-	}))
+	f.execSQL(t, `UPDATE shot SET state = 'GENERATING' WHERE id = ?`, f.shotID)
 
 	n, err := f.svc.Recover(context.Background())
 	require.NoError(t, err)

@@ -163,10 +163,7 @@ func TestReferencePin_PinnedImageSurvivesARebuildWithoutBeingGeneratedAgain(t *t
 func TestReferencePin_ABusyShotIsRefused(t *testing.T) {
 	f := newGenFixture(t, false)
 	it := f.upload(t, "style", "Noir", "")
-	require.NoError(t, f.db.Write(context.Background(), func(ctx context.Context, tx *sql.Tx) error {
-		_, err := tx.ExecContext(ctx, `UPDATE shot SET state = 'GENERATING' WHERE id = ?`, f.shotID)
-		return err
-	}))
+	f.execSQL(t, `UPDATE shot SET state = 'GENERATING' WHERE id = ?`, f.shotID)
 	_, err := f.svc.Reference.Pin(context.Background(), f.shotID, it.ID)
 	assert.ErrorIs(t, err, service.ErrBusy)
 }

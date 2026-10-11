@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
@@ -144,4 +145,17 @@ func TestShotCard_ContinueButtonNeedsATakeThatWasNotRejected(t *testing.T) {
 	assert.NotContains(t, card(nil), "続きを作る", "no Take")
 	assert.NotContains(t, card(take(domain.TakeRejected)), "続きを作る", "every Take is excluded")
 	assert.Contains(t, card(take(domain.TakeCandidate)), "続きを作る")
+}
+
+// The button answers only after the Continue Agent has run (hx-swap="none": nothing on the card
+// changes meanwhile), so it is disabled while the request is in flight: a second click would pay for a
+// second Agent call and post a second card.
+func TestShotCard_ContinueButtonIsDisabledWhileTheRequestIsInFlight(t *testing.T) {
+	takes := []domain.Take{{ID: "t1", ShotID: "s1", ModelName: "m", FilePath: "a.mp4", Status: domain.TakeCandidate}}
+	html := render(t, molecules.ShotCard(molecules.ShotCardData{ProjectID: "p", Shot: domain.Shot{ID: "s1", SceneID: "sc", State: domain.ShotEditing}, Takes: takes, Selected: true}))
+	start := strings.Index(html, `hx-post="/shots/s1/continue"`)
+	require.GreaterOrEqual(t, start, 0)
+	open := strings.LastIndex(html[:start], "<button")
+	end := start + strings.Index(html[start:], ">")
+	assert.Contains(t, html[open:end], `hx-disabled-elt="this"`)
 }
