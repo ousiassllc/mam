@@ -39,6 +39,7 @@ func New(services *service.Services, opts Options) *gin.Engine {
 		middleware.Recovery(logger),
 		middleware.Logger(logger),
 		middleware.LoopbackOnly(),
+		middleware.SecurityHeaders(),
 		middleware.CSRF(),
 		middleware.MaxBody(),
 	)

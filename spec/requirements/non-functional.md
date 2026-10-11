@@ -47,6 +47,7 @@
 | ローカルサーバー公開範囲 | Go バックエンド（Gin/Huma）は `127.0.0.1` のみにバインドし、外部ネットワークからアクセス不可とする |
 | API キー管理 | 外部生成モデル API のキーは OS のセキュアストレージ（Windows Credential Manager / macOS Keychain / Linux Secret Service）に保存し、平文設定ファイルに書かない |
 | CSRF | ループバック限定であっても HALT 標準の CSRF トークン付与（meta タグ + 全リクエストへの付与）は維持する |
+| コンテンツセキュリティ | 全応答に `Content-Security-Policy`（スクリプトは自前の `/static/app.js` のみ、フレーム埋め込み禁止）と `X-Content-Type-Options: nosniff` を付け、htmx・Lit が「他のスクリプトを実行しない」前提をブラウザ側でも強制する（詳細は `architecture/overview.md` §6） |
 | 入力検証 | ユーザーアップロード画像/参照動画は、サービス層（`service/upload.go`）で拡張子・ファイル内容の署名（先頭バイト。MIME は拡張子から決める）・サイズ・件数を検証し、違反は 422 で拒否する。上限は画像 20 MB・動画 300 MB・一度の添付 8 件。アップロードは Gin の multipart ハンドラ（`POST /projects/:id/references` など）で受け、Huma（`/api/v1`）の Input バリデーションは通らない。サーバーの `ReadTimeout`（5 分）は絶対期限で 8 GiB のバンドルが遅い回線・ディスクで収まらないため、アップロードの本文は 1 回の読み取りごとに 1 分のアイドル期限へ延ばす（受信が続く限り打ち切らない） |
 | Brand/Safety 制約 | Safety and Brand Constraints（禁止表現・権利メタデータ等）は Prompt 生成・AI Video Judge・Final QC の全段階で強制適用し、LOCK 違反はスコアに関係なく FAIL とする（F-23 と対応） |
 | テレメトリ | デフォルトで外部への利用状況送信は行わない。診断ログはローカルファイルにのみ出力する |
@@ -105,3 +106,4 @@
 | 1.12 | 2026-10-02 | §8 のエクスポート/インポートで ID の制限を「Project ID」から「Project ID と全テーブルの行 ID」に広げた | 実装（`checkBundle` の `ValidBundleID`）は全テーブルの行 `id` を `[A-Za-z0-9_-]{1,64}` に限るため（Issue #252） |
 | 1.13 | 2026-10-03 | §1 に配布の行を追加（Windows x64 のインストーラー exe とポータブル `mam.exe` を GitHub Releases へ、`v*` タグで自動、署名なし、ffmpeg 非同梱、データディレクトリ保持）。ブラウザ行に Wails ウィンドウ版（WebView2）を追記。アーキテクチャ行から「配布用の自動リリース（CI）は持たない」を削除。冒頭のスコープ文から「Wails 等は対象外」を外した | Issue #480。Windows 向けの配布手段（インストーラー）の要望に応える。従来は自動リリースを持たなかった |
 | 1.14 | 2026-10-03 | §1 のネットワーク行を Wails ウィンドウ（WebView）にも当てはまる表現にし、例外としてインストール時の WebView2 ブートストラッパーの取得を明記 | Issue #480。WebView ↔ バックエンドもループバックのみで完結することと、インストーラーだけが外部取得を行うことを要件に残すため |
+| 1.15 | 2026-10-11 | §5 にコンテンツセキュリティ（全応答の CSP・`X-Content-Type-Options`）の行を追加 | Issue #509。htmx・Lit が他のスクリプトを実行しない前提を、ブラウザ側でも強制するため |

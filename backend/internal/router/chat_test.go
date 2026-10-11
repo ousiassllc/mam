@@ -283,6 +283,7 @@ func TestAssets_ServedWithOwnTypeAndOnlyInsideTheirProject(t *testing.T) {
 	require.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, "image/png", rec.Header().Get("Content-Type"))
 	assert.Equal(t, "nosniff", rec.Header().Get("X-Content-Type-Options"))
+	assert.Equal(t, "sandbox", rec.Header().Get("Content-Security-Policy"), "the page policy does not replace the asset's own")
 	assert.Equal(t, pngBytes, rec.Body.Bytes())
 
 	assert.Equal(t, http.StatusNotFound, a.get("/projects/"+other+"/assets/"+assetID, false).Code)
@@ -641,4 +642,22 @@ func TestChat_MultipartMediaTypeIsCaseInsensitive(t *testing.T) {
 	// A body that is not multipart goes through readMultipart's error handling.
 	rec = a.request(http.MethodPost, "/projects/"+id+"/messages", []byte("content=x"), "Multipart/Form-Data; boundary=mam", true)
 	assert.Equal(t, http.StatusBadRequest, rec.Code, rec.Body.String())
+}
+
+func TestSecurityHeaders_PagesAndFragmentsCarryTheContentSecurityPolicy(t *testing.T) {
+	a := newApp(t)
+	id := a.createProject("動画")
+
+	for name, rec := range map[string]*httptest.ResponseRecorder{
+		"full page":     a.get("/projects", false),
+		"HTMX fragment": a.get("/projects/"+id+"/messages", true),
+		"not found":     a.get("/nope", false),
+	} {
+		csp := rec.Header().Get("Content-Security-Policy")
+		assert.Contains(t, csp, "script-src 'self';", name)
+		assert.Contains(t, csp, "frame-ancestors 'none'", name)
+		assert.Contains(t, csp, "connect-src 'self' ws://127.0.0.1:8787;", name, "the /ws/ WebSocket stays allowed")
+		assert.NotContains(t, csp, "unsafe-eval", name)
+		assert.Equal(t, "nosniff", rec.Header().Get("X-Content-Type-Options"), name)
+	}
 }
