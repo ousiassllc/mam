@@ -8,7 +8,6 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/service"
-	"github.com/ousiassllc/mam/backend/internal/web/molecules"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -60,9 +59,8 @@ type takeLimitsBody struct {
 }
 
 func newTakeBody(v service.TakeView) takeBody {
-	_, statusLabel := molecules.TakeStatusBadge(v.Status)
 	b := takeBody{
-		ID: v.ID, Label: v.Label, Status: string(v.Status), StatusLabel: statusLabel, Adopted: v.Adopted, ModelName: v.ModelName,
+		ID: v.ID, Label: v.Label, Status: string(v.Status), StatusLabel: v.Status.Label(), Adopted: v.Adopted, ModelName: v.ModelName,
 		Resolution: v.Resolution, FPS: v.FPS, DurationSeconds: v.DurationSeconds, Verdict: string(v.Verdict),
 		Proxied: v.Proxied(), JudgeResultURL: paths.APITake(v.ID, "judge-result"), CreatedAt: v.CreatedAt, PartialUsable: v.Usable(),
 	}
