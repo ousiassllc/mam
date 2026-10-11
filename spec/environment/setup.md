@@ -92,6 +92,8 @@ checkout はせず（`GH_REPO` を渡す）、`actions/download-artifact` で受
 
 ディレクトリ上限（2000 行）も同じ基準値方式で扱い、Go のフラットなパッケージ向けの別基準（ファイル数など）は設けない。超過しているパッケージは、その直下の合計行数を増やせない（ファイルの追加・既存ファイルの行増で CI が落ちる）。新しいコードは新しいパッケージへ置くか、パッケージを責務ごとに分割して満たす。分割できたら基準値から外す。
 
+仕様書（Markdown）も計測対象で、同じ基準で扱う。改訂履歴の追記で本文が基準値や上限を超えそうなときは、基準値を上げず、改訂履歴の表を `<spec>.changelog.md`（例: `spec/architecture/overview.changelog.md`）へ移し、本文には参照だけを残す（`overview.md`・`endpoints.md`・`er.md`・`model-adapters.md` は分割済み。新しい版はそれぞれの `*.changelog.md` の末尾に足す）。
+
 pre-commit（`scripts/linterly-staged.sh`）は従来どおり、コミット対象のファイルが超過していれば基準値の有無に関わらず止める。
 
 ## 関数の複雑度
@@ -123,3 +125,4 @@ pre-commit（`scripts/linterly-staged.sh`）は従来どおり、コミット対
 | 1.10 | 2026-10-12 | `make lint-go` に `gocyclo`（25）・`gocognit`（50）の複雑度上限を追加し、既存の超過関数 5 個を除外ルールで許可する「関数の複雑度」節を追加 | Issue #534。行数は Linterly で縛っていたが関数単位の複雑度は未管理で、CI で悪化を検出できなかった |
 | 1.11 | 2026-10-12 | リリース節を `verify`（main の履歴・CI 成功・`make vuln`）→ `build`（`contents: read`）→ `release`（`contents: write`、`gh release create` だけ）の 3 ジョブ構成に書き換え、NSIS の版固定と `uses:` の SHA 固定を明記 | Issue #541。リリースがタグの push だけで CI を通らず公開され、ビルドの全工程が書き込み権限付きの `GITHUB_TOKEN` を持っていた |
 | 1.12 | 2026-10-12 | 「関数の複雑度」節を、許可エントリが `path` と複雑度の範囲まで固定し、悪化・同名の別関数も止める記述に改め、`make test-scripts` に `scripts/complexity-ratchet_test.sh` と `scripts/makefile_test.sh` を加えた。`make lint-go` / `lint-static` / `clean` の `##` 説明と `.PHONY` の `build-all` を足した | Issue #537・#540・#544。許可リストが関数名だけで一致し、許可済みの関数の悪化も同名の別関数も通していた。`make help` に出ないターゲットと `.PHONY` の抜けもあった |
+| 1.13 | 2026-10-12 | 「Linterly」節に、仕様書（Markdown）も行数の計測対象であり、改訂履歴の追記で基準値・上限を超えそうなときは基準値を上げず改訂履歴の表を `<spec>.changelog.md` へ移すことを追記した | Issue #546。#535・#536・#545 の改訂履歴の追記で `spec/architecture/overview.md` が基準値に無いまま 337 行になり、`endpoints.md`・`er.md` も基準値を 1 行ずつ超えて、CI の「Line limit (no regression)」が落ちていた |
