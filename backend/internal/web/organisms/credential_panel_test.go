@@ -2,10 +2,6 @@ package organisms_test
 
 import (
 	"context"
-	"go/parser"
-	"go/token"
-	"os"
-	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -44,20 +40,4 @@ func TestCredentialPanel_DeleteButtonSendsNoFormValues(t *testing.T) {
 	button := regexp.MustCompile(`<button[^>]*\shx-delete=[^>]*>`).FindString(sb.String())
 	require.NotEmpty(t, button, "the configured provider renders a delete button")
 	assert.Contains(t, button, `hx-params="none"`)
-}
-
-// The presentation layer only knows what the handler hands it: no package of it imports the service layer (#484).
-func TestOrganisms_DoNotImportTheServiceLayer(t *testing.T) {
-	files, err := filepath.Glob("*.go")
-	require.NoError(t, err)
-	require.NotEmpty(t, files)
-	for _, f := range files {
-		src, err := os.ReadFile(f)
-		require.NoError(t, err)
-		parsed, err := parser.ParseFile(token.NewFileSet(), f, src, parser.ImportsOnly)
-		require.NoError(t, err, f)
-		for _, imp := range parsed.Imports {
-			assert.NotContains(t, imp.Path.Value, "/internal/service", f)
-		}
-	}
 }

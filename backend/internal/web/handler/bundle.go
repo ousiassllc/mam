@@ -24,7 +24,6 @@ func ExportBundle(svc *service.BundleService) gin.HandlerFunc {
 		}
 		c.Header("Content-Type", "application/zip")
 		c.Header("Content-Disposition", `attachment; filename="`+bundle.FileName+`"`)
-		c.Header("X-Content-Type-Options", "nosniff")
 		c.Status(http.StatusOK)
 		if err := bundle.Write(c.Writer); err != nil {
 			abortDownload(c, err)

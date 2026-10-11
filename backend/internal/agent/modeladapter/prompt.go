@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/textutil"
 )
 
 // VideoJob is a model-independent request for the video of one Shot: the Canonical Shot Spec
@@ -81,7 +82,7 @@ func Prepare(target VideoTarget, job VideoJob) (VideoRequest, error) {
 	switch target.Model {
 	case domain.ModelKling3:
 		req.Prompt = fit(body, constraints, 2400)
-		req.NegativePrompt = domain.TruncateRunes(strings.Join(avoid, ", "), 400)
+		req.NegativePrompt = textutil.TruncateRunes(strings.Join(avoid, ", "), 400)
 	case domain.ModelRunwayGen45: // no negative prompt, and a 1000 character limit: Constraints and the avoid list are kept whole
 		req.Prompt = fit(body, constraints+avoidSentence(avoid), 1000)
 	default: // models without a negative prompt get the constraints as part of the prompt
@@ -95,9 +96,9 @@ func Prepare(target VideoTarget, job VideoJob) (VideoRequest, error) {
 // body, whose last sentences are the least specific, is what gives way.
 func fit(body, tail string, limit int) string {
 	if n := limit - len([]rune(tail)); n > 0 {
-		return domain.TruncateRunes(body, n) + tail
+		return textutil.TruncateRunes(body, n) + tail
 	}
-	return domain.TruncateRunes(strings.TrimSpace(tail), limit)
+	return textutil.TruncateRunes(strings.TrimSpace(tail), limit)
 }
 
 func avoidSentence(avoid []string) string { return " Avoid: " + strings.Join(avoid, ", ") + "." }

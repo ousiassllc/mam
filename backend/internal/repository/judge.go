@@ -57,7 +57,7 @@ func (r *JudgeRepository) GetTake(ctx context.Context, takeID string) (TakeRef, 
 	if err != nil {
 		return TakeRef{}, fmt.Errorf("get take: %w", err)
 	}
-	if t.CreatedAt, err = parseTime(created); err != nil {
+	if t.CreatedAt, err = ParseTime(created); err != nil {
 		return TakeRef{}, err
 	}
 	ref.SpecSnapshot = json.RawMessage(spec)
@@ -183,7 +183,7 @@ func scanJudge(row rowScanner) (domain.JudgeResult, error) {
 	}
 	res.Issues = nonNilSlice(res.Issues)
 	res.Preserve = nonNilSlice(res.Preserve)
-	t, err := parseTime(createdAt)
+	t, err := ParseTime(createdAt)
 	if err != nil {
 		return domain.JudgeResult{}, err
 	}

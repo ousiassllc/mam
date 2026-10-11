@@ -1,4 +1,7 @@
-package repository
+// Package bundle reads the Project Data Model of one Project out of the database and writes it into
+// a database (the Project bundle: export and import). It is the repository of the Project data
+// portability and keeps its own table list, separate from the per-aggregate repositories.
+package bundle
 
 import (
 	"context"
@@ -13,11 +16,12 @@ import (
 	sqlitelib "modernc.org/sqlite/lib"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/repository"
 )
 
-// ErrInvalidBundle means the bundle is not something this version can import: an unknown table or
+// ErrInvalid means the bundle is not something this version can import: an unknown table or
 // column, a row that is not the Project's, or data the schema rejects. Nothing is written.
-var ErrInvalidBundle = errors.New("repository: invalid project bundle")
+var ErrInvalid = errors.New("repository: invalid project bundle")
 
 // bundleTable is a table of the Project Data Model and the condition that selects the rows of one
 // Project (:pid is the Project ID).
@@ -95,23 +99,23 @@ var unbundledTables = map[string]string{
 	"review_inbox_comment":      "the reviewer's comments on review_inbox",
 }
 
-// BundleRepository reads the Project Data Model of a Project out of the database and writes it into
+// Repository reads the Project Data Model of a Project out of the database and writes it into
 // a database (spec/requirements/non-functional.md §8). All writes go through DB.Write.
-type BundleRepository struct {
-	db *DB
+type Repository struct {
+	db *repository.DB
 }
 
-// NewBundleRepository returns a BundleRepository backed by db.
-func NewBundleRepository(db *DB) *BundleRepository { return &BundleRepository{db: db} }
+// New returns a Repository backed by db.
+func New(db *repository.DB) *Repository { return &Repository{db: db} }
 
-// Export returns every row of the Project in one consistent snapshot, or ErrNotFound.
-func (r *BundleRepository) Export(ctx context.Context, projectID string) (domain.BundleData, error) {
+// Export returns every row of the Project in one consistent snapshot, or repository.ErrNotFound.
+func (r *Repository) Export(ctx context.Context, projectID string) (domain.BundleData, error) {
 	tx, err := r.db.Reader().BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
 	if err != nil {
 		return domain.BundleData{}, fmt.Errorf("begin export: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
-	if err := exists(ctx, tx, `SELECT 1 FROM project WHERE id = ?`, projectID); err != nil {
+	if err := repository.Exists(ctx, tx, `SELECT 1 FROM project WHERE id = ?`, projectID); err != nil {
 		return domain.BundleData{}, err
 	}
 	data := domain.BundleData{ProjectID: projectID}
@@ -162,19 +166,19 @@ func readBundleRows(ctx context.Context, tx *sql.Tx, t bundleTable, projectID st
 	return out, rows.Err()
 }
 
-// Import writes the Project into the database in one transaction. It returns ErrConflict when the
-// database already has a Project with that ID and ErrInvalidBundle (nothing written) when the data
+// Import writes the Project into the database in one transaction. It returns repository.ErrConflict when the
+// database already has a Project with that ID and ErrInvalid (nothing written) when the data
 // is not importable: an unknown table or column, a value of the wrong type, a row of another
 // Project, or a row the schema or a foreign key rejects. Any other failure (a full disk, a locked
 // database, a cancelled context) is not the bundle's fault and is returned as an internal error.
-func (r *BundleRepository) Import(ctx context.Context, data domain.BundleData) error {
+func (r *Repository) Import(ctx context.Context, data domain.BundleData) error {
 	if err := checkBundle(data); err != nil {
 		return err
 	}
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
-		if err := exists(ctx, tx, `SELECT 1 FROM project WHERE id = ?`, data.ProjectID); err == nil {
-			return ErrConflict
-		} else if !errors.Is(err, ErrNotFound) {
+		if err := repository.Exists(ctx, tx, `SELECT 1 FROM project WHERE id = ?`, data.ProjectID); err == nil {
+			return repository.ErrConflict
+		} else if !errors.Is(err, repository.ErrNotFound) {
 			return err
 		}
 		// Rows refer to each other in cycles (shot.selected_take_id, take, ...): check the foreign
@@ -204,159 +208,20 @@ func (r *BundleRepository) Import(ctx context.Context, data domain.BundleData) e
 			if err := violations.Scan(&table, &rowid, &parent, &fk); err != nil {
 				return err
 			}
-			return fmt.Errorf("%w: %s refers to a missing %s", ErrInvalidBundle, table, parent)
+			return fmt.Errorf("%w: %s refers to a missing %s", ErrInvalid, table, parent)
 		}
 		if err := violations.Err(); err != nil {
 			return err
 		}
 		return checkBundleOwnership(ctx, tx, data)
 	})
-	if errors.Is(err, ErrConflict) || errors.Is(err, ErrInvalidBundle) {
+	if errors.Is(err, repository.ErrConflict) || errors.Is(err, ErrInvalid) {
 		return err
 	}
 	if err != nil {
 		return fmt.Errorf("import bundle: %w", err)
 	}
 	return nil
-}
-
-// checkBundle verifies what can be verified without the database: known tables, one Project row
-// with the bundle's ID, that every row ID is path-safe, and that every row that names a Project
-// names this one.
-func checkBundle(data domain.BundleData) error {
-	if !domain.ValidBundleID(data.ProjectID) {
-		return fmt.Errorf("%w: project id", ErrInvalidBundle)
-	}
-	known := map[string]bool{}
-	detachColumns := map[string][]string{}
-	noID := map[string]bool{}
-	for _, t := range bundleTables {
-		known[t.name] = true
-		detachColumns[t.name] = t.detach
-		noID[t.name] = t.noID
-	}
-	seen := map[string]bool{}
-	for _, t := range data.Tables {
-		if !known[t.Name] || seen[t.Name] {
-			return fmt.Errorf("%w: table %q", ErrInvalidBundle, t.Name)
-		}
-		seen[t.Name] = true
-		for _, row := range t.Rows {
-			// Row IDs are joined into file paths (take previews, audio directories, edit previews), so every
-			// one is held to the Project ID's character set. A row without an id would be inserted with a NULL
-			// primary key (SQLite does not make "TEXT PRIMARY KEY" NOT NULL), which no ID check or ownership
-			// query sees, so every table with an id column requires one.
-			if !noID[t.Name] {
-				if s, isString := row["id"].(string); !isString || !domain.ValidBundleID(s) {
-					return fmt.Errorf("%w: %s has a missing or unsafe id", ErrInvalidBundle, t.Name)
-				}
-			}
-			if t.Name == "project" && row["id"] != data.ProjectID {
-				return fmt.Errorf("%w: a project row of another project", ErrInvalidBundle)
-			}
-			if pid, ok := row["project_id"]; (ok || noID[t.Name]) && pid != data.ProjectID {
-				return fmt.Errorf("%w: %s has a row of another project", ErrInvalidBundle, t.Name)
-			}
-			if t.Name == "chat_message" && row["kind"] == string(domain.KindTake) {
-				if err := checkTakeCardURLs(row); err != nil {
-					return err
-				}
-			}
-			if err := checkBundleColumns(t.Name, row); err != nil {
-				return err
-			}
-			for _, c := range detachColumns[t.Name] {
-				if row[c] != nil {
-					return fmt.Errorf("%w: %s.%s points outside the bundle", ErrInvalidBundle, t.Name, c)
-				}
-			}
-		}
-	}
-	for _, t := range data.Tables {
-		if t.Name == "project" && len(t.Rows) == 1 {
-			return nil
-		}
-	}
-	return fmt.Errorf("%w: exactly one project row is required", ErrInvalidBundle)
-}
-
-// checkTakeCardURLs refuses a take card whose video or poster is not a same-origin path: the
-// player would load it from another host.
-func checkTakeCardURLs(row domain.BundleRow) error {
-	content, _ := row["content"].(string)
-	body := domain.DecodeTakeCardBody(content)
-	for _, u := range []string{body.VideoURL, body.PosterURL} {
-		if u != "" && !domain.IsLocalPath(u) {
-			return fmt.Errorf("%w: a take card points outside the app", ErrInvalidBundle)
-		}
-	}
-	return nil
-}
-
-// checkBundleOwnership runs inside the import transaction, after the rows are in. The Project is new
-// to the database, so every row that belongs to it is found by its table's where condition. Every
-// inserted row must be found that way (a Shot whose scene_id names another Project's Scene hangs off
-// that Project and is not), and every foreign key of those rows must land on a row of the same
-// Project: the database-wide foreign_key_check is satisfied by a parent that belongs to someone else.
-func checkBundleOwnership(ctx context.Context, tx *sql.Tx, data domain.BundleData) error {
-	inserted := make(map[string]int, len(data.Tables))
-	for _, t := range data.Tables {
-		inserted[t.Name] = len(t.Rows)
-	}
-	byName := make(map[string]bundleTable, len(bundleTables))
-	for _, t := range bundleTables {
-		byName[t.name] = t
-	}
-	pid := sql.Named("pid", data.ProjectID)
-	for _, t := range bundleTables {
-		var n int
-		if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM `+t.name+` WHERE `+t.where, pid).Scan(&n); err != nil { //nolint:gosec // name and where are constants of bundleTables
-			return err
-		}
-		if n != inserted[t.name] {
-			return fmt.Errorf("%w: %s has a row that hangs off another project", ErrInvalidBundle, t.name)
-		}
-	}
-	for _, t := range bundleTables {
-		fks, err := foreignKeys(ctx, tx, t.name)
-		if err != nil {
-			return err
-		}
-		for _, fk := range fks {
-			inParent := `NULL` // a parent outside the bundle (a Series, a Brand Template, a review inbox) is never one of the Project's
-			if parent, ok := byName[fk.parent]; ok {
-				inParent = `SELECT id FROM ` + parent.name + ` WHERE id IS NOT NULL AND (` + parent.where + `)` // a NULL in the set would make NOT IN never true
-			}
-			var n int
-			q := `SELECT count(*) FROM ` + t.name + ` WHERE (` + t.where + `) AND ` + fk.column + ` IS NOT NULL AND ` + fk.column + ` NOT IN (` + inParent + `)` //nolint:gosec // names come from bundleTables and the schema
-			if err := tx.QueryRowContext(ctx, q, pid).Scan(&n); err != nil {
-				return err
-			}
-			if n > 0 {
-				return fmt.Errorf("%w: %s.%s refers to a row outside the project", ErrInvalidBundle, t.name, fk.column)
-			}
-		}
-	}
-	return nil
-}
-
-type foreignKey struct{ column, parent string }
-
-func foreignKeys(ctx context.Context, tx *sql.Tx, table string) ([]foreignKey, error) {
-	rows, err := tx.QueryContext(ctx, `SELECT "from", "table" FROM pragma_foreign_key_list(?)`, table)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = rows.Close() }()
-	var out []foreignKey
-	for rows.Next() {
-		var fk foreignKey
-		if err := rows.Scan(&fk.column, &fk.parent); err != nil {
-			return nil, err
-		}
-		out = append(out, fk)
-	}
-	return out, rows.Err()
 }
 
 func insertBundleTable(ctx context.Context, tx *sql.Tx, t domain.BundleTable) error {
@@ -371,7 +236,7 @@ func insertBundleTable(ctx context.Context, tx *sql.Tx, t domain.BundleTable) er
 		cols := make([]string, 0, len(row))
 		for c := range row {
 			if _, ok := known[c]; !ok {
-				return fmt.Errorf("%w: %s: unknown column %q", ErrInvalidBundle, t.Name, c)
+				return fmt.Errorf("%w: %s: unknown column %q", ErrInvalid, t.Name, c)
 			}
 			cols = append(cols, c)
 		}
@@ -398,7 +263,7 @@ func insertBundleTable(ctx context.Context, tx *sql.Tx, t domain.BundleTable) er
 func insertError(table string, err error) error {
 	var se *sqlite.Error
 	if errors.As(err, &se) && se.Code()&0xff == sqlitelib.SQLITE_CONSTRAINT {
-		return fmt.Errorf("%w: %s: %w", ErrInvalidBundle, table, err)
+		return fmt.Errorf("%w: %s: %w", ErrInvalid, table, err)
 	}
 	return fmt.Errorf("insert %s: %w", table, err)
 }

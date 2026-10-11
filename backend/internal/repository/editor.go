@@ -109,7 +109,7 @@ func scanEditTimeline(row rowScanner) (domain.EditTimelineVersion, error) {
 		return domain.EditTimelineVersion{}, fmt.Errorf("decode edit timeline: %w", err)
 	}
 	var err error
-	v.CreatedAt, err = parseTime(created)
+	v.CreatedAt, err = ParseTime(created)
 	return v, err
 }
 
@@ -179,7 +179,7 @@ func (r *EditorRepository) LatestEditorJudge(ctx context.Context, editTimelineID
 	if err := json.Unmarshal([]byte(raw), &res.Findings); err != nil {
 		return domain.EditorJudgeResult{}, fmt.Errorf("decode findings: %w", err)
 	}
-	res.CreatedAt, err = parseTime(created)
+	res.CreatedAt, err = ParseTime(created)
 	return res, err
 }
 
@@ -238,7 +238,7 @@ func scanAudioTimeline(row rowScanner) (domain.AudioTimelineVersion, error) {
 		return domain.AudioTimelineVersion{}, fmt.Errorf("decode audio timeline: %w", err)
 	}
 	var err error
-	v.CreatedAt, err = parseTime(created)
+	v.CreatedAt, err = ParseTime(created)
 	return v, err
 }
 
@@ -311,7 +311,7 @@ func (r *EditorRepository) LatestFinalQC(ctx context.Context, projectID string) 
 	if err := json.Unmarshal([]byte(raw), &res.Findings); err != nil {
 		return domain.FinalQCResult{}, fmt.Errorf("decode findings: %w", err)
 	}
-	res.CreatedAt, err = parseTime(created)
+	res.CreatedAt, err = ParseTime(created)
 	return res, err
 }
 
@@ -339,7 +339,7 @@ func scanExport(row rowScanner) (domain.Export, error) {
 		return domain.Export{}, err
 	}
 	var err error
-	e.ExportedAt, err = parseTime(exported)
+	e.ExportedAt, err = ParseTime(exported)
 	return e, err
 }
 

@@ -8,6 +8,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/textutil"
 )
 
 // Profile is what a Production Template asks of the cut (F-18 Advanced, spec/spec.md §17 and §19),
@@ -102,7 +103,7 @@ func captionOf(text string) string {
 	if utf8.RuneCountInString(text) <= domain.MaxCaptionRunes {
 		return text
 	}
-	return domain.TruncateRunes(text, domain.MaxCaptionRunes-1) + "…"
+	return textutil.TruncateRunes(text, domain.MaxCaptionRunes-1) + "…"
 }
 
 func round3(v float64) float64 { return math.Round(v*1000) / 1000 }

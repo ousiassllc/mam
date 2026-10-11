@@ -49,7 +49,7 @@ func scanReferenceItem(row rowScanner) (domain.ReferenceItem, error) {
 	if err := json.Unmarshal([]byte(tags), &it.Tags); err != nil {
 		return domain.ReferenceItem{}, fmt.Errorf("reference tags: %w", err)
 	}
-	t, err := parseTime(at)
+	t, err := ParseTime(at)
 	if err != nil {
 		return domain.ReferenceItem{}, err
 	}

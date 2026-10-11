@@ -77,7 +77,7 @@ func (r *BrandTemplateRepository) SaveFromProject(ctx context.Context, name, pro
 			return err
 		}
 		for _, c := range constraints {
-			raw, err := json.Marshal(brandValue{Text: c.Text})
+			raw, err := json.Marshal(BrandValue{Text: c.Text})
 			if err != nil {
 				return fmt.Errorf("marshal brand constraint: %w", err)
 			}
@@ -115,7 +115,7 @@ func (r *BrandTemplateRepository) List(ctx context.Context) ([]domain.BrandTempl
 			_ = rows.Close()
 			return nil, fmt.Errorf("scan brand template: %w", err)
 		}
-		if t.CreatedAt, err = parseTime(added); err != nil {
+		if t.CreatedAt, err = ParseTime(added); err != nil {
 			_ = rows.Close()
 			return nil, err
 		}
@@ -199,7 +199,7 @@ func applyBrandTemplate(ctx context.Context, tx *sql.Tx, templateID, projectID, 
 		return err
 	}
 	for _, c := range tpl.MissingFrom(have) {
-		raw, err := json.Marshal(brandValue{Text: c.Text})
+		raw, err := json.Marshal(BrandValue{Text: c.Text})
 		if err != nil {
 			return fmt.Errorf("marshal brand constraint: %w", err)
 		}
@@ -237,7 +237,7 @@ func readBrandConstraints(ctx context.Context, q querier, query, arg string) (do
 		if err := rows.Scan(&c.ID, &c.Type, &c.Level, &value); err != nil {
 			return nil, fmt.Errorf("scan brand constraint: %w", err)
 		}
-		var v brandValue
+		var v BrandValue
 		if err := json.Unmarshal([]byte(value), &v); err != nil {
 			return nil, fmt.Errorf("decode brand constraint %s: %w", c.ID, err)
 		}

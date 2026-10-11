@@ -1,4 +1,4 @@
-package service
+package bgwork_test
 
 import (
 	"bytes"
@@ -11,13 +11,15 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/ousiassllc/mam/backend/internal/bgwork"
 )
 
-func TestResumer_WakesCoalesceIntoOneRunAtATime(t *testing.T) {
+func TestWorker_WakesCoalesceIntoOneRunAtATime(t *testing.T) {
 	var running, peak, runs atomic.Int32
 	started := make(chan struct{}, 8)
 	gate := make(chan struct{})
-	r := newResumer(slog.New(slog.DiscardHandler), func(context.Context) {
+	r := bgwork.NewWorker(slog.New(slog.DiscardHandler), "test", func(context.Context) {
 		n := running.Add(1)
 		for {
 			p := peak.Load()
@@ -50,16 +52,16 @@ func TestResumer_WakesCoalesceIntoOneRunAtATime(t *testing.T) {
 	assert.Equal(t, int32(1), peak.Load(), "runs never overlap")
 }
 
-func TestResumer_CloseStopsTheWorkerAndLaterWakesDoNothing(t *testing.T) {
+func TestWorker_CloseStopsTheWorkerAndLaterWakesDoNothing(t *testing.T) {
 	var runs atomic.Int32
-	r := newResumer(slog.New(slog.DiscardHandler), func(context.Context) { runs.Add(1) })
+	r := bgwork.NewWorker(slog.New(slog.DiscardHandler), "test", func(context.Context) { runs.Add(1) })
 	r.Close() // never started: returns at once
 
 	r.Wake()
 	time.Sleep(20 * time.Millisecond)
 	assert.Zero(t, runs.Load())
 
-	r = newResumer(slog.New(slog.DiscardHandler), func(context.Context) { runs.Add(1) })
+	r = bgwork.NewWorker(slog.New(slog.DiscardHandler), "test", func(context.Context) { runs.Add(1) })
 	r.Wake()
 	require.Eventually(t, func() bool { return runs.Load() == 1 }, time.Second, time.Millisecond)
 	r.Close()
@@ -68,9 +70,9 @@ func TestResumer_CloseStopsTheWorkerAndLaterWakesDoNothing(t *testing.T) {
 	assert.Equal(t, int32(1), runs.Load())
 }
 
-func TestResumer_APanickingRunIsLoggedAndTheWorkerGoesOn(t *testing.T) {
+func TestWorker_APanickingRunIsLoggedAndTheWorkerGoesOn(t *testing.T) {
 	var runs atomic.Int32
-	r := newResumer(slog.New(slog.DiscardHandler), func(context.Context) {
+	r := bgwork.NewWorker(slog.New(slog.DiscardHandler), "test", func(context.Context) {
 		runs.Add(1)
 		panic("boom")
 	})
@@ -84,7 +86,7 @@ func TestResumer_APanickingRunIsLoggedAndTheWorkerGoesOn(t *testing.T) {
 
 func TestRunSafely_LogsThePanicWithItsStack(t *testing.T) {
 	var buf bytes.Buffer
-	runSafely(slog.New(slog.NewTextHandler(&buf, nil)), "some work", func() { panic("boom") })
+	bgwork.RunSafely(slog.New(slog.NewTextHandler(&buf, nil)), "some work", func() { panic("boom") })
 	assert.Contains(t, buf.String(), "some work panicked")
 	assert.Contains(t, buf.String(), "boom")
 	assert.Contains(t, buf.String(), "stack=")

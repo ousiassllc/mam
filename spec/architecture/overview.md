@@ -123,10 +123,13 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 │       ├── httpclient/     # ベンダー API アダプターが共通で使う HTTP クライアント（別ホストへのリダイレクトでは独自認証ヘッダーを引き継がない）
 │       ├── safefetch/      # ベンダー API が返したダウンロード URL の検証（http・ループバック・リンクローカル・プライベート宛先を拒否）
 │       ├── facesim/        # 顔の同一性の局所計測（ONNX Runtime で YuNet / SFace をプロセス内実行、外部送信なし。`model-adapters.md` §10.1）
+│       ├── textutil/       # 文字列ヘルパー（ルーン単位の切り詰め `TruncateRunes` / `TruncateRunesEllipsis`、ID の短縮 `ShortID`）。domain からは使わない
 │       ├── testenv/        # ffmpeg が無いときのテストの扱い（`MissingFFmpeg`: ローカルは Skip、`CI=true` では失敗）
+│       ├── bgwork/         # 専用ゴルーチンで動かす処理の panic をログに落とす（`RunSafely`）と、起こし合図をまとめて 1 本のワーカーで走らせる `Worker`（サーバー全体を落とさない）
 │       ├── media/          # ffmpeg / ffprobe（Take の解像度・フレームレート取得、4K プロキシ・サムネイル、部分採用の合成）
 │       ├── domain/         # Project/Scene/Shot/Take/WorldState等のドメインモデル
 │       ├── repository/     # SQLite アクセス層（domainのみに依存）
+│       │   ├── bundle/     # Project バンドルの書き出し・取り込み（行の検証と全テーブル一覧を持つ。`repository` の接続・エラーに依存）
 │       │   └── migrations/ # goose 形式の SQL マイグレーション（タイムスタンプ版、go:embed、起動時に自動適用）
 │       ├── credential/     # OSセキュアストレージ（Keychain/Credential Manager/Secret Service）経由の外部モデルAPIキー保存・取得
 │       ├── agent/          # Producer/Writer/Director/Storyboard/ArtDirector/
@@ -143,7 +146,7 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 │       │   ├── orchestrator/ # Orchestrator Agent。Core State Machine の遷移を永続化し、plan ジョブとして Producer → Writer →（承認）→ Director → Storyboard を実行する
 │       │   └── jobqueue/   # 内部ジョブキュー（goroutineワーカー。ジョブは job テーブルに永続化し、再起動時に復旧）
 │       ├── service/        # アプリケーションサービス層（agentを利用しユースケースを実装）。services.go が DI ルート
-│       ├── router/         # ページ(pages.go)/アクション(actions.go)/API(api.go, Huma)ルート定義
+│       ├── router/         # ページ(pages.go)/アクション(actions.go)/API(api.go, Huma)ルート定義（`router/stack/` はミドルウェア〜ルート全体の配線だけを確かめるテスト専用）
 │       └── web/
 │           ├── handler/    # projects.go, chat.go, scenes.go, generation.go, take.go, director.go,
 │           │                # editor.go, branch.go, settings.go ...（機能ごと）
@@ -314,3 +317,4 @@ Windows では、ブラウザ版と同じ `127.0.0.1` のサーバーを `intern
 | 1.18 | 2026-10-11 | §5 の構成図に `backend/internal/testenv/`・`.github/workflows/`（`ci.yml`・`release.yml`）・ルートの `Taskfile.yml` を追加 | Issue #498。`testenv`（Issue #485）の追加時に構成図が更新されておらず、`internal` 直下で唯一図に無いパッケージになっていた。CI のワークフローとルートの Taskfile（`desktop.md` §4 が前提にする）も図に無かった |
 | 1.19 | 2026-10-11 | §5 の `middleware/` に「セキュリティヘッダ（CSP）」を追加し、§6 に `SecurityHeaders`（全応答への `Content-Security-Policy`・`X-Content-Type-Options: nosniff`）の記述を追加 | Issue #509。htmx・Lit が「自前の `/static/app.js` 以外のスクリプトを実行しない」前提が、ブラウザ側の強制（CSP）では担保されていなかったため |
 | 1.20 | 2026-10-11 | §5 の構成図に `static/biome.json` を追加し、`lefthook.yml` の説明（`typecheck` → `lint-static`）と §9 の `make lint` / `make fmt` / `make fmt-check` の説明に Biome を反映 | Issue #505。フロントエンドの TypeScript に formatter / linter が無く、`tsc` だけで CI・pre-commit を通っていた |
+| 1.21 | 2026-10-11 | §5 の構成図に `textutil/`・`bgwork/`・`repository/bundle/`・`router/stack/` を追加した | Issue #496・#500・#501。超過パッケージ（`domain/`・`service/`・`repository/`）へ足したヘルパー・panic 回収・バンドル処理を新しいパッケージへ置き、行数ラチェット（`.linterly-baseline`）を悪化させないため |

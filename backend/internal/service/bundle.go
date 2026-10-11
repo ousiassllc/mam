@@ -20,6 +20,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/repository/bundle"
 )
 
 // Bundle limits. The bundle is a local file the user chose, but a broken or hostile archive must
@@ -39,7 +40,7 @@ const (
 // with the Project Data Model as JSON and the asset files.
 type BundleService struct {
 	*core
-	bundles   *repository.BundleRepository
+	bundles   *bundle.Repository
 	freeBytes func(path string) (uint64, error) // nil selects fsutil.FreeBytes
 }
 
@@ -215,14 +216,13 @@ func (s *BundleService) Import(ctx context.Context, src io.ReaderAt, size int64)
 	} else if !errors.Is(err, repository.ErrNotFound) {
 		return domain.Project{}, err
 	}
-
 	err = s.writeProject(ctx, data, files)
 	switch {
 	case err == nil:
 	case errors.Is(err, repository.ErrConflict):
 		return domain.Project{}, ErrConflict
-	case errors.Is(err, repository.ErrInvalidBundle):
-		return domain.Project{}, invalid("bundle", "このバージョンでは読み込めないデータです: %s", strings.TrimPrefix(err.Error(), repository.ErrInvalidBundle.Error()+": "))
+	case errors.Is(err, bundle.ErrInvalid):
+		return domain.Project{}, invalid("bundle", "このバージョンでは読み込めないデータです: %s", strings.TrimPrefix(err.Error(), bundle.ErrInvalid.Error()+": "))
 	default:
 		return domain.Project{}, err
 	}

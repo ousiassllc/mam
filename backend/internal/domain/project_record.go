@@ -3,6 +3,7 @@ package domain
 import (
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 // Project is one video production and its single chat thread (F-25, F-30).
@@ -35,7 +36,10 @@ func ProjectName(subject, firstMessage string) string {
 		if s == "" {
 			continue
 		}
-		return TruncateRunesEllipsis(s, projectNameMaxRunes)
+		if utf8.RuneCountInString(s) > projectNameMaxRunes {
+			return string([]rune(s)[:projectNameMaxRunes]) + "…"
+		}
+		return s
 	}
 	return UntitledProject
 }

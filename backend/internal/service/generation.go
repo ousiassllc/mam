@@ -8,14 +8,14 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/generation"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/textutil"
 )
 
 // maxInstructionRunes bounds the additional instruction of a generation.
 const maxInstructionRunes = 1000
 
-// clipInstruction cuts a direction the user did not type into a form (the chat's, the AI's) to
-// maxInstructionRunes, where a form field is refused with 422 instead.
-func clipInstruction(s string) string { return domain.TruncateRunes(s, maxInstructionRunes) }
+// clipInstruction cuts a direction not typed into a form (the chat's, the AI's) to maxInstructionRunes.
+func clipInstruction(s string) string { return textutil.TruncateRunes(s, maxInstructionRunes) }
 
 // GenerationService starts the generation of a Shot (Prompt Autopilot → Model Adapter → Takes, F-06,
 // F-07, F-12) and the building of its Reference Pack (F-11), and streams their progress.

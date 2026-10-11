@@ -28,7 +28,7 @@ func NewVersionRepository(db *DB) *VersionRepository {
 
 // ShotVersions returns the prompt versions of the Shot, newest first (ErrNotFound for an unknown Shot).
 func (r *VersionRepository) ShotVersions(ctx context.Context, shotID string) ([]domain.VersionEntry, error) {
-	if err := exists(ctx, r.db.Reader(), `SELECT 1 FROM shot WHERE id = ?`, shotID); err != nil {
+	if err := Exists(ctx, r.db.Reader(), `SELECT 1 FROM shot WHERE id = ?`, shotID); err != nil {
 		return nil, err
 	}
 	rows, err := r.db.Reader().QueryContext(ctx,
@@ -51,7 +51,7 @@ func (r *VersionRepository) ShotVersions(ctx context.Context, shotID string) ([]
 		}
 		_ = json.Unmarshal([]byte(snapshot), &probe) // a snapshot without a spec has no summary
 		e.Summary = probe.Objective
-		if e.CreatedAt, err = parseTime(at); err != nil {
+		if e.CreatedAt, err = ParseTime(at); err != nil {
 			return nil, err
 		}
 		out = append(out, e)
@@ -85,7 +85,7 @@ func (r *VersionRepository) WorldStateVersions(ctx context.Context, projectID, b
 		if err := json.Unmarshal([]byte(state), &w); err == nil {
 			e.Summary = fmt.Sprintf("Character %d / Product %d / Location %d", len(w.Characters), len(w.Products), len(w.Locations))
 		}
-		if e.CreatedAt, err = parseTime(at); err != nil {
+		if e.CreatedAt, err = ParseTime(at); err != nil {
 			return nil, err
 		}
 		out = append(out, e)
@@ -95,7 +95,7 @@ func (r *VersionRepository) WorldStateVersions(ctx context.Context, projectID, b
 
 // BranchVersions returns the versions of the Branch, newest first (ErrNotFound for an unknown Branch).
 func (r *VersionRepository) BranchVersions(ctx context.Context, branchID string) ([]domain.VersionEntry, error) {
-	if err := exists(ctx, r.db.Reader(), `SELECT 1 FROM branch WHERE id = ?`, branchID); err != nil {
+	if err := Exists(ctx, r.db.Reader(), `SELECT 1 FROM branch WHERE id = ?`, branchID); err != nil {
 		return nil, err
 	}
 	rows, err := r.db.Reader().QueryContext(ctx,
@@ -113,7 +113,7 @@ func (r *VersionRepository) BranchVersions(ctx context.Context, branchID string)
 		if err := rows.Scan(&e.Number, &e.Summary, &at); err != nil {
 			return nil, err
 		}
-		if e.CreatedAt, err = parseTime(at); err != nil {
+		if e.CreatedAt, err = ParseTime(at); err != nil {
 			return nil, err
 		}
 		out = append(out, e)
@@ -121,8 +121,8 @@ func (r *VersionRepository) BranchVersions(ctx context.Context, branchID string)
 	return out, rows.Err()
 }
 
-// exists returns ErrNotFound when the query (SELECT 1 ... WHERE id = ?) finds no row.
-func exists(ctx context.Context, q queryer, query string, args ...any) error {
+// Exists returns ErrNotFound when the query (SELECT 1 ... WHERE id = ?) finds no row.
+func Exists(ctx context.Context, q queryer, query string, args ...any) error {
 	var one int
 	err := q.QueryRowContext(ctx, query, args...).Scan(&one)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -136,13 +136,13 @@ func exists(ctx context.Context, q queryer, query string, args ...any) error {
 
 // scopeExists checks the Project and, when branchID is set, that the Branch belongs to it.
 func scopeExists(ctx context.Context, q queryer, projectID, branchID string) error {
-	if err := exists(ctx, q, `SELECT 1 FROM project WHERE id = ?`, projectID); err != nil {
+	if err := Exists(ctx, q, `SELECT 1 FROM project WHERE id = ?`, projectID); err != nil {
 		return err
 	}
 	if branchID == "" {
 		return nil
 	}
-	return exists(ctx, q, `SELECT 1 FROM branch WHERE id = ? AND project_id = ?`, branchID, projectID)
+	return Exists(ctx, q, `SELECT 1 FROM branch WHERE id = ? AND project_id = ?`, branchID, projectID)
 }
 
 // RestoreShotVersion makes the Canonical Shot Spec of prompt version number the spec of the Shot
@@ -343,7 +343,7 @@ func restoreReferenceSlots(ctx context.Context, tx *sql.Tx, projectID string, be
 			}
 		}
 		if assetID != "" {
-			if err := exists(ctx, tx, `SELECT 1 FROM asset WHERE id = ? AND project_id = ?`, assetID, projectID); errors.Is(err, ErrNotFound) {
+			if err := Exists(ctx, tx, `SELECT 1 FROM asset WHERE id = ? AND project_id = ?`, assetID, projectID); errors.Is(err, ErrNotFound) {
 				continue
 			} else if err != nil {
 				return err

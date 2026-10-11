@@ -35,7 +35,7 @@ func scanMessage(row rowScanner) (domain.ChatMessage, error) {
 	if err := json.Unmarshal([]byte(attachments), &m.AttachmentAssetIDs); err != nil {
 		return domain.ChatMessage{}, fmt.Errorf("decode attachment_asset_ids: %w", err)
 	}
-	t, err := parseTime(at)
+	t, err := ParseTime(at)
 	if err != nil {
 		return domain.ChatMessage{}, err
 	}
@@ -236,7 +236,7 @@ func scanAsset(row rowScanner) (domain.Asset, error) {
 	if err := row.Scan(&a.ID, &a.ProjectID, &a.Type, &a.FilePath, &a.MimeType, &a.SizeBytes, &at); err != nil {
 		return domain.Asset{}, err
 	}
-	t, err := parseTime(at)
+	t, err := ParseTime(at)
 	if err != nil {
 		return domain.Asset{}, err
 	}

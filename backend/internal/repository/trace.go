@@ -59,10 +59,10 @@ func (r *TraceRepository) TakeTrace(ctx context.Context, takeID string) (domain.
 		return domain.TakeTrace{}, fmt.Errorf("decode note refs: %w", err)
 	}
 	tr.ModelParameters = json.RawMessage(params)
-	if t.CreatedAt, err = parseTime(takeAt); err != nil {
+	if t.CreatedAt, err = ParseTime(takeAt); err != nil {
 		return domain.TakeTrace{}, err
 	}
-	if pv.CreatedAt, err = parseTime(pvAt); err != nil {
+	if pv.CreatedAt, err = ParseTime(pvAt); err != nil {
 		return domain.TakeTrace{}, err
 	}
 

@@ -71,7 +71,7 @@ func scanRepair(row rowScanner) (domain.RepairRecord, error) {
 	if err := json.Unmarshal([]byte(ins), &rec.Instructions); err != nil {
 		return domain.RepairRecord{}, fmt.Errorf("decode repair instructions: %w", err)
 	}
-	t, err := parseTime(made)
+	t, err := ParseTime(made)
 	if err != nil {
 		return domain.RepairRecord{}, err
 	}
@@ -156,7 +156,7 @@ func (r *RepairRepository) ShotVerdicts(ctx context.Context, shotID string) ([]T
 			_ = rows.Close()
 			return nil, fmt.Errorf("scan take: %w", err)
 		}
-		if t.CreatedAt, err = parseTime(created); err != nil {
+		if t.CreatedAt, err = ParseTime(created); err != nil {
 			_ = rows.Close()
 			return nil, err
 		}

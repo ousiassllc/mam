@@ -259,7 +259,7 @@ func scanBranch(row rowScanner) (domain.Branch, error) {
 		return domain.Branch{}, err
 	}
 	var err error
-	b.CreatedAt, err = parseTime(created)
+	b.CreatedAt, err = ParseTime(created)
 	return b, err
 }
 
@@ -445,7 +445,7 @@ func (r *BranchRepository) Versions(ctx context.Context, branchID string) ([]dom
 		if err := rows.Scan(&v.ID, &v.BranchID, &v.Number, &v.Name, &v.WorldStateVersionID, &v.WorldStateVersion, &created); err != nil {
 			return nil, fmt.Errorf("scan branch version: %w", err)
 		}
-		if v.CreatedAt, err = parseTime(created); err != nil {
+		if v.CreatedAt, err = ParseTime(created); err != nil {
 			return nil, err
 		}
 		out = append(out, v)

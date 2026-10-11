@@ -86,7 +86,6 @@ func ProjectAsset(svc *service.ProjectService) gin.HandlerFunc {
 			return
 		}
 		c.Header("Content-Type", file.Asset.MimeType)
-		c.Header("X-Content-Type-Options", "nosniff")
 		c.Header("Content-Security-Policy", "sandbox")
 		c.File(file.Path)
 	}

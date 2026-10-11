@@ -44,7 +44,7 @@ func (r *NoteRepository) CreatePromotion(ctx context.Context, p NewPromotion, ca
 		if err != nil {
 			return err
 		}
-		if err := exists(ctx, tx, `SELECT 1 FROM note_promotion WHERE note_version_id = ?`, p.NoteVersionID); err == nil {
+		if err := Exists(ctx, tx, `SELECT 1 FROM note_promotion WHERE note_version_id = ?`, p.NoteVersionID); err == nil {
 			return ErrConflict
 		} else if !errors.Is(err, ErrNotFound) {
 			return err
@@ -105,11 +105,11 @@ func readPromotion(ctx context.Context, q queryer, id string) (domain.NotePromot
 		return p, fmt.Errorf("decode locked conflicts: %w", err)
 	}
 	p.WorldStateVersionID = worldVersion.String
-	if p.CreatedAt, err = parseTime(createdAt); err != nil {
+	if p.CreatedAt, err = ParseTime(createdAt); err != nil {
 		return p, err
 	}
 	if resolved.Valid {
-		t, err := parseTime(resolved.String)
+		t, err := ParseTime(resolved.String)
 		if err != nil {
 			return p, err
 		}
