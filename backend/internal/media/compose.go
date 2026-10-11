@@ -32,6 +32,7 @@ func (t Tools) Compose(ctx context.Context, segs []Segment, dst string) (Info, e
 	}
 	infos := make([]Info, len(segs))
 	cut := make([]Segment, len(segs))
+	seconds := 0.0
 	for i, s := range segs {
 		info, err := t.Probe(ctx, s.Path)
 		if err != nil {
@@ -42,6 +43,7 @@ func (t Tools) Compose(ctx context.Context, segs []Segment, dst string) (Info, e
 			return Info{}, fmt.Errorf("compose: segment %d is empty (%.3f-%.3f s of %.3f s)", i+1, s.Start, s.End, info.Duration)
 		}
 		infos[i], cut[i] = info, s
+		seconds += s.Length()
 	}
 	graph, audio := composeGraph(cut, infos)
 	args := make([]string, 0, 2*len(cut)+16)
@@ -55,7 +57,7 @@ func (t Tools) Compose(ctx context.Context, segs []Segment, dst string) (Info, e
 		args = append(args, "-an")
 	}
 	args = append(args, "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p", "-movflags", "+faststart")
-	if err := t.write(ctx, dst, "mp4", args); err != nil {
+	if err := t.write(ctx, dst, "mp4", seconds, args); err != nil {
 		return Info{}, err
 	}
 	return t.Probe(ctx, dst)
