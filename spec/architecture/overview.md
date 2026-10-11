@@ -105,7 +105,7 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 │   ├── fetch-face-models.sh # 顔検出・埋め込みモデル（YuNet / SFace）の取得と SHA-256 検証（§9 / model-adapters.md §10.1）
 │   ├── linterly-staged.sh  # コミット対象ファイルの行数上限チェック（pre-commit）
 │   ├── linterly-baseline.sh # 行数上限の既存超過を `.linterly-baseline` と比べ、悪化を検出する（`make lint-lines`・CI）。`update` で基準値を書き換える
-│   └── linterly-baseline_test.sh # 上のスクリプトのテスト（スタブの linterly。`make test-scripts`）
+│   └── *_test.sh           # スクリプトのテスト（`linterly-baseline_test.sh`: 行数基準値、`complexity-ratchet_test.sh`: `.golangci.yml` の複雑度の許可リスト、`makefile_test.sh`: `Makefile` のターゲット。`make test-scripts`）
 ├── build/                  # Wails v3 のパッケージング設定（`config.yml`・`Taskfile.yml`・`windows/`: アイコン・マニフェスト・`info.json`・`nsis/project.nsi`。§11）
 ├── backend/
 │   ├── cmd/
@@ -127,10 +127,12 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 │       ├── textutil/       # 文字列ヘルパー（ルーン単位の切り詰め `TruncateRunes` / `TruncateRunesEllipsis`、ID の短縮 `ShortID`）。domain からは使わない
 │       ├── testenv/        # ffmpeg が無いときのテストの扱い（`MissingFFmpeg`: ローカルは Skip、`CI=true` では失敗）
 │       ├── bgwork/         # 専用ゴルーチンで動かす処理の panic をログに落とす（`RunSafely`）と、起こし合図をまとめて 1 本のワーカーで走らせる `Worker`（サーバー全体を落とさない）
+│       ├── keylock/        # キー別のロック（`Locker`）。待機側は ctx のキャンセルで諦められ、エントリは保持・待機中だけ存在する（キーの数だけ増え続けない）。`service/take.go`（`preview` / `compose`）と `service/editor.go` が使う
 │       ├── media/          # ffmpeg / ffprobe（Take の解像度・フレームレート取得、4K プロキシ・サムネイル、部分採用の合成）
 │       ├── domain/         # Project/Scene/Shot/Take/WorldState等のドメインモデル
 │       ├── repository/     # SQLite アクセス層（domainのみに依存）
 │       │   ├── bundle/ review/ # bundle: Project バンドルの書き出し・取り込み（行の検証と全テーブル一覧を持つ）。review: チームコラボレーション（レビュー依頼・返答・コメント）の永続化。どちらも `repository` の接続・エラーに依存
+│       │   ├── testdb/     # テスト専用。マイグレーション済みの DB を 1 回だけ作り（`migratedTemplate`）、テストごとにファイルを複製して渡す（`Path` / `Open`）。本番コードから import しない
 │       │   └── migrations/ # goose 形式の SQL マイグレーション（タイムスタンプ版、go:embed、起動時に自動適用）
 │       ├── bundlezip/      # Project バンドルの ZIP（`manifest.json`・`data.json`・`assets/`）の書き出し・読み取り・検証（サイズ・パス）・アセットディレクトリへの展開。DB は触らない（`service.BundleService` が `repository/bundle` と組み合わせる）
 │       ├── credential/     # OSセキュアストレージ（Keychain/Credential Manager/Secret Service）経由の外部モデルAPIキー保存・取得
@@ -148,6 +150,7 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 │       │   ├── orchestrator/ # Orchestrator Agent。Core State Machine の遷移を永続化し、plan ジョブとして Producer → Writer →（承認）→ Director → Storyboard を実行する
 │       │   └── jobqueue/   # 内部ジョブキュー（goroutineワーカー。ジョブは job テーブルに永続化し、再起動時に復旧）
 │       ├── service/        # アプリケーションサービス層（agentを利用しユースケースを実装）。services.go が DI ルート、wiring.go が機能ごとの `wire*`（plan → judge → generation → repair → director → continuity → editor の順）とジョブキューの `OnChange` を最後に 1 つだけ登録する `watchJobs`
+│       │   └── servicetest/ # テスト専用。`service.New` に `t.Cleanup(svc.Close)` を付けて組み立てる（`New`）。本番コードから import しない
 │       ├── router/         # ページ(pages.go)/アクション(actions.go)/API(api.go, Huma)ルート定義（`router/stack/` はミドルウェア〜ルート全体の配線だけを確かめるテスト専用）
 │       └── web/
 │           ├── handler/    # projects.go, chat.go, scenes.go, generation.go, take.go, director.go,
@@ -202,8 +205,9 @@ handler → service → agent → repository → domain
 - `web/handler/`: `service/`, `domain/` に依存。`repository/`・`agent/` を直接使わない
 - `router/`: `handler/` を参照してルートを定義
 - `service/Services`（`service/services.go`）が DI ルート。`internal/app`（`app.Run` → `buildServices`）がインフラ（DB・ジョブキュー・認証情報ストア・ロガー）を生成して `service.New(Deps)` に渡し、`router.New(services, opts)` が `services` を各ルート登録関数へ渡す。`service.New` は `newWiring(deps)` を作り、`service/wiring.go` の `wirePlan` → `wireJudge` → `wireGeneration` → `wireRepair` → `wireDirector` → `wireContinuity` → `wireEditor` → `watchJobs` をこの順に呼ぶ。各 `wire*` は前の `wire*` が設定したものだけを読み、ジョブキューの `OnChange` は `watchJobs` が最後に 1 つだけ登録する（呼び出すエージェントが揃ってから。`Queue` の開始後に登録すると panic する）。新機能は「サービス追加 → Reasoning LLM・ジョブキュー・Model Adapter が要るなら、前提のエージェントより後ろになる `wire*`（無ければ新設）に組み込んで順序の制約を守る → ジョブ状態の変化でチャットを更新するなら `watchJobs` から呼ぶ → `Services` にフィールド追加 → ルートを `pages.go`/`actions.go`/`api.go` に追加」で組み込む。インフラに依存しないサービスは `Services` へのフィールド追加と `wiring.services` の 1 行で済む
+- `Services.Close`（`service/services.go`）は editor の再開 Worker など `Services` が持つバックグラウンドの Worker を止める。ジョブ状態の変化がこの Worker を起こすため、**ジョブキューを止めた後・DB を閉じる前**に呼ぶ（`app/services.go` は `closers` を逆順に走らせるので、`services.Close` を `jobs.Stop` より前に積む）。`Services` に Worker を足す機能は、その停止を `Close` に足してこの順序を守る。テストでは `servicetest.New` が DB を閉じるクリーンアップより後に `Close` を登録し、先に走らせる
 - レイヤー依存ルールは `.golangci.yml` の depguard で機械的に検査する（違反はlintエラー）
-- 関数の複雑度（循環的 25・認知的 50 超）も `.golangci.yml` の `gocyclo` / `gocognit` で検査する。既存の超過関数は除外ルールで個別に許可し、悪化だけを止める（環境構築 spec の「関数の複雑度」節）
+- 関数の複雑度（循環的 25・認知的 50 超）も `.golangci.yml` の `gocyclo` / `gocognit` で検査する。既存の超過関数は除外ルールで 1 関数ずつ（ファイルと複雑度の範囲まで固定して）許可し、新規の超過と悪化を止める（環境構築 spec の「関数の複雑度」節）
 
 ## 6. 起動方式（ローカル Web サーバー）
 
@@ -277,7 +281,7 @@ dev:
 - `make dev` は `MAM_STATIC_DIR=static/src/dist` を設定し、再ビルドのたびにバイナリを作り直さずディスク上のアセットを配信する
 - 本番ビルド: `make build`（`scripts/build.sh`）が `templ generate` → `esbuild`（minify） → `tailwind`（minify） → `go build`（`go:embed`で静的アセット同梱、`CGO_ENABLED=0`）を一括実行し `bin/mam` を生成する（`make build-all` = `scripts/build.sh --all` は windows / darwin / linux × amd64 / arm64 の全プラットフォームを `bin/mam-<os>-<arch>` に生成する）。SQLite は純 Go ドライバ（modernc.org/sqlite）のため各 OS/arch へクロスコンパイル可能
 - Windows 版: `scripts/package-windows.sh` が上の本番ビルドと同じフロントエンド工程の後に `wails3 package GOOS=windows` を実行し、ポータブル `mam.exe` と NSIS インストーラーを作る（`desktop.md` §4）。ローカルの確認は Windows 上で行う（Wails v3 の `wails3` CLI と NSIS（`makensis`）が必要）
-- その他のターゲット: `make test`（Go `-race` + フロントの vitest + web-test-runner の Lit コンポーネントテスト（Chrome が必要）+ `make test-scripts`（`bash scripts/linterly-baseline_test.sh`。行数基準値のスクリプトのテスト。`jq` が要る））、`make lint`（golangci-lint + `tsc --noEmit` + Biome lint）、`make vuln`（`govulncheck ./...`。コードから到達できる既知の脆弱性（標準ライブラリ・依存モジュール）があれば失敗する。`make tools` が入れる `govulncheck` が要る。CI の「Vulnerability check」ステップ。`spec/environment/setup.md` の CI 節）、`make lint-lines`（`scripts/linterly-baseline.sh check`。`.linterly-baseline` より悪化した行数超過があれば失敗する。CI の「Line limit (no regression)」ステップ）、`make linterly-baseline`（同 `update`。基準値の書き換え。`spec/environment/setup.md` の Linterly 節）、`make fmt` / `make fmt-check`（Go・templ に加えてフロントの TypeScript を Biome で整形・検査）
+- その他のターゲット: `make test`（Go `-race` + フロントの vitest + web-test-runner の Lit コンポーネントテスト（Chrome が必要）+ `make test-scripts`（`bash scripts/linterly-baseline_test.sh`・`scripts/makefile_test.sh`・`scripts/complexity-ratchet_test.sh`。行数基準値・`Makefile` のターゲット・複雑度の許可リストのテスト。`jq` と `golangci-lint` が要る））、`make lint`（golangci-lint + `tsc --noEmit` + Biome lint）、`make vuln`（`govulncheck ./...`。コードから到達できる既知の脆弱性（標準ライブラリ・依存モジュール）があれば失敗する。`make tools` が入れる `govulncheck` が要る。CI の「Vulnerability check」ステップ。`spec/environment/setup.md` の CI 節）、`make lint-lines`（`scripts/linterly-baseline.sh check`。`.linterly-baseline` より悪化した行数超過があれば失敗する。CI の「Line limit (no regression)」ステップ）、`make linterly-baseline`（同 `update`。基準値の書き換え。`spec/environment/setup.md` の Linterly 節）、`make fmt` / `make fmt-check`（Go・templ に加えてフロントの TypeScript を Biome で整形・検査）
 
 ## 10. テスト戦略
 
@@ -289,7 +293,9 @@ HALT のレイヤー別テスト方針を踏襲する。
 | Templ テンプレート | `Render()` → HTML文字列アサーション | コンポーネント出力 |
 | Agent（Producer/Judge/RepairAgent等） | Go ユニットテスト（外部APIはモック） | Shot Spec変換、Judge出力パース、Repair戦略選択ロジック |
 | Lit コンポーネント | `@open-wc/testing` + `@web/test-runner` | 単体の振る舞い |
-| シェルスクリプト | `bash scripts/linterly-baseline_test.sh`（`make test-scripts`。JSON の報告を返す偽の `linterly` と一時ディレクトリの基準値で `scripts/linterly-baseline.sh` の判定を検証する） | 行数基準値スクリプトの check / update の振る舞い |
+| シェルスクリプト | `bash scripts/linterly-baseline_test.sh`（`make test-scripts`。JSON の報告を返す偽の `linterly` と一時ディレクトリの基準値で `scripts/linterly-baseline.sh` の判定を検証する）、`scripts/complexity-ratchet_test.sh`（使い捨てのモジュールを `.golangci.yml` で lint する）、`scripts/makefile_test.sh`（`Makefile` の全ターゲットを検査する） | 行数基準値スクリプトの check / update の振る舞い、複雑度の許可リストの判定、`Makefile` の `.PHONY` / `make help` |
+| DB を使うテスト | `repository/testdb`（`testdb.Open` / `testdb.Path`）。テストバイナリごとにマイグレーション済みの DB を 1 回だけ作り、テストごとに複製する（マイグレーションの再適用を避ける）。DB の開き方・マイグレーション自体を検証するテスト（`repository/db_test.go` など）は `repository.Open` を直接使う | リポジトリ・サービス・Agent のテストが、他のテストと状態を共有せず速く走る |
+| `Services` を作るテスト | `service/servicetest`（`servicetest.New`）。`service.New` の後始末として `Services.Close` を登録する（DB を閉じるクリーンアップより後に登録して先に走らせる） | 再開 Worker のゴルーチンが閉じた DB を触らない |
 | E2E | 未導入（方針: Playwright で Gin サーバーを直接起動してブラウザから検証する） | HTMXインタラクション込みのユーザーフロー。現状は Go ハンドラ（`internal/router` の `httptest`、HTMX ヘッダ込み）と Lit のブラウザ内テストで層別に検証しており、ブラウザ通しのフローは自動検証されない |
 
 ## 11. Windows デスクトップ版（Wails v3）
@@ -326,5 +332,6 @@ Windows では、ブラウザ版と同じ `127.0.0.1` のサーバーを `intern
 | 1.23 | 2026-10-11 | §7 に、チャット画面の再取得 URL（全履歴・新着・カード 1 枚）はサーバーが `data-messages-url` / `data-next-url` / `data-card-url` で注入し、`chat.ts` は組み立てずに読むだけであることを追記 | Issue #513。#507 で URL の組み立てをクライアントからサーバーへ移した契約が、`spec/components/overview.md` §5 の `thread.ts` の行にしか書かれていなかったため。実装は `chat_workspace.templ`・`message_frame.templ`・`static/src/chat.ts` |
 | 1.24 | 2026-10-12 | §5 の構成図に `.github/dependabot.yml` を足し、`ci.yml` の説明に脆弱性検査（`make vuln`）を加えた。§9 の「その他のターゲット」に `make vuln` を追加 | Issue #525。#523 が `make vuln`・CI の「Vulnerability check」ステップ・`dependabot.yml` を `spec/environment/setup.md` と `README.md` には反映したのに、同じ構成・ターゲットを列挙する overview.md だけが反映していなかった（#511 と同じ種類の抜け） |
 | 1.25 | 2026-10-12 | §5 の構成図の `service/` に `wiring.go`（機能ごとの `wire*` と、`OnChange` を最後に登録する `watchJobs`）を足し、DI ルートの項の新機能を組み込む手順を「`Services` にフィールドを足すだけ」から `wire*` への組み込みと順序の制約を含む手順に直した | Issue #526。#522 が `service.New` を `wiring.go` の `wire*` に分け、`OnChange` の登録を `watchJobs` の 1 か所にまとめたのに、構成図の `service/` の説明と「追記だけで組み込める」という手順は更新されていなかった。実装は `backend/internal/service/wiring.go`・`services.go` |
-| 1.26 | 2026-10-12 | §5 の構成図の `.golangci.yml` の説明と、レイヤー依存ルールの項に、`gocyclo` / `gocognit` による関数の複雑度の検査を追記 | Issue #534。関数単位の複雑度が lint で管理されていなかった |
+| 1.26 | 2026-10-12 | §5 の構成図の `.golangci.yml` の説明と、レイヤー依存ルールの項に、`gocyclo` / `gocognit` による関数の複雑度の検査を追記。許可リストの説明を「新規の超過と悪化を止める」に改め、構成図と §10 のテスト戦略に `scripts/complexity-ratchet_test.sh`・`makefile_test.sh` を足した | Issue #534・#537・#540・#544。関数単位の複雑度が lint で管理されていなかった。許可エントリが関数名だけで一致し悪化も同名の別関数も通していたため、`path` と複雑度の範囲で固定した |
 | 1.27 | 2026-10-12 | §5 の構成図に `bundlezip/`・`repository/review/`・`agent/modeladapter/configcheck/` を追加した | Issue #529。#522・#518 の分割が、2000 行を超えている `service/`・`modeladapter/` の行数を増やして CI の行数チェックを落としていた。バンドルの ZIP 処理・レビューの永続化・Model Adapter 設定の検査を、超過していない新しいパッケージへ移した |
+| 1.28 | 2026-10-12 | §5 の構成図に `keylock/`・`repository/testdb/`・`service/servicetest/` を追加し、レイヤー依存ルールの項に `Services.Close` の呼び出し順（`jobs.Stop` の後・DB を閉じる前）を、§10 のテスト戦略の表に `testdb`・`servicetest` の使い方を追記した | Issue #535・#545。#530・#532 が足したキー別ロック、#533 が足したテスト用の DB の複製・`Services` の組み立てと `Services.Close` の停止順が、構成図にもテスト戦略にも改訂履歴にも載っていなかった（#529 が `bundlezip/` などを載せたのと不揃い）。実装は `backend/internal/keylock`・`repository/testdb`・`service/servicetest`・`service/services.go`・`app/services.go` |
