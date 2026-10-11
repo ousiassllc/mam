@@ -41,3 +41,8 @@ func (r *recorder) Fatalf(string, ...any) {
 	panic("fatal")
 }
 func (r *recorder) Skip(...any) { panic("skip") }
+
+func TestParallel_MayBeCalledTwiceOnTheSameTest(t *testing.T) {
+	testenv.Parallel(t)
+	assert.NotPanics(t, func() { testenv.Parallel(t) })
+}

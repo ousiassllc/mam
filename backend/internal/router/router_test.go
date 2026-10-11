@@ -2,13 +2,11 @@ package router_test
 
 import (
 	"bytes"
-	"context"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
-	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -20,7 +18,7 @@ import (
 	"github.com/zalando/go-keyring"
 
 	"github.com/ousiassllc/mam/backend/internal/credential"
-	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 	"github.com/ousiassllc/mam/backend/internal/router"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
@@ -31,9 +29,7 @@ func init() { gin.SetMode(gin.TestMode) }
 func newEngine(t *testing.T) *gin.Engine {
 	t.Helper()
 	keyring.MockInit()
-	db, err := repository.Open(context.Background(), filepath.Join(t.TempDir(), "mam.db"), nil)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = db.Close() })
+	db := testdb.Open(t)
 	svc := service.New(service.Deps{DB: db, Credentials: credential.NewKeyring()})
 	return router.New(svc, router.Options{
 		Static: fstest.MapFS{

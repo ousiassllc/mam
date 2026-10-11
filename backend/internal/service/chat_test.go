@@ -15,7 +15,9 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/testenv"
 )
 
 type fixture struct {
@@ -26,11 +28,9 @@ type fixture struct {
 
 func newFixture(t *testing.T) fixture {
 	t.Helper()
-	dir := t.TempDir()
-	db, err := repository.Open(context.Background(), filepath.Join(dir, "mam.db"), nil)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = db.Close() })
-	assets := filepath.Join(dir, "assets")
+	testenv.Parallel(t)
+	db := testdb.Open(t)
+	assets := filepath.Join(t.TempDir(), "assets")
 	return fixture{svc: service.New(service.Deps{DB: db, AssetsDir: assets}), db: db, assetsDir: assets}
 }
 

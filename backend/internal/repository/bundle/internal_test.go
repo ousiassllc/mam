@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"path/filepath"
 	"regexp"
 	"slices"
 	"testing"
@@ -13,16 +12,14 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
-	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 )
 
 // TestBundle_EveryTableIsBundledOrHasAReasonNotToBe makes a new table fail here until its author
 // decides whether the Project bundle carries it: a table silently missing from bundleTables would
 // make exported Projects lose data.
 func TestBundle_EveryTableIsBundledOrHasAReasonNotToBe(t *testing.T) {
-	db, err := repository.Open(context.Background(), filepath.Join(t.TempDir(), "mam.db"), nil)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = db.Close() })
+	db := testdb.Open(t)
 	rows, err := db.Reader().Query(`SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'`)
 	require.NoError(t, err)
 	defer func() { _ = rows.Close() }()
@@ -44,9 +41,7 @@ func TestBundle_EveryTableIsBundledOrHasAReasonNotToBe(t *testing.T) {
 // TestBundle_NoIDMarksExactlyTheTablesWithoutAnIDColumn keeps checkBundle's "every row has an id"
 // rule honest: a bundled table whose primary key is not "id" must say so.
 func TestBundle_NoIDMarksExactlyTheTablesWithoutAnIDColumn(t *testing.T) {
-	db, err := repository.Open(context.Background(), filepath.Join(t.TempDir(), "mam.db"), nil)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = db.Close() })
+	db := testdb.Open(t)
 	for _, b := range bundleTables {
 		var hasID int
 		require.NoError(t, db.Reader().QueryRow(`SELECT count(*) FROM pragma_table_info(?) WHERE name = 'id' AND pk = 1`, b.name).Scan(&hasID))
@@ -58,9 +53,7 @@ func TestBundle_NoIDMarksExactlyTheTablesWithoutAnIDColumn(t *testing.T) {
 // fail here until its author says what the reader decodes it into (bundleJSONColumns) or that any
 // JSON will do (rawJSONColumns): checkBundle refuses a bundle row the readers cannot decode.
 func TestBundle_EveryJSONColumnHasAShapeOrIsKeptRaw(t *testing.T) {
-	db, err := repository.Open(context.Background(), filepath.Join(t.TempDir(), "mam.db"), nil)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = db.Close() })
+	db := testdb.Open(t)
 	jsonColumn := regexp.MustCompile(`json_valid\((\w+)\)`)
 	for _, b := range bundleTables {
 		var ddl string
@@ -82,9 +75,7 @@ func TestBundle_EveryJSONColumnHasAShapeOrIsKeptRaw(t *testing.T) {
 // the readers fail to Scan) is refused, and a number is not. A new numeric column is covered
 // without being listed.
 func TestBundle_EveryNumericColumnRefusesText(t *testing.T) {
-	db, err := repository.Open(context.Background(), filepath.Join(t.TempDir(), "mam.db"), nil)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = db.Close() })
+	db := testdb.Open(t)
 	numeric := 0
 	for _, b := range bundleTables {
 		rows, err := db.Reader().Query(`SELECT name, type FROM pragma_table_info(?)`, b.name)
@@ -121,9 +112,7 @@ func TestBundle_EveryNumericColumnRefusesText(t *testing.T) {
 // bundle; a failure of the database itself (here a cancelled context) is not, so that the caller
 // does not tell the user their data is unreadable.
 func TestInsertBundleTable_OnlyTheBundlesFaultIsInvalidBundle(t *testing.T) {
-	db, err := repository.Open(context.Background(), filepath.Join(t.TempDir(), "mam.db"), nil)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = db.Close() })
+	db := testdb.Open(t)
 	insert := func(ctx context.Context, table domain.BundleTable) error {
 		return db.Write(context.Background(), func(_ context.Context, tx *sql.Tx) error {
 			return insertBundleTable(ctx, tx, table)
@@ -136,7 +125,7 @@ func TestInsertBundleTable_OnlyTheBundlesFaultIsInvalidBundle(t *testing.T) {
 
 	cancelled, cancel := context.WithCancel(context.Background())
 	cancel()
-	err = insert(cancelled, domain.BundleTable{Name: "project", Rows: []domain.BundleRow{{"id": "p", "mode": "auto"}}})
+	err := insert(cancelled, domain.BundleTable{Name: "project", Rows: []domain.BundleRow{{"id": "p", "mode": "auto"}}})
 	require.Error(t, err)
 	assert.NotErrorIs(t, err, ErrInvalid)
 	assert.ErrorIs(t, err, context.Canceled)

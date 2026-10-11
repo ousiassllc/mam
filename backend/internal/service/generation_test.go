@@ -22,6 +22,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 	"github.com/ousiassllc/mam/backend/internal/service"
 )
 
@@ -189,10 +190,7 @@ func newGenFixtureWithFreeBytes(t *testing.T, withModels bool, freeBytes func(st
 // newGenFixtureWithDeps is newGenFixtureWithFreeBytes with a last look at the Deps (nil: none).
 func newGenFixtureWithDeps(t *testing.T, withModels bool, freeBytes func(string) (uint64, error), tweak func(*service.Deps)) genFixture {
 	t.Helper()
-	dir := t.TempDir()
-	db, err := repository.Open(context.Background(), filepath.Join(dir, "mam.db"), nil)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = db.Close() })
+	db := testdb.Open(t)
 
 	fake, reasoner := &modelFake{}, &genReasoner{}
 	backends := modeladapter.Backends{Image: map[domain.ModelName]modeladapter.ImageBackend{}, Video: map[domain.ModelName]modeladapter.VideoBackend{}}
@@ -203,9 +201,8 @@ func newGenFixtureWithDeps(t *testing.T, withModels bool, freeBytes func(string)
 		backends.Video[m] = fake
 	}
 	noSleep := func(context.Context, time.Duration) error { return nil }
-	deps := service.Deps{DB: db, AssetsDir: filepath.Join(dir, "assets"), LLM: reasoner, FreeBytes: freeBytes}
 	jobs := jobqueue.New(repository.NewJobRepository(db), jobqueue.Options{})
-	deps.Jobs = jobs
+	deps := service.Deps{DB: db, AssetsDir: filepath.Join(t.TempDir(), "assets"), LLM: reasoner, FreeBytes: freeBytes, Jobs: jobs}
 	if withModels {
 		deps.Models = modeladapter.New(modeladapter.DefaultConfig(), backends, modeladapter.WithSleep(noSleep))
 	}
