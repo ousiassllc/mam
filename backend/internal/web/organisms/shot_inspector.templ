@@ -252,7 +252,7 @@ templ ShotInspector(d ShotInspectorData) {
 								@atoms.Badge(atoms.BadgeNeutral, string(t.Status))
 								<span class="text-xs text-neutral-400">{ t.ModelName }</span>
 								@atoms.Button(atoms.ToneNeutral, "生成の経緯", templ.Attributes{
-									"type": "button", "hx-get": paths.Take(t.ID, "trace"), "hx-target": "#take-trace-slot-" + t.ID, "hx-swap": "innerHTML",
+									"type": "button", "hx-get": paths.Take(t.ID, "trace"), "hx-target": "next [data-take-trace-slot]", "hx-swap": "innerHTML",
 								})
 							</div>
 							if res, ok := d.Judged[t.ID]; ok {
@@ -268,7 +268,7 @@ templ ShotInspector(d ShotInspectorData) {
 									}
 								</div>
 							}
-							<div id={ "take-trace-slot-" + t.ID }></div>
+							<div data-take-trace-slot></div>
 						</li>
 					}
 				</ol>
