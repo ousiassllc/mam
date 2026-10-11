@@ -118,7 +118,9 @@ func ValidBundleFilePath(projectID, p string) bool {
 // server joins into a file path, and an ID the pages can use: the generated form (a UUID) or
 // [A-Za-z0-9_-]{1,64}. Anything else (a leading ".", ".previews" or ".staging" inside the assets
 // directory, path separators, "..", quotes, control characters, URL syntax) would collide with the
-// server's own directories, escape the assets directory, or break headers and URLs.
+// server's own directories, escape the assets directory, or break headers and URLs. This is the one
+// place that limits the characters of an ID that reaches a URL or a CSS selector (web/paths and
+// web/selector escape them only as defence in depth); bundle_test.go pins it.
 func ValidBundleID(id string) bool {
 	if id == "" || len(id) > 64 {
 		return false

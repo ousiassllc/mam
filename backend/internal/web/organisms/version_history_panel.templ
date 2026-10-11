@@ -7,6 +7,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
+	"github.com/ousiassllc/mam/backend/internal/web/selector"
 )
 
 // VersionHistoryData is one version list of Reversible Decisions (F-28): the saved versions of a
@@ -36,7 +37,7 @@ func (d VersionHistoryData) target() string {
 	if d.Target != "" {
 		return d.Target
 	}
-	return "#" + d.DOMID
+	return selector.ID("", d.DOMID)
 }
 
 // VersionHistoryPanel lists the versions with a restore button each. The newest version is the

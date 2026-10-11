@@ -1,7 +1,8 @@
 // Package paths builds the URL paths of the pages and actions of a Project, Scene, Shot, Take,
 // Branch, Note, Brand Constraint, Edit Timeline, Series, Review and Credential. Their IDs come from
-// outside (a bundle import keeps the ID of every row it finds, and allows characters that mean
-// something in a URL), so every segment is path-escaped here and nowhere else builds "/projects/…",
+// outside; domain.ValidBundleID limits them to [A-Za-z0-9_-] (domain/bundle_test.go is the source
+// of truth), which needs no escaping. Every segment is path-escaped here all the same, so a URL
+// stays intact were that limit ever relaxed, and nowhere else builds "/projects/…",
 // "/scenes/…", "/shots/…", "/takes/…", "/branches/…", "/notes/…", "/brand-constraints/…",
 // "/edit-timelines/…", "/series/…", "/reviews/…", "/credentials/…" or "/api/v1/…" by hand. The same goes for
 // the Take video and thumbnail URLs of domain (domain cannot import this package; paths_test pins

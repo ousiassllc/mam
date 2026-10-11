@@ -102,8 +102,8 @@ func showsProgressPlayer(s domain.Shot) bool {
 
 func takeComparisonURL(shotID string) string { return paths.Shot(shotID, "takes") }
 
-// shotTarget is the hx-target of the card of a Shot (id "shot-<id>"); the ID is escaped because a
-// bundle import allows characters that mean something in a selector (".", ":", " ").
+// shotTarget is the hx-target of the card of a Shot (id "shot-<id>"). IDs are limited to
+// [A-Za-z0-9_-] (domain.ValidBundleID); the escape is defence in depth, were that limit ever relaxed.
 func shotTarget(shotID string) string { return selector.ID("shot-", shotID) }
 
 func takeJudgeResultURL(takeID string) string { return paths.APITake(takeID, "judge-result") }
