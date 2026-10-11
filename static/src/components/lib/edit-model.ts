@@ -41,7 +41,6 @@ export interface EditClip {
 export interface EditLimits {
   min_clip_seconds: number;
   max_transition_seconds: number;
-  max_clips: number;
   max_caption_runes: number;
 }
 

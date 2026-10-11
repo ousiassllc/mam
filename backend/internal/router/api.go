@@ -11,10 +11,11 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/web/handler"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // APIPrefix is the base path of the JSON API used by Lit components.
-const APIPrefix = "/api/v1"
+const APIPrefix = paths.APIPrefix
 
 // registerAPI mounts the Huma JSON API under /api/v1 (OpenAPI 3.1 at /api/v1/openapi.json).
 // The interactive docs page is disabled: it loads its UI from a CDN, and the app
