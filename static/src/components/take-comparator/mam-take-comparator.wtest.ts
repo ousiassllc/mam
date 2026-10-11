@@ -22,14 +22,15 @@ function take(id: string, label: string, over: Partial<TakeScore> = {}): TakeSco
     judge_result_url: `/api/v1/takes/${id}/judge-result`,
     select_url: `/takes/${id}/select`,
     reject_url: `/takes/${id}`,
+    partial_usable: true,
     ...over,
   };
 }
 
 const scored = { product: 65, acting: 100, camera: 85, continuity: 100, overall: 87.5 };
 
-function body(takes: TakeScore[]) {
-  return { body: { shot_id: 's1', duration_seconds: 4, partial_url: '/shots/s1/takes/partial', takes } };
+function body(takes: TakeScore[], partialUrl: string | null = '/shots/s1/takes/partial') {
+  return { body: { shot_id: 's1', duration_seconds: 4, partial_url: partialUrl ?? undefined, takes } };
 }
 
 async function comparator(): Promise<MamTakeComparator> {
@@ -59,8 +60,8 @@ describe('mam-take-comparator: score table', () => {
     stub = stubFetch({
       [`GET ${API}`]: body([
         take('t1', 'A', { scores: scored, status: 'ai_pick', verdict: 'fail' }),
-        take('t2', 'B', { status: 'selected', adopted: true }),
-        take('t3', 'C', { status: 'rejected', video_url: undefined }),
+        take('t2', 'B', { status: 'selected', adopted: true, select_url: undefined }),
+        take('t3', 'C', { status: 'rejected', video_url: undefined, select_url: undefined, reject_url: undefined, partial_usable: false }),
       ]),
     });
     const el = await comparator();
@@ -90,6 +91,33 @@ describe('mam-take-comparator: score table', () => {
     stub = stubFetch({ [`GET ${API}`]: body([]) });
     const el = await comparator();
     expect(el.querySelector('[data-empty]')).to.not.equal(null);
+  });
+
+  it('offers an action only when the server gave its link, whatever the status says', async () => {
+    stub = stubFetch({
+      [`GET ${API}`]: body([
+        take('t1', 'A', { select_url: undefined }), // a candidate the server will not let be selected
+        take('t2', 'B', { status: 'selected', reject_url: undefined }), // a selected Take the server will not let be rejected
+        take('t3', 'C', { select_url: undefined, reject_url: undefined, partial_usable: false }), // a candidate with no action at all
+      ]),
+    });
+    const el = await comparator();
+
+    expect(el.querySelector('[data-take="t1"] [data-action="select"]')).to.equal(null);
+    expect(el.querySelector('[data-take="t1"] [data-action="reject"]')).to.not.equal(null);
+    expect(el.querySelector('[data-take="t2"] [data-action="select"]')).to.not.equal(null);
+    expect(el.querySelector('[data-take="t2"] [data-action="reject"]')).to.equal(null);
+    expect(el.querySelector('[data-take="t3"] [data-action]')).to.equal(null);
+    expect(el.querySelector('[data-lane="t3"]')).to.equal(null);
+  });
+
+  it('hides Partial Take Use when the server gave no partial_url', async () => {
+    stub = stubFetch({ [`GET ${API}`]: body([take('t1', 'A'), take('t2', 'B')], null) });
+    const el = await comparator();
+
+    expect(el.querySelector('[aria-label="区間指定"]')).to.equal(null);
+    expect(el.querySelector('[data-lane]')).to.equal(null);
+    expect(el.querySelector('[data-take="t1"] [data-action="select"]')).to.not.equal(null);
   });
 
   it('shows the server error when the Takes cannot be loaded', async () => {

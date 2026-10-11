@@ -151,3 +151,24 @@ func TestPickAcceptedTake_ARejectedTakeDoesNotMakeTheOthersFallShortOfThePolicy(
 	_, _, ok = PickAcceptedTake(takes[:1], nil)
 	assert.False(t, ok, "only a rejected Take: nothing to pick")
 }
+
+func TestTakeInfo_UsableAndSelectableFollowStatusAndArchivedFile(t *testing.T) {
+	take := func(status TakeStatus, file string) TakeInfo {
+		return TakeInfo{Take: Take{Status: status, FilePath: file}}
+	}
+	cases := []struct {
+		name               string
+		take               TakeInfo
+		usable, selectable bool
+	}{
+		{"candidate", take(TakeCandidate, "a.mp4"), true, true},
+		{"ai pick", take(TakeAIPick, "a.mp4"), true, true},
+		{"selected", take(TakeSelected, "a.mp4"), true, false},
+		{"rejected", take(TakeRejected, "a.mp4"), false, false},
+		{"archived", take(TakeCandidate, ""), false, false},
+	}
+	for _, c := range cases {
+		assert.Equal(t, c.usable, c.take.Usable(), c.name)
+		assert.Equal(t, c.selectable, c.take.Selectable(), c.name)
+	}
+}

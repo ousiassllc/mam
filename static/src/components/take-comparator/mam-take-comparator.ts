@@ -17,7 +17,7 @@ import '../video-player/mam-video-player';
 
 const log = createLogger('take-comparator');
 
-/** A Take of GET /api/v1/shots/:id/takes. The URLs are the server's: the component builds none. */
+/** A Take of GET /api/v1/shots/:id/takes. The URLs are the server's: the component builds none. An action link is absent while the server does not allow the action. */
 export interface TakeScore {
   id: string;
   label: string;
@@ -33,14 +33,15 @@ export interface TakeScore {
   video_url?: string;
   thumbnail_url?: string;
   judge_result_url: string;
-  select_url: string;
-  reject_url: string;
+  select_url?: string;
+  reject_url?: string;
+  partial_usable: boolean;
 }
 
 interface TakesBody {
   shot_id: string;
   duration_seconds?: number;
-  partial_url: string;
+  partial_url?: string;
   takes: TakeScore[];
 }
 
@@ -117,8 +118,8 @@ export class MamTakeComparator extends LitElement {
       if (token !== this.loadToken) return;
       this.takes = body.takes;
       this.shotDuration = body.duration_seconds ?? 0;
-      this.partialUrl = body.partial_url;
-      const usable = new Set(body.takes.filter((t) => t.status !== 'rejected' && t.video_url).map((t) => t.id));
+      this.partialUrl = body.partial_url ?? '';
+      const usable = new Set(body.takes.filter((t) => t.partial_usable).map((t) => t.id));
       this.selection = this.selection.filter((s) => usable.has(s.take_id));
       this.error = '';
     } catch (error) {
@@ -131,7 +132,7 @@ export class MamTakeComparator extends LitElement {
 
   private clips(): Clip[] {
     return this.takes
-      .filter((t) => t.video_url && t.status !== 'rejected')
+      .filter((t) => t.partial_usable)
       .map((t) => ({ id: t.id, label: t.label, duration: t.duration_seconds ?? 0, fps: t.fps && t.fps > 0 ? t.fps : 30 }));
   }
 
@@ -201,7 +202,7 @@ export class MamTakeComparator extends LitElement {
       <div class="flex flex-col gap-4">
         ${this.renderError()}
         <div class="overflow-x-auto">${this.renderTable()}</div>
-        <section class="flex flex-col gap-3" aria-label="区間指定">
+        ${this.partialUrl ? html`<section class="flex flex-col gap-3" aria-label="区間指定">
           <h3 class="text-sm font-semibold">区間で採用（Partial Take Use）</h3>
           ${this.takes.map((t) => this.renderLane(t))}
           <div class="flex flex-col gap-2 rounded border border-neutral-700 p-3" data-selection>
@@ -237,7 +238,7 @@ export class MamTakeComparator extends LitElement {
               </button>
             </form>
           </div>
-        </section>
+        </section>` : nothing}
       </div>
     `;
   }
@@ -289,12 +290,14 @@ export class MamTakeComparator extends LitElement {
         ${t.verdict ? html`<span class="ml-1 text-xs text-neutral-400">${t.verdict.toUpperCase()}</span>` : nothing}
       </td>
       <td class="px-2 py-2 text-xs">
-        ${t.status !== 'rejected' && t.video_url
+        ${t.select_url || t.reject_url
           ? html`<span class="flex gap-3">
-              ${t.status !== 'selected'
-                ? html`<button type="button" class="underline hover:text-neutral-100" data-action="select" ?disabled=${this.busy} @click=${() => void this.act(() => post(t.select_url))}>選択</button>`
+              ${t.select_url
+                ? html`<button type="button" class="underline hover:text-neutral-100" data-action="select" ?disabled=${this.busy} @click=${() => void this.act(() => post(t.select_url!))}>選択</button>`
                 : nothing}
-              <button type="button" class="underline hover:text-neutral-100" data-action="reject" ?disabled=${this.busy} @click=${() => void this.act(() => del(t.reject_url))}>除外</button>
+              ${t.reject_url
+                ? html`<button type="button" class="underline hover:text-neutral-100" data-action="reject" ?disabled=${this.busy} @click=${() => void this.act(() => del(t.reject_url!))}>除外</button>`
+                : nothing}
             </span>`
           : nothing}
       </td>
@@ -302,7 +305,7 @@ export class MamTakeComparator extends LitElement {
   }
 
   private renderLane(t: TakeScore) {
-    if (!t.video_url || t.status === 'rejected') return nothing;
+    if (!t.partial_usable || !t.video_url) return nothing;
     const clip = this.clips().find((c) => c.id === t.id);
     const duration = clip?.duration ?? 0;
     const axis = Math.max(...this.clips().map((c) => c.duration), this.shotDuration, 0.1);
