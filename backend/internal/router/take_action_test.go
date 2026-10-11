@@ -47,3 +47,16 @@ func (ta *takeApp) statusOf(id string) string {
 	ta.t.Fatalf("no take %s", id)
 	return ""
 }
+
+// The comparison names a Take's status as the Shot card does (molecules.TakeStatusBadge), so the
+// client holds no label of its own.
+func TestTakeAPI_NamesEachStatusAsTheShotCardDoes(t *testing.T) {
+	ta := newTakeApp(t)
+	list := func() string { return ta.get("/api/v1/shots/"+ta.shotID+"/takes", false).Body.String() }
+	assert.Contains(t, list(), `"status_label":"候補"`)
+
+	require.Equal(t, http.StatusOK, ta.form(http.MethodPost, "/takes/t1/select", nil).Code)
+	require.Equal(t, http.StatusOK, ta.form(http.MethodDelete, "/takes/t2", nil).Code)
+	assert.Contains(t, list(), `"status_label":"採用"`)
+	assert.Contains(t, list(), `"status_label":"除外"`)
+}

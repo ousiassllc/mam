@@ -16,7 +16,7 @@ import {
 import { DEFAULT_FPS } from '../lib/video';
 import '../video-player/mam-video-player';
 import { describeTake, renderScore } from './take-cells';
-import { STATUS_CLASS, STATUS_LABEL, type TakeStatus } from './take-status';
+import { STATUS_CLASS, type TakeStatus } from './take-status';
 
 const log = createLogger('take-comparator');
 
@@ -28,6 +28,7 @@ export interface TakeScore {
   id: string;
   label: string;
   status: TakeStatus;
+  status_label: string;
   adopted: boolean;
   model_name: string;
   resolution?: string;
@@ -63,8 +64,7 @@ interface Drag {
 /**
  * `<mam-take-comparator>`: the Takes of a Shot side by side (spec/components/overview.md §4.3, UC-3).
  *
- * - A score table: Product / Acting / Camera / Continuity and Status (Candidate / AI Pick / Selected /
- *   Rejected), with the buttons that select or exclude a Take.
+ * - A score table: Product / Acting / Camera / Continuity and Status (the server's `status_label`), with the buttons that select or exclude a Take.
  * - A player and a lane per Take. Dragging on a lane picks that part of the Take; the parts are joined
  *   in the order they were picked (Partial Take Use). The same can be written in words:
  *   "Take A の 0-2秒 + Take B の 2-4秒".
@@ -307,7 +307,7 @@ export class MamTakeComparator extends LitElement {
       <td class="px-2 py-2" data-score="camera">${renderScore(t.scores?.camera)}</td>
       <td class="px-2 py-2" data-score="continuity">${renderScore(t.scores?.continuity)}</td>
       <td class="px-2 py-2">
-        <span class="rounded border px-2 py-0.5 text-xs ${STATUS_CLASS[t.status]}" data-status=${t.status}>${STATUS_LABEL[t.status]}</span>
+        <span class="rounded border px-2 py-0.5 text-xs ${STATUS_CLASS[t.status]}" data-status=${t.status}>${t.status_label}</span>
         ${t.verdict ? html`<span class="ml-1 text-xs text-neutral-400">${t.verdict.toUpperCase()}</span>` : nothing}
       </td>
       <td class="px-2 py-2 text-xs">

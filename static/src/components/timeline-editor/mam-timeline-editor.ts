@@ -26,28 +26,12 @@ import '../video-player/mam-video-player';
 
 const log = createLogger('timeline-editor');
 
-/** The additional Shot only new footage settles (Editor → Reshoot Loop). */
-interface ShotNeed {
-  kind: 'insert' | 'reaction';
-  after_clip: number;
-  objective: string;
-  duration_seconds: number;
-}
-
-interface EditorFinding {
-  clip_index: number;
-  issue: string;
-  action: string;
-  need_shot?: ShotNeed;
-}
-
 /** GET /api/v1/projects/:id/edit-timeline. The URLs are the server's: the component builds none. */
 export interface EditTimelineBody {
   id: string;
   version_number: number;
   duration_seconds: number;
   clips: EditClip[];
-  judge?: { verdict: 'pass' | 're_edit' | 'need_shot'; findings: EditorFinding[] };
   branch_id?: string;
   save_url: string;
   preview_url: string;
@@ -79,7 +63,6 @@ export const TIMELINE_RELOAD_EVENT = 'timeline-reload';
 @customElement('mam-timeline-editor')
 export class MamTimelineEditor extends LitElement {
   @property({ type: String, attribute: 'api-url' }) apiUrl = '';
-  @property({ type: Boolean }) readonly = false;
 
   @state() private body: EditTimelineBody | null = null;
   @state() private clips: EditClip[] = [];
@@ -150,7 +133,7 @@ export class MamTimelineEditor extends LitElement {
   }
 
   private get locked(): boolean {
-    return this.readonly || (this.body?.readonly ?? true) || this.busy;
+    return (this.body?.readonly ?? true) || this.busy;
   }
 
   /**
@@ -257,7 +240,6 @@ export class MamTimelineEditor extends LitElement {
         ${this.renderError()}
         ${this.notice ? html`<p class="text-xs text-emerald-300" role="status" data-notice>${this.notice}</p>` : nothing}
         <mam-video-player video-src=${body.preview_url}></mam-video-player>
-        ${this.renderJudge(body)}
         <ol class="flex flex-col gap-2" data-clips>
           ${this.clips.map((c, i) => this.renderClip(c, i, body))}
         </ol>
@@ -275,7 +257,7 @@ export class MamTimelineEditor extends LitElement {
             変更を戻す
           </button>
           <span class="text-xs text-neutral-400" data-total>合計 ${timelineSeconds(this.clips).toFixed(1)} 秒 / ${this.clips.length} クリップ${dirty ? '（未保存の変更あり）' : ''}</span>
-          ${this.readonly || body.readonly ? html`<span class="text-xs text-amber-300" data-readonly>この段階では編集できません</span>` : nothing}
+          ${body.readonly ? html`<span class="text-xs text-amber-300" data-readonly>この段階では編集できません</span>` : nothing}
         </div>
       </div>
     `;
@@ -285,33 +267,6 @@ export class MamTimelineEditor extends LitElement {
     return this.error
       ? html`<p class="rounded border border-red-500/50 bg-red-950/40 px-3 py-2 text-xs text-red-200" role="alert" data-error>${this.error}</p>`
       : nothing;
-  }
-
-  private renderJudge(body: EditTimelineBody) {
-    const judge = body.judge;
-    if (!judge) return nothing;
-    const label = judge.verdict === 'pass' ? 'PASS' : judge.verdict === 're_edit' ? 'Re-edit' : '素材不足';
-    return html`<div class="rounded border border-neutral-700 p-3 text-xs" data-judge>
-      <p class="font-medium">Editor Judge: ${label}</p>
-      ${
-        judge.findings.length > 0
-          ? html`<ul class="mt-1 flex flex-col gap-1 text-neutral-300">
-            ${judge.findings.map(
-              (f) => html`<li>
-                ${f.clip_index > 0 ? `クリップ ${f.clip_index}: ` : ''}${f.issue} → ${f.action}
-                ${
-                  f.need_shot
-                    ? html`<span class="text-amber-300" data-need-shot>
-                      （追加 Shot: ${CLIP_KIND_LABEL[f.need_shot.kind]} ${f.need_shot.duration_seconds.toFixed(1)} 秒をクリップ ${f.need_shot.after_clip} の後に）
-                    </span>`
-                    : nothing
-                }
-              </li>`,
-            )}
-          </ul>`
-          : nothing
-      }
-    </div>`;
   }
 
   private renderClip(c: EditClip, i: number, body: EditTimelineBody) {

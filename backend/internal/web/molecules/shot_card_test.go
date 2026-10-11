@@ -145,3 +145,12 @@ func TestShotCard_ContinueButtonNeedsATakeThatWasNotRejected(t *testing.T) {
 	assert.NotContains(t, card(take(domain.TakeRejected)), "続きを作る", "every Take is excluded")
 	assert.Contains(t, card(take(domain.TakeCandidate)), "続きを作る")
 }
+
+// The status badge of a Take row says what the Take comparison says (status_label of GET /shots/:id/takes).
+func TestTakeStatusBadge_NamesTheStatusOnScreen(t *testing.T) {
+	got := map[domain.TakeStatus]string{}
+	for _, s := range []domain.TakeStatus{domain.TakeCandidate, domain.TakeAIPick, domain.TakeSelected, domain.TakeRejected} {
+		_, got[s] = molecules.TakeStatusBadge(s)
+	}
+	assert.Equal(t, map[domain.TakeStatus]string{domain.TakeCandidate: "候補", domain.TakeAIPick: "AI Pick", domain.TakeSelected: "採用", domain.TakeRejected: "除外"}, got)
+}

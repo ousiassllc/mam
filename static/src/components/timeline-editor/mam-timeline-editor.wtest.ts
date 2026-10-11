@@ -352,23 +352,4 @@ describe('mam-timeline-editor', () => {
     await el.updateComplete;
     expect(shown()).to.deep.equal(['cut']);
   });
-
-  it('shows the additional Shot a need_shot verdict asks the Director for', async () => {
-    const judge = {
-      verdict: 'need_shot' as const,
-      findings: [
-        {
-          clip_index: 2,
-          issue: 'リアクションがありません',
-          action: 'リアクションショットを足す',
-          need_shot: { kind: 'reaction' as const, after_clip: 2, objective: '驚く', duration_seconds: 1.5 },
-        },
-      ],
-    };
-    stub = stubFetch({ [`GET ${API}`]: { body: timeline('e1', three(), { judge }) } });
-    const el = await editor();
-
-    expect(text(el, '[data-judge]')).to.contain('素材不足');
-    expect(text(el, '[data-need-shot]')).to.contain('リアクション 1.5 秒をクリップ 2 の後に');
-  });
 });

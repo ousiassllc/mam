@@ -10,10 +10,11 @@ describe('mam-take-comparator: score table', () => {
   it('lists the Takes with their four scores and status', async () => {
     stub = stubFetch({
       [`GET ${API}`]: body([
-        take('t1', 'A', { scores: scored, status: 'ai_pick', verdict: 'fail' }),
-        take('t2', 'B', { status: 'selected', adopted: true, select_url: undefined }),
+        take('t1', 'A', { scores: scored, status: 'ai_pick', status_label: 'AI Pick', verdict: 'fail' }),
+        take('t2', 'B', { status: 'selected', status_label: '採用', adopted: true, select_url: undefined }),
         take('t3', 'C', {
           status: 'rejected',
+          status_label: '除外',
           video_url: undefined,
           select_url: undefined,
           reject_url: undefined,
@@ -33,12 +34,12 @@ describe('mam-take-comparator: score table', () => {
 
     const b = el.querySelector('[data-take="t2"]')!;
     expect(text(b, '[data-score="product"]')).to.equal('—'); // not judged yet
-    expect(text(b, '[data-status]')).to.equal('Selected');
+    expect(text(b, '[data-status]')).to.equal('採用');
     expect(b.querySelector('[data-adopted]')).to.not.equal(null);
     expect(b.querySelector('[data-action="select"]')).to.equal(null); // already selected
 
     const c = el.querySelector('[data-take="t3"]')!;
-    expect(text(c, '[data-status]')).to.equal('Rejected');
+    expect(text(c, '[data-status]')).to.equal('除外');
     expect(c.querySelector('[data-action]')).to.equal(null);
     expect(el.querySelector('[data-lane="t3"]')).to.equal(null); // no lane for a rejected Take
     expect(el.querySelectorAll('mam-video-player').length).to.equal(2);
@@ -94,7 +95,10 @@ describe('mam-take-comparator: choosing a Take', () => {
     stub = stubFetch({
       [`GET ${API}`]: () => {
         listed += 1;
-        return body([take('t1', 'A'), take('t2', 'B', listed > 1 ? { status: 'selected', adopted: true } : {})]);
+        return body([
+          take('t1', 'A'),
+          take('t2', 'B', listed > 1 ? { status: 'selected', status_label: '採用', adopted: true } : {}),
+        ]);
       },
       'POST /takes/t2/select': { body: '<div id="shot-s1"></div>' },
       'DELETE /takes/t1': { body: '<div id="shot-s1"></div>' },
@@ -102,7 +106,7 @@ describe('mam-take-comparator: choosing a Take', () => {
     const el = await comparator();
 
     (el.querySelector('[data-take="t2"] [data-action="select"]') as HTMLButtonElement).click();
-    await waitUntil(() => text(el, '[data-take="t2"] [data-status]') === 'Selected');
+    await waitUntil(() => text(el, '[data-take="t2"] [data-status]') === '採用');
     const post = stub.requests.find((r) => r.method === 'POST')!;
     expect(post.url).to.equal('/takes/t2/select');
     expect(post.headers).to.have.property('X-CSRF-Token');

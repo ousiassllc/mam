@@ -1,12 +1,5 @@
-/** The status of a Take as the server names it, and how the comparator shows it. */
+/** The status of a Take as the server names it; the comparator colours it (the label is the server's `status_label`). */
 export type TakeStatus = 'candidate' | 'ai_pick' | 'selected' | 'rejected';
-
-export const STATUS_LABEL: Record<TakeStatus, string> = {
-  candidate: 'Candidate',
-  ai_pick: 'AI Pick',
-  selected: 'Selected',
-  rejected: 'Rejected',
-};
 
 export const STATUS_CLASS: Record<TakeStatus, string> = {
   candidate: 'border-neutral-600 text-neutral-300',
