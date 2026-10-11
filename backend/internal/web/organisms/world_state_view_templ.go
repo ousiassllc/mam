@@ -96,16 +96,16 @@ func entityFields(d WorldStateData, target domain.WorldTarget, id string, values
 
 // fieldLockToggle is the AUTO / LOCK switch of one attribute (PUT /projects/:id/world-state/locks).
 // The response is the whole view, so the switch replaces #world-state-view.
-func (d WorldStateData) fieldLockToggle(target domain.WorldTarget, id, field string) atoms.LockToggleData {
+func (d WorldStateData) fieldLockToggle(target domain.WorldTarget, id, field string) molecules.LockToggleData {
 	mode := domain.LockAuto
 	if d.Locks.Locked(target, id, field) {
 		mode = domain.LockLocked
 	}
-	hidden := []atoms.HiddenField{{Name: "target_type", Value: string(target)}}
+	hidden := []molecules.HiddenField{{Name: "target_type", Value: string(target)}}
 	if id != "" {
-		hidden = append(hidden, atoms.HiddenField{Name: "target_id", Value: id})
+		hidden = append(hidden, molecules.HiddenField{Name: "target_id", Value: id})
 	}
-	return atoms.LockToggleData{
+	return molecules.LockToggleData{
 		DOMID: "lock-" + string(target) + "-" + id + "-" + field, URL: paths.Project(d.Project.ID, "world-state", "locks") + d.branchQuery(),
 		Parameter: domain.LockParameter(field), Label: lockLabel(field), Mode: mode,
 		Modes: []domain.LockMode{domain.LockAuto, domain.LockLocked}, Hidden: hidden,
@@ -253,7 +253,7 @@ func entityForm(d WorldStateData, target domain.WorldTarget, plural, id, name st
 			return templ_7745c5c3_Err
 		}
 		for _, f := range domain.LockableFields(target) {
-			templ_7745c5c3_Err = atoms.LockToggle(d.fieldLockToggle(target, id, f)).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = molecules.LockToggle(d.fieldLockToggle(target, id, f)).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -520,7 +520,7 @@ func WorldStateView(d WorldStateData) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		for _, p := range domain.ProjectLockParameters() {
-			templ_7745c5c3_Err = atoms.LockToggle(ProjectLockToggle(d.Project.ID, p, d.ProjectLocks)).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = molecules.LockToggle(ProjectLockToggle(d.Project.ID, p, d.ProjectLocks)).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -667,7 +667,7 @@ func singletonLocks(d WorldStateData, target domain.WorldTarget) templ.Component
 			return templ_7745c5c3_Err
 		}
 		for _, f := range domain.LockableFields(target) {
-			templ_7745c5c3_Err = atoms.LockToggle(d.fieldLockToggle(target, "", f)).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = molecules.LockToggle(d.fieldLockToggle(target, "", f)).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

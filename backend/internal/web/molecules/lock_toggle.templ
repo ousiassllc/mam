@@ -1,6 +1,9 @@
-package atoms
+package molecules
 
-import "github.com/ousiassllc/mam/backend/internal/domain"
+import (
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+)
 
 // HiddenField is a hidden input of a form.
 type HiddenField struct{ Name, Value string }
@@ -78,12 +81,12 @@ templ LockToggle(d LockToggleData) {
 			}
 		</span>
 		if len(d.Models) > 0 {
-			<select name="value" aria-label="Video Model" class="rounded-md border border-neutral-600 bg-neutral-950 px-2 py-1 text-xs">
+			@atoms.Select(atoms.FieldSm, "", templ.Attributes{"name": "value", "aria-label": "Video Model"}) {
 				<option value="" selected?={ d.Model == "" }>（現在のモデル）</option>
 				for _, m := range d.Models {
 					<option value={ string(m) } selected?={ d.Model == string(m) }>{ string(m) }</option>
 				}
-			</select>
+			}
 		}
 	</form>
 }

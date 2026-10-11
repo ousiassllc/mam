@@ -1,9 +1,11 @@
 // Package paths builds the URL paths of the pages and actions of a Project, Scene, Shot, Take,
 // Branch, Note, Brand Constraint, Edit Timeline, Series, Review and Credential. Their IDs come from
-// outside (a bundle import keeps the ID of every row it finds, and allows characters that mean
-// something in a URL), so every segment is path-escaped here and nowhere else builds "/projects/…",
+// outside; domain.ValidBundleID limits them to [A-Za-z0-9_-] (domain/bundle_test.go is the source
+// of truth), which needs no escaping. Every segment is path-escaped here all the same, so a URL
+// stays intact were that limit ever relaxed, and nowhere else builds "/projects/…",
 // "/scenes/…", "/shots/…", "/takes/…", "/branches/…", "/notes/…", "/brand-constraints/…",
-// "/edit-timelines/…", "/series/…", "/reviews/…", "/credentials/…" or "/api/v1/…" by hand. The same goes for
+// "/edit-timelines/…", "/series/…", "/reviews/…", "/credentials/…" or "/api/v1/…" by hand. The routes
+// of the collections (Projects, Reviews, StaticApp …) are defined here too, for the router and the pages alike. The same goes for
 // the Take video and thumbnail URLs of domain (domain cannot import this package; paths_test pins
 // them to Take(id, "video") and Take(id, "thumbnail")).
 package paths
@@ -27,7 +29,7 @@ func join(prefix string, segments ...string) string {
 // Project is "/projects/<id>" followed by the segments, each path-escaped:
 // Project("p1", "scenes", sc) is "/projects/p1/scenes/<sc>".
 func Project(id string, segments ...string) string {
-	return join("/projects", append([]string{id}, segments...)...)
+	return join(Projects(), append([]string{id}, segments...)...)
 }
 
 // Scene is "/scenes/<id>" followed by the segments: Scene(id, "shots") is "/scenes/<id>/shots".
@@ -93,14 +95,41 @@ func ShotProgress(id string) string { return join("/ws/shots", id) }
 
 // Series is "/series/<id>" followed by the segments: Series(id, "characters", cid).
 func Series(id string, segments ...string) string {
-	return join("/series", append([]string{id}, segments...)...)
+	return join(SeriesList(), append([]string{id}, segments...)...)
 }
 
 // Review is "/reviews/<id>" (an imported Review Package) followed by the segments:
 // Review(id, "comments", cid).
 func Review(id string, segments ...string) string {
-	return join("/reviews", append([]string{id}, segments...)...)
+	return join(Reviews(), append([]string{id}, segments...)...)
 }
+
+// Routes of the collections, without an ID: the router registers them and the pages link to and
+// post to them through the same functions, as APIPrefix does for the API.
+
+// Projects is the Project list and where a new Project is posted, "/projects".
+func Projects() string { return "/projects" }
+
+// ProjectImport is where a Project bundle is posted, "/projects/import".
+func ProjectImport() string { return Projects() + "/import" }
+
+// SeriesList is where a Series is created, "/series".
+func SeriesList() string { return "/series" }
+
+// Reviews is the inbox of imported Review Packages, "/reviews".
+func Reviews() string { return "/reviews" }
+
+// ReviewImport is where a Review Package is posted, "/reviews/import".
+func ReviewImport() string { return Reviews() + "/import" }
+
+// StaticPrefix is the base path of the front-end assets; the router serves them under it.
+const StaticPrefix = "/static"
+
+// The two files the layout loads (the CSP of middleware.SecurityHeaders allows only this script).
+const (
+	StaticCSS = StaticPrefix + "/app.css"
+	StaticApp = StaticPrefix + "/app.js"
+)
 
 // Credential is "/credentials/<provider>", the API key of a provider.
 func Credential(provider string) string { return join("/credentials", provider) }

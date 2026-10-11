@@ -5,6 +5,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/web/handler"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // registerPages registers page routes (GET, branch on HX-Request: full page or fragment).
@@ -12,7 +13,7 @@ func registerPages(engine *gin.Engine, services *service.Services) {
 	engine.GET("/", handler.Projects(services.Projects))
 	engine.GET("/healthz", handler.Health(services.Health))
 
-	engine.GET("/projects", handler.Projects(services.Projects))
+	engine.GET(paths.Projects(), handler.Projects(services.Projects))
 	engine.GET("/projects/:id", handler.ChatWorkspace(services.Chat))
 	engine.GET("/projects/:id/messages", handler.ChatMessages(services.Chat))
 	engine.GET("/projects/:id/messages/:messageId", handler.ChatCard(services.Chat))
@@ -46,7 +47,7 @@ func registerPages(engine *gin.Engine, services *service.Services) {
 
 	engine.GET("/projects/:id/reviews", handler.ProjectReviewsPage(services.Review))
 	engine.GET("/projects/:id/reviews/:reviewId/package", handler.DownloadReviewPackage(services.Review))
-	engine.GET("/reviews", handler.ReviewInboxPage(services.Review))
+	engine.GET(paths.Reviews(), handler.ReviewInboxPage(services.Review))
 	engine.GET("/reviews/:id", handler.ReviewPage(services.Review))
 	engine.GET("/reviews/:id/video", handler.ReviewVideo(services.Review))
 	engine.GET("/reviews/:id/response", handler.DownloadReviewResponse(services.Review))

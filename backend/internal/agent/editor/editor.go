@@ -98,7 +98,7 @@ func onTake(mine, fresh domain.EditClip) domain.EditClip {
 	mine.TakeID, mine.SourceSeconds = fresh.TakeID, fresh.SourceSeconds
 	if mine.SourceSeconds > 0 && mine.Out > mine.SourceSeconds {
 		mine.Out = mine.SourceSeconds
-		if mine.Out-mine.In < domain.MinClipSeconds {
+		if mine.TooShort() {
 			mine.In = max(0, mine.Out-domain.MinClipSeconds)
 		}
 	}

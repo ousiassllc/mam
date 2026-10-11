@@ -5,6 +5,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/layout"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // ReviewsPage is GET /projects/:id/reviews: the owner's review screen in an auxiliary view.
@@ -39,7 +40,7 @@ templ ReviewInboxPage(csrfToken string, d organisms.ReviewInboxData) {
 templ ReviewPage(csrfToken string, i domain.ReviewInbox) {
 	@layout.AppLayout("レビュー: "+i.ProjectName, csrfToken) {
 		<main class="mx-auto max-w-3xl p-8">
-			@atoms.BackLink("/reviews", "← レビュー一覧")
+			@atoms.BackLink(paths.Reviews(), "← レビュー一覧")
 			<h1 class="mb-1 mt-3 text-xl font-semibold">{ i.ProjectName }</h1>
 			<p class="mb-6 text-xs text-neutral-400">{ i.Video.Resolution } / { i.Video.AspectRatio } / { i.Video.Codec }</p>
 			@organisms.ReviewWorkspace(i)
