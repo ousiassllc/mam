@@ -88,10 +88,15 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 .
 ├── go.mod                  # モジュール: github.com/ousiassllc/mam
 ├── Makefile                # dev / build / test / lint / fmt（§9）
+├── Taskfile.yml            # `wails3 package GOOS=windows` の入口（`build/` の Taskfile を取り込む。通常は `scripts/package-windows.sh` 経由。§11）
 ├── .air.toml               # make dev のホットリロード設定
 ├── .golangci.yml           # lint。depguard でレイヤー依存ルールを強制
 ├── .linterly-baseline      # 行数上限（300 行 / 2000 行）を超えている既存のファイル・ディレクトリの行数。CI は悪化だけを止める（環境構築 spec の Linterly 節）
 ├── lefthook.yml            # Git フック。pre-commit は linterly（scripts/linterly-staged.sh 経由）・fmt-check・lint-go・typecheck（lint-static）、pre-push は build/vet と make test
+├── .github/
+│   └── workflows/
+│       ├── ci.yml          # CI（lint・テスト・ビルド・行数上限の基準値チェック。環境構築 spec の CI 節）
+│       └── release.yml     # タグ push で Windows インストーラーをビルドして GitHub Releases へ公開（§11）
 ├── scripts/
 │   ├── build.sh            # 本番ビルド（templ → esbuild/tailwind → go build）。`--all` で全プラットフォーム
 │   ├── package-windows.sh  # Windows 版のパッケージング（フロント → Wails ウィンドウ版 exe → NSIS インストーラー。§11）
@@ -118,6 +123,7 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 │       ├── httpclient/     # ベンダー API アダプターが共通で使う HTTP クライアント（別ホストへのリダイレクトでは独自認証ヘッダーを引き継がない）
 │       ├── safefetch/      # ベンダー API が返したダウンロード URL の検証（http・ループバック・リンクローカル・プライベート宛先を拒否）
 │       ├── facesim/        # 顔の同一性の局所計測（ONNX Runtime で YuNet / SFace をプロセス内実行、外部送信なし。`model-adapters.md` §10.1）
+│       ├── testenv/        # ffmpeg が無いときのテストの扱い（`MissingFFmpeg`: ローカルは Skip、`CI=true` では失敗）
 │       ├── media/          # ffmpeg / ffprobe（Take の解像度・フレームレート取得、4K プロキシ・サムネイル、部分採用の合成）
 │       ├── domain/         # Project/Scene/Shot/Take/WorldState等のドメインモデル
 │       ├── repository/     # SQLite アクセス層（domainのみに依存）
@@ -303,3 +309,4 @@ Windows では、ブラウザ版と同じ `127.0.0.1` のサーバーを `intern
 | 1.15 | 2026-10-11 | §5 に `internal/desktop`（`cmd/wails` の Wails 非依存部分）・`internal/app/args.go`・`scripts/smoke-windows.sh` を追加 | Issue #480 の実装。`cmd/wails` は windows タグで Linux のテストに載らないため、待ち合わせと停止の処理を OS 非依存のパッケージへ出した |
 | 1.16 | 2026-10-11 | §5 の `cmd/wails/` に `dialog.go` を追加し、§6 の DI ルートの説明を `cmd/server/main.go` から `internal/app`（`app.Run` → `buildServices`）に直し、§9 の「§11.3」を `desktop.md` §4 に直した | 配線を `internal/app/services.go` へ移した実装と、起動エラーを MessageBox で出す `cmd/wails/dialog.go` に仕様が追随していなかったため。§11.3 は存在しない節だった |
 | 1.17 | 2026-10-11 | §5 の構成図に `.linterly-baseline`・`scripts/linterly-baseline.sh`・`scripts/linterly-baseline_test.sh` を追加 | Issue #495。行数上限の既存超過を基準値として記録し、CI で悪化だけを止める仕組みを足した |
+| 1.18 | 2026-10-11 | §5 の構成図に `backend/internal/testenv/`・`.github/workflows/`（`ci.yml`・`release.yml`）・ルートの `Taskfile.yml` を追加 | Issue #498。`testenv`（Issue #485）の追加時に構成図が更新されておらず、`internal` 直下で唯一図に無いパッケージになっていた。CI のワークフローとルートの Taskfile（`desktop.md` §4 が前提にする）も図に無かった |

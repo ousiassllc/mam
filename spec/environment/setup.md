@@ -59,7 +59,7 @@ ffmpeg / ffprobe は `ubuntu-latest` に入っていないため、`test` の前
 - 基準値に無いファイル・ディレクトリが上限を超えた（新規の超過）
 - 基準値にあるファイル・ディレクトリの行数が基準値より増えた
 
-基準値より減った・上限以下に戻ったエントリは失敗にせず、「基準値を下げられる」と stderr に出す。分割して減らしたら `make linterly-baseline`（`scripts/linterly-baseline.sh update`）で `.linterly-baseline` を書き換えて同じ PR でコミットする。差分は行の削除か数値の減少だけであること（増えている差分は悪化を基準値に紛れ込ませているのでレビューで止める）。個別の分割（`director.go` / `chat.go` / `repair/agent.go` など）は別 Issue で段階的に進める。`scripts/linterly-baseline_test.sh`（`make test-scripts`）がこの判定をスタブの `linterly` で検査する。
+基準値より減った・上限以下に戻ったエントリは失敗にせず、「基準値を下げられる」と stderr に出す。分割して減らしたら `make linterly-baseline`（`scripts/linterly-baseline.sh update`）で `.linterly-baseline` を書き換えて同じ PR でコミットする。差分は行の削除か数値の減少だけであること（増えている差分は悪化を基準値に紛れ込ませているのでレビューで止める）。基準値に残っているファイルの分割は別 Issue で段階的に進める。`scripts/linterly-baseline_test.sh`（`make test-scripts`）がこの判定をスタブの `linterly` で検査する。
 
 ディレクトリ上限（2000 行）も同じ基準値方式で扱い、Go のフラットなパッケージ向けの別基準（ファイル数など）は設けない。超過しているパッケージは、その直下の合計行数を増やせない（ファイルの追加・既存ファイルの行増で CI が落ちる）。新しいコードは新しいパッケージへ置くか、パッケージを責務ごとに分割して満たす。分割できたら基準値から外す。
 
