@@ -193,8 +193,7 @@ func (s *EditorService) addReshootShots(ctx context.Context, ver domain.EditTime
 			}
 		}
 		if shot, err = s.plans.AppendContinuation(ctx, projectID, newScene, shot); err != nil {
-			// The Shots added so far belong to no round: take them (and the Scenes made for them)
-			// out again, even when the request is what failed.
+			// The Shots added so far belong to no round: take them out again, even when the request is what failed.
 			s.removeAddedShots(context.WithoutCancel(ctx), reqs, newScenes)
 			return nil, nil, notFound(err)
 		}
@@ -208,17 +207,6 @@ func (s *EditorService) addReshootShots(ctx context.Context, ver domain.EditTime
 		return nil, nil, conflict("追加できる Shot がありません（判定に追加 Shot の指定がありません）")
 	}
 	return reqs, newScenes, nil
-}
-
-// removeAddedShots takes the additional Shots that were added but never started out of the Project.
-func (s *EditorService) removeAddedShots(ctx context.Context, reqs []repository.NewReshoot, sceneIDs []string) {
-	ids := make([]string, len(reqs))
-	for i, r := range reqs {
-		ids[i] = r.ShotID
-	}
-	if err := s.plans.RemoveShots(ctx, ids, sceneIDs); err != nil {
-		s.logger.Error("remove additional shots", "err", err)
-	}
 }
 
 func clipKindLabel(k domain.ClipKind) string {

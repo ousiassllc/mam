@@ -81,20 +81,60 @@ func (f genFixture) state(t *testing.T) domain.ProjectState {
 	return p.State
 }
 
+// additionalShot waits until the Director has made the additional Shot and it has a Take.
+func (f genFixture) additionalShot(t *testing.T) string {
+	t.Helper()
+	require.Eventually(t, func() bool { return f.trunkShots(t) == 2 }, 10*time.Second, 10*time.Millisecond, "the Director makes the additional Shot")
+	f.waitJobsDone(t)
+	var newShot string
+	require.NoError(t, f.query(t, `SELECT id FROM shot WHERE id <> ?`, f.shotID).Scan(&newShot))
+	require.Eventually(t, func() bool {
+		return f.count(t, `SELECT COUNT(*) FROM take t JOIN prompt_version pv ON pv.id = t.prompt_version_id WHERE pv.shot_id = ?`, newShot) > 0
+	}, 30*time.Second, 10*time.Millisecond)
+	return newShot
+}
+
+// needTwoShots is the verdict of an Editor Judge that finds a reaction and an insert Shot missing.
+func needTwoShots(reaction, insert string) string {
+	return `{"verdict":"need_shot","findings":[` +
+		`{"clip_index":1,"issue":"a","action":"a","need_shot":{"kind":"reaction","after_clip":1,"objective":"` + reaction + `","duration_seconds":2}},` +
+		`{"clip_index":1,"issue":"b","action":"b","need_shot":{"kind":"insert","after_clip":1,"objective":"` + insert + `","duration_seconds":2}}]}`
+}
+
+// brokenPlanner answers a BROKEN-PLAN Shot with a spec that breaks the BANNED Brand constraint.
+func brokenPlanner(user string) string {
+	if strings.Contains(user, "BROKEN-PLAN") {
+		return strings.Replace(additionalSpec, "Character looks back, surprised", "a BANNED word", 1)
+	}
+	return additionalSpec
+}
+
+// branchFixture is a Project with a Branch whose Rough Cut is made (all additional Shots go into one Scene of it).
+func branchFixture(t *testing.T, planner func(string) string) (f genFixture, branchID, timelineID string) {
+	t.Helper()
+	f = newGenFixture(t, true)
+	f.llm.extractor = extractAnswer
+	f.llm.planner = planner
+	f.llm.director = directorFor(sameSceneAnswer)
+	f.buildReferencePack(t)
+	f.generateAndWait(t, f.shotID, 2)
+	f.selectTakeOf(t, f.shotID)
+	f.execSQL(t, `UPDATE project SET production_template = 'drama', state = 'VISUAL_DESIGN' WHERE id = ?`, f.projectID)
+	branchID = f.branch(t, service.BranchInput{}).Branch.ID
+	view, err := f.svc.Editor.RoughCut(context.Background(), f.projectID, branchID)
+	require.NoError(t, err)
+	require.NotNil(t, view.Timeline)
+	return f, branchID, view.Timeline.ID
+}
+
 func TestEditorReshootLoop_AdditionalShotIsMadeAndPutIntoTheTimelineAfterItsAnchor(t *testing.T) {
 	f, judged := editedFixture(t)
 	ctx := context.Background()
 
 	// The NEED_SHOT verdict in AUTO asks the Director by itself: a new Shot is generated.
-	require.Eventually(t, func() bool { return f.trunkShots(t) == 2 }, 10*time.Second, 10*time.Millisecond, "the Director makes the additional Shot")
+	newShot := f.additionalShot(t)
 	assert.Equal(t, domain.StateGenerating, f.state(t))
 	f.execSQL(t, `UPDATE project SET mode = 'director' WHERE id = ?`, f.projectID) // the AUTO Judge of the round is tested below
-	var newShot string
-	require.NoError(t, f.query(t, `SELECT id FROM shot WHERE id <> ?`, f.shotID).Scan(&newShot))
-	f.waitJobsDone(t)
-	require.Eventually(t, func() bool {
-		return f.count(t, `SELECT COUNT(*) FROM take t JOIN prompt_version pv ON pv.id = t.prompt_version_id WHERE pv.shot_id = ?`, newShot) > 0
-	}, 30*time.Second, 10*time.Millisecond)
 
 	view, err := f.svc.Editor.View(ctx, f.projectID, "")
 	require.NoError(t, err)
@@ -123,14 +163,8 @@ func TestEditorReshootLoop_AdditionalShotIsMadeAndPutIntoTheTimelineAfterItsAnch
 
 func TestEditorReshootLoop_AFinishedShotWaitsForTheBusyStageAndIsPutInWhenItEnds(t *testing.T) {
 	f, _ := editedFixture(t)
-	require.Eventually(t, func() bool { return f.trunkShots(t) == 2 }, 10*time.Second, 10*time.Millisecond)
+	newShot := f.additionalShot(t)
 	f.execSQL(t, `UPDATE project SET mode = 'director' WHERE id = ?`, f.projectID) // the AUTO Judge of the round is tested below
-	f.waitJobsDone(t)
-	var newShot string
-	require.NoError(t, f.query(t, `SELECT id FROM shot WHERE id <> ?`, f.shotID).Scan(&newShot))
-	require.Eventually(t, func() bool {
-		return f.count(t, `SELECT COUNT(*) FROM take t JOIN prompt_version pv ON pv.id = t.prompt_version_id WHERE pv.shot_id = ?`, newShot) > 0
-	}, 30*time.Second, 10*time.Millisecond)
 
 	// A round that is not complete yet (its last Take is not selected) must not hold the editing
 	// stage: the worker woken by the finished job only looks at it. HoldStage here stands for a
@@ -155,13 +189,7 @@ func TestEditorReshootLoop_AFinishedShotWaitsForTheBusyStageAndIsPutInWhenItEnds
 func TestEditorReshootLoop_StopsAtTheRetryPolicyLimitAndEscalates(t *testing.T) {
 	f, _ := editedFixture(t)
 	ctx := context.Background()
-	require.Eventually(t, func() bool { return f.trunkShots(t) == 2 }, 10*time.Second, 10*time.Millisecond)
-	f.waitJobsDone(t)
-	var newShot string
-	require.NoError(t, f.query(t, `SELECT id FROM shot WHERE id <> ?`, f.shotID).Scan(&newShot))
-	require.Eventually(t, func() bool {
-		return f.count(t, `SELECT COUNT(*) FROM take t JOIN prompt_version pv ON pv.id = t.prompt_version_id WHERE pv.shot_id = ?`, newShot) > 0
-	}, 30*time.Second, 10*time.Millisecond)
+	newShot := f.additionalShot(t)
 
 	// One round is the whole budget of Retry Policy "max retries = 1": the Judge that follows the
 	// round (it still finds a Shot missing) does not ask a second one.
@@ -184,13 +212,7 @@ func TestEditorReshootLoop_StopsAtTheRetryPolicyLimitAndEscalates(t *testing.T) 
 func reshotFixture(t *testing.T, answer string) (genFixture, string) {
 	t.Helper()
 	f, _ := editedFixture(t)
-	require.Eventually(t, func() bool { return f.trunkShots(t) == 2 }, 10*time.Second, 10*time.Millisecond)
-	f.waitJobsDone(t)
-	var newShot string
-	require.NoError(t, f.query(t, `SELECT id FROM shot WHERE id <> ?`, f.shotID).Scan(&newShot))
-	require.Eventually(t, func() bool {
-		return f.count(t, `SELECT COUNT(*) FROM take t JOIN prompt_version pv ON pv.id = t.prompt_version_id WHERE pv.shot_id = ?`, newShot) > 0
-	}, 30*time.Second, 10*time.Millisecond)
+	newShot := f.additionalShot(t)
 	f.llm.editor = answer
 	return f, newShot
 }
@@ -242,8 +264,6 @@ func TestEditorReshootLoop_DirectorProjectIsNotJudgedAutomatically(t *testing.T)
 	assert.Equal(t, domain.StateEditing, f.state(t))
 }
 
-// A generation that cannot start (the Shot ceiling cannot buy one Take) must not leave the round
-// pending: the same timeline can be asked again once the budget allows it.
 // A Project that went on to READY / EXPORTED with a round still open (the user edited the timeline
 // meanwhile) is not touched when the round's last Take is selected: a new Edit Timeline version would
 // leave the Audio Timeline and the export on the old edit. The round waits until the Project is
@@ -253,14 +273,8 @@ func TestEditorReshootLoop_AReadyOrExportedProjectKeepsItsEditTimeline(t *testin
 		t.Run(string(state), func(t *testing.T) {
 			f, judged := editedFixture(t)
 			ctx := context.Background()
-			require.Eventually(t, func() bool { return f.trunkShots(t) == 2 }, 10*time.Second, 10*time.Millisecond)
+			newShot := f.additionalShot(t)
 			f.execSQL(t, `UPDATE project SET mode = 'director' WHERE id = ?`, f.projectID)
-			f.waitJobsDone(t)
-			var newShot string
-			require.NoError(t, f.query(t, `SELECT id FROM shot WHERE id <> ?`, f.shotID).Scan(&newShot))
-			require.Eventually(t, func() bool {
-				return f.count(t, `SELECT COUNT(*) FROM take t JOIN prompt_version pv ON pv.id = t.prompt_version_id WHERE pv.shot_id = ?`, newShot) > 0
-			}, 30*time.Second, 10*time.Millisecond)
 			f.execSQL(t, `UPDATE project SET state = ? WHERE id = ?`, string(state), f.projectID)
 
 			f.selectTakeOf(t, newShot)
@@ -289,16 +303,10 @@ func TestEditorReshootLoop_AReadyOrExportedProjectKeepsItsEditTimeline(t *testin
 func TestEditorReshootLoop_APartialTakeUseOfTheLastShotReturnsToTheEditor(t *testing.T) {
 	f, judged := editedFixtureWith(t, needReaction, func(string) string { return additionalSpec }, nil, useStubMedia(t))
 	ctx := context.Background()
-	require.Eventually(t, func() bool { return f.trunkShots(t) == 2 }, 10*time.Second, 10*time.Millisecond)
+	newShot := f.additionalShot(t)
 	f.execSQL(t, `UPDATE project SET mode = 'director' WHERE id = ?`, f.projectID)
-	f.waitJobsDone(t)
-	var newShot string
-	require.NoError(t, f.query(t, `SELECT id FROM shot WHERE id <> ?`, f.shotID).Scan(&newShot))
 	var take string
-	require.Eventually(t, func() bool {
-		err := f.query(t, `SELECT t.id FROM take t JOIN prompt_version pv ON pv.id = t.prompt_version_id WHERE pv.shot_id = ? ORDER BY t.rowid LIMIT 1`, newShot).Scan(&take)
-		return err == nil
-	}, 30*time.Second, 10*time.Millisecond)
+	require.NoError(t, f.query(t, `SELECT t.id FROM take t JOIN prompt_version pv ON pv.id = t.prompt_version_id WHERE pv.shot_id = ? ORDER BY t.rowid LIMIT 1`, newShot).Scan(&take))
 	require.Equal(t, domain.StateGenerating, f.state(t))
 
 	_, err := f.svc.Takes.UsePartial(ctx, newShot, service.PartialInput{Segments: []domain.TakeSegment{{TakeID: take, Start: 0, End: 1}, {TakeID: take, Start: 1, End: 2}}})
@@ -319,14 +327,8 @@ func TestEditorReshootLoop_APartialTakeUseOfTheLastShotReturnsToTheEditor(t *tes
 func TestRoughCut_ABranchTreatsAnInheritedAdditionalShotAsAdditional(t *testing.T) {
 	f, _ := editedFixture(t)
 	ctx := context.Background()
-	require.Eventually(t, func() bool { return f.trunkShots(t) == 2 }, 10*time.Second, 10*time.Millisecond)
+	newShot := f.additionalShot(t)
 	f.execSQL(t, `UPDATE project SET mode = 'director' WHERE id = ?`, f.projectID)
-	f.waitJobsDone(t)
-	var newShot string
-	require.NoError(t, f.query(t, `SELECT id FROM shot WHERE id <> ?`, f.shotID).Scan(&newShot))
-	require.Eventually(t, func() bool {
-		return f.count(t, `SELECT COUNT(*) FROM take t JOIN prompt_version pv ON pv.id = t.prompt_version_id WHERE pv.shot_id = ?`, newShot) > 0
-	}, 30*time.Second, 10*time.Millisecond)
 	branch, err := f.svc.Branch.Create(ctx, newShot, service.BranchInput{})
 	require.NoError(t, err)
 	branchID := branch.Branch.ID
@@ -353,9 +355,7 @@ func TestRoughCut_ABranchTreatsAnInheritedAdditionalShotAsAdditional(t *testing.
 func TestEditorReshootLoop_StartFailureDoesNotLeaveAPendingRound(t *testing.T) {
 	f := newGenFixture(t, true)
 	f.llm.extractor = extractAnswer
-	f.llm.planner = func(string) string {
-		return `{"shot_objective":"Character looks back, surprised","duration":"2.0s","camera":{"lens":"35mm","framing":"close"},"lighting":{"mood":"cold blue"},"continuity":{"start_from_previous_final_state":true}}`
-	}
+	f.llm.planner = func(string) string { return additionalSpec }
 	f.buildReferencePack(t)
 	f.generateAndWait(t, f.shotID, 2)
 	f.selectTakeOf(t, f.shotID)
@@ -386,25 +386,13 @@ func TestEditorReshootLoop_StartFailureDoesNotLeaveAPendingRound(t *testing.T) {
 // On a Branch whose anchor Shot lies in the trunk the additional Shot gets a Scene of its own. When
 // no Shot can start, that Scene is removed with it: asking again must not pile up empty Scenes.
 func TestEditorReshootLoop_StartFailureOnABranchLeavesNoEmptyScene(t *testing.T) {
-	f := newGenFixture(t, true)
-	f.llm.extractor = extractAnswer
-	f.llm.planner = func(string) string { return additionalSpec }
-	f.llm.director = directorFor(sameSceneAnswer)
-	f.buildReferencePack(t)
-	f.generateAndWait(t, f.shotID, 2)
-	f.selectTakeOf(t, f.shotID)
-	f.execSQL(t, `UPDATE project SET production_template = 'drama', state = 'VISUAL_DESIGN' WHERE id = ?`, f.projectID)
+	f, branchID, timelineID := branchFixture(t, func(string) string { return additionalSpec })
 	ctx := context.Background()
-	branchID := f.branch(t, service.BranchInput{}).Branch.ID
-	view, err := f.svc.Editor.RoughCut(ctx, f.projectID, branchID)
-	require.NoError(t, err)
-	require.NotNil(t, view.Timeline)
-	timelineID := view.Timeline.ID
 	f.llm.editor = needReaction
 
 	tiny := 0.01
 	f.setBudget(t, nil, &tiny)
-	_, err = f.svc.Editor.JudgeTimeline(ctx, timelineID)
+	_, err := f.svc.Editor.JudgeTimeline(ctx, timelineID)
 	require.ErrorIs(t, err, service.ErrBudgetExceeded)
 	_, err = f.svc.Editor.RequestAdditionalShot(ctx, timelineID)
 	require.ErrorIs(t, err, service.ErrBudgetExceeded)
@@ -423,15 +411,7 @@ func TestEditorReshootLoop_StartFailureOnABranchLeavesNoEmptyScene(t *testing.T)
 // the one that started belongs to the round and the one that did not is removed: no Shot is left
 // outside a round, and asking again is refused instead of making the started Shot a second time.
 func TestEditorReshootLoop_PartialStartKeepsTheStartedShotInTheRound(t *testing.T) {
-	const twoNeeds = `{"verdict":"need_shot","findings":[` +
-		`{"clip_index":1,"issue":"a","action":"a","need_shot":{"kind":"reaction","after_clip":1,"objective":"驚いて振り返る","duration_seconds":2}},` +
-		`{"clip_index":1,"issue":"b","action":"b","need_shot":{"kind":"insert","after_clip":1,"objective":"BROKEN-PLAN","duration_seconds":2}}]}`
-	f, judged := editedFixtureJudging(t, twoNeeds, func(user string) string {
-		if strings.Contains(user, "BROKEN-PLAN") {
-			return strings.Replace(additionalSpec, "Character looks back, surprised", "a BANNED word", 1)
-		}
-		return additionalSpec
-	}, func(f genFixture) {
+	f, judged := editedFixtureJudging(t, needTwoShots("驚いて振り返る", "BROKEN-PLAN"), brokenPlanner, func(f genFixture) {
 		_, err := f.svc.Brand.Add(context.Background(), f.projectID, service.BrandForm{Type: string(domain.BrandForbidden), Text: "BANNED"})
 		require.NoError(t, err)
 	})
@@ -452,30 +432,12 @@ func TestEditorReshootLoop_PartialStartKeepsTheStartedShotInTheRound(t *testing.
 // When only some of them can start, the Scene stays with the one that did: it must not be removed
 // together with the Shot that failed (#333).
 func TestEditorReshootLoop_PartialStartOnABranchKeepsTheSceneOfTheStartedShot(t *testing.T) {
-	const twoNeeds = `{"verdict":"need_shot","findings":[` +
-		`{"clip_index":1,"issue":"a","action":"a","need_shot":{"kind":"reaction","after_clip":1,"objective":"驚いて振り返る","duration_seconds":2}},` +
-		`{"clip_index":1,"issue":"b","action":"b","need_shot":{"kind":"insert","after_clip":1,"objective":"BROKEN-PLAN","duration_seconds":2}}]}`
-	f := newGenFixture(t, true)
-	f.llm.extractor = extractAnswer
-	f.llm.planner = func(user string) string {
-		if strings.Contains(user, "BROKEN-PLAN") {
-			return strings.Replace(additionalSpec, "Character looks back, surprised", "a BANNED word", 1)
-		}
-		return additionalSpec
-	}
-	f.llm.director = directorFor(sameSceneAnswer)
-	f.buildReferencePack(t)
-	f.generateAndWait(t, f.shotID, 2)
-	f.selectTakeOf(t, f.shotID)
-	f.execSQL(t, `UPDATE project SET production_template = 'drama', state = 'VISUAL_DESIGN' WHERE id = ?`, f.projectID)
+	f, branchID, timelineID := branchFixture(t, brokenPlanner)
 	ctx := context.Background()
-	branchID := f.branch(t, service.BranchInput{}).Branch.ID
-	view, err := f.svc.Editor.RoughCut(ctx, f.projectID, branchID)
+	_, err := f.svc.Brand.Add(ctx, f.projectID, service.BrandForm{Type: string(domain.BrandForbidden), Text: "BANNED"})
 	require.NoError(t, err)
-	_, err = f.svc.Brand.Add(ctx, f.projectID, service.BrandForm{Type: string(domain.BrandForbidden), Text: "BANNED"})
-	require.NoError(t, err)
-	f.llm.editor = twoNeeds
-	_, err = f.svc.Editor.JudgeTimeline(ctx, view.Timeline.ID)
+	f.llm.editor = needTwoShots("驚いて振り返る", "BROKEN-PLAN")
+	_, err = f.svc.Editor.JudgeTimeline(ctx, timelineID)
 	require.NoError(t, err)
 
 	var started string
@@ -486,31 +448,15 @@ func TestEditorReshootLoop_PartialStartOnABranchKeepsTheSceneOfTheStartedShot(t 
 	assert.Equal(t, 2, f.count(t, `SELECT COUNT(*) FROM shot`), "the Shot that could not start is gone")
 }
 
-// When adding the second additional Shot fails (here a trigger aborts the insert, as a cancelled
-// request or a locked DB would), the first one is not left behind: it belongs to no round, and its
-// Branch Scene would show in the plan and be made again by the next request (#572).
+// When adding the second additional Shot fails (a trigger aborts the insert), the first one, which
+// belongs to no round, is not left behind with its Branch Scene (#572).
 func TestEditorReshootLoop_AddFailureRemovesTheShotsAddedBeforeIt(t *testing.T) {
-	const twoNeeds = `{"verdict":"need_shot","findings":[` +
-		`{"clip_index":1,"issue":"a","action":"a","need_shot":{"kind":"reaction","after_clip":1,"objective":"驚いて振り返る","duration_seconds":2}},` +
-		`{"clip_index":1,"issue":"b","action":"b","need_shot":{"kind":"insert","after_clip":1,"objective":"手元のアップ","duration_seconds":2}}]}`
-	f := newGenFixture(t, true)
-	f.llm.extractor = extractAnswer
-	f.llm.planner = func(string) string { return additionalSpec }
-	f.llm.director = directorFor(sameSceneAnswer)
-	f.buildReferencePack(t)
-	f.generateAndWait(t, f.shotID, 2)
-	f.selectTakeOf(t, f.shotID)
-	f.execSQL(t, `UPDATE project SET production_template = 'drama', state = 'VISUAL_DESIGN' WHERE id = ?`, f.projectID)
-	ctx := context.Background()
-	branchID := f.branch(t, service.BranchInput{}).Branch.ID
-	view, err := f.svc.Editor.RoughCut(ctx, f.projectID, branchID)
-	require.NoError(t, err)
-	require.NotNil(t, view.Timeline)
-	f.llm.editor = twoNeeds
+	f, branchID, timelineID := branchFixture(t, func(string) string { return additionalSpec })
+	f.llm.editor = needTwoShots("驚いて振り返る", "手元のアップ")
 	// The Project has one Shot: the first additional Shot is the 2nd, the second one is refused.
 	f.execSQL(t, `CREATE TRIGGER refuse_third_shot BEFORE INSERT ON shot WHEN (SELECT COUNT(*) FROM shot) >= 2 BEGIN SELECT RAISE(ABORT, 'refused'); END`)
 
-	_, err = f.svc.Editor.JudgeTimeline(ctx, view.Timeline.ID)
+	_, err := f.svc.Editor.JudgeTimeline(context.Background(), timelineID)
 	require.Error(t, err)
 
 	assert.Equal(t, 1, f.count(t, `SELECT COUNT(*) FROM shot`), "the Shot added before the failure is removed")
@@ -523,9 +469,7 @@ func TestEditorReshootLoop_AddFailureRemovesTheShotsAddedBeforeIt(t *testing.T) 
 // must not leave a generation that has started outside a round, nor the Shot that could not start
 // in the Project: the bookkeeping after the loop does not depend on the request.
 func TestEditorReshootLoop_ACancelledRequestStillRecordsTheRoundOfTheStartedShots(t *testing.T) {
-	const twoNeeds = `{"verdict":"need_shot","findings":[` +
-		`{"clip_index":1,"issue":"a","action":"a","need_shot":{"kind":"reaction","after_clip":1,"objective":"FIRST-SHOT","duration_seconds":2}},` +
-		`{"clip_index":1,"issue":"b","action":"b","need_shot":{"kind":"insert","after_clip":1,"objective":"SECOND-SHOT","duration_seconds":2}}]}`
+	twoNeeds := needTwoShots("FIRST-SHOT", "SECOND-SHOT")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	f := newGenFixture(t, true)

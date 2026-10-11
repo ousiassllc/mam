@@ -205,7 +205,7 @@ func newGenFixtureWithDeps(t *testing.T, withModels bool, freeBytes func(string)
 	jobs := jobqueue.New(repository.NewJobRepository(db), jobqueue.Options{})
 	deps := service.Deps{DB: db, AssetsDir: filepath.Join(t.TempDir(), "assets"), LLM: reasoner, FreeBytes: freeBytes, Jobs: jobs}
 	if withModels {
-		deps.Models = modeladapter.New(modeladapter.DefaultConfig(), backends, modeladapter.WithSleep(noSleep))
+		deps.Models = modeladapter.New(modeladapter.DefaultConfig(), backends, modeladapter.WithSleep(noSleep), modeladapter.WithTimeLimit(shortLimit))
 	}
 	if tweak != nil {
 		tweak(&deps)
