@@ -21,14 +21,13 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/zalando/go-keyring"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
 	"github.com/ousiassllc/mam/backend/internal/agent/judge"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/repair"
-	"github.com/ousiassllc/mam/backend/internal/credential"
+	"github.com/ousiassllc/mam/backend/internal/credential/credentialtest"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/facesim"
 	"github.com/ousiassllc/mam/backend/internal/media"
@@ -37,6 +36,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/router"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
+	"github.com/ousiassllc/mam/backend/internal/testenv"
 )
 
 // The Shot Spec names the Character the way the Prompt Planner does: "identity": "locked".
@@ -142,14 +142,15 @@ type judgeOpts struct {
 	command string
 	// spec replaces the Prompt Planner's answer (empty: lockedSpecAnswer).
 	spec string
+	keys *credentialtest.Memory // nil: an empty one (a Jev client in shadow needs the store first)
 }
 
 func newJudgeAppOpts(t *testing.T, o judgeOpts, sims ...float64) *judgeApp {
 	t.Helper()
-	keyring.MockInit()
+	testenv.Parallel(t)
+	keys := cmp.Or(o.keys, credentialtest.New())
 	dir := t.TempDir()
 	db := testdb.Open(t)
-
 	l := &judgeLLM{verdict: o.verdict, specs: cmp.Or(o.spec, lockedSpecAnswer), command: o.command}
 	video := &videoFake{}
 	jobs := jobqueue.New(repository.NewJobRepository(db), jobqueue.Options{})
@@ -163,14 +164,13 @@ func newJudgeAppOpts(t *testing.T, o judgeOpts, sims ...float64) *judgeApp {
 	}
 	backends := modeladapter.Backends{Video: map[domain.ModelName]modeladapter.VideoBackend{domain.ModelKling3: backend, domain.ModelSeedance2: backend, domain.ModelRunwayGen45: backend}}
 	svc := servicetest.New(t, service.Deps{
-		DB: db, Credentials: credential.NewKeyring(), AssetsDir: filepath.Join(dir, "assets"), LLM: l, Jobs: jobs,
+		DB: db, Credentials: keys, AssetsDir: filepath.Join(dir, "assets"), LLM: l, Jobs: jobs,
 		Models: modeladapter.New(modeladapter.DefaultConfig(), backends), Frames: clipFrames{pics}, Faces: redFaces{}, Jev: o.shadow, Media: o.media,
 	})
 	ctx, cancel := context.WithCancel(context.Background())
 	jobs.Start(ctx)
 	t.Cleanup(func() { cancel(); jobs.Stop() })
-
-	a := &app{t: t, db: db, engine: router.New(svc, router.Options{}), svc: svc}
+	a := &app{t: t, db: db, engine: router.New(svc, router.Options{}), svc: svc, keys: keys}
 	a.cookie, a.token = bootstrap(t, a.engine)
 	g := &genApp{app: a, video: video}
 	g.project = a.createProject("美容液のCMを作りたい")

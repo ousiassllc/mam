@@ -40,8 +40,8 @@ assets: static/node_modules ## build front-end assets into static/src/dist
 
 test: test-go test-static test-scripts ## run every test
 
-test-go: generate ## Go tests
-	go test -race -timeout 30m ./...
+test-go: generate ## Go tests (then the tests over 3 s are listed)
+	bash -o pipefail -c 'go test -race -timeout 30m -json ./... | scripts/slow-tests.sh'
 
 test-static: static/node_modules ## front-end unit tests
 	npm test --prefix static
@@ -49,6 +49,7 @@ test-static: static/node_modules ## front-end unit tests
 test-scripts: ## shell script tests
 	bash scripts/linterly-baseline_test.sh
 	bash scripts/makefile_test.sh
+	bash scripts/slow-tests_test.sh
 	bash scripts/complexity-ratchet_test.sh
 
 lint: lint-go lint-static ## golangci-lint + tsc + biome lint

@@ -7,7 +7,6 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -24,6 +23,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/testenv"
 )
 
 // editorLLM answers the Editor Judge with a fixed JSON reply and the Audio Director's Planner with
@@ -100,11 +100,7 @@ func newEditorAppWith(t *testing.T, tweak func(*service.Deps)) *editorApp {
 	ta := newTakeAppWith(t, func(d *service.Deps) {
 		tools, err := media.Look()
 		require.NoError(t, err)
-		wav := filepath.Join(t.TempDir(), "voice.wav")
-		out, err := exec.Command("ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "sine=frequency=300:duration=1.5", wav).CombinedOutput()
-		require.NoError(t, err, string(out))
-		speech.data, err = os.ReadFile(wav)
-		require.NoError(t, err)
+		speech.data = testenv.FFmpegFile(t, ".wav", "-f", "lavfi", "-i", "sine=frequency=300:duration=1.5")
 		d.LLM, d.Media = l, &tools
 		d.Audio = audiodirector.Providers{Speech: speech, Music: speech, Sounds: speech, Cloner: voiceCloner{id: "cloned-voice-1", sample: sample}}
 		if tweak != nil {

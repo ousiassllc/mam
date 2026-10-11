@@ -17,13 +17,12 @@ import (
 	"github.com/coder/websocket/wsjson"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/zalando/go-keyring"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/generation"
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
-	"github.com/ousiassllc/mam/backend/internal/credential"
+	"github.com/ousiassllc/mam/backend/internal/credential/credentialtest"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/repository"
@@ -99,12 +98,12 @@ type genOpts struct {
 
 func newGenAppOpts(t *testing.T, withModels bool, o genOpts) *genApp {
 	t.Helper()
-	keyring.MockInit()
+	testenv.Parallel(t)
+	keys := credentialtest.New()
 	dir := t.TempDir()
 	db := testdb.Open(t)
-
 	video := &videoFake{}
-	deps := service.Deps{DB: db, Credentials: credential.NewKeyring(), AssetsDir: filepath.Join(dir, "assets"), Media: o.media}
+	deps := service.Deps{DB: db, Credentials: keys, AssetsDir: filepath.Join(dir, "assets"), Media: o.media}
 	deps.LLM = plannerLLM{}
 	if o.llm != nil {
 		deps.LLM = o.llm
@@ -123,8 +122,7 @@ func newGenAppOpts(t *testing.T, withModels bool, o genOpts) *genApp {
 	ctx, cancel := context.WithCancel(context.Background())
 	jobs.Start(ctx)
 	t.Cleanup(func() { cancel(); jobs.Stop() })
-
-	a := &app{t: t, db: db, engine: router.New(svc, router.Options{}), svc: svc, assets: filepath.Join(dir, "assets")}
+	a := &app{t: t, db: db, engine: router.New(svc, router.Options{}), svc: svc, keys: keys, assets: filepath.Join(dir, "assets")}
 	a.cookie, a.token = bootstrap(t, a.engine)
 	g := &genApp{app: a, video: video}
 	g.project = a.createProject("美容液のCMを作りたい")
@@ -278,11 +276,13 @@ func TestContinue_ProposesACardInTheChatAndConfirmAddsAndGeneratesTheNextShot(t 
 	assert.Contains(t, body, domain.DelegateOption)
 
 	assert.Equal(t, http.StatusUnprocessableEntity, g.form(http.MethodPost, "/shots/"+g.shotID+"/continue/confirm", nil).Code, "a choice is required")
+	g.video.gate = make(chan struct{}) // the new Shot's job waits here, so the card is drawn while it generates
 	rec = g.form(http.MethodPost, "/shots/"+g.shotID+"/continue/confirm", url.Values{"delegate": {"true"}})
 	require.Equal(t, http.StatusAccepted, rec.Code, rec.Body.String())
 	assert.Equal(t, "chat:refresh", rec.Header().Get("HX-Trigger"))
 	assert.Contains(t, rec.Body.String(), "Shot 2: ドアを開ける")
 	assert.Contains(t, rec.Body.String(), "生成中")
+	close(g.video.gate)
 	assert.Equal(t, 2, generates(), "confirming the direction is the user asking for the new Shot: a generate intervention")
 }
 

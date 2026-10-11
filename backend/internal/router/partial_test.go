@@ -5,9 +5,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
-	"os"
-	"os/exec"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -25,13 +22,7 @@ type mp4Video struct{ data []byte }
 
 func newMP4Video(t *testing.T) *mp4Video {
 	t.Helper()
-	path := filepath.Join(t.TempDir(), "clip.mp4")
-	out, err := exec.Command("ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "testsrc=size=320x240:rate=10:duration=4",
-		"-f", "lavfi", "-i", "sine=frequency=440:duration=4", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", path).CombinedOutput()
-	require.NoError(t, err, string(out))
-	data, err := os.ReadFile(path)
-	require.NoError(t, err)
-	return &mp4Video{data: data}
+	return &mp4Video{data: testenv.PatternVideo(t, "320x240", 4)}
 }
 
 func (v *mp4Video) GenerateVideo(context.Context, string, modeladapter.VideoRequest) (modeladapter.VideoResult, error) {

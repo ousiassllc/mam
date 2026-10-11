@@ -8,50 +8,21 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/coder/websocket"
 	"github.com/coder/websocket/wsjson"
-	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/zalando/go-keyring"
 
-	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
-	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
-	"github.com/ousiassllc/mam/backend/internal/router"
-	"github.com/ousiassllc/mam/backend/internal/service"
-	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 )
 
 var pngBytes = append([]byte("\x89PNG\r\n\x1a\n"), bytes.Repeat([]byte{0}, 32)...)
-
-type app struct {
-	t      *testing.T
-	db     *repository.DB
-	engine *gin.Engine
-	svc    *service.Services
-	cookie *http.Cookie
-	token  string
-	assets string // the assets directory
-}
-
-func newApp(t *testing.T) *app {
-	t.Helper()
-	keyring.MockInit()
-	dir := t.TempDir()
-	db := testdb.Open(t)
-	svc := servicetest.New(t, service.Deps{DB: db, Credentials: credential.NewKeyring(), AssetsDir: filepath.Join(dir, "assets")})
-	a := &app{t: t, db: db, engine: router.New(svc, router.Options{}), svc: svc, assets: filepath.Join(dir, "assets")}
-	a.cookie, a.token = bootstrap(t, a.engine)
-	return a
-}
 
 // request sends an unsafe or safe request the way the browser does: cookie + CSRF header (+ HX-Request).
 func (a *app) request(method, path string, body []byte, contentType string, htmx bool) *httptest.ResponseRecorder {
