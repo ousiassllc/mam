@@ -331,12 +331,14 @@ func TestTakePreview_4KIsPlayedThroughA1080pProxyAndSeekingIsSupported(t *testin
 	rec = do(ta.engine, req)
 	assert.Equal(t, http.StatusPartialContent, rec.Code)
 	assert.Equal(t, 100, rec.Body.Len())
+	assert.Equal(t, "sandbox", rec.Header().Get("Content-Security-Policy"), "a served file carries its own sandbox policy")
 	_, err = os.Stat(filepath.Join(ta.dir, "assets", ".previews", "t1.mp4"))
 	assert.True(t, os.IsNotExist(err), "no proxy for 1080p")
 
 	thumb := ta.get("/takes/t1/thumbnail", false)
 	require.Equal(t, http.StatusOK, thumb.Code)
 	assert.Equal(t, "image/jpeg", thumb.Header().Get("Content-Type"))
+	assert.Equal(t, "sandbox", thumb.Header().Get("Content-Security-Policy"))
 	assert.True(t, strings.HasPrefix(thumb.Body.String(), "\xff\xd8"), "a JPEG")
 
 	assert.Equal(t, http.StatusNotFound, ta.get("/takes/nope/video", false).Code)

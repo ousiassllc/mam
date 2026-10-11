@@ -56,6 +56,7 @@ func (t Tools) Render(ctx context.Context, cuts []Cut, opt RenderOptions, dst st
 	}
 	infos := make([]Info, len(cuts))
 	clamped := make([]Cut, len(cuts))
+	seconds := 0.0
 	for i, c := range cuts {
 		info, err := t.Probe(ctx, c.Path)
 		if err != nil {
@@ -66,6 +67,7 @@ func (t Tools) Render(ctx context.Context, cuts []Cut, opt RenderOptions, dst st
 			return Info{}, fmt.Errorf("render: cut %d is empty (%.3f-%.3f s of %.3f s)", i+1, c.Start, c.End, info.Duration)
 		}
 		infos[i], clamped[i] = info, c
+		seconds += c.Length()
 	}
 	w, h := opt.Width, opt.Height
 	if w == 0 || h == 0 {
@@ -108,7 +110,7 @@ func (t Tools) Render(ctx context.Context, cuts []Cut, opt RenderOptions, dst st
 	if err != nil {
 		return Info{}, err
 	}
-	if err := t.write(ctx, dst, format, append(args, codecArgs...)); err != nil {
+	if err := t.write(ctx, dst, format, seconds, append(args, codecArgs...)); err != nil {
 		return Info{}, err
 	}
 	return t.Probe(ctx, dst)

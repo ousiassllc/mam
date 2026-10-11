@@ -45,6 +45,7 @@ func TestEditTimeline_Normalize(t *testing.T) {
 		{"no clip", func(tl *domain.EditTimeline) { tl.Clips = nil }, "クリップがありません"},
 		{"missing take", func(tl *domain.EditTimeline) { tl.Clips[1].TakeID = "" }, "Shot または Take"},
 		{"shorter than the minimum", func(tl *domain.EditTimeline) { tl.Clips[1].Out = tl.Clips[1].In + 0.2 }, "以上の区間"},
+		{"exactly the minimum as the screen sends it", func(tl *domain.EditTimeline) { tl.Clips[1].In, tl.Clips[1].Out = 0.063, 0.563 }, ""},
 		{"negative in point", func(tl *domain.EditTimeline) { tl.Clips[1].In = -1 }, "以上の区間"},
 		{"past the end of the take", func(tl *domain.EditTimeline) { tl.Clips[1].SourceSeconds = 2; tl.Clips[1].Out = 3 }, "Take の長さ"},
 		{"unknown transition", func(tl *domain.EditTimeline) { tl.Clips[1].Transition.Type = "spin" }, "Transition が正しくありません"},

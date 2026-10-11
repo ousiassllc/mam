@@ -1,14 +1,12 @@
 package media
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -31,8 +29,7 @@ type Loudness struct {
 
 // AudioDuration is the length of an audio (or any media) file in seconds.
 func (t Tools) AudioDuration(ctx context.Context, path string) (float64, error) {
-	cmd := exec.CommandContext(ctx, t.ffprobe, "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", path) // #nosec G204 -- fixed arguments; path is an asset file
-	out, err := cmd.Output()
+	out, _, err := run(ctx, t.limits().probe, t.ffprobe, "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", path)
 	if err != nil {
 		return 0, fmt.Errorf("ffprobe %s: %w", filepath.Base(path), err)
 	}
@@ -57,16 +54,14 @@ type loudnormJSON struct {
 // has no measurable sound.
 func (t Tools) MeasureLoudness(ctx context.Context, path string, targetLUFS float64) (Loudness, error) {
 	filter := fmt.Sprintf("loudnorm=I=%s:TP=%s:LRA=11:print_format=json", num(targetLUFS), num(TruePeakCeiling))
-	var stderr bytes.Buffer
-	cmd := exec.CommandContext(ctx, t.ffmpeg, "-hide_banner", "-nostats", "-nostdin", "-i", path, "-vn", "-af", filter, "-f", "null", "-") // #nosec G204 -- arguments are built by this package; path is an asset file
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		if ctx.Err() != nil {
-			return Loudness{}, ctx.Err()
+	_, stderr, err := run(ctx, t.limits().loudness, t.ffmpeg, "-hide_banner", "-nostats", "-nostdin", "-i", path, "-vn", "-af", filter, "-f", "null", "-")
+	text := string(stderr)
+	if err != nil {
+		if ctx.Err() != nil || errors.Is(err, ErrTimeout) {
+			return Loudness{}, err
 		}
-		return Loudness{}, fmt.Errorf("ffmpeg loudnorm: %w: %s", err, tail(stderr.String()))
+		return Loudness{}, fmt.Errorf("ffmpeg loudnorm: %w: %s", err, tail(text))
 	}
-	text := stderr.String()
 	start, end := strings.LastIndex(text, "{"), strings.LastIndex(text, "}")
 	if start < 0 || end < start {
 		return Loudness{}, fmt.Errorf("ffmpeg loudnorm: no report: %s", tail(text))
@@ -151,7 +146,7 @@ func (t Tools) PlaceVoices(ctx context.Context, voices []Track, seconds float64,
 	}
 	mix := strings.Join(labels, "") + fmt.Sprintf("amix=inputs=%d:duration=longest:normalize=0,apad=whole_dur=%s,atrim=end=%s[out]", len(labels), sec(seconds), sec(seconds))
 	graph := strings.Join(append(parts, mix), ";")
-	return t.write(ctx, dst, "wav", append(args, "-filter_complex", graph, "-map", "[out]", "-c:a", "pcm_s16le"))
+	return t.write(ctx, dst, "wav", seconds, append(args, "-filter_complex", graph, "-map", "[out]", "-c:a", "pcm_s16le"))
 }
 
 // Master mixes the sound of base (a video file; "" for none) and the tracks into one stereo track
@@ -193,7 +188,7 @@ func (t Tools) Master(ctx context.Context, base string, tracks []Track, seconds,
 	}
 	raw := filepath.Join(dir, "."+name+".mix.tmp") // an interrupted run leaves it behind; the next run to the same dst overwrites it
 	defer func() { _ = os.Remove(raw) }()
-	if err := t.write(ctx, raw, "wav", append(args, "-filter_complex", graph, "-map", "[out]", "-c:a", "pcm_f32le")); err != nil {
+	if err := t.write(ctx, raw, "wav", seconds, append(args, "-filter_complex", graph, "-map", "[out]", "-c:a", "pcm_f32le")); err != nil {
 		return Loudness{}, err
 	}
 	first, err := t.MeasureLoudness(ctx, raw, targetLUFS)
@@ -202,7 +197,7 @@ func (t Tools) Master(ctx context.Context, base string, tracks []Track, seconds,
 	}
 	norm := fmt.Sprintf("loudnorm=I=%s:TP=%s:LRA=11:measured_I=%s:measured_TP=%s:measured_LRA=%s:measured_thresh=%s:offset=%s:linear=true",
 		num(targetLUFS), num(TruePeakCeiling), num(first.Integrated), num(first.TruePeak), num(first.Range), num(first.Threshold), num(first.Offset))
-	if err := t.write(ctx, dst, "mp4", []string{"-i", raw, "-af", norm + ",aresample=48000,aformat=channel_layouts=stereo", "-c:a", "aac", "-b:a", "192k", "-vn"}); err != nil {
+	if err := t.write(ctx, dst, "mp4", seconds, []string{"-i", raw, "-af", norm + ",aresample=48000,aformat=channel_layouts=stereo", "-c:a", "aac", "-b:a", "192k", "-vn"}); err != nil {
 		return Loudness{}, err
 	}
 	return t.MeasureLoudness(ctx, dst, targetLUFS)

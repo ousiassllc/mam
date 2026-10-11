@@ -1,5 +1,5 @@
 // Package static embeds the built front-end assets (esbuild + Tailwind output)
-// so the server ships as a single binary. src/dist/ is produced by `make build-assets`;
+// so the server ships as a single binary. src/dist/ is produced by `make assets` (or `make build`);
 // only src/dist/.gitkeep is committed, so `go build` works before the assets are built.
 package static
 

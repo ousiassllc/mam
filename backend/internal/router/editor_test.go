@@ -239,6 +239,7 @@ func TestEditor_FullFlowFromRoughCutToExport(t *testing.T) {
 	rec = e.get("/edit-timelines/"+saved.ID+"/preview", false)
 	require.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, "video/mp4", rec.Header().Get("Content-Type"))
+	assert.Equal(t, "sandbox", rec.Header().Get("Content-Security-Policy"))
 
 	// Editor Judge: PASS moves the Project to AUDIO (the default level asks for no Rough Cut card).
 	rec = e.form(http.MethodPost, "/edit-timelines/"+saved.ID+"/judge", nil)
@@ -304,6 +305,7 @@ func TestEditor_FullFlowFromRoughCutToExport(t *testing.T) {
 	rec = e.get("/projects/"+e.project+"/exports/"+exports[0].ID+"/video", false)
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, "video/webm", rec.Header().Get("Content-Type"))
+	assert.Equal(t, "sandbox", rec.Header().Get("Content-Security-Policy"))
 }
 
 func TestEditor_ReEditVerdictKeepsTheProjectEditing(t *testing.T) {

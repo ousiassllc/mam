@@ -28,14 +28,7 @@ func TransitionTypes() []TransitionType {
 }
 
 // Valid reports whether t is a known transition.
-func (t TransitionType) Valid() bool {
-	for _, v := range TransitionTypes() {
-		if t == v {
-			return true
-		}
-	}
-	return false
-}
+func (t TransitionType) Valid() bool { return slices.Contains(TransitionTypes(), t) }
 
 // Limits of the Edit Timeline.
 const (
@@ -100,6 +93,11 @@ type EditClip struct {
 // Length is the duration of the clip in seconds.
 func (c EditClip) Length() float64 { return c.Out - c.In }
 
+// TooShort reports whether the clip is shorter than MinClipSeconds. The 1e-9 slack is the one of
+// trimProblem (static edit-model.ts): the screen cuts to milliseconds, and In 0.063 / Out 0.563 is
+// 0.49999999999999994 long as float64.
+func (c EditClip) TooShort() bool { return c.Length() < MinClipSeconds-1e-9 }
+
 // EditTimeline is the sequence of clips of a Rough Cut (edit_timeline_version.timeline).
 type EditTimeline struct {
 	Clips []EditClip `json:"clips"`
@@ -128,7 +126,7 @@ func (t EditTimeline) Normalize() (EditTimeline, error) {
 		if c.ShotID == "" || c.TakeID == "" {
 			return EditTimeline{}, invalidTimeline("クリップ %d に Shot または Take が指定されていません", i+1)
 		}
-		if !finite(c.In) || !finite(c.Out) || c.In < 0 || c.Length() < MinClipSeconds {
+		if !finite(c.In) || !finite(c.Out) || c.In < 0 || c.TooShort() {
 			return EditTimeline{}, invalidTimeline("クリップ %d は %.1f 秒以上の区間にしてください", i+1, MinClipSeconds)
 		}
 		if c.SourceSeconds > 0 && c.Out > c.SourceSeconds+0.05 {
