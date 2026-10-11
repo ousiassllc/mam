@@ -107,8 +107,7 @@ func TestWrite_SerializesConcurrentWriters(t *testing.T) {
 						break
 					}
 				}
-				_, err := tx.ExecContext(ctx, `INSERT INTO job (id, kind) VALUES (?, 'generate')`, cur)
-				_ = err
+				_, _ = tx.ExecContext(ctx, `INSERT INTO job (id, kind) VALUES (?, 'generate')`, cur)
 				return nil
 			})
 			assert.NoError(t, err)

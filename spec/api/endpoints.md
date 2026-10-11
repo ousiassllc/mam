@@ -117,9 +117,9 @@ M1 の入出力契約（Issue #12）:
 
 | Method | Path | 概要 | 対応機能 |
 |---|---|---|---|
-| POST | `/takes/:id/select` | Take を Selected として確定（DIRECTOR MODEでの手動選択。AI Pick や以前の選択より優先され、以前の Selected は Candidate に戻る）。アーカイブ済み Take は 422、存在しなければ 404。応答は Shot カード（200） | F-15 |
+| POST | `/takes/:id/select` | Take を Selected として確定（DIRECTOR MODEでの手動選択。AI Pick や以前の選択より優先され、以前の Selected は Candidate に戻る）。除外済み・すでに選択済み・ファイルがアーカイブ済みの Take は 422（何も変えず、人間の介入も記録しないので Production Analytics の集計に入らない。Shot カードの「選択」ボタン・`select_url` を出す条件と同じ判定）、存在しなければ 404。応答は Shot カード（200） | F-15 |
 | POST | `/shots/:id/takes/partial` | 複数Takeの区間指定による部分合成。Body は JSON `{"segments":[{"take_id","start","end"}]}`（秒）または `{"instruction":"Take A の 0-2秒 + Take B の 2-4秒"}`（フォームの `segments`（JSON 配列）/`instruction` も可、`segments` 優先）。区間は 2〜8 個・各 0.3 秒以上・Take の長さ内・除外/アーカイブ済み Take 不可（違反は 422）。つなぎ目のクロスフェードは 0.25 秒で、最短区間の 1/3 の方が短いときはその長さに縮める（区間が 1 つのときは無い）。音声は全区間に音声があるときだけ同じ長さでクロスフェードし、1 本でも音声が無い Take が混ざると出力は無音になる。映像は先頭区間の解像度・フレームレートに揃える。新 Take を作って Selected にし、チャットに Take カードを投稿。ffmpeg が無いとき 503。応答は Shot カード（200） | F-15 |
-| DELETE | `/takes/:id` | Take を Rejected として除外（ファイルと履歴は残す。Shot の選択中 Take だった場合は選択なしに戻る）。応答は Shot カード（200） | F-15 |
+| DELETE | `/takes/:id` | Take を Rejected として除外（ファイルと履歴は残す。Shot の選択中 Take だった場合は選択なしに戻る）。すでに除外済み、またはファイルがアーカイブ済みの Take は 422（冪等な 200 ではない。何も変えず、人間の介入も記録しない。「除外」ボタン・`reject_url` を出す条件と同じ判定）、存在しなければ 404。応答は Shot カード（200） | F-15 |
 | GET | `/takes/:id/video` | Take のプレビュー動画（Range 対応）。高さ 1080 超（4K）のときは 1080p プロキシを初回に生成して配信し、原本は変えない。ffmpeg が無いときは原本を配信。アーカイブ済みは 404 | `mam-video-player` |
 | GET | `/takes/:id/thumbnail` | Take の先頭フレームの JPEG（ffmpeg が無いとき 503） | `mam-video-player`（poster） |
 | POST | `/shots/:id/continue` | Continue: 完成した Shot の最終フレーム（起点の Take の映像から ffmpeg で取り出した画像。ffmpeg が無いときは Shot Spec と World State のテキストのみ）と Story/Character/Position/Emotion/Object/Camera/Lighting/Motion/Dialogue/Music State を解析し、次展開候補（NEXT A/B/C）を Question カード（`ref_type=continue`、`ref_id`=Shot ID）としてチャットに追記する。選択肢は A〜C（候補は 1〜3 件で、3 件に満たないときは件数分）、自由指示は入力欄からの返信、「AIに任せる」は常設ボタン。この 2 つの記号は最後の候補の次から振る（候補が 3 件なら D と E、2 件なら C と D）。応答は 201 とカードのフラグメントで、`HX-Redirect` でチャットへ遷移させる。未完成の Shot（非 Rejected の Take が無い）は 409、生成中の Shot は 409、存在しない Shot は 404、生成機能が未構成は 503、AI の出力が使えない場合は 502 | F-16 |
@@ -304,7 +304,6 @@ Response: 202 Accepted
   # フラグメント: Shot状態=GENERATINGのInspector表示
   # 完了通知は /ws/shots/:id 経由
 ```
-
 ```yaml
 # GET /api/v1/projects/:id/edit-timeline   （mam-timeline-editor。保存は PUT /edit-timelines/:id のアクションルート）
 Response 200:
@@ -470,3 +469,4 @@ Notes:
 | 1.85 | 2026-10-03 | §2.3 の `POST /takes/:id/judge` に、Shot カードの Take 行へ「Judge」ボタンを出す条件（未 Judge の Take で、サーバーが受け付けるものだけ）と、409 になる場合（Shot が生成中/Repair 中、Take に動画が無い）を追記した | 再実行の導線が画面に無いのに「Judge を実行して」と案内していたため。ボタンの表示とサーバーの拒否を `domain.CheckJudge` の 1 つの判定にした（Issue #438） |
 | 1.86 | 2026-10-03 | §2.3 の `POST /shots/:id/generate/candidates` に、Shot カードの「生成」・Continue・Branch・追加撮影・Director の再生成がこの Candidate 生成を起動する条件（Judge 構成済みかつ Prompt が LOCK でない）と、それ以外は単発の `/shots/:id/generate` になることを追記した | Candidate 生成を起動する導線が HTTP 直叩きしか無く、MAX QUALITY でも画面からは 1 Take だった（Issue #437） |
 | 1.87 | 2026-10-11 | §3 の `GET /api/v1/shots/:id/takes` の説明に、`select_url`（選択可能な Take のみ）・`reject_url`（除外可能な Take のみ）が操作可能なときだけ返ること、各 Take の `partial_usable`、区間指定が可能なときだけ返る Shot の `partial_url`、区間指定の上限を渡す `limits` を追記した | Take のアクション可否をクライアントの `status` 判定からサーバー判定へ移したため。実装は `domain.TakeInfo.Usable`/`Selectable`、`router/take_api.go` の `newTakeBody`、`service.TakeService.Compare`（Issue #482）、`takeLimitsBody`（Issue #519: 区間数・最短秒数をクライアントの定数から外した） |
+| 1.88 | 2026-10-11 | §2.4 の `POST /takes/:id/select` に、除外済み・すでに選択済み・ファイルがアーカイブ済みの Take は 422 で何も変えず人間の介入も記録しないこと、`DELETE /takes/:id` に、すでに除外済み・ファイルがアーカイブ済みの Take は 422（以前の冪等な 200 ではない）で介入を記録しないことを追記した。両ルートの 404（存在しない Take）も明記した | 「選択」「除外」ボタン・`select_url` / `reject_url` を出す条件とサーバーの拒否を `domain.Take.Usable` / `Selectable` の 1 つの判定にしたため（1.87 の `select_url` / `reject_url` は操作可能なときだけ返す記述の裏側）。実装は `service.TakeService.Select` / `Reject`、`repository` の `ErrConflict`（→ 422）、回帰テストは `router/take_test.go` の `TestTakes_RefuseWhatTheyDoNotOfferAndRecordNoIntervention`（Issue #482・#502・#506・#512・#517） |

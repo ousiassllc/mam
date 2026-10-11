@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"path/filepath"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"time"
@@ -149,7 +150,7 @@ func (d *DB) runWrite(req writeRequest) (err error) {
 		if r := recover(); r != nil {
 			_ = tx.Rollback()
 			err = fmt.Errorf("repository: write panicked: %v", r)
-			d.logger.Error("db write panicked", slog.Any("panic", r))
+			d.logger.Error("db write panicked", "panic", r, "stack", string(debug.Stack()))
 		}
 	}()
 	if err := req.fn(req.ctx, tx); err != nil {
