@@ -91,7 +91,9 @@ describe('htmx history snapshot', () => {
     try {
       (document.getElementById('open-shot') as HTMLButtonElement).click();
       leftPage = true;
-      await waitUntil(() => document.getElementById('other-shot') !== null, 'the other shot did not open', { timeout: 3000 });
+      await waitUntil(() => document.getElementById('other-shot') !== null, 'the other shot did not open', {
+        timeout: 3000,
+      });
 
       const cached = sessionStorage.getItem('htmx-history-cache') ?? '';
       expect(cached).to.contain('data-shot-progress');

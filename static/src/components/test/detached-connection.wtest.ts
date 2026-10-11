@@ -50,7 +50,8 @@ describe('connections of elements that left the document', () => {
   }
 
   it('stops following a Shot card that was replaced before the socket gave up', async () => {
-    host.innerHTML = '<article id="card" data-shot-progress data-ws-url="/ws/shots/s1" data-refresh-url="/refresh/s1">生成中</article>';
+    host.innerHTML =
+      '<article id="card" data-shot-progress data-ws-url="/ws/shots/s1" data-refresh-url="/refresh/s1">生成中</article>';
     initShotProgress(host);
     expect(FakeSocket.instances.length).to.equal(1);
 

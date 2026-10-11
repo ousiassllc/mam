@@ -101,7 +101,11 @@ export function estimateFps(mediaTimes: number[]): number {
 }
 
 /** Puts the element on frame `frame` (paused, so that the frame stays on screen). Returns the time it seeked to. */
-export function seekToFrame(video: Pick<HTMLVideoElement, 'currentTime' | 'duration' | 'pause'>, frame: number, fps: number): number {
+export function seekToFrame(
+  video: Pick<HTMLVideoElement, 'currentTime' | 'duration' | 'pause'>,
+  frame: number,
+  fps: number,
+): number {
   video.pause();
   let time = frameToTime(frame, fps);
   if (Number.isFinite(video.duration)) time = Math.min(time, Math.max(video.duration - 0.5 / fps, 0));

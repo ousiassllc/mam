@@ -65,10 +65,13 @@ export function createSyncer(options: SyncerOptions): Syncer {
           if (failures > maxRetries) {
             options.onGiveUp?.();
           } else {
-            timer = setTimer(() => {
-              timer = null;
-              void start(true);
-            }, retryDelay(failures - 1));
+            timer = setTimer(
+              () => {
+                timer = null;
+                void start(true);
+              },
+              retryDelay(failures - 1),
+            );
           }
           return;
         }

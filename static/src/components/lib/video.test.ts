@@ -40,7 +40,14 @@ describe('frames and time', () => {
   });
 
   it('pauses and puts the element on the requested frame, not past the end', () => {
-    const video = { currentTime: 0, duration: 4, paused: false, pause() { this.paused = true; } };
+    const video = {
+      currentTime: 0,
+      duration: 4,
+      paused: false,
+      pause() {
+        this.paused = true;
+      },
+    };
     expect(seekToFrame(video, 25, 25)).toBeCloseTo(1.02);
     expect(video.currentTime).toBeCloseTo(1.02);
     expect(video.paused).toBe(true);

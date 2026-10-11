@@ -46,7 +46,9 @@ describe('backoffDelay', () => {
 
 describe('socketUrl', () => {
   it('follows the page protocol', () => {
-    expect(socketUrl('/ws/projects/1', { protocol: 'http:', host: '127.0.0.1:8787' })).toBe('ws://127.0.0.1:8787/ws/projects/1');
+    expect(socketUrl('/ws/projects/1', { protocol: 'http:', host: '127.0.0.1:8787' })).toBe(
+      'ws://127.0.0.1:8787/ws/projects/1',
+    );
     expect(socketUrl('/ws/projects/1', { protocol: 'https:', host: 'h' })).toBe('wss://h/ws/projects/1');
   });
 });

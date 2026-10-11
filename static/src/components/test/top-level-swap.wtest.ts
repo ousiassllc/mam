@@ -31,7 +31,11 @@ describe('outerHTML swap of a top-level node', () => {
     document.body.addEventListener('htmx:beforeRequest', onRequest);
     try {
       swapOuter('shot-top', '<li id="shot-top" data-shot-progress data-refresh-url="/refresh/top">生成中</li>');
-      await waitUntil(() => document.getElementById('shot-top')?.dataset.shotReady === 'true', 'the swapped card was not initialised', { timeout: 2000 });
+      await waitUntil(
+        () => document.getElementById('shot-top')?.dataset.shotReady === 'true',
+        'the swapped card was not initialised',
+        { timeout: 2000 },
+      );
 
       document.getElementById('shot-top')!.dispatchEvent(new Event('progress-finished'));
       await aTimeout(50);
@@ -50,6 +54,10 @@ describe('outerHTML swap of a top-level node', () => {
          <form id="chat-composer"><textarea id="composer-content"></textarea><input id="composer-files" type="file" /></form>
        </section>`,
     );
-    await waitUntil(() => document.getElementById('chat-workspace')?.dataset.chatReady === 'true', 'the swapped workspace was not initialised', { timeout: 2000 });
+    await waitUntil(
+      () => document.getElementById('chat-workspace')?.dataset.chatReady === 'true',
+      'the swapped workspace was not initialised',
+      { timeout: 2000 },
+    );
   });
 });

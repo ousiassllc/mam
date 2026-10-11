@@ -92,7 +92,10 @@ export function fileKey(file: { name: string; size: number; lastModified: number
  * request runs, so only a field still holding what was sent is cleared; anything typed, attached or
  * replied to in the meantime is the next message and is kept.
  */
-export function fieldsToClear(sent: ComposerSnapshot, current: ComposerSnapshot): { content: boolean; files: boolean; replyTo: boolean } {
+export function fieldsToClear(
+  sent: ComposerSnapshot,
+  current: ComposerSnapshot,
+): { content: boolean; files: boolean; replyTo: boolean } {
   return {
     content: current.content === sent.content,
     files: current.files.length === sent.files.length && current.files.every((key, i) => key === sent.files[i]),

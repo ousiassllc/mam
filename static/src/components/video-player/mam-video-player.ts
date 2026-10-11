@@ -331,11 +331,13 @@ export class MamVideoPlayer extends LitElement {
             ?disabled=${max === 0}
             @input=${this.onScrub}
           />
-          ${max > 0
-            ? html`<div class="pointer-events-none absolute inset-x-0 top-0 h-full">
+          ${
+            max > 0
+              ? html`<div class="pointer-events-none absolute inset-x-0 top-0 h-full">
                 ${markers.map((m) => this.renderMarker(m, max))}
               </div>`
-            : nothing}
+              : nothing
+          }
         </div>
         <div class="flex items-center gap-2 text-xs text-neutral-300">
           <button type="button" data-action="prev-frame" class="rounded border border-neutral-700 px-2 py-0.5" aria-label="1 コマ戻る" @click=${() => void this.step(-1)}>◀</button>
@@ -355,7 +357,8 @@ export class MamVideoPlayer extends LitElement {
     const { range, issue } = marker;
     const left = Math.min(range.start / max, 1) * 100;
     const width = Math.max(Math.min((range.end - range.start) / max, 1 - left / 100) * 100, 0.8);
-    const color = issue.severity === 'high' ? 'bg-red-500/70' : issue.severity === 'medium' ? 'bg-amber-500/70' : 'bg-sky-500/70';
+    const color =
+      issue.severity === 'high' ? 'bg-red-500/70' : issue.severity === 'medium' ? 'bg-amber-500/70' : 'bg-sky-500/70';
     const label = `${issue.type}（${issue.severity}） ${range.start.toFixed(1)}-${range.end.toFixed(1)}秒`;
     return html`<button
       type="button"
@@ -378,11 +381,13 @@ export class MamVideoPlayer extends LitElement {
       data-stage=${this.progress?.stage ?? 'idle'}
     >
       <span>${describeProgress(this.progress)}</span>
-      ${fraction === null
-        ? nothing
-        : html`<div class="h-1 w-1/2 overflow-hidden rounded bg-neutral-800">
+      ${
+        fraction === null
+          ? nothing
+          : html`<div class="h-1 w-1/2 overflow-hidden rounded bg-neutral-800">
             <div class="h-full bg-neutral-300" style="width:${fraction * 100}%" data-progress-bar></div>
-          </div>`}
+          </div>`
+      }
     </div>`;
   }
 }
