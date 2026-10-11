@@ -1,16 +1,12 @@
 package judge
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"math"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
-	"strconv"
-	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/media"
 )
@@ -60,8 +56,7 @@ type FrameSource interface {
 
 // FFmpeg is the FrameSource that runs ffmpeg; the video is probed through media.Tools.
 type FFmpeg struct {
-	tools  media.Tools
-	ffmpeg string
+	tools media.Tools
 }
 
 // LookFFmpeg finds ffmpeg and ffprobe on the PATH. It returns ErrNoFFmpeg when either is missing.
@@ -70,7 +65,7 @@ func LookFFmpeg() (FFmpeg, error) {
 	if err != nil {
 		return FFmpeg{}, ErrNoFFmpeg
 	}
-	return FFmpeg{tools: tools, ffmpeg: tools.FFmpeg()}, nil
+	return FFmpeg{tools: tools}, nil
 }
 
 // Sample implements FrameSource.
@@ -89,15 +84,8 @@ func (f FFmpeg) Sample(ctx context.Context, videoPath string, spec SampleSpec) (
 	}
 	defer func() { _ = os.RemoveAll(dir) }()
 	filter := fmt.Sprintf("fps=%.6f,scale='min(%d,iw)':-2", rate, spec.MaxWidth)
-	var stderr bytes.Buffer
-	cmd := exec.CommandContext(ctx, f.ffmpeg, "-v", "error", "-i", videoPath, "-an", "-vf", filter, // #nosec G204 -- fixed arguments; path is an asset file
-		"-frames:v", strconv.Itoa(spec.MaxFrames), "-q:v", "3", filepath.Join(dir, "%04d.jpg"))
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		if ctx.Err() != nil {
-			return Clip{}, ctx.Err()
-		}
-		return Clip{}, fmt.Errorf("ffmpeg: %w: %s", err, strings.TrimSpace(stderr.String()))
+	if err := f.tools.Frames(ctx, videoPath, filepath.Join(dir, "%04d.jpg"), filter, spec.MaxFrames, duration); err != nil {
+		return Clip{}, err
 	}
 	names, err := filepath.Glob(filepath.Join(dir, "*.jpg"))
 	if err != nil {
