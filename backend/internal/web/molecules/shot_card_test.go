@@ -159,3 +159,12 @@ func TestShotCard_ContinueButtonIsDisabledWhileTheRequestIsInFlight(t *testing.T
 	end := start + strings.Index(html[start:], ">")
 	assert.Contains(t, html[open:end], `hx-disabled-elt="this"`)
 }
+
+// The status badge of a Take row says what the Take comparison says (status_label of GET /shots/:id/takes).
+func TestTakeStatusBadge_NamesTheStatusOnScreen(t *testing.T) {
+	got := map[domain.TakeStatus]string{}
+	for _, s := range []domain.TakeStatus{domain.TakeCandidate, domain.TakeAIPick, domain.TakeSelected, domain.TakeRejected} {
+		_, got[s] = molecules.TakeStatusBadge(s)
+	}
+	assert.Equal(t, map[domain.TakeStatus]string{domain.TakeCandidate: "候補", domain.TakeAIPick: "AI Pick", domain.TakeSelected: "採用", domain.TakeRejected: "除外"}, got)
+}
