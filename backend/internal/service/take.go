@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/keylock"
@@ -29,6 +30,11 @@ type TakeService struct {
 	// preview serializes the making of one preview file: two requests for the same Take wait for
 	// one ffmpeg run.
 	preview keylock.Locker // path
+	// tall remembers, per Take ID, whether a Take that reports no resolution is taller than the
+	// preview plays (a file never changes), so a Range request does not probe it again.
+	tall sync.Map // take ID -> bool
+	// proxyFailed is when the proxy of a Take last failed (take ID -> time.Time); see proxyRetryAfter.
+	proxyFailed sync.Map
 	// compose serializes Partial Take Use per Shot.
 	compose keylock.Locker // shot ID
 	// afterSelect runs after a Take was selected: the Editor → Reshoot Loop may have been waiting for it.

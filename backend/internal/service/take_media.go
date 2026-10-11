@@ -2,9 +2,12 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
+	"time"
 
+	"github.com/ousiassllc/mam/backend/internal/bgwork"
 	"github.com/ousiassllc/mam/backend/internal/media"
 )
 
@@ -41,10 +44,8 @@ func (s *TakeService) Video(ctx context.Context, takeID string) (MediaFile, erro
 		return MediaFile{Path: src, MimeType: mime}, nil
 	}
 	proxied := d.Proxied()
-	if d.Resolution == "" { // not reported by the model: look at the file
-		if info, err := s.tools.Probe(ctx, src); err == nil {
-			proxied = info.Height > media.MaxPreviewHeight
-		}
+	if d.Resolution == "" { // not reported by the model: look at the file (once: the file never changes)
+		proxied = s.looksTall(ctx, takeID, src, proxied)
 	}
 	if !proxied {
 		return MediaFile{Path: src, MimeType: mime}, nil
@@ -53,11 +54,45 @@ func (s *TakeService) Video(ctx context.Context, takeID string) (MediaFile, erro
 	if dst == "" {
 		return MediaFile{Path: src, MimeType: mime}, nil // the ID is not a safe file name: no proxy is made
 	}
-	if err := s.makePreview(ctx, dst, func() error { return s.tools.Proxy(ctx, src, dst) }); err != nil {
+	if _, err := os.Stat(dst); err != nil && s.proxyFailedRecently(takeID) {
+		return MediaFile{Path: src, MimeType: mime}, nil // it failed a moment ago: a Range request must not retry it
+	}
+	if err := s.makePreview(ctx, dst, func(ctx context.Context) error {
+		err := s.tools.Proxy(ctx, src, dst)
+		if err != nil {
+			s.proxyFailed.Store(takeID, time.Now())
+		}
+		return err
+	}); err != nil {
 		s.logger.Error("make proxy failed; playing the original", "take_id", takeID, "err", err)
 		return MediaFile{Path: src, MimeType: mime}, nil
 	}
 	return MediaFile{Path: dst, MimeType: "video/mp4"}, nil
+}
+
+// proxyRetryAfter is how long a failed proxy is not tried again: the failure of a broken file or a
+// hung mount costs minutes (media.ErrTimeout), and every Range request of a <video> would pay it.
+const proxyRetryAfter = 10 * time.Minute
+
+// looksTall tells whether the picture of the file at src is taller than the preview plays, by
+// probing it the first time only. When ffprobe fails, fallback is returned and nothing is kept.
+func (s *TakeService) looksTall(ctx context.Context, takeID, src string, fallback bool) bool {
+	if tall, ok := s.tall.Load(takeID); ok {
+		return tall.(bool)
+	}
+	info, err := s.tools.Probe(ctx, src)
+	if err != nil {
+		return fallback
+	}
+	tall := info.Height > media.MaxPreviewHeight
+	s.tall.Store(takeID, tall)
+	return tall
+}
+
+// proxyFailedRecently is true when the proxy of the Take failed less than proxyRetryAfter ago.
+func (s *TakeService) proxyFailedRecently(takeID string) bool {
+	at, ok := s.proxyFailed.Load(takeID)
+	return ok && time.Since(at.(time.Time)) < proxyRetryAfter
 }
 
 // Thumbnail returns a JPEG of the first frame of the Take (ErrUnavailable without ffmpeg).
@@ -80,22 +115,38 @@ func (s *TakeService) Thumbnail(ctx context.Context, takeID string) (MediaFile, 
 	if dst == "" {
 		return MediaFile{}, ErrNotFound // the ID is not a safe file name
 	}
-	if err := s.makePreview(ctx, dst, func() error { return s.tools.Thumbnail(ctx, src, dst, 0) }); err != nil {
+	if err := s.makePreview(ctx, dst, func(ctx context.Context) error { return s.tools.Thumbnail(ctx, src, dst, 0) }); err != nil {
 		return MediaFile{}, fmt.Errorf("make thumbnail: %w", err)
 	}
 	return MediaFile{Path: dst, MimeType: "image/jpeg"}, nil
 }
 
-// makePreview runs make unless the preview file already exists; concurrent calls for one file wait
-// for the first, and stop waiting when ctx ends.
-func (s *TakeService) makePreview(ctx context.Context, dst string, make func() error) error {
+// makePreview runs build unless the preview file already exists; concurrent calls for one file wait
+// for the first, and stop waiting when ctx ends. build is not bound to ctx: a client that gives up
+// (a seek, a page change) must not kill a conversion that takes minutes and make the next request
+// start over; ffmpeg's own time limit (media.ErrTimeout) is what ends a hung one. The file lock is
+// held until build returns, whether or not the caller still waits.
+func (s *TakeService) makePreview(ctx context.Context, dst string, build func(ctx context.Context) error) error {
 	unlock, err := s.preview.Lock(ctx, dst)
 	if err != nil {
 		return err
 	}
-	defer unlock()
 	if _, err := os.Stat(dst); err == nil {
+		unlock()
 		return nil
 	}
-	return make()
+	done := make(chan error, 1)
+	go bgwork.RunSafely(s.logger, "make preview", func() {
+		err := errPreviewPanicked
+		defer func() { unlock(); done <- err }() // also when build panics
+		err = build(context.WithoutCancel(ctx))
+	})
+	select {
+	case err := <-done:
+		return err
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
+
+var errPreviewPanicked = errors.New("make preview panicked")
