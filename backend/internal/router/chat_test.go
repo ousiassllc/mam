@@ -25,6 +25,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/router"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 )
 
@@ -47,7 +48,7 @@ func newApp(t *testing.T) *app {
 	db, err := repository.Open(context.Background(), filepath.Join(dir, "mam.db"), nil)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = db.Close() })
-	svc := service.New(service.Deps{DB: db, Credentials: credential.NewKeyring(), AssetsDir: filepath.Join(dir, "assets")})
+	svc := servicetest.New(t, service.Deps{DB: db, Credentials: credential.NewKeyring(), AssetsDir: filepath.Join(dir, "assets")})
 	a := &app{t: t, db: db, engine: router.New(svc, router.Options{}), svc: svc, assets: filepath.Join(dir, "assets")}
 	a.cookie, a.token = bootstrap(t, a.engine)
 	return a

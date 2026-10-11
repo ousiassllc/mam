@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/media"
@@ -28,9 +27,9 @@ type TakeService struct {
 	tools *media.Tools
 	// preview serializes the making of one preview file: two requests for the same Take wait for
 	// one ffmpeg run.
-	preview sync.Map // path -> *sync.Mutex
+	preview keyedLock // path
 	// compose serializes Partial Take Use per Shot.
-	compose sync.Map // shot ID -> *sync.Mutex
+	compose keyedLock // shot ID
 	// afterSelect runs after a Take was selected: the Editor → Reshoot Loop may have been waiting for it.
 	afterSelect func()
 }
@@ -158,7 +157,10 @@ func (s *TakeService) UsePartial(ctx context.Context, shotID string, in PartialI
 	if s.tools == nil {
 		return ShotFragment{}, ErrUnavailable
 	}
-	unlock := lockFor(&s.compose, shotID)
+	unlock, err := s.compose.lock(ctx, shotID)
+	if err != nil {
+		return ShotFragment{}, err
+	}
 	defer unlock()
 
 	ref, err := s.shots.GetShot(ctx, shotID)
@@ -274,7 +276,10 @@ func (s *TakeService) SpliceRegenerated(ctx context.Context, shotID, baseTakeID,
 	if s.tools == nil {
 		return "", ErrUnavailable
 	}
-	unlock := lockFor(&s.compose, shotID)
+	unlock, err := s.compose.lock(ctx, shotID)
+	if err != nil {
+		return "", err
+	}
 	defer unlock()
 
 	ref, err := s.shots.GetShot(ctx, shotID)

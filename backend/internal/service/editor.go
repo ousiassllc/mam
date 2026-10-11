@@ -64,7 +64,7 @@ type EditorService struct {
 	auto sync.Map
 	// autoStopped is the input (autoInput) each Project's AUTO stage last failed on: project ID -> string.
 	autoStopped sync.Map
-	preview     sync.Map // preview file -> *sync.Mutex
+	preview     keyedLock // preview file
 	// resume is the single worker behind ResumeEditing; missed marks Projects whose Reshoot round
 	// found the stage busy, so the release of the stage wakes the worker again.
 	resume *bgwork.Worker

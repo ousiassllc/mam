@@ -16,6 +16,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
 )
 
 type fixture struct {
@@ -31,7 +32,7 @@ func newFixture(t *testing.T) fixture {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = db.Close() })
 	assets := filepath.Join(dir, "assets")
-	return fixture{svc: service.New(service.Deps{DB: db, AssetsDir: assets}), db: db, assetsDir: assets}
+	return fixture{svc: servicetest.New(t, service.Deps{DB: db, AssetsDir: assets}), db: db, assetsDir: assets}
 }
 
 var (

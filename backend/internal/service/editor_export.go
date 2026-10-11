@@ -22,7 +22,10 @@ func (s *EditorService) rough(ctx context.Context, ver domain.EditTimelineVersio
 	if dst == "" {
 		return "", media.Info{}, ErrNotFound
 	}
-	unlock := lockFor(&s.preview, dst)
+	unlock, err := s.preview.lock(ctx, dst)
+	if err != nil {
+		return "", media.Info{}, err
+	}
 	defer unlock()
 	if info, err := s.tools.Probe(ctx, dst); err == nil {
 		return dst, info, nil

@@ -25,6 +25,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/router"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
 	"github.com/ousiassllc/mam/backend/internal/testenv"
 )
 
@@ -56,7 +57,7 @@ func newTakeAppWith(t *testing.T, mutate func(*service.Deps)) *takeApp {
 	if mutate != nil {
 		mutate(&deps)
 	}
-	svc := service.New(deps)
+	svc := servicetest.New(t, deps)
 	a := &app{t: t, db: db, engine: router.New(svc, router.Options{}), svc: svc}
 	a.cookie, a.token = bootstrap(t, a.engine)
 	ta := &takeApp{app: a, dir: dir, tools: tools}
