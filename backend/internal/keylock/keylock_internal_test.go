@@ -25,3 +25,15 @@ func TestLocker_DropsTheEntryOfAKeyNobodyUses(t *testing.T) {
 
 	assert.Empty(t, k.entries)
 }
+
+func TestLocker_TryLockLeavesNoEntryBehind(t *testing.T) {
+	var k Locker
+	unlock, ok := k.TryLock("a")
+	require.True(t, ok)
+	_, ok = k.TryLock("a") // fails while held
+	require.False(t, ok)
+	require.Len(t, k.entries, 1)
+	unlock()
+
+	assert.Empty(t, k.entries)
+}

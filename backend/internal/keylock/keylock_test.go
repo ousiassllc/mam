@@ -55,3 +55,29 @@ func TestLocker_SecondCallerGetsTheLockAfterTheFirstUnlocks(t *testing.T) {
 		t.Fatal("the waiter never got the lock")
 	}
 }
+
+func TestLocker_TryLockFailsWhileHeldAndSucceedsAfterUnlock(t *testing.T) {
+	var k keylock.Locker
+	unlock, ok := k.TryLock("a")
+	require.True(t, ok)
+
+	_, ok = k.TryLock("a")
+	assert.False(t, ok, "the key is held")
+	other, ok := k.TryLock("b")
+	assert.True(t, ok, "another key is free")
+	other()
+
+	unlock()
+	unlock, ok = k.TryLock("a")
+	require.True(t, ok, "the key was released")
+	unlock()
+}
+
+func TestLocker_TryLockDoesNotTakeTheLockOfAWaiter(t *testing.T) {
+	var k keylock.Locker
+	unlock, err := k.Lock(context.Background(), "a")
+	require.NoError(t, err)
+	_, ok := k.TryLock("a")
+	assert.False(t, ok)
+	unlock()
+}

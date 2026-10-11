@@ -17,13 +17,14 @@ func (a *Agent) withinPolicy(ctx context.Context, shot repository.ShotRef, eff d
 		return false, err
 	}
 	if verdict == domain.RetryAllowed {
+		a.escalated.Forget(shot.Shot.ID) // the user raised the limit or the budget: nothing waits for an answer
 		return true, nil
 	}
-	if _, asked := a.escalated.LoadOrStore(res.ID, struct{}{}); asked && auto {
+	if a.escalated.Ask(shot.Shot.ID, res.ID) && auto {
 		return false, nil // the user was already asked about this result; a manual Repair always asks again
 	}
 	if err := a.escalate(ctx, shot, takeID, res, verdict); err != nil {
-		a.escalated.Delete(res.ID) // the question never reached the user: the next automatic run asks again
+		a.escalated.Forget(shot.Shot.ID) // the question never reached the user: the next automatic run asks again
 		return false, err
 	}
 	return false, nil

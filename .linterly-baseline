@@ -22,7 +22,7 @@
 550	backend/internal/agent/modeladapter/adapter_test.go
 674	backend/internal/agent/modeladapter/backends_test.go
 396	backend/internal/agent/modeladapter/backends_video.go
-441	backend/internal/agent/orchestrator/orchestrator.go
+432	backend/internal/agent/orchestrator/orchestrator.go
 975	backend/internal/agent/orchestrator/orchestrator_test.go
 2972	backend/internal/agent/repair/
 428	backend/internal/agent/repair/agent_flow_fixture_test.go
@@ -52,7 +52,7 @@
 516	backend/internal/router/judge_test.go
 453	backend/internal/router/review_test.go
 443	backend/internal/router/take_test.go
-15251	backend/internal/service/
+15249	backend/internal/service/
 343	backend/internal/service/audio.go
 429	backend/internal/service/branch.go
 352	backend/internal/service/branch_test.go
