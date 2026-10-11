@@ -2,9 +2,9 @@
 
 ## 開発ツール
 
-Go（`go.mod` のバージョン）、Node.js（24。CI は `.github/workflows/ci.yml` で `node-version: 24` を固定している。`static/package.json` に `engines` は無い）、`templ`、`golangci-lint`、`linterly`、`lefthook`、`jq`、Chrome / Chromium。`make tools` が templ（`go.mod` の版に合わせる）・air・golangci-lint を版を固定して入れ、npm 依存（`static/node_modules`）も用意する。`make assets` / `make test-static` / `make lint-static` / `make dev` は `static/node_modules` が無ければ（または `package-lock.json` が新しければ）`npm ci` を自動で実行する。フロントエンドのパッケージマネージャは npm（`static/package-lock.json`）。
+Go（`go.mod` のバージョン）、Node.js（24。CI は `.github/workflows/ci.yml` で `node-version: 24` を固定している。`static/package.json` に `engines` は無い）、`templ`、`golangci-lint`、`linterly`、`lefthook`、`jq`、Chrome / Chromium。`make tools` が templ（`go.mod` の版に合わせる）・air・golangci-lint・linterly を版を固定して入れ、npm 依存（`static/node_modules`）も用意する。`make assets` / `make test-static` / `make lint-static` / `make dev` は `static/node_modules` が無ければ（または `package-lock.json` が新しければ）`npm ci` を自動で実行する。フロントエンドのパッケージマネージャは npm（`static/package-lock.json`）。
 
-- **`jq`**: pre-commit の `scripts/linterly-staged.sh`（コミット対象ファイルの行数チェック）が使う。無いと「jq not found」で pre-commit が必ず失敗する（`make tools` では入らない。OS のパッケージマネージャで入れる）。
+- **`jq`**: pre-commit の `scripts/linterly-staged.sh`（コミット対象ファイルの行数チェック）と `scripts/linterly-baseline.sh`（行数の基準値チェック。`make lint-lines`・CI）が使う。無いと「jq not found」で pre-commit が必ず失敗する（`make tools` では入らない。OS のパッケージマネージャで入れる）。
 - **Chrome / Chromium**: Lit コンポーネントのテスト（`*.wtest.ts`）を実際のブラウザで動かす `@web/test-runner-chrome`（`static/web-test-runner.config.mjs`）が、インストール済みの Chrome を探して使う。`make test-static`（したがって `make test` と pre-push）が必要とし、見つからないときは `CHROME_PATH` で実行ファイルを指定する。CI（`ubuntu-latest`）は GitHub 同梱のものを使う。
 - **ffmpeg / ffprobe**: ビルドには要らず、実行時に任意（PATH に無ければ使わない）。無いと Judge（起動時に警告して無効になる）、Take のプレビュー（4K の 1080p プロキシ・サムネイル）、部分採用・区間指定の再生成の合成、Continue の最終フレーム取り出し、Rough Cut のプレビュー、音声制作（Audio Director: 音声の生成・ミックス・ラウドネス正規化・Lip Sync のクリップ切り出し）、最終 Export が使えない（Export は `ErrUnavailable`）。詳細は `spec/architecture/model-adapters.md` §10.2 と `spec/api/endpoints.md` の各 API。
 - **Wails v3 CLI（`wails3`）と NSIS（`makensis`）**: Windows 版のパッケージング（`scripts/package-windows.sh`）だけが使う。`wails3` は `go install github.com/wailsapp/wails/v3/cmd/wails3@<版>` で入れ、版は `go.mod` の `github.com/wailsapp/wails/v3` と同じものに固定する（v3 はベータ）。NSIS は `choco install nsis`（Windows）。通常の開発・`make build`・`make test` には要らない。
@@ -17,9 +17,12 @@ Go（`go.mod` のバージョン）、Node.js（24。CI は `.github/workflows/c
 | `make fmt` | `templ fmt backend` と `golangci-lint fmt ./...`（`.golangci.yml` の formatter は gofmt と goimports） |
 | `make fmt-check` | `gofmt -l backend static` が空であることと `templ fmt -fail backend`（goimports は見ない。未整形で失敗） |
 | `make lint` | `make lint-go` と `make lint-static` |
+| `make lint-lines` | `scripts/linterly-baseline.sh check`。`.linterly-baseline` より悪化した行数超過があれば失敗（Linterly 節）。`linterly` と `jq` が要る |
+| `make linterly-baseline` | `scripts/linterly-baseline.sh update`。`.linterly-baseline` を現在の `linterly check` の結果で書き換える |
 | `make lint-go` | `make generate` のあと `golangci-lint run ./...`（`.golangci.yml`） |
 | `make lint-static` | `tsc --noEmit`（`npm run typecheck --prefix static`） |
-| `make test` | `make test-go` と `make test-static` |
+| `make test` | `make test-go` と `make test-static` と `make test-scripts` |
+| `make test-scripts` | `bash scripts/linterly-baseline_test.sh`（行数基準値のスクリプトのテスト。`jq` が要る） |
 | `make test-go` | `make generate` のあと `go test -race -timeout 30m ./...`（`-race` の逐次テストが長く、既定の 10 分では負荷時に足りない） |
 | `make test-static` | `npm test --prefix static` |
 | `make build` | `scripts/build.sh`（templ → esbuild/tailwind minify → go build）。`bin/mam` を作る |
@@ -29,7 +32,7 @@ Go（`go.mod` のバージョン）、Node.js（24。CI は `.github/workflows/c
 
 ## CI
 
-`.github/workflows/ci.yml`。`main` への push と全 PR で実行する。ツールは `make tools`（Makefile の版指定）で入れる。`make generate` → コミット済み `*_templ.go` の一致確認 → `fmt-check` → `lint` → ffmpeg の導入（`sudo apt-get install -y ffmpeg`）→ `test` → `build` の順。`make generate` の直後に `*_templ.go` が変更・未追跡になっていれば（`.templ` と食い違う古い・手編集の出力、再生成漏れ）失敗させる。`lint` / `test` / `build` は先に再生成するため、この確認がないと食い違いが緑になる（`_templ.go` は git 管理で、素の `go build` はそれをそのままコンパイルする）。`cmd/wails`（`//go:build windows`）は Ubuntu の通常のステップに入らないため、`GOOS=windows CGO_ENABLED=0` で `go build ./backend/...`・`go vet ./backend/...`・`golangci-lint run ./backend/...` を別ステップで実行する（Windows 版の壊れを PR で検知する）。
+`.github/workflows/ci.yml`。`main` への push と全 PR で実行する。ツールは `make tools`（Makefile の版指定）で入れる。`make generate` → コミット済み `*_templ.go` の一致確認 → `fmt-check` → `lint` → 行数の悪化確認（`make lint-lines`。後述の Linterly 節）→ ffmpeg の導入（`sudo apt-get install -y ffmpeg`）→ `test` → `build` の順。`make generate` の直後に `*_templ.go` が変更・未追跡になっていれば（`.templ` と食い違う古い・手編集の出力、再生成漏れ）失敗させる。`lint` / `test` / `build` は先に再生成するため、この確認がないと食い違いが緑になる（`_templ.go` は git 管理で、素の `go build` はそれをそのままコンパイルする）。`cmd/wails`（`//go:build windows`）は Ubuntu の通常のステップに入らないため、`GOOS=windows CGO_ENABLED=0` で `go build ./backend/...`・`go vet ./backend/...`・`golangci-lint run ./backend/...` を別ステップで実行する（Windows 版の壊れを PR で検知する）。
 
 ffmpeg / ffprobe は `ubuntu-latest` に入っていないため、`test` の前に導入する。ffmpeg を使う Go テスト（Judge のフレーム抽出、`media`、Audio Director のミックス、Take のプレビュー・部分採用・区間指定の再生成、Continue の最終フレーム）は、PATH に無いとローカルでは `t.Skip` されるが、`CI=true`（GitHub Actions が設定する）では `backend/internal/testenv` の `MissingFFmpeg` が失敗にする。CI の導入手順が外れても緑のまま飛ばされない。ffmpeg の無い開発機では該当テストが Skip され、lefthook の pre-push（同じ `make test`）でも同様なので、実ファイルの経路を確かめるには ffmpeg を入れてから `go test -v` で SKIP が出ていないことを見る。
 
@@ -49,7 +52,18 @@ ffmpeg / ffprobe は `ubuntu-latest` に入っていないため、`test` の前
 
 ## Linterly
 
-`.linterly.yml`。行数上限はデフォルト（1 ファイル 300 行 / 1 ディレクトリ 2000 行）のまま維持し、特別な理由がない限り変えない。除外は生成物（`*_templ.go`、`static/src/dist/**`、`package-lock.json`）のみで、手書きソースは除外しない。既存の超過は CI では止めず、pre-commit でコミット対象のファイルに限って止める。
+`.linterly.yml`。行数上限はデフォルト（1 ファイル 300 行 / 1 ディレクトリ 2000 行）のまま維持し、特別な理由がない限り変えない。除外は生成物（`*_templ.go`、`static/src/dist/**`、`package-lock.json`）のみで、手書きソースは除外しない。
+
+既存の超過（linterly の `error`: 上限に `warning_threshold` を足した値を超えたもの。`linterly check` が exit 1 になる判定と同じ）は、超過ゼロを目標にせず、**増やさないことを CI で保証する**。超過しているファイルとディレクトリの行数を `.linterly-baseline`（`<行数><TAB><パス>`、ディレクトリは末尾 `/`）に基準値として記録し、`scripts/linterly-baseline.sh check`（`make lint-lines`、CI の「Line limit (no regression)」ステップ）が次のどちらかで失敗させる。
+
+- 基準値に無いファイル・ディレクトリが上限を超えた（新規の超過）
+- 基準値にあるファイル・ディレクトリの行数が基準値より増えた
+
+基準値より減った・上限以下に戻ったエントリは失敗にせず、「基準値を下げられる」と stderr に出す。分割して減らしたら `make linterly-baseline`（`scripts/linterly-baseline.sh update`）で `.linterly-baseline` を書き換えて同じ PR でコミットする。差分は行の削除か数値の減少だけであること（増えている差分は悪化を基準値に紛れ込ませているのでレビューで止める）。個別の分割（`director.go` / `chat.go` / `repair/agent.go` など）は別 Issue で段階的に進める。`scripts/linterly-baseline_test.sh`（`make test-scripts`）がこの判定をスタブの `linterly` で検査する。
+
+ディレクトリ上限（2000 行）も同じ基準値方式で扱い、Go のフラットなパッケージ向けの別基準（ファイル数など）は設けない。超過しているパッケージは、その直下の合計行数を増やせない（ファイルの追加・既存ファイルの行増で CI が落ちる）。新しいコードは新しいパッケージへ置くか、パッケージを責務ごとに分割して満たす。分割できたら基準値から外す。
+
+pre-commit（`scripts/linterly-staged.sh`）は従来どおり、コミット対象のファイルが超過していれば基準値の有無に関わらず止める。
 
 ## Git Hooks
 
@@ -66,3 +80,4 @@ ffmpeg / ffprobe は `ubuntu-latest` に入っていないため、`test` の前
 | 1.2 | 2026-10-11 | `scripts/smoke-windows.sh`（リリースのスモーク）を `release.yml` の手順 4 に明記 | Issue #480 の実装。スモークの手順をスクリプトに切り出し、手元でも shellcheck できるようにした |
 | 1.3 | 2026-10-11 | CI に ffmpeg の導入ステップを追加し、CI では ffmpeg 無しのテストが Skip でなく失敗になることを CI 節に明記 | Issue #485。`ubuntu-latest` に ffmpeg が無く、ffmpeg を使う Go テストが CI で全件 Skip されて緑になっていた |
 | 1.4 | 2026-10-11 | CI 節に、顔同一性の実モデルのテストは環境変数が未設定で Skip し CI・`make test`・pre-push では動かさないこと、手元での実行方法を明記 | Issue #486。実モデルのテストが常に Skip されているのに、環境構築の仕様に存在も実行方法も書かれていなかった |
+| 1.5 | 2026-10-11 | Linterly 節を、既存の超過を `.linterly-baseline` に記録して CI（`make lint-lines`）で悪化を止める運用に書き換え。ディレクトリ上限の方針を明記。`make tools` に linterly、`make test` に `test-scripts` を追加 | Issue #495。超過は CI で検出されず、増えても気づけず、減らす圧力もなかった |

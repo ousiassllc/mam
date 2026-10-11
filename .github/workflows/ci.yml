@@ -50,6 +50,11 @@ jobs:
       - name: Lint
         run: make lint
 
+      # Files / directories already over the linterly limit are recorded in .linterly-baseline: fail
+      # only when something got longer or a new one went over (spec/environment/setup.md).
+      - name: Line limit (no regression)
+        run: make lint-lines
+
       # ubuntu-latest has no ffmpeg / ffprobe: without them the Go tests that need them (Judge frame
       # extraction, media, Audio Director mixing, Take / partial regeneration) fail in CI (testenv).
       - name: Install ffmpeg

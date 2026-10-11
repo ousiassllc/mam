@@ -42,7 +42,7 @@ ffmpeg は同梱していません。無くても起動はできますが、Judg
 Windows 以外、および Windows でもブラウザで使いたいときは、ソースからビルドします（Go と Node.js 24 が要ります）。
 
 ```sh
-make tools    # templ・air・golangci-lint と npm 依存を入れる
+make tools    # templ・air・golangci-lint・linterly と npm 依存を入れる
 make build    # bin/mam を作る
 bin/mam       # サーバーを起動して既定ブラウザを開く
 ```
@@ -53,8 +53,9 @@ bin/mam       # サーバーを起動して既定ブラウザを開く
 
 ```sh
 make dev          # air + templ --watch + esbuild/tailwind --watch
-make test         # Go と front-end のテスト
+make test         # Go・front-end・スクリプトのテスト
 make lint         # golangci-lint と tsc
+make lint-lines   # 行数上限の超過が .linterly-baseline より悪化していないか
 make fmt          # 整形
 ```
 

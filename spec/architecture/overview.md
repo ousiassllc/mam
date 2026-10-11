@@ -90,13 +90,16 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 ├── Makefile                # dev / build / test / lint / fmt（§9）
 ├── .air.toml               # make dev のホットリロード設定
 ├── .golangci.yml           # lint。depguard でレイヤー依存ルールを強制
+├── .linterly-baseline      # 行数上限（300 行 / 2000 行）を超えている既存のファイル・ディレクトリの行数。CI は悪化だけを止める（環境構築 spec の Linterly 節）
 ├── lefthook.yml            # Git フック。pre-commit は linterly（scripts/linterly-staged.sh 経由）・fmt-check・lint-go・typecheck（lint-static）、pre-push は build/vet と make test
 ├── scripts/
 │   ├── build.sh            # 本番ビルド（templ → esbuild/tailwind → go build）。`--all` で全プラットフォーム
 │   ├── package-windows.sh  # Windows 版のパッケージング（フロント → Wails ウィンドウ版 exe → NSIS インストーラー。§11）
 │   ├── smoke-windows.sh    # リリースのスモーク（インストーラーを `/S` で入れ、`mam.exe` を起動して `GET /` が 200 か確認。release.yml）
 │   ├── fetch-face-models.sh # 顔検出・埋め込みモデル（YuNet / SFace）の取得と SHA-256 検証（§9 / model-adapters.md §10.1）
-│   └── linterly-staged.sh  # コミット対象ファイルの行数上限チェック（pre-commit）
+│   ├── linterly-staged.sh  # コミット対象ファイルの行数上限チェック（pre-commit）
+│   ├── linterly-baseline.sh # 行数上限の既存超過を `.linterly-baseline` と比べ、悪化を検出する（`make lint-lines`・CI）。`update` で基準値を書き換える
+│   └── linterly-baseline_test.sh # 上のスクリプトのテスト（スタブの linterly。`make test-scripts`）
 ├── build/                  # Wails v3 のパッケージング設定（`config.yml`・`Taskfile.yml`・`windows/`: アイコン・マニフェスト・`info.json`・`nsis/project.nsi`。§11）
 ├── backend/
 │   ├── cmd/
@@ -299,3 +302,4 @@ Windows では、ブラウザ版と同じ `127.0.0.1` のサーバーを `intern
 | 1.14 | 2026-10-03 | §2 の実行方式、§5 のディレクトリ構成（`internal/app`・`cmd/wails`・`build/`・`scripts/package-windows.sh`）、§6 の起動処理と概念コード、§11 を「将来拡張」から Windows デスクトップ版の要約に書き換え、詳細を `desktop.md` に新設した | Issue #480。インストーラー配布の要望。Wails v3 の AssetServer が WebSocket を処理しない（501）ため、元の Handler 直渡しの方針ではチャットと生成進捗が動かず、サーバーを維持してウィンドウが URL を開く方式にした |
 | 1.15 | 2026-10-11 | §5 に `internal/desktop`（`cmd/wails` の Wails 非依存部分）・`internal/app/args.go`・`scripts/smoke-windows.sh` を追加 | Issue #480 の実装。`cmd/wails` は windows タグで Linux のテストに載らないため、待ち合わせと停止の処理を OS 非依存のパッケージへ出した |
 | 1.16 | 2026-10-11 | §5 の `cmd/wails/` に `dialog.go` を追加し、§6 の DI ルートの説明を `cmd/server/main.go` から `internal/app`（`app.Run` → `buildServices`）に直し、§9 の「§11.3」を `desktop.md` §4 に直した | 配線を `internal/app/services.go` へ移した実装と、起動エラーを MessageBox で出す `cmd/wails/dialog.go` に仕様が追随していなかったため。§11.3 は存在しない節だった |
+| 1.17 | 2026-10-11 | §5 の構成図に `.linterly-baseline`・`scripts/linterly-baseline.sh`・`scripts/linterly-baseline_test.sh` を追加 | Issue #495。行数上限の既存超過を基準値として記録し、CI で悪化だけを止める仕組みを足した |
