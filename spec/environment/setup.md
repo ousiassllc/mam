@@ -33,6 +33,8 @@ Go（`go.mod` のバージョン）、Node.js（24。CI は `.github/workflows/c
 
 ffmpeg / ffprobe は `ubuntu-latest` に入っていないため、`test` の前に導入する。ffmpeg を使う Go テスト（Judge のフレーム抽出、`media`、Audio Director のミックス、Take のプレビュー・部分採用・区間指定の再生成、Continue の最終フレーム）は、PATH に無いとローカルでは `t.Skip` されるが、`CI=true`（GitHub Actions が設定する）では `backend/internal/testenv` の `MissingFFmpeg` が失敗にする。CI の導入手順が外れても緑のまま飛ばされない。ffmpeg の無い開発機では該当テストが Skip され、lefthook の pre-push（同じ `make test`）でも同様なので、実ファイルの経路を確かめるには ffmpeg を入れてから `go test -v` で SKIP が出ていないことを見る。
 
+顔同一性（YuNet / SFace・ONNX Runtime）の実モデルのテスト（`backend/internal/facesim/onnx_test.go` の `TestONNX_SamePersonIsCloserThanAnotherPerson` と `TestONNX_ImageWithoutFaceHasNoFaces`）は、CI では動かさない。`MAM_FACESIM_MODEL_DIR`（モデルのディレクトリ。`scripts/fetch-face-models.sh <DIR>` で取得する）・`MAM_FACESIM_PHOTOS`（`a.jpg` / `a_small.jpg` / `b.jpg` / `none.jpg` を置いたディレクトリ）・任意の `MAM_FACESIM_RUNTIME_LIB`（`libonnxruntime` のパス、ONNX Runtime 1.23.x）が揃ったときだけ動き、未設定だと `t.Skip` するため、CI・`make test`・pre-push では常に Skip される（ffmpeg のような `CI=true` での失敗化はしない）。写真が権利上リポジトリに置けず、モデルとランタイムの取得も重いため。`align.go` / `detect.go` / `imaging.go`（顔検出・整列・埋め込みの前処理）を変えたときは、手元で `go test -v -run TestONNX ./backend/internal/facesim/` を実行し、Skip が出ないことと類似度の値（同一人物 > 0.7、別人物 < 0.3）を確かめる。詳細は `spec/architecture/model-adapters.md` §10.1。
+
 ## リリース
 
 `.github/workflows/release.yml`。`v*` タグ（`vX.Y.Z`）の push で実行する。`permissions` は `contents: write` のみ。`windows-latest` の 1 ジョブ:
@@ -63,3 +65,4 @@ ffmpeg / ffprobe は `ubuntu-latest` に入っていないため、`test` の前
 | 1.1 | 2026-10-03 | Wails v3 CLI・NSIS を開発ツールに、`scripts/package-windows.sh` をタスクに、Windows 向けの CI ステップと `release.yml`（リリース）の節を追加。この表を新設した（以前の版の履歴は無い） | Issue #480。Windows インストーラー exe を GitHub Releases で配布するため |
 | 1.2 | 2026-10-11 | `scripts/smoke-windows.sh`（リリースのスモーク）を `release.yml` の手順 4 に明記 | Issue #480 の実装。スモークの手順をスクリプトに切り出し、手元でも shellcheck できるようにした |
 | 1.3 | 2026-10-11 | CI に ffmpeg の導入ステップを追加し、CI では ffmpeg 無しのテストが Skip でなく失敗になることを CI 節に明記 | Issue #485。`ubuntu-latest` に ffmpeg が無く、ffmpeg を使う Go テストが CI で全件 Skip されて緑になっていた |
+| 1.4 | 2026-10-11 | CI 節に、顔同一性の実モデルのテストは環境変数が未設定で Skip し CI・`make test`・pre-push では動かさないこと、手元での実行方法を明記 | Issue #486。実モデルのテストが常に Skip されているのに、環境構築の仕様に存在も実行方法も書かれていなかった |
