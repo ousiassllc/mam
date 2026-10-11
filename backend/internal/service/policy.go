@@ -247,7 +247,7 @@ func (s *PolicyService) Storage(ctx context.Context, projectID string) (StorageV
 func (s *PolicyService) ArchiveTake(ctx context.Context, projectID, takeID string) (StorageView, error) {
 	removed, err := s.storage.ArchiveTake(ctx, projectID, takeID)
 	if errors.Is(err, repository.ErrConflict) {
-		return StorageView{}, fmt.Errorf("%w: the Take is selected or used by a Timeline", ErrConflict)
+		return StorageView{}, conflict("この Take は選択中か、編集・音声のタイムラインで使われているためアーカイブできません")
 	}
 	if err != nil {
 		return StorageView{}, notFound(err)

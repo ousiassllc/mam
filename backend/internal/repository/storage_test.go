@@ -43,12 +43,15 @@ func TestStorageRepository_MarksRejectedAndBeatenTakesUnneededAndListsThemFirst(
 	require.NoError(t, err)
 	assert.EqualValues(t, 1000, sum.AssetBytes)
 	require.Len(t, sum.Takes, 4)
-	unneeded := map[string]bool{}
+	unneeded, archivable := map[string]bool{}, map[string]bool{}
 	for _, tk := range sum.Takes {
 		unneeded[tk.TakeID] = tk.Unneeded
+		archivable[tk.TakeID] = tk.Archivable
 	}
 	assert.Equal(t, map[string]bool{selected: false, beaten: true, rejected: true, pending: false}, unneeded,
 		"a Take is unneeded when rejected or when another Take of its Shot is Selected")
+	assert.Equal(t, map[string]bool{selected: false, beaten: true, rejected: true, pending: true}, archivable,
+		"every Take but the Selected one can be archived by hand, even a Candidate that is not unneeded")
 	assert.True(t, sum.Takes[0].Unneeded && sum.Takes[1].Unneeded, "the unneeded ones come first")
 	n, size := sum.UnneededTakes()
 	assert.Equal(t, 2, n)
@@ -155,12 +158,15 @@ func TestStorageRepository_NeverArchivesATakeATimelineStillUses(t *testing.T) {
 
 	sum, err := repo.Usage(ctx, f.projectID)
 	require.NoError(t, err)
-	unneeded := map[string]bool{}
+	unneeded, archivable := map[string]bool{}, map[string]bool{}
 	for _, tk := range sum.Takes {
 		unneeded[tk.TakeID] = tk.Unneeded
+		archivable[tk.TakeID] = tk.Archivable
 	}
 	assert.Equal(t, map[string]bool{old: true, trunk: false, onBranch: false, synced: false, free: true, chosen: false, rejected: false}, unneeded,
 		"a Take a latest Timeline refers to is in use, an older version does not count")
+	assert.Equal(t, map[string]bool{old: true, trunk: false, onBranch: false, synced: false, free: true, chosen: false, rejected: false}, archivable,
+		"the archive button is offered exactly for the Takes ArchiveTake accepts")
 
 	for _, id := range []string{trunk, onBranch, synced, rejected} {
 		_, err = repo.ArchiveTake(ctx, f.projectID, id)
