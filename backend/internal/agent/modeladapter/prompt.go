@@ -59,7 +59,7 @@ func Prepare(target VideoTarget, job VideoJob) (VideoRequest, error) {
 		AspectRatio:     job.AspectRatio,
 	}
 	if req.AspectRatio == "" {
-		req.AspectRatio = "16:9"
+		req.AspectRatio = domain.DefaultAspectRatio
 	}
 	useReferences := job.PreferReferences && caps.MaxReferenceImages > 0 && len(job.References) > 0
 	if caps.FirstFrame && !useReferences {

@@ -122,12 +122,12 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 │       ├── logging/        # 構造化ログ（slog、レベル別、ローカルファイルへローテーション出力）
 │       ├── fsutil/         # 一時ファイル→リネームのアトミック書き込み、異常終了時の一時ファイル掃除
 │       ├── httpclient/     # ベンダー API アダプターが共通で使う HTTP クライアント（別ホストへのリダイレクトでは独自認証ヘッダーを引き継がない）
-│       ├── safefetch/      # ベンダー API が返したダウンロード URL の検証（http・ループバック・リンクローカル・プライベート宛先を拒否）
+│       ├── safefetch/      # ベンダー API が返したダウンロード URL の検証（https 以外と、公開インターネット以外のアドレス（ループバック・リンクローカル・プライベート・マルチキャスト・CGNAT などの IANA 特殊用途範囲。IPv4 を埋め込んだ IPv6 は埋め込み先で判定）への接続を拒否）
 │       ├── facesim/        # 顔の同一性の局所計測（ONNX Runtime で YuNet / SFace をプロセス内実行、外部送信なし。`model-adapters.md` §10.1）
 │       ├── textutil/       # 文字列ヘルパー（ルーン単位の切り詰め `TruncateRunes` / `TruncateRunesEllipsis`、ID の短縮 `ShortID`）。domain からは使わない
 │       ├── testenv/        # ffmpeg が無いときのテストの扱い（`MissingFFmpeg`: ローカルは Skip、`CI=true` では失敗）
 │       ├── bgwork/         # 専用ゴルーチンで動かす処理の panic をログに落とす（`RunSafely`）と、起こし合図をまとめて 1 本のワーカーで走らせる `Worker`（サーバー全体を落とさない）
-│       ├── keylock/        # キー別のロック（`Locker`）。待機側は ctx のキャンセルで諦められ、エントリは保持・待機中だけ存在する（キーの数だけ増え続けない）。`service/take.go`（`preview` / `compose`）と `service/editor.go` が使う
+│       ├── keylock/        # キー別のロック（`Locker`）。待機側は ctx のキャンセルで諦められ、エントリは保持・待機中だけ存在する（キーの数だけ増え続けない）。service 層専用ではなく、`agent/orchestrator`（Project ごとの `advance` を 1 度に 1 つに直列化）、`service/take.go`（`preview` / `compose`）、`service/editor.go`（`stage` / `auto` / `preview`）が使う
 │       ├── media/          # ffmpeg / ffprobe（Take の解像度・フレームレート取得、4K プロキシ・サムネイル、部分採用の合成）
 │       ├── domain/         # Project/Scene/Shot/Take/WorldState等のドメインモデル
 │       ├── repository/     # SQLite アクセス層（domainのみに依存）
@@ -141,7 +141,7 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 │       │   │               # EditorAgent/AudioDirector/FinalQC/Orchestrator
 │       │   ├── artdirector/ audiodirector/ commandinterpreter/ continuation/ editor/ finalqc/
 │       │   │   generation/ judge/ modeladapter/ promptplanner/ repair/ stateextractor/
-│       │   │               # 同名の Agent / Orchestrator（Art Director、Audio Director、Command Interpreter、Continue Agent、Editor Agent + Editor Judge、Final QC、Generation Orchestrator、AI Video Judge、Model Adapter、Prompt Planner、Repair Agent、State Extractor）。`modeladapter/configcheck/` は Model Adapter 設定（`modeladapter.Config`）の整合性検査（`Validate`）と、読み込んで検査する `Load`
+│       │   │               # 同名の Agent / Orchestrator（Art Director、Audio Director、Command Interpreter、Continue Agent、Editor Agent + Editor Judge、Final QC、Generation Orchestrator、AI Video Judge、Model Adapter、Prompt Planner、Repair Agent、State Extractor）。`modeladapter/configcheck/` は Model Adapter 設定（`modeladapter.Config`）の整合性検査（`Validate`）と、読み込んで検査する `Load`。`modeladapter/aspectsize/` は Brief の縦横比（`domain.BriefAspectRatios`）ごとの画像サイズ（GPT Image 2・FLUX.2）で、表に無い縦横比は `domain.DefaultAspectRatio` のサイズになる。`repair/escalation/` は自動 Repair ループが Shot ごとに「どの Judge 結果についてユーザーに確認したか」を 1 件だけ覚える `Memory`（`Ask` / `Forget`。新しい結果で置き換わり、確認待ちでなくなった Shot は忘れる。同じ状態で二度確認しない）
 │       │   ├── jev/        # TypeSafe Jev クライアント（Repair Agent のシャドー実行、model-adapters.md §4.5）
 │       │   ├── resilience/ # LLM Adapter と Model Adapter が共有するサーキットブレーカーと指数バックオフ再試行
 │       │   ├── briefing/   # チャット発言からの Creative Brief 抽出（Extractor インターフェース。M1 はルールベース、LLM 版は Reasoning LLM Adapter の Issue で差し替え）
@@ -168,7 +168,7 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
     ├── biome.json          # TypeScript の整形・lint（Biome）の設定。`make fmt` / `make fmt-check` / `make lint-static` が使う
     ├── build.mjs           # esbuild（JS）+ Tailwind（CSS）のビルド・ウォッチ
     └── src/
-        ├── main.ts         # エントリーポイント。htmx へ CSRF トークンを付与、Lit コンポーネントを import
+        ├── main.ts         # エントリーポイント。htmx へ CSRF トークンを付与、Lit コンポーネントを import、その場保存するコントロールの保存失敗時の巻き戻し（`installSaveOnChangeRevert`）を組み込む
         ├── chat.ts         # Chat Workspace の挙動（WebSocket で更新通知を受け、フラグメントを再取得）
         ├── shot.ts         # 生成中 Shot の進捗表示
         ├── ajax.ts         # chat.ts / shot.ts 用の htmx.ajax ラッパー
@@ -176,6 +176,7 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
         │   ├── video-player/         # mam-video-player
         │   ├── timeline-editor/      # mam-timeline-editor
         │   ├── take-comparator/      # mam-take-comparator
+        │   ├── save-on-change/       # 変更でその場保存するコントロール（`hx-trigger="change"` の MODE・Production Template・Quality・Confirmation Level）が保存に失敗したとき、値を保存済みの値へ戻す。`main.ts` が `htmx:afterRequest` で組み込む（Lit ではない）
         │   └── lib/
         │       ├── api.ts            # CSRFトークン自動付与のHTTPクライアント
         │       ├── ajax.ts / errors.ts / toast.ts / connection-notice.ts # フラグメント再取得・エラー表示
@@ -304,34 +305,5 @@ Windows では、ブラウザ版と同じ `127.0.0.1` のサーバーを `intern
 
 ## 改訂履歴
 
-| 版 | 日付 | 変更内容 | 変更理由 |
-|----|------|---------|---------|
-| 1.0 | 2026-09-28 | 新規作成 | HALT（HTMX+Atomic+Lit+Templ）+ Wails によるデスクトップアプリ構成を定義 |
-| 1.1 | 2026-09-28 | Wails前提の記述をローカルWebサーバー+ブラウザ構成へ変更し、Wailsは将来拡張セクションへ移動 | ユーザー指示により、Wails統合は現段階のスコープ外とし将来拡張に切り出す |
-| 1.2 | 2026-09-28 | 技術スタック表に「認証情報管理」行、ディレクトリ構成に `internal/credential` を追加 | non-functional.md §5「APIキーはOSセキュアストレージに保存」を実現する層がアーキテクチャ設計に明記されていなかったため（整合性レビュー指摘） |
-| 1.3 | 2026-09-29 | 技術スタック表に「エージェント推論用LLM連携（Reasoning LLM Adapter）」行を追加。Model Adapter行・全体構成図に採用プロバイダー（Imagen4/Nano Banana/FLUX.2/GPT Image 2、Kling 3.0/Seedance 2.0/Runway Gen-4.5）を明記 | ユーザーとの協議によりエージェント推論LLM・画像/動画生成プロバイダーを具体的に選定したため（`spec/architecture/model-adapters.md` 新設に対応） |
-| 1.4 | 2026-09-29 | §7 にチャット画面の更新方式（`/ws/projects/:id` の新着通知 + `GET /projects/:id/messages?after=` の HTMX フラグメント取得）を追記 | チャット中心UI（`spec/spec.md` §23）でスレッドをリアルタイム更新する方式が未定義だったため |
-| 1.5 | 2026-09-29 | §5 ディレクトリ構成に `config`/`logging`/`fsutil`/`agent/jobqueue`/`repository/migrations`/ビルド関連ファイルを追加し、DI ルートと depguard によるレイヤー検査を追記。§6 にループバックガード・CSRF方式・設定項目を追記、§9 に本番ビルドと各ターゲットの実際の構成を反映 | M1「実行基盤」（Issue #4）の実装で確定した構成を仕様へ反映するため |
-| 1.6 | 2026-09-29 | §5 に `agent/briefing`（Brief 抽出）を追加。ジョブ状態変化の通知フック（`jobqueue.Queue.OnChange`）でチャットの進捗カードを更新する構成を追記 | M1「Project とチャット画面」（Issue #5）の実装で確定した構成を仕様へ反映するため |
-| 1.7 | 2026-09-29 | §5 に `agent/llm`（Reasoning LLM Adapter）・`agent/planning`・`agent/orchestrator` を追加。AUTO パイプラインの企画〜Shot 計画は `plan` ジョブ（再開可能）として実行し、遷移は `repository.ProjectRepository.Transition`（`domain.CanTransition` で検証）で永続化する構成を追記 | M1「Reasoning LLM Adapter と AUTO パイプライン」（Issue #6）の実装で確定した構成を仕様へ反映するため |
-| 1.8 | 2026-09-30 | §5 に `media`（ffmpeg / ffprobe）を追加。Lit コンポーネントのテストは `*.wtest.ts` を `@web/test-runner` で実行し、`lib` の純関数は vitest で検証する | M1「Take システムと補助ビュー」（Issue #11）でプレビュー用プロキシ・部分採用の合成と Lit コンポーネントのテスト方式を実装したため |
-| 1.9 | 2026-10-01 | §8 の Lit コンポーネントから `<mam-branch-tree>` を除き 4 → 3 に変更（Branch ツリーは Templ + HTMX でサーバー描画）。`static/src/components/branch-tree/` を削除 | Branch ツリーは HALT の Lit 使用基準に該当しないため（Issue #40） |
-| 1.10 | 2026-10-01 | §6 の `LoopbackOnly` の説明に、状態変更リクエスト・WebSocket では `Origin` の host:port が `Host` と一致することを求める規則を追記 | 実装が `Origin` のホストがループバックかだけを見ており、同一ホスト上の別ポートのページが通る状態だったため（Issue #70） |
-| 1.11 | 2026-10-01 | §7 の Lit の通信範囲を「`/api/v1` の GET + サーバーが渡すアクションルートへの CSRF 付き `fetch`（HTMX は使わない）」に修正 | 実装の Timeline Editor・Take Comparator が `save_url` / `select_url` 等のアクションルートへ PUT/POST/DELETE しており、「JSON API のみ」の記述と乖離していたため（Issue #163） |
-| 1.12 | 2026-10-01 | §2 の設定フラグ説明と `facesim/` の節番号参照に `model-adapters.md` を付けた | 文書名のない `§9.2`・`§10`・`§11.4`・`§13` が overview.md 自身の節（ビルド・テスト戦略・Wails 等）と読み違えられたため（Issue #185） |
-| 1.13 | 2026-10-03 | §5 の構成図に `cmd/server/judge.go` と `lib/query.ts` を追加し、§11 の Wails 化の記述の `openBrowser()` の所在を `main.go` から `browser.go` に直した | 実装（`backend/cmd/server/judge.go`・`browser.go`、`static/src/components/lib/query.ts`）に構成図と記述が追従していなかったため（Issue #441） |
-| 1.14 | 2026-10-03 | §2 の実行方式、§5 のディレクトリ構成（`internal/app`・`cmd/wails`・`build/`・`scripts/package-windows.sh`）、§6 の起動処理と概念コード、§11 を「将来拡張」から Windows デスクトップ版の要約に書き換え、詳細を `desktop.md` に新設した | Issue #480。インストーラー配布の要望。Wails v3 の AssetServer が WebSocket を処理しない（501）ため、元の Handler 直渡しの方針ではチャットと生成進捗が動かず、サーバーを維持してウィンドウが URL を開く方式にした |
-| 1.15 | 2026-10-11 | §5 に `internal/desktop`（`cmd/wails` の Wails 非依存部分）・`internal/app/args.go`・`scripts/smoke-windows.sh` を追加 | Issue #480 の実装。`cmd/wails` は windows タグで Linux のテストに載らないため、待ち合わせと停止の処理を OS 非依存のパッケージへ出した |
-| 1.16 | 2026-10-11 | §5 の `cmd/wails/` に `dialog.go` を追加し、§6 の DI ルートの説明を `cmd/server/main.go` から `internal/app`（`app.Run` → `buildServices`）に直し、§9 の「§11.3」を `desktop.md` §4 に直した | 配線を `internal/app/services.go` へ移した実装と、起動エラーを MessageBox で出す `cmd/wails/dialog.go` に仕様が追随していなかったため。§11.3 は存在しない節だった |
-| 1.17 | 2026-10-11 | §5 の構成図に `.linterly-baseline`・`scripts/linterly-baseline.sh`・`scripts/linterly-baseline_test.sh` を追加 | Issue #495。行数上限の既存超過を基準値として記録し、CI で悪化だけを止める仕組みを足した |
-| 1.18 | 2026-10-11 | §5 の構成図に `backend/internal/testenv/`・`.github/workflows/`（`ci.yml`・`release.yml`）・ルートの `Taskfile.yml` を追加 | Issue #498。`testenv`（Issue #485）の追加時に構成図が更新されておらず、`internal` 直下で唯一図に無いパッケージになっていた。CI のワークフローとルートの Taskfile（`desktop.md` §4 が前提にする）も図に無かった |
-| 1.19 | 2026-10-11 | §5 の `middleware/` に「セキュリティヘッダ（CSP）」を追加し、§6 に `SecurityHeaders`（全応答への `Content-Security-Policy`・`X-Content-Type-Options: nosniff`）の記述を追加 | Issue #509。htmx・Lit が「自前の `/static/app.js` 以外のスクリプトを実行しない」前提が、ブラウザ側の強制（CSP）では担保されていなかったため |
-| 1.20 | 2026-10-11 | §5 の構成図に `static/biome.json` を追加し、`lefthook.yml` の説明（`typecheck` → `lint-static`）と §9 の `make lint` / `make fmt` / `make fmt-check` の説明に Biome を反映 | Issue #505。フロントエンドの TypeScript に formatter / linter が無く、`tsc` だけで CI・pre-commit を通っていた |
-| 1.21 | 2026-10-11 | §5 の構成図に `textutil/`・`bgwork/`・`repository/bundle/`・`router/stack/` を追加した | Issue #496・#500・#501。超過パッケージ（`domain/`・`service/`・`repository/`）へ足したヘルパー・panic 回収・バンドル処理を新しいパッケージへ置き、行数ラチェット（`.linterly-baseline`）を悪化させないため |
-| 1.22 | 2026-10-11 | §9 の「その他のターゲット」に、`make test` が `make test-scripts`（`scripts/linterly-baseline_test.sh`）も実行すること、`make lint-lines` / `make linterly-baseline`（行数の基準値）を追記。§10 のテスト戦略の表にシェルスクリプトの層を追加 | Issue #511。#495 の `test-scripts`・`lint-lines` を `spec/environment/setup.md`・`README.md` は反映済みなのに、同じ `make` ターゲットを列挙する §9 だけが反映しておらず、`make test` がシェルスクリプトのテストを含まず、行数の悪化を止めるターゲットも無いように読めたため |
-| 1.23 | 2026-10-11 | §7 に、チャット画面の再取得 URL（全履歴・新着・カード 1 枚）はサーバーが `data-messages-url` / `data-next-url` / `data-card-url` で注入し、`chat.ts` は組み立てずに読むだけであることを追記 | Issue #513。#507 で URL の組み立てをクライアントからサーバーへ移した契約が、`spec/components/overview.md` §5 の `thread.ts` の行にしか書かれていなかったため。実装は `chat_workspace.templ`・`message_frame.templ`・`static/src/chat.ts` |
-| 1.24 | 2026-10-12 | §5 の構成図に `.github/dependabot.yml` を足し、`ci.yml` の説明に脆弱性検査（`make vuln`）を加えた。§9 の「その他のターゲット」に `make vuln` を追加 | Issue #525。#523 が `make vuln`・CI の「Vulnerability check」ステップ・`dependabot.yml` を `spec/environment/setup.md` と `README.md` には反映したのに、同じ構成・ターゲットを列挙する overview.md だけが反映していなかった（#511 と同じ種類の抜け） |
-| 1.25 | 2026-10-12 | §5 の構成図の `service/` に `wiring.go`（機能ごとの `wire*` と、`OnChange` を最後に登録する `watchJobs`）を足し、DI ルートの項の新機能を組み込む手順を「`Services` にフィールドを足すだけ」から `wire*` への組み込みと順序の制約を含む手順に直した | Issue #526。#522 が `service.New` を `wiring.go` の `wire*` に分け、`OnChange` の登録を `watchJobs` の 1 か所にまとめたのに、構成図の `service/` の説明と「追記だけで組み込める」という手順は更新されていなかった。実装は `backend/internal/service/wiring.go`・`services.go` |
-| 1.26 | 2026-10-12 | §5 の構成図の `.golangci.yml` の説明と、レイヤー依存ルールの項に、`gocyclo` / `gocognit` による関数の複雑度の検査を追記。許可リストの説明を「新規の超過と悪化を止める」に改め、構成図と §10 のテスト戦略に `scripts/complexity-ratchet_test.sh`・`makefile_test.sh` を足した | Issue #534・#537・#540・#544。関数単位の複雑度が lint で管理されていなかった。許可エントリが関数名だけで一致し悪化も同名の別関数も通していたため、`path` と複雑度の範囲で固定した |
-| 1.27 | 2026-10-12 | §5 の構成図に `bundlezip/`・`repository/review/`・`agent/modeladapter/configcheck/` を追加した | Issue #529。#522・#518 の分割が、2000 行を超えている `service/`・`modeladapter/` の行数を増やして CI の行数チェックを落としていた。バンドルの ZIP 処理・レビューの永続化・Model Adapter 設定の検査を、超過していない新しいパッケージへ移した |
-| 1.28 | 2026-10-12 | §5 の構成図に `keylock/`・`repository/testdb/`・`service/servicetest/` を追加し、レイヤー依存ルールの項に `Services.Close` の呼び出し順（`jobs.Stop` の後・DB を閉じる前）を、§10 のテスト戦略の表に `testdb`・`servicetest` の使い方を追記した | Issue #535・#545。#530・#532 が足したキー別ロック、#533 が足したテスト用の DB の複製・`Services` の組み立てと `Services.Close` の停止順が、構成図にもテスト戦略にも改訂履歴にも載っていなかった（#529 が `bundlezip/` などを載せたのと不揃い）。実装は `backend/internal/keylock`・`repository/testdb`・`service/servicetest`・`service/services.go`・`app/services.go` |
+[overview.changelog.md](overview.changelog.md) を参照（本文の行数を増やさないよう別ファイルに分けている。環境構築 spec の Linterly 節）。
+

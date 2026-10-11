@@ -40,22 +40,25 @@ func (r *LockRepository) ProjectLocks(ctx context.Context, projectID string) (do
 
 // readParameterLocks reads the rows matching where; the parameter of a row is its parameter_name.
 func readParameterLocks(ctx context.Context, q queryer, where string, args ...any) (domain.ParameterLocks, error) {
-	rows, err := q.QueryContext(ctx, `SELECT parameter_name, mode, COALESCE(value, 'null') FROM lock WHERE `+where, args...) //nolint:gosec // where is a constant of this file; only the arguments are data
+	type paramLock struct {
+		name    domain.LockParameter
+		setting domain.LockSetting
+	}
+	rows, err := queryAll(ctx, q, func(row rowScanner) (paramLock, error) {
+		var name, mode, value string
+		if err := row.Scan(&name, &mode, &value); err != nil {
+			return paramLock{}, err
+		}
+		return paramLock{domain.LockParameter(name), domain.LockSetting{Mode: domain.LockMode(mode), Value: json.RawMessage(value)}}, nil
+	}, `SELECT parameter_name, mode, COALESCE(value, 'null') FROM lock WHERE `+where, args...) //nolint:gosec // where is a constant of this file; only the arguments are data
 	if err != nil {
 		return nil, fmt.Errorf("list parameter locks: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
-	locks := domain.ParameterLocks{}
-	for rows.Next() {
-		var (
-			name, mode, value string
-		)
-		if err := rows.Scan(&name, &mode, &value); err != nil {
-			return nil, err
-		}
-		locks[domain.LockParameter(name)] = domain.LockSetting{Mode: domain.LockMode(mode), Value: json.RawMessage(value)}
+	locks := make(domain.ParameterLocks, len(rows))
+	for _, l := range rows {
+		locks[l.name] = l.setting
 	}
-	return locks, rows.Err()
+	return locks, nil
 }
 
 // SetShotLock sets the mode of a parameter of the Shot (an unknown Shot is ErrNotFound). value is

@@ -148,7 +148,7 @@ func (s *EditorService) briefOptions(ctx context.Context, projectID string) (dom
 	if err != nil {
 		return domain.Brief{}, domain.ExportOptions{}, notFound(err)
 	}
-	opts := domain.ExportOptions{AspectRatio: "16:9", Resolution: "1080p", Codec: domain.CodecH264}
+	opts := domain.ExportOptions{AspectRatio: domain.DefaultAspectRatio, Resolution: "1080p", Codec: domain.CodecH264}
 	if ar := strings.ReplaceAll(strings.TrimSpace(brief.AspectRatio), "：", ":"); slices.Contains(domain.ExportAspectRatios(), ar) {
 		opts.AspectRatio = ar
 	}

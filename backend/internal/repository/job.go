@@ -75,38 +75,24 @@ func (r *JobRepository) ListByIDs(ctx context.Context, ids []string) (map[string
 	if len(ids) == 0 {
 		return jobs, nil
 	}
-	rows, err := r.db.Reader().QueryContext(ctx,
+	found, err := queryAll(ctx, r.db.Reader(), scanJob,
 		jobSelect+` WHERE id IN (`+placeholders(len(ids))+`)`, toAny(ids)...)
 	if err != nil {
 		return nil, fmt.Errorf("list jobs by ids: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
-	for rows.Next() {
-		job, err := scanJob(rows)
-		if err != nil {
-			return nil, fmt.Errorf("scan job: %w", err)
-		}
+	for _, job := range found {
 		jobs[job.ID] = job
 	}
-	return jobs, rows.Err()
+	return jobs, nil
 }
 
 // ListByStatus returns jobs in the given status, oldest first.
 func (r *JobRepository) ListByStatus(ctx context.Context, status domain.JobStatus) ([]domain.Job, error) {
-	rows, err := r.db.Reader().QueryContext(ctx, jobSelect+` WHERE status = ? ORDER BY created_at, id`, status)
+	jobs, err := queryAll(ctx, r.db.Reader(), scanJob, jobSelect+` WHERE status = ? ORDER BY created_at, id`, status)
 	if err != nil {
 		return nil, fmt.Errorf("list jobs: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
-	var jobs []domain.Job
-	for rows.Next() {
-		job, err := scanJob(rows)
-		if err != nil {
-			return nil, fmt.Errorf("scan job: %w", err)
-		}
-		jobs = append(jobs, job)
-	}
-	return jobs, rows.Err()
+	return jobs, nil
 }
 
 // ClaimNext atomically moves the oldest queued job to running (incrementing attempts)

@@ -165,21 +165,9 @@ func (r *NoteRepository) Context(ctx context.Context, projectID string) ([]domai
 }
 
 func listNotes(ctx context.Context, q queryer, where, id string, withHistory bool) ([]domain.NoteView, error) {
-	rows, err := q.QueryContext(ctx, noteSelect+` WHERE `+where+` ORDER BY n.pinned DESC, v.created_at DESC, n.id`, id) //nolint:gosec // where is a constant of this file
+	out, err := queryAll(ctx, q, scanNoteView, noteSelect+` WHERE `+where+` ORDER BY n.pinned DESC, v.created_at DESC, n.id`, id) //nolint:gosec // where is a constant of this file
 	if err != nil {
 		return nil, fmt.Errorf("list notes: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-	var out []domain.NoteView
-	for rows.Next() {
-		v, err := scanNoteView(rows)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, v)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
 	}
 	if !withHistory || len(out) == 0 {
 		return out, nil
@@ -196,24 +184,28 @@ func listNotes(ctx context.Context, q queryer, where, id string, withHistory boo
 
 // noteHistories reads the versions (newest first) of the notes that where selects, by note ID.
 func noteHistories(ctx context.Context, q queryer, where, id string) (map[string][]domain.VersionEntry, error) {
-	rows, err := q.QueryContext(ctx, `SELECT note_id, version_number, title, created_at FROM note_version WHERE `+where+` ORDER BY note_id, version_number DESC`, id) //nolint:gosec // where is built from constants of this file
+	type noteVersion struct {
+		noteID string
+		domain.VersionEntry
+	}
+	rows, err := queryAll(ctx, q, func(row rowScanner) (noteVersion, error) {
+		var (
+			v  noteVersion
+			at string
+		)
+		if err := row.Scan(&v.noteID, &v.Number, &v.Summary, &at); err != nil {
+			return v, err
+		}
+		var err error
+		v.CreatedAt, err = ParseTime(at)
+		return v, err
+	}, `SELECT note_id, version_number, title, created_at FROM note_version WHERE `+where+` ORDER BY note_id, version_number DESC`, id) //nolint:gosec // where is built from constants of this file
 	if err != nil {
 		return nil, fmt.Errorf("list note versions: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
 	out := map[string][]domain.VersionEntry{}
-	for rows.Next() {
-		var (
-			noteID, at string
-			e          domain.VersionEntry
-		)
-		if err := rows.Scan(&noteID, &e.Number, &e.Summary, &at); err != nil {
-			return nil, err
-		}
-		if e.CreatedAt, err = ParseTime(at); err != nil {
-			return nil, err
-		}
-		out[noteID] = append(out[noteID], e)
+	for _, v := range rows {
+		out[v.noteID] = append(out[v.noteID], v.VersionEntry)
 	}
-	return out, rows.Err()
+	return out, nil
 }
