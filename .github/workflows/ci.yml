@@ -55,3 +55,14 @@ jobs:
 
       - name: Build
         run: make build
+
+      # cmd/wails (//go:build windows) is not part of the Linux steps above: build, vet and lint the
+      # Windows target so a break of the desktop version is caught on the PR. Pure Go: no CGO.
+      - name: Windows build
+        run: GOOS=windows CGO_ENABLED=0 go build ./backend/...
+
+      - name: Windows vet
+        run: GOOS=windows CGO_ENABLED=0 go vet ./backend/...
+
+      - name: Windows lint
+        run: GOOS=windows CGO_ENABLED=0 golangci-lint run ./backend/...
