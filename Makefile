@@ -6,8 +6,9 @@ TEMPL_VERSION := $(shell go list -m -f '{{.Version}}' github.com/a-h/templ)
 AIR_VERSION ?= v1.64.5
 GOLANGCI_LINT_VERSION ?= v2.12.2
 LINTERLY_VERSION ?= v0.3.3
+GOVULNCHECK_VERSION ?= v1.8.0
 
-.PHONY: help dev build generate assets test test-go test-static test-scripts lint lint-go lint-static lint-lines linterly-baseline fmt fmt-check tools clean
+.PHONY: help dev build generate assets test test-go test-static test-scripts lint lint-go lint-static lint-lines linterly-baseline vuln fmt fmt-check tools clean
 
 help: ## show targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -57,6 +58,9 @@ lint-static: static/node_modules
 lint-lines: ## fail when a file / directory got over the linterly line limit beyond .linterly-baseline
 	./scripts/linterly-baseline.sh check
 
+vuln: ## govulncheck: fail on a known vulnerability reachable from the code (Go standard library + modules)
+	govulncheck ./...
+
 linterly-baseline: ## rewrite .linterly-baseline from the current linterly result (after splitting files)
 	./scripts/linterly-baseline.sh update
 
@@ -70,11 +74,12 @@ fmt-check: static/node_modules ## fail when Go code, templates or front-end Type
 	@templ fmt -fail backend
 	npm run format:check --prefix static
 
-tools: ## install the pinned dev tools (templ, air, golangci-lint, linterly) and the npm deps
+tools: ## install the pinned dev tools (templ, air, golangci-lint, linterly, govulncheck) and the npm deps
 	go install github.com/a-h/templ/cmd/templ@$(TEMPL_VERSION)
 	go install github.com/air-verse/air@$(AIR_VERSION)
 	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
 	go install github.com/ousiassllc/linterly/cmd/linterly@$(LINTERLY_VERSION)
+	go install golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION)
 	$(MAKE) --no-print-directory static/node_modules
 
 clean:

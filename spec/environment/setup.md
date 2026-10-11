@@ -18,6 +18,7 @@ Go（`go.mod` のバージョン）、Node.js（24。CI は `.github/workflows/c
 | `make fmt-check` | `gofmt -l backend static` が空であることと `templ fmt -fail backend`（goimports は見ない）、`biome format`（`npm run format:check --prefix static`）。未整形で失敗 |
 | `make lint` | `make lint-go` と `make lint-static` |
 | `make lint-lines` | `scripts/linterly-baseline.sh check`。`.linterly-baseline` より悪化した行数超過があれば失敗（Linterly 節）。`linterly` と `jq` が要る |
+| `make vuln` | `govulncheck ./...`。コードから到達できる既知の脆弱性（標準ライブラリ・依存モジュール）があれば失敗。`make tools` が入れる `govulncheck` が要る |
 | `make linterly-baseline` | `scripts/linterly-baseline.sh update`。`.linterly-baseline` を現在の `linterly check` の結果で書き換える |
 | `make lint-go` | `make generate` のあと `golangci-lint run ./...`（`.golangci.yml`） |
 | `make lint-static` | `tsc --noEmit`（`npm run typecheck --prefix static`）と `biome lint`（`npm run lint --prefix static`） |
@@ -45,6 +46,8 @@ CI は `make fmt-check` と `make lint` を実行するため、上の検査は�
 ## CI
 
 `.github/workflows/ci.yml`。`main` への push と全 PR で実行する。ツールは `make tools`（Makefile の版指定）で入れる。`make generate` → コミット済み `*_templ.go` の一致確認 → `fmt-check` → `lint` → 行数の悪化確認（`make lint-lines`。後述の Linterly 節）→ ffmpeg の導入（`sudo apt-get install -y ffmpeg`）→ `test` → `build` の順。`make generate` の直後に `*_templ.go` が変更・未追跡になっていれば（`.templ` と食い違う古い・手編集の出力、再生成漏れ）失敗させる。`lint` / `test` / `build` は先に再生成するため、この確認がないと食い違いが緑になる（`_templ.go` は git 管理で、素の `go build` はそれをそのままコンパイルする）。`cmd/wails`（`//go:build windows`）は Ubuntu の通常のステップに入らないため、`GOOS=windows CGO_ENABLED=0` で `go build ./backend/...`・`go vet ./backend/...`・`golangci-lint run ./backend/...` を別ステップで実行する（Windows 版の壊れを PR で検知する）。
+
+標準ライブラリの脆弱性は Go の版で決まるため、`go.mod` の `toolchain` 行で修正版の Go（`actions/setup-go` の `go-version-file: go.mod` が CI と `release.yml` の両方で読む）を固定する。`lint` の次のステップで `make vuln`（`govulncheck ./...`）を実行し、コードから到達できる既知の脆弱性（標準ライブラリ・依存モジュール）があれば失敗させる。依存の更新 PR は `.github/dependabot.yml`（`gomod`・`npm`（`/static`）・`github-actions`）が週次で作る。
 
 ffmpeg / ffprobe は `ubuntu-latest` に入っていないため、`test` の前に導入する。ffmpeg を使う Go テスト（Judge のフレーム抽出、`media`、Audio Director のミックス、Take のプレビュー・部分採用・区間指定の再生成、Continue の最終フレーム）は、PATH に無いとローカルでは `t.Skip` されるが、`CI=true`（GitHub Actions が設定する）では `backend/internal/testenv` の `MissingFFmpeg` が失敗にする。CI の導入手順が外れても緑のまま飛ばされない。ffmpeg の無い開発機では該当テストが Skip され、lefthook の pre-push（同じ `make test`）でも同様なので、実ファイルの経路を確かめるには ffmpeg を入れてから `go test -v` で SKIP が出ていないことを見る。
 
@@ -95,3 +98,4 @@ pre-commit（`scripts/linterly-staged.sh`）は従来どおり、コミット対
 | 1.5 | 2026-10-11 | Linterly 節を、既存の超過を `.linterly-baseline` に記録して CI（`make lint-lines`）で悪化を止める運用に書き換え。ディレクトリ上限の方針を明記。`make tools` に linterly、`make test` に `test-scripts` を追加 | Issue #495。超過は CI で検出されず、増えても気づけず、減らす圧力もなかった |
 | 1.6 | 2026-10-11 | フロントエンドの TypeScript に Biome（format + lint）を導入し、`make fmt` / `make fmt-check` / `make lint-static`・lefthook の pre-commit に組み込んだ。「フロントエンドの整形・lint」節を追加 | Issue #505。`static/src` の約 4,800 行に formatter / linter が無く、`tsc` だけで CI・pre-commit を通っていた（未使用 import・`no-floating-promises`・`==`・インデントの崩れがレビューまで検出されなかった） |
 | 1.7 | 2026-10-11 | Linterly 節の基準値を、統合済みの各修正後の行数に合わせて更新（減った分は下げ、悪化した分は新しいパッケージへの移動・ファイル分割で戻した。基準値を上げたエントリは無い） | Issue #496・#500・#501。基準値が #482〜#484・#494 などの統合前に採られ、統合ブランチで `make lint-lines` が失敗していた |
+| 1.8 | 2026-10-11 | `go.mod` に `toolchain go1.26.9` を追加し、`golang.org/x/net` を v0.60.0・`golang.org/x/crypto` を v0.57.0 へ更新。`make vuln`（`govulncheck ./...`）と、`make tools` への govulncheck の導入、CI の「Vulnerability check」ステップ、`.github/dependabot.yml`（gomod・npm・github-actions）を追加 | Issue #523。`go 1.26.0` のままでは `setup-go` が標準ライブラリの未修正版でビルドし（CI と配布する Windows バイナリ）、govulncheck が標準ライブラリ 16 件と x/net の脆弱性を検出していた。検知の仕組みも無かった |
