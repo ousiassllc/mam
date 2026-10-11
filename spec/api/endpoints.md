@@ -5,6 +5,7 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 ## 0. 認証・共通仕様
 
 - 単一ユーザー・ループバック限定（`127.0.0.1`）のため外部向け認証は行わない。すべてのリクエストに CSRF トークン（meta タグ由来）を付与する（`spec/requirements/non-functional.md` §5）
+- ファイルを返すルート（アセット・Take の動画とサムネイル・Edit Timeline のプレビュー・Export の動画・レビューの動画）は `Content-Security-Policy: sandbox` を付ける（`serveMedia` など）。`X-Content-Type-Options: nosniff` は全応答に付く（`SecurityHeaders`）
 - 外部生成モデル API のキーはサーバー側（`agent/modeladapter`）でのみ保持し、フロントエンドには一切露出しない
 - エラーレスポンスは HALT の方針（`spec/architecture/overview.md` 参照元 `skill://halt`）に従う:
   - ページ/アクションルートのバリデーションエラー（422）: フォームをエラー付きで再レンダリング
@@ -171,7 +172,7 @@ M1（F-18 Simple / F-20 簡易版 / F-26。範囲は `spec/requirements/function
 | GET | `/projects/:id/edit`（別名 `/projects/:id/export`） | 編集画面（`mam-timeline-editor` と Rough Cut〜書き出しの各ステージのボタン）。補助ビュー（別ページ）。チャットの［⋯］メニューから到達 |
 | GET | `/projects/:id/edit/actions` | ステージボタン部分のフラグメント。`timeline-updated` イベントで再取得される |
 | POST | `/projects/:id/edit/rough-cut` | 各 Shot の Selected Take（ファイルのあるもの）から Rough Cut を作り、Project を EDITING にして Edit Timeline の第1版を保存する。Selected Take のない Shot がある・Shot がない場合は 422。EDITING へ進めない状態（承認待ち等）は 409。`HX-Trigger: timeline-reload` を返す（`mam-timeline-editor` が読み直す）。フォーム／JSON の `branch_id`（省略時=主系列トランク）でその Branch の Shot 列から Rough Cut を作り、Branch ごとに独立した版として保存する。Production Template が評価軸に持つ Pace / Hook / Retention / CTA Timing / Caption は Editor Agent が作成時に反映し、内容をチャットに投稿する。Reshoot Loop で追加済みの Shot は元の Shot の後に残る |
-| PUT | `/edit-timelines/:id` | JSON `{"clips":[{"shot_id","take_id","in_point","out_point","transition":{"type","seconds"}}]}` を次の版として保存し 204。`:id` は編集画面が表示していた版で、それより新しい版があれば 409（古い画面での上書き防止）。クリップ 0 件・クリップが 200 個（`MaxClips`）を超える・最短 0.5 秒未満・Take の長さ超過・別 Shot の Take・不明な Transition・`cut` 以外の Transition の長さが 0 秒以下または 2 秒超（`MaxTransitionSeconds`。最初のクリップと `cut` の長さは無視して 0 にする）は 422。保存すると Project は EDITING に戻る。クリップには `kind`（`main`（省略時）/`insert`/`reaction`。追加 Shot 由来の切り出し）と `caption`（字幕、最大 60 文字、空で字幕なし）も持てる。保存は `:id` の版と同じ Branch の版として追記する |
+| PUT | `/edit-timelines/:id` | JSON `{"clips":[{"shot_id","take_id","in_point","out_point","transition":{"type","seconds"}}]}` を次の版として保存し 204。`:id` は編集画面が表示していた版で、それより新しい版があれば 409（古い画面での上書き防止）。クリップ 0 件・クリップが 200 個（`MaxClips`）を超える・最短 0.5 秒未満・Take の長さ超過・別 Shot の Take・不明な Transition・`cut` 以外の Transition の長さが 0 秒以下または 2 秒超（`MaxTransitionSeconds`。最初のクリップと `cut` の長さは無視して 0 にする）は 422。保存すると Project は EDITING に戻る。クリップには `kind`（`main`（省略時）/`insert`/`reaction`。追加 Shot 由来の切り出し）と `caption`（字幕、最大 60 文字、空で字幕なし）も持てる。`GET /api/v1/projects/:id/edit-timeline` の `clips` をそのまま送り返してよいが、`label`・`objective`・`video_url`・`thumbnail_url` は読まず（余分なフィールドは無視する）、`source_seconds` は送られた値を信用せず保存時に Take のファイルから決め直す。保存は `:id` の版と同じ Branch の版として追記する |
 | GET | `/edit-timelines/:id/preview` | Rough Cut の下書きレンダリング（`video/mp4`、Range 対応）。版ごとに初回アクセスで作成しキャッシュする（ffmpeg が必要。なければ 503） |
 | POST | `/edit-timelines/:id/judge` | Editor Judge（PASS / Re-edit / `need_shot`）。最新版のみ・EDITING / EDIT_JUDGING のみ（`need_shot` のまま追加 Shot を待っている EDIT_JUDGING からの再判定を含む。Escalation 応答後の REPAIRING からも実行でき、EDITING へ戻す）。判定は Production Template の評価軸に従い、Pace / Hook / Retention / CTA Timing / Caption は編集で直せる指摘（Re-edit）、Product Exposure / Reaction Shot は追加 Shot が要る指摘（`need_shot`、指摘に `need_shot: {kind: insert|reaction, after_clip, objective, duration_seconds}` が付く）にする。1 件でも `need_shot` があれば判定は `need_shot`。結果を `editor_judge_result` に保存する。PASS は AUDIO へ（Confirmation Level が Rough Cut の確認を求める場合は Approval カードで AWAITING_APPROVAL、承認で AUDIO）。Re-edit は EDITING のまま、指摘をチャットに投稿する。`need_shot` は EDIT_JUDGING のまま、AUTO では続けて `request-additional-shot` の処理を自動で行い、DIRECTOR では要求を待つ。`HX-Trigger: timeline-reload` を返す（`mam-timeline-editor` が Judge 結果と readonly を読み直す） |
 | POST | `/projects/:id/audio/generate` | AUDIO のときのみ。Audio Director（M3、`spec/architecture/model-adapters.md` §14）が Scene Emotion と編集テンポを読んで Audio Timeline（Dialogue / Narration / BGM / SE / Foley / Ambience）を作り、Take の音声とミックスして −14 LUFS に正規化し、Audio Timeline の版として保存する。作る層は Quality Policy で決まる（下記）。フォーム／JSON の `branch_id`（省略時=主系列トランク）でその Branch の Edit Timeline から作り、Branch ごとの系列に版を追記する。`elevenlabs` の API キー未設定は、脚本に台詞行（`dialogue`、ナレーション含む）があるときだけ 502（Planner の有料呼び出しの前に確認する。設定画面で登録）で、台詞行が無いと確認せず、キーが要る層（BGM / SE / Foley / Ambience）を skip して 200 を返す（作れなかった層とその理由はチャットの投稿と画面に出る）。ffmpeg なしは 503 |
@@ -289,7 +290,7 @@ Lit Web Components 専用。HTMX リクエストは発行しない（`spec/archi
 | GET | `/api/v1/shots/:id/takes` | Take一覧（古い順。`label`（A, B, …）・`status`（candidate/ai_pick/selected/rejected）・`adopted`（Shot が使う Take）・`scores`（product/acting/camera/continuity/overall、各 0-100。最新 Judge の Issue から算出: 各軸 100 から high 35・medium 15・low 5 を Issue ごとに引く。未 Judge は null）・`verdict`・`resolution`/`fps`/`duration_seconds`・`proxied`・`video_url`/`thumbnail_url`/`judge_result_url`、操作可能なときだけ返る `select_url`（選択可能な Take のみ）/`reject_url`（除外可能な Take のみ）、区間指定に使える Take を示す `partial_usable`、区間指定が可能なときだけ返る Shot の `partial_url`、および区間指定の上限を渡す `limits`（`max_segments`・`min_segment_seconds`。`domain.MaxTakeSegments` / `MinTakeSegmentSeconds` と同じ値で、クライアントは値を持たない）） | `mam-take-comparator` |
 | GET | `/api/v1/takes/:id/judge-result` | 最新のJudge Result（`result`/`overall_confidence`/`metrics`/`issues`（`time_range`/`frames`付き）/`preserve`/`repair_strategy`/`created_at`/`scores`）。`scores` は Production Template の評価軸ごとの 0-100 のスコアで、Judge が出さなかったときは省略する（Take 一覧の `scores` 4 軸とは別）。同一Takeの過去Judge履歴は含まない（最新1件）。Take が存在しない、または一度も Judge されていないとき 404 | `mam-video-player`（フレームマーカー重畳） |
 | GET | `/api/v1/repair/jev-shadow-report` | Jev のシャドー実行の集計（`runs`/`errors`/`agreed`/`agreement_rate`（失敗を除く一致率）/`mean_confidence`/`mean_latency_ms`（失敗を除く平均）/`total_cost_usd`/`confidence_histogram`（0.1 刻み 10 区間）/`confidence_agreed`）。Jev による前段選別を有効にするかどうかの判断材料（`spec/architecture/model-adapters.md` §4.5・§11） | Repair Agent（F-14） |
-| GET | `/api/v1/projects/:id/edit-timeline` | 現在の Edit Timeline（Shot順序/Cut Point/Transition）と最新の Editor Judge。Rough Cut がなければ 404。クエリ `branch_id`（省略時=主系列トランク）で Branch ごとの版を返す。クリップに `kind`・`caption`、判定の指摘に `need_shot`、応答に `limits.max_caption_runes` を含む（追加 Shot の依頼は Templ の `hx-post`（`/edit-timelines/:id/request-additional-shot`）で、Lit は URL を受け取らない） | `mam-timeline-editor` |
+| GET | `/api/v1/projects/:id/edit-timeline` | 現在の Edit Timeline（Shot順序/Cut Point/Transition）と最新の Editor Judge。Rough Cut がなければ 404。クエリ `branch_id`（省略時=主系列トランク）で Branch ごとの版を返す。応答は `id`・`version_number`・`created_at`・`duration_seconds`・`readonly`・`save_url`・`preview_url`・`transitions`・`limits`（`min_clip_seconds`・`max_transition_seconds`・`max_caption_runes`）・`judge`・`clips`、Branch の版のときだけ `branch_id`（トランクでは省略）。クリップは `shot_id`・`take_id`・`label`・`kind`・`caption`・`objective`・`in_point`・`out_point`・`start`・`transition` に加え、Take から決まる `source_seconds`（Take ファイルの長さ。Out 点の上限判定に使う参考値）・`video_url`・`thumbnail_url`（Take の動画・サムネイルの URL（`/takes/:id/video`・`/takes/:id/thumbnail`）。`source_seconds` は Take の長さが分からないとき省略）を含む。判定の指摘に `need_shot` を含む（追加 Shot の依頼は Templ の `hx-post`（`/edit-timelines/:id/request-additional-shot`）で、Lit は URL を受け取らない） | `mam-timeline-editor` |
 | — | `PUT /edit-timelines/:id`（アクションルート、§2.6） | Edit Timeline 保存（ドラッグ&ドロップ操作の反映）。`/api/v1` では提供せず、JSON API の GET が返す `save_url` へ PUT する（Lit は API クライアント経由で CSRF トークン付きで送る）。`branch_id` は M2 | `mam-timeline-editor` |
 | GET | `/api/v1/health` | ヘルスチェック。`/healthz` と同一の応答（`ok`/`database`、DB 障害時は 503） | 外形監視（Lit は使わない） |
 | GET | `/api/v1/openapi.json` | OpenAPI 3.1 スペック（Huma自動生成）。`/api/v1/openapi.yaml`・`/api/v1/openapi-3.0.json`・`/api/v1/openapi-3.0.yaml` は同内容の別形式、`/api/v1/schemas/:schema` は各型の JSON Schema | - |
@@ -310,6 +311,7 @@ Response 200:
   Body:
     id: "et_01"                  # 表示している版。保存時に PUT のパスへ使う
     version_number: 5
+    created_at: "2026-10-12T09:00:00Z"
     duration_seconds: 9.5
     readonly: false              # 編集できない段階（承認待ち・READY 等）では true
     save_url: "/edit-timelines/et_01"
@@ -317,14 +319,12 @@ Response 200:
     transitions: ["cut", "fade", "fade_black", "dissolve"]
     limits: { min_clip_seconds: 0.5, max_transition_seconds: 2, max_caption_runes: 60 }
     judge: { verdict: "re_edit", findings: [{ clip_index: 2, issue: "...", action: "..." }] }   # 省略あり
+    branch_id: "br_01"           # Branch の版のときだけ。トランクでは省略
     clips:
-      - shot_id: "shot_003"
-        take_id: "take_010"
-        label: "Scene 1 · Shot 1"
-        in_point: 0.0
-        out_point: 4.2
-        start: 0.0
-        transition: { type: "cut", seconds: 0 }
+      - { shot_id: "shot_003", take_id: "take_010", label: "Scene 1 · Shot 1", objective: "駅のホームを歩く",
+          source_seconds: 6.0,   # Take ファイルの長さ（参考値。Out 点の上限判定用。長さが不明なら省略）
+          video_url: "/takes/take_010/video", thumbnail_url: "/takes/take_010/thumbnail",
+          in_point: 0.0, out_point: 4.2, start: 0.0, transition: { type: "cut", seconds: 0 } }
 Errors:
   404: "Rough Cut がまだない"
 ```
