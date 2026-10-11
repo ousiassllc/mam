@@ -24,7 +24,33 @@ func (k *Locker) Lock(ctx context.Context, key string) (func(), error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
+	e := k.acquire(key)
+	select {
+	case e.sem <- struct{}{}:
+		return k.unlocker(key, e), nil
+	case <-ctx.Done():
+		k.release(key, e)
+		return nil, ctx.Err()
+	}
+}
+
+// TryLock takes the lock of key when nobody holds it and returns its unlock; otherwise it does
+// not wait and reports false.
+func (k *Locker) TryLock(key string) (unlock func(), ok bool) {
+	e := k.acquire(key)
+	select {
+	case e.sem <- struct{}{}:
+		return k.unlocker(key, e), true
+	default:
+		k.release(key, e)
+		return nil, false
+	}
+}
+
+// acquire registers the caller as a holder or waiter of key, creating its entry when it has none.
+func (k *Locker) acquire(key string) *keyedEntry {
 	k.mu.Lock()
+	defer k.mu.Unlock()
 	if k.entries == nil {
 		k.entries = make(map[string]*keyedEntry)
 	}
@@ -34,17 +60,13 @@ func (k *Locker) Lock(ctx context.Context, key string) (func(), error) {
 		k.entries[key] = e
 	}
 	e.refs++
-	k.mu.Unlock()
+	return e
+}
 
-	select {
-	case e.sem <- struct{}{}:
-		return func() {
-			<-e.sem
-			k.release(key, e)
-		}, nil
-	case <-ctx.Done():
+func (k *Locker) unlocker(key string, e *keyedEntry) func() {
+	return func() {
+		<-e.sem
 		k.release(key, e)
-		return nil, ctx.Err()
 	}
 }
 

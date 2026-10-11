@@ -60,9 +60,10 @@ type EditorService struct {
 	chatSvc *ChatService
 	// tools is ffmpeg / ffprobe; nil when they are not installed.
 	tools *media.Tools
-	stage sync.Map // project ID -> *sync.Mutex
-	// auto guards the AUTO chain of a Project (AdvanceAuto): project ID -> *sync.Mutex.
-	auto sync.Map
+	// stage claims the editing stage of a Project (acquire); auto guards its AUTO chain
+	// (AdvanceAuto). Both are keyed by project ID.
+	stage keylock.Locker
+	auto  keylock.Locker
 	// autoStopped is the input (autoInput) each Project's AUTO stage last failed on: project ID -> string.
 	autoStopped sync.Map
 	preview     keylock.Locker // preview file
@@ -74,13 +75,12 @@ type EditorService struct {
 
 // acquire claims the Project's editing stage; ErrStageBusy when another one runs.
 func (s *EditorService) acquire(projectID string) (release func(), err error) {
-	mu, _ := s.stage.LoadOrStore(projectID, &sync.Mutex{})
-	l := mu.(*sync.Mutex)
-	if !l.TryLock() {
+	unlock, ok := s.stage.TryLock(projectID)
+	if !ok {
 		return nil, ErrStageBusy
 	}
 	return func() {
-		l.Unlock()
+		unlock()
 		if _, ok := s.missed.LoadAndDelete(projectID); ok {
 			s.resume.Wake()
 		}

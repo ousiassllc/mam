@@ -23,6 +23,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/agent/planning"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/keylock"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
 
@@ -71,9 +72,9 @@ type Orchestrator struct {
 	storyboarder *planning.Storyboarder
 
 	mu     sync.Mutex
-	active map[string]bool        // a plan job of the Project is queued or running
-	rerun  map[string]bool        // something happened while that job was running
-	locks  map[string]*sync.Mutex // one advance at a time per Project
+	active map[string]bool // a plan job of the Project is queued or running
+	rerun  map[string]bool // something happened while that job was running
+	locks  keylock.Locker  // one advance at a time per Project
 }
 
 // New returns an Orchestrator.
@@ -90,7 +91,6 @@ func New(d Deps) *Orchestrator {
 		storyboarder: planning.NewStoryboarder(d.LLM),
 		active:       make(map[string]bool),
 		rerun:        make(map[string]bool),
-		locks:        make(map[string]*sync.Mutex),
 	}
 }
 
@@ -183,17 +183,6 @@ func (o *Orchestrator) release(projectID string) {
 	delete(o.active, projectID)
 }
 
-func (o *Orchestrator) lockFor(projectID string) *sync.Mutex {
-	o.mu.Lock()
-	defer o.mu.Unlock()
-	l, ok := o.locks[projectID]
-	if !ok {
-		l = &sync.Mutex{}
-		o.locks[projectID] = l
-	}
-	return l
-}
-
 // Handle is the job handler of domain.JobPlan (register it as resumable: every step is
 // idempotent). When a Reasoning LLM call fails for good, it tells the user in the chat and
 // returns the failure, so the job is recorded as failed; the next message of the user starts
@@ -204,9 +193,11 @@ func (o *Orchestrator) Handle(ctx context.Context, job domain.Job) error {
 		return fmt.Errorf("plan job %s: invalid payload", job.ID)
 	}
 	id := payload.ProjectID
-	lock := o.lockFor(id)
-	lock.Lock()
-	defer lock.Unlock()
+	unlock, err := o.locks.Lock(ctx, id)
+	if err != nil {
+		return err // shutting down while the job before this one is still running: the job is queued again
+	}
+	defer unlock()
 
 	// A resumed job (after a restart) has no claim yet: take it, so that Kick does not start a second job.
 	o.mu.Lock()
