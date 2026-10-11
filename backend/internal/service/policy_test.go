@@ -221,6 +221,9 @@ func TestStorage_ShowsUsageAndArchivesUnneededTakesRemovingTheirFiles(t *testing
 
 	_, err = f.svc.Policy.ArchiveTake(ctx, f.projectID, takes[0].ID)
 	assert.ErrorIs(t, err, service.ErrConflict, "the Selected Take is never archived")
+	var conflict *service.ConflictError
+	require.ErrorAs(t, err, &conflict, "the refusal carries the reason to show")
+	assert.Contains(t, conflict.Message, "アーカイブできません")
 
 	view, err = f.svc.Policy.ArchiveTake(ctx, f.projectID, takes[1].ID)
 	require.NoError(t, err)
