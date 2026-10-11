@@ -244,7 +244,10 @@ describe('mam-video-player: generation placeholder', () => {
 
       // Every attempt fails until the retries are used up (waitUntil's own timer is slowed down as well: poll by hand).
       for (let i = 0; i < 20 && notice() === null; i++) {
-        FakeSocket.instances.filter((s) => !s.closed).forEach((s) => ((s.closed = true), s.onclose?.()));
+        for (const s of FakeSocket.instances.filter((s) => !s.closed)) {
+          s.closed = true;
+          s.onclose?.();
+        }
         await aTimeout(20);
       }
       expect(notice()).to.not.equal(null);
@@ -260,7 +263,10 @@ describe('mam-video-player: generation placeholder', () => {
 
       // Giving up again and then leaving the page takes the notice away with the player.
       for (let i = 0; i < 20 && notice() === null; i++) {
-        FakeSocket.instances.filter((s) => !s.closed).forEach((s) => ((s.closed = true), s.onclose?.()));
+        for (const s of FakeSocket.instances.filter((s) => !s.closed)) {
+          s.closed = true;
+          s.onclose?.();
+        }
         await aTimeout(20);
       }
       expect(notice()).to.not.equal(null);

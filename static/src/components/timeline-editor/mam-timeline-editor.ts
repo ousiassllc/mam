@@ -184,7 +184,10 @@ export class MamTimelineEditor extends LitElement {
     const inPoint = field === 'in' ? value : clip.in_point;
     const outPoint = field === 'out' ? value : clip.out_point;
     const problem = trimProblem(clip, inPoint, outPoint, body.limits);
-    if (problem) return this.refuse(clip, problem);
+    if (problem) {
+      this.refuse(clip, problem);
+      return;
+    }
     this.change(setTrim(this.clips, index, inPoint, outPoint, body.limits));
   }
 
@@ -203,7 +206,8 @@ export class MamTimelineEditor extends LitElement {
     const problem = captionProblem(input.value, body.limits);
     if (problem) {
       this.captionDraft = { index, text: input.value }; // the text stays in the box so it can be shortened, until the next edit or load
-      return this.refuse(clip, problem);
+      this.refuse(clip, problem);
+      return;
     }
     this.change(setCaption(this.clips, index, input.value, body.limits));
   }

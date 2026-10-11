@@ -33,7 +33,10 @@ describe('connections of elements that left the document', () => {
   async function failUntilGiveUp(beforeLast: () => void): Promise<void> {
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       if (attempt === MAX_RETRIES) beforeLast();
-      FakeSocket.instances.filter((s) => !s.closed).forEach((s) => ((s.closed = true), s.onclose?.()));
+      for (const s of FakeSocket.instances.filter((s) => !s.closed)) {
+        s.closed = true;
+        s.onclose?.();
+      }
       await aTimeout(20);
     }
   }

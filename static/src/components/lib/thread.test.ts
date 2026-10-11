@@ -43,7 +43,9 @@ describe('catchUpAfterReconnect', () => {
     await catchUpAfterReconnect({
       pendingMessageIds: () => ['approval-1', 'progress-2'],
       refetchCard: async (id) => void refetched.push(id),
-      syncNew: async () => void (synced += 1),
+      syncNew: async () => {
+        synced += 1;
+      },
     });
     expect(synced).toBe(1);
     expect(refetched).toEqual(['approval-1', 'progress-2']);
@@ -54,7 +56,13 @@ describe('catchUpAfterReconnect', () => {
       throw new Error('no card to fetch');
     };
     let synced = 0;
-    await catchUpAfterReconnect({ pendingMessageIds: () => [], refetchCard, syncNew: async () => void (synced += 1) });
+    await catchUpAfterReconnect({
+      pendingMessageIds: () => [],
+      refetchCard,
+      syncNew: async () => {
+        synced += 1;
+      },
+    });
     expect(synced).toBe(1);
   });
 });
