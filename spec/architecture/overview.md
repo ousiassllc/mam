@@ -90,7 +90,7 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 ├── Makefile                # dev / build / test / lint / fmt（§9）
 ├── Taskfile.yml            # `wails3 package GOOS=windows` の入口（`build/` の Taskfile を取り込む。通常は `scripts/package-windows.sh` 経由。§11）
 ├── .air.toml               # make dev のホットリロード設定
-├── .golangci.yml           # lint。depguard でレイヤー依存ルールを強制
+├── .golangci.yml           # lint。depguard でレイヤー依存ルールを強制し、gocyclo / gocognit で関数の複雑度の悪化を止める
 ├── .linterly-baseline      # 行数上限（300 行 / 2000 行）を超えている既存のファイル・ディレクトリの行数。CI は悪化だけを止める（環境構築 spec の Linterly 節）
 ├── lefthook.yml            # Git フック。pre-commit は linterly（scripts/linterly-staged.sh 経由）・fmt-check（Go / templ / TS）・lint-go・lint-static（tsc + Biome lint）、pre-push は build/vet と make test
 ├── .github/
@@ -202,6 +202,7 @@ handler → service → agent → repository → domain
 - `router/`: `handler/` を参照してルートを定義
 - `service/Services`（`service/services.go`）が DI ルート。`internal/app`（`app.Run` → `buildServices`）がインフラ（DB・ジョブキュー・認証情報ストア・ロガー）を生成して `service.New(Deps)` に渡し、`router.New(services, opts)` が `services` を各ルート登録関数へ渡す。`service.New` は `newWiring(deps)` を作り、`service/wiring.go` の `wirePlan` → `wireJudge` → `wireGeneration` → `wireRepair` → `wireDirector` → `wireContinuity` → `wireEditor` → `watchJobs` をこの順に呼ぶ。各 `wire*` は前の `wire*` が設定したものだけを読み、ジョブキューの `OnChange` は `watchJobs` が最後に 1 つだけ登録する（呼び出すエージェントが揃ってから。`Queue` の開始後に登録すると panic する）。新機能は「サービス追加 → Reasoning LLM・ジョブキュー・Model Adapter が要るなら、前提のエージェントより後ろになる `wire*`（無ければ新設）に組み込んで順序の制約を守る → ジョブ状態の変化でチャットを更新するなら `watchJobs` から呼ぶ → `Services` にフィールド追加 → ルートを `pages.go`/`actions.go`/`api.go` に追加」で組み込む。インフラに依存しないサービスは `Services` へのフィールド追加と `wiring.services` の 1 行で済む
 - レイヤー依存ルールは `.golangci.yml` の depguard で機械的に検査する（違反はlintエラー）
+- 関数の複雑度（循環的 25・認知的 50 超）も `.golangci.yml` の `gocyclo` / `gocognit` で検査する。既存の超過関数は除外ルールで個別に許可し、悪化だけを止める（環境構築 spec の「関数の複雑度」節）
 
 ## 6. 起動方式（ローカル Web サーバー）
 
@@ -324,3 +325,4 @@ Windows では、ブラウザ版と同じ `127.0.0.1` のサーバーを `intern
 | 1.23 | 2026-10-11 | §7 に、チャット画面の再取得 URL（全履歴・新着・カード 1 枚）はサーバーが `data-messages-url` / `data-next-url` / `data-card-url` で注入し、`chat.ts` は組み立てずに読むだけであることを追記 | Issue #513。#507 で URL の組み立てをクライアントからサーバーへ移した契約が、`spec/components/overview.md` §5 の `thread.ts` の行にしか書かれていなかったため。実装は `chat_workspace.templ`・`message_frame.templ`・`static/src/chat.ts` |
 | 1.24 | 2026-10-12 | §5 の構成図に `.github/dependabot.yml` を足し、`ci.yml` の説明に脆弱性検査（`make vuln`）を加えた。§9 の「その他のターゲット」に `make vuln` を追加 | Issue #525。#523 が `make vuln`・CI の「Vulnerability check」ステップ・`dependabot.yml` を `spec/environment/setup.md` と `README.md` には反映したのに、同じ構成・ターゲットを列挙する overview.md だけが反映していなかった（#511 と同じ種類の抜け） |
 | 1.25 | 2026-10-12 | §5 の構成図の `service/` に `wiring.go`（機能ごとの `wire*` と、`OnChange` を最後に登録する `watchJobs`）を足し、DI ルートの項の新機能を組み込む手順を「`Services` にフィールドを足すだけ」から `wire*` への組み込みと順序の制約を含む手順に直した | Issue #526。#522 が `service.New` を `wiring.go` の `wire*` に分け、`OnChange` の登録を `watchJobs` の 1 か所にまとめたのに、構成図の `service/` の説明と「追記だけで組み込める」という手順は更新されていなかった。実装は `backend/internal/service/wiring.go`・`services.go` |
+| 1.26 | 2026-10-12 | §5 の構成図の `.golangci.yml` の説明と、レイヤー依存ルールの項に、`gocyclo` / `gocognit` による関数の複雑度の検査を追記 | Issue #534。関数単位の複雑度が lint で管理されていなかった |

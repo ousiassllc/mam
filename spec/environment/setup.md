@@ -20,7 +20,7 @@ Go（`go.mod` のバージョン）、Node.js（24。CI は `.github/workflows/c
 | `make lint-lines` | `scripts/linterly-baseline.sh check`。`.linterly-baseline` より悪化した行数超過があれば失敗（Linterly 節）。`linterly` と `jq` が要る |
 | `make vuln` | `govulncheck ./...`。コードから到達できる既知の脆弱性（標準ライブラリ・依存モジュール）があれば失敗。`make tools` が入れる `govulncheck` が要る |
 | `make linterly-baseline` | `scripts/linterly-baseline.sh update`。`.linterly-baseline` を現在の `linterly check` の結果で書き換える |
-| `make lint-go` | `make generate` のあと `golangci-lint run ./...`（`.golangci.yml`） |
+| `make lint-go` | `make generate` のあと `golangci-lint run ./...`（`.golangci.yml`。`gocyclo` 25 / `gocognit` 50 の複雑度上限を含む。「関数の複雑度」節） |
 | `make lint-static` | `tsc --noEmit`（`npm run typecheck --prefix static`）と `biome lint`（`npm run lint --prefix static`） |
 | `make test` | `make test-go` と `make test-static` と `make test-scripts` |
 | `make test-scripts` | `bash scripts/linterly-baseline_test.sh`（行数基準値のスクリプトのテスト。`jq` が要る） |
@@ -80,6 +80,12 @@ ffmpeg / ffprobe は `ubuntu-latest` に入っていないため、`test` の前
 
 pre-commit（`scripts/linterly-staged.sh`）は従来どおり、コミット対象のファイルが超過していれば基準値の有無に関わらず止める。
 
+## 関数の複雑度
+
+`.golangci.yml` の `gocyclo`（循環的複雑度 25 超）と `gocognit`（認知的複雑度 50 超）が、関数単位の複雑度の悪化を `make lint-go`（`make lint`・pre-commit・CI の `Lint` ステップ）で止める。テストコード（`_test.go`）は対象外。
+
+既存の超過関数は `linters.exclusions.rules` の `text`（`of func \`<関数名>\` `）で個別に許可している（`//nolint` は使わない）。許可リストに無い関数が上限を超えれば lint エラーになるので、新規の超過は止まる。一方、許可済みの関数自体がさらに複雑になっても検出できないため、レビューで止める。関数を分割して上限以内になったら、同じ PR で許可エントリを削除する。許可リストが空になったら閾値を `gocyclo` 20 / `gocognit` 40 に下げる（別 Issue）。
+
 ## Git Hooks
 
 `lefthook.yml`（`lefthook install` で有効化）。
@@ -100,3 +106,4 @@ pre-commit（`scripts/linterly-staged.sh`）は従来どおり、コミット対
 | 1.7 | 2026-10-11 | Linterly 節の基準値を、統合済みの各修正後の行数に合わせて更新（減った分は下げ、悪化した分は新しいパッケージへの移動・ファイル分割で戻した。基準値を上げたエントリは無い） | Issue #496・#500・#501。基準値が #482〜#484・#494 などの統合前に採られ、統合ブランチで `make lint-lines` が失敗していた |
 | 1.8 | 2026-10-11 | `go.mod` に `toolchain go1.26.9` を追加し、`golang.org/x/net` を v0.60.0・`golang.org/x/crypto` を v0.57.0 へ更新。`make vuln`（`govulncheck ./...`）と、`make tools` への govulncheck の導入、CI の「Vulnerability check」ステップ、`.github/dependabot.yml`（gomod・npm・github-actions）を追加 | Issue #523。`go 1.26.0` のままでは `setup-go` が標準ライブラリの未修正版でビルドし（CI と配布する Windows バイナリ）、govulncheck が標準ライブラリ 16 件と x/net の脆弱性を検出していた。検知の仕組みも無かった |
 | 1.9 | 2026-10-12 | 「開発ツール」に `govulncheck`（`make tools` が入れる）を加え、CI の実行順を `lint` → `make vuln` → `make lint-lines` に直した | Issue #525。1.8（#523）が `make vuln`・タスク表・脆弱性の段落・README には反映したのに、同じ内容を持つ「開発ツール」の列挙と CI の実行順の段落が更新されておらず、次の段落（`lint` の次に `make vuln`）・`.github/workflows/ci.yml`（`Lint` → `Vulnerability check` → `Line limit (no regression)`）・Makefile の `tools` ターゲットと食い違っていた |
+| 1.10 | 2026-10-12 | `make lint-go` に `gocyclo`（25）・`gocognit`（50）の複雑度上限を追加し、既存の超過関数 5 個を除外ルールで許可する「関数の複雑度」節を追加 | Issue #534。行数は Linterly で縛っていたが関数単位の複雑度は未管理で、CI で悪化を検出できなかった |
