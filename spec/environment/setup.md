@@ -55,13 +55,27 @@ ffmpeg / ffprobe は `ubuntu-latest` に入っていないため、`test` の前
 
 ## リリース
 
-`.github/workflows/release.yml`。`v*` タグ（`vX.Y.Z`）の push で実行する。`permissions` は `contents: write` のみ。`windows-latest` の 1 ジョブ:
+`.github/workflows/release.yml`。`v*` タグ（`vX.Y.Z`）の push で実行する。ワークフロー全体の `permissions` は `contents: read` で、書き込み権限（`contents: write`）を持つのは `release` ジョブだけ。ビルドの工程（`go install`・`choco install`・`npm ci`）は書き込み用の `GITHUB_TOKEN` を持たない環境で動く。`uses:` はコミット SHA で固定し（行末のコメントがタグ）、版は dependabot の `github-actions` が SHA ごと更新する。3 ジョブ構成（`verify` → `build` → `release`）:
 
-1. checkout → setup-go（`go.mod`）→ setup-node（24、npm キャッシュ）
-2. ツール: `templ`（`go.mod` の版）、`wails3`（`go.mod` の版）、`choco install nsis`
+### `verify`（`ubuntu-latest`、`contents: read` + `actions: read`）
+
+タグのコミットを検証する。どれかが失敗したらビルドもリリースも走らない。
+
+1. `git merge-base --is-ancestor "$GITHUB_SHA" origin/main`: タグのコミットが `main` の履歴にあること（`fetch-depth: 0`）。main 以外のコミットに打ったタグは公開しない
+2. CI の成功確認: `gh run list --workflow ci.yml --commit "$GITHUB_SHA"` に `success` の実行があること。CI が赤い、または未完了のコミットは公開しない（CI が通るのを待ってからタグを打つ）
+3. `make tools` → `make generate` → `make vuln`: CI の後に出た新しい脆弱性勧告でも止める
+
+### `build`（`windows-latest`、`needs: verify`、`contents: read`）
+
+1. checkout（`persist-credentials: false`）→ setup-go（`go.mod`）→ setup-node（24、npm キャッシュ）
+2. ツール: `templ`（`go.mod` の版）、`wails3`（`go.mod` の版）、`choco install nsis --version <版>`（ワークフローの `NSIS_VERSION` で固定）
 3. `bash scripts/package-windows.sh "${GITHUB_REF_NAME#v}"`（タグが `vX.Y.Z` でなければ失敗）
 4. スモーク（`bash scripts/smoke-windows.sh bin/mam-<version>-windows-amd64-setup.exe`）: インストーラーを `/S` で `RUNNER_TEMP` 配下へ静かにインストールし（`/D=`）、そのディレクトリの `mam.exe` を `--data-dir`（一時ディレクトリ）・`--port` 固定で起動して `GET /` が 200 を返すことを確認してから停止する。失敗したらリリースを作らない
-5. `gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --generate-notes --verify-tag bin/mam-<version>-windows-amd64-setup.exe bin/mam-<version>-windows-amd64.exe`
+5. `actions/upload-artifact`（名前 `windows-release`）で 2 つの exe を `release` ジョブへ渡す
+
+### `release`（`ubuntu-latest`、`needs: build`、`contents: write`）
+
+checkout はせず（`GH_REPO` を渡す）、`actions/download-artifact` で受け取った exe を使って `gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --generate-notes --verify-tag dist/mam-<version>-windows-amd64-setup.exe dist/mam-<version>-windows-amd64.exe` を実行するだけ。
 
 成果物はこの 2 つだけ（`spec/requirements/non-functional.md` §1）。コード署名はしない（署名の手順を足す場合は別 Issue）。リリースノートは GitHub の自動生成に任せる。同じタグのリリースが既にあれば `gh release create` が失敗するため、作り直すときはタグとリリースを削除してから push し直す。
 
@@ -107,3 +121,4 @@ pre-commit（`scripts/linterly-staged.sh`）は従来どおり、コミット対
 | 1.8 | 2026-10-11 | `go.mod` に `toolchain go1.26.9` を追加し、`golang.org/x/net` を v0.60.0・`golang.org/x/crypto` を v0.57.0 へ更新。`make vuln`（`govulncheck ./...`）と、`make tools` への govulncheck の導入、CI の「Vulnerability check」ステップ、`.github/dependabot.yml`（gomod・npm・github-actions）を追加 | Issue #523。`go 1.26.0` のままでは `setup-go` が標準ライブラリの未修正版でビルドし（CI と配布する Windows バイナリ）、govulncheck が標準ライブラリ 16 件と x/net の脆弱性を検出していた。検知の仕組みも無かった |
 | 1.9 | 2026-10-12 | 「開発ツール」に `govulncheck`（`make tools` が入れる）を加え、CI の実行順を `lint` → `make vuln` → `make lint-lines` に直した | Issue #525。1.8（#523）が `make vuln`・タスク表・脆弱性の段落・README には反映したのに、同じ内容を持つ「開発ツール」の列挙と CI の実行順の段落が更新されておらず、次の段落（`lint` の次に `make vuln`）・`.github/workflows/ci.yml`（`Lint` → `Vulnerability check` → `Line limit (no regression)`）・Makefile の `tools` ターゲットと食い違っていた |
 | 1.10 | 2026-10-12 | `make lint-go` に `gocyclo`（25）・`gocognit`（50）の複雑度上限を追加し、既存の超過関数 5 個を除外ルールで許可する「関数の複雑度」節を追加 | Issue #534。行数は Linterly で縛っていたが関数単位の複雑度は未管理で、CI で悪化を検出できなかった |
+| 1.11 | 2026-10-12 | リリース節を `verify`（main の履歴・CI 成功・`make vuln`）→ `build`（`contents: read`）→ `release`（`contents: write`、`gh release create` だけ）の 3 ジョブ構成に書き換え、NSIS の版固定と `uses:` の SHA 固定を明記 | Issue #541。リリースがタグの push だけで CI を通らず公開され、ビルドの全工程が書き込み権限付きの `GITHUB_TOKEN` を持っていた |
