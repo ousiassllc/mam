@@ -60,9 +60,9 @@ var ratioKeywords = []struct {
 	ratio    string
 	keywords []string
 }{
-	{"9:16", []string{"縦型", "縦長", "縦動画", "縦向き"}},
-	{"16:9", []string{"横型", "横長", "横動画", "横向き"}},
-	{"1:1", []string{"正方形", "スクエア"}},
+	{domain.AspectRatio9x16, []string{"縦型", "縦長", "縦動画", "縦向き"}},
+	{domain.AspectRatio16x9, []string{"横型", "横長", "横動画", "横向き"}},
+	{domain.AspectRatio1x1, []string{"正方形", "スクエア"}},
 }
 
 // Extract implements Extractor.
@@ -144,8 +144,7 @@ func aspectRatio(text string) string {
 	// Only ratios generation supports are taken; a clock time ("10:30") or another ratio ("4:3")
 	// falls through to the keywords instead of silently becoming a 16:9 generation.
 	for _, m := range ratioRe.FindAllStringSubmatch(text, -1) {
-		switch ratio := m[1] + ":" + m[2]; ratio {
-		case "16:9", "9:16", "1:1":
+		if ratio := m[1] + ":" + m[2]; domain.IsBriefAspectRatio(ratio) {
 			return ratio
 		}
 	}

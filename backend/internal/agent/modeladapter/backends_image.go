@@ -11,6 +11,8 @@ import (
 	"net/textproto"
 	"net/url"
 	"strings"
+
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/aspectsize"
 )
 
 // The vendors' request formats below are the published ones at the time of writing
@@ -133,14 +135,14 @@ func (b openAIImageBackend) GenerateImage(ctx context.Context, apiModel string, 
 	auth := map[string]string{"Authorization": "Bearer " + key}
 	var data []byte
 	if len(req.Inputs) == 0 {
-		body, _ := json.Marshal(map[string]any{"model": apiModel, "prompt": req.Prompt, "size": openAISize(req.AspectRatio), "n": 1})
+		body, _ := json.Marshal(map[string]any{"model": apiModel, "prompt": req.Prompt, "size": aspectsize.OpenAI(req.AspectRatio), "n": 1})
 		data, err = b.request(ctx, http.MethodPost, b.baseURL+"/v1/images/generations", jsonHeader(auth), body, maxJSONBytes)
 	} else {
 		var buf bytes.Buffer
 		w := multipart.NewWriter(&buf)
 		_ = w.WriteField("model", apiModel)
 		_ = w.WriteField("prompt", req.Prompt)
-		_ = w.WriteField("size", openAISize(req.AspectRatio))
+		_ = w.WriteField("size", aspectsize.OpenAI(req.AspectRatio))
 		for i, in := range req.Inputs {
 			h := textproto.MIMEHeader{}
 			h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="image[]"; filename="input%d%s"`, i, extFor(in.MimeType)))
@@ -178,16 +180,6 @@ func (b openAIImageBackend) GenerateImage(ctx context.Context, apiModel string, 
 	return ImageResult{Data: img, MimeType: "image/png"}, nil
 }
 
-func openAISize(aspect string) string {
-	switch aspect {
-	case "9:16":
-		return "1024x1536"
-	case "1:1":
-		return "1024x1024"
-	}
-	return "1536x1024"
-}
-
 // fluxBackend calls FLUX.2 (Black Forest Labs API): submit, poll the returned URL, download.
 type fluxBackend struct{ api }
 
@@ -196,7 +188,7 @@ func (b fluxBackend) GenerateImage(ctx context.Context, apiModel string, req Ima
 	if err != nil {
 		return ImageResult{}, err
 	}
-	w, h := fluxSize(req.AspectRatio)
+	w, h := aspectsize.Flux(req.AspectRatio)
 	body := map[string]any{"prompt": req.Prompt, "width": w, "height": h}
 	for i, in := range req.Inputs {
 		name := "input_image"
@@ -261,16 +253,6 @@ func (b fluxBackend) GenerateImage(ctx context.Context, apiModel string, req Ima
 		return ImageResult{}, err
 	}
 	return ImageResult{Data: img, MimeType: orDefault(strings.SplitN(mime, ";", 2)[0], "image/jpeg")}, nil
-}
-
-func fluxSize(aspect string) (int, int) {
-	switch aspect {
-	case "9:16":
-		return 768, 1344
-	case "1:1":
-		return 1024, 1024
-	}
-	return 1344, 768
 }
 
 func orDefault(v, d string) string {
