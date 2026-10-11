@@ -69,8 +69,8 @@
 530	backend/internal/service/reshoot_test.go
 441	backend/internal/service/review.go
 2985	backend/internal/web/handler/
-4447	backend/internal/web/organisms/
-384	backend/internal/web/organisms/editor_panel.templ
+4424	backend/internal/web/organisms/
+376	backend/internal/web/organisms/editor_panel.templ
 383	spec/api/endpoints.md
 738	spec/architecture/er.md
 367	spec/architecture/model-adapters.md

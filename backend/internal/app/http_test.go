@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -59,6 +60,50 @@ func TestRunHTTP_ContextCancelShutsDownGracefullyAfterInFlightRequests(t *testin
 
 	_, err = net.DialTimeout("tcp4", ln.Addr().String(), time.Second)
 	assert.Error(t, err, "the listener is closed after shutdown")
+}
+
+// A request that outlives the graceful shutdown has its context cancelled and runHTTP returns
+// (without an error) only after the handler is done, so the caller can close what it uses.
+func TestRunHTTP_AbortsRequestsStillRunningAfterShutdownTimeout(t *testing.T) {
+	origTimeout := shutdownTimeout
+	shutdownTimeout = 100 * time.Millisecond
+	t.Cleanup(func() { shutdownTimeout = origTimeout })
+
+	ln, err := net.Listen("tcp4", "127.0.0.1:0")
+	require.NoError(t, err)
+	entered := make(chan struct{})
+	var handlerDone atomic.Bool
+	handler := http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		close(entered)
+		<-r.Context().Done()
+		time.Sleep(50 * time.Millisecond) // cleanup after the abort
+		handlerDone.Store(true)
+	})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	ready := make(chan string, 1)
+	result := make(chan error, 1)
+	go func() {
+		result <- runHTTP(ctx, handler, ln, slog.New(slog.DiscardHandler), func(url string) { ready <- url })
+	}()
+	url := <-ready
+
+	go func() {
+		resp, err := http.Get(url)
+		if err == nil {
+			_ = resp.Body.Close()
+		}
+	}()
+	<-entered
+	cancel()
+
+	select {
+	case err := <-result:
+		require.NoError(t, err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("runHTTP did not return after the shutdown timeout")
+	}
+	assert.True(t, handlerDone.Load(), "runHTTP returned while the handler was still running")
 }
 
 func TestRunHTTP_AListenerFailureIsReturnedAsAServeError(t *testing.T) {
