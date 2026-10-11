@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/a-h/templ"
@@ -46,6 +47,17 @@ func AssetURL(projectID, assetID string) templ.SafeURL {
 }
 
 func messagesURL(projectID string) string { return paths.Project(projectID, "messages") }
+
+// cardURL is where one card is fetched as it is now (GET /projects/:id/messages/:messageId).
+func cardURL(projectID, messageID string) string {
+	return paths.Project(projectID, "messages", messageID)
+}
+
+// messagesAfterURL fetches the messages newer than messageID (GET /projects/:id/messages?after=<messageId>).
+// The newest card of the thread carries it, so the client never builds the URL itself.
+func messagesAfterURL(projectID, messageID string) string {
+	return messagesURL(projectID) + "?after=" + url.QueryEscape(messageID)
+}
 
 func approvalURL(projectID, messageID string) string {
 	return paths.Project(projectID, "approvals", messageID)

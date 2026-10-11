@@ -31,16 +31,6 @@ export function removeDuplicateIds(elements: Iterable<Removable>): number {
   return removed;
 }
 
-/** URL of the request that fetches the messages after `lastMessageId` ('' = the whole thread). */
-export function messagesUrl(projectId: string, lastMessageId: string): string {
-  const base = `/projects/${encodeURIComponent(projectId)}/messages`;
-  return lastMessageId ? `${base}?after=${encodeURIComponent(lastMessageId)}` : base;
-}
-
-export function cardUrl(projectId: string, messageId: string): string {
-  return `/projects/${encodeURIComponent(projectId)}/messages/${encodeURIComponent(messageId)}`;
-}
-
 /** What the client does after the WebSocket came back; the DOM and htmx are behind it (chat.ts). */
 export interface CatchUp {
   /** IDs of the cards shown that can still change (the server marks them data-card-pending). */

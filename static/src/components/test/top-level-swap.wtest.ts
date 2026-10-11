@@ -45,7 +45,7 @@ describe('outerHTML swap of a top-level node', () => {
     host.innerHTML = '<div id="chat-workspace">old</div>';
     swapOuter(
       'chat-workspace',
-      `<section id="chat-workspace" data-project-id="p1" data-ws-url="/ws/projects/p1">
+      `<section id="chat-workspace" data-messages-url="/projects/p1/messages" data-ws-url="/ws/projects/p1">
          <div id="chat-thread"></div>
          <form id="chat-composer"><textarea id="composer-content"></textarea><input id="composer-files" type="file" /></form>
        </section>`,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { catchUpAfterReconnect, cardUrl, fieldsToClear, fileKey, isSendKey, messagesUrl, isSuccessResponse, removeDuplicateIds, swapsErrorResponse } from './thread';
+import { catchUpAfterReconnect, fieldsToClear, fileKey, isSendKey, isSuccessResponse, removeDuplicateIds, swapsErrorResponse } from './thread';
 
 function el(id: string) {
   return { id, removed: false, remove() { this.removed = true; } };
@@ -10,14 +10,6 @@ describe('removeDuplicateIds', () => {
     const items = [el('msg-1'), el('msg-2'), el('msg-1'), el('msg-2'), el('msg-3')];
     expect(removeDuplicateIds(items)).toBe(2);
     expect(items.map((i) => i.removed)).toEqual([false, false, true, true, false]);
-  });
-});
-
-describe('URLs', () => {
-  it('asks for the whole thread or only what is newer', () => {
-    expect(messagesUrl('p1', '')).toBe('/projects/p1/messages');
-    expect(messagesUrl('p1', 'm 1')).toBe('/projects/p1/messages?after=m%201');
-    expect(cardUrl('p1', 'm1')).toBe('/projects/p1/messages/m1');
   });
 });
 
