@@ -18,15 +18,14 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/zalando/go-keyring"
 
-	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 	"github.com/ousiassllc/mam/backend/internal/router"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
+	"github.com/ousiassllc/mam/backend/internal/testenv"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 )
 
@@ -37,18 +36,28 @@ type app struct {
 	db     *repository.DB
 	engine *gin.Engine
 	svc    *service.Services
+	keys   *memStore // the key store of the app
 	cookie *http.Cookie
 	token  string
 	assets string // the assets directory
 }
 
+// newApp is an app that shares nothing with another test (its own database, assets directory and
+// key store), so the test that builds it runs in parallel with the others.
 func newApp(t *testing.T) *app {
 	t.Helper()
-	keyring.MockInit()
+	testenv.Parallel(t)
+	return newSerialApp(t)
+}
+
+// newSerialApp is newApp for a test that changes process-wide state (t.Setenv) and so cannot run in parallel.
+func newSerialApp(t *testing.T) *app {
+	t.Helper()
+	keys := newMemStore()
 	dir := t.TempDir()
 	db := testdb.Open(t)
-	svc := servicetest.New(t, service.Deps{DB: db, Credentials: credential.NewKeyring(), AssetsDir: filepath.Join(dir, "assets")})
-	a := &app{t: t, db: db, engine: router.New(svc, router.Options{}), svc: svc, assets: filepath.Join(dir, "assets")}
+	svc := servicetest.New(t, service.Deps{DB: db, Credentials: keys, AssetsDir: filepath.Join(dir, "assets")})
+	a := &app{t: t, db: db, engine: router.New(svc, router.Options{}), svc: svc, keys: keys, assets: filepath.Join(dir, "assets")}
 	a.cookie, a.token = bootstrap(t, a.engine)
 	return a
 }

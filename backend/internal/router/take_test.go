@@ -8,7 +8,6 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -17,9 +16,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/zalando/go-keyring"
 
-	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/repository"
@@ -49,15 +46,16 @@ func newTakeAppWith(t *testing.T, mutate func(*service.Deps)) *takeApp {
 	if err != nil {
 		testenv.MissingFFmpeg(t, "ffmpeg / ffprobe are not installed")
 	}
-	keyring.MockInit()
+	testenv.Parallel(t)
+	keys := newMemStore()
 	dir := t.TempDir()
 	db := testdb.Open(t)
-	deps := service.Deps{DB: db, Credentials: credential.NewKeyring(), AssetsDir: filepath.Join(dir, "assets"), Media: &tools}
+	deps := service.Deps{DB: db, Credentials: keys, AssetsDir: filepath.Join(dir, "assets"), Media: &tools}
 	if mutate != nil {
 		mutate(&deps)
 	}
 	svc := servicetest.New(t, deps)
-	a := &app{t: t, db: db, engine: router.New(svc, router.Options{}), svc: svc}
+	a := &app{t: t, db: db, engine: router.New(svc, router.Options{}), svc: svc, keys: keys}
 	a.cookie, a.token = bootstrap(t, a.engine)
 	ta := &takeApp{app: a, dir: dir, tools: tools}
 	ta.project = a.createProject("美容液のCMを作りたい")
@@ -98,10 +96,7 @@ func newTakeAppWith(t *testing.T, mutate func(*service.Deps)) *takeApp {
 func (ta *takeApp) video(name, size string, seconds int) {
 	ta.t.Helper()
 	path := filepath.Join(ta.dir, "assets", ta.project, name+".mp4")
-	d := strconv.Itoa(seconds)
-	out, err := exec.Command("ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "testsrc=size="+size+":rate=10:duration="+d,
-		"-f", "lavfi", "-i", "sine=frequency=440:duration="+d, "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", path).CombinedOutput()
-	require.NoError(ta.t, err, string(out))
+	require.NoError(ta.t, os.WriteFile(path, testenv.PatternVideo(ta.t, size, seconds), 0o600))
 }
 
 type takeListBody struct {

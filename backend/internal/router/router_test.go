@@ -15,23 +15,29 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/zalando/go-keyring"
 
-	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 	"github.com/ousiassllc/mam/backend/internal/router"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
+	"github.com/ousiassllc/mam/backend/internal/testenv"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 )
 
 func init() { gin.SetMode(gin.TestMode) }
 
+// newEngine is an engine of its own (database, key store), so the test that builds it runs in parallel.
 func newEngine(t *testing.T) *gin.Engine {
 	t.Helper()
-	keyring.MockInit()
+	testenv.Parallel(t)
+	return newSerialEngine(t)
+}
+
+// newSerialEngine is newEngine for a test that changes process-wide state (t.Setenv).
+func newSerialEngine(t *testing.T) *gin.Engine {
+	t.Helper()
 	db := testdb.Open(t)
-	svc := servicetest.New(t, service.Deps{DB: db, Credentials: credential.NewKeyring()})
+	svc := servicetest.New(t, service.Deps{DB: db, Credentials: newMemStore()})
 	return router.New(svc, router.Options{
 		Static: fstest.MapFS{
 			"app.js":           {Data: []byte("console.log(1)")},
@@ -123,7 +129,7 @@ func TestCSRF_RejectsUnsafeRequestsWithoutValidToken(t *testing.T) {
 }
 
 func TestCSRF_IgnoresTheBodyAndNeverBuffersAnUpload(t *testing.T) {
-	engine := newEngine(t)
+	engine := newSerialEngine(t)
 	c, token := bootstrap(t, engine)
 	tmp := t.TempDir()
 	t.Setenv("TMPDIR", tmp)

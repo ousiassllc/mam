@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/jev"
-	"github.com/ousiassllc/mam/backend/internal/credential"
 )
 
 // A Take the Judge fails on a plain (not LOCKed) camera issue; the Judge recommends Partial Regeneration.
@@ -147,11 +146,12 @@ func TestRepair_DifferentModelSwitchesModelAndJevRunsInShadowOnly(t *testing.T) 
 	defer srv.Close()
 	cfg := jev.DefaultConfig()
 	cfg.BaseURL = srv.URL
-	client, err := jev.New(cfg, credential.NewKeyring(), srv.Client())
+	keys := newMemStore()
+	client, err := jev.New(cfg, keys, srv.Client())
 	require.NoError(t, err)
 
-	j := newJudgeAppWith(t, failVerdict, client, 0.95, 0.95, 0.95, 0.95)
-	require.NoError(t, credential.NewKeyring().Set(jev.CredentialProvider, "typesafe-key"))
+	j := newJudgeAppOpts(t, judgeOpts{verdict: failVerdict, shadow: client, keys: keys}, 0.95, 0.95, 0.95, 0.95)
+	require.NoError(t, keys.Set(jev.CredentialProvider, "typesafe-key"))
 	j.director()
 	j.llm.repair = `{"action":"different_model","reason":"the model keeps failing","instructions":["reduce_camera_speed"]}`
 	ids := j.generateAndJudge()
@@ -202,11 +202,12 @@ func TestRepair_JevIsNotAskedWhenARuleOrTheLockDecides(t *testing.T) {
 	defer srv.Close()
 	cfg := jev.DefaultConfig()
 	cfg.BaseURL = srv.URL
-	client, err := jev.New(cfg, credential.NewKeyring(), srv.Client())
+	keys := newMemStore()
+	client, err := jev.New(cfg, keys, srv.Client())
 	require.NoError(t, err)
 
-	j := newJudgeAppWith(t, failVerdict, client, 0.95, 0.95, 0.95, 0.95)
-	require.NoError(t, credential.NewKeyring().Set(jev.CredentialProvider, "typesafe-key"))
+	j := newJudgeAppOpts(t, judgeOpts{verdict: failVerdict, shadow: client, keys: keys}, 0.95, 0.95, 0.95, 0.95)
+	require.NoError(t, keys.Set(jev.CredentialProvider, "typesafe-key"))
 	j.director()
 	j.llm.repair = "" // no valid answer: the fallback (a rule) decides
 	ids := j.generateAndJudge()

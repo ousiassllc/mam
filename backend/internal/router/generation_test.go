@@ -17,13 +17,11 @@ import (
 	"github.com/coder/websocket/wsjson"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/zalando/go-keyring"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/generation"
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
-	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/repository"
@@ -99,12 +97,13 @@ type genOpts struct {
 
 func newGenAppOpts(t *testing.T, withModels bool, o genOpts) *genApp {
 	t.Helper()
-	keyring.MockInit()
+	testenv.Parallel(t)
+	keys := newMemStore()
 	dir := t.TempDir()
 	db := testdb.Open(t)
 
 	video := &videoFake{}
-	deps := service.Deps{DB: db, Credentials: credential.NewKeyring(), AssetsDir: filepath.Join(dir, "assets"), Media: o.media}
+	deps := service.Deps{DB: db, Credentials: keys, AssetsDir: filepath.Join(dir, "assets"), Media: o.media}
 	deps.LLM = plannerLLM{}
 	if o.llm != nil {
 		deps.LLM = o.llm
@@ -124,7 +123,7 @@ func newGenAppOpts(t *testing.T, withModels bool, o genOpts) *genApp {
 	jobs.Start(ctx)
 	t.Cleanup(func() { cancel(); jobs.Stop() })
 
-	a := &app{t: t, db: db, engine: router.New(svc, router.Options{}), svc: svc, assets: filepath.Join(dir, "assets")}
+	a := &app{t: t, db: db, engine: router.New(svc, router.Options{}), svc: svc, keys: keys, assets: filepath.Join(dir, "assets")}
 	a.cookie, a.token = bootstrap(t, a.engine)
 	g := &genApp{app: a, video: video}
 	g.project = a.createProject("美容液のCMを作りたい")

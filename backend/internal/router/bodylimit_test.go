@@ -44,7 +44,7 @@ func TestBodyLimit_OversizedJSONAndFormAre413(t *testing.T) {
 // A multipart Content-Type does not lift the cap on routes that do not upload. The body is refused
 // before it is parsed, so it is neither buffered nor spilled to a temp file.
 func TestBodyLimit_OversizedMultipartOnNonUploadRoutesIs413Unread(t *testing.T) {
-	a := newApp(t)
+	a := newSerialApp(t)
 	tmp := t.TempDir()
 	t.Setenv("TMPDIR", tmp)
 	payload := bytes.Repeat([]byte("a"), middleware.MaxBodyBytes+1)
