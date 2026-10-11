@@ -21,9 +21,9 @@ func TestIssueRanges_AllIssuesNeedARange(t *testing.T) {
 }
 
 func TestParseTimeRanges_RejectsUnreadableAndOutOfShotRanges(t *testing.T) {
-	ranges, err := ParseTimeRanges([]string{"1.0-2.5", " 3-4s "}, 5)
+	ranges, err := ParseTimeRanges([]string{"1.0-2.5", " 3-4s ", "0.4-0.7"}, 5) // 0.7 - 0.4 is 0.29999999999999993
 	require.NoError(t, err)
-	assert.Equal(t, []TimeRange{{1, 2.5}, {3, 4}}, ranges)
+	assert.Equal(t, []TimeRange{{1, 2.5}, {3, 4}, {0.4, 0.7}}, ranges)
 
 	for _, bad := range [][]string{nil, {"soon"}, {"2.0-2.1"}, {"6-7"}, {"-1-2"}} {
 		_, err := ParseTimeRanges(bad, 5)

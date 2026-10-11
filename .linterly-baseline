@@ -29,7 +29,7 @@
 1016	backend/internal/agent/repair/agent_flow_test.go
 7707	backend/internal/domain/
 365	backend/internal/domain/brand.go
-510	backend/internal/domain/editor.go
+509	backend/internal/domain/editor.go
 338	backend/internal/domain/judge.go
 380	backend/internal/domain/review.go
 441	backend/internal/domain/worldstate.go
