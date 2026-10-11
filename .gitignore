@@ -14,3 +14,7 @@ static/src/dist/*
 
 # built server binary
 /backend/cmd/server/server
+
+# Windows packaging (scripts/package-windows.sh)
+*.syso
+/build/windows/nsis/MicrosoftEdgeWebview2Setup.exe

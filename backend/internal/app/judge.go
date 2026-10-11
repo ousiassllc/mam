@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"errors"
@@ -33,9 +33,10 @@ func newJudgeSetup(cfg config.Config, logger *slog.Logger) (judgeSetup, error) {
 	} else {
 		s.frames = ff
 	}
-	faces, err := facesim.NewONNX(facesim.ONNXConfig{ModelDir: cfg.FaceModels(), RuntimeLibrary: cfg.ONNXRuntimeLib})
+	// The Windows stub (facesim/onnx_windows.go) always fails with ErrUnavailable, so staticcheck sees the success case as dead there.
+	faces, err := facesim.NewONNX(facesim.ONNXConfig{ModelDir: cfg.FaceModels(), RuntimeLibrary: cfg.ONNXRuntimeLib}) //nolint:staticcheck // SA4023: platform stub
 	switch {
-	case err == nil:
+	case err == nil: //nolint:staticcheck // SA4023: platform stub
 		s.faces = faces
 	case errors.Is(err, facesim.ErrUnavailable):
 		logger.Warn("face identity similarity is off: Takes are judged qualitatively only", "model_dir", cfg.FaceModels(), "err", err)

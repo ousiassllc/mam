@@ -1,0 +1,15 @@
+# Tasks shared by the platform Taskfiles. The Wails template builds a JS front-end here; mam's
+# front-end is static/ (templ -> esbuild -> tailwind), built by scripts/package-windows.sh before
+# `wails3 package` runs.
+version: '3'
+
+tasks:
+  build:frontend:
+    summary: Checks that the front-end assets are built (static/src/dist)
+    run: once
+    preconditions:
+      - sh: test -f static/src/dist/app.js
+        msg: "static/src/dist is empty. Build the front-end first: run scripts/package-windows.sh (or make assets)."
+
+# build/windows/icon.ico is committed. To regenerate it from build/appicon.png:
+#   cd build && wails3 generate icons -input appicon.png -windowsfilename windows/icon.ico -macfilename /tmp/icons.icns

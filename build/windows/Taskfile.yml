@@ -1,0 +1,45 @@
+version: '3'
+
+includes:
+  common: ../Taskfile.yml
+
+# Variables from scripts/package-windows.sh: VERSION (X.Y.Z) becomes the NSIS INFO_PRODUCTVERSION
+# and the installer file name; INFO_JSON is the info.json (with that version) for the exe resources.
+# Only amd64 is built.
+vars:
+  ARCH: "amd64"
+
+tasks:
+  build:
+    summary: Builds the Wails window front (backend/cmd/wails) into bin/mam.exe, pure Go
+    deps:
+      - task: common:build:frontend
+    cmds:
+      - task: generate:syso
+      - go build -tags production -trimpath -buildvcs=false -ldflags="-s -w -H windowsgui" -o "{{.BIN_DIR}}/{{.APP_NAME}}.exe" ./backend/cmd/wails
+    env:
+      GOOS: windows
+      GOARCH: amd64
+      CGO_ENABLED: "0"
+
+  # The .syso (icon, manifest, version info) is picked up by `go build` from the package directory.
+  generate:syso:
+    summary: Generates the Windows resource file for backend/cmd/wails
+    dir: build
+    cmds:
+      - wails3 generate syso -arch {{.ARCH}} -icon windows/icon.ico -manifest windows/wails.exe.manifest -info {{.INFO_JSON | default "windows/info.json"}} -out ../backend/cmd/wails/wails_windows_{{.ARCH}}.syso
+
+  package:
+    summary: Packages bin/mam.exe into the NSIS installer bin/mam-<version>-windows-amd64-setup.exe
+    deps:
+      - task: build
+    dir: build/windows/nsis
+    cmds:
+      # The WebView2 bootstrapper (downloaded from Microsoft, not committed) goes into the installer.
+      - wails3 generate webview2bootstrapper -dir "{{.ROOT_DIR}}/build/windows/nsis"
+      - |
+        {{if eq OS "windows"}}
+        makensis -DINFO_PRODUCTVERSION={{.VERSION | default "0.0.0"}} -DARG_WAILS_AMD64_BINARY="{{.ROOT_DIR}}\{{.BIN_DIR}}\{{.APP_NAME}}.exe" project.nsi
+        {{else}}
+        makensis -DINFO_PRODUCTVERSION={{.VERSION | default "0.0.0"}} -DARG_WAILS_AMD64_BINARY="{{.ROOT_DIR}}/{{.BIN_DIR}}/{{.APP_NAME}}.exe" project.nsi
+        {{end}}

@@ -94,6 +94,7 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 ├── scripts/
 │   ├── build.sh            # 本番ビルド（templ → esbuild/tailwind → go build）。`--all` で全プラットフォーム
 │   ├── package-windows.sh  # Windows 版のパッケージング（フロント → Wails ウィンドウ版 exe → NSIS インストーラー。§11）
+│   ├── smoke-windows.sh    # リリースのスモーク（インストーラーを `/S` で入れ、`mam.exe` を起動して `GET /` が 200 か確認。release.yml）
 │   ├── fetch-face-models.sh # 顔検出・埋め込みモデル（YuNet / SFace）の取得と SHA-256 検証（§9 / model-adapters.md §10.1）
 │   └── linterly-staged.sh  # コミット対象ファイルの行数上限チェック（pre-commit）
 ├── build/                  # Wails v3 のパッケージング設定（`config.yml`・`Taskfile.yml`・`windows/`: アイコン・マニフェスト・`info.json`・`nsis/project.nsi`。§11）
@@ -105,7 +106,8 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 │   │   └── wails/          # Windows 版のエントリーポイント（`//go:build windows`。Wails ウィンドウ。§11）
 │   │       └── main.go     # Wails アプリ・ウィンドウ・単一インスタンス。`app.Run` を別 goroutine で動かし、起動完了で URL を開く
 │   └── internal/
-│       ├── app/            # 配線（DI）・起動・グレースフルシャットダウン。`cmd/server/main.go` から移した起動処理（設定読込・データディレクトリのロック・ロガー・`buildServices`・ジョブ復旧・`runHTTP`）、`listen.go`（127.0.0.1 の空きポート確保。使用中なら別ポートへフォールバック）、`judge.go`（AI Video Judge の起動時の準備。`newJudgeSetup`。ffmpeg と顔モデル・ONNX Runtime を探し、無ければ縮退して警告ログ。model-adapters.md §10）。`Run(ctx, Options)` は待ち受けが始まった時点で `Options.OnReady(url)` を呼ぶ
+│       ├── app/            # 配線（DI）・起動・グレースフルシャットダウン。`cmd/server/main.go` から移した起動処理（設定読込・データディレクトリのロック・ロガー・`buildServices`・ジョブ復旧・`runHTTP`）、`listen.go`（127.0.0.1 の空きポート確保。使用中なら別ポートへフォールバック）、`judge.go`（AI Video Judge の起動時の準備。`newJudgeSetup`。ffmpeg と顔モデル・ONNX Runtime を探し、無ければ縮退して警告ログ。model-adapters.md §10）。`Run(ctx, Options)` は待ち受けが始まった時点で `Options.OnReady(url)` を呼ぶ。`args.go`（`ValidateArgs`。コンソールの無い `cmd/wails` が `--help`・引数の誤りをダイアログ用の文字列で受け取る）
+│       ├── desktop/        # `cmd/wails` のうち Wails に依存しない部分（OS 非依存でテストする）: `Navigator`（サーバーの URL とウィンドウの準備完了を待ち合わせて読み込む）、`Server`（`app.Run` のバックグラウンド実行と停止）
 │       ├── config/         # フラグ / 環境変数（MAM_*）からの設定解決（データディレクトリ・ポート等）
 │       ├── logging/        # 構造化ログ（slog、レベル別、ローカルファイルへローテーション出力）
 │       ├── fsutil/         # 一時ファイル→リネームのアトミック書き込み、異常終了時の一時ファイル掃除
@@ -294,3 +296,4 @@ Windows では、ブラウザ版と同じ `127.0.0.1` のサーバーを `intern
 | 1.12 | 2026-10-01 | §2 の設定フラグ説明と `facesim/` の節番号参照に `model-adapters.md` を付けた | 文書名のない `§9.2`・`§10`・`§11.4`・`§13` が overview.md 自身の節（ビルド・テスト戦略・Wails 等）と読み違えられたため（Issue #185） |
 | 1.13 | 2026-10-03 | §5 の構成図に `cmd/server/judge.go` と `lib/query.ts` を追加し、§11 の Wails 化の記述の `openBrowser()` の所在を `main.go` から `browser.go` に直した | 実装（`backend/cmd/server/judge.go`・`browser.go`、`static/src/components/lib/query.ts`）に構成図と記述が追従していなかったため（Issue #441） |
 | 1.14 | 2026-10-03 | §2 の実行方式、§5 のディレクトリ構成（`internal/app`・`cmd/wails`・`build/`・`scripts/package-windows.sh`）、§6 の起動処理と概念コード、§11 を「将来拡張」から Windows デスクトップ版の要約に書き換え、詳細を `desktop.md` に新設した | Issue #480。インストーラー配布の要望。Wails v3 の AssetServer が WebSocket を処理しない（501）ため、元の Handler 直渡しの方針ではチャットと生成進捗が動かず、サーバーを維持してウィンドウが URL を開く方式にした |
+| 1.15 | 2026-10-11 | §5 に `internal/desktop`（`cmd/wails` の Wails 非依存部分）・`internal/app/args.go`・`scripts/smoke-windows.sh` を追加 | Issue #480 の実装。`cmd/wails` は windows タグで Linux のテストに載らないため、待ち合わせと停止の処理を OS 非依存のパッケージへ出した |
