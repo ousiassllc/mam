@@ -16,3 +16,9 @@ func RunSafely(logger *slog.Logger, name string, fn func()) {
 	}()
 	fn()
 }
+
+// Async returns fn as a callback that runs on a goroutine of its own (RunSafely), for a callback that
+// must not block its caller. It does not wait for the runs.
+func Async[T any](logger *slog.Logger, name string, fn func(T)) func(T) {
+	return func(v T) { go RunSafely(logger, name, func() { fn(v) }) }
+}

@@ -209,8 +209,8 @@ func New(deps Deps) *Services {
 			// Not resumable: a repair costs money, so an interrupted one is failed, not repeated.
 			deps.Jobs.Register(domain.JobRepair, repairs.agent.Handle, false)
 			// The Repair / Retake Loop continues when a generate or judge job has finished (the queue's
-			// callback must not block).
-			jobFinished = func(jobID string) { go repairs.agent.JobChanged(context.Background(), jobID) }
+			// callback must not block, and a panic must not end the server).
+			jobFinished = bgwork.Async(logger, "repair loop", func(jobID string) { repairs.agent.JobChanged(context.Background(), jobID) })
 		}
 	}
 	versions := repository.NewVersionRepository(deps.DB)
