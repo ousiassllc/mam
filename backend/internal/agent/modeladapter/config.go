@@ -3,10 +3,8 @@ package modeladapter
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
-	"slices"
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -249,117 +247,6 @@ func overlayEntries[K comparable, V any](dst map[K]V, raw map[K]json.RawMessage)
 		dst[k] = v
 	}
 	return nil
-}
-
-// Validate checks that every route names a model that has an adapter and settings, that video
-// targets use a resolution the model supports and that the numbers are positive.
-func (c Config) Validate() error {
-	var errs []error
-	for v, vc := range c.Vendors {
-		if !slices.Contains(Vendors(), v) {
-			errs = append(errs, fmt.Errorf("vendor %q is unknown", v))
-		}
-		if vc.BaseURL == "" || vc.MaxConcurrency <= 0 || vc.TimeoutSeconds <= 0 {
-			errs = append(errs, fmt.Errorf("vendor %s: base_url, max_concurrency and timeout_seconds must be set", v))
-		}
-	}
-	// A typo in the key of a map entry would otherwise change nothing without a word.
-	for m, mc := range c.Models {
-		caps, video := Capabilities(m)
-		if !slices.Contains(domain.ImageModels(), m) && !video {
-			errs = append(errs, fmt.Errorf("models: %q is not an image or video model", m))
-		}
-		for res := range mc.CostPerSecond {
-			if video && !caps.SupportsResolution(res) {
-				errs = append(errs, fmt.Errorf("models %s: cost_per_second_usd: %q is not a resolution of the model", m, res))
-			}
-		}
-	}
-	for p := range c.Images {
-		if !slices.Contains(ImagePurposes(), p) {
-			errs = append(errs, fmt.Errorf("images: %q is not an image purpose", p))
-		}
-	}
-	for q := range c.Policies {
-		if !q.Valid() {
-			errs = append(errs, fmt.Errorf("policies: %q is not a Quality Policy", q))
-		}
-	}
-	for q := range c.Routing.Weights {
-		if !q.Valid() {
-			errs = append(errs, fmt.Errorf("routing weights: %q is not a Quality Policy", q))
-		}
-	}
-	for q := range c.Routing.Candidates {
-		if !q.Valid() {
-			errs = append(errs, fmt.Errorf("routing candidates: %q is not a Quality Policy", q))
-		}
-	}
-	image := func(where string, t ImageTarget) {
-		mc, ok := c.Models[t.Model]
-		if !slices.Contains(domain.ImageModels(), t.Model) || !ok || mc.Model == "" {
-			errs = append(errs, fmt.Errorf("%s: %q is not a configured image model", where, t.Model))
-		}
-		if t.Fast && mc.FastModel == "" {
-			errs = append(errs, fmt.Errorf("%s: %q has no fast_model", where, t.Model))
-		}
-		if _, ok := c.Vendors[VendorOf(t.Model)]; !ok {
-			errs = append(errs, fmt.Errorf("%s: no vendor settings for %q", where, VendorOf(t.Model)))
-		}
-	}
-	for _, p := range ImagePurposes() {
-		r, ok := c.Images[p]
-		if !ok {
-			errs = append(errs, fmt.Errorf("images: no route for %s", p))
-			continue
-		}
-		image("images "+string(p)+" primary", r.Primary)
-		image("images "+string(p)+" fallback", r.Fallback)
-	}
-	video := func(where string, t VideoTarget) {
-		caps, ok := Capabilities(t.Model)
-		mc := c.Models[t.Model]
-		switch {
-		case !ok || mc.Model == "":
-			errs = append(errs, fmt.Errorf("%s: %q is not a configured video model", where, t.Model))
-		case !caps.SupportsResolution(t.Resolution):
-			errs = append(errs, fmt.Errorf("%s: %q does not support %q", where, t.Model, t.Resolution))
-		case mc.CostPerSecond[t.Resolution] <= 0:
-			errs = append(errs, fmt.Errorf("%s: no cost_per_second_usd for %s at %s", where, t.Model, t.Resolution))
-		}
-		if _, ok := c.Vendors[VendorOf(t.Model)]; !ok {
-			errs = append(errs, fmt.Errorf("%s: no vendor settings for %q", where, VendorOf(t.Model)))
-		}
-	}
-	for _, q := range []domain.QualityPolicy{domain.QualityFast, domain.QualityBalanced, domain.QualityMaxQuality} {
-		r, ok := c.Policies[q]
-		if !ok {
-			errs = append(errs, fmt.Errorf("policies: no route for %s", q))
-			continue
-		}
-		if r.Takes <= 0 {
-			errs = append(errs, fmt.Errorf("policies %s: takes must be positive", q))
-		}
-		video("policies "+string(q)+" primary", r.Primary)
-		video("policies "+string(q)+" fallback", r.Fallback)
-	}
-	for _, q := range domain.QualityPolicies() {
-		for i, t := range c.Routing.Candidates[q] {
-			video(fmt.Sprintf("routing candidates %s[%d]", q, i), t)
-		}
-		w := c.Routing.Weights[q]
-		if w.Quality < 0 || w.Cost < 0 || w.Fit < 0 || w.Quality+w.Cost+w.Fit <= 0 {
-			errs = append(errs, fmt.Errorf("routing weights %s: must not be negative and must sum to more than 0", q))
-		}
-	}
-	if r := c.Routing; r.MinSamples <= 0 || r.PriorQuality < 0 || r.PriorQuality > 1 || r.SwitchMargin < 0 {
-		errs = append(errs, errors.New("routing: min_samples must be positive, prior_quality within 0-1 and switch_margin not negative"))
-	}
-	if c.Retry.MaxAttempts <= 0 || c.Retry.BaseDelayMillis <= 0 || c.Retry.MaxDelayMillis < c.Retry.BaseDelayMillis ||
-		c.Breaker.FailureThreshold <= 0 || c.Breaker.OpenSeconds <= 0 {
-		errs = append(errs, errors.New("retry and breaker settings must be positive (max_delay_ms >= base_delay_ms)"))
-	}
-	return errors.Join(errs...)
 }
 
 func (c Config) timeout(v Vendor) time.Duration {
