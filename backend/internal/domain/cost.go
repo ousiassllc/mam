@@ -58,6 +58,10 @@ type StoredTake struct {
 	// Unneeded is true when the Take can be archived without losing a choice: it is Rejected, or
 	// another Take of its Shot is Selected, and no Edit Timeline or Lip Sync refers to it.
 	Unneeded bool
+	// Archivable is true when the Take may be archived: it is not the Selected Take of its Shot and
+	// no Timeline refers to it. Unneeded implies it; the reverse does not hold (a Candidate of a Shot
+	// with no Selected Take can be archived by hand but is not "unneeded").
+	Archivable bool
 }
 
 // StorageSummary is the disk view of a Project (spec/requirements/non-functional.md §4).
