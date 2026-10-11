@@ -92,3 +92,14 @@ func TestCollectionRoutes_AreTheFixedPathsOfTheirResources(t *testing.T) {
 	assert.Equal(t, paths.Reviews()+"/r1", paths.Review("r1"))
 	assert.Equal(t, paths.SeriesList()+"/s1", paths.Series("s1"))
 }
+
+func TestHomeAnalytics_AreTheFixedPathsOfTheirPages(t *testing.T) {
+	assert.Equal(t, "/", paths.Home())
+	assert.Equal(t, "/analytics", paths.Analytics())
+}
+
+func TestWithBranch_AddsTheEscapedBranchQueryAndNothingForTheTrunk(t *testing.T) {
+	assert.Equal(t, "/projects/p1/world-state", paths.WithBranch(paths.Project("p1", "world-state"), ""))
+	assert.Equal(t, "/projects/p1/world-state?branch_id=b1", paths.WithBranch(paths.Project("p1", "world-state"), "b1"))
+	assert.Equal(t, "/x?branch_id=a%26b%3Dc+d%23e%25f%2Fg", paths.WithBranch("/x", "a&b=c d#e%f/g"))
+}

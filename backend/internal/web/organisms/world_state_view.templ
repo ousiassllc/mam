@@ -1,7 +1,6 @@
 package organisms
 
 import (
-	"net/url"
 	"strconv"
 	"strings"
 
@@ -42,12 +41,12 @@ func fieldLabel(name string) string {
 	return name
 }
 
-// branchQuery is the query that addresses the Branch of the view ("" for the trunk).
-func (d WorldStateData) branchQuery() string {
+// branchID is the ID of the Branch of the view ("" for the trunk).
+func (d WorldStateData) branchID() string {
 	if d.Branch == nil {
 		return ""
 	}
-	return "?branch_id=" + url.QueryEscape(d.Branch.ID)
+	return d.Branch.ID
 }
 
 func (d WorldStateData) entityURL(plural, id string) string {
@@ -98,7 +97,7 @@ func (d WorldStateData) fieldLockToggle(target domain.WorldTarget, id, field str
 		hidden = append(hidden, molecules.HiddenField{Name: "target_id", Value: id})
 	}
 	return molecules.LockToggleData{
-		DOMID: "lock-" + string(target) + "-" + id + "-" + field, URL: paths.Project(d.Project.ID, "world-state", "locks") + d.branchQuery(),
+		DOMID: "lock-" + string(target) + "-" + id + "-" + field, URL: paths.WithBranch(paths.Project(d.Project.ID, "world-state", "locks"), d.branchID()),
 		Parameter: domain.LockParameter(field), Label: lockLabel(field), Mode: mode,
 		Modes: []domain.LockMode{domain.LockAuto, domain.LockLocked}, Hidden: hidden,
 		Target: "#world-state-view",
@@ -169,7 +168,7 @@ templ entityForm(d WorldStateData, target domain.WorldTarget, plural, id, name s
 	<div class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3">
 		<form
 			class="flex flex-col gap-2"
-			hx-put={ d.entityURL(plural, id) + d.branchQuery() }
+			hx-put={ paths.WithBranch(d.entityURL(plural, id), d.branchID()) }
 			hx-target="#world-state-view"
 			hx-swap="outerHTML"
 		>
@@ -202,7 +201,7 @@ templ entityForm(d WorldStateData, target domain.WorldTarget, plural, id, name s
 templ referenceSlotForm(d WorldStateData, plural, id string, sf slotForm) {
 	<form
 		class="flex flex-wrap items-center gap-2 text-sm"
-		hx-put={ d.entityURL(plural, id) + "/reference" + d.branchQuery() }
+		hx-put={ paths.WithBranch(d.entityURL(plural, id)+"/reference", d.branchID()) }
 		hx-target="#world-state-view"
 		hx-swap="outerHTML"
 	>
@@ -284,7 +283,7 @@ templ WorldStateView(d WorldStateData) {
 		</section>
 		@VersionHistoryPanel(VersionHistoryData{
 			DOMID: "version-history-world", Title: "World State のバージョン", BasePath: paths.Project(d.Project.ID, "world-state"),
-			Target: "#world-state-view", Query: d.branchQuery(), Entries: d.Versions,
+			Target: "#world-state-view", BranchID: d.branchID(), Entries: d.Versions,
 		})
 	</div>
 }
