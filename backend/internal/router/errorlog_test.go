@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ousiassllc/mam/backend/internal/credential/credentialtest"
 	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 	"github.com/ousiassllc/mam/backend/internal/router"
 	"github.com/ousiassllc/mam/backend/internal/service"
@@ -21,7 +22,7 @@ import (
 func TestProjects_ServiceFailureIsLoggedAndRendersErrorPage(t *testing.T) {
 	testenv.Parallel(t)
 	db := testdb.Open(t)
-	svc := servicetest.New(t, service.Deps{DB: db, Credentials: newMemStore()})
+	svc := servicetest.New(t, service.Deps{DB: db, Credentials: credentialtest.New()})
 	var logs bytes.Buffer
 	engine := router.New(svc, router.Options{Logger: slog.New(slog.NewTextHandler(&logs, nil))})
 	require.NoError(t, db.Close()) // every query now fails with "database is closed"
@@ -45,7 +46,7 @@ func TestProjects_ServiceFailureIsLoggedAndRendersErrorPage(t *testing.T) {
 func TestAPI_ServiceFailureIsAGeneric500WhoseCauseIsLogged(t *testing.T) {
 	testenv.Parallel(t)
 	db := testdb.Open(t)
-	svc := servicetest.New(t, service.Deps{DB: db, Credentials: newMemStore()})
+	svc := servicetest.New(t, service.Deps{DB: db, Credentials: credentialtest.New()})
 	var logs bytes.Buffer
 	engine := router.New(svc, router.Options{Logger: slog.New(slog.NewTextHandler(&logs, nil))})
 	require.NoError(t, db.Close()) // every query now fails with "database is closed"

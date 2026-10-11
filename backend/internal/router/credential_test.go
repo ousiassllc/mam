@@ -78,7 +78,7 @@ func regexpFind(t *testing.T, pattern, body string) string {
 func TestSettings_RendersWithoutAKeyStore(t *testing.T) {
 	a := newApp(t)
 	project := a.createProject("CM")
-	a.keys.failWith(errors.New("secret service is not available"))
+	a.keys.FailWith(errors.New("secret service is not available"))
 
 	rec := a.get("/projects/"+project+"/settings", false)
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
@@ -97,7 +97,7 @@ func TestSettings_RendersWithoutAKeyStore(t *testing.T) {
 // the generic internal error (#324).
 func TestSettings_SavingAndDeletingKeysWithoutAKeyStoreAnswersThePanelWith503(t *testing.T) {
 	a := newApp(t)
-	a.keys.failWith(errors.New("secret service is not available"))
+	a.keys.FailWith(errors.New("secret service is not available"))
 
 	for _, rec := range []*httptest.ResponseRecorder{
 		a.form(http.MethodPut, "/credentials/kling", url.Values{"api_key": {"sk-abc"}}),

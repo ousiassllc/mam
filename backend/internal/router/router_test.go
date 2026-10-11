@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -16,6 +17,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ousiassllc/mam/backend/internal/credential/credentialtest"
+	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 	"github.com/ousiassllc/mam/backend/internal/router"
 	"github.com/ousiassllc/mam/backend/internal/service"
@@ -25,6 +28,37 @@ import (
 )
 
 func init() { gin.SetMode(gin.TestMode) }
+
+type app struct {
+	t      *testing.T
+	db     *repository.DB
+	engine *gin.Engine
+	svc    *service.Services
+	keys   *credentialtest.Memory // the key store of the app
+	cookie *http.Cookie
+	token  string
+	assets string // the assets directory
+}
+
+// newApp is an app that shares nothing with another test (its own database, assets directory and
+// key store), so the test that builds it runs in parallel with the others.
+func newApp(t *testing.T) *app {
+	t.Helper()
+	testenv.Parallel(t)
+	return newSerialApp(t)
+}
+
+// newSerialApp is newApp for a test that changes process-wide state (t.Setenv) and so cannot run in parallel.
+func newSerialApp(t *testing.T) *app {
+	t.Helper()
+	keys := credentialtest.New()
+	dir := t.TempDir()
+	db := testdb.Open(t)
+	svc := servicetest.New(t, service.Deps{DB: db, Credentials: keys, AssetsDir: filepath.Join(dir, "assets")})
+	a := &app{t: t, db: db, engine: router.New(svc, router.Options{}), svc: svc, keys: keys, assets: filepath.Join(dir, "assets")}
+	a.cookie, a.token = bootstrap(t, a.engine)
+	return a
+}
 
 // newEngine is an engine of its own (database, key store), so the test that builds it runs in parallel.
 func newEngine(t *testing.T) *gin.Engine {
@@ -37,7 +71,7 @@ func newEngine(t *testing.T) *gin.Engine {
 func newSerialEngine(t *testing.T) *gin.Engine {
 	t.Helper()
 	db := testdb.Open(t)
-	svc := servicetest.New(t, service.Deps{DB: db, Credentials: newMemStore()})
+	svc := servicetest.New(t, service.Deps{DB: db, Credentials: credentialtest.New()})
 	return router.New(svc, router.Options{
 		Static: fstest.MapFS{
 			"app.js":           {Data: []byte("console.log(1)")},

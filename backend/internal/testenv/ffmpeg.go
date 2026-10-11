@@ -61,7 +61,7 @@ func encode(ffmpeg, ext string, args []string) ([]byte, string) {
 	if b, err := cmd.CombinedOutput(); err != nil {
 		return nil, err.Error() + ": " + string(b)
 	}
-	data, err := os.ReadFile(out)
+	data, err := os.ReadFile(out) // #nosec G304 -- a file of the temp directory this function made
 	if err != nil {
 		return nil, err.Error()
 	}

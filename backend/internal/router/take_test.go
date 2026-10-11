@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ousiassllc/mam/backend/internal/credential/credentialtest"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/repository"
@@ -47,7 +48,7 @@ func newTakeAppWith(t *testing.T, mutate func(*service.Deps)) *takeApp {
 		testenv.MissingFFmpeg(t, "ffmpeg / ffprobe are not installed")
 	}
 	testenv.Parallel(t)
-	keys := newMemStore()
+	keys := credentialtest.New()
 	dir := t.TempDir()
 	db := testdb.Open(t)
 	deps := service.Deps{DB: db, Credentials: keys, AssetsDir: filepath.Join(dir, "assets"), Media: &tools}

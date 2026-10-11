@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Reads `go test -json` on stdin: prints the tests' own output as `go test` would, then lists the tests
+# Reads `go test -json` on stdin: prints the output of the packages and of the failed tests (the output
+# `go test` shows, once the run is over), then lists the tests
 # that took longer than SLOW_TEST_SECONDS (default 3) so that a slow test shows up in the CI log
 # before it makes the package the slowest one. A warning only: the exit status is `go test`'s
 # (run it as `bash -o pipefail -c 'go test -json ./... | scripts/slow-tests.sh'`).
@@ -15,8 +16,19 @@ max_listed=20
 raw="$(mktemp)"
 trap 'rm -f "$raw"' EXIT
 
-# Lines that are not JSON (a build failure is printed as plain text) are passed through unchanged.
-tee "$raw" | jq -R -r 'try (fromjson | select(.Action == "output") | .Output | rtrimstr("\n")) catch .'
+# The output of the tests that passed is dropped (plain `go test` does not print it either); what the
+# failed ones and the packages printed is shown. Lines that are not JSON (a build failure is printed
+# as plain text) are passed through unchanged.
+tee "$raw" >/dev/null
+jq -R -r -n '
+  [inputs | try fromjson catch .] as $events
+  | (reduce ($events[] | select(type == "object" and .Action == "pass" and .Test != null)) as $e ({}; .[$e.Package + "\u0000" + $e.Test] = true)) as $passed
+  | $events[]
+  | if type == "string" then .
+    elif .Action == "output" and (.Test == null or ($passed[.Package + "\u0000" + .Test] | not))
+    then .Output | rtrimstr("\n")
+    else empty end
+' "$raw"
 
 slow="$(jq -R -r --argjson t "$threshold" '
   try (fromjson | select(.Action == "pass" and .Test != null and .Elapsed > $t)

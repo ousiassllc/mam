@@ -10,6 +10,9 @@ stream() {
   cat <<'JSON'
 {"Action":"output","Package":"x/backend/internal/router","Test":"TestFast","Output":"fast says hi\n"}
 {"Action":"pass","Package":"x/backend/internal/router","Test":"TestFast","Elapsed":0.2}
+{"Action":"output","Package":"x/backend/internal/router","Test":"TestBroken","Output":"    broken_test.go:7: expected 1, got 2\n"}
+{"Action":"fail","Package":"x/backend/internal/router","Test":"TestBroken","Elapsed":0.1}
+{"Action":"output","Package":"x/backend/internal/router","Output":"FAIL\tx/backend/internal/router\t30.1s\n"}
 {"Action":"pass","Package":"x/backend/internal/router","Test":"TestMedium","Elapsed":4.5}
 {"Action":"pass","Package":"x/backend/internal/router","Test":"TestSlowest","Elapsed":9.25}
 {"Action":"pass","Package":"x/backend/internal/router","Elapsed":30}
@@ -29,7 +32,9 @@ lacks() { [[ "$1" != *"$2"* ]]; }
 before() { local head="${1%%"$3"*}"; [[ "$1" == *"$3"* && "$head" == *"$2"* ]]; }
 
 out="$(stream | "$script" 2>/dev/null)"
-check "test output is passed through" has "$out" "fast says hi"
+check "the output of a failed test is passed through" has "$out" "expected 1, got 2"
+check "the output of a package is passed through" has "$out" "FAIL"$'\t'"x/backend/internal/router"
+check "the output of a passed test is dropped" lacks "$out" "fast says hi"
 check "plain text is passed through" has "$out" "build failed: plain text"
 check "the report goes to stderr" lacks "$out" "slow-tests:"
 

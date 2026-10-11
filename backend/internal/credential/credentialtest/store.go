@@ -1,4 +1,8 @@
-package router_test
+// Package credentialtest gives tests a credential.Store of their own.
+//
+// The OS key store mock of go-keyring is one process-wide variable that every keyring.MockInit
+// replaces, so tests that use it cannot run in parallel. A Memory is separate for each test.
+package credentialtest
 
 import (
 	"errors"
@@ -8,27 +12,26 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/credential"
 )
 
-// memStore is the credential.Store of one test app. The OS key store mock of go-keyring is one
-// process-wide variable that every MockInit replaces, so tests that share it cannot run in parallel;
-// each app has a store of its own instead.
-type memStore struct {
+// Memory is a credential.Store that keeps the keys in memory.
+type Memory struct {
 	mu   sync.Mutex
 	keys map[string]string
 	err  error
 }
 
-var _ credential.Store = (*memStore)(nil)
+var _ credential.Store = (*Memory)(nil)
 
-func newMemStore() *memStore { return &memStore{keys: map[string]string{}} }
+// New returns an empty Memory.
+func New() *Memory { return &Memory{keys: map[string]string{}} }
 
-// failWith makes every following call fail with err, as an OS key store that is not available does.
-func (m *memStore) failWith(err error) {
+// FailWith makes every following call fail with err, as an OS key store that is not available does.
+func (m *Memory) FailWith(err error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.err = err
 }
 
-func (m *memStore) check(provider string) error {
+func (m *Memory) check(provider string) error {
 	if m.err != nil {
 		return m.err
 	}
@@ -38,7 +41,8 @@ func (m *memStore) check(provider string) error {
 	return nil
 }
 
-func (m *memStore) Set(provider, apiKey string) error {
+// Set implements credential.Store.
+func (m *Memory) Set(provider, apiKey string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if err := m.check(provider); err != nil {
@@ -51,7 +55,8 @@ func (m *memStore) Set(provider, apiKey string) error {
 	return nil
 }
 
-func (m *memStore) Get(provider string) (string, error) {
+// Get implements credential.Store.
+func (m *Memory) Get(provider string) (string, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if err := m.check(provider); err != nil {
@@ -64,7 +69,8 @@ func (m *memStore) Get(provider string) (string, error) {
 	return key, nil
 }
 
-func (m *memStore) Delete(provider string) error {
+// Delete implements credential.Store.
+func (m *Memory) Delete(provider string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if err := m.check(provider); err != nil {
@@ -77,7 +83,8 @@ func (m *memStore) Delete(provider string) error {
 	return nil
 }
 
-func (m *memStore) Has(provider string) (bool, error) {
+// Has implements credential.Store.
+func (m *Memory) Has(provider string) (bool, error) {
 	_, err := m.Get(provider)
 	if errors.Is(err, credential.ErrNotFound) {
 		return false, nil

@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/jev"
+	"github.com/ousiassllc/mam/backend/internal/credential/credentialtest"
 )
 
 // A Take the Judge fails on a plain (not LOCKed) camera issue; the Judge recommends Partial Regeneration.
@@ -146,7 +147,7 @@ func TestRepair_DifferentModelSwitchesModelAndJevRunsInShadowOnly(t *testing.T) 
 	defer srv.Close()
 	cfg := jev.DefaultConfig()
 	cfg.BaseURL = srv.URL
-	keys := newMemStore()
+	keys := credentialtest.New()
 	client, err := jev.New(cfg, keys, srv.Client())
 	require.NoError(t, err)
 
@@ -202,7 +203,7 @@ func TestRepair_JevIsNotAskedWhenARuleOrTheLockDecides(t *testing.T) {
 	defer srv.Close()
 	cfg := jev.DefaultConfig()
 	cfg.BaseURL = srv.URL
-	keys := newMemStore()
+	keys := credentialtest.New()
 	client, err := jev.New(cfg, keys, srv.Client())
 	require.NoError(t, err)
 

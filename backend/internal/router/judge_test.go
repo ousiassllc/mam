@@ -27,6 +27,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/repair"
+	"github.com/ousiassllc/mam/backend/internal/credential/credentialtest"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/facesim"
 	"github.com/ousiassllc/mam/backend/internal/media"
@@ -141,17 +142,15 @@ type judgeOpts struct {
 	command string
 	// spec replaces the Prompt Planner's answer (empty: lockedSpecAnswer).
 	spec string
-	// keys is the key store of the app (nil: an empty one); a test that builds a Jev client for shadow needs it first.
-	keys *memStore
+	keys *credentialtest.Memory // nil: an empty one (a Jev client in shadow needs the store first)
 }
 
 func newJudgeAppOpts(t *testing.T, o judgeOpts, sims ...float64) *judgeApp {
 	t.Helper()
 	testenv.Parallel(t)
-	keys := cmp.Or(o.keys, newMemStore())
+	keys := cmp.Or(o.keys, credentialtest.New())
 	dir := t.TempDir()
 	db := testdb.Open(t)
-
 	l := &judgeLLM{verdict: o.verdict, specs: cmp.Or(o.spec, lockedSpecAnswer), command: o.command}
 	video := &videoFake{}
 	jobs := jobqueue.New(repository.NewJobRepository(db), jobqueue.Options{})
@@ -171,7 +170,6 @@ func newJudgeAppOpts(t *testing.T, o judgeOpts, sims ...float64) *judgeApp {
 	ctx, cancel := context.WithCancel(context.Background())
 	jobs.Start(ctx)
 	t.Cleanup(func() { cancel(); jobs.Stop() })
-
 	a := &app{t: t, db: db, engine: router.New(svc, router.Options{}), svc: svc, keys: keys}
 	a.cookie, a.token = bootstrap(t, a.engine)
 	g := &genApp{app: a, video: video}
