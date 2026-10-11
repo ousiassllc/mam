@@ -1,6 +1,7 @@
 import { expect, waitUntil } from '@open-wc/testing';
 import './mam-timeline-editor';
-import type { EditTimelineBody, MamTimelineEditor } from './mam-timeline-editor';
+import type { MamTimelineEditor } from './mam-timeline-editor';
+import type { EditTimelineBody } from './timeline-api';
 import { holdFetch, stubFetch } from '../testdata/fakes';
 
 const API = '/api/v1/projects/p1/edit-timeline';

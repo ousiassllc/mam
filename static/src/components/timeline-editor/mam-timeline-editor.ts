@@ -17,48 +17,27 @@ import {
   trimProblem,
   withStarts,
   type EditClip,
-  type EditLimits,
   type TransitionType,
 } from '../lib/edit-model';
 import { errorMessage } from '../lib/errors';
 import { createLogger } from '../lib/logger';
 import '../video-player/mam-video-player';
+import { type EditTimelineBody, TIMELINE_RELOAD_EVENT, TIMELINE_UPDATED_EVENT } from './timeline-api';
 
 const log = createLogger('timeline-editor');
-
-/** GET /api/v1/projects/:id/edit-timeline. The URLs are the server's: the component builds none. */
-export interface EditTimelineBody {
-  id: string;
-  version_number: number;
-  duration_seconds: number;
-  clips: EditClip[];
-  branch_id?: string;
-  save_url: string;
-  preview_url: string;
-  transitions: TransitionType[];
-  limits: EditLimits;
-  readonly: boolean;
-}
-
-/** Fired when the server made new work of its own (the Reshoot Loop was started): the page's stage buttons reload. */
-export const TIMELINE_UPDATED_EVENT = 'timeline-updated';
-
-/** The event `htmx` fires (HX-Trigger of the Rough Cut / Final QC actions) when the timeline changed on the server. */
-export const TIMELINE_RELOAD_EVENT = 'timeline-reload';
 
 /**
  * `<mam-timeline-editor>`: the Edit Timeline of a Project (spec/components/overview.md §4.2, F-18 Simple).
  *
- * - Shot Selection: drag a clip (or use the arrows) to reorder; "外す" leaves a clip out.
- * - Cut Point / Timing: the In and Out second of the Take of each clip.
+ * - Shot Selection (drag or arrows to reorder, "外す" leaves a clip out) and Cut Point / Timing (In / Out second of the Take).
  * - Transition: how a clip follows the one before it (cut / fade / fade to black / dissolve).
  * - A preview player of the rendered Rough Cut of the saved version.
  *
  * `api-url` is GET /api/v1/projects/:id/edit-timeline. Saving PUTs the clips to the `save_url` of the response; the
  * server keeps every save as a new version. Once saved the component fires `timeline-updated` (bubbles, composed;
- * detail: {id}) so that HTMX refreshes what depends on the timeline, and reloads. It also reloads on `timeline-reload`,
- * which the server's actions send when they replaced the timeline (a new Rough Cut). It renders into the light DOM so
- * that the page's Tailwind classes apply.
+ * detail: {id}) so that HTMX refreshes what depends on the timeline, and reloads. It also reloads on `timeline-reload`
+ * (the server's actions send it when the timeline or its editability changed; unsaved edits survive). Light DOM: the
+ * page's Tailwind classes apply.
  */
 @customElement('mam-timeline-editor')
 export class MamTimelineEditor extends LitElement {
@@ -75,7 +54,7 @@ export class MamTimelineEditor extends LitElement {
 
   private captionDraft: { index: number; text: string } | null = null;
   private loadToken = 0;
-  private readonly onReload = () => void this.load();
+  private readonly onReload = () => void this.load({ keepEdits: true });
 
   protected override createRenderRoot(): HTMLElement {
     return this;
@@ -98,19 +77,26 @@ export class MamTimelineEditor extends LitElement {
   }
 
   /**
-   * Loads the latest timeline again, dropping unsaved changes. Resolves false when the request failed (the timeline
-   * on screen is then the old one); a load that a newer one superseded, or a 404 (no Rough Cut), is not a failure.
+   * Loads the latest timeline again, dropping unsaved changes (unless `keepEdits`, see below). Resolves false when the
+   * request failed (the timeline on screen is then the old one); a superseded load or a 404 (no Rough Cut) is not a failure.
+   * With `keepEdits` (`timeline-reload`) unsaved changes stay while the server has the version they were made on (only
+   * its `readonly` etc. are taken); a newer version (a new Rough Cut) drops them, and the notice says so.
    */
-  async load(): Promise<boolean> {
+  async load({ keepEdits = false }: { keepEdits?: boolean } = {}): Promise<boolean> {
     const token = ++this.loadToken;
     if (!this.apiUrl) return true;
     let ok = true;
     try {
       const body = await get<EditTimelineBody>(this.apiUrl);
       if (token !== this.loadToken) return true;
+      const previous = this.body;
+      const unsaved = keepEdits && previous !== null && isDirty(previous.clips, this.clips);
       this.body = body;
-      this.clips = withStarts(body.clips);
-      this.captionDraft = null;
+      if (!(unsaved && previous.version_number === body.version_number)) {
+        this.clips = withStarts(body.clips);
+        this.captionDraft = null;
+        if (unsaved) this.notice = '最新の版に差し替わったため、未保存の変更は破棄されました';
+      }
       this.error = '';
     } catch (error) {
       if (token !== this.loadToken) return true;
