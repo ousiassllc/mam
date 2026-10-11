@@ -68,7 +68,7 @@ templ ReviewWorkspace(i domain.ReviewInbox) {
 						<span class="w-14 shrink-0 font-mono text-xs text-neutral-400">{ timecodeLabel(c.TimecodeMs) }</span>
 						<span class="min-w-0 flex-1 whitespace-pre-wrap">{ c.Body }</span>
 						@atoms.Button(atoms.ToneDanger, "削除", templ.Attributes{
-							"hx-delete": paths.Review(i.ID, "comments", c.ID), "hx-target": "#review-workspace", "hx-swap": "outerHTML", "type": "button",
+							"hx-delete": paths.Review(i.ID, "comments", c.ID), "hx-target": "#review-workspace", "hx-swap": "outerHTML", "type": "button", "hx-confirm": "このコメントを削除します。よろしいですか？",
 						})
 					</li>
 				}
