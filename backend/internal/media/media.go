@@ -4,7 +4,6 @@
 package media
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -14,6 +13,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // ErrUnavailable means ffmpeg / ffprobe are not installed.
@@ -24,7 +24,10 @@ var ErrUnavailable = errors.New("media: ffmpeg and ffprobe are required")
 const MaxPreviewHeight = 1080
 
 // Tools is the ffmpeg and ffprobe executables.
-type Tools struct{ ffmpeg, ffprobe string }
+type Tools struct {
+	ffmpeg, ffprobe string
+	lim             limits // the zero value means defaultLimits
+}
 
 // Look finds ffmpeg and ffprobe on the PATH. It returns ErrUnavailable when either is missing.
 func Look() (Tools, error) {
@@ -33,12 +36,8 @@ func Look() (Tools, error) {
 	if err1 != nil || err2 != nil {
 		return Tools{}, ErrUnavailable
 	}
-	return Tools{ffmpeg: ffmpeg, ffprobe: ffprobe}, nil
+	return Tools{ffmpeg: ffmpeg, ffprobe: ffprobe, lim: defaultLimits}, nil
 }
-
-// FFmpeg returns the path of the ffmpeg executable, for callers that run their own ffmpeg command
-// (the frame sampling of the Judge Agent).
-func (t Tools) FFmpeg() string { return t.ffmpeg }
 
 // Info describes the first video stream of a file.
 type Info struct {
@@ -70,9 +69,8 @@ type probeOutput struct {
 
 // Probe reads the length, frame rate, size and audio of the video file.
 func (t Tools) Probe(ctx context.Context, path string) (Info, error) {
-	cmd := exec.CommandContext(ctx, t.ffprobe, "-v", "error", // #nosec G204 -- fixed arguments; path is an asset file
+	out, _, err := run(ctx, t.limits().probe, t.ffprobe, "-v", "error",
 		"-show_entries", "stream=codec_type,r_frame_rate,duration,width,height:format=duration", "-of", "json", path)
-	out, err := cmd.Output()
 	if err != nil {
 		return Info{}, fmt.Errorf("ffprobe %s: %w", filepath.Base(path), err)
 	}
@@ -171,23 +169,45 @@ var errNoOutput = errors.New("ffmpeg wrote no output")
 
 // thumbnailAt writes one frame of src found by the input options seek.
 func (t Tools) thumbnailAt(ctx context.Context, src, dst string, seek ...string) error {
-	return t.write(ctx, dst, "image2", append(append([]string{}, seek...),
+	return t.write(ctx, dst, "image2", 0, append(append([]string{}, seek...),
 		"-i", src, "-frames:v", "1", "-vf", "scale='min(960,iw)':-2", "-q:v", "3"))
 }
 
 // Proxy writes an H.264 copy of src that is at most 1080 pixels tall: what the preview plays
 // instead of a 4K Take.
 func (t Tools) Proxy(ctx context.Context, src, dst string) error {
-	return t.write(ctx, dst, "mp4", []string{
+	info, err := t.Probe(ctx, src)
+	if err != nil {
+		return err
+	}
+	return t.write(ctx, dst, "mp4", info.Duration, []string{
 		"-i", src, "-vf", "scale=-2:'min(" + strconv.Itoa(MaxPreviewHeight) + ",ih)'",
 		"-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-pix_fmt", "yuv420p",
 		"-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart",
 	})
 }
 
-// write runs ffmpeg with args and puts its output (of the given container format) at dst. The file
-// appears only when ffmpeg succeeded, so a crash never leaves a half-written file at dst.
-func (t Tools) write(ctx context.Context, dst, format string, args []string) error {
+// Frames writes the frames of src that the video filter keeps (at most maxFrames) as JPEGs named by
+// the pattern (an ffmpeg output pattern such as dir/%04d.jpg); seconds is the length of src.
+func (t Tools) Frames(ctx context.Context, src, pattern, filter string, maxFrames int, seconds float64) error {
+	return t.runFFmpeg(ctx, t.limits().writeLimit(seconds), "-v", "error", "-i", src, "-an", "-vf", filter,
+		"-frames:v", strconv.Itoa(maxFrames), "-q:v", "3", pattern)
+}
+
+// runFFmpeg runs ffmpeg with the arguments for at most limit. Cancelling ctx or running past the
+// limit (ErrTimeout) returns that error as it is; a failure of ffmpeg carries its stderr.
+func (t Tools) runFFmpeg(ctx context.Context, limit time.Duration, args ...string) error {
+	_, stderr, err := run(ctx, limit, t.ffmpeg, args...)
+	if err != nil && ctx.Err() == nil && !errors.Is(err, ErrTimeout) {
+		return fmt.Errorf("ffmpeg: %w: %s", err, strings.TrimSpace(string(stderr)))
+	}
+	return err
+}
+
+// write runs ffmpeg with args, which handle seconds of media, and puts its output (of the given
+// container format) at dst. The file appears only when ffmpeg succeeded, so a crash never leaves a
+// half-written file at dst.
+func (t Tools) write(ctx context.Context, dst, format string, seconds float64, args []string) error {
 	dir, base := filepath.Split(dst)
 	if dir == "" {
 		dir = "."
@@ -198,15 +218,9 @@ func (t Tools) write(ctx context.Context, dst, format string, args []string) err
 	tmp := filepath.Join(dir, "."+base+".ffmpeg.tmp") // a crash leaves it behind; the next run to the same dst overwrites it
 	full := append([]string{"-v", "error", "-y", "-nostdin"}, args...)
 	full = append(full, "-f", format, tmp)
-	var stderr bytes.Buffer
-	cmd := exec.CommandContext(ctx, t.ffmpeg, full...) // #nosec G204 -- arguments are built by this package; paths are asset files
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
+	if err := t.runFFmpeg(ctx, t.limits().writeLimit(seconds), full...); err != nil {
 		_ = os.Remove(tmp)
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
-		return fmt.Errorf("ffmpeg: %w: %s", err, strings.TrimSpace(stderr.String()))
+		return err
 	}
 	if _, err := os.Stat(tmp); errors.Is(err, os.ErrNotExist) {
 		return errNoOutput // ffmpeg exited 0 but wrote nothing (a seek past the last frame)
