@@ -9,9 +9,18 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
 )
 
+// credentialProviderViews copies the service's key status into the rows the panel shows.
+func credentialProviderViews(statuses []service.CredentialStatus) []organisms.CredentialProviderView {
+	views := make([]organisms.CredentialProviderView, 0, len(statuses))
+	for _, s := range statuses {
+		views = append(views, organisms.CredentialProviderView{Provider: s.Provider, Label: s.Label, Configured: s.Configured})
+	}
+	return views
+}
+
 func credentialPanelData(svc *service.CredentialService) (organisms.CredentialPanelData, error) {
-	providers, err := svc.Status()
-	return organisms.CredentialPanelData{Providers: providers}, err
+	statuses, err := svc.Status()
+	return organisms.CredentialPanelData{Providers: credentialProviderViews(statuses)}, err
 }
 
 // credentialOutcome answers a key save or delete with the panel, whatever the key store does:
