@@ -13,7 +13,7 @@ Go（`go.mod` のバージョン）、Node.js（24。CI は `.github/workflows/c
 
 | コマンド | 内容 |
 |---|---|
-| `make generate` | `templ generate ./backend/...` |
+| `make generate` | `go run github.com/a-h/templ/cmd/templ@<go.mod の templ の版> generate ./backend/...`。PATH 上の `templ` の版に依らず go.mod と同じ版で生成する（古い `templ` が go.mod とずれた `*_templ.go` を書き、CI の鮮度確認が落ちるのを防ぐ。`scripts/makefile_test.sh` が検証）。`make build` / `make dev` も同じ版を使う |
 | `make fmt` | `templ fmt backend`、`golangci-lint fmt ./...`（`.golangci.yml` の formatter は gofmt と goimports）、Biome によるフロントエンド TypeScript の整形（`npm run format --prefix static`） |
 | `make fmt-check` | `gofmt -l backend static` が空であることと `templ fmt -fail backend`（goimports は見ない）、`biome format`（`npm run format:check --prefix static`）。未整形で失敗 |
 | `make lint` | `make lint-go` と `make lint-static` |
