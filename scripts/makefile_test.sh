@@ -19,3 +19,14 @@ if ((fails > 0)); then
   exit 1
 fi
 echo "ok: every Makefile target is in .PHONY and listed by make help"
+
+# Code generation must use the templ version pinned in go.mod, not whatever `templ` is on PATH (a stale binary
+# writes *_templ.go that CI's freshness check rejects).
+templ_version="$(go list -m -f '{{.Version}}' github.com/a-h/templ)"
+generate_cmd="$(make --no-print-directory -n generate)"
+expected="go run github.com/a-h/templ/cmd/templ@${templ_version} generate ./backend/..."
+if [[ "$generate_cmd" != "$expected" ]]; then
+  echo "FAIL: 'make generate' runs '$generate_cmd', want '$expected'"
+  exit 1
+fi
+echo "ok: make generate runs templ ${templ_version} (go.mod), not the templ on PATH"
