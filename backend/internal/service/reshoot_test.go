@@ -486,6 +486,39 @@ func TestEditorReshootLoop_PartialStartOnABranchKeepsTheSceneOfTheStartedShot(t 
 	assert.Equal(t, 2, f.count(t, `SELECT COUNT(*) FROM shot`), "the Shot that could not start is gone")
 }
 
+// When adding the second additional Shot fails (here a trigger aborts the insert, as a cancelled
+// request or a locked DB would), the first one is not left behind: it belongs to no round, and its
+// Branch Scene would show in the plan and be made again by the next request (#572).
+func TestEditorReshootLoop_AddFailureRemovesTheShotsAddedBeforeIt(t *testing.T) {
+	const twoNeeds = `{"verdict":"need_shot","findings":[` +
+		`{"clip_index":1,"issue":"a","action":"a","need_shot":{"kind":"reaction","after_clip":1,"objective":"驚いて振り返る","duration_seconds":2}},` +
+		`{"clip_index":1,"issue":"b","action":"b","need_shot":{"kind":"insert","after_clip":1,"objective":"手元のアップ","duration_seconds":2}}]}`
+	f := newGenFixture(t, true)
+	f.llm.extractor = extractAnswer
+	f.llm.planner = func(string) string { return additionalSpec }
+	f.llm.director = directorFor(sameSceneAnswer)
+	f.buildReferencePack(t)
+	f.generateAndWait(t, f.shotID, 2)
+	f.selectTakeOf(t, f.shotID)
+	f.execSQL(t, `UPDATE project SET production_template = 'drama', state = 'VISUAL_DESIGN' WHERE id = ?`, f.projectID)
+	ctx := context.Background()
+	branchID := f.branch(t, service.BranchInput{}).Branch.ID
+	view, err := f.svc.Editor.RoughCut(ctx, f.projectID, branchID)
+	require.NoError(t, err)
+	require.NotNil(t, view.Timeline)
+	f.llm.editor = twoNeeds
+	// The Project has one Shot: the first additional Shot is the 2nd, the second one is refused.
+	f.execSQL(t, `CREATE TRIGGER refuse_third_shot BEFORE INSERT ON shot WHEN (SELECT COUNT(*) FROM shot) >= 2 BEGIN SELECT RAISE(ABORT, 'refused'); END`)
+
+	_, err = f.svc.Editor.JudgeTimeline(ctx, view.Timeline.ID)
+	require.Error(t, err)
+
+	assert.Equal(t, 1, f.count(t, `SELECT COUNT(*) FROM shot`), "the Shot added before the failure is removed")
+	assert.Zero(t, f.count(t, `SELECT COUNT(*) FROM scene WHERE branch_id = ?`, branchID), "so is the Branch Scene made for it")
+	assert.Zero(t, f.count(t, `SELECT COUNT(*) FROM reshoot_request`))
+	assert.Equal(t, domain.StateEditJudging, f.state(t))
+}
+
 // The request going away while the additional Shots start (the client left, AUTO is shutting down)
 // must not leave a generation that has started outside a round, nor the Shot that could not start
 // in the Project: the bookkeeping after the loop does not depend on the request.
