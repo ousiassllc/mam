@@ -36,9 +36,20 @@ templ SmallButton(tone ButtonTone, label string, attrs templ.Attributes) {
 	<button class={ buttonClass(tone, true) } { attrs... }>{ label }</button>
 }
 
-// LinkButton is a text-only button rendered like a link (for example "返信", "除外").
-templ LinkButton(label string, attrs templ.Attributes) {
-	<button class="text-xs text-neutral-400 underline hover:text-neutral-200" { attrs... }>{ label }</button>
+// ButtonLink is a link (<a>) that looks like a Button, for a navigation or a download; attrs carry
+// for example download.
+templ ButtonLink(tone ButtonTone, label string, href templ.SafeURL, attrs templ.Attributes) {
+	<a href={ href } class={ buttonClass(tone, false) } { attrs... }>{ label }</a>
+}
+
+// LinkButton is a text-only button rendered like a link (for example "返信", "除外"). TonePrimary
+// colours it as an accent; any other tone is the muted default.
+templ LinkButton(tone ButtonTone, label string, attrs templ.Attributes) {
+	if tone == TonePrimary {
+		<button class="text-xs text-indigo-300 underline" { attrs... }>{ label }</button>
+	} else {
+		<button class="text-xs text-neutral-400 underline hover:text-neutral-200" { attrs... }>{ label }</button>
+	}
 }
 
 // IconButton is a bare glyph button (for example the × that cancels a reply); label goes in

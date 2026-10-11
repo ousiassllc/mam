@@ -10,7 +10,7 @@ import (
 
 // registerPages registers page routes (GET, branch on HX-Request: full page or fragment).
 func registerPages(engine *gin.Engine, services *service.Services) {
-	engine.GET("/", handler.Projects(services.Projects))
+	engine.GET(paths.Home(), handler.Projects(services.Projects))
 	engine.GET("/healthz", handler.Health(services.Health))
 
 	engine.GET(paths.Projects(), handler.Projects(services.Projects))
@@ -33,7 +33,7 @@ func registerPages(engine *gin.Engine, services *service.Services) {
 	engine.GET("/projects/:id/settings", handler.SettingsPage(services.Policy, services.Brand, services.Credentials))
 	engine.GET("/projects/:id/cost-summary", handler.CostSummary(services.Policy))
 	engine.GET("/projects/:id/analytics", handler.AnalyticsPage(services.Analytics))
-	engine.GET("/analytics", handler.AnalyticsPage(services.Analytics))
+	engine.GET(paths.Analytics(), handler.AnalyticsPage(services.Analytics))
 	engine.GET("/projects/:id/branches", handler.BranchTreePage(services.Branch))
 	engine.GET("/branches/:id", handler.BranchPage(services.Branch))
 	engine.GET("/projects/:id/bundle", handler.ExportBundle(services.Bundle))

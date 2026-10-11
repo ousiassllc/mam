@@ -40,7 +40,7 @@ func TestCollectionRoutes_AreRegisteredUnderThePathsThePagesUse(t *testing.T) {
 	csrf := home.Result().Cookies()[0]
 	token := strings.SplitN(strings.SplitN(home.Body.String(), `name="csrf-token" content="`, 2)[1], `"`, 2)[0]
 
-	for _, route := range []string{paths.Reviews(), paths.StaticApp, paths.StaticCSS} {
+	for _, route := range []string{paths.Home(), paths.Analytics(), paths.Reviews(), paths.StaticApp, paths.StaticCSS} {
 		assert.Equal(t, http.StatusOK, serve(httptest.NewRequest(http.MethodGet, route, nil)).Code, route)
 	}
 	// An empty body is refused by the handler; a route that does not exist is a 404 / 405.

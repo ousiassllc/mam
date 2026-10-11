@@ -153,12 +153,7 @@ templ ReviewWorkspace(i domain.ReviewInbox) {
 			if i.Decision.Valid() {
 				<div class="flex flex-wrap items-center gap-3">
 					@atoms.Badge(reviewDecisionBadge(i.Decision))
-					<a
-						href={ templ.SafeURL(paths.Review(i.ID, "response")) }
-						download
-						hx-boost="false"
-						class="inline-flex items-center justify-center rounded-md border border-neutral-600 px-3 py-1.5 text-sm font-medium text-neutral-200 hover:bg-neutral-800"
-					>応答ファイルをダウンロード（JSON）</a>
+					@atoms.ButtonLink(atoms.ToneNeutral, "応答ファイルをダウンロード（JSON）", templ.SafeURL(paths.Review(i.ID, "response")), templ.Attributes{"download": true})
 					<span class="text-xs text-neutral-400">オーナーにこのファイルを渡してください。</span>
 				</div>
 			} else {

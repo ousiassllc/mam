@@ -425,30 +425,21 @@ func ReviewWorkspace(i domain.ReviewInbox) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "<a href=\"")
+			templ_7745c5c3_Err = atoms.ButtonLink(atoms.ToneNeutral, "応答ファイルをダウンロード（JSON）", templ.SafeURL(paths.Review(i.ID, "response")), templ.Attributes{"download": true}).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var15 templ.SafeURL
-			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(paths.Review(i.ID, "response")))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 157, Col: 58}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "\" download hx-boost=\"false\" class=\"inline-flex items-center justify-center rounded-md border border-neutral-600 px-3 py-1.5 text-sm font-medium text-neutral-200 hover:bg-neutral-800\">応答ファイルをダウンロード（JSON）</a> <span class=\"text-xs text-neutral-400\">オーナーにこのファイルを渡してください。</span></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "<span class=\"text-xs text-neutral-400\">オーナーにこのファイルを渡してください。</span></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "<p class=\"text-xs text-neutral-400\">判定を保存すると、オーナーに返す応答ファイルをダウンロードできます。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "<p class=\"text-xs text-neutral-400\">判定を保存すると、オーナーに返す応答ファイルをダウンロードできます。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "</section></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "</section></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
