@@ -22,8 +22,9 @@ type shotBody struct {
 	SelectedTakeID  string          `json:"selected_take_id,omitempty" doc:"Take the Shot uses; omitted until one is selected"`
 }
 
-// registerShotAPI registers GET /api/v1/shots/{id}: the Shot itself, for mam-video-player and
-// mam-timeline-editor.
+// registerShotAPI registers GET /api/v1/shots/{id}: the Shot itself. No Lit component calls it
+// (mam-video-player reads a Take's judge-result and mam-timeline-editor reads edit-timeline);
+// it is a reference JSON that keeps the same contract as the other APIs. See spec/api/endpoints.md §3.
 func registerShotAPI(api huma.API, services *service.Services) {
 	type output struct {
 		Body shotBody
