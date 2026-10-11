@@ -81,7 +81,7 @@ func Prepare(target VideoTarget, job VideoJob) (VideoRequest, error) {
 	switch target.Model {
 	case domain.ModelKling3:
 		req.Prompt = fit(body, constraints, 2400)
-		req.NegativePrompt = clip(strings.Join(avoid, ", "), 400)
+		req.NegativePrompt = domain.TruncateRunes(strings.Join(avoid, ", "), 400)
 	case domain.ModelRunwayGen45: // no negative prompt, and a 1000 character limit: Constraints and the avoid list are kept whole
 		req.Prompt = fit(body, constraints+avoidSentence(avoid), 1000)
 	default: // models without a negative prompt get the constraints as part of the prompt
@@ -95,9 +95,9 @@ func Prepare(target VideoTarget, job VideoJob) (VideoRequest, error) {
 // body, whose last sentences are the least specific, is what gives way.
 func fit(body, tail string, limit int) string {
 	if n := limit - len([]rune(tail)); n > 0 {
-		return clip(body, n) + tail
+		return domain.TruncateRunes(body, n) + tail
 	}
-	return clip(strings.TrimSpace(tail), limit)
+	return domain.TruncateRunes(strings.TrimSpace(tail), limit)
 }
 
 func avoidSentence(avoid []string) string { return " Avoid: " + strings.Join(avoid, ", ") + "." }
@@ -199,11 +199,4 @@ func ifSet(v, prefix string) string {
 		return ""
 	}
 	return prefix + humanize(v)
-}
-
-func clip(s string, max int) string {
-	if r := []rune(s); len(r) > max {
-		return string(r[:max])
-	}
-	return s
 }

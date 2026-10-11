@@ -17,13 +17,6 @@ func FailureReason(err error) string {
 	return generation.FailureReason(err)
 }
 
-func shortID(id string) string {
-	if len(id) > 8 {
-		return id[:8]
-	}
-	return id
-}
-
 // Summary is the chat notice of a Judge result: the verdict and the Issues.
 func Summary(shotNumber int, takeID string, res domain.JudgeResult) string {
 	var b strings.Builder
@@ -31,7 +24,7 @@ func Summary(shotNumber int, takeID string, res domain.JudgeResult) string {
 	if res.Result == domain.JudgeFail {
 		verdict = "FAIL"
 	}
-	fmt.Fprintf(&b, "Shot %d · Take %s の Judge 結果: %s（信頼度 %.2f）", shotNumber, shortID(takeID), verdict, res.OverallConfidence)
+	fmt.Fprintf(&b, "Shot %d · Take %s の Judge 結果: %s（信頼度 %.2f）", shotNumber, domain.ShortID(takeID), verdict, res.OverallConfidence)
 	for _, is := range res.Issues {
 		fmt.Fprintf(&b, "\n・[%s] %s", is.Severity, is.Type)
 		if is.TimeRange != "" {

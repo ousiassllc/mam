@@ -43,9 +43,9 @@ func (r *Runner) pick(ctx context.Context, ref repository.TakeRef) string {
 		return ""
 	}
 	if pick.Adopted {
-		return fmt.Sprintf("\nAI Pick: Take %s を採用しました。", shortID(pick.TakeID))
+		return fmt.Sprintf("\nAI Pick: Take %s を採用しました。", domain.ShortID(pick.TakeID))
 	}
-	return fmt.Sprintf("\nAI Pick: Take %s がおすすめです（Take 比較から選択できます）。", shortID(pick.TakeID))
+	return fmt.Sprintf("\nAI Pick: Take %s がおすすめです（Take 比較から選択できます）。", domain.ShortID(pick.TakeID))
 }
 
 // acceptance tells which Takes of the Shot the Retry Policy of the Project accepts (the latest
