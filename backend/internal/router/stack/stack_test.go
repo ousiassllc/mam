@@ -17,6 +17,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 	"github.com/ousiassllc/mam/backend/internal/router"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
 )
 
 func init() { gin.SetMode(gin.TestMode) }
@@ -25,7 +26,7 @@ func newEngine(t *testing.T) *gin.Engine {
 	t.Helper()
 	keyring.MockInit()
 	db := testdb.Open(t)
-	svc := service.New(service.Deps{DB: db, Credentials: credential.NewKeyring()})
+	svc := servicetest.New(t, service.Deps{DB: db, Credentials: credential.NewKeyring()})
 	return router.New(svc, router.Options{
 		Static: fstest.MapFS{
 			"app.js":           {Data: []byte("console.log(1)")},
@@ -89,7 +90,7 @@ func TestHealth_PageRouteAndHumaAPIRoute(t *testing.T) {
 func TestHealth_DatabaseFailureIs503WithOKFalseOnBothRoutes(t *testing.T) {
 	keyring.MockInit()
 	db := testdb.Open(t)
-	engine := router.New(service.New(service.Deps{DB: db, Credentials: credential.NewKeyring()}), router.Options{})
+	engine := router.New(servicetest.New(t, service.Deps{DB: db, Credentials: credential.NewKeyring()}), router.Options{})
 	require.NoError(t, db.Close()) // Ping now fails
 
 	for _, path := range []string{"/healthz", "/api/v1/health"} {

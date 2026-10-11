@@ -72,7 +72,7 @@ templ StoragePanel(d StoragePanelData) {
 								<span class="ml-1 rounded-full bg-amber-500/20 px-2 py-0.5 text-xs text-amber-300">不要</span>
 							}
 						</span>
-						if t.Status != domain.TakeSelected {
+						if t.Archivable {
 							@atoms.SmallButton(atoms.ToneNeutral, "アーカイブ", templ.Attributes{
 								"type":       "button",
 								"hx-post":    paths.Project(d.ProjectID, "takes", t.TakeID, "archive"),
@@ -80,6 +80,8 @@ templ StoragePanel(d StoragePanelData) {
 								"hx-swap":    "outerHTML",
 								"hx-confirm": "この Take の動画ファイルを削除します。よろしいですか？",
 							})
+						} else {
+							<span class="text-xs text-neutral-400" data-testid="take-in-use">選択中、または編集・音声のタイムラインで使用中のためアーカイブできません</span>
 						}
 					</li>
 				}

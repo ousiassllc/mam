@@ -13,6 +13,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/editor"
 	"github.com/ousiassllc/mam/backend/internal/bgwork"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/keylock"
 	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
@@ -64,7 +65,7 @@ type EditorService struct {
 	auto sync.Map
 	// autoStopped is the input (autoInput) each Project's AUTO stage last failed on: project ID -> string.
 	autoStopped sync.Map
-	preview     sync.Map // preview file -> *sync.Mutex
+	preview     keylock.Locker // preview file
 	// resume is the single worker behind ResumeEditing; missed marks Projects whose Reshoot round
 	// found the stage busy, so the release of the stage wakes the worker again.
 	resume *bgwork.Worker

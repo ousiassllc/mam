@@ -24,6 +24,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
 )
 
 const (
@@ -209,7 +210,7 @@ func newGenFixtureWithDeps(t *testing.T, withModels bool, freeBytes func(string)
 	if tweak != nil {
 		tweak(&deps)
 	}
-	svc := service.New(deps)
+	svc := servicetest.New(t, deps)
 	ctx, cancel := context.WithCancel(context.Background())
 	jobs.Start(ctx)
 	t.Cleanup(func() { cancel(); jobs.Stop() })

@@ -37,6 +37,17 @@ function body(
   return { body: { shot_id: 's1', duration_seconds: 4, partial_url: partialUrl ?? undefined, limits, takes } };
 }
 
+/** Replaces window.confirm by an answer and records the questions. */
+function stubConfirm(answer: boolean) {
+  const original = window.confirm;
+  const messages: string[] = [];
+  window.confirm = (message?: string) => {
+    messages.push(message ?? '');
+    return answer;
+  };
+  return { messages, restore: () => (window.confirm = original) };
+}
+
 async function comparator(): Promise<MamTakeComparator> {
   const el = await fixture<MamTakeComparator>(html`<mam-take-comparator api-url=${API}></mam-take-comparator>`);
   await waitUntil(() => el.querySelector('[data-scores], [data-empty]') !== null, 'the Takes were not shown');
@@ -165,9 +176,42 @@ describe('mam-take-comparator: choosing a Take', () => {
     expect(post.url).to.equal('/takes/t2/select');
     expect(post.headers).to.have.property('X-CSRF-Token');
 
-    (el.querySelector('[data-take="t1"] [data-action="reject"]') as HTMLButtonElement).click();
-    await waitUntil(() => stub.requests.some((r) => r.method === 'DELETE'));
+    const confirm = stubConfirm(true);
+    try {
+      (el.querySelector('[data-take="t1"] [data-action="reject"]') as HTMLButtonElement).click();
+      await waitUntil(() => stub.requests.some((r) => r.method === 'DELETE'));
+    } finally {
+      confirm.restore();
+    }
     expect(stub.requests.find((r) => r.method === 'DELETE')!.url).to.equal('/takes/t1');
+  });
+
+  it('asks before rejecting and sends nothing when the user declines', async () => {
+    stub = stubFetch({
+      [`GET ${API}`]: body([take('t1', 'A')]),
+      'DELETE /takes/t1': { body: '<div id="shot-s1"></div>' },
+    });
+    const el = await comparator();
+    const button = () => el.querySelector('[data-take="t1"] [data-action="reject"]') as HTMLButtonElement;
+
+    const declined = stubConfirm(false);
+    try {
+      button().click();
+      await el.updateComplete;
+      expect(declined.messages).to.deep.equal(['この Take を除外しますか？']);
+    } finally {
+      declined.restore();
+    }
+    expect(stub.requests.some((r) => r.method === 'DELETE')).to.equal(false);
+
+    const accepted = stubConfirm(true);
+    try {
+      button().click();
+      await waitUntil(() => stub.requests.some((r) => r.method === 'DELETE'));
+      expect(accepted.messages).to.deep.equal(['この Take を除外しますか？']);
+    } finally {
+      accepted.restore();
+    }
   });
 
   it('shows why a choice failed and keeps the table', async () => {

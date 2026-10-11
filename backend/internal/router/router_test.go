@@ -21,6 +21,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 	"github.com/ousiassllc/mam/backend/internal/router"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 )
 
@@ -30,7 +31,7 @@ func newEngine(t *testing.T) *gin.Engine {
 	t.Helper()
 	keyring.MockInit()
 	db := testdb.Open(t)
-	svc := service.New(service.Deps{DB: db, Credentials: credential.NewKeyring()})
+	svc := servicetest.New(t, service.Deps{DB: db, Credentials: credential.NewKeyring()})
 	return router.New(svc, router.Options{
 		Static: fstest.MapFS{
 			"app.js":           {Data: []byte("console.log(1)")},

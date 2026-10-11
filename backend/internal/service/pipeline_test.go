@@ -17,6 +17,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
 	"github.com/ousiassllc/mam/backend/internal/testenv"
 )
 
@@ -101,7 +102,7 @@ func newPipelineFixture(t *testing.T) pipelineFixture {
 	jobs := jobqueue.New(repository.NewJobRepository(db), jobqueue.Options{})
 	fake := newFakeReasoner()
 	assets := filepath.Join(t.TempDir(), "assets")
-	svc := service.New(service.Deps{DB: db, Jobs: jobs, LLM: fake, AssetsDir: assets})
+	svc := servicetest.New(t, service.Deps{DB: db, Jobs: jobs, LLM: fake, AssetsDir: assets})
 	ctx, cancel := context.WithCancel(context.Background())
 	jobs.Start(ctx)
 	t.Cleanup(func() { cancel(); jobs.Stop() })

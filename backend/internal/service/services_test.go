@@ -15,6 +15,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
 )
 
 // noFrames is a judge.FrameSource that is never asked: the wiring only checks that it is set.
@@ -53,8 +54,7 @@ func TestNew_RegistersJobKindsByDeps(t *testing.T) {
 			}
 			tc.tweak(&deps)
 
-			svc := service.New(deps)
-			t.Cleanup(svc.Close)
+			servicetest.New(t, deps)
 
 			for _, kind := range domain.JobKinds() {
 				assert.Equal(t, slices.Contains(tc.expect, kind), jobs.Handles(kind), "job kind %q", kind)
@@ -67,8 +67,7 @@ func TestNew_RegistersJobKindsByDeps(t *testing.T) {
 func TestNew_NoJobsWiresNoAgent(t *testing.T) {
 	db := testdb.Open(t)
 
-	svc := service.New(service.Deps{DB: db, LLM: &genReasoner{}, Frames: noFrames{}, AssetsDir: t.TempDir()})
-	t.Cleanup(svc.Close)
+	svc := servicetest.New(t, service.Deps{DB: db, LLM: &genReasoner{}, Frames: noFrames{}, AssetsDir: t.TempDir()})
 
 	_, err := svc.Judge.Judge(context.Background(), "missing")
 	assert.ErrorIs(t, err, service.ErrUnavailable)

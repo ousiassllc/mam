@@ -17,6 +17,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
 	"github.com/ousiassllc/mam/backend/internal/testenv"
 )
 
@@ -31,7 +32,7 @@ func newFixture(t *testing.T) fixture {
 	testenv.Parallel(t)
 	db := testdb.Open(t)
 	assets := filepath.Join(t.TempDir(), "assets")
-	return fixture{svc: service.New(service.Deps{DB: db, AssetsDir: assets}), db: db, assetsDir: assets}
+	return fixture{svc: servicetest.New(t, service.Deps{DB: db, AssetsDir: assets}), db: db, assetsDir: assets}
 }
 
 var (

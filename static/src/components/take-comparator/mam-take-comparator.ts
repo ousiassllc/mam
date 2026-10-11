@@ -18,6 +18,9 @@ import { STATUS_CLASS, STATUS_LABEL, type TakeStatus } from './take-status';
 
 const log = createLogger('take-comparator');
 
+/** The same wording as the Take row of the Shot card (`shot_card.templ`, `hx-confirm`): rejecting cannot be undone, so every entry point asks. */
+const REJECT_CONFIRM = 'この Take を除外しますか？';
+
 /** A Take of GET /api/v1/shots/:id/takes. The URLs are the server's: the component builds none. An action link is absent while the server does not allow the action. */
 export interface TakeScore {
   id: string;
@@ -129,6 +132,11 @@ export class MamTakeComparator extends LitElement {
         duration: t.duration_seconds ?? 0,
         fps: t.fps && t.fps > 0 ? t.fps : 30,
       }));
+  }
+
+  /** Rejects a Take once the user confirmed: the Take can never be chosen again. */
+  private reject(url: string): void {
+    if (window.confirm(REJECT_CONFIRM)) void this.act(() => del(url));
   }
 
   /** Runs a request to the server, reports its error and reloads the Takes. */
@@ -317,7 +325,7 @@ export class MamTakeComparator extends LitElement {
               }
               ${
                 t.reject_url
-                  ? html`<button type="button" class="underline hover:text-neutral-100" data-action="reject" ?disabled=${this.busy} @click=${() => void this.act(() => del(t.reject_url!))}>除外</button>`
+                  ? html`<button type="button" class="underline hover:text-neutral-100" data-action="reject" ?disabled=${this.busy} @click=${() => this.reject(t.reject_url!)}>除外</button>`
                   : nothing
               }
             </span>`

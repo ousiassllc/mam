@@ -8,10 +8,14 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/repository"
 )
 
 func TestSettingsPage_ShowsTemplatePolicyBudgetCostAndStorage(t *testing.T) {
@@ -188,6 +192,42 @@ func TestStorage_ArchiveEndpointsFreeTakesAndRefuseTheSelectedOne(t *testing.T) 
 
 	assert.Equal(t, http.StatusNotFound, g.form(http.MethodPost, "/projects/"+g.project+"/takes/missing/archive", nil).Code)
 	assert.Equal(t, http.StatusNotFound, g.form(http.MethodPost, "/projects/missing/storage/archive-unneeded", nil).Code)
+}
+
+func TestStorage_OffersArchiveOnlyForTakesTheServerWouldArchive(t *testing.T) {
+	g := newGenApp(t, true)
+	require.Equal(t, http.StatusAccepted, g.form(http.MethodPost, "/shots/"+g.shotID+"/generate", nil).Code)
+	g.waitTakes(3)
+	rows, err := g.db.Reader().Query(`SELECT id FROM take ORDER BY id`)
+	require.NoError(t, err)
+	var ids []string
+	for rows.Next() {
+		var id string
+		require.NoError(t, rows.Scan(&id))
+		ids = append(ids, id)
+	}
+	require.NoError(t, rows.Close())
+	require.Len(t, ids, 3)
+	used, chosen, free := ids[0], ids[1], ids[2]
+
+	// The Rough Cut used Take A, then Take B was chosen: A is no longer Selected, but the Edit
+	// Timeline still points at it.
+	_, err = repository.NewEditorRepository(g.db).SaveEditTimeline(context.Background(), g.project, "", "",
+		domain.EditTimeline{Clips: []domain.EditClip{{ShotID: g.shotID, TakeID: used, Out: 1}}})
+	require.NoError(t, err)
+	selectTake(t, g, chosen)
+
+	archive := func(id string) string { return `hx-post="/projects/` + g.project + `/takes/` + id + `/archive"` }
+	panel := g.get("/projects/"+g.project+"/settings", false).Body.String()
+	assert.NotContains(t, panel, archive(used), "a Take the Edit Timeline uses cannot be archived")
+	assert.NotContains(t, panel, archive(chosen), "the Selected Take cannot be archived")
+	assert.Contains(t, panel, archive(free))
+	assert.Equal(t, 2, strings.Count(panel, `data-testid="take-in-use"`), "the two refused rows say why")
+
+	rec := g.form(http.MethodPost, "/projects/"+g.project+"/takes/"+used+"/archive", nil)
+	assert.Equal(t, http.StatusConflict, rec.Code)
+	assert.Contains(t, rec.Body.String(), "タイムライン", "the 409 names the reason, not the chat approval wording")
+	assert.NotContains(t, rec.Body.String(), "すでに応答済み")
 }
 
 func TestStorage_ATakeWhoseStoredPathLeavesTheAssetsDirectoryIsNeitherServedNorDeleted(t *testing.T) {
