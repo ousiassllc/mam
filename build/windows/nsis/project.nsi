@@ -1,0 +1,94 @@
+Unicode true
+
+####
+## Installer of the Windows desktop version (spec/architecture/desktop.md §4). scripts/package-windows.sh
+## builds it through `wails3 package GOOS=windows`, which passes -DINFO_PRODUCTVERSION (X.Y.Z) and
+## -DARG_WAILS_AMD64_BINARY (bin\mam.exe). wails_tools.nsh supplies the other INFO_* defaults.
+####
+!include "wails_tools.nsh"
+
+# The version information for this two must consist of 4 parts
+VIProductVersion "${INFO_PRODUCTVERSION}.0"
+VIFileVersion    "${INFO_PRODUCTVERSION}.0"
+
+VIAddVersionKey "CompanyName"     "${INFO_COMPANYNAME}"
+VIAddVersionKey "FileDescription" "${INFO_PRODUCTNAME} Installer"
+VIAddVersionKey "ProductVersion"  "${INFO_PRODUCTVERSION}"
+VIAddVersionKey "FileVersion"     "${INFO_PRODUCTVERSION}"
+VIAddVersionKey "LegalCopyright"  "${INFO_COPYRIGHT}"
+VIAddVersionKey "ProductName"     "${INFO_PRODUCTNAME}"
+
+# Enable HiDPI support. https://nsis.sourceforge.io/Reference/ManifestDPIAware
+ManifestDPIAware true
+
+!include "MUI.nsh"
+
+!define MUI_ICON "..\icon.ico"
+!define MUI_UNICON "..\icon.ico"
+# !define MUI_WELCOMEFINISHPAGE_BITMAP "resources\leftimage.bmp" #Include this to add a bitmap on the left side of the Welcome Page. Must be a size of 164x314
+!define MUI_FINISHPAGE_NOAUTOCLOSE # Wait on the INSTFILES page so the user can take a look into the details of the installation steps
+!define MUI_ABORTWARNING # This will warn the user if they exit from the installer.
+# ffmpeg is not bundled: the Judge, previews and Export use the ffmpeg / ffprobe found on PATH.
+!define MUI_FINISHPAGE_TITLE "${INFO_PRODUCTNAME} has been installed"
+!define MUI_FINISHPAGE_TEXT "Start ${INFO_PRODUCTNAME} from the Start menu or the desktop shortcut.$\r$\n$\r$\nffmpeg is not included. To use the Judge, previews and Export, install ffmpeg and put ffmpeg and ffprobe on your PATH (for example: winget install Gyan.FFmpeg). ${INFO_PRODUCTNAME} starts without it.$\r$\n$\r$\nYour projects and settings are kept in %AppData%\mam and are not removed when you uninstall."
+
+!insertmacro MUI_PAGE_WELCOME # Welcome to the installer page.
+# !insertmacro MUI_PAGE_LICENSE "resources\eula.txt" # Adds a EULA page to the installer
+!insertmacro MUI_PAGE_DIRECTORY # In which folder install page.
+!insertmacro MUI_PAGE_INSTFILES # Installing page.
+!insertmacro MUI_PAGE_FINISH # Finished installation page.
+
+!insertmacro MUI_UNPAGE_INSTFILES # Uninstalling page
+
+!insertmacro MUI_LANGUAGE "English" # Set the Language of the installer
+
+## The following two statements can be used to sign the installer and the uninstaller. The path to the binaries are provided in %1
+#!uninstfinalize 'signtool --file "%1"'
+#!finalize 'signtool --file "%1"'
+
+Name "${INFO_PRODUCTNAME}"
+OutFile "..\..\..\bin\${INFO_PROJECTNAME}-${INFO_PRODUCTVERSION}-windows-${ARCH}-setup.exe" # Name of the installer's file.
+!if "${WAILS_INSTALL_SCOPE}" == "user"
+    InstallDir "$LOCALAPPDATA\Programs\${INFO_PRODUCTNAME}"
+!else
+    InstallDir "$PROGRAMFILES64\${INFO_PRODUCTNAME}"
+!endif
+ShowInstDetails show # This will always show the installation details.
+
+Function .onInit
+   !insertmacro wails.checkArchitecture
+FunctionEnd
+
+Section
+    !insertmacro wails.setShellContext
+
+    !insertmacro wails.webview2runtime
+
+    SetOutPath $INSTDIR
+    
+    !insertmacro wails.files
+
+    CreateShortcut "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
+    CreateShortCut "$DESKTOP\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
+
+    !insertmacro wails.associateFiles
+    !insertmacro wails.associateCustomProtocols
+    
+    !insertmacro wails.writeUninstaller
+SectionEnd
+
+Section "uninstall" 
+    !insertmacro wails.setShellContext
+
+    # The data directory (%AppData%\mam: SQLite, generated media, logs) is deliberately kept.
+
+    RMDir /r $INSTDIR
+
+    Delete "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk"
+    Delete "$DESKTOP\${INFO_PRODUCTNAME}.lnk"
+
+    !insertmacro wails.unassociateFiles
+    !insertmacro wails.unassociateCustomProtocols
+
+    !insertmacro wails.deleteUninstaller
+SectionEnd

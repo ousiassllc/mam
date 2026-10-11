@@ -1,0 +1,23 @@
+# Entry point of `wails3 package GOOS=windows` (the Wails CLI runs the Taskfile in the working
+# directory). scripts/package-windows.sh is the supported way to run it: it builds the front-end
+# first and validates the version. Only Windows x64 is packaged (spec/architecture/desktop.md §4).
+version: '3'
+
+vars:
+  APP_NAME: "mam"
+  BIN_DIR: "bin"
+
+includes:
+  common: ./build/Taskfile.yml
+  windows: ./build/windows/Taskfile.yml
+
+tasks:
+  build:
+    summary: Builds bin/mam.exe (the Wails window front) for Windows
+    cmds:
+      - task: windows:build
+
+  package:
+    summary: Builds bin/mam.exe and the NSIS installer for Windows
+    cmds:
+      - task: windows:package

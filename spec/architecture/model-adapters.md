@@ -342,7 +342,7 @@ MAX QUALITY のみ。話者付きの Dialogue の行（Narration は対象外）
 ### 14.5 コストと予算（F-22）
 
 - 料金はプロバイダー呼び出しごとの **見積** で `cost_ledger_entry`（`provider` は §14.1 の識別子）に記録する。単価の既定は TTS 1,000 文字あたり $0.30、Music 1 秒あたり $0.02、SFX 1 秒あたり $0.01、Lip Sync は Sync Labs の公開価格（25fps）の 1 秒あたり `lipsync-1.9.0-beta` $0.02・`lipsync-2` $0.04・`sync-3` $0.133。ベンダーの課金は plan・クレジットで実額と異なりうるため、予算管理のための見積である（`actual_cost` は空）。失敗した呼び出しは記録しない。ただし Sync Labs が受け付けたあとに失敗した Lip Sync（受理後の成果物欠如・ダウンロード失敗・ポーリング失敗・タイムアウト・キャンセル。`audiodirector.ChargedError`）は、課金が発生しているので、そのクリップは skipped にしつつ見積を台帳に残す（受理前の失敗と Sync Labs が FAILED / REJECTED を返した場合は記録しない）
-- Project の予算上限（`project.project_budget_ceiling`）から台帳の合計（`COALESCE(actual_cost, estimated_cost)` の和）を引いた残りが、各呼び出しの見積に足りなければその呼び出しは行わず `skipped`（`reason: budget`）に残す。セリフの音声合成の見積の合計が残りを超えるときは、何も呼ばずに 409（`BudgetError`）にする
+- Project の予算上限（`project.project_budget_ceiling`）から、台帳の合計（`COALESCE(actual_cost, estimated_cost)` の和）と、予約中の見積（同じ Project の他の音声の実行と、画像・動画の生成が確保している額）を引いた残りが、各呼び出しの見積に足りなければその呼び出しは行わず `skipped`（`reason: budget`）に残す。見積は呼び出しの前に予算上限に対して予約し（`CostRepository.Reserve`。残額の確認と予約は 1 つの不可分な操作）、台帳に記録したあと（呼び出しが課金されなかったときはその時点）で解放する。このため同じ Project で同時に動く実行が、合わせて予算上限を超えることはない。セリフの音声合成の見積は、実行の開始時に合計額を一度に予約し、全行を台帳に記録したあとで解放する。その合計が残りを超えるときは、何も呼ばずに 409（`BudgetError`）にする
 - Audio Timeline の `estimated_cost` にその実行の見積合計を保存する
 
 ### 14.6 M1 の簡易音声からの移行と Branch ごとの版管理
@@ -391,3 +391,4 @@ MAX QUALITY のみ。話者付きの Dialogue の行（Narration は対象外）
 | 1.29 | 2026-10-03 | §10.1 のモデル取得スクリプトの配置先に、4 番目の既定値（ユーザー設定ディレクトリの `mam/models`）と、サーバーの `--data-dir` / `--face-model-dir` フラグを読まないことを追記 | スクリプト（`scripts/fetch-face-models.sh`）は環境変数もなければユーザー設定ディレクトリに置くが、仕様は 3 段階までしか書いていなかった（#442） |
 | 1.30 | 2026-10-03 | §7 に、呼び出し全体が `ErrCircuitOpen` になるのは経路の全モデルがスキップされたときだけで、代替が別の理由で失敗したときは代替の理由で通知することを追記した | プライマリが OPEN で代替がコンテンツポリシーで拒否されても「しばらく待って再実行」と案内していた誤りを直したため（Issue #439） |
 | 1.31 | 2026-10-03 | §10.2（Judge）のジョブの説明に、起動時リカバリがジョブを失敗にした Shot の `JUDGING` を `PLANNING` へ戻すことを追記した | Judge ジョブが再実行されずに失敗すると、Shot が永久に JUDGING のままだったため（Issue #436）。 |
+| 1.32 | 2026-10-11 | §14.5 の予算の検査に、見積を呼び出しの前に予算上限へ不可分に予約すること（残り = 上限 − 台帳 − 予約中の見積）と、セリフの見積は実行の開始時にまとめて予約して台帳への記録後に解放することを追記した | 実装（`audiodirector/cost.go` の `spending.reserve`、`repository/spend.go` の `CostRepository.Reserve`）は呼び出しの前に見積を予約し、同じ Project で同時に動く音声の実行・生成が合わせて上限を超えないようにしているが、仕様は台帳の合計だけを引くと読めたため |

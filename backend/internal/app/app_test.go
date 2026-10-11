@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"context"
@@ -47,16 +47,56 @@ func TestListenLoopback_UsesPreferredPortWhenFree(t *testing.T) {
 	assert.Equal(t, port, ln.Addr().(*net.TCPAddr).Port)
 }
 
-func TestBrowserCommand_PerOS(t *testing.T) {
-	const url = "http://127.0.0.1:8787"
-	for goos, wantName := range map[string]string{"windows": "rundll32", "darwin": "open", "linux": "xdg-open"} {
-		cmd, err := browserCommand(goos, url)
-		require.NoError(t, err, goos)
-		assert.Equal(t, url, cmd.Args[len(cmd.Args)-1])
-		assert.Equal(t, wantName, filepath.Base(cmd.Args[0]), goos)
+// Run reports the URL it listens on through OnReady, after the server accepts connections; --help
+// prints the usage and starts nothing.
+func TestRun_OnReadyReceivesTheListeningURL(t *testing.T) {
+	keyring.MockInit()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	ready := make(chan string, 1)
+	done := make(chan error, 1)
+	go func() {
+		done <- Run(ctx, Options{
+			Args:    []string{"-data-dir", t.TempDir(), "-port", "0"},
+			Getenv:  func(string) string { return "" },
+			OnReady: func(url string) { ready <- url },
+		})
+	}()
+
+	var url string
+	select {
+	case url = <-ready:
+	case <-time.After(15 * time.Second):
+		t.Fatal("OnReady was never called")
 	}
-	_, err := browserCommand("plan9", url)
-	assert.Error(t, err)
+	assert.Regexp(t, `^http://127\.0\.0\.1:\d+$`, url)
+	resp, err := http.Get(url + "/healthz")
+	require.NoError(t, err)
+	_ = resp.Body.Close()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	cancel()
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(15 * time.Second):
+		t.Fatal("server did not shut down")
+	}
+}
+
+func TestRun_HelpPrintsUsageAndStartsNothing(t *testing.T) {
+	var out syncBuffer
+	called := false
+	err := Run(context.Background(), Options{
+		Args:    []string{"-help"},
+		Getenv:  func(string) string { return "" },
+		Stderr:  &out,
+		OnReady: func(string) { called = true },
+	})
+	require.NoError(t, err)
+	assert.Contains(t, out.String(), "-data-dir")
+	assert.False(t, called)
 }
 
 // TestRun_StartsServerServesRequestsAndShutsDownCleanly boots the real wiring on a
@@ -70,7 +110,7 @@ func TestRun_StartsServerServesRequestsAndShutsDownCleanly(t *testing.T) {
 	var out syncBuffer
 	done := make(chan error, 1)
 	go func() {
-		done <- run(ctx, []string{"-data-dir", dataDir, "-port", "0", "-no-browser"}, func(string) string { return "" }, &out)
+		done <- Run(ctx, Options{Args: []string{"-data-dir", dataDir, "-port", "0", "-no-browser"}, Getenv: func(string) string { return "" }, Stderr: &out})
 	}()
 
 	var url string
@@ -122,7 +162,7 @@ func TestRun_RefusesASecondInstanceOnTheSameDataDirAndLeavesTheFirstOnesWorkAlon
 	var out syncBuffer
 	done := make(chan error, 1)
 	go func() {
-		done <- run(ctx, []string{"-data-dir", dataDir, "-port", "0", "-no-browser"}, func(string) string { return "" }, &out)
+		done <- Run(ctx, Options{Args: []string{"-data-dir", dataDir, "-port", "0", "-no-browser"}, Getenv: func(string) string { return "" }, Stderr: &out})
 	}()
 	require.Eventually(t, func() bool { return startedURL(out.String()) != "" }, 15*time.Second, 20*time.Millisecond, "log: %s", out.String())
 
@@ -136,7 +176,7 @@ func TestRun_RefusesASecondInstanceOnTheSameDataDirAndLeavesTheFirstOnesWorkAlon
 	secondCtx, stopSecond := context.WithTimeout(ctx, 3*time.Second)
 	defer stopSecond()
 	var second syncBuffer
-	err = run(secondCtx, []string{"-data-dir", dataDir, "-port", "0", "-no-browser"}, func(string) string { return "" }, &second)
+	err = Run(secondCtx, Options{Args: []string{"-data-dir", dataDir, "-port", "0", "-no-browser"}, Getenv: func(string) string { return "" }, Stderr: &second})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "already using the data directory")
 	assert.FileExists(t, staging.Name(), "the running instance's work was not cleaned up")
@@ -151,4 +191,26 @@ func TestRun_RefusesASecondInstanceOnTheSameDataDirAndLeavesTheFirstOnesWorkAlon
 	lock, err := fsutil.LockDir(dataDir)
 	require.NoError(t, err, "the directory is free again once the first instance stopped")
 	lock.Unlock()
+}
+
+func TestValidateArgs(t *testing.T) {
+	getenv := func(string) string { return "" }
+	require.NoError(t, ValidateArgs([]string{"-data-dir", t.TempDir(), "-no-browser"}, getenv))
+
+	var usage *UsageError
+	err := ValidateArgs([]string{"-help"}, getenv)
+	require.ErrorAs(t, err, &usage)
+	assert.True(t, usage.Help)
+	assert.Contains(t, usage.Text, "-data-dir")
+
+	err = ValidateArgs([]string{"-no-such-flag"}, getenv)
+	require.ErrorAs(t, err, &usage)
+	assert.False(t, usage.Help)
+	assert.Contains(t, usage.Text, "no-such-flag")
+	assert.Contains(t, usage.Text, "-data-dir")
+
+	err = ValidateArgs([]string{"-port", "70000"}, getenv)
+	require.ErrorAs(t, err, &usage)
+	assert.False(t, usage.Help)
+	assert.Contains(t, usage.Text, "invalid port 70000")
 }
