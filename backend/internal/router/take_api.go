@@ -45,20 +45,23 @@ type takeBody struct {
 }
 
 type takeComparisonBody struct {
-	ShotID          string     `json:"shot_id"`
-	DurationSeconds float64    `json:"duration_seconds,omitempty" doc:"Length planned for the Shot"`
-	PartialURL      string     `json:"partial_url,omitempty" doc:"POST here to join parts of the Takes (Partial Take Use); present only while the Shot can be composed"`
-	Takes           []takeBody `json:"takes"`
+	ShotID          string         `json:"shot_id"`
+	DurationSeconds float64        `json:"duration_seconds,omitempty" doc:"Length planned for the Shot"`
+	PartialURL      string         `json:"partial_url,omitempty" doc:"POST here to join parts of the Takes (Partial Take Use); present only while the Shot can be composed"`
+	Limits          takeLimitsBody `json:"limits"`
+	Takes           []takeBody     `json:"takes"`
+}
+
+type takeLimitsBody struct {
+	MaxSegments       int     `json:"max_segments"`
+	MinSegmentSeconds float64 `json:"min_segment_seconds"`
 }
 
 func newTakeBody(v service.TakeView) takeBody {
 	b := takeBody{
 		ID: v.ID, Label: v.Label, Status: string(v.Status), Adopted: v.Adopted, ModelName: v.ModelName,
 		Resolution: v.Resolution, FPS: v.FPS, DurationSeconds: v.DurationSeconds, Verdict: string(v.Verdict),
-		Proxied:        v.Proxied(),
-		JudgeResultURL: paths.APITake(v.ID, "judge-result"),
-		CreatedAt:      v.CreatedAt,
-		PartialUsable:  v.Usable(),
+		Proxied: v.Proxied(), JudgeResultURL: paths.APITake(v.ID, "judge-result"), CreatedAt: v.CreatedAt, PartialUsable: v.Usable(),
 	}
 	if v.Selectable() {
 		b.SelectURL = paths.Take(v.ID, "select")
@@ -78,9 +81,7 @@ func newTakeBody(v service.TakeView) takeBody {
 // registerTakeAPI registers GET /api/v1/shots/{id}/takes: the Takes of a Shot with their scores
 // and status, for mam-take-comparator.
 func registerTakeAPI(api huma.API, services *service.Services) {
-	type output struct {
-		Body takeComparisonBody
-	}
+	type output struct{ Body takeComparisonBody }
 	huma.Register(api, huma.Operation{
 		OperationID: "get-shot-takes",
 		Method:      "GET",
@@ -98,10 +99,8 @@ func registerTakeAPI(api huma.API, services *service.Services) {
 			}
 			return nil, err
 		}
-		body := takeComparisonBody{
-			ShotID: cmp.Shot.ID, DurationSeconds: cmp.Shot.Duration,
-			Takes: make([]takeBody, len(cmp.Takes)),
-		}
+		limits := takeLimitsBody{MaxSegments: domain.MaxTakeSegments, MinSegmentSeconds: domain.MinTakeSegmentSeconds}
+		body := takeComparisonBody{ShotID: cmp.Shot.ID, DurationSeconds: cmp.Shot.Duration, Limits: limits, Takes: make([]takeBody, len(cmp.Takes))}
 		if cmp.PartialUse {
 			body.PartialURL = paths.Shot(cmp.Shot.ID, "takes", "partial")
 		}

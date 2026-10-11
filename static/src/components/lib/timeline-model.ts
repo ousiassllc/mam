@@ -11,10 +11,12 @@ export interface Segment {
   end: number;
 }
 
-/** The shortest segment a composition accepts: a cross-fade needs something to fade (same as the server). */
-export const MIN_SEGMENT_SECONDS = 0.3;
-/** The most segments one composition accepts (same as the server). */
-export const MAX_SEGMENTS = 8;
+/** The limits of a composition: the server's (`limits` of GET /api/v1/shots/:id/takes), never copied here. */
+export interface SegmentLimits {
+  max_segments: number;
+  /** A cross-fade needs something to fade. */
+  min_segment_seconds: number;
+}
 
 /** A clip a segment can be taken from. */
 export interface Clip {
@@ -38,24 +40,18 @@ export function dragToSegment(clip: Clip, fromX: number, toX: number, width: num
 }
 
 /** Why a segment cannot be part of a composition, or '' when it can. */
-export function segmentProblem(segment: Segment, clip: Clip | undefined): string {
+export function segmentProblem(segment: Segment, clip: Clip | undefined, limits: SegmentLimits): string {
   if (!clip) return 'Take が見つかりません';
-  if (segment.end - segment.start < MIN_SEGMENT_SECONDS - 1e-9)
-    return `${MIN_SEGMENT_SECONDS} 秒以上の区間を選んでください`;
+  if (segment.end - segment.start < limits.min_segment_seconds - 1e-9)
+    return `${limits.min_segment_seconds} 秒以上の区間を選んでください`;
   if (clip.duration > 0 && segment.end > clip.duration + 0.001) return 'Take の長さを超えています';
   return '';
 }
 
 /** `segments` with `segment` appended when it is acceptable, else unchanged. */
-export function addSegment(segments: Segment[], segment: Segment, clips: Clip[]): Segment[] {
-  if (segments.length >= MAX_SEGMENTS) return segments;
-  if (
-    segmentProblem(
-      segment,
-      clips.find((c) => c.id === segment.take_id),
-    )
-  )
-    return segments;
+export function addSegment(segments: Segment[], segment: Segment, clips: Clip[], limits: SegmentLimits): Segment[] {
+  const clip = clips.find((c) => c.id === segment.take_id);
+  if (segments.length >= limits.max_segments || segmentProblem(segment, clip, limits)) return segments;
   return [...segments, segment];
 }
 

@@ -29,8 +29,12 @@ function take(id: string, label: string, over: Partial<TakeScore> = {}): TakeSco
 
 const scored = { product: 65, acting: 100, camera: 85, continuity: 100, overall: 87.5 };
 
-function body(takes: TakeScore[], partialUrl: string | null = '/shots/s1/takes/partial') {
-  return { body: { shot_id: 's1', duration_seconds: 4, partial_url: partialUrl ?? undefined, takes } };
+function body(
+  takes: TakeScore[],
+  partialUrl: string | null = '/shots/s1/takes/partial',
+  limits = { max_segments: 8, min_segment_seconds: 0.3 },
+) {
+  return { body: { shot_id: 's1', duration_seconds: 4, partial_url: partialUrl ?? undefined, limits, takes } };
 }
 
 async function comparator(): Promise<MamTakeComparator> {
@@ -245,6 +249,26 @@ describe('mam-take-comparator: Partial Take Use', () => {
     (el.querySelector('[data-segment] [data-action="remove-segment"]') as HTMLButtonElement).click();
     await waitUntil(() => el.querySelectorAll('[data-segment]').length === 1);
     expect(text(el, '[data-segment] span')).to.equal('Take B の 2.0-4.0秒');
+  });
+
+  it('applies the limits the server sends, not values of its own', async () => {
+    stub = stubFetch({
+      [`GET ${API}`]: body(takes(), '/shots/s1/takes/partial', { max_segments: 2, min_segment_seconds: 1 }),
+    });
+    const el = await comparator();
+
+    dragLane(el, 't1', 0.1, 0.3); // 0.8 s: long enough for 0.3 s, too short for 1 s
+    await aTimeout(30);
+    expect(el.querySelectorAll('[data-segment]').length).to.equal(0);
+    expect(text(el, '[data-error]')).to.contain('1 秒以上');
+
+    dragLane(el, 't1', 0, 0.5);
+    dragLane(el, 't2', 0.5, 1);
+    await waitUntil(() => el.querySelectorAll('[data-segment]').length === 2);
+    dragLane(el, 't1', 0, 0.5);
+    await aTimeout(30);
+    expect(el.querySelectorAll('[data-segment]').length).to.equal(2);
+    expect(text(el, '[data-error]')).to.contain('最大 2 個');
   });
 
   it('sends words to the server as they are', async () => {
