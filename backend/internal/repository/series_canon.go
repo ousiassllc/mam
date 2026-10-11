@@ -70,56 +70,32 @@ func readCanon(ctx context.Context, q queryer, seriesID string) (domain.SeriesCa
 	if err != nil {
 		return c, fmt.Errorf("get series: %w", err)
 	}
-	chars, err := q.QueryContext(ctx,
-		`SELECT id, name, COALESCE(hairstyle, ''), COALESCE(wardrobe, ''), COALESCE(voice, ''), COALESCE(personality, ''),
+	c.Characters, err = queryAll(ctx, q, func(row rowScanner) (domain.WorldCharacter, error) {
+		var ch domain.WorldCharacter
+		return ch, row.Scan(&ch.ID, &ch.Name, &ch.Hairstyle, &ch.Wardrobe, &ch.Voice, &ch.Personality, &ch.FaceReferenceAssetID, &ch.BodyReferenceAssetID)
+	}, `SELECT id, name, COALESCE(hairstyle, ''), COALESCE(wardrobe, ''), COALESCE(voice, ''), COALESCE(personality, ''),
 		        COALESCE(face_reference_asset_id, ''), COALESCE(body_reference_asset_id, '')
 		 FROM character WHERE series_id = ? ORDER BY name, id`, seriesID)
 	if err != nil {
 		return c, fmt.Errorf("list canon characters: %w", err)
 	}
-	defer func() { _ = chars.Close() }()
-	for chars.Next() {
-		var ch domain.WorldCharacter
-		if err := chars.Scan(&ch.ID, &ch.Name, &ch.Hairstyle, &ch.Wardrobe, &ch.Voice, &ch.Personality, &ch.FaceReferenceAssetID, &ch.BodyReferenceAssetID); err != nil {
-			return c, err
-		}
-		c.Characters = append(c.Characters, ch)
-	}
-	if err := chars.Err(); err != nil {
-		return c, err
-	}
-	prods, err := q.QueryContext(ctx,
-		`SELECT id, name, COALESCE(material, ''), COALESCE(condition, ''),
+	c.Products, err = queryAll(ctx, q, func(row rowScanner) (domain.WorldProduct, error) {
+		var p domain.WorldProduct
+		return p, row.Scan(&p.ID, &p.Name, &p.Material, &p.Condition, &p.GeometryReferenceAssetID, &p.LabelReferenceAssetID)
+	}, `SELECT id, name, COALESCE(material, ''), COALESCE(condition, ''),
 		        COALESCE(geometry_reference_asset_id, ''), COALESCE(label_reference_asset_id, '')
 		 FROM product WHERE series_id = ? ORDER BY name, id`, seriesID)
 	if err != nil {
 		return c, fmt.Errorf("list canon products: %w", err)
 	}
-	defer func() { _ = prods.Close() }()
-	for prods.Next() {
-		var p domain.WorldProduct
-		if err := prods.Scan(&p.ID, &p.Name, &p.Material, &p.Condition, &p.GeometryReferenceAssetID, &p.LabelReferenceAssetID); err != nil {
-			return c, err
-		}
-		c.Products = append(c.Products, p)
-	}
-	if err := prods.Err(); err != nil {
-		return c, err
-	}
-	locs, err := q.QueryContext(ctx,
-		`SELECT id, name, COALESCE(layout_reference_asset_id, '') FROM location WHERE series_id = ? ORDER BY name, id`, seriesID)
+	c.Locations, err = queryAll(ctx, q, func(row rowScanner) (domain.WorldLocation, error) {
+		var l domain.WorldLocation
+		return l, row.Scan(&l.ID, &l.Name, &l.LayoutReferenceAssetID)
+	}, `SELECT id, name, COALESCE(layout_reference_asset_id, '') FROM location WHERE series_id = ? ORDER BY name, id`, seriesID)
 	if err != nil {
 		return c, fmt.Errorf("list canon locations: %w", err)
 	}
-	defer func() { _ = locs.Close() }()
-	for locs.Next() {
-		var l domain.WorldLocation
-		if err := locs.Scan(&l.ID, &l.Name, &l.LayoutReferenceAssetID); err != nil {
-			return c, err
-		}
-		c.Locations = append(c.Locations, l)
-	}
-	return c, locs.Err()
+	return c, nil
 }
 
 // UpdateCharacter sets fields of a canonical Character (domain.SeriesCharacterFields) and appends

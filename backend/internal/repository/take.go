@@ -81,20 +81,15 @@ func (r *TakeRepository) ShotTakes(ctx context.Context, shotID string) ([]domain
 }
 
 func shotTakes(ctx context.Context, q queryer, shotID string) ([]domain.TakeInfo, error) {
-	rows, err := q.QueryContext(ctx, takeInfoSelect+` WHERE pv.shot_id = ? ORDER BY t.created_at, t.id`, shotID)
+	details, err := queryAll(ctx, q, scanTakeDetail, takeInfoSelect+` WHERE pv.shot_id = ? ORDER BY t.created_at, t.id`, shotID)
 	if err != nil {
 		return nil, fmt.Errorf("list shot takes: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
-	var out []domain.TakeInfo
-	for rows.Next() {
-		d, err := scanTakeDetail(rows)
-		if err != nil {
-			return nil, fmt.Errorf("scan take: %w", err)
-		}
-		out = append(out, d.TakeInfo)
+	out := make([]domain.TakeInfo, len(details))
+	for i, d := range details {
+		out[i] = d.TakeInfo
 	}
-	return out, rows.Err()
+	return out, nil
 }
 
 // Get returns the Take or ErrNotFound.
@@ -120,20 +115,12 @@ func (r *TakeRepository) GetMany(ctx context.Context, takeIDs []string) (map[str
 	if err != nil {
 		return nil, fmt.Errorf("get takes: %w", err)
 	}
-	rows, err := r.db.Reader().QueryContext(ctx, takeInfoSelect+` WHERE t.id IN (SELECT value FROM json_each(?))`, string(ids))
+	details, err := queryAll(ctx, r.db.Reader(), scanTakeDetail, takeInfoSelect+` WHERE t.id IN (SELECT value FROM json_each(?))`, string(ids))
 	if err != nil {
 		return nil, fmt.Errorf("get takes: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
-	for rows.Next() {
-		d, err := scanTakeDetail(rows)
-		if err != nil {
-			return nil, fmt.Errorf("get takes: %w", err)
-		}
+	for _, d := range details {
 		out[d.ID] = d
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("get takes: %w", err)
 	}
 	return out, nil
 }

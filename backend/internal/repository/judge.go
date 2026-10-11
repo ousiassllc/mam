@@ -134,20 +134,11 @@ func (r *JudgeRepository) Get(ctx context.Context, id string) (domain.JudgeResul
 
 // History returns every Judge result of the Take, newest first.
 func (r *JudgeRepository) History(ctx context.Context, takeID string) ([]domain.JudgeResult, error) {
-	rows, err := r.db.Reader().QueryContext(ctx, judgeSelect+` WHERE take_id = ? ORDER BY created_at DESC, rowid DESC`, takeID)
+	out, err := queryAll(ctx, r.db.Reader(), scanJudge, judgeSelect+` WHERE take_id = ? ORDER BY created_at DESC, rowid DESC`, takeID)
 	if err != nil {
 		return nil, fmt.Errorf("list judge results: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
-	var out []domain.JudgeResult
-	for rows.Next() {
-		res, err := scanJudge(rows)
-		if err != nil {
-			return nil, fmt.Errorf("scan judge result: %w", err)
-		}
-		out = append(out, res)
-	}
-	return out, rows.Err()
+	return out, nil
 }
 
 func scanJudge(row rowScanner) (domain.JudgeResult, error) {

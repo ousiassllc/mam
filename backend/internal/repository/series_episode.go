@@ -243,24 +243,10 @@ func (r *SeriesRepository) inheritWorldState(ctx context.Context, tx *sql.Tx, pr
 // canonical note. Archived canonical notes are not copied, and later changes of the canon do not
 // reach the copies.
 func copyNotes(ctx context.Context, tx *sql.Tx, seriesID, projectID, now string) error {
-	rows, err := tx.QueryContext(ctx, noteSelect+` WHERE n.series_id = ? AND n.archived_at IS NULL ORDER BY n.created_at, n.id`, seriesID)
+	canon, err := queryAll(ctx, tx, scanNoteView, noteSelect+` WHERE n.series_id = ? AND n.archived_at IS NULL ORDER BY n.created_at, n.id`, seriesID)
 	if err != nil {
 		return fmt.Errorf("list canonical notes: %w", err)
 	}
-	var canon []domain.NoteView
-	for rows.Next() {
-		v, err := scanNoteView(rows)
-		if err != nil {
-			_ = rows.Close()
-			return err
-		}
-		canon = append(canon, v)
-	}
-	if err := rows.Err(); err != nil {
-		_ = rows.Close()
-		return err
-	}
-	_ = rows.Close()
 	for _, c := range canon {
 		id := domain.NewID()
 		if _, err := tx.ExecContext(ctx,

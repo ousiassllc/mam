@@ -12,8 +12,13 @@ import (
 // whose latest Judge result passed (Multi-model routing, spec/architecture/model-adapters.md §13).
 // A Take counts once, by its latest Judge result and the scores that follow it.
 func (r *GenerationRepository) ModelRecords(ctx context.Context, projectID string) (map[domain.ModelName]domain.ModelRecord, error) {
-	rows, err := r.db.Reader().QueryContext(ctx,
-		`SELECT t.model_name, COUNT(*),
+	records, err := queryAll(ctx, r.db.Reader(), func(row rowScanner) (domain.ModelRecord, error) {
+		var rec domain.ModelRecord
+		if err := row.Scan(&rec.Model, &rec.Samples, &rec.Scores.Product, &rec.Scores.Acting, &rec.Scores.Camera, &rec.Scores.Continuity, &rec.PassRate); err != nil {
+			return rec, fmt.Errorf("scan model record: %w", err)
+		}
+		return rec, nil
+	}, `SELECT t.model_name, COUNT(*),
 		        AVG(json_extract(t.scores, '$.product')), AVG(json_extract(t.scores, '$.acting')),
 		        AVG(json_extract(t.scores, '$.camera')), AVG(json_extract(t.scores, '$.continuity')),
 		        AVG(CASE WHEN jr.result = 'pass' THEN 1.0 ELSE 0.0 END)
@@ -27,14 +32,9 @@ func (r *GenerationRepository) ModelRecords(ctx context.Context, projectID strin
 	if err != nil {
 		return nil, fmt.Errorf("model records: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
-	out := map[domain.ModelName]domain.ModelRecord{}
-	for rows.Next() {
-		var rec domain.ModelRecord
-		if err := rows.Scan(&rec.Model, &rec.Samples, &rec.Scores.Product, &rec.Scores.Acting, &rec.Scores.Camera, &rec.Scores.Continuity, &rec.PassRate); err != nil {
-			return nil, fmt.Errorf("scan model record: %w", err)
-		}
+	out := make(map[domain.ModelName]domain.ModelRecord, len(records))
+	for _, rec := range records {
 		out[rec.Model] = rec
 	}
-	return out, rows.Err()
+	return out, nil
 }
