@@ -264,20 +264,11 @@ func (r *ProjectRepository) Get(ctx context.Context, id string) (domain.Project,
 
 // List returns every Project, newest first.
 func (r *ProjectRepository) List(ctx context.Context) ([]domain.Project, error) {
-	rows, err := r.db.Reader().QueryContext(ctx, projectSelect+` ORDER BY p.created_at DESC, p.id DESC`)
+	projects, err := queryAll(ctx, r.db.Reader(), scanProject, projectSelect+` ORDER BY p.created_at DESC, p.id DESC`)
 	if err != nil {
 		return nil, fmt.Errorf("list projects: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
-	var projects []domain.Project
-	for rows.Next() {
-		p, err := scanProject(rows)
-		if err != nil {
-			return nil, fmt.Errorf("scan project: %w", err)
-		}
-		projects = append(projects, p)
-	}
-	return projects, rows.Err()
+	return projects, nil
 }
 
 // GetBrief returns the Brief of a Project or ErrNotFound.
