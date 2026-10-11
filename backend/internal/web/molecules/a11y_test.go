@@ -54,3 +54,12 @@ func TestApprovalCard_EnterInTheCommentFieldDoesNotApprove(t *testing.T) {
 	assert.NotContains(t, first, `name="decision"`)
 	assert.Less(t, strings.Index(html, first), strings.Index(html, `value="approve"`))
 }
+
+// The answer buttons of a card post the answer and the card they reply to in hx-vals.
+func TestQuestionCard_AnswerButtonsSendTheAnswerAndTheReplyTargetInHxVals(t *testing.T) {
+	html := render(t, molecules.QuestionCard(domain.ThreadMessage{
+		ChatMessage: domain.ChatMessage{ID: "m1", ProjectID: "p", Kind: domain.KindQuestion, Content: domain.EncodeCardBody(domain.CardBody{Text: "どちら？", Options: []string{"A"}})},
+		Open:        true,
+	}))
+	assert.Contains(t, html, `hx-vals="{&#34;content&#34;:&#34;A&#34;,&#34;reply_to_message_id&#34;:&#34;m1&#34;}"`)
+}

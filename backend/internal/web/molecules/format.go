@@ -4,7 +4,6 @@ package molecules
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/url"
 	"strings"
@@ -70,21 +69,12 @@ func answerAttrs(m domain.ThreadMessage, answer string) templ.Attributes {
 	return templ.Attributes{
 		"type":            "button",
 		"hx-post":         messagesURL(m.ProjectID),
-		"hx-vals":         hxVals(map[string]string{"content": answer, "reply_to_message_id": m.ID}),
+		"hx-vals":         atoms.HxVals(map[string]string{"content": answer, "reply_to_message_id": m.ID}),
 		"hx-target":       "#chat-thread",
 		"hx-swap":         "beforeend",
 		"hx-sync":         "closest [data-options]:drop",
 		"hx-disabled-elt": "this",
 	}
-}
-
-// hxVals encodes the hx-vals attribute (extra request parameters).
-func hxVals(v map[string]string) string {
-	raw, err := json.Marshal(v)
-	if err != nil { // a map of strings always marshals
-		return "{}"
-	}
-	return string(raw)
 }
 
 func replyAttrs(m domain.ThreadMessage) templ.Attributes {

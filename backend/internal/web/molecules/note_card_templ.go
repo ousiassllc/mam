@@ -285,7 +285,7 @@ func NoteCard(n domain.NoteView) templ.Component {
 			templ_7745c5c3_Err = atoms.Button(atoms.ToneNeutral, "アーカイブを解除", templ.Attributes{
 				"type":      "button",
 				"hx-put":    paths.Note(n.ID),
-				"hx-vals":   hxVals(map[string]string{"archived": "false"}),
+				"hx-vals":   atoms.HxVals(map[string]string{"archived": "false"}),
 				"hx-target": "#note-list",
 				"hx-swap":   "outerHTML",
 			}).Render(ctx, templ_7745c5c3_Buffer)

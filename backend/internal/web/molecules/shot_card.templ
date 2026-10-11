@@ -3,6 +3,7 @@ package molecules
 import (
 	"fmt"
 	"net/url"
+	"strconv"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
@@ -69,7 +70,7 @@ const SelectedParam = "selected"
 
 // selectedVals is the hx-vals that make a Take button send SelectedParam.
 func selectedVals(selected bool) string {
-	return fmt.Sprintf(`{"%s":"%t"}`, SelectedParam, selected)
+	return atoms.HxVals(map[string]string{SelectedParam: strconv.FormatBool(selected)})
 }
 
 func shotActionURL(shotID string, action ...string) string { return paths.Shot(shotID, action...) }
