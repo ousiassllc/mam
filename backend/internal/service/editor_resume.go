@@ -2,25 +2,27 @@ package service
 
 import (
 	"context"
+	"log/slog"
 	"sync"
 )
 
 // resumer runs the follow-ups of a finished job or a selected Take (the return of the Reshoot
 // Loop, the AUTO editing chain) on ONE worker goroutine. Wake-ups coalesce: any number of Wake calls
 // while a run is going on make exactly one more run. The worker starts at the first Wake and stops
-// with its context.
+// with its context. A run that panics is logged and ends there: the worker waits for the next Wake.
 type resumer struct {
 	ctx    context.Context
 	cancel context.CancelFunc
+	logger *slog.Logger
 	run    func(ctx context.Context)
 	wake   chan struct{} // capacity 1
 	once   sync.Once
 	done   chan struct{}
 }
 
-func newResumer(run func(ctx context.Context)) *resumer {
+func newResumer(logger *slog.Logger, run func(ctx context.Context)) *resumer {
 	ctx, cancel := context.WithCancel(context.Background())
-	return &resumer{ctx: ctx, cancel: cancel, run: run, wake: make(chan struct{}, 1), done: make(chan struct{})}
+	return &resumer{ctx: ctx, cancel: cancel, logger: logger, run: run, wake: make(chan struct{}, 1), done: make(chan struct{})}
 }
 
 // Wake asks for a run; it never blocks and does nothing after Close.
@@ -42,7 +44,7 @@ func (r *resumer) loop() {
 		case <-r.ctx.Done():
 			return
 		case <-r.wake:
-			r.run(r.ctx)
+			runSafely(r.logger, "editor resume", func() { r.run(r.ctx) })
 		}
 	}
 }

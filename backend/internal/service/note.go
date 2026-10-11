@@ -228,11 +228,11 @@ func (s *NoteService) proposeInBackground(ctx context.Context, n domain.NoteView
 		return
 	}
 	bg := context.WithoutCancel(ctx)
-	go func() {
+	go runSafely(s.logger, "propose note promotion", func() {
 		if err := s.ProposePromotion(bg, n.ID, n.Version.Number); err != nil {
 			s.logger.Error("propose note promotion failed", "note_id", n.ID, "version", n.Version.Number, "err", err)
 		}
-	}()
+	})
 }
 
 // ProposePromotion compares the version of a Project note with the World State and, when it says
