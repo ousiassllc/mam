@@ -157,8 +157,8 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 │           │                # editor.go, branch.go, settings.go ...（機能ごと）
 │           ├── middleware/  # CSRF、ループバック限定ガード、セキュリティヘッダ（CSP）、ロギング/リカバリ
 │           ├── paths/       # ルート URL の組み立て（ハンドラーとテンプレートで共有）
-│           ├── atoms/       # button, badge, field, spinner, toast, lock_toggle(AUTO/MANUAL/LOCK) 等
-│           ├── molecules/   # shot_card, take_card, world_state_field, approval_card, escalation_card 等
+│           ├── atoms/       # button, badge, field, spinner, toast 等
+│           ├── molecules/   # shot_card, lock_toggle(AUTO/MANUAL/LOCK), take_card, world_state_field, approval_card, escalation_card 等
 │           ├── organisms/   # chat_workspace, shot_inspector, take_comparison, brief_form, editor_panel 等
 │           ├── pages/       # projects_page, chat_workspace_page, brief_page, editor_page 等
 │           └── layout/      # レイアウトラッパー

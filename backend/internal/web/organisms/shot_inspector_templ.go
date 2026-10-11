@@ -14,6 +14,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -85,8 +86,8 @@ func issueLine(is domain.JudgeIssue) string {
 }
 
 // LockToggleFor is the AUTO / MANUAL / LOCK switch of a parameter of the Shot.
-func LockToggleFor(shotID string, p domain.LockParameter, locks domain.ParameterLocks) atoms.LockToggleData {
-	d := atoms.LockToggleData{DOMID: "lock-" + shotID + "-" + string(p), URL: paths.Shot(shotID, "locks"), Parameter: p, Mode: locks.Mode(p)}
+func LockToggleFor(shotID string, p domain.LockParameter, locks domain.ParameterLocks) molecules.LockToggleData {
+	d := molecules.LockToggleData{DOMID: "lock-" + shotID + "-" + string(p), URL: paths.Shot(shotID, "locks"), Parameter: p, Mode: locks.Mode(p)}
 	if p == domain.ParamVideoModel {
 		d.Models, d.Model = domain.VideoModels(), locks.Text(p)
 	}
@@ -94,8 +95,8 @@ func LockToggleFor(shotID string, p domain.LockParameter, locks domain.Parameter
 }
 
 // ProjectLockToggle is the AUTO / MANUAL / LOCK switch of Story or Music.
-func ProjectLockToggle(projectID string, p domain.LockParameter, locks domain.ParameterLocks) atoms.LockToggleData {
-	return atoms.LockToggleData{DOMID: "lock-" + projectID + "-" + string(p), URL: paths.Project(projectID, "locks"), Parameter: p, Mode: locks.Mode(p)}
+func ProjectLockToggle(projectID string, p domain.LockParameter, locks domain.ParameterLocks) molecules.LockToggleData {
+	return molecules.LockToggleData{DOMID: "lock-" + projectID + "-" + string(p), URL: paths.Project(projectID, "locks"), Parameter: p, Mode: locks.Mode(p)}
 }
 
 // specRows lists the parts of the Canonical Shot Spec as label / value rows.
@@ -165,7 +166,7 @@ func ShotInspector(d ShotInspectorData) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("Scene %d / Shot %d", d.Scene.OrderIndex+1, d.Shot.OrderIndex+1))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/shot_inspector.templ`, Line: 135, Col: 115}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/shot_inspector.templ`, Line: 136, Col: 115}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -178,7 +179,7 @@ func ShotInspector(d ShotInspectorData) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(d.Shot.Objective)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/shot_inspector.templ`, Line: 136, Col: 45}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/shot_inspector.templ`, Line: 137, Col: 45}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -191,7 +192,7 @@ func ShotInspector(d ShotInspectorData) templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(domain.FormatDuration(d.Shot.Duration))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/shot_inspector.templ`, Line: 138, Col: 44}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/shot_inspector.templ`, Line: 139, Col: 44}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -204,7 +205,7 @@ func ShotInspector(d ShotInspectorData) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(string(d.Shot.State))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/shot_inspector.templ`, Line: 139, Col: 29}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/shot_inspector.templ`, Line: 140, Col: 29}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -217,7 +218,7 @@ func ShotInspector(d ShotInspectorData) templ.Component {
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(strings.ToUpper(string(d.Project.Mode)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/shot_inspector.templ`, Line: 140, Col: 53}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/shot_inspector.templ`, Line: 141, Col: 53}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
@@ -230,7 +231,7 @@ func ShotInspector(d ShotInspectorData) templ.Component {
 		var templ_7745c5c3_Var7 templ.SafeURL
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(paths.Project(d.Project.ID, "branches")))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/shot_inspector.templ`, Line: 142, Col: 67}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/shot_inspector.templ`, Line: 143, Col: 67}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
@@ -241,7 +242,7 @@ func ShotInspector(d ShotInspectorData) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		for _, p := range domain.ShotLockParameters() {
-			templ_7745c5c3_Err = atoms.LockToggle(LockToggleFor(d.Shot.ID, p, d.Locks)).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = molecules.LockToggle(LockToggleFor(d.Shot.ID, p, d.Locks)).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -268,7 +269,7 @@ func ShotInspector(d ShotInspectorData) templ.Component {
 				var templ_7745c5c3_Var8 string
 				templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(r[0])
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/shot_inspector.templ`, Line: 158, Col: 49}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/shot_inspector.templ`, Line: 159, Col: 49}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 				if templ_7745c5c3_Err != nil {
@@ -281,7 +282,7 @@ func ShotInspector(d ShotInspectorData) templ.Component {
 				var templ_7745c5c3_Var9 string
 				templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(r[1])
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/shot_inspector.templ`, Line: 159, Col: 16}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/shot_inspector.templ`, Line: 160, Col: 16}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 				if templ_7745c5c3_Err != nil {
@@ -305,7 +306,7 @@ func ShotInspector(d ShotInspectorData) templ.Component {
 			var templ_7745c5c3_Var10 string
 			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.ResolveAttributeValue(paths.Shot(d.Shot.ID, "shot-spec"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/shot_inspector.templ`, Line: 164, Col: 53}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/shot_inspector.templ`, Line: 165, Col: 53}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var10)
 			if templ_7745c5c3_Err != nil {
@@ -331,7 +332,7 @@ func ShotInspector(d ShotInspectorData) templ.Component {
 				var templ_7745c5c3_Var11 string
 				templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(d.SpecError)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/shot_inspector.templ`, Line: 172, Col: 64}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/shot_inspector.templ`, Line: 173, Col: 64}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 				if templ_7745c5c3_Err != nil {
@@ -390,7 +391,7 @@ func ShotInspector(d ShotInspectorData) templ.Component {
 				var templ_7745c5c3_Var12 string
 				templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(r.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/shot_inspector.templ`, Line: 191, Col: 21}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/shot_inspector.templ`, Line: 192, Col: 21}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 				if templ_7745c5c3_Err != nil {
@@ -429,7 +430,7 @@ func ShotInspector(d ShotInspectorData) templ.Component {
 			var templ_7745c5c3_Var13 string
 			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.ResolveAttributeValue(paths.Shot(d.Shot.ID, "references"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/shot_inspector.templ`, Line: 202, Col: 55}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/shot_inspector.templ`, Line: 203, Col: 55}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var13)
 			if templ_7745c5c3_Err != nil {
@@ -459,7 +460,7 @@ func ShotInspector(d ShotInspectorData) templ.Component {
 					var templ_7745c5c3_Var15 string
 					templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.ResolveAttributeValue(it.ID)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/shot_inspector.templ`, Line: 210, Col: 28}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/shot_inspector.templ`, Line: 211, Col: 28}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var15)
 					if templ_7745c5c3_Err != nil {
@@ -472,7 +473,7 @@ func ShotInspector(d ShotInspectorData) templ.Component {
 					var templ_7745c5c3_Var16 string
 					templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(it.Kind.Label() + " / " + it.Name)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/shot_inspector.templ`, Line: 210, Col: 66}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/shot_inspector.templ`, Line: 211, Col: 66}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 					if templ_7745c5c3_Err != nil {
@@ -509,7 +510,7 @@ func ShotInspector(d ShotInspectorData) templ.Component {
 		var templ_7745c5c3_Var17 string
 		templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.ResolveAttributeValue(paths.Shot(d.Shot.ID, "director-command"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/shot_inspector.templ`, Line: 219, Col: 60}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/shot_inspector.templ`, Line: 220, Col: 60}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var17)
 		if templ_7745c5c3_Err != nil {
@@ -555,7 +556,7 @@ func ShotInspector(d ShotInspectorData) templ.Component {
 		var templ_7745c5c3_Var18 string
 		templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(d.generationModel())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/shot_inspector.templ`, Line: 239, Col: 43}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/shot_inspector.templ`, Line: 240, Col: 43}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 		if templ_7745c5c3_Err != nil {
@@ -583,7 +584,7 @@ func ShotInspector(d ShotInspectorData) templ.Component {
 				var templ_7745c5c3_Var19 string
 				templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("Take %d", i+1))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/shot_inspector.templ`, Line: 251, Col: 43}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/shot_inspector.templ`, Line: 252, Col: 43}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 				if templ_7745c5c3_Err != nil {
@@ -604,7 +605,7 @@ func ShotInspector(d ShotInspectorData) templ.Component {
 				var templ_7745c5c3_Var20 string
 				templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(t.ModelName)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/shot_inspector.templ`, Line: 253, Col: 60}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/shot_inspector.templ`, Line: 254, Col: 60}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 				if templ_7745c5c3_Err != nil {
@@ -647,7 +648,7 @@ func ShotInspector(d ShotInspectorData) templ.Component {
 							var templ_7745c5c3_Var21 string
 							templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(issueLine(is))
 							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/shot_inspector.templ`, Line: 265, Col: 31}
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/shot_inspector.templ`, Line: 266, Col: 31}
 							}
 							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 							if templ_7745c5c3_Err != nil {
