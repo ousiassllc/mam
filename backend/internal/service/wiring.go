@@ -17,6 +17,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/stateextractor"
 	"github.com/ousiassllc/mam/backend/internal/bgwork"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/previewcache"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/bundle"
 	"github.com/ousiassllc/mam/backend/internal/repository/review"
@@ -118,7 +119,7 @@ func newWiring(deps Deps) *wiring {
 		generations: generations,
 		judges:      judges,
 		repairs:     &RepairService{core: c, repairs: r.repairs, judges: r.judges, generations: generations},
-		takes:       &TakeService{core: c, takes: r.takes, shots: r.gens, generations: generations, chatSvc: chat, tools: deps.Media},
+		takes:       &TakeService{core: c, takes: r.takes, shots: r.gens, generations: generations, chatSvc: chat, tools: deps.Media, previews: previewcache.New(logger)},
 		worlds:      &WorldService{core: c, world: r.world, versions: r.versions},
 	}
 }
