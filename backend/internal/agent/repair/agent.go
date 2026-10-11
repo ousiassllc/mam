@@ -13,11 +13,11 @@ import (
 	"context"
 	"errors"
 	"log/slog"
-	"sync"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/generation"
 	"github.com/ousiassllc/mam/backend/internal/agent/jev"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
+	"github.com/ousiassllc/mam/backend/internal/agent/repair/escalation"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
@@ -99,9 +99,8 @@ type Deps struct {
 // Agent is the Repair Agent. It is safe for concurrent use.
 type Agent struct {
 	Deps
-	// escalated holds the Judge results the automatic loop has already asked the user about: the loop
-	// is looked at again by every job that ends, and must not ask twice for the same state.
-	escalated sync.Map
+	// escalated is what the automatic loop has already asked the user about.
+	escalated escalation.Memory
 }
 
 // New returns an Agent.

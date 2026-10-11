@@ -52,6 +52,39 @@ func TestIsPublicRejectsEmbeddedNonPublicIPv4(t *testing.T) {
 	assert.True(t, safefetch.IsPublic(netip.MustParseAddr("64:ff9b::808:808")), "NAT64 of 8.8.8.8")
 }
 
+// Ranges the IANA special-purpose registries set aside (IPv4-compatible, Teredo, local-use NAT64,
+// documentation, discard, deprecated 6to4 relay) are not the public internet, whatever they embed.
+func TestIsPublicRejectsSpecialPurposeRanges(t *testing.T) {
+	for _, ip := range []string{
+		"::7f00:1",                             // IPv4-compatible 127.0.0.1
+		"::a00:1",                              // IPv4-compatible 10.0.0.1
+		"::",                                   // unspecified
+		"64:ff9b:1::a00:1",                     // local-use NAT64 (RFC 8215)
+		"64:ff9b:1:ffff:ffff:ffff:ffff:ffff",   // end of the local-use NAT64 /48
+		"2001:0:4136:e378:8000:63bf:3fff:fdd2", // Teredo
+		"2001:db8::1",                          // documentation
+		"100::1",                               // discard-only
+		"192.88.99.1",                          // deprecated 6to4 relay
+		"192.0.2.1",                            // documentation (TEST-NET-1)
+		"198.51.100.1",                         // documentation (TEST-NET-2)
+		"203.0.113.1",                          // documentation (TEST-NET-3)
+	} {
+		require.False(t, safefetch.IsPublic(netip.MustParseAddr(ip)), ip)
+	}
+	assert.True(t, safefetch.IsPublic(netip.MustParseAddr("::808:808")), "IPv4-compatible of 8.8.8.8")
+	assert.True(t, safefetch.IsPublic(netip.MustParseAddr("2001:4860:4860::8888")), "public IPv6 near 2001::/32")
+	assert.True(t, safefetch.IsPublic(netip.MustParseAddr("64:ff9b:2::1")), "outside the local-use NAT64 /48")
+}
+
+func TestCheckURLRejectsSpecialPurposeHosts(t *testing.T) {
+	for _, host := range []string{
+		"[::7f00:1]", "[::a00:1]", "[64:ff9b:1::a00:1]", "[2001:0:4136:e378:8000:63bf:3fff:fdd2]",
+		"[2001:db8::1]", "[100::1]", "192.88.99.1", "192.0.2.1", "198.51.100.1", "203.0.113.1",
+	} {
+		assert.Error(t, safefetch.CheckURL("https://"+host+"/a"), host)
+	}
+}
+
 func TestClientRefusesAURLThatResolvesToEmbeddedNonPublicIPv4(t *testing.T) {
 	client := safefetch.NewClient()
 	for _, ip := range []string{
