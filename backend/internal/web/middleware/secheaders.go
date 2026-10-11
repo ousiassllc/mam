@@ -10,7 +10,7 @@ import (
 
 // cspPrefix and cspSuffix surround the per-request connect-src source of SecurityHeaders.
 //
-//   - script-src 'self': the only script is /static/app.js. No inline script, no eval, so a
+//   - script-src 'self': the only script is paths.StaticApp (/static/app.js). No inline script, no eval, so a
 //     <script> or an on* attribute that ever reaches a page or an HTMX fragment does not run.
 //   - style-src 'unsafe-inline': the Lit components set style="left:…;width:…" attributes and htmx
 //     injects its indicator <style>; style-src 'self' alone would drop both.
@@ -22,7 +22,7 @@ const (
 )
 
 // SecurityHeaders sets Content-Security-Policy and X-Content-Type-Options on every response, so the
-// "no script but our own /static/app.js" design of the front end (htmx-config.ts, AppLayout) is
+// "no script but our own paths.StaticApp" design of the front end (htmx-config.ts, AppLayout) is
 // enforced by the browser and not only by convention.
 //
 // It sets the headers before the handler runs, with Header().Set, so a handler that sets its own

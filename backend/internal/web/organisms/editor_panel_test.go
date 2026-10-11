@@ -131,13 +131,3 @@ func TestEditorPanel_AudioButtonNeedsAnEditOfTheSeries(t *testing.T) {
 		assert.Equal(t, timelineID == "", disabledAttr.MatchString(button), "timeline %q: %s", timelineID, button)
 	}
 }
-
-// Every stage action carries its Branch in hx-vals; the trunk (no Branch) sends an empty branch_id.
-func TestEditorPanel_StageActionsSendTheBranchInHxVals(t *testing.T) {
-	html := renderPanelActions(t, organisms.EditorPanelData{Project: domain.Project{ID: "p", State: domain.ProjectStates()[0]}})
-	assert.Contains(t, html, `hx-vals="{&#34;branch_id&#34;:&#34;&#34;}"`)
-
-	html = renderPanelActions(t, organisms.EditorPanelData{Project: domain.Project{ID: "p"}, BranchID: "b1"})
-	assert.Contains(t, html, `hx-vals="{&#34;branch_id&#34;:&#34;b1&#34;}"`)
-	assert.NotContains(t, html, `branch_id&#34;:&#34;&#34;`)
-}

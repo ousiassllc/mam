@@ -18,7 +18,7 @@ templ ReviewInboxList(d ReviewInboxData) {
 		<section class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3">
 			<h2 class="text-sm font-semibold">レビューパッケージを読み込む</h2>
 			<p class="text-xs text-neutral-400">オーナーから受け取った ZIP（Review Package）を選びます。中身は動画 1 本とオーナーのメモだけです。</p>
-			<form class="flex flex-wrap items-center gap-2" hx-post="/reviews/import" hx-encoding="multipart/form-data" hx-target="#review-inbox" hx-swap="outerHTML">
+			<form class="flex flex-wrap items-center gap-2" hx-post={ paths.ReviewImport() } hx-encoding="multipart/form-data" hx-target="#review-inbox" hx-swap="outerHTML">
 				<input id="review-package-file" type="file" name="package" required accept=".zip,application/zip" aria-label="レビューパッケージ" class="text-xs"/>
 				@atoms.Button(atoms.TonePrimary, "読み込む", templ.Attributes{"type": "submit"})
 			</form>

@@ -17,7 +17,7 @@ templ ChatWorkspace(p domain.Project, msgs []domain.ThreadMessage) {
 	>
 		<header class="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-800 px-4 py-3">
 			<div class="flex min-w-0 items-center gap-3">
-				<a href="/projects" class="text-neutral-400 hover:text-neutral-100" aria-label="プロジェクト一覧へ">←</a>
+				<a href={ templ.SafeURL(paths.Projects()) } class="text-neutral-400 hover:text-neutral-100" aria-label="プロジェクト一覧へ">←</a>
 				<h1 class="truncate text-base font-semibold">{ "PROJECT: " + p.Name }</h1>
 				@ProjectStateBadge(p.State, false)
 			</div>

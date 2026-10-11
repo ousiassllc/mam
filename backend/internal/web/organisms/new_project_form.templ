@@ -3,6 +3,7 @@ package organisms
 import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // NewProjectFormData is the state of the "new project" form.
@@ -19,7 +20,7 @@ templ NewProjectForm(d NewProjectFormData) {
 	<form
 		id="new-project-form"
 		class="rounded-md border border-neutral-800 p-4"
-		hx-post="/projects"
+		hx-post={ paths.Projects() }
 		hx-encoding="multipart/form-data"
 		hx-target="this"
 		hx-swap="outerHTML"

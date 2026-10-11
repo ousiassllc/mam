@@ -1,3 +1,5 @@
+// Package atoms holds the smallest UI elements of the pages (button, field, badge, …) and the
+// helpers they share.
 package atoms
 
 import "encoding/json"
