@@ -39,3 +39,4 @@
 | 1.32 | 2026-10-12 | §5 の `web/` に `selector/`（`hx-target` の ID セレクタ。ID を CSS エスケープする。`paths/` の隣）を足した | Issue #561。#550 が足した `internal/web/selector` が構成図に無かった。契約の本文は `spec/components/overview.md`（1.44） |
 | 1.33 | 2026-10-12 | §5 の `media/` の行に、ffmpeg / ffprobe の上限時間（超えたら強制終了して `ErrTimeout`）を足した。値の本文は `spec/requirements/non-functional.md` §3（1.16） | Issue #583 / #586。#571 の上限時間が仕様書に無かった |
 | 1.34 | 2026-10-12 | §5 の構成図に `previewcache/`（Take のプレビューファイルを 1 度だけ作る。同時要求は 1 回の実行を待つ・切断で止めない・失敗と高さの判定を覚える）を足し、`keylock/` の利用者を `service/take.go`（`compose` のみ）・`service/editor.go`・`previewcache`・`agent/orchestrator` に直した | Issue #594。#576 が Take のプレビュー生成を `service/take_media.go` から `previewcache` へ切り出し、`preview` ロックはファイル単位で `previewcache` が持つようになったのに構成図が追随していなかった |
+| 1.35 | 2026-10-12 | §6 の `cmd/server` と `cmd/wails` の共通点の列挙を「グレースフルシャットダウン（時間切れの残リクエストは中断する）」にした | Issue #597。#577 が 10 秒で終わらないリクエストを中断して戻るまで待つようにしたため（詳細は `desktop.md` §2） |
