@@ -29,16 +29,16 @@ type VersionHistoryData struct {
 	// Target is the CSS selector of what the restore response replaces: the view that shows the
 	// restored content. Empty replaces the panel itself.
 	Target string
-	// Query is appended to the restore URL ("?branch_id=B" scopes a World State restore to a Branch).
-	Query   string
-	Entries []domain.VersionEntry
+	// BranchID scopes the restore URL to a Branch ("" for the trunk and for what is not Branch scoped).
+	BranchID string
+	Entries  []domain.VersionEntry
 	// RestoreBlocked is why a restore is refused in the state the page was loaded in ("" when it is
 	// not): the list then says so in place of the restore buttons the server would answer with 409.
 	RestoreBlocked string
 }
 
 func (d VersionHistoryData) restoreURL(number int) string {
-	return d.BasePath + "/versions/" + strconv.Itoa(number) + "/restore" + d.Query
+	return paths.WithBranch(d.BasePath+"/versions/"+strconv.Itoa(number)+"/restore", d.BranchID)
 }
 
 func (d VersionHistoryData) target() string {

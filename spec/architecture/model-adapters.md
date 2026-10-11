@@ -186,7 +186,7 @@ M1 Issue #9（F-13）の実装仕様。
 - **LOCK の解決**: Shot Spec の `character.identity` / `product.geometry` が `locked`、または `lock` テーブルの `(character, <id>, identity)`・`(product, <id>, geometry|label)` が `mode = lock` のとき、Character Identity + Face / Product Geometry / Logo・Text Accuracy が LOCK 扱い
 - **Repair Strategy**: モデルの `repair_strategy`（`action` は `spec/spec.md` §13 の 6 種）を保存する。high の `face_identity_drift` があるとき、`action` が無い・`prompt_repair` なら `reference_reinforcement` に置き換え、`increase_face_reference_strength` を `instructions` に足す（`spec/spec.md` §12.4）。PASS で戦略が無い Take は `repair_strategy` なし
 - **ジョブ**: Take を作るたびに `job.kind = judge` のジョブを起動する（`payload = {take_id, shot_id}`）。再開可能ジョブ（低コストで再実行できるため、異常終了後は再実行する。再実行できない場合 —— 試行回数が上限、または Judge が構成されていない —— はジョブを失敗にし、その Shot の `JUDGING` を起動時に `PLANNING` へ戻す）。実行中は Shot を `JUDGING` にし（GENERATING 中の Shot の状態は変えない）、`/ws/shots/:id` に `action = judge` の `queued` / `judging` / `done` / `failed` を流す。結果は `judge_result` に追記し（上書きしない）、チャットに PASS/FAIL・Issue・LOCK 違反・数値評価が使えなかった理由を投稿する。同じ Take の Judge が queued/running なら `POST /takes/:id/judge` は 409
-- **エラー**: ffmpeg 未導入は「ffmpeg / ffprobe が見つかりません」、API キー未設定・レート制限・タイムアウト・AI 出力不正は生成と同じ分類（`generation.FailureReason`）で通知する。顔モデルの推論エラーは Judge を失敗させず、その Take を定性評価のみで判定する（`face_identity_status = unavailable`）
+- **エラー**: ffmpeg 未導入は「ffmpeg / ffprobe が見つかりません」、API キー未設定・レート制限・タイムアウト・AI 出力不正は生成と同じ分類（`generation.FailureReason`）で通知する（ffmpeg / ffprobe の上限時間超過 `media.ErrTimeout` も同じ分類で、「動画・音声の処理（ffmpeg）が制限時間を超えました」と通知する。上限は `spec/requirements/non-functional.md` §3）。顔モデルの推論エラーは Judge を失敗させず、その Take を定性評価のみで判定する（`face_identity_status = unavailable`）
 
 ## 11. Repair Agent と Jev のシャドー実行の実装（`internal/agent/repair`、`internal/agent/jev`）
 

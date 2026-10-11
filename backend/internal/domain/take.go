@@ -241,7 +241,7 @@ func ValidateTakeSegments(segs []TakeSegment, takes []TakeInfo) error {
 			return fmt.Errorf("区間 %d の Take は除外されています", n)
 		case take.FilePath == "":
 			return fmt.Errorf("区間 %d の Take のファイルはアーカイブされています", n)
-		case s.Start < 0 || s.End-s.Start < MinTakeSegmentSeconds:
+		case s.Start < 0 || shorterThan(s.End-s.Start, MinTakeSegmentSeconds):
 			return fmt.Errorf("区間 %d は %.1f 秒以上にしてください", n, MinTakeSegmentSeconds)
 		case take.DurationSeconds > 0 && s.End > take.DurationSeconds+0.001:
 			return fmt.Errorf("区間 %d は Take の長さ（%.1f 秒）を超えています", n, take.DurationSeconds)

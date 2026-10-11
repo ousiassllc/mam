@@ -152,7 +152,7 @@ templ TakeRow(t domain.Take, selected bool, repairable bool, judgeable bool) {
 		<span class="flex shrink-0 items-center gap-2">
 			if t.Usable() {
 				if t.Selectable() {
-					@atoms.LinkButton("選択", templ.Attributes{
+					@atoms.LinkButton(atoms.ToneNeutral, "選択", templ.Attributes{
 						"type":      "button",
 						"hx-post":   takeActionURL(t.ID, "select"),
 						"hx-target": shotTarget(t.ShotID),
@@ -160,7 +160,7 @@ templ TakeRow(t domain.Take, selected bool, repairable bool, judgeable bool) {
 						"hx-vals":   selectedVals(selected),
 					})
 				}
-				@atoms.LinkButton("除外", templ.Attributes{
+				@atoms.LinkButton(atoms.ToneNeutral, "除外", templ.Attributes{
 					"type":       "button",
 					"hx-delete":  paths.Take(t.ID),
 					"hx-target":  shotTarget(t.ShotID),

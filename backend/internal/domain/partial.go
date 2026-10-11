@@ -42,7 +42,7 @@ func ParseTimeRanges(texts []string, duration float64) ([]TimeRange, error) {
 		switch {
 		case err != nil:
 			return nil, fmt.Errorf("時間範囲 %q を読み取れません（「2.1-2.8」のように秒で指定してください）", strings.TrimSpace(t))
-		case from < 0 || to-from < MinTakeSegmentSeconds:
+		case from < 0 || shorterThan(to-from, MinTakeSegmentSeconds):
 			return nil, fmt.Errorf("時間範囲 %q は %.1f 秒以上の区間にしてください", strings.TrimSpace(t), MinTakeSegmentSeconds)
 		case duration > 0 && from >= duration:
 			return nil, fmt.Errorf("時間範囲 %q は Shot の長さ（%.1f 秒）を超えています", strings.TrimSpace(t), duration)

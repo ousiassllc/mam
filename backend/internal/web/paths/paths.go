@@ -107,6 +107,12 @@ func Review(id string, segments ...string) string {
 // Routes of the collections, without an ID: the router registers them and the pages link to and
 // post to them through the same functions, as APIPrefix does for the API.
 
+// Home is the landing page, which lists the Projects, "/".
+func Home() string { return "/" }
+
+// Analytics is the production metrics of all Projects, "/analytics".
+func Analytics() string { return "/analytics" }
+
 // Projects is the Project list and where a new Project is posted, "/projects".
 func Projects() string { return "/projects" }
 
@@ -130,6 +136,16 @@ const (
 	StaticCSS = StaticPrefix + "/app.css"
 	StaticApp = StaticPrefix + "/app.js"
 )
+
+// WithBranch scopes the URL p to a Branch: p followed by "?branch_id=<id>", the query the Branch
+// scoped pages and actions read. An empty branchID is the trunk, which takes no query. p must not
+// have a query already.
+func WithBranch(p, branchID string) string {
+	if branchID == "" {
+		return p
+	}
+	return p + "?branch_id=" + url.QueryEscape(branchID)
+}
 
 // Credential is "/credentials/<provider>", the API key of a provider.
 func Credential(provider string) string { return join("/credentials", provider) }

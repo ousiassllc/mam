@@ -2,7 +2,6 @@ package organisms
 
 import (
 	"fmt"
-	"net/url"
 	"strconv"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -54,7 +53,7 @@ type BranchPageData struct {
 func branchURL(id string) string { return paths.Branch(id) }
 
 func branchWorldStateURL(projectID, branchID string) string {
-	return paths.Project(projectID, "world-state") + "?branch_id=" + url.QueryEscape(branchID)
+	return paths.WithBranch(paths.Project(projectID, "world-state"), branchID)
 }
 
 func branchShotURL(shotID string) string { return paths.Shot(shotID, "branch") }
@@ -175,13 +174,12 @@ templ BranchDetail(d BranchDetailData) {
 				}
 			</ol>
 			<div id="branch-history-slot">
-				<button
-					type="button"
-					class="text-xs text-indigo-300 underline"
-					hx-get={ branchVersionsURL(d.Branch.ID) }
-					hx-target="#branch-history-slot"
-					hx-swap="innerHTML"
-				>履歴を開いて復元する</button>
+				@atoms.LinkButton(atoms.TonePrimary, "履歴を開いて復元する", templ.Attributes{
+					"type":      "button",
+					"hx-get":    branchVersionsURL(d.Branch.ID),
+					"hx-target": "#branch-history-slot",
+					"hx-swap":   "innerHTML",
+				})
 			</div>
 		</section>
 	</article>

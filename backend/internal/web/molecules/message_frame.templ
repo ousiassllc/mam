@@ -59,7 +59,7 @@ templ AttachmentStrip(projectID string, assets []domain.Asset) {
 
 // ReplyButton lets the user reply to a card so the instruction targets it (spec/spec.md §23.2).
 templ ReplyButton(m domain.ThreadMessage) {
-	@atoms.LinkButton("返信", replyAttrs(m))
+	@atoms.LinkButton(atoms.ToneNeutral, "返信", replyAttrs(m))
 }
 
 // attachmentLabel names the i-th (0-based) of n attachments for assistive technology.
