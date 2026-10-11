@@ -63,9 +63,7 @@ func (k ClipKind) Valid() bool { return slices.Contains(ClipKinds(), k) }
 const MaxCaptionRunes = 60
 
 // CleanCaption trims a caption and turns its line breaks into spaces.
-func CleanCaption(s string) string {
-	return strings.Join(strings.Fields(s), " ")
-}
+func CleanCaption(s string) string { return strings.Join(strings.Fields(s), " ") }
 
 // Transition is the switch from the previous clip into this one.
 type Transition struct {
@@ -93,10 +91,11 @@ type EditClip struct {
 // Length is the duration of the clip in seconds.
 func (c EditClip) Length() float64 { return c.Out - c.In }
 
-// TooShort reports whether the clip is shorter than MinClipSeconds. The 1e-9 slack is the one of
-// trimProblem (static edit-model.ts): the screen cuts to milliseconds, and In 0.063 / Out 0.563 is
-// 0.49999999999999994 long as float64.
-func (c EditClip) TooShort() bool { return c.Length() < MinClipSeconds-1e-9 }
+// shorterThan: length < min with the screen's 1e-9 slack (0.563 - 0.063 and 0.7 - 0.4 are just under 0.5 / 0.3 as float64).
+func shorterThan(length, min float64) bool { return length < min-1e-9 }
+
+// TooShort reports whether the clip is shorter than MinClipSeconds.
+func (c EditClip) TooShort() bool { return shorterThan(c.Length(), MinClipSeconds) }
 
 // EditTimeline is the sequence of clips of a Rough Cut (edit_timeline_version.timeline).
 type EditTimeline struct {
