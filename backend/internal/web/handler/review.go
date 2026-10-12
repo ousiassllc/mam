@@ -141,7 +141,7 @@ func ReviewPage(svc *service.ReviewService) gin.HandlerFunc {
 			return
 		}
 		if isHTMX(c) {
-			render(c, http.StatusOK, organisms.ReviewDecision(i))
+			render(c, http.StatusOK, organisms.ReviewWorkspace(i))
 			return
 		}
 		render(c, http.StatusOK, pages.ReviewPage(middleware.CSRFToken(c), i))

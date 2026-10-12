@@ -102,9 +102,16 @@ templ ReviewCommentAdded(i domain.ReviewInbox) {
 }
 
 templ ReviewCommentForm(i domain.ReviewInbox, oob bool) {
-	<form id="review-comment-form" class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3" hx-post={ paths.Review(i.ID, "comments") } hx-target="#review-comments" hx-swap="outerHTML" if oob {
-	hx-swap-oob="true"
-}>
+	<form
+		id="review-comment-form"
+		class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3"
+		hx-post={ paths.Review(i.ID, "comments") }
+		hx-target="#review-comments"
+		hx-swap="outerHTML"
+		if oob {
+			hx-swap-oob="true"
+		}
+	>
 		<label class="flex flex-col gap-1 text-xs text-neutral-400" for="review-comment-timecode">
 			位置（秒 または 分:秒。空なら動画全体）
 			@atoms.Input(atoms.FieldMd, "w-32", templ.Attributes{
