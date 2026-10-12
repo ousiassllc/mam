@@ -6,7 +6,7 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 
 - 単一ユーザー・ループバック限定（`127.0.0.1`）のため外部向け認証は行わない。すべてのリクエストに CSRF トークン（meta タグ由来）を付与する（`spec/requirements/non-functional.md` §5）
 - ファイルを返すルート（アセット・Take の動画とサムネイル・Edit Timeline のプレビュー・Export の動画・レビューの動画）は `Content-Security-Policy: sandbox` を付ける（`serveMedia` など）。`X-Content-Type-Options: nosniff` は全応答に付く（`SecurityHeaders`）
-- 外部生成モデル API のキーはサーバー側（`agent/modeladapter`）でのみ保持し、フロントエンドには一切露出しない。画面の `<form hx-post>` はすべて、送信中の再送信を捨て（`hx-sync="this:drop"`）、送信ボタンを無効にする（`hx-disabled-elt`。チャット入力欄は入力を続けられるよう `hx-sync` のみ）ので、作成系の二重作成や 2 回目の誤ったエラートーストは起きない。`backend/internal/web/double_submit_test.go` が `.templ` 全体を走査して漏れを検出する（`hx-trigger="change"` のフォームは対象外）
+- 外部生成モデル API のキーはサーバー側（`agent/modeladapter`）でのみ保持し、フロントエンドには一切露出しない。画面の `<form hx-post>` はすべて、送信中の再送信を捨て（`hx-sync="this:drop"`）、送信ボタンを無効にする（`hx-disabled-elt`。チャット入力欄は入力を続けられるよう `hx-sync` のみ）ので、作成系の二重作成や 2 回目の誤ったエラートーストは起きない。`backend/internal/web/double_submit_test.go` が `.templ` 全体（`organisms/worldstate/` のようなサブディレクトリも再帰的に）を走査して漏れを検出する（`hx-trigger="change"` のフォームは対象外）
 - エラーレスポンスは HALT の方針（`spec/architecture/overview.md` 参照元 `skill://halt`）に従う:
   - ページ/アクションルートのバリデーションエラー（422）: フォームをエラー付きで再レンダリング
   - ビジネスエラー（403/409/423等）: OOBスワップでトースト表示。変更でその場保存するコントロール（`hx-trigger="change"` のラジオ・セレクト・チェックボックスを持つ `<select>` / `<form>`: MODE、Production Template、Quality、Confirmation Level（確認レベルの select と CUSTOM CHECK の確認ポイントの checkbox を持つ 1 つのフォーム）。`<form>` は `reset()` でフォームごと戻る）は送信前に選択が変わっているため、失敗（422・403・5xx・通信断・タイムアウト）の後にクライアント（`static/src/components/save-on-change/`）が `htmx:afterRequest` で保存済みの値に戻す
