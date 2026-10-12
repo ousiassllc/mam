@@ -210,7 +210,7 @@ func TestSeedanceNeverSendsTheFirstFrameAndReferenceImagesTogether(t *testing.T)
 		_, _ = w.Write([]byte(`{"id":"task1"}`))
 	})
 	mux.HandleFunc("/api/v3/contents/generations/tasks/task1", func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte(`{"status":"succeeded","content":{"video_url":"http://127.0.0.1/missing.mp4"}}`))
+		_, _ = w.Write([]byte(`{"status":"succeeded","content":{"video_url":"ftp://127.0.0.1/missing.mp4"}}`))
 	})
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
@@ -486,8 +486,9 @@ func seedanceServer(t *testing.T, pollCodes, downloadCodes []int) (srv *httptest
 
 var seedanceReq = modeladapter.VideoRequest{Prompt: "p", DurationSeconds: 4, Resolution: "720p", AspectRatio: "16:9"}
 
-func TestSubmittedJobSurvivesATransientPollFailureWithoutBeingSubmittedAgain(t *testing.T) {
-	srv, submits, polls, _ := seedanceServer(t, []int{http.StatusServiceUnavailable, 0}, []int{0})
+// A vendor outage longer than the old limit of three tries must not lose the output of a job that is billed already.
+func TestSubmittedJobSurvivesAnOutageOfStatusAndDownloadWithoutBeingSubmittedAgain(t *testing.T) {
+	srv, submits, polls, downloads := seedanceServer(t, []int{503, 503, 503, 503, 503, 503, 0}, []int{502, 502, 502, 502, 502, 502, 0})
 	b := backendsFor(t, srv, memKeys{"seedance": "k"})
 
 	res, err := b.Video[domain.ModelSeedance2].GenerateVideo(context.Background(), "m", seedanceReq)
@@ -495,31 +496,22 @@ func TestSubmittedJobSurvivesATransientPollFailureWithoutBeingSubmittedAgain(t *
 	require.NoError(t, err)
 	assert.Equal(t, []byte("MP4"), fileBytes(t, res.File))
 	assert.EqualValues(t, 1, submits.Load())
-	assert.EqualValues(t, 2, polls.Load())
+	assert.EqualValues(t, 7, polls.Load())
+	assert.EqualValues(t, 7, downloads.Load())
 }
 
-func TestSubmittedJobSurvivesATransientDownloadFailureWithoutBeingSubmittedAgain(t *testing.T) {
-	srv, submits, _, downloads := seedanceServer(t, []int{0}, []int{http.StatusBadGateway, 0})
-	b := backendsFor(t, srv, memKeys{"seedance": "k"})
-
-	res, err := b.Video[domain.ModelSeedance2].GenerateVideo(context.Background(), "m", seedanceReq)
-
-	require.NoError(t, err)
-	assert.Equal(t, []byte("MP4"), fileBytes(t, res.File))
-	assert.EqualValues(t, 1, submits.Load())
-	assert.EqualValues(t, 2, downloads.Load())
-}
-
-func TestPollAndDownloadRetriesAreBounded(t *testing.T) {
+func TestPollRetriesLastUntilTheDeadlineOfTheCall(t *testing.T) {
 	srv, _, polls, _ := seedanceServer(t, []int{http.StatusServiceUnavailable}, []int{0})
 	b := backendsFor(t, srv, memKeys{"seedance": "k"})
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
 
-	_, err := b.Video[domain.ModelSeedance2].GenerateVideo(context.Background(), "m", seedanceReq)
+	_, err := b.Video[domain.ModelSeedance2].GenerateVideo(ctx, "m", seedanceReq)
 
 	var pe *modeladapter.ProviderError
 	require.ErrorAs(t, err, &pe)
 	assert.Equal(t, http.StatusServiceUnavailable, pe.Status)
-	assert.EqualValues(t, 3, polls.Load())
+	assert.Greater(t, polls.Load(), int32(3), "not given up after a fixed number of tries")
 }
 
 func TestAdapterDoesNotSubmitAgainWhenPollingKeepsFailing(t *testing.T) {
@@ -531,7 +523,9 @@ func TestAdapterDoesNotSubmitAgainWhenPollingKeepsFailing(t *testing.T) {
 	}
 	a := newAdapter(cfg, modeladapter.NewBackends(cfg, memKeys{"seedance": "k"}, srv.Client(), time.Millisecond, modeladapter.WithLocalDownloads()))
 
-	_, err := a.GenerateVideo(context.Background(), seedanceTarget, seedanceTarget, baseJob())
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	_, err := a.GenerateVideo(ctx, seedanceTarget, seedanceTarget, baseJob())
 
 	require.Error(t, err)
 	assert.EqualValues(t, 1, submits.Load(), "the vendor accepted the job: a failed status request must not submit it (and bill it) again")

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"mime"
 	"mime/multipart"
@@ -278,13 +279,13 @@ func TestSyncLabs_RetriesATransientStatusOrDownloadFailureOfAnAcceptedJob(t *tes
 		case r.Method == http.MethodPost:
 			_, _ = w.Write([]byte(`{"id":"gen-1","status":"PENDING"}`))
 		case r.URL.Path == "/v2/generate/gen-1":
-			if polls++; polls == 1 {
+			if polls++; polls <= 6 { // an outage longer than the old limit of three tries
 				http.Error(w, "bad gateway", http.StatusBadGateway)
 				return
 			}
 			_, _ = w.Write([]byte(`{"id":"gen-1","status":"COMPLETED","outputUrl":"` + srv.URL + `/out.mp4"}`))
 		case r.URL.Path == "/out.mp4":
-			if downloads++; downloads == 1 {
+			if downloads++; downloads <= 6 {
 				http.Error(w, "slow down", http.StatusTooManyRequests)
 				return
 			}
@@ -298,47 +299,39 @@ func TestSyncLabs_RetriesATransientStatusOrDownloadFailureOfAnAcceptedJob(t *tes
 
 	require.NoError(t, err)
 	assert.Equal(t, []byte("lip-synced-video"), out)
-	assert.Equal(t, 2, polls)
-	assert.Equal(t, 2, downloads)
+	assert.Equal(t, 7, polls)
+	assert.Equal(t, 7, downloads)
 }
 
-func TestSyncLabs_GivesUpAfterTheRetriesAsAChargedError(t *testing.T) {
-	var polls int
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodPost {
-			_, _ = w.Write([]byte(`{"id":"gen-1","status":"PENDING"}`))
-			return
-		}
-		polls++
-		http.Error(w, "bad gateway", http.StatusBadGateway)
-	}))
-	defer srv.Close()
-	sl := audiodirector.NewSyncLabs(audiodirector.SyncLabsConfig{BaseURL: srv.URL, PollInterval: time.Millisecond}, syncKeys(t, true), nil)
+// A failed status request is retried until the Timeout, every poll interval or, when the vendor asks
+// for a long wait (Retry-After), every that long; a client error is not retried.
+func TestSyncLabs_RetriesTheStatusRequestUntilTheTimeoutAndHonoursRetryAfter(t *testing.T) {
+	for _, tc := range []struct {
+		status     int
+		retryAfter string
+		manyTries  bool
+	}{{http.StatusTooManyRequests, "", true}, {http.StatusTooManyRequests, "3600", false}, {http.StatusNotFound, "", false}} {
+		t.Run(fmt.Sprintf("%d Retry-After %q", tc.status, tc.retryAfter), func(t *testing.T) {
+			var polls int
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method == http.MethodPost {
+					_, _ = w.Write([]byte(`{"id":"gen-1","status":"PENDING"}`))
+					return
+				}
+				polls++
+				w.Header().Set("Retry-After", tc.retryAfter)
+				http.Error(w, "unavailable", tc.status)
+			}))
+			defer srv.Close()
+			sl := audiodirector.NewSyncLabs(audiodirector.SyncLabsConfig{BaseURL: srv.URL, Timeout: 100 * time.Millisecond, PollInterval: time.Millisecond}, syncKeys(t, true), nil)
 
-	_, err := sl.Sync(context.Background(), audiodirector.LipSyncRequest{Model: "sync-3"})
+			_, err := sl.Sync(context.Background(), audiodirector.LipSyncRequest{Model: "sync-3"})
 
-	var charged *audiodirector.ChargedError
-	require.ErrorAs(t, err, &charged)
-	assert.Equal(t, 3, polls)
-}
-
-func TestSyncLabs_DoesNotRetryAClientErrorOfTheStatusRequest(t *testing.T) {
-	var polls int
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodPost {
-			_, _ = w.Write([]byte(`{"id":"gen-1","status":"PENDING"}`))
-			return
-		}
-		polls++
-		http.Error(w, "gone", http.StatusNotFound)
-	}))
-	defer srv.Close()
-	sl := audiodirector.NewSyncLabs(audiodirector.SyncLabsConfig{BaseURL: srv.URL, PollInterval: time.Millisecond}, syncKeys(t, true), nil)
-
-	_, err := sl.Sync(context.Background(), audiodirector.LipSyncRequest{Model: "sync-3"})
-
-	require.Error(t, err)
-	assert.Equal(t, 1, polls)
+			var charged *audiodirector.ChargedError
+			require.ErrorAs(t, err, &charged)
+			assert.Equal(t, tc.manyTries, polls > 3, "polls: %d", polls)
+		})
+	}
 }
 
 func TestSyncLabs_Failures(t *testing.T) {
@@ -397,7 +390,7 @@ func TestSyncLabs_ADownloadFailureDoesNotLeakTheSignedOutputURL(t *testing.T) {
 		_, _ = w.Write([]byte(`{"id":"g","status":"COMPLETED","outputUrl":"` + storageURL + `/out.mp4?X-Signature=signed-secret"}`))
 	}))
 	defer srv.Close()
-	sl := audiodirector.NewSyncLabs(audiodirector.SyncLabsConfig{BaseURL: srv.URL, PollInterval: time.Millisecond, LocalDownloads: true}, syncKeys(t, true), nil)
+	sl := audiodirector.NewSyncLabs(audiodirector.SyncLabsConfig{BaseURL: srv.URL, Timeout: 100 * time.Millisecond, PollInterval: time.Millisecond, LocalDownloads: true}, syncKeys(t, true), nil)
 
 	_, err := sl.Sync(context.Background(), audiodirector.LipSyncRequest{Model: "sync-3"})
 
@@ -473,7 +466,7 @@ func TestSyncLabs_AFailureAfterTheJobWasAcceptedIsMarkedCharged(t *testing.T) {
 				}
 				_, _ = w.Write([]byte(`{"id":"g","status":"COMPLETED","outputUrl":"` + storage + `/out.mp4"}`))
 			}
-		}, 0, true},
+		}, 50 * time.Millisecond, true}, // the unreachable storage is retried until the timeout
 		{"completed without an outputUrl", func(string) http.HandlerFunc {
 			return func(w http.ResponseWriter, _ *http.Request) {
 				_, _ = w.Write([]byte(`{"id":"g","status":"COMPLETED"}`))
@@ -487,7 +480,7 @@ func TestSyncLabs_AFailureAfterTheJobWasAcceptedIsMarkedCharged(t *testing.T) {
 				}
 				http.Error(w, "boom", http.StatusInternalServerError)
 			}
-		}, 0, true},
+		}, 50 * time.Millisecond, true},
 		{"timeout while polling", func(string) http.HandlerFunc {
 			return func(w http.ResponseWriter, _ *http.Request) {
 				_, _ = w.Write([]byte(`{"id":"g","status":"PROCESSING"}`))

@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -168,5 +169,22 @@ func TestBlobStoreAsDiscardsTheStagedFileWhenStoringFails(t *testing.T) {
 	}
 	if left := stagedFiles(t, staging); len(left) != 0 {
 		t.Fatalf("staged files left: %v", left)
+	}
+}
+
+// A 429 with a long Retry-After is waited out: the download is not asked again every pollEvery.
+func TestDownloadWaitsForTheRetryAfterOfA429(t *testing.T) {
+	var hits atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		hits.Add(1)
+		w.Header().Set("Retry-After", "3600")
+		w.WriteHeader(http.StatusTooManyRequests)
+	}))
+	defer srv.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+
+	if _, _, err := downloadAPI(srv, t.TempDir()).download(ctx, srv.URL); err == nil || hits.Load() != 1 {
+		t.Fatalf("err %v after %d requests, want an error after one", err, hits.Load())
 	}
 }

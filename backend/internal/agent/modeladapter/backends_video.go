@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/resilience"
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/httpclient"
@@ -308,10 +309,9 @@ func (b runwayBackend) GenerateVideo(ctx context.Context, apiModel string, req V
 			videoURL = st.Output[0]
 			return true, nil
 		case "FAILED", "CANCELLED":
-			// INTERNAL failures are Runway's own and worth another attempt (the task is refunded);
-			// anything else (content moderation, bad input) is a refusal of the request.
+			// INTERNAL failures are Runway's own (refunded, worth another attempt, but not by asking this task again); the rest is a refusal.
 			if strings.HasPrefix(st.FailureCode, "INTERNAL") {
-				return false, &ProviderError{Vendor: string(b.vendor), Status: http.StatusBadGateway, Message: "the video job failed: " + st.Failure}
+				return false, resilience.Final(&ProviderError{Vendor: string(b.vendor), Status: http.StatusBadGateway, Message: "the video job failed: " + st.Failure})
 			}
 			return false, b.failed("the video job ended with status " + st.Status + ": " + st.Failure)
 		}
