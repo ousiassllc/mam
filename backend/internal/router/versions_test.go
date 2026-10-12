@@ -32,7 +32,7 @@ func TestShotVersions_InspectorListsThemAndRestoreAppendsACopy(t *testing.T) {
 	rec := g.form(http.MethodPost, "/shots/"+g.shotID+"/versions/1/restore", nil)
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	body := rec.Body.String()
-	assert.Contains(t, body, `id="shot-inspector"`, "the refreshed inspector is the response")
+	assert.Contains(t, body, `id="shot-spec"`, "the refreshed spec section is the response")
 	assert.NotContains(t, body, "<html")
 	assert.Contains(t, body, "A woman walks")
 	assert.Contains(t, body, `hx-post="/shots/`+g.shotID+`/versions/2/restore"`, "the run that was current is now a restorable version")

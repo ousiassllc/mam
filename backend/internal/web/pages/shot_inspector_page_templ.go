@@ -11,12 +11,12 @@ import templruntime "github.com/a-h/templ/runtime"
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/layout"
-	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/shotinspector"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // ShotInspectorPage is GET /shots/:id: the Shot Inspector in an auxiliary view.
-func ShotInspectorPage(csrfToken string, d organisms.ShotInspectorData) templ.Component {
+func ShotInspectorPage(csrfToken string, d shotinspector.Data) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -74,7 +74,7 @@ func ShotInspectorPage(csrfToken string, d organisms.ShotInspectorData) templ.Co
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = organisms.ShotInspector(d).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = shotinspector.View(d).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -94,7 +94,7 @@ func ShotInspectorPage(csrfToken string, d organisms.ShotInspectorData) templ.Co
 
 // shotInspectorBack is where "back" goes from the Inspector: the Scene page for a trunk Shot, the Branch
 // page for a Branch Shot (a Branch's Scenes are not on the trunk's Scene pages, so that link is a 404).
-func shotInspectorBack(d organisms.ShotInspectorData) (string, string) {
+func shotInspectorBack(d shotinspector.Data) (string, string) {
 	if d.Scene.BranchID != "" {
 		return paths.Branch(d.Scene.BranchID), "← Branch に戻る"
 	}

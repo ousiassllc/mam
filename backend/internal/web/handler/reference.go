@@ -8,6 +8,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/shotinspector"
 	"github.com/ousiassllc/mam/backend/internal/web/pages"
 )
 
@@ -75,7 +76,7 @@ func DeleteReference(svc *service.ReferenceService) gin.HandlerFunc {
 }
 
 // PinReference adds a Library image to the Reference Pack of a Shot (POST /shots/:id/references) and
-// answers with the Shot Inspector.
+// answers with the Reference Pack only (the spec and the 演出指示 keep what is typed in them).
 func PinReference(svc *service.ReferenceService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		view, err := svc.Pin(c.Request.Context(), c.Param("id"), c.PostForm("reference_id"))
@@ -83,6 +84,6 @@ func PinReference(svc *service.ReferenceService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusOK, organisms.ShotInspector(inspectorData(view)))
+		render(c, http.StatusOK, shotinspector.ReferencePackSection(inspectorData(view)))
 	}
 }

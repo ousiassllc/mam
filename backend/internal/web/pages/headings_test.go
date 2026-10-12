@@ -11,6 +11,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/shotinspector"
 	"github.com/ousiassllc/mam/backend/internal/web/pages"
 )
 
@@ -26,7 +27,7 @@ func TestAuxiliaryPages_HaveOneH1(t *testing.T) {
 		{"take comparison", pages.TakeComparisonPage("tok", organisms.TakeComparisonData{Project: project, Shot: domain.Shot{ID: "s"}}), "Take 比較"},
 		{"branch", pages.BranchPage("tok", organisms.BranchPageData{Project: project}), "Branch"},
 		{"scene shot", pages.SceneShotPage("tok", organisms.SceneShotData{Project: project}), "Scene / Shot"},
-		{"shot inspector", pages.ShotInspectorPage("tok", organisms.ShotInspectorData{Project: project}), "Shot Inspector"},
+		{"shot inspector", pages.ShotInspectorPage("tok", shotinspector.Data{Project: project}), "Shot Inspector"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
