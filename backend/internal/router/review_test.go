@@ -383,6 +383,48 @@ func TestReview_ReviewerInputIsValidated(t *testing.T) {
 	assert.Equal(t, http.StatusUnprocessableEntity, r.form(http.MethodPost, base+"/comments", url.Values{"body": {"one too many"}}).Code)
 }
 
+// Adding or deleting a comment and saving the decision each answer with their own part of the screen.
+// An answer that held the <video> would replace it, and the playback position and what is typed in the
+// other forms would be lost.
+func TestReview_ActionsAnswerWithTheirOwnPartNotTheVideo(t *testing.T) {
+	o := newOwner(t)
+	r, inbox := reviewerImports(t, o.packageOf(o.requestReview("")))
+	base := "/reviews/" + inbox
+
+	page := r.get(base, false).Body.String()
+	require.Contains(t, page, "<video")
+	assert.Contains(t, page, `id="review-comments"`)
+	assert.Contains(t, page, `id="review-decision"`)
+	assert.Equal(t, 1, strings.Count(page, `id="review-comment-form"`))
+	assert.NotContains(t, page, "hx-swap-oob", "the form is swapped out of band only by the answer to adding a comment")
+
+	added := r.form(http.MethodPost, base+"/comments", url.Values{"timecode": {"1:23"}, "body": {"ロゴが小さい"}})
+	require.Equal(t, http.StatusCreated, added.Code, added.Body.String())
+	assert.NotContains(t, added.Body.String(), "<video")
+	assert.NotContains(t, added.Body.String(), `id="review-decision"`)
+	assert.Contains(t, added.Body.String(), `id="review-comments"`)
+	assert.Contains(t, added.Body.String(), "ロゴが小さい")
+	assert.Contains(t, added.Body.String(), `id="review-comment-form"`)
+	assert.Contains(t, added.Body.String(), `hx-swap-oob="true"`, "an empty form comes back with the list")
+
+	var cid string
+	require.NoError(t, r.db.Reader().QueryRow(`SELECT id FROM review_inbox_comment LIMIT 1`).Scan(&cid))
+	deleted := r.form(http.MethodDelete, base+"/comments/"+cid, nil)
+	require.Equal(t, http.StatusOK, deleted.Code, deleted.Body.String())
+	assert.NotContains(t, deleted.Body.String(), "<video")
+	assert.NotContains(t, deleted.Body.String(), `id="review-comment-form"`, "deleting keeps the comment being written")
+	assert.NotContains(t, deleted.Body.String(), `id="review-decision"`)
+	assert.NotContains(t, deleted.Body.String(), "ロゴが小さい")
+	assert.Contains(t, deleted.Body.String(), "コメントはまだありません")
+
+	decided := r.form(http.MethodPut, base+"/decision", url.Values{"reviewer_name": {"Taro"}, "decision": {"approved"}, "comment": {"よさそうです"}})
+	require.Equal(t, http.StatusOK, decided.Code, decided.Body.String())
+	assert.NotContains(t, decided.Body.String(), "<video")
+	assert.NotContains(t, decided.Body.String(), `id="review-comment-form"`)
+	assert.Contains(t, decided.Body.String(), `id="review-decision"`)
+	assert.Contains(t, decided.Body.String(), `href="`+base+`/response"`, "the download link is in the section that is swapped")
+}
+
 func TestReview_ProjectBundleCarriesTheOwnersReviewsButNotTheInbox(t *testing.T) {
 	o := newOwner(t)
 	id := o.requestReview("")

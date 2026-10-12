@@ -141,7 +141,7 @@ func ReviewPage(svc *service.ReviewService) gin.HandlerFunc {
 			return
 		}
 		if isHTMX(c) {
-			render(c, http.StatusOK, organisms.ReviewWorkspace(i))
+			render(c, http.StatusOK, organisms.ReviewDecision(i))
 			return
 		}
 		render(c, http.StatusOK, pages.ReviewPage(middleware.CSRFToken(c), i))
@@ -203,7 +203,7 @@ func importReviewPackage(c *gin.Context, svc *service.ReviewService) (domain.Rev
 }
 
 // AddReviewComment adds a comment of the reviewer (POST /reviews/:id/comments) and answers with the
-// review screen (201).
+// list of the comments and an empty form (201), not the whole screen: that would reset the video.
 func AddReviewComment(svc *service.ReviewService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		i, err := svc.AddComment(c.Request.Context(), c.Param("id"), c.PostForm("timecode"), c.PostForm("body"))
@@ -211,11 +211,12 @@ func AddReviewComment(svc *service.ReviewService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusCreated, organisms.ReviewWorkspace(i))
+		render(c, http.StatusCreated, organisms.ReviewCommentAdded(i))
 	}
 }
 
-// DeleteReviewComment removes a comment of the reviewer (DELETE /reviews/:id/comments/:commentId).
+// DeleteReviewComment removes a comment of the reviewer (DELETE /reviews/:id/comments/:commentId) and
+// answers with the list of the comments.
 func DeleteReviewComment(svc *service.ReviewService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		i, err := svc.DeleteComment(c.Request.Context(), c.Param("id"), c.Param("commentId"))
@@ -223,11 +224,11 @@ func DeleteReviewComment(svc *service.ReviewService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusOK, organisms.ReviewWorkspace(i))
+		render(c, http.StatusOK, organisms.ReviewComments(i))
 	}
 }
 
-// DecideReview writes the reviewer's decision (PUT /reviews/:id/decision) and answers with the review screen.
+// DecideReview writes the reviewer's decision (PUT /reviews/:id/decision) and answers with the decision section.
 func DecideReview(svc *service.ReviewService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		i, err := svc.Decide(c.Request.Context(), c.Param("id"), c.PostForm("reviewer_name"), c.PostForm("decision"), c.PostForm("comment"))
@@ -235,6 +236,6 @@ func DecideReview(svc *service.ReviewService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusOK, organisms.ReviewWorkspace(i))
+		render(c, http.StatusOK, organisms.ReviewDecision(i))
 	}
 }
