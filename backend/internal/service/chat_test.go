@@ -134,7 +134,7 @@ func TestCreateProject_RejectsInvalidInputAndLeavesNothingBehind(t *testing.T) {
 		field   string
 	}{
 		{"empty", "  ", nil, "content"},
-		{"too long", string(bytes.Repeat([]byte("あ"), service.MaxMessageRunes+1)), nil, "content"},
+		{"too long", string(bytes.Repeat([]byte("あ"), domain.MaxMessageRunes+1)), nil, "content"},
 		{"unsupported extension", "hi", []service.Upload{upload("run.exe", pngBytes)}, "attachments"},
 		{"content does not match the extension", "hi", []service.Upload{upload("fake.png", []byte("MZ\x90\x00 not an image"))}, "attachments"},
 		{"webm claim with mp4 body", "hi", []service.Upload{upload("v.webm", mp4Bytes)}, "attachments"},

@@ -1,6 +1,11 @@
 package molecules
 
-import "github.com/ousiassllc/mam/backend/internal/web/atoms"
+import (
+	"strconv"
+
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+)
 
 // WorldStateFieldData is one field of the World State. Locked fields cannot be edited (F-10, §9.3).
 type WorldStateFieldData struct {
@@ -26,7 +31,7 @@ templ WorldStateField(d WorldStateFieldData) {
 			"name":      d.Name,
 			"type":      "text",
 			"value":     d.Value,
-			"maxlength": "200",
+			"maxlength": strconv.Itoa(domain.MaxWorldValueRunes),
 			"disabled":  d.Locked,
 		})
 	</div>

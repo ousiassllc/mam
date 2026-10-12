@@ -48,9 +48,7 @@ const (
 )
 
 // Valid reports whether d is a known decision.
-func (d ReviewDecision) Valid() bool {
-	return d == DecisionApproved || d == DecisionChangesRequested
-}
+func (d ReviewDecision) Valid() bool { return d == DecisionApproved || d == DecisionChangesRequested }
 
 // Label is the decision as shown to the user.
 func (d ReviewDecision) Label() string {

@@ -21,9 +21,7 @@ type TakeScores struct {
 }
 
 // Overall is the mean of the four scores.
-func (s TakeScores) Overall() float64 {
-	return (s.Product + s.Acting + s.Camera + s.Continuity) / 4
-}
+func (s TakeScores) Overall() float64 { return (s.Product + s.Acting + s.Camera + s.Continuity) / 4 }
 
 // issuePenalty is what an Issue of the severity takes off the score of its axis.
 func issuePenalty(s IssueSeverity) float64 {
@@ -93,6 +91,9 @@ type TakeInfo struct {
 	// Adopted is true for the Take the Shot uses (shot.selected_take_id).
 	Adopted bool
 }
+
+// Label is the name of a Judge verdict shown to the user, in the capitals of Editor Judge and Final QC.
+func (v JudgeVerdict) Label() string { return strings.ToUpper(string(v)) }
 
 // ResolutionHeight is the number of lines of "1080p", "2160p" or "4K" (0 when unknown).
 func ResolutionHeight(res string) int {

@@ -196,8 +196,8 @@ func (s *BranchService) create(ctx context.Context, shotID string, in BranchInpu
 		return BranchDetail{}, err
 	}
 	direction := strings.TrimSpace(in.Direction)
-	if utf8.RuneCountInString(direction) > maxInstructionRunes {
-		return BranchDetail{}, invalid("direction", "%d 文字以内で入力してください", maxInstructionRunes)
+	if utf8.RuneCountInString(direction) > domain.MaxInstructionRunes {
+		return BranchDetail{}, invalid("direction", "%d 文字以内で入力してください", domain.MaxInstructionRunes)
 	}
 	generate := direction != "" || aiChoice
 	if generate && !s.canContinue() {

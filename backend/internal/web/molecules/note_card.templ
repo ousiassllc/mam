@@ -43,7 +43,7 @@ templ NoteCard(n domain.NoteView) {
 					"name":      "title",
 					"type":      "text",
 					"value":     n.Version.Title,
-					"maxlength": "100",
+					"maxlength": strconv.Itoa(domain.MaxNoteTitleRunes),
 					"required":  true,
 				})
 			</label>
@@ -53,7 +53,7 @@ templ NoteCard(n domain.NoteView) {
 					"id":        "note-content-" + n.ID,
 					"name":      "content",
 					"rows":      "4",
-					"maxlength": "4000",
+					"maxlength": strconv.Itoa(domain.MaxNoteContentRunes),
 					"required":  true,
 				}, n.Version.Content)
 			</label>

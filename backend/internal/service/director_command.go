@@ -24,7 +24,7 @@ type DirectorCommandResult struct {
 func (s *DirectorService) DirectorCommand(ctx context.Context, shotID, message string) (DirectorCommandResult, error) {
 	message = strings.TrimSpace(message)
 	if err := validateMessage(message, false); err != nil {
-		return DirectorCommandResult{}, invalid("content", "指示を入力してください（%d 文字以内）", MaxMessageRunes)
+		return DirectorCommandResult{}, invalid("content", "指示を入力してください（%d 文字以内）", domain.MaxMessageRunes)
 	}
 	ref, err := s.gens.GetShot(ctx, shotID)
 	if err != nil {

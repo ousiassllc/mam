@@ -373,7 +373,7 @@ func ReferenceLibrary(d ReferenceLibraryData) templ.Component {
 			"name":      "name",
 			"type":      "text",
 			"required":  true,
-			"maxlength": "100",
+			"maxlength": intText(domain.MaxReferenceNameRunes),
 		}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err

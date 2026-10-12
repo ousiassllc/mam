@@ -96,7 +96,7 @@ templ ReviewList(d ReviewListData) {
 							"id":        "review-note",
 							"name":      "note",
 							"rows":      "3",
-							"maxlength": "1000",
+							"maxlength": intText(domain.MaxReviewNoteRunes),
 						}, "")
 					</label>
 					<div>

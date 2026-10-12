@@ -579,7 +579,7 @@ func EditorActions(d EditorPanelData) templ.Component {
 			"type":      "text",
 			"name":      "speaker",
 			"required":  true,
-			"maxlength": "20",
+			"maxlength": intText(domain.MaxSpeakerRunes),
 		}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err

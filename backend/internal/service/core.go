@@ -15,9 +15,6 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
 
-// MaxMessageRunes bounds one chat message.
-const MaxMessageRunes = 4000
-
 // core is what ProjectService and ChatService share.
 type core struct {
 	projects  *repository.ProjectRepository

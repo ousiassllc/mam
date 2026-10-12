@@ -106,3 +106,15 @@ func routingExcludedLabel(reason string) string {
 func routingAxisText(w domain.TakeScores) string {
 	return fmt.Sprintf("Shot の性質による軸の重み: product %.2f · acting %.2f · camera %.2f · continuity %.2f", w.Product, w.Acting, w.Camera, w.Continuity)
 }
+
+func stateTone(s domain.ProjectState) atoms.BadgeTone {
+	switch s {
+	case domain.StateAwaitingApproval:
+		return atoms.BadgeWarn
+	case domain.StateReady, domain.StateExported:
+		return atoms.BadgeOK
+	case domain.StateDraft:
+		return atoms.BadgeNeutral
+	}
+	return atoms.BadgeInfo
+}

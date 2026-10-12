@@ -11,6 +11,9 @@ const (
 	ModelSyncLabs        ModelName = "sync-labs"
 )
 
+// MaxSpeakerRunes bounds the speaker name of a cloned voice.
+const MaxSpeakerRunes = 20
+
 // AudioLayer is one layer of the Audio Timeline (spec/spec.md §18).
 type AudioLayer string
 
@@ -28,9 +31,7 @@ const (
 
 // PlannedLayers lists the layers the Audio Director plans from the Scene Emotion and the editing
 // tempo (the spoken layers come from the script).
-func PlannedLayers() []AudioLayer {
-	return []AudioLayer{LayerBGM, LayerSE, LayerAmbience, LayerFoley}
-}
+func PlannedLayers() []AudioLayer { return []AudioLayer{LayerBGM, LayerSE, LayerAmbience, LayerFoley} }
 
 // Model is the model that makes the layer.
 func (l AudioLayer) Model() ModelName {

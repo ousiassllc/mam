@@ -38,16 +38,3 @@ func stateLabel(s domain.ProjectState) string {
 	}
 	return string(s)
 }
-
-func stateClass(s domain.ProjectState) string {
-	base := "rounded-full px-2 py-0.5 text-xs font-medium "
-	switch s {
-	case domain.StateAwaitingApproval:
-		return base + "bg-amber-500/20 text-amber-300"
-	case domain.StateReady, domain.StateExported:
-		return base + "bg-emerald-500/20 text-emerald-300"
-	case domain.StateDraft:
-		return base + "bg-neutral-700 text-neutral-300"
-	}
-	return base + "bg-sky-500/20 text-sky-300"
-}

@@ -51,9 +51,7 @@ var stateTransitions = map[ProjectState][]ProjectState{
 }
 
 // CanTransition reports whether the Core State Machine may move from one state to another.
-func CanTransition(from, to ProjectState) bool {
-	return slices.Contains(stateTransitions[from], to)
-}
+func CanTransition(from, to ProjectState) bool { return slices.Contains(stateTransitions[from], to) }
 
 // CanExport reports whether a Project in the state can be exported: it passed Final QC (READY) or has
 // been exported already. The export is refused (409) from any other state and the panel draws the

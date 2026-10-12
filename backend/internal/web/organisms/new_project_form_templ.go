@@ -66,7 +66,7 @@ func NewProjectForm(d NewProjectFormData) templ.Component {
 			"id":          "new-project-content",
 			"name":        "content",
 			"rows":        "3",
-			"maxlength":   "4000",
+			"maxlength":   intText(domain.MaxMessageRunes),
 			"placeholder": "例: 美容液の縦型15秒CMを作りたい。上品な雰囲気で",
 		}, d.Content).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {

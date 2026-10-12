@@ -60,3 +60,50 @@ func TestStoragePanel_SaysTakeStatusByItsLabel(t *testing.T) {
 		assert.NotContains(t, html, "· "+string(s)+" ·", "take status %s", s)
 	}
 }
+
+// The Brand Template list says how strictly a constraint is enforced as the constraint list does, never by
+// the internal enum value (#644).
+func TestBrandTemplatePanel_SaysEnforcementLevelsAsTheConstraintListDoes(t *testing.T) {
+	html := renderHTML(t, organisms.BrandTemplatePanel(organisms.BrandTemplatePanelData{
+		ProjectID: "p",
+		Templates: []domain.BrandTemplate{{ID: "t1", Name: "T", Constraints: domain.BrandConstraints{
+			{Type: domain.BrandForbidden, Level: domain.EnforceLock, Text: "x"},
+			{Type: domain.BrandDisclaimer, Level: domain.EnforceAdvisory, Text: "y"},
+		}}},
+	}))
+	assert.Contains(t, html, ">LOCK<")
+	assert.Contains(t, html, ">Advisory<")
+	assert.NotContains(t, html, "（lock）")
+	assert.NotContains(t, html, "（advisory）")
+}
+
+// The Judge verdict is said in capitals in the Inspector and the Trace, as the Editor Judge and Final QC do (#644).
+func TestJudgeVerdicts_AreSaidByTheirLabels(t *testing.T) {
+	inspector := renderHTML(t, organisms.ShotInspector(organisms.ShotInspectorData{
+		Project: domain.Project{ID: "p"}, Shot: domain.Shot{ID: "s1", SceneID: "sc"},
+		Takes:  []domain.Take{{ID: "t1", ShotID: "s1"}},
+		Judged: map[string]domain.JudgeResult{"t1": {Result: domain.JudgeFail, OverallConfidence: 0.5}},
+	}))
+	assert.Contains(t, inspector, "Judge: FAIL")
+	assert.NotContains(t, inspector, "Judge: fail")
+
+	trace := renderHTML(t, organisms.TakeTracePanel(domain.TakeTrace{
+		Judgements: []domain.JudgeResult{{Result: domain.JudgePass}},
+	}))
+	assert.Contains(t, trace, ">PASS<")
+	assert.NotContains(t, trace, ">pass<")
+}
+
+// The state badge of the header is the atoms badge carrying its id and data-state, and the one of the
+// list is the same badge (#647).
+func TestProjectStateBadge_IsAnAtomsBadgeWithItsAttributes(t *testing.T) {
+	html := renderHTML(t, organisms.ProjectStateBadge(domain.StateReady, true))
+	assert.Contains(t, html, `id="project-state"`)
+	assert.Contains(t, html, `data-state="READY"`)
+	assert.Contains(t, html, `hx-swap-oob="true"`)
+	assert.Contains(t, html, "bg-emerald-500/20")
+
+	plain := renderHTML(t, organisms.ProjectStateBadge(domain.StateDraft, false))
+	assert.NotContains(t, plain, "hx-swap-oob")
+	assert.Contains(t, plain, "bg-neutral-700")
+}

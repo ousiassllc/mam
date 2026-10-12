@@ -7,6 +7,9 @@ import (
 	"time"
 )
 
+// MaxMessageRunes bounds one chat message and the additional instruction of a new Project.
+const MaxMessageRunes = 4000
+
 // MessageRole is chat_message.role.
 type MessageRole string
 

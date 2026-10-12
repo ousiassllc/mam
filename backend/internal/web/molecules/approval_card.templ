@@ -1,10 +1,16 @@
 package molecules
 
 import (
+	"strconv"
+
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/selector"
 )
+
+// approvalCommentMaxRunes is how much the comment field takes: a limit of the form only, the server
+// accepts what a chat message accepts (domain.MaxMessageRunes).
+const approvalCommentMaxRunes = 500
 
 // ApprovalCard presents the artifact of a checkpoint. It is answered with the
 // buttons (承認 / 修正を依頼) or by replying in words. A disabled submit button comes first so
@@ -29,7 +35,7 @@ templ ApprovalCard(m domain.ThreadMessage) {
 				@atoms.Input(atoms.FieldMd, "min-w-0 flex-1", templ.Attributes{
 					"type":        "text",
 					"name":        "comment",
-					"maxlength":   "500",
+					"maxlength":   strconv.Itoa(approvalCommentMaxRunes),
 					"placeholder": "コメント（任意）",
 					"aria-label":  "コメント",
 				})

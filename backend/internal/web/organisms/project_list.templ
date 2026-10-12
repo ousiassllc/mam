@@ -2,6 +2,7 @@ package organisms
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -16,7 +17,7 @@ templ ProjectList(projects []domain.Project) {
 				<a class="flex items-center justify-between gap-3 px-4 py-3 hover:bg-neutral-900" href={ templ.SafeURL(paths.Project(p.ID)) }>
 					<span class="truncate font-medium">{ p.Name }</span>
 					<span class="flex shrink-0 items-center gap-3 text-xs text-neutral-400">
-						<span class={ stateClass(p.State) }>{ stateLabel(p.State) }</span>
+						@atoms.Badge(stateTone(p.State), stateLabel(p.State))
 						<time datetime={ p.CreatedAt.Format("2006-01-02T15:04:05Z07:00") }>{ p.CreatedAt.Local().Format("2006/01/02 15:04") }</time>
 					</span>
 				</a>

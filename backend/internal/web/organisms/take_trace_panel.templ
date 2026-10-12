@@ -121,7 +121,7 @@ templ TakeTracePanel(t domain.TakeTrace) {
 				<ol class="flex flex-col gap-1">
 					for _, j := range t.Judgements {
 						<li class="flex flex-wrap items-center gap-2">
-							@atoms.Badge(judgeTone(j.Result), string(j.Result))
+							@atoms.Badge(judgeTone(j.Result), j.Result.Label())
 							<span class="text-xs">{ fmt.Sprintf("confidence %.2f · Issue %d", j.OverallConfidence, len(j.Issues)) }</span>
 							<time class="text-xs text-neutral-400" datetime={ j.CreatedAt.Format("2006-01-02T15:04:05Z07:00") }>{ j.CreatedAt.Local().Format("2006/01/02 15:04:05") }</time>
 						</li>

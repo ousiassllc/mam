@@ -97,7 +97,7 @@ func SeriesView(d SeriesViewData) templ.Component {
 			"name":      "style",
 			"type":      "text",
 			"value":     d.Series.Style,
-			"maxlength": "500",
+			"maxlength": intText(domain.MaxStyleRunes),
 		}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -193,7 +193,7 @@ func SeriesView(d SeriesViewData) templ.Component {
 					"name":      name,
 					"type":      "text",
 					"value":     seriesCharacterValues(c)[name],
-					"maxlength": "200",
+					"maxlength": intText(domain.MaxWorldValueRunes),
 				}).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
@@ -543,7 +543,7 @@ func SeriesMembership(p domain.Project) templ.Component {
 				"id":          "series-name",
 				"name":        "name",
 				"type":        "text",
-				"maxlength":   "100",
+				"maxlength":   intText(domain.MaxSeriesNameRunes),
 				"placeholder": p.Name,
 			}).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {

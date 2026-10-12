@@ -104,7 +104,7 @@ func NoteList(d NoteListData) templ.Component {
 			"id":        "note-new-title",
 			"name":      "title",
 			"type":      "text",
-			"maxlength": "100",
+			"maxlength": intText(domain.MaxNoteTitleRunes),
 		}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -117,7 +117,7 @@ func NoteList(d NoteListData) templ.Component {
 			"id":        "note-new-content",
 			"name":      "content",
 			"rows":      "4",
-			"maxlength": "4000",
+			"maxlength": intText(domain.MaxNoteContentRunes),
 			"required":  true,
 		}, "").Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {

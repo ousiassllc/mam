@@ -135,7 +135,7 @@ templ ReferenceLibrary(d ReferenceLibraryData) {
 						"name":      "name",
 						"type":      "text",
 						"required":  true,
-						"maxlength": "100",
+						"maxlength": intText(domain.MaxReferenceNameRunes),
 					})
 				</div>
 				<div>

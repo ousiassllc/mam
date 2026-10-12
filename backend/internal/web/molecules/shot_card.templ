@@ -91,7 +91,7 @@ templ ShotActions(shotID string, canContinue bool, candidates bool) {
 			"id":          "instruction-" + shotID,
 			"name":        "additional_instruction",
 			"type":        "text",
-			"maxlength":   "1000",
+			"maxlength":   strconv.Itoa(domain.MaxInstructionRunes),
 			"placeholder": "追加の指示（任意。例: もう少しカメラを寄せて）",
 		})
 		@atoms.Button(atoms.TonePrimary, "生成", templ.Attributes{"type": "submit"})

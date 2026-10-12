@@ -3,6 +3,7 @@ package organisms
 import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -29,11 +30,7 @@ templ BrandConstraintList(d BrandConstraintListData) {
 						<div class="min-w-0 flex-1">
 							<div class="flex flex-wrap items-center gap-2">
 								<span class="font-medium">{ c.Type.Label() }</span>
-								if c.Level == domain.EnforceLock {
-									<span class="rounded-full bg-red-500/20 px-2 py-0.5 text-xs text-red-300">LOCK</span>
-								} else {
-									<span class="rounded-full bg-amber-500/20 px-2 py-0.5 text-xs text-amber-300">Advisory</span>
-								}
+								@molecules.ConstraintLevelBadge(c.Level)
 							</div>
 							<p class="mt-1 whitespace-pre-wrap break-words text-neutral-300">{ c.Text }</p>
 						</div>

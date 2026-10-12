@@ -143,7 +143,7 @@ func NoteCard(n domain.NoteView) templ.Component {
 			"name":      "title",
 			"type":      "text",
 			"value":     n.Version.Title,
-			"maxlength": "100",
+			"maxlength": strconv.Itoa(domain.MaxNoteTitleRunes),
 			"required":  true,
 		}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
@@ -170,7 +170,7 @@ func NoteCard(n domain.NoteView) templ.Component {
 			"id":        "note-content-" + n.ID,
 			"name":      "content",
 			"rows":      "4",
-			"maxlength": "4000",
+			"maxlength": strconv.Itoa(domain.MaxNoteContentRunes),
 			"required":  true,
 		}, n.Version.Content).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {

@@ -155,7 +155,7 @@ func ShotActions(shotID string, canContinue bool, candidates bool) templ.Compone
 			"id":          "instruction-" + shotID,
 			"name":        "additional_instruction",
 			"type":        "text",
-			"maxlength":   "1000",
+			"maxlength":   strconv.Itoa(domain.MaxInstructionRunes),
 			"placeholder": "追加の指示（任意。例: もう少しカメラを寄せて）",
 		}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {

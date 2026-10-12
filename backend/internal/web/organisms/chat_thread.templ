@@ -5,20 +5,22 @@ import (
 	"io"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
 )
+
+func projectStateAttrs(state domain.ProjectState, oob bool) templ.Attributes {
+	attrs := templ.Attributes{"id": "project-state", "data-state": string(state)}
+	if oob {
+		attrs["hx-swap-oob"] = "true"
+	}
+	return attrs
+}
 
 // ProjectStateBadge shows the Core State Machine state. As an out-of-band fragment it
 // updates the badge in the header whenever messages are fetched.
 templ ProjectStateBadge(state domain.ProjectState, oob bool) {
-	<span
-		id="project-state"
-		class={ stateClass(state) }
-		data-state={ string(state) }
-		if oob {
-			hx-swap-oob="true"
-		}
-	>{ stateLabel(state) }</span>
+	@atoms.BadgeWith(stateTone(state), stateLabel(state), projectStateAttrs(state, oob))
 }
 
 // MessageItem renders a thread entry as text or as the card of its kind.

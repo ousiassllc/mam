@@ -1,0 +1,15 @@
+package molecules
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+)
+
+// ConstraintLevelBadge says how strictly a Brand constraint is enforced: LOCK fails, Advisory only warns.
+templ ConstraintLevelBadge(level domain.EnforcementLevel) {
+	if level == domain.EnforceLock {
+		@atoms.Badge(atoms.BadgeError, "LOCK")
+	} else {
+		@atoms.Badge(atoms.BadgeWarn, "Advisory")
+	}
+}
