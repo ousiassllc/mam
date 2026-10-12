@@ -71,7 +71,7 @@
 2985	backend/internal/web/handler/
 4424	backend/internal/web/organisms/
 376	backend/internal/web/organisms/editor_panel.templ
-382	spec/api/endpoints.md
+373	spec/api/endpoints.md
 738	spec/architecture/er.md
 367	spec/architecture/model-adapters.md
 1648	spec/spec.md
