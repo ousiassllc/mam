@@ -49,7 +49,9 @@ func reviewDecisionBadge(d domain.ReviewDecision) (atoms.BadgeTone, string) {
 }
 
 // ReviewWorkspace is the review screen of a reviewer: the video, the owner's note, the reviewer's
-// comments, the form of the decision and the link that downloads the Review Response.
+// comments, the form of the decision and the link that downloads the Review Response. The actions
+// answer with their own part (ReviewCommentAdded, ReviewComments, ReviewDecision), never with the
+// whole screen: that would replace the <video> and reset its position, and what is typed elsewhere.
 templ ReviewWorkspace(i domain.ReviewInbox) {
 	<div id="review-workspace" class="flex flex-col gap-6">
 		<video class="w-full rounded-md bg-black" aria-label="レビュー対象の動画" controls preload="metadata" src={ paths.Review(i.ID, "video") }></video>
@@ -61,106 +63,103 @@ templ ReviewWorkspace(i domain.ReviewInbox) {
 		}
 		<section class="flex flex-col gap-2" aria-label="コメント">
 			<h2 class="text-sm font-semibold">コメント</h2>
-			if len(i.Comments) == 0 {
-				<p class="text-sm text-neutral-400">コメントはまだありません。</p>
-			}
-			<ul class="flex flex-col gap-2">
-				for _, c := range i.Comments {
-					<li class="flex flex-wrap items-start gap-2 text-sm">
-						<span class="w-14 shrink-0 font-mono text-xs text-neutral-400">{ timecodeLabel(c.TimecodeMs) }</span>
-						<span class="min-w-0 flex-1 whitespace-pre-wrap">{ c.Body }</span>
-						@atoms.Button(atoms.ToneDanger, "削除", templ.Attributes{
-							"hx-delete": paths.Review(i.ID, "comments", c.ID), "hx-target": "#review-workspace", "hx-swap": "outerHTML", "type": "button", "hx-confirm": "このコメントを削除します。よろしいですか？",
-						})
-					</li>
-				}
-			</ul>
-			<form class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3" hx-post={ paths.Review(i.ID, "comments") } hx-target="#review-workspace" hx-swap="outerHTML">
-				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="review-comment-timecode">
-					位置（秒 または 分:秒。空なら動画全体）
-					@atoms.Input(atoms.FieldMd, "w-32", templ.Attributes{
-						"id":          "review-comment-timecode",
-						"name":        "timecode",
-						"type":        "text",
-						"inputmode":   "decimal",
-						"maxlength":   intText(reviewTimecodeMaxRunes),
-						"placeholder": "1:23",
-					})
-				</label>
-				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="review-comment-body">
-					コメント
-					@atoms.Textarea(atoms.FieldMd, "", templ.Attributes{
-						"id":        "review-comment-body",
-						"name":      "body",
-						"rows":      "3",
-						"maxlength": intText(domain.MaxReviewCommentRunes),
-						"required":  true,
-					}, "")
-				</label>
-				<div>
-					@atoms.Button(atoms.ToneNeutral, "コメントを追加", templ.Attributes{"type": "submit"})
-				</div>
-			</form>
+			@ReviewComments(i)
+			@ReviewCommentForm(i, false)
 		</section>
-		<section class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3" aria-label="判定">
-			<h2 class="text-sm font-semibold">判定</h2>
-			<p class="text-xs text-neutral-400">応答ファイルに入るのは、表示名・判定・全体コメント・上のコメントだけです。表示名は自己申告で、確認はされません。</p>
-			<form class="flex flex-col gap-2" hx-put={ paths.Review(i.ID, "decision") } hx-target="#review-workspace" hx-swap="outerHTML">
-				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="review-reviewer-name">
-					表示名（1〜50 文字）
-					@atoms.Input(atoms.FieldMd, "w-64", templ.Attributes{
-						"id":        "review-reviewer-name",
-						"name":      "reviewer_name",
-						"type":      "text",
-						"maxlength": intText(domain.MaxReviewerNameRunes),
-						"required":  true,
-						"value":     i.ReviewerName,
-					})
-				</label>
-				<fieldset class="flex flex-wrap gap-4 text-sm">
-					<legend class="mb-1 text-xs text-neutral-400">判定</legend>
-					<label class="flex items-center gap-1">
-						@atoms.Choice("", templ.Attributes{
-							"type":     "radio",
-							"name":     "decision",
-							"value":    "approved",
-							"required": true,
-							"checked":  i.Decision == domain.DecisionApproved,
-						})
-						承認
-					</label>
-					<label class="flex items-center gap-1">
-						@atoms.Choice("", templ.Attributes{
-							"type":    "radio",
-							"name":    "decision",
-							"value":   "changes_requested",
-							"checked": i.Decision == domain.DecisionChangesRequested,
-						})
-						修正依頼
-					</label>
-				</fieldset>
-				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="review-decision-comment">
-					全体コメント（任意）
-					@atoms.Textarea(atoms.FieldMd, "", templ.Attributes{
-						"id":        "review-decision-comment",
-						"name":      "comment",
-						"rows":      "3",
-						"maxlength": intText(domain.MaxReviewCommentRunes),
-					}, i.Comment)
-				</label>
-				<div>
-					@atoms.Button(atoms.TonePrimary, "判定を保存", templ.Attributes{"type": "submit"})
-				</div>
-			</form>
-			if i.Decision.Valid() {
-				<div class="flex flex-wrap items-center gap-3">
-					@atoms.Badge(reviewDecisionBadge(i.Decision))
-					@atoms.ButtonLink(atoms.ToneNeutral, "応答ファイルをダウンロード（JSON）", templ.SafeURL(paths.Review(i.ID, "response")), templ.Attributes{"download": true})
-					<span class="text-xs text-neutral-400">オーナーにこのファイルを渡してください。</span>
-				</div>
-			} else {
-				<p class="text-xs text-neutral-400">判定を保存すると、オーナーに返す応答ファイルをダウンロードできます。</p>
-			}
-		</section>
+		@ReviewDecision(i)
 	</div>
+}
+
+// ReviewCommentAdded is the answer to adding a comment: the list and, out of band, an empty form.
+templ ReviewCommentAdded(i domain.ReviewInbox) {
+	@ReviewComments(i)
+	@ReviewCommentForm(i, true)
+}
+
+// ReviewComments is the list of the comments, the answer to deleting one. The form is not in it: what is
+// being written stays.
+templ ReviewComments(i domain.ReviewInbox) {
+	<div id="review-comments" class="flex flex-col gap-2">
+		if len(i.Comments) == 0 {
+			<p class="text-sm text-neutral-400">コメントはまだありません。</p>
+		}
+		<ul class="flex flex-col gap-2">
+			for _, c := range i.Comments {
+				<li class="flex flex-wrap items-start gap-2 text-sm">
+					<span class="w-14 shrink-0 font-mono text-xs text-neutral-400">{ timecodeLabel(c.TimecodeMs) }</span>
+					<span class="min-w-0 flex-1 whitespace-pre-wrap">{ c.Body }</span>
+					@atoms.Button(atoms.ToneDanger, "削除", templ.Attributes{"hx-delete": paths.Review(i.ID, "comments", c.ID), "hx-target": "#review-comments", "hx-swap": "outerHTML", "type": "button", "hx-confirm": "このコメントを削除します。よろしいですか？"})
+				</li>
+			}
+		</ul>
+	</div>
+}
+
+templ ReviewCommentForm(i domain.ReviewInbox, oob bool) {
+	<form
+		id="review-comment-form"
+		class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3"
+		hx-post={ paths.Review(i.ID, "comments") }
+		hx-target="#review-comments"
+		hx-swap="outerHTML"
+		hx-sync="this:drop"
+		hx-disabled-elt="find button[type=submit]"
+		if oob {
+			hx-swap-oob="true"
+		}
+	>
+		<label class="flex flex-col gap-1 text-xs text-neutral-400" for="review-comment-timecode">
+			位置（秒 または 分:秒。空なら動画全体）
+			@atoms.Input(atoms.FieldMd, "w-32", templ.Attributes{"id": "review-comment-timecode", "name": "timecode", "type": "text", "inputmode": "decimal", "maxlength": intText(reviewTimecodeMaxRunes), "placeholder": "1:23"})
+		</label>
+		<label class="flex flex-col gap-1 text-xs text-neutral-400" for="review-comment-body">
+			コメント
+			@atoms.Textarea(atoms.FieldMd, "", templ.Attributes{"id": "review-comment-body", "name": "body", "rows": "3", "maxlength": intText(domain.MaxReviewCommentRunes), "required": true}, "")
+		</label>
+		<div>
+			@atoms.Button(atoms.ToneNeutral, "コメントを追加", templ.Attributes{"type": "submit"})
+		</div>
+	</form>
+}
+
+// ReviewDecision is the form of the decision and, once it is written, the badge and the link that
+// downloads the Review Response. It is the answer to saving the decision.
+templ ReviewDecision(i domain.ReviewInbox) {
+	<section id="review-decision" class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3" aria-label="判定">
+		<h2 class="text-sm font-semibold">判定</h2>
+		<p class="text-xs text-neutral-400">応答ファイルに入るのは、表示名・判定・全体コメント・上のコメントだけです。表示名は自己申告で、確認はされません。</p>
+		<form class="flex flex-col gap-2" hx-put={ paths.Review(i.ID, "decision") } hx-target="#review-decision" hx-swap="outerHTML">
+			<label class="flex flex-col gap-1 text-xs text-neutral-400" for="review-reviewer-name">
+				表示名（1〜50 文字）
+				@atoms.Input(atoms.FieldMd, "w-64", templ.Attributes{"id": "review-reviewer-name", "name": "reviewer_name", "type": "text", "maxlength": intText(domain.MaxReviewerNameRunes), "required": true, "value": i.ReviewerName})
+			</label>
+			<fieldset class="flex flex-wrap gap-4 text-sm">
+				<legend class="mb-1 text-xs text-neutral-400">判定</legend>
+				<label class="flex items-center gap-1">
+					@atoms.Choice("", templ.Attributes{"type": "radio", "name": "decision", "value": "approved", "required": true, "checked": i.Decision == domain.DecisionApproved})
+					承認
+				</label>
+				<label class="flex items-center gap-1">
+					@atoms.Choice("", templ.Attributes{"type": "radio", "name": "decision", "value": "changes_requested", "checked": i.Decision == domain.DecisionChangesRequested})
+					修正依頼
+				</label>
+			</fieldset>
+			<label class="flex flex-col gap-1 text-xs text-neutral-400" for="review-decision-comment">
+				全体コメント（任意）
+				@atoms.Textarea(atoms.FieldMd, "", templ.Attributes{"id": "review-decision-comment", "name": "comment", "rows": "3", "maxlength": intText(domain.MaxReviewCommentRunes)}, i.Comment)
+			</label>
+			<div>
+				@atoms.Button(atoms.TonePrimary, "判定を保存", templ.Attributes{"type": "submit"})
+			</div>
+		</form>
+		if i.Decision.Valid() {
+			<div class="flex flex-wrap items-center gap-3">
+				@atoms.Badge(reviewDecisionBadge(i.Decision))
+				@atoms.ButtonLink(atoms.ToneNeutral, "応答ファイルをダウンロード（JSON）", templ.SafeURL(paths.Review(i.ID, "response")), templ.Attributes{"download": true})
+				<span class="text-xs text-neutral-400">オーナーにこのファイルを渡してください。</span>
+			</div>
+		} else {
+			<p class="text-xs text-neutral-400">判定を保存すると、オーナーに返す応答ファイルをダウンロードできます。</p>
+		}
+	</section>
 }

@@ -6,7 +6,7 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 
 - 単一ユーザー・ループバック限定（`127.0.0.1`）のため外部向け認証は行わない。すべてのリクエストに CSRF トークン（meta タグ由来）を付与する（`spec/requirements/non-functional.md` §5）
 - ファイルを返すルート（アセット・Take の動画とサムネイル・Edit Timeline のプレビュー・Export の動画・レビューの動画）は `Content-Security-Policy: sandbox` を付ける（`serveMedia` など）。`X-Content-Type-Options: nosniff` は全応答に付く（`SecurityHeaders`）
-- 外部生成モデル API のキーはサーバー側（`agent/modeladapter`）でのみ保持し、フロントエンドには一切露出しない
+- 外部生成モデル API のキーはサーバー側（`agent/modeladapter`）でのみ保持し、フロントエンドには一切露出しない。画面の `<form hx-post>` はすべて、送信中の再送信を捨て（`hx-sync="this:drop"`）、送信ボタンを無効にする（`hx-disabled-elt`。チャット入力欄は入力を続けられるよう `hx-sync` のみ）ので、作成系の二重作成や 2 回目の誤ったエラートーストは起きない。`backend/internal/web/double_submit_test.go` が `.templ` 全体を走査して漏れを検出する（`hx-trigger="change"` のフォームは対象外）
 - エラーレスポンスは HALT の方針（`spec/architecture/overview.md` 参照元 `skill://halt`）に従う:
   - ページ/アクションルートのバリデーションエラー（422）: フォームをエラー付きで再レンダリング
   - ビジネスエラー（403/409/423等）: OOBスワップでトースト表示。変更でその場保存するコントロール（`hx-trigger="change"` のラジオ・セレクト・チェックボックスを持つ `<select>` / `<form>`: MODE、Production Template、Quality、Confirmation Level（確認レベルの select と CUSTOM CHECK の確認ポイントの checkbox を持つ 1 つのフォーム）。`<form>` は `reset()` でフォームごと戻る）は送信前に選択が変わっているため、失敗（422・403・5xx・通信断・タイムアウト）の後にクライアント（`static/src/components/save-on-change/`）が `htmx:afterRequest` で保存済みの値に戻す
@@ -269,7 +269,7 @@ M2 の入出力契約（Issue #15）:
 - `POST /projects/:id/reviews/feedback`: 成功時は更新後のレビュー一覧（201）。ファイルなし・JSON として読めない・`format`/`version` が違う・判定やコメントが不正・ファイルが 1MB 超過（本文全体が 2 MiB 以内のとき。超えれば §0 の 413）は 422（何も保存しない）、`review_id` がこの Project のレビュー依頼でなければ 422、`response_id` が取り込み済みなら 409。取り込むと Chat Workspace のスレッドに AI の発言（表示名・判定・コメント件数）を追加する
 - `PUT /projects/:id/review-comments/:commentId`: 更新後のレビュー一覧（200）。当該 Project のコメントでなければ 404
 - `POST /reviews/import`: 成功時は `HX-Redirect: /reviews/:id`（201）。ZIP として読めない・`manifest.json` と `video.mp4|webm` 以外のエントリがある・形式やバージョンが違う・動画の署名が合わない・サイズ超過（本文全体が 2 GiB + 2 MiB 以内のとき。超えれば §0 の 413）は 422（何も保存しない）、同じ `review_id` を読み込み済みなら 409
-- `POST /reviews/:id/comments`・`DELETE /reviews/:id/comments/:commentId`・`PUT /reviews/:id/decision`: 更新後のレビュー画面のフラグメント（201 / 200）。コメントは 1 レビュー 200 件まで（超過は 422）、`timecode` が負・秒でも 分:秒 でもない・24 時間超は 422、`decision` が不正・`reviewer_name` が空か長すぎるは 422。コメントや判定を変えると、書き出す応答の `response_id` が新しくなる
+- `POST /reviews/:id/comments`・`DELETE /reviews/:id/comments/:commentId`・`PUT /reviews/:id/decision`: 変わる部分だけのフラグメント（201 / 200）。動画（`<video>`）を含む画面全体は返さない（再生位置と、他のフォームの書きかけを失わないため）。コメントの追加は、コメント一覧（`#review-comments`）と、空にした追加フォーム（`#review-comment-form`、OOB スワップ）。削除は一覧だけ（書きかけの追加フォームは残る）。判定の保存は判定の領域（`#review-decision`。保存後のバッジと応答ファイルのダウンロードリンクを含む）だけ。コメントは 1 レビュー 200 件まで（超過は 422）、`timecode` が負・秒でも 分:秒 でもない・24 時間超は 422、`decision` が不正・`reviewer_name` が空か長すぎるは 422。コメントや判定を変えると、書き出す応答の `response_id` が新しくなる
 
 ## 3. API ルート（Huma, JSON, `/api/v1`）
 

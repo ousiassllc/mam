@@ -14,7 +14,7 @@ import (
 )
 
 func TestBundleRepository_ImportRejectsProjectIDsThatCollideWithServerDirectories(t *testing.T) {
-	for _, id := range []string{".previews", ".staging", `a"b`, "a?b"} {
+	for _, id := range []string{".previews", ".staging", "reviews", `a"b`, "a?b"} {
 		ctx := context.Background()
 		db := openTestDB(t)
 		seedDeepProject(t, db, "a")

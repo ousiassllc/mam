@@ -251,16 +251,7 @@ templ EditorActions(d EditorPanelData) {
 			if !d.CanRender {
 				<p class="text-xs text-amber-300">ffmpeg / ffprobe が見つからないため、音声と書き出しは使えません。</p>
 			}
-			<form
-				hx-post={ paths.Project(d.Project.ID, "audio", "voices") }
-				hx-encoding="multipart/form-data"
-				hx-target="#editor-actions"
-				hx-swap="outerHTML"
-				hx-disabled-elt="find button"
-				hx-vals={ branchVals(d.BranchID) }
-				class="flex flex-wrap items-end gap-3"
-				aria-label="音声クローン"
-			>
+			<form hx-post={ paths.Project(d.Project.ID, "audio", "voices") } hx-encoding="multipart/form-data" hx-target="#editor-actions" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button" hx-vals={ branchVals(d.BranchID) } class="flex flex-wrap items-end gap-3" aria-label="音声クローン">
 				<label class="flex flex-col gap-1 text-xs text-neutral-400">
 					話者名（脚本の「話者: セリフ」の話者）
 					@atoms.Input(atoms.FieldMd, "", templ.Attributes{
@@ -311,14 +302,7 @@ templ EditorActions(d EditorPanelData) {
 		</section>
 		<section class="flex flex-col gap-2" aria-label="Export">
 			<h3 class="text-sm font-semibold">5. 書き出し</h3>
-			<form
-				hx-post={ paths.Project(d.Project.ID, "export") }
-				hx-target="#editor-actions"
-				hx-swap="outerHTML"
-				hx-disabled-elt="find button"
-				hx-vals={ branchVals(d.BranchID) }
-				class="flex flex-wrap items-end gap-3"
-			>
+			<form hx-post={ paths.Project(d.Project.ID, "export") } hx-target="#editor-actions" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button" hx-vals={ branchVals(d.BranchID) } class="flex flex-wrap items-end gap-3">
 				<label class="flex flex-col gap-1 text-xs text-neutral-400">
 					Aspect Ratio
 					@atoms.Select(atoms.FieldMd, "", templ.Attributes{

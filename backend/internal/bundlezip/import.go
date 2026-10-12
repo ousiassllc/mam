@@ -105,6 +105,11 @@ func readData(zr *zip.Reader) (domain.BundleData, error) {
 	if data.ProjectID != manifest.ProjectID {
 		return data, invalid("manifest.json と data.json のプロジェクト ID が一致しません")
 	}
+	// Install puts the files in assets/<project_id>/ before the rows are checked, so a Project ID the
+	// server uses for its own directory (the Review inbox) is refused here, before anything is written.
+	if !domain.ValidBundleID(data.ProjectID) {
+		return data, invalid("プロジェクト ID が正しくありません")
+	}
 	return data, nil
 }
 

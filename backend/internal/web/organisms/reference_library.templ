@@ -131,6 +131,8 @@ templ referenceUploadForm(d ReferenceLibraryData, oob bool) {
 		hx-encoding="multipart/form-data"
 		hx-target="#reference-library"
 		hx-swap="outerHTML"
+		hx-sync="this:drop"
+		hx-disabled-elt="find button[type=submit]"
 		if oob {
 			hx-swap-oob="true"
 		}

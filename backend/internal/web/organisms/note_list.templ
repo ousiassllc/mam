@@ -74,6 +74,8 @@ templ noteAddForm(d NoteListData, oob bool) {
 		hx-post={ d.BasePath }
 		hx-target="#note-list"
 		hx-swap="outerHTML"
+		hx-sync="this:drop"
+		hx-disabled-elt="find button[type=submit]"
 		if oob {
 			hx-swap-oob="true"
 		}

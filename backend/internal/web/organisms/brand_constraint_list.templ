@@ -73,6 +73,8 @@ templ brandConstraintForm(d BrandConstraintListData, oob bool) {
 		hx-post={ paths.Project(d.ProjectID, "brand-constraints") }
 		hx-target="#brand-constraint-list"
 		hx-swap="outerHTML"
+		hx-sync="this:drop"
+		hx-disabled-elt="find button[type=submit]"
 		if oob {
 			hx-swap-oob="true"
 		}

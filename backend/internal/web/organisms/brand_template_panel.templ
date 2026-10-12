@@ -80,12 +80,7 @@ templ BrandTemplatePanel(d BrandTemplatePanelData) {
 				}
 			</ul>
 		}
-		<form
-			class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3"
-			hx-post={ paths.Project(d.ProjectID, "brand-templates") }
-			hx-target="#brand-template-panel"
-			hx-swap="outerHTML"
-		>
+		<form class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3" hx-post={ paths.Project(d.ProjectID, "brand-templates") } hx-target="#brand-template-panel" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]">
 			<label for="brand-template-name" class="text-sm font-medium">この Project の制約をテンプレートとして保存</label>
 			@atoms.Input(atoms.FieldLg, "w-full", templ.Attributes{
 				"id":          "brand-template-name",

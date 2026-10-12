@@ -157,11 +157,11 @@ func TestReview_ReviewerAnswersAndOwnerImportsTheResponse(t *testing.T) {
 	rec := r.form(http.MethodPost, "/reviews/"+inbox+"/comments", url.Values{"timecode": {"1:23"}, "body": {"ロゴが小さい"}})
 	require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
 	assert.Contains(t, rec.Body.String(), "ロゴが小さい")
-	assert.Contains(t, rec.Body.String(), "1:23")
+	assert.True(t, strings.Contains(rec.Body.String(), `hx-swap-oob="true"`) && !strings.Contains(rec.Body.String(), "<video"), "the answer is the list and an empty form, not the screen")
 	rec = r.form(http.MethodPost, "/reviews/"+inbox+"/comments", url.Values{"body": {"全体に良いです"}})
 	require.Equal(t, http.StatusCreated, rec.Code)
 	rec = r.form(http.MethodPut, "/reviews/"+inbox+"/decision", url.Values{"reviewer_name": {"Taro"}, "decision": {"changes_requested"}, "comment": {"直してください"}})
-	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	require.True(t, rec.Code == http.StatusOK && strings.Contains(rec.Body.String(), `id="review-decision"`) && !strings.Contains(rec.Body.String(), "<video"), rec.Body.String())
 
 	resp := r.get("/reviews/"+inbox+"/response", false)
 	require.Equal(t, http.StatusOK, resp.Code)
@@ -371,7 +371,7 @@ func TestReview_ReviewerInputIsValidated(t *testing.T) {
 	var cid string
 	require.NoError(t, r.db.Reader().QueryRow(`SELECT id FROM review_inbox_comment LIMIT 1`).Scan(&cid))
 	assert.Equal(t, http.StatusNotFound, r.form(http.MethodDelete, "/reviews/nope/comments/"+cid, nil).Code)
-	assert.Equal(t, http.StatusOK, r.form(http.MethodDelete, base+"/comments/"+cid, nil).Code)
+	assert.Contains(t, r.form(http.MethodDelete, base+"/comments/"+cid, nil).Body.String(), `id="review-comments"`, "the answer to deleting is the list only")
 	assert.Equal(t, http.StatusNotFound, r.form(http.MethodDelete, base+"/comments/"+cid, nil).Code)
 	assert.Equal(t, http.StatusNotFound, r.form(http.MethodPost, "/reviews/nope/comments", url.Values{"body": {"x"}}).Code)
 	assert.Equal(t, http.StatusNotFound, r.form(http.MethodPut, "/reviews/nope/decision", url.Values{"reviewer_name": {"T"}, "decision": {"approved"}}).Code)

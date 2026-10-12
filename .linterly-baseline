@@ -18,7 +18,7 @@
 3097	backend/internal/agent/judge/
 469	backend/internal/agent/judge/judge.go
 430	backend/internal/agent/judge/judge_test.go
-3771	backend/internal/agent/modeladapter/
+3769	backend/internal/agent/modeladapter/
 550	backend/internal/agent/modeladapter/adapter_test.go
 668	backend/internal/agent/modeladapter/backends_test.go
 396	backend/internal/agent/modeladapter/backends_video.go
@@ -68,8 +68,8 @@
 527	backend/internal/service/reshoot_test.go
 441	backend/internal/service/review.go
 2975	backend/internal/web/handler/
-4280	backend/internal/web/organisms/
-376	backend/internal/web/organisms/editor_panel.templ
+4251	backend/internal/web/organisms/
+360	backend/internal/web/organisms/editor_panel.templ
 373	spec/api/endpoints.md
 738	spec/architecture/er.md
 367	spec/architecture/model-adapters.md
