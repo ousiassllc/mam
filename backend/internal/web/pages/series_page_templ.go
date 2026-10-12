@@ -11,12 +11,12 @@ import templruntime "github.com/a-h/templ/runtime"
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/layout"
-	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/seriesview"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // SeriesPage is GET /series/:id: the canon and the Episodes of a Series.
-func SeriesPage(csrfToken string, d organisms.SeriesViewData) templ.Component {
+func SeriesPage(csrfToken string, d seriesview.Data) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -74,7 +74,7 @@ func SeriesPage(csrfToken string, d organisms.SeriesViewData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = organisms.SeriesView(d).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = seriesview.View(d).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

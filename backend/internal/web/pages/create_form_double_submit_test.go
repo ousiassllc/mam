@@ -12,6 +12,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/seriesview"
 	"github.com/ousiassllc/mam/backend/internal/web/pages"
 )
 
@@ -28,7 +29,7 @@ func TestCreateAndRedirectForms_IgnoreASecondSubmitWhileOneIsInFlight(t *testing
 		action string
 	}{
 		{"new project", pages.ProjectsPage("tok", nil, organisms.NewProjectFormData{}), `hx-post="/projects"`},
-		{"next episode", pages.SeriesPage("tok", organisms.SeriesViewData{Series: domain.Series{ID: "s1", Name: "S"}}), `hx-post="/series/s1/episodes"`},
+		{"next episode", pages.SeriesPage("tok", seriesview.Data{Series: domain.Series{ID: "s1", Name: "S"}}), `hx-post="/series/s1/episodes"`},
 		{"branch", pages.BranchPage("tok", organisms.BranchPageData{Project: project, Shots: []organisms.BranchShotOption{{ShotID: "sh1", Label: "Scene 1 / Shot 1"}}}), `hx-post="/shots/sh1/branch"`},
 		{"make a series of a project", organisms.SeriesMembership(project), `hx-post="/series"`},
 		{"import a project bundle", pages.ProjectsPage("tok", nil, organisms.NewProjectFormData{}), `hx-post="/projects/import"`},
