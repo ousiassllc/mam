@@ -87,20 +87,20 @@ func ShotInspector(svc *service.DirectorService) gin.HandlerFunc {
 }
 
 // EditShotSpec stores a hand-edited Canonical Shot Spec (PUT /shots/:id/shot-spec) and answers with
-// the inspector. An unusable spec is 422 and the inspector is drawn again with the input and the
-// reason; a change to a LOCKed parameter is 423.
+// the spec section only (the 演出指示 and the Reference Pack form keep what is typed in them). An unusable
+// spec is 422 and the section is drawn again with the input and the reason; a change to a LOCKed parameter is 423.
 func EditShotSpec(svc *service.DirectorService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		view, err := svc.EditSpec(c.Request.Context(), c.Param("id"), c.PostForm("shot_spec"))
 		if err != nil {
 			if v := asValidation(err); v != nil && view.Shot.ID != "" {
-				render(c, http.StatusUnprocessableEntity, organisms.ShotInspector(inspectorData(view)))
+				render(c, http.StatusUnprocessableEntity, organisms.ShotSpecSection(inspectorData(view)))
 				return
 			}
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusOK, organisms.ShotInspector(inspectorData(view)))
+		render(c, http.StatusOK, organisms.ShotSpecChanged(inspectorData(view)))
 	}
 }
 

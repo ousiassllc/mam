@@ -12,7 +12,8 @@ import (
 )
 
 // RestoreShotVersion restores the spec of a Shot to a saved version
-// (POST /shots/:id/versions/:versionNumber/restore) and answers with the Shot Inspector.
+// (POST /shots/:id/versions/:versionNumber/restore) and answers with the spec section and the version
+// history (the 演出指示 and the Reference Pack form keep what is typed in them).
 func RestoreShotVersion(svc *service.VersionService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		number, err := service.ParseVersionNumber(c.Param("versionNumber"))
@@ -25,7 +26,7 @@ func RestoreShotVersion(svc *service.VersionService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusOK, organisms.ShotInspector(inspectorData(view)))
+		render(c, http.StatusOK, organisms.ShotSpecChanged(inspectorData(view)))
 	}
 }
 
