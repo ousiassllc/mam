@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"strings"
 
@@ -15,10 +16,31 @@ import (
 )
 
 // Extractor is the State Extractor Agent.
-type Extractor struct{ llm llm.Completer }
+type Extractor struct {
+	llm    llm.Completer
+	logger *slog.Logger
+}
+
+// Option configures an Extractor.
+type Option func(*Extractor)
+
+// WithLogger sets the logger that reports the changes the Extractor leaves out as invalid.
+func WithLogger(l *slog.Logger) Option {
+	return func(e *Extractor) {
+		if l != nil {
+			e.logger = l
+		}
+	}
+}
 
 // New returns an Extractor that reasons through c.
-func New(c llm.Completer) *Extractor { return &Extractor{llm: c} }
+func New(c llm.Completer, opts ...Option) *Extractor {
+	e := &Extractor{llm: c, logger: slog.New(slog.DiscardHandler)}
+	for _, o := range opts {
+		o(e)
+	}
+	return e
+}
 
 // Input is what the State Extractor works from (spec/components/overview.md §1).
 type Input struct {
@@ -45,6 +67,8 @@ func llmFields(t domain.WorldTarget) []string {
 }
 
 func systemPrompt() string {
+	knownInformationRule := fmt.Sprintf(`- "known_information" is the COMPLETE list after the shot: keep the current items and add what the shot reveals. It holds at most %d items: when the list would be longer, drop the oldest or least important items so that %d items or fewer remain. Every other value is one short text.`,
+		domain.MaxKnownInformation, domain.MaxKnownInformation)
 	var fields strings.Builder
 	for _, t := range llmTargets {
 		fmt.Fprintf(&fields, "- %s: %s\n", t, strings.Join(llmFields(t), ", "))
@@ -68,14 +92,14 @@ Rules:
 - "character", "product" and "location" changes need the "id" of an entry of the world state; never invent characters, products or locations. "camera" and "story" have no "id".
 - A "location" change is only for the location the shot takes place in (named in the shot spec): "time" is the time of day, "lighting_state" the light on the location and "weather" the weather at the last frame.
 - "position" is where the character or camera is at the last frame; "current_action" is what the character is doing at the last frame; "emotion" is how the character feels at the end.
-- "known_information" is the COMPLETE list after the shot: keep the current items and add what the shot reveals. Every other value is one short text.
+` + knownInformationRule + `
 - Write every value in English, short snake_case or a few words, in the style of the current values. Do not describe anything the shot does not show or clearly imply.`
 }
 
 // Extract returns the State Diff of the completed Shot: the fields whose value at the end of the
 // Shot differs from the World State. Answers that name an unknown entity or field, a value of the
 // wrong shape, an unchanged value, a Location other than the Shot's or a LOCKed field are left out,
-// so every change of the diff is applicable. story.scene follows the Scene of the Shot.
+// so every change of the diff is applicable (a change left out for an invalid value is logged). story.scene follows the Scene of the Shot.
 func (e *Extractor) Extract(ctx context.Context, in Input) (domain.StateDiff, error) {
 	type change struct {
 		Target domain.WorldTarget `json:"target"`
@@ -107,8 +131,11 @@ func (e *Extractor) Extract(ctx context.Context, in Input) (domain.StateDiff, er
 		if t == domain.TargetLocation && (shotLocation == "" || id != shotLocation) {
 			return
 		}
-		if seen[key] || domain.SameValue(to, nil) || !domain.IsExtractable(t, field) || in.Locks.Locked(t, id, field) ||
-			domain.ValidateFieldValue(t, field, to) != nil {
+		if seen[key] || domain.SameValue(to, nil) || !domain.IsExtractable(t, field) || in.Locks.Locked(t, id, field) {
+			return
+		}
+		if err := domain.ValidateFieldValue(t, field, to); err != nil {
+			e.logger.Warn("state extractor change left out: invalid value", "target", t, "id", id, "field", field, "err", err)
 			return
 		}
 		from, exists := in.World.Current(t, id, field)
