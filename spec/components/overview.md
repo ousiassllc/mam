@@ -81,7 +81,7 @@ export class MamVideoPlayer extends LitElement {
   @state() private issues: JudgeIssue[] = [];                          // フレームマーカー描画用
 
   @property({ type: String }) poster = '';                              // 再生前の静止画（サーバーが注入）
-  @property({ type: Number }) fps = 0;                                 // 既知のフレームレート。0 のときは再生中に計測（未計測は 30fps 扱い）
+  @property({ type: Number }) fps = 0;                                 // 既知のフレームレート（Take カードの `fps`。ffprobe で読めた Take のみ）。0 のときは再生中に計測（未計測は 30fps 扱い）
 
   // イベント: 'seek-requested'（他コンポーネントへ再生位置 {time, frame} を伝播）、'progress-finished'（生成/Judge の完了・失敗を通知）
 }
@@ -221,3 +221,4 @@ export class MamTakeComparator extends LitElement {
 | 1.45 | 2026-10-12 | §3 の表に `settings_body`（organisms）・`settings_section`（molecules）・`choice`（atoms）を足し、`button`・`toast`・`back_link` の変種（`SmallButton`・`LinkButton`・`IconButton`・`ToastOOB`・`ChatBackLink`）を各行の括弧書きに足した | Issue #588。設定画面の構成要素が表に無く、「実在する名前だけを載せる」方針（1.33）のまま設定画面を直す人が入口の organism を仕様から見つけられなかった |
 | 1.46 | 2026-10-12 | §4.2 の `<mam-timeline-editor>` から `readonly` プロパティと Editor Judge の描画（`judge`）を外し、§4.3 の Take 比較の状態ラベルをサーバーの `status_label`（候補 / AI Pick / 採用 / 除外）にした | Issue #601・#602・#603。`readonly` はどの Templ も渡さず、Judge 結果は Lit と Templ の 2 か所に別の文言で出ており、Take の状態名が画面ごとに違っていた |
 | 1.47 | 2026-10-12 | §3 の atoms の行に、`ButtonLink`（ボタンの見た目の `<a>`。ナビゲーション・ダウンロード用）と、`tone` を受ける `LinkButton`、共有ヘルパー `HxVals`（`hx-vals` を JSON エスケープして組み立てる）を足した | Issue #598。#578 が `ButtonLink` を足して `LinkButton` に `tone` を渡すようにし、#568 が `hx-vals` の組み立てを `atoms.HxVals` に一本化したのに、atoms の一覧に載っていなかった |
+| 1.48 | 2026-10-12 | §4.1 の `mam-video-player` の `fps` を、Take カードの本文 JSON の `fps`（カード作成時に ffprobe で 1 回読んだ値）から `take_card` が注入すると明記（ffprobe がない構成は従来どおり再生中に計測） | `fps` を Templ がどこからも渡しておらず、サーバーが知る値をクライアントが無音再生で取り直していたため（Issue #618） |

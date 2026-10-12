@@ -275,7 +275,7 @@ func TestTakes_PartialUseJoinsPartsIntoANewSelectedTakeAndAnnouncesItInTheChat(t
 	chat := ta.get("/projects/"+ta.project, false).Body.String()
 	assert.Contains(t, chat, "部分採用 Take")
 	assert.Contains(t, chat, "Take A 0.0-2.0秒 + Take B 2.0-4.0秒")
-	assert.Contains(t, chat, `video-src="`+composed.VideoURL+`"`)
+	assert.Contains(t, chat, `video-src="`+composed.VideoURL+`" fps="10"`, "the card carries the frame rate ffprobe read, so the player need not measure it")
 
 	var content string
 	require.NoError(t, ta.db.Reader().QueryRowContext(context.Background(),

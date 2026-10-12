@@ -205,7 +205,7 @@ func (s *TakeService) composeTake(ctx context.Context, ref repository.ShotRef, t
 			Summary:   describeSegments(segs, takes),
 			ShotID:    ref.Shot.ID,
 			VideoURL:  domain.TakeVideoURL(takeID),
-			PosterURL: domain.TakeThumbnailURL(takeID),
+			PosterURL: domain.TakeThumbnailURL(takeID), FPS: info.FPS,
 		}),
 	}
 	if err := s.chatSvc.Announce(context.WithoutCancel(ctx), ref.ProjectID, card); err != nil {
