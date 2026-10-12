@@ -104,3 +104,26 @@ func TestAsync_RunsOnItsOwnGoroutineAndSurvivesAPanic(t *testing.T) {
 	run(7)
 	assert.Equal(t, 7, <-got)
 }
+
+func TestWorker_IdleIsFalseFromAWakeUntilItsRunAndTheRunsItCoalescedHaveEnded(t *testing.T) {
+	started := make(chan struct{}, 2)
+	gate := make(chan struct{})
+	r := bgwork.NewWorker(slog.New(slog.DiscardHandler), "test", func(context.Context) {
+		started <- struct{}{}
+		<-gate
+	})
+	defer r.Close()
+	assert.True(t, r.Idle(), "a worker that was never woken is idle")
+
+	r.Wake()
+	assert.False(t, r.Idle(), "a wake is asked for before its run starts")
+	<-started
+	r.Wake()
+	r.Wake() // coalesced with the one above: one more run
+	gate <- struct{}{}
+	require.False(t, r.Idle(), "the run the wakes during a run asked for is still to come")
+	<-started
+	gate <- struct{}{}
+
+	require.Eventually(t, r.Idle, time.Second, time.Millisecond)
+}

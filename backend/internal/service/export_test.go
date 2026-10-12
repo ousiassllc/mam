@@ -7,3 +7,6 @@ func (s *EditorService) HoldStage(projectID string) (release func(), err error) 
 
 // AudioError is audioError: the error the user sees when the audio stage failed.
 func AudioError(err error) error { return audioError(err) }
+
+// EditingWorkerIdle reports whether the worker of ResumeEditing has no run going on or asked for.
+func (s *EditorService) EditingWorkerIdle() bool { return s.resume.Idle() }
