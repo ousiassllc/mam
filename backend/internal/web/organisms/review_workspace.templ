@@ -95,16 +95,19 @@ templ ReviewComments(i domain.ReviewInbox) {
 	</div>
 }
 
-func reviewCommentFormAttrs(i domain.ReviewInbox, oob bool) templ.Attributes {
-	attrs := templ.Attributes{"id": "review-comment-form", "class": "flex flex-col gap-2 rounded-md border border-neutral-700 p-3", "hx-post": paths.Review(i.ID, "comments"), "hx-target": "#review-comments", "hx-swap": "outerHTML"}
-	if oob {
-		attrs["hx-swap-oob"] = "true"
-	}
-	return attrs
-}
-
 templ ReviewCommentForm(i domain.ReviewInbox, oob bool) {
-	<form { reviewCommentFormAttrs(i, oob)... }>
+	<form
+		id="review-comment-form"
+		class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3"
+		hx-post={ paths.Review(i.ID, "comments") }
+		hx-target="#review-comments"
+		hx-swap="outerHTML"
+		hx-sync="this:drop"
+		hx-disabled-elt="find button[type=submit]"
+		if oob {
+			hx-swap-oob="true"
+		}
+	>
 		<label class="flex flex-col gap-1 text-xs text-neutral-400" for="review-comment-timecode">
 			位置（秒 または 分:秒。空なら動画全体）
 			@atoms.Input(atoms.FieldMd, "w-32", templ.Attributes{"id": "review-comment-timecode", "name": "timecode", "type": "text", "inputmode": "decimal", "maxlength": intText(reviewTimecodeMaxRunes), "placeholder": "1:23"})

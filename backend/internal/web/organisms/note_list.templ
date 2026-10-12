@@ -56,7 +56,7 @@ func groupNotes(notes []domain.NoteView) (groups []noteGroup, archived []domain.
 templ NoteList(d NoteListData) {
 	{{ groups, archived := groupNotes(d.Notes) }}
 	<div id="note-list" class="flex flex-col gap-6">
-		<form class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3" hx-post={ d.BasePath } hx-target="#note-list" hx-swap="outerHTML">
+		<form class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3" hx-post={ d.BasePath } hx-target="#note-list" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]">
 			<h2 class="text-sm font-semibold">メモを追加</h2>
 			<label class="flex flex-col gap-1 text-xs text-neutral-400" for="note-new-title">
 				タイトル（空なら本文の先頭行）
