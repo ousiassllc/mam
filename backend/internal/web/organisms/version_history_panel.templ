@@ -27,6 +27,9 @@ type VersionHistoryData struct {
 	// RestoreBlocked is why a restore is refused in the state the page was loaded in ("" when it is
 	// not): the list then says so in place of the restore buttons the server would answer with 409.
 	RestoreBlocked string
+	// OOB makes the panel replace the one already on the page (a response that appends a version
+	// carries the list along).
+	OOB bool
 }
 
 func (d VersionHistoryData) restoreURL(number int) string {
@@ -44,7 +47,14 @@ func (d VersionHistoryData) target() string {
 // current one and needs none. Restoring appends a copy as the newest version, so it can be undone
 // by restoring an older one.
 templ VersionHistoryPanel(d VersionHistoryData) {
-	<section id={ d.DOMID } aria-label={ d.Title } class="flex flex-col gap-2">
+	<section
+		id={ d.DOMID }
+		aria-label={ d.Title }
+		class="flex flex-col gap-2"
+		if d.OOB {
+			hx-swap-oob="true"
+		}
+	>
 		<h3 class="text-sm font-semibold">{ d.Title }</h3>
 		if len(d.Entries) == 0 {
 			<p class="text-sm text-neutral-400">保存されたバージョンはまだありません。</p>

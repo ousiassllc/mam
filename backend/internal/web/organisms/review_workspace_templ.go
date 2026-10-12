@@ -409,7 +409,7 @@ func ReviewCommentForm(i domain.ReviewInbox, oob bool) templ.Component {
 		var templ_7745c5c3_Var16 string
 		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.ResolveAttributeValue(paths.Review(i.ID, "comments"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 99, Col: 141}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 102, Col: 42}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var16)
 		if templ_7745c5c3_Err != nil {
@@ -487,7 +487,7 @@ func ReviewDecision(i domain.ReviewInbox) templ.Component {
 		var templ_7745c5c3_Var18 string
 		templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.ResolveAttributeValue(paths.Review(i.ID, "decision"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 122, Col: 75}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 131, Col: 75}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var18)
 		if templ_7745c5c3_Err != nil {

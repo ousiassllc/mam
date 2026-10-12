@@ -8,6 +8,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/worldstate"
 )
 
 // RestoreShotVersion restores the spec of a Shot to a saved version
@@ -43,7 +44,7 @@ func RestoreWorldStateVersion(svc *service.VersionService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusOK, organisms.WorldStateView(worldStateData(view)))
+		render(c, http.StatusOK, worldstate.View(worldStateData(view)))
 	}
 }
 

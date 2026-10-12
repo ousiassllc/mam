@@ -144,7 +144,7 @@ func TestWorldState_ShowsALockToggleForEveryAttributeAndSwitchesIt(t *testing.T)
 
 	rec := a.form(http.MethodPut, "/projects/"+id+"/world-state/locks", url.Values{"target_type": {"location"}, "target_id": {"l1"}, "parameter": {"time"}, "mode": {"lock"}})
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-	assert.Contains(t, rec.Body.String(), `id="world-state-view"`, "the whole view comes back")
+	assert.NotContains(t, rec.Body.String(), `id="world-state-view"`, "the whole view does not come back (#685)")
 	assert.Contains(t, timeToggle.FindString(rec.Body.String()), `value="lock" aria-pressed="true"`, "the switch shows the stored state")
 
 	edit := a.form(http.MethodPut, "/projects/"+id+"/locations/l1", url.Values{"time": {"night"}})

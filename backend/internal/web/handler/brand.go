@@ -14,13 +14,13 @@ func brandListData(v service.BrandView) organisms.BrandConstraintListData {
 }
 
 // AddBrandConstraint registers a Brand / Safety Constraint (POST /projects/:id/brand-constraints).
-// Invalid input re-renders the list with the user's input and the error (422).
+// Invalid input re-renders the add form with the user's input and the error (422).
 func AddBrandConstraint(svc *service.BrandService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		form := service.BrandForm{Type: c.PostForm("type"), Level: c.PostForm("level"), Text: c.PostForm("text")}
 		view, err := svc.Add(c.Request.Context(), c.Param("id"), form)
 		if err == nil {
-			render(c, http.StatusOK, organisms.BrandConstraintList(brandListData(view)))
+			render(c, http.StatusOK, organisms.BrandConstraintAdded(brandListData(view)))
 			return
 		}
 		if invalid := asValidation(err); invalid != nil {
@@ -32,14 +32,14 @@ func AddBrandConstraint(svc *service.BrandService) gin.HandlerFunc {
 			data := brandListData(current)
 			data.Typed = map[string]string{"type": form.Type, "level": form.Level, "text": form.Text}
 			data.Errors = map[string]string{invalid.Field: invalid.Message}
-			render(c, http.StatusUnprocessableEntity, organisms.BrandConstraintList(data))
+			render(c, http.StatusUnprocessableEntity, organisms.BrandConstraintAdded(data))
 			return
 		}
 		toast(c, err)
 	}
 }
 
-// DeleteBrandConstraint removes a constraint (DELETE /brand-constraints/:id).
+// DeleteBrandConstraint removes a constraint (DELETE /brand-constraints/:id); the list answers, not the add form.
 func DeleteBrandConstraint(svc *service.BrandService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		view, err := svc.Delete(c.Request.Context(), c.Param("id"))
@@ -47,7 +47,7 @@ func DeleteBrandConstraint(svc *service.BrandService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusOK, organisms.BrandConstraintList(brandListData(view)))
+		render(c, http.StatusOK, organisms.BrandConstraintItems(brandListData(view)))
 	}
 }
 
@@ -91,7 +91,7 @@ func ApplyBrandTemplate(svc *service.BrandService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusOK, organisms.BrandConstraintList(brandListData(view)))
+		render(c, http.StatusOK, organisms.BrandConstraintItems(brandListData(view)))
 	}
 }
 

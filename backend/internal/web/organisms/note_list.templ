@@ -50,58 +50,88 @@ func groupNotes(notes []domain.NoteView) (groups []noteGroup, archived []domain.
 	return groups, archived
 }
 
-// NoteList lists the notes by pin and category with the form that adds one, the archived notes
-// apart, and, per note, the version history (version_history_panel) whose restore buttons answer with
-// this list.
+// NoteList is the notes screen body: the form that adds a note above the list of the notes. The list
+// (#note-list) is the part every response replaces; the form is outside it, so an action on one note
+// never discards the text typed in the form (CreatedNoteList is the one response that carries a fresh form).
 templ NoteList(d NoteListData) {
+	<div id="note-view" class="flex flex-col gap-6">
+		@noteAddForm(d, false)
+		@NoteGroups(d)
+	</div>
+}
+
+// CreatedNoteList answers the creation of a note: the list, and the form emptied out of band.
+templ CreatedNoteList(d NoteListData) {
+	@NoteGroups(d)
+	@noteAddForm(d, true)
+}
+
+// noteAddForm is the form that adds a note; oob makes it replace the one on the page.
+templ noteAddForm(d NoteListData, oob bool) {
+	<form
+		id="note-add-form"
+		class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3"
+		hx-post={ d.BasePath }
+		hx-target="#note-list"
+		hx-swap="outerHTML"
+		hx-sync="this:drop"
+		hx-disabled-elt="find button[type=submit]"
+		if oob {
+			hx-swap-oob="true"
+		}
+	>
+		<h2 class="text-sm font-semibold">メモを追加</h2>
+		<label class="flex flex-col gap-1 text-xs text-neutral-400" for="note-new-title">
+			タイトル（空なら本文の先頭行）
+			@atoms.Input(atoms.FieldMd, "", templ.Attributes{
+				"id":        "note-new-title",
+				"name":      "title",
+				"type":      "text",
+				"maxlength": intText(domain.MaxNoteTitleRunes),
+			})
+		</label>
+		<label class="flex flex-col gap-1 text-xs text-neutral-400" for="note-new-content">
+			本文
+			@atoms.Textarea(atoms.FieldMd, "", templ.Attributes{
+				"id":        "note-new-content",
+				"name":      "content",
+				"rows":      "4",
+				"maxlength": intText(domain.MaxNoteContentRunes),
+				"required":  true,
+			}, "")
+		</label>
+		<div class="flex flex-wrap items-end gap-3">
+			<label class="flex flex-col gap-1 text-xs text-neutral-400" for="note-new-category">
+				カテゴリ
+				@atoms.Select(atoms.FieldMd, "", templ.Attributes{
+					"id":   "note-new-category",
+					"name": "category",
+				}) {
+					<option value="">AI に分類させる</option>
+					for _, c := range domain.NoteCategories() {
+						<option value={ string(c) }>{ c.Label() }</option>
+					}
+				}
+			</label>
+			<label class="flex items-center gap-1 text-sm">
+				<input type="hidden" name="pinned" value="false"/>
+				@atoms.Choice("", templ.Attributes{
+					"type":  "checkbox",
+					"name":  "pinned",
+					"value": "true",
+				})
+				ピン留め
+			</label>
+			@atoms.Button(atoms.TonePrimary, "追加", templ.Attributes{"type": "submit"})
+		</div>
+	</form>
+}
+
+// NoteGroups lists the notes by pin and category, the archived notes apart, and, per note, the version
+// history (version_history_panel) whose restore buttons answer with this list.
+templ NoteGroups(d NoteListData) {
 	{{ groups, archived := groupNotes(d.Notes) }}
 	<div id="note-list" class="flex flex-col gap-6">
-		<form class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3" hx-post={ d.BasePath } hx-target="#note-list" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]">
-			<h2 class="text-sm font-semibold">メモを追加</h2>
-			<label class="flex flex-col gap-1 text-xs text-neutral-400" for="note-new-title">
-				タイトル（空なら本文の先頭行）
-				@atoms.Input(atoms.FieldMd, "", templ.Attributes{
-					"id":        "note-new-title",
-					"name":      "title",
-					"type":      "text",
-					"maxlength": intText(domain.MaxNoteTitleRunes),
-				})
-			</label>
-			<label class="flex flex-col gap-1 text-xs text-neutral-400" for="note-new-content">
-				本文
-				@atoms.Textarea(atoms.FieldMd, "", templ.Attributes{
-					"id":        "note-new-content",
-					"name":      "content",
-					"rows":      "4",
-					"maxlength": intText(domain.MaxNoteContentRunes),
-					"required":  true,
-				}, "")
-			</label>
-			<div class="flex flex-wrap items-end gap-3">
-				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="note-new-category">
-					カテゴリ
-					@atoms.Select(atoms.FieldMd, "", templ.Attributes{
-						"id":   "note-new-category",
-						"name": "category",
-					}) {
-						<option value="">AI に分類させる</option>
-						for _, c := range domain.NoteCategories() {
-							<option value={ string(c) }>{ c.Label() }</option>
-						}
-					}
-				</label>
-				<label class="flex items-center gap-1 text-sm">
-					<input type="hidden" name="pinned" value="false"/>
-					@atoms.Choice("", templ.Attributes{
-						"type":  "checkbox",
-						"name":  "pinned",
-						"value": "true",
-					})
-					ピン留め
-				</label>
-				@atoms.Button(atoms.TonePrimary, "追加", templ.Attributes{"type": "submit"})
-			</div>
-		</form>
 		if len(groups) == 0 {
 			<p class="text-sm text-neutral-400">メモはまだありません。チャットで「覚えておいて」と伝えても追加できます。</p>
 		}
