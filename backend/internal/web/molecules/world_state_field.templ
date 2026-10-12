@@ -1,6 +1,7 @@
 package molecules
 
 import (
+	"slices"
 	"strconv"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -35,6 +36,19 @@ templ WorldStateField(d WorldStateFieldData) {
 			"disabled":  d.Locked,
 		})
 	</div>
+}
+
+// WorldStateSave is the save button of an entity's edit form. The inputs of LOCKed fields are disabled, so
+// the browser does not send them: when every field is LOCKed a save would carry nothing and the server would
+// refuse it (422), so the reason is shown instead of a button that always fails.
+templ WorldStateSave(fields []WorldStateFieldData) {
+	if slices.ContainsFunc(fields, func(f WorldStateFieldData) bool { return !f.Locked }) {
+		<div>
+			@atoms.Button(atoms.TonePrimary, "保存", templ.Attributes{"type": "submit"})
+		</div>
+	} else {
+		<p class="text-sm text-neutral-400" data-entity-edit-blocked>すべての項目が LOCK 中のため編集できません。</p>
+	}
 }
 
 // WorldStateReadonly is a labelled value that the user does not edit (Camera and Story follow the shots).
