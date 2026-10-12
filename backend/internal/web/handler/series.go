@@ -63,8 +63,8 @@ func CreateEpisode(svc *service.SeriesService) gin.HandlerFunc {
 }
 
 // UpdateSeriesCharacter sets the canonical attributes named in the form
-// (PUT /series/:id/characters/:characterId) and answers with the updated view. Existing Episodes
-// are not changed.
+// (PUT /series/:id/characters/:characterId) and answers with the form of that Character, with the new
+// version carried along (the other forms are not part of it). Existing Episodes are not changed.
 func UpdateSeriesCharacter(svc *service.SeriesService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		fields := map[string]string{}
@@ -78,12 +78,12 @@ func UpdateSeriesCharacter(svc *service.SeriesService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusOK, organisms.SeriesView(seriesData(view)))
+		render(c, http.StatusOK, organisms.SeriesCharacterSaved(seriesData(view), c.Param("characterId")))
 	}
 }
 
 // UpdateSeriesStyle sets the canonical Style (PUT /series/:id/style, form field style) and answers
-// with the updated view.
+// with the Style form, with the new version carried along.
 func UpdateSeriesStyle(svc *service.SeriesService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		view, err := svc.UpdateStyle(c.Request.Context(), c.Param("id"), c.PostForm("style"))
@@ -91,6 +91,6 @@ func UpdateSeriesStyle(svc *service.SeriesService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusOK, organisms.SeriesView(seriesData(view)))
+		render(c, http.StatusOK, organisms.SeriesStyleSaved(seriesData(view)))
 	}
 }

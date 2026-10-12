@@ -62,6 +62,11 @@ func TestSeries_CreateFromProjectStartEpisodesAndUpdateCanonWithoutPropagation(t
 	assert.NotContains(t, rec.Body.String(), "<html")
 	assert.Contains(t, rec.Body.String(), `value="long"`)
 	assert.Contains(t, rec.Body.String(), "バージョン 2")
+	// Only the saved form is answered (#693): the Style and the Episode form keep what is typed in them.
+	assert.Contains(t, rec.Body.String(), `id="series-character-`+canonCharacter+`"`)
+	for _, other := range []string{`id="series-view"`, `id="series-style-form"`, `name="previous_episode_id"`} {
+		assert.NotContains(t, rec.Body.String(), other)
+	}
 	for _, id := range []string{src, ep2} {
 		w := a.get("/projects/"+id+"/world-state", false).Body.String()
 		assert.Contains(t, w, `value="bob"`, id)
@@ -76,6 +81,9 @@ func TestSeries_CreateFromProjectStartEpisodesAndUpdateCanonWithoutPropagation(t
 	rec = a.form(http.MethodPut, "/series/"+seriesID+"/style", url.Values{"style": {"soft watercolor"}})
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	assert.Contains(t, rec.Body.String(), `value="soft watercolor"`)
+	assert.Contains(t, rec.Body.String(), `id="series-style-form"`)
+	assert.NotContains(t, rec.Body.String(), `id="series-view"`)
+	assert.NotContains(t, rec.Body.String(), `hx-put="/series/`+seriesID+`/characters/`)
 	rec = a.form(http.MethodPost, "/series/"+seriesID+"/episodes", url.Values{})
 	ep4 := strings.TrimPrefix(rec.Header().Get("HX-Redirect"), "/projects/")
 	assert.Contains(t, a.get("/projects/"+ep4+"/brief", false).Body.String(), "soft watercolor")
