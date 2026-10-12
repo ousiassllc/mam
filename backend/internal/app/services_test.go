@@ -146,7 +146,8 @@ func TestBuildServices_ARestartResumesTheEditingFollowUpsLeftUndone(t *testing.T
 }
 
 // A conversion killed halfway leaves .<name>.ffmpeg.tmp in .previews, which the size shown and the
-// limit on it never reach: the start removes it and keeps the finished previews (#667).
+// limit on it never reach: the start removes it (fsutil.RemoveStaleTemp sweeps assets recursively)
+// and keeps the finished previews (#667).
 func TestBuildServices_AStartRemovesPreviewConversionsAKillLeftBehind(t *testing.T) {
 	cfg := testConfig(t)
 	previews := filepath.Join(cfg.AssetsDir(), ".previews")

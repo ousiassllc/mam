@@ -7,8 +7,6 @@ import (
 	"slices"
 	"strings"
 	"time"
-
-	"github.com/ousiassllc/mam/backend/internal/media"
 )
 
 // Path is the file name name directly inside it. It returns "" when name (built from a row ID, which
@@ -68,34 +66,6 @@ func (c *Cache) prune(keep string) error {
 		total -= f.size
 	}
 	return first
-}
-
-// RemoveStaleTemp deletes the files of conversions that a killed process left behind in the preview
-// directory under assetsDir (".<name>.ffmpeg.tmp": nothing ever asks for the same file again once its
-// Edit Timeline version or Take is gone) and returns their paths. list counts and prune deletes only
-// finished previews, so these would stay forever. Call it at startup, when no conversion can be
-// running.
-func RemoveStaleTemp(assetsDir string) ([]string, error) {
-	dir := filepath.Join(assetsDir, dirName)
-	entries, err := os.ReadDir(dir)
-	if errors.Is(err, os.ErrNotExist) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	var removed []string
-	for _, e := range entries {
-		if e.IsDir() || !media.IsTempName(e.Name()) {
-			continue
-		}
-		p := filepath.Join(dir, e.Name())
-		if err := os.Remove(p); err != nil && !errors.Is(err, os.ErrNotExist) {
-			return removed, err
-		}
-		removed = append(removed, p)
-	}
-	return removed, nil
 }
 
 type file struct {

@@ -17,7 +17,6 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
 	"github.com/ousiassllc/mam/backend/internal/media"
-	"github.com/ousiassllc/mam/backend/internal/previewcache"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/service"
 )
@@ -48,23 +47,14 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger) 
 		logger.Warn("removed stale import directories", "count", len(staleImports))
 	}
 
-	// Leftovers of interrupted atomic writes must not be mistaken for finished assets.
+	// Leftovers of interrupted atomic writes and ffmpeg conversions (".<name>.ffmpeg.tmp" in .previews
+	// too) must not be mistaken for finished assets.
 	removed, err := fsutil.RemoveStaleTemp(cfg.AssetsDir())
 	if err != nil {
 		return nil, nil, fmt.Errorf("clean stale temp files: %w", err)
 	}
 	if len(removed) > 0 {
 		logger.Warn("removed stale temp files", "count", len(removed))
-	}
-
-	// A conversion killed halfway leaves its ffmpeg output in the preview directory, where neither the
-	// size shown nor the limit on it reaches it.
-	staleConversions, err := previewcache.RemoveStaleTemp(cfg.AssetsDir())
-	if err != nil {
-		return nil, nil, fmt.Errorf("clean stale preview conversions: %w", err)
-	}
-	if len(staleConversions) > 0 {
-		logger.Warn("removed stale preview conversions", "count", len(staleConversions))
 	}
 
 	db, err := repository.Open(ctx, cfg.DBPath(), logger)

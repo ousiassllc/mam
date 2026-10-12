@@ -81,8 +81,10 @@ func syncDir(dir string) {
 	_ = d.Close()
 }
 
-// RemoveStaleTemp deletes temporary files left behind by WriteAtomic under root
-// (for example after a crash between create and rename) and returns their paths.
+// RemoveStaleTemp deletes under root (recursively, dot directories such as .previews included) every
+// regular file whose name starts with "." and ends with ".tmp" and returns their paths. That is what a
+// crash leaves behind: WriteAtomic's and CreateStagingTemp's files, and the ffmpeg outputs of media
+// (".<name>.ffmpeg.tmp", ".<name>.mix.tmp"). Call it at startup, when none of them is in use.
 func RemoveStaleTemp(root string) ([]string, error) {
 	var removed []string
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
