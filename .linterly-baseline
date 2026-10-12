@@ -58,7 +58,7 @@
 855	backend/internal/service/chat_test.go
 346	backend/internal/service/continue.go
 348	backend/internal/service/continue_test.go
-900	backend/internal/service/director_test.go
+894	backend/internal/service/director_test.go
 475	backend/internal/service/editor_reshoot.go
 361	backend/internal/service/editor_timeline.go
 705	backend/internal/service/generation_test.go

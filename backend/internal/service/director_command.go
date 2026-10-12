@@ -26,6 +26,12 @@ func (s *DirectorService) DirectorCommand(ctx context.Context, shotID, message s
 	if err := validateMessage(message, false); err != nil {
 		return DirectorCommandResult{}, invalid("content", "指示を入力してください（%d 文字以内）", domain.MaxMessageRunes)
 	}
+	// A second direction for a Shot (a double click, a second tab) while one is being carried out would pay for another Interpreter call and run it twice.
+	key := "director-command\x00" + shotID // answering also holds Shot IDs: the prefix keeps the keys apart
+	if _, busy := s.answering.LoadOrStore(key, struct{}{}); busy {
+		return DirectorCommandResult{}, ErrConflict
+	}
+	defer s.answering.Delete(key)
 	ref, err := s.gens.GetShot(ctx, shotID)
 	if err != nil {
 		return DirectorCommandResult{}, notFound(err)

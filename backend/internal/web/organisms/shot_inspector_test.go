@@ -15,7 +15,7 @@ import (
 
 // The Inspector draws a form only in the Shot states in which the server accepts it (#334): the spec
 // save and the version restore are refused (409) while the Shot is generated or repaired, the Reference
-// Pack add while it is generated, repaired or judged.
+// Pack add while it is generated, repaired or judged. The 演出指示 form (a paid Interpreter call) drops a second submit (#669).
 func TestShotInspector_LeavesOutTheFormsTheServerRefusesInTheShotState(t *testing.T) {
 	now := time.Now()
 	for _, state := range domain.ShotStates() {
@@ -30,7 +30,6 @@ func TestShotInspector_LeavesOutTheFormsTheServerRefusesInTheShotState(t *testin
 			},
 		}).Render(context.Background(), &sb))
 		html := sb.String()
-
 		specBlocked := state == domain.ShotGenerating || state == domain.ShotRepairing
 		pinBlocked := state != domain.ShotPlanning && state != domain.ShotEditing
 		assert.Equal(t, !specBlocked, strings.Contains(html, `hx-put="/shots/s1/shot-spec"`), "spec form in %s", state)
@@ -38,5 +37,6 @@ func TestShotInspector_LeavesOutTheFormsTheServerRefusesInTheShotState(t *testin
 		assert.Equal(t, !pinBlocked, strings.Contains(html, `hx-post="/shots/s1/references"`), "reference form in %s", state)
 		assert.Equal(t, specBlocked, strings.Contains(html, "data-spec-edit-blocked"), "spec notice in %s", state)
 		assert.Equal(t, pinBlocked, strings.Contains(html, "data-pin-reference-blocked"), "reference notice in %s", state)
+		assert.Contains(t, html, `hx-post="/shots/s1/director-command" hx-target="#shot-inspector" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]"`, "director-command form in %s", state)
 	}
 }
