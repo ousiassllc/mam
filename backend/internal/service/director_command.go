@@ -20,14 +20,13 @@ type DirectorCommandResult struct {
 
 // DirectorCommand carries out a natural language direction for a Shot whose target is known
 // (POST /shots/:id/director-command). The message and the result are recorded in the thread. It
-// fails with ErrLocked, and does nothing, when the direction changes a LOCKed parameter. A direction
-// for a Shot that another one is still being carried out for (a double click, a second tab) is
-// ErrConflict: it would pay for a second Interpreter call and record, and maybe run, the direction twice.
+// fails with ErrLocked, and does nothing, when the direction changes a LOCKed parameter.
 func (s *DirectorService) DirectorCommand(ctx context.Context, shotID, message string) (DirectorCommandResult, error) {
 	message = strings.TrimSpace(message)
 	if err := validateMessage(message, false); err != nil {
 		return DirectorCommandResult{}, invalid("content", "指示を入力してください（%d 文字以内）", domain.MaxMessageRunes)
 	}
+	// A second direction for a Shot (a double click, a second tab) while one is being carried out would pay for another Interpreter call and run it twice.
 	key := "director-command\x00" + shotID // answering also holds Shot IDs: the prefix keeps the keys apart
 	if _, busy := s.answering.LoadOrStore(key, struct{}{}); busy {
 		return DirectorCommandResult{}, ErrConflict

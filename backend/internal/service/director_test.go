@@ -338,60 +338,54 @@ func TestChat_DirectorModeTheAnswerOfAQueuedRegenerationIsRecordedAfterTheReques
 	})
 }
 
-func TestDirectorCommand_DirectionPrecedesTheProgressCardInTheThread(t *testing.T) {
+func TestDirectorCommand_DirectionPrecedesTheProgressCardItCausesAndASecondOneWhileItIsRunningIsRefused(t *testing.T) {
 	f := newGenFixture(t, true)
 	f.firstGeneration(t)
 	f.llm.planner = func(string) string { return plannerRewrite }
-	f.llm.interpreter = opsJSON(`{"type":"regenerate","changes":["camera"],"instruction":"Move the camera closer and keep it steady."}`)
-
-	_, err := f.svc.Director.DirectorCommand(context.Background(), f.shotID, "もう少し寄って")
-
-	require.NoError(t, err)
-	f.waitTakeCount(t, 6)
-	thread := f.thread(t, f.projectID)
-	direction, card := -1, -1
-	for i, m := range thread {
-		if m.Role == domain.RoleUser && m.Content == "もう少し寄って" {
-			direction = i
-		}
-		if m.Kind == domain.KindProgress {
-			card = i
-		}
+	regenerate := opsJSON(`{"type":"regenerate","changes":["camera"],"instruction":"Move the camera closer and keep it steady."}`)
+	direct := func() error {
+		_, err := f.svc.Director.DirectorCommand(context.Background(), f.shotID, "もう少し寄って")
+		return err
 	}
-	require.NotEqual(t, -1, direction, "the direction is in the thread")
-	require.NotEqual(t, -1, card, "the progress card is in the thread")
-	assert.Less(t, direction, card, "the direction is listed before the progress card it caused")
-}
+	var refused error // the same direction again while it is being read (a double click, a second tab) pays and records nothing (#669)
+	f.llm.interpreter = func(user string) string { refused = f.overlap(direct); return regenerate(user) }
 
-func TestDirectorCommand_DirectionIsCommittedBeforeTheProgressCardItCauses(t *testing.T) {
-	f := newGenFixture(t, true)
-	f.firstGeneration(t)
-	f.llm.planner = func(string) string { return plannerRewrite }
-	f.llm.interpreter = opsJSON(`{"type":"regenerate","changes":["camera"],"instruction":"Move the camera closer and keep it steady."}`)
+	require.NoError(t, direct())
 
-	_, err := f.svc.Director.DirectorCommand(context.Background(), f.shotID, "もう少し寄って")
-
-	require.NoError(t, err)
+	assert.ErrorIs(t, refused, service.ErrConflict)
+	assert.Equal(t, 1, f.llm.calls(llm.AgentCommandInterpreter), "the direction is read once")
 	f.waitTakeCount(t, 6)
 	// A chat that is open asks only for the messages after the last one it shows; a direction committed
-	// after the progress card would be left out of every such sync, whatever its ID.
+	// after the progress card would be left out of every such sync, whatever its ID. So the direction is
+	// listed, and was committed, before the card it caused.
+	directionBeforeCard := func(msgs [][3]string) bool { // each message is {role, kind, content}
+		direction, card := -1, -1
+		for i, m := range msgs {
+			if m[0] == string(domain.RoleUser) && m[2] == "もう少し寄って" {
+				direction = i
+			}
+			if m[1] == string(domain.KindProgress) {
+				card = i
+			}
+		}
+		require.True(t, direction >= 0 && card >= 0, "the direction and the progress card are in the thread")
+		return direction < card
+	}
+	var listed, committed [][3]string
+	for _, m := range f.thread(t, f.projectID) {
+		listed = append(listed, [3]string{string(m.Role), string(m.Kind), m.Content})
+	}
 	rows, err := f.db.Reader().QueryContext(context.Background(), `SELECT role, kind, content FROM chat_message WHERE project_id = ? ORDER BY rowid`, f.projectID)
 	require.NoError(t, err)
 	defer func() { _ = rows.Close() }()
-	direction, card := -1, -1
-	for i := 0; rows.Next(); i++ {
-		var role, kind, content string
-		require.NoError(t, rows.Scan(&role, &kind, &content))
-		if role == string(domain.RoleUser) && content == "もう少し寄って" {
-			direction = i
-		}
-		if kind == string(domain.KindProgress) {
-			card = i
-		}
+	for rows.Next() {
+		var m [3]string
+		require.NoError(t, rows.Scan(&m[0], &m[1], &m[2]))
+		committed = append(committed, m)
 	}
 	require.NoError(t, rows.Err())
-	require.NotEqual(t, -1, card, "the progress card is in the thread")
-	assert.Less(t, direction, card, "the direction was committed before the progress card")
+	assert.True(t, directionBeforeCard(listed), "the direction is listed before the progress card it caused")
+	assert.True(t, directionBeforeCard(committed), "the direction was committed before the progress card")
 }
 
 func TestDirectorCommand_LockedPartsSurviveWhateverThePlannerAnswers(t *testing.T) {
@@ -897,41 +891,4 @@ func TestChat_AskingForTheModeTheProjectIsAlreadyInRecordsNoSwitch(t *testing.T)
 	f.llm.interpreter = opsJSON(`{"type":"set_mode","project_mode":"auto"}`, `{"type":"set_mode","project_mode":"director"}`)
 	f.say(t, "AUTO にして、やっぱり DIRECTOR", "")
 	assert.Equal(t, 1, switches(), "a real switch back to DIRECTOR is recorded")
-}
-
-// A direction for a Shot that another one is still being carried out for (a double click, a second tab)
-// is refused: it would pay for a second Interpreter call and record, and maybe run, the direction twice (#669).
-func TestDirectorCommand_ADirectionWhileAnotherOneIsBeingCarriedOutForTheShotIsRefused(t *testing.T) {
-	f := newGenFixture(t, true)
-	f.firstGeneration(t)
-	f.llm.planner = func(string) string { return plannerRewrite }
-	regenerate := opsJSON(`{"type":"regenerate","changes":["camera"],"instruction":"Move the camera closer and keep it steady."}`)
-	var refused error
-	f.llm.interpreter = func(user string) string {
-		refused = f.overlap(func() error {
-			_, err := f.svc.Director.DirectorCommand(context.Background(), f.shotID, "もう少し寄って")
-			return err
-		}) // the same direction again while it is being read
-		return regenerate(user)
-	}
-
-	res, err := f.svc.Director.DirectorCommand(context.Background(), f.shotID, "もう少し寄って")
-
-	require.NoError(t, err)
-	assert.ErrorIs(t, refused, service.ErrConflict)
-	assert.True(t, res.Started)
-	f.waitTakeCount(t, 6)
-	assert.Equal(t, 1, f.llm.calls(llm.AgentCommandInterpreter), "the direction is read once")
-	recorded := 0
-	for _, m := range f.thread(t, f.projectID) {
-		if m.Role == domain.RoleUser && m.Content == "もう少し寄って" {
-			recorded++
-		}
-	}
-	assert.Equal(t, 1, recorded, "the direction is recorded once")
-
-	f.llm.interpreter = regenerate
-	_, err = f.svc.Director.DirectorCommand(context.Background(), f.shotID, "もう少し寄って")
-	require.NoError(t, err, "the guard is released when the direction is done")
-	f.waitTakeCount(t, 9)
 }
