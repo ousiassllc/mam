@@ -207,7 +207,7 @@ Audio Timeline の版は Branch ごとに 1 から振る追記のみの系列で
 
 M1 の入出力契約（Issue #8）:
 
-- `PUT /projects/:id/characters|products|locations/:entityId`: Body は `application/x-www-form-urlencoded`。編集できる項目は Character が `hairstyle/wardrobe/voice/personality/emotion/position/current_action`、Product が `material/orientation/condition`、Location が `time/lighting_state/weather`（各 200 文字以内、前後の空白は除去）。送った項目だけを更新し、空文字は項目のクリア。応答は更新後の World State ビュー（`#world-state-view` フラグメント、200）で、新しい `world_state_version` を追記する。エラーはトースト（`HX-Reswap: none`）: LOCK 対象を1項目でも含むと **423** で全体を拒否（何も書き込まない）、更新項目なし・未知の項目・長すぎる値は 422、Project または当該 Project のエンティティが無ければ 404
+- `PUT /projects/:id/characters|products|locations/:entityId`: Body は `application/x-www-form-urlencoded`。編集できる項目は Character が `hairstyle/wardrobe/voice/personality/emotion/position/current_action`、Product が `material/orientation/condition`、Location が `time/lighting_state/weather`（各 200 文字以内、前後の空白は除去）。送った項目だけを更新し、空文字は項目のクリア。応答は更新後の World State ビュー（`#world-state-view` フラグメント、200）で、新しい `world_state_version` を追記する。エラーはトースト（`HX-Reswap: none`）: LOCK 対象を1項目でも含むと **423** で全体を拒否（何も書き込まない）、更新項目なし・未知の項目・長すぎる値は 422、Project または当該 Project のエンティティが無ければ 404。画面（`world_state_view`）は、編集できる項目がすべて LOCK のエンティティには「保存」を描画せず、「すべての項目が LOCK 中のため編集できません。」の説明（`data-entity-edit-blocked`）を出す（`disabled` の入力は送信されず、押すと必ず上の 422 になるため。Shot Inspector が Shot の状態でフォームを出し分けるのと同じ）
 - `GET /projects/:id/world-state`: `HX-Request` でフラグメント、なければフルページ（`world_state_page`）。LOCK 中の項目は「LOCK」バッジ付きで編集不可。Camera/Story は Shot 完了ごとに State Extractor が更新するため参照専用
 - `branch_id` クエリ（`GET /projects/:id/world-state` と `POST /projects/:id/world-state/versions/:versionNumber/restore`）は、当該 Project の Branch を指すときだけ有効で（Issue #18）、存在しない Branch は 404。省略時は主系列（トランク）
 

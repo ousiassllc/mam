@@ -178,9 +178,7 @@ templ entityForm(d WorldStateData, target domain.WorldTarget, plural, id, name s
 					@molecules.WorldStateField(f)
 				}
 			</div>
-			<div>
-				@atoms.Button(atoms.TonePrimary, "保存", templ.Attributes{"type": "submit"})
-			</div>
+			@molecules.WorldStateSave(fields)
 		</form>
 		for _, sf := range d.slots(target, slots) {
 			@referenceSlotForm(d, plural, id, sf)
