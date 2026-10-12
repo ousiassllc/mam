@@ -19,6 +19,7 @@ const (
 	BundleManifestName = "manifest.json"
 	BundleDataName     = "data.json"
 	BundleAssetsDir    = "assets/"
+	ReviewInboxDir     = "reviews" // assets/reviews/ holds the videos of imported Review Packages
 )
 
 // BundleManifest identifies a bundle and the Project in it.
@@ -116,12 +117,11 @@ func ValidBundleFilePath(projectID, p string) bool {
 
 // ValidBundleID reports whether id can be the name of the Project's file directory, a row ID that the
 // server joins into a file path, and an ID the pages can use: the generated form (a UUID) or
-// [A-Za-z0-9_-]{1,64}. Anything else (a leading ".", ".previews" or ".staging" inside the assets
-// directory, path separators, "..", quotes, control characters, URL syntax) would collide with the
-// server's own directories, escape the assets directory, or break headers and URLs. This is the one
-// limit on an ID that reaches a URL or a selector (web/paths and web/selector only escape as defence).
+// [A-Za-z0-9_-]{1,64}, but not ReviewInboxDir. Anything else (a leading ".", ".previews", ".staging", "reviews",
+// path separators, "..", quotes, control characters, URL syntax) would collide with the server's own
+// directories below assets, escape it, or break headers and URLs. It is the one limit on an ID that reaches a URL.
 func ValidBundleID(id string) bool {
-	if id == "" || len(id) > 64 {
+	if id == "" || len(id) > 64 || id == ReviewInboxDir {
 		return false
 	}
 	for _, r := range id {
