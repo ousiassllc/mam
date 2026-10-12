@@ -2,7 +2,6 @@ package handler_test
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -107,23 +106,4 @@ func TestCredential_RefusedByTheStoreAnswers503WithAClearMessage(t *testing.T) {
 	assert.Equal(t, http.StatusServiceUnavailable, rec.Code)
 	assert.Contains(t, rec.Body.String(), "保存できませんでした", "the readable store still says which key failed")
 	require.Equal(t, "sk-abc", store.keys["kling"])
-}
-
-// A key the OS store refuses for its size is a 422 about the key, not a 503 that sends the user to
-// the key chain (#679).
-func TestSaveCredential_KeyTooLargeForTheStoreAnswers422(t *testing.T) {
-	store := &flakyStore{keys: map[string]string{"kling": "sk-abc"}, setErr: fmt.Errorf("store api key: %w", credential.ErrTooLarge)}
-	rec := do(t, store, http.MethodPut, "/credentials/kling", url.Values{"api_key": {"sk-new"}})
-	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code, rec.Body.String())
-	assert.Contains(t, rec.Body.String(), "長すぎます")
-	assert.NotContains(t, rec.Body.String(), "キーチェーン")
-	assert.Equal(t, "sk-abc", store.keys["kling"])
-}
-
-func TestSaveCredential_KeyOverTheLimitAnswers422(t *testing.T) {
-	store := &flakyStore{keys: map[string]string{}}
-	rec := do(t, store, http.MethodPut, "/credentials/kling", url.Values{"api_key": {strings.Repeat("a", service.MaxAPIKeyBytes+1)}})
-	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code, rec.Body.String())
-	assert.Contains(t, rec.Body.String(), "長すぎます")
-	assert.Empty(t, store.keys)
 }

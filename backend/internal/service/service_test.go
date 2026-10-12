@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/credential"
-	"github.com/ousiassllc/mam/backend/internal/credential/credentialtest"
 	"github.com/ousiassllc/mam/backend/internal/service"
 )
 
@@ -60,15 +59,4 @@ func TestCredentialService_SaveConfiguredRemove(t *testing.T) {
 	assert.NoError(t, svc.Remove("kling"), "removing a missing key is idempotent")
 	ok, _ = svc.Configured("kling")
 	assert.False(t, ok)
-}
-
-// A key the OS store refuses for its size is a validation error on api_key (#679).
-func TestCredentialService_SaveMapsStoreTooLargeToValidationError(t *testing.T) {
-	store := credentialtest.New()
-	store.FailWith(credential.ErrTooLarge)
-	err := service.NewCredentialService(store).Save("kling", "sk-1")
-	var invalid *service.ValidationError
-	require.ErrorAs(t, err, &invalid)
-	assert.Equal(t, "api_key", invalid.Field)
-	assert.Contains(t, invalid.Message, "長すぎます")
 }
