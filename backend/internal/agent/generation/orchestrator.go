@@ -359,9 +359,9 @@ func (o *Orchestrator) warnLowDisk(ctx context.Context, ref repository.ShotRef, 
 		return
 	}
 	notice := domain.ChatMessage{
-		Role: domain.RoleAssistant, Kind: domain.KindText,
+		Role: domain.RoleAssistant, Kind: domain.KindText, RefType: domain.RefSettings,
 		Content: fmt.Sprintf("ディスクの空き容量が少ない可能性があります（Shot %d の生成に約 %s 必要な見込みに対し、空きは %s）。"+
-			"不要な Take は設定画面（/projects/%s/settings）からアーカイブできます。", ref.Shot.OrderIndex+1, domain.FormatBytes(need), domain.FormatBytes(free), ref.ProjectID),
+			"不要な Take は設定画面からアーカイブできます。", ref.Shot.OrderIndex+1, domain.FormatBytes(need), domain.FormatBytes(free)),
 	}
 	if err := o.chat.Announce(ctx, ref.ProjectID, notice); err != nil {
 		o.logger.Error("post disk warning failed", "shot_id", ref.Shot.ID, "err", err)

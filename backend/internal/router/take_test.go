@@ -60,14 +60,7 @@ func newTakeAppWith(t *testing.T, mutate func(*service.Deps)) *takeApp {
 	a.cookie, a.token = bootstrap(t, a.engine)
 	ta := &takeApp{app: a, dir: dir, tools: tools}
 	ta.project = a.createProject("美容液のCMを作りたい")
-	rec := a.form(http.MethodPost, "/projects/"+ta.project+"/scenes", url.Values{"title": {"Street"}})
-	m := sceneIDRe.FindStringSubmatch(rec.Body.String())
-	require.NotNil(t, m)
-	rec = a.form(http.MethodPost, "/scenes/"+m[1]+"/shots", url.Values{"objective": {"走り出す"}, "duration_seconds": {"4"}})
-	require.Equal(t, http.StatusCreated, rec.Code)
-	m = shotIDRe.FindStringSubmatch(rec.Body.String())
-	require.NotNil(t, m)
-	ta.shotID = m[1]
+	_, ta.shotID = a.createShot(ta.project)
 
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "assets", ta.project), 0o700))
 	ta.video("t1", "1920x1080", 4)
@@ -142,7 +135,7 @@ func TestTakeAPI_ListsTakesOldestFirstWithLabelsLinksAndScores(t *testing.T) {
 	b := ta.takes()
 	assert.Equal(t, ta.shotID, b.ShotID)
 	assert.Equal(t, "/shots/"+ta.shotID+"/takes/partial", b.PartialURL)
-	assert.Equal(t, map[string]float64{"max_segments": domain.MaxTakeSegments, "min_segment_seconds": domain.MinTakeSegmentSeconds}, b.Limits)
+	assert.Equal(t, map[string]float64{"max_segments": domain.MaxTakeSegments, "min_segment_seconds": domain.MinTakeSegmentSeconds, "min_axis_score": 55}, b.Limits, "a new Project is Balanced")
 	require.Len(t, b.Takes, 3)
 	assert.Equal(t, []string{"A", "B", "C"}, []string{b.Takes[0].Label, b.Takes[1].Label, b.Takes[2].Label})
 	assert.Equal(t, "candidate", b.Takes[0].Status)

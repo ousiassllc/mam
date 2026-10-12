@@ -68,7 +68,11 @@ describe('mam-take-comparator: Partial Take Use', () => {
 
   it('applies the limits the server sends, not values of its own', async () => {
     stub = stubFetch({
-      [`GET ${API}`]: body(takes(), '/shots/s1/takes/partial', { max_segments: 2, min_segment_seconds: 1 }),
+      [`GET ${API}`]: body(takes(), '/shots/s1/takes/partial', {
+        max_segments: 2,
+        min_segment_seconds: 1,
+        min_axis_score: 60,
+      }),
     });
     const el = await comparator();
 

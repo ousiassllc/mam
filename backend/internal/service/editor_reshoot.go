@@ -103,7 +103,7 @@ func (s *EditorService) requestShots(ctx context.Context, ver domain.EditTimelin
 	if len(failed) > 0 {
 		msg += fmt.Sprintf("\n生成を始められなかった %d 件は見送りました（%s）。編集に戻ったら Editor Judge をやり直してください。", len(failed), additionalShotNames(failed))
 	}
-	s.announce(ctx, projectID, msg)
+	s.announce(ctx, projectID, assistantText(msg))
 	return s.View(ctx, projectID, branchID)
 }
 
@@ -360,7 +360,7 @@ func (s *EditorService) autoJudgeReshot(ctx context.Context, projectID string, v
 		if errors.Is(err, ErrStageBusy) || errors.Is(err, ErrNotFound) || ctx.Err() != nil {
 			return nil
 		}
-		s.announce(ctx, projectID, fmt.Sprintf("追加 Shot を入れた編集の Editor Judge を自動で実行できませんでした: %s\n編集画面から Editor Judge を実行してください。", err))
+		s.announce(ctx, projectID, assistantText(fmt.Sprintf("追加 Shot を入れた編集の Editor Judge を自動で実行できませんでした: %s\n編集画面から Editor Judge を実行してください。", err)))
 		return err
 	}
 	return nil
@@ -416,7 +416,7 @@ func (s *EditorService) applyRound(ctx context.Context, projectID, branchID stri
 	} else {
 		msg += "タイムラインを確認して、もう一度 Editor Judge を実行してください。"
 	}
-	s.announce(ctx, projectID, msg)
+	s.announce(ctx, projectID, assistantText(msg))
 	return &ver, nil
 }
 
