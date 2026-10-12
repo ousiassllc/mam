@@ -67,6 +67,13 @@ func (f fixture) brief(t *testing.T, projectID string) domain.Brief {
 	return view.Brief
 }
 
+func requireInvalid(t *testing.T, err error, field string) {
+	t.Helper()
+	var invalid *service.ValidationError
+	require.ErrorAs(t, err, &invalid)
+	assert.Equal(t, field, invalid.Field)
+}
+
 func lastMessage(t *testing.T, msgs []domain.ThreadMessage) domain.ThreadMessage {
 	t.Helper()
 	require.NotEmpty(t, msgs)
@@ -147,9 +154,7 @@ func TestCreateProject_RejectsInvalidInputAndLeavesNothingBehind(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			f := newFixture(t)
 			_, err := f.svc.Projects.Create(context.Background(), service.CreateProjectInput{Content: tt.content, Uploads: tt.uploads})
-			var invalid *service.ValidationError
-			require.ErrorAs(t, err, &invalid)
-			assert.Equal(t, tt.field, invalid.Field)
+			requireInvalid(t, err, tt.field)
 
 			list, err := f.svc.Projects.List(context.Background())
 			require.NoError(t, err)
@@ -259,13 +264,15 @@ func TestPostMessage_RejectsUnknownReplyTargetsAndAttachments(t *testing.T) {
 	foreign := f.brief(t, other.ID).Assets[0]
 
 	_, err := f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "x", ReplyToMessageID: "missing"})
-	var invalid *service.ValidationError
-	require.ErrorAs(t, err, &invalid)
-	assert.Equal(t, "reply_to_message_id", invalid.Field)
-
+	requireInvalid(t, err, "reply_to_message_id")
 	_, err = f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "x", AttachmentAssetIDs: []string{foreign}})
-	require.ErrorAs(t, err, &invalid)
-	assert.Equal(t, "attachment_asset_ids", invalid.Field, "assets of another project cannot be attached")
+	requireInvalid(t, err, "attachment_asset_ids") // assets of another project cannot be attached
+	ids := []string{"1", "2", "3", "4", "5", "6", "7", "8"}
+	_, err = f.svc.Chat.PostMessage(ctx, p.ID, service.PostMessageInput{Content: "x", AttachmentAssetIDs: ids, Uploads: []service.Upload{upload("c.png", pngBytes)}})
+	requireInvalid(t, err, "attachments") // existing assets and new files share one limit
+
+	ws := postMessage(t, f.svc, other.ID, service.PostMessageInput{Content: "x", AttachmentAssetIDs: []string{foreign, foreign}})
+	assert.Equal(t, []string{foreign}, ws.Messages[0].AttachmentAssetIDs, "the same asset is attached once")
 
 	_, err = f.svc.Chat.PostMessage(ctx, "missing", service.PostMessageInput{Content: "x"})
 	assert.ErrorIs(t, err, service.ErrNotFound)
@@ -428,14 +435,10 @@ func TestRespondApproval_ValidatesTheRequest(t *testing.T) {
 	p := f.createProject(t, "動画")
 	text := f.thread(t, p.ID)[0]
 
-	var invalid *service.ValidationError
 	_, _, err := f.svc.Chat.RespondApproval(ctx, p.ID, text.ID, "maybe", "")
-	require.ErrorAs(t, err, &invalid)
-	assert.Equal(t, "decision", invalid.Field)
-
+	requireInvalid(t, err, "decision")
 	_, _, err = f.svc.Chat.RespondApproval(ctx, p.ID, text.ID, service.DecisionApprove, "")
-	require.ErrorAs(t, err, &invalid)
-	assert.Equal(t, "message", invalid.Field, "only approval cards can be approved")
+	requireInvalid(t, err, "message") // only approval cards can be approved
 
 	_, _, err = f.svc.Chat.RespondApproval(ctx, p.ID, "missing", service.DecisionApprove, "")
 	assert.ErrorIs(t, err, service.ErrNotFound)
@@ -639,13 +642,10 @@ func TestUpdateBrief_SavesEditsAndValidates(t *testing.T) {
 	assert.Len(t, view.Brief.References, 3, "the uploaded video reference is kept next to the two URLs")
 	assert.Contains(t, lastMessage(t, f.thread(t, p.ID)).Content, "Brief を更新しました")
 
-	var invalid *service.ValidationError
 	_, err = f.svc.Projects.UpdateBrief(ctx, p.ID, service.BriefForm{Values: map[domain.BriefField]string{domain.BriefAspectRatio: "4:5"}}) // no Brief ratio: generation would make 16:9
-	require.ErrorAs(t, err, &invalid)
-	assert.Equal(t, string(domain.BriefAspectRatio), invalid.Field)
+	requireInvalid(t, err, string(domain.BriefAspectRatio))
 	_, err = f.svc.Projects.UpdateBrief(ctx, p.ID, service.BriefForm{References: "ftp://example.com"})
-	require.ErrorAs(t, err, &invalid)
-	assert.Equal(t, "references", invalid.Field)
+	requireInvalid(t, err, "references")
 	assert.Equal(t, "化粧水", f.brief(t, p.ID).Subject, "rejected edits are not stored")
 
 	_, err = f.svc.Projects.UpdateBrief(ctx, "missing", service.BriefForm{})
