@@ -146,6 +146,60 @@ func TestOpen_RefusesWhatCostsMoreMemoryThanARealBundle(t *testing.T) {
 	}
 }
 
+// TestOpen_RefusesDeeplyNestedUnknownField is the regression for json.Decoder.Token having no
+// nesting limit: a data.json whose unknown field is "[[[[…" costs one stack entry per '[', so
+// 200k of them (a few hundred bytes of ZIP; hundreds of MB in the real attack) must be refused at
+// maxSkipDepth for exceeding the limit, not read to the end (balanced or truncated).
+func TestOpen_RefusesDeeplyNestedUnknownField(t *testing.T) {
+	const depth = 200_000
+	nested := func(open, shut string) func(io.Writer) {
+		return func(w io.Writer) {
+			_, _ = fmt.Fprintf(w, `{"project_id":%q,"x":`, limitsProjectID)
+			_, _ = io.WriteString(w, strings.Repeat(open, depth))
+			_, _ = io.WriteString(w, strings.Repeat(shut, depth))
+			_, _ = io.WriteString(w, `,"tables":[]}`)
+		}
+	}
+	cases := map[string]func(io.Writer){
+		"balanced arrays":  nested("[", "]"),
+		"balanced objects": nested(`{"a":`, "}"),
+		"never closed": func(w io.Writer) {
+			_, _ = fmt.Fprintf(w, `{"project_id":%q,"x":`, limitsProjectID)
+			_, _ = io.WriteString(w, strings.Repeat("[", depth))
+		},
+		"in a table": func(w io.Writer) {
+			_, _ = fmt.Fprintf(w, `{"project_id":%q,"tables":[{"name":"t","x":`, limitsProjectID)
+			_, _ = io.WriteString(w, strings.Repeat("[", depth))
+		},
+	}
+	for name, writeData := range cases {
+		t.Run(name, func(t *testing.T) {
+			src := zipOf(t, manifestJSON(), writeData)
+			assert.Less(t, src.Size(), int64(64<<10), "the attack is a small ZIP")
+
+			_, err := openBytes(t, src)
+
+			requireInvalid(t, err)
+			assert.Contains(t, err.Error(), "入れ子")
+		})
+	}
+}
+
+func TestOpen_AcceptsUnknownFieldNestedUpToMaxSkipDepth(t *testing.T) {
+	nested := func(depth int) func(io.Writer) {
+		return func(w io.Writer) {
+			_, _ = fmt.Fprintf(w, `{"project_id":%q,"x":%s%s,"tables":[]}`, limitsProjectID,
+				strings.Repeat("[", depth), strings.Repeat("]", depth))
+		}
+	}
+
+	_, err := openBytes(t, zipOf(t, manifestJSON(), nested(maxSkipDepth)))
+	require.NoError(t, err)
+
+	_, err = openBytes(t, zipOf(t, manifestJSON(), nested(maxSkipDepth+1)))
+	requireInvalid(t, err)
+}
+
 func TestOpen_ManifestIsHeldToItsOwnSmallLimit(t *testing.T) {
 	padded := strings.TrimSuffix(manifestJSON(), "}") + `,"pad":"` + strings.Repeat("x", maxManifest) + `"}`
 
