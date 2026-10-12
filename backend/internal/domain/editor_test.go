@@ -23,14 +23,11 @@ func TestEditTimeline_DurationSubtractsTheOverlapOfEveryTransition(t *testing.T)
 
 	assert.InDelta(t, 7.5, tl.Duration(), 1e-9)
 	assert.Equal(t, []float64{0, 3.5, 5.5}, tl.Starts())
-}
 
-func TestEditTimeline_TransitionIsCappedAtHalfOfTheShorterClip(t *testing.T) {
-	tl := domain.EditTimeline{Clips: []domain.EditClip{
+	tl = domain.EditTimeline{Clips: []domain.EditClip{ // a transition is capped at half of the shorter clip
 		clip("a", 0, 4, domain.TransitionCut, 0),
 		clip("b", 0, 1, domain.TransitionDissolve, 2),
 	}}
-
 	assert.InDelta(t, 0.5, tl.OverlapSeconds(1), 1e-9)
 	assert.InDelta(t, 4.5, tl.Duration(), 1e-9)
 }
@@ -137,7 +134,7 @@ func TestExportOptions_SizeFollowsTheShortSideAndTheAspectRatio(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestEditTimeline_NormalizeKeepsKindAndTidiesTheCaption(t *testing.T) {
+func TestEditTimeline_NormalizeKeepsKindTidiesTheCaptionAndRejectsAnUnknownKindOrATooLongCaption(t *testing.T) {
 	c := clip("a", 0, 2, domain.TransitionCut, 0)
 	c.Kind, c.Caption = domain.ClipReaction, "  えっ？\r\n\r\n\r\n本当に  "
 	plain := clip("b", 0, 2, domain.TransitionCut, 0)
@@ -149,12 +146,9 @@ func TestEditTimeline_NormalizeKeepsKindAndTidiesTheCaption(t *testing.T) {
 	assert.Equal(t, domain.ClipMain, got.Clips[1].Kind, "no kind is the story")
 	assert.Equal(t, domain.CleanCaption(c.Caption), got.Clips[0].Caption)
 	assert.NotContains(t, got.Clips[0].Caption, "\r")
-}
 
-func TestEditTimeline_NormalizeRejectsAnUnknownKindAndATooLongCaption(t *testing.T) {
-	c := clip("a", 0, 2, domain.TransitionCut, 0)
 	c.Kind = "trailer"
-	_, err := domain.EditTimeline{Clips: []domain.EditClip{c}}.Normalize()
+	_, err = domain.EditTimeline{Clips: []domain.EditClip{c}}.Normalize()
 	assert.ErrorIs(t, err, domain.ErrInvalidTimeline)
 	c.Kind, c.Caption = "", strings.Repeat("あ", domain.MaxCaptionRunes+1)
 	_, err = domain.EditTimeline{Clips: []domain.EditClip{c}}.Normalize()

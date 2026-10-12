@@ -1,6 +1,8 @@
 package domain
 
 import (
+	"math"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -19,7 +21,9 @@ func TestScoreTake_SeverityTakesPenaltyOffTheAxisOfTheDimension(t *testing.T) {
 	assert.Equal(t, TakeScores{Product: 30, Acting: 65, Camera: 50, Continuity: 55}, scores, "prompt_adherence takes its penalty off every axis")
 }
 
-func TestScoreTake_EveryJudgeDimensionCountsForTheScores(t *testing.T) {
+func TestScoreTake_NoIssuesIsPerfectAndEveryJudgeDimensionCountsForTheScores(t *testing.T) {
+	assert.Equal(t, TakeScores{100, 100, 100, 100}, ScoreTake(nil))
+	assert.Equal(t, 100.0, ScoreTake(nil).Overall())
 	for _, d := range JudgeDimensions() {
 		assert.Less(t, ScoreTake([]JudgeIssue{{Type: "x", Severity: SeverityHigh, Dimension: d}}).Overall(), 100.0, string(d))
 	}
@@ -35,11 +39,6 @@ func TestScoreTake_FaceIdentityDriftCountsForActingAndScoresNeverGoBelowZero(t *
 
 	assert.Zero(t, scores.Acting)
 	assert.Equal(t, 100.0, scores.Product)
-}
-
-func TestScoreTake_NoIssuesIsPerfect(t *testing.T) {
-	assert.Equal(t, TakeScores{100, 100, 100, 100}, ScoreTake(nil))
-	assert.Equal(t, 100.0, ScoreTake(nil).Overall())
 }
 
 func TestPickTake_PassedTakeBeatsAHigherScoringFailedTake(t *testing.T) {
@@ -94,6 +93,7 @@ func shotTakes() []TakeInfo {
 		{Take: Take{ID: "t1", FilePath: "p/1.mp4"}, DurationSeconds: 4},
 		{Take: Take{ID: "t2", FilePath: "p/2.mp4"}, DurationSeconds: 4},
 		{Take: Take{ID: "t3", FilePath: "p/3.mp4", Status: TakeRejected}, DurationSeconds: 4},
+		{Take: Take{ID: "t4", FilePath: "p/4.mp4"}}, // length unknown
 	}
 }
 
@@ -107,12 +107,16 @@ func TestParseTakeSegments_ReadsLettersNumbersAndSeparatorsInTheOrderOfTheText(t
 	assert.Equal(t, []TakeSegment{{TakeID: "t1", Start: 0.5, End: 1.5}, {TakeID: "t2", Start: 1.5, End: 3.25}}, segs)
 }
 
-func TestParseTakeSegments_UnreadableTextAndUnknownTakesAreErrors(t *testing.T) {
+func TestParseTakeSegments_UnreadableTextUnknownTakesAndHugeNumbersAreErrors(t *testing.T) {
 	_, err := ParseTakeSegments("いい感じに繋いで", shotTakes())
 	assert.Error(t, err)
 
-	_, err = ParseTakeSegments("Take A の 0-2秒 + Take D の 2-4秒", shotTakes())
-	assert.ErrorContains(t, err, "Take D")
+	_, err = ParseTakeSegments("Take A の 0-2秒 + Take E の 2-4秒", shotTakes())
+	assert.ErrorContains(t, err, "Take E")
+
+	huge := strings.Repeat("9", 400) // ParseFloat gives +Inf, which ValidateTakeSegments takes for NaN
+	_, err = ParseTakeSegments("Take A の "+huge+"-"+huge+"秒 + Take B の 0-1秒", shotTakes())
+	assert.ErrorContains(t, err, "大きすぎ")
 }
 
 func TestValidateTakeSegments_RejectsWhatCannotBeComposed(t *testing.T) {
@@ -127,6 +131,7 @@ func TestValidateTakeSegments_RejectsWhatCannotBeComposed(t *testing.T) {
 		"too short":       {ok[0], {TakeID: "t2", Start: 1, End: 1.1}},
 		"negative start":  {ok[0], {TakeID: "t2", Start: -1, End: 2}},
 		"beyond the take": {ok[0], {TakeID: "t2", Start: 2, End: 5}},
+		"infinite":        {ok[0], {TakeID: "t4", Start: math.Inf(1), End: math.Inf(1)}}, // NaN length, and no Take length to bound it
 		"too many parts":  append(make([]TakeSegment, 0), ok[0], ok[1], ok[0], ok[1], ok[0], ok[1], ok[0], ok[1], ok[0]),
 	} {
 		assert.Error(t, ValidateTakeSegments(segs, shotTakes()), name)
