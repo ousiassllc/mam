@@ -512,7 +512,7 @@ func ShotInspector(d ShotInspectorData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "\" hx-target=\"#shot-inspector\" hx-swap=\"outerHTML\" class=\"flex flex-col gap-2\"><label for=\"director-command\" class=\"text-xs text-neutral-400\">自然言語で指示（例: もう少し寄って。ラベルは固定して）。この Shot だけが再生成されます</label>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "\" hx-target=\"#shot-inspector\" hx-swap=\"outerHTML\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button[type=submit]\" class=\"flex flex-col gap-2\"><label for=\"director-command\" class=\"text-xs text-neutral-400\">自然言語で指示（例: もう少し寄って。ラベルは固定して）。この Shot だけが再生成されます</label>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

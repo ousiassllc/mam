@@ -213,7 +213,7 @@ templ ShotInspector(d ShotInspectorData) {
 		</section>
 		<section aria-label="演出指示" class="flex flex-col gap-2">
 			<h3 class="text-sm font-semibold">演出指示</h3>
-			<form hx-post={ paths.Shot(d.Shot.ID, "director-command") } hx-target="#shot-inspector" hx-swap="outerHTML" class="flex flex-col gap-2">
+			<form hx-post={ paths.Shot(d.Shot.ID, "director-command") } hx-target="#shot-inspector" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]" class="flex flex-col gap-2">
 				<label for="director-command" class="text-xs text-neutral-400">自然言語で指示（例: もう少し寄って。ラベルは固定して）。この Shot だけが再生成されます</label>
 				@atoms.Textarea(atoms.FieldMd, "", templ.Attributes{
 					"id":        "director-command",

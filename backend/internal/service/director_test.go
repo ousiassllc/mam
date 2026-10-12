@@ -898,3 +898,40 @@ func TestChat_AskingForTheModeTheProjectIsAlreadyInRecordsNoSwitch(t *testing.T)
 	f.say(t, "AUTO にして、やっぱり DIRECTOR", "")
 	assert.Equal(t, 1, switches(), "a real switch back to DIRECTOR is recorded")
 }
+
+// A direction for a Shot that another one is still being carried out for (a double click, a second tab)
+// is refused: it would pay for a second Interpreter call and record, and maybe run, the direction twice (#669).
+func TestDirectorCommand_ADirectionWhileAnotherOneIsBeingCarriedOutForTheShotIsRefused(t *testing.T) {
+	f := newGenFixture(t, true)
+	f.firstGeneration(t)
+	f.llm.planner = func(string) string { return plannerRewrite }
+	regenerate := opsJSON(`{"type":"regenerate","changes":["camera"],"instruction":"Move the camera closer and keep it steady."}`)
+	var refused error
+	f.llm.interpreter = func(user string) string {
+		refused = f.overlap(func() error {
+			_, err := f.svc.Director.DirectorCommand(context.Background(), f.shotID, "もう少し寄って")
+			return err
+		}) // the same direction again while it is being read
+		return regenerate(user)
+	}
+
+	res, err := f.svc.Director.DirectorCommand(context.Background(), f.shotID, "もう少し寄って")
+
+	require.NoError(t, err)
+	assert.ErrorIs(t, refused, service.ErrConflict)
+	assert.True(t, res.Started)
+	f.waitTakeCount(t, 6)
+	assert.Equal(t, 1, f.llm.calls(llm.AgentCommandInterpreter), "the direction is read once")
+	recorded := 0
+	for _, m := range f.thread(t, f.projectID) {
+		if m.Role == domain.RoleUser && m.Content == "もう少し寄って" {
+			recorded++
+		}
+	}
+	assert.Equal(t, 1, recorded, "the direction is recorded once")
+
+	f.llm.interpreter = regenerate
+	_, err = f.svc.Director.DirectorCommand(context.Background(), f.shotID, "もう少し寄って")
+	require.NoError(t, err, "the guard is released when the direction is done")
+	f.waitTakeCount(t, 9)
+}
