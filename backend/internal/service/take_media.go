@@ -15,8 +15,9 @@ const previewRetryAfter = 10 * time.Minute // a failure costs minutes (media.Err
 
 // MediaFile is a file to serve.
 type MediaFile struct {
-	Path     string
-	MimeType string
+	Path        string
+	MimeType    string
+	Disposition string // Content-Disposition of a download (an exported video); "" for a file played in the page
 }
 
 // Video returns the file the preview plays for the Take: the file itself, or, when the picture is taller

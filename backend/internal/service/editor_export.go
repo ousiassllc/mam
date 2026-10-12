@@ -215,9 +215,7 @@ func (s *EditorService) ExportFile(ctx context.Context, projectID, exportID stri
 	if !s.fileExists(e.FilePath) {
 		return MediaFile{}, ErrNotFound
 	}
-	mime := "video/mp4"
-	if domain.ExportExtension(e.Codec) == "webm" {
-		mime = "video/webm"
-	}
-	return MediaFile{Path: s.assetPath(e.FilePath), MimeType: mime}, nil
+	// The name is made of the date, the Export ID and the extension only, so it holds no quote.
+	name := fmt.Sprintf("mam-export-%s-%s.%s", e.ExportedAt.UTC().Format("20060102"), e.ID, domain.ExportExtension(e.Codec))
+	return MediaFile{Path: s.assetPath(e.FilePath), MimeType: domain.ReviewVideoMime(domain.ReviewVideoName(e.Codec)), Disposition: `attachment; filename="` + name + `"`}, nil
 }

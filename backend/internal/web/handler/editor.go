@@ -194,6 +194,7 @@ func EditPreview(svc *service.EditorService) gin.HandlerFunc {
 func ExportVideo(svc *service.EditorService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		file, err := svc.ExportFile(c.Request.Context(), c.Param("id"), c.Param("exportId"))
+		c.Header("Content-Disposition", file.Disposition) // "" on an error: gin then sets no header
 		serveMedia(c, file, err)
 	}
 }

@@ -324,7 +324,7 @@ func TestTakePreview_4KIsPlayedThroughA1080pProxyAndSeekingIsSupported(t *testin
 	rec = do(ta.engine, req)
 	assert.Equal(t, http.StatusPartialContent, rec.Code)
 	assert.Equal(t, 100, rec.Body.Len())
-	assert.Equal(t, "sandbox", rec.Header().Get("Content-Security-Policy"), "a served file carries its own sandbox policy")
+	assert.Equal(t, []string{"sandbox", ""}, []string{rec.Header().Get("Content-Security-Policy"), rec.Header().Get("Content-Disposition")}, "a served file carries its own sandbox policy, and the preview is played, not downloaded")
 	_, err = os.Stat(filepath.Join(ta.dir, "assets", ".previews", "t1.mp4"))
 	assert.True(t, os.IsNotExist(err), "no proxy for 1080p")
 
