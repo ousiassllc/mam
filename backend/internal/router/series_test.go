@@ -53,13 +53,12 @@ func TestSeries_CreateFromProjectStartEpisodesAndUpdateCanonWithoutPropagation(t
 	for _, want := range []string{"Mio", "bob", "black_coat", "angry", "Serum", "Cafe"} {
 		assert.Contains(t, ws, want)
 	}
-	assert.Equal(t, http.StatusOK, a.get("/projects/"+ep2, false).Code)
 	assert.Contains(t, a.get("/projects/"+ep2, false).Body.String(), "第2話")
 
 	// Updating the canon does not reach the Episodes that exist; the next Episode gets it.
 	rec = a.form(http.MethodPut, "/series/"+seriesID+"/characters/"+canonCharacter, url.Values{"hairstyle": {" long "}, "emotion": {"ignored"}})
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-	assert.NotContains(t, rec.Body.String(), "<html")
+	assert.NotContains(t, rec.Body.String(), `id="series-view"`) // only the saved form is answered (#693), so the other forms keep what is typed
 	assert.Contains(t, rec.Body.String(), `value="long"`)
 	assert.Contains(t, rec.Body.String(), "バージョン 2")
 	for _, id := range []string{src, ep2} {
@@ -76,6 +75,7 @@ func TestSeries_CreateFromProjectStartEpisodesAndUpdateCanonWithoutPropagation(t
 	rec = a.form(http.MethodPut, "/series/"+seriesID+"/style", url.Values{"style": {"soft watercolor"}})
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	assert.Contains(t, rec.Body.String(), `value="soft watercolor"`)
+	assert.NotContains(t, rec.Body.String(), `id="series-view"`)
 	rec = a.form(http.MethodPost, "/series/"+seriesID+"/episodes", url.Values{})
 	ep4 := strings.TrimPrefix(rec.Header().Get("HX-Redirect"), "/projects/")
 	assert.Contains(t, a.get("/projects/"+ep4+"/brief", false).Body.String(), "soft watercolor")

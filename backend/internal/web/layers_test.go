@@ -4,7 +4,6 @@ import (
 	"go/parser"
 	"go/token"
 	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -15,8 +14,7 @@ import (
 // layer (#484). handler is not in the list: it is the one that talks to the service.
 func TestPresentationPackages_DoNotImportTheServiceLayer(t *testing.T) {
 	for _, dir := range []string{"atoms", "molecules", "organisms", "pages", "layout"} {
-		files, err := filepath.Glob(filepath.Join(dir, "*.go"))
-		require.NoError(t, err)
+		files := sourcesUnder(t, ".go", dir) // organisms/worldstate is a package of its own and counts too
 		require.NotEmpty(t, files, dir)
 		for _, f := range files {
 			src, err := os.ReadFile(f)

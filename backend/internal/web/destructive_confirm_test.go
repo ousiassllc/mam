@@ -2,7 +2,6 @@ package web_test
 
 import (
 	"os"
-	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -15,8 +14,7 @@ import (
 // button in the templates carries hx-confirm, on itself or on the form it submits. The check reads
 // the .templ sources, so that a button added later cannot skip the dialog unnoticed.
 func TestDestructiveControls_AskForConfirmation(t *testing.T) {
-	sources, err := filepath.Glob("*/*.templ")
-	require.NoError(t, err)
+	sources := sourcesUnder(t, ".templ")
 	require.NotEmpty(t, sources)
 	seen := 0
 	for _, f := range sources {

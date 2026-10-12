@@ -78,7 +78,7 @@
 
 | 項目 | 要件 |
 |------|------|
-| エクスポート/インポート | プロジェクト全体（Project Data Model + アセット参照）をポータブルなバンドル（アーカイブファイル）としてエクスポート/インポートできる。クラウド同期基盤は前提としない。バンドルは ZIP（`manifest.json`・`data.json`・`assets/`）で、インポートは同じ ID の Project が無い環境へ ID とファイルパスを保ったまま復元する。取り込める Project ID と全テーブルの行 ID は `[A-Za-z0-9_-]{1,64}`（UUID を含む）に限り、サーバーが `assets/` 直下で使う `reviews`（Review Package の動画置き場 `assets/reviews/`）は使えない。中断したインポートの展開先（`assets/.import-*`）は起動時に削除する |
+| エクスポート/インポート | プロジェクト全体（Project Data Model + アセット参照）をポータブルなバンドル（アーカイブファイル）としてエクスポート/インポートできる。クラウド同期基盤は前提としない。バンドルは ZIP（`manifest.json`・`data.json`・`assets/`）で、インポートは同じ ID の Project が無い環境へ ID とファイルパスを保ったまま復元する。取り込める Project ID と全テーブルの行 ID は `[A-Za-z0-9_-]{1,64}`（UUID を含む）に限り、サーバーが `assets/` 直下で使う `reviews`（Review Package の動画置き場 `assets/reviews/`）と Windows の予約デバイス名（`CON`・`PRN`・`AUX`・`NUL`・`COM1`〜`COM9`・`LPT1`〜`LPT9`）は、大文字小文字を区別せず使えない（Windows・macOS の既定のファイルシステムは大文字小文字を区別せず、`Reviews` が `reviews` と同じディレクトリになるため）。中断したインポートの展開先（`assets/.import-*`）は起動時に削除する |
 | チーム共有（レビュー） | プロジェクトバンドルは自分の端末間の移行・バックアップ用で、顔基準画像などを含むため他人に渡すものではない。チームでの共有は、動画 1 本とメモだけの Review Package（F-32、`spec/spec.md` §27.1）で行い、クラウド同期基盤は前提としない |
 | 最終成果物書き出し | Final Export は指定 Aspect Ratio / 解像度 / コーデックで動画ファイルをローカルへ書き出す |
 
@@ -117,3 +117,4 @@
 | 1.21 | 2026-10-12 | §4 のディスク容量に、強制終了で残った変換の一時ファイル（`assets/.previews/.<名前>.ffmpeg.tmp`）を起動時に削除することを足した（行数は増やしていない） | Issue #667。一時ファイルは容量表示にも上限削除にも入らず、同じ出力先が二度と要求されなければ溜まり続けた（`buildServices` が呼ぶ `fsutil.RemoveStaleTemp` が消す。当初の `previewcache.RemoveStaleTemp` は同じファイルを既に消していたので 1.22 で取り除いた） |
 | 1.22 | 2026-10-12 | 1.21 の起動時削除（§4 のディスク容量）の担い手を、新設の `previewcache.RemoveStaleTemp` ではなく既存の `fsutil.RemoveStaleTemp`（`assets` 配下を再帰して `.` 始まり `.tmp` 終わりのファイルを消す）と訂正した（要件は変えていない） | Issue #671。`fsutil.RemoveStaleTemp` が既に `.previews` の `.ffmpeg.tmp` を消していたため、`previewcache.RemoveStaleTemp` は常に空振りする重複だった |
 | 1.23 | 2026-10-12 | §8 のエクスポート/インポートで、取り込める ID から `reviews` を除いた（`assets/reviews/` は Review Package の動画置き場） | Issue #682。`ValidBundleID` は `.` 始まりしか拒まず、`project_id: "reviews"` のバンドルが Review の受信箱の動画置き場と同じディレクトリに展開され、取り込み失敗時の削除で受信箱ごと消えうる（`domain.ReviewInboxDir`、`bundlezip.Open` が展開前に拒む） |
+| 1.24 | 2026-10-12 | §8 のエクスポート/インポートで、取り込めない ID の `reviews` を大文字小文字を区別せず拒むようにし、Windows の予約デバイス名（`CON`・`NUL`・`COM1` など）も加えた | Issue #689。Windows・macOS の既定のファイルシステムは大文字小文字を区別せず、`project_id: "Reviews"` が #682 の拒否をすり抜けて `assets/reviews/` と衝突する。`CON` などは Windows でディレクトリにできず、展開が 500 相当で失敗する（`domain.ValidBundleID`） |
