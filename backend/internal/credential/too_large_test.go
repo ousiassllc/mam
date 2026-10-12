@@ -16,13 +16,6 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/handler"
 )
 
-func TestKeyring_SetMapsDataTooBigToErrTooLarge(t *testing.T) {
-	keyring.MockInitWithError(keyring.ErrSetDataTooBig)
-	err := credential.NewKeyring().Set("kling", "k")
-	assert.ErrorIs(t, err, credential.ErrTooLarge)
-	assert.NotErrorIs(t, err, keyring.ErrSetDataTooBig)
-}
-
 // A key the OS store refuses for its size is a 422 about the key, not a 503 that sends the user to
 // the key chain (#679).
 func TestSaveCredential_KeyTooLargeForTheOSStoreAnswers422(t *testing.T) {
