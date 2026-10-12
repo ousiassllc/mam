@@ -19,15 +19,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # No actions cache on the self-hosted runner: the host keeps the Go module / build and npm caches
+      # itself, and the cache save of setup-go hung the job for 25+ minutes in its post step.
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+          cache: false
 
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: npm
-          cache-dependency-path: static/package-lock.json
 
       - name: Install tools
         run: |
