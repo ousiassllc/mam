@@ -21,6 +21,9 @@ type Comparison struct {
 	Project domain.Project
 	Shot    domain.Shot
 	Takes   []TakeView
+	// MinAxisScore is the score every axis of a Take needs to reach for the Judge to let it pass: the
+	// Quality Policy of the Project with the user's override applied. The Takes below it are the weak ones.
+	MinAxisScore int
 	// PartialUse tells whether Partial Take Use is offered: ffmpeg is installed and a Take can be cut.
 	PartialUse bool
 }
@@ -40,7 +43,11 @@ func (s *TakeService) Compare(ctx context.Context, shotID string) (Comparison, e
 	if err != nil {
 		return Comparison{}, notFound(err)
 	}
-	out := Comparison{Project: project, Shot: ref.Shot, Takes: make([]TakeView, len(takes))}
+	policy, err := s.policies.Get(ctx, ref.ProjectID)
+	if err != nil {
+		return Comparison{}, notFound(err)
+	}
+	out := Comparison{Project: project, Shot: ref.Shot, MinAxisScore: policy.Effective().MinAxisScore, Takes: make([]TakeView, len(takes))}
 	for i, t := range takes {
 		v := TakeView{TakeInfo: t, Label: domain.TakeLabel(i)}
 		if abs := s.assetPath(t.FilePath); s.tools != nil && abs != "" {

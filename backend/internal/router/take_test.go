@@ -142,7 +142,7 @@ func TestTakeAPI_ListsTakesOldestFirstWithLabelsLinksAndScores(t *testing.T) {
 	b := ta.takes()
 	assert.Equal(t, ta.shotID, b.ShotID)
 	assert.Equal(t, "/shots/"+ta.shotID+"/takes/partial", b.PartialURL)
-	assert.Equal(t, map[string]float64{"max_segments": domain.MaxTakeSegments, "min_segment_seconds": domain.MinTakeSegmentSeconds}, b.Limits)
+	assert.Equal(t, map[string]float64{"max_segments": domain.MaxTakeSegments, "min_segment_seconds": domain.MinTakeSegmentSeconds, "min_axis_score": 55}, b.Limits, "a new Project is Balanced")
 	require.Len(t, b.Takes, 3)
 	assert.Equal(t, []string{"A", "B", "C"}, []string{b.Takes[0].Label, b.Takes[1].Label, b.Takes[2].Label})
 	assert.Equal(t, "candidate", b.Takes[0].Status)
@@ -162,6 +162,27 @@ func TestTakeAPI_ListsTakesOldestFirstWithLabelsLinksAndScores(t *testing.T) {
 	assert.True(t, b.Takes[2].Proxied, "4K is played through a proxy")
 
 	assert.Equal(t, http.StatusNotFound, ta.get("/api/v1/shots/nope/takes", false).Code)
+}
+
+// The score under which an axis is shown as low is the Judge's: the Quality Policy of the Project with
+// the user's override, never a number the component owns (#633).
+func TestTakeAPI_MinAxisScoreFollowsTheQualityPolicyAndTheUsersOverride(t *testing.T) {
+	ta := newTakeApp(t)
+	put := func(quality, axis string) {
+		t.Helper()
+		rec := ta.form(http.MethodPut, "/projects/"+ta.project+"/quality-policy", url.Values{
+			"quality_policy": {quality}, "max_retries": {""}, "max_generation_seconds": {""}, "min_acceptance_score": {""}, "min_axis_score": {axis},
+		})
+		require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	}
+
+	assert.InDelta(t, 55, ta.takes().Limits["min_axis_score"], 1e-9, "Balanced")
+	put("max_quality", "")
+	assert.InDelta(t, 70, ta.takes().Limits["min_axis_score"], 1e-9, "Max Quality")
+	put("fast", "")
+	assert.InDelta(t, 40, ta.takes().Limits["min_axis_score"], 1e-9, "Fast")
+	put("max_quality", "62")
+	assert.InDelta(t, 62, ta.takes().Limits["min_axis_score"], 1e-9, "the override wins over the Quality Policy")
 }
 
 // The links are the server's decision: a Take carries select_url / reject_url only while that action

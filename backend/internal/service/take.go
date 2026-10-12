@@ -21,6 +21,7 @@ type TakeService struct {
 	*core
 	takes       *repository.TakeRepository
 	shots       *repository.GenerationRepository
+	policies    *repository.PolicyRepository
 	generations *GenerationService
 	chatSvc     *ChatService
 	// tools is ffmpeg / ffprobe; nil when they are not installed. Partial Take Use then fails with
