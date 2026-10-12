@@ -112,33 +112,3 @@ func TestMake_ReusingAFileKeepsItBeyondNewerUnusedOnes(t *testing.T) {
 	assert.NoFileExists(t, unused, "the file nobody asked for goes first")
 	assert.FileExists(t, dst)
 }
-
-// A conversion that was killed leaves ".<name>.ffmpeg.tmp" behind, which neither Size nor prune
-// reaches. Nothing runs at startup, so it is removed; finished previews and other files stay.
-func TestRemoveStaleTemp_RemovesLeftoverConversionsOnly(t *testing.T) {
-	assets := t.TempDir()
-	dir := filepath.Join(assets, ".previews")
-	require.NoError(t, os.MkdirAll(dir, 0o700))
-	stale := write(t, dir, ".x.mp4.ffmpeg.tmp", 10, time.Hour)
-	staleJPG := write(t, dir, ".edit-v1.jpg.ffmpeg.tmp", 10, time.Hour)
-	done := write(t, dir, "x.mp4", 10, time.Hour)
-	other := write(t, dir, ".keep", 10, time.Hour)
-	bare := write(t, dir, ".ffmpeg.tmp", 10, time.Hour) // no name between the prefix and the suffix: not one of ours
-
-	removed, err := previewcache.RemoveStaleTemp(assets)
-
-	require.NoError(t, err)
-	assert.ElementsMatch(t, []string{stale, staleJPG}, removed)
-	assert.NoFileExists(t, stale)
-	assert.NoFileExists(t, staleJPG)
-	assert.FileExists(t, done)
-	assert.FileExists(t, other)
-	assert.FileExists(t, bare)
-}
-
-func TestRemoveStaleTemp_AMissingDirHasNothingToRemove(t *testing.T) {
-	removed, err := previewcache.RemoveStaleTemp(filepath.Join(t.TempDir(), "missing"))
-
-	require.NoError(t, err)
-	assert.Empty(t, removed)
-}

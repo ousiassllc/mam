@@ -244,12 +244,3 @@ func TestThumbnail_ASecondPastTheEndTakesTheLastFrameOfAMatroskaVideo(t *testing
 
 	assert.Equal(t, last, thumbnailBytes(t, tools, src, 1000))
 }
-
-// IsTempName must recognise exactly the name write gives its ffmpeg output.
-func TestIsTempName_MatchesTheNameWriteMakes(t *testing.T) {
-	assert.True(t, IsTempName(filepath.Base(filepath.Join("dir", tempPrefix+"x.mp4"+tempSuffix))))
-	assert.True(t, IsTempName(".edit-v1.mp4.ffmpeg.tmp"))
-	for _, name := range []string{"x.mp4", ".x.mp4", "x.mp4.ffmpeg.tmp", ".ffmpeg.tmp", "", ".keep"} {
-		assert.False(t, IsTempName(name), name)
-	}
-}

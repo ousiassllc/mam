@@ -210,11 +210,6 @@ const (
 	tempSuffix = ".ffmpeg.tmp"
 )
 
-// IsTempName reports whether name (a file name, not a path) is that of a file write is making.
-func IsTempName(name string) bool {
-	return len(name) > len(tempPrefix)+len(tempSuffix) && strings.HasPrefix(name, tempPrefix) && strings.HasSuffix(name, tempSuffix)
-}
-
 // write runs ffmpeg with args, which handle seconds of media, and puts its output (of the given
 // container format) at dst. The file appears only when ffmpeg succeeded, so a crash never leaves a
 // half-written file at dst.
@@ -226,7 +221,7 @@ func (t Tools) write(ctx context.Context, dst, format string, seconds float64, a
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return fmt.Errorf("create directory: %w", err)
 	}
-	tmp := filepath.Join(dir, tempPrefix+base+tempSuffix) // a crash leaves it behind: the next run to the same dst overwrites it, and previewcache.RemoveStaleTemp removes it at startup
+	tmp := filepath.Join(dir, tempPrefix+base+tempSuffix) // a crash leaves it behind: the next run to the same dst overwrites it, and fsutil.RemoveStaleTemp removes it at startup (a leading dot and a .tmp ending)
 	full := append([]string{"-v", "error", "-y", "-nostdin"}, args...)
 	full = append(full, "-f", format, tmp)
 	if err := t.runFFmpeg(ctx, t.limits().writeLimit(seconds), full...); err != nil {

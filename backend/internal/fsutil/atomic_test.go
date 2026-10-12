@@ -79,6 +79,23 @@ func TestRemoveStaleTemp_MissingRootIsNotAnError(t *testing.T) {
 	assert.Empty(t, removed)
 }
 
+// The conversions media makes in .previews (".<name>.ffmpeg.tmp") are swept by this alone (#667, #671).
+func TestRemoveStaleTemp_RemovesAnFFmpegOutputLeftByAKilledConversion(t *testing.T) {
+	root := t.TempDir()
+	previews := filepath.Join(root, ".previews")
+	require.NoError(t, os.MkdirAll(previews, 0o700))
+	stale := filepath.Join(previews, ".x.mp4.ffmpeg.tmp")
+	done := filepath.Join(previews, "x.mp4")
+	require.NoError(t, os.WriteFile(stale, []byte("half"), 0o600))
+	require.NoError(t, os.WriteFile(done, []byte("done"), 0o600))
+
+	removed, err := fsutil.RemoveStaleTemp(root)
+
+	require.NoError(t, err)
+	assert.Equal(t, []string{stale}, removed)
+	assert.FileExists(t, done)
+}
+
 func TestRemoveStaleTemp_RemovesAStagingFileLeftByACrash(t *testing.T) {
 	root := t.TempDir()
 	f, err := fsutil.CreateStagingTemp(filepath.Join(root, ".staging"))
