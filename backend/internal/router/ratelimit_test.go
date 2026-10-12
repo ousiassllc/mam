@@ -10,7 +10,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 )
 
-// An external API answering 429 reaches the browser as 429 (spec/api/endpoints.md §0), not as a 502.
+// An external API answering 429 reaches the browser as 429 (spec/api/errors.md), not as a 502.
 func TestAudio_RateLimitOfTheReasoningLLMIs429AndOtherProviderFailuresStay502(t *testing.T) {
 	e := newEditorApp(t)
 	e.setState("VISUAL_DESIGN")
