@@ -30,8 +30,7 @@ func abortDownload(c *gin.Context, err error) {
 // the whole <body> with the response, so it needs the full page. The answer depends on
 // these request headers, so they are declared in Vary to keep caches from mixing the two.
 func isHTMX(c *gin.Context) bool {
-	h := c.Writer.Header()
-	h.Add("Vary", "HX-Request, HX-History-Restore-Request")
+	c.Writer.Header().Add("Vary", "HX-Request, HX-History-Restore-Request")
 	return c.GetHeader("HX-Request") == "true" && c.GetHeader("HX-History-Restore-Request") != "true"
 }
 

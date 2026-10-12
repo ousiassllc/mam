@@ -304,7 +304,7 @@ func TestEditor_FullFlowFromRoughCutToExport(t *testing.T) {
 	rec = e.get("/projects/"+e.project+"/exports/"+exports[0].ID+"/video", false)
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, "video/webm", rec.Header().Get("Content-Type"))
-	assert.Equal(t, "sandbox", rec.Header().Get("Content-Security-Policy"))
+	assert.Equal(t, []string{"sandbox", `attachment; filename="mam-export-` + exports[0].ExportedAt.UTC().Format("20060102") + `-` + exports[0].ID + `.webm"`}, []string{rec.Header().Get("Content-Security-Policy"), rec.Header().Get("Content-Disposition")}, "the download is saved under a name of its own, not `video`")
 
 	// The completion notice carries no URL in its text; the chat draws the download link from ref_type / ref_id.
 	var notice string
