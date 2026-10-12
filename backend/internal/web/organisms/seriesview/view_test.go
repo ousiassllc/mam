@@ -1,17 +1,28 @@
-package organisms_test
+package seriesview_test
 
 import (
+	"context"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/a-h/templ"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
-	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/seriesview"
 )
 
-func seriesViewData() organisms.SeriesViewData {
-	return organisms.SeriesViewData{
+func renderHTML(t *testing.T, c templ.Component) string {
+	t.Helper()
+	var sb strings.Builder
+	require.NoError(t, c.Render(context.Background(), &sb))
+	return sb.String()
+}
+
+func seriesViewData() seriesview.Data {
+	return seriesview.Data{
 		Series: domain.Series{ID: "s1", Name: "Mio", Style: "watercolor", Version: 3},
 		Canon: domain.SeriesCanon{Characters: []domain.WorldCharacter{
 			{ID: "c1", Name: "Mio", Wardrobe: "red coat"},
@@ -26,7 +37,7 @@ func seriesViewData() organisms.SeriesViewData {
 // The other Characters, the Style and the Episode form share the screen: replacing them would discard what the user
 // typed into them without a word (#693, the same shape as #685).
 func TestSeriesCharacterSaved_AnswersTheFormOfThatCharacterOnly(t *testing.T) {
-	html := renderHTML(t, organisms.SeriesCharacterSaved(seriesViewData(), "c1"))
+	html := renderHTML(t, seriesview.CharacterSaved(seriesViewData(), "c1"))
 
 	assert.Contains(t, html, `id="series-character-c1"`)
 	assert.Contains(t, html, `hx-target="this"`)
@@ -40,7 +51,7 @@ func TestSeriesCharacterSaved_AnswersTheFormOfThatCharacterOnly(t *testing.T) {
 }
 
 func TestSeriesStyleSaved_AnswersTheStyleFormOnly(t *testing.T) {
-	html := renderHTML(t, organisms.SeriesStyleSaved(seriesViewData()))
+	html := renderHTML(t, seriesview.StyleSaved(seriesViewData()))
 
 	assert.Contains(t, html, `id="series-style-form"`)
 	assert.Contains(t, html, `hx-target="this"`)
@@ -54,7 +65,7 @@ func TestSeriesStyleSaved_AnswersTheStyleFormOnly(t *testing.T) {
 
 // The page carries every form with its own id and replaces only itself, so a save never reaches the others.
 func TestSeriesView_EachFormReplacesItself(t *testing.T) {
-	html := renderHTML(t, organisms.SeriesView(seriesViewData()))
+	html := renderHTML(t, seriesview.View(seriesViewData()))
 
 	for _, id := range []string{"series-style-form", "series-character-c1", "series-character-c2", "series-version", "series-history"} {
 		assert.Contains(t, html, `id="`+id+`"`)

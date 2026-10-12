@@ -9,13 +9,13 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
-	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/seriesview"
 	"github.com/ousiassllc/mam/backend/internal/web/pages"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
-func seriesData(v service.SeriesView) organisms.SeriesViewData {
-	return organisms.SeriesViewData{Series: v.Series, Canon: v.Canon, Versions: v.Versions, Episodes: v.Episodes, Templates: v.Templates}
+func seriesData(v service.SeriesView) seriesview.Data {
+	return seriesview.Data{Series: v.Series, Canon: v.Canon, Versions: v.Versions, Episodes: v.Episodes, Templates: v.Templates}
 }
 
 // SeriesPage renders a Series (GET /series/:id): the full page, or the view fragment for HTMX.
@@ -27,7 +27,7 @@ func SeriesPage(svc *service.SeriesService) gin.HandlerFunc {
 			return
 		}
 		if isHTMX(c) {
-			render(c, http.StatusOK, organisms.SeriesView(seriesData(view)))
+			render(c, http.StatusOK, seriesview.View(seriesData(view)))
 			return
 		}
 		render(c, http.StatusOK, pages.SeriesPage(middleware.CSRFToken(c), seriesData(view)))
@@ -78,7 +78,7 @@ func UpdateSeriesCharacter(svc *service.SeriesService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusOK, organisms.SeriesCharacterSaved(seriesData(view), c.Param("characterId")))
+		render(c, http.StatusOK, seriesview.CharacterSaved(seriesData(view), c.Param("characterId")))
 	}
 }
 
@@ -91,6 +91,6 @@ func UpdateSeriesStyle(svc *service.SeriesService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusOK, organisms.SeriesStyleSaved(seriesData(view)))
+		render(c, http.StatusOK, seriesview.StyleSaved(seriesData(view)))
 	}
 }

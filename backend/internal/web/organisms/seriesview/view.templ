@@ -1,15 +1,16 @@
-package organisms
+package seriesview
 
 import (
 	"strconv"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
-// SeriesViewData is the state of the Series page (series_page): the canon and the Episodes.
-type SeriesViewData struct {
+// Data is the state of the Series page (series_page): the canon and the Episodes.
+type Data struct {
 	Series   domain.Series
 	Canon    domain.SeriesCanon
 	Versions []domain.SeriesVersion
@@ -30,11 +31,11 @@ func episodeLabel(p domain.Project) string {
 	return "第" + strconv.Itoa(p.EpisodeNumber) + "話"
 }
 
-// SeriesView shows a Series: its canonical Style, Characters, Products and Locations (Characters
+// View shows a Series: its canonical Style, Characters, Products and Locations (Characters
 // and the Style are editable; the edits never reach an existing Episode), the Episodes with a form
 // to start the next one, and the history of the canon. Each editable form replaces only itself when it
-// is saved (SeriesStyleSaved, SeriesCharacterSaved), so what is typed into the other forms is kept.
-templ SeriesView(d SeriesViewData) {
+// is saved (StyleSaved, CharacterSaved), so what is typed into the other forms is kept.
+templ View(d Data) {
 	<div id="series-view" class="flex flex-col gap-6">
 		@seriesVersionLine(d, false)
 		<section aria-label="Style" class="flex flex-col gap-2">
@@ -90,7 +91,7 @@ templ SeriesView(d SeriesViewData) {
 						}
 					}
 				</label>
-				@BrandTemplateSelect("series-brand-template", d.Templates)
+				@organisms.BrandTemplateSelect("series-brand-template", d.Templates)
 				@atoms.Button(atoms.TonePrimary, "次の Episode を作成", templ.Attributes{"type": "submit"})
 			</form>
 		</section>
@@ -98,7 +99,7 @@ templ SeriesView(d SeriesViewData) {
 	</div>
 }
 
-templ seriesVersionLine(d SeriesViewData, oob bool) {
+templ seriesVersionLine(d Data, oob bool) {
 	<p
 		id="series-version"
 		class="text-xs text-neutral-400"
@@ -110,7 +111,7 @@ templ seriesVersionLine(d SeriesViewData, oob bool) {
 	</p>
 }
 
-templ seriesHistory(d SeriesViewData, oob bool) {
+templ seriesHistory(d Data, oob bool) {
 	<section
 		id="series-history"
 		aria-label="History"
@@ -130,21 +131,21 @@ templ seriesHistory(d SeriesViewData, oob bool) {
 
 // seriesCanonSaved is what a saved canon changes outside the form that saved it: the version line and
 // the history of the canon, out of band.
-templ seriesCanonSaved(d SeriesViewData) {
+templ seriesCanonSaved(d Data) {
 	@seriesVersionLine(d, true)
 	@seriesHistory(d, true)
 }
 
-// SeriesStyleSaved answers the save of the Style (PUT /series/:id/style): the Style form only, with the
+// StyleSaved answers the save of the Style (PUT /series/:id/style): the Style form only, with the
 // new version carried along. The Characters and the Episode form are not part of the response.
-templ SeriesStyleSaved(d SeriesViewData) {
+templ StyleSaved(d Data) {
 	@seriesStyleForm(d)
 	@seriesCanonSaved(d)
 }
 
-// SeriesCharacterSaved answers the save of a Character (PUT /series/:id/characters/:characterId): the form
+// CharacterSaved answers the save of a Character (PUT /series/:id/characters/:characterId): the form
 // of that Character only, with the new version carried along.
-templ SeriesCharacterSaved(d SeriesViewData, characterID string) {
+templ CharacterSaved(d Data, characterID string) {
 	for _, c := range d.Canon.Characters {
 		if c.ID == characterID {
 			@seriesCharacterForm(d, c)
@@ -153,7 +154,7 @@ templ SeriesCharacterSaved(d SeriesViewData, characterID string) {
 	@seriesCanonSaved(d)
 }
 
-templ seriesStyleForm(d SeriesViewData) {
+templ seriesStyleForm(d Data) {
 	<form
 		id="series-style-form"
 		class="flex flex-wrap items-end gap-2"
@@ -168,14 +169,14 @@ templ seriesStyleForm(d SeriesViewData) {
 				"name":      "style",
 				"type":      "text",
 				"value":     d.Series.Style,
-				"maxlength": intText(domain.MaxStyleRunes),
+				"maxlength": strconv.Itoa(domain.MaxStyleRunes),
 			})
 		</label>
 		@atoms.Button(atoms.TonePrimary, "保存", templ.Attributes{"type": "submit"})
 	</form>
 }
 
-templ seriesCharacterForm(d SeriesViewData, c domain.WorldCharacter) {
+templ seriesCharacterForm(d Data, c domain.WorldCharacter) {
 	<form
 		id={ "series-character-" + c.ID }
 		class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3"
@@ -193,7 +194,7 @@ templ seriesCharacterForm(d SeriesViewData, c domain.WorldCharacter) {
 						"name":      name,
 						"type":      "text",
 						"value":     seriesCharacterValues(c)[name],
-						"maxlength": intText(domain.MaxWorldValueRunes),
+						"maxlength": strconv.Itoa(domain.MaxWorldValueRunes),
 					})
 				</label>
 			}
@@ -202,30 +203,4 @@ templ seriesCharacterForm(d SeriesViewData, c domain.WorldCharacter) {
 			@atoms.Button(atoms.TonePrimary, "保存", templ.Attributes{"type": "submit"})
 		</div>
 	</form>
-}
-
-// SeriesMembership is on the World State page: the Series the Project belongs to, or the form
-// that makes a Series of it (its Characters, Products and Locations become the canon).
-templ SeriesMembership(p domain.Project) {
-	<section aria-label="Series" class="mb-6 flex flex-col gap-2 rounded-md border border-neutral-700 p-3">
-		<h2 class="text-sm font-semibold text-neutral-200">Series</h2>
-		if p.SeriesID != "" {
-			<a class="text-sm text-indigo-300 underline" href={ templ.SafeURL(paths.Series(p.SeriesID)) }>Series の正本と Episode を開く（この Project は第{ strconv.Itoa(p.EpisodeNumber) }話）</a>
-		} else {
-			<form class="flex flex-wrap items-end gap-2" hx-post={ paths.SeriesList() } hx-sync="this:drop" hx-disabled-elt="find button[type=submit]">
-				<input type="hidden" name="from_project_id" value={ p.ID }/>
-				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="series-name">
-					Series 名（この Project の Character / Product / Location を正本として登録します）
-					@atoms.Input(atoms.FieldMd, "", templ.Attributes{
-						"id":          "series-name",
-						"name":        "name",
-						"type":        "text",
-						"maxlength":   intText(domain.MaxSeriesNameRunes),
-						"placeholder": p.Name,
-					})
-				</label>
-				@atoms.Button(atoms.ToneNeutral, "Series にする", templ.Attributes{"type": "submit"})
-			</form>
-		}
-	</section>
 }
