@@ -36,6 +36,9 @@ type fixture struct {
 	close func()
 	logs  *bytes.Buffer
 	file  string // the file of the Take "t1"
+
+	mu      sync.Mutex
+	writers []*os.File // the writing ends of the FIFO that goneOnceRunning holds
 }
 
 // newFixture is a Take "t1" (a 4K Take, so Video makes a proxy) whose file is a FIFO nobody writes
@@ -77,16 +80,40 @@ func newFixture(t *testing.T, hang bool) *fixture {
 		Logger: slog.New(slog.NewTextHandler(f.logs, nil)),
 	})
 	f.close = sync.OnceFunc(f.svc.Close) // Services.Close is not for calling twice: a test that closes does it through f.close
+	t.Cleanup(f.closeWriters)            // runs after f.close: the conversion is killed first, not given an end of file
 	t.Cleanup(f.close)
 	return f
 }
 
-// goneAfter is a context of a request the browser cancels after d (a seek, a page change).
-func goneAfter(t *testing.T, d time.Duration) context.Context {
+// goneOnceRunning is a context of a request the browser cancels (a seek, a page change) once the
+// conversion of the hanging file is running. It waits for the conversion, not for a time: how long a
+// request takes to get to ffmpeg depends on the machine (-race is several times slower), and a
+// request that is cancelled before it gets there starts no conversion at all.
+//
+// The conversion is running when ffmpeg has opened the FIFO: opening it for writing returns only
+// then. The writer is held open, so ffmpeg goes on waiting for data until it is killed.
+func (f *fixture) goneOnceRunning(t *testing.T) context.Context {
 	t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), d)
+	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
+	go func() {
+		w, err := os.OpenFile(f.file, os.O_WRONLY, 0)
+		if err == nil {
+			f.mu.Lock()
+			f.writers = append(f.writers, w)
+			f.mu.Unlock()
+		}
+		cancel()
+	}()
 	return ctx
+}
+
+func (f *fixture) closeWriters() {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, w := range f.writers {
+		_ = w.Close()
+	}
 }
 
 // A browser cancels what it asked for at every seek and card change. That is not a failure of the
@@ -94,7 +121,7 @@ func goneAfter(t *testing.T, d time.Duration) context.Context {
 func TestVideo_AClientThatGivesUpIsNotLoggedAsAFailedProxy(t *testing.T) {
 	f := newFixture(t, true)
 
-	_, err := f.svc.Takes.Video(goneAfter(t, 100*time.Millisecond), "t1")
+	_, err := f.svc.Takes.Video(f.goneOnceRunning(t), "t1")
 
 	require.NoError(t, err)
 	assert.NotContains(t, f.logs.String(), "level=ERROR")
@@ -107,7 +134,7 @@ func TestThumbnail_AClientThatGivesUpIsNotLoggedAsAServerError(t *testing.T) {
 	engine := gin.New()
 	engine.Use(middleware.Logger(slog.New(slog.NewTextHandler(f.logs, nil))))
 	engine.GET("/takes/:id/thumbnail", handler.TakeThumbnail(f.svc.Takes))
-	req := httptest.NewRequest(http.MethodGet, "/takes/t1/thumbnail", nil).WithContext(goneAfter(t, 100*time.Millisecond))
+	req := httptest.NewRequest(http.MethodGet, "/takes/t1/thumbnail", nil).WithContext(f.goneOnceRunning(t))
 
 	rec := httptest.NewRecorder()
 	engine.ServeHTTP(rec, req)
@@ -133,7 +160,7 @@ func TestThumbnail_AFailureIsNotMadeAgainForAWhile(t *testing.T) {
 // Stopping the app kills the conversions that are running: they are not left to run as orphans.
 func TestServicesClose_KillsTheRunningConversion(t *testing.T) {
 	f := newFixture(t, true)
-	_, err := f.svc.Takes.Video(goneAfter(t, 200*time.Millisecond), "t1") // ffmpeg is running, the request is gone
+	_, err := f.svc.Takes.Video(f.goneOnceRunning(t), "t1") // ffmpeg is running, the request is gone
 	require.NoError(t, err)
 
 	closed := make(chan struct{})
