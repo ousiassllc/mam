@@ -48,7 +48,7 @@ func (ta *takeApp) statusOf(id string) string {
 	return ""
 }
 
-// The comparison names a Take's status as the Shot card does (molecules.TakeStatusBadge), so the
+// The comparison names a Take's status as the Shot card does (domain.TakeStatus.Label), so the
 // client holds no label of its own.
 func TestTakeAPI_NamesEachStatusAsTheShotCardDoes(t *testing.T) {
 	ta := newTakeApp(t)
