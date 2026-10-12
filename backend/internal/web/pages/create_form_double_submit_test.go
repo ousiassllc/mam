@@ -17,7 +17,8 @@ import (
 
 // The forms that create something and then send the browser to its page show nothing until the server
 // answers, so a second click or Enter would queue a second request (htmx's default) and make a second
-// Project / Episode / Branch (#651). Each drops a request while one is in flight and disables its submit
+// Project / Episode / Branch (#651), a second Series (#676), or the upload of the same bundle or Review
+// Package twice (#676). Each drops a request while one is in flight and disables its submit
 // button, like the chat composer and the "続きを作る" button of the Shot card.
 func TestCreateAndRedirectForms_IgnoreASecondSubmitWhileOneIsInFlight(t *testing.T) {
 	project := domain.Project{ID: "p", Name: "P"}
@@ -29,6 +30,9 @@ func TestCreateAndRedirectForms_IgnoreASecondSubmitWhileOneIsInFlight(t *testing
 		{"new project", pages.ProjectsPage("tok", nil, organisms.NewProjectFormData{}), `hx-post="/projects"`},
 		{"next episode", pages.SeriesPage("tok", organisms.SeriesViewData{Series: domain.Series{ID: "s1", Name: "S"}}), `hx-post="/series/s1/episodes"`},
 		{"branch", pages.BranchPage("tok", organisms.BranchPageData{Project: project, Shots: []organisms.BranchShotOption{{ShotID: "sh1", Label: "Scene 1 / Shot 1"}}}), `hx-post="/shots/sh1/branch"`},
+		{"make a series of a project", organisms.SeriesMembership(project), `hx-post="/series"`},
+		{"import a project bundle", pages.ProjectsPage("tok", nil, organisms.NewProjectFormData{}), `hx-post="/projects/import"`},
+		{"import a review package", pages.ReviewInboxPage("tok", organisms.ReviewInboxData{}), `hx-post="/reviews/import"`},
 	}
 	formTag := regexp.MustCompile(`<form[^>]*>`)
 	for _, tc := range tests {

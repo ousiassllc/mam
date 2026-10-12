@@ -53,7 +53,7 @@ func ProjectImportForm(d ProjectImportFormData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" hx-encoding=\"multipart/form-data\" hx-target=\"this\" hx-swap=\"outerHTML\"><label for=\"project-import-file\" class=\"text-neutral-300\">プロジェクトバンドルを読み込む</label> <input id=\"project-import-file\" type=\"file\" name=\"bundle\" required accept=\".zip,application/zip\" class=\"text-xs\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" hx-encoding=\"multipart/form-data\" hx-target=\"this\" hx-swap=\"outerHTML\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button[type=submit]\"><label for=\"project-import-file\" class=\"text-neutral-300\">プロジェクトバンドルを読み込む</label> <input id=\"project-import-file\" type=\"file\" name=\"bundle\" required accept=\".zip,application/zip\" class=\"text-xs\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
