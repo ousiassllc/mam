@@ -103,7 +103,7 @@ func (s *EditorService) RoughCut(ctx context.Context, projectID, branchID string
 	if len(notes) > 0 {
 		text += fmt.Sprintf("\nProduction Template（%s）に合わせて編集しました:\n・%s", project.ProductionTemplate.Label(), strings.Join(notes, "\n・"))
 	}
-	s.announce(ctx, projectID, text)
+	s.announce(ctx, projectID, assistantText(text))
 	return s.View(ctx, projectID, branchID)
 }
 

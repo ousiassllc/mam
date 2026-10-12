@@ -138,7 +138,7 @@ func (s *EditorService) Export(ctx context.Context, projectID string, in ExportI
 			return EditorView{}, err
 		}
 	}
-	s.announce(ctx, projectID, fmt.Sprintf("書き出しが完了しました（%s / %s / %s）。ダウンロード: /projects/%s/exports/%s/video", opts.AspectRatio, opts.Resolution, opts.Codec, projectID, rec.ID))
+	s.announce(ctx, projectID, domain.ChatMessage{Role: domain.RoleAssistant, Kind: domain.KindText, Content: fmt.Sprintf("書き出しが完了しました（%s / %s / %s）。", opts.AspectRatio, opts.Resolution, opts.Codec), RefType: domain.RefExport, RefID: rec.ID})
 	return s.View(ctx, projectID, in.BranchID)
 }
 

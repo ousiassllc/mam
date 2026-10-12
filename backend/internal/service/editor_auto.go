@@ -47,7 +47,7 @@ func (s *EditorService) AdvanceAuto(ctx context.Context, projectID string) {
 			s.logger.Warn("AUTO editing stage is unavailable", "project_id", projectID, "err", err)
 		default:
 			s.logger.Error("AUTO editing stage failed", "project_id", projectID, "err", err)
-			s.announce(ctx, projectID, fmt.Sprintf("自動の編集工程が止まりました: %s\n編集画面から続きを実行してください。", err))
+			s.announce(ctx, projectID, assistantText(fmt.Sprintf("自動の編集工程が止まりました: %s\n編集画面から続きを実行してください。", err)))
 		}
 		return
 	}

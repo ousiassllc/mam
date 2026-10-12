@@ -182,7 +182,7 @@ func TestGenerateShot_WarnsBeforeStartingWhenTheDiskIsTooSmall(t *testing.T) {
 	for _, m := range g.thread(t, g.projectID) {
 		if m.Kind == domain.KindText && strings.Contains(m.Content, "ディスクの空き容量") {
 			warned = true
-			assert.Contains(t, m.Content, "/projects/"+g.projectID+"/settings")
+			assert.Equal(t, domain.RefSettings, m.RefType, "the chat draws the settings link; the text has no URL")
 		}
 	}
 	assert.True(t, warned, "the thread warns about the disk space")

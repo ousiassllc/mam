@@ -150,3 +150,29 @@ type oobKey struct{}
 func WithOOB(ctx context.Context) context.Context { return context.WithValue(ctx, oobKey{}, true) }
 
 func isOOB(ctx context.Context) bool { v, _ := ctx.Value(oobKey{}).(bool); return v }
+
+// refLink is the link a text notice carries: the notice names what it points at (ref_type / ref_id),
+// and the URL is built here from paths, not written into the message by the service or agent.
+type refLink struct {
+	Label string
+	Href  templ.SafeURL
+	Attrs templ.Attributes
+}
+
+// refLinkOf is the link of an AI text notice whose ref_type is a destination, if it has one.
+func refLinkOf(m domain.ThreadMessage) (refLink, bool) {
+	if m.Role != domain.RoleAssistant || m.Kind != domain.KindText {
+		return refLink{}, false
+	}
+	switch {
+	case m.RefType == domain.RefExport && m.RefID != "":
+		return refLink{
+			Label: "書き出した動画をダウンロード",
+			Href:  templ.SafeURL(paths.Project(m.ProjectID, "exports", m.RefID, "video")),
+			Attrs: templ.Attributes{"download": true},
+		}, true
+	case m.RefType == domain.RefSettings:
+		return refLink{Label: "設定画面を開く", Href: templ.SafeURL(paths.Project(m.ProjectID, "settings"))}, true
+	}
+	return refLink{}, false
+}

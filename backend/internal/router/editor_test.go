@@ -271,16 +271,9 @@ func TestEditor_FullFlowFromRoughCutToExport(t *testing.T) {
 	assert.Equal(t, "期待", audio.Scenes[0].Emotion)
 	assert.InDelta(t, domain.DefaultTargetLUFS, audio.MeasuredLUFS, 1.5)
 	// Every provider call is in the cost ledger under the identifier of model-adapters.md §6.
-	var providers []string
-	rows, err := e.db.Reader().QueryContext(context.Background(), `SELECT provider FROM cost_ledger_entry WHERE project_id = ? AND provider LIKE 'elevenlabs-%' ORDER BY provider`, e.project)
-	require.NoError(t, err)
-	for rows.Next() {
-		var p string
-		require.NoError(t, rows.Scan(&p))
-		providers = append(providers, p)
-	}
-	require.NoError(t, rows.Err())
-	assert.Equal(t, []string{"elevenlabs-music", "elevenlabs-sfx", "elevenlabs-tts", "elevenlabs-tts"}, providers)
+	var providers string
+	require.NoError(t, e.db.Reader().QueryRow(`SELECT group_concat(provider) FROM (SELECT provider FROM cost_ledger_entry WHERE project_id = ? AND provider LIKE 'elevenlabs-%' ORDER BY provider)`, e.project).Scan(&providers))
+	assert.Equal(t, "elevenlabs-music,elevenlabs-sfx,elevenlabs-tts,elevenlabs-tts", providers)
 	_, statErr := os.Stat(filepath.Join(e.dir, "assets", filepath.FromSlash(audio.MixPath)))
 	assert.NoError(t, statErr)
 
@@ -312,6 +305,12 @@ func TestEditor_FullFlowFromRoughCutToExport(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, "video/webm", rec.Header().Get("Content-Type"))
 	assert.Equal(t, "sandbox", rec.Header().Get("Content-Security-Policy"))
+
+	// The completion notice carries no URL in its text; the chat draws the download link from ref_type / ref_id.
+	var notice string
+	require.NoError(t, e.db.Reader().QueryRow(`SELECT content FROM chat_message WHERE project_id = ? AND ref_type = 'export' AND ref_id = ?`, e.project, exports[0].ID).Scan(&notice))
+	assert.NotContains(t, notice, "/projects/")
+	assert.Contains(t, e.get("/projects/"+e.project, false).Body.String(), `<a href="/projects/`+e.project+`/exports/`+exports[0].ID+`/video"`)
 }
 
 func TestEditor_ReEditVerdictKeepsTheProjectEditing(t *testing.T) {

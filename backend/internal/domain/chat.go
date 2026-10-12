@@ -40,8 +40,7 @@ const (
 	ApprovalChangesRequested ApprovalStatus = "changes_requested"
 )
 
-// chat_message.ref_type values understood by the chat. Cards refer to an entity
-// (er.md §4); Approval cards use the artifact types of CheckpointRefType.
+// chat_message.ref_type values understood by the chat. Cards refer to an entity (er.md §4); Approval cards use CheckpointRefType.
 const (
 	RefBriefField    = "brief_field" // Question card: ref_id is the BriefField being asked
 	RefAsset         = "asset"       // Keyframe card: ref_id is the asset ID
@@ -50,6 +49,8 @@ const (
 	RefShot          = "shot"        // Escalation card: ref_id is the shot ID (optional)
 	RefNotePromotion = "note_promotion"
 	RefContinue      = "continue" // Question card of Continue: ref_id is the completed shot ID
+	RefExport        = "export"   // Text notice of a finished export: ref_id is the export ID (the chat draws its download link)
+	RefSettings      = "settings" // Text notice that points at the settings page of the Project (no ref_id; the chat draws the link)
 )
 
 // ChatMessage is one entry of a Project's chat thread. The thread is append-only;
@@ -135,9 +136,8 @@ func DecodeTakeCardBody(content string) TakeCardBody {
 	return b
 }
 
-// IsLocalPath reports whether p is a same-origin absolute path: the only kind of URL a card may
-// make the browser load. A backslash (browsers read /\host as "//host"), an escaped one, a
-// control character, a scheme or a host is refused.
+// IsLocalPath reports whether p is a same-origin absolute path: the only kind of URL a card may make the browser load.
+// A backslash (browsers read /\host as "//host"), an escaped one, a control character, a scheme or a host is refused.
 func IsLocalPath(p string) bool {
 	if !strings.HasPrefix(p, "/") || strings.HasPrefix(p, "//") || strings.Contains(strings.ToLower(p), "%5c") {
 		return false

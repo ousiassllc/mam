@@ -88,7 +88,7 @@ func (s *EditorService) GenerateAudio(ctx context.Context, projectID, branchID s
 		_ = s.audio.DiscardRun(in)
 		return EditorView{}, notFound(err)
 	}
-	s.announce(ctx, projectID, audioSummary(tl, branchID != ""))
+	s.announce(ctx, projectID, assistantText(audioSummary(tl, branchID != "")))
 	return s.View(ctx, projectID, branchID)
 }
 
