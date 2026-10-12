@@ -59,7 +59,7 @@ func ClipKinds() []ClipKind { return []ClipKind{ClipMain, ClipInsert, ClipReacti
 // Valid reports whether k is a known kind.
 func (k ClipKind) Valid() bool { return slices.Contains(ClipKinds(), k) }
 
-// MaxCaptionRunes bounds a caption: it is written over the picture in one or two lines.
+// MaxCaptionRunes bounds a caption: it is written over the picture in up to three lines, drawn smaller when it needs to fit (media.layoutCaption).
 const MaxCaptionRunes = 60
 
 // CleanCaption trims a caption and turns its line breaks into spaces.

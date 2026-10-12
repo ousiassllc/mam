@@ -2,7 +2,6 @@ package web_test
 
 import (
 	"os"
-	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -28,8 +27,7 @@ var (
 // the .templ sources, so that a form added later cannot skip the guard unnoticed. The forms that save
 // on every change (hx-trigger="change") are idempotent PUTs and are not covered.
 func TestPostingForms_IgnoreASecondSubmitWhileOneIsInFlight(t *testing.T) {
-	sources, err := filepath.Glob("*/*.templ")
-	require.NoError(t, err)
+	sources := sourcesUnder(t, ".templ")
 	require.NotEmpty(t, sources)
 	seen := 0
 	for _, f := range sources {
