@@ -48,14 +48,7 @@ templ StoragePanel(d StoragePanelData) {
 			</div>
 		</dl>
 		if hasUnneeded(d.Storage) {
-			<form
-				hx-post={ paths.Project(d.ProjectID, "storage", "archive-unneeded") }
-				hx-target="#storage-panel"
-				hx-swap="outerHTML"
-				hx-sync="this:drop"
-				hx-disabled-elt="find button[type=submit]"
-				hx-confirm="不要な Take の動画ファイルを削除します。よろしいですか？"
-			>
+			<form hx-post={ paths.Project(d.ProjectID, "storage", "archive-unneeded") } hx-target="#storage-panel" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]" hx-confirm="不要な Take の動画ファイルを削除します。よろしいですか？">
 				@atoms.Button(atoms.ToneDanger, "不要な Take をまとめてアーカイブ", templ.Attributes{
 					"type": "submit",
 				})

@@ -117,14 +117,7 @@ templ fieldError(errs map[string]string, field string) {
 }
 
 templ sceneForm(d SceneShotData) {
-	<form
-		class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3"
-		hx-post={ paths.Project(d.Project.ID, "scenes") }
-		hx-target="#scene-shot-view"
-		hx-swap="outerHTML"
-		hx-sync="this:drop"
-		hx-disabled-elt="find button[type=submit]"
-	>
+	<form class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3" hx-post={ paths.Project(d.Project.ID, "scenes") } hx-target="#scene-shot-view" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]">
 		<p class="text-sm font-medium">Scene を追加</p>
 		if d.Scene != nil {
 			<input type="hidden" name="current_scene_id" value={ d.Scene.ID }/>
@@ -175,14 +168,7 @@ templ sceneForm(d SceneShotData) {
 }
 
 templ shotForm(d SceneShotData) {
-	<form
-		class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3"
-		hx-post={ paths.Scene(d.Scene.ID, "shots") }
-		hx-target="#scene-shot-view"
-		hx-swap="outerHTML"
-		hx-sync="this:drop"
-		hx-disabled-elt="find button[type=submit]"
-	>
+	<form class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3" hx-post={ paths.Scene(d.Scene.ID, "shots") } hx-target="#scene-shot-view" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]">
 		<p class="text-sm font-medium">Shot を追加</p>
 		<div>
 			<label for="shot-objective" class="mb-1 block text-xs text-neutral-400">この Shot で見せること（必須）</label>

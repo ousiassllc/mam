@@ -103,15 +103,7 @@ templ ReferenceLibrary(d ReferenceLibraryData) {
 				}
 			</ul>
 		}
-		<form
-			class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3"
-			hx-post={ paths.Project(d.Project.ID, "references") }
-			hx-encoding="multipart/form-data"
-			hx-target="#reference-library"
-			hx-swap="outerHTML"
-			hx-sync="this:drop"
-			hx-disabled-elt="find button[type=submit]"
-		>
+		<form class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3" hx-post={ paths.Project(d.Project.ID, "references") } hx-encoding="multipart/form-data" hx-target="#reference-library" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]">
 			<h2 class="text-sm font-semibold">参照画像を登録</h2>
 			<div class="grid gap-2 sm:grid-cols-2">
 				<div>
