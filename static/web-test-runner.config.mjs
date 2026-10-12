@@ -23,6 +23,9 @@ async function reviewAnswerMiddleware(ctx, next) {
 
 export default {
   files: 'src/components/**/*.wtest.ts',
+  // One page at a time: when two pages load a clip together (video-player and review-workspace wtests
+  // run side by side) the <video> metadata of both never loads and the tests time out.
+  concurrency: 1,
   nodeResolve: true,
   middleware: [reviewAnswerMiddleware],
   plugins: [esbuildPlugin({ ts: true, tsconfig: './tsconfig.json' })],
