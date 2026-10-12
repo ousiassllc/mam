@@ -209,13 +209,26 @@ func (a *Archive) Install(assetsDir string) (string, error) {
 		return "", err
 	}
 	target := filepath.Join(assetsDir, a.Data.ProjectID)
-	if err := os.Rename(filepath.Join(staging, a.Data.ProjectID), target); err != nil {
-		if errors.Is(err, fs.ErrExist) {
+	if err := renameDir(filepath.Join(staging, a.Data.ProjectID), target); err != nil {
+		// Moving onto an existing directory fails as fs.ErrExist on Linux but as access denied
+		// (fs.ErrPermission) on Windows, so the error kind does not say who lost the race: a target
+		// that is there now does.
+		if errors.Is(err, fs.ErrExist) || targetExists(target) {
 			return "", ErrProjectDirExists
 		}
 		return "", fmt.Errorf("move imported files: %w", err)
 	}
 	return target, nil
+}
+
+// renameDir moves the extracted Project directory into place; a variable so that a test can make it
+// fail the way Windows does.
+var renameDir = os.Rename
+
+// targetExists reports whether something is at path.
+func targetExists(path string) bool {
+	_, err := os.Lstat(path)
+	return err == nil
 }
 
 // extractFiles writes the files below root (the asset-relative paths are kept).
