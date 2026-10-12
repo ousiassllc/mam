@@ -112,12 +112,33 @@ func TestRoughCutPreview_AFailureIsNotRenderedAgainForAWhile(t *testing.T) {
 }
 
 // A seek or a card change cancels the request, not the render: the next request finds the file.
+//
+// The client gives up once the render is running (ffmpeg is writing its temporary file), not after
+// a fixed time: a request that is cancelled before it reaches Make starts no render at all, and
+// how long it takes to get there depends on the machine (-race is several times slower).
 func TestRoughCutPreview_ARenderIsNotStoppedByAClientThatGivesUp(t *testing.T) {
 	f := newRoughFixture(t, true)
+	renderStarted := filepath.Join(filepath.Dir(f.rough), "."+filepath.Base(f.rough)+".ffmpeg.tmp")
+	ctx, giveUp := context.WithCancel(context.Background())
+	t.Cleanup(giveUp)
+	asked := make(chan error, 1)
+	go func() {
+		_, err := f.svc.Editor.Preview(ctx, "v1")
+		asked <- err
+	}()
 
-	_, err := f.svc.Editor.Preview(goneAfter(t, 20*time.Millisecond), "v1") // the render takes longer: nobody waits for it
-	require.Error(t, err)
+	require.Eventually(t, func() bool {
+		_, err := os.Stat(renderStarted)
+		return err == nil
+	}, 30*time.Second, time.Millisecond, "the render starts")
+	giveUp()
 
+	select {
+	case err := <-asked:
+		require.ErrorIs(t, err, context.Canceled, "nobody waits for the render")
+	case <-time.After(30 * time.Second):
+		require.FailNow(t, "the request is still waiting for the render")
+	}
 	require.Eventually(t, func() bool {
 		_, err := os.Stat(f.rough)
 		return err == nil
@@ -125,6 +146,19 @@ func TestRoughCutPreview_ARenderIsNotStoppedByAClientThatGivesUp(t *testing.T) {
 	file, err := f.svc.Editor.Preview(context.Background(), "v1")
 	require.NoError(t, err)
 	assert.Equal(t, f.rough, file.Path)
+}
+
+// A request that is gone before it reaches Make starts no render.
+func TestRoughCutPreview_ARequestThatIsGoneBeforeTheRenderStartsMakesNothing(t *testing.T) {
+	f := newRoughFixture(t, true)
+	ctx, giveUp := context.WithCancel(context.Background())
+	giveUp()
+
+	_, err := f.svc.Editor.Preview(ctx, "v1")
+
+	require.Error(t, err)
+	f.close() // waits for the renders that are running: none
+	assert.NoFileExists(t, f.rough)
 }
 
 // The Rough Cut is made by the cache Services.Close stops (the one of the Take previews): after it
