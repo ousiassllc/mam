@@ -95,7 +95,7 @@ func statusOf(c *gin.Context, err error) (int, string) {
 }
 
 // toast answers an action with an out-of-band toast and leaves the swap target untouched
-// (HX-Reswap: none, no URL push). The business errors of spec/api/endpoints.md §0 are reported this way.
+// (HX-Reswap: none, no URL push). The business errors of spec/api/errors.md are reported this way.
 func toast(c *gin.Context, err error) {
 	status, message := statusOf(c, err)
 	middleware.ToastOnly(c)
