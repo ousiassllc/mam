@@ -29,6 +29,15 @@ func TestShotCard_EscapesShotAndTakeIDsInEveryURL(t *testing.T) {
 	assert.NotContains(t, html, `?shot=s?1`)
 }
 
+func TestTakeCard_PassesTheFrameRateTheServerKnowsToThePlayer(t *testing.T) {
+	card := func(content string) string {
+		return render(t, molecules.TakeCard(domain.ThreadMessage{ChatMessage: domain.ChatMessage{ID: "m", Kind: domain.KindTake, RefID: "t1", Content: content}}))
+	}
+	assert.Contains(t, card(`{"title":"T","video_url":"/takes/t1/video","fps":24}`), `fps="24"`)
+	assert.Contains(t, card(`{"title":"T","video_url":"/takes/t1/video","fps":23.976023976023978}`), `fps="23.976023976023978"`)
+	assert.NotContains(t, card(`{"title":"T","video_url":"/takes/t1/video"}`), `fps=`)
+}
+
 func TestTakeCard_DoesNotLoadAVideoOrPosterFromAnotherHost(t *testing.T) {
 	card := func(content string) string {
 		return render(t, molecules.TakeCard(domain.ThreadMessage{ChatMessage: domain.ChatMessage{ID: "m", Kind: domain.KindTake, RefID: "t1", Content: content}}))

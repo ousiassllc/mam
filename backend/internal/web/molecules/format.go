@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/a-h/templ"
@@ -130,6 +131,9 @@ func progressView(job *domain.Job) (atoms.BadgeTone, string, bool) {
 }
 
 func scorePercent(score float64) string { return fmt.Sprintf("%.2f", score) }
+
+// frameRate writes a frame rate for the fps attribute of mam-video-player ("23.976", "30").
+func frameRate(fps float64) string { return strconv.FormatFloat(fps, 'f', -1, 64) }
 
 func frameClass(m domain.ThreadMessage) string {
 	base := "max-w-[85%] rounded-lg px-4 py-3 text-sm "

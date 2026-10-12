@@ -111,10 +111,10 @@ type TakeCardBody struct {
 	Score    *float64 `json:"score,omitempty"` // overall judge score, 0..1
 	Summary  string   `json:"summary,omitempty"`
 	VideoURL string   `json:"video_url,omitempty"`
-	// PosterURL is the still shown before the video plays; ShotID is the Shot the Take belongs
-	// to (the card links to its Take comparison).
-	PosterURL string `json:"poster_url,omitempty"`
-	ShotID    string `json:"shot_id,omitempty"`
+	// PosterURL is the still shown before the video plays; ShotID is the Shot the Take belongs to (the card links to its Take comparison).
+	PosterURL string  `json:"poster_url,omitempty"`
+	ShotID    string  `json:"shot_id,omitempty"`
+	FPS       float64 `json:"fps,omitempty"` // read by ffprobe when the card was made; 0: unknown, the player measures it
 }
 
 // EncodeTakeCardBody serialises a take card body.

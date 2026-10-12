@@ -5,13 +5,14 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/web/handler"
+	"github.com/ousiassllc/mam/backend/internal/web/health"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // registerPages registers page routes (GET, branch on HX-Request: full page or fragment).
 func registerPages(engine *gin.Engine, services *service.Services) {
 	engine.GET(paths.Home(), handler.Projects(services.Projects))
-	engine.GET("/healthz", handler.Health(services.Health))
+	engine.GET("/healthz", health.Handler(services.Health))
 
 	engine.GET(paths.Projects(), handler.Projects(services.Projects))
 	engine.GET("/projects/:id", handler.ChatWorkspace(services.Chat))

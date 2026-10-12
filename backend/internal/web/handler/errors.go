@@ -5,12 +5,14 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/gin-gonic/gin"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // abortDownload ends a download whose body failed after the status was sent: the archive is
@@ -95,9 +97,30 @@ func statusOf(c *gin.Context, err error) (int, string) {
 }
 
 // toast answers an action with an out-of-band toast and leaves the swap target untouched
-// (HX-Reswap: none, no URL push). The business errors of spec/api/endpoints.md §0 are reported this way.
+// (HX-Reswap: none, no URL push). The business errors of spec/api/errors.md are reported this way.
 func toast(c *gin.Context, err error) {
 	status, message := statusOf(c, err)
 	middleware.ToastOnly(c)
 	render(c, status, atoms.ToastOOB(message))
+}
+
+// RouteErrors makes a URL without a route (NoRoute) or a method the route does not serve (NoMethod)
+// answer like an unknown target of a page route: the full page, or the toast of an HTMX request.
+// Under /api/v1 it is a Huma-style problem. The message names the URL so the toast says which one failed.
+func RouteErrors(engine *gin.Engine) {
+	engine.HandleMethodNotAllowed = true
+	engine.NoRoute(func(c *gin.Context) { routeError(c, http.StatusNotFound, "ページが見つかりません") })
+	engine.NoMethod(func(c *gin.Context) {
+		routeError(c, http.StatusMethodNotAllowed, "この URL ではこの操作はできません")
+	})
+}
+
+func routeError(c *gin.Context, status int, message string) {
+	path := c.Request.URL.Path
+	if path == paths.APIPrefix || strings.HasPrefix(path, paths.APIPrefix+"/") {
+		c.Header("Content-Type", "application/problem+json")
+		c.JSON(status, huma.NewError(status, message))
+		return
+	}
+	pageError(c, &requestError{status: status, message: message + ": " + path})
 }
