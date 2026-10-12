@@ -18,7 +18,7 @@
 3097	backend/internal/agent/judge/
 469	backend/internal/agent/judge/judge.go
 430	backend/internal/agent/judge/judge_test.go
-3771	backend/internal/agent/modeladapter/
+3769	backend/internal/agent/modeladapter/
 550	backend/internal/agent/modeladapter/adapter_test.go
 668	backend/internal/agent/modeladapter/backends_test.go
 396	backend/internal/agent/modeladapter/backends_video.go

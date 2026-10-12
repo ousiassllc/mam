@@ -29,7 +29,7 @@ const (
 	// MaxReviewResponseRequestBytes caps the upload of a Review Response: the file plus the form overhead.
 	MaxReviewResponseRequestBytes = maxReviewResponseBytes + 1<<20
 	reviewVideoSniffBytes         = 16
-	reviewsDir                    = "reviews/" // below the assets directory: the videos of imported packages
+	reviewsDir                    = domain.ReviewInboxDir + "/" // below the assets directory: the videos of imported packages
 )
 
 // ReviewService is Team Collaboration: the owner makes Review Packages and imports the responses; a
