@@ -184,6 +184,9 @@ const importStagingPrefix = ".import-"
 
 // RemoveStaleImports deletes the extraction directories (assets/.import-*) an import that was killed
 // halfway left behind, and returns their paths. Call it at startup, when no import can be running.
+//
+// It is best effort: a directory that cannot be removed does not stop the others from being removed.
+// The returned error joins every failure (nil when there was none); the paths returned are those removed.
 func RemoveStaleImports(assetsDir string) ([]string, error) {
 	entries, err := os.ReadDir(assetsDir)
 	if err != nil {
@@ -193,17 +196,19 @@ func RemoveStaleImports(assetsDir string) ([]string, error) {
 		return nil, err
 	}
 	var removed []string
+	var failures []error
 	for _, e := range entries {
 		if !e.IsDir() || !strings.HasPrefix(e.Name(), importStagingPrefix) {
 			continue
 		}
 		dir := filepath.Join(assetsDir, e.Name())
 		if err := os.RemoveAll(dir); err != nil {
-			return removed, err
+			failures = append(failures, err)
+			continue
 		}
 		removed = append(removed, dir)
 	}
-	return removed, nil
+	return removed, errors.Join(failures...)
 }
 
 // Install puts the files of the Project into assetsDir/<project>. They are extracted into a staging

@@ -240,6 +240,7 @@ waitForShutdownSignal()
 - 設定は `--data-dir`（既定: OS のユーザー設定ディレクトリ配下の `mam`）・`--port`（既定 8787、使用中なら空きポート）・`--no-browser`・`--log-level`（既定 `info`）・`--static-dir`（開発時のみ、ディスクから静的アセットを配信）と、モデル関連の設定（下の `--llm-config` 等）がある。すべてのフラグは、フラグ名を大文字・`_` 区切りにした `MAM_*` 環境変数でも指定できる（`MAM_DATA_DIR`・`MAM_PORT`・`MAM_NO_BROWSER`・`MAM_LOG_LEVEL`・`MAM_STATIC_DIR` と、モデル関連の `MAM_LLM_CONFIG` 等）。フラグは環境変数より優先され（`--port`・`--no-browser` はフラグが無いときだけ環境変数を読む）、環境変数の不正値（数でない・範囲外の `MAM_PORT`、`1/true/yes/on`・`0/false/no/off` 以外の `MAM_NO_BROWSER`、不正な `MAM_LOG_LEVEL`）は起動エラーになる。
 - 起動処理は `internal/app` が持ち、`cmd/server` と `cmd/wails` は表示の仕方（ブラウザを開く／ウィンドウに URL を読み込む）だけが違う。どちらも同じ `127.0.0.1` のサーバーを起動し、設定（フラグ・`MAM_*`）、データディレクトリのロック、ジョブ復旧、グレースフルシャットダウン（時間切れの残リクエストは中断する）は共通である
 - データディレクトリは起動時に排他ロック（`<data-dir>/.mam.lock`、OS のファイルロック。プロセスが死ねば OS が解放する）を取る。同じディレクトリで 2 つ目のインスタンスを起動するとエラーで終了し、実行中のインスタンスの一時ファイルやインポート途中のディレクトリを起動時の掃除（`fsutil.RemoveStaleTemp` / `RemoveStaleImports`）で消すことはない。別の `--data-dir` を指定すれば並行して起動できる。
+- 起動時の掃除（`fsutil.RemoveStaleTemp` / `RemoveStaleImports`）は best-effort。削除できないファイルや読めないディレクトリがあっても警告ログを残して走査を続け、起動は止めない（残るのは参照されないゴミだけで、次回の起動で再び掃除される）。
   - `--llm-config`: Reasoning LLM の Agent ごとのプロバイダー割り当て JSON（`model-adapters.md` §2.1）
   - `--model-config`: 画像・動画生成 Model Adapter の設定 JSON（`model-adapters.md` §9.2。Multi-model routing も同じ JSON、`model-adapters.md` §13）
   - `--judge-config`: AI Video Judge のフレーム抽出と顔類似度の閾値 JSON（`model-adapters.md` §10）
