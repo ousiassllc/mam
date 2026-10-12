@@ -148,8 +148,8 @@ func validateBrief(b domain.Brief) error {
 		return invalid("additional_instruction", "%d 文字以内で入力してください", domain.MaxMessageRunes)
 	}
 	for _, r := range b.References {
-		if isURL(r) && (utf8.RuneCountInString(r) > briefing.FieldMaxRunes || strings.ContainsAny(r, " \t")) {
-			return invalid("references", "URL が長すぎるか、空白を含んでいます: %s", r)
+		if problem := briefing.ReferenceProblem(r); isURL(r) && problem != "" {
+			return invalid("references", "%s: %s", problem, r)
 		}
 	}
 	return nil

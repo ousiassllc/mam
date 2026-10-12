@@ -107,3 +107,15 @@ func TestValueProblem(t *testing.T) {
 	assert.Empty(t, briefing.ValueProblem(domain.BriefMood, strings.Repeat("あ", briefing.FieldMaxRunes)))
 	assert.Contains(t, briefing.ValueProblem(domain.BriefMood, strings.Repeat("あ", briefing.FieldMaxRunes+1)), "200 文字以内")
 }
+
+func TestReferenceProblem(t *testing.T) {
+	assert.Empty(t, briefing.ReferenceProblem("https://example.com/"+strings.Repeat("a", briefing.FieldMaxRunes-len("https://example.com/"))))
+	assert.Contains(t, briefing.ReferenceProblem("https://example.com/"+strings.Repeat("a", briefing.FieldMaxRunes)), "200 文字")
+	assert.NotEmpty(t, briefing.ReferenceProblem("https://example.com/a b"))
+}
+
+func TestRuleExtractor_LeavesOutURLsTheBriefFormRefuses(t *testing.T) {
+	long := "https://example.com/?" + strings.Repeat("a", briefing.FieldMaxRunes)
+	got := briefing.RuleExtractor{}.Extract("参考 " + long + " と https://example.com/ok.").References
+	assert.Equal(t, []string{"https://example.com/ok"}, got)
+}

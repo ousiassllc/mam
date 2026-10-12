@@ -31,3 +31,13 @@ func Question(f domain.BriefField, text string) domain.ChatMessage {
 		RefType: domain.RefBriefField, RefID: string(f),
 	}
 }
+
+// ReferenceProblem says why the URL u cannot be a Brief Reference ("" when it can). It is the rule of
+// the Brief form (PUT /projects/:id/brief) and of the URLs RuleExtractor takes from the chat, so a URL
+// pasted in the chat never blocks saving the form.
+func ReferenceProblem(u string) string {
+	if utf8.RuneCountInString(u) > FieldMaxRunes || strings.ContainsAny(u, " \t") {
+		return fmt.Sprintf("URL が %d 文字を超えているか、空白を含んでいます", FieldMaxRunes)
+	}
+	return ""
+}
