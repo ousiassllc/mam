@@ -75,7 +75,6 @@ export function connect<T>(options: ConnectOptions<T>): Connection {
   const createSocket = options.createSocket ?? ((url: string) => new WebSocket(url) as unknown as SocketLike);
   const setTimer = options.setTimer ?? ((fn: () => void, ms: number) => setTimeout(fn, ms));
   const clearTimer = options.clearTimer ?? ((h: unknown) => clearTimeout(h as ReturnType<typeof setTimeout>));
-
   const now = options.now ?? Date.now;
 
   let socket: SocketLike | null = null;
@@ -97,17 +96,18 @@ export function connect<T>(options: ConnectOptions<T>): Connection {
       options.onOpen?.(reconnected);
     };
     current.onmessage = (event) => {
+      let message: T | undefined;
       try {
-        options.onMessage(JSON.parse(String(event.data)) as T);
+        message = JSON.parse(String(event.data)) as T;
       } catch (error) {
         log.warn('ignored a malformed message', error);
       }
+      if (message !== undefined) options.onMessage(message);
     };
     current.onclose = () => {
       if (closed || socket !== current) return;
       waiting = true;
-      if (openedAt !== null && now() - openedAt >= STABLE_MS) failures = 0;
-      else failures += 1;
+      failures = openedAt !== null && now() - openedAt >= STABLE_MS ? 0 : failures + 1;
       if (failures >= MAX_RETRIES) {
         log.warn('gave up reconnecting');
         options.onGiveUp?.();
