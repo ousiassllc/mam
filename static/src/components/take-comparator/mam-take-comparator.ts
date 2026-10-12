@@ -49,7 +49,7 @@ interface TakesBody {
   shot_id: string;
   duration_seconds?: number;
   partial_url?: string;
-  limits: SegmentLimits;
+  limits: SegmentLimits & { min_axis_score: number };
   takes: TakeScore[];
 }
 
@@ -87,7 +87,7 @@ export class MamTakeComparator extends LitElement {
 
   private shotDuration = 0;
   private partialUrl = '';
-  private limits: SegmentLimits | null = null;
+  private limits: TakesBody['limits'] | null = null;
   private loadToken = 0;
 
   protected override createRenderRoot(): HTMLElement {
@@ -291,21 +291,21 @@ export class MamTakeComparator extends LitElement {
         </tr>
       </thead>
       <tbody>
-        ${this.takes.map((t) => this.renderRow(t))}
+        ${this.takes.map((t) => this.renderRow(t, this.limits?.min_axis_score ?? 0))}
       </tbody>
     </table>`;
   }
 
-  private renderRow(t: TakeScore) {
+  private renderRow(t: TakeScore, minAxis: number) {
     return html`<tr class="border-t border-neutral-800 ${t.status === 'rejected' ? 'opacity-60' : ''}" data-take=${t.id}>
       <th scope="row" class="px-2 py-2 font-medium">
         Take ${t.label}${t.adopted ? html` <span class="text-xs text-emerald-300" data-adopted>（使用中）</span>` : nothing}
         <div class="text-xs font-normal text-neutral-400">${describeTake(t)}</div>
       </th>
-      <td class="px-2 py-2" data-score="product">${renderScore(t.scores?.product)}</td>
-      <td class="px-2 py-2" data-score="acting">${renderScore(t.scores?.acting)}</td>
-      <td class="px-2 py-2" data-score="camera">${renderScore(t.scores?.camera)}</td>
-      <td class="px-2 py-2" data-score="continuity">${renderScore(t.scores?.continuity)}</td>
+      <td class="px-2 py-2" data-score="product">${renderScore(t.scores?.product, minAxis)}</td>
+      <td class="px-2 py-2" data-score="acting">${renderScore(t.scores?.acting, minAxis)}</td>
+      <td class="px-2 py-2" data-score="camera">${renderScore(t.scores?.camera, minAxis)}</td>
+      <td class="px-2 py-2" data-score="continuity">${renderScore(t.scores?.continuity, minAxis)}</td>
       <td class="px-2 py-2">
         <span class="rounded border px-2 py-0.5 text-xs ${STATUS_CLASS[t.status]}" data-status=${t.status}>${t.status_label}</span>
         ${t.verdict ? html`<span class="ml-1 text-xs text-neutral-400">${t.verdict.toUpperCase()}</span>` : nothing}

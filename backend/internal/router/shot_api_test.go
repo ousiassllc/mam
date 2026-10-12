@@ -10,18 +10,26 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// createShot adds a Scene and a 4 s Shot to the Project and returns their IDs.
+func (a *app) createShot(project string) (sceneID, shotID string) {
+	a.t.Helper()
+	rec := a.form(http.MethodPost, "/projects/"+project+"/scenes", url.Values{"title": {"Street"}})
+	m := sceneIDRe.FindStringSubmatch(rec.Body.String())
+	require.NotNil(a.t, m)
+	sceneID = m[1]
+	rec = a.form(http.MethodPost, "/scenes/"+sceneID+"/shots", url.Values{"objective": {"走り出す"}, "duration_seconds": {"4"}})
+	require.Equal(a.t, http.StatusCreated, rec.Code, rec.Body.String())
+	m = shotIDRe.FindStringSubmatch(rec.Body.String())
+	require.NotNil(a.t, m, rec.Body.String())
+	return sceneID, m[1]
+}
+
 func TestShotAPI_ReturnsTheShotAndUnknownIDIs404(t *testing.T) {
 	a := newApp(t)
 	project := a.createProject("美容液のCMを作りたい")
-	rec := a.form(http.MethodPost, "/projects/"+project+"/scenes", url.Values{"title": {"Street"}})
-	m := sceneIDRe.FindStringSubmatch(rec.Body.String())
-	require.NotNil(t, m)
-	rec = a.form(http.MethodPost, "/scenes/"+m[1]+"/shots", url.Values{"objective": {"走り出す"}, "duration_seconds": {"4"}})
-	require.Equal(t, http.StatusCreated, rec.Code)
-	s := shotIDRe.FindStringSubmatch(rec.Body.String())
-	require.NotNil(t, s)
+	scene, shot := a.createShot(project)
 
-	rec = a.get("/api/v1/shots/"+s[1], false)
+	rec := a.get("/api/v1/shots/"+shot, false)
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	var body struct {
 		ID              string          `json:"id"`
@@ -34,8 +42,8 @@ func TestShotAPI_ReturnsTheShotAndUnknownIDIs404(t *testing.T) {
 		SelectedTakeID  string          `json:"selected_take_id"`
 	}
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
-	assert.Equal(t, s[1], body.ID)
-	assert.Equal(t, m[1], body.SceneID)
+	assert.Equal(t, shot, body.ID)
+	assert.Equal(t, scene, body.SceneID)
 	assert.Equal(t, project, body.ProjectID)
 	assert.Equal(t, "走り出す", body.Objective)
 	assert.InDelta(t, 4, body.DurationSeconds, 0)

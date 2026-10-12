@@ -35,7 +35,8 @@ func (c *Cache) Size() (int64, error) {
 	return total, nil
 }
 
-// prune deletes the oldest finished previews (by modification time) until the rest is at most
+// prune deletes the least recently used finished previews (by modification time, which Make
+// refreshes whenever it finds a file already made) until the rest is at most
 // c.maxBytes. The file keep (the one just made) is never deleted. A file that cannot be deleted is
 // skipped and the first such error is returned after the pass.
 func (c *Cache) prune(keep string) error {
