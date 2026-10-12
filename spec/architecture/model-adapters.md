@@ -61,7 +61,7 @@ Reasoning LLM Adapter にも動画/画像生成 Model Adapter にも属さない
 
 | 用途 | 採用 | 実行場所 | 入力 | 選定理由 |
 |------|------|---------|------|---------|
-| Face Identity Similarity（F-13、`spec/spec.md` §12.4） | 顔検出 + 顔埋め込みモデル（ArcFace 系を想定。具体モデルは実装時に確定） | ローカル（外部送信なし） | Take のサンプルフレーム、`character.face_reference_asset_id` の参照顔 | Gemini の定性評価だけでは微妙な顔のズレを見逃す恐れがあり、シリーズ制作で致命的になる。数値化により閾値判定と時系列追跡ができる |
+| Face Identity Similarity（F-13、`spec/spec.md` §12.4） | 顔検出 YuNet + 顔埋め込み SFace（ONNX、ローカル実行。確定の経緯と検証は §10.1） | ローカル（外部送信なし） | Take のサンプルフレーム、`character.face_reference_asset_id` の参照顔 | Gemini の定性評価だけでは微妙な顔のズレを見逃す恐れがあり、シリーズ制作で致命的になる。数値化により閾値判定と時系列追跡ができる |
 | Repair Strategy の前段選別（F-14） | TypeSafe AI Jev（System One API。外部 API、`POST https://api.typesafe.ai/v1/systemone`） | 外部 API | Judge Result の issues（`type` / `severity` / `time_range`）を英語の構造化 JSON にしたもの | Choice で Repair 戦略を選び、確率と confidence を返す。confidence を閾値ゲートに使えるため、低 confidence の場合のみ Repair Agent（LLM）に回して LLM 呼び出しを減らせる |
 
 Jev の利用ルール:
