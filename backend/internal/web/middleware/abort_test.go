@@ -49,15 +49,15 @@ func assertToast(t *testing.T, rec *httptest.ResponseRecorder, status int) {
 	assert.Contains(t, rec.Body.String(), "data-toast-message")
 }
 
-func TestCSRF_RejectsAnHTMXRequestWithAToastAndOthersWithJSON(t *testing.T) {
+func TestCSRF_RejectsAnHTMXRequestWithAToastAndOthersWithAProblem(t *testing.T) {
 	engine := newEngine(middleware.CSRF())
 
 	assertToast(t, post(engine, "/x", true, nil), http.StatusForbidden)
 
 	rec := post(engine, "/x", false, nil)
 	assert.Equal(t, http.StatusForbidden, rec.Code)
-	assert.Contains(t, rec.Header().Get("Content-Type"), "application/json")
-	assert.JSONEq(t, `{"error":"invalid or missing CSRF token"}`, rec.Body.String())
+	assert.Equal(t, "application/problem+json", rec.Header().Get("Content-Type"))
+	assert.JSONEq(t, `{"status":403,"title":"invalid or missing CSRF token","detail":"送信を確認できませんでした。画面を再読み込みしてからやり直してください"}`, rec.Body.String())
 }
 
 func TestMaxBody_RefusesAnOversizedHTMXRequestWithAToast(t *testing.T) {
@@ -68,7 +68,8 @@ func TestMaxBody_RefusesAnOversizedHTMXRequestWithAToast(t *testing.T) {
 
 	rec := post(engine, "/x", false, big)
 	assert.Equal(t, http.StatusRequestEntityTooLarge, rec.Code)
-	assert.Contains(t, rec.Header().Get("Content-Type"), "application/json")
+	assert.Equal(t, "application/problem+json", rec.Header().Get("Content-Type"))
+	assert.JSONEq(t, `{"status":413,"title":"送信内容が大きすぎます","detail":"送信内容が大きすぎます"}`, rec.Body.String())
 }
 
 func TestLoopbackOnly_RefusesAForeignHTMXRequestWithAToast(t *testing.T) {
