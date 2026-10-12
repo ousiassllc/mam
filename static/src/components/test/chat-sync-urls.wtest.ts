@@ -67,4 +67,30 @@ describe('URLs the Chat Workspace requests', () => {
     await waitUntil(() => requested.length > 0, 'no request was made', { timeout: 2000 });
     expect(requested).to.deep.equal(['/server/card-m1']);
   });
+
+  it('retries a card refetch that failed, and replaces the card once it works', async function () {
+    this.timeout(8000); // the retry waits for its first backoff (1 s)
+    const socket = mount(
+      '<article id="msg-m1" data-message-id="m1" data-card-pending data-card-url="/server/missing-card"></article>',
+    );
+    const failed: number[] = [];
+    const onAfterRequest = (event: Event) => {
+      const detail = (event as CustomEvent<{ xhr: { status: number }; pathInfo: { requestPath: string } }>).detail;
+      if (detail.pathInfo.requestPath === '/server/missing-card') failed.push(detail.xhr.status);
+    };
+    document.body.addEventListener('htmx:afterRequest', onAfterRequest);
+    try {
+      document.body.removeEventListener('htmx:beforeRequest', onRequest); // let the requests go to the dev server
+      socket.emit({ type: 'card.updated', message_id: 'm1' });
+      await waitUntil(() => failed.length > 0, 'the first refetch did not fail', { timeout: 2000 });
+      // The server is back: the card now points at a fragment that exists.
+      host.querySelector<HTMLElement>('#msg-m1')!.dataset.cardUrl = '/src/components/testdata/card-final.html';
+      await waitUntil(() => host.querySelector('#msg-m1[data-card-final]') !== null, 'the card was not replaced', {
+        timeout: 5000,
+      });
+      expect(failed).to.deep.equal([404]);
+    } finally {
+      document.body.removeEventListener('htmx:afterRequest', onAfterRequest);
+    }
+  });
 });

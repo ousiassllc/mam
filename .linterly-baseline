@@ -74,7 +74,7 @@
 738	spec/architecture/er.md
 367	spec/architecture/model-adapters.md
 1648	spec/spec.md
-2334	static/src/components/lib/
+2279	static/src/components/lib/
 379	static/src/components/take-comparator/mam-take-comparator.ts
 346	static/src/components/timeline-editor/mam-timeline-editor.ts
 399	static/src/components/video-player/mam-video-player.ts
