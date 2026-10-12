@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/resilience"
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
@@ -159,7 +160,7 @@ func (a api) fetchOnce(ctx context.Context, fileURL string, into sink) (Blob, st
 	}
 	defer func() { _ = res.Body.Close() }()
 	if res.StatusCode/100 != 2 {
-		return Blob{}, "", &ProviderError{Vendor: string(a.vendor), Status: res.StatusCode, Message: "download of the result failed"}
+		return Blob{}, "", &ProviderError{Vendor: string(a.vendor), Status: res.StatusCode, Message: "download of the result failed", RetryAfter: httpclient.ParseRetryAfter(res.Header.Get("Retry-After"))}
 	}
 	limit := cmp.Or(a.maxDownload, maxDownloadBytes)
 	tooLarge := &ProviderError{Vendor: string(a.vendor), Status: http.StatusOK, Message: "the result file is too large"}
@@ -264,25 +265,11 @@ func (a api) checkResultURL(raw string) error {
 	return safefetch.CheckURL(raw)
 }
 
-// maxTransientAttempts bounds how often one status request or download is tried when the vendor
-// answers 429 / 5xx or the connection breaks.
-const maxTransientAttempts = 3
-
-// repeat runs fn, repeating it up to maxTransientAttempts times (waiting pollEvery between the
-// tries) while it fails with an unavailable answer. fn must be safe to repeat: a GET of a job that
-// was already submitted.
+// repeat runs fn again while it fails with an unavailable answer, until ctx ends (resilience.Repeat):
+// the job is billed already, so the call's timeout, not a number of tries, bounds it. fn must be a GET.
 func (a api) repeat(ctx context.Context, fn func() error) error {
-	for attempt := 1; ; attempt++ {
-		err := fn()
-		if err == nil || attempt >= maxTransientAttempts || ctx.Err() != nil || !unavailable(err) {
-			return err
-		}
-		select {
-		case <-time.After(a.pollEvery):
-		case <-ctx.Done():
-			return err
-		}
-	}
+	return resilience.Repeat(ctx, resilience.Backoff{Base: a.pollEvery, Max: resilience.JobRetryMaxDelay},
+		resilience.Hooks{Unavailable: unavailable, RetryAfter: retryAfter}, fn)
 }
 
 // poll calls check until it reports done or fails, waiting pollEvery between calls. It only runs
