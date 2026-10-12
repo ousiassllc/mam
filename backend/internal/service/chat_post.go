@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/briefing"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
@@ -209,18 +210,22 @@ func (s *ChatService) planTurn(ctx context.Context, project domain.Project, targ
 	before := brief
 	brief.AttachAssets(attached)
 
+	var refused *domain.ChatMessage
 	if project.State == domain.StateDraft && len(brief.Missing()) > 0 {
-		if err := s.answerBrief(ctx, project.ID, &brief, target, replied, user.Content); err != nil {
+		if refused, err = s.answerBrief(ctx, project.ID, &brief, target, replied, user.Content); err != nil {
 			return turn, nil, err
 		}
+	}
+	if refused != nil {
+		turn.Messages = append(turn.Messages, *refused)
 	}
 	if !briefChanged(before, brief) {
 		return turn, nil, nil
 	}
 	turn.Brief = &brief
-	// The AI speaks again only when the answer moved the Brief forward.
+	// The AI speaks again only when the answer moved the Brief forward (a refused answer asks again).
 	beforeMissing, nowMissing := before.Missing(), brief.Missing()
-	if !slices.Equal(beforeMissing, nowMissing) {
+	if refused == nil && !slices.Equal(beforeMissing, nowMissing) {
 		turn.Messages = append(turn.Messages, briefFollowUp(brief))
 	}
 	decided := slices.DeleteFunc(slices.Clone(beforeMissing), func(f domain.BriefField) bool { return slices.Contains(nowMissing, f) })
@@ -246,37 +251,37 @@ func (s *ChatService) attachToBrief(ctx context.Context, turn *repository.Turn, 
 	return nil
 }
 
-// answerBrief applies a message received while the Brief is incomplete.
-func (s *ChatService) answerBrief(ctx context.Context, projectID string, brief *domain.Brief, target *domain.ChatMessage, replied map[string]bool, text string) error {
+// answerBrief applies a message received while the Brief is incomplete; it returns the question again for an answer the Brief cannot hold.
+func (s *ChatService) answerBrief(ctx context.Context, projectID string, brief *domain.Brief, target *domain.ChatMessage, replied map[string]bool, text string) (*domain.ChatMessage, error) {
 	if target != nil && target.Kind == domain.KindQuestion && target.RefType == domain.RefBriefField && !replied[target.ID] {
-		applyAnswer(brief, domain.BriefField(target.RefID), text)
-		return nil
+		return applyAnswer(brief, domain.BriefField(target.RefID), text), nil
 	}
 	// Free input: take what the text says about the Brief, then treat the rest as the
 	// answer to the newest open question.
 	brief.Merge(s.extractor.Extract(text))
 	open, err := s.chat.LatestOpenQuestion(ctx, projectID)
-	if err != nil {
-		return err
+	if err != nil || open == nil {
+		return nil, err
 	}
-	if open != nil {
-		f := domain.BriefField(open.RefID)
-		if brief.Get(f) == "" && !brief.IsDelegated(f) {
-			applyAnswer(brief, f, text)
-		}
+	f := domain.BriefField(open.RefID)
+	if brief.Get(f) != "" || brief.IsDelegated(f) {
+		return nil, nil
 	}
-	return nil
+	return applyAnswer(brief, f, text), nil
 }
 
-func applyAnswer(brief *domain.Brief, f domain.BriefField, text string) {
+// applyAnswer stores an answer; the Brief form's rule refuses it with the question again and the reason.
+func applyAnswer(brief *domain.Brief, f domain.BriefField, text string) *domain.ChatMessage {
 	text = strings.TrimSpace(text)
 	if text == domain.DelegateOption {
 		brief.Delegate(f)
-		return
-	}
-	if text != "" {
+	} else if problem := briefing.ValueProblem(f, text); problem != "" {
+		again := briefing.Question(f, f.Label()+": "+problem+"\n"+f.Question())
+		return &again
+	} else if text != "" {
 		brief.Set(f, text)
 	}
+	return nil
 }
 
 func briefChanged(a, b domain.Brief) bool {

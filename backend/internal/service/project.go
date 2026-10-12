@@ -7,6 +7,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/briefing"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
@@ -101,8 +102,6 @@ type BriefForm struct {
 	References            string
 }
 
-const briefFieldMaxRunes = 200
-
 // UpdateBrief validates and saves the edited Brief and records the change in the thread.
 // On a ValidationError the returned BriefView holds the unsaved input so the form can be
 // shown again with the user's values.
@@ -141,18 +140,15 @@ func (s *ProjectService) UpdateBrief(ctx context.Context, projectID string, form
 
 func validateBrief(b domain.Brief) error {
 	for _, f := range domain.RequiredBriefFields() {
-		if utf8.RuneCountInString(b.Get(f)) > briefFieldMaxRunes {
-			return invalid(string(f), "%d 文字以内で入力してください", briefFieldMaxRunes)
+		if problem := briefing.ValueProblem(f, b.Get(f)); problem != "" {
+			return invalid(string(f), "%s", problem)
 		}
-	}
-	if b.AspectRatio != "" && !domain.IsBriefAspectRatio(b.AspectRatio) {
-		return invalid(string(domain.BriefAspectRatio), "%s から選んでください", strings.Join(domain.BriefAspectRatios(), " / "))
 	}
 	if utf8.RuneCountInString(b.AdditionalInstruction) > domain.MaxMessageRunes {
 		return invalid("additional_instruction", "%d 文字以内で入力してください", domain.MaxMessageRunes)
 	}
 	for _, r := range b.References {
-		if isURL(r) && (utf8.RuneCountInString(r) > briefFieldMaxRunes || strings.ContainsAny(r, " \t")) {
+		if isURL(r) && (utf8.RuneCountInString(r) > briefing.FieldMaxRunes || strings.ContainsAny(r, " \t")) {
 			return invalid("references", "URL が長すぎるか、空白を含んでいます: %s", r)
 		}
 	}

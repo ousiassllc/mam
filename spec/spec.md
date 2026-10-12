@@ -140,7 +140,7 @@ DELIVERY
 | References | URL / Image / Video |
 | Additional Instruction | 任意 |
 
-必須 7 項目（Content Type / Objective / Subject / Target / Duration / Aspect Ratio / Mood）が不足している場合、AI は自動補完せず 1 つずつ質問し、ユーザーが値を答えるか「AIに任せる」を選ぶまで PLANNING は始まらない。Assets / References / Additional Instruction は任意（§23.1）。
+必須 7 項目（Content Type / Objective / Subject / Target / Duration / Aspect Ratio / Mood）が不足している場合、AI は自動補完せず 1 つずつ質問し、ユーザーが値を答えるか「AIに任せる」を選ぶまで PLANNING は始まらない。チャットでの回答も編集フォームと同じ値域（Aspect Ratio は 9:16 / 16:9 / 1:1、各項目 200 文字以内）で、範囲外の回答は保存せず同じ質問を聞き直す。Assets / References / Additional Instruction は任意（§23.1）。
 
 ## 4.3 AUTO Pipeline
 
