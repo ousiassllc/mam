@@ -640,7 +640,7 @@ func TestUpdateBrief_SavesEditsAndValidates(t *testing.T) {
 	assert.Contains(t, lastMessage(t, f.thread(t, p.ID)).Content, "Brief を更新しました")
 
 	var invalid *service.ValidationError
-	_, err = f.svc.Projects.UpdateBrief(ctx, p.ID, service.BriefForm{Values: map[domain.BriefField]string{domain.BriefAspectRatio: "縦"}})
+	_, err = f.svc.Projects.UpdateBrief(ctx, p.ID, service.BriefForm{Values: map[domain.BriefField]string{domain.BriefAspectRatio: "4:5"}}) // no Brief ratio: generation would make 16:9
 	require.ErrorAs(t, err, &invalid)
 	assert.Equal(t, string(domain.BriefAspectRatio), invalid.Field)
 	_, err = f.svc.Projects.UpdateBrief(ctx, p.ID, service.BriefForm{References: "ftp://example.com"})

@@ -518,7 +518,7 @@ func TestBrief_InvalidEditRerendersWithErrorAndKeepsInput(t *testing.T) {
 
 	rec := a.form(http.MethodPut, "/projects/"+id+"/brief", url.Values{"subject": {"化粧水"}, "aspect_ratio": {"縦長"}})
 	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
-	assert.Contains(t, rec.Body.String(), "9:16 のように")
+	assert.Contains(t, rec.Body.String(), "9:16 / 16:9 / 1:1 から選んでください")
 	assert.Contains(t, rec.Body.String(), `value="縦長"`, "the rejected input is shown again")
 
 	rec = a.form(http.MethodPut, "/projects/"+id+"/brief", url.Values{"references": {"javascript:alert(1)"}})

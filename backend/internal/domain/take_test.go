@@ -16,7 +16,13 @@ func TestScoreTake_SeverityTakesPenaltyOffTheAxisOfTheDimension(t *testing.T) {
 		{Type: "prompt", Severity: SeverityHigh, Dimension: DimPromptAdherence},
 	})
 
-	assert.Equal(t, TakeScores{Product: 65, Acting: 100, Camera: 85, Continuity: 90}, scores)
+	assert.Equal(t, TakeScores{Product: 30, Acting: 65, Camera: 50, Continuity: 55}, scores, "prompt_adherence takes its penalty off every axis")
+}
+
+func TestScoreTake_EveryJudgeDimensionCountsForTheScores(t *testing.T) {
+	for _, d := range JudgeDimensions() {
+		assert.Less(t, ScoreTake([]JudgeIssue{{Type: "x", Severity: SeverityHigh, Dimension: d}}).Overall(), 100.0, string(d))
+	}
 }
 
 func TestScoreTake_FaceIdentityDriftCountsForActingAndScoresNeverGoBelowZero(t *testing.T) {
