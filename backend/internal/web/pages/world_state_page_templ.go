@@ -12,10 +12,11 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/layout"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/worldstate"
 )
 
 // WorldStatePage is GET /projects/:id/world-state: the current World State in an auxiliary view.
-func WorldStatePage(csrfToken string, d organisms.WorldStateData) templ.Component {
+func WorldStatePage(csrfToken string, d worldstate.Data) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -63,7 +64,7 @@ func WorldStatePage(csrfToken string, d organisms.WorldStateData) templ.Componen
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(d.Project.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/pages/world_state_page.templ`, Line: 15, Col: 60}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/pages/world_state_page.templ`, Line: 16, Col: 60}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -77,7 +78,7 @@ func WorldStatePage(csrfToken string, d organisms.WorldStateData) templ.Componen
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = organisms.WorldStateView(d).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = worldstate.View(d).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

@@ -28,8 +28,24 @@ func sourceLabel(s domain.ReferenceSource) string {
 }
 
 // ReferenceLibrary lists the reference images of the Project with a search form and the upload form
-// (F-11, spec/spec.md §10.1). Searching swaps the whole view; every action answers with it.
+// (F-11, spec/spec.md §10.1). Searching and removing an image replace the list with its search form
+// (#reference-library); the upload form is outside it, so they never discard the file and the text
+// being entered in it (UploadedReference is the one answer that carries a fresh form).
 templ ReferenceLibrary(d ReferenceLibraryData) {
+	<div class="flex flex-col gap-6">
+		@ReferenceLibraryList(d)
+		@referenceUploadForm(d, false)
+	</div>
+}
+
+// UploadedReference answers the registration of an image: the list, and the emptied upload form out of band.
+templ UploadedReference(d ReferenceLibraryData) {
+	@ReferenceLibraryList(d)
+	@referenceUploadForm(d, true)
+}
+
+// ReferenceLibraryList is the search form and the images found.
+templ ReferenceLibraryList(d ReferenceLibraryData) {
 	<div id="reference-library" class="flex flex-col gap-6">
 		<form
 			class="flex flex-wrap items-end gap-2"
@@ -103,53 +119,61 @@ templ ReferenceLibrary(d ReferenceLibraryData) {
 				}
 			</ul>
 		}
-		<form
-			class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3"
-			hx-post={ paths.Project(d.Project.ID, "references") }
-			hx-encoding="multipart/form-data"
-			hx-target="#reference-library"
-			hx-swap="outerHTML"
-		>
-			<h2 class="text-sm font-semibold">参照画像を登録</h2>
-			<div class="grid gap-2 sm:grid-cols-2">
-				<div>
-					<label for="ref-file" class="mb-1 block text-xs text-neutral-400">画像（jpg / png / webp / gif、20MB まで）</label>
-					<input id="ref-file" name="file" type="file" accept="image/jpeg,image/png,image/webp,image/gif" required class="w-full text-sm"/>
-				</div>
-				<div>
-					<label for="ref-new-kind" class="mb-1 block text-xs text-neutral-400">種別</label>
-					@atoms.Select(atoms.FieldMd, "w-full", templ.Attributes{
-						"id":       "ref-new-kind",
-						"name":     "kind",
-						"required": true,
-					}) {
-						for _, k := range domain.LibraryKinds() {
-							<option value={ string(k) }>{ k.Label() }</option>
-						}
-					}
-				</div>
-				<div>
-					<label for="ref-new-name" class="mb-1 block text-xs text-neutral-400">名前（100 文字以内。Character / Product / Location は登場する名前と揃える）</label>
-					@atoms.Input(atoms.FieldMd, "w-full", templ.Attributes{
-						"id":        "ref-new-name",
-						"name":      "name",
-						"type":      "text",
-						"required":  true,
-						"maxlength": intText(domain.MaxReferenceNameRunes),
-					})
-				</div>
-				<div>
-					<label for="ref-new-tags" class="mb-1 block text-xs text-neutral-400">タグ（カンマ区切り、10 個まで）</label>
-					@atoms.Input(atoms.FieldMd, "w-full", templ.Attributes{
-						"id":   "ref-new-tags",
-						"name": "tags",
-						"type": "text",
-					})
-				</div>
+	</div>
+}
+
+// referenceUploadForm registers an image; oob makes it replace the one on the page.
+templ referenceUploadForm(d ReferenceLibraryData, oob bool) {
+	<form
+		id="reference-upload-form"
+		class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3"
+		hx-post={ paths.Project(d.Project.ID, "references") }
+		hx-encoding="multipart/form-data"
+		hx-target="#reference-library"
+		hx-swap="outerHTML"
+		if oob {
+			hx-swap-oob="true"
+		}
+	>
+		<h2 class="text-sm font-semibold">参照画像を登録</h2>
+		<div class="grid gap-2 sm:grid-cols-2">
+			<div>
+				<label for="ref-file" class="mb-1 block text-xs text-neutral-400">画像（jpg / png / webp / gif、20MB まで）</label>
+				<input id="ref-file" name="file" type="file" accept="image/jpeg,image/png,image/webp,image/gif" required class="w-full text-sm"/>
 			</div>
 			<div>
-				@atoms.Button(atoms.TonePrimary, "登録", templ.Attributes{"type": "submit"})
+				<label for="ref-new-kind" class="mb-1 block text-xs text-neutral-400">種別</label>
+				@atoms.Select(atoms.FieldMd, "w-full", templ.Attributes{
+					"id":       "ref-new-kind",
+					"name":     "kind",
+					"required": true,
+				}) {
+					for _, k := range domain.LibraryKinds() {
+						<option value={ string(k) }>{ k.Label() }</option>
+					}
+				}
 			</div>
-		</form>
-	</div>
+			<div>
+				<label for="ref-new-name" class="mb-1 block text-xs text-neutral-400">名前（100 文字以内。Character / Product / Location は登場する名前と揃える）</label>
+				@atoms.Input(atoms.FieldMd, "w-full", templ.Attributes{
+					"id":        "ref-new-name",
+					"name":      "name",
+					"type":      "text",
+					"required":  true,
+					"maxlength": intText(domain.MaxReferenceNameRunes),
+				})
+			</div>
+			<div>
+				<label for="ref-new-tags" class="mb-1 block text-xs text-neutral-400">タグ（カンマ区切り、10 個まで）</label>
+				@atoms.Input(atoms.FieldMd, "w-full", templ.Attributes{
+					"id":   "ref-new-tags",
+					"name": "tags",
+					"type": "text",
+				})
+			</div>
+		</div>
+		<div>
+			@atoms.Button(atoms.TonePrimary, "登録", templ.Attributes{"type": "submit"})
+		</div>
+	</form>
 }

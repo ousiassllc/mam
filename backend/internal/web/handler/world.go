@@ -9,7 +9,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
-	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/worldstate"
 	"github.com/ousiassllc/mam/backend/internal/web/pages"
 )
 
@@ -25,7 +25,7 @@ func WorldStatePage(svc *service.WorldService) gin.HandlerFunc {
 		}
 		data := worldStateData(view)
 		if isHTMX(c) {
-			render(c, http.StatusOK, organisms.WorldStateView(data))
+			render(c, http.StatusOK, worldstate.View(data))
 			return
 		}
 		render(c, http.StatusOK, pages.WorldStatePage(middleware.CSRFToken(c), data))
@@ -33,8 +33,8 @@ func WorldStatePage(svc *service.WorldService) gin.HandlerFunc {
 }
 
 // UpdateCharacter sets the attributes named in the form (PUT /projects/:id/characters/:characterId)
-// and answers with the updated view. A LOCKed attribute is refused with 423 and nothing is written.
-// UpdateProduct and UpdateLocation do the same for Products and Locations.
+// and answers with that Character's form only (the whole view would discard what is typed in the other forms).
+// A LOCKed attribute is refused with 423. UpdateProduct and UpdateLocation do the same for Products and Locations.
 func UpdateCharacter(svc *service.WorldService) gin.HandlerFunc {
 	return updateEntity(svc, domain.TargetCharacter, "characterId")
 }
@@ -63,21 +63,21 @@ func updateEntity(svc *service.WorldService, target domain.WorldTarget, param st
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusOK, organisms.WorldStateView(worldStateData(view)))
+		render(c, http.StatusOK, worldstate.EntitySaved(worldStateData(view), target, c.Param(param)))
 	}
 }
 
 // SetWorldLock switches an attribute of the World State between AUTO and LOCK
-// (PUT /projects/:id/world-state/locks) and answers with the updated view.
+// (PUT /projects/:id/world-state/locks) and answers with the switch and what it changes (not the whole view).
 func SetWorldLock(svc *service.WorldService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		view, err := svc.SetFieldLock(c.Request.Context(), c.Param("id"), c.Query("branch_id"), domain.WorldTarget(c.PostForm("target_type")),
-			c.PostForm("target_id"), c.PostForm("parameter"), domain.LockMode(c.PostForm("mode")))
+		target, id, field := domain.WorldTarget(c.PostForm("target_type")), c.PostForm("target_id"), c.PostForm("parameter")
+		view, err := svc.SetFieldLock(c.Request.Context(), c.Param("id"), c.Query("branch_id"), target, id, field, domain.LockMode(c.PostForm("mode")))
 		if err != nil {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusOK, organisms.WorldStateView(worldStateData(view)))
+		render(c, http.StatusOK, worldstate.LockSwitched(worldStateData(view), target, id, field))
 	}
 }
 
@@ -105,10 +105,10 @@ func assignReference(svc *service.WorldService, target domain.WorldTarget, param
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusOK, organisms.WorldStateView(worldStateData(view)))
+		render(c, http.StatusOK, worldstate.ReferenceAssigned(worldStateData(view), target, c.Param(param), c.PostForm("slot")))
 	}
 }
 
-func worldStateData(v service.WorldView) organisms.WorldStateData {
-	return organisms.WorldStateData{Project: v.Project, Branch: v.Branch, World: v.World, Locks: v.Locks, ProjectLocks: v.ProjectLocks, Library: v.Library, Versions: v.Versions}
+func worldStateData(v service.WorldView) worldstate.Data {
+	return worldstate.Data{Project: v.Project, Branch: v.Branch, World: v.World, Locks: v.Locks, ProjectLocks: v.ProjectLocks, Library: v.Library, Versions: v.Versions}
 }

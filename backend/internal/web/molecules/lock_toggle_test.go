@@ -40,15 +40,14 @@ func TestLockToggle_OffersTheVideoModelOfManualAndLockInTheSharedFieldLook(t *te
 	}
 }
 
-func TestLockToggle_CarriesTheHiddenFieldsAndTargetOfAWorldStateSwitch(t *testing.T) {
+func TestLockToggle_CarriesTheHiddenFieldsOfAWorldStateSwitchAndReplacesOnlyItself(t *testing.T) {
 	html := render(t, molecules.LockToggle(molecules.LockToggleData{
 		DOMID: "lock-wa", URL: "/projects/p1/world-state/locks", Parameter: domain.ParamStory, Mode: domain.LockAuto,
 		Label: "Mood", Modes: []domain.LockMode{domain.LockAuto, domain.LockLocked},
 		Hidden: []molecules.HiddenField{{Name: "target_type", Value: "scene"}, {Name: "target_id", Value: "sc1"}},
-		Target: "#world-state",
 	}))
 
-	assert.Contains(t, html, `hx-target="#world-state"`)
+	assert.Contains(t, html, `hx-target="this"`, "only the switch is replaced, never the view around it")
 	assert.Contains(t, html, `<input type="hidden" name="target_type" value="scene">`)
 	assert.Contains(t, html, `<input type="hidden" name="target_id" value="sc1">`)
 	assert.Contains(t, html, "Mood")

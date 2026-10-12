@@ -20,12 +20,10 @@ type LockToggleData struct {
 	Models []domain.ModelName
 	Model  string
 	// The World State switches (spec/spec.md §9.3) differ: Label names the attribute, Modes limits the
-	// choice (AUTO / LOCK), Hidden are further fields of the request (target_type, target_id) and
-	// Target is the selector the response replaces (the whole view) instead of the form itself.
+	// choice (AUTO / LOCK) and Hidden are further fields of the request (target_type, target_id).
 	Label  string
 	Modes  []domain.LockMode
 	Hidden []HiddenField
-	Target string
 }
 
 func (d LockToggleData) label() string {
@@ -40,13 +38,6 @@ func (d LockToggleData) modes() []domain.LockMode {
 		return d.Modes
 	}
 	return domain.LockModes()
-}
-
-func (d LockToggleData) target() string {
-	if d.Target != "" {
-		return d.Target
-	}
-	return "this"
 }
 
 func lockModeClass(active bool, m domain.LockMode) string {
@@ -67,7 +58,7 @@ templ LockToggle(d LockToggleData) {
 		id={ d.DOMID }
 		class="flex flex-wrap items-center gap-2 text-sm"
 		hx-put={ d.URL }
-		hx-target={ d.target() }
+		hx-target="this"
 		hx-swap="outerHTML"
 	>
 		<input type="hidden" name="parameter" value={ string(d.Parameter) }/>

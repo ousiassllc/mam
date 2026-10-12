@@ -99,7 +99,7 @@ func noteInput(c *gin.Context) service.NoteInput {
 	return service.NoteInput{Title: c.PostForm("title"), Content: c.PostForm("content"), Category: c.PostForm("category"), Pinned: pinned != nil && *pinned}
 }
 
-// CreateProjectNote adds a note to a Project (POST /projects/:id/notes) and answers with the list (201).
+// CreateProjectNote adds a note to a Project (POST /projects/:id/notes).
 func CreateProjectNote(svc *service.NoteService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		view, err := svc.CreateProjectNote(c.Request.Context(), c.Param("id"), noteInput(c))
@@ -107,11 +107,11 @@ func CreateProjectNote(svc *service.NoteService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusCreated, organisms.NoteList(noteListData(view)))
+		render(c, http.StatusCreated, organisms.CreatedNoteList(noteListData(view)))
 	}
 }
 
-// CreateSeriesNote adds a canonical note to a Series (POST /series/:id/notes) and answers with the list (201).
+// CreateSeriesNote adds a canonical note to a Series (POST /series/:id/notes).
 func CreateSeriesNote(svc *service.NoteService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		view, err := svc.CreateSeriesNote(c.Request.Context(), c.Param("id"), noteInput(c))
@@ -119,7 +119,7 @@ func CreateSeriesNote(svc *service.NoteService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusCreated, organisms.NoteList(noteListData(view)))
+		render(c, http.StatusCreated, organisms.CreatedNoteList(noteListData(view)))
 	}
 }
 
@@ -135,7 +135,7 @@ func UpdateNote(svc *service.NoteService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusOK, organisms.NoteList(noteListData(view)))
+		render(c, http.StatusOK, organisms.NoteGroups(noteListData(view)))
 	}
 }
 
@@ -147,7 +147,7 @@ func ArchiveNote(svc *service.NoteService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusOK, organisms.NoteList(noteListData(view)))
+		render(c, http.StatusOK, organisms.NoteGroups(noteListData(view)))
 	}
 }
 
@@ -165,6 +165,6 @@ func RestoreNoteVersion(svc *service.NoteService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusOK, organisms.NoteList(noteListData(view)))
+		render(c, http.StatusOK, organisms.NoteGroups(noteListData(view)))
 	}
 }

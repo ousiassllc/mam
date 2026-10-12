@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
-	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/worldstate"
 	"github.com/ousiassllc/mam/backend/internal/web/pages"
 )
 
@@ -34,7 +34,7 @@ func TestWorldStatePage_LeavesOutTheSaveButtonWhenEveryEditableFieldIsLocked(t *
 			}
 			var sb strings.Builder
 
-			require.NoError(t, pages.WorldStatePage("tok", organisms.WorldStateData{
+			require.NoError(t, pages.WorldStatePage("tok", worldstate.Data{
 				Project: domain.Project{ID: "p"},
 				World:   domain.WorldContext{Locations: []domain.WorldLocation{{ID: "l1", Name: "Cafe"}}},
 				Locks:   locks,

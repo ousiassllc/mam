@@ -16,7 +16,7 @@ func libraryData(v service.LibraryView) organisms.ReferenceLibraryData {
 }
 
 // ReferenceLibraryPage renders the Reference Library (GET /projects/:id/references?q=&kind=&tag=): the
-// full page, or the view fragment for HTMX.
+// full page, or the list for HTMX.
 func ReferenceLibraryPage(svc *service.ReferenceService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		view, err := svc.Library(c.Request.Context(), c.Param("id"), service.LibraryQuery{Q: c.Query("q"), Kind: c.Query("kind"), Tag: c.Query("tag")})
@@ -25,7 +25,7 @@ func ReferenceLibraryPage(svc *service.ReferenceService) gin.HandlerFunc {
 			return
 		}
 		if isHTMX(c) {
-			render(c, http.StatusOK, organisms.ReferenceLibrary(libraryData(view)))
+			render(c, http.StatusOK, organisms.ReferenceLibraryList(libraryData(view)))
 			return
 		}
 		render(c, http.StatusOK, pages.ReferenceLibraryPage(middleware.CSRFToken(c), libraryData(view)))
@@ -33,7 +33,7 @@ func ReferenceLibraryPage(svc *service.ReferenceService) gin.HandlerFunc {
 }
 
 // UploadReference registers an image (POST /projects/:id/references, multipart) and answers with the
-// Library (201).
+// list and the emptied upload form (201).
 func UploadReference(svc *service.ReferenceService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		form, err := readMultipart(c, service.MaxImageBytes+1<<20)
@@ -47,7 +47,7 @@ func UploadReference(svc *service.ReferenceService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusCreated, organisms.ReferenceLibrary(libraryData(view)))
+		render(c, http.StatusCreated, organisms.UploadedReference(libraryData(view)))
 	}
 }
 
@@ -59,7 +59,7 @@ func DeleteReference(svc *service.ReferenceService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusOK, organisms.ReferenceLibrary(libraryData(view)))
+		render(c, http.StatusOK, organisms.ReferenceLibraryList(libraryData(view)))
 	}
 }
 
