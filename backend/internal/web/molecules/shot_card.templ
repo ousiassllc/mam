@@ -27,35 +27,6 @@ type ShotCardData struct {
 	Judgeable map[string]bool
 }
 
-// takeStatusTone is the colour of a Take's status badge; its name is domain.TakeStatus.Label.
-func takeStatusTone(s domain.TakeStatus) atoms.BadgeTone {
-	switch s {
-	case domain.TakeAIPick:
-		return atoms.BadgeInfo
-	case domain.TakeSelected:
-		return atoms.BadgeOK
-	case domain.TakeRejected:
-		return atoms.BadgeNeutral
-	}
-	return atoms.BadgeWarn
-}
-
-func shotStateLabel(s domain.ShotState) string {
-	switch s {
-	case domain.ShotPlanning:
-		return "計画中"
-	case domain.ShotGenerating:
-		return "生成中"
-	case domain.ShotJudging:
-		return "Judge 中"
-	case domain.ShotRepairing:
-		return "Repair 中"
-	case domain.ShotEditing:
-		return "編集待ち"
-	}
-	return string(s)
-}
-
 func secondsText(d float64) string { return fmt.Sprintf("%.1f 秒", d) }
 
 // shotURL selects the Shot on the Scene page.
@@ -171,7 +142,7 @@ templ TakeRow(t domain.Take, selected bool, repairable bool, judgeable bool) {
 					"hx-vals":    selectedVals(selected),
 				})
 			}
-			@atoms.Badge(takeStatusTone(t.Status), t.Status.Label())
+			@TakeStatusBadge(t.Status)
 			if judgeable {
 				@atoms.Button(atoms.ToneNeutral, "Judge", templ.Attributes{
 					"type":      "button",
@@ -246,7 +217,7 @@ templ ShotCard(d ShotCardData) {
 				if d.Shot.State == domain.ShotRepairing {
 					@atoms.Spinner("Repair 中")
 				}
-				@atoms.Badge(atoms.BadgeNeutral, shotStateLabel(d.Shot.State))
+				@atoms.Badge(atoms.BadgeNeutral, ShotStateLabel(d.Shot.State))
 			</span>
 		</div>
 		if d.Selected && d.Storyboard != nil {

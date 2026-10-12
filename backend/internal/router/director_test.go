@@ -40,7 +40,7 @@ func (g *genApp) generateAndWait() {
 	g.t.Helper()
 	g.generateTakes()
 	require.Eventually(g.t, func() bool {
-		return strings.Contains(g.get("/shots/"+g.shotID, true).Body.String(), "PLANNING")
+		return strings.Contains(g.get("/shots/"+g.shotID, true).Body.String(), "· 計画中")
 	}, 30*time.Second, 10*time.Millisecond)
 }
 

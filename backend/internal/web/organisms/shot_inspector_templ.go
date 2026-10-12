@@ -203,9 +203,9 @@ func ShotInspector(d ShotInspectorData) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var5 string
-		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(string(d.Shot.State))
+		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(molecules.ShotStateLabel(d.Shot.State))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/shot_inspector.templ`, Line: 140, Col: 29}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/shot_inspector.templ`, Line: 140, Col: 47}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -594,7 +594,7 @@ func ShotInspector(d ShotInspectorData) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = atoms.Badge(atoms.BadgeNeutral, string(t.Status)).Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = molecules.TakeStatusBadge(t.Status).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
