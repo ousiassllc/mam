@@ -79,7 +79,7 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 
 | Method | Path | 概要 | 対応機能 |
 |---|---|---|---|
-| POST | `/projects/:id/scenes` | Scene 作成。Body `title`（必須、100文字以内）、`location`/`time`（任意、各 100 文字以内）、`objective`（任意、300 文字以内）。成功時は追加した Scene を選択した階層フラグメント（201）、入力不正は入力値を保ったまま再描画（422）。スレッドに AI 発言として記録される | F-04 |
+| POST | `/projects/:id/scenes` | Scene 作成。Body `title`（必須、100文字以内）、`location`/`time`（任意、各 100 文字以内）、`objective`（任意、300 文字以内）。成功時は追加した Scene を選択した階層フラグメント（201）、入力不正は入力値を保ったまま再描画（422）。`current_scene_id`（任意）は 422 で階層を選択した状態で再描画する Scene の ID（省略時は先頭の Scene、この Project に無い ID は 404）で、画面のフォームは表示中の Scene を hidden で送る。スレッドに AI 発言として記録される | F-04 |
 | POST | `/scenes/:id/shots` | Shot 作成。Body `objective`（必須、300文字以内）、`duration_seconds`（必須、0 より大きく 60 以下）。成功時は階層フラグメント（201）、入力不正は 422、存在しない Scene は 404 | F-04 |
 | PUT | `/shots/:id/locks` | パラメータ単位の AUTO/MANUAL/LOCK 設定（Character Identity/Camera/Product Geometry 等） | F-05 |
 | PUT | `/shots/:id/shot-spec` | Canonical Shot Spec の手動編集（Project のモードによらず可能。DIRECTOR MODE 専用の API ではない） | F-06 |
