@@ -203,7 +203,7 @@ func importReviewPackage(c *gin.Context, svc *service.ReviewService) (domain.Rev
 }
 
 // AddReviewComment adds a comment of the reviewer (POST /reviews/:id/comments) and answers with the
-// review screen (201).
+// list of the comments and an empty form, not the screen (201): the screen would reset the <video>.
 func AddReviewComment(svc *service.ReviewService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		i, err := svc.AddComment(c.Request.Context(), c.Param("id"), c.PostForm("timecode"), c.PostForm("body"))
@@ -211,7 +211,7 @@ func AddReviewComment(svc *service.ReviewService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusCreated, organisms.ReviewWorkspace(i))
+		render(c, http.StatusCreated, organisms.ReviewCommentAdded(i))
 	}
 }
 
@@ -223,11 +223,11 @@ func DeleteReviewComment(svc *service.ReviewService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusOK, organisms.ReviewWorkspace(i))
+		render(c, http.StatusOK, organisms.ReviewComments(i))
 	}
 }
 
-// DecideReview writes the reviewer's decision (PUT /reviews/:id/decision) and answers with the review screen.
+// DecideReview writes the reviewer's decision (PUT /reviews/:id/decision) and answers with the decision section.
 func DecideReview(svc *service.ReviewService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		i, err := svc.Decide(c.Request.Context(), c.Param("id"), c.PostForm("reviewer_name"), c.PostForm("decision"), c.PostForm("comment"))
@@ -235,6 +235,6 @@ func DecideReview(svc *service.ReviewService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusOK, organisms.ReviewWorkspace(i))
+		render(c, http.StatusOK, organisms.ReviewDecision(i))
 	}
 }
