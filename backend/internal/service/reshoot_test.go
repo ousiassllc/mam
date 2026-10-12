@@ -34,8 +34,9 @@ func editedFixtureJudging(t *testing.T, judge string, planner func(string) strin
 	return editedFixtureWith(t, judge, planner, before, nil)
 }
 
-// editedFixtureWith is editedFixtureJudging with a last look at the Deps (nil: none).
-func editedFixtureWith(t *testing.T, judge string, planner func(string) string, before func(genFixture), tweak func(*service.Deps)) (genFixture, domain.EditTimelineVersion) {
+// selectedFixture is an AUTO Project whose only Shot has a Selected Take and which is about to get its
+// Rough Cut (state VISUAL_DESIGN, drama template).
+func selectedFixture(t *testing.T, planner func(string) string, tweak func(*service.Deps)) genFixture {
 	t.Helper()
 	f := newGenFixtureWithDeps(t, true, func(string) (uint64, error) { return 1 << 40, nil }, tweak)
 	f.llm.extractor = extractAnswer
@@ -43,7 +44,15 @@ func editedFixtureWith(t *testing.T, judge string, planner func(string) string, 
 	f.buildReferencePack(t)
 	f.generateAndWait(t, f.shotID, 2)
 	f.selectTakeOf(t, f.shotID)
+	f.waitEditingWorkerIdle(t) // the Select woke the editing worker: let it end before the state below starts the AUTO chain
 	f.execSQL(t, `UPDATE project SET production_template = 'drama', state = 'VISUAL_DESIGN' WHERE id = ?`, f.projectID)
+	return f
+}
+
+// editedFixtureWith is editedFixtureJudging with a last look at the Deps (nil: none).
+func editedFixtureWith(t *testing.T, judge string, planner func(string) string, before func(genFixture), tweak func(*service.Deps)) (genFixture, domain.EditTimelineVersion) {
+	t.Helper()
+	f := selectedFixture(t, planner, tweak)
 	ctx := context.Background()
 	view, err := f.svc.Editor.RoughCut(ctx, f.projectID, "")
 	require.NoError(t, err)
@@ -72,6 +81,13 @@ func (f genFixture) selectTakeOf(t *testing.T, shotID string) {
 	require.NoError(t, f.query(t, `SELECT t.id FROM take t JOIN prompt_version pv ON pv.id = t.prompt_version_id WHERE pv.shot_id = ? ORDER BY t.rowid DESC LIMIT 1`, shotID).Scan(&takeID))
 	_, err := f.svc.Takes.Select(context.Background(), takeID)
 	require.NoError(t, err)
+}
+
+// waitEditingWorkerIdle waits until the worker behind ResumeEditing (woken by a Take selection or a
+// finished job) is idle: it holds the editing stage while it runs, so a stage called meanwhile fails with ErrStageBusy (#608).
+func (f genFixture) waitEditingWorkerIdle(t *testing.T) {
+	t.Helper()
+	require.Eventually(t, f.svc.Editor.EditingWorkerIdle, 15*time.Second, 5*time.Millisecond, "the editing worker goes back to waiting")
 }
 
 func (f genFixture) state(t *testing.T) domain.ProjectState {
@@ -112,14 +128,8 @@ func brokenPlanner(user string) string {
 // branchFixture is a Project with a Branch whose Rough Cut is made (all additional Shots go into one Scene of it).
 func branchFixture(t *testing.T, planner func(string) string) (f genFixture, branchID, timelineID string) {
 	t.Helper()
-	f = newGenFixture(t, true)
-	f.llm.extractor = extractAnswer
-	f.llm.planner = planner
+	f = selectedFixture(t, planner, nil)
 	f.llm.director = directorFor(sameSceneAnswer)
-	f.buildReferencePack(t)
-	f.generateAndWait(t, f.shotID, 2)
-	f.selectTakeOf(t, f.shotID)
-	f.execSQL(t, `UPDATE project SET production_template = 'drama', state = 'VISUAL_DESIGN' WHERE id = ?`, f.projectID)
 	branchID = f.branch(t, service.BranchInput{}).Branch.ID
 	view, err := f.svc.Editor.RoughCut(context.Background(), f.projectID, branchID)
 	require.NoError(t, err)
@@ -142,10 +152,10 @@ func TestEditorReshootLoop_AdditionalShotIsMadeAndPutIntoTheTimelineAfterItsAnch
 
 	// Selecting its Take returns to the Editor: the clip follows its anchor as a reaction.
 	f.selectTakeOf(t, newShot)
-	require.Eventually(t, func() bool { return f.state(t) == domain.StateEditing }, 10*time.Second, 10*time.Millisecond, "back to EDITING")
-	view, err = f.svc.Editor.View(ctx, f.projectID, "")
-	require.NoError(t, err)
-	require.NotNil(t, view.Timeline)
+	require.Eventually(t, func() bool { // EDITING comes before the round is saved: wait for the version with the Shot
+		view, err = f.svc.Editor.View(ctx, f.projectID, "")
+		return err == nil && view.Project.State == domain.StateEditing && view.PendingShots == 0 && view.Timeline != nil && view.Timeline.VersionNumber == judged.VersionNumber+1
+	}, 10*time.Second, 10*time.Millisecond, "back to EDITING with the Shot in the timeline")
 	assert.Equal(t, judged.VersionNumber+1, view.Timeline.VersionNumber)
 	require.Len(t, view.Timeline.Clips, 2)
 	assert.Equal(t, f.shotID, view.Timeline.Clips[0].ShotID)
@@ -155,6 +165,7 @@ func TestEditorReshootLoop_AdditionalShotIsMadeAndPutIntoTheTimelineAfterItsAnch
 	assert.Zero(t, view.PendingShots)
 
 	// A Rough Cut made again keeps the additional Shot (it is not a story Shot).
+	f.waitEditingWorkerIdle(t) // the worker that put the Shot in holds the stage until it has looked at the Judge too
 	again, err := f.svc.Editor.RoughCut(ctx, f.projectID, "")
 	require.NoError(t, err)
 	require.Len(t, again.Timeline.Clips, 2)
@@ -196,8 +207,8 @@ func TestEditorReshootLoop_StopsAtTheRetryPolicyLimitAndEscalates(t *testing.T) 
 	_, err := f.svc.Policy.SetQualityPolicy(ctx, f.projectID, domain.QualityBalanced, &service.PolicyForm{MaxRetries: "1"})
 	require.NoError(t, err)
 	f.selectTakeOf(t, newShot)
-
 	require.Eventually(t, func() bool { return f.count(t, `SELECT COUNT(*) FROM chat_message WHERE kind = 'escalation'`) == 1 }, 10*time.Second, 10*time.Millisecond)
+	f.waitEditingWorkerIdle(t)
 	assert.Equal(t, domain.StateAwaitingApproval, f.state(t), "no second round: the Project waits for the user's decision")
 	assert.Equal(t, 2, f.trunkShots(t), "no further Shot was made")
 	view, err := f.svc.Editor.View(ctx, f.projectID, "")
@@ -221,8 +232,9 @@ func TestEditorReshootLoop_AutoJudgesTheTimelineWithTheAdditionalShotsAndGoesOnO
 	f, newShot := reshotFixture(t, `{"verdict":"pass","findings":[]}`)
 
 	f.selectTakeOf(t, newShot)
-
-	require.Eventually(t, func() bool { return f.state(t) != domain.StateGenerating && f.state(t) != domain.StateEditing }, 10*time.Second, 10*time.Millisecond, "the Judge ran by itself and passed")
+	// JUDGING, EDITING and EDIT_JUDGING come first: wait for the second Judge call and the worker's end.
+	require.Eventually(t, func() bool { return f.llm.calls(llm.AgentEditor) == 2 }, 10*time.Second, 10*time.Millisecond, "the Judge ran by itself")
+	f.waitEditingWorkerIdle(t)
 	assert.Equal(t, 2, f.llm.calls(llm.AgentEditor), "once for the Rough Cut, once for the version with the additional Shot")
 	assert.Equal(t, 2, f.trunkShots(t))
 	view, err := f.svc.Editor.View(context.Background(), f.projectID, "")
@@ -343,6 +355,7 @@ func TestRoughCut_ABranchTreatsAnInheritedAdditionalShotAsAdditional(t *testing.
 	// The round is applied on the trunk: the Branch's Rough Cut places the Shot after its anchor, as a reaction.
 	f.selectTakeOf(t, newShot)
 	require.Eventually(t, func() bool { return f.count(t, `SELECT COUNT(*) FROM reshoot_request WHERE status = 'applied'`) == 1 }, 10*time.Second, 10*time.Millisecond)
+	f.waitEditingWorkerIdle(t) // the worker that applied the round holds the stage until it is done
 	f.execSQL(t, `UPDATE project SET state = 'VISUAL_DESIGN' WHERE id = ?`, f.projectID)
 	view, err = f.svc.Editor.RoughCut(ctx, f.projectID, branchID)
 	require.NoError(t, err)
@@ -353,13 +366,7 @@ func TestRoughCut_ABranchTreatsAnInheritedAdditionalShotAsAdditional(t *testing.
 }
 
 func TestEditorReshootLoop_StartFailureDoesNotLeaveAPendingRound(t *testing.T) {
-	f := newGenFixture(t, true)
-	f.llm.extractor = extractAnswer
-	f.llm.planner = func(string) string { return additionalSpec }
-	f.buildReferencePack(t)
-	f.generateAndWait(t, f.shotID, 2)
-	f.selectTakeOf(t, f.shotID)
-	f.execSQL(t, `UPDATE project SET production_template = 'drama', state = 'VISUAL_DESIGN' WHERE id = ?`, f.projectID)
+	f := selectedFixture(t, func(string) string { return additionalSpec }, nil)
 	ctx := context.Background()
 	view, err := f.svc.Editor.RoughCut(ctx, f.projectID, "")
 	require.NoError(t, err)
@@ -472,18 +479,12 @@ func TestEditorReshootLoop_ACancelledRequestStillRecordsTheRoundOfTheStartedShot
 	twoNeeds := needTwoShots("FIRST-SHOT", "SECOND-SHOT")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	f := newGenFixture(t, true)
-	f.llm.extractor = extractAnswer
-	f.llm.planner = func(user string) string {
+	f := selectedFixture(t, func(user string) string {
 		if strings.Contains(user, "SECOND-SHOT") {
 			cancel() // the client leaves while the second generation starts, after the first one did
 		}
 		return additionalSpec
-	}
-	f.buildReferencePack(t)
-	f.generateAndWait(t, f.shotID, 2)
-	f.selectTakeOf(t, f.shotID)
-	f.execSQL(t, `UPDATE project SET production_template = 'drama', state = 'VISUAL_DESIGN' WHERE id = ?`, f.projectID)
+	}, nil)
 	view, err := f.svc.Editor.RoughCut(context.Background(), f.projectID, "")
 	require.NoError(t, err)
 	require.NotNil(t, view.Timeline)
@@ -500,12 +501,7 @@ func TestEditorReshootLoop_ACancelledRequestStillRecordsTheRoundOfTheStartedShot
 // new Take with the user's cut, so that the Editor Judge's "the Take changed" finding goes away.
 func TestRoughCut_AFixedShotFollowsItsNewSelectedTake(t *testing.T) {
 	ctx := context.Background()
-	f := newGenFixture(t, true)
-	f.llm.extractor = extractAnswer
-	f.buildReferencePack(t)
-	f.generateAndWait(t, f.shotID, 2)
-	f.selectTakeOf(t, f.shotID)
-	f.execSQL(t, `UPDATE project SET production_template = 'drama', state = 'VISUAL_DESIGN' WHERE id = ?`, f.projectID)
+	f := selectedFixture(t, nil, nil)
 	view, err := f.svc.Editor.RoughCut(ctx, f.projectID, "")
 	require.NoError(t, err)
 	oldTake := view.Timeline.Clips[0].TakeID
@@ -514,6 +510,7 @@ func TestRoughCut_AFixedShotFollowsItsNewSelectedTake(t *testing.T) {
 	require.NoError(t, f.query(t, `SELECT t.id FROM take t JOIN prompt_version pv ON pv.id = t.prompt_version_id WHERE pv.shot_id = ? AND t.id <> ? ORDER BY t.rowid LIMIT 1`, f.shotID, oldTake).Scan(&newTake))
 	_, err = f.svc.Takes.Select(ctx, newTake)
 	require.NoError(t, err)
+	f.waitEditingWorkerIdle(t) // the Select woke the worker, which may hold the stage
 
 	again, err := f.svc.Editor.RoughCut(ctx, f.projectID, "")
 	require.NoError(t, err)

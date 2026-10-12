@@ -6,6 +6,7 @@ import (
 	"context"
 	"log/slog"
 	"sync"
+	"sync/atomic"
 )
 
 // Worker runs one function on ONE worker goroutine, whenever it is woken. Wake-ups coalesce: any
@@ -19,6 +20,7 @@ type Worker struct {
 	name   string
 	run    func(ctx context.Context)
 	wake   chan struct{} // capacity 1
+	asked  atomic.Int32  // wake-ups in the channel plus the run in progress
 	once   sync.Once
 	done   chan struct{}
 }
@@ -35,11 +37,17 @@ func (w *Worker) Wake() {
 		return
 	}
 	w.once.Do(func() { go w.loop() })
+	w.asked.Add(1)
 	select {
 	case w.wake <- struct{}{}:
 	default: // a run is already asked for
+		w.asked.Add(-1)
 	}
 }
+
+// Idle reports whether no run is going on and none is asked for. It lets a test wait until the
+// worker is quiet before it does what the worker would otherwise race with.
+func (w *Worker) Idle() bool { return w.asked.Load() == 0 }
 
 func (w *Worker) loop() {
 	defer close(w.done)
@@ -49,6 +57,7 @@ func (w *Worker) loop() {
 			return
 		case <-w.wake:
 			RunSafely(w.logger, w.name, func() { w.run(w.ctx) })
+			w.asked.Add(-1)
 		}
 	}
 }

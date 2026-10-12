@@ -66,7 +66,7 @@
 371	backend/internal/service/note.go
 344	backend/internal/service/note_test.go
 459	backend/internal/service/pipeline_test.go
-530	backend/internal/service/reshoot_test.go
+527	backend/internal/service/reshoot_test.go
 441	backend/internal/service/review.go
 2985	backend/internal/web/handler/
 4424	backend/internal/web/organisms/
