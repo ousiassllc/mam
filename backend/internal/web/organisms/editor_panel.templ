@@ -267,7 +267,7 @@ templ EditorActions(d EditorPanelData) {
 						"type":      "text",
 						"name":      "speaker",
 						"required":  true,
-						"maxlength": "20",
+						"maxlength": intText(domain.MaxSpeakerRunes),
 					})
 				</label>
 				<label class="flex flex-col gap-1 text-xs text-neutral-400">

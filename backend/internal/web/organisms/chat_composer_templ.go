@@ -97,7 +97,7 @@ func ChatComposer(p domain.Project) templ.Component {
 			"id":          "composer-content",
 			"name":        "content",
 			"rows":        "2",
-			"maxlength":   "4000",
+			"maxlength":   intText(domain.MaxMessageRunes),
 			"placeholder": "指示を入力…（Enter で送信、Shift+Enter で改行）",
 		}, "").Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {

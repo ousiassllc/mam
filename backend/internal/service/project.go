@@ -151,8 +151,8 @@ func validateBrief(b domain.Brief) error {
 	if b.AspectRatio != "" && !aspectRatioRe.MatchString(b.AspectRatio) {
 		return invalid(string(domain.BriefAspectRatio), "9:16 のように「幅:高さ」で入力してください")
 	}
-	if utf8.RuneCountInString(b.AdditionalInstruction) > MaxMessageRunes {
-		return invalid("additional_instruction", "%d 文字以内で入力してください", MaxMessageRunes)
+	if utf8.RuneCountInString(b.AdditionalInstruction) > domain.MaxMessageRunes {
+		return invalid("additional_instruction", "%d 文字以内で入力してください", domain.MaxMessageRunes)
 	}
 	for _, r := range b.References {
 		if isURL(r) && (utf8.RuneCountInString(r) > briefFieldMaxRunes || strings.ContainsAny(r, " \t")) {
@@ -287,8 +287,8 @@ func validateMessage(content string, hasAttachments bool) error {
 	if content == "" && !hasAttachments {
 		return invalid("content", "発言または添付ファイルを入力してください")
 	}
-	if utf8.RuneCountInString(content) > MaxMessageRunes {
-		return invalid("content", "%d 文字以内で入力してください", MaxMessageRunes)
+	if utf8.RuneCountInString(content) > domain.MaxMessageRunes {
+		return invalid("content", "%d 文字以内で入力してください", domain.MaxMessageRunes)
 	}
 	return nil
 }

@@ -276,7 +276,6 @@ func audioError(err error) error {
 // Voice sample limits: MaxVoiceSampleBytes is the largest sample recording.
 const (
 	MaxVoiceSampleBytes = 10 << 20
-	maxSpeakerRunes     = 20
 )
 
 // CloneVoice clones a voice from a sample recording and makes it the voice of the speaker's lines
@@ -284,8 +283,8 @@ const (
 // has one voice: a new clone replaces the old one.
 func (s *EditorService) CloneVoice(ctx context.Context, projectID, speaker, name string, file Upload) (domain.VoiceClone, error) {
 	speaker, name = strings.TrimSpace(speaker), strings.TrimSpace(name)
-	if speaker == "" || len([]rune(speaker)) > maxSpeakerRunes {
-		return domain.VoiceClone{}, invalid("speaker", "話者名は 1〜%d 文字で入力してください", maxSpeakerRunes)
+	if speaker == "" || len([]rune(speaker)) > domain.MaxSpeakerRunes {
+		return domain.VoiceClone{}, invalid("speaker", "話者名は 1〜%d 文字で入力してください", domain.MaxSpeakerRunes)
 	}
 	if file.Open == nil {
 		return domain.VoiceClone{}, invalid("sample", "声のサンプルの音声ファイルを選んでください")

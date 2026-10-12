@@ -30,7 +30,7 @@ templ NewProjectForm(d NewProjectFormData) {
 			"id":          "new-project-content",
 			"name":        "content",
 			"rows":        "3",
-			"maxlength":   "4000",
+			"maxlength":   intText(domain.MaxMessageRunes),
 			"placeholder": "例: 美容液の縦型15秒CMを作りたい。上品な雰囲気で",
 		}, d.Content)
 		if d.Error != "" {

@@ -11,6 +11,9 @@ const (
 	ModelSyncLabs        ModelName = "sync-labs"
 )
 
+// MaxSpeakerRunes bounds the speaker name of a cloned voice.
+const MaxSpeakerRunes = 20
+
 // AudioLayer is one layer of the Audio Timeline (spec/spec.md §18).
 type AudioLayer string
 

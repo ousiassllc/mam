@@ -249,8 +249,8 @@ func (s *ContinueService) confirm(ctx context.Context, shotID string, in Confirm
 	} else if direction == "" {
 		return ShotFragment{}, false, invalid("instruction", "続きの展開を選ぶか、指示を入力してください")
 	}
-	if utf8.RuneCountInString(direction) > maxInstructionRunes {
-		return ShotFragment{}, false, invalid("instruction", "%d 文字以内で入力してください", maxInstructionRunes)
+	if utf8.RuneCountInString(direction) > domain.MaxInstructionRunes {
+		return ShotFragment{}, false, invalid("instruction", "%d 文字以内で入力してください", domain.MaxInstructionRunes)
 	}
 	if _, busy := s.answering.LoadOrStore(shotID, struct{}{}); busy {
 		return ShotFragment{}, false, ErrConflict

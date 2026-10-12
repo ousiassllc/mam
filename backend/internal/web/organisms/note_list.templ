@@ -64,7 +64,7 @@ templ NoteList(d NoteListData) {
 					"id":        "note-new-title",
 					"name":      "title",
 					"type":      "text",
-					"maxlength": "100",
+					"maxlength": intText(domain.MaxNoteTitleRunes),
 				})
 			</label>
 			<label class="flex flex-col gap-1 text-xs text-neutral-400" for="note-new-content">
@@ -73,7 +73,7 @@ templ NoteList(d NoteListData) {
 					"id":        "note-new-content",
 					"name":      "content",
 					"rows":      "4",
-					"maxlength": "4000",
+					"maxlength": intText(domain.MaxNoteContentRunes),
 					"required":  true,
 				}, "")
 			</label>

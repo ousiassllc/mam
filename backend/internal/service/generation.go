@@ -11,11 +11,8 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/textutil"
 )
 
-// maxInstructionRunes bounds the additional instruction of a generation.
-const maxInstructionRunes = 1000
-
-// clipInstruction cuts a direction not typed into a form (the chat's, the AI's) to maxInstructionRunes.
-func clipInstruction(s string) string { return textutil.TruncateRunes(s, maxInstructionRunes) }
+// clipInstruction cuts a direction not typed into a form (the chat's, the AI's) to domain.MaxInstructionRunes.
+func clipInstruction(s string) string { return textutil.TruncateRunes(s, domain.MaxInstructionRunes) }
 
 // GenerationService starts the generation of a Shot (Prompt Autopilot → Model Adapter → Takes, F-06,
 // F-07, F-12) and the building of its Reference Pack (F-11), and streams their progress.
@@ -38,8 +35,8 @@ func (s *GenerationService) GenerateShot(ctx context.Context, shotID, instructio
 	if s.gen == nil {
 		return ShotFragment{}, ErrUnavailable
 	}
-	if utf8.RuneCountInString(instruction) > maxInstructionRunes {
-		return ShotFragment{}, invalid("additional_instruction", "%d 文字以内で入力してください", maxInstructionRunes)
+	if utf8.RuneCountInString(instruction) > domain.MaxInstructionRunes {
+		return ShotFragment{}, invalid("additional_instruction", "%d 文字以内で入力してください", domain.MaxInstructionRunes)
 	}
 	record := s.generationRecorder(ctx, shotID)
 	if _, err := s.gen.Start(ctx, shotID, instruction); err != nil {
@@ -57,8 +54,8 @@ func (s *GenerationService) GenerateCandidates(ctx context.Context, shotID, inst
 	if s.gen == nil {
 		return ShotFragment{}, ErrUnavailable
 	}
-	if utf8.RuneCountInString(instruction) > maxInstructionRunes {
-		return ShotFragment{}, invalid("additional_instruction", "%d 文字以内で入力してください", maxInstructionRunes)
+	if utf8.RuneCountInString(instruction) > domain.MaxInstructionRunes {
+		return ShotFragment{}, invalid("additional_instruction", "%d 文字以内で入力してください", domain.MaxInstructionRunes)
 	}
 	record := s.generationRecorder(ctx, shotID)
 	if _, err := s.gen.StartCandidates(ctx, shotID, instruction); err != nil {

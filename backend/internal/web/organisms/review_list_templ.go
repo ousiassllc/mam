@@ -185,7 +185,7 @@ func ReviewList(d ReviewListData) templ.Component {
 				"id":        "review-note",
 				"name":      "note",
 				"rows":      "3",
-				"maxlength": "1000",
+				"maxlength": intText(domain.MaxReviewNoteRunes),
 			}, "").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err

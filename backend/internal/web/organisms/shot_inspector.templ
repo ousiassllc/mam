@@ -223,7 +223,7 @@ templ ShotInspector(d ShotInspectorData) {
 					"id":        "director-command",
 					"name":      "content",
 					"rows":      "2",
-					"maxlength": "4000",
+					"maxlength": intText(domain.MaxMessageRunes),
 					"required":  true,
 				}, "")
 				<div>
