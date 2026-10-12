@@ -24,6 +24,11 @@ type PostMessageInput struct {
 // Question (a reply to its card, or free input); a reply to an Approval card answers it;
 // a reply to an Escalation card resumes the Project.
 func (s *ChatService) PostMessage(ctx context.Context, projectID string, in PostMessageInput) (Workspace, error) {
+	slices.Sort(in.AttachmentAssetIDs) // the same asset is attached once
+	in.AttachmentAssetIDs = slices.Compact(in.AttachmentAssetIDs)
+	if len(in.AttachmentAssetIDs)+len(in.Uploads) > MaxAttachments {
+		return Workspace{}, invalid("attachments", "添付は一度に %d 件までです", MaxAttachments)
+	}
 	content := strings.TrimSpace(in.Content)
 	if err := validateMessage(content, len(in.Uploads)+len(in.AttachmentAssetIDs) > 0); err != nil {
 		return Workspace{}, err

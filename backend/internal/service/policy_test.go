@@ -43,9 +43,7 @@ func TestSetProductionTemplate_ChangesTheAxesTheAgentsAreToldAndIsRecordedInTheT
 	assert.NotContains(t, prompt, "Product Accuracy")
 
 	_, err = f.svc.Policy.SetProductionTemplate(ctx, f.projectID, "movie")
-	var invalid *service.ValidationError
-	require.ErrorAs(t, err, &invalid)
-	assert.Equal(t, "production_template", invalid.Field)
+	requireInvalid(t, err, "production_template")
 	_, err = f.svc.Policy.SetProductionTemplate(ctx, "missing", domain.TemplateAnime)
 	assert.ErrorIs(t, err, service.ErrNotFound)
 }
