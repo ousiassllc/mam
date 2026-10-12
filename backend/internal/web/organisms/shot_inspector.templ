@@ -137,7 +137,7 @@ templ ShotInspector(d ShotInspectorData) {
 			<p class="mt-1 text-sm">{ d.Shot.Objective }</p>
 			<p class="text-sm text-neutral-400">
 				{ domain.FormatDuration(d.Shot.Duration) }
-				· { string(d.Shot.State) }
+				· { molecules.ShotStateLabel(d.Shot.State) }
 				· MODE { strings.ToUpper(string(d.Project.Mode)) }
 			</p>
 			<a href={ templ.SafeURL(paths.Project(d.Project.ID, "branches")) } class="mt-1 inline-block text-xs text-neutral-400 underline hover:text-neutral-100">Branch を作る</a>
@@ -250,7 +250,7 @@ templ ShotInspector(d ShotInspectorData) {
 						<li class="flex flex-col gap-2">
 							<div class="flex items-center gap-2">
 								<span>{ fmt.Sprintf("Take %d", i+1) }</span>
-								@atoms.Badge(atoms.BadgeNeutral, string(t.Status))
+								@molecules.TakeStatusBadge(t.Status)
 								<span class="text-xs text-neutral-400">{ t.ModelName }</span>
 								@atoms.Button(atoms.ToneNeutral, "生成の経緯", templ.Attributes{
 									"type": "button", "hx-get": paths.Take(t.ID, "trace"), "hx-target": "next [data-take-trace-slot]", "hx-swap": "innerHTML",

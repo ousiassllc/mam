@@ -174,7 +174,7 @@ func StoragePanel(d StoragePanelData) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var8 string
-				templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(" · " + string(t.Status) + " · " + domain.FormatBytes(t.SizeBytes))
+				templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(" · " + t.Status.Label() + " · " + domain.FormatBytes(t.SizeBytes))
 				if templ_7745c5c3_Err != nil {
 					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/storage_panel.templ`, Line: 70, Col: 108}
 				}

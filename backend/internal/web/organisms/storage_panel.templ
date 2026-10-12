@@ -67,7 +67,7 @@ templ StoragePanel(d StoragePanelData) {
 					<li class="flex flex-wrap items-center justify-between gap-2 py-2">
 						<span>
 							{ "Scene " + intText(t.SceneIndex+1) + " · Shot " + intText(t.ShotIndex+1) + " · " + t.ModelName }
-							<span class="text-neutral-400">{ " · " + string(t.Status) + " · " + domain.FormatBytes(t.SizeBytes) }</span>
+							<span class="text-neutral-400">{ " · " + t.Status.Label() + " · " + domain.FormatBytes(t.SizeBytes) }</span>
 							if t.Unneeded {
 								<span class="ml-1 rounded-full bg-amber-500/20 px-2 py-0.5 text-xs text-amber-300">不要</span>
 							}
