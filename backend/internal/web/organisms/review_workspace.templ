@@ -6,9 +6,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
-// reviewTimecodeMaxRunes is how long a position the field takes ("1:23", "83.5"); domain.ParseReviewTimecode
-// is what decides whether it is valid.
-const reviewTimecodeMaxRunes = 16
+const reviewTimecodeMaxRunes = 16 // the field's length only: domain.ParseReviewTimecode decides what is valid
 
 // ReviewInboxData is the reviewer's entrance (reviews_page): the packages imported so far.
 type ReviewInboxData struct {

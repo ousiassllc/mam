@@ -31,9 +31,7 @@ const (
 
 // PlannedLayers lists the layers the Audio Director plans from the Scene Emotion and the editing
 // tempo (the spoken layers come from the script).
-func PlannedLayers() []AudioLayer {
-	return []AudioLayer{LayerBGM, LayerSE, LayerAmbience, LayerFoley}
-}
+func PlannedLayers() []AudioLayer { return []AudioLayer{LayerBGM, LayerSE, LayerAmbience, LayerFoley} }
 
 // Model is the model that makes the layer.
 func (l AudioLayer) Model() ModelName {

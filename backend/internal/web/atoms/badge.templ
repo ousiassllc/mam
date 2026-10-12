@@ -29,5 +29,10 @@ func badgeClass(tone BadgeTone) string {
 
 // Badge is a small status label.
 templ Badge(tone BadgeTone, text string) {
-	<span class={ badgeClass(tone) }>{ text }</span>
+	@BadgeWith(tone, text, nil)
+}
+
+// BadgeWith is a Badge whose element carries attrs too (an id, a data attribute, hx-swap-oob).
+templ BadgeWith(tone BadgeTone, text string, attrs templ.Attributes) {
+	<span class={ badgeClass(tone) } { attrs... }>{ text }</span>
 }

@@ -14,14 +14,6 @@ const (
 	JudgeFail JudgeVerdict = "fail"
 )
 
-// Label is the name shown to the user, in the capitals of the other verdicts (Editor Judge, Final QC).
-func (v JudgeVerdict) Label() string {
-	if v == JudgePass {
-		return "PASS"
-	}
-	return "FAIL"
-}
-
 // IssueSeverity is how bad a Judge Issue is.
 type IssueSeverity string
 

@@ -162,9 +162,7 @@ func (b *Brief) Delegate(f BriefField) {
 }
 
 // IsDelegated reports whether the user left the field to the AI.
-func (b Brief) IsDelegated(f BriefField) bool {
-	return slices.Contains(b.Delegated, string(f))
-}
+func (b Brief) IsDelegated(f BriefField) bool { return slices.Contains(b.Delegated, string(f)) }
 
 // Missing returns the required fields that are neither set nor delegated, in question order.
 func (b Brief) Missing() []BriefField {

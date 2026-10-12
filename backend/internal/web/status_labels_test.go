@@ -93,3 +93,17 @@ func TestJudgeVerdicts_AreSaidByTheirLabels(t *testing.T) {
 	assert.Contains(t, trace, ">PASS<")
 	assert.NotContains(t, trace, ">pass<")
 }
+
+// The state badge of the header is the atoms badge carrying its id and data-state, and the one of the
+// list is the same badge (#647).
+func TestProjectStateBadge_IsAnAtomsBadgeWithItsAttributes(t *testing.T) {
+	html := renderHTML(t, organisms.ProjectStateBadge(domain.StateReady, true))
+	assert.Contains(t, html, `id="project-state"`)
+	assert.Contains(t, html, `data-state="READY"`)
+	assert.Contains(t, html, `hx-swap-oob="true"`)
+	assert.Contains(t, html, "bg-emerald-500/20")
+
+	plain := renderHTML(t, organisms.ProjectStateBadge(domain.StateDraft, false))
+	assert.NotContains(t, plain, "hx-swap-oob")
+	assert.Contains(t, plain, "bg-neutral-700")
+}
