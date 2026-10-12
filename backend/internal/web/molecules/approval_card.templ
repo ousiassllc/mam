@@ -30,6 +30,8 @@ templ ApprovalCard(m domain.ThreadMessage) {
 				hx-post={ approvalURL(m.ProjectID, m.ID) }
 				hx-target={ selector.ID("msg-", m.ID) }
 				hx-swap="outerHTML"
+				hx-sync="this:drop"
+				hx-disabled-elt="find button[type=submit]"
 			>
 				<button type="submit" disabled hidden tabindex="-1" aria-hidden="true"></button>
 				@atoms.Input(atoms.FieldMd, "min-w-0 flex-1", templ.Attributes{
