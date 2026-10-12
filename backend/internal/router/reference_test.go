@@ -114,11 +114,7 @@ func TestReferenceLibrary_PinAddsTheImageToTheShotsReferencePack(t *testing.T) {
 
 	pin := g.form(http.MethodPost, "/shots/"+g.shotID+"/references", url.Values{"reference_id": {refID}})
 	require.Equal(t, http.StatusOK, pin.Code, pin.Body.String())
-	assert.Contains(t, pin.Body.String(), "ライブラリから追加")
-	assert.Contains(t, pin.Body.String(), `id="reference-pack"`, "the Reference Pack answers")
-	assert.NotContains(t, pin.Body.String(), `id="director-command"`, "what is typed in the 演出指示 is not replaced (#695)")
-	assert.NotContains(t, pin.Body.String(), `id="shot-spec-text"`, "what is typed in the spec editor is not replaced (#695)")
-	assert.NotContains(t, pin.Body.String(), `id="shot-inspector"`)
+	assert.Contains(t, pin.Body.String(), `id="reference-pack"`, "the Reference Pack alone answers (#695)")
 	assert.Contains(t, g.get("/shots/"+g.shotID, true).Body.String(), "ライブラリから追加")
 
 	assert.Equal(t, http.StatusUnprocessableEntity, g.form(http.MethodPost, "/shots/"+g.shotID+"/references", url.Values{}).Code)

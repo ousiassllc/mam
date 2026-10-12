@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
-	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/shotinspector"
 	"github.com/ousiassllc/mam/backend/internal/web/pages"
 )
 
@@ -25,7 +25,7 @@ func TestShotInspectorPage_BackLinkFollowsTheBranchOfTheScene(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			var sb strings.Builder
 
-			require.NoError(t, pages.ShotInspectorPage("tok", organisms.ShotInspectorData{
+			require.NoError(t, pages.ShotInspectorPage("tok", shotinspector.Data{
 				Project: domain.Project{ID: "p1"},
 				Scene:   domain.Scene{ID: "sc1", ProjectID: "p1", BranchID: tc.branchID},
 				Shot:    domain.Shot{ID: "s1", SceneID: "sc1"},
@@ -42,7 +42,7 @@ func TestShotInspectorPage_BackLinkFollowsTheBranchOfTheScene(t *testing.T) {
 func TestShotInspectorPage_TraceTargetDoesNotDependOnTheTakeID(t *testing.T) {
 	var sb strings.Builder
 
-	require.NoError(t, pages.ShotInspectorPage("tok", organisms.ShotInspectorData{
+	require.NoError(t, pages.ShotInspectorPage("tok", shotinspector.Data{
 		Project: domain.Project{ID: "p1"},
 		Scene:   domain.Scene{ID: "sc1", ProjectID: "p1"},
 		Shot:    domain.Shot{ID: "s1", SceneID: "sc1"},

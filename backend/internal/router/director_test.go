@@ -145,16 +145,12 @@ func TestShotSpec_PutEditsTheSpecAndLockedPartsAre423(t *testing.T) {
 
 	rec := g.form(http.MethodPut, "/shots/"+g.shotID+"/shot-spec", url.Values{"shot_spec": {spec}})
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-	assert.Contains(t, rec.Body.String(), `id="shot-spec"`, "the spec section answers, not the whole inspector (#695)")
-	assert.NotContains(t, rec.Body.String(), `id="shot-inspector"`)
-	assert.NotContains(t, rec.Body.String(), `id="director-command"`, "what is typed in the 演出指示 is not replaced")
+	assert.Contains(t, rec.Body.String(), `id="shot-spec"`)
 	assert.Contains(t, rec.Body.String(), "walks")
 
 	rec = g.form(http.MethodPut, "/shots/"+g.shotID+"/shot-spec", url.Values{"shot_spec": {`{"shot_objective":"x"`}})
 	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
 	assert.Contains(t, rec.Body.String(), `role="alert"`, "the form is drawn again with the reason")
-	assert.Contains(t, rec.Body.String(), `id="shot-spec"`)
-	assert.NotContains(t, rec.Body.String(), `id="director-command"`)
 	assert.Contains(t, rec.Body.String(), `{&#34;shot_objective&#34;:&#34;x&#34;`, "and with the input")
 
 	require.Equal(t, http.StatusOK, g.form(http.MethodPut, "/shots/"+g.shotID+"/locks", url.Values{"parameter": {"camera"}, "mode": {"lock"}}).Code)

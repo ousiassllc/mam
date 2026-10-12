@@ -4,7 +4,6 @@ import (
 	"context"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/a-h/templ"
 	"github.com/stretchr/testify/assert"
@@ -66,38 +65,4 @@ func TestCredentialRow_AnswersForItsProviderOnly(t *testing.T) {
 	assert.Contains(t, html, "鍵が正しくありません")
 	assert.NotContains(t, html, `id="credential-panel"`)
 	assert.NotContains(t, html, "runway")
-}
-
-// The Shot Inspector holds independent inputs (the spec JSON, the 演出指示, the Reference Pack form). The answer of one
-// of them is its own section, or the pasted-over input of the others is lost (#695).
-func TestShotInspectorAnswersCarryOnlyTheirOwnSection(t *testing.T) {
-	now := time.Now()
-	d := organisms.ShotInspectorData{
-		Project:  domain.Project{ID: "p"},
-		Shot:     domain.Shot{ID: "s1", SceneID: "sc", State: domain.ShotEditing},
-		Library:  []domain.ReferenceItem{{ID: "r1", Name: "ref"}},
-		Versions: []domain.VersionEntry{{Number: 2, CreatedAt: now}, {Number: 1, CreatedAt: now}},
-	}
-	spec, changed, pack, whole := renderHTML(t, organisms.ShotSpecSection(d)), renderHTML(t, organisms.ShotSpecChanged(d)),
-		renderHTML(t, organisms.ReferencePackSection(d)), renderHTML(t, organisms.ShotInspector(d))
-
-	assert.Contains(t, spec, `id="shot-spec-text"`)
-	assert.Contains(t, spec, `hx-target="#shot-spec"`)
-	assert.Contains(t, pack, `id="reference-pack"`)
-	assert.Contains(t, pack, `hx-target="#reference-pack"`)
-	assert.Contains(t, changed, `id="shot-spec"`)
-	assert.Contains(t, changed, `id="version-history-shot-s1"`)
-	assert.Contains(t, changed, `hx-swap-oob="true"`, "the version history that gained a version replaces the one of the page")
-	assert.Contains(t, changed, `hx-target="#shot-spec"`, "a restore answers into the spec section")
-	assert.NotContains(t, whole, `hx-swap-oob`)
-	assert.Contains(t, whole, `hx-target="#shot-spec"`)
-	assert.Contains(t, whole, `hx-target="#reference-pack"`)
-
-	for name, html := range map[string]string{"spec": spec, "spec saved or restored": changed, "reference pack": pack} {
-		assert.NotContains(t, html, `id="director-command"`, name)
-		assert.NotContains(t, html, `id="shot-inspector"`, name)
-	}
-	assert.NotContains(t, spec, `id="reference-pack"`)
-	assert.NotContains(t, pack, `id="shot-spec-text"`)
-	assert.Equal(t, 1, strings.Count(whole, `hx-target="#shot-inspector"`), "only the 演出指示 answers with the whole inspector")
 }

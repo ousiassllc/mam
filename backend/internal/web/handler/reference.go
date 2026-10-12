@@ -8,6 +8,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/shotinspector"
 	"github.com/ousiassllc/mam/backend/internal/web/pages"
 )
 
@@ -72,6 +73,6 @@ func PinReference(svc *service.ReferenceService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusOK, organisms.ReferencePackSection(inspectorData(view)))
+		render(c, http.StatusOK, shotinspector.ReferencePackSection(inspectorData(view)))
 	}
 }
