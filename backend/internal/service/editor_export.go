@@ -13,32 +13,39 @@ import (
 )
 
 // rough returns the rendered Rough Cut of the Edit Timeline (a draft with the sound of the Takes),
-// made on first use. It is also what the preview plays.
-func (s *EditorService) rough(ctx context.Context, ver domain.EditTimelineVersion) (string, media.Info, error) {
+// made on first use. It is also what the preview plays; a seek asks again, so see previewcache.Cache.Make.
+func (s *EditorService) rough(ctx context.Context, ver domain.EditTimelineVersion) (string, error) {
 	if s.tools == nil {
-		return "", media.Info{}, ErrUnavailable
+		return "", ErrUnavailable
 	}
-	dst := s.previewPath("edit-" + ver.ID + ".mp4")
+	dst := s.previews.Path("edit-" + ver.ID + ".mp4")
 	if dst == "" {
-		return "", media.Info{}, ErrNotFound
+		return "", ErrNotFound
 	}
-	unlock, err := s.preview.Lock(ctx, dst)
+	err := s.previews.Make(ctx, dst, previewRetryAfter, func(ctx context.Context) error {
+		cuts, err := s.cuts(ctx, ver.Timeline, nil)
+		if err != nil {
+			return err
+		}
+		if _, err := s.tools.Render(ctx, cuts, media.RenderOptions{Draft: true}, dst); err != nil {
+			return &AIError{Reason: "Rough Cut の書き出しに失敗しました: " + err.Error(), Err: err}
+		}
+		return nil
+	})
+	if err != nil {
+		return "", err
+	}
+	return dst, nil
+}
+
+// roughInfo is rough with what the Rough Cut holds (sound, length), probed once it is made.
+func (s *EditorService) roughInfo(ctx context.Context, ver domain.EditTimelineVersion) (string, media.Info, error) {
+	dst, err := s.rough(ctx, ver)
 	if err != nil {
 		return "", media.Info{}, err
 	}
-	defer unlock()
-	if info, err := s.tools.Probe(ctx, dst); err == nil {
-		return dst, info, nil
-	}
-	cuts, err := s.cuts(ctx, ver.Timeline, nil)
-	if err != nil {
-		return "", media.Info{}, err
-	}
-	info, err := s.tools.Render(ctx, cuts, media.RenderOptions{Draft: true}, dst)
-	if err != nil {
-		return "", media.Info{}, &AIError{Reason: "Rough Cut の書き出しに失敗しました: " + err.Error(), Err: err}
-	}
-	return dst, info, nil
+	info, err := s.tools.Probe(ctx, dst)
+	return dst, info, err
 }
 
 // transitionNames maps the Edit Timeline transitions to ffmpeg's.
@@ -77,7 +84,7 @@ func (s *EditorService) Preview(ctx context.Context, id string) (MediaFile, erro
 	if err != nil {
 		return MediaFile{}, notFound(err)
 	}
-	file, _, err := s.rough(ctx, ver)
+	file, err := s.rough(ctx, ver)
 	if err != nil {
 		return MediaFile{}, err
 	}

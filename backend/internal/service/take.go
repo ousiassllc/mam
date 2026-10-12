@@ -12,7 +12,6 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/keylock"
 	"github.com/ousiassllc/mam/backend/internal/media"
-	"github.com/ousiassllc/mam/backend/internal/previewcache"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
 
@@ -27,8 +26,6 @@ type TakeService struct {
 	// tools is ffmpeg / ffprobe; nil when they are not installed. Partial Take Use then fails with
 	// ErrUnavailable, and a 4K Take is played as it is (no proxy, no thumbnail).
 	tools *media.Tools
-	// previews makes the preview files (proxy, thumbnail) once and remembers what failed.
-	previews *previewcache.Cache
 	// compose serializes Partial Take Use per Shot.
 	compose keylock.Locker // shot ID
 	// afterSelect runs after a Take was selected: the Editor → Reshoot Loop may have been waiting for it.

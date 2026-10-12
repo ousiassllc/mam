@@ -11,19 +11,8 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/media"
+	"github.com/ousiassllc/mam/backend/internal/previewcache"
 )
-
-func TestPreviewPath_StaysDirectlyInsideThePreviewDirectory(t *testing.T) {
-	assets := filepath.Join(t.TempDir(), "assets")
-	c := &core{assetsDir: assets}
-
-	assert.Equal(t, filepath.Join(assets, previewDir, "0b9f1a52.mp4"), c.previewPath("0b9f1a52.mp4"))
-	for _, name := range []string{
-		"a/../../x.mp4", "../x.mp4", "../../../x.mp4", "sub/x.mp4", "edit-a/../../../x.mp4", "",
-	} {
-		assert.Empty(t, c.previewPath(name), name)
-	}
-}
 
 func TestEditorService_RoughCutOfAHostileEditTimelineIDWritesNothingOutsidePreviews(t *testing.T) {
 	bin := t.TempDir()
@@ -38,12 +27,11 @@ func TestEditorService_RoughCutOfAHostileEditTimelineIDWritesNothingOutsidePrevi
 	data := t.TempDir()
 	assets := filepath.Join(data, "assets")
 	require.NoError(t, os.MkdirAll(assets, 0o750))
-	s := &EditorService{core: &core{assetsDir: assets}, tools: &tools}
+	s := &EditorService{core: &core{assetsDir: assets, previews: previewcache.New(nil, assets, 0)}, tools: &tools}
 
-	_, _, err = s.rough(context.Background(), domain.EditTimelineVersion{ID: "a/../../../x"})
+	_, err = s.rough(context.Background(), domain.EditTimelineVersion{ID: "a/../../../x"})
 
 	assert.ErrorIs(t, err, ErrNotFound)
 	assert.NoFileExists(t, log, "no ffmpeg / ffprobe run for an unsafe ID")
-	_, statErr := os.Stat(filepath.Join(data, "x.mp4"))
-	assert.True(t, os.IsNotExist(statErr))
+	assert.NoFileExists(t, filepath.Join(data, "x.mp4"))
 }

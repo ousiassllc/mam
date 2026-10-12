@@ -22,15 +22,15 @@ func unneededText(s domain.StorageSummary) string {
 	return intText(n) + " 件 / " + domain.FormatBytes(size)
 }
 
-// StoragePanel shows the disk usage of the Project and lets the user archive Takes that are not
-// needed (Rejected, or not chosen where another Take of the Shot is Selected), which frees their
-// video files (spec/requirements/non-functional.md §4).
+// StoragePanel shows the disk usage of the Project and the preview cache, and lets the user archive Takes that are not
+// needed (Rejected, or not chosen where another Take of the Shot is Selected: spec/requirements/non-functional.md §4).
 templ StoragePanel(d StoragePanelData) {
 	<section id="storage-panel" class="flex flex-col gap-3">
 		<dl class="grid grid-cols-1 gap-3 sm:grid-cols-3">
 			<div class="rounded-md border border-neutral-700 p-3">
 				<dt class="text-xs text-neutral-400">Project のファイル</dt>
 				<dd class="text-lg font-semibold" data-testid="asset-bytes">{ domain.FormatBytes(d.Storage.AssetBytes) }</dd>
+				<dd class="text-xs text-neutral-400" data-testid="preview-bytes">{ "プレビューのキャッシュ（全 Project 共通）: " + domain.FormatBytes(d.Storage.PreviewBytes) }</dd>
 			</div>
 			<div class="rounded-md border border-neutral-700 p-3">
 				<dt class="text-xs text-neutral-400">ディスクの空き容量</dt>

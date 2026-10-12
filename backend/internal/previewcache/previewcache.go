@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -30,6 +31,11 @@ var errPanicked = errors.New("previewcache: making the file panicked")
 // to be tall. It lives as long as the service that owns it; Close ends the conversions it runs.
 type Cache struct {
 	logger *slog.Logger
+	// dir is where the files are made. maxBytes bounds it (0: no bound): once a file is made, the
+	// oldest ones beyond it are deleted. They are made again when asked for, and a preview of an Edit
+	// Timeline version that was replaced is never asked for again.
+	dir      string
+	maxBytes int64
 	// lock serializes the making of one file: two requests for it wait for one ffmpeg run.
 	lock keylock.Locker // file path
 	// tall is the answer of Tall (id -> bool).
@@ -50,10 +56,18 @@ type failure struct {
 	err error
 }
 
-// New returns a Cache; logger tells a panic while a file is made.
-func New(logger *slog.Logger) *Cache {
+// dirName is the directory of the previews under the assets directory; made on demand, deletable any time.
+const dirName = ".previews"
+
+// New returns a Cache of the previews under assetsDir ("": none can be made); logger tells a panic
+// while a file is made. maxBytes bounds the directory (0: no bound).
+func New(logger *slog.Logger, assetsDir string, maxBytes int64) *Cache {
 	ctx, cancel := context.WithCancel(context.Background())
-	return &Cache{logger: logger, ctx: ctx, cancel: cancel}
+	c := &Cache{logger: logger, maxBytes: maxBytes, ctx: ctx, cancel: cancel}
+	if assetsDir != "" {
+		c.dir = filepath.Join(assetsDir, dirName)
+	}
+	return c
 }
 
 // Tall returns the answer of probe for id, asking it once: the file behind an id never changes. A
@@ -108,6 +122,11 @@ func (c *Cache) Make(ctx context.Context, dst string, retryAfter time.Duration, 
 		switch {
 		case err == nil:
 			c.failed.Delete(dst)
+			if c.maxBytes > 0 {
+				if perr := c.prune(dst); perr != nil {
+					c.logger.Warn("prune the preview directory failed", "err", perr)
+				}
+			}
 		case retryAfter > 0:
 			c.failed.Store(dst, failure{at: time.Now(), err: err})
 		}

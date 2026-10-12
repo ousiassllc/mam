@@ -18,7 +18,7 @@ import (
 )
 
 func newCache() *previewcache.Cache {
-	return previewcache.New(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	return previewcache.New(slog.New(slog.NewTextHandler(io.Discard, nil)), "", 0)
 }
 
 var errBroken = errors.New("ffmpeg: broken file")

@@ -11,9 +11,6 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/previewcache"
 )
 
-// previewDir is where the previews of Takes (proxies, thumbnails) are cached under the assets directory; made on demand, deletable any time.
-const previewDir = ".previews"
-
 const previewRetryAfter = 10 * time.Minute // a failure costs minutes (media.ErrTimeout); every Range request / card would pay it
 
 // MediaFile is a file to serve.
@@ -55,7 +52,7 @@ func (s *TakeService) Video(ctx context.Context, takeID string) (MediaFile, erro
 	if !proxied {
 		return original, nil
 	}
-	dst := s.previewPath(takeID + ".mp4")
+	dst := s.previews.Path(takeID + ".mp4")
 	if dst == "" {
 		return original, nil // the ID is not a safe file name: no proxy is made
 	}
@@ -85,7 +82,7 @@ func (s *TakeService) Thumbnail(ctx context.Context, takeID string) (MediaFile, 
 	if src == "" {
 		return MediaFile{}, ErrNotFound // outside the assets directory
 	}
-	dst := s.previewPath(takeID + ".jpg")
+	dst := s.previews.Path(takeID + ".jpg")
 	if dst == "" {
 		return MediaFile{}, ErrNotFound // the ID is not a safe file name
 	}
