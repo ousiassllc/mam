@@ -411,12 +411,14 @@ func TestJudge_UnknownTakeIs404AndAnUnjudgedTakeHasNoResult(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, code, "the Take exists but was never judged")
 }
 
-func TestJudge_AJudgeRunThatIsQueuedOrRunningCannotBeStartedTwice(t *testing.T) {
+func TestJudge_AJudgeRunInFlightCannotBeStartedTwice(t *testing.T) {
 	j := newJudgeApp(t, goodVerdict, 0.95, 0.95, 0.95)
 	ids := j.generateAndJudge()
-	// A queued judge job of the Take is on record.
+	// A judge job of the Take is on record. It is 'running', not 'queued': the app's job queue is live and
+	// claims any queued row, which would run a real judge. JudgePending counts both statuses (the queued
+	// case is covered in repository/judge_test.go).
 	require.NoError(t, j.db.Write(context.Background(), func(ctx context.Context, tx *sql.Tx) error {
-		_, err := tx.ExecContext(ctx, `INSERT INTO job (id, kind, payload, status) VALUES ('stuck', 'judge', ?, 'queued')`, `{"take_id":"`+ids[0]+`","shot_id":"`+j.shotID+`"}`)
+		_, err := tx.ExecContext(ctx, `INSERT INTO job (id, kind, payload, status) VALUES ('stuck', 'judge', ?, 'running')`, `{"take_id":"`+ids[0]+`","shot_id":"`+j.shotID+`"}`)
 		return err
 	}))
 	rec := j.form(http.MethodPost, "/takes/"+ids[0]+"/judge", nil)
@@ -443,8 +445,9 @@ func TestJudge_ButtonIsDrawnOnlyForUnjudgedTakesTheServerAccepts(t *testing.T) {
 	assert.True(t, button(html, ids[1]), "never judged")
 	assert.False(t, button(html, ids[0]))
 
-	// A judge run of the Take in flight: the server answers 409, so there is no button.
-	j.execSQL(`INSERT INTO job (id, kind, payload, status) VALUES ('stuck', 'judge', ?, 'queued')`, `{"take_id":"`+ids[1]+`","shot_id":"`+j.shotID+`"}`)
+	// A judge run of the Take in flight: the server answers 409, so there is no button. 'running', not
+	// 'queued': the live job queue would claim a queued row and run a real judge.
+	j.execSQL(`INSERT INTO job (id, kind, payload, status) VALUES ('stuck', 'judge', ?, 'running')`, `{"take_id":"`+ids[1]+`","shot_id":"`+j.shotID+`"}`)
 	assert.False(t, button(page(), ids[1]))
 	assert.Equal(t, http.StatusConflict, j.form(http.MethodPost, "/takes/"+ids[1]+"/judge", nil).Code)
 	j.execSQL(`DELETE FROM job WHERE id = 'stuck'`)
