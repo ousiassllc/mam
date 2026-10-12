@@ -12,12 +12,10 @@ func TestIssueRanges_AllIssuesNeedARange(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, []TimeRange{{2.1, 2.8}, {0.5, 1.0}}, ranges)
 
-	_, ok = IssueRanges([]JudgeIssue{{TimeRange: "2.1-2.8s"}, {Type: "prompt_adherence"}})
-	assert.False(t, ok, "an Issue of the whole Shot cannot be fixed by regenerating a stretch")
-	_, ok = IssueRanges([]JudgeIssue{{TimeRange: "3.0-2.0s"}})
-	assert.False(t, ok)
-	_, ok = IssueRanges(nil)
-	assert.False(t, ok)
+	for _, issues := range [][]JudgeIssue{{{TimeRange: "2.1-2.8s"}, {Type: "prompt_adherence"}}, {{TimeRange: "3.0-2.0s"}}, nil} {
+		_, ok = IssueRanges(issues)
+		assert.False(t, ok, "an Issue of the whole Shot cannot be fixed by regenerating a stretch: %v", issues)
+	}
 }
 
 func TestParseTimeRanges_RejectsUnreadableAndOutOfShotRanges(t *testing.T) {
