@@ -151,11 +151,11 @@ export class MamTakeComparator extends LitElement {
 | `errors.ts` | API エラー応答を利用者向けメッセージに変換する（`errorMessage`。各コンポーネントで共有） |
 | `toast.ts` | エラートースト（`#toast-region`）の生成と閉じるボタン。マークアップは `atoms.Toast` の 1 か所だけで定義し、`AppLayout` が埋め込む `#toast-template` を複製してメッセージだけ差し込む。トーストは利用者が閉じるまで残り、自動では消えない |
 | `connection-notice.ts` | 接続断念通知（「接続が切れました」＋「再接続」「再読み込み」）の表示。マークアップは `atoms.ConnectionNotice` の 1 か所だけで定義し、`AppLayout` が埋め込む `#connection-notice-template` を複製してメッセージとボタンの動作だけ差し込む。チャット・Shot カード・`mam-video-player` が共通で使う |
-| `ajax.ts` | htmx の GET 再取得（`htmx.ajax`）を HTTP エラー・通信失敗でも reject させず、失敗をトースト表示して成否を返すラッパー（`failOnHttpError`） |
+| `ajax.ts` | htmx の GET 再取得（`htmx.ajax`）が 4xx/5xx 応答でも reject するようにするラッパー（`failOnHttpError`）。reject は `sync.ts` の再試行が受け、断念したときだけトーストを出す（`chat.ts` / `shot.ts`） |
 | `history.ts` | htmx の履歴スナップショット（sessionStorage）から、初期化済みマーカー・接続断通知・表示中のトーストを取り除く（`sanitizeHistoryHtml` / `installHistorySnapshotHygiene`。`main.ts` が読み込む） |
 | `query.ts` | `selfAndDescendants`。htmx の `outerHTML` 差し替えで `htmx:load` が差し替え後の最上位ノードに発火するため、そのノード自身と子孫を合わせて返す |
 | `shot.ts` | Shot の進捗表示の純関数（`/ws/shots/:id` のメッセージ型 `ShotProgress`、終了判定、完了した Shot カードの再取得リクエストの組み立て。再取得の対象 `#shot-<id>` は `CSS.escape` でセレクタにする（手で連結しない。サーバー側は `selector.ID`）。DOM の結線は `static/src/shot.ts`） |
-| `sync.ts` | 再取得を 1 本ずつ実行し、成功するまで再試行する（実行中の要求は 1 回分にまとめる。失敗はバックオフ付きで再試行し、上限で断念を通知する。`chat.ts` が使う） |
+| `sync.ts` | 再取得を 1 本ずつ実行し、成功するまで再試行する（実行中の要求は 1 回分にまとめる。失敗はバックオフ付きで再試行し、上限で断念を通知する。`chat.ts`（新着メッセージの取得と、カード ID ごとのカード再取得）と `shot.ts`（完了した Shot カードの再取得。「作業が終わった」通知は 1 回しか来ず、取得に失敗するとカードが進行中のまま残るため）が使う） |
 | `thread.ts` | チャットスレッドの純関数（WebSocket の再取得ヒント `ProjectEvent`、重複した id の除去、成功応答の判定など。続きのメッセージ・カードの取得 URL は持たない（サーバーが `data-messages-url` / `data-next-url` / `data-card-url` で注入し、`chat.ts` はそれを読むだけ）。`main.ts` / `chat.ts` / `ajax.ts` が使う） |
 | `htmx-config.ts` | htmx の設定（同一オリジンのみ、`allowScriptTags` / `allowEval` は無効） |
 
@@ -225,3 +225,4 @@ export class MamTakeComparator extends LitElement {
 | 1.49 | 2026-10-12 | §4.2 の `<mam-timeline-editor>` に、`timeline-reload` での読み直しで未保存の編集を保つこと（サーバーの版が表示中の版と同じなら編集中の内容を保ち、`readonly` などサーバー由来の値だけを更新する。新しい版に差し替わっていたときだけ編集を破棄して「未保存の変更は破棄されました」と通知する。「変更を戻す」と保存後の再読込は最新の版で置き換える）を足したことを記録した（本文は 2e7e560 で更新済み） | Issue #610・#612・#630。Rough Cut 作成や Editor Judge の再読み込みで、ユーザーの未保存の編集が黙って消えていた。`load({ keepEdits: true })` の契約変更なのに改訂履歴の行が無かった |
 | 1.50 | 2026-10-12 | §3 の molecules に `shot_actions`・`take_row`（shot_card の部品）・`status`（`TakeStatusBadge`・`ShotStateLabel`）・`world_state_readonly`・`constraint_level_badge` を足し、`text_message` の説明に、AI のテキスト発言の `ref_type` が `export` / `settings` のときリンクボタンを付けることを足した。§4.3 の Take Comparator のスコア表に、`limits.min_axis_score` を下回る値を赤で出し、閾値をクライアントが持たないこと（`limits` が無いときは 0）を足した。1.33 の `take_row` 削除は誤りで、`TakeRow` は e11bb29 から実装にある | Issue #637・#638・#639・#640・#641・#642。0906dad（#633）の `min_axis_score`、2e0aadc（#631）の `refLinkOf`、65f7abd（#632）の `status.templ` が仕様に載っていなかった。#639 の molecules の欠け（`shot_actions`・`take_row`・`world_state_readonly`）と、6b409aa（#647）の `constraint_level_badge` も同じ一覧の欠けだった |
 | 1.51 | 2026-10-12 | §3 の molecules の `world_state_field` に、編集フォームの「保存」を描く `WorldStateSave`（編集できる項目がすべて LOCK のときは「保存」を出さず編集できない理由を表示する）を足した | 全項目 LOCK で「保存」を押すと必ず 422 になっていた。操作可否をサーバーが出し分ける HALT の方針に合わせた（Issue #656） |
+| 1.52 | 2026-10-12 | §5 の `ajax.ts` を「失敗を reject する」ものに書き換え、`sync.ts` の利用者に、チャットのカード再取得（`card.updated`・再接続後の補完）と `shot.ts` の完了した Shot カードの再取得を加えた | Issue #668。「作業が終わった」通知は 1 回しか来ず、その直後の再取得が一時的に失敗するとリトライされず、カードが「生成中」のまま固まっていた。新着メッセージの取得だけが持っていたバックオフ付きの再試行を、カードの再取得にも使う |

@@ -3,11 +3,11 @@
  * only listens to /ws/projects/:id and asks for HTML fragments when told something changed
  * (the socket never carries a body), and handles the composer (reply target, attachments, Enter to send).
  */
-import { ajaxChecked, ajaxGet, showToast } from './ajax';
+import { ajaxChecked, showToast } from './ajax';
 import { createConnectionNotice, releaseIfDetached } from './components/lib/connection-notice';
 import { AJAX_FAILED_MESSAGE } from './components/lib/ajax';
 import { selfAndDescendants } from './components/lib/query';
-import { createSyncer } from './components/lib/sync';
+import { createSyncer, type Syncer } from './components/lib/sync';
 import { connect, socketUrl } from './components/lib/ws';
 import {
   type ComposerSnapshot,
@@ -45,6 +45,8 @@ class ChatWorkspace {
     run: () => ajaxChecked('get', this.nextMessagesUrl(), { target: THREAD, swap: 'beforeend', source: THREAD }),
     onGiveUp: () => showToast(AJAX_FAILED_MESSAGE),
   });
+  /** One per card: a card refetch that failed is retried with a backoff, as syncer does for new messages. */
+  private readonly cardSyncers = new Map<string, Syncer>();
 
   constructor(private readonly root: HTMLElement) {
     this.messagesUrl = root.dataset.messagesUrl ?? '';
@@ -88,11 +90,24 @@ class ChatWorkspace {
     this.syncNew();
   }
 
-  /** Replaces the card with the server's current one, from the URL the server put on it (data-card-url). */
-  private refetchCard(messageId: string): Promise<boolean> {
-    const target = `#msg-${CSS.escape(messageId)}`;
-    const url = this.thread.querySelector<HTMLElement>(target)?.dataset.cardUrl;
-    return url ? ajaxGet(url, { target, swap: 'outerHTML' }) : Promise.resolve(false);
+  /**
+   * Replaces the card with the server's current one, from the URL the server put on it (data-card-url).
+   * The URL is read on every attempt: a retry stops by itself once the card is gone from the thread.
+   */
+  private refetchCard(messageId: string): Promise<void> {
+    let syncer = this.cardSyncers.get(messageId);
+    if (!syncer) {
+      const target = `#msg-${CSS.escape(messageId)}`;
+      syncer = createSyncer({
+        run: async () => {
+          const url = this.thread.querySelector<HTMLElement>(target)?.dataset.cardUrl;
+          if (url) await ajaxChecked('get', url, { target, swap: 'outerHTML', source: target });
+        },
+        onGiveUp: () => showToast(AJAX_FAILED_MESSAGE),
+      });
+      this.cardSyncers.set(messageId, syncer);
+    }
+    return syncer.request();
   }
 
   private catchUp(): Promise<unknown> {
