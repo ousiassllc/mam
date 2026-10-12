@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/netip"
 	"net/url"
-	"os"
 	"strings"
 	"time"
 
@@ -168,16 +167,18 @@ func (a api) fetchOnce(ctx context.Context, fileURL string, into sink) (Blob, st
 		return Blob{}, "", tooLarge
 	}
 	blob, err := into(res.Body, limit)
+	var local *fsutil.LocalError
 	switch {
-	case errors.Is(err, errTooLarge):
+	case errors.Is(err, fsutil.ErrTooLarge):
 		return Blob{}, "", tooLarge
+	case errors.As(err, &local):
+		// The staging disk failed, not the vendor: it is not unavailable, and asking again would not help.
+		return Blob{}, "", err
 	case err != nil:
 		return Blob{}, "", &ProviderError{Vendor: string(a.vendor), Err: err}
 	}
 	return blob, res.Header.Get("Content-Type"), nil
 }
-
-var errTooLarge = errors.New("the body is larger than the limit")
 
 // collect is the sink that keeps the body in memory.
 func (a api) collect(body io.Reader, limit int64) (Blob, error) {
@@ -186,44 +187,15 @@ func (a api) collect(body io.Reader, limit int64) (Blob, error) {
 		return Blob{}, err
 	}
 	if int64(len(data)) > limit {
-		return Blob{}, errTooLarge
+		return Blob{}, fsutil.ErrTooLarge
 	}
 	return BlobOf(data), nil
 }
 
-// stage is the sink that streams the body into a new file of the staging directory. The file is
-// synced, and removed again when the body cannot be read completely.
-func (a api) stage(body io.Reader, limit int64) (blob Blob, err error) {
-	dir := a.stagingDir
-	if dir != "" {
-		if err := os.MkdirAll(dir, 0o700); err != nil {
-			return Blob{}, fmt.Errorf("create staging directory: %w", err)
-		}
-	}
-	f, err := fsutil.CreateStagingTemp(dir) // RemoveStaleTemp sweeps it after a crash
-	if err != nil {
-		return Blob{}, fmt.Errorf("create staging file: %w", err)
-	}
-	defer func() {
-		if err != nil {
-			_ = f.Close()
-			_ = os.Remove(f.Name())
-		}
-	}()
-	n, err := io.Copy(f, io.LimitReader(body, limit+1))
-	if err != nil {
-		return Blob{}, err
-	}
-	if n > limit {
-		return Blob{}, errTooLarge
-	}
-	if err = f.Sync(); err != nil {
-		return Blob{}, fmt.Errorf("sync staging file: %w", err)
-	}
-	if err = f.Close(); err != nil {
-		return Blob{}, fmt.Errorf("close staging file: %w", err)
-	}
-	return Blob{path: f.Name(), size: n}, nil
+// stage is the sink that streams the body into a new, synced file of the staging directory.
+func (a api) stage(body io.Reader, limit int64) (Blob, error) {
+	path, n, err := fsutil.StageReader(a.stagingDir, body, limit)
+	return Blob{path: path, size: n}, err
 }
 
 // ownsURL reports whether target is a URL of the vendor, the only kind a request carrying the API
