@@ -281,7 +281,7 @@ func TestOrchestrator_StartWarnsAboutLowDiskButStillQueues(t *testing.T) {
 			}
 			require.Len(t, warnings, 1)
 			assert.Contains(t, warnings[0].Content, "ディスクの空き容量")
-			assert.Contains(t, warnings[0].Content, f.projectID)
+			assert.Equal(t, domain.RefSettings, warnings[0].RefType, "the chat draws the settings link; the text has no URL")
 		})
 	}
 }

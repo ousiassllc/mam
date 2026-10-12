@@ -273,8 +273,8 @@ func (s *EditorService) toEditing(ctx context.Context, p domain.Project) error {
 
 // announce posts a message of the editing stage in the chat. A failure is logged, not returned:
 // the stage has been done.
-func (s *EditorService) announce(ctx context.Context, projectID, text string) {
-	if err := s.chatSvc.Announce(context.WithoutCancel(ctx), projectID, assistantText(text)); err != nil {
+func (s *EditorService) announce(ctx context.Context, projectID string, m domain.ChatMessage) {
+	if err := s.chatSvc.Announce(context.WithoutCancel(ctx), projectID, m); err != nil {
 		s.logger.Error("post editor notice failed", "project_id", projectID, "err", err)
 	}
 }
