@@ -2,6 +2,7 @@ package modeladapter
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -11,6 +12,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/ousiassllc/mam/backend/internal/fsutil"
 )
 
 func TestOwnsURLOnlyAcceptsTheVendorsHosts(t *testing.T) {
@@ -186,5 +189,28 @@ func TestDownloadWaitsForTheRetryAfterOfA429(t *testing.T) {
 
 	if _, _, err := downloadAPI(srv, t.TempDir()).download(ctx, srv.URL); err == nil || hits.Load() != 1 {
 		t.Fatalf("err %v after %d requests, want an error after one", err, hits.Load())
+	}
+}
+
+// A staging directory that cannot be used is not a vendor outage: the download is not repeated.
+func TestDownloadDoesNotRetryAFailureOfTheLocalStaging(t *testing.T) {
+	notADir := filepath.Join(t.TempDir(), "file")
+	if err := os.WriteFile(notADir, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var hits atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		hits.Add(1)
+		_, _ = io.WriteString(w, "MP4DATA")
+	}))
+	defer srv.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	_, _, err := downloadAPI(srv, filepath.Join(notADir, ".staging")).download(ctx, srv.URL)
+
+	var local *fsutil.LocalError
+	if !errors.As(err, &local) || errors.Is(err, ErrTimeout) || unavailable(err) || hits.Load() != 1 {
+		t.Fatalf("err = %v after %d downloads, want one and a local failure", err, hits.Load())
 	}
 }
