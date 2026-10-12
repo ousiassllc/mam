@@ -203,7 +203,7 @@ func importReviewPackage(c *gin.Context, svc *service.ReviewService) (domain.Rev
 }
 
 // AddReviewComment adds a comment of the reviewer (POST /reviews/:id/comments) and answers with the
-// list of the comments and an empty form (201), not the whole screen: that would reset the video.
+// list of the comments and an empty form, not the screen (201): the screen would reset the <video>.
 func AddReviewComment(svc *service.ReviewService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		i, err := svc.AddComment(c.Request.Context(), c.Param("id"), c.PostForm("timecode"), c.PostForm("body"))
@@ -215,8 +215,7 @@ func AddReviewComment(svc *service.ReviewService) gin.HandlerFunc {
 	}
 }
 
-// DeleteReviewComment removes a comment of the reviewer (DELETE /reviews/:id/comments/:commentId) and
-// answers with the list of the comments.
+// DeleteReviewComment removes a comment of the reviewer (DELETE /reviews/:id/comments/:commentId).
 func DeleteReviewComment(svc *service.ReviewService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		i, err := svc.DeleteComment(c.Request.Context(), c.Param("id"), c.Param("commentId"))
