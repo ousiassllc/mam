@@ -208,3 +208,16 @@ func TestOpen_ManifestIsHeldToItsOwnSmallLimit(t *testing.T) {
 	requireInvalid(t, err)
 	assert.Contains(t, err.Error(), "manifest.json が大きすぎます")
 }
+
+// "reviews" is the Review inbox below the assets directory (domain.ReviewInboxDir). Install puts the
+// files in assets/<project_id>/ before the rows are checked, so Open must refuse it up front (#682).
+func TestOpen_RefusesTheProjectIDOfTheReviewInbox(t *testing.T) {
+	manifest := `{"format":"mam-project-bundle","version":1,"project_id":"reviews","exported_at":"2026-01-01T00:00:00Z"}`
+	src := zipOf(t, manifest, func(w io.Writer) {
+		_, _ = io.WriteString(w, `{"project_id":"reviews","tables":[]}`)
+	})
+
+	_, err := openBytes(t, src)
+
+	requireInvalid(t, err)
+}

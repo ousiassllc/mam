@@ -14,7 +14,7 @@ func TestValidBundleID_AcceptsOnlyIDsSafeAsDirectoryHeaderAndURL(t *testing.T) {
 		assert.True(t, domain.ValidBundleID(id), id)
 	}
 	for _, id := range []string{
-		"", ".", "..", ".previews", ".staging", ".import-x", "a/b", `a\b`, "a:b", "a\x00b", "a\nb",
+		"", ".", "..", ".previews", ".staging", ".import-x", domain.ReviewInboxDir, "a/b", `a\b`, "a:b", "a\x00b", "a\nb",
 		`a"b`, "a?b", "a#b", "a b", "100%", "日本語", strings.Repeat("x", 65),
 	} {
 		assert.False(t, domain.ValidBundleID(id), "%q", id)
