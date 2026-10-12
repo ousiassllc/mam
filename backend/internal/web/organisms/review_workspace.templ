@@ -75,7 +75,7 @@ templ ReviewWorkspace(i domain.ReviewInbox) {
 					</li>
 				}
 			</ul>
-			<form class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3" hx-post={ paths.Review(i.ID, "comments") } hx-target="#review-workspace" hx-swap="outerHTML">
+			<form class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3" hx-post={ paths.Review(i.ID, "comments") } hx-target="#review-workspace" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]">
 				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="review-comment-timecode">
 					位置（秒 または 分:秒。空なら動画全体）
 					@atoms.Input(atoms.FieldMd, "w-32", templ.Attributes{

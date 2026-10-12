@@ -257,6 +257,7 @@ templ EditorActions(d EditorPanelData) {
 				hx-target="#editor-actions"
 				hx-swap="outerHTML"
 				hx-disabled-elt="find button"
+				hx-sync="this:drop"
 				hx-vals={ branchVals(d.BranchID) }
 				class="flex flex-wrap items-end gap-3"
 				aria-label="音声クローン"
@@ -316,6 +317,7 @@ templ EditorActions(d EditorPanelData) {
 				hx-target="#editor-actions"
 				hx-swap="outerHTML"
 				hx-disabled-elt="find button"
+				hx-sync="this:drop"
 				hx-vals={ branchVals(d.BranchID) }
 				class="flex flex-wrap items-end gap-3"
 			>

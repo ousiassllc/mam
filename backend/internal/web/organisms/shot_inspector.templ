@@ -196,7 +196,7 @@ templ ShotInspector(d ShotInspectorData) {
 			if !d.Shot.State.CanPinReference() {
 				<p class="text-sm text-neutral-400" data-pin-reference-blocked>生成・Repair・Judge 中は Reference Pack に追加できません。終わってから開き直してください。</p>
 			} else if len(d.Library) > 0 {
-				<form hx-post={ paths.Shot(d.Shot.ID, "references") } hx-target="#shot-inspector" hx-swap="outerHTML" class="flex flex-wrap items-center gap-2">
+				<form hx-post={ paths.Shot(d.Shot.ID, "references") } hx-target="#shot-inspector" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]" class="flex flex-wrap items-center gap-2">
 					<label for="pin-reference" class="text-xs text-neutral-400">ライブラリの参照画像を追加</label>
 					@atoms.Select(atoms.FieldSm, "", templ.Attributes{
 						"id":       "pin-reference",

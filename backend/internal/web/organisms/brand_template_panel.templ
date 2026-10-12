@@ -85,6 +85,8 @@ templ BrandTemplatePanel(d BrandTemplatePanelData) {
 			hx-post={ paths.Project(d.ProjectID, "brand-templates") }
 			hx-target="#brand-template-panel"
 			hx-swap="outerHTML"
+			hx-sync="this:drop"
+			hx-disabled-elt="find button[type=submit]"
 		>
 			<label for="brand-template-name" class="text-sm font-medium">この Project の制約をテンプレートとして保存</label>
 			@atoms.Input(atoms.FieldLg, "w-full", templ.Attributes{

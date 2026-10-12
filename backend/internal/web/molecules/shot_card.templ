@@ -85,6 +85,8 @@ templ ShotActions(shotID string, canContinue bool, candidates bool) {
 		hx-post={ generateURL(shotID, candidates) }
 		hx-target={ shotTarget(shotID) }
 		hx-swap="outerHTML"
+		hx-sync="this:drop"
+		hx-disabled-elt="find button[type=submit]"
 	>
 		<label class="sr-only" for={ "instruction-" + shotID }>追加の指示</label>
 		@atoms.Input(atoms.FieldMd, "min-w-0 flex-1", templ.Attributes{

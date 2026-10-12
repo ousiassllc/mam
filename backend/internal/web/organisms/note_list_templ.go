@@ -96,7 +96,7 @@ func NoteList(d NoteListData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" hx-target=\"#note-list\" hx-swap=\"outerHTML\"><h2 class=\"text-sm font-semibold\">メモを追加</h2><label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"note-new-title\">タイトル（空なら本文の先頭行）")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" hx-target=\"#note-list\" hx-swap=\"outerHTML\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button[type=submit]\"><h2 class=\"text-sm font-semibold\">メモを追加</h2><label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"note-new-title\">タイトル（空なら本文の先頭行）")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

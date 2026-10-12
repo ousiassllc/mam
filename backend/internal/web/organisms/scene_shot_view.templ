@@ -122,6 +122,8 @@ templ sceneForm(d SceneShotData) {
 		hx-post={ paths.Project(d.Project.ID, "scenes") }
 		hx-target="#scene-shot-view"
 		hx-swap="outerHTML"
+		hx-sync="this:drop"
+		hx-disabled-elt="find button[type=submit]"
 	>
 		<p class="text-sm font-medium">Scene を追加</p>
 		if d.Scene != nil {
@@ -178,6 +180,8 @@ templ shotForm(d SceneShotData) {
 		hx-post={ paths.Scene(d.Scene.ID, "shots") }
 		hx-target="#scene-shot-view"
 		hx-swap="outerHTML"
+		hx-sync="this:drop"
+		hx-disabled-elt="find button[type=submit]"
 	>
 		<p class="text-sm font-medium">Shot を追加</p>
 		<div>
