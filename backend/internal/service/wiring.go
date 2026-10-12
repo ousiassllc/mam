@@ -101,6 +101,7 @@ func newWiring(deps Deps) *wiring {
 		hub:       NewHub(),
 		extractor: extractor,
 		assetsDir: deps.AssetsDir,
+		previews:  previewcache.New(logger, deps.AssetsDir, 4<<30), // the oldest previews beyond 4 GiB are deleted when a new one is made
 		logger:    logger,
 		plans:     repository.NewPlanRepository(deps.DB),
 
@@ -119,7 +120,7 @@ func newWiring(deps Deps) *wiring {
 		generations: generations,
 		judges:      judges,
 		repairs:     &RepairService{core: c, repairs: r.repairs, judges: r.judges, generations: generations},
-		takes:       &TakeService{core: c, takes: r.takes, shots: r.gens, generations: generations, chatSvc: chat, tools: deps.Media, previews: previewcache.New(logger)},
+		takes:       &TakeService{core: c, takes: r.takes, shots: r.gens, generations: generations, chatSvc: chat, tools: deps.Media},
 		worlds:      &WorldService{core: c, world: r.world, versions: r.versions},
 	}
 }

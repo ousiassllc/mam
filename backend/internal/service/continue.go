@@ -164,7 +164,7 @@ func (s *ContinueService) finalFrame(ctx context.Context, ref repository.ShotRef
 	}
 	list := takes[ref.Shot.ID]
 	for i, t := range list {
-		if t.FilePath == "" || rank(t) == 0 {
+		if s.assetPath(t.FilePath) == "" || rank(t) == 0 { // no file, or one outside the assets directory (never read)
 			continue
 		}
 		if from == nil || rank(t) >= rank(*from) {
@@ -174,7 +174,7 @@ func (s *ContinueService) finalFrame(ctx context.Context, ref repository.ShotRef
 	if from == nil {
 		return nil
 	}
-	src := filepath.Join(s.assetsDir, filepath.FromSlash(from.FilePath))
+	src := s.assetPath(from.FilePath)
 	info, err := s.tools.Probe(ctx, src)
 	if err != nil {
 		s.logger.Error("probe the take for the final frame failed", "take_id", from.ID, "err", err)

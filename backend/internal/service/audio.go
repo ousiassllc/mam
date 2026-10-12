@@ -42,7 +42,7 @@ func (s *EditorService) GenerateAudio(ctx context.Context, projectID, branchID s
 	if err != nil {
 		return EditorView{}, notFound(err)
 	}
-	roughPath, info, err := s.rough(ctx, ver)
+	roughPath, info, err := s.roughInfo(ctx, ver)
 	if err != nil {
 		return EditorView{}, err
 	}
