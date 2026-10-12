@@ -18,7 +18,9 @@ func ToastOnly(c *gin.Context) {
 // abortWith ends the request with status. An HTMX request gets the out-of-band toast the handlers
 // use for their own errors (HX-Reswap: none leaves the swap target alone), because htmx swaps only
 // text/html error responses and anything else would leave the user looking at an unchanged screen.
-// Other callers get the JSON problem {"error": problem}, or an empty body when problem is empty.
+// Other callers get an RFC 7807 problem {status, title, detail} (application/problem+json, the shape
+// of the Huma and NoRoute errors): title is problem, detail is the user-facing toast text, which the
+// Lit components show as it is. The body is empty when problem is empty.
 func abortWith(c *gin.Context, status int, problem, toast string) {
 	if c.Writer.Written() {
 		c.Abort() // the status line is gone; a second body would corrupt the response
@@ -38,5 +40,6 @@ func abortWith(c *gin.Context, status int, problem, toast string) {
 		c.AbortWithStatus(status)
 		return
 	}
-	c.AbortWithStatusJSON(status, gin.H{"error": problem})
+	c.Header("Content-Type", "application/problem+json")
+	c.AbortWithStatusJSON(status, gin.H{"status": status, "title": problem, "detail": toast})
 }

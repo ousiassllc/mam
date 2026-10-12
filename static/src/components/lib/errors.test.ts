@@ -3,8 +3,8 @@ import { ApiError } from './api';
 import { errorMessage, requestFailureMessage } from './errors';
 
 describe('errorMessage', () => {
-  it('shows the detail of a JSON problem', () => {
-    expect(errorMessage(new ApiError(409, { detail: 'すでに選択済みです' }))).toBe('すでに選択済みです');
+  it('shows the detail of a JSON problem, such as the CSRF refusal of the middleware', () => {
+    expect(errorMessage(new ApiError(403, { title: 'CSRF', detail: 'やり直してください' }))).toBe('やり直してください');
   });
 
   it('names the status when the response has no readable message', () => {

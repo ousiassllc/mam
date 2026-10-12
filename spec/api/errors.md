@@ -4,7 +4,7 @@
 
 | HTTPステータス | 意味 |
 |---|---|
-| 400 | 本文が読み取れない。(1) 不正なパーセントエンコードなどで解析できない `application/x-www-form-urlencoded` フォーム: `MaxBody` ミドルウェアが全ルートで返す（非 HTMX は JSON `{"error":"Bad Request"}`、HTMX はトースト）。(2) multipart ではない・途中で切断された・読み取りが 1 分止まった（無通信、非機能要件 §3）`multipart/form-data`: `MaxBody` はアップロードルートの multipart をそのまま通すので、`readMultipart` を呼ぶアップロードルートのハンドラが「送信内容の形式が正しくありません」としてトースト／フォーム再描画で返す（JSON ではない） |
+| 400 | 本文が読み取れない。(1) 不正なパーセントエンコードなどで解析できない `application/x-www-form-urlencoded` フォーム: `MaxBody` ミドルウェアが全ルートで返す（非 HTMX は Problem Details `{"status":400,"title":"Bad Request","detail":"送信内容を読み取れませんでした"}`、HTMX はトースト）。(2) multipart ではない・途中で切断された・読み取りが 1 分止まった（無通信、非機能要件 §3）`multipart/form-data`: `MaxBody` はアップロードルートの multipart をそのまま通すので、`readMultipart` を呼ぶアップロードルートのハンドラが「送信内容の形式が正しくありません」としてトースト／フォーム再描画で返す（JSON ではない） |
 | 413 | リクエスト本文が上限を超えた（`MaxBody` ミドルウェアが 1MiB。`readMultipart` を呼ぶアップロードルートの `multipart/form-data` の本文だけが各上限で（`POST /projects/import` は 8 GB + 1 MiB、§2.1。参照画像 `POST /projects/:id/references` は 20 MB + 1 MiB、音声サンプル `POST /projects/:id/audio/voices` は 10 MB + 1 MiB、Review Response `POST /projects/:id/reviews/feedback` は 1 MiB + 1 MiB、Review Package `POST /reviews/import` は 2 GiB + 2 MiB、チャット作成 `POST /projects` とチャット発言 `POST /projects/:id/messages` は添付 8 件 × 動画上限 300 MB + 1 MiB（約 2.34 GiB）。つまり「ファイルが各ファイルの上限を超え、本文全体は上限内」のときだけ各ルートの 422 になり、本文全体が上限を超えれば 413 になる）。`Content-Length` が上限を超えていれば本文を読む前に 413 にする、アップロードルートでも multipart 以外（urlencoded など）の本文は 1MiB のまま。Content-Type を `multipart/form-data` にしてもそれ以外のルートの上限は外れない。宣言された長さが上限を超える本文は読まずに 413） |
 | 402 | Project/Shot budget ceiling 超過（F-22） |
 | 403 | Brand/Safety Constraint 違反、CSRF トークンの不正、または非ループバックからのアクセス |
