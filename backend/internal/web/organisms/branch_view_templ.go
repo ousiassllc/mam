@@ -919,7 +919,7 @@ func BranchView(d BranchPageData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 73, "\" hx-swap=\"none\"><label class=\"flex flex-col gap-1 text-xs text-neutral-400\">分岐点")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 73, "\" hx-swap=\"none\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button[type=submit]\"><label class=\"flex flex-col gap-1 text-xs text-neutral-400\">分岐点")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
