@@ -16,16 +16,11 @@ func libraryData(v service.LibraryView) organisms.ReferenceLibraryData {
 	return organisms.ReferenceLibraryData{Project: v.Project, Q: v.Query.Q, Kind: v.Query.Kind, Tag: v.Query.Tag, Items: v.Items}
 }
 
-// libraryQuery is the filter of the query string: q, kind and tag.
-func libraryQuery(c *gin.Context) service.LibraryQuery {
-	return service.LibraryQuery{Q: c.Query("q"), Kind: c.Query("kind"), Tag: c.Query("tag")}
-}
-
 // ReferenceLibraryPage renders the Reference Library (GET /projects/:id/references?q=&kind=&tag=): the
 // full page, or the list for HTMX.
 func ReferenceLibraryPage(svc *service.ReferenceService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		view, err := svc.Library(c.Request.Context(), c.Param("id"), libraryQuery(c))
+		view, err := svc.Library(c.Request.Context(), c.Param("id"), service.LibraryQuery{Q: c.Query("q"), Kind: c.Query("kind"), Tag: c.Query("tag")})
 		if err != nil {
 			pageError(c, err)
 			return
@@ -57,16 +52,10 @@ func UploadReference(svc *service.ReferenceService) gin.HandlerFunc {
 	}
 }
 
-// DeleteReference takes an image out of the Library (DELETE /projects/:id/references/:referenceId) and
-// answers with the list under the filter the button carries (q, kind, tag as the query), so that removing
-// an image from a filtered list does not reset the filter.
+// DeleteReference takes an image out of the Library (DELETE /projects/:id/references/:referenceId?q=&kind=&tag= keeps the filter).
 func DeleteReference(svc *service.ReferenceService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if err := svc.Remove(c.Request.Context(), c.Param("id"), c.Param("referenceId")); err != nil {
-			toast(c, err)
-			return
-		}
-		view, err := svc.Library(c.Request.Context(), c.Param("id"), libraryQuery(c))
+		view, err := svc.Remove(c.Request.Context(), c.Param("id"), c.Param("referenceId"), service.LibraryQuery{Q: c.Query("q"), Kind: c.Query("kind"), Tag: c.Query("tag")})
 		if err != nil {
 			toast(c, err)
 			return

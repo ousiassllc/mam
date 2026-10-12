@@ -11,7 +11,7 @@ import templruntime "github.com/a-h/templ/runtime"
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/layout"
-	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/notelist"
 )
 
 // NotesPageData is the header of the Notes page: whose notes they are and where to go back to.
@@ -22,7 +22,7 @@ type NotesPageData struct {
 	BackHref, BackLabel string
 	// Lead explains what the notes do in this scope.
 	Lead  string
-	Notes organisms.NoteListData
+	Notes notelist.Data
 }
 
 // NotesPage is GET /projects/:id/notes and GET /series/:id/notes: the notes in an auxiliary view.
@@ -110,7 +110,7 @@ func NotesPage(csrfToken string, d NotesPageData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = organisms.NoteList(d.Notes).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = notelist.View(d.Notes).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

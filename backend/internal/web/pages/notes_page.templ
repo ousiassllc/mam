@@ -3,7 +3,7 @@ package pages
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/layout"
-	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/notelist"
 )
 
 // NotesPageData is the header of the Notes page: whose notes they are and where to go back to.
@@ -14,7 +14,7 @@ type NotesPageData struct {
 	BackHref, BackLabel string
 	// Lead explains what the notes do in this scope.
 	Lead  string
-	Notes organisms.NoteListData
+	Notes notelist.Data
 }
 
 // NotesPage is GET /projects/:id/notes and GET /series/:id/notes: the notes in an auxiliary view.
@@ -25,7 +25,7 @@ templ NotesPage(csrfToken string, d NotesPageData) {
 			<h1 class="mb-1 mt-3 text-xl font-semibold">{ d.Title }</h1>
 			<p class="mb-2 text-sm text-neutral-400">{ d.Owner }</p>
 			<p class="mb-6 text-xs text-neutral-400">{ d.Lead }</p>
-			@organisms.NoteList(d.Notes)
+			@notelist.View(d.Notes)
 		</main>
 	}
 }
