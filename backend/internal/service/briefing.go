@@ -1,6 +1,9 @@
 package service
 
-import "github.com/ousiassllc/mam/backend/internal/domain"
+import (
+	"github.com/ousiassllc/mam/backend/internal/agent/briefing"
+	"github.com/ousiassllc/mam/backend/internal/domain"
+)
 
 const briefCompleteText = "Creative Brief が揃いました。補助ビューの Brief でいつでも確認・編集できます。"
 
@@ -12,12 +15,7 @@ func briefFollowUp(b domain.Brief) domain.ChatMessage {
 	if len(missing) == 0 {
 		return assistantText(briefCompleteText)
 	}
-	f := missing[0]
-	return domain.ChatMessage{
-		Role: domain.RoleAssistant, Kind: domain.KindQuestion,
-		Content: domain.EncodeCardBody(domain.CardBody{Text: f.Question(), Options: f.Options()}),
-		RefType: domain.RefBriefField, RefID: string(f),
-	}
+	return briefing.Question(missing[0], missing[0].Question())
 }
 
 // templateFor picks the Production Template from the extracted Content Type (UC-7).

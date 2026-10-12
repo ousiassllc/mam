@@ -1,6 +1,7 @@
 package briefing_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -93,4 +94,16 @@ func TestRuleExtractor_Extract(t *testing.T) {
 			assert.Equal(t, tt.want, briefing.RuleExtractor{}.Extract(tt.text))
 		})
 	}
+}
+
+func TestValueProblem(t *testing.T) {
+	for _, r := range domain.BriefAspectRatios() {
+		assert.Empty(t, briefing.ValueProblem(domain.BriefAspectRatio, r))
+	}
+	assert.Empty(t, briefing.ValueProblem(domain.BriefAspectRatio, ""), "not decided yet is no problem")
+	for _, r := range []string{"4:5", "21:9", "９：１６", "縦長"} {
+		assert.Contains(t, briefing.ValueProblem(domain.BriefAspectRatio, r), "9:16 / 16:9 / 1:1", r)
+	}
+	assert.Empty(t, briefing.ValueProblem(domain.BriefMood, strings.Repeat("あ", briefing.FieldMaxRunes)))
+	assert.Contains(t, briefing.ValueProblem(domain.BriefMood, strings.Repeat("あ", briefing.FieldMaxRunes+1)), "200 文字以内")
 }
