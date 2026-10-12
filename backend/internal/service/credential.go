@@ -11,8 +11,11 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/credential"
 )
 
-// MaxAPIKeyBytes bounds a pasted API key.
-const MaxAPIKeyBytes = 4096
+// MaxAPIKeyBytes bounds a pasted API key. It is within the strictest OS secure storage limit
+// (Windows Credential Manager: 2560 bytes); real keys are a few hundred bytes.
+const MaxAPIKeyBytes = 2560
+
+const msgAPIKeyTooLong = "API キーが長すぎます"
 
 // CredentialProviders are the providers whose API key the settings screen manages, in display
 // order. The ID is the credential.Store key the adapters read.
@@ -74,7 +77,7 @@ func knownProvider(provider string) bool {
 
 // Save stores or replaces the key for provider. Adapters read the store on every call, so the key
 // is in effect without a restart. A provider the settings screen does not manage, an empty key and
-// a key with whitespace inside are refused (ValidationError; field "api_key") and the old key stays.
+// a key with whitespace inside, and a key the OS store refuses for its size are refused (ValidationError; field "api_key") and the old key stays.
 func (s *CredentialService) Save(provider, apiKey string) error {
 	if !knownProvider(provider) {
 		return &ValidationError{Field: "provider", Message: "未対応のプロバイダーです"}
@@ -84,11 +87,17 @@ func (s *CredentialService) Save(provider, apiKey string) error {
 	case apiKey == "":
 		return &ValidationError{Field: "api_key", Message: "API キーを入力してください"}
 	case len(apiKey) > MaxAPIKeyBytes:
-		return &ValidationError{Field: "api_key", Message: "API キーが長すぎます"}
+		return &ValidationError{Field: "api_key", Message: msgAPIKeyTooLong}
 	case strings.ContainsAny(apiKey, " \t\r\n"):
 		return &ValidationError{Field: "api_key", Message: "API キーに空白や改行は含められません"}
 	}
-	return s.store.Set(provider, apiKey)
+	if err := s.store.Set(provider, apiKey); err != nil {
+		if errors.Is(err, credential.ErrTooLarge) {
+			return &ValidationError{Field: "api_key", Message: msgAPIKeyTooLong}
+		}
+		return err
+	}
+	return nil
 }
 
 // Configured reports whether a key exists for provider.
