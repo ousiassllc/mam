@@ -217,6 +217,9 @@ func ParseTakeSegments(text string, takes []TakeInfo) ([]TakeSegment, error) {
 		}
 		start, _ := strconv.ParseFloat(m[2], 64)
 		end, _ := strconv.ParseFloat(m[3], 64)
+		if !finite(start) || !finite(end) { // the pattern has no digit limit: 309+ digits are out of range (±Inf)
+			return nil, fmt.Errorf("Take %s の区間の秒数が大きすぎて読み取れませんでした", strings.ToUpper(m[1]))
+		}
 		segs = append(segs, TakeSegment{TakeID: takes[idx].ID, Start: start, End: end})
 	}
 	return segs, nil
@@ -247,7 +250,7 @@ func ValidateTakeSegments(segs []TakeSegment, takes []TakeInfo) error {
 			return fmt.Errorf("区間 %d の Take は除外されています", n)
 		case take.FilePath == "":
 			return fmt.Errorf("区間 %d の Take のファイルはアーカイブされています", n)
-		case s.Start < 0 || shorterThan(s.End-s.Start, MinTakeSegmentSeconds):
+		case !finite(s.Start) || !finite(s.End) || s.Start < 0 || shorterThan(s.End-s.Start, MinTakeSegmentSeconds):
 			return fmt.Errorf("区間 %d は %.1f 秒以上にしてください", n, MinTakeSegmentSeconds)
 		case take.DurationSeconds > 0 && s.End > take.DurationSeconds+0.001:
 			return fmt.Errorf("区間 %d は Take の長さ（%.1f 秒）を超えています", n, take.DurationSeconds)
