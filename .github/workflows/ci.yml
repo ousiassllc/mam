@@ -14,7 +14,8 @@ concurrency:
 
 jobs:
   ci:
-    runs-on: ubuntu-latest
+    # Self-hosted runner (org ousiassllc): GitHub-hosted runners are billed and were blocked by a payment failure.
+    runs-on: [self-hosted, Linux, X64]
     steps:
       - uses: actions/checkout@v4
 
@@ -60,12 +61,17 @@ jobs:
       - name: Line limit (no regression)
         run: make lint-lines
 
-      # ubuntu-latest has no ffmpeg / ffprobe: without them the Go tests that need them (Judge frame
-      # extraction, media, Audio Director mixing, Take / partial regeneration) fail in CI (testenv).
-      - name: Install ffmpeg
+      # The Go tests that need ffmpeg / ffprobe (Judge frame extraction, media, Audio Director mixing,
+      # Take / partial regeneration) fail without them (testenv). The self-hosted runner normally has
+      # them; install via apt only when missing (needs passwordless sudo), else fail with a clear error.
+      - name: Ensure ffmpeg
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends ffmpeg
+          if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null; then
+            sudo -n apt-get update
+            sudo -n apt-get install -y --no-install-recommends ffmpeg
+          fi
+          ffmpeg -version | head -1
+          ffprobe -version | head -1
 
       - name: Test
         run: make test
