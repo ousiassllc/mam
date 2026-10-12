@@ -10,7 +10,7 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 - エラーレスポンスは HALT の方針（`spec/architecture/overview.md` 参照元 `skill://halt`）に従う:
   - ページ/アクションルートのバリデーションエラー（422）: フォームをエラー付きで再レンダリング
   - ビジネスエラー（403/409/423等）: OOBスワップでトースト表示。変更でその場保存するコントロール（`hx-trigger="change"` のラジオ・セレクト・チェックボックスを持つ `<select>` / `<form>`: MODE、Production Template、Quality、Confirmation Level（確認レベルの select と CUSTOM CHECK の確認ポイントの checkbox を持つ 1 つのフォーム）。`<form>` は `reset()` でフォームごと戻る）は送信前に選択が変わっているため、失敗（422・403・5xx・通信断・タイムアウト）の後にクライアント（`static/src/components/save-on-change/`）が `htmx:afterRequest` で保存済みの値に戻す
-  - APIルートのエラー: Huma による RFC 7807 Problem Details
+  - APIルートのエラー: Huma による RFC 7807 Problem Details。ルートに一致しない URL（404）とメソッド違い（405）も、`/api/v1` 配下は同じ Problem Details（`application/problem+json`）で、それ以外はページルートの存在しない対象と同じ応答（レイアウト付きの `ErrorPage`、`HX-Request` では `HX-Reswap: none` のトースト。どちらも文言に URL を含める）。gin 既定の素のテキストは返さない
   - 共通ミドルウェアが Huma より前に返すエラー（非ループバック・CSRF 不一致の 403、本文上限の 413、読めない urlencoded フォームの 400）は `/api/v1` でも RFC 7807 ではなく JSON `{"error": string}`（理由が無いときは空本文）。RFC 7807 はハンドラ内の Huma エラーだけ。HTMX リクエストにはトーストを返す。読めない `multipart/form-data` の 400 と、アップロードルートの multipart の 413 はこのミドルウェアではなく、`readMultipart` を呼ぶ各ハンドラが他のビジネスエラーと同じ表示（トースト、フォームを持つルートはエラー付きの再描画。JSON ではない）で返す
 - 共通ビジネスエラーコード:
   | HTTPステータス | 意味 |

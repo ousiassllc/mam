@@ -10,7 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/ousiassllc/mam/backend/internal/service"
-	"github.com/ousiassllc/mam/backend/internal/web/handler"
+	"github.com/ousiassllc/mam/backend/internal/web/health"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -59,7 +59,7 @@ func apiError(ctx huma.Context, status int, msg string, errs ...error) huma.Stat
 func registerAPIRoutes(api huma.API, services *service.Services) {
 	type healthOutput struct {
 		Status int
-		Body   handler.HealthBody
+		Body   health.Body
 	}
 	huma.Register(api, huma.Operation{
 		OperationID: "get-health",
@@ -68,7 +68,7 @@ func registerAPIRoutes(api huma.API, services *service.Services) {
 		Summary:     "Local server health (503 when the database is unavailable)",
 		Tags:        []string{"system"},
 	}, func(ctx context.Context, _ *struct{}) (*healthOutput, error) {
-		status, body := handler.HealthResponse(services.Health.Check(ctx))
+		status, body := health.Response(services.Health.Check(ctx))
 		return &healthOutput{Status: status, Body: body}, nil
 	})
 	registerJudgeAPI(api, services)
