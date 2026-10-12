@@ -136,10 +136,10 @@ func New(d Deps) *Orchestrator {
 	if o.freeDisk == nil {
 		o.freeDisk = fsutil.FreeBytes
 	}
-	o.world, o.notes, o.extractor = d.World, d.Notes, stateextractor.New(d.LLM)
 	if o.logger == nil {
 		o.logger = slog.New(slog.DiscardHandler)
 	}
+	o.world, o.notes, o.extractor = d.World, d.Notes, stateextractor.New(d.LLM, stateextractor.WithLogger(o.logger))
 	if o.notify == nil {
 		o.notify = func(Progress) {}
 	}

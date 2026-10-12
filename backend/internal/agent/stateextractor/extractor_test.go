@@ -1,7 +1,12 @@
 package stateextractor_test
 
 import (
+	"bytes"
 	"context"
+	"fmt"
+	"log/slog"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -169,4 +174,34 @@ func TestExtract_NoLocationChangeWhenTheShotHasNoKnownLocation(t *testing.T) {
 	in.Spec.Location = nil
 	diff, _ := extract(t, `{"changes":[{"target":"location","id":"l1","field":"time","value":"night"}]}`, in)
 	assert.Empty(t, diff.Changes)
+}
+
+func TestExtract_PromptTellsTheModelTheKnownInformationLimit(t *testing.T) {
+	_, f := extract(t, `{"changes":[]}`, input())
+	assert.Contains(t, f.system, "at most "+strconv.Itoa(domain.MaxKnownInformation)+" items")
+	assert.Contains(t, f.system, "drop the oldest or least important items")
+}
+
+func TestExtract_LogsAWarningWhenAnInvalidChangeIsLeftOut(t *testing.T) {
+	var buf bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn}))
+	items := make([]string, domain.MaxKnownInformation+1)
+	for i := range items {
+		items[i] = fmt.Sprintf("fact_%d", i)
+	}
+	over := `["` + strings.Join(items, `","`) + `"]`
+	f := &fakeLLM{answer: `{"changes":[{"target":"story","field":"known_information","value":` + over + `}]}`}
+
+	diff, err := stateextractor.New(f, stateextractor.WithLogger(logger)).Extract(context.Background(), input())
+	require.NoError(t, err)
+	assert.Empty(t, diff.Changes, "a list over the limit is not applied")
+	assert.Contains(t, buf.String(), "level=WARN")
+	assert.Contains(t, buf.String(), "known_information")
+	assert.Contains(t, buf.String(), "more than 20 items")
+
+	buf.Reset()
+	f.answer = `{"changes":[{"target":"character","id":"zzz","field":"emotion","value":"x"}]}`
+	_, err = stateextractor.New(f, stateextractor.WithLogger(logger)).Extract(context.Background(), input())
+	require.NoError(t, err)
+	assert.Empty(t, buf.String(), "other drops stay quiet")
 }

@@ -482,7 +482,7 @@ project_world:
 
 - 通常の生成では、Take を 1 本以上作れた時点で 1 回抽出する。Candidate Generation（Quality / Balanced）では、選ばれた Candidate の Spec から抽出する。
 - Judge が FAIL にして撮り直す場合（Repair）は、Shot Spec が変わる Repair（Prompt 修正・Partial Regeneration）の Take を生成した直後にもう一度抽出し、新しい `world_state_version` を追記する。Judge で FAIL になった Take の Spec から追記された版も消さない（World State は追記のみで、版は履歴として残る。`spec/architecture/er.md` §4）。
-- 抽出に失敗しても Take の生成は失敗させない（World State は更新されず、次の Shot は現在の World State から始まる）。
+- 抽出に失敗しても Take の生成は失敗させない（World State は更新されず、次の Shot は現在の World State から始まる）。 `story.known_information` は 20 件まで（1 項目 200 文字以内）で、State Extractor には現在の項目を保ったまま追加した完全なリストを、20 件を超えるときは古い／重要でない項目を落として 20 件以内で返させる。超えたリストは適用せず（World State は据え置き）、警告ログに残す。
 
 ```text
 Previous State

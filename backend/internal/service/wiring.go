@@ -226,7 +226,7 @@ func (w *wiring) wireContinuity() {
 	w.c.continuer = w.continues
 	w.notes = &NoteService{core: w.c, notes: w.r.notes, series: w.r.series, world: w.r.world}
 	if w.deps.LLM != nil {
-		w.notes.extractor = stateextractor.New(w.deps.LLM)
+		w.notes.extractor = stateextractor.New(w.deps.LLM, stateextractor.WithLogger(w.logger))
 	}
 	w.c.notes = w.notes
 	w.branch = &BranchService{core: w.c, shots: w.r.gens, continues: w.continues, brands: w.r.brands}
