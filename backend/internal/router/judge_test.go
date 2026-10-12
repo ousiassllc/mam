@@ -414,9 +414,7 @@ func TestJudge_UnknownTakeIs404AndAnUnjudgedTakeHasNoResult(t *testing.T) {
 func TestJudge_AJudgeRunInFlightCannotBeStartedTwice(t *testing.T) {
 	j := newJudgeApp(t, goodVerdict, 0.95, 0.95, 0.95)
 	ids := j.generateAndJudge()
-	// A judge job of the Take is on record. It is 'running', not 'queued': the app's job queue is live and
-	// claims any queued row, which would run a real judge. JudgePending counts both statuses (the queued
-	// case is covered in repository/judge_test.go).
+	// A judge job of the Take is on record: 'running', as the live job queue would claim a 'queued' row.
 	require.NoError(t, j.db.Write(context.Background(), func(ctx context.Context, tx *sql.Tx) error {
 		_, err := tx.ExecContext(ctx, `INSERT INTO job (id, kind, payload, status) VALUES ('stuck', 'judge', ?, 'running')`, `{"take_id":"`+ids[0]+`","shot_id":"`+j.shotID+`"}`)
 		return err
@@ -445,8 +443,7 @@ func TestJudge_ButtonIsDrawnOnlyForUnjudgedTakesTheServerAccepts(t *testing.T) {
 	assert.True(t, button(html, ids[1]), "never judged")
 	assert.False(t, button(html, ids[0]))
 
-	// A judge run of the Take in flight: the server answers 409, so there is no button. 'running', not
-	// 'queued': the live job queue would claim a queued row and run a real judge.
+	// A judge run of the Take in flight ('running', not 'queued': see above): 409, so no button.
 	j.execSQL(`INSERT INTO job (id, kind, payload, status) VALUES ('stuck', 'judge', ?, 'running')`, `{"take_id":"`+ids[1]+`","shot_id":"`+j.shotID+`"}`)
 	assert.False(t, button(page(), ids[1]))
 	assert.Equal(t, http.StatusConflict, j.form(http.MethodPost, "/takes/"+ids[1]+"/judge", nil).Code)
