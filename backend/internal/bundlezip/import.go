@@ -97,7 +97,7 @@ func readData(zr *zip.Reader) (domain.BundleData, error) {
 		return err
 	})
 	if errors.Is(err, errDataTooLarge) {
-		return data, invalid("%s の行数または列数が上限を超えています", domain.BundleDataName)
+		return data, invalid("%s の行数・列数・入れ子の深さが上限を超えています", domain.BundleDataName)
 	}
 	if err != nil {
 		return data, err

@@ -19,9 +19,10 @@ const (
 	maxCells      = 2_000_000 // values of all rows
 	maxManifest   = 64 << 10  // manifest.json is a few hundred bytes
 	maxDataBytes  = 512 << 20 // data.json
+	maxSkipDepth  = 8         // nesting of an unknown field's value; a real data.json has no unknown fields
 )
 
-var errDataTooLarge = errors.New("data.json holds more tables, rows or columns than a bundle may")
+var errDataTooLarge = errors.New("data.json holds more tables, rows, columns or nesting than a bundle may")
 
 // decodeData reads data.json from r row by row: {"project_id": "...", "tables": [{"name": "...",
 // "rows": [{"column": scalar, ...}, ...]}, ...]}. Unknown fields are skipped without being kept.
@@ -83,7 +84,9 @@ func (d *dataDecoder) expect(delim json.Delim) error {
 // value decodes one small value (a string) into v.
 func (d *dataDecoder) value(v any) error { return d.dec.Decode(v) }
 
-// skip reads and drops one value of any shape.
+// skip reads and drops one value of any shape. json.Decoder.Token has no nesting limit (it pushes a
+// stack entry per '[' or '{'), so a value nested deeper than maxSkipDepth is refused: a few KB of
+// ZIP holding hundreds of MB of '[' would otherwise grow the stack to gigabytes.
 func (d *dataDecoder) skip() error {
 	depth := 0
 	for {
@@ -94,6 +97,9 @@ func (d *dataDecoder) skip() error {
 		if delim, ok := tok.(json.Delim); ok {
 			if delim == '{' || delim == '[' {
 				depth++
+				if depth > maxSkipDepth {
+					return errDataTooLarge
+				}
 			} else {
 				depth--
 			}
