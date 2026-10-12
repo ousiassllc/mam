@@ -76,7 +76,10 @@ func (RuleExtractor) Extract(text string) domain.Brief {
 	b.AspectRatio = aspectRatio(text)
 	b.Mood = mood(text)
 	for _, u := range urlRe.FindAllString(text, -1) {
-		b.References = append(b.References, strings.TrimRight(u, ".,;"))
+		// A URL the Brief form would refuse stays out, or it would block saving the form later.
+		if u = strings.TrimRight(u, ".,;"); ReferenceProblem(u) == "" {
+			b.References = append(b.References, u)
+		}
 	}
 	return b
 }

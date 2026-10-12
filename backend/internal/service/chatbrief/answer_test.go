@@ -109,3 +109,26 @@ func TestAnswerLongerThanTheFormLimitIsAskedAgain(t *testing.T) {
 	assert.Equal(t, string(domain.BriefContentType), ws.Messages[1].RefID)
 	assert.Contains(t, domain.DecodeCardBody(ws.Messages[1].Content).Text, "200 文字以内")
 }
+
+// A URL the Brief form refuses (over 200 characters) is not taken from the chat: otherwise the form could
+// not save any other item until the user deleted it.
+func TestURLLongerThanTheFormLimitIsNotTakenFromTheChatSoTheFormStaysSavable(t *testing.T) {
+	long := "https://example.com/?" + strings.Repeat("a", 250)
+	short := "https://example.com/ok"
+	f := newFixture(t)
+	ctx := context.Background()
+
+	// The first message and a later one take the short URL only.
+	p, err := f.svc.Projects.Create(ctx, service.CreateProjectInput{Content: "動画を作りたい " + long + " " + short})
+	require.NoError(t, err)
+	assert.Equal(t, []string{short}, f.brief(t, p.ID).References)
+	f.post(t, p.ID, "参考はこれ "+long, "")
+	assert.Equal(t, []string{short}, f.brief(t, p.ID).References)
+
+	_, err = f.svc.Projects.UpdateBrief(ctx, p.ID, service.BriefForm{
+		Values:     map[domain.BriefField]string{domain.BriefMood: "ポップ"},
+		References: strings.Join(f.brief(t, p.ID).References, "\n"),
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "ポップ", f.brief(t, p.ID).Mood)
+}
