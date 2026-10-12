@@ -88,3 +88,27 @@ func TestMake_DeletesTheOldestFilesBeyondTheLimitButNotTheNewOneNorOnesInProgres
 	assert.NoFileExists(t, middle)
 	assert.NoFileExists(t, dst)
 }
+
+// The limit is an LRU, not "the oldest made": a preview that was made long ago but asked for again
+// (every Range request of a <video> goes through Make) outlives one that was made later and not used.
+func TestMake_ReusingAFileKeepsItBeyondNewerUnusedOnes(t *testing.T) {
+	assets := t.TempDir()
+	dir := filepath.Join(assets, ".previews")
+	require.NoError(t, os.MkdirAll(dir, 0o700))
+	played := write(t, dir, "played.mp4", 10, 3*time.Hour)
+	unused := write(t, dir, "unused.mp4", 10, 2*time.Hour)
+	c := newDirCache(t, assets, 20)
+
+	// The browser asks for the old file again: it exists, so nothing is built.
+	require.NoError(t, c.Make(context.Background(), played, 0, func(context.Context) error {
+		t.Fatal("build must not run for a file that exists")
+		return nil
+	}))
+
+	dst := c.Path("new.mp4")
+	require.NoError(t, c.Make(context.Background(), dst, 0, func(context.Context) error { return os.WriteFile(dst, make([]byte, 10), 0o600) }))
+
+	assert.FileExists(t, played, "the file used a moment ago stays")
+	assert.NoFileExists(t, unused, "the file nobody asked for goes first")
+	assert.FileExists(t, dst)
+}
