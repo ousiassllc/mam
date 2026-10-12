@@ -114,7 +114,7 @@ templ SeriesView(d SeriesViewData) {
 					</li>
 				}
 			</ul>
-			<form class="flex flex-wrap items-end gap-2" hx-post={ paths.Series(d.Series.ID, "episodes") }>
+			<form class="flex flex-wrap items-end gap-2" hx-post={ paths.Series(d.Series.ID, "episodes") } hx-sync="this:drop" hx-disabled-elt="find button[type=submit]">
 				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="series-previous-episode">
 					前の話（最終 World State を開始状態にする）
 					@atoms.Select(atoms.FieldMd, "", templ.Attributes{

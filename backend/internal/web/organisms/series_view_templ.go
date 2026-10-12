@@ -333,7 +333,7 @@ func SeriesView(d SeriesViewData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "\"><label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"series-previous-episode\">前の話（最終 World State を開始状態にする）")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button[type=submit]\"><label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"series-previous-episode\">前の話（最終 World State を開始状態にする）")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

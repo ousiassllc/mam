@@ -283,7 +283,7 @@ templ BranchView(d BranchPageData) {
 			for _, s := range d.Shots {
 				<details class="rounded-md border border-neutral-700 p-2 text-sm">
 					<summary class="cursor-pointer">{ s.Label }</summary>
-					<form class="mt-2 flex flex-wrap items-end gap-2" hx-post={ branchShotURL(s.ShotID) } hx-swap="none">
+					<form class="mt-2 flex flex-wrap items-end gap-2" hx-post={ branchShotURL(s.ShotID) } hx-swap="none" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]">
 						<label class="flex flex-col gap-1 text-xs text-neutral-400">
 							分岐点
 							@atoms.Select(atoms.FieldMd, "", templ.Attributes{
