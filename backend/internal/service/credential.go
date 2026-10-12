@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"slices"
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector"
@@ -11,8 +12,8 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/credential"
 )
 
-// MaxAPIKeyBytes bounds a pasted API key.
-const MaxAPIKeyBytes = 4096
+// MaxAPIKeyBytes bounds a pasted API key (within the Windows Credential Manager limit of 2560 bytes).
+const MaxAPIKeyBytes = 2560
 
 // CredentialProviders are the providers whose API key the settings screen manages, in display
 // order. The ID is the credential.Store key the adapters read.
@@ -64,17 +65,12 @@ func (s *CredentialService) Status() ([]CredentialStatus, error) {
 }
 
 func knownProvider(provider string) bool {
-	for _, p := range CredentialProviders {
-		if p.ID == provider {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(CredentialProviders, func(p struct{ ID, Label string }) bool { return p.ID == provider })
 }
 
 // Save stores or replaces the key for provider. Adapters read the store on every call, so the key
 // is in effect without a restart. A provider the settings screen does not manage, an empty key and
-// a key with whitespace inside are refused (ValidationError; field "api_key") and the old key stays.
+// a key with whitespace inside or too long for the OS store are refused (ValidationError; field "api_key").
 func (s *CredentialService) Save(provider, apiKey string) error {
 	if !knownProvider(provider) {
 		return &ValidationError{Field: "provider", Message: "未対応のプロバイダーです"}
@@ -88,7 +84,11 @@ func (s *CredentialService) Save(provider, apiKey string) error {
 	case strings.ContainsAny(apiKey, " \t\r\n"):
 		return &ValidationError{Field: "api_key", Message: "API キーに空白や改行は含められません"}
 	}
-	return s.store.Set(provider, apiKey)
+	err := s.store.Set(provider, apiKey)
+	if errors.Is(err, credential.ErrTooLarge) {
+		return &ValidationError{Field: "api_key", Message: "API キーが長すぎます"}
+	}
+	return err
 }
 
 // Configured reports whether a key exists for provider.

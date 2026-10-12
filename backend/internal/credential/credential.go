@@ -20,9 +20,13 @@ const ServiceName = "mam"
 // ErrNotFound is returned by Get and Delete when no key is stored for the provider.
 var ErrNotFound = errors.New("credential: not found")
 
+// ErrTooLarge is returned by Set when the OS secure storage refuses the key for its size
+// (Windows Credential Manager: 2560 bytes; macOS Keychain: about 3000 bytes with service and account).
+var ErrTooLarge = errors.New("credential: api key too large for the OS secure storage")
+
 // Store saves and loads API keys per provider (e.g. "kling", "seedance", "anthropic").
 type Store interface {
-	// Set stores or replaces the key for provider.
+	// Set stores or replaces the key for provider, or returns ErrTooLarge if the OS store refuses its size.
 	Set(provider, apiKey string) error
 	// Get returns the key for provider, or ErrNotFound.
 	Get(provider string) (string, error)
@@ -57,6 +61,9 @@ func (*Keyring) Set(provider, apiKey string) error {
 		return errors.New("credential: api key must not be empty")
 	}
 	if err := keyring.Set(ServiceName, acct, apiKey); err != nil {
+		if errors.Is(err, keyring.ErrSetDataTooBig) {
+			return fmt.Errorf("store api key for %q: %w", provider, ErrTooLarge)
+		}
 		return fmt.Errorf("store api key for %q: %w", provider, err)
 	}
 	return nil

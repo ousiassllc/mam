@@ -150,7 +150,7 @@ templ SeriesMembership(p domain.Project) {
 		if p.SeriesID != "" {
 			<a class="text-sm text-indigo-300 underline" href={ templ.SafeURL(paths.Series(p.SeriesID)) }>Series の正本と Episode を開く（この Project は第{ strconv.Itoa(p.EpisodeNumber) }話）</a>
 		} else {
-			<form class="flex flex-wrap items-end gap-2" hx-post={ paths.SeriesList() }>
+			<form class="flex flex-wrap items-end gap-2" hx-post={ paths.SeriesList() } hx-sync="this:drop" hx-disabled-elt="find button[type=submit]">
 				<input type="hidden" name="from_project_id" value={ p.ID }/>
 				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="series-name">
 					Series 名（この Project の Character / Product / Location を正本として登録します）
