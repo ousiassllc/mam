@@ -80,7 +80,10 @@ func readData(zr *zip.Reader) (domain.BundleData, error) {
 		manifest domain.BundleManifest
 		data     domain.BundleData
 	)
-	if err := readJSON(zr, domain.BundleManifestName, &manifest, false); err != nil {
+	err := readJSON(zr, domain.BundleManifestName, maxManifest, func(r io.Reader) error {
+		return json.NewDecoder(r).Decode(&manifest)
+	})
+	if err != nil {
 		return data, err
 	}
 	if manifest.Format != domain.BundleFormat {
@@ -89,7 +92,14 @@ func readData(zr *zip.Reader) (domain.BundleData, error) {
 	if manifest.Version != domain.BundleVersion {
 		return data, invalid("対応していないバンドルのバージョンです（%d）", manifest.Version)
 	}
-	if err := readJSON(zr, domain.BundleDataName, &data, true); err != nil {
+	err = readJSON(zr, domain.BundleDataName, maxDataBytes, func(r io.Reader) (err error) {
+		data, err = decodeData(r)
+		return err
+	})
+	if errors.Is(err, errDataTooLarge) {
+		return data, invalid("%s の行数または列数が上限を超えています", domain.BundleDataName)
+	}
+	if err != nil {
 		return data, err
 	}
 	if data.ProjectID != manifest.ProjectID {
@@ -98,12 +108,15 @@ func readData(zr *zip.Reader) (domain.BundleData, error) {
 	return data, nil
 }
 
-func readJSON(zr *zip.Reader, name string, v any, useNumber bool) error {
+// readJSON runs decode on the entry name, whose size must be at most limit bytes (the declared size
+// and what is read are both held to it). decode errors are an *InvalidError ("cannot read"), except
+// the ones that are one already or errDataTooLarge.
+func readJSON(zr *zip.Reader, name string, limit int64, decode func(io.Reader) error) error {
 	for _, f := range zr.File {
 		if f.Name != name {
 			continue
 		}
-		if f.UncompressedSize64 > maxDataBytes {
+		if f.UncompressedSize64 > uint64(limit) { //nolint:gosec // limit is a positive constant
 			return invalid("%s が大きすぎます", name)
 		}
 		rc, err := f.Open()
@@ -111,11 +124,10 @@ func readJSON(zr *zip.Reader, name string, v any, useNumber bool) error {
 			return invalid("%s を開けません", name)
 		}
 		defer func() { _ = rc.Close() }()
-		dec := json.NewDecoder(io.LimitReader(rc, maxDataBytes+1))
-		if useNumber {
-			dec.UseNumber()
-		}
-		if err := dec.Decode(v); err != nil {
+		if err := decode(io.LimitReader(rc, limit+1)); err != nil {
+			if errors.Is(err, errDataTooLarge) {
+				return err
+			}
 			return invalid("%s を読み取れません", name)
 		}
 		return nil

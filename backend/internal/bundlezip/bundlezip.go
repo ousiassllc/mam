@@ -17,7 +17,6 @@ const (
 	// maxExtractBytes is what an import writes to the assets directory at most, however much room
 	// the disk has: the files the data names, added up.
 	maxExtractBytes = 32 << 30
-	maxDataBytes    = 512 << 20 // data.json and manifest.json
 	maxEntries      = 100_000
 )
 
