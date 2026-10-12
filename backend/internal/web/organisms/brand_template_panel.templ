@@ -52,7 +52,11 @@ templ BrandTemplatePanel(d BrandTemplatePanelData) {
 							<span class="ml-2 text-xs text-neutral-400">{ strconv.Itoa(len(t.Constraints)) } 件の制約</span>
 							<ul class="mt-1 list-disc pl-5 text-xs text-neutral-400">
 								for _, c := range t.Constraints {
-									<li>{ c.Type.Label() }（{ string(c.Level) }）: { c.Text }</li>
+									<li class="flex flex-wrap items-center gap-2">
+										<span>{ c.Type.Label() }</span>
+										@constraintLevelBadge(c.Level)
+										<span>{ c.Text }</span>
+									</li>
 								}
 							</ul>
 						</div>

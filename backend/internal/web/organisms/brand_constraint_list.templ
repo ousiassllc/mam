@@ -15,6 +15,15 @@ type BrandConstraintListData struct {
 	Errors      map[string]string
 }
 
+// constraintLevelBadge says how strictly a constraint is enforced, as the Brand Template list does too.
+templ constraintLevelBadge(level domain.EnforcementLevel) {
+	if level == domain.EnforceLock {
+		@atoms.Badge(atoms.BadgeError, "LOCK")
+	} else {
+		@atoms.Badge(atoms.BadgeWarn, "Advisory")
+	}
+}
+
 // BrandConstraintList registers, lists and removes the Safety / Brand Constraints of a Project
 // (F-23, UC-9). Prompt generation, the AI Video Judge and Final QC all enforce them: a violation of a
 // LOCK constraint fails the Take or the deliverable whatever its score is, an Advisory one only warns.
@@ -29,11 +38,7 @@ templ BrandConstraintList(d BrandConstraintListData) {
 						<div class="min-w-0 flex-1">
 							<div class="flex flex-wrap items-center gap-2">
 								<span class="font-medium">{ c.Type.Label() }</span>
-								if c.Level == domain.EnforceLock {
-									<span class="rounded-full bg-red-500/20 px-2 py-0.5 text-xs text-red-300">LOCK</span>
-								} else {
-									<span class="rounded-full bg-amber-500/20 px-2 py-0.5 text-xs text-amber-300">Advisory</span>
-								}
+								@constraintLevelBadge(c.Level)
 							</div>
 							<p class="mt-1 whitespace-pre-wrap break-words text-neutral-300">{ c.Text }</p>
 						</div>

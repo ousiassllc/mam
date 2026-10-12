@@ -500,7 +500,7 @@ func TestJudge_TheShotInspectorShowsEachTakesLatestJudgeResultAndTheGenerationMo
 
 	html := j.get("/shots/"+j.shotID, false).Body.String()
 	assert.Contains(t, html, "data-judge-result")
-	assert.Contains(t, html, "Judge: fail（確信度 90%）")
+	assert.Contains(t, html, "Judge: FAIL（確信度 90%）")
 	assert.Contains(t, html, "LOCK 違反 / medium / acting_drift / 0.8-1.7s: 表情が急に変わる")
 	assert.Contains(t, html, `aria-label="Generation Model"`)
 	assert.NotContains(t, html, "自動選択（生成時に決定）", "the Shot has a Take, whose model is the Generation Model")

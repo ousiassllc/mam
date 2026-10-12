@@ -62,7 +62,7 @@ func (d ShotInspectorData) generationModel() string {
 
 // judgeSummary is the one line of a Take's latest Judge result: the verdict and confidence.
 func judgeSummary(r domain.JudgeResult) (atoms.BadgeTone, string) {
-	label := fmt.Sprintf("Judge: %s（確信度 %.0f%%）", r.Result, r.OverallConfidence*100)
+	label := fmt.Sprintf("Judge: %s（確信度 %.0f%%）", r.Result.Label(), r.OverallConfidence*100)
 	if r.Result == domain.JudgePass {
 		return atoms.BadgeOK, label
 	}
