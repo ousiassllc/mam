@@ -2,6 +2,7 @@ package router_test
 
 import (
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"regexp"
 	"strings"
@@ -64,6 +65,43 @@ func TestNotes_CreateUpdateVersionRestoreAndArchiveOnTheNotesPage(t *testing.T) 
 	rec = a.form(http.MethodPost, base, url.Values{"title": {"x"}, "content": {"  "}})
 	assert.GreaterOrEqual(t, rec.Code, 400)
 	assert.Equal(t, http.StatusNotFound, a.get("/projects/nope/notes", false).Code)
+}
+
+// An action on one note answers with the note it is about; the other notes are placeholders that the page
+// keeps as they are, so the text typed into their forms survives (#694).
+func TestNotes_AnActionOnOneNoteDoesNotCarryTheFormsOfTheOthers(t *testing.T) {
+	a := newApp(t)
+	p := a.createProject("美容液の縦型15秒CMを作りたい")
+	base := "/projects/" + p + "/notes"
+	rec := a.form(http.MethodPost, base, url.Values{"title": {"口調"}, "content": {"落ち着いた口調"}, "category": {"character"}})
+	require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
+	other := noteIDRe.FindStringSubmatch(rec.Body.String())[1]
+	rec = a.form(http.MethodPost, base, url.Values{"title": {"舞台"}, "content": {"近未来の東京"}, "category": {"world"}})
+	require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
+	var id string
+	for _, m := range noteIDRe.FindAllStringSubmatch(rec.Body.String(), -1) {
+		if m[1] != other {
+			id = m[1]
+		}
+	}
+	require.NotEmpty(t, id)
+
+	answers := map[string]*httptest.ResponseRecorder{
+		"archive":   a.form(http.MethodDelete, "/notes/"+id, url.Values{}),
+		"unarchive": a.form(http.MethodPut, "/notes/"+id, url.Values{"archived": {"false"}}),
+		"save":      a.form(http.MethodPut, "/notes/"+id, url.Values{"title": {"舞台"}, "content": {"近未来の大阪"}, "category": {"tone"}}),
+		"restore":   a.form(http.MethodPost, "/notes/"+id+"/versions/1/restore", url.Values{}),
+	}
+	for name, rec := range answers {
+		require.Equal(t, http.StatusOK, rec.Code, name+": "+rec.Body.String())
+		body := rec.Body.String()
+		assert.Contains(t, body, `id="note-content-`+id+`"`, name+": the note acted on is drawn in full")
+		assert.NotContains(t, body, `id="note-content-`+other+`"`, name+": the form of another note is not replaced")
+		assert.NotContains(t, body, "落ち着いた口調", name)
+		assert.Contains(t, body, `<div id="note-item-`+other+`" hx-preserve></div>`, name+": the page keeps the other note")
+		assert.Contains(t, body, `id="note-list"`, name)
+	}
+	assert.Contains(t, answers["save"].Body.String(), `<section aria-label="トーン・口調"`, "a note that changed its category lands in the group of the new one")
 }
 
 func TestNotes_SeriesNotesPage(t *testing.T) {

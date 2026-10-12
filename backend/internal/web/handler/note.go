@@ -123,8 +123,16 @@ func CreateSeriesNote(svc *service.NoteService) gin.HandlerFunc {
 	}
 }
 
+// noteAnswered answers an action on one note with the list of its scope, in which the other notes are
+// placeholders: the page keeps them as they are, with the text typed into their forms (#694).
+func noteAnswered(c *gin.Context, view service.NotesView) {
+	data := noteListData(view)
+	data.Only = c.Param("id")
+	render(c, http.StatusOK, organisms.NoteGroups(data))
+}
+
 // UpdateNote changes the fields that were sent (PUT /notes/:id: title, content, category, pinned,
-// archived) and answers with the list of the note's scope.
+// archived) and answers with the list of the note's scope (see noteAnswered).
 func UpdateNote(svc *service.NoteService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		view, err := svc.Update(c.Request.Context(), c.Param("id"), service.NoteChange{
@@ -135,11 +143,11 @@ func UpdateNote(svc *service.NoteService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusOK, organisms.NoteGroups(noteListData(view)))
+		noteAnswered(c, view)
 	}
 }
 
-// ArchiveNote archives a note (DELETE /notes/:id) and answers with the list.
+// ArchiveNote archives a note (DELETE /notes/:id) and answers with the list (see noteAnswered).
 func ArchiveNote(svc *service.NoteService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		view, err := svc.Archive(c.Request.Context(), c.Param("id"))
@@ -147,12 +155,12 @@ func ArchiveNote(svc *service.NoteService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusOK, organisms.NoteGroups(noteListData(view)))
+		noteAnswered(c, view)
 	}
 }
 
 // RestoreNoteVersion restores an earlier version of a note as a new version
-// (POST /notes/:id/versions/:versionNumber/restore) and answers with the list.
+// (POST /notes/:id/versions/:versionNumber/restore) and answers with the list (see noteAnswered).
 func RestoreNoteVersion(svc *service.NoteService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		number, err := service.ParseVersionNumber(c.Param("versionNumber"))
@@ -165,6 +173,6 @@ func RestoreNoteVersion(svc *service.NoteService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusOK, organisms.NoteGroups(noteListData(view)))
+		noteAnswered(c, view)
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -75,6 +76,29 @@ func TestReferenceLibrary_UploadSearchAndDelete(t *testing.T) {
 	require.Equal(t, http.StatusOK, del.Code)
 	assert.NotContains(t, del.Body.String(), "Serum")
 	assert.Contains(t, del.Body.String(), "Mio 正面")
+}
+
+// Removing an image from a filtered list keeps the filter: the button carries it and the answer is the filtered
+// list again, with the search form showing it (#696).
+func TestReferenceLibrary_DeleteKeepsTheFilterOfTheList(t *testing.T) {
+	a := newApp(t)
+	id := a.createProject("美容液の縦型15秒CMを作りたい")
+	for _, in := range []struct{ kind, name, tags string }{{"character", "Mio", "hero"}, {"character", "Rin", "hero"}, {"product", "Serum", "hero"}} {
+		require.Equal(t, http.StatusCreated, a.uploadReference(id, map[string]string{"kind": in.kind, "name": in.name, "tags": in.tags}, &file{in.name + ".png", pngBytes}).Code)
+	}
+
+	filtered := a.get("/projects/"+id+"/references?kind=character&tag=hero", true).Body.String()
+	assert.Contains(t, filtered, `{&#34;kind&#34;:&#34;character&#34;,&#34;q&#34;:&#34;&#34;,&#34;tag&#34;:&#34;hero&#34;}`, "the remove button carries the filter")
+	refID := firstReferenceID(t, filtered)
+
+	del := a.request(http.MethodDelete, "/projects/"+id+"/references/"+refID+"?q=&kind=character&tag=hero", nil, "", true)
+	require.Equal(t, http.StatusOK, del.Code, del.Body.String())
+	body := del.Body.String()
+	assert.NotContains(t, body, "Serum", "the filter still holds")
+	assert.Equal(t, 1, strings.Count(body, `hx-delete="`), "one of the two characters is left")
+	assert.Contains(t, body, `value="character" selected`, "the search form shows the kind")
+	assert.Contains(t, body, `name="tag" type="text" value="hero"`, "and the tag")
+	assert.Equal(t, http.StatusNotFound, a.request(http.MethodDelete, "/projects/"+id+"/references/nope?kind=bogus", nil, "", true).Code, "an unknown image is refused before the filter is read")
 }
 
 func TestReferenceLibrary_UploadRejectsBadInputWithNothingStored(t *testing.T) {

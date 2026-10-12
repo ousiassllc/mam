@@ -16,6 +16,11 @@ type NoteListData struct {
 	// Series is true for the canonical notes of a Series (no promotion to the World State).
 	Series bool
 	Notes  []domain.NoteView
+	// Only is the note an action answers about ("" for the whole list). Every other note comes as an empty
+	// placeholder that htmx replaces with the note already on the page (hx-preserve), so the text typed into
+	// the form of another note survives the action (#694). The groups are still drawn from the server, so
+	// the note acted on lands in the group it now belongs to.
+	Only string
 }
 
 // noteGroup is a heading of the list with its notes.
@@ -128,7 +133,8 @@ templ noteAddForm(d NoteListData, oob bool) {
 }
 
 // NoteGroups lists the notes by pin and category, the archived notes apart, and, per note, the version
-// history (version_history_panel) whose restore buttons answer with this list.
+// history (version_history_panel) whose restore buttons answer with this list. With d.Only set, the
+// notes other than that one are placeholders (see NoteListData.Only).
 templ NoteGroups(d NoteListData) {
 	{{ groups, archived := groupNotes(d.Notes) }}
 	<div id="note-list" class="flex flex-col gap-6">
@@ -139,7 +145,7 @@ templ NoteGroups(d NoteListData) {
 			<section aria-label={ g.Title } class="flex flex-col gap-2">
 				<h2 class="text-sm font-semibold text-neutral-200">{ g.Title }</h2>
 				for _, n := range g.Notes {
-					@noteWithHistory(n)
+					@noteWithHistory(d, n)
 				}
 			</section>
 		}
@@ -148,7 +154,7 @@ templ NoteGroups(d NoteListData) {
 				<summary class="cursor-pointer text-sm font-semibold text-neutral-300">{ "アーカイブ済み (" + strconv.Itoa(len(archived)) + ")" }</summary>
 				<div class="mt-2 flex flex-col gap-2">
 					for _, n := range archived {
-						@noteWithHistory(n)
+						@noteWithHistory(d, n)
 					}
 				</div>
 			</details>
@@ -156,9 +162,18 @@ templ NoteGroups(d NoteListData) {
 	</div>
 }
 
-// noteWithHistory is a note card with the version history under it.
-templ noteWithHistory(n domain.NoteView) {
-	<div class="flex flex-col gap-2">
+// noteWithHistory is a note card with the version history under it, or, when d.Only names another
+// note, the placeholder of the one already on the page.
+templ noteWithHistory(d NoteListData, n domain.NoteView) {
+	if d.Only != "" && d.Only != n.ID {
+		<div id={ "note-item-" + n.ID } hx-preserve></div>
+	} else {
+		@noteItem(n)
+	}
+}
+
+templ noteItem(n domain.NoteView) {
+	<div id={ "note-item-" + n.ID } class="flex flex-col gap-2">
 		@molecules.NoteCard(n)
 		<details class="pl-3 text-sm">
 			<summary class="cursor-pointer text-xs text-neutral-400">バージョン履歴</summary>

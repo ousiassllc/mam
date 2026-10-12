@@ -29,8 +29,9 @@ func sourceLabel(s domain.ReferenceSource) string {
 
 // ReferenceLibrary lists the reference images of the Project with a search form and the upload form
 // (F-11, spec/spec.md §10.1). Searching and removing an image replace the list with its search form
-// (#reference-library); the upload form is outside it, so they never discard the file and the text
-// being entered in it (UploadedReference is the one answer that carries a fresh form).
+// (#reference-library; the remove button carries the filter the list shows, so the list stays filtered);
+// the upload form is outside it, so they never discard the file and the text being entered in it
+// (UploadedReference is the one answer that carries a fresh form, and lists the whole Library).
 templ ReferenceLibrary(d ReferenceLibraryData) {
 	<div class="flex flex-col gap-6">
 		@ReferenceLibraryList(d)
@@ -110,6 +111,7 @@ templ ReferenceLibraryList(d ReferenceLibraryData) {
 						<div>
 							@atoms.Button(atoms.ToneDanger, "ライブラリから外す", templ.Attributes{
 								"hx-delete":  referenceURL(d.Project.ID, it.ID),
+								"hx-vals":    atoms.HxVals(map[string]string{"q": d.Q, "kind": d.Kind, "tag": d.Tag}),
 								"hx-target":  "#reference-library",
 								"hx-swap":    "outerHTML",
 								"hx-confirm": "ライブラリから外しますか？（画像と、Shot に付いた参照は残ります）",

@@ -66,3 +66,32 @@ func TestCredentialRow_AnswersForItsProviderOnly(t *testing.T) {
 	assert.NotContains(t, html, `id="credential-panel"`)
 	assert.NotContains(t, html, "runway")
 }
+
+// An action on one note answers with that note in full and the others as placeholders the page keeps (#694).
+func TestNoteGroups_OnlyTheNoteActedOnIsDrawn(t *testing.T) {
+	notes := []domain.NoteView{
+		{Note: domain.Note{ID: "a", Category: domain.NoteCategoryTone}},
+		{Note: domain.Note{ID: "b", Category: domain.NoteCategoryTone}},
+	}
+	html := renderHTML(t, organisms.NoteGroups(organisms.NoteListData{BasePath: "/projects/p1/notes", Notes: notes, Only: "b"}))
+
+	assert.Contains(t, html, `id="note-content-b"`)
+	assert.NotContains(t, html, `id="note-content-a"`)
+	assert.Contains(t, html, `<div id="note-item-a" hx-preserve></div>`)
+
+	whole := renderHTML(t, organisms.NoteGroups(organisms.NoteListData{BasePath: "/projects/p1/notes", Notes: notes}))
+	assert.Contains(t, whole, `id="note-content-a"`)
+	assert.Contains(t, whole, `id="note-content-b"`)
+	assert.NotContains(t, whole, "hx-preserve")
+}
+
+// The remove button carries the filter of the list, so the answer is the same filtered list (#696).
+func TestReferenceLibraryList_RemoveButtonCarriesTheFilter(t *testing.T) {
+	html := renderHTML(t, organisms.ReferenceLibraryList(organisms.ReferenceLibraryData{
+		Project: domain.Project{ID: "p1"}, Q: "mio", Kind: "character", Tag: "hero",
+		Items: []domain.ReferenceItem{{ID: "r1", AssetID: "as1", Name: "Mio", Kind: domain.RefCharacter}},
+	}))
+
+	assert.Contains(t, html, `hx-delete="/projects/p1/references/r1"`)
+	assert.Contains(t, html, `{&#34;kind&#34;:&#34;character&#34;,&#34;q&#34;:&#34;mio&#34;,&#34;tag&#34;:&#34;hero&#34;}`)
+}
