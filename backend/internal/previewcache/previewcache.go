@@ -100,6 +100,10 @@ func (c *Cache) Make(ctx context.Context, dst string, retryAfter time.Duration, 
 	}
 	if _, err := os.Stat(dst); err == nil {
 		unlock()
+		// prune deletes by modification time: using a file counts as making it again, so the
+		// ones that are played are the last to go. A failure only makes the file look older.
+		now := time.Now()
+		_ = os.Chtimes(dst, now, now)
 		return nil
 	}
 	if f, ok := c.failed.Load(dst); ok && time.Since(f.(failure).at) < retryAfter {
