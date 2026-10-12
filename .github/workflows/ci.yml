@@ -73,6 +73,16 @@ jobs:
           ffmpeg -version | head -1
           ffprobe -version | head -1
 
+      # The Lit component tests (make test-static) need a Linux Chrome. Some self-hosted runners (a WSL
+      # host) only have the Windows chrome.exe, which web-test-runner cannot drive: download a Chrome for
+      # Testing into the runner's tool cache (kept between runs) when there is none and CHROME_PATH is unset.
+      - name: Ensure Chrome
+        run: |
+          if [ -z "${CHROME_PATH:-}" ] && ! command -v google-chrome >/dev/null && ! command -v chromium >/dev/null; then
+            chrome="$(npx --yes @puppeteer/browsers install chrome@stable --path "${RUNNER_TOOL_CACHE}/chrome-for-testing" | tail -n 1 | cut -d' ' -f2-)"
+            echo "CHROME_PATH=${chrome}" >> "$GITHUB_ENV"
+          fi
+
       - name: Test
         run: make test
 
