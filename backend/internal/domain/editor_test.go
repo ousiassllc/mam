@@ -75,12 +75,10 @@ func TestEditTimeline_Normalize(t *testing.T) {
 }
 
 func TestEditTimeline_NormalizeMakesACutHaveNoLengthAndDefaultsTheType(t *testing.T) {
-	tl := domain.EditTimeline{Clips: []domain.EditClip{
+	got, err := domain.EditTimeline{Clips: []domain.EditClip{
 		clip("a", 0, 2, "", 0),
 		clip("b", 0, 2, domain.TransitionCut, 1.5),
-	}}
-
-	got, err := tl.Normalize()
+	}}.Normalize()
 
 	require.NoError(t, err)
 	assert.Equal(t, domain.Transition{Type: domain.TransitionCut}, got.Clips[1].Transition)
@@ -154,18 +152,15 @@ func TestEditTimeline_NormalizeKeepsKindAndTidiesTheCaption(t *testing.T) {
 }
 
 func TestEditTimeline_NormalizeRejectsAnUnknownKindAndATooLongCaption(t *testing.T) {
-	bad := clip("a", 0, 2, domain.TransitionCut, 0)
-	bad.Kind = "trailer"
-	long := clip("a", 0, 2, domain.TransitionCut, 0)
-	long.Caption = strings.Repeat("あ", domain.MaxCaptionRunes+1)
-	ok := clip("a", 0, 2, domain.TransitionCut, 0)
-	ok.Caption = strings.Repeat("あ", domain.MaxCaptionRunes)
-
-	_, err := domain.EditTimeline{Clips: []domain.EditClip{bad}}.Normalize()
+	c := clip("a", 0, 2, domain.TransitionCut, 0)
+	c.Kind = "trailer"
+	_, err := domain.EditTimeline{Clips: []domain.EditClip{c}}.Normalize()
 	assert.ErrorIs(t, err, domain.ErrInvalidTimeline)
-	_, err = domain.EditTimeline{Clips: []domain.EditClip{long}}.Normalize()
+	c.Kind, c.Caption = "", strings.Repeat("あ", domain.MaxCaptionRunes+1)
+	_, err = domain.EditTimeline{Clips: []domain.EditClip{c}}.Normalize()
 	assert.ErrorIs(t, err, domain.ErrInvalidTimeline)
-	_, err = domain.EditTimeline{Clips: []domain.EditClip{ok}}.Normalize()
+	c.Caption = strings.Repeat("あ", domain.MaxCaptionRunes)
+	_, err = domain.EditTimeline{Clips: []domain.EditClip{c}}.Normalize()
 	assert.NoError(t, err)
 }
 
