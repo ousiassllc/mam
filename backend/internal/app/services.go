@@ -39,9 +39,10 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger) 
 	}()
 
 	// Leftovers of interrupted imports (tens of GB at most) go first, so the sweep below does not walk them.
+	// Both sweeps are best effort: the leftovers are harmless garbage, so a failure is only logged.
 	staleImports, err := bundlezip.RemoveStaleImports(cfg.AssetsDir())
 	if err != nil {
-		return nil, nil, fmt.Errorf("clean stale import directories: %w", err)
+		logger.Warn("clean stale import directories failed", "err", err)
 	}
 	if len(staleImports) > 0 {
 		logger.Warn("removed stale import directories", "count", len(staleImports))
@@ -51,7 +52,7 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger) 
 	// too) must not be mistaken for finished assets.
 	removed, err := fsutil.RemoveStaleTemp(cfg.AssetsDir())
 	if err != nil {
-		return nil, nil, fmt.Errorf("clean stale temp files: %w", err)
+		logger.Warn("clean stale temp files failed", "err", err)
 	}
 	if len(removed) > 0 {
 		logger.Warn("removed stale temp files", "count", len(removed))

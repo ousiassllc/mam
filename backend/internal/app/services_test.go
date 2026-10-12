@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -163,4 +164,30 @@ func TestBuildServices_AStartRemovesPreviewConversionsAKillLeftBehind(t *testing
 
 	assert.NoFileExists(t, stale)
 	assert.FileExists(t, done)
+}
+
+// The sweep of leftovers is best effort: a directory under assets that cannot be read is logged and
+// the start goes on (the user would otherwise be locked out until fixing the data directory by hand),
+// while the leftovers of the other directories are still removed (#680).
+func TestBuildServices_AStartSurvivesAFailedSweepOfLeftovers(t *testing.T) {
+	if runtime.GOOS == "windows" || os.Geteuid() == 0 {
+		t.Skip("permission bits do not restrict this user")
+	}
+	cfg := testConfig(t)
+	locked := filepath.Join(cfg.AssetsDir(), "a-locked")
+	require.NoError(t, os.MkdirAll(locked, 0o700))
+	require.NoError(t, os.Chmod(locked, 0o000))
+	t.Cleanup(func() { _ = os.Chmod(locked, 0o700) })
+	staleDir := filepath.Join(cfg.AssetsDir(), "b-proj")
+	require.NoError(t, os.MkdirAll(staleDir, 0o700))
+	stale := filepath.Join(staleDir, ".take.mp4.1.tmp")
+	require.NoError(t, os.WriteFile(stale, []byte("half"), 0o600))
+
+	logs := &syncBuffer{}
+	_, cleanup, err := buildServices(context.Background(), cfg, slog.New(slog.NewTextHandler(logs, nil)))
+	require.NoError(t, err)
+	defer cleanup()
+
+	assert.NoFileExists(t, stale)
+	assert.Contains(t, logs.String(), "clean stale temp files failed")
 }

@@ -85,24 +85,32 @@ func syncDir(dir string) {
 // regular file whose name starts with "." and ends with ".tmp" and returns their paths. That is what a
 // crash leaves behind: WriteAtomic's and CreateStagingTemp's files, and the ffmpeg outputs of media
 // (".<name>.ffmpeg.tmp", ".<name>.mix.tmp"). Call it at startup, when none of them is in use.
+//
+// The sweep is best effort: a file that cannot be removed or a directory that cannot be read does not
+// stop it. The returned error joins every such failure (nil when there was none), and the paths
+// returned are those that were removed regardless.
 func RemoveStaleTemp(root string) ([]string, error) {
 	var removed []string
-	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+	var failures []error
+	_ = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
-			if errors.Is(err, fs.ErrNotExist) {
-				return nil
+			if !errors.Is(err, fs.ErrNotExist) {
+				failures = append(failures, err)
 			}
-			return err
+			return nil // an unreadable directory is skipped; a failed root ends the walk
 		}
 		name := d.Name()
 		if d.IsDir() || !strings.HasPrefix(name, tempPrefix) || !strings.HasSuffix(name, tempSuffix) {
 			return nil
 		}
 		if err := os.Remove(path); err != nil { //nolint:gosec // root is the app-owned assets dir; only regular temp files are removed
-			return err
+			if !errors.Is(err, fs.ErrNotExist) {
+				failures = append(failures, err)
+			}
+			return nil
 		}
 		removed = append(removed, path)
 		return nil
 	})
-	return removed, err
+	return removed, errors.Join(failures...)
 }
