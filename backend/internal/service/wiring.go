@@ -176,7 +176,7 @@ func (w *wiring) wireGeneration() {
 	}
 	w.generations.gen = generation.New(generation.Deps{
 		Generations: w.r.gens, World: w.r.world, Notes: w.r.notes, Projects: w.c.projects, Policies: w.r.policies, FreeBytes: d.FreeBytes, Assets: w.c.assets, Chat: w.chat, Jobs: d.Jobs,
-		Repairs: w.r.repairs, LLM: d.LLM, Adapter: d.Models, AssetsDir: d.AssetsDir, Logger: w.logger, Judge: w.takeJudge, Brands: w.r.brands,
+		Repairs: w.r.repairs, LLM: d.LLM, Adapter: d.Models, AssetsDir: d.AssetsDir, Logger: w.logger, Judge: w.takeJudge, Brands: w.r.brands, Media: d.Media,
 		Notify: w.notifyProgress,
 	})
 	// Not resumable: a generation costs money, so an interrupted one is failed, not repeated.

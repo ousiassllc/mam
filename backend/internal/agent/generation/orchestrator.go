@@ -90,10 +90,10 @@ type Deps struct {
 	Chat  Chat
 	Jobs  Jobs
 	// LLM is the Reasoning LLM Adapter the Prompt Planner and the Art Director reason through.
-	LLM     llm.Completer
-	Adapter *modeladapter.Adapter
-	// AssetsDir is the root of stored files (config.AssetsDir).
-	AssetsDir string
+	LLM       llm.Completer
+	Adapter   *modeladapter.Adapter
+	AssetsDir string       // the root of stored files (config.AssetsDir)
+	Media     *media.Tools // reads the frame rate of every Take for its card; nil: the cards have none
 	// Judge, when set, judges every Take as soon as it is made (AI Video Judge, F-13).
 	Judge Judger
 	// FreeBytes reports the free disk space at a path; it defaults to fsutil.FreeBytes.
@@ -131,7 +131,7 @@ func New(d Deps) *Orchestrator {
 	o := &Orchestrator{
 		gens: d.Generations, projects: d.Projects, policies: d.Policies, assets: d.Assets, repairs: d.Repairs, brands: d.Brands, chat: d.Chat, jobs: d.Jobs, adapter: d.Adapter,
 		planner: promptplanner.New(d.LLM), art: artdirector.New(d.LLM),
-		files: fileStore{root: d.AssetsDir}, freeDisk: d.FreeBytes, judge: d.Judge, notify: d.Notify, logger: d.Logger,
+		files: fileStore{root: d.AssetsDir, media: d.Media}, freeDisk: d.FreeBytes, judge: d.Judge, notify: d.Notify, logger: d.Logger,
 	}
 	if o.freeDisk == nil {
 		o.freeDisk = fsutil.FreeBytes

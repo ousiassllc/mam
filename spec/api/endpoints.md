@@ -136,7 +136,7 @@ M1 の入出力契約（Issue #12）:
 **Take System の動作（M1）**
 
 - AI Pick: Judge が結果を保存するたびに、その Shot の Take のうち Judge 済みで除外されていないものから最良を `ai_pick` にする（PASS が FAIL より先、次に 4 スコアの平均、同点は古い方。Retry Policy の Minimum acceptance score を満たす Take が 1 本でもあれば、候補はその Take だけで、基準未達の Take は平均が高くても AI Pick にならない）。ユーザーが Selected にした Take があれば何もしない。AUTO MODE で Shot の Take Selection が AUTO のときは、PASS かつ Minimum acceptance score を満たした AI Pick を Shot の Take（`selected_take_id`）にもする（PASS でも基準未達なら AI Pick にはなるが採用しない）。DIRECTOR MODE、または Take Selection が MANUAL / LOCK の Shot では推奨のみで、確定はユーザー（`POST /takes/:id/select`）。変更があったときは Judge のチャット通知に「AI Pick: …」を追記する。
-- Take カード（`ref_type=take`）の本文 JSON は `video_url`（`/takes/:id/video`）・`poster_url`・`shot_id` を持ち、`mam-video-player` を埋め込む。Judge 要約と Take 状態（AI Pick / 採用 / 除外）はカードに載せない（スレッドは追記のみのため）。Judge が結果を保存するたびに別のテキスト発言として投稿される。カードには返信と Take 比較（`GET /shots/:id/takes`）への導線がある。
+- Take カード（`ref_type=take`）の本文 JSON は `video_url`（`/takes/:id/video`）・`poster_url`・`shot_id`・`fps`（カード作成時に ffprobe で 1 回読んだフレームレート。ffprobe がなければ省略）を持ち、`mam-video-player` を埋め込む（Templ は `fps` があれば `fps` 属性に渡す。なければプレイヤーが再生中に計測する）。Judge 要約と Take 状態（AI Pick / 採用 / 除外）はカードに載せない（スレッドは追記のみのため）。Judge が結果を保存するたびに別のテキスト発言として投稿される。カードには返信と Take 比較（`GET /shots/:id/takes`）への導線がある。
 - `GET /shots/:id/takes` は `mam-take-comparator`（`api-url` に `GET /api/v1/shots/:id/takes`）を置くページ。部分採用が確定するとコンポーネントが `partial-take-confirmed` を発火する。
 
 M2 の入出力契約（Issue #18 Branch）:
