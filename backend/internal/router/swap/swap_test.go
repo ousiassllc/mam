@@ -23,6 +23,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
 	"github.com/ousiassllc/mam/backend/internal/testenv"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/notelist"
 )
 
 func init() { gin.SetMode(gin.TestMode) }
@@ -100,8 +101,9 @@ func (a *app) createProject() string {
 	return strings.TrimPrefix(rec.Header().Get("HX-Redirect"), "/projects/")
 }
 
-// An action on one note answers with that note in full; the other notes are placeholders the page keeps,
-// so the text typed into their forms survives (#694).
+// An action on one note answers with that note in full; the other notes the page has are placeholders
+// the page keeps, so the text typed into their forms survives (#694). A note the page does not have
+// (added in another tab since) comes in full, not as a placeholder that would stay empty (#697).
 func TestNotes_AnActionOnOneNoteDoesNotCarryTheFormsOfTheOthers(t *testing.T) {
 	a := newApp(t)
 	base := "/projects/" + a.createProject() + "/notes"
@@ -118,12 +120,30 @@ func TestNotes_AnActionOnOneNoteDoesNotCarryTheFormsOfTheOthers(t *testing.T) {
 		}
 	}
 	require.NotEmpty(t, id)
+	// Another tab adds a note the first tab's page does not show.
+	rec = a.form(http.MethodPost, base, url.Values{"title": {"小道具"}, "content": {"赤い傘"}, "category": {"product"}})
+	require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
+	var unseen string
+	for _, m := range idRe.FindAllStringSubmatch(rec.Body.String(), -1) {
+		if m[1] != other && m[1] != id {
+			unseen = m[1]
+		}
+	}
+	require.NotEmpty(t, unseen)
 
+	// What the page reports: the hx-include of #note-list sends the on-page field of the notes it shows.
+	onPage := url.Values{notelist.OnPageField: {id, other}}
+	with := func(v url.Values) url.Values {
+		for k, vs := range onPage {
+			v[k] = vs
+		}
+		return v
+	}
 	answers := map[string]*httptest.ResponseRecorder{
-		"archive":   a.form(http.MethodDelete, "/notes/"+id, url.Values{}),
-		"unarchive": a.form(http.MethodPut, "/notes/"+id, url.Values{"archived": {"false"}}),
-		"save":      a.form(http.MethodPut, "/notes/"+id, url.Values{"title": {"舞台"}, "content": {"近未来の大阪"}, "category": {"tone"}}),
-		"restore":   a.form(http.MethodPost, "/notes/"+id+"/versions/1/restore", url.Values{}),
+		"archive":   a.htmx(http.MethodDelete, "/notes/"+id+"?"+onPage.Encode(), nil, ""),
+		"unarchive": a.form(http.MethodPut, "/notes/"+id, with(url.Values{"archived": {"false"}})),
+		"save":      a.form(http.MethodPut, "/notes/"+id, with(url.Values{"title": {"舞台"}, "content": {"近未来の大阪"}, "category": {"tone"}})),
+		"restore":   a.form(http.MethodPost, "/notes/"+id+"/versions/1/restore", with(url.Values{})),
 	}
 	for name, rec := range answers {
 		require.Equal(t, http.StatusOK, rec.Code, name+": "+rec.Body.String())
@@ -133,6 +153,8 @@ func TestNotes_AnActionOnOneNoteDoesNotCarryTheFormsOfTheOthers(t *testing.T) {
 		assert.NotContains(t, body, `id="note-content-`+other+`"`, name+": the form of another note is not replaced")
 		assert.NotContains(t, body, "落ち着いた口調", name)
 		assert.Contains(t, body, `<div id="note-item-`+other+`" hx-preserve></div>`, name+": the page keeps the other note")
+		assert.Contains(t, body, `id="note-content-`+unseen+`"`, name+": a note the page does not have is drawn in full")
+		assert.NotContains(t, body, `<div id="note-item-`+unseen+`" hx-preserve></div>`, name)
 	}
 	assert.Contains(t, answers["save"].Body.String(), `<section aria-label="トーン・口調"`, "a note that changed its category lands in its new group")
 }

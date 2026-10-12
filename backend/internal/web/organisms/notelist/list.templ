@@ -1,6 +1,7 @@
 package notelist
 
 import (
+	"slices"
 	"strconv"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -17,12 +18,17 @@ type Data struct {
 	// Series is true for the canonical notes of a Series (no promotion to the World State).
 	Series bool
 	Notes  []domain.NoteView
-	// Only is the note an action answers about ("" for the whole list). Every other note comes as an empty
-	// placeholder that htmx replaces with the note already on the page (hx-preserve), so the text typed into
-	// the form of another note survives the action (#694). The groups are still drawn from the server, so
-	// the note acted on lands in the group it now belongs to.
+	// Only is the note an action answers about ("" for the whole list). Every other note the page has (OnPage)
+	// comes as an empty placeholder that htmx replaces with the note already on the page (hx-preserve), so
+	// the text typed into the form of another note survives the action (#694). The groups are still drawn
+	// from the server, so the note acted on lands in the group it now belongs to.
 	Only string
+	// OnPage is the ids of the notes the page shows, sent with the action (OnPageField).
+	OnPage []string
 }
+
+// OnPageField is the name of the hidden field of each note that tells the server the page has it.
+const OnPageField = "on-page"
 
 // noteGroup is a heading of the list with its notes.
 type noteGroup struct {
@@ -138,7 +144,7 @@ templ noteAddForm(d Data, oob bool) {
 // notes other than that one are placeholders (see Data.Only).
 templ Groups(d Data) {
 	{{ groups, archived := groupNotes(d.Notes) }}
-	<div id="note-list" class="flex flex-col gap-6">
+	<div id="note-list" class="flex flex-col gap-6" hx-include={ "#note-list input[name='" + OnPageField + "']" }>
 		if len(groups) == 0 {
 			<p class="text-sm text-neutral-400">メモはまだありません。チャットで「覚えておいて」と伝えても追加できます。</p>
 		}
@@ -163,18 +169,28 @@ templ Groups(d Data) {
 	</div>
 }
 
-// noteWithHistory is a note card with the version history under it, or, when d.Only names another
-// note, the placeholder of the one already on the page.
+// keeps reports whether n is drawn as the placeholder of the note already on the page: an action named
+// a note (Only), n is another one, and the page said it has n. A note the page does not have (added
+// elsewhere since) is drawn in full, or it would stay an empty placeholder no element replaces (#697).
+func (d Data) keeps(n domain.NoteView) bool {
+	return d.Only != "" && d.Only != n.ID && slices.Contains(d.OnPage, n.ID)
+}
+
+// noteWithHistory is a note card with the version history under it, or the placeholder of the note the
+// page already has (see Data.Only).
 templ noteWithHistory(d Data, n domain.NoteView) {
-	if d.Only != "" && d.Only != n.ID {
+	if d.keeps(n) {
 		<div id={ "note-item-" + n.ID } hx-preserve></div>
 	} else {
 		@noteItem(n)
 	}
 }
 
+// noteItem carries the id of its note in a hidden field: the actions on any note include the fields of
+// the list (hx-include of #note-list), which tells the server which notes the page has.
 templ noteItem(n domain.NoteView) {
 	<div id={ "note-item-" + n.ID } class="flex flex-col gap-2">
+		<input type="hidden" name={ OnPageField } value={ n.ID }/>
 		@molecules.NoteCard(n)
 		<details class="pl-3 text-sm">
 			<summary class="cursor-pointer text-xs text-neutral-400">バージョン履歴</summary>
