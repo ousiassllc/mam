@@ -144,3 +144,22 @@ func TestBuildServices_ARestartResumesTheEditingFollowUpsLeftUndone(t *testing.T
 		return strings.Contains(out, "AUTO editing stage") && strings.Contains(out, projectID)
 	}, 15*time.Second, 10*time.Millisecond, "the AUTO chain tried the audio stage of the waiting Project; logs:\n%s", logs.String())
 }
+
+// A conversion killed halfway leaves .<name>.ffmpeg.tmp in .previews, which the size shown and the
+// limit on it never reach: the start removes it and keeps the finished previews (#667).
+func TestBuildServices_AStartRemovesPreviewConversionsAKillLeftBehind(t *testing.T) {
+	cfg := testConfig(t)
+	previews := filepath.Join(cfg.AssetsDir(), ".previews")
+	require.NoError(t, os.MkdirAll(previews, 0o700))
+	stale := filepath.Join(previews, ".x.mp4.ffmpeg.tmp")
+	done := filepath.Join(previews, "x.mp4")
+	require.NoError(t, os.WriteFile(stale, []byte("half"), 0o600))
+	require.NoError(t, os.WriteFile(done, []byte("done"), 0o600))
+
+	_, cleanup, err := buildServices(context.Background(), cfg, slog.New(slog.DiscardHandler))
+	require.NoError(t, err)
+	defer cleanup()
+
+	assert.NoFileExists(t, stale)
+	assert.FileExists(t, done)
+}
