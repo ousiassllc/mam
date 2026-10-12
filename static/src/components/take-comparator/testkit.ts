@@ -32,7 +32,7 @@ export const scored = { product: 65, acting: 100, camera: 85, continuity: 100, o
 export function body(
   takes: TakeScore[],
   partialUrl: string | null = '/shots/s1/takes/partial',
-  limits = { max_segments: 8, min_segment_seconds: 0.3 },
+  limits = { max_segments: 8, min_segment_seconds: 0.3, min_axis_score: 60 },
 ) {
   return { body: { shot_id: 's1', duration_seconds: 4, partial_url: partialUrl ?? undefined, limits, takes } };
 }

@@ -45,6 +45,30 @@ describe('mam-take-comparator: score table', () => {
     expect(el.querySelectorAll('mam-video-player').length).to.equal(2);
   });
 
+  it('shows a score in red only when it is below the min_axis_score the server gave', async () => {
+    // product 65 / acting 100 / camera 85 / continuity 100: Balanced (55) fails none, Max Quality (70) fails Product.
+    const redScores = async (min_axis_score: number) => {
+      stub = stubFetch({
+        [`GET ${API}`]: body([take('t1', 'A', { scores: scored })], undefined, {
+          max_segments: 8,
+          min_segment_seconds: 0.3,
+          min_axis_score,
+        }),
+      });
+      const el = await comparator();
+      const red = [...el.querySelectorAll('[data-take="t1"] [data-score] .text-red-300')].map(
+        (s) => s.parentElement!.dataset.score,
+      );
+      stub.restore();
+      return red;
+    };
+
+    expect(await redScores(55)).to.deep.equal([]);
+    expect(await redScores(70)).to.deep.equal(['product']);
+    expect(await redScores(65)).to.deep.equal([]); // reaching the minimum is a pass
+    expect(await redScores(90)).to.deep.equal(['product', 'camera']);
+  });
+
   it('says so when the Shot has no Take', async () => {
     stub = stubFetch({ [`GET ${API}`]: body([]) });
     const el = await comparator();

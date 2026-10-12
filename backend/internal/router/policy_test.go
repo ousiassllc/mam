@@ -242,3 +242,19 @@ func selectTake(t *testing.T, g *genApp, takeID string) {
 		return err
 	}))
 }
+
+// The score under which an axis is shown as low is the Judge's: the Quality Policy of the Project with
+// the user's override, never a number the component owns (#633).
+func TestTakeAPI_MinAxisScoreFollowsTheQualityPolicyAndTheUsersOverride(t *testing.T) {
+	ta := newTakeApp(t)
+	assert.InDelta(t, 55, ta.takes().Limits["min_axis_score"], 0, "Balanced")
+	for _, c := range []struct {
+		quality, override string
+		want              float64
+	}{{"max_quality", "", 70}, {"fast", "", 40}, {"max_quality", "62", 62}} {
+		rec := ta.form(http.MethodPut, "/projects/"+ta.project+"/quality-policy", url.Values{"quality_policy": {c.quality},
+			"max_retries": {""}, "max_generation_seconds": {""}, "min_acceptance_score": {""}, "min_axis_score": {c.override}})
+		require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+		assert.InDelta(t, c.want, ta.takes().Limits["min_axis_score"], 0, c.quality+" "+c.override)
+	}
+}

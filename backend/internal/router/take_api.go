@@ -56,6 +56,7 @@ type takeComparisonBody struct {
 type takeLimitsBody struct {
 	MaxSegments       int     `json:"max_segments"`
 	MinSegmentSeconds float64 `json:"min_segment_seconds"`
+	MinAxisScore      int     `json:"min_axis_score" doc:"An axis score below this is one the AI Video Judge fails: the Quality Policy of the Project with the user's override. The component shows such a score as low"`
 }
 
 func newTakeBody(v service.TakeView) takeBody {
@@ -100,7 +101,11 @@ func registerTakeAPI(api huma.API, services *service.Services) {
 			}
 			return nil, err
 		}
-		limits := takeLimitsBody{MaxSegments: domain.MaxTakeSegments, MinSegmentSeconds: domain.MinTakeSegmentSeconds}
+		policy, err := services.Policy.Policy(ctx, cmp.Project.ID)
+		if err != nil {
+			return nil, err
+		}
+		limits := takeLimitsBody{MaxSegments: domain.MaxTakeSegments, MinSegmentSeconds: domain.MinTakeSegmentSeconds, MinAxisScore: policy.Effective.MinAxisScore}
 		body := takeComparisonBody{ShotID: cmp.Shot.ID, DurationSeconds: cmp.Shot.Duration, Limits: limits, Takes: make([]takeBody, len(cmp.Takes))}
 		if cmp.PartialUse {
 			body.PartialURL = paths.Shot(cmp.Shot.ID, "takes", "partial")
