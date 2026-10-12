@@ -12,11 +12,11 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
-func noteListData(v service.NotesView, only string) notelist.Data {
+func noteListData(v service.NotesView, only string, onPage ...string) notelist.Data {
 	if v.Project.ID != "" {
-		return notelist.Data{BasePath: paths.Project(v.Project.ID, "notes"), Notes: v.Notes, Only: only}
+		return notelist.Data{BasePath: paths.Project(v.Project.ID, "notes"), Notes: v.Notes, Only: only, OnPage: onPage}
 	}
-	return notelist.Data{BasePath: paths.Series(v.Series.ID, "notes"), Series: true, Notes: v.Notes, Only: only}
+	return notelist.Data{BasePath: paths.Series(v.Series.ID, "notes"), Series: true, Notes: v.Notes, Only: only, OnPage: onPage}
 }
 
 func notesPageData(v service.NotesView) pages.NotesPageData {
@@ -135,7 +135,7 @@ func UpdateNote(svc *service.NoteService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusOK, notelist.Groups(noteListData(view, c.Param("id"))))
+		render(c, http.StatusOK, notelist.Groups(noteListData(view, c.Param("id"), notelist.OnPage(c.Request)...)))
 	}
 }
 
@@ -147,7 +147,7 @@ func ArchiveNote(svc *service.NoteService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusOK, notelist.Groups(noteListData(view, c.Param("id"))))
+		render(c, http.StatusOK, notelist.Groups(noteListData(view, c.Param("id"), notelist.OnPage(c.Request)...)))
 	}
 }
 
@@ -165,6 +165,6 @@ func RestoreNoteVersion(svc *service.NoteService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusOK, notelist.Groups(noteListData(view, c.Param("id"))))
+		render(c, http.StatusOK, notelist.Groups(noteListData(view, c.Param("id"), notelist.OnPage(c.Request)...)))
 	}
 }

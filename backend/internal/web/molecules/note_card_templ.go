@@ -26,7 +26,7 @@ func sourceNoteLabel(s domain.NoteSource) string {
 // NoteCard shows one note (F-31): its latest text in an edit form, the category and pin, the archive
 // button, and the version history with a restore button per earlier version. Saving with a changed
 // title or text appends a version; the category and pin do not. Every action answers with the note
-// list (#note-list) in which the other notes are placeholders (notelist.Data.Only).
+// list (#note-list) in which the other notes the page has are placeholders (notelist.Data.Only).
 func NoteCard(n domain.NoteView) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
