@@ -84,10 +84,7 @@ type genApp struct {
 
 var shotIDRe = regexp.MustCompile(`id="shot-([0-9a-f-]{36})"`)
 
-func newGenApp(t *testing.T, withModels bool) *genApp {
-	t.Helper()
-	return newGenAppOpts(t, withModels, genOpts{})
-}
+func newGenApp(t *testing.T, withModels bool) *genApp { return newGenAppOpts(t, withModels, genOpts{}) }
 
 // genOpts replaces parts of the generation app: the LLM, the video model and ffmpeg.
 type genOpts struct {
@@ -316,6 +313,9 @@ func TestContinue_TheAgentSeesTheFinalFrameOfTheTakeWhenFfmpegIsAvailable(t *tes
 	g := newGenAppOpts(t, true, genOpts{llm: spy, video: newMP4Video(t), media: &tools})
 	g.form(http.MethodPost, "/shots/"+g.shotID+"/generate", nil)
 	g.waitTakes(3)
+	require.Eventually(t, func() bool {
+		return strings.Count(g.get("/projects/"+g.project, false).Body.String(), ` fps="10"`) == 3
+	}, 30*time.Second, 10*time.Millisecond, "the cards hand the fps ffprobe read to the player")
 	require.Eventually(t, func() bool {
 		var state string
 		return g.db.Reader().QueryRow(`SELECT state FROM shot WHERE id = ?`, g.shotID).Scan(&state) == nil && state == "PLANNING"
