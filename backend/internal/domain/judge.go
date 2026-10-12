@@ -2,6 +2,7 @@ package domain
 
 import (
 	"encoding/json"
+	"slices"
 	"time"
 )
 
@@ -86,14 +87,7 @@ func JudgeDimensions() []JudgeDimension {
 }
 
 // Valid reports whether d is a known dimension.
-func (d JudgeDimension) Valid() bool {
-	for _, v := range JudgeDimensions() {
-		if v == d {
-			return true
-		}
-	}
-	return false
-}
+func (d JudgeDimension) Valid() bool { return slices.Contains(JudgeDimensions(), d) }
 
 // JudgeIssue is one problem of a Take at a time range. TimeRange is "2.1-2.8s"; Frames is the
 // first and last source frame number of the range.
