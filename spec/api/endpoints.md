@@ -232,24 +232,24 @@ M2 の入出力契約（Issue #15）:
 |---|---|---|---|
 | POST | `/projects/:id/notes` | Project メモ作成。Body `title`（任意、100 文字以内。空なら本文 1 行目の先頭 30 文字、超えれば省略記号付き）、`content`（必須、4000 文字以内）、`category`（任意、省略時は AI が分類）、`pinned`（任意）。title の超過、content の空・超過、不正な `category` は 422。チャットからは `POST /projects/:id/messages` の Command Interpreter が同じ処理を呼ぶ（`source=chat`）。作成後、State Extractor が昇格提案を非同期で生成する。応答（201）は一覧（`#note-list`）に、空にした追加フォームを `hx-swap-oob` で添える（更新・アーカイブ・バージョン復元の応答は一覧だけで、追加フォームの書きかけを消さない） | F-31 |
 | POST | `/series/:id/notes` | Series 正本メモ作成（Body と 422 は `POST /projects/:id/notes` と同じ。昇格提案は生成しない） | F-31, F-29 |
-| PUT | `/notes/:id` | メモ更新。`title`/`content` が変わる場合は新しい `note_version` を追記する（Project スコープは昇格提案を再生成）。`category`/`pinned`/`archived`（`false` でアーカイブ解除）は行を更新し、バージョンは増えない。Series 正本の更新はコピー済みの Episode へ伝播しない | F-31, F-28 |
-| DELETE | `/notes/:id` | メモをアーカイブ（`archived_at` を設定。以降の推論文脈には渡さない） | F-31 |
-| POST | `/notes/:id/versions/:versionNumber/restore` | 指定バージョンの内容を新しい `note_version` として追記して復元 | F-31, F-28 |
+| PUT | `/notes/:id` | メモ更新。`title`/`content` が変わる場合は新しい `note_version` を追記する（Project スコープは昇格提案を再生成）。`category`/`pinned`/`archived`（`false` でアーカイブ解除）は行を更新し、バージョンは増えない。Series 正本の更新はコピー済みの Episode へ伝播しない。応答は `#note-list` で、操作したメモだけを描き、ほかのメモは `hx-preserve` の空の置き場（`#note-item-<id>`）にして、ページ上のメモ（書きかけの入力を含む）を残す | F-31, F-28 |
+| DELETE | `/notes/:id` | メモをアーカイブ（`archived_at` を設定。以降の推論文脈には渡さない）。応答は `PUT /notes/:id` と同じ（操作したメモだけを描く） | F-31 |
+| POST | `/notes/:id/versions/:versionNumber/restore` | 指定バージョンの内容を新しい `note_version` として追記して復元。応答は `PUT /notes/:id` と同じ（操作したメモだけを描く） | F-31, F-28 |
 
 ### 2.11 Reference Library（M2）
 
 | Method | Path | 概要 | 対応機能 |
 |---|---|---|---|
 | POST | `/projects/:id/references` | 参照画像をライブラリへ登録。`multipart/form-data`: `file`（必須、jpg/png/webp/gif、20MB まで）、`kind`（必須、`character|product|location|style|lighting`）、`name`（必須、100文字以内）、`tags`（任意、カンマ・空白・読点区切り、最大10個・各30文字以内） | F-11 |
-| DELETE | `/projects/:id/references/:referenceId` | ライブラリから外す（画像と、すでに Shot に付いた参照は残す） | F-11 |
+| DELETE | `/projects/:id/references/:referenceId` | ライブラリから外す（画像と、すでに Shot に付いた参照は残す）。クエリ `q`・`kind`・`tag` で、外した後の一覧に掛ける絞り込みを受ける（一覧の「ライブラリから外す」ボタンが `hx-vals` で現在の条件を載せる） | F-11 |
 | POST | `/shots/:id/references` | ライブラリの画像を Shot の Reference Pack に追加（ピン留め）。Body `reference_id` | F-11 |
 
 入出力契約:
 
 - `GET /projects/:id/references`: `HX-Request` でフラグメント（`#reference-library`。検索フォームと一覧で、登録フォームは含まない）、なければフルページ（`reference_library_page`）。`q`（名前・タグの部分一致）、`kind`、`tag`（完全一致）は AND で絞り込み（`q` と `tag` は大文字小文字を区別しない。ASCII 以外も同様）、新しい登録順。不正な `kind` は 422
 - `POST /projects/:id/references`: 成功時は更新後の一覧（201）に、空にした登録フォームを `hx-swap-oob` で添える。ファイルなし・拡張子と内容の不一致・サイズ超過・不正な `kind`・名前が空か長すぎる・タグが多すぎる／長すぎるは 422（何も保存しない。サイズ超過は本文全体が 20 MB + 1 MiB 以内のときだけで、超えれば §0 の 413）、存在しない Project は 404
-- `DELETE /projects/:id/references/:referenceId`: 更新後の一覧（200。登録フォームは含まず、書きかけの入力を消さない）。当該 Project に無ければ 404
-- `POST /shots/:id/references`: 応答は更新後の Reference Pack の領域（`#reference-pack`。ピン留めした参照を含む。200。Inspector 全体は返さず、演出指示や Shot Spec の書きかけの入力を消さない）。同じ種別・同じ名前の参照があれば置き換える（Pack には Style と Lighting が各 1 枚なので、この 2 種別は名前に関係なく種別だけで置き換える。`domain.SameReference`、`spec/spec.md` §10.1）。`library_item` に登録 ID を記録する。Reference Pack の再生成ではピン留めした参照を残し、再生成しない。`reference_id` が空は 422、Shot または `reference_id`（同じ Project のもの）が無ければ 404、生成中・Repair 中・Judge 中の Shot（GENERATING / REPAIRING / JUDGING）は 409（`domain.ShotState.CanPinReference`。Shot Inspector は同じ述語で追加フォームを出さない）
+- `DELETE /projects/:id/references/:referenceId`: クエリ `q`・`kind`・`tag` の絞り込みを掛けた更新後の一覧（200。検索フォームにも同じ条件を描く。登録フォームは含まず、書きかけの入力を消さない）。当該 Project に無ければ 404
+- `POST /shots/:id/references`: 応答は更新後の Shot Inspector（`GET /shots/:id` と同じ、Reference Pack にピン留めした参照を含む。200）。同じ種別・同じ名前の参照があれば置き換える（Pack には Style と Lighting が各 1 枚なので、この 2 種別は名前に関係なく種別だけで置き換える。`domain.SameReference`、`spec/spec.md` §10.1）。`library_item` に登録 ID を記録する。Reference Pack の再生成ではピン留めした参照を残し、再生成しない。`reference_id` が空は 422、Shot または `reference_id`（同じ Project のもの）が無ければ 404、生成中・Repair 中・Judge 中の Shot（GENERATING / REPAIRING / JUDGING）は 409（`domain.ShotState.CanPinReference`。Shot Inspector は同じ述語で追加フォームを出さない）
 
 ### 2.12 Team Collaboration（M3）
 

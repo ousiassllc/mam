@@ -52,10 +52,10 @@ func UploadReference(svc *service.ReferenceService) gin.HandlerFunc {
 	}
 }
 
-// DeleteReference takes an image out of the Library (DELETE /projects/:id/references/:referenceId).
+// DeleteReference takes an image out of the Library (DELETE /projects/:id/references/:referenceId?q=&kind=&tag= keeps the filter).
 func DeleteReference(svc *service.ReferenceService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		view, err := svc.Remove(c.Request.Context(), c.Param("id"), c.Param("referenceId"))
+		view, err := svc.Remove(c.Request.Context(), c.Param("id"), c.Param("referenceId"), service.LibraryQuery{Q: c.Query("q"), Kind: c.Query("kind"), Tag: c.Query("tag")})
 		if err != nil {
 			toast(c, err)
 			return

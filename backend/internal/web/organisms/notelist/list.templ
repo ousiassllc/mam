@@ -1,4 +1,4 @@
-package organisms
+package notelist
 
 import (
 	"strconv"
@@ -6,16 +6,22 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
-// NoteListData is the state of the note list (notes_page): the notes of a Project or of a Series.
-type NoteListData struct {
+// Data is the state of the note list (notes_page): the notes of a Project or of a Series.
+type Data struct {
 	// BasePath is the notes resource of the scope: /projects/:id/notes or /series/:id/notes.
 	BasePath string
 	// Series is true for the canonical notes of a Series (no promotion to the World State).
 	Series bool
 	Notes  []domain.NoteView
+	// Only is the note an action answers about ("" for the whole list). Every other note comes as an empty
+	// placeholder that htmx replaces with the note already on the page (hx-preserve), so the text typed into
+	// the form of another note survives the action (#694). The groups are still drawn from the server, so
+	// the note acted on lands in the group it now belongs to.
+	Only string
 }
 
 // noteGroup is a heading of the list with its notes.
@@ -50,24 +56,24 @@ func groupNotes(notes []domain.NoteView) (groups []noteGroup, archived []domain.
 	return groups, archived
 }
 
-// NoteList is the notes screen body: the form that adds a note above the list of the notes. The list
+// View is the notes screen body: the form that adds a note above the list of the notes. The list
 // (#note-list) is the part every response replaces; the form is outside it, so an action on one note
-// never discards the text typed in the form (CreatedNoteList is the one response that carries a fresh form).
-templ NoteList(d NoteListData) {
+// never discards the text typed in the form (Created is the one response that carries a fresh form).
+templ View(d Data) {
 	<div id="note-view" class="flex flex-col gap-6">
 		@noteAddForm(d, false)
-		@NoteGroups(d)
+		@Groups(d)
 	</div>
 }
 
-// CreatedNoteList answers the creation of a note: the list, and the form emptied out of band.
-templ CreatedNoteList(d NoteListData) {
-	@NoteGroups(d)
+// Created answers the creation of a note: the list, and the form emptied out of band.
+templ Created(d Data) {
+	@Groups(d)
 	@noteAddForm(d, true)
 }
 
 // noteAddForm is the form that adds a note; oob makes it replace the one on the page.
-templ noteAddForm(d NoteListData, oob bool) {
+templ noteAddForm(d Data, oob bool) {
 	<form
 		id="note-add-form"
 		class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3"
@@ -87,7 +93,7 @@ templ noteAddForm(d NoteListData, oob bool) {
 				"id":        "note-new-title",
 				"name":      "title",
 				"type":      "text",
-				"maxlength": intText(domain.MaxNoteTitleRunes),
+				"maxlength": strconv.Itoa(domain.MaxNoteTitleRunes),
 			})
 		</label>
 		<label class="flex flex-col gap-1 text-xs text-neutral-400" for="note-new-content">
@@ -96,7 +102,7 @@ templ noteAddForm(d NoteListData, oob bool) {
 				"id":        "note-new-content",
 				"name":      "content",
 				"rows":      "4",
-				"maxlength": intText(domain.MaxNoteContentRunes),
+				"maxlength": strconv.Itoa(domain.MaxNoteContentRunes),
 				"required":  true,
 			}, "")
 		</label>
@@ -127,9 +133,10 @@ templ noteAddForm(d NoteListData, oob bool) {
 	</form>
 }
 
-// NoteGroups lists the notes by pin and category, the archived notes apart, and, per note, the version
-// history (version_history_panel) whose restore buttons answer with this list.
-templ NoteGroups(d NoteListData) {
+// Groups lists the notes by pin and category, the archived notes apart, and, per note, the version
+// history (version_history_panel) whose restore buttons answer with this list. With d.Only set, the
+// notes other than that one are placeholders (see Data.Only).
+templ Groups(d Data) {
 	{{ groups, archived := groupNotes(d.Notes) }}
 	<div id="note-list" class="flex flex-col gap-6">
 		if len(groups) == 0 {
@@ -139,7 +146,7 @@ templ NoteGroups(d NoteListData) {
 			<section aria-label={ g.Title } class="flex flex-col gap-2">
 				<h2 class="text-sm font-semibold text-neutral-200">{ g.Title }</h2>
 				for _, n := range g.Notes {
-					@noteWithHistory(n)
+					@noteWithHistory(d, n)
 				}
 			</section>
 		}
@@ -148,7 +155,7 @@ templ NoteGroups(d NoteListData) {
 				<summary class="cursor-pointer text-sm font-semibold text-neutral-300">{ "アーカイブ済み (" + strconv.Itoa(len(archived)) + ")" }</summary>
 				<div class="mt-2 flex flex-col gap-2">
 					for _, n := range archived {
-						@noteWithHistory(n)
+						@noteWithHistory(d, n)
 					}
 				</div>
 			</details>
@@ -156,14 +163,23 @@ templ NoteGroups(d NoteListData) {
 	</div>
 }
 
-// noteWithHistory is a note card with the version history under it.
-templ noteWithHistory(n domain.NoteView) {
-	<div class="flex flex-col gap-2">
+// noteWithHistory is a note card with the version history under it, or, when d.Only names another
+// note, the placeholder of the one already on the page.
+templ noteWithHistory(d Data, n domain.NoteView) {
+	if d.Only != "" && d.Only != n.ID {
+		<div id={ "note-item-" + n.ID } hx-preserve></div>
+	} else {
+		@noteItem(n)
+	}
+}
+
+templ noteItem(n domain.NoteView) {
+	<div id={ "note-item-" + n.ID } class="flex flex-col gap-2">
 		@molecules.NoteCard(n)
 		<details class="pl-3 text-sm">
 			<summary class="cursor-pointer text-xs text-neutral-400">バージョン履歴</summary>
 			<div class="mt-2">
-				@VersionHistoryPanel(VersionHistoryData{
+				@organisms.VersionHistoryPanel(organisms.VersionHistoryData{
 					DOMID: "note-history-" + n.ID, Title: "メモのバージョン", BasePath: paths.Note(n.ID),
 					Target: "#note-list", Entries: n.Versions,
 				})

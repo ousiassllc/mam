@@ -37,8 +37,9 @@ func sourceLabel(s domain.ReferenceSource) string {
 
 // ReferenceLibrary lists the reference images of the Project with a search form and the upload form
 // (F-11, spec/spec.md §10.1). Searching and removing an image replace the list with its search form
-// (#reference-library); the upload form is outside it, so they never discard the file and the text
-// being entered in it (UploadedReference is the one answer that carries a fresh form).
+// (#reference-library; the remove button carries the filter the list shows, so the list stays filtered);
+// the upload form is outside it, so they never discard the file and the text being entered in it
+// (UploadedReference is the one answer that carries a fresh form, and lists the whole Library).
 func ReferenceLibrary(d ReferenceLibraryData) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -143,7 +144,7 @@ func ReferenceLibraryList(d ReferenceLibraryData) templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(paths.Project(d.Project.ID, "references"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/reference_library.templ`, Line: 52, Col: 53}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/reference_library.templ`, Line: 53, Col: 53}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 		if templ_7745c5c3_Err != nil {
@@ -190,7 +191,7 @@ func ReferenceLibraryList(d ReferenceLibraryData) templ.Component {
 				var templ_7745c5c3_Var6 string
 				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue(string(k))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/reference_library.templ`, Line: 73, Col: 31}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/reference_library.templ`, Line: 74, Col: 31}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
 				if templ_7745c5c3_Err != nil {
@@ -213,7 +214,7 @@ func ReferenceLibraryList(d ReferenceLibraryData) templ.Component {
 				var templ_7745c5c3_Var7 string
 				templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(k.Label())
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/reference_library.templ`, Line: 73, Col: 79}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/reference_library.templ`, Line: 74, Col: 79}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 				if templ_7745c5c3_Err != nil {
@@ -276,7 +277,7 @@ func ReferenceLibraryList(d ReferenceLibraryData) templ.Component {
 				var templ_7745c5c3_Var8 string
 				templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue(paths.Project(d.Project.ID, "assets", it.AssetID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/reference_library.templ`, Line: 95, Col: 62}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/reference_library.templ`, Line: 96, Col: 62}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
 				if templ_7745c5c3_Err != nil {
@@ -289,7 +290,7 @@ func ReferenceLibraryList(d ReferenceLibraryData) templ.Component {
 				var templ_7745c5c3_Var9 string
 				templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue(it.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/reference_library.templ`, Line: 96, Col: 20}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/reference_library.templ`, Line: 97, Col: 20}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
 				if templ_7745c5c3_Err != nil {
@@ -310,7 +311,7 @@ func ReferenceLibraryList(d ReferenceLibraryData) templ.Component {
 				var templ_7745c5c3_Var10 string
 				templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(it.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/reference_library.templ`, Line: 102, Col: 50}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/reference_library.templ`, Line: 103, Col: 50}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 				if templ_7745c5c3_Err != nil {
@@ -323,7 +324,7 @@ func ReferenceLibraryList(d ReferenceLibraryData) templ.Component {
 				var templ_7745c5c3_Var11 string
 				templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(sourceLabel(it.Source))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/reference_library.templ`, Line: 105, Col: 31}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/reference_library.templ`, Line: 106, Col: 31}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 				if templ_7745c5c3_Err != nil {
@@ -341,7 +342,7 @@ func ReferenceLibraryList(d ReferenceLibraryData) templ.Component {
 					var templ_7745c5c3_Var12 string
 					templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(strings.Join(it.Tags, " / "))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/reference_library.templ`, Line: 107, Col: 41}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/reference_library.templ`, Line: 108, Col: 41}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 					if templ_7745c5c3_Err != nil {
@@ -354,6 +355,7 @@ func ReferenceLibraryList(d ReferenceLibraryData) templ.Component {
 				}
 				templ_7745c5c3_Err = atoms.Button(atoms.ToneDanger, "ライブラリから外す", templ.Attributes{
 					"hx-delete":  referenceURL(d.Project.ID, it.ID),
+					"hx-vals":    atoms.HxVals(map[string]string{"q": d.Q, "kind": d.Kind, "tag": d.Tag}),
 					"hx-target":  "#reference-library",
 					"hx-swap":    "outerHTML",
 					"hx-confirm": "ライブラリから外しますか？（画像と、Shot に付いた参照は残ります）",
@@ -408,7 +410,7 @@ func referenceUploadForm(d ReferenceLibraryData, oob bool) templ.Component {
 		var templ_7745c5c3_Var14 string
 		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.ResolveAttributeValue(paths.Project(d.Project.ID, "references"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/reference_library.templ`, Line: 130, Col: 53}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/reference_library.templ`, Line: 132, Col: 53}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var14)
 		if templ_7745c5c3_Err != nil {
@@ -448,7 +450,7 @@ func referenceUploadForm(d ReferenceLibraryData, oob bool) templ.Component {
 				var templ_7745c5c3_Var16 string
 				templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.ResolveAttributeValue(string(k))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/reference_library.templ`, Line: 154, Col: 31}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/reference_library.templ`, Line: 156, Col: 31}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var16)
 				if templ_7745c5c3_Err != nil {
@@ -461,7 +463,7 @@ func referenceUploadForm(d ReferenceLibraryData, oob bool) templ.Component {
 				var templ_7745c5c3_Var17 string
 				templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(k.Label())
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/reference_library.templ`, Line: 154, Col: 45}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/reference_library.templ`, Line: 156, Col: 45}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 				if templ_7745c5c3_Err != nil {

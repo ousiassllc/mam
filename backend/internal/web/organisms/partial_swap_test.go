@@ -11,6 +11,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/notelist"
 )
 
 func renderHTML(t *testing.T, c templ.Component) string {
@@ -23,14 +24,14 @@ func renderHTML(t *testing.T, c templ.Component) string {
 // A list and the form that adds to it share a screen. What an action on a row answers must not contain the form,
 // or the text and the file typed into it are replaced by an empty one (#686). Only a creation carries a fresh form.
 func TestListAnswersDoNotCarryTheAddForm(t *testing.T) {
-	notes := organisms.NoteListData{BasePath: "/projects/p1/notes", Notes: []domain.NoteView{{Note: domain.Note{ID: "n1"}}}}
+	notes := notelist.Data{BasePath: "/projects/p1/notes", Notes: []domain.NoteView{{Note: domain.Note{ID: "n1"}}}}
 	brand := organisms.BrandConstraintListData{ProjectID: "p1"}
 	library := organisms.ReferenceLibraryData{Project: domain.Project{ID: "p1"}}
 
 	cases := []struct {
 		name, list, form, created string
 	}{
-		{"notes", renderHTML(t, organisms.NoteGroups(notes)), "note-add-form", renderHTML(t, organisms.CreatedNoteList(notes))},
+		{"notes", renderHTML(t, notelist.Groups(notes)), "note-add-form", renderHTML(t, notelist.Created(notes))},
 		{"brand constraints", renderHTML(t, organisms.BrandConstraintItems(brand)), "brand-constraint-form", renderHTML(t, organisms.BrandConstraintAdded(brand))},
 		{"references", renderHTML(t, organisms.ReferenceLibraryList(library)), "reference-upload-form", renderHTML(t, organisms.UploadedReference(library))},
 	}
@@ -44,7 +45,7 @@ func TestListAnswersDoNotCarryTheAddForm(t *testing.T) {
 
 func TestListViewsCarryTheAddFormOutsideTheListThatIsReplaced(t *testing.T) {
 	for name, view := range map[string]struct{ html, list, form string }{
-		"notes":             {renderHTML(t, organisms.NoteList(organisms.NoteListData{BasePath: "/projects/p1/notes"})), "note-list", "note-add-form"},
+		"notes":             {renderHTML(t, notelist.View(notelist.Data{BasePath: "/projects/p1/notes"})), "note-list", "note-add-form"},
 		"brand constraints": {renderHTML(t, organisms.BrandConstraintList(organisms.BrandConstraintListData{ProjectID: "p1"})), "brand-constraint-list", "brand-constraint-form"},
 		"references":        {renderHTML(t, organisms.ReferenceLibrary(organisms.ReferenceLibraryData{Project: domain.Project{ID: "p1"}})), "reference-library", "reference-upload-form"},
 	} {
@@ -65,4 +66,15 @@ func TestCredentialRow_AnswersForItsProviderOnly(t *testing.T) {
 	assert.Contains(t, html, "鍵が正しくありません")
 	assert.NotContains(t, html, `id="credential-panel"`)
 	assert.NotContains(t, html, "runway")
+}
+
+// The remove button carries the filter of the list, so the answer is the same filtered list (#696).
+func TestReferenceLibraryList_RemoveButtonCarriesTheFilter(t *testing.T) {
+	html := renderHTML(t, organisms.ReferenceLibraryList(organisms.ReferenceLibraryData{
+		Project: domain.Project{ID: "p1"}, Q: "mio", Kind: "character", Tag: "hero",
+		Items: []domain.ReferenceItem{{ID: "r1", AssetID: "as1", Name: "Mio", Kind: domain.RefCharacter}},
+	}))
+
+	assert.Contains(t, html, `hx-delete="/projects/p1/references/r1"`)
+	assert.Contains(t, html, `{&#34;kind&#34;:&#34;character&#34;,&#34;q&#34;:&#34;mio&#34;,&#34;tag&#34;:&#34;hero&#34;}`)
 }

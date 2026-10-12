@@ -90,11 +90,11 @@ func TestReferenceLibrary_RegistersSearchesAndRemoves(t *testing.T) {
 	_, err = f.svc.Reference.Library(ctx, "nope", service.LibraryQuery{})
 	assert.ErrorIs(t, err, service.ErrNotFound)
 
-	view, err = f.svc.Reference.Remove(ctx, f.projectID, mio.ID)
+	view, err = f.svc.Reference.Remove(ctx, f.projectID, mio.ID, service.LibraryQuery{Kind: "product"})
 	require.NoError(t, err)
 	assert.Len(t, view.Items, 1)
 	assert.Equal(t, 1, f.count(t, `SELECT COUNT(*) FROM asset WHERE id = ?`, mio.AssetID), "the image stays")
-	_, err = f.svc.Reference.Remove(ctx, f.projectID, mio.ID)
+	_, err = f.svc.Reference.Remove(ctx, f.projectID, mio.ID, service.LibraryQuery{})
 	assert.ErrorIs(t, err, service.ErrNotFound)
 }
 
