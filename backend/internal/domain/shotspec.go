@@ -3,7 +3,6 @@ package domain
 import (
 	"encoding/json"
 	"fmt"
-	"math"
 	"strconv"
 	"strings"
 	"unicode"
@@ -98,15 +97,10 @@ func ParseTimeRange(s string) (from, to float64, err error) {
 	if to, err = strconv.ParseFloat(strings.TrimSpace(b), 64); err != nil {
 		return 0, 0, fmt.Errorf("time range %q: %w", s, err)
 	}
-	if !isFinite(from) || !isFinite(to) {
+	if !finite(from) || !finite(to) { // strconv.ParseFloat accepts "nan" and "inf"
 		return 0, 0, fmt.Errorf("time range %q is not finite", s)
 	}
 	return from, to, nil
-}
-
-// isFinite reports whether x is neither NaN nor ±Inf (strconv.ParseFloat accepts "nan" and "inf").
-func isFinite(x float64) bool {
-	return !math.IsNaN(x) && !math.IsInf(x, 0)
 }
 
 // Validate checks that the spec can drive a generation for a Shot of the given duration
