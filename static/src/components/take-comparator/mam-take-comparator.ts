@@ -45,16 +45,11 @@ export interface TakeScore {
   partial_usable: boolean;
 }
 
-/** The limits of GET /api/v1/shots/:id/takes: the composition's, and the lowest axis score the Judge lets a Take pass with. */
-interface TakesLimits extends SegmentLimits {
-  min_axis_score: number;
-}
-
 interface TakesBody {
   shot_id: string;
   duration_seconds?: number;
   partial_url?: string;
-  limits: TakesLimits;
+  limits: SegmentLimits & { min_axis_score: number };
   takes: TakeScore[];
 }
 
@@ -92,7 +87,7 @@ export class MamTakeComparator extends LitElement {
 
   private shotDuration = 0;
   private partialUrl = '';
-  private limits: TakesLimits | null = null;
+  private limits: TakesBody['limits'] | null = null;
   private loadToken = 0;
 
   protected override createRenderRoot(): HTMLElement {
@@ -296,13 +291,12 @@ export class MamTakeComparator extends LitElement {
         </tr>
       </thead>
       <tbody>
-        ${this.takes.map((t) => this.renderRow(t))}
+        ${this.takes.map((t) => this.renderRow(t, this.limits?.min_axis_score ?? 0))}
       </tbody>
     </table>`;
   }
 
-  private renderRow(t: TakeScore) {
-    const minAxis = this.limits?.min_axis_score ?? 0;
+  private renderRow(t: TakeScore, minAxis: number) {
     return html`<tr class="border-t border-neutral-800 ${t.status === 'rejected' ? 'opacity-60' : ''}" data-take=${t.id}>
       <th scope="row" class="px-2 py-2 font-medium">
         Take ${t.label}${t.adopted ? html` <span class="text-xs text-emerald-300" data-adopted>（使用中）</span>` : nothing}

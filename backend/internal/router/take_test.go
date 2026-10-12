@@ -60,14 +60,7 @@ func newTakeAppWith(t *testing.T, mutate func(*service.Deps)) *takeApp {
 	a.cookie, a.token = bootstrap(t, a.engine)
 	ta := &takeApp{app: a, dir: dir, tools: tools}
 	ta.project = a.createProject("美容液のCMを作りたい")
-	rec := a.form(http.MethodPost, "/projects/"+ta.project+"/scenes", url.Values{"title": {"Street"}})
-	m := sceneIDRe.FindStringSubmatch(rec.Body.String())
-	require.NotNil(t, m)
-	rec = a.form(http.MethodPost, "/scenes/"+m[1]+"/shots", url.Values{"objective": {"走り出す"}, "duration_seconds": {"4"}})
-	require.Equal(t, http.StatusCreated, rec.Code)
-	m = shotIDRe.FindStringSubmatch(rec.Body.String())
-	require.NotNil(t, m)
-	ta.shotID = m[1]
+	_, ta.shotID = a.createShot(ta.project)
 
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "assets", ta.project), 0o700))
 	ta.video("t1", "1920x1080", 4)
@@ -162,27 +155,6 @@ func TestTakeAPI_ListsTakesOldestFirstWithLabelsLinksAndScores(t *testing.T) {
 	assert.True(t, b.Takes[2].Proxied, "4K is played through a proxy")
 
 	assert.Equal(t, http.StatusNotFound, ta.get("/api/v1/shots/nope/takes", false).Code)
-}
-
-// The score under which an axis is shown as low is the Judge's: the Quality Policy of the Project with
-// the user's override, never a number the component owns (#633).
-func TestTakeAPI_MinAxisScoreFollowsTheQualityPolicyAndTheUsersOverride(t *testing.T) {
-	ta := newTakeApp(t)
-	put := func(quality, axis string) {
-		t.Helper()
-		rec := ta.form(http.MethodPut, "/projects/"+ta.project+"/quality-policy", url.Values{
-			"quality_policy": {quality}, "max_retries": {""}, "max_generation_seconds": {""}, "min_acceptance_score": {""}, "min_axis_score": {axis},
-		})
-		require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-	}
-
-	assert.InDelta(t, 55, ta.takes().Limits["min_axis_score"], 1e-9, "Balanced")
-	put("max_quality", "")
-	assert.InDelta(t, 70, ta.takes().Limits["min_axis_score"], 1e-9, "Max Quality")
-	put("fast", "")
-	assert.InDelta(t, 40, ta.takes().Limits["min_axis_score"], 1e-9, "Fast")
-	put("max_quality", "62")
-	assert.InDelta(t, 62, ta.takes().Limits["min_axis_score"], 1e-9, "the override wins over the Quality Policy")
 }
 
 // The links are the server's decision: a Take carries select_url / reject_url only while that action

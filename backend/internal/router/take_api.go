@@ -101,7 +101,11 @@ func registerTakeAPI(api huma.API, services *service.Services) {
 			}
 			return nil, err
 		}
-		limits := takeLimitsBody{MaxSegments: domain.MaxTakeSegments, MinSegmentSeconds: domain.MinTakeSegmentSeconds, MinAxisScore: cmp.MinAxisScore}
+		policy, err := services.Policy.Policy(ctx, cmp.Project.ID)
+		if err != nil {
+			return nil, err
+		}
+		limits := takeLimitsBody{MaxSegments: domain.MaxTakeSegments, MinSegmentSeconds: domain.MinTakeSegmentSeconds, MinAxisScore: policy.Effective.MinAxisScore}
 		body := takeComparisonBody{ShotID: cmp.Shot.ID, DurationSeconds: cmp.Shot.Duration, Limits: limits, Takes: make([]takeBody, len(cmp.Takes))}
 		if cmp.PartialUse {
 			body.PartialURL = paths.Shot(cmp.Shot.ID, "takes", "partial")

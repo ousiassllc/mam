@@ -120,7 +120,7 @@ func newWiring(deps Deps) *wiring {
 		generations: generations,
 		judges:      judges,
 		repairs:     &RepairService{core: c, repairs: r.repairs, judges: r.judges, generations: generations},
-		takes:       &TakeService{core: c, takes: r.takes, shots: r.gens, policies: r.policies, generations: generations, chatSvc: chat, tools: deps.Media},
+		takes:       &TakeService{core: c, takes: r.takes, shots: r.gens, generations: generations, chatSvc: chat, tools: deps.Media},
 		worlds:      &WorldService{core: c, world: r.world, versions: r.versions},
 	}
 }
