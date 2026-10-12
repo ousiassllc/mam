@@ -2,6 +2,7 @@ package domain
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -27,14 +28,7 @@ func BranchPointTypes() []BranchPointType {
 }
 
 // Valid reports whether t is a branch point type.
-func (t BranchPointType) Valid() bool {
-	for _, v := range BranchPointTypes() {
-		if t == v {
-			return true
-		}
-	}
-	return false
-}
+func (t BranchPointType) Valid() bool { return slices.Contains(BranchPointTypes(), t) }
 
 // MaxBranchNameRunes bounds the name of a Branch.
 const MaxBranchNameRunes = 100

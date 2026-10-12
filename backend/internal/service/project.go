@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"regexp"
 	"slices"
 	"strings"
 	"unicode/utf8"
@@ -104,8 +103,6 @@ type BriefForm struct {
 
 const briefFieldMaxRunes = 200
 
-var aspectRatioRe = regexp.MustCompile(`^\d{1,2}:\d{1,2}$`)
-
 // UpdateBrief validates and saves the edited Brief and records the change in the thread.
 // On a ValidationError the returned BriefView holds the unsaved input so the form can be
 // shown again with the user's values.
@@ -148,8 +145,8 @@ func validateBrief(b domain.Brief) error {
 			return invalid(string(f), "%d 文字以内で入力してください", briefFieldMaxRunes)
 		}
 	}
-	if b.AspectRatio != "" && !aspectRatioRe.MatchString(b.AspectRatio) {
-		return invalid(string(domain.BriefAspectRatio), "9:16 のように「幅:高さ」で入力してください")
+	if b.AspectRatio != "" && !domain.IsBriefAspectRatio(b.AspectRatio) {
+		return invalid(string(domain.BriefAspectRatio), "%s から選んでください", strings.Join(domain.BriefAspectRatios(), " / "))
 	}
 	if utf8.RuneCountInString(b.AdditionalInstruction) > domain.MaxMessageRunes {
 		return invalid("additional_instruction", "%d 文字以内で入力してください", domain.MaxMessageRunes)

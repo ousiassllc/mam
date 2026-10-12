@@ -36,8 +36,8 @@ func issuePenalty(s IssueSeverity) float64 {
 	return 0
 }
 
-// scoreAxis is the comparison axis a Judge dimension counts for; dimensions that are not listed
-// (prompt adherence, for one) leave the four scores alone.
+// scoreAxis is the comparison axis a Judge dimension counts for; prompt_adherence is not listed
+// because it counts for all four (ScoreTake).
 func scoreAxis(d JudgeDimension) (axis string, ok bool) {
 	switch d {
 	case DimProductAccuracy, DimProductGeometry, DimLogoTextAccuracy, DimObjectConsistency:
@@ -53,7 +53,8 @@ func scoreAxis(d JudgeDimension) (axis string, ok bool) {
 }
 
 // ScoreTake derives the four scores of a Take from the Issues of its Judge result. A
-// face_identity_drift Issue counts for Acting whatever dimension it names.
+// face_identity_drift Issue counts for Acting whatever dimension it names, and a prompt_adherence
+// Issue (the Take as a whole is off the prompt) counts for every axis.
 func ScoreTake(issues []JudgeIssue) TakeScores {
 	penalty := map[string]float64{}
 	for _, is := range issues {
@@ -63,6 +64,10 @@ func ScoreTake(issues []JudgeIssue) TakeScores {
 		}
 		if ok {
 			penalty[axis] += issuePenalty(is.Severity)
+		} else if is.Dimension == DimPromptAdherence {
+			for _, a := range []string{"product", "acting", "camera", "continuity"} {
+				penalty[a] += issuePenalty(is.Severity)
+			}
 		}
 	}
 	score := func(axis string) float64 { return max(100-penalty[axis], 0) }
