@@ -11,6 +11,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/shotinspector"
 )
 
 func renderHTML(t *testing.T, c templ.Component) string {
@@ -36,7 +37,7 @@ func TestShotInspector_SaysStatesByTheirLabels(t *testing.T) {
 		takes = append(takes, domain.Take{ID: "t-" + string(s), ShotID: "s1", Status: s})
 	}
 	for state, label := range stateLabels {
-		html := renderHTML(t, organisms.ShotInspector(organisms.ShotInspectorData{
+		html := renderHTML(t, shotinspector.View(shotinspector.Data{
 			Project: domain.Project{ID: "p"}, Shot: domain.Shot{ID: "s1", SceneID: "sc", State: state}, Takes: takes,
 		}))
 		assert.Contains(t, html, "· "+label, "state %s", state)
@@ -79,7 +80,7 @@ func TestBrandTemplatePanel_SaysEnforcementLevelsAsTheConstraintListDoes(t *test
 
 // The Judge verdict is said in capitals in the Inspector and the Trace, as the Editor Judge and Final QC do (#644).
 func TestJudgeVerdicts_AreSaidByTheirLabels(t *testing.T) {
-	inspector := renderHTML(t, organisms.ShotInspector(organisms.ShotInspectorData{
+	inspector := renderHTML(t, shotinspector.View(shotinspector.Data{
 		Project: domain.Project{ID: "p"}, Shot: domain.Shot{ID: "s1", SceneID: "sc"},
 		Takes:  []domain.Take{{ID: "t1", ShotID: "s1"}},
 		Judged: map[string]domain.JudgeResult{"t1": {Result: domain.JudgeFail, OverallConfidence: 0.5}},

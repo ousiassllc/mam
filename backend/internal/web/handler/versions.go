@@ -8,11 +8,12 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/shotinspector"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/worldstate"
 )
 
 // RestoreShotVersion restores the spec of a Shot to a saved version
-// (POST /shots/:id/versions/:versionNumber/restore) and answers with the Shot Inspector.
+// (POST /shots/:id/versions/:versionNumber/restore) and answers with the spec section, not the whole inspector.
 func RestoreShotVersion(svc *service.VersionService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		number, err := service.ParseVersionNumber(c.Param("versionNumber"))
@@ -25,7 +26,7 @@ func RestoreShotVersion(svc *service.VersionService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusOK, organisms.ShotInspector(inspectorData(view)))
+		render(c, http.StatusOK, shotinspector.SpecChanged(inspectorData(view)))
 	}
 }
 

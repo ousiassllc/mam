@@ -145,7 +145,7 @@ func TestShotSpec_PutEditsTheSpecAndLockedPartsAre423(t *testing.T) {
 
 	rec := g.form(http.MethodPut, "/shots/"+g.shotID+"/shot-spec", url.Values{"shot_spec": {spec}})
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-	assert.Contains(t, rec.Body.String(), `id="shot-inspector"`)
+	assert.Contains(t, rec.Body.String(), `id="shot-spec"`)
 	assert.Contains(t, rec.Body.String(), "walks")
 
 	rec = g.form(http.MethodPut, "/shots/"+g.shotID+"/shot-spec", url.Values{"shot_spec": {`{"shot_objective":"x"`}})

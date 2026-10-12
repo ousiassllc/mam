@@ -29,7 +29,8 @@ func worldVersionText(v int) string {
 	return "v" + strconv.Itoa(v)
 }
 
-func judgeTone(v domain.JudgeVerdict) atoms.BadgeTone {
+// JudgeTone is the badge tone of a Judge verdict.
+func JudgeTone(v domain.JudgeVerdict) atoms.BadgeTone {
 	if v == domain.JudgePass {
 		return atoms.BadgeOK
 	}
