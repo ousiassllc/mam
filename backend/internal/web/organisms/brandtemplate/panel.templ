@@ -1,4 +1,4 @@
-package organisms
+package brandtemplate
 
 import (
 	"strconv"
@@ -9,18 +9,18 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
-// BrandTemplatePanelData is the Brand Templates on the settings screen of a Project. Typed and Errors
+// Data is the Brand Templates on the settings screen of a Project. Typed and Errors
 // are what the user typed and why it was rejected.
-type BrandTemplatePanelData struct {
+type Data struct {
 	ProjectID string
 	Templates []domain.BrandTemplate
 	Typed     map[string]string
 	Errors    map[string]string
 }
 
-// BrandTemplateSelect is the optional choice of a Brand Template for a new Project or Episode; it
+// Select is the optional choice of a Brand Template for a new Project or Episode; it
 // renders nothing while there are no templates. The constraints are copied into the new Project.
-templ BrandTemplateSelect(id string, templates []domain.BrandTemplate) {
+templ Select(id string, templates []domain.BrandTemplate) {
 	if len(templates) > 0 {
 		<label class="flex flex-col gap-1 text-xs text-neutral-400" for={ id }>
 			Brand Template（制約をコピーして開始）
@@ -37,11 +37,28 @@ templ BrandTemplateSelect(id string, templates []domain.BrandTemplate) {
 	}
 }
 
-// BrandTemplatePanel saves the Project's Brand / Safety Constraints as a template and lists the
+// Panel saves the Project's Brand / Safety Constraints as a template and lists the
 // templates (F-23, M3). Applying a template copies its constraints into this Project; it never
 // links them, so later edits on either side do not reach the other.
-templ BrandTemplatePanel(d BrandTemplatePanelData) {
+// The list (#brand-template-list) is what the removal of a template replaces; the form that saves one
+// is outside it, so a removal never discards the name typed in it.
+templ Panel(d Data) {
 	<section id="brand-template-panel" class="flex flex-col gap-4">
+		@Items(d)
+		@brandTemplateForm(d, false)
+	</section>
+}
+
+// Saved answers the saving of a template (accepted or refused): the list, and the form
+// out of band, emptied or with the input and the error.
+templ Saved(d Data) {
+	@Items(d)
+	@brandTemplateForm(d, true)
+}
+
+// Items is the list of the Brand Templates.
+templ Items(d Data) {
+	<div id="brand-template-list">
 		if len(d.Templates) == 0 {
 			<p class="text-sm text-neutral-400">保存されたテンプレートはありません。</p>
 		} else {
@@ -71,7 +88,7 @@ templ BrandTemplatePanel(d BrandTemplatePanelData) {
 							@atoms.SmallButton(atoms.ToneNeutral, "削除", templ.Attributes{
 								"type":       "button",
 								"hx-delete":  paths.Project(d.ProjectID, "brand-templates", t.ID),
-								"hx-target":  "#brand-template-panel",
+								"hx-target":  "#brand-template-list",
 								"hx-swap":    "outerHTML",
 								"hx-confirm": "このテンプレートを削除します。適用済みの Project の制約は変わりません。よろしいですか？",
 							})
@@ -80,25 +97,40 @@ templ BrandTemplatePanel(d BrandTemplatePanelData) {
 				}
 			</ul>
 		}
-		<form class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3" hx-post={ paths.Project(d.ProjectID, "brand-templates") } hx-target="#brand-template-panel" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]">
-			<label for="brand-template-name" class="text-sm font-medium">この Project の制約をテンプレートとして保存</label>
-			@atoms.Input(atoms.FieldLg, "w-full", templ.Attributes{
-				"id":          "brand-template-name",
-				"name":        "name",
-				"type":        "text",
-				"maxlength":   intText(domain.MaxBrandTemplateNameRunes),
-				"value":       d.Typed["name"],
-				"placeholder": "例: ブランドA 標準",
+	</div>
+}
+
+// brandTemplateForm saves the Project's constraints as a template; oob makes it replace the one on the page.
+templ brandTemplateForm(d Data, oob bool) {
+	<form
+		id="brand-template-form"
+		class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3"
+		hx-post={ paths.Project(d.ProjectID, "brand-templates") }
+		hx-target="#brand-template-list"
+		hx-swap="outerHTML"
+		hx-sync="this:drop"
+		hx-disabled-elt="find button[type=submit]"
+		if oob {
+			hx-swap-oob="true"
+		}
+	>
+		<label for="brand-template-name" class="text-sm font-medium">この Project の制約をテンプレートとして保存</label>
+		@atoms.Input(atoms.FieldLg, "w-full", templ.Attributes{
+			"id":          "brand-template-name",
+			"name":        "name",
+			"type":        "text",
+			"maxlength":   strconv.Itoa(domain.MaxBrandTemplateNameRunes),
+			"value":       d.Typed["name"],
+			"placeholder": "例: ブランドA 標準",
+		})
+		if msg := d.Errors["name"]; msg != "" {
+			<p class="text-sm text-red-300" role="alert">{ msg }</p>
+		}
+		<p class="text-xs text-neutral-400">保存するのは現在の制約のコピーです。以後この Project の制約を変えてもテンプレートは変わらず、テンプレートを削除しても適用済みの Project には影響しません。</p>
+		<div>
+			@atoms.Button(atoms.TonePrimary, "テンプレートを保存", templ.Attributes{
+				"type": "submit",
 			})
-			if msg := d.Errors["name"]; msg != "" {
-				<p class="text-sm text-red-300" role="alert">{ msg }</p>
-			}
-			<p class="text-xs text-neutral-400">保存するのは現在の制約のコピーです。以後この Project の制約を変えてもテンプレートは変わらず、テンプレートを削除しても適用済みの Project には影響しません。</p>
-			<div>
-				@atoms.Button(atoms.TonePrimary, "テンプレートを保存", templ.Attributes{
-					"type": "submit",
-				})
-			</div>
-		</form>
-	</section>
+		</div>
+	</form>
 }
