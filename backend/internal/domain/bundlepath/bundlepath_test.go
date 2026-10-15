@@ -21,6 +21,15 @@ func TestValidID_AcceptsOnlyIDsSafeAsDirectoryHeaderAndURL(t *testing.T) {
 	}
 }
 
+func TestValidShape_AcceptsReservedNamesButNotOtherShapes(t *testing.T) {
+	for _, id := range []string{"p1", "nul", "Reviews", "COM1", strings.Repeat("x", 64)} {
+		assert.True(t, bundlepath.ValidShape(id), id)
+	}
+	for _, id := range []string{"", "a/b", "a.b", "a b", "日本語", strings.Repeat("x", 65)} {
+		assert.False(t, bundlepath.ValidShape(id), "%q", id)
+	}
+}
+
 func TestValidFilePath_AcceptsOrdinaryNamesBelowTheProject(t *testing.T) {
 	for _, p := range []string{"p/a.mp4", "p/takes/t1.mp4", "p/a b.png", "p/.hidden", "p/console.txt", "p/com0", "p/com10.mp4", "p/nul_1.mp4", "p/日本語.png", "p/a.b.c", "p/console/a.mp4"} {
 		assert.True(t, bundlepath.ValidFilePath("p", p), p)

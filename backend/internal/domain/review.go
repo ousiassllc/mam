@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"github.com/ousiassllc/mam/backend/internal/domain/bundlepath"
 )
 
 // Team Collaboration (spec/spec.md §27.1): review and approval by handing files over. The owner
@@ -134,7 +136,7 @@ func (m ReviewManifest) Validate() error {
 		return invalidReview("MAM のレビューパッケージではありません")
 	case m.Version != ReviewVersion:
 		return invalidReview("対応していないパッケージのバージョンです（%d）", m.Version)
-	case !validReviewID(m.ReviewID):
+	case !bundlepath.ValidShape(m.ReviewID):
 		return invalidReview("review_id が正しくありません")
 	case strings.TrimSpace(m.ProjectName) == "" || tooLong(m.ProjectName, maxReviewProjectRunes):
 		return invalidReview("project_name が正しくありません")
@@ -147,11 +149,6 @@ func (m ReviewManifest) Validate() error {
 	}
 	return nil
 }
-
-var reviewIDPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
-
-// validReviewID reports whether id can be stored and shown: a short token of letters, digits, "-" and "_".
-func validReviewID(id string) bool { return reviewIDPattern.MatchString(id) }
 
 // HasReviewVideoSignature reports whether head (the first bytes of the file) is the container that
 // the entry name says: an MP4 has "ftyp" at offset 4, a WebM starts with the EBML header.
@@ -200,7 +197,7 @@ func (r ReviewResponse) Validate() error {
 		return invalidReview("MAM のレビュー応答ではありません")
 	case r.Version != ReviewVersion:
 		return invalidReview("対応していない応答のバージョンです（%d）", r.Version)
-	case !validReviewID(r.ResponseID) || !validReviewID(r.ReviewID):
+	case !bundlepath.ValidID(r.ResponseID) || !bundlepath.ValidShape(r.ReviewID): // response_id is a row id a bundle import checks with ValidID
 		return invalidReview("response_id / review_id が正しくありません")
 	case !r.Decision.Valid():
 		return invalidReview("decision が正しくありません")

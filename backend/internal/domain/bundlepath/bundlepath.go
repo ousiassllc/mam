@@ -51,8 +51,12 @@ var reservedID = regexp.MustCompile(`(?i)^(` + ReviewInboxDir + `|con|prn|aux|nu
 // ValidID reports whether id is safe as the Project's directory name, a file-path part, a header value and a
 // URL part: a UUID or [A-Za-z0-9_-]{1,64}, but not ReviewInboxDir or a Windows device name (CON, NUL, COM1, ...),
 // in any letter case (NTFS and APFS ignore it: "Reviews" is assets/reviews/). It is the one limit on an ID that reaches a URL.
-func ValidID(id string) bool {
-	if id == "" || len(id) > 64 || reservedID.MatchString(id) {
+func ValidID(id string) bool { return !reservedID.MatchString(id) && ValidShape(id) }
+
+// ValidShape reports whether id is [A-Za-z0-9_-]{1,64}, reserved names or not: the limit on an ID that is
+// stored and shown but does not name a directory of its own.
+func ValidShape(id string) bool {
+	if id == "" || len(id) > 64 {
 		return false
 	}
 	for _, r := range id {
