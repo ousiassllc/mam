@@ -258,3 +258,38 @@ func TestOpen_AcceptsOrdinaryFilePaths(t *testing.T) {
 
 	require.NoError(t, err)
 }
+
+// pathsData writes a data.json whose asset table names the file paths.
+func pathsData(paths ...string) func(io.Writer) {
+	return func(w io.Writer) {
+		rows := make([]string, len(paths))
+		for i, p := range paths {
+			rows[i] = fmt.Sprintf(`{"id":"a%d","file_path":%q}`, i, p)
+		}
+		_, _ = fmt.Fprintf(w, `{"project_id":%q,"tables":[{"name":"asset","rows":[%s]}]}`, limitsProjectID, strings.Join(rows, ","))
+	}
+}
+
+// Two paths that one file of a case-insensitive file system (Windows, macOS) would hold, or a file that is
+// also a directory, are refused before anything is extracted (#735).
+func TestOpen_RefusesFilePathsThatCollide(t *testing.T) {
+	cases := map[string][]string{
+		"letter case only":   {"p1/x.mp4", "p1/X.mp4"},
+		"file and directory": {"p1/x", "p1/x/y.mp4"},
+	}
+	for name, paths := range cases {
+		t.Run(name, func(t *testing.T) {
+			_, err := openBytes(t, zipOf(t, manifestJSON(), pathsData(paths...)))
+
+			requireInvalid(t, err)
+			assert.Contains(t, err.Error(), "同じ名前")
+		})
+	}
+}
+
+func TestOpen_AcceptsDistinctFilePaths(t *testing.T) {
+	a, err := openBytes(t, zipOf(t, manifestJSON(), pathsData("p1/x.mp4", "p1/xy/z.mp4")))
+
+	require.NoError(t, err)
+	assert.Empty(t, a.files, "nothing in the ZIP is named by the data")
+}

@@ -64,6 +64,9 @@ func Open(src io.ReaderAt, size int64) (*Archive, error) {
 			return nil, invalid("バンドルに不正なファイルパスがあります")
 		}
 	}
+	if bundlepath.Conflict(named) {
+		return nil, invalid("バンドルに同じ名前のファイル（大文字小文字の違いだけのもの、またはファイルとフォルダ）が複数あります")
+	}
 	files, err := listFiles(zr, data.ProjectID, named)
 	if err != nil {
 		return nil, err

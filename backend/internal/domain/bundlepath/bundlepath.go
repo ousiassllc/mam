@@ -61,3 +61,31 @@ func ValidID(id string) bool {
 	}
 	return true
 }
+
+// Conflict reports whether two of the paths cannot both be written to a case-insensitive file system
+// (NTFS, APFS): two spellings that differ only in letter case ("a.mp4" and "A.mp4" would be one file),
+// or a path that is a file and also a directory above another path ("a" and "a/b"). The same spelling
+// twice is one file, not a conflict. Each path is expected to have passed ValidFilePath.
+func Conflict(paths []string) bool {
+	files := make(map[string]string, len(paths)) // lower-cased path -> its spelling
+	dirs := map[string]bool{}
+	for _, p := range paths {
+		key := strings.ToLower(p)
+		if spelling, ok := files[key]; ok {
+			if spelling != p {
+				return true
+			}
+			continue
+		}
+		files[key] = p
+		for d := path.Dir(key); d != "."; d = path.Dir(d) {
+			dirs[d] = true
+		}
+	}
+	for key := range files {
+		if dirs[key] {
+			return true
+		}
+	}
+	return false
+}
