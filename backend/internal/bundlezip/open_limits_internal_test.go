@@ -227,3 +227,34 @@ func TestOpen_RefusesTheProjectIDOfTheReviewInboxAndWindowsDeviceNames(t *testin
 		})
 	}
 }
+
+// A file_path whose element Windows cannot create (a device name, * ? " < > |, a control character, a trailing dot
+// or space) is refused by Open with the same 422 as a path outside the Project, whichever table names it (#725).
+func TestOpen_RefusesFilePathsWindowsCannotCreate(t *testing.T) {
+	for _, filePath := range []string{"p1/NUL.mp4", "p1/a/con", "p1/aux.txt", "p1/x*y", "p1/a<b", "p1/a.", "p1/a /b"} {
+		for _, table := range []string{"asset", "take", "export"} {
+			t.Run(table+"/"+filePath, func(t *testing.T) {
+				src := zipOf(t, manifestJSON(), func(w io.Writer) {
+					row, err := json.Marshal(map[string]any{"id": "r1", "file_path": filePath})
+					require.NoError(t, err)
+					_, _ = fmt.Fprintf(w, `{"project_id":%q,"tables":[{"name":%q,"rows":[%s]}]}`, limitsProjectID, table, row)
+				})
+
+				_, err := openBytes(t, src)
+
+				requireInvalid(t, err)
+				assert.Contains(t, err.Error(), "不正なファイルパス")
+			})
+		}
+	}
+}
+
+func TestOpen_AcceptsOrdinaryFilePaths(t *testing.T) {
+	src := zipOf(t, manifestJSON(), func(w io.Writer) {
+		_, _ = fmt.Fprintf(w, `{"project_id":%q,"tables":[{"name":"asset","rows":[{"id":"a1","file_path":"p1/console.mp4"}]}]}`, limitsProjectID)
+	})
+
+	_, err := openBytes(t, src)
+
+	require.NoError(t, err)
+}
