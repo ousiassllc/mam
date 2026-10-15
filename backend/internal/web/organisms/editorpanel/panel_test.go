@@ -1,4 +1,4 @@
-package organisms_test
+package editorpanel_test
 
 import (
 	"context"
@@ -6,11 +6,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/a-h/templ"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
-	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/editorpanel"
 )
 
 // roughCutButton is the opening tag of the Rough Cut button of the panel.
@@ -25,7 +26,7 @@ func TestEditorPanel_RoughCutButtonFollowsTheStatesTheServerEditsIn(t *testing.T
 	for _, state := range domain.ProjectStates() {
 		for _, timelineID := range []string{"", "tl1"} {
 			var sb strings.Builder
-			require.NoError(t, organisms.EditorActions(organisms.EditorPanelData{
+			require.NoError(t, editorpanel.Actions(editorpanel.Data{
 				Project:    domain.Project{ID: "p", State: state},
 				TimelineID: timelineID,
 			}).Render(context.Background(), &sb))
@@ -39,10 +40,10 @@ func TestEditorPanel_RoughCutButtonFollowsTheStatesTheServerEditsIn(t *testing.T
 // exportButton is the opening tag of the export button of the panel.
 var exportButton = regexp.MustCompile(`<button[^>]*type="submit"[^>]*>\s*書き出す`)
 
-func renderPanelActions(t *testing.T, d organisms.EditorPanelData) string {
+func renderPanelActions(t *testing.T, d editorpanel.Data) string {
 	t.Helper()
 	var sb strings.Builder
-	require.NoError(t, organisms.EditorActions(d).Render(context.Background(), &sb))
+	require.NoError(t, editorpanel.Actions(d).Render(context.Background(), &sb))
 	return sb.String()
 }
 
@@ -69,7 +70,7 @@ func TestEditorPanel_ExportButtonFollowsWhatTheServerExports(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			body := renderPanelActions(t, organisms.EditorPanelData{
+			body := renderPanelActions(t, editorpanel.Data{
 				Project: domain.Project{ID: "p", State: tc.state}, BranchID: "b1", TimelineID: "tl2", Audio: tc.audio, CanRender: tc.render,
 			})
 			button := exportButton.FindString(body)
@@ -109,7 +110,7 @@ func TestEditorPanel_FinalQCButtonFollowsTheAudioOfTheTrunk(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			body := renderPanelActions(t, organisms.EditorPanelData{
+			body := renderPanelActions(t, editorpanel.Data{
 				Project: domain.Project{ID: "p", State: domain.StateAudio}, BranchID: tc.branch, TimelineID: "tl1", Audio: tc.own, TrunkAudio: tc.trunk, CanRender: true,
 			})
 			button := finalQCButton.FindString(body)
@@ -123,11 +124,62 @@ func TestEditorPanel_FinalQCButtonFollowsTheAudioOfTheTrunk(t *testing.T) {
 // The audio button needs an Edit Timeline in the series shown: the server answers 404 without one.
 func TestEditorPanel_AudioButtonNeedsAnEditOfTheSeries(t *testing.T) {
 	for _, timelineID := range []string{"", "tl1"} {
-		body := renderPanelActions(t, organisms.EditorPanelData{
+		body := renderPanelActions(t, editorpanel.Data{
 			Project: domain.Project{ID: "p", State: domain.StateAudio}, BranchID: "b1", TimelineID: timelineID, CanRender: true,
 		})
 		button := audioButton.FindString(body)
 		require.NotEmpty(t, button)
 		assert.Equal(t, timelineID == "", disabledAttr.MatchString(button), "timeline %q: %s", timelineID, button)
 	}
+}
+
+// The stage actions and the reload after a timeline save replace the regions that show a result, never the
+// inputs: the export options chosen and the voice sample being picked survive them (#731).
+func TestEditorPanel_ActionsFragmentCarriesNoInputOfTheForms(t *testing.T) {
+	d := editorpanel.Data{
+		Project: domain.Project{ID: "p", State: domain.StateReady}, TimelineID: "tl1", CanRender: true,
+		Audio: &domain.AudioTimelineVersion{Timeline: domain.AudioTimeline{EditTimelineID: "tl1"}}, Voices: []domain.VoiceClone{{Speaker: "ユイ"}},
+		Exports: []domain.Export{{ID: "e1", AspectRatio: "16:9", Resolution: "1080p", Codec: "h264"}},
+	}
+	body := renderFragment(t, editorpanel.ActionsFragment(d))
+
+	for _, input := range []string{`name="aspect_ratio"`, `name="resolution"`, `name="codec"`, `name="speaker"`, `name="sample"`, `id="editor-actions"`, `id="editor-voice-form"`} {
+		assert.NotContains(t, body, input)
+	}
+	for _, region := range []string{"editor-edit-stage", "editor-audio-stage", "editor-voices", "editor-final-qc", "editor-export-submit", "editor-exports", "project-state"} {
+		assert.Regexp(t, `<[^>]*hx-swap-oob="true"[^>]*id="`+region+`"|<[^>]*id="`+region+`"[^>]*hx-swap-oob="true"`, body, region)
+	}
+	assert.Contains(t, body, "ユイ（クローン音声）")
+	assert.Contains(t, body, "16:9 / 1080p / h264")
+	assert.False(t, disabledAttr.MatchString(exportButton.FindString(body)), "the export button follows the state")
+}
+
+// The panel holds the inputs outside what the answers replace; no button or form targets #editor-actions.
+func TestEditorPanel_InputsAreOutsideTheRegionsThatAreReplaced(t *testing.T) {
+	body := renderPanelActions(t, editorpanel.Data{Project: domain.Project{ID: "p"}, Defaults: domain.ExportOptions{AspectRatio: "9:16", Resolution: "2160p", Codec: "h265"}})
+
+	for _, input := range []string{`name="aspect_ratio"`, `name="resolution"`, `name="codec"`, `name="speaker"`, `name="sample"`} {
+		assert.Contains(t, body, input)
+	}
+	assert.Contains(t, body, `hx-swap="none"`)
+	assert.NotContains(t, body, `hx-target="#editor-actions"`)
+	assert.NotContains(t, body, "hx-swap-oob")
+	assert.Regexp(t, `<option value="9:16" selected`, body)
+	assert.NotRegexp(t, `<option value="9:16"[^>]*hx-swap-oob`, body)
+}
+
+// A cloned voice empties the voice form, out of band; every other stage leaves it.
+func TestEditorPanel_VoiceClonedEmptiesTheVoiceForm(t *testing.T) {
+	body := renderFragment(t, editorpanel.VoiceCloned(editorpanel.Data{Project: domain.Project{ID: "p"}}))
+
+	assert.Regexp(t, `<form[^>]*hx-swap-oob="true"[^>]*id="editor-voice-form"|<form[^>]*id="editor-voice-form"[^>]*hx-swap-oob="true"`, body)
+	assert.Contains(t, body, `name="sample"`)
+	assert.Contains(t, body, `id="editor-voices"`)
+}
+
+func renderFragment(t *testing.T, c templ.Component) string {
+	t.Helper()
+	var sb strings.Builder
+	require.NoError(t, c.Render(context.Background(), &sb))
+	return sb.String()
 }

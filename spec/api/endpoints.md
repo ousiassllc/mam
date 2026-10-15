@@ -156,12 +156,12 @@ M2 の入出力契約（Issue #18 Branch）:
 | POST | `/projects/:id/final-qc` | Final QC 実行 | F-26 |
 | POST | `/projects/:id/export` | 最終書き出し実行（Aspect Ratio/解像度/コーデック指定）。Body `branch_id`（省略時=主系列トランク）で対象Branchを指定 | F-26 |
 
-M1（F-18 Simple / F-20 簡易版 / F-26。範囲は `spec/requirements/functional.md` §3.6）の実装は次のとおり。アクションルートは HTML フラグメント（`#editor-actions`）を返し、業務エラーは Toast（§0）で返す。
+M1（F-18 Simple / F-20 簡易版 / F-26。範囲は `spec/requirements/functional.md` §3.6）の実装は次のとおり。アクションルートは各ステージの結果の領域（`#editor-edit-stage`・`#editor-audio-stage`・`#editor-voices`・`#editor-final-qc`・`#editor-export-submit`・`#editor-exports`。いずれも `hx-swap-oob`）と状態バッジの HTML フラグメントを返し、書き出しの選択（Aspect Ratio・解像度・コーデック）と声のクローンのフォーム（話者名・サンプル）は差し替えない（別ステージの操作・タイムライン保存の再読込で書きかけの入力が消えない）。声のクローンの成功だけは、そのフォームを空にして返す。業務エラーは Toast（§0）で返す。
 
 | Method | Path | M1 の挙動 |
 |---|---|---|
 | GET | `/projects/:id/edit`（別名 `/projects/:id/export`） | 編集画面（`mam-timeline-editor` と Rough Cut〜書き出しの各ステージのボタン）。補助ビュー（別ページ）。チャットの［⋯］メニューから到達 |
-| GET | `/projects/:id/edit/actions` | ステージボタン部分のフラグメント。`timeline-updated` イベントで再取得される |
+| GET | `/projects/:id/edit/actions` | 各ステージの結果の領域のフラグメント（OOB）。`timeline-updated` イベントで再取得される |
 | POST | `/projects/:id/edit/rough-cut` | 各 Shot の Selected Take（ファイルのあるもの）から Rough Cut を作り、Project を EDITING にして Edit Timeline の第1版を保存する。Selected Take のない Shot がある・Shot がない場合は 422。EDITING へ進めない状態（承認待ち等）は 409。`HX-Trigger: timeline-reload` を返す（`mam-timeline-editor` が読み直す）。フォーム／JSON の `branch_id`（省略時=主系列トランク）でその Branch の Shot 列から Rough Cut を作り、Branch ごとに独立した版として保存する。Production Template が評価軸に持つ Pace / Hook / Retention / CTA Timing / Caption は Editor Agent が作成時に反映し、内容をチャットに投稿する。Reshoot Loop で追加済みの Shot は元の Shot の後に残る |
 | PUT | `/edit-timelines/:id` | JSON `{"clips":[{"shot_id","take_id","in_point","out_point","transition":{"type","seconds"}}]}` を次の版として保存し 204。`:id` は編集画面が表示していた版で、それより新しい版があれば 409（古い画面での上書き防止）。クリップ 0 件・クリップが 200 個（`MaxClips`）を超える・最短 0.5 秒未満・Take の長さ超過・別 Shot の Take・不明な Transition・`cut` 以外の Transition の長さが 0 秒以下または 2 秒超（`MaxTransitionSeconds`。最初のクリップと `cut` の長さは無視して 0 にする）は 422。保存すると Project は EDITING に戻る。クリップには `kind`（`main`（省略時）/`insert`/`reaction`。追加 Shot 由来の切り出し）と `caption`（字幕、最大 60 文字、空で字幕なし）も持てる。`GET /api/v1/projects/:id/edit-timeline` の `clips` をそのまま送り返してよいが、`label`・`objective`・`video_url`・`thumbnail_url` は読まず（余分なフィールドは無視する）、`source_seconds` は送られた値を信用せず保存時に Take のファイルから決め直す。保存は `:id` の版と同じ Branch の版として追記する |
 | GET | `/edit-timelines/:id/preview` | Rough Cut の下書きレンダリング（`video/mp4`、Range 対応）。版ごとに初回アクセスで作成しキャッシュする（ffmpeg が必要。なければ 503）。同じ版への同時要求は 1 回のレンダリングを待ち、レンダリングはクライアントの切断（シークなど）では止めない。失敗（ffmpeg の失敗・上限時間切れ）は 10 分間覚え、その間は再レンダリングせず同じ失敗を返す。作ったファイルは `assets/.previews` の合計 4 GiB の上限で、最後に使われた（再生・要求された）のが古いものから削除される（LRU。作ってから古いものではない） |

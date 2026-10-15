@@ -223,3 +223,21 @@ func TestReviews_ResolvingACommentDoesNotCarryTheFormsOfTheList(t *testing.T) {
 	assert.NotContains(t, body, `id="review-response-file"`, "the chosen response file is not replaced")
 	assert.Equal(t, http.StatusNotFound, a.form(http.MethodPut, "/projects/"+p+"/review-comments/nope", url.Values{"resolved": {"true"}}).Code)
 }
+
+// The reload of the stage regions (after the timeline editor saved) is what every stage answers like: it carries
+// neither the export options nor the voice form, so what is typed or picked in them survives (#731). The page does carry them.
+func TestEditor_StageAnswersDoNotCarryTheInputsOfTheForms(t *testing.T) {
+	a := newApp(t)
+	id := a.createProject()
+
+	page := a.htmx(http.MethodGet, "/projects/"+id+"/edit", nil, "").Body.String()
+	for _, input := range []string{`name="aspect_ratio"`, `name="sample"`, `id="editor-actions"`} {
+		assert.Contains(t, page, input)
+	}
+	reload := a.htmx(http.MethodGet, "/projects/"+id+"/edit/actions", nil, "")
+	require.Equal(t, http.StatusOK, reload.Code, reload.Body.String())
+	for _, input := range []string{`name="aspect_ratio"`, `name="resolution"`, `name="codec"`, `name="speaker"`, `name="sample"`, `id="editor-actions"`} {
+		assert.NotContains(t, reload.Body.String(), input)
+	}
+	assert.Contains(t, reload.Body.String(), `id="editor-export-submit"`)
+}
