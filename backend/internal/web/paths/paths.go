@@ -1,6 +1,6 @@
 // Package paths builds the URL paths of the pages and actions of a Project, Scene, Shot, Take,
 // Branch, Note, Brand Constraint, Edit Timeline, Series, Review and Credential. Their IDs come from
-// outside; domain.ValidBundleID limits them to [A-Za-z0-9_-] (domain/bundle_test.go is the source
+// outside; bundlepath.ValidID limits them to [A-Za-z0-9_-] (domain/bundlepath/bundlepath_test.go is the source
 // of truth), which needs no escaping. Every segment is path-escaped here all the same, so a URL
 // stays intact were that limit ever relaxed, and nowhere else builds "/projects/…",
 // "/scenes/…", "/shots/…", "/takes/…", "/branches/…", "/notes/…", "/brand-constraints/…",

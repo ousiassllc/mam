@@ -15,13 +15,13 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/bundlezip"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/domain/bundlepath"
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/review"
 )
 
-// Team Collaboration limits (spec/spec.md §27.1). The files come from other people, so what is read
-// from them is bounded.
+// Team Collaboration limits (spec/spec.md §27.1). The files come from other people, so what is read from them is bounded.
 const (
 	maxReviewVideoBytes    = 2 << 30 // the video of a package
 	MaxReviewPackageBytes  = maxReviewVideoBytes + 1<<20
@@ -29,7 +29,7 @@ const (
 	// MaxReviewResponseRequestBytes caps the upload of a Review Response: the file plus the form overhead.
 	MaxReviewResponseRequestBytes = maxReviewResponseBytes + 1<<20
 	reviewVideoSniffBytes         = 16
-	reviewsDir                    = domain.ReviewInboxDir + "/" // below the assets directory: the videos of imported packages
+	reviewsDir                    = bundlepath.ReviewInboxDir + "/" // below the assets directory: the videos of imported packages
 )
 
 // ReviewService is Team Collaboration: the owner makes Review Packages and imports the responses; a
@@ -113,7 +113,7 @@ func (s *ReviewService) CreateRequest(ctx context.Context, projectID, exportID, 
 }
 
 func (s *ReviewService) exportFileExists(e domain.Export) bool {
-	if !domain.ValidBundleFilePath(e.ProjectID, e.FilePath) {
+	if !bundlepath.ValidFilePath(e.ProjectID, e.FilePath) {
 		return false
 	}
 	st, err := os.Stat(filepath.Join(s.assetsDir, filepath.FromSlash(e.FilePath)))

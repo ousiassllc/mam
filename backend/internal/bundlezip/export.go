@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/domain/bundlepath"
 )
 
 // Export is a bundle ready to be written.
@@ -36,7 +37,7 @@ func NewExport(data domain.BundleData, root string, now time.Time) (Export, erro
 		return Export{}, fmt.Errorf("audio timeline: %w", err)
 	}
 	for _, rel := range append(data.FilePaths(), timelinePaths...) {
-		if !domain.ValidBundleFilePath(data.ProjectID, rel) {
+		if !bundlepath.ValidFilePath(data.ProjectID, rel) {
 			return Export{}, fmt.Errorf("export bundle: %q is not a file path of the project", rel)
 		}
 	}
@@ -57,7 +58,7 @@ func relocateSharedAssets(data *domain.BundleData) map[string]string {
 			old, _ := row["file_path"].(string)
 			id, _ := row["id"].(string)
 			owner, _, _ := strings.Cut(old, "/")
-			if old == "" || owner == data.ProjectID || !domain.ValidBundleFilePath(owner, old) || !domain.ValidBundleID(id) {
+			if old == "" || owner == data.ProjectID || !bundlepath.ValidFilePath(owner, old) || !bundlepath.ValidID(id) {
 				continue
 			}
 			moved := data.ProjectID + "/" + id + path.Ext(old)
@@ -93,14 +94,14 @@ func (e Export) Write(w io.Writer) error {
 			continue
 		}
 		seen[rel] = true
-		if !domain.ValidBundleFilePath(e.data.ProjectID, rel) || e.root == "" {
+		if !bundlepath.ValidFilePath(e.data.ProjectID, rel) || e.root == "" {
 			continue
 		}
 		from := rel
 		if src, ok := e.sources[rel]; ok {
 			from = src
 		}
-		f, err := os.Open(filepath.Join(e.root, filepath.FromSlash(from))) //nolint:gosec // from was checked by ValidBundleFilePath
+		f, err := os.Open(filepath.Join(e.root, filepath.FromSlash(from))) //nolint:gosec // from was checked by bundlepath.ValidFilePath
 		if errors.Is(err, os.ErrNotExist) {
 			continue
 		}

@@ -6,13 +6,14 @@ import (
 	"fmt"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/domain/bundlepath"
 )
 
 // checkBundle verifies what can be verified without the database: known tables, one Project row
 // with the bundle's ID, that every row ID is path-safe, and that every row that names a Project
 // names this one.
 func checkBundle(data domain.BundleData) error {
-	if !domain.ValidBundleID(data.ProjectID) {
+	if !bundlepath.ValidID(data.ProjectID) {
 		return fmt.Errorf("%w: project id", ErrInvalid)
 	}
 	known := map[string]bool{}
@@ -35,7 +36,7 @@ func checkBundle(data domain.BundleData) error {
 			// primary key (SQLite does not make "TEXT PRIMARY KEY" NOT NULL), which no ID check or ownership
 			// query sees, so every table with an id column requires one.
 			if !noID[t.Name] {
-				if s, isString := row["id"].(string); !isString || !domain.ValidBundleID(s) {
+				if s, isString := row["id"].(string); !isString || !bundlepath.ValidID(s) {
 					return fmt.Errorf("%w: %s has a missing or unsafe id", ErrInvalid, t.Name)
 				}
 			}
