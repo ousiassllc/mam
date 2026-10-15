@@ -164,6 +164,36 @@ func TestNotes_AnActionOnOneNoteDoesNotCarryTheFormsOfTheOthers(t *testing.T) {
 	assert.Contains(t, answers["save"].Body.String(), `<section aria-label="トーン・口調"`, "a note that changed its category lands in its new group")
 }
 
+// Adding a note answers with the new note in full; the notes the page has are placeholders the page
+// keeps, so the text typed into the form of another note survives the addition (#742). The add form
+// reports the notes on the page (on-page) through the hx-include it carries.
+func TestNotes_CreatingANoteDoesNotCarryTheFormsOfTheOthers(t *testing.T) {
+	a := newApp(t)
+	base := "/projects/" + a.createProject() + "/notes"
+	idRe := regexp.MustCompile(`hx-put="/notes/([^"]+)"`)
+	rec := a.form(http.MethodPost, base, url.Values{"title": {"口調"}, "content": {"落ち着いた口調"}, "category": {"character"}})
+	require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
+	existing := idRe.FindStringSubmatch(rec.Body.String())[1]
+
+	rec = a.form(http.MethodPost, base, url.Values{
+		"title": {"舞台"}, "content": {"近未来の東京"}, "category": {"world"},
+		notelist.OnPageField: {existing},
+	})
+	require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
+	body := rec.Body.String()
+	var created string
+	for _, m := range idRe.FindAllStringSubmatch(body, -1) {
+		created = m[1]
+	}
+	require.NotEmpty(t, created)
+	require.NotEqual(t, existing, created)
+	assert.Contains(t, body, `id="note-content-`+created+`"`, "the new note is drawn in full")
+	assert.NotContains(t, body, `id="note-content-`+existing+`"`, "the form of another note is not replaced")
+	assert.NotContains(t, body, "落ち着いた口調")
+	assert.Contains(t, body, `<div id="note-item-`+existing+`" hx-preserve></div>`, "the page keeps the other note")
+	assert.Regexp(t, `(?s)<form\s+id="note-add-form"[^>]*hx-include="#note-list input\[name=&#39;`+notelist.OnPageField+`&#39;\]"`, body, "the add form sends on-page")
+}
+
 // Removing an image from a filtered list keeps the filter: the button carries it and the answer is the
 // filtered list, with the search form showing it (#696).
 func TestReferenceLibrary_DeleteKeepsTheFilterOfTheList(t *testing.T) {

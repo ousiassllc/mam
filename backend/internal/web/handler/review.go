@@ -9,6 +9,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/reviewlist"
 	"github.com/ousiassllc/mam/backend/internal/web/pages"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -16,10 +17,10 @@ import (
 // Team Collaboration (spec/spec.md §27.1, spec/api/endpoints.md §2.12). The owner's routes work on a
 // Project; the reviewer's routes work on the Review Packages the instance imported and need no Project.
 
-func reviewListData(v service.ReviewsView) organisms.ReviewListData {
-	d := organisms.ReviewListData{ProjectID: v.Project.ID, Exports: v.Exports}
+func reviewListData(v service.ReviewsView) reviewlist.Data {
+	d := reviewlist.Data{ProjectID: v.Project.ID, Exports: v.Exports, Touched: v.Touched}
 	for _, it := range v.Items {
-		d.Items = append(d.Items, organisms.ReviewListItem{Item: it.ReviewItem, Export: it.Export})
+		d.Items = append(d.Items, reviewlist.Item{Item: it.ReviewItem, Export: it.Export})
 	}
 	return d
 }
@@ -28,21 +29,20 @@ func reviewListData(v service.ReviewsView) organisms.ReviewListData {
 // or the list fragment for HTMX.
 func ProjectReviewsPage(svc *service.ReviewService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		view, err := svc.ProjectReviews(c.Request.Context(), c.Param("id"))
+		view, err := svc.ProjectReviews(c.Request.Context(), c.Param("id"), "")
 		if err != nil {
 			pageError(c, err)
 			return
 		}
 		if isHTMX(c) {
-			render(c, http.StatusOK, organisms.ReviewList(reviewListData(view)))
+			render(c, http.StatusOK, reviewlist.List(reviewListData(view)))
 			return
 		}
 		render(c, http.StatusOK, pages.ReviewsPage(middleware.CSRFToken(c), view.Project, reviewListData(view)))
 	}
 }
 
-// CreateReview makes a review request from an Export (POST /projects/:id/reviews) and answers with
-// the list (201).
+// CreateReview makes a review request from an Export (POST /projects/:id/reviews); 201 with the emptied form and the new request.
 func CreateReview(svc *service.ReviewService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		view, err := svc.CreateRequest(c.Request.Context(), c.Param("id"), c.PostForm("export_id"), c.PostForm("note"))
@@ -50,7 +50,7 @@ func CreateReview(svc *service.ReviewService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusCreated, organisms.ReviewList(reviewListData(view)))
+		render(c, http.StatusCreated, reviewlist.Created(reviewListData(view)))
 	}
 }
 
@@ -74,7 +74,7 @@ func DownloadReviewPackage(svc *service.ReviewService) gin.HandlerFunc {
 }
 
 // ImportReviewResponse imports a Review Response file (POST /projects/:id/reviews/feedback, multipart
-// field "response") and answers with the list (201).
+// field "response") and answers with the emptied form and the request that holds the response (201).
 func ImportReviewResponse(svc *service.ReviewService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		form, err := readMultipart(c, service.MaxReviewResponseRequestBytes)
@@ -98,7 +98,7 @@ func ImportReviewResponse(svc *service.ReviewService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusCreated, organisms.ReviewList(reviewListData(view)))
+		render(c, http.StatusCreated, reviewlist.Imported(reviewListData(view)))
 	}
 }
 
@@ -111,7 +111,7 @@ func SetReviewCommentResolved(svc *service.ReviewService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusOK, organisms.ReviewRequestCard(c.Param("id"), organisms.ReviewListItem{Item: it.ReviewItem, Export: it.Export}))
+		render(c, http.StatusOK, reviewlist.Card(c.Param("id"), reviewlist.Item{Item: it.ReviewItem, Export: it.Export}))
 	}
 }
 

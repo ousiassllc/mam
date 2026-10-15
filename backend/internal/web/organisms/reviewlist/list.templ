@@ -1,24 +1,37 @@
-package organisms
+package reviewlist
 
 import (
 	"strconv"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
-// ReviewListItem is a review request with the Export it carries.
-type ReviewListItem struct {
+// Item is a review request with the Export it carries.
+type Item struct {
 	Item   domain.ReviewItem
 	Export domain.Export
 }
 
-// ReviewListData is the state of the owner's review screen (reviews_page).
-type ReviewListData struct {
+// Data is the state of the owner's review screen (reviews_page).
+type Data struct {
 	ProjectID string
 	Exports   []domain.Export // the Exports a review can be requested for, newest first
-	Items     []ReviewListItem
+	Items     []Item
+	// Touched is the review request a create or an import answers about ("" for the whole list).
+	Touched string
+}
+
+// touched is the item of d.Touched.
+func (d Data) touched() (Item, bool) {
+	for _, it := range d.Items {
+		if it.Item.Request.ID == d.Touched {
+			return it, true
+		}
+	}
+	return Item{}, false
 }
 
 func reviewStatusTone(s domain.ReviewStatus) atoms.BadgeTone {
@@ -31,22 +44,8 @@ func reviewStatusTone(s domain.ReviewStatus) atoms.BadgeTone {
 	return atoms.BadgeNeutral
 }
 
-func reviewDecisionTone(d domain.ReviewDecision) atoms.BadgeTone {
-	if d == domain.DecisionApproved {
-		return atoms.BadgeOK
-	}
-	return atoms.BadgeWarn
-}
-
 func exportLabel(e domain.Export) string {
 	return e.Resolution + " / " + e.AspectRatio + " / " + e.Codec + "（" + e.ExportedAt.Local().Format("2006-01-02 15:04") + "）"
-}
-
-func timecodeLabel(ms *int64) string {
-	if ms == nil {
-		return "全体"
-	}
-	return domain.FormatReviewTimecode(*ms)
 }
 
 func resolvedValue(resolved bool) string {
@@ -63,10 +62,12 @@ func resolvedLabel(resolved bool) string {
 	return "解決済みにする"
 }
 
-// ReviewList is the owner's review screen (Team Collaboration, spec/spec.md §27.1): the form that
+// List is the owner's review screen (Team Collaboration, spec/spec.md §27.1): the form that
 // makes a Review Package from an Export, the form that imports a Review Response, and per review
 // request its status, the download link of the package and the responses with their comments.
-templ ReviewList(d ReviewListData) {
+// The two forms and the cards are answered separately (Created, Imported, Card),
+// so working with one never discards what was typed or chosen in another (#730, #743).
+templ List(d Data) {
 	<div id="review-list" class="flex flex-col gap-6">
 		<section class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3">
 			<h2 class="text-sm font-semibold">レビューを依頼する</h2>
@@ -76,54 +77,99 @@ templ ReviewList(d ReviewListData) {
 			if len(d.Exports) == 0 {
 				<p class="text-sm text-neutral-400">書き出しがまだありません。編集 / 書き出しで Final Export を作ると、レビューを依頼できます。</p>
 			} else {
-				<form class="flex flex-col gap-2" hx-post={ paths.Project(d.ProjectID, "reviews") } hx-target="#review-list" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]">
-					<label class="flex flex-col gap-1 text-xs text-neutral-400" for="review-export">
-						書き出し
-						@atoms.Select(atoms.FieldMd, "", templ.Attributes{
-							"id":       "review-export",
-							"name":     "export_id",
-							"required": true,
-						}) {
-							for _, e := range d.Exports {
-								<option value={ e.ID }>{ exportLabel(e) }</option>
-							}
-						}
-					</label>
-					<label class="flex flex-col gap-1 text-xs text-neutral-400" for="review-note">
-						レビュアーへのメモ（任意、1000 文字まで）
-						@atoms.Textarea(atoms.FieldMd, "", templ.Attributes{
-							"id":        "review-note",
-							"name":      "note",
-							"rows":      "3",
-							"maxlength": intText(domain.MaxReviewNoteRunes),
-						}, "")
-					</label>
-					<div>
-						@atoms.Button(atoms.TonePrimary, "レビュー依頼を作る", templ.Attributes{"type": "submit"})
-					</div>
-				</form>
+				@reviewRequestForm(d)
 			}
 		</section>
 		<section class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3">
 			<h2 class="text-sm font-semibold">レビュアーの応答を取り込む</h2>
 			<p class="text-xs text-neutral-400">レビュアーから届いた応答ファイル（JSON）を選びます。レビュアーの名前は本人の自己申告で、確認はされません。</p>
-			<form class="flex flex-wrap items-center gap-2" hx-post={ paths.Project(d.ProjectID, "reviews", "feedback") } hx-encoding="multipart/form-data" hx-target="#review-list" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]">
-				<input id="review-response-file" type="file" name="response" required accept=".json,application/json" aria-label="応答ファイル" class="text-xs"/>
-				@atoms.Button(atoms.ToneNeutral, "取り込む", templ.Attributes{"type": "submit"})
-			</form>
+			@reviewImportForm(d)
 		</section>
-		if len(d.Items) == 0 {
-			<p class="text-sm text-neutral-400">レビュー依頼はまだありません。</p>
-		}
-		for _, it := range d.Items {
-			@ReviewRequestCard(d.ProjectID, it)
-		}
+		<div id="review-list-items" class="flex flex-col gap-6">
+			if len(d.Items) == 0 {
+				<p id="review-empty" class="text-sm text-neutral-400">レビュー依頼はまだありません。</p>
+			}
+			for _, it := range d.Items {
+				@Card(d.ProjectID, it)
+			}
+		</div>
 	</div>
 }
 
-// ReviewRequestCard is one review request; resolving a comment swaps only it (the id comes from the request).
-templ ReviewRequestCard(projectID string, it ReviewListItem) {
-	<article id={ "review-" + it.Item.Request.ID } class="flex flex-col gap-3 rounded-md border border-neutral-700 p-3" aria-label={ "レビュー依頼 " + it.Item.Request.CreatedAt.Local().Format("2006-01-02 15:04") }>
+// Created answers the creation of a review request: the form that sent it, emptied, and the new
+// request (d.Touched) put at the head of the list. The form that imports a response is not part of it.
+templ Created(d Data) {
+	@reviewRequestForm(d)
+	if it, ok := d.touched(); ok {
+		<div hx-swap-oob="afterbegin:#review-list-items">
+			@Card(d.ProjectID, it)
+		</div>
+		<p id="review-empty" hx-swap-oob="delete"></p>
+	}
+}
+
+// Imported answers the import of a response: the form that sent it, emptied, and the review request
+// that holds the response (d.Touched) in its place. The form that makes a request is not part of it.
+templ Imported(d Data) {
+	@reviewImportForm(d)
+	if it, ok := d.touched(); ok {
+		@reviewCard(d.ProjectID, it, true)
+	}
+}
+
+// reviewRequestForm is the form that makes a review request from an Export (it replaces itself).
+templ reviewRequestForm(d Data) {
+	<form class="flex flex-col gap-2" hx-post={ paths.Project(d.ProjectID, "reviews") } hx-target="this" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]">
+		<label class="flex flex-col gap-1 text-xs text-neutral-400" for="review-export">
+			書き出し
+			@atoms.Select(atoms.FieldMd, "", templ.Attributes{
+				"id":       "review-export",
+				"name":     "export_id",
+				"required": true,
+			}) {
+				for _, e := range d.Exports {
+					<option value={ e.ID }>{ exportLabel(e) }</option>
+				}
+			}
+		</label>
+		<label class="flex flex-col gap-1 text-xs text-neutral-400" for="review-note">
+			レビュアーへのメモ（任意、1000 文字まで）
+			@atoms.Textarea(atoms.FieldMd, "", templ.Attributes{
+				"id":        "review-note",
+				"name":      "note",
+				"rows":      "3",
+				"maxlength": strconv.Itoa(domain.MaxReviewNoteRunes),
+			}, "")
+		</label>
+		<div>
+			@atoms.Button(atoms.TonePrimary, "レビュー依頼を作る", templ.Attributes{"type": "submit"})
+		</div>
+	</form>
+}
+
+// reviewImportForm is the form that imports a Review Response (it replaces itself).
+templ reviewImportForm(d Data) {
+	<form class="flex flex-wrap items-center gap-2" hx-post={ paths.Project(d.ProjectID, "reviews", "feedback") } hx-encoding="multipart/form-data" hx-target="this" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]">
+		<input id="review-response-file" type="file" name="response" required accept=".json,application/json" aria-label="応答ファイル" class="text-xs"/>
+		@atoms.Button(atoms.ToneNeutral, "取り込む", templ.Attributes{"type": "submit"})
+	</form>
+}
+
+// Card is one review request; resolving a comment swaps only it (the id comes from the request).
+templ Card(projectID string, it Item) {
+	@reviewCard(projectID, it, false)
+}
+
+// reviewCard is Card; oob makes it replace the card of the request on the page.
+templ reviewCard(projectID string, it Item, oob bool) {
+	<article
+		id={ "review-" + it.Item.Request.ID }
+		class="flex flex-col gap-3 rounded-md border border-neutral-700 p-3"
+		aria-label={ "レビュー依頼 " + it.Item.Request.CreatedAt.Local().Format("2006-01-02 15:04") }
+		if oob {
+			hx-swap-oob="true"
+		}
+	>
 		<header class="flex flex-wrap items-center gap-3">
 			@atoms.Badge(reviewStatusTone(it.Item.Status()), it.Item.Status().Label())
 			<span class="text-sm">{ exportLabel(it.Export) }</span>
@@ -145,7 +191,7 @@ templ ReviewRequestCard(projectID string, it ReviewListItem) {
 			<section class="flex flex-col gap-2 rounded-md bg-neutral-900 p-3" aria-label={ "応答 " + r.ReviewerName }>
 				<div class="flex flex-wrap items-center gap-2">
 					<span class="text-sm font-medium">{ r.ReviewerName }</span>
-					@atoms.Badge(reviewDecisionTone(r.Decision), r.Decision.Label())
+					@atoms.Badge(organisms.ReviewDecisionTone(r.Decision), r.Decision.Label())
 					<span class="text-xs text-neutral-400">{ r.CreatedAt.Local().Format("2006-01-02 15:04") }</span>
 				</div>
 				if r.Comment != "" {
@@ -155,7 +201,7 @@ templ ReviewRequestCard(projectID string, it ReviewListItem) {
 					<ul class="flex flex-col gap-2">
 						for _, c := range r.Comments {
 							<li class="flex flex-wrap items-start gap-2 text-sm">
-								<span class="w-14 shrink-0 font-mono text-xs text-neutral-400">{ timecodeLabel(c.TimecodeMs) }</span>
+								<span class="w-14 shrink-0 font-mono text-xs text-neutral-400">{ organisms.TimecodeLabel(c.TimecodeMs) }</span>
 								if c.Resolved {
 									<span class="min-w-0 flex-1 whitespace-pre-wrap text-neutral-500 line-through">{ c.Body }</span>
 								} else {

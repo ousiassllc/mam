@@ -99,7 +99,7 @@ func noteInput(c *gin.Context) service.NoteInput {
 	return service.NoteInput{Title: c.PostForm("title"), Content: c.PostForm("content"), Category: c.PostForm("category"), Pinned: pinned != nil && *pinned}
 }
 
-// CreateProjectNote adds a note to a Project (POST /projects/:id/notes).
+// CreateProjectNote adds a note to a Project (POST /projects/:id/notes); the notes on the page stay (#742).
 func CreateProjectNote(svc *service.NoteService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		view, err := svc.CreateProjectNote(c.Request.Context(), c.Param("id"), noteInput(c))
@@ -107,7 +107,7 @@ func CreateProjectNote(svc *service.NoteService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusCreated, notelist.Created(noteListData(view, "")))
+		render(c, http.StatusCreated, notelist.Created(noteListData(view, "", notelist.OnPage(c.Request)...)))
 	}
 }
 
@@ -119,7 +119,7 @@ func CreateSeriesNote(svc *service.NoteService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusCreated, notelist.Created(noteListData(view, "")))
+		render(c, http.StatusCreated, notelist.Created(noteListData(view, "", notelist.OnPage(c.Request)...)))
 	}
 }
 
