@@ -121,10 +121,10 @@ const (
 )
 
 // FaceIdentityMetric is the Face Identity Similarity of one Character in a Take (spec/spec.md §12.3).
-// Similarities are cosine similarities to the Character's reference faces. Frames without a
-// detectable face are missing values: they count in UndetectedRatio only. Evaluated is false when
-// the thresholds were not calibrated from the reference distribution, or too few frames had a
-// face for the numbers to mean anything; the Take is then judged by the qualitative evaluation alone.
+// Similarities are cosine similarities to the Character's reference faces. Frames without a detectable
+// face are missing values: they count in UndetectedRatio only. Evaluated is false when the thresholds
+// were not calibrated from the reference distribution, or too few frames had a face for the numbers to
+// mean anything; the Take is then judged by the qualitative evaluation alone.
 type FaceIdentityMetric struct {
 	CharacterID     string  `json:"character_id"`
 	SimilarityMean  float64 `json:"similarity_mean"`

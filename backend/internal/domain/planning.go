@@ -102,6 +102,10 @@ type Storyboard struct {
 	Shots [][]ShotStoryboard
 }
 
+// The Scene / Shot limits (title, location / time, objective in runes; Shot length in seconds) that the
+// forms, the Director Agent and the Continue Agent all keep to.
+const MaxSceneTitleRunes, MaxSceneMetaRunes, MaxObjectiveRunes, MaxShotSeconds = 100, 100, 300, 60
+
 // Scene is a row of scene: one scene of the video. State is the sub-state within the
 // Core State Machine.
 type Scene struct {
