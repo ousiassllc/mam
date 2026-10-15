@@ -10,7 +10,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
-// The IDs of these tests could not come from a bundle import (domain.ValidBundleID refuses them): they pin
+// The IDs of these tests could not come from a bundle import (bundlepath.ValidID refuses them): they pin
 // the escape that keeps a URL intact were that limit ever relaxed.
 func TestProject_EscapesEverySegmentSoAnIDCannotChangeTheRoute(t *testing.T) {
 	assert.Equal(t, "/projects/p1", paths.Project("p1"))

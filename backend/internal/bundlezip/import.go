@@ -15,6 +15,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/domain/bundlepath"
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
 )
 
@@ -59,7 +60,7 @@ func Open(src io.ReaderAt, size int64) (*Archive, error) {
 	}
 	named := append(data.FilePaths(), timelinePaths...)
 	for _, rel := range named {
-		if !domain.ValidBundleFilePath(data.ProjectID, rel) {
+		if !bundlepath.ValidFilePath(data.ProjectID, rel) {
 			return nil, invalid("バンドルに不正なファイルパスがあります")
 		}
 	}
@@ -107,7 +108,7 @@ func readData(zr *zip.Reader) (domain.BundleData, error) {
 	}
 	// Install puts the files in assets/<project_id>/ before the rows are checked, so a Project ID the
 	// server uses for its own directory (the Review inbox) is refused here, before anything is written.
-	if !domain.ValidBundleID(data.ProjectID) {
+	if !bundlepath.ValidID(data.ProjectID) {
 		return data, invalid("プロジェクト ID が正しくありません")
 	}
 	return data, nil
@@ -153,7 +154,7 @@ func listFiles(zr *zip.Reader, projectID string, named []string) ([]file, error)
 		if !ok || f.FileInfo().IsDir() {
 			continue
 		}
-		if !domain.ValidBundleFilePath(projectID, rel) || path.Clean(rel) != rel {
+		if !bundlepath.ValidFilePath(projectID, rel) || path.Clean(rel) != rel {
 			return nil, invalid("バンドルに不正なファイルパスがあります")
 		}
 		if !wanted[rel] {

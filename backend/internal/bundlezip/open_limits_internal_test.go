@@ -209,7 +209,7 @@ func TestOpen_ManifestIsHeldToItsOwnSmallLimit(t *testing.T) {
 	assert.Contains(t, err.Error(), "manifest.json が大きすぎます")
 }
 
-// "reviews" is the Review inbox below the assets directory (domain.ReviewInboxDir). Install puts the
+// "reviews" is the Review inbox below the assets directory (bundlepath.ReviewInboxDir). Install puts the
 // files in assets/<project_id>/ before the rows are checked, so Open must refuse it up front (#682).
 // NTFS and APFS ignore case, so "Reviews" is the same directory, and the Windows device names (CON, NUL, ...)
 // cannot be a directory at all: Open refuses those with the same 422 instead of failing later in Install (#689).
