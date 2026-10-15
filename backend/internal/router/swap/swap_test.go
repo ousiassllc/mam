@@ -4,6 +4,8 @@ package swap_test
 
 import (
 	"bytes"
+	"context"
+	"database/sql"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -17,6 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/credential/credentialtest"
+	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 	"github.com/ousiassllc/mam/backend/internal/router"
 	"github.com/ousiassllc/mam/backend/internal/service"
@@ -30,6 +33,7 @@ func init() { gin.SetMode(gin.TestMode) }
 
 type app struct {
 	t      *testing.T
+	db     *repository.DB
 	engine *gin.Engine
 	cookie *http.Cookie
 	token  string
@@ -40,8 +44,9 @@ type app struct {
 func newApp(t *testing.T) *app {
 	t.Helper()
 	testenv.Parallel(t)
-	svc := servicetest.New(t, service.Deps{DB: testdb.Open(t), Credentials: credentialtest.New(), AssetsDir: t.TempDir()})
-	a := &app{t: t, engine: router.New(svc, router.Options{})}
+	d := testdb.Open(t)
+	svc := servicetest.New(t, service.Deps{DB: d, Credentials: credentialtest.New(), AssetsDir: t.TempDir()})
+	a := &app{t: t, db: d, engine: router.New(svc, router.Options{})}
 	rec := a.serve(httptest.NewRequest(http.MethodGet, "/", nil))
 	require.Equal(t, http.StatusOK, rec.Code)
 	for _, c := range rec.Result().Cookies() {
@@ -182,4 +187,39 @@ func TestReferenceLibrary_DeleteKeepsTheFilterOfTheList(t *testing.T) {
 	assert.Contains(t, body, `value="character" selected`, "the search form shows the kind")
 	assert.Contains(t, body, `name="tag" type="text" value="hero"`, "and the tag")
 	assert.Equal(t, http.StatusNotFound, a.htmx(http.MethodDelete, "/projects/"+id+"/references/nope?kind=bogus", nil, "").Code)
+}
+
+// Resolving a comment of a review answers with the review request that holds it, not the list: the
+// note being written for the next request and the response file being chosen are in the list's forms
+// and would be replaced (#730).
+func TestReviews_ResolvingACommentDoesNotCarryTheFormsOfTheList(t *testing.T) {
+	a := newApp(t)
+	p := a.createProject()
+	for _, q := range []string{
+		`INSERT INTO export (id, project_id, file_path, resolution, aspect_ratio, codec) VALUES ('e1', '` + p + `', 'x.mp4', '1080p', '9:16', 'h264')`,
+		`INSERT INTO review_request (id, project_id, export_id) VALUES ('rq1', '` + p + `', 'e1')`,
+		`INSERT INTO review_response (id, review_request_id, reviewer_name, decision, created_at) VALUES ('rs1', 'rq1', 'Taro', 'changes_requested', '2026-10-16T00:00:00.000Z')`,
+		`INSERT INTO review_comment (id, review_response_id, body) VALUES ('c1', 'rs1', 'ロゴが小さい')`,
+	} {
+		require.NoError(t, a.db.Write(context.Background(), func(ctx context.Context, tx *sql.Tx) error {
+			_, err := tx.ExecContext(ctx, q)
+			return err
+		}))
+	}
+
+	page := a.htmx(http.MethodGet, "/projects/"+p+"/reviews", nil, "").Body.String()
+	assert.Contains(t, page, `id="review-note"`)
+	assert.Contains(t, page, `id="review-response-file"`)
+	assert.Contains(t, page, `hx-target="closest article"`, "the button swaps its request only")
+
+	rec := a.form(http.MethodPut, "/projects/"+p+"/review-comments/c1", url.Values{"resolved": {"true"}})
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	body := rec.Body.String()
+	assert.Contains(t, body, `id="review-rq1"`, "the request the comment belongs to")
+	assert.Contains(t, body, "line-through", "the comment is resolved")
+	assert.NotContains(t, body, "未解決のコメント", "the count of open comments is in the swapped part")
+	assert.NotContains(t, body, `id="review-list"`)
+	assert.NotContains(t, body, `id="review-note"`, "the note of the request form is not replaced")
+	assert.NotContains(t, body, `id="review-response-file"`, "the chosen response file is not replaced")
+	assert.Equal(t, http.StatusNotFound, a.form(http.MethodPut, "/projects/"+p+"/review-comments/nope", url.Values{"resolved": {"true"}}).Code)
 }

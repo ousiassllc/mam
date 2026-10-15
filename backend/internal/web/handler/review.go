@@ -103,15 +103,15 @@ func ImportReviewResponse(svc *service.ReviewService) gin.HandlerFunc {
 }
 
 // SetReviewCommentResolved marks an imported comment as resolved or open
-// (PUT /projects/:id/review-comments/:commentId) and answers with the list.
+// (PUT /projects/:id/review-comments/:commentId) and answers with the review request that holds it only.
 func SetReviewCommentResolved(svc *service.ReviewService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		view, err := svc.SetCommentResolved(c.Request.Context(), c.Param("id"), c.Param("commentId"), c.PostForm("resolved") == "true")
+		it, err := svc.SetCommentResolved(c.Request.Context(), c.Param("id"), c.Param("commentId"), c.PostForm("resolved") == "true")
 		if err != nil {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusOK, organisms.ReviewList(reviewListData(view)))
+		render(c, http.StatusOK, organisms.ReviewRequestCard(c.Param("id"), organisms.ReviewListItem{Item: it.ReviewItem, Export: it.Export}))
 	}
 }
 

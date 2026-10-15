@@ -51,7 +51,7 @@
 507	backend/internal/router/judge_test.go
 453	backend/internal/router/review_test.go
 434	backend/internal/router/take_test.go
-15216	backend/internal/service/
+15215	backend/internal/service/
 342	backend/internal/service/audio.go
 429	backend/internal/service/branch.go
 352	backend/internal/service/branch_test.go
@@ -66,7 +66,7 @@
 344	backend/internal/service/note_test.go
 459	backend/internal/service/pipeline_test.go
 527	backend/internal/service/reshoot_test.go
-441	backend/internal/service/review.go
+440	backend/internal/service/review.go
 2975	backend/internal/web/handler/
 3561	backend/internal/web/organisms/
 360	backend/internal/web/organisms/editor_panel.templ
