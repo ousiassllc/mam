@@ -242,64 +242,33 @@ func TestEditor_StageAnswersDoNotCarryTheInputsOfTheForms(t *testing.T) {
 	assert.Contains(t, reload.Body.String(), `id="editor-export-submit"`)
 }
 
-// Adding a Scene or a Shot answers with the form that sent it and the part it changes, never the whole view: the other
-// form (and the selected Shot card) would be replaced by an empty one and lose what is typed into it (#733).
-func TestScenes_AddingASceneOrAShotDoesNotCarryTheOtherForm(t *testing.T) {
+// Selecting or excluding a Take answers with the whole Shot card, whose "追加の指示" input is new and
+// empty: it is hx-preserve, so htmx keeps the one on the page with what is typed in it (#732).
+func TestShotCard_TakeActionsKeepTheAdditionalInstruction(t *testing.T) {
 	a := newApp(t)
-	p := a.createProject()
-	idRe := regexp.MustCompile(`/projects/` + p + `/scenes/([0-9a-f-]{36})`)
-
-	// The first Scene: the page shows none and has no Shot form, so its Scene form takes the whole view.
-	page := a.htmx(http.MethodGet, "/projects/"+p+"/scenes", nil, "")
-	assert.Contains(t, page.Body.String(), `hx-target="#scene-shot-view"`)
-	rec := a.form(http.MethodPost, "/projects/"+p+"/scenes", url.Values{"title": {"導入"}})
+	rec := a.form(http.MethodPost, "/projects/"+a.createProject()+"/scenes", url.Values{"title": {"Street"}})
+	scene := regexp.MustCompile(`/scenes/([0-9a-f-]{36})`).FindStringSubmatch(rec.Body.String())[1]
+	rec = a.form(http.MethodPost, "/scenes/"+scene+"/shots", url.Values{"objective": {"走り出す"}, "duration_seconds": {"4"}})
 	require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
-	assert.Contains(t, rec.Body.String(), `id="scene-shot-view"`)
-	scene := idRe.FindStringSubmatch(rec.Body.String())[1]
+	shot := regexp.MustCompile(`id="shot-([0-9a-f-]{36})"`).FindStringSubmatch(rec.Body.String())[1]
+	require.NoError(t, a.db.Write(context.Background(), func(ctx context.Context, tx *sql.Tx) error {
+		for _, q := range []string{
+			`INSERT INTO prompt_version (id, shot_id, version_number, shot_spec_snapshot) VALUES ('pv1', '` + shot + `', 1, '{}')`,
+			`INSERT INTO take (id, prompt_version_id, model_name, model_parameters, file_path) VALUES ('t1', 'pv1', 'kling-3.0', '{}', 'p/t1.mp4'), ('t2', 'pv1', 'kling-3.0', '{}', 'p/t2.mp4')`,
+		} {
+			if _, err := tx.ExecContext(ctx, q); err != nil {
+				return err
+			}
+		}
+		return nil
+	}))
 
-	// A second Scene while the first is shown: the Scene form and the new list item; no Shot form.
-	rec = a.form(http.MethodPost, "/projects/"+p+"/scenes", url.Values{"title": {"展開"}, "current_scene_id": {scene}})
-	require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
-	body := rec.Body.String()
-	assert.Contains(t, body, `id="scene-form"`)
-	assert.Contains(t, body, `hx-swap-oob="beforeend:#scene-list"`)
-	assert.Contains(t, body, "Scene 2: 展開")
-	assert.Contains(t, body, `name="current_scene_id" value="`+scene+`"`, "the Scene shown is still the one shown")
-	for _, other := range []string{`id="scene-shot-view"`, `id="shot-form"`, `name="duration_seconds"`, `id="shot-list"`} {
-		assert.NotContains(t, body, other)
-	}
-
-	// A rejected Scene answers the Scene form only.
-	rec = a.form(http.MethodPost, "/projects/"+p+"/scenes", url.Values{"title": {" "}, "location": {"残る場所"}, "current_scene_id": {scene}})
-	require.Equal(t, http.StatusUnprocessableEntity, rec.Code, rec.Body.String())
-	assert.Contains(t, rec.Body.String(), `id="scene-form"`)
-	assert.Contains(t, rec.Body.String(), `value="残る場所"`)
-	assert.NotContains(t, rec.Body.String(), `name="duration_seconds"`)
-
-	// A Shot: the Shot form, the new card appended unselected, the empty message removed and the count of its Scene.
-	rec = a.form(http.MethodPost, "/scenes/"+scene+"/shots", url.Values{"objective": {"商品を見せる"}, "duration_seconds": {"3"}})
-	require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
-	body = rec.Body.String()
-	assert.Contains(t, body, `id="shot-form"`)
-	assert.Contains(t, body, `hx-swap-oob="beforeend:#shot-list"`)
-	assert.Contains(t, body, "商品を見せる")
-	assert.NotContains(t, body, `aria-current="true"`, "the new Shot does not take the selection from the one selected")
-	assert.Contains(t, body, `id="shot-empty" hx-swap-oob="delete"`)
-	assert.Contains(t, body, `id="scene-shot-count-`+scene+`"`)
-	assert.Contains(t, body, "1 Shot")
-	for _, other := range []string{`id="scene-shot-view"`, `id="scene-form"`, `name="location"`, `id="scene-list"`} {
-		assert.NotContains(t, body, other)
-	}
-	rec = a.form(http.MethodPost, "/scenes/"+scene+"/shots", url.Values{"objective": {"二つ目"}, "duration_seconds": {"2"}})
-	assert.NotContains(t, rec.Body.String(), `id="shot-empty"`, "only the first Shot removes the empty message")
-	assert.Contains(t, rec.Body.String(), "2 Shot")
-
-	// A rejected Shot answers the Shot form only.
-	rec = a.form(http.MethodPost, "/scenes/"+scene+"/shots", url.Values{"objective": {"残る目的"}, "duration_seconds": {"abc"}})
-	require.Equal(t, http.StatusUnprocessableEntity, rec.Code, rec.Body.String())
-	assert.Contains(t, rec.Body.String(), `id="shot-form"`)
-	assert.Contains(t, rec.Body.String(), `value="残る目的"`)
-	for _, other := range []string{`name="location"`, `id="scene-form"`, `id="shot-list"`} {
-		assert.NotContains(t, rec.Body.String(), other)
+	input := regexp.MustCompile(`<input[^>]*id="instruction-` + shot + `"[^>]*>`)
+	for name, rec := range map[string]*httptest.ResponseRecorder{
+		"select":  a.form(http.MethodPost, "/takes/t1/select", url.Values{"selected": {"true"}}),
+		"exclude": a.form(http.MethodDelete, "/takes/t2?selected=true", nil),
+	} {
+		require.Equal(t, http.StatusOK, rec.Code, name+": "+rec.Body.String())
+		assert.Contains(t, input.FindString(rec.Body.String()), "hx-preserve", name)
 	}
 }

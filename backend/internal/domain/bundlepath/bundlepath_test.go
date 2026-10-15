@@ -38,3 +38,25 @@ func TestValidFilePath_RefusesNamesWindowsCannotCreate(t *testing.T) {
 		assert.False(t, bundlepath.ValidFilePath("p", p), "%q", p)
 	}
 }
+
+// NTFS and APFS ignore letter case, and a file cannot also be a directory (#735).
+func TestConflict(t *testing.T) {
+	for name, paths := range map[string][]string{
+		"letter case only":       {"p/x.mp4", "p/X.mp4"},
+		"file and directory":     {"p/x", "p/x/y.mp4"},
+		"file and deep dir":      {"p/x/y/z.mp4", "p/x"},
+		"file and dir, any case": {"p/X", "p/x/y.mp4"},
+	} {
+		assert.True(t, bundlepath.Conflict(paths), name)
+	}
+	for name, paths := range map[string][]string{
+		"none":                           nil,
+		"distinct names":                 {"p/a.mp4", "p/b.mp4", "p/takes/a.mp4"},
+		"same spelling twice":            {"p/a.mp4", "p/a.mp4"},
+		"directory spelled in two cases": {"p/Takes/a.mp4", "p/takes/b.mp4"},
+		"shared directory":               {"p/t/a.mp4", "p/t/b.mp4"},
+		"prefix of a name":               {"p/x", "p/xy/z.mp4"},
+	} {
+		assert.False(t, bundlepath.Conflict(paths), name)
+	}
+}
