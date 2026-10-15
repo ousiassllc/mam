@@ -31,7 +31,7 @@
 359	backend/internal/domain/brand.go
 509	backend/internal/domain/editor.go
 332	backend/internal/domain/judge.go
-378	backend/internal/domain/review.go
+375	backend/internal/domain/review.go
 441	backend/internal/domain/worldstate.go
 13074	backend/internal/repository/
 431	backend/internal/repository/branch.go
