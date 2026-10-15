@@ -107,13 +107,35 @@ func (d BundleData) AudioTimelinePaths() ([]string, error) {
 }
 
 // ValidBundleFilePath reports whether p is a safe asset-relative path of the Project: slash
-// separated, clean, below the Project's own directory, with no ".." and no absolute or drive part.
+// separated, clean, below the Project's own directory, with no ".." and no absolute or drive part,
+// and every element after the Project directory is a name Windows can create: no device name (CON,
+// NUL.mp4, COM1, ...), none of * ? " < > | or a control character, and no trailing dot or space
+// (Windows drops it, so "a." and "a" would be one file).
 func ValidBundleFilePath(projectID, p string) bool {
 	if !ValidBundleID(projectID) || p == "" || strings.ContainsAny(p, "\\:\x00") {
 		return false
 	}
-	return path.Clean(p) == p && strings.HasPrefix(p, projectID+"/") && len(p) > len(projectID)+1 &&
-		!strings.Contains(p, "/../") && !strings.HasSuffix(p, "/..")
+	if path.Clean(p) != p || !strings.HasPrefix(p, projectID+"/") || len(p) == len(projectID)+1 ||
+		strings.Contains(p, "/../") || strings.HasSuffix(p, "/..") {
+		return false
+	}
+	for _, name := range strings.Split(p[len(projectID)+1:], "/") {
+		if !validBundleFileName(name) {
+			return false
+		}
+	}
+	return true
+}
+
+// reservedWindowsDeviceName matches a Windows device name with or without an extension: Windows opens
+// "NUL.mp4" and "con.tar.gz" as the device.
+var reservedWindowsDeviceName = regexp.MustCompile(`(?i)^(con|prn|aux|nul|(com|lpt)[1-9])(\..*)?$`)
+
+func validBundleFileName(name string) bool {
+	if name == "" || strings.HasSuffix(name, ".") || strings.HasSuffix(name, " ") || reservedWindowsDeviceName.MatchString(name) {
+		return false
+	}
+	return !strings.ContainsFunc(name, func(r rune) bool { return r < 0x20 || r == 0x7f || strings.ContainsRune(`*?"<>|`, r) })
 }
 
 var reservedBundleID = regexp.MustCompile(`(?i)^(` + ReviewInboxDir + `|con|prn|aux|nul|(com|lpt)[1-9])$`)
