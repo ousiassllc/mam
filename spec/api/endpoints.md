@@ -230,7 +230,7 @@ M2 の入出力契約（Issue #15）:
 
 | Method | Path | 概要 | 対応機能 |
 |---|---|---|---|
-| POST | `/projects/:id/notes` | Project メモ作成。Body `title`（任意、100 文字以内。空なら本文 1 行目の先頭 30 文字、超えれば省略記号付き）、`content`（必須、4000 文字以内）、`category`（任意、省略時は AI が分類）、`pinned`（任意）。title の超過、content の空・超過、不正な `category` は 422。チャットからは `POST /projects/:id/messages` の Command Interpreter が同じ処理を呼ぶ（`source=chat`）。作成後、State Extractor が昇格提案を非同期で生成する。応答（201）は一覧（`#note-list`）に、空にした追加フォームを `hx-swap-oob` で添える（更新・アーカイブ・バージョン復元の応答は一覧だけで、追加フォームの書きかけを消さない） | F-31 |
+| POST | `/projects/:id/notes` | Project メモ作成。Body `title`（任意、100 文字以内。空なら本文 1 行目の先頭 30 文字、超えれば省略記号付き）、`content`（必須、4000 文字以内）、`category`（任意、省略時は AI が分類）、`pinned`（任意）。title の超過、content の空・超過、不正な `category` は 422。チャットからは `POST /projects/:id/messages` の Command Interpreter が同じ処理を呼ぶ（`source=chat`）。作成後、State Extractor が昇格提案を非同期で生成する。応答（201）は `#note-list` で、作成したメモだけを描き、ほかのメモのうちページに載っているもの（追加フォームが `hx-include` で送る `on-page`。`PUT /notes/:id` と同じ）は `hx-preserve` の空の置き場にして、ほかのメモの編集フォームの書きかけの入力を残す。空にした追加フォームを `hx-swap-oob` で添える（更新・アーカイブ・バージョン復元の応答は一覧だけで、追加フォームの書きかけを消さない） | F-31 |
 | POST | `/series/:id/notes` | Series 正本メモ作成（Body と 422 は `POST /projects/:id/notes` と同じ。昇格提案は生成しない） | F-31, F-29 |
 | PUT | `/notes/:id` | メモ更新。`title`/`content` が変わる場合は新しい `note_version` を追記する（Project スコープは昇格提案を再生成）。`category`/`pinned`/`archived`（`false` でアーカイブ解除）は行を更新し、バージョンは増えない。Series 正本の更新はコピー済みの Episode へ伝播しない。応答は `#note-list` で、操作したメモだけを描き、ほかのメモのうちページに載っているもの（要求の `on-page`＝各メモの隠し項目を `#note-list` の `hx-include` で送る。DELETE はクエリ）は `hx-preserve` の空の置き場（`#note-item-<id>`）にして、ページ上のメモ（書きかけの入力を含む）を残す。`on-page` に無いメモ（別タブなどで増えた分）は完全な形で返す | F-31, F-28 |
 | DELETE | `/notes/:id` | メモをアーカイブ（`archived_at` を設定。以降の推論文脈には渡さない）。応答は `PUT /notes/:id` と同じ（操作したメモだけを描く） | F-31 |
