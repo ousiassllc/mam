@@ -17,16 +17,16 @@ jobs:
     # Self-hosted runner (org ousiassllc): GitHub-hosted runners are billed and were blocked by a payment failure.
     runs-on: [self-hosted, Linux, X64]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       # No actions cache on the self-hosted runner: the host keeps the Go module / build and npm caches
       # itself, and the cache save of setup-go hung the job for 25+ minutes in its post step.
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version-file: go.mod
           cache: false
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24
 
