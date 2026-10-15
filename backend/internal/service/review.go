@@ -232,15 +232,14 @@ func (s *ReviewService) ImportResponse(ctx context.Context, projectID string, sr
 }
 
 // SetCommentResolved marks an imported comment as dealt with or open again
-// (PUT /projects/:id/review-comments/:commentId).
-func (s *ReviewService) SetCommentResolved(ctx context.Context, projectID, commentID string, resolved bool) (ReviewsView, error) {
-	if _, err := s.getProject(ctx, projectID); err != nil {
-		return ReviewsView{}, err
+// (PUT /projects/:id/review-comments/:commentId) and returns the review request that holds it.
+func (s *ReviewService) SetCommentResolved(ctx context.Context, projectID, commentID string, resolved bool) (ReviewItemView, error) {
+	it, err := s.reviews.SetCommentResolved(ctx, projectID, commentID, resolved)
+	if err != nil {
+		return ReviewItemView{}, notFound(err)
 	}
-	if err := s.reviews.SetCommentResolved(ctx, projectID, commentID, resolved); err != nil {
-		return ReviewsView{}, notFound(err)
-	}
-	return s.ProjectReviews(ctx, projectID)
+	e, err := s.editors.GetExport(ctx, projectID, it.Request.ExportID)
+	return ReviewItemView{ReviewItem: it, Export: e}, err
 }
 
 // Inbox lists the packages this instance imported as a reviewer, newest first.

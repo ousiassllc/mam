@@ -17,9 +17,8 @@ type ReviewListItem struct {
 // ReviewListData is the state of the owner's review screen (reviews_page).
 type ReviewListData struct {
 	ProjectID string
-	// Exports are the Exports a review can be requested for, newest first.
-	Exports []domain.Export
-	Items   []ReviewListItem
+	Exports   []domain.Export // the Exports a review can be requested for, newest first
+	Items     []ReviewListItem
 }
 
 func reviewStatusTone(s domain.ReviewStatus) atoms.BadgeTone {
@@ -117,13 +116,14 @@ templ ReviewList(d ReviewListData) {
 			<p class="text-sm text-neutral-400">レビュー依頼はまだありません。</p>
 		}
 		for _, it := range d.Items {
-			@reviewItem(d.ProjectID, it)
+			@ReviewRequestCard(d.ProjectID, it)
 		}
 	</div>
 }
 
-templ reviewItem(projectID string, it ReviewListItem) {
-	<article class="flex flex-col gap-3 rounded-md border border-neutral-700 p-3" aria-label={ "レビュー依頼 " + it.Item.Request.CreatedAt.Local().Format("2006-01-02 15:04") }>
+// ReviewRequestCard is one review request; resolving a comment swaps only it (the id comes from the request).
+templ ReviewRequestCard(projectID string, it ReviewListItem) {
+	<article id={ "review-" + it.Item.Request.ID } class="flex flex-col gap-3 rounded-md border border-neutral-700 p-3" aria-label={ "レビュー依頼 " + it.Item.Request.CreatedAt.Local().Format("2006-01-02 15:04") }>
 		<header class="flex flex-wrap items-center gap-3">
 			@atoms.Badge(reviewStatusTone(it.Item.Status()), it.Item.Status().Label())
 			<span class="text-sm">{ exportLabel(it.Export) }</span>
@@ -161,7 +161,7 @@ templ reviewItem(projectID string, it ReviewListItem) {
 								} else {
 									<span class="min-w-0 flex-1 whitespace-pre-wrap">{ c.Body }</span>
 								}
-								<form hx-put={ paths.Project(projectID, "review-comments", c.ID) } hx-target="#review-list" hx-swap="outerHTML">
+								<form hx-put={ paths.Project(projectID, "review-comments", c.ID) } hx-target="closest article" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]">
 									<input type="hidden" name="resolved" value={ resolvedValue(c.Resolved) }/>
 									@atoms.Button(atoms.ToneNeutral, resolvedLabel(c.Resolved), templ.Attributes{"type": "submit"})
 								</form>
