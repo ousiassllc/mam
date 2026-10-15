@@ -79,12 +79,18 @@ jobs:
       # Testing into the runner's tool cache (kept between runs) when there is none and CHROME_PATH is unset.
       # Both the downloader (@puppeteer/browsers, pinned by static/package-lock.json and installed by
       # `make tools`) and the Chrome version (CHROME_VERSION) are pinned so the same commit tests the same
-      # browser; bump CHROME_VERSION by hand (spec/environment/setup.md).
+      # browser; bump CHROME_VERSION by hand (spec/environment/setup.md). `browsers install` unpacks the
+      # Chrome for Testing zip with `unzip` (without it: "Extraction failed: no zip archiver is available"):
+      # like ffmpeg, install it via apt only when missing (needs passwordless sudo), else fail with a clear error.
       - name: Ensure Chrome
         env:
           CHROME_VERSION: 155.0.8059.79
         run: |
           if [ -z "${CHROME_PATH:-}" ] && ! command -v google-chrome >/dev/null && ! command -v chromium >/dev/null; then
+            if ! command -v unzip >/dev/null; then
+              sudo -n apt-get update
+              sudo -n apt-get install -y --no-install-recommends unzip
+            fi
             chrome="$(./static/node_modules/.bin/browsers install "chrome@${CHROME_VERSION}" --path "${RUNNER_TOOL_CACHE}/chrome-for-testing" | tail -n 1 | cut -d' ' -f2-)"
             echo "CHROME_PATH=${chrome}" >> "$GITHUB_ENV"
           fi
