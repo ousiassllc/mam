@@ -14,8 +14,7 @@ type Beat struct {
 	DurationSeconds float64 `json:"duration_seconds,omitempty"`
 }
 
-// Concept is the output of the Producer Agent: the concept and structure developed
-// from the Creative Brief (spec/spec.md §4.3).
+// Concept is the output of the Producer Agent: the concept and structure developed from the Creative Brief (spec/spec.md §4.3).
 type Concept struct {
 	Title     string `json:"title"`
 	Logline   string `json:"logline"`
@@ -85,9 +84,8 @@ func (p ScenePlan) ShotCount() int {
 	return n
 }
 
-// ShotStoryboard is the storyboard frame the Storyboard Agent draws for one Shot. It
-// is stored under the "storyboard" key of shot.shot_spec; the Canonical Shot Spec
-// fields are added next to it by the Prompt Planner.
+// ShotStoryboard is the storyboard frame the Storyboard Agent draws for one Shot. It is stored under the "storyboard"
+// key of shot.shot_spec; the Canonical Shot Spec fields are added next to it by the Prompt Planner.
 type ShotStoryboard struct {
 	Description string `json:"description"` // what the frame shows
 	Framing     string `json:"framing,omitempty"`
@@ -98,22 +96,15 @@ type ShotStoryboard struct {
 }
 
 // Storyboard holds the frames of a ScenePlan: Shots[i][j] belongs to Scenes[i].Shots[j].
-type Storyboard struct {
-	Shots [][]ShotStoryboard
-}
+type Storyboard struct{ Shots [][]ShotStoryboard }
 
-// MaxSceneTitleRunes bounds a Scene title in runes. The forms, the Director Agent and the Continue Agent
-// all keep to the Scene / Shot limits declared here.
-const MaxSceneTitleRunes = 100
-
-// MaxSceneMetaRunes bounds a Scene location and a Scene time in runes.
-const MaxSceneMetaRunes = 100
-
-// MaxObjectiveRunes bounds a Scene or Shot objective in runes.
-const MaxObjectiveRunes = 300
-
-// MaxShotSeconds is the longest a Shot may be, in seconds.
-const MaxShotSeconds = 60
+// Scene / Shot limits (runes; MaxShotSeconds in seconds) that the forms, the Director and the Continue Agent keep to.
+const (
+	MaxSceneTitleRunes = 100 // a Scene title
+	MaxSceneMetaRunes  = 100 // a Scene location and a Scene time
+	MaxObjectiveRunes  = 300 // a Scene or Shot objective
+	MaxShotSeconds     = 60  // the longest a Shot may be
+)
 
 // Scene is a row of scene: one scene of the video. State is the sub-state within the
 // Core State Machine.
