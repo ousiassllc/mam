@@ -4,10 +4,10 @@
 
 Go（`go.mod` のバージョン）、Node.js（24。CI は `.github/workflows/ci.yml` で `node-version: 24` を固定している。`static/package.json` に `engines` は無い）、`templ`、`golangci-lint`、`linterly`、`govulncheck`、`lefthook`、`jq`、Chrome / Chromium。`make tools` が templ（`go.mod` の版に合わせる）・air・golangci-lint・linterly・govulncheck を版を固定して入れ、npm 依存（`static/node_modules`。Biome を含む）も用意する。`make assets` / `make test-static` / `make lint-static` / `make fmt` / `make fmt-check` / `make dev` は `static/node_modules` が無ければ（または `package-lock.json` が新しければ）`npm ci` を自動で実行する。フロントエンドのパッケージマネージャは npm（`static/package-lock.json`）。
 
-- **`jq`**: pre-commit の `scripts/linterly-staged.sh`（コミット対象ファイルの行数チェック）と `scripts/linterly-baseline.sh`（行数の基準値チェック。`make lint-lines`・CI）が使う。無いと「jq not found」で pre-commit が必ず失敗する（`make tools` では入らない。OS のパッケージマネージャで入れる）。
+- **`jq`**: pre-commit の `scripts/linterly-staged.sh`（コミット対象ファイルの行数チェック）と `scripts/linterly-baseline.sh`（行数の基準値チェック。`make lint-lines`・CI）、Windows 版のパッケージング `scripts/package-windows.sh`（`build/windows/info.json` へのバージョン書き込み）が使う。無いと「jq not found」で pre-commit が必ず失敗し、`scripts/package-windows.sh` もツール確認で失敗する（`make tools` では入らない。OS のパッケージマネージャで入れる。Windows の Git Bash には既定で入っていない）。
 - **Chrome / Chromium**: Lit コンポーネントのテスト（`*.wtest.ts`）を実際のブラウザで動かす `@web/test-runner-chrome`（`static/web-test-runner.config.mjs`）が、インストール済みの Chrome を探して使う。`make test-static`（したがって `make test` と pre-push）が必要とし、見つからないときは `CHROME_PATH` で実行ファイルを指定する。CI（self-hosted runner）は runner のホストの Linux 版 Chrome を使い、無いとき（WSL ホストは Windows の `chrome.exe` しか見えず、web-test-runner が操作できない）は `Ensure Chrome` ステップが Chrome for Testing を runner のツールキャッシュへ取得して `CHROME_PATH` に渡す。
 - **ffmpeg / ffprobe**: ビルドには要らず、実行時に任意（PATH に無ければ使わない）。無いと Judge（起動時に警告して無効になる）、Take のプレビュー（4K の 1080p プロキシ・サムネイル）、部分採用・区間指定の再生成の合成、Continue の最終フレーム取り出し、Rough Cut のプレビュー、音声制作（Audio Director: 音声の生成・ミックス・ラウドネス正規化・Lip Sync のクリップ切り出し）、最終 Export が使えない（Export は `ErrUnavailable`）。詳細は `spec/architecture/model-adapters.md` §10.2 と `spec/api/endpoints.md` の各 API。
-- **Wails v3 CLI（`wails3`）と NSIS（`makensis`）**: Windows 版のパッケージング（`scripts/package-windows.sh`）だけが使う。`wails3` は `go install github.com/wailsapp/wails/v3/cmd/wails3@<版>` で入れ、版は `go.mod` の `github.com/wailsapp/wails/v3` と同じものに固定する（v3 はベータ）。NSIS は `choco install nsis`（Windows）。通常の開発・`make build`・`make test` には要らない。
+- **Wails v3 CLI（`wails3`）と NSIS（`makensis`）**: Windows 版のパッケージング（`scripts/package-windows.sh`。上の `jq` も要る）だけが使う。`wails3` は `go install github.com/wailsapp/wails/v3/cmd/wails3@<版>` で入れ、版は `go.mod` の `github.com/wailsapp/wails/v3` と同じものに固定する（v3 はベータ）。NSIS は `choco install nsis`（Windows）。通常の開発・`make build`・`make test` には要らない。
 
 ## タスク
 
@@ -29,7 +29,7 @@ Go（`go.mod` のバージョン）、Node.js（24。CI は `.github/workflows/c
 | `make build` | `scripts/build.sh`（templ → esbuild/tailwind minify → go build）。`bin/mam` を作る |
 | `make build-all` | `scripts/build.sh --all`。windows / darwin / linux × amd64 / arm64 の 6 構成を `bin/mam-<os>-<arch>[.exe]`（Windows は `.exe` 付き）に出力する（`spec/requirements/non-functional.md` §1） |
 | `make clean` | `bin`・`tmp`・`static/src/dist/app.*` を削除する |
-| `scripts/package-windows.sh <version>` | Windows 版（Wails ウィンドウ）のパッケージング。templ → esbuild/tailwind → `wails3 package GOOS=windows`（`GOARCH=amd64`）で `bin/mam-<version>-windows-amd64.exe`（ポータブル）と `bin/mam-<version>-windows-amd64-setup.exe`（NSIS インストーラー）を作る。`<version>` は `X.Y.Z` 形式でなければ失敗する。Windows 上（Git Bash）で動かす。`make` のターゲットは無い（Windows に `make` が無いため） |
+| `scripts/package-windows.sh <version>` | Windows 版（Wails ウィンドウ）のパッケージング。templ → esbuild/tailwind → `wails3 package GOOS=windows`（`GOARCH=amd64`）で `bin/mam-<version>-windows-amd64.exe`（ポータブル）と `bin/mam-<version>-windows-amd64-setup.exe`（NSIS インストーラー）を作る。`<version>` は `X.Y.Z` 形式でなければ失敗する。`go`・`npm`・`templ`・`wails3`・`makensis`・`jq` が要る（無いとツール確認で失敗する）。Windows 上（Git Bash）で動かす。`make` のターゲットは無い（Windows に `make` が無いため） |
 
 ## フロントエンドの整形・lint
 
@@ -133,3 +133,4 @@ pre-commit（`scripts/linterly-staged.sh`）は従来どおり、コミット対
 | 1.14 | 2026-10-12 | `make test-go` を `go test -json` + `scripts/slow-tests.sh` にし、3 秒を超えたテストを一覧に出すようにした。CI 節に `router` のテストの素材共有と並列化を追記 | Issue #558。`router` の 215 本が直列で 226〜350 秒かかり、ffmpeg で同じ素材をテストごとに作っていた |
 | 1.15 | 2026-10-12 | 「Go テストの所要時間」の段落で、router テストの鍵の保管庫を `memStore` から `credentialtest.Memory`（`backend/internal/credential/credentialtest`）に直した | Issue #559。`backend/internal/router` に `memStore` は無く、実装は #558 で入れた `credentialtest.Memory` だった |
 | 1.16 | 2026-10-12 | CI（`ci.yml`）の実行先を `ubuntu-latest` から組織の self-hosted runner（`[self-hosted, Linux, X64]`）に変え、ffmpeg の導入を「無いときだけ `sudo -n apt-get`」に改めた。Chrome・ffmpeg は runner のホストのものを使い、Linux 版 Chrome が無い runner では `Ensure Chrome` ステップが Chrome for Testing を取得し、`setup-go` / `setup-node` は actions のキャッシュを使わないと CI 節・開発ツールに明記 | GitHub-hosted runner の課金停止で CI ジョブが開始されず、PR #707 の CI が確認できなかった。組織には online の self-hosted runner が 2 台あり、うち `silent` は Windows の chrome.exe しか見えず `make test-static` が起動に失敗し、`setup-go` のキャッシュ保存が止まった |
+| 1.17 | 2026-10-15 | `jq` の用途に `scripts/package-windows.sh`（`build/windows/info.json` へのバージョン書き込み）を加え、Windows 版パッケージングの前提（開発ツール・タスク表の `scripts/package-windows.sh`）に `jq` を明記した。README の前提も同様に直した | Issue #724。`package-windows.sh` は `jq` を必須としツール確認で失敗するのに、仕様書は `jq` の用途を pre-commit・行数基準値のスクリプトに限り、Windows 版パッケージングの前提を `wails3` と NSIS だけとしていた（リリースの CI は runner に `jq` があるため表に出ていなかった） |
