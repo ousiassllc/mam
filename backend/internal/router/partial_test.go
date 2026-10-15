@@ -5,9 +5,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
-	"os"
-	"os/exec"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -17,6 +14,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/media"
+	"github.com/ousiassllc/mam/backend/internal/testenv"
 )
 
 // mp4Video is a video model that makes a real 4 s test video, so that ffmpeg can splice it.
@@ -24,13 +22,7 @@ type mp4Video struct{ data []byte }
 
 func newMP4Video(t *testing.T) *mp4Video {
 	t.Helper()
-	path := filepath.Join(t.TempDir(), "clip.mp4")
-	out, err := exec.Command("ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "testsrc=size=320x240:rate=10:duration=4",
-		"-f", "lavfi", "-i", "sine=frequency=440:duration=4", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", path).CombinedOutput()
-	require.NoError(t, err, string(out))
-	data, err := os.ReadFile(path)
-	require.NoError(t, err)
-	return &mp4Video{data: data}
+	return &mp4Video{data: testenv.PatternVideo(t, "320x240", 4)}
 }
 
 func (v *mp4Video) GenerateVideo(context.Context, string, modeladapter.VideoRequest) (modeladapter.VideoResult, error) {
@@ -50,7 +42,7 @@ func newPartialApp(t *testing.T, verdict, command string) *judgeApp {
 	t.Helper()
 	tools, err := media.Look()
 	if err != nil {
-		t.Skip("ffmpeg / ffprobe are not installed")
+		testenv.MissingFFmpeg(t, "ffmpeg / ffprobe are not installed")
 	}
 	j := newJudgeAppOpts(t, judgeOpts{verdict: verdict, video: newMP4Video(t), media: &tools, command: command}, 0.95, 0.95, 0.95)
 	j.director()

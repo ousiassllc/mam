@@ -8,11 +8,17 @@ linters:
   enable:
     - depguard
     - errorlint
+    - gocognit
+    - gocyclo
     - gosec
     - misspell
     - revive
     - unconvert
   settings:
+    gocyclo:
+      min-complexity: 25
+    gocognit:
+      min-complexity: 50
     depguard:
       # Layer rules: handler -> service -> agent -> repository -> domain (overview.md §5).
       rules:
@@ -59,7 +65,29 @@ linters:
       - std-error-handling
     rules:
       - path: _test\.go
-        linters: [gosec]
+        linters: [gosec, gocognit, gocyclo]
+      # Complexity ratchet: gocyclo (25) / gocognit (50) stop NEW or WORSENED functions.
+      # The functions below already exceed the limits; each entry is a temporary allowance
+      # (like .linterly-baseline). It pins the file (`path`), the function and the complexity
+      # range (limit+1 .. current value), so a bigger value, a same-named function elsewhere
+      # and a new function all fail. Remove the entry when the function is split, and lower the
+      # thresholds (gocyclo 20 / gocognit 40) once the list is empty. See #534, #537, #540.
+      # scripts/complexity-ratchet_test.sh checks this behaviour.
+      - linters: [gocognit]
+        path: backend/internal/repository/project\.go
+        text: 'cognitive complexity (5[1-3]) of func `\(\*ProjectRepository\)\.Apply` '
+      - linters: [gocyclo]
+        path: backend/internal/agent/commandinterpreter/interpreter\.go
+        text: 'cyclomatic complexity (2[67]) of func `clean` '
+      - linters: [gocyclo]
+        path: backend/internal/agent/modeladapter/prompt\.go
+        text: 'cyclomatic complexity (2[6-9]|3[01]) of func `describe` '
+      - linters: [gocyclo]
+        path: backend/internal/service/chat_read\.go
+        text: 'cyclomatic complexity (2[6-9]) of func `\(\*ChatService\)\.views` '
+      - linters: [gocyclo]
+        path: backend/internal/service/director_execute\.go
+        text: 'cyclomatic complexity (2[6-9]|3[01]) of func `\(\*DirectorService\)\.execute` '
 
 formatters:
   enable:

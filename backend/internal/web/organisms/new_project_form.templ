@@ -3,6 +3,7 @@ package organisms
 import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // NewProjectFormData is the state of the "new project" form.
@@ -16,20 +17,13 @@ type NewProjectFormData struct {
 // NewProjectForm starts a Project from the first message (F-01): the Creative Brief is
 // extracted from it and the AI asks for what is missing in the new thread.
 templ NewProjectForm(d NewProjectFormData) {
-	<form
-		id="new-project-form"
-		class="rounded-md border border-neutral-800 p-4"
-		hx-post="/projects"
-		hx-encoding="multipart/form-data"
-		hx-target="this"
-		hx-swap="outerHTML"
-	>
+	<form id="new-project-form" class="rounded-md border border-neutral-800 p-4" hx-post={ paths.Projects() } hx-encoding="multipart/form-data" hx-target="this" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]">
 		<label for="new-project-content" class="mb-2 block text-sm font-medium">作りたい動画を教えてください</label>
 		@atoms.Textarea(atoms.FieldLg, "w-full", templ.Attributes{
 			"id":          "new-project-content",
 			"name":        "content",
 			"rows":        "3",
-			"maxlength":   "4000",
+			"maxlength":   intText(domain.MaxMessageRunes),
 			"placeholder": "例: 美容液の縦型15秒CMを作りたい。上品な雰囲気で",
 		}, d.Content)
 		if d.Error != "" {

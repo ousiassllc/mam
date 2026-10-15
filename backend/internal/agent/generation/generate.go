@@ -23,16 +23,12 @@ var errInvalidPlan = planning.ErrInvalidPlan
 
 var ratioRe = regexp.MustCompile(`(\d+)\s*[:：]\s*(\d+)`)
 
-// aspectRatio reads the Brief's aspect ratio ("9:16", "縦 9:16") and falls back to 16:9. Only
-// ratios the image and video models accept are returned.
+// aspectRatio reads the Brief's aspect ratio ("9:16", "縦 9:16"); an unsupported or missing one is the default.
 func aspectRatio(brief domain.Brief) string {
-	if m := ratioRe.FindStringSubmatch(brief.AspectRatio); m != nil {
-		switch r := m[1] + ":" + m[2]; r {
-		case "16:9", "9:16", "1:1":
-			return r
-		}
+	if m := ratioRe.FindStringSubmatch(brief.AspectRatio); m != nil && domain.IsBriefAspectRatio(m[1]+":"+m[2]) {
+		return m[1] + ":" + m[2]
 	}
-	return "16:9"
+	return domain.DefaultAspectRatio
 }
 
 // recordedRequest is what prompt_version.model_adapter_output keeps of a request: the prompt of the
@@ -410,7 +406,7 @@ func (o *Orchestrator) makeTake(ctx context.Context, ref repository.ShotRef, pv 
 		Content: domain.EncodeTakeCardBody(domain.TakeCardBody{
 			Title:    title,
 			Summary:  fmt.Sprintf("%s（%s・%.0f 秒）", out.Model, out.Resolution, out.DurationSeconds),
-			VideoURL: domain.TakeVideoURL(takeID), PosterURL: domain.TakeThumbnailURL(takeID), ShotID: ref.Shot.ID,
+			VideoURL: domain.TakeVideoURL(takeID), PosterURL: domain.TakeThumbnailURL(takeID), ShotID: ref.Shot.ID, FPS: o.files.frameRate(context.WithoutCancel(ctx), asset),
 		}),
 	}
 	if err := o.chat.Announce(context.WithoutCancel(ctx), ref.ProjectID, card); err != nil {

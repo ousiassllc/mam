@@ -56,9 +56,7 @@ func TestReferenceUpload_ValidatesEverythingBeforeStoringAnything(t *testing.T) 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := f.svc.Reference.Upload(context.Background(), f.projectID, tt.in)
-			var invalid *service.ValidationError
-			require.ErrorAs(t, err, &invalid)
-			assert.Equal(t, tt.field, invalid.Field)
+			requireInvalid(t, err, tt.field)
 		})
 	}
 	assert.Equal(t, 0, f.count(t, `SELECT COUNT(*) FROM reference_item`))
@@ -88,17 +86,15 @@ func TestReferenceLibrary_RegistersSearchesAndRemoves(t *testing.T) {
 	assert.Empty(t, view.Items, "filters are ANDed")
 
 	_, err = f.svc.Reference.Library(ctx, f.projectID, service.LibraryQuery{Kind: "keyframe"})
-	var invalid *service.ValidationError
-	require.ErrorAs(t, err, &invalid)
-	assert.Equal(t, "kind", invalid.Field)
+	requireInvalid(t, err, "kind")
 	_, err = f.svc.Reference.Library(ctx, "nope", service.LibraryQuery{})
 	assert.ErrorIs(t, err, service.ErrNotFound)
 
-	view, err = f.svc.Reference.Remove(ctx, f.projectID, mio.ID)
+	view, err = f.svc.Reference.Remove(ctx, f.projectID, mio.ID, service.LibraryQuery{Kind: "product"})
 	require.NoError(t, err)
 	assert.Len(t, view.Items, 1)
 	assert.Equal(t, 1, f.count(t, `SELECT COUNT(*) FROM asset WHERE id = ?`, mio.AssetID), "the image stays")
-	_, err = f.svc.Reference.Remove(ctx, f.projectID, mio.ID)
+	_, err = f.svc.Reference.Remove(ctx, f.projectID, mio.ID, service.LibraryQuery{})
 	assert.ErrorIs(t, err, service.ErrNotFound)
 }
 
@@ -163,10 +159,7 @@ func TestReferencePin_PinnedImageSurvivesARebuildWithoutBeingGeneratedAgain(t *t
 func TestReferencePin_ABusyShotIsRefused(t *testing.T) {
 	f := newGenFixture(t, false)
 	it := f.upload(t, "style", "Noir", "")
-	require.NoError(t, f.db.Write(context.Background(), func(ctx context.Context, tx *sql.Tx) error {
-		_, err := tx.ExecContext(ctx, `UPDATE shot SET state = 'GENERATING' WHERE id = ?`, f.shotID)
-		return err
-	}))
+	f.execSQL(t, `UPDATE shot SET state = 'GENERATING' WHERE id = ?`, f.shotID)
 	_, err := f.svc.Reference.Pin(context.Background(), f.shotID, it.ID)
 	assert.ErrorIs(t, err, service.ErrBusy)
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/layout"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // AnalyticsPageData is everything the analytics screen shows. Project is nil for the metrics of
@@ -67,7 +68,7 @@ func AnalyticsPage(csrfToken string, d AnalyticsPageData) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			} else {
-				templ_7745c5c3_Err = atoms.BackLink("/", "← プロジェクト一覧に戻る").Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = atoms.BackLink(paths.Home(), "← プロジェクト一覧に戻る").Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -84,7 +85,7 @@ func AnalyticsPage(csrfToken string, d AnalyticsPageData) templ.Component {
 				var templ_7745c5c3_Var3 string
 				templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(d.Project.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/pages/analytics_page.templ`, Line: 30, Col: 57}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/pages/analytics_page.templ`, Line: 31, Col: 57}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 				if templ_7745c5c3_Err != nil {

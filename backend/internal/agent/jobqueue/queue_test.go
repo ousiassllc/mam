@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -16,13 +15,12 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 )
 
 func newRepo(t *testing.T) (*repository.DB, *repository.JobRepository) {
 	t.Helper()
-	db, err := repository.Open(context.Background(), filepath.Join(t.TempDir(), "mam.db"), nil)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = db.Close() })
+	db := testdb.Open(t)
 	return db, repository.NewJobRepository(db)
 }
 

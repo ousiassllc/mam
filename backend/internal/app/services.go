@@ -11,6 +11,8 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/configcheck"
+	"github.com/ousiassllc/mam/backend/internal/bundlezip"
 	"github.com/ousiassllc/mam/backend/internal/config"
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
@@ -37,18 +39,20 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger) 
 	}()
 
 	// Leftovers of interrupted imports (tens of GB at most) go first, so the sweep below does not walk them.
-	staleImports, err := service.RemoveStaleImports(cfg.AssetsDir())
+	// Both sweeps are best effort: the leftovers are harmless garbage, so a failure is only logged.
+	staleImports, err := bundlezip.RemoveStaleImports(cfg.AssetsDir())
 	if err != nil {
-		return nil, nil, fmt.Errorf("clean stale import directories: %w", err)
+		logger.Warn("clean stale import directories failed", "err", err)
 	}
 	if len(staleImports) > 0 {
 		logger.Warn("removed stale import directories", "count", len(staleImports))
 	}
 
-	// Leftovers of interrupted atomic writes must not be mistaken for finished assets.
+	// Leftovers of interrupted atomic writes and ffmpeg conversions (".<name>.ffmpeg.tmp" in .previews
+	// too) must not be mistaken for finished assets.
 	removed, err := fsutil.RemoveStaleTemp(cfg.AssetsDir())
 	if err != nil {
-		return nil, nil, fmt.Errorf("clean stale temp files: %w", err)
+		logger.Warn("clean stale temp files failed", "err", err)
 	}
 	if len(removed) > 0 {
 		logger.Warn("removed stale temp files", "count", len(removed))
@@ -71,7 +75,7 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger) 
 	keys := credential.NewKeyring()
 	reasoning := llm.NewClient(llmCfg, llm.NewBackends(llmCfg, keys, nil), llm.WithLogger(logger))
 
-	modelCfg, err := modeladapter.LoadConfig(cfg.ModelConfigPath)
+	modelCfg, err := configcheck.Load(cfg.ModelConfigPath)
 	if err != nil {
 		return nil, nil, err
 	}

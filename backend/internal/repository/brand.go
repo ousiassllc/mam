@@ -21,14 +21,14 @@ type BrandRepository struct {
 // NewBrandRepository returns a BrandRepository backed by db.
 func NewBrandRepository(db *DB) *BrandRepository { return &BrandRepository{db: db, now: time.Now} }
 
-// brandValue is brand_constraint.value.
-type brandValue struct {
+// BrandValue is brand_constraint.value.
+type BrandValue struct {
 	Text string `json:"text"`
 }
 
 // Create registers a constraint of the Project, or returns ErrNotFound when the Project does not exist.
 func (r *BrandRepository) Create(ctx context.Context, c domain.BrandConstraint) (domain.BrandConstraint, error) {
-	raw, err := json.Marshal(brandValue{Text: c.Text})
+	raw, err := json.Marshal(BrandValue{Text: c.Text})
 	if err != nil {
 		return domain.BrandConstraint{}, fmt.Errorf("marshal brand constraint: %w", err)
 	}
@@ -39,7 +39,7 @@ func (r *BrandRepository) Create(ctx context.Context, c domain.BrandConstraint) 
 		}
 		_, err := tx.ExecContext(ctx,
 			`INSERT INTO brand_constraint (id, project_id, type, enforcement_level, value, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
-			c.ID, c.ProjectID, c.Type, c.Level, string(raw), formatTime(c.CreatedAt))
+			c.ID, c.ProjectID, c.Type, c.Level, string(raw), FormatTime(c.CreatedAt))
 		return err
 	})
 	if err != nil {
@@ -76,31 +76,24 @@ func (r *BrandRepository) Delete(ctx context.Context, id string) (string, error)
 
 // List returns the constraints of the Project in the order they were registered.
 func (r *BrandRepository) List(ctx context.Context, projectID string) (domain.BrandConstraints, error) {
-	rows, err := r.db.Reader().QueryContext(ctx,
-		`SELECT id, project_id, type, enforcement_level, value, created_at FROM brand_constraint
-		 WHERE project_id = ? ORDER BY created_at, rowid`, projectID)
-	if err != nil {
-		return nil, fmt.Errorf("list brand constraints: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-	var out domain.BrandConstraints
-	for rows.Next() {
+	out, err := queryAll(ctx, r.db.Reader(), func(row rowScanner) (domain.BrandConstraint, error) {
 		var (
 			c            domain.BrandConstraint
 			value, added string
 		)
-		if err := rows.Scan(&c.ID, &c.ProjectID, &c.Type, &c.Level, &value, &added); err != nil {
-			return nil, fmt.Errorf("scan brand constraint: %w", err)
+		if err := row.Scan(&c.ID, &c.ProjectID, &c.Type, &c.Level, &value, &added); err != nil {
+			return c, fmt.Errorf("scan brand constraint: %w", err)
 		}
-		var v brandValue
-		if err := json.Unmarshal([]byte(value), &v); err != nil {
-			return nil, fmt.Errorf("decode brand constraint %s: %w", c.ID, err)
+		if err := decodeBrandValue(&c, value); err != nil {
+			return c, err
 		}
-		c.Text = v.Text
-		if c.CreatedAt, err = parseTime(added); err != nil {
-			return nil, err
-		}
-		out = append(out, c)
+		var err error
+		c.CreatedAt, err = ParseTime(added)
+		return c, err
+	}, `SELECT id, project_id, type, enforcement_level, value, created_at FROM brand_constraint
+		 WHERE project_id = ? ORDER BY created_at, rowid`, projectID)
+	if err != nil {
+		return nil, fmt.Errorf("list brand constraints: %w", err)
 	}
-	return out, rows.Err()
+	return domain.BrandConstraints(out), nil
 }

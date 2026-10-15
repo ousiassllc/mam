@@ -11,10 +11,12 @@ import templruntime "github.com/a-h/templ/runtime"
 import (
 	"fmt"
 	"net/url"
+	"strconv"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
+	"github.com/ousiassllc/mam/backend/internal/web/selector"
 )
 
 // ShotCardData is a Shot with its storyboard frame and Takes.
@@ -33,34 +35,6 @@ type ShotCardData struct {
 	Judgeable map[string]bool
 }
 
-func takeStatusLabel(s domain.TakeStatus) (atoms.BadgeTone, string) {
-	switch s {
-	case domain.TakeAIPick:
-		return atoms.BadgeInfo, "AI Pick"
-	case domain.TakeSelected:
-		return atoms.BadgeOK, "採用"
-	case domain.TakeRejected:
-		return atoms.BadgeNeutral, "除外"
-	}
-	return atoms.BadgeWarn, "候補"
-}
-
-func shotStateLabel(s domain.ShotState) string {
-	switch s {
-	case domain.ShotPlanning:
-		return "計画中"
-	case domain.ShotGenerating:
-		return "生成中"
-	case domain.ShotJudging:
-		return "Judge 中"
-	case domain.ShotRepairing:
-		return "Repair 中"
-	case domain.ShotEditing:
-		return "編集待ち"
-	}
-	return string(s)
-}
-
 func secondsText(d float64) string { return fmt.Sprintf("%.1f 秒", d) }
 
 // shotURL selects the Shot on the Scene page.
@@ -76,7 +50,7 @@ const SelectedParam = "selected"
 
 // selectedVals is the hx-vals that make a Take button send SelectedParam.
 func selectedVals(selected bool) string {
-	return fmt.Sprintf(`{"%s":"%t"}`, SelectedParam, selected)
+	return atoms.HxVals(map[string]string{SelectedParam: strconv.FormatBool(selected)})
 }
 
 func shotActionURL(shotID string, action ...string) string { return paths.Shot(shotID, action...) }
@@ -100,6 +74,10 @@ func showsProgressPlayer(s domain.Shot) bool {
 }
 
 func takeComparisonURL(shotID string) string { return paths.Shot(shotID, "takes") }
+
+// shotTarget is the hx-target of the card of a Shot (id "shot-<id>"). IDs are limited to
+// [A-Za-z0-9_-] (domain.ValidBundleID); the escape is defence in depth, were that limit ever relaxed.
+func shotTarget(shotID string) string { return selector.ID("shot-", shotID) }
 
 func takeJudgeResultURL(takeID string) string { return paths.APITake(takeID, "judge-result") }
 
@@ -137,7 +115,7 @@ func ShotActions(shotID string, canContinue bool, candidates bool) templ.Compone
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.ResolveAttributeValue(generateURL(shotID, candidates))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/shot_card.templ`, Line: 107, Col: 43}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/shot_card.templ`, Line: 85, Col: 43}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
 		if templ_7745c5c3_Err != nil {
@@ -148,22 +126,22 @@ func ShotActions(shotID string, canContinue bool, candidates bool) templ.Compone
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var3 string
-		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue("#shot-" + shotID)
+		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(shotTarget(shotID))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/shot_card.templ`, Line: 108, Col: 31}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/shot_card.templ`, Line: 86, Col: 32}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" hx-swap=\"outerHTML\"><label class=\"sr-only\" for=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" hx-swap=\"outerHTML\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button[type=submit]\"><label class=\"sr-only\" for=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue("instruction-" + shotID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/shot_card.templ`, Line: 111, Col: 54}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/shot_card.templ`, Line: 91, Col: 54}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 		if templ_7745c5c3_Err != nil {
@@ -177,7 +155,7 @@ func ShotActions(shotID string, canContinue bool, candidates bool) templ.Compone
 			"id":          "instruction-" + shotID,
 			"name":        "additional_instruction",
 			"type":        "text",
-			"maxlength":   "1000",
+			"maxlength":   strconv.Itoa(domain.MaxInstructionRunes),
 			"placeholder": "追加の指示（任意。例: もう少しカメラを寄せて）",
 		}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
@@ -190,7 +168,7 @@ func ShotActions(shotID string, canContinue bool, candidates bool) templ.Compone
 		templ_7745c5c3_Err = atoms.Button(atoms.ToneNeutral, "Reference Pack", templ.Attributes{
 			"type":      "button",
 			"hx-post":   shotActionURL(shotID, "reference-pack"),
-			"hx-target": "#shot-" + shotID,
+			"hx-target": shotTarget(shotID),
 			"hx-swap":   "outerHTML",
 		}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
@@ -198,9 +176,10 @@ func ShotActions(shotID string, canContinue bool, candidates bool) templ.Compone
 		}
 		if canContinue {
 			templ_7745c5c3_Err = atoms.Button(atoms.ToneNeutral, "続きを作る", templ.Attributes{
-				"type":    "button",
-				"hx-post": shotActionURL(shotID, "continue"),
-				"hx-swap": "none",
+				"type":            "button",
+				"hx-post":         shotActionURL(shotID, "continue"),
+				"hx-swap":         "none",
+				"hx-disabled-elt": "this",
 			}).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -249,7 +228,7 @@ func TakeRow(t domain.Take, selected bool, repairable bool, judgeable bool) temp
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(t.ModelName)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/shot_card.templ`, Line: 145, Col: 38}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/shot_card.templ`, Line: 126, Col: 38}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
@@ -259,12 +238,12 @@ func TakeRow(t domain.Take, selected bool, repairable bool, judgeable bool) temp
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		if t.Status != domain.TakeRejected && t.FilePath != "" {
-			if t.Status != domain.TakeSelected {
-				templ_7745c5c3_Err = atoms.LinkButton("選択", templ.Attributes{
+		if t.Usable() {
+			if t.Selectable() {
+				templ_7745c5c3_Err = atoms.LinkButton(atoms.ToneNeutral, "選択", templ.Attributes{
 					"type":      "button",
 					"hx-post":   takeActionURL(t.ID, "select"),
-					"hx-target": "#shot-" + t.ShotID,
+					"hx-target": shotTarget(t.ShotID),
 					"hx-swap":   "outerHTML",
 					"hx-vals":   selectedVals(selected),
 				}).Render(ctx, templ_7745c5c3_Buffer)
@@ -276,10 +255,10 @@ func TakeRow(t domain.Take, selected bool, repairable bool, judgeable bool) temp
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = atoms.LinkButton("除外", templ.Attributes{
+			templ_7745c5c3_Err = atoms.LinkButton(atoms.ToneNeutral, "除外", templ.Attributes{
 				"type":       "button",
 				"hx-delete":  paths.Take(t.ID),
-				"hx-target":  "#shot-" + t.ShotID,
+				"hx-target":  shotTarget(t.ShotID),
 				"hx-swap":    "outerHTML",
 				"hx-confirm": "この Take を除外しますか？",
 				"hx-vals":    selectedVals(selected),
@@ -288,8 +267,7 @@ func TakeRow(t domain.Take, selected bool, repairable bool, judgeable bool) temp
 				return templ_7745c5c3_Err
 			}
 		}
-		tone, label := takeStatusLabel(t.Status)
-		templ_7745c5c3_Err = atoms.Badge(tone, label).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = TakeStatusBadge(t.Status).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -297,7 +275,7 @@ func TakeRow(t domain.Take, selected bool, repairable bool, judgeable bool) temp
 			templ_7745c5c3_Err = atoms.Button(atoms.ToneNeutral, "Judge", templ.Attributes{
 				"type":      "button",
 				"hx-post":   paths.Take(t.ID, "judge"),
-				"hx-target": "#shot-" + t.ShotID,
+				"hx-target": shotTarget(t.ShotID),
 				"hx-swap":   "outerHTML",
 				"hx-vals":   selectedVals(selected),
 			}).Render(ctx, templ_7745c5c3_Buffer)
@@ -309,7 +287,7 @@ func TakeRow(t domain.Take, selected bool, repairable bool, judgeable bool) temp
 			templ_7745c5c3_Err = atoms.Button(atoms.ToneNeutral, "Repair", templ.Attributes{
 				"type":      "button",
 				"hx-post":   paths.Take(t.ID, "repair"),
-				"hx-target": "#shot-" + t.ShotID,
+				"hx-target": shotTarget(t.ShotID),
 				"hx-swap":   "outerHTML",
 				"hx-vals":   selectedVals(selected),
 			}).Render(ctx, templ_7745c5c3_Buffer)
@@ -374,7 +352,7 @@ func ShotCard(d ShotCardData) templ.Component {
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue("shot-" + d.Shot.ID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/shot_card.templ`, Line: 208, Col: 26}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/shot_card.templ`, Line: 188, Col: 26}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
 		if templ_7745c5c3_Err != nil {
@@ -411,7 +389,7 @@ func ShotCard(d ShotCardData) templ.Component {
 			var templ_7745c5c3_Var11 string
 			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.ResolveAttributeValue(shotURL(d.ProjectID, d.Shot.SceneID, d.Shot.ID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/shot_card.templ`, Line: 215, Col: 69}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/shot_card.templ`, Line: 195, Col: 69}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var11)
 			if templ_7745c5c3_Err != nil {
@@ -429,7 +407,7 @@ func ShotCard(d ShotCardData) templ.Component {
 				var templ_7745c5c3_Var12 string
 				templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.ResolveAttributeValue(shotProgressURL(d.Shot.ID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/shot_card.templ`, Line: 217, Col: 44}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/shot_card.templ`, Line: 197, Col: 44}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var12)
 				if templ_7745c5c3_Err != nil {
@@ -448,7 +426,7 @@ func ShotCard(d ShotCardData) templ.Component {
 		var templ_7745c5c3_Var13 templ.SafeURL
 		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(shotURL(d.ProjectID, d.Shot.SceneID, d.Shot.ID)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/shot_card.templ`, Line: 224, Col: 73}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/shot_card.templ`, Line: 204, Col: 73}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 		if templ_7745c5c3_Err != nil {
@@ -461,7 +439,7 @@ func ShotCard(d ShotCardData) templ.Component {
 		var templ_7745c5c3_Var14 string
 		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.ResolveAttributeValue(shotURL(d.ProjectID, d.Shot.SceneID, d.Shot.ID))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/shot_card.templ`, Line: 225, Col: 60}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/shot_card.templ`, Line: 205, Col: 60}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var14)
 		if templ_7745c5c3_Err != nil {
@@ -474,7 +452,7 @@ func ShotCard(d ShotCardData) templ.Component {
 		var templ_7745c5c3_Var15 string
 		templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("Shot %d: %s", d.Shot.OrderIndex+1, d.Shot.Objective))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/shot_card.templ`, Line: 229, Col: 71}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/shot_card.templ`, Line: 209, Col: 71}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 		if templ_7745c5c3_Err != nil {
@@ -487,7 +465,7 @@ func ShotCard(d ShotCardData) templ.Component {
 		var templ_7745c5c3_Var16 templ.SafeURL
 		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(inspectorURL(d.Shot.ID)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/shot_card.templ`, Line: 231, Col: 52}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/shot_card.templ`, Line: 211, Col: 52}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 		if templ_7745c5c3_Err != nil {
@@ -500,7 +478,7 @@ func ShotCard(d ShotCardData) templ.Component {
 		var templ_7745c5c3_Var17 string
 		templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(secondsText(d.Shot.Duration))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/shot_card.templ`, Line: 232, Col: 40}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/shot_card.templ`, Line: 212, Col: 40}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 		if templ_7745c5c3_Err != nil {
@@ -528,7 +506,7 @@ func ShotCard(d ShotCardData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = atoms.Badge(atoms.BadgeNeutral, shotStateLabel(d.Shot.State)).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = atoms.Badge(atoms.BadgeNeutral, ShotStateLabel(d.Shot.State)).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -549,7 +527,7 @@ func ShotCard(d ShotCardData) templ.Component {
 				var templ_7745c5c3_Var18 string
 				templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(row[0])
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/shot_card.templ`, Line: 248, Col: 42}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/shot_card.templ`, Line: 228, Col: 42}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 				if templ_7745c5c3_Err != nil {
@@ -562,7 +540,7 @@ func ShotCard(d ShotCardData) templ.Component {
 				var templ_7745c5c3_Var19 string
 				templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(row[1])
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/shot_card.templ`, Line: 249, Col: 57}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/shot_card.templ`, Line: 229, Col: 57}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 				if templ_7745c5c3_Err != nil {
@@ -592,7 +570,7 @@ func ShotCard(d ShotCardData) templ.Component {
 			var templ_7745c5c3_Var20 string
 			templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.ResolveAttributeValue(shotProgressURL(d.Shot.ID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/shot_card.templ`, Line: 257, Col: 75}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/shot_card.templ`, Line: 237, Col: 75}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var20)
 			if templ_7745c5c3_Err != nil {
@@ -626,7 +604,7 @@ func ShotCard(d ShotCardData) templ.Component {
 				var templ_7745c5c3_Var21 templ.SafeURL
 				templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(takeComparisonURL(d.Shot.ID)))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/shot_card.templ`, Line: 266, Col: 57}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/shot_card.templ`, Line: 246, Col: 57}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 				if templ_7745c5c3_Err != nil {

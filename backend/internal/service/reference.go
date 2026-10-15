@@ -117,15 +117,15 @@ func retag(err error, field string) error {
 }
 
 // Remove takes the entry out of the Library (the image and the references Shots hold stay) and
-// returns the whole Library.
-func (s *ReferenceService) Remove(ctx context.Context, projectID, referenceID string) (LibraryView, error) {
+// returns the Library under q, the filter of the list the entry was removed from.
+func (s *ReferenceService) Remove(ctx context.Context, projectID, referenceID string, q LibraryQuery) (LibraryView, error) {
 	if _, err := s.getProject(ctx, projectID); err != nil {
 		return LibraryView{}, err
 	}
 	if err := s.references.Delete(ctx, projectID, referenceID); err != nil {
 		return LibraryView{}, notFound(err)
 	}
-	return s.Library(ctx, projectID, LibraryQuery{})
+	return s.Library(ctx, projectID, q)
 }
 
 // Pin adds the Library image to the Reference Pack of the Shot and returns the Shot Inspector. An

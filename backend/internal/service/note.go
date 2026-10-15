@@ -8,6 +8,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/stateextractor"
+	"github.com/ousiassllc/mam/backend/internal/bgwork"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
@@ -221,18 +222,17 @@ func (s *NoteService) Restore(ctx context.Context, id string, number int) (Notes
 }
 
 // proposeInBackground lets the State Extractor look at the new version of a Project note after the
-// request has been answered. Only Project notes are promoted (Series notes reach a Project as
-// copies).
+// request has been answered. Only Project notes are promoted (Series notes copy into a Project).
 func (s *NoteService) proposeInBackground(ctx context.Context, n domain.NoteView) {
 	if n.ProjectID == "" || s.extractor == nil {
 		return
 	}
 	bg := context.WithoutCancel(ctx)
-	go func() {
+	go bgwork.RunSafely(s.logger, "propose note promotion", func() {
 		if err := s.ProposePromotion(bg, n.ID, n.Version.Number); err != nil {
 			s.logger.Error("propose note promotion failed", "note_id", n.ID, "version", n.Version.Number, "err", err)
 		}
-	}()
+	})
 }
 
 // ProposePromotion compares the version of a Project note with the World State and, when it says

@@ -18,14 +18,8 @@ func branchApp(t *testing.T) (a *app, project, shot string) {
 	t.Helper()
 	a = newApp(t)
 	project = a.createProject("美容液の縦型15秒CMを作りたい")
-	rec := a.form(http.MethodPost, "/projects/"+project+"/scenes", url.Values{"title": {"Street"}})
-	m := sceneIDRe.FindStringSubmatch(rec.Body.String())
-	require.NotNil(t, m)
-	rec = a.form(http.MethodPost, "/scenes/"+m[1]+"/shots", url.Values{"objective": {"走り出す"}, "duration_seconds": {"4"}})
-	require.Equal(t, http.StatusCreated, rec.Code)
-	m = shotIDRe.FindStringSubmatch(rec.Body.String())
-	require.NotNil(t, m)
-	return a, project, m[1]
+	_, shot = a.createShot(project)
+	return a, project, shot
 }
 
 func TestBranch_PostSavesTheBranchPointAndRedirectsToTheBranch(t *testing.T) {

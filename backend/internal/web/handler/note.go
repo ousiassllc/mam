@@ -7,16 +7,16 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
-	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/notelist"
 	"github.com/ousiassllc/mam/backend/internal/web/pages"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
-func noteListData(v service.NotesView) organisms.NoteListData {
+func noteListData(v service.NotesView, only string, onPage ...string) notelist.Data {
 	if v.Project.ID != "" {
-		return organisms.NoteListData{BasePath: paths.Project(v.Project.ID, "notes"), Notes: v.Notes}
+		return notelist.Data{BasePath: paths.Project(v.Project.ID, "notes"), Notes: v.Notes, Only: only, OnPage: onPage}
 	}
-	return organisms.NoteListData{BasePath: "/series/" + v.Series.ID + "/notes", Series: true, Notes: v.Notes}
+	return notelist.Data{BasePath: paths.Series(v.Series.ID, "notes"), Series: true, Notes: v.Notes, Only: only, OnPage: onPage}
 }
 
 func notesPageData(v service.NotesView) pages.NotesPageData {
@@ -24,19 +24,19 @@ func notesPageData(v service.NotesView) pages.NotesPageData {
 		return pages.NotesPageData{
 			Title: "Notes", Owner: v.Project.Name, BackHref: paths.Project(v.Project.ID), BackLabel: "← チャットに戻る",
 			Lead:  "自由記述の制作メモです。ピン留めしたメモは常に、それ以外は関連度の高い順に、脚本・Scene/Shot 計画・Shot Spec の作成に渡されます（アーカイブしたメモは渡されません）。構造化できる内容は、チャットの承認カードで World State への反映を提案します。",
-			Notes: noteListData(v),
+			Notes: noteListData(v, ""),
 		}
 	}
 	return pages.NotesPageData{
-		Title: "Series Notes", Owner: v.Series.Name, BackHref: "/series/" + v.Series.ID, BackLabel: "← Series に戻る",
+		Title: "Series Notes", Owner: v.Series.Name, BackHref: paths.Series(v.Series.ID), BackLabel: "← Series に戻る",
 		Lead:  "Series の正本メモです。Episode の開始時に Project へコピーされます（アーカイブ済みは除く）。正本を更新しても、すでに作成した Episode には反映されません。",
-		Notes: noteListData(v),
+		Notes: noteListData(v, ""),
 	}
 }
 
 func renderNotesPage(c *gin.Context, v service.NotesView) {
 	if isHTMX(c) {
-		render(c, http.StatusOK, organisms.NoteList(noteListData(v)))
+		render(c, http.StatusOK, notelist.View(noteListData(v, "")))
 		return
 	}
 	render(c, http.StatusOK, pages.NotesPage(middleware.CSRFToken(c), notesPageData(v)))
@@ -99,7 +99,7 @@ func noteInput(c *gin.Context) service.NoteInput {
 	return service.NoteInput{Title: c.PostForm("title"), Content: c.PostForm("content"), Category: c.PostForm("category"), Pinned: pinned != nil && *pinned}
 }
 
-// CreateProjectNote adds a note to a Project (POST /projects/:id/notes) and answers with the list (201).
+// CreateProjectNote adds a note to a Project (POST /projects/:id/notes).
 func CreateProjectNote(svc *service.NoteService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		view, err := svc.CreateProjectNote(c.Request.Context(), c.Param("id"), noteInput(c))
@@ -107,11 +107,11 @@ func CreateProjectNote(svc *service.NoteService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusCreated, organisms.NoteList(noteListData(view)))
+		render(c, http.StatusCreated, notelist.Created(noteListData(view, "")))
 	}
 }
 
-// CreateSeriesNote adds a canonical note to a Series (POST /series/:id/notes) and answers with the list (201).
+// CreateSeriesNote adds a canonical note to a Series (POST /series/:id/notes).
 func CreateSeriesNote(svc *service.NoteService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		view, err := svc.CreateSeriesNote(c.Request.Context(), c.Param("id"), noteInput(c))
@@ -119,12 +119,12 @@ func CreateSeriesNote(svc *service.NoteService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusCreated, organisms.NoteList(noteListData(view)))
+		render(c, http.StatusCreated, notelist.Created(noteListData(view, "")))
 	}
 }
 
 // UpdateNote changes the fields that were sent (PUT /notes/:id: title, content, category, pinned,
-// archived) and answers with the list of the note's scope.
+// archived) and answers with the list of the note's scope, drawing only that note (notelist.Data.Only).
 func UpdateNote(svc *service.NoteService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		view, err := svc.Update(c.Request.Context(), c.Param("id"), service.NoteChange{
@@ -135,11 +135,11 @@ func UpdateNote(svc *service.NoteService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusOK, organisms.NoteList(noteListData(view)))
+		render(c, http.StatusOK, notelist.Groups(noteListData(view, c.Param("id"), notelist.OnPage(c.Request)...)))
 	}
 }
 
-// ArchiveNote archives a note (DELETE /notes/:id) and answers with the list.
+// ArchiveNote archives a note (DELETE /notes/:id) and answers with the list, drawing only that note.
 func ArchiveNote(svc *service.NoteService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		view, err := svc.Archive(c.Request.Context(), c.Param("id"))
@@ -147,12 +147,12 @@ func ArchiveNote(svc *service.NoteService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusOK, organisms.NoteList(noteListData(view)))
+		render(c, http.StatusOK, notelist.Groups(noteListData(view, c.Param("id"), notelist.OnPage(c.Request)...)))
 	}
 }
 
 // RestoreNoteVersion restores an earlier version of a note as a new version
-// (POST /notes/:id/versions/:versionNumber/restore) and answers with the list.
+// (POST /notes/:id/versions/:versionNumber/restore) and answers with the list, drawing only that note.
 func RestoreNoteVersion(svc *service.NoteService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		number, err := service.ParseVersionNumber(c.Param("versionNumber"))
@@ -165,6 +165,6 @@ func RestoreNoteVersion(svc *service.NoteService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusOK, organisms.NoteList(noteListData(view)))
+		render(c, http.StatusOK, notelist.Groups(noteListData(view, c.Param("id"), notelist.OnPage(c.Request)...)))
 	}
 }

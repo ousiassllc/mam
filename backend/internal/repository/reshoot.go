@@ -48,7 +48,7 @@ func (r *EditorRepository) CreateReshootRound(ctx context.Context, timelineID st
 				`INSERT INTO reshoot_request (id, project_id, branch_id, edit_timeline_version_id, round, shot_id, after_shot_id, kind, objective, duration_seconds, status, created_at)
 				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 				req.ID, projectID, nullIfEmpty(branchID), timelineID, round, n.ShotID, nullIfEmpty(n.AfterShotID), n.Kind, n.Objective, n.DurationSeconds,
-				req.Status, formatTime(req.CreatedAt)); err != nil {
+				req.Status, FormatTime(req.CreatedAt)); err != nil {
 				return err
 			}
 			out = append(out, req)
@@ -80,27 +80,23 @@ const reshootSelect = `SELECT id, project_id, COALESCE(branch_id, ''), edit_time
 	kind, objective, duration_seconds, status, COALESCE(applied_edit_timeline_version_id, ''), created_at FROM reshoot_request`
 
 func (r *EditorRepository) queryReshoots(ctx context.Context, where string, args ...any) ([]domain.ReshootRequest, error) {
-	rows, err := r.db.Reader().QueryContext(ctx, reshootSelect+where+` ORDER BY round, rowid`, args...)
-	if err != nil {
-		return nil, fmt.Errorf("list reshoot requests: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-	var out []domain.ReshootRequest
-	for rows.Next() {
+	out, err := queryAll(ctx, r.db.Reader(), func(row rowScanner) (domain.ReshootRequest, error) {
 		var (
 			q       domain.ReshootRequest
 			created string
 		)
-		if err := rows.Scan(&q.ID, &q.ProjectID, &q.BranchID, &q.EditTimelineVersionID, &q.Round, &q.ShotID, &q.AfterShotID,
+		if err := row.Scan(&q.ID, &q.ProjectID, &q.BranchID, &q.EditTimelineVersionID, &q.Round, &q.ShotID, &q.AfterShotID,
 			&q.Kind, &q.Objective, &q.DurationSeconds, &q.Status, &q.AppliedEditTimelineVersionID, &created); err != nil {
-			return nil, fmt.Errorf("scan reshoot request: %w", err)
+			return q, fmt.Errorf("scan reshoot request: %w", err)
 		}
-		if q.CreatedAt, err = parseTime(created); err != nil {
-			return nil, err
-		}
-		out = append(out, q)
+		var err error
+		q.CreatedAt, err = ParseTime(created)
+		return q, err
+	}, reshootSelect+where+` ORDER BY round, rowid`, args...)
+	if err != nil {
+		return nil, fmt.Errorf("list reshoot requests: %w", err)
 	}
-	return out, rows.Err()
+	return out, nil
 }
 
 // ListReshoots returns every additional Shot request of the Project (trunk and every Branch),
@@ -118,20 +114,11 @@ func (r *EditorRepository) PendingReshoots(ctx context.Context, projectID string
 
 // ProjectsWithPendingReshoots returns the IDs of the Projects that wait for an additional Shot.
 func (r *EditorRepository) ProjectsWithPendingReshoots(ctx context.Context) ([]string, error) {
-	rows, err := r.db.Reader().QueryContext(ctx, `SELECT DISTINCT project_id FROM reshoot_request WHERE status = ?`, domain.ReshootRequested)
+	ids, err := queryAll(ctx, r.db.Reader(), scanString, `SELECT DISTINCT project_id FROM reshoot_request WHERE status = ?`, domain.ReshootRequested)
 	if err != nil {
 		return nil, fmt.Errorf("list projects with pending reshoots: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
-	var ids []string
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			return nil, fmt.Errorf("scan project id: %w", err)
-		}
-		ids = append(ids, id)
-	}
-	return ids, rows.Err()
+	return ids, nil
 }
 
 // SaveReshootApplied saves the timeline that has the additional Shots as the next version of the

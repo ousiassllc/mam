@@ -8,50 +8,21 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/coder/websocket"
 	"github.com/coder/websocket/wsjson"
-	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/zalando/go-keyring"
 
-	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
-	"github.com/ousiassllc/mam/backend/internal/router"
-	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 )
 
 var pngBytes = append([]byte("\x89PNG\r\n\x1a\n"), bytes.Repeat([]byte{0}, 32)...)
-
-type app struct {
-	t      *testing.T
-	db     *repository.DB
-	engine *gin.Engine
-	svc    *service.Services
-	cookie *http.Cookie
-	token  string
-	assets string // the assets directory
-}
-
-func newApp(t *testing.T) *app {
-	t.Helper()
-	keyring.MockInit()
-	dir := t.TempDir()
-	db, err := repository.Open(context.Background(), filepath.Join(dir, "mam.db"), nil)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = db.Close() })
-	svc := service.New(service.Deps{DB: db, Credentials: credential.NewKeyring(), AssetsDir: filepath.Join(dir, "assets")})
-	a := &app{t: t, db: db, engine: router.New(svc, router.Options{}), svc: svc, assets: filepath.Join(dir, "assets")}
-	a.cookie, a.token = bootstrap(t, a.engine)
-	return a
-}
 
 // request sends an unsafe or safe request the way the browser does: cookie + CSRF header (+ HX-Request).
 func (a *app) request(method, path string, body []byte, contentType string, htmx bool) *httptest.ResponseRecorder {
@@ -108,7 +79,6 @@ func (a *app) createProject(content string, files ...file) string {
 
 func TestProjects_ListPageWithNewProjectFormAndFragment(t *testing.T) {
 	a := newApp(t)
-
 	rec := a.get("/projects", false)
 	require.Equal(t, http.StatusOK, rec.Code)
 	body := rec.Body.String()
@@ -138,6 +108,9 @@ func TestCreateProject_StartsTheThreadWithBriefQuestionAndAttachments(t *testing
 	assert.Contains(t, body, `id="chat-thread"`, "chat_thread")
 	assert.Contains(t, body, `id="chat-composer"`, "chat_composer")
 	assert.Contains(t, body, `data-ws-url="/ws/projects/`+id+`"`)
+	assert.Contains(t, body, `data-messages-url="/projects/`+id+`/messages"`, "the client fetches the thread from the URL the server gives")
+	assert.Contains(t, body, `data-card-url="/projects/`+id+`/messages/`, "every card says where it is fetched again")
+	assert.Contains(t, body, `data-next-url="/projects/`+id+`/messages?after=`, "every message says where what is newer is fetched")
 	assert.Contains(t, body, "美容液の縦型15秒CMを作りたい")
 	assert.Contains(t, body, `data-kind="question"`)
 	assert.Contains(t, body, "確認です。動画の目的")
@@ -167,7 +140,6 @@ func TestWorkspace_HistoryIsPersistedPerProject(t *testing.T) {
 
 func TestWorkspace_UnknownProjectIs404(t *testing.T) {
 	a := newApp(t)
-
 	rec := a.get("/projects/missing", false)
 	assert.Equal(t, http.StatusNotFound, rec.Code)
 	assert.Contains(t, rec.Body.String(), "対象が見つかりません")
@@ -180,7 +152,6 @@ func TestWorkspace_UnknownProjectIs404(t *testing.T) {
 
 func TestCreateProject_InvalidInputRerendersTheFormWithTheError(t *testing.T) {
 	a := newApp(t)
-
 	rec := a.multipart(http.MethodPost, "/projects", map[string]string{"content": "  "})
 	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
 	assert.Contains(t, rec.Body.String(), `id="new-project-form"`)
@@ -280,6 +251,7 @@ func TestAssets_ServedWithOwnTypeAndOnlyInsideTheirProject(t *testing.T) {
 	require.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, "image/png", rec.Header().Get("Content-Type"))
 	assert.Equal(t, "nosniff", rec.Header().Get("X-Content-Type-Options"))
+	assert.Equal(t, "sandbox", rec.Header().Get("Content-Security-Policy"), "the page policy does not replace the asset's own")
 	assert.Equal(t, pngBytes, rec.Body.Bytes())
 
 	assert.Equal(t, http.StatusNotFound, a.get("/projects/"+other+"/assets/"+assetID, false).Code)
@@ -546,7 +518,7 @@ func TestBrief_InvalidEditRerendersWithErrorAndKeepsInput(t *testing.T) {
 
 	rec := a.form(http.MethodPut, "/projects/"+id+"/brief", url.Values{"subject": {"化粧水"}, "aspect_ratio": {"縦長"}})
 	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
-	assert.Contains(t, rec.Body.String(), "9:16 のように")
+	assert.Contains(t, rec.Body.String(), "9:16 / 16:9 / 1:1 から選んでください")
 	assert.Contains(t, rec.Body.String(), `value="縦長"`, "the rejected input is shown again")
 
 	rec = a.form(http.MethodPut, "/projects/"+id+"/brief", url.Values{"references": {"javascript:alert(1)"}})
@@ -634,7 +606,6 @@ func TestChat_MultipartMediaTypeIsCaseInsensitive(t *testing.T) {
 	var assets int
 	require.NoError(t, a.db.Reader().QueryRow(`SELECT COUNT(*) FROM asset WHERE project_id = ?`, id).Scan(&assets))
 	assert.Equal(t, 1, assets)
-
 	// A body that is not multipart goes through readMultipart's error handling.
 	rec = a.request(http.MethodPost, "/projects/"+id+"/messages", []byte("content=x"), "Multipart/Form-Data; boundary=mam", true)
 	assert.Equal(t, http.StatusBadRequest, rec.Code, rec.Body.String())

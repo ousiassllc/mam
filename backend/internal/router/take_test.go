@@ -8,7 +8,6 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -17,14 +16,16 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/zalando/go-keyring"
 
-	"github.com/ousiassllc/mam/backend/internal/credential"
+	"github.com/ousiassllc/mam/backend/internal/credential/credentialtest"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 	"github.com/ousiassllc/mam/backend/internal/router"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
+	"github.com/ousiassllc/mam/backend/internal/testenv"
 )
 
 type takeApp struct {
@@ -44,30 +45,22 @@ func newTakeAppWith(t *testing.T, mutate func(*service.Deps)) *takeApp {
 	t.Helper()
 	tools, err := media.Look()
 	if err != nil {
-		t.Skip("ffmpeg / ffprobe are not installed")
+		testenv.MissingFFmpeg(t, "ffmpeg / ffprobe are not installed")
 	}
-	keyring.MockInit()
+	testenv.Parallel(t)
+	keys := credentialtest.New()
 	dir := t.TempDir()
-	db, err := repository.Open(context.Background(), filepath.Join(dir, "mam.db"), nil)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = db.Close() })
-	deps := service.Deps{DB: db, Credentials: credential.NewKeyring(), AssetsDir: filepath.Join(dir, "assets"), Media: &tools}
+	db := testdb.Open(t)
+	deps := service.Deps{DB: db, Credentials: keys, AssetsDir: filepath.Join(dir, "assets"), Media: &tools}
 	if mutate != nil {
 		mutate(&deps)
 	}
-	svc := service.New(deps)
-	a := &app{t: t, db: db, engine: router.New(svc, router.Options{}), svc: svc}
+	svc := servicetest.New(t, deps)
+	a := &app{t: t, db: db, engine: router.New(svc, router.Options{}), svc: svc, keys: keys}
 	a.cookie, a.token = bootstrap(t, a.engine)
 	ta := &takeApp{app: a, dir: dir, tools: tools}
 	ta.project = a.createProject("美容液のCMを作りたい")
-	rec := a.form(http.MethodPost, "/projects/"+ta.project+"/scenes", url.Values{"title": {"Street"}})
-	m := sceneIDRe.FindStringSubmatch(rec.Body.String())
-	require.NotNil(t, m)
-	rec = a.form(http.MethodPost, "/scenes/"+m[1]+"/shots", url.Values{"objective": {"走り出す"}, "duration_seconds": {"4"}})
-	require.Equal(t, http.StatusCreated, rec.Code)
-	m = shotIDRe.FindStringSubmatch(rec.Body.String())
-	require.NotNil(t, m)
-	ta.shotID = m[1]
+	_, ta.shotID = a.createShot(ta.project)
 
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "assets", ta.project), 0o700))
 	ta.video("t1", "1920x1080", 4)
@@ -97,31 +90,28 @@ func newTakeAppWith(t *testing.T, mutate func(*service.Deps)) *takeApp {
 func (ta *takeApp) video(name, size string, seconds int) {
 	ta.t.Helper()
 	path := filepath.Join(ta.dir, "assets", ta.project, name+".mp4")
-	d := strconv.Itoa(seconds)
-	out, err := exec.Command("ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "testsrc=size="+size+":rate=10:duration="+d,
-		"-f", "lavfi", "-i", "sine=frequency=440:duration="+d, "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", path).CombinedOutput()
-	require.NoError(ta.t, err, string(out))
+	require.NoError(ta.t, os.WriteFile(path, testenv.PatternVideo(ta.t, size, seconds), 0o600))
 }
 
 type takeListBody struct {
-	ShotID     string `json:"shot_id"`
-	PartialURL string `json:"partial_url"`
+	ShotID     string             `json:"shot_id"`
+	PartialURL string             `json:"partial_url"`
+	Limits     map[string]float64 `json:"limits"`
 	Takes      []struct {
-		ID           string  `json:"id"`
-		Label        string  `json:"label"`
-		Status       string  `json:"status"`
-		Adopted      bool    `json:"adopted"`
-		Resolution   string  `json:"resolution"`
-		FPS          float64 `json:"fps"`
-		Duration     float64 `json:"duration_seconds"`
-		Proxied      bool    `json:"proxied"`
-		VideoURL     string  `json:"video_url"`
-		ThumbnailURL string  `json:"thumbnail_url"`
-		SelectURL    string  `json:"select_url"`
-		RejectURL    string  `json:"reject_url"`
-		Scores       *struct {
-			Product, Acting, Camera, Continuity, Overall float64
-		} `json:"scores"`
+		ID            string                                                          `json:"id"`
+		Label         string                                                          `json:"label"`
+		Status        string                                                          `json:"status"`
+		Adopted       bool                                                            `json:"adopted"`
+		Resolution    string                                                          `json:"resolution"`
+		FPS           float64                                                         `json:"fps"`
+		Duration      float64                                                         `json:"duration_seconds"`
+		Proxied       bool                                                            `json:"proxied"`
+		VideoURL      string                                                          `json:"video_url"`
+		ThumbnailURL  string                                                          `json:"thumbnail_url"`
+		SelectURL     string                                                          `json:"select_url"`
+		RejectURL     string                                                          `json:"reject_url"`
+		PartialUsable bool                                                            `json:"partial_usable"`
+		Scores        *struct{ Product, Acting, Camera, Continuity, Overall float64 } `json:"scores"`
 	} `json:"takes"`
 }
 
@@ -132,17 +122,6 @@ func (ta *takeApp) takes() takeListBody {
 	var b takeListBody
 	require.NoError(ta.t, json.Unmarshal(rec.Body.Bytes(), &b))
 	return b
-}
-
-func (ta *takeApp) statusOf(id string) string {
-	ta.t.Helper()
-	for _, tk := range ta.takes().Takes {
-		if tk.ID == id {
-			return tk.Status
-		}
-	}
-	ta.t.Fatalf("no take %s", id)
-	return ""
 }
 
 func TestTakeAPI_ListsTakesOldestFirstWithLabelsLinksAndScores(t *testing.T) {
@@ -156,6 +135,7 @@ func TestTakeAPI_ListsTakesOldestFirstWithLabelsLinksAndScores(t *testing.T) {
 	b := ta.takes()
 	assert.Equal(t, ta.shotID, b.ShotID)
 	assert.Equal(t, "/shots/"+ta.shotID+"/takes/partial", b.PartialURL)
+	assert.Equal(t, map[string]float64{"max_segments": domain.MaxTakeSegments, "min_segment_seconds": domain.MinTakeSegmentSeconds, "min_axis_score": 55}, b.Limits, "a new Project is Balanced")
 	require.Len(t, b.Takes, 3)
 	assert.Equal(t, []string{"A", "B", "C"}, []string{b.Takes[0].Label, b.Takes[1].Label, b.Takes[2].Label})
 	assert.Equal(t, "candidate", b.Takes[0].Status)
@@ -169,11 +149,51 @@ func TestTakeAPI_ListsTakesOldestFirstWithLabelsLinksAndScores(t *testing.T) {
 	assert.Equal(t, "/takes/t1/thumbnail", first.ThumbnailURL)
 	assert.Equal(t, "/takes/t1/select", first.SelectURL)
 	assert.Equal(t, "/takes/t1", first.RejectURL)
+	assert.True(t, first.PartialUsable)
 	assert.InDelta(t, 10, first.FPS, 0.01, "read from the file")
 	assert.False(t, first.Proxied)
 	assert.True(t, b.Takes[2].Proxied, "4K is played through a proxy")
 
 	assert.Equal(t, http.StatusNotFound, ta.get("/api/v1/shots/nope/takes", false).Code)
+}
+
+// The links are the server's decision: a Take carries select_url / reject_url only while that action
+// is allowed, and the Shot carries partial_url only while a Take can be cut (HATEOAS, #482).
+func TestTakeAPI_OffersAnActionOnlyWhileTheServerAllowsIt(t *testing.T) {
+	ta := newTakeApp(t)
+
+	b := ta.takes()
+	assert.NotEmpty(t, b.PartialURL)
+	for _, tk := range b.Takes {
+		assert.NotEmpty(t, tk.SelectURL, tk.ID)
+		assert.NotEmpty(t, tk.RejectURL, tk.ID)
+		assert.True(t, tk.PartialUsable, tk.ID)
+	}
+
+	require.Equal(t, http.StatusOK, ta.form(http.MethodPost, "/takes/t1/select", nil).Code)
+	selected := ta.takes().Takes[0]
+	assert.Empty(t, selected.SelectURL, "the selected Take cannot be selected again")
+	assert.Equal(t, "/takes/t1", selected.RejectURL)
+
+	require.Equal(t, http.StatusOK, ta.form(http.MethodDelete, "/takes/t2", nil).Code)
+	rejected := ta.takes().Takes[1]
+	assert.Empty(t, rejected.SelectURL, "a rejected Take cannot be selected")
+	assert.Empty(t, rejected.RejectURL, "a rejected Take cannot be rejected again")
+	assert.False(t, rejected.PartialUsable)
+	assert.NotEmpty(t, ta.takes().PartialURL, "other Takes can still be cut")
+
+	for _, id := range []string{"t1", "t3"} {
+		require.Equal(t, http.StatusOK, ta.form(http.MethodDelete, "/takes/"+id, nil).Code)
+	}
+	assert.Empty(t, ta.takes().PartialURL, "no Take is left to cut")
+}
+
+func TestTakeAPI_OffersNoPartialUseWithoutFFmpeg(t *testing.T) {
+	ta := newTakeAppWith(t, func(d *service.Deps) { d.Media = nil })
+
+	b := ta.takes()
+	assert.Empty(t, b.PartialURL)
+	assert.NotEmpty(t, b.Takes[0].SelectURL, "selecting needs no ffmpeg")
 }
 
 func TestTakes_SelectMakesTheTakeTheShotsAndRejectExcludesIt(t *testing.T) {
@@ -248,7 +268,7 @@ func TestTakes_PartialUseJoinsPartsIntoANewSelectedTakeAndAnnouncesItInTheChat(t
 	chat := ta.get("/projects/"+ta.project, false).Body.String()
 	assert.Contains(t, chat, "部分採用 Take")
 	assert.Contains(t, chat, "Take A 0.0-2.0秒 + Take B 2.0-4.0秒")
-	assert.Contains(t, chat, `video-src="`+composed.VideoURL+`"`)
+	assert.Contains(t, chat, `video-src="`+composed.VideoURL+`" fps="10"`, "the card carries the frame rate ffprobe read, so the player need not measure it")
 
 	var content string
 	require.NoError(t, ta.db.Reader().QueryRowContext(context.Background(),
@@ -304,12 +324,14 @@ func TestTakePreview_4KIsPlayedThroughA1080pProxyAndSeekingIsSupported(t *testin
 	rec = do(ta.engine, req)
 	assert.Equal(t, http.StatusPartialContent, rec.Code)
 	assert.Equal(t, 100, rec.Body.Len())
+	assert.Equal(t, []string{"sandbox", ""}, []string{rec.Header().Get("Content-Security-Policy"), rec.Header().Get("Content-Disposition")}, "a served file carries its own sandbox policy, and the preview is played, not downloaded")
 	_, err = os.Stat(filepath.Join(ta.dir, "assets", ".previews", "t1.mp4"))
 	assert.True(t, os.IsNotExist(err), "no proxy for 1080p")
 
 	thumb := ta.get("/takes/t1/thumbnail", false)
 	require.Equal(t, http.StatusOK, thumb.Code)
 	assert.Equal(t, "image/jpeg", thumb.Header().Get("Content-Type"))
+	assert.Equal(t, "sandbox", thumb.Header().Get("Content-Security-Policy"))
 	assert.True(t, strings.HasPrefix(thumb.Body.String(), "\xff\xd8"), "a JPEG")
 
 	assert.Equal(t, http.StatusNotFound, ta.get("/takes/nope/video", false).Code)

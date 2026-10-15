@@ -2,7 +2,6 @@ package service_test
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -273,11 +272,15 @@ func TestDirectorCommand_RegeneratesOnlyThisShotAndKeepsWhatIsNotChanged(t *test
 	assert.Contains(t, texts[len(texts)-1], "Shot 1 だけを再生成")
 }
 
-// requestEndedByTheQueuedJob returns the context of a request that is cancelled, as a closed client
-// does, as soon as the job its direction queued has announced its progress card (the second message
-// of the thread after the call: the direction itself is the first).
-func (f genFixture) requestEndedByTheQueuedJob(t *testing.T) context.Context {
+// requireAnswerRecordedAfterTheRequestEnded runs call (the direction of a regeneration) with the
+// context of a request that is cancelled, as a closed client does, as soon as the job the direction
+// queued has announced its progress card (the second message of the thread: the direction itself is
+// the first). Events reach the cancelling goroutine asynchronously, so the call may return first;
+// the test waits for the cancellation to have happened, or fails if the card was never announced.
+func (f genFixture) requireAnswerRecordedAfterTheRequestEnded(t *testing.T, call func(ctx context.Context)) {
 	t.Helper()
+	f.llm.planner = func(string) string { return plannerRewrite }
+	f.llm.interpreter = opsJSON(`{"type":"regenerate","changes":["camera"],"instruction":"Move the camera closer and keep it steady."}`)
 	ctx, cancelRequest := context.WithCancel(context.Background())
 	t.Cleanup(cancelRequest)
 	events, unsubscribe, err := f.svc.Chat.Subscribe(context.Background(), f.projectID)
@@ -294,7 +297,14 @@ func (f genFixture) requestEndedByTheQueuedJob(t *testing.T) context.Context {
 			}
 		}
 	}()
-	return ctx
+	call(ctx)
+	select {
+	case <-ctx.Done():
+	case <-time.After(5 * time.Second):
+		t.Fatal("the request did not end: the progress card of the queued job was never announced")
+	}
+	assert.Len(t, f.answers(t), 1, "the answer is in the thread")
+	f.waitTakeCount(t, 6)
 }
 
 // answers lists the text the assistant gave to the direction in the thread.
@@ -314,86 +324,68 @@ func (f genFixture) answers(t *testing.T) []string {
 func TestDirectorCommand_TheAnswerOfAQueuedRegenerationIsRecordedAfterTheRequestEnded(t *testing.T) {
 	f := newGenFixture(t, true)
 	f.firstGeneration(t)
-	f.llm.planner = func(string) string { return plannerRewrite }
-	f.llm.interpreter = opsJSON(`{"type":"regenerate","changes":["camera"],"instruction":"Move the camera closer and keep it steady."}`)
-	ctx := f.requestEndedByTheQueuedJob(t)
-
-	_, _ = f.svc.Director.DirectorCommand(ctx, f.shotID, "もう少し寄って")
-
-	require.Error(t, ctx.Err(), "the request ended while the direction was carried out")
-	assert.Len(t, f.answers(t), 1, "the answer is in the thread")
-	f.waitTakeCount(t, 6)
+	f.requireAnswerRecordedAfterTheRequestEnded(t, func(ctx context.Context) {
+		_, _ = f.svc.Director.DirectorCommand(ctx, f.shotID, "もう少し寄って")
+	})
 }
 
 func TestChat_DirectorModeTheAnswerOfAQueuedRegenerationIsRecordedAfterTheRequestEnded(t *testing.T) {
 	f := newGenFixture(t, true)
 	f.firstGeneration(t)
 	f.startDirecting(t)
-	f.llm.planner = func(string) string { return plannerRewrite }
-	f.llm.interpreter = opsJSON(`{"type":"regenerate","changes":["camera"],"instruction":"Move the camera closer and keep it steady."}`)
-	ctx := f.requestEndedByTheQueuedJob(t)
-
-	_, _ = f.svc.Chat.PostMessage(ctx, f.projectID, service.PostMessageInput{Content: "もう少し寄って"})
-
-	require.Error(t, ctx.Err(), "the request ended while the direction was carried out")
-	assert.Len(t, f.answers(t), 1, "the answer is in the thread")
-	f.waitTakeCount(t, 6)
+	f.requireAnswerRecordedAfterTheRequestEnded(t, func(ctx context.Context) {
+		_, _ = f.svc.Chat.PostMessage(ctx, f.projectID, service.PostMessageInput{Content: "もう少し寄って"})
+	})
 }
 
-func TestDirectorCommand_DirectionPrecedesTheProgressCardInTheThread(t *testing.T) {
+func TestDirectorCommand_DirectionPrecedesTheProgressCardItCausesAndASecondOneWhileItIsRunningIsRefused(t *testing.T) {
 	f := newGenFixture(t, true)
 	f.firstGeneration(t)
 	f.llm.planner = func(string) string { return plannerRewrite }
-	f.llm.interpreter = opsJSON(`{"type":"regenerate","changes":["camera"],"instruction":"Move the camera closer and keep it steady."}`)
-
-	_, err := f.svc.Director.DirectorCommand(context.Background(), f.shotID, "もう少し寄って")
-
-	require.NoError(t, err)
-	f.waitTakeCount(t, 6)
-	thread := f.thread(t, f.projectID)
-	direction, card := -1, -1
-	for i, m := range thread {
-		if m.Role == domain.RoleUser && m.Content == "もう少し寄って" {
-			direction = i
-		}
-		if m.Kind == domain.KindProgress {
-			card = i
-		}
+	regenerate := opsJSON(`{"type":"regenerate","changes":["camera"],"instruction":"Move the camera closer and keep it steady."}`)
+	direct := func() error {
+		_, err := f.svc.Director.DirectorCommand(context.Background(), f.shotID, "もう少し寄って")
+		return err
 	}
-	require.NotEqual(t, -1, direction, "the direction is in the thread")
-	require.NotEqual(t, -1, card, "the progress card is in the thread")
-	assert.Less(t, direction, card, "the direction is listed before the progress card it caused")
-}
+	var refused error // the same direction again while it is being read (a double click, a second tab) pays and records nothing (#669)
+	f.llm.interpreter = func(user string) string { refused = f.overlap(direct); return regenerate(user) }
 
-func TestDirectorCommand_DirectionIsCommittedBeforeTheProgressCardItCauses(t *testing.T) {
-	f := newGenFixture(t, true)
-	f.firstGeneration(t)
-	f.llm.planner = func(string) string { return plannerRewrite }
-	f.llm.interpreter = opsJSON(`{"type":"regenerate","changes":["camera"],"instruction":"Move the camera closer and keep it steady."}`)
+	require.NoError(t, direct())
 
-	_, err := f.svc.Director.DirectorCommand(context.Background(), f.shotID, "もう少し寄って")
-
-	require.NoError(t, err)
+	assert.ErrorIs(t, refused, service.ErrConflict)
+	assert.Equal(t, 1, f.llm.calls(llm.AgentCommandInterpreter), "the direction is read once")
 	f.waitTakeCount(t, 6)
 	// A chat that is open asks only for the messages after the last one it shows; a direction committed
-	// after the progress card would be left out of every such sync, whatever its ID.
+	// after the progress card would be left out of every such sync, whatever its ID. So the direction is
+	// listed, and was committed, before the card it caused.
+	directionBeforeCard := func(msgs [][3]string) bool { // each message is {role, kind, content}
+		direction, card := -1, -1
+		for i, m := range msgs {
+			if m[0] == string(domain.RoleUser) && m[2] == "もう少し寄って" {
+				direction = i
+			}
+			if m[1] == string(domain.KindProgress) {
+				card = i
+			}
+		}
+		require.True(t, direction >= 0 && card >= 0, "the direction and the progress card are in the thread")
+		return direction < card
+	}
+	var listed, committed [][3]string
+	for _, m := range f.thread(t, f.projectID) {
+		listed = append(listed, [3]string{string(m.Role), string(m.Kind), m.Content})
+	}
 	rows, err := f.db.Reader().QueryContext(context.Background(), `SELECT role, kind, content FROM chat_message WHERE project_id = ? ORDER BY rowid`, f.projectID)
 	require.NoError(t, err)
 	defer func() { _ = rows.Close() }()
-	direction, card := -1, -1
-	for i := 0; rows.Next(); i++ {
-		var role, kind, content string
-		require.NoError(t, rows.Scan(&role, &kind, &content))
-		if role == string(domain.RoleUser) && content == "もう少し寄って" {
-			direction = i
-		}
-		if kind == string(domain.KindProgress) {
-			card = i
-		}
+	for rows.Next() {
+		var m [3]string
+		require.NoError(t, rows.Scan(&m[0], &m[1], &m[2]))
+		committed = append(committed, m)
 	}
 	require.NoError(t, rows.Err())
-	require.NotEqual(t, -1, card, "the progress card is in the thread")
-	assert.Less(t, direction, card, "the direction was committed before the progress card")
+	assert.True(t, directionBeforeCard(listed), "the direction is listed before the progress card it caused")
+	assert.True(t, directionBeforeCard(committed), "the direction was committed before the progress card")
 }
 
 func TestDirectorCommand_LockedPartsSurviveWhateverThePlannerAnswers(t *testing.T) {
@@ -577,15 +569,17 @@ func TestDirectorCommand_PinsTheVideoModelToRunwayAndAsksForAnyModelWithoutAName
 
 func (f genFixture) startDirecting(t *testing.T) {
 	t.Helper()
-	require.NoError(t, f.db.Write(context.Background(), func(ctx context.Context, tx *sql.Tx) error {
-		_, err := tx.ExecContext(ctx, `UPDATE project SET mode = 'director', state = 'GENERATING' WHERE id = ?`, f.projectID)
-		return err
-	}))
+	f.execSQL(t, `UPDATE project SET mode = 'director', state = 'GENERATING' WHERE id = ?`, f.projectID)
 }
 
 func (f genFixture) say(t *testing.T, content, replyTo string) service.Workspace {
 	t.Helper()
-	ws, err := f.svc.Chat.PostMessage(context.Background(), f.projectID, service.PostMessageInput{Content: content, ReplyToMessageID: replyTo})
+	return postMessage(t, f.svc, f.projectID, service.PostMessageInput{Content: content, ReplyToMessageID: replyTo})
+}
+
+func postMessage(t *testing.T, svc *service.Services, projectID string, in service.PostMessageInput) service.Workspace {
+	t.Helper()
+	ws, err := svc.Chat.PostMessage(context.Background(), projectID, in)
 	require.NoError(t, err)
 	return ws
 }
@@ -597,9 +591,7 @@ func TestChat_DirectorModeDirectionAttachmentsJoinTheBrief(t *testing.T) {
 	before, err := f.svc.Projects.Brief(context.Background(), f.projectID)
 	require.NoError(t, err)
 
-	_, err = f.svc.Chat.PostMessage(context.Background(), f.projectID, service.PostMessageInput{
-		Content: "この画像の雰囲気で", Uploads: []service.Upload{upload("look.png", pngBytes)}})
-	require.NoError(t, err)
+	postMessage(t, f.svc, f.projectID, service.PostMessageInput{Content: "この画像の雰囲気で", Uploads: []service.Upload{upload("look.png", pngBytes)}})
 
 	after, err := f.svc.Projects.Brief(context.Background(), f.projectID)
 	require.NoError(t, err)

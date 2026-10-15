@@ -9,9 +9,16 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 import (
+	"strconv"
+
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/selector"
 )
+
+// approvalCommentMaxRunes is how much the comment field takes: a limit of the form only, the server
+// accepts what a chat message accepts (domain.MaxMessageRunes).
+const approvalCommentMaxRunes = 500
 
 // ApprovalCard presents the artifact of a checkpoint. It is answered with the
 // buttons (承認 / 修正を依頼) or by replying in words. A disabled submit button comes first so
@@ -57,7 +64,7 @@ func ApprovalCard(m domain.ThreadMessage) templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(approvalLabel(m.ChatMessage))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/approval_card.templ`, Line: 15, Col: 72}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/approval_card.templ`, Line: 22, Col: 72}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -79,7 +86,7 @@ func ApprovalCard(m domain.ThreadMessage) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(m.Content)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/approval_card.templ`, Line: 19, Col: 68}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/approval_card.templ`, Line: 26, Col: 68}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -97,7 +104,7 @@ func ApprovalCard(m domain.ThreadMessage) templ.Component {
 				var templ_7745c5c3_Var5 string
 				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue(approvalURL(m.ProjectID, m.ID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/approval_card.templ`, Line: 23, Col: 44}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/approval_card.templ`, Line: 30, Col: 44}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
 				if templ_7745c5c3_Err != nil {
@@ -108,22 +115,22 @@ func ApprovalCard(m domain.ThreadMessage) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var6 string
-				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue("#msg-" + m.ID)
+				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue(selector.ID("msg-", m.ID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/approval_card.templ`, Line: 24, Col: 30}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/approval_card.templ`, Line: 31, Col: 41}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\" hx-swap=\"outerHTML\"><button type=\"submit\" disabled hidden tabindex=\"-1\" aria-hidden=\"true\"></button>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\" hx-swap=\"outerHTML\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button[type=submit]\"><button type=\"submit\" disabled hidden tabindex=\"-1\" aria-hidden=\"true\"></button>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				templ_7745c5c3_Err = atoms.Input(atoms.FieldMd, "min-w-0 flex-1", templ.Attributes{
 					"type":        "text",
 					"name":        "comment",
-					"maxlength":   "500",
+					"maxlength":   strconv.Itoa(approvalCommentMaxRunes),
 					"placeholder": "コメント（任意）",
 					"aria-label":  "コメント",
 				}).Render(ctx, templ_7745c5c3_Buffer)

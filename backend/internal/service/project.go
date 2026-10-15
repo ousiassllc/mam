@@ -3,11 +3,11 @@ package service
 import (
 	"context"
 	"errors"
-	"regexp"
 	"slices"
 	"strings"
 	"unicode/utf8"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/briefing"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
@@ -102,10 +102,6 @@ type BriefForm struct {
 	References            string
 }
 
-const briefFieldMaxRunes = 200
-
-var aspectRatioRe = regexp.MustCompile(`^\d{1,2}:\d{1,2}$`)
-
 // UpdateBrief validates and saves the edited Brief and records the change in the thread.
 // On a ValidationError the returned BriefView holds the unsaved input so the form can be
 // shown again with the user's values.
@@ -144,19 +140,16 @@ func (s *ProjectService) UpdateBrief(ctx context.Context, projectID string, form
 
 func validateBrief(b domain.Brief) error {
 	for _, f := range domain.RequiredBriefFields() {
-		if utf8.RuneCountInString(b.Get(f)) > briefFieldMaxRunes {
-			return invalid(string(f), "%d 文字以内で入力してください", briefFieldMaxRunes)
+		if problem := briefing.ValueProblem(f, b.Get(f)); problem != "" {
+			return invalid(string(f), "%s", problem)
 		}
 	}
-	if b.AspectRatio != "" && !aspectRatioRe.MatchString(b.AspectRatio) {
-		return invalid(string(domain.BriefAspectRatio), "9:16 のように「幅:高さ」で入力してください")
-	}
-	if utf8.RuneCountInString(b.AdditionalInstruction) > MaxMessageRunes {
-		return invalid("additional_instruction", "%d 文字以内で入力してください", MaxMessageRunes)
+	if utf8.RuneCountInString(b.AdditionalInstruction) > domain.MaxMessageRunes {
+		return invalid("additional_instruction", "%d 文字以内で入力してください", domain.MaxMessageRunes)
 	}
 	for _, r := range b.References {
-		if isURL(r) && (utf8.RuneCountInString(r) > briefFieldMaxRunes || strings.ContainsAny(r, " \t")) {
-			return invalid("references", "URL が長すぎるか、空白を含んでいます: %s", r)
+		if problem := briefing.ReferenceProblem(r); isURL(r) && problem != "" {
+			return invalid("references", "%s: %s", problem, r)
 		}
 	}
 	return nil
@@ -287,8 +280,8 @@ func validateMessage(content string, hasAttachments bool) error {
 	if content == "" && !hasAttachments {
 		return invalid("content", "発言または添付ファイルを入力してください")
 	}
-	if utf8.RuneCountInString(content) > MaxMessageRunes {
-		return invalid("content", "%d 文字以内で入力してください", MaxMessageRunes)
+	if utf8.RuneCountInString(content) > domain.MaxMessageRunes {
+		return invalid("content", "%d 文字以内で入力してください", domain.MaxMessageRunes)
 	}
 	return nil
 }

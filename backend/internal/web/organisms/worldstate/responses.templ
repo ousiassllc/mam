@@ -1,0 +1,113 @@
+package worldstate
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// versionInfo is what an appended World State version changes outside the form that made it: the version
+// line and the version history. oob makes them replace the ones of the page.
+templ versionInfo(d Data, oob bool) {
+	@versionLine(d, oob)
+	@organisms.VersionHistoryPanel(d.versionHistory(oob))
+}
+
+templ versionLine(d Data, oob bool) {
+	<p
+		id="world-state-version"
+		class="text-xs text-neutral-400"
+		if oob {
+			hx-swap-oob="true"
+		}
+	>{ versionText(d.World.Version) }。LOCK した項目は Shot 完了時にも自動更新されません。</p>
+}
+
+func (d Data) versionHistory(oob bool) organisms.VersionHistoryData {
+	return organisms.VersionHistoryData{
+		DOMID: "version-history-world", Title: "World State のバージョン", BasePath: paths.Project(d.Project.ID, "world-state"),
+		Target: "#world-state-view", BranchID: d.branchID(), Entries: d.Versions, OOB: oob,
+	}
+}
+
+// cameraValues and storyValues are the read-only values of the Camera and the Story; oob makes them replace
+// the ones of the page (the response to the LOCK switch of one of them).
+templ cameraValues(d Data, oob bool) {
+	<dl
+		id="world-state-camera"
+		class="flex flex-col gap-1"
+		if oob {
+			hx-swap-oob="true"
+		}
+	>
+		@molecules.WorldStateReadonly(fieldLabel("lens"), d.World.Camera.Lens, d.Locks.Locked(domain.TargetCamera, "", "lens"))
+		@molecules.WorldStateReadonly(fieldLabel("position"), d.World.Camera.Position, d.Locks.Locked(domain.TargetCamera, "", "position"))
+		@molecules.WorldStateReadonly(fieldLabel("angle"), d.World.Camera.Angle, d.Locks.Locked(domain.TargetCamera, "", "angle"))
+		@molecules.WorldStateReadonly(fieldLabel("movement"), d.World.Camera.Movement, d.Locks.Locked(domain.TargetCamera, "", "movement"))
+	</dl>
+}
+
+templ storyValues(d Data, oob bool) {
+	<dl
+		id="world-state-story"
+		class="flex flex-col gap-1"
+		if oob {
+			hx-swap-oob="true"
+		}
+	>
+		@molecules.WorldStateReadonly("Scene", storyScene(d.World.Story), d.Locks.Locked(domain.TargetStory, "", domain.StoryFieldScene))
+		@molecules.WorldStateReadonly(fieldLabel("character_goal"), d.World.Story.CharacterGoal, d.Locks.Locked(domain.TargetStory, "", "character_goal"))
+		@molecules.WorldStateReadonly(fieldLabel("known_information"), joinKnown(d.World.Story.KnownInformation), d.Locks.Locked(domain.TargetStory, "", "known_information"))
+		@molecules.WorldStateReadonly(fieldLabel("previous_event"), d.World.Story.PreviousEvent, d.Locks.Locked(domain.TargetStory, "", "previous_event"))
+	</dl>
+}
+
+// EntitySaved answers a save of the attributes of an entity (PUT /projects/:id/{plural}/:id): the
+// attribute form of that entity only, with the new version carried along.
+templ EntitySaved(d Data, target domain.WorldTarget, id string) {
+	if e, ok := d.entity(target, id); ok {
+		@entityAttributeForm(d, e)
+		@versionInfo(d, true)
+	}
+}
+
+// ReferenceAssigned answers an assignment of a reference image (PUT /projects/:id/{plural}/:id/reference):
+// the form of that slot only, with the new version carried along.
+templ ReferenceAssigned(d Data, target domain.WorldTarget, id, slot string) {
+	if e, ok := d.entity(target, id); ok {
+		for _, sf := range d.slots(e.Target, e.Slots) {
+			if sf.Slot.Name == slot {
+				@referenceSlotForm(d, e, sf)
+			}
+		}
+		@versionInfo(d, true)
+	}
+}
+
+// LockSwitched answers a LOCK switch (PUT /projects/:id/world-state/locks): the switch itself, and
+// what its state changes elsewhere: the one input and the save button of the entity (a locked input is
+// disabled), or the read-only values of the Camera or the Story. The other forms are not part of the response.
+templ LockSwitched(d Data, target domain.WorldTarget, id, field string) {
+	@molecules.LockToggle(d.fieldLockToggle(target, id, field))
+	switch target {
+		case domain.TargetCamera:
+			@cameraValues(d, true)
+		case domain.TargetStory:
+			@storyValues(d, true)
+		default:
+			if e, ok := d.entity(target, id); ok {
+				for _, f := range e.Fields {
+					if f.Name == field {
+						@molecules.WorldStateField(oobField(f))
+						@molecules.WorldStateSave(e.saveID(), e.Fields, true)
+					}
+				}
+			}
+	}
+}
+
+func oobField(f molecules.WorldStateFieldData) molecules.WorldStateFieldData {
+	f.OOB = true
+	return f
+}

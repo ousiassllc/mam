@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"cmp"
 	"slices"
 	"strings"
 )
@@ -22,32 +23,16 @@ const (
 // RequiredBriefFields lists the items the AI asks about, in question order
 // (spec/spec.md §4.2). Assets, References and Additional Instruction are optional.
 func RequiredBriefFields() []BriefField {
-	return []BriefField{
-		BriefContentType, BriefObjective, BriefSubject, BriefTarget,
-		BriefDuration, BriefAspectRatio, BriefMood,
-	}
+	return []BriefField{BriefContentType, BriefObjective, BriefSubject, BriefTarget, BriefDuration, BriefAspectRatio, BriefMood}
 }
 
-// Label is the Japanese display name of the field.
-func (f BriefField) Label() string {
-	switch f {
-	case BriefContentType:
-		return "Content Type"
-	case BriefObjective:
-		return "Objective"
-	case BriefSubject:
-		return "Subject"
-	case BriefTarget:
-		return "Target"
-	case BriefDuration:
-		return "Duration"
-	case BriefAspectRatio:
-		return "Aspect Ratio"
-	case BriefMood:
-		return "Mood"
-	}
-	return string(f)
+var briefLabels = map[BriefField]string{
+	BriefContentType: "Content Type", BriefObjective: "Objective", BriefSubject: "Subject", BriefTarget: "Target",
+	BriefDuration: "Duration", BriefAspectRatio: "Aspect Ratio", BriefMood: "Mood",
 }
+
+// Label is the display name of the field.
+func (f BriefField) Label() string { return cmp.Or(briefLabels[f], string(f)) }
 
 // Question is the sentence the AI asks when the field is missing.
 func (f BriefField) Question() string {
@@ -83,7 +68,7 @@ func (f BriefField) Options() []string {
 	case BriefDuration:
 		return []string{"6秒", "15秒", "30秒", "60秒"}
 	case BriefAspectRatio:
-		return []string{"9:16", "16:9", "1:1"}
+		return BriefAspectRatios()
 	case BriefMood:
 		return []string{"高級・ミニマル", "ポップ・明るい", "クール・スタイリッシュ", "ナチュラル・温かい"}
 	}
@@ -92,6 +77,20 @@ func (f BriefField) Options() []string {
 
 // DelegateOption is the button label that leaves a field to the AI.
 const DelegateOption = "AIに任せる"
+
+// Aspect ratios a Brief can hold; DefaultAspectRatio stands in for a missing or unsupported one.
+const (
+	AspectRatio16x9    = "16:9"
+	AspectRatio9x16    = "9:16"
+	AspectRatio1x1     = "1:1"
+	DefaultAspectRatio = AspectRatio16x9
+)
+
+// BriefAspectRatios lists the aspect ratios a Brief can hold (and generation accepts), in quick-answer order.
+func BriefAspectRatios() []string { return []string{AspectRatio9x16, AspectRatio16x9, AspectRatio1x1} }
+
+// IsBriefAspectRatio reports whether r is one of BriefAspectRatios.
+func IsBriefAspectRatio(r string) bool { return slices.Contains(BriefAspectRatios(), r) }
 
 // Brief is the Creative Brief stored in brief.content as JSON (F-01, F-25).
 type Brief struct {
@@ -163,9 +162,7 @@ func (b *Brief) Delegate(f BriefField) {
 }
 
 // IsDelegated reports whether the user left the field to the AI.
-func (b Brief) IsDelegated(f BriefField) bool {
-	return slices.Contains(b.Delegated, string(f))
-}
+func (b Brief) IsDelegated(f BriefField) bool { return slices.Contains(b.Delegated, string(f)) }
 
 // Missing returns the required fields that are neither set nor delegated, in question order.
 func (b Brief) Missing() []BriefField {

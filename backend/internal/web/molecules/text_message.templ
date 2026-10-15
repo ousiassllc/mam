@@ -1,12 +1,20 @@
 package molecules
 
-import "github.com/ousiassllc/mam/backend/internal/domain"
+import (
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+)
 
 // TextMessage is a plain user or AI message.
 templ TextMessage(m domain.ThreadMessage) {
 	@MessageFrame(m) {
 		if m.Content != "" {
 			<p class="whitespace-pre-wrap break-words">{ m.Content }</p>
+		}
+		if link, ok := refLinkOf(m); ok {
+			<p class="mt-2">
+				@atoms.ButtonLink(atoms.ToneNeutral, link.Label, link.Href, link.Attrs)
+			</p>
 		}
 	}
 }

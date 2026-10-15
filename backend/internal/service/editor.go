@@ -11,7 +11,9 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector"
 	"github.com/ousiassllc/mam/backend/internal/agent/editor"
+	"github.com/ousiassllc/mam/backend/internal/bgwork"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/keylock"
 	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
@@ -58,27 +60,26 @@ type EditorService struct {
 	chatSvc *ChatService
 	// tools is ffmpeg / ffprobe; nil when they are not installed.
 	tools *media.Tools
-	stage sync.Map // project ID -> *sync.Mutex
-	// auto guards the AUTO chain of a Project (AdvanceAuto): project ID -> *sync.Mutex.
-	auto sync.Map
+	// stage claims the editing stage of a Project (acquire); auto guards its AUTO chain
+	// (AdvanceAuto). Both are keyed by project ID.
+	stage keylock.Locker
+	auto  keylock.Locker
 	// autoStopped is the input (autoInput) each Project's AUTO stage last failed on: project ID -> string.
 	autoStopped sync.Map
-	preview     sync.Map // preview file -> *sync.Mutex
 	// resume is the single worker behind ResumeEditing; missed marks Projects whose Reshoot round
 	// found the stage busy, so the release of the stage wakes the worker again.
-	resume *resumer
+	resume *bgwork.Worker
 	missed sync.Map // project ID -> struct{}
 }
 
 // acquire claims the Project's editing stage; ErrStageBusy when another one runs.
 func (s *EditorService) acquire(projectID string) (release func(), err error) {
-	mu, _ := s.stage.LoadOrStore(projectID, &sync.Mutex{})
-	l := mu.(*sync.Mutex)
-	if !l.TryLock() {
+	unlock, ok := s.stage.TryLock(projectID)
+	if !ok {
 		return nil, ErrStageBusy
 	}
 	return func() {
-		l.Unlock()
+		unlock()
 		if _, ok := s.missed.LoadAndDelete(projectID); ok {
 			s.resume.Wake()
 		}
@@ -146,7 +147,7 @@ func (s *EditorService) briefOptions(ctx context.Context, projectID string) (dom
 	if err != nil {
 		return domain.Brief{}, domain.ExportOptions{}, notFound(err)
 	}
-	opts := domain.ExportOptions{AspectRatio: "16:9", Resolution: "1080p", Codec: domain.CodecH264}
+	opts := domain.ExportOptions{AspectRatio: domain.DefaultAspectRatio, Resolution: "1080p", Codec: domain.CodecH264}
 	if ar := strings.ReplaceAll(strings.TrimSpace(brief.AspectRatio), "：", ":"); slices.Contains(domain.ExportAspectRatios(), ar) {
 		opts.AspectRatio = ar
 	}
@@ -272,8 +273,8 @@ func (s *EditorService) toEditing(ctx context.Context, p domain.Project) error {
 
 // announce posts a message of the editing stage in the chat. A failure is logged, not returned:
 // the stage has been done.
-func (s *EditorService) announce(ctx context.Context, projectID, text string) {
-	if err := s.chatSvc.Announce(context.WithoutCancel(ctx), projectID, assistantText(text)); err != nil {
+func (s *EditorService) announce(ctx context.Context, projectID string, m domain.ChatMessage) {
+	if err := s.chatSvc.Announce(context.WithoutCancel(ctx), projectID, m); err != nil {
 		s.logger.Error("post editor notice failed", "project_id", projectID, "err", err)
 	}
 }

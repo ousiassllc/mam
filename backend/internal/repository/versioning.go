@@ -28,35 +28,30 @@ func NewVersionRepository(db *DB) *VersionRepository {
 
 // ShotVersions returns the prompt versions of the Shot, newest first (ErrNotFound for an unknown Shot).
 func (r *VersionRepository) ShotVersions(ctx context.Context, shotID string) ([]domain.VersionEntry, error) {
-	if err := exists(ctx, r.db.Reader(), `SELECT 1 FROM shot WHERE id = ?`, shotID); err != nil {
+	if err := Exists(ctx, r.db.Reader(), `SELECT 1 FROM shot WHERE id = ?`, shotID); err != nil {
 		return nil, err
 	}
-	rows, err := r.db.Reader().QueryContext(ctx,
-		`SELECT version_number, shot_spec_snapshot, created_at FROM prompt_version WHERE shot_id = ? ORDER BY version_number DESC`, shotID)
-	if err != nil {
-		return nil, fmt.Errorf("list prompt versions: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-	var out []domain.VersionEntry
-	for rows.Next() {
+	out, err := queryAll(ctx, r.db.Reader(), func(row rowScanner) (domain.VersionEntry, error) {
 		var (
 			e            domain.VersionEntry
 			snapshot, at string
 		)
-		if err := rows.Scan(&e.Number, &snapshot, &at); err != nil {
-			return nil, err
+		if err := row.Scan(&e.Number, &snapshot, &at); err != nil {
+			return e, err
 		}
 		var probe struct {
 			Objective string `json:"shot_objective"`
 		}
 		_ = json.Unmarshal([]byte(snapshot), &probe) // a snapshot without a spec has no summary
 		e.Summary = probe.Objective
-		if e.CreatedAt, err = parseTime(at); err != nil {
-			return nil, err
-		}
-		out = append(out, e)
+		var err error
+		e.CreatedAt, err = ParseTime(at)
+		return e, err
+	}, `SELECT version_number, shot_spec_snapshot, created_at FROM prompt_version WHERE shot_id = ? ORDER BY version_number DESC`, shotID)
+	if err != nil {
+		return nil, fmt.Errorf("list prompt versions: %w", err)
 	}
-	return out, rows.Err()
+	return out, nil
 }
 
 // WorldStateVersions returns the World State versions of the Project's trunk (branchID "") or of
@@ -65,64 +60,54 @@ func (r *VersionRepository) WorldStateVersions(ctx context.Context, projectID, b
 	if err := scopeExists(ctx, r.db.Reader(), projectID, branchID); err != nil {
 		return nil, err
 	}
-	rows, err := r.db.Reader().QueryContext(ctx,
-		`SELECT version_number, state, created_at FROM world_state_version WHERE project_id = ? AND branch_id IS ? ORDER BY version_number DESC`,
-		projectID, nullIfEmpty(branchID))
-	if err != nil {
-		return nil, fmt.Errorf("list world state versions: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-	var out []domain.VersionEntry
-	for rows.Next() {
+	out, err := queryAll(ctx, r.db.Reader(), func(row rowScanner) (domain.VersionEntry, error) {
 		var (
 			e         domain.VersionEntry
 			state, at string
 		)
-		if err := rows.Scan(&e.Number, &state, &at); err != nil {
-			return nil, err
+		if err := row.Scan(&e.Number, &state, &at); err != nil {
+			return e, err
 		}
 		var w domain.WorldContext
 		if err := json.Unmarshal([]byte(state), &w); err == nil {
 			e.Summary = fmt.Sprintf("Character %d / Product %d / Location %d", len(w.Characters), len(w.Products), len(w.Locations))
 		}
-		if e.CreatedAt, err = parseTime(at); err != nil {
-			return nil, err
-		}
-		out = append(out, e)
+		var err error
+		e.CreatedAt, err = ParseTime(at)
+		return e, err
+	}, `SELECT version_number, state, created_at FROM world_state_version WHERE project_id = ? AND branch_id IS ? ORDER BY version_number DESC`,
+		projectID, nullIfEmpty(branchID))
+	if err != nil {
+		return nil, fmt.Errorf("list world state versions: %w", err)
 	}
-	return out, rows.Err()
+	return out, nil
 }
 
 // BranchVersions returns the versions of the Branch, newest first (ErrNotFound for an unknown Branch).
 func (r *VersionRepository) BranchVersions(ctx context.Context, branchID string) ([]domain.VersionEntry, error) {
-	if err := exists(ctx, r.db.Reader(), `SELECT 1 FROM branch WHERE id = ?`, branchID); err != nil {
+	if err := Exists(ctx, r.db.Reader(), `SELECT 1 FROM branch WHERE id = ?`, branchID); err != nil {
 		return nil, err
 	}
-	rows, err := r.db.Reader().QueryContext(ctx,
-		`SELECT version_number, name, created_at FROM branch_version WHERE branch_id = ? ORDER BY version_number DESC`, branchID)
-	if err != nil {
-		return nil, fmt.Errorf("list branch versions: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-	var out []domain.VersionEntry
-	for rows.Next() {
+	out, err := queryAll(ctx, r.db.Reader(), func(row rowScanner) (domain.VersionEntry, error) {
 		var (
 			e  domain.VersionEntry
 			at string
 		)
-		if err := rows.Scan(&e.Number, &e.Summary, &at); err != nil {
-			return nil, err
+		if err := row.Scan(&e.Number, &e.Summary, &at); err != nil {
+			return e, err
 		}
-		if e.CreatedAt, err = parseTime(at); err != nil {
-			return nil, err
-		}
-		out = append(out, e)
+		var err error
+		e.CreatedAt, err = ParseTime(at)
+		return e, err
+	}, `SELECT version_number, name, created_at FROM branch_version WHERE branch_id = ? ORDER BY version_number DESC`, branchID)
+	if err != nil {
+		return nil, fmt.Errorf("list branch versions: %w", err)
 	}
-	return out, rows.Err()
+	return out, nil
 }
 
-// exists returns ErrNotFound when the query (SELECT 1 ... WHERE id = ?) finds no row.
-func exists(ctx context.Context, q queryer, query string, args ...any) error {
+// Exists returns ErrNotFound when the query (SELECT 1 ... WHERE id = ?) finds no row.
+func Exists(ctx context.Context, q queryer, query string, args ...any) error {
 	var one int
 	err := q.QueryRowContext(ctx, query, args...).Scan(&one)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -136,13 +121,13 @@ func exists(ctx context.Context, q queryer, query string, args ...any) error {
 
 // scopeExists checks the Project and, when branchID is set, that the Branch belongs to it.
 func scopeExists(ctx context.Context, q queryer, projectID, branchID string) error {
-	if err := exists(ctx, q, `SELECT 1 FROM project WHERE id = ?`, projectID); err != nil {
+	if err := Exists(ctx, q, `SELECT 1 FROM project WHERE id = ?`, projectID); err != nil {
 		return err
 	}
 	if branchID == "" {
 		return nil
 	}
-	return exists(ctx, q, `SELECT 1 FROM branch WHERE id = ? AND project_id = ?`, branchID, projectID)
+	return Exists(ctx, q, `SELECT 1 FROM branch WHERE id = ? AND project_id = ?`, branchID, projectID)
 }
 
 // RestoreShotVersion makes the Canonical Shot Spec of prompt version number the spec of the Shot
@@ -343,7 +328,7 @@ func restoreReferenceSlots(ctx context.Context, tx *sql.Tx, projectID string, be
 			}
 		}
 		if assetID != "" {
-			if err := exists(ctx, tx, `SELECT 1 FROM asset WHERE id = ? AND project_id = ?`, assetID, projectID); errors.Is(err, ErrNotFound) {
+			if err := Exists(ctx, tx, `SELECT 1 FROM asset WHERE id = ? AND project_id = ?`, assetID, projectID); errors.Is(err, ErrNotFound) {
 				continue
 			} else if err != nil {
 				return err
@@ -380,7 +365,7 @@ func (r *VersionRepository) RestoreBranchVersion(ctx context.Context, branchID s
 		}
 		_, err = tx.ExecContext(ctx,
 			`INSERT INTO branch_version (id, branch_id, version_number, name, world_state_version_id, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
-			domain.NewID(), branchID, next, name, wsv, formatTime(r.now()))
+			domain.NewID(), branchID, next, name, wsv, FormatTime(r.now()))
 		return err
 	})
 	if errors.Is(err, ErrNotFound) {

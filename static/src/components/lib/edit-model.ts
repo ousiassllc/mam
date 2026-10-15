@@ -41,7 +41,6 @@ export interface EditClip {
 export interface EditLimits {
   min_clip_seconds: number;
   max_transition_seconds: number;
-  max_clips: number;
   max_caption_runes: number;
 }
 
@@ -112,14 +111,21 @@ export function removeClip(clips: EditClip[], index: number): EditClip[] {
 export function trimProblem(clip: EditClip, inPoint: number, outPoint: number, limits: EditLimits): string {
   if (!Number.isFinite(inPoint) || !Number.isFinite(outPoint)) return '数値で指定してください';
   if (inPoint < 0) return '開始は 0 秒以上にしてください';
-  if (outPoint - inPoint < limits.min_clip_seconds - 1e-9) return `${limits.min_clip_seconds} 秒以上の区間にしてください`;
+  if (outPoint - inPoint < limits.min_clip_seconds - 1e-9)
+    return `${limits.min_clip_seconds} 秒以上の区間にしてください`;
   const source = clip.source_seconds ?? 0;
   if (source > 0 && outPoint > source + 1e-6) return `Take の長さ（${source.toFixed(1)} 秒）を超えています`;
   return '';
 }
 
 /** Sets the Cut Point (In / Out) of a clip. Returns `clips` itself when the change is not acceptable. */
-export function setTrim(clips: EditClip[], index: number, inPoint: number, outPoint: number, limits: EditLimits): EditClip[] {
+export function setTrim(
+  clips: EditClip[],
+  index: number,
+  inPoint: number,
+  outPoint: number,
+  limits: EditLimits,
+): EditClip[] {
   const clip = clips[index];
   if (!clip || trimProblem(clip, inPoint, outPoint, limits) !== '') return clips;
   const next = clips.slice();
@@ -128,7 +134,13 @@ export function setTrim(clips: EditClip[], index: number, inPoint: number, outPo
 }
 
 /** Sets the transition into a clip. The first clip has none; a hard cut has no length. */
-export function setTransition(clips: EditClip[], index: number, type: TransitionType, seconds: number, limits: EditLimits): EditClip[] {
+export function setTransition(
+  clips: EditClip[],
+  index: number,
+  type: TransitionType,
+  seconds: number,
+  limits: EditLimits,
+): EditClip[] {
   const clip = clips[index];
   if (!clip || index === 0) return clips;
   const length = type === 'cut' ? 0 : round(Math.min(Math.max(seconds, 0.1), limits.max_transition_seconds));
@@ -140,7 +152,9 @@ export function setTransition(clips: EditClip[], index: number, type: Transition
 /** Why a caption is not acceptable ('' when it is). Line breaks are the server's to tidy; only the length is checked. */
 export function captionProblem(text: string, limits: EditLimits): string {
   const length = [...text.trim()].length;
-  return length > limits.max_caption_runes ? `字幕は ${limits.max_caption_runes} 文字以内にしてください（現在 ${length} 文字）` : '';
+  return length > limits.max_caption_runes
+    ? `字幕は ${limits.max_caption_runes} 文字以内にしてください（現在 ${length} 文字）`
+    : '';
 }
 
 /** Sets the caption of a clip ('' removes it). Returns `clips` itself when the text is too long. */
@@ -156,7 +170,12 @@ export function setCaption(clips: EditClip[], index: number, text: string, limit
 
 /** The body of PUT /edit-timelines/:id. */
 export function toPayload(clips: EditClip[]): {
-  clips: Array<Pick<EditClip, 'shot_id' | 'take_id' | 'in_point' | 'out_point' | 'transition'> & { kind: ClipKind; caption: string }>;
+  clips: Array<
+    Pick<EditClip, 'shot_id' | 'take_id' | 'in_point' | 'out_point' | 'transition'> & {
+      kind: ClipKind;
+      caption: string;
+    }
+  >;
 } {
   return {
     clips: clips.map((c, i) => ({

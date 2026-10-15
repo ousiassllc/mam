@@ -28,14 +28,7 @@ func TransitionTypes() []TransitionType {
 }
 
 // Valid reports whether t is a known transition.
-func (t TransitionType) Valid() bool {
-	for _, v := range TransitionTypes() {
-		if t == v {
-			return true
-		}
-	}
-	return false
-}
+func (t TransitionType) Valid() bool { return slices.Contains(TransitionTypes(), t) }
 
 // Limits of the Edit Timeline.
 const (
@@ -66,13 +59,11 @@ func ClipKinds() []ClipKind { return []ClipKind{ClipMain, ClipInsert, ClipReacti
 // Valid reports whether k is a known kind.
 func (k ClipKind) Valid() bool { return slices.Contains(ClipKinds(), k) }
 
-// MaxCaptionRunes bounds a caption: it is written over the picture in one or two lines.
+// MaxCaptionRunes bounds a caption: it is written over the picture in up to three lines, drawn smaller when it needs to fit (media.layoutCaption).
 const MaxCaptionRunes = 60
 
 // CleanCaption trims a caption and turns its line breaks into spaces.
-func CleanCaption(s string) string {
-	return strings.Join(strings.Fields(s), " ")
-}
+func CleanCaption(s string) string { return strings.Join(strings.Fields(s), " ") }
 
 // Transition is the switch from the previous clip into this one.
 type Transition struct {
@@ -99,6 +90,12 @@ type EditClip struct {
 
 // Length is the duration of the clip in seconds.
 func (c EditClip) Length() float64 { return c.Out - c.In }
+
+// shorterThan: length < min with the screen's 1e-9 slack (0.563 - 0.063 and 0.7 - 0.4 are just under 0.5 / 0.3 as float64).
+func shorterThan(length, min float64) bool { return length < min-1e-9 }
+
+// TooShort reports whether the clip is shorter than MinClipSeconds.
+func (c EditClip) TooShort() bool { return shorterThan(c.Length(), MinClipSeconds) }
 
 // EditTimeline is the sequence of clips of a Rough Cut (edit_timeline_version.timeline).
 type EditTimeline struct {
@@ -128,7 +125,7 @@ func (t EditTimeline) Normalize() (EditTimeline, error) {
 		if c.ShotID == "" || c.TakeID == "" {
 			return EditTimeline{}, invalidTimeline("クリップ %d に Shot または Take が指定されていません", i+1)
 		}
-		if !finite(c.In) || !finite(c.Out) || c.In < 0 || c.Length() < MinClipSeconds {
+		if !finite(c.In) || !finite(c.Out) || c.In < 0 || c.TooShort() {
 			return EditTimeline{}, invalidTimeline("クリップ %d は %.1f 秒以上の区間にしてください", i+1, MinClipSeconds)
 		}
 		if c.SourceSeconds > 0 && c.Out > c.SourceSeconds+0.05 {

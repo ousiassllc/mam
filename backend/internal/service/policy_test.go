@@ -43,9 +43,7 @@ func TestSetProductionTemplate_ChangesTheAxesTheAgentsAreToldAndIsRecordedInTheT
 	assert.NotContains(t, prompt, "Product Accuracy")
 
 	_, err = f.svc.Policy.SetProductionTemplate(ctx, f.projectID, "movie")
-	var invalid *service.ValidationError
-	require.ErrorAs(t, err, &invalid)
-	assert.Equal(t, "production_template", invalid.Field)
+	requireInvalid(t, err, "production_template")
 	_, err = f.svc.Policy.SetProductionTemplate(ctx, "missing", domain.TemplateAnime)
 	assert.ErrorIs(t, err, service.ErrNotFound)
 }
@@ -145,6 +143,14 @@ func TestCostSummary_ShowsEstimatedAndVendorReportedCostByShotSceneAndProject(t 
 	assert.ErrorIs(t, err, service.ErrNotFound)
 }
 
+// shortLimit lets the shortest Max generation time a Policy can hold (10 s) run out in 10 ms.
+func shortLimit(d time.Duration) time.Duration {
+	if d == domain.MinGenerationSeconds*time.Second {
+		return 10 * time.Millisecond
+	}
+	return d
+}
+
 func TestGenerateShot_StopsAtMaxGenerationTimeAndReportsIt(t *testing.T) {
 	f := newGenFixture(t, true)
 	f.models.block = make(chan struct{}) // the model never answers
@@ -159,7 +165,7 @@ func TestGenerateShot_StopsAtMaxGenerationTimeAndReportsIt(t *testing.T) {
 	f.waitJobsDone(t)
 	f.waitShotState(t, domain.ShotPlanning)
 
-	assert.Less(t, time.Since(start), 20*time.Second)
+	assert.Less(t, time.Since(start), 5*time.Second, "the 10 s limit ran out in 10 ms, not in 10 s")
 	assert.Zero(t, f.count(t, `SELECT COUNT(*) FROM take`))
 	assert.Contains(t, lastMessage(t, f.thread(t, f.projectID)).Content, "制限時間")
 }
@@ -174,7 +180,7 @@ func TestGenerateShot_WarnsBeforeStartingWhenTheDiskIsTooSmall(t *testing.T) {
 	for _, m := range g.thread(t, g.projectID) {
 		if m.Kind == domain.KindText && strings.Contains(m.Content, "ディスクの空き容量") {
 			warned = true
-			assert.Contains(t, m.Content, "/projects/"+g.projectID+"/settings")
+			assert.Equal(t, domain.RefSettings, m.RefType, "the chat draws the settings link; the text has no URL")
 		}
 	}
 	assert.True(t, warned, "the thread warns about the disk space")
@@ -221,6 +227,9 @@ func TestStorage_ShowsUsageAndArchivesUnneededTakesRemovingTheirFiles(t *testing
 
 	_, err = f.svc.Policy.ArchiveTake(ctx, f.projectID, takes[0].ID)
 	assert.ErrorIs(t, err, service.ErrConflict, "the Selected Take is never archived")
+	var conflict *service.ConflictError
+	require.ErrorAs(t, err, &conflict, "the refusal carries the reason to show")
+	assert.Contains(t, conflict.Message, "アーカイブできません")
 
 	view, err = f.svc.Policy.ArchiveTake(ctx, f.projectID, takes[1].ID)
 	require.NoError(t, err)

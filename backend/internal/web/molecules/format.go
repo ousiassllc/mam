@@ -4,8 +4,9 @@ package molecules
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
+	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/a-h/templ"
@@ -47,6 +48,17 @@ func AssetURL(projectID, assetID string) templ.SafeURL {
 
 func messagesURL(projectID string) string { return paths.Project(projectID, "messages") }
 
+// cardURL is where one card is fetched as it is now (GET /projects/:id/messages/:messageId).
+func cardURL(projectID, messageID string) string {
+	return paths.Project(projectID, "messages", messageID)
+}
+
+// messagesAfterURL fetches the messages newer than messageID (GET /projects/:id/messages?after=<messageId>).
+// The newest card of the thread carries it, so the client never builds the URL itself.
+func messagesAfterURL(projectID, messageID string) string {
+	return messagesURL(projectID) + "?after=" + url.QueryEscape(messageID)
+}
+
 func approvalURL(projectID, messageID string) string {
 	return paths.Project(projectID, "approvals", messageID)
 }
@@ -58,21 +70,12 @@ func answerAttrs(m domain.ThreadMessage, answer string) templ.Attributes {
 	return templ.Attributes{
 		"type":            "button",
 		"hx-post":         messagesURL(m.ProjectID),
-		"hx-vals":         hxVals(map[string]string{"content": answer, "reply_to_message_id": m.ID}),
+		"hx-vals":         atoms.HxVals(map[string]string{"content": answer, "reply_to_message_id": m.ID}),
 		"hx-target":       "#chat-thread",
 		"hx-swap":         "beforeend",
 		"hx-sync":         "closest [data-options]:drop",
 		"hx-disabled-elt": "this",
 	}
-}
-
-// hxVals encodes the hx-vals attribute (extra request parameters).
-func hxVals(v map[string]string) string {
-	raw, err := json.Marshal(v)
-	if err != nil { // a map of strings always marshals
-		return "{}"
-	}
-	return string(raw)
 }
 
 func replyAttrs(m domain.ThreadMessage) templ.Attributes {
@@ -129,6 +132,9 @@ func progressView(job *domain.Job) (atoms.BadgeTone, string, bool) {
 
 func scorePercent(score float64) string { return fmt.Sprintf("%.2f", score) }
 
+// frameRate writes a frame rate for the fps attribute of mam-video-player ("23.976", "30").
+func frameRate(fps float64) string { return strconv.FormatFloat(fps, 'f', -1, 64) }
+
 func frameClass(m domain.ThreadMessage) string {
 	base := "max-w-[85%] rounded-lg px-4 py-3 text-sm "
 	if m.Role == domain.RoleUser {
@@ -144,3 +150,29 @@ type oobKey struct{}
 func WithOOB(ctx context.Context) context.Context { return context.WithValue(ctx, oobKey{}, true) }
 
 func isOOB(ctx context.Context) bool { v, _ := ctx.Value(oobKey{}).(bool); return v }
+
+// refLink is the link a text notice carries: the notice names what it points at (ref_type / ref_id),
+// and the URL is built here from paths, not written into the message by the service or agent.
+type refLink struct {
+	Label string
+	Href  templ.SafeURL
+	Attrs templ.Attributes
+}
+
+// refLinkOf is the link of an AI text notice whose ref_type is a destination, if it has one.
+func refLinkOf(m domain.ThreadMessage) (refLink, bool) {
+	if m.Role != domain.RoleAssistant || m.Kind != domain.KindText {
+		return refLink{}, false
+	}
+	switch {
+	case m.RefType == domain.RefExport && m.RefID != "":
+		return refLink{
+			Label: "書き出した動画をダウンロード",
+			Href:  templ.SafeURL(paths.Project(m.ProjectID, "exports", m.RefID, "video")),
+			Attrs: templ.Attributes{"download": true},
+		}, true
+	case m.RefType == domain.RefSettings:
+		return refLink{Label: "設定画面を開く", Href: templ.SafeURL(paths.Project(m.ProjectID, "settings"))}, true
+	}
+	return refLink{}, false
+}

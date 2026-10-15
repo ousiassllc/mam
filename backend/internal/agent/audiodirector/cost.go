@@ -2,6 +2,7 @@ package audiodirector
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 
@@ -128,4 +129,16 @@ func (s *spending) record(ctx context.Context, model domain.ModelName, cost floa
 		return fmt.Errorf("record cost: %w", err)
 	}
 	return nil
+}
+
+// reserve holds the estimate of a call under the budget ceiling before the call is paid. A call that
+// does not fit is listed in Skipped (ok=false, no error).
+func (r *run) reserve(ctx context.Context, layer domain.AudioLayer, prompt string, cost float64) (release func(), ok bool, err error) {
+	release, err = r.spend.reserve(ctx, cost)
+	var be *BudgetError
+	if errors.As(err, &be) {
+		r.skip(layer, prompt, domain.SkipBudget, fmt.Sprintf("見積 $%.2f に対し残り予算が $%.2f です", be.Needed, be.Remaining))
+		return nil, false, nil
+	}
+	return release, err == nil, err
 }

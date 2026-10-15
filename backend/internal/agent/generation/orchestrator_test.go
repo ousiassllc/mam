@@ -15,6 +15,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
 
@@ -280,7 +281,7 @@ func TestOrchestrator_StartWarnsAboutLowDiskButStillQueues(t *testing.T) {
 			}
 			require.Len(t, warnings, 1)
 			assert.Contains(t, warnings[0].Content, "ディスクの空き容量")
-			assert.Contains(t, warnings[0].Content, f.projectID)
+			assert.Equal(t, domain.RefSettings, warnings[0].RefType, "the chat draws the settings link; the text has no URL")
 		})
 	}
 }
@@ -340,6 +341,7 @@ func TestFailureReason(t *testing.T) {
 		{"rejected", modeladapter.ErrRejected, "拒否"},
 		{"model timeout", modeladapter.ErrTimeout, "タイムアウト"},
 		{"llm timeout", llm.ErrTimeout, "タイムアウト"},
+		{"ffmpeg timeout", fmt.Errorf("%w after 30s", media.ErrTimeout), "ffmpeg"},
 		{"bad llm output", llm.ErrInvalidOutput, "AI の出力"},
 		{"provider error", &modeladapter.ProviderError{Status: 502}, "生成モデルの呼び出しに失敗"},
 		{"llm api error", &llm.APIError{Status: 500}, "AI サービスの呼び出しに失敗"},
@@ -407,17 +409,12 @@ func TestHandle_ReleasesTheShotWhenTheJobEndsBeforeItsWorkStarts(t *testing.T) {
 // A Shot that is already being generated or repaired is refused before the Prompt Planner (a paid
 // LLM call) writes a spec that would be thrown away.
 func TestOrchestrator_StartOfABusyShotSparesThePromptPlanner(t *testing.T) {
+	bg := context.Background()
 	for _, state := range []domain.ShotState{domain.ShotGenerating, domain.ShotRepairing} {
 		for name, start := range map[string]func(f *fixture) error{
-			"Start": func(f *fixture) error { _, err := f.orch.Start(context.Background(), f.shotID, ""); return err },
-			"StartDirected": func(f *fixture) error {
-				_, err := f.orch.StartDirected(context.Background(), f.shotID, "slower", nil)
-				return err
-			},
-			"StartCandidates": func(f *fixture) error {
-				_, err := f.orch.StartCandidates(context.Background(), f.shotID, "")
-				return err
-			},
+			"Start":           func(f *fixture) error { _, err := f.orch.Start(bg, f.shotID, ""); return err },
+			"StartDirected":   func(f *fixture) error { _, err := f.orch.StartDirected(bg, f.shotID, "slower", nil); return err },
+			"StartCandidates": func(f *fixture) error { _, err := f.orch.StartCandidates(bg, f.shotID, ""); return err },
 		} {
 			t.Run(string(state)+"/"+name, func(t *testing.T) {
 				f := newFixture(t, options{withJudge: true})

@@ -6,6 +6,9 @@ import (
 	"time"
 )
 
+// MaxInstructionRunes bounds the additional instruction of a generation.
+const MaxInstructionRunes = 1000
+
 // ModelName identifies an image or video generation model. The values are the canonical
 // identifiers of spec/architecture/model-adapters.md §6, stored in take.model_name and
 // cost_ledger_entry.provider.

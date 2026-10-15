@@ -22,15 +22,15 @@ func unneededText(s domain.StorageSummary) string {
 	return intText(n) + " 件 / " + domain.FormatBytes(size)
 }
 
-// StoragePanel shows the disk usage of the Project and lets the user archive Takes that are not
-// needed (Rejected, or not chosen where another Take of the Shot is Selected), which frees their
-// video files (spec/requirements/non-functional.md §4).
+// StoragePanel shows the disk usage of the Project and the preview cache, and lets the user archive Takes that are not
+// needed (Rejected, or not chosen where another Take of the Shot is Selected: spec/requirements/non-functional.md §4).
 templ StoragePanel(d StoragePanelData) {
 	<section id="storage-panel" class="flex flex-col gap-3">
 		<dl class="grid grid-cols-1 gap-3 sm:grid-cols-3">
 			<div class="rounded-md border border-neutral-700 p-3">
 				<dt class="text-xs text-neutral-400">Project のファイル</dt>
 				<dd class="text-lg font-semibold" data-testid="asset-bytes">{ domain.FormatBytes(d.Storage.AssetBytes) }</dd>
+				<dd class="text-xs text-neutral-400" data-testid="preview-bytes">{ "プレビューのキャッシュ（全 Project 共通）: " + domain.FormatBytes(d.Storage.PreviewBytes) }</dd>
 			</div>
 			<div class="rounded-md border border-neutral-700 p-3">
 				<dt class="text-xs text-neutral-400">ディスクの空き容量</dt>
@@ -48,12 +48,7 @@ templ StoragePanel(d StoragePanelData) {
 			</div>
 		</dl>
 		if hasUnneeded(d.Storage) {
-			<form
-				hx-post={ paths.Project(d.ProjectID, "storage", "archive-unneeded") }
-				hx-target="#storage-panel"
-				hx-swap="outerHTML"
-				hx-confirm="不要な Take の動画ファイルを削除します。よろしいですか？"
-			>
+			<form hx-post={ paths.Project(d.ProjectID, "storage", "archive-unneeded") } hx-target="#storage-panel" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]" hx-confirm="不要な Take の動画ファイルを削除します。よろしいですか？">
 				@atoms.Button(atoms.ToneDanger, "不要な Take をまとめてアーカイブ", templ.Attributes{
 					"type": "submit",
 				})
@@ -67,12 +62,12 @@ templ StoragePanel(d StoragePanelData) {
 					<li class="flex flex-wrap items-center justify-between gap-2 py-2">
 						<span>
 							{ "Scene " + intText(t.SceneIndex+1) + " · Shot " + intText(t.ShotIndex+1) + " · " + t.ModelName }
-							<span class="text-neutral-400">{ " · " + string(t.Status) + " · " + domain.FormatBytes(t.SizeBytes) }</span>
+							<span class="text-neutral-400">{ " · " + t.Status.Label() + " · " + domain.FormatBytes(t.SizeBytes) }</span>
 							if t.Unneeded {
-								<span class="ml-1 rounded-full bg-amber-500/20 px-2 py-0.5 text-xs text-amber-300">不要</span>
+								@atoms.Badge(atoms.BadgeWarn, "不要")
 							}
 						</span>
-						if t.Status != domain.TakeSelected {
+						if t.Archivable {
 							@atoms.SmallButton(atoms.ToneNeutral, "アーカイブ", templ.Attributes{
 								"type":       "button",
 								"hx-post":    paths.Project(d.ProjectID, "takes", t.TakeID, "archive"),
@@ -80,6 +75,8 @@ templ StoragePanel(d StoragePanelData) {
 								"hx-swap":    "outerHTML",
 								"hx-confirm": "この Take の動画ファイルを削除します。よろしいですか？",
 							})
+						} else {
+							<span class="text-xs text-neutral-400" data-testid="take-in-use">選択中、または編集・音声のタイムラインで使用中のためアーカイブできません</span>
 						}
 					</li>
 				}

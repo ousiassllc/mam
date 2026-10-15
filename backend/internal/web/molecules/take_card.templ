@@ -22,6 +22,9 @@ templ TakeCard(m domain.ThreadMessage) {
 			<mam-video-player
 				class="block"
 				video-src={ body.VideoURL }
+				if body.FPS > 0 {
+					fps={ frameRate(body.FPS) }
+				}
 				api-url={ takeJudgeResultURL(m.RefID) }
 				if domain.IsLocalPath(body.PosterURL) {
 					poster={ body.PosterURL }

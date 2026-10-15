@@ -1,8 +1,22 @@
 import { describe, expect, it } from 'vitest';
-import { catchUpAfterReconnect, cardUrl, fieldsToClear, fileKey, isSendKey, messagesUrl, isSuccessResponse, removeDuplicateIds, swapsErrorResponse } from './thread';
+import {
+  catchUpAfterReconnect,
+  fieldsToClear,
+  fileKey,
+  isSendKey,
+  isSuccessResponse,
+  removeDuplicateIds,
+  swapsErrorResponse,
+} from './thread';
 
 function el(id: string) {
-  return { id, removed: false, remove() { this.removed = true; } };
+  return {
+    id,
+    removed: false,
+    remove() {
+      this.removed = true;
+    },
+  };
 }
 
 describe('removeDuplicateIds', () => {
@@ -10,14 +24,6 @@ describe('removeDuplicateIds', () => {
     const items = [el('msg-1'), el('msg-2'), el('msg-1'), el('msg-2'), el('msg-3')];
     expect(removeDuplicateIds(items)).toBe(2);
     expect(items.map((i) => i.removed)).toEqual([false, false, true, true, false]);
-  });
-});
-
-describe('URLs', () => {
-  it('asks for the whole thread or only what is newer', () => {
-    expect(messagesUrl('p1', '')).toBe('/projects/p1/messages');
-    expect(messagesUrl('p1', 'm 1')).toBe('/projects/p1/messages?after=m%201');
-    expect(cardUrl('p1', 'm1')).toBe('/projects/p1/messages/m1');
   });
 });
 
@@ -51,7 +57,9 @@ describe('catchUpAfterReconnect', () => {
     await catchUpAfterReconnect({
       pendingMessageIds: () => ['approval-1', 'progress-2'],
       refetchCard: async (id) => void refetched.push(id),
-      syncNew: async () => void (synced += 1),
+      syncNew: async () => {
+        synced += 1;
+      },
     });
     expect(synced).toBe(1);
     expect(refetched).toEqual(['approval-1', 'progress-2']);
@@ -62,7 +70,13 @@ describe('catchUpAfterReconnect', () => {
       throw new Error('no card to fetch');
     };
     let synced = 0;
-    await catchUpAfterReconnect({ pendingMessageIds: () => [], refetchCard, syncNew: async () => void (synced += 1) });
+    await catchUpAfterReconnect({
+      pendingMessageIds: () => [],
+      refetchCard,
+      syncNew: async () => {
+        synced += 1;
+      },
+    });
     expect(synced).toBe(1);
   });
 });
@@ -93,12 +107,16 @@ describe('fieldsToClear', () => {
     expect(fieldsToClear(sent, { ...sent, files: ['a.png:10:1', 'b.png:20:2'] }).files).toBe(false);
     expect(fieldsToClear(sent, { ...sent, files: [] }).files).toBe(false);
     expect(fieldsToClear(sent, { ...sent, replyTo: 'm2' }).replyTo).toBe(false);
-    expect(fieldsToClear({ content: 'x', files: [], replyTo: '' }, { content: 'x', files: [], replyTo: '' }).files).toBe(true);
+    expect(
+      fieldsToClear({ content: 'x', files: [], replyTo: '' }, { content: 'x', files: [], replyTo: '' }).files,
+    ).toBe(true);
   });
 });
 
 describe('fileKey', () => {
   it('tells two picks of the same name apart', () => {
-    expect(fileKey({ name: 'a.png', size: 1, lastModified: 2 })).not.toBe(fileKey({ name: 'a.png', size: 1, lastModified: 3 }));
+    expect(fileKey({ name: 'a.png', size: 1, lastModified: 2 })).not.toBe(
+      fileKey({ name: 'a.png', size: 1, lastModified: 3 }),
+    );
   });
 });

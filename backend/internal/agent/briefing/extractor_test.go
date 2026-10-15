@@ -1,6 +1,7 @@
 package briefing_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -51,6 +52,14 @@ func TestRuleExtractor_AspectRatio(t *testing.T) {
 	}
 }
 
+func TestRuleExtractor_AspectRatioTakesEveryBriefAspectRatio(t *testing.T) {
+	for _, r := range domain.BriefAspectRatios() {
+		t.Run(r, func(t *testing.T) {
+			assert.Equal(t, r, briefing.RuleExtractor{}.Extract("比率は"+r+"で").AspectRatio)
+		})
+	}
+}
+
 func TestRuleExtractor_Extract(t *testing.T) {
 	tests := []struct {
 		name string
@@ -85,4 +94,28 @@ func TestRuleExtractor_Extract(t *testing.T) {
 			assert.Equal(t, tt.want, briefing.RuleExtractor{}.Extract(tt.text))
 		})
 	}
+}
+
+func TestValueProblem(t *testing.T) {
+	for _, r := range domain.BriefAspectRatios() {
+		assert.Empty(t, briefing.ValueProblem(domain.BriefAspectRatio, r))
+	}
+	assert.Empty(t, briefing.ValueProblem(domain.BriefAspectRatio, ""), "not decided yet is no problem")
+	for _, r := range []string{"4:5", "21:9", "９：１６", "縦長"} {
+		assert.Contains(t, briefing.ValueProblem(domain.BriefAspectRatio, r), "9:16 / 16:9 / 1:1", r)
+	}
+	assert.Empty(t, briefing.ValueProblem(domain.BriefMood, strings.Repeat("あ", briefing.FieldMaxRunes)))
+	assert.Contains(t, briefing.ValueProblem(domain.BriefMood, strings.Repeat("あ", briefing.FieldMaxRunes+1)), "200 文字以内")
+}
+
+func TestReferenceProblem(t *testing.T) {
+	assert.Empty(t, briefing.ReferenceProblem("https://example.com/"+strings.Repeat("a", briefing.FieldMaxRunes-len("https://example.com/"))))
+	assert.Contains(t, briefing.ReferenceProblem("https://example.com/"+strings.Repeat("a", briefing.FieldMaxRunes)), "200 文字")
+	assert.NotEmpty(t, briefing.ReferenceProblem("https://example.com/a b"))
+}
+
+func TestRuleExtractor_LeavesOutURLsTheBriefFormRefuses(t *testing.T) {
+	long := "https://example.com/?" + strings.Repeat("a", briefing.FieldMaxRunes)
+	got := briefing.RuleExtractor{}.Extract("参考 " + long + " と https://example.com/ok.").References
+	assert.Equal(t, []string{"https://example.com/ok"}, got)
 }

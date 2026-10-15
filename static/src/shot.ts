@@ -5,10 +5,12 @@
  * module waits for the player's progress-finished), otherwise data-ws-url names the socket and this
  * module listens to it.
  */
-import { ajaxGet } from './ajax';
+import { ajaxChecked, showToast } from './ajax';
+import { AJAX_FAILED_MESSAGE } from './components/lib/ajax';
 import { createConnectionNotice, releaseIfDetached } from './components/lib/connection-notice';
 import { connect, socketUrl, type Connection } from './components/lib/ws';
 import { selfAndDescendants } from './components/lib/query';
+import { createSyncer } from './components/lib/sync';
 import { createRefreshGuard, isFinished, planCardRefresh, type ShotProgress } from './components/lib/shot';
 
 const mayRefresh = createRefreshGuard();
@@ -20,21 +22,43 @@ export function initShotProgress(root: ParentNode = document): void {
   }
 }
 
+/**
+ * Fetches the finished card's page again. The "work is over" notice comes once and the socket is closed, so a
+ * refetch that fails is retried with a backoff (outside the guard, which must let done/failed through) and the
+ * user is told only when the retries are used up. The retry stops once the card has left the page.
+ */
 function refresh(card: HTMLElement, stage: ShotProgress['stage']): void {
-  const refreshUrl = card.dataset.refreshUrl ?? '';
-  if (!refreshUrl || !mayRefresh(refreshUrl, stage)) return;
-  const selectedLink = document.querySelector('#scene-shot-view li[id^="shot-"][aria-current="true"] a[href]');
-  const plan = planCardRefresh(
-    { id: card.id, refreshUrl, selected: card.getAttribute('aria-current') === 'true' },
-    selectedLink?.getAttribute('href') ?? null,
-  );
-  void ajaxGet(plan.url, { target: plan.target, swap: plan.swap, select: plan.select });
+  const initialUrl = card.dataset.refreshUrl ?? '';
+  if (!initialUrl || !mayRefresh(initialUrl, stage)) return;
+  const syncer = createSyncer({
+    run: async () => {
+      const refreshUrl = card.dataset.refreshUrl ?? '';
+      if (!card.isConnected || !refreshUrl) return;
+      const selectedLink = document.querySelector('#scene-shot-view li[id^="shot-"][aria-current="true"] a[href]');
+      const plan = planCardRefresh(
+        { id: card.id, refreshUrl, selected: card.getAttribute('aria-current') === 'true' },
+        selectedLink?.getAttribute('href') ?? null,
+      );
+      await ajaxChecked('get', plan.url, {
+        target: plan.target,
+        swap: plan.swap,
+        source: plan.target,
+        select: plan.select,
+      });
+    },
+    onGiveUp: () => showToast(AJAX_FAILED_MESSAGE),
+  });
+  void syncer.request();
 }
 
 function watch(el: HTMLElement): void {
   if (!el.dataset.wsUrl) {
     // The card's mam-video-player follows the progress and says when it is over.
-    el.addEventListener('progress-finished', (event) => refresh(el, (event as CustomEvent<ShotProgress | undefined>).detail?.stage ?? 'done'), { once: true });
+    el.addEventListener(
+      'progress-finished',
+      (event) => refresh(el, (event as CustomEvent<ShotProgress | undefined>).detail?.stage ?? 'done'),
+      { once: true },
+    );
     return;
   }
   let connection: Connection | null = null;

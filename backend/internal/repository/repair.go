@@ -35,7 +35,7 @@ func (r *RepairRepository) CreateAction(ctx context.Context, judgeResultID strin
 	err = r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		_, err := tx.ExecContext(ctx,
 			`INSERT INTO repair_action (id, judge_result_id, action_type, instructions, created_at) VALUES (?, ?, ?, ?, ?)`,
-			rec.ID, judgeResultID, action, string(raw), formatTime(rec.CreatedAt))
+			rec.ID, judgeResultID, action, string(raw), FormatTime(rec.CreatedAt))
 		return err
 	})
 	if err != nil {
@@ -71,7 +71,7 @@ func scanRepair(row rowScanner) (domain.RepairRecord, error) {
 	if err := json.Unmarshal([]byte(ins), &rec.Instructions); err != nil {
 		return domain.RepairRecord{}, fmt.Errorf("decode repair instructions: %w", err)
 	}
-	t, err := parseTime(made)
+	t, err := ParseTime(made)
 	if err != nil {
 		return domain.RepairRecord{}, err
 	}
@@ -94,24 +94,14 @@ func (r *RepairRepository) ProducedBy(ctx context.Context, takeID string) (domai
 
 // ShotActions returns the repair actions of the Takes of the Shot, oldest first: its Repair history.
 func (r *RepairRepository) ShotActions(ctx context.Context, shotID string) ([]domain.RepairRecord, error) {
-	rows, err := r.db.Reader().QueryContext(ctx,
-		repairSelect+` JOIN judge_result jr ON jr.id = ra.judge_result_id
+	out, err := queryAll(ctx, r.db.Reader(), scanRepair, repairSelect+` JOIN judge_result jr ON jr.id = ra.judge_result_id
 		 JOIN take t ON t.id = jr.take_id
 		 JOIN prompt_version pv ON pv.id = t.prompt_version_id
 		 WHERE pv.shot_id = ? ORDER BY ra.created_at, ra.rowid`, shotID)
 	if err != nil {
 		return nil, fmt.Errorf("list repair actions: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
-	var out []domain.RepairRecord
-	for rows.Next() {
-		rec, err := scanRepair(rows)
-		if err != nil {
-			return nil, fmt.Errorf("scan repair action: %w", err)
-		}
-		out = append(out, rec)
-	}
-	return out, rows.Err()
+	return out, nil
 }
 
 // CandidateTakeCount is how many Takes Prompt Candidate Generation made for the Shot, rejected ones
@@ -139,50 +129,49 @@ type TakeVerdict struct {
 // ShotVerdicts returns the Takes of the Shot that are still in play (not rejected), oldest first,
 // with their newest Judge result.
 func (r *RepairRepository) ShotVerdicts(ctx context.Context, shotID string) ([]TakeVerdict, error) {
-	rows, err := r.db.Reader().QueryContext(ctx,
-		`SELECT t.id, pv.shot_id, t.prompt_version_id, t.model_name, COALESCE(t.file_path, ''), t.status, t.created_at
-		 FROM take t JOIN prompt_version pv ON pv.id = t.prompt_version_id
-		 WHERE pv.shot_id = ? AND t.status <> ? ORDER BY t.created_at, t.rowid`, shotID, domain.TakeRejected)
+	db := r.db.Reader()
+	out, err := queryAll(ctx, db, func(row rowScanner) (TakeVerdict, error) {
+		t, err := scanTake(row)
+		return TakeVerdict{Take: t}, err
+	}, takeSelect+` WHERE pv.shot_id = ? AND t.status <> ? ORDER BY t.created_at, t.rowid`, shotID, domain.TakeRejected)
 	if err != nil {
 		return nil, fmt.Errorf("list shot takes: %w", err)
 	}
-	var out []TakeVerdict
-	for rows.Next() {
-		var (
-			t       domain.Take
-			created string
-		)
-		if err := rows.Scan(&t.ID, &t.ShotID, &t.PromptVersionID, &t.ModelName, &t.FilePath, &t.Status, &created); err != nil {
-			_ = rows.Close()
-			return nil, fmt.Errorf("scan take: %w", err)
-		}
-		if t.CreatedAt, err = parseTime(created); err != nil {
-			_ = rows.Close()
-			return nil, err
-		}
-		out = append(out, TakeVerdict{Take: t})
+	if len(out) == 0 {
+		return nil, nil
 	}
-	if err := rows.Err(); err != nil {
-		_ = rows.Close()
-		return nil, err
+	takeIDs := make([]string, len(out))
+	for i, v := range out {
+		takeIDs[i] = v.Take.ID
 	}
-	_ = rows.Close()
+
+	// Oldest first, so the last result seen for a Take is its newest.
+	results, err := queryAll(ctx, db, scanJudge,
+		judgeSelect+` WHERE take_id IN (`+placeholders(len(takeIDs))+`) ORDER BY created_at, rowid`, toAny(takeIDs)...)
+	if err != nil {
+		return nil, fmt.Errorf("list judge results: %w", err)
+	}
+	newest := make(map[string]domain.JudgeResult, len(out))
+	for _, res := range results {
+		newest[res.TakeID] = res
+	}
+	pendingArgs := append([]any{domain.JobJudge, domain.JobQueued, domain.JobRunning}, toAny(takeIDs)...)
+	pendingIDs, err := queryAll(ctx, db, scanString, `SELECT DISTINCT json_extract(payload, '$.take_id') FROM job
+		 WHERE kind = ? AND status IN (?, ?) AND json_extract(payload, '$.take_id') IN (`+placeholders(len(takeIDs))+`)`, pendingArgs...)
+	if err != nil {
+		return nil, fmt.Errorf("list judge jobs: %w", err)
+	}
+	pending := make(map[string]bool, len(pendingIDs))
+	for _, id := range pendingIDs {
+		pending[id] = true
+	}
 
 	for i := range out {
 		id := out[i].Take.ID
-		res, err := scanJudge(r.db.Reader().QueryRowContext(ctx, judgeSelect+` WHERE take_id = ? ORDER BY created_at DESC, rowid DESC LIMIT 1`, id))
-		switch {
-		case errors.Is(err, sql.ErrNoRows):
-		case err != nil:
-			return nil, fmt.Errorf("get judge result: %w", err)
-		default:
+		if res, ok := newest[id]; ok {
 			out[i].Result = &res
 		}
-		if err := r.db.Reader().QueryRowContext(ctx,
-			`SELECT EXISTS (SELECT 1 FROM job WHERE kind = ? AND status IN (?, ?) AND json_extract(payload, '$.take_id') = ?)`,
-			domain.JobJudge, domain.JobQueued, domain.JobRunning, id).Scan(&out[i].Pending); err != nil {
-			return nil, fmt.Errorf("count judge jobs: %w", err)
-		}
+		out[i].Pending = pending[id]
 	}
 	return out, nil
 }
@@ -206,7 +195,7 @@ func (r *RepairRepository) SaveShadow(ctx context.Context, s domain.RepairShadow
 			                            latency_ms, input_tokens, output_tokens, cost_usd, error, created_at)
 			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			domain.NewID(), s.RepairActionID, s.Model, s.JevChoice, confidence, string(probs), s.DecidedAction, s.Agreed,
-			s.LatencyMillis, s.InputTokens, s.OutputTokens, s.CostUSD, s.Error, formatTime(r.now()))
+			s.LatencyMillis, s.InputTokens, s.OutputTokens, s.CostUSD, s.Error, FormatTime(r.now()))
 		if err != nil {
 			return fmt.Errorf("save repair shadow: %w", err)
 		}
@@ -217,46 +206,42 @@ func (r *RepairRepository) SaveShadow(ctx context.Context, s domain.RepairShadow
 // ShadowReport summarises every shadow run: the agreement with the Repair Agent, the confidence
 // distribution, the latency and the cost.
 func (r *RepairRepository) ShadowReport(ctx context.Context) (domain.ShadowReport, error) {
-	rows, err := r.db.Reader().QueryContext(ctx, `SELECT confidence, agreed, latency_ms, cost_usd, error FROM repair_shadow`)
+	type shadowRun struct {
+		confidence sql.NullFloat64
+		agreed     bool
+		latency    int64
+		cost       float64
+		failure    string
+	}
+	runs, err := queryAll(ctx, r.db.Reader(), func(row rowScanner) (shadowRun, error) {
+		var s shadowRun
+		return s, row.Scan(&s.confidence, &s.agreed, &s.latency, &s.cost, &s.failure)
+	}, `SELECT confidence, agreed, latency_ms, cost_usd, error FROM repair_shadow`)
 	if err != nil {
 		return domain.ShadowReport{}, fmt.Errorf("list repair shadows: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
 	var (
 		rep                       domain.ShadowReport
 		confidenceSum, latencySum float64
 		succeeded                 int
 	)
-	for rows.Next() {
-		var (
-			confidence sql.NullFloat64
-			agreed     bool
-			latency    int64
-			cost       float64
-			failure    string
-		)
-		if err := rows.Scan(&confidence, &agreed, &latency, &cost, &failure); err != nil {
-			return domain.ShadowReport{}, fmt.Errorf("scan repair shadow: %w", err)
-		}
+	for _, s := range runs {
 		rep.Runs++
-		rep.TotalCostUSD += cost
-		if failure != "" || !confidence.Valid {
+		rep.TotalCostUSD += s.cost
+		if s.failure != "" || !s.confidence.Valid {
 			rep.Errors++
 			continue
 		}
 		succeeded++
-		latencySum += float64(latency) // a failed call records no latency: it would pull the mean down
-		confidenceSum += confidence.Float64
-		bucket := min(int(confidence.Float64*domain.ConfidenceBuckets), domain.ConfidenceBuckets-1)
+		latencySum += float64(s.latency) // a failed call records no latency: it would pull the mean down
+		confidenceSum += s.confidence.Float64
+		bucket := min(int(s.confidence.Float64*domain.ConfidenceBuckets), domain.ConfidenceBuckets-1)
 		bucket = max(bucket, 0)
 		rep.Confidence[bucket]++
-		if agreed {
+		if s.agreed {
 			rep.Agreed++
 			rep.ConfidenceAgreed[bucket]++
 		}
-	}
-	if err := rows.Err(); err != nil {
-		return domain.ShadowReport{}, err
 	}
 	if succeeded > 0 {
 		rep.AgreementRate = float64(rep.Agreed) / float64(succeeded)

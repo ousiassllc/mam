@@ -5,12 +5,13 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/web/handler"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // registerActions registers action routes (POST/PUT/DELETE, never branch on
 // HX-Request, return HTML fragments only). All of them are behind the CSRF middleware.
 func registerActions(engine *gin.Engine, services *service.Services) {
-	engine.POST("/projects", handler.CreateProject(services.Projects))
+	engine.POST(paths.Projects(), handler.CreateProject(services.Projects))
 	engine.PUT("/projects/:id/brief", handler.UpdateBrief(services.Projects))
 	engine.PUT("/projects/:id/confirmation-level", handler.SetConfirmationLevel(services.Projects))
 	engine.PUT("/projects/:id/mode", handler.SetMode(services.Director))
@@ -38,7 +39,7 @@ func registerActions(engine *gin.Engine, services *service.Services) {
 	engine.DELETE("/projects/:id/references/:referenceId", handler.DeleteReference(services.Reference))
 	engine.POST("/shots/:id/references", handler.PinReference(services.Reference))
 
-	engine.POST("/series", handler.CreateSeries(services.Series))
+	engine.POST(paths.SeriesList(), handler.CreateSeries(services.Series))
 	engine.POST("/series/:id/episodes", handler.CreateEpisode(services.Series))
 	engine.PUT("/series/:id/characters/:characterId", handler.UpdateSeriesCharacter(services.Series))
 	engine.PUT("/series/:id/style", handler.UpdateSeriesStyle(services.Series))
@@ -58,7 +59,7 @@ func registerActions(engine *gin.Engine, services *service.Services) {
 	// The Branch routes name the Branch :id: gin allows one wildcard name per path position.
 	engine.POST("/branches/:id/world-state/versions/:versionNumber/restore", handler.RestoreBranchWorldStateVersion(services.Versions))
 	engine.POST("/branches/:id/versions/:versionNumber/restore", handler.RestoreBranchVersion(services.Versions))
-	engine.POST("/projects/import", handler.ImportBundle(services.Bundle))
+	engine.POST(paths.ProjectImport(), handler.ImportBundle(services.Bundle))
 	engine.POST("/projects/:id/edit/rough-cut", handler.RoughCut(services.Editor))
 	engine.PUT("/edit-timelines/:id", handler.SaveEditTimeline(services.Editor))
 	engine.POST("/edit-timelines/:id/judge", handler.JudgeTimeline(services.Editor))
@@ -88,7 +89,7 @@ func registerActions(engine *gin.Engine, services *service.Services) {
 	engine.POST("/projects/:id/reviews", handler.CreateReview(services.Review))
 	engine.POST("/projects/:id/reviews/feedback", handler.ImportReviewResponse(services.Review))
 	engine.PUT("/projects/:id/review-comments/:commentId", handler.SetReviewCommentResolved(services.Review))
-	engine.POST("/reviews/import", handler.ImportReviewPackage(services.Review))
+	engine.POST(paths.ReviewImport(), handler.ImportReviewPackage(services.Review))
 	engine.POST("/reviews/:id/comments", handler.AddReviewComment(services.Review))
 	engine.DELETE("/reviews/:id/comments/:commentId", handler.DeleteReviewComment(services.Review))
 	engine.PUT("/reviews/:id/decision", handler.DecideReview(services.Review))

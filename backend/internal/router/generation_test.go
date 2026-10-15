@@ -17,18 +17,20 @@ import (
 	"github.com/coder/websocket/wsjson"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/zalando/go-keyring"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/generation"
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
-	"github.com/ousiassllc/mam/backend/internal/credential"
+	"github.com/ousiassllc/mam/backend/internal/credential/credentialtest"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 	"github.com/ousiassllc/mam/backend/internal/router"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
+	"github.com/ousiassllc/mam/backend/internal/testenv"
 )
 
 const plannerAnswer = `{"shot_objective":"A woman turns and runs","duration":"4.0s","camera":{"framing":"medium"},
@@ -82,10 +84,7 @@ type genApp struct {
 
 var shotIDRe = regexp.MustCompile(`id="shot-([0-9a-f-]{36})"`)
 
-func newGenApp(t *testing.T, withModels bool) *genApp {
-	t.Helper()
-	return newGenAppOpts(t, withModels, genOpts{})
-}
+func newGenApp(t *testing.T, withModels bool) *genApp { return newGenAppOpts(t, withModels, genOpts{}) }
 
 // genOpts replaces parts of the generation app: the LLM, the video model and ffmpeg.
 type genOpts struct {
@@ -96,14 +95,12 @@ type genOpts struct {
 
 func newGenAppOpts(t *testing.T, withModels bool, o genOpts) *genApp {
 	t.Helper()
-	keyring.MockInit()
+	testenv.Parallel(t)
+	keys := credentialtest.New()
 	dir := t.TempDir()
-	db, err := repository.Open(context.Background(), filepath.Join(dir, "mam.db"), nil)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = db.Close() })
-
+	db := testdb.Open(t)
 	video := &videoFake{}
-	deps := service.Deps{DB: db, Credentials: credential.NewKeyring(), AssetsDir: filepath.Join(dir, "assets"), Media: o.media}
+	deps := service.Deps{DB: db, Credentials: keys, AssetsDir: filepath.Join(dir, "assets"), Media: o.media}
 	deps.LLM = plannerLLM{}
 	if o.llm != nil {
 		deps.LLM = o.llm
@@ -118,24 +115,15 @@ func newGenAppOpts(t *testing.T, withModels bool, o genOpts) *genApp {
 		backends := modeladapter.Backends{Video: map[domain.ModelName]modeladapter.VideoBackend{domain.ModelKling3: backend, domain.ModelSeedance2: backend}}
 		deps.Models = modeladapter.New(modeladapter.DefaultConfig(), backends)
 	}
-	svc := service.New(deps)
+	svc := servicetest.New(t, deps)
 	ctx, cancel := context.WithCancel(context.Background())
 	jobs.Start(ctx)
 	t.Cleanup(func() { cancel(); jobs.Stop() })
-
-	a := &app{t: t, db: db, engine: router.New(svc, router.Options{}), svc: svc, assets: filepath.Join(dir, "assets")}
+	a := &app{t: t, db: db, engine: router.New(svc, router.Options{}), svc: svc, keys: keys, assets: filepath.Join(dir, "assets")}
 	a.cookie, a.token = bootstrap(t, a.engine)
 	g := &genApp{app: a, video: video}
 	g.project = a.createProject("美容液のCMを作りたい")
-	rec := a.form(http.MethodPost, "/projects/"+g.project+"/scenes", url.Values{"title": {"Street"}})
-	m := sceneIDRe.FindStringSubmatch(rec.Body.String())
-	require.NotNil(t, m)
-	g.sceneID = m[1]
-	rec = a.form(http.MethodPost, "/scenes/"+g.sceneID+"/shots", url.Values{"objective": {"走り出す"}, "duration_seconds": {"4"}})
-	require.Equal(t, http.StatusCreated, rec.Code)
-	m = shotIDRe.FindStringSubmatch(rec.Body.String())
-	require.NotNil(t, m, rec.Body.String())
-	g.shotID = m[1]
+	g.sceneID, g.shotID = a.createShot(g.project)
 	return g
 }
 
@@ -277,11 +265,13 @@ func TestContinue_ProposesACardInTheChatAndConfirmAddsAndGeneratesTheNextShot(t 
 	assert.Contains(t, body, domain.DelegateOption)
 
 	assert.Equal(t, http.StatusUnprocessableEntity, g.form(http.MethodPost, "/shots/"+g.shotID+"/continue/confirm", nil).Code, "a choice is required")
+	g.video.gate = make(chan struct{}) // the new Shot's job waits here, so the card is drawn while it generates
 	rec = g.form(http.MethodPost, "/shots/"+g.shotID+"/continue/confirm", url.Values{"delegate": {"true"}})
 	require.Equal(t, http.StatusAccepted, rec.Code, rec.Body.String())
 	assert.Equal(t, "chat:refresh", rec.Header().Get("HX-Trigger"))
 	assert.Contains(t, rec.Body.String(), "Shot 2: ドアを開ける")
 	assert.Contains(t, rec.Body.String(), "生成中")
+	close(g.video.gate)
 	assert.Equal(t, 2, generates(), "confirming the direction is the user asking for the new Shot: a generate intervention")
 }
 
@@ -309,12 +299,15 @@ func (f *frameSpyLLM) Complete(ctx context.Context, agent llm.Agent, req llm.Req
 func TestContinue_TheAgentSeesTheFinalFrameOfTheTakeWhenFfmpegIsAvailable(t *testing.T) {
 	tools, err := media.Look()
 	if err != nil {
-		t.Skip("ffmpeg / ffprobe are not installed")
+		testenv.MissingFFmpeg(t, "ffmpeg / ffprobe are not installed")
 	}
 	spy := &frameSpyLLM{}
 	g := newGenAppOpts(t, true, genOpts{llm: spy, video: newMP4Video(t), media: &tools})
 	g.form(http.MethodPost, "/shots/"+g.shotID+"/generate", nil)
 	g.waitTakes(3)
+	require.Eventually(t, func() bool {
+		return strings.Count(g.get("/projects/"+g.project, false).Body.String(), ` fps="10"`) == 3
+	}, 30*time.Second, 10*time.Millisecond, "the cards hand the fps ffprobe read to the player")
 	require.Eventually(t, func() bool {
 		var state string
 		return g.db.Reader().QueryRow(`SELECT state FROM shot WHERE id = ?`, g.shotID).Scan(&state) == nil && state == "PLANNING"

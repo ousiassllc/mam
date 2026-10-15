@@ -67,3 +67,9 @@ func TestKeyring_StorageFailureIsNotReportedAsMissing(t *testing.T) {
 	_, err = store.Has("kling")
 	assert.ErrorIs(t, err, boom, "Has must surface storage errors instead of returning false")
 }
+
+func TestKeyring_SetMapsDataTooBigToErrTooLarge(t *testing.T) {
+	keyring.MockInitWithError(keyring.ErrSetDataTooBig)
+	err := credential.NewKeyring().Set("kling", "k")
+	assert.ErrorIs(t, err, credential.ErrTooLarge)
+}

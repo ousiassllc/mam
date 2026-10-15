@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"path"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -19,6 +20,7 @@ const (
 	BundleManifestName = "manifest.json"
 	BundleDataName     = "data.json"
 	BundleAssetsDir    = "assets/"
+	ReviewInboxDir     = "reviews" // assets/reviews/ holds the videos of imported Review Packages
 )
 
 // BundleManifest identifies a bundle and the Project in it.
@@ -114,18 +116,17 @@ func ValidBundleFilePath(projectID, p string) bool {
 		!strings.Contains(p, "/../") && !strings.HasSuffix(p, "/..")
 }
 
-// ValidBundleID reports whether id can be the name of the Project's file directory, a row ID that the
-// server joins into a file path, and an ID the pages can use: the generated form (a UUID) or
-// [A-Za-z0-9_-]{1,64}. Anything else (a leading ".", ".previews" or ".staging" inside the assets
-// directory, path separators, "..", quotes, control characters, URL syntax) would collide with the
-// server's own directories, escape the assets directory, or break headers and URLs.
+var reservedBundleID = regexp.MustCompile(`(?i)^(` + ReviewInboxDir + `|con|prn|aux|nul|(com|lpt)[1-9])$`)
+
+// ValidBundleID reports whether id is safe as the Project's directory name, a file-path part, a header value and a
+// URL part: a UUID or [A-Za-z0-9_-]{1,64}, but not ReviewInboxDir or a Windows device name (CON, NUL, COM1, ...),
+// in any letter case (NTFS and APFS ignore it: "Reviews" is assets/reviews/). It is the one limit on an ID that reaches a URL.
 func ValidBundleID(id string) bool {
-	if id == "" || len(id) > 64 {
+	if id == "" || len(id) > 64 || reservedBundleID.MatchString(id) {
 		return false
 	}
 	for _, r := range id {
-		ok := r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '_' || r == '-'
-		if !ok {
+		if ok := r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '_' || r == '-'; !ok {
 			return false
 		}
 	}

@@ -17,72 +17,31 @@ import {
   trimProblem,
   withStarts,
   type EditClip,
-  type EditLimits,
   type TransitionType,
 } from '../lib/edit-model';
 import { errorMessage } from '../lib/errors';
 import { createLogger } from '../lib/logger';
 import '../video-player/mam-video-player';
+import { type EditTimelineBody, TIMELINE_RELOAD_EVENT, TIMELINE_UPDATED_EVENT } from './timeline-api';
 
 const log = createLogger('timeline-editor');
-
-/** The additional Shot only new footage settles (Editor → Reshoot Loop). */
-interface ShotNeed {
-  kind: 'insert' | 'reaction';
-  after_clip: number;
-  objective: string;
-  duration_seconds: number;
-}
-
-interface EditorFinding {
-  clip_index: number;
-  issue: string;
-  action: string;
-  need_shot?: ShotNeed;
-}
-
-/** GET /api/v1/projects/:id/edit-timeline. The URLs are the server's: the component builds none. */
-export interface EditTimelineBody {
-  id: string;
-  version_number: number;
-  duration_seconds: number;
-  clips: EditClip[];
-  judge?: { verdict: 'pass' | 're_edit' | 'need_shot'; findings: EditorFinding[] };
-  branch_id?: string;
-  save_url: string;
-  /** POST here (an action route) to ask the Director for the additional Shots of a need_shot verdict. */
-  request_shot_url: string;
-  preview_url: string;
-  transitions: TransitionType[];
-  limits: EditLimits;
-  readonly: boolean;
-}
-
-/** Fired when the server made new work of its own (the Reshoot Loop was started): the page's stage buttons reload. */
-export const TIMELINE_UPDATED_EVENT = 'timeline-updated';
-
-/** The event `htmx` fires (HX-Trigger of the Rough Cut / Final QC actions) when the timeline changed on the server. */
-export const TIMELINE_RELOAD_EVENT = 'timeline-reload';
 
 /**
  * `<mam-timeline-editor>`: the Edit Timeline of a Project (spec/components/overview.md §4.2, F-18 Simple).
  *
- * - Shot Selection: drag a clip (or use the arrows) to reorder; "外す" leaves a clip out.
- * - Cut Point / Timing: the In and Out second of the Take of each clip.
+ * - Shot Selection (drag or arrows to reorder, "外す" leaves a clip out) and Cut Point / Timing (In / Out second of the Take).
  * - Transition: how a clip follows the one before it (cut / fade / fade to black / dissolve).
  * - A preview player of the rendered Rough Cut of the saved version.
  *
- * `api-url` is GET /api/v1/projects/:id/edit-timeline. Saving PUTs the clips to the `save_url` of the
- * response; the server keeps every save as a new version. Once saved the component fires
- * `timeline-updated` (bubbles, composed; detail: {id}) so that HTMX refreshes what depends on the
- * timeline, and reloads. It also reloads on `timeline-reload`, which the server's actions send when
- * they replaced the timeline (a new Rough Cut). It renders into the light DOM so that the page's
- * Tailwind classes apply.
+ * `api-url` is GET /api/v1/projects/:id/edit-timeline. Saving PUTs the clips to the `save_url` of the response; the
+ * server keeps every save as a new version. Once saved the component fires `timeline-updated` (bubbles, composed;
+ * detail: {id}) so that HTMX refreshes what depends on the timeline, and reloads. It also reloads on `timeline-reload`
+ * (the server's actions send it when the timeline or its editability changed; unsaved edits survive). Light DOM: the
+ * page's Tailwind classes apply.
  */
 @customElement('mam-timeline-editor')
 export class MamTimelineEditor extends LitElement {
   @property({ type: String, attribute: 'api-url' }) apiUrl = '';
-  @property({ type: Boolean }) readonly = false;
 
   @state() private body: EditTimelineBody | null = null;
   @state() private clips: EditClip[] = [];
@@ -95,7 +54,7 @@ export class MamTimelineEditor extends LitElement {
 
   private captionDraft: { index: number; text: string } | null = null;
   private loadToken = 0;
-  private readonly onReload = () => void this.load();
+  private readonly onReload = () => void this.load({ keepEdits: true });
 
   protected override createRenderRoot(): HTMLElement {
     return this;
@@ -104,6 +63,7 @@ export class MamTimelineEditor extends LitElement {
   override connectedCallback(): void {
     super.connectedCallback();
     document.addEventListener(TIMELINE_RELOAD_EVENT, this.onReload);
+    if (this.hasUpdated) this.onReload(); // moved in the DOM: apiUrl did not change, so reload
   }
 
   override disconnectedCallback(): void {
@@ -117,19 +77,26 @@ export class MamTimelineEditor extends LitElement {
   }
 
   /**
-   * Loads the latest timeline again, dropping unsaved changes. Resolves false when the request failed (the timeline
-   * on screen is then the old one); a load that a newer one superseded, or a 404 (no Rough Cut), is not a failure.
+   * Loads the latest timeline again, dropping unsaved changes (unless `keepEdits`, see below). Resolves false when the
+   * request failed (the timeline on screen is then the old one); a superseded load or a 404 (no Rough Cut) is not a failure.
+   * With `keepEdits` (`timeline-reload`) unsaved changes stay while the server has the version they were made on (only
+   * its `readonly` etc. are taken); a newer version (a new Rough Cut) drops them, and the notice says so.
    */
-  async load(): Promise<boolean> {
+  async load({ keepEdits = false }: { keepEdits?: boolean } = {}): Promise<boolean> {
     const token = ++this.loadToken;
     if (!this.apiUrl) return true;
     let ok = true;
     try {
       const body = await get<EditTimelineBody>(this.apiUrl);
       if (token !== this.loadToken) return true;
+      const previous = this.body;
+      const unsaved = keepEdits && previous !== null && isDirty(previous.clips, this.clips);
       this.body = body;
-      this.clips = withStarts(body.clips);
-      this.captionDraft = null;
+      if (!(unsaved && previous.version_number === body.version_number)) {
+        this.clips = withStarts(body.clips);
+        this.captionDraft = null;
+        if (unsaved) this.notice = '最新の版に差し替わったため、未保存の変更は破棄されました';
+      }
       this.error = '';
     } catch (error) {
       if (token !== this.loadToken) return true;
@@ -152,7 +119,7 @@ export class MamTimelineEditor extends LitElement {
   }
 
   private get locked(): boolean {
-    return this.readonly || (this.body?.readonly ?? true) || this.busy;
+    return (this.body?.readonly ?? true) || this.busy;
   }
 
   /**
@@ -184,7 +151,10 @@ export class MamTimelineEditor extends LitElement {
     const inPoint = field === 'in' ? value : clip.in_point;
     const outPoint = field === 'out' ? value : clip.out_point;
     const problem = trimProblem(clip, inPoint, outPoint, body.limits);
-    if (problem) return this.refuse(clip, problem);
+    if (problem) {
+      this.refuse(clip, problem);
+      return;
+    }
     this.change(setTrim(this.clips, index, inPoint, outPoint, body.limits));
   }
 
@@ -203,7 +173,8 @@ export class MamTimelineEditor extends LitElement {
     const problem = captionProblem(input.value, body.limits);
     if (problem) {
       this.captionDraft = { index, text: input.value }; // the text stays in the box so it can be shortened, until the next edit or load
-      return this.refuse(clip, problem);
+      this.refuse(clip, problem);
+      return;
     }
     this.change(setCaption(this.clips, index, input.value, body.limits));
   }
@@ -229,7 +200,9 @@ export class MamTimelineEditor extends LitElement {
         return;
       }
       this.notice = '保存しました';
-      this.dispatchEvent(new CustomEvent(TIMELINE_UPDATED_EVENT, { detail: { id: this.body?.id ?? '' }, bubbles: true, composed: true }));
+      this.dispatchEvent(
+        new CustomEvent(TIMELINE_UPDATED_EVENT, { detail: { id: this.body?.id ?? '' }, bubbles: true, composed: true }),
+      );
     } catch (error) {
       this.error = errorMessage(error);
     } finally {
@@ -253,7 +226,6 @@ export class MamTimelineEditor extends LitElement {
         ${this.renderError()}
         ${this.notice ? html`<p class="text-xs text-emerald-300" role="status" data-notice>${this.notice}</p>` : nothing}
         <mam-video-player video-src=${body.preview_url}></mam-video-player>
-        ${this.renderJudge(body)}
         <ol class="flex flex-col gap-2" data-clips>
           ${this.clips.map((c, i) => this.renderClip(c, i, body))}
         </ol>
@@ -271,37 +243,16 @@ export class MamTimelineEditor extends LitElement {
             変更を戻す
           </button>
           <span class="text-xs text-neutral-400" data-total>合計 ${timelineSeconds(this.clips).toFixed(1)} 秒 / ${this.clips.length} クリップ${dirty ? '（未保存の変更あり）' : ''}</span>
-          ${this.readonly || body.readonly ? html`<span class="text-xs text-amber-300" data-readonly>この段階では編集できません</span>` : nothing}
+          ${body.readonly ? html`<span class="text-xs text-amber-300" data-readonly>この段階では編集できません</span>` : nothing}
         </div>
       </div>
     `;
   }
 
   private renderError() {
-    return this.error ? html`<p class="rounded border border-red-500/50 bg-red-950/40 px-3 py-2 text-xs text-red-200" role="alert" data-error>${this.error}</p>` : nothing;
-  }
-
-  private renderJudge(body: EditTimelineBody) {
-    const judge = body.judge;
-    if (!judge) return nothing;
-    const label = judge.verdict === 'pass' ? 'PASS' : judge.verdict === 're_edit' ? 'Re-edit' : '素材不足';
-    return html`<div class="rounded border border-neutral-700 p-3 text-xs" data-judge>
-      <p class="font-medium">Editor Judge: ${label}</p>
-      ${judge.findings.length > 0
-        ? html`<ul class="mt-1 flex flex-col gap-1 text-neutral-300">
-            ${judge.findings.map(
-              (f) => html`<li>
-                ${f.clip_index > 0 ? `クリップ ${f.clip_index}: ` : ''}${f.issue} → ${f.action}
-                ${f.need_shot
-                  ? html`<span class="text-amber-300" data-need-shot>
-                      （追加 Shot: ${CLIP_KIND_LABEL[f.need_shot.kind]} ${f.need_shot.duration_seconds.toFixed(1)} 秒をクリップ ${f.need_shot.after_clip} の後に）
-                    </span>`
-                  : nothing}
-              </li>`,
-            )}
-          </ul>`
-        : nothing}
-    </div>`;
+    return this.error
+      ? html`<p class="rounded border border-red-500/50 bg-red-950/40 px-3 py-2 text-xs text-red-200" role="alert" data-error>${this.error}</p>`
+      : nothing;
   }
 
   private renderClip(c: EditClip, i: number, body: EditTimelineBody) {
@@ -352,20 +303,24 @@ export class MamTimelineEditor extends LitElement {
           <input type="number" data-field="out" step="0.1" min="0" class="w-24 rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-neutral-100" .value=${live(String(c.out_point))} ?disabled=${locked} @change=${(e: Event) => this.onTrim(i, 'out', e.target as HTMLInputElement)} />
         </label>
         ${c.source_seconds ? html`<span>Take の長さ ${c.source_seconds.toFixed(1)} 秒</span>` : nothing}
-        ${i === 0
-          ? nothing
-          : html`<label class="flex flex-col gap-1">
+        ${
+          i === 0
+            ? nothing
+            : html`<label class="flex flex-col gap-1">
                 前のクリップからの切り替え
                 <select data-field="transition" class="rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-neutral-100" ?disabled=${locked} @change=${(e: Event) => this.onTransition(i, (e.target as HTMLSelectElement).value as TransitionType)}>
                   ${body.transitions.map((v) => html`<option value=${v} .selected=${live(v === t.type)}>${TRANSITION_LABEL[v] ?? v}</option>`)}
                 </select>
               </label>
-              ${t.type === 'cut'
-                ? nothing
-                : html`<label class="flex flex-col gap-1">
+              ${
+                t.type === 'cut'
+                  ? nothing
+                  : html`<label class="flex flex-col gap-1">
                     長さ（秒）
                     <input type="number" data-field="transition-seconds" step="0.05" min="0.1" max=${body.limits.max_transition_seconds} class="w-24 rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-neutral-100" .value=${live(String(t.seconds))} ?disabled=${locked} @change=${(e: Event) => this.onTransition(i, t.type, (e.target as HTMLInputElement).value)} />
-                  </label>`}`}
+                  </label>`
+              }`
+        }
       </div>
       <label class="flex flex-col gap-1 text-xs text-neutral-400">
         字幕（Caption）

@@ -3,6 +3,7 @@ package domain
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -36,14 +37,7 @@ func BrandConstraintTypes() []BrandConstraintType {
 }
 
 // Valid reports whether t is a known type.
-func (t BrandConstraintType) Valid() bool {
-	for _, v := range BrandConstraintTypes() {
-		if v == t {
-			return true
-		}
-	}
-	return false
-}
+func (t BrandConstraintType) Valid() bool { return slices.Contains(BrandConstraintTypes(), t) }
 
 // Label is the name shown to the user.
 func (t BrandConstraintType) Label() string {

@@ -7,6 +7,7 @@ import { swapsErrorResponse } from './components/lib/thread';
 import { requestFailureMessage, type RequestFailure } from './components/lib/errors';
 import { showToast } from './ajax';
 import { installHistorySnapshotHygiene } from './components/lib/history';
+import { installSaveOnChangeRevert } from './components/save-on-change/save-on-change';
 import { dedupeToastsOnSwap, dismissToastsOnClick } from './components/lib/toast';
 
 // Attach the CSRF token (from <meta name="csrf-token">) to every HTMX request.
@@ -27,12 +28,22 @@ document.addEventListener('htmx:beforeSwap', (event) => {
 
 // A request that got no swappable response (server down, timeout, a non-HTML error) would leave the
 // screen unchanged: say so.
-for (const type of ['htmx:responseError', 'htmx:sendError', 'htmx:timeout'] as const satisfies readonly RequestFailure[]) {
+for (const type of [
+  'htmx:responseError',
+  'htmx:sendError',
+  'htmx:timeout',
+] as const satisfies readonly RequestFailure[]) {
   document.addEventListener(type, (event) => {
     const xhr = (event as CustomEvent<{ xhr?: XMLHttpRequest }>).detail?.xhr;
     showToast(requestFailureMessage(type, xhr?.status));
   });
 }
+
+// A control that saves on change (MODE, Production Template, Quality, Confirmation Level) has already
+// moved to the chosen value when the request goes out. When the save fails, whatever the response
+// (a 4xx/5xx toast, server down, timeout), put it back to the stored value, so that the screen never
+// shows a value that was not saved (issue 538).
+installSaveOnChangeRevert();
 
 lockDownHtmx(htmx.config);
 

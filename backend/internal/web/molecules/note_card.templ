@@ -17,8 +17,8 @@ func sourceNoteLabel(s domain.NoteSource) string {
 
 // NoteCard shows one note (F-31): its latest text in an edit form, the category and pin, the archive
 // button, and the version history with a restore button per earlier version. Saving with a changed
-// title or text appends a version; the category and pin do not. Every action answers with the whole
-// note list (#note-list).
+// title or text appends a version; the category and pin do not. Every action answers with the note
+// list (#note-list) in which the other notes the page has are placeholders (notelist.Data.Only).
 templ NoteCard(n domain.NoteView) {
 	<article id={ "note-" + n.ID } class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3">
 		<div class="flex flex-wrap items-center gap-2 text-xs text-neutral-400">
@@ -43,7 +43,7 @@ templ NoteCard(n domain.NoteView) {
 					"name":      "title",
 					"type":      "text",
 					"value":     n.Version.Title,
-					"maxlength": "100",
+					"maxlength": strconv.Itoa(domain.MaxNoteTitleRunes),
 					"required":  true,
 				})
 			</label>
@@ -53,7 +53,7 @@ templ NoteCard(n domain.NoteView) {
 					"id":        "note-content-" + n.ID,
 					"name":      "content",
 					"rows":      "4",
-					"maxlength": "4000",
+					"maxlength": strconv.Itoa(domain.MaxNoteContentRunes),
 					"required":  true,
 				}, n.Version.Content)
 			</label>
@@ -87,7 +87,7 @@ templ NoteCard(n domain.NoteView) {
 				@atoms.Button(atoms.ToneNeutral, "アーカイブを解除", templ.Attributes{
 					"type":      "button",
 					"hx-put":    paths.Note(n.ID),
-					"hx-vals":   hxVals(map[string]string{"archived": "false"}),
+					"hx-vals":   atoms.HxVals(map[string]string{"archived": "false"}),
 					"hx-target": "#note-list",
 					"hx-swap":   "outerHTML",
 				})

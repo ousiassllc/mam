@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
@@ -35,7 +34,7 @@ func scanMessage(row rowScanner) (domain.ChatMessage, error) {
 	if err := json.Unmarshal([]byte(attachments), &m.AttachmentAssetIDs); err != nil {
 		return domain.ChatMessage{}, fmt.Errorf("decode attachment_asset_ids: %w", err)
 	}
-	t, err := parseTime(at)
+	t, err := ParseTime(at)
 	if err != nil {
 		return domain.ChatMessage{}, err
 	}
@@ -62,58 +61,39 @@ func (r *ChatRepository) ListByIDs(ctx context.Context, projectID string, ids []
 	if len(ids) == 0 {
 		return messages, nil
 	}
-	rows, err := r.db.Reader().QueryContext(ctx,
+	found, err := queryAll(ctx, r.db.Reader(), scanMessage,
 		messageSelect+` WHERE project_id = ? AND id IN (`+placeholders(len(ids))+`)`, append([]any{projectID}, toAny(ids)...)...)
 	if err != nil {
 		return nil, fmt.Errorf("list messages by ids: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
-	for rows.Next() {
-		m, err := scanMessage(rows)
-		if err != nil {
-			return nil, fmt.Errorf("scan message: %w", err)
-		}
+	for _, m := range found {
 		messages[m.ID] = m
 	}
-	return messages, rows.Err()
+	return messages, nil
 }
 
 // List returns the thread in order. With after set, only messages newer than that
 // message ID are returned (IDs are time-ordered UUIDv7, so the ID order is the thread order).
 func (r *ChatRepository) List(ctx context.Context, projectID, after string) ([]domain.ChatMessage, error) {
-	rows, err := r.db.Reader().QueryContext(ctx, messageSelect+` WHERE project_id = ? AND id > ? ORDER BY id`, projectID, after)
+	messages, err := queryAll(ctx, r.db.Reader(), scanMessage, messageSelect+` WHERE project_id = ? AND id > ? ORDER BY id`, projectID, after)
 	if err != nil {
 		return nil, fmt.Errorf("list messages: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
-	var messages []domain.ChatMessage
-	for rows.Next() {
-		m, err := scanMessage(rows)
-		if err != nil {
-			return nil, fmt.Errorf("scan message: %w", err)
-		}
-		messages = append(messages, m)
-	}
-	return messages, rows.Err()
+	return messages, nil
 }
 
 // RepliedMessageIDs returns the IDs of the Project's messages that have at least one reply.
 func (r *ChatRepository) RepliedMessageIDs(ctx context.Context, projectID string) (map[string]bool, error) {
-	rows, err := r.db.Reader().QueryContext(ctx,
+	ids, err := queryAll(ctx, r.db.Reader(), scanString,
 		`SELECT DISTINCT reply_to_message_id FROM chat_message WHERE project_id = ? AND reply_to_message_id IS NOT NULL`, projectID)
 	if err != nil {
 		return nil, fmt.Errorf("list replied messages: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
-	replied := make(map[string]bool)
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			return nil, fmt.Errorf("scan replied message: %w", err)
-		}
+	replied := make(map[string]bool, len(ids))
+	for _, id := range ids {
 		replied[id] = true
 	}
-	return replied, rows.Err()
+	return replied, nil
 }
 
 // LatestOpenQuestion returns the newest Brief question card nobody replied to, or nil.
@@ -140,40 +120,22 @@ func (r *ChatRepository) ListBriefQuestions(ctx context.Context, projectID strin
 	for _, f := range fields {
 		args = append(args, f)
 	}
-	rows, err := r.db.Reader().QueryContext(ctx,
+	messages, err := queryAll(ctx, r.db.Reader(), scanMessage,
 		messageSelect+` WHERE project_id = ? AND kind = 'question' AND ref_type = 'brief_field' AND ref_id IN (`+
-			strings.TrimSuffix(strings.Repeat("?,", len(fields)), ",")+`) ORDER BY id`, args...)
+			placeholders(len(fields))+`) ORDER BY id`, args...)
 	if err != nil {
 		return nil, fmt.Errorf("list brief questions: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
-	var messages []domain.ChatMessage
-	for rows.Next() {
-		m, err := scanMessage(rows)
-		if err != nil {
-			return nil, fmt.Errorf("scan message: %w", err)
-		}
-		messages = append(messages, m)
-	}
-	return messages, rows.Err()
+	return messages, nil
 }
 
 // ListByRef returns the messages (of any Project) that point at the given entity.
 func (r *ChatRepository) ListByRef(ctx context.Context, refType, refID string) ([]domain.ChatMessage, error) {
-	rows, err := r.db.Reader().QueryContext(ctx, messageSelect+` WHERE ref_type = ? AND ref_id = ? ORDER BY id`, refType, refID)
+	messages, err := queryAll(ctx, r.db.Reader(), scanMessage, messageSelect+` WHERE ref_type = ? AND ref_id = ? ORDER BY id`, refType, refID)
 	if err != nil {
 		return nil, fmt.Errorf("list messages by ref: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
-	var messages []domain.ChatMessage
-	for rows.Next() {
-		m, err := scanMessage(rows)
-		if err != nil {
-			return nil, fmt.Errorf("scan message: %w", err)
-		}
-		messages = append(messages, m)
-	}
-	return messages, rows.Err()
+	return messages, nil
 }
 
 func insertMessage(ctx context.Context, tx *sql.Tx, m domain.ChatMessage, now string) error {
@@ -236,7 +198,7 @@ func scanAsset(row rowScanner) (domain.Asset, error) {
 	if err := row.Scan(&a.ID, &a.ProjectID, &a.Type, &a.FilePath, &a.MimeType, &a.SizeBytes, &at); err != nil {
 		return domain.Asset{}, err
 	}
-	t, err := parseTime(at)
+	t, err := ParseTime(at)
 	if err != nil {
 		return domain.Asset{}, err
 	}
@@ -280,22 +242,14 @@ func (r *AssetRepository) ListByIDs(ctx context.Context, projectID string, ids [
 	for _, id := range ids {
 		args = append(args, id)
 	}
-	rows, err := r.db.Reader().QueryContext(ctx,
-		assetSelect+` WHERE project_id = ? AND id IN (`+strings.TrimSuffix(strings.Repeat("?,", len(ids)), ",")+`)`, args...)
+	found, err := queryAll(ctx, r.db.Reader(), scanAsset,
+		assetSelect+` WHERE project_id = ? AND id IN (`+placeholders(len(ids))+`)`, args...)
 	if err != nil {
 		return nil, fmt.Errorf("list assets: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
-	byID := make(map[string]domain.Asset, len(ids))
-	for rows.Next() {
-		a, err := scanAsset(rows)
-		if err != nil {
-			return nil, fmt.Errorf("scan asset: %w", err)
-		}
+	byID := make(map[string]domain.Asset, len(found))
+	for _, a := range found {
 		byID[a.ID] = a
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
 	}
 	assets := make([]domain.Asset, 0, len(ids))
 	for _, id := range ids {
@@ -308,17 +262,12 @@ func (r *AssetRepository) ListByIDs(ctx context.Context, projectID string, ids [
 
 // LatestOfKind returns the newest message of the Project of the given kind, or nil when there is none.
 func (r *ChatRepository) LatestOfKind(ctx context.Context, projectID string, kind domain.MessageKind) (*domain.ChatMessage, error) {
-	rows, err := r.db.Reader().QueryContext(ctx, messageSelect+` WHERE project_id = ? AND kind = ? ORDER BY id DESC LIMIT 1`, projectID, kind)
+	messages, err := queryAll(ctx, r.db.Reader(), scanMessage, messageSelect+` WHERE project_id = ? AND kind = ? ORDER BY id DESC LIMIT 1`, projectID, kind)
 	if err != nil {
 		return nil, fmt.Errorf("get latest message: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
-	if !rows.Next() {
-		return nil, rows.Err()
+	if len(messages) == 0 {
+		return nil, nil
 	}
-	m, err := scanMessage(rows)
-	if err != nil {
-		return nil, fmt.Errorf("scan message: %w", err)
-	}
-	return &m, nil
+	return &messages[0], nil
 }

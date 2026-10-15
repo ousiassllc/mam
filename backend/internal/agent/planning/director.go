@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"math"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/textutil"
 )
 
 // Director plans the Scenes and Shots of the Script (Scene / Shot Planning).
@@ -74,10 +74,10 @@ func (d *Director) Plan(ctx context.Context, in PlanInput) (domain.ScenePlan, er
 	}
 	for i := range plan.Scenes {
 		sc := &plan.Scenes[i]
-		sc.Title = clip(sc.Title, sceneTitleMaxRunes)
-		sc.Location = clip(sc.Location, sceneMetaMaxRunes)
-		sc.Time = clip(sc.Time, sceneMetaMaxRunes)
-		sc.Objective = clip(sc.Objective, objectiveMaxRunes)
+		sc.Title = textutil.TruncateRunes(strings.TrimSpace(sc.Title), sceneTitleMaxRunes)
+		sc.Location = textutil.TruncateRunes(strings.TrimSpace(sc.Location), sceneMetaMaxRunes)
+		sc.Time = textutil.TruncateRunes(strings.TrimSpace(sc.Time), sceneMetaMaxRunes)
+		sc.Objective = textutil.TruncateRunes(strings.TrimSpace(sc.Objective), objectiveMaxRunes)
 		if sc.Title == "" {
 			return domain.ScenePlan{}, fmt.Errorf("director: %w", invalidf("scene %d has no title", i+1))
 		}
@@ -86,7 +86,7 @@ func (d *Director) Plan(ctx context.Context, in PlanInput) (domain.ScenePlan, er
 		}
 		for j := range sc.Shots {
 			sh := &sc.Shots[j]
-			sh.Objective = clip(sh.Objective, objectiveMaxRunes)
+			sh.Objective = textutil.TruncateRunes(strings.TrimSpace(sh.Objective), objectiveMaxRunes)
 			if sh.Objective == "" || sh.DurationSeconds <= 0 || math.IsNaN(sh.DurationSeconds) || math.IsInf(sh.DurationSeconds, 0) {
 				return domain.ScenePlan{}, fmt.Errorf("director: %w", invalidf("scene %d shot %d has no objective or a non-positive duration", i+1, j+1))
 			}
@@ -109,14 +109,6 @@ func capShotSeconds(plan *domain.ScenePlan) {
 			sh.DurationSeconds = min(sh.DurationSeconds, maxShotSeconds)
 		}
 	}
-}
-
-func clip(s string, max int) string {
-	s = strings.TrimSpace(s)
-	if utf8.RuneCountInString(s) <= max {
-		return s
-	}
-	return string([]rune(s)[:max])
 }
 
 // fitDuration scales every Shot so that the total is target seconds (to 0.1 s), unless the

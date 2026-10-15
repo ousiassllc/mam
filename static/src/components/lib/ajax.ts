@@ -1,9 +1,8 @@
 /**
- * A GET request through htmx that never rejects. htmx.ajax rejects on a network error, a timeout
- * or a missing target; fired with `void` that is an unhandled rejection and the swap silently does
- * not happen. The wrapper logs it, tells the user and returns whether the request went through.
+ * A GET request through htmx. htmx.ajax rejects on a network error, a timeout or a missing target;
+ * fired with `void` that is an unhandled rejection and the swap silently does not happen. Callers
+ * (chat.ts, shot.ts) run it inside a Syncer, which retries a rejection and tells the user when it gives up.
  */
-import { createLogger } from './logger';
 import { isSuccessResponse } from './thread';
 
 export interface AjaxContext {
@@ -43,23 +42,9 @@ export function failOnHttpError(ajax: AjaxFn, findSource: (selector: string) => 
     } finally {
       source?.removeEventListener('htmx:afterRequest', onAfterRequest);
     }
-    if (status !== undefined && !isSuccessResponse({ status })) throw new Error(`${verb.toUpperCase()} ${url} responded ${status}`);
+    if (status !== undefined && !isSuccessResponse({ status }))
+      throw new Error(`${verb.toUpperCase()} ${url} responded ${status}`);
   };
 }
 
 export const AJAX_FAILED_MESSAGE = '通信に失敗しました。しばらくしてからもう一度お試しください。';
-
-const log = createLogger('ajax');
-
-export function createAjaxGet(ajax: AjaxFn, notify: (message: string) => void): (url: string, context: AjaxContext) => Promise<boolean> {
-  return async (url, context) => {
-    try {
-      await ajax('get', url, { source: context.target, ...context });
-      return true;
-    } catch (error) {
-      log.warn(`GET ${url} failed`, error);
-      notify(AJAX_FAILED_MESSAGE);
-      return false;
-    }
-  };
-}

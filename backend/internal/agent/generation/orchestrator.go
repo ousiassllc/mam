@@ -19,6 +19,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/stateextractor"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
+	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
 
@@ -89,10 +90,10 @@ type Deps struct {
 	Chat  Chat
 	Jobs  Jobs
 	// LLM is the Reasoning LLM Adapter the Prompt Planner and the Art Director reason through.
-	LLM     llm.Completer
-	Adapter *modeladapter.Adapter
-	// AssetsDir is the root of stored files (config.AssetsDir).
-	AssetsDir string
+	LLM       llm.Completer
+	Adapter   *modeladapter.Adapter
+	AssetsDir string       // the root of stored files (config.AssetsDir)
+	Media     *media.Tools // reads the frame rate of every Take for its card; nil: the cards have none
 	// Judge, when set, judges every Take as soon as it is made (AI Video Judge, F-13).
 	Judge Judger
 	// FreeBytes reports the free disk space at a path; it defaults to fsutil.FreeBytes.
@@ -130,15 +131,15 @@ func New(d Deps) *Orchestrator {
 	o := &Orchestrator{
 		gens: d.Generations, projects: d.Projects, policies: d.Policies, assets: d.Assets, repairs: d.Repairs, brands: d.Brands, chat: d.Chat, jobs: d.Jobs, adapter: d.Adapter,
 		planner: promptplanner.New(d.LLM), art: artdirector.New(d.LLM),
-		files: fileStore{root: d.AssetsDir}, freeDisk: d.FreeBytes, judge: d.Judge, notify: d.Notify, logger: d.Logger,
+		files: fileStore{root: d.AssetsDir, media: d.Media}, freeDisk: d.FreeBytes, judge: d.Judge, notify: d.Notify, logger: d.Logger,
 	}
 	if o.freeDisk == nil {
 		o.freeDisk = fsutil.FreeBytes
 	}
-	o.world, o.notes, o.extractor = d.World, d.Notes, stateextractor.New(d.LLM)
 	if o.logger == nil {
 		o.logger = slog.New(slog.DiscardHandler)
 	}
+	o.world, o.notes, o.extractor = d.World, d.Notes, stateextractor.New(d.LLM, stateextractor.WithLogger(o.logger))
 	if o.notify == nil {
 		o.notify = func(Progress) {}
 	}
@@ -358,9 +359,9 @@ func (o *Orchestrator) warnLowDisk(ctx context.Context, ref repository.ShotRef, 
 		return
 	}
 	notice := domain.ChatMessage{
-		Role: domain.RoleAssistant, Kind: domain.KindText,
+		Role: domain.RoleAssistant, Kind: domain.KindText, RefType: domain.RefSettings,
 		Content: fmt.Sprintf("ディスクの空き容量が少ない可能性があります（Shot %d の生成に約 %s 必要な見込みに対し、空きは %s）。"+
-			"不要な Take は設定画面（/projects/%s/settings）からアーカイブできます。", ref.Shot.OrderIndex+1, domain.FormatBytes(need), domain.FormatBytes(free), ref.ProjectID),
+			"不要な Take は設定画面からアーカイブできます。", ref.Shot.OrderIndex+1, domain.FormatBytes(need), domain.FormatBytes(free)),
 	}
 	if err := o.chat.Announce(ctx, ref.ProjectID, notice); err != nil {
 		o.logger.Error("post disk warning failed", "shot_id", ref.Shot.ID, "err", err)
@@ -483,13 +484,9 @@ func (o *Orchestrator) Handle(ctx context.Context, job domain.Job) error {
 
 // fail tells the user why the job stopped and returns the error for the job record.
 func (o *Orchestrator) fail(ctx context.Context, ref repository.ShotRef, a Action, err error) error {
-	if ctx.Err() != nil {
-		o.release(ctx, ref.Shot.ID)
-		return err // shutting down: nobody is told
-	}
 	o.release(ctx, ref.Shot.ID)
-	if errors.Is(err, repository.ErrNotFound) {
-		return err // the Shot is gone
+	if ctx.Err() != nil || errors.Is(err, repository.ErrNotFound) {
+		return err // shutting down (nobody is told) or the Shot is gone
 	}
 	o.logger.Error("generation failed", "shot_id", ref.Shot.ID, "action", a, "err", err)
 	reason := FailureReason(err)
@@ -535,6 +532,8 @@ func FailureReason(err error) string {
 		return "生成モデルがリクエストを拒否しました（コンテンツポリシー等）。指示を変えて再実行してください"
 	case errors.Is(err, modeladapter.ErrTimeout), errors.Is(err, llm.ErrTimeout):
 		return "生成モデルの応答がタイムアウトしました"
+	case errors.Is(err, media.ErrTimeout):
+		return "動画・音声の処理（ffmpeg）が制限時間を超えました。素材ファイルを確認して再実行してください"
 	case errors.Is(err, llm.ErrInvalidOutput), errors.Is(err, errInvalidPlan):
 		return "AI の出力を制作に使える形で受け取れませんでした"
 	}

@@ -1,0 +1,41 @@
+package molecules
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+)
+
+// takeStatusTone is the colour of a Take's status badge; its name is domain.TakeStatus.Label.
+func takeStatusTone(s domain.TakeStatus) atoms.BadgeTone {
+	switch s {
+	case domain.TakeAIPick:
+		return atoms.BadgeInfo
+	case domain.TakeSelected:
+		return atoms.BadgeOK
+	case domain.TakeRejected:
+		return atoms.BadgeNeutral
+	}
+	return atoms.BadgeWarn
+}
+
+// TakeStatusBadge is the status of a Take as the Shot card, the Shot Inspector and the Storage panel all say it.
+templ TakeStatusBadge(s domain.TakeStatus) {
+	@atoms.Badge(takeStatusTone(s), s.Label())
+}
+
+// ShotStateLabel is the state of a Shot as the Shot card and the Shot Inspector say it.
+func ShotStateLabel(s domain.ShotState) string {
+	switch s {
+	case domain.ShotPlanning:
+		return "計画中"
+	case domain.ShotGenerating:
+		return "生成中"
+	case domain.ShotJudging:
+		return "Judge 中"
+	case domain.ShotRepairing:
+		return "Repair 中"
+	case domain.ShotEditing:
+		return "編集待ち"
+	}
+	return string(s)
+}

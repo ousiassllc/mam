@@ -83,10 +83,11 @@ func TestBranchCreate_FrameNeedsAnOffsetInsideTheShotAndNamesAreNumbered(t *test
 
 func TestBranchCreate_WithADirectionPlansAndGeneratesTheFirstShotInTheBranchOnly(t *testing.T) {
 	f := completedShotFixture(t, sameSceneAnswer)
-	trunkBefore := f.trunkShots(t)
-
-	d := f.branch(t, service.BranchInput{Direction: "彼女がドアを開ける"})
-
+	trunkBefore, in, plan, refused := f.trunkShots(t), service.BranchInput{Direction: "彼女がドアを開ける"}, f.llm.director, error(nil)
+	call := func() error { _, err := f.svc.Branch.Create(context.Background(), f.shotID, in); return err }
+	f.llm.director = func(system, user string) string { refused = f.overlap(call); return plan(system, user) } // an identical request while the Shot is being planned (a double click)
+	d := f.branch(t, in)
+	assert.ErrorIs(t, refused, service.ErrConflict)
 	assert.True(t, d.Started)
 	assert.Equal(t, "彼女がドアを開ける", d.Branch.Name, "the Branch is named after its direction")
 	require.Len(t, d.Shots, 1)
@@ -94,7 +95,6 @@ func TestBranchCreate_WithADirectionPlansAndGeneratesTheFirstShotInTheBranchOnly
 	require.Len(t, d.Scenes, 1)
 	assert.Equal(t, d.Branch.ID, d.Scenes[0].BranchID)
 	assert.Equal(t, trunkBefore, f.trunkShots(t), "the trunk keeps its Shots")
-
 	// The first Shot of the Branch is generated from, and updates, the Branch's own World State.
 	f.waitGenerateJobs(t, 3) // Reference Pack and Take of the trunk Shot, then the Take of the Branch Shot
 	view, err := f.svc.World.View(context.Background(), f.projectID, d.Branch.ID)

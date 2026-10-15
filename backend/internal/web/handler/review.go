@@ -10,6 +10,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
 	"github.com/ousiassllc/mam/backend/internal/web/pages"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // Team Collaboration (spec/spec.md §27.1, spec/api/endpoints.md §2.12). The owner's routes work on a
@@ -65,7 +66,6 @@ func DownloadReviewPackage(svc *service.ReviewService) gin.HandlerFunc {
 		}
 		c.Header("Content-Type", "application/zip")
 		c.Header("Content-Disposition", `attachment; filename="`+pkg.FileName+`"`)
-		c.Header("X-Content-Type-Options", "nosniff")
 		c.Status(http.StatusOK)
 		if err := pkg.Write(c.Writer); err != nil {
 			abortDownload(c, err)
@@ -167,7 +167,6 @@ func DownloadReviewResponse(svc *service.ReviewService) gin.HandlerFunc {
 			return
 		}
 		c.Header("Content-Disposition", `attachment; filename="`+file.FileName+`"`)
-		c.Header("X-Content-Type-Options", "nosniff")
 		c.Data(http.StatusOK, "application/json", file.Data)
 	}
 }
@@ -181,7 +180,7 @@ func ImportReviewPackage(svc *service.ReviewService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		c.Header("HX-Redirect", "/reviews/"+inbox.ID)
+		c.Header("HX-Redirect", paths.Review(inbox.ID))
 		c.Status(http.StatusCreated)
 	}
 }
@@ -204,7 +203,7 @@ func importReviewPackage(c *gin.Context, svc *service.ReviewService) (domain.Rev
 }
 
 // AddReviewComment adds a comment of the reviewer (POST /reviews/:id/comments) and answers with the
-// review screen (201).
+// list of the comments and an empty form, not the screen (201): the screen would reset the <video>.
 func AddReviewComment(svc *service.ReviewService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		i, err := svc.AddComment(c.Request.Context(), c.Param("id"), c.PostForm("timecode"), c.PostForm("body"))
@@ -212,7 +211,7 @@ func AddReviewComment(svc *service.ReviewService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusCreated, organisms.ReviewWorkspace(i))
+		render(c, http.StatusCreated, organisms.ReviewCommentAdded(i))
 	}
 }
 
@@ -224,11 +223,11 @@ func DeleteReviewComment(svc *service.ReviewService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusOK, organisms.ReviewWorkspace(i))
+		render(c, http.StatusOK, organisms.ReviewComments(i))
 	}
 }
 
-// DecideReview writes the reviewer's decision (PUT /reviews/:id/decision) and answers with the review screen.
+// DecideReview writes the reviewer's decision (PUT /reviews/:id/decision) and answers with the decision section.
 func DecideReview(svc *service.ReviewService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		i, err := svc.Decide(c.Request.Context(), c.Param("id"), c.PostForm("reviewer_name"), c.PostForm("decision"), c.PostForm("comment"))
@@ -236,6 +235,6 @@ func DecideReview(svc *service.ReviewService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusOK, organisms.ReviewWorkspace(i))
+		render(c, http.StatusOK, organisms.ReviewDecision(i))
 	}
 }

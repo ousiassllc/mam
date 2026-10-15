@@ -7,6 +7,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
+	"github.com/ousiassllc/mam/backend/internal/web/selector"
 )
 
 // VersionHistoryData is one version list of Reversible Decisions (F-28): the saved versions of a
@@ -20,30 +21,40 @@ type VersionHistoryData struct {
 	// Target is the CSS selector of what the restore response replaces: the view that shows the
 	// restored content. Empty replaces the panel itself.
 	Target string
-	// Query is appended to the restore URL ("?branch_id=B" scopes a World State restore to a Branch).
-	Query   string
-	Entries []domain.VersionEntry
+	// BranchID scopes the restore URL to a Branch ("" for the trunk and for what is not Branch scoped).
+	BranchID string
+	Entries  []domain.VersionEntry
 	// RestoreBlocked is why a restore is refused in the state the page was loaded in ("" when it is
 	// not): the list then says so in place of the restore buttons the server would answer with 409.
 	RestoreBlocked string
+	// OOB makes the panel replace the one already on the page (a response that appends a version
+	// carries the list along).
+	OOB bool
 }
 
 func (d VersionHistoryData) restoreURL(number int) string {
-	return d.BasePath + "/versions/" + strconv.Itoa(number) + "/restore" + d.Query
+	return paths.WithBranch(d.BasePath+"/versions/"+strconv.Itoa(number)+"/restore", d.BranchID)
 }
 
 func (d VersionHistoryData) target() string {
 	if d.Target != "" {
 		return d.Target
 	}
-	return "#" + d.DOMID
+	return selector.ID("", d.DOMID)
 }
 
 // VersionHistoryPanel lists the versions with a restore button each. The newest version is the
 // current one and needs none. Restoring appends a copy as the newest version, so it can be undone
 // by restoring an older one.
 templ VersionHistoryPanel(d VersionHistoryData) {
-	<section id={ d.DOMID } aria-label={ d.Title } class="flex flex-col gap-2">
+	<section
+		id={ d.DOMID }
+		aria-label={ d.Title }
+		class="flex flex-col gap-2"
+		if d.OOB {
+			hx-swap-oob="true"
+		}
+	>
 		<h3 class="text-sm font-semibold">{ d.Title }</h3>
 		if len(d.Entries) == 0 {
 			<p class="text-sm text-neutral-400">保存されたバージョンはまだありません。</p>

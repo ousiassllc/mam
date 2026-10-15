@@ -18,7 +18,7 @@ case "${1:-}" in
 esac
 
 echo "==> templ generate"
-templ generate ./backend/...
+make --no-print-directory generate
 
 echo "==> esbuild + tailwind (minify)"
 npm ci --prefix static

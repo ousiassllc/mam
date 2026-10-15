@@ -48,7 +48,7 @@ templ BriefForm(d BriefFormData) {
 				<label for={ "brief-" + string(f) } class="mb-1 flex items-center gap-2 text-sm font-medium">
 					{ f.Label() }
 					if d.Brief.Get(f) == "" && d.Brief.IsDelegated(f) {
-						<span class="rounded-full bg-neutral-700 px-2 py-0.5 text-xs font-normal text-neutral-300">AIに任せる</span>
+						@atoms.Badge(atoms.BadgeNeutral, "AIに任せる")
 					}
 				</label>
 				@atoms.Input(atoms.FieldLg, "w-full", templ.Attributes{

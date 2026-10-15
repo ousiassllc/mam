@@ -13,12 +13,34 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
-func (g *genApp) generateAndWait() {
+// takeIDs lists the IDs of the Takes made so far, oldest first.
+func (g *genApp) takeIDs() []string {
+	g.t.Helper()
+	rows, err := g.db.Reader().Query(`SELECT id FROM take ORDER BY created_at, id`)
+	require.NoError(g.t, err)
+	defer func() { _ = rows.Close() }()
+	var ids []string
+	for rows.Next() {
+		var id string
+		require.NoError(g.t, rows.Scan(&id))
+		ids = append(ids, id)
+	}
+	return ids
+}
+
+// generateTakes generates the Shot and returns the IDs of its three Takes, oldest first.
+func (g *genApp) generateTakes() []string {
 	g.t.Helper()
 	require.Equal(g.t, http.StatusAccepted, g.form(http.MethodPost, "/shots/"+g.shotID+"/generate", nil).Code)
 	g.waitTakes(3)
+	return g.takeIDs()
+}
+
+func (g *genApp) generateAndWait() {
+	g.t.Helper()
+	g.generateTakes()
 	require.Eventually(g.t, func() bool {
-		return strings.Contains(g.get("/shots/"+g.shotID, true).Body.String(), "PLANNING")
+		return strings.Contains(g.get("/shots/"+g.shotID, true).Body.String(), "· 計画中")
 	}, 30*time.Second, 10*time.Millisecond)
 }
 
@@ -123,7 +145,7 @@ func TestShotSpec_PutEditsTheSpecAndLockedPartsAre423(t *testing.T) {
 
 	rec := g.form(http.MethodPut, "/shots/"+g.shotID+"/shot-spec", url.Values{"shot_spec": {spec}})
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-	assert.Contains(t, rec.Body.String(), `id="shot-inspector"`)
+	assert.Contains(t, rec.Body.String(), `id="shot-spec"`)
 	assert.Contains(t, rec.Body.String(), "walks")
 
 	rec = g.form(http.MethodPut, "/shots/"+g.shotID+"/shot-spec", url.Values{"shot_spec": {`{"shot_objective":"x"`}})

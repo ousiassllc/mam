@@ -15,7 +15,7 @@ import {
   type EditLimits,
 } from './edit-model';
 
-const limits: EditLimits = { min_clip_seconds: 0.5, max_transition_seconds: 2, max_clips: 200, max_caption_runes: 10 };
+const limits: EditLimits = { min_clip_seconds: 0.5, max_transition_seconds: 2, max_caption_runes: 10 };
 
 function clip(shot: string, inPoint: number, outPoint: number, over: Partial<EditClip> = {}): EditClip {
   return {
@@ -31,11 +31,7 @@ function clip(shot: string, inPoint: number, outPoint: number, over: Partial<Edi
   };
 }
 
-const three = () => [
-  clip('a', 0, 4),
-  clip('b', 1, 3, { transition: { type: 'fade', seconds: 0.5 } }),
-  clip('c', 0, 2),
-];
+const three = () => [clip('a', 0, 4), clip('b', 1, 3, { transition: { type: 'fade', seconds: 0.5 } }), clip('c', 0, 2)];
 
 describe('timeline length', () => {
   it('overlaps the clips of a transition', () => {
@@ -106,7 +102,15 @@ describe('setTransition', () => {
 describe('save', () => {
   it('sends what the server needs and nothing derived', () => {
     const payload = toPayload(moveClip(three(), 1, 0));
-    expect(Object.keys(payload.clips[0]!).sort()).toEqual(['caption', 'in_point', 'kind', 'out_point', 'shot_id', 'take_id', 'transition']);
+    expect(Object.keys(payload.clips[0]!).sort()).toEqual([
+      'caption',
+      'in_point',
+      'kind',
+      'out_point',
+      'shot_id',
+      'take_id',
+      'transition',
+    ]);
     expect(payload.clips[0]!.transition).toEqual({ type: 'cut', seconds: 0 }); // the new first clip
   });
 

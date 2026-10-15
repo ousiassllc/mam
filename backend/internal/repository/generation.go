@@ -66,20 +66,11 @@ func (r *GenerationRepository) GetShot(ctx context.Context, shotID string) (Shot
 // ListProjectShots returns every Shot of the trunk of the Project in story order (Scene, then
 // Shot). The Shots of a Branch are read with StoryShots.
 func (r *GenerationRepository) ListProjectShots(ctx context.Context, projectID string) ([]ShotRef, error) {
-	rows, err := r.db.Reader().QueryContext(ctx, shotRefSelect+` WHERE s.project_id = ? AND s.branch_id IS NULL ORDER BY s.order_index, sh.order_index`, projectID)
+	out, err := queryAll(ctx, r.db.Reader(), scanShotRef, shotRefSelect+` WHERE s.project_id = ? AND s.branch_id IS NULL ORDER BY s.order_index, sh.order_index`, projectID)
 	if err != nil {
 		return nil, fmt.Errorf("list project shots: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
-	var out []ShotRef
-	for rows.Next() {
-		ref, err := scanShotRef(rows)
-		if err != nil {
-			return nil, fmt.Errorf("scan shot: %w", err)
-		}
-		out = append(out, ref)
-	}
-	return out, rows.Err()
+	return out, nil
 }
 
 // StartShot moves the Shot to GENERATING unless it already is (or is being repaired). It reports
@@ -321,7 +312,7 @@ func (r *GenerationRepository) writeSpec(ctx context.Context, tx *sql.Tx, shotID
 	}
 	_, err = tx.ExecContext(ctx,
 		`INSERT INTO prompt_version (id, shot_id, version_number, shot_spec_snapshot, model_adapter_output, note_refs, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		pv.ID, shotID, next, string(merged), output, string(refs), formatTime(r.now()))
+		pv.ID, shotID, next, string(merged), output, string(refs), FormatTime(r.now()))
 	return pv, err
 }
 
@@ -346,7 +337,7 @@ func (r *GenerationRepository) CreateTake(ctx context.Context, nt NewTake) (stri
 	if params == "" {
 		params = "{}"
 	}
-	now := formatTime(r.now())
+	now := FormatTime(r.now())
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		if err := insertAsset(ctx, tx, nt.Asset, now); err != nil {
 			return err
@@ -369,7 +360,7 @@ func (r *GenerationRepository) CreateTake(ctx context.Context, nt NewTake) (stri
 // AddCost appends an entry to the cost ledger for a paid output that no Take or Pack row holds:
 // the provider has charged, so the spend stays on the ledger.
 func (r *GenerationRepository) AddCost(ctx context.Context, c domain.CostEntry) error {
-	now := formatTime(r.now())
+	now := FormatTime(r.now())
 	return r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error { return insertCost(ctx, tx, c, now) })
 }
 
@@ -399,7 +390,7 @@ type NewReferencePack struct {
 // with its Shot), the Characters and Products it names join the World State (when not already
 // there) and the "references" key of shot.shot_spec is rewritten, in one transaction.
 func (r *GenerationRepository) SaveReferencePack(ctx context.Context, p NewReferencePack) error {
-	now := formatTime(r.now())
+	now := FormatTime(r.now())
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		var current, branchID string
 		if err := tx.QueryRowContext(ctx,

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"sync"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
@@ -27,12 +26,11 @@ const autoStages = 3
 // It runs whenever a job finished, a Take was selected or an Approval card was answered, and does
 // nothing for a DIRECTOR Project or a Project that has nothing to do yet.
 func (s *EditorService) AdvanceAuto(ctx context.Context, projectID string) {
-	mu, _ := s.auto.LoadOrStore(projectID, &sync.Mutex{})
-	l := mu.(*sync.Mutex)
-	if !l.TryLock() {
+	unlock, ok := s.auto.TryLock(projectID)
+	if !ok {
 		return // a run is going on; it looks at the Project again when it ends
 	}
-	defer l.Unlock()
+	defer unlock()
 	// ctx stays cancelable, so that Close does not wait for the stages of the chain: what a stage
 	// stores and announces survives it (EditorService.announce, backTo), and the one that was
 	// cut short is not reported, since it stopped for the shutdown.
@@ -49,7 +47,7 @@ func (s *EditorService) AdvanceAuto(ctx context.Context, projectID string) {
 			s.logger.Warn("AUTO editing stage is unavailable", "project_id", projectID, "err", err)
 		default:
 			s.logger.Error("AUTO editing stage failed", "project_id", projectID, "err", err)
-			s.announce(ctx, projectID, fmt.Sprintf("自動の編集工程が止まりました: %s\n編集画面から続きを実行してください。", err))
+			s.announce(ctx, projectID, assistantText(fmt.Sprintf("自動の編集工程が止まりました: %s\n編集画面から続きを実行してください。", err)))
 		}
 		return
 	}

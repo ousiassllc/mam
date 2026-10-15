@@ -21,9 +21,7 @@ type TakeScores struct {
 }
 
 // Overall is the mean of the four scores.
-func (s TakeScores) Overall() float64 {
-	return (s.Product + s.Acting + s.Camera + s.Continuity) / 4
-}
+func (s TakeScores) Overall() float64 { return (s.Product + s.Acting + s.Camera + s.Continuity) / 4 }
 
 // issuePenalty is what an Issue of the severity takes off the score of its axis.
 func issuePenalty(s IssueSeverity) float64 {
@@ -38,8 +36,8 @@ func issuePenalty(s IssueSeverity) float64 {
 	return 0
 }
 
-// scoreAxis is the comparison axis a Judge dimension counts for; dimensions that are not listed
-// (prompt adherence, for one) leave the four scores alone.
+// scoreAxis is the comparison axis a Judge dimension counts for; prompt_adherence is not listed
+// because it counts for all four (ScoreTake).
 func scoreAxis(d JudgeDimension) (axis string, ok bool) {
 	switch d {
 	case DimProductAccuracy, DimProductGeometry, DimLogoTextAccuracy, DimObjectConsistency:
@@ -55,7 +53,8 @@ func scoreAxis(d JudgeDimension) (axis string, ok bool) {
 }
 
 // ScoreTake derives the four scores of a Take from the Issues of its Judge result. A
-// face_identity_drift Issue counts for Acting whatever dimension it names.
+// face_identity_drift Issue counts for Acting whatever dimension it names, and a prompt_adherence
+// Issue (the Take as a whole is off the prompt) counts for every axis.
 func ScoreTake(issues []JudgeIssue) TakeScores {
 	penalty := map[string]float64{}
 	for _, is := range issues {
@@ -65,11 +64,22 @@ func ScoreTake(issues []JudgeIssue) TakeScores {
 		}
 		if ok {
 			penalty[axis] += issuePenalty(is.Severity)
+		} else if is.Dimension == DimPromptAdherence {
+			for _, a := range []string{"product", "acting", "camera", "continuity"} {
+				penalty[a] += issuePenalty(is.Severity)
+			}
 		}
 	}
 	score := func(axis string) float64 { return max(100-penalty[axis], 0) }
 	return TakeScores{Product: score("product"), Acting: score("acting"), Camera: score("camera"), Continuity: score("continuity")}
 }
+
+// Usable tells whether the Take can still be acted on: it is not rejected and its file was not
+// archived. It is the rule behind every Take action, in the API, the pages and the repository.
+func (t Take) Usable() bool { return t.Status != TakeRejected && t.FilePath != "" }
+
+// Selectable tells whether the Take can be selected: it is usable and not already the selected one.
+func (t Take) Selectable() bool { return t.Usable() && t.Status != TakeSelected }
 
 // TakeInfo is a Take with what the comparison of the Takes of a Shot shows.
 type TakeInfo struct {
@@ -86,6 +96,9 @@ type TakeInfo struct {
 	// Adopted is true for the Take the Shot uses (shot.selected_take_id).
 	Adopted bool
 }
+
+// Label is the name of a Judge verdict shown to the user, in the capitals of Editor Judge and Final QC.
+func (v JudgeVerdict) Label() string { return strings.ToUpper(string(v)) }
 
 // ResolutionHeight is the number of lines of "1080p", "2160p" or "4K" (0 when unknown).
 func ResolutionHeight(res string) int {
@@ -204,6 +217,9 @@ func ParseTakeSegments(text string, takes []TakeInfo) ([]TakeSegment, error) {
 		}
 		start, _ := strconv.ParseFloat(m[2], 64)
 		end, _ := strconv.ParseFloat(m[3], 64)
+		if !finite(start) || !finite(end) { // the pattern has no digit limit: 309+ digits are out of range (±Inf)
+			return nil, fmt.Errorf("Take %s の区間の秒数が大きすぎて読み取れませんでした", strings.ToUpper(m[1]))
+		}
 		segs = append(segs, TakeSegment{TakeID: takes[idx].ID, Start: start, End: end})
 	}
 	return segs, nil
@@ -234,7 +250,7 @@ func ValidateTakeSegments(segs []TakeSegment, takes []TakeInfo) error {
 			return fmt.Errorf("区間 %d の Take は除外されています", n)
 		case take.FilePath == "":
 			return fmt.Errorf("区間 %d の Take のファイルはアーカイブされています", n)
-		case s.Start < 0 || s.End-s.Start < MinTakeSegmentSeconds:
+		case !finite(s.Start) || !finite(s.End) || s.Start < 0 || shorterThan(s.End-s.Start, MinTakeSegmentSeconds):
 			return fmt.Errorf("区間 %d は %.1f 秒以上にしてください", n, MinTakeSegmentSeconds)
 		case take.DurationSeconds > 0 && s.End > take.DurationSeconds+0.001:
 			return fmt.Errorf("区間 %d は Take の長さ（%.1f 秒）を超えています", n, take.DurationSeconds)

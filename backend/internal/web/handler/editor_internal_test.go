@@ -45,5 +45,5 @@ func TestEditorActionsFragment_RefreshesTheStateBadge(t *testing.T) {
 	require.NoError(t, organisms.EditorActionsFragment(d).Render(context.Background(), &sb))
 	body := sb.String()
 	assert.Contains(t, body, `id="editor-actions"`)
-	assert.Regexp(t, `<span[^>]*id="project-state"[^>]*hx-swap-oob="true"[^>]*data-state="EDIT_JUDGING"|<span[^>]*id="project-state"[^>]*data-state="EDIT_JUDGING"[^>]*hx-swap-oob="true"`, body)
+	assert.Regexp(t, `<span[^>]*data-state="EDIT_JUDGING"[^>]*hx-swap-oob="true"[^>]*id="project-state"`, body) // templ sorts the attributes
 }

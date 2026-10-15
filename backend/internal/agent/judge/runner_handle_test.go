@@ -17,6 +17,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/judge"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 )
 
 type silentChat struct{}
@@ -41,9 +42,7 @@ func TestHandle_TheShotIsGivenBackBeforeDoneOrFailedIsAnnounced(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
-			db, err := repository.Open(ctx, filepath.Join(t.TempDir(), "mam.db"), nil)
-			require.NoError(t, err)
-			t.Cleanup(func() { _ = db.Close() })
+			db := testdb.Open(t)
 			require.NoError(t, db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 				for _, q := range []string{
 					`INSERT INTO project (id, mode, confirmation_level, production_template, quality_policy) VALUES ('p1', 'auto', 'full_auto', 'product_cm', 'balanced')`,
@@ -115,9 +114,7 @@ func TestHandle_TellsWhichTakeWasJudgedOnlyWhenAResultWasSaved(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
-			db, err := repository.Open(ctx, filepath.Join(t.TempDir(), "mam.db"), nil)
-			require.NoError(t, err)
-			t.Cleanup(func() { _ = db.Close() })
+			db := testdb.Open(t)
 			require.NoError(t, db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 				for _, q := range []string{
 					`INSERT INTO project (id, mode, confirmation_level, production_template, quality_policy) VALUES ('p1', 'auto', 'full_auto', 'product_cm', 'balanced')`,
@@ -168,9 +165,7 @@ func TestHandle_EveryFailureAfterTheShotIsEnteredIsAnnounced(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
-			db, err := repository.Open(ctx, filepath.Join(t.TempDir(), "mam.db"), nil)
-			require.NoError(t, err)
-			t.Cleanup(func() { _ = db.Close() })
+			db := testdb.Open(t)
 			require.NoError(t, db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 				for _, q := range []string{
 					`INSERT INTO project (id, mode, confirmation_level, production_template, quality_policy) VALUES ('p1', 'auto', 'full_auto', 'product_cm', 'balanced')`,

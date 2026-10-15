@@ -11,11 +11,9 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/briefing"
 	"github.com/ousiassllc/mam/backend/internal/agent/orchestrator"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/previewcache"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
-
-// MaxMessageRunes bounds one chat message.
-const MaxMessageRunes = 4000
 
 // core is what ProjectService and ChatService share.
 type core struct {
@@ -27,6 +25,8 @@ type core struct {
 	extractor briefing.Extractor
 	assetsDir string
 	logger    *slog.Logger
+	// previews makes the preview files (Take proxies and thumbnails, Rough Cuts) once, bounded in size.
+	previews *previewcache.Cache
 	// pipeline drives the AUTO pipeline; nil when no Reasoning LLM is configured.
 	pipeline *orchestrator.Orchestrator
 	// afterAnswer lets the AUTO editing chain go on after the user changed something (see kick).
@@ -49,7 +49,7 @@ type core struct {
 	// answering holds the Continue and Brief question cards that are being answered (card message
 	// ID -> struct{}), so that a reply that overlaps another one to the same card is refused
 	// instead of making a second Shot and a second paid generation, or putting the answer into
-	// the next item of the Brief.
+	// the next item of the Brief. It also holds the Shots a Continue card is proposed or confirmed for (Shot ID) and the Branch requests being served ("branch" + Shot ID + input).
 	answering sync.Map
 	// takeActions decides which Takes may be repaired (domain.CheckRepair) or judged (domain.CheckJudge); set by New.
 	takeActions takeActions
@@ -147,17 +147,6 @@ func (c *core) assetPath(rel string) string {
 	abs := filepath.Join(c.assetsDir, filepath.FromSlash(rel))
 	within, err := filepath.Rel(c.assetsDir, abs)
 	if err != nil || within == "." || within == ".." || strings.HasPrefix(within, ".."+string(filepath.Separator)) {
-		return ""
-	}
-	return abs
-}
-
-// previewPath is the cache file name of a preview directly inside the preview directory. It returns
-// "" when name (built from a row ID, which an imported bundle or a URL can make hostile) would put
-// the file anywhere else.
-func (c *core) previewPath(name string) string {
-	abs := c.assetPath(previewDir + "/" + name)
-	if abs == "" || filepath.Dir(abs) != filepath.Join(c.assetsDir, previewDir) {
 		return ""
 	}
 	return abs

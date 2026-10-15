@@ -1,0 +1,141 @@
+package worldstate
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// entityForm is the edit form of one Character, Product or Location with its reference slots and LOCK
+// switches. Each form of it is replaced alone by the response of its own request (the attribute form by a
+// save, a slot form by an assignment, a switch by itself), so an operation never discards what the user has
+// typed in another form nor closes the LOCK settings.
+templ entityForm(d Data, e entityView) {
+	<div class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3">
+		@entityAttributeForm(d, e)
+		for _, sf := range d.slots(e.Target, e.Slots) {
+			@referenceSlotForm(d, e, sf)
+		}
+		<details class="text-sm">
+			<summary class="cursor-pointer text-xs text-neutral-400">LOCK 設定（AUTO: AI が更新 / LOCK: 更新しない）</summary>
+			<div class="mt-2 flex flex-col gap-1">
+				for _, f := range domain.LockableFields(e.Target) {
+					@molecules.LockToggle(d.fieldLockToggle(e.Target, e.ID, f))
+				}
+			</div>
+		</details>
+	</div>
+}
+
+// entityAttributeForm edits the attributes of an entity (PUT /projects/:id/{plural}/:id).
+templ entityAttributeForm(d Data, e entityView) {
+	<form
+		id={ e.formID() }
+		class="flex flex-col gap-2"
+		hx-put={ paths.WithBranch(d.entityURL(e.Plural, e.ID), d.branchID()) }
+		hx-target="this"
+		hx-swap="outerHTML"
+	>
+		<p class="text-sm font-medium">{ e.Name }</p>
+		<div class="grid gap-2 sm:grid-cols-2">
+			for _, f := range e.Fields {
+				@molecules.WorldStateField(f)
+			}
+		</div>
+		@molecules.WorldStateSave(e.saveID(), e.Fields, false)
+	</form>
+}
+
+// referenceSlotForm assigns a Library image to a reference slot of an entity
+// (PUT /projects/:id/{plural}/:id/reference).
+templ referenceSlotForm(d Data, e entityView, sf slotForm) {
+	<form
+		id={ e.slotFormID(sf.Slot.Name) }
+		class="flex flex-wrap items-center gap-2 text-sm"
+		hx-put={ paths.WithBranch(d.entityURL(e.Plural, e.ID)+"/reference", d.branchID()) }
+		hx-target="this"
+		hx-swap="outerHTML"
+	>
+		<input type="hidden" name="slot" value={ sf.Slot.Name }/>
+		<label class="w-40 shrink-0 text-xs text-neutral-400" for={ "slot-" + e.ID + "-" + sf.Slot.Name }>{ slotLabels[sf.Slot.Name] } の参照画像</label>
+		@atoms.Select(atoms.FieldSm, "", templ.Attributes{
+			"id":   "slot-" + e.ID + "-" + sf.Slot.Name,
+			"name": "reference_id",
+		}) {
+			<option value="">（なし）</option>
+			for _, it := range sf.Items {
+				<option value={ it.ID } selected?={ it.AssetID == sf.Current }>{ it.Name }</option>
+			}
+		}
+		if sf.Current != "" {
+			<a class="text-xs text-indigo-300 underline" href={ templ.SafeURL(paths.Project(d.Project.ID, "assets", sf.Current)) } target="_blank" rel="noopener">現在の画像</a>
+		}
+		@atoms.Button(atoms.ToneNeutral, "割り当て", templ.Attributes{"type": "submit"})
+	</form>
+}
+
+// View shows the World State: Characters, Products, Locations (editable unless LOCKed)
+// and the Camera and Story left by the latest Shot.
+templ View(d Data) {
+	<div id="world-state-view" class="flex flex-col gap-6">
+		if d.Branch != nil {
+			<p class="text-sm text-indigo-300">
+				Branch「{ d.Branch.Name }」の World State です。ここでの変更はトランクや他の Branch には影響しません。
+				<a class="underline" href={ templ.SafeURL(paths.Branch(d.Branch.ID)) }>Branch の詳細へ</a>
+			</p>
+		}
+		@versionLine(d, false)
+		<section aria-label="Story / Music" class="flex flex-col gap-2">
+			<h2 class="text-sm font-semibold text-neutral-200">Story / Music</h2>
+			for _, p := range domain.ProjectLockParameters() {
+				@molecules.LockToggle(organisms.ProjectLockToggle(d.Project.ID, p, d.ProjectLocks))
+			}
+		</section>
+		if d.empty() {
+			<p class="text-sm text-neutral-400">登場人物・商品・場所はまだ登録されていません。</p>
+		}
+		<section aria-label="Characters" class="flex flex-col gap-2">
+			<h2 class="text-sm font-semibold text-neutral-200">Characters</h2>
+			for _, c := range d.World.Characters {
+				@entityForm(d, characterView(d, c))
+			}
+		</section>
+		<section aria-label="Products" class="flex flex-col gap-2">
+			<h2 class="text-sm font-semibold text-neutral-200">Products</h2>
+			for _, p := range d.World.Products {
+				@entityForm(d, productView(d, p))
+			}
+		</section>
+		<section aria-label="Locations" class="flex flex-col gap-2">
+			<h2 class="text-sm font-semibold text-neutral-200">Locations</h2>
+			for _, l := range d.World.Locations {
+				@entityForm(d, locationView(d, l))
+			}
+		</section>
+		<section aria-label="Camera" class="flex flex-col gap-2">
+			<h2 class="text-sm font-semibold text-neutral-200">Camera</h2>
+			@cameraValues(d, false)
+			@singletonLocks(d, domain.TargetCamera)
+		</section>
+		<section aria-label="Story" class="flex flex-col gap-2">
+			<h2 class="text-sm font-semibold text-neutral-200">Story</h2>
+			@storyValues(d, false)
+			@singletonLocks(d, domain.TargetStory)
+		</section>
+		@organisms.VersionHistoryPanel(d.versionHistory(false))
+	</div>
+}
+
+// singletonLocks are the LOCK switches of the Camera or the Story.
+templ singletonLocks(d Data, target domain.WorldTarget) {
+	<details class="text-sm">
+		<summary class="cursor-pointer text-xs text-neutral-400">LOCK 設定（AUTO: AI が更新 / LOCK: 更新しない）</summary>
+		<div class="mt-2 flex flex-col gap-1">
+			for _, f := range domain.LockableFields(target) {
+				@molecules.LockToggle(d.fieldLockToggle(target, "", f))
+			}
+		</div>
+	</details>
+}

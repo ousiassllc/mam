@@ -13,29 +13,39 @@ import (
 )
 
 // rough returns the rendered Rough Cut of the Edit Timeline (a draft with the sound of the Takes),
-// made on first use. It is also what the preview plays.
-func (s *EditorService) rough(ctx context.Context, ver domain.EditTimelineVersion) (string, media.Info, error) {
+// made on first use. It is also what the preview plays; a seek asks again, so see previewcache.Cache.Make.
+func (s *EditorService) rough(ctx context.Context, ver domain.EditTimelineVersion) (string, error) {
 	if s.tools == nil {
-		return "", media.Info{}, ErrUnavailable
+		return "", ErrUnavailable
 	}
-	dst := s.previewPath("edit-" + ver.ID + ".mp4")
+	dst := s.previews.Path("edit-" + ver.ID + ".mp4")
 	if dst == "" {
-		return "", media.Info{}, ErrNotFound
+		return "", ErrNotFound
 	}
-	unlock := lockFor(&s.preview, dst)
-	defer unlock()
-	if info, err := s.tools.Probe(ctx, dst); err == nil {
-		return dst, info, nil
+	err := s.previews.Make(ctx, dst, previewRetryAfter, func(ctx context.Context) error {
+		cuts, err := s.cuts(ctx, ver.Timeline, nil)
+		if err != nil {
+			return err
+		}
+		if _, err := s.tools.Render(ctx, cuts, media.RenderOptions{Draft: true}, dst); err != nil {
+			return &AIError{Reason: "Rough Cut の書き出しに失敗しました: " + err.Error(), Err: err}
+		}
+		return nil
+	})
+	if err != nil {
+		return "", err
 	}
-	cuts, err := s.cuts(ctx, ver.Timeline, nil)
+	return dst, nil
+}
+
+// roughInfo is rough with what the Rough Cut holds (sound, length), probed once it is made.
+func (s *EditorService) roughInfo(ctx context.Context, ver domain.EditTimelineVersion) (string, media.Info, error) {
+	dst, err := s.rough(ctx, ver)
 	if err != nil {
 		return "", media.Info{}, err
 	}
-	info, err := s.tools.Render(ctx, cuts, media.RenderOptions{Draft: true}, dst)
-	if err != nil {
-		return "", media.Info{}, &AIError{Reason: "Rough Cut の書き出しに失敗しました: " + err.Error(), Err: err}
-	}
-	return dst, info, nil
+	info, err := s.tools.Probe(ctx, dst)
+	return dst, info, err
 }
 
 // transitionNames maps the Edit Timeline transitions to ffmpeg's.
@@ -74,7 +84,7 @@ func (s *EditorService) Preview(ctx context.Context, id string) (MediaFile, erro
 	if err != nil {
 		return MediaFile{}, notFound(err)
 	}
-	file, _, err := s.rough(ctx, ver)
+	file, err := s.rough(ctx, ver)
 	if err != nil {
 		return MediaFile{}, err
 	}
@@ -128,7 +138,7 @@ func (s *EditorService) Export(ctx context.Context, projectID string, in ExportI
 			return EditorView{}, err
 		}
 	}
-	s.announce(ctx, projectID, fmt.Sprintf("書き出しが完了しました（%s / %s / %s）。ダウンロード: /projects/%s/exports/%s/video", opts.AspectRatio, opts.Resolution, opts.Codec, projectID, rec.ID))
+	s.announce(ctx, projectID, domain.ChatMessage{Role: domain.RoleAssistant, Kind: domain.KindText, Content: fmt.Sprintf("書き出しが完了しました（%s / %s / %s）。", opts.AspectRatio, opts.Resolution, opts.Codec), RefType: domain.RefExport, RefID: rec.ID})
 	return s.View(ctx, projectID, in.BranchID)
 }
 
@@ -205,9 +215,7 @@ func (s *EditorService) ExportFile(ctx context.Context, projectID, exportID stri
 	if !s.fileExists(e.FilePath) {
 		return MediaFile{}, ErrNotFound
 	}
-	mime := "video/mp4"
-	if domain.ExportExtension(e.Codec) == "webm" {
-		mime = "video/webm"
-	}
-	return MediaFile{Path: s.assetPath(e.FilePath), MimeType: mime}, nil
+	// The name is made of the date, the Export ID and the extension only, so it holds no quote.
+	name := fmt.Sprintf("mam-export-%s-%s.%s", e.ExportedAt.UTC().Format("20060102"), e.ID, domain.ExportExtension(e.Codec))
+	return MediaFile{Path: s.assetPath(e.FilePath), MimeType: domain.ReviewVideoMime(domain.ReviewVideoName(e.Codec)), Disposition: `attachment; filename="` + name + `"`}, nil
 }

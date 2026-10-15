@@ -100,7 +100,7 @@ func (s *EditorService) afterJudge(ctx context.Context, project domain.Project, 
 		if auto {
 			next = "Director に追加 Shot を要求します。"
 		}
-		s.announce(ctx, projectID, "Editor Judge: 素材不足（編集では直せません）\n"+describeFindings(res.Findings)+"\n"+next)
+		s.announce(ctx, projectID, assistantText("Editor Judge: 素材不足（編集では直せません）\n"+describeFindings(res.Findings)+"\n"+next))
 		if auto {
 			return s.requestShots(ctx, ver, res)
 		}
@@ -108,7 +108,7 @@ func (s *EditorService) afterJudge(ctx context.Context, project domain.Project, 
 		if err := s.projects.Transition(ctx, projectID, domain.StateEditing); err != nil {
 			return EditorView{}, err
 		}
-		s.announce(ctx, projectID, "Editor Judge: Re-edit（編集で直せる問題があります）\n"+describeFindings(res.Findings))
+		s.announce(ctx, projectID, assistantText("Editor Judge: Re-edit（編集で直せる問題があります）\n"+describeFindings(res.Findings)))
 	default:
 		if err := s.passRoughCut(ctx, projectID, ver); err != nil {
 			return EditorView{}, err
@@ -132,7 +132,7 @@ func (s *EditorService) passRoughCut(ctx context.Context, projectID string, ver 
 		s.backTo(ctx, projectID, domain.StateEditing)
 		return err
 	}
-	s.announce(ctx, projectID, "Editor Judge: PASS。音声制作に進みます。")
+	s.announce(ctx, projectID, assistantText("Editor Judge: PASS。音声制作に進みます。"))
 	return nil
 }
 

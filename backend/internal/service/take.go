@@ -8,16 +8,12 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/keylock"
 	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
-
-// previewDir is where the previews of Takes (proxies and thumbnails) are cached, under the assets
-// directory. They are made on demand and can be deleted at any time.
-const previewDir = ".previews"
 
 // TakeService is the Take System (F-15, spec/spec.md §14): the comparison of the Takes of a Shot,
 // the user's choice among them, and Partial Take Use.
@@ -30,73 +26,21 @@ type TakeService struct {
 	// tools is ffmpeg / ffprobe; nil when they are not installed. Partial Take Use then fails with
 	// ErrUnavailable, and a 4K Take is played as it is (no proxy, no thumbnail).
 	tools *media.Tools
-	// preview serializes the making of one preview file: two requests for the same Take wait for
-	// one ffmpeg run.
-	preview sync.Map // path -> *sync.Mutex
 	// compose serializes Partial Take Use per Shot.
-	compose sync.Map // shot ID -> *sync.Mutex
+	compose keylock.Locker // shot ID
 	// afterSelect runs after a Take was selected: the Editor → Reshoot Loop may have been waiting for it.
 	afterSelect func()
 }
 
-// TakeView is a Take of the comparison.
-type TakeView struct {
-	domain.TakeInfo
-	// Label names the Take in the comparison and in words: "A", "B", ...
-	Label string
-	// FPS is the frame rate of the file (0 when it could not be read).
-	FPS float64
-}
-
-// Comparison is the Takes of a Shot side by side.
-type Comparison struct {
-	Project domain.Project
-	Shot    domain.Shot
-	Takes   []TakeView
-}
-
-// Compare returns the Takes of the Shot, oldest first. The size, length and frame rate of a file
-// the Model Adapter did not describe are read from the file.
-func (s *TakeService) Compare(ctx context.Context, shotID string) (Comparison, error) {
-	ref, err := s.shots.GetShot(ctx, shotID)
-	if err != nil {
-		return Comparison{}, notFound(err)
-	}
-	takes, err := s.takes.ShotTakes(ctx, shotID)
-	if err != nil {
-		return Comparison{}, err
-	}
-	project, err := s.projects.Get(ctx, ref.ProjectID)
-	if err != nil {
-		return Comparison{}, notFound(err)
-	}
-	out := Comparison{Project: project, Shot: ref.Shot, Takes: make([]TakeView, len(takes))}
-	for i, t := range takes {
-		v := TakeView{TakeInfo: t, Label: domain.TakeLabel(i)}
-		if abs := s.assetPath(t.FilePath); s.tools != nil && abs != "" {
-			if info, err := s.tools.Probe(ctx, abs); err == nil {
-				v.FPS = info.FPS
-				if v.Resolution == "" && info.Height > 0 {
-					v.Resolution = fmt.Sprintf("%dp", info.Height)
-				}
-				if v.DurationSeconds == 0 {
-					v.DurationSeconds = info.Duration
-				}
-			}
-		}
-		out.Takes[i] = v
-	}
-	return out, nil
-}
-
 // Select makes the Take the one the Shot uses (POST /takes/:id/select). It is the user's choice
-// and replaces the AI Pick or an earlier choice.
+// and replaces the AI Pick or an earlier choice. A Take that is rejected, whose file was archived,
+// or that already is the selected one is refused, and no intervention is recorded for it.
 func (s *TakeService) Select(ctx context.Context, takeID string) (ShotFragment, error) {
 	override := s.overridesAIPick(ctx, takeID)
 	shotID, err := s.takes.Select(ctx, takeID)
 	switch {
 	case errors.Is(err, repository.ErrConflict):
-		return ShotFragment{}, invalid("", "この Take のファイルはアーカイブされているため選択できません")
+		return ShotFragment{}, invalid("", "この Take は選択できません（除外済み、ファイルのアーカイブ済み、またはすでに選択済みです）")
 	case err != nil:
 		return ShotFragment{}, notFound(err)
 	}
@@ -126,14 +70,18 @@ func (s *TakeService) overridesAIPick(ctx context.Context, takeID string) bool {
 }
 
 // Reject excludes the Take (DELETE /takes/:id). Its file and history stay. Rejecting the AI Pick
-// contradicts the AI.
+// contradicts the AI. A Take that is already rejected, or whose file was archived, is refused, and
+// no intervention is recorded for it.
 func (s *TakeService) Reject(ctx context.Context, takeID string) (ShotFragment, error) {
 	override := false
 	if d, err := s.takes.Get(ctx, takeID); err == nil {
 		override = d.Status == domain.TakeAIPick
 	}
 	shotID, err := s.takes.Reject(ctx, takeID)
-	if err != nil {
+	switch {
+	case errors.Is(err, repository.ErrConflict):
+		return ShotFragment{}, invalid("", "この Take は除外できません（すでに除外済み、またはファイルがアーカイブ済みです）")
+	case err != nil:
 		return ShotFragment{}, notFound(err)
 	}
 	s.recordIntervention(ctx, domain.Intervention{ShotID: shotID, TakeID: takeID, Kind: domain.InterventionRejectTake, Override: override})
@@ -154,7 +102,10 @@ func (s *TakeService) UsePartial(ctx context.Context, shotID string, in PartialI
 	if s.tools == nil {
 		return ShotFragment{}, ErrUnavailable
 	}
-	unlock := lockFor(&s.compose, shotID)
+	unlock, err := s.compose.Lock(ctx, shotID)
+	if err != nil {
+		return ShotFragment{}, err
+	}
 	defer unlock()
 
 	ref, err := s.shots.GetShot(ctx, shotID)
@@ -251,7 +202,7 @@ func (s *TakeService) composeTake(ctx context.Context, ref repository.ShotRef, t
 			Summary:   describeSegments(segs, takes),
 			ShotID:    ref.Shot.ID,
 			VideoURL:  domain.TakeVideoURL(takeID),
-			PosterURL: domain.TakeThumbnailURL(takeID),
+			PosterURL: domain.TakeThumbnailURL(takeID), FPS: info.FPS,
 		}),
 	}
 	if err := s.chatSvc.Announce(context.WithoutCancel(ctx), ref.ProjectID, card); err != nil {
@@ -270,7 +221,10 @@ func (s *TakeService) SpliceRegenerated(ctx context.Context, shotID, baseTakeID,
 	if s.tools == nil {
 		return "", ErrUnavailable
 	}
-	unlock := lockFor(&s.compose, shotID)
+	unlock, err := s.compose.Lock(ctx, shotID)
+	if err != nil {
+		return "", err
+	}
 	defer unlock()
 
 	ref, err := s.shots.GetShot(ctx, shotID)
@@ -321,97 +275,4 @@ func describeSegments(segs []domain.TakeSegment, takes []domain.TakeInfo) string
 		parts[i] = fmt.Sprintf("Take %s %.1f-%.1f秒", label[s.TakeID], s.Start, s.End)
 	}
 	return strings.Join(parts, " + ")
-}
-
-// MediaFile is a file to serve.
-type MediaFile struct {
-	Path     string
-	MimeType string
-}
-
-// Video returns the file the preview plays for the Take: the file itself, or, when the picture is
-// taller than 1080 lines (4K), a 1080p proxy made on first use so that playback does not drop
-// frames (spec/requirements/non-functional.md §2). Without ffmpeg the file itself is played.
-func (s *TakeService) Video(ctx context.Context, takeID string) (MediaFile, error) {
-	d, err := s.takes.Get(ctx, takeID)
-	if err != nil {
-		return MediaFile{}, notFound(err)
-	}
-	if d.FilePath == "" {
-		return MediaFile{}, ErrNotFound // archived
-	}
-	src := s.assetPath(d.FilePath)
-	if src == "" {
-		return MediaFile{}, ErrNotFound // outside the assets directory
-	}
-	mime := "video/mp4"
-	if a, err := s.assets.Get(ctx, d.ProjectID, d.AssetID); err == nil && a.MimeType != "" {
-		mime = a.MimeType
-	}
-	if s.tools == nil {
-		return MediaFile{Path: src, MimeType: mime}, nil
-	}
-	proxied := d.Proxied()
-	if d.Resolution == "" { // not reported by the model: look at the file
-		if info, err := s.tools.Probe(ctx, src); err == nil {
-			proxied = info.Height > media.MaxPreviewHeight
-		}
-	}
-	if !proxied {
-		return MediaFile{Path: src, MimeType: mime}, nil
-	}
-	dst := s.previewPath(takeID + ".mp4")
-	if dst == "" {
-		return MediaFile{Path: src, MimeType: mime}, nil // the ID is not a safe file name: no proxy is made
-	}
-	if err := s.makePreview(dst, func() error { return s.tools.Proxy(ctx, src, dst) }); err != nil {
-		s.logger.Error("make proxy failed; playing the original", "take_id", takeID, "err", err)
-		return MediaFile{Path: src, MimeType: mime}, nil
-	}
-	return MediaFile{Path: dst, MimeType: "video/mp4"}, nil
-}
-
-// Thumbnail returns a JPEG of the first frame of the Take (ErrUnavailable without ffmpeg).
-func (s *TakeService) Thumbnail(ctx context.Context, takeID string) (MediaFile, error) {
-	d, err := s.takes.Get(ctx, takeID)
-	if err != nil {
-		return MediaFile{}, notFound(err)
-	}
-	if d.FilePath == "" {
-		return MediaFile{}, ErrNotFound
-	}
-	if s.tools == nil {
-		return MediaFile{}, ErrUnavailable
-	}
-	src := s.assetPath(d.FilePath)
-	if src == "" {
-		return MediaFile{}, ErrNotFound // outside the assets directory
-	}
-	dst := s.previewPath(takeID + ".jpg")
-	if dst == "" {
-		return MediaFile{}, ErrNotFound // the ID is not a safe file name
-	}
-	if err := s.makePreview(dst, func() error { return s.tools.Thumbnail(ctx, src, dst, 0) }); err != nil {
-		return MediaFile{}, fmt.Errorf("make thumbnail: %w", err)
-	}
-	return MediaFile{Path: dst, MimeType: "image/jpeg"}, nil
-}
-
-// makePreview runs make unless the preview file already exists; concurrent calls for one file wait
-// for the first.
-func (s *TakeService) makePreview(dst string, make func() error) error {
-	unlock := lockFor(&s.preview, dst)
-	defer unlock()
-	if _, err := os.Stat(dst); err == nil {
-		return nil
-	}
-	return make()
-}
-
-// lockFor locks the mutex of key in m (created on first use) and returns its unlock.
-func lockFor(m *sync.Map, key string) func() {
-	mu, _ := m.LoadOrStore(key, &sync.Mutex{})
-	l := mu.(*sync.Mutex)
-	l.Lock()
-	return l.Unlock
 }

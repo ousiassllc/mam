@@ -8,15 +8,17 @@ package organisms
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import "github.com/ousiassllc/mam/backend/internal/web/atoms"
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
 
 // ProjectImportFormData is the state of the bundle import form.
 type ProjectImportFormData struct {
 	Error string
 }
 
-// ProjectImportForm imports a project bundle (POST /projects/import): the archive made by the
-// bundle export of the settings screen, on this or another machine.
+// ProjectImportForm imports a project bundle (paths.ProjectImport): the archive of the settings screen's bundle export.
 func ProjectImportForm(d ProjectImportFormData) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -38,7 +40,20 @@ func ProjectImportForm(d ProjectImportFormData) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<form id=\"project-import-form\" class=\"mt-4 flex flex-wrap items-center gap-2 rounded-md border border-neutral-800 p-3 text-sm\" hx-post=\"/projects/import\" hx-encoding=\"multipart/form-data\" hx-target=\"this\" hx-swap=\"outerHTML\"><label for=\"project-import-file\" class=\"text-neutral-300\">プロジェクトバンドルを読み込む</label> <input id=\"project-import-file\" type=\"file\" name=\"bundle\" required accept=\".zip,application/zip\" class=\"text-xs\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<form id=\"project-import-form\" class=\"mt-4 flex flex-wrap items-center gap-2 rounded-md border border-neutral-800 p-3 text-sm\" hx-post=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var2 string
+		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.ResolveAttributeValue(paths.ProjectImport())
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/project_import_form.templ`, Line: 18, Col: 33}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" hx-encoding=\"multipart/form-data\" hx-target=\"this\" hx-swap=\"outerHTML\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button[type=submit]\"><label for=\"project-import-file\" class=\"text-neutral-300\">プロジェクトバンドルを読み込む</label> <input id=\"project-import-file\" type=\"file\" name=\"bundle\" required accept=\".zip,application/zip\" class=\"text-xs\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -49,25 +64,25 @@ func ProjectImportForm(d ProjectImportFormData) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if d.Error != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<p class=\"basis-full text-sm text-red-300\" role=\"alert\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<p class=\"basis-full text-sm text-red-300\" role=\"alert\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var2 string
-			templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(d.Error)
+			var templ_7745c5c3_Var3 string
+			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(d.Error)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/project_import_form.templ`, Line: 27, Col: 68}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/project_import_form.templ`, Line: 31, Col: 68}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</form>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</form>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

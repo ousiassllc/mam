@@ -1,6 +1,9 @@
 package layout
 
-import "github.com/ousiassllc/mam/backend/internal/web/atoms"
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
 
 // AppLayout is the shared page shell. The CSRF token is published in a meta tag;
 // static/src/main.ts reads it and attaches it to every HTMX request, and
@@ -16,8 +19,8 @@ templ AppLayout(title string, csrfToken string) {
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
 			<meta name="csrf-token" content={ csrfToken }/>
 			<title>{ title } | mam</title>
-			<link rel="stylesheet" href="/static/app.css"/>
-			<script type="module" src="/static/app.js"></script>
+			<link rel="stylesheet" href={ paths.StaticCSS }/>
+			<script type="module" src={ paths.StaticApp }></script>
 		</head>
 		<body class="min-h-screen bg-neutral-950 text-neutral-100">
 			{ children... }

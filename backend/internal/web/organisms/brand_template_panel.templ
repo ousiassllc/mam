@@ -5,6 +5,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -52,7 +53,10 @@ templ BrandTemplatePanel(d BrandTemplatePanelData) {
 							<span class="ml-2 text-xs text-neutral-400">{ strconv.Itoa(len(t.Constraints)) } 件の制約</span>
 							<ul class="mt-1 list-disc pl-5 text-xs text-neutral-400">
 								for _, c := range t.Constraints {
-									<li>{ c.Type.Label() }（{ string(c.Level) }）: { c.Text }</li>
+									<li class="flex flex-wrap items-center gap-2">
+										<span>{ c.Type.Label() }</span> @molecules.ConstraintLevelBadge(c.Level)
+										<span>{ c.Text }</span>
+									</li>
 								}
 							</ul>
 						</div>
@@ -76,12 +80,7 @@ templ BrandTemplatePanel(d BrandTemplatePanelData) {
 				}
 			</ul>
 		}
-		<form
-			class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3"
-			hx-post={ paths.Project(d.ProjectID, "brand-templates") }
-			hx-target="#brand-template-panel"
-			hx-swap="outerHTML"
-		>
+		<form class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3" hx-post={ paths.Project(d.ProjectID, "brand-templates") } hx-target="#brand-template-panel" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]">
 			<label for="brand-template-name" class="text-sm font-medium">この Project の制約をテンプレートとして保存</label>
 			@atoms.Input(atoms.FieldLg, "w-full", templ.Attributes{
 				"id":          "brand-template-name",

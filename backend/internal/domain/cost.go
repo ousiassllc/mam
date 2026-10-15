@@ -55,17 +55,17 @@ type StoredTake struct {
 	Status     TakeStatus
 	ModelName  string
 	SizeBytes  int64
-	// Unneeded is true when the Take can be archived without losing a choice: it is Rejected, or
-	// another Take of its Shot is Selected, and no Edit Timeline or Lip Sync refers to it.
-	Unneeded bool
+	// Unneeded: archiving the Take loses no choice (it is Rejected, or another Take of its Shot is Selected, and no
+	// Edit Timeline or Lip Sync uses it). Archivable: it may be archived (not Selected, no Timeline uses it); Unneeded implies it.
+	Unneeded, Archivable bool
 }
 
 // StorageSummary is the disk view of a Project (spec/requirements/non-functional.md §4).
 type StorageSummary struct {
 	// Takes lists the stored Takes, the unneeded ones first.
 	Takes []StoredTake
-	// AssetBytes is the size of every file the Project owns (uploads, references, Take videos).
-	AssetBytes int64
+	// AssetBytes is the size of every file the Project owns (uploads, references, Take videos); PreviewBytes is the preview cache (proxies, thumbnails, Rough Cuts) every Project shares.
+	AssetBytes, PreviewBytes int64
 	// FreeBytes is the free space of the volume that holds the assets directory; FreeKnown is false when it could not be read.
 	FreeBytes uint64
 	FreeKnown bool

@@ -57,7 +57,7 @@ func (r *JudgeRepository) GetTake(ctx context.Context, takeID string) (TakeRef, 
 	if err != nil {
 		return TakeRef{}, fmt.Errorf("get take: %w", err)
 	}
-	if t.CreatedAt, err = parseTime(created); err != nil {
+	if t.CreatedAt, err = ParseTime(created); err != nil {
 		return TakeRef{}, err
 	}
 	ref.SpecSnapshot = json.RawMessage(spec)
@@ -94,7 +94,7 @@ func (r *JudgeRepository) Save(ctx context.Context, res domain.JudgeResult) (dom
 			`INSERT INTO judge_result (id, take_id, result, overall_confidence, issues, metrics, preserve, repair_strategy, scores, created_at)
 			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			res.ID, res.TakeID, res.Result, res.OverallConfidence, string(issues), string(metrics), string(preserve), repairColumn, scoresColumn,
-			formatTime(res.CreatedAt)); err != nil {
+			FormatTime(res.CreatedAt)); err != nil {
 			return err
 		}
 		_, err := tx.ExecContext(ctx, `UPDATE take SET scores = ? WHERE id = ?`, string(takeScores), res.TakeID)
@@ -134,20 +134,11 @@ func (r *JudgeRepository) Get(ctx context.Context, id string) (domain.JudgeResul
 
 // History returns every Judge result of the Take, newest first.
 func (r *JudgeRepository) History(ctx context.Context, takeID string) ([]domain.JudgeResult, error) {
-	rows, err := r.db.Reader().QueryContext(ctx, judgeSelect+` WHERE take_id = ? ORDER BY created_at DESC, rowid DESC`, takeID)
+	out, err := queryAll(ctx, r.db.Reader(), scanJudge, judgeSelect+` WHERE take_id = ? ORDER BY created_at DESC, rowid DESC`, takeID)
 	if err != nil {
 		return nil, fmt.Errorf("list judge results: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
-	var out []domain.JudgeResult
-	for rows.Next() {
-		res, err := scanJudge(rows)
-		if err != nil {
-			return nil, fmt.Errorf("scan judge result: %w", err)
-		}
-		out = append(out, res)
-	}
-	return out, rows.Err()
+	return out, nil
 }
 
 func scanJudge(row rowScanner) (domain.JudgeResult, error) {
@@ -183,7 +174,7 @@ func scanJudge(row rowScanner) (domain.JudgeResult, error) {
 	}
 	res.Issues = nonNilSlice(res.Issues)
 	res.Preserve = nonNilSlice(res.Preserve)
-	t, err := parseTime(createdAt)
+	t, err := ParseTime(createdAt)
 	if err != nil {
 		return domain.JudgeResult{}, err
 	}

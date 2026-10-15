@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/resilience"
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/httpclient"
@@ -243,7 +244,7 @@ const runwayVersion = "2024-11-06"
 
 // runwayRatios maps the aspect ratio of a Shot to the output size Gen-4.5 takes. Text-to-video
 // offers the first two only; image-to-video also offers the square.
-var runwayRatios = map[string]string{"16:9": "1280:720", "9:16": "720:1280", "1:1": "960:960"}
+var runwayRatios = map[string]string{domain.AspectRatio16x9: "1280:720", domain.AspectRatio9x16: "720:1280", domain.AspectRatio1x1: "960:960"}
 
 // runwayBackend calls Runway Gen-4.5 (text_to_video, or image_to_video when a first frame is given).
 type runwayBackend struct{ api }
@@ -256,7 +257,7 @@ func (b runwayBackend) GenerateVideo(ctx context.Context, apiModel string, req V
 	auth := map[string]string{"Authorization": "Bearer " + key, "X-Runway-Version": runwayVersion}
 
 	ratio, ok := runwayRatios[req.AspectRatio]
-	if !ok || (req.AspectRatio == "1:1" && req.FirstFrame == nil) {
+	if !ok || (req.AspectRatio == domain.AspectRatio1x1 && req.FirstFrame == nil) {
 		// The request itself is unusable for this model: the Adapter routes to the alternative.
 		return VideoResult{}, &ProviderError{Vendor: string(b.vendor), Status: http.StatusUnprocessableEntity,
 			Message: "aspect ratio " + req.AspectRatio + " is not available for this request"}
@@ -308,10 +309,9 @@ func (b runwayBackend) GenerateVideo(ctx context.Context, apiModel string, req V
 			videoURL = st.Output[0]
 			return true, nil
 		case "FAILED", "CANCELLED":
-			// INTERNAL failures are Runway's own and worth another attempt (the task is refunded);
-			// anything else (content moderation, bad input) is a refusal of the request.
+			// INTERNAL failures are Runway's own (refunded, worth another attempt, but not by asking this task again); the rest is a refusal.
 			if strings.HasPrefix(st.FailureCode, "INTERNAL") {
-				return false, &ProviderError{Vendor: string(b.vendor), Status: http.StatusBadGateway, Message: "the video job failed: " + st.Failure}
+				return false, resilience.Final(&ProviderError{Vendor: string(b.vendor), Status: http.StatusBadGateway, Message: "the video job failed: " + st.Failure})
 			}
 			return false, b.failed("the video job ended with status " + st.Status + ": " + st.Failure)
 		}

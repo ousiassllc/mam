@@ -244,7 +244,10 @@ describe('mam-video-player: generation placeholder', () => {
 
       // Every attempt fails until the retries are used up (waitUntil's own timer is slowed down as well: poll by hand).
       for (let i = 0; i < 20 && notice() === null; i++) {
-        FakeSocket.instances.filter((s) => !s.closed).forEach((s) => ((s.closed = true), s.onclose?.()));
+        for (const s of FakeSocket.instances.filter((s) => !s.closed)) {
+          s.closed = true;
+          s.onclose?.();
+        }
         await aTimeout(20);
       }
       expect(notice()).to.not.equal(null);
@@ -260,7 +263,10 @@ describe('mam-video-player: generation placeholder', () => {
 
       // Giving up again and then leaving the page takes the notice away with the player.
       for (let i = 0; i < 20 && notice() === null; i++) {
-        FakeSocket.instances.filter((s) => !s.closed).forEach((s) => ((s.closed = true), s.onclose?.()));
+        for (const s of FakeSocket.instances.filter((s) => !s.closed)) {
+          s.closed = true;
+          s.onclose?.();
+        }
         await aTimeout(20);
       }
       expect(notice()).to.not.equal(null);
@@ -274,14 +280,17 @@ describe('mam-video-player: generation placeholder', () => {
 
   it('shows the placeholder when the video cannot be played', async () => {
     const el = await player({ src: '/src/components/testdata/missing.webm' });
-    await waitUntil(() => placeholder(el)?.textContent?.includes('再生できません') === true, 'no error shown', { timeout: 5000 });
+    await waitUntil(() => placeholder(el)?.textContent?.includes('再生できません') === true, 'no error shown', {
+      timeout: 5000,
+    });
   });
 });
 
 // The refresh is an htmx GET into #scene-shot-view: the test only watches it start.
 function refreshes(): { urls: string[]; stop: () => void } {
   const urls: string[] = [];
-  const on = (e: Event) => urls.push((e as CustomEvent<{ pathInfo: { requestPath: string } }>).detail.pathInfo.requestPath);
+  const on = (e: Event) =>
+    urls.push((e as CustomEvent<{ pathInfo: { requestPath: string } }>).detail.pathInfo.requestPath);
   document.body.addEventListener('htmx:beforeRequest', on);
   return { urls, stop: () => document.body.removeEventListener('htmx:beforeRequest', on) };
 }
@@ -326,7 +335,9 @@ describe('Shot card: one WebSocket per card (shot.ts)', () => {
     </div>`);
     initShotProgress(root);
 
-    expect(FakeSocket.instances.map((s) => s.url)).to.deep.equal([`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws/shots/s1`]);
+    expect(FakeSocket.instances.map((s) => s.url)).to.deep.equal([
+      `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws/shots/s1`,
+    ]);
 
     FakeSocket.instances[0]!.emit({ shot_id: 's1', stage: 'generating', takes_done: 1, takes_total: 3 });
     await aTimeout(20);

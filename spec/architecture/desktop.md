@@ -18,7 +18,7 @@ Windows では Wails v3 のネイティブウィンドウ（WebView2）でアプ
 - ウィンドウ: タイトル `MAM`、既定 1440×900、最小 1024×700。背景色はアプリの背景（`bg-neutral-950`）に合わせ、サーバーが応答するまでの白いちらつきを避ける
 - 構成: Wails に依存しない部分は `internal/desktop`（`Navigator`: サーバーの URL とウィンドウの初回ナビゲーション完了を、どちらが先でも待ち合わせて `SetURL` する。`Server`: `app.Run` のバックグラウンド実行・停止・予期しない終了の通知）に置き、OS 非依存でテストする。`cmd/wails` はそれを Wails のウィンドウ・単一インスタンス・`OnShutdown` に結ぶだけにする
 - 単一インスタンス: `application.Options.SingleInstance`（`UniqueID` は固定の `com.ousiassllc.mam`）。2 つ目の起動は新しいウィンドウを作らず、先のウィンドウを復元して前面に出して終了する（データディレクトリのロック `.mam.lock` に到達しない）。2 つ目の起動の `--data-dir` などの引数は使わず捨てる。Windows 版は `--data-dir` が違っても同時に 1 つしか起動できない（並行起動はブラウザ版 `cmd/server` を使う）
-- 終了: ウィンドウを閉じるとアプリ全体を終了する（トレイ常駐なし）。`app.Run` の `ctx` を取り消してグレースフルシャットダウン（`shutdownTimeout` 10 秒）を行い、サーバーが止まってから Wails アプリを終了する。生成ジョブ（外部 API 呼び出しで課金が発生する）の実行中に閉じたときの扱い: ジョブは中断され、次回起動時にクラッシュ復旧（non-functional.md §3）と同じ経路で再開または安全に失敗として扱う。実行中ジョブがあるときの確認ダイアログは出さない（ブラウザ版でタブやプロセスを閉じるのと同じ扱い）
+- 終了: ウィンドウを閉じるとアプリ全体を終了する（トレイ常駐なし）。`app.Run` の `ctx` を取り消してグレースフルシャットダウン（`shutdownTimeout` 10 秒）を行い、サーバーが止まってから Wails アプリを終了する。10 秒で終わらないリクエスト（動画の配信・長いアップロードなど）は中断し（コンテキストをキャンセルして接続を閉じる）、ハンドラが戻るまで最大 5 秒（`abortTimeout`）待ってからジョブキューや DB を閉じる（中断は要求された停止であり、失敗として扱わない）。ウィンドウを閉じてからアプリが終わるまでの最長は約 15 秒。生成ジョブ（外部 API 呼び出しで課金が発生する）の実行中に閉じたときの扱い: ジョブは中断され、次回起動時にクラッシュ復旧（non-functional.md §3）と同じ経路で再開または安全に失敗として扱う。実行中ジョブがあるときの確認ダイアログは出さない（ブラウザ版でタブやプロセスを閉じるのと同じ扱い）
 - 起動エラー（設定の誤り・データディレクトリが別プロセスで使用中・リッスン失敗）はコンソールが無い（`-H windowsgui`）ためネイティブのエラーダイアログ（Win32 `MessageBox`。Wails のダイアログはイベントループが要るため使わない）に出して終了コード 1 で終わる。`--help` と引数の誤りもダイアログに出す（`app.ValidateArgs` が使い方の文字列を返す）。起動後にサーバーが落ちたときも同じ（ダイアログ → 終了コード 1）
 - 設定は `cmd/server` と同じ `config.Load`（フラグ・`MAM_*`。`--data-dir`・`MAM_DATA_DIR` も同様に効く）。`--no-browser` は無視する。ショートカットは引数なしで起動する（データディレクトリの既定は `os.UserConfigDir()` 配下の `mam`、つまり `%AppData%\mam`）
 - ブラウザ版と異なる点: Windows では ONNX Runtime のバインディングが無いため顔同一性の定量評価は使えない（non-functional.md §1、ブラウザ版も同じ）。ffmpeg は PATH から探す（同梱しない）
@@ -27,8 +27,8 @@ Windows では Wails v3 のネイティブウィンドウ（WebView2）でアプ
 
 Windows 実機が要る項目は、リリース前に実機で確かめる（実機での確認結果は Issue #480 に残す）。ソースで確かめられた分は結果を書く。
 
-- ダウンロード（`Content-Disposition: attachment` を返す `handler/bundle.go`・`review.go`、`<a download>` の `editor_panel.templ`・`settings_body.templ`・`review_workspace.templ`）: v3.0.0-beta.27 は WebView2 の `DownloadStarting` を公開していない（`pkg/application` に該当の API が無い）。実装は何も差し込まず WebView2 の既定（ダウンロード UI）に任せる。**実機で保存できるかは未確認**。保存できなければ、ダウンロードの URL を `application.BrowserManager.OpenURL` で既定ブラウザへ渡す
-- `target="_blank"` のリンク（`world_state_view.templ`・`message_frame.templ`・`keyframe_card.templ`。ループバックのアセット画像）: v3.0.0-beta.27 は `NewWindowRequested` を公開していないため、WebView2 の既定（新しいポップアップウィンドウ）になる。**実機で目的を果たせるかは未確認**。足りなければ新しいウィンドウを作らず `application.BrowserManager.OpenURL` で既定ブラウザへ渡す
+- ダウンロード（`Content-Disposition: attachment` を返す `handler/bundle.go`・`review.go`・`editor.go` の `ExportVideo`、`<a download>` の `editor_panel.templ`・`settings_body.templ`・`review_workspace.templ`・`review_list.templ`・`text_message.templ`（チャットの書き出し完了通知「書き出した動画をダウンロード」。`ref_type=export` のリンクを `molecules/format.go` の `refLinkOf` が作る。応答は `GET /projects/:id/exports/:exportId/video`））: v3.0.0-beta.27 は WebView2 の `DownloadStarting` を公開していない（`pkg/application` に該当の API が無い）。実装は何も差し込まず WebView2 の既定（ダウンロード UI）に任せる。**実機で保存できるかは未確認**。保存できなければ、ダウンロードの URL を `application.BrowserManager.OpenURL` で既定ブラウザへ渡す
+- `target="_blank"` のリンク（`organisms/worldstate/view.templ`・`message_frame.templ`・`keyframe_card.templ`。ループバックのアセット画像）: v3.0.0-beta.27 は `NewWindowRequested` を公開していないため、WebView2 の既定（新しいポップアップウィンドウ）になる。**実機で目的を果たせるかは未確認**。足りなければ新しいウィンドウを作らず `application.BrowserManager.OpenURL` で既定ブラウザへ渡す
 - 外部 URL を開くウィンドウに Wails のランタイム（`window._wails`）が露出するか: ナビゲーション完了のたびにランタイムが注入される（`webview_window_windows.go`）ため露出する。バインディングは登録しないので Go 側の API は呼べず、権限は増えない。`AllowSimpleEventEmit` は無効（既定）のままとする
 - `windows-latest`（デスクトップセッションなし）で GUI の `mam.exe` のウィンドウ生成が失敗しないか: **未確認**（最初のタグのリリースジョブで分かる）。失敗するなら、リリースのスモーク（`spec/environment/setup.md`）の対象をブラウザ版 `cmd/server` の exe に切り替える
 
@@ -37,7 +37,7 @@ Windows 実機が要る項目は、リリース前に実機で確かめる（実
 - ビルド・パッケージングは `scripts/package-windows.sh`（`build.sh` と同じ templ → esbuild → tailwind の後、`wails3 package GOOS=windows`）。設定は `build/`（Wails v3 の既定配置。Taskfile のフロントエンド工程は本リポジトリの `static/` のビルドへ置き換える。Go のビルドは `./backend/cmd/wails`、`-tags production`、`-ldflags "-s -w -H windowsgui"`、`-trimpath`、`CGO_ENABLED=0`、`GOOS=windows GOARCH=amd64`）
 - 成果物: ポータブル `mam.exe`（Wails ウィンドウ版）と、それを入れる NSIS インストーラー exe。インストーラーは WebView2 ブートストラッパーを含み（WebView2 が無い Windows 10 では取得するためインターネット接続が要る）、Start メニューとデスクトップにショートカットを作り、アンインストーラーを登録する。インストール先は `%ProgramFiles%\MAM`（Wails v3 の NSIS 既定の管理者権限）。アンインストールでデータディレクトリ（SQLite・生成物）は消さない。完了画面に ffmpeg の導入案内（PATH に `ffmpeg` / `ffprobe` を置くと Judge・プレビュー・Export などが使える。無くても起動する）を出す
 - バージョンは Git タグ `vX.Y.Z` の `X.Y.Z`。`build/windows/info.json`（ファイルバージョン・ProductVersion）と NSIS の `INFO_PRODUCTVERSION`、ファイル名に反映する
-- 配布は GitHub Actions の `release.yml`（`windows-latest`、`v*` タグの push）が `gh release create` でリリースを作り、2 つの成果物を添付する（`spec/environment/setup.md`）。コード署名はしない
+- 配布は GitHub Actions の `release.yml`（`v*` タグの push。`verify` → `windows-latest` の `build` → `release` の 3 ジョブで、`release` だけが書き込み権限を持つ）が `gh release create` でリリースを作り、2 つの成果物を添付する（`spec/environment/setup.md`）。コード署名はしない
 
 ## 5. 対象外
 
@@ -49,3 +49,9 @@ Windows 実機が要る項目は、リリース前に実機で確かめる（実
 |----|------|---------|---------|
 | 1.0 | 2026-10-03 | 新規作成。`spec/architecture/overview.md` §11 に書いた Windows デスクトップ版（方式・`cmd/wails` の挙動・未検証項目・パッケージング）をこのファイルへ移した | Issue #480。`overview.md` が行数上限（300 行、`.linterly.yml`）を超えるため、`model-adapters.md` と同じく `spec/architecture/` 内の別ファイルに切り出した |
 | 1.1 | 2026-10-11 | §2 に構成（`internal/desktop`）・背景色・ダイアログの実装方法・終了時の確認ダイアログなしを、§3 に v3.0.0-beta.27 のソースで確かめた結果（`DownloadStarting`・`NewWindowRequested` が非公開、ランタイムは露出）と実機で未確認の項目を追記 | Issue #480 の実装 |
+| 1.2 | 2026-10-11 | §3 のダウンロードの実機確認の対象に、Review Package の ZIP のリンク（`organisms/review_list.templ`）を加えた | Issue #514。`<a download>` を持つテンプレートは 4 つあるのに列挙が 3 つで、リリース前の実機確認が Review Package のダウンロードを確認漏れにするため（応答は `handler/review.go` の `Content-Disposition: attachment`） |
+| 1.3 | 2026-10-12 | §4 の配布の項に、`release.yml` が `verify` → `windows-latest` の `build` → `release` の 3 ジョブで、書き込み権限は `release` だけが持つことを追記した（本文は 56a6e39 で書き換え済み。版の行をこの版で足した） | Issue #565。`release.yml` を検証・ビルド・公開に分け、ビルド工程が書き込み用トークンを持たない構成にしたため（`56a6e39`、`setup.md` 1.11）。`desktop.md` の改訂履歴だけ行が足されていなかった |
+| 1.4 | 2026-10-12 | §2 の終了に、10 秒（`shutdownTimeout`）で終わらないリクエストは中断し（コンテキストをキャンセルして接続を閉じる）、ハンドラが戻るまで最大 5 秒（`abortTimeout`）待ってからジョブキューや DB を閉じること、ウィンドウを閉じてからアプリが終わるまでの最長が約 15 秒であることを足した | Issue #597。#577 が `runHTTP` に中断フェーズを足したのに、終了の記述がグレースフルシャットダウンの 10 秒だけだった |
+| 1.5 | 2026-10-12 | §3 のダウンロードの実機確認の対象に、チャットの書き出し完了通知のリンク（`molecules/text_message.templ`。`ref_type=export`）を加えた | Issue #648。#631 が 5 つ目の `<a download>`（「書き出した動画をダウンロード」）を足したのに、列挙が 4 つのままで、リリース前の実機確認がこのリンクを確認漏れにするため（#514 と同じ種類の列挙漏れ） |
+| 1.6 | 2026-10-12 | §3 の `target="_blank"` リンクの実機確認の対象のうち、存在しない `world_state_view.templ` を実体の `organisms/worldstate/view.templ` に直した | Issues #690・#691。#685・#686 が World State の表示を `organisms/worldstate/` サブパッケージ（`view.templ`・`responses.templ`・`data.go`）へ移し、`world_state_view.templ` が無くなったのに列挙が旧名のままで、実機確認の担当者がこのリンクを探せず確認漏れにするため（#514・#648 と同じ種類の列挙のずれ）。 |
+| 1.7 | 2026-10-13 | §3 のダウンロードの列挙で `Content-Disposition: attachment` を返すハンドラに `handler/editor.go` の `ExportVideo` を足した | Issue #706。書き出した動画のダウンロードにも保存名（`mam-export-<日付>-<exportId>.<ext>`）を付けたため、実機確認の担当者が列挙から保存名の確認対象を読み取れるように |

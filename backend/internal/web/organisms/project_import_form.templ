@@ -1,22 +1,26 @@
 package organisms
 
-import "github.com/ousiassllc/mam/backend/internal/web/atoms"
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
 
 // ProjectImportFormData is the state of the bundle import form.
 type ProjectImportFormData struct {
 	Error string
 }
 
-// ProjectImportForm imports a project bundle (POST /projects/import): the archive made by the
-// bundle export of the settings screen, on this or another machine.
+// ProjectImportForm imports a project bundle (paths.ProjectImport): the archive of the settings screen's bundle export.
 templ ProjectImportForm(d ProjectImportFormData) {
 	<form
 		id="project-import-form"
 		class="mt-4 flex flex-wrap items-center gap-2 rounded-md border border-neutral-800 p-3 text-sm"
-		hx-post="/projects/import"
+		hx-post={ paths.ProjectImport() }
 		hx-encoding="multipart/form-data"
 		hx-target="this"
 		hx-swap="outerHTML"
+		hx-sync="this:drop"
+		hx-disabled-elt="find button[type=submit]"
 	>
 		<label for="project-import-file" class="text-neutral-300">プロジェクトバンドルを読み込む</label>
 		<input id="project-import-file" type="file" name="bundle" required accept=".zip,application/zip" class="text-xs"/>

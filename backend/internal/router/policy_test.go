@@ -8,10 +8,14 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/repository"
 )
 
 func TestSettingsPage_ShowsTemplatePolicyBudgetCostAndStorage(t *testing.T) {
@@ -144,8 +148,7 @@ func TestCostSummary_ShowsCostByShotAfterGenerationAndTheBudgetBlocksWith402(t *
 	assert.Contains(t, rec.Body.String(), "予算上限")
 
 	require.Equal(t, http.StatusOK, g.form(http.MethodPut, "/projects/"+g.project+"/budget", url.Values{"project_budget": {"10"}}).Code)
-	require.Equal(t, http.StatusAccepted, g.form(http.MethodPost, "/shots/"+g.shotID+"/generate", nil).Code)
-	g.waitTakes(3)
+	g.generateTakes()
 
 	after := g.get("/projects/"+g.project+"/cost-summary", true).Body.String()
 	assert.Contains(t, after, `data-testid="project-estimated">$0.960<`, "3 Takes x 4 s x 0.08 USD/s")
@@ -158,18 +161,7 @@ func TestCostSummary_ShowsCostByShotAfterGenerationAndTheBudgetBlocksWith402(t *
 
 func TestStorage_ArchiveEndpointsFreeTakesAndRefuseTheSelectedOne(t *testing.T) {
 	g := newGenApp(t, true)
-	require.Equal(t, http.StatusAccepted, g.form(http.MethodPost, "/shots/"+g.shotID+"/generate", nil).Code)
-	g.waitTakes(3)
-	rows, err := g.db.Reader().Query(`SELECT id FROM take ORDER BY id`)
-	require.NoError(t, err)
-	var ids []string
-	for rows.Next() {
-		var id string
-		require.NoError(t, rows.Scan(&id))
-		ids = append(ids, id)
-	}
-	require.NoError(t, rows.Close())
-	require.Len(t, ids, 3)
+	ids := g.generateTakes()
 	selectTake(t, g, ids[0])
 
 	panel := g.get("/projects/"+g.project+"/settings", false).Body.String()
@@ -190,20 +182,34 @@ func TestStorage_ArchiveEndpointsFreeTakesAndRefuseTheSelectedOne(t *testing.T) 
 	assert.Equal(t, http.StatusNotFound, g.form(http.MethodPost, "/projects/missing/storage/archive-unneeded", nil).Code)
 }
 
+func TestStorage_OffersArchiveOnlyForTakesTheServerWouldArchive(t *testing.T) {
+	g := newGenApp(t, true)
+	ids := g.generateTakes()
+	used, chosen, free := ids[0], ids[1], ids[2]
+
+	// The Rough Cut used Take A, then Take B was chosen: A is no longer Selected, but the Edit
+	// Timeline still points at it.
+	_, err := repository.NewEditorRepository(g.db).SaveEditTimeline(context.Background(), g.project, "", "",
+		domain.EditTimeline{Clips: []domain.EditClip{{ShotID: g.shotID, TakeID: used, Out: 1}}})
+	require.NoError(t, err)
+	selectTake(t, g, chosen)
+
+	archive := func(id string) string { return `hx-post="/projects/` + g.project + `/takes/` + id + `/archive"` }
+	panel := g.get("/projects/"+g.project+"/settings", false).Body.String()
+	assert.NotContains(t, panel, archive(used), "a Take the Edit Timeline uses cannot be archived")
+	assert.NotContains(t, panel, archive(chosen), "the Selected Take cannot be archived")
+	assert.Contains(t, panel, archive(free))
+	assert.Equal(t, 2, strings.Count(panel, `data-testid="take-in-use"`), "the two refused rows say why")
+
+	rec := g.form(http.MethodPost, "/projects/"+g.project+"/takes/"+used+"/archive", nil)
+	assert.Equal(t, http.StatusConflict, rec.Code)
+	assert.Contains(t, rec.Body.String(), "タイムライン", "the 409 names the reason, not the chat approval wording")
+	assert.NotContains(t, rec.Body.String(), "すでに応答済み")
+}
+
 func TestStorage_ATakeWhoseStoredPathLeavesTheAssetsDirectoryIsNeitherServedNorDeleted(t *testing.T) {
 	g := newGenApp(t, true)
-	require.Equal(t, http.StatusAccepted, g.form(http.MethodPost, "/shots/"+g.shotID+"/generate", nil).Code)
-	g.waitTakes(3)
-	rows, err := g.db.Reader().Query(`SELECT id FROM take ORDER BY id`)
-	require.NoError(t, err)
-	var ids []string
-	for rows.Next() {
-		var id string
-		require.NoError(t, rows.Scan(&id))
-		ids = append(ids, id)
-	}
-	require.NoError(t, rows.Close())
-	require.Len(t, ids, 3)
+	ids := g.generateTakes()
 	selectTake(t, g, ids[0])
 
 	outside := filepath.Join(filepath.Dir(g.assets), "outside")
@@ -235,4 +241,20 @@ func selectTake(t *testing.T, g *genApp, takeID string) {
 		_, err := tx.ExecContext(ctx, `UPDATE shot SET selected_take_id = ? WHERE id = ?`, takeID, g.shotID)
 		return err
 	}))
+}
+
+// The score under which an axis is shown as low is the Judge's: the Quality Policy of the Project with
+// the user's override, never a number the component owns (#633).
+func TestTakeAPI_MinAxisScoreFollowsTheQualityPolicyAndTheUsersOverride(t *testing.T) {
+	ta := newTakeApp(t)
+	assert.InDelta(t, 55, ta.takes().Limits["min_axis_score"], 0, "Balanced")
+	for _, c := range []struct {
+		quality, override string
+		want              float64
+	}{{"max_quality", "", 70}, {"fast", "", 40}, {"max_quality", "62", 62}} {
+		rec := ta.form(http.MethodPut, "/projects/"+ta.project+"/quality-policy", url.Values{"quality_policy": {c.quality},
+			"max_retries": {""}, "max_generation_seconds": {""}, "min_acceptance_score": {""}, "min_axis_score": {c.override}})
+		require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+		assert.InDelta(t, c.want, ta.takes().Limits["min_axis_score"], 0, c.quality+" "+c.override)
+	}
 }

@@ -49,7 +49,7 @@ func scanReferenceItem(row rowScanner) (domain.ReferenceItem, error) {
 	if err := json.Unmarshal([]byte(tags), &it.Tags); err != nil {
 		return domain.ReferenceItem{}, fmt.Errorf("reference tags: %w", err)
 	}
-	t, err := parseTime(at)
+	t, err := ParseTime(at)
 	if err != nil {
 		return domain.ReferenceItem{}, err
 	}
@@ -66,23 +66,18 @@ func (r *ReferenceRepository) List(ctx context.Context, projectID string, f Refe
 		args = append(args, string(f.Kind))
 	}
 	q += ` ORDER BY created_at DESC, id DESC`
-	rows, err := r.db.Reader().QueryContext(ctx, q, args...) //nolint:gosec // q is assembled from constants; only the arguments are data
+	all, err := queryAll(ctx, r.db.Reader(), scanReferenceItem, q, args...) //nolint:gosec // q is assembled from constants; only the arguments are data
 	if err != nil {
 		return nil, fmt.Errorf("list reference library: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
 	items := []domain.ReferenceItem{}
-	for rows.Next() {
-		it, err := scanReferenceItem(rows)
-		if err != nil {
-			return nil, err
-		}
+	for _, it := range all {
 		// Query and Tag are matched here: SQLite folds the case of ASCII only.
 		if it.Matches(f.Query, f.Tag) {
 			items = append(items, it)
 		}
 	}
-	return items, rows.Err()
+	return items, nil
 }
 
 // Get returns an entry of the Project's Library or ErrNotFound.
@@ -108,7 +103,7 @@ func getReferenceItem(ctx context.Context, q queryer, projectID, id string) (dom
 // Add registers an uploaded image: the asset (type reference) and its Library entry are written
 // together. An unknown Project is ErrNotFound. item.ID and item.AssetID are set by the caller.
 func (r *ReferenceRepository) Add(ctx context.Context, item domain.ReferenceItem, asset domain.Asset) error {
-	now := formatTime(r.now())
+	now := FormatTime(r.now())
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		if err := projectExists(ctx, tx, item.ProjectID); err != nil {
 			return err

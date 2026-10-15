@@ -23,14 +23,11 @@ func TestEditTimeline_DurationSubtractsTheOverlapOfEveryTransition(t *testing.T)
 
 	assert.InDelta(t, 7.5, tl.Duration(), 1e-9)
 	assert.Equal(t, []float64{0, 3.5, 5.5}, tl.Starts())
-}
 
-func TestEditTimeline_TransitionIsCappedAtHalfOfTheShorterClip(t *testing.T) {
-	tl := domain.EditTimeline{Clips: []domain.EditClip{
+	tl = domain.EditTimeline{Clips: []domain.EditClip{ // a transition is capped at half of the shorter clip
 		clip("a", 0, 4, domain.TransitionCut, 0),
 		clip("b", 0, 1, domain.TransitionDissolve, 2),
 	}}
-
 	assert.InDelta(t, 0.5, tl.OverlapSeconds(1), 1e-9)
 	assert.InDelta(t, 4.5, tl.Duration(), 1e-9)
 }
@@ -45,6 +42,7 @@ func TestEditTimeline_Normalize(t *testing.T) {
 		{"no clip", func(tl *domain.EditTimeline) { tl.Clips = nil }, "クリップがありません"},
 		{"missing take", func(tl *domain.EditTimeline) { tl.Clips[1].TakeID = "" }, "Shot または Take"},
 		{"shorter than the minimum", func(tl *domain.EditTimeline) { tl.Clips[1].Out = tl.Clips[1].In + 0.2 }, "以上の区間"},
+		{"exactly the minimum as the screen sends it", func(tl *domain.EditTimeline) { tl.Clips[1].In, tl.Clips[1].Out = 0.063, 0.563 }, ""},
 		{"negative in point", func(tl *domain.EditTimeline) { tl.Clips[1].In = -1 }, "以上の区間"},
 		{"past the end of the take", func(tl *domain.EditTimeline) { tl.Clips[1].SourceSeconds = 2; tl.Clips[1].Out = 3 }, "Take の長さ"},
 		{"unknown transition", func(tl *domain.EditTimeline) { tl.Clips[1].Transition.Type = "spin" }, "Transition が正しくありません"},
@@ -74,12 +72,10 @@ func TestEditTimeline_Normalize(t *testing.T) {
 }
 
 func TestEditTimeline_NormalizeMakesACutHaveNoLengthAndDefaultsTheType(t *testing.T) {
-	tl := domain.EditTimeline{Clips: []domain.EditClip{
+	got, err := domain.EditTimeline{Clips: []domain.EditClip{
 		clip("a", 0, 2, "", 0),
 		clip("b", 0, 2, domain.TransitionCut, 1.5),
-	}}
-
-	got, err := tl.Normalize()
+	}}.Normalize()
 
 	require.NoError(t, err)
 	assert.Equal(t, domain.Transition{Type: domain.TransitionCut}, got.Clips[1].Transition)
@@ -138,7 +134,7 @@ func TestExportOptions_SizeFollowsTheShortSideAndTheAspectRatio(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestEditTimeline_NormalizeKeepsKindAndTidiesTheCaption(t *testing.T) {
+func TestEditTimeline_NormalizeKeepsKindTidiesTheCaptionAndRejectsAnUnknownKindOrATooLongCaption(t *testing.T) {
 	c := clip("a", 0, 2, domain.TransitionCut, 0)
 	c.Kind, c.Caption = domain.ClipReaction, "  えっ？\r\n\r\n\r\n本当に  "
 	plain := clip("b", 0, 2, domain.TransitionCut, 0)
@@ -150,21 +146,15 @@ func TestEditTimeline_NormalizeKeepsKindAndTidiesTheCaption(t *testing.T) {
 	assert.Equal(t, domain.ClipMain, got.Clips[1].Kind, "no kind is the story")
 	assert.Equal(t, domain.CleanCaption(c.Caption), got.Clips[0].Caption)
 	assert.NotContains(t, got.Clips[0].Caption, "\r")
-}
 
-func TestEditTimeline_NormalizeRejectsAnUnknownKindAndATooLongCaption(t *testing.T) {
-	bad := clip("a", 0, 2, domain.TransitionCut, 0)
-	bad.Kind = "trailer"
-	long := clip("a", 0, 2, domain.TransitionCut, 0)
-	long.Caption = strings.Repeat("あ", domain.MaxCaptionRunes+1)
-	ok := clip("a", 0, 2, domain.TransitionCut, 0)
-	ok.Caption = strings.Repeat("あ", domain.MaxCaptionRunes)
-
-	_, err := domain.EditTimeline{Clips: []domain.EditClip{bad}}.Normalize()
+	c.Kind = "trailer"
+	_, err = domain.EditTimeline{Clips: []domain.EditClip{c}}.Normalize()
 	assert.ErrorIs(t, err, domain.ErrInvalidTimeline)
-	_, err = domain.EditTimeline{Clips: []domain.EditClip{long}}.Normalize()
+	c.Kind, c.Caption = "", strings.Repeat("あ", domain.MaxCaptionRunes+1)
+	_, err = domain.EditTimeline{Clips: []domain.EditClip{c}}.Normalize()
 	assert.ErrorIs(t, err, domain.ErrInvalidTimeline)
-	_, err = domain.EditTimeline{Clips: []domain.EditClip{ok}}.Normalize()
+	c.Caption = strings.Repeat("あ", domain.MaxCaptionRunes)
+	_, err = domain.EditTimeline{Clips: []domain.EditClip{c}}.Normalize()
 	assert.NoError(t, err)
 }
 

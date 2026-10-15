@@ -15,7 +15,10 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
+	"github.com/ousiassllc/mam/backend/internal/testenv"
 )
 
 // fakeReasoner stands in for the Reasoning LLM Adapter: no external API is called. It answers
@@ -93,15 +96,12 @@ type pipelineFixture struct {
 
 func newPipelineFixture(t *testing.T) pipelineFixture {
 	t.Helper()
-	dir := t.TempDir()
-	db, err := repository.Open(context.Background(), filepath.Join(dir, "mam.db"), nil)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = db.Close() })
-
+	testenv.Parallel(t)
+	db := testdb.Open(t)
 	jobs := jobqueue.New(repository.NewJobRepository(db), jobqueue.Options{})
 	fake := newFakeReasoner()
-	assets := filepath.Join(dir, "assets")
-	svc := service.New(service.Deps{DB: db, Jobs: jobs, LLM: fake, AssetsDir: assets})
+	assets := filepath.Join(t.TempDir(), "assets")
+	svc := servicetest.New(t, service.Deps{DB: db, Jobs: jobs, LLM: fake, AssetsDir: assets})
 	ctx, cancel := context.WithCancel(context.Background())
 	jobs.Start(ctx)
 	t.Cleanup(func() { cancel(); jobs.Stop() })

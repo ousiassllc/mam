@@ -14,19 +14,21 @@ concurrency:
 
 jobs:
   ci:
-    runs-on: ubuntu-latest
+    # Self-hosted runner (org ousiassllc): GitHub-hosted runners are billed and were blocked by a payment failure.
+    runs-on: [self-hosted, Linux, X64]
     steps:
       - uses: actions/checkout@v4
 
+      # No actions cache on the self-hosted runner: the host keeps the Go module / build and npm caches
+      # itself, and the cache save of setup-go hung the job for 25+ minutes in its post step.
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+          cache: false
 
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: npm
-          cache-dependency-path: static/package-lock.json
 
       - name: Install tools
         run: |
@@ -49,6 +51,38 @@ jobs:
 
       - name: Lint
         run: make lint
+
+      # Known vulnerabilities reachable from the code: the Go standard library of the toolchain
+      # pinned by go.mod's `toolchain` line, and the required modules. A new advisory fails CI.
+      - name: Vulnerability check
+        run: make vuln
+
+      # Files / directories already over the linterly limit are recorded in .linterly-baseline: fail
+      # only when something got longer or a new one went over (spec/environment/setup.md).
+      - name: Line limit (no regression)
+        run: make lint-lines
+
+      # The Go tests that need ffmpeg / ffprobe (Judge frame extraction, media, Audio Director mixing,
+      # Take / partial regeneration) fail without them (testenv). The self-hosted runner normally has
+      # them; install via apt only when missing (needs passwordless sudo), else fail with a clear error.
+      - name: Ensure ffmpeg
+        run: |
+          if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null; then
+            sudo -n apt-get update
+            sudo -n apt-get install -y --no-install-recommends ffmpeg
+          fi
+          ffmpeg -version | head -1
+          ffprobe -version | head -1
+
+      # The Lit component tests (make test-static) need a Linux Chrome. Some self-hosted runners (a WSL
+      # host) only have the Windows chrome.exe, which web-test-runner cannot drive: download a Chrome for
+      # Testing into the runner's tool cache (kept between runs) when there is none and CHROME_PATH is unset.
+      - name: Ensure Chrome
+        run: |
+          if [ -z "${CHROME_PATH:-}" ] && ! command -v google-chrome >/dev/null && ! command -v chromium >/dev/null; then
+            chrome="$(npx --yes @puppeteer/browsers install chrome@stable --path "${RUNNER_TOOL_CACHE}/chrome-for-testing" | tail -n 1 | cut -d' ' -f2-)"
+            echo "CHROME_PATH=${chrome}" >> "$GITHUB_ENV"
+          fi
 
       - name: Test
         run: make test

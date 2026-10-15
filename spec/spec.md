@@ -140,7 +140,7 @@ DELIVERY
 | References | URL / Image / Video |
 | Additional Instruction | 任意 |
 
-必須 7 項目（Content Type / Objective / Subject / Target / Duration / Aspect Ratio / Mood）が不足している場合、AI は自動補完せず 1 つずつ質問し、ユーザーが値を答えるか「AIに任せる」を選ぶまで PLANNING は始まらない。Assets / References / Additional Instruction は任意（§23.1）。
+必須 7 項目（Content Type / Objective / Subject / Target / Duration / Aspect Ratio / Mood）が不足している場合、AI は自動補完せず 1 つずつ質問し、ユーザーが値を答えるか「AIに任せる」を選ぶまで PLANNING は始まらない。チャットでの回答も編集フォームと同じ値域（Aspect Ratio は 9:16 / 16:9 / 1:1、各項目 200 文字以内）で、範囲外の回答は保存せず同じ質問を聞き直す。発言から抜き出す URL も編集フォームと同じ規則（200 文字以内・空白を含まない）で、外れた URL は References に入れない。Assets / References / Additional Instruction は任意（§23.1）。
 
 ## 4.3 AUTO Pipeline
 
@@ -482,7 +482,7 @@ project_world:
 
 - 通常の生成では、Take を 1 本以上作れた時点で 1 回抽出する。Candidate Generation（Quality / Balanced）では、選ばれた Candidate の Spec から抽出する。
 - Judge が FAIL にして撮り直す場合（Repair）は、Shot Spec が変わる Repair（Prompt 修正・Partial Regeneration）の Take を生成した直後にもう一度抽出し、新しい `world_state_version` を追記する。Judge で FAIL になった Take の Spec から追記された版も消さない（World State は追記のみで、版は履歴として残る。`spec/architecture/er.md` §4）。
-- 抽出に失敗しても Take の生成は失敗させない（World State は更新されず、次の Shot は現在の World State から始まる）。
+- 抽出に失敗しても Take の生成は失敗させない（World State は更新されず、次の Shot は現在の World State から始まる）。 `story.known_information` は 20 件まで（1 項目 200 文字以内）で、State Extractor には現在の項目を保ったまま追加した完全なリストを、20 件を超えるときは古い／重要でない項目を落として 20 件以内で返させる。超えたリストは適用せず（World State は据え置き）、警告ログに残す。
 
 ```text
 Previous State
@@ -1152,7 +1152,7 @@ EXPORTED
 
 > **Project 状態と Shot 状態（実装の範囲）**: 上の状態遷移のうち、Project の状態として実際に遷移するのは DRAFT → PLANNING → VISUAL_DESIGN（Orchestrator）、確認ポイントでの AWAITING_APPROVAL、および EDITING 以降（EDIT_JUDGING・AUDIO・FINAL_QC・READY・EXPORTED）である。EDITING の開始は `POST /projects/:id/edit/rough-cut` だけではない。ユーザーが Rough Cut を作る／編集したときに加え、AUTO MODE ではトランクの全 Shot に Selected Take が揃った時点で Rough Cut と Editor Judge が自動で始まり EDITING に入る。開始時、VISUAL_DESIGN からは GENERATING → JUDGING → EDITING を一括で辿る（全 Shot に Selected Take があることが前提）。確認ポイント通過後の AUDIO と Final QC も AUTO MODE では自動で進み、Export はユーザー操作である。GENERATING / JUDGING / REPAIRING は Shot 単位（`shot.state`、§13）で進み、Shot の生成・Judge・Repair は Shot ごとに並行して起動されるため、Project 全体の状態としては遷移させない（Project は VISUAL_DESIGN のまま）。例外は Reshoot Loop の追加 Shot（Project を GENERATING にする）と、Escalation への回答後（Project は REPAIRING になり、Editor Judge／編集操作で EDITING へ戻る）である。
 
-図の AWAITING_APPROVAL は確認ポイント（脚本・Rough Cut・Final）の位置を示す。AWAITING_APPROVAL に遷移するのは、確認ポイントの Approval カードと Escalation カードのみとする。ただし Escalation カードで AWAITING_APPROVAL に入れるのは、状態遷移表にその遷移がある状態（PLANNING〜EDITING 系・FINAL_QC など）のときだけである。DRAFT・AUDIO・READY・EXPORTED で出た Shot 単位の Escalation（書き出し後の Repair 上限到達など）はカードを投稿するだけで Project の状態を変えず、そのカードは確認ポイントを待たせず、回答しても REPAIRING にはならない。Notes の昇格提案カード（`ref_type=note_promotion`、§9.4）は非ブロッキングで、Core State Machine の状態を変えない。
+図の AWAITING_APPROVAL は確認ポイント（脚本・Rough Cut・Final）の位置を示す。AWAITING_APPROVAL に遷移するのは、確認ポイントの Approval カードと Escalation カードのみとする。ただし Escalation カードで AWAITING_APPROVAL に入れるのは、PLANNING・VISUAL_DESIGN・GENERATING・JUDGING・REPAIRING・EDITING・EDIT_JUDGING・FINAL_QC のいずれかにいるときだけである（`domain.stateTransitions` はこれと一致させる。AWAITING_APPROVAL から戻れるのは PLANNING・VISUAL_DESIGN・GENERATING・REPAIRING・EDITING・AUDIO・READY で、確認ポイントの承認 / 修正依頼と Escalation の再開先から決まる）。DRAFT・AUDIO・READY・EXPORTED で出た Shot 単位の Escalation（書き出し後の Repair 上限到達など）はカードを投稿するだけで Project の状態を変えず、そのカードは確認ポイントを待たせず、回答しても REPAIRING にはならない。Notes の昇格提案カード（`ref_type=note_promotion`、§9.4）は非ブロッキングで、Core State Machine の状態を変えない。
 
 ---
 

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
@@ -41,6 +42,28 @@ func TestShotCard_TakeButtonsSendWhetherTheCardIsSelected(t *testing.T) {
 			want = `hx-vals="{&#34;selected&#34;:&#34;true&#34;}"`
 		}
 		assert.Equal(t, 3, strings.Count(html, want), "select, exclude and Repair of selected=%v", selected)
+	}
+}
+
+// The select and exclude buttons of a Take row follow domain.Take.Selectable / Usable, the rule the
+// API offers select_url / reject_url by and the server holds to: a rejected or archived Take has
+// neither, the selected Take can only be excluded.
+func TestShotCard_TakeButtonsFollowTheRuleOfSelectableAndUsable(t *testing.T) {
+	cases := []struct {
+		name string
+		take domain.Take
+	}{
+		{"candidate", domain.Take{Status: domain.TakeCandidate, FilePath: "a.mp4"}},
+		{"ai pick", domain.Take{Status: domain.TakeAIPick, FilePath: "a.mp4"}},
+		{"selected", domain.Take{Status: domain.TakeSelected, FilePath: "a.mp4"}},
+		{"rejected", domain.Take{Status: domain.TakeRejected, FilePath: "a.mp4"}},
+		{"archived", domain.Take{Status: domain.TakeCandidate}},
+	}
+	for _, c := range cases {
+		c.take.ID, c.take.ShotID, c.take.ModelName = "t1", "s1", "m"
+		html := render(t, molecules.ShotCard(molecules.ShotCardData{ProjectID: "p", Shot: domain.Shot{ID: "s1", SceneID: "sc"}, Takes: []domain.Take{c.take}, Selected: true}))
+		assert.Equal(t, c.take.Selectable(), strings.Contains(html, `hx-post="/takes/t1/select"`), "select button of %s", c.name)
+		assert.Equal(t, c.take.Usable(), strings.Contains(html, `hx-delete="/takes/t1"`), "exclude button of %s", c.name)
 	}
 }
 
@@ -122,4 +145,28 @@ func TestShotCard_ContinueButtonNeedsATakeThatWasNotRejected(t *testing.T) {
 	assert.NotContains(t, card(nil), "続きを作る", "no Take")
 	assert.NotContains(t, card(take(domain.TakeRejected)), "続きを作る", "every Take is excluded")
 	assert.Contains(t, card(take(domain.TakeCandidate)), "続きを作る")
+}
+
+// The button answers only after the Continue Agent has run (hx-swap="none": nothing on the card
+// changes meanwhile), so it is disabled while the request is in flight: a second click would pay for a
+// second Agent call and post a second card.
+func TestShotCard_ContinueButtonIsDisabledWhileTheRequestIsInFlight(t *testing.T) {
+	takes := []domain.Take{{ID: "t1", ShotID: "s1", ModelName: "m", FilePath: "a.mp4", Status: domain.TakeCandidate}}
+	html := render(t, molecules.ShotCard(molecules.ShotCardData{ProjectID: "p", Shot: domain.Shot{ID: "s1", SceneID: "sc", State: domain.ShotEditing}, Takes: takes, Selected: true}))
+	start := strings.Index(html, `hx-post="/shots/s1/continue"`)
+	require.GreaterOrEqual(t, start, 0)
+	open := strings.LastIndex(html[:start], "<button")
+	end := start + strings.Index(html[start:], ">")
+	assert.Contains(t, html[open:end], `hx-disabled-elt="this"`)
+}
+
+// The status badge of a Take row names the status as domain.TakeStatus.Label does, as status_label of
+// GET /shots/:id/takes does.
+func TestShotCard_TakeStatusBadgeNamesTheStatusOnScreen(t *testing.T) {
+	want := map[domain.TakeStatus]string{domain.TakeCandidate: "候補", domain.TakeAIPick: "AI Pick", domain.TakeSelected: "採用", domain.TakeRejected: "除外"}
+	for status, label := range want {
+		takes := []domain.Take{{ID: "t1", ShotID: "s1", Status: status}}
+		html := render(t, molecules.ShotCard(molecules.ShotCardData{ProjectID: "p", Shot: domain.Shot{ID: "s1", SceneID: "sc"}, Takes: takes}))
+		assert.Contains(t, html, ">"+label+"<", string(status))
+	}
 }

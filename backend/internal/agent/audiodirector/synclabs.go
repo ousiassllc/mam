@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/resilience"
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/httpclient"
 	"github.com/ousiassllc/mam/backend/internal/safefetch"
@@ -159,26 +160,19 @@ func (s *SyncLabs) Sync(ctx context.Context, req LipSyncRequest) ([]byte, error)
 	return video, nil
 }
 
-// maxTransientAttempts bounds how often one status request or download is tried when the vendor
-// answers 429 / 5xx or the connection breaks. The job was accepted (and is billed) already, so a
-// single transient failure must not lose its output.
-const maxTransientAttempts = 3
-
-// repeat runs fn, repeating it up to maxTransientAttempts times (waiting PollInterval between the
-// tries) while it fails with a transient error. fn must be safe to repeat: a GET of a job that
-// was already accepted.
+// repeat runs fn again while it fails with a transient error (429, 5xx, a broken connection), for as
+// long as ctx lives: the Sync's Timeout, not a number of tries, bounds it, because the job was
+// accepted (and is billed) already and its output is lost when a vendor outage of some seconds ends
+// the wait. It waits PollInterval, doubling up to resilience.JobRetryMaxDelay, or the Retry-After of
+// the answer when that is longer. fn must be safe to repeat: a GET of a job that was already accepted.
 func (s *SyncLabs) repeat(ctx context.Context, fn func() error) error {
-	for attempt := 1; ; attempt++ {
-		err := fn()
-		if err == nil || attempt >= maxTransientAttempts || ctx.Err() != nil || !transient(err) {
-			return err
-		}
-		select {
-		case <-time.After(s.cfg.PollInterval):
-		case <-ctx.Done():
-			return err
-		}
-	}
+	return resilience.Repeat(ctx, resilience.Backoff{Base: s.cfg.PollInterval, Max: resilience.JobRetryMaxDelay},
+		resilience.Hooks{Unavailable: transient}, fn)
+}
+
+// retryAfter attaches the Retry-After of a failed answer to err, so that repeat waits for it.
+func retryAfter(res *http.Response, err error) error {
+	return resilience.WithRetryAfter(err, httpclient.ParseRetryAfter(res.Header.Get("Retry-After")))
 }
 
 // transient reports whether err is a 429, a 5xx or a network failure (a retry can succeed).
@@ -246,7 +240,7 @@ func (s *SyncLabs) send(r *http.Request, key string) (generation, error) {
 		return generation{}, err
 	}
 	if res.StatusCode/100 != 2 {
-		return generation{}, &ProviderError{Vendor: VendorSyncLabs, Status: res.StatusCode, Message: snippet(data)}
+		return generation{}, retryAfter(res, &ProviderError{Vendor: VendorSyncLabs, Status: res.StatusCode, Message: httpclient.Snippet(data)})
 	}
 	var g generation
 	if err := json.Unmarshal(data, &g); err != nil || g.ID == "" {
@@ -270,7 +264,7 @@ func (s *SyncLabs) download(ctx context.Context, link string) ([]byte, error) {
 	}
 	defer func() { _ = res.Body.Close() }()
 	if res.StatusCode/100 != 2 {
-		return nil, &ProviderError{Vendor: VendorSyncLabs, Status: res.StatusCode, Message: "download of the output failed"}
+		return nil, retryAfter(res, &ProviderError{Vendor: VendorSyncLabs, Status: res.StatusCode, Message: "download of the output failed"})
 	}
 	data, err := io.ReadAll(io.LimitReader(res.Body, maxLipSyncBytes+1))
 	if err != nil {

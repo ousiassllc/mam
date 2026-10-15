@@ -11,8 +11,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
-// ErrConflict is returned when a row is not in the state the write requires
-// (for example, an approval card that was already answered).
+// ErrConflict is returned when a row is not in the state the write requires (e.g. an answered card).
 var ErrConflict = errors.New("repository: conflict")
 
 // ProjectRepository persists Projects with their Brief, Assets and chat thread.
@@ -40,7 +39,7 @@ type NewProject struct {
 
 // Create inserts the Project, its Brief, its uploaded Assets and its first messages.
 func (r *ProjectRepository) Create(ctx context.Context, np NewProject) error {
-	now := formatTime(r.now())
+	now := FormatTime(r.now())
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		p := np.Project
 		if err := insertProject(ctx, tx, p, np.Brief, now); err != nil {
@@ -141,7 +140,7 @@ func (r *ProjectRepository) Apply(ctx context.Context, t Turn) error {
 			return fmt.Errorf("marshal checkpoints: %w", err)
 		}
 	}
-	now := formatTime(r.now())
+	now := FormatTime(r.now())
 	err = r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		var exists int
 		if err := tx.QueryRowContext(ctx, `SELECT 1 FROM project WHERE id = ?`, t.ProjectID).Scan(&exists); errors.Is(err, sql.ErrNoRows) {
@@ -239,7 +238,7 @@ func scanProject(row rowScanner) (domain.Project, error) {
 	if err := json.Unmarshal([]byte(checkpoints), &p.CustomCheckpoints); err != nil {
 		return domain.Project{}, fmt.Errorf("decode custom_checkpoints: %w", err)
 	}
-	t, err := parseTime(created)
+	t, err := ParseTime(created)
 	if err != nil {
 		return domain.Project{}, err
 	}
@@ -265,20 +264,11 @@ func (r *ProjectRepository) Get(ctx context.Context, id string) (domain.Project,
 
 // List returns every Project, newest first.
 func (r *ProjectRepository) List(ctx context.Context) ([]domain.Project, error) {
-	rows, err := r.db.Reader().QueryContext(ctx, projectSelect+` ORDER BY p.created_at DESC, p.id DESC`)
+	projects, err := queryAll(ctx, r.db.Reader(), scanProject, projectSelect+` ORDER BY p.created_at DESC, p.id DESC`)
 	if err != nil {
 		return nil, fmt.Errorf("list projects: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
-	var projects []domain.Project
-	for rows.Next() {
-		p, err := scanProject(rows)
-		if err != nil {
-			return nil, fmt.Errorf("scan project: %w", err)
-		}
-		projects = append(projects, p)
-	}
-	return projects, rows.Err()
+	return projects, nil
 }
 
 // GetBrief returns the Brief of a Project or ErrNotFound.
@@ -305,7 +295,8 @@ func nonNilCheckpoints(c []domain.Checkpoint) []domain.Checkpoint {
 	return c
 }
 
-func parseTime(s string) (time.Time, error) {
+// ParseTime reads a timestamp in the format the tables store (see FormatTime).
+func ParseTime(s string) (time.Time, error) {
 	t, err := time.Parse(timeLayout, s)
 	if err != nil {
 		return time.Time{}, fmt.Errorf("parse time %q: %w", s, err)

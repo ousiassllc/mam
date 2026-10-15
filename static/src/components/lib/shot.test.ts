@@ -1,12 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import { createRefreshGuard, describeProgress, isFinished, planCardRefresh, progressFraction } from './shot';
+import { createRefreshGuard, describeProgress, isFinished, progressFraction } from './shot';
 
 describe('isFinished', () => {
   it('is true once the work is over or nothing is running', () => {
-    expect(['done', 'failed', 'idle'].map((stage) => isFinished({ stage: stage as never }))).toEqual([true, true, true]);
+    expect(['done', 'failed', 'idle'].map((stage) => isFinished({ stage: stage as never }))).toEqual([
+      true,
+      true,
+      true,
+    ]);
   });
   it('is false while the Shot is queued or generating', () => {
-    expect(['queued', 'generating', 'judging'].map((stage) => isFinished({ stage: stage as never }))).toEqual([false, false, false]);
+    expect(['queued', 'generating', 'judging'].map((stage) => isFinished({ stage: stage as never }))).toEqual([
+      false,
+      false,
+      false,
+    ]);
   });
 });
 
@@ -18,7 +26,9 @@ describe('describeProgress', () => {
     expect(describeProgress({ stage: 'queued', action: 'judge' })).toBe('Judge の順番を待っています');
     expect(describeProgress({ stage: 'generating', takes_done: 1, takes_total: 3 })).toBe('生成中 1 / 3 Take');
     expect(describeProgress({ stage: 'queued', action: 'candidates' })).toBe('生成の順番を待っています');
-    expect(describeProgress({ stage: 'generating', action: 'candidates', takes_done: 1, takes_total: 3 })).toBe('生成中 1 / 3 Take');
+    expect(describeProgress({ stage: 'generating', action: 'candidates', takes_done: 1, takes_total: 3 })).toBe(
+      '生成中 1 / 3 Take',
+    );
     expect(describeProgress({ stage: 'generating' })).toBe('生成中');
     expect(describeProgress({ stage: 'queued', action: 'repair' })).toBe('修正の順番を待っています');
     expect(describeProgress({ stage: 'repairing', action: 'repair' })).toBe('修正中');
@@ -58,30 +68,5 @@ describe('createRefreshGuard', () => {
     expect(mayRefresh('/shots/a', 'failed')).toBe(true);
     t += 10;
     expect(mayRefresh('/shots/a', 'idle')).toBe(false);
-  });
-});
-
-describe('planCardRefresh', () => {
-  const card = { id: 'shot-b', refreshUrl: '/projects/p/scenes/s?shot=b' };
-
-  it('refreshes the whole Shot view when the selected Shot finished', () => {
-    expect(planCardRefresh({ ...card, selected: true }, '/projects/p/scenes/s?shot=b')).toEqual({
-      url: '/projects/p/scenes/s?shot=b',
-      target: '#scene-shot-view',
-      swap: 'outerHTML',
-    });
-  });
-
-  it('refreshes only the finished card, from the selected Shot page, when another Shot is viewed', () => {
-    expect(planCardRefresh({ ...card, selected: false }, '/projects/p/scenes/s?shot=a')).toEqual({
-      url: '/projects/p/scenes/s?shot=a',
-      target: '#shot-b',
-      swap: 'outerHTML',
-      select: '#shot-b',
-    });
-  });
-
-  it('asks for the Scene page without ?shot= when no Shot is selected, so the card is not rendered as selected', () => {
-    expect(planCardRefresh({ ...card, selected: false }, null).url).toBe('/projects/p/scenes/s');
   });
 });

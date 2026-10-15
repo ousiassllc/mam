@@ -2,27 +2,91 @@ name: Release
 
 # A v<X.Y.Z> tag push builds the Windows desktop version (Wails window + NSIS installer) and
 # publishes the GitHub Release. No code signing (spec/environment/setup.md "リリース").
+#
+# Three jobs, so that the build never holds a write token and nothing is published unchecked:
+#   verify  the tagged commit is in main's history, passed ci.yml, and has no reachable known vulnerability
+#   build   package + smoke test; contents: read only; hands the two exes over as an artifact
+#   release gh release create only; the one job with contents: write
+# `uses:` are pinned to a commit SHA (the comment is the tag; dependabot's github-actions keeps both up to date).
 on:
   push:
     tags: ['v*']
 
 permissions:
-  contents: write
+  contents: read
+
+env:
+  # Pinned: choco installs the latest by default. Keep the version available on community.chocolatey.org/packages/nsis.
+  NSIS_VERSION: 3.11.0
 
 jobs:
-  windows:
+  verify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read # gh run list (the CI result of the tagged commit)
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0 # the history of main, for the ancestry check
+
+      - name: The tagged commit is in main's history
+        run: |
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::$GITHUB_REF_NAME ($GITHUB_SHA) is not in main's history: tag a commit that is merged into main"
+            exit 1
+          fi
+
+      - name: ci.yml succeeded on the tagged commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ok="$(gh run list --workflow ci.yml --commit "$GITHUB_SHA" --json conclusion --jq 'any(.[]; .conclusion == "success")')"
+          if [ "$ok" != "true" ]; then
+            echo "::error::no successful CI run for $GITHUB_SHA: wait for CI to pass on this commit (or fix it) before tagging"
+            exit 1
+          fi
+
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: static/package-lock.json
+
+      - name: Install tools
+        run: |
+          make tools
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Generate
+        run: make generate
+
+      # A new advisory since the CI run (the release can be tagged later) stops the release too.
+      - name: Vulnerability check
+        run: make vuln
+
+  build:
+    needs: verify
     runs-on: windows-latest
+    permissions:
+      contents: read
     defaults:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version-file: go.mod
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24
           cache: npm
@@ -32,7 +96,7 @@ jobs:
         run: |
           go install github.com/a-h/templ/cmd/templ@"$(go list -m -f '{{.Version}}' github.com/a-h/templ)"
           go install github.com/wailsapp/wails/v3/cmd/wails3@"$(go list -m -f '{{.Version}}' github.com/wailsapp/wails/v3)"
-          choco install nsis --no-progress -y
+          choco install nsis --version "$NSIS_VERSION" --no-progress -y
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
           echo "C:/Program Files (x86)/NSIS" >> "$GITHUB_PATH"
 
@@ -42,14 +106,32 @@ jobs:
       - name: Smoke test the installer
         run: bash scripts/smoke-windows.sh "bin/mam-${GITHUB_REF_NAME#v}-windows-amd64-setup.exe"
 
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: windows-release
+          path: bin/mam-*-windows-amd64*.exe
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: windows-release
+          path: dist
+
       - name: Create the release
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }} # no checkout in this job
         run: |
           version="${GITHUB_REF_NAME#v}"
           gh release create "$GITHUB_REF_NAME" \
             --title "$GITHUB_REF_NAME" \
             --generate-notes \
             --verify-tag \
-            "bin/mam-$version-windows-amd64-setup.exe" \
-            "bin/mam-$version-windows-amd64.exe"
+            "dist/mam-$version-windows-amd64-setup.exe" \
+            "dist/mam-$version-windows-amd64.exe"

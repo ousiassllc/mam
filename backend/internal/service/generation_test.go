@@ -22,7 +22,9 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
 )
 
 const (
@@ -189,10 +191,7 @@ func newGenFixtureWithFreeBytes(t *testing.T, withModels bool, freeBytes func(st
 // newGenFixtureWithDeps is newGenFixtureWithFreeBytes with a last look at the Deps (nil: none).
 func newGenFixtureWithDeps(t *testing.T, withModels bool, freeBytes func(string) (uint64, error), tweak func(*service.Deps)) genFixture {
 	t.Helper()
-	dir := t.TempDir()
-	db, err := repository.Open(context.Background(), filepath.Join(dir, "mam.db"), nil)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = db.Close() })
+	db := testdb.Open(t)
 
 	fake, reasoner := &modelFake{}, &genReasoner{}
 	backends := modeladapter.Backends{Image: map[domain.ModelName]modeladapter.ImageBackend{}, Video: map[domain.ModelName]modeladapter.VideoBackend{}}
@@ -203,16 +202,15 @@ func newGenFixtureWithDeps(t *testing.T, withModels bool, freeBytes func(string)
 		backends.Video[m] = fake
 	}
 	noSleep := func(context.Context, time.Duration) error { return nil }
-	deps := service.Deps{DB: db, AssetsDir: filepath.Join(dir, "assets"), LLM: reasoner, FreeBytes: freeBytes}
 	jobs := jobqueue.New(repository.NewJobRepository(db), jobqueue.Options{})
-	deps.Jobs = jobs
+	deps := service.Deps{DB: db, AssetsDir: filepath.Join(t.TempDir(), "assets"), LLM: reasoner, FreeBytes: freeBytes, Jobs: jobs}
 	if withModels {
-		deps.Models = modeladapter.New(modeladapter.DefaultConfig(), backends, modeladapter.WithSleep(noSleep))
+		deps.Models = modeladapter.New(modeladapter.DefaultConfig(), backends, modeladapter.WithSleep(noSleep), modeladapter.WithTimeLimit(shortLimit))
 	}
 	if tweak != nil {
 		tweak(&deps)
 	}
-	svc := service.New(deps)
+	svc := servicetest.New(t, deps)
 	ctx, cancel := context.WithCancel(context.Background())
 	jobs.Start(ctx)
 	t.Cleanup(func() { cancel(); jobs.Stop() })
@@ -548,10 +546,7 @@ func TestSubscribeShot_SaysIdleWhenNothingRunsAndStreamsProgressUntilDone(t *tes
 func TestSubscribeShot_RepairingShotIsToldItIsRepairing(t *testing.T) {
 	f := newGenFixture(t, true)
 	ctx := context.Background()
-	require.NoError(t, f.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
-		_, err := tx.ExecContext(ctx, `UPDATE shot SET state = 'REPAIRING' WHERE id = ?`, f.shotID)
-		return err
-	}))
+	f.execSQL(t, `UPDATE shot SET state = 'REPAIRING' WHERE id = ?`, f.shotID)
 
 	ch, cancel, err := f.svc.Generation.SubscribeShot(ctx, f.shotID)
 	require.NoError(t, err)
@@ -596,10 +591,7 @@ func TestGenerateShot_RejectsAnOverlongInstruction(t *testing.T) {
 
 func TestRecover_ReleasesShotsThatWereBeingGeneratedWhenTheAppStopped(t *testing.T) {
 	f := newGenFixture(t, true)
-	require.NoError(t, f.db.Write(context.Background(), func(ctx context.Context, tx *sql.Tx) error {
-		_, err := tx.ExecContext(ctx, `UPDATE shot SET state = 'GENERATING' WHERE id = ?`, f.shotID)
-		return err
-	}))
+	f.execSQL(t, `UPDATE shot SET state = 'GENERATING' WHERE id = ?`, f.shotID)
 
 	n, err := f.svc.Recover(context.Background())
 	require.NoError(t, err)

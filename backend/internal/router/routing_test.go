@@ -49,7 +49,7 @@ func (g *genApp) generateAfterSeed(seeded int) {
 	require.Equal(g.t, http.StatusAccepted, g.form(http.MethodPost, "/shots/"+g.shotID+"/generate", nil).Code)
 	g.waitTakes(seeded + 3)
 	require.Eventually(g.t, func() bool {
-		return strings.Contains(g.get("/shots/"+g.shotID, true).Body.String(), "PLANNING")
+		return strings.Contains(g.get("/shots/"+g.shotID, true).Body.String(), "· 計画中")
 	}, 30*time.Second, 10*time.Millisecond)
 }
 

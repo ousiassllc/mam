@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -88,8 +89,12 @@ func (r *WorldRepository) AgentLocks(ctx context.Context, projectID string) (dom
 // trunk, or of the Branch when branchID is set. `branch_id IS ?` matches NULL (the trunk) for "".
 func readWorld(ctx context.Context, q queryer, projectID, branchID string) (domain.WorldContext, error) {
 	var w domain.WorldContext
-	chars, err := q.QueryContext(ctx,
-		`SELECT c.id, c.name, COALESCE(c.hairstyle, ''), COALESCE(c.wardrobe, ''), COALESCE(c.voice, ''), COALESCE(c.personality, ''),
+	var err error
+	w.Characters, err = queryAll(ctx, q, func(row rowScanner) (domain.WorldCharacter, error) {
+		var c domain.WorldCharacter
+		return c, row.Scan(&c.ID, &c.Name, &c.Hairstyle, &c.Wardrobe, &c.Voice, &c.Personality,
+			&c.Emotion, &c.Position, &c.CurrentAction, &c.FaceReferenceAssetID, &c.BodyReferenceAssetID, &c.SeriesFaceReferenceAssetID)
+	}, `SELECT c.id, c.name, COALESCE(c.hairstyle, ''), COALESCE(c.wardrobe, ''), COALESCE(c.voice, ''), COALESCE(c.personality, ''),
 		        COALESCE(c.emotion, ''), COALESCE(c.position, ''), COALESCE(c.current_action, ''),
 		        COALESCE(c.face_reference_asset_id, ''), COALESCE(c.body_reference_asset_id, ''),
 		        COALESCE(o.face_reference_asset_id, '')
@@ -98,54 +103,22 @@ func readWorld(ctx context.Context, q queryer, projectID, branchID string) (doma
 	if err != nil {
 		return w, fmt.Errorf("list characters: %w", err)
 	}
-	defer func() { _ = chars.Close() }()
-	for chars.Next() {
-		var c domain.WorldCharacter
-		if err := chars.Scan(&c.ID, &c.Name, &c.Hairstyle, &c.Wardrobe, &c.Voice, &c.Personality,
-			&c.Emotion, &c.Position, &c.CurrentAction, &c.FaceReferenceAssetID, &c.BodyReferenceAssetID, &c.SeriesFaceReferenceAssetID); err != nil {
-			return w, err
-		}
-		w.Characters = append(w.Characters, c)
-	}
-	if err := chars.Err(); err != nil {
-		return w, err
-	}
-
-	prods, err := q.QueryContext(ctx,
-		`SELECT id, name, COALESCE(material, ''), COALESCE(orientation, ''), COALESCE(condition, ''),
+	w.Products, err = queryAll(ctx, q, func(row rowScanner) (domain.WorldProduct, error) {
+		var p domain.WorldProduct
+		return p, row.Scan(&p.ID, &p.Name, &p.Material, &p.Orientation, &p.Condition, &p.GeometryReferenceAssetID, &p.LabelReferenceAssetID)
+	}, `SELECT id, name, COALESCE(material, ''), COALESCE(orientation, ''), COALESCE(condition, ''),
 		        COALESCE(geometry_reference_asset_id, ''), COALESCE(label_reference_asset_id, '')
 		 FROM product WHERE project_id = ? AND branch_id IS ? ORDER BY name, id`, projectID, nullIfEmpty(branchID))
 	if err != nil {
 		return w, fmt.Errorf("list products: %w", err)
 	}
-	defer func() { _ = prods.Close() }()
-	for prods.Next() {
-		var p domain.WorldProduct
-		if err := prods.Scan(&p.ID, &p.Name, &p.Material, &p.Orientation, &p.Condition, &p.GeometryReferenceAssetID, &p.LabelReferenceAssetID); err != nil {
-			return w, err
-		}
-		w.Products = append(w.Products, p)
-	}
-	if err := prods.Err(); err != nil {
-		return w, err
-	}
-
-	locs, err := q.QueryContext(ctx,
-		`SELECT id, name, COALESCE(time, ''), COALESCE(lighting_state, ''), COALESCE(weather, ''), COALESCE(layout_reference_asset_id, '')
+	w.Locations, err = queryAll(ctx, q, func(row rowScanner) (domain.WorldLocation, error) {
+		var l domain.WorldLocation
+		return l, row.Scan(&l.ID, &l.Name, &l.Time, &l.LightingState, &l.Weather, &l.LayoutReferenceAssetID)
+	}, `SELECT id, name, COALESCE(time, ''), COALESCE(lighting_state, ''), COALESCE(weather, ''), COALESCE(layout_reference_asset_id, '')
 		 FROM location WHERE project_id = ? AND branch_id IS ? ORDER BY name, id`, projectID, nullIfEmpty(branchID))
 	if err != nil {
 		return w, fmt.Errorf("list locations: %w", err)
-	}
-	defer func() { _ = locs.Close() }()
-	for locs.Next() {
-		var l domain.WorldLocation
-		if err := locs.Scan(&l.ID, &l.Name, &l.Time, &l.LightingState, &l.Weather, &l.LayoutReferenceAssetID); err != nil {
-			return w, err
-		}
-		w.Locations = append(w.Locations, l)
-	}
-	if err := locs.Err(); err != nil {
-		return w, err
 	}
 
 	var state string
@@ -174,29 +147,29 @@ func readLocks(ctx context.Context, q queryer, projectID string) (domain.LockSet
 
 // readLockRows reads the lock rows whose mode holds.
 func readLockRows(ctx context.Context, q queryer, projectID string, holds func(domain.LockMode) bool) (domain.LockSet, error) {
-	rows, err := q.QueryContext(ctx, `SELECT target_type, target_id, parameter_name, mode FROM lock WHERE project_id = ? AND mode <> 'auto'`, projectID)
+	type lockRow struct {
+		key  domain.LockKey
+		mode domain.LockMode
+	}
+	rows, err := queryAll(ctx, q, func(row rowScanner) (lockRow, error) {
+		var l lockRow
+		return l, row.Scan(&l.key.Target, &l.key.ID, &l.key.Field, &l.mode)
+	}, `SELECT target_type, target_id, parameter_name, mode FROM lock WHERE project_id = ? AND mode <> 'auto'`, projectID)
 	if err != nil {
 		return nil, fmt.Errorf("list locks: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
 	locks := domain.LockSet{}
-	for rows.Next() {
-		var (
-			k    domain.LockKey
-			mode domain.LockMode
-		)
-		if err := rows.Scan(&k.Target, &k.ID, &k.Field, &mode); err != nil {
-			return nil, err
-		}
-		if !holds(mode) {
+	for _, l := range rows {
+		if !holds(l.mode) {
 			continue
 		}
+		k := l.key
 		if k.Target.IsSingleton() {
 			k.ID = ""
 		}
 		locks[k] = struct{}{}
 	}
-	return locks, rows.Err()
+	return locks, nil
 }
 
 // appendVersion appends a snapshot of the World State as the next world_state_version of the trunk
@@ -214,7 +187,7 @@ func (r *WorldRepository) appendVersion(ctx context.Context, tx *sql.Tx, project
 	id := domain.NewID()
 	if _, err := tx.ExecContext(ctx,
 		`INSERT INTO world_state_version (id, project_id, branch_id, version_number, state, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
-		id, projectID, nullIfEmpty(branchID), next, string(state), formatTime(r.now())); err != nil {
+		id, projectID, nullIfEmpty(branchID), next, string(state), FormatTime(r.now())); err != nil {
 		return "", 0, err
 	}
 	return id, next, nil
@@ -343,7 +316,7 @@ func (r *WorldRepository) ApplyStateDiff(ctx context.Context, projectID, branchI
 		}
 		_, err = tx.ExecContext(ctx,
 			`INSERT INTO state_diff (id, shot_id, take_id, diff, world_state_version_id, applied_at) VALUES (?, ?, ?, ?, ?, ?)`,
-			domain.NewID(), shotID, takeID, string(raw), versionID, formatTime(r.now()))
+			domain.NewID(), shotID, takeID, string(raw), versionID, FormatTime(r.now()))
 		return err
 	})
 	if err != nil {
@@ -372,25 +345,12 @@ func ensureWorldEntity(ctx context.Context, tx *sql.Tx, projectID, branchID stri
 	}
 	// "Mio" and "mio " name the same entity (domain.SameReferenceName): SQLite's = and NOCASE would
 	// tell them apart (and only fold ASCII), so the names are compared here.
-	rows, err := tx.QueryContext(ctx, `SELECT name FROM `+table+` WHERE project_id = ? AND branch_id IS ?`, projectID, nullIfEmpty(branchID)) //nolint:gosec // table is from worldTables
+	existing, err := queryAll(ctx, tx, scanString, `SELECT name FROM `+table+` WHERE project_id = ? AND branch_id IS ?`, projectID, nullIfEmpty(branchID)) //nolint:gosec // table is from worldTables
 	if err != nil {
 		return err
 	}
-	defer func() { _ = rows.Close() }()
-	for rows.Next() {
-		var existing string
-		if err := rows.Scan(&existing); err != nil {
-			return err
-		}
-		if domain.SameReferenceName(existing, name) {
-			return nil
-		}
-	}
-	if err := rows.Err(); err != nil {
-		return err
-	}
-	if err := rows.Close(); err != nil {
-		return err
+	if slices.ContainsFunc(existing, func(n string) bool { return domain.SameReferenceName(n, name) }) {
+		return nil
 	}
 	_, err = tx.ExecContext(ctx, `INSERT INTO `+table+` (id, project_id, branch_id, name) VALUES (?, ?, ?, ?)`, domain.NewID(), projectID, nullIfEmpty(branchID), name) //nolint:gosec // table is from worldTables
 	return err

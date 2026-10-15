@@ -11,8 +11,9 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
-	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
 )
 
 // cancellingCloner creates the voice (billed) and then the client goes away.
@@ -25,12 +26,10 @@ func (c cancellingCloner) Clone(context.Context, string, audiodirector.Sample) (
 
 func TestCloneVoice_ABilledVoiceIsStoredEvenWhenTheRequestIsCancelled(t *testing.T) {
 	dir := t.TempDir()
-	db, err := repository.Open(context.Background(), filepath.Join(dir, "mam.db"), nil)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = db.Close() })
+	db := testdb.Open(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	svc := service.New(service.Deps{DB: db, AssetsDir: filepath.Join(dir, "assets"), Audio: audiodirector.Providers{Cloner: cancellingCloner{cancel: cancel}}})
+	svc := servicetest.New(t, service.Deps{DB: db, AssetsDir: filepath.Join(dir, "assets"), Audio: audiodirector.Providers{Cloner: cancellingCloner{cancel: cancel}}})
 	p, err := svc.Projects.Create(context.Background(), service.CreateProjectInput{Content: "商品CM"})
 	require.NoError(t, err)
 

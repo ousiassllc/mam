@@ -93,7 +93,7 @@ func (s *EditorService) afterFinalQC(ctx context.Context, in finalqc.Input, res 
 		if err := s.projects.Transition(ctx, projectID, stage); err != nil {
 			return err
 		}
-		s.announce(ctx, projectID, fmt.Sprintf("Final QC: FAIL。%s に戻します。\n%s", stageLabel(stage), describeQC(findings)))
+		s.announce(ctx, projectID, assistantText(fmt.Sprintf("Final QC: FAIL。%s に戻します。\n%s", stageLabel(stage), describeQC(findings))))
 		return nil
 	}
 	summary := fmt.Sprintf("Final QC に合格しました（%.1f 秒 / %.1f LUFS）。書き出してよいですか？", in.Edit.Timeline.Duration(), in.Audio.Timeline.MeasuredLUFS)
@@ -111,7 +111,7 @@ func (s *EditorService) afterFinalQC(ctx context.Context, in finalqc.Input, res 
 	if len(findings) > 0 {
 		text += "\n" + describeQC(findings)
 	}
-	s.announce(ctx, projectID, text)
+	s.announce(ctx, projectID, assistantText(text))
 	return nil
 }
 

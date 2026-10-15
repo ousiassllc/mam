@@ -174,18 +174,20 @@ func (s *BranchService) detail(ctx context.Context, branch domain.Branch) (Branc
 	return d, nil
 }
 
-// Create saves the Branch Point at the Shot and snapshots the World State there (POST
-// /shots/:id/branch). With a Direction the AI also plans the first Shot of the Branch and starts
-// generating it; a Direction needs generation to be configured (ErrUnavailable otherwise, before
-// anything is made), and one with a forbidden expression of a LOCK Brand constraint is
-// ErrBrandViolation, also before anything is made. An unknown Shot is ErrNotFound; an unusable type,
-// offset or name is a ValidationError.
+// Create saves the Branch Point at the Shot and snapshots the World State there (POST /shots/:id/branch). With a Direction the AI also plans the
+// first Shot of the Branch and starts generating it; a Direction needs generation to be configured (ErrUnavailable otherwise) and must not hold a
+// forbidden expression of a LOCK Brand constraint (ErrBrandViolation), both before anything is made. An unknown Shot is ErrNotFound; an unusable
+// type, offset or name is a ValidationError. An identical request still being served (a double click, a second tab) is ErrConflict, not a second Branch.
 func (s *BranchService) Create(ctx context.Context, shotID string, in BranchInput) (BranchDetail, error) {
+	key := fmt.Sprintf("branch\x00%s\x00%q", shotID, in) // answering also holds Shot IDs: the prefix keeps the keys apart
+	if _, busy := s.answering.LoadOrStore(key, struct{}{}); busy {
+		return BranchDetail{}, ErrConflict
+	}
+	defer s.answering.Delete(key)
 	return s.create(ctx, shotID, in, false)
 }
 
-// create is Create; aiChoice has the AI plan and generate the first Shot even without a Direction
-// (the development is left to it).
+// create is Create; aiChoice has the AI plan and generate the first Shot even without a Direction (the development is left to it).
 func (s *BranchService) create(ctx context.Context, shotID string, in BranchInput, aiChoice bool) (BranchDetail, error) {
 	ref, err := s.shots.GetShot(ctx, shotID)
 	if err != nil {
@@ -196,8 +198,8 @@ func (s *BranchService) create(ctx context.Context, shotID string, in BranchInpu
 		return BranchDetail{}, err
 	}
 	direction := strings.TrimSpace(in.Direction)
-	if utf8.RuneCountInString(direction) > maxInstructionRunes {
-		return BranchDetail{}, invalid("direction", "%d 文字以内で入力してください", maxInstructionRunes)
+	if utf8.RuneCountInString(direction) > domain.MaxInstructionRunes {
+		return BranchDetail{}, invalid("direction", "%d 文字以内で入力してください", domain.MaxInstructionRunes)
 	}
 	generate := direction != "" || aiChoice
 	if generate && !s.canContinue() {
@@ -210,15 +212,13 @@ func (s *BranchService) create(ctx context.Context, shotID string, in BranchInpu
 	if err != nil {
 		return BranchDetail{}, notFound(err)
 	}
-	started := false
 	if generate {
 		if err := s.continueBranch(ctx, ref, branch, direction); err != nil {
 			return BranchDetail{}, err
 		}
-		started = true
 	}
 	d, err := s.detail(ctx, branch)
-	d.Started = started
+	d.Started = generate // continueBranch started the first Shot
 	return d, err
 }
 

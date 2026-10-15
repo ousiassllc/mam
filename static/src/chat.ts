@@ -3,21 +3,19 @@
  * only listens to /ws/projects/:id and asks for HTML fragments when told something changed
  * (the socket never carries a body), and handles the composer (reply target, attachments, Enter to send).
  */
-import { ajaxChecked, ajaxGet, showToast } from './ajax';
+import { ajaxChecked, showToast } from './ajax';
 import { createConnectionNotice, releaseIfDetached } from './components/lib/connection-notice';
 import { AJAX_FAILED_MESSAGE } from './components/lib/ajax';
 import { selfAndDescendants } from './components/lib/query';
-import { createSyncer } from './components/lib/sync';
+import { createSyncer, type Syncer } from './components/lib/sync';
 import { connect, socketUrl } from './components/lib/ws';
 import {
   type ComposerSnapshot,
-  cardUrl,
   catchUpAfterReconnect,
   fieldsToClear,
   fileKey,
   isSendKey,
   isSuccessResponse,
-  messagesUrl,
   removeDuplicateIds,
   type ProjectEvent,
 } from './components/lib/thread';
@@ -36,7 +34,7 @@ export function initChatWorkspaces(root: ParentNode = document): void {
 }
 
 class ChatWorkspace {
-  private readonly projectId: string;
+  private readonly messagesUrl: string;
   private readonly thread: HTMLElement;
   private readonly composer: HTMLFormElement;
   private readonly content: HTMLTextAreaElement;
@@ -44,12 +42,14 @@ class ChatWorkspace {
   private stickToBottom = true; // is the thread scrolled to the bottom (so new messages should be followed)?
   /** Fetches the messages after the last one shown; requests are merged and a failure is retried. */
   private readonly syncer = createSyncer({
-    run: () => ajaxChecked('get', messagesUrl(this.projectId, this.lastMessageId()), { target: THREAD, swap: 'beforeend', source: THREAD }),
+    run: () => ajaxChecked('get', this.nextMessagesUrl(), { target: THREAD, swap: 'beforeend', source: THREAD }),
     onGiveUp: () => showToast(AJAX_FAILED_MESSAGE),
   });
+  /** One per card: a card refetch that failed is retried with a backoff, as syncer does for new messages. */
+  private readonly cardSyncers = new Map<string, Syncer>();
 
   constructor(private readonly root: HTMLElement) {
-    this.projectId = root.dataset.projectId ?? '';
+    this.messagesUrl = root.dataset.messagesUrl ?? '';
     this.thread = root.querySelector<HTMLElement>(THREAD)!;
     this.composer = root.querySelector<HTMLFormElement>('#chat-composer')!;
     this.content = this.composer.querySelector<HTMLTextAreaElement>('#composer-content')!;
@@ -90,14 +90,33 @@ class ChatWorkspace {
     this.syncNew();
   }
 
-  private refetchCard(messageId: string): Promise<boolean> {
-    return ajaxGet(cardUrl(this.projectId, messageId), { target: `#msg-${CSS.escape(messageId)}`, swap: 'outerHTML' });
+  /**
+   * Replaces the card with the server's current one, from the URL the server put on it (data-card-url).
+   * The URL is read on every attempt: a retry stops by itself once the card is gone from the thread.
+   */
+  private refetchCard(messageId: string): Promise<void> {
+    let syncer = this.cardSyncers.get(messageId);
+    if (!syncer) {
+      const target = `#msg-${CSS.escape(messageId)}`;
+      syncer = createSyncer({
+        run: async () => {
+          const url = this.thread.querySelector<HTMLElement>(target)?.dataset.cardUrl;
+          if (url) await ajaxChecked('get', url, { target, swap: 'outerHTML', source: target });
+        },
+        onGiveUp: () => showToast(AJAX_FAILED_MESSAGE),
+      });
+      this.cardSyncers.set(messageId, syncer);
+    }
+    return syncer.request();
   }
 
   private catchUp(): Promise<unknown> {
     return catchUpAfterReconnect({
       pendingMessageIds: () =>
-        Array.from(this.thread.querySelectorAll<HTMLElement>('[data-card-pending]'), (el) => el.dataset.messageId ?? '').filter(Boolean),
+        Array.from(
+          this.thread.querySelectorAll<HTMLElement>('[data-card-pending]'),
+          (el) => el.dataset.messageId ?? '',
+        ).filter(Boolean),
       refetchCard: (id) => this.refetchCard(id),
       syncNew: () => this.syncer.request(),
     });
@@ -107,9 +126,10 @@ class ChatWorkspace {
     void this.syncer.request();
   }
 
-  private lastMessageId(): string {
+  /** Where the messages newer than the last one shown are: the server put it on that message (data-next-url), else the whole thread. */
+  private nextMessagesUrl(): string {
     const items = this.thread.querySelectorAll<HTMLElement>('[data-message-id]');
-    return items.item(items.length - 1)?.dataset.messageId ?? '';
+    return items.item(items.length - 1)?.dataset.nextUrl || this.messagesUrl;
   }
 
   private bindThread(): void {
@@ -172,7 +192,8 @@ class ChatWorkspace {
     });
     // Card buttons post replies on their own (not the refetches of syncNew): clear the pending reply target with them.
     this.thread.addEventListener('htmx:afterRequest', (event) => {
-      if ((event.target as HTMLElement).hasAttribute('hx-post') && isSuccessResponse(requestXhr(event))) this.setReplyTarget('', '');
+      if ((event.target as HTMLElement).hasAttribute('hx-post') && isSuccessResponse(requestXhr(event)))
+        this.setReplyTarget('', '');
     });
   }
 

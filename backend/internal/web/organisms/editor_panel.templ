@@ -1,9 +1,7 @@
 package organisms
 
 import (
-	"encoding/json"
 	"fmt"
-	"net/url"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
@@ -36,24 +34,9 @@ type EditorPanelData struct {
 	CanRender bool
 }
 
-func editorAPIURL(projectID, branchID string) string {
-	return "/api/v1" + paths.Project(projectID, "edit-timeline") + branchQuery(branchID)
-}
-
-func branchQuery(branchID string) string {
-	if branchID == "" {
-		return ""
-	}
-	return "?branch_id=" + url.QueryEscape(branchID)
-}
-
 // branchVals is the hx-vals that tell a stage action which Branch it works on.
 func branchVals(branchID string) string {
-	raw, err := json.Marshal(map[string]string{"branch_id": branchID})
-	if err != nil { // only strings: Marshal cannot fail
-		panic(err)
-	}
-	return string(raw)
+	return atoms.HxVals(map[string]string{"branch_id": branchID})
 }
 
 // CanRequestShots reports whether the Director can be asked for the additional Shots the Editor
@@ -159,7 +142,7 @@ templ EditorWorkspace(d EditorPanelData) {
 			<h2 class="text-lg font-semibold">編集・音声・書き出し</h2>
 			@ProjectStateBadge(d.Project.State, false)
 		</div>
-		<mam-timeline-editor api-url={ editorAPIURL(d.Project.ID, d.BranchID) }></mam-timeline-editor>
+		<mam-timeline-editor api-url={ paths.WithBranch(paths.APIProject(d.Project.ID, "edit-timeline"), d.BranchID) }></mam-timeline-editor>
 		@EditorActions(d)
 	</section>
 }
@@ -177,7 +160,7 @@ templ EditorActions(d EditorPanelData) {
 	<div
 		id="editor-actions"
 		class="flex flex-col gap-5"
-		hx-get={ paths.Project(d.Project.ID, "edit", "actions") + branchQuery(d.BranchID) }
+		hx-get={ paths.WithBranch(paths.Project(d.Project.ID, "edit", "actions"), d.BranchID) }
 		hx-trigger="timeline-updated from:body"
 		hx-swap="outerHTML"
 	>
@@ -268,23 +251,14 @@ templ EditorActions(d EditorPanelData) {
 			if !d.CanRender {
 				<p class="text-xs text-amber-300">ffmpeg / ffprobe が見つからないため、音声と書き出しは使えません。</p>
 			}
-			<form
-				hx-post={ paths.Project(d.Project.ID, "audio", "voices") }
-				hx-encoding="multipart/form-data"
-				hx-target="#editor-actions"
-				hx-swap="outerHTML"
-				hx-disabled-elt="find button"
-				hx-vals={ branchVals(d.BranchID) }
-				class="flex flex-wrap items-end gap-3"
-				aria-label="音声クローン"
-			>
+			<form hx-post={ paths.Project(d.Project.ID, "audio", "voices") } hx-encoding="multipart/form-data" hx-target="#editor-actions" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button" hx-vals={ branchVals(d.BranchID) } class="flex flex-wrap items-end gap-3" aria-label="音声クローン">
 				<label class="flex flex-col gap-1 text-xs text-neutral-400">
 					話者名（脚本の「話者: セリフ」の話者）
 					@atoms.Input(atoms.FieldMd, "", templ.Attributes{
 						"type":      "text",
 						"name":      "speaker",
 						"required":  true,
-						"maxlength": "20",
+						"maxlength": intText(domain.MaxSpeakerRunes),
 					})
 				</label>
 				<label class="flex flex-col gap-1 text-xs text-neutral-400">
@@ -328,14 +302,7 @@ templ EditorActions(d EditorPanelData) {
 		</section>
 		<section class="flex flex-col gap-2" aria-label="Export">
 			<h3 class="text-sm font-semibold">5. 書き出し</h3>
-			<form
-				hx-post={ paths.Project(d.Project.ID, "export") }
-				hx-target="#editor-actions"
-				hx-swap="outerHTML"
-				hx-disabled-elt="find button"
-				hx-vals={ branchVals(d.BranchID) }
-				class="flex flex-wrap items-end gap-3"
-			>
+			<form hx-post={ paths.Project(d.Project.ID, "export") } hx-target="#editor-actions" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button" hx-vals={ branchVals(d.BranchID) } class="flex flex-wrap items-end gap-3">
 				<label class="flex flex-col gap-1 text-xs text-neutral-400">
 					Aspect Ratio
 					@atoms.Select(atoms.FieldMd, "", templ.Attributes{

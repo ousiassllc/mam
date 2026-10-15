@@ -1,20 +1,34 @@
 package molecules
 
-import "github.com/ousiassllc/mam/backend/internal/web/atoms"
+import (
+	"slices"
+	"strconv"
+
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+)
 
 // WorldStateFieldData is one field of the World State. Locked fields cannot be edited (F-10, §9.3).
 type WorldStateFieldData struct {
-	// ID is the DOM id of the input, unique on the page.
+	// ID is the DOM id of the input, unique on the page; the element around it has the id ID + "-field".
 	ID     string
 	Name   string // form field name
 	Label  string
 	Value  string
 	Locked bool
+	// OOB makes the field replace the one already on the page, so the response to a LOCK switch can
+	// redraw this field alone (the other fields of the form keep what the user has typed).
+	OOB bool
 }
 
 // WorldStateField is a labelled text input; when the field is LOCKed it is read-only and marked.
 templ WorldStateField(d WorldStateFieldData) {
-	<div>
+	<div
+		id={ d.ID + "-field" }
+		if d.OOB {
+			hx-swap-oob="true"
+		}
+	>
 		<label for={ d.ID } class="mb-1 flex items-center gap-2 text-xs text-neutral-400">
 			{ d.Label }
 			if d.Locked {
@@ -26,9 +40,28 @@ templ WorldStateField(d WorldStateFieldData) {
 			"name":      d.Name,
 			"type":      "text",
 			"value":     d.Value,
-			"maxlength": "200",
+			"maxlength": strconv.Itoa(domain.MaxWorldValueRunes),
 			"disabled":  d.Locked,
 		})
+	</div>
+}
+
+// WorldStateSave is the save button of an entity's edit form (id is the DOM id of its element). The inputs of
+// LOCKed fields are disabled, so the browser does not send them: when every field is LOCKed a save would carry
+// nothing and the server would refuse it (422), so the reason is shown instead of a button that always fails.
+// oob makes it replace the one already on the page (the response to a LOCK switch).
+templ WorldStateSave(id string, fields []WorldStateFieldData, oob bool) {
+	<div
+		id={ id }
+		if oob {
+			hx-swap-oob="true"
+		}
+	>
+		if slices.ContainsFunc(fields, func(f WorldStateFieldData) bool { return !f.Locked }) {
+			@atoms.Button(atoms.TonePrimary, "保存", templ.Attributes{"type": "submit"})
+		} else {
+			<p class="text-sm text-neutral-400" data-entity-edit-blocked>すべての項目が LOCK 中のため編集できません。</p>
+		}
 	</div>
 }
 

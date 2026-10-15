@@ -29,6 +29,7 @@ func TestShotSpec_ValidateRejectsWhatCannotDriveAGeneration(t *testing.T) {
 		"beat beyond the end": func(s *domain.ShotSpec) { s.Acting[1].Time = "0.7-6.0" },
 		"beat overlaps":       func(s *domain.ShotSpec) { s.Acting[1].Time = "0.3-4.0" },
 		"beat is not a range": func(s *domain.ShotSpec) { s.Acting[0].Time = "soon" },
+		"beat ends at NaN":    func(s *domain.ShotSpec) { s.Acting[1].Time = "0.7-nan" },
 		"empty action":        func(s *domain.ShotSpec) { s.Acting[0].Action = "" },
 		"empty constraint":    func(s *domain.ShotSpec) { s.Constraints = []string{" "} },
 		"Japanese":            func(s *domain.ShotSpec) { s.Style = "冷たい青" },
@@ -77,7 +78,7 @@ func TestParseTimeRange(t *testing.T) {
 	require.NoError(t, err)
 	assert.InDelta(t, 0.7, from, 1e-9)
 	assert.InDelta(t, 1.3, to, 1e-9)
-	for _, bad := range []string{"", "1.3", "a-b", "-1-2"} {
+	for _, bad := range []string{"", "1.3", "a-b", "-1-2", "nan-2", "1-nan", "NaN-NaN", "1-inf", "1-Infinity", "inf-2"} {
 		_, _, err := domain.ParseTimeRange(bad)
 		assert.Error(t, err, bad)
 	}

@@ -3,17 +3,18 @@ package pages
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/layout"
-	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/seriesview"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // SeriesPage is GET /series/:id: the canon and the Episodes of a Series.
-templ SeriesPage(csrfToken string, d organisms.SeriesViewData) {
+templ SeriesPage(csrfToken string, d seriesview.Data) {
 	@layout.AppLayout("Series: "+d.Series.Name, csrfToken) {
 		<main class="mx-auto max-w-5xl p-8">
-			@atoms.BackLink("/projects", "← プロジェクト一覧へ")
+			@atoms.BackLink(paths.Projects(), "← プロジェクト一覧へ")
 			<h1 class="mb-1 mt-3 text-xl font-semibold">Series</h1>
 			<p class="mb-6 text-sm text-neutral-400">{ d.Series.Name }</p>
-			@organisms.SeriesView(d)
+			@seriesview.View(d)
 		</main>
 	}
 }

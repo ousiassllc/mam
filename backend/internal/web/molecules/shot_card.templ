@@ -3,10 +3,12 @@ package molecules
 import (
 	"fmt"
 	"net/url"
+	"strconv"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
+	"github.com/ousiassllc/mam/backend/internal/web/selector"
 )
 
 // ShotCardData is a Shot with its storyboard frame and Takes.
@@ -25,34 +27,6 @@ type ShotCardData struct {
 	Judgeable map[string]bool
 }
 
-func takeStatusLabel(s domain.TakeStatus) (atoms.BadgeTone, string) {
-	switch s {
-	case domain.TakeAIPick:
-		return atoms.BadgeInfo, "AI Pick"
-	case domain.TakeSelected:
-		return atoms.BadgeOK, "採用"
-	case domain.TakeRejected:
-		return atoms.BadgeNeutral, "除外"
-	}
-	return atoms.BadgeWarn, "候補"
-}
-
-func shotStateLabel(s domain.ShotState) string {
-	switch s {
-	case domain.ShotPlanning:
-		return "計画中"
-	case domain.ShotGenerating:
-		return "生成中"
-	case domain.ShotJudging:
-		return "Judge 中"
-	case domain.ShotRepairing:
-		return "Repair 中"
-	case domain.ShotEditing:
-		return "編集待ち"
-	}
-	return string(s)
-}
-
 func secondsText(d float64) string { return fmt.Sprintf("%.1f 秒", d) }
 
 // shotURL selects the Shot on the Scene page.
@@ -68,7 +42,7 @@ const SelectedParam = "selected"
 
 // selectedVals is the hx-vals that make a Take button send SelectedParam.
 func selectedVals(selected bool) string {
-	return fmt.Sprintf(`{"%s":"%t"}`, SelectedParam, selected)
+	return atoms.HxVals(map[string]string{SelectedParam: strconv.FormatBool(selected)})
 }
 
 func shotActionURL(shotID string, action ...string) string { return paths.Shot(shotID, action...) }
@@ -93,6 +67,10 @@ func showsProgressPlayer(s domain.Shot) bool {
 
 func takeComparisonURL(shotID string) string { return paths.Shot(shotID, "takes") }
 
+// shotTarget is the hx-target of the card of a Shot (id "shot-<id>"). IDs are limited to
+// [A-Za-z0-9_-] (domain.ValidBundleID); the escape is defence in depth, were that limit ever relaxed.
+func shotTarget(shotID string) string { return selector.ID("shot-", shotID) }
+
 func takeJudgeResultURL(takeID string) string { return paths.APITake(takeID, "judge-result") }
 
 func takeActionURL(takeID, action string) string { return paths.Take(takeID, action) }
@@ -105,29 +83,32 @@ templ ShotActions(shotID string, canContinue bool, candidates bool) {
 	<form
 		class="mt-2 flex flex-wrap items-center gap-2"
 		hx-post={ generateURL(shotID, candidates) }
-		hx-target={ "#shot-" + shotID }
+		hx-target={ shotTarget(shotID) }
 		hx-swap="outerHTML"
+		hx-sync="this:drop"
+		hx-disabled-elt="find button[type=submit]"
 	>
 		<label class="sr-only" for={ "instruction-" + shotID }>追加の指示</label>
 		@atoms.Input(atoms.FieldMd, "min-w-0 flex-1", templ.Attributes{
 			"id":          "instruction-" + shotID,
 			"name":        "additional_instruction",
 			"type":        "text",
-			"maxlength":   "1000",
+			"maxlength":   strconv.Itoa(domain.MaxInstructionRunes),
 			"placeholder": "追加の指示（任意。例: もう少しカメラを寄せて）",
 		})
 		@atoms.Button(atoms.TonePrimary, "生成", templ.Attributes{"type": "submit"})
 		@atoms.Button(atoms.ToneNeutral, "Reference Pack", templ.Attributes{
 			"type":      "button",
 			"hx-post":   shotActionURL(shotID, "reference-pack"),
-			"hx-target": "#shot-" + shotID,
+			"hx-target": shotTarget(shotID),
 			"hx-swap":   "outerHTML",
 		})
 		if canContinue {
 			@atoms.Button(atoms.ToneNeutral, "続きを作る", templ.Attributes{
-				"type":    "button",
-				"hx-post": shotActionURL(shotID, "continue"),
-				"hx-swap": "none",
+				"type":            "button",
+				"hx-post":         shotActionURL(shotID, "continue"),
+				"hx-swap":         "none",
+				"hx-disabled-elt": "this",
 			})
 		}
 	</form>
@@ -144,32 +125,31 @@ templ TakeRow(t domain.Take, selected bool, repairable bool, judgeable bool) {
 	<li class="flex items-center justify-between gap-2 text-xs text-neutral-300">
 		<span class="truncate">{ t.ModelName }</span>
 		<span class="flex shrink-0 items-center gap-2">
-			if t.Status != domain.TakeRejected && t.FilePath != "" {
-				if t.Status != domain.TakeSelected {
-					@atoms.LinkButton("選択", templ.Attributes{
+			if t.Usable() {
+				if t.Selectable() {
+					@atoms.LinkButton(atoms.ToneNeutral, "選択", templ.Attributes{
 						"type":      "button",
 						"hx-post":   takeActionURL(t.ID, "select"),
-						"hx-target": "#shot-" + t.ShotID,
+						"hx-target": shotTarget(t.ShotID),
 						"hx-swap":   "outerHTML",
 						"hx-vals":   selectedVals(selected),
 					})
 				}
-				@atoms.LinkButton("除外", templ.Attributes{
+				@atoms.LinkButton(atoms.ToneNeutral, "除外", templ.Attributes{
 					"type":       "button",
 					"hx-delete":  paths.Take(t.ID),
-					"hx-target":  "#shot-" + t.ShotID,
+					"hx-target":  shotTarget(t.ShotID),
 					"hx-swap":    "outerHTML",
 					"hx-confirm": "この Take を除外しますか？",
 					"hx-vals":    selectedVals(selected),
 				})
 			}
-			{{ tone, label := takeStatusLabel(t.Status) }}
-			@atoms.Badge(tone, label)
+			@TakeStatusBadge(t.Status)
 			if judgeable {
 				@atoms.Button(atoms.ToneNeutral, "Judge", templ.Attributes{
 					"type":      "button",
 					"hx-post":   paths.Take(t.ID, "judge"),
-					"hx-target": "#shot-" + t.ShotID,
+					"hx-target": shotTarget(t.ShotID),
 					"hx-swap":   "outerHTML",
 					"hx-vals":   selectedVals(selected),
 				})
@@ -178,7 +158,7 @@ templ TakeRow(t domain.Take, selected bool, repairable bool, judgeable bool) {
 				@atoms.Button(atoms.ToneNeutral, "Repair", templ.Attributes{
 					"type":      "button",
 					"hx-post":   paths.Take(t.ID, "repair"),
-					"hx-target": "#shot-" + t.ShotID,
+					"hx-target": shotTarget(t.ShotID),
 					"hx-swap":   "outerHTML",
 					"hx-vals":   selectedVals(selected),
 				})
@@ -239,7 +219,7 @@ templ ShotCard(d ShotCardData) {
 				if d.Shot.State == domain.ShotRepairing {
 					@atoms.Spinner("Repair 中")
 				}
-				@atoms.Badge(atoms.BadgeNeutral, shotStateLabel(d.Shot.State))
+				@atoms.Badge(atoms.BadgeNeutral, ShotStateLabel(d.Shot.State))
 			</span>
 		</div>
 		if d.Selected && d.Storyboard != nil {

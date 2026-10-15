@@ -166,6 +166,19 @@ const (
 	TakeRejected  TakeStatus = "rejected"
 )
 
+// Label is the status as the user sees it: the Shot card and GET /shots/:id/takes (status_label) say it alike.
+func (s TakeStatus) Label() string {
+	switch s {
+	case TakeAIPick:
+		return "AI Pick"
+	case TakeSelected:
+		return "採用"
+	case TakeRejected:
+		return "除外"
+	}
+	return "候補"
+}
+
 // Take is a row of take, seen from its Shot.
 type Take struct {
 	ID              string

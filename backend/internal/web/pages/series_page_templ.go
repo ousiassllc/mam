@@ -11,11 +11,12 @@ import templruntime "github.com/a-h/templ/runtime"
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/layout"
-	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/seriesview"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // SeriesPage is GET /series/:id: the canon and the Episodes of a Series.
-func SeriesPage(csrfToken string, d organisms.SeriesViewData) templ.Component {
+func SeriesPage(csrfToken string, d seriesview.Data) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -52,7 +53,7 @@ func SeriesPage(csrfToken string, d organisms.SeriesViewData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = atoms.BackLink("/projects", "← プロジェクト一覧へ").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = atoms.BackLink(paths.Projects(), "← プロジェクト一覧へ").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -63,7 +64,7 @@ func SeriesPage(csrfToken string, d organisms.SeriesViewData) templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(d.Series.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/pages/series_page.templ`, Line: 15, Col: 59}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/pages/series_page.templ`, Line: 16, Col: 59}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -73,7 +74,7 @@ func SeriesPage(csrfToken string, d organisms.SeriesViewData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = organisms.SeriesView(d).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = seriesview.View(d).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

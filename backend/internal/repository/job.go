@@ -17,7 +17,8 @@ var ErrNotFound = errors.New("repository: not found")
 
 const timeLayout = "2006-01-02T15:04:05.000Z"
 
-func formatTime(t time.Time) string { return t.UTC().Format(timeLayout) }
+// FormatTime writes a timestamp in the format the tables store (ParseTime reads it back).
+func FormatTime(t time.Time) string { return t.UTC().Format(timeLayout) }
 
 // JobRepository persists background jobs. All writes go through DB.Write.
 type JobRepository struct {
@@ -45,7 +46,7 @@ func (r *JobRepository) Create(ctx context.Context, kind domain.JobKind, payload
 	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		_, err := tx.ExecContext(ctx,
 			`INSERT INTO job (id, kind, payload, status, created_at) VALUES (?, ?, ?, ?, ?)`,
-			job.ID, job.Kind, string(job.Payload), job.Status, formatTime(job.CreatedAt))
+			job.ID, job.Kind, string(job.Payload), job.Status, FormatTime(job.CreatedAt))
 		return err
 	})
 	if err != nil {
@@ -74,38 +75,24 @@ func (r *JobRepository) ListByIDs(ctx context.Context, ids []string) (map[string
 	if len(ids) == 0 {
 		return jobs, nil
 	}
-	rows, err := r.db.Reader().QueryContext(ctx,
+	found, err := queryAll(ctx, r.db.Reader(), scanJob,
 		jobSelect+` WHERE id IN (`+placeholders(len(ids))+`)`, toAny(ids)...)
 	if err != nil {
 		return nil, fmt.Errorf("list jobs by ids: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
-	for rows.Next() {
-		job, err := scanJob(rows)
-		if err != nil {
-			return nil, fmt.Errorf("scan job: %w", err)
-		}
+	for _, job := range found {
 		jobs[job.ID] = job
 	}
-	return jobs, rows.Err()
+	return jobs, nil
 }
 
 // ListByStatus returns jobs in the given status, oldest first.
 func (r *JobRepository) ListByStatus(ctx context.Context, status domain.JobStatus) ([]domain.Job, error) {
-	rows, err := r.db.Reader().QueryContext(ctx, jobSelect+` WHERE status = ? ORDER BY created_at, id`, status)
+	jobs, err := queryAll(ctx, r.db.Reader(), scanJob, jobSelect+` WHERE status = ? ORDER BY created_at, id`, status)
 	if err != nil {
 		return nil, fmt.Errorf("list jobs: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
-	var jobs []domain.Job
-	for rows.Next() {
-		job, err := scanJob(rows)
-		if err != nil {
-			return nil, fmt.Errorf("scan job: %w", err)
-		}
-		jobs = append(jobs, job)
-	}
-	return jobs, rows.Err()
+	return jobs, nil
 }
 
 // ClaimNext atomically moves the oldest queued job to running (incrementing attempts)
@@ -124,7 +111,7 @@ func (r *JobRepository) ClaimNext(ctx context.Context) (domain.Job, error) {
 		started := r.now().UTC()
 		if _, err := tx.ExecContext(ctx,
 			`UPDATE job SET status = 'running', attempts = attempts + 1, started_at = ?, finished_at = NULL, error = '' WHERE id = ?`,
-			formatTime(started), j.ID); err != nil {
+			FormatTime(started), j.ID); err != nil {
 			return err
 		}
 		j.Status = domain.JobRunning
@@ -149,21 +136,21 @@ func (r *JobRepository) ClaimNext(ctx context.Context) (domain.Job, error) {
 func (r *JobRepository) MarkRunning(ctx context.Context, id string) error {
 	return r.transition(ctx, id,
 		`UPDATE job SET status = 'running', attempts = attempts + 1, started_at = ?, finished_at = NULL, error = ''
-		 WHERE id = ? AND status = 'queued'`, formatTime(r.now()), id)
+		 WHERE id = ? AND status = 'queued'`, FormatTime(r.now()), id)
 }
 
 // MarkSucceeded moves a running job to succeeded.
 func (r *JobRepository) MarkSucceeded(ctx context.Context, id string) error {
 	return r.transition(ctx, id,
 		`UPDATE job SET status = 'succeeded', finished_at = ? WHERE id = ? AND status = 'running'`,
-		formatTime(r.now()), id)
+		FormatTime(r.now()), id)
 }
 
 // MarkFailed moves a queued or running job to failed and records the reason.
 func (r *JobRepository) MarkFailed(ctx context.Context, id, reason string) error {
 	return r.transition(ctx, id,
 		`UPDATE job SET status = 'failed', error = ?, finished_at = ? WHERE id = ? AND status IN ('queued', 'running')`,
-		reason, formatTime(r.now()), id)
+		reason, FormatTime(r.now()), id)
 }
 
 // Requeue moves a running job back to queued so it is executed again.

@@ -11,7 +11,6 @@ import (
 	"image/jpeg"
 	"math"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -21,20 +20,22 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/zalando/go-keyring"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
 	"github.com/ousiassllc/mam/backend/internal/agent/judge"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/repair"
-	"github.com/ousiassllc/mam/backend/internal/credential"
+	"github.com/ousiassllc/mam/backend/internal/credential/credentialtest"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/facesim"
 	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 	"github.com/ousiassllc/mam/backend/internal/router"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
+	"github.com/ousiassllc/mam/backend/internal/testenv"
 )
 
 // The Shot Spec names the Character the way the Prompt Planner does: "identity": "locked".
@@ -140,16 +141,15 @@ type judgeOpts struct {
 	command string
 	// spec replaces the Prompt Planner's answer (empty: lockedSpecAnswer).
 	spec string
+	keys *credentialtest.Memory // nil: an empty one (a Jev client in shadow needs the store first)
 }
 
 func newJudgeAppOpts(t *testing.T, o judgeOpts, sims ...float64) *judgeApp {
 	t.Helper()
-	keyring.MockInit()
+	testenv.Parallel(t)
+	keys := cmp.Or(o.keys, credentialtest.New())
 	dir := t.TempDir()
-	db, err := repository.Open(context.Background(), filepath.Join(dir, "mam.db"), nil)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = db.Close() })
-
+	db := testdb.Open(t)
 	l := &judgeLLM{verdict: o.verdict, specs: cmp.Or(o.spec, lockedSpecAnswer), command: o.command}
 	video := &videoFake{}
 	jobs := jobqueue.New(repository.NewJobRepository(db), jobqueue.Options{})
@@ -162,27 +162,18 @@ func newJudgeAppOpts(t *testing.T, o judgeOpts, sims ...float64) *judgeApp {
 		backend = o.video
 	}
 	backends := modeladapter.Backends{Video: map[domain.ModelName]modeladapter.VideoBackend{domain.ModelKling3: backend, domain.ModelSeedance2: backend, domain.ModelRunwayGen45: backend}}
-	svc := service.New(service.Deps{
-		DB: db, Credentials: credential.NewKeyring(), AssetsDir: filepath.Join(dir, "assets"), LLM: l, Jobs: jobs,
+	svc := servicetest.New(t, service.Deps{
+		DB: db, Credentials: keys, AssetsDir: filepath.Join(dir, "assets"), LLM: l, Jobs: jobs,
 		Models: modeladapter.New(modeladapter.DefaultConfig(), backends), Frames: clipFrames{pics}, Faces: redFaces{}, Jev: o.shadow, Media: o.media,
 	})
 	ctx, cancel := context.WithCancel(context.Background())
 	jobs.Start(ctx)
 	t.Cleanup(func() { cancel(); jobs.Stop() })
-
-	a := &app{t: t, db: db, engine: router.New(svc, router.Options{}), svc: svc}
+	a := &app{t: t, db: db, engine: router.New(svc, router.Options{}), svc: svc, keys: keys}
 	a.cookie, a.token = bootstrap(t, a.engine)
 	g := &genApp{app: a, video: video}
 	g.project = a.createProject("美容液のCMを作りたい")
-	rec := a.form(http.MethodPost, "/projects/"+g.project+"/scenes", url.Values{"title": {"Street"}})
-	m := sceneIDRe.FindStringSubmatch(rec.Body.String())
-	require.NotNil(t, m)
-	g.sceneID = m[1]
-	rec = a.form(http.MethodPost, "/scenes/"+g.sceneID+"/shots", url.Values{"objective": {"走り出す"}, "duration_seconds": {"4"}})
-	require.Equal(t, http.StatusCreated, rec.Code)
-	m = shotIDRe.FindStringSubmatch(rec.Body.String())
-	require.NotNil(t, m)
-	g.shotID = m[1]
+	g.sceneID, g.shotID = a.createShot(g.project)
 
 	// Mira and her face reference: a stored picture (red 0) and its asset row.
 	rel := filepath.Join(g.project, "mira.jpg")
@@ -198,20 +189,6 @@ func newJudgeAppOpts(t *testing.T, o judgeOpts, sims ...float64) *judgeApp {
 	return &judgeApp{genApp: g, llm: l, dir: dir}
 }
 
-func (j *judgeApp) takeIDs() []string {
-	j.t.Helper()
-	rows, err := j.db.Reader().Query(`SELECT id FROM take ORDER BY created_at, id`)
-	require.NoError(j.t, err)
-	defer func() { _ = rows.Close() }()
-	var ids []string
-	for rows.Next() {
-		var id string
-		require.NoError(j.t, rows.Scan(&id))
-		ids = append(ids, id)
-	}
-	return ids
-}
-
 func (j *judgeApp) results(takeID string) int {
 	var n int
 	require.NoError(j.t, j.db.Reader().QueryRow(`SELECT COUNT(*) FROM judge_result WHERE take_id = ?`, takeID).Scan(&n))
@@ -221,9 +198,7 @@ func (j *judgeApp) results(takeID string) int {
 // generateAndJudge generates the Shot's Takes and waits until each of them has been judged.
 func (j *judgeApp) generateAndJudge() []string {
 	j.t.Helper()
-	require.Equal(j.t, http.StatusAccepted, j.form(http.MethodPost, "/shots/"+j.shotID+"/generate", nil).Code)
-	j.waitTakes(3)
-	ids := j.takeIDs()
+	ids := j.generateTakes()
 	require.Eventually(j.t, func() bool {
 		for _, id := range ids {
 			if j.results(id) == 0 {
@@ -436,12 +411,12 @@ func TestJudge_UnknownTakeIs404AndAnUnjudgedTakeHasNoResult(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, code, "the Take exists but was never judged")
 }
 
-func TestJudge_AJudgeRunThatIsQueuedOrRunningCannotBeStartedTwice(t *testing.T) {
+func TestJudge_AJudgeRunInFlightCannotBeStartedTwice(t *testing.T) {
 	j := newJudgeApp(t, goodVerdict, 0.95, 0.95, 0.95)
 	ids := j.generateAndJudge()
-	// A queued judge job of the Take is on record.
+	// A judge job of the Take is on record: 'running', as the live job queue would claim a 'queued' row.
 	require.NoError(t, j.db.Write(context.Background(), func(ctx context.Context, tx *sql.Tx) error {
-		_, err := tx.ExecContext(ctx, `INSERT INTO job (id, kind, payload, status) VALUES ('stuck', 'judge', ?, 'queued')`, `{"take_id":"`+ids[0]+`","shot_id":"`+j.shotID+`"}`)
+		_, err := tx.ExecContext(ctx, `INSERT INTO job (id, kind, payload, status) VALUES ('stuck', 'judge', ?, 'running')`, `{"take_id":"`+ids[0]+`","shot_id":"`+j.shotID+`"}`)
 		return err
 	}))
 	rec := j.form(http.MethodPost, "/takes/"+ids[0]+"/judge", nil)
@@ -468,8 +443,8 @@ func TestJudge_ButtonIsDrawnOnlyForUnjudgedTakesTheServerAccepts(t *testing.T) {
 	assert.True(t, button(html, ids[1]), "never judged")
 	assert.False(t, button(html, ids[0]))
 
-	// A judge run of the Take in flight: the server answers 409, so there is no button.
-	j.execSQL(`INSERT INTO job (id, kind, payload, status) VALUES ('stuck', 'judge', ?, 'queued')`, `{"take_id":"`+ids[1]+`","shot_id":"`+j.shotID+`"}`)
+	// A judge run of the Take in flight ('running', not 'queued': see above): 409, so no button.
+	j.execSQL(`INSERT INTO job (id, kind, payload, status) VALUES ('stuck', 'judge', ?, 'running')`, `{"take_id":"`+ids[1]+`","shot_id":"`+j.shotID+`"}`)
 	assert.False(t, button(page(), ids[1]))
 	assert.Equal(t, http.StatusConflict, j.form(http.MethodPost, "/takes/"+ids[1]+"/judge", nil).Code)
 	j.execSQL(`DELETE FROM job WHERE id = 'stuck'`)
@@ -497,8 +472,7 @@ func TestJudge_ButtonIsDrawnOnlyForUnjudgedTakesTheServerAccepts(t *testing.T) {
 // Without the Judge POST /takes/:id/judge is always 503, so no card offers it.
 func TestJudge_NoButtonWithoutTheJudge(t *testing.T) {
 	g := newGenApp(t, true)
-	require.Equal(t, http.StatusAccepted, g.form(http.MethodPost, "/shots/"+g.shotID+"/generate", nil).Code)
-	g.waitTakes(3)
+	g.generateTakes()
 	html := g.get("/projects/"+g.project+"/scenes/"+g.sceneID+"?shot="+g.shotID, true).Body.String()
 	assert.Contains(t, html, "/takes/", "the Takes are listed")
 	assert.NotContains(t, html, "/judge\"")
@@ -508,8 +482,7 @@ func TestJudge_IsUnavailableWithoutFrameSampling(t *testing.T) {
 	g := newGenApp(t, true) // the generation app has no Frames: the Judge is off
 	assert.Equal(t, http.StatusServiceUnavailable, g.form(http.MethodPost, "/takes/anything/judge", nil).Code)
 
-	require.Equal(t, http.StatusAccepted, g.form(http.MethodPost, "/shots/"+g.shotID+"/generate", nil).Code)
-	g.waitTakes(3)
+	g.generateTakes()
 	var id string
 	require.NoError(t, g.db.Reader().QueryRow(`SELECT id FROM take LIMIT 1`).Scan(&id))
 	assert.Equal(t, http.StatusServiceUnavailable, g.form(http.MethodPost, "/takes/"+id+"/judge", nil).Code)
@@ -527,7 +500,7 @@ func TestJudge_TheShotInspectorShowsEachTakesLatestJudgeResultAndTheGenerationMo
 
 	html := j.get("/shots/"+j.shotID, false).Body.String()
 	assert.Contains(t, html, "data-judge-result")
-	assert.Contains(t, html, "Judge: fail（確信度 90%）")
+	assert.Contains(t, html, "Judge: FAIL（確信度 90%）")
 	assert.Contains(t, html, "LOCK 違反 / medium / acting_drift / 0.8-1.7s: 表情が急に変わる")
 	assert.Contains(t, html, `aria-label="Generation Model"`)
 	assert.NotContains(t, html, "自動選択（生成時に決定）", "the Shot has a Take, whose model is the Generation Model")

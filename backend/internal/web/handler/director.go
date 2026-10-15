@@ -7,10 +7,10 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/service"
-	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/shotinspector"
 	"github.com/ousiassllc/mam/backend/internal/web/pages"
 )
 
@@ -46,12 +46,11 @@ func SetProjectLock(svc *service.DirectorService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusOK, atoms.LockToggle(organisms.ProjectLockToggle(c.Param("id"), p, locks)))
+		render(c, http.StatusOK, molecules.LockToggle(organisms.ProjectLockToggle(c.Param("id"), p, locks)))
 	}
 }
 
-// SetShotLock sets one parameter of a Shot (PUT /shots/:id/locks) and answers with the switch. A
-// LOCKed value that would be replaced is refused with 423.
+// SetShotLock sets one parameter of a Shot (PUT /shots/:id/locks) and answers with the switch (423 for a LOCKed value that would be replaced).
 func SetShotLock(svc *service.DirectorService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		p := parameterOf(c)
@@ -60,12 +59,12 @@ func SetShotLock(svc *service.DirectorService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusOK, atoms.LockToggle(organisms.LockToggleFor(c.Param("id"), p, locks)))
+		render(c, http.StatusOK, molecules.LockToggle(organisms.LockToggleFor(c.Param("id"), p, locks)))
 	}
 }
 
-func inspectorData(v service.Inspector) organisms.ShotInspectorData {
-	return organisms.ShotInspectorData{
+func inspectorData(v service.Inspector) shotinspector.Data {
+	return shotinspector.Data{
 		Project: v.Project, Scene: v.Scene, Shot: v.Shot, Spec: v.Spec, Takes: v.Takes, Locks: v.Locks,
 		Pack: v.Pack, Library: v.Library, SpecText: v.SpecText(), SpecError: v.SpecError, Versions: v.Versions, Judged: v.Judged,
 	}
@@ -80,34 +79,32 @@ func ShotInspector(svc *service.DirectorService) gin.HandlerFunc {
 			return
 		}
 		if isHTMX(c) {
-			render(c, http.StatusOK, organisms.ShotInspector(inspectorData(view)))
+			render(c, http.StatusOK, shotinspector.View(inspectorData(view)))
 			return
 		}
 		render(c, http.StatusOK, pages.ShotInspectorPage(middleware.CSRFToken(c), inspectorData(view)))
 	}
 }
 
-// EditShotSpec stores a hand-edited Canonical Shot Spec (PUT /shots/:id/shot-spec) and answers with
-// the inspector. An unusable spec is 422 and the inspector is drawn again with the input and the
-// reason; a change to a LOCKed parameter is 423.
+// EditShotSpec stores a hand-edited Canonical Shot Spec (PUT /shots/:id/shot-spec) and answers with the spec section
+// only (the other forms keep what is typed in them). An unusable spec is 422, drawn again with the input and the reason; a LOCKed change is 423.
 func EditShotSpec(svc *service.DirectorService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		view, err := svc.EditSpec(c.Request.Context(), c.Param("id"), c.PostForm("shot_spec"))
 		if err != nil {
 			if v := asValidation(err); v != nil && view.Shot.ID != "" {
-				render(c, http.StatusUnprocessableEntity, organisms.ShotInspector(inspectorData(view)))
+				render(c, http.StatusUnprocessableEntity, shotinspector.SpecSection(inspectorData(view)))
 				return
 			}
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusOK, organisms.ShotInspector(inspectorData(view)))
+		render(c, http.StatusOK, shotinspector.SpecChanged(inspectorData(view)))
 	}
 }
 
 // DirectorCommand carries out a natural language direction for the Shot (POST /shots/:id/director-command).
-// It answers 202 with the inspector when a regeneration was queued, 200 otherwise, and 423 when
-// the direction changes a LOCKed parameter.
+// It answers 202 with the whole inspector when a regeneration was queued, 200 otherwise, and 423 when it changes a LOCKed parameter.
 func DirectorCommand(svc *service.DirectorService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		res, err := svc.DirectorCommand(c.Request.Context(), c.Param("id"), c.PostForm("content"))
@@ -120,6 +117,6 @@ func DirectorCommand(svc *service.DirectorService) gin.HandlerFunc {
 			status = http.StatusAccepted
 		}
 		c.Header("HX-Trigger", refreshTrigger)
-		render(c, status, organisms.ShotInspector(inspectorData(res.Inspector)))
+		render(c, status, shotinspector.View(inspectorData(res.Inspector)))
 	}
 }

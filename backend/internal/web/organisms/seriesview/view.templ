@@ -1,0 +1,206 @@
+package seriesview
+
+import (
+	"strconv"
+
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// Data is the state of the Series page (series_page): the canon and the Episodes.
+type Data struct {
+	Series   domain.Series
+	Canon    domain.SeriesCanon
+	Versions []domain.SeriesVersion
+	Episodes []domain.Project
+	// Templates are the Brand Templates a new Episode can start from.
+	Templates []domain.BrandTemplate
+}
+
+var seriesFieldLabels = map[string]string{
+	"hairstyle": "髪型 (hairstyle)", "wardrobe": "衣装 (wardrobe)", "voice": "声 (voice)", "personality": "性格 (personality)",
+}
+
+func seriesCharacterValues(c domain.WorldCharacter) map[string]string {
+	return map[string]string{"hairstyle": c.Hairstyle, "wardrobe": c.Wardrobe, "voice": c.Voice, "personality": c.Personality}
+}
+
+func episodeLabel(p domain.Project) string {
+	return "第" + strconv.Itoa(p.EpisodeNumber) + "話"
+}
+
+// View shows a Series: its canonical Style, Characters, Products and Locations (Characters
+// and the Style are editable; the edits never reach an existing Episode), the Episodes with a form
+// to start the next one, and the history of the canon. Each editable form replaces only itself when it
+// is saved (StyleSaved, CharacterSaved), so what is typed into the other forms is kept.
+templ View(d Data) {
+	<div id="series-view" class="flex flex-col gap-6">
+		@seriesVersionLine(d, false)
+		<section aria-label="Style" class="flex flex-col gap-2">
+			<h2 class="text-sm font-semibold text-neutral-200">Style</h2>
+			@seriesStyleForm(d)
+			if d.Series.StyleReferenceAssetID != "" {
+				<p class="text-xs text-neutral-400">Style の参照画像を Episode の Reference Library に引き継ぎます。</p>
+			}
+		</section>
+		<section aria-label="Characters" class="flex flex-col gap-2">
+			<h2 class="text-sm font-semibold text-neutral-200">Characters</h2>
+			if len(d.Canon.Characters) == 0 {
+				<p class="text-sm text-neutral-400">登録された Character はありません。</p>
+			}
+			for _, c := range d.Canon.Characters {
+				@seriesCharacterForm(d, c)
+			}
+		</section>
+		<section aria-label="Products and Locations" class="flex flex-col gap-2">
+			<h2 class="text-sm font-semibold text-neutral-200">Products / Locations</h2>
+			<ul class="flex flex-col gap-1 text-sm">
+				for _, p := range d.Canon.Products {
+					<li>Product: { p.Name }</li>
+				}
+				for _, l := range d.Canon.Locations {
+					<li>Location: { l.Name }</li>
+				}
+			</ul>
+		</section>
+		<section aria-label="Notes" class="flex flex-col gap-2">
+			<h2 class="text-sm font-semibold text-neutral-200">Notes</h2>
+			<a class="text-sm text-indigo-300 underline" href={ templ.SafeURL(paths.Series(d.Series.ID, "notes")) }>Series の制作メモを開く（Episode 開始時に Project へコピーされます）</a>
+		</section>
+		<section aria-label="Episodes" class="flex flex-col gap-2">
+			<h2 class="text-sm font-semibold text-neutral-200">Episodes</h2>
+			<ul class="flex flex-col gap-1 text-sm">
+				for _, p := range d.Episodes {
+					<li>
+						<a class="text-indigo-300 underline" href={ templ.SafeURL(paths.Project(p.ID)) }>{ episodeLabel(p) }: { p.Name }</a>
+					</li>
+				}
+			</ul>
+			<form class="flex flex-wrap items-end gap-2" hx-post={ paths.Series(d.Series.ID, "episodes") } hx-sync="this:drop" hx-disabled-elt="find button[type=submit]">
+				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="series-previous-episode">
+					前の話（最終 World State を開始状態にする）
+					@atoms.Select(atoms.FieldMd, "", templ.Attributes{
+						"id":   "series-previous-episode",
+						"name": "previous_episode_id",
+					}) {
+						<option value="">（引き継がない）</option>
+						for _, p := range d.Episodes {
+							<option value={ p.ID }>{ episodeLabel(p) }</option>
+						}
+					}
+				</label>
+				@organisms.BrandTemplateSelect("series-brand-template", d.Templates)
+				@atoms.Button(atoms.TonePrimary, "次の Episode を作成", templ.Attributes{"type": "submit"})
+			</form>
+		</section>
+		@seriesHistory(d, false)
+	</div>
+}
+
+templ seriesVersionLine(d Data, oob bool) {
+	<p
+		id="series-version"
+		class="text-xs text-neutral-400"
+		if oob {
+			hx-swap-oob="true"
+		}
+	>
+		Series 正本 バージョン { strconv.Itoa(d.Series.Version) }。正本を更新しても、すでに作成した Episode には反映されません（次の Episode から適用されます）。
+	</p>
+}
+
+templ seriesHistory(d Data, oob bool) {
+	<section
+		id="series-history"
+		aria-label="History"
+		class="flex flex-col gap-1"
+		if oob {
+			hx-swap-oob="true"
+		}
+	>
+		<h2 class="text-sm font-semibold text-neutral-200">正本の更新履歴</h2>
+		<ul class="text-xs text-neutral-400">
+			for _, v := range d.Versions {
+				<li>バージョン { strconv.Itoa(v.Number) } · { v.CreatedAt.Local().Format("2006-01-02 15:04") }</li>
+			}
+		</ul>
+	</section>
+}
+
+// seriesCanonSaved is what a saved canon changes outside the form that saved it: the version line and
+// the history of the canon, out of band.
+templ seriesCanonSaved(d Data) {
+	@seriesVersionLine(d, true)
+	@seriesHistory(d, true)
+}
+
+// StyleSaved answers the save of the Style (PUT /series/:id/style): the Style form only, with the
+// new version carried along. The Characters and the Episode form are not part of the response.
+templ StyleSaved(d Data) {
+	@seriesStyleForm(d)
+	@seriesCanonSaved(d)
+}
+
+// CharacterSaved answers the save of a Character (PUT /series/:id/characters/:characterId): the form
+// of that Character only, with the new version carried along.
+templ CharacterSaved(d Data, characterID string) {
+	for _, c := range d.Canon.Characters {
+		if c.ID == characterID {
+			@seriesCharacterForm(d, c)
+		}
+	}
+	@seriesCanonSaved(d)
+}
+
+templ seriesStyleForm(d Data) {
+	<form
+		id="series-style-form"
+		class="flex flex-wrap items-end gap-2"
+		hx-put={ paths.Series(d.Series.ID, "style") }
+		hx-target="this"
+		hx-swap="outerHTML"
+	>
+		<label class="flex min-w-64 flex-1 flex-col gap-1 text-xs text-neutral-400" for="series-style">
+			スタイル（絵柄・色調・質感など）
+			@atoms.Input(atoms.FieldMd, "", templ.Attributes{
+				"id":        "series-style",
+				"name":      "style",
+				"type":      "text",
+				"value":     d.Series.Style,
+				"maxlength": strconv.Itoa(domain.MaxStyleRunes),
+			})
+		</label>
+		@atoms.Button(atoms.TonePrimary, "保存", templ.Attributes{"type": "submit"})
+	</form>
+}
+
+templ seriesCharacterForm(d Data, c domain.WorldCharacter) {
+	<form
+		id={ "series-character-" + c.ID }
+		class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3"
+		hx-put={ paths.Series(d.Series.ID, "characters", c.ID) }
+		hx-target="this"
+		hx-swap="outerHTML"
+	>
+		<p class="text-sm font-medium">{ c.Name }</p>
+		<div class="grid gap-2 sm:grid-cols-2">
+			for _, name := range domain.SeriesCharacterFields() {
+				<label class="flex flex-col gap-1 text-xs text-neutral-400" for={ "series-" + c.ID + "-" + name }>
+					{ seriesFieldLabels[name] }
+					@atoms.Input(atoms.FieldMd, "", templ.Attributes{
+						"id":        "series-" + c.ID + "-" + name,
+						"name":      name,
+						"type":      "text",
+						"value":     seriesCharacterValues(c)[name],
+						"maxlength": strconv.Itoa(domain.MaxWorldValueRunes),
+					})
+				</label>
+			}
+		</div>
+		<div>
+			@atoms.Button(atoms.TonePrimary, "保存", templ.Attributes{"type": "submit"})
+		</div>
+	</form>
+}

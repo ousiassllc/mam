@@ -11,10 +11,8 @@ const (
 	ModelSyncLabs        ModelName = "sync-labs"
 )
 
-// AudioModels lists the audio models that have an adapter.
-func AudioModels() []ModelName {
-	return []ModelName{ModelElevenLabsTTS, ModelElevenLabsMusic, ModelElevenLabsSFX, ModelSyncLabs}
-}
+// MaxSpeakerRunes bounds the speaker name of a cloned voice.
+const MaxSpeakerRunes = 20
 
 // AudioLayer is one layer of the Audio Timeline (spec/spec.md §18).
 type AudioLayer string
@@ -33,19 +31,7 @@ const (
 
 // PlannedLayers lists the layers the Audio Director plans from the Scene Emotion and the editing
 // tempo (the spoken layers come from the script).
-func PlannedLayers() []AudioLayer {
-	return []AudioLayer{LayerBGM, LayerSE, LayerAmbience, LayerFoley}
-}
-
-// IsPlanned reports whether l is one of PlannedLayers.
-func (l AudioLayer) IsPlanned() bool {
-	for _, p := range PlannedLayers() {
-		if l == p {
-			return true
-		}
-	}
-	return false
-}
+func PlannedLayers() []AudioLayer { return []AudioLayer{LayerBGM, LayerSE, LayerAmbience, LayerFoley} }
 
 // Model is the model that makes the layer.
 func (l AudioLayer) Model() ModelName {

@@ -108,7 +108,7 @@ func (r *BranchRepository) Create(ctx context.Context, in NewBranch) (domain.Bra
 		if _, err := tx.ExecContext(ctx,
 			`INSERT INTO branch (id, project_id, branch_point_type, branch_point_scene_id, branch_point_shot_id, branch_point_offset_seconds, name, created_at)
 			 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-			id, projectID, in.PointType, pointScene, pointShot, offset, in.Name, formatTime(r.now())); err != nil {
+			id, projectID, in.PointType, pointScene, pointShot, offset, in.Name, FormatTime(r.now())); err != nil {
 			return err
 		}
 		if err := copyWorldInto(ctx, tx, projectID, id, snapshot); err != nil {
@@ -142,29 +142,15 @@ func (r *BranchRepository) Create(ctx context.Context, in NewBranch) (domain.Bra
 // copied from, so a Branch of a Series Episode is still measured against the canon face.
 func copyWorldInto(ctx context.Context, tx *sql.Tx, projectID, branchID string, w domain.WorldContext) error {
 	copyLocks := func(target domain.WorldTarget, from, to string) error {
-		rows, err := tx.QueryContext(ctx,
-			`SELECT parameter_name, mode, value FROM lock WHERE project_id = ? AND target_type = ? AND target_id = ?`, projectID, string(target), from)
-		if err != nil {
-			return err
-		}
 		type lockRow struct {
 			parameter, mode string
 			value           sql.NullString
 		}
-		var locks []lockRow
-		for rows.Next() {
+		locks, err := queryAll(ctx, tx, func(row rowScanner) (lockRow, error) {
 			var l lockRow
-			if err := rows.Scan(&l.parameter, &l.mode, &l.value); err != nil {
-				_ = rows.Close()
-				return err
-			}
-			locks = append(locks, l)
-		}
-		if err := rows.Err(); err != nil {
-			_ = rows.Close()
-			return err
-		}
-		if err := rows.Close(); err != nil {
+			return l, row.Scan(&l.parameter, &l.mode, &l.value)
+		}, `SELECT parameter_name, mode, value FROM lock WHERE project_id = ? AND target_type = ? AND target_id = ?`, projectID, string(target), from)
+		if err != nil {
 			return err
 		}
 		for _, l := range locks {
@@ -229,7 +215,7 @@ func (r *BranchRepository) appendBranchVersion(ctx context.Context, tx *sql.Tx, 
 	}
 	_, err := tx.ExecContext(ctx,
 		`INSERT INTO branch_version (id, branch_id, version_number, name, world_state_version_id, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
-		domain.NewID(), branchID, next, name, nullIfEmpty(worldStateVersionID), formatTime(r.now()))
+		domain.NewID(), branchID, next, name, nullIfEmpty(worldStateVersionID), FormatTime(r.now()))
 	return err
 }
 
@@ -259,7 +245,7 @@ func scanBranch(row rowScanner) (domain.Branch, error) {
 		return domain.Branch{}, err
 	}
 	var err error
-	b.CreatedAt, err = parseTime(created)
+	b.CreatedAt, err = ParseTime(created)
 	return b, err
 }
 
@@ -277,20 +263,11 @@ func (r *BranchRepository) Get(ctx context.Context, id string) (domain.Branch, e
 
 // List returns the Branches of the Project, oldest first.
 func (r *BranchRepository) List(ctx context.Context, projectID string) ([]domain.Branch, error) {
-	rows, err := r.db.Reader().QueryContext(ctx, branchSelect+` WHERE b.project_id = ? ORDER BY b.created_at, b.rowid`, projectID)
+	out, err := queryAll(ctx, r.db.Reader(), scanBranch, branchSelect+` WHERE b.project_id = ? ORDER BY b.created_at, b.rowid`, projectID)
 	if err != nil {
 		return nil, fmt.Errorf("list branches: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
-	var out []domain.Branch
-	for rows.Next() {
-		b, err := scanBranch(rows)
-		if err != nil {
-			return nil, fmt.Errorf("scan branch: %w", err)
-		}
-		out = append(out, b)
-	}
-	return out, rows.Err()
+	return out, nil
 }
 
 // BranchChange is what PUT /branches/:id may change. A nil field is left as it is.
@@ -348,20 +325,11 @@ func (r *BranchRepository) Update(ctx context.Context, id string, c BranchChange
 
 // Scenes returns the Scenes of the Branch's own derived tree in order.
 func (r *BranchRepository) Scenes(ctx context.Context, branchID string) ([]domain.Scene, error) {
-	rows, err := r.db.Reader().QueryContext(ctx, sceneSelect+` WHERE s.branch_id = ? ORDER BY s.order_index`, branchID)
+	scenes, err := queryAll(ctx, r.db.Reader(), scanScene, sceneSelect+` WHERE s.branch_id = ? ORDER BY s.order_index`, branchID)
 	if err != nil {
 		return nil, fmt.Errorf("list branch scenes: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
-	var scenes []domain.Scene
-	for rows.Next() {
-		s, err := scanScene(rows)
-		if err != nil {
-			return nil, fmt.Errorf("scan scene: %w", err)
-		}
-		scenes = append(scenes, s)
-	}
-	return scenes, rows.Err()
+	return scenes, nil
 }
 
 // CutAtBranchPoint returns the Shots of a story (in order) that a Branch made at the point inherits:
@@ -410,67 +378,45 @@ func (r *GenerationRepository) StoryShots(ctx context.Context, projectID, branch
 		return nil, err
 	}
 	inherited = CutAtBranchPoint(inherited, typ, sceneID, shotID)
-	rows, err := point.QueryContext(ctx, shotRefSelect+` WHERE s.project_id = ? AND s.branch_id = ? ORDER BY s.order_index, sh.order_index`, projectID, branchID)
+	own, err := queryAll(ctx, point, scanShotRef, shotRefSelect+` WHERE s.project_id = ? AND s.branch_id = ? ORDER BY s.order_index, sh.order_index`, projectID, branchID)
 	if err != nil {
 		return nil, fmt.Errorf("list branch shots: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
-	out := append([]ShotRef{}, inherited...)
-	for rows.Next() {
-		ref, err := scanShotRef(rows)
-		if err != nil {
-			return nil, fmt.Errorf("scan shot: %w", err)
-		}
-		out = append(out, ref)
-	}
-	return out, rows.Err()
+	return append(append([]ShotRef{}, inherited...), own...), nil
 }
 
 // Versions returns the branch_versions of the Branch, newest first.
 func (r *BranchRepository) Versions(ctx context.Context, branchID string) ([]domain.BranchVersion, error) {
-	rows, err := r.db.Reader().QueryContext(ctx, `
+	out, err := queryAll(ctx, r.db.Reader(), func(row rowScanner) (domain.BranchVersion, error) {
+		var (
+			v       domain.BranchVersion
+			created string
+		)
+		if err := row.Scan(&v.ID, &v.BranchID, &v.Number, &v.Name, &v.WorldStateVersionID, &v.WorldStateVersion, &created); err != nil {
+			return v, fmt.Errorf("scan branch version: %w", err)
+		}
+		var err error
+		v.CreatedAt, err = ParseTime(created)
+		return v, err
+	}, `
 		SELECT bv.id, bv.branch_id, bv.version_number, bv.name, COALESCE(bv.world_state_version_id, ''), COALESCE(v.version_number, 0), bv.created_at
 		FROM branch_version bv LEFT JOIN world_state_version v ON v.id = bv.world_state_version_id
 		WHERE bv.branch_id = ? ORDER BY bv.version_number DESC`, branchID)
 	if err != nil {
 		return nil, fmt.Errorf("list branch versions: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
-	var out []domain.BranchVersion
-	for rows.Next() {
-		var (
-			v       domain.BranchVersion
-			created string
-		)
-		if err := rows.Scan(&v.ID, &v.BranchID, &v.Number, &v.Name, &v.WorldStateVersionID, &v.WorldStateVersion, &created); err != nil {
-			return nil, fmt.Errorf("scan branch version: %w", err)
-		}
-		if v.CreatedAt, err = parseTime(created); err != nil {
-			return nil, err
-		}
-		out = append(out, v)
-	}
-	return out, rows.Err()
+	return out, nil
 }
 
 // ListAllShots returns every Shot of the Project, trunk first and then each Branch's own tree, in
 // story order within each.
 func (r *GenerationRepository) ListAllShots(ctx context.Context, projectID string) ([]ShotRef, error) {
-	rows, err := r.db.Reader().QueryContext(ctx,
+	out, err := queryAll(ctx, r.db.Reader(), scanShotRef,
 		shotRefSelect+` WHERE s.project_id = ? ORDER BY COALESCE(s.branch_id, ''), s.order_index, sh.order_index`, projectID)
 	if err != nil {
 		return nil, fmt.Errorf("list all shots: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
-	var out []ShotRef
-	for rows.Next() {
-		ref, err := scanShotRef(rows)
-		if err != nil {
-			return nil, fmt.Errorf("scan shot: %w", err)
-		}
-		out = append(out, ref)
-	}
-	return out, rows.Err()
+	return out, nil
 }
 
 // LatestWorldVersion returns the number of the newest world_state_version of the Branch's own

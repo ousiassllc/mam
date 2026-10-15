@@ -10,11 +10,10 @@ import (
 	"net/http"
 	"net/netip"
 	"net/url"
-	"os"
-	"strconv"
 	"strings"
 	"time"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/resilience"
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
@@ -87,7 +86,7 @@ func (a api) request(ctx context.Context, method, target string, header map[stri
 	}
 	res, err := a.client.Do(req)
 	if err != nil {
-		return nil, &ProviderError{Vendor: string(a.vendor), Err: redactURL(err)}
+		return nil, &ProviderError{Vendor: string(a.vendor), Err: httpclient.RedactURL(err)}
 	}
 	defer func() { _ = res.Body.Close() }()
 	data, err := io.ReadAll(io.LimitReader(res.Body, limit+1))
@@ -99,8 +98,8 @@ func (a api) request(ctx context.Context, method, target string, header map[stri
 	}
 	if res.StatusCode/100 != 2 {
 		return nil, &ProviderError{
-			Vendor: string(a.vendor), Status: res.StatusCode, Message: snippet(data),
-			RetryAfter: parseRetryAfter(res.Header.Get("Retry-After")),
+			Vendor: string(a.vendor), Status: res.StatusCode, Message: httpclient.Snippet(data),
+			RetryAfter: httpclient.ParseRetryAfter(res.Header.Get("Retry-After")),
 		}
 	}
 	return data, nil
@@ -156,11 +155,11 @@ func (a api) fetchOnce(ctx context.Context, fileURL string, into sink) (Blob, st
 	}
 	res, err := a.fetcher.Do(req)
 	if err != nil {
-		return Blob{}, "", &ProviderError{Vendor: string(a.vendor), Err: redactURL(err)}
+		return Blob{}, "", &ProviderError{Vendor: string(a.vendor), Err: httpclient.RedactURL(err)}
 	}
 	defer func() { _ = res.Body.Close() }()
 	if res.StatusCode/100 != 2 {
-		return Blob{}, "", &ProviderError{Vendor: string(a.vendor), Status: res.StatusCode, Message: "download of the result failed"}
+		return Blob{}, "", &ProviderError{Vendor: string(a.vendor), Status: res.StatusCode, Message: "download of the result failed", RetryAfter: httpclient.ParseRetryAfter(res.Header.Get("Retry-After"))}
 	}
 	limit := cmp.Or(a.maxDownload, maxDownloadBytes)
 	tooLarge := &ProviderError{Vendor: string(a.vendor), Status: http.StatusOK, Message: "the result file is too large"}
@@ -168,16 +167,18 @@ func (a api) fetchOnce(ctx context.Context, fileURL string, into sink) (Blob, st
 		return Blob{}, "", tooLarge
 	}
 	blob, err := into(res.Body, limit)
+	var local *fsutil.LocalError
 	switch {
-	case errors.Is(err, errTooLarge):
+	case errors.Is(err, fsutil.ErrTooLarge):
 		return Blob{}, "", tooLarge
+	case errors.As(err, &local):
+		// The staging disk failed, not the vendor: it is not unavailable, and asking again would not help.
+		return Blob{}, "", err
 	case err != nil:
 		return Blob{}, "", &ProviderError{Vendor: string(a.vendor), Err: err}
 	}
 	return blob, res.Header.Get("Content-Type"), nil
 }
-
-var errTooLarge = errors.New("the body is larger than the limit")
 
 // collect is the sink that keeps the body in memory.
 func (a api) collect(body io.Reader, limit int64) (Blob, error) {
@@ -186,44 +187,15 @@ func (a api) collect(body io.Reader, limit int64) (Blob, error) {
 		return Blob{}, err
 	}
 	if int64(len(data)) > limit {
-		return Blob{}, errTooLarge
+		return Blob{}, fsutil.ErrTooLarge
 	}
 	return BlobOf(data), nil
 }
 
-// stage is the sink that streams the body into a new file of the staging directory. The file is
-// synced, and removed again when the body cannot be read completely.
-func (a api) stage(body io.Reader, limit int64) (blob Blob, err error) {
-	dir := a.stagingDir
-	if dir != "" {
-		if err := os.MkdirAll(dir, 0o700); err != nil {
-			return Blob{}, fmt.Errorf("create staging directory: %w", err)
-		}
-	}
-	f, err := fsutil.CreateStagingTemp(dir) // RemoveStaleTemp sweeps it after a crash
-	if err != nil {
-		return Blob{}, fmt.Errorf("create staging file: %w", err)
-	}
-	defer func() {
-		if err != nil {
-			_ = f.Close()
-			_ = os.Remove(f.Name())
-		}
-	}()
-	n, err := io.Copy(f, io.LimitReader(body, limit+1))
-	if err != nil {
-		return Blob{}, err
-	}
-	if n > limit {
-		return Blob{}, errTooLarge
-	}
-	if err = f.Sync(); err != nil {
-		return Blob{}, fmt.Errorf("sync staging file: %w", err)
-	}
-	if err = f.Close(); err != nil {
-		return Blob{}, fmt.Errorf("close staging file: %w", err)
-	}
-	return Blob{path: f.Name(), size: n}, nil
+// stage is the sink that streams the body into a new, synced file of the staging directory.
+func (a api) stage(body io.Reader, limit int64) (Blob, error) {
+	path, n, err := fsutil.StageReader(a.stagingDir, body, limit)
+	return Blob{path: path, size: n}, err
 }
 
 // ownsURL reports whether target is a URL of the vendor, the only kind a request carrying the API
@@ -265,25 +237,11 @@ func (a api) checkResultURL(raw string) error {
 	return safefetch.CheckURL(raw)
 }
 
-// maxTransientAttempts bounds how often one status request or download is tried when the vendor
-// answers 429 / 5xx or the connection breaks.
-const maxTransientAttempts = 3
-
-// repeat runs fn, repeating it up to maxTransientAttempts times (waiting pollEvery between the
-// tries) while it fails with an unavailable answer. fn must be safe to repeat: a GET of a job that
-// was already submitted.
+// repeat runs fn again while it fails with an unavailable answer, until ctx ends (resilience.Repeat):
+// the job is billed already, so the call's timeout, not a number of tries, bounds it. fn must be a GET.
 func (a api) repeat(ctx context.Context, fn func() error) error {
-	for attempt := 1; ; attempt++ {
-		err := fn()
-		if err == nil || attempt >= maxTransientAttempts || ctx.Err() != nil || !unavailable(err) {
-			return err
-		}
-		select {
-		case <-time.After(a.pollEvery):
-		case <-ctx.Done():
-			return err
-		}
-	}
+	return resilience.Repeat(ctx, resilience.Backoff{Base: a.pollEvery, Max: resilience.JobRetryMaxDelay},
+		resilience.Hooks{Unavailable: unavailable, RetryAfter: retryAfter}, fn)
 }
 
 // poll calls check until it reports done or fails, waiting pollEvery between calls. It only runs
@@ -314,30 +272,6 @@ func (a api) poll(ctx context.Context, check func(ctx context.Context) (done boo
 // failed reports a job that the vendor finished without a result (content policy, internal error).
 func (a api) failed(reason string) error {
 	return &ProviderError{Vendor: string(a.vendor), Status: http.StatusUnprocessableEntity, Message: reason}
-}
-
-// redactURL drops the request URL from a transport error: it must not leak into logs or the chat.
-func redactURL(err error) error {
-	var ue *url.Error
-	if errors.As(err, &ue) {
-		return ue.Err
-	}
-	return err
-}
-
-func snippet(b []byte) string {
-	s := strings.Join(strings.Fields(string(b)), " ")
-	if r := []rune(s); len(r) > 300 {
-		return string(r[:300]) + "…"
-	}
-	return s
-}
-
-func parseRetryAfter(v string) time.Duration {
-	if secs, err := strconv.Atoi(strings.TrimSpace(v)); err == nil && secs > 0 {
-		return time.Duration(secs) * time.Second
-	}
-	return 0
 }
 
 func (a api) empty(what string) error {

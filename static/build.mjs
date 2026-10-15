@@ -35,8 +35,10 @@ const jsOptions = {
 
 const tailwindArgs = [
   'tailwindcss',
-  '--input', join(root, 'src', 'css', 'app.css'),
-  '--output', join(outdir, 'app.css'),
+  '--input',
+  join(root, 'src', 'css', 'app.css'),
+  '--output',
+  join(outdir, 'app.css'),
   ...(minify ? ['--minify'] : []),
   ...(watch ? ['--watch'] : []),
 ];

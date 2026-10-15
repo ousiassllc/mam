@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"path/filepath"
 	"sync"
 	"testing"
 	"time"
@@ -15,6 +14,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/judge"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 )
 
 // gatedJobs stores the job like the real queue but holds the first Enqueue until release is closed,
@@ -38,9 +38,7 @@ func (j *gatedJobs) Enqueue(ctx context.Context, kind domain.JobKind, payload an
 
 func TestStart_ConcurrentStartsOnATakeQueueOneJobAndTheOtherIsBusy(t *testing.T) {
 	ctx := context.Background()
-	db, err := repository.Open(ctx, filepath.Join(t.TempDir(), "mam.db"), nil)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = db.Close() })
+	db := testdb.Open(t)
 	require.NoError(t, db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		for _, q := range []string{
 			`INSERT INTO project (id, mode, confirmation_level, production_template, quality_policy) VALUES ('p1', 'auto', 'full_auto', 'product_cm', 'balanced')`,

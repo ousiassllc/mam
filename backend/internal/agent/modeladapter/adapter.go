@@ -38,7 +38,9 @@ type Adapter struct {
 	limiters map[Vendor]*limiter
 	now      func() time.Time
 	sleep    func(ctx context.Context, d time.Duration) error
-	logger   *slog.Logger
+	// timeLimit maps the limit of a video job to the one that is applied; nil applies it as given.
+	timeLimit func(time.Duration) time.Duration
+	logger    *slog.Logger
 }
 
 // Option customises an Adapter.
@@ -50,6 +52,12 @@ func WithClock(now func() time.Time) Option { return func(a *Adapter) { a.now = 
 // WithSleep replaces the backoff wait.
 func WithSleep(sleep func(ctx context.Context, d time.Duration) error) Option {
 	return func(a *Adapter) { a.sleep = sleep }
+}
+
+// WithTimeLimit maps the time limit of every video job (VideoJob.MaxTime) through limit. A Policy
+// cannot hold less than 10 s: a test shortens it here instead of waiting.
+func WithTimeLimit(limit func(time.Duration) time.Duration) Option {
+	return func(a *Adapter) { a.timeLimit = limit }
 }
 
 // WithLogger sets the logger of retries and fail-overs.
@@ -118,7 +126,7 @@ func (a *Adapter) GenerateImage(ctx context.Context, purpose ImagePurpose, req I
 		targets = append(targets, route.Fallback)
 	}
 	if req.AspectRatio == "" {
-		req.AspectRatio = "16:9"
+		req.AspectRatio = domain.DefaultAspectRatio
 	}
 	var failures []error
 	for i, t := range targets {
@@ -156,6 +164,9 @@ func (a *Adapter) GenerateImage(ctx context.Context, purpose ImagePurpose, req I
 // primary is unavailable (breaker open, or failed after the retries) it renders the job again for
 // the alternative and calls that (F-14 "Different Model", model-adapters.md §7).
 func (a *Adapter) GenerateVideo(ctx context.Context, primary, fallback VideoTarget, job VideoJob) (VideoOutput, error) {
+	if a.timeLimit != nil {
+		job.MaxTime = a.timeLimit(job.MaxTime)
+	}
 	targets := []VideoTarget{primary}
 	if fallback != primary {
 		targets = append(targets, fallback)

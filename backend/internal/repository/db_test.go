@@ -13,14 +13,12 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 )
 
 func openTestDB(t *testing.T) *repository.DB {
 	t.Helper()
-	db, err := repository.Open(context.Background(), filepath.Join(t.TempDir(), "mam.db"), nil)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = db.Close() })
-	return db
+	return testdb.Open(t)
 }
 
 func exec(t *testing.T, db *repository.DB, query string, args ...any) error {
@@ -107,8 +105,7 @@ func TestWrite_SerializesConcurrentWriters(t *testing.T) {
 						break
 					}
 				}
-				_, err := tx.ExecContext(ctx, `INSERT INTO job (id, kind) VALUES (?, 'generate')`, cur)
-				_ = err
+				_, _ = tx.ExecContext(ctx, `INSERT INTO job (id, kind) VALUES (?, 'generate')`, cur)
 				return nil
 			})
 			assert.NoError(t, err)

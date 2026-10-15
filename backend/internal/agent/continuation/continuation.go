@@ -15,6 +15,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/agent/planning"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/textutil"
 )
 
 // Limits of what the Agent returns. They follow the limits of the Scene / Shot forms.
@@ -146,7 +147,7 @@ func (a *Agent) Plan(ctx context.Context, in Input, direction string) (domain.Co
 		return domain.ContinuePlan{}, fmt.Errorf("continue: %w", err)
 	}
 	plan := domain.ContinuePlan{NewScene: out.NewScene}
-	plan.Shot.Objective = clip(out.Shot.Objective, maxObjectiveRunes)
+	plan.Shot.Objective = textutil.TruncateRunes(strings.TrimSpace(out.Shot.Objective), maxObjectiveRunes)
 	if plan.Shot.Objective == "" {
 		return domain.ContinuePlan{}, fmt.Errorf("continue: %w", planning.Invalidf("the next shot has no objective"))
 	}
@@ -160,8 +161,10 @@ func (a *Agent) Plan(ctx context.Context, in Input, direction string) (domain.Co
 	plan.Shot.DurationSeconds = math.Min(secs, maxShotSeconds)
 	if out.NewScene {
 		plan.Scene = domain.PlannedScene{
-			Title: clip(out.Scene.Title, maxSceneTitleRunes), Location: clip(out.Scene.Location, maxSceneMetaRunes),
-			Time: clip(out.Scene.Time, maxSceneMetaRunes), Objective: clip(out.Scene.Objective, maxObjectiveRunes),
+			Title:     textutil.TruncateRunes(strings.TrimSpace(out.Scene.Title), maxSceneTitleRunes),
+			Location:  textutil.TruncateRunes(strings.TrimSpace(out.Scene.Location), maxSceneMetaRunes),
+			Time:      textutil.TruncateRunes(strings.TrimSpace(out.Scene.Time), maxSceneMetaRunes),
+			Objective: textutil.TruncateRunes(strings.TrimSpace(out.Scene.Objective), maxObjectiveRunes),
 		}
 		if plan.Scene.Title == "" {
 			return domain.ContinuePlan{}, fmt.Errorf("continue: %w", planning.Invalidf("the new scene has no title"))
@@ -220,17 +223,9 @@ func writeCompletedShot(b *strings.Builder, in Input) {
 	}
 }
 
-func clip(s string, max int) string {
-	s = strings.TrimSpace(s)
-	if utf8.RuneCountInString(s) <= max {
-		return s
-	}
-	return string([]rune(s)[:max])
-}
-
 func clipAnalysis(a domain.StateAnalysis) domain.StateAnalysis {
 	for _, p := range []*string{&a.FinalFrame, &a.Story, &a.Character, &a.Position, &a.Emotion, &a.Object, &a.Camera, &a.Lighting, &a.Motion, &a.Dialogue, &a.Music} {
-		*p = clip(*p, maxAnalysisRunes)
+		*p = textutil.TruncateRunes(strings.TrimSpace(*p), maxAnalysisRunes)
 	}
 	return a
 }

@@ -3,11 +3,11 @@ package router_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -24,6 +24,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/testenv"
 )
 
 // editorLLM answers the Editor Judge with a fixed JSON reply and the Audio Director's Planner with
@@ -100,11 +101,7 @@ func newEditorAppWith(t *testing.T, tweak func(*service.Deps)) *editorApp {
 	ta := newTakeAppWith(t, func(d *service.Deps) {
 		tools, err := media.Look()
 		require.NoError(t, err)
-		wav := filepath.Join(t.TempDir(), "voice.wav")
-		out, err := exec.Command("ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "sine=frequency=300:duration=1.5", wav).CombinedOutput()
-		require.NoError(t, err, string(out))
-		speech.data, err = os.ReadFile(wav)
-		require.NoError(t, err)
+		speech.data = testenv.FFmpegFile(t, ".wav", "-f", "lavfi", "-i", "sine=frequency=300:duration=1.5")
 		d.LLM, d.Media = l, &tools
 		d.Audio = audiodirector.Providers{Speech: speech, Music: speech, Sounds: speech, Cloner: voiceCloner{id: "cloned-voice-1", sample: sample}}
 		if tweak != nil {
@@ -152,14 +149,7 @@ type timelineBody struct {
 	Duration float64 `json:"duration_seconds"`
 	SaveURL  string  `json:"save_url"`
 	Readonly bool    `json:"readonly"`
-	Judge    *struct {
-		Verdict  string `json:"verdict"`
-		Findings []struct {
-			ClipIndex int    `json:"clip_index"`
-			Issue     string `json:"issue"`
-		} `json:"findings"`
-	} `json:"judge"`
-	Clips []struct {
+	Clips    []struct {
 		ShotID     string  `json:"shot_id"`
 		TakeID     string  `json:"take_id"`
 		Label      string  `json:"label"`
@@ -181,6 +171,18 @@ func (e *editorApp) timeline() timelineBody {
 	var b timelineBody
 	require.NoError(e.t, json.Unmarshal(rec.Body.Bytes(), &b))
 	return b
+}
+
+// judge is the newest Editor Judge result of the current timeline version (nil: none yet). The
+// result is not part of the timeline API: EditorActions (Templ) draws it.
+func (e *editorApp) judge() *domain.EditorJudgeResult {
+	e.t.Helper()
+	res, err := repository.NewEditorRepository(e.db).LatestEditorJudge(context.Background(), e.timeline().ID)
+	if errors.Is(err, repository.ErrNotFound) {
+		return nil
+	}
+	require.NoError(e.t, err)
+	return &res
 }
 
 func TestEditor_RoughCutNeedsASelectedTakeForEveryShot(t *testing.T) {
@@ -243,13 +245,14 @@ func TestEditor_FullFlowFromRoughCutToExport(t *testing.T) {
 	rec = e.get("/edit-timelines/"+saved.ID+"/preview", false)
 	require.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, "video/mp4", rec.Header().Get("Content-Type"))
+	assert.Equal(t, "sandbox", rec.Header().Get("Content-Security-Policy"))
 
 	// Editor Judge: PASS moves the Project to AUDIO (the default level asks for no Rough Cut card).
 	rec = e.form(http.MethodPost, "/edit-timelines/"+saved.ID+"/judge", nil)
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-	assert.Equal(t, "timeline-reload", rec.Header().Get("HX-Trigger"), "the timeline editor shows the new Judge result")
+	assert.Equal(t, "timeline-reload", rec.Header().Get("HX-Trigger"), "the timeline editor reloads once the Project moved on")
 	assert.Equal(t, "AUDIO", e.state())
-	assert.Equal(t, "pass", e.timeline().Judge.Verdict)
+	assert.Equal(t, domain.EditorPass, e.judge().Verdict)
 
 	// Audio: two lines are spoken, the Scene gets the BGM and SE its Emotion asks for, all mixed and normalized.
 	rec = e.form(http.MethodPost, "/projects/"+e.project+"/audio/generate", nil)
@@ -268,16 +271,9 @@ func TestEditor_FullFlowFromRoughCutToExport(t *testing.T) {
 	assert.Equal(t, "期待", audio.Scenes[0].Emotion)
 	assert.InDelta(t, domain.DefaultTargetLUFS, audio.MeasuredLUFS, 1.5)
 	// Every provider call is in the cost ledger under the identifier of model-adapters.md §6.
-	var providers []string
-	rows, err := e.db.Reader().QueryContext(context.Background(), `SELECT provider FROM cost_ledger_entry WHERE project_id = ? AND provider LIKE 'elevenlabs-%' ORDER BY provider`, e.project)
-	require.NoError(t, err)
-	for rows.Next() {
-		var p string
-		require.NoError(t, rows.Scan(&p))
-		providers = append(providers, p)
-	}
-	require.NoError(t, rows.Err())
-	assert.Equal(t, []string{"elevenlabs-music", "elevenlabs-sfx", "elevenlabs-tts", "elevenlabs-tts"}, providers)
+	var providers string
+	require.NoError(t, e.db.Reader().QueryRow(`SELECT group_concat(provider) FROM (SELECT provider FROM cost_ledger_entry WHERE project_id = ? AND provider LIKE 'elevenlabs-%' ORDER BY provider)`, e.project).Scan(&providers))
+	assert.Equal(t, "elevenlabs-music,elevenlabs-sfx,elevenlabs-tts,elevenlabs-tts", providers)
 	_, statErr := os.Stat(filepath.Join(e.dir, "assets", filepath.FromSlash(audio.MixPath)))
 	assert.NoError(t, statErr)
 
@@ -308,6 +304,13 @@ func TestEditor_FullFlowFromRoughCutToExport(t *testing.T) {
 	rec = e.get("/projects/"+e.project+"/exports/"+exports[0].ID+"/video", false)
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, "video/webm", rec.Header().Get("Content-Type"))
+	assert.Equal(t, []string{"sandbox", `attachment; filename="mam-export-` + exports[0].ExportedAt.UTC().Format("20060102") + `-` + exports[0].ID + `.webm"`}, []string{rec.Header().Get("Content-Security-Policy"), rec.Header().Get("Content-Disposition")}, "the download is saved under a name of its own, not `video`")
+
+	// The completion notice carries no URL in its text; the chat draws the download link from ref_type / ref_id.
+	var notice string
+	require.NoError(t, e.db.Reader().QueryRow(`SELECT content FROM chat_message WHERE project_id = ? AND ref_type = 'export' AND ref_id = ?`, e.project, exports[0].ID).Scan(&notice))
+	assert.NotContains(t, notice, "/projects/")
+	assert.Contains(t, e.get("/projects/"+e.project, false).Body.String(), `<a href="/projects/`+e.project+`/exports/`+exports[0].ID+`/video"`)
 }
 
 func TestEditor_ReEditVerdictKeepsTheProjectEditing(t *testing.T) {
@@ -321,9 +324,9 @@ func TestEditor_ReEditVerdictKeepsTheProjectEditing(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	assert.Equal(t, "EDITING", e.state())
-	j := e.timeline().Judge
+	j := e.judge()
 	require.NotNil(t, j)
-	assert.Equal(t, "re_edit", j.Verdict)
+	assert.Equal(t, domain.EditorReEdit, j.Verdict)
 	assert.Equal(t, "冒頭が長い", j.Findings[0].Issue)
 	assert.Contains(t, rec.Body.String(), "冒頭が長い")
 }
@@ -522,29 +525,18 @@ func TestEditor_NeedShotVerdictIsReportedWithTheShotToMakeAndAwaitsTheDirector(t
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	assert.Equal(t, "EDIT_JUDGING", e.state(), "the Project waits for the additional Shot")
 	assert.Contains(t, rec.Body.String(), "data-need-shot")
-
-	var body struct {
-		Judge struct {
-			Verdict  string `json:"verdict"`
-			Findings []struct {
-				Need struct {
-					Kind      string  `json:"kind"`
-					AfterClip int     `json:"after_clip"`
-					Seconds   float64 `json:"duration_seconds"`
-				} `json:"need_shot"`
-			} `json:"findings"`
-		} `json:"judge"`
-		RequestShotURL string `json:"request_shot_url"`
-	}
-	require.NoError(t, json.Unmarshal(e.get("/api/v1/projects/"+e.project+"/edit-timeline", false).Body.Bytes(), &body))
-	assert.Equal(t, "need_shot", body.Judge.Verdict)
-	require.Len(t, body.Judge.Findings, 1)
-	assert.Equal(t, "reaction", body.Judge.Findings[0].Need.Kind)
-	assert.Equal(t, 1, body.Judge.Findings[0].Need.AfterClip)
-	assert.Equal(t, "/edit-timelines/"+id+"/request-additional-shot", body.RequestShotURL)
+	j := e.judge()
+	require.NotNil(t, j)
+	assert.Equal(t, domain.EditorNeedShot, j.Verdict)
+	require.Len(t, j.Findings, 1)
+	require.NotNil(t, j.Findings[0].Need)
+	assert.Equal(t, domain.ClipReaction, j.Findings[0].Need.Kind)
+	assert.Equal(t, 1, j.Findings[0].Need.AfterClip)
+	assert.NotContains(t, e.get("/api/v1/projects/"+e.project+"/edit-timeline", false).Body.String(), "judge", "the Judge result is Templ's (EditorActions), not an API field")
+	assert.NotContains(t, e.get("/api/v1/projects/"+e.project+"/edit-timeline", false).Body.String(), "request_shot_url", "the button is Templ's (hx-post), not an API field")
 
 	// Without generation configured (no video model) the Director cannot be asked.
-	assert.Equal(t, http.StatusServiceUnavailable, e.form(http.MethodPost, body.RequestShotURL, nil).Code)
+	assert.Equal(t, http.StatusServiceUnavailable, e.form(http.MethodPost, "/edit-timelines/"+id+"/request-additional-shot", nil).Code)
 }
 
 func TestEditor_RoughCutKeepsTheClipOfAShotWhoseEditingIsFixed(t *testing.T) {
@@ -635,7 +627,7 @@ func TestEditor_AutoChainRunsFromTheLastSelectedTakeToReady(t *testing.T) {
 	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/takes/t1/select", nil).Code)
 
 	require.Eventually(t, func() bool { return e.state() == "READY" }, 60*time.Second, 50*time.Millisecond, "state: %s", e.state())
-	assert.Equal(t, "pass", e.timeline().Judge.Verdict)
+	assert.Equal(t, domain.EditorPass, e.judge().Verdict)
 	audio, err := repository.NewEditorRepository(e.db).LatestAudioTimeline(context.Background(), e.project, "")
 	require.NoError(t, err)
 	assert.Equal(t, 1, audio.VersionNumber)
@@ -657,9 +649,9 @@ func TestEditor_AutoChainStopsAtAReEditVerdict(t *testing.T) {
 
 	require.Eventually(t, func() bool {
 		rec := e.get("/api/v1/projects/"+e.project+"/edit-timeline", false)
-		return rec.Code == http.StatusOK && e.timeline().Judge != nil
+		return rec.Code == http.StatusOK && e.judge() != nil
 	}, 30*time.Second, 50*time.Millisecond)
-	assert.Equal(t, "re_edit", e.timeline().Judge.Verdict)
+	assert.Equal(t, domain.EditorReEdit, e.judge().Verdict)
 	time.Sleep(300 * time.Millisecond)
 	assert.Equal(t, "EDITING", e.state(), "a Re-edit verdict waits for the user")
 	_, err := repository.NewEditorRepository(e.db).LatestAudioTimeline(context.Background(), e.project, "")
@@ -679,7 +671,8 @@ func TestEditor_JudgeStopsOnADatabaseErrorInsteadOfReportingAMissingTakeFile(t *
 
 	assert.GreaterOrEqual(t, rec.Code, http.StatusInternalServerError, rec.Body.String())
 	assert.Equal(t, "EDITING", e.state())
-	assert.Nil(t, e.timeline().Judge, "no false Re-edit finding is stored")
+	_, err := repository.NewEditorRepository(e.db).LatestEditorJudge(context.Background(), id)
+	assert.ErrorIs(t, err, repository.ErrNotFound, "no false Re-edit finding is stored")
 }
 
 func TestEditor_AudioFilesAreRemovedWhenTheTimelineCannotBeSaved(t *testing.T) {

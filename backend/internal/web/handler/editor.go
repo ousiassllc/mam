@@ -12,6 +12,8 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/pages"
 )
 
+const timelineReloadTrigger = "timeline-reload" // <mam-timeline-editor> reloads on it (its TIMELINE_RELOAD_EVENT)
+
 func editorPanelData(v service.EditorView) organisms.EditorPanelData {
 	d := organisms.EditorPanelData{
 		Project: v.Project, BranchID: v.BranchID, PendingShots: v.PendingShots, Audio: v.Audio, TrunkAudio: v.TrunkAudio, Voices: v.Voices, QC: v.QC, Exports: v.Exports, Defaults: v.Defaults, CanRender: v.CanRender,
@@ -74,8 +76,7 @@ type roughCutForm struct {
 }
 
 // RoughCut makes the Rough Cut from the Selected Takes of the trunk or of the Branch in branch_id
-// (POST /projects/:id/edit/rough-cut). The timeline editor reloads on the timeline-reload event the
-// response carries.
+// (POST /projects/:id/edit/rough-cut). The timeline editor reloads on the timeline-reload event.
 func RoughCut(svc *service.EditorService) gin.HandlerFunc {
 	return editorStage(func(c *gin.Context) (service.EditorView, error) {
 		var in roughCutForm
@@ -83,26 +84,25 @@ func RoughCut(svc *service.EditorService) gin.HandlerFunc {
 			return service.EditorView{}, unreadable(c, err, "branch_id", "Branch の指定を読み取れませんでした")
 		}
 		return svc.RoughCut(c.Request.Context(), c.Param("id"), in.BranchID)
-	}, "timeline-reload")
+	}, timelineReloadTrigger)
 }
 
-// JudgeTimeline runs the Editor Judge (POST /edit-timelines/:id/judge). The timeline editor shows
-// the Judge result and is readonly once the Project moved on, so it reloads on the timeline-reload
-// event the response carries.
+// JudgeTimeline runs the Editor Judge (POST /edit-timelines/:id/judge). The Judge result is drawn
+// once, by the stage buttons (EditorActions), which the response replaces. The timeline editor reloads
+// on the timeline-reload event: it is readonly once the Project moved on.
 func JudgeTimeline(svc *service.EditorService) gin.HandlerFunc {
 	return editorStage(func(c *gin.Context) (service.EditorView, error) {
 		return svc.JudgeTimeline(c.Request.Context(), c.Param("id"))
-	}, "timeline-reload")
+	}, timelineReloadTrigger)
 }
 
 // RequestAdditionalShot asks the Director for the additional Shots the Editor Judge found missing
-// (POST /edit-timelines/:id/request-additional-shot): the Editor → Reshoot Loop. The Project moves
-// on to GENERATING, or, at the limit of the Retry Policy, to AWAITING_APPROVAL (an Escalation card),
-// where the timeline editor is readonly: it reloads on the timeline-reload event the response carries.
+// (POST /edit-timelines/:id/request-additional-shot): the Editor → Reshoot Loop. The Project moves on to GENERATING,
+// or at the limit of the Retry Policy to AWAITING_APPROVAL (Escalation card), where the timeline editor is readonly.
 func RequestAdditionalShot(svc *service.EditorService) gin.HandlerFunc {
 	return editorStage(func(c *gin.Context) (service.EditorView, error) {
 		return svc.RequestAdditionalShot(c.Request.Context(), c.Param("id"))
-	}, "timeline-reload")
+	}, timelineReloadTrigger)
 }
 
 // GenerateAudio makes the Audio Timeline of the trunk or of the Branch in branch_id (POST
@@ -141,7 +141,7 @@ func FinalQC(svc *service.EditorService) gin.HandlerFunc {
 			return service.EditorView{}, unreadable(c, err, "branch_id", "Branch の指定を読み取れませんでした")
 		}
 		return svc.FinalQC(c.Request.Context(), c.Param("id"), in.BranchID)
-	}, "timeline-reload")
+	}, timelineReloadTrigger)
 }
 
 // exportForm is the body of POST /projects/:id/export. Empty fields take the defaults; branch_id
@@ -194,6 +194,7 @@ func EditPreview(svc *service.EditorService) gin.HandlerFunc {
 func ExportVideo(svc *service.EditorService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		file, err := svc.ExportFile(c.Request.Context(), c.Param("id"), c.Param("exportId"))
+		c.Header("Content-Disposition", file.Disposition) // "" on an error: gin then sets no header
 		serveMedia(c, file, err)
 	}
 }

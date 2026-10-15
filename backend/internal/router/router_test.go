@@ -2,7 +2,6 @@ package router_test
 
 import (
 	"bytes"
-	"context"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -17,24 +16,62 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/zalando/go-keyring"
 
-	"github.com/ousiassllc/mam/backend/internal/credential"
+	"github.com/ousiassllc/mam/backend/internal/credential/credentialtest"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 	"github.com/ousiassllc/mam/backend/internal/router"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
+	"github.com/ousiassllc/mam/backend/internal/testenv"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 )
 
 func init() { gin.SetMode(gin.TestMode) }
 
+type app struct {
+	t      *testing.T
+	db     *repository.DB
+	engine *gin.Engine
+	svc    *service.Services
+	keys   *credentialtest.Memory // the key store of the app
+	cookie *http.Cookie
+	token  string
+	assets string // the assets directory
+}
+
+// newApp is an app that shares nothing with another test (its own database, assets directory and
+// key store), so the test that builds it runs in parallel with the others.
+func newApp(t *testing.T) *app {
+	t.Helper()
+	testenv.Parallel(t)
+	return newSerialApp(t)
+}
+
+// newSerialApp is newApp for a test that changes process-wide state (t.Setenv) and so cannot run in parallel.
+func newSerialApp(t *testing.T) *app {
+	t.Helper()
+	keys := credentialtest.New()
+	dir := t.TempDir()
+	db := testdb.Open(t)
+	svc := servicetest.New(t, service.Deps{DB: db, Credentials: keys, AssetsDir: filepath.Join(dir, "assets")})
+	a := &app{t: t, db: db, engine: router.New(svc, router.Options{}), svc: svc, keys: keys, assets: filepath.Join(dir, "assets")}
+	a.cookie, a.token = bootstrap(t, a.engine)
+	return a
+}
+
+// newEngine is an engine of its own (database, key store), so the test that builds it runs in parallel.
 func newEngine(t *testing.T) *gin.Engine {
 	t.Helper()
-	keyring.MockInit()
-	db, err := repository.Open(context.Background(), filepath.Join(t.TempDir(), "mam.db"), nil)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = db.Close() })
-	svc := service.New(service.Deps{DB: db, Credentials: credential.NewKeyring()})
+	testenv.Parallel(t)
+	return newSerialEngine(t)
+}
+
+// newSerialEngine is newEngine for a test that changes process-wide state (t.Setenv).
+func newSerialEngine(t *testing.T) *gin.Engine {
+	t.Helper()
+	db := testdb.Open(t)
+	svc := servicetest.New(t, service.Deps{DB: db, Credentials: credentialtest.New()})
 	return router.New(svc, router.Options{
 		Static: fstest.MapFS{
 			"app.js":           {Data: []byte("console.log(1)")},
@@ -126,7 +163,7 @@ func TestCSRF_RejectsUnsafeRequestsWithoutValidToken(t *testing.T) {
 }
 
 func TestCSRF_IgnoresTheBodyAndNeverBuffersAnUpload(t *testing.T) {
-	engine := newEngine(t)
+	engine := newSerialEngine(t)
 	c, token := bootstrap(t, engine)
 	tmp := t.TempDir()
 	t.Setenv("TMPDIR", tmp)
@@ -155,83 +192,4 @@ func TestCSRF_IgnoresTheBodyAndNeverBuffersAnUpload(t *testing.T) {
 	entries, err := os.ReadDir(tmp)
 	require.NoError(t, err)
 	assert.Empty(t, entries, "no temp file for a request that failed CSRF")
-}
-
-func TestLoopbackOnly_RejectsForeignHostOriginAndClient(t *testing.T) {
-	engine := newEngine(t)
-
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	req.Host = "evil.example.com:8787"
-	assert.Equal(t, http.StatusForbidden, do(engine, req).Code, "DNS rebinding: foreign Host header")
-
-	req = httptest.NewRequest(http.MethodGet, "/", nil)
-	req.Header.Set("Origin", "https://evil.example.com")
-	assert.Equal(t, http.StatusForbidden, do(engine, req).Code, "foreign Origin")
-
-	req = httptest.NewRequest(http.MethodGet, "/", nil)
-	rec := httptest.NewRecorder()
-	req.Host = "127.0.0.1:8787"
-	req.RemoteAddr = "192.168.1.20:5555"
-	engine.ServeHTTP(rec, req)
-	assert.Equal(t, http.StatusForbidden, rec.Code, "non-loopback client")
-	assert.Nil(t, cookie(rec, middleware.CSRFCookieName), "rejected requests get no token")
-
-	for _, host := range []string{"127.0.0.1:8787", "localhost:8787", "[::1]:8787"} {
-		req = httptest.NewRequest(http.MethodGet, "/", nil)
-		req.Host = host
-		req.Header.Set("Origin", "http://"+host)
-		assert.Equal(t, http.StatusOK, do(engine, req).Code, host)
-	}
-}
-
-func TestHealth_PageRouteAndHumaAPIRoute(t *testing.T) {
-	engine := newEngine(t)
-
-	rec := do(engine, httptest.NewRequest(http.MethodGet, "/healthz", nil))
-	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.JSONEq(t, `{"ok":true,"database":"ok"}`, rec.Body.String())
-
-	rec = do(engine, httptest.NewRequest(http.MethodGet, "/api/v1/health", nil))
-	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.JSONEq(t, `{"ok":true,"database":"ok"}`, rec.Body.String())
-}
-
-func TestHealth_DatabaseFailureIs503WithOKFalseOnBothRoutes(t *testing.T) {
-	keyring.MockInit()
-	db, err := repository.Open(context.Background(), filepath.Join(t.TempDir(), "mam.db"), nil)
-	require.NoError(t, err)
-	engine := router.New(service.New(service.Deps{DB: db, Credentials: credential.NewKeyring()}), router.Options{})
-	require.NoError(t, db.Close()) // Ping now fails
-
-	for _, path := range []string{"/healthz", "/api/v1/health"} {
-		rec := do(engine, httptest.NewRequest(http.MethodGet, path, nil))
-		assert.Equal(t, http.StatusServiceUnavailable, rec.Code, path)
-		assert.JSONEq(t, `{"ok":false,"database":"unavailable"}`, rec.Body.String(), path)
-	}
-}
-
-func TestAPI_ServesOpenAPIButNoExternalDocsPage(t *testing.T) {
-	engine := newEngine(t)
-
-	rec := do(engine, httptest.NewRequest(http.MethodGet, "/api/v1/openapi.json", nil))
-	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Contains(t, rec.Body.String(), `"openapi":"3.1`)
-
-	assert.Equal(t, http.StatusNotFound, do(engine, httptest.NewRequest(http.MethodGet, "/docs", nil)).Code)
-	assert.Equal(t, http.StatusNotFound, do(engine, httptest.NewRequest(http.MethodGet, "/api/v1/docs", nil)).Code)
-}
-
-func TestStatic_ServesFilesButNotDotfilesOrListings(t *testing.T) {
-	engine := newEngine(t)
-
-	rec := do(engine, httptest.NewRequest(http.MethodGet, "/static/app.js", nil))
-	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Equal(t, "console.log(1)", rec.Body.String())
-
-	assert.Equal(t, http.StatusNotFound, do(engine, httptest.NewRequest(http.MethodGet, "/static/.secret", nil)).Code)
-	assert.Equal(t, http.StatusNotFound, do(engine, httptest.NewRequest(http.MethodGet, "/static/sub/", nil)).Code)
-	for _, hidden := range []string{"/static/.hidden/file.txt", "/static/sub/.git/config", "/static/sub/../.hidden/file.txt"} {
-		assert.Equal(t, http.StatusNotFound, do(engine, httptest.NewRequest(http.MethodGet, hidden, nil)).Code, hidden)
-	}
-	assert.Equal(t, http.StatusOK, do(engine, httptest.NewRequest(http.MethodGet, "/static/sub/inner.js", nil)).Code)
 }

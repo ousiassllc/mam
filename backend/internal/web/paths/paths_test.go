@@ -1,13 +1,17 @@
 package paths_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
+// The IDs of these tests could not come from a bundle import (domain.ValidBundleID refuses them): they pin
+// the escape that keeps a URL intact were that limit ever relaxed.
 func TestProject_EscapesEverySegmentSoAnIDCannotChangeTheRoute(t *testing.T) {
 	assert.Equal(t, "/projects/p1", paths.Project("p1"))
 	assert.Equal(t, "/projects/p1/scenes/sc1", paths.Project("p1", "scenes", "sc1"))
@@ -30,8 +34,25 @@ func TestShotTakeBranchSceneAPIAndSocketPaths_EscapeEverySegment(t *testing.T) {
 	assert.Equal(t, "/scenes/"+esc+"/shots", paths.Scene(id, "shots"))
 	assert.Equal(t, "/api/v1/shots/"+esc+"/takes", paths.APIShot(id, "takes"))
 	assert.Equal(t, "/api/v1/takes/"+esc+"/judge-result", paths.APITake(id, "judge-result"))
+	assert.Equal(t, "/api/v1/projects/"+esc+"/edit-timeline", paths.APIProject(id, "edit-timeline"))
 	assert.Equal(t, "/ws/shots/"+esc, paths.ShotProgress(id))
 	assert.Equal(t, "/shots/plain", paths.Shot("plain"))
+}
+
+func TestAPIPrefix_IsTheOneBaseOfEveryAPIPath(t *testing.T) {
+	assert.Equal(t, "/api/v1", paths.APIPrefix)
+	for _, p := range []string{paths.APIProject("x"), paths.APIShot("x"), paths.APITake("x")} {
+		assert.True(t, strings.HasPrefix(p, paths.APIPrefix+"/"), p)
+	}
+}
+
+// domain builds the Take video and thumbnail URLs it stores in the Take cards, and cannot import
+// paths: the two must stay the same route.
+func TestDomainTakeURLs_AreTheTakeRoutes(t *testing.T) {
+	for _, id := range []string{"t1", "a?b#c%d e/f"} {
+		assert.Equal(t, paths.Take(id, "video"), domain.TakeVideoURL(id))
+		assert.Equal(t, paths.Take(id, "thumbnail"), domain.TakeThumbnailURL(id))
+	}
 }
 
 func TestNoteBrandConstraintEditTimeline_EscapeEverySegment(t *testing.T) {
@@ -43,4 +64,42 @@ func TestNoteBrandConstraintEditTimeline_EscapeEverySegment(t *testing.T) {
 	assert.Equal(t, "/edit-timelines/"+esc, paths.EditTimeline(id))
 	assert.Equal(t, "/edit-timelines/"+esc+"/request-additional-shot", paths.EditTimeline(id, "request-additional-shot"))
 	assert.Equal(t, "/edit-timelines/e1/preview", paths.EditTimeline("e1", "preview"))
+}
+
+func TestSeriesReviewCredential_EscapeEverySegment(t *testing.T) {
+	id := "a?b#c%d e/f"
+	esc := "a%3Fb%23c%25d%20e%2Ff"
+	assert.Equal(t, "/series/"+esc, paths.Series(id))
+	assert.Equal(t, "/series/"+esc+"/characters/"+esc, paths.Series(id, "characters", id))
+	assert.Equal(t, "/series/s1/episodes", paths.Series("s1", "episodes"))
+	assert.Equal(t, "/reviews/"+esc, paths.Review(id))
+	assert.Equal(t, "/reviews/"+esc+"/comments/"+esc, paths.Review(id, "comments", id))
+	assert.Equal(t, "/reviews/r1/video", paths.Review("r1", "video"))
+	assert.Equal(t, "/credentials/"+esc, paths.Credential(id))
+	assert.Equal(t, "/credentials/openai", paths.Credential("openai"))
+}
+
+func TestCollectionRoutes_AreTheFixedPathsOfTheirResources(t *testing.T) {
+	assert.Equal(t, "/projects", paths.Projects())
+	assert.Equal(t, "/projects/import", paths.ProjectImport())
+	assert.Equal(t, "/series", paths.SeriesList())
+	assert.Equal(t, "/reviews", paths.Reviews())
+	assert.Equal(t, "/reviews/import", paths.ReviewImport())
+	assert.Equal(t, "/static/app.css", paths.StaticCSS)
+	assert.Equal(t, "/static/app.js", paths.StaticApp)
+	// The ID routes extend the collections: the same prefix, so a rename moves both.
+	assert.Equal(t, paths.Projects()+"/p1", paths.Project("p1"))
+	assert.Equal(t, paths.Reviews()+"/r1", paths.Review("r1"))
+	assert.Equal(t, paths.SeriesList()+"/s1", paths.Series("s1"))
+}
+
+func TestHomeAnalytics_AreTheFixedPathsOfTheirPages(t *testing.T) {
+	assert.Equal(t, "/", paths.Home())
+	assert.Equal(t, "/analytics", paths.Analytics())
+}
+
+func TestWithBranch_AddsTheEscapedBranchQueryAndNothingForTheTrunk(t *testing.T) {
+	assert.Equal(t, "/projects/p1/world-state", paths.WithBranch(paths.Project("p1", "world-state"), ""))
+	assert.Equal(t, "/projects/p1/world-state?branch_id=b1", paths.WithBranch(paths.Project("p1", "world-state"), "b1"))
+	assert.Equal(t, "/x?branch_id=a%26b%3Dc+d%23e%25f%2Fg", paths.WithBranch("/x", "a&b=c d#e%f/g"))
 }

@@ -35,21 +35,16 @@ func NewBrandTemplateRepository(db *DB) *BrandTemplateRepository {
 // simple folding (like the Reference Library's search and tags). The column's COLLATE NOCASE folds
 // ASCII only, so it stays as a backstop and the comparison is made here.
 func templateNameFree(ctx context.Context, tx *sql.Tx, name string) error {
-	rows, err := tx.QueryContext(ctx, `SELECT name FROM brand_template`)
+	names, err := queryAll(ctx, tx, scanString, `SELECT name FROM brand_template`)
 	if err != nil {
 		return err
 	}
-	defer func() { _ = rows.Close() }()
-	for rows.Next() {
-		var taken string
-		if err := rows.Scan(&taken); err != nil {
-			return err
-		}
+	for _, taken := range names {
 		if strings.EqualFold(taken, name) {
 			return ErrConflict
 		}
 	}
-	return rows.Err()
+	return nil
 }
 
 // SaveFromProject stores a snapshot of the Project's constraints as a template with the (already
@@ -73,11 +68,11 @@ func (r *BrandTemplateRepository) SaveFromProject(ctx context.Context, name, pro
 			return ErrEmpty
 		}
 		if _, err := tx.ExecContext(ctx, `INSERT INTO brand_template (id, name, created_at) VALUES (?, ?, ?)`,
-			t.ID, t.Name, formatTime(t.CreatedAt)); err != nil {
+			t.ID, t.Name, FormatTime(t.CreatedAt)); err != nil {
 			return err
 		}
 		for _, c := range constraints {
-			raw, err := json.Marshal(brandValue{Text: c.Text})
+			raw, err := json.Marshal(BrandValue{Text: c.Text})
 			if err != nil {
 				return fmt.Errorf("marshal brand constraint: %w", err)
 			}
@@ -99,39 +94,53 @@ func (r *BrandTemplateRepository) SaveFromProject(ctx context.Context, name, pro
 	return t, nil
 }
 
-// List returns every template with its constraints, oldest first.
+// List returns every template with its constraints, oldest first. The constraints of all templates
+// come from one query.
 func (r *BrandTemplateRepository) List(ctx context.Context) ([]domain.BrandTemplate, error) {
-	rows, err := r.db.Reader().QueryContext(ctx, `SELECT id, name, created_at FROM brand_template ORDER BY created_at, rowid`)
+	db := r.db.Reader()
+	out, err := queryAll(ctx, db, scanBrandTemplate, `SELECT id, name, created_at FROM brand_template ORDER BY created_at, rowid`)
 	if err != nil {
 		return nil, fmt.Errorf("list brand templates: %w", err)
 	}
-	var out []domain.BrandTemplate
-	for rows.Next() {
-		var (
-			t     domain.BrandTemplate
-			added string
-		)
-		if err := rows.Scan(&t.ID, &t.Name, &added); err != nil {
-			_ = rows.Close()
-			return nil, fmt.Errorf("scan brand template: %w", err)
-		}
-		if t.CreatedAt, err = parseTime(added); err != nil {
-			_ = rows.Close()
-			return nil, err
-		}
-		out = append(out, t)
+	if len(out) == 0 {
+		return out, nil
 	}
-	if err := rows.Err(); err != nil {
-		_ = rows.Close()
-		return nil, err
+	type templateConstraint struct {
+		templateID string
+		domain.BrandConstraint
 	}
-	_ = rows.Close()
+	rows, err := queryAll(ctx, db, func(row rowScanner) (templateConstraint, error) {
+		var tc templateConstraint
+		var value string
+		if err := row.Scan(&tc.templateID, &tc.ID, &tc.Type, &tc.Level, &value); err != nil {
+			return tc, fmt.Errorf("scan brand constraint: %w", err)
+		}
+		return tc, decodeBrandValue(&tc.BrandConstraint, value)
+	}, `SELECT template_id, id, type, enforcement_level, value FROM brand_template_constraint ORDER BY rowid`)
+	if err != nil {
+		return nil, fmt.Errorf("list brand constraints: %w", err)
+	}
+	byTemplate := make(map[string]domain.BrandConstraints, len(out))
+	for _, tc := range rows {
+		byTemplate[tc.templateID] = append(byTemplate[tc.templateID], tc.BrandConstraint)
+	}
 	for i := range out {
-		if out[i].Constraints, err = templateConstraints(ctx, r.db.Reader(), out[i].ID); err != nil {
-			return nil, err
-		}
+		out[i].Constraints = byTemplate[out[i].ID]
 	}
 	return out, nil
+}
+
+func scanBrandTemplate(row rowScanner) (domain.BrandTemplate, error) {
+	var (
+		t     domain.BrandTemplate
+		added string
+	)
+	if err := row.Scan(&t.ID, &t.Name, &added); err != nil {
+		return t, fmt.Errorf("scan brand template: %w", err)
+	}
+	var err error
+	t.CreatedAt, err = ParseTime(added)
+	return t, err
 }
 
 // Delete removes the template, or returns ErrNotFound. Projects that used it keep their constraints.
@@ -163,7 +172,7 @@ func (r *BrandTemplateRepository) Apply(ctx context.Context, templateID, project
 		if err := projectExists(ctx, tx, projectID); err != nil {
 			return err
 		}
-		return applyBrandTemplate(ctx, tx, templateID, projectID, formatTime(r.now()))
+		return applyBrandTemplate(ctx, tx, templateID, projectID, FormatTime(r.now()))
 	})
 	if errors.Is(err, ErrNotFound) || errors.Is(err, ErrTemplateNotFound) {
 		return err
@@ -172,11 +181,6 @@ func (r *BrandTemplateRepository) Apply(ctx context.Context, templateID, project
 		return fmt.Errorf("apply brand template: %w", err)
 	}
 	return nil
-}
-
-// querier is what *sql.DB and *sql.Tx share.
-type querier interface {
-	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
 }
 
 // applyBrandTemplate is Apply inside the transaction of another write (a new Project or Episode).
@@ -199,7 +203,7 @@ func applyBrandTemplate(ctx context.Context, tx *sql.Tx, templateID, projectID, 
 		return err
 	}
 	for _, c := range tpl.MissingFrom(have) {
-		raw, err := json.Marshal(brandValue{Text: c.Text})
+		raw, err := json.Marshal(BrandValue{Text: c.Text})
 		if err != nil {
 			return fmt.Errorf("marshal brand constraint: %w", err)
 		}
@@ -212,37 +216,39 @@ func applyBrandTemplate(ctx context.Context, tx *sql.Tx, templateID, projectID, 
 	return nil
 }
 
-func projectConstraints(ctx context.Context, q querier, projectID string) (domain.BrandConstraints, error) {
+func projectConstraints(ctx context.Context, q queryer, projectID string) (domain.BrandConstraints, error) {
 	return readBrandConstraints(ctx, q, `SELECT id, type, enforcement_level, value FROM brand_constraint WHERE project_id = ? ORDER BY created_at, rowid`, projectID)
 }
 
-func templateConstraints(ctx context.Context, q querier, templateID string) (domain.BrandConstraints, error) {
+func templateConstraints(ctx context.Context, q queryer, templateID string) (domain.BrandConstraints, error) {
 	return readBrandConstraints(ctx, q, `SELECT id, type, enforcement_level, value FROM brand_template_constraint WHERE template_id = ? ORDER BY rowid`, templateID)
 }
 
 // readBrandConstraints runs a query selecting id, type, enforcement_level and value. The rows carry no
 // ProjectID and no time.
-func readBrandConstraints(ctx context.Context, q querier, query, arg string) (domain.BrandConstraints, error) {
-	rows, err := q.QueryContext(ctx, query, arg)
-	if err != nil {
-		return nil, fmt.Errorf("list brand constraints: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-	var out domain.BrandConstraints
-	for rows.Next() {
+func readBrandConstraints(ctx context.Context, q queryer, query, arg string) (domain.BrandConstraints, error) {
+	out, err := queryAll(ctx, q, func(row rowScanner) (domain.BrandConstraint, error) {
 		var (
 			c     domain.BrandConstraint
 			value string
 		)
-		if err := rows.Scan(&c.ID, &c.Type, &c.Level, &value); err != nil {
-			return nil, fmt.Errorf("scan brand constraint: %w", err)
+		if err := row.Scan(&c.ID, &c.Type, &c.Level, &value); err != nil {
+			return c, fmt.Errorf("scan brand constraint: %w", err)
 		}
-		var v brandValue
-		if err := json.Unmarshal([]byte(value), &v); err != nil {
-			return nil, fmt.Errorf("decode brand constraint %s: %w", c.ID, err)
-		}
-		c.Text = v.Text
-		out = append(out, c)
+		return c, decodeBrandValue(&c, value)
+	}, query, arg)
+	if err != nil {
+		return nil, fmt.Errorf("list brand constraints: %w", err)
 	}
-	return out, rows.Err()
+	return domain.BrandConstraints(out), nil
+}
+
+// decodeBrandValue fills the constraint's Text from the JSON value column.
+func decodeBrandValue(c *domain.BrandConstraint, value string) error {
+	var v BrandValue
+	if err := json.Unmarshal([]byte(value), &v); err != nil {
+		return fmt.Errorf("decode brand constraint %s: %w", c.ID, err)
+	}
+	c.Text = v.Text
+	return nil
 }

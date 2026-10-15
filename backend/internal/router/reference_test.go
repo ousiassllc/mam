@@ -114,7 +114,7 @@ func TestReferenceLibrary_PinAddsTheImageToTheShotsReferencePack(t *testing.T) {
 
 	pin := g.form(http.MethodPost, "/shots/"+g.shotID+"/references", url.Values{"reference_id": {refID}})
 	require.Equal(t, http.StatusOK, pin.Code, pin.Body.String())
-	assert.Contains(t, pin.Body.String(), "ライブラリから追加")
+	assert.Contains(t, pin.Body.String(), `id="reference-pack"`, "the Reference Pack alone answers (#695)")
 	assert.Contains(t, g.get("/shots/"+g.shotID, true).Body.String(), "ライブラリから追加")
 
 	assert.Equal(t, http.StatusUnprocessableEntity, g.form(http.MethodPost, "/shots/"+g.shotID+"/references", url.Values{}).Code)
@@ -144,7 +144,7 @@ func TestWorldState_ShowsALockToggleForEveryAttributeAndSwitchesIt(t *testing.T)
 
 	rec := a.form(http.MethodPut, "/projects/"+id+"/world-state/locks", url.Values{"target_type": {"location"}, "target_id": {"l1"}, "parameter": {"time"}, "mode": {"lock"}})
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-	assert.Contains(t, rec.Body.String(), `id="world-state-view"`, "the whole view comes back")
+	assert.NotContains(t, rec.Body.String(), `id="world-state-view"`, "the whole view does not come back (#685)")
 	assert.Contains(t, timeToggle.FindString(rec.Body.String()), `value="lock" aria-pressed="true"`, "the switch shows the stored state")
 
 	edit := a.form(http.MethodPut, "/projects/"+id+"/locations/l1", url.Values{"time": {"night"}})

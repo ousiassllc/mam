@@ -10,17 +10,12 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/zalando/go-keyring"
-
-	"github.com/ousiassllc/mam/backend/internal/credential"
 )
 
 func TestSettings_APIKeysAreSavedAndDeletedWithoutEverBeingShown(t *testing.T) {
 	a := newApp(t)
 	project := a.createProject("CM")
-	store := credential.NewKeyring()
-	t.Cleanup(func() { _ = store.Delete("kling") })
+	store := a.keys
 	const secret = "sk-very-secret-value"
 	row := func(body, provider string) string {
 		re := `(?s)<li[^>]*data-provider="` + provider + `".*?</li>`
@@ -83,8 +78,7 @@ func regexpFind(t *testing.T, pattern, body string) string {
 func TestSettings_RendersWithoutAKeyStore(t *testing.T) {
 	a := newApp(t)
 	project := a.createProject("CM")
-	keyring.MockInitWithError(errors.New("secret service is not available"))
-	t.Cleanup(keyring.MockInit)
+	a.keys.FailWith(errors.New("secret service is not available"))
 
 	rec := a.get("/projects/"+project+"/settings", false)
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
@@ -103,8 +97,7 @@ func TestSettings_RendersWithoutAKeyStore(t *testing.T) {
 // the generic internal error (#324).
 func TestSettings_SavingAndDeletingKeysWithoutAKeyStoreAnswersThePanelWith503(t *testing.T) {
 	a := newApp(t)
-	keyring.MockInitWithError(errors.New("secret service is not available"))
-	t.Cleanup(keyring.MockInit)
+	a.keys.FailWith(errors.New("secret service is not available"))
 
 	for _, rec := range []*httptest.ResponseRecorder{
 		a.form(http.MethodPut, "/credentials/kling", url.Values{"api_key": {"sk-abc"}}),

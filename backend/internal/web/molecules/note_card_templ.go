@@ -25,8 +25,8 @@ func sourceNoteLabel(s domain.NoteSource) string {
 
 // NoteCard shows one note (F-31): its latest text in an edit form, the category and pin, the archive
 // button, and the version history with a restore button per earlier version. Saving with a changed
-// title or text appends a version; the category and pin do not. Every action answers with the whole
-// note list (#note-list).
+// title or text appends a version; the category and pin do not. Every action answers with the note
+// list (#note-list) in which the other notes the page has are placeholders (notelist.Data.Only).
 func NoteCard(n domain.NoteView) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -143,7 +143,7 @@ func NoteCard(n domain.NoteView) templ.Component {
 			"name":      "title",
 			"type":      "text",
 			"value":     n.Version.Title,
-			"maxlength": "100",
+			"maxlength": strconv.Itoa(domain.MaxNoteTitleRunes),
 			"required":  true,
 		}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
@@ -170,7 +170,7 @@ func NoteCard(n domain.NoteView) templ.Component {
 			"id":        "note-content-" + n.ID,
 			"name":      "content",
 			"rows":      "4",
-			"maxlength": "4000",
+			"maxlength": strconv.Itoa(domain.MaxNoteContentRunes),
 			"required":  true,
 		}, n.Version.Content).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
@@ -285,7 +285,7 @@ func NoteCard(n domain.NoteView) templ.Component {
 			templ_7745c5c3_Err = atoms.Button(atoms.ToneNeutral, "アーカイブを解除", templ.Attributes{
 				"type":      "button",
 				"hx-put":    paths.Note(n.ID),
-				"hx-vals":   hxVals(map[string]string{"archived": "false"}),
+				"hx-vals":   atoms.HxVals(map[string]string{"archived": "false"}),
 				"hx-target": "#note-list",
 				"hx-swap":   "outerHTML",
 			}).Render(ctx, templ_7745c5c3_Buffer)

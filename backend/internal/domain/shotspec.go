@@ -97,6 +97,9 @@ func ParseTimeRange(s string) (from, to float64, err error) {
 	if to, err = strconv.ParseFloat(strings.TrimSpace(b), 64); err != nil {
 		return 0, 0, fmt.Errorf("time range %q: %w", s, err)
 	}
+	if !finite(from) || !finite(to) { // strconv.ParseFloat accepts "nan" and "inf"
+		return 0, 0, fmt.Errorf("time range %q is not finite", s)
+	}
 	return from, to, nil
 }
 

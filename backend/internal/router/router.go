@@ -10,7 +10,9 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/web/handler"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // Options are the non-service inputs of New.
@@ -20,13 +22,11 @@ type Options struct {
 	Static fs.FS
 }
 
-// New builds the engine. Middleware order matters: recovery and logging wrap
-// everything; the loopback guard runs before CSRF so foreign hosts get nothing,
-// not even a token cookie.
+// New builds the engine. Middleware order matters: recovery and logging wrap everything; the
+// loopback guard runs before CSRF so foreign hosts get nothing, not even a token cookie.
 //
-// To add routes, register them in the matching file (pages.go for HX-Request-aware
-// page routes, actions.go for fragment-returning actions, api.go for Huma JSON
-// routes); no other file needs to change.
+// To add routes, register them in the matching file (pages.go for HX-Request-aware page routes,
+// actions.go for fragment-returning actions, api.go for Huma JSON routes); no other file needs to change.
 func New(services *service.Services, opts Options) *gin.Engine {
 	logger := opts.Logger
 	if logger == nil {
@@ -34,11 +34,12 @@ func New(services *service.Services, opts Options) *gin.Engine {
 	}
 
 	engine := gin.New()
-	engine.HandleMethodNotAllowed = true
+	handler.RouteErrors(engine)
 	engine.Use(
 		middleware.Recovery(logger),
 		middleware.Logger(logger),
 		middleware.LoopbackOnly(),
+		middleware.SecurityHeaders(),
 		middleware.CSRF(),
 		middleware.MaxBody(),
 	)
@@ -54,5 +55,5 @@ func registerStatic(engine *gin.Engine, static fs.FS) {
 	if static == nil {
 		return
 	}
-	engine.StaticFS("/static", httpFS(static))
+	engine.StaticFS(paths.StaticPrefix, httpFS(static))
 }
