@@ -1,93 +1,32 @@
-package organisms
+package sceneshot
 
 import (
-	"fmt"
-
-	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
-// SceneItem is one entry of the Scene list.
-type SceneItem struct {
-	Scene     domain.Scene
-	ShotCount int
-}
-
-// SceneShotData is the state of the Scene / Shot hierarchy view. The error maps are keyed by
-// form field name; the Input fields hold the user's rejected input.
-type SceneShotData struct {
-	Project domain.Project
-	Scenes  []SceneItem
-	Scene   *domain.Scene // nil when the Project has no Scene
-	Shots   []molecules.ShotCardData
-
-	SceneErrors map[string]string
-	SceneInput  SceneInput
-	ShotErrors  map[string]string
-	ShotInput   ShotInput
-}
-
-// SceneInput is the Scene form's rejected input.
-type SceneInput struct{ Title, Location, Time, Objective string }
-
-// ShotInput is the Shot form's rejected input.
-type ShotInput struct{ Objective, DurationSeconds string }
-
-func sceneURL(projectID, sceneID string) string {
-	return paths.Project(projectID, "scenes", sceneID)
-}
-
-func sceneSummary(s domain.Scene) string {
-	text := ""
-	for _, part := range []string{s.Location, s.Time} {
-		if part == "" {
-			continue
-		}
-		if text != "" {
-			text += " / "
-		}
-		text += part
-	}
-	return text
-}
-
-// SceneShotView is the Scene / Shot / Take hierarchy (F-04): the Scene list on the left, the
-// selected Scene with its Shots and their Takes on the right, and the forms to add either.
-// HTMX swaps the whole view, so selecting and adding never reloads the page.
-templ SceneShotView(d SceneShotData) {
+// View is the Scene / Shot / Take hierarchy (F-04): the Scene list on the left, the selected Scene
+// with its Shots and their Takes on the right, and the forms to add either. Selecting a Scene or a
+// Shot swaps the whole view; adding one answers with the part it changes (see responses.templ), so
+// what is typed into the other form survives (#733).
+templ View(d Data) {
 	<div id="scene-shot-view" class="grid gap-6 md:grid-cols-[16rem_1fr]">
 		<nav aria-label="Scene 一覧" class="flex flex-col gap-3">
-			<ol class="flex flex-col gap-1">
+			<ol id="scene-list" class="flex flex-col gap-1">
 				for _, item := range d.Scenes {
-					<li>
-						<a
-							class={ "block rounded-md border px-3 py-2 text-sm", templ.KV("border-indigo-400 bg-indigo-500/10", d.Scene != nil && d.Scene.ID == item.Scene.ID), templ.KV("border-neutral-700 hover:bg-neutral-800", d.Scene == nil || d.Scene.ID != item.Scene.ID) }
-							href={ templ.SafeURL(sceneURL(d.Project.ID, item.Scene.ID)) }
-							hx-get={ sceneURL(d.Project.ID, item.Scene.ID) }
-							hx-target="#scene-shot-view"
-							hx-swap="outerHTML"
-							hx-push-url="true"
-							if d.Scene != nil && d.Scene.ID == item.Scene.ID {
-								aria-current="true"
-							}
-						>
-							<span class="font-medium">{ fmt.Sprintf("Scene %d: %s", item.Scene.OrderIndex+1, item.Scene.Title) }</span>
-							<span class="block text-xs text-neutral-400">{ fmt.Sprintf("%d Shot", item.ShotCount) }</span>
-						</a>
-					</li>
+					@sceneItem(d.Project.ID, item, item.Scene.ID == d.currentSceneID())
 				}
 			</ol>
 			if len(d.Scenes) == 0 {
 				<p class="text-sm text-neutral-400">Scene はまだありません。企画が進むと AI が作成します。手動でも追加できます。</p>
 			}
-			@sceneForm(d)
+			@sceneForm(d, d.currentSceneID())
 		</nav>
 		<section aria-label="Scene 詳細" class="flex flex-col gap-4">
 			if d.Scene != nil {
 				<header>
-					<h2 class="text-lg font-semibold">{ fmt.Sprintf("Scene %d: %s", d.Scene.OrderIndex+1, d.Scene.Title) }</h2>
+					<h2 class="text-lg font-semibold">{ sceneLabel(*d.Scene) }</h2>
 					if sceneSummary(*d.Scene) != "" {
 						<p class="text-sm text-neutral-400">{ sceneSummary(*d.Scene) }</p>
 					}
@@ -95,19 +34,49 @@ templ SceneShotView(d SceneShotData) {
 						<p class="mt-1 text-sm">{ d.Scene.Objective }</p>
 					}
 				</header>
-				if len(d.Shots) == 0 {
-					<p class="text-sm text-neutral-400">この Scene に Shot はまだありません。</p>
-				} else {
-					<ol class="flex flex-col gap-2" aria-label="Shot 一覧">
-						for _, sh := range d.Shots {
-							@molecules.ShotCard(sh)
-						}
-					</ol>
-				}
+				<ol id="shot-list" class="flex flex-col gap-2" aria-label="Shot 一覧">
+					if len(d.Shots) == 0 {
+						<li id="shot-empty" class="text-sm text-neutral-400">この Scene に Shot はまだありません。</li>
+					}
+					for _, sh := range d.Shots {
+						@molecules.ShotCard(sh)
+					}
+				</ol>
 				@shotForm(d)
 			}
 		</section>
 	</div>
+}
+
+// sceneItem is one link of the Scene list; current marks the Scene the view shows.
+templ sceneItem(projectID string, item Item, current bool) {
+	<li>
+		<a
+			class={ "block rounded-md border px-3 py-2 text-sm", templ.KV("border-indigo-400 bg-indigo-500/10", current), templ.KV("border-neutral-700 hover:bg-neutral-800", !current) }
+			href={ templ.SafeURL(sceneURL(projectID, item.Scene.ID)) }
+			hx-get={ sceneURL(projectID, item.Scene.ID) }
+			hx-target="#scene-shot-view"
+			hx-swap="outerHTML"
+			hx-push-url="true"
+			if current {
+				aria-current="true"
+			}
+		>
+			<span class="font-medium">{ sceneLabel(item.Scene) }</span>
+			@shotCount(item.Scene.ID, item.ShotCount, false)
+		</a>
+	</li>
+}
+
+// shotCount is the number of Shots of a Scene in the Scene list; oob makes it replace the one on the page.
+templ shotCount(sceneID string, n int, oob bool) {
+	<span
+		id={ shotCountID(sceneID) }
+		class="block text-xs text-neutral-400"
+		if oob {
+			hx-swap-oob="true"
+		}
+	>{ shotCountText(n) }</span>
 }
 
 templ fieldError(errs map[string]string, field string) {
@@ -116,11 +85,14 @@ templ fieldError(errs map[string]string, field string) {
 	}
 }
 
-templ sceneForm(d SceneShotData) {
-	<form class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3" hx-post={ paths.Project(d.Project.ID, "scenes") } hx-target="#scene-shot-view" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]">
+// sceneForm adds a Scene. It answers itself (the error, or an empty form), so the Shot form beside it is
+// not replaced; currentSceneID is the Scene the page shows. With none, the form is the whole view's only
+// content to keep and the answer is the whole view (sceneFormTarget).
+templ sceneForm(d Data, currentSceneID string) {
+	<form id="scene-form" class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3" hx-post={ paths.Project(d.Project.ID, "scenes") } hx-target={ sceneFormTarget(currentSceneID) } hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]">
 		<p class="text-sm font-medium">Scene を追加</p>
-		if d.Scene != nil {
-			<input type="hidden" name="current_scene_id" value={ d.Scene.ID }/>
+		if currentSceneID != "" {
+			<input type="hidden" name="current_scene_id" value={ currentSceneID }/>
 		}
 		<div>
 			<label for="scene-title" class="mb-1 block text-xs text-neutral-400">見出し（必須）</label>
@@ -167,8 +139,9 @@ templ sceneForm(d SceneShotData) {
 	</form>
 }
 
-templ shotForm(d SceneShotData) {
-	<form class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3" hx-post={ paths.Scene(d.Scene.ID, "shots") } hx-target="#scene-shot-view" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]">
+// shotForm adds a Shot to the shown Scene. It answers itself, so the Scene form is not replaced.
+templ shotForm(d Data) {
+	<form id="shot-form" class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3" hx-post={ paths.Scene(d.Scene.ID, "shots") } hx-target="this" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]">
 		<p class="text-sm font-medium">Shot を追加</p>
 		<div>
 			<label for="shot-objective" class="mb-1 block text-xs text-neutral-400">この Shot で見せること（必須）</label>
