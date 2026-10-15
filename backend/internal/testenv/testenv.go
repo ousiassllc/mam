@@ -5,6 +5,7 @@ package testenv
 
 import (
 	"context"
+	"net/http"
 	"os"
 	"sync"
 	"sync/atomic"
@@ -28,6 +29,17 @@ func EndsAfterFirstRequest(t testing.TB, requests *atomic.Int32, grace time.Dura
 		cancel()
 	}()
 	return ctx
+}
+
+// CountGets wraps h so that every GET request it serves is counted in n. For a job API the first GET
+// is the first status request: the job was accepted by then, which a POST arriving does not tell.
+func CountGets(n *atomic.Int32, h http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			n.Add(1)
+		}
+		h(w, r)
+	}
 }
 
 // MissingFFmpeg ends a test that needs ffmpeg / ffprobe which are not on PATH. On a developer

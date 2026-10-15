@@ -1,6 +1,8 @@
 package testenv_test
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -63,4 +65,17 @@ func TestEndsAfterFirstRequest_StartsTheGraceWithTheFirstRequest(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("the call did not end after the first request")
 	}
+}
+
+func TestCountGets_CountsOnlyTheGetRequestsAndServesThemWithTheHandler(t *testing.T) {
+	var gets atomic.Int32
+	h := testenv.CountGets(&gets, func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusTeapot) })
+
+	for _, method := range []string{http.MethodPost, http.MethodGet, http.MethodGet} {
+		rec := httptest.NewRecorder()
+		h(rec, httptest.NewRequest(method, "/v2/generate", nil))
+		assert.Equal(t, http.StatusTeapot, rec.Code)
+	}
+
+	assert.EqualValues(t, 2, gets.Load())
 }
