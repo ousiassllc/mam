@@ -35,8 +35,9 @@ func ValidFilePath(projectID, p string) bool {
 }
 
 // reservedWindowsDeviceName matches a Windows device name with or without an extension: Windows opens
-// "NUL.mp4" and "con.tar.gz" as the device.
-var reservedWindowsDeviceName = regexp.MustCompile(`(?i)^(con|prn|aux|nul|(com|lpt)[1-9])(\..*)?$`)
+// "NUL.mp4" and "con.tar.gz" as the device. COM and LPT take the superscript digits ¹ ² ³ too (Microsoft's
+// "Naming Files, Paths, and Namespaces"); COM0 and LPT0 are not reserved here.
+var reservedWindowsDeviceName = regexp.MustCompile(`(?i)^(con|prn|aux|nul|(com|lpt)([1-9]|[¹²³]))(\..*)?$`)
 
 func validFileName(name string) bool {
 	if name == "" || strings.HasSuffix(name, ".") || strings.HasSuffix(name, " ") || reservedWindowsDeviceName.MatchString(name) {
