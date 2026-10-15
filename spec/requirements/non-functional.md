@@ -17,7 +17,7 @@
 | 項目 | 要件 |
 |------|------|
 | UI 応答性 | HTMX フラグメント swap のループバック往復（サーバー処理時間）は 100ms 以内を目標（DB問い合わせのみのアクション） |
-| 生成ジョブの非同期性 | 画像/動画生成・Judge・Repair はすべてバックグラウンドジョブとして実行し、UI スレッド（HTTPリクエスト処理）をブロックしない |
+| 生成ジョブの非同期性 | 画像/動画生成・Judge・Repair はすべてバックグラウンドジョブとして実行し、UI スレッド（HTTPリクエスト処理）をブロックしない。ジョブ（生成・Judge・Repair・AUTO パイプラインの `plan`）を同時に実行するワーカーは 4 本で、これを超えたジョブは `queued` のまま順番を待つ |
 | 進捗通知 | 生成中の Take/Shot の進捗は WebSocket 経由でリアルタイムに UI へ反映する（ポーリング禁止） |
 | プレビュー再生 | 1080p 動画のプレビュー再生はコマ落ちなく再生できること。4K アセットはサムネイル/プロキシ生成で代替表示を許容する。プロキシを作れなかったとき（ffmpeg が無い・失敗・上限時間切れ）は原本で代替し（コマ落ちしうる）、失敗は 10 分間覚えて再試行しない。変換はクライアントの切断では止めず、同じファイルにつき 1 回だけ走る |
 | 起動時間 | プロジェクトを開いた際の Chat Workspace（`GET /projects/:id`）の初期表示は 3 秒以内（ローカル SQLite 読み込みのみの場合） |
@@ -122,4 +122,5 @@
 | 1.26 | 2026-10-16 | §8 のエクスポート/インポートの実装の所在を `domain.ValidBundleID` / `domain.ValidBundleFilePath` から `domain/bundlepath` の `ValidID` / `ValidFilePath` に改めた（拒否する名前・パスは変えていない） | Issue #727。#725 の修正で `backend/internal/domain/` が行数基準値を超え `make lint-lines` が落ちたため、バンドルの ID・パスの検証をサブパッケージに切り出した（`domain.ReviewInboxDir` も `bundlepath.ReviewInboxDir` へ） |
 | 1.27 | 2026-10-16 | §8 のエクスポート/インポートで、取り込めないファイルパスに、取り込む全ファイルのパスの間の衝突（大文字小文字だけが違う 2 本、ファイルとディレクトリが同名になる 2 本）を足した | Issue #735。パスを 1 本ずつしか検査せず、`x.mp4` と `X.mp4` は Windows・macOS で片方がもう片方を黙って上書きして 2 つのアセット／Take が同じ動画を指し、`x` と `x/y.mp4` は展開が ENOTDIR で失敗して 422 でなく 500 になった（`bundlepath.Conflict`） |
 | 1.28 | 2026-10-16 | §8 のエクスポート/インポートで、取り込めないファイルパスの Windows 予約デバイス名に、上付き数字の `COM¹`〜`COM³`・`LPT¹`〜`LPT³`（拡張子付きを含む）を足した | Issue #744。Microsoft の「Naming Files, Paths, and Namespaces」が予約名とする `COM¹` などが ASCII の数字 `[1-9]` だけの判定をすり抜け、`p/COM¹.png` が `Open` を通って Windows の展開が失敗した（`bundlepath.ValidFilePath`。`com0`・`lpt0` は従来どおり許可） |
-| 1.29 | 2026-10-16 | §4 のディスク容量に、生成前の警告の見積もり（Take 1 秒あたり 2 MiB × Take 数 × Shot の長さ）を足した | Issue #759。見積もりの根拠（`bytesPerVideoSecond = 2 << 20`、`generation/orchestrator.go` の `warnLowDisk`）が仕様書に無く、警告の誤差の前提が分からなかった |
+| 1.29 | 2026-10-16 | §2 の「生成ジョブの非同期性」に、ジョブを同時に実行するワーカー数 4（`jobqueue.DefaultWorkers`）と、超えたジョブは `queued` で待つことを追記した | Issue #761。`app.services` は既定値の `jobqueue.Options{Logger: logger}` で起動するため同時実行数は 4 だが、仕様に無かった |
+| 1.30 | 2026-10-16 | §4 のディスク容量に、生成前の警告の見積もり（Take 1 秒あたり 2 MiB × Take 数 × Shot の長さ）を足した | Issue #759。見積もりの根拠（`bytesPerVideoSecond = 2 << 20`、`generation/orchestrator.go` の `warnLowDisk`）が仕様書に無く、警告の誤差の前提が分からなかった |
