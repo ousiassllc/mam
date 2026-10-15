@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
+	"github.com/ousiassllc/mam/backend/internal/testenv"
 )
 
 func TestOwnsURLOnlyAcceptsTheVendorsHosts(t *testing.T) {
@@ -184,8 +185,7 @@ func TestDownloadWaitsForTheRetryAfterOfA429(t *testing.T) {
 		w.WriteHeader(http.StatusTooManyRequests)
 	}))
 	defer srv.Close()
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
-	defer cancel()
+	ctx := testenv.EndsAfterFirstRequest(t, &hits, 100*time.Millisecond)
 
 	if _, _, err := downloadAPI(srv, t.TempDir()).download(ctx, srv.URL); err == nil || hits.Load() != 1 {
 		t.Fatalf("err %v after %d requests, want an error after one", err, hits.Load())

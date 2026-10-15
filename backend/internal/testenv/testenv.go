@@ -1,12 +1,34 @@
 // Package testenv holds the helpers tests use to react to their environment: a missing external
-// tool, or whether a fixture may run its test in parallel.
+// tool, whether a fixture may run its test in parallel, or how late a request arrives on a busy
+// machine.
 package testenv
 
 import (
+	"context"
 	"os"
 	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 )
+
+// EndsAfterFirstRequest returns a context that ends grace after requests first counts a request,
+// not grace after the test started: on a busy machine the first request may arrive late, and a
+// fixed deadline then ends the call before any request was made. The 30 second deadline only
+// guards against a request that never comes.
+func EndsAfterFirstRequest(t testing.TB, requests *atomic.Int32, grace time.Duration) context.Context {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	t.Cleanup(cancel)
+	go func() {
+		for requests.Load() == 0 && ctx.Err() == nil {
+			time.Sleep(time.Millisecond)
+		}
+		time.Sleep(grace)
+		cancel()
+	}()
+	return ctx
+}
 
 // MissingFFmpeg ends a test that needs ffmpeg / ffprobe which are not on PATH. On a developer
 // machine the test is skipped; in CI (the CI environment variable is "true", as GitHub Actions
