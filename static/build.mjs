@@ -69,6 +69,8 @@ try {
     };
     process.on('SIGINT', stop);
     process.on('SIGTERM', stop);
+    // Tell whoever drives this process (the SIGTERM test) that signals are now handled.
+    console.log('[build] watching for changes');
     await tailwindDone;
     // stop() is shutting down (it calls process.exit); otherwise Tailwind's watch mode, which never
     // ends on its own, exited with 0, and that is a failure too.

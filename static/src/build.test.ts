@@ -58,9 +58,21 @@ it.skipIf(process.platform === 'win32')(
 it.skipIf(process.platform === 'win32')(
   'watch mode exits cleanly on SIGTERM',
   async () => {
-    const child = spawn('node', ['build.mjs', '--watch'], { cwd: root, env: withFakeTailwind(0, 30), stdio: 'ignore' });
+    const child = spawn('node', ['build.mjs', '--watch'], {
+      cwd: root,
+      env: withFakeTailwind(0, 30),
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
     const exited = new Promise<number | null>((resolve) => child.on('exit', (code) => resolve(code)));
-    await new Promise((r) => setTimeout(r, 1500));
+    // SIGTERM is handled only once the first build is done; wait for that instead of a fixed delay.
+    const ready = new Promise<void>((resolve) => {
+      let out = '';
+      child.stdout.on('data', (chunk) => {
+        out += chunk;
+        if (out.includes('[build] watching for changes')) resolve();
+      });
+    });
+    await Promise.race([ready, exited]);
 
     child.kill('SIGTERM');
 
