@@ -101,7 +101,7 @@ func (e Export) Write(w io.Writer) error {
 		if src, ok := e.sources[rel]; ok {
 			from = src
 		}
-		f, err := os.Open(filepath.Join(e.root, filepath.FromSlash(from))) //nolint:gosec // from was checked by ValidBundleFilePath
+		f, err := os.Open(filepath.Join(e.root, filepath.FromSlash(from))) //nolint:gosec // from was checked by bundlepath.ValidFilePath
 		if errors.Is(err, os.ErrNotExist) {
 			continue
 		}
