@@ -230,11 +230,10 @@ func (k ReferenceKind) Valid() bool {
 	return false
 }
 
-// Reference is one image of a Shot's Reference Pack. It is stored in the "references" key of
-// shot.shot_spec. AssetID is the asset row holding the image; Prompt is the English prompt it
-// was made from and Model the image model that made it. LibraryItem is the Reference Library
-// entry the image was taken from ("" for an image made for this Shot): a Reference Pack rebuild
-// keeps such a reference instead of making a new one.
+// Reference is one image of a Shot's Reference Pack, stored in the "references" key of shot.shot_spec.
+// AssetID is the asset row holding the image; Prompt is the English prompt it was made from and Model
+// the image model that made it. LibraryItem is the Reference Library entry the image was taken from
+// ("" for an image made for this Shot): a Reference Pack rebuild keeps such a reference.
 type Reference struct {
 	Kind        ReferenceKind `json:"kind"`
 	Name        string        `json:"name,omitempty"` // e.g. the character or product name

@@ -296,9 +296,8 @@ type ReviewItem struct {
 // Status is where the request stands: pending without a response, changes_requested when the latest
 // response of any reviewer asks for changes, approved when every reviewer's latest response approves.
 // A reviewer is told apart by the name they gave, ignoring surrounding whitespace. A reviewer's latest
-// response is the one written last (the greatest CreatedAt, so a v1 imported after the v2 does not win);
-// among responses written at the same time the one imported last is the latest. Approval tells the
-// owner something; it does not gate the Project.
+// response is the one written last (the greatest CreatedAt, so a v1 imported after the v2 does not win;
+// the one imported last among equals). Approval tells the owner something; it does not gate the Project.
 func (i ReviewItem) Status() ReviewStatus {
 	latest := map[string]ReviewResponseRecord{}
 	for _, r := range i.Responses {

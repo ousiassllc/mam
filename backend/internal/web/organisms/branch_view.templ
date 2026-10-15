@@ -40,8 +40,7 @@ type BranchDetailData struct {
 	Started bool
 }
 
-// BranchPageData is the Branch page (branch_page): the tree, the Shots a Branch can be made at and,
-// when a Branch is selected, its detail.
+// BranchPageData is the Branch page (branch_page): the tree, the Shots a Branch can start from, the selected detail.
 type BranchPageData struct {
 	Project domain.Project
 	// Roots are the Branches whose Branch Point lies in the trunk.
@@ -250,8 +249,7 @@ templ branchTreeGroup(nodes []BranchTreeNode, selected string) {
 	</ul>
 }
 
-// BranchDetailWithTree is what HTMX gets for a Branch: the detail for #branch-detail and the tree,
-// redrawn out-of-band with the Branch selected.
+// BranchDetailWithTree is the detail for #branch-detail and the tree, redrawn out-of-band with the Branch selected.
 templ BranchDetailWithTree(d BranchDetailData, tree BranchTreeData) {
 	@BranchDetail(d)
 	@BranchTree(tree, true)
