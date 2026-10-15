@@ -82,7 +82,11 @@ jobs:
       # browser; bump CHROME_VERSION by hand (spec/environment/setup.md). `browsers install` unpacks the
       # Chrome for Testing zip with `unzip` (without it: "Extraction failed: no zip archiver is available"):
       # like ffmpeg, install it via apt only when missing (needs passwordless sudo), else fail with a clear error.
+      # The step fails when the download fails: `shell: bash` is `bash -eo pipefail` (the default `bash -e`
+      # has no pipefail, so `browsers ... | tail | cut` would succeed whatever `browsers` returned and an empty
+      # CHROME_PATH would be exported), and an empty or non-executable result is rejected explicitly.
       - name: Ensure Chrome
+        shell: bash
         env:
           CHROME_VERSION: 155.0.8059.79
         run: |
@@ -92,6 +96,10 @@ jobs:
               sudo -n apt-get install -y --no-install-recommends unzip
             fi
             chrome="$(./static/node_modules/.bin/browsers install "chrome@${CHROME_VERSION}" --path "${RUNNER_TOOL_CACHE}/chrome-for-testing" | tail -n 1 | cut -d' ' -f2-)"
+            if [ ! -x "$chrome" ]; then
+              echo "::error::Chrome for Testing の取得に失敗しました（chrome='${chrome}'）"
+              exit 1
+            fi
             echo "CHROME_PATH=${chrome}" >> "$GITHUB_ENV"
           fi
 
