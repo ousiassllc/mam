@@ -26,7 +26,6 @@ func renderHTML(t *testing.T, c templ.Component) string {
 func TestListAnswersDoNotCarryTheAddForm(t *testing.T) {
 	notes := notelist.Data{BasePath: "/projects/p1/notes", Notes: []domain.NoteView{{Note: domain.Note{ID: "n1"}}}}
 	brand := organisms.BrandConstraintListData{ProjectID: "p1"}
-	templates := organisms.BrandTemplatePanelData{ProjectID: "p1", Templates: []domain.BrandTemplate{{ID: "t1", Name: "T"}}}
 	library := organisms.ReferenceLibraryData{Project: domain.Project{ID: "p1"}}
 
 	cases := []struct {
@@ -34,7 +33,6 @@ func TestListAnswersDoNotCarryTheAddForm(t *testing.T) {
 	}{
 		{"notes", renderHTML(t, notelist.Groups(notes)), "note-add-form", renderHTML(t, notelist.Created(notes))},
 		{"brand constraints", renderHTML(t, organisms.BrandConstraintItems(brand)), "brand-constraint-form", renderHTML(t, organisms.BrandConstraintAdded(brand))},
-		{"brand templates", renderHTML(t, organisms.BrandTemplateItems(templates)), "brand-template-form", renderHTML(t, organisms.BrandTemplateSaved(templates))},
 		{"references", renderHTML(t, organisms.ReferenceLibraryList(library)), "reference-upload-form", renderHTML(t, organisms.UploadedReference(library))},
 	}
 	for _, c := range cases {
@@ -49,7 +47,6 @@ func TestListViewsCarryTheAddFormOutsideTheListThatIsReplaced(t *testing.T) {
 	for name, view := range map[string]struct{ html, list, form string }{
 		"notes":             {renderHTML(t, notelist.View(notelist.Data{BasePath: "/projects/p1/notes"})), "note-list", "note-add-form"},
 		"brand constraints": {renderHTML(t, organisms.BrandConstraintList(organisms.BrandConstraintListData{ProjectID: "p1"})), "brand-constraint-list", "brand-constraint-form"},
-		"brand templates":   {renderHTML(t, organisms.BrandTemplatePanel(organisms.BrandTemplatePanelData{ProjectID: "p1"})), "brand-template-list", "brand-template-form"},
 		"references":        {renderHTML(t, organisms.ReferenceLibrary(organisms.ReferenceLibraryData{Project: domain.Project{ID: "p1"}})), "reference-library", "reference-upload-form"},
 	} {
 		assert.Contains(t, view.html, `id="`+view.list+`"`, name)

@@ -11,6 +11,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/brandtemplate"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/shotinspector"
 )
 
@@ -65,7 +66,7 @@ func TestStoragePanel_SaysTakeStatusByItsLabel(t *testing.T) {
 // The Brand Template list says how strictly a constraint is enforced as the constraint list does, never by
 // the internal enum value (#644).
 func TestBrandTemplatePanel_SaysEnforcementLevelsAsTheConstraintListDoes(t *testing.T) {
-	html := renderHTML(t, organisms.BrandTemplatePanel(organisms.BrandTemplatePanelData{
+	html := renderHTML(t, brandtemplate.Panel(brandtemplate.Data{
 		ProjectID: "p",
 		Templates: []domain.BrandTemplate{{ID: "t1", Name: "T", Constraints: domain.BrandConstraints{
 			{Type: domain.BrandForbidden, Level: domain.EnforceLock, Text: "x"},

@@ -7,6 +7,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/brandtemplate"
 )
 
 func brandListData(v service.BrandView) organisms.BrandConstraintListData {
@@ -51,19 +52,18 @@ func DeleteBrandConstraint(svc *service.BrandService) gin.HandlerFunc {
 	}
 }
 
-func brandTemplatePanelData(v service.TemplatesView) organisms.BrandTemplatePanelData {
-	return organisms.BrandTemplatePanelData{ProjectID: v.ProjectID, Templates: v.Templates}
+func brandTemplatePanelData(v service.TemplatesView) brandtemplate.Data {
+	return brandtemplate.Data{ProjectID: v.ProjectID, Templates: v.Templates}
 }
 
-// SaveBrandTemplate saves the Project's constraints as a Brand Template
-// (POST /projects/:id/brand-templates). The answer is the list and, out of band, the save form: emptied
-// on success, with the input and the error on invalid input (422).
+// SaveBrandTemplate saves the Project's constraints as a Brand Template (POST /projects/:id/brand-templates).
+// The answer is the list and, out of band, the save form: emptied, or with the input and the error (422).
 func SaveBrandTemplate(svc *service.BrandService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		name := c.PostForm("name")
 		view, err := svc.SaveTemplate(c.Request.Context(), c.Param("id"), name)
 		if err == nil {
-			render(c, http.StatusOK, organisms.BrandTemplateSaved(brandTemplatePanelData(view)))
+			render(c, http.StatusOK, brandtemplate.Saved(brandTemplatePanelData(view)))
 			return
 		}
 		if invalid := asValidation(err); invalid != nil {
@@ -75,7 +75,7 @@ func SaveBrandTemplate(svc *service.BrandService) gin.HandlerFunc {
 			data := brandTemplatePanelData(current)
 			data.Typed = map[string]string{"name": name}
 			data.Errors = map[string]string{invalid.Field: invalid.Message}
-			render(c, http.StatusUnprocessableEntity, organisms.BrandTemplateSaved(data))
+			render(c, http.StatusUnprocessableEntity, brandtemplate.Saved(data))
 			return
 		}
 		toast(c, err)
@@ -104,6 +104,6 @@ func DeleteBrandTemplate(svc *service.BrandService) gin.HandlerFunc {
 			toast(c, err)
 			return
 		}
-		render(c, http.StatusOK, organisms.BrandTemplateItems(brandTemplatePanelData(view)))
+		render(c, http.StatusOK, brandtemplate.Items(brandTemplatePanelData(view)))
 	}
 }
