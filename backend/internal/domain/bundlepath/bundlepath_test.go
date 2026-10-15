@@ -31,6 +31,7 @@ func TestValidFilePath_AcceptsOrdinaryNamesBelowTheProject(t *testing.T) {
 func TestValidFilePath_RefusesNamesWindowsCannotCreate(t *testing.T) {
 	for _, p := range []string{
 		"p/NUL.mp4", "p/a/con", "p/aux.txt", "p/PRN", "p/Com1.tar.gz", "p/a/LPT9.png", "p/nul",
+		"p/COM¹.png", "p/COM².mp4", "p/com³", "p/lpt¹", "p/LPT².mp4", "p/a/lpt³.tar.gz",
 		"p/x*y", "p/a?b", `p/a"b`, "p/a<b", "p/a>b", "p/a|b", "p/a\tb", "p/a\nb", "p/a\x7fb", "p/a/\x01",
 		"p/a.", "p/a /b", "p/a/b ", "p/a/b.", "p/a./b",
 		"p", "p/", "p//a", "p/../a", "p/a/..", "/p/a", `p\a`, "p/a:b", "q/a.mp4",

@@ -174,7 +174,7 @@ func (e *editorApp) timeline() timelineBody {
 }
 
 // judge is the newest Editor Judge result of the current timeline version (nil: none yet). The
-// result is not part of the timeline API: EditorActions (Templ) draws it.
+// result is not part of the timeline API: editorpanel.Actions (Templ) draws it.
 func (e *editorApp) judge() *domain.EditorJudgeResult {
 	e.t.Helper()
 	res, err := repository.NewEditorRepository(e.db).LatestEditorJudge(context.Background(), e.timeline().ID)
@@ -532,7 +532,7 @@ func TestEditor_NeedShotVerdictIsReportedWithTheShotToMakeAndAwaitsTheDirector(t
 	require.NotNil(t, j.Findings[0].Need)
 	assert.Equal(t, domain.ClipReaction, j.Findings[0].Need.Kind)
 	assert.Equal(t, 1, j.Findings[0].Need.AfterClip)
-	assert.NotContains(t, e.get("/api/v1/projects/"+e.project+"/edit-timeline", false).Body.String(), "judge", "the Judge result is Templ's (EditorActions), not an API field")
+	assert.NotContains(t, e.get("/api/v1/projects/"+e.project+"/edit-timeline", false).Body.String(), "judge", "the Judge result is Templ's (editorpanel.Actions), not an API field")
 	assert.NotContains(t, e.get("/api/v1/projects/"+e.project+"/edit-timeline", false).Body.String(), "request_shot_url", "the button is Templ's (hx-post), not an API field")
 
 	// Without generation configured (no video model) the Director cannot be asked.
