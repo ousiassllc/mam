@@ -241,3 +241,34 @@ func TestEditor_StageAnswersDoNotCarryTheInputsOfTheForms(t *testing.T) {
 	}
 	assert.Contains(t, reload.Body.String(), `id="editor-export-submit"`)
 }
+
+// Selecting or excluding a Take answers with the whole Shot card, whose "追加の指示" input is new and
+// empty: it is hx-preserve, so htmx keeps the one on the page with what is typed in it (#732).
+func TestShotCard_TakeActionsKeepTheAdditionalInstruction(t *testing.T) {
+	a := newApp(t)
+	rec := a.form(http.MethodPost, "/projects/"+a.createProject()+"/scenes", url.Values{"title": {"Street"}})
+	scene := regexp.MustCompile(`/scenes/([0-9a-f-]{36})`).FindStringSubmatch(rec.Body.String())[1]
+	rec = a.form(http.MethodPost, "/scenes/"+scene+"/shots", url.Values{"objective": {"走り出す"}, "duration_seconds": {"4"}})
+	require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
+	shot := regexp.MustCompile(`id="shot-([0-9a-f-]{36})"`).FindStringSubmatch(rec.Body.String())[1]
+	require.NoError(t, a.db.Write(context.Background(), func(ctx context.Context, tx *sql.Tx) error {
+		for _, q := range []string{
+			`INSERT INTO prompt_version (id, shot_id, version_number, shot_spec_snapshot) VALUES ('pv1', '` + shot + `', 1, '{}')`,
+			`INSERT INTO take (id, prompt_version_id, model_name, model_parameters, file_path) VALUES ('t1', 'pv1', 'kling-3.0', '{}', 'p/t1.mp4'), ('t2', 'pv1', 'kling-3.0', '{}', 'p/t2.mp4')`,
+		} {
+			if _, err := tx.ExecContext(ctx, q); err != nil {
+				return err
+			}
+		}
+		return nil
+	}))
+
+	input := regexp.MustCompile(`<input[^>]*id="instruction-` + shot + `"[^>]*>`)
+	for name, rec := range map[string]*httptest.ResponseRecorder{
+		"select":  a.form(http.MethodPost, "/takes/t1/select", url.Values{"selected": {"true"}}),
+		"exclude": a.form(http.MethodDelete, "/takes/t2?selected=true", nil),
+	} {
+		require.Equal(t, http.StatusOK, rec.Code, name+": "+rec.Body.String())
+		assert.Contains(t, input.FindString(rec.Body.String()), "hx-preserve", name)
+	}
+}

@@ -79,6 +79,8 @@ func takeActionURL(takeID, action string) string { return paths.Take(takeID, act
 // building of its Reference Pack. Both answer with the Shot card in the GENERATING state. The card
 // draws them only while the Shot is not busy (domain.ShotState.Busy): the server refuses them then.
 // "続きを作る" is drawn only when Continue is accepted (domain.CanContinue: a Take that was not rejected).
+// The input is hx-preserve (its id is unique per Shot): the Take buttons of the card answer with the whole
+// card, and htmx then keeps the input on the page, with what is typed in it, instead of the new empty one.
 templ ShotActions(shotID string, canContinue bool, candidates bool) {
 	<form
 		class="mt-2 flex flex-wrap items-center gap-2"
@@ -91,6 +93,7 @@ templ ShotActions(shotID string, canContinue bool, candidates bool) {
 		<label class="sr-only" for={ "instruction-" + shotID }>追加の指示</label>
 		@atoms.Input(atoms.FieldMd, "min-w-0 flex-1", templ.Attributes{
 			"id":          "instruction-" + shotID,
+			"hx-preserve": true,
 			"name":        "additional_instruction",
 			"type":        "text",
 			"maxlength":   strconv.Itoa(domain.MaxInstructionRunes),
