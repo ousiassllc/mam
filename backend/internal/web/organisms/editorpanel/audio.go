@@ -1,4 +1,4 @@
-package organisms
+package editorpanel
 
 import (
 	"fmt"
