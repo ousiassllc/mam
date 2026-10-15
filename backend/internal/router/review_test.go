@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"maps"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -58,6 +60,7 @@ func (o *owner) requestReview(note string) string {
 	o.t.Helper()
 	rec := o.form(http.MethodPost, "/projects/"+o.project+"/reviews", url.Values{"export_id": {o.exportID}, "note": {note}})
 	require.Equal(o.t, http.StatusCreated, rec.Code, rec.Body.String())
+	assert.NotContains(o.t, rec.Body.String(), `id="review-response-file"`, "making a request leaves the import form (and its chosen file) alone (#743)")
 	var id string
 	require.NoError(o.t, o.db.Reader().QueryRow(`SELECT id FROM review_request ORDER BY rowid DESC LIMIT 1`).Scan(&id))
 	return id
@@ -109,7 +112,7 @@ func TestReview_PackageCarriesTheVideoAndNothingElseOfTheProject(t *testing.T) {
 	assert.Equal(t, id, manifest["review_id"])
 	assert.Equal(t, "最終版です。よろしくお願いします", manifest["note"])
 	assert.NotEmpty(t, manifest["project_name"])
-	assert.ElementsMatch(t, []string{"format", "version", "review_id", "project_name", "note", "exported_at", "video"}, keysOf(manifest))
+	assert.ElementsMatch(t, []string{"format", "version", "review_id", "project_name", "note", "exported_at", "video"}, slices.Collect(maps.Keys(manifest)))
 	assert.Equal(t, map[string]any{"file_name": "video.mp4", "resolution": "1080p", "aspect_ratio": "9:16", "codec": "h264"}, manifest["video"])
 
 	// Nothing of the rest of the Project, and no key, leaks into what is handed over.
@@ -120,14 +123,6 @@ func TestReview_PackageCarriesTheVideoAndNothingElseOfTheProject(t *testing.T) {
 	}
 	assert.NotContains(t, string(pkg), faceMarker, "no reference image is in the archive")
 	assert.NotContains(t, string(pkg), secretKey)
-}
-
-func keysOf(m map[string]any) []string {
-	out := make([]string, 0, len(m))
-	for k := range m {
-		out = append(out, k)
-	}
-	return out
 }
 
 func TestReview_ReviewerAnswersAndOwnerImportsTheResponse(t *testing.T) {
@@ -168,13 +163,15 @@ func TestReview_ReviewerAnswersAndOwnerImportsTheResponse(t *testing.T) {
 	assert.Contains(t, resp.Header().Get("Content-Disposition"), "attachment")
 	var body map[string]any
 	require.NoError(t, json.Unmarshal(resp.Body.Bytes(), &body))
-	assert.ElementsMatch(t, []string{"format", "version", "response_id", "review_id", "reviewer_name", "decision", "comment", "comments", "created_at"}, keysOf(body))
+	assert.ElementsMatch(t, []string{"format", "version", "response_id", "review_id", "reviewer_name", "decision", "comment", "comments", "created_at"}, slices.Collect(maps.Keys(body)))
 	assert.Equal(t, id, body["review_id"])
 	assert.Len(t, body["comments"], 2)
 
 	// The owner imports it: the request now asks for changes and the chat has the result.
 	imp := o.importReviewFile("/projects/"+o.project+"/reviews/feedback", "response", "response.json", resp.Body.Bytes())
 	require.Equal(t, http.StatusCreated, imp.Code, imp.Body.String())
+	assert.NotContains(t, imp.Body.String(), `id="review-note"`, "importing leaves the request form (and its note) alone (#743)")
+	assert.Contains(t, imp.Body.String(), `<article id="review-`+id+`"`)
 	assert.Contains(t, imp.Body.String(), "修正依頼あり")
 	assert.Contains(t, imp.Body.String(), "ロゴが小さい")
 	assert.Contains(t, imp.Body.String(), "Taro")

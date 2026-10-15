@@ -5,11 +5,12 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/layout"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/reviewlist"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // ReviewsPage is GET /projects/:id/reviews: the owner's review screen in an auxiliary view.
-templ ReviewsPage(csrfToken string, project domain.Project, d organisms.ReviewListData) {
+templ ReviewsPage(csrfToken string, project domain.Project, d reviewlist.Data) {
 	@layout.AppLayout("レビュー: "+project.Name, csrfToken) {
 		<main class="mx-auto max-w-4xl p-8">
 			@atoms.ChatBackLink(project.ID)
@@ -18,7 +19,7 @@ templ ReviewsPage(csrfToken string, project domain.Project, d organisms.ReviewLi
 			<p class="mb-6 text-xs text-neutral-400">
 				完成した動画をメンバーに見てもらい、コメントと承認をもらいます。やり取りはファイルの受け渡しだけで、アカウントもサーバーも使いません。レビュアーは自分の mam に Review Package を読み込み、応答ファイルを返します。
 			</p>
-			@organisms.ReviewList(d)
+			@reviewlist.List(d)
 		</main>
 	}
 }

@@ -60,12 +60,12 @@ type ReviewItemView struct {
 type ReviewsView struct {
 	Project domain.Project
 	Items   []ReviewItemView
-	// Exports are the Exports a review can be requested for, newest first.
-	Exports []domain.Export
+	Exports []domain.Export // the Exports a review can be requested for, newest first
+	Touched string          // the review request a create or an import changed ("" for neither)
 }
 
-// ProjectReviews returns the review screen of a Project.
-func (s *ReviewService) ProjectReviews(ctx context.Context, projectID string) (ReviewsView, error) {
+// ProjectReviews returns the review screen of a Project; touched is the review request just changed.
+func (s *ReviewService) ProjectReviews(ctx context.Context, projectID, touched string) (ReviewsView, error) {
 	p, err := s.getProject(ctx, projectID)
 	if err != nil {
 		return ReviewsView{}, err
@@ -82,7 +82,7 @@ func (s *ReviewService) ProjectReviews(ctx context.Context, projectID string) (R
 	if err != nil {
 		return ReviewsView{}, err
 	}
-	view := ReviewsView{Project: p, Exports: exports}
+	view := ReviewsView{Project: p, Exports: exports, Touched: touched}
 	for _, it := range items {
 		view.Items = append(view.Items, ReviewItemView{ReviewItem: it, Export: byID[it.Request.ExportID]})
 	}
@@ -109,7 +109,7 @@ func (s *ReviewService) CreateRequest(ctx context.Context, projectID, exportID, 
 	if err := s.reviews.CreateRequest(ctx, q); err != nil {
 		return ReviewsView{}, err
 	}
-	return s.ProjectReviews(ctx, projectID)
+	return s.ProjectReviews(ctx, projectID, q.ID)
 }
 
 func (s *ReviewService) exportFileExists(e domain.Export) bool {
@@ -228,7 +228,7 @@ func (s *ReviewService) ImportResponse(ctx context.Context, projectID string, sr
 	if err := s.chatSvc.Announce(context.WithoutCancel(ctx), projectID, assistantText(text)); err != nil {
 		s.logger.Error("post review notice failed", "project_id", projectID, "err", err)
 	}
-	return s.ProjectReviews(ctx, projectID)
+	return s.ProjectReviews(ctx, projectID, resp.ReviewID)
 }
 
 // SetCommentResolved marks an imported comment as dealt with or open again
