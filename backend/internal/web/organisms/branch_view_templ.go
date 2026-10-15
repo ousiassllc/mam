@@ -979,6 +979,7 @@ func BranchView(d BranchPageData) templ.Component {
 			templ_7745c5c3_Err = atoms.Input(atoms.FieldMd, "w-64", templ.Attributes{
 				"type":        "text",
 				"name":        "direction",
+				"maxlength":   strconv.Itoa(domain.MaxInstructionRunes),
 				"placeholder": "例: ドアを開ける",
 			}).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {

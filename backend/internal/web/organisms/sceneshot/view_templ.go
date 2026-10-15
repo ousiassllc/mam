@@ -9,6 +9,9 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 import (
+	"strconv"
+
+	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
@@ -75,7 +78,7 @@ func View(d Data) templ.Component {
 			var templ_7745c5c3_Var2 string
 			templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(sceneLabel(*d.Scene))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sceneshot/view.templ`, Line: 29, Col: 61}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sceneshot/view.templ`, Line: 32, Col: 61}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 			if templ_7745c5c3_Err != nil {
@@ -93,7 +96,7 @@ func View(d Data) templ.Component {
 				var templ_7745c5c3_Var3 string
 				templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(sceneSummary(*d.Scene))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sceneshot/view.templ`, Line: 31, Col: 66}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sceneshot/view.templ`, Line: 34, Col: 66}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 				if templ_7745c5c3_Err != nil {
@@ -112,7 +115,7 @@ func View(d Data) templ.Component {
 				var templ_7745c5c3_Var4 string
 				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(d.Scene.Objective)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sceneshot/view.templ`, Line: 34, Col: 49}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sceneshot/view.templ`, Line: 37, Col: 49}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 				if templ_7745c5c3_Err != nil {
@@ -207,7 +210,7 @@ func sceneItem(projectID string, item Item, current bool) templ.Component {
 		var templ_7745c5c3_Var8 templ.SafeURL
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(sceneURL(projectID, item.Scene.ID)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sceneshot/view.templ`, Line: 56, Col: 59}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sceneshot/view.templ`, Line: 59, Col: 59}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 		if templ_7745c5c3_Err != nil {
@@ -220,7 +223,7 @@ func sceneItem(projectID string, item Item, current bool) templ.Component {
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue(sceneURL(projectID, item.Scene.ID))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sceneshot/view.templ`, Line: 57, Col: 46}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sceneshot/view.templ`, Line: 60, Col: 46}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
 		if templ_7745c5c3_Err != nil {
@@ -243,7 +246,7 @@ func sceneItem(projectID string, item Item, current bool) templ.Component {
 		var templ_7745c5c3_Var10 string
 		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(sceneLabel(item.Scene))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sceneshot/view.templ`, Line: 65, Col: 53}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sceneshot/view.templ`, Line: 68, Col: 53}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 		if templ_7745c5c3_Err != nil {
@@ -294,7 +297,7 @@ func shotCount(sceneID string, n int, oob bool) templ.Component {
 		var templ_7745c5c3_Var12 string
 		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.ResolveAttributeValue(shotCountID(sceneID))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sceneshot/view.templ`, Line: 74, Col: 27}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sceneshot/view.templ`, Line: 77, Col: 27}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var12)
 		if templ_7745c5c3_Err != nil {
@@ -317,7 +320,7 @@ func shotCount(sceneID string, n int, oob bool) templ.Component {
 		var templ_7745c5c3_Var13 string
 		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(shotCountText(n))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sceneshot/view.templ`, Line: 79, Col: 20}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sceneshot/view.templ`, Line: 82, Col: 20}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 		if templ_7745c5c3_Err != nil {
@@ -360,7 +363,7 @@ func fieldError(errs map[string]string, field string) templ.Component {
 			var templ_7745c5c3_Var15 string
 			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(msg)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sceneshot/view.templ`, Line: 84, Col: 57}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sceneshot/view.templ`, Line: 87, Col: 57}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 			if templ_7745c5c3_Err != nil {
@@ -406,7 +409,7 @@ func sceneForm(d Data, currentSceneID string) templ.Component {
 		var templ_7745c5c3_Var17 string
 		templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.ResolveAttributeValue(paths.Project(d.Project.ID, "scenes"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sceneshot/view.templ`, Line: 92, Col: 139}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sceneshot/view.templ`, Line: 95, Col: 139}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var17)
 		if templ_7745c5c3_Err != nil {
@@ -419,7 +422,7 @@ func sceneForm(d Data, currentSceneID string) templ.Component {
 		var templ_7745c5c3_Var18 string
 		templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.ResolveAttributeValue(sceneFormTarget(currentSceneID))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sceneshot/view.templ`, Line: 92, Col: 185}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sceneshot/view.templ`, Line: 95, Col: 185}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var18)
 		if templ_7745c5c3_Err != nil {
@@ -437,7 +440,7 @@ func sceneForm(d Data, currentSceneID string) templ.Component {
 			var templ_7745c5c3_Var19 string
 			templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.ResolveAttributeValue(currentSceneID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sceneshot/view.templ`, Line: 95, Col: 70}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sceneshot/view.templ`, Line: 98, Col: 70}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var19)
 			if templ_7745c5c3_Err != nil {
@@ -453,11 +456,12 @@ func sceneForm(d Data, currentSceneID string) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		templ_7745c5c3_Err = atoms.Input(atoms.FieldMd, "w-full", templ.Attributes{
-			"id":       "scene-title",
-			"name":     "title",
-			"type":     "text",
-			"required": true,
-			"value":    d.SceneInput.Title,
+			"id":        "scene-title",
+			"name":      "title",
+			"type":      "text",
+			"maxlength": strconv.Itoa(domain.MaxSceneTitleRunes),
+			"required":  true,
+			"value":     d.SceneInput.Title,
 		}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -471,10 +475,11 @@ func sceneForm(d Data, currentSceneID string) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		templ_7745c5c3_Err = atoms.Input(atoms.FieldMd, "w-full", templ.Attributes{
-			"id":    "scene-location",
-			"name":  "location",
-			"type":  "text",
-			"value": d.SceneInput.Location,
+			"id":        "scene-location",
+			"name":      "location",
+			"type":      "text",
+			"maxlength": strconv.Itoa(domain.MaxSceneMetaRunes),
+			"value":     d.SceneInput.Location,
 		}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -488,10 +493,11 @@ func sceneForm(d Data, currentSceneID string) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		templ_7745c5c3_Err = atoms.Input(atoms.FieldMd, "w-full", templ.Attributes{
-			"id":    "scene-time",
-			"name":  "time",
-			"type":  "text",
-			"value": d.SceneInput.Time,
+			"id":        "scene-time",
+			"name":      "time",
+			"type":      "text",
+			"maxlength": strconv.Itoa(domain.MaxSceneMetaRunes),
+			"value":     d.SceneInput.Time,
 		}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -505,10 +511,11 @@ func sceneForm(d Data, currentSceneID string) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		templ_7745c5c3_Err = atoms.Input(atoms.FieldMd, "w-full", templ.Attributes{
-			"id":    "scene-objective",
-			"name":  "objective",
-			"type":  "text",
-			"value": d.SceneInput.Objective,
+			"id":        "scene-objective",
+			"name":      "objective",
+			"type":      "text",
+			"maxlength": strconv.Itoa(domain.MaxObjectiveRunes),
+			"value":     d.SceneInput.Objective,
 		}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -562,7 +569,7 @@ func shotForm(d Data) templ.Component {
 		var templ_7745c5c3_Var21 string
 		templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.ResolveAttributeValue(paths.Scene(d.Scene.ID, "shots"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sceneshot/view.templ`, Line: 144, Col: 133}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sceneshot/view.templ`, Line: 151, Col: 133}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var21)
 		if templ_7745c5c3_Err != nil {
@@ -573,11 +580,12 @@ func shotForm(d Data) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		templ_7745c5c3_Err = atoms.Input(atoms.FieldMd, "w-full", templ.Attributes{
-			"id":       "shot-objective",
-			"name":     "objective",
-			"type":     "text",
-			"required": true,
-			"value":    d.ShotInput.Objective,
+			"id":        "shot-objective",
+			"name":      "objective",
+			"type":      "text",
+			"maxlength": strconv.Itoa(domain.MaxObjectiveRunes),
+			"required":  true,
+			"value":     d.ShotInput.Objective,
 		}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -596,6 +604,7 @@ func shotForm(d Data) templ.Component {
 			"type":     "number",
 			"step":     "0.1",
 			"min":      "0.1",
+			"max":      strconv.Itoa(domain.MaxShotSeconds),
 			"required": true,
 			"value":    d.ShotInput.DurationSeconds,
 		}).Render(ctx, templ_7745c5c3_Buffer)

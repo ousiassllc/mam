@@ -2,6 +2,7 @@ package sceneshot_test
 
 import (
 	"context"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -109,4 +110,26 @@ func TestShotAdded_AppendsOnlyTheNewShotAndUpdatesTheCount(t *testing.T) {
 
 	d.Shots = d.Shots[1:]
 	assert.Contains(t, renderHTML(t, sceneshot.ShotAdded(d)), `<li id="shot-empty" hx-swap-oob="delete"></li>`, "the first Shot removes the empty message")
+}
+
+// The fields the server limits (service.PlanService) take the same limit as maxlength / max (#754).
+func TestView_LimitsTheFieldsLikeTheServerDoes(t *testing.T) {
+	html := renderHTML(t, sceneshot.View(data()))
+
+	attr := func(id, name string) string {
+		i := strings.Index(html, `id="`+id+`"`)
+		require.NotEqual(t, -1, i, id)
+		tag := html[strings.LastIndex(html[:i], "<") : i+strings.Index(html[i:], ">")]
+		_, rest, ok := strings.Cut(tag, " "+name+`="`)
+		require.True(t, ok, "%s has no %s", id, name)
+		value, _, _ := strings.Cut(rest, `"`)
+		return value
+	}
+
+	assert.Equal(t, strconv.Itoa(domain.MaxSceneTitleRunes), attr("scene-title", "maxlength"))
+	assert.Equal(t, strconv.Itoa(domain.MaxSceneMetaRunes), attr("scene-location", "maxlength"))
+	assert.Equal(t, strconv.Itoa(domain.MaxSceneMetaRunes), attr("scene-time", "maxlength"))
+	assert.Equal(t, strconv.Itoa(domain.MaxObjectiveRunes), attr("scene-objective", "maxlength"))
+	assert.Equal(t, strconv.Itoa(domain.MaxObjectiveRunes), attr("shot-objective", "maxlength"))
+	assert.Equal(t, strconv.Itoa(domain.MaxShotSeconds), attr("shot-duration", "max"))
 }

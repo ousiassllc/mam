@@ -316,6 +316,7 @@ templ BranchView(d BranchPageData) {
 							@atoms.Input(atoms.FieldMd, "w-64", templ.Attributes{
 								"type":        "text",
 								"name":        "direction",
+								"maxlength":   strconv.Itoa(domain.MaxInstructionRunes),
 								"placeholder": "例: ドアを開ける",
 							})
 						</label>

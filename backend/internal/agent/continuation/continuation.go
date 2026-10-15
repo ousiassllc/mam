@@ -18,17 +18,13 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/textutil"
 )
 
-// Limits of what the Agent returns. They follow the limits of the Scene / Shot forms.
+// Limits of what the Agent returns. The Scene / Shot limits are domain's (MaxObjectiveRunes etc.).
 const (
 	// MaxCandidates is how many NEXT candidates (A, B, C) are proposed; D (free direction) and E
 	// (leave it to the AI) are always offered next to them.
 	MaxCandidates      = 3
 	maxCandidateRunes  = 100
 	maxAnalysisRunes   = 200
-	maxObjectiveRunes  = 300
-	maxSceneTitleRunes = 100
-	maxSceneMetaRunes  = 100
-	maxShotSeconds     = 60
 	defaultShotSeconds = 4.0
 )
 
@@ -147,7 +143,7 @@ func (a *Agent) Plan(ctx context.Context, in Input, direction string) (domain.Co
 		return domain.ContinuePlan{}, fmt.Errorf("continue: %w", err)
 	}
 	plan := domain.ContinuePlan{NewScene: out.NewScene}
-	plan.Shot.Objective = textutil.TruncateRunes(strings.TrimSpace(out.Shot.Objective), maxObjectiveRunes)
+	plan.Shot.Objective = textutil.TruncateRunes(strings.TrimSpace(out.Shot.Objective), domain.MaxObjectiveRunes)
 	if plan.Shot.Objective == "" {
 		return domain.ContinuePlan{}, fmt.Errorf("continue: %w", planning.Invalidf("the next shot has no objective"))
 	}
@@ -158,13 +154,13 @@ func (a *Agent) Plan(ctx context.Context, in Input, direction string) (domain.Co
 	if secs <= 0 || math.IsNaN(secs) {
 		secs = defaultShotSeconds
 	}
-	plan.Shot.DurationSeconds = math.Min(secs, maxShotSeconds)
+	plan.Shot.DurationSeconds = math.Min(secs, domain.MaxShotSeconds)
 	if out.NewScene {
 		plan.Scene = domain.PlannedScene{
-			Title:     textutil.TruncateRunes(strings.TrimSpace(out.Scene.Title), maxSceneTitleRunes),
-			Location:  textutil.TruncateRunes(strings.TrimSpace(out.Scene.Location), maxSceneMetaRunes),
-			Time:      textutil.TruncateRunes(strings.TrimSpace(out.Scene.Time), maxSceneMetaRunes),
-			Objective: textutil.TruncateRunes(strings.TrimSpace(out.Scene.Objective), maxObjectiveRunes),
+			Title:     textutil.TruncateRunes(strings.TrimSpace(out.Scene.Title), domain.MaxSceneTitleRunes),
+			Location:  textutil.TruncateRunes(strings.TrimSpace(out.Scene.Location), domain.MaxSceneMetaRunes),
+			Time:      textutil.TruncateRunes(strings.TrimSpace(out.Scene.Time), domain.MaxSceneMetaRunes),
+			Objective: textutil.TruncateRunes(strings.TrimSpace(out.Scene.Objective), domain.MaxObjectiveRunes),
 		}
 		if plan.Scene.Title == "" {
 			return domain.ContinuePlan{}, fmt.Errorf("continue: %w", planning.Invalidf("the new scene has no title"))
