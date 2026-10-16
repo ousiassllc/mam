@@ -100,7 +100,7 @@ templ LockSwitched(d Data, target domain.WorldTarget, id, field string) {
 				for _, f := range e.Fields {
 					if f.Name == field {
 						@molecules.WorldStateField(oobField(f))
-						@molecules.WorldStateSave(e.saveID(), e.Fields, true)
+						@molecules.WorldStateSave(e.saveID(), e.Name, e.Fields, true)
 					}
 				}
 			}

@@ -44,7 +44,7 @@ templ entityAttributeForm(d Data, e entityView) {
 				@molecules.WorldStateField(f)
 			}
 		</div>
-		@molecules.WorldStateSave(e.saveID(), e.Fields, false)
+		@molecules.WorldStateSave(e.saveID(), e.Name, e.Fields, false)
 	</form>
 }
 
@@ -72,7 +72,7 @@ templ referenceSlotForm(d Data, e entityView, sf slotForm) {
 		if sf.Current != "" {
 			<a class="text-xs text-indigo-300 underline" href={ templ.SafeURL(paths.Project(d.Project.ID, "assets", sf.Current)) } target="_blank" rel="noopener">現在の画像</a>
 		}
-		@atoms.Button(atoms.ToneNeutral, "割り当て", templ.Attributes{"type": "submit"})
+		@atoms.ButtonFor(atoms.ToneNeutral, "割り当て", e.Name+" の "+slotLabels[sf.Slot.Name], templ.Attributes{"type": "submit"})
 	</form>
 }
 
