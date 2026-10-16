@@ -3,8 +3,9 @@
 //   node build.mjs --minify   production build
 //   node build.mjs --watch    rebuild on change (make dev)
 import { spawn } from 'node:child_process';
+import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
-import { mkdirSync, readdirSync, rmSync } from 'node:fs';
+import { mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import * as esbuild from 'esbuild';
 
@@ -33,8 +34,18 @@ const jsOptions = {
   logLevel: 'info',
 };
 
+// Tailwind runs as `node <cli entry>`, not through `npx`: on Windows `npx` is `npx.cmd`, which
+// spawn() cannot start without a shell (ENOENT, or EINVAL on a current Node). The entry comes from
+// the installed @tailwindcss/cli (a devDependency), so nothing is fetched and no PATH lookup is needed.
+// MAM_TAILWIND_CLI replaces the entry (build.test.ts points it at a fake Tailwind).
+function tailwindCliEntry() {
+  if (process.env.MAM_TAILWIND_CLI) return process.env.MAM_TAILWIND_CLI;
+  const pkgPath = createRequire(import.meta.url).resolve('@tailwindcss/cli/package.json');
+  const { bin } = JSON.parse(readFileSync(pkgPath, 'utf8'));
+  return join(dirname(pkgPath), typeof bin === 'string' ? bin : bin.tailwindcss);
+}
+
 const tailwindArgs = [
-  'tailwindcss',
   '--input',
   join(root, 'src', 'css', 'app.css'),
   '--output',
@@ -46,7 +57,7 @@ const tailwindArgs = [
 // The Tailwind process is part of the build: if it dies (crash, killed, failed build) the build
 // fails, in watch mode too, where an unnoticed dead Tailwind would leave the CSS stale while esbuild
 // keeps rebuilding (make dev runs this under `concurrently -k`, so exiting non-zero stops the rest).
-const tailwind = spawn('npx', ['--no-install', ...tailwindArgs], { cwd: root, stdio: 'inherit' });
+const tailwind = spawn(process.execPath, [tailwindCliEntry(), ...tailwindArgs], { cwd: root, stdio: 'inherit' });
 let stopping = false;
 const tailwindDone = new Promise((resolve, reject) => {
   tailwind.on('exit', (code, signal) => {
