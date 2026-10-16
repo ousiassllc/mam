@@ -380,7 +380,7 @@ func ReviewComments(i domain.ReviewInbox) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = atoms.Button(atoms.ToneDanger, "削除", templ.Attributes{"hx-delete": paths.Review(i.ID, "comments", c.ID), "hx-target": "#review-comments", "hx-swap": "outerHTML", "type": "button", "hx-confirm": "このコメントを削除します。よろしいですか？"}).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = atoms.ButtonFor(atoms.ToneDanger, "削除", TimecodeLabel(c.TimecodeMs)+" "+c.Body, templ.Attributes{"hx-delete": paths.Review(i.ID, "comments", c.ID), "hx-target": "#review-comments", "hx-swap": "outerHTML", "type": "button", "hx-confirm": "このコメントを削除します。よろしいですか？"}).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

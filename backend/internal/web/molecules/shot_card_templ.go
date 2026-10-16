@@ -280,7 +280,7 @@ func TakeRow(t domain.Take, n int, selected bool, repairable bool, judgeable boo
 			return templ_7745c5c3_Err
 		}
 		if judgeable {
-			templ_7745c5c3_Err = atoms.Button(atoms.ToneNeutral, "Judge", templ.Attributes{
+			templ_7745c5c3_Err = atoms.ButtonFor(atoms.ToneNeutral, "Judge", takeName(t, n), templ.Attributes{
 				"type":      "button",
 				"hx-post":   paths.Take(t.ID, "judge"),
 				"hx-target": shotTarget(t.ShotID),
@@ -292,7 +292,7 @@ func TakeRow(t domain.Take, n int, selected bool, repairable bool, judgeable boo
 			}
 		}
 		if repairable {
-			templ_7745c5c3_Err = atoms.Button(atoms.ToneNeutral, "Repair", templ.Attributes{
+			templ_7745c5c3_Err = atoms.ButtonFor(atoms.ToneNeutral, "Repair", takeName(t, n), templ.Attributes{
 				"type":      "button",
 				"hx-post":   paths.Take(t.ID, "repair"),
 				"hx-target": shotTarget(t.ShotID),

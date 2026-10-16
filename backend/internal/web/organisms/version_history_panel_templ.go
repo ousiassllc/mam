@@ -207,7 +207,7 @@ func VersionHistoryPanel(d VersionHistoryData) templ.Component {
 						return templ_7745c5c3_Err
 					}
 				} else if d.RestoreBlocked == "" {
-					templ_7745c5c3_Err = atoms.Button(atoms.ToneNeutral, "このバージョンに復元", templ.Attributes{
+					templ_7745c5c3_Err = atoms.ButtonFor(atoms.ToneNeutral, "このバージョンに復元", fmt.Sprintf("v%d", e.Number), templ.Attributes{
 						"type":       "button",
 						"hx-post":    d.restoreURL(e.Number),
 						"hx-target":  d.target(),

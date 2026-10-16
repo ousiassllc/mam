@@ -273,7 +273,7 @@ func NoteCard(n domain.NoteView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = atoms.Button(atoms.TonePrimary, "保存", templ.Attributes{"type": "submit"}).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = atoms.ButtonFor(atoms.TonePrimary, "保存", n.Version.Title, templ.Attributes{"type": "submit"}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -282,7 +282,7 @@ func NoteCard(n domain.NoteView) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if n.Archived() {
-			templ_7745c5c3_Err = atoms.Button(atoms.ToneNeutral, "アーカイブを解除", templ.Attributes{
+			templ_7745c5c3_Err = atoms.ButtonFor(atoms.ToneNeutral, "アーカイブを解除", n.Version.Title, templ.Attributes{
 				"type":      "button",
 				"hx-put":    paths.Note(n.ID),
 				"hx-vals":   atoms.HxVals(map[string]string{"archived": "false"}),
@@ -293,7 +293,7 @@ func NoteCard(n domain.NoteView) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = atoms.Button(atoms.ToneDanger, "アーカイブ", templ.Attributes{
+			templ_7745c5c3_Err = atoms.ButtonFor(atoms.ToneDanger, "アーカイブ", n.Version.Title, templ.Attributes{
 				"type":       "button",
 				"hx-delete":  paths.Note(n.ID),
 				"hx-target":  "#note-list",

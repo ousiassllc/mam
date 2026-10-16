@@ -70,7 +70,7 @@ templ VersionHistoryPanel(d VersionHistoryData) {
 						if i == 0 {
 							@atoms.Badge(atoms.BadgeNeutral, "現在")
 						} else if d.RestoreBlocked == "" {
-							@atoms.Button(atoms.ToneNeutral, "このバージョンに復元", templ.Attributes{
+							@atoms.ButtonFor(atoms.ToneNeutral, "このバージョンに復元", fmt.Sprintf("v%d", e.Number), templ.Attributes{
 								"type":       "button",
 								"hx-post":    d.restoreURL(e.Number),
 								"hx-target":  d.target(),
