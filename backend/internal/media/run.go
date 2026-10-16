@@ -55,6 +55,7 @@ func run(ctx context.Context, limit time.Duration, exe string, args ...string) (
 	defer cancel()
 	var out, errOut bytes.Buffer
 	cmd := exec.CommandContext(runCtx, exe, args...) // #nosec G204 -- arguments are built by this package; paths are asset files
+	hideWindow(cmd)
 	cmd.Stdout, cmd.Stderr = &out, &errOut
 	cmd.WaitDelay = waitDelay
 	if err := cmd.Run(); err != nil {
