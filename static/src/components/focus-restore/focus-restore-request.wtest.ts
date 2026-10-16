@@ -176,5 +176,51 @@ describe('focus after a request that disables, replaces by hx-swap-oob or sets o
       expectFocusOn(find('[data-focus-key="resolve-c2"]'));
       expect(document.activeElement?.textContent).to.equal('未解決に戻す');
     });
+
+    // The save button of a note: its note moves to the top of the list and its label changes (#809).
+    it('returns the focus to the save button of the note that moved within the list', async () => {
+      const save = (id: string, title: string) => `
+        <form hx-get="${DATA}/focus-notes-reordered.html" hx-target="#note-list" hx-swap="outerHTML" hx-disabled-elt="find button[type=submit]">
+          <button type="submit" aria-label="保存: ${title}" data-focus-key="save-${id}">保存</button>
+        </form>`;
+      render(`<div id="note-list">${save('n1', 'A')}${save('n2', 'B')}${save('n3', 'C')}</div>`);
+      const done = swapped('#note-list');
+      find('[data-focus-key="save-n3"]').focus();
+      find('[data-focus-key="save-n3"]').click();
+      await done;
+
+      expectFocusOn(find('[data-focus-key="save-n3"]'));
+      expect(document.activeElement?.getAttribute('aria-label')).to.equal('保存: C 新');
+      expect(find('button').getAttribute('data-focus-key'), 'the note moved to the top').to.equal('save-n3');
+    });
+  });
+
+  // A control of the answer that sits in a closed <details> cannot take the focus until it is opened (#810).
+  describe('a control that the answer puts in a closed <details>', () => {
+    const archive = (answer: string) => `
+      <div id="note-list">
+        <button type="button" hx-get="${DATA}/${answer}" hx-target="#note-list" hx-swap="outerHTML" hx-disabled-elt="this" data-focus-key="archive-n1">アーカイブ</button>
+      </div>`;
+
+    it('opens the <details> and returns the focus to the control in it', async () => {
+      render(archive('focus-archived-in-details.html'));
+      const done = swapped('#note-list');
+      find('button').focus();
+      find('button').click();
+      await done;
+
+      expectFocusOn(find('[data-focus-key="archive-n1"]'));
+      expect(find<HTMLDetailsElement>('details').open, 'the <details> is open').to.equal(true);
+    });
+
+    it('goes on to the region when the control cannot take the focus at all', async () => {
+      render(archive('focus-unfocusable-after.html'));
+      const done = swapped('#note-list');
+      find('button').focus();
+      find('button').click();
+      await done;
+
+      expectFocusOn(find('#note-list'));
+    });
   });
 });

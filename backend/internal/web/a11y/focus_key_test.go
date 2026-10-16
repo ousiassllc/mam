@@ -8,6 +8,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/reviewlist"
 )
 
@@ -43,4 +44,39 @@ func TestNoteCard_ArchiveToggleKeepsItsFocusKeyWhenTheLabelFlips(t *testing.T) {
 
 	assert.Contains(t, card(nil), `data-focus-key="archive-n1"`)
 	assert.Contains(t, card(&archived), `data-focus-key="archive-n1"`)
+}
+
+// The save button of a note names its note too: saving a new title moves the note within the list and
+// changes the button's accessible name, so the focus must not be found again by its place or its label (#809).
+func TestNoteCard_SaveKeepsItsFocusKeyWhenTheTitleChanges(t *testing.T) {
+	card := func(id, title string) string {
+		return render(t, molecules.NoteCard(domain.NoteView{
+			Note:    domain.Note{ID: id},
+			Version: domain.NoteVersion{Number: 1, Title: title},
+		}))
+	}
+
+	assert.Contains(t, card("n1", "旧タイトル"), `data-focus-key="save-n1"`)
+	assert.Contains(t, card("n1", "新タイトル"), `data-focus-key="save-n1"`)
+	assert.Contains(t, card("n2", "新タイトル"), `data-focus-key="save-n2"`)
+}
+
+// The restore buttons of the version history of every note read alike ("このバージョンに復元: v1"), and the
+// notes move when one is restored: each names its panel and version, so that the focus finds the same one (#810).
+func TestVersionHistoryPanel_RestoreKeepsItsFocusKeyPerPanelAndVersion(t *testing.T) {
+	now := time.Now()
+	panel := func(id string, newest int) string {
+		entries := []domain.VersionEntry{}
+		for n := newest; n >= 1; n-- {
+			entries = append(entries, domain.VersionEntry{Number: n, CreatedAt: now})
+		}
+		return render(t, organisms.VersionHistoryPanel(organisms.VersionHistoryData{
+			DOMID: "note-history-" + id, Title: "履歴", BasePath: "/notes/" + id, Entries: entries,
+		}))
+	}
+
+	assert.Contains(t, panel("n1", 3), `data-focus-key="restore-note-history-n1-1"`)
+	assert.Contains(t, panel("n1", 4), `data-focus-key="restore-note-history-n1-1"`)
+	assert.Contains(t, panel("n2", 3), `data-focus-key="restore-note-history-n2-1"`)
+	assert.NotContains(t, panel("n1", 3), `data-focus-key="restore-note-history-n1-3"`)
 }
