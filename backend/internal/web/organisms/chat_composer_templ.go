@@ -76,26 +76,27 @@ func ChatComposer(p domain.Project) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</div><input type=\"hidden\" name=\"reply_to_message_id\" id=\"reply-to\" value=\"\"><ul id=\"attachment-names\" class=\"mb-2 flex flex-wrap gap-2 text-xs text-neutral-300\"></ul><div class=\"flex items-end gap-2\"><label for=\"composer-files\" class=\"cursor-pointer rounded-md border border-neutral-600 px-3 py-1.5 text-sm hover:bg-neutral-800\" title=\"画像・動画を添付\">＋</label> <input id=\"composer-files\" type=\"file\" name=\"attachments\" multiple accept=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</div><input type=\"hidden\" name=\"reply_to_message_id\" id=\"reply-to\" value=\"\"><ul id=\"attachment-names\" class=\"mb-2 flex flex-wrap gap-2 text-xs text-neutral-300\"></ul><div class=\"flex items-end gap-2\"><input id=\"composer-files\" type=\"file\" name=\"attachments\" multiple accept=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(AcceptedUploads)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/chat_composer.templ`, Line: 48, Col: 95}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/chat_composer.templ`, Line: 47, Col: 95}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" class=\"sr-only\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" aria-label=\"画像・動画を添付\" class=\"peer sr-only\"> <label for=\"composer-files\" class=\"cursor-pointer rounded-md border border-neutral-600 px-3 py-1.5 text-sm hover:bg-neutral-800 peer-focus-visible:ring-2 peer-focus-visible:ring-indigo-400\" title=\"画像・動画を添付\">＋</label>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		templ_7745c5c3_Err = atoms.Textarea(atoms.FieldLg, "min-h-10 flex-1 resize-y", templ.Attributes{
 			"id":          "composer-content",
 			"name":        "content",
+			"aria-label":  "メッセージ",
 			"rows":        "2",
 			"maxlength":   intText(domain.MaxMessageRunes),
 			"placeholder": "指示を入力…（Enter で送信、Shift+Enter で改行）",
@@ -141,7 +142,7 @@ func ChatComposer(p domain.Project) templ.Component {
 				var templ_7745c5c3_Var5 string
 				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue(string(q.Value))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/chat_composer.templ`, Line: 74, Col: 37}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/chat_composer.templ`, Line: 75, Col: 37}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
 				if templ_7745c5c3_Err != nil {
@@ -164,7 +165,7 @@ func ChatComposer(p domain.Project) templ.Component {
 				var templ_7745c5c3_Var6 string
 				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(q.Label)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/chat_composer.templ`, Line: 74, Col: 90}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/chat_composer.templ`, Line: 75, Col: 90}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 				if templ_7745c5c3_Err != nil {
@@ -195,7 +196,7 @@ func ChatComposer(p domain.Project) templ.Component {
 		var templ_7745c5c3_Var7 templ.SafeURL
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(paths.Project(p.ID, "settings")))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/chat_composer.templ`, Line: 78, Col: 59}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/chat_composer.templ`, Line: 79, Col: 59}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
