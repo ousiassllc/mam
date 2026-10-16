@@ -158,7 +158,11 @@ class ChatWorkspace {
       }
     });
     this.files.addEventListener('change', () => this.showAttachments());
-    this.composer.querySelector('#reply-cancel')?.addEventListener('click', () => this.setReplyTarget('', ''));
+    // The × hides itself with the reply chip: the focus goes back to the message, as when a reply starts.
+    this.composer.querySelector('#reply-cancel')?.addEventListener('click', () => {
+      this.setReplyTarget('', '');
+      this.content.focus();
+    });
 
     this.composer.addEventListener('dragover', (event) => event.preventDefault());
     this.composer.addEventListener('drop', (event) => {
