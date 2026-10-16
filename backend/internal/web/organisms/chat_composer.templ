@@ -49,6 +49,7 @@ templ ChatComposer(p domain.Project) {
 				@atoms.Textarea(atoms.FieldLg, "min-h-10 flex-1 resize-y", templ.Attributes{
 					"id":          "composer-content",
 					"name":        "content",
+					"aria-label":  "メッセージ",
 					"rows":        "2",
 					"maxlength":   intText(domain.MaxMessageRunes),
 					"placeholder": "指示を入力…（Enter で送信、Shift+Enter で改行）",

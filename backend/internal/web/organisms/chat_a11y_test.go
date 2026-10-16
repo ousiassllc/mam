@@ -20,3 +20,12 @@ func TestChatWorkspace_RootIsTheMainLandmark(t *testing.T) {
 	assert.Contains(t, root, `id="chat-workspace"`)
 	assert.Contains(t, html, "</main>")
 }
+
+// A placeholder is not an accessible name: it disappears on input (#779).
+func TestChatComposer_MessageInputHasAnAccessibleName(t *testing.T) {
+	html := renderHTML(t, organisms.ChatComposer(domain.Project{ID: "p1"}))
+
+	textarea := regexp.MustCompile(`<textarea[^>]*name="content"[^>]*>`).FindString(html)
+	require.NotEmpty(t, textarea, html)
+	assert.Contains(t, textarea, `aria-label="メッセージ"`)
+}
