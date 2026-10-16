@@ -64,8 +64,9 @@ lint-static: static/node_modules ## tsc + biome lint
 lint-lines: ## fail when a file / directory got over the linterly line limit beyond .linterly-baseline
 	./scripts/linterly-baseline.sh check
 
-vuln: ## govulncheck: fail on a known vulnerability reachable from the code (Go standard library + modules)
+vuln: ## govulncheck: fail on a known vulnerability reachable from the code (Go standard library + modules), for the Linux host and the Windows target (cmd/wails)
 	govulncheck ./...
+	GOOS=windows CGO_ENABLED=0 govulncheck ./...
 
 linterly-baseline: ## rewrite .linterly-baseline from the current linterly result (after splitting files)
 	./scripts/linterly-baseline.sh update

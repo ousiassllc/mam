@@ -18,7 +18,7 @@ Go（`go.mod` のバージョン）、Node.js（24。CI は `.github/workflows/c
 | `make fmt-check` | `gofmt -l backend static` が空であることと `templ fmt -fail backend`（goimports は見ない）、`biome format`（`npm run format:check --prefix static`）。未整形で失敗 |
 | `make lint` | `make lint-go` と `make lint-static` |
 | `make lint-lines` | `scripts/linterly-baseline.sh check`。`.linterly-baseline` より悪化した行数超過があれば失敗（Linterly 節）。`linterly` と `jq` が要る |
-| `make vuln` | `govulncheck ./...`。コードから到達できる既知の脆弱性（標準ライブラリ・依存モジュール）があれば失敗。`make tools` が入れる `govulncheck` が要る |
+| `make vuln` | `govulncheck ./...` を Linux ホストと Windows ターゲット（`GOOS=windows CGO_ENABLED=0 govulncheck ./...`。配布する Windows 版の `backend/cmd/wails`（`//go:build windows`）・Wails v3・Windows 実装は Linux の解析に入らないため）の両方で実行する。コードから到達できる既知の脆弱性（標準ライブラリ・依存モジュール）がどちらかにあれば失敗。`make tools` が入れる `govulncheck` が要る |
 | `make linterly-baseline` | `scripts/linterly-baseline.sh update`。`.linterly-baseline` を現在の `linterly check` の結果で書き換える |
 | `make lint-go` | `make generate` のあと `golangci-lint run ./...`（`.golangci.yml`。`gocyclo` 25 / `gocognit` 50 の複雑度上限を含む。「関数の複雑度」節） |
 | `make lint-static` | `tsc --noEmit`（`npm run typecheck --prefix static`）と `biome lint`（`npm run lint --prefix static`） |
@@ -49,7 +49,7 @@ CI は `make fmt-check` と `make lint` を実行するため、上の検査は�
 
 `.github/workflows/ci.yml`。`main` への push と全 PR で、組織の self-hosted runner（`runs-on: [self-hosted, Linux, X64]`）で実行する（GitHub-hosted の `ubuntu-latest` は課金で止まるとジョブが開始されず、CI が確認できなくなるため）。ツールは `make tools`（Makefile の版指定）で入れる。`make generate` → コミット済み `*_templ.go` の一致確認 → `fmt-check` → `lint` → 脆弱性の検査（`make vuln`。後述）→ 行数の悪化確認（`make lint-lines`。後述の Linterly 節）→ ffmpeg の確認（無ければ `sudo -n apt-get install -y ffmpeg`）→ Chrome の確認（Linux 版 Chrome も `CHROME_PATH` も無いときだけ、`unzip` が無ければ `sudo -n apt-get install -y unzip` で入れてから Chrome for Testing を取得する。取得に失敗したらそのステップで失敗する。前提は開発ツールの「Chrome / Chromium」）→ `test` → `build` の順。`make generate` の直後に `*_templ.go` が変更・未追跡になっていれば（`.templ` と食い違う古い・手編集の出力、再生成漏れ）失敗させる。`lint` / `test` / `build` は先に再生成するため、この確認がないと食い違いが緑になる（`_templ.go` は git 管理で、素の `go build` はそれをそのままコンパイルする）。`cmd/wails`（`//go:build windows`）は Linux の通常のステップに入らないため、`GOOS=windows CGO_ENABLED=0` で `go build ./backend/...`・`go vet ./backend/...`・`golangci-lint run ./backend/...` を別ステップで実行する（Windows 版の壊れを PR で検知する）。
 
-標準ライブラリの脆弱性は Go の版で決まるため、`go.mod` の `toolchain` 行で修正版の Go（`actions/setup-go` の `go-version-file: go.mod` が CI と `release.yml` の両方で読む）を固定する。`lint` の次のステップで `make vuln`（`govulncheck ./...`）を実行し、コードから到達できる既知の脆弱性（標準ライブラリ・依存モジュール）があれば失敗させる。依存の更新 PR は `.github/dependabot.yml`（`gomod`・`npm`（`/static`）・`github-actions`）が週次で作る。
+標準ライブラリの脆弱性は Go の版で決まるため、`go.mod` の `toolchain` 行で修正版の Go（`actions/setup-go` の `go-version-file: go.mod` が CI と `release.yml` の両方で読む）を固定する。`lint` の次のステップで `make vuln`（`govulncheck ./...` を Linux ホストと `GOOS=windows CGO_ENABLED=0` の Windows ターゲットの両方で実行）を実行し、コードから到達できる既知の脆弱性（標準ライブラリ・依存モジュール）があれば失敗させる。Windows ターゲットも検査するのは、配布する exe の元になる `backend/cmd/wails`（`//go:build windows`）と Wails v3・Windows 実装が Linux の govulncheck の解析に一度も入らないため（Windows 向けの `go build` / `go vet` / `golangci-lint` を別ステップで回しているのと同じ理由）。依存の更新 PR は `.github/dependabot.yml`（`gomod`・`npm`（`/static`）・`github-actions`）が週次で作る。
 
 ffmpeg / ffprobe は runner のホストに入っているものを使い、PATH に無いときだけ `test` の前に導入する（パスワード無しの sudo が要る。無ければステップが失敗する）。ffmpeg を使う Go テスト（Judge のフレーム抽出、`media`、Audio Director のミックス、Take のプレビュー・部分採用・区間指定の再生成、Continue の最終フレーム）は、PATH に無いとローカルでは `t.Skip` されるが、`CI=true`（GitHub Actions が設定する）では `backend/internal/testenv` の `MissingFFmpeg` が失敗にする。CI の導入手順が外れても緑のまま飛ばされない。ffmpeg の無い開発機では該当テストが Skip され、lefthook の pre-push（同じ `make test`）でも同様なので、実ファイルの経路を確かめるには ffmpeg を入れてから `go test -v` で SKIP が出ていないことを見る。
 
@@ -71,7 +71,7 @@ Go テストの所要時間（`backend/internal/router`）: ffmpeg で作る素�
 
 1. `git merge-base --is-ancestor "$GITHUB_SHA" origin/main`: タグのコミットが `main` の履歴にあること（`fetch-depth: 0`）。main 以外のコミットに打ったタグは公開しない
 2. CI の成功確認: `gh run list --workflow ci.yml --commit "$GITHUB_SHA"` に `success` の実行があること。CI が赤い、または未完了のコミットは公開しない（CI が通るのを待ってからタグを打つ）
-3. `make tools` → `make generate` → `make vuln`: CI の後に出た新しい脆弱性勧告でも止める
+3. `make tools` → `make generate` → `make vuln`（Linux と Windows の両方のターゲットを検査する）: CI の後に出た新しい脆弱性勧告でも止める
 
 ### `build`（`windows-latest`、`needs: verify`、`contents: read`）
 
@@ -144,3 +144,4 @@ pre-commit（`scripts/linterly-staged.sh`）は従来どおり、コミット対
 | 1.20 | 2026-10-15 | 開発ツールの「Chrome / Chromium」と CI 節に、`Ensure Chrome` が Chrome for Testing の zip 展開に `unzip` を必要とすることを明記し、`ci.yml` の `Ensure Chrome` に、`unzip` が無いときだけ `sudo -n apt-get install` で入れる確認を足した（ffmpeg と同じ扱い） | Issue #726。`browsers install` は `unzip`（か任意依存の `yauzl`）が無いと `Extraction failed: no zip archiver is available` で失敗するが、`ci.yml` も仕様書も `unzip` の前提を確認・記載していなかった。Linux 版 Chrome も `unzip` も無い最小構成の runner で、このステップだけが分かりにくく失敗した |
 | 1.21 | 2026-10-16 | CI の `Ensure Chrome` ステップに `shell: bash`（`bash -eo pipefail`）を指定し、取得した Chrome のパスが空・実行不可なら `::error::` を出して失敗させるようにした。開発ツールの「Chrome / Chromium」と CI 節に「取得に失敗したらステップが失敗する」ことを明記した | Issue #728。`ci.yml` の `Ensure Chrome` は `shell:` 未指定（既定は `bash -e` で `pipefail` なし）のため、`browsers install \| tail \| cut` の終了コードが `cut` の 0 になり、取得に失敗してもステップが成功して空の `CHROME_PATH=` を `$GITHUB_ENV` に書いていた。失敗が後続の `Test` で別の症状として現れ、原因が読めなかった |
 | 1.22 | 2026-10-16 | 「フロントエンドの整形・lint」節の後に、`static/build.mjs` が Tailwind を `npx` ではなく `node` でインストール済みの `@tailwindcss/cli` のエントリから直接起動することを追記し、`release.yml` の `build` ジョブの手順に、パッケージの前に Windows 上でフロントエンドのビルドと `build.test.ts` を動かす手順（手順 3）を足した（以降の手順は繰り下げ） | Issue #765。`build.mjs` は `spawn('npx', …)`（`shell` 無し）で Tailwind を起動しており、Windows の `npx.cmd` を起動できず `build failed: spawn npx ENOENT` で `scripts/package-windows.sh` が止まり、リリースの `build` ジョブ（`windows-latest`）が成功しなかった。CI は Linux だけで、`build.test.ts` の Tailwind 異常系も Windows では `skipIf` で飛ばしていたため、この経路は一度も検証されていなかった |
+| 1.23 | 2026-10-16 | `make vuln` を Linux ホストに加えて Windows ターゲット（`GOOS=windows CGO_ENABLED=0 govulncheck ./...`）でも実行するようにし、タスク表・CI 節・リリース節 `verify` の手順 3 に「Linux と Windows の両方のターゲットを検査する」ことを明記した。`scripts/makefile_test.sh` に `make vuln` が両方を実行する検査を足した | Issue #767。`make vuln` は `GOOS` を指定せず Linux でだけ走り、配布する Windows 版の `backend/cmd/wails`（`//go:build windows`）と Wails v3・`fsutil` の Windows 実装・標準ライブラリの Windows 実装が検査の対象外だった（1.8 の「CI と配布する Windows バイナリ」を守るという記述と実装がずれていた）。Windows ターゲットでも現時点で脆弱性は無く、見逃しではなく網羅範囲のずれ |
