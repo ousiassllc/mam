@@ -1,4 +1,4 @@
-package organisms_test
+package a11y_test
 
 import (
 	"regexp"
