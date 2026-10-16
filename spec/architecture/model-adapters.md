@@ -302,8 +302,8 @@ Shot の性質による軸の重み: 4 軸とも基準 1 に、Shot Spec に Pro
 | `routing.min_samples` | 実績として使うのに必要な Judge 済み Take 数 | 5 |
 | `routing.prior_quality` | 実績が足りないモデルの quality（0〜1） | 0.75 |
 | `routing.switch_margin` | 切り替えに必要な score の差 | 0.05 |
-| `routing.weights.<fast\|balanced\|max_quality>` | `quality` / `cost` / `fit` の重み（負でなく、合計が正） | 13.3 |
-| `routing.candidates.<fast\|balanced\|max_quality>` | `model` と `resolution` の配列（各モデルは動画モデルで、`policies` と同じ検証を受ける） | 13.2 |
+| `routing.weights.<fast\|balanced\|max_quality>` | `quality` / `cost` / `fit` の重み（負でなく、合計が正） | §13.3 の重み |
+| `routing.candidates.<fast\|balanced\|max_quality>` | `model` と `resolution` の配列（各モデルは動画モデルで、`policies` と同じ検証を受ける） | §13.2 の候補 |
 
 ## 14. Audio Director（M3）の実装（`internal/agent/audiodirector`）
 
