@@ -60,6 +60,11 @@ type StoredTake struct {
 	Unneeded, Archivable bool
 }
 
+// Label names the Take in a list the way the row shows it: where it is, which model made it, its status and size.
+func (t StoredTake) Label() string {
+	return fmt.Sprintf("Scene %d · Shot %d · %s · %s · %s", t.SceneIndex+1, t.ShotIndex+1, t.ModelName, t.Status.Label(), FormatBytes(t.SizeBytes))
+}
+
 // StorageSummary is the disk view of a Project (spec/requirements/non-functional.md §4).
 type StorageSummary struct {
 	// Takes lists the stored Takes, the unneeded ones first.

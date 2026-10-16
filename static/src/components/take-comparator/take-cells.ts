@@ -1,5 +1,5 @@
 import { html } from 'lit';
-import type { TakeScore } from './mam-take-comparator';
+import type { TakeScore } from './take-model';
 
 /** One score of the table: a dash while the Take has none, red when it is below `minAxisScore` (the server's, the one the Judge fails a Take under). */
 export function renderScore(value: number | undefined, minAxisScore: number) {

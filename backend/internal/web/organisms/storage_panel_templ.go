@@ -197,7 +197,7 @@ func StoragePanel(d StoragePanelData) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				if t.Archivable {
-					templ_7745c5c3_Err = atoms.SmallButton(atoms.ToneNeutral, "アーカイブ", templ.Attributes{
+					templ_7745c5c3_Err = atoms.SmallButtonFor(atoms.ToneNeutral, "アーカイブ", t.Label(), templ.Attributes{
 						"type":       "button",
 						"hx-post":    paths.Project(d.ProjectID, "takes", t.TakeID, "archive"),
 						"hx-target":  "#storage-panel",

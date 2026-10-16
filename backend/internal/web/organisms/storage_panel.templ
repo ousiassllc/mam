@@ -68,7 +68,7 @@ templ StoragePanel(d StoragePanelData) {
 							}
 						</span>
 						if t.Archivable {
-							@atoms.SmallButton(atoms.ToneNeutral, "アーカイブ", templ.Attributes{
+							@atoms.SmallButtonFor(atoms.ToneNeutral, "アーカイブ", t.Label(), templ.Attributes{
 								"type":       "button",
 								"hx-post":    paths.Project(d.ProjectID, "takes", t.TakeID, "archive"),
 								"hx-target":  "#storage-panel",

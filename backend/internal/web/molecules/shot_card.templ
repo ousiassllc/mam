@@ -75,6 +75,11 @@ func takeJudgeResultURL(takeID string) string { return paths.APITake(takeID, "ju
 
 func takeActionURL(takeID, action string) string { return paths.Take(takeID, action) }
 
+// takeName is "Take A · model": the Take as the comparison names it (oldest first), for the accessible name of its buttons.
+func takeName(t domain.Take, n int) string {
+	return "Take " + domain.TakeLabel(n) + " · " + t.ModelName
+}
+
 // ShotActions starts the generation of a Shot (optionally with an additional direction) or the
 // building of its Reference Pack. Both answer with the Shot card in the GENERATING state. The card
 // draws them only while the Shot is not busy (domain.ShotState.Busy): the server refuses them then.
@@ -117,20 +122,20 @@ templ ShotActions(shotID string, canContinue bool, candidates bool) {
 	</form>
 }
 
-// TakeRow is one Take under a Shot: its status, and the buttons that select it (the user's choice
+// TakeRow is the n-th (0-based) Take under a Shot: its status, and the buttons that select it (the user's choice
 // replaces the AI Pick) or exclude it, and the one that repairs it. They answer with the Shot card,
 // which has to be drawn as selected or not like the card they replace: the buttons send that in
 // "selected" (selected is whether the card they sit on is the selected one). The Repair button is
 // left out unless the server accepts it (domain.CheckRepair): the Take is judged and not accepted, and
 // the Shot is not busy (generating or repairing). The Judge button runs the AI Video Judge on a Take that
 // has no result (never judged, or the run failed); it is drawn only when domain.CheckJudge accepts it.
-templ TakeRow(t domain.Take, selected bool, repairable bool, judgeable bool) {
+templ TakeRow(t domain.Take, n int, selected bool, repairable bool, judgeable bool) {
 	<li class="flex items-center justify-between gap-2 text-xs text-neutral-300">
 		<span class="truncate">{ t.ModelName }</span>
 		<span class="flex shrink-0 items-center gap-2">
 			if t.Usable() {
 				if t.Selectable() {
-					@atoms.LinkButton(atoms.ToneNeutral, "選択", templ.Attributes{
+					@atoms.LinkButtonFor("選択", takeName(t, n), templ.Attributes{
 						"type":      "button",
 						"hx-post":   takeActionURL(t.ID, "select"),
 						"hx-target": shotTarget(t.ShotID),
@@ -138,7 +143,7 @@ templ TakeRow(t domain.Take, selected bool, repairable bool, judgeable bool) {
 						"hx-vals":   selectedVals(selected),
 					})
 				}
-				@atoms.LinkButton(atoms.ToneNeutral, "除外", templ.Attributes{
+				@atoms.LinkButtonFor("除外", takeName(t, n), templ.Attributes{
 					"type":       "button",
 					"hx-delete":  paths.Take(t.ID),
 					"hx-target":  shotTarget(t.ShotID),
@@ -241,8 +246,8 @@ templ ShotCard(d ShotCardData) {
 		}
 		if len(d.Takes) > 0 {
 			<ul class="mt-2 flex flex-col gap-1 border-t border-neutral-800 pt-2" aria-label="Take 一覧">
-				for _, t := range d.Takes {
-					@TakeRow(t, d.Selected, d.Repairable[t.ID], d.Judgeable[t.ID])
+				for i, t := range d.Takes {
+					@TakeRow(t, i, d.Selected, d.Repairable[t.ID], d.Judgeable[t.ID])
 				}
 			</ul>
 			if len(d.Takes) > 1 {

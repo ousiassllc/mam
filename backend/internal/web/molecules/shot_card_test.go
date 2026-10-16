@@ -170,3 +170,16 @@ func TestShotCard_TakeStatusBadgeNamesTheStatusOnScreen(t *testing.T) {
 		assert.Contains(t, html, ">"+label+"<", string(status))
 	}
 }
+
+// The select / exclude buttons of the Takes of a Shot are named after their Take, led by their visible text (#783).
+func TestShotCard_TakeButtonsAreNamedAfterTheirTake(t *testing.T) {
+	takes := []domain.Take{
+		{ID: "t1", ShotID: "s1", ModelName: "kling", FilePath: "a.mp4", Status: domain.TakeCandidate},
+		{ID: "t2", ShotID: "s1", ModelName: "kling", FilePath: "b.mp4", Status: domain.TakeCandidate},
+	}
+	html := render(t, molecules.ShotCard(molecules.ShotCardData{ProjectID: "p", Shot: domain.Shot{ID: "s1", SceneID: "sc"}, Takes: takes, Selected: true}))
+
+	for _, want := range []string{"選択: Take A · kling", "選択: Take B · kling", "除外: Take A · kling", "除外: Take B · kling"} {
+		assert.Contains(t, html, `aria-label="`+want+`"`)
+	}
+}
