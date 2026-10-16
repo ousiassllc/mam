@@ -156,4 +156,25 @@ describe('focus after a request that disables, replaces by hx-swap-oob or sets o
       expect(document.activeElement === document.body, 'the focus is on <body>').to.equal(true);
     });
   });
+
+  // A toggle that flips its label has no label to be found by: `data-focus-key` names it (#806, #808).
+  describe('data-focus-key', () => {
+    const row = (id: string, label: string) => `
+      <li>
+        <form hx-get="${DATA}/focus-toggle-after.html" hx-target="closest article" hx-swap="outerHTML" hx-disabled-elt="find button[type=submit]">
+          <button type="submit" aria-label="${label}: ${id}" data-focus-key="resolve-${id}">${label}</button>
+        </form>
+      </li>`;
+
+    it('returns the focus to the flipped toggle of the same row, not to the same-named toggle of another row', async () => {
+      render(`<article id="review-1"><ul>${row('c1', '解決済みにする')}${row('c2', '解決済みにする')}</ul></article>`);
+      const done = swapped('#review-1');
+      find('[data-focus-key="resolve-c2"]').focus();
+      find('[data-focus-key="resolve-c2"]').click();
+      await done;
+
+      expectFocusOn(find('[data-focus-key="resolve-c2"]'));
+      expect(document.activeElement?.textContent).to.equal('未解決に戻す');
+    });
+  });
 });
