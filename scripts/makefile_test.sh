@@ -38,3 +38,16 @@ for want in 'govulncheck ./...' 'GOOS=windows CGO_ENABLED=0 govulncheck ./...'; 
   grep -qxF -- "$want" <<<"$vuln_cmd" || { echo "FAIL: 'make vuln' does not run '$want'"; exit 1; }
 done
 echo "ok: make vuln checks both the Linux host and the Windows target"
+
+# scripts/package-windows.sh (Windows has no make) must pin templ the same way: a PATH `templ generate` would rewrite the
+# committed *_templ.go with a stale version, and `templ` must not be a required tool any more.
+if grep -qE '^[[:space:]]*templ generate' scripts/package-windows.sh || grep -qE 'for tool in .*\btempl\b' scripts/package-windows.sh; then
+  echo "FAIL: scripts/package-windows.sh uses the templ on PATH; use 'go run github.com/a-h/templ/cmd/templ@<go.mod version> generate'"
+  exit 1
+fi
+# shellcheck disable=SC2016 # the literal $templ_version in package-windows.sh is what is searched for
+grep -qF 'go run github.com/a-h/templ/cmd/templ@"$templ_version" generate ./backend/...' scripts/package-windows.sh || {
+  echo "FAIL: scripts/package-windows.sh does not run templ at the go.mod version"
+  exit 1
+}
+echo "ok: scripts/package-windows.sh runs templ ${templ_version} (go.mod), not the templ on PATH"

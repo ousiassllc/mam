@@ -94,7 +94,6 @@ jobs:
 
       - name: Install tools
         run: |
-          go install github.com/a-h/templ/cmd/templ@"$(go list -m -f '{{.Version}}' github.com/a-h/templ)"
           go install github.com/wailsapp/wails/v3/cmd/wails3@"$(go list -m -f '{{.Version}}' github.com/wailsapp/wails/v3)"
           choco install nsis --version "$NSIS_VERSION" --no-progress -y
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
