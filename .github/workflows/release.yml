@@ -110,6 +110,13 @@ jobs:
           npm run build -- --minify
           npx --no-install vitest run src/build.test.ts
 
+      # ci.yml runs on Linux only (it only builds, vets and lints for GOOS=windows), so the Windows
+      # code (fsutil dirlock/diskfree: LockFileEx, GetDiskFreeSpaceEx) and the Windows branches of
+      # tests are never run. Run the light packages that hold them here, before the packaging.
+      # Packages that need ffmpeg are left out: with CI=true testenv.MissingFFmpeg fails the test.
+      - name: Go tests that exercise the Windows code
+        run: go test ./backend/internal/fsutil/... ./backend/internal/desktop/... ./backend/internal/app/... ./backend/internal/config/...
+
       - name: Package
         run: bash scripts/package-windows.sh "${GITHUB_REF_NAME#v}"
 
