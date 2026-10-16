@@ -20,12 +20,12 @@ templ AnalyticsPanel(m domain.ProductionMetrics) {
 						<div class="rounded-md border border-neutral-700 p-3" data-testid={ "metric-" + row.Key }>
 							<dt class="text-xs text-neutral-400">{ row.Label }</dt>
 							<dd class="text-lg font-semibold" data-testid={ "value-" + row.Key }>{ row.Value }</dd>
-							<dd class="text-xs text-neutral-500">{ row.Basis }</dd>
+							<dd class="text-xs text-neutral-400">{ row.Basis }</dd>
 						</div>
 					}
 				</dl>
 			</section>
 		}
-		<p class="text-xs text-neutral-500">集計はこの端末のデータだけから行い、外部へは送信しません。</p>
+		<p class="text-xs text-neutral-400">集計はこの端末のデータだけから行い、外部へは送信しません。</p>
 	</div>
 }

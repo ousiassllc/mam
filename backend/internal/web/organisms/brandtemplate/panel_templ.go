@@ -338,7 +338,7 @@ func Items(d Data) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = atoms.SmallButton(atoms.ToneNeutral, "この Project に適用", templ.Attributes{
+				templ_7745c5c3_Err = atoms.SmallButtonFor(atoms.ToneNeutral, "この Project に適用", t.Name, templ.Attributes{
 					"type":       "button",
 					"hx-post":    paths.Project(d.ProjectID, "brand-templates", t.ID, "apply"),
 					"hx-target":  "#brand-constraint-list",
@@ -348,7 +348,7 @@ func Items(d Data) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = atoms.SmallButton(atoms.ToneNeutral, "削除", templ.Attributes{
+				templ_7745c5c3_Err = atoms.SmallButtonFor(atoms.ToneNeutral, "削除", t.Name, templ.Attributes{
 					"type":       "button",
 					"hx-delete":  paths.Project(d.ProjectID, "brand-templates", t.ID),
 					"hx-target":  "#brand-template-list",

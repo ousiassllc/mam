@@ -93,6 +93,26 @@ describe('mam-take-comparator: score table', () => {
     expect(el.querySelector('[data-lane="t3"]')).to.equal(null);
   });
 
+  it('names the select / reject buttons after their Take, starting with their visible text', async () => {
+    stub = stubFetch({ [`GET ${API}`]: body([take('t1', 'A'), take('t2', 'B')]) });
+    const el = await comparator();
+
+    const names = (action: string) =>
+      [...el.querySelectorAll(`[data-action="${action}"]`)].map((b) => b.getAttribute('aria-label'));
+    expect(names('select')).to.deep.equal(['選択: Take A', '選択: Take B']);
+    expect(names('reject')).to.deep.equal(['除外: Take A', '除外: Take B']);
+    expect(text(el, '[data-take="t1"] [data-action="select"]')).to.equal('選択');
+  });
+
+  it('greys a rejected Take with a text colour that keeps 4.5:1, not with opacity', async () => {
+    stub = stubFetch({ [`GET ${API}`]: body([take('t1', 'A', { status: 'rejected', status_label: '除外' })]) });
+    const el = await comparator();
+
+    const row = el.querySelector('[data-take="t1"]') as HTMLElement;
+    expect(row.classList.contains('text-neutral-400')).to.equal(true);
+    expect(row.className).not.to.contain('opacity');
+  });
+
   it('hides Partial Take Use when the server gave no partial_url', async () => {
     stub = stubFetch({ [`GET ${API}`]: body([take('t1', 'A'), take('t2', 'B')], null) });
     const el = await comparator();

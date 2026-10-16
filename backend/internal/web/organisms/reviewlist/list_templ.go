@@ -675,7 +675,7 @@ func reviewCard(projectID string, it Item, oob bool) templ.Component {
 						return templ_7745c5c3_Err
 					}
 					if c.Resolved {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "<span class=\"min-w-0 flex-1 whitespace-pre-wrap text-neutral-500 line-through\">")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "<span class=\"min-w-0 flex-1 whitespace-pre-wrap text-neutral-400 line-through\">")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}

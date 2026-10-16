@@ -2,36 +2,17 @@ import { LitElement, html, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { ApiError, get } from '../lib/api';
 import { createLogger } from '../lib/logger';
-import { describeProgress, isFinished, progressFraction, type ShotProgress } from '../lib/shot';
-import {
-  DEFAULT_FPS,
-  estimateFps,
-  formatTimecode,
-  issueRange,
-  seekToFrame,
-  stepFrame,
-  timeToFrame,
-  type JudgeIssue,
-  type TimeRange,
-} from '../lib/video';
+import { isFinished, type ShotProgress } from '../lib/shot';
+import { DEFAULT_FPS, seekToFrame, stepFrame, timeToFrame, type JudgeIssue } from '../lib/video';
 import { createConnectionNotice } from '../lib/connection-notice';
 import { connect, socketUrl, type Connection } from '../lib/ws';
+import { probeFrameRate, sampleFrameRate } from './video-fps';
+import { buildMarkers, renderPlaceholder, renderTransport } from './video-parts';
 
 const log = createLogger('video-player');
 
-/** Number of presentation times read to measure the frame rate of a file. */
-const FPS_SAMPLES = 8;
-/** How long the muted probe may run to measure the frame rate before it gives up. */
-const FPS_PROBE_MS = 1500;
-
 interface JudgeResultBody {
   issues?: JudgeIssue[];
-}
-
-/** An Issue as the time bar draws it. */
-interface Marker {
-  issue: JudgeIssue;
-  range: TimeRange;
 }
 
 export interface SeekRequestedDetail {
@@ -187,7 +168,7 @@ export class MamVideoPlayer extends LitElement {
   async step(delta: number): Promise<void> {
     const video = this.video;
     if (!video) return;
-    if (!this.frameRateKnown) await this.probeFrameRate(video);
+    if (!this.frameRateKnown) await this.probe(video);
     const frame = stepFrame(video.currentTime, delta, this.frameRate, this.duration || video.duration || 0);
     this.seekFrame(frame);
   }
@@ -202,61 +183,10 @@ export class MamVideoPlayer extends LitElement {
     }
   }
 
-  /** Reads the presentation times of the next frames while the video runs. */
-  private sampleFrames(video: HTMLVideoElement): void {
-    if (this.frameRateKnown || typeof video.requestVideoFrameCallback !== 'function') return;
-    const times: number[] = [];
-    const onFrame = (_now: number, meta: VideoFrameCallbackMetadata) => {
-      times.push(meta.mediaTime);
-      if (times.length >= FPS_SAMPLES) {
-        const rate = estimateFps(times);
-        if (rate > 0) this.measuredFps = rate;
-        return;
-      }
-      if (!video.paused) video.requestVideoFrameCallback(onFrame);
-    };
-    video.requestVideoFrameCallback(onFrame);
-  }
-
-  /**
-   * Plays the video muted for a moment to measure its frame rate, then puts it back where it was.
-   * Callers during a probe share it: a second probe would take the state the first one made (muted,
-   * advanced time) for the original and restore that.
-   */
-  private probeFrameRate(video: HTMLVideoElement): Promise<void> {
-    this.probing ??= this.runFrameRateProbe(video).finally(() => (this.probing = null));
+  /** Plays the video muted for a moment to measure its frame rate (see video-fps). Callers during a probe share it: a second probe would take the state the first one made (muted, advanced time) for the original and restore that. */
+  private probe(video: HTMLVideoElement): Promise<void> {
+    this.probing ??= probeFrameRate(video, () => this.frameRateKnown).finally(() => (this.probing = null));
     return this.probing;
-  }
-
-  private async runFrameRateProbe(video: HTMLVideoElement): Promise<void> {
-    if (typeof video.requestVideoFrameCallback !== 'function') return;
-    const time = video.currentTime;
-    const muted = video.muted;
-    const wasPaused = video.paused;
-    video.muted = true;
-    try {
-      await video.play();
-      const deadline = Date.now() + FPS_PROBE_MS;
-      while (!this.frameRateKnown && Date.now() < deadline) {
-        await new Promise((resolve) => setTimeout(resolve, 30));
-      }
-    } catch (error) {
-      log.warn('could not measure the frame rate', error);
-    } finally {
-      if (wasPaused) video.pause();
-      video.currentTime = time;
-      video.muted = muted;
-    }
-  }
-
-  private markers(): Marker[] {
-    const out: Marker[] = [];
-    const rate = this.frameRateKnown ? this.frameRate : 0;
-    for (const issue of this.issues) {
-      const range = issueRange(issue, rate);
-      if (range) out.push({ issue, range });
-    }
-    return out;
   }
 
   private onScrub(event: Event): void {
@@ -283,14 +213,13 @@ export class MamVideoPlayer extends LitElement {
   private renderBody() {
     const stage = this.progress?.stage;
     const generating = stage === 'queued' || stage === 'generating' || stage === 'repairing';
-    if (!this.videoSrc || generating) return this.renderPlaceholder();
+    if (!this.videoSrc || generating) return renderPlaceholder(this.progress);
     if (this.failed) {
       return html`<div class="flex aspect-video items-center justify-center rounded border border-neutral-700 bg-neutral-900 text-xs text-neutral-400" role="alert" data-placeholder>
         動画を再生できません
       </div>`;
     }
     const max = this.duration || 0;
-    const markers = this.markers();
     return html`
       <div class="flex flex-col gap-1" @keydown=${this.onKey}>
         <video
@@ -307,7 +236,8 @@ export class MamVideoPlayer extends LitElement {
           }}
           @play=${(e: Event) => {
             this.playing = true;
-            this.sampleFrames(e.target as HTMLVideoElement);
+            if (!this.frameRateKnown)
+              sampleFrameRate(e.target as HTMLVideoElement, (rate) => (this.measuredFps = rate));
           }}
           @pause=${() => {
             this.playing = false;
@@ -319,76 +249,20 @@ export class MamVideoPlayer extends LitElement {
             this.failed = true;
           }}
         ></video>
-        <div class="relative" data-timebar>
-          <input
-            type="range"
-            class="w-full"
-            aria-label="再生位置"
-            min="0"
-            max=${max}
-            step=${1 / this.frameRate}
-            .value=${String(this.currentTime)}
-            ?disabled=${max === 0}
-            @input=${this.onScrub}
-          />
-          ${
-            max > 0
-              ? html`<div class="pointer-events-none absolute inset-x-0 top-0 h-full">
-                ${markers.map((m) => this.renderMarker(m, max))}
-              </div>`
-              : nothing
-          }
-        </div>
-        <div class="flex items-center gap-2 text-xs text-neutral-300">
-          <button type="button" data-action="prev-frame" class="rounded border border-neutral-700 px-2 py-0.5" aria-label="1 コマ戻る" @click=${() => void this.step(-1)}>◀</button>
-          <button type="button" data-action="play" class="rounded border border-neutral-700 px-2 py-0.5" aria-label=${this.playing ? '一時停止' : '再生'} @click=${this.togglePlay}>
-            ${this.playing ? '❚❚' : '▶'}
-          </button>
-          <button type="button" data-action="next-frame" class="rounded border border-neutral-700 px-2 py-0.5" aria-label="1 コマ進む" @click=${() => void this.step(1)}>▶</button>
-          <span class="font-mono" data-timecode>${formatTimecode(this.currentTime, this.frameRate)}</span>
-          <span class="font-mono text-neutral-500">/ ${formatTimecode(max, this.frameRate)}</span>
-          <span class="text-neutral-500">${this.frameRate.toFixed(this.frameRate % 1 === 0 ? 0 : 2)} fps${this.frameRateKnown ? '' : '（仮）'}</span>
-        </div>
+        ${renderTransport({
+          max,
+          rate: this.frameRate,
+          rateKnown: this.frameRateKnown,
+          currentTime: this.currentTime,
+          playing: this.playing,
+          markers: buildMarkers(this.issues, this.frameRateKnown ? this.frameRate : 0),
+          scrub: (e) => this.onScrub(e),
+          step: (delta) => void this.step(delta),
+          toggle: () => this.togglePlay(),
+          seek: (time) => this.seek(time),
+        })}
       </div>
     `;
-  }
-
-  private renderMarker(marker: Marker, max: number) {
-    const { range, issue } = marker;
-    const left = Math.min(range.start / max, 1) * 100;
-    const width = Math.max(Math.min((range.end - range.start) / max, 1 - left / 100) * 100, 0.8);
-    const color =
-      issue.severity === 'high' ? 'bg-red-500/70' : issue.severity === 'medium' ? 'bg-amber-500/70' : 'bg-sky-500/70';
-    const label = `${issue.type}（${issue.severity}） ${range.start.toFixed(1)}-${range.end.toFixed(1)}秒`;
-    return html`<button
-      type="button"
-      data-marker
-      data-severity=${issue.severity}
-      class="pointer-events-auto absolute top-0 h-full rounded-sm ${color}"
-      style="left:${left}%;width:${width}%"
-      title=${label}
-      aria-label=${label}
-      @click=${() => this.seek(range.start)}
-    ></button>`;
-  }
-
-  private renderPlaceholder() {
-    const fraction = progressFraction(this.progress);
-    return html`<div
-      class="flex aspect-video flex-col items-center justify-center gap-2 rounded border border-dashed border-neutral-700 bg-neutral-900 text-xs text-neutral-400"
-      role="status"
-      data-placeholder
-      data-stage=${this.progress?.stage ?? 'idle'}
-    >
-      <span>${describeProgress(this.progress)}</span>
-      ${
-        fraction === null
-          ? nothing
-          : html`<div class="h-1 w-1/2 overflow-hidden rounded bg-neutral-800">
-            <div class="h-full bg-neutral-300" style="width:${fraction * 100}%" data-progress-bar></div>
-          </div>`
-      }
-    </div>`;
   }
 }
 

@@ -1,6 +1,7 @@
 import { fixture, html, waitUntil } from '@open-wc/testing';
 import './mam-take-comparator';
-import type { MamTakeComparator, TakeScore } from './mam-take-comparator';
+import type { MamTakeComparator } from './mam-take-comparator';
+import type { TakeScore } from './take-model';
 
 export const API = '/api/v1/shots/s1/takes';
 

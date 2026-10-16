@@ -203,7 +203,7 @@ templ reviewCard(projectID string, it Item, oob bool) {
 							<li class="flex flex-wrap items-start gap-2 text-sm">
 								<span class="w-14 shrink-0 font-mono text-xs text-neutral-400">{ organisms.TimecodeLabel(c.TimecodeMs) }</span>
 								if c.Resolved {
-									<span class="min-w-0 flex-1 whitespace-pre-wrap text-neutral-500 line-through">{ c.Body }</span>
+									<span class="min-w-0 flex-1 whitespace-pre-wrap text-neutral-400 line-through">{ c.Body }</span>
 								} else {
 									<span class="min-w-0 flex-1 whitespace-pre-wrap">{ c.Body }</span>
 								}

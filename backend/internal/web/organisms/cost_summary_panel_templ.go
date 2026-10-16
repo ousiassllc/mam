@@ -313,7 +313,7 @@ func CostSummaryPanel(projectID string, s domain.CostSummary) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "<p class=\"text-xs text-neutral-500\">推定コストは生成時の見積り、実コストはベンダーが報告した金額です（* は一部のみ報告）。</p></section>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "<p class=\"text-xs text-neutral-400\">推定コストは生成時の見積り、実コストはベンダーが報告した金額です（* は一部のみ報告）。</p></section>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

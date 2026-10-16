@@ -78,14 +78,14 @@ templ Items(d Data) {
 							</ul>
 						</div>
 						<div class="flex gap-2">
-							@atoms.SmallButton(atoms.ToneNeutral, "この Project に適用", templ.Attributes{
+							@atoms.SmallButtonFor(atoms.ToneNeutral, "この Project に適用", t.Name, templ.Attributes{
 								"type":       "button",
 								"hx-post":    paths.Project(d.ProjectID, "brand-templates", t.ID, "apply"),
 								"hx-target":  "#brand-constraint-list",
 								"hx-swap":    "outerHTML",
 								"hx-confirm": "このテンプレートの制約をこの Project にコピーします（同じ制約はスキップ）。よろしいですか？",
 							})
-							@atoms.SmallButton(atoms.ToneNeutral, "削除", templ.Attributes{
+							@atoms.SmallButtonFor(atoms.ToneNeutral, "削除", t.Name, templ.Attributes{
 								"type":       "button",
 								"hx-delete":  paths.Project(d.ProjectID, "brand-templates", t.ID),
 								"hx-target":  "#brand-template-list",

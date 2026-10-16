@@ -57,3 +57,14 @@ func TestSaved_KeepsTheInputAndTheErrorOfARefusedName(t *testing.T) {
 	assert.Contains(t, html, `value="dup"`)
 	assert.Contains(t, html, "すでにあります")
 }
+
+// The apply and delete buttons of every template are named after it, led by their visible text (#783).
+func TestItems_ButtonsAreNamedAfterTheirTemplate(t *testing.T) {
+	d := brandtemplate.Data{ProjectID: "p1", Templates: []domain.BrandTemplate{{ID: "t1", Name: "夏キャンペーン"}, {ID: "t2", Name: "冬キャンペーン"}}}
+	list := renderHTML(t, brandtemplate.Items(d))
+
+	for _, name := range []string{"夏キャンペーン", "冬キャンペーン"} {
+		assert.Contains(t, list, `aria-label="この Project に適用: `+name+`"`)
+		assert.Contains(t, list, `aria-label="削除: `+name+`"`)
+	}
+}

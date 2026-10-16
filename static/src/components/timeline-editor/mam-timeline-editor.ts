@@ -1,10 +1,7 @@
 import { LitElement, html, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import { live } from 'lit/directives/live.js';
 import { get, put } from '../lib/api';
 import {
-  CLIP_KIND_LABEL,
-  TRANSITION_LABEL,
   captionProblem,
   isDirty,
   moveClip,
@@ -23,6 +20,7 @@ import { errorMessage } from '../lib/errors';
 import { createLogger } from '../lib/logger';
 import '../video-player/mam-video-player';
 import { type EditTimelineBody, TIMELINE_RELOAD_EVENT, TIMELINE_UPDATED_EVENT } from './timeline-api';
+import { renderClipRow } from './timeline-clip';
 
 const log = createLogger('timeline-editor');
 
@@ -256,86 +254,30 @@ export class MamTimelineEditor extends LitElement {
   }
 
   private renderClip(c: EditClip, i: number, body: EditTimelineBody) {
-    const locked = this.locked;
-    const over = this.overIndex === i && this.dragIndex !== i;
-    const t = c.transition;
-    return html`<li
-      class="flex flex-col gap-2 rounded border p-3 ${over ? 'border-sky-400' : 'border-neutral-700'} ${this.dragIndex === i ? 'opacity-50' : ''}"
-      data-clip=${c.shot_id}
-      draggable=${locked ? 'false' : 'true'}
-      @dragstart=${(e: DragEvent) => {
-        this.dragIndex = i;
-        e.dataTransfer?.setData('text/plain', String(i));
+    return renderClipRow(c, i, body, {
+      locked: this.locked,
+      over: this.overIndex === i && this.dragIndex !== i,
+      dragging: this.dragIndex === i,
+      count: this.clips.length,
+      captionDraft: this.captionDraft?.index === i ? this.captionDraft.text : null,
+      dragStart: (at, e) => {
+        this.dragIndex = at;
+        e.dataTransfer?.setData('text/plain', String(at));
         if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
-      }}
-      @dragover=${(e: DragEvent) => {
+      },
+      dragOver: (at, e) => {
         if (this.dragIndex < 0) return;
         e.preventDefault();
-        this.overIndex = i;
-      }}
-      @drop=${(e: DragEvent) => {
-        e.preventDefault();
-        this.onDrop(i);
-      }}
-      @dragend=${() => (this.dragIndex = this.overIndex = -1)}
-    >
-      <div class="flex flex-wrap items-center gap-3">
-        <span class="text-xs text-neutral-500">${i + 1}</span>
-        ${c.thumbnail_url ? html`<img class="h-10 w-auto rounded" src=${c.thumbnail_url} alt="" />` : nothing}
-        <div class="min-w-40 flex-1">
-          <p class="text-sm font-medium">
-            ${c.label}${c.kind && c.kind !== 'main' ? html` <span class="rounded bg-sky-900 px-1.5 py-0.5 text-[10px] text-sky-200" data-kind=${c.kind}>${CLIP_KIND_LABEL[c.kind]}</span>` : nothing}
-          </p>
-          ${c.objective ? html`<p class="text-xs text-neutral-400">${c.objective}</p>` : nothing}
-        </div>
-        <span class="text-xs text-neutral-400" data-start>${c.start.toFixed(1)} 秒〜 / ${(c.out_point - c.in_point).toFixed(1)} 秒</span>
-        <button type="button" aria-label="${c.label} を上へ" data-action="up" class="px-1 text-neutral-400 hover:text-neutral-100 disabled:opacity-30" ?disabled=${locked || i === 0} @click=${() => this.change(moveClip(this.clips, i, i - 1))}>↑</button>
-        <button type="button" aria-label="${c.label} を下へ" data-action="down" class="px-1 text-neutral-400 hover:text-neutral-100 disabled:opacity-30" ?disabled=${locked || i === this.clips.length - 1} @click=${() => this.change(moveClip(this.clips, i, i + 1))}>↓</button>
-        <button type="button" data-action="remove" class="text-xs text-neutral-400 underline disabled:opacity-30" ?disabled=${locked || this.clips.length <= 1} @click=${() => this.change(removeClip(this.clips, i))}>外す</button>
-      </div>
-      <div class="flex flex-wrap items-end gap-3 text-xs text-neutral-400">
-        <label class="flex flex-col gap-1">
-          開始（秒）
-          <input type="number" data-field="in" step="0.1" min="0" class="w-24 rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-neutral-100" .value=${live(String(c.in_point))} ?disabled=${locked} @change=${(e: Event) => this.onTrim(i, 'in', e.target as HTMLInputElement)} />
-        </label>
-        <label class="flex flex-col gap-1">
-          終了（秒）
-          <input type="number" data-field="out" step="0.1" min="0" class="w-24 rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-neutral-100" .value=${live(String(c.out_point))} ?disabled=${locked} @change=${(e: Event) => this.onTrim(i, 'out', e.target as HTMLInputElement)} />
-        </label>
-        ${c.source_seconds ? html`<span>Take の長さ ${c.source_seconds.toFixed(1)} 秒</span>` : nothing}
-        ${
-          i === 0
-            ? nothing
-            : html`<label class="flex flex-col gap-1">
-                前のクリップからの切り替え
-                <select data-field="transition" class="rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-neutral-100" ?disabled=${locked} @change=${(e: Event) => this.onTransition(i, (e.target as HTMLSelectElement).value as TransitionType)}>
-                  ${body.transitions.map((v) => html`<option value=${v} .selected=${live(v === t.type)}>${TRANSITION_LABEL[v] ?? v}</option>`)}
-                </select>
-              </label>
-              ${
-                t.type === 'cut'
-                  ? nothing
-                  : html`<label class="flex flex-col gap-1">
-                    長さ（秒）
-                    <input type="number" data-field="transition-seconds" step="0.05" min="0.1" max=${body.limits.max_transition_seconds} class="w-24 rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-neutral-100" .value=${live(String(t.seconds))} ?disabled=${locked} @change=${(e: Event) => this.onTransition(i, t.type, (e.target as HTMLInputElement).value)} />
-                  </label>`
-              }`
-        }
-      </div>
-      <label class="flex flex-col gap-1 text-xs text-neutral-400">
-        字幕（Caption）
-        <textarea
-          data-field="caption"
-          rows="2"
-          maxlength=${body.limits.max_caption_runes * 2}
-          placeholder="この区間に重ねる文字。空なら字幕なし"
-          class="rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-neutral-100"
-          .value=${live(this.captionDraft?.index === i ? this.captionDraft.text : (c.caption ?? ''))}
-          ?disabled=${locked}
-          @change=${(e: Event) => this.onCaption(i, e.target as HTMLTextAreaElement)}
-        ></textarea>
-      </label>
-    </li>`;
+        this.overIndex = at;
+      },
+      drop: (at) => this.onDrop(at),
+      dragEnd: () => (this.dragIndex = this.overIndex = -1),
+      move: (from, to) => this.change(moveClip(this.clips, from, to)),
+      remove: (at) => this.change(removeClip(this.clips, at)),
+      trim: (at, field, input) => this.onTrim(at, field, input),
+      transition: (at, type, raw) => this.onTransition(at, type, raw),
+      caption: (at, input) => this.onCaption(at, input),
+    });
   }
 }
 

@@ -43,7 +43,7 @@ templ ProductionTemplateForm(d PolicyFormData) {
 						<ol class="flex flex-wrap gap-x-3 gap-y-1 text-xs text-neutral-400">
 							for i, a := range t.Axes() {
 								<li>
-									{ a.Label() } <span class="text-neutral-500">{ axisWeightPercent(t, a) }</span>
+									{ a.Label() } <span class="text-neutral-400">{ axisWeightPercent(t, a) }</span>
 									if i < len(t.Axes())-1 {
 										<span aria-hidden="true">›</span>
 									}

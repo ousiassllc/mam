@@ -11,47 +11,16 @@ import {
   totalSeconds,
   type Clip,
   type Segment,
-  type SegmentLimits,
 } from '../lib/timeline-model';
 import { DEFAULT_FPS } from '../lib/video';
 import '../video-player/mam-video-player';
-import { describeTake, renderScore } from './take-cells';
-import { STATUS_CLASS, type TakeStatus } from './take-status';
+import type { TakeScore, TakesBody } from './take-model';
+import { renderTakeTable } from './take-table';
 
 const log = createLogger('take-comparator');
 
 /** The same wording as the Take row of the Shot card (`shot_card.templ`, `hx-confirm`): rejecting cannot be undone, so every entry point asks. */
 const REJECT_CONFIRM = 'この Take を除外しますか？';
-
-/** A Take of GET /api/v1/shots/:id/takes. The URLs are the server's: the component builds none. An action link is absent while the server does not allow the action. */
-export interface TakeScore {
-  id: string;
-  label: string;
-  status: TakeStatus;
-  status_label: string;
-  adopted: boolean;
-  model_name: string;
-  resolution?: string;
-  fps?: number;
-  duration_seconds?: number;
-  verdict?: string;
-  scores: { product: number; acting: number; camera: number; continuity: number; overall: number } | null;
-  proxied: boolean;
-  video_url?: string;
-  thumbnail_url?: string;
-  judge_result_url: string;
-  select_url?: string;
-  reject_url?: string;
-  partial_usable: boolean;
-}
-
-interface TakesBody {
-  shot_id: string;
-  duration_seconds?: number;
-  partial_url?: string;
-  limits: SegmentLimits & { min_axis_score: number };
-  takes: TakeScore[];
-}
 
 /** A drag on a lane in progress. */
 interface Drag {
@@ -217,7 +186,11 @@ export class MamTakeComparator extends LitElement {
     return html`
       <div class="flex flex-col gap-4">
         ${this.renderError()}
-        <div class="overflow-x-auto">${this.renderTable()}</div>
+        <div class="overflow-x-auto">${renderTakeTable(this.takes, this.limits?.min_axis_score ?? 0, {
+          busy: this.busy,
+          select: (url) => void this.act(() => post(url)),
+          reject: (url) => this.reject(url),
+        })}</div>
         ${
           this.partialUrl
             ? html`<section class="flex flex-col gap-3" aria-label="区間指定">
@@ -275,60 +248,6 @@ export class MamTakeComparator extends LitElement {
     return this.error
       ? html`<p class="rounded border border-red-500/50 bg-red-950/40 px-3 py-2 text-xs text-red-200" role="alert" data-error>${this.error}</p>`
       : nothing;
-  }
-
-  private renderTable() {
-    return html`<table class="w-full text-left text-sm" data-scores>
-      <thead class="text-xs text-neutral-400">
-        <tr>
-          <th class="px-2 py-1 font-medium">Take</th>
-          <th class="px-2 py-1 font-medium">Product</th>
-          <th class="px-2 py-1 font-medium">Acting</th>
-          <th class="px-2 py-1 font-medium">Camera</th>
-          <th class="px-2 py-1 font-medium">Continuity</th>
-          <th class="px-2 py-1 font-medium">Status</th>
-          <th class="px-2 py-1 font-medium"><span class="sr-only">操作</span></th>
-        </tr>
-      </thead>
-      <tbody>
-        ${this.takes.map((t) => this.renderRow(t, this.limits?.min_axis_score ?? 0))}
-      </tbody>
-    </table>`;
-  }
-
-  private renderRow(t: TakeScore, minAxis: number) {
-    return html`<tr class="border-t border-neutral-800 ${t.status === 'rejected' ? 'opacity-60' : ''}" data-take=${t.id}>
-      <th scope="row" class="px-2 py-2 font-medium">
-        Take ${t.label}${t.adopted ? html` <span class="text-xs text-emerald-300" data-adopted>（使用中）</span>` : nothing}
-        <div class="text-xs font-normal text-neutral-400">${describeTake(t)}</div>
-      </th>
-      <td class="px-2 py-2" data-score="product">${renderScore(t.scores?.product, minAxis)}</td>
-      <td class="px-2 py-2" data-score="acting">${renderScore(t.scores?.acting, minAxis)}</td>
-      <td class="px-2 py-2" data-score="camera">${renderScore(t.scores?.camera, minAxis)}</td>
-      <td class="px-2 py-2" data-score="continuity">${renderScore(t.scores?.continuity, minAxis)}</td>
-      <td class="px-2 py-2">
-        <span class="rounded border px-2 py-0.5 text-xs ${STATUS_CLASS[t.status]}" data-status=${t.status}>${t.status_label}</span>
-        ${t.verdict ? html`<span class="ml-1 text-xs text-neutral-400">${t.verdict.toUpperCase()}</span>` : nothing}
-      </td>
-      <td class="px-2 py-2 text-xs">
-        ${
-          t.select_url || t.reject_url
-            ? html`<span class="flex gap-3">
-              ${
-                t.select_url
-                  ? html`<button type="button" class="underline hover:text-neutral-100" data-action="select" ?disabled=${this.busy} @click=${() => void this.act(() => post(t.select_url!))}>選択</button>`
-                  : nothing
-              }
-              ${
-                t.reject_url
-                  ? html`<button type="button" class="underline hover:text-neutral-100" data-action="reject" ?disabled=${this.busy} @click=${() => this.reject(t.reject_url!)}>除外</button>`
-                  : nothing
-              }
-            </span>`
-            : nothing
-        }
-      </td>
-    </tr>`;
   }
 
   private renderLane(t: TakeScore, clipById: Map<string, Clip>) {
