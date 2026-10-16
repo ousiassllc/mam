@@ -22,7 +22,7 @@ func TestBranchTree_NestsABranchUnderTheBranchItStartsFromAndMarksTheSelectedOne
 
 	assert.Regexp(t, `data-branch="root"[^<]*</a>\s*<ul[^>]*>.*data-branch="child"`, html, "the child hangs in a list inside its parent")
 	assert.Equal(t, 1, strings.Count(html, `aria-current="true"`))
-	assert.Regexp(t, `<a[^>]*data-branch="child"[^>]*aria-current="true"`, html, "only the selected link is the current one")
+	assert.Regexp(t, `<a[^>]*aria-current="true"[^>]*data-branch="child"`, html, "only the selected link is the current one")
 	assert.NotContains(t, html, "hx-swap-oob")
 	assert.NotContains(t, html, "data-empty")
 }

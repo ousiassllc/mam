@@ -233,10 +233,10 @@ templ branchTreeGroup(nodes []BranchTreeNode, selected string) {
 					hx-target="#branch-detail"
 					hx-swap="innerHTML"
 					class={ "underline", templ.KV("font-semibold text-indigo-300", n.Branch.ID == selected), templ.KV("text-neutral-200", n.Branch.ID != selected) }
-					data-branch={ n.Branch.ID }
 					if n.Branch.ID == selected {
 						aria-current="true"
 					}
+					data-branch={ n.Branch.ID }
 				>{ n.Branch.Name }（{ branchPointText(n.Branch) }）</a>
 				if len(n.Children) > 0 {
 					@branchTreeGroup(n.Children, selected)
