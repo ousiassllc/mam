@@ -9,7 +9,7 @@ import (
 // ChatWorkspace is the standard screen: one Project = one chat thread (F-30). It
 // listens to /ws/projects/:id (see static/src/chat.ts) for new messages and card changes.
 templ ChatWorkspace(p domain.Project, msgs []domain.ThreadMessage) {
-	<div
+	<main
 		id="chat-workspace"
 		class="mx-auto flex h-screen max-w-3xl flex-col"
 		data-messages-url={ paths.Project(p.ID, "messages") }
@@ -45,5 +45,5 @@ templ ChatWorkspace(p domain.Project, msgs []domain.ThreadMessage) {
 		</header>
 		@ChatThread(msgs)
 		@ChatComposer(p)
-	</div>
+	</main>
 }
