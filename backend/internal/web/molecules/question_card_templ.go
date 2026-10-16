@@ -71,12 +71,12 @@ func QuestionCard(m domain.ThreadMessage) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				for _, option := range domain.DecodeCardBody(m.Content).Options {
-					templ_7745c5c3_Err = atoms.Button(atoms.ToneNeutral, option, answerAttrs(m, option)).Render(ctx, templ_7745c5c3_Buffer)
+					templ_7745c5c3_Err = atoms.ButtonFor(atoms.ToneNeutral, option, excerpt(m.ChatMessage), answerAttrs(m, option)).Render(ctx, templ_7745c5c3_Buffer)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = atoms.Button(atoms.TonePrimary, domain.DelegateOption, answerAttrs(m, domain.DelegateOption)).Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = atoms.ButtonFor(atoms.TonePrimary, domain.DelegateOption, excerpt(m.ChatMessage), answerAttrs(m, domain.DelegateOption)).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
