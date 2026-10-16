@@ -1,0 +1,159 @@
+import { expect, waitUntil } from '@open-wc/testing';
+import htmx from 'htmx.org';
+import '../../main';
+import { expectFocusOn } from './focus-assert';
+
+const DATA = '/src/components/testdata';
+
+// The focus that `hx-disabled-elt` drops to <body> (Chrome does so for a button that becomes disabled), the
+// areas that `hx-swap-oob` replaces, and the requests that the answer of a request sets off (`HX-Trigger`).
+describe('focus after a request that disables, replaces by hx-swap-oob or sets off another one', () => {
+  let host: HTMLElement;
+
+  beforeEach(() => {
+    host = document.createElement('div');
+    document.body.append(host);
+  });
+
+  afterEach(() => host.remove());
+
+  function render(html: string): void {
+    host.innerHTML = html;
+    htmx.process(host);
+  }
+
+  const find = <T extends HTMLElement = HTMLButtonElement>(selector: string) => host.querySelector<T>(selector)!;
+
+  function swapped(selector: string): Promise<void> {
+    const old = host.querySelector(selector);
+    return waitUntil(() => host.querySelector(selector) !== old, 'the response was not swapped in', { timeout: 2000 });
+  }
+
+  describe('hx-disabled-elt', () => {
+    it('returns the focus to the replaced button that disabled itself', async () => {
+      render(`
+        <form id="lock-1" hx-get="${DATA}/focus-lock-after.html" hx-target="this" hx-swap="outerHTML">
+          <button type="submit" name="mode" value="LOCK" hx-disabled-elt="this">LOCK</button>
+        </form>`);
+      const done = swapped('#lock-1');
+      find('button').focus();
+      find('button').click();
+      await done;
+
+      expectFocusOn(find('[value="LOCK"]'));
+    });
+
+    it('returns the focus to the replaced submit button that the form disables', async () => {
+      render(`
+        <form id="lock-1" hx-get="${DATA}/focus-lock-after.html" hx-target="this" hx-swap="outerHTML" hx-disabled-elt="find button[type=submit]">
+          <button type="submit" name="mode" value="LOCK">LOCK</button>
+        </form>`);
+      const done = swapped('#lock-1');
+      find('button').focus();
+      find('button').click();
+      await done;
+
+      expectFocusOn(find('[value="LOCK"]'));
+    });
+
+    it('gives the button back its focus when it stayed and was enabled again', async () => {
+      render(
+        `<button type="button" hx-get="${DATA}/focus-rows-empty.html" hx-swap="none" hx-disabled-elt="this">指示する</button>`,
+      );
+      find('button').focus();
+      find('button').click();
+      await waitUntil(() => !find('button').disabled, 'the button was not enabled again', { timeout: 2000 });
+      await waitUntil(() => document.activeElement === find('button'), 'the focus did not come back', {
+        timeout: 2000,
+      });
+    });
+
+    it('does not take the focus when the user has moved it on while the button was disabled', async () => {
+      render(`
+        <form id="lock-1" hx-get="${DATA}/focus-lock-after.html" hx-target="this" hx-swap="outerHTML">
+          <button type="submit" name="mode" value="LOCK" hx-disabled-elt="this">LOCK</button>
+        </form>
+        <input id="elsewhere" />`);
+      const done = swapped('#lock-1');
+      find('button').focus();
+      find('button').click();
+      find('#elsewhere').focus();
+      await done;
+
+      expectFocusOn(find('#elsewhere'));
+    });
+  });
+
+  describe('hx-swap-oob', () => {
+    it('returns the focus to the button of the stage that the response replaced, with swap none', async () => {
+      render(`
+        <div id="editor-actions" hx-swap="none">
+          <div id="stage-a"><button type="button" hx-get="${DATA}/focus-oob-stage.html" hx-disabled-elt="this">Rough Cut を作成</button></div>
+          <div id="stage-b"><button type="button" hx-get="${DATA}/focus-oob-stage.html">Editor Judge を実行</button></div>
+        </div>`);
+      const done = swapped('#stage-a');
+      find('#stage-a button').focus();
+      find('#stage-a button').click();
+      await done;
+
+      expectFocusOn(find('#stage-a button'));
+      expect(document.activeElement?.textContent).to.equal('Rough Cut を作成');
+    });
+
+    it('returns the focus to the same button of the neighbouring stage when the first stage was not pressed', async () => {
+      render(`
+        <div id="editor-actions" hx-swap="none">
+          <div id="stage-a"><button type="button" hx-get="${DATA}/focus-oob-stage.html">Rough Cut を作成</button></div>
+          <div id="stage-b"><button type="button" hx-get="${DATA}/focus-oob-stage.html">Editor Judge を実行</button></div>
+        </div>`);
+      const done = swapped('#stage-b');
+      find('#stage-b button').focus();
+      find('#stage-b button').click();
+      await done;
+
+      expectFocusOn(find('#stage-b button'));
+    });
+
+    it('returns the focus to the submit button of a form outside the swap target that the response replaced', async () => {
+      render(`
+        <ul id="added-rows"></ul>
+        <form id="add-form" hx-get="${DATA}/focus-oob-form.html" hx-target="#added-rows" hx-swap="beforeend" hx-disabled-elt="find button[type=submit]">
+          <input name="title" />
+          <button type="submit">追加</button>
+        </form>`);
+      const done = swapped('#add-form');
+      find('#add-form button').focus();
+      find('#add-form button').click();
+      await done;
+
+      expect(find('#added-rows').children.length).to.equal(1);
+      expectFocusOn(find('#add-form button'));
+    });
+  });
+
+  describe('HX-Trigger', () => {
+    it('returns the focus after the reload that the answer of a click set off', async () => {
+      render(`
+        <article id="branch-detail" hx-get="${DATA}/focus-detail-reloaded.html" hx-trigger="branch-reload from:body" hx-target="#branch-detail" hx-swap="innerHTML">
+          <div id="history-slot"><button type="button" hx-get="${DATA}/focus-trigger-after.html" hx-target="#history-slot" hx-swap="outerHTML" hx-disabled-elt="this">このバージョンに復元</button></div>
+        </article>`);
+      find('#history-slot button').focus();
+      find('#history-slot button').click();
+      await waitUntil(() => host.querySelector('#reloaded'), 'the Branch was not reloaded', { timeout: 2000 });
+
+      expectFocusOn(find('#history-slot button'));
+    });
+
+    it('does not take the focus for a reload that nobody set off', async () => {
+      render(`
+        <article id="branch-detail" hx-get="${DATA}/focus-detail-reloaded.html" hx-trigger="branch-reload from:body" hx-target="#branch-detail" hx-swap="innerHTML">
+          <div id="history-slot"><button type="button">このバージョンに復元</button></div>
+        </article>`);
+      find('#history-slot button').focus();
+      document.body.dispatchEvent(new CustomEvent('branch-reload'));
+      await waitUntil(() => host.querySelector('#reloaded'), 'the Branch was not reloaded', { timeout: 2000 });
+
+      expect(document.activeElement === document.body, 'the focus is on <body>').to.equal(true);
+    });
+  });
+});
