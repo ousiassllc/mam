@@ -30,7 +30,7 @@ export function renderTakeTable(takes: TakeScore[], minAxis: number, actions: Ta
 }
 
 function renderRow(t: TakeScore, minAxis: number, actions: TakeActions) {
-  return html`<tr class="border-t border-neutral-800 ${t.status === 'rejected' ? 'opacity-60' : ''}" data-take=${t.id}>
+  return html`<tr class="border-t border-neutral-800 ${t.status === 'rejected' ? 'text-neutral-400' : ''}" data-take=${t.id}>
     <th scope="row" class="px-2 py-2 font-medium">
       Take ${t.label}${t.adopted ? html` <span class="text-xs text-emerald-300" data-adopted>（使用中）</span>` : nothing}
       <div class="text-xs font-normal text-neutral-400">${describeTake(t)}</div>

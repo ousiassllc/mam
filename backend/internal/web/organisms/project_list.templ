@@ -10,7 +10,7 @@ import (
 templ ProjectList(projects []domain.Project) {
 	<ul id="project-list" class="mt-4 divide-y divide-neutral-800 rounded-md border border-neutral-800">
 		if len(projects) == 0 {
-			<li class="px-4 py-6 text-center text-sm text-neutral-500">まだプロジェクトがありません。上の入力欄から作りたい動画を伝えてください。</li>
+			<li class="px-4 py-6 text-center text-sm text-neutral-400">まだプロジェクトがありません。上の入力欄から作りたい動画を伝えてください。</li>
 		}
 		for _, p := range projects {
 			<li>

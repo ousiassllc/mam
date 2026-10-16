@@ -41,7 +41,7 @@ export function renderClipRow(c: EditClip, i: number, body: EditTimelineBody, vi
     @dragend=${() => view.dragEnd()}
   >
     <div class="flex flex-wrap items-center gap-3">
-      <span class="text-xs text-neutral-500">${i + 1}</span>
+      <span class="text-xs text-neutral-400">${i + 1}</span>
       ${c.thumbnail_url ? html`<img class="h-10 w-auto rounded" src=${c.thumbnail_url} alt="" />` : nothing}
       <div class="min-w-40 flex-1">
         <p class="text-sm font-medium">
