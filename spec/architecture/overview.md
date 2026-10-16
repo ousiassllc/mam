@@ -175,7 +175,7 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
     ├── biome.json          # TypeScript の整形・lint（Biome）の設定。`make fmt` / `make fmt-check` / `make lint-static` が使う
     ├── build.mjs           # esbuild（JS）+ Tailwind（CSS）のビルド・ウォッチ
     └── src/
-        ├── main.ts         # エントリーポイント。htmx へ CSRF トークンを付与、Lit コンポーネントを import、その場保存するコントロールの保存失敗時の巻き戻し（`installSaveOnChangeRevert`）を組み込む
+        ├── main.ts         # エントリーポイント。htmx へ CSRF トークンを付与、Lit コンポーネントを import、その場保存するコントロールの保存失敗時の巻き戻し（`installSaveOnChangeRevert`）・swap 後のフォーカス復帰（`installFocusRestore`）・履歴スナップショットの後始末（`installHistorySnapshotHygiene`）を組み込む
         ├── chat.ts         # Chat Workspace の挙動（WebSocket で更新通知を受け、フラグメントを再取得）
         ├── shot.ts         # 生成中 Shot の進捗表示
         ├── ajax.ts         # chat.ts / shot.ts 用の htmx.ajax ラッパー
@@ -184,7 +184,7 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
         │   ├── timeline-editor/      # mam-timeline-editor
         │   ├── take-comparator/      # mam-take-comparator
         │   ├── save-on-change/       # 変更でその場保存するコントロール（`hx-trigger="change"` の MODE・Production Template・Quality・Confirmation Level）が保存に失敗したとき、値を保存済みの値へ戻す。`main.ts` が `htmx:afterRequest` で組み込む（Lit ではない）
-        │   ├── focus-restore/        # 利用者の操作で始まった htmx の swap が、フォーカス中のコントロールを消したとき、差し替え後の同じコントロールへフォーカスを戻す（`htmx:beforeSwap` / `htmx:afterSwap`。`main.ts` が組み込む。Lit ではない）
+        │   ├── focus-restore/        # 利用者の操作で始まった htmx の swap（`HX-Trigger` 起点の再読込・`hx-swap-oob` を含む）が、フォーカス中のコントロールを消した、または `hx-disabled-elt` で `disabled` にしたとき、差し替え後の同じコントロールへフォーカスを戻す（`htmx:beforeRequest` / `beforeSwap` / `afterSwap` / `afterRequest`。`main.ts` が組み込む。Lit ではない。詳細は [components/overview.md](../components/overview.md) §5.2）。Lit コンポーネント（`take-comparator/`・`timeline-editor/timeline-focus.ts`）向けの `lit-focus.ts`（`focusAfterUpdate()`・`focusFirst()`）と、テスト用の `focus-assert.ts` も置く
         │   └── lib/
         │       ├── api.ts            # CSRFトークン自動付与のHTTPクライアント
         │       ├── ajax.ts / errors.ts / toast.ts / connection-notice.ts # フラグメント再取得・エラー表示
