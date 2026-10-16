@@ -40,16 +40,6 @@ func FFmpegFile(t testing.TB, ext string, args ...string) []byte {
 	return m.data
 }
 
-// WriteFFmpegFile writes FFmpegFile(t, ext, args...) to path: the file a test may open, move or
-// change for itself.
-func WriteFFmpegFile(t testing.TB, path, ext string, args ...string) {
-	t.Helper()
-	data := FFmpegFile(t, ext, args...)
-	if err := os.WriteFile(path, data, 0o600); err != nil {
-		t.Fatalf("write %s: %v", path, err)
-	}
-}
-
 func encode(ffmpeg, ext string, args []string) ([]byte, string) {
 	dir, err := os.MkdirTemp("", "mam-ffmpeg-")
 	if err != nil {
