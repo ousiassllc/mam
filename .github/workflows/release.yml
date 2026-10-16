@@ -116,11 +116,12 @@ jobs:
       - name: Go tests that exercise the Windows code
         run: go test ./backend/internal/fsutil/... ./backend/internal/desktop/... ./backend/internal/app/... ./backend/internal/config/...
 
-      # internal/media is not in the list above (most of its tests need ffmpeg), but its Windows-only test
-      # (run_windows_test.go: HideWindow and CREATE_NO_WINDOW on the ffmpeg / ffprobe child, #770) needs
-      # none: it only builds an exec.Cmd and never starts it. Run just that one.
+      # internal/media is not in the list above (most of its tests need ffmpeg), but its Windows-only tests
+      # (run_windows_test.go: HideWindow and CREATE_NO_WINDOW on the ffmpeg / ffprobe child, #770) need
+      # none. TestHideWindowSetsNoConsoleFlags checks hideWindow itself; TestRunHidesConsoleWindow runs a
+      # trivial cmd.exe through run, so dropping the hideWindow call from run fails it (#777). Run just those.
       - name: Go test that the media child processes hide their console window
-        run: go test -run '^TestHideWindowSetsNoConsoleFlags$' ./backend/internal/media/
+        run: go test -run '^(TestHideWindowSetsNoConsoleFlags|TestRunHidesConsoleWindow)$' ./backend/internal/media/
 
       - name: Package
         run: bash scripts/package-windows.sh "${GITHUB_REF_NAME#v}"
