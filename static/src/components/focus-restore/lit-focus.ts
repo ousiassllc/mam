@@ -8,9 +8,13 @@ import type { LitElement } from 'lit';
 
 const FOCUSABLE = 'a[href],button,input:not([type="hidden"]),select,textarea,summary,[tabindex]';
 
+/**
+ * The focus is lost when it is on <body> or on a control that was disabled: newer Chrome (155) keeps a just-disabled
+ * button as `document.activeElement` until a later frame, and only then drops the focus to <body>.
+ */
 export function lostFocus(): boolean {
   const current = document.activeElement;
-  return !current || current === document.body;
+  return !current || current === document.body || current.matches(':disabled');
 }
 
 /**
