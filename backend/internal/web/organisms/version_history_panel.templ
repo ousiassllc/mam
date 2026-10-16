@@ -43,9 +43,8 @@ func (d VersionHistoryData) target() string {
 	return selector.ID("", d.DOMID)
 }
 
-// VersionHistoryPanel lists the versions with a restore button each. The newest version is the
-// current one and needs none. Restoring appends a copy as the newest version, so it can be undone
-// by restoring an older one.
+// VersionHistoryPanel lists the versions with a restore button each (none for the newest, the current
+// one). Restoring appends a copy as the newest version, so it can be undone by restoring an older one.
 templ VersionHistoryPanel(d VersionHistoryData) {
 	<section
 		id={ d.DOMID }
@@ -71,11 +70,12 @@ templ VersionHistoryPanel(d VersionHistoryData) {
 							@atoms.Badge(atoms.BadgeNeutral, "現在")
 						} else if d.RestoreBlocked == "" {
 							@atoms.ButtonFor(atoms.ToneNeutral, "このバージョンに復元", fmt.Sprintf("v%d", e.Number), templ.Attributes{
-								"type":       "button",
-								"hx-post":    d.restoreURL(e.Number),
-								"hx-target":  d.target(),
-								"hx-swap":    "outerHTML",
-								"hx-confirm": fmt.Sprintf("v%d に復元しますか？（新しいバージョンとして追記され、現在の内容も履歴に残ります）", e.Number),
+								"type":           "button",
+								"data-focus-key": "restore-" + d.DOMID + "-" + strconv.Itoa(e.Number),
+								"hx-post":        d.restoreURL(e.Number),
+								"hx-target":      d.target(),
+								"hx-swap":        "outerHTML",
+								"hx-confirm":     fmt.Sprintf("v%d に復元しますか？（新しいバージョンとして追記され、現在の内容も履歴に残ります）", e.Number),
 							})
 						}
 					</li>

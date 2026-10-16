@@ -178,9 +178,19 @@ function replacements(memory: FocusMemory): { roots: Element[]; keyIndex: number
   return scopes;
 }
 
-function focus(el: Element): void {
-  if (!(el instanceof HTMLElement)) return;
+/**
+ * Opens the closed <details> around `el` (a closed one cannot take the focus, and the user pressed the control to
+ * see its result: an archived note, a version restored), then focuses it. Returns whether the focus is on `el`.
+ * A summary stays as it is: it is what a closed <details> shows.
+ */
+function focus(el: Element): boolean {
+  if (!(el instanceof HTMLElement)) return false;
+  const closed = (from: Element | null) => from?.closest<HTMLDetailsElement>('details:not([open])') ?? null;
+  for (let d = closed(el); d; d = closed(d.parentElement)) {
+    if (!(el.matches('summary') && el.parentElement === d)) d.open = true;
+  }
   el.focus({ preventScroll: true });
+  return document.activeElement === el;
 }
 
 /** The nth of `matches`, or the last one when the list got shorter (the control after a deleted row). */
@@ -203,11 +213,7 @@ function restore(memory: FocusMemory): void {
     const candidates = focusablesOf(roots).filter((el) => !el.matches(':disabled'));
     const same = candidates.filter((el) => keyOf(el) === memory.key);
     const sameKind = candidates.filter((el) => kindOf(el) === memory.kind);
-    const next = nth(same, keyIndex) ?? nth(sameKind, kindIndex);
-    if (next) {
-      focus(next);
-      return;
-    }
+    if ([nth(same, keyIndex), nth(sameKind, kindIndex)].some((next) => next && focus(next))) return;
   }
 
   // Nothing to press again (the last row was deleted): the region itself, so that a reader starts there.
