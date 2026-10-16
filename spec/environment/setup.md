@@ -115,7 +115,7 @@ pre-commit（`scripts/linterly-staged.sh`）は従来どおり、コミット対
 
 `lefthook.yml`（`lefthook install` で有効化）。
 
-- pre-commit: コミット対象ファイルの行数（`scripts/linterly-staged.sh`。`linterly check` は 1 パスしか受け取れないため全体結果をコミット対象に絞る）、`make fmt-check`（`*.go` / `*.templ` / `*.ts`）、`make lint-go`、`make lint-static`（`static/**/*.ts` がある場合。`tsc` と Biome lint）
+- pre-commit: コミット対象ファイルの行数（`scripts/linterly-staged.sh`。`linterly check` は 1 パスしか受け取れないため全体結果をコミット対象に絞る）、`make fmt-check`（`*.go` / `*.templ` / `*.ts` / `*.mjs`）、`make lint-go`、`make lint-static`（`static/**/*.ts` / `static/*.mjs` がある場合。`tsc` と Biome lint）
 - pre-push: `go build ./...` と `go vet ./...`、それに `make test`
 
 ## 改訂履歴
@@ -145,3 +145,4 @@ pre-commit（`scripts/linterly-staged.sh`）は従来どおり、コミット対
 | 1.21 | 2026-10-16 | CI の `Ensure Chrome` ステップに `shell: bash`（`bash -eo pipefail`）を指定し、取得した Chrome のパスが空・実行不可なら `::error::` を出して失敗させるようにした。開発ツールの「Chrome / Chromium」と CI 節に「取得に失敗したらステップが失敗する」ことを明記した | Issue #728。`ci.yml` の `Ensure Chrome` は `shell:` 未指定（既定は `bash -e` で `pipefail` なし）のため、`browsers install \| tail \| cut` の終了コードが `cut` の 0 になり、取得に失敗してもステップが成功して空の `CHROME_PATH=` を `$GITHUB_ENV` に書いていた。失敗が後続の `Test` で別の症状として現れ、原因が読めなかった |
 | 1.22 | 2026-10-16 | 「フロントエンドの整形・lint」節の後に、`static/build.mjs` が Tailwind を `npx` ではなく `node` でインストール済みの `@tailwindcss/cli` のエントリから直接起動することを追記し、`release.yml` の `build` ジョブの手順に、パッケージの前に Windows 上でフロントエンドのビルドと `build.test.ts` を動かす手順（手順 3）を足した（以降の手順は繰り下げ） | Issue #765。`build.mjs` は `spawn('npx', …)`（`shell` 無し）で Tailwind を起動しており、Windows の `npx.cmd` を起動できず `build failed: spawn npx ENOENT` で `scripts/package-windows.sh` が止まり、リリースの `build` ジョブ（`windows-latest`）が成功しなかった。CI は Linux だけで、`build.test.ts` の Tailwind 異常系も Windows では `skipIf` で飛ばしていたため、この経路は一度も検証されていなかった |
 | 1.23 | 2026-10-16 | `make vuln` を Linux ホストに加えて Windows ターゲット（`GOOS=windows CGO_ENABLED=0 govulncheck ./...`）でも実行するようにし、タスク表・CI 節・リリース節 `verify` の手順 3 に「Linux と Windows の両方のターゲットを検査する」ことを明記した。`scripts/makefile_test.sh` に `make vuln` が両方を実行する検査を足した | Issue #767。`make vuln` は `GOOS` を指定せず Linux でだけ走り、配布する Windows 版の `backend/cmd/wails`（`//go:build windows`）と Wails v3・`fsutil` の Windows 実装・標準ライブラリの Windows 実装が検査の対象外だった（1.8 の「CI と配布する Windows バイナリ」を守るという記述と実装がずれていた）。Windows ターゲットでも現時点で脆弱性は無く、見逃しではなく網羅範囲のずれ |
+| 1.24 | 2026-10-16 | Git Hooks 節の pre-commit の対象を `*.mjs`（`make fmt-check`）・`static/*.mjs`（`make lint-static`）まで広げ、`lefthook.yml` の glob も同じにした | Issue #773。Biome の対象（`static/biome.json`）と CI の `make fmt-check` は `static/build.mjs`・`static/web-test-runner.config.mjs` を見るのに、lefthook の glob が `*.ts` だけで、`.mjs` だけを変えたコミットでは整形・lint が走らず push 後の CI まで検出されなかった |
