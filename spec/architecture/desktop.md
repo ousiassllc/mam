@@ -22,7 +22,7 @@ Windows では Wails v3 のネイティブウィンドウ（WebView2）でアプ
 - 起動エラー（設定の誤り・データディレクトリが別プロセスで使用中・リッスン失敗）はコンソールが無い（`-H windowsgui`）ためネイティブのエラーダイアログ（Win32 `MessageBox`。Wails のダイアログはイベントループが要るため使わない）に出して終了コード 1 で終わる。`--help` と引数の誤りもダイアログに出す（`app.ValidateArgs` が使い方の文字列を返す）。起動後にサーバーが落ちたときも同じ（ダイアログ → 終了コード 1）
 - 設定は `cmd/server` と同じ `config.Load`（フラグ・`MAM_*`。`--data-dir`・`MAM_DATA_DIR` も同様に効く）。`--no-browser` は無視する。ショートカットは引数なしで起動する（データディレクトリの既定は `os.UserConfigDir()` 配下の `mam`、つまり `%AppData%\mam`）
 - ブラウザ版と異なる点: Windows では ONNX Runtime のバインディングが無いため顔同一性の定量評価は使えない（non-functional.md §1、ブラウザ版も同じ）。ffmpeg は PATH から探す（同梱しない）
-- 子プロセス: ffmpeg / ffprobe はコンソールウィンドウを出さずに起動する（GUI プロセスはコンソールを持たず、何もしないと起動のたびに黒いウィンドウが点滅するため。`internal/media/run_windows.go` が `HideWindow` と `CREATE_NO_WINDOW` を付ける）。ブラウザ版は親のコンソールを継承するので影響しない
+- 子プロセス: ffmpeg / ffprobe はコンソールウィンドウを出さずに起動する（GUI プロセスはコンソールを持たず、何もしないと起動のたびに黒いウィンドウが点滅するため。`internal/media/run_windows.go` が `HideWindow` と `CREATE_NO_WINDOW` を付ける）。ブラウザ版は親のコンソールを継承するので影響しない。付くことは Windows 専用テスト `internal/media/run_windows_test.go` が確かめ、リリースの `build` ジョブ（`spec/environment/setup.md` のリリース手順 5）が Windows 上で動かす
 
 ## 3. 実装時に検証する項目
 
@@ -60,3 +60,4 @@ Windows 実機が要る項目は、リリース前に実機で確かめる（実
 | 1.9 | 2026-10-16 | §3 のダウンロードの実機確認の列挙で、`review_list.templ` を移動先の `organisms/reviewlist/list.templ` に直した | Issue #743。レビュー一覧をサブパッケージ `organisms/reviewlist/` に移したため |
 | 1.10 | 2026-10-16 | §4 のパッケージングの項に、`wails3 package` は `build/config.yml` を読まず、exe のリソースは `build/windows/info.json`（`package-windows.sh` がリリース版を書いた複製を `INFO_JSON` で渡す）、インストーラーの版は `VERSION` が入力であることを足した | Issue #766。`build/config.yml` のコメントが「`package-windows.sh` が `version` を上書きし `wails3 update build-assets` を実行する」と書いていたが、スクリプトはどちらもせず、`config.yml` を書き換えても成果物に反映されないため、リリース担当者が誤った場所を直す恐れがあった（コメントも実態に合わせた） |
 | 1.11 | 2026-10-16 | §2 に、ffmpeg / ffprobe の起動でコンソールウィンドウを出さない（`internal/media` の `run` が Windows で `HideWindow` と `CREATE_NO_WINDOW` を付ける）ことを足した | Issue #770。`-H windowsgui` の GUI プロセスはコンソールを持たないため、子のコンソールアプリ（ffmpeg / ffprobe）を起動するたびに新しいコンソールウィンドウが点滅しフォーカスを奪っていた |
+| 1.12 | 2026-10-16 | §2 の「子プロセス」に、`HideWindow` と `CREATE_NO_WINDOW` が付くことを `internal/media/run_windows_test.go` が確かめ、リリースの `build` ジョブが Windows 上で動かすことを足した | Issue #774。#770 のテストは Linux だけの `ci.yml` でも `release.yml` でも実行されず、検証する手段がどこにも書かれていなかった（setup.md の改訂 1.27 で `release.yml` に手順を足した） |
