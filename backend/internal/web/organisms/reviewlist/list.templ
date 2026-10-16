@@ -209,7 +209,7 @@ templ reviewCard(projectID string, it Item, oob bool) {
 								}
 								<form hx-put={ paths.Project(projectID, "review-comments", c.ID) } hx-target="closest article" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]">
 									<input type="hidden" name="resolved" value={ resolvedValue(c.Resolved) }/>
-									@atoms.ButtonFor(atoms.ToneNeutral, resolvedLabel(c.Resolved), organisms.TimecodeLabel(c.TimecodeMs)+" "+c.Body, templ.Attributes{"type": "submit"})
+									@atoms.ButtonFor(atoms.ToneNeutral, resolvedLabel(c.Resolved), organisms.TimecodeLabel(c.TimecodeMs)+" "+c.Body, templ.Attributes{"type": "submit", "data-focus-key": "resolve-" + c.ID})
 								</form>
 							</li>
 						}

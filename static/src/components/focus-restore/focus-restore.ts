@@ -68,8 +68,14 @@ function focusablesOf(roots: readonly Element[]): Element[] {
   return roots.flatMap((root) => [...(root.matches(FOCUSABLE) ? [root] : []), ...root.querySelectorAll(FOCUSABLE)]);
 }
 
-/** What makes a control this control: what it is, what it sends and where, and what it says. */
+/**
+ * What makes a control this control: what it is, what it sends and where, and what it says. A control with
+ * `data-focus-key` is told apart by that alone, so a toggle whose label (and `aria-label`) flips on every press
+ * ("解決済みにする" / "未解決に戻す") is still found again after the swap.
+ */
 function keyOf(el: Element): string {
+  const focusKey = el.getAttribute('data-focus-key');
+  if (focusKey !== null) return [el.tagName, focusKey].join('\u0000');
   const attr = (name: string) => el.getAttribute(name) ?? '';
   return [
     el.tagName,
@@ -77,7 +83,6 @@ function keyOf(el: Element): string {
     attr('name'),
     attr('value'),
     attr('aria-label'),
-    attr('data-focus-key'),
     ...HX_ACTIONS.map(attr),
     el.textContent?.trim() ?? '',
   ].join('\u0000');
@@ -85,6 +90,8 @@ function keyOf(el: Element): string {
 
 /** The same without what differs between the rows of a list (its URL, its label): the "kind" of control. */
 function kindOf(el: Element): string {
+  const focusKey = el.getAttribute('data-focus-key');
+  if (focusKey !== null) return [el.tagName, focusKey].join('\u0000');
   return [el.tagName, el.getAttribute('type') ?? '', el.getAttribute('name') ?? '', el.textContent?.trim() ?? ''].join(
     '\u0000',
   );

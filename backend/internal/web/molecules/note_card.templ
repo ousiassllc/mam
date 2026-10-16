@@ -85,19 +85,21 @@ templ NoteCard(n domain.NoteView) {
 		<div class="flex flex-wrap gap-2">
 			if n.Archived() {
 				@atoms.ButtonFor(atoms.ToneNeutral, "アーカイブを解除", n.Version.Title, templ.Attributes{
-					"type":      "button",
-					"hx-put":    paths.Note(n.ID),
-					"hx-vals":   atoms.HxVals(map[string]string{"archived": "false"}),
-					"hx-target": "#note-list",
-					"hx-swap":   "outerHTML",
+					"type":           "button",
+					"data-focus-key": "archive-" + n.ID,
+					"hx-put":         paths.Note(n.ID),
+					"hx-vals":        atoms.HxVals(map[string]string{"archived": "false"}),
+					"hx-target":      "#note-list",
+					"hx-swap":        "outerHTML",
 				})
 			} else {
 				@atoms.ButtonFor(atoms.ToneDanger, "アーカイブ", n.Version.Title, templ.Attributes{
-					"type":       "button",
-					"hx-delete":  paths.Note(n.ID),
-					"hx-target":  "#note-list",
-					"hx-swap":    "outerHTML",
-					"hx-confirm": "アーカイブしますか？（メモは残りますが、以降の推論には渡されません）",
+					"type":           "button",
+					"data-focus-key": "archive-" + n.ID,
+					"hx-delete":      paths.Note(n.ID),
+					"hx-target":      "#note-list",
+					"hx-swap":        "outerHTML",
+					"hx-confirm":     "アーカイブしますか？（メモは残りますが、以降の推論には渡されません）",
 				})
 			}
 		</div>

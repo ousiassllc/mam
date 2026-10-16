@@ -283,22 +283,24 @@ func NoteCard(n domain.NoteView) templ.Component {
 		}
 		if n.Archived() {
 			templ_7745c5c3_Err = atoms.ButtonFor(atoms.ToneNeutral, "アーカイブを解除", n.Version.Title, templ.Attributes{
-				"type":      "button",
-				"hx-put":    paths.Note(n.ID),
-				"hx-vals":   atoms.HxVals(map[string]string{"archived": "false"}),
-				"hx-target": "#note-list",
-				"hx-swap":   "outerHTML",
+				"type":           "button",
+				"data-focus-key": "archive-" + n.ID,
+				"hx-put":         paths.Note(n.ID),
+				"hx-vals":        atoms.HxVals(map[string]string{"archived": "false"}),
+				"hx-target":      "#note-list",
+				"hx-swap":        "outerHTML",
 			}).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
 			templ_7745c5c3_Err = atoms.ButtonFor(atoms.ToneDanger, "アーカイブ", n.Version.Title, templ.Attributes{
-				"type":       "button",
-				"hx-delete":  paths.Note(n.ID),
-				"hx-target":  "#note-list",
-				"hx-swap":    "outerHTML",
-				"hx-confirm": "アーカイブしますか？（メモは残りますが、以降の推論には渡されません）",
+				"type":           "button",
+				"data-focus-key": "archive-" + n.ID,
+				"hx-delete":      paths.Note(n.ID),
+				"hx-target":      "#note-list",
+				"hx-swap":        "outerHTML",
+				"hx-confirm":     "アーカイブしますか？（メモは残りますが、以降の推論には渡されません）",
 			}).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
