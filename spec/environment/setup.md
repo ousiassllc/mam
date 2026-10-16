@@ -29,7 +29,7 @@ Go（`go.mod` のバージョン）、Node.js（24。CI は `.github/workflows/c
 | `make build` | `scripts/build.sh`（templ → esbuild/tailwind minify → go build）。`bin/mam` を作る |
 | `make build-all` | `scripts/build.sh --all`。windows / darwin / linux × amd64 / arm64 の 6 構成を `bin/mam-<os>-<arch>[.exe]`（Windows は `.exe` 付き）に出力する（`spec/requirements/non-functional.md` §1） |
 | `make clean` | `bin`・`tmp`・`static/src/dist/app.*` を削除する |
-| `scripts/package-windows.sh <version>` | Windows 版（Wails ウィンドウ）のパッケージング。templ → esbuild/tailwind → `wails3 package GOOS=windows`（`GOARCH=amd64`）で `bin/mam-<version>-windows-amd64.exe`（ポータブル）と `bin/mam-<version>-windows-amd64-setup.exe`（NSIS インストーラー）を作る。`<version>` は `X.Y.Z` 形式でなければ失敗する。`go`・`npm`・`templ`・`wails3`・`makensis`・`jq` が要る（無いとツール確認で失敗する）。Windows 上（Git Bash）で動かす。`make` のターゲットは無い（Windows に `make` が無いため） |
+| `scripts/package-windows.sh <version>` | Windows 版（Wails ウィンドウ）のパッケージング。templ → esbuild/tailwind → `wails3 package GOOS=windows`（`GOARCH=amd64`）で `bin/mam-<version>-windows-amd64.exe`（ポータブル）と `bin/mam-<version>-windows-amd64-setup.exe`（NSIS インストーラー）を作る。`<version>` は `X.Y.Z` 形式でなければ失敗する。`go`・`npm`・`wails3`・`makensis`・`jq` が要る（無いとツール確認で失敗する）。`templ` は PATH に要らず、`make generate` と同じく `go run` で go.mod と同じ版を使って生成する（Windows に `make` が無くても、古い `templ` が `*_templ.go` を書き換えない）。Windows 上（Git Bash）で動かす。`make` のターゲットは無い（Windows に `make` が無いため） |
 
 ## フロントエンドの整形・lint
 
@@ -76,7 +76,7 @@ Go テストの所要時間（`backend/internal/router`）: ffmpeg で作る素�
 ### `build`（`windows-latest`、`needs: verify`、`contents: read`）
 
 1. checkout（`persist-credentials: false`）→ setup-go（`go.mod`）→ setup-node（24、npm キャッシュ）
-2. ツール: `templ`（`go.mod` の版）、`wails3`（`go.mod` の版）、`choco install nsis --version <版>`（ワークフローの `NSIS_VERSION` で固定）
+2. ツール: `wails3`（`go.mod` の版）、`choco install nsis --version <版>`（ワークフローの `NSIS_VERSION` で固定）。`templ` は入れない（`scripts/package-windows.sh` が `go run` で `go.mod` の版を使う）
 3. フロントエンドのビルドとそのテスト（`working-directory: static`: `npm ci` → `npm run build -- --minify` → `npx --no-install vitest run src/build.test.ts`）: `ci.yml` は Linux だけで動き、`static/build.mjs`（Tailwind を子プロセスとして起動する）を Windows では一度も動かさないため、パッケージの前に Windows 上で動かして、この経路の不具合を専用のステップで落とす
 4. `bash scripts/package-windows.sh "${GITHUB_REF_NAME#v}"`（タグが `vX.Y.Z` でなければ失敗）
 5. スモーク（`bash scripts/smoke-windows.sh bin/mam-<version>-windows-amd64-setup.exe`）: インストーラーを `/S` で `RUNNER_TEMP` 配下へ静かにインストールし（`/D=`）、そのディレクトリの `mam.exe` を `--data-dir`（一時ディレクトリ）・`--port` 固定で起動して `GET /` が 200 を返すことを確認してから停止する。失敗したらリリースを作らない
@@ -145,3 +145,4 @@ pre-commit（`scripts/linterly-staged.sh`）は従来どおり、コミット対
 | 1.21 | 2026-10-16 | CI の `Ensure Chrome` ステップに `shell: bash`（`bash -eo pipefail`）を指定し、取得した Chrome のパスが空・実行不可なら `::error::` を出して失敗させるようにした。開発ツールの「Chrome / Chromium」と CI 節に「取得に失敗したらステップが失敗する」ことを明記した | Issue #728。`ci.yml` の `Ensure Chrome` は `shell:` 未指定（既定は `bash -e` で `pipefail` なし）のため、`browsers install \| tail \| cut` の終了コードが `cut` の 0 になり、取得に失敗してもステップが成功して空の `CHROME_PATH=` を `$GITHUB_ENV` に書いていた。失敗が後続の `Test` で別の症状として現れ、原因が読めなかった |
 | 1.22 | 2026-10-16 | 「フロントエンドの整形・lint」節の後に、`static/build.mjs` が Tailwind を `npx` ではなく `node` でインストール済みの `@tailwindcss/cli` のエントリから直接起動することを追記し、`release.yml` の `build` ジョブの手順に、パッケージの前に Windows 上でフロントエンドのビルドと `build.test.ts` を動かす手順（手順 3）を足した（以降の手順は繰り下げ） | Issue #765。`build.mjs` は `spawn('npx', …)`（`shell` 無し）で Tailwind を起動しており、Windows の `npx.cmd` を起動できず `build failed: spawn npx ENOENT` で `scripts/package-windows.sh` が止まり、リリースの `build` ジョブ（`windows-latest`）が成功しなかった。CI は Linux だけで、`build.test.ts` の Tailwind 異常系も Windows では `skipIf` で飛ばしていたため、この経路は一度も検証されていなかった |
 | 1.23 | 2026-10-16 | `make vuln` を Linux ホストに加えて Windows ターゲット（`GOOS=windows CGO_ENABLED=0 govulncheck ./...`）でも実行するようにし、タスク表・CI 節・リリース節 `verify` の手順 3 に「Linux と Windows の両方のターゲットを検査する」ことを明記した。`scripts/makefile_test.sh` に `make vuln` が両方を実行する検査を足した | Issue #767。`make vuln` は `GOOS` を指定せず Linux でだけ走り、配布する Windows 版の `backend/cmd/wails`（`//go:build windows`）と Wails v3・`fsutil` の Windows 実装・標準ライブラリの Windows 実装が検査の対象外だった（1.8 の「CI と配布する Windows バイナリ」を守るという記述と実装がずれていた）。Windows ターゲットでも現時点で脆弱性は無く、見逃しではなく網羅範囲のずれ |
+| 1.24 | 2026-10-16 | `scripts/package-windows.sh` が `templ generate` を PATH 上の `templ` ではなく `go run github.com/a-h/templ/cmd/templ@<go.mod の版>` で実行するようにし、`templ` を同スクリプトの前提ツール（タスク表・リリース節の「ツール」・`release.yml` の `Install tools`）から外した。`scripts/makefile_test.sh` に同スクリプトの検査を足した | Issue #768。`Makefile` は PATH の `templ` を使わない方針（古い `templ` が go.mod とずれた `*_templ.go` を書き CI の鮮度確認が落ちる）なのに、`make` の無い Windows で使う `package-windows.sh` だけ版を検証せず PATH の `templ` を使い、`wails3` だけ版を検証していた |
