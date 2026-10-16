@@ -220,7 +220,7 @@ export class MamTakeComparator extends LitElement {
               <input
                 type="text"
                 name="instruction"
-                class="min-w-64 flex-1 rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs"
+                class="min-w-64 flex-1 rounded border border-neutral-500 bg-neutral-900 px-2 py-1 text-xs"
                 placeholder="Take A の 0-2秒 + Take B の 2-4秒"
                 aria-label="区間を言葉で指定"
                 .value=${this.instruction}

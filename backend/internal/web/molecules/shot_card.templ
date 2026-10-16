@@ -154,7 +154,7 @@ templ TakeRow(t domain.Take, n int, selected bool, repairable bool, judgeable bo
 			}
 			@TakeStatusBadge(t.Status)
 			if judgeable {
-				@atoms.Button(atoms.ToneNeutral, "Judge", templ.Attributes{
+				@atoms.ButtonFor(atoms.ToneNeutral, "Judge", takeName(t, n), templ.Attributes{
 					"type":      "button",
 					"hx-post":   paths.Take(t.ID, "judge"),
 					"hx-target": shotTarget(t.ShotID),
@@ -163,7 +163,7 @@ templ TakeRow(t domain.Take, n int, selected bool, repairable bool, judgeable bo
 				})
 			}
 			if repairable {
-				@atoms.Button(atoms.ToneNeutral, "Repair", templ.Attributes{
+				@atoms.ButtonFor(atoms.ToneNeutral, "Repair", takeName(t, n), templ.Attributes{
 					"type":      "button",
 					"hx-post":   paths.Take(t.ID, "repair"),
 					"hx-target": shotTarget(t.ShotID),
