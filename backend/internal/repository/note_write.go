@@ -59,13 +59,13 @@ func insertNoteVersion(ctx context.Context, tx *sql.Tx, noteID string, number in
 	return nil
 }
 
-// appendNoteVersion appends a version to the note after its latest one and returns its number.
-func appendNoteVersion(ctx context.Context, tx *sql.Tx, noteID, title, content string, source domain.NoteSource, now string) (int, error) {
+// appendNoteVersion appends a version to the note after its latest one.
+func appendNoteVersion(ctx context.Context, tx *sql.Tx, noteID, title, content string, source domain.NoteSource, now string) error {
 	var next int
 	if err := tx.QueryRowContext(ctx, `SELECT COALESCE(MAX(version_number), 0) + 1 FROM note_version WHERE note_id = ?`, noteID).Scan(&next); err != nil {
-		return 0, err
+		return err
 	}
-	return next, insertNoteVersion(ctx, tx, noteID, next, title, content, source, now)
+	return insertNoteVersion(ctx, tx, noteID, next, title, content, source, now)
 }
 
 // Update changes a memo and returns it. newVersion reports whether the title or content changed and
@@ -86,7 +86,7 @@ func (r *NoteRepository) Update(ctx context.Context, id string, u NoteUpdate) (d
 			content = *u.Content
 		}
 		if title != cur.Version.Title || content != cur.Version.Content {
-			if _, err := appendNoteVersion(ctx, tx, id, title, content, u.Source, now); err != nil {
+			if err := appendNoteVersion(ctx, tx, id, title, content, u.Source, now); err != nil {
 				return err
 			}
 			newVersion = true
@@ -140,8 +140,7 @@ func (r *NoteRepository) Restore(ctx context.Context, id string, number int) (do
 		if err != nil {
 			return err
 		}
-		_, err = appendNoteVersion(ctx, tx, id, title, content, source, now)
-		return err
+		return appendNoteVersion(ctx, tx, id, title, content, source, now)
 	})
 	if errors.Is(err, ErrNotFound) {
 		return domain.NoteView{}, err
