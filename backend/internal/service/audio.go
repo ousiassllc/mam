@@ -331,12 +331,3 @@ func (s *EditorService) Voices(ctx context.Context, projectID string) ([]domain.
 	}
 	return s.voices.List(ctx, projectID)
 }
-
-// AudioTimelines lists the Audio Timeline versions of the trunk (branchID "") or of a Branch, newest
-// first: every Branch has its own series of versions.
-func (s *EditorService) AudioTimelines(ctx context.Context, projectID, branchID string) ([]domain.AudioTimelineVersion, error) {
-	if _, err := s.getProject(ctx, projectID); err != nil {
-		return nil, err
-	}
-	return s.editors.ListAudioTimelines(ctx, projectID, branchID)
-}

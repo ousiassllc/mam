@@ -101,15 +101,6 @@ func (a *Adapter) Unavailable(m domain.ModelName) string {
 	return ""
 }
 
-// EstimateVideo is the estimated cost of one Take at the target for a clip of the requested length.
-func (a *Adapter) EstimateVideo(t VideoTarget, seconds float64) float64 {
-	caps, ok := Capabilities(t.Model)
-	if !ok {
-		return 0
-	}
-	return a.cfg.VideoCost(t, caps.SnapDuration(seconds))
-}
-
 // EstimateImage is the most one image of the purpose can cost: the dearer of the primary model and
 // the alternative the call falls back to. It is what a budget check holds before the call.
 func (a *Adapter) EstimateImage(purpose ImagePurpose) float64 {
