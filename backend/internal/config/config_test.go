@@ -95,7 +95,7 @@ func TestLoad_MalformedPortEnvironmentDoesNotBreakHelpOrThePortFlag(t *testing.T
 func TestLoad_JudgeAndFaceModelSettings(t *testing.T) {
 	cfg, err := config.Load([]string{"--data-dir", "/d"}, func(string) string { return "" }, io.Discard)
 	require.NoError(t, err)
-	assert.Equal(t, "/d/models", cfg.FaceModels(), "the models default to <data-dir>/models")
+	assert.Equal(t, filepath.Join("/d", "models"), cfg.FaceModels(), "the models default to <data-dir>/models")
 	assert.Empty(t, cfg.JudgeConfigPath)
 
 	env := map[string]string{"MAM_JUDGE_CONFIG": "/j.json", "MAM_FACE_MODEL_DIR": "/m", "MAM_ONNXRUNTIME_LIB": "/lib/libonnxruntime.so"}
