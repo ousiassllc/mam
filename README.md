@@ -56,7 +56,7 @@ make dev          # air + templ --watch + esbuild/tailwind --watch
 make test         # Go・front-end・スクリプトのテスト
 make lint         # golangci-lint・tsc・Biome lint
 make lint-lines   # 行数上限の超過が .linterly-baseline より悪化していないか
-make vuln         # govulncheck: 到達できる既知の脆弱性（標準ライブラリ・依存）が無いか
+make vuln         # govulncheck: 到達できる既知の脆弱性（標準ライブラリ・依存）が無いか（Linux と Windows の両ターゲット）
 make fmt          # 整形（Go・templ・TypeScript）
 ```
 

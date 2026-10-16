@@ -53,7 +53,8 @@ jobs:
         run: make lint
 
       # Known vulnerabilities reachable from the code: the Go standard library of the toolchain
-      # pinned by go.mod's `toolchain` line, and the required modules. A new advisory fails CI.
+      # pinned by go.mod's `toolchain` line, and the required modules, for the Linux host and the Windows
+      # target (cmd/wails is //go:build windows, so a Linux-only run never analyses it). A new advisory fails CI.
       - name: Vulnerability check
         run: make vuln
 

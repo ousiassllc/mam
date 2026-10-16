@@ -30,3 +30,11 @@ if [[ "$generate_cmd" != "$expected" ]]; then
   exit 1
 fi
 echo "ok: make generate runs templ ${templ_version} (go.mod), not the templ on PATH"
+
+# The distributed Windows build (cmd/wails, //go:build windows) is invisible to a Linux govulncheck run, so `make vuln`
+# must check the Windows target as well.
+vuln_cmd="$(make --no-print-directory -n vuln)"
+for want in 'govulncheck ./...' 'GOOS=windows CGO_ENABLED=0 govulncheck ./...'; do
+  grep -qxF -- "$want" <<<"$vuln_cmd" || { echo "FAIL: 'make vuln' does not run '$want'"; exit 1; }
+done
+echo "ok: make vuln checks both the Linux host and the Windows target"
