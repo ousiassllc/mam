@@ -169,6 +169,14 @@ export class MamTakeComparator extends LitElement {
 - 失敗時は `<select>` なら各 option を `defaultSelected` に、`<form>` なら `form.reset()` で、描画時または直近の保存成功時の値へ戻す。Confirmation Level は select と CUSTOM CHECK の確認ポイントの checkbox を持つ 1 つの `<form>` なので、フォームごと戻る
 - 成功時は現在の値を「保存済みの値」にする（select の `defaultSelected`、input の `defaultChecked` / `defaultValue`）。Quality の select は 204 を返して何も swap しないため、これをしないと後の失敗で最初に描画された値まで戻ってしまう
 
+### 5.2 差し替え後のフォーカスの復帰（`static/src/components/focus-restore/`）
+
+押したボタンを含む領域を `hx-swap="outerHTML"` で差し替える操作（LockToggle の AUTO / MANUAL / LOCK、削除、アーカイブ）では、htmx は元の要素が `id` を持つときだけ同じ `id` の要素へフォーカスを戻す。ボタンに `id` は付けないため、`main.ts` が `installFocusRestore()` で `htmx:beforeSwap`（差し替え前のフォーカスを覚える）と `htmx:afterSwap`（戻す）を購読する。Lit コンポーネントではない。
+
+- 対象は、利用者の操作（`click`・`submit`・`change`・`input`・`keydown`・`keyup`・`dblclick`）で始まったリクエストの swap のうち、差し替え先の中にフォーカスがあり、差し替え後にその要素が消えてフォーカスが `<body>` へ落ちたものだけ。ポーリング（`every`）・`load` / `revealed`・WebSocket 起点の再取得は操作のイベントを持たないので触らない。応答が届く前に利用者がフォーカスを別へ移していたとき、htmx が `id` で戻したときも触らない
+- 戻し先は、差し替え後の領域の中で、(1) 種類・`name`・`value`・`hx-*` の URL・ラベル・`data-focus-key` が同じコントロール（同じものが複数あれば同じ順番）、(2) 行の URL・ラベルを除いた種類が同じコントロールの同じ順番（最後を超えたら最後。削除した行の次の行の削除ボタン）、(3) 領域自身（`tabindex="-1"` を付けて）の順
+- チャットの返信先の「×」（`#reply-cancel`）は swap ではなく自分で非表示にするため、`chat.ts` が押したときに入力欄へフォーカスを戻す（返信を始めたときの動作と揃える）
+
 ## 改訂履歴
 
 | 版 | 日付 | 変更内容 | 変更理由 |
@@ -241,3 +249,4 @@ export class MamTakeComparator extends LitElement {
 | 1.65 | 2026-10-16 | §4.2 の Timeline Editor（M3）の Editor Judge の結果を描く Templ の名前を、実在しない `EditorActions` から `editorpanel.Actions`（`organisms/editorpanel/panel.templ`）に直した（行数は増やしていない） | Issue #745。#731 が `organisms/editor_panel.templ` の `templ EditorActions` を `organisms/editorpanel/` の `Actions`・`ActionsFragment` に移したのに、§4.2 だけ旧名のままだった（`EditorActions` は今は Go のハンドラ名 `handler.EditorActions`） |
 | 1.66 | 2026-10-16 | §3 の organisms の `review_list` に、実体が `reviewlist`（サブパッケージ `organisms/reviewlist/`）であることと、作成・取り込みの応答の範囲を追記した | Issue #743。レビュー依頼の作成・応答の取り込みが、もう一方のフォームの書きかけの入力を消さないようにしたため |
 | 1.67 | 2026-10-16 | §1.1 の Director Agent の行に、Brief の Duration への Shot の尺の自動拡縮（±10% を超えたとき・0.1 秒丸め・1 Shot の下限 0.5 秒）、1 Shot の上限 60 秒、Scene / Shot の文字数の切り詰め（title / location / time 100・objective 300）を追記した（行数は増やしていない） | Issue #758。`planning.Director.Plan` は LLM の計画を書き換えて保存するが、仕様のどこにも書かれていなかった |
+| 1.68 | 2026-10-16 | 共通ライブラリの節に §5.2「差し替え後のフォーカスの復帰」を足した（`main.ts` が `installFocusRestore()` で `htmx:beforeSwap` / `htmx:afterSwap` を購読し、利用者の操作で始まった swap が、フォーカス中のコントロールを消したときだけ、差し替え後の同じコントロールへフォーカスを戻す）。`chat.ts` の返信先の「×」は、押すとフォーカスを入力欄へ戻す | Issues #789・#794。LockToggle・削除・アーカイブなどのボタンは `id` を持たないまま領域ごと `outerHTML` で差し替わるため、htmx が戻すフォーカスが働かず、キーボード・スクリーンリーダーの利用者は押すたびに `<body>` へ落ちていた（WCAG 2.4.3） |

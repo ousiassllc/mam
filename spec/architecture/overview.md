@@ -183,6 +183,7 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
         │   ├── timeline-editor/      # mam-timeline-editor
         │   ├── take-comparator/      # mam-take-comparator
         │   ├── save-on-change/       # 変更でその場保存するコントロール（`hx-trigger="change"` の MODE・Production Template・Quality・Confirmation Level）が保存に失敗したとき、値を保存済みの値へ戻す。`main.ts` が `htmx:afterRequest` で組み込む（Lit ではない）
+        │   ├── focus-restore/        # 利用者の操作で始まった htmx の swap が、フォーカス中のコントロールを消したとき、差し替え後の同じコントロールへフォーカスを戻す（`htmx:beforeSwap` / `htmx:afterSwap`。`main.ts` が組み込む。Lit ではない）
         │   └── lib/
         │       ├── api.ts            # CSRFトークン自動付与のHTTPクライアント
         │       ├── ajax.ts / errors.ts / toast.ts / connection-notice.ts # フラグメント再取得・エラー表示
