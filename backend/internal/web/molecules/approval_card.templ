@@ -39,10 +39,10 @@ templ ApprovalCard(m domain.ThreadMessage) {
 					"name":        "comment",
 					"maxlength":   strconv.Itoa(approvalCommentMaxRunes),
 					"placeholder": "コメント（任意）",
-					"aria-label":  "コメント",
+					"aria-label":  atoms.RowLabel("コメント", excerpt(m.ChatMessage)),
 				})
-				@atoms.Button(atoms.TonePrimary, "承認", submitAttrs("approve"))
-				@atoms.Button(atoms.ToneNeutral, "修正を依頼", submitAttrs("request_changes"))
+				@atoms.ButtonFor(atoms.TonePrimary, "承認", excerpt(m.ChatMessage), submitAttrs("approve"))
+				@atoms.ButtonFor(atoms.ToneNeutral, "修正を依頼", excerpt(m.ChatMessage), submitAttrs("request_changes"))
 			</form>
 			<div class="mt-1">
 				@ReplyButton(m)
