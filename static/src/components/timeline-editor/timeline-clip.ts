@@ -25,6 +25,9 @@ export interface ClipRowView {
   caption(i: number, input: HTMLTextAreaElement): void;
 }
 
+/** The key of a row: the clip itself, so that the DOM (and the focus in it) moves with the clip when the clips are reordered. */
+export const clipKey = (c: EditClip): string => c.shot_id;
+
 export function renderClipRow(c: EditClip, i: number, body: EditTimelineBody, view: ClipRowView) {
   const { locked } = view;
   const t = c.transition;

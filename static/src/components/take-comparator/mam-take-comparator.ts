@@ -3,18 +3,13 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { del, get, post } from '../lib/api';
 import { errorMessage } from '../lib/errors';
 import { createLogger } from '../lib/logger';
-import {
-  addSegment,
-  describeSegments,
-  dragToSegment,
-  removeSegment,
-  totalSeconds,
-  type Clip,
-  type Segment,
-} from '../lib/timeline-model';
+import { addSegment, dragToSegment, removeSegment, type Clip, type Segment } from '../lib/timeline-model';
 import { DEFAULT_FPS } from '../lib/video';
+import { focusAfterUpdate } from '../focus-restore/lit-focus';
 import '../video-player/mam-video-player';
 import type { TakeScore, TakesBody } from './take-model';
+import { rowTargets, segmentButton, selectionTargets } from './take-focus';
+import { renderSelection } from './take-selection';
 import { renderTakeTable } from './take-table';
 
 const log = createLogger('take-comparator');
@@ -111,12 +106,17 @@ export class MamTakeComparator extends LitElement {
   }
 
   /** Rejects a Take once the user confirmed: the Take can never be chosen again. */
-  private reject(url: string): void {
-    if (window.confirm(REJECT_CONFIRM)) void this.act(() => del(url));
+  private reject(take: TakeScore): void {
+    const url = take.reject_url;
+    if (url && window.confirm(REJECT_CONFIRM))
+      void this.act(
+        () => del(url),
+        () => rowTargets(this, take.id, 'reject'),
+      );
   }
 
-  /** Runs a request to the server, reports its error and reloads the Takes. */
-  private async act(run: () => Promise<unknown>): Promise<boolean> {
+  /** Runs a request to the server, reports its error and reloads the Takes; the focus then goes to `focusTo`. */
+  private async act(run: () => Promise<unknown>, focusTo: () => (Element | null)[]): Promise<boolean> {
     if (this.busy) return false;
     this.busy = true;
     this.error = '';
@@ -129,11 +129,14 @@ export class MamTakeComparator extends LitElement {
       return false;
     } finally {
       this.busy = false;
+      void focusAfterUpdate(this, focusTo);
     }
   }
 
   private async confirmPartial(body: { segments: Segment[] } | { instruction: string }): Promise<void> {
-    const ok = await this.act(() => post(this.partialUrl, body));
+    const focusSelector = 'segments' in body ? '[data-action="confirm-partial"]' : 'input[name="instruction"]';
+    const focusTo = () => selectionTargets(this, focusSelector);
+    const ok = await this.act(() => post(this.partialUrl, body), focusTo);
     if (!ok) return;
     const segments = 'segments' in body ? body.segments : [];
     this.selection = [];
@@ -141,6 +144,18 @@ export class MamTakeComparator extends LitElement {
     this.dispatchEvent(
       new CustomEvent('partial-take-confirmed', { detail: { segments }, bubbles: true, composed: true }),
     );
+    void focusAfterUpdate(this, focusTo);
+  }
+
+  /** Takes a picked part out: the focus goes to the next part's button (the previous one after the last). */
+  private dropSegment(index: number): void {
+    this.selection = removeSegment(this.selection, index);
+    void focusAfterUpdate(this, () => selectionTargets(this, segmentButton(index, this.selection.length)));
+  }
+
+  private clearSelection(): void {
+    this.selection = [];
+    void focusAfterUpdate(this, () => selectionTargets(this));
   }
 
   private onLaneDown(event: PointerEvent, clip: Clip): void {
@@ -188,49 +203,30 @@ export class MamTakeComparator extends LitElement {
         ${this.renderError()}
         <div class="overflow-x-auto">${renderTakeTable(this.takes, this.limits?.min_axis_score ?? 0, {
           busy: this.busy,
-          select: (url) => void this.act(() => post(url)),
-          reject: (url) => this.reject(url),
+          select: (take) =>
+            void this.act(
+              () => post(take.select_url!),
+              () => rowTargets(this, take.id, 'select'),
+            ),
+          reject: (take) => this.reject(take),
         })}</div>
         ${
           this.partialUrl
             ? html`<section class="flex flex-col gap-3" aria-label="区間指定">
           <h3 class="text-sm font-semibold">区間で採用（Partial Take Use）</h3>
           ${this.takes.map((t) => this.renderLane(t, clipById))}
-          <div class="flex flex-col gap-2 rounded border border-neutral-700 p-3" data-selection>
-            ${
-              this.selection.length === 0
-                ? html`<p class="text-xs text-neutral-400">Take の帯をドラッグして区間を選ぶと、選んだ順につなぎます。</p>`
-                : html`<ol class="flex flex-wrap gap-2 text-xs">
-                    ${this.selection.map(
-                      (s, i) => html`<li class="flex items-center gap-1 rounded bg-neutral-800 px-2 py-1" data-segment>
-                        <span>${describeSegments([s], clips)}</span>
-                        <button type="button" class="text-neutral-400 hover:text-neutral-100" aria-label="区間 ${i + 1} を外す" data-action="remove-segment" @click=${() => (this.selection = removeSegment(this.selection, i))}>×</button>
-                      </li>`,
-                    )}
-                  </ol>
-                  <p class="text-xs text-neutral-400">合計 ${totalSeconds(this.selection).toFixed(1)} 秒（つなぎ目はクロスフェード）</p>`
-            }
-            <div class="flex flex-wrap items-center gap-2">
-              <button type="button" data-action="confirm-partial" class="rounded bg-neutral-200 px-3 py-1 text-xs font-medium text-neutral-900 disabled:opacity-40" ?disabled=${!canMerge} @click=${() => void this.confirmPartial({ segments: this.selection })}>
-                この区間で合成
-              </button>
-              <button type="button" class="text-xs text-neutral-400 underline" ?disabled=${this.selection.length === 0} @click=${() => (this.selection = [])}>選び直す</button>
-            </div>
-            <form class="flex flex-wrap items-center gap-2" @submit=${this.onInstructionSubmit}>
-              <input
-                type="text"
-                name="instruction"
-                class="min-w-64 flex-1 rounded border border-neutral-500 bg-neutral-900 px-2 py-1 text-xs"
-                placeholder="Take A の 0-2秒 + Take B の 2-4秒"
-                aria-label="区間を言葉で指定"
-                .value=${this.instruction}
-                @input=${(e: Event) => (this.instruction = (e.target as HTMLInputElement).value)}
-              />
-              <button type="submit" data-action="confirm-instruction" class="rounded border border-neutral-600 px-3 py-1 text-xs disabled:opacity-40" ?disabled=${this.busy || this.instruction.trim() === ''}>
-                言葉で合成
-              </button>
-            </form>
-          </div>
+          ${renderSelection({
+            selection: this.selection,
+            clips,
+            instruction: this.instruction,
+            busy: this.busy,
+            canMerge,
+            removeSegment: (index) => this.dropSegment(index),
+            clear: () => this.clearSelection(),
+            merge: () => void this.confirmPartial({ segments: this.selection }),
+            setInstruction: (text) => (this.instruction = text),
+            submitInstruction: (e) => this.onInstructionSubmit(e),
+          })}
         </section>`
             : nothing
         }
