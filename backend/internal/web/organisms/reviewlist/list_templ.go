@@ -741,7 +741,7 @@ func reviewCard(projectID string, it Item, oob bool) templ.Component {
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = atoms.Button(atoms.ToneNeutral, resolvedLabel(c.Resolved), templ.Attributes{"type": "submit"}).Render(ctx, templ_7745c5c3_Buffer)
+					templ_7745c5c3_Err = atoms.ButtonFor(atoms.ToneNeutral, resolvedLabel(c.Resolved), organisms.TimecodeLabel(c.TimecodeMs)+" "+c.Body, templ.Attributes{"type": "submit"}).Render(ctx, templ_7745c5c3_Buffer)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
