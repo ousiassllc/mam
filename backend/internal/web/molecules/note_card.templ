@@ -79,12 +79,12 @@ templ NoteCard(n domain.NoteView) {
 					})
 					ピン留め（常に推論の文脈に渡す）
 				</label>
-				@atoms.Button(atoms.TonePrimary, "保存", templ.Attributes{"type": "submit"})
+				@atoms.ButtonFor(atoms.TonePrimary, "保存", n.Version.Title, templ.Attributes{"type": "submit"})
 			</div>
 		</form>
 		<div class="flex flex-wrap gap-2">
 			if n.Archived() {
-				@atoms.Button(atoms.ToneNeutral, "アーカイブを解除", templ.Attributes{
+				@atoms.ButtonFor(atoms.ToneNeutral, "アーカイブを解除", n.Version.Title, templ.Attributes{
 					"type":      "button",
 					"hx-put":    paths.Note(n.ID),
 					"hx-vals":   atoms.HxVals(map[string]string{"archived": "false"}),
@@ -92,7 +92,7 @@ templ NoteCard(n domain.NoteView) {
 					"hx-swap":   "outerHTML",
 				})
 			} else {
-				@atoms.Button(atoms.ToneDanger, "アーカイブ", templ.Attributes{
+				@atoms.ButtonFor(atoms.ToneDanger, "アーカイブ", n.Version.Title, templ.Attributes{
 					"type":       "button",
 					"hx-delete":  paths.Note(n.ID),
 					"hx-target":  "#note-list",

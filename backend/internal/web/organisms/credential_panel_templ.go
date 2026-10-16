@@ -249,12 +249,12 @@ func CredentialRow(p CredentialProviderView, errorMessage string) templ.Componen
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = atoms.Button(atoms.TonePrimary, "保存", templ.Attributes{"type": "submit"}).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = atoms.ButtonFor(atoms.TonePrimary, "保存", p.Label, templ.Attributes{"type": "submit"}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if p.Configured {
-			templ_7745c5c3_Err = atoms.Button(atoms.ToneNeutral, "削除", templ.Attributes{
+			templ_7745c5c3_Err = atoms.ButtonFor(atoms.ToneNeutral, "削除", p.Label, templ.Attributes{
 				"type":       "button",
 				"hx-delete":  paths.Credential(p.Provider),
 				"hx-params":  "none", // inside the api_key form: never send its values (the key) in the DELETE URL

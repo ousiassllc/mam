@@ -83,7 +83,6 @@ func replyAttrs(m domain.ThreadMessage) templ.Attributes {
 		"type":             "button",
 		"data-reply-to":    m.ID,
 		"data-reply-label": excerpt(m.ChatMessage),
-		"aria-label":       "このカードに返信",
 	}
 }
 
