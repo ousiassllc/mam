@@ -6,6 +6,11 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
+// storedTakeName is where a stored Take sits and which model made it: how its row names it.
+func storedTakeName(t domain.StoredTake) string {
+	return "Scene " + intText(t.SceneIndex+1) + " · Shot " + intText(t.ShotIndex+1) + " · " + t.ModelName
+}
+
 // StoragePanelData is the disk usage of a Project.
 type StoragePanelData struct {
 	ProjectID string
@@ -61,14 +66,14 @@ templ StoragePanel(d StoragePanelData) {
 				for _, t := range d.Storage.Takes {
 					<li class="flex flex-wrap items-center justify-between gap-2 py-2">
 						<span>
-							{ "Scene " + intText(t.SceneIndex+1) + " · Shot " + intText(t.ShotIndex+1) + " · " + t.ModelName }
+							{ storedTakeName(t) }
 							<span class="text-neutral-400">{ " · " + t.Status.Label() + " · " + domain.FormatBytes(t.SizeBytes) }</span>
 							if t.Unneeded {
 								@atoms.Badge(atoms.BadgeWarn, "不要")
 							}
 						</span>
 						if t.Archivable {
-							@atoms.SmallButtonFor(atoms.ToneNeutral, "アーカイブ", t.Label(), templ.Attributes{
+							@atoms.SmallButtonFor(atoms.ToneNeutral, "アーカイブ", storedTakeName(t), templ.Attributes{
 								"type":       "button",
 								"hx-post":    paths.Project(d.ProjectID, "takes", t.TakeID, "archive"),
 								"hx-target":  "#storage-panel",

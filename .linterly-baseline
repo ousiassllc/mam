@@ -68,13 +68,10 @@
 527	backend/internal/service/reshoot_test.go
 440	backend/internal/service/review.go
 2975	backend/internal/web/handler/
-2640	backend/internal/web/organisms/
+2599	backend/internal/web/organisms/
 373	spec/api/endpoints.md
 738	spec/architecture/er.md
 367	spec/architecture/model-adapters.md
 1648	spec/spec.md
 2279	static/src/components/lib/
-379	static/src/components/take-comparator/mam-take-comparator.ts
-346	static/src/components/timeline-editor/mam-timeline-editor.ts
-399	static/src/components/video-player/mam-video-player.ts
 370	static/src/components/video-player/mam-video-player.wtest.ts
