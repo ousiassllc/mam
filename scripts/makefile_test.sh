@@ -51,3 +51,14 @@ grep -qF 'go run github.com/a-h/templ/cmd/templ@"$templ_version" generate ./back
   exit 1
 }
 echo "ok: scripts/package-windows.sh runs templ ${templ_version} (go.mod), not the templ on PATH"
+
+# windows-latest checks out with core.autocrlf=true, which would turn scripts/*.sh into CRLF (bash then stops at
+# `set: pipefail\r: invalid option name`) unless .gitattributes pins the line endings. Text files must be forced to LF
+# and every binary file (git ls-files --eol: i/-text) must be marked binary explicitly, so it is never converted.
+while IFS= read -r f; do
+  [[ "$(git check-attr eol -- "$f")" == *'eol: lf' ]] || { echo "FAIL: .gitattributes does not pin $f to LF"; exit 1; }
+done < <(git ls-files -- 'scripts/*.sh' 'backend/internal/repository/migrations/*.sql' Makefile)
+while IFS= read -r f; do
+  [[ "$(git check-attr text -- "$f")" == *'text: unset' ]] || { echo "FAIL: binary file $f is not marked binary in .gitattributes"; exit 1; }
+done < <(git ls-files --eol | awk '$1 == "i/-text" {print $NF}')
+echo "ok: .gitattributes pins text files to LF and marks binary files as binary"
