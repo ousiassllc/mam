@@ -94,7 +94,6 @@ jobs:
 
       - name: Install tools
         run: |
-          go install github.com/a-h/templ/cmd/templ@"$(go list -m -f '{{.Version}}' github.com/a-h/templ)"
           go install github.com/wailsapp/wails/v3/cmd/wails3@"$(go list -m -f '{{.Version}}' github.com/wailsapp/wails/v3)"
           choco install nsis --version "$NSIS_VERSION" --no-progress -y
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
@@ -109,6 +108,13 @@ jobs:
           npm ci
           npm run build -- --minify
           npx --no-install vitest run src/build.test.ts
+
+      # ci.yml runs on Linux only (it only builds, vets and lints for GOOS=windows), so the Windows
+      # code (fsutil dirlock/diskfree: LockFileEx, GetDiskFreeSpaceEx) and the Windows branches of
+      # tests are never run. Run the light packages that hold them here, before the packaging.
+      # Packages that need ffmpeg are left out: with CI=true testenv.MissingFFmpeg fails the test.
+      - name: Go tests that exercise the Windows code
+        run: go test ./backend/internal/fsutil/... ./backend/internal/desktop/... ./backend/internal/app/... ./backend/internal/config/...
 
       - name: Package
         run: bash scripts/package-windows.sh "${GITHUB_REF_NAME#v}"
