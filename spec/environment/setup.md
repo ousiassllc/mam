@@ -43,6 +43,8 @@ Go（`go.mod` のバージョン）、Node.js（24。CI は `.github/workflows/c
 
 CI は `make fmt-check` と `make lint` を実行するため、上の検査は追加のステップ無しで CI に入る（`static/node_modules` は `make tools` の `npm ci` で用意される）。
 
+`static/build.mjs`（`npm run build` / `npm run dev`。`make build`・`scripts/package-windows.sh` が使う）は、esbuild と Tailwind を並べて動かす。Tailwind は `npx` を介さず、`process.execPath`（`node`）で、インストール済みの `@tailwindcss/cli`（`static/package.json` の devDependency）の `bin` が指すエントリを直接起動する（`shell` は使わない。Windows の `npx` は `npx.cmd` で、`shell` 無しの `spawn` では `ENOENT`（新しい Node では `EINVAL`）になるため。`--no-install` と同じく何も取得しない）。`static/src/build.test.ts` は環境変数 `MAM_TAILWIND_CLI`（Tailwind のエントリの上書き。テスト専用）で偽の Tailwind を差し込んで失敗経路を、PATH を空にして `npx` が無くても本物の Tailwind で本番ビルドが通ることを検査し、Windows でも動かす（SIGTERM のテストだけは Windows にシグナルが無いので Windows では飛ばす）。
+
 ## CI
 
 `.github/workflows/ci.yml`。`main` への push と全 PR で、組織の self-hosted runner（`runs-on: [self-hosted, Linux, X64]`）で実行する（GitHub-hosted の `ubuntu-latest` は課金で止まるとジョブが開始されず、CI が確認できなくなるため）。ツールは `make tools`（Makefile の版指定）で入れる。`make generate` → コミット済み `*_templ.go` の一致確認 → `fmt-check` → `lint` → 脆弱性の検査（`make vuln`。後述）→ 行数の悪化確認（`make lint-lines`。後述の Linterly 節）→ ffmpeg の確認（無ければ `sudo -n apt-get install -y ffmpeg`）→ Chrome の確認（Linux 版 Chrome も `CHROME_PATH` も無いときだけ、`unzip` が無ければ `sudo -n apt-get install -y unzip` で入れてから Chrome for Testing を取得する。取得に失敗したらそのステップで失敗する。前提は開発ツールの「Chrome / Chromium」）→ `test` → `build` の順。`make generate` の直後に `*_templ.go` が変更・未追跡になっていれば（`.templ` と食い違う古い・手編集の出力、再生成漏れ）失敗させる。`lint` / `test` / `build` は先に再生成するため、この確認がないと食い違いが緑になる（`_templ.go` は git 管理で、素の `go build` はそれをそのままコンパイルする）。`cmd/wails`（`//go:build windows`）は Linux の通常のステップに入らないため、`GOOS=windows CGO_ENABLED=0` で `go build ./backend/...`・`go vet ./backend/...`・`golangci-lint run ./backend/...` を別ステップで実行する（Windows 版の壊れを PR で検知する）。
@@ -75,9 +77,10 @@ Go テストの所要時間（`backend/internal/router`）: ffmpeg で作る素�
 
 1. checkout（`persist-credentials: false`）→ setup-go（`go.mod`）→ setup-node（24、npm キャッシュ）
 2. ツール: `templ`（`go.mod` の版）、`wails3`（`go.mod` の版）、`choco install nsis --version <版>`（ワークフローの `NSIS_VERSION` で固定）
-3. `bash scripts/package-windows.sh "${GITHUB_REF_NAME#v}"`（タグが `vX.Y.Z` でなければ失敗）
-4. スモーク（`bash scripts/smoke-windows.sh bin/mam-<version>-windows-amd64-setup.exe`）: インストーラーを `/S` で `RUNNER_TEMP` 配下へ静かにインストールし（`/D=`）、そのディレクトリの `mam.exe` を `--data-dir`（一時ディレクトリ）・`--port` 固定で起動して `GET /` が 200 を返すことを確認してから停止する。失敗したらリリースを作らない
-5. `actions/upload-artifact`（名前 `windows-release`）で 2 つの exe を `release` ジョブへ渡す
+3. フロントエンドのビルドとそのテスト（`working-directory: static`: `npm ci` → `npm run build -- --minify` → `npx --no-install vitest run src/build.test.ts`）: `ci.yml` は Linux だけで動き、`static/build.mjs`（Tailwind を子プロセスとして起動する）を Windows では一度も動かさないため、パッケージの前に Windows 上で動かして、この経路の不具合を専用のステップで落とす
+4. `bash scripts/package-windows.sh "${GITHUB_REF_NAME#v}"`（タグが `vX.Y.Z` でなければ失敗）
+5. スモーク（`bash scripts/smoke-windows.sh bin/mam-<version>-windows-amd64-setup.exe`）: インストーラーを `/S` で `RUNNER_TEMP` 配下へ静かにインストールし（`/D=`）、そのディレクトリの `mam.exe` を `--data-dir`（一時ディレクトリ）・`--port` 固定で起動して `GET /` が 200 を返すことを確認してから停止する。失敗したらリリースを作らない
+6. `actions/upload-artifact`（名前 `windows-release`）で 2 つの exe を `release` ジョブへ渡す
 
 ### `release`（`ubuntu-latest`、`needs: build`、`contents: write`）
 
@@ -140,3 +143,4 @@ pre-commit（`scripts/linterly-staged.sh`）は従来どおり、コミット対
 | 1.19 | 2026-10-15 | CI の `Ensure Chrome` ステップを、`npx --yes @puppeteer/browsers install chrome@stable` から、`static/package.json` の devDependency に固定した `@puppeteer/browsers`（`static/node_modules/.bin/browsers`）と `CHROME_VERSION` で固定した Chrome for Testing の取得に改め、「Chrome / Chromium」に版固定の方針を追記した | Issue #723。`@puppeteer/browsers` も `chrome@stable` も版が固定されておらず、`--yes` で未検証のパッケージを取得して self-hosted runner 上で実行していた。`stable` が進むと同じコミットで Lit コンポーネントテストの結果が変わりえた |
 | 1.20 | 2026-10-15 | 開発ツールの「Chrome / Chromium」と CI 節に、`Ensure Chrome` が Chrome for Testing の zip 展開に `unzip` を必要とすることを明記し、`ci.yml` の `Ensure Chrome` に、`unzip` が無いときだけ `sudo -n apt-get install` で入れる確認を足した（ffmpeg と同じ扱い） | Issue #726。`browsers install` は `unzip`（か任意依存の `yauzl`）が無いと `Extraction failed: no zip archiver is available` で失敗するが、`ci.yml` も仕様書も `unzip` の前提を確認・記載していなかった。Linux 版 Chrome も `unzip` も無い最小構成の runner で、このステップだけが分かりにくく失敗した |
 | 1.21 | 2026-10-16 | CI の `Ensure Chrome` ステップに `shell: bash`（`bash -eo pipefail`）を指定し、取得した Chrome のパスが空・実行不可なら `::error::` を出して失敗させるようにした。開発ツールの「Chrome / Chromium」と CI 節に「取得に失敗したらステップが失敗する」ことを明記した | Issue #728。`ci.yml` の `Ensure Chrome` は `shell:` 未指定（既定は `bash -e` で `pipefail` なし）のため、`browsers install \| tail \| cut` の終了コードが `cut` の 0 になり、取得に失敗してもステップが成功して空の `CHROME_PATH=` を `$GITHUB_ENV` に書いていた。失敗が後続の `Test` で別の症状として現れ、原因が読めなかった |
+| 1.22 | 2026-10-16 | 「フロントエンドの整形・lint」節の後に、`static/build.mjs` が Tailwind を `npx` ではなく `node` でインストール済みの `@tailwindcss/cli` のエントリから直接起動することを追記し、`release.yml` の `build` ジョブの手順に、パッケージの前に Windows 上でフロントエンドのビルドと `build.test.ts` を動かす手順（手順 3）を足した（以降の手順は繰り下げ） | Issue #765。`build.mjs` は `spawn('npx', …)`（`shell` 無し）で Tailwind を起動しており、Windows の `npx.cmd` を起動できず `build failed: spawn npx ENOENT` で `scripts/package-windows.sh` が止まり、リリースの `build` ジョブ（`windows-latest`）が成功しなかった。CI は Linux だけで、`build.test.ts` の Tailwind 異常系も Windows では `skipIf` で飛ばしていたため、この経路は一度も検証されていなかった |
