@@ -6,8 +6,8 @@ import { STATUS_CLASS } from './take-status';
 /** What the buttons of a row do: the component owns the request, its busy state and the confirmation. */
 export interface TakeActions {
   busy: boolean;
-  select(url: string): void;
-  reject(url: string): void;
+  select(take: TakeScore): void;
+  reject(take: TakeScore): void;
 }
 
 export function renderTakeTable(takes: TakeScore[], minAxis: number, actions: TakeActions) {
@@ -49,12 +49,12 @@ function renderRow(t: TakeScore, minAxis: number, actions: TakeActions) {
           ? html`<span class="flex gap-3">
             ${
               t.select_url
-                ? html`<button type="button" aria-label="選択: Take ${t.label}" class="underline hover:text-neutral-100" data-action="select" ?disabled=${actions.busy} @click=${() => actions.select(t.select_url!)}>選択</button>`
+                ? html`<button type="button" aria-label="選択: Take ${t.label}" class="underline hover:text-neutral-100" data-action="select" ?disabled=${actions.busy} @click=${() => actions.select(t)}>選択</button>`
                 : nothing
             }
             ${
               t.reject_url
-                ? html`<button type="button" aria-label="除外: Take ${t.label}" class="underline hover:text-neutral-100" data-action="reject" ?disabled=${actions.busy} @click=${() => actions.reject(t.reject_url!)}>除外</button>`
+                ? html`<button type="button" aria-label="除外: Take ${t.label}" class="underline hover:text-neutral-100" data-action="reject" ?disabled=${actions.busy} @click=${() => actions.reject(t)}>除外</button>`
                 : nothing
             }
           </span>`

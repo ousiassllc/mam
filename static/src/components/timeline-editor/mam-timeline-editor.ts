@@ -1,5 +1,6 @@
 import { LitElement, html, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { repeat } from 'lit/directives/repeat.js';
 import { get, put } from '../lib/api';
 import {
   captionProblem,
@@ -9,7 +10,6 @@ import {
   setCaption,
   setTransition,
   setTrim,
-  timelineSeconds,
   toPayload,
   trimProblem,
   withStarts,
@@ -20,7 +20,9 @@ import { errorMessage } from '../lib/errors';
 import { createLogger } from '../lib/logger';
 import '../video-player/mam-video-player';
 import { type EditTimelineBody, TIMELINE_RELOAD_EVENT, TIMELINE_UPDATED_EVENT } from './timeline-api';
-import { renderClipRow } from './timeline-clip';
+import { clipKey, renderClipRow } from './timeline-clip';
+import { focusMoved, focusRemoved, focusToolbar } from './timeline-focus';
+import { renderToolbar } from './timeline-toolbar';
 
 const log = createLogger('timeline-editor');
 
@@ -45,6 +47,7 @@ export class MamTimelineEditor extends LitElement {
   @state() private clips: EditClip[] = [];
   @state() private error = '';
   @state() private notice = '';
+  @state() private announce = '';
   @state() private busy = false;
   @state() private loaded = false;
   @state() private dragIndex = -1;
@@ -129,7 +132,7 @@ export class MamTimelineEditor extends LitElement {
     this.captionDraft = null;
     if (next !== this.clips) {
       this.clips = next;
-      this.notice = '';
+      this.notice = this.announce = '';
       this.error = '';
     }
     this.requestUpdate();
@@ -180,7 +183,7 @@ export class MamTimelineEditor extends LitElement {
   private onDrop(to: number): void {
     const from = this.dragIndex;
     this.dragIndex = this.overIndex = -1;
-    if (from >= 0) this.change(moveClip(this.clips, from, to));
+    if (from >= 0) this.moveTo(from, to);
   }
 
   /** Saves the clips as the next version. */
@@ -205,7 +208,24 @@ export class MamTimelineEditor extends LitElement {
       this.error = errorMessage(error);
     } finally {
       this.busy = false;
+      focusToolbar(this);
     }
+  }
+
+  private moveTo(from: number, to: number): void {
+    const clip = this.clips[from];
+    this.change(moveClip(this.clips, from, to));
+    if (!clip) return;
+    this.announce = `${clip.label} を ${to + 1} 番目へ移動しました`;
+    focusMoved(this, clip.shot_id, from, to);
+  }
+
+  private removeAt(at: number): void {
+    const clip = this.clips[at];
+    this.change(removeClip(this.clips, at));
+    if (!clip) return;
+    this.announce = `${clip.label} を外しました（${this.clips.length} クリップ）`;
+    focusRemoved(this, this.clips[Math.min(at, this.clips.length - 1)]?.shot_id);
   }
 
   protected override render() {
@@ -218,31 +238,23 @@ export class MamTimelineEditor extends LitElement {
           Rough Cut がまだありません。各 Shot の採用 Take を選んでから「Rough Cut を作成」を押してください。
         </p>`;
     }
-    const dirty = isDirty(body.clips, this.clips);
     return html`
       <div class="flex flex-col gap-4">
         ${this.renderError()}
         ${this.notice ? html`<p class="text-xs text-emerald-300" role="status" data-notice>${this.notice}</p>` : nothing}
+        <p class="sr-only" role="status" data-announce>${this.announce}</p>
         <mam-video-player video-src=${body.preview_url}></mam-video-player>
         <ol class="flex flex-col gap-2" data-clips>
-          ${this.clips.map((c, i) => this.renderClip(c, i, body))}
+          ${repeat(this.clips, clipKey, (c, i) => this.renderClip(c, i, body))}
         </ol>
-        <div class="flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            data-action="save"
-            class="rounded bg-neutral-200 px-3 py-1 text-xs font-medium text-neutral-900 disabled:opacity-40"
-            ?disabled=${this.locked || !dirty}
-            @click=${() => void this.save()}
-          >
-            保存
-          </button>
-          <button type="button" data-action="revert" class="text-xs text-neutral-400 underline disabled:opacity-40" ?disabled=${this.busy || !dirty} @click=${() => void this.load()}>
-            変更を戻す
-          </button>
-          <span class="text-xs text-neutral-400" data-total>合計 ${timelineSeconds(this.clips).toFixed(1)} 秒 / ${this.clips.length} クリップ${dirty ? '（未保存の変更あり）' : ''}</span>
-          ${body.readonly ? html`<span class="text-xs text-amber-300" data-readonly>この段階では編集できません</span>` : nothing}
-        </div>
+        ${renderToolbar({
+          clips: this.clips,
+          saved: body.clips,
+          busy: this.busy,
+          readonly: body.readonly,
+          save: () => void this.save(),
+          revert: () => void this.load().then(() => focusToolbar(this)),
+        })}
       </div>
     `;
   }
@@ -272,8 +284,8 @@ export class MamTimelineEditor extends LitElement {
       },
       drop: (at) => this.onDrop(at),
       dragEnd: () => (this.dragIndex = this.overIndex = -1),
-      move: (from, to) => this.change(moveClip(this.clips, from, to)),
-      remove: (at) => this.change(removeClip(this.clips, at)),
+      move: (from, to) => this.moveTo(from, to),
+      remove: (at) => this.removeAt(at),
       trim: (at, field, input) => this.onTrim(at, field, input),
       transition: (at, type, raw) => this.onTransition(at, type, raw),
       caption: (at, input) => this.onCaption(at, input),

@@ -21,13 +21,19 @@ async function reviewAnswerMiddleware(ctx, next) {
   ctx.body = await readFile(new URL(`./src/components/testdata/${file}`, import.meta.url));
 }
 
+// The answer of "restore a version" (test: focus-restore): the handler sends `HX-Trigger: branch-reload`.
+async function hxTriggerMiddleware(ctx, next) {
+  await next();
+  if (ctx.path.endsWith('/focus-trigger-after.html')) ctx.set('HX-Trigger', 'branch-reload');
+}
+
 export default {
   files: 'src/components/**/*.wtest.ts',
   // One page at a time: when two pages load a clip together (video-player and review-workspace wtests
   // run side by side) the <video> metadata of both never loads and the tests time out.
   concurrency: 1,
   nodeResolve: true,
-  middleware: [reviewAnswerMiddleware],
+  middleware: [reviewAnswerMiddleware, hxTriggerMiddleware],
   plugins: [esbuildPlugin({ ts: true, tsconfig: './tsconfig.json' })],
   browsers: [
     chromeLauncher({

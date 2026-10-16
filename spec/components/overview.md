@@ -173,11 +173,17 @@ export class MamTakeComparator extends LitElement {
 
 ### 5.2 差し替え後のフォーカスの復帰（`static/src/components/focus-restore/`）
 
-押したボタンを含む領域を `hx-swap="outerHTML"` で差し替える操作（LockToggle の AUTO / MANUAL / LOCK、削除、アーカイブ）では、htmx は元の要素が `id` を持つときだけ同じ `id` の要素へフォーカスを戻す。ボタンに `id` は付けないため、`main.ts` が `installFocusRestore()` で `htmx:beforeSwap`（差し替え前のフォーカスを覚える）と `htmx:afterSwap`（戻す）を購読する。Lit コンポーネントではない。
+押したボタンを含む領域を `hx-swap="outerHTML"` で差し替える操作（LockToggle の AUTO / MANUAL / LOCK、削除、アーカイブ）では、htmx は元の要素が `id` を持つときだけ同じ `id` の要素へフォーカスを戻す。ボタンに `id` は付けないため、`main.ts` が `installFocusRestore()` で `htmx:beforeRequest`（押したコントロールを覚える）・`htmx:beforeSwap`（差し替え前の位置を控える）・`htmx:afterSwap`（戻す）・`htmx:afterRequest`（残ったコントロールのフォーカスを戻す）を購読する。Lit コンポーネントではない。
 
-- 対象は、利用者の操作（`click`・`submit`・`change`・`input`・`keydown`・`keyup`・`dblclick`）で始まったリクエストの swap のうち、差し替え先の中にフォーカスがあり、差し替え後にその要素が消えてフォーカスが `<body>` へ落ちたものだけ。ポーリング（`every`）・`load` / `revealed`・WebSocket 起点の再取得は操作のイベントを持たないので触らない。応答が届く前に利用者がフォーカスを別へ移していたとき、htmx が `id` で戻したときも触らない
-- 戻し先は、差し替え後の領域の中で、(1) 種類・`name`・`value`・`hx-*` の URL・ラベル・`data-focus-key` が同じコントロール（同じものが複数あれば同じ順番）、(2) 行の URL・ラベルを除いた種類が同じコントロールの同じ順番（最後を超えたら最後。削除した行の次の行の削除ボタン）、(3) 領域自身（`tabindex="-1"` を付けて）の順
+- 対象は、利用者の操作（`click`・`submit`・`change`・`input`・`keydown`・`keyup`・`dblclick`）で始まったリクエスト、およびその応答の `HX-Trigger`（Branch の版の復元後の `branch-reload` など）が起こしたリクエストの swap のうち、押したコントロールが消えてフォーカスが `<body>` へ落ちたものだけ。ポーリング（`every`）・`load` / `revealed`・WebSocket 起点の再取得は、利用者の操作の応答の最中でなければ操作のイベントを持たないので触らない。応答が届く前に利用者がフォーカスを別へ移していたとき、htmx が `id` で戻したときも触らない
+- 押したコントロールは、**リクエストを出す時点**（`htmx:beforeRequest`）の `document.activeElement` で覚える。`hx-disabled-elt` は直後に押したボタンを `disabled` にし、Chrome は `disabled` にしたボタンのフォーカスを `<body>` へ落とすため、応答が届いた時点（`htmx:beforeSwap`）では覚えられない。フォーカスが `<body>` に落ちていても、押したコントロールがまだ DOM にあれば、それを覚えたものとして扱う
+- 戻し先は、差し替え後の領域（`hx-target`、`hx-swap-oob` で同じ `id` の要素に置き換わった祖先）の中で、(1) 種類・`name`・`value`・`hx-*` の URL・ラベル・`data-focus-key` が同じコントロール（同じものが複数あれば同じ順番）、(2) 行の URL・ラベルを除いた種類が同じコントロールの同じ順番（最後を超えたら最後。削除した行の次の行の削除ボタン）、(3) 領域自身（`tabindex="-1"` を付けて）の順。押したコントロールが残り、`disabled` が外れたときは、リクエストの終了後にそのコントロールへ戻す
+- `hx-swap-oob` で領域を差し替える操作（編集画面のステージボタン、Brand 制約・Brand Template・Note の追加フォーム）では、押したコントロールが `hx-target` の外にあっても、それを含む `id` 付きの祖先を `id` で探し直し、その中の同じコントロールへ戻す
 - チャットの返信先の「×」（`#reply-cancel`）は swap ではなく自分で非表示にするため、`chat.ts` が押したときに入力欄へフォーカスを戻す（返信を始めたときの動作と揃える）
+- Lit コンポーネント（`mam-take-comparator`・`mam-timeline-editor`）は htmx を通らないため、操作の結果の描画が終わった後（`updateComplete`）に `focus-restore/lit-focus.ts` の `focusAfterUpdate()` でフォーカスを戻す。フォーカスが `<body>` に落ちたときだけ動き、利用者が別へ移していれば触らない。戻し先は、(1) 同じ行の同じ種類のボタン、(2) 同じ行の別のボタン、(3) 行・パネル・一覧（`tabindex="-1"` を付けて）の順:
+  - Take の「選択」「除外」→ 同じ行の残ったボタン、なければ行見出し。「この区間で合成」→ 選択パネル、区間の「×」→ 次の区間の「×」（最後なら 1 つ前）
+  - Timeline の「↑」「↓」→ 動かしたクリップの同じ向きのボタン（動かせなくなったら反対向き）。「外す」→ 代わりに同じ位置に来たクリップの「外す」（残りが 1 つで押せなければ行）。「保存」→ 保存失敗なら「保存」、成功なら「保存しました」の通知。「変更を戻す」→ クリップ一覧
+  - Timeline の行は `shot_id` をキーに描画し（`repeat`）、行を入れ替えても DOM がクリップと一緒に動く（フォーカス中のボタンが別のクリップの `aria-label` に変わらない）。並べ替え・削除の結果は `role="status"` の `data-announce` で「X を N 番目へ移動しました」「X を外しました」と読み上げる
 
 ## 改訂履歴
 
@@ -255,3 +261,4 @@ export class MamTakeComparator extends LitElement {
 | 1.69 | 2026-10-16 | §4.3 の Take Comparator のスコア表で、`limits.min_axis_score` を下回る値に `▼` と読み上げ用の「（基準 N 未満）」を足し、スコアの無い `—` に「スコアなし」を添えることを書いた。§4.1 の動画プレイヤーの操作ボタンを `◀|` / `▶` / `|▶` に分け、3 つに `title` を付けることを書いた（本文の行数は増やしていない） | Issue #790・#795・#791。基準未満が赤色だけで伝わらず（WCAG 1.4.1）、再生と 1 コマ進むが同じ `▶` で見分けられなかった |
 | 1.70 | 2026-10-16 | 共通ライブラリの節に §5.2「差し替え後のフォーカスの復帰」を足した（`main.ts` が `installFocusRestore()` で `htmx:beforeSwap` / `htmx:afterSwap` を購読し、利用者の操作で始まった swap が、フォーカス中のコントロールを消したときだけ、差し替え後の同じコントロールへフォーカスを戻す）。`chat.ts` の返信先の「×」は、押すとフォーカスを入力欄へ戻す | Issues #789・#794。LockToggle・削除・アーカイブなどのボタンは `id` を持たないまま領域ごと `outerHTML` で差し替わるため、htmx が戻すフォーカスが働かず、キーボード・スクリーンリーダーの利用者は押すたびに `<body>` へ落ちていた（WCAG 2.4.3） |
 | 1.71 | 2026-10-16 | §3 の atoms に `ButtonFor`（通常サイズの `Button` の行ごと版）を足し、行ごとに繰り返すボタンは `*For` を使うという規約と、その適用範囲（レビューのコメント・版履歴・認証情報・Reference Library・Note・Shot カードの操作・Shot Inspector の Take・World State・Series の Character）を一般化して書いた。レビューのコメントの解決切り替え・Shot カードの生成 / Reference Pack / 続きを作る・「追加の指示」の sr-only ラベル・Shot Inspector の「生成の経緯」・World State の「保存」「割り当て」・Series の Character の「保存」を `*For`（`RowLabel`）にしたことを記録した（`molecules.WorldStateSave` と `molecules.ShotActions` は行名の引数を持つ） | Issues #799・#800・#804。#783/#793 の行ボタンの accessible name が `ButtonFor` と上の画面に及んでおらず、仕様の atoms 一覧も `ButtonFor` を欠いていたため（実装が妥当で、仕様書を更新する） |
+| 1.72 | 2026-10-16 | §5.2 のフォーカス復帰を拡張した: 押したコントロールを `htmx:beforeRequest` で覚える（`hx-disabled-elt` で `<body>` に落ちても働く）、`HX-Trigger` が起こした再読込を対象にする、`hx-swap-oob` で差し替わる領域（ステージボタン・追加フォーム）の中の同じコントロールへ戻す、`htmx:afterRequest` で残ったボタンのフォーカスを戻す、Lit コンポーネント（Take Comparator・Timeline Editor）の操作後のフォーカスの戻し先と Timeline の行のキー・読み上げ（`data-announce`）を規定した | Issues #798・#801・#802・#803。#789 の復帰は `hx-disabled-elt` 付きのボタン・`HX-Trigger` の再読込・OOB 差し替え・Lit の操作では働かず、フォーカスが `<body>` に落ちたままだった（WCAG 2.4.3） |
