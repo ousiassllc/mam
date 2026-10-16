@@ -200,7 +200,7 @@ templ seriesCharacterForm(d Data, c domain.WorldCharacter) {
 			}
 		</div>
 		<div>
-			@atoms.Button(atoms.TonePrimary, "保存", templ.Attributes{"type": "submit"})
+			@atoms.ButtonFor(atoms.TonePrimary, "保存", c.Name, templ.Attributes{"type": "submit"})
 		</div>
 	</form>
 }

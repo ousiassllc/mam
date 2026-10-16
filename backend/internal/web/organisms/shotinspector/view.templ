@@ -164,7 +164,7 @@ templ View(d Data) {
 								<span>{ fmt.Sprintf("Take %d", i+1) }</span>
 								@molecules.TakeStatusBadge(t.Status)
 								<span class="text-xs text-neutral-400">{ t.ModelName }</span>
-								@atoms.Button(atoms.ToneNeutral, "生成の経緯", templ.Attributes{
+								@atoms.ButtonFor(atoms.ToneNeutral, "生成の経緯", fmt.Sprintf("Take %d · %s", i+1, t.ModelName), templ.Attributes{
 									"type": "button", "hx-get": paths.Take(t.ID, "trace"), "hx-target": "next [data-take-trace-slot]", "hx-swap": "innerHTML",
 								})
 							</div>

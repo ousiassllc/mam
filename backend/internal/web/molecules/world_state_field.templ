@@ -46,11 +46,12 @@ templ WorldStateField(d WorldStateFieldData) {
 	</div>
 }
 
-// WorldStateSave is the save button of an entity's edit form (id is the DOM id of its element). The inputs of
+// WorldStateSave is the save button of an entity's edit form (id is the DOM id of its element; subject names
+// the entity in its accessible name). The inputs of
 // LOCKed fields are disabled, so the browser does not send them: when every field is LOCKed a save would carry
 // nothing and the server would refuse it (422), so the reason is shown instead of a button that always fails.
 // oob makes it replace the one already on the page (the response to a LOCK switch).
-templ WorldStateSave(id string, fields []WorldStateFieldData, oob bool) {
+templ WorldStateSave(id, subject string, fields []WorldStateFieldData, oob bool) {
 	<div
 		id={ id }
 		if oob {
@@ -58,7 +59,7 @@ templ WorldStateSave(id string, fields []WorldStateFieldData, oob bool) {
 		}
 	>
 		if slices.ContainsFunc(fields, func(f WorldStateFieldData) bool { return !f.Locked }) {
-			@atoms.Button(atoms.TonePrimary, "保存", templ.Attributes{"type": "submit"})
+			@atoms.ButtonFor(atoms.TonePrimary, "保存", subject, templ.Attributes{"type": "submit"})
 		} else {
 			<p class="text-sm text-neutral-400" data-entity-edit-blocked>すべての項目が LOCK 中のため編集できません。</p>
 		}
