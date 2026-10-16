@@ -34,7 +34,7 @@ func AnalyticsPanel(m domain.ProductionMetrics) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div id=\"analytics-panel\" class=\"flex flex-col gap-6\"><section class=\"rounded-md border border-emerald-700 bg-emerald-950/30 p-4\" data-testid=\"north-star\"><h3 class=\"text-xs text-neutral-400\">North Star: 人間の細かな生成操作なしで、採用可能な完成動画に到達した割合</h3><p class=\"text-3xl font-semibold\" data-testid=\"metric-north-star\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div id=\"analytics-panel\" class=\"flex flex-col gap-6\"><section class=\"rounded-md border border-emerald-700 bg-emerald-950/30 p-4\" data-testid=\"north-star\"><h2 class=\"text-xs text-neutral-400\">North Star: 人間の細かな生成操作なしで、採用可能な完成動画に到達した割合</h2><p class=\"text-3xl font-semibold\" data-testid=\"metric-north-star\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -78,7 +78,7 @@ func AnalyticsPanel(m domain.ProductionMetrics) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		for _, g := range metricGroups(m) {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<section class=\"flex flex-col gap-2\"><h3 class=\"text-sm font-semibold\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<section class=\"flex flex-col gap-2\"><h2 class=\"text-sm font-semibold\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -91,7 +91,7 @@ func AnalyticsPanel(m domain.ProductionMetrics) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</h3><dl class=\"grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</h2><dl class=\"grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

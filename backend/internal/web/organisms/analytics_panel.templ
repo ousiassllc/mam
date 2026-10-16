@@ -8,13 +8,13 @@ import "github.com/ousiassllc/mam/backend/internal/domain"
 templ AnalyticsPanel(m domain.ProductionMetrics) {
 	<div id="analytics-panel" class="flex flex-col gap-6">
 		<section class="rounded-md border border-emerald-700 bg-emerald-950/30 p-4" data-testid="north-star">
-			<h3 class="text-xs text-neutral-400">North Star: 人間の細かな生成操作なしで、採用可能な完成動画に到達した割合</h3>
+			<h2 class="text-xs text-neutral-400">North Star: 人間の細かな生成操作なしで、採用可能な完成動画に到達した割合</h2>
 			<p class="text-3xl font-semibold" data-testid="metric-north-star">{ percentText(m.NorthStar) }</p>
 			<p class="text-xs text-neutral-400">{ fractionText(m.NorthStar) } Project（着手済み { intText(m.Started) } 件のうち、完成・介入なし）</p>
 		</section>
 		for _, g := range metricGroups(m) {
 			<section class="flex flex-col gap-2">
-				<h3 class="text-sm font-semibold">{ g.Title }</h3>
+				<h2 class="text-sm font-semibold">{ g.Title }</h2>
 				<dl class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
 					for _, row := range g.Rows {
 						<div class="rounded-md border border-neutral-700 p-3" data-testid={ "metric-" + row.Key }>

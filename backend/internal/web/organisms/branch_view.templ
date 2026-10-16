@@ -209,8 +209,8 @@ templ BranchTree(d BranchTreeData, oob bool) {
 			hx-swap-oob="true"
 		}
 	>
-		<ul role="tree" class="flex flex-col gap-1 text-sm">
-			<li role="treeitem" aria-selected="false" aria-expanded="true">
+		<ul class="flex flex-col gap-1 text-sm">
+			<li>
 				<span class="text-neutral-300">トランク</span>
 				if len(d.Roots) > 0 {
 					@branchTreeGroup(d.Roots, d.SelectedID)
@@ -224,21 +224,18 @@ templ BranchTree(d BranchTreeData, oob bool) {
 }
 
 templ branchTreeGroup(nodes []BranchTreeNode, selected string) {
-	<ul role="group" class="ml-3 mt-1 flex flex-col gap-1 border-l border-neutral-700 pl-3">
+	<ul class="ml-3 mt-1 flex flex-col gap-1 border-l border-neutral-700 pl-3">
 		for _, n := range nodes {
-			<li
-				role="treeitem"
-				aria-selected={ strconv.FormatBool(n.Branch.ID == selected) }
-				if len(n.Children) > 0 {
-					aria-expanded="true"
-				}
-			>
+			<li>
 				<a
 					href={ templ.SafeURL(branchURL(n.Branch.ID)) }
 					hx-get={ branchURL(n.Branch.ID) }
 					hx-target="#branch-detail"
 					hx-swap="innerHTML"
 					class={ "underline", templ.KV("font-semibold text-indigo-300", n.Branch.ID == selected), templ.KV("text-neutral-200", n.Branch.ID != selected) }
+					if n.Branch.ID == selected {
+						aria-current="true"
+					}
 					data-branch={ n.Branch.ID }
 				>{ n.Branch.Name }（{ branchPointText(n.Branch) }）</a>
 				if len(n.Children) > 0 {
@@ -259,7 +256,7 @@ templ BranchDetailWithTree(d BranchDetailData, tree BranchTreeData) {
 // the forms that make a Branch at a Shot. The chat thread is not split by Branch.
 templ BranchView(d BranchPageData) {
 	<div id="branch-view" class="flex flex-col gap-6">
-		<section aria-label="Branch ツリー" class="flex flex-col gap-2">
+		<section class="flex flex-col gap-2">
 			<h2 class="text-sm font-semibold text-neutral-200">Branch ツリー</h2>
 			@BranchTree(BranchTreeData{Roots: d.Roots, SelectedID: selectedBranchID(d)}, false)
 		</section>
