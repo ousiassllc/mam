@@ -55,6 +55,7 @@ function renderMarker(marker: Marker, max: number, seek: (time: number) => void)
 /** The time bar (with the Issue markers) and the frame / play buttons under the video. */
 export function renderTransport(v: TransportView) {
   const { max, rate } = v;
+  const playLabel = v.playing ? '一時停止' : '再生';
   return html`
     <div class="relative" data-timebar>
       <input
@@ -77,11 +78,11 @@ export function renderTransport(v: TransportView) {
       }
     </div>
     <div class="flex items-center gap-2 text-xs text-neutral-300">
-      <button type="button" data-action="prev-frame" class="rounded border border-neutral-700 px-2 py-0.5" aria-label="1 コマ戻る" @click=${() => v.step(-1)}>◀</button>
-      <button type="button" data-action="play" class="rounded border border-neutral-700 px-2 py-0.5" aria-label=${v.playing ? '一時停止' : '再生'} @click=${v.toggle}>
+      <button type="button" data-action="prev-frame" class="rounded border border-neutral-700 px-2 py-0.5" aria-label="1 コマ戻る" title="1 コマ戻る" @click=${() => v.step(-1)}>◀|</button>
+      <button type="button" data-action="play" class="rounded border border-neutral-700 px-2 py-0.5" aria-label=${playLabel} title=${playLabel} @click=${v.toggle}>
         ${v.playing ? '❚❚' : '▶'}
       </button>
-      <button type="button" data-action="next-frame" class="rounded border border-neutral-700 px-2 py-0.5" aria-label="1 コマ進む" @click=${() => v.step(1)}>▶</button>
+      <button type="button" data-action="next-frame" class="rounded border border-neutral-700 px-2 py-0.5" aria-label="1 コマ進む" title="1 コマ進む" @click=${() => v.step(1)}>|▶</button>
       <span class="font-mono" data-timecode>${formatTimecode(v.currentTime, rate)}</span>
       <span class="font-mono text-neutral-400">/ ${formatTimecode(max, rate)}</span>
       <span class="text-neutral-400">${rate.toFixed(rate % 1 === 0 ? 0 : 2)} fps${v.rateKnown ? '' : '（仮）'}</span>

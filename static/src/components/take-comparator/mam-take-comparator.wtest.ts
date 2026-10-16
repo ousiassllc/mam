@@ -33,7 +33,8 @@ describe('mam-take-comparator: score table', () => {
     expect(a.textContent).to.contain('FAIL');
 
     const b = el.querySelector('[data-take="t2"]')!;
-    expect(text(b, '[data-score="product"]')).to.equal('—'); // not judged yet
+    expect(text(b, '[data-score="product"]')).to.equal('—スコアなし'); // not judged yet: read out as "no score"
+    expect(b.querySelector('[data-score="product"] [data-no-score] .sr-only')?.textContent).to.equal('スコアなし');
     expect(text(b, '[data-status]')).to.equal('採用');
     expect(b.querySelector('[data-adopted]')).to.not.equal(null);
     expect(b.querySelector('[data-action="select"]')).to.equal(null); // already selected
@@ -45,9 +46,9 @@ describe('mam-take-comparator: score table', () => {
     expect(el.querySelectorAll('mam-video-player').length).to.equal(2);
   });
 
-  it('shows a score in red only when it is below the min_axis_score the server gave', async () => {
+  it('marks a score below the min_axis_score the server gave in text, not by colour alone', async () => {
     // product 65 / acting 100 / camera 85 / continuity 100: Balanced (55) fails none, Max Quality (70) fails Product.
-    const redScores = async (min_axis_score: number) => {
+    const belowMin = async (min_axis_score: number) => {
       stub = stubFetch({
         [`GET ${API}`]: body([take('t1', 'A', { scores: scored })], undefined, {
           max_segments: 8,
@@ -56,17 +57,27 @@ describe('mam-take-comparator: score table', () => {
         }),
       });
       const el = await comparator();
-      const red = [...el.querySelectorAll('[data-take="t1"] [data-score] .text-red-300')].map(
-        (s) => s.parentElement!.dataset.score,
-      );
+      const cells = [...el.querySelectorAll('[data-take="t1"] [data-score]')];
+      const marked = cells.filter((c) => c.querySelector('[data-below-min]') !== null);
+      // What a screen reader and a colour-blind reader get: the score, the reason and a visible ▼.
+      for (const c of marked) {
+        expect(c.querySelector('.sr-only')?.textContent).to.equal(`（基準 ${min_axis_score} 未満）`);
+        expect(c.textContent).to.contain('▼');
+        expect(c.querySelector('[aria-hidden="true"]')?.textContent).to.equal(' ▼');
+      }
+      // A passing score is the bare number: no marker, no hidden text.
+      for (const c of cells.filter((c) => !marked.includes(c))) {
+        expect(c.querySelector('.sr-only')).to.equal(null);
+        expect(c.textContent).to.not.contain('▼');
+      }
       stub.restore();
-      return red;
+      return marked.map((c) => (c as HTMLElement).dataset.score);
     };
 
-    expect(await redScores(55)).to.deep.equal([]);
-    expect(await redScores(70)).to.deep.equal(['product']);
-    expect(await redScores(65)).to.deep.equal([]); // reaching the minimum is a pass
-    expect(await redScores(90)).to.deep.equal(['product', 'camera']);
+    expect(await belowMin(55)).to.deep.equal([]);
+    expect(await belowMin(70)).to.deep.equal(['product']);
+    expect(await belowMin(65)).to.deep.equal([]); // reaching the minimum is a pass
+    expect(await belowMin(90)).to.deep.equal(['product', 'camera']);
   });
 
   it('says so when the Shot has no Take', async () => {
