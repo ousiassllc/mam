@@ -188,18 +188,6 @@ func (r *PlanRepository) ListScenes(ctx context.Context, projectID string) ([]do
 	return scenes, nil
 }
 
-// GetScene returns a Scene of the Project or ErrNotFound.
-func (r *PlanRepository) GetScene(ctx context.Context, projectID, sceneID string) (domain.Scene, error) {
-	s, err := scanScene(r.db.Reader().QueryRowContext(ctx, sceneSelect+` WHERE s.project_id = ? AND s.id = ?`, projectID, sceneID))
-	if errors.Is(err, sql.ErrNoRows) {
-		return domain.Scene{}, ErrNotFound
-	}
-	if err != nil {
-		return domain.Scene{}, fmt.Errorf("get scene: %w", err)
-	}
-	return s, nil
-}
-
 // GetSceneByID returns a Scene by its ID alone or ErrNotFound.
 func (r *PlanRepository) GetSceneByID(ctx context.Context, sceneID string) (domain.Scene, error) {
 	s, err := scanScene(r.db.Reader().QueryRowContext(ctx, sceneSelect+` WHERE s.id = ?`, sceneID))

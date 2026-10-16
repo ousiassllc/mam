@@ -389,16 +389,3 @@ func (r *VersionRepository) BranchProject(ctx context.Context, branchID string) 
 	}
 	return projectID, nil
 }
-
-// ShotProject returns the Project the Shot belongs to (ErrNotFound for an unknown Shot).
-func (r *VersionRepository) ShotProject(ctx context.Context, shotID string) (string, error) {
-	var projectID string
-	err := r.db.Reader().QueryRowContext(ctx, `SELECT sc.project_id FROM shot sh JOIN scene sc ON sc.id = sh.scene_id WHERE sh.id = ?`, shotID).Scan(&projectID)
-	if errors.Is(err, sql.ErrNoRows) {
-		return "", ErrNotFound
-	}
-	if err != nil {
-		return "", fmt.Errorf("get shot project: %w", err)
-	}
-	return projectID, nil
-}
