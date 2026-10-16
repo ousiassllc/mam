@@ -176,5 +176,22 @@ describe('focus after a request that disables, replaces by hx-swap-oob or sets o
       expectFocusOn(find('[data-focus-key="resolve-c2"]'));
       expect(document.activeElement?.textContent).to.equal('未解決に戻す');
     });
+
+    // The save button of a note: its note moves to the top of the list and its label changes (#809).
+    it('returns the focus to the save button of the note that moved within the list', async () => {
+      const save = (id: string, title: string) => `
+        <form hx-get="${DATA}/focus-notes-reordered.html" hx-target="#note-list" hx-swap="outerHTML" hx-disabled-elt="find button[type=submit]">
+          <button type="submit" aria-label="保存: ${title}" data-focus-key="save-${id}">保存</button>
+        </form>`;
+      render(`<div id="note-list">${save('n1', 'A')}${save('n2', 'B')}${save('n3', 'C')}</div>`);
+      const done = swapped('#note-list');
+      find('[data-focus-key="save-n3"]').focus();
+      find('[data-focus-key="save-n3"]').click();
+      await done;
+
+      expectFocusOn(find('[data-focus-key="save-n3"]'));
+      expect(document.activeElement?.getAttribute('aria-label')).to.equal('保存: C 新');
+      expect(find('button').getAttribute('data-focus-key'), 'the note moved to the top').to.equal('save-n3');
+    });
   });
 });

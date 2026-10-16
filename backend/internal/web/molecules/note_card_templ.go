@@ -273,7 +273,7 @@ func NoteCard(n domain.NoteView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = atoms.ButtonFor(atoms.TonePrimary, "保存", n.Version.Title, templ.Attributes{"type": "submit"}).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = atoms.ButtonFor(atoms.TonePrimary, "保存", n.Version.Title, templ.Attributes{"type": "submit", "data-focus-key": "save-" + n.ID}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

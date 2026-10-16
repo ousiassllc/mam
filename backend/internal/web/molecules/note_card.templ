@@ -79,7 +79,7 @@ templ NoteCard(n domain.NoteView) {
 					})
 					ピン留め（常に推論の文脈に渡す）
 				</label>
-				@atoms.ButtonFor(atoms.TonePrimary, "保存", n.Version.Title, templ.Attributes{"type": "submit"})
+				@atoms.ButtonFor(atoms.TonePrimary, "保存", n.Version.Title, templ.Attributes{"type": "submit", "data-focus-key": "save-" + n.ID})
 			</div>
 		</form>
 		<div class="flex flex-wrap gap-2">
