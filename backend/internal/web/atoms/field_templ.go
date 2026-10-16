@@ -21,7 +21,7 @@ const (
 // fieldClass is the shared look of Input, Select and Textarea; layout adds placement classes
 // (width, flex) and nothing that changes colours or borders.
 func fieldClass(size FieldSize, layout string) string {
-	base := "rounded-md border border-neutral-600 bg-neutral-950 text-neutral-100 "
+	base := "rounded-md border border-neutral-500 bg-neutral-950 text-neutral-100 "
 	switch size {
 	case FieldSm:
 		base += "px-2 py-1 text-xs"
