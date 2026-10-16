@@ -116,7 +116,7 @@ pre-commit（`scripts/linterly-staged.sh`）は従来どおり、コミット対
 
 `lefthook.yml`（`lefthook install` で有効化）。
 
-- pre-commit: コミット対象ファイルの行数（`scripts/linterly-staged.sh`。`linterly check` は 1 パスしか受け取れないため全体結果をコミット対象に絞る）、`make fmt-check`（`*.go` / `*.templ` / `*.ts`）、`make lint-go`、`make lint-static`（`static/**/*.ts` がある場合。`tsc` と Biome lint）
+- pre-commit: コミット対象ファイルの行数（`scripts/linterly-staged.sh`。`linterly check` は 1 パスしか受け取れないため全体結果をコミット対象に絞る）、`make fmt-check`（`*.go` / `*.templ` / `*.ts` / `*.mjs`）、`make lint-go`、`make lint-static`（`static/**/*.ts` / `static/*.mjs` がある場合。`tsc` と Biome lint）
 - pre-push: `go build ./...` と `go vet ./...`、それに `make test`
 
 ## 改訂履歴
@@ -148,3 +148,4 @@ pre-commit（`scripts/linterly-staged.sh`）は従来どおり、コミット対
 | 1.23 | 2026-10-16 | `make vuln` を Linux ホストに加えて Windows ターゲット（`GOOS=windows CGO_ENABLED=0 govulncheck ./...`）でも実行するようにし、タスク表・CI 節・リリース節 `verify` の手順 3 に「Linux と Windows の両方のターゲットを検査する」ことを明記した。`scripts/makefile_test.sh` に `make vuln` が両方を実行する検査を足した | Issue #767。`make vuln` は `GOOS` を指定せず Linux でだけ走り、配布する Windows 版の `backend/cmd/wails`（`//go:build windows`）と Wails v3・`fsutil` の Windows 実装・標準ライブラリの Windows 実装が検査の対象外だった（1.8 の「CI と配布する Windows バイナリ」を守るという記述と実装がずれていた）。Windows ターゲットでも現時点で脆弱性は無く、見逃しではなく網羅範囲のずれ |
 | 1.24 | 2026-10-16 | `release.yml` の `build` ジョブの手順に、パッケージの前に Windows 上で `fsutil`・`desktop`・`app`・`config` の Go テストを動かす手順（手順 4）を足した（以降の手順は繰り下げ）。ffmpeg を要するパッケージは対象外とし、その理由を明記した | Issue #771。`fsutil` の Windows 実装（`LockFileEx`・`GetDiskFreeSpaceEx`）と `runtime.GOOS == "windows"` で分岐するテストは、CI（Linux だけ。Windows はビルド・vet・lint まで）でもリリースの `build` ジョブ（スモークは起動時のロック取得だけ）でも `go test` されず、`FreeBytes` の Windows 経路や 2 回目のロック失敗が検証されていなかった（#767 と同種の網羅範囲のずれ） |
 | 1.25 | 2026-10-16 | `scripts/package-windows.sh` が `templ generate` を PATH 上の `templ` ではなく `go run github.com/a-h/templ/cmd/templ@<go.mod の版>` で実行するようにし、`templ` を同スクリプトの前提ツール（タスク表・リリース節の「ツール」・`release.yml` の `Install tools`）から外した。`scripts/makefile_test.sh` に同スクリプトの検査を足した | Issue #768。`Makefile` は PATH の `templ` を使わない方針（古い `templ` が go.mod とずれた `*_templ.go` を書き CI の鮮度確認が落ちる）なのに、`make` の無い Windows で使う `package-windows.sh` だけ版を検証せず PATH の `templ` を使い、`wails3` だけ版を検証していた |
+| 1.26 | 2026-10-16 | Git Hooks 節の pre-commit の対象を `*.mjs`（`make fmt-check`）・`static/*.mjs`（`make lint-static`）まで広げ、`lefthook.yml` の glob も同じにした | Issue #773。Biome の対象（`static/biome.json`）と CI の `make fmt-check` は `static/build.mjs`・`static/web-test-runner.config.mjs` を見るのに、lefthook の glob が `*.ts` だけで、`.mjs` だけを変えたコミットでは整形・lint が走らず push 後の CI まで検出されなかった |
