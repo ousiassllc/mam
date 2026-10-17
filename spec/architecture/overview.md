@@ -28,7 +28,7 @@
 | バックグラウンド処理 | Go goroutine + 内部ジョブキュー | 生成・Judge・Repair 等の非同期実行、進捗は WebSocket で通知 |
 | 外部生成モデル連携 | Model Adapter（アダプタパターン） | 画像/動画生成モデル API をベンダー非依存に抽象化。特定モデルへの構造的依存を作らない。採用プロバイダーは `spec/architecture/model-adapters.md` 参照（画像: Imagen 4/Nano Banana/FLUX.2/GPT Image 2、動画: Kling 3.0/Seedance 2.0/Runway Gen-4.5） |
 | エージェント推論用LLM連携 | Reasoning LLM Adapter（アダプタパターン） | Producer/Writer/Director/Judge/Repair等の自然言語推論をLLM API経由で実行する層。Model Adapterとは別レイヤー（画像/動画生成物を伴わない）。採用プロバイダーは Claude Opus系/GPT-5系/Gemini 3.1 Pro（Agentごとのルーティングは `spec/architecture/model-adapters.md` 参照） |
-| 認証情報管理 | OS セキュアストレージ（Windows Credential Manager / macOS Keychain / Linux Secret Service） | 外部生成モデル API キーを平文設定ファイルに書かず OS ネイティブストアへ保存・取得する（`internal/credential`） |
+| 認証情報管理 | OS セキュアストレージ（Windows Credential Manager / macOS Keychain / Linux Secret Service） | 外部生成モデル API キーを平文設定ファイルに書かず OS ネイティブストアへ保存・取得する（`internal/credential`）。ストアが `DefaultTimeout`（5 秒）以内に応えないとき（Linux の Secret Service がロック解除の入力待ち）は `credential.ErrUnavailable` で失敗し、設定画面は API キーのパネルだけを「利用できません」にする |
 
 ## 3. 全体構成図
 
@@ -89,6 +89,7 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 ├── go.mod                  # モジュール: github.com/ousiassllc/mam
 ├── Makefile                # dev / build / test / lint / fmt（§9）
 ├── Taskfile.yml            # `wails3 package GOOS=windows` の入口（`build/` の Taskfile を取り込む。通常は `scripts/package-windows.sh` 経由。§11）
+├── .gitattributes          # 行末を LF に固定（`* text=auto eol=lf`）しバイナリを `binary` にする。Windows runner（`core.autocrlf=true`）の checkout で `scripts/*.sh` が CRLF になるのを防ぐ（環境構築 spec のリリース節）
 ├── .air.toml               # make dev のホットリロード設定
 ├── .golangci.yml           # lint。depguard でレイヤー依存ルールを強制し、gocyclo / gocognit で関数の複雑度の悪化を止める
 ├── .linterly-baseline      # 行数上限（300 行 / 2000 行）を超えている既存のファイル・ディレクトリの行数。CI は悪化だけを止める（環境構築 spec の Linterly 節）
@@ -126,18 +127,18 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 │       ├── safefetch/      # ベンダー API が返したダウンロード URL の検証（https 以外と、公開インターネット以外のアドレス（ループバック・リンクローカル・プライベート・マルチキャスト・CGNAT などの IANA 特殊用途範囲。IPv4 を埋め込んだ IPv6 は埋め込み先で判定）への接続を拒否）
 │       ├── facesim/        # 顔の同一性の局所計測（ONNX Runtime で YuNet / SFace をプロセス内実行、外部送信なし。`model-adapters.md` §10.1）
 │       ├── textutil/       # 文字列ヘルパー（ルーン単位の切り詰め `TruncateRunes` / `TruncateRunesEllipsis`、ID の短縮 `ShortID`）。domain からは使わない
-│       ├── testenv/        # テストの共通ヘルパー: ffmpeg が無いときの扱い（`MissingFFmpeg`: ローカルは Skip、`CI=true` では失敗）、並列実行（`Parallel`: 並列数を 8 に絞る）、ffmpeg の素材（`FFmpegFile` / `WriteFFmpegFile` / `PatternVideo`: プロセスごとに 1 回だけ作り共有する）
+│       ├── testenv/        # テストの共通ヘルパー: ffmpeg が無いときの扱い（`MissingFFmpeg`: ローカルは Skip、`CI=true` では失敗）、並列実行（`Parallel`: 並列数を 8 に絞る）、ffmpeg の素材（`FFmpegFile` / `PatternVideo`: プロセスごとに 1 回だけ作り共有する）、期限の起点（`EndsAfterFirstRequest`: 最初のリクエストをサーバが受けてから一定時間後に終わる ctx。固定の期限だと負荷時に最初のリクエストの前に切れる。`CountGets`: ジョブ API のハンドラが受けた GET＝最初の状態確認を数える。受理前の POST では起点にならないため）
 │       ├── bgwork/         # 専用ゴルーチンで動かす処理の panic をログに落とす（`RunSafely`）と、起こし合図をまとめて 1 本のワーカーで走らせる `Worker`（サーバー全体を落とさない）
 │       ├── keylock/        # キー別のロック（`Locker`）。待機側は ctx のキャンセルで諦められ、エントリは保持・待機中だけ存在する（キーの数だけ増え続けない）。service 層専用ではなく、`agent/orchestrator`（Project ごとの `advance` を 1 度に 1 つに直列化）、`service/take.go`（`compose` のみ。Shot ごと）、`service/editor.go`（`stage` / `auto` / `preview`）、`previewcache`（ファイルごと）が使う
 │       ├── media/          # ffmpeg / ffprobe（Take の解像度・フレームレート取得、4K プロキシ・サムネイル、部分採用の合成）。実行には上限時間があり、超えたら強制終了して `ErrTimeout` で失敗にする（キャンセルとは区別する。値は `spec/requirements/non-functional.md` §3）
 │       ├── previewcache/   # プレビューファイル（Take の 4K のプロキシ・サムネイルと Rough Cut のプレビュー `edit-<版ID>.mp4`）を `assets/.previews` に 1 度だけ作る（`Path` がファイルを `.previews` 直下に固定する）。同じファイルへの同時要求は 1 回の ffmpeg 実行を待ち、作る処理はクライアントの切断では止めない（サービスの `Close` で止める）。失敗は 10 分覚えて再実行しない（`ErrFailedRecently`）。高さの判定（`Tall`）も Take ごとに覚える。合計が上限（4 GiB）を超えたら最後に使われた（`Make` で要求された）のが古いものから削除し（`prune`。LRU で、作ってから古いものではない。ファイルが既にあるときも `Make` が更新時刻を更新する）、Take のアーカイブでその Take の分も消す。合計は `Size()` で Storage 画面に出す（`PreviewBytes`）。強制終了で残った変換の一時ファイル（`.<名前>.ffmpeg.tmp`）は `Size()` にも `prune` にも入らないので、起動時の `fsutil.RemoveStaleTemp`（`assets` 配下を再帰して、`.` で始まり `.tmp` で終わるファイルを消す。`.previews` も対象）が消す（`app` の `buildServices`、Queue 開始前。`previewcache` 自身は掃除しない）。`service` の `core.previews`（`wiring.go` が作る）が持ち、`take_media.go` / `editor_export.go` / `policy.go` が使う
-│       ├── domain/         # Project/Scene/Shot/Take/WorldState等のドメインモデル
+│       ├── domain/         # Project/Scene/Shot/Take/WorldState等のドメインモデル。サブパッケージ `bundlepath/` は Project バンドルの ID・ファイルパスの検証（`ValidID` / `ValidFilePath`。行数上限のため分けた）
 │       ├── repository/     # SQLite アクセス層（domainのみに依存）
 │       │   ├── bundle/ review/ # bundle: Project バンドルの書き出し・取り込み（行の検証と全テーブル一覧を持つ）。review: チームコラボレーション（レビュー依頼・返答・コメント）の永続化。どちらも `repository` の接続・エラーに依存
 │       │   ├── testdb/     # テスト専用。マイグレーション済みの DB を 1 回だけ作り（`migratedTemplate`）、テストごとにファイルを複製して渡す（`Path` / `Open`）。本番コードから import しない
 │       │   └── migrations/ # goose 形式の SQL マイグレーション（タイムスタンプ版、go:embed、起動時に自動適用）
 │       ├── bundlezip/      # Project バンドルの ZIP（`manifest.json`・`data.json`・`assets/`）の書き出し・読み取り・検証（サイズ・パス）・アセットディレクトリへの展開。DB は触らない（`service.BundleService` が `repository/bundle` と組み合わせる）
-│       ├── credential/     # OSセキュアストレージ（Keychain/Credential Manager/Secret Service）経由の外部モデルAPIキー保存・取得。`credentialtest/` はテスト専用の `credential.Store`（`Memory`。テストごとに持つ。本番コードから import しない）
+│       ├── credential/     # OSセキュアストレージ（Keychain/Credential Manager/Secret Service）経由の外部モデルAPIキー保存・取得。`credentialtest/` はテスト専用の `credential.Store`（`Memory`・戻らない `Blocking`。テストごとに持つ。本番コードから import しない）
 │       ├── agent/          # Producer/Writer/Director/Storyboard/ArtDirector/PromptPlanner/ModelAdapter/
 │       │   │               # VideoJudge/RepairAgent/EditorAgent/AudioDirector/FinalQC/Orchestrator
 │       │   ├── artdirector/ audiodirector/ commandinterpreter/ continuation/ editor/ finalqc/
@@ -157,6 +158,7 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 │       │   └── takepreview/ # テスト専用（`unix` のみ。非テストの `.go` は無い）。`TakeService.Video` / `Thumbnail` の Take のプレビューを実 ffmpeg で確かめる回帰テスト
 │       ├── router/         # ページ(pages.go)/アクション(actions.go)/API(api.go, Huma)ルート定義（`router/stack/` はミドルウェア〜ルート全体の配線だけを確かめるテスト専用、`router/swap/` はメモ・参照ライブラリの操作が差し替える範囲を確かめる回帰テスト専用）
 │       └── web/
+│           ├── a11y/       # テスト専用（非テストの `.go` は無い・本番コードから import しない）。配色（`text-neutral-500` を使わない）、Input / Select / Textarea と Lit のフィールドの枠線のコントラスト 3:1（WCAG 1.4.11）、一覧の行ごとの操作ボタンの accessible name が行ごとに一意であること（`atoms.RowLabel` 経由）、`data-focus-key` の値がラベルや並びが変わっても行ごとに安定していること（`spec/components/overview.md` §5.2 の規約）を確かめる回帰テスト
 │           ├── handler/    # projects.go, chat.go, scenes.go, generation.go, take.go, director.go, editor.go, branch.go, settings.go ...（機能ごと）
 │           ├── health/     # `GET /healthz` と `GET /api/v1/health` が共有するレディネス JSON の応答（`Response` / `Handler`）。Templ / HTMX の `handler/` から切り離してあり、`router/` が `service.HealthService` とともに使う
 │           ├── middleware/  # CSRF、ループバック限定ガード、セキュリティヘッダ（CSP）、ロギング/リカバリ
@@ -164,7 +166,7 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 │           ├── selector/    # `hx-target` の ID セレクタの組み立て（`selector.ID`。外部由来の ID を CSS エスケープする。手で `#shot-` + ID と連結しない。`paths/` の隣）
 │           ├── atoms/       # button, badge, field, spinner, toast 等
 │           ├── molecules/   # shot_card, lock_toggle(AUTO/MANUAL/LOCK), take_card, world_state_field, approval_card, escalation_card 等
-│           ├── organisms/   # chat_workspace, shot_inspector, take_comparison, brief_form, editor_panel 等。World State の画面部品はサブパッケージ `worldstate/`（`view.templ`・`responses.templ`・`data.go`）、Series 画面の部品はサブパッケージ `seriesview/`（`view.templ`）、メモ一覧は `notelist/`（`list.templ`）、Shot Inspector は `shotinspector/`（`view.templ`・`data.go`）
+│           ├── organisms/   # chat_workspace, shot_inspector, take_comparison, brief_form 等。編集画面の部品はサブパッケージ `editorpanel/`（`panel.templ`・`stages.templ`・`data.go`・`audio.go`）、World State の画面部品はサブパッケージ `worldstate/`（`view.templ`・`responses.templ`・`data.go`）、Series 画面の部品はサブパッケージ `seriesview/`（`view.templ`）、Scene / Shot 画面の部品はサブパッケージ `sceneshot/`（`view.templ`・`responses.templ`・`data.go`）、メモ一覧は `notelist/`（`list.templ`・`onpage.go`）、オーナー側のレビュー一覧は `reviewlist/`（`list.templ`）、Shot Inspector は `shotinspector/`（`view.templ`・`data.go`）、Brand Template は `brandtemplate/`（`panel.templ`）、テスト専用の `a11y/`（非テストの `.go` は無い・本番コードから import しない。organisms 直下から移した a11y・Branch ツリー（tree ロールを付けない入れ子の `<ul>`・`aria-current`）の描画テストで、行数基準値のために分けてある）
 │           ├── pages/       # projects_page, chat_workspace_page, brief_page, editor_page 等
 │           └── layout/      # レイアウトラッパー
 └── static/
@@ -173,7 +175,7 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
     ├── biome.json          # TypeScript の整形・lint（Biome）の設定。`make fmt` / `make fmt-check` / `make lint-static` が使う
     ├── build.mjs           # esbuild（JS）+ Tailwind（CSS）のビルド・ウォッチ
     └── src/
-        ├── main.ts         # エントリーポイント。htmx へ CSRF トークンを付与、Lit コンポーネントを import、その場保存するコントロールの保存失敗時の巻き戻し（`installSaveOnChangeRevert`）を組み込む
+        ├── main.ts         # エントリーポイント。htmx へ CSRF トークンを付与、Lit コンポーネントを import、その場保存するコントロールの保存失敗時の巻き戻し（`installSaveOnChangeRevert`）・swap 後のフォーカス復帰（`installFocusRestore`）・履歴スナップショットの後始末（`installHistorySnapshotHygiene`）を組み込む
         ├── chat.ts         # Chat Workspace の挙動（WebSocket で更新通知を受け、フラグメントを再取得）
         ├── shot.ts         # 生成中 Shot の進捗表示
         ├── ajax.ts         # chat.ts / shot.ts 用の htmx.ajax ラッパー
@@ -182,6 +184,7 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
         │   ├── timeline-editor/      # mam-timeline-editor
         │   ├── take-comparator/      # mam-take-comparator
         │   ├── save-on-change/       # 変更でその場保存するコントロール（`hx-trigger="change"` の MODE・Production Template・Quality・Confirmation Level）が保存に失敗したとき、値を保存済みの値へ戻す。`main.ts` が `htmx:afterRequest` で組み込む（Lit ではない）
+        │   ├── focus-restore/        # 利用者の操作で始まった htmx の swap（`HX-Trigger` 起点の再読込・`hx-swap-oob` を含む）が、フォーカス中のコントロールを消した、または `hx-disabled-elt` で `disabled` にしたとき、差し替え後の同じコントロールへフォーカスを戻す（`htmx:beforeRequest` / `beforeSwap` / `afterSwap` / `afterRequest`。`main.ts` が組み込む。Lit ではない。詳細は [components/overview.md](../components/overview.md) §5.2）。Lit コンポーネント（`take-comparator/`・`timeline-editor/timeline-focus.ts`）向けの `lit-focus.ts`（`focusAfterUpdate()`・`focusFirst()`）と、テスト用の `focus-assert.ts` も置く
         │   └── lib/
         │       ├── api.ts            # CSRFトークン自動付与のHTTPクライアント
         │       ├── ajax.ts / errors.ts / toast.ts / connection-notice.ts # フラグメント再取得・エラー表示
@@ -289,7 +292,7 @@ dev:
 - `make dev` は `MAM_STATIC_DIR=static/src/dist` を設定し、再ビルドのたびにバイナリを作り直さずディスク上のアセットを配信する
 - 本番ビルド: `make build`（`scripts/build.sh`）が `templ generate` → `esbuild`（minify） → `tailwind`（minify） → `go build`（`go:embed`で静的アセット同梱、`CGO_ENABLED=0`）を一括実行し `bin/mam` を生成する（`make build-all` = `scripts/build.sh --all` は windows / darwin / linux × amd64 / arm64 の全プラットフォームを `bin/mam-<os>-<arch>` に生成する）。SQLite は純 Go ドライバ（modernc.org/sqlite）のため各 OS/arch へクロスコンパイル可能
 - Windows 版: `scripts/package-windows.sh` が上の本番ビルドと同じフロントエンド工程の後に `wails3 package GOOS=windows` を実行し、ポータブル `mam.exe` と NSIS インストーラーを作る（`desktop.md` §4）。ローカルの確認は Windows 上で行う（Wails v3 の `wails3` CLI と NSIS（`makensis`）が必要）
-- その他のターゲット: `make test`（Go `-race`（`make test-go`。`go test -json` を `scripts/slow-tests.sh` に流し、3 秒を超えたテストを遅い順に最大 20 件 stderr に一覧する。警告だけで失敗にはしない）+ フロントの vitest + web-test-runner の Lit コンポーネントテスト（Chrome が必要）+ `make test-scripts`（`bash scripts/linterly-baseline_test.sh`・`scripts/slow-tests_test.sh`・`scripts/makefile_test.sh`・`scripts/complexity-ratchet_test.sh`。行数基準値・遅いテストの一覧・`Makefile` のターゲット・複雑度の許可リストのテスト。`jq` と `golangci-lint` が要る））、`make lint`（golangci-lint + `tsc --noEmit` + Biome lint）、`make vuln`（`govulncheck ./...`。コードから到達できる既知の脆弱性（標準ライブラリ・依存モジュール）があれば失敗する。`make tools` が入れる `govulncheck` が要る。CI の「Vulnerability check」ステップ。`spec/environment/setup.md` の CI 節）、`make lint-lines`（`scripts/linterly-baseline.sh check`。`.linterly-baseline` より悪化した行数超過があれば失敗する。CI の「Line limit (no regression)」ステップ）、`make linterly-baseline`（同 `update`。基準値の書き換え。`spec/environment/setup.md` の Linterly 節）、`make fmt` / `make fmt-check`（Go・templ に加えてフロントの TypeScript を Biome で整形・検査）
+- その他のターゲット: `make test`（Go `-race`（`make test-go`。`go test -json` を `scripts/slow-tests.sh` に流し、3 秒を超えたテストを遅い順に最大 20 件 stderr に一覧する。警告だけで失敗にはしない）+ フロントの vitest + web-test-runner の Lit コンポーネントテスト（Chrome が必要）+ `make test-scripts`（`bash scripts/linterly-baseline_test.sh`・`scripts/slow-tests_test.sh`・`scripts/makefile_test.sh`・`scripts/complexity-ratchet_test.sh`。行数基準値・遅いテストの一覧・`Makefile` のターゲット・複雑度の許可リストのテスト。`jq` と `golangci-lint` が要る））、`make lint`（golangci-lint + `tsc --noEmit` + Biome lint）、`make vuln`（`govulncheck ./...` を Linux ホストと Windows ターゲット（`GOOS=windows CGO_ENABLED=0`。`backend/cmd/wails` は `//go:build windows` で Linux の解析に入らないため）の両方で実行する。コードから到達できる既知の脆弱性（標準ライブラリ・依存モジュール）がどちらかにあれば失敗する。`make tools` が入れる `govulncheck` が要る。CI の「Vulnerability check」ステップ。`spec/environment/setup.md` の CI 節）、`make lint-lines`（`scripts/linterly-baseline.sh check`。`.linterly-baseline` より悪化した行数超過があれば失敗する。CI の「Line limit (no regression)」ステップ）、`make linterly-baseline`（同 `update`。基準値の書き換え。`spec/environment/setup.md` の Linterly 節）、`make fmt` / `make fmt-check`（Go・templ に加えてフロントの TypeScript を Biome で整形・検査）
 
 ## 10. テスト戦略
 
@@ -301,7 +304,7 @@ HALT のレイヤー別テスト方針を踏襲する。
 | Templ テンプレート | `Render()` → HTML文字列アサーション | コンポーネント出力 |
 | Agent（Producer/Judge/RepairAgent等） | Go ユニットテスト（外部APIはモック） | Shot Spec変換、Judge出力パース、Repair戦略選択ロジック |
 | Lit コンポーネント | `@open-wc/testing` + `@web/test-runner` | 単体の振る舞い |
-| シェルスクリプト | `bash scripts/linterly-baseline_test.sh`（`make test-scripts`。JSON の報告を返す偽の `linterly` と一時ディレクトリの基準値で `scripts/linterly-baseline.sh` の判定を検証する）、`scripts/slow-tests_test.sh`（`go test -json` を流して遅いテストの一覧を検証する）、`scripts/complexity-ratchet_test.sh`（使い捨てのモジュールを `.golangci.yml` で lint する）、`scripts/makefile_test.sh`（`Makefile` の全ターゲットを検査する） | 行数基準値スクリプトの check / update の振る舞い、遅いテストの一覧の判定、複雑度の許可リストの判定、`Makefile` の `.PHONY` / `make help` |
+| シェルスクリプト | `bash scripts/linterly-baseline_test.sh`（`make test-scripts`。JSON の報告を返す偽の `linterly` と一時ディレクトリの基準値で `scripts/linterly-baseline.sh` の判定を検証する）、`scripts/slow-tests_test.sh`（`go test -json` を流して遅いテストの一覧を検証する）、`scripts/complexity-ratchet_test.sh`（使い捨てのモジュールを `.golangci.yml` で lint する）、`scripts/makefile_test.sh`（`Makefile` の全ターゲットと `.gitattributes` の行末・バイナリ指定を検査する） | 行数基準値スクリプトの check / update の振る舞い、遅いテストの一覧の判定、複雑度の許可リストの判定、`Makefile` の `.PHONY` / `make help` |
 | DB を使うテスト | `repository/testdb`（`testdb.Open` / `testdb.Path`）。テストバイナリごとにマイグレーション済みの DB を 1 回だけ作り、テストごとに複製する（マイグレーションの再適用を避ける）。DB の開き方・マイグレーション自体を検証するテスト（`repository/db_test.go` など）は `repository.Open` を直接使う | リポジトリ・サービス・Agent のテストが、他のテストと状態を共有せず速く走る |
 | router の HTTP テスト | `internal/router` のフィクスチャ（`newApp` / `newEngine` / `newGenApp` / `newTakeApp` / `newJudgeApp`）は `testenv.Parallel`（並列数 8）で並列に走り、鍵の保管庫は `credentialtest.Memory`。ffmpeg の素材は `testenv.FFmpegFile` / `PatternVideo` がプロセスごとに 1 回だけ作る。`t.Setenv` を使うテストは並列にできないので `newSerialApp` / `newSerialEngine` を使う。3 秒を超えるテストは `make test-go` が一覧に出す | router のテストが直列で数分かかり、同じ素材をテストごとに作る無駄を避ける（`spec/environment/setup.md` の CI 節） |
 | `Services` を作るテスト | `service/servicetest`（`servicetest.New`）。`service.New` の後始末として `Services.Close` を登録する（DB を閉じるクリーンアップより後に登録して先に走らせる） | 再開 Worker のゴルーチンが閉じた DB を触らない |

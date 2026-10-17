@@ -107,15 +107,15 @@ func TestBranch_HTMXSelectionRedrawsTheServerRenderedTreeWithTheBranchSelected(t
 		assert.Contains(t, list.Body.String(), `hx-get="/branches/`+id+`"`, "every Branch loads its detail on choosing")
 	}
 	assert.Contains(t, list.Body.String(), `hx-target="#branch-detail"`)
-	assert.NotContains(t, list.Body.String(), `aria-selected="true"`, "nothing is selected on the list")
+	assert.NotContains(t, list.Body.String(), `aria-current`, "nothing is selected on the list")
 	assert.NotContains(t, list.Body.String(), "<mam-branch-tree")
 
 	rec := a.get("/branches/"+idA, true)
 	require.Equal(t, http.StatusOK, rec.Code)
 	assert.Contains(t, rec.Body.String(), `data-branch-detail="`+idA+`"`)
 	assert.Contains(t, rec.Body.String(), `hx-swap-oob="true"`, "the tree is redrawn along with the detail")
-	assert.Equal(t, 1, strings.Count(rec.Body.String(), `aria-selected="true"`), "only the chosen Branch is selected")
-	assert.Regexp(t, `aria-selected="true"[^>]*>\s*<a[^>]*data-branch="`+idA+`"`, rec.Body.String())
+	assert.Equal(t, 1, strings.Count(rec.Body.String(), `aria-current="true"`), "only the chosen Branch is selected")
+	assert.Regexp(t, `<a[^>]*aria-current="true"[^>]*data-branch="`+idA+`"`, rec.Body.String())
 
 	assert.Equal(t, http.StatusNotFound, a.get("/api/v1/projects/"+project+"/branches", false).Code, "the tree has no JSON twin")
 }

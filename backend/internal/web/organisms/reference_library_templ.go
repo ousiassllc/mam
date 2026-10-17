@@ -353,7 +353,7 @@ func ReferenceLibraryList(d ReferenceLibraryData) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = atoms.Button(atoms.ToneDanger, "ライブラリから外す", templ.Attributes{
+				templ_7745c5c3_Err = atoms.ButtonFor(atoms.ToneDanger, "ライブラリから外す", it.Name, templ.Attributes{
 					"hx-delete":  referenceURL(d.Project.ID, it.ID),
 					"hx-vals":    atoms.HxVals(map[string]string{"q": d.Q, "kind": d.Kind, "tag": d.Tag}),
 					"hx-target":  "#reference-library",

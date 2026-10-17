@@ -36,13 +36,17 @@ type Store interface {
 	Has(provider string) (bool, error)
 }
 
-// Keyring is the Store backed by the OS secure storage.
-type Keyring struct{}
+// Keyring is the Store backed by the OS secure storage. A call the OS store does not answer within
+// DefaultTimeout (a Secret Service waiting for an unlock prompt) fails with ErrUnavailable.
+type Keyring struct{ Store }
 
 // NewKeyring returns the OS secure storage Store.
-func NewKeyring() *Keyring { return &Keyring{} }
+func NewKeyring() *Keyring { return &Keyring{Store: WithTimeout(osStore{}, DefaultTimeout)} }
 
 var _ Store = (*Keyring)(nil)
+
+// osStore calls go-keyring directly, with no time limit.
+type osStore struct{}
 
 func account(provider string) (string, error) {
 	if strings.TrimSpace(provider) == "" {
@@ -52,7 +56,7 @@ func account(provider string) (string, error) {
 }
 
 // Set implements Store.
-func (*Keyring) Set(provider, apiKey string) error {
+func (osStore) Set(provider, apiKey string) error {
 	acct, err := account(provider)
 	if err != nil {
 		return err
@@ -70,7 +74,7 @@ func (*Keyring) Set(provider, apiKey string) error {
 }
 
 // Get implements Store.
-func (*Keyring) Get(provider string) (string, error) {
+func (osStore) Get(provider string) (string, error) {
 	acct, err := account(provider)
 	if err != nil {
 		return "", err
@@ -86,7 +90,7 @@ func (*Keyring) Get(provider string) (string, error) {
 }
 
 // Delete implements Store.
-func (*Keyring) Delete(provider string) error {
+func (osStore) Delete(provider string) error {
 	acct, err := account(provider)
 	if err != nil {
 		return err
@@ -102,7 +106,7 @@ func (*Keyring) Delete(provider string) error {
 }
 
 // Has implements Store.
-func (k *Keyring) Has(provider string) (bool, error) {
+func (k osStore) Has(provider string) (bool, error) {
 	_, err := k.Get(provider)
 	if errors.Is(err, ErrNotFound) {
 		return false, nil

@@ -1,11 +1,11 @@
 // Package selector builds the CSS selectors that the pages hand to HTMX (hx-target) from IDs that
-// come from outside. Today those IDs are limited to [A-Za-z0-9_-] (domain.ValidBundleID checks
+// come from outside. Today those IDs are limited to [A-Za-z0-9_-] (bundlepath.ValidID checks
 // every ID of a bundle import, a Review ID has the same pattern, any other ID is a UUID), which
 // needs no escaping. The escape is defence in depth: were that limit ever relaxed, an ID with "."
 // (a class), ":" (a pseudo-class), a space or "#" concatenated into "#shot-" + id would select
 // another element or be an invalid selector, and htmx:targetError would swallow the result of
 // the action. paths does the same for URLs: nothing else builds an ID selector from an ID by hand.
-// domain.ValidBundleID (domain/bundle_test.go) is the source of truth of the limit.
+// bundlepath.ValidID (domain/bundlepath/bundlepath_test.go) is the source of truth of the limit.
 package selector
 
 import (

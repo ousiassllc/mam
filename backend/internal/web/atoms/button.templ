@@ -57,3 +57,20 @@ templ LinkButton(tone ButtonTone, label string, attrs templ.Attributes) {
 templ IconButton(glyph string, attrs templ.Attributes) {
 	<button class="text-neutral-400 hover:text-neutral-100" { attrs... }>{ glyph }</button>
 }
+
+// ButtonFor is the Button of one row of a list: its accessible name says which row it acts on
+// (RowLabel), while the visible text stays label.
+templ ButtonFor(tone ButtonTone, label, subject string, attrs templ.Attributes) {
+	<button class={ buttonClass(tone, false) } aria-label={ RowLabel(label, subject) } { attrs... }>{ label }</button>
+}
+
+// SmallButtonFor is the SmallButton of one row of a list: its accessible name says which row it acts on
+// (RowLabel), while the visible text stays label.
+templ SmallButtonFor(tone ButtonTone, label, subject string, attrs templ.Attributes) {
+	<button class={ buttonClass(tone, true) } aria-label={ RowLabel(label, subject) } { attrs... }>{ label }</button>
+}
+
+// LinkButtonFor is the LinkButton of one row of a list, named after the row like SmallButtonFor.
+templ LinkButtonFor(label, subject string, attrs templ.Attributes) {
+	<button class="text-xs text-neutral-400 underline hover:text-neutral-200" aria-label={ RowLabel(label, subject) } { attrs... }>{ label }</button>
+}

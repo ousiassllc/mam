@@ -72,7 +72,8 @@ templ View(d Data) {
 	</div>
 }
 
-// Created answers the creation of a note: the list, and the form emptied out of band.
+// Created answers the creation of a note: the list with the notes the page has as placeholders (d.OnPage)
+// and the new one in full (#742), and the form emptied out of band.
 templ Created(d Data) {
 	@Groups(d)
 	@noteAddForm(d, true)
@@ -86,6 +87,7 @@ templ noteAddForm(d Data, oob bool) {
 		hx-post={ d.BasePath }
 		hx-target="#note-list"
 		hx-swap="outerHTML"
+		hx-include={ "#note-list input[name='" + OnPageField + "']" }
 		hx-sync="this:drop"
 		hx-disabled-elt="find button[type=submit]"
 		if oob {
@@ -169,11 +171,12 @@ templ Groups(d Data) {
 	</div>
 }
 
-// keeps reports whether n is drawn as the placeholder of the note already on the page: an action named
-// a note (Only), n is another one, and the page said it has n. A note the page does not have (added
-// elsewhere since) is drawn in full, or it would stay an empty placeholder no element replaces (#697).
+// keeps reports whether n is drawn as the placeholder of the note already on the page: the page said it
+// has n and an action did not name n (Only; the creation of a note names none, its note is not on the
+// page). A note the page does not have (added elsewhere since) is drawn in full, or it would stay an
+// empty placeholder no element replaces (#697).
 func (d Data) keeps(n domain.NoteView) bool {
-	return d.Only != "" && d.Only != n.ID && slices.Contains(d.OnPage, n.ID)
+	return d.Only != n.ID && slices.Contains(d.OnPage, n.ID)
 }
 
 // noteWithHistory is a note card with the version history under it, or the placeholder of the note the

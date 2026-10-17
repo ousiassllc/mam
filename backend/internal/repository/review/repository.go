@@ -94,10 +94,10 @@ func (r *Repository) ImportResponse(ctx context.Context, projectID string, resp 
 	})
 }
 
-// SetCommentResolved marks a comment of the Project's review responses as resolved or open
-// (repository.ErrNotFound for a comment of another Project).
-func (r *Repository) SetCommentResolved(ctx context.Context, projectID, commentID string, resolved bool) error {
-	return r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
+// SetCommentResolved marks a comment of the Project's review responses as resolved or open and
+// returns the review request that holds it (repository.ErrNotFound for a comment of another Project).
+func (r *Repository) SetCommentResolved(ctx context.Context, projectID, commentID string, resolved bool) (domain.ReviewItem, error) {
+	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		v := 0
 		if resolved {
 			v = 1
@@ -114,6 +114,23 @@ func (r *Repository) SetCommentResolved(ctx context.Context, projectID, commentI
 		}
 		return nil
 	})
+	if err != nil {
+		return domain.ReviewItem{}, err
+	}
+	items, err := r.ListItems(ctx, projectID)
+	if err != nil {
+		return domain.ReviewItem{}, err
+	}
+	for _, it := range items {
+		for _, resp := range it.Responses {
+			for _, c := range resp.Comments {
+				if c.ID == commentID {
+					return it, nil
+				}
+			}
+		}
+	}
+	return domain.ReviewItem{}, repository.ErrNotFound
 }
 
 const inboxSelect = `SELECT id, review_id, project_name, note, video_path, file_name, resolution, aspect_ratio, codec,

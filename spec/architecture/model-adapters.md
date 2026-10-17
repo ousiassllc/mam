@@ -114,7 +114,7 @@ Reasoning LLM Adapter側の呼び出しモデルは Take/Cost Ledger の対象�
 - API キーは `credential.Store` のプロバイダー名（`anthropic` / `openai` / `google`）で呼び出しごとに読む。設定画面で保存したキーは再起動なしで有効になる
 - 再試行: タイムアウト・ネットワーク断・429・5xx を指数バックオフで再試行する。`Retry-After` があれば、待ち時間は現在のバックオフ以上にし（バックオフより短い指示には従わず、長い指示を優先する）、`max_delay_ms`（既定 16 秒）で頭打ちにする（ベンダーが長い待ちを求めても呼び出しを長時間止めない）。認証エラー等の 4xx は再試行しない
 - サーキットブレーカー: プロバイダー単位。連続失敗が `failure_threshold` に達すると OPEN になり、`open_seconds` 経過後に 1 回だけ試行（HALF-OPEN）して成功で CLOSED に戻る。OPEN のプロバイダーは呼ばず、代替へ自動でルーティングする（§7）
-- 出力は構造化 JSON を要求し、コードフェンスや前置きを除いて検証する。検証に失敗した回答は保存せず、チャットにエラーを通知して再開できる状態に留める
+- 出力は構造化 JSON を要求し、コードフェンスや前置きを除いて検証する。検証に失敗した回答は保存せず、チャットにエラーを通知して再開できる状態に留める。出力は 1 回の呼び出しあたり最大 8192 トークン（`Request.MaxTokens` が 0 のときに必ず適用される固定値 `DefaultMaxTokens`。Anthropic の `max_tokens`・OpenAI の `max_completion_tokens`・Gemini の `maxOutputTokens` に渡す。現状 `MaxTokens` を指定する呼び出し元は無く、全 Agent に掛かる。設定（`--llm-config`）では変えられない）で、長い回答が途中で切れると上の検証に失敗する。プロバイダー応答の読み取りは 8 MiB までで、それ以上は読まない
 
 ## 9. 画像・動画生成 Model Adapter の実装（`internal/agent/modeladapter`、`internal/agent/generation`）
 
@@ -143,13 +143,13 @@ API キーは `credential.Store` のベンダー名（`google` / `openai` / `flu
 
 ### 9.3 動作
 
-- **Canonical Shot Spec → モデル固有プロンプト（F-07）**: `Prepare` が Shot Spec を英語のプロンプトへ変換する。モデルごとに対応する長さ（Kling 5/10 秒、Seedance 4〜12 秒。要求を満たす最短の長さ）、First/Last Frame、参照画像の上限（Seedance 9 枚）に合わせて入力を絞る。Negative Prompt を持たないモデルでは本文へ折り込む。プロンプトは英語のみ（`non-functional.md` §9）
+- **Canonical Shot Spec → モデル固有プロンプト（F-07）**: `Prepare` が Shot Spec を英語のプロンプトへ変換する。モデルごとに対応する長さ（Kling 5/10 秒、Seedance 4〜12 秒。要求を満たす最短の長さ）、First/Last Frame、参照画像の上限（Seedance 9 枚）に合わせて入力を絞る。Negative Prompt を持たないモデルでは本文へ折り込む。プロンプトは英語のみ（`non-functional.md` §9）。プロンプトの長さの上限（文字数は rune）は、Kling 3.0 が本文 2400 文字・ネガティブプロンプト 400 文字（Avoid の項目を `, ` で連結して 400 文字で切る）、Runway Gen-4.5 が 1000 文字、ネガティブプロンプトを持たないその他のモデル（Seedance 2.0 など）が 2400 文字。超えるときは、末尾の Constraints 文（ネガティブプロンプトを持たないモデルでは続く「Avoid:」文も）を丸ごと残し、Shot の描写（本文）の末尾側を削って収める（LOCK 由来の制約・ブランド制約を生成に届けるため）。末尾の文だけで上限を超えるときは、その末尾の文を上限で切る
 - **フェイルオーバー（§7）**: ベンダー単位のブレーカーが OPEN、または再試行しても失敗したとき、同じ Shot Spec を代替モデル向けに再変換して呼ぶ。429・5xx・ネットワーク断のみ同じモデルで再試行し、認証エラー等の 4xx は再試行しない（待ち時間は §2.1 の再試行と同じく、`Retry-After` をバックオフの下限として加味し `max_delay_ms` で頭打ちにする）。タイムアウトは同じモデルでは再試行せず、直ちに代替モデルへフェイルオーバーする（ベンダー側でジョブが継続・課金されている可能性があり、再提出すると二重に課金されるため。LLM の §2.1 は課金を伴う非同期ジョブを持たないためタイムアウトも再試行する）。タイムアウトもブレーカーの失敗に数える。ベンダーがジョブを受け付けた後（状態確認・結果のダウンロード）の 429・5xx・ネットワーク断は、同じジョブ ID への GET だけを再試行する。出力は課金済みで、短い障害で失うと取り戻せないため、回数の上限は置かず、呼び出し全体のタイムアウトまで続ける（待ち時間は状態確認の間隔（既定 5 秒）から倍々に増やして 1 分で頭打ちにし、`Retry-After` がそれより長ければ従う。ただし 1 分を超えない）。タイムアウトに達してもなお失敗していたときは、ジョブを再提出せず（二重課金回避）代替モデルへ進む。Sync Labs（§14.1）のポーリング・ダウンロードも同じ規則で、`Retry-After` と呼び出し全体のタイムアウト（Lip Sync の `timeout`）まで再試行する。ただし結果ファイルの保存先（ステージングディレクトリ）の作成・書き込み・同期の失敗（ディスクフル・権限など、ベンダーではなくこのマシンの問題）は再試行せず、ベンダーの一時障害としても数えない（ダウンロードを期限まで繰り返さず、ブレーカーも開かない）
-- **ベンダー応答の URL の扱い**: API キーを付けるリクエストは、ベンダーのベース URL と同じスキーム・ポートで、同じホストまたはそのベースホストの親ドメイン配下（例: `api.bfl.ai` → `api.eu.bfl.ai`）の URL にだけ送る。FLUX の `polling_url` がそれ以外を指すときは、キーを送らずエラーにする。生成結果のダウンロード（Sync Labs の `outputUrl` を含む）は https の URL だけを受け付け、公開インターネットのアドレス以外へは接続しない（許可リスト型。`localhost`、ループバック、リンクローカル（クラウドのメタデータサービス `169.254.169.254` など）、プライベート、未指定、マルチキャストに加え、IANA の特殊用途範囲 — キャリアグレード NAT `100.64.0.0/10`・`0.0.0.0/8`・ドキュメント用・ベンチマーク用・予約済みクラス E・6to4 リレー anycast・Teredo など — は全て拒否する。IPv4 互換・6to4・NAT64 の IPv6 アドレスは埋め込まれた IPv4 アドレスで判定する。ホスト名の解決後のアドレスも検査する。リダイレクト先も同じ規則。プロキシ設定は使わない）。ローカルの常駐アプリがベンダー応答を経由して内部ネットワークを読み出さないための制限である。ベンダー API を呼ぶ既定の HTTP クライアント（LLM・Model Adapter・Audio Director・Jev 共通、`internal/httpclient`）は、別ホストへのリダイレクトと https から http へのリダイレクトを拒否し（独自ヘッダーの API キーを別ホストへ転送しない）、接続・TLS ハンドシェイク・レスポンスヘッダーの待ちにタイムアウトを持つ。生成動画のダウンロード（上限 300 MB）は本文をメモリに載せずアセットディレクトリ配下の一時ファイル（`<assets>/.staging/`）へストリーム書き込みし、保存時にアセットのパスへリネームする（失敗・サイズ超過時は一時ファイルを削除し、異常終了で残った分は起動時に掃除する）。画像は小さいためメモリ上で扱う
+- **ベンダー応答の URL の扱い**: API キーを付けるリクエストは、ベンダーのベース URL と同じスキーム・ポートで、同じホストまたはそのベースホストの親ドメイン配下（例: `api.bfl.ai` → `api.eu.bfl.ai`）の URL にだけ送る。FLUX の `polling_url` がそれ以外を指すときは、キーを送らずエラーにする。生成結果のダウンロード（Sync Labs の `outputUrl` を含む）は https の URL だけを受け付け、公開インターネットのアドレス以外へは接続しない（許可リスト型。`localhost`、ループバック、リンクローカル（クラウドのメタデータサービス `169.254.169.254` など）、プライベート、未指定、マルチキャストに加え、IANA の特殊用途範囲 — キャリアグレード NAT `100.64.0.0/10`・`0.0.0.0/8`・ドキュメント用・ベンチマーク用・予約済みクラス E・6to4 リレー anycast・Teredo など — は全て拒否する。IPv4 互換・6to4・NAT64 の IPv6 アドレスは埋め込まれた IPv4 アドレスで判定する。ホスト名の解決後のアドレスも検査する。リダイレクト先も同じ規則。プロキシ設定は使わない）。ローカルの常駐アプリがベンダー応答を経由して内部ネットワークを読み出さないための制限である。ベンダー API を呼ぶ既定の HTTP クライアント（LLM・Model Adapter・Audio Director・Jev 共通、`internal/httpclient`）は、別ホストへのリダイレクトと https から http へのリダイレクトを拒否し（独自ヘッダーの API キーを別ホストへ転送しない）、接続・TLS ハンドシェイク・レスポンスヘッダーの待ちにタイムアウトを持つ。ベンダーの JSON 応答は 64 MiB まで読み、超えると失敗扱いにする（画像は base64 で JSON に入って返るため）。生成動画のダウンロード（上限 300 MB）は本文をメモリに載せずアセットディレクトリ配下の一時ファイル（`<assets>/.staging/`）へストリーム書き込みし、保存時にアセットのパスへリネームする（失敗・サイズ超過時は一時ファイルを削除し、異常終了で残った分は起動時に掃除する）。画像は小さいためメモリ上で扱う
 - **同時実行数（`non-functional.md` §4）**: ベンダーごとの上限を Model Adapter が持つ。429 を受けると上限を半分（最小 1）にし、成功が上限回数続くごとに 1 ずつ戻す。上限を超える呼び出しはスロットが空くまで待つ。Prompt Candidate Generation（F-08）が Candidate を並列に生成しても、外部 API への同時呼び出し数はこの上限（Runway は既定 2）で抑えられる
 - **Generation Orchestrator（F-12）**: Quality Policy でモデル・解像度・Take 数を決め、(1) Shot が主モデルの最長クリップを超え代替モデルなら収まる場合は入れ替え、(2) Shot/Project の予算上限（残額）に Take 数が収まらなければ Take 数を減らし、主モデルが 1 Take も収まらず代替なら収まるなら代替を主にし、(3) 1 Take も収まらなければ 402 で開始しない。決定理由は `prompt_version.model_adapter_output`（`reasons`）に残る。Take は並列に生成し、1 つ以上成功すれば成功とする
 - **Prompt Autopilot（F-06）**: Prompt Planner（Reasoning LLM）が Shot の指示と World State・直前 Shot の Spec・Reference Pack から Canonical Shot Spec（JSON、英語）を作る。検証（目的・フレーミングあり、Acting が Shot 内で時系列順、日本語などを含まない）に失敗した回答は保存しない。既存 Spec は、追加指示がある場合だけ改訂し、無ければ再利用する。生成のたびに `prompt_version` が 1 行増え、`shot_spec_snapshot` に保存時点の Spec、`model_adapter_output` に各モデルへ渡す内容（プロンプト・解像度・参照枚数）を記録する
-- **Reference Pack（F-11）**: Art Director（Reasoning LLM）が Character/Product/Location/Style/Lighting/Keyframe の各画像のプロンプトを決め、画像 Model Adapter が生成する。Character/Product/Location/Style/Lighting を先に並列生成し、Keyframe は先行する 3 種を入力にして最後に生成する。全画像が揃ったときだけ `shot.shot_spec.references` を置き換え（途中で失敗したら旧 Pack を残し、作成済みファイルも削除する）。Keyframe は動画生成の First Frame になる
+- **Reference Pack（F-11）**: Art Director（Reasoning LLM）が Character/Product/Location/Style/Lighting/Keyframe の各画像のプロンプトを決め、画像 Model Adapter が生成する。Character/Product/Location/Style/Lighting を先に並列生成し、Keyframe は先行する 3 種を入力にして最後に生成する。全画像が揃ったときだけ `shot.shot_spec.references` を置き換え（途中で失敗したら旧 Pack を残し、作成済みファイルも削除する）。Keyframe は動画生成の First Frame になる。画像モデルへ入力として渡す参照画像は、Brief に添付したアップロード素材も、World State の参照（Character の顔・体、Product の形・ラベル、Location のレイアウト）も、種類ごとに読み込めた先頭の 4 枚までで、5 枚目以降は通知なしで使われない。1 枚 20 MiB を超える保存済み画像は入力にせず、警告ログを残すだけで除外する（AI Video Judge に渡す参照画像も同じ 20 MiB で、超えるものは黙って渡さない）
 - **ジョブ**: 生成・Reference Pack 作成は `job.kind = generate` の非再開ジョブ（課金を伴うため、異常終了後と、シャットダウン（Ctrl+C など）で実行中に中断された場合は、キューに戻さず失敗として扱い、Shot を PLANNING へ戻す）。開始時に Shot を GENERATING にし、同じ Shot の二重実行は 409 とする。進捗は `/ws/shots/:id`、チャットの進捗カードと Take/Keyframe カードで通知する
 
 ## 10. AI Video Judge と Face Identity Similarity の実装（`internal/agent/judge`、`internal/facesim`）
@@ -221,7 +221,7 @@ M1（F-14、Issue #10）で実装する Repair / Retake Loop の判断部分。�
 
 - **対象**: Repair Agent（LLM）が戦略を選んだときだけ、同じ質問（候補から 1 つを選ぶ Choice）を Jev にも投げる。ルールや LOCK・Retry Policy で決めたときは呼ばない。Jev の答えは記録するだけで、Repair には使わない。Jev の失敗・タイムアウトも Repair に影響しない
 - **送るもの**: Issue の構造化フィールド（`type` / `severity` / `dimension` / `time_range`）と候補の識別子のみ。日本語の自由記述・Character ID・フレーム番号・Brief・画像は送らない
-- **バージョン固定**: 既定は `jev-1.13.0`。`jev-latest` などの別名は起動時に拒否する（`jev-<major>.<minor>.<patch>` のみ）。`--jev-config`（`MAM_JEV_CONFIG`）の JSON ファイル（`base_url` / `model` / `timeout_seconds` / `input_cost_per_million_usd`）で上書きできる。未知のキーはエラー
+- **バージョン固定**: 既定は `jev-1.13.0`。`jev-latest` などの別名は起動時に拒否する（`jev-<major>.<minor>.<patch>` のみ）。`--jev-config`（`MAM_JEV_CONFIG`）の JSON ファイル（`base_url` / `model` / `timeout_seconds` / `input_cost_per_million_usd`）で上書きできる。未知のキーはエラー。既定値は `base_url` が `https://api.typesafe.ai`、`timeout_seconds` が 10（1 回の呼び出しの上限秒数）、`input_cost_per_million_usd` が 0.042（入力 100 万トークンあたりの USD。出力は無料。下の `repair_shadow` のコストはこの単価で計算するので、合計コストの前提になる）。応答の本文は 1 MiB までしか読まない
 - **API キー**: `internal/credential` のプロバイダー `typesafe` に保存する。キーが無いときは呼ばず、何も記録しない
 - **記録**: `repair_shadow`（`spec/architecture/er.md`）に、Jev の選択・確率・confidence・Repair Agent の選択・一致の有無・遅延・トークン数・コスト（入力トークン × 単価）・失敗時の理由を 1 呼び出し 1 行で残す。集計（`RepairRepository.ShadowReport`）は一致率（失敗を除く）・confidence の平均と 10 区間の分布（各区間での一致数つき）・平均遅延（失敗を除く）・合計コストを返す。前段選別を有効にするかどうかは、この集計を見て §4.5 の導入手順に従って決める
 
@@ -302,8 +302,8 @@ Shot の性質による軸の重み: 4 軸とも基準 1 に、Shot Spec に Pro
 | `routing.min_samples` | 実績として使うのに必要な Judge 済み Take 数 | 5 |
 | `routing.prior_quality` | 実績が足りないモデルの quality（0〜1） | 0.75 |
 | `routing.switch_margin` | 切り替えに必要な score の差 | 0.05 |
-| `routing.weights.<fast\|balanced\|max_quality>` | `quality` / `cost` / `fit` の重み（負でなく、合計が正） | 13.3 |
-| `routing.candidates.<fast\|balanced\|max_quality>` | `model` と `resolution` の配列（各モデルは動画モデルで、`policies` と同じ検証を受ける） | 13.2 |
+| `routing.weights.<fast\|balanced\|max_quality>` | `quality` / `cost` / `fit` の重み（負でなく、合計が正） | §13.3 の重み |
+| `routing.candidates.<fast\|balanced\|max_quality>` | `model` と `resolution` の配列（各モデルは動画モデルで、`policies` と同じ検証を受ける） | §13.2 の候補 |
 
 ## 14. Audio Director（M3）の実装（`internal/agent/audiodirector`）
 
@@ -316,16 +316,16 @@ M3 Issue #25 の仕様。§5 の全機能（TTS・音声クローン / Music / S
 | Dialogue / Narration（TTS） | `elevenlabs-tts` | `POST /v1/text-to-speech/{voice_id}`（モデル `eleven_multilingual_v2`） | `elevenlabs`（ヘッダー `xi-api-key`） |
 | 音声クローン | （生成物ではなくコストなし。音声 ID は `voice_clone` に保存） | `POST /v1/voices/add`（multipart。`name` と `files`）。応答の `voice_id` を保存する | `elevenlabs` |
 | BGM（Music v2） | `elevenlabs-music` | `POST /v1/music`（`prompt`・`music_length_ms`・`model_id: music_v2`・`force_instrumental: true`）。長さは 3〜600 秒 | `elevenlabs` |
-| SE / Foley / Ambience | `elevenlabs-sfx` | `POST /v1/sound-generation`（`text`・`duration_seconds`・`loop`）。長さは 0.5〜30 秒 | `elevenlabs` |
+| SE / Foley / Ambience | `elevenlabs-sfx` | `POST /v1/sound-generation`（`text`・`duration_seconds`・`loop`・`model_id: eleven_text_to_sound_v2`）。長さは 0.5〜30 秒 | `elevenlabs` |
 | Lip Sync | `sync-labs` | `POST https://api.sync.so/v2/generate`（multipart。`video`・`audio`・`model`）→ `GET /v2/generate/{id}` を `COMPLETED` までポーリングし、`outputUrl` をダウンロードする（ダウンロードには API キーを送らない） | `synclabs`（ヘッダー `x-api-key`） |
 
-- 長さが範囲外の Music / SE はリクエストを送らずに拒否する。429 はレート制限として利用者に伝え、リトライしない。API キーはエラーメッセージに含めない
+- 長さが範囲外の Music / SE はリクエストを送らずに拒否する。429 はレート制限として利用者に伝え、リトライしない。API キーはエラーメッセージに含めない。1 回の呼び出しの時間上限は、ElevenLabs の TTS・SFX・音声クローンが 60 秒、Music が 180 秒、Sync Labs の Lip Sync がアップロードからダウンロードまで 10 分（状態確認の間隔 2 秒）で、超えるとその呼び出しは失敗し、層は `skipped` に残る。生成した音声（TTS・Music・SFX の応答）は 32 MiB まで、Lip Sync の出力動画は 512 MiB までで、空または超えるものは失敗として扱う
 - 各ベンダーの呼び出しはインターフェース（`Synthesizer` / `Composer` / `SoundMaker` / `VoiceCloner` / `LipSyncer`）の裏にあり、`audiodirector.Providers` で束ねて `service.Deps.Audio` に渡す。未設定のプロバイダーの層は作らず、Audio Timeline の `skipped` に残す（偽の音は作らない）
 
 ### 14.2 Audio Timeline の生成（Scene Emotion と編集テンポ）
 
 1. **Scene の読み取り**: Edit Timeline のクリップを Scene ごとにまとめ、編集後の動画上の開始・終了、クリップ数、Scene の場所・目的・脚本の内容・Shot の目的を集める。編集テンポは Scene 内のクリップの平均の長さから決める（2.5 秒未満 `fast`、5 秒超 `slow`、それ以外 `medium`）
-2. **プラン（Planner）**: Reasoning LLM（`llm.AgentAudioDirector`）が Scene ごとに Scene Emotion（感情）・BGM のプロンプト・Ambience のプロンプト・SE / Foley の置き場所（Scene 先頭からの秒数・長さ・プロンプト）を JSON で返す。Quality Policy の範囲外の層、Scene の外・長さ 0.5 秒未満・最大 4 個を超える効果音は捨てる。LLM が未設定のときは規則で作る（BGM はテンポとブリーフの mood、Ambience は Scene の場所から。効果音は置かない）。LLM の出力が使えない（Scene を 1 つも指していない等）ときは **プロバイダーへの支払いの前に** エラーにする
+2. **プラン（Planner）**: Reasoning LLM（`llm.AgentAudioDirector`）が Scene ごとに Scene Emotion（感情）・BGM のプロンプト・Ambience のプロンプト・SE / Foley の置き場所（Scene 先頭からの秒数・長さ・プロンプト）を JSON で返す。Scene Emotion は 40 文字（rune）に切り詰めて Audio Timeline の `scenes[].emotion` に保存する。Quality Policy の範囲外の層、Scene の外・長さ 0.5 秒未満・最大 4 個を超える効果音は捨てる。採用する効果音の長さは、LLM が返した長さを 6 秒（Planner 固有の上限。§14.1 の SFX の上限 30 秒とは別）と Scene の終わりまでの残りのうち短い方に切り詰める（生成もコストの見積もりもこの長さで行う）。捨てるのは LLM が返した長さが 0.5 秒未満のものと、切り詰めた結果が 0.5 秒未満になるもの（Scene の終わりの直前に置かれたもの）で、0.5 秒未満の効果音は引き延ばさない。LLM が未設定のときは規則で作る（BGM はテンポとブリーフの mood、Ambience は Scene の場所から。効果音は置かない）。LLM の出力が使えない（Scene を 1 つも指していない等）ときは **プロバイダーへの支払いの前に** エラーにする
 3. **層ごとの生成**: Dialogue / Narration は脚本の行を順に話し、行は Scene の開始位置か直前の行の直後（遅い方）に置く（行の間 0.3 秒）。話者に音声クローンがあれば Dialogue の行はその声で話す（Narration は既定の声）。その後、BGM（Scene の長さ）→ Ambience（Scene の長さ。ループ）→ SE → Foley の順に作る。この順は予算が足りないときの優先順位でもある
 4. **ミキシング・ラウドネス**: Take 自体の音声（あれば）と全クリップをローカルの ffmpeg で 1 本にする。BGM・Ambience は Scene の両端で 0.5 秒フェードし、層ごとの音量は Dialogue / Narration 0 dB、BGM −16 dB、Ambience −22 dB、SE −8 dB、Foley −12 dB（ファイルに対して）。そのうえで §12 と同じ 2 パスの `loudnorm` で −14 LUFS / −1.5 dBTP に揃え、測定値を保存する（外部 API は呼ばない）。セリフも Take の音声も足す音もなければ無音とし、ミックスは作らない
 
@@ -343,7 +343,7 @@ Dialogue と Narration は常に作る。
 
 ### 14.4 Lip Sync
 
-MAX QUALITY のみ。話者付きの Dialogue の行（Narration は対象外）が入っているクリップごとに、そのクリップの Take の該当範囲を切り出した動画と、そのクリップの行を本来の時刻に置いた音声（ffmpeg で作る）を Sync Labs に渡し、返った動画を `<project_id>/audio/<edit_timeline_id>/<run>/lipsync-NN.mp4`（assets ディレクトリ直下からの相対パス）に保存して Audio Timeline の `lip_sync` に記録する。書き出し（Export）はそのクリップの映像を Take の代わりにこの動画から切り出す。行がクリップをまたぐ・どのクリップにも入らない場合と、失敗した場合は、そのクリップの Lip Sync だけ諦めて `skipped` に残す（音声は作る。Sync Labs が受け付けたあとの失敗は見積を台帳に残す。§14.5）。Sync Labs のキーがなければ、残りのクリップも試さない。
+MAX QUALITY のみ。話者付きの Dialogue の行（Narration は対象外）が入っているクリップごとに、そのクリップの Take の該当範囲を切り出した動画と、そのクリップの行を本来の時刻に置いた音声（ffmpeg で作る）を Sync Labs に渡し、返った動画を `<project_id>/audio/<edit_timeline_id>/<run>/lipsync-NN.mp4`（assets ディレクトリ直下からの相対パス）に保存して Audio Timeline の `lip_sync` に記録する。書き出し（Export）はそのクリップの映像を Take の代わりにこの動画から切り出す。行がクリップをまたぐ・どのクリップにも入らない場合と、失敗した場合は、そのクリップの Lip Sync だけ諦めて `skipped` に残す（音声は作る。Sync Labs が受け付けたあとの失敗は見積を台帳に残す。§14.5）。クリップに入っているかの判定には 0.1 秒の許容幅を持つ（行の開始がクリップの開始の 0.1 秒前以降でクリップの終わりより前、かつ行の終わりがクリップの終わりの 0.1 秒後までなら、そのクリップに入っていると見なす）。Sync Labs のキーがなければ、残りのクリップも試さない。
 
 ### 14.5 コストと予算（F-22）
 

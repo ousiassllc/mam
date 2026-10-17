@@ -166,11 +166,27 @@ func ReviewInboxList(d ReviewInboxData) templ.Component {
 	})
 }
 
+// ReviewDecisionTone is the badge tone of a decision (shared with the owner's review list).
+func ReviewDecisionTone(d domain.ReviewDecision) atoms.BadgeTone {
+	if d == domain.DecisionApproved {
+		return atoms.BadgeOK
+	}
+	return atoms.BadgeWarn
+}
+
+// TimecodeLabel is the position of a comment in the video: "全体" for a comment on the whole.
+func TimecodeLabel(ms *int64) string {
+	if ms == nil {
+		return "全体"
+	}
+	return domain.FormatReviewTimecode(*ms)
+}
+
 func reviewDecisionBadge(d domain.ReviewDecision) (atoms.BadgeTone, string) {
 	if !d.Valid() {
 		return atoms.BadgeNeutral, "未回答"
 	}
-	return reviewDecisionTone(d), d.Label()
+	return ReviewDecisionTone(d), d.Label()
 }
 
 // ReviewWorkspace is the review screen of a reviewer: the video, the owner's note, the reviewer's
@@ -205,7 +221,7 @@ func ReviewWorkspace(i domain.ReviewInbox) templ.Component {
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue(paths.Review(i.ID, "video"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 57, Col: 146}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 73, Col: 146}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
 		if templ_7745c5c3_Err != nil {
@@ -223,7 +239,7 @@ func ReviewWorkspace(i domain.ReviewInbox) templ.Component {
 			var templ_7745c5c3_Var10 string
 			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(i.Note)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 61, Col: 68}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 77, Col: 68}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {
@@ -339,9 +355,9 @@ func ReviewComments(i domain.ReviewInbox) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var13 string
-			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(timecodeLabel(c.TimecodeMs))
+			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(TimecodeLabel(c.TimecodeMs))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 89, Col: 97}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 105, Col: 97}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 			if templ_7745c5c3_Err != nil {
@@ -354,7 +370,7 @@ func ReviewComments(i domain.ReviewInbox) templ.Component {
 			var templ_7745c5c3_Var14 string
 			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(c.Body)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 90, Col: 62}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 106, Col: 62}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 			if templ_7745c5c3_Err != nil {
@@ -364,7 +380,7 @@ func ReviewComments(i domain.ReviewInbox) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = atoms.Button(atoms.ToneDanger, "削除", templ.Attributes{"hx-delete": paths.Review(i.ID, "comments", c.ID), "hx-target": "#review-comments", "hx-swap": "outerHTML", "type": "button", "hx-confirm": "このコメントを削除します。よろしいですか？"}).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = atoms.ButtonFor(atoms.ToneDanger, "削除", TimecodeLabel(c.TimecodeMs)+" "+c.Body, templ.Attributes{"hx-delete": paths.Review(i.ID, "comments", c.ID), "hx-target": "#review-comments", "hx-swap": "outerHTML", "type": "button", "hx-confirm": "このコメントを削除します。よろしいですか？"}).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -409,7 +425,7 @@ func ReviewCommentForm(i domain.ReviewInbox, oob bool) templ.Component {
 		var templ_7745c5c3_Var16 string
 		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.ResolveAttributeValue(paths.Review(i.ID, "comments"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 102, Col: 42}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 118, Col: 42}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var16)
 		if templ_7745c5c3_Err != nil {
@@ -487,7 +503,7 @@ func ReviewDecision(i domain.ReviewInbox) templ.Component {
 		var templ_7745c5c3_Var18 string
 		templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.ResolveAttributeValue(paths.Review(i.ID, "decision"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 131, Col: 75}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/review_workspace.templ`, Line: 147, Col: 75}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var18)
 		if templ_7745c5c3_Err != nil {

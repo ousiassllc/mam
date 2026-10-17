@@ -15,13 +15,13 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/bundlezip"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/domain/bundlepath"
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/review"
 )
 
-// Team Collaboration limits (spec/spec.md §27.1). The files come from other people, so what is read
-// from them is bounded.
+// Team Collaboration limits (spec/spec.md §27.1). The files come from other people, so what is read from them is bounded.
 const (
 	maxReviewVideoBytes    = 2 << 30 // the video of a package
 	MaxReviewPackageBytes  = maxReviewVideoBytes + 1<<20
@@ -29,7 +29,7 @@ const (
 	// MaxReviewResponseRequestBytes caps the upload of a Review Response: the file plus the form overhead.
 	MaxReviewResponseRequestBytes = maxReviewResponseBytes + 1<<20
 	reviewVideoSniffBytes         = 16
-	reviewsDir                    = domain.ReviewInboxDir + "/" // below the assets directory: the videos of imported packages
+	reviewsDir                    = bundlepath.ReviewInboxDir + "/" // below the assets directory: the videos of imported packages
 )
 
 // ReviewService is Team Collaboration: the owner makes Review Packages and imports the responses; a
@@ -60,12 +60,12 @@ type ReviewItemView struct {
 type ReviewsView struct {
 	Project domain.Project
 	Items   []ReviewItemView
-	// Exports are the Exports a review can be requested for, newest first.
-	Exports []domain.Export
+	Exports []domain.Export // the Exports a review can be requested for, newest first
+	Touched string          // the review request a create or an import changed ("" for neither)
 }
 
-// ProjectReviews returns the review screen of a Project.
-func (s *ReviewService) ProjectReviews(ctx context.Context, projectID string) (ReviewsView, error) {
+// ProjectReviews returns the review screen of a Project; touched is the review request just changed.
+func (s *ReviewService) ProjectReviews(ctx context.Context, projectID, touched string) (ReviewsView, error) {
 	p, err := s.getProject(ctx, projectID)
 	if err != nil {
 		return ReviewsView{}, err
@@ -82,7 +82,7 @@ func (s *ReviewService) ProjectReviews(ctx context.Context, projectID string) (R
 	if err != nil {
 		return ReviewsView{}, err
 	}
-	view := ReviewsView{Project: p, Exports: exports}
+	view := ReviewsView{Project: p, Exports: exports, Touched: touched}
 	for _, it := range items {
 		view.Items = append(view.Items, ReviewItemView{ReviewItem: it, Export: byID[it.Request.ExportID]})
 	}
@@ -109,11 +109,11 @@ func (s *ReviewService) CreateRequest(ctx context.Context, projectID, exportID, 
 	if err := s.reviews.CreateRequest(ctx, q); err != nil {
 		return ReviewsView{}, err
 	}
-	return s.ProjectReviews(ctx, projectID)
+	return s.ProjectReviews(ctx, projectID, q.ID)
 }
 
 func (s *ReviewService) exportFileExists(e domain.Export) bool {
-	if !domain.ValidBundleFilePath(e.ProjectID, e.FilePath) {
+	if !bundlepath.ValidFilePath(e.ProjectID, e.FilePath) {
 		return false
 	}
 	st, err := os.Stat(filepath.Join(s.assetsDir, filepath.FromSlash(e.FilePath)))
@@ -228,19 +228,18 @@ func (s *ReviewService) ImportResponse(ctx context.Context, projectID string, sr
 	if err := s.chatSvc.Announce(context.WithoutCancel(ctx), projectID, assistantText(text)); err != nil {
 		s.logger.Error("post review notice failed", "project_id", projectID, "err", err)
 	}
-	return s.ProjectReviews(ctx, projectID)
+	return s.ProjectReviews(ctx, projectID, resp.ReviewID)
 }
 
 // SetCommentResolved marks an imported comment as dealt with or open again
-// (PUT /projects/:id/review-comments/:commentId).
-func (s *ReviewService) SetCommentResolved(ctx context.Context, projectID, commentID string, resolved bool) (ReviewsView, error) {
-	if _, err := s.getProject(ctx, projectID); err != nil {
-		return ReviewsView{}, err
+// (PUT /projects/:id/review-comments/:commentId) and returns the review request that holds it.
+func (s *ReviewService) SetCommentResolved(ctx context.Context, projectID, commentID string, resolved bool) (ReviewItemView, error) {
+	it, err := s.reviews.SetCommentResolved(ctx, projectID, commentID, resolved)
+	if err != nil {
+		return ReviewItemView{}, notFound(err)
 	}
-	if err := s.reviews.SetCommentResolved(ctx, projectID, commentID, resolved); err != nil {
-		return ReviewsView{}, notFound(err)
-	}
-	return s.ProjectReviews(ctx, projectID)
+	e, err := s.editors.GetExport(ctx, projectID, it.Request.ExportID)
+	return ReviewItemView{ReviewItem: it, Export: e}, err
 }
 
 // Inbox lists the packages this instance imported as a reviewer, newest first.

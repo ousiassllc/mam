@@ -17,7 +17,7 @@
 | 項目 | 要件 |
 |------|------|
 | UI 応答性 | HTMX フラグメント swap のループバック往復（サーバー処理時間）は 100ms 以内を目標（DB問い合わせのみのアクション） |
-| 生成ジョブの非同期性 | 画像/動画生成・Judge・Repair はすべてバックグラウンドジョブとして実行し、UI スレッド（HTTPリクエスト処理）をブロックしない |
+| 生成ジョブの非同期性 | 画像/動画生成・Judge・Repair はすべてバックグラウンドジョブとして実行し、UI スレッド（HTTPリクエスト処理）をブロックしない。ジョブ（生成・Judge・Repair・AUTO パイプラインの `plan`）を同時に実行するワーカーは 4 本で、これを超えたジョブは `queued` のまま順番を待つ |
 | 進捗通知 | 生成中の Take/Shot の進捗は WebSocket 経由でリアルタイムに UI へ反映する（ポーリング禁止） |
 | プレビュー再生 | 1080p 動画のプレビュー再生はコマ落ちなく再生できること。4K アセットはサムネイル/プロキシ生成で代替表示を許容する。プロキシを作れなかったとき（ffmpeg が無い・失敗・上限時間切れ）は原本で代替し（コマ落ちしうる）、失敗は 10 分間覚えて再試行しない。変換はクライアントの切断では止めず、同じファイルにつき 1 回だけ走る |
 | 起動時間 | プロジェクトを開いた際の Chat Workspace（`GET /projects/:id`）の初期表示は 3 秒以内（ローカル SQLite 読み込みのみの場合） |
@@ -38,7 +38,7 @@
 | 項目 | 要件 |
 |------|------|
 | プロジェクト規模 | 1プロジェクトあたり Scene/Shot/Take 数百件、Take あたり複数バージョンのファイル資産を保持していても、一覧表示の初期表示が 2 秒以内、検索結果表示が 1 秒以内で返ること（一覧・チャット履歴はページングせず全件を 1 回の問い合わせで取得して描画し、画像・動画のサムネイルだけを `loading="lazy"` で遅延読み込みする。ローカルの SQLite では、job を持つ進捗カード 1,000 件のチャット履歴の取得・整形が約 16 ms、Project 一覧が 1 ms 未満であり、この規模では全件描画で目標を満たす。N+1 クエリを避けるため、履歴の整形は job・返信先・添付を一括取得する） |
-| ディスク容量 | 生成前に空き容量を見積もり、不足時は警告してから生成を開始する。不要 Take のアーカイブ/削除機能を提供する。Take のプロキシ・サムネイルと Rough Cut のプレビューは `assets/.previews` に必要になった時点で作るキャッシュで、Take のアーカイブで当該 Take の分を削除し、合計が 4 GiB を超えたら最後に使われた（再生・要求された）のが古いものから削除する（LRU。作ってから古いものではない）。Storage 画面に合計サイズを表示する。強制終了で残った変換の一時ファイル（`assets/.previews/.<名前>.ffmpeg.tmp`）は起動時に削除する |
+| ディスク容量 | 生成前に空き容量を見積もり、不足時は警告してから生成を開始する。見積もりは Take 1 秒あたり 2 MiB（約 16 Mbit/s の概算）× Take 数 × Shot の長さで、空きがそれ未満なら Shot ごとにチャットへ警告する（実際の動画がこれより大きい・小さいときは警告に誤差が出る）。不要 Take のアーカイブ/削除機能を提供する。Take のプロキシ・サムネイルと Rough Cut のプレビューは `assets/.previews` に必要になった時点で作るキャッシュで、Take のアーカイブで当該 Take の分を削除し、合計が 4 GiB を超えたら最後に使われた（再生・要求された）のが古いものから削除する（LRU。作ってから古いものではない）。Storage 画面に合計サイズを表示する。強制終了で残った変換の一時ファイル（`assets/.previews/.<名前>.ffmpeg.tmp`）は起動時に削除する |
 | 同時実行 | 同一プロジェクト内で複数 Shot の並列生成（Prompt Candidate Generation の Quality Mode 等）を許容する。外部モデル API のレート制限に応じて同時実行数を Model Adapter 側で制御する |
 | マルチプロジェクト | 複数プロジェクトの並行オープンはサポートしない（M1〜M2）。将来的な複数プロジェクト同時操作は本要件の対象外とする |
 
@@ -78,7 +78,7 @@
 
 | 項目 | 要件 |
 |------|------|
-| エクスポート/インポート | プロジェクト全体（Project Data Model + アセット参照）をポータブルなバンドル（アーカイブファイル）としてエクスポート/インポートできる。クラウド同期基盤は前提としない。バンドルは ZIP（`manifest.json`・`data.json`・`assets/`）で、インポートは同じ ID の Project が無い環境へ ID とファイルパスを保ったまま復元する。取り込める Project ID と全テーブルの行 ID は `[A-Za-z0-9_-]{1,64}`（UUID を含む）に限り、サーバーが `assets/` 直下で使う `reviews`（Review Package の動画置き場 `assets/reviews/`）と Windows の予約デバイス名（`CON`・`PRN`・`AUX`・`NUL`・`COM1`〜`COM9`・`LPT1`〜`LPT9`）は、大文字小文字を区別せず使えない（Windows・macOS の既定のファイルシステムは大文字小文字を区別せず、`Reviews` が `reviews` と同じディレクトリになるため）。中断したインポートの展開先（`assets/.import-*`）は起動時に削除する |
+| エクスポート/インポート | プロジェクト全体（Project Data Model + アセット参照）をポータブルなバンドル（アーカイブファイル）としてエクスポート/インポートできる。クラウド同期基盤は前提としない。バンドルは ZIP（`manifest.json`・`data.json`・`assets/`）で、インポートは同じ ID の Project が無い環境へ ID とファイルパスを保ったまま復元する。取り込める Project ID と全テーブルの行 ID は `[A-Za-z0-9_-]{1,64}`（UUID を含む）に限り、サーバーが `assets/` 直下で使う `reviews`（Review Package の動画置き場 `assets/reviews/`）と Windows の予約デバイス名（`CON`・`PRN`・`AUX`・`NUL`・`COM1`〜`COM9`・`LPT1`〜`LPT9`）は、大文字小文字を区別せず使えない（Windows・macOS の既定のファイルシステムは大文字小文字を区別せず、`Reviews` が `reviews` と同じディレクトリになるため）。ファイルパス（`file_path`・Audio Timeline が指すパス）は `<project_id>/` の下で、Project ディレクトリの外へ出ず、`\`・`:`・NUL・`..` を含まず、`/` で区切った各要素が Windows で作れる名前であること（`CON`・`PRN`・`AUX`・`NUL`・`COM1`〜`COM9`・`LPT1`〜`LPT9`・上付き数字の `COM¹`〜`COM³`・`LPT¹`〜`LPT³` は拡張子付き〔`NUL.mp4`〕も含め大文字小文字を区別せず、`*`・`?`・`"`・`<`・`>`・`|`・制御文字を含まず、末尾が `.` や空白でない。末尾の `.`・空白は Windows が落とすため `a.` と `a` が同じファイルになる。取り込む全ファイルのパスの間でも、大文字小文字だけが違う 2 本（`x.mp4` と `X.mp4`）と、ファイルとディレクトリが同名になる 2 本（`x` と `x/y.mp4`）は取り込めない（`bundlepath.Conflict`。Windows・macOS では後に書いた方が先の方を黙って上書きする）。`bundlepath.ValidFilePath`）。中断したインポートの展開先（`assets/.import-*`）は起動時に削除する |
 | チーム共有（レビュー） | プロジェクトバンドルは自分の端末間の移行・バックアップ用で、顔基準画像などを含むため他人に渡すものではない。チームでの共有は、動画 1 本とメモだけの Review Package（F-32、`spec/spec.md` §27.1）で行い、クラウド同期基盤は前提としない |
 | 最終成果物書き出し | Final Export は指定 Aspect Ratio / 解像度 / コーデックで動画ファイルをローカルへ書き出す |
 
@@ -118,3 +118,9 @@
 | 1.22 | 2026-10-12 | 1.21 の起動時削除（§4 のディスク容量）の担い手を、新設の `previewcache.RemoveStaleTemp` ではなく既存の `fsutil.RemoveStaleTemp`（`assets` 配下を再帰して `.` 始まり `.tmp` 終わりのファイルを消す）と訂正した（要件は変えていない） | Issue #671。`fsutil.RemoveStaleTemp` が既に `.previews` の `.ffmpeg.tmp` を消していたため、`previewcache.RemoveStaleTemp` は常に空振りする重複だった |
 | 1.23 | 2026-10-12 | §8 のエクスポート/インポートで、取り込める ID から `reviews` を除いた（`assets/reviews/` は Review Package の動画置き場） | Issue #682。`ValidBundleID` は `.` 始まりしか拒まず、`project_id: "reviews"` のバンドルが Review の受信箱の動画置き場と同じディレクトリに展開され、取り込み失敗時の削除で受信箱ごと消えうる（`domain.ReviewInboxDir`、`bundlezip.Open` が展開前に拒む） |
 | 1.24 | 2026-10-12 | §8 のエクスポート/インポートで、取り込めない ID の `reviews` を大文字小文字を区別せず拒むようにし、Windows の予約デバイス名（`CON`・`NUL`・`COM1` など）も加えた | Issue #689。Windows・macOS の既定のファイルシステムは大文字小文字を区別せず、`project_id: "Reviews"` が #682 の拒否をすり抜けて `assets/reviews/` と衝突する。`CON` などは Windows でディレクトリにできず、展開が 500 相当で失敗する（`domain.ValidBundleID`） |
+| 1.25 | 2026-10-15 | §8 のエクスポート/インポートで、取り込めないファイルパスに、各要素が Windows の予約デバイス名（拡張子付きを含む）・`* ? " < > |`・制御文字・末尾の `.` や空白である場合を足した | Issue #725。#689 の Windows 名の防御が Project ID（先頭要素）止まりで、`p/NUL.mp4` や `p/a.` が `Open` を通り、Windows の展開が失敗するか `a.` と `a` が互いを上書きした（`domain.ValidBundleFilePath`） |
+| 1.26 | 2026-10-16 | §8 のエクスポート/インポートの実装の所在を `domain.ValidBundleID` / `domain.ValidBundleFilePath` から `domain/bundlepath` の `ValidID` / `ValidFilePath` に改めた（拒否する名前・パスは変えていない） | Issue #727。#725 の修正で `backend/internal/domain/` が行数基準値を超え `make lint-lines` が落ちたため、バンドルの ID・パスの検証をサブパッケージに切り出した（`domain.ReviewInboxDir` も `bundlepath.ReviewInboxDir` へ） |
+| 1.27 | 2026-10-16 | §8 のエクスポート/インポートで、取り込めないファイルパスに、取り込む全ファイルのパスの間の衝突（大文字小文字だけが違う 2 本、ファイルとディレクトリが同名になる 2 本）を足した | Issue #735。パスを 1 本ずつしか検査せず、`x.mp4` と `X.mp4` は Windows・macOS で片方がもう片方を黙って上書きして 2 つのアセット／Take が同じ動画を指し、`x` と `x/y.mp4` は展開が ENOTDIR で失敗して 422 でなく 500 になった（`bundlepath.Conflict`） |
+| 1.28 | 2026-10-16 | §8 のエクスポート/インポートで、取り込めないファイルパスの Windows 予約デバイス名に、上付き数字の `COM¹`〜`COM³`・`LPT¹`〜`LPT³`（拡張子付きを含む）を足した | Issue #744。Microsoft の「Naming Files, Paths, and Namespaces」が予約名とする `COM¹` などが ASCII の数字 `[1-9]` だけの判定をすり抜け、`p/COM¹.png` が `Open` を通って Windows の展開が失敗した（`bundlepath.ValidFilePath`。`com0`・`lpt0` は従来どおり許可） |
+| 1.29 | 2026-10-16 | §2 の「生成ジョブの非同期性」に、ジョブを同時に実行するワーカー数 4（`jobqueue.DefaultWorkers`）と、超えたジョブは `queued` で待つことを追記した | Issue #761。`app.services` は既定値の `jobqueue.Options{Logger: logger}` で起動するため同時実行数は 4 だが、仕様に無かった |
+| 1.30 | 2026-10-16 | §4 のディスク容量に、生成前の警告の見積もり（Take 1 秒あたり 2 MiB × Take 数 × Shot の長さ）を足した | Issue #759。見積もりの根拠（`bytesPerVideoSecond = 2 << 20`、`generation/orchestrator.go` の `warnLowDisk`）が仕様書に無く、警告の誤差の前提が分からなかった |

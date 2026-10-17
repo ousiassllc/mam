@@ -19,6 +19,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/testenv"
 )
 
 type memKeys map[string]string
@@ -503,10 +504,8 @@ func TestSubmittedJobSurvivesAnOutageOfStatusAndDownloadWithoutBeingSubmittedAga
 func TestPollRetriesLastUntilTheDeadlineOfTheCall(t *testing.T) {
 	srv, _, polls, _ := seedanceServer(t, []int{http.StatusServiceUnavailable}, []int{0})
 	b := backendsFor(t, srv, memKeys{"seedance": "k"})
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
-	defer cancel()
 
-	_, err := b.Video[domain.ModelSeedance2].GenerateVideo(ctx, "m", seedanceReq)
+	_, err := b.Video[domain.ModelSeedance2].GenerateVideo(testenv.EndsAfterFirstRequest(t, polls, 100*time.Millisecond), "m", seedanceReq)
 
 	var pe *modeladapter.ProviderError
 	require.ErrorAs(t, err, &pe)
@@ -515,7 +514,7 @@ func TestPollRetriesLastUntilTheDeadlineOfTheCall(t *testing.T) {
 }
 
 func TestAdapterDoesNotSubmitAgainWhenPollingKeepsFailing(t *testing.T) {
-	srv, submits, _, _ := seedanceServer(t, []int{http.StatusServiceUnavailable}, []int{0})
+	srv, submits, polls, _ := seedanceServer(t, []int{http.StatusServiceUnavailable}, []int{0})
 	cfg := modeladapter.DefaultConfig()
 	for v, vc := range cfg.Vendors {
 		vc.BaseURL = srv.URL
@@ -523,9 +522,7 @@ func TestAdapterDoesNotSubmitAgainWhenPollingKeepsFailing(t *testing.T) {
 	}
 	a := newAdapter(cfg, modeladapter.NewBackends(cfg, memKeys{"seedance": "k"}, srv.Client(), time.Millisecond, modeladapter.WithLocalDownloads()))
 
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
-	defer cancel()
-	_, err := a.GenerateVideo(ctx, seedanceTarget, seedanceTarget, baseJob())
+	_, err := a.GenerateVideo(testenv.EndsAfterFirstRequest(t, polls, 100*time.Millisecond), seedanceTarget, seedanceTarget, baseJob())
 
 	require.Error(t, err)
 	assert.EqualValues(t, 1, submits.Load(), "the vendor accepted the job: a failed status request must not submit it (and bill it) again")

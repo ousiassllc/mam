@@ -180,7 +180,7 @@ func BrandConstraintItems(d BrandConstraintListData) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = atoms.SmallButton(atoms.ToneNeutral, "削除", templ.Attributes{
+				templ_7745c5c3_Err = atoms.SmallButtonFor(atoms.ToneNeutral, "削除", c.Text, templ.Attributes{
 					"type":       "button",
 					"hx-delete":  paths.BrandConstraint(c.ID),
 					"hx-target":  "#brand-constraint-list",

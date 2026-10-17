@@ -8,6 +8,7 @@ import { requestFailureMessage, type RequestFailure } from './components/lib/err
 import { showToast } from './ajax';
 import { installHistorySnapshotHygiene } from './components/lib/history';
 import { installSaveOnChangeRevert } from './components/save-on-change/save-on-change';
+import { installFocusRestore } from './components/focus-restore/focus-restore';
 import { dedupeToastsOnSwap, dismissToastsOnClick } from './components/lib/toast';
 
 // Attach the CSRF token (from <meta name="csrf-token">) to every HTMX request.
@@ -44,6 +45,10 @@ for (const type of [
 // (a 4xx/5xx toast, server down, timeout), put it back to the stored value, so that the screen never
 // shows a value that was not saved (issue 538).
 installSaveOnChangeRevert();
+
+// A swap that the user started and that replaced the control they used (a LockToggle button, a Delete
+// button) would leave the focus on <body>: give it back to the control that took its place (issues 789, 794).
+installFocusRestore();
 
 lockDownHtmx(htmx.config);
 

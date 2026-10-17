@@ -35,7 +35,7 @@ tasks:
       - task: build
     dir: build/windows/nsis
     cmds:
-      # The WebView2 bootstrapper (downloaded from Microsoft, not committed) goes into the installer.
+      # The WebView2 bootstrapper (embedded in the wails3 CLI, written here; not committed) goes into the installer.
       - wails3 generate webview2bootstrapper -dir "{{.ROOT_DIR}}/build/windows/nsis"
       - |
         {{if eq OS "windows"}}

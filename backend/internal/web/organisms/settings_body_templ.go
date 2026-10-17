@@ -12,6 +12,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/brandtemplate"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -21,7 +22,7 @@ type SettingsBodyData struct {
 	Cost      domain.CostSummary
 	Storage   StoragePanelData
 	Brand     BrandConstraintListData
-	Templates BrandTemplatePanelData
+	Templates brandtemplate.Data
 	// Credentials is which provider has an API key; never a key.
 	Credentials CredentialPanelData
 }
@@ -196,7 +197,7 @@ func SettingsBody(d SettingsBodyData) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = BrandTemplatePanel(d.Templates).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = brandtemplate.Panel(d.Templates).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

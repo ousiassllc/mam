@@ -30,3 +30,35 @@ if [[ "$generate_cmd" != "$expected" ]]; then
   exit 1
 fi
 echo "ok: make generate runs templ ${templ_version} (go.mod), not the templ on PATH"
+
+# The distributed Windows build (cmd/wails, //go:build windows) is invisible to a Linux govulncheck run, so `make vuln`
+# must check the Windows target as well.
+vuln_cmd="$(make --no-print-directory -n vuln)"
+for want in 'govulncheck ./...' 'GOOS=windows CGO_ENABLED=0 govulncheck ./...'; do
+  grep -qxF -- "$want" <<<"$vuln_cmd" || { echo "FAIL: 'make vuln' does not run '$want'"; exit 1; }
+done
+echo "ok: make vuln checks both the Linux host and the Windows target"
+
+# scripts/package-windows.sh (Windows has no make) must pin templ the same way: a PATH `templ generate` would rewrite the
+# committed *_templ.go with a stale version, and `templ` must not be a required tool any more.
+if grep -qE '^[[:space:]]*templ generate' scripts/package-windows.sh || grep -qE 'for tool in .*\btempl\b' scripts/package-windows.sh; then
+  echo "FAIL: scripts/package-windows.sh uses the templ on PATH; use 'go run github.com/a-h/templ/cmd/templ@<go.mod version> generate'"
+  exit 1
+fi
+# shellcheck disable=SC2016 # the literal $templ_version in package-windows.sh is what is searched for
+grep -qF 'go run github.com/a-h/templ/cmd/templ@"$templ_version" generate ./backend/...' scripts/package-windows.sh || {
+  echo "FAIL: scripts/package-windows.sh does not run templ at the go.mod version"
+  exit 1
+}
+echo "ok: scripts/package-windows.sh runs templ ${templ_version} (go.mod), not the templ on PATH"
+
+# windows-latest checks out with core.autocrlf=true, which would turn scripts/*.sh into CRLF (bash then stops at
+# `set: pipefail\r: invalid option name`) unless .gitattributes pins the line endings. Text files must be forced to LF
+# and every binary file (git ls-files --eol: i/-text) must be marked binary explicitly, so it is never converted.
+while IFS= read -r f; do
+  [[ "$(git check-attr eol -- "$f")" == *'eol: lf' ]] || { echo "FAIL: .gitattributes does not pin $f to LF"; exit 1; }
+done < <(git ls-files -- 'scripts/*.sh' 'backend/internal/repository/migrations/*.sql' Makefile)
+while IFS= read -r f; do
+  [[ "$(git check-attr text -- "$f")" == *'text: unset' ]] || { echo "FAIL: binary file $f is not marked binary in .gitattributes"; exit 1; }
+done < <(git ls-files --eol | awk '$1 == "i/-text" {print $NF}')
+echo "ok: .gitattributes pins text files to LF and marks binary files as binary"

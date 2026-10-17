@@ -57,11 +57,11 @@ func ParseTimeRanges(texts []string, duration float64) ([]TimeRange, error) {
 
 // SpliceSegments lays out a Partial Regeneration for Partial Take Use: the picture of the base Take
 // everywhere but in the ranges, where it is the picture of the regenerated Take. The two Takes are
-// taken to run on the same clock (both are the same Shot). The ranges are widened by
-// SpliceMarginSeconds, made at least MinTakeSegmentSeconds long and merged when they are too close
-// for the base Take to show between them; a base part shorter than MinTakeSegmentSeconds at either
-// end is given to the regenerated Take. baseDuration and regeneratedDuration are the lengths of the
-// files (0 when unknown); the shorter one bounds the result.
+// taken to run on the same clock. The ranges are widened by SpliceMarginSeconds, made at least
+// MinTakeSegmentSeconds long and merged when they are too close for the base Take to show between
+// them; a base part shorter than MinTakeSegmentSeconds at either end is given to the regenerated Take.
+// baseDuration and regeneratedDuration are the lengths of the files (0 when unknown); the shorter one
+// bounds the result.
 //
 // It returns nil when no splice is worth making: the ranges leave nothing of the base Take (the new
 // Take replaces it as a whole), the Takes are too short, or more than MaxTakeSegments would be needed.

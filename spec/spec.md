@@ -1446,7 +1446,7 @@ ZIP ファイル 1 つ。中身は次の 2 エントリだけ（allowlist）。
 
 ### Review Response（レビュアー → オーナー）
 
-JSON ファイル 1 つ（`format=mam-review-response`・`version`・`response_id`・`review_id`・`reviewer_name`・`decision`（`approved` / `changes_requested`）・`comment`（全体コメント、2000 文字以内）・`comments`（最大 200 件。`timecode_ms`（省略可、動画内の位置）・`body`（1〜2000 文字））・`created_at`）。判定を書いた後にだけ書き出せる。コメントや判定を変えると `response_id` が変わり、変更前のファイルとは別の応答として取り込まれる。
+JSON ファイル 1 つ（`format=mam-review-response`・`version`・`response_id`・`review_id`・`reviewer_name`・`decision`（`approved` / `changes_requested`）・`comment`（全体コメント、2000 文字以内）・`comments`（最大 200 件。`timecode_ms`（省略可、動画内の位置）・`body`（1〜2000 文字））・`created_at`）。判定を書いた後にだけ書き出せる。コメントや判定を変えると `response_id` が変わり、変更前のファイルとは別の応答として取り込まれる。`response_id` は取り込むと `review_response.id`（行の主キー）になるため、プロジェクトバンドルの行 ID と同じく `[A-Za-z0-9_-]{1,64}` で、`reviews` と Windows の予約デバイス名（`CON`・`NUL`・`COM1` など。大文字小文字を問わない）は取り込まない（`bundlepath.ValidID`。書き出したバンドルを取り込めなくならないため）。
 
 ### レビューの状態
 

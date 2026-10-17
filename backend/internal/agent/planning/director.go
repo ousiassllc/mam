@@ -52,14 +52,6 @@ const durationTolerance = 0.1
 // minShotSeconds is the shortest Shot the rescaling produces.
 const minShotSeconds = 0.5
 
-// The limits a Scene / Shot has everywhere else (service.PlanService, the Continue Agent).
-const (
-	maxShotSeconds     = 60
-	sceneTitleMaxRunes = 100
-	sceneMetaMaxRunes  = 100
-	objectiveMaxRunes  = 300
-)
-
 // Plan returns the Scene / Shot plan. When the Brief has a Duration the Shot durations are
 // rescaled to it, since a model cannot be trusted to add up.
 func (d *Director) Plan(ctx context.Context, in PlanInput) (domain.ScenePlan, error) {
@@ -74,10 +66,10 @@ func (d *Director) Plan(ctx context.Context, in PlanInput) (domain.ScenePlan, er
 	}
 	for i := range plan.Scenes {
 		sc := &plan.Scenes[i]
-		sc.Title = textutil.TruncateRunes(strings.TrimSpace(sc.Title), sceneTitleMaxRunes)
-		sc.Location = textutil.TruncateRunes(strings.TrimSpace(sc.Location), sceneMetaMaxRunes)
-		sc.Time = textutil.TruncateRunes(strings.TrimSpace(sc.Time), sceneMetaMaxRunes)
-		sc.Objective = textutil.TruncateRunes(strings.TrimSpace(sc.Objective), objectiveMaxRunes)
+		sc.Title = textutil.TruncateRunes(strings.TrimSpace(sc.Title), domain.MaxSceneTitleRunes)
+		sc.Location = textutil.TruncateRunes(strings.TrimSpace(sc.Location), domain.MaxSceneMetaRunes)
+		sc.Time = textutil.TruncateRunes(strings.TrimSpace(sc.Time), domain.MaxSceneMetaRunes)
+		sc.Objective = textutil.TruncateRunes(strings.TrimSpace(sc.Objective), domain.MaxObjectiveRunes)
 		if sc.Title == "" {
 			return domain.ScenePlan{}, fmt.Errorf("director: %w", invalidf("scene %d has no title", i+1))
 		}
@@ -86,7 +78,7 @@ func (d *Director) Plan(ctx context.Context, in PlanInput) (domain.ScenePlan, er
 		}
 		for j := range sc.Shots {
 			sh := &sc.Shots[j]
-			sh.Objective = textutil.TruncateRunes(strings.TrimSpace(sh.Objective), objectiveMaxRunes)
+			sh.Objective = textutil.TruncateRunes(strings.TrimSpace(sh.Objective), domain.MaxObjectiveRunes)
 			if sh.Objective == "" || sh.DurationSeconds <= 0 || math.IsNaN(sh.DurationSeconds) || math.IsInf(sh.DurationSeconds, 0) {
 				return domain.ScenePlan{}, fmt.Errorf("director: %w", invalidf("scene %d shot %d has no objective or a non-positive duration", i+1, j+1))
 			}
@@ -99,14 +91,14 @@ func (d *Director) Plan(ctx context.Context, in PlanInput) (domain.ScenePlan, er
 	return plan, nil
 }
 
-// capShotSeconds keeps every Shot at or under maxShotSeconds, the longest a Shot may be, even
+// capShotSeconds keeps every Shot at or under domain.MaxShotSeconds, the longest a Shot may be, even
 // when rescaling to a long Brief Duration would stretch it further; the total then falls short
 // of that Duration.
 func capShotSeconds(plan *domain.ScenePlan) {
 	for i := range plan.Scenes {
 		for j := range plan.Scenes[i].Shots {
 			sh := &plan.Scenes[i].Shots[j]
-			sh.DurationSeconds = min(sh.DurationSeconds, maxShotSeconds)
+			sh.DurationSeconds = min(sh.DurationSeconds, domain.MaxShotSeconds)
 		}
 	}
 }

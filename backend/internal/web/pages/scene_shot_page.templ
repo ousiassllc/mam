@@ -3,17 +3,17 @@ package pages
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/layout"
-	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/sceneshot"
 )
 
 // SceneShotPage is GET /projects/:id/scenes/:sceneId: the Scene / Shot / Take hierarchy in an auxiliary view.
-templ SceneShotPage(csrfToken string, d organisms.SceneShotData) {
+templ SceneShotPage(csrfToken string, d sceneshot.Data) {
 	@layout.AppLayout("Scene / Shot: "+d.Project.Name, csrfToken) {
 		<main class="mx-auto max-w-5xl p-8">
 			@atoms.ChatBackLink(d.Project.ID)
 			<h1 class="mb-1 mt-3 text-xl font-semibold">Scene / Shot</h1>
 			<p class="mb-6 text-sm text-neutral-400">{ d.Project.Name }</p>
-			@organisms.SceneShotView(d)
+			@sceneshot.View(d)
 		</main>
 	}
 }

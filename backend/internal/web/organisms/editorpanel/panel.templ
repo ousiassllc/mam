@@ -1,0 +1,97 @@
+package editorpanel
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// Workspace hosts mam-timeline-editor (loaded from the JSON API) and the stage buttons.
+templ Workspace(d Data) {
+	<section id="editor-workspace" class="flex flex-col gap-6" aria-label="編集">
+		<div class="flex flex-wrap items-center gap-3">
+			<h2 class="text-lg font-semibold">編集・音声・書き出し</h2>
+			@organisms.ProjectStateBadge(d.Project.State, false)
+		</div>
+		<mam-timeline-editor api-url={ paths.WithBranch(paths.APIProject(d.Project.ID, "edit-timeline"), d.BranchID) }></mam-timeline-editor>
+		@Actions(d)
+	</section>
+}
+
+// ActionsFragment is what a stage action or the reload of #editor-actions answers with. Nothing
+// replaces #editor-actions: it holds the export options and the voice sample being typed in, so the
+// answer is the regions that show a stage's result, each replacing the one of the page (hx-swap-oob),
+// and the Project state badge of the page header, which the stage (Rough Cut, Final QC, an additional
+// Shot request, ...) may have moved.
+templ ActionsFragment(d Data) {
+	@editorEditStage(d, true)
+	@editorAudioStage(d, true)
+	@editorVoices(d, true)
+	@editorFinalQC(d, true)
+	@editorExportSubmit(d, true)
+	@editorExports(d, true)
+	@organisms.ProjectStateBadge(d.Project.State, true)
+}
+
+// VoiceCloned answers a cloned voice: the regions, and the voice form emptied out of band (a
+// refused clone is a toast that leaves the form as it is).
+templ VoiceCloned(d Data) {
+	@ActionsFragment(d)
+	@editorVoiceForm(d, true)
+}
+
+// oobAttr makes an element replace the one of the page with its id.
+func oobAttr(oob bool) templ.Attributes {
+	if oob {
+		return templ.Attributes{"hx-swap-oob": "true"}
+	}
+	return nil
+}
+
+// Actions is the row of stages. It reloads the regions of the results when the timeline editor
+// saved. Its stage buttons and forms answer into those regions, never into #editor-actions (hx-swap
+// none is inherited by all of them).
+templ Actions(d Data) {
+	<div
+		id="editor-actions"
+		class="flex flex-col gap-5"
+		hx-get={ paths.WithBranch(paths.Project(d.Project.ID, "edit", "actions"), d.BranchID) }
+		hx-trigger="timeline-updated from:body"
+		hx-swap="none"
+	>
+		@editorEditStage(d, false)
+		<section class="flex flex-col gap-2" aria-label="Audio">
+			<h3 class="text-sm font-semibold">3. 音声（Audio Director）</h3>
+			<p class="text-xs text-neutral-400">
+				Scene の感情と編集テンポに合わせて、セリフ・ナレーション（ElevenLabs TTS）に加えて Quality Policy の範囲で BGM・Ambience・SE・Foley（ElevenLabs）と Lip Sync（Sync Labs。MAX QUALITY のみ）を作り、
+				Take の音声とミックスして −14 LUFS に整えます。作るたびに新しい版になり、Branch ごとに版を管理します。
+			</p>
+			@editorAudioStage(d, false)
+			@editorVoiceForm(d, false)
+			@editorVoices(d, false)
+		</section>
+		@editorFinalQC(d, false)
+		<section class="flex flex-col gap-2" aria-label="Export">
+			<h3 class="text-sm font-semibold">5. 書き出し</h3>
+			<form hx-post={ paths.Project(d.Project.ID, "export") } hx-sync="this:drop" hx-disabled-elt="find button" hx-vals={ branchVals(d.BranchID) } class="flex flex-wrap items-end gap-3">
+				@exportSelect("Aspect Ratio", "aspect_ratio", d.Defaults.AspectRatio, domain.ExportAspectRatios())
+				@exportSelect("解像度", "resolution", d.Defaults.Resolution, domain.ExportResolutions())
+				@exportSelect("コーデック", "codec", d.Defaults.Codec, domain.ExportCodecs())
+				@editorExportSubmit(d, false)
+			</form>
+			@editorExports(d, false)
+		</section>
+	</div>
+}
+
+templ exportSelect(label, name, current string, options []string) {
+	<label class="flex flex-col gap-1 text-xs text-neutral-400">
+		{ label }
+		@atoms.Select(atoms.FieldMd, "", templ.Attributes{"name": name}) {
+			for _, o := range options {
+				<option value={ o } selected?={ o == current }>{ o }</option>
+			}
+		}
+	</label>
+}

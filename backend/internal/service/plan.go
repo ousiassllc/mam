@@ -109,13 +109,6 @@ type SceneForm struct {
 	CurrentSceneID string
 }
 
-const (
-	sceneTitleMaxRunes = 100
-	sceneMetaMaxRunes  = 100
-	textMaxRunes       = 300
-	maxShotSeconds     = 60
-)
-
 // CreateScene appends a Scene to the Project and shows it selected. The change is recorded
 // in the thread. On a ValidationError the returned view is the unchanged hierarchy.
 func (s *PlanService) CreateScene(ctx context.Context, projectID string, form SceneForm) (SceneView, error) {
@@ -141,14 +134,14 @@ func validateScene(title, location, when, objective string) error {
 	switch {
 	case title == "":
 		return invalid("title", "Scene の見出しを入力してください")
-	case utf8.RuneCountInString(title) > sceneTitleMaxRunes:
-		return invalid("title", "%d 文字以内で入力してください", sceneTitleMaxRunes)
-	case utf8.RuneCountInString(location) > sceneMetaMaxRunes:
-		return invalid("location", "%d 文字以内で入力してください", sceneMetaMaxRunes)
-	case utf8.RuneCountInString(when) > sceneMetaMaxRunes:
-		return invalid("time", "%d 文字以内で入力してください", sceneMetaMaxRunes)
-	case utf8.RuneCountInString(objective) > textMaxRunes:
-		return invalid("objective", "%d 文字以内で入力してください", textMaxRunes)
+	case utf8.RuneCountInString(title) > domain.MaxSceneTitleRunes:
+		return invalid("title", "%d 文字以内で入力してください", domain.MaxSceneTitleRunes)
+	case utf8.RuneCountInString(location) > domain.MaxSceneMetaRunes:
+		return invalid("location", "%d 文字以内で入力してください", domain.MaxSceneMetaRunes)
+	case utf8.RuneCountInString(when) > domain.MaxSceneMetaRunes:
+		return invalid("time", "%d 文字以内で入力してください", domain.MaxSceneMetaRunes)
+	case utf8.RuneCountInString(objective) > domain.MaxObjectiveRunes:
+		return invalid("objective", "%d 文字以内で入力してください", domain.MaxObjectiveRunes)
 	}
 	return nil
 }
@@ -187,12 +180,12 @@ func parseShotInput(objective, duration string) (float64, error) {
 	switch {
 	case objective == "":
 		return 0, invalid("objective", "Shot の狙いを入力してください")
-	case utf8.RuneCountInString(objective) > textMaxRunes:
-		return 0, invalid("objective", "%d 文字以内で入力してください", textMaxRunes)
+	case utf8.RuneCountInString(objective) > domain.MaxObjectiveRunes:
+		return 0, invalid("objective", "%d 文字以内で入力してください", domain.MaxObjectiveRunes)
 	}
 	seconds, err := strconv.ParseFloat(strings.TrimSpace(duration), 64)
-	if err != nil || math.IsNaN(seconds) || math.IsInf(seconds, 0) || seconds <= 0 || seconds > maxShotSeconds {
-		return 0, invalid("duration_seconds", "0 より大きく %d 以下の秒数を入力してください", maxShotSeconds)
+	if err != nil || math.IsNaN(seconds) || math.IsInf(seconds, 0) || seconds <= 0 || seconds > domain.MaxShotSeconds {
+		return 0, invalid("duration_seconds", "0 より大きく %d 以下の秒数を入力してください", domain.MaxShotSeconds)
 	}
 	return seconds, nil
 }

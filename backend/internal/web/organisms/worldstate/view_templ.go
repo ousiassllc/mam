@@ -148,7 +148,7 @@ func entityAttributeForm(d Data, e entityView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = molecules.WorldStateSave(e.saveID(), e.Fields, false).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = molecules.WorldStateSave(e.saveID(), e.Name, e.Fields, false).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -338,7 +338,7 @@ func referenceSlotForm(d Data, e entityView, sf slotForm) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = atoms.Button(atoms.ToneNeutral, "割り当て", templ.Attributes{"type": "submit"}).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = atoms.ButtonFor(atoms.ToneNeutral, "割り当て", e.Name+" の "+slotLabels[sf.Slot.Name], templ.Attributes{"type": "submit"}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -64,10 +64,9 @@ func (s ProjectState) CanExport() bool { return s == StateReady || s == StateExp
 func (s ProjectState) CanAwaitApproval() bool { return CanTransition(s, StateAwaitingApproval) }
 
 // EscalationBlocks reports whether an Escalation posted in the state holds the Project: it waits in
-// AWAITING_APPROVAL until the card is answered, and the answer moves it on (EscalationResumeState).
-// That is every state that can enter AWAITING_APPROVAL, and AWAITING_APPROVAL itself. From DRAFT, AUDIO,
-// READY and EXPORTED the Core State Machine has no such move: the Escalation of a Shot is only a card
-// there (CardBody.NonBlocking) and the Project keeps its state, before and after the answer.
+// AWAITING_APPROVAL until the card is answered (EscalationResumeState). That is every state that can
+// enter AWAITING_APPROVAL, and AWAITING_APPROVAL itself. From DRAFT, AUDIO, READY and EXPORTED the
+// Escalation of a Shot is only a card (CardBody.NonBlocking) and the Project keeps its state.
 func (s ProjectState) EscalationBlocks() bool {
 	return s == StateAwaitingApproval || s.CanAwaitApproval()
 }
@@ -107,15 +106,14 @@ func (s ShotState) Busy() bool { return s == ShotGenerating || s == ShotRepairin
 func (s ShotState) CanEditSpec() bool { return !s.Busy() }
 
 // CanPinReference reports whether a Reference Library image may be added to the Shot's Reference Pack:
-// the pack is read by the generation, the Repair and the Judge (a Repair reads it when it starts and
-// saves the prompt_version, which carries it, when it ends), so it is refused (409) while the Shot is
-// being generated, repaired or judged. The Shot Inspector draws the form only when it holds; the
-// repository refuses with the same predicate.
+// the generation, the Repair and the Judge read the pack, so it is refused (409) while the Shot is being
+// generated, repaired or judged. The Shot Inspector draws the form only when it holds; the repository
+// refuses with the same predicate.
 func (s ShotState) CanPinReference() bool { return !s.Busy() && s != ShotJudging }
 
 // CanContinue reports whether Continue may start from the Shot: it is not being generated or repaired
-// and it has a Take that was not rejected (the completed Shot the next one grows from). The Shot card
-// draws the "続きを作る" button only when it holds; the service refuses (409) with the same predicate.
+// and it has a Take that was not rejected. The Shot card draws the "続きを作る" button only when it
+// holds; the service refuses (409) with the same predicate.
 func CanContinue(state ShotState, takes []Take) bool {
 	return !state.Busy() && slices.ContainsFunc(takes, func(t Take) bool { return t.Status != TakeRejected })
 }

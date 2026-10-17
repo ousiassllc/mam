@@ -78,12 +78,12 @@ func EscalationCard(m domain.ThreadMessage) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				for _, option := range domain.DecodeCardBody(m.Content).Options {
-					templ_7745c5c3_Err = atoms.Button(atoms.ToneNeutral, option, answerAttrs(m, option)).Render(ctx, templ_7745c5c3_Buffer)
+					templ_7745c5c3_Err = atoms.ButtonFor(atoms.ToneNeutral, option, excerpt(m.ChatMessage), answerAttrs(m, option)).Render(ctx, templ_7745c5c3_Buffer)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</div><p class=\"mt-2 text-xs text-neutral-500\">入力欄からの返信でも判断を伝えられます。</p><div class=\"mt-1\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</div><p class=\"mt-2 text-xs text-neutral-400\">入力欄からの返信でも判断を伝えられます。</p><div class=\"mt-1\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -96,7 +96,7 @@ func EscalationCard(m domain.ThreadMessage) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			} else {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<p class=\"mt-2 text-xs text-neutral-500\">回答済み</p>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<p class=\"mt-2 text-xs text-neutral-400\">回答済み</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

@@ -209,7 +209,7 @@ func TestOpen_ManifestIsHeldToItsOwnSmallLimit(t *testing.T) {
 	assert.Contains(t, err.Error(), "manifest.json が大きすぎます")
 }
 
-// "reviews" is the Review inbox below the assets directory (domain.ReviewInboxDir). Install puts the
+// "reviews" is the Review inbox below the assets directory (bundlepath.ReviewInboxDir). Install puts the
 // files in assets/<project_id>/ before the rows are checked, so Open must refuse it up front (#682).
 // NTFS and APFS ignore case, so "Reviews" is the same directory, and the Windows device names (CON, NUL, ...)
 // cannot be a directory at all: Open refuses those with the same 422 instead of failing later in Install (#689).
@@ -226,4 +226,70 @@ func TestOpen_RefusesTheProjectIDOfTheReviewInboxAndWindowsDeviceNames(t *testin
 			requireInvalid(t, err)
 		})
 	}
+}
+
+// A file_path whose element Windows cannot create (a device name, * ? " < > |, a control character, a trailing dot
+// or space) is refused by Open with the same 422 as a path outside the Project, whichever table names it (#725).
+func TestOpen_RefusesFilePathsWindowsCannotCreate(t *testing.T) {
+	for _, filePath := range []string{"p1/NUL.mp4", "p1/a/con", "p1/aux.txt", "p1/x*y", "p1/a<b", "p1/a.", "p1/a /b"} {
+		for _, table := range []string{"asset", "take", "export"} {
+			t.Run(table+"/"+filePath, func(t *testing.T) {
+				src := zipOf(t, manifestJSON(), func(w io.Writer) {
+					row, err := json.Marshal(map[string]any{"id": "r1", "file_path": filePath})
+					require.NoError(t, err)
+					_, _ = fmt.Fprintf(w, `{"project_id":%q,"tables":[{"name":%q,"rows":[%s]}]}`, limitsProjectID, table, row)
+				})
+
+				_, err := openBytes(t, src)
+
+				requireInvalid(t, err)
+				assert.Contains(t, err.Error(), "不正なファイルパス")
+			})
+		}
+	}
+}
+
+func TestOpen_AcceptsOrdinaryFilePaths(t *testing.T) {
+	src := zipOf(t, manifestJSON(), func(w io.Writer) {
+		_, _ = fmt.Fprintf(w, `{"project_id":%q,"tables":[{"name":"asset","rows":[{"id":"a1","file_path":"p1/console.mp4"}]}]}`, limitsProjectID)
+	})
+
+	_, err := openBytes(t, src)
+
+	require.NoError(t, err)
+}
+
+// pathsData writes a data.json whose asset table names the file paths.
+func pathsData(paths ...string) func(io.Writer) {
+	return func(w io.Writer) {
+		rows := make([]string, len(paths))
+		for i, p := range paths {
+			rows[i] = fmt.Sprintf(`{"id":"a%d","file_path":%q}`, i, p)
+		}
+		_, _ = fmt.Fprintf(w, `{"project_id":%q,"tables":[{"name":"asset","rows":[%s]}]}`, limitsProjectID, strings.Join(rows, ","))
+	}
+}
+
+// Two paths that one file of a case-insensitive file system (Windows, macOS) would hold, or a file that is
+// also a directory, are refused before anything is extracted (#735).
+func TestOpen_RefusesFilePathsThatCollide(t *testing.T) {
+	cases := map[string][]string{
+		"letter case only":   {"p1/x.mp4", "p1/X.mp4"},
+		"file and directory": {"p1/x", "p1/x/y.mp4"},
+	}
+	for name, paths := range cases {
+		t.Run(name, func(t *testing.T) {
+			_, err := openBytes(t, zipOf(t, manifestJSON(), pathsData(paths...)))
+
+			requireInvalid(t, err)
+			assert.Contains(t, err.Error(), "同じ名前")
+		})
+	}
+}
+
+func TestOpen_AcceptsDistinctFilePaths(t *testing.T) {
+	a, err := openBytes(t, zipOf(t, manifestJSON(), pathsData("p1/x.mp4", "p1/xy/z.mp4")))
+
+	require.NoError(t, err)
+	assert.Empty(t, a.files, "nothing in the ZIP is named by the data")
 }
