@@ -102,7 +102,7 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 ├── scripts/
 │   ├── build.sh            # 本番ビルド（templ → esbuild/tailwind → go build）。`--all` で全プラットフォーム
 │   ├── package-windows.sh  # Windows 版のパッケージング（フロント → Wails ウィンドウ版 exe → NSIS インストーラー。§11）
-│   ├── smoke-windows.sh    # リリースのスモーク（インストーラーを `/S` で入れ、`mam.exe` を起動して `GET /` が 200 か確認。release.yml）
+│   ├── smoke-windows.sh    # インストーラーのスモーク（`/S` で入れ、`mam.exe` を起動して `GET /` が 200 か確認）。Windows の機械で手動実行する（release.yml は動かさない）
 │   ├── fetch-face-models.sh # 顔検出・埋め込みモデル（YuNet / SFace）の取得と SHA-256 検証（§9 / model-adapters.md §10.1）
 │   ├── linterly-staged.sh  # コミット対象ファイルの行数上限チェック（pre-commit）
 │   ├── linterly-baseline.sh # 行数上限の既存超過を `.linterly-baseline` と比べ、悪化を検出する（`make lint-lines`・CI）。`update` で基準値を書き換える
