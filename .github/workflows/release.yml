@@ -1,49 +1,122 @@
 name: Release
 
-# A v<X.Y.Z> tag push builds the Windows desktop version (Wails window + NSIS installer) and
-# publishes the GitHub Release. No code signing (spec/environment/setup.md "リリース").
+# Builds the Windows desktop version (Wails window + NSIS installer) and publishes the GitHub Release.
+# No code signing (spec/environment/setup.md "リリース"). Two triggers:
+#   workflow_run  ci.yml succeeded for a push to main: release main's tip as the next patch (vX.Y.Z+1 of the
+#                 latest v* tag; v0.1.0 if there is none). Nobody tags anything.
+#   tag push      v<X.Y.Z>: a hand-made tag, to raise the minor / major version.
 #
-# Three jobs, so that the build never holds a write token and nothing is published unchecked:
-#   verify  the tagged commit is in main's history, passed ci.yml, and has no reachable known vulnerability
+# Four jobs, so that the build never holds a write token and nothing is published unchecked:
+#   plan    decide whether to release and which tag (the tip of main only, so an older commit never gets a newer version)
+#   verify  the commit is in main's history, passed ci.yml, and has no reachable known vulnerability
 #   build   package + smoke test; contents: read only; hands the two exes over as an artifact
-#   release gh release create only; the one job with contents: write
+#   release gh release create only; the one job with contents: write (it creates the tag too)
 # `uses:` are pinned to a commit SHA (the comment is the tag; dependabot's github-actions keeps both up to date).
 on:
   push:
     tags: ['v*']
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
 
 permissions:
   contents: read
 
+# One release at a time: the next version is read from the existing tags, so two runs must not overlap.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 env:
   # Pinned: choco installs the latest by default. Keep the version available on community.chocolatey.org/packages/nsis.
   NSIS_VERSION: 3.11.0
+  # The commit to release: the one CI passed on (workflow_run) or the tagged one (tag push).
+  RELEASE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
 
 jobs:
-  verify:
+  plan:
+    # workflow_run fires for every CI run: only a successful push CI of this repository's main releases.
+    if: >-
+      github.event_name == 'push' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      actions: read # gh run list (the CI result of the tagged commit)
+    outputs:
+      release: ${{ steps.plan.outputs.release }}
+      tag: ${{ steps.plan.outputs.tag }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          ref: ${{ env.RELEASE_SHA }}
+          fetch-depth: 0 # all tags (the latest version) and main's tip
+          persist-credentials: false
+
+      - name: Decide the release and its tag
+        id: plan
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = push ]; then
+            if [[ ! "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "::error::tag $GITHUB_REF_NAME is not vX.Y.Z"
+              exit 1
+            fi
+            echo "release=true" >> "$GITHUB_OUTPUT"
+            echo "tag=$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ "$(git rev-parse origin/main)" != "$RELEASE_SHA" ]; then
+            echo "::notice::$RELEASE_SHA is not main's tip any more: the run for the newer commit releases"
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ -n "$(git tag --points-at "$RELEASE_SHA" --list 'v*')" ]; then
+            echo "::notice::$RELEASE_SHA already has a version tag: nothing new to release"
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          latest="$(git tag --list 'v*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1 || true)"
+          if [ -z "$latest" ]; then
+            tag=v0.1.0
+          else
+            IFS=. read -r major minor patch <<< "${latest#v}"
+            tag="v$major.$minor.$((patch + 1))"
+          fi
+          echo "::notice::releasing $tag (latest: ${latest:-none})"
+          echo "release=true" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+  verify:
+    needs: plan
+    if: needs.plan.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read # gh run list (the CI result of the commit)
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ env.RELEASE_SHA }}
           fetch-depth: 0 # the history of main, for the ancestry check
 
-      - name: The tagged commit is in main's history
+      - name: The commit is in main's history
         run: |
-          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
-            echo "::error::$GITHUB_REF_NAME ($GITHUB_SHA) is not in main's history: tag a commit that is merged into main"
+          if ! git merge-base --is-ancestor "$RELEASE_SHA" origin/main; then
+            echo "::error::${{ needs.plan.outputs.tag }} ($RELEASE_SHA) is not in main's history: tag a commit that is merged into main"
             exit 1
           fi
 
-      - name: ci.yml succeeded on the tagged commit
+      - name: ci.yml succeeded on the commit
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          ok="$(gh run list --workflow ci.yml --commit "$GITHUB_SHA" --json conclusion --jq 'any(.[]; .conclusion == "success")')"
+          ok="$(gh run list --workflow ci.yml --commit "$RELEASE_SHA" --json conclusion --jq 'any(.[]; .conclusion == "success")')"
           if [ "$ok" != "true" ]; then
-            echo "::error::no successful CI run for $GITHUB_SHA: wait for CI to pass on this commit (or fix it) before tagging"
+            echo "::error::no successful CI run for $RELEASE_SHA: wait for CI to pass on this commit (or fix it) before tagging"
             exit 1
           fi
 
@@ -70,7 +143,7 @@ jobs:
         run: make vuln
 
   build:
-    needs: verify
+    needs: [plan, verify]
     runs-on: windows-latest
     permissions:
       contents: read
@@ -80,6 +153,7 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          ref: ${{ env.RELEASE_SHA }}
           persist-credentials: false
 
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
@@ -124,10 +198,14 @@ jobs:
         run: go test -run '^(TestHideWindowSetsNoConsoleFlags|TestRunHidesConsoleWindow)$' ./backend/internal/media/
 
       - name: Package
-        run: bash scripts/package-windows.sh "${GITHUB_REF_NAME#v}"
+        env:
+          TAG: ${{ needs.plan.outputs.tag }}
+        run: bash scripts/package-windows.sh "${TAG#v}"
 
       - name: Smoke test the installer
-        run: bash scripts/smoke-windows.sh "bin/mam-${GITHUB_REF_NAME#v}-windows-amd64-setup.exe"
+        env:
+          TAG: ${{ needs.plan.outputs.tag }}
+        run: bash scripts/smoke-windows.sh "bin/mam-${TAG#v}-windows-amd64-setup.exe"
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -136,7 +214,7 @@ jobs:
           if-no-files-found: error
 
   release:
-    needs: build
+    needs: [plan, build]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -150,11 +228,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }} # no checkout in this job
+          TAG: ${{ needs.plan.outputs.tag }}
         run: |
-          version="${GITHUB_REF_NAME#v}"
-          gh release create "$GITHUB_REF_NAME" \
-            --title "$GITHUB_REF_NAME" \
+          version="${TAG#v}"
+          # --target creates the tag at the released commit (an existing tag, from a tag push, is kept as is).
+          gh release create "$TAG" \
+            --title "$TAG" \
             --generate-notes \
-            --verify-tag \
+            --target "$RELEASE_SHA" \
             "dist/mam-$version-windows-amd64-setup.exe" \
             "dist/mam-$version-windows-amd64.exe"

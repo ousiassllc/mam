@@ -63,32 +63,39 @@ Go テストの所要時間（`backend/internal/router`）: ffmpeg で作る素�
 
 ## リリース
 
-`.github/workflows/release.yml`。`v*` タグ（`vX.Y.Z`）の push で実行する。ワークフロー全体の `permissions` は `contents: read` で、書き込み権限（`contents: write`）を持つのは `release` ジョブだけ。ビルドの工程（`go install`・`choco install`・`npm ci`）は書き込み用の `GITHUB_TOKEN` を持たない環境で動く。`uses:` はコミット SHA で固定し（行末のコメントがタグ）、版は dependabot の `github-actions` が SHA ごと更新する。3 ジョブ構成（`verify` → `build` → `release`）:
+`.github/workflows/release.yml`。実行の契機は 2 つ。(1) `ci.yml`（`CI`）が `main` への push で成功して完了したとき（`workflow_run`）: `main` の先端を、最新の `v*` タグの patch を 1 つ上げた版（`vX.Y.Z` → `vX.Y.(Z+1)`、タグが 1 つも無ければ `v0.1.0`）でリリースする。誰もタグを打たない。(2) `v*` タグ（`vX.Y.Z`）の手動 push: minor・major を上げるときだけ使う。ワークフロー全体の `permissions` は `contents: read` で、書き込み権限（`contents: write`）を持つのは `release` ジョブだけ（タグも `gh release create` が作る）。ビルドの工程（`go install`・`choco install`・`npm ci`）は書き込み用の `GITHUB_TOKEN` を持たない環境で動く。`uses:` はコミット SHA で固定し（行末のコメントがタグ）、版は dependabot の `github-actions` が SHA ごと更新する。`concurrency`（`group: release`、`cancel-in-progress: false`）で同時に 1 本だけ動かす（次の版を既存タグから決めるため、重ならないようにする）。待ち行列は 1 件しか持たないので、待っている間に更に新しい実行が来ると古い待機は取り消される（`main` の先端以外はどのみちリリースしない）。リリースするコミット `RELEASE_SHA` は、`workflow_run` では CI が通ったコミット（`workflow_run.head_sha`）、タグの push ではタグのコミット。4 ジョブ構成（`plan` → `verify` → `build` → `release`）:
 
-### `verify`（`ubuntu-latest`、`contents: read` + `actions: read`）
+### `plan`（`ubuntu-latest`、`contents: read`）
 
-タグのコミットを検証する。どれかが失敗したらビルドもリリースも走らない。
+リリースするかどうかとタグを決める。`workflow_run` は CI の実行ごとに起動するため、ジョブの `if` で、成功（`conclusion == success`）・`push` 由来・このリポジトリのブランチ（フォークの `main` を除く）に絞る。`fetch-depth: 0` で全タグと `main` の先端を取り、次のとおり決める。`release=false` のときは後続のジョブを動かさない。
 
-1. `git merge-base --is-ancestor "$GITHUB_SHA" origin/main`: タグのコミットが `main` の履歴にあること（`fetch-depth: 0`）。main 以外のコミットに打ったタグは公開しない
-2. CI の成功確認: `gh run list --workflow ci.yml --commit "$GITHUB_SHA"` に `success` の実行があること。CI が赤い、または未完了のコミットは公開しない（CI が通るのを待ってからタグを打つ）
+- タグの push: タグが `vX.Y.Z` でなければ失敗。そのタグをリリースする
+- `workflow_run`: `RELEASE_SHA` が `origin/main` の先端でなければ `release=false`（CI が遅れて終わった古いコミットが、新しいコミットより新しい版を得ないようにする。その後の実行が先端をリリースする）。`RELEASE_SHA` に既に `v*` タグが付いていれば `release=false`（手動タグでリリース済みのコミットを二重に出さない）。それ以外は、`vX.Y.Z` 形式のタグを `--sort=-v:refname` で並べた先頭の patch に 1 を足す
+
+### `verify`（`ubuntu-latest`、`needs: plan`、`contents: read` + `actions: read`）
+
+リリースするコミットを検証する。どれかが失敗したらビルドもリリースも走らない。
+
+1. `git merge-base --is-ancestor "$RELEASE_SHA" origin/main`: コミットが `main` の履歴にあること（`fetch-depth: 0`）。main 以外のコミットに打ったタグは公開しない
+2. CI の成功確認: `gh run list --workflow ci.yml --commit "$RELEASE_SHA"` に `success` の実行があること。CI が赤い、または未完了のコミットは公開しない（手動タグは CI が通るのを待ってから打つ）
 3. `make tools` → `make generate` → `make vuln`（Linux と Windows の両方のターゲットを検査する）: CI の後に出た新しい脆弱性勧告でも止める
 
-### `build`（`windows-latest`、`needs: verify`、`contents: read`）
+### `build`（`windows-latest`、`needs: [plan, verify]`、`contents: read`）
 
 1. checkout（`persist-credentials: false`）。行末はリポジトリ直下の `.gitattributes`（`* text=auto eol=lf`。バイナリ（`*.png`・`*.ico`・`*.webm`・`*.exe`・`*.onnx`）は `binary`）で LF に固定している。GitHub-hosted の Windows runner の git は `core.autocrlf=true` が既定で、指定が無いと `scripts/*.sh` が CRLF で checkout され、bash が `set: pipefail\r: invalid option name` で止まる（`//go:embed` する `migrations/*.sql` も CRLF のまま exe に入る）ため、runner の設定ではなくリポジトリ側で固定する → setup-go（`go.mod`）→ setup-node（24、npm キャッシュ）
 2. ツール: `wails3`（`go.mod` の版）、`choco install nsis --version <版>`（ワークフローの `NSIS_VERSION` で固定）。`templ` は入れない（`scripts/package-windows.sh` が `go run` で `go.mod` の版を使う）
 3. フロントエンドのビルドとそのテスト（`working-directory: static`: `npm ci` → `npm run build -- --minify` → `npx --no-install vitest run src/build.test.ts`）: `ci.yml` は Linux だけで動き、`static/build.mjs`（Tailwind を子プロセスとして起動する）を Windows では一度も動かさないため、パッケージの前に Windows 上で動かして、この経路の不具合を専用のステップで落とす
 4. Windows のコードを動かす Go テスト（`go test ./backend/internal/fsutil/... ./backend/internal/desktop/... ./backend/internal/app/... ./backend/internal/config/...`）: `ci.yml` は Linux だけで `make test` を動かし、Windows 向けにはビルド・vet・lint までしかしないため、`fsutil` の Windows 実装（`dirlock_windows.go` の `LockFileEx` による多重起動防止、`diskfree_windows.go` の `GetDiskFreeSpaceEx`）と、`runtime.GOOS == "windows"` で分岐するテストは、リリースの前に Windows 上で動かさない限り一度も実行されない。パッケージの前に動かし、失敗したらリリースを作らない。ffmpeg を要するパッケージは丸ごとは含めない（この `build` ジョブは ffmpeg を導入せず、`CI=true` では `testenv.MissingFFmpeg` がテストを失敗にする）。対象を広げるときは、そのパッケージのテストが ffmpeg を使わないことを確かめる
 5. 子プロセスがコンソールを出さないことのテスト（`go test -run '^(TestHideWindowSetsNoConsoleFlags|TestRunHidesConsoleWindow)$' ./backend/internal/media/`）: `internal/media` は手順 4 の対象外だが、Windows 専用の `run_windows_test.go` の 2 つは ffmpeg を要さないため、`-run` で絞れば `testenv.MissingFFmpeg` に掛からずにこの `build` ジョブで動かせる。`TestHideWindowSetsNoConsoleFlags` は `hideWindow` が `HideWindow` と `CREATE_NO_WINDOW` を設定すること、`TestRunHidesConsoleWindow` は ffmpeg / ffprobe を起動する唯一の経路 `run` を実 exe（`cmd.exe /c exit 0`）で通し、`run` が `commandContext` で作った `exec.Cmd` にそのフラグが付いていること（`spec/architecture/desktop.md` §2「子プロセス」）を確かめる。後者があるので、`run` が `hideWindow` を呼ばなくなる退行を検出できる。パッケージの前に動かし、失敗したらリリースを作らない。`media` のほかのテストは足さない
-6. `bash scripts/package-windows.sh "${GITHUB_REF_NAME#v}"`（タグが `vX.Y.Z` でなければ失敗）
+6. `bash scripts/package-windows.sh "${TAG#v}"`（`TAG` は `plan` が決めたタグ）
 7. スモーク（`bash scripts/smoke-windows.sh bin/mam-<version>-windows-amd64-setup.exe`）: インストーラーを `/S` で `RUNNER_TEMP` 配下へ静かにインストールし（`/D=`）、そのディレクトリの `mam.exe` を `--data-dir`（一時ディレクトリ）・`--port` 固定で起動して `GET /` が 200 を返すことを確認してから停止する。失敗したらリリースを作らない
 8. `actions/upload-artifact`（名前 `windows-release`）で 2 つの exe を `release` ジョブへ渡す
 
-### `release`（`ubuntu-latest`、`needs: build`、`contents: write`）
+### `release`（`ubuntu-latest`、`needs: [plan, build]`、`contents: write`）
 
-checkout はせず（`GH_REPO` を渡す）、`actions/download-artifact` で受け取った exe を使って `gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --generate-notes --verify-tag dist/mam-<version>-windows-amd64-setup.exe dist/mam-<version>-windows-amd64.exe` を実行するだけ。
+checkout はせず（`GH_REPO` を渡す）、`actions/download-artifact` で受け取った exe を使って `gh release create "$TAG" --title "$TAG" --generate-notes --target "$RELEASE_SHA" dist/mam-<version>-windows-amd64-setup.exe dist/mam-<version>-windows-amd64.exe` を実行するだけ。`--target` はタグが無ければそのコミットにタグを作り、手動タグの push ならそのタグをそのまま使う。
 
-成果物はこの 2 つだけ（`spec/requirements/non-functional.md` §1）。コード署名はしない（署名の手順を足す場合は別 Issue）。リリースノートは GitHub の自動生成に任せる。同じタグのリリースが既にあれば `gh release create` が失敗するため、作り直すときはタグとリリースを削除してから push し直す。
+成果物はこの 2 つだけ（`spec/requirements/non-functional.md` §1）。コード署名はしない（署名の手順を足す場合は別 Issue）。リリースノートは GitHub の自動生成に任せる。タグはビルド・スモークまで通った後の `release` ジョブでだけ作るので、途中で失敗してもタグは残らず、`main` に次の push があれば同じ版で作り直される。同じタグのリリースが既にあれば `gh release create` が失敗するため、手動タグで作り直すときはタグとリリースを削除してから push し直す。`CI` が失敗・取り消しになった push は、`plan` ジョブごとスキップされる（Actions の一覧には Skipped の Release 実行が並ぶ）。
 
 ## Linterly
 
@@ -153,3 +160,4 @@ pre-commit（`scripts/linterly-staged.sh`）は従来どおり、コミット対
 | 1.27 | 2026-10-16 | `release.yml` の `build` ジョブの手順に、パッケージの前に Windows 上で `internal/media` の `TestHideWindowSetsNoConsoleFlags` だけを `-run` で動かす手順（手順 5）を足した（以降の手順は繰り下げ）。手順 4 の「ffmpeg を要するパッケージは含めない」を「丸ごとは含めない」に直した | Issue #774。#770 の Windows 専用テスト `run_windows_test.go` は、`ci.yml`（Linux だけ）でも手順 4 の対象（`media` が入っていない）でもどこでも実行されず、`run` が `hideWindow` を呼ばなくなる退行を検出できなかった。このテストは ffmpeg を起動しないので、`testenv.MissingFFmpeg` に掛からないよう `-run` で絞れば `build` ジョブで動かせる |
 | 1.28 | 2026-10-16 | リポジトリ直下に `.gitattributes`（`* text=auto eol=lf`、`*.png`・`*.ico`・`*.webm`・`*.exe`・`*.onnx` は `binary`）を追加し、リリース節 `build` ジョブの手順 1 に、行末を LF に固定している理由（Windows runner の `core.autocrlf=true` で bash スクリプトが壊れる）を明記した。`scripts/makefile_test.sh` に、`scripts/*.sh`・`migrations/*.sql`・`Makefile` が LF に固定され、リポジトリのバイナリファイルが `binary` として明示されている検査を足した | Issue #776。`.gitattributes` が無く、`windows-latest` の checkout が `core.autocrlf=true` で `scripts/package-windows.sh` / `scripts/smoke-windows.sh` を CRLF にし、タグを打つたびに「Package」ステップが `set: pipefail\r: invalid option name` で失敗してリリースが作れなかった（Linux / macOS・CI では再現しないため未検出だった） |
 | 1.29 | 2026-10-16 | 手順 5 の Windows 上のテストに `TestRunHidesConsoleWindow` を足し、`internal/media` の `run` の `exec.Cmd` 生成を差し込める変数 `commandContext` にした。手順 5 の説明を、`hideWindow` 単体の検査と `run` 経由の検査に分けて書き直した | Issue #777。`TestHideWindowSetsNoConsoleFlags` は `hideWindow` を直接呼ぶだけで `run` を通らず、`run` から `hideWindow(cmd)` を消しても通るのに、手順 5 は「`run` の退行を検出する」と述べていた。`run` を実 exe で通して作られた `exec.Cmd` を検査するテストを足して記述を実態に合わせた |
+| 1.30 | 2026-10-21 | リリース節を、`main` への push で `ci.yml` が成功した後に自動で次の patch 版をリリースする（`workflow_run`）構成に書き換え、リリースする版とコミットを決める `plan` ジョブを足した（3 → 4 ジョブ）。手動の `v*` タグは minor・major を上げる用に残した。`concurrency` で直列化し、`main` の先端以外・タグ済みのコミットはリリースしない | `release.yml` が一度も動いておらず、リリースのたびにタグを手で打つ運用だったため。`main` に入れるだけで配布物が出るようにする |

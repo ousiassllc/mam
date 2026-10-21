@@ -98,7 +98,7 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 │   ├── dependabot.yml      # 依存の更新 PR を週次で作る（gomod・npm（`/static`）・github-actions。環境構築 spec の CI 節）
 │   └── workflows/
 │       ├── ci.yml          # CI（lint・脆弱性検査（`make vuln`）・テスト・ビルド・行数上限の基準値チェック。環境構築 spec の CI 節）
-│       └── release.yml     # タグ push で Windows インストーラーをビルドして GitHub Releases へ公開（§11）
+│       └── release.yml     # `main` の CI 成功後に次の patch 版を自動で（手動の `v*` タグでも）Windows インストーラーをビルドして GitHub Releases へ公開（§11）
 ├── scripts/
 │   ├── build.sh            # 本番ビルド（templ → esbuild/tailwind → go build）。`--all` で全プラットフォーム
 │   ├── package-windows.sh  # Windows 版のパッケージング（フロント → Wails ウィンドウ版 exe → NSIS インストーラー。§11）
