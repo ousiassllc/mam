@@ -47,7 +47,7 @@
 | 項目 | 要件 |
 |------|------|
 | ローカルサーバー公開範囲 | Go バックエンド（Gin/Huma）は `127.0.0.1` のみにバインドし、外部ネットワークからアクセス不可とする |
-| API キー管理 | 外部生成モデル API のキーは OS のセキュアストレージ（Windows Credential Manager / macOS Keychain / Linux Secret Service）に保存し、平文設定ファイルに書かない |
+| API キー管理 | 外部生成モデル API のキーは OS のセキュアストレージ（Windows Credential Manager / macOS Keychain / Linux Secret Service）に保存し、平文設定ファイルに書かない。キーは Project に属さないので、全体の設定画面（`/settings`、プロジェクト一覧から開く）で登録する |
 | CSRF | ループバック限定であっても HALT 標準の CSRF トークン付与（meta タグ + 全リクエストへの付与）は維持する |
 | コンテンツセキュリティ | 全応答に `Content-Security-Policy`（スクリプトは自前の `/static/app.js` のみ、フレーム埋め込み禁止）と `X-Content-Type-Options: nosniff` を付け、htmx・Lit が「他のスクリプトを実行しない」前提をブラウザ側でも強制する（詳細は `architecture/overview.md` §6） |
 | 入力検証 | ユーザーアップロード画像/参照動画は、サービス層（`service/upload.go`）で拡張子・ファイル内容の署名（先頭バイト。MIME は拡張子から決める）・サイズ・件数を検証し、違反は 422 で拒否する。上限は画像 20 MB・動画 300 MB・一度の添付 8 件。アップロードは Gin の multipart ハンドラ（`POST /projects/:id/references` など）で受け、Huma（`/api/v1`）の Input バリデーションは通らない。サーバーの `ReadTimeout`（5 分）は絶対期限で 8 GiB のバンドルが遅い回線・ディスクで収まらないため、アップロードの本文は 1 回の読み取りごとに 1 分のアイドル期限へ延ばす（受信が続く限り打ち切らない） |
@@ -62,7 +62,7 @@
 |------|------|
 | 予算上限 | Project budget ceiling / Shot budget ceiling をユーザー設定可能とし、超過が見込まれる生成はブロックまたは警告する |
 | リトライ制御 | Max retries per Shot / Max cost per Shot / Minimum acceptance score を Repair/Retake Loop に適用し、無限再生成を防止する |
-| モデル呼び出し耐性 | 外部 API の 429（レート制限）・5xx・ネットワーク断に対し指数バックオフで再試行し（LLM はタイムアウトも再試行する。課金を伴う画像・動画生成ではタイムアウトを再試行せず、二重課金を避けて代替モデルへフェイルオーバーする）、プロバイダ単位でサーキットブレーカーを設ける。M3 の Multi-model routing（`architecture/model-adapters.md` §13）は使うモデルの順序（プライマリ/代替）だけを決め、OPEN のベンダーのモデルを先頭に選ばない。再試行・フェイルオーバー・同時実行数の制御は変えない |
+| モデル呼び出し耐性 | 外部 API の 429（レート制限）・5xx・ネットワーク断に対し指数バックオフで再試行し（LLM はタイムアウトも再試行する。課金を伴う画像・動画生成ではタイムアウトを再試行せず、二重課金を避けて代替モデルへフェイルオーバーする）、プロバイダ単位でサーキットブレーカーを設ける。M3 の Multi-model routing（`architecture/model-adapters-m3.md` §13）は使うモデルの順序（プライマリ/代替）だけを決め、OPEN のベンダーのモデルを先頭に選ばない。再試行・フェイルオーバー・同時実行数の制御は変えない |
 | コスト可視化 | Shot/Scene/Project 単位の推定コストと実コストを UI に表示する |
 
 ## 7. 可観測性 / トレーサビリティ
@@ -124,3 +124,5 @@
 | 1.28 | 2026-10-16 | §8 のエクスポート/インポートで、取り込めないファイルパスの Windows 予約デバイス名に、上付き数字の `COM¹`〜`COM³`・`LPT¹`〜`LPT³`（拡張子付きを含む）を足した | Issue #744。Microsoft の「Naming Files, Paths, and Namespaces」が予約名とする `COM¹` などが ASCII の数字 `[1-9]` だけの判定をすり抜け、`p/COM¹.png` が `Open` を通って Windows の展開が失敗した（`bundlepath.ValidFilePath`。`com0`・`lpt0` は従来どおり許可） |
 | 1.29 | 2026-10-16 | §2 の「生成ジョブの非同期性」に、ジョブを同時に実行するワーカー数 4（`jobqueue.DefaultWorkers`）と、超えたジョブは `queued` で待つことを追記した | Issue #761。`app.services` は既定値の `jobqueue.Options{Logger: logger}` で起動するため同時実行数は 4 だが、仕様に無かった |
 | 1.30 | 2026-10-16 | §4 のディスク容量に、生成前の警告の見積もり（Take 1 秒あたり 2 MiB × Take 数 × Shot の長さ）を足した | Issue #759。見積もりの根拠（`bytesPerVideoSecond = 2 << 20`、`generation/orchestrator.go` の `warnLowDisk`）が仕様書に無く、警告の誤差の前提が分からなかった |
+| 1.31 | 2026-10-21 | §5 の API キー管理に、キーは Project に属さず全体の設定画面（`/settings`）で登録することを足した | 登録画面が Project の設定の中にしかなく、Project を作るまでキーを登録できなかったため（`spec/api/endpoints.md` の改訂 1.147） |
+| 1.32 | 2026-10-21 | §6 のモデル呼び出し耐性の Multi-model routing の参照先を `architecture/model-adapters-m3.md` §13 に改めた | `endpoints.md`・`model-adapters.md` が行数上限（300 行）を超え、後半を別ファイルに分けたため（`spec/api/endpoints.changelog.md` 1.149、`spec/architecture/model-adapters.changelog.md` 1.46） |

@@ -54,8 +54,8 @@ func DecideWithModel(cfg modeladapter.Config, policy domain.QualityPolicy, shotS
 	return DecideRouted(cfg, policy, shotSeconds, budget, forced, nil)
 }
 
-// DecideRouted is DecideWithModel with Multi-model routing (spec/architecture/model-adapters.md
-// §12): unless the model is forced or routing is switched off in cfg, the models of the Quality
+// DecideRouted is DecideWithModel with Multi-model routing (spec/architecture/model-adapters-m3.md
+// §13): unless the model is forced or routing is switched off in cfg, the models of the Quality
 // Policy are weighed against the other candidates by the nature of the Shot, the Judge record and
 // the cost, before the budget is applied. A nil in leaves the routing out (and the decision unrecorded).
 func DecideRouted(cfg modeladapter.Config, policy domain.QualityPolicy, shotSeconds float64, budget repository.Budget, forced domain.ModelName, in *RoutingInput) (Strategy, error) {

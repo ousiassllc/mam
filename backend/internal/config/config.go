@@ -56,6 +56,27 @@ func (c Config) LogDir() string { return filepath.Join(c.DataDir, "logs") }
 // AssetsDir is the root of generated and uploaded files.
 func (c Config) AssetsDir() string { return filepath.Join(c.DataDir, "assets") }
 
+// LLMSettingsFile is the file of the Reasoning LLM setting (the provider and model of each Agent) and
+// whether the operator pinned it. --llm-config / MAM_LLM_CONFIG (LLMConfigPath) is pinned: the screen
+// must not write it. Otherwise it is DataDir/llm.json, which the server loads when it exists and the
+// settings screen may write.
+func (c Config) LLMSettingsFile() (path string, pinned bool) {
+	return settingsFile(c.LLMConfigPath, filepath.Join(c.DataDir, "llm.json"))
+}
+
+// ModelSettingsFile is the file of the image / video Model Adapter setting and whether the operator
+// pinned it: --model-config / MAM_MODEL_CONFIG (ModelConfigPath), else DataDir/models.json (see LLMSettingsFile).
+func (c Config) ModelSettingsFile() (path string, pinned bool) {
+	return settingsFile(c.ModelConfigPath, filepath.Join(c.DataDir, "models.json"))
+}
+
+func settingsFile(flagPath, dataDirPath string) (path string, pinned bool) {
+	if flagPath != "" {
+		return flagPath, true
+	}
+	return dataDirPath, false
+}
+
 // FaceModels is the directory of the face models: --face-model-dir, or DataDir/models.
 func (c Config) FaceModels() string {
 	if c.FaceModelDir != "" {

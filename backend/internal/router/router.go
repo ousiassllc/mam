@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/ousiassllc/mam/backend/internal/router/settingsroutes"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/web/handler"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
@@ -19,7 +20,8 @@ import (
 type Options struct {
 	Logger *slog.Logger
 	// Static serves /static/*. Callers pass static.Dist() or os.DirFS for `make dev`.
-	Static fs.FS
+	Static   fs.FS
+	Settings *settingsroutes.Services // the LLM / model sections of the settings screen; nil leaves them out
 }
 
 // New builds the engine. Middleware order matters: recovery and logging wrap everything; the
@@ -48,6 +50,7 @@ func New(services *service.Services, opts Options) *gin.Engine {
 	registerPages(engine, services)
 	registerActions(engine, services)
 	registerAPI(engine, services)
+	settingsroutes.Register(engine, services.Credentials, opts.Settings)
 	return engine
 }
 

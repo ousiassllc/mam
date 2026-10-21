@@ -14,7 +14,6 @@ import (
 
 func TestSettings_APIKeysAreSavedAndDeletedWithoutEverBeingShown(t *testing.T) {
 	a := newApp(t)
-	project := a.createProject("CM")
 	store := a.keys
 	const secret = "sk-very-secret-value"
 	row := func(body, provider string) string {
@@ -22,8 +21,8 @@ func TestSettings_APIKeysAreSavedAndDeletedWithoutEverBeingShown(t *testing.T) {
 		return regexpFind(t, re, body)
 	}
 
-	// The settings screen lists every provider as unset and offers a save form.
-	body := a.get("/projects/"+project+"/settings", false).Body.String()
+	// The global settings screen lists every provider as unset and offers a save form.
+	body := a.get("/settings", false).Body.String()
 	for _, p := range []string{"anthropic", "openai", "google", "kling", "seedance", "runway", "elevenlabs", "synclabs", "typesafe"} {
 		assert.Contains(t, body, `hx-put="/credentials/`+p+`"`, p)
 	}
@@ -37,7 +36,7 @@ func TestSettings_APIKeysAreSavedAndDeletedWithoutEverBeingShown(t *testing.T) {
 	assert.Equal(t, secret, got, "the key is trimmed and stored")
 	assert.Contains(t, row(rec.Body.String(), "kling"), "設定済み")
 	assert.NotContains(t, rec.Body.String(), secret)
-	assert.NotContains(t, a.get("/projects/"+project+"/settings", false).Body.String(), secret)
+	assert.NotContains(t, a.get("/settings", false).Body.String(), secret)
 
 	// A refused key keeps the stored one and says why.
 	for _, bad := range []string{"", "   ", "two words"} {
@@ -77,18 +76,16 @@ func regexpFind(t *testing.T, pattern, body string) string {
 // of the settings screen, which needs no key, still renders.
 func TestSettings_RendersWithoutAKeyStore(t *testing.T) {
 	a := newApp(t)
-	project := a.createProject("CM")
 	a.keys.FailWith(errors.New("secret service is not available"))
 
-	rec := a.get("/projects/"+project+"/settings", false)
+	rec := a.get("/settings", false)
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	body := rec.Body.String()
 	assert.Contains(t, body, `data-testid="credential-unavailable"`)
 	assert.NotContains(t, body, `data-testid="credential-row"`)
-	assert.Contains(t, body, `id="policy-`, "the policy form is still there")
 
 	// The HTMX fragment degrades the same way.
-	rec = a.get("/projects/"+project+"/settings", true)
+	rec = a.get("/settings", true)
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	assert.Contains(t, rec.Body.String(), `data-testid="credential-unavailable"`)
 }

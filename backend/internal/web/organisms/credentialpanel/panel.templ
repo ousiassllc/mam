@@ -1,34 +1,42 @@
-package organisms
+package credentialpanel
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
-// CredentialProviderView is one row of the panel: a provider, its label and whether its key is set.
+// ProviderView is one row of the panel: a provider, its label and whether its key is set.
 // It never carries the key.
-type CredentialProviderView struct {
+type ProviderView struct {
 	Provider   string
 	Label      string
 	Configured bool
 }
 
-// CredentialPanelData is the API keys on the settings screen: which provider has a key. The value of
+// Data is the API keys on the settings screen: which provider has a key. The value of
 // a key is never part of it. Unavailable means the OS key store could not be read (no Secret Service,
 // locked, ...): the panel then says so instead of listing providers. Notice is what succeeded although
 // the key store cannot be read afterwards (a key that was saved, so that it is not taken for a failure).
-// The reason a save was refused is shown by the row of its provider (CredentialRow), not by the panel.
-type CredentialPanelData struct {
-	Providers   []CredentialProviderView
+// The reason a save was refused is shown by the row of its provider (Row), not by the panel.
+type Data struct {
+	Providers   []ProviderView
 	Unavailable bool
 	Notice      string
 }
 
-// CredentialPanel lists the providers with "設定済み" / "未設定", a form to save a key (PUT) and a
+// Section is the "API キー" section of the global settings screen: Panel under its title.
+templ Section(d Data) {
+	@molecules.SettingsSection("API キー", "外部モデルの API キーを登録します。キーは OS のセキュアストレージに保存され、画面には設定済みかどうかだけが表示されます。保存したキーは再起動なしで次の呼び出しから使われます。") {
+		@Panel(d)
+	}
+}
+
+// Panel lists the providers with "設定済み" / "未設定", a form to save a key (PUT) and a
 // button to delete it (DELETE). The key is sent once and never rendered again. A save or a delete
-// answers with the row of its provider only (CredentialRow), so the keys typed into the other rows
+// answers with the row of its provider only (Row), so the keys typed into the other rows
 // are kept; only a key store that cannot be read answers with the whole panel.
-templ CredentialPanel(d CredentialPanelData) {
+templ Panel(d Data) {
 	<section id="credential-panel" class="flex flex-col gap-3">
 		if d.Unavailable {
 			<p class="text-sm text-amber-300" role="alert" data-testid="credential-unavailable">キーストアを利用できません。OS のキーチェーン（Secret Service など）を確認してから、画面を再読み込みしてください</p>
@@ -38,7 +46,7 @@ templ CredentialPanel(d CredentialPanelData) {
 		}
 		<ul class="flex flex-col divide-y divide-neutral-800 text-sm">
 			for _, p := range d.Providers {
-				@CredentialRow(p, "")
+				@Row(p, "")
 			}
 		</ul>
 	</section>
@@ -46,9 +54,9 @@ templ CredentialPanel(d CredentialPanelData) {
 
 func credentialRowID(provider string) string { return "credential-row-" + provider }
 
-// CredentialRow is one provider: its state, the form that saves its key and, when errorMessage is set, the
+// Row is one provider: its state, the form that saves its key and, when errorMessage is set, the
 // reason the last save was refused. It replaces itself (and nothing else) on a save or a delete.
-templ CredentialRow(p CredentialProviderView, errorMessage string) {
+templ Row(p ProviderView, errorMessage string) {
 	<li id={ credentialRowID(p.Provider) } class="flex flex-col gap-2 py-3" data-testid="credential-row" data-provider={ p.Provider }>
 		<div class="flex flex-wrap items-center justify-between gap-2">
 			<span class="font-medium">{ p.Label }</span>

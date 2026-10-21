@@ -56,18 +56,6 @@ func TestListViewsCarryTheAddFormOutsideTheListThatIsReplaced(t *testing.T) {
 	}
 }
 
-// The key typed into one provider's row survives the save or delete of another provider: a row answers for itself.
-func TestCredentialRow_AnswersForItsProviderOnly(t *testing.T) {
-	html := renderHTML(t, organisms.CredentialRow(organisms.CredentialProviderView{Provider: "kling", Label: "Kling", Configured: true}, "鍵が正しくありません"))
-
-	assert.Contains(t, html, `id="credential-row-kling"`)
-	assert.Contains(t, html, `hx-target="#credential-row-kling"`)
-	assert.Contains(t, html, `hx-delete="/credentials/kling"`)
-	assert.Contains(t, html, "鍵が正しくありません")
-	assert.NotContains(t, html, `id="credential-panel"`)
-	assert.NotContains(t, html, "runway")
-}
-
 // The remove button carries the filter of the list, so the answer is the same filtered list (#696).
 func TestReferenceLibraryList_RemoveButtonCarriesTheFilter(t *testing.T) {
 	html := renderHTML(t, organisms.ReferenceLibraryList(organisms.ReferenceLibraryData{

@@ -1,4 +1,4 @@
-package organisms_test
+package credentialpanel_test
 
 import (
 	"context"
@@ -9,12 +9,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/credentialpanel"
 )
 
-func TestCredentialPanel_RendersTheProviderRowsFromTheViewType(t *testing.T) {
+func TestPanel_RendersTheProviderRowsFromTheViewType(t *testing.T) {
 	var sb strings.Builder
-	err := organisms.CredentialPanel(organisms.CredentialPanelData{Providers: []organisms.CredentialProviderView{
+	err := credentialpanel.Panel(credentialpanel.Data{Providers: []credentialpanel.ProviderView{
 		{Provider: "kling", Label: "Kling", Configured: true},
 		{Provider: "runway", Label: "Runway", Configured: false},
 	}}).Render(context.Background(), &sb)
@@ -30,9 +30,9 @@ func TestCredentialPanel_RendersTheProviderRowsFromTheViewType(t *testing.T) {
 
 // The delete button sits inside the <form> that holds the password input. htmx would send the form's values with a
 // DELETE as URL query parameters, leaking a pasted-but-unsaved API key into the URL (#504); hx-params="none" stops it.
-func TestCredentialPanel_DeleteButtonSendsNoFormValues(t *testing.T) {
+func TestPanel_DeleteButtonSendsNoFormValues(t *testing.T) {
 	var sb strings.Builder
-	err := organisms.CredentialPanel(organisms.CredentialPanelData{Providers: []organisms.CredentialProviderView{
+	err := credentialpanel.Panel(credentialpanel.Data{Providers: []credentialpanel.ProviderView{
 		{Provider: "kling", Label: "Kling", Configured: true},
 	}}).Render(context.Background(), &sb)
 	require.NoError(t, err)
@@ -40,4 +40,18 @@ func TestCredentialPanel_DeleteButtonSendsNoFormValues(t *testing.T) {
 	button := regexp.MustCompile(`<button[^>]*\shx-delete=[^>]*>`).FindString(sb.String())
 	require.NotEmpty(t, button, "the configured provider renders a delete button")
 	assert.Contains(t, button, `hx-params="none"`)
+}
+
+// The key typed into one provider's row survives the save or delete of another provider: a row answers for itself.
+func TestRow_AnswersForItsProviderOnly(t *testing.T) {
+	var sb strings.Builder
+	require.NoError(t, credentialpanel.Row(credentialpanel.ProviderView{Provider: "kling", Label: "Kling", Configured: true}, "鍵が正しくありません").Render(context.Background(), &sb))
+	html := sb.String()
+
+	assert.Contains(t, html, `id="credential-row-kling"`)
+	assert.Contains(t, html, `hx-target="#credential-row-kling"`)
+	assert.Contains(t, html, `hx-delete="/credentials/kling"`)
+	assert.Contains(t, html, "鍵が正しくありません")
+	assert.NotContains(t, html, `id="credential-panel"`)
+	assert.NotContains(t, html, "runway")
 }
