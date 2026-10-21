@@ -1,7 +1,7 @@
 name: Release
 
-# Builds the Windows desktop version (Wails window + NSIS installer) and publishes the GitHub Release.
-# No code signing (spec/environment/setup.md "リリース"). Two triggers:
+# Builds the Windows desktop version (Wails window + per-user NSIS installer), signs the installer's checksum and publishes
+# the GitHub Release. No Authenticode code signing (spec/environment/setup.md "リリース"). Two triggers:
 #   workflow_run  ci.yml succeeded for a push to main: release main's tip as the next patch (vX.Y.Z+1 of the
 #                 latest v* tag; v0.1.0 if there is none). Nobody tags anything.
 #   tag push      v<X.Y.Z>: a hand-made tag, to raise the minor / major version.
@@ -10,11 +10,16 @@ name: Release
 # by a payment failure. The Windows exes are therefore cross-built (GOOS=windows, pure Go) and the installer is
 # made by makensis on Linux; nothing here runs a Windows binary (no Windows-only tests, no installer smoke test).
 #
-# Four jobs, so that the build never holds a write token and nothing is published unchecked:
+# Five jobs, so that the build never holds a write token and nothing is published unchecked:
 #   plan    decide whether to release and which tag (the tip of main only, so an older commit never gets a newer version)
 #   verify  the commit is in main's history, passed ci.yml, and has no reachable known vulnerability
-#   build   package; contents: read only; hands the two exes over as an artifact
-#   release gh release create only; the one job with contents: write (it creates the tag too)
+#   build   package; contents: read only; the version and the release public key are embedded in the exe; makes
+#           checksums.txt and its ed25519 signature (the signing key is a secret, only the last step sees it);
+#           hands the four files over as an artifact
+#   release gh release create in this (private) repository only; the one job with contents: write (it creates the tag too)
+#   publish copies the same four files to the PUBLIC release-only repository ousiassllc/mam-releases with the RELEASES_TOKEN
+#           secret (a fine-grained PAT, Contents read/write on that repository only). The installed apps check that repository
+#           (this one is private) and verify the signature with the public key embedded at build time.
 # `uses:` are pinned to a commit SHA (the comment is the tag; dependabot's github-actions keeps both up to date).
 on:
   push:
@@ -171,46 +176,51 @@ jobs:
           CGO_ENABLED=0 go install github.com/wailsapp/wails/v3/cmd/wails3@"$(go list -m -f '{{.Version}}' github.com/wailsapp/wails/v3)"
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
-      # The installer is made by makensis (NSIS). Install it when it is missing, without needing root:
-      #   1. makensis on PATH: use it.
-      #   2. passwordless sudo: apt-get install nsis.
-      #   3. otherwise: apt-get download nsis + nsis-common (no root needed) and dpkg -x them into a per-user cache,
-      #      with a makensis wrapper that sets NSISDIR (the stubs live in nsis-common). The cache survives between runs.
-      # The version is the distro's (not pinned).
+      # makensis (NSIS) makes the installer: scripts/ensure-nsis.sh installs it when missing, without needing root.
       - name: Ensure NSIS
-        run: |
-          if ! command -v makensis >/dev/null; then
-            if sudo -n true 2>/dev/null; then
-              sudo -n apt-get update && sudo -n apt-get install -y --no-install-recommends nsis
-            else
-              nsis_home="${XDG_CACHE_HOME:-$HOME/.cache}/mam-release/nsis"
-              if [ ! -x "$nsis_home/bin/makensis" ]; then
-                tmp="$(mktemp -d)"
-                (cd "$tmp" && apt-get download nsis nsis-common && for deb in ./*.deb; do dpkg -x "$deb" root; done)
-                rm -rf "$nsis_home"
-                mkdir -p "$nsis_home/bin"
-                mv "$tmp/root" "$nsis_home/root"
-                rm -rf "$tmp"
-                printf '#!/bin/sh\nNSISDIR=%s exec %s "$@"\n' \
-                  "$nsis_home/root/usr/share/nsis" "$nsis_home/root/usr/bin/makensis" > "$nsis_home/bin/makensis"
-                chmod +x "$nsis_home/bin/makensis"
-              fi
-              echo "$nsis_home/bin" >> "$GITHUB_PATH"
-              export PATH="$nsis_home/bin:$PATH"
-            fi
-          fi
-          command -v makensis >/dev/null || { echo "::error::makensis is missing and could not be installed"; exit 1; }
-          makensis -VERSION
+        run: bash scripts/ensure-nsis.sh
 
+      # Release builds MUST embed the public key the installed apps verify the update signature with (and the version, which
+      # the script takes from the tag): an exe without it would skip the signature check.
       - name: Package
         env:
           TAG: ${{ needs.plan.outputs.tag }}
-        run: bash scripts/package-windows.sh "${TAG#v}"
+          RELEASE_SIGNING_PUBLIC_KEY: ${{ vars.RELEASE_SIGNING_PUBLIC_KEY }}
+        run: |
+          if [ -z "$RELEASE_SIGNING_PUBLIC_KEY" ]; then
+            echo "::error::the repository variable RELEASE_SIGNING_PUBLIC_KEY is not set: a release build must embed the update signature public key"
+            exit 1
+          fi
+          bash scripts/package-windows.sh "${TAG#v}"
+
+      # checksums.txt covers the installer only (the one asset the apps install): `<sha256>  <file name>` lines.
+      - name: Checksums
+        env:
+          TAG: ${{ needs.plan.outputs.tag }}
+        run: |
+          version="${TAG#v}"
+          cd bin
+          sha256sum "mam-$version-windows-amd64-setup.exe" > checksums.txt
+          cat checksums.txt
+
+      # The last step of the job: the only one that sees the signing key (a secret, not a write token). It signs checksums.txt
+      # (the base64 of the raw ed25519 signature) and verifies the signature with the public key, so a key that does not match
+      # fails the build (scripts/sign-checksums.sh). VERIFY_PUBLIC_KEY is normally the embedded key; only in the one release of
+      # a key rotation (signed with the OLD key, embedding the NEW one) the variable RELEASE_SIGNING_VERIFY_PUBLIC_KEY holds
+      # the old public key.
+      - name: Sign checksums
+        env:
+          RELEASE_SIGNING_KEY: ${{ secrets.RELEASE_SIGNING_KEY }}
+          VERIFY_PUBLIC_KEY: ${{ vars.RELEASE_SIGNING_VERIFY_PUBLIC_KEY || vars.RELEASE_SIGNING_PUBLIC_KEY }}
+        run: bash scripts/sign-checksums.sh bin
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: windows-release
-          path: bin/mam-*-windows-amd64*.exe
+          path: |
+            bin/mam-*-windows-amd64*.exe
+            bin/checksums.txt
+            bin/checksums.txt.sig
           if-no-files-found: error
 
   release:
@@ -237,4 +247,43 @@ jobs:
             --generate-notes \
             --target "$RELEASE_SHA" \
             "dist/mam-$version-windows-amd64-setup.exe" \
+            "dist/mam-$version-windows-amd64.exe" \
+            dist/checksums.txt \
+            dist/checksums.txt.sig
+
+  # Copies the release to the public, release-only repository the installed apps check for updates. After `release`, so a
+  # release exists here only for a tag that was created in this repository. Safe to re-run: when the release already exists
+  # (a rerun after a partial failure) the files are uploaded again with --clobber instead of failing.
+  publish:
+    needs: [plan, release]
+    runs-on: [self-hosted, Linux, X64]
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: windows-release
+          path: dist
+
+      - name: Publish to ousiassllc/mam-releases
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+          TAG: ${{ needs.plan.outputs.tag }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::the secret RELEASES_TOKEN is not set: create a fine-grained personal access token (Contents: read and write on ousiassllc/mam-releases only) and register it as the repository secret RELEASES_TOKEN"
+            exit 1
+          fi
+          version="${TAG#v}"
+          files=(
+            "dist/mam-$version-windows-amd64-setup.exe"
             "dist/mam-$version-windows-amd64.exe"
+            dist/checksums.txt
+            dist/checksums.txt.sig
+          )
+          if gh release view "$TAG" --repo ousiassllc/mam-releases >/dev/null 2>&1; then
+            echo "::notice::the release $TAG already exists in ousiassllc/mam-releases: uploading the files again"
+            gh release upload "$TAG" --repo ousiassllc/mam-releases --clobber "${files[@]}"
+          else
+            gh release create "$TAG" --repo ousiassllc/mam-releases --title "$TAG" --notes "MAM $TAG" "${files[@]}"
+          fi

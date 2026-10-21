@@ -23,13 +23,13 @@ Go（`go.mod` のバージョン）、Node.js（24。CI は `.github/workflows/c
 | `make lint-go` | `make generate` のあと `golangci-lint run ./...`（`.golangci.yml`。`gocyclo` 25 / `gocognit` 50 の複雑度上限を含む。「関数の複雑度」節） |
 | `make lint-static` | `tsc --noEmit`（`npm run typecheck --prefix static`）と `biome lint`（`npm run lint --prefix static`） |
 | `make test` | `make test-go` と `make test-static` と `make test-scripts` |
-| `make test-scripts` | `bash scripts/linterly-baseline_test.sh`（行数基準値のスクリプトのテスト。`jq` が要る）、`bash scripts/slow-tests_test.sh`（遅いテストの一覧を出すスクリプトのテスト。`jq` が要る）、`bash scripts/makefile_test.sh`（`Makefile` の全ターゲットが `.PHONY` と `make help` にあるか、`.gitattributes` が `scripts/*.sh` などを LF に固定し、バイナリを `binary` にしているか）、`bash scripts/complexity-ratchet_test.sh`（複雑度の許可リストの判定。`golangci-lint` が要る） |
+| `make test-scripts` | `bash scripts/linterly-baseline_test.sh`（行数基準値のスクリプトのテスト。`jq` が要る）、`bash scripts/slow-tests_test.sh`（遅いテストの一覧を出すスクリプトのテスト。`jq` が要る）、`bash scripts/makefile_test.sh`（`Makefile` の全ターゲットが `.PHONY` と `make help` にあるか、`.gitattributes` が `scripts/*.sh` などを LF に固定し、バイナリを `binary` にしているか）、`bash scripts/complexity-ratchet_test.sh`（複雑度の許可リストの判定。`golangci-lint` が要る）、`bash scripts/sign-checksums_test.sh`（`checksums.txt` の署名スクリプトのテスト。使い捨ての鍵で、鍵の組の不一致・空の鍵を失敗させる。`openssl` が要る） |
 | `make test-go` | `make generate` のあと `go test -race -timeout 30m -json ./...` を `scripts/slow-tests.sh` に流す（`-race` の逐次テストが長く、既定の 10 分では負荷時に足りない）。テストの出力は `go test` と同じに出し、最後に 3 秒（`SLOW_TEST_SECONDS`）を超えたテストを遅い順に最大 20 件 stderr に一覧する。警告だけで失敗にはしない（終了コードは `go test` のもの）。`jq` が要る |
 | `make test-static` | `npm test --prefix static` |
 | `make build` | `scripts/build.sh`（templ → esbuild/tailwind minify → go build）。`bin/mam` を作る |
 | `make build-all` | `scripts/build.sh --all`。windows / darwin / linux × amd64 / arm64 の 6 構成を `bin/mam-<os>-<arch>[.exe]`（Windows は `.exe` 付き）に出力する（`spec/requirements/non-functional.md` §1） |
 | `make clean` | `bin`・`tmp`・`static/src/dist/app.*` を削除する |
-| `scripts/package-windows.sh <version>` | Windows 版（Wails ウィンドウ）のパッケージング。templ → esbuild/tailwind → `wails3 package GOOS=windows`（`GOARCH=amd64`）で `bin/mam-<version>-windows-amd64.exe`（ポータブル）と `bin/mam-<version>-windows-amd64-setup.exe`（NSIS インストーラー）を作る。`<version>` は `X.Y.Z` 形式でなければ失敗する。`go`・`npm`・`wails3`・`makensis`・`jq` が要る（無いとツール確認で失敗する）。`templ` は PATH に要らず、`make generate` と同じく `go run` で go.mod と同じ版を使って生成する（Windows に `make` が無くても、古い `templ` が `*_templ.go` を書き換えない）。Windows 上（Git Bash）で動かす。`make` のターゲットは無い（Windows に `make` が無いため） |
+| `scripts/package-windows.sh <version>` | Windows 版（Wails ウィンドウ）のパッケージング。templ → esbuild/tailwind → `wails3 package GOOS=windows`（`GOARCH=amd64`）で `bin/mam-<version>-windows-amd64.exe`（ポータブル）と `bin/mam-<version>-windows-amd64-setup.exe`（ユーザー単位の NSIS インストーラー）を作る。環境変数 `RELEASE_SIGNING_PUBLIC_KEY`（任意。公開鍵の base64）とバージョンを `-ldflags -X` でバイナリへ埋め込み、空なら警告を出して公開鍵なしで作る（「自動更新の配布物と署名」）。`<version>` は `X.Y.Z` 形式でなければ失敗する。`go`・`npm`・`wails3`・`makensis`・`jq` が要る（無いとツール確認で失敗する）。`templ` は PATH に要らず、`make generate` と同じく `go run` で go.mod と同じ版を使って生成する（Windows に `make` が無くても、古い `templ` が `*_templ.go` を書き換えない）。Windows 上（Git Bash）で動かす。`make` のターゲットは無い（Windows に `make` が無いため） |
 
 ## フロントエンドの整形・lint
 
@@ -84,17 +84,34 @@ Go テストの所要時間（`backend/internal/router`）: ffmpeg で作る素�
 
 1. checkout（`persist-credentials: false`）→ setup-go（`go.mod`、`cache: false`）→ setup-node（24）。行末はリポジトリ直下の `.gitattributes`（`* text=auto eol=lf`。バイナリ（`*.png`・`*.ico`・`*.webm`・`*.exe`・`*.onnx`）は `binary`）で LF に固定している（Windows の git は `core.autocrlf=true` が既定で `scripts/*.sh` を CRLF にし、bash が `set: pipefail\r: invalid option name` で止まるため。Linux の runner でも `//go:embed` する `migrations/*.sql` の行末が変わらないよう、この指定を保つ）
 2. `wails3`（`go.mod` の版）: `CGO_ENABLED=0 go install`。`templ` は入れない（`scripts/package-windows.sh` が `go run` で `go.mod` の版を使う）
-3. NSIS（`makensis`）: PATH に無ければ導入する。passwordless sudo があれば `apt-get install nsis`。無ければ root 不要の方法として、`apt-get download nsis nsis-common` を `dpkg -x` でユーザーのキャッシュ（`${XDG_CACHE_HOME:-$HOME/.cache}/mam-release/nsis`）へ展開し、`NSISDIR`（スタブは `nsis-common` にある）を設定する `makensis` ラッパーを PATH に足す。キャッシュは実行をまたいで残る。版はディストリビューションのもの（固定しない）。導入できなければ失敗
-4. `bash scripts/package-windows.sh "${TAG#v}"`（`TAG` は `plan` が決めたタグ）
-5. `actions/upload-artifact`（名前 `windows-release`）で 2 つの exe を `release` ジョブへ渡す
+3. NSIS（`makensis`）: PATH に無ければ導入する（`scripts/ensure-nsis.sh`。ワークフローはこれを呼ぶだけ）。passwordless sudo があれば `apt-get install nsis`。無ければ root 不要の方法として、`apt-get download nsis nsis-common` を `dpkg -x` でユーザーのキャッシュ（`${XDG_CACHE_HOME:-$HOME/.cache}/mam-release/nsis`）へ展開し、`NSISDIR`（スタブは `nsis-common` にある）を設定する `makensis` ラッパーを PATH に足す。キャッシュは実行をまたいで残る。版はディストリビューションのもの（固定しない）。導入できなければ失敗
+4. `Package`: `bash scripts/package-windows.sh "${TAG#v}"`（`TAG` は `plan` が決めたタグ）。環境変数 `RELEASE_SIGNING_PUBLIC_KEY` にリポジトリ変数 `vars.RELEASE_SIGNING_PUBLIC_KEY` を渡し、**空ならここで失敗する**（リリースのビルドは更新の署名検証用の公開鍵を必ず埋め込む）。スクリプトはバージョン（`v<X.Y.Z>`）と公開鍵を `-ldflags -X` で `backend/internal/version` へ埋め込む（後述「自動更新の配布物と署名」）
+5. `Checksums`: `cd bin && sha256sum mam-<version>-windows-amd64-setup.exe > checksums.txt`（対象はインストーラーだけ）
+6. `Sign checksums`: ジョブの最後の工程で、署名鍵（シークレット `RELEASE_SIGNING_KEY`）を見るのはこの工程だけ（`env` はこの工程に限る）。鍵は `umask 077` の一時ディレクトリへ書いて署名後すぐ消す。`scripts/sign-checksums.sh bin`（中身は `openssl pkeyutl -sign -rawin -inkey <鍵> -in bin/checksums.txt | base64 -w0 > bin/checksums.txt.sig`。テストは `scripts/sign-checksums_test.sh`）で、`checksums.txt` の ed25519 分離署名（生の 64 バイトの base64）を作る。続けて同じ工程で、公開鍵（`RELEASE_SIGNING_PUBLIC_KEY` の base64 を 32 バイトに戻し、ASN.1 の接頭辞 `302a300506032b6570032100` を付けて DER にしたもの）で `openssl pkeyutl -verify -rawin -pubin` を実行し、鍵の組が合わなければビルドを失敗させる（どのアプリも検証に失敗するリリースを公開しない）。`RELEASE_SIGNING_KEY` が空でも失敗する。検証に使う公開鍵は `vars.RELEASE_SIGNING_VERIFY_PUBLIC_KEY`（任意。鍵の更新の 1 回だけ使う）があればそれ、無ければ `vars.RELEASE_SIGNING_PUBLIC_KEY`。署名鍵は書き込み用トークンではないので、`build` は `contents: read` のまま
+7. `actions/upload-artifact`（名前 `windows-release`）で 4 つのファイル（2 つの exe・`checksums.txt`・`checksums.txt.sig`）を `release` ジョブと `publish` ジョブへ渡す
 
 Windows 上で動かす検査（`fsutil` の `LockFileEx`・`GetDiskFreeSpaceEx` の実装や `GOOS=windows` 分岐のテスト、子プロセスのコンソール非表示のテスト、フロントエンドの Windows 上のビルド、インストーラーのスモーク `scripts/smoke-windows.sh`）は、Windows の runner が無いためリリースでは動かさない。`smoke-windows.sh` は Windows の機械で手動実行する用に残す（`bash scripts/smoke-windows.sh bin/mam-<version>-windows-amd64-setup.exe`）。
 
 ### `release`（self-hosted の Linux、`needs: [plan, build]`、`contents: write`）
 
-checkout はせず（`GH_REPO` を渡す）、`actions/download-artifact` で受け取った exe を使って `gh release create "$TAG" --title "$TAG" --generate-notes --target "$RELEASE_SHA" dist/mam-<version>-windows-amd64-setup.exe dist/mam-<version>-windows-amd64.exe` を実行するだけ。`--target` はタグが無ければそのコミットにタグを作り、手動タグの push ならそのタグをそのまま使う。
+checkout はせず（`GH_REPO` を渡す）、`actions/download-artifact` で受け取った 4 つのファイルを使って `gh release create "$TAG" --title "$TAG" --generate-notes --target "$RELEASE_SHA" dist/mam-<version>-windows-amd64-setup.exe dist/mam-<version>-windows-amd64.exe dist/checksums.txt dist/checksums.txt.sig` を実行するだけ。`--target` はタグが無ければそのコミットにタグを作り、手動タグの push ならそのタグをそのまま使う。この（非公開の）リポジトリのリリースは記録として残す。
 
-成果物はこの 2 つだけ（`spec/requirements/non-functional.md` §1）。コード署名はしない（署名の手順を足す場合は別 Issue）。リリースノートは GitHub の自動生成に任せる。タグはビルドまで通った後の `release` ジョブでだけ作るので、途中で失敗してもタグは残らず、`main` に次の push があれば同じ版で作り直される。同じタグのリリースが既にあれば `gh release create` が失敗するため、手動タグで作り直すときはタグとリリースを削除してから push し直す。`CI` が失敗・取り消しになった push は、`plan` ジョブごとスキップされる（Actions の一覧には Skipped の Release 実行が並ぶ）。
+成果物は 4 つ（`spec/requirements/non-functional.md` §1）。Authenticode のコード署名はしない（更新用の ed25519 署名は別物。後述）。リリースノートは GitHub の自動生成に任せる。タグはビルドまで通った後の `release` ジョブでだけ作るので、途中で失敗してもタグは残らず、`main` に次の push があれば同じ版で作り直される。同じタグのリリースが既にあれば `gh release create` が失敗するため、手動タグで作り直すときはタグとリリースを削除してから push し直す。`CI` が失敗・取り消しになった push は、`plan` ジョブごとスキップされる（Actions の一覧には Skipped の Release 実行が並ぶ）。
+
+### `publish`（self-hosted の Linux、`needs: [plan, release]`、`contents: read`）
+
+インストール済みのアプリが更新を確認する**公開**リポジトリ `ousiassllc/mam-releases`（リリースのファイルだけを置く。ソースは無い）へ、同じ 4 つのファイルを同じタグ（`v<X.Y.Z>`）で公開する。MAM 本体のリポジトリは非公開で、アプリは認証無しで読める公開リポジトリを見るため。`release` の後に動かすので、このリポジトリでタグが作られた版だけが公開される。`GH_TOKEN` にシークレット `RELEASES_TOKEN`（`mam-releases` だけの Contents: read/write を持つ fine-grained PAT。利用者が作る）を渡す。空なら `::error::` でシークレット名を挙げて最初に失敗する。`gh release create "$TAG" --repo ousiassllc/mam-releases --title "$TAG" --notes "MAM $TAG" <4 ファイル>` を実行する。再実行で冪等にするため、`mam-releases` に同じタグのリリースが既にあるときは作らず、`gh release upload --clobber` で 4 ファイルを上げ直す。
+
+## 自動更新の配布物と署名
+
+アプリの自動更新（`spec/architecture/desktop.md`）が信頼する配布物の約束。
+
+- **配布物**（`mam-releases` のリリース。タグは `v<X.Y.Z>`）: `mam-<X.Y.Z>-windows-amd64-setup.exe`（アプリが実行するインストーラー）、`mam-<X.Y.Z>-windows-amd64.exe`（ポータブル。自動ではインストールしない）、`checksums.txt`（インストーラーだけへの `sha256sum` の出力。`<hex>  mam-<X.Y.Z>-windows-amd64-setup.exe`）、`checksums.txt.sig`
+- **署名**: `checksums.txt` の ed25519 分離署名を、生の 64 バイトの base64 にしたもの。アプリは、バイナリに埋め込んだ公開鍵（生の 32 バイトの base64）で `checksums.txt.sig` を検証してから、インストーラーの SHA-256 を `checksums.txt` と照らす。
+- **埋め込み**: `scripts/package-windows.sh`（`build/windows/Taskfile.yml` の `go build`）が `-X github.com/ousiassllc/mam/backend/internal/version.Version=v<X.Y.Z>` と `-X …/version.ReleasePublicKey=<環境変数 RELEASE_SIGNING_PUBLIC_KEY>` を渡す。`RELEASE_SIGNING_PUBLIC_KEY` が空のスクリプト実行（手元のビルド）は警告を出して続行し、公開鍵なしの exe を作る（アプリは警告を出して署名検証を省く）。バージョン引数が無い Taskfile の直接実行は `Version=dev`（アプリは更新確認をしない）。リリースの CI は公開鍵が空なら失敗する。
+- **シークレットと変数**（リポジトリ `ousiassllc/mam`）: `secrets.RELEASE_SIGNING_KEY`（ed25519 秘密鍵の PEM。`Sign checksums` だけが見る）、`vars.RELEASE_SIGNING_PUBLIC_KEY`（公開鍵の生 32 バイトの base64。ビルドへの埋め込みと署名の検証に使う）、`secrets.RELEASES_TOKEN`（上記の PAT。`publish` だけが見る）。
+- **鍵の更新**: インストール済みのアプリは古い公開鍵を埋め込んでいるので、鍵をいきなり替えると、以後のリリースは既存のアプリに検証されず更新されなくなる。次の順で替える。(1) リポジトリ変数 `RELEASE_SIGNING_PUBLIC_KEY` を**新しい**公開鍵に、`RELEASE_SIGNING_VERIFY_PUBLIC_KEY`（任意の変数。`Sign checksums` が署名の検証に使う公開鍵を、埋め込む鍵と別にするためのもの）を**古い**公開鍵にし、シークレット `RELEASE_SIGNING_KEY` は**古い**秘密鍵のまま 1 回リリースする（古い鍵で署名され、新しい公開鍵を埋め込んだアプリが出る）。(2) 既存のアプリがこのリリースへ更新されるのを待つ。(3) `RELEASE_SIGNING_KEY` を新しい秘密鍵に替え、`RELEASE_SIGNING_VERIFY_PUBLIC_KEY` を削除する。(1) を飛ばした場合や、(2) の前に替えた場合、更新できないアプリは新しいインストーラーを手動で入れ直すまで更新されない。
+- **ユーザー単位のインストール**: インストーラーは `WAILS_INSTALL_SCOPE=user` で作る（`build/windows/Taskfile.yml` の `makensis -DWAILS_INSTALL_SCOPE=user`）。実行レベルは `asInvoker`（管理者権限なし。UAC の確認が出ない）、インストール先は `$LOCALAPPDATA\Programs\MAM`、アンインストール情報は `HKCU`、ショートカットは現在のユーザーの Start メニューとデスクトップ。自動更新が `/S` で実行しても確認が出ない。v0.1.x の管理者権限のインストール（`C:\Program Files\MAM`・`HKLM`）は移行しない。ユーザー単位の版は別に入るので、旧版は「設定 > アプリ」から手動でアンインストールする。
 
 ## Linterly
 
@@ -162,3 +179,4 @@ pre-commit（`scripts/linterly-staged.sh`）は従来どおり、コミット対
 | 1.30 | 2026-10-21 | リリース節を、`main` への push で `ci.yml` が成功した後に自動で次の patch 版をリリースする（`workflow_run`）構成に書き換え、リリースする版とコミットを決める `plan` ジョブを足した（3 → 4 ジョブ）。手動の `v*` タグは minor・major を上げる用に残した。`concurrency` で直列化し、`main` の先端以外・タグ済みのコミットはリリースしない | `release.yml` が一度も動いておらず、リリースのたびにタグを手で打つ運用だったため。`main` に入れるだけで配布物が出るようにする |
 | 1.31 | 2026-10-21 | リリースの全ジョブを self-hosted の Linux runner へ移し、Windows 版は Linux 上のクロスビルド + `makensis` で作る構成にした。`build` ジョブから Windows 上のテスト・フロントエンドの Windows 上のビルド・インストーラーのスモークを外し（`smoke-windows.sh` は手動用に残す）、`wails3` を `CGO_ENABLED=0` で入れ、NSIS を無ければ自動で導入する（sudo があれば apt、無ければ root 不要で展開）手順を足した。依存ツールの節の NSIS の入れ方も改めた | 初回のリリース実行（PR #820 のマージ後）が、GitHub-hosted runner の課金の支払い失敗で `plan` ジョブから起動できず失敗したため。Linux 上で `scripts/package-windows.sh` がインストーラー・単体 exe まで通ることを確認済み |
 | 1.32 | 2026-10-21 | ffmpeg の節の API の参照先に `spec/api/endpoints-api.md` を加えた | `endpoints.md`・`model-adapters.md` が行数上限（300 行）を超え、後半を別ファイルに分けたため（`spec/api/endpoints.changelog.md` 1.149、`spec/architecture/model-adapters.changelog.md` 1.46） |
+| 1.33 | 2026-10-21 | リリースにアプリの自動更新のための配布を足した。`build` に `RELEASE_SIGNING_PUBLIC_KEY`（変数）の必須化と `-ldflags -X` でのバージョン・公開鍵の埋め込み、`checksums.txt` の作成と ed25519 署名（`RELEASE_SIGNING_KEY`、最後の工程、同じ工程で公開鍵を使って検証）を、`release` に 4 ファイルの添付を足し、公開リポジトリ `ousiassllc/mam-releases` へ公開する `publish` ジョブ（`RELEASES_TOKEN`、再実行で冪等）を足した（4 → 5 ジョブ）。インストーラーをユーザー単位（`WAILS_INSTALL_SCOPE=user`）にし、「自動更新の配布物と署名」節（配布物・署名・埋め込み・シークレット・鍵の更新手順・v0.1.x の管理者権限インストールは移行しないこと）を追加した | MAM 本体のリポジトリは非公開で、インストール済みのアプリが更新を確認・取得できる場所が無かった。更新を管理者権限の確認（UAC）なしで `/S` 実行できるようにし、配布物の改ざんをアプリが署名で検出できるようにする |

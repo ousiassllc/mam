@@ -34,7 +34,7 @@ func TestBuildServices_ACleanupClosesEverythingItOpened(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	services, cleanup, err := buildServices(ctx, cfg, slog.New(slog.DiscardHandler))
+	services, _, cleanup, err := buildServices(ctx, cfg, slog.New(slog.DiscardHandler))
 	require.NoError(t, err)
 	require.NotNil(t, services)
 	assert.Equal(t, "ok", services.Health.Check(ctx).Database)
@@ -49,14 +49,14 @@ func TestBuildServices_AFailureLateInTheBuildReleasesTheDatabase(t *testing.T) {
 	require.NoError(t, os.WriteFile(bad, []byte(`{"nope": 1}`), 0o600))
 	cfg.ModelConfigPath = bad // fails after the database is open
 
-	services, cleanup, err := buildServices(context.Background(), cfg, slog.New(slog.DiscardHandler))
+	services, _, cleanup, err := buildServices(context.Background(), cfg, slog.New(slog.DiscardHandler))
 	require.Error(t, err)
 	assert.Nil(t, services)
 	assert.Nil(t, cleanup)
 
 	// The database file lock is free again: opening the same data dir succeeds.
 	cfg.ModelConfigPath = ""
-	_, cleanup, err = buildServices(context.Background(), cfg, slog.New(slog.DiscardHandler))
+	_, _, cleanup, err = buildServices(context.Background(), cfg, slog.New(slog.DiscardHandler))
 	require.NoError(t, err)
 	cleanup()
 }
@@ -66,7 +66,7 @@ func TestBuildServices_AFailureLateInTheBuildReleasesTheDatabase(t *testing.T) {
 func TestBuildServices_ARestartReleasesAJudgingShotWhoseJudgeJobFailedAtRecovery(t *testing.T) {
 	cfg := testConfig(t)
 	ctx := context.Background()
-	_, cleanup, err := buildServices(ctx, cfg, slog.New(slog.DiscardHandler)) // creates the database
+	_, _, cleanup, err := buildServices(ctx, cfg, slog.New(slog.DiscardHandler)) // creates the database
 	require.NoError(t, err)
 	cleanup()
 
@@ -100,7 +100,7 @@ func TestBuildServices_ARestartReleasesAJudgingShotWhoseJudgeJobFailedAtRecovery
 	}))
 	require.NoError(t, db.Close())
 
-	_, cleanup, err = buildServices(ctx, cfg, slog.New(slog.DiscardHandler))
+	_, _, cleanup, err = buildServices(ctx, cfg, slog.New(slog.DiscardHandler))
 	require.NoError(t, err)
 	cleanup()
 
@@ -117,7 +117,7 @@ func TestBuildServices_ARestartReleasesAJudgingShotWhoseJudgeJobFailedAtRecovery
 func TestBuildServices_ARestartResumesTheEditingFollowUpsLeftUndone(t *testing.T) {
 	cfg := testConfig(t)
 	ctx := context.Background()
-	_, cleanup, err := buildServices(ctx, cfg, slog.New(slog.DiscardHandler)) // creates the database
+	_, _, cleanup, err := buildServices(ctx, cfg, slog.New(slog.DiscardHandler)) // creates the database
 	require.NoError(t, err)
 	cleanup()
 
@@ -136,7 +136,7 @@ func TestBuildServices_ARestartResumesTheEditingFollowUpsLeftUndone(t *testing.T
 	require.NoError(t, db.Close())
 
 	logs := &syncBuffer{}
-	_, cleanup, err = buildServices(ctx, cfg, slog.New(slog.NewTextHandler(logs, nil)))
+	_, _, cleanup, err = buildServices(ctx, cfg, slog.New(slog.NewTextHandler(logs, nil)))
 	require.NoError(t, err)
 	defer cleanup()
 
@@ -158,7 +158,7 @@ func TestBuildServices_AStartRemovesPreviewConversionsAKillLeftBehind(t *testing
 	require.NoError(t, os.WriteFile(stale, []byte("half"), 0o600))
 	require.NoError(t, os.WriteFile(done, []byte("done"), 0o600))
 
-	_, cleanup, err := buildServices(context.Background(), cfg, slog.New(slog.DiscardHandler))
+	_, _, cleanup, err := buildServices(context.Background(), cfg, slog.New(slog.DiscardHandler))
 	require.NoError(t, err)
 	defer cleanup()
 
@@ -184,7 +184,7 @@ func TestBuildServices_AStartSurvivesAFailedSweepOfLeftovers(t *testing.T) {
 	require.NoError(t, os.WriteFile(stale, []byte("half"), 0o600))
 
 	logs := &syncBuffer{}
-	_, cleanup, err := buildServices(context.Background(), cfg, slog.New(slog.NewTextHandler(logs, nil)))
+	_, _, cleanup, err := buildServices(context.Background(), cfg, slog.New(slog.NewTextHandler(logs, nil)))
 	require.NoError(t, err)
 	defer cleanup()
 

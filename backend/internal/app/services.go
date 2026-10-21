@@ -27,8 +27,9 @@ import (
 // buildServices opens the database, builds every dependency of the services, recovers the work an
 // abnormal termination left behind and starts the job queue. cleanup stops and closes all of it in
 // the reverse order of construction (queue, services, Judge, database). It is nil on error, where
-// buildServices has already released everything it had built.
-func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger) (_ *service.Services, _ func(), err error) {
+// buildServices has already released everything it had built. jobs is the job table: the app updater
+// reads it to see whether any work is in flight.
+func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger) (_ *service.Services, _ *repository.JobRepository, _ func(), err error) {
 	var closers []func()
 	release := func() {
 		for i := len(closers) - 1; i >= 0; i-- {
@@ -63,7 +64,7 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger) 
 
 	db, err := repository.Open(ctx, cfg.DBPath(), logger)
 	if err != nil {
-		return nil, nil, fmt.Errorf("open database: %w", err)
+		return nil, nil, nil, fmt.Errorf("open database: %w", err)
 	}
 	closers = append(closers, func() {
 		if err := db.Close(); err != nil {
@@ -73,28 +74,28 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger) 
 
 	llmFile, err := settingsFileToLoad(cfg.LLMSettingsFile())
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	llmCfg, err := llm.LoadConfig(llmFile)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	keys := credential.NewKeyring()
 	reasoning := llm.NewClient(llmCfg, llm.NewBackends(llmCfg, keys, nil), llm.WithLogger(logger))
 
 	modelFile, err := settingsFileToLoad(cfg.ModelSettingsFile())
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	modelCfg, err := configcheck.Load(modelFile)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	models := modeladapter.New(modelCfg, modeladapter.NewBackends(modelCfg, keys, nil, 0, modeladapter.WithStagingDir(filepath.Join(cfg.AssetsDir(), ".staging"))), modeladapter.WithLogger(logger))
 
 	judging, err := newJudgeSetup(cfg, logger)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	closers = append(closers, judging.close)
 
@@ -107,15 +108,16 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger) 
 
 	jevCfg, err := jev.LoadConfig(cfg.JevConfigPath)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	// The Jev shadow run of the Repair Agent works once a TypeSafe API key is stored (credential provider "typesafe").
 	shadow, err := jev.New(jevCfg, keys, nil)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
-	jobs := jobqueue.New(repository.NewJobRepository(db), jobqueue.Options{Logger: logger})
+	jobTable := repository.NewJobRepository(db)
+	jobs := jobqueue.New(jobTable, jobqueue.Options{Logger: logger})
 	// Job handlers are registered by service.New (the plan job) and by the features that add more kinds.
 	// The services are built before the queue starts: they subscribe to job changes.
 	services := service.New(service.Deps{
@@ -135,11 +137,11 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger) 
 	})
 	closers = append(closers, services.Close) // runs after jobs.Stop: no job change wakes the workers any more
 	if err := recoverWork(ctx, services, jobs, logger); err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	jobs.Start(ctx)
 	closers = append(closers, jobs.Stop)
-	return services, release, nil
+	return services, jobTable, release, nil
 }
 
 // recoverWork cleans up after an abnormal termination: Shots left GENERATING / REPAIRING are released

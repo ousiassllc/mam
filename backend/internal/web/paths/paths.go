@@ -156,5 +156,8 @@ func Settings() string { return "/settings" }
 // LLMSettings is "/settings/llm", the LLM assignment of the settings screen.
 func LLMSettings() string { return Settings() + "/llm" }
 
+// UpdateCheck is "/settings/update/check", the manual update check of the settings screen (POST).
+func UpdateCheck() string { return Settings() + "/update/check" }
+
 // ModelSettings is "/settings/models", the image / video model assignment of the settings screen.
 func ModelSettings() string { return Settings() + "/models" }
