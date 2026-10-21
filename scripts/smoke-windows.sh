@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Release smoke test (run by .github/workflows/release.yml on windows-latest, in Git Bash):
+# Windows installer smoke test (run by hand on a Windows machine, in Git Bash; the release workflow runs on Linux and does not run it):
 # silently install the NSIS installer, check what it should have created, start the installed
 # mam.exe and require GET / to answer 200 from the 127.0.0.1 server.
 #

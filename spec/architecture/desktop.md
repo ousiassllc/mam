@@ -31,14 +31,14 @@ Windows 実機が要る項目は、リリース前に実機で確かめる（実
 - ダウンロード（`Content-Disposition: attachment` を返す `handler/bundle.go`・`review.go`・`editor.go` の `ExportVideo`、`<a download>` の `organisms/editorpanel/stages.templ`・`settings_body.templ`・`review_workspace.templ`・`reviewlist/list.templ`・`text_message.templ`（チャットの書き出し完了通知「書き出した動画をダウンロード」。`ref_type=export` のリンクを `molecules/format.go` の `refLinkOf` が作る。応答は `GET /projects/:id/exports/:exportId/video`））: v3.0.0-beta.27 は WebView2 の `DownloadStarting` を公開していない（`pkg/application` に該当の API が無い）。実装は何も差し込まず WebView2 の既定（ダウンロード UI）に任せる。**実機で保存できるかは未確認**。保存できなければ、ダウンロードの URL を `application.BrowserManager.OpenURL` で既定ブラウザへ渡す
 - `target="_blank"` のリンク（`organisms/worldstate/view.templ`・`message_frame.templ`・`keyframe_card.templ`。ループバックのアセット画像）: v3.0.0-beta.27 は `NewWindowRequested` を公開していないため、WebView2 の既定（新しいポップアップウィンドウ）になる。**実機で目的を果たせるかは未確認**。足りなければ新しいウィンドウを作らず `application.BrowserManager.OpenURL` で既定ブラウザへ渡す
 - 外部 URL を開くウィンドウに Wails のランタイム（`window._wails`）が露出するか: ナビゲーション完了のたびにランタイムが注入される（`webview_window_windows.go`）ため露出する。バインディングは登録しないので Go 側の API は呼べず、権限は増えない。`AllowSimpleEventEmit` は無効（既定）のままとする
-- `windows-latest`（デスクトップセッションなし）で GUI の `mam.exe` のウィンドウ生成が失敗しないか: **未確認**（最初のタグのリリースジョブで分かる）。失敗するなら、リリースのスモーク（`spec/environment/setup.md`）の対象をブラウザ版 `cmd/server` の exe に切り替える
+- Windows 上の GUI の `mam.exe` のウィンドウ生成が失敗しないか: **未確認**（リリースのジョブは Linux でクロスビルドするため、Windows では動かさない。Windows の機械で `scripts/smoke-windows.sh` を手動で実行して確かめる）
 
 ## 4. パッケージングと配布
 
 - ビルド・パッケージングは `scripts/package-windows.sh`（`build.sh` と同じ templ → esbuild → tailwind の後、`wails3 package GOOS=windows`）。設定は `build/`（Wails v3 の既定配置。Taskfile のフロントエンド工程は本リポジトリの `static/` のビルドへ置き換える。Go のビルドは `./backend/cmd/wails`、`-tags production`、`-ldflags "-s -w -H windowsgui"`、`-trimpath`、`CGO_ENABLED=0`、`GOOS=windows GOARCH=amd64`）。`wails3 package` が読むのは `build/Taskfile.yml`・`build/windows/` で、`build/config.yml` は読まない（`wails3 update build-assets` を実行する箇所も無い）ため、exe のリソースやインストーラーを変えるときは `config.yml` の `info`・`version` ではなく `build/windows/info.json` と `package-windows.sh` の引数を直す
 - 成果物: ポータブル `mam.exe`（Wails ウィンドウ版）と、それを入れる NSIS インストーラー exe。インストーラーは WebView2 ブートストラッパーを含み（WebView2 が無い Windows 10 では取得するためインターネット接続が要る）、Start メニューとデスクトップにショートカットを作り、アンインストーラーを登録する。インストール先は `%ProgramFiles%\MAM`（Wails v3 の NSIS 既定の管理者権限）。アンインストールでデータディレクトリ（SQLite・生成物）は消さない。完了画面に ffmpeg の導入案内（PATH に `ffmpeg` / `ffprobe` を置くと Judge・プレビュー・Export などが使える。無くても起動する）を出す
 - バージョンは Git タグ `vX.Y.Z` の `X.Y.Z`。`main` への push で CI が成功すると、最新の `v*` タグの patch を 1 つ上げた版（タグが無ければ `v0.1.0`）を自動で付ける。minor・major を上げるときは手でタグを打つ。`build/windows/info.json`（ファイルバージョン・ProductVersion）と NSIS の `INFO_PRODUCTVERSION`、ファイル名に反映する
-- 配布は GitHub Actions の `release.yml`（`main` の CI 成功後の `workflow_run`、または `v*` タグの手動 push。`plan` → `verify` → `windows-latest` の `build` → `release` の 4 ジョブで、`release` だけが書き込み権限を持つ）が `gh release create` でリリースを作り、2 つの成果物を添付する（`spec/environment/setup.md`）。コード署名はしない
+- 配布は GitHub Actions の `release.yml`（`main` の CI 成功後の `workflow_run`、または `v*` タグの手動 push。`plan` → `verify` → `build` → `release` の 4 ジョブを self-hosted の Linux runner で動かし、Windows 版は Linux 上でクロスビルドして `makensis` でインストーラーを作る。`release` だけが書き込み権限を持つ）が `gh release create` でリリースを作り、2 つの成果物を添付する（`spec/environment/setup.md`）。コード署名はしない
 
 ## 5. 対象外
 
@@ -63,3 +63,4 @@ Windows 実機が要る項目は、リリース前に実機で確かめる（実
 | 1.12 | 2026-10-16 | §2 の「子プロセス」に、`HideWindow` と `CREATE_NO_WINDOW` が付くことを `internal/media/run_windows_test.go` が確かめ、リリースの `build` ジョブが Windows 上で動かすことを足した | Issue #774。#770 のテストは Linux だけの `ci.yml` でも `release.yml` でも実行されず、検証する手段がどこにも書かれていなかった（setup.md の改訂 1.27 で `release.yml` に手順を足した） |
 | 1.13 | 2026-10-16 | §2 の「子プロセス」で、`run_windows_test.go` が確かめる内容を、`hideWindow` 単体の検査と、`run` を実 exe で通して `exec.Cmd` を見る検査（`TestRunHidesConsoleWindow`）に分けて書いた | Issue #777。従来のテストは `hideWindow` を直接呼ぶだけで `run` を通らず、`run` から `hideWindow` を消しても通ったため、記述（`run` の退行を検出する）が実態と合っていなかった（setup.md の改訂 1.29） |
 | 1.14 | 2026-10-21 | §4 のバージョンと配布の項を、`main` の CI 成功後に次の patch 版を自動でリリースする構成（手動の `v*` タグは minor・major を上げる用）と、`plan` を加えた 4 ジョブへ改めた | `release.yml` を、タグを手で打たなくても `main` への push で配布物が出るようにしたため |
+| 1.15 | 2026-10-21 | §4 の配布の項と §3 の未確認事項を、リリースを self-hosted の Linux runner でのクロスビルドへ移したことに合わせた | 初回のリリース実行が GitHub-hosted runner の支払い失敗で動かず、self-hosted へ移したため（setup.md の改訂 1.31） |

@@ -6,10 +6,14 @@ name: Release
 #                 latest v* tag; v0.1.0 if there is none). Nobody tags anything.
 #   tag push      v<X.Y.Z>: a hand-made tag, to raise the minor / major version.
 #
+# Every job runs on the self-hosted Linux runner (like ci.yml): GitHub-hosted runners are billed and were blocked
+# by a payment failure. The Windows exes are therefore cross-built (GOOS=windows, pure Go) and the installer is
+# made by makensis on Linux; nothing here runs a Windows binary (no Windows-only tests, no installer smoke test).
+#
 # Four jobs, so that the build never holds a write token and nothing is published unchecked:
 #   plan    decide whether to release and which tag (the tip of main only, so an older commit never gets a newer version)
 #   verify  the commit is in main's history, passed ci.yml, and has no reachable known vulnerability
-#   build   package + smoke test; contents: read only; hands the two exes over as an artifact
+#   build   package; contents: read only; hands the two exes over as an artifact
 #   release gh release create only; the one job with contents: write (it creates the tag too)
 # `uses:` are pinned to a commit SHA (the comment is the tag; dependabot's github-actions keeps both up to date).
 on:
@@ -29,8 +33,6 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  # Pinned: choco installs the latest by default. Keep the version available on community.chocolatey.org/packages/nsis.
-  NSIS_VERSION: 3.11.0
   # The commit to release: the one CI passed on (workflow_run) or the tagged one (tag push).
   RELEASE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
 
@@ -42,7 +44,7 @@ jobs:
       (github.event.workflow_run.conclusion == 'success' &&
        github.event.workflow_run.event == 'push' &&
        github.event.workflow_run.head_repository.full_name == github.repository)
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64]
     permissions:
       contents: read
     outputs:
@@ -93,7 +95,7 @@ jobs:
   verify:
     needs: plan
     if: needs.plan.outputs.release == 'true'
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64]
     permissions:
       contents: read
       actions: read # gh run list (the CI result of the commit)
@@ -120,15 +122,15 @@ jobs:
             exit 1
           fi
 
+      # No actions cache on the self-hosted runner (see ci.yml).
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version-file: go.mod
+          cache: false
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24
-          cache: npm
-          cache-dependency-path: static/package-lock.json
 
       - name: Install tools
         run: |
@@ -144,12 +146,9 @@ jobs:
 
   build:
     needs: [plan, verify]
-    runs-on: windows-latest
+    runs-on: [self-hosted, Linux, X64]
     permissions:
       contents: read
-    defaults:
-      run:
-        shell: bash
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -159,53 +158,54 @@ jobs:
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version-file: go.mod
+          cache: false
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24
-          cache: npm
-          cache-dependency-path: static/package-lock.json
 
-      - name: Install tools
+      # CGO_ENABLED=0: the Wails CLI builds without cgo; with cgo on Linux it wants webkitgtk-6.0 headers.
+      # (The app itself is cross-built for Windows with CGO_ENABLED=0 by wails3 package.)
+      - name: Install wails3
         run: |
-          go install github.com/wailsapp/wails/v3/cmd/wails3@"$(go list -m -f '{{.Version}}' github.com/wailsapp/wails/v3)"
-          choco install nsis --version "$NSIS_VERSION" --no-progress -y
+          CGO_ENABLED=0 go install github.com/wailsapp/wails/v3/cmd/wails3@"$(go list -m -f '{{.Version}}' github.com/wailsapp/wails/v3)"
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
-          echo "C:/Program Files (x86)/NSIS" >> "$GITHUB_PATH"
 
-      # ci.yml runs on Linux only, so static/build.mjs (it starts Tailwind as a child process, which
-      # differs on Windows) is never run on Windows there. Run the production build and build.test.ts
-      # here first, so a break of that path fails with its own step before the packaging.
-      - name: Front end build and its tests
-        working-directory: static
+      # The installer is made by makensis (NSIS). Install it when it is missing, without needing root:
+      #   1. makensis on PATH: use it.
+      #   2. passwordless sudo: apt-get install nsis.
+      #   3. otherwise: apt-get download nsis + nsis-common (no root needed) and dpkg -x them into a per-user cache,
+      #      with a makensis wrapper that sets NSISDIR (the stubs live in nsis-common). The cache survives between runs.
+      # The version is the distro's (not pinned).
+      - name: Ensure NSIS
         run: |
-          npm ci
-          npm run build -- --minify
-          npx --no-install vitest run src/build.test.ts
-
-      # ci.yml runs on Linux only (it only builds, vets and lints for GOOS=windows), so the Windows
-      # code (fsutil dirlock/diskfree: LockFileEx, GetDiskFreeSpaceEx) and the Windows branches of
-      # tests are never run. Run the light packages that hold them here, before the packaging.
-      # Packages that need ffmpeg are left out: with CI=true testenv.MissingFFmpeg fails the test.
-      - name: Go tests that exercise the Windows code
-        run: go test ./backend/internal/fsutil/... ./backend/internal/desktop/... ./backend/internal/app/... ./backend/internal/config/...
-
-      # internal/media is not in the list above (most of its tests need ffmpeg), but its Windows-only tests
-      # (run_windows_test.go: HideWindow and CREATE_NO_WINDOW on the ffmpeg / ffprobe child, #770) need
-      # none. TestHideWindowSetsNoConsoleFlags checks hideWindow itself; TestRunHidesConsoleWindow runs a
-      # trivial cmd.exe through run, so dropping the hideWindow call from run fails it (#777). Run just those.
-      - name: Go test that the media child processes hide their console window
-        run: go test -run '^(TestHideWindowSetsNoConsoleFlags|TestRunHidesConsoleWindow)$' ./backend/internal/media/
+          if ! command -v makensis >/dev/null; then
+            if sudo -n true 2>/dev/null; then
+              sudo -n apt-get update && sudo -n apt-get install -y --no-install-recommends nsis
+            else
+              nsis_home="${XDG_CACHE_HOME:-$HOME/.cache}/mam-release/nsis"
+              if [ ! -x "$nsis_home/bin/makensis" ]; then
+                tmp="$(mktemp -d)"
+                (cd "$tmp" && apt-get download nsis nsis-common && for deb in ./*.deb; do dpkg -x "$deb" root; done)
+                rm -rf "$nsis_home"
+                mkdir -p "$nsis_home/bin"
+                mv "$tmp/root" "$nsis_home/root"
+                rm -rf "$tmp"
+                printf '#!/bin/sh\nNSISDIR=%s exec %s "$@"\n' \
+                  "$nsis_home/root/usr/share/nsis" "$nsis_home/root/usr/bin/makensis" > "$nsis_home/bin/makensis"
+                chmod +x "$nsis_home/bin/makensis"
+              fi
+              echo "$nsis_home/bin" >> "$GITHUB_PATH"
+              export PATH="$nsis_home/bin:$PATH"
+            fi
+          fi
+          command -v makensis >/dev/null || { echo "::error::makensis is missing and could not be installed"; exit 1; }
+          makensis -VERSION
 
       - name: Package
         env:
           TAG: ${{ needs.plan.outputs.tag }}
         run: bash scripts/package-windows.sh "${TAG#v}"
-
-      - name: Smoke test the installer
-        env:
-          TAG: ${{ needs.plan.outputs.tag }}
-        run: bash scripts/smoke-windows.sh "bin/mam-${TAG#v}-windows-amd64-setup.exe"
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -215,7 +215,7 @@ jobs:
 
   release:
     needs: [plan, build]
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64]
     permissions:
       contents: write
     steps:
