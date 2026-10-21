@@ -25,6 +25,7 @@ func TestAuxiliaryPages_HaveOneH1(t *testing.T) {
 		page templ.Component
 		h1   string
 	}{
+		{"global settings", pages.GlobalSettingsPage("tok", organisms.GlobalSettingsBodyData{}), "設定"},
 		{"editor", pages.EditorPage("tok", editorpanel.Data{Project: project}), "編集"},
 		{"take comparison", pages.TakeComparisonPage("tok", organisms.TakeComparisonData{Project: project, Shot: domain.Shot{ID: "s"}}), "Take 比較"},
 		{"branch", pages.BranchPage("tok", organisms.BranchPageData{Project: project}), "Branch"},

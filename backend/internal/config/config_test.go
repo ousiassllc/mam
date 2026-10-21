@@ -168,3 +168,28 @@ func TestLoad_NoBrowserEnvironmentIsParsedAsABoolean(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, cfg.OpenBrowser, "an explicit flag wins over the environment")
 }
+
+func TestSettingsFiles_DefaultToTheDataDirAndAreNotPinned(t *testing.T) {
+	cfg, err := config.Load(nil, env(map[string]string{"MAM_DATA_DIR": "/data"}), io.Discard)
+	require.NoError(t, err)
+
+	path, pinned := cfg.LLMSettingsFile()
+	assert.Equal(t, filepath.Join("/data", "llm.json"), path)
+	assert.False(t, pinned)
+	path, pinned = cfg.ModelSettingsFile()
+	assert.Equal(t, filepath.Join("/data", "models.json"), path)
+	assert.False(t, pinned)
+}
+
+func TestSettingsFiles_AFlagOrEnvironmentPinsTheFile(t *testing.T) {
+	cfg, err := config.Load([]string{"-llm-config", "/etc/mam/llm.json"},
+		env(map[string]string{"MAM_DATA_DIR": "/data", "MAM_MODEL_CONFIG": "/etc/mam/models.json"}), io.Discard)
+	require.NoError(t, err)
+
+	path, pinned := cfg.LLMSettingsFile()
+	assert.Equal(t, "/etc/mam/llm.json", path)
+	assert.True(t, pinned, "--llm-config pins the file")
+	path, pinned = cfg.ModelSettingsFile()
+	assert.Equal(t, "/etc/mam/models.json", path)
+	assert.True(t, pinned, "MAM_MODEL_CONFIG pins the file")
+}

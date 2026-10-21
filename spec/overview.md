@@ -80,10 +80,12 @@ flowchart TB
 | アーキテクチャ設計 | `spec/architecture/overview.md` | HALT（Gin/Huma/Templ/HTMX/Lit）レイヤー構成、Agent Architecture、通信フロー、Wails ウィンドウ版（Windows）の構成 |
 | Windows デスクトップ版 | `spec/architecture/desktop.md` | Wails v3 ウィンドウ版（サーバーを維持して URL を開く方式、単一インスタンス・終了・起動エラー、NSIS インストーラーと GitHub Releases 配布、実装時に検証する項目） |
 | ER / データモデル | `spec/architecture/er.md` | Project Data Model（Scene/Shot/Take/World State 等）の ER 図とテーブル定義 |
-| API 仕様 | `spec/api/endpoints.md` | ページルート/アクションルート（HTMX）と `/api/v1` JSON API（Huma/OpenAPI）のエンドポイント仕様 |
+| API 仕様 | `spec/api/endpoints.md` | ページルート/アクションルート（HTMX）のエンドポイント仕様（§0〜§2） |
+| API 仕様（API ルートと WebSocket） | `spec/api/endpoints-api.md` | `/api/v1` JSON API（Huma/OpenAPI）と WebSocket のエンドポイント仕様（§3・§4。`endpoints.md` の続き） |
 | API 共通エラーコード | `spec/api/errors.md` | HTTP ステータスの意味（全ルート共通。各ルートの行にはそのルート固有の条件だけを書く） |
 | コンポーネント設計 | `spec/components/overview.md` | Agent 群（Producer/Director/Editor 等）とHALT側コンポーネント（atoms/molecules/organisms/Lit）の責務分割 |
 | Model Adapter 選定 | `spec/architecture/model-adapters.md` | エージェント推論LLM・画像/動画生成モデル・音声プロバイダーの具体的な選定とルーティング表（Claude/GPT-5/Gemini、Imagen4/Nano Banana/FLUX.2/GPT Image 2、Kling/Seedance/Runway、ElevenLabs/Sync Labs） |
+| Model Adapter 選定（M3） | `spec/architecture/model-adapters-m3.md` | Multi-model routing（§13）と Audio Director の実装（§14）。`model-adapters.md` の続き |
 | 環境構築 | `spec/environment/setup.md` | 開発ツール、Makefile タスク、CI、リリース（Windows インストーラー）、Linterly、Git Hooks（Lefthook） |
 
 ## マイルストーン / リリース計画
@@ -133,3 +135,4 @@ flowchart TB
 | 1.7 | 2026-10-03 | スコープと実行基盤に Windows デスクトップ版（Wails v3 ウィンドウ + NSIS インストーラーの GitHub Releases 配布）を追加。Wails を将来拡張から現段階の Windows 版の表示シェルに改め、Handler 直埋め込みを採らない理由を用語集に追記。環境構築の概要にリリースを追加 | Issue #480。「GitHub の Releases にインストーラーの exe を入れたい」というユーザー要望。Wails v3 の AssetServer は WebSocket を処理せず（`assetserver.go` が 501）、本製品はチャット・生成進捗に WebSocket を使うため、サーバーを `127.0.0.1` に維持して URL を開く方式にした |
 | 1.8 | 2026-10-03 | ドキュメントマップに `spec/architecture/desktop.md`（Windows デスクトップ版）を追加 | Issue #480。`spec/architecture/overview.md` が行数上限（300 行）を超えるため、Windows 版の詳細を別ファイルに切り出した |
 | 1.9 | 2026-10-12 | ドキュメントマップに `spec/api/errors.md`（API 共通エラーコード）を追加し、改訂履歴が `*.changelog.md` に分かれている仕様があることを注記した | Issue #674。`endpoints.md` §0 が共通ビジネスエラーコードを `errors.md` に切り出しているのに、ドキュメントマップから辿れず、各ルートの 4xx/5xx の正本が見つけにくかった |
+| 1.10 | 2026-10-21 | ドキュメントマップに `spec/api/endpoints-api.md`（`endpoints.md` の §3・§4）と `spec/architecture/model-adapters-m3.md`（`model-adapters.md` の §13・§14）を追加し、`endpoints.md` の説明をページ/アクションルートに絞った | `endpoints.md`・`model-adapters.md` が行数上限（300 行）を超えたため後半を別ファイルに分けた。詳細は各 `*.changelog.md` |

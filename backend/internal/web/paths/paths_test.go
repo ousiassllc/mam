@@ -93,9 +93,10 @@ func TestCollectionRoutes_AreTheFixedPathsOfTheirResources(t *testing.T) {
 	assert.Equal(t, paths.SeriesList()+"/s1", paths.Series("s1"))
 }
 
-func TestHomeAnalytics_AreTheFixedPathsOfTheirPages(t *testing.T) {
+func TestHomeAnalyticsSettings_AreTheFixedPathsOfTheirPages(t *testing.T) {
 	assert.Equal(t, "/", paths.Home())
 	assert.Equal(t, "/analytics", paths.Analytics())
+	assert.Equal(t, "/settings", paths.Settings())
 }
 
 func TestWithBranch_AddsTheEscapedBranchQueryAndNothingForTheTrunk(t *testing.T) {

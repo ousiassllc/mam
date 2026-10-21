@@ -149,3 +149,12 @@ func WithBranch(p, branchID string) string {
 
 // Credential is "/credentials/<provider>", the API key of a provider.
 func Credential(provider string) string { return join("/credentials", provider) }
+
+// Settings is the global settings screen (API keys, the LLM and the models), "/settings".
+func Settings() string { return "/settings" }
+
+// LLMSettings is "/settings/llm", the LLM assignment of the settings screen.
+func LLMSettings() string { return Settings() + "/llm" }
+
+// ModelSettings is "/settings/models", the image / video model assignment of the settings screen.
+func ModelSettings() string { return Settings() + "/models" }

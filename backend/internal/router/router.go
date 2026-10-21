@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/ousiassllc/mam/backend/internal/router/settingsroutes"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/web/handler"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
@@ -19,14 +20,14 @@ import (
 type Options struct {
 	Logger *slog.Logger
 	// Static serves /static/*. Callers pass static.Dist() or os.DirFS for `make dev`.
-	Static fs.FS
+	Static   fs.FS
+	Settings *settingsroutes.Services // the LLM / model sections of the settings screen; nil leaves them out
 }
 
 // New builds the engine. Middleware order matters: recovery and logging wrap everything; the
 // loopback guard runs before CSRF so foreign hosts get nothing, not even a token cookie.
 //
-// To add routes, register them in the matching file (pages.go for HX-Request-aware page routes,
-// actions.go for fragment-returning actions, api.go for Huma JSON routes); no other file needs to change.
+// Routes go in pages.go (pages), actions.go (fragment actions), api.go (Huma JSON); the settings screen's in settingsroutes.
 func New(services *service.Services, opts Options) *gin.Engine {
 	logger := opts.Logger
 	if logger == nil {
@@ -48,6 +49,7 @@ func New(services *service.Services, opts Options) *gin.Engine {
 	registerPages(engine, services)
 	registerActions(engine, services)
 	registerAPI(engine, services)
+	settingsroutes.Register(engine, services.Credentials, opts.Settings)
 	return engine
 }
 

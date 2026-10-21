@@ -28,7 +28,7 @@
 | バックグラウンド処理 | Go goroutine + 内部ジョブキュー | 生成・Judge・Repair 等の非同期実行、進捗は WebSocket で通知 |
 | 外部生成モデル連携 | Model Adapter（アダプタパターン） | 画像/動画生成モデル API をベンダー非依存に抽象化。特定モデルへの構造的依存を作らない。採用プロバイダーは `spec/architecture/model-adapters.md` 参照（画像: Imagen 4/Nano Banana/FLUX.2/GPT Image 2、動画: Kling 3.0/Seedance 2.0/Runway Gen-4.5） |
 | エージェント推論用LLM連携 | Reasoning LLM Adapter（アダプタパターン） | Producer/Writer/Director/Judge/Repair等の自然言語推論をLLM API経由で実行する層。Model Adapterとは別レイヤー（画像/動画生成物を伴わない）。採用プロバイダーは Claude Opus系/GPT-5系/Gemini 3.1 Pro（Agentごとのルーティングは `spec/architecture/model-adapters.md` 参照） |
-| 認証情報管理 | OS セキュアストレージ（Windows Credential Manager / macOS Keychain / Linux Secret Service） | 外部生成モデル API キーを平文設定ファイルに書かず OS ネイティブストアへ保存・取得する（`internal/credential`）。ストアが `DefaultTimeout`（5 秒）以内に応えないとき（Linux の Secret Service がロック解除の入力待ち）は `credential.ErrUnavailable` で失敗し、設定画面は API キーのパネルだけを「利用できません」にする |
+| 認証情報管理 | OS セキュアストレージ（Windows Credential Manager / macOS Keychain / Linux Secret Service） | 外部生成モデル API キーを平文設定ファイルに書かず OS ネイティブストアへ保存・取得する（`internal/credential`）。ストアが `DefaultTimeout`（5 秒）以内に応えないとき（Linux の Secret Service がロック解除の入力待ち）は `credential.ErrUnavailable` で失敗し、全体の設定画面（`GET /settings`）は API キーのパネルだけを「利用できません」にする |
 
 ## 3. 全体構成図
 
@@ -154,19 +154,20 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 │       ├── service/        # アプリケーションサービス層（agentを利用しユースケースを実装）。services.go が DI ルート、wiring.go が機能ごとの `wire*`（plan → judge → generation → repair → director → continuity → editor の順）とジョブキューの `OnChange` を最後に 1 つだけ登録する `watchJobs`
 │       │   ├── chatbrief/  # テスト専用（非テストの `.go` は無い）。チャットの質問カードへの回答が Brief の値域（Aspect Ratio・200 文字）を外れたとき聞き直すことを `service` の公開 API 越しに確かめる回帰テスト
 │       │   ├── finalframe/ # テスト専用（`unix` のみ。非テストの `.go` は無い）。Continue Agent に渡す最終フレームの元になる Take ファイルの選び方を `service` の公開 API 越しに確かめる回帰テスト
+│       │   ├── modelsettings/ # 全体の設定画面の「画像・動画モデル」の保存先（`models.json` の `images` / `policies` の読み書き。`Service`・`InvalidError`・`ErrPinned`）。`service` の行数基準値のために別パッケージにしてあり、`service` は import しない。同じ理由の別パッケージに、「LLM の割り当て」の `llm.json`（`routes`）の読み書きの `llmassign/`（`Service`・`InvalidError`・`ErrPinned`）と、両者が使う設定 JSON の読み書きの `settingsfile/`（`Read` / `Write`。他のキーを残して書く）がある
 │       │   ├── servicetest/ # テスト専用。`service.New` に `t.Cleanup(svc.Close)` を付けて組み立てる（`New`）。本番コードから import しない
 │       │   └── takepreview/ # テスト専用（`unix` のみ。非テストの `.go` は無い）。`TakeService.Video` / `Thumbnail` の Take のプレビューを実 ffmpeg で確かめる回帰テスト
-│       ├── router/         # ページ(pages.go)/アクション(actions.go)/API(api.go, Huma)ルート定義（`router/stack/` はミドルウェア〜ルート全体の配線だけを確かめるテスト専用、`router/swap/` はメモ・参照ライブラリの操作が差し替える範囲を確かめる回帰テスト専用）
+│       ├── router/         # ページ(pages.go)/アクション(actions.go)/API(api.go, Huma)ルート定義。全体の設定画面（`GET /settings` と、「LLM の割り当て」「画像・動画モデル」の PUT / DELETE）のルートとそのサービスは `router/settingsroutes/`（`New` / `Register`）にあり、`router.Options.Settings` で `router.New` に渡す（`Settings` が nil なら画面は API キーの区画だけで、PUT / DELETE のルートは無い。`router` と `service` の行数基準値のため）（`router/stack/` はミドルウェア〜ルート全体の配線だけを確かめるテスト専用、`router/swap/` はメモ・参照ライブラリの操作が差し替える範囲を確かめる回帰テスト専用）
 │       └── web/
 │           ├── a11y/       # テスト専用（非テストの `.go` は無い・本番コードから import しない）。配色（`text-neutral-500` を使わない）、Input / Select / Textarea と Lit のフィールドの枠線のコントラスト 3:1（WCAG 1.4.11）、一覧の行ごとの操作ボタンの accessible name が行ごとに一意であること（`atoms.RowLabel` 経由）、`data-focus-key` の値がラベルや並びが変わっても行ごとに安定していること（`spec/components/overview.md` §5.2 の規約）を確かめる回帰テスト
-│           ├── handler/    # projects.go, chat.go, scenes.go, generation.go, take.go, director.go, editor.go, branch.go, settings.go ...（機能ごと）
+│           ├── handler/    # projects.go, chat.go, scenes.go, generation.go, take.go, director.go, editor.go, branch.go, settings.go ...（機能ごと）。全体の設定画面の「画像・動画モデル」の PUT / DELETE は `handler/modelassign/`（`handlers.go`・`view.go`。行数基準値のために別パッケージ）、「LLM の割り当て」のは `handler/llmassign/`
 │           ├── health/     # `GET /healthz` と `GET /api/v1/health` が共有するレディネス JSON の応答（`Response` / `Handler`）。Templ / HTMX の `handler/` から切り離してあり、`router/` が `service.HealthService` とともに使う
 │           ├── middleware/  # CSRF、ループバック限定ガード、セキュリティヘッダ（CSP）、ロギング/リカバリ
 │           ├── paths/       # ルート URL の組み立て（ハンドラーとテンプレートで共有）
 │           ├── selector/    # `hx-target` の ID セレクタの組み立て（`selector.ID`。外部由来の ID を CSS エスケープする。手で `#shot-` + ID と連結しない。`paths/` の隣）
 │           ├── atoms/       # button, badge, field, spinner, toast 等
 │           ├── molecules/   # shot_card, lock_toggle(AUTO/MANUAL/LOCK), take_card, world_state_field, approval_card, escalation_card 等
-│           ├── organisms/   # chat_workspace, shot_inspector, take_comparison, brief_form 等。編集画面の部品はサブパッケージ `editorpanel/`（`panel.templ`・`stages.templ`・`data.go`・`audio.go`）、World State の画面部品はサブパッケージ `worldstate/`（`view.templ`・`responses.templ`・`data.go`）、Series 画面の部品はサブパッケージ `seriesview/`（`view.templ`）、Scene / Shot 画面の部品はサブパッケージ `sceneshot/`（`view.templ`・`responses.templ`・`data.go`）、メモ一覧は `notelist/`（`list.templ`・`onpage.go`）、オーナー側のレビュー一覧は `reviewlist/`（`list.templ`）、Shot Inspector は `shotinspector/`（`view.templ`・`data.go`）、Brand Template は `brandtemplate/`（`panel.templ`）、テスト専用の `a11y/`（非テストの `.go` は無い・本番コードから import しない。organisms 直下から移した a11y・Branch ツリー（tree ロールを付けない入れ子の `<ul>`・`aria-current`）の描画テストで、行数基準値のために分けてある）
+│           ├── organisms/   # chat_workspace, shot_inspector, take_comparison, brief_form 等。編集画面の部品はサブパッケージ `editorpanel/`（`panel.templ`・`stages.templ`・`data.go`・`audio.go`）、World State の画面部品はサブパッケージ `worldstate/`（`view.templ`・`responses.templ`・`data.go`）、Series 画面の部品はサブパッケージ `seriesview/`（`view.templ`）、Scene / Shot 画面の部品はサブパッケージ `sceneshot/`（`view.templ`・`responses.templ`・`data.go`）、メモ一覧は `notelist/`（`list.templ`・`onpage.go`）、オーナー側のレビュー一覧は `reviewlist/`（`list.templ`）、Shot Inspector は `shotinspector/`（`view.templ`・`data.go`）、Brand Template は `brandtemplate/`（`panel.templ`）、API キーのパネルは `credentialpanel/`（`panel.templ`）、画像・動画モデルの割り当ては `modelassignment/`（`section.templ`）、テスト専用の `a11y/`（非テストの `.go` は無い・本番コードから import しない。organisms 直下から移した a11y・Branch ツリー（tree ロールを付けない入れ子の `<ul>`・`aria-current`）の描画テストで、行数基準値のために分けてある）
 │           ├── pages/       # projects_page, chat_workspace_page, brief_page, editor_page 等
 │           └── layout/      # レイアウトラッパー
 └── static/
@@ -213,7 +214,7 @@ handler → service → agent → repository → domain
 - `service/`: `domain/`, `repository/`, `agent/` に依存。ユースケース単位のオーケストレーション
 - `web/handler/`: `service/`, `domain/` に依存。`repository/`・`agent/` を直接使わない
 - `web/health/`: `service/`（`HealthService` / `HealthStatus`）だけに依存し、`handler/` とは互いに参照しない。`router/` が `GET /healthz` と `GET /api/v1/health` に使う
-- `router/`: `handler/` を参照してルートを定義
+- `router/`: `handler/` を参照してルートを定義（設定画面のルートは `router/settingsroutes/` を `router.Options.Settings` 経由で受ける）
 - `service/Services`（`service/services.go`）が DI ルート。`internal/app`（`app.Run` → `buildServices`）がインフラ（DB・ジョブキュー・認証情報ストア・ロガー）を生成して `service.New(Deps)` に渡し、`router.New(services, opts)` が `services` を各ルート登録関数へ渡す。`service.New` は `newWiring(deps)` を作り、`service/wiring.go` の `wirePlan` → `wireJudge` → `wireGeneration` → `wireRepair` → `wireDirector` → `wireContinuity` → `wireEditor` → `watchJobs` をこの順に呼ぶ。各 `wire*` は前の `wire*` が設定したものだけを読み、ジョブキューの `OnChange` は `watchJobs` が最後に 1 つだけ登録する（呼び出すエージェントが揃ってから。`Queue` の開始後に登録すると panic する）。新機能は「サービス追加 → Reasoning LLM・ジョブキュー・Model Adapter が要るなら、前提のエージェントより後ろになる `wire*`（無ければ新設）に組み込んで順序の制約を守る → ジョブ状態の変化でチャットを更新するなら `watchJobs` から呼ぶ → `Services` にフィールド追加 → ルートを `pages.go`/`actions.go`/`api.go` に追加」で組み込む。インフラに依存しないサービスは `Services` へのフィールド追加と `wiring.services` の 1 行で済む
 - `Services.Close`（`service/services.go`）は editor の再開 Worker など `Services` が持つバックグラウンドの Worker を止め、実行中のプレビュー変換（`previewcache`）も取り消す（クライアントの切断では止めないが、停止では止める）。ジョブ状態の変化がこの Worker を起こすため、**ジョブキューを止めた後・DB を閉じる前**に呼ぶ（`app/services.go` は `closers` を逆順に走らせるので、`services.Close` を `jobs.Stop` より前に積む）。`Services` に Worker を足す機能は、その停止を `Close` に足してこの順序を守る。テストでは `servicetest.New` が DB を閉じるクリーンアップより後に `Close` を登録し、先に走らせる
 - レイヤー依存ルールは `.golangci.yml` の depguard で機械的に検査する（違反はlintエラー）
@@ -244,8 +245,8 @@ waitForShutdownSignal()
 - 起動処理は `internal/app` が持ち、`cmd/server` と `cmd/wails` は表示の仕方（ブラウザを開く／ウィンドウに URL を読み込む）だけが違う。どちらも同じ `127.0.0.1` のサーバーを起動し、設定（フラグ・`MAM_*`）、データディレクトリのロック、ジョブ復旧、グレースフルシャットダウン（時間切れの残リクエストは中断する）は共通である
 - データディレクトリは起動時に排他ロック（`<data-dir>/.mam.lock`、OS のファイルロック。プロセスが死ねば OS が解放する）を取る。同じディレクトリで 2 つ目のインスタンスを起動するとエラーで終了し、実行中のインスタンスの一時ファイルやインポート途中のディレクトリを起動時の掃除（`fsutil.RemoveStaleTemp` / `RemoveStaleImports`）で消すことはない。別の `--data-dir` を指定すれば並行して起動できる。
 - 起動時の掃除（`fsutil.RemoveStaleTemp` / `RemoveStaleImports`）は best-effort。削除できないファイルや読めないディレクトリがあっても警告ログを残して走査を続け、起動は止めない（残るのは参照されないゴミだけで、次回の起動で再び掃除される）。
-  - `--llm-config`: Reasoning LLM の Agent ごとのプロバイダー割り当て JSON（`model-adapters.md` §2.1）
-  - `--model-config`: 画像・動画生成 Model Adapter の設定 JSON（`model-adapters.md` §9.2。Multi-model routing も同じ JSON、`model-adapters.md` §13）
+  - `--llm-config`: Reasoning LLM の Agent ごとのプロバイダー割り当て JSON（`model-adapters.md` §2.1）。指定しない（`MAM_LLM_CONFIG` も空の）ときは、データディレクトリの `llm.json` があれば起動時に読み、無ければ既定値を使う（ファイルが無いのはエラーにしない。読めない・JSON として不正・未知のキーがあるときは、指定したファイルと同じく起動エラー）。指定したときはそのファイルだけを読み、データディレクトリの `llm.json` は読まず、設定画面からも書き換えない（運用者が固定したもの）。`config.Config.LLMSettingsFile()` が（パス, 固定されているか）を返す
+  - `--model-config`: 画像・動画生成 Model Adapter の設定 JSON（`model-adapters.md` §9.2。Multi-model routing も同じ JSON、`model-adapters-m3.md` §13）。指定しないときはデータディレクトリの `models.json` を `llm.json` と同じ規則で読む（`config.Config.ModelSettingsFile()`）
   - `--judge-config`: AI Video Judge のフレーム抽出と顔類似度の閾値 JSON（`model-adapters.md` §10）
   - `--jev-config`: Repair Agent の TypeSafe Jev シャドー実行（固定バージョン・base URL・タイムアウト・単価）JSON（`model-adapters.md` §11.4）
   - `--face-model-dir`: 顔検出・埋め込みモデルのディレクトリ（既定 `<data-dir>/models`、`model-adapters.md` §10.1）

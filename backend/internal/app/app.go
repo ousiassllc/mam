@@ -21,6 +21,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
 	"github.com/ousiassllc/mam/backend/internal/logging"
 	"github.com/ousiassllc/mam/backend/internal/router"
+	"github.com/ousiassllc/mam/backend/internal/router/settingsroutes"
 	"github.com/ousiassllc/mam/static"
 )
 
@@ -96,7 +97,10 @@ func serve(ctx context.Context, cfg config.Config, logger *slog.Logger, onReady 
 	defer cleanup()
 
 	gin.SetMode(gin.ReleaseMode)
-	engine := router.New(services, router.Options{Logger: logger, Static: staticFS(cfg)})
+	llmFile, llmPinned := cfg.LLMSettingsFile()
+	modelFile, modelPinned := cfg.ModelSettingsFile()
+	settings := settingsroutes.New(llmFile, llmPinned, modelFile, modelPinned)
+	engine := router.New(services, router.Options{Logger: logger, Static: staticFS(cfg), Settings: settings})
 
 	ln, err := listenLoopback(cfg.Port)
 	if err != nil {

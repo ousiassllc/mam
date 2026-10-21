@@ -7,21 +7,21 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/ousiassllc/mam/backend/internal/service"
-	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/credentialpanel"
 )
 
 // credentialProviderViews copies the service's key status into the rows the panel shows.
-func credentialProviderViews(statuses []service.CredentialStatus) []organisms.CredentialProviderView {
-	views := make([]organisms.CredentialProviderView, 0, len(statuses))
+func credentialProviderViews(statuses []service.CredentialStatus) []credentialpanel.ProviderView {
+	views := make([]credentialpanel.ProviderView, 0, len(statuses))
 	for _, s := range statuses {
-		views = append(views, organisms.CredentialProviderView{Provider: s.Provider, Label: s.Label, Configured: s.Configured})
+		views = append(views, credentialpanel.ProviderView{Provider: s.Provider, Label: s.Label, Configured: s.Configured})
 	}
 	return views
 }
 
-func credentialPanelData(svc *service.CredentialService) (organisms.CredentialPanelData, error) {
+func credentialPanelData(svc *service.CredentialService) (credentialpanel.Data, error) {
 	statuses, err := svc.Status()
-	return organisms.CredentialPanelData{Providers: credentialProviderViews(statuses)}, err
+	return credentialpanel.Data{Providers: credentialProviderViews(statuses)}, err
 }
 
 // credentialOutcome answers a key save or delete with the row of the provider (the keys typed into the
@@ -39,21 +39,21 @@ func credentialOutcome(c *gin.Context, svc *service.CredentialService, provider 
 	data, statusErr := credentialPanelData(svc)
 	if statusErr != nil {
 		_ = c.Error(statusErr)
-		data = organisms.CredentialPanelData{Unavailable: true}
+		data = credentialpanel.Data{Unavailable: true}
 		if opErr == nil {
 			data.Notice = notice
 		}
 		c.Header("HX-Retarget", "#credential-panel")
 		c.Header("HX-Reswap", "outerHTML")
-		render(c, code, organisms.CredentialPanel(data))
+		render(c, code, credentialpanel.Panel(data))
 		return
 	}
-	i := slices.IndexFunc(data.Providers, func(p organisms.CredentialProviderView) bool { return p.Provider == provider })
+	i := slices.IndexFunc(data.Providers, func(p credentialpanel.ProviderView) bool { return p.Provider == provider })
 	if i < 0 { // a provider that is not managed has no row to answer with
 		toast(c, opErr)
 		return
 	}
-	render(c, code, organisms.CredentialRow(data.Providers[i], message))
+	render(c, code, credentialpanel.Row(data.Providers[i], message))
 }
 
 // SaveCredential stores the API key of a provider (PUT /credentials/:provider, form api_key) and

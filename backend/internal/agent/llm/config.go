@@ -169,21 +169,32 @@ func DefaultConfig() Config {
 // empty path selects the defaults. Unknown keys are rejected so a typo does not silently
 // leave a route unchanged.
 func LoadConfig(path string) (Config, error) {
-	cfg := DefaultConfig()
 	if path == "" {
-		return cfg, nil
+		return DefaultConfig(), nil
 	}
 	data, err := os.ReadFile(path) // #nosec G304 -- the operator chooses the settings file
 	if err != nil {
 		return Config{}, fmt.Errorf("read llm config: %w", err)
 	}
+	cfg, err := ParseConfig(data)
+	if err != nil {
+		return Config{}, fmt.Errorf("%s: %w", path, err)
+	}
+	return cfg, nil
+}
+
+// ParseConfig is LoadConfig for the content of a settings file: DefaultConfig with the JSON applied on
+// top, unknown keys rejected, the result validated. The settings screen checks what it is about to
+// write with it, so that a file it writes is one that LoadConfig accepts at the next start.
+func ParseConfig(data []byte) (Config, error) {
+	cfg := DefaultConfig()
 	dec := json.NewDecoder(bytes.NewReader(data))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&cfg); err != nil {
-		return Config{}, fmt.Errorf("decode llm config %s: %w", path, err)
+		return Config{}, fmt.Errorf("decode llm config: %w", err)
 	}
 	if err := cfg.Validate(); err != nil {
-		return Config{}, fmt.Errorf("llm config %s: %w", path, err)
+		return Config{}, fmt.Errorf("llm config: %w", err)
 	}
 	return cfg, nil
 }

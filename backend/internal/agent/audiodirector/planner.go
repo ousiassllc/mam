@@ -157,7 +157,7 @@ func (p *Planner) Plan(ctx context.Context, in PlanInput) (Plan, error) {
 			if e.AtSeconds < 0 || e.AtSeconds >= sc.Length() || len(sp.Effects) >= MaxEffectsPerScene {
 				continue
 			}
-			// §14.2: an effect the model made shorter than the floor is dropped, not stretched;
+			// model-adapters-m3.md §14.2: an effect the model made shorter than the floor is dropped, not stretched;
 			// the Scene end and the ceiling only cut an effect that was long enough to begin with.
 			dur := min(e.DurationSeconds, MaxEffectSeconds, sc.Length()-e.AtSeconds)
 			if e.DurationSeconds < MinEffectSeconds || dur < MinEffectSeconds {

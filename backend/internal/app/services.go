@@ -2,8 +2,11 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io/fs"
 	"log/slog"
+	"os"
 	"path/filepath"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector"
@@ -68,14 +71,22 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger) 
 		}
 	})
 
-	llmCfg, err := llm.LoadConfig(cfg.LLMConfigPath)
+	llmFile, err := settingsFileToLoad(cfg.LLMSettingsFile())
+	if err != nil {
+		return nil, nil, err
+	}
+	llmCfg, err := llm.LoadConfig(llmFile)
 	if err != nil {
 		return nil, nil, err
 	}
 	keys := credential.NewKeyring()
 	reasoning := llm.NewClient(llmCfg, llm.NewBackends(llmCfg, keys, nil), llm.WithLogger(logger))
 
-	modelCfg, err := configcheck.Load(cfg.ModelConfigPath)
+	modelFile, err := settingsFileToLoad(cfg.ModelSettingsFile())
+	if err != nil {
+		return nil, nil, err
+	}
+	modelCfg, err := configcheck.Load(modelFile)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -170,4 +181,19 @@ func audioProviders(keys credential.Store) audiodirector.Providers {
 	p := audiodirector.ElevenLabsProviders(audiodirector.NewElevenLabs(audiodirector.Config{}, keys, nil))
 	p.LipSync = audiodirector.NewSyncLabs(audiodirector.SyncLabsConfig{}, keys, nil)
 	return p
+}
+
+// settingsFileToLoad is the path to hand to llm.LoadConfig / configcheck.Load: a pinned file (the
+// operator named it) as it is, so a missing one is an error; the default file of the data directory only
+// when it exists, where "" selects the defaults. Any other failure to reach it is an error, as it is for a pinned file.
+func settingsFileToLoad(path string, pinned bool) (string, error) {
+	if pinned {
+		return path, nil
+	}
+	if _, err := os.Stat(path); errors.Is(err, fs.ErrNotExist) {
+		return "", nil
+	} else if err != nil {
+		return "", fmt.Errorf("settings file %s: %w", path, err)
+	}
+	return path, nil
 }

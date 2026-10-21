@@ -9,6 +9,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/credentialpanel"
 )
 
 // A button that repeats down a list names its row, so that a button list or a voice command tells the
@@ -58,7 +59,7 @@ func TestVersionHistoryPanel_RestoreButtonsAreNamedAfterTheirVersion(t *testing.
 }
 
 func TestCredentialPanel_SaveAndDeleteButtonsAreNamedAfterTheirProvider(t *testing.T) {
-	html := render(t, organisms.CredentialPanel(organisms.CredentialPanelData{Providers: []organisms.CredentialProviderView{
+	html := render(t, credentialpanel.Panel(credentialpanel.Data{Providers: []credentialpanel.ProviderView{
 		{Provider: "kling", Label: "Kling", Configured: true},
 		{Provider: "veo", Label: "Veo", Configured: true},
 	}}))
