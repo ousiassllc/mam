@@ -2,7 +2,7 @@ module github.com/ousiassllc/mam
 
 go 1.26.0
 
-toolchain go1.26.9
+toolchain go1.26.10
 
 require (
 	github.com/a-h/templ v0.3.1020
