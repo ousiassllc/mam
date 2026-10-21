@@ -83,6 +83,7 @@ func TestSettings_RendersWithoutAKeyStore(t *testing.T) {
 	body := rec.Body.String()
 	assert.Contains(t, body, `data-testid="credential-unavailable"`)
 	assert.NotContains(t, body, `data-testid="credential-row"`)
+	assert.Contains(t, body, "<h1", "the rest of the screen is still there")
 
 	// The HTMX fragment degrades the same way.
 	rec = a.get("/settings", true)

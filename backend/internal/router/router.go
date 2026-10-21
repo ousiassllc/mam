@@ -27,8 +27,7 @@ type Options struct {
 // New builds the engine. Middleware order matters: recovery and logging wrap everything; the
 // loopback guard runs before CSRF so foreign hosts get nothing, not even a token cookie.
 //
-// To add routes, register them in the matching file (pages.go for HX-Request-aware page routes,
-// actions.go for fragment-returning actions, api.go for Huma JSON routes); no other file needs to change.
+// Routes go in pages.go (pages), actions.go (fragment actions), api.go (Huma JSON); the settings screen's in settingsroutes.
 func New(services *service.Services, opts Options) *gin.Engine {
 	logger := opts.Logger
 	if logger == nil {
