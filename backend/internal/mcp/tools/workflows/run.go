@@ -3,6 +3,7 @@ package workflows
 import (
 	"context"
 	"errors"
+	"path/filepath"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
@@ -116,23 +117,7 @@ func (h handlers) runFile(ctx context.Context, id string) (mcpkit.DownloadFile, 
 	if err != nil {
 		return mcpkit.DownloadFile{}, mapError(err)
 	}
-	return mcpkit.DownloadFile{Name: "workflow-" + id[:8] + extension(mime), ContentType: mime, Path: path}, nil
-}
-
-func extension(mime string) string {
-	switch mime {
-	case "image/jpeg":
-		return ".jpg"
-	case "image/webp":
-		return ".webp"
-	case "video/mp4":
-		return ".mp4"
-	case "video/webm":
-		return ".webm"
-	case "video/quicktime":
-		return ".mov"
-	}
-	return ".png"
+	return mcpkit.DownloadFile{Name: "workflow-" + id[:8] + filepath.Ext(path), ContentType: mime, Path: path}, nil
 }
 
 // SetShotWorkflowInput pins a Shot.

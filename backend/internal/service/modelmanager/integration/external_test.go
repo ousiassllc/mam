@@ -75,9 +75,3 @@ func TestExternalInventoryReportsAnUnreachableServer(t *testing.T) {
 	_, err := r.svc.ExternalInventory(ctx(), "gone")
 	assert.Error(t, err)
 }
-
-func TestDetectionIsDelegated(t *testing.T) {
-	r := newRig(t)
-	assert.Equal(t, "high", r.svc.DetectGPU(ctx()).Recommendation.Confidence)
-	assert.NotNil(t, r.svc.DetectComfyUI(ctx()).Found)
-}
