@@ -1,0 +1,191 @@
+{
+ "id": "txt2video-wan22-5b",
+ "label": "Wan 2.2 5B: テキストから動画",
+ "media": "video",
+ "description": "Wan 2.2 TI2V 5B（24fps、フレーム数は 4n+1）の標準ノードだけのワークフロー。モデルファイルは ComfyUI のテンプレートの取得先から用意する。GPU では未実行（構造のテストのみ）。",
+ "model": {
+  "media": "video",
+  "video": {
+   "durations": [
+    3,
+    4,
+    5
+   ],
+   "resolutions": [
+    "480p",
+    "720p"
+   ]
+  },
+  "workflow": {
+   "graph": {
+    "37": {
+     "class_type": "UNETLoader",
+     "inputs": {
+      "unet_name": "wan2.2_ti2v_5B_fp16.safetensors",
+      "weight_dtype": "default"
+     }
+    },
+    "38": {
+     "class_type": "CLIPLoader",
+     "inputs": {
+      "clip_name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+      "type": "wan",
+      "device": "default"
+     }
+    },
+    "39": {
+     "class_type": "VAELoader",
+     "inputs": {
+      "vae_name": "wan2.2_vae.safetensors"
+     }
+    },
+    "48": {
+     "class_type": "ModelSamplingSD3",
+     "inputs": {
+      "shift": 8,
+      "model": [
+       "37",
+       0
+      ]
+     }
+    },
+    "6": {
+     "class_type": "CLIPTextEncode",
+     "inputs": {
+      "text": "",
+      "clip": [
+       "38",
+       0
+      ]
+     }
+    },
+    "7": {
+     "class_type": "CLIPTextEncode",
+     "inputs": {
+      "text": "",
+      "clip": [
+       "38",
+       0
+      ]
+     }
+    },
+    "55": {
+     "class_type": "Wan22ImageToVideoLatent",
+     "inputs": {
+      "width": 1280,
+      "height": 704,
+      "length": 121,
+      "batch_size": 1,
+      "vae": [
+       "39",
+       0
+      ]
+     }
+    },
+    "3": {
+     "class_type": "KSampler",
+     "inputs": {
+      "seed": 0,
+      "steps": 20,
+      "cfg": 5,
+      "sampler_name": "uni_pc",
+      "scheduler": "simple",
+      "denoise": 1,
+      "model": [
+       "48",
+       0
+      ],
+      "positive": [
+       "6",
+       0
+      ],
+      "negative": [
+       "7",
+       0
+      ],
+      "latent_image": [
+       "55",
+       0
+      ]
+     }
+    },
+    "8": {
+     "class_type": "VAEDecode",
+     "inputs": {
+      "samples": [
+       "3",
+       0
+      ],
+      "vae": [
+       "39",
+       0
+      ]
+     }
+    },
+    "57": {
+     "class_type": "CreateVideo",
+     "inputs": {
+      "fps": 24,
+      "images": [
+       "8",
+       0
+      ]
+     }
+    },
+    "58": {
+     "class_type": "SaveVideo",
+     "inputs": {
+      "filename_prefix": "video/mam",
+      "format": "auto",
+      "codec": "auto",
+      "video": [
+       "57",
+       0
+      ]
+     }
+    }
+   },
+   "assignments": [
+    {
+     "param": "prompt",
+     "node": "6",
+     "input": "text"
+    },
+    {
+     "param": "negative_prompt",
+     "node": "7",
+     "input": "text"
+    },
+    {
+     "param": "seed",
+     "node": "3",
+     "input": "seed"
+    },
+    {
+     "param": "width",
+     "node": "55",
+     "input": "width"
+    },
+    {
+     "param": "height",
+     "node": "55",
+     "input": "height"
+    },
+    {
+     "param": "frames",
+     "node": "55",
+     "input": "length"
+    },
+    {
+     "param": "fps",
+     "node": "57",
+     "input": "fps"
+    }
+   ],
+   "output_node": "58",
+   "fps": 24,
+   "frames_step": 4,
+   "size_multiple": 32
+  }
+ }
+}

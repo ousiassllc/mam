@@ -42,6 +42,8 @@
 | OpenAI系LLM（GPT-5）と認証・請求を統合したい場合 | OpenAI GPT Image 2 | Imagen 4 | 品質ベンチマーク最上位、GPT-5系のAgentと同一ベンダーで運用しやすい |
 | ChatGPT のサブスクで描く場合（**非公式・既定 OFF**。設定画面で ON にするときにリスクを確認する） | GPT Image 2（`gpt-image-2:chatgpt-subscription`） | 利用者が割り当てる | API キーなしで ChatGPT のプランの枠を使える。ChatGPT の内部 API（`chatgpt.com/backend-api/codex/responses` の `image_generation`）を使うため、予告なく使えなくなることがあり、公式のプレビューでは画像生成はサポート外で、プランの利用上限を消費する（`spec/architecture/chatgpt-signin.md` §5.2） |
 
+利用者が登録した ComfyUI・OpenAI 互換 API の画像モデルも、上の用途（`new_reference` / `edit_reference` / `preview` / `unified_openai`）の主・代替に割り当てられる（OpenAI 互換は画像のみ。設計は [local-models.md](local-models.md)）。
+
 > **注（Imagen 4 は参照画像を受け取れない）**: Imagen 4 が受け取るのはプロンプトとアスペクト比だけで、画像入力（`Inputs`）は取れない（参照画像を受け取れるのは Nano Banana・GPT Image 2・FLUX.2 のみ）。そのため参照画像つきの呼び出しが代替の Imagen 4 に回ると、参照画像は警告ログを残して**黙って捨てられ**、プロンプトだけの新規生成になる（利用者への通知や失敗扱いはなく、画像の結果にも代替に回ったことは残らない）。Style / Lighting / Keyframe とアップロード素材・World State の参照つき Character / Product / Location は `edit_reference` の代替でこうなり、**その画像ではアップロード素材・World State の見た目やキャラクターの同一性は保たれない**（その Reference Pack / Keyframe を拠り所にする以降の Judge の Identity 評価も、参照なしで作られた画像が基準になる）。同一性を保ちたい用途で代替にも参照画像を持たせたいときは、`images.edit_reference` の `fallback.model` に GPT Image 2 または FLUX.2 を指定する。
 
 ## 4. 動画生成 Model Adapter（Take生成）
@@ -55,6 +57,7 @@
 - Repair Agent の **Different Model** 戦略（F-14）は上記3モデル間の自動フォールバックとして実装し、同一 Canonical Shot Spec から別ベンダーへの再試行で品質不足・レート制限の双方をヘッジする
 - **M1 実装順**: コスト効率と音声同時生成による検証のしやすさを優先し、Kling 3.0 + Seedance 2.0 の2アダプタを先行実装する。Runway Gen-4.5 は M2 で追加した（§9.1、MAX QUALITY のプライマリ）
 - OpenAI Sora 2 は候補から除外: API提供が2026-09-24付で終了済みのため
+- ローカルの動画モデルは ComfyUI の接続先に登録したワークフローで、Quality Policy の主・代替に割り当てられる。OpenAI 互換の動画は対象外（公式 Videos API が 2026-09-24 に終了し、互換サーバーごとに仕様が違うため。[local-models.md](local-models.md) §1）
 
 ## 4.5 評価・判断の補助（Judge / Repair 用）
 
@@ -95,6 +98,8 @@ Jev の利用ルール:
 音声: elevenlabs-tts, elevenlabs-music, elevenlabs-sfx, sync-labs
 ```
 
+利用者が登録した接続先のモデルは `comfyui:<接続先名>/<モデル名>`、`openai-compat:<接続先名>/<モデル名>` で保存する（例: `comfyui:gpu-box/wan22-i2v`）。接続先名・モデル名は作成後に変えられない（Take と Cost Ledger の識別子が指すため。変えるときは削除して作り直す）。見積コストが 0 USD でも Cost Ledger の行は書く。組み込みの識別子は列挙のまま、登録したモデルを足した開いた集合として扱う（[local-models.md](local-models.md) §2）。
+
 ChatGPT のサブスク経由の画像は `gpt-image-2:chatgpt-subscription`（API キー経由の `gpt-image-2` と区別できる識別子。`take.model_name`・`cost_ledger_entry.provider` に制約はないのでマイグレーション不要。見積もり 0 USD で、台帳には 0 円の行を残す）。上の表は組み込みの 7 つで、設定で増える識別子も同じ列に入る。
 
 Reasoning LLM Adapter側の呼び出しモデルは Take/Cost Ledger の対象外（生成物ではなく思考プロセスのため）。将来的にLLM呼び出しコストの可視化が必要になった場合は、別テーブル（例: `AGENT_INVOCATION_LOG`）の追加を別途検討する。
@@ -122,13 +127,14 @@ Reasoning LLM Adapter側の呼び出しモデルは Take/Cost Ledger の対象�
 
 ## 9. 画像・動画生成 Model Adapter の実装（`internal/agent/modeladapter`、`internal/agent/generation`）
 
-M1 Issue #7（F-06/F-07/F-11/F-12）の実装仕様。Reasoning LLM Adapter（§2.1）とは別パッケージで、耐障害部品（サーキットブレーカー・指数バックオフ）は `internal/agent/resilience` を両者が共有する。
+M1 Issue #7（F-06/F-07/F-11/F-12）の実装仕様。Reasoning LLM Adapter（§2.1）とは別パッケージで、耐障害部品（サーキットブレーカー・指数バックオフ・同時実行数の上限 `Limiter`）は `internal/agent/resilience` を両者が共有する。ローカル・代替モデルは `modeladapter/` の下位パッケージ（`localcfg`・`localhttp`・`comfyui`・`openaicompat`・`localbackends`）に置く。
 
 ### 9.1 M1 で実装するプロバイダー
 
 - **画像**: §3 の 4 種すべて（Imagen 4 / Nano Banana / FLUX.2 / GPT Image 2）のアダプターと、用途→プライマリ/代替の設定（§3 の表どおり。`new_reference` / `edit_reference` / `preview` / `unified_openai`）を実装する。Reference Pack の Character/Product/Location は新規生成として `new_reference`（アップロード素材や World State の参照画像がある場合は参照ベース編集として `edit_reference`）、Style/Lighting/Keyframe は `edit_reference` を使う。`prefer_openai` を有効にすると新規参照を `unified_openai` へ回す。`preview`（FLUX.2 による高速プレビュー）は、現状どの機能からも呼ばれない予約ルートである（FLUX.2 を使うには `images.new_reference` などの `primary` に FLUX.2 を指定する）
 - **動画**: Kling 3.0 / Seedance 2.0（M1）と Runway Gen-4.5（M2）の 3 アダプタ（§4）。Runway Gen-4.5 は `POST /v1/text_to_video`（Shot に先頭フレームがなければ）または `POST /v1/image_to_video`（先頭フレームのみ）を非同期タスクとして起動して `GET /v1/tasks/:id` をポーリングし、`X-Runway-Version` ヘッダーを付ける。出力は 720p のみ、長さは 2〜10 秒、ネガティブプロンプトはなく（Avoid は本文に含める）プロンプトは 1000 文字まで、自由な参照画像は取れない。縦横比は `text_to_video` が 16:9 / 9:16 だけ、`image_to_video` は 1:1 も取れる。そのため Brief の縦横比が 1:1 で Shot に先頭フレーム（Keyframe）がないときは、リクエストを送らず 422 相当の `ProviderError` で失敗し、§9.3 のフェイルオーバーで代替モデルに回る（MAX QUALITY では Kling 3.0）。1:1 の Shot で Runway を主に使うには先頭フレームを用意する。価格はクレジット（12 クレジット/秒、1 クレジット = 0.01 USD）から USD に換算して見積る
 - **`model_name` / `provider`**: `take.model_name`・`cost_ledger_entry.provider` は §6 の正規識別子（`imagen-4` / `nano-banana` / `flux-2` / `gpt-image-2` / `kling-3.0` / `seedance-2.0` / `runway-gen-4.5`）で保存する。API のモデル ID（`imagen-4.0-generate-001` など）は設定値で、保存値には使わない。`gpt-image-2` の既定 API モデル ID は、現時点で公開 API として確認できている `gpt-image-1`（`models.gpt-image-2.model` で差し替え可能。公開されたら設定で `gpt-image-2` に切り替える）
+- **ローカル・代替モデル（Issue #831）**: 登録した ComfyUI（画像・動画。`POST /prompt` と `/ws` の進捗、取り消しは自分の `prompt_id` だけ）と OpenAI 互換（画像のみ。`/v1/images/generations`・`/v1/images/edits`）の接続先のモデルを、組み込みと同じ用途・Quality Policy の割り当て、フェイルオーバー、ブレーカー（接続先ごとに `endpoint:<名>`）、同時実行数（既定 1）に載せる。識別子は §6 のとおり。保存した接続先・モデルは再起動なしで反映する。詳細は [local-models.md](local-models.md)
 - **ChatGPT のサブスク経由の画像（非公式、`internal/agent/modeladapter/chatgptimage`）**: `gpt-image-2:chatgpt-subscription`。Codex のエンドポイントの `image_generation` ツールを、画像専用のログイン（Codex の公開クライアント）のトークンで呼ぶ。参照画像は `input_image` で渡せる。**既定 OFF**で、OFF のあいだは外部への呼び出しを一切しない。ON にするには設定画面でリスクを確認する。呼び出しの失敗は §9.3 と同じ再試行・代替の対象で、無音が 180 秒続くと中止する。設計は `spec/architecture/chatgpt-signin.md` §5.2
 
 ### 9.2 設定
@@ -141,6 +147,7 @@ M1 Issue #7（F-06/F-07/F-11/F-12）の実装仕様。Reasoning LLM Adapter（§
 | `models.<正規識別子>` | `model`（API のモデル ID）、`fast_model`、`cost_per_image_usd`、`cost_per_second_usd`（解像度別）。価格は参考値（§8）で見積コストにのみ使う | §3 / §4 の割り当て |
 | `images.<purpose>` | `primary` / `fallback`（`model` と `fast`） | §3 の表 |
 | `policies.<fast\|balanced\|max_quality>` | `primary` / `fallback`（`model` と `resolution`）、`takes`（Take 数） | FAST: Kling 3.0 720p → Seedance 2.0 480p、2 Take。BALANCED: Seedance 2.0 720p → Kling 3.0 720p、3 Take。MAX QUALITY: Runway Gen-4.5 720p → Kling 3.0 1080p、4 Take |
+| `endpoints.<名>` / `local_models.<接続先>/<名>` | 登録した接続先（`kind`・`base_url`・`max_concurrency`・`timeout_seconds`）とそのモデル（ワークフロー・割り当て表・動画の長さと解像度・価格）。`images`・`policies` の `model` には `<kind>:<接続先>/<名>` を書ける。接続先の API キーは `credential.Store` の `endpoint:<名>`（任意）に置く。スキーマは [local-models.md](local-models.md) §3 | 空（価格 0、同時実行 1、タイムアウト ComfyUI 3600 秒・互換 900 秒） |
 | `prefer_openai` | トップレベルの真偽値。`true` で新規参照（`new_reference`）を `unified_openai` へ回す（§3） | `false` |
 | `retry` / `breaker` | §2.1 と同じ形式・同じ既定値 | 3 回 / 1000ms〜16000ms、5 回失敗で 30 秒 OPEN |
 
@@ -150,7 +157,8 @@ API キーは `credential.Store` のベンダー名（`google` / `openai` / `flu
 
 - **Canonical Shot Spec → モデル固有プロンプト（F-07）**: `Prepare` が Shot Spec を英語のプロンプトへ変換する。モデルごとに対応する長さ（Kling 5/10 秒、Seedance 4〜12 秒。要求を満たす最短の長さ）、First/Last Frame、参照画像の上限（Seedance 9 枚）に合わせて入力を絞る。Negative Prompt を持たないモデルでは本文へ折り込む。プロンプトは英語のみ（`non-functional.md` §9）。プロンプトの長さの上限（文字数は rune）は、Kling 3.0 が本文 2400 文字・ネガティブプロンプト 400 文字（Avoid の項目を `, ` で連結して 400 文字で切る）、Runway Gen-4.5 が 1000 文字、ネガティブプロンプトを持たないその他のモデル（Seedance 2.0 など）が 2400 文字。超えるときは、末尾の Constraints 文（ネガティブプロンプトを持たないモデルでは続く「Avoid:」文も）を丸ごと残し、Shot の描写（本文）の末尾側を削って収める（LOCK 由来の制約・ブランド制約を生成に届けるため）。末尾の文だけで上限を超えるときは、その末尾の文を上限で切る
 - **フェイルオーバー（§7）**: ベンダー単位のブレーカーが OPEN、または再試行しても失敗したとき、同じ Shot Spec を代替モデル向けに再変換して呼ぶ。429・5xx・ネットワーク断のみ同じモデルで再試行し、認証エラー等の 4xx は再試行しない（待ち時間は §2.1 の再試行と同じく、`Retry-After` をバックオフの下限として加味し `max_delay_ms` で頭打ちにする）。タイムアウトは同じモデルでは再試行せず、直ちに代替モデルへフェイルオーバーする（ベンダー側でジョブが継続・課金されている可能性があり、再提出すると二重に課金されるため。LLM の §2.1 は課金を伴う非同期ジョブを持たないためタイムアウトも再試行する）。タイムアウトもブレーカーの失敗に数える。ベンダーがジョブを受け付けた後（状態確認・結果のダウンロード）の 429・5xx・ネットワーク断は、同じジョブ ID への GET だけを再試行する。出力は課金済みで、短い障害で失うと取り戻せないため、回数の上限は置かず、呼び出し全体のタイムアウトまで続ける（待ち時間は状態確認の間隔（既定 5 秒）から倍々に増やして 1 分で頭打ちにし、`Retry-After` がそれより長ければ従う。ただし 1 分を超えない）。タイムアウトに達してもなお失敗していたときは、ジョブを再提出せず（二重課金回避）代替モデルへ進む。Sync Labs（`model-adapters-m3.md` §14.1）のポーリング・ダウンロードも同じ規則で、`Retry-After` と呼び出し全体のタイムアウト（Lip Sync の `timeout`）まで再試行する。ただし結果ファイルの保存先（ステージングディレクトリ）の作成・書き込み・同期の失敗（ディスクフル・権限など、ベンダーではなくこのマシンの問題）は再試行せず、ベンダーの一時障害としても数えない（ダウンロードを期限まで繰り返さず、ブレーカーも開かない）
-- **ベンダー応答の URL の扱い**: API キーを付けるリクエストは、ベンダーのベース URL と同じスキーム・ポートで、同じホストまたはそのベースホストの親ドメイン配下（例: `api.bfl.ai` → `api.eu.bfl.ai`）の URL にだけ送る。FLUX の `polling_url` がそれ以外を指すときは、キーを送らずエラーにする。生成結果のダウンロード（Sync Labs の `outputUrl` を含む）は https の URL だけを受け付け、公開インターネットのアドレス以外へは接続しない（許可リスト型。`localhost`、ループバック、リンクローカル（クラウドのメタデータサービス `169.254.169.254` など）、プライベート、未指定、マルチキャストに加え、IANA の特殊用途範囲 — キャリアグレード NAT `100.64.0.0/10`・`0.0.0.0/8`・ドキュメント用・ベンチマーク用・予約済みクラス E・6to4 リレー anycast・Teredo など — は全て拒否する。IPv4 互換・6to4・NAT64 の IPv6 アドレスは埋め込まれた IPv4 アドレスで判定する。ホスト名の解決後のアドレスも検査する。リダイレクト先も同じ規則。プロキシ設定は使わない）。ローカルの常駐アプリがベンダー応答を経由して内部ネットワークを読み出さないための制限である。ベンダー API を呼ぶ既定の HTTP クライアント（LLM・Model Adapter・Audio Director・Jev 共通、`internal/httpclient`）は、別ホストへのリダイレクトと https から http へのリダイレクトを拒否し（独自ヘッダーの API キーを別ホストへ転送しない）、接続・TLS ハンドシェイク・レスポンスヘッダーの待ちにタイムアウトを持つ。ベンダーの JSON 応答は 64 MiB まで読み、超えると失敗扱いにする（画像は base64 で JSON に入って返るため）。生成動画のダウンロード（上限 300 MB）は本文をメモリに載せずアセットディレクトリ配下の一時ファイル（`<assets>/.staging/`）へストリーム書き込みし、保存時にアセットのパスへリネームする（失敗・サイズ超過時は一時ファイルを削除し、異常終了で残った分は起動時に掃除する）。画像は小さいためメモリ上で扱う
+- **ベンダー応答の URL の扱い**: API キーを付けるリクエストは、ベンダーのベース URL と同じスキーム・ポートで、同じホストまたはそのベースホストの親ドメイン配下（例: `api.bfl.ai` → `api.eu.bfl.ai`）の URL にだけ送る。FLUX の `polling_url` がそれ以外を指すときは、キーを送らずエラーにする。生成結果のダウンロード（Sync Labs の `outputUrl` を含む。登録した接続先の例外は次の項目）は https の URL だけを受け付け、公開インターネットのアドレス以外へは接続しない（許可リスト型。`localhost`、ループバック、リンクローカル（クラウドのメタデータサービス `169.254.169.254` など）、プライベート、未指定、マルチキャストに加え、IANA の特殊用途範囲 — キャリアグレード NAT `100.64.0.0/10`・`0.0.0.0/8`・ドキュメント用・ベンチマーク用・予約済みクラス E・6to4 リレー anycast・Teredo など — は全て拒否する。IPv4 互換・6to4・NAT64 の IPv6 アドレスは埋め込まれた IPv4 アドレスで判定する。ホスト名の解決後のアドレスも検査する。リダイレクト先も同じ規則。プロキシ設定は使わない）。ローカルの常駐アプリがベンダー応答を経由して内部ネットワークを読み出さないための制限である。ベンダー API を呼ぶ既定の HTTP クライアント（LLM・Model Adapter・Audio Director・Jev 共通、`internal/httpclient`）は、別ホストへのリダイレクトと https から http へのリダイレクトを拒否し（独自ヘッダーの API キーを別ホストへ転送しない）、接続・TLS ハンドシェイク・レスポンスヘッダーの待ちにタイムアウトを持つ。ベンダーの JSON 応答は 64 MiB まで読み、超えると失敗扱いにする（画像は base64 で JSON に入って返るため）。生成動画のダウンロード（上限 300 MB）は本文をメモリに載せずアセットディレクトリ配下の一時ファイル（`<assets>/.staging/`）へストリーム書き込みし、保存時にアセットのパスへリネームする（失敗・サイズ超過時は一時ファイルを削除し、異常終了で残った分は起動時に掃除する）。画像は小さいためメモリ上で扱う
+- **登録した接続先（ローカルモデル）の URL の扱い**: 組み込みベンダーの規則をゆるめるのは、登録した接続先の `base_url` と**同じスキーム・ホスト・ポート**の URL に対してだけで、http・`localhost`・プライベート・`100.64.0.0/10` へ接続できる。それ以外の URL（第三者ベンダーの応答 URL を含む）は上の規則のまま拒否する。ホスト違いと https から http へのリダイレクトは拒否し、API キーは接続先の `base_url` 配下にだけ付ける。**リンクローカル（`169.254.0.0/16`、`fe80::/10`）は登録した接続先でも常に拒否**し、判断は接続時に解決した IP（ダイヤラの `Control`）で行う（DNS リバインディング対策。`local-models.md` §6）
 - **同時実行数（`non-functional.md` §4）**: ベンダーごとの上限を Model Adapter が持つ。429 を受けると上限を半分（最小 1）にし、成功が上限回数続くごとに 1 ずつ戻す。上限を超える呼び出しはスロットが空くまで待つ。Prompt Candidate Generation（F-08）が Candidate を並列に生成しても、外部 API への同時呼び出し数はこの上限（Runway は既定 2）で抑えられる
 - **Generation Orchestrator（F-12）**: Quality Policy でモデル・解像度・Take 数を決め、(1) Shot が主モデルの最長クリップを超え代替モデルなら収まる場合は入れ替え、(2) Shot/Project の予算上限（残額）に Take 数が収まらなければ Take 数を減らし、主モデルが 1 Take も収まらず代替なら収まるなら代替を主にし、(3) 1 Take も収まらなければ 402 で開始しない。決定理由は `prompt_version.model_adapter_output`（`reasons`）に残る。Take は並列に生成し、1 つ以上成功すれば成功とする
 - **Prompt Autopilot（F-06）**: Prompt Planner（Reasoning LLM）が Shot の指示と World State・直前 Shot の Spec・Reference Pack から Canonical Shot Spec（JSON、英語）を作る。検証（目的・フレーミングあり、Acting が Shot 内で時系列順、日本語などを含まない）に失敗した回答は保存しない。既存 Spec は、追加指示がある場合だけ改訂し、無ければ再利用する。生成のたびに `prompt_version` が 1 行増え、`shot_spec_snapshot` に保存時点の Spec、`model_adapter_output` に各モデルへ渡す内容（プロンプト・解像度・参照枚数）を記録する

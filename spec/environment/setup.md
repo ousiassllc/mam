@@ -120,6 +120,10 @@ MCP サーバー（`spec/architecture/mcp.md`）の設定は 2 つ。どちら�
 - **待ち受け先の IP**: データディレクトリの `mcp.json`（`{"bind_address": "100.101.102.103"}`）。**設定画面の「MCP サーバー」から保存する**のが基本（保存するとその場で切り替わる）。ファイルが無い・キーが無いときは `127.0.0.1`。値は「このマシンのインターフェースにある、ループバックか `100.64.0.0/10` の IP」だけで、起動時に使えなければ `127.0.0.1` で待ち受けて画面に理由を出す。`mcp.json` に他のキーがあっても保存で消えない。`llm.json` / `models.json` と違い、起動オプションで固定するファイルは無い。
 
 
+## ローカル・代替モデルの設定
+
+ComfyUI・OpenAI 互換の接続先とそのモデル（`spec/architecture/local-models.md`）は、`models.json` の `endpoints` と `local_models` に書く（スキーマは同書 §3）。`--model-config` で固定したファイルは読み取り専用で、保存した接続先・モデルは再起動なしで反映される。接続先の API キー（任意）は設定画面から `credential.Store` に保存する。ComfyUI は 0.3.57 以上を推奨（取り消しが他のジョブを止めないため）。
+
 ## Linterly
 
 `.linterly.yml`。行数上限はデフォルト（1 ファイル 300 行 / 1 ディレクトリ 2000 行）のまま維持し、特別な理由がない限り変えない。除外は生成物（`*_templ.go`、`static/src/dist/**`、`package-lock.json`）とライセンス全文（`LICENSE`、`THIRD_PARTY_NOTICES.md`）のみで、手書きソースは除外しない。
@@ -192,3 +196,4 @@ pre-commit（`scripts/linterly-staged.sh`）は従来どおり、コミット対
 | 1.36 | 2026-10-24 | `publish` ジョブ（公開リポジトリ `ousiassllc/mam-releases` への複製）を削除し、`RELEASES_TOKEN` を不要にした（5 → 4 ジョブ）。`release` の Release が、アプリの更新の確認先になる。「自動更新の配布物と署名」節の配布物の置き場とシークレットを改め、古い版からのつなぎ（`mam-releases` を見る版は配布されておらず、v0.1.0・v0.1.1 は手動で入れ替える）を書いた | 公開後は mam 自身の Release から配る（Issue #827）。リポジトリを公開すれば別の公開リポジトリと PAT は要らず、`GITHUB_TOKEN` だけで済む |
 | 1.37 | 2026-10-24 | 開発ツールの「ffmpeg / ffprobe」に、動作を確かめている版（4.4 系と 8 系）と、JPEG を作る呼び出しの扱い（フルレンジへの変換と `-strict unofficial`）を足した | 公開後の最初の `ubuntu-latest` の CI で、8.0.1 の mjpeg エンコーダが、フレームが来ないまま開く場合（最後のフレームより先を指す `-ss`、何も残さないフィルタ）に限定レンジを拒否し（終了コード 234）、`TestThumbnail_*` が落ちた。4.4 系は同じ場合に終了コード 0 で何も書かず、`Thumbnail` と Judge がそれを前提にしていた |
 | 1.38 | 2026-10-24 | 「MCP サーバーの設定」の節（`--mcp-port` / `MAM_MCP_PORT` と `mcp.json` の `bind_address`）を足した | Issue #830。MCP サーバーのポートと待ち受け先の設定の置き場所と規則を、環境構築の側にも残すため |
+| 1.39 | 2026-10-24 | 「ローカル・代替モデルの設定」の節（`models.json` の `endpoints`・`local_models`、固定ファイルは読み取り専用、キー、ComfyUI 0.3.57 以上）を足した | Issue #831 |

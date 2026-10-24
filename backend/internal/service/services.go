@@ -17,6 +17,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/facesim"
 	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
 )
 
 // Deps are the infrastructure dependencies wired once in cmd/server.
@@ -83,6 +84,7 @@ type Services struct {
 	Editor      *EditorService
 	Brand       *BrandService
 	Analytics   *AnalyticsService
+	LocalModels *localmodels.Service // ComfyUI / OpenAI-compatible endpoints and models; the app sets it
 }
 
 // Close stops the background workers of the services and kills the Take preview conversions that
