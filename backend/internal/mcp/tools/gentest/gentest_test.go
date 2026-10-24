@@ -17,7 +17,7 @@ import (
 )
 
 func TestListModelsOffersEveryBuiltInModelWithItsCapabilities(t *testing.T) {
-	r := newRig(t, gentesttest.WithoutBackend(domain.ModelImagen4))
+	r := newRig(t, gentesttest.WithoutBackend(domain.ModelNanoBananaLite))
 	var out mcpgentest.ListModelsOutput
 	r.CallOK("list_generation_models", map[string]any{}, &out)
 	by := map[string]modelcatalog.Info{}
@@ -30,8 +30,8 @@ func TestListModelsOffersEveryBuiltInModelWithItsCapabilities(t *testing.T) {
 	assert.False(t, by["nano-banana"].SupportsSeed)
 	require.Contains(t, by, "runway-gen-4.5")
 	assert.NotEmpty(t, by["runway-gen-4.5"].Video.Resolutions)
-	assert.False(t, by["imagen-4"].Available, "an image model without a backend says why it cannot be chosen")
-	assert.NotEmpty(t, by["imagen-4"].UnavailableMessage)
+	assert.False(t, by["nano-banana-lite"].Available, "an image model without a backend says why it cannot be chosen")
+	assert.NotEmpty(t, by["nano-banana-lite"].UnavailableMessage)
 	assert.Equal(t, 50, out.Limits.MaxItems)
 	assert.InDelta(t, 20, out.Limits.MaxCostUSD, 1e-9)
 

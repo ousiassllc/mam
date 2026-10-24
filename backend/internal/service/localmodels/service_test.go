@@ -218,7 +218,7 @@ func TestModelsCanBeAssignedAndAreProtectedWhileUsed(t *testing.T) {
 
 	in := modelsettings.Input{Images: view.Images, Policies: view.Policies}
 	in.Images[modelsettings.PurposeEditReference] = modelsettings.ImageRoute{
-		Primary: modelsettings.ImageTarget{Model: "comfyui:box/img"}, Fallback: modelsettings.ImageTarget{Model: domain.ModelImagen4},
+		Primary: modelsettings.ImageTarget{Model: "comfyui:box/img"}, Fallback: modelsettings.ImageTarget{Model: domain.ModelNanoBanana},
 	}
 	in.Policies[domain.QualityFast] = modelsettings.PolicyRoute{
 		Primary: modelsettings.VideoTarget{Model: "comfyui:box/vid", Resolution: "720p"}, Fallback: modelsettings.VideoTarget{Model: domain.ModelKling3, Resolution: "720p"}, Takes: 1,

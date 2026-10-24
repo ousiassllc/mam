@@ -36,15 +36,15 @@
 
 | 用途 | プライマリ | 代替 | 選定理由 |
 |------|-----------|------|---------|
-| Character / Product / Location Reference（新規生成、テキスト正確性が必要な素材） | Google Imagen 4 | OpenAI GPT Image 2 | テキストレンダリング精度・製品写実性が高く、ラベル/ロゴ等 Brand Constraints 適合の素材生成に強い |
-| Style / Lighting Reference、既存素材の参照ベース編集・差分変更 | Google Nano Banana（Gemini Image） | Imagen 4（参照画像は使えない。下の注） | 編集・変換・参照ベース変更・キャラクター一貫性維持に強く、World State継承の再生成に向く |
-| 高速反復・低コストプレビュー生成 | Black Forest Labs FLUX.2 | Imagen 4 Fast | オープンウェイトでセルフホスト可能（ベンダーロックイン回避の保険）、生成速度重視のCandidate Generation向き |
-| OpenAI系LLM（GPT-5）と認証・請求を統合したい場合 | OpenAI GPT Image 2 | Imagen 4 | 品質ベンチマーク最上位、GPT-5系のAgentと同一ベンダーで運用しやすい |
+| Character / Product / Location Reference（新規生成、テキスト正確性が必要な素材） | OpenAI GPT Image 2 | Google Nano Banana（Gemini Image） | テキストレンダリング精度・製品写実性が高く、ラベル/ロゴ等 Brand Constraints 適合の素材生成に強い。Google の Imagen 4 は 2026-08-17 に終了し、参照画像を使える Nano Banana が代替になる |
+| Style / Lighting Reference、既存素材の参照ベース編集・差分変更 | Google Nano Banana（Gemini Image） | OpenAI GPT Image 2 | 編集・変換・参照ベース変更・キャラクター一貫性維持に強く、World State継承の再生成に向く。代替の GPT Image 2 も参照画像を受け取れるので、同一性の基準が代替でも保たれる |
+| 高速反復・低コストプレビュー生成 | Black Forest Labs FLUX.2 | Google Nano Banana Lite（Gemini 3.1 Flash Lite Image、1K のみ） | オープンウェイトでセルフホスト可能（ベンダーロックイン回避の保険）、生成速度重視のCandidate Generation向き。代替は低遅延・低価格の Gemini 画像モデル |
+| OpenAI系LLM（GPT-5）と認証・請求を統合したい場合 | OpenAI GPT Image 2 | Google Nano Banana | 品質ベンチマーク最上位、GPT-5系のAgentと同一ベンダーで運用しやすい |
 | ChatGPT のサブスクで描く場合（**非公式・既定 OFF**。設定画面で ON にするときにリスクを確認する） | GPT Image 2（`gpt-image-2:chatgpt-subscription`） | 利用者が割り当てる | API キーなしで ChatGPT のプランの枠を使える。ChatGPT の内部 API（`chatgpt.com/backend-api/codex/responses` の `image_generation`）を使うため、予告なく使えなくなることがあり、公式のプレビューでは画像生成はサポート外で、プランの利用上限を消費する（`spec/architecture/chatgpt-signin.md` §5.2） |
 
 利用者が登録した ComfyUI・OpenAI 互換 API の画像モデルも、上の用途（`new_reference` / `edit_reference` / `preview` / `unified_openai`）の主・代替に割り当てられる（OpenAI 互換は画像のみ。設計は [local-models.md](local-models.md)）。
 
-> **注（Imagen 4 は参照画像を受け取れない）**: Imagen 4 が受け取るのはプロンプトとアスペクト比だけで、画像入力（`Inputs`）は取れない（参照画像を受け取れるのは Nano Banana・GPT Image 2・FLUX.2 のみ）。そのため参照画像つきの呼び出しが代替の Imagen 4 に回ると、参照画像は警告ログを残して**黙って捨てられ**、プロンプトだけの新規生成になる（利用者への通知や失敗扱いはなく、画像の結果にも代替に回ったことは残らない）。Style / Lighting / Keyframe とアップロード素材・World State の参照つき Character / Product / Location は `edit_reference` の代替でこうなり、**その画像ではアップロード素材・World State の見た目やキャラクターの同一性は保たれない**（その Reference Pack / Keyframe を拠り所にする以降の Judge の Identity 評価も、参照なしで作られた画像が基準になる）。同一性を保ちたい用途で代替にも参照画像を持たせたいときは、`images.edit_reference` の `fallback.model` に GPT Image 2 または FLUX.2 を指定する。
+> **注（Imagen 4 の終了と、参照画像を捨てる場合）**: Imagen 4（`imagen-4.0-*-001`）は Google が 2026-08-17 に終了した（後継は `gemini-nano-banana-2.1`。<https://ai.google.dev/gemini-api/docs/deprecations>）ため、識別子 `imagen-4` ごと組み込みから外した。保存済みの `models.json` が `imagen-4` を指していれば、起動時に Nano Banana へ読み替える（§6）。組み込みの 4 モデル（Nano Banana・Nano Banana Lite・GPT Image 2・FLUX.2）はどれも参照画像を受け取れるので、組み込み同士の代替では参照画像は捨てられない。参照画像を受け取れない登録モデル（`accepts_image_inputs` が偽のローカルモデル。[local-models.md](local-models.md)）が `edit_reference` などの主・代替に回ったときは、参照画像は警告ログを残して**黙って捨てられ**、プロンプトだけの新規生成になる（利用者への通知や失敗扱いはなく、画像の結果にも代替に回ったことは残らない）。その画像ではアップロード素材・World State の見た目やキャラクターの同一性は保たれず、以降の Judge の Identity 評価も参照なしで作られた画像が基準になる。同一性を保ちたい用途では、そのモデルを主・代替に割り当てない。
 
 ## 4. 動画生成 Model Adapter（Take生成）
 
@@ -93,10 +93,12 @@ Jev の利用ルール:
 `architecture/er.md` の `TAKE.model_name`、`COST_LEDGER_ENTRY.provider` に格納する識別子は以下の文字列を正規値とする（Model Adapter実装時のenum定義元）。
 
 ```
-画像: imagen-4, nano-banana, flux-2, gpt-image-2
+画像: nano-banana, nano-banana-lite, flux-2, gpt-image-2
 動画: kling-3.0, seedance-2.0, runway-gen-4.5
 音声: elevenlabs-tts, elevenlabs-music, elevenlabs-sfx, sync-labs
 ```
+
+`imagen-4` は 2026-08-17 の Imagen 4 の終了で、この集合から外した。過去に保存した Take・Cost Ledger・参照画像（Shot Spec の `references[].model`）・生成テストの履歴には、実際に生成して課金したモデルとして `imagen-4` が残る（書き換えない。表示するだけで、動作を決めない）。**動作を決める設定**だけを起動時に読み替える: `models.json` の `images` の `imagen-4` は `nano-banana` に、`fast: true` の `imagen-4` は `nano-banana-lite`（高速な代替。`fast` は外す）に、`models.imagen-4` の項目は捨てる（ファイルは書き換えず、設定画面で保存したときに今の割り当てで書き直す）。
 
 利用者が登録した接続先のモデルは `comfyui:<接続先名>/<モデル名>`、`openai-compat:<接続先名>/<モデル名>` で保存する（例: `comfyui:gpu-box/wan22-i2v`）。接続先名・モデル名は作成後に変えられない（Take と Cost Ledger の識別子が指すため。変えるときは削除して作り直す）。見積コストが 0 USD でも Cost Ledger の行は書く。組み込みの識別子は列挙のまま、登録したモデルを足した開いた集合として扱う（[local-models.md](local-models.md) §2）。
 
@@ -131,15 +133,15 @@ M1 Issue #7（F-06/F-07/F-11/F-12）の実装仕様。Reasoning LLM Adapter（§
 
 ### 9.1 M1 で実装するプロバイダー
 
-- **画像**: §3 の 4 種すべて（Imagen 4 / Nano Banana / FLUX.2 / GPT Image 2）のアダプターと、用途→プライマリ/代替の設定（§3 の表どおり。`new_reference` / `edit_reference` / `preview` / `unified_openai`）を実装する。Reference Pack の Character/Product/Location は新規生成として `new_reference`（アップロード素材や World State の参照画像がある場合は参照ベース編集として `edit_reference`）、Style/Lighting/Keyframe は `edit_reference` を使う。`prefer_openai` を有効にすると新規参照を `unified_openai` へ回す。`preview`（FLUX.2 による高速プレビュー）は、現状どの機能からも呼ばれない予約ルートである（FLUX.2 を使うには `images.new_reference` などの `primary` に FLUX.2 を指定する）
+- **画像**: §3 の 4 モデル（Nano Banana / Nano Banana Lite / FLUX.2 / GPT Image 2）のアダプターと、用途→プライマリ/代替の設定（§3 の表どおり。`new_reference` / `edit_reference` / `preview` / `unified_openai`）を実装する。Nano Banana と Nano Banana Lite は同じ Gemini の `models/<モデル ID>:generateContent`（`responseModalities` は `IMAGE`、`imageConfig.aspectRatio`、`imageSize` は送らず既定の 1K）を呼ぶ。Reference Pack の Character/Product/Location は新規生成として `new_reference`（アップロード素材や World State の参照画像がある場合は参照ベース編集として `edit_reference`）、Style/Lighting/Keyframe は `edit_reference` を使う。`prefer_openai` を有効にすると新規参照を `unified_openai` へ回す。`preview`（FLUX.2 による高速プレビュー）は、現状どの機能からも呼ばれない予約ルートである（FLUX.2 を使うには `images.new_reference` などの `primary` に FLUX.2 を指定する）
 - **動画**: Kling 3.0 / Seedance 2.0（M1）と Runway Gen-4.5（M2）の 3 アダプタ（§4）。Runway Gen-4.5 は `POST /v1/text_to_video`（Shot に先頭フレームがなければ）または `POST /v1/image_to_video`（先頭フレームのみ）を非同期タスクとして起動して `GET /v1/tasks/:id` をポーリングし、`X-Runway-Version` ヘッダーを付ける。出力は 720p のみ、長さは 2〜10 秒、ネガティブプロンプトはなく（Avoid は本文に含める）プロンプトは 1000 文字まで、自由な参照画像は取れない。縦横比は `text_to_video` が 16:9 / 9:16 だけ、`image_to_video` は 1:1 も取れる。そのため Brief の縦横比が 1:1 で Shot に先頭フレーム（Keyframe）がないときは、リクエストを送らず 422 相当の `ProviderError` で失敗し、§9.3 のフェイルオーバーで代替モデルに回る（MAX QUALITY では Kling 3.0）。1:1 の Shot で Runway を主に使うには先頭フレームを用意する。価格はクレジット（12 クレジット/秒、1 クレジット = 0.01 USD）から USD に換算して見積る
-- **`model_name` / `provider`**: `take.model_name`・`cost_ledger_entry.provider` は §6 の正規識別子（`imagen-4` / `nano-banana` / `flux-2` / `gpt-image-2` / `kling-3.0` / `seedance-2.0` / `runway-gen-4.5`）で保存する。API のモデル ID（`imagen-4.0-generate-001` など）は設定値で、保存値には使わない。`gpt-image-2` の既定 API モデル ID は、現時点で公開 API として確認できている `gpt-image-1`（`models.gpt-image-2.model` で差し替え可能。公開されたら設定で `gpt-image-2` に切り替える）
+- **`model_name` / `provider`**: `take.model_name`・`cost_ledger_entry.provider` は §6 の正規識別子（`nano-banana` / `nano-banana-lite` / `flux-2` / `gpt-image-2` / `kling-3.0` / `seedance-2.0` / `runway-gen-4.5`）で保存する。API のモデル ID（`gemini-nano-banana-2.1` など。既定は §9.2 の表）は設定値で、保存値には使わない。`gpt-image-2` の既定 API モデル ID は `gpt-image-2`（`gpt-image-1` は 2026-10-23 に終了した）。リクエストは OpenAI の公式仕様（`openai-openapi` の `CreateImageRequest` / `CreateImageEditRequest`）に合わせる: 生成は `POST /v1/images/generations` の JSON（`model`・`prompt`・`size`・`n`）、参照画像つきは `POST /v1/images/edits` の multipart（`model`・`prompt`・`size`・`image[]`）。`gpt-image-2` では `input_fidelity`（常に高精細で処理され、API が変更を許さない）と `response_format`（GPT Image は常に base64 で返す）を送らない。`quality` も送らない（`auto`）。サイズは Brief の縦横比から `1536x1024` / `1024x1536` / `1024x1024`（16 の倍数・比 3:1 以内・画素数の範囲を満たす）に決める
 - **ローカル・代替モデル（Issue #831）**: 登録した ComfyUI（画像・動画。`POST /prompt` と `/ws` の進捗、取り消しは自分の `prompt_id` だけ）と OpenAI 互換（画像のみ。`/v1/images/generations`・`/v1/images/edits`）の接続先のモデルを、組み込みと同じ用途・Quality Policy の割り当て、フェイルオーバー、ブレーカー（接続先ごとに `endpoint:<名>`）、同時実行数（既定 1）に載せる。識別子は §6 のとおり。保存した接続先・モデルは再起動なしで反映する。詳細は [local-models.md](local-models.md)
 - **ChatGPT のサブスク経由の画像（非公式、`internal/agent/modeladapter/chatgptimage`）**: `gpt-image-2:chatgpt-subscription`。Codex のエンドポイントの `image_generation` ツールを、画像専用のログイン（Codex の公開クライアント）のトークンで呼ぶ。参照画像は `input_image` で渡せる。**既定 OFF**で、OFF のあいだは外部への呼び出しを一切しない。ON にするには設定画面でリスクを確認する。選択肢（設定画面・MCP）に出るのは ON のあいだだけで、すでに割り当ててあって OFF になった場合は呼ばずに代替モデルへ回る。専用のベンダー `chatgpt-subscription`（ブレーカー・同時実行数 1）を持つ。呼び出しの失敗は §9.3 と同じ再試行・代替の対象で、無音が 180 秒続くと中止する。設計は `spec/architecture/chatgpt-signin.md` §5.2
 
 ### 9.2 設定
 
-`--model-config`（`MAM_MODEL_CONFIG`）の JSON ファイルで既定値を部分的に上書きできる（未知のキーはエラー）。指定しないときは、データディレクトリの `models.json` があれば起動時に同じ規則で読む。全体の設定画面（`GET /settings`）の「画像・動画モデル」は、この `models.json` の `images`（用途ごとの主・代替モデルと `fast`）と `policies`（Quality Policy ごとの主・代替モデル・解像度・`takes`）だけに、既定と違う割り当てを保存する（既定と同じものは書かず、ほかのキーは残し、書く前に起動時と同じ検査を通して通らなければ 422 で何も書かない。選べるのは、画像は画像バックエンドのあるモデル、動画は `Capabilities` が対応する解像度との組み合わせ。保存した割り当ては次の起動から効く）。`--model-config` で指定したファイルは読み取り専用で、画面から書かない。参照画像を使えない画像モデル（`AcceptsImageInputs` が偽。いまは Imagen 4）で生成するときは、主モデルでも代替モデルでも参照画像を渡さず Prompt だけで作る（`Adapter.GenerateImage`。ログに警告が出るだけで、呼び出し側へのエラーにはならない）。
+`--model-config`（`MAM_MODEL_CONFIG`）の JSON ファイルで既定値を部分的に上書きできる（未知のキーはエラー）。指定しないときは、データディレクトリの `models.json` があれば起動時に同じ規則で読む。全体の設定画面（`GET /settings`）の「画像・動画モデル」は、この `models.json` の `images`（用途ごとの主・代替モデルと `fast`）と `policies`（Quality Policy ごとの主・代替モデル・解像度・`takes`）だけに、既定と違う割り当てを保存する（既定と同じものは書かず、ほかのキーは残し、書く前に起動時と同じ検査を通して通らなければ 422 で何も書かない。選べるのは、画像は画像バックエンドのあるモデル、動画は `Capabilities` が対応する解像度との組み合わせ。保存した割り当ては次の起動から効く）。`--model-config` で指定したファイルは読み取り専用で、画面から書かない。`fast` を選べるのは `models.<識別子>.fast_model` を設定したモデルだけで、既定では組み込みのどのモデルにも `fast_model` はない。参照画像を使えない画像モデル（`AcceptsImageInputs` が偽。組み込みにはなく、`accepts_image_inputs` が偽の登録モデルだけ）で生成するときは、主モデルでも代替モデルでも参照画像を渡さず Prompt だけで作る（`Adapter.GenerateImage`。ログに警告が出るだけで、呼び出し側へのエラーにはならない）。
 
 | キー | 内容 | 既定 |
 |---|---|---|
@@ -152,6 +154,15 @@ M1 Issue #7（F-06/F-07/F-11/F-12）の実装仕様。Reasoning LLM Adapter（§
 | `retry` / `breaker` | §2.1 と同じ形式・同じ既定値 | 3 回 / 1000ms〜16000ms、5 回失敗で 30 秒 OPEN |
 
 API キーは `credential.Store` のベンダー名（`google` / `openai` / `flux` / `kling` / `seedance` / `runway`）で呼び出しごとに読む。Kling のキーは `ACCESS_KEY:SECRET_KEY` の形式で保存する。
+
+既定の API モデル ID と見積価格（`cost_per_image_usd`。2026-10-25 に公式の料金表で確認。価格は参考値で、見積コストにのみ使う）:
+
+| 識別子 | 既定の API モデル ID | `cost_per_image_usd` | 出どころ |
+|---|---|---|---|
+| `nano-banana` | `gemini-nano-banana-2.1` | 0.0336 | [Gemini API pricing](https://ai.google.dev/gemini-api/docs/pricing)「Nano Banana 2.1」Standard: 1K 画像（1120 トークン × $30 / 100 万トークン）。`imageSize` を送らない既定が 1K。2K は 0.0504、4K は 0.113 |
+| `nano-banana-lite` | `gemini-3.1-flash-lite-image` | 0.0336 | 同「Gemini 3.1 Flash Lite Image」Standard: 1K 画像（1K のみ対応） |
+| `flux-2` | `flux-2-pro` | 0.03 | [BFL の料金表](https://bfl.ai/pricing)「FLUX.2 [pro]」: 生成画像の最初の 1 メガピクセルが $0.03（参照画像は 1 メガピクセルごとに $0.015 加算。mam の出力サイズ 1344×768 などは 1 メガピクセル未満）。参照画像つきの呼び出しではこの値より高くなる |
+| `gpt-image-2` | `gpt-image-2` | 未設定（0） | [OpenAI の料金表](https://developers.openai.com/api/docs/pricing)は画像出力トークン課金（$30 / 100 万トークン、入力は別）で、1 枚あたりの値は `quality` とサイズで変わる（1536×1024: low $0.005 / medium $0.041 / high $0.165、出力のみ）。mam は `quality` を送らず（`auto`）モデルが決めるため、1 枚の価格を確かめられない。推測で埋めず未設定にし、見積では「価格不明」として扱う（生成テスト画面の価格は「不明」、台帳の見積は 0 USD。`models.gpt-image-2.cost_per_image_usd` で設定できる） |
 
 ### 9.3 動作
 

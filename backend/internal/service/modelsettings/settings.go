@@ -284,8 +284,8 @@ func setKey[K ~string, V any](raw settingsfile.Object, key string, entries map[K
 	return nil
 }
 
-// imageTargetJSON names Fast explicitly: an omitted "fast" would keep the default's value (the preview
-// fallback is the fast Imagen 4), so that a route could not switch it off.
+// imageTargetJSON names Fast explicitly: an omitted "fast" would keep the default's value, so that a
+// route could not switch it off.
 type imageTargetJSON struct {
 	Model domain.ModelName `json:"model"`
 	Fast  bool             `json:"fast"`

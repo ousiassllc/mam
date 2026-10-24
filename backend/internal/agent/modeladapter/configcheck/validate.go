@@ -16,12 +16,14 @@ import (
 )
 
 // Load is modeladapter.LoadConfig followed by Validate: the Config of the settings file, or an
-// error that says what is wrong with it. An empty path selects the (valid) defaults.
+// error that says what is wrong with it. An empty path selects the (valid) defaults. A file that
+// still names Imagen 4 is read as Nano Banana (migrateLegacyModels).
 func Load(path string) (modeladapter.Config, error) {
 	cfg, err := modeladapter.LoadConfig(path)
 	if err != nil {
 		return modeladapter.Config{}, err
 	}
+	migrateLegacyModels(&cfg)
 	cfg = withWorkflows(cfg)
 	if err := Validate(cfg); err != nil {
 		return modeladapter.Config{}, fmt.Errorf("model config %s: %w", path, err)
