@@ -9,7 +9,7 @@ count_mode: all # 変更しない
 default_excludes: true
 language: ja
 
-# 除外は生成物・ロックファイルのみ。手書きソースは除外しない。
+# 除外は生成物・ロックファイル・ライセンス全文（LICENSE、THIRD_PARTY_NOTICES.md）のみ。手書きソースは除外しない。
 ignore:
   - "**/*_templ.go"
   - "static/src/dist/**"

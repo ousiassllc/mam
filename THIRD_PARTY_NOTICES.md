@@ -1,6 +1,6 @@
 # サードパーティのライセンス表記
 
-MAM の Windows 版（インストーラー `mam-<version>-windows-amd64-setup.exe` とポータブル版 `mam-<version>-windows-amd64.exe`）に含まれるサードパーティのソフトウェアと、そのライセンス文です。MAM 自身のライセンスは [AGPL-3.0](LICENSE) です。
+MAM の Windows 版に含まれるサードパーティのソフトウェアと、そのライセンス文です。MAM 自身のライセンスは [AGPL-3.0](LICENSE) です。インストーラー（`mam-<version>-windows-amd64-setup.exe`）は、`LICENSE` とこのファイルをインストール先に置きます。
 
 このファイルは [`scripts/third-party-notices.sh`](scripts/third-party-notices.sh) が生成します。手で編集せず、`go.mod` や `static/package-lock.json` を変えたらスクリプトを実行し直してください。ライセンス文は各コンポーネントの `LICENSE` などのファイルをそのまま写しています。
 
@@ -4055,7 +4055,7 @@ SOFTWARE.
 
 インストーラーは、Microsoft の WebView2 ランタイム（Evergreen）のブートストラッパー `MicrosoftEdgeWebview2Setup.exe` を同梱します。WebView2 ランタイムが入っていない PC でだけ実行し、Microsoft のサーバーからランタイムをダウンロードしてインストールします。ポータブル版はブートストラッパーを含まず、PC に入っているランタイムを使います。
 
-ブートストラッパーとランタイムは Microsoft の著作物で、AGPL-3.0 の対象ではありません。「Microsoft Software License Terms: Microsoft Edge WebView2 Runtime」の条件で提供されます。条件は <https://developer.microsoft.com/microsoft-edge/webview2> のダウンロード時に表示されます。ランタイムは使用状況の情報を Microsoft に送ることがあります。詳しくは Microsoft のプライバシーに関する声明（<https://aka.ms/privacy>）を参照してください。
+ブートストラッパーとランタイムは Microsoft の著作物で、AGPL-3.0 の対象ではありません。条件は Microsoft の WebView2 のライセンス条項に従います（<https://developer.microsoft.com/microsoft-edge/api/eula/webview2>）。配布の方法は <https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/distribution> にあります。
 
 ## 同梱していないが実行時に取得するもの
 

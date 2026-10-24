@@ -80,9 +80,10 @@ jobs:
           ffprobe -version | head -1
 
       # The Lit component tests (make test-static) need a Linux Chrome. The ubuntu-latest image has its own
-      # google-chrome, but its version moves with the image: always download the pinned Chrome for Testing into
-      # the runner's tool cache and point CHROME_PATH at it (web-test-runner uses CHROME_PATH before any
-      # installed Chrome), so the same commit tests the same browser.
+      # google-chrome, but its version moves with the image: always download the pinned Chrome for Testing
+      # and point CHROME_PATH at it (web-test-runner uses CHROME_PATH before any installed Chrome), so the
+      # same commit tests the same browser. A GitHub-hosted runner starts empty on every run, so the
+      # download (under RUNNER_TOOL_CACHE) happens on every run; nothing is kept between runs.
       # Both the downloader (@puppeteer/browsers, pinned by static/package-lock.json and installed by
       # `make tools`) and the Chrome version (CHROME_VERSION) are pinned; bump CHROME_VERSION by hand
       # (spec/environment/setup.md). `browsers install` unpacks the Chrome for Testing zip with `unzip`
