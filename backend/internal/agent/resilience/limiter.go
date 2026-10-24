@@ -1,15 +1,15 @@
-package modeladapter
+package resilience
 
 import (
 	"context"
 	"sync"
 )
 
-// limiter bounds the calls in flight to one vendor. The limit starts at max, is halved when the
+// Limiter bounds the calls in flight to one vendor. The limit starts at max, is halved when the
 // vendor answers 429 (never below 1) and grows by one after as many successful calls as the
 // current limit (additive increase, multiplicative decrease), so the concurrency follows the rate
 // limit of the account instead of a guess.
-type limiter struct {
+type Limiter struct {
 	mu       sync.Mutex
 	max      int
 	limit    int
@@ -18,11 +18,15 @@ type limiter struct {
 	waiters  []chan struct{}
 }
 
-func newLimiter(max int) *limiter { return &limiter{max: max, limit: max} }
+// NewLimiter returns a Limiter whose limit starts at max.
+func NewLimiter(max int) *Limiter { return &Limiter{max: max, limit: max} }
 
-// acquire waits for a free slot. The returned function gives the slot back; ok tells whether the
+// Max is the limit the Limiter started with and grows back to.
+func (l *Limiter) Max() int { return l.max }
+
+// Acquire waits for a free slot. The returned function gives the slot back; ok tells whether the
 // call succeeded (it feeds the growth of the limit).
-func (l *limiter) acquire(ctx context.Context) (release func(ok bool), err error) {
+func (l *Limiter) Acquire(ctx context.Context) (release func(ok bool), err error) {
 	for {
 		l.mu.Lock()
 		if l.inflight < l.limit {
@@ -49,7 +53,7 @@ func (l *limiter) acquire(ctx context.Context) (release func(ok bool), err error
 	}
 }
 
-func (l *limiter) remove(ch chan struct{}) bool {
+func (l *Limiter) remove(ch chan struct{}) bool {
 	for i, w := range l.waiters {
 		if w == ch {
 			l.waiters = append(l.waiters[:i], l.waiters[i+1:]...)
@@ -60,22 +64,22 @@ func (l *limiter) remove(ch chan struct{}) bool {
 }
 
 // wake lets waiters retry while there is capacity. The caller holds l.mu.
-func (l *limiter) wake() {
+func (l *Limiter) wake() {
 	for free := l.limit - l.inflight; free > 0 && len(l.waiters) > 0; free-- {
 		close(l.waiters[0])
 		l.waiters = l.waiters[1:]
 	}
 }
 
-// throttle lowers the limit after a 429.
-func (l *limiter) throttle() {
+// Throttle lowers the limit after a 429.
+func (l *Limiter) Throttle() {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.limit = max(1, l.limit/2)
 	l.streak = 0
 }
 
-func (l *limiter) release(ok bool) {
+func (l *Limiter) release(ok bool) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.inflight--
@@ -89,8 +93,8 @@ func (l *limiter) release(ok bool) {
 	l.wake()
 }
 
-// current returns the present limit (tests and diagnostics).
-func (l *limiter) current() int {
+// Current returns the present limit (tests and diagnostics).
+func (l *Limiter) Current() int {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	return l.limit

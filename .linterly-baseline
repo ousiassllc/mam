@@ -18,7 +18,7 @@
 3097	backend/internal/agent/judge/
 469	backend/internal/agent/judge/judge.go
 430	backend/internal/agent/judge/judge_test.go
-3757	backend/internal/agent/modeladapter/
+3677	backend/internal/agent/modeladapter/
 550	backend/internal/agent/modeladapter/adapter_test.go
 665	backend/internal/agent/modeladapter/backends_test.go
 396	backend/internal/agent/modeladapter/backends_video.go
@@ -27,7 +27,7 @@
 2972	backend/internal/agent/repair/
 428	backend/internal/agent/repair/agent_flow_fixture_test.go
 1016	backend/internal/agent/repair/agent_flow_test.go
-7641	backend/internal/domain/
+7639	backend/internal/domain/
 359	backend/internal/domain/brand.go
 509	backend/internal/domain/editor.go
 332	backend/internal/domain/judge.go
@@ -51,7 +51,7 @@
 507	backend/internal/router/judge_test.go
 450	backend/internal/router/review_test.go
 434	backend/internal/router/take_test.go
-15199	backend/internal/service/
+15197	backend/internal/service/
 333	backend/internal/service/audio.go
 429	backend/internal/service/branch.go
 352	backend/internal/service/branch_test.go

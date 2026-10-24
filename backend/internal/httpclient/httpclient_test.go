@@ -2,9 +2,11 @@ package httpclient_test
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
+	"syscall"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -65,4 +67,28 @@ func TestRedirectLoopIsStopped(t *testing.T) {
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "too many redirects")
+}
+
+// NewGuarded runs its control on the resolved address of every connection, so a name cannot smuggle an
+// address in, and ignores proxy settings (a proxy would hide the destination from the guard).
+func TestNewGuardedChecksEveryConnection(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("ok")) }))
+	defer srv.Close()
+	t.Setenv("HTTP_PROXY", "http://127.0.0.1:1")
+
+	var seen []string
+	allow := func(_, address string, _ syscall.RawConn) error { seen = append(seen, address); return nil }
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, srv.URL, nil)
+	require.NoError(t, err)
+	res, err := httpclient.NewGuarded(allow).Do(req)
+	require.NoError(t, err, "the proxy setting is ignored")
+	_ = res.Body.Close()
+	require.Len(t, seen, 1)
+	assert.Equal(t, srv.Listener.Addr().String(), seen[0])
+
+	deny := func(_, _ string, _ syscall.RawConn) error { return errors.New("denied") }
+	req, _ = http.NewRequestWithContext(context.Background(), http.MethodGet, srv.URL, nil)
+	_, err = httpclient.NewGuarded(deny).Do(req)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "denied")
 }

@@ -210,7 +210,7 @@ func TestDownloadDoesNotRetryAFailureOfTheLocalStaging(t *testing.T) {
 	_, _, err := downloadAPI(srv, filepath.Join(notADir, ".staging")).download(ctx, srv.URL)
 
 	var local *fsutil.LocalError
-	if !errors.As(err, &local) || errors.Is(err, ErrTimeout) || unavailable(err) || hits.Load() != 1 {
+	if !errors.As(err, &local) || errors.Is(err, ErrTimeout) || IsUnavailable(err) || hits.Load() != 1 {
 		t.Fatalf("err = %v after %d downloads, want one and a local failure", err, hits.Load())
 	}
 }

@@ -5,13 +5,18 @@ import (
 	"slices"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
 func imageOptions(cfg modeladapter.Config) []ImageOption {
 	opts := make([]ImageOption, 0, len(domain.ImageModels()))
 	for _, m := range domain.ImageModels() {
-		opts = append(opts, ImageOption{Model: m, Fast: cfg.Models[m].FastModel != "", AcceptsReferences: modeladapter.AcceptsImageInputs(m)})
+		if _, _, local := cfg.LocalModel(m); local {
+			opts = append(opts, ImageOption{Model: m, AcceptsReferences: cfg.AcceptsImages(m)})
+		} else if _, _, _, isLocal := localcfg.ParseID(string(m)); !isLocal {
+			opts = append(opts, ImageOption{Model: m, Fast: cfg.Models[m].FastModel != "", AcceptsReferences: modeladapter.AcceptsImageInputs(m)})
+		}
 	}
 	return opts
 }
@@ -19,8 +24,12 @@ func imageOptions(cfg modeladapter.Config) []ImageOption {
 func videoOptions(cfg modeladapter.Config) []VideoOption {
 	opts := make([]VideoOption, 0, len(domain.VideoModels()))
 	for _, m := range domain.VideoModels() {
-		caps, ok := modeladapter.Capabilities(m)
+		caps, ok := cfg.VideoCaps(m)
 		if !ok {
+			continue
+		}
+		if _, _, local := cfg.LocalModel(m); local {
+			opts = append(opts, VideoOption{Model: m, Resolutions: caps.Resolutions}) // a local model's price may be 0
 			continue
 		}
 		var resolutions []string

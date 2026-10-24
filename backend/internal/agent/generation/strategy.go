@@ -76,7 +76,7 @@ func DecideRouted(cfg modeladapter.Config, policy domain.QualityPolicy, shotSeco
 		s.Reasons = append(s.Reasons, fmt.Sprintf("the video model is fixed by the user: %s", forced))
 		decision.Mode, decision.Reason = domain.RoutingFixed, fmt.Sprintf("the video model is fixed by the user: %s", forced)
 	default:
-		if longest(pr.Primary.Model) < shotSeconds && longest(pr.Fallback.Model) >= shotSeconds {
+		if longest(cfg, pr.Primary.Model) < shotSeconds && longest(cfg, pr.Fallback.Model) >= shotSeconds {
 			s.Primary, s.Fallback = s.Fallback, s.Primary
 			s.Reasons = append(s.Reasons, fmt.Sprintf("the %.1fs Shot exceeds the longest clip of %s: %s is primary", shotSeconds, pr.Primary.Model, s.Primary.Model))
 		}
@@ -91,7 +91,7 @@ func DecideRouted(cfg modeladapter.Config, policy domain.QualityPolicy, shotSeco
 
 	remaining := budget.Remaining()
 	cost := func(t modeladapter.VideoTarget) float64 {
-		caps, _ := modeladapter.Capabilities(t.Model)
+		caps, _ := cfg.VideoCaps(t.Model)
 		return cfg.VideoCost(t, caps.SnapDuration(shotSeconds))
 	}
 	perTake := cost(s.Primary)
@@ -110,7 +110,7 @@ func DecideRouted(cfg modeladapter.Config, policy domain.QualityPolicy, shotSeco
 		s.Reasons = append(s.Reasons, fmt.Sprintf("the budget allows %d of %d Takes", min(fit, s.Takes), s.Takes))
 		s.Takes = min(fit, s.Takes)
 	}
-	caps, _ := modeladapter.Capabilities(s.Primary.Model)
+	caps, _ := cfg.VideoCaps(s.Primary.Model)
 	s.DurationSeconds = caps.SnapDuration(shotSeconds)
 	s.CostPerTake = perTake
 	if decision.Mode != "" {
@@ -129,8 +129,8 @@ func (s Strategy) routing() *domain.RoutingDecision {
 	return &s.Routing
 }
 
-func longest(m domain.ModelName) float64 {
-	caps, ok := modeladapter.Capabilities(m)
+func longest(cfg modeladapter.Config, m domain.ModelName) float64 {
+	caps, ok := cfg.VideoCaps(m)
 	if !ok || len(caps.Durations) == 0 {
 		return 0
 	}
