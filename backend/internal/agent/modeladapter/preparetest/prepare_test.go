@@ -1,4 +1,6 @@
-package modeladapter_test
+// Package preparetest_test holds the tests of modeladapter.Prepare. They have their own directory because the
+// modeladapter directory is over the line limit.
+package preparetest_test
 
 import (
 	"regexp"
@@ -10,6 +12,22 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+)
+
+func baseJob() modeladapter.VideoJob {
+	return modeladapter.VideoJob{
+		Spec: domain.ShotSpec{
+			ShotObjective: "A woman notices something behind her and starts running",
+			Camera:        domain.SpecCamera{Framing: "medium"},
+		},
+		DurationSeconds: 4,
+	}
+}
+
+var (
+	klingTarget    = modeladapter.VideoTarget{Model: domain.ModelKling3, Resolution: "720p"}
+	seedanceTarget = modeladapter.VideoTarget{Model: domain.ModelSeedance2, Resolution: "720p"}
+	runwayTarget   = modeladapter.VideoTarget{Model: domain.ModelRunwayGen45, Resolution: "720p"}
 )
 
 var cjk = regexp.MustCompile(`[\p{Han}\p{Hiragana}\p{Katakana}]`)

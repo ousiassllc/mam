@@ -189,7 +189,7 @@ func (b fluxBackend) GenerateImage(ctx context.Context, apiModel string, req Ima
 		return ImageResult{}, err
 	}
 	w, h := aspectsize.Flux(req.AspectRatio)
-	body := map[string]any{"prompt": req.Prompt, "width": w, "height": h}
+	body := withSeed(map[string]any{"prompt": req.Prompt, "width": w, "height": h}, req.Seed)
 	for i, in := range req.Inputs {
 		name := "input_image"
 		if i > 0 {

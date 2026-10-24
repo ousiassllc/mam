@@ -28,16 +28,28 @@ type values struct {
 
 func imageValues(req modeladapter.ImageRequest) values {
 	w, h := aspectsize.Flux(req.AspectRatio)
-	return values{prompt: req.Prompt, negative: defaultNegative, seed: newSeed(), width: w, height: h, references: req.Inputs}
+	negative := defaultNegative
+	if req.NegativePrompt != "" {
+		negative = req.NegativePrompt
+	}
+	return values{prompt: req.Prompt, negative: negative, seed: seedOr(req.Seed), width: w, height: h, references: req.Inputs}
 }
 
 func videoValues(wf localcfg.Workflow, req modeladapter.VideoRequest) values {
 	w, h := localcfg.VideoSize(req.Resolution, req.AspectRatio, wf.SizeMultiple)
 	return values{
-		prompt: req.Prompt, negative: req.NegativePrompt, seed: newSeed(), width: w, height: h,
+		prompt: req.Prompt, negative: req.NegativePrompt, seed: seedOr(req.Seed), width: w, height: h,
 		frames: wf.Frames(req.DurationSeconds), fps: wf.FPSOrDefault(),
 		references: req.References, first: req.FirstFrame, last: req.LastFrame,
 	}
+}
+
+// seedOr is the seed the request names, else a new one.
+func seedOr(s *int64) int64 {
+	if s != nil {
+		return *s
+	}
+	return newSeed()
 }
 
 // newSeed is not a secret: it only varies the picture.

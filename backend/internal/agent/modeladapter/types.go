@@ -33,6 +33,9 @@ type ImageRequest struct {
 	Prompt      string
 	AspectRatio string // "16:9", "9:16", "1:1"
 	Inputs      []Input
+	// NegativePrompt is for a model that has the field (a ComfyUI workflow with a negative prompt); others ignore it.
+	NegativePrompt string
+	Seed           *int64 // for a model that takes one (SupportsSeed); nil lets the vendor choose
 }
 
 // ImageResult is a generated image.
@@ -41,6 +44,13 @@ type ImageResult struct {
 	MimeType string
 	// ActualCost is the cost in USD the vendor reported for the call; nil when it reports none.
 	ActualCost *float64
+}
+
+func withSeed(body map[string]any, seed *int64) map[string]any {
+	if seed != nil {
+		body["seed"] = *seed
+	}
+	return body
 }
 
 // ImageBackend calls one image model. apiModel is the vendor's model identifier from Config.
@@ -60,6 +70,7 @@ type VideoRequest struct {
 	FirstFrame      *Input
 	LastFrame       *Input
 	References      []Input
+	Seed            *int64 // for a model that takes one (SupportsSeed); nil lets the vendor choose
 }
 
 // VideoResult is a generated video file. The caller owns File and MUST store or discard it.
