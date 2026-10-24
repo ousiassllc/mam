@@ -145,14 +145,31 @@ func (s *screen) confirmed(form url.Values) url.Values {
 	return hiddenOf(s.t, rec.Body.String())
 }
 
-var batchPath = regexp.MustCompile(`/generation-test/batches/([^/"]+)`)
+// start posts the confirmed form to run and returns the 202 response with the id of the batch it started. The id is read
+// from the service, not from the response: the progress section names the batch only while it is still running.
+func (s *screen) start(form url.Values) (*httptest.ResponseRecorder, string) {
+	s.t.Helper()
+	known := map[string]bool{}
+	for _, b := range s.batches() {
+		known[b.BatchID] = true
+	}
+	rec := s.do(http.MethodPost, paths.GenerationTestPart("run"), form)
+	require.Equal(s.t, http.StatusAccepted, rec.Code, rec.Body.String())
+	var started []string
+	for _, b := range s.batches() {
+		if !known[b.BatchID] {
+			started = append(started, b.BatchID)
+		}
+	}
+	require.Len(s.t, started, 1, rec.Body.String())
+	return rec, started[0]
+}
 
-// batchID reads the batch the progress section names.
-func batchID(t *testing.T, body string) string {
-	t.Helper()
-	m := batchPath.FindStringSubmatch(body)
-	require.Len(t, m, 2, body)
-	return m[1]
+func (s *screen) batches() []gentest.BatchStatus {
+	s.t.Helper()
+	list, err := s.rig.Svc.Batches(s.t.Context(), 1000)
+	require.NoError(s.t, err)
+	return list
 }
 
 // settled polls the batch as the page does until it stops asking for itself.
@@ -169,9 +186,7 @@ func (s *screen) settled(id string) string {
 // run estimates, confirms and runs the form and waits for the batch to end; it returns the batch id.
 func (s *screen) run(form url.Values) string {
 	s.t.Helper()
-	rec := s.do(http.MethodPost, paths.GenerationTestPart("run"), s.confirmed(form))
-	require.Equal(s.t, http.StatusAccepted, rec.Code, rec.Body.String())
-	id := batchID(s.t, rec.Body.String())
+	_, id := s.start(s.confirmed(form))
 	s.settled(id)
 	return id
 }

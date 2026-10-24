@@ -194,7 +194,8 @@ func TestChatGPTSettings_AnExpiredSignInAsksToLogInAgain(t *testing.T) {
 }
 
 func TestChatGPTSettings_ImageGenerationNeedsTheConfirmationAndHasItsOwnLogin(t *testing.T) {
-	s := newScreen(t, true)
+	g := newGate(t)
+	s := newScreen(t, true, g.tweak)
 	rec := s.act(http.MethodPost, paths.ChatGPTLogin("image"), url.Values{"method": {"device"}})
 	assert.Equal(t, http.StatusConflict, rec.Code, "no image login while it is off")
 	assert.Zero(t, s.auth.Total())
@@ -216,6 +217,7 @@ func TestChatGPTSettings_ImageGenerationNeedsTheConfirmationAndHasItsOwnLogin(t 
 	require.Equal(t, http.StatusOK, rec.Code)
 	assert.Contains(t, rec.Body.String(), "ABCD-1234", "the user code")
 	assert.Contains(t, rec.Body.String(), s.auth.URL+"/codex/device", "the verification URL")
+	g.open() // the poll interval ends: the login can finish
 	s.waitFor("codex@example.com")
 	p := s.panel()
 	assert.NotContains(t, p, "ABCD-1234")
@@ -250,7 +252,7 @@ func TestChatGPTSettings_ActionsNeedTheCSRFToken(t *testing.T) {
 }
 
 func TestChatGPTSettings_CancelAndModels(t *testing.T) {
-	s := newScreen(t, true)
+	s := newScreen(t, true, newGate(t).tweak) // never opened: the login stays pending until it is cancelled
 	s.auth.PendingPolls = 1 << 20
 	require.NoError(t, s.svc.SetImageEnabled(true, true))
 	s.act(http.MethodPost, paths.ChatGPTLogin("image"), url.Values{"method": {"device"}})
