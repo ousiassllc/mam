@@ -3,7 +3,6 @@ package service
 import (
 	"errors"
 	"slices"
-	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector"
 	"github.com/ousiassllc/mam/backend/internal/agent/jev"
@@ -13,7 +12,7 @@ import (
 )
 
 // MaxAPIKeyBytes bounds a pasted API key (within the Windows Credential Manager limit of 2560 bytes).
-const MaxAPIKeyBytes = 2560
+const MaxAPIKeyBytes = credential.MaxAPIKeyBytes
 
 // CredentialProviders are the providers whose API key the settings screen manages, in display
 // order. The ID is the credential.Store key the adapters read.
@@ -75,14 +74,9 @@ func (s *CredentialService) Save(provider, apiKey string) error {
 	if !knownProvider(provider) {
 		return &ValidationError{Field: "provider", Message: "未対応のプロバイダーです"}
 	}
-	apiKey = strings.TrimSpace(apiKey)
-	switch {
-	case apiKey == "":
-		return &ValidationError{Field: "api_key", Message: "API キーを入力してください"}
-	case len(apiKey) > MaxAPIKeyBytes:
-		return &ValidationError{Field: "api_key", Message: "API キーが長すぎます"}
-	case strings.ContainsAny(apiKey, " \t\r\n"):
-		return &ValidationError{Field: "api_key", Message: "API キーに空白や改行は含められません"}
+	apiKey, problem := credential.CleanAPIKey(apiKey)
+	if problem != "" {
+		return &ValidationError{Field: "api_key", Message: problem}
 	}
 	err := s.store.Set(provider, apiKey)
 	if errors.Is(err, credential.ErrTooLarge) {

@@ -15,6 +15,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/configcheck"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localbackends"
 	"github.com/ousiassllc/mam/backend/internal/bundlezip"
 	"github.com/ousiassllc/mam/backend/internal/config"
 	"github.com/ousiassllc/mam/backend/internal/credential"
@@ -22,6 +23,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
 )
 
 // buildServices opens the database, builds every dependency of the services, recovers the work an
@@ -83,7 +85,8 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger) 
 	keys := credential.NewKeyring()
 	reasoning := llm.NewClient(llmCfg, llm.NewBackends(llmCfg, keys, nil), llm.WithLogger(logger))
 
-	modelFile, err := settingsFileToLoad(cfg.ModelSettingsFile())
+	modelPath, modelPinned := cfg.ModelSettingsFile()
+	modelFile, err := settingsFileToLoad(modelPath, modelPinned)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -91,7 +94,12 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger) 
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	models := modeladapter.New(modelCfg, modeladapter.NewBackends(modelCfg, keys, nil, 0, modeladapter.WithStagingDir(filepath.Join(cfg.AssetsDir(), ".staging"))), modeladapter.WithLogger(logger))
+	backendOpts := localbackends.Options{StagingDir: filepath.Join(cfg.AssetsDir(), ".staging")}
+	models := modeladapter.New(modelCfg, localbackends.Build(modelCfg, keys, backendOpts), modeladapter.WithLogger(logger))
+	localbackends.Publish(modelCfg)
+	localModels := localmodels.New(localmodels.Deps{
+		Path: modelPath, Pinned: modelPinned, Keys: keys, Adapter: models, Backends: backendOpts, Logger: logger,
+	})
 
 	judging, err := newJudgeSetup(cfg, logger)
 	if err != nil {
@@ -135,6 +143,7 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger) 
 		Media:       previews,
 		Audio:       audioProviders(keys),
 	})
+	services.LocalModels = localModels
 	closers = append(closers, services.Close) // runs after jobs.Stop: no job change wakes the workers any more
 	if err := recoverWork(ctx, services, jobs, logger); err != nil {
 		return nil, nil, nil, err

@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
-	"time"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
@@ -123,6 +124,10 @@ type Config struct {
 	Models   map[domain.ModelName]ModelConfig     `json:"models"`
 	Images   map[ImagePurpose]ImageRoute          `json:"images"`
 	Policies map[domain.QualityPolicy]PolicyRoute `json:"policies"`
+	// Endpoints are the servers the user registered (ComfyUI, OpenAI-compatible) and LocalModels the models
+	// defined on them, keyed "<endpoint>/<name>"; a model is routed to as localcfg.ID (spec/architecture/local-models.md).
+	Endpoints   map[string]localcfg.Endpoint `json:"endpoints,omitempty"`
+	LocalModels map[string]localcfg.Model    `json:"local_models,omitempty"`
 	// PreferOpenAI routes new references through PurposeUnifiedOpenAI (§3, row "OpenAI系 LLM と認証・請求を統合したい場合").
 	PreferOpenAI bool          `json:"prefer_openai"`
 	Retry        RetryConfig   `json:"retry"`
@@ -247,8 +252,59 @@ func overlayEntries[K comparable, V any](dst map[K]V, raw map[K]json.RawMessage)
 	return nil
 }
 
-func (c Config) timeout(v Vendor) time.Duration {
-	return time.Duration(c.Vendors[v].TimeoutSeconds) * time.Second
+// VendorSettings are the built-in vendors and the registered endpoints (vendors named by localcfg.VendorKey).
+func (c Config) VendorSettings() map[Vendor]VendorConfig {
+	out := maps.Clone(c.Vendors)
+	if out == nil {
+		out = map[Vendor]VendorConfig{}
+	}
+	for name, e := range c.Endpoints {
+		out[Vendor(localcfg.VendorKey(name))] = VendorConfig{BaseURL: e.BaseURL, MaxConcurrency: e.Concurrency(), TimeoutSeconds: e.Timeout()}
+	}
+	return out
+}
+
+// LocalModel returns the model defined on a registered endpoint that the identifier names.
+func (c Config) LocalModel(m domain.ModelName) (localcfg.Model, localcfg.Kind, bool) {
+	kind, endpoint, name, ok := localcfg.ParseID(string(m))
+	if !ok || c.Endpoints[endpoint].Kind != kind {
+		return localcfg.Model{}, "", false
+	}
+	lm, ok := c.LocalModels[localcfg.Key(endpoint, name)]
+	return lm, kind, ok
+}
+
+// ModelSettings are the settings of a model: its entry of Models, or those a local model stands for.
+func (c Config) ModelSettings(m domain.ModelName) ModelConfig {
+	if lm, _, ok := c.LocalModel(m); ok {
+		return ModelConfig{Model: lm.Model, CostPerImage: lm.CostPerImage}
+	}
+	return c.Models[m]
+}
+
+// VideoCaps are the capabilities of a video model, built-in or defined on an endpoint.
+func (c Config) VideoCaps(m domain.ModelName) (VideoCapabilities, bool) {
+	if lm, _, ok := c.LocalModel(m); ok {
+		caps, isVideo := lm.VideoCaps()
+		return VideoCapabilities(caps), isVideo
+	}
+	return Capabilities(m)
+}
+
+// negativeModel is m when it is a local model whose workflow takes a negative prompt, else "".
+func (c Config) negativeModel(m domain.ModelName) domain.ModelName {
+	if lm, _, ok := c.LocalModel(m); ok && lm.Workflow != nil && lm.Workflow.Has(localcfg.ParamNegativePrompt) {
+		return m
+	}
+	return ""
+}
+
+// AcceptsImages reports whether an image model uses reference images.
+func (c Config) AcceptsImages(m domain.ModelName) bool {
+	if lm, kind, ok := c.LocalModel(m); ok {
+		return lm.ImageInputs(kind)
+	}
+	return AcceptsImageInputs(m)
 }
 
 // ImageRouteFor returns the route of an image purpose, honouring PreferOpenAI for new references.
@@ -261,8 +317,11 @@ func (c Config) ImageRouteFor(p ImagePurpose) ImageRoute {
 
 // VideoCost is the estimated cost of a clip of the given length.
 func (c Config) VideoCost(t VideoTarget, seconds float64) float64 {
+	if lm, _, ok := c.LocalModel(t.Model); ok {
+		return lm.CostPerSecond * seconds
+	}
 	return c.Models[t.Model].CostPerSecond[t.Resolution] * seconds
 }
 
 // ImageCost is the estimated cost of one image.
-func (c Config) ImageCost(m domain.ModelName) float64 { return c.Models[m].CostPerImage }
+func (c Config) ImageCost(m domain.ModelName) float64 { return c.ModelSettings(m).CostPerImage }

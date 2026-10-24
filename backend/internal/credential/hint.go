@@ -1,6 +1,9 @@
 package credential
 
-import "errors"
+import (
+	"errors"
+	"strings"
+)
 
 // HintLen is the most characters of a key that Hint reveals.
 const HintLen = 4
@@ -18,4 +21,22 @@ func Hint(s Store, provider string) (string, error) {
 		return "", err
 	}
 	return key[len(key)-min(HintLen, len(key)/4):], nil
+}
+
+// MaxAPIKeyBytes bounds a pasted API key (within the Windows Credential Manager limit of 2560 bytes).
+const MaxAPIKeyBytes = 2560
+
+// CleanAPIKey trims a pasted API key and says what is wrong with it, in words for the person who pasted it:
+// problem is empty when the key can be stored (empty, with whitespace inside, or too long are refused).
+func CleanAPIKey(raw string) (key, problem string) {
+	key = strings.TrimSpace(raw)
+	switch {
+	case key == "":
+		return "", "API キーを入力してください"
+	case len(key) > MaxAPIKeyBytes:
+		return "", "API キーが長すぎます"
+	case strings.ContainsAny(key, " \t\r\n"):
+		return "", "API キーに空白や改行は含められません"
+	}
+	return key, ""
 }

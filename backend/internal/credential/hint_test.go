@@ -2,6 +2,7 @@ package credential_test
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -43,3 +44,15 @@ type failingStore struct {
 }
 
 func (f failingStore) Get(string) (string, error) { return "", f.err }
+
+func TestCleanAPIKey(t *testing.T) {
+	key, problem := credential.CleanAPIKey("  sk-abc \n")
+	assert.Equal(t, "sk-abc", key)
+	assert.Empty(t, problem)
+	for _, bad := range []string{"", "   ", "a b", "a\tb", strings.Repeat("x", credential.MaxAPIKeyBytes+1)} {
+		_, problem := credential.CleanAPIKey(bad)
+		assert.NotEmpty(t, problem, bad)
+	}
+	_, problem = credential.CleanAPIKey(strings.Repeat("x", credential.MaxAPIKeyBytes))
+	assert.Empty(t, problem)
+}

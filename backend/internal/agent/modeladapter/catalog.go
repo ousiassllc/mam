@@ -22,7 +22,7 @@ type VideoCapabilities struct {
 	NativeAudio bool
 }
 
-// Capabilities returns the capabilities of a video model.
+// Capabilities returns the capabilities of a video model, a registered one (PublishLocal) included.
 func Capabilities(m domain.ModelName) (VideoCapabilities, bool) {
 	switch m {
 	case domain.ModelKling3:
@@ -39,7 +39,7 @@ func Capabilities(m domain.ModelName) (VideoCapabilities, bool) {
 		// Text-to-video and image-to-video (first frame only) at 720p; no free reference images.
 		return VideoCapabilities{Durations: []float64{2, 3, 4, 5, 6, 7, 8, 9, 10}, Resolutions: []string{"720p"}, FirstFrame: true}, true
 	}
-	return VideoCapabilities{}, false
+	return publishedCaps(m)
 }
 
 // SnapDuration returns the shortest supported length that holds the requested seconds, or the
