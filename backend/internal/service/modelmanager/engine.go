@@ -189,6 +189,8 @@ func (s *Service) handleInstall(ctx context.Context, job domain.Job) error {
 	defer s.tracker.Finish(job.ID)
 	defer s.lock(p.Target)()
 	set := func(u track.Update) { s.tracker.Set(job.ID, p.Target, u) }
+	ctx, done := s.cancellable(ctx, job.ID)
+	defer done()
 	var err error
 	if p.Target == engineTarget {
 		err = s.runEngineInstall(ctx, p, set)
@@ -196,6 +198,9 @@ func (s *Service) handleInstall(ctx context.Context, job domain.Job) error {
 		err = s.runModelInstall(ctx, id, set)
 	} else {
 		err = fmt.Errorf("unknown install target %q", p.Target)
+	}
+	if err != nil && errors.Is(context.Cause(ctx), errCancelled) {
+		return errCancelled
 	}
 	return userFacing(ctx, err)
 }

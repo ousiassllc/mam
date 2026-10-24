@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -16,13 +15,13 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/domain"
-	"github.com/ousiassllc/mam/backend/internal/fsutil"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
 
 // Limits of a trial generation.
 const (
-	maxPromptRunes   = 4000
+	// MaxPromptRunes is the longest prompt (and negative prompt) of a trial, in characters.
+	MaxPromptRunes   = 4000
 	maxReferenceSize = 20 << 20
 	gentestDirName   = "gentest"
 	inputsDirName    = "_inputs"
@@ -47,7 +46,12 @@ type GentestInput struct {
 	Resolution      string
 	DurationSeconds float64
 	Reference       *Reference
+	// ReferenceID names a picture that StageReference stored before (the MCP upload of a trial's reference): the
+	// alternative to Reference for a client that cannot hand over bytes in the same call. Not both.
+	ReferenceID string
 }
+
+func (in GentestInput) hasReference() bool { return in.Reference != nil || in.ReferenceID != "" }
 
 // GentestStatus is the state of a trial.
 type GentestStatus string
@@ -109,16 +113,24 @@ func (s *Service) StartGentest(ctx context.Context, in GentestInput) (JobRef, er
 	if err != nil {
 		return JobRef{}, err
 	}
-	if in.Reference != nil {
+	staged := false
+	switch {
+	case in.Reference != nil:
 		name, mime, err := s.stageInput(*in.Reference)
 		if err != nil {
 			return JobRef{}, err
 		}
-		p.Input, p.InputMime = name, mime
+		p.Input, p.InputMime, staged = name, mime, true
+	case in.ReferenceID != "":
+		mime, err := s.stagedMime(in.ReferenceID)
+		if err != nil {
+			return JobRef{}, err
+		}
+		p.Input, p.InputMime = in.ReferenceID, mime
 	}
 	job, err := s.Jobs.Enqueue(ctx, domain.JobGentest, p)
 	if err != nil {
-		if p.Input != "" {
+		if staged {
 			_ = os.Remove(filepath.Join(s.gentestDir(), inputsDirName, p.Input))
 		}
 		return JobRef{}, err
@@ -144,11 +156,14 @@ func (s *Service) checkGentest(in GentestInput, m localcfg.Model) (gentestPayloa
 	kind, _, _, _ := localcfg.ParseID(in.ModelID)
 	p := gentestPayload{ModelID: in.ModelID, Prompt: strings.TrimSpace(in.Prompt), NegativePrompt: strings.TrimSpace(in.NegativePrompt),
 		AspectRatio: in.AspectRatio, Resolution: in.Resolution, DurationSeconds: in.DurationSeconds}
-	if p.Prompt == "" || utf8.RuneCountInString(p.Prompt) > maxPromptRunes {
-		return p, invalid("プロンプトは 1〜%d 文字で入力してください", maxPromptRunes)
+	if in.Reference != nil && in.ReferenceID != "" {
+		return p, invalid("参照画像は、バイト列か ID のどちらか一方で指定してください")
 	}
-	if utf8.RuneCountInString(p.NegativePrompt) > maxPromptRunes {
-		return p, invalid("ネガティブプロンプトは %d 文字以内にしてください", maxPromptRunes)
+	if p.Prompt == "" || utf8.RuneCountInString(p.Prompt) > MaxPromptRunes {
+		return p, invalid("プロンプトは 1〜%d 文字で入力してください", MaxPromptRunes)
+	}
+	if utf8.RuneCountInString(p.NegativePrompt) > MaxPromptRunes {
+		return p, invalid("ネガティブプロンプトは %d 文字以内にしてください", MaxPromptRunes)
 	}
 	if m.Media == localcfg.MediaImage {
 		if p.NegativePrompt != "" || p.Resolution != "" || p.DurationSeconds != 0 {
@@ -157,7 +172,7 @@ func (s *Service) checkGentest(in GentestInput, m localcfg.Model) (gentestPayloa
 		if p.AspectRatio == "" {
 			p.AspectRatio = "1:1"
 		}
-		if in.Reference != nil && !m.ImageInputs(kind) {
+		if in.hasReference() && !m.ImageInputs(kind) {
 			return p, invalid("このモデルは参照画像を使えません")
 		}
 	} else {
@@ -180,7 +195,7 @@ func (s *Service) checkGentest(in GentestInput, m localcfg.Model) (gentestPayloa
 		if !slices.Contains(caps.Durations, p.DurationSeconds) {
 			return p, invalid("長さ %g 秒は使えません（%v 秒）", p.DurationSeconds, caps.Durations)
 		}
-		if in.Reference != nil && !caps.FirstFrame && caps.MaxReferenceImages == 0 {
+		if in.hasReference() && !caps.FirstFrame && caps.MaxReferenceImages == 0 {
 			return p, invalid("このモデルは画像からの動画に対応していません")
 		}
 	}
@@ -188,27 +203,6 @@ func (s *Service) checkGentest(in GentestInput, m localcfg.Model) (gentestPayloa
 		return p, invalid("縦横比は 16:9 のように指定してください")
 	}
 	return p, nil
-}
-
-// stageInput writes the picture of a trial to the inputs directory and returns its file name and type.
-func (s *Service) stageInput(r Reference) (name, mime string, err error) {
-	if len(r.Data) == 0 || len(r.Data) > maxReferenceSize {
-		return "", "", invalid("参照画像は 1 バイト以上 %d MiB 以下にしてください", maxReferenceSize>>20)
-	}
-	mime = http.DetectContentType(r.Data)
-	ext, ok := map[string]string{"image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp"}[mime]
-	if !ok {
-		return "", "", invalid("参照画像は PNG・JPEG・WebP にしてください")
-	}
-	name = domain.NewID() + ext
-	dir := filepath.Join(s.gentestDir(), inputsDirName)
-	if err := os.MkdirAll(dir, 0o750); err != nil {
-		return "", "", err
-	}
-	if err := fsutil.WriteFileAtomic(filepath.Join(dir, name), r.Data, 0o600); err != nil {
-		return "", "", err
-	}
-	return name, mime, nil
 }
 
 // cleanInputs removes pictures of trials that never started (older than a day: a queued trial still needs its own).

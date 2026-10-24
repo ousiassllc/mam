@@ -64,6 +64,8 @@ flowchart TB
 | pages | `projects_page`（設定への入口として全体の設定 `/settings` へのリンクを持つ）, `global_settings_page`（全体の設定画面。`GlobalSettingsBodyData` を `global_settings_body` に渡す。戻るリンクはプロジェクト一覧）, `chat_workspace_page`（標準画面、`chat_thread` + `chat_composer`）, `brief_page`（補助ビュー）, `shot_inspector_page`, `take_comparison_page`（`mam-take-comparator`埋め込み）, `editor_page`（Rough Cut〜Export。`mam-timeline-editor`埋め込み）, `branch_page`（`branch_tree` を含む）, `world_state_page`, `notes_page`（M2、Project / Series 共用）, `settings_page`, `analytics_page`, `reviews_page`（`ReviewsPage` / `ReviewInboxPage` / `ReviewPage`）, `series_page`, `scene_shot_page`, `reference_library_page`, `error_page` | organismsを組み合わせたページ全体 |
 | layout | `app_layout` | 共通シェル（CSRF メタ・JS/CSS・エラートースト領域 `#toast-region` と、`toast.ts` / `connection-notice.ts` が複製するテンプレート）。ナビゲーションは持たず、戻りは各ページの `back_link`。Mode切替・Qualityセレクタは `chat_composer` に置く |
 
+モデルマネージャー画面（`model_manager_page` と organisms の `modelmgr`）のコンポーネントは [model-manager-screen.md](model-manager-screen.md)。
+
 外部由来の ID は現状 `[A-Za-z0-9_-]{1,64}`（UUID を含む）に限られ、`.`・`:`・空白を含む ID はバンドル取込で拒否される（`bundlepath.ValidID`。`spec/requirements/non-functional.md` §8）。ID セレクタ（`hx-target="#shot-<id>"` など）の CSS エスケープは、この制約が将来緩められたときに備えた多層防御で、Templ では `internal/web/selector` の `selector.ID`、`shot.ts` では `CSS.escape` で組み立てる（手で `"#shot-" + id` と連結しない。制約が緩んだ後に連結していると、`.` などを含む ID で `htmx:targetError` になり結果が画面に反映されない）。URL のセグメントを `internal/web/paths` でパスエスケープするのと同じ位置づけ。
 
 ## 4. Lit Web Components インターフェース
@@ -273,3 +275,4 @@ export class MamTakeComparator extends LitElement {
 | 1.80 | 2026-10-21 | §1.1 の Audio Director（M3）の参照先を `spec/architecture/model-adapters-m3.md` §14 に改めた | `endpoints.md`・`model-adapters.md` が行数上限（300 行）を超え、後半を別ファイルに分けたため（`spec/api/endpoints.changelog.md` 1.149、`spec/architecture/model-adapters.changelog.md` 1.46） |
 | 1.81 | 2026-10-21 | §3 の `global_settings_body` に「バージョンとアップデート」（`updatepanel.Section`。サブパッケージ `organisms/updatepanel/`）を足した | Windows 版の自動更新（`spec/architecture/desktop.md` §6）の状態を設定画面で確かめ、手動で確認できるようにした。区画は `organisms/` の行数基準値のためサブパッケージに置き、`handler/appupdate/` が値を組み立てる |
 | 1.80 | 2026-10-25 | §3 の `global_settings_body` に「ローカル・代替モデル」（`localmodels.Section`）の区画を足した | Issue #831。ComfyUI・OpenAI 互換の接続先とモデルを設定画面で登録するため |
+| 1.82 | 2026-10-25 | §3 にモデルマネージャー画面のコンポーネントの案内を足し、[model-manager-screen.md](model-manager-screen.md) に分けて書いた | Issue #833。ComfyUI エンジンの導入・モデルのカタログ・ライセンスの同意・試し生成の画面 |
