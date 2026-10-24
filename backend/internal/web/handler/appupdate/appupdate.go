@@ -31,7 +31,7 @@ func SectionData(svc *appupdate.Service) view.Data {
 // A failed check is answered with 200 and the reason in the section: the section is what tells.
 func Check(svc *appupdate.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		v, _ := svc.CheckNow(c.Request.Context()) // a failure is in the log and shows as the state of the view
+		v, _ := svc.CheckNow(c.Request.Context()) // Service.Check has logged a failure at ERROR; it shows as the state of the view
 		c.Header("Content-Type", "text/html; charset=utf-8")
 		c.Status(http.StatusOK)
 		if err := view.Panel(dataOf(v)).Render(c.Request.Context(), c.Writer); err != nil {

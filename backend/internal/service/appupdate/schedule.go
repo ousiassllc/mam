@@ -76,10 +76,10 @@ func (s *Service) loop(ctx context.Context, sc Schedule) {
 		case ctx.Err() != nil, s.installing.Load(), s.checker.Status().DevBuild:
 			return
 		case err != nil && !retryable(ctx, err):
-			s.logger.Error("update: check failed, not repeating before the next scheduled check", "err", err)
+			s.logger.Info("update: not repeating the failed check before the next scheduled one", "in", sc.Interval)
 			delay, backoff = sc.Interval, sc.InitialBackoff
 		case err != nil:
-			s.logger.Error("update: check failed, repeating with backoff", "err", err, "in", backoff)
+			s.logger.Info("update: repeating the failed check with backoff", "in", backoff)
 			delay, backoff = backoff, min(backoff*2, sc.MaxBackoff)
 		case s.pending():
 			s.logger.Info("update: a newer release is held back, repeating with backoff", "in", backoff)

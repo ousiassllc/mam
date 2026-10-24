@@ -60,6 +60,11 @@ func (s *Service) CheckNow(ctx context.Context) (View, error) {
 
 // Check runs one check: look for a newer release and, when one is there and no work is in flight,
 // download and verify it and hand it to install. A check does nothing once an installer was handed over.
+//
+// A failed check is logged here, at ERROR, with its kind (and the newer version when one is known): this
+// is the one place both callers (the schedule and CheckNow, the manual check) go through, so each failure
+// is logged exactly once and the schedule only logs what it decides to do about it. "No release" is not a
+// failure, and a check that ctx cancelled (the app is quitting, the request went away) is not logged.
 func (s *Service) Check(ctx context.Context) error {
 	if s.installing.Load() {
 		return nil
@@ -68,6 +73,10 @@ func (s *Service) Check(ctx context.Context) error {
 	defer s.checking.Add(-1)
 	result, err := s.checker.CheckForUpdate(ctx)
 	if err != nil {
+		if ctx.Err() == nil {
+			st := s.checker.Status()
+			s.logger.Error("update: check failed", "kind", st.ErrorKind, "version", st.Version, "err", err)
+		}
 		return err
 	}
 	if result.Ready && s.installing.CompareAndSwap(false, true) {
