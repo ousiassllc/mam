@@ -128,6 +128,5 @@
 | 1.31 | 2026-10-21 | §5 の API キー管理に、キーは Project に属さず全体の設定画面（`/settings`）で登録することを足した | 登録画面が Project の設定の中にしかなく、Project を作るまでキーを登録できなかったため（`spec/api/endpoints.md` の改訂 1.147） |
 | 1.32 | 2026-10-21 | §6 のモデル呼び出し耐性の Multi-model routing の参照先を `architecture/model-adapters-m3.md` §13 に改めた | `endpoints.md`・`model-adapters.md` が行数上限（300 行）を超え、後半を別ファイルに分けたため（`spec/api/endpoints.changelog.md` 1.149、`spec/architecture/model-adapters.changelog.md` 1.46） |
 | 1.33 | 2026-10-21 | §1 の配布を、成果物 2 つだけから 4 ファイル（インストーラー・ポータブル・`checksums.txt`・`checksums.txt.sig`）に改め、インストーラーがユーザー単位であること・公開リポジトリ `ousiassllc/mam-releases` にも載せることを足した。ネットワークの例外に自動更新の確認・取得を足した | アプリの自動更新（署名の検証付き）のため。MAM 本体のリポジトリが非公開で、アプリが更新を取得できる場所が必要だった |
-
 | 1.34 | 2026-10-21 | §3 に自動更新の行（作業中は再起動しない・検証が通らなければ入れない）を足した | Windows 版の自動更新（`spec/architecture/desktop.md` §6）。再起動でジョブ・変換・編集の工程を失わない・壊さないことを非機能要件として定めた |
 | 1.35 | 2026-10-24 | §1 の配布と「ネットワーク」の例外を、4 ファイルを MAM 自身の Releases にだけ載せ、アプリもそこを確認する、に改めた（別の公開リポジトリには載せない） | 公開後は mam 自身の Release から配る（Issue #827）。リポジトリを公開すれば別の公開リポジトリと PAT は要らず、`GITHUB_TOKEN` だけで足りる |

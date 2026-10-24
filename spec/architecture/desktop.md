@@ -38,7 +38,7 @@ Windows 実機が要る項目は、リリース前に実機で確かめる（実
 - ビルド・パッケージングは `scripts/package-windows.sh`（`build.sh` と同じ templ → esbuild → tailwind の後、`wails3 package GOOS=windows`）。設定は `build/`（Wails v3 の既定配置。Taskfile のフロントエンド工程は本リポジトリの `static/` のビルドへ置き換える。Go のビルドは `./backend/cmd/wails`、`-tags production`、`-ldflags "-s -w -H windowsgui"`、`-trimpath`、`CGO_ENABLED=0`、`GOOS=windows GOARCH=amd64`）。`wails3 package` が読むのは `build/Taskfile.yml`・`build/windows/` で、`build/config.yml` は読まない（`wails3 update build-assets` を実行する箇所も無い）ため、exe のリソースやインストーラーを変えるときは `config.yml` の `info`・`version` ではなく `build/windows/info.json` と `package-windows.sh` の引数を直す
 - 成果物: ポータブル `mam.exe`（Wails ウィンドウ版）と、それを入れる NSIS インストーラー exe。インストーラーは WebView2 ブートストラッパーを含み（WebView2 が無い Windows 10 では取得するためインターネット接続が要る）、Start メニューとデスクトップにショートカットを作り、アンインストーラーを登録する。インストールはユーザー単位（`WAILS_INSTALL_SCOPE=user`）で、インストール先は `%LOCALAPPDATA%\Programs\MAM`、管理者権限は要らない（自動更新が UAC の確認なしで動くため。§6）。アンインストールでデータディレクトリ（SQLite・生成物）は消さない。完了画面に ffmpeg の導入案内（PATH に `ffmpeg` / `ffprobe` を置くと Judge・プレビュー・Export などが使える。無くても起動する）を出す
 - バージョンは Git タグ `vX.Y.Z` の `X.Y.Z`。`main` への push で CI が成功すると、最新の `v*` タグの patch を 1 つ上げた版（タグが無ければ `v0.1.0`）を自動で付ける。minor・major を上げるときは手でタグを打つ。`build/windows/info.json`（ファイルバージョン・ProductVersion）と NSIS の `INFO_PRODUCTVERSION`、ファイル名に反映する
-- 配布は GitHub Actions の `release.yml`（`main` の CI 成功後の `workflow_run`、または `v*` タグの手動 push。`plan` → `verify` → `build` → `release` の 4 ジョブを self-hosted の Linux runner で動かし、Windows 版は Linux 上でクロスビルドして `makensis` でインストーラーを作る。`release` だけが書き込み権限を持つ）が `gh release create` でリリースを作り、2 つの成果物を添付する（`spec/environment/setup.md`）。コード署名はしない
+- 配布は GitHub Actions の `release.yml`（`main` の CI 成功後の `workflow_run`、または `v*` タグの手動 push。`plan` → `verify` → `build` → `release` の 4 ジョブを self-hosted の Linux runner で動かし、Windows 版は Linux 上でクロスビルドして `makensis` でインストーラーを作る。`release` だけが書き込み権限を持つ）が `gh release create` でリリースを作り、4 つのファイルを添付する: インストーラー `mam-<version>-windows-amd64-setup.exe`、ポータブル版 `mam-<version>-windows-amd64.exe`、インストーラーだけを対象にしたチェックサム `checksums.txt`、その署名 `checksums.txt.sig`（§6.3。`spec/environment/setup.md`）。コード署名はしない
 
 ## 5. 対象外
 
@@ -52,7 +52,7 @@ Windows 実機が要る項目は、リリース前に実機で確かめる（実
 
 1. 起動の 1 分後に最初の確認をし、その後 6 時間ごとに確認する（起動を遅くしない。`appupdate.Schedule`）。失敗したときと、新しいリリースを安全ゲートが止めたときは、1 分から始めて倍にし最大 1 時間までの間隔で繰り返す。原因が変わらない失敗（`ErrorAccess`・`ErrorVerification`・`ErrorRelease`）は繰り返さず、次の 6 時間ごとの確認を待つ。開発版は最初の確認で打ち切る
 2. この（`ousiassllc/mam`）リポジトリ自身の Releases（`version.GitHubOwner` / `version.GitHubRepo`）の `GET /repos/{owner}/{repo}/releases/latest` の `tag_name` を、埋め込んだ版（`version.Version`）と `golang.org/x/mod/semver` で比べる。新しくなければ何もしない。リリースが無い（404）のは失敗ではなく「リリースなし」。リポジトリが非公開の間は、認証無しの照会に GitHub が 404 を返すので、この「リリースなし」になる（公開すれば最新の Release が見える。追加の処理は要らない）
-3. 安全ゲート（§6.2）が通れば、インストーラー（`mam-*-windows-amd64-setup.exe` に合う 1 つ。ポータブル版は入れない）・`checksums.txt`・`checksums.txt.sig` を一時ディレクトリ（`mam-update-*`）へ取得し、署名と SHA-256 を検証する（§6.3）
+3. 安全ゲート（§6.2）が通れば、インストーラー（リリースの `tag_name` から先頭の `v` を除いた版の名前 `mam-<X.Y.Z>-windows-amd64-setup.exe` に**完全に一致する**アセットだけ。別の版のインストーラーやポータブル版は選ばず、無ければ `ErrorRelease`）・`checksums.txt`・`checksums.txt.sig` を一時ディレクトリ（`mam-update-*`）へ取得し、署名と SHA-256 を検証する（§6.3）
 4. ダウンロードには数分かかるので、**取得の直後に安全ゲートをもう一度**確かめる。閉じていれば結果は Blocked で、取り込んだファイルは消す（次の確認で取り直す）
 5. 検証できたら `appupdate.Service` が `UpdateOptions.Install(path)` を呼ぶ。`desktop.Updater` はインストーラーのパスを覚え、Wails の `Quit()` を別 goroutine で呼ぶ（検証した確認 goroutine の中で終了を待たない）
 6. `OnShutdown` で `app.Run` が止まって（サーバー・ジョブキュー・DB が閉じて）から、`desktop.InstallCommand(path)`（`<installer> /S`、コンソール無し・新しいプロセスグループの切り離したプロセス）を起動し、アプリは終わる。起動に失敗したときはネイティブのダイアログで知らせる（アプリは終わっているので、起動し直してもらう）
@@ -74,8 +74,8 @@ Windows 実機が要る項目は、リリース前に実機で確かめる（実
 
 ### 6.3 署名と検証
 
-- `checksums.txt` はインストーラーだけを対象にした `sha256sum` の出力（`<hex>  mam-<X.Y.Z>-windows-amd64-setup.exe`）で、そのファイル名の行を探す
-- SHA-256 だけでは、同じリリースにあるファイル同士なので差し替えを検出できない。リリースのジョブが `checksums.txt` に**ed25519 の分離署名**（生の 64 バイトの base64）`checksums.txt.sig` を付け、署名鍵（GitHub Actions のシークレット `RELEASE_SIGNING_KEY`）は成果物を作るジョブとは別に持つ。公開鍵（生の 32 バイトの base64）は `-ldflags -X …/internal/version.ReleasePublicKey=` でバイナリに埋め込む（リポジトリ変数 `RELEASE_SIGNING_PUBLIC_KEY`）
+- `checksums.txt` はインストーラーだけを対象にした `sha256sum` の出力（`<hex>  mam-<X.Y.Z>-windows-amd64-setup.exe`）で、選んだインストーラーと**同じ名前**の行だけを探す（別の名前の行しか無ければ `ErrorVerification`）
+- SHA-256 だけでは、同じリリースにあるファイル同士なので差し替えを検出できない。`release.yml` の `build` ジョブの最後のステップ（`Sign checksums`、`scripts/sign-checksums.sh`）が `checksums.txt` に**ed25519 の分離署名**（生の 64 バイトの base64）`checksums.txt.sig` を付け、同じステップで公開鍵を使って署名を検証する（鍵が合わなければビルドが落ちる）。署名鍵（GitHub Actions のシークレット `RELEASE_SIGNING_KEY`）を見るのはこのステップだけで、`release` ジョブは署名せず、受け取った 4 つのファイルを公開するだけ。公開鍵（生の 32 バイトの base64）は `-ldflags -X …/internal/version.ReleasePublicKey=` でバイナリに埋め込む（リポジトリ変数 `RELEASE_SIGNING_PUBLIC_KEY`）
 - 公開鍵が埋め込まれているとき、署名の欠落・形式の誤り・不一致、鍵そのものの形式の誤りは、すべて検証エラー（`ErrorVerification`。繰り返さない）にして、ダウンロードしたファイルを全部消す（fail closed）。インストーラーは署名の検証が通る前には取得もしない。公開鍵が空の開発ビルドは署名の検証を飛ばして警告を出し、SHA-256 だけで確かめる
 - ネットワークの堅牢化: リリース照会 30 秒・ダウンロード全体 10 分のデッドライン、ダウンロードサイズの上限（インストーラー 512 MiB・`checksums.txt` 1 MiB・署名 4 KiB。GitHub が返す `size` があればそれに一致）、ダウンロード URL は `https://github.com/ousiassllc/mam/releases/download/` の配下だけ許す
 - 版は `version.Version`（リリースビルドが `v<X.Y.Z>` を埋め込む）。`dev`（semver でない値）の開発ビルドは確認そのものをしない。リリースのタグは `v<X.Y.Z>`
@@ -87,7 +87,7 @@ Windows 実機が要る項目は、リリース前に実機で確かめる（実
 
 ### 6.5 画面で確かめられる状態
 
-設定画面（`GET /settings`）の「バージョンとアップデート」（§6.7）は、`appupdate.View` の状態を出す: 未確認・確認中・最新・新版あり（取得中）・待機中（作業が動いているため。待っている理由付き）・更新します（検証済み）・エラー（`ErrorKind`: ネットワーク・取得回数の上限・アクセス拒否・検証失敗・リリースの内容・その他）・リリースなし・開発版。エラーの生のメッセージは画面に出さずログに残す。
+設定画面（`GET /settings`）の「バージョンとアップデート」（§6.7）は、`appupdate.View` の状態を出す: 未確認・確認中・最新・新版あり（取得中）・待機中（作業が動いているため。待っている理由付き）・更新します（検証済み）・エラー（`ErrorKind`: ネットワーク・取得回数の上限・アクセス拒否・検証失敗・リリースの内容・その他）・リリースなし・開発版。エラーの生のメッセージは画面に出さずログに残す。確認の失敗は、定期確認でも手動確認（`POST /settings/update/check`）でも、`appupdate.Service.Check` が `ERROR` で 1 回だけ記録する（`kind`（`ErrorKind`）・新版が分かっていれば `version`・`err`。検証失敗も同じ。「リリースなし」と、アプリの終了や接続の切断で取り消された確認は記録しない）。スケジュールは再試行するかどうかの判断だけを `INFO` で記録する。
 
 ### 6.6 テストできること・できないこと
 
@@ -120,3 +120,4 @@ Windows 実機が要る項目は、リリース前に実機で確かめる（実
 | 1.15 | 2026-10-21 | §4 の配布の項と §3 の未確認事項を、リリースを self-hosted の Linux runner でのクロスビルドへ移したことに合わせた | 初回のリリース実行が GitHub-hosted runner の支払い失敗で動かず、self-hosted へ移したため（setup.md の改訂 1.31） |
 | 1.16 | 2026-10-21 | §6 に自動更新（流れ・安全ゲート・署名と検証・ユーザー単位のインストール・再起動・テストの範囲・設定画面）を足し、§4 のインストール先をユーザー単位に、§5 の対象外から自動更新を外した | Windows 版が新しいリリースを自分で入れ替えるようにしたため。リポジトリは非公開なので、リリースの配布物だけを持つ公開リポジトリ `ousiassllc/mam-releases` を確認する |
 | 1.17 | 2026-10-24 | §6.1・§6.3 の更新の確認先を、別の公開リポジトリ `ousiassllc/mam-releases` から MAM 自身の Releases（`ousiassllc/mam`）に改めた。非公開の間は 404 で「リリースなし」になること、古い版からのつなぎ（`mam-releases` を見る版は配布されておらず、v0.1.0・v0.1.1 は手動で入れ替える）を足した | 公開後は mam 自身の Release から配る（Issue #827） |
+| 1.18 | 2026-10-24 | §4 の配布の「2 つの成果物」を、実際の 4 ファイル（インストーラー・ポータブル・`checksums.txt`・`checksums.txt.sig`）に直した。§6.1 のインストーラーの選び方と §6.3 のチェックサムの引き方を、リリースの `tag_name` の版が入った名前との完全一致にした（別の版のインストーラーは選ばず `ErrorRelease`、別の名前の行しか無ければ `ErrorVerification`）。§6.3 の署名を作る場所を、`build` ジョブの最後のステップ `Sign checksums`（同じステップで公開鍵を使って検証。`release` ジョブは署名しない）に直した。§6.5 に、確認の失敗を定期確認でも手動確認でも `Service.Check` が `ERROR` で 1 回記録することを足した | PR #824 のレビュー指摘。インストーラーを glob で選ぶと、タグと無関係な版のインストーラーを入れてしまう。署名の場所と成果物の数が実装（`release.yml`）と食い違っていた。手動確認の失敗が（`ErrorVerification` を含め）ログに残らなかった |
