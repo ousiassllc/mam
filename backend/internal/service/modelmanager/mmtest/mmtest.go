@@ -27,7 +27,9 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/gpu"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/store"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
 	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/modelsettings"
@@ -35,8 +37,10 @@ import (
 
 // Rig is the Service and what it runs on.
 type Rig struct {
-	T       *testing.T
-	Svc     *modelmanager.Service
+	T   *testing.T
+	Svc *modelmanager.Service
+	// Gentest is the generation test service the trial generations run on, over the same database, queue and Model Adapter.
+	Gentest *gentest.Service
 	Queue   *jobqueue.Queue
 	Table   *repository.JobRepository
 	Models  *localmodels.Service
@@ -78,7 +82,7 @@ func New(t *testing.T, opts ...Option) *Rig {
 	r.GPUReport = gpu.Report{Recommendation: gpu.Recommendation{Variant: catalog.VariantNVIDIA, Confidence: "high", Reason: "test GPU"}}
 
 	d := modelmanager.Deps{
-		Layout: r.Layout, DataDir: r.DataDir, Catalog: testCatalog(host), Keys: r.Keys, Platform: "windows",
+		Layout: r.Layout, Catalog: testCatalog(host), Keys: r.Keys, Platform: "windows",
 		Command: fakeEngine, PollEvery: 20 * time.Millisecond, StartTimeout: 20 * time.Second,
 		Comfy: func(context.Context) detect.Report { return detect.Report{Found: []detect.Found{}} },
 	}
@@ -97,7 +101,16 @@ func New(t *testing.T, opts ...Option) *Rig {
 	}
 	cfg, err := configcheck.Load("")
 	require.NoError(t, err)
-	bo := localbackends.Options{StagingDir: t.TempDir(), PollEvery: 10 * time.Millisecond}
+	bo := localbackends.Options{
+		StagingDir: t.TempDir(), PollEvery: 10 * time.Millisecond,
+		// as the app wires it: the bundled engine starts when a model of it is called
+		Prepare: func(ctx context.Context, endpoint string) error {
+			if r.Svc != nil {
+				return r.Svc.Prepare(ctx, endpoint)
+			}
+			return nil
+		},
+	}
 	r.Adapter = modeladapter.New(cfg, localbackends.Build(cfg, r.Keys, bo))
 	localbackends.Publish(cfg)
 	t.Cleanup(func() { localbackends.Publish(modeladapter.DefaultConfig()) })
@@ -113,6 +126,11 @@ func New(t *testing.T, opts ...Option) *Rig {
 	r.Svc, err = modelmanager.New(d)
 	require.NoError(t, err)
 	r.Svc.Register()
+	r.Gentest = gentest.New(gentest.Deps{
+		Repo: gentestrepo.New(r.db), Jobs: r.Queue, JobTable: r.Table, Adapter: r.Adapter, DataDir: r.DataDir, AssetsDir: t.TempDir(),
+		Projects: repository.NewProjectRepository(r.db), Assets: repository.NewAssetRepository(r.db), References: repository.NewReferenceRepository(r.db),
+	})
+	r.Gentest.Register()
 	t.Cleanup(func() { r.Queue.Stop(); r.Svc.Close() })
 	return r
 }

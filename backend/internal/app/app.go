@@ -119,6 +119,7 @@ func serve(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Opt
 	})
 	settings.ChatGPT = gpt
 	settings.ModelManager = services.ModelManager
+	settings.Gentest = services.Gentest
 	if opts.Update != nil {
 		var stop func()
 		settings.Update, stop = startUpdates(ctx, opts.Update, services, repository.NewJobRepository(db), logger)

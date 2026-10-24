@@ -32,11 +32,3 @@ func catalogURL(c Catalog) string {
 	}
 	return paths.ModelManagerPart("models") + "?jobs=" + url.QueryEscape(strings.Join(c.Jobs, ","))
 }
-
-// trialsURL is where the trial list asks for itself again: with the jobs that have no record yet.
-func trialsURL(t Trials) string {
-	if len(t.Jobs) == 0 {
-		return paths.ModelManagerPart("trials")
-	}
-	return paths.ModelManagerPart("trials") + "?jobs=" + url.QueryEscape(strings.Join(t.Jobs, ","))
-}

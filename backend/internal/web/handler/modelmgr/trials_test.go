@@ -6,14 +6,17 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/comfyuitest"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
@@ -64,7 +67,27 @@ func TestTrial_NoModelShowsWhyAndAStartIsRefused(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, rec.Code)
 }
 
-func TestTrial_RunsAsAJobShowsProgressAndTheResultIsServedInASandbox(t *testing.T) {
+// settled starts the queue and returns the trial list once no trial waits or runs.
+func (s *screen) settled() string {
+	s.t.Helper()
+	s.rig.Start()
+	var body string
+	require.Eventually(s.t, func() bool {
+		body = s.get(paths.ModelManagerPart("trials")).Body.String()
+		return !strings.Contains(body, `hx-trigger="every 2s"`)
+	}, 30*time.Second, 20*time.Millisecond, "the trial did not end")
+	return body
+}
+
+// resultID reads the id of the first trial of a list from its file URL or delete button.
+func resultID(t *testing.T, body string) string {
+	t.Helper()
+	m := regexp.MustCompile(`/model-manager/trials/([^/"?]+)`).FindStringSubmatch(body)
+	require.Len(t, m, 2, body)
+	return m[1]
+}
+
+func TestTrial_RunsAsABatchOfTheGenerationTestAndTheResultIsServedInASandbox(t *testing.T) {
 	s := newScreen(t)
 	f := s.externalBox()
 	form := s.get(paths.ModelManagerPart("trials", "form") + "?model_id=comfyui:box/vid").Body.String()
@@ -76,18 +99,14 @@ func TestTrial_RunsAsAJobShowsProgressAndTheResultIsServedInASandbox(t *testing.
 	rec := s.multipartTrial(map[string]string{"model_id": "comfyui:box/img", "prompt": "a red fox", "aspect_ratio": "16:9"}, comfyuitest.PNG)
 	require.Equal(t, http.StatusAccepted, rec.Code, rec.Body.String())
 	assert.Contains(t, rec.Body.String(), "試し生成を始めました")
-	assert.Contains(t, rec.Body.String(), `data-testid="mm-trial-item"`, "the job is on the list at once, before it has a record")
-	assert.Equal(t, 1, strings.Count(rec.Body.String(), `data-testid="mm-trial-item"`))
-	assert.Contains(t, rec.Body.String(), "順番を待っています")
-	id := jobID(t, rec.Body.String())
-	assert.Contains(t, rec.Body.String(), `hx-get="`+paths.ModelManagerPart("trials")+`?jobs=`+id+`"`, "the list asks for the job until its record exists")
-	s.waitJob(id)
+	assert.Equal(t, 1, strings.Count(rec.Body.String(), `data-testid="mm-trial-item"`), "the result is on the list at once")
+	assert.Contains(t, rec.Body.String(), `hx-trigger="every 2s"`, "the list polls while the result waits")
+	assert.Contains(t, rec.Body.String(), paths.GenerationTestHistory(), "the history of the generation test keeps it")
 
-	list := s.get(paths.ModelManagerPart("trials") + "?jobs=" + id)
-	require.Equal(t, http.StatusOK, list.Code)
-	assert.Contains(t, list.Body.String(), `data-status="succeeded"`)
-	assert.NotContains(t, list.Body.String(), `hx-trigger="every 2s"`, "polling stops when no trial runs")
-	assert.Contains(t, list.Body.String(), `src="`+paths.ModelManagerPart("trials", id, "file")+`"`)
+	list := s.settled()
+	assert.Contains(t, list, `data-status="succeeded"`)
+	id := resultID(t, list)
+	assert.Contains(t, list, `src="`+paths.ModelManagerPart("trials", id, "file")+`"`)
 	assert.Equal(t, 1, f.Count("POST /upload/image"), "the reference reached the server")
 
 	file := s.get(paths.ModelManagerPart("trials", id, "file"))
@@ -97,6 +116,11 @@ func TestTrial_RunsAsAJobShowsProgressAndTheResultIsServedInASandbox(t *testing.
 	assert.Equal(t, comfyuitest.PNG, file.Body.Bytes())
 	assert.Equal(t, http.StatusNotFound, s.get(paths.ModelManagerPart("trials", "nope", "file")).Code)
 
+	hist, err := s.rig.Gentest.History(t.Context(), gentest.HistoryFilter{})
+	require.NoError(t, err)
+	require.Len(t, hist, 1, "the trial is a result of the generation test")
+	assert.Equal(t, id, hist[0].ID)
+
 	del := s.do(http.MethodDelete, paths.ModelManagerPart("trials", id), nil)
 	require.Equal(t, http.StatusOK, del.Code)
 	assert.Contains(t, del.Body.String(), "試し生成の結果を削除しました")
@@ -104,15 +128,13 @@ func TestTrial_RunsAsAJobShowsProgressAndTheResultIsServedInASandbox(t *testing.
 	assert.Equal(t, http.StatusNotFound, s.do(http.MethodDelete, paths.ModelManagerPart("trials", id), nil).Code)
 }
 
-func TestTrial_RefusalsAreCheckedAgainstTheModelBeforeAJobIsQueued(t *testing.T) {
+func TestTrial_RefusalsAreCheckedAgainstTheModelBeforeAnythingIsQueued(t *testing.T) {
 	s := newScreen(t)
 	s.externalBox()
 	for name, fields := range map[string]map[string]string{
-		"no prompt":        {"model_id": "comfyui:box/img", "prompt": "  "},
-		"bad aspect":       {"model_id": "comfyui:box/img", "prompt": "x", "aspect_ratio": "wide"},
-		"video length":     {"model_id": "comfyui:box/vid", "prompt": "x", "duration_seconds": "99"},
-		"not a number":     {"model_id": "comfyui:box/vid", "prompt": "x", "duration_seconds": "long"},
-		"video resolution": {"model_id": "comfyui:box/vid", "prompt": "x", "resolution": "4k"},
+		"no prompt":    {"model_id": "comfyui:box/img", "prompt": "  "},
+		"bad aspect":   {"model_id": "comfyui:box/img", "prompt": "x", "aspect_ratio": "wide"},
+		"not a number": {"model_id": "comfyui:box/vid", "prompt": "x", "duration_seconds": "long"},
 	} {
 		rec := s.multipartTrial(fields, nil)
 		assert.Equal(t, http.StatusUnprocessableEntity, rec.Code, name)
@@ -122,9 +144,9 @@ func TestTrial_RefusalsAreCheckedAgainstTheModelBeforeAJobIsQueued(t *testing.T)
 	notPicture := s.multipartTrial(map[string]string{"model_id": "comfyui:box/img", "prompt": "x"}, []byte("GIF89a not what it says"))
 	assert.Equal(t, http.StatusUnprocessableEntity, notPicture.Code)
 	assert.Contains(t, notPicture.Body.String(), "PNG・JPEG・WebP")
-	recs, err := s.rig.Svc.Gentests(t.Context())
+	hist, err := s.rig.Gentest.History(t.Context(), gentest.HistoryFilter{})
 	require.NoError(t, err)
-	assert.Empty(t, recs, "nothing started")
+	assert.Empty(t, hist, "nothing started")
 }
 
 func TestTrial_AFailedTrialShowsItsReason(t *testing.T) {
@@ -133,9 +155,7 @@ func TestTrial_AFailedTrialShowsItsReason(t *testing.T) {
 	f.FailWith = "CUDA out of memory"
 	rec := s.multipartTrial(map[string]string{"model_id": "comfyui:box/t2i", "prompt": "x"}, nil)
 	require.Equal(t, http.StatusAccepted, rec.Code)
-	id := jobID(t, rec.Body.String())
-	s.waitJob(id)
-	list := s.get(paths.ModelManagerPart("trials") + "?jobs=" + id).Body.String()
+	list := s.settled()
 	assert.Contains(t, list, `data-status="failed"`)
 	assert.Contains(t, list, "CUDA out of memory")
 }

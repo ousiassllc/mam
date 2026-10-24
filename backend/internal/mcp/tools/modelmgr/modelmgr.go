@@ -1,7 +1,7 @@
 // Package modelmgr holds the MCP tools of the model manager screen (/model-manager): the bundled ComfyUI engine, the
 // catalog of local image and video models with its license acceptance, the optional Hugging Face token and the read-only
 // view of an external ComfyUI (spec/api/mcp-tools-model-manager.md, spec/architecture/model-manager/model-manager.md).
-// The trial generations are the tools of package modeltrial.
+// The generation test (which the trial generations of the model manager screen run through) is package gentest.
 //
 // The tools call the same modelmanager.Service as the screen, so the same checks hold: a model whose license needs an
 // acceptance is not installed without a record of it (install_model answers "conflict" until accept_model_license ran,

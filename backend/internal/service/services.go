@@ -17,6 +17,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/facesim"
 	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/workflows"
@@ -40,11 +41,9 @@ type Deps struct {
 	FreeBytes func(path string) (uint64, error)
 	// Frames samples frames from Takes (ffmpeg). The AI Video Judge is available only when it, LLM and Jobs are all set.
 	Frames judge.FrameSource
-	// Faces is the local face engine of the Face Identity Similarity. Nil: Takes are judged
-	// qualitatively only.
+	// Faces is the local face engine of the Face Identity Similarity. Nil: Takes are judged qualitatively only.
 	Faces facesim.Engine
-	// Media is ffmpeg / ffprobe for the Take previews (4K proxies, thumbnails) and Partial Take Use.
-	// Nil: 4K Takes play as they are and Partial Take Use is unavailable.
+	// Media is ffmpeg / ffprobe for the Take previews (4K proxies, thumbnails) and Partial Take Use; nil: none of them.
 	Media *media.Tools
 	// Judge is the AI Video Judge setting. The zero value selects judge.DefaultConfig.
 	Judge judge.Config
@@ -83,7 +82,8 @@ type Services struct {
 	Brand        *BrandService
 	Analytics    *AnalyticsService
 	LocalModels  *localmodels.Service  // ComfyUI / OpenAI-compatible endpoints and models; the app sets it
-	ModelManager *modelmanager.Service // bundled ComfyUI engine, model catalog, trial generation; the app sets it
+	ModelManager *modelmanager.Service // bundled ComfyUI engine, model catalog; the app sets it
+	Gentest      *gentest.Service      // generation test: batches of generations outside any Project, history, import; the app sets it
 	Workflows    *workflows.Service    // ComfyUI workflows saved in mam (node screen, models, MCP); the app sets it
 }
 

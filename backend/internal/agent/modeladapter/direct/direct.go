@@ -148,3 +148,21 @@ func Fold(prompt, negative string) string {
 	}
 	return prompt + shotprompt.AvoidSentence([]string{negative})
 }
+
+// AspectProblem says why a video model refuses the aspect ratio (empty when it takes it): Runway Gen-4.5 makes 16:9 and 9:16,
+// and 1:1 only from a first frame (its backend answers 422 otherwise; the Adapter's shot path would switch to the alternative,
+// a direct call fails). Other models take any ratio the caller names.
+func AspectProblem(m domain.ModelName, aspect string, hasFirstFrame bool) string {
+	if m != domain.ModelRunwayGen45 {
+		return ""
+	}
+	switch {
+	case aspect == domain.AspectRatio16x9 || aspect == domain.AspectRatio9x16:
+		return ""
+	case aspect == domain.AspectRatio1x1 && !hasFirstFrame:
+		return "1:1 は最初のフレームがあるときだけ作れます"
+	case aspect == domain.AspectRatio1x1:
+		return ""
+	}
+	return "16:9・9:16・1:1（最初のフレームつき）だけ作れます"
+}

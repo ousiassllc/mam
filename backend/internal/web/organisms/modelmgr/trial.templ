@@ -104,7 +104,13 @@ templ TrialFormView(f TrialForm) {
 				<input id="mm-trial-reference" type="file" name={ FieldReference } accept="image/png,image/jpeg,image/webp" class="text-sm"/>
 			</label>
 		}
-		<p class="text-xs text-neutral-400">ローカルのモデルなので課金はありません。結果はプロジェクトの Take やコスト台帳には入りません。動いている間にこの画面を閉じても生成は続きます。</p>
+		<p class="text-xs text-neutral-400">
+			ローカルのモデルなので課金はありません。結果はプロジェクトの Take やコスト台帳には入らず、
+			<a class="underline" href={ templ.SafeURL(paths.GenerationTestHistory()) }>生成テストの履歴</a>
+			に残ります。複数のモデル・プロンプトを並べて比べるなら
+			<a class="underline" href={ templ.SafeURL(paths.GenerationTest()) } data-testid="mm-trial-open-gentest">生成テスト画面</a>
+			を使います。動いている間にこの画面を閉じても生成は続きます。
+		</p>
 		<div>
 			@atoms.Button(atoms.TonePrimary, "試し生成する", templ.Attributes{"type": "submit"})
 		</div>
@@ -125,7 +131,7 @@ templ TrialList(t Trials) {
 		class="flex flex-col gap-3"
 		data-testid="mm-trials"
 		if t.Polling() {
-			hx-get={ trialsURL(t) }
+			hx-get={ paths.ModelManagerPart("trials") }
 			hx-trigger={ Polling }
 			hx-swap="outerHTML"
 		}
@@ -188,7 +194,7 @@ func trialTone(status string) atoms.BadgeTone {
 	switch status {
 	case "succeeded":
 		return atoms.BadgeOK
-	case "failed":
+	case "failed", "cancelled":
 		return atoms.BadgeError
 	}
 	return atoms.BadgeInfo

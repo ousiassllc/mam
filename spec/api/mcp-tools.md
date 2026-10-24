@@ -65,7 +65,8 @@ curl -OJ 'http://100.101.102.103:8788/mcp-files/<ticket>'
 | ローカル・代替モデル（ComfyUI・OpenAI 互換の接続先とモデル） | [mcp-tools-local-models.md](mcp-tools-local-models.md) |
 | ComfyUI ワークフロー（保存・取り込み・実行・Shot への固定） | [mcp-tools-workflows.md](mcp-tools-workflows.md) |
 | ChatGPT でログイン（ログイン・ログアウト・状態・画像生成の ON/OFF） | [mcp-tools-chatgpt.md](mcp-tools-chatgpt.md) |
-| モデルマネージャー（ComfyUI エンジン・ローカルモデルのカタログと導入・ライセンスの同意・試し生成） | [mcp-tools-model-manager.md](mcp-tools-model-manager.md) |
+| モデルマネージャー（ComfyUI エンジン・ローカルモデルのカタログと導入・ライセンスの同意） | [mcp-tools-model-manager.md](mcp-tools-model-manager.md) |
+| 生成テスト（プロジェクトに属さない画像・動画の比較生成・履歴・プロンプト履歴・プロジェクトへの取り込み） | [mcp-tools-generation-test.md](mcp-tools-generation-test.md) |
 | 編集（Edit Timeline・音声・書き出し） | [mcp-tools-editor-review.md](mcp-tools-editor-review.md) |
 | レビュー（依頼・受信箱・コメント・判定） | [mcp-tools-editor-review-reviews.md](mcp-tools-editor-review-reviews.md) |
 
@@ -81,3 +82,4 @@ MCP ツールの対象外: MCP サーバー自身の設定（待ち受け先の�
 | 1.3 | 2026-10-25 | 「ドメイン別」に [mcp-tools-local-models.md](mcp-tools-local-models.md)（ローカル・代替モデル）を足した | Issue #831。ComfyUI・OpenAI 互換の接続先とモデルの操作を MCP ツールにする（#830 の方針: 画面の全操作を MCP で操作できる） |
 | 1.4 | 2026-10-25 | 「ドメイン別」に [mcp-tools-model-manager.md](mcp-tools-model-manager.md)（モデルマネージャー）を足した | Issue #833。ComfyUI エンジン・モデルのカタログ・導入・同意・試し生成を MCP ツールにする（#830 の方針） |
 | 1.5 | 2026-10-25 | 「ドメイン別」に [mcp-tools-workflows.md](mcp-tools-workflows.md)（ComfyUI ワークフロー）を足した | Issue #834。保存したワークフローの一覧・取り込み・実行・Shot への固定を MCP ツールにする（ノード画面は対象外） |
+| 1.6 | 2026-10-26 | 「ドメイン別」に [mcp-tools-generation-test.md](mcp-tools-generation-test.md)（生成テスト）を足し、モデルマネージャーの試し生成のツールをそこへ統合した | Issue #835。モデル × プロンプトの比較生成・履歴・取り込みを MCP ツールにする（#830 の方針） |
