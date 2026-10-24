@@ -58,9 +58,18 @@ curl -OJ 'http://100.101.102.103:8788/mcp-files/<ticket>'
 | ドメイン | ファイル |
 |---------|---------|
 | （基盤: このファイル） | `mcp-tools.md` |
+| Project・Brief・チャット・バンドル | [mcp-tools-projects-chat.md](mcp-tools-projects-chat.md) |
+| Scene・Shot・Director・生成・Judge・Repair・Take | [mcp-tools-shots-generation.md](mcp-tools-shots-generation.md) |
+| World State・Reference Library・Branch・バージョン・Series・メモ | [mcp-tools-world-notes.md](mcp-tools-world-notes.md)（対応表: [mcp-tools-world-notes-coverage.md](mcp-tools-world-notes-coverage.md)） |
+| Project 設定・Brand・原価・制作指標・全体設定（LLM・モデル・更新） | [mcp-tools-settings-policy.md](mcp-tools-settings-policy.md) |
+| 編集（Edit Timeline・音声・書き出し） | [mcp-tools-editor-review.md](mcp-tools-editor-review.md) |
+| レビュー（依頼・受信箱・コメント・判定） | [mcp-tools-editor-review-reviews.md](mcp-tools-editor-review-reviews.md) |
+
+MCP ツールの対象外: MCP サーバー自身の設定（待ち受け先の変更・トークンの発行・失効）は設定画面だけで行う（エージェントが自分のアクセス権を変えないため）。
 
 ## 改訂履歴
 
 | 版 | 日付 | 変更内容 | 変更理由 |
 |----|------|---------|---------|
 | 1.0 | 2026-10-24 | 新規作成。規約と基盤のツール（`get_server_info`・`list_projects`・`get_job`・`list_credentials`・`set_credential`・`delete_credential`・`list_upload_purposes`・`create_upload_ticket`・`get_asset_download_url`）、アップロードの用途 `import_bundle`・`reference_image` | Issue #830。画面の全操作を MCP ツールにするための基盤 |
+| 1.1 | 2026-10-24 | 「ドメイン別」に 6 ファイル（Project・チャット／Shot・生成／World・メモ／設定・Brand／編集／レビュー）を載せ、MCP サーバー自身の設定を MCP の対象外にすると書いた | Issue #830。画面の全操作の MCP ツール化 |
