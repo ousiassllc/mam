@@ -114,12 +114,44 @@ Function .onInstSuccess
     relaunchDone:
 FunctionEnd
 
+# The uninstaller waits (up to 10 s) until the installed exe can be opened for writing, as waitForAppToExit does for an update:
+# a running mam.exe keeps its files locked. Quitting mam ends its ComfyUI child with it (the engine is in a Job Object with
+# KILL_ON_JOB_CLOSE, internal/modelmgr/proc), so there is nothing else to stop; the child needs a moment to let go of its files,
+# which the retry of the removal below covers.
+Function un.onInit
+    StrCpy $1 0
+    unWaitLoop:
+        IfFileExists "$INSTDIR\${PRODUCT_EXECUTABLE}" 0 unWaitDone
+        ClearErrors
+        FileOpen $0 "$INSTDIR\${PRODUCT_EXECUTABLE}" a
+        IfErrors 0 unWaitFree
+        IntOp $1 $1 + 1
+        IntCmp $1 20 unWaitDone unWaitMore unWaitDone
+    unWaitMore:
+        Sleep 500
+        Goto unWaitLoop
+    unWaitFree:
+        FileClose $0
+    unWaitDone:
+FunctionEnd
+
 Section "uninstall" 
     !insertmacro wails.setShellContext
 
     # The data directory (%AppData%\mam: SQLite, generated media, logs) is deliberately kept.
 
-    RMDir /r $INSTDIR
+    # The engine and the models of the model manager are in $INSTDIR\comfyui (spec/architecture/model-manager/model-manager.md §2),
+    # so this removes them too. The folder is tried again for up to 5 s: ComfyUI's files may be locked for a moment after it ended.
+    StrCpy $1 0
+    removeLoop:
+        RMDir /r $INSTDIR
+        IfFileExists "$INSTDIR\comfyui\*.*" 0 removeDone
+        IntOp $1 $1 + 1
+        IntCmp $1 10 removeDone removeMore removeDone
+    removeMore:
+        Sleep 500
+        Goto removeLoop
+    removeDone:
 
     Delete "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk"
     Delete "$DESKTOP\${INFO_PRODUCTNAME}.lnk"
