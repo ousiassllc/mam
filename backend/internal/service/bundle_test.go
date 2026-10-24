@@ -73,7 +73,7 @@ func TestBundleImport_ExtractsOnlyTheFilesTheDataNames(t *testing.T) {
 }
 
 func TestBundleImport_RefusesFilesThatDoNotFitTheFreeDiskAndWritesNothing(t *testing.T) {
-	f := newGenFixtureWithFreeBytes(t, false, func(string) (uint64, error) { return 1 << 20, nil }) // 1 MiB free
+	f := newGenFixtureWithDeps(t, false, func(string) (uint64, error) { return 1 << 20, nil }, nil) // 1 MiB free
 	data := bundleZip(t, map[string][]byte{"proj1/named.bin": bytes.Repeat([]byte{0}, 4<<20)})      // 4 MiB, tiny once deflated
 	require.Less(t, len(data), 1<<20)
 
@@ -83,11 +83,9 @@ func TestBundleImport_RefusesFilesThatDoNotFitTheFreeDiskAndWritesNothing(t *tes
 
 	_, err := os.Stat(filepath.Join(f.assetsDir, "proj1"))
 	assert.True(t, os.IsNotExist(err), "no file was written")
-	var n int
-	require.NoError(t, f.db.Reader().QueryRow(`SELECT COUNT(*) FROM project WHERE id = 'proj1'`).Scan(&n))
-	assert.Zero(t, n)
+	assert.Zero(t, f.count(t, `SELECT COUNT(*) FROM project WHERE id = 'proj1'`))
 
-	roomy := newGenFixtureWithFreeBytes(t, false, func(string) (uint64, error) { return 8 << 20, nil })
+	roomy := newGenFixtureWithDeps(t, false, func(string) (uint64, error) { return 8 << 20, nil }, nil)
 	assert.NoError(t, importBundle(roomy, data), "the same bundle imports when the disk has room")
 }
 
@@ -142,8 +140,7 @@ func TestBundleExport_RoundTripRelocatesAFileSharedWithAnotherProject(t *testing
 
 	second := newGenFixture(t, false)
 	require.NoError(t, importBundle(second, out.Bytes()))
-	var filePath string
-	require.NoError(t, second.db.Reader().QueryRow(`SELECT file_path FROM asset WHERE id = 'a1'`).Scan(&filePath))
+	filePath := second.text(t, `SELECT file_path FROM asset WHERE id = 'a1'`)
 	assert.Equal(t, "proj1/a1.png", filePath)
 	got, err := os.ReadFile(filepath.Join(second.assetsDir, filepath.FromSlash(filePath)))
 	require.NoError(t, err)
