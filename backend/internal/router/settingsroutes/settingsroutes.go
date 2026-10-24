@@ -14,6 +14,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/llmassign"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
 	"github.com/ousiassllc/mam/backend/internal/service/mcpsettings"
+	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/modelsettings"
 	"github.com/ousiassllc/mam/backend/internal/web/handler"
 	updatehandler "github.com/ousiassllc/mam/backend/internal/web/handler/appupdate"
@@ -22,6 +23,7 @@ import (
 	localhandler "github.com/ousiassllc/mam/backend/internal/web/handler/localmodels"
 	mcphandler "github.com/ousiassllc/mam/backend/internal/web/handler/mcpsettings"
 	modelhandler "github.com/ousiassllc/mam/backend/internal/web/handler/modelassign"
+	modelmgrhandler "github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -41,6 +43,8 @@ type Services struct {
 	LocalModels *localmodels.Service
 	// ChatGPT is the ChatGPT sign-in section. Nil leaves the section and its routes out.
 	ChatGPT *chatgpt.Service
+	// ModelManager is the model manager screen (paths.ModelManager). Nil leaves the screen and its routes out.
+	ModelManager *modelmanager.Service
 }
 
 // New builds the services over the settings files (llm.json / models.json, or the files the operator pinned
@@ -102,6 +106,9 @@ func Register(engine *gin.Engine, keys *service.CredentialService, s *Services) 
 	}
 	if s != nil && s.LocalModels != nil {
 		registerLocalModels(engine, localhandler.Handlers{Local: s.LocalModels, Models: s.Models})
+	}
+	if s != nil && s.ModelManager != nil {
+		modelmgrhandler.Register(engine, s.ModelManager)
 	}
 	engine.GET(paths.Settings(), handler.GlobalSettingsPage(keys, addSections))
 }

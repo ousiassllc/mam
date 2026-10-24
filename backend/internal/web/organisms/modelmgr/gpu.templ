@@ -1,0 +1,121 @@
+package modelmgr
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// GPUBlock is the GPU detection and the form that installs the engine (it replaces #mm-gpu in the card of an engine
+// that is not installed).
+templ GPUBlock(g GPU) {
+	<div id={ GPUID } class="flex flex-col gap-3" data-testid="mm-gpu">
+		@notice(g.Message, "mm-gpu")
+		<div class="flex flex-col gap-1 text-sm">
+			<h3 class="text-sm font-semibold">GPU の検出結果</h3>
+			if g.DetectError != "" {
+				<p class="text-amber-300" data-testid="mm-gpu-error">GPU を調べられませんでした（{ g.DetectError }）。</p>
+			}
+			if len(g.Adapters) == 0 {
+				<p class="text-neutral-300" data-testid="mm-gpu-none">GPU は見つかりませんでした。</p>
+			} else {
+				<ul class="flex flex-col gap-0.5" data-testid="mm-gpu-adapters">
+					for _, a := range g.Adapters {
+						<li>{ a.Name }<span class="ml-2 text-xs text-neutral-400">VRAM { a.VRAM }</span></li>
+					}
+				</ul>
+			}
+			if g.Variant != "" {
+				<p class="text-emerald-300" data-testid="mm-gpu-recommended">
+					推奨するビルド: { variantLabel(g, g.Variant) }
+					if g.Confidence == "low" {
+						（推定です。合っているか確認してください）
+					}
+				</p>
+				<p class="text-xs text-neutral-400">{ g.Reason }</p>
+			} else {
+				<p class="text-amber-300" data-testid="mm-gpu-guidance">{ g.Guidance }</p>
+				<p class="text-xs text-neutral-400">
+					別の ComfyUI を使うなら、<a class="underline" href={ templ.SafeURL(paths.Settings()) }>設定</a>の「ローカル・代替モデル」にその URL を登録してください。
+				</p>
+			}
+		</div>
+		<form
+			class="flex flex-col gap-3"
+			hx-post={ paths.ModelManagerPart("engine", "install") }
+			hx-target={ "#" + EngineID }
+			hx-swap="outerHTML"
+			hx-sync="this:drop"
+			hx-disabled-elt="find button[type=submit]"
+			data-testid="mm-engine-install"
+		>
+			<label class="flex flex-col gap-1 text-xs text-neutral-400" for="mm-variant">
+				<span>導入するビルド（ダウンロードの大きさと、必要な空き容量）</span>
+				@atoms.Select(atoms.FieldMd, "w-full max-w-xl", templ.Attributes{"id": "mm-variant", "name": FieldVariant}) {
+					if g.Variant == "" {
+						<option value="" selected>選んでください</option>
+					}
+					for _, v := range g.Variants {
+						<option value={ v.Value } selected?={ v.Recommended }>{ v.Label }（{ v.Size }／必要な空き { v.Need }）{ recommendedMark(v) }</option>
+					}
+				}
+			</label>
+			if g.CPUAvailable {
+				<label class="flex items-start gap-2 text-sm">
+					@atoms.Choice("mt-1", templ.Attributes{"type": "checkbox", "name": FieldCPU, "value": "1", "data-testid": "mm-cpu"})
+					<span>GPU を使わず CPU で実行する（とても遅く、動画には向きません。対応する GPU が無いときだけの手段です）</span>
+				</label>
+			}
+			<p class="text-xs text-neutral-400">空き { g.Free }。取得するのは固定した版で、SHA-256 が合わなければ破棄します。中断しても続きから再開できます。</p>
+			<div>
+				@atoms.Button(atoms.TonePrimary, "ComfyUI を導入する", templ.Attributes{"type": "submit"})
+			</div>
+		</form>
+	</div>
+}
+
+func variantLabel(g GPU, value string) string {
+	for _, v := range g.Variants {
+		if v.Value == value {
+			return v.Label
+		}
+	}
+	return value
+}
+
+func recommendedMark(v Variant) string {
+	if v.Recommended {
+		return " ★推奨"
+	}
+	return ""
+}
+
+// DetectBlock is the result of the search for a ComfyUI that is already on this machine.
+templ DetectBlock(d Detect) {
+	<div id={ DetectID } class="flex flex-col gap-2 text-sm" data-testid="mm-detect" role="status" aria-live="polite">
+		@notice(d.Message, "mm-detect")
+		if len(d.Found) == 0 {
+			<p class="text-neutral-300" data-testid="mm-detect-none">この PC（127.0.0.1 の 8188・8000 番）に動いている ComfyUI は見つかりませんでした。</p>
+		}
+		for _, f := range d.Found {
+			<div class="flex flex-col gap-1 rounded border border-neutral-700 p-2" data-testid="mm-detect-found">
+				<span>
+					<code>{ f.URL }</code> ComfyUI { f.Version }
+					if f.Desktop {
+						@atoms.Badge(atoms.BadgeInfo, "ComfyUI Desktop")
+					}
+				</span>
+				for _, dev := range f.Devices {
+					<span class="text-xs text-neutral-400">{ dev }</span>
+				}
+			</div>
+		}
+		if d.DesktopHint {
+			<p class="text-xs text-neutral-400">ComfyUI Desktop の設定ファイルがあります（起動していないと見つけられません）。</p>
+		}
+		if d.Recommended != "" {
+			<p class="text-xs text-neutral-300">
+				<code>{ d.Recommended }</code> を<a class="underline" href={ templ.SafeURL(paths.Settings()) }>設定</a>の「ローカル・代替モデル」に接続先として登録すると使えます。mam はこの ComfyUI を起動も停止もしません。
+			</p>
+		}
+	</div>
+}

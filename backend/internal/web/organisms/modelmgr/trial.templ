@@ -1,0 +1,195 @@
+package modelmgr
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// TrialSection is the trial form and the results, outside any Project: nothing here is a Take or a cost.
+templ TrialSection(p TrialPanel) {
+	<div
+		id={ TrialID }
+		class="flex flex-col gap-4"
+		data-testid="mm-trial"
+		if p.OOB {
+			hx-swap-oob="true"
+		}
+	>
+		if p.Unavailable != "" {
+			<p class="text-sm text-neutral-300" data-testid="mm-trial-unavailable">{ p.Unavailable }</p>
+		} else {
+			@TrialFormView(p.Form)
+		}
+		@TrialList(p.Trials)
+	</div>
+}
+
+// TrialFormView is the form; choosing another model draws it again for that model (its resolutions and lengths).
+templ TrialFormView(f TrialForm) {
+	<form
+		id={ TrialFmID }
+		class="flex flex-col gap-3 rounded-md border border-neutral-700 p-4"
+		hx-post={ paths.ModelManagerPart("trials") }
+		hx-encoding="multipart/form-data"
+		hx-target={ "#" + TrialID }
+		hx-swap="outerHTML"
+		hx-sync="this:drop"
+		hx-disabled-elt="find button[type=submit]"
+		autocomplete="off"
+		data-testid="mm-trial-form"
+	>
+		@notice(f.Message, "mm-trial")
+		<label class="flex flex-col gap-1 text-xs text-neutral-400" for="mm-trial-model">
+			<span>モデル（導入済み・登録済みのもの）</span>
+			@atoms.Select(atoms.FieldMd, "w-full max-w-xl", templ.Attributes{
+				"id": "mm-trial-model", "name": FieldModelID, "hx-get": paths.ModelManagerPart("trials", "form"),
+				"hx-trigger": "change", "hx-target": "#" + TrialFmID, "hx-swap": "outerHTML",
+				"hx-include": "[name=" + FieldPrompt + "],[name=" + FieldNegative + "],[name=" + FieldAspect + "]",
+			}) {
+				for _, m := range f.Models {
+					<option value={ m.ID } selected?={ m.Selected }>{ m.Label }</option>
+				}
+			}
+		</label>
+		<label class="flex flex-col gap-1 text-xs text-neutral-400" for="mm-trial-prompt">
+			<span>プロンプト</span>
+			@atoms.Textarea(atoms.FieldMd, "w-full max-w-2xl", templ.Attributes{
+				"id": "mm-trial-prompt", "name": FieldPrompt, "rows": "3", "required": true, "maxlength": itoa(f.MaxPrompt),
+			}, f.Prompt)
+		</label>
+		if f.Media == "video" {
+			<label class="flex flex-col gap-1 text-xs text-neutral-400" for="mm-trial-negative">
+				<span>ネガティブプロンプト（省略可）</span>
+				@atoms.Textarea(atoms.FieldMd, "w-full max-w-2xl", templ.Attributes{
+					"id": "mm-trial-negative", "name": FieldNegative, "rows": "2", "maxlength": itoa(f.MaxPrompt),
+				}, f.Negative)
+			</label>
+		}
+		<div class="flex flex-wrap items-end gap-3">
+			<label class="flex flex-col gap-1 text-xs text-neutral-400" for="mm-trial-aspect">
+				<span>縦横比（例 16:9）</span>
+				@atoms.Input(atoms.FieldMd, "w-28", templ.Attributes{
+					"id": "mm-trial-aspect", "name": FieldAspect, "type": "text", "value": f.Aspect, "pattern": "[1-9][0-9]?:[1-9][0-9]?",
+					"placeholder": aspectPlaceholder(f.Media), "maxlength": itoa(MaxAspectLen),
+				})
+			</label>
+			if f.Media == "video" {
+				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="mm-trial-resolution">
+					<span>解像度</span>
+					@atoms.Select(atoms.FieldMd, "", templ.Attributes{"id": "mm-trial-resolution", "name": FieldResol}) {
+						for _, r := range f.Resolutions {
+							<option value={ r } selected?={ r == f.Resolution }>{ r }</option>
+						}
+					}
+				</label>
+				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="mm-trial-duration">
+					<span>長さ（秒）</span>
+					@atoms.Select(atoms.FieldMd, "", templ.Attributes{"id": "mm-trial-duration", "name": FieldDuration}) {
+						for _, d := range f.Durations {
+							<option value={ d } selected?={ d == f.Duration }>{ d }</option>
+						}
+					}
+				</label>
+			}
+		</div>
+		if f.AcceptsReference {
+			<label class="flex flex-col gap-1 text-xs text-neutral-400" for="mm-trial-reference">
+				<span>
+					if f.Media == "video" {
+						最初のフレームにする画像（省略可。PNG・JPEG・WebP）
+					} else {
+						参照画像（省略可。PNG・JPEG・WebP）
+					}
+				</span>
+				<input id="mm-trial-reference" type="file" name={ FieldReference } accept="image/png,image/jpeg,image/webp" class="text-sm"/>
+			</label>
+		}
+		<p class="text-xs text-neutral-400">ローカルのモデルなので課金はありません。結果はプロジェクトの Take やコスト台帳には入りません。動いている間にこの画面を閉じても生成は続きます。</p>
+		<div>
+			@atoms.Button(atoms.TonePrimary, "試し生成する", templ.Attributes{"type": "submit"})
+		</div>
+	</form>
+}
+
+func aspectPlaceholder(media string) string {
+	if media == "video" {
+		return "16:9"
+	}
+	return "1:1"
+}
+
+// TrialList is the trials, newest first; while one runs it polls itself.
+templ TrialList(t Trials) {
+	<div
+		id={ TrialsID }
+		class="flex flex-col gap-3"
+		data-testid="mm-trials"
+		if t.Polling() {
+			hx-get={ trialsURL(t) }
+			hx-trigger={ Polling }
+			hx-swap="outerHTML"
+		}
+	>
+		@notice(t.Message, "mm-trials")
+		if len(t.Items) == 0 {
+			<p class="text-sm text-neutral-400" data-testid="mm-trials-empty">試し生成の結果はまだありません。</p>
+		}
+		<ul class="flex flex-col gap-4">
+			for _, it := range t.Items {
+				@trialItem(it)
+			}
+		</ul>
+	</div>
+}
+
+templ trialItem(t Trial) {
+	<li class="flex flex-col gap-2 rounded-md border border-neutral-800 p-3 text-sm" data-testid="mm-trial-item" data-trial={ t.ID } data-status={ t.Status }>
+		<div class="flex flex-wrap items-center justify-between gap-2">
+			<span class="flex flex-wrap items-center gap-2">
+				<code class="text-xs">{ t.ModelID }</code>
+				@atoms.Badge(trialTone(t.Status), t.StatusText)
+				<span class="text-xs text-neutral-400">{ t.CreatedAt }</span>
+			</span>
+			if t.Deletable {
+				@atoms.SmallButtonFor(atoms.ToneDanger, "削除", "試し生成 "+t.ID, templ.Attributes{
+					"type": "button", "hx-delete": paths.ModelManagerPart("trials", t.ID), "hx-target": "#" + TrialsID, "hx-swap": "outerHTML",
+					"hx-sync": "this:drop", "hx-disabled-elt": "this", "hx-confirm": "この試し生成の結果を削除します。よろしいですか？",
+				})
+			}
+		</div>
+		<p class="whitespace-pre-wrap break-words text-neutral-200">{ t.Prompt }</p>
+		<p class="text-xs text-neutral-400">
+			{ t.Detail }
+			if t.Reference {
+				／ 画像を添えて生成
+			}
+		</p>
+		if t.Progress != nil {
+			@progressBar(*t.Progress, "試し生成の進み具合")
+		}
+		if t.Status == "failed" && t.Error != "" {
+			<p class="text-sm text-red-300" role="alert" data-testid="mm-trial-error">{ t.Error }</p>
+		}
+		if t.Status == "succeeded" && t.FileURL != "" {
+			if t.Video {
+				<video class="max-h-80 max-w-full rounded" controls preload="metadata" src={ t.FileURL }></video>
+			} else {
+				<img class="max-h-80 max-w-full rounded" src={ t.FileURL } alt={ "試し生成の結果: " + t.Prompt }/>
+			}
+			<p class="text-xs text-neutral-400">
+				{ t.Size }
+				／ <a class="underline" href={ templ.SafeURL(t.FileURL) } target="_blank" rel="noopener noreferrer">ファイルを開く</a>
+			</p>
+		}
+	</li>
+}
+
+func trialTone(status string) atoms.BadgeTone {
+	switch status {
+	case "succeeded":
+		return atoms.BadgeOK
+	case "failed":
+		return atoms.BadgeError
+	}
+	return atoms.BadgeInfo
+}

@@ -1,0 +1,139 @@
+package modelmgr
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// HFCard is the optional Hugging Face token: its state (and last characters), a form to set it and a button to remove
+// it. The token itself is never shown.
+templ HFCard(h HFToken) {
+	<div id={ HFID } class="flex flex-col gap-3" data-testid="mm-hf">
+		@notice(h.Message, "mm-hf")
+		if h.Unavailable {
+			<p class="text-sm text-amber-300" data-testid="mm-hf-unavailable">キーの保管先を読めないため、トークンを扱えません。</p>
+		} else if h.Configured {
+			<p class="text-sm" data-testid="mm-hf-status">{ hfState(h) }</p>
+		} else {
+			<p class="text-sm text-neutral-300" data-testid="mm-hf-status">トークンは設定されていません（いまのカタログのモデルは、トークンなしで取得できます）。</p>
+		}
+		if !h.Unavailable {
+			<form
+				class="flex flex-wrap items-end gap-2"
+				hx-put={ paths.ModelManagerPart("hf-token") }
+				hx-target={ "#" + HFID }
+				hx-swap="outerHTML"
+				hx-sync="this:drop"
+				hx-disabled-elt="find button[type=submit]"
+				autocomplete="off"
+			>
+				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="mm-hf-token">
+					<span>Hugging Face のトークン（ログインが要るモデル用）</span>
+					@atoms.Input(atoms.FieldMd, "w-72", templ.Attributes{
+						"id": "mm-hf-token", "name": FieldToken, "type": "password", "autocomplete": "off", "required": true, "maxlength": itoa(MaxTokenLen),
+						"placeholder": hfPlaceholder(h.Configured),
+					})
+				</label>
+				@atoms.Button(atoms.TonePrimary, "保存", templ.Attributes{"type": "submit"})
+				if h.Configured {
+					@atoms.Button(atoms.ToneDanger, "削除", templ.Attributes{
+						"type": "button", "hx-delete": paths.ModelManagerPart("hf-token"), "hx-target": "#" + HFID, "hx-swap": "outerHTML",
+						"hx-sync": "this:drop", "hx-disabled-elt": "this", "hx-confirm": "保存した Hugging Face のトークンを削除します。よろしいですか？",
+					})
+				}
+			</form>
+		}
+		<p class="text-xs text-neutral-400">トークンは OS の資格情報ストアに保存し、huggingface.co への最初の要求にだけ付けます（別のホストへの転送では外します）。画面には表示しません。</p>
+	</div>
+}
+
+func hfState(h HFToken) string {
+	if h.LastChars == "" {
+		return "トークンは設定済みです。"
+	}
+	return "トークンは設定済みです（末尾 " + h.LastChars + "）。"
+}
+
+func hfPlaceholder(configured bool) string {
+	if configured {
+		return "置き換えるトークンを入力"
+	}
+	return "hf_…"
+}
+
+// ExternalCard is the read-only view of an external ComfyUI: the models it has and what a catalog model lacks there.
+// mam installs nothing on it (ComfyUI has no API to put a model on a server).
+templ ExternalCard(x External) {
+	<div id={ ExternalID } class="flex flex-col gap-3" data-testid="mm-external">
+		@notice(x.Message, "mm-external")
+		if len(x.Endpoints) == 0 {
+			<p class="text-sm text-neutral-300" data-testid="mm-external-none">
+				外部の ComfyUI はまだ登録されていません。<a class="underline" href={ templ.SafeURL(paths.Settings()) }>設定</a>の「ローカル・代替モデル」で、種類 ComfyUI の接続先を追加すると、ここで導入済みのモデルを確かめられます。
+			</p>
+		} else {
+			<form
+				class="flex flex-wrap items-end gap-2"
+				hx-get={ paths.ModelManagerPart("external") }
+				hx-target={ "#" + ExternalID }
+				hx-swap="outerHTML"
+				hx-sync="this:drop"
+				hx-disabled-elt="find button[type=submit]"
+			>
+				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="mm-external-endpoint">
+					<span>接続先</span>
+					@atoms.Select(atoms.FieldMd, "", templ.Attributes{"id": "mm-external-endpoint", "name": FieldEndpoint}) {
+						for _, e := range x.Endpoints {
+							<option value={ e } selected?={ e == x.Selected }>{ e }</option>
+						}
+					}
+				</label>
+				@atoms.Button(atoms.ToneNeutral, "導入済みのモデルを確認", templ.Attributes{"type": "submit"})
+			</form>
+		}
+		if x.Result != nil {
+			@externalResult(*x.Result)
+		}
+	</div>
+}
+
+templ externalResult(r ExternalResult) {
+	<div class="flex flex-col gap-3 text-sm" data-testid="mm-external-result">
+		<p>
+			接続先 <code>{ r.Endpoint }</code>
+			if r.Version != "" {
+				（ComfyUI { r.Version }）
+			}
+		</p>
+		<ul class="flex flex-col gap-2" data-testid="mm-external-models">
+			for _, m := range r.Models {
+				<li class="flex flex-col gap-0.5" data-testid="mm-external-model" data-complete={ boolText(m.Complete) }>
+					<span>
+						{ m.Name }
+						if m.Complete {
+							@atoms.Badge(atoms.BadgeOK, "そろっています")
+						} else {
+							@atoms.Badge(atoms.BadgeWarn, "足りないファイルがあります")
+						}
+					</span>
+					if len(m.Missing) > 0 {
+						<span class="text-xs text-neutral-400">足りない: { joinNames(m.Missing) }</span>
+					}
+				</li>
+			}
+		</ul>
+		<details class="text-xs text-neutral-300">
+			<summary class="cursor-pointer text-neutral-400">フォルダごとのファイル</summary>
+			for _, f := range r.Folders {
+				<p class="mt-1"><code>{ f.Name }</code>（{ itoa(len(f.Files)) }）</p>
+				if len(f.Files) > 0 {
+					<ul class="ml-3 list-disc">
+						for _, name := range f.Files {
+							<li class="break-all">{ name }</li>
+						}
+					</ul>
+				}
+			}
+		</details>
+		<p class="text-xs text-neutral-400">外部の ComfyUI へのモデルの導入は、その ComfyUI の側で行ってください（mam は読むだけです）。そろっているモデルは、接続先にワークフローを登録すると使えます。</p>
+	</div>
+}
