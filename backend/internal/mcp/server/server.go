@@ -22,9 +22,11 @@ type Options struct {
 	// JobTable is the persisted job queue, which get_job also reads (repository.JobRepository).
 	JobTable mcpkit.JobTable
 	// Keys is the key store; the credential tools read only the end of a key from it.
-	Keys    credential.Store
-	Logger  *slog.Logger
-	Version string
+	Keys credential.Store
+	// Settings are the LLM / model assignment and update services of the settings screen (a nil field: not there).
+	Settings mcpkit.Settings
+	Logger   *slog.Logger
+	Version  string
 	// DataDir holds mcp.json.
 	DataDir string
 	// Port is the preferred port; 0 selects DefaultPort.
@@ -63,6 +65,7 @@ func New(o Options) *Server {
 		Jobs:        mcpkit.NewJobs(o.JobTable),
 		Files:       files,
 		Credentials: o.Keys,
+		Settings:    o.Settings,
 		Logger:      o.Logger,
 		Version:     o.Version,
 		ListenAddr:  func() string { return mgr.Addr() },

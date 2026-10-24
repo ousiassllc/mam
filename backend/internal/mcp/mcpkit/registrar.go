@@ -18,7 +18,19 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/ousiassllc/mam/backend/internal/credential"
+	"github.com/ousiassllc/mam/backend/internal/service/appupdate"
+	"github.com/ousiassllc/mam/backend/internal/service/llmassign"
+	"github.com/ousiassllc/mam/backend/internal/service/modelsettings"
 )
+
+// Settings are the services of the global settings screen that are not in service.Services (the app builds
+// them next to the router: router/settingsroutes.Services). A nil field is a section the app does not
+// have (Update in the headless server); its tools answer "unavailable".
+type Settings struct {
+	LLM    *llmassign.Service
+	Models *modelsettings.Service
+	Update *appupdate.Service
+}
 
 // Kit is what the server shares with the tool packages besides service.Services.
 type Kit struct {
@@ -35,6 +47,8 @@ type Kit struct {
 	Version string
 	// ListenAddr is the address the MCP listener has now ("127.0.0.1:8788").
 	ListenAddr func() string
+	// Settings are the services of the global settings sections (LLM / model assignment, update check).
+	Settings Settings
 }
 
 // Registrar adds the tools of the tool packages to one MCP server and counts them. The Kit is embedded,
