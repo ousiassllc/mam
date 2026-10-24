@@ -207,7 +207,7 @@ func VendorOf(m domain.ModelName) Vendor {
 	case chatgptid.Model:
 		return Vendor(chatgptid.Vendor)
 	}
-	if _, endpoint, _, ok := localcfg.ParseID(string(m)); ok {
+	if endpoint, ok := localcfg.EndpointOf(string(m)); ok {
 		return Vendor(localcfg.VendorKey(endpoint))
 	}
 	return Vendor(m)

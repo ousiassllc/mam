@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/limitclock"
 	"github.com/ousiassllc/mam/backend/internal/agent/resilience"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
@@ -190,7 +191,7 @@ func (a *Adapter) GenerateVideo(ctx context.Context, primary, fallback VideoTarg
 		targets = append(targets, fallback)
 	}
 	var failures []error
-	clock := &limitClock{limit: job.MaxTime}
+	clock := &limitclock.Clock{Limit: job.MaxTime}
 	for i, t := range targets {
 		backend := st.backends.Video[t.Model]
 		if backend == nil {
@@ -214,7 +215,7 @@ func (a *Adapter) GenerateVideo(ctx context.Context, primary, fallback VideoTarg
 		if ctx.Err() != nil {
 			return VideoOutput{}, ctx.Err()
 		}
-		if clock.expired() {
+		if clock.Expired() {
 			// The alternative has no time left either: say that, not what the cut-off call returned.
 			return VideoOutput{}, fmt.Errorf("%w (%s): %w", ErrTimeLimit, job.MaxTime, err)
 		}
@@ -240,7 +241,7 @@ func (a *Adapter) logFailover(m domain.ModelName, i, n int, err error) {
 // concurrency slot, and retries unavailable answers with exponential backoff. A 429 also lowers
 // the vendor's concurrency limit. The call is bounded by the vendor's timeout, and by clock, which
 // starts once the slot is held.
-func call[T any](ctx context.Context, a *Adapter, st *state, v Vendor, clock *limitClock, fn func(context.Context) (T, error), model string) (T, error) {
+func call[T any](ctx context.Context, a *Adapter, st *state, v Vendor, clock *limitclock.Clock, fn func(context.Context) (T, error), model string) (T, error) {
 	var zero T
 	b, lim := st.breakers[v], st.limiters[v]
 	if b == nil || lim == nil {
@@ -255,7 +256,7 @@ func call[T any](ctx context.Context, a *Adapter, st *state, v Vendor, clock *li
 	}
 	ok := false
 	defer func() { release(ok) }()
-	ctx, cancelLimit := clock.start(ctx)
+	ctx, cancelLimit := clock.Start(ctx)
 	defer cancelLimit()
 
 	policy := resilience.Policy{

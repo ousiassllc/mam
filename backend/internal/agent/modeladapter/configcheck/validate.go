@@ -22,6 +22,7 @@ func Load(path string) (modeladapter.Config, error) {
 	if err != nil {
 		return modeladapter.Config{}, err
 	}
+	cfg = withWorkflows(cfg)
 	if err := Validate(cfg); err != nil {
 		return modeladapter.Config{}, fmt.Errorf("model config %s: %w", path, err)
 	}
@@ -188,6 +189,9 @@ func checkVideoTarget(c modeladapter.Config, where string, t modeladapter.VideoT
 }
 
 func checkVendorSettings(c modeladapter.Config, where string, m domain.ModelName) []error {
+	if _, saved := c.Workflows[string(m)]; saved {
+		return nil // a saved workflow runs on the endpoint it names, which may not be registered yet: it has no backend until it is
+	}
 	if _, ok := c.VendorSettings()[modeladapter.VendorOf(m)]; !ok {
 		return []error{fmt.Errorf("%s: no vendor settings for %q", where, modeladapter.VendorOf(m))}
 	}

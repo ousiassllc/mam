@@ -49,6 +49,8 @@ type Fake struct {
 	CancelStatus int
 	// running / pending are the prompt IDs GET /queue lists.
 	Running, Pending []string
+	Server
+	ServerMu sync.Mutex
 }
 
 // New starts a fake ComfyUI server that closes with the test.
@@ -72,6 +74,9 @@ func (f *Fake) record(r *http.Request) {
 
 func (f *Fake) serve(w http.ResponseWriter, r *http.Request) {
 	f.record(r)
+	if f.serveServer(w, r) {
+		return
+	}
 	switch {
 	case r.URL.Path == "/ws":
 		f.socket(w, r)

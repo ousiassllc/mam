@@ -1,0 +1,26 @@
+package pages
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/layout"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/workflows"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// WorkflowsPage is GET /workflows: the ComfyUI workflows saved in mam.
+templ WorkflowsPage(csrfToken string, d workflows.Data) {
+	@layout.AppLayout("ワークフロー", csrfToken) {
+		<main class="mx-auto flex max-w-4xl flex-col gap-6 p-8">
+			<div>
+				@atoms.BackLink(paths.Home(), "← プロジェクト一覧に戻る")
+				<h1 class="mb-1 mt-3 text-xl font-semibold">ワークフロー</h1>
+				<p class="text-sm text-neutral-400">
+					ComfyUI のワークフローを mam に保存し、画像の用途・Quality Policy・Shot の Video Model で選べるようにします。作成と編集は
+					<a class="underline hover:text-neutral-100" href={ templ.SafeURL(paths.Nodes()) }>ノード画面</a>
+					で行います。
+				</p>
+			</div>
+			@workflows.Panel(d)
+		</main>
+	}
+}

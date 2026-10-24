@@ -28,6 +28,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/shotgen"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/shotplan"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/takes"
+	"github.com/ousiassllc/mam/backend/internal/mcp/tools/workflows"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/worldnotes"
 	"github.com/ousiassllc/mam/backend/internal/service"
 )
@@ -60,6 +61,7 @@ func Register(r *mcpkit.Registrar, svc *service.Services) {
 	modelmgr.Register(r, svc)
 	modeltrial.Register(r, svc)
 	chatgptauth.Register(r, svc)
+	workflows.Register(r, svc)
 
 	editor.Register(r, svc)
 	editorstage.Register(r, svc)

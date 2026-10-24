@@ -19,6 +19,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
+	"github.com/ousiassllc/mam/backend/internal/service/workflows"
 )
 
 // Deps are the infrastructure dependencies wired once in cmd/server.
@@ -37,8 +38,7 @@ type Deps struct {
 	Models *modeladapter.Adapter
 	// FreeBytes reports the free disk space at a path. Nil selects fsutil.FreeBytes.
 	FreeBytes func(path string) (uint64, error)
-	// Frames samples frames from Takes (ffmpeg). The AI Video Judge is available only when it, LLM
-	// and Jobs are all set.
+	// Frames samples frames from Takes (ffmpeg). The AI Video Judge is available only when it, LLM and Jobs are all set.
 	Frames judge.FrameSource
 	// Faces is the local face engine of the Face Identity Similarity. Nil: Takes are judged
 	// qualitatively only.
@@ -58,33 +58,33 @@ type Deps struct {
 
 // Services is the DI root handed to router.New: one field per feature and one line in wiring.services (wiring.go).
 type Services struct {
-	Health      *HealthService
-	Credentials *CredentialService
-	Projects    *ProjectService
-	Chat        *ChatService
-	Plans       *PlanService
-	Generation  *GenerationService
-	World       *WorldService
-	Director    *DirectorService
-	Policy      *PolicyService
-	Judge       *JudgeService
-	Repair      *RepairService
-	Continue    *ContinueService
-	Reference   *ReferenceService
-	Trace       *TraceService
-	Versions    *VersionService
-	Bundle      *BundleService
-	Series      *SeriesService
-	Takes       *TakeService
-	Notes       *NoteService
-	Branch      *BranchService
-	Review      *ReviewService
-	Editor      *EditorService
-	Brand       *BrandService
-	Analytics   *AnalyticsService
-	LocalModels *localmodels.Service // ComfyUI / OpenAI-compatible endpoints and models; the app sets it
-	// ModelManager: bundled ComfyUI engine, model catalog, trial generation; the app sets it.
-	ModelManager *modelmanager.Service
+	Health       *HealthService
+	Credentials  *CredentialService
+	Projects     *ProjectService
+	Chat         *ChatService
+	Plans        *PlanService
+	Generation   *GenerationService
+	World        *WorldService
+	Director     *DirectorService
+	Policy       *PolicyService
+	Judge        *JudgeService
+	Repair       *RepairService
+	Continue     *ContinueService
+	Reference    *ReferenceService
+	Trace        *TraceService
+	Versions     *VersionService
+	Bundle       *BundleService
+	Series       *SeriesService
+	Takes        *TakeService
+	Notes        *NoteService
+	Branch       *BranchService
+	Review       *ReviewService
+	Editor       *EditorService
+	Brand        *BrandService
+	Analytics    *AnalyticsService
+	LocalModels  *localmodels.Service  // ComfyUI / OpenAI-compatible endpoints and models; the app sets it
+	ModelManager *modelmanager.Service // bundled ComfyUI engine, model catalog, trial generation; the app sets it
+	Workflows    *workflows.Service    // ComfyUI workflows saved in mam (node screen, models, MCP); the app sets it
 }
 
 // Close stops the background workers of the services and kills the Take preview conversions that

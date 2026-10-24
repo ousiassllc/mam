@@ -26,9 +26,11 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
 	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/repository/comfywf"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
+	"github.com/ousiassllc/mam/backend/internal/service/workflows"
 )
 
 // buildServices opens the database, builds every dependency of the services, recovers the work an
@@ -92,6 +94,10 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 	chatgptsub.Add(llmBackends, llmCfg, gpt.Official(), nil) // the ChatGPT plan provider; its sign-in is not an API key
 	reasoning := llm.NewClient(llmCfg, llmBackends, llm.WithLogger(logger))
 
+	// The saved ComfyUI workflows are models of the settings: the routes of models.json may name them.
+	if err := workflows.Publish(ctx, comfywf.New(db), logger); err != nil {
+		return nil, nil, nil, err
+	}
 	modelPath, modelPinned := cfg.ModelSettingsFile()
 	modelFile, err := settingsFileToLoad(modelPath, modelPinned)
 	if err != nil {
@@ -172,6 +178,7 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 	}
 	services.ModelManager = mgr
 	manager.Store(mgr)
+	services.Workflows = newWorkflows(cfg, db, localModels, models, mgr, services.Projects, keys, backendOpts, logger)
 	closers = append(closers, mgr.Close) // after jobs.Stop too: the engine outlives the jobs that call it
 	if err := recoverWork(ctx, services, jobs, logger); err != nil {
 		return nil, nil, nil, err

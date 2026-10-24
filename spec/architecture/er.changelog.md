@@ -81,3 +81,4 @@
 | 1.74 | 2026-10-16 | §3 の `job` に、再開回数の上限 3（`attempts` が 3 未満の間だけ再開）と、再開可能な種別が `plan` と `judge` であること（`generate`・`repair` は再開しない）を追記した（行数は増やしていない） | Issue #761。`jobqueue.DefaultMaxAttempts`（`Recover` の `job.Attempts < maxAttempts`）と `service/wiring.go` の `Register` の再開可否が仕様に無かった |
 | 1.75 | 2026-10-24 | MCP サーバーのベアラートークンのテーブル `mcp_token`（値は SHA-256 のみ保存。作成・最終利用・失効の日時）を足した。定義は行数上限のため `spec/architecture/er-mcp.md` に置き、冒頭から参照する | Issue #830。MCP サーバー（`spec/architecture/mcp.md`）の認証に、複数発行・個別失効できるトークンの保存先が要るため |
 | 1.76 | 2026-10-25 | `job.kind` に `model_install`・`gentest` を足した（6 値。再開は `model_install` のみ）。定義は行数上限のため [er-model-manager.md](model-manager/er-model-manager.md) に書いた | Issue #833。モデルの導入と試し生成を既存のジョブキューで動かすため |
+| 1.77 | 2026-10-25 | `comfy_workflow`・`comfy_workflow_version`（ComfyUI ワークフローの保存と版）を、新しいファイル [er-comfy-workflows.md](comfy/er-comfy-workflows.md) に足した | Issue #834 |

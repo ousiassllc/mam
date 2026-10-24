@@ -73,6 +73,11 @@ func Build(cfg modeladapter.Config, keys credential.Store, o Options) modeladapt
 			}
 		}
 	}
+	for id, w := range cfg.Workflows {
+		if client := clients[w.Endpoint]; client != nil && cfg.Endpoints[w.Endpoint].Kind == localcfg.KindComfyUI {
+			buildSaved(b, domain.ModelName(id), w, client, o.Prepare)
+		}
+	}
 	return b
 }
 
@@ -81,12 +86,15 @@ func Build(cfg modeladapter.Config, keys credential.Store, o Options) modeladapt
 // screen. Call it whenever the backends are rebuilt. The ChatGPT subscription's image model is listed only
 // while the user has turned it on, so it is never offered while it would not be called.
 func (o Options) Publish(cfg modeladapter.Config) {
-	modeladapter.PublishLocal(cfg.Endpoints, cfg.LocalModels)
+	modeladapter.PublishLocal(cfg.Endpoints, cfg.LocalModels, cfg.Workflows)
 	images := localcfg.IDs(cfg.Endpoints, cfg.LocalModels, localcfg.MediaImage)
+	savedImages, savedVideos, labels := savedLists(cfg.Workflows)
+	images = append(images, savedImages...)
 	if o.ChatGPTImage != nil && o.ChatGPTImageEnabled != nil && o.ChatGPTImageEnabled() {
 		images = append(images, string(chatgptid.Model))
 	}
-	modelreg.Set(images, localcfg.IDs(cfg.Endpoints, cfg.LocalModels, localcfg.MediaVideo))
+	modelreg.Set(images, append(localcfg.IDs(cfg.Endpoints, cfg.LocalModels, localcfg.MediaVideo), savedVideos...))
+	modelreg.SetLabels(labels)
 }
 
 // Publish is Options.Publish without the ChatGPT image model.

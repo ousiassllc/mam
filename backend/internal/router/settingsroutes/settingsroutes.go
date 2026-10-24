@@ -16,6 +16,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/mcpsettings"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/modelsettings"
+	workflowsvc "github.com/ousiassllc/mam/backend/internal/service/workflows"
 	"github.com/ousiassllc/mam/backend/internal/web/handler"
 	updatehandler "github.com/ousiassllc/mam/backend/internal/web/handler/appupdate"
 	chatgpthandler "github.com/ousiassllc/mam/backend/internal/web/handler/chatgptsettings"
@@ -43,6 +44,8 @@ type Services struct {
 	LocalModels *localmodels.Service
 	// ChatGPT is the ChatGPT sign-in section. Nil leaves the section and its routes out.
 	ChatGPT *chatgpt.Service
+	// Workflows is the node screen and the saved ComfyUI workflows (service.Services.Workflows). Nil leaves them out.
+	Workflows *workflowsvc.Service
 	// ModelManager is the model manager screen (paths.ModelManager). Nil leaves the screen and its routes out.
 	ModelManager *modelmanager.Service
 }
@@ -103,6 +106,9 @@ func Register(engine *gin.Engine, keys *service.CredentialService, s *Services) 
 		engine.DELETE(paths.LLMSettings(), llmhandler.Reset(s.LLM))
 		engine.PUT(paths.ModelSettings(), modelhandler.Save(s.Models))
 		engine.DELETE(paths.ModelSettings(), modelhandler.Reset(s.Models))
+	}
+	if s != nil && s.Workflows != nil {
+		registerWorkflows(engine, s.Workflows)
 	}
 	if s != nil && s.LocalModels != nil {
 		registerLocalModels(engine, localhandler.Handlers{Local: s.LocalModels, Models: s.Models})
