@@ -37,9 +37,10 @@ func run(ctx context.Context, args []string, getenv func(string) string, stderr 
 		return err
 	}
 	return app.Run(ctx, app.Options{
-		Args:   args,
-		Getenv: getenv,
-		Stderr: stderr,
+		Args:        args,
+		Getenv:      getenv,
+		Stderr:      stderr,
+		OpenBrowser: openBrowser,
 		OnReady: func(url string) {
 			if !cfg.OpenBrowser {
 				return

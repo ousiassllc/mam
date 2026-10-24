@@ -13,10 +13,13 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/jev"
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
+	"github.com/ousiassllc/mam/backend/internal/agent/llm/chatgptsub"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/chatgptimage"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/configcheck"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localbackends"
 	"github.com/ousiassllc/mam/backend/internal/bundlezip"
+	"github.com/ousiassllc/mam/backend/internal/chatgpt"
 	"github.com/ousiassllc/mam/backend/internal/config"
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
@@ -31,7 +34,7 @@ import (
 // the reverse order of construction (queue, services, Judge, database). It is nil on error, where
 // buildServices has already released everything it had built. db is the database: the app updater reads
 // the job table through it to see whether any work is in flight, and the MCP server keeps its tokens in it.
-func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger) (_ *service.Services, _ *repository.DB, _ func(), err error) {
+func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, gpt *chatgpt.Service) (_ *service.Services, _ *repository.DB, _ func(), err error) {
 	var closers []func()
 	release := func() {
 		for i := len(closers) - 1; i >= 0; i-- {
@@ -83,7 +86,9 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger) 
 		return nil, nil, nil, err
 	}
 	keys := credential.NewKeyring()
-	reasoning := llm.NewClient(llmCfg, llm.NewBackends(llmCfg, keys, nil), llm.WithLogger(logger))
+	llmBackends := llm.NewBackends(llmCfg, keys, nil)
+	chatgptsub.Add(llmBackends, llmCfg, gpt.Official(), nil) // the ChatGPT plan provider; its sign-in is not an API key
+	reasoning := llm.NewClient(llmCfg, llmBackends, llm.WithLogger(logger))
 
 	modelPath, modelPinned := cfg.ModelSettingsFile()
 	modelFile, err := settingsFileToLoad(modelPath, modelPinned)
@@ -94,9 +99,14 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger) 
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	backendOpts := localbackends.Options{StagingDir: filepath.Join(cfg.AssetsDir(), ".staging")}
+	backendOpts := localbackends.Options{
+		StagingDir:   filepath.Join(cfg.AssetsDir(), ".staging"),
+		ChatGPTImage: chatgptimage.New(gpt, chatgptimage.Options{}), ChatGPTImageEnabled: gpt.ImageEnabled,
+	}
 	models := modeladapter.New(modelCfg, localbackends.Build(modelCfg, keys, backendOpts), modeladapter.WithLogger(logger))
-	localbackends.Publish(modelCfg)
+	backendOpts.Publish(modelCfg)
+	// The subscription's image model is listed only while it is on: the switch republishes the list.
+	gpt.SetOnImageChange(func() { backendOpts.Publish(models.Config()) })
 	localModels := localmodels.New(localmodels.Deps{
 		Path: modelPath, Pinned: modelPinned, Keys: keys, Adapter: models, Backends: backendOpts, Logger: logger,
 	})

@@ -70,6 +70,14 @@ type APIError struct {
 	Message    string
 	RetryAfter time.Duration
 	Err        error
+	// Permanent marks a failure that waiting does not cure (a plan's usage limit, a sign-in that must be
+	// repeated): it is neither retried nor counted by the circuit breaker, and the call goes straight to the
+	// alternative provider.
+	Permanent bool
+	// Notice is a sentence for the user about the cause of this failure (a usage limit, a sign-in to repeat). It
+	// is told when the call is routed to the alternative provider (WithFallbackNotice) and is the reason shown when
+	// every provider failed. It names no token.
+	Notice string
 }
 
 func (e *APIError) Error() string {
@@ -94,7 +102,7 @@ func unavailable(err error) bool {
 	}
 	var api *APIError
 	if errors.As(err, &api) {
-		return api.Status == 0 || api.Status == 429 || api.Status >= 500
+		return !api.Permanent && (api.Status == 0 || api.Status == 429 || api.Status >= 500)
 	}
 	return false
 }
@@ -171,6 +179,7 @@ func (c *Client) Complete(ctx context.Context, agent Agent, req Request) (Respon
 		if i+1 < len(targets) {
 			c.logger.Warn("llm target failed, routing to the alternative provider",
 				"agent", agent, "provider", t.Provider, "next_provider", targets[i+1].Provider, "err", err)
+			notifyFallback(ctx, err)
 		}
 	}
 	// Only a route whose providers were all skipped by their breakers is an ErrCircuitOpen: when the

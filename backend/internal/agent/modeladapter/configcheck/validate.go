@@ -10,6 +10,7 @@ import (
 	"slices"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/chatgptid"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
@@ -61,7 +62,7 @@ func validateModels(c modeladapter.Config) []error {
 	var errs []error
 	for _, m := range slices.Sorted(maps.Keys(c.Models)) {
 		caps, video := modeladapter.Capabilities(m)
-		if !slices.Contains(domain.ImageModels(), m) && !video {
+		if !slices.Contains(domain.ImageModels(), m) && !video && m != chatgptid.Model {
 			errs = append(errs, fmt.Errorf("models: %q is not an image or video model", m))
 		}
 		for _, res := range slices.Sorted(maps.Keys(c.Models[m].CostPerSecond)) {
@@ -158,6 +159,8 @@ func checkImageTarget(c modeladapter.Config, where string, t modeladapter.ImageT
 	} else {
 		mc, ok := c.Models[t.Model]
 		fast, configured = mc.FastModel, slices.Contains(domain.ImageModels(), t.Model) && ok && mc.Model != ""
+		// Valid while image generation by subscription is off, too: a route that names it then fails over.
+		configured = configured || t.Model == chatgptid.Model
 	}
 	if !configured {
 		errs = append(errs, fmt.Errorf("%s: %q is not a configured image model", where, t.Model))

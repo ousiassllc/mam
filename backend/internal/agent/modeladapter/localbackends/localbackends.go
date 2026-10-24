@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/chatgptid"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/comfyui"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localhttp"
@@ -25,6 +26,10 @@ type Options struct {
 	StagingDir string
 	// Vendor are the options of the built-in vendors' backends.
 	Vendor []modeladapter.BackendOption
+	// ChatGPTImage is the backend of chatgptid.Model (image generation with a ChatGPT subscription); nil leaves
+	// the model without a backend. It is offered for selection (Publish) only while ChatGPTImageEnabled is true.
+	ChatGPTImage        modeladapter.ImageBackend
+	ChatGPTImageEnabled func() bool
 }
 
 // Build returns the backends of cfg. A model of an endpoint that cannot be built (a bad base URL) is
@@ -32,6 +37,9 @@ type Options struct {
 // setting before it is saved.
 func Build(cfg modeladapter.Config, keys credential.Store, o Options) modeladapter.Backends {
 	b := modeladapter.NewBackends(cfg, keys, nil, o.PollEvery, append([]modeladapter.BackendOption{modeladapter.WithStagingDir(o.StagingDir)}, o.Vendor...)...)
+	if o.ChatGPTImage != nil {
+		b.Image[chatgptid.Model] = o.ChatGPTImage
+	}
 	clients := map[string]*localhttp.Client{}
 	for name, e := range cfg.Endpoints {
 		c, err := localhttp.New(name, e, keys, o.StagingDir)
@@ -67,8 +75,16 @@ func Build(cfg modeladapter.Config, keys credential.Store, o Options) modeladapt
 
 // Publish makes the models of cfg selectable everywhere a model name is validated (modelreg, read by
 // domain.ImageModels and domain.VideoModels): the locks of a Shot, the Director's commands, the settings
-// screen. Call it whenever the backends are rebuilt.
-func Publish(cfg modeladapter.Config) {
+// screen. Call it whenever the backends are rebuilt. The ChatGPT subscription's image model is listed only
+// while the user has turned it on, so it is never offered while it would not be called.
+func (o Options) Publish(cfg modeladapter.Config) {
 	modeladapter.PublishLocal(cfg.Endpoints, cfg.LocalModels)
-	modelreg.Set(localcfg.IDs(cfg.Endpoints, cfg.LocalModels, localcfg.MediaImage), localcfg.IDs(cfg.Endpoints, cfg.LocalModels, localcfg.MediaVideo))
+	images := localcfg.IDs(cfg.Endpoints, cfg.LocalModels, localcfg.MediaImage)
+	if o.ChatGPTImage != nil && o.ChatGPTImageEnabled != nil && o.ChatGPTImageEnabled() {
+		images = append(images, string(chatgptid.Model))
+	}
+	modelreg.Set(images, localcfg.IDs(cfg.Endpoints, cfg.LocalModels, localcfg.MediaVideo))
 }
+
+// Publish is Options.Publish without the ChatGPT image model.
+func Publish(cfg modeladapter.Config) { Options{}.Publish(cfg) }

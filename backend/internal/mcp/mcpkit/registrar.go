@@ -17,6 +17,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/ousiassllc/mam/backend/internal/chatgpt"
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/service/appupdate"
 	"github.com/ousiassllc/mam/backend/internal/service/llmassign"
@@ -30,6 +31,8 @@ type Settings struct {
 	LLM    *llmassign.Service
 	Models *modelsettings.Service
 	Update *appupdate.Service
+	// ChatGPT is the ChatGPT sign-in (login, logout, status and the image generation switch).
+	ChatGPT *chatgpt.Service
 }
 
 // Kit is what the server shares with the tool packages besides service.Services.

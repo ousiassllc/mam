@@ -24,7 +24,7 @@ func startMCP(cfg config.Config, services *service.Services, settings *settingsr
 	tokens := mcptoken.New(mcptokenrepo.New(db))
 	srv := server.New(server.Options{
 		Services: services,
-		Settings: mcpkit.Settings{LLM: settings.LLM, Models: settings.Models, Update: settings.Update},
+		Settings: mcpkit.Settings{LLM: settings.LLM, Models: settings.Models, Update: settings.Update, ChatGPT: settings.ChatGPT},
 		Tokens:   tokens,
 		JobTable: repository.NewJobRepository(db),
 		Keys:     credential.NewKeyring(),

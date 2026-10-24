@@ -51,7 +51,7 @@ func (s *Service) Reload() error {
 		return err
 	}
 	s.Adapter.Reload(cfg, localbackends.Build(cfg, s.Keys, s.Backends))
-	localbackends.Publish(cfg)
+	s.Backends.Publish(cfg)
 	return nil
 }
 

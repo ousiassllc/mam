@@ -7,6 +7,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/analytics"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/brand"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/chat"
+	"github.com/ousiassllc/mam/backend/internal/mcp/tools/chatgptauth"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/credentials"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/director"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/editor"
@@ -54,6 +55,7 @@ func Register(r *mcpkit.Registrar, svc *service.Services) {
 	health.Register(r, svc)
 	settings.Register(r, svc)
 	localmodels.Register(r, svc)
+	chatgptauth.Register(r, svc)
 
 	editor.Register(r, svc)
 	editorstage.Register(r, svc)
