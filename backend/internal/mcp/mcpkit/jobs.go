@@ -127,11 +127,20 @@ func (j *Jobs) RegisterKind(kind string, probe Probe) {
 // what was there before. A kind with no Probe needs a queue job id: there would be nothing to read
 // the progress from.
 func (j *Jobs) Run(ctx context.Context, kind, target string, start func(ctx context.Context) (queueJobID string, err error)) (JobRef, error) {
+	return j.RunResolved(ctx, kind, func(ctx context.Context) (string, string, error) {
+		queueID, err := start(ctx)
+		return target, queueID, err
+	})
+}
+
+// RunResolved is Run for work whose target is only known once it has started (Continue makes the Shot it
+// generates): start returns the target together with the queue job id.
+func (j *Jobs) RunResolved(ctx context.Context, kind string, start func(ctx context.Context) (target, queueJobID string, err error)) (JobRef, error) {
 	j.mu.Lock()
 	_, probed := j.probes[kind]
 	j.mu.Unlock()
 	startedAt := j.now().UTC()
-	queueID, err := start(ctx)
+	target, queueID, err := start(ctx)
 	if err != nil {
 		return JobRef{}, err
 	}

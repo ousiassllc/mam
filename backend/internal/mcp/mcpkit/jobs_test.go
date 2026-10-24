@@ -183,3 +183,19 @@ func TestJobs_ForgetsOldJobsAndKeepsTheNewest(t *testing.T) {
 	assert.ErrorIs(t, err, service.ErrNotFound, "the oldest goes when the registry is full")
 	assert.LessOrEqual(t, len(j.entries), maxJobs)
 }
+
+func TestJobs_RunResolvedTakesTheTargetFromTheStartedWork(t *testing.T) {
+	ctx := context.Background()
+	j, _ := newJobs(nil)
+	work := &shotWork{state: "running"}
+	j.RegisterKind("generate_shot", work.probe)
+
+	ref, err := j.RunResolved(ctx, "generate_shot", func(context.Context) (string, string, error) { return "new-shot", "", nil })
+	require.NoError(t, err)
+	st, err := j.Get(ctx, ref.JobID)
+	require.NoError(t, err)
+	assert.Equal(t, "new-shot", st.Target, "the target the work made, not one known before it started")
+
+	_, err = j.RunResolved(ctx, "generate_shot", func(context.Context) (string, string, error) { return "", "", errors.New("refused") })
+	assert.EqualError(t, err, "refused", "a start that fails makes no job")
+}
