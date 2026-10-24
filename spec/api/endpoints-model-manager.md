@@ -28,11 +28,11 @@
 | PUT | `/model-manager/hf-token` | Hugging Face のトークンの保存。フォーム `token`。応答は「設定済み（末尾 4 文字）」の状態だけで、**値は返さない** |
 | DELETE | `/model-manager/hf-token` | トークンの削除（未設定でもエラーにならない） |
 | GET | `/model-manager/external` | 外部の ComfyUI の確認（`#mm-external`）。クエリ `endpoint`（種類 ComfyUI の接続先の名前）を渡すと、その ComfyUI が持つモデルファイルと、カタログのモデルに足りないファイルを出す（読むだけ。導入の操作は無い）。同梱の `bundled-comfyui` は 422、未登録は 404、到達できないときは 502 |
-| GET | `/model-manager/trials` | 試し生成の一覧（`#mm-trials`）。動いているものがあれば自分で取り直す。クエリ `jobs` は、まだ記録（`record.json`）を作っていないジョブ（待機中）を出すためのもの |
+| GET | `/model-manager/trials` | 試し生成の一覧（`#mm-trials`）。生成テストの履歴のうち、この画面のローカルのモデルの結果を新しい順に 20 件。待機中・生成中のものがあれば自分で取り直す |
 | GET | `/model-manager/trials/form` | 選んだモデル向けの試し生成フォーム（動画モデルは解像度・長さ・ネガティブプロンプト、参照画像を使えるモデルだけ画像の欄）。入力済みのプロンプトは保ったまま差し替える |
-| POST | `/model-manager/trials` | 試し生成の開始（ジョブ）。multipart: `model_id`・`prompt`・`negative_prompt`・`aspect_ratio`・`resolution`・`duration_seconds`・`reference`（任意のファイル。PNG・JPEG・WebP、20 MiB まで）。モデルの検査（プロンプトの長さ・動画の長さと解像度・参照画像の可否・縦横比・画像の種類）に通らなければ 422 でジョブを作らない。202 |
-| DELETE | `/model-manager/trials/:id` | 試し生成の結果の削除。動いているものは 409、無ければ 404 |
-| GET | `/model-manager/trials/:id/file` | 結果のファイル（画像・動画）。保存した MIME のまま `Content-Security-Policy: sandbox` を付けて返す（Take のメディアと同じ `serveMedia` の扱い）。完了していない・無い試し生成は 404 |
+| POST | `/model-manager/trials` | 試し生成の開始（生成テストの 1 件のバッチ。見積り（ローカルは 0 USD）を確認したものとして実行する）。multipart: `model_id`・`prompt`・`negative_prompt`・`aspect_ratio`・`resolution`・`duration_seconds`・`reference`（任意のファイル。PNG・JPEG・WebP、20 MiB まで）。モデルの検査（プロンプトの長さ・動画の長さと解像度・参照画像の可否・縦横比・画像の種類）に通らなければ 422 でジョブを作らない。202 |
+| DELETE | `/model-manager/trials/:id` | 試し生成の結果の削除（`:id` は生成テストの結果 ID。履歴からも消える）。動いているものは 409、無ければ 404 |
+| GET | `/model-manager/trials/:id/file` | 結果のファイル（画像・動画）。保存した MIME のまま `Content-Security-Policy: sandbox` を付けて返す（Take のメディアと同じ `serveMedia` の扱い）。完了していない・無い結果は 404（`/generation-test/results/:id/file` と同じ） |
 
 `POST /model-manager/trials` は、`middleware.MaxBody` のアップロード用ルートの一覧に載せ、参照画像のために本文の上限を 21 MiB まで広げている（本文の読み取りはハンドラが `MaxBytesReader` で制限する）。
 
@@ -73,3 +73,4 @@
 | 版 | 日付 | 変更内容 | 変更理由 |
 |----|------|---------|---------|
 | 1.0 | 2026-10-25 | 新規作成（ルート・エラーの対応・画面・テスト） | Issue #833。モデルマネージャーの画面 |
+| 1.1 | 2026-10-26 | 試し生成のルートを、生成テスト（[endpoints-gentest.md](endpoints-gentest.md)）の 1 件のバッチを動かすものに改めた（一覧は履歴の結果・`jobs` クエリを廃止・`:id` は結果の ID）。試し生成の区画に生成テスト画面へのリンクを足した | Issue #835 |

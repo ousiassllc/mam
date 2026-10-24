@@ -185,3 +185,12 @@ func TestPostsNeedTheCSRFToken(t *testing.T) {
 		assert.Equal(t, http.StatusForbidden, s.send(req).Code, p)
 	}
 }
+
+// A picture over the 1 MiB that an ordinary form may carry still reaches the estimate: it is an upload route.
+func TestEstimateTakesAPictureOverTheOrdinaryBodyLimit(t *testing.T) {
+	s := newScreen(t)
+	big := append(append([]byte{}, gentesttest.PNG...), make([]byte, 3<<20)...)
+	rec := s.upload(paths.GenerationTestPart("estimate"), batchForm("flux-2"), "upload", big)
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String()[:min(300, rec.Body.Len())])
+	assert.Contains(t, rec.Body.String(), `data-testid="gt-run"`)
+}

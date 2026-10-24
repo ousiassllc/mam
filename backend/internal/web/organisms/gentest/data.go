@@ -3,7 +3,11 @@
 // with its import form, and the prompt history. The handlers build these structs; nothing here calls a service.
 package gentest
 
-import "strconv"
+import (
+	"strconv"
+
+	"github.com/ousiassllc/mam/backend/internal/domain"
+)
 
 // DOM ids the handlers' HTMX targets name.
 const (
@@ -40,7 +44,7 @@ const (
 // Limits of the text fields (the service checks the same).
 const (
 	MaxAspectLen = len("99:99")
-	MaxNameLen   = 100
+	MaxNameLen   = domain.MaxReferenceNameRunes
 )
 
 func itoa(n int) string { return strconv.Itoa(n) }

@@ -6,7 +6,6 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"path"
 	"path/filepath"
@@ -127,7 +126,7 @@ func (s *Service) newBatch(r Request, est Estimate, plans []modelPlan, sources [
 	for i, src := range sources {
 		inputIDs[i] = domain.NewID()
 		name := "in-" + inputIDs[i] + inputTypes[src.mime]
-		if err := copyFile(src.path, filepath.Join(dir, name)); err != nil {
+		if err := fsutil.CopyFile(src.path, filepath.Join(dir, name)); err != nil {
 			return fail(fmt.Errorf("copy input image: %w", err))
 		}
 		nb.Inputs = append(nb.Inputs, gentestrepo.Input{
@@ -174,16 +173,4 @@ func foldFor(m modelcatalog.Info, p PromptInput) (sent, mode string) {
 		return p.Prompt, gentestrepo.NegativeField
 	}
 	return direct.Fold(p.Prompt, p.Negative), gentestrepo.NegativeFolded
-}
-
-func copyFile(src, dst string) error {
-	in, err := os.Open(src) //nolint:gosec // src is a file resolve() found: staged, an asset of a Project or a history file
-	if err != nil {
-		return err
-	}
-	defer func() { _ = in.Close() }()
-	return fsutil.WriteAtomic(dst, 0o600, func(w io.Writer) error {
-		_, err := io.Copy(w, in)
-		return err
-	})
 }

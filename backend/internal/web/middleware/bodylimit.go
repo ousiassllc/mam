@@ -27,6 +27,7 @@ var uploadRoutes = map[string]struct{}{
 	"POST /reviews/import":                {},
 	"POST /workflows/import":              {},
 	"POST /model-manager/trials":          {},
+	"POST /generation-test/estimate":      {},
 }
 
 func isUploadRoute(c *gin.Context) bool {

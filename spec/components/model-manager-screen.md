@@ -16,7 +16,7 @@
 - **進捗は HTMX のポーリング**: 動いているジョブのある区画（エンジンのカード・モデルの一覧・試し生成の一覧）は `hx-get` と `hx-trigger="every 2s"` を持ち、ジョブがなくなると属性が消えて止まる。取り直しの URL はジョブの ID を持ち（`?job=`・`?jobs=`）、ジョブが終わった取り直しで、結果（導入した／失敗の理由）を 1 度出す。WebSocket は使わない。
 - **操作の応答は、変えた区画だけ**（`hx-target="#mm-…"`・`outerHTML`）。導入の完了・エンジンの削除・モデルの削除は、ほかの区画（モデルの一覧・試し生成のモデルの選択肢）を `hx-swap-oob` で描き直す。
 - **破壊的な操作**（エンジンの削除・モデルの削除・導入の中断・試し生成の削除・トークンの削除）は `hx-confirm` を持つ。送信ボタンは `hx-disabled-elt` と `hx-sync="this:drop"` で二重送信を防ぐ（`double_submit_test`・`destructive_confirm_test` が検査する）。
-- **入力の長さ**は定数（`MaxTokenLen`・`MaxAspectLen`、プロンプトは `modelmanager.MaxPromptRunes`）で、テンプレートに数字を書かない（`maxlength_test`）。
+- **入力の長さ**は定数（`MaxTokenLen`・`MaxAspectLen`、プロンプトは `gentest.MaxPromptRunes`）で、テンプレートに数字を書かない（`maxlength_test`）。
 - **秘密を出さない**: Hugging Face のトークンは、状態（設定済みか・末尾 4 文字）だけを描く。
 - **入口**: `projects_page`（プロジェクト一覧）のリンク「モデルマネージャー」と、`global_settings_page` の見出しの下のリンク。
 
@@ -25,3 +25,4 @@
 | 版 | 日付 | 変更内容 | 変更理由 |
 |----|------|---------|---------|
 | 1.0 | 2026-10-25 | 新規作成 | Issue #833。モデルマネージャーの画面のコンポーネント |
+| 1.1 | 2026-10-26 | 試し生成の区画が生成テストの結果を出すことに合わせ、プロンプトの上限の出どころを `gentest.MaxPromptRunes` に改めた | Issue #835 |
