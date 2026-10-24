@@ -1,0 +1,39 @@
+{
+ "id": "sd35-medium",
+ "name": "Stable Diffusion 3.5 Medium (fp8)",
+ "kind": "image",
+ "tier": "advanced",
+ "description": "Stable Diffusion 3.5 の中型版。CLIP と T5 入りの 1 ファイルのチェックポイント（約 12 GB）。",
+ "files": [
+  {
+   "name": "sd3.5_medium_incl_clips_t5xxlfp8scaled.safetensors",
+   "folder": "checkpoints",
+   "url": "https://huggingface.co/Comfy-Org/stable-diffusion-3.5/resolve/934251d1e6168bcb45a069abc5bd5cdd5f8fea00/sd3.5_medium_incl_clips_t5xxlfp8scaled.safetensors",
+   "sha256": "1778e8857679042c176c21cd8a0da7b29bded68be018557477f84419df79bacf",
+   "size": 11638004202
+  }
+ ],
+ "vram": {
+  "min_gb": 12,
+  "source": "mam の見積もり（出典なし・実機未検証）",
+  "estimate": true
+ },
+ "license": {
+  "id": "stabilityai-ai-community",
+  "version": "2024-07-05",
+  "name": "Stability AI Community License Agreement",
+  "url": "https://stability.ai/community-license-agreement",
+  "summary": "研究・非商用と、年間売上が 100 万米ドル未満の個人・組織による商用利用は無償。売上がそれ以上の組織は Stability AI のエンタープライズライセンスが要る。",
+  "commercial_use": true,
+  "commercial_condition": "年間売上が 100 万米ドル（または相当額）未満の個人・組織に限る",
+  "notice": "年間売上が 100 万米ドルを超える組織が商用に使うには、Stability AI との別の契約が必要です。"
+ },
+ "consent_required": true,
+ "requires_hf_token": false,
+ "workflows": [
+  {
+   "name": "sd35-medium",
+   "template": "txt2img-sd35-medium"
+  }
+ ]
+}

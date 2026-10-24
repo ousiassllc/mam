@@ -2,6 +2,8 @@
 
 [model-adapters.md](model-adapters.md) の Model Adapter（§3 画像・§4 動画）に、利用者が登録した接続先（ComfyUI サーバー、OpenAI 互換の画像 API サーバー）のモデルを足す。クラウドの組み込みモデルと同じ経路（用途・Quality Policy の割り当て、フェイルオーバー、ブレーカー、同時実行数、Cost Ledger）に載り、違いは接続先と識別子だけである。Issue #831。ワークフローの編集画面（ComfyUI のノード UI）は含まない（#834）。
 
+MAM が ComfyUI を自分で取得・起動し、モデルを入れる経路は [model-manager.md](model-manager/model-manager.md)（自動作成される接続先 `bundled-comfyui` はこの文書の通常の ComfyUI 接続先として扱う）。
+
 ## 1. 接続先の種類
 
 | 種類（`kind`） | 作れるモデル | 呼び出し |

@@ -1,0 +1,45 @@
+{
+ "version": "v0.42.1",
+ "source_url": "https://github.com/Comfy-Org/ComfyUI/tree/v0.42.1",
+ "archive_root": "ComfyUI_windows_portable",
+ "python": "python_embeded/python.exe",
+ "main": "ComfyUI/main.py",
+ "license": {
+  "id": "gpl-3.0",
+  "version": "3.0",
+  "name": "GNU General Public License v3.0",
+  "url": "https://github.com/Comfy-Org/ComfyUI/blob/v0.42.1/LICENSE",
+  "summary": "ComfyUI は mam とは別のプログラムで、GPL-3.0 で公開されている。mam は ComfyUI のバイトを配布せず、利用者の PC に公式のリリースから取得する。ソースコードは GitHub の v0.42.1 のタグにある。",
+  "commercial_use": true
+ },
+ "variants": {
+  "nvidia": {
+   "label": "NVIDIA（RTX 20 シリーズ以降。CUDA 13）",
+   "url": "https://github.com/Comfy-Org/ComfyUI/releases/download/v0.42.1/ComfyUI_windows_portable_nvidia.7z",
+   "sha256": "496afd18790ec685d99ebba2edf200d7371a29fbdd3a992bb0f4f52f244a6874",
+   "size": 2018444114,
+   "extracted_size": 4444541117
+  },
+  "nvidia_cu126": {
+   "label": "NVIDIA（GTX 10 シリーズ以前。CUDA 12.6）",
+   "url": "https://github.com/Comfy-Org/ComfyUI/releases/download/v0.42.1/ComfyUI_windows_portable_nvidia_cu126.7z",
+   "sha256": "0506abc6563ea5928a052fe0bc0b32c2a063098558bd593fe39345a27f1e47fc",
+   "size": 1910153206,
+   "extracted_size": 5619088436
+  },
+  "amd": {
+   "label": "AMD（Radeon。ROCm）",
+   "url": "https://github.com/Comfy-Org/ComfyUI/releases/download/v0.42.1/ComfyUI_windows_portable_amd.7z",
+   "sha256": "8af051e342de65e5ca2d9f43a5f0b11a6377da10bd96159dc41e8722cc5841fc",
+   "size": 1636139353,
+   "extracted_size": 6191685727
+  },
+  "intel": {
+   "label": "Intel（Arc。XPU）",
+   "url": "https://github.com/Comfy-Org/ComfyUI/releases/download/v0.42.1/ComfyUI_windows_portable_intel.7z",
+   "sha256": "a1e03d31ea364af2f80820461cd0c5ae5bbba4b562c023c1f43b2cf65541d4ab",
+   "size": 1451207360,
+   "extracted_size": 5351586975
+  }
+ }
+}

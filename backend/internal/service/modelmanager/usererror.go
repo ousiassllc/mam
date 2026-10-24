@@ -1,0 +1,50 @@
+package modelmanager
+
+import (
+	"context"
+	"errors"
+	"fmt"
+
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/fetch"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/store"
+)
+
+// userFacing turns a failure into the message the screen shows. A cancelled context stays as it is: the queue
+// decides what an interruption means.
+func userFacing(ctx context.Context, err error) error {
+	if err == nil || ctx.Err() != nil {
+		return err
+	}
+	var ns *fetch.NoSpaceError
+	var he *fetch.HTTPError
+	switch {
+	case errors.As(err, &ns):
+		return &userError{fmt.Sprintf("空き容量が足りません（必要 %s、空き %s、場所 %s）", humanBytes(ns.Need), humanBytes(ns.Free), ns.Path), err}
+	case errors.Is(err, fetch.ErrChecksum):
+		return fmt.Errorf("ダウンロードしたファイルの SHA-256 が一致しません。ダウンロードを破棄しました（取得元の改ざんか転送の破損の可能性があります）: %w", err)
+	case errors.Is(err, fetch.ErrSize):
+		return fmt.Errorf("ダウンロードしたファイルの大きさが固定した値と違います。ダウンロードを破棄しました: %w", err)
+	case errors.As(err, &he) && (he.Status == 401 || he.Status == 403):
+		return fmt.Errorf("取得元が認証を求めています（%d）。Hugging Face のトークンを設定してください: %w", he.Status, err)
+	case errors.Is(err, store.ErrNotWritable):
+		return fmt.Errorf("mam.exe のあるフォルダに書き込めません。書き込める場所に置くか、外部の ComfyUI の URL を使ってください: %w", err)
+	}
+	return err
+}
+
+// userError carries the message for the user and the error behind it, which errors.Is / As still reach.
+type userError struct {
+	msg string
+	err error
+}
+
+func (e *userError) Error() string { return e.msg }
+func (e *userError) Unwrap() error { return e.err }
+
+func humanBytes(n uint64) string {
+	const gb = 1 << 30
+	if n >= gb {
+		return fmt.Sprintf("%.1f GiB", float64(n)/gb)
+	}
+	return fmt.Sprintf("%.0f MiB", float64(n)/(1<<20))
+}

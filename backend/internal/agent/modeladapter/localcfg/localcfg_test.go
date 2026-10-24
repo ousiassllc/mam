@@ -95,11 +95,25 @@ func comfy() map[string]localcfg.Endpoint {
 	return map[string]localcfg.Endpoint{"box": {Kind: localcfg.KindComfyUI, BaseURL: "http://127.0.0.1:8188"}, "oa": {Kind: localcfg.KindOpenAICompat, BaseURL: "http://127.0.0.1:1234"}}
 }
 
+// coreVersion is the ComfyUI release whose sources (nodes.py and comfy_extras) define every class below: the
+// templates use these and no custom node. A template that needs another class is a decision to take, so it
+// has to be added here after looking the class up in that release.
+const coreVersion = "v0.42.1"
+
+var coreNodes = []string{
+	"BasicScheduler", "CFGGuider", "CLIPLoader", "CLIPTextEncode", "CheckpointLoaderSimple", "ConditioningZeroOut",
+	"CreateVideo", "DualCLIPLoader", "EmptyHunyuanVideo15Latent", "EmptyLTXVLatentVideo", "EmptyLatentImage",
+	"EmptySD3LatentImage", "FluxGuidance", "KSampler", "KSamplerSelect", "LTXVConditioning", "LTXVImgToVideo",
+	"LTXVScheduler", "LoadImage", "ModelSamplingAuraFlow", "ModelSamplingSD3", "RandomNoise", "SamplerCustom",
+	"SamplerCustomAdvanced", "SaveImage", "SaveVideo", "UNETLoader", "VAEDecode", "VAEDecodeTiled", "VAEEncode",
+	"VAELoader", "Wan22ImageToVideoLatent",
+}
+
 // Every built-in template is a valid model: each assignment points to an existing, literal input of an
 // existing node, the output node exists, and the capabilities follow from the assignments.
 func TestTemplatesAreStructurallyValid(t *testing.T) {
 	templates := localcfg.Templates()
-	require.Len(t, templates, 4)
+	require.Len(t, templates, 11)
 	byMedia := map[localcfg.Media]int{}
 	for _, tpl := range templates {
 		byMedia[tpl.Media]++
@@ -109,14 +123,14 @@ func TestTemplatesAreStructurallyValid(t *testing.T) {
 		g, err := localcfg.ParseGraph(tpl.Model.Workflow.Graph)
 		require.NoError(t, err, tpl.ID)
 		for _, n := range g {
-			assert.NotContains(t, n.ClassType, "Custom", tpl.ID, "core nodes only")
+			assert.Contains(t, coreNodes, n.ClassType, "%s: not a core node of ComfyUI %s", tpl.ID, coreVersion)
 		}
 		got, found := localcfg.TemplateByID(tpl.ID)
 		assert.True(t, found)
 		assert.Equal(t, tpl.ID, got.ID)
 	}
-	assert.Equal(t, 2, byMedia[localcfg.MediaImage])
-	assert.Equal(t, 2, byMedia[localcfg.MediaVideo])
+	assert.Equal(t, 6, byMedia[localcfg.MediaImage])
+	assert.Equal(t, 5, byMedia[localcfg.MediaVideo])
 
 	i2v, _ := localcfg.TemplateByID("img2video-wan22-5b")
 	caps, ok := i2v.Model.VideoCaps()
