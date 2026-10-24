@@ -12,6 +12,17 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
 
+// newTake stores a Take of the prompt version whose video file is p/<id>.mp4 (9 bytes).
+func (f genRepoFixture) newTake(t *testing.T, pvID, id string, model domain.ModelName, params json.RawMessage) string {
+	t.Helper()
+	take, err := f.repo.CreateTake(context.Background(), repository.NewTake{
+		ProjectID: f.projectID, ShotID: f.shotID, PromptVersionID: pvID, Model: model, Parameters: params,
+		Asset: domain.Asset{ID: id, ProjectID: f.projectID, Type: domain.AssetVideo, FilePath: "p/" + id + ".mp4", MimeType: "video/mp4", SizeBytes: 9},
+	})
+	require.NoError(t, err)
+	return take
+}
+
 func TestTraceRepository_TakeTraceGathersEverythingThatLedToTheTake(t *testing.T) {
 	ctx := context.Background()
 	f := newGenRepoFixture(t)
@@ -26,21 +37,13 @@ func TestTraceRepository_TakeTraceGathersEverythingThatLedToTheTake(t *testing.T
 	require.NoError(t, err)
 	pv, err := f.repo.SavePromptedSpec(ctx, f.shotID, spec, json.RawMessage(`{"requests":{}}`), nil)
 	require.NoError(t, err)
-	first, err := f.repo.CreateTake(ctx, repository.NewTake{
-		ProjectID: f.projectID, ShotID: f.shotID, PromptVersionID: pv.ID, Model: domain.ModelKling3, Parameters: params,
-		Asset: domain.Asset{ID: "a1", ProjectID: f.projectID, Type: domain.AssetVideo, FilePath: "p/a1.mp4", MimeType: "video/mp4", SizeBytes: 9},
-	})
-	require.NoError(t, err)
+	first := f.newTake(t, pv.ID, "a1", domain.ModelKling3, params)
 	judged, err := repository.NewJudgeRepository(f.db).Save(ctx, domain.JudgeResult{TakeID: first, Result: domain.JudgeFail, OverallConfidence: 0.5})
 	require.NoError(t, err)
 	repairs := repository.NewRepairRepository(f.db)
 	action, err := repairs.CreateAction(ctx, judged.ID, domain.RepairFullRetake, domain.RepairInstructions{DecidedBy: domain.DecidedByRule, SourceTakeID: first})
 	require.NoError(t, err)
-	second, err := f.repo.CreateTake(ctx, repository.NewTake{
-		ProjectID: f.projectID, ShotID: f.shotID, PromptVersionID: pv.ID, Model: domain.ModelSeedance2,
-		Asset: domain.Asset{ID: "a2", ProjectID: f.projectID, Type: domain.AssetVideo, FilePath: "p/a2.mp4"},
-	})
-	require.NoError(t, err)
+	second := f.newTake(t, pv.ID, "a2", domain.ModelSeedance2, nil)
 	require.NoError(t, repairs.SetResultingTake(ctx, action.ID, second))
 
 	tr, err := repository.NewTraceRepository(f.db).TakeTrace(ctx, first)
@@ -82,11 +85,7 @@ func TestTraceRepository_ArchivedTakeHasNoOutput(t *testing.T) {
 	f := newGenRepoFixture(t)
 	pv, err := f.repo.SavePromptedSpec(ctx, f.shotID, wideSpec("run"), nil, nil)
 	require.NoError(t, err)
-	take, err := f.repo.CreateTake(ctx, repository.NewTake{
-		ProjectID: f.projectID, ShotID: f.shotID, PromptVersionID: pv.ID, Model: domain.ModelKling3,
-		Asset: domain.Asset{ID: "a1", ProjectID: f.projectID, Type: domain.AssetVideo, FilePath: "p/a1.mp4"},
-	})
-	require.NoError(t, err)
+	take := f.newTake(t, pv.ID, "a1", domain.ModelKling3, nil)
 	require.NoError(t, exec(t, f.db, `DELETE FROM asset WHERE id = 'a1'`))
 	require.NoError(t, exec(t, f.db, `UPDATE take SET file_path = NULL, status = 'rejected' WHERE id = ?`, take))
 
@@ -110,16 +109,8 @@ func TestTraceRepository_TakeTraceReadsTheRoutingDecisionOfTheTake(t *testing.T)
 	}
 	params, err := json.Marshal(map[string]any{"routing": decision})
 	require.NoError(t, err)
-	routed, err := f.repo.CreateTake(ctx, repository.NewTake{
-		ProjectID: f.projectID, ShotID: f.shotID, PromptVersionID: pv.ID, Model: domain.ModelKling3, Parameters: params,
-		Asset: domain.Asset{ID: "r1", ProjectID: f.projectID, Type: domain.AssetVideo, FilePath: "p/r1.mp4"},
-	})
-	require.NoError(t, err)
-	old, err := f.repo.CreateTake(ctx, repository.NewTake{
-		ProjectID: f.projectID, ShotID: f.shotID, PromptVersionID: pv.ID, Model: domain.ModelKling3, Parameters: json.RawMessage(`{"resolution":"720p"}`),
-		Asset: domain.Asset{ID: "r2", ProjectID: f.projectID, Type: domain.AssetVideo, FilePath: "p/r2.mp4"},
-	})
-	require.NoError(t, err)
+	routed := f.newTake(t, pv.ID, "r1", domain.ModelKling3, params)
+	old := f.newTake(t, pv.ID, "r2", domain.ModelKling3, json.RawMessage(`{"resolution":"720p"}`))
 
 	tr, err := repository.NewTraceRepository(f.db).TakeTrace(ctx, routed)
 	require.NoError(t, err)
@@ -144,11 +135,7 @@ func TestTraceRepository_ACompositeTakeTracesToTheWorldStateReferencesAndRouting
 	require.NoError(t, err)
 	pv, err := f.repo.SavePromptedSpec(ctx, f.shotID, wideSpec("run"), json.RawMessage(`{"requests":{}}`), nil)
 	require.NoError(t, err)
-	base, err := f.repo.CreateTake(ctx, repository.NewTake{
-		ProjectID: f.projectID, ShotID: f.shotID, PromptVersionID: pv.ID, Model: domain.ModelKling3, Parameters: params,
-		Asset: domain.Asset{ID: "a1", ProjectID: f.projectID, Type: domain.AssetVideo, FilePath: "p/a1.mp4", MimeType: "video/mp4", SizeBytes: 9},
-	})
-	require.NoError(t, err)
+	base := f.newTake(t, pv.ID, "a1", domain.ModelKling3, params)
 
 	composite, err := repository.NewTakeRepository(f.db).CreateComposite(ctx, repository.NewComposite{
 		ProjectID: f.projectID, ShotID: f.shotID, BaseTakeID: base,
