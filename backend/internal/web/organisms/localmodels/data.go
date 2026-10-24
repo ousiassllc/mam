@@ -93,6 +93,8 @@ type Endpoint struct {
 type Key struct {
 	Configured bool
 	LastChars  string
+	// Unavailable: the OS key store could not be read, so the state of the key is unknown.
+	Unavailable bool
 	// Error is why the last attempt to save the key was refused (set by the key form only).
 	Error string
 }

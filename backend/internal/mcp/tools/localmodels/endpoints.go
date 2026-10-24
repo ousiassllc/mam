@@ -40,8 +40,9 @@ func registerEndpoints(r *mcpkit.Registrar, h handlers) {
 
 // KeyState is whether an endpoint has an API key. The key itself is never returned.
 type KeyState struct {
-	Configured bool   `json:"configured"`
-	LastChars  string `json:"last_chars,omitempty" jsonschema:"キー末尾の数文字（設定済みのときだけ。短いキーでは空）"`
+	Configured  bool   `json:"configured"`
+	LastChars   string `json:"last_chars,omitempty" jsonschema:"キー末尾の数文字（設定済みのときだけ。短いキーでは空）"`
+	Unavailable bool   `json:"unavailable,omitempty" jsonschema:"OS のキーストアを読めず、キーの有無が分からない（接続先の一覧は返る）"`
 }
 
 // Endpoint is a registered endpoint.
@@ -80,7 +81,7 @@ func (h handlers) listEndpoints(_ context.Context, _ Input) (ListEndpointsOutput
 func endpointOf(e localmodels.EndpointView, models []localmodels.ModelView) Endpoint {
 	out := Endpoint{
 		Name: e.Name, Kind: string(e.Kind), BaseURL: e.BaseURL, MaxConcurrency: e.MaxConcurrency, TimeoutSeconds: e.TimeoutSeconds,
-		APIKey: KeyState{Configured: e.Key.Configured, LastChars: e.Key.LastChars}, Models: []string{},
+		APIKey: KeyState{Configured: e.Key.Configured, LastChars: e.Key.LastChars, Unavailable: e.Key.Unavailable}, Models: []string{},
 	}
 	for _, m := range models {
 		if m.Endpoint == e.Name {

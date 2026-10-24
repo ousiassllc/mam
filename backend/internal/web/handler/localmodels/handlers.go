@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/url"
 	"slices"
-	"strings"
 
 	"github.com/a-h/templ"
 	"github.com/gin-gonic/gin"
@@ -87,21 +86,10 @@ func (h Handlers) classify(c *gin.Context, err error, exists string) (int, strin
 	case errors.Is(err, service.ErrNotFound):
 		return http.StatusNotFound, "その接続先またはモデルは見つかりません。画面を読み込み直してください"
 	case errors.As(err, &invalid):
-		return http.StatusUnprocessableEntity, explain(invalid.Message)
+		return http.StatusUnprocessableEntity, invalid.Message
 	}
 	_ = c.Error(err)
 	return http.StatusInternalServerError, "保存できませんでした。保存先の権限と空き容量、mam のログを確認してください"
-}
-
-// linkLocalHint is added to a refusal of a link-local (or unspecified, multicast) address, whose reason the
-// validation states in English only: it is never allowed, not even for an address the user registers.
-const linkLocalHint = "（リンクローカル（169.254.x.x・fe80::）、未指定、マルチキャストのアドレスは、登録した接続先でも使えません。クラウドのメタデータサービスなどに届いてしまうためです）"
-
-func explain(msg string) string {
-	if strings.Contains(msg, "link-local") {
-		return msg + " " + linkLocalHint
-	}
-	return msg
 }
 
 // open answers a button that opens a form: the form alone (it is swapped into #local-models-editor). A pinned

@@ -1,6 +1,7 @@
 package localmodels_test
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -213,4 +214,18 @@ func TestConnectionTest_AFailureIsTheResultNotAnError(t *testing.T) {
 	rec := s.do(http.MethodPost, paths.LocalEndpoint("gone", "test"), nil)
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Contains(t, rec.Body.String(), "接続できませんでした")
+}
+
+func TestEndpointList_ABrokenKeyStoreDoesNotHideTheEndpoints(t *testing.T) {
+	s := newScreen(t, false, "")
+	require.Equal(t, http.StatusOK, s.addEndpoint("box", "comfyui", "http://127.0.0.1:8188").Code)
+	s.keys.FailWith(errors.New("no secret service"))
+
+	body := s.page()
+	assert.Contains(t, body, `data-endpoint="box"`, "the endpoint is listed")
+	assert.Contains(t, body, "キーストアを利用できません")
+	assert.NotContains(t, body, `data-testid="local-models-problem"`)
+	// The other actions work on what is saved.
+	assert.Equal(t, http.StatusOK, s.do(http.MethodGet, paths.LocalEndpoint("box", "edit"), nil).Code)
+	assert.Equal(t, http.StatusOK, s.do(http.MethodGet, paths.LocalEndpoint("box", "models", "new"), nil).Code)
 }

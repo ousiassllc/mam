@@ -192,7 +192,11 @@ templ KeyRow(endpoint string, k Key) {
 			autocomplete="off"
 		>
 			<span class="text-xs text-neutral-400">API キー（任意）:</span>
-			if k.Configured {
+			if k.Unavailable {
+				<span data-testid="local-key-state">
+					@atoms.Badge(atoms.BadgeWarn, "キーストアを利用できません")
+				</span>
+			} else if k.Configured {
 				<span data-testid="local-key-state">
 					@atoms.Badge(atoms.BadgeOK, keyState(k))
 				</span>

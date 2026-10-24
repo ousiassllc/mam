@@ -47,7 +47,7 @@ func SectionData(svc *service.Service) view.Data {
 		d.Endpoints = append(d.Endpoints, view.Endpoint{
 			Name: e.Name, Kind: string(e.Kind), KindLabel: kindLabel(e.Kind), BaseURL: e.BaseURL,
 			MaxConcurrency: e.MaxConcurrency, TimeoutSeconds: e.TimeoutSeconds,
-			Key: view.Key{Configured: e.Key.Configured, LastChars: e.Key.LastChars}, Models: byEndpoint[e.Name],
+			Key: view.Key{Configured: e.Key.Configured, LastChars: e.Key.LastChars, Unavailable: e.Key.Unavailable}, Models: byEndpoint[e.Name],
 		})
 	}
 	return d
