@@ -72,7 +72,7 @@ flowchart TB
 
 ## 4. Lit Web Components インターフェース
 
-`spec/architecture/overview.md` §8 の3コンポーネントについて、HATEOAS原則（サーバーがURL・権限をHTML属性で注入、クライアントはURLをハードコードしない）に従ったインターフェースを定義する。
+`spec/architecture/overview.md` §8 の3コンポーネントと、ノード画面の `<mam-comfy-frame>`（§4.4）について、HATEOAS原則（サーバーがURL・権限をHTML属性で注入、クライアントはURLをハードコードしない）に従ったインターフェースを定義する。
 
 ### 4.1 `<mam-video-player>`
 
@@ -143,6 +143,23 @@ export class MamTakeComparator extends LitElement {
 - Take ごとに `mam-video-player` と区間指定用のレーンを表示する（`partial_usable` が true の Take のみ）。レーン上のドラッグはフレームに丸めて区間にし、選んだ順に並べる。区間数の上限と最短秒数はサーバーが `GET /api/v1/shots/:id/takes` の `limits`（`max_segments`・`min_segment_seconds`）で渡し、コンポーネントは値を持たない（現行の値は最大 8 個・各 0.3 秒以上）。自然言語（「Take A の 0-2秒 + Take B の 2-4秒」）でも指定でき、その文字列はサーバーが解釈する。
 - 「選択」「除外」のボタンは、見える文言のまま `aria-label` を「選択: Take A」「除外: Take A」のように Take ごとに変える（`take-table.ts`。Templ の `take_row` と同じ形。atoms の `RowLabel`）。
 - 合成は `partial_url`（`POST /shots/:id/takes/partial`）へ `lib/api.ts` 経由で送る。`partial_url` は ffmpeg が使え、切り出せる Take があるときだけ返り、無ければ区間指定 UI ごと出さない。確定後に `partial-take-confirmed` を発火し、Take 一覧を読み直す。
+
+### 4.4 `<mam-comfy-frame>`
+
+```typescript
+@customElement('mam-comfy-frame')
+export class MamComfyFrame extends LitElement {
+  @property({ type: String }) src = '';                                       // サーバーが組み立てた ComfyUI のアドレス（mam のページと同じ文字どおりのホスト）
+  @property({ type: String, attribute: 'open-url' }) openUrl = '';            // 「ブラウザで開く」のリンク先（常に出す）
+  @property({ type: String, attribute: 'failure-message' }) failureMessage = '';
+  @property({ type: String, attribute: 'open-label' }) openLabel = 'ブラウザで開く';
+  @property({ type: Number, attribute: 'timeout-ms' }) timeoutMs = 20_000;    // iframe の `load` を待つ時間
+
+  // イベント: 'comfy-frame-failed'（`load` が時間内に来ない・`error` のとき 1 回。bubbles / composed）
+}
+```
+
+責務: ノード画面（`GET /nodes`）で ComfyUI の画面を iframe に入れ、出なかったときは案内と「ブラウザで開く」を出す。データ取得はせず、`src` / `open-url` はサーバーが渡す（HATEOAS）。ブラウザは別オリジンの iframe が空の理由を教えないので、拒否と遅延は区別できない（ComfyUI が拒否の応答を返すときはサーバーが `workflows.Service.NodeTarget` で先に見つけ、iframe を描かない）。Light DOM に描画する。CSP は `GET /nodes` の応答だけが、描画する ComfyUI の 1 オリジンを `frame-src` に持つ（`comfy/comfy-embedding.md`）。
 
 ## 5. 共通ライブラリ（`static/src/components/lib`）
 
@@ -276,6 +293,7 @@ export class MamTakeComparator extends LitElement {
 | 1.79 | 2026-10-21 | §3 の `global_settings_body` に「LLM の割り当て」（`llmassign.Section`）と「画像・動画モデル」（`modelassignment.Section`。サブパッケージ `organisms/modelassignment/`。画像の用途と Quality Policy ごとの主・代替モデルを 1 つのフォームで編集し、保存・既定に戻すはこのフォームの区画（`#model-assignment`）を丸ごと差し替える）の区画を足した（既存の行へ追記し、行数は増やしていない） | `--llm-config` / `--model-config` の JSON を手で書かないと割り当てを変えられなかったため、全体の設定画面から編集できるようにした（`spec/api/endpoints.md` の改訂 1.148）。Quality Policy ごとの動画モデルは、モデルと解像度を 1 つの `<select>`（値は `<モデル>@<解像度>`）にまとめ、そのモデルが対応しない解像度を選べないようにした |
 | 1.80 | 2026-10-21 | §1.1 の Audio Director（M3）の参照先を `spec/architecture/model-adapters-m3.md` §14 に改めた | `endpoints.md`・`model-adapters.md` が行数上限（300 行）を超え、後半を別ファイルに分けたため（`spec/api/endpoints.changelog.md` 1.149、`spec/architecture/model-adapters.changelog.md` 1.46） |
 | 1.81 | 2026-10-21 | §3 の `global_settings_body` に「バージョンとアップデート」（`updatepanel.Section`。サブパッケージ `organisms/updatepanel/`）を足した | Windows 版の自動更新（`spec/architecture/desktop.md` §6）の状態を設定画面で確かめ、手動で確認できるようにした。区画は `organisms/` の行数基準値のためサブパッケージに置き、`handler/appupdate/` が値を組み立てる |
-| 1.80 | 2026-10-25 | §3 の `global_settings_body` に「ローカル・代替モデル」（`localmodels.Section`）の区画を足した | Issue #831。ComfyUI・OpenAI 互換の接続先とモデルを設定画面で登録するため |
-| 1.82 | 2026-10-25 | §3 にモデルマネージャー画面のコンポーネントの案内を足し、[model-manager-screen.md](model-manager-screen.md) に分けて書いた | Issue #833。ComfyUI エンジンの導入・モデルのカタログ・ライセンスの同意・試し生成の画面 |
-| 1.83 | 2026-10-26 | §3 に生成テスト画面のコンポーネントの案内を足し、[gentest-screen.md](gentest-screen.md) に分けて書いた | Issue #835 |
+| 1.82 | 2026-10-25 | §3 の `global_settings_body` に「ローカル・代替モデル」（`localmodels.Section`）の区画を足した | Issue #831。ComfyUI・OpenAI 互換の接続先とモデルを設定画面で登録するため |
+| 1.83 | 2026-10-25 | §3 にモデルマネージャー画面のコンポーネントの案内を足し、[model-manager-screen.md](model-manager-screen.md) に分けて書いた | Issue #833。ComfyUI エンジンの導入・モデルのカタログ・ライセンスの同意・試し生成の画面 |
+| 1.84 | 2026-10-26 | §3 に生成テスト画面のコンポーネントの案内を足し、[gentest-screen.md](gentest-screen.md) に分けて書いた | Issue #835 |
+| 1.85 | 2026-10-26 | 1.80 が 2 行あったため、後ろの #831 の行を 1.82 に振り直し、以降を 1.83・1.84 にした。§4.4 に `<mam-comfy-frame>`（ノード画面の iframe。Lit は 3 → 4）を足した | 統合時に版番号が重複した。#834 の `static/src/components/comfy-frame/` が §4 に無く、`architecture/overview.md` §8 の「3 コンポーネント」の例外が仕様から辿れなかった（`comfy/comfy-embedding.md` §4） |
