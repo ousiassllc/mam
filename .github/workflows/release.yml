@@ -10,16 +10,15 @@ name: Release
 # by a payment failure. The Windows exes are therefore cross-built (GOOS=windows, pure Go) and the installer is
 # made by makensis on Linux; nothing here runs a Windows binary (no Windows-only tests, no installer smoke test).
 #
-# Five jobs, so that the build never holds a write token and nothing is published unchecked:
+# Four jobs, so that the build never holds a write token and nothing is published unchecked:
 #   plan    decide whether to release and which tag (the tip of main only, so an older commit never gets a newer version)
 #   verify  the commit is in main's history, passed ci.yml, and has no reachable known vulnerability
 #   build   package; contents: read only; the version and the release public key are embedded in the exe; makes
 #           checksums.txt and its ed25519 signature (the signing key is a secret, only the last step sees it);
 #           hands the four files over as an artifact
-#   release gh release create in this (private) repository only; the one job with contents: write (it creates the tag too)
-#   publish copies the same four files to the PUBLIC release-only repository ousiassllc/mam-releases with the RELEASES_TOKEN
-#           secret (a fine-grained PAT, Contents read/write on that repository only). The installed apps check that repository
-#           (this one is private) and verify the signature with the public key embedded at build time.
+#   release gh release create in this repository only, with the GITHUB_TOKEN; the one job with contents: write (it creates
+#           the tag too). The installed apps check this repository's Releases and verify the signature with the public key
+#           embedded at build time (there is no other repository to copy the release to).
 # `uses:` are pinned to a commit SHA (the comment is the tag; dependabot's github-actions keeps both up to date).
 on:
   push:
@@ -250,40 +249,3 @@ jobs:
             "dist/mam-$version-windows-amd64.exe" \
             dist/checksums.txt \
             dist/checksums.txt.sig
-
-  # Copies the release to the public, release-only repository the installed apps check for updates. After `release`, so a
-  # release exists here only for a tag that was created in this repository. Safe to re-run: when the release already exists
-  # (a rerun after a partial failure) the files are uploaded again with --clobber instead of failing.
-  publish:
-    needs: [plan, release]
-    runs-on: [self-hosted, Linux, X64]
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
-        with:
-          name: windows-release
-          path: dist
-
-      - name: Publish to ousiassllc/mam-releases
-        env:
-          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
-          TAG: ${{ needs.plan.outputs.tag }}
-        run: |
-          if [ -z "$GH_TOKEN" ]; then
-            echo "::error::the secret RELEASES_TOKEN is not set: create a fine-grained personal access token (Contents: read and write on ousiassllc/mam-releases only) and register it as the repository secret RELEASES_TOKEN"
-            exit 1
-          fi
-          version="${TAG#v}"
-          files=(
-            "dist/mam-$version-windows-amd64-setup.exe"
-            "dist/mam-$version-windows-amd64.exe"
-            dist/checksums.txt
-            dist/checksums.txt.sig
-          )
-          if gh release view "$TAG" --repo ousiassllc/mam-releases >/dev/null 2>&1; then
-            echo "::notice::the release $TAG already exists in ousiassllc/mam-releases: uploading the files again"
-            gh release upload "$TAG" --repo ousiassllc/mam-releases --clobber "${files[@]}"
-          else
-            gh release create "$TAG" --repo ousiassllc/mam-releases --title "$TAG" --notes "MAM $TAG" "${files[@]}"
-          fi

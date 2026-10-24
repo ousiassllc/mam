@@ -23,7 +23,7 @@ func signedReleaseMock(t *testing.T, checksums string, signature *string) *httpt
 	t.Helper()
 	var serverURL string
 	mux := http.NewServeMux()
-	mux.HandleFunc("/repos/ousiassllc/mam-releases/releases/latest", func(w http.ResponseWriter, _ *http.Request) {
+	mux.HandleFunc("/repos/ousiassllc/mam/releases/latest", func(w http.ResponseWriter, _ *http.Request) {
 		assets := []updater.Asset{
 			{Name: installerName, BrowserDownloadURL: serverURL + "/download/installer.exe"},
 			{Name: "checksums.txt", BrowserDownloadURL: serverURL + "/download/checksums.txt"},
@@ -98,7 +98,7 @@ func TestChecker_CheckForUpdate_SignatureVerification(t *testing.T) {
 			t.Setenv("TMPDIR", tmp)
 			server := signedReleaseMock(t, tt.checksums, tt.signature)
 			checker := updater.NewChecker(updater.Config{
-				Owner: "ousiassllc", Repo: "mam-releases", Gate: allowGate(),
+				Owner: "ousiassllc", Repo: "mam", Gate: allowGate(),
 				HTTPClient: server.Client(), BaseURL: server.URL,
 				DownloadURLPrefix: server.URL + "/download/",
 				PublicKey:         tt.key,

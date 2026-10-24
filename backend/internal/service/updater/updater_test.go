@@ -66,7 +66,7 @@ func newGitHubMock(t *testing.T, tagName string, checksumsBody string) *httptest
 	mux := http.NewServeMux()
 
 	var serverURL string
-	mux.HandleFunc("/repos/ousiassllc/mam-releases/releases/latest", func(w http.ResponseWriter, _ *http.Request) {
+	mux.HandleFunc("/repos/ousiassllc/mam/releases/latest", func(w http.ResponseWriter, _ *http.Request) {
 		release := updater.Release{
 			TagName: tagName,
 			Assets: []updater.Asset{
@@ -93,7 +93,7 @@ func newGitHubMock(t *testing.T, tagName string, checksumsBody string) *httptest
 func newChecker(server *httptest.Server, gate updater.Gate) *updater.Checker {
 	return updater.NewChecker(updater.Config{
 		Owner:      "ousiassllc",
-		Repo:       "mam-releases",
+		Repo:       "mam",
 		Gate:       gate,
 		HTTPClient: server.Client(),
 		BaseURL:    server.URL,
@@ -136,7 +136,7 @@ func TestChecker_CheckForUpdate_DevBuildSkipsCheckEntirely(t *testing.T) {
 	// against a nonexistent server it would return an error, not a clean
 	// zero Result.
 	checker := updater.NewChecker(updater.Config{
-		Owner: "ousiassllc", Repo: "mam-releases",
+		Owner: "ousiassllc", Repo: "mam",
 		Gate:    allowGate(),
 		BaseURL: "http://127.0.0.1:1", // deliberately unreachable
 	})
@@ -210,7 +210,7 @@ func TestChecker_CheckForUpdate_UnsafeGateBlocksDownload(t *testing.T) {
 func TestChecker_CheckForUpdate_MissingInstallerAssetErrors(t *testing.T) {
 	setVersion(t, "v0.1.0")
 	mux := http.NewServeMux()
-	mux.HandleFunc("/repos/ousiassllc/mam-releases/releases/latest", func(w http.ResponseWriter, _ *http.Request) {
+	mux.HandleFunc("/repos/ousiassllc/mam/releases/latest", func(w http.ResponseWriter, _ *http.Request) {
 		release := updater.Release{TagName: "v0.2.0", Assets: []updater.Asset{{Name: "checksums.txt", BrowserDownloadURL: "http://unused"}}}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(release)
@@ -233,7 +233,7 @@ func TestChecker_CheckForUpdate_MissingInstallerAssetErrors(t *testing.T) {
 func TestChecker_CheckForUpdate_GitHubAPIErrorPropagates(t *testing.T) {
 	setVersion(t, "v0.1.0")
 	mux := http.NewServeMux()
-	mux.HandleFunc("/repos/ousiassllc/mam-releases/releases/latest", func(w http.ResponseWriter, _ *http.Request) {
+	mux.HandleFunc("/repos/ousiassllc/mam/releases/latest", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)
 	})
 	server := httptest.NewServer(mux)

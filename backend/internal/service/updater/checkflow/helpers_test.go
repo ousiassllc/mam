@@ -66,7 +66,7 @@ func newGitHubMock(t *testing.T, tagName string, checksumsBody string) *httptest
 	mux := http.NewServeMux()
 
 	var serverURL string
-	mux.HandleFunc("/repos/ousiassllc/mam-releases/releases/latest", func(w http.ResponseWriter, _ *http.Request) {
+	mux.HandleFunc("/repos/ousiassllc/mam/releases/latest", func(w http.ResponseWriter, _ *http.Request) {
 		release := updater.Release{
 			TagName: tagName,
 			Assets: []updater.Asset{
@@ -93,7 +93,7 @@ func newGitHubMock(t *testing.T, tagName string, checksumsBody string) *httptest
 func newChecker(server *httptest.Server, gate updater.Gate) *updater.Checker {
 	return updater.NewChecker(updater.Config{
 		Owner:      "ousiassllc",
-		Repo:       "mam-releases",
+		Repo:       "mam",
 		Gate:       gate,
 		HTTPClient: server.Client(),
 		BaseURL:    server.URL,

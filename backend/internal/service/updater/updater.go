@@ -82,8 +82,7 @@ type Result struct {
 // Config configures a new Checker.
 type Config struct {
 	// Owner/Repo identify the GitHub repository CheckForUpdate polls
-	// (version.GitHubOwner / version.GitHubRepo in production: the public repository that holds the
-	// release assets only).
+	// (version.GitHubOwner / version.GitHubRepo in production: this repository's own Releases).
 	Owner, Repo string
 	// Gate is the mandatory safety gate: SafeToUpdate must pass before any download is attempted
 	// and again before the result is Ready.

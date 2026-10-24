@@ -49,7 +49,7 @@ func TestChecker_CheckForUpdate_ClosedGateDownloadsNothing(t *testing.T) {
 	downloads := 0
 	mux := http.NewServeMux()
 	var serverURL string
-	mux.HandleFunc("/repos/ousiassllc/mam-releases/releases/latest", func(w http.ResponseWriter, _ *http.Request) {
+	mux.HandleFunc("/repos/ousiassllc/mam/releases/latest", func(w http.ResponseWriter, _ *http.Request) {
 		_ = json.NewEncoder(w).Encode(updater.Release{TagName: "v0.2.0", Assets: []updater.Asset{
 			{Name: installerName, BrowserDownloadURL: serverURL + "/download/installer.exe"},
 			{Name: "checksums.txt", BrowserDownloadURL: serverURL + "/download/checksums.txt"},

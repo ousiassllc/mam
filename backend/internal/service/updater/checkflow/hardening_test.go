@@ -22,7 +22,7 @@ func newAssetMock(t *testing.T, installerBody string, assets func(serverURL stri
 	t.Helper()
 	var serverURL string
 	mux := http.NewServeMux()
-	mux.HandleFunc("/repos/ousiassllc/mam-releases/releases/latest", func(w http.ResponseWriter, _ *http.Request) {
+	mux.HandleFunc("/repos/ousiassllc/mam/releases/latest", func(w http.ResponseWriter, _ *http.Request) {
 		_ = json.NewEncoder(w).Encode(updater.Release{TagName: "v0.2.0", Assets: assets(serverURL)})
 	})
 	mux.HandleFunc("/download/installer.exe", func(w http.ResponseWriter, _ *http.Request) {
@@ -115,7 +115,7 @@ func TestChecker_CheckForUpdate_MetadataTimeout(t *testing.T) {
 	t.Cleanup(func() { close(release) })
 
 	checker := updater.NewChecker(updater.Config{
-		Owner: "ousiassllc", Repo: "mam-releases", Gate: allowGate(),
+		Owner: "ousiassllc", Repo: "mam", Gate: allowGate(),
 		HTTPClient: server.Client(), BaseURL: server.URL,
 		MetadataTimeout: 50 * time.Millisecond,
 	})
@@ -134,7 +134,7 @@ func TestChecker_CheckForUpdate_DownloadTimeout(t *testing.T) {
 	done := make(chan struct{})
 	var serverURL string
 	mux := http.NewServeMux()
-	mux.HandleFunc("/repos/ousiassllc/mam-releases/releases/latest", func(w http.ResponseWriter, _ *http.Request) {
+	mux.HandleFunc("/repos/ousiassllc/mam/releases/latest", func(w http.ResponseWriter, _ *http.Request) {
 		_ = json.NewEncoder(w).Encode(updater.Release{TagName: "v0.2.0", Assets: standardAssets(0)(serverURL)})
 	})
 	mux.HandleFunc("/download/", func(_ http.ResponseWriter, r *http.Request) {
@@ -149,7 +149,7 @@ func TestChecker_CheckForUpdate_DownloadTimeout(t *testing.T) {
 	t.Cleanup(func() { close(done) })
 
 	checker := updater.NewChecker(updater.Config{
-		Owner: "ousiassllc", Repo: "mam-releases", Gate: allowGate(),
+		Owner: "ousiassllc", Repo: "mam", Gate: allowGate(),
 		HTTPClient: server.Client(), BaseURL: server.URL,
 		DownloadURLPrefix: server.URL + "/download/",
 		DownloadTimeout:   50 * time.Millisecond,

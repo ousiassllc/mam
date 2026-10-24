@@ -51,7 +51,7 @@ Windows 実機が要る項目は、リリース前に実機で確かめる（実
 ### 6.1 流れ
 
 1. 起動の 1 分後に最初の確認をし、その後 6 時間ごとに確認する（起動を遅くしない。`appupdate.Schedule`）。失敗したときと、新しいリリースを安全ゲートが止めたときは、1 分から始めて倍にし最大 1 時間までの間隔で繰り返す。原因が変わらない失敗（`ErrorAccess`・`ErrorVerification`・`ErrorRelease`）は繰り返さず、次の 6 時間ごとの確認を待つ。開発版は最初の確認で打ち切る
-2. 公開リポジトリ `ousiassllc/mam-releases` の `GET /repos/{owner}/{repo}/releases/latest` の `tag_name` を、埋め込んだ版（`version.Version`）と `golang.org/x/mod/semver` で比べる。新しくなければ何もしない。リリースが無い（404）のは失敗ではなく「リリースなし」
+2. この（`ousiassllc/mam`）リポジトリ自身の Releases（`version.GitHubOwner` / `version.GitHubRepo`）の `GET /repos/{owner}/{repo}/releases/latest` の `tag_name` を、埋め込んだ版（`version.Version`）と `golang.org/x/mod/semver` で比べる。新しくなければ何もしない。リリースが無い（404）のは失敗ではなく「リリースなし」。リポジトリが非公開の間は、認証無しの照会に GitHub が 404 を返すので、この「リリースなし」になる（公開すれば最新の Release が見える。追加の処理は要らない）
 3. 安全ゲート（§6.2）が通れば、インストーラー（`mam-*-windows-amd64-setup.exe` に合う 1 つ。ポータブル版は入れない）・`checksums.txt`・`checksums.txt.sig` を一時ディレクトリ（`mam-update-*`）へ取得し、署名と SHA-256 を検証する（§6.3）
 4. ダウンロードには数分かかるので、**取得の直後に安全ゲートをもう一度**確かめる。閉じていれば結果は Blocked で、取り込んだファイルは消す（次の確認で取り直す）
 5. 検証できたら `appupdate.Service` が `UpdateOptions.Install(path)` を呼ぶ。`desktop.Updater` はインストーラーのパスを覚え、Wails の `Quit()` を別 goroutine で呼ぶ（検証した確認 goroutine の中で終了を待たない）
@@ -77,8 +77,9 @@ Windows 実機が要る項目は、リリース前に実機で確かめる（実
 - `checksums.txt` はインストーラーだけを対象にした `sha256sum` の出力（`<hex>  mam-<X.Y.Z>-windows-amd64-setup.exe`）で、そのファイル名の行を探す
 - SHA-256 だけでは、同じリリースにあるファイル同士なので差し替えを検出できない。リリースのジョブが `checksums.txt` に**ed25519 の分離署名**（生の 64 バイトの base64）`checksums.txt.sig` を付け、署名鍵（GitHub Actions のシークレット `RELEASE_SIGNING_KEY`）は成果物を作るジョブとは別に持つ。公開鍵（生の 32 バイトの base64）は `-ldflags -X …/internal/version.ReleasePublicKey=` でバイナリに埋め込む（リポジトリ変数 `RELEASE_SIGNING_PUBLIC_KEY`）
 - 公開鍵が埋め込まれているとき、署名の欠落・形式の誤り・不一致、鍵そのものの形式の誤りは、すべて検証エラー（`ErrorVerification`。繰り返さない）にして、ダウンロードしたファイルを全部消す（fail closed）。インストーラーは署名の検証が通る前には取得もしない。公開鍵が空の開発ビルドは署名の検証を飛ばして警告を出し、SHA-256 だけで確かめる
-- ネットワークの堅牢化: リリース照会 30 秒・ダウンロード全体 10 分のデッドライン、ダウンロードサイズの上限（インストーラー 512 MiB・`checksums.txt` 1 MiB・署名 4 KiB。GitHub が返す `size` があればそれに一致）、ダウンロード URL は `https://github.com/ousiassllc/mam-releases/releases/download/` の配下だけ許す
-- 版は `version.Version`（リリースビルドが `v<X.Y.Z>` を埋め込む）。`dev`（semver でない値）の開発ビルドは確認そのものをしない。リリースのタグは非公開リポジトリと公開リポジトリで同じ `v<X.Y.Z>`
+- ネットワークの堅牢化: リリース照会 30 秒・ダウンロード全体 10 分のデッドライン、ダウンロードサイズの上限（インストーラー 512 MiB・`checksums.txt` 1 MiB・署名 4 KiB。GitHub が返す `size` があればそれに一致）、ダウンロード URL は `https://github.com/ousiassllc/mam/releases/download/` の配下だけ許す
+- 版は `version.Version`（リリースビルドが `v<X.Y.Z>` を埋め込む）。`dev`（semver でない値）の開発ビルドは確認そのものをしない。リリースのタグは `v<X.Y.Z>`
+- 古い版からのつなぎ: 自動更新は MAM 自身の Releases だけを見る。`ousiassllc/mam-releases` を確認する版は一度も配布されておらず（このリポジトリには Release もタグも無い）、つなぐ実装は要らない。すでに配布された v0.1.0・v0.1.1 は自動更新を持たず、`checksums.txt` も署名も付いていないので、利用者は署名付きの最初のリリースを手動でインストールする（以後は自動で更新される）
 
 ### 6.4 ユーザー単位のインストール
 
@@ -118,3 +119,4 @@ Windows 実機が要る項目は、リリース前に実機で確かめる（実
 | 1.14 | 2026-10-21 | §4 のバージョンと配布の項を、`main` の CI 成功後に次の patch 版を自動でリリースする構成（手動の `v*` タグは minor・major を上げる用）と、`plan` を加えた 4 ジョブへ改めた | `release.yml` を、タグを手で打たなくても `main` への push で配布物が出るようにしたため |
 | 1.15 | 2026-10-21 | §4 の配布の項と §3 の未確認事項を、リリースを self-hosted の Linux runner でのクロスビルドへ移したことに合わせた | 初回のリリース実行が GitHub-hosted runner の支払い失敗で動かず、self-hosted へ移したため（setup.md の改訂 1.31） |
 | 1.16 | 2026-10-21 | §6 に自動更新（流れ・安全ゲート・署名と検証・ユーザー単位のインストール・再起動・テストの範囲・設定画面）を足し、§4 のインストール先をユーザー単位に、§5 の対象外から自動更新を外した | Windows 版が新しいリリースを自分で入れ替えるようにしたため。リポジトリは非公開なので、リリースの配布物だけを持つ公開リポジトリ `ousiassllc/mam-releases` を確認する |
+| 1.17 | 2026-10-24 | §6.1・§6.3 の更新の確認先を、別の公開リポジトリ `ousiassllc/mam-releases` から MAM 自身の Releases（`ousiassllc/mam`）に改めた。非公開の間は 404 で「リリースなし」になること、古い版からのつなぎ（`mam-releases` を見る版は配布されておらず、v0.1.0・v0.1.1 は手動で入れ替える）を足した | 公開後は mam 自身の Release から配る（Issue #827） |

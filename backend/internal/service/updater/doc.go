@@ -3,7 +3,7 @@
 // is headless, has no installer, and never does.
 //
 // Checker.CheckForUpdate runs the whole read-only-until-verified pipeline once: fetch the latest
-// release of the public release repository (version.GitHubOwner / version.GitHubRepo), compare its
+// release of this repository's own Releases (version.GitHubOwner / version.GitHubRepo), compare its
 // tag_name with version.Version (golang.org/x/mod/semver; no hand-rolled parsing), and - only once
 // Gate.SafeToUpdate says that no work a restart would lose is in flight (SafeGate) - download the
 // installer asset (mam-<X.Y.Z>-windows-amd64-setup.exe), verify it against the published

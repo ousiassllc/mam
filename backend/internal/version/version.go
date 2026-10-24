@@ -19,9 +19,10 @@ var Version = "dev"
 // Empty (a dev build) skips the signature check with a warning.
 var ReleasePublicKey = ""
 
-// The public repository that holds the release assets only: the source repository is private, so
-// the installed app cannot look there.
+// The repository whose Releases the installed app checks for updates: this one. The repository is to be made
+// public, and the release assets live in its own Releases. While it is private, GitHub answers 404 for the
+// latest release and the updater reports "no release" (Status.NoRelease), which is not a failure.
 const (
 	GitHubOwner = "ousiassllc"
-	GitHubRepo  = "mam-releases"
+	GitHubRepo  = "mam"
 )
