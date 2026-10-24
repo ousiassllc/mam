@@ -45,7 +45,7 @@ func newScreen(t *testing.T, opts ...mmtest.Option) *screen {
 	rig := mmtest.New(t, opts...)
 	svc := servicetest.New(t, service.Deps{DB: testdb.Open(t), Credentials: credentialtest.New()})
 	settings := settingsroutes.New(filepath.Join(t.TempDir(), "llm.json"), false, filepath.Join(t.TempDir(), "m.json"), false)
-	settings.ModelManager = rig.Svc
+	settings.ModelManager, settings.Gentest = rig.Svc, rig.Gentest
 	s := &screen{t: t, rig: rig, engine: router.New(svc, router.Options{Settings: settings})}
 
 	rec := s.send(httptest.NewRequest(http.MethodGet, paths.ModelManager(), nil))

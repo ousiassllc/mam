@@ -36,7 +36,7 @@ func Validate(c modeladapter.Config) error {
 	var errs []error
 	for _, check := range []func(modeladapter.Config) []error{
 		validateVendors, validateModels, validateLocal, validateImageRoutes,
-		validatePolicies, validateRouting, validateRetry,
+		validatePolicies, validateRouting, validateRetry, func(c modeladapter.Config) []error { return c.Gentest.Validate() },
 	} {
 		errs = append(errs, check(c)...)
 	}

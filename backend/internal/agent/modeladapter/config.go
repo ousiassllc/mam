@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/chatgptid"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/gentestcfg"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/overlay"
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -136,7 +137,8 @@ type Config struct {
 	Retry        RetryConfig   `json:"retry"`
 	Breaker      BreakerConfig `json:"breaker"`
 	// Routing is Multi-model routing on top of Policies (model-adapters-m3.md §13).
-	Routing RoutingConfig `json:"routing"`
+	Routing RoutingConfig     `json:"routing"`
+	Gentest gentestcfg.Limits `json:"gentest"` // the limits of one batch of the generation test screen
 }
 
 // DefaultConfig is the assignment of model-adapters.md §3, §4 for M1. The prices are reference values.

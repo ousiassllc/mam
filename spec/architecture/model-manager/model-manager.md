@@ -22,7 +22,7 @@
   state.json     導入状態（§7）
 ```
 
-- ジョブの結果（試し生成）は MAM のデータディレクトリ（`<data-dir>/gentest/<job-id>/`）に置く。`comfyui` の中ではない（アンインストールでもデータは残す、という既存の方針）。
+- ジョブの結果（試し生成）は MAM のデータディレクトリ（`<data-dir>/gentest/<バッチ ID>/`）に置く。`comfyui` の中ではない（アンインストールでもデータは残す、という既存の方針）。
 - `store.Layout.CheckWritable` が作成と書き込みを試し、できなければ `ErrNotWritable`（`EngineView.Writable=false`）。
 - `store.ForExecutable(exe)` が exe の実体（シンボリックリンクは解決）から `Layout` を作る。
 
@@ -118,7 +118,7 @@ ComfyUI **v0.42.1** のリリースアセット 4 種（`ComfyUI_windows_portabl
 | 種別 | 再開 | 内容 |
 |---|---|---|
 | `model_install` | **する**（`resumable=true`） | `target` は `engine` か `model:<id>`。ファイルを順に `downloads\` の `.part` へ取得（`Range` で再開）→ SHA-256 を再検証 → `data\models\<folder>\` へ移す。冪等で、検証済みのファイルは取り直さない |
-| `gentest` | しない（`resumable=false`） | 試し生成（§8）。MAM が落ちたら失敗になる |
+| `gentest` | しない（`resumable=false`） | 試し生成（§8）。生成テストのバッチ（[../gentest/gentest.md](../gentest/gentest.md)）として動く。MAM が落ちたら、終わっていない結果は失敗になる |
 
 - 再起動のたびに再開するのは `jobqueue.DefaultMaxAttempts`（3）回まで。それを超えると失敗として残り、利用者が導入をやり直す。
 - 同じ対象のジョブが動いている間の再実行は、新しいジョブを作らずそのジョブを返す（`JobRef.Existing`）。対象ごとに直列化する。
@@ -148,7 +148,7 @@ ComfyUI **v0.42.1** のリリースアセット 4 種（`ComfyUI_windows_portabl
 
 ## 8. 試し生成（`gentest`）
 
-入力: モデル ID（`comfyui:bundled-comfyui/...` のほか、外部の ComfyUI・OpenAI 互換のモデルも可）・プロンプト・任意の参照画像・長さ・解像度・縦横比。`localbackends.Build` で作ったバックエンドを **`Adapter`・サーキットブレーカー・コスト台帳・Take を通さず**に直接呼ぶ。結果は `<data-dir>/gentest/<job-id>/`（`record.json`・結果ファイル・参照画像）に置き、`take`・`cost_ledger_entry`・`assets` には書かない。一覧・取得・削除は Service で行う。参照画像はジョブの作成前に `gentest/_inputs/` へ置き、ハンドラが試行のディレクトリへ移す（24 時間以上前の取りこぼしは起動時に消す）。Issue #835 の履歴・比較は、この種別の上に後で作る。
+試し生成は**生成テスト（[../gentest/gentest.md](../gentest/gentest.md)）の 1 モデル・1 プロンプト・1 本のバッチ**として動く。実装は 1 つ（`service/gentest`。このサービスにはもう試し生成のコードも保存場所もない）。画面（`handler/modelmgr`）は `gentest.Service` の `Estimate`→`Run` を呼び、一覧は履歴のうち「この画面のローカルのモデル」の結果を新しい順に出す。モデル（`comfyui:bundled-comfyui/...`、外部の ComfyUI、OpenAI 互換）はモデル名を指定した直接呼び出し（代替なし。[../gentest/gentest-adapter.md](../gentest/gentest-adapter.md)）で呼ぶ。同梱エンジンのモデルは、`localbackends.Options.Prepare`（`Service.Prepare`）が呼び出しの前にエンジンを起動する。結果は `<data-dir>/gentest/<バッチ ID>/` に置き、`take`・`cost_ledger_entry`・アセットには書かない。参照画像は `gentest/_staging/` に置いてバッチの作成時に入力として複製する（24 時間以上前の取りこぼしは起動時に消す）。
 
 ## 9. 起動・連携（`internal/app`）
 
@@ -189,13 +189,6 @@ func (*Service) SetHuggingFaceToken(token string) error
 func (*Service) ClearHuggingFaceToken() error
 func (*Service) HuggingFaceTokenStatus() (configured bool, lastChars string, err error)
 func (*Service) ExternalInventory(ctx, endpoint string) (ExternalInventory, error)  // 外部の ComfyUI（読むだけ）
-// 試し生成
-func (*Service) StartGentest(ctx, GentestInput) (JobRef, error)
-func (*Service) Gentests(ctx) ([]GentestRecord, error)
-func (*Service) Gentest(ctx, id string) (GentestRecord, error)
-func (*Service) StageReference(Reference) (id string, err error) // 参照画像を先に置く（MCP のアップロード用途 model_trial_reference）。GentestInput.ReferenceID で渡す
-func (*Service) GentestFile(ctx, id string) (path, mime string, err error)
-func (*Service) DeleteGentest(ctx, id string) error
 ```
 
 - **エンジンの更新**: MAM の更新とは独立。サイレントインストーラーはエンジンを取り直さない。`Engine()` の導入版と固定版（カタログ）が違えば更新できる状態で、`InstallEngine` が新しい固定版を入れる（`engine\` を入れ替え、`data\` は残る）。
@@ -216,7 +209,7 @@ func (*Service) DeleteGentest(ctx, id string) error
 ## 12. 画面と MCP ツール
 
 - **画面**: `GET /model-manager`（`web/handler/modelmgr`・`organisms/modelmgr`）。仕様は [endpoints-model-manager.md](../../api/endpoints-model-manager.md)・[model-manager-screen.md](../../components/model-manager-screen.md)。入口はプロジェクト一覧と設定画面のリンク。進捗は HTMX のポーリング（2 秒）。
-- **MCP ツール**: `mcp/tools/modelmgr`（エンジン・カタログ・トークン・外部）と `mcp/tools/modeltrial`（試し生成）。仕様は [mcp-tools-model-manager.md](../../api/mcp-tools-model-manager.md)。ジョブの種別 `model_install`・`gentest` の Probe を持ち、`get_job` が状態・進捗・結果・失敗の理由を返す。
+- **MCP ツール**: `mcp/tools/modelmgr`（エンジン・カタログ・トークン・外部）と 生成テストの `mcp/tools/gentest`（試し生成もこれで行う）。仕様は [mcp-tools-model-manager.md](../../api/mcp-tools-model-manager.md)・[mcp-tools-generation-test.md](../../api/mcp-tools-generation-test.md)。ジョブの種別 `model_install` の Probe はこの画面側、`gentest` の Probe は生成テスト側にあり、`get_job` が状態・進捗・結果・失敗の理由を返す。
 - **共有**: サービスの拒否は `service/modelmanager/mmview.Refuse`（種類とメッセージ）で、画面の HTTP 状態と MCP のエラーコードに写す（`ErrConsentRequired`・`ErrBusy`・`ErrPinned`・`ErrUnsupported` は 409 / `conflict`、`ErrNoGPU`・`*InvalidError` は 422 / `validation`）。`mmview.TrialModels` は試し生成の選択肢（モデルの識別子・動画の解像度と長さ・参照画像を使えるか）。
 - **導入の中断**: `CancelInstall`。ジョブは失敗で終わり（理由に「導入を中断しました」）、`.part` は残るので、導入し直すと続きから再開する。
 - **同意の強制は API**: 画面のダイアログは同意を渡す手段で、`InstallModel` が記録を確かめる（§6）。MCP からも同じ（記録が無ければ 409 / `conflict`）。

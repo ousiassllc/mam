@@ -123,7 +123,6 @@ type Event struct {
 // start (the engine takes a while to load). Failures are logged and shown by Engine().
 func (s *Service) OnStartup(ctx context.Context) {
 	s.engine.CleanLeftovers()
-	s.cleanInputs()
 	if !s.bundled || !s.engine.Status().Installed {
 		return
 	}
@@ -146,5 +145,4 @@ func (s *Service) Close() { _ = s.proc.Stop() }
 // queue starts (and before Recover, which fails the jobs of a kind without a handler).
 func (s *Service) Register() {
 	s.Jobs.Register(domain.JobModelInstall, s.handleInstall, true)
-	s.Jobs.Register(domain.JobGentest, s.handleGentest, false)
 }

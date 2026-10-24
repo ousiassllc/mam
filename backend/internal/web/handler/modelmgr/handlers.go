@@ -7,11 +7,14 @@
 package modelmgr
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/a-h/templ"
 	"github.com/gin-gonic/gin"
 
+	"github.com/ousiassllc/mam/backend/internal/service/gentest"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmview"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
@@ -23,11 +26,14 @@ import (
 // Handlers answer the routes of the screen.
 type Handlers struct {
 	Svc *modelmanager.Service
+	// Gentest runs the trial generations (a batch of one result of the generation test) and keeps their results. Nil
+	// leaves the trial panel without a form.
+	Gentest *gentest.Service
 }
 
 // Register adds the routes of the screen to the engine.
-func Register(engine *gin.Engine, svc *modelmanager.Service) {
-	h := Handlers{Svc: svc}
+func Register(engine *gin.Engine, svc *modelmanager.Service, g *gentest.Service) {
+	h := Handlers{Svc: svc, Gentest: g}
 	engine.GET(paths.ModelManager(), h.Page)
 	engine.GET(paths.ModelManagerPart("dialog"), h.CloseDialog)
 
@@ -77,6 +83,16 @@ func (h Handlers) CloseDialog(c *gin.Context) {
 // the state does not allow it, 404 for something that is not there; anything else is a fault (500, logged, with a
 // generic message: the cause stays out of the page).
 func refuse(c *gin.Context, err error) (status int, msg string) {
+	var invalid *gterr.InvalidError
+	var conflict *gterr.ConflictError
+	switch {
+	case errors.As(err, &invalid):
+		return http.StatusUnprocessableEntity, invalid.Message
+	case errors.As(err, &conflict):
+		return http.StatusConflict, conflict.Message
+	case errors.Is(err, gterr.ErrNotFound):
+		return http.StatusNotFound, "対象が見つかりません。画面を読み込み直してください"
+	}
 	kind, msg := mmview.Refuse(err)
 	switch kind {
 	case mmview.RefusalInvalid:

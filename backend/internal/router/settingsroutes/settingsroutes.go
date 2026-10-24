@@ -11,6 +11,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/chatgpt"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/appupdate"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/llmassign"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
 	"github.com/ousiassllc/mam/backend/internal/service/mcpsettings"
@@ -20,6 +21,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/handler"
 	updatehandler "github.com/ousiassllc/mam/backend/internal/web/handler/appupdate"
 	chatgpthandler "github.com/ousiassllc/mam/backend/internal/web/handler/chatgptsettings"
+	gentesthandler "github.com/ousiassllc/mam/backend/internal/web/handler/gentest"
 	llmhandler "github.com/ousiassllc/mam/backend/internal/web/handler/llmassign"
 	localhandler "github.com/ousiassllc/mam/backend/internal/web/handler/localmodels"
 	mcphandler "github.com/ousiassllc/mam/backend/internal/web/handler/mcpsettings"
@@ -48,6 +50,9 @@ type Services struct {
 	Workflows *workflowsvc.Service
 	// ModelManager is the model manager screen (paths.ModelManager). Nil leaves the screen and its routes out.
 	ModelManager *modelmanager.Service
+	// Gentest is the generation test screen (paths.GenerationTest) and the trial generations of the model manager screen
+	// (service.Services.Gentest). Nil leaves the screen out and the trial panel without a form.
+	Gentest *gentest.Service
 }
 
 // New builds the services over the settings files (llm.json / models.json, or the files the operator pinned
@@ -114,7 +119,10 @@ func Register(engine *gin.Engine, keys *service.CredentialService, s *Services) 
 		registerLocalModels(engine, localhandler.Handlers{Local: s.LocalModels, Models: s.Models})
 	}
 	if s != nil && s.ModelManager != nil {
-		modelmgrhandler.Register(engine, s.ModelManager)
+		modelmgrhandler.Register(engine, s.ModelManager, s.Gentest)
+	}
+	if s != nil && s.Gentest != nil {
+		gentesthandler.Register(engine, s.Gentest)
 	}
 	engine.GET(paths.Settings(), handler.GlobalSettingsPage(keys, addSections))
 }

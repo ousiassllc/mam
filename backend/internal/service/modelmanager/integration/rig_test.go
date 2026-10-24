@@ -175,7 +175,6 @@ type rig struct {
 	keys    *credentialtest.Memory
 	host    *fakeHost
 	layout  store.Layout
-	dataDir string
 	free    func(string) (uint64, error)
 	started bool
 }
@@ -190,7 +189,7 @@ func newPinnedRig(t *testing.T, opts ...option) *rig { return build(t, true, opt
 func build(t *testing.T, pinned bool, opts ...option) *rig {
 	t.Helper()
 	host := newHost(t, allTest...)
-	r := &rig{t: t, host: host, keys: credentialtest.New(), dataDir: t.TempDir()}
+	r := &rig{t: t, host: host, keys: credentialtest.New()}
 	r.layout = store.Layout{Root: filepath.Join(t.TempDir(), "install", "comfyui")}
 	r.free = func(string) (uint64, error) { return 1 << 40, nil }
 
@@ -216,7 +215,7 @@ func build(t *testing.T, pinned bool, opts ...option) *rig {
 
 	anyURL := func(*url.URL) error { return nil }
 	d := modelmanager.Deps{
-		Layout: r.layout, DataDir: r.dataDir, Catalog: testCatalog(host), Jobs: r.queue, JobTable: r.table, Models: r.models, Adapter: r.ad,
+		Layout: r.layout, Catalog: testCatalog(host), Jobs: r.queue, JobTable: r.table, Models: r.models, Adapter: r.ad,
 		Keys: r.keys, Backends: bo, Platform: "windows", FreeBytes: func(p string) (uint64, error) { return r.free(p) },
 		Fetch:   fetch.Options{CheckURL: anyURL, Client: fetch.WithRedirectRules(&http.Client{}, anyURL, "")},
 		Command: fakeEngine, PollEvery: 20 * time.Millisecond, StartTimeout: 20 * time.Second,

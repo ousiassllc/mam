@@ -1,0 +1,112 @@
+package gentest
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// HistoryID is the DOM id of the history list.
+const HistoryID = "gt-history"
+
+// HistoryList is the history (newest first) with its filter, the total spend and a button for the next page.
+templ HistoryList(h History) {
+	<section id={ HistoryID } class="flex flex-col gap-4" data-testid="gt-history">
+		@notice(h.Message, "gt-history")
+		<p class="text-sm text-neutral-300" data-testid="gt-spend">{ h.Spend }</p>
+		<form
+			class="flex flex-wrap items-end gap-3"
+			hx-get={ paths.GenerationTestHistory() }
+			hx-target={ "#" + HistoryID }
+			hx-swap="outerHTML"
+			hx-push-url="true"
+			data-testid="gt-filter"
+		>
+			<label class="flex flex-col gap-1 text-xs text-neutral-400" for="gt-filter-model">
+				<span>モデル</span>
+				@atoms.Select(atoms.FieldMd, "max-w-xs", templ.Attributes{"id": "gt-filter-model", "name": FieldModel}) {
+					<option value="">すべて</option>
+					for _, m := range h.Models {
+						<option value={ m } selected?={ m == h.Filter.Model }>{ m }</option>
+					}
+				}
+			</label>
+			<label class="flex flex-col gap-1 text-xs text-neutral-400" for="gt-filter-media">
+				<span>種類</span>
+				@atoms.Select(atoms.FieldMd, "", templ.Attributes{"id": "gt-filter-media", "name": FieldMedia}) {
+					<option value="">すべて</option>
+					<option value="image" selected?={ h.Filter.Media == "image" }>画像</option>
+					<option value="video" selected?={ h.Filter.Media == "video" }>動画</option>
+				}
+			</label>
+			<label class="flex items-center gap-1 text-sm">
+				<input type="checkbox" name="favorite" value="1" checked?={ h.Filter.Favorite }/>
+				<span>お気に入りだけ</span>
+			</label>
+			@atoms.Button(atoms.ToneNeutral, "絞り込む", templ.Attributes{"type": "submit"})
+		</form>
+		if len(h.Cards) == 0 {
+			<p class="text-sm text-neutral-400" data-testid="gt-history-empty">条件に合う結果はありません。</p>
+		}
+		<ul class="flex flex-wrap gap-3">
+			for _, c := range h.Cards {
+				<li data-testid="gt-history-item">
+					@HistoryCard(c)
+				</li>
+			}
+		</ul>
+		if h.Next != "" {
+			<div>
+				@atoms.Button(atoms.ToneNeutral, "さらに表示", templ.Attributes{
+					"type": "button", "hx-get": h.Next, "hx-target": "#" + HistoryID, "hx-swap": "outerHTML", "data-testid": "gt-more",
+				})
+			</div>
+		}
+	</section>
+}
+
+// HistoryCard is a result with its favorite toggle (the heart) and its prompt.
+templ HistoryCard(c Card) {
+	<div class="flex w-44 flex-col gap-1">
+		@ResultCard(c)
+		<p class="line-clamp-2 break-words text-xs text-neutral-300">{ c.Prompt }</p>
+		<div class="flex items-center justify-between text-xs text-neutral-400">
+			<span>{ c.CreatedAt }</span>
+			@FavoriteButton(c.ID, c.Favorite)
+		</div>
+	</div>
+}
+
+// FavoriteButton toggles the favorite mark; it replaces itself.
+templ FavoriteButton(id string, on bool) {
+	<button
+		type="button"
+		class="rounded px-1 text-base leading-none hover:bg-neutral-800"
+		hx-post={ paths.GenerationTestPart("results", id, "favorite") }
+		hx-vals={ favoriteVals(!on) }
+		hx-swap="outerHTML"
+		aria-pressed={ boolText(on) }
+		aria-label={ favoriteLabel(on) }
+		data-testid="gt-favorite"
+		data-on={ boolText(on) }
+	>
+		if on {
+			<span aria-hidden="true">★</span>
+		} else {
+			<span aria-hidden="true">☆</span>
+		}
+	</button>
+}
+
+func favoriteVals(next bool) string {
+	if next {
+		return `{"favorite":"1"}`
+	}
+	return `{"favorite":"0"}`
+}
+
+func favoriteLabel(on bool) string {
+	if on {
+		return "お気に入りを外す"
+	}
+	return "お気に入りにする"
+}

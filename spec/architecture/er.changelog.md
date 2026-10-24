@@ -82,3 +82,4 @@
 | 1.75 | 2026-10-24 | MCP サーバーのベアラートークンのテーブル `mcp_token`（値は SHA-256 のみ保存。作成・最終利用・失効の日時）を足した。定義は行数上限のため `spec/architecture/er-mcp.md` に置き、冒頭から参照する | Issue #830。MCP サーバー（`spec/architecture/mcp.md`）の認証に、複数発行・個別失効できるトークンの保存先が要るため |
 | 1.76 | 2026-10-25 | `job.kind` に `model_install`・`gentest` を足した（6 値。再開は `model_install` のみ）。定義は行数上限のため [er-model-manager.md](model-manager/er-model-manager.md) に書いた | Issue #833。モデルの導入と試し生成を既存のジョブキューで動かすため |
 | 1.77 | 2026-10-25 | `comfy_workflow`・`comfy_workflow_version`（ComfyUI ワークフローの保存と版）を、新しいファイル [er-comfy-workflows.md](comfy/er-comfy-workflows.md) に足した | Issue #834 |
+| 1.78 | 2026-10-26 | 生成テストのテーブル `gentest_batch`・`gentest_input`・`gentest_result`・`gentest_prompt`・`gentest_import` を、新しいファイル [gentest/er-gentest.md](gentest/er-gentest.md) に足した（どれも Project のテーブルを参照せず、書き出しに含めない）。`job.kind` の `gentest` は 1 バッチを動かす（`payload` は `batch_id`） | Issue #835 |

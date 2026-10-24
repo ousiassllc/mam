@@ -85,17 +85,12 @@ type Trial struct {
 type Trials struct {
 	Message
 	Items []Trial
-	// Jobs are the trial jobs that have no record yet (queued, or just started): the list asks for them until they have.
-	Jobs []string
 }
 
-// Polling reports whether a trial is running.
+// Polling reports whether a trial waits or runs.
 func (t Trials) Polling() bool {
-	if len(t.Jobs) > 0 {
-		return true
-	}
 	for _, it := range t.Items {
-		if it.Status == "running" {
+		if it.Status == "running" || it.Status == "queued" {
 			return true
 		}
 	}

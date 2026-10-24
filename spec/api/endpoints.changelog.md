@@ -160,3 +160,4 @@
 | 1.153 | 2026-10-25 | §1 の `GET /settings` に「ローカル・代替モデル」の区画を足し、そのルート（`/settings/local-models/…`）を [endpoints-local-models.md](endpoints-local-models.md) に分けて書いた。「画像・動画モデル」の保存・既定に戻すの応答を「すぐに反映されます」に改めた（LLM は再起動後のまま） | Issue #831。ComfyUI・OpenAI 互換の接続先とモデルを設定画面で登録し、保存でただちに Model Adapter へ反映するため。割り当てのフォームに追加したモデルが並ぶので、画像・動画モデルの保存も再起動を待たない |
 | 1.154 | 2026-10-25 | §1 にモデルマネージャー画面のルート（`/model-manager/…`）を足し、仕様を [endpoints-model-manager.md](endpoints-model-manager.md) に分けて書いた | Issue #833。ComfyUI エンジンの導入・モデルのカタログ・ライセンスの同意・試し生成の画面 |
 | 1.155 | 2026-10-25 | §1 に `GET /nodes`・`POST /nodes/start`（ノード画面）と `/workflows/…`（保存した ComfyUI ワークフローの画面）を足し、仕様を [endpoints-workflows.md](endpoints-workflows.md) に書いた | Issue #834 |
+| 1.156 | 2026-10-26 | §1 に生成テスト画面のルート（`/generation-test/…`）を足し、仕様を [endpoints-gentest.md](endpoints-gentest.md) に書いた。モデルマネージャーの試し生成のルートは、生成テストの 1 件のバッチを動かすものに改めた（[endpoints-model-manager.md](endpoints-model-manager.md) 1.1） | Issue #835 |

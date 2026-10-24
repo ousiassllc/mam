@@ -1,13 +1,12 @@
 // Package modelmanager is the model manager of the settings screen and of the MCP tools: the bundled ComfyUI
-// engine (download, start, stop), the catalog of local image and video models (install, delete, licenses), the
-// trial generation outside any Project, and the read-only view of an external ComfyUI
-// (spec/architecture/model-manager/model-manager.md, "Service API").
+// engine (download, start, stop), the catalog of local image and video models (install, delete, licenses) and the
+// read-only view of an external ComfyUI (spec/architecture/model-manager/model-manager.md, "Service API"). The trial
+// generation outside any Project is a batch of the generation test service (package gentest).
 //
 // The engine and the models are below one directory next to mam.exe, so that the uninstaller removes them with the
 // application. An installed model appears as a model of the managed endpoint "bundled-comfyui" (localmodels) and
-// is then selectable everywhere a #831 model is. Downloads and trial generations are background jobs
-// (domain.JobModelInstall, resumable; domain.JobGentest, not): Register installs their handlers, JobStatus reads
-// their progress.
+// is then selectable everywhere a #831 model is. Downloads are background jobs (domain.JobModelInstall, resumable):
+// Register installs the handler, JobStatus reads the progress.
 //
 // Like localmodels it does not import package service: its refusals are the Err values below and *InvalidError.
 package modelmanager
@@ -82,20 +81,18 @@ func invalid(format string, args ...any) error {
 type Deps struct {
 	// Layout is the comfyui directory next to mam.exe (store.ForExecutable).
 	Layout store.Layout
-	// DataDir is the data directory of mam; trial generations are below DataDir/gentest.
-	DataDir string
 	// Catalog is the catalog (nil: catalog.Default()).
 	Catalog *catalog.Catalog
-	// Jobs and JobTable are the queue the install and trial jobs run on and its table (read for their state).
+	// Jobs and JobTable are the queue the install jobs run on and its table (read for their state).
 	Jobs     *jobqueue.Queue
 	JobTable *repository.JobRepository
 	// Models creates and deletes the models of the bundled endpoint and lists the endpoints.
 	Models *localmodels.Service
-	// Adapter is the running Model Adapter: the setting a trial generation reads.
+	// Adapter is the running Model Adapter: the setting the external ComfyUI view reads.
 	Adapter *modeladapter.Adapter
 	// Keys holds the optional Hugging Face token (HuggingFaceProvider).
 	Keys credential.Store
-	// Backends are the options the trial generation builds its backends with (staging directory, poll interval).
+	// Backends are the options the external ComfyUI view reads (staging directory).
 	Backends localbackends.Options
 	Logger   *slog.Logger
 

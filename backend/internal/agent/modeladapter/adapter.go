@@ -107,14 +107,16 @@ func (a *Adapter) Reload(cfg Config, backends Backends) {
 // Config returns the setting the Adapter runs with.
 func (a *Adapter) Config() Config { return a.state.Load().cfg }
 
-// Unavailable says why the video model cannot be called now (domain.ExcludedNoBackend: it has no
+// Unavailable says why the image or video model cannot be called now (domain.ExcludedNoBackend: it has no
 // backend or no API key is stored for its vendor; domain.ExcludedCircuitOpen: its vendor's circuit
 // breaker is open), or "" when it can. It does not consume the breaker's probe call.
 func (a *Adapter) Unavailable(m domain.ModelName) string {
 	st := a.state.Load()
-	backend := st.backends.Video[m]
+	backend := any(st.backends.Video[m])
 	if backend == nil {
-		return domain.ExcludedNoBackend
+		if backend = any(st.backends.Image[m]); backend == nil {
+			return domain.ExcludedNoBackend
+		}
 	}
 	// Keys are added at run time, so the stored key is looked up on every call.
 	if c, ok := backend.(interface{ Configured() bool }); ok && !c.Configured() {
@@ -124,6 +126,17 @@ func (a *Adapter) Unavailable(m domain.ModelName) string {
 		return domain.ExcludedCircuitOpen
 	}
 	return ""
+}
+
+// Snapshot is the setting and the backends a call that starts now runs with (for the direct calls of package direct).
+func (a *Adapter) Snapshot() (Config, Backends) {
+	st := a.state.Load()
+	return st.cfg, st.backends
+}
+
+// Call runs fn like the Adapter's own calls: behind the vendor's breaker, concurrency limit, retry and timeout, no fail-over.
+func Call[T any](ctx context.Context, a *Adapter, v Vendor, clock *limitclock.Clock, model string, fn func(context.Context) (T, error)) (T, error) {
+	return call(ctx, a, a.state.Load(), v, clock, fn, model)
 }
 
 // EstimateImage is the most one image of the purpose can cost: the dearer of the primary model and

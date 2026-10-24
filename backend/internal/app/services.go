@@ -172,17 +172,19 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 	})
 	services.LocalModels = localModels
 	closers = append(closers, services.Close) // runs after jobs.Stop: no job change wakes the workers any more
-	mgr, err := newModelManager(cfg, localModels, models, jobs, jobTable, keys, backendOpts, logger)
+	mgr, err := newModelManager(localModels, models, jobs, jobTable, keys, backendOpts, logger)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 	services.ModelManager = mgr
 	manager.Store(mgr)
+	services.Gentest = newGentest(cfg, db, jobs, models, services, logger)
 	services.Workflows = newWorkflows(cfg, db, localModels, models, mgr, services.Projects, keys, backendOpts, logger)
 	closers = append(closers, mgr.Close) // after jobs.Stop too: the engine outlives the jobs that call it
 	if err := recoverWork(ctx, services, jobs, logger); err != nil {
 		return nil, nil, nil, err
 	}
+	services.Gentest.OnStartup(ctx) // after the queue failed the interrupted jobs: settles the results they left
 	jobs.Start(ctx)
 	closers = append(closers, jobs.Stop)
 	mgr.OnStartup(ctx)

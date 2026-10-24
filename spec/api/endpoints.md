@@ -46,6 +46,7 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 | GET ほか | `/nodes`・`/workflows/…` | ノード画面（ComfyUI の UI の埋め込み）と、保存した ComfyUI ワークフローの画面。一覧と仕様は [endpoints-workflows.md](endpoints-workflows.md) |
 | （各種） | `/settings/local-models/…` | 設定画面「ローカル・代替モデル」の接続先・モデル・API キー・接続テストのルート。一覧と仕様は [endpoints-local-models.md](endpoints-local-models.md) |
 | （各種） | `/model-manager/…` | モデルマネージャー画面（ComfyUI エンジン・モデルのカタログと導入・ライセンスの同意・試し生成）。入口はプロジェクト一覧と設定画面のリンク。ルートと仕様は [endpoints-model-manager.md](endpoints-model-manager.md)（`GET /model-manager` が画面） |
+| （各種） | `/generation-test/…` | 生成テスト画面（プロジェクトに属さない画像・動画の比較生成。モデル × プロンプト × 本数の見積り確認・実行・進捗と比較表・履歴・プロンプト履歴・プロジェクトへの取り込み）。入口はプロジェクト一覧のリンク。ルートと仕様は [endpoints-gentest.md](endpoints-gentest.md)（`GET /generation-test` が画面） |
 | GET | `/settings/chatgpt` | 設定画面「ChatGPT でログイン」の区画だけ（`#chatgpt-panel`）。ログイン中は区画が 2 秒ごとにこの URL を取り直す（`Cache-Control: no-store`）。`GET /settings/chatgpt/models` は公式ログインのプランで使えるモデル（`GET https://api.openai.com/v1/models` の `visibility=="list"`）を区画に出す。区画は `app` が ChatGPT のサービスを持つときだけ。トークンの値はどの応答にも出ない（`spec/architecture/chatgpt-signin.md`） |
 | POST | `/settings/chatgpt/:kind/login` | ログインの開始。`:kind` は `official` / `image`（他は 404）。フォーム `method`（`browser` / `device`）。CSRF 必須。200 で区画（ブラウザ: 開いたことと認可 URL、デバイスコード: 確認 URL・コード・期限）。画像生成が OFF の `image` は 409、公式のデバイスコードは 422（デバイスコードの方式がない）。`POST …/login/cancel` は進行中のログインを中止する |
 | DELETE | `/settings/chatgpt/:kind` | ログアウト（失効の要求 → 保存したトークンの削除）。CSRF 必須。200 で区画を返し、失効を確認できなかったときはその旨と「ChatGPT の設定で接続を解除」を出す（ローカルのトークンは消える） |
