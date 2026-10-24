@@ -90,6 +90,8 @@ func run(args []string, getenv func(string) string) int {
 		Getenv:  getenv,
 		OnReady: nav.SetURL,
 		Update:  &app.UpdateOptions{Install: updater.Install},
+		// The ChatGPT login opens the default browser, not the webview: the login page must not run inside the app window.
+		OpenBrowser: func(url string) error { return wails.Browser.OpenURL(url) },
 	}, func(err error) {
 		// The server is already down: no graceful shutdown to wait for.
 		showError(errorText(err))

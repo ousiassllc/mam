@@ -40,6 +40,7 @@
 | Style / Lighting Reference、既存素材の参照ベース編集・差分変更 | Google Nano Banana（Gemini Image） | Imagen 4（参照画像は使えない。下の注） | 編集・変換・参照ベース変更・キャラクター一貫性維持に強く、World State継承の再生成に向く |
 | 高速反復・低コストプレビュー生成 | Black Forest Labs FLUX.2 | Imagen 4 Fast | オープンウェイトでセルフホスト可能（ベンダーロックイン回避の保険）、生成速度重視のCandidate Generation向き |
 | OpenAI系LLM（GPT-5）と認証・請求を統合したい場合 | OpenAI GPT Image 2 | Imagen 4 | 品質ベンチマーク最上位、GPT-5系のAgentと同一ベンダーで運用しやすい |
+| ChatGPT のサブスクで描く場合（**非公式・既定 OFF**。設定画面で ON にするときにリスクを確認する） | GPT Image 2（`gpt-image-2:chatgpt-subscription`） | 利用者が割り当てる | API キーなしで ChatGPT のプランの枠を使える。ChatGPT の内部 API（`chatgpt.com/backend-api/codex/responses` の `image_generation`）を使うため、予告なく使えなくなることがあり、公式のプレビューでは画像生成はサポート外で、プランの利用上限を消費する（`spec/architecture/chatgpt-signin.md` §5.2） |
 
 > **注（Imagen 4 は参照画像を受け取れない）**: Imagen 4 が受け取るのはプロンプトとアスペクト比だけで、画像入力（`Inputs`）は取れない（参照画像を受け取れるのは Nano Banana・GPT Image 2・FLUX.2 のみ）。そのため参照画像つきの呼び出しが代替の Imagen 4 に回ると、参照画像は警告ログを残して**黙って捨てられ**、プロンプトだけの新規生成になる（利用者への通知や失敗扱いはなく、画像の結果にも代替に回ったことは残らない）。Style / Lighting / Keyframe とアップロード素材・World State の参照つき Character / Product / Location は `edit_reference` の代替でこうなり、**その画像ではアップロード素材・World State の見た目やキャラクターの同一性は保たれない**（その Reference Pack / Keyframe を拠り所にする以降の Judge の Identity 評価も、参照なしで作られた画像が基準になる）。同一性を保ちたい用途で代替にも参照画像を持たせたいときは、`images.edit_reference` の `fallback.model` に GPT Image 2 または FLUX.2 を指定する。
 
@@ -94,6 +95,8 @@ Jev の利用ルール:
 音声: elevenlabs-tts, elevenlabs-music, elevenlabs-sfx, sync-labs
 ```
 
+ChatGPT のサブスク経由の画像は `gpt-image-2:chatgpt-subscription`（API キー経由の `gpt-image-2` と区別できる識別子。`take.model_name`・`cost_ledger_entry.provider` に制約はないのでマイグレーション不要。見積もり 0 USD で、台帳には 0 円の行を残す）。上の表は組み込みの 7 つで、設定で増える識別子も同じ列に入る。
+
 Reasoning LLM Adapter側の呼び出しモデルは Take/Cost Ledger の対象外（生成物ではなく思考プロセスのため）。将来的にLLM呼び出しコストの可視化が必要になった場合は、別テーブル（例: `AGENT_INVOCATION_LOG`）の追加を別途検討する。
 
 ## 7. フォールバック / サーキットブレーカー
@@ -112,6 +115,7 @@ Reasoning LLM Adapter側の呼び出しモデルは Take/Cost Ledger の対象�
 
 - 設定: Agent ごとの `routes`（`primary` / `fallback` の `provider`+`model`）、`providers`（`base_url`）、`timeout_seconds`（既定 120）、`retry`（`max_attempts` 3 / `base_delay_ms` 1000 / `max_delay_ms` 16000）、`breaker`（`failure_threshold` 5 / `open_seconds` 30）。既定値は §2 の表と同じ割り当てで、JSON ファイルで上書きできる（未知のキーはエラー）。読むファイルは `--llm-config`（`MAM_LLM_CONFIG`）で指定したもの、指定が無ければデータディレクトリの `llm.json`（無ければ既定値）。全体の設定画面（`GET /settings`）の「LLM の割り当て」は、14 Agent の `primary` / `fallback` を `llm.json` の `routes` に保存する（`internal/service/llmassign`）: 既定と同じ割り当ては書かず（のちに既定が変わっても追従する）、`providers`・`retry` など `routes` 以外のキーと手書きの他の Agent の経路はそのまま残し、全体を `llm.ParseConfig`（起動時の `llm.LoadConfig` と同じ検証）に通して通らなければ 422 で何も書かない。起動オプションで指定したファイルは書き換えず読み取り専用で表示する。起動時に 1 回だけ読むため、保存・「既定に戻す」の反映にはアプリの再起動が必要（画面は実行中の割り当てではなく保存済みの割り当てを示す）。モデル名は設定値であり Agent のコードには書かない
 - API キーは `credential.Store` のプロバイダー名（`anthropic` / `openai` / `google`）で呼び出しごとに読む。設定画面で保存したキーは再起動なしで有効になる
+- プロバイダー `chatgpt-subscription`（`llm.Providers()` の 4 つ目）は API キーではなく「ChatGPT でログイン」（Sign in with ChatGPT、公式の ChatGPT plan usage）のアクセストークンで、公式の Responses API（`POST https://api.openai.com/v1/responses`、`store:false`・`stream:true`・`instructions`・`max_output_tokens` 等は送らない）を呼ぶ（`internal/agent/llm/chatgptsub`）。成功は `response.completed` だけ。プランの利用上限（`subscription_sharing_usage_limit_exceeded`、429）など待っても戻らない失敗（`APIError.Permanent`）は再試行せず・ブレーカーに数えず、直ちに代替へ回して理由と `https://chatgpt.com/settings/usage` のリンクをチャットに出す（`llm.WithFallbackNotice`）。5xx・503 の利用量取得失敗は §2.1 の指数バックオフで再試行する。JSON は `text.format` ではなく `instructions` で求め、上の検証で受ける。モデル名は `GET https://api.openai.com/v1/models` で選ぶ（固定しない）。詳細は `spec/architecture/chatgpt-signin.md` §5.1
 - 再試行: タイムアウト・ネットワーク断・429・5xx を指数バックオフで再試行する。`Retry-After` があれば、待ち時間は現在のバックオフ以上にし（バックオフより短い指示には従わず、長い指示を優先する）、`max_delay_ms`（既定 16 秒）で頭打ちにする（ベンダーが長い待ちを求めても呼び出しを長時間止めない）。認証エラー等の 4xx は再試行しない
 - サーキットブレーカー: プロバイダー単位。連続失敗が `failure_threshold` に達すると OPEN になり、`open_seconds` 経過後に 1 回だけ試行（HALF-OPEN）して成功で CLOSED に戻る。OPEN のプロバイダーは呼ばず、代替へ自動でルーティングする（§7）
 - 出力は構造化 JSON を要求し、コードフェンスや前置きを除いて検証する。検証に失敗した回答は保存せず、チャットにエラーを通知して再開できる状態に留める。出力は 1 回の呼び出しあたり最大 8192 トークン（`Request.MaxTokens` が 0 のときに必ず適用される固定値 `DefaultMaxTokens`。Anthropic の `max_tokens`・OpenAI の `max_completion_tokens`・Gemini の `maxOutputTokens` に渡す。現状 `MaxTokens` を指定する呼び出し元は無く、全 Agent に掛かる。設定（`--llm-config`）では変えられない）で、長い回答が途中で切れると上の検証に失敗する。プロバイダー応答の読み取りは 8 MiB までで、それ以上は読まない
@@ -125,6 +129,7 @@ M1 Issue #7（F-06/F-07/F-11/F-12）の実装仕様。Reasoning LLM Adapter（§
 - **画像**: §3 の 4 種すべて（Imagen 4 / Nano Banana / FLUX.2 / GPT Image 2）のアダプターと、用途→プライマリ/代替の設定（§3 の表どおり。`new_reference` / `edit_reference` / `preview` / `unified_openai`）を実装する。Reference Pack の Character/Product/Location は新規生成として `new_reference`（アップロード素材や World State の参照画像がある場合は参照ベース編集として `edit_reference`）、Style/Lighting/Keyframe は `edit_reference` を使う。`prefer_openai` を有効にすると新規参照を `unified_openai` へ回す。`preview`（FLUX.2 による高速プレビュー）は、現状どの機能からも呼ばれない予約ルートである（FLUX.2 を使うには `images.new_reference` などの `primary` に FLUX.2 を指定する）
 - **動画**: Kling 3.0 / Seedance 2.0（M1）と Runway Gen-4.5（M2）の 3 アダプタ（§4）。Runway Gen-4.5 は `POST /v1/text_to_video`（Shot に先頭フレームがなければ）または `POST /v1/image_to_video`（先頭フレームのみ）を非同期タスクとして起動して `GET /v1/tasks/:id` をポーリングし、`X-Runway-Version` ヘッダーを付ける。出力は 720p のみ、長さは 2〜10 秒、ネガティブプロンプトはなく（Avoid は本文に含める）プロンプトは 1000 文字まで、自由な参照画像は取れない。縦横比は `text_to_video` が 16:9 / 9:16 だけ、`image_to_video` は 1:1 も取れる。そのため Brief の縦横比が 1:1 で Shot に先頭フレーム（Keyframe）がないときは、リクエストを送らず 422 相当の `ProviderError` で失敗し、§9.3 のフェイルオーバーで代替モデルに回る（MAX QUALITY では Kling 3.0）。1:1 の Shot で Runway を主に使うには先頭フレームを用意する。価格はクレジット（12 クレジット/秒、1 クレジット = 0.01 USD）から USD に換算して見積る
 - **`model_name` / `provider`**: `take.model_name`・`cost_ledger_entry.provider` は §6 の正規識別子（`imagen-4` / `nano-banana` / `flux-2` / `gpt-image-2` / `kling-3.0` / `seedance-2.0` / `runway-gen-4.5`）で保存する。API のモデル ID（`imagen-4.0-generate-001` など）は設定値で、保存値には使わない。`gpt-image-2` の既定 API モデル ID は、現時点で公開 API として確認できている `gpt-image-1`（`models.gpt-image-2.model` で差し替え可能。公開されたら設定で `gpt-image-2` に切り替える）
+- **ChatGPT のサブスク経由の画像（非公式、`internal/agent/modeladapter/chatgptimage`）**: `gpt-image-2:chatgpt-subscription`。Codex のエンドポイントの `image_generation` ツールを、画像専用のログイン（Codex の公開クライアント）のトークンで呼ぶ。参照画像は `input_image` で渡せる。**既定 OFF**で、OFF のあいだは外部への呼び出しを一切しない。ON にするには設定画面でリスクを確認する。呼び出しの失敗は §9.3 と同じ再試行・代替の対象で、無音が 180 秒続くと中止する。設計は `spec/architecture/chatgpt-signin.md` §5.2
 
 ### 9.2 設定
 

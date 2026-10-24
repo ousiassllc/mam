@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/ousiassllc/mam/backend/internal/chatgpt"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/appupdate"
 	"github.com/ousiassllc/mam/backend/internal/service/llmassign"
@@ -15,6 +16,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/modelsettings"
 	"github.com/ousiassllc/mam/backend/internal/web/handler"
 	updatehandler "github.com/ousiassllc/mam/backend/internal/web/handler/appupdate"
+	chatgpthandler "github.com/ousiassllc/mam/backend/internal/web/handler/chatgptsettings"
 	llmhandler "github.com/ousiassllc/mam/backend/internal/web/handler/llmassign"
 	mcphandler "github.com/ousiassllc/mam/backend/internal/web/handler/mcpsettings"
 	modelhandler "github.com/ousiassllc/mam/backend/internal/web/handler/modelassign"
@@ -32,6 +34,8 @@ type Services struct {
 	// MCP is the MCP server section (address, bind address, tokens). Nil when the MCP server is not running
 	// (a router built without the app, as the tests do): the section and its routes are then absent.
 	MCP *mcpsettings.Service
+	// ChatGPT is the ChatGPT sign-in section. Nil leaves the section and its routes out.
+	ChatGPT *chatgpt.Service
 }
 
 // New builds the services over the settings files (llm.json / models.json, or the files the operator pinned
@@ -60,6 +64,10 @@ func Register(engine *gin.Engine, keys *service.CredentialService, s *Services) 
 			mcp := mcphandler.SectionData(context.Background(), s.MCP)
 			d.MCP = &mcp
 		}
+		if s != nil && s.ChatGPT != nil {
+			gpt := chatgpthandler.SectionData(s.ChatGPT)
+			d.Credentials.ChatGPT = &gpt
+		}
 	}
 	if update != nil {
 		engine.POST(paths.UpdateCheck(), updatehandler.Check(update))
@@ -68,6 +76,14 @@ func Register(engine *gin.Engine, keys *service.CredentialService, s *Services) 
 		engine.PUT(paths.MCPBind(), mcphandler.Bind(s.MCP))
 		engine.POST(paths.MCPTokens(), mcphandler.Issue(s.MCP))
 		engine.DELETE(paths.MCPToken(":id"), mcphandler.Revoke(s.MCP))
+	}
+	if s != nil && s.ChatGPT != nil {
+		engine.GET(paths.ChatGPTSettings(), chatgpthandler.Panel(s.ChatGPT))
+		engine.GET(paths.ChatGPTModels(), chatgpthandler.Models(s.ChatGPT))
+		engine.PUT(paths.ChatGPTImageEnabled(), chatgpthandler.SetImageEnabled(s.ChatGPT))
+		engine.POST(paths.ChatGPTLogin(":kind"), chatgpthandler.StartLogin(s.ChatGPT))
+		engine.POST(paths.ChatGPTLoginCancel(":kind"), chatgpthandler.CancelLogin(s.ChatGPT))
+		engine.DELETE(paths.ChatGPTAccount(":kind"), chatgpthandler.Logout(s.ChatGPT))
 	}
 	if s != nil {
 		engine.PUT(paths.LLMSettings(), llmhandler.Save(s.LLM))
