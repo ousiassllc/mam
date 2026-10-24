@@ -23,6 +23,19 @@ var ErrUnavailable = errors.New("media: ffmpeg and ffprobe are required")
 // shown through its proxy.
 const MaxPreviewHeight = 1080
 
+// jpegFullRange is the scale filter option, and jpegEncoding the encoder options, of every JPEG
+// written here (the thumbnail and the frames the Judge reads). A JPEG is full-range YUV, and
+// ffmpeg 8's mjpeg encoder refuses anything else ("Non full-range YUV is non-standard", exit 234)
+// at the moment it opens, which for a seek past the last frame, or a filter that keeps no frame, is
+// before any frame has arrived and so with the range still unspecified: ffmpeg 4.4 exited 0 and
+// wrote nothing there, and Thumbnail and the Judge rely on that. The frames are therefore
+// converted to full range explicitly (the levels stay right: black 0, white 255), and -strict
+// unofficial lets the encoder open for the empty case. -strict unofficial alone would write
+// limited-range levels (black 16, white 235) into the JPEG.
+const jpegFullRange = "out_range=full"
+
+var jpegEncoding = []string{"-q:v", "3", "-strict", "unofficial"}
+
 // Tools is the ffmpeg and ffprobe executables.
 type Tools struct {
 	ffmpeg, ffprobe string
@@ -170,7 +183,7 @@ var errNoOutput = errors.New("ffmpeg wrote no output")
 // thumbnailAt writes one frame of src found by the input options seek.
 func (t Tools) thumbnailAt(ctx context.Context, src, dst string, seek ...string) error {
 	return t.write(ctx, dst, "image2", 0, append(append([]string{}, seek...),
-		"-i", src, "-frames:v", "1", "-vf", "scale='min(960,iw)':-2", "-q:v", "3"))
+		append([]string{"-i", src, "-frames:v", "1", "-vf", "scale='min(960,iw)':-2:" + jpegFullRange}, jpegEncoding...)...))
 }
 
 // Proxy writes an H.264 copy of src that is at most 1080 pixels tall: what the preview plays
@@ -190,8 +203,9 @@ func (t Tools) Proxy(ctx context.Context, src, dst string) error {
 // Frames writes the frames of src that the video filter keeps (at most maxFrames) as JPEGs named by
 // the pattern (an ffmpeg output pattern such as dir/%04d.jpg); seconds is the length of src.
 func (t Tools) Frames(ctx context.Context, src, pattern, filter string, maxFrames int, seconds float64) error {
-	return t.runFFmpeg(ctx, t.limits().writeLimit(seconds), "-v", "error", "-i", src, "-an", "-vf", filter,
-		"-frames:v", strconv.Itoa(maxFrames), "-q:v", "3", pattern)
+	args := []string{"-v", "error", "-i", src, "-an", "-vf", filter + ",scale=" + jpegFullRange,
+		"-frames:v", strconv.Itoa(maxFrames)}
+	return t.runFFmpeg(ctx, t.limits().writeLimit(seconds), append(append(args, jpegEncoding...), pattern)...)
 }
 
 // runFFmpeg runs ffmpeg with the arguments for at most limit. Cancelling ctx or running past the

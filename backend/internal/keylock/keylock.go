@@ -47,6 +47,13 @@ func (k *Locker) TryLock(key string) (unlock func(), ok bool) {
 	}
 }
 
+// Busy reports whether any key is held or waited for.
+func (k *Locker) Busy() bool {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	return len(k.entries) > 0
+}
+
 // acquire registers the caller as a holder or waiter of key, creating its entry when it has none.
 func (k *Locker) acquire(key string) *keyedEntry {
 	k.mu.Lock()

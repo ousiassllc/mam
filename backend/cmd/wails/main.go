@@ -34,7 +34,12 @@ func run(args []string, getenv func(string) string) int {
 	var window atomic.Pointer[application.WebviewWindow]
 	var server atomic.Pointer[desktop.Server]
 
-	wails := application.New(application.Options{
+	// The automatic update (spec/architecture/desktop.md §Auto update): the update service hands a verified
+	// installer to updater, which quits the application; OnShutdown runs the installer once the server stopped.
+	var wails *application.App
+	updater := desktop.NewUpdater(func() { wails.Quit() })
+
+	wails = application.New(application.Options{
 		Name:        appName,
 		Description: "Multi-agent AI video production studio",
 		// A second launch restores and raises the first window, then exits (inside application.New,
@@ -47,10 +52,14 @@ func run(args []string, getenv func(string) string) int {
 				}
 			},
 		},
-		// The last window closed: stop the server gracefully before the process ends.
+		// The last window closed, or an update asks to quit: stop the server gracefully before the process ends,
+		// then (only for an update) run the installer, which restarts the application after it installed.
 		OnShutdown: func() {
 			if s := server.Load(); s != nil {
 				_ = s.Stop() // a failed shutdown is already in the log file
+			}
+			if err := updater.RunPending(); err != nil {
+				showError("アップデートのインストーラーを起動できませんでした。アプリを起動し直してください。\n" + err.Error())
 			}
 		},
 	})
@@ -80,6 +89,7 @@ func run(args []string, getenv func(string) string) int {
 		Args:    args,
 		Getenv:  getenv,
 		OnReady: nav.SetURL,
+		Update:  &app.UpdateOptions{Install: updater.Install},
 	}, func(err error) {
 		// The server is already down: no graceful shutdown to wait for.
 		showError(errorText(err))

@@ -85,7 +85,7 @@ func TestBuildServices_TheDefaultSettingsFilesOfTheDataDirAreLoadedAtStartup(t *
 		cfg := testConfig(t)
 		require.NoError(t, os.WriteFile(filepath.Join(cfg.DataDir, name), []byte(content), 0o600))
 
-		services, cleanup, err := buildServices(context.Background(), cfg, slog.New(slog.DiscardHandler))
+		services, _, cleanup, err := buildServices(context.Background(), cfg, slog.New(slog.DiscardHandler))
 		require.Error(t, err, name)
 		assert.Nil(t, services, name)
 		assert.Nil(t, cleanup, name)
@@ -94,7 +94,7 @@ func TestBuildServices_TheDefaultSettingsFilesOfTheDataDirAreLoadedAtStartup(t *
 	cfg := testConfig(t)
 	require.NoError(t, os.WriteFile(filepath.Join(cfg.DataDir, "llm.json"), []byte(`{"timeout_seconds": 90}`), 0o600))
 	require.NoError(t, os.WriteFile(filepath.Join(cfg.DataDir, "models.json"), []byte(`{}`), 0o600))
-	_, cleanup, err := buildServices(context.Background(), cfg, slog.New(slog.DiscardHandler))
+	_, _, cleanup, err := buildServices(context.Background(), cfg, slog.New(slog.DiscardHandler))
 	require.NoError(t, err)
 	cleanup()
 }

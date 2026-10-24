@@ -55,8 +55,32 @@ OutFile "..\..\..\bin\${INFO_PROJECTNAME}-${INFO_PRODUCTVERSION}-windows-${ARCH}
 !endif
 ShowInstDetails show # This will always show the installation details.
 
+# An automatic update (the app quits and runs `setup.exe /S`, spec/architecture/desktop.md §Auto update) starts
+# the installer while the old process may still be ending. Files of a running exe cannot be overwritten, so a
+# silent install first waits (up to 60 s) until the installed exe can be opened for writing, which is not
+# possible while it runs. An installer that is not silent, or a first install, does not wait.
+Function waitForAppToExit
+    StrCpy $1 0
+    waitLoop:
+        IfFileExists "$INSTDIR\${PRODUCT_EXECUTABLE}" 0 waitDone
+        ClearErrors
+        FileOpen $0 "$INSTDIR\${PRODUCT_EXECUTABLE}" a
+        IfErrors 0 waitFree
+        IntOp $1 $1 + 1
+        IntCmp $1 120 waitDone waitMore waitDone
+    waitMore:
+        Sleep 500
+        Goto waitLoop
+    waitFree:
+        FileClose $0
+    waitDone:
+FunctionEnd
+
 Function .onInit
    !insertmacro wails.checkArchitecture
+   IfSilent 0 initDone
+   Call waitForAppToExit
+   initDone:
 FunctionEnd
 
 Section
@@ -79,6 +103,16 @@ Section
     
     !insertmacro wails.writeUninstaller
 SectionEnd
+
+# NSIS skips every page during a /S install - including the finish page - so nothing there can start the app
+# again after an automatic update. This does: a silent install that succeeded starts the new exe. It is started
+# by the installer of the user (WAILS_INSTALL_SCOPE=user: no elevation), so the app does not run as administrator.
+Function .onInstSuccess
+    IfSilent 0 relaunchDone
+    SetOutPath "$INSTDIR"
+    Exec '"$INSTDIR\${PRODUCT_EXECUTABLE}"'
+    relaunchDone:
+FunctionEnd
 
 Section "uninstall" 
     !insertmacro wails.setShellContext

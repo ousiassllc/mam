@@ -12,21 +12,20 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/credentialpanel"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/llmassign"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelassignment"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/updatepanel"
 )
 
-// GlobalSettingsBodyData is everything the global settings screen (paths.Settings) shows: one field
-// per section, in the order of the sections. A new section adds its field here and its organism to
-// GlobalSettingsBody.
+// GlobalSettingsBodyData is everything the global settings screen (paths.Settings) shows: one field per
+// section, in order. A new section adds its field here and its organism to GlobalSettingsBody.
 type GlobalSettingsBodyData struct {
-	// Credentials is which provider has an API key; never a key.
-	Credentials credentialpanel.Data
-	// LLM and Models are the saved LLM / image and video model assignments. Nil leaves the section out.
+	Credentials credentialpanel.Data // which provider has an API key; never a key
+	// LLM, Models (the saved assignments) and Update (the version and update check): nil leaves the section out.
 	LLM    *llmassign.Data
 	Models *modelassignment.Data
+	Update *updatepanel.Data
 }
 
-// GlobalSettingsBody is the sections of the global settings screen without the page frame: a vertical
-// stack, each section an organism of its own.
+// GlobalSettingsBody is the sections of the global settings screen without the page frame, one organism each.
 func GlobalSettingsBody(d GlobalSettingsBodyData) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -67,6 +66,10 @@ func GlobalSettingsBody(d GlobalSettingsBodyData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
+		}
+		templ_7745c5c3_Err = updatepanel.SectionIf(d.Update).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
 		}
 		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "</div>")
 		if templ_7745c5c3_Err != nil {

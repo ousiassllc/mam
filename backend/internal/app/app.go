@@ -36,6 +36,8 @@ type Options struct {
 	// OnReady, when not nil, is called with the base URL (http://127.0.0.1:<port>) once the server
 	// accepts connections. It runs on the goroutine of Run, so it must not block.
 	OnReady func(url string)
+	// Update, when not nil, turns the automatic update on (the Wails front only).
+	Update *UpdateOptions
 }
 
 // staticFS serves assets from disk when --static-dir is set (make dev), else from the binary.
@@ -82,15 +84,15 @@ func Run(ctx context.Context, opts Options) error {
 	}
 	defer func() { _ = closeLog.Close() }()
 
-	if err := serve(ctx, cfg, logger, opts.OnReady); err != nil {
+	if err := serve(ctx, cfg, logger, opts); err != nil {
 		logger.Error("server terminated", "err", err)
 		return err
 	}
 	return nil
 }
 
-func serve(ctx context.Context, cfg config.Config, logger *slog.Logger, onReady func(url string)) error {
-	services, cleanup, err := buildServices(ctx, cfg, logger)
+func serve(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Options) error {
+	services, jobs, cleanup, err := buildServices(ctx, cfg, logger)
 	if err != nil {
 		return err
 	}
@@ -100,6 +102,11 @@ func serve(ctx context.Context, cfg config.Config, logger *slog.Logger, onReady 
 	llmFile, llmPinned := cfg.LLMSettingsFile()
 	modelFile, modelPinned := cfg.ModelSettingsFile()
 	settings := settingsroutes.New(llmFile, llmPinned, modelFile, modelPinned)
+	if opts.Update != nil {
+		var stop func()
+		settings.Update, stop = startUpdates(ctx, opts.Update, services, jobs, logger)
+		defer stop() // before cleanup: the check in flight is cancelled while the services are still there
+	}
 	engine := router.New(services, router.Options{Logger: logger, Static: staticFS(cfg), Settings: settings})
 
 	ln, err := listenLoopback(cfg.Port)
@@ -108,8 +115,8 @@ func serve(ctx context.Context, cfg config.Config, logger *slog.Logger, onReady 
 	}
 	return runHTTP(ctx, engine, ln, logger, func(url string) {
 		logger.Info("server started", "url", url, "data_dir", cfg.DataDir)
-		if onReady != nil {
-			onReady(url)
+		if opts.OnReady != nil {
+			opts.OnReady(url)
 		}
 	})
 }
