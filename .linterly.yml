@@ -14,3 +14,6 @@ ignore:
   - "**/*_templ.go"
   - "static/src/dist/**"
   - "static/package-lock.json"
+  # ライセンス全文（LICENSE は AGPL-3.0 の公式本文、THIRD_PARTY_NOTICES.md は scripts/third-party-notices.sh の生成物）
+  - "LICENSE"
+  - "THIRD_PARTY_NOTICES.md"
