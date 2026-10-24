@@ -16,6 +16,8 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/health"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/jobs"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/localmodels"
+	"github.com/ousiassllc/mam/backend/internal/mcp/tools/modelmgr"
+	"github.com/ousiassllc/mam/backend/internal/mcp/tools/modeltrial"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/policy"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/projectbundle"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/projectcore"
@@ -55,6 +57,8 @@ func Register(r *mcpkit.Registrar, svc *service.Services) {
 	health.Register(r, svc)
 	settings.Register(r, svc)
 	localmodels.Register(r, svc)
+	modelmgr.Register(r, svc)
+	modeltrial.Register(r, svc)
 	chatgptauth.Register(r, svc)
 
 	editor.Register(r, svc)

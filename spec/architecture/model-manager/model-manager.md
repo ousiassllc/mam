@@ -1,6 +1,6 @@
 # モデルマネージャー（ComfyUI エンジンの取得・起動とモデルの導入）
 
-[local-models.md](../local-models.md)（利用者が登録した ComfyUI・OpenAI 互換の接続先）に、**MAM が自分で ComfyUI を取得・起動し、カタログのモデルを入れる**経路を足す。実装は `backend/internal/modelmgr/*`（部品）と `backend/internal/service/modelmanager`（Service）。画面・MCP ツール・インストーラーの変更はこの Service API の上に別の作業で載せる。改訂履歴は [model-manager.changelog.md](model-manager.changelog.md)。
+[local-models.md](../local-models.md)（利用者が登録した ComfyUI・OpenAI 互換の接続先）に、**MAM が自分で ComfyUI を取得・起動し、カタログのモデルを入れる**経路を足す。実装は `backend/internal/modelmgr/*`（部品）と `backend/internal/service/modelmanager`（Service）。画面（[../../api/endpoints-model-manager.md](../../api/endpoints-model-manager.md)）・MCP ツール（[../../api/mcp-tools-model-manager.md](../../api/mcp-tools-model-manager.md)）はこの Service API の上に載る（§12）。インストーラーは変わらない（desktop.md §4・§6.8）。改訂履歴は [model-manager.changelog.md](model-manager.changelog.md)。
 
 ## 1. 方針（変えない前提）
 
@@ -176,6 +176,7 @@ func (*Service) InstallEngine(ctx, EngineInstallInput{Variant, CPU}) (JobRef, er
 func (*Service) RemoveEngine(ctx) error
 func (*Service) StartEngine(ctx) (proc.Status, error)
 func (*Service) StopEngine() error
+func (*Service) CancelInstall(jobID string) error  // 動いている導入の中断（ErrNotFound: 動いていない）
 func (*Service) SetAutoStart(on bool) error
 func (*Service) Prepare(ctx, endpoint string) error  // Adapter の呼び出し前に呼ばれる（画面は使わない）
 // モデル
@@ -192,6 +193,7 @@ func (*Service) ExternalInventory(ctx, endpoint string) (ExternalInventory, erro
 func (*Service) StartGentest(ctx, GentestInput) (JobRef, error)
 func (*Service) Gentests(ctx) ([]GentestRecord, error)
 func (*Service) Gentest(ctx, id string) (GentestRecord, error)
+func (*Service) StageReference(Reference) (id string, err error) // 参照画像を先に置く（MCP のアップロード用途 model_trial_reference）。GentestInput.ReferenceID で渡す
 func (*Service) GentestFile(ctx, id string) (path, mime string, err error)
 func (*Service) DeleteGentest(ctx, id string) error
 ```
@@ -210,3 +212,12 @@ func (*Service) DeleteGentest(ctx, id string) error
 | 実物のエンジン（約 2 GB）・モデル（数十 GB）の取得と展開 | **未実施**。合成アーカイブと偽の GitHub・HF サーバー（`Range`・ハッシュ不一致・再開・空き容量不足）で確認。実アーカイブのヘッダーと BCJ2 のファイルは HTTP の `Range` で読めることを確かめた |
 | モデルの VRAM の目安 | Wan 2.2（README）と HunyuanVideo（文書）以外は MAM の推定 |
 | ポータブル版の Python・PyTorch のライセンスの一覧 | **未調査**（`THIRD_PARTY_NOTICES.md` に明記） |
+
+## 12. 画面と MCP ツール
+
+- **画面**: `GET /model-manager`（`web/handler/modelmgr`・`organisms/modelmgr`）。仕様は [endpoints-model-manager.md](../../api/endpoints-model-manager.md)・[model-manager-screen.md](../../components/model-manager-screen.md)。入口はプロジェクト一覧と設定画面のリンク。進捗は HTMX のポーリング（2 秒）。
+- **MCP ツール**: `mcp/tools/modelmgr`（エンジン・カタログ・トークン・外部）と `mcp/tools/modeltrial`（試し生成）。仕様は [mcp-tools-model-manager.md](../../api/mcp-tools-model-manager.md)。ジョブの種別 `model_install`・`gentest` の Probe を持ち、`get_job` が状態・進捗・結果・失敗の理由を返す。
+- **共有**: サービスの拒否は `service/modelmanager/mmview.Refuse`（種類とメッセージ）で、画面の HTTP 状態と MCP のエラーコードに写す（`ErrConsentRequired`・`ErrBusy`・`ErrPinned`・`ErrUnsupported` は 409 / `conflict`、`ErrNoGPU`・`*InvalidError` は 422 / `validation`）。`mmview.TrialModels` は試し生成の選択肢（モデルの識別子・動画の解像度と長さ・参照画像を使えるか）。
+- **導入の中断**: `CancelInstall`。ジョブは失敗で終わり（理由に「導入を中断しました」）、`.part` は残るので、導入し直すと続きから再開する。
+- **同意の強制は API**: 画面のダイアログは同意を渡す手段で、`InstallModel` が記録を確かめる（§6）。MCP からも同じ（記録が無ければ 409 / `conflict`）。
+- **テスト用の部品**: `service/modelmanager/mmtest` は偽の GitHub / Hugging Face（`Range`・保留 `Hold` つき）・偽のエンジンのプロセス・ジョブキューつきの `Service` を作る（画面と MCP のテストが共有する）。

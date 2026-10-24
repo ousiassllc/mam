@@ -44,6 +44,7 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 | POST | `/settings/mcp/tokens` | MCP のベアラートークンの発行。フォーム `name`（空白を除いて 1〜64 文字）。CSRF 必須。201 で区画（`#mcp-panel`）を返し、**発行したトークンの値はこの応答に一度だけ**出る（`Cache-Control: no-store`。以後の画面には先頭 8 文字だけ）。名前が不正なら 422（入力値を残す）。DB に残るのは SHA-256 だけ |
 | DELETE | `/settings/mcp/tokens/:id` | MCP トークンの失効。CSRF 必須。200 で区画を返す（一覧には「失効済み」で残り、失効ボタンは消える）。このトークンでの接続は即時にできなくなる。無ければ 404 |
 | （各種） | `/settings/local-models/…` | 設定画面「ローカル・代替モデル」の接続先・モデル・API キー・接続テストのルート。一覧と仕様は [endpoints-local-models.md](endpoints-local-models.md) |
+| （各種） | `/model-manager/…` | モデルマネージャー画面（ComfyUI エンジン・モデルのカタログと導入・ライセンスの同意・試し生成）。入口はプロジェクト一覧と設定画面のリンク。ルートと仕様は [endpoints-model-manager.md](endpoints-model-manager.md)（`GET /model-manager` が画面） |
 | GET | `/settings/chatgpt` | 設定画面「ChatGPT でログイン」の区画だけ（`#chatgpt-panel`）。ログイン中は区画が 2 秒ごとにこの URL を取り直す（`Cache-Control: no-store`）。`GET /settings/chatgpt/models` は公式ログインのプランで使えるモデル（`GET https://api.openai.com/v1/models` の `visibility=="list"`）を区画に出す。区画は `app` が ChatGPT のサービスを持つときだけ。トークンの値はどの応答にも出ない（`spec/architecture/chatgpt-signin.md`） |
 | POST | `/settings/chatgpt/:kind/login` | ログインの開始。`:kind` は `official` / `image`（他は 404）。フォーム `method`（`browser` / `device`）。CSRF 必須。200 で区画（ブラウザ: 開いたことと認可 URL、デバイスコード: 確認 URL・コード・期限）。画像生成が OFF の `image` は 409、公式のデバイスコードは 422（デバイスコードの方式がない）。`POST …/login/cancel` は進行中のログインを中止する |
 | DELETE | `/settings/chatgpt/:kind` | ログアウト（失効の要求 → 保存したトークンの削除）。CSRF 必須。200 で区画を返し、失効を確認できなかったときはその旨と「ChatGPT の設定で接続を解除」を出す（ローカルのトークンは消える） |
