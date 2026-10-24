@@ -45,6 +45,27 @@ func TestDefaultConfigNamesTheCurrentModelsAndNoRetiredOnes(t *testing.T) {
 	assert.NotContains(t, domain.ImageModels(), domain.ModelName("imagen-4"))
 }
 
+// The assignment of spec/architecture/model-adapters.md §3 (decision of Issue #837).
+func TestDefaultImageRoutes(t *testing.T) {
+	cfg := modeladapter.DefaultConfig()
+	for _, tt := range []struct {
+		purpose         modeladapter.ImagePurpose
+		primary, backup domain.ModelName
+	}{
+		{modeladapter.PurposeNewReference, domain.ModelGPTImage2, domain.ModelNanoBanana},
+		{modeladapter.PurposeEditReference, domain.ModelNanoBanana, domain.ModelGPTImage2},
+		{modeladapter.PurposePreview, domain.ModelFlux2, domain.ModelNanoBananaLite},
+		{modeladapter.PurposeUnifiedOpenAI, domain.ModelGPTImage2, domain.ModelNanoBanana},
+	} {
+		t.Run(string(tt.purpose), func(t *testing.T) {
+			assert.Equal(t, modeladapter.ImageRoute{
+				Primary: modeladapter.ImageTarget{Model: tt.primary}, Fallback: modeladapter.ImageTarget{Model: tt.backup},
+			}, cfg.ImageRouteFor(tt.purpose))
+		})
+	}
+	assert.Len(t, cfg.Images, len(modeladapter.ImagePurposes()), "no purpose beyond the four")
+}
+
 type fakeImage struct {
 	err    error
 	inputs []int

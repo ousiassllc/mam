@@ -1,6 +1,8 @@
 package configcheck
 
 import (
+	"log/slog"
+
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
@@ -28,8 +30,10 @@ func replaceLegacy(t modeladapter.ImageTarget) modeladapter.ImageTarget {
 	case t.Model != legacyImagen4:
 		return t
 	case t.Fast:
+		slog.Warn("model settings name the retired imagen-4: read as nano-banana-lite", "fast", true)
 		return modeladapter.ImageTarget{Model: domain.ModelNanoBananaLite}
 	default:
+		slog.Warn("model settings name the retired imagen-4: read as nano-banana")
 		return modeladapter.ImageTarget{Model: domain.ModelNanoBanana}
 	}
 }
