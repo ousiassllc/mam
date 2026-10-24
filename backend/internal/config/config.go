@@ -15,12 +15,17 @@ import (
 // DefaultPort is the preferred listen port. The server falls back to a free port if it is taken.
 const DefaultPort = 8787
 
+// DefaultMCPPort is the preferred port of the MCP server. It falls back to a free port if it is taken.
+const DefaultMCPPort = 8788
+
 // Config is the resolved runtime configuration.
 type Config struct {
 	// DataDir holds the SQLite database, logs and generated assets.
 	DataDir string
 	// Port is the preferred loopback port.
 	Port int
+	// MCPPort is the preferred port of the MCP server (its address is the bind address of mcp.json).
+	MCPPort int
 	// OpenBrowser opens the default browser on startup.
 	OpenBrowser bool
 	// LogLevel is the minimum level written to the log file.
@@ -95,6 +100,7 @@ func Load(args []string, getenv func(string) string, output io.Writer) (Config, 
 	fs.SetOutput(output)
 	dataDir := fs.String("data-dir", envOr(getenv, "MAM_DATA_DIR", defaultDir), "directory for the database, logs and assets (MAM_DATA_DIR)")
 	port := fs.Int("port", DefaultPort, "preferred loopback port; a free port is used if it is busy (MAM_PORT)")
+	mcpPort := fs.Int("mcp-port", DefaultMCPPort, "preferred port of the MCP server; a free port is used if it is busy (MAM_MCP_PORT)")
 	noBrowser := fs.Bool("no-browser", false, "do not open the default browser (MAM_NO_BROWSER)")
 	level := fs.String("log-level", envOr(getenv, "MAM_LOG_LEVEL", "info"), "log level: debug, info, warn, error (MAM_LOG_LEVEL)")
 	staticDir := fs.String("static-dir", getenv("MAM_STATIC_DIR"), "serve static assets from this directory instead of the embedded copy (MAM_STATIC_DIR)")
@@ -103,6 +109,11 @@ func Load(args []string, getenv func(string) string, output io.Writer) (Config, 
 	judgeConfig := fs.String("judge-config", getenv("MAM_JUDGE_CONFIG"), "JSON file with the AI Video Judge setting: frame sampling and face similarity thresholds (MAM_JUDGE_CONFIG)")
 	jevConfig := fs.String("jev-config", getenv("MAM_JEV_CONFIG"), "JSON file with the TypeSafe Jev shadow-run setting of the Repair Agent: pinned version, base URL, timeout, price (MAM_JEV_CONFIG)")
 	faceModels := fs.String("face-model-dir", getenv("MAM_FACE_MODEL_DIR"), "directory with the face detection and embedding models; default <data-dir>/models (MAM_FACE_MODEL_DIR)")
+	// The two detect options print a report and exit before anything starts (app.RunDetect); they are declared
+	// here so that the command line is valid and --help lists them.
+	fs.Bool("detect-gpu", false, "print the GPUs found and the ComfyUI build recommended for them as JSON, then exit")
+	fs.Bool("detect-comfyui", false, "print the ComfyUI already running on this machine (ports 8188 and 8000) as JSON, then exit")
+	fs.String("detect-output", "", "write the JSON of --detect-gpu / --detect-comfyui to this file instead of the standard output")
 	onnxRuntime := fs.String("onnxruntime-lib", getenv("MAM_ONNXRUNTIME_LIB"), "ONNX Runtime shared library (1.23.x) for the face models (MAM_ONNXRUNTIME_LIB)")
 	if err := fs.Parse(args); err != nil {
 		return Config{}, err
@@ -116,6 +127,14 @@ func Load(args []string, getenv func(string) string, output io.Writer) (Config, 
 			return Config{}, err
 		}
 		*port = envPort
+	}
+
+	if !flagSet(fs, "mcp-port") {
+		envPort, err := envInt(getenv, "MAM_MCP_PORT", DefaultMCPPort)
+		if err != nil {
+			return Config{}, err
+		}
+		*mcpPort = envPort
 	}
 
 	// MAM_NO_BROWSER is read only when --no-browser is absent, for the same reason as MAM_PORT.
@@ -134,6 +153,9 @@ func Load(args []string, getenv func(string) string, output io.Writer) (Config, 
 	if *port < 0 || *port > 65535 {
 		return Config{}, fmt.Errorf("invalid port %d", *port)
 	}
+	if *mcpPort < 0 || *mcpPort > 65535 {
+		return Config{}, fmt.Errorf("invalid mcp port %d", *mcpPort)
+	}
 	if *dataDir == "" && defaultErr != nil {
 		return Config{}, defaultErr
 	}
@@ -143,6 +165,7 @@ func Load(args []string, getenv func(string) string, output io.Writer) (Config, 
 	return Config{
 		DataDir:         *dataDir,
 		Port:            *port,
+		MCPPort:         *mcpPort,
 		OpenBrowser:     !*noBrowser,
 		LogLevel:        lvl,
 		StaticDir:       *staticDir,
@@ -205,3 +228,6 @@ func envBool(getenv func(string) string, key string) (bool, error) {
 	}
 	return false, fmt.Errorf("invalid %s %q: not a boolean (1/true/yes/on or 0/false/no/off)", key, v)
 }
+
+// MCPSettingsFile is the file of the MCP bind address (mcp.json), which the settings screen writes.
+func (c Config) MCPSettingsFile() string { return filepath.Join(c.DataDir, "mcp.json") }

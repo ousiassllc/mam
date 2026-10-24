@@ -8,28 +8,37 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector"
 	"github.com/ousiassllc/mam/backend/internal/agent/jev"
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
+	"github.com/ousiassllc/mam/backend/internal/agent/llm/chatgptsub"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/chatgptimage"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/configcheck"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localbackends"
 	"github.com/ousiassllc/mam/backend/internal/bundlezip"
+	"github.com/ousiassllc/mam/backend/internal/chatgpt"
 	"github.com/ousiassllc/mam/backend/internal/config"
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
 	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/repository/comfywf"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
+	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
+	"github.com/ousiassllc/mam/backend/internal/service/workflows"
 )
 
 // buildServices opens the database, builds every dependency of the services, recovers the work an
 // abnormal termination left behind and starts the job queue. cleanup stops and closes all of it in
 // the reverse order of construction (queue, services, Judge, database). It is nil on error, where
-// buildServices has already released everything it had built. jobs is the job table: the app updater
-// reads it to see whether any work is in flight.
-func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger) (_ *service.Services, _ *repository.JobRepository, _ func(), err error) {
+// buildServices has already released everything it had built. db is the database: the app updater reads
+// the job table through it to see whether any work is in flight, and the MCP server keeps its tokens in it.
+func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, gpt *chatgpt.Service) (_ *service.Services, _ *repository.DB, _ func(), err error) {
 	var closers []func()
 	release := func() {
 		for i := len(closers) - 1; i >= 0; i-- {
@@ -81,9 +90,16 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger) 
 		return nil, nil, nil, err
 	}
 	keys := credential.NewKeyring()
-	reasoning := llm.NewClient(llmCfg, llm.NewBackends(llmCfg, keys, nil), llm.WithLogger(logger))
+	llmBackends := llm.NewBackends(llmCfg, keys, nil)
+	chatgptsub.Add(llmBackends, llmCfg, gpt.Official(), nil) // the ChatGPT plan provider; its sign-in is not an API key
+	reasoning := llm.NewClient(llmCfg, llmBackends, llm.WithLogger(logger))
 
-	modelFile, err := settingsFileToLoad(cfg.ModelSettingsFile())
+	// The saved ComfyUI workflows are models of the settings: the routes of models.json may name them.
+	if err := workflows.Publish(ctx, comfywf.New(db), logger); err != nil {
+		return nil, nil, nil, err
+	}
+	modelPath, modelPinned := cfg.ModelSettingsFile()
+	modelFile, err := settingsFileToLoad(modelPath, modelPinned)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -91,7 +107,26 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger) 
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	models := modeladapter.New(modelCfg, modeladapter.NewBackends(modelCfg, keys, nil, 0, modeladapter.WithStagingDir(filepath.Join(cfg.AssetsDir(), ".staging"))), modeladapter.WithLogger(logger))
+	// The bundled ComfyUI starts on the first call of one of its models (modelmanager.Service.Prepare); the manager
+	// is built after the queue it needs, so the hook finds it through a pointer.
+	var manager atomic.Pointer[modelmanager.Service]
+	backendOpts := localbackends.Options{
+		StagingDir:   filepath.Join(cfg.AssetsDir(), ".staging"),
+		ChatGPTImage: chatgptimage.New(gpt, chatgptimage.Options{}), ChatGPTImageEnabled: gpt.ImageEnabled,
+		Prepare: func(ctx context.Context, endpoint string) error {
+			if m := manager.Load(); m != nil {
+				return m.Prepare(ctx, endpoint)
+			}
+			return nil
+		},
+	}
+	models := modeladapter.New(modelCfg, localbackends.Build(modelCfg, keys, backendOpts), modeladapter.WithLogger(logger))
+	backendOpts.Publish(modelCfg)
+	// The subscription's image model is listed only while it is on: the switch republishes the list.
+	gpt.SetOnImageChange(func() { backendOpts.Publish(models.Config()) })
+	localModels := localmodels.New(localmodels.Deps{
+		Path: modelPath, Pinned: modelPinned, Keys: keys, Adapter: models, Backends: backendOpts, Logger: logger,
+	})
 
 	judging, err := newJudgeSetup(cfg, logger)
 	if err != nil {
@@ -135,13 +170,25 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger) 
 		Media:       previews,
 		Audio:       audioProviders(keys),
 	})
+	services.LocalModels = localModels
 	closers = append(closers, services.Close) // runs after jobs.Stop: no job change wakes the workers any more
+	mgr, err := newModelManager(localModels, models, jobs, jobTable, keys, backendOpts, logger)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	services.ModelManager = mgr
+	manager.Store(mgr)
+	services.Gentest = newGentest(cfg, db, jobs, models, services, logger)
+	services.Workflows = newWorkflows(cfg, db, localModels, models, mgr, services.Projects, keys, backendOpts, logger)
+	closers = append(closers, mgr.Close) // after jobs.Stop too: the engine outlives the jobs that call it
 	if err := recoverWork(ctx, services, jobs, logger); err != nil {
 		return nil, nil, nil, err
 	}
+	services.Gentest.OnStartup(ctx) // after the queue failed the interrupted jobs: settles the results they left
 	jobs.Start(ctx)
 	closers = append(closers, jobs.Stop)
-	return services, jobTable, release, nil
+	mgr.OnStartup(ctx)
+	return services, db, release, nil
 }
 
 // recoverWork cleans up after an abnormal termination: Shots left GENERATING / REPAIRING are released

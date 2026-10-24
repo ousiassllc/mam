@@ -128,7 +128,7 @@ MAM の Windows 版に含まれるサードパーティのソフトウェアと�
 - `static/` の本番バンドルに入る npm パッケージ（`static/src/main.ts` から import されるもの。`static/src/dist/app.css` に Tailwind CSS が含まれるので `tailwindcss` も）
 - インストーラーに同梱する Microsoft の WebView2 ブートストラッパー（下の節）
 
-開発用のツール・テスト用のパッケージ（`devDependencies` など）は配布物に入らないので載せていません。ffmpeg は同梱しません。
+開発用のツール・テスト用のパッケージ（`devDependencies` など）は配布物に入らないので載せていません。ffmpeg と ComfyUI は同梱しません（ComfyUI は下の節）。
 
 ## 一覧
 
@@ -165,6 +165,15 @@ EOF
 ## 同梱していないが実行時に取得するもの
 
 Judge の顔同一性（Face Identity Similarity）に使うモデル、YuNet（MIT）と SFace（Apache-2.0）は OpenCV Zoo のもので、MAM には同梱しません。利用者が `scripts/fetch-face-models.sh` で実行時にダウンロードします（ONNX Runtime も別途ダウンロードです）。そのため配布物には入らず、ここにライセンス文は載せません。取得したモデルを再配布するときは、それぞれのライセンスに従ってください。
+
+## ComfyUI（利用者が取得する別プログラム）
+
+MAM のモデルマネージャーは、利用者の操作で ComfyUI のポータブル版（v0.42.1）を公式のリリースから取得し、MAM の実行ファイルと同じ場所の `comfyui` ディレクトリに展開して、別のプロセスとして起動します。ComfyUI は GPL-3.0 のプログラムで、**MAM のインストーラー・ポータブル版・リリースには ComfyUI のバイトを一切含めません**。MAM は ComfyUI のコードをリンクせず、HTTP（`127.0.0.1`）で通信するだけです。
+
+- ComfyUI のライセンス（GPL-3.0）と対応するソースコード: <https://github.com/Comfy-Org/ComfyUI/tree/v0.42.1>（取得するポータブル版は <https://github.com/Comfy-Org/ComfyUI/releases/tag/v0.42.1> のアセットで、SHA-256 を MAM のカタログに固定して検証します）。
+- **ノード画面（ComfyUI のフロントエンド、GPL-3.0）**: MAM の「ノード」画面（`/nodes`）は、取得した ComfyUI が配信する画面（`Comfy-Org/ComfyUI_frontend`、GPL-3.0。ポータブル版に pip パッケージ `comfyui-frontend-package` として入っている）を iframe で表示するだけです。**MAM はそのコードを一切含めず、改変も再配布もしません**（ブラウザは ComfyUI のサーバーから直接読み込みます）。ソース: <https://github.com/Comfy-Org/ComfyUI_frontend>。
+- ポータブル版に入っている Python・PyTorch・その他のパッケージのライセンスは、**一覧を調べていません（未確認）**。取得したものを再配布するときは、取得した `comfyui\engine` の中の各ライセンスを確認してください。
+- 利用者が導入できるモデルの重み（Stable Diffusion XL・FLUX.1・Qwen-Image・Wan 2.2・LTX-Video・Stable Diffusion 3.5・HunyuanVideo など）は、Hugging Face から利用者が取得します。MAM は再配布せず、各モデルのライセンス（商用利用の可否・地域の制限を含む）は導入の画面に表示します。条件の一部（FLUX.1 [dev] の非商用、HunyuanVideo の EU・英国・韓国での不可など）は、導入の前に同意を求めます。
 EOF
 } >"$tmp_out"
 chmod 644 "$tmp_out" # mktemp creates it 0600

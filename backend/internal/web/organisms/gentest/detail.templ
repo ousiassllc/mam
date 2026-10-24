@@ -1,0 +1,159 @@
+package gentest
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// DetailID is the DOM id of the result detail.
+const DetailID = "gt-detail"
+
+// ImportID is the DOM id of the import form.
+const ImportID = "gt-import"
+
+// ResultDetail is one result: the file, the settings that made it, the inputs, where it was imported to and the import form.
+templ ResultDetail(d Detail) {
+	<section id={ DetailID } class="flex flex-col gap-4" data-testid="gt-detail">
+		@notice(d.Message, "gt-detail")
+		<div class="flex flex-wrap gap-4">
+			<div class="w-full max-w-md">
+				@ResultCard(d.Card)
+			</div>
+			<dl class="grid flex-1 grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-sm" data-testid="gt-params">
+				for _, kv := range d.Params {
+					<dt class="text-xs text-neutral-400">{ kv.Key }</dt>
+					<dd class="break-words">{ kv.Value }</dd>
+				}
+			</dl>
+		</div>
+		<div class="flex flex-wrap items-center gap-3">
+			@FavoriteButton(d.Card.ID, d.Card.Favorite)
+			if d.Card.FileURL != "" {
+				@atoms.ButtonLink(atoms.ToneNeutral, "ファイルをダウンロード", templ.SafeURL(d.Card.FileURL+"?download=1"), templ.Attributes{"data-testid": "gt-download"})
+			}
+			if d.UseURL != "" {
+				@atoms.ButtonLink(atoms.ToneNeutral, "入力画像として使う", templ.SafeURL(d.UseURL), templ.Attributes{"data-testid": "gt-use"})
+			}
+			<form hx-delete={ paths.GenerationTestPart("results", d.Card.ID) } hx-confirm="この結果とファイルを削除しますか？" hx-target="body" hx-push-url="true">
+				@atoms.Button(atoms.ToneDanger, "削除", templ.Attributes{"type": "submit", "data-testid": "gt-delete"})
+			</form>
+		</div>
+		<div class="flex flex-col gap-1">
+			<h3 class="text-xs text-neutral-400">実際に送ったプロンプト</h3>
+			<p class="whitespace-pre-wrap break-words rounded-md border border-neutral-800 p-2 text-sm" data-testid="gt-sent-prompt">{ d.SentPrompt }</p>
+			if d.Negative != "" {
+				<p class="text-xs text-neutral-400" data-testid="gt-negative">ネガティブ（{ d.NegMode }）: { d.Negative }</p>
+			}
+		</div>
+		if len(d.Inputs) > 0 {
+			<div class="flex flex-col gap-2">
+				<h3 class="text-xs text-neutral-400">入力画像</h3>
+				<ul class="flex flex-wrap gap-3" data-testid="gt-inputs-list">
+					for _, in := range d.Inputs {
+						<li class="flex w-32 flex-col gap-1 text-xs">
+							<img class="h-24 w-full rounded object-cover" src={ in.URL } alt={ in.Role } loading="lazy"/>
+							<span class="text-neutral-400">{ in.Role }・{ in.Origin }</span>
+						</li>
+					}
+				</ul>
+			</div>
+		}
+		if len(d.Imports) > 0 {
+			<div class="flex flex-col gap-1">
+				<h3 class="text-xs text-neutral-400">取り込み済み</h3>
+				<ul class="text-sm" data-testid="gt-imports">
+					for _, im := range d.Imports {
+						<li>
+							<a class="underline" href={ templ.SafeURL(im.ProjectURL) }>{ im.ProjectName }</a>
+							に { im.What }（{ im.At }）
+						</li>
+					}
+				</ul>
+			</div>
+		}
+		@ImportBox(d.Import)
+	</section>
+}
+
+// ImportBox imports the result into a Project as a Reference Library image or an asset and, for an image, optionally assigns it
+// to a slot of a Character, Product or Location. Any succeeded result can be imported; the favorite mark is only a hint.
+templ ImportBox(f ImportForm) {
+	<form
+		id={ ImportID }
+		class="flex flex-col gap-3 rounded-md border border-neutral-700 p-4"
+		hx-post={ paths.GenerationTestPart("results", f.ResultID, "import") }
+		hx-target={ "#" + ImportID }
+		hx-swap="outerHTML"
+		hx-sync="this:drop"
+		hx-disabled-elt="find button[type=submit]"
+		data-testid="gt-import"
+	>
+		<h3 class="text-sm font-medium">プロジェクトに取り込む</h3>
+		@notice(f.Message, "gt-import")
+		if f.Done != "" {
+			<p class="text-sm text-emerald-300" data-testid="gt-import-done">{ f.Done }</p>
+		}
+		<div class="flex flex-wrap items-end gap-3">
+			<label class="flex flex-col gap-1 text-xs text-neutral-400" for="gt-import-project">
+				<span>プロジェクト</span>
+				@atoms.Select(atoms.FieldMd, "max-w-xs", templ.Attributes{"id": "gt-import-project", "name": "project_id", "required": true}) {
+					for _, p := range f.Projects {
+						<option value={ p.ID }>{ p.Name }</option>
+					}
+				}
+			</label>
+			<label class="flex flex-col gap-1 text-xs text-neutral-400" for="gt-import-as">
+				<span>取り込み先</span>
+				@atoms.Select(atoms.FieldMd, "", templ.Attributes{"id": "gt-import-as", "name": "as"}) {
+					if f.Image {
+						<option value="reference">参照画像（Reference Library）</option>
+					}
+					<option value="asset">アセット</option>
+				}
+			</label>
+		</div>
+		if f.Image {
+			<div class="flex flex-wrap items-end gap-3">
+				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="gt-import-kind">
+					<span>参照の種類（参照画像のとき）</span>
+					@atoms.Select(atoms.FieldMd, "", templ.Attributes{"id": "gt-import-kind", "name": "kind"}) {
+						<option value="character">キャラクター</option>
+						<option value="product">プロダクト</option>
+						<option value="location">ロケーション</option>
+						<option value="style">スタイル</option>
+						<option value="lighting">ライティング</option>
+					}
+				</label>
+				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="gt-import-name">
+					<span>名前（参照画像のとき）</span>
+					@atoms.Input(atoms.FieldMd, "", templ.Attributes{"id": "gt-import-name", "name": "name", "type": "text", "maxlength": itoa(MaxNameLen)})
+				</label>
+				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="gt-import-tags">
+					<span>タグ（カンマ区切り）</span>
+					@atoms.Input(atoms.FieldMd, "", templ.Attributes{"id": "gt-import-tags", "name": "tags", "type": "text"})
+				</label>
+			</div>
+			<fieldset class="flex flex-wrap items-end gap-3 text-xs text-neutral-400">
+				<legend class="mb-1">続けてスロットに割り当てる（省略可。種類が合うものだけ。LOCK されたスロットは変えられません）</legend>
+				<label class="flex flex-col gap-1" for="gt-assign-target">
+					<span>対象</span>
+					@atoms.Select(atoms.FieldMd, "", templ.Attributes{"id": "gt-assign-target", "name": "assign_target"}) {
+						<option value="">割り当てない</option>
+						<option value="character">キャラクター</option>
+						<option value="product">プロダクト</option>
+						<option value="location">ロケーション</option>
+					}
+				</label>
+				<label class="flex flex-col gap-1" for="gt-assign-id">
+					<span>対象の ID</span>
+					@atoms.Input(atoms.FieldMd, "", templ.Attributes{"id": "gt-assign-id", "name": "assign_id", "type": "text"})
+				</label>
+				<label class="flex flex-col gap-1" for="gt-assign-slot">
+					<span>スロット（face・body など）</span>
+					@atoms.Input(atoms.FieldMd, "", templ.Attributes{"id": "gt-assign-slot", "name": "assign_slot", "type": "text"})
+				</label>
+			</fieldset>
+		}
+		@atoms.Button(atoms.TonePrimary, "取り込む", templ.Attributes{"type": "submit", "data-testid": "gt-import-submit"})
+	</form>
+}

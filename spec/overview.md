@@ -79,9 +79,11 @@ flowchart TB
 | 非機能要件 | `spec/requirements/non-functional.md` | ローカル起動型 Web アプリとしての性能・可用性・データ整合性・セキュリティ・コスト制御要件 |
 | アーキテクチャ設計 | `spec/architecture/overview.md` | HALT（Gin/Huma/Templ/HTMX/Lit）レイヤー構成、Agent Architecture、通信フロー、Wails ウィンドウ版（Windows）の構成 |
 | Windows デスクトップ版 | `spec/architecture/desktop.md` | Wails v3 ウィンドウ版（サーバーを維持して URL を開く方式、単一インスタンス・終了・起動エラー、NSIS インストーラーと GitHub Releases 配布、実装時に検証する項目） |
-| ER / データモデル | `spec/architecture/er.md` | Project Data Model（Scene/Shot/Take/World State 等）の ER 図とテーブル定義 |
+| ER / データモデル | `spec/architecture/er.md` | Project Data Model（Scene/Shot/Take/World State 等）の ER 図とテーブル定義（MCP トークンは `spec/architecture/er-mcp.md`） |
+| MCP サーバー | `spec/architecture/mcp.md` | 画面の全操作を MCP（Streamable HTTP）で操作する内蔵サーバー。別リスナー・待ち受け先の規則（`127.0.0.1` / tailnet）・ベアラートークン・Origin 検査・ジョブ・ファイルのチケット・API キー・設定画面 |
 | API 仕様 | `spec/api/endpoints.md` | ページルート/アクションルート（HTMX）のエンドポイント仕様（§0〜§2） |
 | API 仕様（API ルートと WebSocket） | `spec/api/endpoints-api.md` | `/api/v1` JSON API（Huma/OpenAPI）と WebSocket のエンドポイント仕様（§3・§4。`endpoints.md` の続き） |
+| MCP ツール一覧 | `spec/api/mcp-tools.md` | MCP ツールの規約と基盤のツール（`get_job`・`list_credentials`・`create_upload_ticket` など）。ドメイン別は `mcp-tools-<ドメイン>.md` |
 | API 共通エラーコード | `spec/api/errors.md` | HTTP ステータスの意味（全ルート共通。各ルートの行にはそのルート固有の条件だけを書く） |
 | コンポーネント設計 | `spec/components/overview.md` | Agent 群（Producer/Director/Editor 等）とHALT側コンポーネント（atoms/molecules/organisms/Lit）の責務分割 |
 | Model Adapter 選定 | `spec/architecture/model-adapters.md` | エージェント推論LLM・画像/動画生成モデル・音声プロバイダーの具体的な選定とルーティング表（Claude/GPT-5/Gemini、Imagen4/Nano Banana/FLUX.2/GPT Image 2、Kling/Seedance/Runway、ElevenLabs/Sync Labs） |
@@ -136,3 +138,4 @@ flowchart TB
 | 1.8 | 2026-10-03 | ドキュメントマップに `spec/architecture/desktop.md`（Windows デスクトップ版）を追加 | Issue #480。`spec/architecture/overview.md` が行数上限（300 行）を超えるため、Windows 版の詳細を別ファイルに切り出した |
 | 1.9 | 2026-10-12 | ドキュメントマップに `spec/api/errors.md`（API 共通エラーコード）を追加し、改訂履歴が `*.changelog.md` に分かれている仕様があることを注記した | Issue #674。`endpoints.md` §0 が共通ビジネスエラーコードを `errors.md` に切り出しているのに、ドキュメントマップから辿れず、各ルートの 4xx/5xx の正本が見つけにくかった |
 | 1.10 | 2026-10-21 | ドキュメントマップに `spec/api/endpoints-api.md`（`endpoints.md` の §3・§4）と `spec/architecture/model-adapters-m3.md`（`model-adapters.md` の §13・§14）を追加し、`endpoints.md` の説明をページ/アクションルートに絞った | `endpoints.md`・`model-adapters.md` が行数上限（300 行）を超えたため後半を別ファイルに分けた。詳細は各 `*.changelog.md` |
+| 1.11 | 2026-10-24 | ドキュメントマップに `spec/architecture/mcp.md`（MCP サーバー）・`spec/api/mcp-tools.md`（MCP ツール一覧）・`spec/architecture/er-mcp.md`（MCP トークンのテーブル）を追加した | Issue #830。MCP サーバーの仕様の所在をドキュメントマップに残すため |

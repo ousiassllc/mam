@@ -1,0 +1,243 @@
+{
+ "id": "img2video-ltx-v095",
+ "label": "LTX-Video 2B 0.9.5: 先頭フレームから動画",
+ "media": "video",
+ "description": "ComfyUI 標準ノードだけの LTX-Video 2B v0.9.5（チェックポイント ltx-video-2b-v0.9.5.safetensors、テキストエンコーダー t5xxl_fp8_e4m3fn.safetensors）の、先頭フレームから動画を作るワークフロー。24fps、フレーム数は 8n+1。GPU では未実行（構造のテストのみ）。",
+ "model": {
+  "media": "video",
+  "workflow": {
+   "graph": {
+    "44": {
+     "class_type": "CheckpointLoaderSimple",
+     "inputs": {
+      "ckpt_name": "ltx-video-2b-v0.9.5.safetensors"
+     }
+    },
+    "38": {
+     "class_type": "CLIPLoader",
+     "inputs": {
+      "clip_name": "t5xxl_fp8_e4m3fn.safetensors",
+      "type": "ltxv",
+      "device": "default"
+     }
+    },
+    "6": {
+     "class_type": "CLIPTextEncode",
+     "inputs": {
+      "text": "",
+      "clip": [
+       "38",
+       0
+      ]
+     }
+    },
+    "7": {
+     "class_type": "CLIPTextEncode",
+     "inputs": {
+      "text": "",
+      "clip": [
+       "38",
+       0
+      ]
+     }
+    },
+    "73": {
+     "class_type": "KSamplerSelect",
+     "inputs": {
+      "sampler_name": "euler"
+     }
+    },
+    "8": {
+     "class_type": "VAEDecode",
+     "inputs": {
+      "samples": [
+       "72",
+       0
+      ],
+      "vae": [
+       "44",
+       2
+      ]
+     }
+    },
+    "78": {
+     "class_type": "LoadImage",
+     "inputs": {
+      "image": "example.png"
+     }
+    },
+    "77": {
+     "class_type": "LTXVImgToVideo",
+     "inputs": {
+      "width": 768,
+      "height": 512,
+      "length": 97,
+      "batch_size": 1,
+      "strength": 0.15,
+      "positive": [
+       "6",
+       0
+      ],
+      "negative": [
+       "7",
+       0
+      ],
+      "vae": [
+       "44",
+       2
+      ],
+      "image": [
+       "78",
+       0
+      ]
+     }
+    },
+    "69": {
+     "class_type": "LTXVConditioning",
+     "inputs": {
+      "frame_rate": 24,
+      "positive": [
+       "77",
+       0
+      ],
+      "negative": [
+       "77",
+       1
+      ]
+     }
+    },
+    "71": {
+     "class_type": "LTXVScheduler",
+     "inputs": {
+      "steps": 30,
+      "max_shift": 2.05,
+      "base_shift": 0.95,
+      "stretch": true,
+      "terminal": 0.1,
+      "latent": [
+       "77",
+       2
+      ]
+     }
+    },
+    "72": {
+     "class_type": "SamplerCustom",
+     "inputs": {
+      "add_noise": true,
+      "noise_seed": 0,
+      "cfg": 3,
+      "model": [
+       "44",
+       0
+      ],
+      "positive": [
+       "69",
+       0
+      ],
+      "negative": [
+       "69",
+       1
+      ],
+      "sampler": [
+       "73",
+       0
+      ],
+      "sigmas": [
+       "71",
+       0
+      ],
+      "latent_image": [
+       "77",
+       2
+      ]
+     }
+    },
+    "80": {
+     "class_type": "CreateVideo",
+     "inputs": {
+      "fps": 24,
+      "images": [
+       "8",
+       0
+      ]
+     }
+    },
+    "81": {
+     "class_type": "SaveVideo",
+     "inputs": {
+      "filename_prefix": "video/mam",
+      "format": "auto",
+      "codec": "auto",
+      "video": [
+       "80",
+       0
+      ]
+     }
+    }
+   },
+   "assignments": [
+    {
+     "param": "prompt",
+     "node": "6",
+     "input": "text"
+    },
+    {
+     "param": "negative_prompt",
+     "node": "7",
+     "input": "text"
+    },
+    {
+     "param": "seed",
+     "node": "72",
+     "input": "noise_seed"
+    },
+    {
+     "param": "width",
+     "node": "77",
+     "input": "width"
+    },
+    {
+     "param": "height",
+     "node": "77",
+     "input": "height"
+    },
+    {
+     "param": "frames",
+     "node": "77",
+     "input": "length"
+    },
+    {
+     "param": "fps",
+     "node": "80",
+     "input": "fps"
+    },
+    {
+     "param": "fps",
+     "node": "69",
+     "input": "frame_rate"
+    },
+    {
+     "param": "first_frame",
+     "node": "78",
+     "input": "image"
+    }
+   ],
+   "output_node": "81",
+   "fps": 24,
+   "frames_step": 8,
+   "size_multiple": 32
+  },
+  "video": {
+   "durations": [
+    2,
+    3,
+    4,
+    5
+   ],
+   "resolutions": [
+    "480p",
+    "720p"
+   ]
+  }
+ }
+}

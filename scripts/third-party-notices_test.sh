@@ -83,6 +83,9 @@ check "texts are verbatim (b)" "$(
 check "ends with the WebView2 and face model sections" "$(
   has '## Microsoft Edge WebView2 Runtime（ブートストラッパー）' && has '## 同梱していないが実行時に取得するもの' && echo 0 || echo 1
 )"
+check "the ComfyUI section: a separate GPL-3.0 program, the source, no bytes, the unverified Python/PyTorch inventory" "$(
+  has '## ComfyUI（利用者が取得する別プログラム）' && grep -qF 'https://github.com/Comfy-Org/ComfyUI/tree/v0.42.1' "$out" && grep -qF 'ComfyUI のバイトを一切含めません' "$out" && grep -qF '未確認' "$out" && echo 0 || echo 1
+)"
 check "the output is deterministic" "$(
   (cd "$work/repo" && bash scripts/third-party-notices.sh "$work/second.md" 2>/dev/null) && cmp -s "$out" "$work/second.md" && echo 0 || echo 1
 )"

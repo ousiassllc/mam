@@ -10,6 +10,7 @@ Windows では Wails v3 のネイティブウィンドウ（WebView2）でアプ
 - 理由: ① Wails v3 の AssetServer は WebSocket のハンドシェイクを 501 で拒否する（`v3/internal/assetserver/assetserver.go`、v3.0.0-beta.27 のソースで確認）。チャット（`/ws/projects/:id`）と生成進捗（`/ws/shots/:id`）は WebSocket で、ポーリングは禁止（non-functional.md §2）。② AssetServer 経由の Host は `wails.localhost`（`assetserver_windows.go`）で、`LoopbackOnly`（overview.md §6）がループバック以外の Host を拒否するのと食い違う。サーバーを維持すれば WebSocket・CSRF・`LoopbackOnly`・大容量アップロード・動画の Range 配信・ダウンロードのいずれも変更せずに使える（AssetServer 上の Range とアップロード上限の挙動は未検証で、本方式では問題にならない）
 - ウィンドウはサーバーの URL 以外へ移動しない。Wails のバインディング・イベントは使わない（Go 側の API を WebView に公開しない）。`LoopbackOnly` と CSRF は変更しない
 - 起動順: ① `internal/app` が `127.0.0.1` のポートを確保して待ち受けを始める（`--port` の既定 8787、使用中ならOSが選ぶ空きポート）② `OnReady(url)` が確定したポートの URL をウィンドウに渡す。ウィンドウはそれまで背景色だけの空ページを出す。サーバーの起動はウィンドウの生成結果に依存しない
+- MCP サーバー（`spec/architecture/mcp.md`）は `internal/app` の中で起動するので、Wails 版でもブラウザ版と同じに使える（ウィンドウとは無関係に別のリスナーで、既定は `127.0.0.1:8788`。ウィンドウが閉じてアプリが終われば止まる）。インストーラー版・ポータブル版の違いもない
 
 ## 2. `cmd/wails` の挙動
 
@@ -40,6 +41,8 @@ Windows 実機が要る項目は、リリース前に実機で確かめる（実
 - バージョンは Git タグ `vX.Y.Z` の `X.Y.Z`。`main` への push で CI が成功すると、最新の `v*` タグの patch を 1 つ上げた版（タグが無ければ `v0.1.0`）を自動で付ける。minor・major を上げるときは手でタグを打つ。`build/windows/info.json`（ファイルバージョン・ProductVersion）と NSIS の `INFO_PRODUCTVERSION`、ファイル名に反映する
 - 配布は GitHub Actions の `release.yml`（`main` の CI 成功後の `workflow_run`、または `v*` タグの手動 push。`plan` → `verify` → `build` → `release` の 4 ジョブを GitHub-hosted の `ubuntu-latest` で動かし、Windows 版は Linux 上でクロスビルドして `makensis` でインストーラーを作る。`release` だけが書き込み権限を持つ）が `gh release create` でリリースを作り、4 つのファイルを添付する: インストーラー `mam-<version>-windows-amd64-setup.exe`、ポータブル版 `mam-<version>-windows-amd64.exe`、インストーラーだけを対象にしたチェックサム `checksums.txt`、その署名 `checksums.txt.sig`（§6.3。`spec/environment/setup.md`）。コード署名はしない
 
+- **ComfyUI は同梱しない**: インストーラー・ポータブル版・Release のどれにも ComfyUI のバイトは入らず、インストーラーのサイズは変わらない（サイズと自動更新の上限のため）。ComfyUI のポータブル版（GPL-3.0 の別プログラム）は、アプリ内の「エンジンの導入」操作が GitHub から取得し（SHA-256 を検証）、`<mam.exe のディレクトリ>\comfyui` に展開する。インストール版は `%LOCALAPPDATA%\Programs\MAM\comfyui`、ポータブル版は exe の隣。**アンインストールの扱い**: `build/windows/nsis/project.nsi` の `uninstall` セクションの `RMDir /r $INSTDIR` がインストール先をまるごと消すので、`comfyui`（エンジン・モデル・ComfyUI の出力）も一緒に消え、他の場所には何も残らない（データディレクトリ `%AppData%\mam` は従来どおり残す）。アンインストールの時点で ComfyUI の子プロセスが動いているとファイルが消せないため、子は MAM の終了で止まり（MAM が異常終了しても Job Object の `KILL_ON_JOB_CLOSE` で止まる）、残らない。`project.nsi` の変更は不要と見ているが、実機での確認は未了（`model-manager/model-manager.md` §11）。詳細は `model-manager/model-manager.md`。
+
 ## 5. 対象外
 
 トレイ常駐・コード署名（Authenticode。§6 の ed25519 署名はインストーラーの真正性を確かめる別の仕組み）・Windows arm64・macOS/Linux のネイティブ版・ffmpeg の同梱。必要になった時点で別 Issue とする。
@@ -65,7 +68,7 @@ Windows 実機が要る項目は、リリース前に実機で確かめる（実
 
 | 種別 | 条件 | 権威のある情報源と理由 |
 |------|------|------------------------|
-| `jobs` | `job` テーブルに `running` または `queued` の行がある（generate・judge・repair・plan） | **DB**。ジョブは実行前に保存し、開始・終了で状態を書くので、ワーカーがまだ取り出していないジョブも見える（メモリ上のキューは取り出し済みしか知らない）。再起動は generate・repair を失敗にし、`queued` は再起動後すぐ走り直すので、どちらも「実行中の作業」として数える |
+| `jobs` | `job` テーブルに `running` または `queued` の行がある（generate・judge・repair・plan・model_install・gentest。モデルの導入と試し生成も、再起動で止まるため作業中として数える） | **DB**。ジョブは実行前に保存し、開始・終了で状態を書くので、ワーカーがまだ取り出していないジョブも見える（メモリ上のキューは取り出し済みしか知らない）。再起動は generate・repair を失敗にし、`queued` は再起動後すぐ走り直すので、どちらも「実行中の作業」として数える |
 | `editing` | `EditorService.Busy()`: いずれかの Project で編集の工程（Rough Cut・Editor Judge・音声・Final QC・Export）または AUTO の連鎖（`stage`・`auto` の `keylock`）、再開ワーカーが動いている | **メモリ**。これらは DB に行が無く `keylock` が実行中を表す唯一の情報 |
 | `media` | `media.Running() > 0`: ffmpeg / ffprobe が動いている（プレビュー・Partial Take Use・書き出し・変換。`media.run` が起動と終了で数える） | **メモリ（プロセス数）**。再起動は子プロセスを殺し、書きかけの出力が残る |
 | `check_failed` | 上のいずれかの照会が失敗した | 安全と確かめられないため止める |
@@ -98,6 +101,12 @@ Windows 実機が要る項目は、リリース前に実機で確かめる（実
 
 `organisms/updatepanel`（表示）・`handler/appupdate`（`SectionData`・`Check`）・`router/settingsroutes`。ヘッドレスの `cmd/server`（`settingsroutes.Services.Update` が nil）は版だけを出し、確認ボタンと `POST /settings/update/check` は無い。開発ビルドの版は「開発版」と表示する。
 
+### 6.8 `comfyui` ディレクトリと更新
+
+自動更新（`setup.exe /S`）が入れ替えるのはインストーラーが置くファイルだけで、`project.nsi` の `install` セクションは `$INSTDIR\comfyui` を消さない（`Delete`・`RMDir` を呼ばず、`File` で上書きするだけ）。よって導入済みの ComfyUI エンジンとモデルは更新後もそのまま使える。**エンジンの更新は MAM の更新とは別**: サイレントインストーラーはエンジンを取り直さず、固定版（カタログ）が変わったときだけ、設定画面の「エンジンを更新」で入れ替える（`model-manager/model-manager.md` §10）。再起動の前に ComfyUI の子プロセスを止める（`Services.Close`）ので、更新がエンジンのファイルに触れて失敗することはない。`comfyui\` の実機での扱い（更新後の残存・アンインストールでの削除）は未確認。
+
+**アンインストールと動いている ComfyUI**: 子プロセスの ComfyUI は、Job Object（`KILL_ON_JOB_CLOSE`、`internal/modelmgr/proc`）により mam の終了で終わるので、`waitForAppToExit` が待つ「インストール済みの `mam.exe` を書き込みで開けるまで」の間に、エンジンも止まる。アンインストーラーには `un.onInit` を足し、同じ待ち（最大 10 秒。サイレントでなくても待つ）をしてから、`RMDir /r $INSTDIR` を `comfyui` が消えるまで最大 5 秒（0.5 秒おき 10 回）くり返す（ComfyUI の子プロセスがファイルを放すまでの短い間に消せないことがある）。新しいインストーラーのページは足さない（エンジンの導入はアプリの中のボタン）。**`makensis` はこの開発ホストに無く、`project.nsi` の構文は目視だけで確認した（未ビルド）**。
+
 ## 改訂履歴
 
 | 版 | 日付 | 変更内容 | 変更理由 |
@@ -123,3 +132,6 @@ Windows 実機が要る項目は、リリース前に実機で確かめる（実
 | 1.18 | 2026-10-21 | §6 に自動更新（流れ・安全ゲート・署名と検証・ユーザー単位のインストール・再起動・テストの範囲・設定画面）を足し、§4 のインストール先をユーザー単位に、§5 の対象外から自動更新を外した | Windows 版が新しいリリースを自分で入れ替えるようにしたため。リポジトリは非公開なので、リリースの配布物だけを持つ公開リポジトリ `ousiassllc/mam-releases` を確認する |
 | 1.19 | 2026-10-24 | §6.1・§6.3 の更新の確認先を、別の公開リポジトリ `ousiassllc/mam-releases` から MAM 自身の Releases（`ousiassllc/mam`）に改めた。非公開の間は 404 で「リリースなし」になること、古い版からのつなぎ（`mam-releases` を見る版は配布されておらず、v0.1.0・v0.1.1 は手動で入れ替える）を足した | 公開後は mam 自身の Release から配る（Issue #827） |
 | 1.20 | 2026-10-24 | §4 の配布の「2 つの成果物」を、実際の 4 ファイル（インストーラー・ポータブル・`checksums.txt`・`checksums.txt.sig`）に直した。§6.1 のインストーラーの選び方と §6.3 のチェックサムの引き方を、リリースの `tag_name` の版が入った名前との完全一致にした（別の版のインストーラーは選ばず `ErrorRelease`、別の名前の行しか無ければ `ErrorVerification`）。§6.3 の署名を作る場所を、`build` ジョブの最後のステップ `Sign checksums`（同じステップで公開鍵を使って検証。`release` ジョブは署名しない）に直した。§6.5 に、確認の失敗を定期確認でも手動確認でも `Service.Check` が `ERROR` で 1 回記録することを足した | PR #824 のレビュー指摘。インストーラーを glob で選ぶと、タグと無関係な版のインストーラーを入れてしまう。署名の場所と成果物の数が実装（`release.yml`）と食い違っていた。手動確認の失敗が（`ErrorVerification` を含め）ログに残らなかった |
+| 1.21 | 2026-10-24 | §1 に、MCP サーバーが `internal/app` の中で起動するため Wails 版でも使えることを足した | Issue #830。Windows デスクトップ版でも MCP に接続できることが完了条件のため |
+| 1.22 | 2026-10-25 | §4 に、ComfyUI は同梱せず `<mam.exe のディレクトリ>\comfyui` へ実行時に取得すること、`RMDir /r $INSTDIR` でアンインストールが消すことを、§6.2 の安全ゲートに `model_install`・`gentest` を、§6.8 に更新と `comfyui` ディレクトリの関係を足した | Issue #833。インストーラーの大きさと更新の上限を保つため、エンジンは利用者の操作で取得する |
+| 1.23 | 2026-10-25 | §6.8 に、アンインストーラーが動いている `mam.exe` の終了を待ち（`un.onInit`）、`comfyui` ディレクトリが消えるまで `RMDir /r` をくり返すことを足した | Issue #833。ComfyUI の子プロセスが放すまでの間にファイルが消えないことがある |

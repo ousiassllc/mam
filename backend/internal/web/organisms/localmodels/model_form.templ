@@ -1,0 +1,165 @@
+package localmodels
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// ModelFormView is the form that defines a model (POST) or changes one (PUT). The name is a field only
+// when defining: a model keeps its name for good (it is in the identifiers of Takes and the Cost Ledger).
+templ ModelFormView(f ModelForm, errMsg string) {
+	<form
+		class="flex flex-col gap-4 rounded-md border border-neutral-700 p-4"
+		if f.Edit {
+			hx-put={ paths.LocalEndpoint(f.Endpoint, "models", f.Name) }
+		} else {
+			hx-post={ paths.LocalEndpoint(f.Endpoint, "models") }
+		}
+		hx-target={ "#" + PanelID }
+		hx-swap="outerHTML"
+		hx-sync="this:drop"
+		hx-disabled-elt="find button[type=submit]"
+		autocomplete="off"
+		data-testid="local-model-form"
+	>
+		<h3 class="text-sm font-semibold">
+			if f.Edit {
+				モデル「{ f.Name }」を編集（接続先 { f.Endpoint }）
+			} else {
+				接続先「{ f.Endpoint }」に{ mediaLabel(f.Media) }モデルを追加
+			}
+		</h3>
+		@formError(errMsg)
+		<input type="hidden" name={ FieldMedia } value={ f.Media }/>
+		if f.Edit {
+			<p class="text-sm" data-testid="local-model-fixed">
+				<span class="text-neutral-400">名前:</span> <code>{ f.Name }</code>
+			</p>
+			<p class="text-xs text-neutral-400">名前は変えられません（Take とコスト台帳に残る識別子が名前でできているため）。変えたいときは、削除して作り直してください。</p>
+		} else {
+			<label class="flex flex-col gap-1 text-xs text-neutral-400" for="local-model-name">
+				<span>名前（英小文字・数字・. _ -。識別子は「{ f.EndpointKind }:{ f.Endpoint }/名前」になります）</span>
+				@atoms.Input(atoms.FieldMd, "w-64", templ.Attributes{
+					"id": "local-model-name", "name": FieldName, "type": "text", "value": f.Name, "required": true,
+					"maxlength": itoa(MaxNameLen), "pattern": NamePattern, "autocomplete": "off",
+				})
+			</label>
+		}
+		if f.EndpointKind == KindComfyUI {
+			@workflowFields(f)
+		} else {
+			@compatFields(f)
+		}
+		if f.Media == MediaVideo {
+			@videoFields(f)
+		}
+		@costFields(f)
+		<div class="flex flex-wrap items-center gap-2">
+			@atoms.Button(atoms.TonePrimary, "保存", templ.Attributes{"type": "submit"})
+			@closeButton()
+		</div>
+	</form>
+}
+
+templ compatFields(f ModelForm) {
+	<label class="flex flex-col gap-1 text-xs text-neutral-400" for="local-model-id">
+		<span>サーバーに渡すモデル ID（/v1/images/generations の model）</span>
+		@atoms.Input(atoms.FieldMd, "w-full max-w-md", templ.Attributes{
+			"id": "local-model-id", "name": FieldModelID, "type": "text", "value": f.ModelID, "required": true, "maxlength": itoa(MaxModelIDLen), "autocomplete": "off",
+		})
+	</label>
+	<label class="flex items-center gap-2 text-sm">
+		@atoms.Choice("", templ.Attributes{"type": "checkbox", "name": FieldAcceptsImage, "value": "1", "checked": f.AcceptsImages})
+		参照画像を受け取れる（/v1/images/edits を使う）
+	</label>
+}
+
+templ workflowFields(f ModelForm) {
+	<input type="hidden" name={ FieldGraph } value={ f.Graph }/>
+	<fieldset class="flex flex-col gap-2" data-testid="local-assignments">
+		<legend class="text-sm font-medium">入力の割り当て</legend>
+		<p class="text-xs text-neutral-400">mam の値を、ワークフローのどのノードのどの入力に入れるかを選びます。他のノードがつないでいる入力は選べません。Prompt は必須です。参照画像の枚数と最初・最後のフレームの対応は、ここで選んだ入力から決まります。</p>
+		<table class="w-full text-sm">
+			<tbody>
+				for _, s := range f.Slots {
+					<tr class="border-b border-neutral-800">
+						<th scope="row" class="py-1 pr-3 text-left font-normal">
+							<label for={ s.Field }>{ s.Label }</label>
+						</th>
+						<td class="py-1">
+							@atoms.Select(atoms.FieldSm, "max-w-xl", templ.Attributes{"id": s.Field, "name": s.Field}) {
+								<option value="" selected?={ s.Selected == "" }>（使わない）</option>
+								for _, n := range f.Nodes {
+									<optgroup label={ n.ID + ": " + n.Class }>
+										for _, o := range n.Options {
+											<option value={ o.Value } selected?={ o.Value == s.Selected }>{ o.Label }</option>
+										}
+									</optgroup>
+								}
+							}
+						</td>
+					</tr>
+				}
+			</tbody>
+		</table>
+	</fieldset>
+	<label class="flex flex-col gap-1 text-xs text-neutral-400" for="local-output-node">
+		<span>出力に使うノード（画像・動画を保存するノード）</span>
+		@atoms.Select(atoms.FieldMd, "max-w-md", templ.Attributes{"id": "local-output-node", "name": FieldOutputNode, "required": true}) {
+			<option value="" selected?={ f.OutputNode == "" }>選んでください</option>
+			for _, n := range f.Nodes {
+				<option value={ n.ID } selected?={ n.ID == f.OutputNode }>{ n.ID }: { n.Class }</option>
+			}
+		}
+	</label>
+	<div class="flex flex-wrap items-end gap-3">
+		if f.Media == MediaVideo {
+			<label class="flex flex-col gap-1 text-xs text-neutral-400" for="local-fps">
+				<span>fps（空: 16）</span>
+				@atoms.Input(atoms.FieldMd, "w-24", templ.Attributes{"id": "local-fps", "name": FieldFPS, "type": "number", "min": "1", "max": "240", "step": "1", "value": f.FPS})
+			</label>
+			<label class="flex flex-col gap-1 text-xs text-neutral-400" for="local-frames-step">
+				<span>フレーム数の刻み（Wan は 4、LTX は 8。空: 刻みなし）</span>
+				@atoms.Input(atoms.FieldMd, "w-24", templ.Attributes{"id": "local-frames-step", "name": FieldFramesStep, "type": "number", "min": "0", "max": "64", "step": "1", "value": f.FramesStep})
+			</label>
+		}
+		<label class="flex flex-col gap-1 text-xs text-neutral-400" for="local-size-multiple">
+			<span>幅・高さの倍数（空: 16）</span>
+			@atoms.Input(atoms.FieldMd, "w-24", templ.Attributes{"id": "local-size-multiple", "name": FieldSizeMultiple, "type": "number", "min": "1", "max": "128", "step": "1", "value": f.SizeMultiple})
+		</label>
+	</div>
+}
+
+templ videoFields(f ModelForm) {
+	<fieldset class="flex flex-col gap-2" data-testid="local-video-fields">
+		<legend class="text-sm font-medium">動画の能力</legend>
+		<div class="flex flex-wrap items-end gap-3">
+			<label class="flex flex-col gap-1 text-xs text-neutral-400" for="local-durations">
+				<span>長さ（秒。小さい順にカンマ区切り。例: 3, 4, 5）</span>
+				@atoms.Input(atoms.FieldMd, "w-48", templ.Attributes{"id": "local-durations", "name": FieldDurations, "type": "text", "value": f.Durations, "required": true, "autocomplete": "off"})
+			</label>
+			<label class="flex flex-col gap-1 text-xs text-neutral-400" for="local-resolutions">
+				<span>解像度（短辺。カンマ区切り。例: 480p, 720p）</span>
+				@atoms.Input(atoms.FieldMd, "w-48", templ.Attributes{"id": "local-resolutions", "name": FieldResolutions, "type": "text", "value": f.Resolutions, "required": true, "autocomplete": "off"})
+			</label>
+		</div>
+		<label class="flex items-center gap-2 text-sm">
+			@atoms.Choice("", templ.Attributes{"type": "checkbox", "name": FieldNativeAudio, "value": "1", "checked": f.NativeAudio})
+			音声も同時に生成する
+		</label>
+	</fieldset>
+}
+
+templ costFields(f ModelForm) {
+	if f.Media == MediaVideo {
+		<label class="flex flex-col gap-1 text-xs text-neutral-400" for="local-cost-second">
+			<span>見積コスト（USD / 秒。空: 0。参考値で、見積にだけ使います）</span>
+			@atoms.Input(atoms.FieldMd, "w-32", templ.Attributes{"id": "local-cost-second", "name": FieldCostSecond, "type": "number", "min": "0", "step": "any", "value": f.CostPerSecond})
+		</label>
+	} else {
+		<label class="flex flex-col gap-1 text-xs text-neutral-400" for="local-cost-image">
+			<span>見積コスト（USD / 枚。空: 0。参考値で、見積にだけ使います）</span>
+			@atoms.Input(atoms.FieldMd, "w-32", templ.Attributes{"id": "local-cost-image", "name": FieldCostImage, "type": "number", "min": "0", "step": "any", "value": f.CostPerImage})
+		</label>
+	}
+}

@@ -16,6 +16,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/chatgptid"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
@@ -31,6 +33,9 @@ type ImageRequest struct {
 	Prompt      string
 	AspectRatio string // "16:9", "9:16", "1:1"
 	Inputs      []Input
+	// NegativePrompt is for a model that has the field (a ComfyUI workflow with a negative prompt); others ignore it.
+	NegativePrompt string
+	Seed           *int64 // for a model that takes one (SupportsSeed); nil lets the vendor choose
 }
 
 // ImageResult is a generated image.
@@ -39,6 +44,13 @@ type ImageResult struct {
 	MimeType string
 	// ActualCost is the cost in USD the vendor reported for the call; nil when it reports none.
 	ActualCost *float64
+}
+
+func withSeed(body map[string]any, seed *int64) map[string]any {
+	if seed != nil {
+		body["seed"] = *seed
+	}
+	return body
 }
 
 // ImageBackend calls one image model. apiModel is the vendor's model identifier from Config.
@@ -58,6 +70,7 @@ type VideoRequest struct {
 	FirstFrame      *Input
 	LastFrame       *Input
 	References      []Input
+	Seed            *int64 // for a model that takes one (SupportsSeed); nil lets the vendor choose
 }
 
 // VideoResult is a generated video file. The caller owns File and MUST store or discard it.
@@ -123,10 +136,10 @@ func RateLimited(err error) bool {
 	return errors.As(err, &pe) && pe.Status == http.StatusTooManyRequests
 }
 
-// unavailable reports whether err says the vendor is temporarily unusable: a timeout, a network
+// IsUnavailable reports whether err says the vendor is temporarily unusable: a timeout, a network
 // failure, 429 or a 5xx. Only those count for the circuit breaker; a 4xx or a missing key is a
 // problem of the request or the setup.
-func unavailable(err error) bool {
+func IsUnavailable(err error) bool {
 	if errors.Is(err, ErrTimeout) {
 		return true
 	}
@@ -137,21 +150,21 @@ func unavailable(err error) bool {
 	return false
 }
 
-// errAfterSubmit marks an error that happened after the vendor accepted the job (while waiting
+// ErrAfterSubmit marks an error that happened after the vendor accepted the job (while waiting
 // for it or downloading its result).
-var errAfterSubmit = errors.New("after the job was submitted")
+var ErrAfterSubmit = errors.New("after the job was submitted")
 
 type submittedError struct{ err error }
 
 func (e *submittedError) Error() string { return e.err.Error() }
 func (e *submittedError) Unwrap() error { return e.err }
 
-// Is lets errors.Is(err, errAfterSubmit) recognise the marker; the wrapped error stays reachable
+// Is lets errors.Is(err, ErrAfterSubmit) recognise the marker; the wrapped error stays reachable
 // through Unwrap, so it still counts for the circuit breaker.
-func (e *submittedError) Is(target error) bool { return target == errAfterSubmit }
+func (e *submittedError) Is(target error) bool { return target == ErrAfterSubmit }
 
-// afterSubmit marks err as one that happened after the job was submitted (nil stays nil).
-func afterSubmit(err error) error {
+// AfterSubmit marks err as one that happened after the job was submitted (nil stays nil).
+func AfterSubmit(err error) error {
 	if err == nil {
 		return nil
 	}
@@ -160,9 +173,9 @@ func afterSubmit(err error) error {
 
 // retryable is unavailable without the cases where submitting the job again would be billed twice:
 // after a timeout the job may still be running at the vendor, and after the vendor accepted the job
-// (errAfterSubmit) it is running there already. The alternative model is used instead.
+// (ErrAfterSubmit) it is running there already. The alternative model is used instead.
 func retryable(err error) bool {
-	return unavailable(err) && !errors.Is(err, ErrTimeout) && !errors.Is(err, errAfterSubmit)
+	return IsUnavailable(err) && !errors.Is(err, ErrTimeout) && !errors.Is(err, ErrAfterSubmit)
 }
 
 func retryAfter(err error) time.Duration {
@@ -202,6 +215,11 @@ func VendorOf(m domain.ModelName) Vendor {
 		return VendorSeedance
 	case domain.ModelRunwayGen45:
 		return VendorRunway
+	case chatgptid.Model:
+		return Vendor(chatgptid.Vendor)
+	}
+	if endpoint, ok := localcfg.EndpointOf(string(m)); ok {
+		return Vendor(localcfg.VendorKey(endpoint))
 	}
 	return Vendor(m)
 }

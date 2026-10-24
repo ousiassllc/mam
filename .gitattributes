@@ -9,3 +9,4 @@
 *.webm binary
 *.exe binary
 *.onnx binary
+*.7z binary

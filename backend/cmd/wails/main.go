@@ -6,6 +6,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"os"
 	"sync/atomic"
@@ -27,6 +28,14 @@ const (
 )
 
 func main() {
+	// --detect-gpu / --detect-comfyui (the installer calls them) print a report and exit: no window, no
+	// single-instance check, no data directory.
+	if handled, err := app.RunDetect(context.Background(), os.Args[1:], os.Stdout); handled {
+		if err != nil {
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
 	os.Exit(run(os.Args[1:], os.Getenv))
 }
 
@@ -90,6 +99,8 @@ func run(args []string, getenv func(string) string) int {
 		Getenv:  getenv,
 		OnReady: nav.SetURL,
 		Update:  &app.UpdateOptions{Install: updater.Install},
+		// The ChatGPT login opens the default browser, not the webview: the login page must not run inside the app window.
+		OpenBrowser: func(url string) error { return wails.Browser.OpenURL(url) },
 	}, func(err error) {
 		// The server is already down: no graceful shutdown to wait for.
 		showError(errorText(err))

@@ -12,6 +12,9 @@ import (
 // runs several workers) cannot each see the whole budget as free. It lives in the DB handle because
 // the ledger readers (GenerationRepository.Budget, CostRepository.ProjectBudget) share it.
 type inflightSpend struct {
+	// settle is held shared while reserve checks the ledger and exclusively while a Take's cost goes
+	// from its hold to the ledger (CreateReservedTake): the cost is then never counted in both.
+	settle  sync.RWMutex
 	mu      sync.Mutex
 	project map[string]float64
 	shot    map[string]float64
@@ -66,6 +69,8 @@ func (s *inflightSpend) reserve(projectID, shotID string, cost float64, remainin
 	if cost <= 0 {
 		return func() {}, true, nil
 	}
+	s.settle.RLock()
+	defer s.settle.RUnlock()
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	left, err := remaining(s.of(projectID, shotID))
@@ -118,4 +123,17 @@ func (r *CostRepository) Reserve(ctx context.Context, projectID string, cost flo
 		}
 		return Budget{ProjectCeiling: ceiling, ProjectSpent: spent + reservedProject}.Remaining(), nil
 	})
+}
+
+// CreateReservedTake is CreateTake for a Take whose cost Reserve held: release gives the hold back as
+// the ledger entry commits, so that a Reserve in between does not count the cost twice (in the ledger
+// and in the hold) and refuse a generation that fits. When the Take is not created, release is not called.
+func (r *GenerationRepository) CreateReservedTake(ctx context.Context, nt NewTake, release func()) (string, error) {
+	r.db.inflight.settle.Lock()
+	defer r.db.inflight.settle.Unlock()
+	id, err := r.CreateTake(ctx, nt)
+	if err == nil {
+		release()
+	}
+	return id, err
 }

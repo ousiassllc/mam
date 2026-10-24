@@ -3,6 +3,7 @@ package credentialpanel
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/chatgptpanel"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -19,17 +20,20 @@ type ProviderView struct {
 // locked, ...): the panel then says so instead of listing providers. Notice is what succeeded although
 // the key store cannot be read afterwards (a key that was saved, so that it is not taken for a failure).
 // The reason a save was refused is shown by the row of its provider (Row), not by the panel.
+// ChatGPT is the "ChatGPT でログイン" section, which follows the keys (a sign-in takes the place of a key): nil leaves it out.
 type Data struct {
 	Providers   []ProviderView
 	Unavailable bool
 	Notice      string
+	ChatGPT     *chatgptpanel.Data
 }
 
-// Section is the "API キー" section of the global settings screen: Panel under its title.
+// Section is the "API キー" section of the global settings screen: Panel under its title, then the ChatGPT sign-in section.
 templ Section(d Data) {
 	@molecules.SettingsSection("API キー", "外部モデルの API キーを登録します。キーは OS のセキュアストレージに保存され、画面には設定済みかどうかだけが表示されます。保存したキーは再起動なしで次の呼び出しから使われます。") {
 		@Panel(d)
 	}
+	@chatgptpanel.SectionIf(d.ChatGPT)
 }
 
 // Panel lists the providers with "設定済み" / "未設定", a form to save a key (PUT) and a

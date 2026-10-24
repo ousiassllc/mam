@@ -48,6 +48,13 @@ templ Section(d Data) {
 	}
 }
 
+// SectionIf is Section, or nothing when d is nil.
+templ SectionIf(d *Data) {
+	if d != nil {
+		@Section(*d)
+	}
+}
+
 // Panel is the form that saves the assignment (PUT) with the button that returns it to the defaults
 // (DELETE); both answer with the panel itself. A pinned file is listed read-only, without a form.
 templ Panel(d Data) {
@@ -64,6 +71,10 @@ templ Panel(d Data) {
 		if d.Error != "" {
 			<p class="text-sm text-red-300" role="alert" data-testid="llm-error">{ d.Error }</p>
 		}
+		<p class="text-xs text-neutral-400" data-testid="llm-chatgpt-note">
+			プロバイダー「chatgpt-subscription」を選ぶと、ChatGPT のプランを使います（Using ChatGPT plan）。モデル名は、ログインしたあと、設定画面の ChatGPT の欄で確認できます。
+			<a class="underline" href="https://chatgpt.com/settings/usage" target="_blank" rel="noopener noreferrer">Manage usage</a>
+		</p>
 		if d.Pinned {
 			@readOnlyList(d.Rows)
 			@readOnlyUnused(d.Unused)

@@ -11,17 +11,20 @@ import templruntime "github.com/a-h/templ/runtime"
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/credentialpanel"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/llmassign"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/localmodels"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/mcppanel"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelassignment"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/updatepanel"
 )
 
-// GlobalSettingsBodyData is everything the global settings screen (paths.Settings) shows: one field per
-// section, in order. A new section adds its field here and its organism to GlobalSettingsBody.
+// GlobalSettingsBodyData is everything the global settings screen (paths.Settings) shows: one field per section, in order. A new section adds its field here and its organism to GlobalSettingsBody.
 type GlobalSettingsBodyData struct {
 	Credentials credentialpanel.Data // which provider has an API key; never a key
-	// LLM, Models (the saved assignments) and Update (the version and update check): nil leaves the section out.
+	// LLM, Models (the saved assignments), MCP (the MCP server) and Update (the version and update check): nil leaves the section out.
 	LLM    *llmassign.Data
 	Models *modelassignment.Data
+	Local  *localmodels.Data
+	MCP    *mcppanel.Data
 	Update *updatepanel.Data
 }
 
@@ -55,17 +58,21 @@ func GlobalSettingsBody(d GlobalSettingsBodyData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		if d.LLM != nil {
-			templ_7745c5c3_Err = llmassign.Section(*d.LLM).Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
+		templ_7745c5c3_Err = llmassign.SectionIf(d.LLM).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
 		}
-		if d.Models != nil {
-			templ_7745c5c3_Err = modelassignment.Section(*d.Models).Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
+		templ_7745c5c3_Err = modelassignment.SectionIf(d.Models).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = localmodels.SectionIf(d.Local).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = mcppanel.SectionIf(d.MCP).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
 		}
 		templ_7745c5c3_Err = updatepanel.SectionIf(d.Update).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {

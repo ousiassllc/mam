@@ -112,9 +112,33 @@ checkout はせず（`GH_REPO` を渡す）、`actions/download-artifact` で受
 - **鍵の更新**: インストール済みのアプリは古い公開鍵を埋め込んでいるので、鍵をいきなり替えると、以後のリリースは既存のアプリに検証されず更新されなくなる。次の順で替える。(1) リポジトリ変数 `RELEASE_SIGNING_PUBLIC_KEY` を**新しい**公開鍵に、`RELEASE_SIGNING_VERIFY_PUBLIC_KEY`（任意の変数。`Sign checksums` が署名の検証に使う公開鍵を、埋め込む鍵と別にするためのもの）を**古い**公開鍵にし、シークレット `RELEASE_SIGNING_KEY` は**古い**秘密鍵のまま 1 回リリースする（古い鍵で署名され、新しい公開鍵を埋め込んだアプリが出る）。(2) 既存のアプリがこのリリースへ更新されるのを待つ。(3) `RELEASE_SIGNING_KEY` を新しい秘密鍵に替え、`RELEASE_SIGNING_VERIFY_PUBLIC_KEY` を削除する。(1) を飛ばした場合や、(2) の前に替えた場合、更新できないアプリは新しいインストーラーを手動で入れ直すまで更新されない。
 - **ユーザー単位のインストール**: インストーラーは `WAILS_INSTALL_SCOPE=user` で作る（`build/windows/Taskfile.yml` の `makensis -DWAILS_INSTALL_SCOPE=user`）。実行レベルは `asInvoker`（管理者権限なし。UAC の確認が出ない）、インストール先は `$LOCALAPPDATA\Programs\MAM`、アンインストール情報は `HKCU`、ショートカットは現在のユーザーの Start メニューとデスクトップ。自動更新が `/S` で実行しても確認が出ない。v0.1.x の管理者権限のインストール（`C:\Program Files\MAM`・`HKLM`）は移行しない。ユーザー単位の版は別に入るので、旧版は「設定 > アプリ」から手動でアンインストールする。
 
+## MCP サーバーの設定
+
+MCP サーバー（`spec/architecture/mcp.md`）の設定は 2 つ。どちらも `app.Run` が読むので、ブラウザ版・Wails 版で同じ。
+
+- **ポート**: `--mcp-port` / 環境変数 `MAM_MCP_PORT`（既定 8788。0 は OS に任せる。使用中なら OS が選ぶ空きポートで、実際のアドレスはログの `mcp server started` と設定画面に出る）。フラグが環境変数に勝ち、環境変数の値が不正でも `--mcp-port` を渡せば起動できる（`--port` / `MAM_PORT` と同じ）。
+- **待ち受け先の IP**: データディレクトリの `mcp.json`（`{"bind_address": "100.101.102.103"}`）。**設定画面の「MCP サーバー」から保存する**のが基本（保存するとその場で切り替わる）。ファイルが無い・キーが無いときは `127.0.0.1`。値は「このマシンのインターフェースにある、ループバックか `100.64.0.0/10` の IP」だけで、起動時に使えなければ `127.0.0.1` で待ち受けて画面に理由を出す。`mcp.json` に他のキーがあっても保存で消えない。`llm.json` / `models.json` と違い、起動オプションで固定するファイルは無い。
+
+
+## ローカル・代替モデルの設定
+
+ComfyUI・OpenAI 互換の接続先とそのモデル（`spec/architecture/local-models.md`）は、`models.json` の `endpoints` と `local_models` に書く（スキーマは同書 §3）。`--model-config` で固定したファイルは読み取り専用で、保存した接続先・モデルは再起動なしで反映される。接続先の API キー（任意）は設定画面から `credential.Store` に保存する。ComfyUI は 0.3.57 以上を推奨（取り消しが他のジョブを止めないため）。
+
+## モデルマネージャーの設定（ComfyUI エンジンの取得と検出）
+
+設計は `spec/architecture/model-manager/model-manager.md`。専用の設定ファイルや環境変数は無く、導入状態（自動起動の有無・導入したエンジンとモデル・ライセンスの同意）は exe と同じ場所の `comfyui\state.json` に、画面（別 Issue）から保存する。置き場所は `<mam.exe のディレクトリ>\comfyui`（インストール版は `%LOCALAPPDATA%\Programs\MAM\comfyui`）で、`--data-dir` では変えられない。
+
+コマンドラインの追加オプション（`--help` に出る。ウィンドウ・データディレクトリ・単一起動の確認より前に処理し、JSON を出して終了する。インストーラーと利用者が使う）:
+
+- `--detect-gpu`: GPU（アダプター名・ベンダー・専用 VRAM）と、推奨する ComfyUI のビルド（`nvidia`・`nvidia_cu126`・`amd`・`intel`、または対応なし）の JSON。Windows 以外は空。
+- `--detect-comfyui`: `127.0.0.1:8188`・`:8000` で動いている ComfyUI（版つき）と、ComfyUI Desktop の設定（`%APPDATA%\ComfyUI\config.json`）の JSON。
+- 両方を付けると `{"gpu": ..., "comfyui": ...}`。`--detect-output FILE` で標準出力ではなくファイルへ書く（`-H windowsgui` の exe はコンソールに書けないことがあるため、インストーラーはこちらを使うと確実）。
+
+テストは `go test ./backend/internal/app/ -run Detect`。Windows の GPU 検出（DXGI）は Windows 上でしか動かず、未検証（model-manager.md §11）。
+
 ## Linterly
 
-`.linterly.yml`。行数上限はデフォルト（1 ファイル 300 行 / 1 ディレクトリ 2000 行）のまま維持し、特別な理由がない限り変えない。除外は生成物（`*_templ.go`、`static/src/dist/**`、`package-lock.json`）とライセンス全文（`LICENSE`、`THIRD_PARTY_NOTICES.md`）のみで、手書きソースは除外しない。
+`.linterly.yml`。行数上限はデフォルト（1 ファイル 300 行 / 1 ディレクトリ 2000 行）のまま維持し、特別な理由がない限り変えない。除外は生成物（`*_templ.go`、`static/src/dist/**`、`package-lock.json`、`go.sum`）とライセンス全文（`LICENSE`、`THIRD_PARTY_NOTICES.md`）のみで、手書きソースは除外しない。
 
 既存の超過（linterly の `error`: 上限に `warning_threshold` を足した値を超えたもの。`linterly check` が exit 1 になる判定と同じ）は、超過ゼロを目標にせず、**増やさないことを CI で保証する**。超過しているファイルとディレクトリの行数を `.linterly-baseline`（`<行数><TAB><パス>`、ディレクトリは末尾 `/`）に基準値として記録し、`scripts/linterly-baseline.sh check`（`make lint-lines`、CI の「Line limit (no regression)」ステップ）が次のどちらかで失敗させる。
 
@@ -183,3 +207,6 @@ pre-commit（`scripts/linterly-staged.sh`）は従来どおり、コミット対
 | 1.35 | 2026-10-21 | リリースにアプリの自動更新のための配布を足した。`build` に `RELEASE_SIGNING_PUBLIC_KEY`（変数）の必須化と `-ldflags -X` でのバージョン・公開鍵の埋め込み、`checksums.txt` の作成と ed25519 署名（`RELEASE_SIGNING_KEY`、最後の工程、同じ工程で公開鍵を使って検証）を、`release` に 4 ファイルの添付を足し、公開リポジトリ `ousiassllc/mam-releases` へ公開する `publish` ジョブ（`RELEASES_TOKEN`、再実行で冪等）を足した（4 → 5 ジョブ）。インストーラーをユーザー単位（`WAILS_INSTALL_SCOPE=user`）にし、「自動更新の配布物と署名」節（配布物・署名・埋め込み・シークレット・鍵の更新手順・v0.1.x の管理者権限インストールは移行しないこと）を追加した | MAM 本体のリポジトリは非公開で、インストール済みのアプリが更新を確認・取得できる場所が無かった。更新を管理者権限の確認（UAC）なしで `/S` 実行できるようにし、配布物の改ざんをアプリが署名で検出できるようにする |
 | 1.36 | 2026-10-24 | `publish` ジョブ（公開リポジトリ `ousiassllc/mam-releases` への複製）を削除し、`RELEASES_TOKEN` を不要にした（5 → 4 ジョブ）。`release` の Release が、アプリの更新の確認先になる。「自動更新の配布物と署名」節の配布物の置き場とシークレットを改め、古い版からのつなぎ（`mam-releases` を見る版は配布されておらず、v0.1.0・v0.1.1 は手動で入れ替える）を書いた | 公開後は mam 自身の Release から配る（Issue #827）。リポジトリを公開すれば別の公開リポジトリと PAT は要らず、`GITHUB_TOKEN` だけで済む |
 | 1.37 | 2026-10-24 | 開発ツールの「ffmpeg / ffprobe」に、動作を確かめている版（4.4 系と 8 系）と、JPEG を作る呼び出しの扱い（フルレンジへの変換と `-strict unofficial`）を足した | 公開後の最初の `ubuntu-latest` の CI で、8.0.1 の mjpeg エンコーダが、フレームが来ないまま開く場合（最後のフレームより先を指す `-ss`、何も残さないフィルタ）に限定レンジを拒否し（終了コード 234）、`TestThumbnail_*` が落ちた。4.4 系は同じ場合に終了コード 0 で何も書かず、`Thumbnail` と Judge がそれを前提にしていた |
+| 1.38 | 2026-10-24 | 「MCP サーバーの設定」の節（`--mcp-port` / `MAM_MCP_PORT` と `mcp.json` の `bind_address`）を足した | Issue #830。MCP サーバーのポートと待ち受け先の設定の置き場所と規則を、環境構築の側にも残すため |
+| 1.39 | 2026-10-24 | 「ローカル・代替モデルの設定」の節（`models.json` の `endpoints`・`local_models`、固定ファイルは読み取り専用、キー、ComfyUI 0.3.57 以上）を足した | Issue #831 |
+| 1.40 | 2026-10-25 | 「モデルマネージャーの設定」の節（`comfyui` ディレクトリの置き場所、`--detect-gpu`・`--detect-comfyui`・`--detect-output`）を足した。`go.sum`（依存の追加で 300 行を超えた生成ファイル）を Linterly の除外に加えた | Issue #833 |

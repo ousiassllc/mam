@@ -87,7 +87,7 @@ var bundleTables = []bundleTable{
 }
 
 // unbundledTables are the tables a bundle leaves out, with the reason.
-var unbundledTables = map[string]string{
+var unbundledTables = map[string]string{ // #nosec G101 -- table names with the reason, not credentials
 	"series":                    "shared by the Episodes of a Series, not part of one Project; an exported Project is detached from it",
 	"series_version":            "the version history of a Series (see series)",
 	"brand_template":            "shared by every Project (a saved set of Brand Constraints); an applied template lives on as the Project's own brand_constraint rows",
@@ -97,6 +97,9 @@ var unbundledTables = map[string]string{
 	"sqlite_sequence":           "SQLite internal",
 	"review_inbox":              "the Review Packages this instance imported as a reviewer (spec/spec.md §27.1): another team's videos, not part of any Project of this instance",
 	"review_inbox_comment":      "the reviewer's comments on review_inbox",
+	"comfy_workflow":            "ComfyUI workflows are global, shared by every Project (spec/architecture/comfy/comfy-workflows.md): a bundle does not embed them, and an import warns about the ones its Takes and Locks name that this instance lacks (MissingWorkflows)",
+	"comfy_workflow_version":    "the version history of a ComfyUI workflow (see comfy_workflow)",
+	"mcp_token":                 "the MCP server's bearer tokens (spec/architecture/mcp.md): credentials of this instance, never to leave it in a bundle",
 }
 
 // Repository reads the Project Data Model of a Project out of the database and writes it into
@@ -213,7 +216,10 @@ func (r *Repository) Import(ctx context.Context, data domain.BundleData) error {
 		if err := violations.Err(); err != nil {
 			return err
 		}
-		return checkBundleOwnership(ctx, tx, data)
+		if err := checkBundleOwnership(ctx, tx, data); err != nil {
+			return err
+		}
+		return warnMissingWorkflows(ctx, tx, data.ProjectID)
 	})
 	if errors.Is(err, repository.ErrConflict) || errors.Is(err, ErrInvalid) {
 		return err

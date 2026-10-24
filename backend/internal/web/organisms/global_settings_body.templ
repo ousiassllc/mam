@@ -3,17 +3,20 @@ package organisms
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/credentialpanel"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/llmassign"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/localmodels"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/mcppanel"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelassignment"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/updatepanel"
 )
 
-// GlobalSettingsBodyData is everything the global settings screen (paths.Settings) shows: one field per
-// section, in order. A new section adds its field here and its organism to GlobalSettingsBody.
+// GlobalSettingsBodyData is everything the global settings screen (paths.Settings) shows: one field per section, in order. A new section adds its field here and its organism to GlobalSettingsBody.
 type GlobalSettingsBodyData struct {
 	Credentials credentialpanel.Data // which provider has an API key; never a key
-	// LLM, Models (the saved assignments) and Update (the version and update check): nil leaves the section out.
+	// LLM, Models (the saved assignments), MCP (the MCP server) and Update (the version and update check): nil leaves the section out.
 	LLM    *llmassign.Data
 	Models *modelassignment.Data
+	Local  *localmodels.Data
+	MCP    *mcppanel.Data
 	Update *updatepanel.Data
 }
 
@@ -21,12 +24,10 @@ type GlobalSettingsBodyData struct {
 templ GlobalSettingsBody(d GlobalSettingsBodyData) {
 	<div id="global-settings-body" class="flex flex-col gap-8">
 		@credentialpanel.Section(d.Credentials)
-		if d.LLM != nil {
-			@llmassign.Section(*d.LLM)
-		}
-		if d.Models != nil {
-			@modelassignment.Section(*d.Models)
-		}
+		@llmassign.SectionIf(d.LLM)
+		@modelassignment.SectionIf(d.Models)
+		@localmodels.SectionIf(d.Local)
+		@mcppanel.SectionIf(d.MCP)
 		@updatepanel.SectionIf(d.Update)
 	</div>
 }
