@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector"
 	"github.com/ousiassllc/mam/backend/internal/agent/jev"
@@ -24,6 +25,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
+	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 )
 
 // buildServices opens the database, builds every dependency of the services, recovers the work an
@@ -94,7 +96,18 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger) 
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	backendOpts := localbackends.Options{StagingDir: filepath.Join(cfg.AssetsDir(), ".staging")}
+	// The bundled ComfyUI starts on the first call of one of its models (modelmanager.Service.Prepare); the manager
+	// is built after the queue it needs, so the hook finds it through a pointer.
+	var manager atomic.Pointer[modelmanager.Service]
+	backendOpts := localbackends.Options{
+		StagingDir: filepath.Join(cfg.AssetsDir(), ".staging"),
+		Prepare: func(ctx context.Context, endpoint string) error {
+			if m := manager.Load(); m != nil {
+				return m.Prepare(ctx, endpoint)
+			}
+			return nil
+		},
+	}
 	models := modeladapter.New(modelCfg, localbackends.Build(modelCfg, keys, backendOpts), modeladapter.WithLogger(logger))
 	localbackends.Publish(modelCfg)
 	localModels := localmodels.New(localmodels.Deps{
@@ -145,11 +158,19 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger) 
 	})
 	services.LocalModels = localModels
 	closers = append(closers, services.Close) // runs after jobs.Stop: no job change wakes the workers any more
+	mgr, err := newModelManager(cfg, localModels, models, jobs, jobTable, keys, backendOpts, logger)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	services.ModelManager = mgr
+	manager.Store(mgr)
+	closers = append(closers, mgr.Close) // after jobs.Stop too: the engine outlives the jobs that call it
 	if err := recoverWork(ctx, services, jobs, logger); err != nil {
 		return nil, nil, nil, err
 	}
 	jobs.Start(ctx)
 	closers = append(closers, jobs.Stop)
+	mgr.OnStartup(ctx)
 	return services, db, release, nil
 }
 

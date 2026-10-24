@@ -25,6 +25,9 @@ type Options struct {
 	StagingDir string
 	// Vendor are the options of the built-in vendors' backends.
 	Vendor []modeladapter.BackendOption
+	// Prepare, when set, runs before every call of a model of a registered endpoint (the bundled ComfyUI is
+	// started here when it is not running). A failure is the failure of the call.
+	Prepare PrepareFunc
 }
 
 // Build returns the backends of cfg. A model of an endpoint that cannot be built (a bad base URL) is
@@ -52,13 +55,13 @@ func Build(cfg modeladapter.Config, keys credential.Store, o Options) modeladapt
 		case localcfg.KindComfyUI:
 			backend := &comfyui.Backend{Client: client, Model: m}
 			if m.Media == localcfg.MediaVideo {
-				b.Video[id] = backend
+				b.Video[id] = wrapVideo(endpoint, o.Prepare, backend)
 			} else {
-				b.Image[id] = backend
+				b.Image[id] = wrapImage(endpoint, o.Prepare, backend)
 			}
 		case localcfg.KindOpenAICompat:
 			if m.Media == localcfg.MediaImage {
-				b.Image[id] = openaicompat.Backend{Client: client, CostPerImage: m.CostPerImage}
+				b.Image[id] = wrapImage(endpoint, o.Prepare, openaicompat.Backend{Client: client, CostPerImage: m.CostPerImage})
 			}
 		}
 	}

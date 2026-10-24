@@ -6,6 +6,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"os"
 	"sync/atomic"
@@ -27,6 +28,14 @@ const (
 )
 
 func main() {
+	// --detect-gpu / --detect-comfyui (the installer calls them) print a report and exit: no window, no
+	// single-instance check, no data directory.
+	if handled, err := app.RunDetect(context.Background(), os.Args[1:], os.Stdout); handled {
+		if err != nil {
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
 	os.Exit(run(os.Args[1:], os.Getenv))
 }
 

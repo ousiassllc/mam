@@ -1,0 +1,56 @@
+package fetch
+
+import (
+	"errors"
+	"fmt"
+	"net/http"
+	"net/url"
+	"strings"
+
+	"github.com/ousiassllc/mam/backend/internal/safefetch"
+)
+
+// allowedDomains are the hosts of the downloads the model manager makes, and their subdomains: Hugging Face
+// (the model files and its CDN, which is cdn-lfs*.huggingface.co and *.hf.co) and GitHub (the engine archive,
+// which redirects to *.githubusercontent.com). Nothing else is fetched.
+var allowedDomains = []string{"huggingface.co", "hf.co", "github.com", "githubusercontent.com"}
+
+// AllowedURL accepts an https URL on an allowed host (and, through safefetch, no address of the local network).
+func AllowedURL(u *url.URL) error {
+	if err := safefetch.CheckURL(u.String()); err != nil {
+		return fmt.Errorf("fetch: %w", err)
+	}
+	host := strings.TrimSuffix(strings.ToLower(u.Hostname()), ".")
+	for _, d := range allowedDomains {
+		if host == d || strings.HasSuffix(host, "."+d) {
+			return nil
+		}
+	}
+	return fmt.Errorf("fetch: %s is not a download host of the model manager", host)
+}
+
+const maxRedirects = 8
+
+// NewClient returns the HTTP client of the downloads: it connects to public addresses only (safefetch), follows
+// redirects that pass check, and takes the Authorization header off a request that leaves the host the
+// download started on (the token goes to authHost's first request only; the CDN is addressed by a signed URL).
+func NewClient(check func(*url.URL) error, authHost string) *http.Client {
+	return WithRedirectRules(safefetch.NewClient(), check, authHost)
+}
+
+// WithRedirectRules sets the redirect rules of NewClient on c (a test passes a client that may reach loopback).
+func WithRedirectRules(c *http.Client, check func(*url.URL) error, authHost string) *http.Client {
+	c.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		if len(via) >= maxRedirects {
+			return errors.New("fetch: too many redirects")
+		}
+		if err := check(req.URL); err != nil {
+			return err
+		}
+		if req.URL.Host != via[0].URL.Host || !strings.EqualFold(req.URL.Hostname(), authHost) {
+			req.Header.Del("Authorization")
+		}
+		return nil
+	}
+	return c
+}

@@ -109,6 +109,11 @@ func Load(args []string, getenv func(string) string, output io.Writer) (Config, 
 	judgeConfig := fs.String("judge-config", getenv("MAM_JUDGE_CONFIG"), "JSON file with the AI Video Judge setting: frame sampling and face similarity thresholds (MAM_JUDGE_CONFIG)")
 	jevConfig := fs.String("jev-config", getenv("MAM_JEV_CONFIG"), "JSON file with the TypeSafe Jev shadow-run setting of the Repair Agent: pinned version, base URL, timeout, price (MAM_JEV_CONFIG)")
 	faceModels := fs.String("face-model-dir", getenv("MAM_FACE_MODEL_DIR"), "directory with the face detection and embedding models; default <data-dir>/models (MAM_FACE_MODEL_DIR)")
+	// The two detect options print a report and exit before anything starts (app.RunDetect); they are declared
+	// here so that the command line is valid and --help lists them.
+	fs.Bool("detect-gpu", false, "print the GPUs found and the ComfyUI build recommended for them as JSON, then exit")
+	fs.Bool("detect-comfyui", false, "print the ComfyUI already running on this machine (ports 8188 and 8000) as JSON, then exit")
+	fs.String("detect-output", "", "write the JSON of --detect-gpu / --detect-comfyui to this file instead of the standard output")
 	onnxRuntime := fs.String("onnxruntime-lib", getenv("MAM_ONNXRUNTIME_LIB"), "ONNX Runtime shared library (1.23.x) for the face models (MAM_ONNXRUNTIME_LIB)")
 	if err := fs.Parse(args); err != nil {
 		return Config{}, err

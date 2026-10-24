@@ -18,6 +18,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
+	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 )
 
 // Deps are the infrastructure dependencies wired once in cmd/server.
@@ -30,11 +31,9 @@ type Deps struct {
 	AssetsDir string
 	// Briefing extracts the Creative Brief from chat messages. Nil selects briefing.RuleExtractor.
 	Briefing briefing.Extractor
-	// LLM is the Reasoning LLM Adapter of the AUTO pipeline. When nil, or when Jobs is nil,
-	// the pipeline is off: Projects stay in DRAFT after the Brief is complete.
+	// LLM is the Reasoning LLM Adapter of the AUTO pipeline; nil (or nil Jobs) turns it off: Projects stay in DRAFT.
 	LLM llm.Completer
-	// Models is the Model Adapter that generates images and videos. Generation (Shot Takes and
-	// Reference Packs) is available only when it, LLM and Jobs are all set.
+	// Models is the Model Adapter that generates images and videos; Takes and Reference Packs need it, LLM and Jobs.
 	Models *modeladapter.Adapter
 	// FreeBytes reports the free disk space at a path. Nil selects fsutil.FreeBytes.
 	FreeBytes func(path string) (uint64, error)
@@ -57,8 +56,7 @@ type Deps struct {
 	Audio audiodirector.Providers
 }
 
-// Services is the DI root handed to router.New. Each feature adds one field
-// here and one line in wiring.services; wiring.go says where its agent is wired.
+// Services is the DI root handed to router.New: one field per feature and one line in wiring.services (wiring.go).
 type Services struct {
 	Health      *HealthService
 	Credentials *CredentialService
@@ -85,6 +83,8 @@ type Services struct {
 	Brand       *BrandService
 	Analytics   *AnalyticsService
 	LocalModels *localmodels.Service // ComfyUI / OpenAI-compatible endpoints and models; the app sets it
+	// ModelManager: bundled ComfyUI engine, model catalog, trial generation; the app sets it.
+	ModelManager *modelmanager.Service
 }
 
 // Close stops the background workers of the services and kills the Take preview conversions that

@@ -182,3 +182,33 @@ func TestPublishMakesLocalModelsSelectable(t *testing.T) {
 	localbackends.Publish(modeladapter.DefaultConfig())
 	assert.NotContains(t, domain.ImageModels(), domain.ModelName("openai-compat:box/m"))
 }
+
+// The Prepare hook runs before every call of a model of a registered endpoint, its failure is the failure of the
+// call (the backend is not reached), and a backend that is not configured stays not configured.
+func TestPrepareRunsBeforeTheCallsOfAnEndpointsModels(t *testing.T) {
+	var hits atomic.Int32
+	srv := imageServer(t, 200, &hits)
+	cfg := configWith(map[string]string{"box": srv.URL})
+	var prepared []string
+	var failWith error
+	b := localbackends.Build(cfg, credentialtest.New(), localbackends.Options{
+		PollEvery: time.Millisecond, StagingDir: t.TempDir(),
+		Prepare: func(_ context.Context, endpoint string) error { prepared = append(prepared, endpoint); return failWith },
+	})
+	backend := b.Image[domain.ModelName("openai-compat:box/m")]
+	require.NotNil(t, backend)
+
+	_, err := backend.GenerateImage(context.Background(), "", modeladapter.ImageRequest{Prompt: "p"})
+	require.NoError(t, err)
+	assert.Equal(t, []string{"box"}, prepared)
+	assert.Equal(t, int32(1), hits.Load())
+	c, ok := backend.(interface{ Configured() bool })
+	require.True(t, ok)
+	assert.True(t, c.Configured())
+
+	failWith = assert.AnError
+	_, err = backend.GenerateImage(context.Background(), "", modeladapter.ImageRequest{Prompt: "p"})
+	require.ErrorIs(t, err, assert.AnError)
+	assert.Equal(t, int32(1), hits.Load(), "the server was not called")
+	assert.NotNil(t, b.Image[domain.ModelName("openai-compat:box/m")])
+}
