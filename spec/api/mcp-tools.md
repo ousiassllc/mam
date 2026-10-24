@@ -63,6 +63,7 @@ curl -OJ 'http://100.101.102.103:8788/mcp-files/<ticket>'
 | World State・Reference Library・Branch・バージョン・Series・メモ | [mcp-tools-world-notes.md](mcp-tools-world-notes.md)（対応表: [mcp-tools-world-notes-coverage.md](mcp-tools-world-notes-coverage.md)） |
 | Project 設定・Brand・原価・制作指標・全体設定（LLM・モデル・更新） | [mcp-tools-settings-policy.md](mcp-tools-settings-policy.md) |
 | ローカル・代替モデル（ComfyUI・OpenAI 互換の接続先とモデル） | [mcp-tools-local-models.md](mcp-tools-local-models.md) |
+| ComfyUI ワークフロー（保存・取り込み・実行・Shot への固定） | [mcp-tools-workflows.md](mcp-tools-workflows.md) |
 | ChatGPT でログイン（ログイン・ログアウト・状態・画像生成の ON/OFF） | [mcp-tools-chatgpt.md](mcp-tools-chatgpt.md) |
 | 編集（Edit Timeline・音声・書き出し） | [mcp-tools-editor-review.md](mcp-tools-editor-review.md) |
 | レビュー（依頼・受信箱・コメント・判定） | [mcp-tools-editor-review-reviews.md](mcp-tools-editor-review-reviews.md) |
@@ -77,3 +78,4 @@ MCP ツールの対象外: MCP サーバー自身の設定（待ち受け先の�
 | 1.1 | 2026-10-24 | 「ドメイン別」に 6 ファイル（Project・チャット／Shot・生成／World・メモ／設定・Brand／編集／レビュー）を載せ、MCP サーバー自身の設定を MCP の対象外にすると書いた | Issue #830。画面の全操作の MCP ツール化 |
 | 1.2 | 2026-10-24 | 「ドメイン別」に `mcp-tools-chatgpt.md`（ChatGPT でログイン）を足した | Issue #832。ChatGPT のログイン・ログアウト・状態・画像生成の ON/OFF の MCP ツール |
 | 1.3 | 2026-10-25 | 「ドメイン別」に [mcp-tools-local-models.md](mcp-tools-local-models.md)（ローカル・代替モデル）を足した | Issue #831。ComfyUI・OpenAI 互換の接続先とモデルの操作を MCP ツールにする（#830 の方針: 画面の全操作を MCP で操作できる） |
+| 1.4 | 2026-10-25 | 「ドメイン別」に [mcp-tools-workflows.md](mcp-tools-workflows.md)（ComfyUI ワークフロー）を足した | Issue #834。保存したワークフローの一覧・取り込み・実行・Shot への固定を MCP ツールにする（ノード画面は対象外） |

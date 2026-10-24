@@ -110,6 +110,7 @@ func serve(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Opt
 	modelFile, modelPinned := cfg.ModelSettingsFile()
 	settings := settingsroutes.New(llmFile, llmPinned, modelFile, modelPinned)
 	settings.LocalModels = services.LocalModels
+	settings.Workflows = services.Workflows
 	// A saved image / video assignment applies at once, as a saved endpoint or model does.
 	settings.Models.SetOnChange(func() {
 		if err := services.LocalModels.Reload(); err != nil {

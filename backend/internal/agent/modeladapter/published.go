@@ -14,8 +14,8 @@ var published atomic.Pointer[Config]
 
 // PublishLocal makes the endpoints and models known to Capabilities and Prepare. The application has one
 // setting; tests that publish must restore it.
-func PublishLocal(endpoints map[string]localcfg.Endpoint, models map[string]localcfg.Model) {
-	published.Store(&Config{Endpoints: endpoints, LocalModels: models})
+func PublishLocal(endpoints map[string]localcfg.Endpoint, models map[string]localcfg.Model, workflows map[string]localcfg.SavedWorkflow) {
+	published.Store(&Config{Endpoints: endpoints, LocalModels: models, Workflows: workflows})
 }
 
 func publishedConfig() Config {

@@ -22,6 +22,7 @@ templ ProjectsPage(csrfToken string, projects []domain.Project, form organisms.N
 			@organisms.ProjectList(projects)
 			<p class="mt-4 text-sm"><a href={ templ.SafeURL(paths.Analytics()) } class="text-neutral-400 hover:text-neutral-100">制作指標（すべてのプロジェクト）</a></p>
 			<p class="mt-2 text-sm"><a href={ templ.SafeURL(paths.Settings()) } class="text-neutral-400 hover:text-neutral-100">設定（API キー・モデル）</a></p>
+			<p class="mt-2 text-sm"><a href={ templ.SafeURL(paths.Nodes()) } class="text-neutral-400 hover:text-neutral-100">ノード（ComfyUI のワークフロー）</a></p>
 		</main>
 	}
 }

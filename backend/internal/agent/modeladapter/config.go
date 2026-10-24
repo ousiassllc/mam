@@ -128,8 +128,9 @@ type Config struct {
 	Policies map[domain.QualityPolicy]PolicyRoute `json:"policies"`
 	// Endpoints are the servers the user registered (ComfyUI, OpenAI-compatible) and LocalModels the models
 	// defined on them, keyed "<endpoint>/<name>"; a model is routed to as localcfg.ID (spec/architecture/local-models.md).
-	Endpoints   map[string]localcfg.Endpoint `json:"endpoints,omitempty"`
-	LocalModels map[string]localcfg.Model    `json:"local_models,omitempty"`
+	Endpoints   map[string]localcfg.Endpoint      `json:"endpoints,omitempty"`
+	LocalModels map[string]localcfg.Model         `json:"local_models,omitempty"`
+	Workflows   map[string]localcfg.SavedWorkflow `json:"-"` // saved in mam, by identifier; configcheck.Load attaches them
 	// PreferOpenAI routes new references through PurposeUnifiedOpenAI (§3, row "OpenAI系 LLM と認証・請求を統合したい場合").
 	PreferOpenAI bool          `json:"prefer_openai"`
 	Retry        RetryConfig   `json:"retry"`
@@ -255,6 +256,9 @@ func (c Config) VendorSettings() map[Vendor]VendorConfig {
 
 // LocalModel returns the model defined on a registered endpoint that the identifier names.
 func (c Config) LocalModel(m domain.ModelName) (localcfg.Model, localcfg.Kind, bool) {
+	if w, ok := c.Workflows[string(m)]; ok {
+		return w.Model, localcfg.KindComfyUI, true
+	}
 	kind, endpoint, name, ok := localcfg.ParseID(string(m))
 	if !ok || c.Endpoints[endpoint].Kind != kind {
 		return localcfg.Model{}, "", false

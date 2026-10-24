@@ -1,0 +1,105 @@
+package workflows
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// Node states (service/workflows.NodeState, as strings).
+const (
+	NodeReady    = "ready"
+	NodeStopped  = "stopped"
+	NodeStarting = "starting"
+	NodeRejected = "rejected"
+)
+
+// NodeData is the node screen: the ComfyUI the iframe shows (or why it cannot).
+type NodeData struct {
+	// Endpoint is the selected ComfyUI endpoint and Endpoints the ones to choose from (the bundled one first).
+	Endpoint  string
+	Endpoints []string
+	Bundled   bool
+	State     string
+	Reason    string
+	// FrameURL is the iframe's address; OpenURL the same for the link that opens it in the browser.
+	FrameURL string
+	OpenURL  string
+	// Installed: the bundled engine is installed, so "起動" is offered.
+	Installed bool
+	// Opened is the name of the workflow mam just wrote into ComfyUI: "ワークフロー" から開く。
+	Opened string
+	// ModelManagerURL is the model manager screen, where the bundled ComfyUI is installed and managed.
+	ModelManagerURL string
+	Error           string
+}
+
+// Node is the body of the node screen.
+templ Node(d NodeData) {
+	<div class="flex flex-col gap-4" data-testid="nodes">
+		<form method="get" action={ paths.Nodes() } class="flex flex-wrap items-end gap-3" data-testid="nodes-target">
+			<label class="flex flex-col gap-1 text-xs text-neutral-400" for="nodes-endpoint">
+				<span>表示する ComfyUI</span>
+				@atoms.Select(atoms.FieldMd, "w-64", templ.Attributes{"id": "nodes-endpoint", "name": FieldEndpoint}) {
+					for _, e := range d.Endpoints {
+						<option value={ e } selected?={ e == d.Endpoint }>{ nodeLabel(e) }</option>
+					}
+				}
+			</label>
+			@atoms.Button(atoms.ToneNeutral, "切り替える", templ.Attributes{"type": "submit"})
+		</form>
+		if d.Error != "" {
+			<p class="text-sm text-red-300" role="alert" data-testid="nodes-error">{ d.Error }</p>
+		}
+		if d.Opened != "" {
+			<p class="text-sm text-emerald-300" role="status" data-testid="nodes-opened">ComfyUI に「{ d.Opened }」を置きました。画面左の「ワークフロー」（w キー）から開いてください。</p>
+		}
+		if d.State == NodeReady || d.State == NodeRejected {
+			<p class="text-xs text-neutral-400">ノードを組んで保存し、一度実行したら、「ワークフロー」画面の「ComfyUI から取り込む」で mam に保存します。</p>
+		}
+		if d.State == NodeReady {
+			<mam-comfy-frame
+				src={ d.FrameURL }
+				open-url={ d.OpenURL }
+				failure-message="ComfyUI の画面を読み込めませんでした。ComfyUI が起動しているか、接続先のアドレスを確かめてください。外部の ComfyUI が別のサイトの中での表示を拒否している場合は、ComfyUI の起動オプションに --enable-cors-header（mam のオリジン）を付けるか、「ブラウザで開く」を使ってください。"
+				data-testid="nodes-frame"
+			></mam-comfy-frame>
+		} else {
+			@unavailable(d)
+		}
+	</div>
+}
+
+templ unavailable(d NodeData) {
+	<div class="flex flex-col gap-3 rounded-md border border-amber-700 p-4" role="status" data-testid="nodes-unavailable" data-state={ d.State }>
+		<p class="text-sm text-amber-200">{ d.Reason }</p>
+		<div class="flex flex-wrap items-center gap-3">
+			if d.Bundled && d.Installed && d.State != NodeStarting {
+				@atoms.Button(atoms.TonePrimary, "ComfyUI を起動する", templ.Attributes{
+					"type":            "button",
+					"hx-post":         paths.NodesStart(),
+					"hx-sync":         "this:drop",
+					"hx-disabled-elt": "this",
+				})
+			}
+			if d.State == NodeStarting {
+				@atoms.ButtonLink(atoms.ToneNeutral, "開き直す", templ.SafeURL(paths.Nodes()), templ.Attributes{})
+			}
+			if d.Bundled && d.ModelManagerURL != "" {
+				<a class="text-sm text-neutral-300 underline hover:text-neutral-100" href={ templ.SafeURL(d.ModelManagerURL) } data-testid="nodes-model-manager">モデルマネージャーを開く</a>
+			}
+			if !d.Bundled {
+				<a class="text-sm text-neutral-300 underline hover:text-neutral-100" href={ templ.SafeURL(paths.Settings()) } data-testid="nodes-settings">設定の「ローカル・代替モデル」で接続先を確かめる</a>
+			}
+			if d.OpenURL != "" {
+				<a class="text-sm text-neutral-300 underline hover:text-neutral-100" href={ templ.SafeURL(d.OpenURL) } target="_blank" rel="noopener noreferrer" data-testid="nodes-open">ブラウザで開く</a>
+			}
+		</div>
+	</div>
+}
+
+func nodeLabel(endpoint string) string {
+	if endpoint == "bundled-comfyui" {
+		return "同梱の ComfyUI（bundled-comfyui）"
+	}
+	return endpoint
+}

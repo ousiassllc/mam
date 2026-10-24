@@ -25,7 +25,7 @@ func videoOptions(cfg modeladapter.Config) []VideoOption {
 	opts := make([]VideoOption, 0, len(domain.VideoModels()))
 	for _, m := range domain.VideoModels() {
 		caps, ok := cfg.VideoCaps(m)
-		if !ok {
+		if w, saved := cfg.Workflows[string(m)]; !ok || (saved && !w.Current) { // an older version is kept for the Shots pinned to it, not offered
 			continue
 		}
 		if _, _, local := cfg.LocalModel(m); local {
