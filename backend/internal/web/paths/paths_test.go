@@ -105,3 +105,10 @@ func TestWithBranch_AddsTheEscapedBranchQueryAndNothingForTheTrunk(t *testing.T)
 	assert.Equal(t, "/projects/p1/world-state?branch_id=b1", paths.WithBranch(paths.Project("p1", "world-state"), "b1"))
 	assert.Equal(t, "/x?branch_id=a%26b%3Dc+d%23e%25f%2Fg", paths.WithBranch("/x", "a&b=c d#e%f/g"))
 }
+
+func TestMCPSettingsPaths_AreBelowSettingsAndEscapeTheTokenID(t *testing.T) {
+	assert.Equal(t, "/settings/mcp/bind", paths.MCPBind())
+	assert.Equal(t, "/settings/mcp/tokens", paths.MCPTokens())
+	assert.Equal(t, "/settings/mcp/tokens/abc", paths.MCPToken("abc"))
+	assert.Equal(t, "/settings/mcp/tokens/a%2Fb%3Fc", paths.MCPToken("a/b?c"))
+}

@@ -20,6 +20,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/config"
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
 	"github.com/ousiassllc/mam/backend/internal/logging"
+	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/router"
 	"github.com/ousiassllc/mam/backend/internal/router/settingsroutes"
 	"github.com/ousiassllc/mam/static"
@@ -92,7 +93,7 @@ func Run(ctx context.Context, opts Options) error {
 }
 
 func serve(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Options) error {
-	services, jobs, cleanup, err := buildServices(ctx, cfg, logger)
+	services, db, cleanup, err := buildServices(ctx, cfg, logger)
 	if err != nil {
 		return err
 	}
@@ -104,9 +105,12 @@ func serve(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Opt
 	settings := settingsroutes.New(llmFile, llmPinned, modelFile, modelPinned)
 	if opts.Update != nil {
 		var stop func()
-		settings.Update, stop = startUpdates(ctx, opts.Update, services, jobs, logger)
+		settings.Update, stop = startUpdates(ctx, opts.Update, services, repository.NewJobRepository(db), logger)
 		defer stop() // before cleanup: the check in flight is cancelled while the services are still there
 	}
+	var stopMCP func()
+	settings.MCP, stopMCP = startMCP(cfg, services, db, logger)
+	defer stopMCP() // before cleanup: tool calls in flight use the services
 	engine := router.New(services, router.Options{Logger: logger, Static: staticFS(cfg), Settings: settings})
 
 	ln, err := listenLoopback(cfg.Port)

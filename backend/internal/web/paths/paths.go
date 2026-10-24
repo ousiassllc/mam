@@ -161,3 +161,16 @@ func UpdateCheck() string { return Settings() + "/update/check" }
 
 // ModelSettings is "/settings/models", the image / video model assignment of the settings screen.
 func ModelSettings() string { return Settings() + "/models" }
+
+// MCPSettings is "/settings/mcp", the MCP server section of the settings screen (the section itself is
+// part of GET /settings).
+func MCPSettings() string { return Settings() + "/mcp" }
+
+// MCPBind is "/settings/mcp/bind", the bind address of the MCP listener (PUT).
+func MCPBind() string { return MCPSettings() + "/bind" }
+
+// MCPTokens is "/settings/mcp/tokens", where an MCP bearer token is issued (POST).
+func MCPTokens() string { return MCPSettings() + "/tokens" }
+
+// MCPToken is "/settings/mcp/tokens/:id", one MCP token (DELETE revokes it).
+func MCPToken(id string) string { return MCPTokens() + "/" + url.PathEscape(id) }

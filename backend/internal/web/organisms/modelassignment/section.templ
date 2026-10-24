@@ -87,6 +87,13 @@ type Data struct {
 
 const sectionID = "model-assignment"
 
+// SectionIf is Section, or nothing when d is nil.
+templ SectionIf(d *Data) {
+	if d != nil {
+		@Section(*d)
+	}
+}
+
 // Section is the "画像・動画モデル" section of the global settings screen.
 templ Section(d Data) {
 	@molecules.SettingsSection("画像・動画モデル", "画像の用途ごと・Quality Policy ごとに、主モデルと、主モデルが使えないときの代替モデルを選びます。保存した内容は <データフォルダ>/models.json に書かれ、反映にはアプリの再起動が必要です。") {

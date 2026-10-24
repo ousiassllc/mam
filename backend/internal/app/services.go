@@ -27,9 +27,9 @@ import (
 // buildServices opens the database, builds every dependency of the services, recovers the work an
 // abnormal termination left behind and starts the job queue. cleanup stops and closes all of it in
 // the reverse order of construction (queue, services, Judge, database). It is nil on error, where
-// buildServices has already released everything it had built. jobs is the job table: the app updater
-// reads it to see whether any work is in flight.
-func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger) (_ *service.Services, _ *repository.JobRepository, _ func(), err error) {
+// buildServices has already released everything it had built. db is the database: the app updater reads
+// the job table through it to see whether any work is in flight, and the MCP server keeps its tokens in it.
+func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger) (_ *service.Services, _ *repository.DB, _ func(), err error) {
 	var closers []func()
 	release := func() {
 		for i := len(closers) - 1; i >= 0; i-- {
@@ -141,7 +141,7 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger) 
 	}
 	jobs.Start(ctx)
 	closers = append(closers, jobs.Stop)
-	return services, jobTable, release, nil
+	return services, db, release, nil
 }
 
 // recoverWork cleans up after an abnormal termination: Shots left GENERATING / REPAIRING are released

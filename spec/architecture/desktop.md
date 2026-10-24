@@ -10,6 +10,7 @@ Windows では Wails v3 のネイティブウィンドウ（WebView2）でアプ
 - 理由: ① Wails v3 の AssetServer は WebSocket のハンドシェイクを 501 で拒否する（`v3/internal/assetserver/assetserver.go`、v3.0.0-beta.27 のソースで確認）。チャット（`/ws/projects/:id`）と生成進捗（`/ws/shots/:id`）は WebSocket で、ポーリングは禁止（non-functional.md §2）。② AssetServer 経由の Host は `wails.localhost`（`assetserver_windows.go`）で、`LoopbackOnly`（overview.md §6）がループバック以外の Host を拒否するのと食い違う。サーバーを維持すれば WebSocket・CSRF・`LoopbackOnly`・大容量アップロード・動画の Range 配信・ダウンロードのいずれも変更せずに使える（AssetServer 上の Range とアップロード上限の挙動は未検証で、本方式では問題にならない）
 - ウィンドウはサーバーの URL 以外へ移動しない。Wails のバインディング・イベントは使わない（Go 側の API を WebView に公開しない）。`LoopbackOnly` と CSRF は変更しない
 - 起動順: ① `internal/app` が `127.0.0.1` のポートを確保して待ち受けを始める（`--port` の既定 8787、使用中ならOSが選ぶ空きポート）② `OnReady(url)` が確定したポートの URL をウィンドウに渡す。ウィンドウはそれまで背景色だけの空ページを出す。サーバーの起動はウィンドウの生成結果に依存しない
+- MCP サーバー（`spec/architecture/mcp.md`）は `internal/app` の中で起動するので、Wails 版でもブラウザ版と同じに使える（ウィンドウとは無関係に別のリスナーで、既定は `127.0.0.1:8788`。ウィンドウが閉じてアプリが終われば止まる）。インストーラー版・ポータブル版の違いもない
 
 ## 2. `cmd/wails` の挙動
 
@@ -123,3 +124,4 @@ Windows 実機が要る項目は、リリース前に実機で確かめる（実
 | 1.18 | 2026-10-21 | §6 に自動更新（流れ・安全ゲート・署名と検証・ユーザー単位のインストール・再起動・テストの範囲・設定画面）を足し、§4 のインストール先をユーザー単位に、§5 の対象外から自動更新を外した | Windows 版が新しいリリースを自分で入れ替えるようにしたため。リポジトリは非公開なので、リリースの配布物だけを持つ公開リポジトリ `ousiassllc/mam-releases` を確認する |
 | 1.19 | 2026-10-24 | §6.1・§6.3 の更新の確認先を、別の公開リポジトリ `ousiassllc/mam-releases` から MAM 自身の Releases（`ousiassllc/mam`）に改めた。非公開の間は 404 で「リリースなし」になること、古い版からのつなぎ（`mam-releases` を見る版は配布されておらず、v0.1.0・v0.1.1 は手動で入れ替える）を足した | 公開後は mam 自身の Release から配る（Issue #827） |
 | 1.20 | 2026-10-24 | §4 の配布の「2 つの成果物」を、実際の 4 ファイル（インストーラー・ポータブル・`checksums.txt`・`checksums.txt.sig`）に直した。§6.1 のインストーラーの選び方と §6.3 のチェックサムの引き方を、リリースの `tag_name` の版が入った名前との完全一致にした（別の版のインストーラーは選ばず `ErrorRelease`、別の名前の行しか無ければ `ErrorVerification`）。§6.3 の署名を作る場所を、`build` ジョブの最後のステップ `Sign checksums`（同じステップで公開鍵を使って検証。`release` ジョブは署名しない）に直した。§6.5 に、確認の失敗を定期確認でも手動確認でも `Service.Check` が `ERROR` で 1 回記録することを足した | PR #824 のレビュー指摘。インストーラーを glob で選ぶと、タグと無関係な版のインストーラーを入れてしまう。署名の場所と成果物の数が実装（`release.yml`）と食い違っていた。手動確認の失敗が（`ErrorVerification` を含め）ログに残らなかった |
+| 1.21 | 2026-10-24 | §1 に、MCP サーバーが `internal/app` の中で起動するため Wails 版でも使えることを足した | Issue #830。Windows デスクトップ版でも MCP に接続できることが完了条件のため |

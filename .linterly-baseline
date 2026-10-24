@@ -68,7 +68,7 @@
 527	backend/internal/service/reshoot_test.go
 440	backend/internal/service/review.go
 2895	backend/internal/web/handler/
-2472	backend/internal/web/organisms/
+2470	backend/internal/web/organisms/
 738	spec/architecture/er.md
 1648	spec/spec.md
 2279	static/src/components/lib/

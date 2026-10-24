@@ -48,6 +48,13 @@ templ Section(d Data) {
 	}
 }
 
+// SectionIf is Section, or nothing when d is nil.
+templ SectionIf(d *Data) {
+	if d != nil {
+		@Section(*d)
+	}
+}
+
 // Panel is the form that saves the assignment (PUT) with the button that returns it to the defaults
 // (DELETE); both answer with the panel itself. A pinned file is listed read-only, without a form.
 templ Panel(d Data) {

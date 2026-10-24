@@ -4,15 +4,19 @@
 package settingsroutes
 
 import (
+	"context"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/appupdate"
 	"github.com/ousiassllc/mam/backend/internal/service/llmassign"
+	"github.com/ousiassllc/mam/backend/internal/service/mcpsettings"
 	"github.com/ousiassllc/mam/backend/internal/service/modelsettings"
 	"github.com/ousiassllc/mam/backend/internal/web/handler"
 	updatehandler "github.com/ousiassllc/mam/backend/internal/web/handler/appupdate"
 	llmhandler "github.com/ousiassllc/mam/backend/internal/web/handler/llmassign"
+	mcphandler "github.com/ousiassllc/mam/backend/internal/web/handler/mcpsettings"
 	modelhandler "github.com/ousiassllc/mam/backend/internal/web/handler/modelassign"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
@@ -25,6 +29,9 @@ type Services struct {
 	// Update checks for a newer version. Nil in the headless server, which cannot update itself: the
 	// version section then shows the version only and has no check route.
 	Update *appupdate.Service
+	// MCP is the MCP server section (address, bind address, tokens). Nil when the MCP server is not running
+	// (a router built without the app, as the tests do): the section and its routes are then absent.
+	MCP *mcpsettings.Service
 }
 
 // New builds the services over the settings files (llm.json / models.json, or the files the operator pinned
@@ -35,8 +42,8 @@ func New(llmFile string, llmPinned bool, modelFile string, modelPinned bool) *Se
 
 // Register adds GET paths.Settings() (always: the API key panel needs only keys and the version section
 // only the version) and, when s is not nil, the LLM and model sections with their PUT / DELETE routes and,
-// when s.Update is set, POST paths.UpdateCheck(). Without s the screen has no such sections and the routes
-// do not exist.
+// when s.Update is set, POST paths.UpdateCheck() and, when s.MCP is set, the MCP server section with its PUT / POST /
+// DELETE routes. Without s the screen has no such sections and the routes do not exist.
 func Register(engine *gin.Engine, keys *service.CredentialService, s *Services) {
 	var update *appupdate.Service
 	if s != nil {
@@ -49,9 +56,18 @@ func Register(engine *gin.Engine, keys *service.CredentialService, s *Services) 
 		}
 		version := updatehandler.SectionData(update)
 		d.Update = &version
+		if s != nil && s.MCP != nil {
+			mcp := mcphandler.SectionData(context.Background(), s.MCP)
+			d.MCP = &mcp
+		}
 	}
 	if update != nil {
 		engine.POST(paths.UpdateCheck(), updatehandler.Check(update))
+	}
+	if s != nil && s.MCP != nil {
+		engine.PUT(paths.MCPBind(), mcphandler.Bind(s.MCP))
+		engine.POST(paths.MCPTokens(), mcphandler.Issue(s.MCP))
+		engine.DELETE(paths.MCPToken(":id"), mcphandler.Revoke(s.MCP))
 	}
 	if s != nil {
 		engine.PUT(paths.LLMSettings(), llmhandler.Save(s.LLM))
