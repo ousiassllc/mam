@@ -109,7 +109,7 @@ func serve(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Opt
 		defer stop() // before cleanup: the check in flight is cancelled while the services are still there
 	}
 	var stopMCP func()
-	settings.MCP, stopMCP = startMCP(cfg, services, db, logger)
+	settings.MCP, stopMCP = startMCP(cfg, services, settings, db, logger)
 	defer stopMCP() // before cleanup: tool calls in flight use the services
 	engine := router.New(services, router.Options{Logger: logger, Static: staticFS(cfg), Settings: settings})
 
