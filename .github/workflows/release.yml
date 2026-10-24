@@ -6,8 +6,8 @@ name: Release
 #                 latest v* tag; v0.1.0 if there is none). Nobody tags anything.
 #   tag push      v<X.Y.Z>: a hand-made tag, to raise the minor / major version.
 #
-# Every job runs on the self-hosted Linux runner (like ci.yml): GitHub-hosted runners are billed and were blocked
-# by a payment failure. The Windows exes are therefore cross-built (GOOS=windows, pure Go) and the installer is
+# Every job runs on the GitHub-hosted ubuntu-latest runner (like ci.yml; free for a public repository). The Windows exes
+# are cross-built (GOOS=windows, pure Go) and the installer is
 # made by makensis on Linux; nothing here runs a Windows binary (no Windows-only tests, no installer smoke test).
 #
 # Four jobs, so that the build never holds a write token and nothing is published unchecked:
@@ -44,7 +44,7 @@ jobs:
       (github.event.workflow_run.conclusion == 'success' &&
        github.event.workflow_run.event == 'push' &&
        github.event.workflow_run.head_repository.full_name == github.repository)
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     permissions:
       contents: read
     outputs:
@@ -95,7 +95,7 @@ jobs:
   verify:
     needs: plan
     if: needs.plan.outputs.release == 'true'
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       actions: read # gh run list (the CI result of the commit)
@@ -122,15 +122,18 @@ jobs:
             exit 1
           fi
 
-      # No actions cache on the self-hosted runner (see ci.yml).
+      # A GitHub-hosted runner starts empty every time: the Go and npm caches come from the actions cache (see ci.yml).
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version-file: go.mod
-          cache: false
+          cache: true
+          cache-dependency-path: go.sum
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24
+          cache: npm
+          cache-dependency-path: static/package-lock.json
 
       - name: Install tools
         run: |
@@ -146,7 +149,7 @@ jobs:
 
   build:
     needs: [plan, verify]
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
@@ -158,11 +161,14 @@ jobs:
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version-file: go.mod
-          cache: false
+          cache: true
+          cache-dependency-path: go.sum
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24
+          cache: npm
+          cache-dependency-path: static/package-lock.json
 
       # CGO_ENABLED=0: the Wails CLI builds without cgo; with cgo on Linux it wants webkitgtk-6.0 headers.
       # (The app itself is cross-built for Windows with CGO_ENABLED=0 by wails3 package.)
@@ -215,7 +221,7 @@ jobs:
 
   release:
     needs: [plan, build]
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
