@@ -63,3 +63,9 @@ make fmt          # 整形（Go・templ・TypeScript）
 ```
 
 Windows 版（Wails ウィンドウ + ユーザー単位の NSIS インストーラー）は `scripts/package-windows.sh <version>`（`X.Y.Z`）で作ります。`wails3`（`go.mod` の `github.com/wailsapp/wails/v3` と同じ版）と NSIS（`makensis`）と `jq` が要ります。環境変数 `RELEASE_SIGNING_PUBLIC_KEY`（更新の署名検証用の公開鍵。base64）を渡すとバイナリに埋め込みます（空なら警告して埋め込まず、アプリは署名検証を省きます）。リリースは、`main` への push で CI が成功すると GitHub Actions（`.github/workflows/release.yml`）が最新タグの patch を 1 つ上げた版で自動で作ります。インストーラーの `checksums.txt` に署名（シークレット `RELEASE_SIGNING_KEY`）して、このリポジトリの Releases に載せます（`GITHUB_TOKEN` だけを使います。アプリの自動更新もこの Releases を確認します）。Authenticode のコード署名はしません。minor・major を上げるときだけ `v<version>` タグを手で push します。詳しくは [`spec/architecture/desktop.md`](spec/architecture/desktop.md) と [`spec/environment/setup.md`](spec/environment/setup.md) を参照してください。
+
+## ライセンス
+
+MAM は [GNU Affero General Public License v3.0](LICENSE)（AGPL-3.0）で公開しています。Copyright (C) 2026 Ousiass合同会社。改変した MAM をネットワーク越しに利用させるときも、その利用者にソースコードを提供する義務があります（AGPL-3.0 第 13 条）。
+
+Windows 版が使うサードパーティのソフトウェアのライセンス表記は [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) にあります。インストーラーは `LICENSE` とこのファイルをインストール先に置きます。`go.mod` や `static/package-lock.json` の依存を変えたら、`scripts/third-party-notices.sh` で作り直します。

@@ -52,6 +52,7 @@ test-scripts: ## shell script tests
 	bash scripts/slow-tests_test.sh
 	bash scripts/complexity-ratchet_test.sh
 	bash scripts/sign-checksums_test.sh
+	bash scripts/third-party-notices_test.sh
 
 lint: lint-go lint-static ## golangci-lint + tsc + biome lint
 
