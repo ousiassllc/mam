@@ -3,6 +3,7 @@ package organisms
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/credentialpanel"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/llmassign"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/localmodels"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/mcppanel"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelassignment"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/updatepanel"
@@ -14,6 +15,7 @@ type GlobalSettingsBodyData struct {
 	// LLM, Models (the saved assignments), MCP (the MCP server) and Update (the version and update check): nil leaves the section out.
 	LLM    *llmassign.Data
 	Models *modelassignment.Data
+	Local  *localmodels.Data
 	MCP    *mcppanel.Data
 	Update *updatepanel.Data
 }
@@ -24,6 +26,7 @@ templ GlobalSettingsBody(d GlobalSettingsBodyData) {
 		@credentialpanel.Section(d.Credentials)
 		@llmassign.SectionIf(d.LLM)
 		@modelassignment.SectionIf(d.Models)
+		@localmodels.SectionIf(d.Local)
 		@mcppanel.SectionIf(d.MCP)
 		@updatepanel.SectionIf(d.Update)
 	</div>

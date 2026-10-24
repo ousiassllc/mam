@@ -22,10 +22,11 @@ const pinnedNote = "起動オプション（--model-config / MAM_MODEL_CONFIG）
 // unavailable is what the section says when the settings file cannot be read.
 const unavailable = "画像・動画モデルの設定ファイルを読み込めないため、割り当てを表示できません"
 
-// Notices of a successful save and reset: the clients are built once, so a saved change waits for a restart.
+// Notices of a successful save and reset: the Model Adapter is rebuilt at once (the app wires
+// modelsettings.Service.SetOnChange), so a saved change needs no restart.
 const (
-	savedNotice = "保存しました。反映にはアプリの再起動が必要です"
-	resetNotice = "既定に戻しました。反映にはアプリの再起動が必要です"
+	savedNotice = "保存しました。すぐに反映されます"
+	resetNotice = "既定に戻しました。すぐに反映されます"
 )
 
 type purposeInfo struct{ label, hint string }

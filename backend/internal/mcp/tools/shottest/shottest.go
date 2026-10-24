@@ -64,6 +64,9 @@ type Options struct {
 	FFmpeg bool
 	// NoModels leaves out the video / image models (generation is then unavailable).
 	NoModels bool
+	// Models, when set, is the Model Adapter instead of the fake models (a test that runs a real backend
+	// against a fake server, as the local models test does). It is still the Project's Models: Video is unused.
+	Models *modeladapter.Adapter
 }
 
 // New builds the fixture: register adds the tools under test.
@@ -86,7 +89,9 @@ func New(t *testing.T, register func(env *mcptest.Env, r *mcpkit.Registrar), o O
 	f.Env = mcptest.New(t, register, func(d *service.Deps) {
 		f.Jobs = jobqueue.New(repository.NewJobRepository(d.DB), jobqueue.Options{})
 		d.Jobs, d.LLM, d.Frames, d.Media = f.Jobs, l, frames{}, tools
-		if !o.NoModels {
+		if o.Models != nil {
+			d.Models = o.Models
+		} else if !o.NoModels {
 			backends := modeladapter.Backends{Image: map[domain.ModelName]modeladapter.ImageBackend{}, Video: map[domain.ModelName]modeladapter.VideoBackend{}}
 			for _, m := range domain.ImageModels() {
 				backends.Image[m] = video

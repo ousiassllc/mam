@@ -7,7 +7,7 @@
 ## 方針
 
 - **MCP トークンの管理は MCP からはできない**（設定画面だけ。`PUT /settings/mcp/bind`・`POST /settings/mcp/tokens`・`DELETE /settings/mcp/tokens/:id`）。トークンの発行・失効や待ち受け先の変更をエージェントに許すと、エージェントが自分の接続の権限を変えられてしまうため、ツールを作らない（`spec/architecture/mcp.md`）。`get_global_settings` にも MCP の区画は含めない。
-- **LLM・モデルの割り当ては「保存した設定」を読み書きする**。画面と同じく、反映にはアプリの再起動が必要（実行中の割り当てではない）。`--llm-config` / `--model-config` で固定されたファイルは読めるが変更できず、`conflict`（「起動オプションで固定されている…」）になる。
+- **LLM・モデルの割り当ては「保存した設定」を読み書きする**。画面と同じく、LLM の割り当ての反映にはアプリの再起動が必要（実行中の割り当てではない）。画像・動画モデルの割り当ては保存するとすぐに反映される（#831。`model` にはローカル・代替モデルの識別子も使える。[mcp-tools-local-models.md](mcp-tools-local-models.md)）。`--llm-config` / `--model-config` で固定されたファイルは読めるが変更できず、`conflict`（「起動オプションで固定されている…」）になる。
 - `set_llm_assignment` / `set_model_assignment` は、**指定した Agent・用途・Quality Policy だけ**を変える（画面はフォーム全体を送るが、ツールは差分だけ受け、保存済みの値に重ねてから同じ検証 `check` を通す）。指定しなかったものは保存済みのまま。検証の失敗は `validation`（メッセージは画面と同じ）で、ファイルには何も書かない。
 - **アップデート**は、アップデーターを持つ版（Windows デスクトップ）でだけ使える。ヘッドレス版では `get_update_status` / `check_for_update` が `unavailable`、`get_global_settings` の `update.available` が `false`（バージョンだけ返す）。LLM・モデルの区画を持たないアプリ（テスト用ルーター）では同様に各ツールが `unavailable`、`get_global_settings` の `llm.available` / `models.available` が `false`。
 - キーの値はどのツールにも出ない。`get_global_settings` は API キーの区画を含まない（`list_credentials` を使う）。
