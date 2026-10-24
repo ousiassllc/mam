@@ -34,6 +34,7 @@ func TestChecker_Status_BlockedKindNamesTheFailingGate(t *testing.T) {
 func TestChecker_Status_ErrorKindClassifiesFailures(t *testing.T) {
 	setVersion(t, "v0.1.0")
 	badChecksums := fmt.Sprintf("%064d  %s\n", 0, installerName)
+	otherNameChecksums := fmt.Sprintf("%s  mam-0.1.0-windows-amd64-setup.exe\n", installerChecksum(t))
 
 	// The retry loop (service/appupdate) skips failures that only a new
 	// release or configuration can fix, via the error's Permanent() marker.
@@ -104,6 +105,8 @@ func TestChecker_Status_ErrorKindClassifiesFailures(t *testing.T) {
 		{"API 500", apiStatus(http.StatusInternalServerError, nil), updater.ErrorNetwork},
 		{"200 with undecodable body", apiStatus(http.StatusOK, nil), updater.ErrorRelease},
 		{"non-semver tag", newGitHubMock(t, "latest", ""), updater.ErrorRelease},
+		// The mock's installer is mam-0.2.0-...: it is not the installer of a v99.0.0 release.
+		{"installer of another version than the tag", newGitHubMock(t, "v99.0.0", ""), updater.ErrorRelease},
 		{"asset 429 rate limit", assetStatus(http.StatusTooManyRequests, nil), updater.ErrorRateLimit},
 		{"asset 403 with Retry-After", assetStatus(http.StatusForbidden, http.Header{"Retry-After": {"60"}}), updater.ErrorRateLimit},
 		{"asset plain 403", assetStatus(http.StatusForbidden, nil), updater.ErrorAccess},
@@ -112,6 +115,7 @@ func TestChecker_Status_ErrorKindClassifiesFailures(t *testing.T) {
 		{"asset 500", assetStatus(http.StatusInternalServerError, nil), updater.ErrorNetwork},
 		{"checksum mismatch", newGitHubMock(t, "v0.2.0", badChecksums), updater.ErrorVerification},
 		{"checksum entry missing", newGitHubMock(t, "v0.2.0", "\n"), updater.ErrorVerification},
+		{"checksum entry only for another name", newGitHubMock(t, "v0.2.0", otherNameChecksums), updater.ErrorVerification},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

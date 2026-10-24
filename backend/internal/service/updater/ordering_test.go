@@ -28,7 +28,7 @@ func TestChecker_CheckForUpdate_SemverOrdering(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.current+"->"+tt.latest, func(t *testing.T) {
 			setVersion(t, tt.current)
-			checksums := fmt.Sprintf("%s  %s\n", installerChecksum(t), installerName)
+			checksums := fmt.Sprintf("%s  %s\n", installerChecksum(t), installerNameOf(tt.latest))
 			result, err := newChecker(newGitHubMock(t, tt.latest, checksums), allowGate()).CheckForUpdate(context.Background())
 			if err != nil {
 				t.Fatalf("CheckForUpdate: %v", err)

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/ousiassllc/mam/backend/internal/service/updater"
@@ -52,6 +53,11 @@ const installerBody = "fake-installer-bytes-for-update-tests"
 
 const installerName = "mam-0.2.0-windows-amd64-setup.exe"
 
+// installerNameOf is the installer of the release tagged tag (the only name the Checker accepts).
+func installerNameOf(tag string) string {
+	return "mam-" + strings.TrimPrefix(tag, "v") + "-windows-amd64-setup.exe"
+}
+
 func installerChecksum(t *testing.T) string {
 	t.Helper()
 	sum := sha256.Sum256([]byte(installerBody))
@@ -60,7 +66,7 @@ func installerChecksum(t *testing.T) string {
 
 // newGitHubMock serves `/repos/{owner}/{repo}/releases/latest` plus the
 // installer/checksums asset download URLs it references, standing in for
-// GitHub's real API + asset CDN .
+// GitHub's real API + asset CDN. The installer is named after tagName.
 func newGitHubMock(t *testing.T, tagName string, checksumsBody string) *httptest.Server {
 	t.Helper()
 	mux := http.NewServeMux()
@@ -70,7 +76,7 @@ func newGitHubMock(t *testing.T, tagName string, checksumsBody string) *httptest
 		release := updater.Release{
 			TagName: tagName,
 			Assets: []updater.Asset{
-				{Name: "mam-0.2.0-windows-amd64-setup.exe", BrowserDownloadURL: serverURL + "/download/installer.exe"},
+				{Name: installerNameOf(tagName), BrowserDownloadURL: serverURL + "/download/installer.exe"},
 				{Name: "checksums.txt", BrowserDownloadURL: serverURL + "/download/checksums.txt"},
 			},
 		}

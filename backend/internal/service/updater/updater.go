@@ -22,13 +22,10 @@ import (
 // httptest.Server instead).
 const defaultBaseURL = "https://api.github.com"
 
-// installerAssetPattern and checksumsAssetName are the names of the release assets of
-// scripts/package-windows.sh: the NSIS installer mam-<X.Y.Z>-windows-amd64-setup.exe and the
-// `sha256sum` output over it (checksums.txt).
-const (
-	installerAssetPattern = "mam-*-windows-amd64-setup.exe"
-	checksumsAssetName    = "checksums.txt"
-)
+// checksumsAssetName is the name of the release's `sha256sum` output over the NSIS installer
+// (scripts/package-windows.sh). The installer's own name depends on the release tag
+// (installerAssetName).
+const checksumsAssetName = "checksums.txt"
 
 // Default deadlines and size caps . http.DefaultClient has no
 // overall timeout, so a stalled connection would otherwise block
@@ -230,7 +227,7 @@ func (c *Checker) check(ctx context.Context) (Result, error) {
 		return Result{}, nil
 	}
 
-	assets, err := selectAssets(release.Assets)
+	assets, err := selectAssets(release.Assets, release.TagName)
 	if err != nil {
 		return Result{}, withKind(ErrorRelease, fmt.Errorf("updater: %s: %w", release.TagName, err))
 	}

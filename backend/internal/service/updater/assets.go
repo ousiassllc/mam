@@ -2,7 +2,7 @@ package updater
 
 import (
 	"fmt"
-	"path"
+	"strings"
 )
 
 // releaseAssets are the release assets the update pipeline uses.
@@ -12,20 +12,26 @@ type releaseAssets struct {
 	signature Asset
 }
 
-// selectAssets finds the NSIS installer (mam-<X.Y.Z>-windows-amd64-setup.exe) and its checksums.txt
-// among assets, plus the optional detached signature checksums.txt.sig. The portable exe of the
-// release never matches installerAssetPattern: it is not installed automatically. Two installers
-// are ambiguous, so the release is refused instead of guessing which one to run.
-func selectAssets(assets []Asset) (releaseAssets, error) {
+// installerAssetName is the one installer name a release with tag_name tag may carry:
+// mam-<tag without its leading "v">-windows-amd64-setup.exe, the name scripts/package-windows.sh
+// gives it. tag must already be valid semver (Checker.check verifies that first).
+func installerAssetName(tag string) string {
+	return "mam-" + strings.TrimPrefix(tag, "v") + "-windows-amd64-setup.exe"
+}
+
+// selectAssets finds the NSIS installer of the release tagged tag and its checksums.txt among
+// assets, plus the optional detached signature checksums.txt.sig. The installer must be named
+// exactly installerAssetName(tag): an installer of another version never matches, and neither does
+// the portable exe (mam-<X.Y.Z>-windows-amd64.exe), which is not installed automatically. The same
+// name is the key of the checksums.txt line the download is verified against (readChecksum).
+func selectAssets(assets []Asset, tag string) (releaseAssets, error) {
+	installerName := installerAssetName(tag)
 	var found releaseAssets
-	installers, foundChecksums := 0, false
+	foundInstaller, foundChecksums := false, false
 	for _, a := range assets {
-		if ok, _ := path.Match(installerAssetPattern, a.Name); ok {
-			found.installer = a
-			installers++
-			continue
-		}
 		switch a.Name {
+		case installerName:
+			found.installer, foundInstaller = a, true
 		case checksumsAssetName:
 			found.checksums, foundChecksums = a, true
 		case signatureAssetName:
@@ -33,10 +39,8 @@ func selectAssets(assets []Asset) (releaseAssets, error) {
 		}
 	}
 	switch {
-	case installers == 0:
-		return releaseAssets{}, fmt.Errorf("no %s asset found", installerAssetPattern)
-	case installers > 1:
-		return releaseAssets{}, fmt.Errorf("%d assets match %s, expected exactly one", installers, installerAssetPattern)
+	case !foundInstaller:
+		return releaseAssets{}, fmt.Errorf("no %s asset found", installerName)
 	case !foundChecksums:
 		return releaseAssets{}, fmt.Errorf("no %s asset found", checksumsAssetName)
 	}

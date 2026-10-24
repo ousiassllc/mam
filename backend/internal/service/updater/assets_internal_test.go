@@ -6,7 +6,10 @@ import (
 )
 
 func TestSelectAssets(t *testing.T) {
-	const setup = "mam-0.2.0-windows-amd64-setup.exe"
+	const (
+		tag   = "v0.2.0"
+		setup = "mam-0.2.0-windows-amd64-setup.exe"
+	)
 	asset := func(name string) Asset {
 		return Asset{Name: name, BrowserDownloadURL: "https://example.invalid/" + name}
 	}
@@ -21,13 +24,14 @@ func TestSelectAssets(t *testing.T) {
 		{name: "the portable exe is never the installer", assets: []Asset{asset("mam-0.2.0-windows-amd64.exe"), asset("checksums.txt")}, wantErr: true},
 		{name: "the portable exe next to the installer is ignored", assets: []Asset{asset("mam-0.2.0-windows-amd64.exe"), asset(setup), asset("checksums.txt")}},
 		{name: "another platform's installer", assets: []Asset{asset("mam-0.2.0-linux-amd64-setup.exe"), asset("checksums.txt")}, wantErr: true},
+		{name: "an installer of another version", assets: []Asset{asset("mam-0.3.0-windows-amd64-setup.exe"), asset("checksums.txt")}, wantErr: true},
+		{name: "the installer of the tag is picked among other versions", assets: []Asset{asset("mam-0.3.0-windows-amd64-setup.exe"), asset(setup), asset("checksums.txt")}},
 		{name: "no checksums", assets: []Asset{asset(setup)}, wantErr: true},
-		{name: "two installers are ambiguous", assets: []Asset{asset(setup), asset("mam-0.3.0-windows-amd64-setup.exe"), asset("checksums.txt")}, wantErr: true},
 		{name: "no assets", wantErr: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := selectAssets(tt.assets)
+			got, err := selectAssets(tt.assets, tag)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("selectAssets error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -38,6 +42,29 @@ func TestSelectAssets(t *testing.T) {
 				t.Fatalf("selectAssets = %+v", got)
 			}
 		})
+	}
+}
+
+// The installer is named after the release tag, not after the running build or a glob: a release
+// tagged v99.0.0 that only carries the 0.2.0 installer is refused.
+func TestSelectAssets_ExactNameOfTheReleaseTag(t *testing.T) {
+	asset := func(name string) Asset { return Asset{Name: name} }
+	stale := []Asset{asset("mam-0.2.0-windows-amd64-setup.exe"), asset("checksums.txt")}
+	if _, err := selectAssets(stale, "v99.0.0"); err == nil {
+		t.Fatal("selectAssets(v99.0.0) with only the 0.2.0 installer: err = nil, want an error")
+	}
+	right := []Asset{asset("mam-99.0.0-windows-amd64-setup.exe"), asset("mam-99.0.0-windows-amd64.exe"), asset("checksums.txt")}
+	got, err := selectAssets(right, "v99.0.0")
+	if err != nil || got.installer.Name != "mam-99.0.0-windows-amd64-setup.exe" {
+		t.Fatalf("selectAssets(v99.0.0) = %+v, %v; want the mam-99.0.0 installer", got, err)
+	}
+	portableOnly := []Asset{asset("mam-99.0.0-windows-amd64.exe"), asset("checksums.txt")}
+	if _, err := selectAssets(portableOnly, "v99.0.0"); err == nil {
+		t.Fatal("selectAssets(v99.0.0) with only the portable exe: err = nil, want an error")
+	}
+	prerelease := []Asset{asset("mam-1.0.0-rc.1-windows-amd64-setup.exe"), asset("checksums.txt")}
+	if _, err := selectAssets(prerelease, "v1.0.0-rc.1"); err != nil {
+		t.Fatalf("selectAssets(v1.0.0-rc.1): %v", err)
 	}
 }
 

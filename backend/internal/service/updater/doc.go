@@ -6,8 +6,9 @@
 // release of this repository's own Releases (version.GitHubOwner / version.GitHubRepo), compare its
 // tag_name with version.Version (golang.org/x/mod/semver; no hand-rolled parsing), and - only once
 // Gate.SafeToUpdate says that no work a restart would lose is in flight (SafeGate) - download the
-// installer asset (mam-<X.Y.Z>-windows-amd64-setup.exe), verify it against the published
-// checksums.txt and that file's detached signature, and report the verified local path in its Result.
+// installer asset (named exactly mam-<tag_name without its leading v>-windows-amd64-setup.exe: an
+// installer of another version never matches), verify it against the checksums.txt line of that same
+// name and that file's detached signature, and report the verified local path in its Result.
 // The gate is evaluated a second time right after the download: it takes minutes, and the caller
 // quits and installs as soon as the Result is Ready, so work that started meanwhile turns the check
 // into Status.Blocked instead (the installer is discarded and the next check downloads it again).
@@ -21,9 +22,12 @@
 // https://github.com/<owner>/<repo>/releases/download/.
 //
 // Release authenticity: checksums.txt comes from the same release as the installer, so SHA-256 alone
-// only detects corruption, not a replaced release (a compromised token or release job). The release
-// job therefore also publishes checksums.txt.sig, a base64 detached ed25519 signature of
-// checksums.txt made with a GitHub Actions secret, and the matching public key is embedded in the
+// only detects corruption, not a replaced release (a compromised token or release job). The build
+// job of .github/workflows/release.yml therefore also signs checksums.txt, in its last step
+// (Sign checksums, the only one that sees the signing secret; it verifies the signature with the
+// public key in the same step), and the release job only publishes the resulting checksums.txt.sig:
+// a base64 detached ed25519 signature of
+// checksums.txt. The matching public key is embedded in the
 // binary (version.ReleasePublicKey, overridable by Config.PublicKey). When a key is configured,
 // downloadAndVerify verifies the signature right after fetching checksums.txt - before the installer
 // is downloaded or run - and a missing, malformed or mismatching signature (or a malformed key) is a
