@@ -7,7 +7,9 @@ import (
 	"maps"
 	"os"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/chatgptid"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/overlay"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
@@ -152,6 +154,7 @@ func DefaultConfig() Config {
 			domain.ModelNanoBanana: {Model: "gemini-2.5-flash-image", CostPerImage: 0.04},
 			domain.ModelFlux2:      {Model: "flux-2-pro", CostPerImage: 0.03},
 			domain.ModelGPTImage2:  {Model: "gpt-image-1", CostPerImage: 0.06},
+			chatgptid.Model:        {Model: chatgptid.APIModel}, // the plan pays: 0 USD per image
 			domain.ModelKling3:     {Model: "kling-v3", CostPerSecond: map[string]float64{"720p": 0.07, "1080p": 0.14}},
 			domain.ModelSeedance2:  {Model: "seedance-2-0", CostPerSecond: map[string]float64{"480p": 0.03, "720p": 0.08, "1080p": 0.18}},
 			// Runway prices in credits (12 credits per second of Gen-4.5, 1 credit = USD 0.01).
@@ -226,9 +229,9 @@ func LoadConfig(path string) (Config, error) {
 	cfg = file.Config
 	cfg.Routing = file.Routing.RoutingConfig
 	for _, err := range []error{
-		overlayEntries(cfg.Vendors, file.Vendors), overlayEntries(cfg.Models, file.Models),
-		overlayEntries(cfg.Images, file.Images), overlayEntries(cfg.Policies, file.Policies),
-		overlayEntries(cfg.Routing.Weights, file.Routing.Weights),
+		overlay.Entries(cfg.Vendors, file.Vendors), overlay.Entries(cfg.Models, file.Models),
+		overlay.Entries(cfg.Images, file.Images), overlay.Entries(cfg.Policies, file.Policies),
+		overlay.Entries(cfg.Routing.Weights, file.Routing.Weights),
 	} {
 		if err != nil {
 			return Config{}, fmt.Errorf("decode model config %s: %w", path, err)
@@ -237,27 +240,13 @@ func LoadConfig(path string) (Config, error) {
 	return cfg, nil
 }
 
-// overlayEntries applies the JSON of each entry on top of the entry of dst with the same key (the
-// zero value for a new key); fields the JSON does not name keep their value. Unknown fields are rejected.
-func overlayEntries[K comparable, V any](dst map[K]V, raw map[K]json.RawMessage) error {
-	for k, r := range raw {
-		v := dst[k]
-		dec := json.NewDecoder(bytes.NewReader(r))
-		dec.DisallowUnknownFields()
-		if err := dec.Decode(&v); err != nil {
-			return fmt.Errorf("%v: %w", k, err)
-		}
-		dst[k] = v
-	}
-	return nil
-}
-
 // VendorSettings are the built-in vendors and the registered endpoints (vendors named by localcfg.VendorKey).
 func (c Config) VendorSettings() map[Vendor]VendorConfig {
 	out := maps.Clone(c.Vendors)
 	if out == nil {
 		out = map[Vendor]VendorConfig{}
 	}
+	out[Vendor(chatgptid.Vendor)] = VendorConfig{BaseURL: chatgptid.BaseURL, MaxConcurrency: 1, TimeoutSeconds: chatgptid.TimeoutSeconds}
 	for name, e := range c.Endpoints {
 		out[Vendor(localcfg.VendorKey(name))] = VendorConfig{BaseURL: e.BaseURL, MaxConcurrency: e.Concurrency(), TimeoutSeconds: e.Timeout()}
 	}

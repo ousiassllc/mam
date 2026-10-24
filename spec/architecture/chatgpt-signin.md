@@ -65,7 +65,7 @@ OpenAI の 2 つのクライアントは**トークンを使い回せない**た
 
 ### 5.2 画像生成（非公式、`internal/agent/modeladapter/chatgptimage`）
 
-- 識別子 `gpt-image-2:chatgpt-subscription`（`take.model_name`・`cost_ledger_entry.provider`。API キー経由の `gpt-image-2` と区別できる。`model_name` / `provider` の列に制約はなくマイグレーション不要）。見積もりコスト 0 USD で、台帳には 0 円の行を 1 件残す。#831 の開放集合の仕組み（`ModelName` を設定で増える値に）に載せる。
+- 識別子 `gpt-image-2:chatgpt-subscription`（`take.model_name`・`cost_ledger_entry.provider`。API キー経由の `gpt-image-2` と区別できる。`model_name` / `provider` の列に制約はなくマイグレーション不要）。見積もりコスト 0 USD で、台帳には 0 円の行を 1 件残す。#831 の開放集合の仕組み（`domain/modelreg`）に載せる: `modeladapter/chatgptid` が識別子・ベンダー名（`chatgpt-subscription`: ブレーカー・同時実行数 1・タイムアウト 600 秒は専用）・Codex に渡すモデル名 `gpt-image-2` を持ち、`localbackends.Options.ChatGPTImage` のバックエンドを `Build` が `Image[識別子]` に載せる（再読み込みのたびに付け直す）。選択肢（`domain.ImageModels()`）に載るのは**スイッチが ON のあいだだけ**で（`Options.Publish`。スイッチを切り替えると `chatgpt.Service.SetOnImageChange` で一覧を作り直す）、設定画面からは OFF のとき選べない。設定ファイルにすでにある割り当ては OFF でも検証を通り、実行時に `ErrImageDisabled`（外部へ送らない）で失敗して代替モデルに回る。参照画像は受け付ける（`AcceptsImageInputs`）。
 - `POST https://chatgpt.com/backend-api/codex/responses`: `model`（Codex のドライバー、既定 `gpt-5.5`）、`instructions`（ツールを確実に呼ばせる最小の文）、`input[{role:"user", content:[input_text, input_image…]}]`、`tools:[{type:"image_generation", model:"gpt-image-2", size, output_format}]`、`tool_choice`、`stream:true`、`store:false`。ヘッダー: `Authorization`、`ChatGPT-Account-Id`（ID トークンの `chatgpt_account_id`）、`OpenAI-Beta: responses=experimental`、`originator: codex_cli_rs`、`session_id`。結果は SSE の `response.output_item.done` の `image_generation_call.result`（base64）。無音が 180 秒続いたら中止。参照画像は `input_image`（`AcceptsImageInputs` は真）。
 - **OFF（既定）のときは一切呼ばない**: トークンの読み取りも更新もログインの開始もしない（呼び出しのたびに先に ON/OFF を見る）。ON にするには、設定画面でリスクを見て確認のチェックを入れる／MCP は `acknowledge_risks: true`。OFF にするのに確認は要らず、ON にするたびに確認を取り直す。OFF にしてもログインは残る（ログアウトで消す）。
 - 表示するリスク: ① OpenAI の公開 API ではない非公式の経路で、予告なく使えなくなることがある ② 公式のプレビューの制限では画像生成はサポート外（Unsupported tools） ③ ChatGPT のプランの利用上限を消費する。
@@ -86,3 +86,4 @@ OpenAI の 2 つのクライアントは**トークンを使い回せない**た
 | 版 | 日付 | 変更内容 | 変更理由 |
 |----|------|---------|---------|
 | 1.0 | 2026-10-24 | 新規作成。ログイン 2 系統（公式・非公式の画像）の決定、要確認 3 点の結果（1 は確認済み、2・3 と `text.format` は未検証）、ブラウザ・デバイスコード、トークンの保存・更新・ログアウト、テキスト・画像の使い道、画面と MCP | Issue #832。ChatGPT のサブスクでログインしてテキスト生成と画像生成に使えるようにする |
+| 1.1 | 2026-10-24 | §5.2: 画像モデルを #831 の開放集合（`modelreg`）に載せた。スイッチ ON のあいだだけ選択肢に出し、OFF では呼ばずに代替へ回る | Issue #832（#831 の取り込み後） |

@@ -3,6 +3,7 @@ package modeladapter
 import (
 	"slices"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/chatgptid"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
@@ -58,5 +59,5 @@ func (c VideoCapabilities) SupportsResolution(r string) bool {
 
 // AcceptsImageInputs reports whether an image model uses reference images.
 func AcceptsImageInputs(m domain.ModelName) bool {
-	return m == domain.ModelNanoBanana || m == domain.ModelGPTImage2 || m == domain.ModelFlux2
+	return m == domain.ModelNanoBanana || m == domain.ModelGPTImage2 || m == domain.ModelFlux2 || m == chatgptid.Model
 }

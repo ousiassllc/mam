@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/chatgpt/oauth"
@@ -46,6 +47,7 @@ type Service struct {
 	settings *settings
 	apiBase  string
 	client   *oauth.Client
+	onImage  atomic.Pointer[func()]
 }
 
 // DefaultAPIBase is the OpenAI API origin.
@@ -108,8 +110,18 @@ func (s *Service) SetImageEnabled(enabled, acknowledged bool) error {
 	if enabled && !acknowledged {
 		return ErrRisksNotAcknowledged
 	}
-	return s.settings.setImage(enabled)
+	if err := s.settings.setImage(enabled); err != nil {
+		return err
+	}
+	if fn := s.onImage.Load(); fn != nil {
+		(*fn)()
+	}
+	return nil
 }
+
+// SetOnImageChange registers fn, called after every successful SetImageEnabled: the image model is listed for
+// selection only while the switch is on, so whoever publishes the model list refreshes it there.
+func (s *Service) SetOnImageChange(fn func()) { s.onImage.Store(&fn) }
 
 // StartImageBrowserLogin starts the browser login of the image generation; the login is for an opt-in feature and
 // refuses while it is off.

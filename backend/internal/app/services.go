@@ -15,6 +15,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm/chatgptsub"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/chatgptimage"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/configcheck"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localbackends"
 	"github.com/ousiassllc/mam/backend/internal/bundlezip"
@@ -98,9 +99,14 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	backendOpts := localbackends.Options{StagingDir: filepath.Join(cfg.AssetsDir(), ".staging")}
+	backendOpts := localbackends.Options{
+		StagingDir:   filepath.Join(cfg.AssetsDir(), ".staging"),
+		ChatGPTImage: chatgptimage.New(gpt, chatgptimage.Options{}), ChatGPTImageEnabled: gpt.ImageEnabled,
+	}
 	models := modeladapter.New(modelCfg, localbackends.Build(modelCfg, keys, backendOpts), modeladapter.WithLogger(logger))
-	localbackends.Publish(modelCfg)
+	backendOpts.Publish(modelCfg)
+	// The subscription's image model is listed only while it is on: the switch republishes the list.
+	gpt.SetOnImageChange(func() { backendOpts.Publish(models.Config()) })
 	localModels := localmodels.New(localmodels.Deps{
 		Path: modelPath, Pinned: modelPinned, Keys: keys, Adapter: models, Backends: backendOpts, Logger: logger,
 	})
