@@ -1,4 +1,4 @@
-package organisms_test
+package partialswap_test
 
 import (
 	"context"

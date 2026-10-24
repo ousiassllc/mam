@@ -12,12 +12,14 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/appupdate"
 	"github.com/ousiassllc/mam/backend/internal/service/llmassign"
+	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
 	"github.com/ousiassllc/mam/backend/internal/service/mcpsettings"
 	"github.com/ousiassllc/mam/backend/internal/service/modelsettings"
 	"github.com/ousiassllc/mam/backend/internal/web/handler"
 	updatehandler "github.com/ousiassllc/mam/backend/internal/web/handler/appupdate"
 	chatgpthandler "github.com/ousiassllc/mam/backend/internal/web/handler/chatgptsettings"
 	llmhandler "github.com/ousiassllc/mam/backend/internal/web/handler/llmassign"
+	localhandler "github.com/ousiassllc/mam/backend/internal/web/handler/localmodels"
 	mcphandler "github.com/ousiassllc/mam/backend/internal/web/handler/mcpsettings"
 	modelhandler "github.com/ousiassllc/mam/backend/internal/web/handler/modelassign"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
@@ -34,6 +36,9 @@ type Services struct {
 	// MCP is the MCP server section (address, bind address, tokens). Nil when the MCP server is not running
 	// (a router built without the app, as the tests do): the section and its routes are then absent.
 	MCP *mcpsettings.Service
+	// LocalModels is the "ローカル・代替モデル" section (endpoints and models, service.Services.LocalModels).
+	// Nil leaves the section and its routes out.
+	LocalModels *localmodels.Service
 	// ChatGPT is the ChatGPT sign-in section. Nil leaves the section and its routes out.
 	ChatGPT *chatgpt.Service
 }
@@ -64,6 +69,10 @@ func Register(engine *gin.Engine, keys *service.CredentialService, s *Services) 
 			mcp := mcphandler.SectionData(context.Background(), s.MCP)
 			d.MCP = &mcp
 		}
+		if s != nil && s.LocalModels != nil {
+			local := localhandler.SectionData(s.LocalModels)
+			d.Local = &local
+		}
 		if s != nil && s.ChatGPT != nil {
 			gpt := chatgpthandler.SectionData(s.ChatGPT)
 			d.Credentials.ChatGPT = &gpt
@@ -91,5 +100,28 @@ func Register(engine *gin.Engine, keys *service.CredentialService, s *Services) 
 		engine.PUT(paths.ModelSettings(), modelhandler.Save(s.Models))
 		engine.DELETE(paths.ModelSettings(), modelhandler.Reset(s.Models))
 	}
+	if s != nil && s.LocalModels != nil {
+		registerLocalModels(engine, localhandler.Handlers{Local: s.LocalModels, Models: s.Models})
+	}
 	engine.GET(paths.Settings(), handler.GlobalSettingsPage(keys, addSections))
+}
+
+// registerLocalModels adds the routes of the "ローカル・代替モデル" section (spec/api/endpoints.md).
+func registerLocalModels(engine *gin.Engine, h localhandler.Handlers) {
+	engine.GET(paths.LocalModels(), h.Panel)
+	engine.GET(paths.LocalEndpoints()+"/new", h.NewEndpoint)
+	engine.POST(paths.LocalEndpoints(), h.CreateEndpoint)
+	engine.POST(paths.LocalEndpoints()+"/test", h.TestDraft)
+	engine.GET(paths.LocalEndpoint(":name", "edit"), h.EditEndpoint)
+	engine.PUT(paths.LocalEndpoint(":name"), h.UpdateEndpoint)
+	engine.DELETE(paths.LocalEndpoint(":name"), h.DeleteEndpoint)
+	engine.POST(paths.LocalEndpoint(":name", "test"), h.TestEndpoint)
+	engine.PUT(paths.LocalEndpoint(":name", "key"), h.SetKey)
+	engine.DELETE(paths.LocalEndpoint(":name", "key"), h.ClearKey)
+	engine.GET(paths.LocalEndpoint(":name", "models", "new"), h.NewModel)
+	engine.POST(paths.LocalEndpoint(":name", "models", "start"), h.StartModel)
+	engine.POST(paths.LocalEndpoint(":name", "models"), h.CreateModel)
+	engine.GET(paths.LocalEndpoint(":name", "models", ":model", "edit"), h.EditModel)
+	engine.PUT(paths.LocalEndpoint(":name", "models", ":model"), h.UpdateModel)
+	engine.DELETE(paths.LocalEndpoint(":name", "models", ":model"), h.DeleteModel)
 }

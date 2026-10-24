@@ -51,7 +51,8 @@ func (s *Service) View() (View, error) {
 		e := cfg.Endpoints[name]
 		key, err := s.keyStatus(name)
 		if err != nil {
-			return View{}, err
+			s.Logger.Warn("read the API key status of a local endpoint failed", "endpoint", name, "err", err)
+			key = KeyStatus{Unavailable: true}
 		}
 		v.Endpoints = append(v.Endpoints, EndpointView{Name: name, Kind: e.Kind, BaseURL: e.BaseURL, MaxConcurrency: e.Concurrency(), TimeoutSeconds: e.Timeout(), Key: key})
 	}

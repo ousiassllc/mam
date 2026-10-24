@@ -174,3 +174,20 @@ func MCPTokens() string { return MCPSettings() + "/tokens" }
 
 // MCPToken is "/settings/mcp/tokens/:id", one MCP token (DELETE revokes it).
 func MCPToken(id string) string { return MCPTokens() + "/" + url.PathEscape(id) }
+
+// LocalModels is "/settings/local-models", the "ローカル・代替モデル" section of the settings screen (the
+// section itself is part of GET /settings; GET here answers with the section alone).
+func LocalModels() string { return Settings() + "/local-models" }
+
+// LocalEndpoints is "/settings/local-models/endpoints", the registered endpoints (POST registers one).
+func LocalEndpoints() string { return LocalModels() + "/endpoints" }
+
+// LocalEndpoint is "/settings/local-models/endpoints/:name[/rest...]", one endpoint or something under it
+// (edit, test, key, models). The names are slugs; every segment is escaped all the same.
+func LocalEndpoint(name string, rest ...string) string {
+	p := LocalEndpoints() + "/" + url.PathEscape(name)
+	for _, s := range rest {
+		p += "/" + url.PathEscape(s)
+	}
+	return p
+}

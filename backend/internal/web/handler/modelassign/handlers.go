@@ -12,7 +12,7 @@ import (
 )
 
 // SectionData is the saved assignment as the section shows it (the page handler of the settings screen
-// calls it). It is what the next start runs with, not what runs now. A settings file that cannot be
+// calls it). It is the saved assignment, which the app has applied (SetOnChange). A settings file that cannot be
 // read is the Problem of the section, so that the rest of the screen still works.
 func SectionData(svc *modelsettings.Service) modelassignment.Data {
 	return sectionData(svc, nil)
@@ -44,7 +44,7 @@ func Save(svc *modelsettings.Service) gin.HandlerFunc {
 }
 
 // Reset drops the saved image / video assignment (DELETE /settings/models), so that the defaults apply
-// from the next start, and answers with the section.
+// at once, and answers with the section.
 func Reset(svc *modelsettings.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		answer(c, svc, svc.Reset(), resetNotice, nil)

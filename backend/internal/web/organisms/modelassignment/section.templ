@@ -67,18 +67,21 @@ type PolicyRow struct {
 	Takes    int
 }
 
-// Data is the "画像・動画モデル" section: the saved assignment (not the running one: a saved change applies
-// after a restart) and what it may be set to. Pinned: the file was fixed by a start-up option, so the
+// Data is the "画像・動画モデル" section: the saved assignment (the app applies a
+// saved change at once) and what it may be set to. Pinned: the file was fixed by a start-up option, so the
 // section is read-only and PinnedNote names that option. Notice is the confirmation of a save or a
 // reset; Error is why the last save was refused (the form then shows what was submitted). Problem means
 // the settings file cannot be read: the section then says so and offers nothing.
 type Data struct {
-	Pinned       bool
-	PinnedNote   string
-	Customized   bool
-	Notice       string
-	Error        string
-	Problem      string
+	Pinned     bool
+	PinnedNote string
+	Customized bool
+	Notice     string
+	Error      string
+	Problem    string
+	// OOB: the form is sent out of band, to replace the one on the screen (an action of another section changed
+	// what can be chosen: the local models).
+	OOB          bool
 	Images       []ImageRow
 	ImageModels  []ImageModel
 	Policies     []PolicyRow
@@ -96,7 +99,7 @@ templ SectionIf(d *Data) {
 
 // Section is the "画像・動画モデル" section of the global settings screen.
 templ Section(d Data) {
-	@molecules.SettingsSection("画像・動画モデル", "画像の用途ごと・Quality Policy ごとに、主モデルと、主モデルが使えないときの代替モデルを選びます。保存した内容は <データフォルダ>/models.json に書かれ、反映にはアプリの再起動が必要です。") {
+	@molecules.SettingsSection("画像・動画モデル", "画像の用途ごと・Quality Policy ごとに、主モデルと、主モデルが使えないときの代替モデルを選びます。保存した内容は <データフォルダ>/models.json に書かれ、すぐに反映されます。「ローカル・代替モデル」で登録したモデルも選べます。") {
 		if d.Problem != "" {
 			<div id={ sectionID }>
 				<p class="text-sm text-red-300" role="alert" data-testid="model-assignment-problem">{ d.Problem }</p>
@@ -120,6 +123,9 @@ templ Form(d Data) {
 		hx-disabled-elt="find button"
 		autocomplete="off"
 		data-testid="model-assignment"
+		if d.OOB {
+			hx-swap-oob="true"
+		}
 	>
 		if d.Pinned {
 			<p class="text-sm text-amber-300" role="status" data-testid="model-assignment-pinned">{ d.PinnedNote }</p>

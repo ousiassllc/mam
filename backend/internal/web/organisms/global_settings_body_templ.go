@@ -11,6 +11,7 @@ import templruntime "github.com/a-h/templ/runtime"
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/credentialpanel"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/llmassign"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/localmodels"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/mcppanel"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelassignment"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/updatepanel"
@@ -22,6 +23,7 @@ type GlobalSettingsBodyData struct {
 	// LLM, Models (the saved assignments), MCP (the MCP server) and Update (the version and update check): nil leaves the section out.
 	LLM    *llmassign.Data
 	Models *modelassignment.Data
+	Local  *localmodels.Data
 	MCP    *mcppanel.Data
 	Update *updatepanel.Data
 }
@@ -61,6 +63,10 @@ func GlobalSettingsBody(d GlobalSettingsBodyData) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		templ_7745c5c3_Err = modelassignment.SectionIf(d.Models).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = localmodels.SectionIf(d.Local).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -99,6 +99,9 @@ func (s *Service) DeleteEndpoint(_ context.Context, name string) error {
 type KeyStatus struct {
 	Configured bool
 	LastChars  string
+	// Unavailable: the OS key store could not be read (no Secret Service, locked, ...). View reports it
+	// instead of failing, so that a broken key store does not hide the endpoints; Configured is then unknown.
+	Unavailable bool
 }
 
 // EndpointKeyStatus reports the API key of the endpoint called name.
@@ -199,5 +202,13 @@ func firstError(errs []error) error {
 	if len(errs) == 0 {
 		return nil
 	}
-	return invalid("%v", errors.Join(errs...))
+	err := errors.Join(errs...)
+	if strings.Contains(err.Error(), "link-local") {
+		return invalid("%v %s", err, linkLocalHint)
+	}
+	return invalid("%v", err)
 }
+
+// linkLocalHint says in Japanese why such an address is refused: the validation's own text is English only.
+// It is never allowed, not even for an endpoint the user registers.
+const linkLocalHint = "（リンクローカル（169.254.x.x・fe80::）、未指定、マルチキャストのアドレスは、登録した接続先でも使えません。クラウドのメタデータサービスなどに届いてしまうためです）"
