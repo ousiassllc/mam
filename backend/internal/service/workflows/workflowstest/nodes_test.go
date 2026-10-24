@@ -96,11 +96,17 @@ func TestNodeTargetOfAnExternalComfyUI(t *testing.T) {
 	assert.Equal(t, r.comfy.URL(), got.Origin, "exactly the configured endpoint's origin")
 	assert.Equal(t, r.comfy.URL()+"/", got.OpenURL)
 
-	// ComfyUI's own origin check refuses a page of another site: the screen says so, with the way out.
+	// A ComfyUI on this machine is framed with the literal host the page was opened with, so it is the same site.
 	r.comfy.RejectCrossSite = true
 	got = r.svc.NodeTarget(ctx, "localhost:8787", "tailnet")
+	assert.Equal(t, workflows.NodeReady, got.State)
+	assert.Equal(t, "http://localhost:"+r.comfy.URL()[len("http://127.0.0.1:"):], got.Origin)
+
+	// ComfyUI's own origin check refuses a page of another site (here: a page opened by a name that is not this
+	// machine's loopback): the screen says so, with the way out.
+	got = r.svc.NodeTarget(ctx, "mam.example:8787", "tailnet")
 	assert.Equal(t, workflows.NodeRejected, got.State)
-	assert.Contains(t, got.Reason, "--enable-cors-header http://localhost:8787")
+	assert.Contains(t, got.Reason, "--enable-cors-header http://mam.example:8787")
 	assert.Equal(t, r.comfy.URL()+"/", got.OpenURL, "the link that opens it in the browser stays")
 
 	r.comfy.Down = true

@@ -134,6 +134,7 @@ type Service struct {
 	mu      sync.Mutex
 	active  map[string]string // target -> job id of the queued or running job
 	targets map[string]*sync.Mutex
+	cancels map[string]context.CancelCauseFunc // job id -> cancel of a running install
 }
 
 // New returns the Service. It reads the record (a broken one is an error).
@@ -164,7 +165,7 @@ func New(d Deps) (*Service, error) {
 		return nil, err
 	}
 	s := &Service{Deps: d, cat: d.Catalog, state: st, bundled: d.Platform == "windows", tracker: track.New(),
-		active: map[string]string{}, targets: map[string]*sync.Mutex{}}
+		active: map[string]string{}, targets: map[string]*sync.Mutex{}, cancels: map[string]context.CancelCauseFunc{}}
 	s.engine = &engine.Installer{Layout: d.Layout, Engine: d.Catalog.Engine, Store: st, Extract: d.Extract, Fetch: d.Fetch, FreeBytes: d.FreeBytes, Now: d.Now}
 	build := d.Command
 	if build == nil {

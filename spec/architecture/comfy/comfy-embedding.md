@@ -24,7 +24,7 @@ ComfyUI v0.42.1 のサーバーは `X-Frame-Options` も `frame-ancestors` も�
 
 ## 3. iframe の URL のホスト
 
-`LoopbackOnly` は `localhost` と `127.x` の両方の `Host` を受ける。ブラウザは `localhost` と `127.0.0.1` を**別のサイト**として扱い、`Sec-Fetch-Site: cross-site` を付ける。ComfyUI の `origin_only_middleware` はそれを 403 にする。そこで iframe の URL は、**mam への要求の `Host` と同じ文字（`127.0.0.1` か `localhost`）のホスト**で組む（ポートは ComfyUI のもの）。同じサイト内なら ComfyUI 自身の `fetch`・WebSocket の `Origin` も自分と一致して通る。
+`LoopbackOnly` は `localhost` と `127.x` の両方の `Host` を受ける。ブラウザは `localhost` と `127.0.0.1` を**別のサイト**として扱い、`Sec-Fetch-Site: cross-site` を付ける。ComfyUI の `origin_only_middleware` はそれを 403 にする。そこで iframe の URL は、**mam への要求の `Host` と同じ文字（`127.0.0.1` か `localhost`）のホスト**で組む（ポートは ComfyUI のもの）。同じサイト内なら ComfyUI 自身の `fetch`・WebSocket の `Origin` も自分と一致して通る。この規則は、同梱版と、`localhost` / `127.x` で登録した外部の接続先（同じ PC の ComfyUI）に適用する（登録した URL のホストが `127.0.0.1` でも、ページを `localhost` で開いていれば `localhost` で開く）。それ以外のホスト（tailnet など）は登録した URL のまま（§4）。
 
 ## 4. 外部の ComfyUI
 

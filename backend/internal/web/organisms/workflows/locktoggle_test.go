@@ -11,6 +11,8 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain/modelreg"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/workflows"
+	"github.com/ousiassllc/mam/backend/internal/web/pages"
 )
 
 // Wherever the Video Model of a Shot is picked, the saved video workflows that are published are listed by their name
@@ -28,4 +30,22 @@ func TestShotVideoModelPickListsSavedWorkflows(t *testing.T) {
 	assert.Contains(t, html, `<option value="`+v1+`" selected>Clip (v1)</option>`)
 	assert.Contains(t, html, `<option value="`+v2+`">Clip (v2)</option>`)
 	assert.Contains(t, html, `<option value="kling-3.0">kling-3.0</option>`, "the built-in models are still there")
+}
+
+// A ComfyUI that refuses to be framed is not drawn: the page says why, how to allow it, and keeps the link that opens
+// it in the browser.
+func TestNodeScreenOfARejectingComfyUIHasNoFrameAndTheWayOut(t *testing.T) {
+	var b strings.Builder
+	d := workflows.NodeData{
+		Endpoint: "gpu", Endpoints: []string{"bundled-comfyui", "gpu"}, State: workflows.NodeRejected,
+		Reason:  "この ComfyUI は、別のサイト（mam）の中に表示されることを拒否しています（403）。--enable-cors-header http://mam.example:8787 を付けるか、ブラウザで開いてください",
+		OpenURL: "http://100.64.0.9:8188/", ModelManagerURL: "/model-manager",
+	}
+	assert.NoError(t, pages.NodesPage("tok", d).Render(context.Background(), &b))
+	html := b.String()
+	assert.NotContains(t, html, "<mam-comfy-frame")
+	assert.Contains(t, html, `data-state="rejected"`)
+	assert.Contains(t, html, "--enable-cors-header http://mam.example:8787")
+	assert.Contains(t, html, `href="http://100.64.0.9:8188/"`)
+	assert.Contains(t, html, `data-testid="nodes-open"`)
 }

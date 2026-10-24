@@ -76,22 +76,17 @@ func TestNodesPageWithoutAUsableComfyUIHasNoFrameSrcAndSaysWhy(t *testing.T) {
 	assert.Contains(t, rec.Body.String(), "登録されていません")
 }
 
-// An external ComfyUI that answers 403 to a cross-site frame is not drawn: the error says to add --enable-cors-header
-// <mam origin>, and the link opens it in the browser. The page on localhost is another site than 127.0.0.1.
-func TestNodesPageExplainsAComfyUIThatRefusesTheFrame(t *testing.T) {
+// A ComfyUI that refuses the cross-site frame (as ComfyUI does without --enable-cors-header) still opens when the
+// page and the ComfyUI are the same site: a local one is framed with the host of the request, localhost or 127.0.0.1.
+func TestNodesPageSameSiteComfyUIPassesItsOriginCheck(t *testing.T) {
 	s := newScreen(t)
 	s.addExternal(t, "gpu", s.comfy.URL())
 	s.comfy.RejectCrossSite = true
-
-	same := s.nodes("127.0.0.1:8787", "?endpoint=gpu")
-	assert.Contains(t, same.Header().Get("Content-Security-Policy"), "frame-src", "the same site passes the origin check")
-
-	rec := s.nodes("localhost:8787", "?endpoint=gpu")
-	require.Equal(t, http.StatusOK, rec.Code)
-	assert.NotContains(t, rec.Header().Get("Content-Security-Policy"), "frame-src")
-	assert.Contains(t, rec.Body.String(), `data-state="rejected"`)
-	assert.Contains(t, rec.Body.String(), "--enable-cors-header http://localhost:8787")
-	assert.Contains(t, rec.Body.String(), `data-testid="nodes-open"`)
+	for _, host := range []string{"127.0.0.1:8787", "localhost:8787"} {
+		rec := s.nodes(host, "?endpoint=gpu")
+		assert.Contains(t, rec.Header().Get("Content-Security-Policy"), "frame-src", host)
+		assert.NotContains(t, rec.Body.String(), `data-state="rejected"`, host)
+	}
 }
 
 func TestNodesPageIsNotAFrameTargetForANonOriginAndStartNeedsTheToken(t *testing.T) {
@@ -100,4 +95,18 @@ func TestNodesPageIsNotAFrameTargetForANonOriginAndStartNeedsTheToken(t *testing
 	rec := s.form(http.MethodPost, paths.NodesStart(), nil, true)
 	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code, "no bundled engine in this build")
 	assert.Contains(t, rec.Body.String(), "同梱の ComfyUI")
+}
+
+// A ComfyUI on this machine is framed with the literal host the page was opened with: localhost and 127.0.0.1 are
+// different sites to the browser, and ComfyUI refuses the cross-site one.
+func TestNodesPageUsesTheHostOfTheRequestForALocalComfyUI(t *testing.T) {
+	s := newScreen(t)
+	s.addExternal(t, "gpu", s.comfy.URL())
+	port := s.comfy.URL()[strings.LastIndex(s.comfy.URL(), ":")+1:]
+
+	rec := s.nodes("localhost:8787", "?endpoint=gpu")
+	require.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Header().Get("Content-Security-Policy"), "frame-src http://localhost:"+port+";")
+	assert.Contains(t, rec.Body.String(), `src="http://localhost:`+port+`/"`)
+	assert.NotContains(t, rec.Body.String(), `src="http://127.0.0.1:`+port)
 }

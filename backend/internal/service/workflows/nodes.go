@@ -118,6 +118,12 @@ func (s *Service) externalTarget(ctx context.Context, requestHost string, t Node
 		t.State, t.Reason = NodeUnreachable, "接続先 "+t.Endpoint+" の URL を読めません"
 		return t
 	}
+	// A ComfyUI on this machine is reached through whichever of localhost / 127.x the page itself was opened with.
+	if h := hostOf(strings.TrimPrefix(strings.TrimPrefix(origin, "https://"), "http://")); h == "localhost" || isLoopback4(h) {
+		if same, ok := sameHostOrigin(origin, requestHost); ok {
+			origin = same
+		}
+	}
 	t.Origin = origin
 	ctx, cancel := context.WithTimeout(ctx, probeTimeout)
 	defer cancel()

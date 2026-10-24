@@ -1,0 +1,195 @@
+package modelmgr
+
+import (
+	"strconv"
+
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+func itoa(n int) string { return strconv.Itoa(n) }
+
+templ notice(m Message, id string) {
+	if m.Notice != "" {
+		<p class="text-sm text-emerald-300" role="status" data-testid={ id + "-notice" }>{ m.Notice }</p>
+	}
+	if m.Error != "" {
+		<p class="text-sm text-red-300" role="alert" data-testid={ id + "-error" }>{ m.Error }</p>
+	}
+}
+
+// progressBar is the progress of a running install.
+templ progressBar(p Progress, label string) {
+	<div class="flex flex-col gap-1" role="status" aria-live="polite" data-testid="mm-progress" data-job={ p.JobID }>
+		<progress class="w-full" max="100" value={ itoa(p.Percent) } aria-label={ label }></progress>
+		<p class="text-xs text-neutral-300">
+			{ p.Message }（{ itoa(p.Percent) }%）
+			if p.Bytes != "" {
+				<span class="text-neutral-400">{ p.Bytes }</span>
+			}
+		</p>
+	</div>
+}
+
+func stateBadge(state string) (atoms.BadgeTone, string) {
+	switch state {
+	case "running":
+		return atoms.BadgeOK, "起動中"
+	case "starting":
+		return atoms.BadgeInfo, "起動しています"
+	case "failed":
+		return atoms.BadgeError, "起動に失敗"
+	}
+	return atoms.BadgeNeutral, "停止中"
+}
+
+// EngineCard is the card of the bundled ComfyUI engine; while an install or a start is in progress it polls itself.
+templ EngineCard(e Engine) {
+	<div
+		id={ EngineID }
+		class="flex flex-col gap-3 rounded-md border border-neutral-700 p-4"
+		data-testid="mm-engine"
+		if e.Polling() {
+			hx-get={ engineURL(e) }
+			hx-trigger={ Polling }
+			hx-swap="outerHTML"
+		}
+	>
+		<h2 class="text-base font-semibold">ComfyUI エンジン</h2>
+		@notice(e.Message, "mm-engine")
+		switch  {
+			case !e.Supported:
+				<p class="text-sm text-amber-300" data-testid="mm-engine-unsupported">
+					同梱の ComfyUI は Windows 版のデスクトップアプリだけで使えます。この環境（ブラウザ版・サーバー版）では、別に動かしている ComfyUI の URL を
+					<a class="underline" href={ templ.SafeURL(paths.Settings()) }>設定</a>の「ローカル・代替モデル」に登録して使ってください（モデルの導入は、その ComfyUI の側で行います）。
+				</p>
+			case !e.Writable:
+				<p class="text-sm text-amber-300" role="alert" data-testid="mm-engine-readonly">
+					mam.exe のあるフォルダ（{ e.Dir }）に書き込めません。書き込める場所に置き直すか、外部の ComfyUI の URL を設定してください。
+				</p>
+				<p class="text-xs text-neutral-400">{ e.WritableError }</p>
+			default:
+				@engineStatus(e)
+		}
+		<p class="text-xs text-neutral-400">
+			ComfyUI（GPL-3.0）は別のプログラムで、mam には含まれません。公式のリリース
+			if e.PinnedVersion != "" {
+				（{ e.PinnedVersion }）
+			}
+			を実行時に取得し、SHA-256 を確かめてから使います。
+			if e.SourceURL != "" {
+				<a class="underline" href={ templ.SafeURL(e.SourceURL) } target="_blank" rel="noopener noreferrer">ソース</a>
+			}
+			if e.LicenseURL != "" {
+				／ <a class="underline" href={ templ.SafeURL(e.LicenseURL) } target="_blank" rel="noopener noreferrer">{ e.LicenseName }</a>
+			}
+		</p>
+		if e.Supported && e.Writable {
+			<p class="text-xs text-neutral-400" data-testid="mm-engine-dir">導入先: <code class="break-all">{ e.Dir }</code>（空き { e.Free }）。アンインストールするとここも一緒に消えます。</p>
+		}
+	</div>
+}
+
+templ engineStatus(e Engine) {
+	switch  {
+		case e.Install != nil:
+			@progressBar(*e.Install, "ComfyUI の導入の進み具合")
+			@atoms.SmallButton(atoms.ToneNeutral, "中断する", templ.Attributes{
+				"type":            "button",
+				"hx-post":         paths.ModelManagerPart("jobs", e.Install.JobID, "cancel"),
+				"hx-target":       "#" + EngineID,
+				"hx-swap":         "outerHTML",
+				"hx-sync":         "this:drop",
+				"hx-disabled-elt": "this",
+				"hx-confirm":      "ComfyUI の導入を中断します。ダウンロード済みの分は残り、もう一度導入すると続きから再開します。よろしいですか？",
+			})
+		case e.Installed && !e.Broken:
+			@installedCard(e)
+		default:
+			if e.Broken {
+				<p class="text-sm text-amber-300" role="alert" data-testid="mm-engine-broken">導入済みの記録がありますが、エンジンのファイルが見つかりません。もう一度導入してください。</p>
+			} else {
+				<p class="text-sm text-neutral-300" data-testid="mm-engine-missing">ComfyUI エンジンは導入されていません。</p>
+			}
+			@atoms.Badge(atoms.BadgeNeutral, "未導入")
+			<div id={ GPUID } hx-get={ paths.ModelManagerPart("engine", "gpu") } hx-trigger="load" hx-swap="outerHTML">
+				<p class="text-sm text-neutral-400">GPU を検出しています…</p>
+			</div>
+	}
+}
+
+templ installedCard(e Engine) {
+	{{ tone, label := stateBadge(e.State) }}
+	<div class="flex flex-wrap items-center gap-2 text-sm" data-testid="mm-engine-status">
+		@atoms.BadgeWith(tone, label, templ.Attributes{"data-testid": "mm-engine-state", "data-state": e.State})
+		<span>ComfyUI { e.Version }</span>
+		<span class="text-neutral-400">
+			（{ e.VariantLabel }
+			if e.CPU {
+				・CPU 実行
+			}
+			）
+		</span>
+	</div>
+	if e.State == "running" {
+		<p class="text-xs text-neutral-300">待ち受け: <code data-testid="mm-engine-url">{ e.URL }</code>（この PC の中だけ）</p>
+	}
+	if e.State == "failed" && e.ProcessError != "" {
+		<pre class="max-h-48 overflow-auto whitespace-pre-wrap rounded bg-neutral-900 p-2 text-xs text-red-300" role="alert" data-testid="mm-engine-failure">{ e.ProcessError }</pre>
+	}
+	if e.UpdateAvailable {
+		<form
+			class="flex flex-wrap items-center gap-2 text-sm text-amber-300"
+			hx-post={ paths.ModelManagerPart("engine", "install") }
+			hx-target={ "#" + EngineID }
+			hx-swap="outerHTML"
+			hx-sync="this:drop"
+			hx-disabled-elt="find button[type=submit]"
+			data-testid="mm-engine-update"
+		>
+			<span>固定版 { e.PinnedVersion } があります（導入済み: { e.Version }）。</span>
+			<input type="hidden" name={ FieldVariant } value={ e.Variant }/>
+			if e.CPU {
+				<input type="hidden" name={ FieldCPU } value="1"/>
+			}
+			@atoms.Button(atoms.TonePrimary, "更新する", templ.Attributes{"type": "submit"})
+		</form>
+	}
+	<div class="flex flex-wrap items-center gap-2">
+		if e.State == "running" || e.State == "starting" {
+			@atoms.Button(atoms.ToneNeutral, "停止", templ.Attributes{
+				"type": "button", "hx-post": paths.ModelManagerPart("engine", "stop"), "hx-target": "#" + EngineID,
+				"hx-swap": "outerHTML", "hx-sync": "this:drop", "hx-disabled-elt": "this",
+			})
+		} else {
+			@atoms.Button(atoms.TonePrimary, "起動", templ.Attributes{
+				"type": "button", "hx-post": paths.ModelManagerPart("engine", "start"), "hx-target": "#" + EngineID,
+				"hx-swap": "outerHTML", "hx-sync": "this:drop", "hx-disabled-elt": "this",
+			})
+		}
+		@atoms.Button(atoms.ToneNeutral, autoStartLabel(e.AutoStart), templ.Attributes{
+			"type": "button", "hx-put": paths.ModelManagerPart("engine", "autostart"), "hx-vals": atoms.HxVals(map[string]string{FieldOn: autoStartValue(!e.AutoStart)}),
+			"hx-target": "#" + EngineID, "hx-swap": "outerHTML", "hx-sync": "this:drop", "hx-disabled-elt": "this",
+			"aria-pressed": strconv.FormatBool(e.AutoStart), "data-testid": "mm-engine-autostart",
+		})
+		@atoms.Button(atoms.ToneDanger, "エンジンを削除", templ.Attributes{
+			"type": "button", "hx-delete": paths.ModelManagerPart("engine"), "hx-target": "#" + EngineID, "hx-swap": "outerHTML",
+			"hx-sync": "this:drop", "hx-disabled-elt": "this",
+			"hx-confirm": "ComfyUI エンジンを削除します（導入したモデルのファイルは残ります）。よろしいですか？",
+		})
+	</div>
+}
+
+func autoStartLabel(on bool) string {
+	if on {
+		return "mam の起動時に自動で起動する: オン"
+	}
+	return "mam の起動時に自動で起動する: オフ（最初に使うときに起動）"
+}
+
+func autoStartValue(on bool) string {
+	if on {
+		return "1"
+	}
+	return "0"
+}
