@@ -71,6 +71,10 @@ templ Panel(d Data) {
 		if d.Error != "" {
 			<p class="text-sm text-red-300" role="alert" data-testid="llm-error">{ d.Error }</p>
 		}
+		<p class="text-xs text-neutral-400" data-testid="llm-chatgpt-note">
+			プロバイダー「chatgpt-subscription」を選ぶと、ChatGPT のプランを使います（Using ChatGPT plan）。モデル名は、ログインしたあと、設定画面の ChatGPT の欄で確認できます。
+			<a class="underline" href="https://chatgpt.com/settings/usage" target="_blank" rel="noopener noreferrer">Manage usage</a>
+		</p>
 		if d.Pinned {
 			@readOnlyList(d.Rows)
 			@readOnlyUnused(d.Unused)

@@ -17,7 +17,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/ousiassllc/mam/backend/internal/chatgpt"
 	"github.com/ousiassllc/mam/backend/internal/config"
+	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
 	"github.com/ousiassllc/mam/backend/internal/logging"
 	"github.com/ousiassllc/mam/backend/internal/repository"
@@ -39,6 +41,9 @@ type Options struct {
 	OnReady func(url string)
 	// Update, when not nil, turns the automatic update on (the Wails front only).
 	Update *UpdateOptions
+	// OpenBrowser opens a URL in the default browser of this machine (never in the Wails window): the browser login
+	// of "Sign in with ChatGPT" uses it. Nil: the login screen shows the URL to open by hand.
+	OpenBrowser func(url string) error
 }
 
 // staticFS serves assets from disk when --static-dir is set (make dev), else from the binary.
@@ -93,7 +98,8 @@ func Run(ctx context.Context, opts Options) error {
 }
 
 func serve(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Options) error {
-	services, db, cleanup, err := buildServices(ctx, cfg, logger)
+	gpt := chatgpt.New(chatgpt.Options{Keys: credential.NewKeyring(), DataDir: cfg.DataDir, Open: opts.OpenBrowser, Logger: logger})
+	services, db, cleanup, err := buildServices(ctx, cfg, logger, gpt)
 	if err != nil {
 		return err
 	}
@@ -109,6 +115,7 @@ func serve(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Opt
 			logger.Error("apply the saved model settings failed", "err", err)
 		}
 	})
+	settings.ChatGPT = gpt
 	if opts.Update != nil {
 		var stop func()
 		settings.Update, stop = startUpdates(ctx, opts.Update, services, repository.NewJobRepository(db), logger)

@@ -55,11 +55,14 @@ const (
 	ProviderAnthropic Provider = "anthropic"
 	ProviderOpenAI    Provider = "openai"
 	ProviderGoogle    Provider = "google"
+	// ProviderChatGPTSubscription is the official ChatGPT plan usage route (Responses API, signed in with ChatGPT).
+	// It has no API key: the sign-in of package chatgpt takes its place.
+	ProviderChatGPTSubscription Provider = "chatgpt-subscription"
 )
 
 // Providers lists every supported provider.
 func Providers() []Provider {
-	return []Provider{ProviderAnthropic, ProviderOpenAI, ProviderGoogle}
+	return []Provider{ProviderAnthropic, ProviderOpenAI, ProviderGoogle, ProviderChatGPTSubscription}
 }
 
 // Target is one provider and the model to call on it.
@@ -158,6 +161,8 @@ func DefaultConfig() Config {
 			ProviderAnthropic: {BaseURL: "https://api.anthropic.com"},
 			ProviderOpenAI:    {BaseURL: "https://api.openai.com"},
 			ProviderGoogle:    {BaseURL: "https://generativelanguage.googleapis.com"},
+			// The Responses API of the plan usage flow lives on the public API host.
+			ProviderChatGPTSubscription: {BaseURL: "https://api.openai.com"},
 		},
 		TimeoutSeconds: 120,
 		Retry:          RetryConfig{MaxAttempts: 3, BaseDelayMillis: 1000, MaxDelayMillis: 16000},

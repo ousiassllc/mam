@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/chatgptid"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
@@ -203,6 +204,8 @@ func VendorOf(m domain.ModelName) Vendor {
 		return VendorSeedance
 	case domain.ModelRunwayGen45:
 		return VendorRunway
+	case chatgptid.Model:
+		return Vendor(chatgptid.Vendor)
 	}
 	if _, endpoint, _, ok := localcfg.ParseID(string(m)); ok {
 		return Vendor(localcfg.VendorKey(endpoint))
