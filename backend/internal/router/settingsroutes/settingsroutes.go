@@ -21,6 +21,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/handler"
 	updatehandler "github.com/ousiassllc/mam/backend/internal/web/handler/appupdate"
 	chatgpthandler "github.com/ousiassllc/mam/backend/internal/web/handler/chatgptsettings"
+	gentesthandler "github.com/ousiassllc/mam/backend/internal/web/handler/gentest"
 	llmhandler "github.com/ousiassllc/mam/backend/internal/web/handler/llmassign"
 	localhandler "github.com/ousiassllc/mam/backend/internal/web/handler/localmodels"
 	mcphandler "github.com/ousiassllc/mam/backend/internal/web/handler/mcpsettings"
@@ -119,6 +120,9 @@ func Register(engine *gin.Engine, keys *service.CredentialService, s *Services) 
 	}
 	if s != nil && s.ModelManager != nil {
 		modelmgrhandler.Register(engine, s.ModelManager, s.Gentest)
+	}
+	if s != nil && s.Gentest != nil {
+		gentesthandler.Register(engine, s.Gentest)
 	}
 	engine.GET(paths.Settings(), handler.GlobalSettingsPage(keys, addSections))
 }
