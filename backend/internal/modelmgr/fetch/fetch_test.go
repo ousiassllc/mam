@@ -276,6 +276,11 @@ func TestDownloadStopsOnCancelAndKeepsThePartFile(t *testing.T) {
 	errc := make(chan error, 1)
 	go func() { errc <- fetch.Download(ctx, dest, source(srv.URL), opts()) }()
 	<-started
+	// The server flushed, but the client may not have written a byte yet: cancel only once it has.
+	require.Eventually(t, func() bool {
+		st, err := os.Stat(fetch.PartPath(dest))
+		return err == nil && st.Size() > 0
+	}, 10*time.Second, 5*time.Millisecond, "the client wrote nothing to the part file")
 	cancel()
 	select {
 	case err := <-errc:

@@ -56,11 +56,9 @@ func TestEstimateRefusesWhatCannotRunAndSaysWhy(t *testing.T) {
 func TestRunRunsEveryCombinationAndTheGridComparesModelsAgainstPrompts(t *testing.T) {
 	s := newScreen(t)
 	form := s.confirmed(batchForm("flux-2", "nano-banana"))
-	rec := s.do(http.MethodPost, paths.GenerationTestPart("run"), form)
-	require.Equal(t, http.StatusAccepted, rec.Code, rec.Body.String())
+	rec, id := s.start(form)
 	assert.Contains(t, rec.Body.String(), "生成を始めました")
 	assert.Contains(t, rec.Body.String(), `data-testid="gt-grid"`)
-	id := batchID(t, rec.Body.String())
 	body := s.settled(id)
 
 	assert.Equal(t, 2, strings.Count(body, `data-testid="gt-row"`), "a row per model")
@@ -136,9 +134,7 @@ func TestUploadedInputIsStagedAtTheEstimateAndUsedByTheRun(t *testing.T) {
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	form := hiddenOf(t, rec.Body.String())
 	require.Contains(t, strings.Join(form["ref"], ","), "upload::", "the confirmation carries the staged id, not the bytes")
-	run := s.do(http.MethodPost, paths.GenerationTestPart("run"), form)
-	require.Equal(t, http.StatusAccepted, run.Code, run.Body.String())
-	id := batchID(t, run.Body.String())
+	_, id := s.start(form)
 	s.settled(id)
 	require.NotEmpty(t, s.rig.Fake.Calls())
 	for _, call := range s.rig.Fake.Calls() {
@@ -155,11 +151,9 @@ func TestCancelStopsWhatHasNotStarted(t *testing.T) {
 	}))
 	release := s.rig.Fake.Hold(domain.ModelFlux2)
 	form := url.Values{"media": {"image"}, "model": {"flux-2"}, "count": {"3"}, "prompt": {"fox"}, "negative": {""}}
-	rec := s.do(http.MethodPost, paths.GenerationTestPart("run"), s.confirmed(form))
-	require.Equal(t, http.StatusAccepted, rec.Code, rec.Body.String())
+	rec, id := s.start(s.confirmed(form))
 	assert.Contains(t, rec.Body.String(), `hx-trigger="every 2s"`, "the progress polls while the batch runs")
 	assert.Contains(t, rec.Body.String(), `data-testid="gt-cancel"`)
-	id := batchID(t, rec.Body.String())
 	<-s.rig.Fake.Started()
 
 	cancel := s.do(http.MethodPost, paths.GenerationTestPart("batches", id, "cancel"), nil)

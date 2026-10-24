@@ -85,8 +85,7 @@ func TestDetailShowsWhatWasSentAndTheInputsAndDeleteGoesBackToTheHistory(t *test
 	s := newScreen(t)
 	staged := s.upload(paths.GenerationTestPart("estimate"), batchForm("flux-2"), "upload", gentesttest.PNG)
 	require.Equal(t, http.StatusOK, staged.Code)
-	run := s.do(http.MethodPost, paths.GenerationTestPart("run"), hiddenOf(t, staged.Body.String()))
-	id := batchID(t, run.Body.String())
+	_, id := s.start(hiddenOf(t, staged.Body.String()))
 	s.settled(id)
 	var red string
 	for _, r := range s.results(id) {
