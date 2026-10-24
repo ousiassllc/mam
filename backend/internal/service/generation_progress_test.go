@@ -2,7 +2,6 @@ package service_test
 
 import (
 	"context"
-	"database/sql"
 	"regexp"
 	"testing"
 	"time"
@@ -119,21 +118,11 @@ func extractAnswer(user string) string {
 		{"target":"story","field":"previous_event","value":"phone_call_ended"}]}`
 }
 
-func (f genFixture) buildReferencePack(t *testing.T) {
-	t.Helper()
-	_, err := f.svc.Generation.BuildReferencePack(context.Background(), f.shotID)
-	require.NoError(t, err)
-	f.waitJobsDone(t)
-	f.waitShotState(t, domain.ShotPlanning)
-}
-
 func (f genFixture) generateAndWait(t *testing.T, shotID string, jobs int) {
 	t.Helper()
 	_, err := f.svc.Generation.GenerateShot(context.Background(), shotID, "")
 	require.NoError(t, err)
-	require.Eventually(t, func() bool {
-		return f.count(t, `SELECT COUNT(*) FROM job WHERE status = 'succeeded' AND kind = 'generate'`) == jobs
-	}, 30*time.Second, 10*time.Millisecond)
+	f.waitGenerateJobs(t, jobs)
 }
 
 func TestGenerateShot_StateExtractorAppendsWorldStateVersionAndTheNextShotStartsFromIt(t *testing.T) {
@@ -146,8 +135,7 @@ func TestGenerateShot_StateExtractorAppendsWorldStateVersionAndTheNextShotStarts
 	// F-10: a State Diff and a new world_state_version were appended for the Shot.
 	assert.Equal(t, 1, f.count(t, `SELECT COUNT(*) FROM world_state_version WHERE project_id = ?`, f.projectID))
 	assert.Equal(t, 1, f.count(t, `SELECT COUNT(*) FROM state_diff WHERE shot_id = ? AND take_id IN (SELECT id FROM take)`, f.shotID))
-	var diff string
-	require.NoError(t, f.query(t, `SELECT diff FROM state_diff WHERE shot_id = ?`, f.shotID).Scan(&diff))
+	diff := f.text(t, `SELECT diff FROM state_diff WHERE shot_id = ?`, f.shotID)
 	assert.Contains(t, diff, `"field":"emotion"`)
 	assert.Contains(t, diff, `"to":"anxious"`)
 	world, err := f.svc.World.View(context.Background(), f.projectID, "")
@@ -176,17 +164,9 @@ func TestGenerateShot_StateExtractorLeavesLockedFieldsAlone(t *testing.T) {
 	f := newGenFixture(t, true)
 	f.llm.extractor = extractAnswer
 	f.buildReferencePack(t)
-	var charID string
-	require.NoError(t, f.query(t, `SELECT id FROM character WHERE project_id = ?`, f.projectID).Scan(&charID))
-	require.NoError(t, f.db.Write(context.Background(), func(ctx context.Context, tx *sql.Tx) error {
-		_, err := tx.ExecContext(ctx,
-			`INSERT INTO lock (id, project_id, target_type, target_id, parameter_name, mode, value) VALUES ('l1', ?, 'character', ?, 'emotion', 'lock', 'null')`, f.projectID, charID)
-		return err
-	}))
-	require.NoError(t, f.db.Write(context.Background(), func(ctx context.Context, tx *sql.Tx) error {
-		_, err := tx.ExecContext(ctx, `UPDATE character SET emotion = 'calm' WHERE id = ?`, charID)
-		return err
-	}))
+	charID := f.text(t, `SELECT id FROM character WHERE project_id = ?`, f.projectID)
+	f.execSQL(t, `INSERT INTO lock (id, project_id, target_type, target_id, parameter_name, mode, value) VALUES ('l1', ?, 'character', ?, 'emotion', 'lock', 'null')`, f.projectID, charID)
+	f.execSQL(t, `UPDATE character SET emotion = 'calm' WHERE id = ?`, charID)
 
 	f.generateAndWait(t, f.shotID, 2)
 
@@ -194,8 +174,7 @@ func TestGenerateShot_StateExtractorLeavesLockedFieldsAlone(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "calm", world.World.Characters[0].Emotion, "the LOCKed emotion is not updated")
 	assert.Equal(t, "hallway_door", world.World.Characters[0].Position, "unlocked fields still follow the Shot")
-	var diff string
-	require.NoError(t, f.query(t, `SELECT diff FROM state_diff WHERE shot_id = ?`, f.shotID).Scan(&diff))
+	diff := f.text(t, `SELECT diff FROM state_diff WHERE shot_id = ?`, f.shotID)
 	assert.NotContains(t, diff, `"emotion"`, "LOCKed fields are excluded from the State Diff")
 }
 

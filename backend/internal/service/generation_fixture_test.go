@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"path/filepath"
 	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -105,17 +104,10 @@ func (g *genReasoner) prompts(agent llm.Agent) []string {
 func (g *genReasoner) reset(agent llm.Agent) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	if g.users == nil {
-		g.users = map[llm.Agent][]string{}
-	}
-	g.users[agent] = nil
+	delete(g.users, agent)
 }
 
-func (g *genReasoner) calls(agent llm.Agent) int {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	return len(g.users[agent])
-}
+func (g *genReasoner) calls(agent llm.Agent) int { return len(g.prompts(agent)) }
 
 // modelFake is the image and video backend of every model: no external API is called.
 type modelFake struct {
@@ -125,12 +117,9 @@ type modelFake struct {
 	actual   *float64      // the cost the vendor reports for a video, when set
 	requests []modeladapter.VideoRequest
 	images   []string
-	inflight atomic.Int32
 }
 
 func (m *modelFake) GenerateVideo(ctx context.Context, _ string, req modeladapter.VideoRequest) (modeladapter.VideoResult, error) {
-	m.inflight.Add(1)
-	defer m.inflight.Add(-1)
 	if err := m.hold(ctx); err != nil {
 		return modeladapter.VideoResult{}, err
 	}
@@ -187,15 +176,10 @@ type genFixture struct {
 
 func newGenFixture(t *testing.T, withModels bool) genFixture {
 	t.Helper()
-	return newGenFixtureWithFreeBytes(t, withModels, func(string) (uint64, error) { return 1 << 40, nil })
+	return newGenFixtureWithDeps(t, withModels, func(string) (uint64, error) { return 1 << 40, nil }, nil)
 }
 
-func newGenFixtureWithFreeBytes(t *testing.T, withModels bool, freeBytes func(string) (uint64, error)) genFixture {
-	t.Helper()
-	return newGenFixtureWithDeps(t, withModels, freeBytes, nil)
-}
-
-// newGenFixtureWithDeps is newGenFixtureWithFreeBytes with a last look at the Deps (nil: none).
+// newGenFixtureWithDeps is newGenFixture with the free disk space and a last look at the Deps (nil: none).
 func newGenFixtureWithDeps(t *testing.T, withModels bool, freeBytes func(string) (uint64, error), tweak func(*service.Deps)) genFixture {
 	t.Helper()
 	db := testdb.Open(t)
@@ -276,10 +260,15 @@ func (f genFixture) count(t *testing.T, q string, args ...any) int {
 	return n
 }
 
+// text is the one string the query selects.
+func (f genFixture) text(t *testing.T, q string, args ...any) string {
+	t.Helper()
+	var s string
+	require.NoError(t, f.query(t, q, args...).Scan(&s))
+	return s
+}
+
 func (f genFixture) setBudget(t *testing.T, project, shot *float64) {
 	t.Helper()
-	require.NoError(t, f.db.Write(context.Background(), func(ctx context.Context, tx *sql.Tx) error {
-		_, err := tx.ExecContext(ctx, `UPDATE project SET project_budget_ceiling = ?, shot_budget_ceiling = ? WHERE id = ?`, project, shot, f.projectID)
-		return err
-	}))
+	f.execSQL(t, `UPDATE project SET project_budget_ceiling = ?, shot_budget_ceiling = ? WHERE id = ?`, project, shot, f.projectID)
 }

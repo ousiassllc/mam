@@ -39,10 +39,7 @@ func TestGenerateShot_ReturnsAcceptedGeneratingShotAndMakesTakesWithCanonicalIde
 	require.True(t, ok)
 	assert.Equal(t, "Character_A", spec.Character.ID)
 	assert.Equal(t, "4.0s", spec.Duration)
-	var snapshot, stored string
-	require.NoError(t, f.query(t, `SELECT shot_spec_snapshot FROM prompt_version WHERE shot_id = ?`, f.shotID).Scan(&snapshot))
-	require.NoError(t, f.query(t, `SELECT shot_spec FROM shot WHERE id = ?`, f.shotID).Scan(&stored))
-	assert.JSONEq(t, stored, snapshot)
+	assert.JSONEq(t, f.text(t, `SELECT shot_spec FROM shot WHERE id = ?`, f.shotID), f.text(t, `SELECT shot_spec_snapshot FROM prompt_version WHERE shot_id = ?`, f.shotID))
 
 	// F-07 / F-12: the balanced policy makes 3 Takes with Seedance 2.0, stored with canonical identifiers.
 	assert.Equal(t, 3, f.count(t, `SELECT COUNT(*) FROM take`))
@@ -61,31 +58,24 @@ func TestGenerateShot_ReturnsAcceptedGeneratingShotAndMakesTakesWithCanonicalIde
 		assert.NotRegexp(t, japanese, req.Prompt)
 		assert.Contains(t, req.Prompt, "starts running")
 	}
-	var record string
-	require.NoError(t, f.query(t, `SELECT model_adapter_output FROM prompt_version WHERE shot_id = ?`, f.shotID).Scan(&record))
+	record := f.text(t, `SELECT model_adapter_output FROM prompt_version WHERE shot_id = ?`, f.shotID)
 	assert.Contains(t, record, `"seedance-2.0"`)
 	assert.Contains(t, record, `"kling-3.0"`, "the alternative model's request is recorded too")
 
 	// The chat shows a progress card and a card per Take.
-	kinds := map[domain.MessageKind]int{}
-	for _, m := range f.thread(t, f.projectID) {
-		kinds[m.Kind]++
+	for kind, want := range map[string]int{"progress": 1, "take": 3} {
+		assert.Equal(t, want, f.count(t, `SELECT COUNT(*) FROM chat_message WHERE kind = ? AND project_id = ?`, kind, f.projectID))
 	}
-	assert.Equal(t, 1, kinds[domain.KindProgress])
-	assert.Equal(t, 3, kinds[domain.KindTake])
 }
 
 func TestGenerateShot_KeepsTheSpecUnlessThereIsANewInstruction(t *testing.T) {
 	f := newGenFixture(t, true)
 	ctx := context.Background()
 
-	_, err := f.svc.Generation.GenerateShot(ctx, f.shotID, "")
-	require.NoError(t, err)
-	f.waitJobsDone(t)
-	f.waitShotState(t, domain.ShotPlanning)
+	f.generate(t)
 	assert.Equal(t, 1, f.llm.calls(llm.AgentPromptPlanner))
 
-	_, err = f.svc.Generation.GenerateShot(ctx, f.shotID, "")
+	_, err := f.svc.Generation.GenerateShot(ctx, f.shotID, "")
 	require.NoError(t, err)
 	require.Eventually(t, func() bool { return f.count(t, `SELECT COUNT(*) FROM take`) == 6 }, 30*time.Second, 10*time.Millisecond)
 	f.waitShotState(t, domain.ShotPlanning)
@@ -133,8 +123,7 @@ func TestGenerateShot_BudgetCeilingLimitsTakesOrRefuses(t *testing.T) {
 	require.NoError(t, err)
 	f.waitJobsDone(t)
 	assert.Equal(t, 1, f.count(t, `SELECT COUNT(*) FROM take`), "the number of Takes is reduced to what the budget allows")
-	var record string
-	require.NoError(t, f.query(t, `SELECT model_adapter_output FROM prompt_version WHERE shot_id = ?`, f.shotID).Scan(&record))
+	record := f.text(t, `SELECT model_adapter_output FROM prompt_version WHERE shot_id = ?`, f.shotID)
 	assert.Contains(t, record, "budget allows 1 of 3 Takes")
 
 	_, err = f.svc.Generation.GenerateShot(ctx, f.shotID, "")
@@ -145,10 +134,7 @@ func TestGenerateShot_FailureIsReportedInTheChatAndTheShotIsReleased(t *testing.
 	f := newGenFixture(t, true)
 	f.models.err = &modeladapter.ProviderError{Vendor: "seedance", Status: http.StatusForbidden, Message: "policy"}
 
-	_, err := f.svc.Generation.GenerateShot(context.Background(), f.shotID, "")
-	require.NoError(t, err)
-	f.waitJobsDone(t)
-	f.waitShotState(t, domain.ShotPlanning)
+	f.generate(t)
 
 	assert.Zero(t, f.count(t, `SELECT COUNT(*) FROM take`))
 	assert.Zero(t, f.count(t, `SELECT COUNT(*) FROM cost_ledger_entry`), "a failed call is not charged")
@@ -158,7 +144,7 @@ func TestGenerateShot_FailureIsReportedInTheChatAndTheShotIsReleased(t *testing.
 	assert.Contains(t, last.Content, "拒否")
 
 	f.models.err = nil
-	_, err = f.svc.Generation.GenerateShot(context.Background(), f.shotID, "")
+	_, err := f.svc.Generation.GenerateShot(context.Background(), f.shotID, "")
 	assert.NoError(t, err, "the user can start again")
 }
 
@@ -197,13 +183,7 @@ func TestBuildReferencePack_MakesEveryReferenceAndTheKeyframeThenGenerationUsesT
 	assert.Equal(t, 3, f.count(t, `SELECT COUNT(*) FROM cost_ledger_entry WHERE provider = 'imagen-4'`))
 	assert.Equal(t, 3, f.count(t, `SELECT COUNT(*) FROM cost_ledger_entry WHERE provider = 'nano-banana'`))
 
-	keyframes := 0
-	for _, m := range f.thread(t, f.projectID) {
-		if m.Kind == domain.KindKeyframe {
-			keyframes++
-		}
-	}
-	assert.Equal(t, 6, keyframes, "every image is shown in the chat")
+	assert.Equal(t, 6, f.count(t, `SELECT COUNT(*) FROM chat_message WHERE kind = 'keyframe' AND project_id = ?`, f.projectID), "every image is shown in the chat")
 
 	// The Keyframe starts the clip and the other references go along.
 	_, err = f.svc.Generation.GenerateShot(ctx, f.shotID, "")
@@ -215,8 +195,7 @@ func TestBuildReferencePack_MakesEveryReferenceAndTheKeyframeThenGenerationUsesT
 		assert.Equal(t, pngBytes, req.FirstFrame.Data)
 		assert.Empty(t, req.References, "frames and reference images are exclusive")
 	}
-	var stored string
-	require.NoError(t, f.query(t, `SELECT shot_spec FROM shot WHERE id = ?`, f.shotID).Scan(&stored))
+	stored := f.text(t, `SELECT shot_spec FROM shot WHERE id = ?`, f.shotID)
 	var doc map[string]json.RawMessage
 	require.NoError(t, json.Unmarshal([]byte(stored), &doc))
 	assert.Contains(t, doc, "references", "the Canonical Shot Spec is written next to the Reference Pack")
@@ -225,17 +204,13 @@ func TestBuildReferencePack_MakesEveryReferenceAndTheKeyframeThenGenerationUsesT
 
 func TestBuildReferencePack_FailureKeepsTheOldPackAndLeavesNoFiles(t *testing.T) {
 	f := newGenFixture(t, true)
-	ctx := context.Background()
 
-	_, err := f.svc.Generation.BuildReferencePack(ctx, f.shotID)
-	require.NoError(t, err)
-	f.waitJobsDone(t)
-	f.waitShotState(t, domain.ShotPlanning)
+	f.buildReferencePack(t)
 	before := f.shot(t).References()
 	files := countFiles(t, f.assetsDir)
 
 	f.models.err = &modeladapter.ProviderError{Vendor: "google", Status: http.StatusForbidden}
-	_, err = f.svc.Generation.BuildReferencePack(ctx, f.shotID)
+	_, err := f.svc.Generation.BuildReferencePack(context.Background(), f.shotID)
 	require.NoError(t, err)
 	require.Eventually(t, func() bool {
 		return f.shot(t).State == domain.ShotPlanning && f.count(t, `SELECT COUNT(*) FROM job WHERE status = 'failed'`) == 1
