@@ -27,23 +27,13 @@ type GenerationService struct {
 type ShotFragment struct {
 	ProjectID string
 	ShotView
+	JobID string // the queued job row when the action queued one (the screen ignores it; the MCP tools hand it out)
 }
 
 // GenerateShot queues the generation of the Shot and returns it in the GENERATING state (202).
 // instruction is an optional additional direction ("もう少しカメラを寄せて").
 func (s *GenerationService) GenerateShot(ctx context.Context, shotID, instruction string) (ShotFragment, error) {
-	if s.gen == nil {
-		return ShotFragment{}, ErrUnavailable
-	}
-	if utf8.RuneCountInString(instruction) > domain.MaxInstructionRunes {
-		return ShotFragment{}, invalid("additional_instruction", "%d 文字以内で入力してください", domain.MaxInstructionRunes)
-	}
-	record := s.generationRecorder(ctx, shotID)
-	if _, err := s.gen.Start(ctx, shotID, instruction); err != nil {
-		return ShotFragment{}, mapGenerationError(err)
-	}
-	record()
-	return s.Shot(ctx, shotID)
+	return s.begin(ctx, shotID, instruction, s.generationRecorder(ctx, shotID), func() (domain.Job, error) { return s.gen.Start(ctx, shotID, instruction) })
 }
 
 // GenerateCandidates queues Prompt Candidate Generation for the Shot (F-08) and returns it in the
@@ -51,29 +41,36 @@ func (s *GenerationService) GenerateShot(ctx context.Context, shotID, instructio
 // instruction is an optional additional direction. ErrUnavailable means generation or the AI Video
 // Judge (which picks the Best Take) is not configured.
 func (s *GenerationService) GenerateCandidates(ctx context.Context, shotID, instruction string) (ShotFragment, error) {
+	return s.begin(ctx, shotID, instruction, s.generationRecorder(ctx, shotID), func() (domain.Job, error) { return s.gen.StartCandidates(ctx, shotID, instruction) })
+}
+
+// BuildReferencePack queues the (re)generation of the Shot's Reference Pack and returns the Shot.
+func (s *GenerationService) BuildReferencePack(ctx context.Context, shotID string) (ShotFragment, error) {
+	return s.begin(ctx, shotID, "", func() {}, func() (domain.Job, error) { return s.gen.StartReferencePack(ctx, shotID) })
+}
+
+// begin runs start, which queues the work, when generation is configured and instruction is short enough.
+// record is called once the work is queued (the intervention of the user for the Production Analytics).
+func (s *GenerationService) begin(ctx context.Context, shotID, instruction string, record func(), start func() (domain.Job, error)) (ShotFragment, error) {
 	if s.gen == nil {
 		return ShotFragment{}, ErrUnavailable
 	}
 	if utf8.RuneCountInString(instruction) > domain.MaxInstructionRunes {
 		return ShotFragment{}, invalid("additional_instruction", "%d 文字以内で入力してください", domain.MaxInstructionRunes)
 	}
-	record := s.generationRecorder(ctx, shotID)
-	if _, err := s.gen.StartCandidates(ctx, shotID, instruction); err != nil {
+	job, err := start()
+	if err != nil {
 		return ShotFragment{}, mapGenerationError(err)
 	}
 	record()
-	return s.Shot(ctx, shotID)
+	return s.shotOfJob(ctx, shotID, job)
 }
 
-// BuildReferencePack queues the (re)generation of the Shot's Reference Pack and returns the Shot.
-func (s *GenerationService) BuildReferencePack(ctx context.Context, shotID string) (ShotFragment, error) {
-	if s.gen == nil {
-		return ShotFragment{}, ErrUnavailable
-	}
-	if _, err := s.gen.StartReferencePack(ctx, shotID); err != nil {
-		return ShotFragment{}, mapGenerationError(err)
-	}
-	return s.Shot(ctx, shotID)
+// shotOfJob is the Shot with the job that was queued for it.
+func (s *GenerationService) shotOfJob(ctx context.Context, shotID string, job domain.Job) (ShotFragment, error) {
+	frag, err := s.Shot(ctx, shotID)
+	frag.JobID = job.ID
+	return frag, err
 }
 
 // Shot returns the Shot with its Takes.
