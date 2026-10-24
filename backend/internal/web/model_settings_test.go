@@ -39,7 +39,7 @@ func TestModelSettings_TheScreenListsEveryPurposeAndPolicyWithOnlyWhatTheAdapter
 	}
 	for _, p := range modeladapter.ImagePurposes() {
 		for _, slot := range []string{modelassignment.SlotPrimary, modelassignment.SlotFallback} {
-			assert.False(t, isChecked(t, html, modelassignment.ImageFastField(string(p), slot)), "no default route is a fast variant: %s %s", p, slot)
+			assert.NotContains(t, html, `name="`+modelassignment.ImageFastField(string(p), slot)+`"`, "no model has a fast variant by default: the checkbox is not offered: %s %s", p, slot)
 		}
 	}
 
@@ -118,7 +118,7 @@ func TestModelSettings_AModelsFileThatStillNamesImagen4IsShownAsNanoBanana(t *te
 	assert.NotContains(t, html, `data-testid="model-assignment-problem"`)
 	assert.Equal(t, "nano-banana", selectedOption(t, html, modelassignment.ImageModelField("new_reference", modelassignment.SlotPrimary)))
 	assert.Equal(t, "nano-banana-lite", selectedOption(t, html, modelassignment.ImageModelField("new_reference", modelassignment.SlotFallback)))
-	assert.False(t, isChecked(t, html, modelassignment.ImageFastField("new_reference", modelassignment.SlotFallback)), "the fast flag is dropped")
+	assert.NotContains(t, html, `name="`+modelassignment.ImageFastField("new_reference", modelassignment.SlotFallback)+`"`, "the fast flag is dropped")
 	assert.NotContains(t, optionValues(t, html, modelassignment.ImageModelField("new_reference", modelassignment.SlotPrimary)), "imagen-4")
 	data, err := os.ReadFile(file)
 	require.NoError(t, err)

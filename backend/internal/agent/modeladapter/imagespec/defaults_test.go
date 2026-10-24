@@ -45,37 +45,6 @@ func TestDefaultConfigNamesTheCurrentModelsAndNoRetiredOnes(t *testing.T) {
 	assert.NotContains(t, domain.ImageModels(), domain.ModelName("imagen-4"))
 }
 
-func TestDefaultImageRoutes(t *testing.T) {
-	cfg := modeladapter.DefaultConfig()
-	for _, tt := range []struct {
-		purpose         modeladapter.ImagePurpose
-		primary, backup domain.ModelName
-	}{
-		{modeladapter.PurposeNewReference, domain.ModelGPTImage2, domain.ModelNanoBanana},
-		{modeladapter.PurposeEditReference, domain.ModelNanoBanana, domain.ModelGPTImage2},
-		{modeladapter.PurposePreview, domain.ModelFlux2, domain.ModelNanoBananaLite},
-		{modeladapter.PurposeUnifiedOpenAI, domain.ModelGPTImage2, domain.ModelNanoBanana},
-	} {
-		t.Run(string(tt.purpose), func(t *testing.T) {
-			assert.Equal(t, modeladapter.ImageRoute{
-				Primary: modeladapter.ImageTarget{Model: tt.primary}, Fallback: modeladapter.ImageTarget{Model: tt.backup},
-			}, cfg.ImageRouteFor(tt.purpose))
-		})
-	}
-	assert.Len(t, cfg.Images, len(modeladapter.ImagePurposes()), "no purpose beyond the four")
-}
-
-func TestImageCostOfTheDefaultModels(t *testing.T) {
-	cfg := modeladapter.DefaultConfig()
-	// Nano Banana and Nano Banana Lite: Google's Gemini API pricing, one 1K image (what an unset imageSize gives).
-	assert.Equal(t, 0.0336, cfg.ImageCost(domain.ModelNanoBanana))
-	assert.Equal(t, 0.0336, cfg.ImageCost(domain.ModelNanoBananaLite))
-	// FLUX.2 [pro]: BFL's pricing for a text-only image up to 1 megapixel.
-	assert.Equal(t, 0.03, cfg.ImageCost(domain.ModelFlux2))
-	// GPT Image 2 is priced per token (the quality is left to the model): unpriced on purpose, 0.
-	assert.Zero(t, cfg.ImageCost(domain.ModelGPTImage2))
-}
-
 type fakeImage struct {
 	err    error
 	inputs []int

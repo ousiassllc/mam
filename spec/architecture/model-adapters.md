@@ -98,7 +98,7 @@ Jev の利用ルール:
 音声: elevenlabs-tts, elevenlabs-music, elevenlabs-sfx, sync-labs
 ```
 
-`imagen-4` は 2026-08-17 の Imagen 4 の終了で、この集合から外した。過去に保存した Take・Cost Ledger・参照画像（Shot Spec の `references[].model`）・生成テストの履歴には、実際に生成して課金したモデルとして `imagen-4` が残る（書き換えない。表示するだけで、動作を決めない）。**動作を決める設定**だけを起動時に読み替える: `models.json` の `images` の `imagen-4` は `nano-banana` に、`fast: true` の `imagen-4` は `nano-banana-lite`（高速な代替。`fast` は外す）に、`models.imagen-4` の項目は捨てる（ファイルは書き換えず、設定画面で保存したときに今の割り当てで書き直す）。
+`imagen-4` は 2026-08-17 の Imagen 4 の終了で、この集合から外した。過去に保存した Take・Cost Ledger・参照画像（Shot Spec の `references[].model`）・生成テストの履歴には、実際に生成して課金したモデルとして `imagen-4` が残る（書き換えない。表示するだけで、動作を決めない。履歴の `imagen-4` の結果を再実行しようとすると、組み込みのモデルではないので断られる）。**動作を決める設定**だけを起動時（設定画面の読み込み・保存・`--model-config` の固定ファイルも同じ）に読み替える: `models.json` の `images` の `imagen-4` は `nano-banana` に、`fast: true` の `imagen-4` は `nano-banana-lite`（高速な代替。`fast` は外す）に読み、`models.imagen-4` の項目は読み込みのたびに捨てる。ファイルは書き換えない: 設定画面で保存すると `images` と `policies` だけを今の割り当てで書き直し、ほかのキー（`models.imagen-4` を含む）は手書きのままファイルに残る（無視されるだけで害はない）。
 
 利用者が登録した接続先のモデルは `comfyui:<接続先名>/<モデル名>`、`openai-compat:<接続先名>/<モデル名>` で保存する（例: `comfyui:gpu-box/wan22-i2v`）。接続先名・モデル名は作成後に変えられない（Take と Cost Ledger の識別子が指すため。変えるときは削除して作り直す）。見積コストが 0 USD でも Cost Ledger の行は書く。組み込みの識別子は列挙のまま、登録したモデルを足した開いた集合として扱う（[local-models.md](local-models.md) §2）。
 
