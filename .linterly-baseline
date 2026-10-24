@@ -4,9 +4,8 @@
 512	backend/internal/agent/audiodirector/audiodirector_test.go
 1125	backend/internal/agent/audiodirector/director_test.go
 347	backend/internal/agent/audiodirector/elevenlabs.go
-5014	backend/internal/agent/generation/
+5009	backend/internal/agent/generation/
 487	backend/internal/agent/generation/candidates.go
-469	backend/internal/agent/generation/generate.go
 574	backend/internal/agent/generation/orchestrator.go
 415	backend/internal/agent/generation/orchestrator_candidates_test.go
 459	backend/internal/agent/generation/orchestrator_fixture_test.go
@@ -22,7 +21,7 @@
 550	backend/internal/agent/modeladapter/adapter_test.go
 665	backend/internal/agent/modeladapter/backends_test.go
 975	backend/internal/agent/orchestrator/orchestrator_test.go
-2972	backend/internal/agent/repair/
+2948	backend/internal/agent/repair/
 428	backend/internal/agent/repair/agent_flow_fixture_test.go
 1016	backend/internal/agent/repair/agent_flow_test.go
 7639	backend/internal/domain/
@@ -31,7 +30,7 @@
 332	backend/internal/domain/judge.go
 374	backend/internal/domain/review.go
 441	backend/internal/domain/worldstate.go
-13048	backend/internal/repository/
+13047	backend/internal/repository/
 431	backend/internal/repository/branch.go
 352	backend/internal/repository/editor.go
 548	backend/internal/repository/generation.go

@@ -103,8 +103,17 @@ func (a *Agent) JobChanged(ctx context.Context, jobID string) {
 	a.Continue(ctx, p.ShotID)
 }
 
-// Continue is one look of the automatic loop at a Shot (see JobChanged).
+// Continue is one look of the automatic loop at a Shot (see JobChanged). Every job that ends makes a
+// look (a generate job, a judge job, the repair job itself), so looks overlap. A look reads the Shot
+// and then claims it, and a repair of the Shot can begin and end in between: the look would then
+// repair, or ask the user about, a Judge result that is no longer the latest. So only one look at a
+// Shot runs at a time, and the one that waits reads the Shot afresh.
 func (a *Agent) Continue(ctx context.Context, shotID string) {
+	unlock, err := a.looks.Lock(ctx, shotID)
+	if err != nil {
+		return // ctx ended
+	}
+	defer unlock()
 	shot, err := a.Generations.GetShot(ctx, shotID)
 	if err != nil {
 		return

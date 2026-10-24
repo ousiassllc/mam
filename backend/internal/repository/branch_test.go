@@ -213,13 +213,7 @@ func TestBranchRepository_BranchAtSceneStartsFromTheStateBeforeTheScene(t *testi
 	shot, err := f.plans.CreateShot(ctx, domain.Shot{SceneID: second.ID, Objective: "later", Duration: 2})
 	require.NoError(t, err)
 	// Shot 1 of Scene 2 completes and changes the emotion; a Branch at Scene 2 must not see it.
-	pv, err := f.repo.SavePromptedSpec(ctx, shot.ID, domain.ShotSpec{ShotObjective: "x", Camera: domain.SpecCamera{Framing: "wide"}}, nil, nil)
-	require.NoError(t, err)
-	take2, err := f.repo.CreateTake(ctx, repository.NewTake{
-		ProjectID: f.projectID, ShotID: shot.ID, PromptVersionID: pv.ID, Model: domain.ModelSeedance2,
-		Asset: domain.Asset{ID: "asset-2", ProjectID: f.projectID, Type: domain.AssetVideo, FilePath: "p/asset-2.mp4", MimeType: "video/mp4"},
-	})
-	require.NoError(t, err)
+	take2 := newTake(t, f.genRepoFixture, shot.ID, "p/asset-2.mp4", 0, 0, nil)
 	_, _, err = f.world.ApplyStateDiff(ctx, f.projectID, "", shot.ID, take2, domain.StateDiff{Changes: []domain.StateChange{
 		{Target: domain.TargetCharacter, ID: f.charID, Field: "emotion", To: raw(`"furious"`)},
 	}})
