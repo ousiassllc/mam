@@ -170,8 +170,8 @@ func SaveImage(svc *modelsettings.Service) gin.HandlerFunc {
 			return
 		}
 		if err != nil {
-			refuse(c, err, func(msg string) templ.Component {
-				return media.ImageModal(media.ImageForm{Row: imageRow(v, p, route), Models: imageModels(v), Error: msg})
+			refuse(c, err, func(msg, field string) templ.Component {
+				return media.ImageModal(media.ImageForm{Row: imageRow(v, p, route), Models: imageModels(v), Error: msg, Blame: field})
 			})
 			return
 		}
@@ -196,8 +196,8 @@ func SavePolicy(svc *modelsettings.Service) gin.HandlerFunc {
 			return
 		}
 		if err != nil {
-			refuse(c, err, func(msg string) templ.Component {
-				return media.PolicyModal(media.PolicyForm{Row: policyRow(v, q, route), Choices: videoChoices(v), Error: msg})
+			refuse(c, err, func(msg, field string) templ.Component {
+				return media.PolicyModal(media.PolicyForm{Row: policyRow(v, q, route), Choices: videoChoices(v), Error: msg, Blame: field})
 			})
 			return
 		}
@@ -216,14 +216,14 @@ func done(c *gin.Context, v modelsettings.View, row templ.Component, toast strin
 // refuse answers a save that did not happen with the modal again (draw) and why: 422 for a refused input, 409 for a file
 // that was pinned or unreadable meanwhile, 500 for a failed write. draw is nil when the saved assignment cannot be read
 // any more: the modal then says only that.
-func refuse(c *gin.Context, err error, draw func(message string) templ.Component) {
-	status, message := http.StatusInternalServerError, writeFailed
+func refuse(c *gin.Context, err error, draw func(message, field string) templ.Component) {
+	status, message, field := http.StatusInternalServerError, writeFailed, ""
 	var invalid *modelsettings.InvalidError
 	switch {
 	case errors.Is(err, modelsettings.ErrPinned):
 		status, message = http.StatusConflict, pinnedReason
 	case errors.As(err, &invalid):
-		status, message = http.StatusUnprocessableEntity, invalid.Message
+		status, message, field = http.StatusUnprocessableEntity, invalid.Message, invalid.Field
 	default:
 		_ = c.Error(err)
 	}
@@ -231,7 +231,7 @@ func refuse(c *gin.Context, err error, draw func(message string) templ.Component
 		settingshttp.Render(c, status, modal.Notice("画像・動画モデル", message))
 		return
 	}
-	settingshttp.Render(c, status, draw(message))
+	settingshttp.Render(c, status, draw(message, field))
 }
 
 // Register adds the routes of the category: the modals (GET paths.ModelImageEdit, paths.ModelPolicyEdit), the saves of the

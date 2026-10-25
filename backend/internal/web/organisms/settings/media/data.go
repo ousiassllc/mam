@@ -117,6 +117,8 @@ type ImageForm struct {
 	Row    ImageRow
 	Models []ImageModel
 	Error  string
+	// Blame is the slot (SlotPrimary, SlotFallback) the refusal is about, "" when it is about none.
+	Blame string
 }
 
 // PolicyForm is what the modal of a Quality Policy is drawn from.
@@ -124,7 +126,12 @@ type PolicyForm struct {
 	Row     PolicyRow
 	Choices []VideoChoice
 	Error   string
+	// Blame is the slot (SlotPrimary, SlotFallback) or BlameTakes the refusal is about, "" when it is about none.
+	Blame string
 }
+
+// BlameTakes is PolicyForm.Blame for a refusal about the number of Takes.
+const BlameTakes = "takes"
 
 // unusableSuffix marks the option of a saved model that is not among the choices (an adult model while the age confirmation
 // is off), so that the select shows the saved assignment instead of silently showing another model.

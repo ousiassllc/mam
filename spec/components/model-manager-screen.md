@@ -22,7 +22,7 @@
 - **入力の長さ**は定数（`MaxTokenLen`・`MaxAspectLen`、プロンプトは `gentest.MaxPromptRunes`）で、テンプレートに数字を書かない（`maxlength_test`）。
 - **秘密を出さない**: Hugging Face のトークンは、状態（設定済みか・末尾 4 文字）だけを描く。
 - **入口**: `projects_page`（プロジェクト一覧）のリンク「モデルマネージャー」と、`global_settings_page` の見出しの下のリンク。
-- **成人向けモデル**（Issue #841）: モデルの区画の先頭に設定「成人向けモデルを表示する」（`AdultCard`、`#mm-adult`。既定はオフ）。初めてオンにするとき `AdultDialog`（`#mm-dialog`）が、注意書き（`Service.AdultContent().Notice`）と「18 歳以上（またはお住まいの地域で成年）であり、注意書きに同意します」のチェックを出し、`PUT /model-manager/adult` で送る（`notice_version` と `agree=1`）。画面は確認を渡す手段で、**ゲートは Service が閉じる**（確認が無い間は、成人向けのモデルが一覧・導入・試し生成の選択肢に出ず、直接叩いても 409。endpoints-model-manager.md）。確認の後は、同じカードの切り替え（オン／オフ）だけで、聞き直さない。切り替えの応答はカードと、一覧・試し生成の区画（`hx-swap-oob`）・ダイアログの閉じ（`AdultWithCatalog`）。成人向けのモデルのカードには、バッジ「成人向け」（`mm-adult-badge`）・ライセンス・商用可否・**原本の場所**（ミラーのファイルのとき。`mm-sources`）・**トリガー語**（LoRA のとき。`mm-trigger-words`）を出す。同意ダイアログは、ライセンスの要約の後に、成人向けの注意書き（`mm-consent-adult`）と原本の場所（`mm-consent-sources`）を出す。
+- **成人向けモデル**（Issue #841）: モデルの区画の先頭に設定「成人向けモデルを表示する」（`AdultCard`、`#mm-adult`。既定はオフ）。初めてオンにするとき `AdultDialog`（`#mm-dialog`）が、注意書き（`Service.AdultContent().Notice`）と「18 歳以上（またはお住まいの地域で成年）であり、注意書きに同意します」のチェックを出し、`PUT /model-manager/adult` で送る（`notice_version` と `agree=1`）。ダイアログは `<section role="dialog" data-inline-dialog>`（ページの中の区画で、`<dialog>` のモーダルではない）。**開いたら、フォーカスは理由（422 のとき）かダイアログ自身に移り、Esc で閉じ（「閉じる」ボタン `data-inline-dialog-close` を押すのと同じ）、閉じたらフォーカスを開いたボタンに戻す**（そのボタンが応答で置き換わったときは、`data-return-focus` の区画 `#mm-adult` の最初の操作）。実装は `static/src/components/inline-dialog/`（同意ダイアログ `#mm-consent` も同じ）。画面は確認を渡す手段で、**ゲートは Service が閉じる**（確認が無い間は、成人向けのモデルが一覧・導入・試し生成の選択肢に出ず、直接叩いても 409。endpoints-model-manager.md）。確認の後は、同じカードの切り替え（オン／オフ）だけで、聞き直さない。切り替えの応答はカードと、一覧・試し生成の区画（`hx-swap-oob`）・ダイアログの閉じ（`AdultWithCatalog`）。成人向けのモデルのカードには、バッジ「成人向け」（`mm-adult-badge`）・ライセンス・商用可否・**原本の場所**（ミラーのファイルのとき。`mm-sources`）・**トリガー語**（LoRA のとき。`mm-trigger-words`）を出す。同意ダイアログは、ライセンスの要約の後に、成人向けの注意書き（`mm-consent-adult`）と原本の場所（`mm-consent-sources`）を出す。
 
 ## 改訂履歴
 
@@ -32,3 +32,4 @@
 | 1.1 | 2026-10-26 | 試し生成の区画が生成テストの結果を出すことに合わせ、プロンプトの上限の出どころを `gentest.MaxPromptRunes` に改めた | Issue #835 |
 | 1.2 | 2026-10-25 | モデルの一覧に「成人向け」のバッジ・トリガー語・原本の場所（ミラー）を足し、同意ダイアログに成人向けの注意書きと原本の場所を足した。設定「成人向けモデルを表示する」（`AdultCard`）と年齢確認のダイアログ（`AdultDialog`）・`AdultWithCatalog` を足した | Issue #841。成人向けモデルと年齢確認 |
 | 1.3 | 2026-10-25 | 区画「Hugging Face から導入」の organism（`HFImportSection`・`HFResultView`・`HFModelListView` ほか）と、ハンドラのパッケージ `web/handler/modelmgr/hfimport`（`jobview` を共有。画面テストの部品は `web/screentest`）を足した。`hf-token` のハンドラは `hfimport` に移した | Issue #842 |
+| 1.4 | 2026-10-25 | 年齢確認・同意のダイアログに、開いたらフォーカスが入る・Esc で閉じる・閉じたら開いたボタンへフォーカスが戻る、を足した。モデルの行は説明が長くても操作ボタンを右上に置く（`shrink-0`） | 最終の実画面の確認（Issue #841 の指摘） |

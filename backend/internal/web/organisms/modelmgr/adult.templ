@@ -39,14 +39,17 @@ templ AdultCard(a Adult) {
 // AdultDialog is the age confirmation and the notice for adult models, with the form that turns the setting on.
 templ AdultDialog(d AdultConfirm) {
 	<section
-		class="flex flex-col gap-3 rounded-md border border-amber-500/60 bg-neutral-900 p-4"
+		class="flex flex-col gap-3 rounded-md border border-amber-500/60 bg-neutral-900 p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
 		role="dialog"
 		aria-labelledby="mm-adult-title"
+		tabindex="-1"
+		data-inline-dialog
+		data-return-focus={ "#" + AdultID }
 		data-testid="mm-adult-dialog"
 	>
 		<h3 id="mm-adult-title" class="text-sm font-semibold">成人向けモデルを表示する前の確認</h3>
 		if d.Error != "" {
-			<p class="text-sm text-red-300" role="alert" data-testid="mm-adult-dialog-error">{ d.Error }</p>
+			<p class="text-sm text-red-300 focus-visible:outline-none" role="alert" tabindex="-1" data-testid="mm-adult-dialog-error">{ d.Error }</p>
 		}
 		<p class="text-sm text-neutral-200" data-testid="mm-adult-notice">{ d.Notice }</p>
 		<p class="text-xs text-neutral-400">モデルの重みは mam が再配布するものではありません。モデルごとのライセンスへの同意は、導入のときに別に取ります。生成物の内容は mam では選別しません。ローカルでの利用はあなたの責任です。</p>
@@ -69,6 +72,7 @@ templ AdultDialog(d AdultConfirm) {
 				@atoms.Button(atoms.TonePrimary, "確認して表示する", templ.Attributes{"type": "submit"})
 				@atoms.Button(atoms.ToneNeutral, "閉じる", templ.Attributes{
 					"type": "button", "hx-get": paths.ModelManagerPart("dialog"), "hx-target": "#" + DialogID, "hx-swap": "innerHTML",
+					"data-inline-dialog-close": true,
 				})
 			</div>
 		</form>

@@ -125,6 +125,7 @@ func TestModelSettings_ARefusedSaveSaysWhyKeepsTheModalAndWritesNothing(t *testi
 	rec := s.requestTo(http.MethodPut, paths.ModelPolicy("fast"), form)
 	require.Equal(t, http.StatusUnprocessableEntity, rec.Code, rec.Body.String())
 	assert.Regexp(t, `<p id="mam-modal-error" role="alert"[^>]*>[^<]*解像度に対応していません`, rec.Body.String())
+	assertFieldBlamed(t, rec.Body.String(), media.PolicyTargetField("fast", media.SlotPrimary))
 	assert.Equal(t, "7", numberValue(t, rec.Body.String(), media.PolicyTakesField("fast")), "what was typed is shown again")
 	assert.Equal(t, "kling-3.0@480p", selectedOption(t, rec.Body.String(), media.PolicyTargetField("fast", media.SlotPrimary)), "the refused option is still the selected one")
 	assert.NoFileExists(t, file)
@@ -139,6 +140,9 @@ func TestModelSettings_ARefusedSaveSaysWhyKeepsTheModalAndWritesNothing(t *testi
 		rec := s.requestTo(http.MethodPut, paths.ModelPolicy("fast"), bad)
 		assert.Equal(t, http.StatusUnprocessableEntity, rec.Code, name)
 		assert.Contains(t, rec.Body.String(), `id="mam-modal-error"`, name)
+		if name == "no takes" {
+			assertFieldBlamed(t, rec.Body.String(), media.PolicyTakesField("fast"))
+		}
 	}
 	for name, mutate := range map[string]func(url.Values){
 		"an unknown model": func(f url.Values) { f.Set(media.ImageModelField("preview", media.SlotPrimary), "dall-e") },

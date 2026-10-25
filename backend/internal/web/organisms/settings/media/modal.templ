@@ -42,7 +42,7 @@ templ ImageModal(f ImageForm) {
 templ imageSlot(f ImageForm, slot, slotLabel string, t ImageTarget, first bool) {
 	<div class="flex flex-wrap items-center gap-3">
 		<label for={ ImageModelField(f.Row.Purpose, slot) } class="w-24 text-sm font-medium">{ slotLabel }</label>
-		@atoms.Select(atoms.FieldMd, "", selectAttrs(ImageModelField(f.Row.Purpose, slot), first)) {
+		@atoms.Select(atoms.FieldMd, "", selectAttrs(ImageModelField(f.Row.Purpose, slot), first, f.Blame == slot)) {
 			for _, m := range f.Models {
 				<option value={ m.Name } selected?={ m.Name == t.Model }>{ m.Name }</option>
 			}
@@ -81,14 +81,14 @@ templ PolicyModal(f PolicyForm) {
 			@policySlot(f, SlotFallback, "代替モデル", f.Row.Fallback, false)
 			<div class="flex flex-wrap items-center gap-3">
 				<label for={ PolicyTakesField(f.Row.Policy) } class="w-24 text-sm font-medium">テイク数</label>
-				@atoms.Input(atoms.FieldMd, "w-20", templ.Attributes{
+				@atoms.Input(atoms.FieldMd, "w-20", blamed(templ.Attributes{
 					"id":    PolicyTakesField(f.Row.Policy),
 					"name":  PolicyTakesField(f.Row.Policy),
 					"type":  "number",
 					"min":   "1",
 					"step":  "1",
 					"value": strconv.Itoa(f.Row.Takes),
-				})
+				}, f.Blame == BlameTakes))
 			</div>
 			@modal.Actions() {
 				@modal.Cancel("キャンセル")
@@ -101,7 +101,7 @@ templ PolicyModal(f PolicyForm) {
 templ policySlot(f PolicyForm, slot, slotLabel, selected string, first bool) {
 	<div class="flex flex-wrap items-center gap-3">
 		<label for={ PolicyTargetField(f.Row.Policy, slot) } class="w-24 text-sm font-medium">{ slotLabel }</label>
-		@atoms.Select(atoms.FieldMd, "", selectAttrs(PolicyTargetField(f.Row.Policy, slot), first)) {
+		@atoms.Select(atoms.FieldMd, "", selectAttrs(PolicyTargetField(f.Row.Policy, slot), first, f.Blame == slot)) {
 			for _, c := range f.Choices {
 				<option value={ c.Value } selected?={ c.Value == selected }>{ c.Label }</option>
 			}
@@ -113,11 +113,19 @@ templ policySlot(f PolicyForm, slot, slotLabel, selected string, first bool) {
 }
 
 // selectAttrs are the attributes of a model <select>: the first one of the modal is the one to start with, unless a refusal
-// is to be read first.
-func selectAttrs(name string, first bool) templ.Attributes {
+// is to be read first; the one a refusal is about (blame) is marked and is the one to start with.
+func selectAttrs(name string, first, blame bool) templ.Attributes {
 	a := templ.Attributes{"id": name, "name": name}
 	if first {
 		a["autofocus"] = true
+	}
+	return blamed(a, blame)
+}
+
+// blamed marks the field a refusal is about: what says so (aria-invalid, the reason as its description) and the focus.
+func blamed(a templ.Attributes, blame bool) templ.Attributes {
+	if blame {
+		a["aria-invalid"], a["aria-describedby"], a["autofocus"] = "true", modal.ErrorID, true
 	}
 	return a
 }

@@ -154,6 +154,26 @@ func TestModelSettings_TheFastVariantIsSavedOnlyForAModelThatHasOne(t *testing.T
 	rec = save(form)
 	require.Equal(t, http.StatusUnprocessableEntity, rec.Code, rec.Body.String())
 	assert.Contains(t, rec.Body.String(), "nano-banana-lite には高速版がありません")
+	assertFieldBlamed(t, rec.Body.String(), media.ImageModelField("preview", media.SlotFallback))
+	assert.NotContains(t, startTag(t, rec.Body.String(), media.ImageModelField("preview", media.SlotPrimary)), "autofocus", "only the field the refusal is about")
+}
+
+// startTag is the opening tag of the control with the id.
+func startTag(t *testing.T, html, id string) string {
+	t.Helper()
+	m := regexp.MustCompile(`<[a-z]+[^>]*\bid="` + regexp.QuoteMeta(id) + `"[^>]*>`).FindString(html)
+	require.NotEmpty(t, m, "no control %q in the modal", id)
+	return m
+}
+
+// assertFieldBlamed asserts that the modal marks the control as the one the refusal is about and moves the focus to it
+// (the modal script focuses the control marked autofocus, else the reason).
+func assertFieldBlamed(t *testing.T, html, id string) {
+	t.Helper()
+	tag := startTag(t, html, id)
+	assert.Contains(t, tag, "autofocus", id)
+	assert.Contains(t, tag, `aria-invalid="true"`, id)
+	assert.Contains(t, tag, `aria-describedby="mam-modal-error"`, id)
 }
 
 // With the age confirmation off the screen does not offer an adult model, but it shows a saved assignment that still names one as
@@ -188,6 +208,7 @@ func TestModelSettings_AnAdultModelOfTheSavedAssignmentIsShownAsUnusableWhileThe
 	require.Equal(t, http.StatusUnprocessableEntity, rec.Code, rec.Body.String())
 	assert.Contains(t, rec.Body.String(), "年齢確認がオフ")
 	assert.Equal(t, noRefLocalModel, selectedOption(t, rec.Body.String(), primary), "the refusal keeps the select as it was")
+	assertFieldBlamed(t, rec.Body.String(), primary)
 	rec = s.request(http.MethodPut, form)
 	require.Equal(t, http.StatusUnprocessableEntity, rec.Code, rec.Body.String())
 	assert.Contains(t, rec.Body.String(), "年齢確認がオフ")

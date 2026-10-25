@@ -2,6 +2,7 @@ package localcfg_test
 
 import (
 	"encoding/json"
+	"errors"
 	"slices"
 	"testing"
 
@@ -37,6 +38,23 @@ func TestCheckBaseURL(t *testing.T) {
 	for _, bad := range []string{"", "127.0.0.1:8188", "ftp://h", "http://", "http://u:p@h", "http://h?x=1", "http://h#f", "http://169.254.169.254", "http://[fe80::1]:1", "http://0.0.0.0:1", "http://224.0.0.1"} {
 		assert.Error(t, localcfg.CheckBaseURL(bad), bad)
 	}
+}
+
+func TestValidateEndpointNamesTheFieldOfEachProblem(t *testing.T) {
+	errs := localcfg.ValidateEndpoint("Bad Name", localcfg.Endpoint{Kind: "x", BaseURL: "http://169.254.169.254", MaxConcurrency: 65, TimeoutSeconds: -1})
+
+	var fields []localcfg.EndpointField
+	for _, err := range errs {
+		var p *localcfg.EndpointError
+		require.ErrorAs(t, err, &p)
+		fields = append(fields, p.Field)
+		if p.Field == localcfg.FieldBaseURL {
+			assert.ErrorIs(t, err, localcfg.ErrBaseURLLinkLocal)
+		}
+	}
+	assert.Equal(t, []localcfg.EndpointField{localcfg.FieldName, localcfg.FieldKind, localcfg.FieldBaseURL, localcfg.FieldMaxConcurrency, localcfg.FieldTimeoutSeconds}, fields)
+	assert.Contains(t, errs[0].Error(), "endpoints Bad Name: the name must be", "the English line of the settings file's check is kept")
+	assert.NoError(t, errors.Join(localcfg.ValidateEndpoint("box", localcfg.Endpoint{Kind: localcfg.KindComfyUI, BaseURL: "http://127.0.0.1:8188"})...))
 }
 
 func TestEndpointDefaults(t *testing.T) {

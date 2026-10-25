@@ -167,13 +167,20 @@ templ KeyRow(endpoint string, k Key) {
 	</div>
 }
 
+// DraftTestResult is the answer of the connection test of the endpoint modal: the line, and the reason of an earlier
+// refused save taken away, so that the modal does not say two things at once.
+templ DraftTestResult(t TestView) {
+	@TestResult(t)
+	<p id="mam-modal-error" hx-swap-oob="delete"></p>
+}
+
 // TestResult is the line a connection test answers with.
 templ TestResult(t TestView) {
 	<div class="flex flex-col gap-1 text-xs" data-testid="local-test-result">
 		if t.OK {
 			<p class="text-emerald-300">{ t.Message }</p>
 		} else {
-			<p class="text-red-300" role="alert">{ t.Message }</p>
+			<p class="whitespace-pre-line text-red-300" role="alert">{ t.Message }</p>
 		}
 		if t.Note != "" {
 			<p class="text-amber-300" data-testid="local-test-note">{ t.Note }</p>
