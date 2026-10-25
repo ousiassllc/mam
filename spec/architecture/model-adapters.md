@@ -285,4 +285,3 @@ M3 の Multi-model routing（§13）と Audio Director の実装（§14）は [m
 ## 改訂履歴
 
 [model-adapters.changelog.md](model-adapters.changelog.md) を参照（本文の行数を増やさないよう別ファイルに分けている。環境構築 spec の Linterly 節）。
-
