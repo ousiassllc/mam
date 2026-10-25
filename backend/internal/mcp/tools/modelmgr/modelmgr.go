@@ -5,7 +5,8 @@
 //
 // The tools call the same modelmanager.Service as the screen, so the same checks hold: a model whose license needs an
 // acceptance is not installed without a record of it (install_model answers "conflict" until accept_model_license ran,
-// or the call carries the acceptance), the engine is Windows only, a pinned model file refuses installs. The long
+// or the call carries the acceptance), an adult model is neither listed nor installed until the age confirmation is on record
+// (set_adult_content; the tools never confirm on the user's behalf), the engine is Windows only, a pinned model file refuses installs. The long
 // operations (install_model_engine, install_model) answer with a job_id; get_job reads the job through the Probe of the
 // job kind "model_install". No tool returns the Hugging Face token: a read gives whether it is set and its last characters.
 package modelmgr
@@ -31,6 +32,7 @@ func Register(r *mcpkit.Registrar, svc *service.Services) {
 	r.Jobs.RegisterKind(KindModelInstall, h.probe)
 	registerEngine(r, h)
 	registerCatalog(r, h)
+	registerAdult(r, h)
 	registerExtras(r, h)
 }
 

@@ -21,6 +21,7 @@ templ Body(d Data) {
 			</div>
 		}
 		@molecules.SettingsSection("モデル", "導入すると、画像・動画のモデルとして選べます（設定の「画像・動画モデル」・Shot の生成）。ダウンロードは取得元から直接で、SHA-256 を確かめます。ライセンスの同意が要るモデルは、同意してから導入します。") {
+			@AdultCard(d.Adult)
 			<div id={ DialogID } data-testid="mm-dialog"></div>
 			@CatalogList(d.Catalog)
 		}

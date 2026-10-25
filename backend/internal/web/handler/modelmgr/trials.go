@@ -142,7 +142,7 @@ func trialDetail(r gentest.ResultView) string {
 func (h Handlers) data(c *gin.Context) view.Data {
 	ctx := c.Request.Context()
 	d := view.Data{
-		Engine: engineData(ctx, h.Svc, "", false), Catalog: catalogData(ctx, h.Svc, nil), HF: hfData(h),
+		Engine: engineData(ctx, h.Svc, "", false), Adult: adultData(h.Svc), Catalog: catalogData(ctx, h.Svc, nil), HF: hfData(h),
 		External: view.External{Endpoints: h.externalEndpoints(c)},
 		Trial:    h.trialPanel(ctx, view.TrialForm{}, "", ""),
 	}

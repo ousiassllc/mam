@@ -3,6 +3,7 @@
  "name": "Qwen-Image (fp8)",
  "kind": "image",
  "tier": "standard",
+ "content_rating": "general",
  "description": "文字の描画と指示への忠実さに強い画像モデル。拡散モデル・テキストエンコーダー・VAE の 3 ファイル（合計約 30 GB）。",
  "files": [
   {

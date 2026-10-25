@@ -129,6 +129,7 @@ func New(t *testing.T, opts ...Option) *Rig {
 	r.Gentest = gentest.New(gentest.Deps{
 		Repo: gentestrepo.New(r.db), Jobs: r.Queue, JobTable: r.Table, Adapter: r.Adapter, DataDir: r.DataDir, AssetsDir: t.TempDir(),
 		Projects: repository.NewProjectRepository(r.db), Assets: repository.NewAssetRepository(r.db), References: repository.NewReferenceRepository(r.db),
+		Hidden: r.Svc.HidesModel,
 	})
 	r.Gentest.Register()
 	t.Cleanup(func() { r.Queue.Stop(); r.Svc.Close() })
@@ -178,6 +179,12 @@ func (r *Rig) InstallModel(id string) modelmanager.JobStatus {
 	ref, err := r.Svc.InstallModel(context.Background(), id, accept)
 	require.NoError(r.T, err)
 	return r.Wait(ref.JobID)
+}
+
+// ConfirmAdult opens the age gate as a user who confirmed would (the confirmation of the current wording).
+func (r *Rig) ConfirmAdult() {
+	r.T.Helper()
+	require.NoError(r.T, r.Svc.SetAdultContent(true, &modelmanager.AdultConfirmation{Adult: true, NoticeVersion: modelmanager.AdultNoticeVersion}))
 }
 
 // ModelFile is where the installed file lies (for a test that checks the disk).
