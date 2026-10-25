@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
@@ -26,6 +27,9 @@ func (s *Service) AcceptLicense(modelID string, ref LicenseRef) error {
 	if !ok {
 		return ErrNotFound
 	}
+	if !s.allowed(m) {
+		return ErrAdultNotConfirmed
+	}
 	if ref.ID != m.License.ID || ref.Version != m.License.Version {
 		return invalid("同意するライセンスが違います（%s %s が必要です）", m.License.ID, m.License.Version)
 	}
@@ -33,13 +37,13 @@ func (s *Service) AcceptLicense(modelID string, ref LicenseRef) error {
 		if st.Consents == nil {
 			st.Consents = map[string]store.Consent{}
 		}
-		st.Consents[m.License.ID] = store.Consent{Version: m.License.Version, AcceptedAt: s.Now().UTC()}
+		st.Consents[consentKey(m)] = store.Consent{Version: m.License.Version, AcceptedAt: s.Now().UTC()}
 	})
 }
 
 // accepted reports whether the license of m was accepted in its current version.
 func (s *Service) accepted(m catalog.Model) bool {
-	c, ok := s.state.Get().Consents[m.License.ID]
+	c, ok := s.state.Get().Consents[consentKey(m)]
 	return ok && c.Version == m.License.Version
 }
 
@@ -53,6 +57,9 @@ func (s *Service) InstallModel(ctx context.Context, modelID string, accept *Lice
 	m, ok := s.cat.Model(modelID)
 	if !ok {
 		return JobRef{}, ErrNotFound
+	}
+	if !s.allowed(m) {
+		return JobRef{}, ErrAdultNotConfirmed
 	}
 	if !s.bundled {
 		return JobRef{}, ErrUnsupported
@@ -123,6 +130,9 @@ func (s *Service) runModelInstall(ctx context.Context, id string, set func(track
 	if !ok {
 		return fmt.Errorf("model %q is not in the catalog", id)
 	}
+	if !s.allowed(m) { // the gate was closed after the job was queued (or before a restart resumed it)
+		return ErrAdultNotConfirmed
+	}
 	if err := s.Layout.CheckWritable(); err != nil {
 		return err
 	}
@@ -187,6 +197,10 @@ func (s *Service) fetchFile(ctx context.Context, dest string, f catalog.File, op
 	err := fetch.Download(ctx, dest, fetch.Source{URL: f.URL, SHA256: f.SHA256, Size: f.Size}, opts)
 	if err == nil || ctx.Err() != nil {
 		return err
+	}
+	var he *fetch.HTTPError
+	if errors.As(err, &he) && (he.Status == http.StatusNotFound || he.Status == http.StatusGone) {
+		return sourceGone(f, he.Status, err)
 	}
 	return fmt.Errorf("%s: %w", f.Name, err)
 }

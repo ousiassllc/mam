@@ -22,7 +22,9 @@
 | POST | `/model-manager/jobs/:job/cancel` | 動いている導入の中断（エンジンのカードか一覧を返す）。ジョブは失敗で終わり、ダウンロード済みの分は残って再開できる。動いていないジョブは 404 |
 | GET | `/model-manager/models` | モデルの一覧（`#mm-catalog`）。導入中は自分で取り直す。クエリ `jobs`（カンマ区切り）は報告するジョブ。終わったら「導入しました」／失敗の理由を出し、試し生成の区画を `hx-swap-oob` で描き直す |
 | GET | `/model-manager/models/:id/consent` | ライセンスの確認ダイアログ（`#mm-dialog` に差し込む）。同意が要らないモデルは 404 |
-| POST | `/model-manager/models/:id/install` | モデルの導入（ジョブ）。同意が要るモデルは、フォーム `agree=1`・`license_id`・`license_version` で同意を渡す。**同意の記録が無ければ、画面を経ずに叩いても 409 で、ジョブは作らない**（サービスが強制する）。202 で一覧を返し、ダイアログを閉じる |
+| GET | `/model-manager/adult/confirm` | 成人向けモデルの年齢確認と注意書きのダイアログ（`#mm-dialog` に差し込む） |
+| PUT | `/model-manager/adult` | 設定「成人向けモデルを表示する」（既定オフ）。フォーム `on`（`1` / `0`）。**オンにする最初の 1 回**は、ダイアログの `notice_version`（`Service.AdultContent().NoticeVersion`）と `agree=1`（18 歳以上の確認と注意書きへの同意）が要る。確認の記録（日時・注意書きの版）が `state.json` に残り、以後のオン／オフは `on` だけでよい。確認の記録が無く `notice_version` も無いオンは 409、`agree` が無い・版が違うのは 422（ダイアログに理由を出し、ゲートは開かない）。200 でカード（`#mm-adult`）を返し、モデルの一覧・試し生成の区画を `hx-swap-oob` で描き直し、ダイアログを閉じる。**確認が無い間は、一覧（`GET /model-manager/models`）に成人向けのモデルが出ず、試し生成のフォームにも導入済みの成人向けモデルが出ず、名指しの要求は 404** |
+| POST | `/model-manager/models/:id/install` | モデルの導入（ジョブ）。同意が要るモデルは、フォーム `agree=1`・`license_id`・`license_version` で同意を渡す。**同意の記録が無ければ、画面を経ずに叩いても 409 で、ジョブは作らない**（サービスが強制する）。**成人向けのモデルは、年齢確認が無ければ同意を渡しても 409**（下の `adult`）。202 で一覧を返し、ダイアログを閉じる |
 | DELETE | `/model-manager/models/:id` | モデルの削除。画像の用途・Quality Policy に使われていれば 422、導入中は 409、未導入は 409。他のモデルと共有するファイルは残る |
 | GET | `/model-manager/dialog` | 空（ダイアログを閉じる） |
 | PUT | `/model-manager/hf-token` | Hugging Face のトークンの保存。フォーム `token`。応答は「設定済み（末尾 4 文字）」の状態だけで、**値は返さない** |
@@ -44,6 +46,7 @@
 |-----------------|------|-------------|------------------------|
 | `*InvalidError`・`ErrNoGPU`・`engine.ErrVariant` | 422 | `validation` | サービスのメッセージ（GPU が無いときは案内。CPU は明示的に選ぶ） |
 | `ErrConsentRequired` | 409 | `conflict` | 「このモデルのライセンスに同意してから導入してください」（同意ダイアログを開いたままにする） |
+| `ErrAdultNotConfirmed` | 409 | `conflict` | 「成人向けモデルです。年齢の確認と注意書きへの同意を済ませ、「成人向けモデルを表示する」をオンにしてください」（導入・同意・読み取りのどれも、何も記録せず何もダウンロードしない） |
 | `ErrBusy` | 409 | `conflict` | 導入・試し生成が実行中 |
 | `ErrPinned` | 409 | `conflict` | `--model-config` で固定されているため、導入・削除できない |
 | `ErrUnsupported` | 409 | `conflict` | 同梱の ComfyUI は Windows 版だけ。外部の ComfyUI の URL を使う |
@@ -74,3 +77,4 @@
 |----|------|---------|---------|
 | 1.0 | 2026-10-25 | 新規作成（ルート・エラーの対応・画面・テスト） | Issue #833。モデルマネージャーの画面 |
 | 1.1 | 2026-10-26 | 試し生成のルートを、生成テスト（[endpoints-gentest.md](endpoints-gentest.md)）の 1 件のバッチを動かすものに改めた（一覧は履歴の結果・`jobs` クエリを廃止・`:id` は結果の ID）。試し生成の区画に生成テスト画面へのリンクを足した | Issue #835 |
+| 1.2 | 2026-10-25 | 成人向けモデルの年齢確認のルート（`GET /model-manager/adult/confirm`・`PUT /model-manager/adult`）と、`ErrAdultNotConfirmed`（409）を足した。モデルの一覧・導入・試し生成の選択肢は、確認が無い間は成人向けのモデルを出さず、導入は 409 | Issue #841 |

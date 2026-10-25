@@ -1,0 +1,85 @@
+package modelmgr
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// AdultCard is the setting "成人向けモデルを表示する" (off by default). Turning it on the first time opens the dialog that
+// asks the age confirmation and the agreement to the notice; the server records it and enforces it (the screen is only how
+// the user gives it).
+templ AdultCard(a Adult) {
+	<div id={ AdultID } class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3" data-testid="mm-adult">
+		@notice(a.Message, "mm-adult")
+		if a.Enabled {
+			<p class="text-sm" data-testid="mm-adult-status">成人向けモデルを表示しています（確認: { a.ConfirmedAt }）。</p>
+			@atoms.Button(atoms.ToneNeutral, "成人向けモデルを隠す", templ.Attributes{
+				"type": "button", "hx-put": paths.ModelManagerPart("adult"), "hx-vals": atoms.HxVals(map[string]string{FieldOn: "0"}),
+				"hx-target": "#" + AdultID, "hx-swap": "outerHTML", "hx-sync": "this:drop", "hx-disabled-elt": "this",
+				"aria-pressed": "true", "data-testid": "mm-adult-off",
+			})
+		} else {
+			<p class="text-sm text-neutral-300" data-testid="mm-adult-status">成人向けモデル（非検閲のモデル・LoRA）は表示していません。18 歳以上の確認と注意書きへの同意の後に、一覧・導入・試し生成に出ます。</p>
+			if a.Confirmed {
+				@atoms.Button(atoms.ToneNeutral, "成人向けモデルを表示する", templ.Attributes{
+					"type": "button", "hx-put": paths.ModelManagerPart("adult"), "hx-vals": atoms.HxVals(map[string]string{FieldOn: "1"}),
+					"hx-target": "#" + AdultID, "hx-swap": "outerHTML", "hx-sync": "this:drop", "hx-disabled-elt": "this",
+					"aria-pressed": "false", "data-testid": "mm-adult-on",
+				})
+			} else {
+				@atoms.Button(atoms.ToneNeutral, "成人向けモデルを表示する…", templ.Attributes{
+					"type": "button", "hx-get": paths.ModelManagerPart("adult", "confirm"), "hx-target": "#" + DialogID, "hx-swap": "innerHTML",
+					"aria-pressed": "false", "data-testid": "mm-adult-open",
+				})
+			}
+		}
+	</div>
+}
+
+// AdultDialog is the age confirmation and the notice for adult models, with the form that turns the setting on.
+templ AdultDialog(d AdultConfirm) {
+	<section
+		class="flex flex-col gap-3 rounded-md border border-amber-500/60 bg-neutral-900 p-4"
+		role="dialog"
+		aria-labelledby="mm-adult-title"
+		data-testid="mm-adult-dialog"
+	>
+		<h3 id="mm-adult-title" class="text-sm font-semibold">成人向けモデルを表示する前の確認</h3>
+		if d.Error != "" {
+			<p class="text-sm text-red-300" role="alert" data-testid="mm-adult-dialog-error">{ d.Error }</p>
+		}
+		<p class="text-sm text-neutral-200" data-testid="mm-adult-notice">{ d.Notice }</p>
+		<p class="text-xs text-neutral-400">モデルの重みは mam が再配布するものではありません。モデルごとのライセンスへの同意は、導入のときに別に取ります。生成物の内容は mam では選別しません。ローカルでの利用はあなたの責任です。</p>
+		<form
+			class="flex flex-col gap-3"
+			hx-put={ paths.ModelManagerPart("adult") }
+			hx-target={ "#" + AdultID }
+			hx-swap="outerHTML"
+			hx-sync="this:drop"
+			hx-disabled-elt="find button[type=submit]"
+			data-testid="mm-adult-form"
+		>
+			<input type="hidden" name={ FieldOn } value="1"/>
+			<input type="hidden" name={ FieldNoticeV } value={ d.NoticeVersion }/>
+			<label class="flex items-start gap-2 text-sm">
+				@atoms.Choice("mt-1", templ.Attributes{"type": "checkbox", "name": FieldAgree, "value": "1", "required": true, "data-testid": "mm-adult-agree"})
+				<span>私は 18 歳以上（またはお住まいの地域で成年）であり、上の注意書きに同意します</span>
+			</label>
+			<div class="flex gap-2">
+				@atoms.Button(atoms.TonePrimary, "確認して表示する", templ.Attributes{"type": "submit"})
+				@atoms.Button(atoms.ToneNeutral, "閉じる", templ.Attributes{
+					"type": "button", "hx-get": paths.ModelManagerPart("dialog"), "hx-target": "#" + DialogID, "hx-swap": "innerHTML",
+				})
+			</div>
+		</form>
+	</section>
+}
+
+// AdultWithCatalog is the answer of turning the setting on or off: the card, and what it changes out of band (the model list,
+// the choices of the trial generation, the closed dialog).
+templ AdultWithCatalog(a Adult, c Catalog, t TrialPanel) {
+	@AdultCard(a)
+	@CatalogList(c)
+	@TrialSection(t)
+	@DialogClear()
+}

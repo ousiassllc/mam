@@ -85,7 +85,9 @@ ComfyUI **v0.42.1** のリリースアセット 4 種（`ComfyUI_windows_portabl
 | フィールド | 内容 |
 |---|---|
 | `id` / `name` / `kind` / `tier` / `description` | `kind` は `image`・`video`。`tier` は `standard` か `advanced`（同意が要る） |
-| `files[]` | `name`・`folder`（`checkpoints`・`diffusion_models`・`text_encoders`・`vae`）・`url`（**コミット固定の** Hugging Face の URL、https）・`sha256`・`size` |
+| `content_rating` | `general` か `adult`。`adult` は年齢確認（§6.2）が済むまで一覧・導入・試し生成に出ない。**`adult` は `tier = advanced`（同意必須）** |
+| `trigger_words[]` | LoRA を含むモデルのトリガー語（プロンプトに入れる語）。`loras` のファイルを持つモデルだけ |
+| `files[]` | `name`・`folder`（`checkpoints`・`diffusion_models`・`text_encoders`・`vae`・`loras`）・`url`（**コミット固定の** Hugging Face の URL、https）・`sha256`・`size`・`source_note`（第三者のミラーのとき: 原本の場所と、SHA-256 が一致することを確かめた日付。省略可） |
 | `vram` | `min_gb`（目安）・`source`（出典。無いものは保守的な値）・`estimate`（true は MAM の推定で GPU では未確認） |
 | `license` | `id`・`version`・`name`・`url`・`summary`・`commercial_use`・`commercial_condition`・`excluded_regions`・`notice` |
 | `consent_required` | true のモデルは、同意の記録が無いと導入のジョブを作れない（§6） |
@@ -105,11 +107,23 @@ ComfyUI **v0.42.1** のリリースアセット 4 種（`ComfyUI_windows_portabl
 | `sd35-medium` | 画像 | 同意 | 11.6 GB | 12 GB（推定） | Stability AI Community（年間売上 100 万 US ドル未満は無償） |
 | `hunyuanvideo15-480p` | 動画 | 同意 | 20.7 GB | 24 GB（Hunyuan の文書） | Tencent Hunyuan Community（EU・英国・韓国では無効。月間 1 億人超は別途許諾） |
 
-ワークフローは `localcfg/templates/` の **コアノード（ComfyUI 本体のノード）だけ**で書く。SDXL と Wan 2.2 は既存のテンプレートを使い、FLUX schnell/dev・SD3.5・Qwen-Image・LTX・HunyuanVideo のテンプレートを足した（`txt2img-flux-schnell` など 7 つ）。`catalog.Validate` は、各テンプレートのローダーノード（`CheckpointLoaderSimple`・`UNETLoader`・`CLIPLoader`・`DualCLIPLoader`・`VAELoader`）が、そのモデルのファイル名と一致することを確かめる。**テンプレートは構造テストだけで、GPU 実機では未検証**（画面にも「構造テストのみ・GPU 実機未検証」と出す。`ModelView.WorkflowCheck`）。
+**成人向け・LoRA の追加（Issue #841）**。VRAM はすべて推定（`estimate=true`。出典は Issue の付録の Notion の記載または MAM の推定で、GPU では未検証）。合計サイズは共有ファイルを 1 回だけ数えたものではなく、そのモデルのファイルの合計。
+
+| ID | 種別 | 区分 | 合計サイズ | VRAM 目安 | ライセンス（商用） | 備考 |
+|---|---|---|---|---|---|---|
+| `wan22-i2v-14b` | 動画 | 標準 | 35.6 GB | 16 GB（推定） | Apache-2.0（可） | 公式のベース（I2V 14B fp8、高・低ノイズ）。umt5 は `wan22-ti2v-5b` と、VAE `wan_2.1_vae` は下の 2 つと共有 |
+| `noctq-v4-qwen-image21` | 画像 | 成人向け | 17.3 GB | 16 GB（推定） | Qwen Research License（**不可**） | Noct Q V4（int8_convrot）＋共有の Qwen3-VL 8B テキストエンコーダー・VAE |
+| `chroma1-hd` | 画像 | 成人向け | 14.7 GB | 12 GB（推定） | Apache-2.0（可。ただし成人向けなので同意必須） | fp8mixed ＋ T5-XXL fp8 ＋ FLUX の `ae` |
+| `flux1-dev-nsfw-master` | 画像 | 成人向け | 17.4 GB（導入済みの `flux1-dev` があれば LoRA の 0.17 GB だけ取得） | 16 GB（推定） | FLUX.1 \[dev\] 非商用（**不可**） | `flux1-dev-fp8` を `flux1-dev` と共有＋ LoRA NSFW MASTER（`loras`、ミラー）。トリガー語 `NSFW`・`Nude` |
+| `wan22-remix-nsfw-i2v` | 動画 | 成人向け | 35.6 GB | 16 GB（推定） | ライセンスの記載なし（`unspecified`。**不可扱い**） | Remix I2V v3.0 高・低（ミラー）＋共有の TE・VAE |
+| `wan22-i2v-14b-nsfw-lora` | 動画 | 成人向け | 36.8 GB（導入済みの `wan22-i2v-14b` があれば LoRA の 1.2 GB だけ取得） | 16 GB（推定） | ライセンスの記載なし（`unspecified`。**不可扱い**） | `wan22-i2v-14b` のファイル（共有）＋ NSFW-22-H/L-e8（`loras`、ミラー）。トリガー語 `nsfwsks` |
+
+Wan 2.2 14B は T2V を入れない（I2V のみ。決定 4）。ミラーのファイル（NSFW MASTER・Remix・Wan NSFW LoRA）は、Hugging Face のミラーの SHA-256 が Civitai の原本と一致することを 2026-10-25 に確かめた（`source_note`）。Remix と Wan NSFW LoRA は HF にライセンスの本文が無く、Civitai の表示（販売まで可／Civitai 上の利用だけ）に頼らず、商用不可として入れる。除外したもの: LTX-2.3 Uncensored（テキストエンコーダーが GGUF で `ComfyUI-GGUF` が要る）・WAI-NSFW-Illustrious-SDXL（Civitai だけ）・abenzerps UC。
+ワークフローは `localcfg/templates/` の **コアノード（ComfyUI 本体のノード）だけ**で書く。SDXL と Wan 2.2 は既存のテンプレートを使い、FLUX schnell/dev・SD3.5・Qwen-Image・LTX・HunyuanVideo のテンプレートを足した（`txt2img-flux-schnell` など 7 つ）。成人向けの追加で、`txt2img-qwen-image21`（`TextEncodeQwenImage21`、25 ステップ・euler/simple・cfg 3）・`txt2img-chroma`（`CLIPLoader type=chroma`、`T5TokenizerOptions`、`BetaSamplingScheduler`、`CFGGuider` cfg 3.8）・`txt2img-flux-dev-lora`（`LoraLoaderModelOnly`、強さ 0.8）・`img2video-wan22-14b`（高ノイズ→低ノイズの 2 段の `KSamplerAdvanced`、`WanImageToVideo`、16fps）・`img2video-wan22-14b-remix`（同じ形、12 ステップ・cfg 1）・`img2video-wan22-14b-lora`（高・低のそれぞれに `LoraLoaderModelOnly`、強さ 1）の 6 つを足した（合計 17）。`catalog.Validate` は、各テンプレートのローダーノード（`CheckpointLoaderSimple`・`UNETLoader`・`CLIPLoader`・`DualCLIPLoader`・`VAELoader`・`LoraLoaderModelOnly`）が、そのモデルのファイル名（と `loras` などのフォルダ）と一致することを確かめる。**テンプレートは構造テストだけで、GPU 実機では未検証**（画面にも「構造テストのみ・GPU 実機未検証」と出す。`ModelView.WorkflowCheck`）。
 
 ### 4.3 検証（`catalog_test.go`）
 
-すべてのファイルに https の固定 URL・64 桁の SHA-256・正のサイズがあること、同意が要るモデルにライセンス情報が揃うこと、ID と（フォルダ, 名前）の重複が無いこと、テンプレートが存在し構造が正しいこと。
+すべてのファイルに https の固定 URL・64 桁の SHA-256・正のサイズがあること、同意が要るモデルにライセンス情報が揃うこと、ID と（フォルダ, 名前）の重複が無いこと、テンプレートが存在し構造が正しいこと。`content_rating` が `general` か `adult` で、`adult` は `advanced`（同意必須）であること、`license.id = unspecified` は商用不可であること、`trigger_words` は `loras` のファイルを持つモデルだけにあること、`source_note` に確認の日付があること、`loras` のファイルと `LoraLoaderModelOnly` のローダーがモデルのファイルと一致すること。新しい 6 モデルの URL・SHA-256・サイズは、Hugging Face の LFS の oid とコミットに照らした値で固定されている（`adult_test.go`）。
 
 ## 5. モデルの導入
 
@@ -139,10 +153,40 @@ ComfyUI **v0.42.1** のリリースアセット 4 種（`ComfyUI_windows_portabl
 - `consent_required` のモデルは、`InstallModel` が**同意の記録（ライセンス ID＋版）を確かめて**から、ジョブを作る。画面の確認だけに頼らず、API が強制する（MCP など他の入口でも同じ）。
 - 記録は `state.json` の `Consents`（ライセンス ID ごとに ID・版・日時）。`InstallModel` の `accept` 引数、または `AcceptLicense` で記録する。`accept` の ID や版がカタログと違えば `*InvalidError`、記録が無ければ `ErrConsentRequired`。カタログの版が変わると、改めて同意が要る。
 - ライセンスの要約・URL・商用可否・地域の制限は `ModelView.License` で画面が出す。モデルの重みは MAM が再配布せず、ライセンスはアプリ内に表示する。
+- **同意の記録の鍵**: 一般のモデルはライセンス ID（同じライセンスのモデルは 1 回の同意で足りる）。**成人向けのモデルはモデルごと**（`adult:<モデル ID>`）。同じライセンス ID でも、成人向けの注意書きと原本の場所は、その同意で見せたものだからである（`consentKey`）。
+- 成人向けのモデルの同意の文言は、**ライセンスの要約の後に、成人向けの注意書き（`ModelView.AdultNotice`）と、ミラーの原本の場所（`FileView.SourceNote`）を付ける**。ライセンスの記載が無いモデル（`license.id = unspecified`）と商用不可のモデルは、導入の前にこの要約と原本の場所を出し、同意してから導入する。
+
+### 6.1 成人向けモデル（`content_rating = adult`）の扱い
+
+- 成人向け（非検閲のモデル、または非検閲にする LoRA）は `content_rating = adult`。**必ず `tier = advanced`・`consent_required = true`**（Apache-2.0 の Chroma1-HD も。成人向けの利用条件への同意を取るため。`catalog.Validate` が確かめる）。
+- **年齢確認が済むまで、成人向けのモデルは出さず、導入させない**。画面ではなく **Service が強制する**（§6.2）。モデルのカードには「成人向け」のバッジを付ける。
+- **LoRA だけを足すモデル**（`flux1-dev-nsfw-master`・`wan22-i2v-14b-nsfw-lora`）は、ベースのファイルも `files` に含める。ベースが導入済みなら取り直さず、ベースのモデルを消しても、LoRA のモデルが残る間は共有ファイルは消えない（§7）。`trigger_words`（LoRA のトリガー語）は一覧・MCP に出す。
+- 第三者のミラー（原本が Civitai のもの）のファイルは `source_note`（原本の場所と、SHA-256 が一致することを確かめた日付）を持つ。ミラーが消えて 404・410 になったときは、取得の失敗ではなく**「取得元が消えています」**（`ErrSourceGone`。ファイル名・HTTP の状態・`source_note` を添える）で失敗する。
+
+### 6.2 年齢確認（`AdultContent`）
+
+設定「成人向けモデルを表示する」（既定はオフ）。**オンにするときに一度だけ**、18 歳以上（またはその地域の成年）であることの確認と注意書き（`AdultNotice`）への同意を求め、`state.json` の `adult_content`（`enabled`・`notice_version`・`confirmed_at`）に記録する。オフにしても記録は残り、もう一度オンにするときは聞き直さない。注意書きの文言を変えたら `AdultNoticeVersion` を上げる（古い版の確認ではゲートは開かず、聞き直す）。モデルごとのライセンスの同意（上）は、これとは別に取る。
+
+| 呼び出し | ゲートが閉じているとき |
+|---|---|
+| `Catalog()` | 成人向けのモデルを返さない |
+| `Model(id)`・`AcceptLicense`・`InstallModel` | `ErrAdultNotConfirmed`（導入は何もダウンロードせず、同意も記録しない。画面・MCP は 409 / `conflict`） |
+| 導入のジョブ（`runModelInstall`） | 待っている間に閉じられたら、始めに同じ理由で失敗する |
+| 試し生成のモデルの一覧（`mmview.TrialModels`、生成テストの `Models`・`Model`） | 導入済みの成人向けモデル（`comfyui:bundled-comfyui/<ワークフロー名>`）も出さず、名指しの要求は不明なモデルとして断る（`gentest.Deps.Hidden` = `HidesModel`） |
+| `DeleteModel` | 影響しない（導入済みのファイルの片づけは、いつでもできる） |
+
+```go
+func (*Service) AdultContent() AdultContentStatus          // enabled・confirmed・confirmed_at・notice_version・notice
+func (*Service) AdultContentEnabled() bool                 // ゲートが開いているか。#842（Hugging Face の取り込み）などが「成人向けの確認は済んだか」を聞くのはこれ
+func (*Service) SetAdultContent(on bool, *AdultConfirmation) error  // オンは確認（Adult=true・現行の NoticeVersion）が要る。確認が無く、記録も無ければ ErrAdultNotConfirmed、確認が足りなければ *InvalidError
+func (*Service) HidesModel(id string) bool                 // 試し生成などが、成人向けのモデルを隠すかを聞く
+```
+
+**MAM は年齢を自分で確認したことにしない**。画面は「同意する」のチェックの後にだけ `AdultConfirmation` を渡し、MCP の `set_adult_content` は、ユーザー自身が確認して答えた後にだけ `confirm_adult=true` で呼ぶ（`accept_model_license` と同じ扱い。mcp-tools-model-manager.md）。生成物の内容は選別しない（ローカルでの利用は利用者の責任）。
 
 ## 7. 状態・削除
 
-`state.json`: `AutoStart`・`LastPort`・`Engine`（版・変種・CPU）・`Consents`・`Models`（導入済みのファイルとワークフロー）。読めない記録は `state.json.corrupt` に退避して空から始める（MAM の起動を止めない。ファイルは残り、導入は検証し直す）。
+`state.json`: `AutoStart`・`LastPort`・`Engine`（版・変種・CPU）・`Consents`・`AdultContent`（§6.2）・`Models`（導入済みのファイルとワークフロー）。読めない記録は `state.json.corrupt` に退避して空から始める（MAM の起動を止めない。ファイルは残り、導入は検証し直す）。
 
 **削除**（`DeleteModel`）: 使われている画像用途・Quality Policy があれば `*InvalidError` で断る（`localmodels` の `UsedBy`）。`local_models` を消し、**他の導入済みモデルが使っていないファイルだけ**を消す（共有する VAE・テキストエンコーダーは、使うモデルが残る間は残す。参照数は記録した導入済みファイルから数える）。
 
@@ -157,7 +201,7 @@ ComfyUI **v0.42.1** のリリースアセット 4 種（`ComfyUI_windows_portabl
 
 ## 10. Service API（`internal/service/modelmanager`）
 
-画面・MCP は次を呼ぶ（戻りは JSON タグ付きの構造体）。エラーは `ErrUnsupported`・`ErrNotFound`・`ErrEngineNotInstalled`・`ErrAlreadyInstalled`・`ErrNotInstalled`・`ErrConsentRequired`・`ErrBusy`・`ErrNoGPU`・`ErrPinned`・`ErrEndpointMoved`・`*InvalidError`（メッセージを利用者に見せる）。
+画面・MCP は次を呼ぶ（戻りは JSON タグ付きの構造体）。エラーは `ErrUnsupported`・`ErrNotFound`・`ErrEngineNotInstalled`・`ErrAlreadyInstalled`・`ErrNotInstalled`・`ErrConsentRequired`・`ErrAdultNotConfirmed`・`ErrBusy`・`ErrNoGPU`・`ErrPinned`・`ErrEndpointMoved`・`*InvalidError`（メッセージを利用者に見せる）。取得元が消えたときのジョブの失敗は `ErrSourceGone`（利用者向けのメッセージに包む）。
 
 ```go
 func New(Deps) (*Service, error)
@@ -189,6 +233,11 @@ func (*Service) SetHuggingFaceToken(token string) error
 func (*Service) ClearHuggingFaceToken() error
 func (*Service) HuggingFaceTokenStatus() (configured bool, lastChars string, err error)
 func (*Service) ExternalInventory(ctx, endpoint string) (ExternalInventory, error)  // 外部の ComfyUI（読むだけ）
+// 成人向けモデルの年齢確認（§6.2）
+func (*Service) AdultContent() AdultContentStatus
+func (*Service) AdultContentEnabled() bool
+func (*Service) SetAdultContent(on bool, *AdultConfirmation) error
+func (*Service) HidesModel(id string) bool
 ```
 
 - **エンジンの更新**: MAM の更新とは独立。サイレントインストーラーはエンジンを取り直さない。`Engine()` の導入版と固定版（カタログ）が違えば更新できる状態で、`InstallEngine` が新しい固定版を入れる（`engine\` を入れ替え、`data\` は残る）。
@@ -203,8 +252,11 @@ func (*Service) ExternalInventory(ctx, endpoint string) (ExternalInventory, erro
 | Windows の Job Object・非表示ウィンドウでの子の起動 | 同上（Linux の `Pdeathsig` は子プロセスのテストで確認済み） |
 | 実物の ComfyUI の起動、実際の生成、ワークフロー（テンプレート）の出力 | **未検証**（テンプレートは構造と、ローダーとファイル名の一致だけ。HunyuanVideo のサンプラー設定は推定） |
 | 実物のエンジン（約 2 GB）・モデル（数十 GB）の取得と展開 | **未実施**。合成アーカイブと偽の GitHub・HF サーバー（`Range`・ハッシュ不一致・再開・空き容量不足）で確認。実アーカイブのヘッダーと BCJ2 のファイルは HTTP の `Range` で読めることを確かめた |
-| モデルの VRAM の目安 | Wan 2.2（README）と HunyuanVideo（文書）以外は MAM の推定 |
-| ポータブル版の Python・PyTorch のライセンスの一覧 | **未調査**（`THIRD_PARTY_NOTICES.md` に明記） |
+| モデルの VRAM の目安 | Wan 2.2（README）と HunyuanVideo（文書）以外は MAM の推定（成人向けの 5 モデルと `wan22-i2v-14b` もすべて `estimate=true`） |
+| 成人向け・LoRA の 6 モデルのテンプレートの実行（`txt2img-qwen-image21`・`txt2img-chroma`・`txt2img-flux-dev-lora`・`img2video-wan22-14b`・`-remix`・`-lora`） | **GPU 実機で未検証**（構造テストと、ローダーとファイル名の一致だけ。サンプラーの値は作者の推奨と ComfyUI の公式手順に基づく） |
+| Wan 2.2 14B に `wan_2.1_vae` を使うこと、Chroma の `CLIPLoader type=chroma` ＋ fp8mixed の組み合わせ | **未検証**（ComfyUI の公式手順・作者のワークフローに基づく。実機で確かめる） |
+| NSFW MASTER の作者の原本のライセンス | **未確認**（HF のミラーのタグは MIT。Civitai の API はライセンス名を返さない。全体を非商用として扱う） |
+| 実物の Hugging Face からの 6 モデルの取得（数十 GB）と、ミラーが消えたときの実際の応答 | **未実施**（偽の HF で、404 の `ErrSourceGone`・SHA-256 の不一致・共有ファイルの 1 回取得は確認） |
 
 ## 12. 画面と MCP ツール
 
@@ -212,5 +264,5 @@ func (*Service) ExternalInventory(ctx, endpoint string) (ExternalInventory, erro
 - **MCP ツール**: `mcp/tools/modelmgr`（エンジン・カタログ・トークン・外部）と 生成テストの `mcp/tools/gentest`（試し生成もこれで行う）。仕様は [mcp-tools-model-manager.md](../../api/mcp-tools-model-manager.md)・[mcp-tools-generation-test.md](../../api/mcp-tools-generation-test.md)。ジョブの種別 `model_install` の Probe はこの画面側、`gentest` の Probe は生成テスト側にあり、`get_job` が状態・進捗・結果・失敗の理由を返す。
 - **共有**: サービスの拒否は `service/modelmanager/mmview.Refuse`（種類とメッセージ）で、画面の HTTP 状態と MCP のエラーコードに写す（`ErrConsentRequired`・`ErrBusy`・`ErrPinned`・`ErrUnsupported` は 409 / `conflict`、`ErrNoGPU`・`*InvalidError` は 422 / `validation`）。`mmview.TrialModels` は試し生成の選択肢（モデルの識別子・動画の解像度と長さ・参照画像を使えるか）。
 - **導入の中断**: `CancelInstall`。ジョブは失敗で終わり（理由に「導入を中断しました」）、`.part` は残るので、導入し直すと続きから再開する。
-- **同意の強制は API**: 画面のダイアログは同意を渡す手段で、`InstallModel` が記録を確かめる（§6）。MCP からも同じ（記録が無ければ 409 / `conflict`）。
+- **同意の強制は API**: 画面のダイアログは同意を渡す手段で、`InstallModel` が記録を確かめる（§6）。MCP からも同じ（記録が無ければ 409 / `conflict`）。**年齢確認も同じ**（§6.2）: 画面のダイアログ（`PUT /model-manager/adult`）と MCP の `set_adult_content` は確認を渡す手段で、`Catalog`・`InstallModel`・試し生成の一覧は Service が閉じる。`ErrAdultNotConfirmed` は 409 / `conflict`（`mmview.Refuse`）。
 - **テスト用の部品**: `service/modelmanager/mmtest` は偽の GitHub / Hugging Face（`Range`・保留 `Hold` つき）・偽のエンジンのプロセス・ジョブキューつきの `Service` を作る（画面と MCP のテストが共有する）。

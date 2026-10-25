@@ -3,6 +3,7 @@ package modelmgr
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -173,18 +174,30 @@ func blockedText(ctx context.Context, svc *modelmanager.Service) string {
 func modelData(ctx context.Context, svc *modelmanager.Service, m modelmanager.ModelView, free uint64) view.Model {
 	out := view.Model{
 		ID: m.ID, Name: m.Name, KindLabel: kindLabel(string(m.Kind)), Advanced: m.Tier == "advanced", Description: m.Description,
+		Adult: m.ContentRating == catalog.RatingAdult, TriggerWords: m.TriggerWords, Sources: sourcesOf(m),
 		Size: bytesText(m.TotalSize), Need: bytesText(m.NeedBytes), VRAM: vramText(m.VRAM.MinGB, m.VRAM.Source, m.VRAM.Estimate),
 		License: licenseOf(m.License), Consent: m.ConsentRequired, Accepted: m.Accepted, NeedsToken: m.RequiresHFToken,
 		State: string(m.State), ModelIDs: m.ModelIDs, WorkflowCheck: m.WorkflowCheck,
 		LowDisk: m.NeedBytes > 0 && free > 0 && uint64(m.NeedBytes) > free,
 	}
 	for _, f := range m.Files {
-		out.Files = append(out.Files, view.File{Path: f.Folder + "/" + f.Name, Size: bytesText(f.Size), Present: f.Present, Shared: f.SharedWith})
+		out.Files = append(out.Files, view.File{Path: f.Folder + "/" + f.Name, Size: bytesText(f.Size), Present: f.Present, Shared: f.SharedWith, SourceNote: f.SourceNote})
 	}
 	if m.InstallJob != "" {
 		out.Install = progressOf(ctx, svc, m.InstallJob)
 	}
 	return out
+}
+
+// sourcesOf is the places of the originals of the model's mirrored files, each once, in the order of the files.
+func sourcesOf(m modelmanager.ModelView) []string {
+	var notes []string
+	for _, f := range m.Files {
+		if f.SourceNote != "" && !slices.Contains(notes, f.SourceNote) {
+			notes = append(notes, f.SourceNote)
+		}
+	}
+	return notes
 }
 
 func kindLabel(kind string) string {

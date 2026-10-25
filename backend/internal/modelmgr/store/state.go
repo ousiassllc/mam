@@ -27,6 +27,16 @@ type Consent struct {
 	AcceptedAt time.Time `json:"accepted_at"`
 }
 
+// AdultContent records the age confirmation (18 or over, or of age where the user lives) and the agreement to the notice
+// for adult models, with the version of the wording that was shown and when. Enabled is the setting "show adult models":
+// turning it off keeps the confirmation (it is asked once), turning it on without a confirmation of the current wording
+// is refused.
+type AdultContent struct {
+	Enabled       bool      `json:"enabled"`
+	NoticeVersion string    `json:"notice_version"`
+	ConfirmedAt   time.Time `json:"confirmed_at"`
+}
+
 // InstalledFile is a file of an installed model as it was verified.
 type InstalledFile struct {
 	Path   string `json:"path"` // models/<folder>/<name>
@@ -53,6 +63,8 @@ type State struct {
 	Engine   *EngineRecord             `json:"engine,omitempty"`
 	Consents map[string]Consent        `json:"consents,omitempty"`
 	Models   map[string]InstalledModel `json:"models,omitempty"`
+	// AdultContent is the age confirmation and the "show adult models" setting (nil: never confirmed, adult models hidden).
+	AdultContent *AdultContent `json:"adult_content,omitempty"`
 }
 
 // clone copies the maps, so that a caller cannot change what the store holds.
@@ -62,6 +74,10 @@ func (s State) clone() State {
 	if s.Engine != nil {
 		e := *s.Engine
 		s.Engine = &e
+	}
+	if s.AdultContent != nil {
+		a := *s.AdultContent
+		s.AdultContent = &a
 	}
 	return s
 }

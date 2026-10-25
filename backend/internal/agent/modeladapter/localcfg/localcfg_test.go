@@ -2,6 +2,7 @@ package localcfg_test
 
 import (
 	"encoding/json"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -101,19 +102,20 @@ func comfy() map[string]localcfg.Endpoint {
 const coreVersion = "v0.42.1"
 
 var coreNodes = []string{
-	"BasicScheduler", "CFGGuider", "CLIPLoader", "CLIPTextEncode", "CheckpointLoaderSimple", "ConditioningZeroOut",
-	"CreateVideo", "DualCLIPLoader", "EmptyHunyuanVideo15Latent", "EmptyLTXVLatentVideo", "EmptyLatentImage",
-	"EmptySD3LatentImage", "FluxGuidance", "KSampler", "KSamplerSelect", "LTXVConditioning", "LTXVImgToVideo",
-	"LTXVScheduler", "LoadImage", "ModelSamplingAuraFlow", "ModelSamplingSD3", "RandomNoise", "SamplerCustom",
-	"SamplerCustomAdvanced", "SaveImage", "SaveVideo", "UNETLoader", "VAEDecode", "VAEDecodeTiled", "VAEEncode",
-	"VAELoader", "Wan22ImageToVideoLatent",
+	"BasicScheduler", "BetaSamplingScheduler", "CFGGuider", "CLIPLoader", "CLIPTextEncode", "CheckpointLoaderSimple",
+	"ConditioningZeroOut", "CreateVideo", "DualCLIPLoader", "EmptyHunyuanVideo15Latent", "EmptyLTXVLatentVideo",
+	"EmptyLatentImage", "EmptySD3LatentImage", "FluxGuidance", "KSampler", "KSamplerAdvanced", "KSamplerSelect",
+	"LTXVConditioning", "LTXVImgToVideo", "LTXVScheduler", "LoadImage", "LoraLoaderModelOnly", "ModelSamplingAuraFlow",
+	"ModelSamplingSD3", "RandomNoise", "SamplerCustom", "SamplerCustomAdvanced", "SaveImage", "SaveVideo",
+	"T5TokenizerOptions", "TextEncodeQwenImage21", "UNETLoader", "VAEDecode", "VAEDecodeTiled", "VAEEncode",
+	"VAELoader", "Wan22ImageToVideoLatent", "WanImageToVideo",
 }
 
 // Every built-in template is a valid model: each assignment points to an existing, literal input of an
 // existing node, the output node exists, and the capabilities follow from the assignments.
 func TestTemplatesAreStructurallyValid(t *testing.T) {
 	templates := localcfg.Templates()
-	require.Len(t, templates, 11)
+	require.Len(t, templates, 17)
 	byMedia := map[localcfg.Media]int{}
 	for _, tpl := range templates {
 		byMedia[tpl.Media]++
@@ -129,8 +131,8 @@ func TestTemplatesAreStructurallyValid(t *testing.T) {
 		assert.True(t, found)
 		assert.Equal(t, tpl.ID, got.ID)
 	}
-	assert.Equal(t, 6, byMedia[localcfg.MediaImage])
-	assert.Equal(t, 5, byMedia[localcfg.MediaVideo])
+	assert.Equal(t, 9, byMedia[localcfg.MediaImage])
+	assert.Equal(t, 8, byMedia[localcfg.MediaVideo])
 
 	i2v, _ := localcfg.TemplateByID("img2video-wan22-5b")
 	caps, ok := i2v.Model.VideoCaps()
@@ -145,6 +147,85 @@ func TestTemplatesAreStructurallyValid(t *testing.T) {
 	assert.True(t, i2i.Model.ImageInputs(localcfg.KindComfyUI))
 	t2i, _ := localcfg.TemplateByID("txt2img-sdxl")
 	assert.False(t, t2i.Model.ImageInputs(localcfg.KindComfyUI))
+}
+
+// linked returns the node that feeds the input of a node (a link), for the wiring checks below.
+func linked(t *testing.T, g localcfg.Graph, id, input string) (string, localcfg.Node) {
+	t.Helper()
+	var link []json.RawMessage
+	require.NoError(t, json.Unmarshal(g[id].Inputs[input], &link), "node %s input %s is a link", id, input)
+	var from string
+	require.NoError(t, json.Unmarshal(link[0], &from))
+	return from, g[from]
+}
+
+func graphOf(t *testing.T, id string) localcfg.Graph {
+	t.Helper()
+	tpl, ok := localcfg.TemplateByID(id)
+	require.True(t, ok, id)
+	g, err := localcfg.ParseGraph(tpl.Model.Workflow.Graph)
+	require.NoError(t, err)
+	return g
+}
+
+func idsOf(g localcfg.Graph, class string) []string {
+	var ids []string
+	for id, n := range g {
+		if n.ClassType == class {
+			ids = append(ids, id)
+		}
+	}
+	slices.Sort(ids)
+	return ids
+}
+
+// The templates of the uncensored models (Issue #841): a LoRA is a LoraLoaderModelOnly between the loader and the sampler,
+// Wan 2.2 14B is two models (high noise, then low noise) on two KSamplerAdvanced, Chroma loads its text encoder as type chroma.
+func TestUncensoredModelTemplatesAreWiredAsDesigned(t *testing.T) {
+	flux := graphOf(t, "txt2img-flux-dev-lora")
+	lora := idsOf(flux, "LoraLoaderModelOnly")
+	require.Len(t, lora, 1)
+	from, _ := linked(t, flux, idsOf(flux, "KSampler")[0], "model")
+	assert.Equal(t, lora[0], from, "the sampler uses the LoRA'd model")
+	_, loaded := linked(t, flux, lora[0], "model")
+	assert.Equal(t, "CheckpointLoaderSimple", loaded.ClassType)
+	assert.JSONEq(t, "0.8", string(flux[lora[0]].Inputs["strength_model"]))
+
+	chroma := graphOf(t, "txt2img-chroma")
+	clip := idsOf(chroma, "CLIPLoader")
+	require.Len(t, clip, 1)
+	assert.JSONEq(t, `"chroma"`, string(chroma[clip[0]].Inputs["type"]))
+
+	for _, id := range []string{"img2video-wan22-14b", "img2video-wan22-14b-remix", "img2video-wan22-14b-lora"} {
+		g := graphOf(t, id)
+		assert.Len(t, idsOf(g, "UNETLoader"), 2, id)
+		samplers := idsOf(g, "KSamplerAdvanced")
+		require.Len(t, samplers, 2, id)
+		high, low := g[samplers[0]], g[samplers[1]]
+		if string(high.Inputs["add_noise"]) != `"enable"` {
+			high, low = low, high
+		}
+		assert.JSONEq(t, `"enable"`, string(high.Inputs["return_with_leftover_noise"]), id)
+		assert.JSONEq(t, `"disable"`, string(low.Inputs["add_noise"]), id)
+		assert.JSONEq(t, string(high.Inputs["end_at_step"]), string(low.Inputs["start_at_step"]), "%s: the low noise model takes over where the high noise model stops", id)
+		tpl, _ := localcfg.TemplateByID(id)
+		caps, ok := tpl.Model.VideoCaps()
+		require.True(t, ok, id)
+		assert.True(t, caps.FirstFrame, id)
+		assert.Equal(t, 16, tpl.Model.Workflow.FPS, id)
+	}
+	// every model of the LoRA template goes through its own LoRA
+	g := graphOf(t, "img2video-wan22-14b-lora")
+	require.Len(t, idsOf(g, "LoraLoaderModelOnly"), 2)
+	seen := map[string]bool{}
+	for _, id := range idsOf(g, "ModelSamplingSD3") {
+		l, n := linked(t, g, id, "model")
+		assert.Equal(t, "LoraLoaderModelOnly", n.ClassType)
+		_, u := linked(t, g, l, "model")
+		assert.Equal(t, "UNETLoader", u.ClassType)
+		seen[l] = true
+	}
+	assert.Len(t, seen, 2, "the high and the low noise model have a LoRA each")
 }
 
 func model(t *testing.T, edit func(m *localcfg.Model)) localcfg.Model {
