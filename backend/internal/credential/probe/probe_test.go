@@ -133,3 +133,25 @@ func TestSupported_OnlyTheProvidersWithAFreeReadOnlyCall(t *testing.T) {
 		assert.False(t, probe.Supported(p), p)
 	}
 }
+
+// Every test uses the same client, so the connection of the first is kept for the next: a client for each test would
+// leave a connection (and its goroutines) behind every click on "接続テスト".
+func TestProber_TestsShareOneClientAndSoOneConnection(t *testing.T) {
+	var mu sync.Mutex
+	conns := map[string]bool{}
+	srv := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		conns[r.RemoteAddr] = true
+		mu.Unlock()
+	}))
+	t.Cleanup(srv.Close)
+	p := probe.Prober{BaseURLs: map[string]string{"openai": srv.URL}}
+
+	for range 3 {
+		assert.Equal(t, probe.Accepted, p.Test(context.Background(), "openai", secret).Outcome)
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+	assert.Len(t, conns, 1, "the three calls went over one connection")
+}

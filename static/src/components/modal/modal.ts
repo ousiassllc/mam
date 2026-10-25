@@ -102,6 +102,8 @@ function restoreFocus(opener: Opener): void {
 /** Installs the modal. Call it once (main.ts). */
 export function installModal(root: Document = document): void {
   let opener: Opener | null = null;
+  // The requests sent from inside the dialog that have not been answered: closing the dialog abandons them.
+  const inFlight = new Set<XMLHttpRequest>();
 
   root.addEventListener('htmx:beforeRequest', (event) => {
     const elt = targetOf(event);
@@ -117,6 +119,13 @@ export function installModal(root: Document = document): void {
     if (dlg && insideModal(elt)) hideFailure(dlg);
   });
 
+  root.addEventListener('htmx:beforeSend', (event) => {
+    const xhr = detailOf(event).xhr;
+    if (!xhr || !insideModal(targetOf(event))) return;
+    inFlight.add(xhr);
+    xhr.addEventListener('loadend', () => inFlight.delete(xhr));
+  });
+
   // The answer of the request that opened the modal (or of a form inside it, which fills the body again): open the
   // dialog when it is not open. The new content is not processed by htmx until the swap settles (the hx-* attributes of
   // its form), and a form that is sent before that is sent by the browser itself, with the key in the address. So the
@@ -128,11 +137,14 @@ export function installModal(root: Document = document): void {
     const requester = detailOf(event).requestConfig?.elt;
     const dlg = dialog();
     if (!dlg) return;
-    label(dlg);
-    if (!dlg.open) {
-      if (!requester?.hasAttribute('data-modal-open')) return; // nothing asked for the modal: leave it closed
-      dlg.showModal();
+    // Nothing asked for the modal. An answer that comes after it was closed (a form's, which may hold what is shown
+    // once, like a token) is not kept in the closed dialog.
+    if (!dlg.open && !requester?.hasAttribute('data-modal-open')) {
+      (body as HTMLElement).replaceChildren();
+      return;
     }
+    label(dlg);
+    if (!dlg.open) dlg.showModal();
     (body as HTMLElement).inert = true;
   });
 
@@ -161,8 +173,8 @@ export function installModal(root: Document = document): void {
   // snapshot is taken, and `close` only tells later, so the body is emptied here.
   root.addEventListener('htmx:beforeHistorySave', () => {
     const dlg = dialog();
-    if (!dlg?.open) return;
-    dlg.close();
+    if (!dlg) return;
+    if (dlg.open) dlg.close();
     dlg.querySelector(BODY)?.replaceChildren();
     hideFailure(dlg);
   });
@@ -176,6 +188,10 @@ export function installModal(root: Document = document): void {
       const body = dlg.querySelector<HTMLElement>(BODY);
       if (body) body.inert = false;
       body?.replaceChildren();
+      // An answer that is on its way must not come back into the emptied body (one that has arrived is DONE: its
+      // handlers are still running, and aborting it would clear its status).
+      for (const xhr of inFlight) if (xhr.readyState !== XMLHttpRequest.DONE) xhr.abort();
+      inFlight.clear();
       hideFailure(dlg);
       dlg.removeAttribute('aria-describedby');
       const from = opener;

@@ -25,6 +25,7 @@ templ BindModal(f BindForm) {
 		}
 		<form
 			class="flex flex-col gap-3"
+			method="post"
 			hx-put={ paths.MCPBind() }
 			hx-target={ "#" + modal.BodyID }
 			hx-swap="innerHTML"
@@ -77,6 +78,7 @@ templ IssueModal(f IssueForm) {
 		}
 		<form
 			class="flex flex-col gap-3"
+			method="post"
 			hx-post={ paths.MCPTokens() }
 			hx-target={ "#" + modal.BodyID }
 			hx-swap="innerHTML"

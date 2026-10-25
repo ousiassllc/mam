@@ -70,7 +70,9 @@ func TestEdit_TheModalHasAnEmptyPasswordFieldAndNeverTheStoredKey(t *testing.T) 
 	assert.NotContains(t, body, `value="`, "no value is ever written into the key field")
 	assert.NotContains(t, body, secret)
 	assert.Equal(t, "no-store", rec.Header().Get("Cache-Control"))
-	assert.Contains(t, body, "空のまま保存すると、保存済みのキーのままです", "a provider that has a key says what an empty field means")
+	assert.Contains(t, body, "新しいキーを入力して保存すると、保存済みのキーを置き換えます", "a provider that has a key says what a save does")
+	assert.NotContains(t, body, "空のまま保存", "an empty save is refused with 422, so the copy never promises one")
+	assert.NotContains(t, body, "接続テストは、空のままなら", "kling has no connection test, so it does not say what an empty test does")
 	assert.Contains(t, body, `hx-put="/credentials/kling"`)
 	assert.Contains(t, body, `hx-sync="this:drop"`)
 	assert.Contains(t, body, `hx-disabled-elt="find button[type=submit]"`)
@@ -89,6 +91,16 @@ func TestEdit_OnlyProvidersWithAFreeReadOnlyCallHaveAConnectionTest(t *testing.T
 		assert.NotContains(t, body, "/test", p)
 		assert.Contains(t, body, "保存したあと、最初の生成で確かめられます", p)
 	}
+}
+
+// A provider with a connection test says what an empty field means there (the saved key is used); one with nothing
+// saved says nothing of it.
+func TestEdit_SaysThatAnEmptyConnectionTestUsesTheSavedKey(t *testing.T) {
+	r := newRig(t)
+	require.NoError(t, r.keys.Set("openai", secret))
+
+	assert.Contains(t, r.do(http.MethodGet, paths.CredentialEdit("openai"), nil, true).Body.String(), "接続テストは、空のままなら保存済みのキーで試します")
+	assert.NotContains(t, r.do(http.MethodGet, paths.CredentialEdit("anthropic"), nil, true).Body.String(), "保存済みのキー", "nothing is saved for it")
 }
 
 func TestEdit_UnknownProviderIs404WithAModalThatSaysSoAndANavigationGetsThePage(t *testing.T) {
@@ -194,7 +206,8 @@ func TestTest_SaysWhatTheProviderAnsweredAndSavesNothing(t *testing.T) {
 		want   string
 	}{
 		{http.StatusOK, "接続できました"},
-		{http.StatusUnauthorized, "キーが拒否されました"},
+		{http.StatusUnauthorized, "キーが拒否されました（この確認に必要な権限が足りない場合もあります）"},
+		{http.StatusForbidden, "権限を絞ったキーは、保存して最初の生成で確かめてください"},
 		{http.StatusTooManyRequests, "上限に達しています"},
 		{http.StatusInternalServerError, "通信できませんでした"},
 		{http.StatusNotFound, "想定外の応答でした（HTTP 404）"},

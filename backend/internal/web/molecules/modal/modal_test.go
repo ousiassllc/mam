@@ -41,6 +41,7 @@ func TestOpenAttrs_FillTheBodyAndCarryTheFocusKey(t *testing.T) {
 	assert.Equal(t, "#mam-modal-body", attrs["hx-target"])
 	assert.Equal(t, "innerHTML", attrs["hx-swap"])
 	assert.Equal(t, "credential-kling", attrs["data-focus-key"])
+	assert.Equal(t, "this:drop", attrs["hx-sync"], "a double click must not send the request twice: the second answer would replace what was typed")
 	assert.Equal(t, "button", attrs["type"], "it never submits a form it is in")
 	assert.Contains(t, attrs, "data-modal-open")
 }

@@ -47,6 +47,7 @@ func OpenAttrs(url, focusKey string) templ.Attributes {
 		"hx-get":          url,
 		"hx-target":       "#" + BodyID,
 		"hx-swap":         "innerHTML",
+		"hx-sync":         "this:drop", // a double click is one request: a second answer would wipe what was typed
 		"data-modal-open": true,
 		"data-focus-key":  focusKey,
 	}

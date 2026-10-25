@@ -229,7 +229,7 @@ func describe(r probe.Result) (atoms.BadgeTone, string) {
 	case probe.Accepted:
 		return atoms.BadgeOK, "接続できました。キーは受け付けられました"
 	case probe.Rejected:
-		return atoms.BadgeError, "キーが拒否されました。キーを確かめてください"
+		return atoms.BadgeError, "キーが拒否されました（この確認に必要な権限が足りない場合もあります）。権限を絞ったキーは、保存して最初の生成で確かめてください"
 	case probe.RateLimited:
 		return atoms.BadgeWarn, "上限に達しています。しばらくしてからもう一度試してください"
 	case probe.Unreachable:

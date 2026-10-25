@@ -145,6 +145,7 @@ func TestEndpointKey_SetAndClearAnswerWithTheKeyRowOnly(t *testing.T) {
 	assert.NotContains(t, body, "key-with-tail", "never the key")
 	assert.NotContains(t, body, `id="local-models-panel"`, "only the row: the other fields keep what was typed")
 	assert.Contains(t, body, `hx-delete="`+paths.LocalEndpoint("box", "key")+`"`)
+	assert.Regexp(t, `<form[^>]*method="post"[^>]*hx-put="`+paths.LocalEndpoint("box", "key")+`"`, body, "a key never goes into an address if the form is sent before htmx has it")
 
 	bad := s.do(http.MethodPut, paths.LocalEndpoint("box", "key"), url.Values{"api_key": {"has space inside"}})
 	assert.Equal(t, http.StatusUnprocessableEntity, bad.Code)

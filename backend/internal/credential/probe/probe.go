@@ -13,6 +13,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/httpclient"
@@ -34,7 +35,8 @@ const maxBody = 64 << 10
 type Outcome string
 
 // The outcomes. Accepted: the call worked with the key. Rejected: the provider refused the key (401 / 403; Google also
-// 400 for a key it does not know). RateLimited: 429. Unreachable: no answer (network, DNS, timeout) or a server error.
+// 400 for a key it does not know). A key limited to other scopes than the read call needs is refused the same way, so the
+// screen does not say more than "refused, or lacking the permission of this check". RateLimited: 429. Unreachable: no answer (network, DNS, timeout) or a server error.
 // Unexpected: any other status; the key is neither accepted nor refused.
 const (
 	Accepted    Outcome = "accepted"
@@ -84,10 +86,14 @@ func Supported(provider string) bool {
 	return ok
 }
 
+// sharedClient is the client of every Prober without one: a client keeps its connections, so one for each test would
+// leave a kept-alive connection behind every click.
+var sharedClient = sync.OnceValue(httpclient.New)
+
 // Prober makes the calls. The zero value works: the providers' own hosts and a client that does not follow a redirect to
 // another host (the key header would go with it).
 type Prober struct {
-	// Client sends the requests; nil is httpclient.New().
+	// Client sends the requests; nil is one httpclient.New() client shared by all (not one for each test).
 	Client httpclient.Doer
 	// BaseURLs replaces the host of a provider (tests); a provider that is not in it keeps its own.
 	BaseURLs map[string]string
@@ -117,7 +123,7 @@ func (p Prober) Test(ctx context.Context, provider, key string) Result {
 	req.Header.Set("Accept", "application/json")
 	client := p.Client
 	if client == nil {
-		client = httpclient.New()
+		client = sharedClient()
 	}
 	resp, err := client.Do(req)
 	if err != nil {
