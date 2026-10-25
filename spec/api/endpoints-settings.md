@@ -2,7 +2,7 @@
 
 [endpoints.md](endpoints.md) §1 の `GET /settings` の行の本体。画面の作りは [../components/settings-screen.md](../components/settings-screen.md)（枠・ナビ・概要）・[../components/settings-screen-categories.md](../components/settings-screen-categories.md)（分類ごとの一覧とモーダル）、部品は [../components/shared-ui-parts.md](../components/shared-ui-parts.md)、新しいルートの経緯と応答の決まりの下書きは [../components/settings-screen-routes.md](../components/settings-screen-routes.md)（Issue #847）。「ローカル・代替モデル」のルートは [endpoints-local-models.md](endpoints-local-models.md)。`endpoints.md` は行数の上限（300 行）に収めるため、この分類のルートはここに書く。
 
-実装の段階（settings-screen.md §7）: ① ナビ・分類ごとの URL・概要、②-1 モーダルと一覧の行の部品、②-2 API キーとログイン、②-5 ローカル・代替モデル、②-6 MCP サーバーが実装済み。LLM・画像動画のモーダルの保存（下の「実装していないもの」）は後続の段階。
+実装の段階（settings-screen.md §7）: ① ナビ・分類ごとの URL・概要、②-1 モーダルと一覧の行の部品、②-2 API キーとログイン、②-3 テキスト生成（LLM）、②-4 画像・動画モデル、②-5 ローカル・代替モデル、②-6 MCP サーバーが実装済み。
 
 ## 1. ページ（HTMX でないときはページ全体、HTMX のときは本体だけ）
 
@@ -12,8 +12,8 @@
 |------|------|----------|
 | `/settings` | **概要**。分類ごとのカード（`molecules.ToolCard`。名前・1 行の説明・いまの状態・「開く」）。先頭が「API キーとログイン」、続いて「テキスト生成（LLM）」「画像・動画モデル」「ローカル・代替モデル」「MCP サーバー」「バージョンとアップデート」、最後に「モデルマネージャー」（別の画面 `/tools/model-manager`）。カードの状態は設定ファイル・キーストアを読むだけで、外部へは通信しない | 常に |
 | `/settings/api-keys` | API キーとログイン（API キーのカード、ChatGPT のログインのカード 3 枚） | 常に |
-| `/settings/llm` | テキスト生成（LLM の割り当て。今の区画をそのまま） | LLM のサービスがあるとき |
-| `/settings/models` | 画像・動画モデル（今の区画をそのまま） | モデル設定のサービスがあるとき |
+| `/settings/llm` | テキスト生成（Agent ごとの表。§3 の「表の行の保存」。使われない Agent は折りたたみ） | LLM のサービスがあるとき |
+| `/settings/models` | 画像・動画モデル（画像の用途の表と Quality Policy の表。§3 の「表の行の保存」） | モデル設定のサービスがあるとき |
 | `/settings/local-models` | ローカル・代替モデル（モデルマネージャーのカード・接続先のカード）。HTMX のときは本体だけ、HTMX でなければ分類のページ | `localmodels.Service` があるとき |
 | `/settings/local-models/endpoints/:name` | 接続先のサブページ（接続先のカードと、そのモデルの表。モデルの追加・編集のフォームはこのページの中に開く）。タイトルは「設定: ローカル・代替モデル: <名前>」、ナビの現在の分類は「ローカル・代替モデル」。無い接続先は 404。名前が `new` の接続先（古い設定ファイルにだけある）は、追加フォームの URL に隠れるのでページが無い（一覧のカードがそう書く） | 同上 |
 | `/settings/mcp` | MCP サーバー（今の区画をそのまま） | `app` が MCP サーバーを起動したとき |
@@ -22,7 +22,7 @@
 | `/settings/local-models/health` | 概要の「ローカル・代替モデル」のカード用: 接続先ごとの接続状態の断片（接続先ごとに接続テスト `localmodels.Service.TestEndpoint` と同じ確認を同時に行い、各 3 秒で打ち切る）。常に 200（接続先が無ければ空）、`Cache-Control: no-store` | `localmodels.Service` があるとき |
 
 - ページのタイトルは概要が「設定」、分類が「設定: <分類名>」。ページ全体は `<nav aria-label="設定">`（現在の分類に `aria-current="page"`）と、分類の `<section id="settings-category">`（`h2#settings-category-title`）を持つ。分類を移るのは通常のリンク（`hx-boost` は使わない）。
-- 分類の本文の区画は、API キーとログイン・ローカル・代替モデル（「接続先」）・MCP サーバー（「トークン」）が `h3`（作り直した区画）、ほかは今の区画のまま（見出しは分類の `h2` に統合され、区画の `h2` は出ない）。
+- 分類の本文の区画は、API キーとログイン・画像・動画モデル（画像の用途の表・Quality Policy の表）・ローカル・代替モデル（「接続先」）・MCP サーバー（「トークン」）が `h3`（作り直した区画）、テキスト生成（LLM）は見出しの無い 1 つの区画（分類の `h2` が見出し）、ほかは今の区画のまま（見出しは分類の `h2` に統合され、区画の `h2` は出ない）。
 - 概要のカードの「いまの状態」の文（例: 「設定済み 3 / 10」）は、サーバーが読める値だけで組み立てる。接続先の状態だけは `/settings/local-models/health` が後から差し込む（`hx-trigger="load"`。読めないときは「状態を確認できません」）。
 
 ## 2. モーダル
@@ -33,6 +33,9 @@ HTMX 専用の断片（`#mam-modal-body` に入る）。HTMX でない GET は 4
 |--------|------|------|
 | GET | `/settings/credentials/:provider/edit` | API キーのモーダル。パスワード欄（`name=api_key`、`maxlength` は `service.MaxAPIKeyBytes`、`autofocus`、値は入れない）・「保存」・「キャンセル」、接続テストのあるプロバイダーは「接続テスト」も。未知の `provider` は 404（モーダルの断片）。キーストアが読めないときは理由と「閉じる」だけ |
 | POST | `/settings/credentials/:provider/test` | API キーの接続テスト（§4）。フォーム `api_key`（空・空白だけなら保存済みのキー）。**保存しない**。接続テストの無いプロバイダーは 404。結果は `role="status"` の 1 行の断片（`#credential-test-result` に入る）。成功・キーが拒否された・通信できない・上限に達した・想定外の応答は、いずれも 200（要求自体は成功）。保存済みのキーが無く欄も空のときと、不正な入力は 422、保存済みのキーを読めないときは 503（どちらも同じ 1 行の断片）。キーは応答・ログ・URL のどこにも出さない。`Cache-Control: no-store` |
+| GET | `/settings/llm/agents/:agent/edit` | LLM の Agent のモーダル（プライマリと代替の、プロバイダーの `<select>` とモデル名の `<input>`（`maxlength` は `llmassign.MaxModelBytes`）。既定を横に出す。「保存」・「この Agent を既定に戻す」・「キャンセル」）。未知の Agent は 404、固定（`--llm-config`）は 409（理由と「閉じる」だけ） |
+| GET | `/settings/models/images/:purpose/edit` | 画像の用途のモーダル（主・代替のモデルの `<select>`、高速版を持つモデルがあるときだけ「高速版」）。開くたびに、いま選べるモデル（登録したローカルのモデルを含む）を読む。選べなくなった保存済みのモデルは「（現在は使えません）」つきで選択済みのまま。未知の用途は 404、固定・設定ファイルが読めないときは 409 |
+| GET | `/settings/models/policies/:policy/edit` | Quality Policy のモーダル（主・代替の `<モデル>@<解像度>` の `<select>` とテイク数）。未知は 404、固定・設定ファイルが読めないときは 409 |
 | GET | `/settings/chatgpt/:kind/login` | ログインのモーダル。`:kind` は `official` / `image` / `codex`（他は 404）。方式の選択（公式は「Continue with ChatGPT」のブラウザだけ、画像・Codex はブラウザかデバイスコード）。画像が OFF の `image` は 409、エンジンが無い `codex` は 409（理由の断片）。**`?poll=1`**: ログイン中のモーダルが 2 秒ごとに取り直す。ログイン中は進行の表示、終わっていたら成功で `HX-Trigger-After-Swap: modal-close` と区画（`#chatgpt-panel`）の OOB、失敗・取り消しは方式の選択に理由（失敗のとき）を添えて返す |
 | GET | `/settings/local-models/endpoints/new`・`…/endpoints/:name/edit` | 接続先の追加・編集のモーダル。追加は名前・種類・`base_url`・同時実行数・タイムアウト・API キー（任意）と「入力中の内容で接続テスト」（`POST …/endpoints/test`。保存しない）。編集は `base_url`・同時実行数・タイムアウトだけ（名前と種類は文字）。**`?page=1`**: 接続先のサブページで開いたとき、保存はそのページの概要のカードを差し替える。固定ファイル（`--model-config`）は 409（理由の断片）、無い接続先の編集は 404 |
 | GET | `/settings/mcp/bind/edit` | MCP の待ち受け先のモーダル（候補つきの 1 欄。保存済みのアドレスが入る） |
@@ -54,6 +57,19 @@ HTMX 専用の断片（`#mam-modal-body` に入る）。HTMX でない GET は 4
 - `HX-Trigger-After-Swap` のイベントは、リクエストを出した要素がモーダルの本文の空によって DOM から消えるため、htmx 2.0.11 が `<body>` に起こし、`document` で聞く（2026-10-25 に `htmx.js` で確認）。
 - OOB の行は `hx-swap-oob="true"` なので、行の `id` が一覧に無いと swap されない。行の `id` は、API キーが `credential-row-<provider>`（一覧 `credential-list`）、ChatGPT が `chatgpt-card-<kind>`（一覧 `chatgpt-cards`）。外部由来の値は `selector.ID` を通す。
 - キーストアが保存のあとで読めなくなったときだけ、行の代わりに区画全体（`#credential-panel`、`HX-Retarget` + `HX-Reswap: outerHTML`）を「キーストアの状態を確認できません」つきで返す（保存は成功しているので、成功を失敗に見せない）。
+
+### 表の行の保存（LLM・画像・動画モデル）
+
+| Method | Path | 内容 |
+|--------|------|------|
+| PUT | `/settings/llm/agents/:agent` | 1 つの Agent の保存。フォーム `primary.provider`・`primary.model`・`fallback.provider`・`fallback.model`。**保存済みの他の Agent と合わせて**検証して書く（`llmassign.Service.Save` に 1 件だけの `map`）。成功は 200、行（`<tr id="llm-row-<agent>" hx-swap-oob="true">`。**応答の先頭**。HTML のパーサーは先頭の `<tr>` だけを行として読む）・成功のトースト・`HX-Trigger-After-Swap: modal-close`。行には `再起動で反映` の印（保存した直後の行だけ）。422 は `InvalidError.Message`（例「Writer（脚本） のプライマリ: モデル名を入力してください」）をモーダルの `role="alert"` に出し、入力を残し、問題の欄に `aria-invalid` と `autofocus`。固定は 409、未知の Agent は 404、書き込みの失敗は 500 |
+| DELETE | `/settings/llm/agents/:agent` | その Agent を既定に戻す（`Save` に既定の route を渡す。既定と同じ route は設定ファイルから消える）。`hx-confirm` は付けない（モーダルの中の操作で、いつでもやり直せる。オーナー決定）。応答は PUT と同じ |
+| PUT | `/settings/models/images/:purpose` | 1 つの画像の用途の保存。フォームは全体の保存と同じ欄の名前（`image_<用途>_<primary\|fallback>_model`・`…_fast`）。**その行だけ**検査して書く（`modelsettings.Service.SaveImage`。他の行は保存済みのまま。他の行が年齢確認で使えないモデルを指していても、この行の保存は止まらない）。成功は 200、行（`media-image-<purpose>`）・`#model-status`（注意とすべて既定に戻すの置き場。保存で変わるので同じ応答で OOB）・トースト・`modal-close`。**すぐに反映される**（再起動は要らない）。422・409・404・500 は上と同じ形（422 は選択を残す） |
+| PUT | `/settings/models/policies/:policy` | 1 つの Quality Policy の保存（`policy_<…>_<primary\|fallback>`・`policy_<…>_takes`。`SavePolicy`）。応答は上と同じ（行は `media-policy-<policy>`） |
+
+- 行の `id` と一覧: LLM は `llm-row-<agent>`（表 `llm-table`、折りたたみの表 `llm-unused-table`）、画像・動画は `media-image-<purpose>`（`media-images`）・`media-policy-<policy>`（`media-policies`）。開くボタンの `data-focus-key` は `edit-<agent>`・`edit-image-<purpose>`・`edit-policy-<policy>`（行が差し替わっても同じ）。
+- 全体の保存・リセット（`PUT` / `DELETE /settings/llm`・`/settings/models`）は MCP のツールとテストのために残す。応答は分類の本文（LLM は `#llm-assignment-panel`、画像・動画は `#model-assignment`。`hx-swap="outerHTML"`）で、画面の「すべて既定に戻す」（`hx-confirm` つき）がこの `DELETE` を呼ぶ。
+- 「画像・動画モデル」の選択肢は、ローカルのモデルを足す・消す応答には添えない（`#model-assignment` の OOB は外した。モーダルを開くたびに最新を読む）。
 
 ### 今のルートに起きた変更（パス・フォーム・状態コードは変えない）
 
@@ -82,9 +98,9 @@ HTMX 専用の断片（`#mam-modal-body` に入る）。HTMX でない GET は 4
 
 結果の分類: 2xx = 受け付けられた、401/403 = キーが拒否された、429 = 上限に達した、通信の失敗・タイムアウト = 通信できない、そのほか = 想定外の応答（ステータスコードを添える）。
 
-## 5. 実装していないもの（後続の段階）
+## 5. 今のルートのまま残すもの
 
-次はまだ今のルートのまま（settings-screen.md §7 の②-3・②-4）: `PUT`・`DELETE /settings/llm/agents/:agent` と各モーダル、`PUT /settings/models/images/:purpose`・`…/policies/:policy`、`GET /settings/llm/agents/:agent/edit`・`/settings/models/images/:purpose/edit`・`…/policies/:policy/edit`。
+§3・§5.1 のとおり、LLM・画像動画（②-3・②-4）とローカル・MCP（②-5・②-6）の保存の応答は行の OOB に作り直した。全体の保存・リセット（`PUT`・`DELETE /settings/llm`・`/settings/models`）は今のルートのまま（§6）。
 
 ## 5.1 ローカル・代替モデルと MCP サーバーの保存の応答（②-5・②-6）
 
@@ -104,7 +120,7 @@ HTMX 専用の断片（`#mam-modal-body` に入る）。HTMX でない GET は 4
 
 行（`<tr>`）と表の本体（`<tbody>`）を OOB で足す・置き換えるときは、`<template>` に包む（HTML の構文解析は、`<tr>` を表の外で読むと捨てるため。htmx は `<template>` の中の OOB を読む）。`<ul>` に足すときは `<ul hx-swap-oob="beforeend:#…">` の子として、置き換えでない OOB は要素の**中身**が入ることに注意する。
 
-## 6. 今のままの区画の保存の規則（LLM の割り当て・画像・動画モデル・アップデート。段階 ②-3 以降で作り直すまで）
+## 6. 区画の保存の規則（LLM の割り当て・画像・動画モデルの全体の保存と、アップデート）。LLM・画像動画の画面は §3 の「表の行の保存」の表とモーダルに作り直した
 
 旧 `GET /settings` の行（`endpoints.md` §1。Issue #847 で本文をここへ移した）から。
 
@@ -120,4 +136,5 @@ HTMX 専用の断片（`#mam-modal-body` に入る）。HTMX でない GET は 4
 |----|------|---------|---------|
 | 1.0 | 2026-10-25 | 新規作成。分類ごとのページ、API キーとログインのモーダル・接続テスト、モーダルの保存の応答の決まりを書いた | Issue #847。`endpoints.md` の行数上限（300 行）に収めるため、設定画面の分類のルートを別ファイルにした |
 | 1.1 | 2026-10-25 | §6 に、年齢確認がオフの間の成人向けモデルの扱い（選択肢から外す・保存済みの割り当ては「（現在は使えません）」・保存は 422）を足した | Issue #848 が `endpoints.md` §1 の `GET /settings` の行に足した規則を、#847 で行をここへ移したのに合わせて移した |
-| 1.2 | 2026-10-25 | §1 に接続先のサブページ（`GET /settings/local-models/endpoints/:name`）、§2 に接続先・MCP のモーダル（`GET …/endpoints/new`・`…/:name/edit`・`/settings/mcp/bind/edit`・`/settings/mcp/tokens/new`）、§5.1 にローカル・代替モデルと MCP の保存の応答（行の OOB、`#model-assignment` の OOB の廃止、トークンの発行の 201）を書いた。§5 の「実装していないもの」から外した | Issue #847 ②-5・②-6 |
+| 1.2 | 2026-10-25 | LLM・画像動画の分類を表とモーダルにした。`GET /settings/llm/agents/:agent/edit`・`/settings/models/images/:purpose/edit`・`…/policies/:policy/edit`、`PUT`・`DELETE /settings/llm/agents/:agent`、`PUT /settings/models/images/:purpose`・`…/policies/:policy` を足した（§2・§3）。全体の保存・リセットは残し、応答を分類の本文にした。ローカルのモデルの変更の応答は `#model-assignment` を添えなくなった | Issue #847 段階 ②-3・②-4 |
+| 1.3 | 2026-10-25 | §1 に接続先のサブページ（`GET /settings/local-models/endpoints/:name`）、§2 に接続先・MCP のモーダル（`GET …/endpoints/new`・`…/:name/edit`・`/settings/mcp/bind/edit`・`/settings/mcp/tokens/new`）、§5.1 にローカル・代替モデルと MCP の保存の応答（行の OOB、`#model-assignment` の OOB の廃止、トークンの発行の 201）を書いた。§5 の「実装していないもの」を「今のルートのまま残すもの」に改めた | Issue #847 ②-5・②-6 |

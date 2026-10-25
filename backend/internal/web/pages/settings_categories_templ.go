@@ -10,12 +10,12 @@ import templruntime "github.com/a-h/templ/runtime"
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
-	"github.com/ousiassllc/mam/backend/internal/web/organisms/llmassign"
-	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelassignment"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/chatgpt"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/credentials"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/llm"
 	local "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/local"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/mcp"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/media"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/overview"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/updatepanel"
 )
@@ -128,7 +128,7 @@ func SettingsAPIKeysBody(keys credentials.Data, login *chatgpt.Data) templ.Compo
 }
 
 // SettingsLLMBody is "テキスト生成（LLM）".
-func SettingsLLMBody(d llmassign.Data) templ.Component {
+func SettingsLLMBody(d llm.Data) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -161,13 +161,13 @@ func SettingsLLMBody(d llmassign.Data) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = llmassign.Section(d).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = llm.Section(d).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = settingsui.Category("テキスト生成（LLM）", "").Render(templ.WithChildren(ctx, templ_7745c5c3_Var6), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = settingsui.Category("テキスト生成（LLM）", "Agent ごとに、最初に呼ぶ LLM（プライマリ）と、失敗したときに切り替える LLM（代替）を選びます。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var6), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -176,7 +176,7 @@ func SettingsLLMBody(d llmassign.Data) templ.Component {
 }
 
 // SettingsModelsBody is "画像・動画モデル".
-func SettingsModelsBody(d modelassignment.Data) templ.Component {
+func SettingsModelsBody(d media.Data) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -209,13 +209,13 @@ func SettingsModelsBody(d modelassignment.Data) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = modelassignment.Section(d).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = media.Section(d).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = settingsui.Category("画像・動画モデル", "").Render(templ.WithChildren(ctx, templ_7745c5c3_Var8), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = settingsui.Category("画像・動画モデル", "画像の用途ごと・Quality Policy ごとに、主モデルと、主モデルが使えないときの代替モデルを選びます。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var8), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

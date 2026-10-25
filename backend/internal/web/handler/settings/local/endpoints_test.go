@@ -26,6 +26,7 @@ func TestSection_IsOnTheSettingsScreenWithEmptyState(t *testing.T) {
 	assert.NotContains(t, body, `data-testid="local-models-pinned"`)
 	assert.NotContains(t, body, `id="local-models-editor"`, "the forms of an endpoint are a modal, not a block under the list")
 	assert.Less(t, strings.Index(body, `data-tool="model-manager"`), strings.Index(body, `id="local-endpoints"`), "the card of the model manager is at the head")
+	assert.NotContains(t, body, `id="model-assignment"`, "the assignment of the models is a category of its own")
 }
 
 func TestEndpoint_CreateShowsItAndSavesTheFileAndTheKeyAppearsAsStatusOnly(t *testing.T) {
@@ -115,7 +116,7 @@ func TestEndpoint_DeleteRemovesItsModelsAndKeyButNotWhileAModelIsChosen(t *testi
 		url.Values{"name": {"flux"}, "media": {"image"}, "model_id": {"flux-schnell"}}).Code)
 
 	// Choose the model for a purpose, then try to delete the endpoint.
-	assign := s.do(http.MethodPut, paths.ModelSettings(), assignmentForm(t, s.modelsPage(), "image_new_reference_primary_model", "openai-compat:box/flux"))
+	assign := s.assignImage("new_reference", "image_new_reference_primary_model", "openai-compat:box/flux")
 	require.Equal(t, http.StatusOK, assign.Code, assign.Body.String())
 	refused := s.do(http.MethodDelete, paths.LocalEndpoint("box"), nil)
 	assert.Equal(t, http.StatusUnprocessableEntity, refused.Code)

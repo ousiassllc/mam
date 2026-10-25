@@ -25,8 +25,9 @@ const MaxModelBytes = 128
 // does not write it.
 var ErrPinned = errors.New("llmassign: the settings file is pinned by a start option")
 
-// InvalidError is an assignment that cannot be saved. Message is shown to the user; nothing was written.
-type InvalidError struct{ Message string }
+// InvalidError is an assignment that cannot be saved. Message is shown to the user; nothing was written. Role ("primary" /
+// "fallback") and Field ("provider" / "model") say which field of the route is to blame, when one is (else empty).
+type InvalidError struct{ Message, Role, Field string }
 
 func (e *InvalidError) Error() string { return "invalid LLM assignment: " + e.Message }
 
@@ -220,19 +221,22 @@ func (s *Service) update(edit func(routes map[string]json.RawMessage) error) err
 
 func checkRoute(a llm.Agent, r llm.Route) error {
 	for _, t := range []struct {
-		name   string
-		target llm.Target
-	}{{"プライマリ", r.Primary}, {"代替", r.Fallback}} {
+		role, name string
+		target     llm.Target
+	}{{"primary", "プライマリ", r.Primary}, {"fallback", "代替", r.Fallback}} {
 		where := labels[a] + " の" + t.name
+		bad := func(field, reason string) error {
+			return &InvalidError{Message: where + ": " + reason, Role: t.role, Field: field}
+		}
 		switch model := strings.TrimSpace(t.target.Model); {
 		case !slices.Contains(llm.Providers(), t.target.Provider):
-			return &InvalidError{Message: where + ": 未対応のプロバイダーです"}
+			return bad("provider", "未対応のプロバイダーです")
 		case model == "":
-			return &InvalidError{Message: where + ": モデル名を入力してください"}
+			return bad("model", "モデル名を入力してください")
 		case model != t.target.Model || strings.ContainsAny(model, " \t\r\n"):
-			return &InvalidError{Message: where + ": モデル名に空白や改行は含められません"}
+			return bad("model", "モデル名に空白や改行は含められません")
 		case len(model) > MaxModelBytes:
-			return &InvalidError{Message: where + ": モデル名が長すぎます"}
+			return bad("model", "モデル名が長すぎます")
 		}
 	}
 	return nil

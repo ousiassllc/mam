@@ -1,9 +1,9 @@
-// Package modelassign holds the handlers of the "画像・動画モデル" section of the global settings screen
-// (spec/api/endpoints.md). It is a package of its own because handler is at its size limit; like handler,
-// it depends on the service layer and the web layer only. view.go turns the image / video model
-// assignment between the service's types (modelsettings) and the section the screen draws
-// (modelassignment); handlers.go answers PUT and DELETE /settings/models.
-package modelassign
+// Package media holds the handlers of the "画像・動画モデル" category of the global settings screen
+// (spec/components/settings-screen-categories.md §3). It is a package of its own because handler is at its size limit; like
+// handler, it depends on the service layer and the web layer only. view.go turns the image / video model assignment between
+// the service's types (modelsettings) and the category the screen draws (organisms/settings/media); handlers.go answers the
+// modals of the rows and their saves, and the save and the reset of the whole assignment (PUT / DELETE /settings/models).
+package media
 
 import (
 	"net/url"
@@ -13,7 +13,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/service/modelsettings"
-	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelassignment"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/media"
 )
 
 // pinnedNote is what a read-only section says: the operator fixed the file with a start-up option.
@@ -38,45 +38,67 @@ var purposes = map[modelsettings.ImagePurpose]purposeInfo{
 	modelsettings.PurposeUnifiedOpenAI: {"OpenAI で統一", "設定ファイルの prefer_openai を有効にしているときだけ、新規リファレンスがこの割り当てを使います"},
 }
 
-// Data is the section for the saved assignment of v. in, when not nil, is shown instead of the saved
-// routes: the form that was submitted and refused.
-func Data(v modelsettings.View, in *modelsettings.Input) modelassignment.Data {
-	images, policies := v.Images, v.Policies
-	if in != nil {
-		images, policies = in.Images, in.Policies
-	}
-	d := modelassignment.Data{Pinned: v.Pinned, Customized: v.Customized}
+// Data is the category for the saved assignment of v.
+func Data(v modelsettings.View) media.Data {
+	d := media.Data{Pinned: v.Pinned, Customized: v.Customized}
 	if v.Pinned {
 		d.PinnedNote = pinnedNote
 	}
 	if len(v.Gated) > 0 {
 		d.GatedNote = gatedNote(v.Gated)
 	}
-	for _, m := range v.ImageModels {
-		d.ImageModels = append(d.ImageModels, modelassignment.ImageModel{Name: string(m.Model), Fast: m.Fast, AcceptsReferences: m.AcceptsReferences})
-	}
-	for _, m := range v.VideoModels {
-		for _, res := range m.Resolutions {
-			d.VideoChoices = append(d.VideoChoices, modelassignment.VideoChoice{Value: choiceValue(m.Model, res), Label: string(m.Model) + " / " + res})
-		}
-	}
 	for _, p := range modelsettings.ImagePurposes() {
-		r := images[p]
-		d.Images = append(d.Images, modelassignment.ImageRow{
-			Purpose: string(p), Label: purposes[p].label, Hint: purposes[p].hint,
-			Primary:       modelassignment.ImageTarget{Model: string(r.Primary.Model), Fast: r.Primary.Fast},
-			Fallback:      modelassignment.ImageTarget{Model: string(r.Fallback.Model), Fast: r.Fallback.Fast},
-			ReferenceNote: referenceNote(r, v.ImageModels),
-		})
+		d.Images = append(d.Images, imageRow(v, p, v.Images[p]))
 	}
 	for _, q := range domain.QualityPolicies() {
-		r := policies[q]
-		d.Policies = append(d.Policies, modelassignment.PolicyRow{
-			Policy: string(q), Label: q.Label(), Takes: r.Takes,
-			Primary: choiceValue(r.Primary.Model, r.Primary.Resolution), Fallback: choiceValue(r.Fallback.Model, r.Fallback.Resolution),
-		})
+		d.Policies = append(d.Policies, policyRow(v, q, v.Policies[q]))
 	}
 	return d
+}
+
+func imageModels(v modelsettings.View) []media.ImageModel {
+	var out []media.ImageModel
+	for _, m := range v.ImageModels {
+		out = append(out, media.ImageModel{Name: string(m.Model), Fast: m.Fast, AcceptsReferences: m.AcceptsReferences})
+	}
+	return out
+}
+
+func videoChoices(v modelsettings.View) []media.VideoChoice {
+	var out []media.VideoChoice
+	for _, m := range v.VideoModels {
+		for _, res := range m.Resolutions {
+			out = append(out, media.VideoChoice{Value: choiceValue(m.Model, res), Label: string(m.Model) + " / " + res})
+		}
+	}
+	return out
+}
+
+// imageRow is the row of purpose p whose route is r (the saved one, or what was typed).
+func imageRow(v modelsettings.View, p modelsettings.ImagePurpose, r modelsettings.ImageRoute) media.ImageRow {
+	usable := func(m domain.ModelName) bool {
+		return slices.ContainsFunc(v.ImageModels, func(o modelsettings.ImageOption) bool { return o.Model == m })
+	}
+	return media.ImageRow{
+		Purpose: string(p), Label: purposes[p].label, Hint: purposes[p].hint,
+		Primary:       media.ImageTarget{Model: string(r.Primary.Model), Fast: r.Primary.Fast, Unusable: !usable(r.Primary.Model)},
+		Fallback:      media.ImageTarget{Model: string(r.Fallback.Model), Fast: r.Fallback.Fast, Unusable: !usable(r.Fallback.Model)},
+		ReferenceNote: referenceNote(r, v.ImageModels),
+	}
+}
+
+// policyRow is the row of the Quality Policy q whose route is r.
+func policyRow(v modelsettings.View, q domain.QualityPolicy, r modelsettings.PolicyRoute) media.PolicyRow {
+	usable := func(t modelsettings.VideoTarget) bool {
+		return slices.ContainsFunc(v.VideoModels, func(o modelsettings.VideoOption) bool {
+			return o.Model == t.Model && slices.Contains(o.Resolutions, t.Resolution)
+		})
+	}
+	return media.PolicyRow{
+		Policy: string(q), Label: q.Label(), Takes: r.Takes,
+		Primary: choiceValue(r.Primary.Model, r.Primary.Resolution), Fallback: choiceValue(r.Fallback.Model, r.Fallback.Resolution),
+		PrimaryUnusable: !usable(r.Primary), FallbackUnusable: !usable(r.Fallback),
+	}
 }
 
 // gatedNote says that the saved assignment names adult models that are not offered while the age confirmation is off.
@@ -116,26 +138,34 @@ func ParseInput(form url.Values) modelsettings.Input {
 		Images:   map[modelsettings.ImagePurpose]modelsettings.ImageRoute{},
 		Policies: map[domain.QualityPolicy]modelsettings.PolicyRoute{},
 	}
-	image := func(p modelsettings.ImagePurpose, slot string) modelsettings.ImageTarget {
-		return modelsettings.ImageTarget{
-			Model: domain.ModelName(form.Get(modelassignment.ImageModelField(string(p), slot))),
-			Fast:  form.Get(modelassignment.ImageFastField(string(p), slot)) != "",
-		}
-	}
 	for _, p := range modelsettings.ImagePurposes() {
-		in.Images[p] = modelsettings.ImageRoute{
-			Primary: image(p, modelassignment.SlotPrimary), Fallback: image(p, modelassignment.SlotFallback),
-		}
+		in.Images[p] = parseImage(form, p)
 	}
 	for _, q := range domain.QualityPolicies() {
-		takes, _ := strconv.Atoi(strings.TrimSpace(form.Get(modelassignment.PolicyTakesField(string(q)))))
-		in.Policies[q] = modelsettings.PolicyRoute{
-			Primary:  videoTarget(form.Get(modelassignment.PolicyTargetField(string(q), modelassignment.SlotPrimary))),
-			Fallback: videoTarget(form.Get(modelassignment.PolicyTargetField(string(q), modelassignment.SlotFallback))),
-			Takes:    takes,
-		}
+		in.Policies[q] = parsePolicy(form, q)
 	}
 	return in
+}
+
+// parseImage is the route of purpose p in the form (the fields of media.ImageModelField and ImageFastField).
+func parseImage(form url.Values, p modelsettings.ImagePurpose) modelsettings.ImageRoute {
+	target := func(slot string) modelsettings.ImageTarget {
+		return modelsettings.ImageTarget{
+			Model: domain.ModelName(form.Get(media.ImageModelField(string(p), slot))),
+			Fast:  form.Get(media.ImageFastField(string(p), slot)) != "",
+		}
+	}
+	return modelsettings.ImageRoute{Primary: target(media.SlotPrimary), Fallback: target(media.SlotFallback)}
+}
+
+// parsePolicy is the route of the Quality Policy q in the form (media.PolicyTargetField and PolicyTakesField).
+func parsePolicy(form url.Values, q domain.QualityPolicy) modelsettings.PolicyRoute {
+	takes, _ := strconv.Atoi(strings.TrimSpace(form.Get(media.PolicyTakesField(string(q)))))
+	return modelsettings.PolicyRoute{
+		Primary:  videoTarget(form.Get(media.PolicyTargetField(string(q), media.SlotPrimary))),
+		Fallback: videoTarget(form.Get(media.PolicyTargetField(string(q), media.SlotFallback))),
+		Takes:    takes,
+	}
 }
 
 // videoTarget splits a "<model>@<resolution>" option value.

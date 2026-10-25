@@ -99,8 +99,41 @@ func (s *screen) do(method, path string, form url.Values) *httptest.ResponseReco
 // page is GET /settings/local-models (the page of the category).
 func (s *screen) page() string { return s.get(paths.LocalModels()) }
 
-// modelsPage is GET /settings/models: the image / video model assignment, which the local models are choices of.
-func (s *screen) modelsPage() string { return s.get(paths.ModelSettings()) }
+// imageModal is the modal that edits the models of an image purpose: what its select offers is what a local model is a choice of.
+func (s *screen) imageModal(purpose string) string {
+	s.t.Helper()
+	return s.modal(paths.ModelImageEdit(purpose))
+}
+
+// policyModal is the modal that edits the video models of a Quality Policy.
+func (s *screen) policyModal(policy string) string {
+	s.t.Helper()
+	return s.modal(paths.ModelPolicyEdit(policy))
+}
+
+// modal is the body of a modal, which the button of a row asks for with an HTMX request.
+func (s *screen) modal(target string) string {
+	s.t.Helper()
+	rec := s.do(http.MethodGet, target, nil)
+	require.Equal(s.t, http.StatusOK, rec.Code, rec.Body.String())
+	return rec.Body.String()
+}
+
+// assignImage chooses a model in the modal of the image purpose as the browser would: the form of the modal, one field set, saved.
+func (s *screen) assignImage(purpose, field, value string) *httptest.ResponseRecorder {
+	s.t.Helper()
+	form := formOf(s.t, s.imageModal(purpose), "media-image-form")
+	form.Set(field, value)
+	return s.do(http.MethodPut, paths.ModelImage(purpose), form)
+}
+
+// assignPolicy is assignImage for a Quality Policy.
+func (s *screen) assignPolicy(policy, field, value string) *httptest.ResponseRecorder {
+	s.t.Helper()
+	form := formOf(s.t, s.policyModal(policy), "media-policy-form")
+	form.Set(field, value)
+	return s.do(http.MethodPut, paths.ModelPolicy(policy), form)
+}
 
 func (s *screen) get(target string) string {
 	s.t.Helper()

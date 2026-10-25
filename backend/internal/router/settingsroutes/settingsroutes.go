@@ -23,12 +23,12 @@ import (
 	updatehandler "github.com/ousiassllc/mam/backend/internal/web/handler/appupdate"
 	chatgpthandler "github.com/ousiassllc/mam/backend/internal/web/handler/chatgptsettings"
 	gentesthandler "github.com/ousiassllc/mam/backend/internal/web/handler/gentest"
-	llmhandler "github.com/ousiassllc/mam/backend/internal/web/handler/llmassign"
-	modelhandler "github.com/ousiassllc/mam/backend/internal/web/handler/modelassign"
 	modelmgrhandler "github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr"
 	credentialshandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/credentials"
+	llmhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/llm"
 	localhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/local"
 	mcphandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/mcp"
+	mediahandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/media"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/settingspage"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -103,10 +103,8 @@ func Register(engine *gin.Engine, services *service.Services, s *Services, logge
 		engine.PUT(paths.ChatGPTCodexPath(), chatgpthandler.CodexSetPath(s.ChatGPT))
 	}
 	if s != nil {
-		engine.PUT(paths.LLMSettings(), llmhandler.Save(s.LLM))
-		engine.DELETE(paths.LLMSettings(), llmhandler.Reset(s.LLM))
-		engine.PUT(paths.ModelSettings(), modelhandler.Save(s.Models))
-		engine.DELETE(paths.ModelSettings(), modelhandler.Reset(s.Models))
+		llmhandler.Register(engine, s.LLM, pages.Page(paths.SettingsLLM))
+		mediahandler.Register(engine, s.Models, pages.Page(paths.SettingsModels))
 	}
 	if s != nil && s.Workflows != nil {
 		registerWorkflows(engine, s.Workflows)

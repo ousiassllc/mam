@@ -177,3 +177,32 @@ func TestResettingTheAssignmentWorksWhileTheGateIsClosed(t *testing.T) {
 	assert.Empty(t, view.Gated)
 	assert.False(t, view.Customized)
 }
+
+// A route is saved on its own: it is checked on its own, so that a route that still names an adult model (saved while the gate
+// was open) neither stops another route from being saved nor is changed by it, and a route that names one is refused.
+func TestARowIsSavedAndCheckedOnItsOwn(t *testing.T) {
+	svc, closed, _ := gatedService(t)
+	require.NoError(t, svc.Save(assigned(t, svc)))
+	*closed = true
+	var invalid *modelsettings.InvalidError
+
+	require.NoError(t, svc.SaveImage(modeladapter.PurposeNewReference, modeladapter.ImageRoute{
+		Primary: modeladapter.ImageTarget{Model: domain.ModelFlux2}, Fallback: modeladapter.ImageTarget{Model: domain.ModelNanoBanana}}))
+	require.NoError(t, svc.SavePolicy(domain.QualityBalanced, modeladapter.PolicyRoute{
+		Primary: modeladapter.VideoTarget{Model: domain.ModelKling3, Resolution: "720p"}, Fallback: modeladapter.VideoTarget{Model: domain.ModelSeedance2, Resolution: "720p"}, Takes: 4}))
+	view, err := svc.View()
+	require.NoError(t, err)
+	assert.Equal(t, domain.ModelFlux2, view.Images[modeladapter.PurposeNewReference].Primary.Model)
+	assert.Equal(t, 4, view.Policies[domain.QualityBalanced].Takes)
+	assert.Equal(t, adultImage, view.Images[modeladapter.PurposePreview].Primary.Model, "the other row is as it was")
+	assert.Equal(t, []domain.ModelName{adultImage, adultVideo}, view.Gated)
+
+	require.ErrorAs(t, svc.SaveImage(modeladapter.PurposePreview, view.Images[modeladapter.PurposePreview]), &invalid, "saved unchanged: still refused")
+	assert.Contains(t, invalid.Message, "年齢確認がオフ")
+	require.ErrorAs(t, svc.SavePolicy(domain.QualityFast, view.Policies[domain.QualityFast]), &invalid)
+	assert.Contains(t, invalid.Message, string(adultVideo))
+	require.ErrorAs(t, svc.SaveImage("nowhere", modeladapter.ImageRoute{}), &invalid)
+	require.ErrorAs(t, svc.SavePolicy("nowhere", modeladapter.PolicyRoute{}), &invalid)
+
+	require.ErrorIs(t, modelsettings.New(filepath.Join(t.TempDir(), "m.json"), true).SaveImage(modeladapter.PurposePreview, modeladapter.ImageRoute{}), modelsettings.ErrPinned)
+}

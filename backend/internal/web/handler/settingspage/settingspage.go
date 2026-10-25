@@ -23,11 +23,11 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/modelsettings"
 	updatehandler "github.com/ousiassllc/mam/backend/internal/web/handler/appupdate"
 	chatgpthandler "github.com/ousiassllc/mam/backend/internal/web/handler/chatgptsettings"
-	llmhandler "github.com/ousiassllc/mam/backend/internal/web/handler/llmassign"
-	modelhandler "github.com/ousiassllc/mam/backend/internal/web/handler/modelassign"
 	credentialshandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/credentials"
+	llmhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/llm"
 	localhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/local"
 	mcphandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/mcp"
+	mediahandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/media"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/settings/settingshttp"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
@@ -75,7 +75,7 @@ func init() {
 			return pages.SettingsLLMBody(llmhandler.SectionData(s.LLM))
 		}},
 		{paths.SettingsModels, "画像・動画モデル", func(s Services) bool { return s.Models != nil }, func(_ *gin.Context, s Services) templ.Component {
-			return pages.SettingsModelsBody(modelhandler.SectionData(s.Models))
+			return pages.SettingsModelsBody(mediahandler.SectionData(s.Models))
 		}},
 		{paths.SettingsLocalModels, "ローカル・代替モデル", func(s Services) bool { return s.LocalModels != nil }, func(_ *gin.Context, s Services) templ.Component {
 			return pages.SettingsLocalModelsBody(localhandler.SectionData(s.LocalModels))

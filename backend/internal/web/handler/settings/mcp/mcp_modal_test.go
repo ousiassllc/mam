@@ -1,4 +1,4 @@
-package web_test
+package mcp_test
 
 import (
 	"context"
