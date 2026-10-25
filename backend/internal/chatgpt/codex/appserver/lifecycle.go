@@ -10,6 +10,7 @@ import (
 
 // watch notices the end of the process: one nobody asked for is a failure (the status says so; the next use starts again).
 func (s *Server) watch(se *Session) {
+	defer close(se.recorded)
 	select {
 	case <-se.proc.Done():
 	case <-se.conn.Done():
@@ -23,7 +24,7 @@ func (s *Server) watch(se *Session) {
 	s.mu.Unlock()
 	se.proc.Stop() // the connection may have ended with the process still running
 	err := fmt.Errorf("%w", ErrStart)
-	if info := se.EndReason(); info != "" {
+	if info := se.endReason(); info != "" {
 		err = errors.New(info)
 	}
 	s.opts.Logger.Warn("codex app-server ended", "state", "failed")
