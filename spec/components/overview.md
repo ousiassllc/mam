@@ -65,6 +65,7 @@ flowchart TB
 | layout | `app_layout` | 共通シェル（CSRF メタ・JS/CSS・エラートースト領域 `#toast-region` と、`toast.ts` / `connection-notice.ts` が複製するテンプレート）。ナビゲーションは持たず、戻りは各ページの `back_link`。Mode切替・Qualityセレクタは `chat_composer` に置く |
 
 モデルマネージャー画面（`model_manager_page` と organisms の `modelmgr`）のコンポーネントは [model-manager-screen.md](model-manager-screen.md)。
+
 生成テスト画面（`gentest_pages` と organisms の `gentest`）のコンポーネントは [gentest-screen.md](gentest-screen.md)。トップ画面のツールのカード（#846。実装済み）は [home-screen.md](home-screen.md)、カード・アイコンの部品は [shared-ui-parts.md](shared-ui-parts.md)。全体の設定画面のサブページ・モーダル（#847）の画面仕様案（実装前）は [settings-screen.md](settings-screen.md)。
 
 外部由来の ID は現状 `[A-Za-z0-9_-]{1,64}`（UUID を含む）に限られ、`.`・`:`・空白を含む ID はバンドル取込で拒否される（`bundlepath.ValidID`。`spec/requirements/non-functional.md` §8）。ID セレクタ（`hx-target="#shot-<id>"` など）の CSS エスケープは、この制約が将来緩められたときに備えた多層防御で、Templ では `internal/web/selector` の `selector.ID`、`shot.ts` では `CSS.escape` で組み立てる（手で `"#shot-" + id` と連結しない。制約が緩んだ後に連結していると、`.` などを含む ID で `htmx:targetError` になり結果が画面に反映されない）。URL のセグメントを `internal/web/paths` でパスエスケープするのと同じ位置づけ。
@@ -298,3 +299,4 @@ export class MamComfyFrame extends LitElement {
 | 1.85 | 2026-10-26 | 1.80 が 2 行あったため、後ろの #831 の行を 1.82 に振り直し、以降を 1.83・1.84 にした。§4.4 に `<mam-comfy-frame>`（ノード画面の iframe。Lit は 3 → 4）を足した | 統合時に版番号が重複した。#834 の `static/src/components/comfy-frame/` が §4 に無く、`architecture/overview.md` §8 の「3 コンポーネント」の例外が仕様から辿れなかった（`comfy/comfy-embedding.md` §4） |
 | 1.86 | 2026-10-25 | §1.1 の Model Adapter の行の画像プロバイダーを、Imagen 4 を外して GPT Image 2 / Nano Banana / Nano Banana Lite / FLUX.2 にした | Imagen 4 の終了と、画像モデルの割り当て・識別子の変更（`model-adapters.md` 1.52。Issue #836・#837） |
 | 1.87 | 2026-10-25 | §3 の atoms に `icon`、molecules に `tool_card`、pages の `projects_page` にツールのカード（7 枚・3 グループ）を足し、トップ画面の文字のリンクを置き換えたことを記録した。画面仕様は [home-screen.md](home-screen.md)、部品は [shared-ui-parts.md](shared-ui-parts.md) | Issue #846 |
+| 1.88 | 2026-10-25 | §3 の「モデルマネージャー画面…」と「生成テスト画面…」の段落の間の空行を戻した | 1.87 の編集で空行が消え、2 つの段落が 1 つに結合していた（独立レビュー（PR #849 の 2 周目）の指摘）。ツールのカードの状態は `modelmanager.Service.Brief()`（ディスクに書かない）から読む |

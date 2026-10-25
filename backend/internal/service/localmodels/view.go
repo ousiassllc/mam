@@ -65,3 +65,19 @@ func (s *Service) View() (View, error) {
 	slices.SortStableFunc(v.Models, func(a, b ModelView) int { return cmp.Compare(a.ID, b.ID) })
 	return v, nil
 }
+
+// EndpointNames lists the names of the saved endpoints of the kind, sorted. Unlike View it does not ask the key store
+// about each endpoint: for a read that only counts them (the home page).
+func (s *Service) EndpointNames(kind localcfg.Kind) ([]string, error) {
+	cfg, err := s.load()
+	if err != nil {
+		return nil, err
+	}
+	var names []string
+	for _, name := range slices.Sorted(maps.Keys(cfg.Endpoints)) {
+		if cfg.Endpoints[name].Kind == kind {
+			names = append(names, name)
+		}
+	}
+	return names, nil
+}

@@ -49,15 +49,18 @@ func TestHomePage_HeadingsDoNotSkipALevel(t *testing.T) {
 }
 
 // A card is focusable by its link alone and shows where the focus is: the ring of indigo-400 on the neutral-950 page
-// (6.64:1) with a gap, as the other focus rings of the app; the text colours are the ones contrast_test accepts.
+// (6.64:1) with a gap, as the other focus rings of the app. The ring is a box-shadow, which Windows High Contrast
+// (forced-colors) drops, so the outline stays: outline-hidden is transparent normally and drawn in forced-colors mode,
+// where outline-none would remove it. The text colours are the ones contrast_test accepts.
 func TestHomeToolCards_ShowTheFocusAndKeepTheirTextReadable(t *testing.T) {
 	html := homePage(t)
 
 	card := regexp.MustCompile(`<a id="tool-nodes"[^>]*class="([^"]+)"`).FindStringSubmatch(html)
 	require.NotNil(t, card)
-	for _, c := range []string{"focus-visible:ring-2", "focus-visible:ring-indigo-400", "focus-visible:ring-offset-neutral-950", "motion-reduce:transition-none"} {
-		assert.Contains(t, card[1], c)
+	for _, c := range []string{"focus-visible:outline-hidden", "focus-visible:ring-2", "focus-visible:ring-indigo-400", "focus-visible:ring-offset-neutral-950", "motion-reduce:transition-none"} {
+		assert.Contains(t, strings.Fields(card[1]), c)
 	}
+	assert.NotContains(t, strings.Fields(card[1]), "focus-visible:outline-none", "outline-none removes the focus outline in forced-colors mode")
 	assert.Equal(t, 7, strings.Count(html, `data-testid="tool-card"`))
 	assert.NotContains(t, html, "tabindex")
 	assert.NotContains(t, html, "text-neutral-500")

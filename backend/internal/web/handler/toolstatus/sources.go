@@ -42,17 +42,11 @@ func (s Services) Sources() map[string]Source {
 
 func (s Services) comfyUI(lines func(ComfyUI) []molecules.StatusLine) Source {
 	return func(ctx context.Context) ([]molecules.StatusLine, error) {
-		st, err := s.ModelManager.Status(ctx)
+		b, err := s.ModelManager.Brief(ctx)
 		if err != nil {
 			return nil, err
 		}
-		c := ComfyUI{Supported: st.Engine.Supported, Installed: st.Engine.Installed && !st.Engine.Broken, State: st.Engine.Process.State}
-		for _, ep := range st.Endpoints {
-			if !ep.Bundled {
-				c.External++
-			}
-		}
-		return lines(c), nil
+		return lines(ComfyUI{Supported: b.Supported, Installed: b.Installed, State: b.Process, External: b.External}), nil
 	}
 }
 
@@ -72,15 +66,29 @@ func (s Services) receivedReviews(ctx context.Context) ([]molecules.StatusLine, 
 	return CountLine("受け取り", len(inbox), "受け取りなし"), nil
 }
 
-func (s Services) settings(context.Context) ([]molecules.StatusLine, error) {
-	keys, err := s.Credentials.Status()
+// settings counts the keys that are set. The OS key store can hang (a Secret Service waiting for an unlock prompt, 5 s a
+// call), and this runs on after the card gave up at the deadline, so each provider and the ChatGPT read are asked for
+// only while the request is still waiting: an abandoned read stops after the call it is in.
+func (s Services) settings(ctx context.Context) ([]molecules.StatusLine, error) {
 	configured := 0
-	for _, k := range keys {
-		if k.Configured {
+	var keysErr error
+	for _, p := range service.CredentialProviders {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		ok, err := s.Credentials.Configured(p.ID)
+		if err != nil {
+			keysErr = err
+			break
+		}
+		if ok {
 			configured++
 		}
 	}
-	return SettingsLines(configured, len(service.CredentialProviders), err, s.login()), nil
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	return SettingsLines(configured, len(service.CredentialProviders), keysErr, s.login()), nil
 }
 
 // login is the ChatGPT sign-in over the official, the image generation and the Codex methods, or nil when it cannot be

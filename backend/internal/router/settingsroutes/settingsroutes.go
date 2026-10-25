@@ -5,6 +5,7 @@ package settingsroutes
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/gin-gonic/gin"
 
@@ -66,7 +67,7 @@ func New(llmFile string, llmPinned bool, modelFile string, modelPinned bool) *Se
 // when s.Update is set, POST paths.UpdateCheck() and, when s.MCP is set, the MCP server section with its PUT / POST /
 // DELETE routes. Without s the screen has no such sections and the routes do not exist. It also adds the status routes
 // of the tool cards of the home page (registerTools), which read the services of both.
-func Register(engine *gin.Engine, services *service.Services, s *Services) {
+func Register(engine *gin.Engine, services *service.Services, s *Services, logger *slog.Logger) {
 	keys := services.Credentials
 	var update *appupdate.Service
 	if s != nil {
@@ -132,7 +133,7 @@ func Register(engine *gin.Engine, services *service.Services, s *Services) {
 		gentesthandler.Register(engine, s.Gentest)
 	}
 	engine.GET(paths.Settings(), handler.GlobalSettingsPage(keys, addSections))
-	registerTools(engine, services, s)
+	registerTools(engine, services, s, logger)
 }
 
 // registerLocalModels adds the routes of the "ローカル・代替モデル" section (spec/api/endpoints.md).
