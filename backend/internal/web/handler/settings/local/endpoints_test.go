@@ -79,6 +79,7 @@ func TestEndpoint_Refusals(t *testing.T) {
 	assert.Equal(t, http.StatusUnprocessableEntity, both.Code)
 	reason := regexp.MustCompile(`(?s)<p id="mam-modal-error"[^>]*>(.*?)</p>`).FindStringSubmatch(both.Body.String())
 	require.Len(t, reason, 2, "the reason is the alert of the modal")
+	assert.Contains(t, both.Body.String(), `value="Bad Name"`, "what was typed is shown again")
 	assert.Contains(t, reason[1], "名前は 1〜63 文字")
 	assert.Contains(t, reason[1], "リンクローカル")
 	assert.Equal(t, 1, strings.Count(reason[1], "\n"), "one line per problem: %q", reason[1])
