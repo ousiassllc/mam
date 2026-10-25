@@ -19,6 +19,7 @@ describe('modal dialog (spec/components/shared-ui-parts.md §4)', () => {
       <ul id="rows"><li id="row-a">
         <button type="button" id="opener" data-modal-open data-focus-key="edit-a" hx-get="${openUrl}" hx-target="#mam-modal-body" hx-swap="innerHTML">設定</button>
       </li></ul>
+      <span id="token-count">0 件</span>
       <button type="button" id="elsewhere">ほかのボタン</button>
       <button type="button" id="outside" hx-get="${DATA}/modal-token.html" hx-target="#mam-modal-body" hx-swap="innerHTML">ほかの要求</button>
       <dialog id="mam-modal" data-modal aria-labelledby="mam-modal-title">
@@ -136,6 +137,27 @@ describe('modal dialog (spec/components/shared-ui-parts.md §4)', () => {
     expect(document.activeElement === byId('modal-input')).to.equal(true);
   });
 
+  it('takes aria-invalid and aria-describedby off the field when an answer deletes the reason (the draft connection test)', async () => {
+    await open();
+    (byId('modal-invalid') as HTMLButtonElement).click();
+    await waitUntil(() => document.getElementById('mam-modal-error') !== null, 'the 422 body was not swapped in', {
+      timeout: 2000,
+    });
+    await waitUntil(() => !body().inert, 'the swap did not settle', { timeout: 2000 });
+    const field = byId('modal-input');
+    expect(field.getAttribute('aria-describedby')).to.equal('mam-modal-error');
+
+    (byId('draft-test') as HTMLButtonElement).click();
+    await waitUntil(() => document.getElementById('draft-ok') !== null, 'the draft answer did not arrive', {
+      timeout: 2000,
+    });
+
+    expect(document.getElementById('mam-modal-error')).to.equal(null);
+    expect(field.hasAttribute('aria-describedby')).to.equal(false);
+    expect(field.hasAttribute('aria-invalid')).to.equal(false);
+    expect((field as HTMLInputElement).value).to.equal('typed');
+  });
+
   it('opens with the reason and a close button when the target is gone (404 / 409)', async () => {
     host.remove();
     render(`${DATA}/modal-notice.html`);
@@ -157,35 +179,63 @@ describe('modal dialog (spec/components/shared-ui-parts.md §4)', () => {
     expect(document.querySelector('#toast-region [data-toast]')).to.equal(null);
   });
 
-  it('abandons a request that is in flight when the dialog is closed, so its answer never comes back into the body', async () => {
-    await open();
-    // Keep the request in flight after htmx has opened it: no answer can come until the test says, and the abort is seen.
-    let held: XMLHttpRequest | undefined;
-    let aborted = false;
+  // Keeps the next request of `click` in flight after htmx has opened it: no answer comes until `release()`, and an abort is seen.
+  async function holdRequest(click: () => void) {
+    const held: { aborted: boolean; release?: () => void } = { aborted: false };
     const hold = (e: Event) => {
       const xhr = (e as CustomEvent<{ xhr: XMLHttpRequest }>).detail.xhr;
-      held = xhr;
-      xhr.send = () => {};
+      const send = xhr.send.bind(xhr);
       const abort = xhr.abort.bind(xhr);
+      xhr.send = (payload) => {
+        held.release = () => send(payload);
+      };
       xhr.abort = () => {
-        aborted = true;
+        held.aborted = true;
         abort();
       };
     };
     document.addEventListener('htmx:beforeSend', hold);
     try {
-      (byId('modal-token') as HTMLButtonElement).click();
-      await waitUntil(() => held !== undefined, 'the request was not sent', { timeout: 2000 });
+      click();
+      await waitUntil(() => held.release !== undefined, 'the request was not sent', { timeout: 2000 });
     } finally {
       document.removeEventListener('htmx:beforeSend', hold);
     }
-    expect(aborted).to.equal(false);
+    return held;
+  }
+
+  it('abandons a GET that is in flight when the dialog is closed, so its answer never comes back into the body', async () => {
+    await open();
+    const held = await holdRequest(() => (byId('modal-token') as HTMLButtonElement).click());
+    expect(held.aborted).to.equal(false);
 
     await sendKeys({ press: 'Escape' });
     await waitUntil(() => !dialog().open, 'Esc did not close the dialog', { timeout: 2000 });
 
-    expect(aborted).to.equal(true);
+    expect(held.aborted).to.equal(true);
     expect(body().children.length).to.equal(0);
+  });
+
+  it('lets the answer of a POST that is in flight arrive after the dialog is closed: its rows are swapped, the token is not kept', async () => {
+    await open();
+    const held = await holdRequest(() => (byId('modal-issue') as HTMLButtonElement).click());
+    expect(byId('token-count').textContent).to.equal('0 件');
+
+    await sendKeys({ press: 'Escape' });
+    await waitUntil(() => !dialog().open, 'Esc did not close the dialog', { timeout: 2000 });
+    // The server may have applied it: the request is not abandoned.
+    expect(held.aborted).to.equal(false);
+
+    let swapped = false;
+    document.addEventListener('htmx:afterSwap', () => (swapped = true), { once: true });
+    held.release!();
+    await waitUntil(() => swapped, 'the answer did not arrive', { timeout: 2000 });
+
+    expect(byId('token-count').textContent).to.equal('1 件');
+    expect(dialog().open).to.equal(false);
+    expect(body().children.length).to.equal(0);
+    expect(dialog().textContent).to.not.contain('secret-token-value');
+    expect(host.innerHTML).to.not.contain('secret-token-value');
   });
 
   it('does not keep an answer in the body of a closed dialog when nothing asked for the modal (a token is shown once)', async () => {

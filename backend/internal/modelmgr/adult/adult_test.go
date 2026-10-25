@@ -60,6 +60,61 @@ func TestReadsJudgesTheFilesAGraphNamesNotTheNameOfTheModel(t *testing.T) {
 	assert.False(t, files.Reads(json.RawMessage(`{"not": "a graph"}`)), "a graph that cannot be read reads nothing")
 }
 
+func graphOf(inputs map[string]any) json.RawMessage {
+	raw, _ := json.Marshal(map[string]any{"1": map[string]any{"class_type": "Power Lora Loader (rgthree)", "inputs": inputs}})
+	return raw
+}
+
+func TestReadsWalksTheValuesAndReadsTheNamesATextHolds(t *testing.T) {
+	files := adult.FilesOf(testCatalog(), store.State{})
+
+	for name, inputs := range map[string]map[string]any{
+		"an object (rgthree Power Lora Loader)": {"lora_1": map[string]any{"on": true, "lora": "Spicy.safetensors", "strength": 1}},
+		"an object in an object":                {"a": map[string]any{"b": map[string]any{"lora": "sub/Spicy.safetensors"}}},
+		"a list":                                {"loras": []any{"other.safetensors", "Spicy.safetensors"}},
+		"a list of objects":                     {"loras": []any{map[string]any{"name": "SPICY.safetensors"}}},
+		"a lora tag":                            {"text": "a cat <lora:Spicy:0.8> on a sofa"},
+		"a lora tag with the extension":         {"text": "<lora:Spicy.safetensors:0.8>"},
+		"a lora tag of a sub folder":            {"text": "<lora:sub\\Spicy:1>"},
+		"a trailing space":                      {"lora_name": "Spicy.safetensors "},
+		"spaces around":                         {"lora_name": "  spicy.safetensors\n"},
+		"a name with a space and a path":        {"lora_name": "./sub/Spicy.safetensors "},
+		"the name as a word of a text":          {"text": "spicy, a cat"},
+	} {
+		assert.True(t, files.Reads(graphOf(inputs)), name)
+	}
+}
+
+func TestReadsDoesNotJudgeWhatDoesNotNameAnAdultFile(t *testing.T) {
+	files := adult.FilesOf(testCatalog(), store.State{})
+
+	for name, inputs := range map[string]map[string]any{
+		"a nested general file":     {"lora_1": map[string]any{"on": true, "lora": "other.safetensors", "strength": 1}},
+		"a list of general files":   {"loras": []any{"Base.safetensors", "shared.safetensors"}},
+		"a general lora tag":        {"text": "<lora:Plain:0.8> <lora:other.safetensors:1>"},
+		"a name that goes on":       {"text": "spicyfood and unspicy and spicy_2 and spicy-2 and spicy2"},
+		"a text without any name":   {"text": "a cat on a sofa", "steps": 20, "on": true, "seed": nil},
+		"general files of a nested": {"lora_1": map[string]any{"lora": "shared.safetensors"}},
+	} {
+		assert.False(t, files.Reads(graphOf(inputs)), name)
+	}
+}
+
+func TestAFileOfAUserRecordDoesNotMakeAnAdultNameGeneral(t *testing.T) {
+	st := store.State{
+		Models: map[string]store.InstalledModel{
+			"old-general": {Files: []store.InstalledFile{{Path: "models/loras/Spicy.safetensors"}}}, // no longer in the catalog
+		},
+		UserModels: map[string]store.UserModel{
+			"models/loras/Spicy.safetensors": {Name: "Spicy.safetensors", Path: "models/loras/Spicy.safetensors"},
+		},
+	}
+	files := adult.FilesOf(testCatalog(), st)
+
+	assert.True(t, files.Reads(graph(map[string]string{"lora_name": "Spicy.safetensors"})), "only a general model of the catalog subtracts a name")
+	assert.False(t, files.Reads(graph(map[string]string{"ckpt_name": "Base.safetensors"})), "a name that a general model of the catalog has is still shared")
+}
+
 func TestFilesComeFromTheRecordsToo(t *testing.T) {
 	cat := &catalog.Catalog{Models: []catalog.Model{{ID: "base", ContentRating: catalog.RatingGeneral, Files: []catalog.File{file("checkpoints", "base.safetensors")}}}}
 	st := store.State{

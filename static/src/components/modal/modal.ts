@@ -17,6 +17,7 @@ import { requestFailureMessage, type RequestFailure } from '../lib/errors';
 const DIALOG = 'dialog[data-modal]';
 const BODY = '#mam-modal-body';
 const FAILURE = '#mam-modal-failure';
+const REASON = 'mam-modal-error';
 const TITLE = 'mam-modal-title';
 const DESCRIPTION = 'mam-modal-desc';
 
@@ -30,7 +31,7 @@ interface Opener {
 
 interface RequestDetail {
   xhr?: XMLHttpRequest;
-  requestConfig?: { elt?: Element };
+  requestConfig?: { elt?: Element; verb?: string };
 }
 
 const detailOf = (event: Event) => (event as CustomEvent<RequestDetail>).detail;
@@ -69,6 +70,20 @@ function label(dlg: HTMLDialogElement): void {
   if (document.getElementById(TITLE)) dlg.setAttribute('aria-labelledby', TITLE);
 }
 
+/**
+ * A field that said its refusal was about it (`aria-invalid`, `aria-describedby` = the reason) must not point at a reason
+ * that an answer has taken away (the draft connection test deletes `#mam-modal-error` out of band).
+ */
+function dropGoneReason(dlg: HTMLDialogElement): void {
+  if (document.getElementById(REASON)) return;
+  for (const field of dlg.querySelectorAll(`[aria-describedby~="${REASON}"]`)) {
+    const rest = (field.getAttribute('aria-describedby') ?? '').split(/\s+/).filter((id) => id && id !== REASON);
+    if (rest.length > 0) field.setAttribute('aria-describedby', rest.join(' '));
+    else field.removeAttribute('aria-describedby');
+    field.removeAttribute('aria-invalid');
+  }
+}
+
 function hideFailure(dlg: HTMLDialogElement): void {
   const failure = dlg.querySelector<HTMLElement>(FAILURE);
   if (!failure) return;
@@ -102,7 +117,9 @@ function restoreFocus(opener: Opener): void {
 /** Installs the modal. Call it once (main.ts). */
 export function installModal(root: Document = document): void {
   let opener: Opener | null = null;
-  // The requests sent from inside the dialog that have not been answered: closing the dialog abandons them.
+  // The GET requests sent from inside the dialog that have not been answered (a poll, a `hx-trigger="load"`): closing the
+  // dialog abandons them. A POST / PUT / DELETE is not: the server may have applied it, and its answer (the out-of-band
+  // rows, a one-time token) must arrive; the afterSwap guard below empties the closed dialog's body again.
   const inFlight = new Set<XMLHttpRequest>();
 
   root.addEventListener('htmx:beforeRequest', (event) => {
@@ -120,8 +137,8 @@ export function installModal(root: Document = document): void {
   });
 
   root.addEventListener('htmx:beforeSend', (event) => {
-    const xhr = detailOf(event).xhr;
-    if (!xhr || !insideModal(targetOf(event))) return;
+    const { xhr, requestConfig } = detailOf(event);
+    if (!xhr || requestConfig?.verb !== 'get' || !insideModal(targetOf(event))) return;
     inFlight.add(xhr);
     xhr.addEventListener('loadend', () => inFlight.delete(xhr));
   });
@@ -146,6 +163,12 @@ export function installModal(root: Document = document): void {
     label(dlg);
     if (!dlg.open) dlg.showModal();
     (body as HTMLElement).inert = true;
+  });
+
+  // Any answer that lands in the dialog may take the reason away: the fields stop pointing at it in the same swap.
+  root.addEventListener('htmx:afterSwap', (event) => {
+    const dlg = dialog();
+    if (dlg && insideModal(targetOf(event))) dropGoneReason(dlg);
   });
 
   root.addEventListener('htmx:afterSettle', (event) => {
@@ -188,8 +211,9 @@ export function installModal(root: Document = document): void {
       const body = dlg.querySelector<HTMLElement>(BODY);
       if (body) body.inert = false;
       body?.replaceChildren();
-      // An answer that is on its way must not come back into the emptied body (one that has arrived is DONE: its
-      // handlers are still running, and aborting it would clear its status).
+      // A GET that is on its way must not come back into the emptied body (one that has arrived is DONE: its handlers
+      // are still running, and aborting it would clear its status). A POST / PUT / DELETE is let to arrive: the afterSwap
+      // guard empties the body again after the out-of-band parts (the rows) are swapped.
       for (const xhr of inFlight) if (xhr.readyState !== XMLHttpRequest.DONE) xhr.abort();
       inFlight.clear();
       hideFailure(dlg);

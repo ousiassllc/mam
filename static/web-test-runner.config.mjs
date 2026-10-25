@@ -30,6 +30,12 @@ async function hxTriggerMiddleware(ctx, next) {
 // The answers of the modal dialog (test: modal): a saved form closes it through `HX-Trigger-After-Swap: modal-close`, a
 // refused one is a 422 with the form again.
 async function modalAnswerMiddleware(ctx, next) {
+  // The answer of a POST (the dev server only serves files on GET): a token issued, with a row to swap out of band.
+  if (ctx.method === 'POST' && ctx.path.endsWith('/modal-issued.html')) {
+    ctx.type = 'text/html';
+    ctx.body = await readFile(new URL('./src/components/testdata/modal-issued.html', import.meta.url));
+    return;
+  }
   await next();
   if (ctx.path.endsWith('/modal-saved.html')) ctx.set('HX-Trigger-After-Swap', 'modal-close');
   if (ctx.path.endsWith('/modal-invalid.html')) ctx.status = 422;
