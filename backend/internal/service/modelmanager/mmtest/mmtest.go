@@ -205,3 +205,6 @@ func (r *Rig) ConfirmAdult() {
 func (r *Rig) ModelFile(f File) string {
 	return r.Layout.ModelPath("models/" + f.Folder + "/" + f.Name)
 }
+
+// DB is the database the rig runs on (a test that adds a service over the same database, as the saved workflows).
+func (r *Rig) DB() *repository.DB { return r.db }

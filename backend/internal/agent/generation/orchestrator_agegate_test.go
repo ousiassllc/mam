@@ -78,18 +78,42 @@ func TestOrchestrator_AQueuedGenerationIsRefusedWhenTheGateClosesBeforeItRuns(t 
 	assert.Equal(t, domain.ShotPlanning, f.shotState(t), "the Shot is free again")
 }
 
-// The Reference Pack makes images of both purposes, so a route of either that names a refused model refuses it up front.
+// The Reference Pack makes images of both purposes, so a route of either that names a refused model refuses it up front. The
+// purposes name different models here, so each slot of each purpose is the only place its model is found.
 func TestOrchestrator_StartReferencePackRefusesAnImageRouteThatNamesARefusedModel(t *testing.T) {
-	f := newFixture(t, options{})
-	editRoute := f.adapter.Config().ImageRouteFor(modeladapter.PurposeEditReference)
-	f.closeGateFor(editRoute.Fallback.Model)
+	to := func(m domain.ModelName) modeladapter.ImageTarget { return modeladapter.ImageTarget{Model: m} }
+	for _, refused := range []domain.ModelName{domain.ModelGPTImage2, domain.ModelNanoBanana, domain.ModelFlux2, domain.ModelNanoBananaLite} {
+		f := newFixture(t, options{})
+		cfg, backends := f.adapter.Snapshot()
+		cfg.Images[modeladapter.PurposeNewReference] = modeladapter.ImageRoute{Primary: to(domain.ModelGPTImage2), Fallback: to(domain.ModelNanoBanana)}
+		cfg.Images[modeladapter.PurposeEditReference] = modeladapter.ImageRoute{Primary: to(domain.ModelFlux2), Fallback: to(domain.ModelNanoBananaLite)}
+		f.adapter.Reload(cfg, backends)
+		f.closeGateFor(refused)
 
-	_, err := f.orch.StartReferencePack(context.Background(), f.shotID)
+		_, err := f.orch.StartReferencePack(context.Background(), f.shotID)
 
-	require.ErrorIs(t, err, agegate.ErrRefused)
-	assert.Zero(t, f.jobs.count())
-	assert.Zero(t, f.image.callCount())
-	assert.Equal(t, domain.ShotPlanning, f.shotState(t))
+		require.ErrorIs(t, err, agegate.ErrRefused, refused)
+		assert.Contains(t, err.Error(), string(refused))
+		assert.Zero(t, f.jobs.count(), refused)
+	}
+}
+
+// The age confirmation goes off while Prompt Candidates judge the first Take: the run stops before the next Take and the
+// summary says why (the gate), not that the budget is spent.
+func TestOrchestrator_ARetryRefusedByTheGateIsReportedAsSuchNotAsTheBudget(t *testing.T) {
+	f := newFixture(t, options{withJudge: true})
+	f.judge.verdicts = func(int) (domain.JudgeResult, error) {
+		f.closeGateFor(domain.ModelSeedance2)
+		return failing(), nil
+	}
+
+	require.NoError(t, f.candidates(t, ""))
+
+	assert.Equal(t, 1, f.count(t, `SELECT COUNT(*) FROM take`), "the second Take was not made")
+	summary := f.chat.ofKind(domain.KindText)
+	require.Len(t, summary, 1)
+	assert.Contains(t, summary[0].Content, "seedance-2.0 は成人向けモデルで、年齢確認がオフのため使えません")
+	assert.NotContains(t, summary[0].Content, "予算上限")
 }
 
 // Opened again, the same assignment generates: the refusal is the gate's, not a change of the assignment.

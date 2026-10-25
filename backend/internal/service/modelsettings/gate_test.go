@@ -144,6 +144,27 @@ func TestAnAssignmentSavedBeforeTheGateClosedIsReportedAndCanOnlyBeReplaced(t *t
 	require.NoError(t, svc.Save(assigned(t, svc)), "saving is refused only while the gate is closed")
 }
 
+// The alternative of a route is a model the route calls when the primary fails: an adult model there is reported and refused as
+// much as one in the primary slot, for an image purpose and for a Quality Policy alike.
+func TestAnAdultModelOnlyInTheAlternativeSlotIsReportedAndRefused(t *testing.T) {
+	svc, closed, _ := gatedService(t)
+	view, err := svc.View()
+	require.NoError(t, err)
+	in := modelsettings.Input{Images: view.Images, Policies: view.Policies}
+	in.Images[modeladapter.PurposePreview] = modeladapter.ImageRoute{Primary: modeladapter.ImageTarget{Model: domain.ModelFlux2}, Fallback: modeladapter.ImageTarget{Model: adultImage}}
+	in.Policies[domain.QualityFast] = modeladapter.PolicyRoute{
+		Primary: modeladapter.VideoTarget{Model: domain.ModelKling3, Resolution: "720p"}, Fallback: modeladapter.VideoTarget{Model: adultVideo, Resolution: "720p"}, Takes: 2,
+	}
+	require.NoError(t, svc.Save(in))
+	*closed = true
+
+	view, err = svc.View()
+	require.NoError(t, err)
+	assert.Equal(t, []domain.ModelName{adultImage, adultVideo}, view.Gated)
+	var invalid *modelsettings.InvalidError
+	require.ErrorAs(t, svc.Save(modelsettings.Input{Images: view.Images, Policies: view.Policies}), &invalid)
+}
+
 func TestResettingTheAssignmentWorksWhileTheGateIsClosed(t *testing.T) {
 	svc, closed, _ := gatedService(t)
 	require.NoError(t, svc.Save(assigned(t, svc)))
