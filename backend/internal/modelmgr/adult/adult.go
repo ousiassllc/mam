@@ -8,6 +8,7 @@ package adult
 import (
 	"encoding/json"
 	"path"
+	"regexp"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -91,9 +92,9 @@ func FilesOf(cat *catalog.Catalog, st store.State) Files {
 
 // Reads reports whether the graph (API format) reads one of the files: an input of any node (a checkpoint, a diffusion
 // model, a LoRA, a VAE or a text encoder of a loader; any value of any node, so that a custom loader node is judged as
-// well) that names it. Every value is walked down to its string leaves, so a file that sits in an object (a rgthree Power
-// Lora Loader) or a list is read too, and a leaf that is not a bare file name (a "<lora:Name:0.8>" tag of a prompt, a name
-// with a space around it) is read for the names it holds. A graph that cannot be read reads nothing: it cannot run either.
+// well) that names it. Every value is walked down to its string leaves and the keys of its objects, so a file that sits in
+// an object (a rgthree Power Lora Loader), a list or the key of a map is read too, and a leaf that is not a bare file name
+// is read for the names it holds (see readsString). A graph that cannot be read reads nothing: it cannot run either.
 func (f Files) Reads(graph json.RawMessage) bool {
 	if len(f) == 0 || len(graph) == 0 {
 		return false
@@ -102,10 +103,11 @@ func (f Files) Reads(graph json.RawMessage) bool {
 	if err != nil {
 		return false
 	}
+	r := newReader(f)
 	for _, node := range g {
 		for _, raw := range node.Inputs {
 			var v any
-			if json.Unmarshal(raw, &v) == nil && f.readsValue(v) {
+			if json.Unmarshal(raw, &v) == nil && r.readsValue(v, 0) {
 				return true
 			}
 		}
@@ -113,19 +115,46 @@ func (f Files) Reads(graph json.RawMessage) bool {
 	return false
 }
 
-func (f Files) readsValue(v any) bool {
+// maxJSONDepth is how many times a string that holds JSON is decoded inside a string that holds JSON (a stringified LoRA
+// stack in a stringified list). A deeper one is read as text only.
+const maxJSONDepth = 4
+
+// loraTag is the "<lora:NAME:weight>" tag of a prompt ("<lyco:...>" of LyCORIS too); the name is up to ":" or ">".
+var loraTag = regexp.MustCompile(`<(?:lora|lyco):([^:>]+)`)
+
+// reader judges the leaves of one graph against the files. The index is built once per Reads call, never kept.
+type reader struct {
+	files Files
+	stems map[string]bool // the names of the files without their model extension: what a LoRA tag names
+	odd   []string        // the file names that the tokens of a text cannot hold (a space, a bracket): scanned for
+}
+
+func newReader(f Files) reader {
+	r := reader{files: f, stems: map[string]bool{}}
+	for name := range f {
+		if s := stem(name); s != name {
+			r.stems[s] = true
+		}
+		if !isOneWord(name) {
+			r.odd = append(r.odd, name)
+		}
+	}
+	return r
+}
+
+func (r reader) readsValue(v any, depth int) bool {
 	switch v := v.(type) {
 	case string:
-		return f.readsString(v)
+		return r.readsString(v, depth)
 	case []any:
 		for _, e := range v {
-			if f.readsValue(e) {
+			if r.readsValue(e, depth) {
 				return true
 			}
 		}
 	case map[string]any:
-		for _, e := range v {
-			if f.readsValue(e) {
+		for k, e := range v {
+			if r.readsString(k, depth) || r.readsValue(e, depth) {
 				return true
 			}
 		}
@@ -133,23 +162,67 @@ func (f Files) readsValue(v any) bool {
 	return false
 }
 
-// readsString judges one string leaf: a file name (the exact match), else a text that holds the name of an adult file, with
-// or without its extension, as a word of its own ("<lora:Spicy:0.8>" holds "Spicy", "Spicy.safetensors " holds the file).
-func (f Files) readsString(s string) bool {
-	if f[key(s)] {
+// readsString judges one string leaf (or key). It reads the file when the leaf is: the name of the file (the exact match,
+// below any folder); a text that holds the full name of the file, with its extension, as a word of its own ("Spicy.safetensors "
+// or "a, Spicy.safetensors."); the name of a LoRA tag, below any folder, with or without the extension ("<lora:Spicy:0.8>").
+// A stem is never read as a free word of a text: "ae" or "model" are in any prompt. A "." that is between two name
+// characters is part of the name ("spicy.v2" is not "spicy"). A leaf that is JSON is decoded and read again.
+func (r reader) readsString(s string, depth int) bool {
+	if r.files[key(s)] {
 		return true
 	}
 	text := strings.ToLower(s)
-	for name := range f {
-		if holdsWord(text, name) || holdsWord(text, stem(name)) {
+	if words(text, func(w string) bool { return r.files[w] }) {
+		return true
+	}
+	for _, name := range r.odd {
+		if holdsWord(text, name) {
 			return true
+		}
+	}
+	if strings.Contains(text, "<") {
+		for _, m := range loraTag.FindAllStringSubmatch(text, -1) {
+			if k := key(strings.TrimSpace(m[1])); r.files[k] || r.stems[k] {
+				return true
+			}
+		}
+	}
+	if depth < maxJSONDepth {
+		if t := strings.TrimSpace(s); strings.HasPrefix(t, "{") || strings.HasPrefix(t, "[") {
+			var v any
+			return json.Unmarshal([]byte(t), &v) == nil && r.readsValue(v, depth+1)
 		}
 	}
 	return false
 }
 
-// holdsWord reports whether text holds word between characters that cannot be part of a file name (the ends of the text
-// count): "spicy" is in "<lora:spicy:0.8>" and in "spicy food" but not in "spicyfood" nor in "unspicy".
+// words calls yield with every name of text (the runs of name characters) until it reports true, and reports that.
+func words(text string, yield func(string) bool) bool {
+	start := -1
+	for i, r := range text {
+		if isNameRune(r) || (r == '.' && start >= 0 && startsName(text[i+1:])) {
+			if start < 0 {
+				start = i
+			}
+			continue
+		}
+		if start >= 0 && yield(text[start:i]) {
+			return true
+		}
+		start = -1
+	}
+	return start >= 0 && yield(text[start:])
+}
+
+// isOneWord reports whether name is a single name of words: it has nothing that splits it.
+func isOneWord(name string) bool {
+	n, whole := 0, false
+	words(name, func(w string) bool { n, whole = n+1, w == name; return false })
+	return n == 1 && whole
+}
+
+// holdsWord reports whether text holds word between characters that cannot continue a name (the ends of the text count):
+// the way of words for a file name that has a space or a bracket in it.
 func holdsWord(text, word string) bool {
 	if word == "" {
 		return false
@@ -160,13 +233,27 @@ func holdsWord(text, word string) bool {
 			return false
 		}
 		start, end := from+i, from+i+len(word)
-		before, _ := utf8.DecodeLastRuneInString(text[:start])
+		before, size := utf8.DecodeLastRuneInString(text[:start])
 		after, _ := utf8.DecodeRuneInString(text[end:])
-		if !isNameRune(before) && !isNameRune(after) {
+		joinsBefore := isNameRune(before) || (before == '.' && size == 1 && continuesBefore(text[:start-1]))
+		joinsAfter := isNameRune(after) || (after == '.' && startsName(text[end+1:]))
+		if !joinsBefore && !joinsAfter {
 			return true
 		}
 		from = start + 1
 	}
+}
+
+// continuesBefore reports whether text ends with a name character: a "." after it is part of a name that goes on.
+func continuesBefore(text string) bool {
+	r, _ := utf8.DecodeLastRuneInString(text)
+	return isNameRune(r)
+}
+
+// startsName reports whether text starts with a letter or a digit: a "." before it joins the names around it.
+func startsName(text string) bool {
+	r, _ := utf8.DecodeRuneInString(text)
+	return unicode.IsLetter(r) || unicode.IsDigit(r)
 }
 
 // stem is the name of a file without its model extension ("spicy.safetensors" is "spicy"; "v2.1" stays).
@@ -178,8 +265,8 @@ func stem(name string) string {
 	return name
 }
 
-// isNameRune reports whether r continues a name: a letter, a digit, "_" or "-" ("." is a separator: a sentence ends with
-// it). The RuneError of the end of the text is none of these.
+// isNameRune reports whether r continues a name: a letter, a digit, "_" or "-". A "." does only between two of them (a
+// sentence ends with it). The RuneError of the end of the text is none of these.
 func isNameRune(r rune) bool {
 	return unicode.IsLetter(r) || unicode.IsDigit(r) || r == '_' || r == '-'
 }
