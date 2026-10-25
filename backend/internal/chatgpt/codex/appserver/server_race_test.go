@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"testing"
 
@@ -50,6 +51,58 @@ func (h signalHandler) Handle(_ context.Context, r slog.Record) error {
 }
 
 func (h signalHandler) Enabled(context.Context, slog.Level) bool { return true }
+
+// holdHandler blocks the goroutine that logs the message until release is closed (entered is closed when it arrives).
+type holdHandler struct {
+	slog.Handler
+	msg      string
+	entered  chan struct{}
+	release  chan struct{}
+	enterOne *sync.Once
+}
+
+func (h holdHandler) Handle(_ context.Context, r slog.Record) error {
+	if r.Message == h.msg {
+		h.enterOne.Do(func() { close(h.entered) })
+		<-h.release
+	}
+	return nil
+}
+
+func (h holdHandler) Enabled(context.Context, slog.Level) bool { return true }
+
+// The reason a caller gets for the end of the process comes only after the status says Failed: a call that returns the
+// crash must not be followed by a status that still says Running.
+func TestTheEndReasonIsGivenOnlyOnceTheStatusSaysFailed(t *testing.T) {
+	fake := codextest.New(t, home)
+	hold := holdHandler{msg: "codex app-server ended", entered: make(chan struct{}), release: make(chan struct{}), enterOne: new(sync.Once)}
+	srv := appserver.New(appserver.Options{
+		CodexHome: home, Logger: slog.New(hold),
+		Start: func() (appserver.Process, error) { return fake.Process(), nil },
+	})
+	t.Cleanup(srv.Close)
+	se, err := srv.Ensure(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	fake.Crash(9)
+	<-hold.entered // the watcher has dropped the session and is about to record the end
+	reason := make(chan string, 1)
+	go func() { reason <- se.EndReason() }()
+	for range 1000 { // the reason (if it is wrongly given now) follows within moments
+		select {
+		case r := <-reason:
+			t.Fatalf("the reason was given before the end was recorded: %q (status %+v)", r, srv.Status())
+		default:
+			runtime.Gosched()
+		}
+	}
+	close(hold.release)
+	got := <-reason
+	if st := srv.Status(); st.State != appserver.StateFailed || st.Error != got || !strings.Contains(got, "終了コード 9") {
+		t.Fatalf("reason = %q, status = %+v", got, st)
+	}
+}
 
 func TestTheEndOfAnOldProcessDoesNotMarkANewerHealthySessionFailed(t *testing.T) {
 	fake := codextest.New(t, home)

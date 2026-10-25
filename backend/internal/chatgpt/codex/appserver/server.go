@@ -110,6 +110,9 @@ type Session struct {
 	proc Process
 	conn *rpc.Conn
 	h    *handler
+	// recorded is closed when the watcher has recorded the end of the process in the status (or found that it was
+	// stopped, or replaced, and so records nothing).
+	recorded chan struct{}
 }
 
 // Call sends a request to the process.
@@ -120,12 +123,27 @@ func (se *Session) Call(ctx context.Context, method string, params, result any) 
 // Done is closed when the process ended.
 func (se *Session) Done() <-chan struct{} { return se.conn.Done() }
 
-// endWait is how long EndReason waits for the exit status after the output of the process ended.
+// endWait is how long the exit status is waited for after the output of the process ended.
 const endWait = 2 * time.Second
 
-// EndReason says, for the user, how the process ended: its exit code and the end of its standard error. The output of a
-// process ends just before it exits, so this waits a moment for the exit status.
+// recordWait is how long EndReason waits for the watcher to record the end: the watcher stops the process (which bounds
+// itself) and waits for the exit status (endWait) first.
+const recordWait = 10 * time.Second
+
+// EndReason says, for the user, how the process ended: its exit code and the end of its standard error. A caller that
+// learned of the end (the connection closed) gets it after the status says Failed (the watcher records it
+// asynchronously), so what it reports and what the status shows agree.
 func (se *Session) EndReason() string {
+	select {
+	case <-se.recorded:
+	case <-time.After(recordWait):
+	}
+	return se.endReason()
+}
+
+// endReason is EndReason without waiting for the record: the watcher uses it to make the record. The output of a
+// process ends just before it exits, so this waits a moment for the exit status.
+func (se *Session) endReason() string {
 	select {
 	case <-se.proc.Done():
 	case <-time.After(endWait):
@@ -190,7 +208,7 @@ func (s *Server) start(ctx context.Context, gen int) (*Session, error) {
 	}
 	h := newHandler(s.opts.Logger, s.dispatchAccount)
 	conn := rpc.NewConn(p.Stdout(), p.Stdin(), h)
-	se := &Session{srv: s, proc: p, conn: conn, h: h}
+	se := &Session{srv: s, proc: p, conn: conn, h: h, recorded: make(chan struct{})}
 	if err := s.handshake(ctx, se); err != nil {
 		info := p.ExitInfo()
 		p.Stop()
