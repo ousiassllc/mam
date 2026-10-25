@@ -54,7 +54,7 @@ func (h Handlers) CreateEndpoint(c *gin.Context) {
 			status, msg := h.classify(c, err, "")
 			d := SectionData(h.Local)
 			d.Error = "接続先「" + in.Name + "」は追加しましたが、API キーを保存できませんでした: " + msg
-			h.respond(c, status, d, true)
+			h.respond(c, status, d)
 			return
 		}
 	}

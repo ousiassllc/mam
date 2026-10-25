@@ -1,6 +1,6 @@
 # 画面仕様: 全体の設定画面（分類ごとのサブページ）
 
-> **状態: 段階 ①・②-1・②-2 実装済み（2026-10-25）。②-3 以降（LLM・画像動画・ローカルの接続先・MCP の作り直し）は未実装。** Issue #847。オーナーは §11 を推奨する既定で決定した（2026-10-25）。分類ごとの一覧とモーダルは [settings-screen-categories.md](settings-screen-categories.md)、新しいルートと応答の決まりは [settings-screen-routes.md](settings-screen-routes.md)、共通の部品（カード・アイコン・モーダル・一覧の行）は [shared-ui-parts.md](shared-ui-parts.md)。確認が要る点は §11。
+> **状態: 段階 ①・②-1・②-2・②-3・②-4 実装済み（2026-10-25）。②-5 以降（ローカルの接続先・MCP の作り直し）は未実装。** Issue #847。オーナーは §11 を推奨する既定で決定した（2026-10-25）。分類ごとの一覧とモーダルは [settings-screen-categories.md](settings-screen-categories.md)、新しいルートと応答の決まりは [settings-screen-routes.md](settings-screen-routes.md)、共通の部品（カード・アイコン・モーダル・一覧の行）は [shared-ui-parts.md](shared-ui-parts.md)。確認が要る点は §11。
 
 [overview.md](overview.md) §3 の `global_settings_page`・`global_settings_body`（`GET /settings`。API キー・ChatGPT・LLM・画像動画モデル・ローカル・MCP・バージョンが 1 ページに縦に並ぶ）を、**左のサイドナビ ＋ 分類ごとのサブページ**に分ける。プロジェクトの設定（`/projects/:id/settings`）・モデルマネージャーの作り直し・全画面共通のナビゲーションは範囲外。
 
@@ -125,13 +125,14 @@
 | ① **実装済み** | ナビ・分類ごとの URL・概要。**中身は今の区画をそのまま**各分類のページに移す（フォーム・ルート・応答は変えない） | `pages/settings_pages.templ`・`molecules/settingsui`（`SettingsNav`）・`organisms/settings/overview/`・`handler/settingspage/`・`settingsroutes`・`SettingsSection` の見出しのレベル | ① の完成で 1024×700・1440×900 |
 | ②-1 **実装済み** | **モーダルの部品**と一覧の行の部品を作り、API キーのカードで使う（モーダルの担当は未決。#846 の決定事項 1 は #846 で作ると読める。[shared-ui-parts.md](shared-ui-parts.md) §8 の質問 7。ここは推奨する既定に沿って #847 で作る前提） | `molecules/modal/`・`static/src/components/modal/`・`organisms/settings/credentials/` | **部品の段階**で 1024×700・1440×900（決定事項 10(a) の 1 回目） |
 | ②-2 **実装済み**（API キーのカードと接続テストを含む） | ChatGPT のログインをカードに（ログイン中の表示はモーダル）。#845 の Codex 経由は 3 つ目のカード（§9） | `organisms/settings/chatgpt/` | |
-| ②-3 | LLM の割り当て（Agent の表・Agent ごとの保存） | `organisms/settings/llm/`・`PUT /settings/llm/agents/:agent` | |
-| ②-4 | 画像・動画モデル | `organisms/settings/media/` | |
+| ②-3 **実装済み** | LLM の割り当て（Agent の表・Agent ごとの保存） | `organisms/settings/llm/`・`handler/settings/llm/`・`PUT`・`DELETE /settings/llm/agents/:agent`。旧 `organisms/llmassign/`・`handler/llmassign/` は消した | |
+| ②-4 **実装済み** | 画像・動画モデル（画像の用途の表・Quality Policy の表・行ごとのモーダルと保存） | `organisms/settings/media/`・`handler/settings/media/`・`PUT /settings/models/images/:purpose`・`…/policies/:policy`・`modelsettings.Service.SaveImage`・`SavePolicy`。旧 `organisms/modelassignment/`・`handler/modelassign/` は消し、ローカルのモデルの応答の `#model-assignment` の OOB を外した | |
 | ②-5 | ローカルの接続先（カード・モーダル）とサブページ | `organisms/settings/local/` | |
 | ②-6 | MCP（待ち受け先・トークンの表・発行のモーダル） | `organisms/settings/mcp/` | **完成の段階**で全分類を 1024×700・1440×900（10(a) の 2 回目） |
 
 - ② の各段階は、古い区画を**新しい場所に作り直して古いものを消す**（二重に残さない）。段階の間は、まだ移していない分類は ① のままの区画が動く。
 - ① の時点で、概要から各分類へ行け、「1 ページに全部並んで見にくい」は解消する。
+- ②-3・②-4 の確認（2026-10-25、ヘッドレスの Chromium、使い捨てのデータフォルダ・一時のキーリング、実キーなし）: LLM と画像・動画モデルの表とモーダルを 1024×700・1440×900 で撮って見た。モーダルの `Esc` で閉じて開いたボタンへフォーカスが戻ること、422 で入力が残り問題の欄（無ければ理由）にフォーカスが移ること、保存で行が OOB で差し替わりフォーカスが同じキーのボタンに戻ることを確かめた。年齢確認がオフの行の「（現在は使えません）」は、実際の成人向けの ComfyUI のモデルが要るため実画面では撮れず、同じ HTML を静的に描いて見た（実画面は **未検証**）。Windows の WebView2 は **未検証**（実機が要る）。
 
 ## 8. 変わるテスト（実装のとき。今のテストの期待値は、表示の場所の違いを除いて変えない）
 
@@ -196,3 +197,4 @@
 | 0.3 | 2026-10-25 | ②-1 のモーダルの担当を未決とし（[shared-ui-parts.md](shared-ui-parts.md) §8 の質問 7）、#845 のタブ（`role="tablist"`）の扱いを §9 に足した | 独立レビュー（PR #849）の指摘 |
 | 0.4 | 2026-10-25 | §2 の分類の表の「画像・動画モデル」の行に、年齢確認がオフの間の画面の挙動（成人向けを選択肢から外す・「（現在は使えません）」・保存は 422）への参照を足した。詳細は settings-screen-categories.md §3（0.4） | PR #849 の独立レビュー（#848）の指摘 |
 | 0.5 | 2026-10-25 | 状態を「段階 ①・②-1・②-2 実装済み」にした（§7 の表に印）。実装: ナビ・概要・分類ごとのページ・モーダル・API キーとログイン。接続先の名前 `new` は 422（§11 の質問 6 の推奨）。ログインのカードの取り直しは `GET /settings/chatgpt/:kind/login?poll=1`（モーダル）とパネル全体の取り直しで行い、`card=<kind>` は使わなかった（`method` クエリは読まない） | Issue #847 の実装 |
+| 0.6 | 2026-10-25 | 状態を「段階 ①〜②-4 実装済み」にした（§7 の表に印）。実装: テキスト生成（LLM）と画像・動画モデルを表とモーダルに（`SettingsTable`）。1024×700 では「用途」の列を `lg` ではなく `xl` から出す（サイドナビで表が約 700 px に狭まり、`lg` ではモデル名が割れるため。[settings-screen-categories.md](settings-screen-categories.md) §2） | Issue #847 段階 ②-3・②-4 の実装 |

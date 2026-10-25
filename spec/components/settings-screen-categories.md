@@ -1,6 +1,6 @@
 # 画面仕様: 設定画面の分類ごとの一覧とモーダル
 
-> **状態: §1（API キーとログイン）は実装済み（2026-10-25）。§2 以降（LLM・画像動画・ローカル・MCP）は未実装（段階 ②-3 以降）。** Issue #847 ステージ ②。オーナーは §7 を推奨する既定で決定した（2026-10-25）。枠・ナビ・URL・概要は [settings-screen.md](settings-screen.md)、ルートと応答の決まりは [settings-screen-routes.md](settings-screen-routes.md)、部品は [shared-ui-parts.md](shared-ui-parts.md)。`<dialog>` の決まり（開く・閉じる・フォーカス・成功・422）はすべて shared-ui-parts §4 に従い、ここでは繰り返さない。
+> **状態: §1（API キーとログイン）・§2（LLM）・§3（画像・動画）は実装済み（2026-10-25）。§4 以降（MCP・ローカル）は未実装（段階 ②-5 以降）。** Issue #847 ステージ ②。オーナーは §7 を推奨する既定で決定した（2026-10-25）。枠・ナビ・URL・概要は [settings-screen.md](settings-screen.md)、ルートと応答の決まりは [settings-screen-routes.md](settings-screen-routes.md)、部品は [shared-ui-parts.md](shared-ui-parts.md)。`<dialog>` の決まり（開く・閉じる・フォーカス・成功・422）はすべて shared-ui-parts §4 に従い、ここでは繰り返さない。
 
 方式の凡例（決定事項 8(a)）: **モーダル** = 1 つの対象の短い編集（項目が数個・1 回の保存）。**サブページ** = 一覧を持つもの・長い作業（URL を持つ）。削除の確認は今のまま `hx-confirm`。
 
@@ -79,7 +79,8 @@
 | 操作 | 「編集」（`SmallButtonFor`、`aria-label`「編集: Writer（脚本）」） |
 
 - 使われていない Agent（`Unused`: Orchestrator・Final QC）は、今と同じく折りたたみ（`<details>`「現在は使われません」）に入れ、表の下に置く。折りたたみの中の表も同じ列・同じ編集。
-- 14 行で、1440×900 では 1 画面に収まらず main がスクロールする。1024×700 では「用途」列を `lg:` 以上でだけ出し、狭いときは行見出しの下に 1 行で出す。
+- 14 行で、1440×900 では 1 画面に収まらず main がスクロールする。「用途」列は `xl:`（1280 px）以上でだけ出し、狭いときは行見出しの下に 1 行で出す（実装で変更: 当初は `lg:` の案だったが、サイドナビで表が約 700 px に狭まる 1024×700 の実画面で、`lg:` ではモデル名が割れて読みにくかった。2026-10-25 に両方を撮って比べた）。
+- 実装（2026-10-25）: 全体の「既定に戻す」は「すべて既定に戻す」（`hx-confirm`。`DELETE /settings/llm`）。モーダルの 422 は `llmassign.InvalidError` の `Role`・`Field` で問題の欄に `aria-invalid`・`autofocus`。「再起動で反映」の印（`Badge` warn）は保存した直後の行だけ。『この Agent を既定に戻す』の確認なしは `destructive_confirm_test` の例外に理由つきで足した。用途の 1 行（§7 の質問 2）は `model-adapters.md` §2 の選定理由から要約した（`handler/settings/llm/purposes.go`）。`PUT /settings/llm`（全体）は MCP のツールとテストのために残し、応答は表の区画（`#llm-assignment-panel`）。
 
 モーダル（`GET /settings/llm/agents/:agent/edit`。`:agent` は `llmassign.Agents()` の名前。未知は 404）:
 
@@ -93,6 +94,7 @@
 
 方式: **表 2 つ（画像の用途・動画の Quality Policy）＋ 「編集」はモーダル**。
 
+- 実装（2026-10-25）: 表は 2 つ（`media-images`・`media-policies`。見出しは `h3`）、行のモーダルは `GET …/images/:purpose/edit`・`…/policies/:policy/edit`、保存は `PUT …/images/:purpose`・`…/policies/:policy`（**その行だけ**検査して書く。`SaveImage`・`SavePolicy`。他の行が年齢確認で使えないモデルを指していても、この行の保存は止まらない）。成功の応答は行・`#model-status`（年齢確認の注意とすべて既定に戻す。保存で変わるので同じ応答で OOB）・トースト。反映は即時で、モーダルを開くたびに最新の選択肢（ローカルのモデルを含む）を読む。全体の保存 `PUT /settings/models`・`DELETE /settings/models` は残す（応答は `#model-assignment`）。
 - 画像（行 `id="media-image-<purpose>"`）: 用途・説明（`Hint`）・主モデル・代替モデル・（高速版があるときだけ）高速版の印。「編集」。参照画像を使えないモデルの注意（`ReferenceNote`）は**該当する行にだけ**出す（今の区画の上の常時表示の注意は、行がその状態でなければ出さない）。
 - 動画（行 `id="media-policy-<policy>"`）: Quality Policy・主モデル（モデル＠解像度）・代替・テイク数。「編集」。
 - モーダル（`GET /settings/models/images/:purpose/edit`・`/settings/models/policies/:policy/edit`）: 1 行ぶんのフォーム（今の `imageRow`・`policyRow` の欄をそのまま入れる）。保存は `PUT /settings/models/images/:purpose`・`/settings/models/policies/:policy`（**新しいルート**。今の `PUT /settings/models` は全体の保存として残す。§7 の質問 4: 行ごとにしてよいか。決定事項 9(a) は LLM だけを決めている）。
@@ -146,3 +148,4 @@
 | 0.3 | 2026-10-25 | §1.3 のログインのモーダルの取り直しのクエリを、今の `GET /settings/chatgpt?method=` との関係つきで書き直した（`card` は未決の質問） | 独立レビュー（PR #849）の指摘 |
 | 0.4 | 2026-10-25 | §3 に、年齢確認がオフの間の画像・動画モデルの画面（成人向けを選択肢から外す・保存済みの割り当ては「（現在は使えません）」付きで選択済みに見せる・保存は 422・既定に戻すは通る・ロックの選択肢は除かない）を足した | PR #849 の独立レビュー（#848）の指摘。#848 で入った画面の挙動が画面仕様に無かったため |
 | 0.5 | 2026-10-25 | §1 を実装済みにした。§1.1 の接続テストの表の「確認の状態」を、公式資料で確かめた結果（6 つに接続テスト、4 つは候補なし）と、実キーでは未検証であることに書き直し、キーの取り方のリンクの URL を書いた。成功の通知はトースト（決定事項どおり） | Issue #847 の実装 |
+| 0.6 | 2026-10-25 | §2・§3 を実装済みにした。§2 の「用途」の列を `lg:` から `xl:` にした（1024×700 の実画面で比べた結果）。実装の形（行の保存・`#model-status`・全体の保存の残し方）を足した | Issue #847 段階 ②-3・②-4 の実装 |

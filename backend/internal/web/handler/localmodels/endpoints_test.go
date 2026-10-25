@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -23,7 +22,7 @@ func TestSection_IsOnTheSettingsScreenWithEmptyState(t *testing.T) {
 	assert.Contains(t, body, `data-testid="local-models-empty"`)
 	assert.Contains(t, body, `hx-get="`+paths.LocalEndpoints()+`/new"`, "the add button opens the form")
 	assert.NotContains(t, body, `data-testid="local-models-pinned"`)
-	assert.Less(t, strings.Index(body, `id="model-assignment"`), strings.Index(body, `id="local-models-panel"`), "after the assignment of the built-in models")
+	assert.NotContains(t, body, `id="model-assignment"`, "the assignment of the models is a category of its own")
 }
 
 func TestEndpoint_CreateShowsItAndSavesTheFileAndTheKeyAppearsAsStatusOnly(t *testing.T) {
@@ -113,7 +112,7 @@ func TestEndpoint_DeleteRemovesItsModelsAndKeyButNotWhileAModelIsChosen(t *testi
 		url.Values{"name": {"flux"}, "media": {"image"}, "model_id": {"flux-schnell"}}).Code)
 
 	// Choose the model for a purpose, then try to delete the endpoint.
-	assign := s.do(http.MethodPut, paths.ModelSettings(), assignmentForm(t, s.modelsPage(), "image_new_reference_primary_model", "openai-compat:box/flux"))
+	assign := s.assignImage("new_reference", "image_new_reference_primary_model", "openai-compat:box/flux")
 	require.Equal(t, http.StatusOK, assign.Code, assign.Body.String())
 	refused := s.do(http.MethodDelete, paths.LocalEndpoint("box"), nil)
 	assert.Equal(t, http.StatusUnprocessableEntity, refused.Code)

@@ -1,9 +1,7 @@
 package localmodels
 
 import (
-	"context"
 	"errors"
-	"io"
 	"net/http"
 	"net/url"
 	"slices"
@@ -12,49 +10,31 @@ import (
 	"github.com/gin-gonic/gin"
 
 	service "github.com/ousiassllc/mam/backend/internal/service/localmodels"
-	"github.com/ousiassllc/mam/backend/internal/service/modelsettings"
-	modelassign "github.com/ousiassllc/mam/backend/internal/web/handler/modelassign"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/localmodels"
-	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelassignment"
 )
 
 // Handlers answer the routes of the section (router/settingsroutes registers them).
 type Handlers struct {
 	// Local is the endpoints and models service.
 	Local *service.Service
-	// Models, when set, is the image / video assignment: its form is drawn again (out of band) after a change,
-	// so that an added or removed model is a choice there at once.
-	Models *modelsettings.Service
 }
 
 // Panel answers GET /settings/local-models with the section alone: what "閉じる" swaps in.
 func (h Handlers) Panel(c *gin.Context) {
-	h.respond(c, http.StatusOK, SectionData(h.Local), false)
+	h.respond(c, http.StatusOK, SectionData(h.Local))
 }
 
-// respond draws the panel d. changed: the settings were changed, so the assignment form is refreshed too.
-func (h Handlers) respond(c *gin.Context, status int, d view.Data, changed bool) {
-	render(c, status, templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		if err := view.Panel(d).Render(ctx, w); err != nil {
-			return err
-		}
-		if !changed || h.Models == nil {
-			return nil
-		}
-		md := modelassign.SectionData(h.Models)
-		if md.Problem != "" {
-			return nil
-		}
-		md.OOB = true
-		return modelassignment.Form(md).Render(ctx, w)
-	}))
+// respond draws the panel d. The models that an added or removed local model is a choice of are read by the modals of the
+// "画像・動画モデル" category when they open, so nothing else is refreshed.
+func (h Handlers) respond(c *gin.Context, status int, d view.Data) {
+	render(c, status, view.Panel(d))
 }
 
 // ok answers a change that worked: the panel with the notice, 200.
 func (h Handlers) ok(c *gin.Context, notice string) {
 	d := SectionData(h.Local)
 	d.Notice = notice
-	h.respond(c, http.StatusOK, d, true)
+	h.respond(c, http.StatusOK, d)
 }
 
 // refuse answers a change that did not work: the panel with the reason, and the form (open) holding what
@@ -71,7 +51,7 @@ func (h Handlers) refuse(c *gin.Context, err error, exists string, editor view.E
 		msg = ""
 	}
 	d.Error = msg
-	h.respond(c, status, d, false)
+	h.respond(c, status, d)
 }
 
 // classify maps the service's refusals: ErrPinned and ErrExists to 409, ErrNotFound to 404 and *InvalidError
@@ -107,7 +87,7 @@ func (h Handlers) open(c *gin.Context, editor view.Editor) {
 	}
 	c.Header("HX-Retarget", "#"+view.PanelID)
 	c.Header("HX-Reswap", "outerHTML")
-	h.respond(c, status, d, false)
+	h.respond(c, status, d)
 }
 
 // endpointOf finds a saved endpoint.

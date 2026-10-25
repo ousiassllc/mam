@@ -13,15 +13,6 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
-// assignmentForm is the form of the "画像・動画モデル" section in body as the browser would submit it, with
-// one field set.
-func assignmentForm(t *testing.T, body, field, value string) url.Values {
-	t.Helper()
-	v := formOf(t, body, "model-assignment")
-	v.Set(field, value)
-	return v
-}
-
 // startWith opens the first step of a ComfyUI model with a template and returns the model form's HTML.
 func startWith(t *testing.T, s *screen, endpoint, template string) string {
 	t.Helper()
@@ -66,32 +57,29 @@ func TestModel_TemplateFormSubmitsAsItIsAndTheModelAppearsInTheAssignments(t *te
 	assert.Contains(t, body, "長さ 3、5 秒")
 	assert.Contains(t, body, "見積 $0.02/秒")
 
-	// The assignment form comes along out of band, so the new models are choices at once ...
-	assert.Contains(t, body, `hx-swap-oob="true"`)
-	assert.Contains(t, options(body, "image_new_reference_primary_model"), "comfyui:box/sdxl")
-	assert.Contains(t, options(body, "policy_fast_primary"), "comfyui:box/wan@480p")
-	assert.NotContains(t, options(body, "image_new_reference_primary_model"), "comfyui:box/wan", "a video model is not an image choice")
-
-	// ... and so on the screen after a reload.
-	page := s.modelsPage()
+	// The models are read when a modal of the "画像・動画モデル" category opens, so they are choices at once: nothing else is
+	// refreshed by the answer.
+	assert.NotContains(t, body, "model-assignment")
 	for _, purpose := range []string{"new_reference", "edit_reference", "preview", "unified_openai"} {
+		modal := s.imageModal(purpose)
 		for _, slot := range []string{"primary", "fallback"} {
-			assert.Contains(t, options(page, "image_"+purpose+"_"+slot+"_model"), "comfyui:box/sdxl", purpose+" "+slot)
+			assert.Contains(t, options(modal, "image_"+purpose+"_"+slot+"_model"), "comfyui:box/sdxl", purpose+" "+slot)
+			assert.NotContains(t, options(modal, "image_"+purpose+"_"+slot+"_model"), "comfyui:box/wan", "a video model is not an image choice")
 		}
 	}
 	for _, policy := range []string{"fast", "balanced", "max_quality"} {
+		modal := s.policyModal(policy)
 		for _, slot := range []string{"primary", "fallback"} {
-			assert.Contains(t, options(page, "policy_"+policy+"_"+slot), "comfyui:box/wan@480p", policy+" "+slot)
+			assert.Contains(t, options(modal, "policy_"+policy+"_"+slot), "comfyui:box/wan@480p", policy+" "+slot)
 		}
 	}
 
 	// Choosing them saves, and the model is then in use and cannot be deleted.
-	form = formOf(t, page, "model-assignment")
-	form.Set("image_new_reference_primary_model", "comfyui:box/sdxl")
-	form.Set("policy_fast_primary", "comfyui:box/wan@480p")
-	assign := s.do(http.MethodPut, paths.ModelSettings(), form)
+	assign := s.assignImage("new_reference", "image_new_reference_primary_model", "comfyui:box/sdxl")
 	require.Equal(t, http.StatusOK, assign.Code, assign.Body.String())
 	assert.Contains(t, assign.Body.String(), "保存しました。すぐに反映されます")
+	assign = s.assignPolicy("fast", "policy_fast_primary", "comfyui:box/wan@480p")
+	require.Equal(t, http.StatusOK, assign.Code, assign.Body.String())
 	assert.Contains(t, s.page(), "使用中: images.new_reference.primary")
 	refused := s.do(http.MethodDelete, paths.LocalEndpoint("box", "models", "sdxl"), nil)
 	assert.Equal(t, http.StatusUnprocessableEntity, refused.Code)
@@ -212,7 +200,7 @@ func TestModel_OpenAICompatibleFormHasModelIDAndNoWorkflow(t *testing.T) {
 	assert.Contains(t, rec.Body.String(), `data-model-id="openai-compat:lm/flux"`)
 	assert.Contains(t, rec.Body.String(), "モデル ID: flux-schnell")
 	assert.Contains(t, rec.Body.String(), "参照画像を使える")
-	assert.Contains(t, options(rec.Body.String(), "image_preview_primary_model"), "openai-compat:lm/flux", "an OpenAI-compatible endpoint serves images only, whatever the form says")
+	assert.Contains(t, options(s.imageModal("preview"), "image_preview_primary_model"), "openai-compat:lm/flux", "an OpenAI-compatible endpoint serves images only, whatever the form says")
 
 	missing := s.do(http.MethodPost, paths.LocalEndpoint("lm", "models"), url.Values{"name": {"empty"}, "media": {"image"}, "model_id": {""}})
 	assert.Equal(t, http.StatusUnprocessableEntity, missing.Code)
