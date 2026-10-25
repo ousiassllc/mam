@@ -2,10 +2,11 @@ package modelmanager
 
 import (
 	"errors"
-	"slices"
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/adult"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/store"
 )
@@ -91,30 +92,28 @@ func (s *Service) SetAdultContent(on bool, c *AdultConfirmation) error {
 // allowed reports whether the model may be listed, accepted and installed now: an adult model needs the open gate.
 func (s *Service) allowed(m catalog.Model) bool { return !m.Adult() || s.AdultContentEnabled() }
 
-// HidesModel reports whether the model with this #831 identifier (comfyui:bundled-comfyui/<name>) belongs to an adult
-// catalog model while the gate is closed. The lists of the trial generation (the model manager screen's and the generation
-// test's) leave such a model out, and a request that names it is refused as an unknown model.
+// HidesModel reports whether the model with this identifier belongs to an adult model while the gate is closed: the age
+// gate's one predicate, asked by the Model Adapter's Gate (every generation), the assignment choices and the trial generation
+// lists, and by the run of a saved workflow (spec/architecture/model-manager/model-manager.md §6.1). A model is an adult one when
+//   - it is a model of the bundled endpoint (comfyui:bundled-comfyui/<name>) that the model manager created for an adult model
+//     (the catalog's adult workflows, the installed adult models' records, the NFAA models added from Hugging Face), or
+//   - its ComfyUI workflow reads a file only an adult model has (adult.Files): a model of any endpoint, a model made from an
+//     imported graph or under another name, and a saved workflow (comfy:<id>@v<N>) alike.
+//
+// A built-in model, a model of an OpenAI-compatible server and a workflow that reads only files of general models are never hidden.
 func (s *Service) HidesModel(id string) bool {
-	kind, endpoint, name, ok := localcfg.ParseID(id)
-	if !ok || kind != localcfg.KindComfyUI || endpoint != BundledEndpoint || s.AdultContentEnabled() {
+	if s.AdultContentEnabled() {
 		return false
 	}
-	for _, m := range s.cat.Models {
-		if !m.Adult() {
-			continue
-		}
-		for _, w := range m.Workflows {
-			if w.Name == name {
-				return true
-			}
-		}
+	st := s.state.Get()
+	if kind, endpoint, name, ok := localcfg.ParseID(id); ok && kind == localcfg.KindComfyUI && endpoint == BundledEndpoint && adult.Workflows(s.cat, st)[name] {
+		return true
 	}
-	for _, um := range s.state.Get().UserModels { // an SDXL checkpoint of a repository for adults
-		if um.NFAA && slices.Contains(um.Workflows, name) {
-			return true
-		}
+	if s.Adapter == nil {
+		return false
 	}
-	return false
+	m, _, ok := s.Adapter.Config().LocalModel(domain.ModelName(id))
+	return ok && m.Workflow != nil && adult.FilesOf(s.cat, st).Reads(m.Workflow.Graph)
 }
 
 // consentKey is the key of the license acceptance in state.json: the license ID, so that one acceptance covers the models

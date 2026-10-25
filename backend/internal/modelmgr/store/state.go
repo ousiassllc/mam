@@ -46,12 +46,14 @@ type InstalledFile struct {
 
 // InstalledModel is a model whose files are all in place and verified. Workflows are the names of the models
 // created on the bundled endpoint. Files are what was installed (the catalog of a later release may list others),
-// and are what the reference count of a delete counts.
+// and are what the reference count of a delete counts. Adult is true when the catalog rated the model for adults when it was
+// installed: the age gate keeps judging the model's files and workflows by this record, whatever a later catalog says.
 type InstalledModel struct {
 	InstalledAt time.Time       `json:"installed_at"`
 	Files       []InstalledFile `json:"files"`
 	Workflows   []string        `json:"workflows"`
 	LicenseID   string          `json:"license_id"`
+	Adult       bool            `json:"adult,omitempty"`
 }
 
 // HFLicense is what the model card of a Hugging Face repository said of its license when a file was installed (a snapshot:

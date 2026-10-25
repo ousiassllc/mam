@@ -14,7 +14,8 @@ import (
 )
 
 // Excluded is the reason Adapter.Unavailable gives for a refused model, so that Multi-model routing leaves it out of its
-// candidates and the generation test lists it as unavailable.
+// candidates. The generation test does not list a refused model at all (its lists leave it out with the same predicate); the
+// message for the reason (modelcatalog's unavailableMessage) is there in case a model is listed anyway.
 const Excluded = "年齢確認がオフ"
 
 // ErrRefused is what *RefusedError matches: the model is an adult model and the age confirmation is off.
