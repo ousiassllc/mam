@@ -1,6 +1,6 @@
-# 画面仕様: 設定画面の新しいルートと応答の決まり（下書き）
+# 画面仕様: 設定画面の新しいルートと応答の決まり
 
-> **状態: 段階 ①・②-1〜②-6 のぶんは実装済み**（`GET /settings`・`/settings/<slug>`・`/settings/local-models/health`・`GET /settings/credentials/:provider/edit`・`POST /settings/credentials/:provider/test`・`GET /settings/chatgpt/:kind/login`、`PUT`・`DELETE /credentials/:provider` の応答。実際の契約は [../api/endpoints-settings.md](../api/endpoints-settings.md)）。LLM（`GET`・`PUT`・`DELETE …/llm/agents/:agent` ほか）と画像・動画（`GET …/models/images/:purpose/edit`・`…/policies/:policy/edit`、`PUT …/images/:purpose`・`…/policies/:policy`）のルートも実装済み（②-3・②-4）。ローカル・MCP のルート（接続先のサブページ・モーダル・MCP のモーダルと発行の 201）も実装済み（②-5・②-6）。Issue #847。オーナーは §6 を推奨する既定で決定した（2026-10-25）。実装のとき、§1 の表を `spec/api/endpoints-settings.md`（新規。`endpoints.md` が上限に近いため。§4）と [../api/endpoints-local-models.md](../api/endpoints-local-models.md) に移し、`spec/api/endpoints.md` §1 の `/settings` の行は「概要」にして `endpoints-settings.md` への案内を足す。ここでは、その下書きと、モーダルの保存の応答の決まりを書く。画面は [settings-screen.md](settings-screen.md)・[settings-screen-categories.md](settings-screen-categories.md)、部品は [shared-ui-parts.md](shared-ui-parts.md)。
+> **状態: 段階 ①・②-1〜②-6 のぶんは実装済み**（`GET /settings`・`/settings/<slug>`・`/settings/local-models/health`・`GET /settings/credentials/:provider/edit`・`POST /settings/credentials/:provider/test`・`GET /settings/chatgpt/:kind/login`、`PUT`・`DELETE /credentials/:provider` の応答。実際の契約は [../api/endpoints-settings.md](../api/endpoints-settings.md)）。LLM（`GET`・`PUT`・`DELETE …/llm/agents/:agent` ほか）と画像・動画（`GET …/models/images/:purpose/edit`・`…/policies/:policy/edit`、`PUT …/images/:purpose`・`…/policies/:policy`）のルートも実装済み（②-3・②-4）。ローカル・MCP のルート（接続先のサブページ・モーダル・MCP のモーダルと発行の 201）も実装済み（②-5・②-6）。Issue #847。オーナーは §6 を推奨する既定で決定した（2026-10-25）。§1 の表の契約は `spec/api/endpoints-settings.md`（新規。`endpoints.md` が上限に近いため。§4）と [../api/endpoints-local-models.md](../api/endpoints-local-models.md) に移し、`spec/api/endpoints.md` §1 の `/settings` の行は「概要」にして `endpoints-settings.md` への案内を足した。ここでは、ルートの決め方と、モーダルの保存の応答の決まりを残す。画面は [settings-screen.md](settings-screen.md)・[settings-screen-categories.md](settings-screen-categories.md)、部品は [shared-ui-parts.md](shared-ui-parts.md)。
 
 ## 1. 新しいルート（すべて今のルートに足す。今のルートの意味は変えない）
 
@@ -18,7 +18,7 @@ GET は状態を変えない。PUT・POST・DELETE は CSRF 必須。`:provider`
 | GET | `/settings/local-models/endpoints/:name` | 接続先のサブページ（モデルの表・追加）。無ければ 404 | 同上 |
 | GET | `/settings/mcp` | MCP サーバー | `Services.MCP` あり |
 | GET | `/settings/update` | バージョンとアップデート | 常に |
-| GET | `/settings/chatgpt` | **変更**: HTMX でなければ `/settings/api-keys` のページ全体（`canonical` つき）。HTMX は今どおり区画の断片（今のクエリ `method` = `official` / `codex` を保つ。ログインのカードごとの取り直しに `card=<kind>` を足すかは §6 の質問 5） | `Services.ChatGPT` あり |
+| GET | `/settings/chatgpt` | **変更**: HTMX でなければ `/settings/api-keys` のページ全体（`canonical` つき）。HTMX は今どおり区画の断片（クエリ `method` = `official` / `codex` を保つ。ログインのモーダルの取り直しは `GET /settings/chatgpt/:kind/login?poll=1` で、`card=<kind>` は足さない。§6 の質問 5） | `Services.ChatGPT` あり |
 | GET | `/settings/local-models/health` | 概要のカード用: 接続先の接続状態の断片（各 3 秒で打ち切り。空の 200 もある） | `Services.LocalModels` あり |
 
 ### モーダルの本文（断片。HTMX 専用。HTMX でない GET は 400 ではなく、該当する分類のページ全体を返す）
@@ -73,7 +73,7 @@ GET は状態を変えない。PUT・POST・DELETE は CSRF 必須。`:provider`
 
 | 仕様書 | 変更 |
 |--------|------|
-| `spec/api/endpoints.md` §1 | `/settings` の行を「概要」にし、`endpoints-settings.md` への案内を足す。**`endpoints.md` は 296 行で上限（300 行）まで 4 行**（2026-10-25 時点。#845 が 3 行足した）なので、新しいルートは `endpoints-settings.md`（新規）に書き、`endpoints.md` にはその一覧への 1 行の案内を足す（`endpoints-local-models.md` と同じやり方）。[home-screen.md](home-screen.md) の `GET /tools/:tool/status` の 1 行も `endpoints.md` に足すので、合わせて 298 行 |
+| `spec/api/endpoints.md` §1 | `/settings` の行を「概要」にし、`endpoints-settings.md` への案内を足す。**`endpoints.md` は 300 行が上限で、着手時は 296 行だった**（#845 が 3 行足した）ので、新しいルートは `endpoints-settings.md`（新規）に書き、`endpoints.md` にはその一覧への 1 行の案内を足す（`endpoints-local-models.md` と同じやり方）。[home-screen.md](home-screen.md) の `GET /tools/:tool/status` の 1 行も `endpoints.md` に足した。実装後は 297 行 |
 | `spec/api/endpoints-local-models.md` | §1「画面」・§2 の表の GET の行（区画 → モーダル・サブページ・HTMX の分岐）、成功の応答（区画全体 → 行の OOB）、`#model-assignment` の OOB の削除 |
 | `spec/components/overview.md` §3 | `global_settings_body`・`global_settings_page` の行を新しい作りに、`molecules` に `tool_card`・`settingsui`・`modal`、`atoms` に `icon` を足す（**この文書群への 1 行のポインターだけを今回足す**。本文の更新は実装のとき） |
 | `spec/api/endpoints.changelog.md`・各仕様書の改訂履歴 | 追記 |
@@ -96,11 +96,11 @@ GET は状態を変えない。PUT・POST・DELETE は CSRF 必須。`:provider`
 
 | # | 質問 | 推奨する既定 |
 |---|------|-------------|
-| 1 | 新しいルートの一覧を `endpoints.md` に直接足さず、`endpoints-settings.md`（新規）に書くか（`endpoints.md` が 296 行で、上限の 300 行まで 4 行） | `endpoints-settings.md` を新規に作る |
+| 1 | 新しいルートの一覧を `endpoints.md` に直接足さず、`endpoints-settings.md`（新規）に書くか（`endpoints.md` は上限の 300 行まで 4 行しかなかった。実装後は 297 行） | `endpoints-settings.md` を新規に作る |
 | 2 | HTMX でない `GET` をモーダルの本文のパスに送ったとき、400 にするか、該当分類のページ全体を返すか | ページ全体（直接開いても壊れない。URL をブックマークされても 404 にならない） |
 | 3 | モーダルを使う保存の応答を、全体の保存（`PUT /settings/llm`・`/settings/models`）と分けて持つことでよいか | 分ける（全体の保存は MCP・テストのために今のまま。モーダルのルートだけ OOB の行を返す） |
 | 4 | 成功の通知を、行の中の文にするか、トースト（`atoms.ToastOOB`）にするか | トースト（モーダルが閉じたあとに見える。行は要約だけにする） |
-| 5 | ログインのモーダルがカードごとに取り直すとき、`GET /settings/chatgpt` に新しいクエリ `card=<kind>` を足すか、今の `method`（`official` / `codex`）を保つだけにするか、`method` を `kind` に置き換えるか。今の `method` は画像生成（`image`）を指せない | `card=<kind>` を足し、`method` は互換のために残す（今の区画が `method` で動いているため。置き換えは #845 の取り込みを壊す） |
+| 5 | ログインのモーダルがカードごとに取り直すとき、`GET /settings/chatgpt` に新しいクエリ `card=<kind>` を足すか、今の `method`（`official` / `codex`）を保つだけにするか、`method` を `kind` に置き換えるか。今の `method` は画像生成（`image`）を指せない | `card=<kind>` を足し、`method` は互換のために残す（今の区画が `method` で動いているため。置き換えは #845 の取り込みを壊す）。**実装した形（0.4）**: `card` は足さず、ログインのモーダルが自分の `GET /settings/chatgpt/:kind/login?poll=1` を取り直す。`method` は読まない |
 
 ## 改訂履歴
 
@@ -112,3 +112,4 @@ GET は状態を変えない。PUT・POST・DELETE は CSRF 必須。`:provider`
 | 0.4 | 2026-10-25 | 状態を更新した。実装済みのルートは [../api/endpoints-settings.md](../api/endpoints-settings.md) に移した。成功の通知はトースト（§6 の質問 4 の推奨。`atoms.SuccessToastOOB`）。§6 の質問 5 は、ログインのモーダルが自分の `GET /settings/chatgpt/:kind/login?poll=1` を取り直し、パネル全体の取り直しは `GET /settings/chatgpt` のままで、`card` は足さず `method` は読まない形にした | Issue #847 の実装 |
 | 0.5 | 2026-10-25 | 状態を更新した。LLM・画像動画のルートを実装した。画像・動画の行ごとの保存（§6 の質問 4）は推奨どおり足した。OOB の行は**応答の先頭**に置く（HTML のパーサーは先頭の `<tr>` だけを行として読む）。画像・動画の保存は `#model-status`（年齢確認の注意とすべて既定に戻す）も OOB で返す | Issue #847 段階 ②-3・②-4 の実装 |
 | 0.6 | 2026-10-25 | 段階 ②-5・②-6 を実装済みにした（接続先のサブページ、`GET …/endpoints/new`・`…/:name/edit`・`/settings/mcp/bind/edit`・`/settings/mcp/tokens/new`、行の OOB、トークンの発行の 201）。行の OOB は `<template>` に包む注意を [../api/endpoints-settings.md](../api/endpoints-settings.md) §5.1 に書いた | Issue #847 の実装 |
+| 0.7 | 2026-10-25 | 題の「（下書き）」を外した。`endpoints.md` の行数を実測の 297 行に直し、§1 の `GET /settings/chatgpt` と §6 の質問 5 に、`card` を足さない実装の形を書いた | PR #849 の第 2 周の独立レビューの指摘 |
