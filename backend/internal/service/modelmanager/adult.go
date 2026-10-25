@@ -2,6 +2,7 @@ package modelmanager
 
 import (
 	"errors"
+	"slices"
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
@@ -106,6 +107,11 @@ func (s *Service) HidesModel(id string) bool {
 			if w.Name == name {
 				return true
 			}
+		}
+	}
+	for _, um := range s.state.Get().UserModels { // an SDXL checkpoint of a repository for adults
+		if um.NFAA && slices.Contains(um.Workflows, name) {
+			return true
 		}
 	}
 	return false

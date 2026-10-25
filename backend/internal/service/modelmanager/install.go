@@ -205,16 +205,10 @@ func (s *Service) fetchFile(ctx context.Context, dest string, f catalog.File, op
 	return fmt.Errorf("%s: %w", f.Name, err)
 }
 
-// recordedGood reports whether an installed model recorded the file as verified.
+// recordedGood reports whether an installed model (or a user model) recorded the file as verified.
 func (s *Service) recordedGood(f catalog.File) bool {
-	for _, im := range s.state.Get().Models {
-		for _, r := range im.Files {
-			if r.Path == f.Path() && r.SHA256 == f.SHA256 && r.Size == f.Size {
-				return true
-			}
-		}
-	}
-	return false
+	sha, size, ok := s.recordedAt(f.Path())
+	return ok && sha == f.SHA256 && size == f.Size
 }
 
 // SetHuggingFaceToken stores the optional Hugging Face token (credential provider "huggingface"). No model of the

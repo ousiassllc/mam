@@ -25,6 +25,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/detect"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/fetch"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/gpu"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/hf/hftest"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/store"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
@@ -48,6 +49,9 @@ type Rig struct {
 	Adapter *modeladapter.Adapter
 	Keys    *credentialtest.Memory
 	Host    *Host
+	// HF is the fake Hugging Face of the import from Hugging Face (no repository until a test adds one); the Service reads it
+	// and the token goes to it as to huggingface.co.
+	HF      *hftest.Server
 	Layout  store.Layout
 	DataDir string
 	// Free is the free space the Service sees (default: plenty); a test lowers it.
@@ -57,6 +61,7 @@ type Rig struct {
 	started   bool
 	db        *repository.DB
 	pinned    bool
+	authHost  string
 }
 
 // Option changes the Deps (and the Rig) before the Service is made.
@@ -68,6 +73,10 @@ func WithDB(db *repository.DB) Option { return func(_ *modelmanager.Deps, r *Rig
 // Pinned makes the model setting file the one the operator pinned (--model-config).
 func Pinned() Option { return func(_ *modelmanager.Deps, r *Rig) { r.pinned = true } }
 
+// HFAuth makes the fake Hugging Face (and the fake hosts, which share the loopback address) the host that gets the stored
+// token, as huggingface.co is in production: a test of a gated repository needs it. Without it no host sees the token.
+func HFAuth() Option { return func(_ *modelmanager.Deps, r *Rig) { r.authHost = "127.0.0.1" } }
+
 // NotWindows makes the Service one of an OS without the bundled engine.
 func NotWindows() Option { return func(d *modelmanager.Deps, _ *Rig) { d.Platform = "linux" } }
 
@@ -76,7 +85,7 @@ func NotWindows() Option { return func(d *modelmanager.Deps, _ *Rig) { d.Platfor
 func New(t *testing.T, opts ...Option) *Rig {
 	t.Helper()
 	host := newHost(t)
-	r := &Rig{T: t, Host: host, Keys: credentialtest.New(), DataDir: t.TempDir()}
+	r := &Rig{T: t, Host: host, HF: hftest.New(t), Keys: credentialtest.New(), DataDir: t.TempDir()}
 	r.Layout = store.Layout{Root: filepath.Join(t.TempDir(), "install", "comfyui")}
 	r.Free = func(string) (uint64, error) { return 1 << 40, nil }
 	r.GPUReport = gpu.Report{Recommendation: gpu.Recommendation{Variant: catalog.VariantNVIDIA, Confidence: "high", Reason: "test GPU"}}
@@ -122,7 +131,9 @@ func New(t *testing.T, opts ...Option) *Rig {
 	d.Jobs, d.JobTable, d.Models, d.Adapter, d.Backends = r.Queue, r.Table, r.Models, r.Adapter, bo
 	d.FreeBytes = func(p string) (uint64, error) { return r.Free(p) }
 	d.GPU = func(context.Context) gpu.Report { return r.GPUReport }
-	d.Fetch = fetch.Options{CheckURL: anyURL, Client: fetch.WithRedirectRules(&http.Client{}, anyURL, "")}
+	d.Fetch = fetch.Options{CheckURL: anyURL, Client: fetch.WithRedirectRules(&http.Client{}, anyURL, r.authHost)}
+	d.Fetch.AuthHost = r.authHost
+	d.HFBase = r.HF.URL
 	r.Svc, err = modelmanager.New(d)
 	require.NoError(t, err)
 	r.Svc.Register()
