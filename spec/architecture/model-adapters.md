@@ -153,7 +153,7 @@ M1 Issue #7（F-06/F-07/F-11/F-12）の実装仕様。Reasoning LLM Adapter（§
 | `prefer_openai` | トップレベルの真偽値。`true` で新規参照（`new_reference`）を `unified_openai` へ回す（§3） | `false` |
 | `retry` / `breaker` | §2.1 と同じ形式・同じ既定値 | 3 回 / 1000ms〜16000ms、5 回失敗で 30 秒 OPEN |
 
-API キーは `credential.Store` のベンダー名（`google` / `openai` / `flux` / `kling` / `seedance` / `runway`）で呼び出しごとに読む。Kling のキーは `ACCESS_KEY:SECRET_KEY` の形式で保存する。
+API キーは `credential.Store` のベンダー名（`google` / `openai` / `flux` / `kling` / `seedance` / `runway`）で呼び出しごとに読む。Kling のキーは `ACCESS_KEY:SECRET_KEY` の形式で保存する。Kling の本文と公式ドキュメントとの突き合わせ、旧経路が `kling-v3` を受け付けるかの未検証は [kling-api.md](kling/kling-api.md)。
 
 既定の API モデル ID と見積価格（`cost_per_image_usd`。2026-10-25 に公式の料金表で確認。価格は参考値で、見積コストにのみ使う）:
 
