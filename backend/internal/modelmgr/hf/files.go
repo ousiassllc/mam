@@ -61,7 +61,10 @@ func (c *Client) PathsInfo(ctx context.Context, repo, commit string, paths []str
 			}
 			fi := FileInfo{Path: e.Path, Size: e.Size}
 			if e.LFS != nil {
-				fi.SHA256, fi.LFSSize = strings.ToLower(e.LFS.OID), e.LFS.Size
+				fi.SHA256, fi.LFSSize = lfsOID(e.LFS.OID), e.LFS.Size
+				if fi.SHA256 == "" {
+					fi.LFSSize = 0
+				}
 			}
 			if e.Security != nil {
 				fi.Security = strings.ToLower(e.Security.Status)
@@ -73,7 +76,7 @@ func (c *Client) PathsInfo(ctx context.Context, repo, commit string, paths []str
 }
 
 // MaxHeaderBytes bounds the JSON header of a .safetensors file that is read (real checkpoints have well under 8 MiB).
-const MaxHeaderBytes = 16 << 20
+const MaxHeaderBytes = 8 << 20
 
 // ErrHeader means the file does not start with a readable .safetensors header.
 var ErrHeader = errors.New("hf: not a readable safetensors header")

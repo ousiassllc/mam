@@ -4,7 +4,11 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
+	"strconv"
+	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -48,6 +52,27 @@ func TestRevision_PinsTheCommitAndReadsLicenseAndTags(t *testing.T) {
 	assert.False(t, r.License.Unclear())
 	assert.True(t, hf.License{ID: "other"}.Unclear())
 	assert.True(t, hf.License{}.Unclear())
+}
+
+func TestRevision_NFAAIsTheTagAtTheCommitOrAtTheHead(t *testing.T) {
+	const old = "fedcba9876543210fedcba9876543210fedcba98"
+	srv := hftest.New(t, hftest.Repo{ID: "o/m", Commit: commit, OldCommit: old, NFAA: true})
+	r, err := newClient(srv, "").Revision(context.Background(), "o/m", old)
+	require.NoError(t, err)
+	assert.Equal(t, old, r.Commit)
+	assert.NotContains(t, r.Tags, hf.TagNFAA, "the old commit's card has no tag")
+	assert.True(t, r.NFAA, "the head is tagged, so the old commit is adult too")
+
+	srv.Add(hftest.Repo{ID: "o/m", Commit: commit, OldCommit: old})
+	r, err = newClient(srv, "").Revision(context.Background(), "o/m", old)
+	require.NoError(t, err)
+	assert.False(t, r.NFAA)
+}
+
+func TestIsNFAA_ReadsTheTagInAnyCaseAndItsShortForm(t *testing.T) {
+	assert.True(t, hf.IsNFAA([]string{"safetensors", "Not-For-All-Audiences"}))
+	assert.True(t, hf.IsNFAA([]string{"NFAA"}))
+	assert.False(t, hf.IsNFAA([]string{"safetensors", "license:mit"}))
 }
 
 func TestRevision_FollowsARenamedRepositoryAndReportsTheNewName(t *testing.T) {
@@ -207,4 +232,68 @@ func TestClient_RefusesAHostOutsideTheAllowList(t *testing.T) {
 func TestResolveURL_IsPinnedToTheCommit(t *testing.T) {
 	c := hf.New(hf.Options{})
 	assert.Equal(t, "https://huggingface.co/o/m/resolve/"+commit+"/split_files/x%20y.safetensors", c.ResolveURL("o/m", commit, "split_files/x y.safetensors"))
+}
+
+// A redirect from Hugging Face to another host (GitHub is allowed for the engine download only) is refused.
+func TestARedirectToAHostThatIsNotHuggingFaceIsRefused(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "https://github.com/o/m", http.StatusFound)
+	}))
+	defer srv.Close()
+	check := func(u *url.URL) error {
+		if u.Hostname() == "127.0.0.1" {
+			return nil
+		}
+		return fetch.HFAllowedURL(u)
+	}
+	c := hf.New(hf.Options{
+		Base: srv.URL, CheckURL: check, HTTP: fetch.WithRedirectRules(&http.Client{}, check, "127.0.0.1"), AuthHost: "127.0.0.1",
+		Wait: func(int, time.Duration) time.Duration { return 0 },
+	})
+	_, err := c.Revision(context.Background(), "o/m", "")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "github.com")
+}
+
+// A server that keeps answering a next cursor with no files, or repeats one, ends the list instead of looping.
+func TestTreeStopsOnAnEndlessOrRepeatedCursor(t *testing.T) {
+	var calls atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		n := calls.Add(1)
+		w.Header().Set("Link", `<https://huggingface.co/api/models/o/m/tree/`+commit+`?cursor=c`+strconv.Itoa(int(n))+`>; rel="next"`)
+		_, _ = w.Write([]byte(`[{"type":"directory","path":"d"}]`))
+	}))
+	defer srv.Close()
+	entries, truncated, err := newClient(&hftest.Server{Server: srv}, "").Tree(context.Background(), "o/m", commit)
+	require.NoError(t, err)
+	assert.Empty(t, entries)
+	assert.True(t, truncated)
+	assert.LessOrEqual(t, int(calls.Load()), 100)
+
+	calls.Store(0)
+	same := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		calls.Add(1)
+		w.Header().Set("Link", `<https://huggingface.co/x?cursor=same>; rel="next"`)
+		_, _ = w.Write([]byte(`[]`))
+	}))
+	defer same.Close()
+	_, truncated, err = newClient(&hftest.Server{Server: same}, "").Tree(context.Background(), "o/m", commit)
+	require.NoError(t, err)
+	assert.True(t, truncated)
+	assert.LessOrEqual(t, int(calls.Load()), 3, "a repeated cursor ends the list")
+}
+
+// An LFS object id that is not 64 hex digits is no SHA-256: the file counts as one without LFS.
+func TestAnLFSIdThatIsNotASHA256IsNotTaken(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`[{"type":"file","path":"a.safetensors","size":5,"lfs":{"oid":"zz","size":5}},` +
+			`{"type":"file","path":"b.safetensors","size":5,"lfs":{"oid":"` + strings.Repeat("AB", 32) + `","size":5}}]`))
+	}))
+	defer srv.Close()
+	entries, _, err := newClient(&hftest.Server{Server: srv}, "").Tree(context.Background(), "o/m", commit)
+	require.NoError(t, err)
+	require.Len(t, entries, 2)
+	assert.Empty(t, entries[0].SHA256)
+	assert.Zero(t, entries[0].LFSSize)
+	assert.Equal(t, strings.Repeat("ab", 32), entries[1].SHA256)
 }

@@ -21,12 +21,14 @@ import (
 const DefaultBase = "https://huggingface.co"
 
 const (
-	// maxBody bounds a JSON answer (a tree page of 1000 files is well under 1 MiB).
-	maxBody = 32 << 20
+	// maxBody bounds a JSON answer (a tree page of 1000 files and a search of 50 models are well under 1 MiB).
+	maxBody = 8 << 20
 	// maxRetries is how often a rate-limited (429) request is repeated.
 	maxRetries = 3
 	// maxWait is the longest a rate-limit answer is waited out: a longer hint (the anonymous window is minutes) is returned as an error.
 	maxWait = 20 * time.Second
+	// maxHint caps the seconds of a rate-limit hint that are read (a day: far above maxWait, far below an overflow).
+	maxHint = 24 * 60 * 60
 )
 
 // Options of New. The zero value is the production setting.
@@ -35,7 +37,7 @@ type Options struct {
 	Base string
 	// HTTP sends the requests (default: the client of fetch.NewClient, which follows redirects that pass CheckURL and drops the token when one leaves the host).
 	HTTP httpclient.Doer
-	// CheckURL accepts the URL of a request and of every redirect (default fetch.AllowedURL).
+	// CheckURL accepts the URL of a request and of every redirect (default fetch.HFAllowedURL: huggingface.co and hf.co only).
 	CheckURL func(*url.URL) error
 	// Token returns the token ("" for none). It is sent to AuthHost only.
 	Token func() string
@@ -63,7 +65,7 @@ func New(o Options) *Client {
 		c.base = DefaultBase
 	}
 	if c.check == nil {
-		c.check = fetch.AllowedURL
+		c.check = fetch.HFAllowedURL
 	}
 	if c.authHost == "" {
 		c.authHost = "huggingface.co"
@@ -207,7 +209,7 @@ func rateHint(h http.Header) time.Duration {
 	for _, part := range strings.Split(h.Get("RateLimit"), ";") {
 		if v, ok := strings.CutPrefix(strings.TrimSpace(part), "t="); ok {
 			if secs, err := strconv.Atoi(v); err == nil && secs > 0 {
-				return time.Duration(secs) * time.Second
+				return time.Duration(min(secs, maxHint)) * time.Second // no overflow: a hint above maxWait is an error anyway
 			}
 		}
 	}

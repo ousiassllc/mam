@@ -154,6 +154,10 @@ func (br *batchRun) start(ctx context.Context, r gentestrepo.Result) {
 	if !started {
 		return
 	}
+	if s.Hidden != nil && s.Hidden(r.Model) { // the age gate was closed after the batch was queued: the call is not made
+		s.settle(ctx, r.ID, gentestrepo.StatusFailed, ReasonHidden, nil)
+		return
+	}
 	br.execute(ctx, r)
 }
 

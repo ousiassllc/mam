@@ -13,7 +13,7 @@ import (
 
 // DeleteModel removes an installed model: its models of the managed endpoint and its files. A file that another
 // installed model uses too (a VAE, a text encoder) stays while that model is installed (the count is over the
-// files recorded at the installs). A model that an image purpose or a Quality Policy chooses is refused
+// files recorded at the installs and those of the installs in progress). A model that an image purpose or a Quality Policy chooses is refused
 // (*InvalidError): change the assignment first. An install that is running is ErrBusy.
 func (s *Service) DeleteModel(ctx context.Context, modelID string) error {
 	if _, ok := s.cat.Model(modelID); !ok {
@@ -36,7 +36,7 @@ func (s *Service) DeleteModel(ctx context.Context, modelID string) error {
 			return err
 		}
 	}
-	keep := map[string]bool{}
+	keep := s.activeFiles(modelID)    // a file that an install in progress needs (a shared encoder) is not recorded yet
 	for path := range st.UserModels { // a file the user added from Hugging Face stays while its record does
 		keep[path] = true
 	}

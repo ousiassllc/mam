@@ -29,7 +29,7 @@ type File struct {
 	Served []byte
 }
 
-// Repo is a fake repository. Its Commit is the only revision besides "main".
+// Repo is a fake repository. Its Commit is the head; besides "main" it answers OldCommit (when set) as an earlier revision.
 type Repo struct {
 	ID     string
 	Commit string
@@ -38,6 +38,8 @@ type Repo struct {
 	Gated bool
 	// NFAA tags the repository not-for-all-audiences.
 	NFAA bool
+	// OldCommit is an earlier commit (same files) whose card does not carry the NFAA tag yet: the tag was added later.
+	OldCommit string
 	// License is cardData.license ("" for none); LicenseName and LicenseLink are the other card fields.
 	License, LicenseName, LicenseLink string
 	Downloads, Likes                  int64
@@ -60,6 +62,7 @@ type Server struct {
 	repos   map[string]Repo
 	renames map[string]string
 	limited int
+	hold    chan struct{} // while set, the CDN answers nothing until it is closed
 	reqs    []Request
 }
 
@@ -107,6 +110,28 @@ func (s *Server) RateLimit(n int) {
 	s.mu.Lock()
 	s.limited = n
 	s.mu.Unlock()
+}
+
+// HoldCDN makes the CDN wait before it answers a file until the returned release is called (release is safe to call more than
+// once, and the test cleanup calls it). The API and the redirect to the CDN are not held: a download is queued, started and
+// stuck at the CDN, so that a test can queue another install while the first one is in flight.
+func (s *Server) HoldCDN(t *testing.T) (release func()) {
+	t.Helper()
+	gate := make(chan struct{})
+	s.mu.Lock()
+	s.hold = gate
+	s.mu.Unlock()
+	var once sync.Once
+	release = func() {
+		once.Do(func() {
+			s.mu.Lock()
+			s.hold = nil
+			s.mu.Unlock()
+			close(gate)
+		})
+	}
+	t.Cleanup(release)
+	return release
 }
 
 // Requests are the requests seen so far.

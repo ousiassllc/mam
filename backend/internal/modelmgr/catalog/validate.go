@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 )
@@ -19,6 +20,16 @@ var (
 	// sourceNoteDate finds the date a mirror's SHA-256 was checked against the original, in a File.SourceNote.
 	sourceNoteDate = regexp.MustCompile(`20[0-9]{2}-[0-9]{2}-[0-9]{2}`)
 )
+
+// hasCheckDate reports whether the note names a real calendar date (YYYY-MM-DD).
+func hasCheckDate(note string) bool {
+	for _, d := range sourceNoteDate.FindAllString(note, -1) {
+		if _, err := time.Parse(time.DateOnly, d); err == nil {
+			return true
+		}
+	}
+	return false
+}
 
 // unspecifiedLicense is the license ID of a model whose source states no license text.
 const unspecifiedLicense = "unspecified"
@@ -169,7 +180,7 @@ func validateFiles(where string, files []File, shared map[string]File) []error {
 			errs = append(errs, fmt.Errorf("%s: name must be a .safetensors file name", fw))
 		case !slices.Contains([]string{"checkpoints", "diffusion_models", "text_encoders", "vae", "loras"}, f.Folder):
 			errs = append(errs, fmt.Errorf("%s: folder %q is not a model folder", fw, f.Folder))
-		case f.SourceNote != "" && !sourceNoteDate.MatchString(f.SourceNote):
+		case f.SourceNote != "" && !hasCheckDate(f.SourceNote):
 			errs = append(errs, fmt.Errorf("%s: source_note must say where the original is and the date (YYYY-MM-DD) its SHA-256 was checked", fw))
 		case !modelURLPattern.MatchString(f.URL):
 			errs = append(errs, fmt.Errorf("%s: url must be https://huggingface.co/<repo>/resolve/<40-hex commit>/<path>", fw))

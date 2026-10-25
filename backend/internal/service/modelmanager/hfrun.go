@@ -30,7 +30,8 @@ func (s *Service) runHFInstall(ctx context.Context, p hfplan.Payload, set func(t
 		return ErrAdultNotConfirmed
 	}
 	dest := s.Layout.ModelPath(p.Rel())
-	if err := errors.Join(s.Layout.CheckWritable(), s.hfError(hfplan.CheckDest(dest, p, s.recordedAt))); err != nil {
+	defer s.lockDests(p.Rel())()                                                                                      // held until the record is written: a job for the same file waits and then sees it
+	if err := errors.Join(s.Layout.CheckWritable(), s.hfError(hfplan.CheckDest(dest, p, s.recordedAt))); err != nil { // again: another install may have written the file while this one waited
 		return err
 	}
 	opts := s.Fetch
@@ -38,6 +39,9 @@ func (s *Service) runHFInstall(ctx context.Context, p hfplan.Payload, set func(t
 		opts.FreeBytes = s.FreeBytes
 	}
 	opts.Token = s.huggingFaceToken
+	if opts.CheckURL == nil {
+		opts.CheckURL = fetch.HFAllowedURL // the import never leaves Hugging Face (the engine download keeps its own list)
+	}
 	opts.Progress = func(done, total int64) {
 		set(track.Update{Percent: int(float64(done) / float64(total) * 99), Phase: "download", Message: p.Name, DoneBytes: done, TotalBytes: total})
 	}
@@ -91,7 +95,7 @@ func (s *Service) UserModels() []UserModelView {
 	st := s.state.Get()
 	return hfplan.UserModels(st, s.AdultContentEnabled(), BundledEndpoint,
 		func(um store.UserModel) bool { return fileIsThere(s.Layout.ModelPath(um.Path), um.Size) },
-		func(path string) []string { return s.catalogHolders(st, path) })
+		func(path string) []string { return s.visibleCatalogHolders(st, path) })
 }
 
 // catalogHolders lists the installed catalog models that hold the file at path.
@@ -103,6 +107,35 @@ func (s *Service) catalogHolders(st store.State, path string) (ids []string) {
 	}
 	slices.Sort(ids)
 	return ids
+}
+
+// visibleCatalogHolders is catalogHolders without the adult models while the age gate is closed (what a list may name).
+func (s *Service) visibleCatalogHolders(st store.State, path string) []string {
+	return slices.DeleteFunc(s.catalogHolders(st, path), func(id string) bool {
+		m, ok := s.cat.Model(id)
+		return ok && !s.allowed(m)
+	})
+}
+
+// activeFiles are the files that the installs queued or running will write (the files of the catalog models, except the model
+// except, and the destinations of the imports): a file that one of them needs is not removed with another model, although
+// no record holds it yet.
+func (s *Service) activeFiles(except string) map[string]bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	out := map[string]bool{}
+	for target := range s.active {
+		if rel := s.activeDest[target]; rel != "" {
+			out[rel] = true
+		}
+		id, ok := modelTarget(target)
+		if m, found := s.cat.Model(id); ok && found && id != except {
+			for _, f := range m.Files {
+				out[f.Path()] = true
+			}
+		}
+	}
+	return out
 }
 
 // DeleteUserModel removes a file added from Hugging Face, by its path (models/<folder>/<name>): the models created for it
@@ -127,7 +160,7 @@ func (s *Service) DeleteUserModel(ctx context.Context, path string) error {
 		}
 	}
 	var failed error
-	if dest := s.Layout.ModelPath(um.Path); len(s.catalogHolders(st, um.Path)) == 0 {
+	if dest := s.Layout.ModelPath(um.Path); len(s.catalogHolders(st, um.Path)) == 0 && !s.activeFiles("")[um.Path] {
 		for _, p := range []string{dest, fetch.PartPath(dest)} {
 			if err := os.Remove(p); err != nil && !errors.Is(err, os.ErrNotExist) {
 				failed = errors.Join(failed, err)

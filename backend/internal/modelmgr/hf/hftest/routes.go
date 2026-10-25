@@ -65,14 +65,14 @@ func (s *Server) api(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "Invalid username or password."})
 		return
 	}
-	if rev := parts[3]; rev != "main" && rev != repo.Commit {
+	if rev := parts[3]; rev != "main" && rev != repo.Commit && (repo.OldCommit == "" || rev != repo.OldCommit) {
 		w.Header().Set("X-Error-Code", "RevisionNotFound")
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "Revision not found"})
 		return
 	}
 	switch parts[2] {
 	case "revision":
-		s.revision(w, repo)
+		s.revision(w, repo, parts[3])
 	case "tree":
 		s.tree(w, r, repo)
 	case "paths-info":
@@ -82,7 +82,7 @@ func (s *Server) api(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) revision(w http.ResponseWriter, repo Repo) {
+func (s *Server) revision(w http.ResponseWriter, repo Repo, rev string) {
 	card := map[string]any{}
 	if repo.License != "" {
 		card["license"] = repo.License
@@ -93,8 +93,12 @@ func (s *Server) revision(w http.ResponseWriter, repo Repo) {
 	if repo.LicenseLink != "" {
 		card["license_link"] = repo.LicenseLink
 	}
+	sha, tags := repo.Commit, tagsOf(repo)
+	if repo.OldCommit != "" && rev == repo.OldCommit { // an earlier commit: the card had no NFAA tag yet
+		sha, tags = repo.OldCommit, []string{"safetensors"}
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"id": repo.ID, "sha": repo.Commit, "gated": gatedField(repo), "private": false, "disabled": repo.Disabled, "tags": tagsOf(repo), "cardData": card,
+		"id": repo.ID, "sha": sha, "gated": gatedField(repo), "private": false, "disabled": repo.Disabled, "tags": tags, "cardData": card,
 	})
 }
 
@@ -171,7 +175,7 @@ func (s *Server) resolve(w http.ResponseWriter, r *http.Request) {
 	s.mu.Lock()
 	repo, ok := s.repos[parts[0]+"/"+parts[1]]
 	s.mu.Unlock()
-	if !ok || (parts[3] != "main" && parts[3] != repo.Commit) {
+	if !ok || (parts[3] != "main" && parts[3] != repo.Commit && (repo.OldCommit == "" || parts[3] != repo.OldCommit)) {
 		http.NotFound(w, r)
 		return
 	}
@@ -205,6 +209,16 @@ func (s *Server) cdn(w http.ResponseWriter, r *http.Request) {
 	if err != nil || !ok || idx >= len(repo.Files) {
 		http.NotFound(w, r)
 		return
+	}
+	s.mu.Lock()
+	hold := s.hold
+	s.mu.Unlock()
+	if hold != nil {
+		select {
+		case <-hold:
+		case <-r.Context().Done():
+			return
+		}
 	}
 	body := repo.Files[idx].Body
 	if repo.Files[idx].Served != nil {
