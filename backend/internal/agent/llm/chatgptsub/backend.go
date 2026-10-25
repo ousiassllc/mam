@@ -57,8 +57,9 @@ func Add(backends map[llm.Provider]llm.Backend, cfg llm.Config, tokens TokenSour
 const (
 	provider = llm.ProviderChatGPTSubscription
 	// maxStreamBytes bounds what one call reads.
-	maxStreamBytes = 8 << 20
-	jsonDemand     = "\n\nAnswer with one JSON object and nothing else: no code fence, no text before or after it."
+	maxStreamBytes  = 8 << 20
+	userNotEligible = "subscription_sharing_user_not_eligible"
+	jsonDemand      = "\n\nAnswer with one JSON object and nothing else: no code fence, no text before or after it."
 	// defaultInstructions is sent when the Agent has no system prompt: the endpoint requires instructions.
 	defaultInstructions = "You are a helpful assistant."
 )
@@ -90,9 +91,13 @@ func (b *Backend) Complete(ctx context.Context, model string, req llm.Request) (
 		}
 		defer func() { _ = res.Body.Close() }()
 		if res.StatusCode/100 != 2 {
-			return "", httpError(res)
+			return "", b.advise(httpError(res))
 		}
-		return readStream(io.LimitReader(res.Body, maxStreamBytes))
+		text, err := readStream(io.LimitReader(res.Body, maxStreamBytes))
+		if err != nil {
+			return "", b.advise(err)
+		}
+		return text, nil
 	}
 }
 
@@ -156,4 +161,24 @@ func signInError(err error) error {
 		return &llm.APIError{Provider: provider, Permanent: true, Err: err, Notice: "ChatGPT のプランの利用が許可されていません。設定画面でログインし直し、プランの利用を許可してください。"}
 	}
 	return &llm.APIError{Provider: provider, Err: err}
+}
+
+// planSource is what advise needs of the sign-in to know the plan: *chatgpt.Account has it.
+type planSource interface {
+	Status() (chatgpt.Status, error)
+}
+
+// advise adds the way out to the notice of a refusal "user not eligible" when the account is a workspace one
+// (Business / Enterprise / Edu): the plan cannot be used through this route, the Codex login can.
+func (b *Backend) advise(err error) error {
+	var api *llm.APIError
+	if !errors.As(err, &api) || api.Notice == "" || api.Status != http.StatusForbidden || !strings.Contains(api.Message, userNotEligible) {
+		return err
+	}
+	if ps, ok := b.tokens.(planSource); ok {
+		if st, serr := ps.Status(); serr == nil && chatgpt.IsWorkspacePlan(st.Plan) {
+			api.Notice += " " + chatgpt.WorkspaceAdvice
+		}
+	}
+	return err
 }

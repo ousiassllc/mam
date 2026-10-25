@@ -14,6 +14,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/jev"
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
+	"github.com/ousiassllc/mam/backend/internal/agent/llm/chatgptcodex"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm/chatgptsub"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/chatgptimage"
@@ -92,6 +93,7 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 	keys := credential.NewKeyring()
 	llmBackends := llm.NewBackends(llmCfg, keys, nil)
 	chatgptsub.Add(llmBackends, llmCfg, gpt.Official(), nil) // the ChatGPT plan provider; its sign-in is not an API key
+	chatgptcodex.Add(llmBackends, llmCfg, gpt.Codex())       // the same plan through the Codex app-server (workspace accounts)
 	reasoning := llm.NewClient(llmCfg, llmBackends, llm.WithLogger(logger))
 
 	// The saved ComfyUI workflows are models of the settings: the routes of models.json may name them.

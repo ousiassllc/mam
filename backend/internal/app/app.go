@@ -25,6 +25,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/router"
 	"github.com/ousiassllc/mam/backend/internal/router/settingsroutes"
+	"github.com/ousiassllc/mam/backend/internal/version"
 	"github.com/ousiassllc/mam/static"
 )
 
@@ -98,7 +99,11 @@ func Run(ctx context.Context, opts Options) error {
 }
 
 func serve(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Options) error {
-	gpt := chatgpt.New(chatgpt.Options{Keys: credential.NewKeyring(), DataDir: cfg.DataDir, Open: opts.OpenBrowser, Logger: logger})
+	gpt := chatgpt.New(chatgpt.Options{
+		Keys: credential.NewKeyring(), DataDir: cfg.DataDir, Open: opts.OpenBrowser, Logger: logger,
+		CodexLayout: codexLayout(logger), Version: version.Version,
+	})
+	defer gpt.Close() // the Codex app-server is a child process of mam
 	services, db, cleanup, err := buildServices(ctx, cfg, logger, gpt)
 	if err != nil {
 		return err

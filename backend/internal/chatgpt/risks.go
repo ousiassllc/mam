@@ -1,5 +1,7 @@
 package chatgpt
 
+import "strings"
+
 // Links the sign-in UI is required to show (SIWC ui-ux-guidelines, accounts-and-sessions "Tracking usage").
 const (
 	// UsageURL is where the user reviews and limits what apps use of the ChatGPT plan.
@@ -30,4 +32,25 @@ func ImageRisksSummary() string {
 		out += r
 	}
 	return out
+}
+
+// PolicyDeniedMessage is the reason of an official login that the organization of the account refused
+// (3p_delegated_access_policy_denied).
+const PolicyDeniedMessage = "この ChatGPT アカウントの組織では、このアプリでのプランの利用が許可されていません（Business / Enterprise / Edu のワークスペースアカウントは、OpenAI の仕様で他のアプリからプランを使えません）。Codex 経由でログインしてください"
+
+// WorkspaceAdvice tells the user of a workspace account (Business / Enterprise / Edu) to use the Codex login.
+const WorkspaceAdvice = "組織のアカウントは Codex 経由のログインを使ってください。設定画面の「ChatGPT でログイン」で方式を「Codex 経由」にします。"
+
+// IsWorkspacePlan reports whether a plan type (the chatgpt_plan_type of the ID token, the planType of the Codex
+// account) is a workspace plan: Team, Business, Enterprise or Edu and their variants. Those accounts cannot use the plan
+// through the official sign-in.
+func IsWorkspacePlan(plan string) bool {
+	p := strings.ToLower(strings.TrimSpace(plan))
+	switch {
+	case p == "", p == "free", p == "go", p == "plus", p == "pro", p == "unknown":
+		return false
+	case p == "team", strings.Contains(p, "business"), strings.HasPrefix(p, "ent"), strings.HasPrefix(p, "edu"):
+		return true
+	}
+	return false
 }
