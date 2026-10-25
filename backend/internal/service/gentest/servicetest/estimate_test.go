@@ -86,10 +86,25 @@ func TestEstimateVideoUsesTheSnappedLengthAndTheResolutionPrice(t *testing.T) {
 	assert.Equal(t, []string{"kling-3.0"}, snapped)
 }
 
+func TestEstimateOfAnImageFollowsItsSize(t *testing.T) {
+	r := gentesttest.New(t)
+	landscape, square := imageReq("gpt-image-2"), imageReq("gpt-image-2")
+	landscape.AspectRatio, square.AspectRatio = "16:9", "1:1"
+
+	l, err := r.Svc.Estimate(context.Background(), landscape)
+	require.NoError(t, err)
+	q, err := r.Svc.Estimate(context.Background(), square)
+	require.NoError(t, err)
+
+	assert.Equal(t, "priced", line(t, l, "gpt-image-2").Basis)
+	assert.InDelta(t, 0.041, *line(t, l, "gpt-image-2").UnitUSD, 1e-9, "medium at 1536x1024")
+	assert.InDelta(t, 0.053, *line(t, q, "gpt-image-2").UnitUSD, 1e-9, "medium at 1024x1024")
+}
+
 func TestEstimateIsTriState(t *testing.T) {
 	r := gentesttest.New(t, gentesttest.WithConfig(func(c *modeladapter.Config) {
 		mc := c.Models[domain.ModelGPTImage2]
-		mc.CostPerImage = 0 // a cloud model whose price the user removed from models.json
+		mc.Model, mc.CostPerImage = "gpt-image-1.5", 0 // a cloud model the built-in prices do not cover (the user changed its API model ID)
 		c.Models[domain.ModelGPTImage2] = mc
 	}))
 	e, err := r.Svc.Estimate(context.Background(), imageReq("flux-2", "gpt-image-2"))

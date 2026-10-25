@@ -70,8 +70,8 @@ func TestOpenAIGenerationsRequestMatchesTheGPTImage2Spec(t *testing.T) {
 			assert.Equal(t, "/v1/images/generations", gotPath)
 			assert.Equal(t, "Bearer sk-test", gotAuth)
 			assert.Equal(t, "application/json", gotContentType)
-			assert.Equal(t, map[string]any{"model": "gpt-image-2", "prompt": "a bottle", "size": size, "n": float64(1)}, body,
-				"exactly model, prompt, size, n: no response_format, input_fidelity, quality or background")
+			assert.Equal(t, map[string]any{"model": "gpt-image-2", "prompt": "a bottle", "size": size, "quality": "medium", "n": float64(1)}, body,
+				"exactly model, prompt, size, quality (the default profile, sent explicitly), n: no response_format, input_fidelity or background")
 		})
 	}
 }
@@ -116,7 +116,7 @@ func TestOpenAIEditsRequestMatchesTheGPTImage2Spec(t *testing.T) {
 	assert.Equal(t, []byte("EDITED"), res.Data, "data[0].b64_json is decoded")
 	assert.Equal(t, "/v1/images/edits", gotPath)
 	assert.Equal(t, "Bearer sk-test", gotAuth)
-	assert.Equal(t, map[string][]string{"model": {"gpt-image-2"}, "prompt": {"combine them"}, "size": {"1024x1536"}}, fields,
+	assert.Equal(t, map[string][]string{"model": {"gpt-image-2"}, "prompt": {"combine them"}, "size": {"1024x1536"}, "quality": {"medium"}}, fields,
 		"no input_fidelity and no response_format field")
 	assert.Equal(t, map[string][][]byte{"image[]": {[]byte("ONE"), []byte("TWO")}}, files, "one image[] file part per input, in order")
 }
@@ -156,4 +156,23 @@ func TestGeminiImageModelsCallGenerateContentWithTheImageConfig(t *testing.T) {
 				"no imageSize: unset is the model's default 1K, the size CostPerImage prices")
 		})
 	}
+}
+
+func TestOpenAIImageBackendUsesEditsWhenReferencesAreGiven(t *testing.T) {
+	var paths []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		paths = append(paths, r.URL.Path)
+		assert.Equal(t, "Bearer k", r.Header.Get("Authorization"))
+		_, _ = w.Write([]byte(`{"data":[{"b64_json":"` + base64.StdEncoding.EncodeToString([]byte("IMG")) + `"}]}`))
+	}))
+	defer srv.Close()
+	b := backendsFor(t, srv, memKeys{"openai": "k"})
+	be := b.Image[domain.ModelGPTImage2]
+
+	_, err := be.GenerateImage(context.Background(), "gpt-image-2", modeladapter.ImageRequest{Prompt: "a"})
+	require.NoError(t, err)
+	_, err = be.GenerateImage(context.Background(), "gpt-image-2", modeladapter.ImageRequest{Prompt: "b", Inputs: []modeladapter.Input{{Data: []byte("R"), MimeType: "image/png"}}})
+	require.NoError(t, err)
+
+	assert.Equal(t, []string{"/v1/images/generations", "/v1/images/edits"}, paths)
 }

@@ -89,22 +89,3 @@ func TestGeminiImageBackendSendsReferencesInline(t *testing.T) {
 	assert.Contains(t, body, base64.StdEncoding.EncodeToString([]byte("REF")))
 	assert.Contains(t, body, `"aspectRatio":"1:1"`)
 }
-
-func TestOpenAIImageBackendUsesEditsWhenReferencesAreGiven(t *testing.T) {
-	var paths []string
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		paths = append(paths, r.URL.Path)
-		assert.Equal(t, "Bearer k", r.Header.Get("Authorization"))
-		_, _ = w.Write([]byte(`{"data":[{"b64_json":"` + base64.StdEncoding.EncodeToString([]byte("IMG")) + `"}]}`))
-	}))
-	defer srv.Close()
-	b := backendsFor(t, srv, memKeys{"openai": "k"})
-	be := b.Image[domain.ModelGPTImage2]
-
-	_, err := be.GenerateImage(context.Background(), "gpt-image-2", modeladapter.ImageRequest{Prompt: "a"})
-	require.NoError(t, err)
-	_, err = be.GenerateImage(context.Background(), "gpt-image-2", modeladapter.ImageRequest{Prompt: "b", Inputs: []modeladapter.Input{{Data: []byte("R"), MimeType: "image/png"}}})
-	require.NoError(t, err)
-
-	assert.Equal(t, []string{"/v1/images/generations", "/v1/images/edits"}, paths)
-}

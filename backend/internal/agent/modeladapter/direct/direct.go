@@ -32,7 +32,7 @@ var (
 
 // Image makes one image with model. req is sent as it is: no fail-over, and a request with input images for a model that
 // takes none is refused (ErrInputsUnsupported) instead of being sent without them. A seed is dropped for a model that takes
-// none (SupportsSeed). The output records the model, the estimated cost (Config.ImageCost) and FellBack false.
+// none (SupportsSeed). The output records the model, the estimated cost (Config.ImageCostFor) and FellBack false.
 func Image(ctx context.Context, a *modeladapter.Adapter, model domain.ModelName, req modeladapter.ImageRequest) (modeladapter.ImageOutput, error) {
 	if err := a.Gate.Check(model); err != nil {
 		return modeladapter.ImageOutput{}, err
@@ -61,7 +61,7 @@ func Image(ctx context.Context, a *modeladapter.Adapter, model domain.ModelName,
 	if err != nil {
 		return modeladapter.ImageOutput{}, err
 	}
-	return modeladapter.ImageOutput{ImageResult: res, Model: model, EstimatedCost: cfg.ImageCost(model)}, nil
+	return modeladapter.ImageOutput{ImageResult: res, Model: model, EstimatedCost: cfg.ImageCostFor(model, req.AspectRatio)}, nil
 }
 
 // Video makes one clip with the model of target at the resolution of target. The length is snapped to one the model

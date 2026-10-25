@@ -81,4 +81,4 @@ Windows 版（Wails ウィンドウ + ユーザー単位の NSIS インストー
 
 MAM は [GNU Affero General Public License v3.0](LICENSE)（AGPL-3.0）で公開しています。Copyright (C) 2026 Ousiass合同会社。改変した MAM をネットワーク越しに利用させるときも、その利用者にソースコードを提供する義務があります（AGPL-3.0 第 13 条）。
 
-Windows 版が使うサードパーティのソフトウェアのライセンス表記は [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) にあります。インストーラーは `LICENSE` とこのファイルをインストール先に置きます。`go.mod` や `static/package-lock.json` の依存を変えたら、`scripts/third-party-notices.sh` で作り直します。
+Windows 版が使うサードパーティのソフトウェアのライセンス表記は [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) にあります。インストーラーは `LICENSE` とこのファイルをインストール先に置きます。`go.mod` や `static/package-lock.json` の依存を変えたら、`scripts/third-party-notices.sh` で作り直します。画面のアイコンは [Lucide](https://lucide.dev)（ISC。Feather 由来のものは MIT）の SVG をソースにコピーしたもので、取り込んだ版のライセンス文は [`backend/internal/web/atoms/icons/LICENSE`](backend/internal/web/atoms/icons/LICENSE) にあり、`THIRD_PARTY_NOTICES.md` にも載ります。

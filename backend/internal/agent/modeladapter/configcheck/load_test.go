@@ -61,3 +61,24 @@ func TestLoadConfigRejectsAnUnknownMapKey(t *testing.T) {
 		assert.Error(t, err, name)
 	}
 }
+
+func TestConfigRejectsAQualityThatIsNotAProfile(t *testing.T) {
+	for name, quality := range map[string]string{"auto": "auto", "unknown": "ultra"} {
+		t.Run(name, func(t *testing.T) {
+			cfg := modeladapter.DefaultConfig()
+			mc := cfg.Models[domain.ModelGPTImage2]
+			mc.Quality = quality
+			cfg.Models[domain.ModelGPTImage2] = mc
+
+			err := configcheck.Validate(cfg)
+
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "quality")
+		})
+	}
+	cfg := modeladapter.DefaultConfig()
+	mc := cfg.Models[domain.ModelFlux2]
+	mc.Quality = "high"
+	cfg.Models[domain.ModelFlux2] = mc
+	assert.ErrorContains(t, configcheck.Validate(cfg), "only gpt-image-2 has one")
+}

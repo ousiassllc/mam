@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/chatgptid"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/gptimage"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
@@ -227,4 +228,17 @@ func VendorOf(m domain.ModelName) Vendor {
 // Vendors lists every vendor that has a backend.
 func Vendors() []Vendor {
 	return []Vendor{VendorGoogle, VendorOpenAI, VendorFlux, VendorKling, VendorSeedance, VendorRunway}
+}
+
+// ImageCost is the most one image of the model can cost (its dearest size): what a budget check holds.
+func (c Config) ImageCost(m domain.ModelName) float64 { return c.ImageCostFor(m, "") }
+
+// ImageCostFor is the estimated cost of one image of the aspect ratio ("" for the dearest size): the price the user set,
+// else for GPT Image 2 the price of its quality profile at the size.
+func (c Config) ImageCostFor(m domain.ModelName, aspect string) float64 {
+	mc := c.ModelSettings(m)
+	if m == domain.ModelGPTImage2 && mc.CostPerImage == 0 && gptimage.Priced(mc.Model) {
+		return gptimage.Estimate(mc.Quality, aspect)
+	}
+	return mc.CostPerImage
 }

@@ -163,4 +163,5 @@
 | 1.156 | 2026-10-26 | §1 に生成テスト画面のルート（`/generation-test/…`）を足し、仕様を [endpoints-gentest.md](endpoints-gentest.md) に書いた。モデルマネージャーの試し生成のルートは、生成テストの 1 件のバッチを動かすものに改めた（[endpoints-model-manager.md](endpoints-model-manager.md) 1.1） | Issue #835 |
 | 1.157 | 2026-10-25 | §1 の `GET /settings` の行: 参照画像を使えないモデルは組み込みにはなく登録モデルだけになったこと、保存済みの `models.json` の `imagen-4` を読み込み時に Nano Banana（高速版は Nano Banana Lite）として扱うことを追記 | Imagen 4 の終了と、画像モデルの割り当て・識別子の変更（`model-adapters.md` 1.52。Issue #836・#837） |
 | 1.158 | 2026-10-25 | §1 の `/settings/chatgpt` の行に `method` クエリ・`:kind=codex` を足し、Codex 経由のログインのルート（`POST …/codex/install`・`…/install/cancel`・`PUT …/codex/path`・`POST …/codex/refresh`・`GET …/codex/models`）を足した | Issue #845。Business / Enterprise / Edu のアカウントを Codex の app-server 経由で使えるようにする |
-| 1.159 | 2026-10-25 | §1 の `GET /settings` の行: 年齢確認がオフの間は、導入済みの成人向けモデルを画像・動画モデルの選択肢に出さず、それを指す保存済みの割り当てを「（現在は使えません）」で見せ、保存を 422 にする（`model-assignment-gated`） | Issue #848。年齢確認をオフに戻したあとも、導入済みの成人向けモデルが割り当て・生成から使えた |
+| 1.159 | 2026-10-25 | §1 に `GET /tools/:tool/status`（トップ画面のツールのカードの状態）を足し、仕様を [endpoints-home.md](endpoints-home.md) に書いた | Issue #846 |
+| 1.160 | 2026-10-25 | §1 の `GET /settings` の行: 年齢確認がオフの間は、導入済みの成人向けモデルを画像・動画モデルの選択肢に出さず、それを指す保存済みの割り当てを「（現在は使えません）」で見せ、保存を 422 にする（`model-assignment-gated`） | Issue #848。年齢確認をオフに戻したあとも、導入済みの成人向けモデルが割り当て・生成から使えた |

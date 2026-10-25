@@ -64,8 +64,10 @@ func New(llmFile string, llmPinned bool, modelFile string, modelPinned bool) *Se
 // Register adds GET paths.Settings() (always: the API key panel needs only keys and the version section
 // only the version) and, when s is not nil, the LLM and model sections with their PUT / DELETE routes and,
 // when s.Update is set, POST paths.UpdateCheck() and, when s.MCP is set, the MCP server section with its PUT / POST /
-// DELETE routes. Without s the screen has no such sections and the routes do not exist.
-func Register(engine *gin.Engine, keys *service.CredentialService, s *Services) {
+// DELETE routes. Without s the screen has no such sections and the routes do not exist. It also adds the status routes
+// of the tool cards of the home page (registerTools), which read the services of both.
+func Register(engine *gin.Engine, services *service.Services, s *Services) {
+	keys := services.Credentials
 	var update *appupdate.Service
 	if s != nil {
 		update = s.Update
@@ -130,6 +132,7 @@ func Register(engine *gin.Engine, keys *service.CredentialService, s *Services) 
 		gentesthandler.Register(engine, s.Gentest)
 	}
 	engine.GET(paths.Settings(), handler.GlobalSettingsPage(keys, addSections))
+	registerTools(engine, services, s)
 }
 
 // registerLocalModels adds the routes of the "ローカル・代替モデル" section (spec/api/endpoints.md).

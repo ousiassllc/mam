@@ -60,6 +60,11 @@ func (s *Service) planModel(cfg modeladapter.Config, r Request, info modelcatalo
 		s.planVideo(cfg, r, &p, warn)
 	}
 	p.unit, p.basis = unitPrice(info, r.Media, p.resolution, p.seconds)
+	if r.Media == gentestrepo.MediaImage && p.basis == modelcatalog.BasisPriced {
+		// the price of an image can depend on its size (GPT Image 2): the catalog holds the dearest one
+		unit := cfg.ImageCostFor(domain.ModelName(info.ID), r.AspectRatio)
+		p.unit = &unit
+	}
 	if p.basis == modelcatalog.BasisUnknown {
 		warn(WarnNoPrice, "%s は単価が分からないため、見積りの合計に入れません", info.Label)
 	}
