@@ -283,8 +283,23 @@ func (s *Server) Stop() {
 	if se != nil {
 		se.conn.Close()
 		se.proc.Stop()
+		// A notification already read must not touch mam's state after Stop returns (a logout with removal deletes it).
+		waitReader(se.conn)
 	}
 }
+
+// waitReader waits for the reading goroutine of the connection once the process is gone. A stream that is not closed
+// with the process (a child of the process holding the pipe) would hold Stop for ever: it gives up after a few seconds.
+func waitReader(c *rpc.Conn) {
+	ended := make(chan struct{})
+	go func() { c.Wait(); close(ended) }()
+	select {
+	case <-ended:
+	case <-time.After(readerGrace):
+	}
+}
+
+const readerGrace = 5 * time.Second
 
 // Close stops the process for good (mam is shutting down): later calls fail with ErrStart.
 func (s *Server) Close() {

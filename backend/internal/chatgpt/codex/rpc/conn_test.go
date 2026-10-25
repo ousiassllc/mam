@@ -160,3 +160,43 @@ func TestCallStopsWithItsContext(t *testing.T) {
 		t.Fatalf("err = %v", err)
 	}
 }
+
+type blockingNotifications struct {
+	recorder
+	entered chan struct{}
+	release chan struct{}
+	handled chan struct{}
+}
+
+func (b *blockingNotifications) Notification(method string, params json.RawMessage) {
+	close(b.entered)
+	<-b.release
+	b.recorder.Notification(method, params)
+	close(b.handled)
+}
+
+func TestWaitReturnsOnlyAfterTheHandlerOfAReadNotificationFinished(t *testing.T) {
+	h := &blockingNotifications{entered: make(chan struct{}), release: make(chan struct{}), handled: make(chan struct{})}
+	c, p := newPair(t, h)
+	p.send(t, `{"method":"account/updated"}`)
+	<-h.entered
+	_ = p.out.Close() // the stream ends while the handler is still running
+	waited := make(chan struct{})
+	go func() { c.Wait(); close(waited) }()
+	select {
+	case <-waited:
+		t.Fatal("Wait returned while a handler was running")
+	case <-time.After(50 * time.Millisecond):
+	}
+	close(h.release)
+	select {
+	case <-waited:
+	case <-time.After(5 * time.Second):
+		t.Fatal("Wait did not return after the handler finished")
+	}
+	select {
+	case <-h.handled:
+	default:
+		t.Fatal("Wait returned before the handler finished")
+	}
+}

@@ -81,17 +81,25 @@ type Conn struct {
 	pending map[int64]chan response
 	err     error
 	done    chan struct{}
+	readEnd chan struct{} // closed when the reading goroutine returned: no handler runs after it
 }
 
 // NewConn starts reading r. The caller closes the streams; Done is closed when r ends.
 func NewConn(r io.Reader, w io.Writer, h Handler) *Conn {
-	c := &Conn{w: w, handler: h, pending: map[int64]chan response{}, done: make(chan struct{})}
-	go c.read(r)
+	c := &Conn{w: w, handler: h, pending: map[int64]chan response{}, done: make(chan struct{}), readEnd: make(chan struct{})}
+	go func() {
+		defer close(c.readEnd)
+		c.read(r)
+	}()
 	return c
 }
 
 // Done is closed when the connection ended.
 func (c *Conn) Done() <-chan struct{} { return c.done }
+
+// Wait returns once the reading goroutine ended (r returned an error or EOF, so the caller has to end the stream first): no
+// handler call is running or will start after it. It must not be called from a handler.
+func (c *Conn) Wait() { <-c.readEnd }
 
 // Err is why the connection ended (wrapping ErrClosed); nil while it is open.
 func (c *Conn) Err() error {
