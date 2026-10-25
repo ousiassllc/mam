@@ -145,7 +145,7 @@ func ToolCardItem(c ToolCard) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "\" class=\"flex h-full min-h-36 flex-col gap-3 rounded-lg border border-neutral-800 bg-neutral-900 p-4 transition-colors hover:border-neutral-600 hover:bg-neutral-800/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 motion-reduce:transition-none\"><span class=\"flex items-center gap-3\"><span class=\"flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-neutral-800 text-indigo-300\" aria-hidden=\"true\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "\" class=\"flex h-full min-h-36 flex-col gap-3 rounded-lg border border-neutral-800 bg-neutral-900 p-4 transition-colors hover:border-neutral-600 hover:bg-neutral-800/60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 motion-reduce:transition-none\"><span class=\"flex items-center gap-3\"><span class=\"flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-neutral-800 text-indigo-300\" aria-hidden=\"true\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -15,7 +15,7 @@
 | 補助の文字 | `text-neutral-400`（`neutral-900` 上 7.11:1、`neutral-950` 上 7.85:1） | `text-neutral-500` は使わない（`a11y/contrast_test.go`。3.78:1） |
 | 主要な文字 | `text-neutral-100`（`neutral-900` 上 16.44:1） | |
 | アイコンの色 | `text-indigo-300`（`neutral-800` 上 7.59:1、`neutral-900` 上 8.99:1） | 飾りなので 1.4.11 の対象外だが、見える色にしておく |
-| フォーカスの輪 | `focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950`（`indigo-400` は `neutral-950` 上 6.64:1、`neutral-900` 上 6.01:1） | モーダルの中は `ring-offset-neutral-900`。既存の `peer-focus-visible:ring-2 ring-indigo-400`（チャットの添付）と同じ色 |
+| フォーカスの輪 | `focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950`（`indigo-400` は `neutral-950` 上 6.64:1、`neutral-900` 上 6.01:1） | モーダルの中は `ring-offset-neutral-900`。既存の `peer-focus-visible:ring-2 ring-indigo-400`（チャットの添付）と同じ色。輪は box-shadow で Windows のハイコントラスト（`forced-colors`）では消えるため、輪郭は `outline-none`（消す）ではなく `outline-hidden`（通常は透明、`forced-colors` では描かれる）にする |
 | ホバー | `hover:border-neutral-600 hover:bg-neutral-800/60` | 見た目の補助。ホバーだけに意味を持たせない |
 | 動き | `transition-colors motion-reduce:transition-none` のみ。拡大・移動・アニメーションは使わない | #797（`prefers-reduced-motion`）。スピナーの `motion-reduce:animate-none` が先例 |
 | 主ボタンの `bg-indigo-500` | `atoms.TonePrimary` の実ボタン専用 | カードの見た目に使わない（カードはリンクであってボタンではない） |
@@ -174,7 +174,8 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 | 0.1 | 2026-10-25 | 新規作成（案） | Issue #846 決定事項 5(a)・#847 決定事項 1(a)。実装前にオーナーが確認するための共通部品の仕様 |
 | 0.2 | 2026-10-25 | モーダルの担当を未決にした（§6.1 に #846・#847 の原文を併記、§8 の質問 7 を追加） | 独立レビュー（PR #849）の指摘。#846 決定事項 1 は #846 で作ると読め、#847 の「やること」は #847 で作ると読める。仕様書が片方に決めていた |
 | 0.3 | 2026-10-25 | 状態を「一部実装済み」にした（`atoms.Icon` の 8 個と `molecules.ToolCard` を #846 で実装）。§8 をオーナーの決定の表にし、モーダルを #847 で作ることを §6.1 に記録した | Issue #846 の実装と、オーナーの 2026-10-25 の判断 |
-| 0.4 | 2026-10-25 | §4 に「入れ替えの間は触れない」を足した。状態を更新した。`atoms.Icon` の #847 の 7 個・モーダル（`molecules/modal/`・`static/src/components/modal/`）・`SettingsCard`（`settingsui.CardItem`）を実装した。`SettingsTable`・`IconCopy` は後続。モーダルの関数の名前を実装に合わせた（`ModalOpen` → `OpenAttrs`）。成功の通知は `atoms.SuccessToastOOB` | Issue #847 段階 ①・②-1・②-2 の実装 |
+| 0.4 | 2026-10-25 | §1 のフォーカスの輪を `outline-none` から `outline-hidden` にした（輪郭が `forced-colors` で描かれる） | 独立レビュー（PR #849 の 2 周目）の指摘。輪は box-shadow で、Windows のハイコントラストでは消える |
+| 0.5 | 2026-10-25 | §4 に「入れ替えの間は触れない」を足した。状態を更新した。`atoms.Icon` の #847 の 7 個・モーダル（`molecules/modal/`・`static/src/components/modal/`）・`SettingsCard`（`settingsui.CardItem`）を実装した。`SettingsTable`・`IconCopy` は後続。モーダルの関数の名前を実装に合わせた（`ModalOpen` → `OpenAttrs`）。成功の通知は `atoms.SuccessToastOOB` | Issue #847 段階 ①・②-1・②-2 の実装 |
 
 ## 8. オーナーへの確認事項と決定（2026-10-25: すべて推奨する既定で決定）
 

@@ -24,7 +24,6 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/logging"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/router"
-	"github.com/ousiassllc/mam/backend/internal/router/settingsroutes"
 	"github.com/ousiassllc/mam/backend/internal/version"
 	"github.com/ousiassllc/mam/static"
 )
@@ -111,21 +110,7 @@ func serve(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Opt
 	defer cleanup()
 
 	gin.SetMode(gin.ReleaseMode)
-	llmFile, llmPinned := cfg.LLMSettingsFile()
-	modelFile, modelPinned := cfg.ModelSettingsFile()
-	settings := settingsroutes.New(llmFile, llmPinned, modelFile, modelPinned)
-	settings.LocalModels = services.LocalModels
-	settings.Keys = credential.NewKeyring() // the OS secure storage: the connection test of an API key reads a saved key from it
-	settings.Workflows = services.Workflows
-	// A saved image / video assignment applies at once, as a saved endpoint or model does.
-	settings.Models.SetOnChange(func() {
-		if err := services.LocalModels.Reload(); err != nil {
-			logger.Error("apply the saved model settings failed", "err", err)
-		}
-	})
-	settings.ChatGPT = gpt
-	settings.ModelManager = services.ModelManager
-	settings.Gentest = services.Gentest
+	settings := newSettings(cfg, services, gpt, logger)
 	if opts.Update != nil {
 		var stop func()
 		settings.Update, stop = startUpdates(ctx, opts.Update, services, repository.NewJobRepository(db), logger)

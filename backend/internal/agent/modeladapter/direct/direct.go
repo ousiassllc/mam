@@ -17,7 +17,8 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
-// The refusals of a request that the model cannot take. They come before any vendor call: nothing is billed.
+// The refusals of a request that the model cannot take (and *agegate.RefusedError, an adult model while the age confirmation is
+// off). They come before any vendor call: nothing is billed.
 var (
 	// ErrNoBackend: the model has no backend (it is not a model of the running setting).
 	ErrNoBackend = errors.New("direct: the model has no backend")
@@ -33,6 +34,9 @@ var (
 // takes none is refused (ErrInputsUnsupported) instead of being sent without them. A seed is dropped for a model that takes
 // none (SupportsSeed). The output records the model, the estimated cost (Config.ImageCostFor) and FellBack false.
 func Image(ctx context.Context, a *modeladapter.Adapter, model domain.ModelName, req modeladapter.ImageRequest) (modeladapter.ImageOutput, error) {
+	if err := a.Gate.Check(model); err != nil {
+		return modeladapter.ImageOutput{}, err
+	}
 	cfg, backends := a.Snapshot()
 	backend := backends.Image[model]
 	if backend == nil {
@@ -65,6 +69,9 @@ func Image(ctx context.Context, a *modeladapter.Adapter, model domain.ModelName,
 // and refused when it cannot take them (ErrInputsUnsupported, ErrInputsConflict), and so is a resolution it does not produce
 // (ErrResolution). A seed or a negative prompt for a model without that field is dropped. There is no time limit beyond the vendor's timeout.
 func Video(ctx context.Context, a *modeladapter.Adapter, target modeladapter.VideoTarget, req modeladapter.VideoRequest) (modeladapter.VideoOutput, error) {
+	if err := a.Gate.Check(target.Model); err != nil {
+		return modeladapter.VideoOutput{}, err
+	}
 	cfg, backends := a.Snapshot()
 	caps, ok := cfg.VideoCaps(target.Model)
 	if !ok {

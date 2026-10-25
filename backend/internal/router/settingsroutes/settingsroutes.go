@@ -4,6 +4,8 @@
 package settingsroutes
 
 import (
+	"log/slog"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/ousiassllc/mam/backend/internal/chatgpt"
@@ -70,7 +72,7 @@ func New(llmFile string, llmPinned bool, modelFile string, modelPinned bool) *Se
 // is set, the MCP server section with its PUT / POST / DELETE routes. Without s the screen has no such sections and the
 // routes do not exist. It also adds the status routes of the tool cards of the home page (registerTools), which read the
 // services of both.
-func Register(engine *gin.Engine, services *service.Services, s *Services) {
+func Register(engine *gin.Engine, services *service.Services, s *Services, logger *slog.Logger) {
 	pages := pageServices(services, s)
 	update := pages.Update
 	credentialshandler.Register(engine, credentialshandler.Keys{Svc: services.Credentials, Tester: pages.Tester}, pages.Page(paths.SettingsAPIKeys))
@@ -119,7 +121,7 @@ func Register(engine *gin.Engine, services *service.Services, s *Services) {
 		gentesthandler.Register(engine, s.Gentest)
 	}
 	settingspage.Register(engine, pages)
-	registerTools(engine, services, s)
+	registerTools(engine, services, s, logger)
 }
 
 // pageServices are the services the pages of the settings screen are built from (the ones s does not have stay nil).

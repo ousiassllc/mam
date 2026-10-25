@@ -51,7 +51,7 @@
 ## 6. 年齢ゲート（#841）と NFAA
 
 - リポジトリのタグ `not-for-all-audiences`（NFAA）は成人向けとして扱う（§3 のとおり、コミットのタグと今の先頭のタグの OR）。**Service が強制する**（画面だけではない）: 年齢確認（`AdultContentEnabled()`）が済むまで、`SearchHF` の結果から外し、`HFRepo`・`InstallHFFile` は `ErrAdultNotConfirmed`（409）、ツリーを読む前に断る。古いコミットの URL（`tree/<commit>`・`blob/<commit>`・`resolve/<commit>`）や `install_hf_file` の `commit` を名指ししても同じ。
-- 導入済みの NFAA のファイルは、ゲートが閉じている間 `UserModels()` から隠れ、作ったモデルは `HidesModel` で隠れる（試し生成の選択肢にも出ない）。`UserModels()` の `shared_with` も、ゲートが閉じている間は成人向けのカタログのモデルを挙げない。キューに入った後でゲートが閉じたら、実行時（宛先のロックを取った後も）に `ErrAdultNotConfirmed` で失敗する。同じパス・同じ SHA-256 の記録がすでにあるとき、NFAA でないリポジトリからの再導入は記録の `nfaa` を落とさず（古い記録か新しい記録のどちらかが NFAA なら NFAA）、作ったモデル名も引き継ぐ（`hfplan.KeepEarlier`）。`DeleteUserModel` はゲートに関係なく動く（片付けは常にできる）。
+- 導入済みの NFAA のファイルは、ゲートが閉じている間 `UserModels()` から隠れ、作ったモデルは `HidesModel` で隠れる（試し生成・画像・動画モデルの割り当ての選択肢にも出ず、割り当てが指していても生成は断られる。[model-manager.md](model-manager.md) §6.1）。`UserModels()` の `shared_with` も、ゲートが閉じている間は成人向けのカタログのモデルを挙げない。キューに入った後でゲートが閉じたら、実行時（宛先のロックを取った後も）に `ErrAdultNotConfirmed` で失敗する。同じパス・同じ SHA-256 の記録がすでにあるとき、NFAA でないリポジトリからの再導入は記録の `nfaa` を落とさず（古い記録か新しい記録のどちらかが NFAA なら NFAA）、作ったモデル名も引き継ぐ（`hfplan.KeepEarlier`）。`DeleteUserModel` はゲートに関係なく動く（片付けは常にできる）。
 - 年齢の確認を自動で済ませる仕組みは無い（`set_adult_content` と画面のダイアログだけ）。
 
 ## 7. 注意書き（terms）の確認

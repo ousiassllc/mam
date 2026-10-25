@@ -6,6 +6,7 @@
 package gptimage
 
 import (
+	"encoding/json"
 	"slices"
 	"strings"
 
@@ -90,17 +91,41 @@ type Usage struct {
 	} `json:"input_tokens_details"`
 }
 
+// ParseUsage decodes the `usage` member of a response. `usage` only refines the cost of an image that is already
+// paid for, so one that is absent, null or malformed (a count that is a string or a fraction, or too large for an
+// integer) gives nil, never an error: the caller still has the image and the estimate stands.
+func ParseUsage(raw []byte) *Usage {
+	var u *Usage
+	if err := json.Unmarshal(raw, &u); err != nil {
+		return nil
+	}
+	return u
+}
+
+// The ceilings of a token count that can be real. mam's largest image (high quality, 1024×1024) is about 7,000
+// output tokens ($0.211 at $30 per million); a few high-fidelity reference images are a few thousand input tokens
+// each. The ceilings are far above that: a count over one comes from a corrupt or hostile response and, once it is
+// a cost that is summed into the budget, would exhaust it.
+const (
+	maxOutputTokens = 100_000
+	maxInputTokens  = 200_000
+)
+
+func within(n, ceiling int) bool { return n >= 0 && n <= ceiling }
+
 // ActualCost is the cost (USD) of a call computed from its token counts: text and image input tokens and the output
-// image tokens at the prices above. It is nil when the response has no usage, or the model is not priced here.
-// Input tokens the details do not account for count as text, the cheaper kind of input, so the cost is not
-// overstated; the estimate is the upper bound.
+// image tokens at the prices above. It is nil when the response has no usable usage (none, or a count that is
+// negative or over its ceiling), or the model is not priced here; the estimate is used then. Input tokens the details
+// do not account for count as text, the cheaper kind of input, so the cost is not overstated.
 func ActualCost(apiModel string, u *Usage) *float64 {
 	if u == nil || !Priced(apiModel) {
 		return nil
 	}
-	text := max(u.InputDetails.TextTokens, 0)
-	image := max(u.InputDetails.ImageTokens, 0)
+	text, image := u.InputDetails.TextTokens, u.InputDetails.ImageTokens
+	if !within(u.InputTokens, maxInputTokens) || !within(text, maxInputTokens) || !within(image, maxInputTokens) || !within(u.OutputTokens, maxOutputTokens) {
+		return nil
+	}
 	text += max(u.InputTokens-text-image, 0)
-	cost := (float64(text)*textInputPerMillion + float64(image)*imageInputPerMillion + float64(max(u.OutputTokens, 0))*outputPerMillion) / 1e6
+	cost := (float64(text)*textInputPerMillion + float64(image)*imageInputPerMillion + float64(u.OutputTokens)*outputPerMillion) / 1e6
 	return &cost
 }

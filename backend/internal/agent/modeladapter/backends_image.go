@@ -135,7 +135,7 @@ func (b openAIImageBackend) GenerateImage(ctx context.Context, apiModel string, 
 		Data []struct {
 			B64 string `json:"b64_json"`
 		} `json:"data"`
-		Usage *gptimage.Usage `json:"usage"`
+		Usage json.RawMessage `json:"usage"` // decoded apart (gptimage.ParseUsage): a bad usage must not lose the image
 	}
 	if err := unmarshal(b.api, data, &out); err != nil {
 		return ImageResult{}, err
@@ -147,7 +147,7 @@ func (b openAIImageBackend) GenerateImage(ctx context.Context, apiModel string, 
 	if err != nil {
 		return ImageResult{}, err
 	}
-	return ImageResult{Data: img, MimeType: "image/png", ActualCost: gptimage.ActualCost(apiModel, out.Usage)}, nil
+	return ImageResult{Data: img, MimeType: "image/png", ActualCost: gptimage.ActualCost(apiModel, gptimage.ParseUsage(out.Usage))}, nil
 }
 
 // fluxBackend calls FLUX.2 (Black Forest Labs API): submit, poll the returned URL, download.

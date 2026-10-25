@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/agegate"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/comfyui"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/progress"
@@ -92,6 +93,11 @@ func (s *Service) StartRun(ctx context.Context, in RunInput) (RunRecord, error) 
 	saved, ok := s.Adapter.Config().Workflows[modelID]
 	if !ok {
 		return RunRecord{}, s.notRunnable(ctx, wf.ID, version)
+	}
+	// The run calls the backend itself, not through the Adapter: the age gate is asked here (a workflow that reads a file of an
+	// adult model is not run while the age confirmation is off, spec model-manager.md §6.1).
+	if err := s.Adapter.Gate.Check(domain.ModelName(modelID)); err != nil {
+		return RunRecord{}, invalid("%s", agegate.Reason(err))
 	}
 	req, err := s.prepare(ctx, saved, in)
 	if err != nil {

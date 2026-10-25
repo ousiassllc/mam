@@ -214,7 +214,7 @@ func (s *Service) runModelInstall(ctx context.Context, id string, set func(track
 		if st.Models == nil {
 			st.Models = map[string]store.InstalledModel{}
 		}
-		st.Models[id] = store.InstalledModel{InstalledAt: s.Now().UTC(), Files: installed, Workflows: names, LicenseID: m.License.ID}
+		st.Models[id] = store.InstalledModel{InstalledAt: s.Now().UTC(), Files: installed, Workflows: names, LicenseID: m.License.ID, Adult: m.Adult()}
 	}); err != nil {
 		return err
 	}

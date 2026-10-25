@@ -27,7 +27,7 @@
 | 0 | 概要 | `/settings` | 各分類の状態のカード（§5） | 常に |
 | 1 | API キーとログイン | `/settings/api-keys` | API キー（`credentialpanel`）＋ ChatGPT でログイン（`chatgptpanel`。#845 の Codex 経由も） | 常に |
 | 2 | テキスト生成（LLM） | `/settings/llm` | LLM の割り当て（`llmassign`） | `Settings` サービスがある |
-| 3 | 画像・動画モデル | `/settings/models` | 画像の用途・Quality Policy ごとの割り当て（`modelassignment`） | 同上 |
+| 3 | 画像・動画モデル | `/settings/models` | 画像の用途・Quality Policy ごとの割り当て（`modelassignment`）。年齢確認がオフの間は成人向けのモデルを選択肢から外し、保存済みの割り当ては「（現在は使えません）」付きで見せる（[settings-screen-categories.md](settings-screen-categories.md) §3） | 同上 |
 | 4 | ローカル・代替モデル | `/settings/local-models` | 接続先とモデル（`localmodels`）＋モデルマネージャーへのカード | `Services.LocalModels` がある |
 | 5 | MCP サーバー | `/settings/mcp` | 待ち受け先・トークン（`mcppanel`） | `Services.MCP` がある |
 | 6 | バージョンとアップデート | `/settings/update` | 版と「今すぐ確認」（`updatepanel`） | 常に（版の表示だけのときもある） |
@@ -194,4 +194,5 @@
 | 0.1 | 2026-10-25 | 新規作成（案） | Issue #847 決定事項 1(a)。実装前にオーナーが確認するための設定画面の仕様 |
 | 0.2 | 2026-10-25 | §3 の GET の数（8 → 9。`/settings/chatgpt/codex/models`）と §9 の `chatgptpanel` の行数・#845 の取り込みの記述を、入った #845 の実装に合わせた | 統合の見直し。#845 が先に入ったため |
 | 0.3 | 2026-10-25 | ②-1 のモーダルの担当を未決とし（[shared-ui-parts.md](shared-ui-parts.md) §8 の質問 7）、#845 のタブ（`role="tablist"`）の扱いを §9 に足した | 独立レビュー（PR #849）の指摘 |
-| 0.4 | 2026-10-25 | 状態を「段階 ①・②-1・②-2 実装済み」にした（§7 の表に印）。実装: ナビ・概要・分類ごとのページ・モーダル・API キーとログイン。接続先の名前 `new` は 422（§11 の質問 6 の推奨）。ログインのカードの取り直しは `GET /settings/chatgpt/:kind/login?poll=1`（モーダル）とパネル全体の取り直しで行い、`card=<kind>` は使わなかった（`method` クエリは読まない） | Issue #847 の実装 |
+| 0.4 | 2026-10-25 | §2 の分類の表の「画像・動画モデル」の行に、年齢確認がオフの間の画面の挙動（成人向けを選択肢から外す・「（現在は使えません）」・保存は 422）への参照を足した。詳細は settings-screen-categories.md §3（0.4） | PR #849 の独立レビュー（#848）の指摘 |
+| 0.5 | 2026-10-25 | 状態を「段階 ①・②-1・②-2 実装済み」にした（§7 の表に印）。実装: ナビ・概要・分類ごとのページ・モーダル・API キーとログイン。接続先の名前 `new` は 422（§11 の質問 6 の推奨）。ログインのカードの取り直しは `GET /settings/chatgpt/:kind/login?poll=1`（モーダル）とパネル全体の取り直しで行い、`card=<kind>` は使わなかった（`method` クエリは読まない） | Issue #847 の実装 |

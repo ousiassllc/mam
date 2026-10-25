@@ -49,7 +49,7 @@ func New(services *service.Services, opts Options) *gin.Engine {
 	registerPages(engine, services)
 	registerActions(engine, services)
 	registerAPI(engine, services)
-	settingsroutes.Register(engine, services, opts.Settings)
+	settingsroutes.Register(engine, services, opts.Settings, logger)
 	return engine
 }
 

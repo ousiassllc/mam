@@ -1,4 +1,4 @@
-package modeladapter_test
+package backendstest_test
 
 import (
 	"context"
@@ -17,7 +17,10 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/testenv"
 )
 
-var seedanceReq = modeladapter.VideoRequest{Prompt: "p", DurationSeconds: 4, Resolution: "720p", AspectRatio: "16:9"}
+var (
+	seedanceReq    = modeladapter.VideoRequest{Prompt: "p", DurationSeconds: 4, Resolution: "720p", AspectRatio: "16:9"}
+	seedanceTarget = modeladapter.VideoTarget{Model: domain.ModelSeedance2, Resolution: "720p"}
+)
 
 // A vendor outage longer than the old limit of three tries must not lose the output of a job that is billed already.
 func TestSubmittedJobSurvivesAnOutageOfStatusAndDownloadWithoutBeingSubmittedAgain(t *testing.T) {
@@ -52,9 +55,11 @@ func TestAdapterDoesNotSubmitAgainWhenPollingKeepsFailing(t *testing.T) {
 		vc.BaseURL = srv.URL
 		cfg.Vendors[v] = vc
 	}
-	a := newAdapter(cfg, modeladapter.NewBackends(cfg, memKeys{"seedance": "k"}, srv.Client(), time.Millisecond, modeladapter.WithLocalDownloads()))
+	noSleep := func(context.Context, time.Duration) error { return nil }
+	a := modeladapter.New(cfg, modeladapter.NewBackends(cfg, memKeys{"seedance": "k"}, srv.Client(), time.Millisecond, modeladapter.WithLocalDownloads()), modeladapter.WithSleep(noSleep))
+	job := modeladapter.VideoJob{Spec: domain.ShotSpec{ShotObjective: "A woman notices something behind her and starts running"}, DurationSeconds: 4}
 
-	_, err := a.GenerateVideo(testenv.EndsAfterFirstRequest(t, polls, 100*time.Millisecond), seedanceTarget, seedanceTarget, baseJob())
+	_, err := a.GenerateVideo(testenv.EndsAfterFirstRequest(t, polls, 100*time.Millisecond), seedanceTarget, seedanceTarget, job)
 
 	require.Error(t, err)
 	assert.EqualValues(t, 1, submits.Load(), "the vendor accepted the job: a failed status request must not submit it (and bill it) again")
