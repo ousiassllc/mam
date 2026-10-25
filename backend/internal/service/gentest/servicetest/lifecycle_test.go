@@ -2,6 +2,7 @@ package servicetest_test
 
 import (
 	"context"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -55,6 +56,39 @@ func TestCancelStopsDispatchingAndLetsInFlightCallsFinish(t *testing.T) {
 	assert.ErrorAs(t, err, &c, "a finished batch cannot be cancelled")
 	_, err = r.Svc.Cancel(context.Background(), "nope")
 	assert.ErrorIs(t, err, gterr.ErrNotFound)
+}
+
+// The age gate is checked again when a queued result starts: a model hidden after the batch was queued is not called, and its
+// results fail with the reason. The call already in flight finishes.
+func TestAQueuedResultOfAModelHiddenInTheMeantimeIsNotCalled(t *testing.T) {
+	var hidden atomic.Bool
+	r := gentesttest.New(t,
+		gentesttest.WithConfig(func(c *modeladapter.Config) {
+			v := c.Vendors[modeladapter.VendorFlux]
+			v.MaxConcurrency = 1
+			c.Vendors[modeladapter.VendorFlux] = v
+		}),
+		func(_ *gentesttest.Rig, d *gentest.Deps) {
+			d.Hidden = func(id string) bool { return hidden.Load() && id == "flux-2" }
+		})
+	release := r.Fake.Hold(domain.ModelFlux2)
+	req := imageReq("flux-2")
+	req.Count = 3
+	ref, err := r.Confirmed(req)
+	require.NoError(t, err)
+	<-r.Fake.Started()
+	hidden.Store(true) // the user turned the age confirmation off while two results are queued
+	release <- struct{}{}
+	st := r.Wait(ref.BatchID)
+
+	assert.Equal(t, 1, st.Succeeded)
+	assert.Equal(t, 2, st.Failed)
+	for _, x := range st.Results {
+		if x.Status == gentestrepo.StatusFailed {
+			assert.Equal(t, gentest.ReasonHidden, x.Error)
+		}
+	}
+	assert.Len(t, r.Fake.CallsOf(domain.ModelFlux2), 1, "no call was made for the hidden model after it was hidden")
 }
 
 func TestProgressIsCountedFromTheResults(t *testing.T) {

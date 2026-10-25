@@ -29,8 +29,8 @@
 | GET | `/model-manager/dialog` | 空（ダイアログを閉じる） |
 | PUT | `/model-manager/hf-token` | Hugging Face のトークンの保存。フォーム `token`。応答は「設定済み（末尾 4 文字）」の状態だけで、**値は返さない** |
 | DELETE | `/model-manager/hf-token` | トークンの削除（未設定でもエラーにならない） |
-| GET | `/model-manager/hf` | Hugging Face の検索と、リポジトリのファイルの一覧（`#mm-hfi-result`）。クエリ `q` が URL（`://` を含む）か `owner/repo` ならそのリポジトリをコミットに固定して一覧し（`Service.HFRepo`）、それ以外はキーワード検索（`Service.SearchHF`、`kind` で絞る）。`q` が空・形式が不正（`hf.co`・http・他のホスト・`datasets/`）は 422、NFAA を年齢確認の前に開くと 409、gated でトークン・アクセス権が無いのは 422、無いリポジトリは 422 |
-| POST | `/model-manager/hf/install` | ファイル 1 つの導入（ジョブ）。フォーム `repo`・`commit`・`path`・`folder`・`name`・`agree=1`・`terms_version`。202 で「追加したモデル」を返す（導入中の進捗つき）。拒否は `HX-Retarget: #mm-hfi-msg`・`HX-Reswap: innerHTML` でエラーの行に出す: terms の確認が無ければ 409、版違い・GGUF・pickle・名前の衝突・gated・フォルダ不明は 422、NFAA を年齢確認の前に導入しようとすると 409。SHA-256・サイズは送らない（Service が HF から読み直す） |
+| GET | `/model-manager/hf` | Hugging Face の検索と、リポジトリのファイルの一覧（`#mm-hfi-result`）。クエリ `q` が URL（`://` を含む）か `owner/repo` ならそのリポジトリをコミットに固定して一覧し（`Service.HFRepo`）、それ以外はキーワード検索（`Service.SearchHF`、`kind` で絞る）。`q` が空・形式が不正（`hf.co`・http・他のホスト・`datasets/`）は 422、NFAA（コミットのタグか、リポジトリの今の先頭のタグ）を年齢確認の前に開くと 409（古いコミットの URL でも同じ）、gated でトークン・アクセス権が無いのは 422、無いリポジトリは 422 |
+| POST | `/model-manager/hf/install` | ファイル 1 つの導入（ジョブ）。フォーム `repo`・`commit`・`path`・`folder`・`name`・`agree=1`・`terms_version`。202 で「追加したモデル」を返す（導入中の進捗つき）。拒否は `HX-Retarget: #mm-hfi-msg`・`HX-Reswap: innerHTML` でエラーの行に出す: terms の確認が無ければ 409、版違い・GGUF・pickle・名前の衝突（同じ宛先の別ファイル、別のフォルダ・名前で導入中の同じファイルを含む）・gated・フォルダ不明は 422、NFAA を年齢確認の前に導入しようとすると 409。SHA-256・サイズは送らない（Service が HF から読み直す） |
 | GET | `/model-manager/hf/models` | 「追加したモデル」（`#mm-hfi-models`）。導入中は自分で取り直す。クエリ `jobs`（カンマ区切り）は報告するジョブで、終わったら結果を 1 度出し、試し生成の区画を `hx-swap-oob` で描き直す |
 | POST | `/model-manager/hf/jobs/:job/cancel` | 動いている導入の中断（「追加したモデル」を返す。ダウンロード済みの分は残り、導入し直すと続きから再開する） |
 | DELETE | `/model-manager/hf/models` | 追加したファイルの削除。クエリ `path`（`models/<folder>/<name>`）。作ったモデルも消える。使用中は 422、導入中・記録に無いのは 409。カタログのモデルと共有するファイルは、そのモデルが残る間は残る。試し生成の区画を描き直す |
@@ -71,7 +71,7 @@
 - **試し生成**: モデルの選択（導入済みの同梱モデル・登録済みの外部 ComfyUI・OpenAI 互換のモデル）・プロンプト・縦横比・（動画）ネガティブプロンプト・解像度・長さ・（参照画像を使えるモデルだけ）画像。選べるモデルが無いときは理由を出す。結果は新しい順で、動いているものは進捗、完了は画像（`<img>`）か動画（`<video>`）と「ファイルを開く」、失敗は理由。削除ボタン（確認つき）。課金は無く、Take・コスト台帳には入らないと書く。
 - **トークン**: 設定済みか（末尾 4 文字）だけを出す。入力欄は `type=password`。
 - **Hugging Face から導入**（区画「Hugging Face から導入」、`#mm-hfi`。Issue #842）: 上から、検索フォーム（キーワード・`owner/repo`・URL のどれか 1 つと、キーワード検索の種別）、エラーの行（`#mm-hfi-msg`。導入の拒否はここに出る）、結果（`#mm-hfi-result`）、「追加したモデル」（`#mm-hfi-models`）。結果はヒットしたリポジトリの一覧（gated・NFAA の印・ダウンロード数・「ファイルを見る」）か、1 つのリポジトリ: コミットに固定したことと、ライセンス・警告（記載が無いとき）・gated の案内（トークンの設定とリポジトリのページでのアクセスの申請。mam からは申請できない）・terms と、モデルのファイルをグループ（同じモデルの版）ごとに出す。各ファイルは大きさ・形式・SHA-256 の先頭・Hub のスキャン・VRAM の目安（収まる見込み／ぎりぎり／収まらない見込み／VRAM 不明）・導入済みの印を出し、**導入できないファイル（GGUF・pickle・分割形式・unsafe）は理由を出してフォームを出さない**。導入できるファイルは「導入する…」を開くと、フォルダ（推定の既定値つき・判定できなければ「選んでください」）・ファイル名・（そのリポジトリのコミットで未確認なら）terms のチェックボックスのフォームが出る。SDXL のチェックポイントには「試し生成で選べる画像モデルになる」、それ以外には「置くだけでワークフローは作らない」と書く。導入すると 202 で「追加したモデル」を返し、動いている間は 2 秒ごとに自分を取り直す（進捗バー・「中断」。終わったら試し生成の区画を `hx-swap-oob` で描き直す）。各モデルは、リポジトリ・コミット・大きさ・ライセンス・共有しているカタログのモデルを出し、「削除」（確認つき）を持つ。**NFAA のモデルは年齢確認が済むまで出ない**（Service が隠す）。
-- **外部の ComfyUI**: 接続先の選択と「導入済みのモデルを確認」。結果は、カタログのモデルごとに「そろっています」／「足りないファイルがあります（足りない: …）」、フォルダごとのファイル。「外部の ComfyUI へのモデルの導入は、その ComfyUI の側で」と書く。
+- **外部の ComfyUI**: 接続先の選択と「導入済みのモデルを確認」。結果は、カタログのモデルごとに「そろっています」／「足りないファイルがあります（足りない: …）」、フォルダごとのファイル（`loras` を含む）。成人向けのモデルは、年齢確認が済むまで出ない。「外部の ComfyUI へのモデルの導入は、その ComfyUI の側で」と書く。
 
 ## 4. テスト
 
@@ -87,3 +87,4 @@
 | 1.1 | 2026-10-26 | 試し生成のルートを、生成テスト（[endpoints-gentest.md](endpoints-gentest.md)）の 1 件のバッチを動かすものに改めた（一覧は履歴の結果・`jobs` クエリを廃止・`:id` は結果の ID）。試し生成の区画に生成テスト画面へのリンクを足した | Issue #835 |
 | 1.2 | 2026-10-25 | 成人向けモデルの年齢確認のルート（`GET /model-manager/adult/confirm`・`PUT /model-manager/adult`）と、`ErrAdultNotConfirmed`（409）を足した。モデルの一覧・導入・試し生成の選択肢は、確認が無い間は成人向けのモデルを出さず、導入は 409 | Issue #841 |
 | 1.3 | 2026-10-26 | Hugging Face からの導入のルート（`/model-manager/hf`・`hf/install`・`hf/models`・`hf/jobs/:job/cancel`）と区画「Hugging Face から導入」（`#mm-hfi`）を足した。`hf-token` のハンドラは新しいパッケージ `hfimport` に移した（ルートは同じ） | Issue #842。意味は [../architecture/model-manager/model-manager-hf.md](../architecture/model-manager/model-manager-hf.md) |
+| 1.4 | 2026-10-25 | `/model-manager/external` が成人向けのモデルを年齢確認が済むまで出さず、`loras` フォルダを読むようにした。`/model-manager/hf`・`/model-manager/hf/install` の NFAA 判定を、コミットのタグと今の先頭のタグの OR にした（`tree/<commit>` などで古いコミットを指しても 409）。別のフォルダ・名前で導入中の同じファイルは 422 | PR #849 のレビューの指摘（#841・#842）への修正 |

@@ -8,7 +8,7 @@
 - **置き場所は `<mam.exe のあるディレクトリ>\comfyui` だけ**（§2）。インストール版ならアンインストーラーがインストール先ごと消し、ポータブル版は exe の隣に残る。それ以外に永続する場所を作らない。書けない場所なら明確なエラーで、外部 URL の利用を案内する。
 - **取得物は固定（ピン留め）して SHA-256 を検証する**: エンジンもモデルも、コミットまたはタグ・SHA-256・サイズをカタログ（埋め込みの JSON）に持つ。ハッシュが合わないものは使わず、消す。
 - **Windows 版だけが同梱エンジンを持つ**。ブラウザ版・サーバー版（非 Windows）では同梱エンジンは使えず（`ErrUnsupported`）、外部の ComfyUI を接続先 URL（local-models.md）で使う。
-- **外部の ComfyUI は読むだけ**: インストール済みモデルの一覧（`GET /models/{folder}`）と、カタログと照らした「足りない」表示までで、リモートへの導入はしない（ComfyUI にモデルを置く API が無い）。
+- **外部の ComfyUI は読むだけ**: インストール済みモデルの一覧（`GET /models/{folder}`。`checkpoints`・`diffusion_models`・`text_encoders`・`vae`・`loras`）と、カタログと照らした「足りない」表示までで、リモートへの導入はしない（ComfyUI にモデルを置く API が無い）。年齢確認が済むまで、成人向けのモデルは照合の結果に出ない（§6.1）。
 - 起動した ComfyUI 以外（ComfyUI Desktop など）は **起動も停止もしない**。
 
 ## 2. ディレクトリ
@@ -51,7 +51,7 @@ ComfyUI **v0.42.1** のリリースアセット 4 種（`ComfyUI_windows_portabl
 5. 失敗・取り消しでは `engine.new\`・`.part`・退避を片づける。起動時にも前回の取りこぼしを消す（`CleanLeftovers`）。
 6. 進捗（バイト・割合・メッセージ）は `track` に載せ、`JobStatus` と `Watch` で読める。
 
-取得できるホストは `huggingface.co`・`hf.co`・`github.com`・`githubusercontent.com` だけで、リダイレクト先も同じ規則で調べる。`Authorization` は最初の要求の宛先ホストにだけ付け、ホストが変わると外す（§5.3）。
+取得できるホストは `huggingface.co`・`hf.co`・`github.com`・`githubusercontent.com` だけで、リダイレクト先も同じ規則で調べる（`fetch.AllowedURL`。エンジンのアーカイブとカタログのモデルの取得）。**Hugging Face の導入経路（`hf` のクライアントと導入したファイルの取得）は `huggingface.co` と `*.hf.co` だけ**（`fetch.HFAllowedURL`。GitHub へのリダイレクトは断る。[model-manager-hf.md](model-manager-hf.md) §2）。`Authorization` は最初の要求の宛先ホストにだけ付け、ホストが変わると外す（§5.3）。
 
 **7z の方式**: 公式パッケージは LZMA2＋BCJ2（`-m0=lzma2 -mf=BCJ2 -md=768m`）。`bodgit/sevenzip` v1.6.0 が同じ方式で作った合成アーカイブ（`extract/testdata/bcj2.7z`、1.5 GB のものでも）を読めることを確かめた。展開時の最大メモリは 1.5 GB のアーカイブで約 1.6 GB。実物の約 2 GB を丸ごと取得・展開した検証は未実施（§11）。
 
@@ -135,7 +135,7 @@ Wan 2.2 14B は T2V を入れない（I2V のみ。決定 4）。ミラーのフ
 | `gentest` | しない（`resumable=false`） | 試し生成（§8）。生成テストのバッチ（[../gentest/gentest.md](../gentest/gentest.md)）として動く。MAM が落ちたら、終わっていない結果は失敗になる |
 
 - 再起動のたびに再開するのは `jobqueue.DefaultMaxAttempts`（3）回まで。それを超えると失敗として残り、利用者が導入をやり直す。
-- 同じ対象のジョブが動いている間の再実行は、新しいジョブを作らずそのジョブを返す（`JobRef.Existing`）。対象ごとに直列化する。
+- 同じ対象のジョブが動いている間の再実行は、新しいジョブを作らずそのジョブを返す（`JobRef.Existing`）。対象ごとに直列化する。**書き込み先（`models/<folder>/<name>`）ごとにも直列化する**（対象が違っても同じ宛先なら 1 つずつ動き、ロックを取った後に宛先を調べ直す。`model:<id>` の導入は、利用者が HF から足した別の SHA-256 のファイルを上書きせず `*InvalidError` で断る。[model-manager-hf.md](model-manager-hf.md) §4）。
 - 他のモデルが検証済みの同じファイル（パス・SHA-256・サイズが同じ。VAE・テキストエンコーダーなど）は、再ハッシュせず信用する。
 - 2 つの種別は 1 つのマイグレーション（`20261025090000_job_kind_model.sql`）で `job.kind` の CHECK に加える（[er-model-manager.md](er-model-manager.md)）。
 - 更新の安全ゲート（desktop.md §6.2）は種別を見ずに `running`・`queued` の `job` を数えるので、導入と試し生成の間は自動更新が保留される。
@@ -159,7 +159,7 @@ Wan 2.2 14B は T2V を入れない（I2V のみ。決定 4）。ミラーのフ
 ### 6.1 成人向けモデル（`content_rating = adult`）の扱い
 
 - 成人向け（非検閲のモデル、または非検閲にする LoRA）は `content_rating = adult`。**必ず `tier = advanced`・`consent_required = true`**（Apache-2.0 の Chroma1-HD も。成人向けの利用条件への同意を取るため。`catalog.Validate` が確かめる）。
-- **年齢確認が済むまで、成人向けのモデルは出さず、導入させない**。画面ではなく **Service が強制する**（§6.2）。モデルのカードには「成人向け」のバッジを付ける。
+- **年齢確認が済むまで、成人向けのモデルは出さず、導入させない**。画面ではなく **Service が強制する**（§6.2）。モデルのカードには「成人向け」のバッジを付ける。一覧・詳細・導入・ライセンスの同意・試し生成の選択肢に加えて、**外部の ComfyUI の確認（`ExternalInventory`）にも出さない**。キューに入った試し生成の結果は、始まる時にゲートをもう一度調べ（`ReasonHidden`）、閉じていて成人向けのモデルなら呼ばずに失敗にする。
 - **LoRA だけを足すモデル**（`flux1-dev-nsfw-master`・`wan22-i2v-14b-nsfw-lora`）は、ベースのファイルも `files` に含める。ベースが導入済みなら取り直さず、ベースのモデルを消しても、LoRA のモデルが残る間は共有ファイルは消えない（§7）。`trigger_words`（LoRA のトリガー語）は一覧・MCP に出す。
 - 第三者のミラー（原本が Civitai のもの）のファイルは `source_note`（原本の場所と、SHA-256 が一致することを確かめた日付）を持つ。ミラーが消えて 404・410 になったときは、取得の失敗ではなく**「取得元が消えています」**（`ErrSourceGone`。ファイル名・HTTP の状態・`source_note` を添える）で失敗する。
 

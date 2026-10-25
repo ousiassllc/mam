@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
@@ -93,10 +94,34 @@ func (s *Service) InstallModel(ctx context.Context, modelID string, accept *Lice
 	if err := s.Layout.CheckWritable(); err != nil {
 		return JobRef{}, err
 	}
+	if err := s.checkModelFiles(m); err != nil {
+		return JobRef{}, err
+	}
 	if err := s.checkModelSpace(m); err != nil {
 		return JobRef{}, userFacing(ctx, err)
 	}
 	return s.enqueue(ctx, "model:"+m.ID, installPayload{Target: "model:" + m.ID})
+}
+
+// checkModelFiles refuses an install that would replace a file the user added from Hugging Face with a file of another SHA-256
+// (a catalog file and an import can share models/<folder>/<name>). The same file is fine: it is recorded for both.
+func (s *Service) checkModelFiles(m catalog.Model) error {
+	for _, f := range m.Files {
+		if um, ok := s.userModelAt(f.Path()); ok && (!strings.EqualFold(um.SHA256, f.SHA256) || um.Size != f.Size) {
+			return invalid("%s には、Hugging Face から追加した別のファイルがあります。上書きしません。モデル管理でそのファイルを削除してから導入してください", f.Path())
+		}
+	}
+	return nil
+}
+
+// userModelAt is the file the user added from Hugging Face at the relative path (compared without case).
+func (s *Service) userModelAt(rel string) (store.UserModel, bool) {
+	for _, um := range s.state.Get().UserModels {
+		if strings.EqualFold(um.Path, rel) {
+			return um, true
+		}
+	}
+	return store.UserModel{}, false
 }
 
 // checkModelSpace is the refusal of an install that does not fit: what is not downloaded yet against the free space.
@@ -133,7 +158,15 @@ func (s *Service) runModelInstall(ctx context.Context, id string, set func(track
 	if !s.allowed(m) { // the gate was closed after the job was queued (or before a restart resumed it)
 		return ErrAdultNotConfirmed
 	}
+	rels := make([]string, 0, len(m.Files))
+	for _, f := range m.Files {
+		rels = append(rels, f.Path())
+	}
+	defer s.lockDests(rels...)() // held until the record is written: an import of the same file waits and then sees it
 	if err := s.Layout.CheckWritable(); err != nil {
+		return err
+	}
+	if err := s.checkModelFiles(m); err != nil { // again: an import may have written a file while this one waited
 		return err
 	}
 	if err := s.checkModelSpace(m); err != nil {

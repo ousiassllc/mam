@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -65,7 +66,7 @@ func (c *Client) Search(ctx context.Context, o SearchOptions) ([]SearchHit, erro
 		}
 		hits = append(hits, SearchHit{
 			Repo: m.ID, Downloads: m.Downloads, Likes: m.Likes, Gated: isGated(m.Gated),
-			NFAA: slices.Contains(m.Tags, TagNFAA), PipelineTag: m.PipelineTag,
+			NFAA: IsNFAA(m.Tags), PipelineTag: m.PipelineTag,
 		})
 	}
 	return hits, nil
@@ -107,30 +108,55 @@ func (l License) Unclear() bool {
 	return l.ID == "" || (strings.EqualFold(l.ID, "other") && l.Name == "" && l.Link == "")
 }
 
+// IsNFAA reports whether the tags mark adult content: the tag of the Hub, in any case, or its short form "nfaa".
+func IsNFAA(tags []string) bool {
+	return slices.ContainsFunc(tags, func(t string) bool {
+		return strings.EqualFold(t, TagNFAA) || strings.EqualFold(t, "nfaa")
+	})
+}
+
+// revisionAnswer is the answer of /api/models/<repo>/revision/<rev>.
+type revisionAnswer struct {
+	ID       string          `json:"id"`
+	SHA      string          `json:"sha"`
+	Gated    json.RawMessage `json:"gated"`
+	Disabled bool            `json:"disabled"`
+	Tags     []string        `json:"tags"`
+	CardData struct {
+		License     json.RawMessage `json:"license"`
+		LicenseName string          `json:"license_name"`
+		LicenseLink string          `json:"license_link"`
+	} `json:"cardData"`
+}
+
+func (c *Client) revision(ctx context.Context, repo, rev string) (revisionAnswer, error) {
+	var raw revisionAnswer
+	_, err := c.getJSON(ctx, request{method: http.MethodGet, path: apiPath(repo, "revision", rev)}, &raw)
+	return raw, err
+}
+
 // Revision reads the repository at rev ("" is main) and pins it to the commit. A repository that was renamed is
-// followed (the Hub answers 307) and ID is its new name.
+// followed (the Hub answers 307) and ID is its new name. NFAA is the tag at the commit or at the repository's current
+// head (an older commit of a repository that is NFAA today may not have the tag yet, so naming it never opens the gate).
 func (c *Client) Revision(ctx context.Context, repo, rev string) (Repo, error) {
 	if rev == "" {
 		rev = "main"
 	}
-	var raw struct {
-		ID       string          `json:"id"`
-		SHA      string          `json:"sha"`
-		Gated    json.RawMessage `json:"gated"`
-		Disabled bool            `json:"disabled"`
-		Tags     []string        `json:"tags"`
-		CardData struct {
-			License     json.RawMessage `json:"license"`
-			LicenseName string          `json:"license_name"`
-			LicenseLink string          `json:"license_link"`
-		} `json:"cardData"`
-	}
-	if _, err := c.getJSON(ctx, request{method: http.MethodGet, path: apiPath(repo, "revision", rev)}, &raw); err != nil {
+	raw, err := c.revision(ctx, repo, rev)
+	if err != nil {
 		return Repo{}, err
+	}
+	nfaa := IsNFAA(raw.Tags)
+	if rev != "main" {
+		head, err := c.revision(ctx, repo, "main")
+		if err != nil {
+			return Repo{}, err
+		}
+		nfaa = nfaa || IsNFAA(head.Tags)
 	}
 	r := Repo{
 		ID: raw.ID, Commit: raw.SHA, Gated: isGated(raw.Gated), Disabled: raw.Disabled, Tags: raw.Tags,
-		NFAA: slices.Contains(raw.Tags, TagNFAA), License: License{ID: licenseID(raw.CardData.License), Name: raw.CardData.LicenseName, Link: raw.CardData.LicenseLink},
+		NFAA: nfaa, License: License{ID: licenseID(raw.CardData.License), Name: raw.CardData.LicenseName, Link: raw.CardData.LicenseLink},
 	}
 	if r.ID == "" {
 		r.ID = repo
@@ -173,11 +199,25 @@ type TreeEntry struct {
 // MaxTreeEntries bounds how many entries Tree reads (a repository with more is cut and Truncated says so).
 const MaxTreeEntries = 5000
 
+// maxTreePages bounds how many pages Tree follows: a server that keeps answering a next cursor with no files, or one that repeats
+// a cursor, ends the list there (truncated).
+const maxTreePages = 100
+
+var sha256Hex = regexp.MustCompile(`^[0-9a-f]{64}$`)
+
+// lfsOID is the SHA-256 the Hub gives as an LFS object id, lower-cased; "" when it is not 64 hex digits.
+func lfsOID(oid string) string {
+	if oid = strings.ToLower(oid); sha256Hex.MatchString(oid) {
+		return oid
+	}
+	return ""
+}
+
 // Tree lists the files of the repository at the commit, directories excluded, following the pages the Hub makes
 // (the cursor of the Link header). truncated is true when MaxTreeEntries cut the list.
 func (c *Client) Tree(ctx context.Context, repo, commit string) (entries []TreeEntry, truncated bool, err error) {
 	q := url.Values{"recursive": {"true"}, "limit": {"1000"}}
-	for {
+	for pages := 1; ; pages++ {
 		var page []struct {
 			Type string `json:"type"`
 			Path string `json:"path"`
@@ -197,7 +237,10 @@ func (c *Client) Tree(ctx context.Context, repo, commit string) (entries []TreeE
 			}
 			te := TreeEntry{Path: e.Path, Size: e.Size}
 			if e.LFS != nil {
-				te.SHA256, te.LFSSize = strings.ToLower(e.LFS.OID), e.LFS.Size
+				te.SHA256, te.LFSSize = lfsOID(e.LFS.OID), e.LFS.Size
+				if te.SHA256 == "" {
+					te.LFSSize = 0 // not a SHA-256: the file counts as one without LFS
+				}
 			}
 			entries = append(entries, te)
 		}
@@ -205,7 +248,7 @@ func (c *Client) Tree(ctx context.Context, repo, commit string) (entries []TreeE
 		if cursor == "" {
 			return entries, false, nil
 		}
-		if len(entries) >= MaxTreeEntries {
+		if len(entries) >= MaxTreeEntries || pages >= maxTreePages || cursor == q.Get("cursor") {
 			return entries, true, nil
 		}
 		q.Set("cursor", cursor)

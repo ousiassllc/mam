@@ -53,6 +53,16 @@ func (r *rig) hfInstallOK(path string) modelmanager.JobStatus {
 	return st
 }
 
+// hfInstallOKAs installs a file into the folder under the name and waits for the job.
+func (r *rig) hfInstallOKAs(path, folder, name string) modelmanager.JobStatus {
+	r.t.Helper()
+	ref, err := r.hfInstall(modelmanager.HFInstallInput{Path: path, Folder: folder, Name: name, Accept: true, TermsVersion: hfplan.TermsVersion})
+	require.NoError(r.t, err)
+	st := r.wait(ref.JobID)
+	require.Equal(r.t, domain.JobSucceeded, st.State, st.Error)
+	return st
+}
+
 // cdnRequests counts the downloads from the CDN: a request without a Range, or one that continues a part file (the header
 // reads that guess a folder ask for a closed range).
 func (r *rig) cdnRequests() int {

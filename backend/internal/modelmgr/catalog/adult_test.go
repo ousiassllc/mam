@@ -158,9 +158,10 @@ func TestValidateChecksTheContentRatingLorasAndSourceNotes(t *testing.T) {
 		"an unlicensed commercial model": {func(c *catalog.Catalog) {
 			find(c, "wan22-remix-nsfw-i2v").License.CommercialUse = true
 		}, "not commercial use"},
-		"trigger words without a LoRA": {func(c *catalog.Catalog) { find(c, "sdxl-base").TriggerWords = []string{"x"} }, "trigger_words belong to a model with a LoRA"},
-		"an empty trigger word":        {func(c *catalog.Catalog) { find(c, "flux1-dev-nsfw-master").TriggerWords = []string{" "} }, "trigger word is empty"},
-		"a source note without a date": {func(c *catalog.Catalog) { find(c, "flux1-dev-nsfw-master").Files[1].SourceNote = "Civitai" }, "source_note must say"},
+		"trigger words without a LoRA":          {func(c *catalog.Catalog) { find(c, "sdxl-base").TriggerWords = []string{"x"} }, "trigger_words belong to a model with a LoRA"},
+		"an empty trigger word":                 {func(c *catalog.Catalog) { find(c, "flux1-dev-nsfw-master").TriggerWords = []string{" "} }, "trigger word is empty"},
+		"a source note without a date":          {func(c *catalog.Catalog) { find(c, "flux1-dev-nsfw-master").Files[1].SourceNote = "Civitai" }, "source_note must say"},
+		"a source note with an impossible date": {func(c *catalog.Catalog) { find(c, "flux1-dev-nsfw-master").Files[1].SourceNote = "Civitai 2099-99-99" }, "source_note must say"},
 		"a LoRA the workflow does not load": {func(c *catalog.Catalog) {
 			m := find(c, "flux1-dev-nsfw-master")
 			m.Workflows[0].Template = "txt2img-flux-dev"

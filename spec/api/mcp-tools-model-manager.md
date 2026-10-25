@@ -39,7 +39,7 @@
 | `get_huggingface_token_status` | トークンの有無と末尾の数文字（値は返さない） | なし | `configured`, `last_chars` | はい |
 | `set_huggingface_token` | トークンを保存・置き換える（冪等。応答に含まれない） | `token` | 同上 | いいえ |
 | `clear_huggingface_token` | トークンを削除する（冪等） | なし | 同上 | いいえ（破壊的） |
-| `get_external_inventory` | 外部の ComfyUI（種類 ComfyUI の登録済み接続先）が持つモデルファイルと、カタログのモデルに足りないファイル。読むだけ | `endpoint` | `endpoint`, `version`, `folders`, `models[]`（`id`, `present`, `missing`, `complete`） | はい（外部へ接続する） |
+| `get_external_inventory` | 外部の ComfyUI（種類 ComfyUI の登録済み接続先）が持つモデルファイル（`checkpoints`・`diffusion_models`・`text_encoders`・`vae`・`loras`）と、カタログのモデルに足りないファイル。読むだけ。成人向けのモデルは年齢確認が済むまで `models[]` に出ない | `endpoint` | `endpoint`, `version`, `folders`, `models[]`（`id`, `present`, `missing`, `complete`） | はい（外部へ接続する） |
 | `get_adult_content_status` | 成人向けモデルの表示（年齢確認のゲート）の状態と、いまの注意書き | なし | `enabled`（ゲートが開いている）, `confirmed`（現行の注意書きの版の確認が記録済み）, `confirmed_at`, `notice_version`, `notice` | はい |
 | `set_adult_content` | 成人向けモデルの表示を切り替える（冪等）。**オンにするのは、`notice` をユーザーに見せ、ユーザー自身が「18 歳以上（またはお住まいの地域で成年）」と注意書きへの同意を答えた後だけ**。エージェントが自分で確認したことにして呼ばない（`accept_model_license` と同じ扱い）。確認の日時と注意書きの版は `state.json` に記録される | `enabled`, `confirm_adult`（ユーザーが答えたとき true）, `notice_version`（`get_adult_content_status` の値）。一度確認すれば、オフ→オンでは `confirm_adult` を省ける | `get_adult_content_status` と同じ | いいえ |
 
@@ -79,3 +79,4 @@
 | 1.1 | 2026-10-26 | 試し生成の 6 ツール・アップロードの用途 `model_trial_reference`・ダウンロードの種類 `model_trial_file` を削除し、生成テストのツール（[mcp-tools-generation-test.md](mcp-tools-generation-test.md)）に統合した。ジョブの種別 `gentest` の Probe も生成テスト側に移った | Issue #835。生成テストの実装を 1 つにする（試し生成は 1 モデル 1 プロンプトのバッチ） |
 | 1.2 | 2026-10-25 | 成人向けモデルの年齢確認のツール `get_adult_content_status`・`set_adult_content` を足した。`list_model_catalog`・`get_catalog_model` に `content_rating`・`trigger_words`（と `files[].source_note`・`adult_notice`）を足し、ゲートが閉じている間は成人向けモデルを一覧に出さず、`get_catalog_model`・`accept_model_license`・`install_model` は `conflict` にした。取得元が消えた導入の失敗の理由を足した | Issue #841。成人向け（非検閲）のモデル・LoRA と年齢確認 |
 | 1.3 | 2026-10-26 | Hugging Face の任意の `.safetensors` の導入のツール `search_hf_models`・`get_hf_model_files`・`install_hf_file`・`list_user_models`・`delete_user_model` を足した。ジョブの `target` に `hf:<repo>@<commit>/<path>` を足した | Issue #842。意味は [../architecture/model-manager/model-manager-hf.md](../architecture/model-manager/model-manager-hf.md) |
+| 1.4 | 2026-10-25 | `get_external_inventory` が成人向けのモデルを年齢確認が済むまで返さず、`loras` フォルダも読むようにした。`get_hf_model_files`・`install_hf_file` の NFAA 判定を、コミットのタグと今の先頭のタグの OR にした（古いコミットを指名しても年齢確認が要る）。同じファイルを別のフォルダ・名前で導入中に頼むと `validation`。同じ宛先の別ファイルは上書きされない（`validation`）。`list_user_models` の `shared_with` は年齢確認が済むまで成人向けのモデルを挙げない | PR #849 のレビューの指摘（#841・#842）への修正 |

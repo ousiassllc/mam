@@ -153,6 +153,29 @@ func TestBrowse_AnNFAARepositoryIsRefusedWithoutTheAgeGate(t *testing.T) {
 	assert.True(t, l.Repo.NFAA)
 }
 
+// An older commit of a repository that is NFAA today may predate the tag: naming it must not open the gate.
+const oldCommit = "fedcba9876543210fedcba9876543210fedcba98"
+
+func TestBrowse_AnOlderCommitWithoutTheTagIsStillAdultWhileTheHeadIsTagged(t *testing.T) {
+	r := repo()
+	r.NFAA, r.OldCommit = true, oldCommit
+	srv := hftest.New(t, r)
+	for _, ref := range []hf.Ref{
+		{Repo: "o/m", Kind: hf.KindTree, Rev: oldCommit},
+		{Repo: "o/m", Kind: hf.KindBlob, Rev: oldCommit, Path: "pony-fp16.safetensors"},
+		{Repo: "o/m", Kind: hf.KindResolve, Rev: oldCommit, Path: "pony-fp16.safetensors"},
+	} {
+		_, err := hfplan.Browse(context.Background(), client(srv, ""), ref, hfplan.BrowseOptions{})
+		require.ErrorIs(t, err, hfplan.ErrAdult, ref.Kind)
+	}
+	assert.Zero(t, srv.Count("/api/models/o/m/tree/"), "nothing of the repository is read")
+
+	l, err := hfplan.Browse(context.Background(), client(srv, ""), hf.Ref{Repo: "o/m", Kind: hf.KindTree, Rev: oldCommit}, hfplan.BrowseOptions{AdultOK: true})
+	require.NoError(t, err)
+	assert.True(t, l.Repo.NFAA)
+	assert.Equal(t, oldCommit, l.Repo.Commit)
+}
+
 func TestBrowse_MissingAndRateLimitedRepositoriesSayWhatToDo(t *testing.T) {
 	srv := hftest.New(t, repo())
 	_, err := hfplan.Browse(context.Background(), client(srv, ""), hf.Ref{Repo: "o/none", Kind: hf.KindRepo}, hfplan.BrowseOptions{})
@@ -270,4 +293,21 @@ func TestPin_AnNFAARepositoryIsRefusedWithoutTheAgeGate(t *testing.T) {
 	p, err := pin(t, srv, "", "pony-fp16.safetensors", hfplan.PinOptions{AdultOK: true})
 	require.NoError(t, err)
 	assert.True(t, p.NFAA)
+}
+
+func TestPin_AnOlderCommitWithoutTheTagIsStillAdultWhileTheHeadIsTagged(t *testing.T) {
+	r := repo()
+	r.NFAA, r.OldCommit = true, oldCommit
+	srv := hftest.New(t, r)
+	pinOld := func(o hfplan.PinOptions) (hfplan.Pinned, error) {
+		return hfplan.Pin(context.Background(), client(srv, ""), "o/m", oldCommit, "pony-fp16.safetensors", o)
+	}
+	_, err := pinOld(hfplan.PinOptions{})
+	require.ErrorIs(t, err, hfplan.ErrAdult)
+	assert.Zero(t, srv.Count("/api/models/o/m/paths-info/"), "nothing of the file is read")
+
+	p, err := pinOld(hfplan.PinOptions{AdultOK: true})
+	require.NoError(t, err)
+	assert.True(t, p.NFAA, "the file is recorded as adult")
+	assert.Equal(t, oldCommit, p.Commit)
 }

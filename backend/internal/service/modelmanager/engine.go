@@ -147,11 +147,16 @@ func (s *Service) chooseVariant(ctx context.Context, in EngineInstallInput) (cat
 	return rec.Variant, nil
 }
 
-// enqueue queues a model_install job for target unless one is queued or running already.
+// enqueue queues a model_install job for target unless one is queued or running already. An import of the file that is already
+// queued under another folder or name is refused (*InvalidError): the first job keeps its destination, and the answer must not
+// hide that the choice of the second was dropped.
 func (s *Service) enqueue(ctx context.Context, target string, p installPayload) (JobRef, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if id, ok := s.active[target]; ok {
+		if p.HF != nil && s.activeDest[target] != "" && !strings.EqualFold(s.activeDest[target], p.HF.Rel()) {
+			return JobRef{}, invalid("このファイルはすでに %s に導入中です。終わってから、別のフォルダ・名前でやり直してください", s.activeDest[target])
+		}
 		return JobRef{JobID: id, Existing: true}, nil
 	}
 	job, err := s.Jobs.Enqueue(ctx, domain.JobModelInstall, p)
@@ -159,7 +164,15 @@ func (s *Service) enqueue(ctx context.Context, target string, p installPayload) 
 		return JobRef{}, err
 	}
 	s.active[target] = job.ID
+	s.setDest(target, p)
 	return JobRef{JobID: job.ID}, nil
+}
+
+// setDest remembers where an import writes (the caller holds s.mu).
+func (s *Service) setDest(target string, p installPayload) {
+	if p.HF != nil {
+		s.activeDest[target] = p.HF.Rel()
+	}
 }
 
 func (s *Service) activeJob(target string) string {
@@ -173,6 +186,7 @@ func (s *Service) release(target, jobID string) {
 	s.mu.Lock()
 	if s.active[target] == jobID {
 		delete(s.active, target)
+		delete(s.activeDest, target)
 	}
 	s.mu.Unlock()
 }
@@ -186,6 +200,7 @@ func (s *Service) handleInstall(ctx context.Context, job domain.Job) error {
 	}
 	s.mu.Lock()
 	s.active[p.Target] = job.ID // a job resumed after a restart is active again
+	s.setDest(p.Target, p)
 	s.mu.Unlock()
 	defer s.release(p.Target, job.ID)
 	defer s.tracker.Finish(job.ID)
