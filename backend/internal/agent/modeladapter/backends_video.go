@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/gptimage"
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/httpclient"
@@ -295,7 +296,7 @@ func NewBackends(cfg Config, keys credential.Store, client httpclient.Doer, poll
 		Image: map[domain.ModelName]ImageBackend{
 			domain.ModelNanoBanana:     geminiImageBackend{mk(VendorGoogle)},
 			domain.ModelNanoBananaLite: geminiImageBackend{mk(VendorGoogle)},
-			domain.ModelGPTImage2:      openAIImageBackend{mk(VendorOpenAI)},
+			domain.ModelGPTImage2:      openAIImageBackend{mk(VendorOpenAI), gptimage.Effective(cfg.Models[domain.ModelGPTImage2].Quality)},
 			domain.ModelFlux2:          fluxBackend{mk(VendorFlux)},
 		},
 		Video: map[domain.ModelName]VideoBackend{
