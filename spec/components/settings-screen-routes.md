@@ -1,6 +1,6 @@
 # 画面仕様: 設定画面の新しいルートと応答の決まり（下書き）
 
-> **状態: 案（実装前。オーナーの確認待ち）。** Issue #847。実装のとき、§1 の表を `spec/api/endpoints-settings.md`（新規。`endpoints.md` が上限に近いため。§4）と [../api/endpoints-local-models.md](../api/endpoints-local-models.md) に移し、`spec/api/endpoints.md` §1 の `/settings` の行は「概要」にして `endpoints-settings.md` への案内を足す。ここでは、その下書きと、モーダルの保存の応答の決まりを書く。画面は [settings-screen.md](settings-screen.md)・[settings-screen-categories.md](settings-screen-categories.md)、部品は [shared-ui-parts.md](shared-ui-parts.md)。
+> **状態: 段階 ①・②-1・②-2 のぶんは実装済み**（`GET /settings`・`/settings/<slug>`・`/settings/local-models/health`・`GET /settings/credentials/:provider/edit`・`POST /settings/credentials/:provider/test`・`GET /settings/chatgpt/:kind/login`、`PUT`・`DELETE /credentials/:provider` の応答。実際の契約は [../api/endpoints-settings.md](../api/endpoints-settings.md)）。LLM・画像動画・ローカル・MCP のルートは未実装（②-3 以降）。Issue #847。オーナーは §6 を推奨する既定で決定した（2026-10-25）。実装のとき、§1 の表を `spec/api/endpoints-settings.md`（新規。`endpoints.md` が上限に近いため。§4）と [../api/endpoints-local-models.md](../api/endpoints-local-models.md) に移し、`spec/api/endpoints.md` §1 の `/settings` の行は「概要」にして `endpoints-settings.md` への案内を足す。ここでは、その下書きと、モーダルの保存の応答の決まりを書く。画面は [settings-screen.md](settings-screen.md)・[settings-screen-categories.md](settings-screen-categories.md)、部品は [shared-ui-parts.md](shared-ui-parts.md)。
 
 ## 1. 新しいルート（すべて今のルートに足す。今のルートの意味は変えない）
 
@@ -109,3 +109,4 @@ GET は状態を変えない。PUT・POST・DELETE は CSRF 必須。`:provider`
 | 0.1 | 2026-10-25 | 新規作成（案） | Issue #847 決定事項 4(a)・8(a)・9(a)。新しいルートと、モーダルの保存の応答の下書き |
 | 0.2 | 2026-10-25 | §1 のログインのモーダルの `:kind` に `codex` を足した | 統合の見直し。#845 が先に入ったため |
 | 0.3 | 2026-10-25 | `endpoints.md` の行数を 296 行に直し、`GET /tools/:tool/status` との合計を書いた。`GET /settings/chatgpt` の `card` と今の `method` の関係を未決の質問（§6 の 5）にした | 独立レビュー（PR #849）の指摘 |
+| 0.4 | 2026-10-25 | 状態を更新した。実装済みのルートは [../api/endpoints-settings.md](../api/endpoints-settings.md) に移した。成功の通知はトースト（§6 の質問 4 の推奨。`atoms.SuccessToastOOB`）。§6 の質問 5 は、ログインのモーダルが自分の `GET /settings/chatgpt/:kind/login?poll=1` を取り直し、パネル全体の取り直しは `GET /settings/chatgpt` のままで、`card` は足さず `method` は読まない形にした | Issue #847 の実装 |

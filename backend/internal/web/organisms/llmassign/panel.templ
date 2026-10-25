@@ -43,7 +43,7 @@ type Data struct {
 
 // Section is the "LLM の割り当て" section of the global settings screen: Panel under its title.
 templ Section(d Data) {
-	@molecules.SettingsSection("LLM の割り当て", "Agent ごとに、最初に呼ぶ LLM（プライマリ）と、失敗したときに切り替える LLM（代替）を選びます。変更は保存したあとアプリを再起動すると反映されます。") {
+	@molecules.SettingsSectionAt(molecules.HeadingNone, "LLM の割り当て", "Agent ごとに、最初に呼ぶ LLM（プライマリ）と、失敗したときに切り替える LLM（代替）を選びます。変更は保存したあとアプリを再起動すると反映されます。") {
 		@Panel(d)
 	}
 }

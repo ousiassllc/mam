@@ -89,7 +89,7 @@ func Section(d Data) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = molecules.SettingsSection("LLM の割り当て", "Agent ごとに、最初に呼ぶ LLM（プライマリ）と、失敗したときに切り替える LLM（代替）を選びます。変更は保存したあとアプリを再起動すると反映されます。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = molecules.SettingsSectionAt(molecules.HeadingNone, "LLM の割り当て", "Agent ごとに、最初に呼ぶ LLM（プライマリ）と、失敗したときに切り替える LLM（代替）を選びます。変更は保存したあとアプリを再起動すると反映されます。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

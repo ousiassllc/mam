@@ -168,6 +168,19 @@ func TestInvalidInputWritesNothing(t *testing.T) {
 	assert.Equal(t, before, after)
 }
 
+// An endpoint called "new" would be hidden behind the address of the form that adds one, so it is refused for good.
+func TestCreateEndpoint_RefusesTheNameThatIsTheAddressOfTheAddForm(t *testing.T) {
+	r := newRig(t, false, "")
+	var invalid *localmodels.InvalidError
+
+	err := r.svc.CreateEndpoint(context.Background(), localmodels.EndpointInput{Name: "new", Kind: localcfg.KindComfyUI, BaseURL: "http://127.0.0.1:8188"})
+
+	require.ErrorAs(t, err, &invalid)
+	assert.Contains(t, invalid.Message, "「new」")
+	assert.NoFileExists(t, r.path, "nothing is written")
+	require.NoError(t, r.svc.CreateEndpoint(context.Background(), localmodels.EndpointInput{Name: "news", Kind: localcfg.KindComfyUI, BaseURL: "http://127.0.0.1:8188"}), "only the exact name")
+}
+
 func TestPinnedFileIsNeverWritten(t *testing.T) {
 	r := newRig(t, true, `{"endpoints":{"box":{"kind":"comfyui","base_url":"http://127.0.0.1:8188"}}}`)
 	before, _ := os.ReadFile(r.path)

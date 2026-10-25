@@ -210,7 +210,7 @@ func Section(d Data) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = molecules.SettingsSection("画像・動画モデル", "画像の用途ごと・Quality Policy ごとに、主モデルと、主モデルが使えないときの代替モデルを選びます。保存した内容は <データフォルダ>/models.json に書かれ、すぐに反映されます。「ローカル・代替モデル」で登録したモデルも選べます。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var3), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = molecules.SettingsSectionAt(molecules.HeadingNone, "画像・動画モデル", "画像の用途ごと・Quality Policy ごとに、主モデルと、主モデルが使えないときの代替モデルを選びます。保存した内容は <データフォルダ>/models.json に書かれ、すぐに反映されます。「ローカル・代替モデル」で登録したモデルも選べます。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var3), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

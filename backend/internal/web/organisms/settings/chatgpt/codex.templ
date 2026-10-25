@@ -1,0 +1,180 @@
+package chatgpt
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+const codexTitle = "ChatGPT 経由の Codex（テキスト生成のみ）"
+
+// codexCard is the card of the Codex login: the engine, the account, the usage limits and the buttons. The login and the
+// model list are modals.
+templ codexCard(d Data) {
+	@settingsui.CardItem(codexCardOf(d)) {
+		if d.Codex.EngineReady() {
+			if !d.Codex.SignedIn {
+				@openLogin(codexKind, "ログイン", codexTitle, true)
+			}
+			@codexRefreshButton()
+			if d.Codex.SignedIn {
+				@openModels(codexKind, modelsURL(codexKind), codexTitle)
+				@codexLogout()
+			}
+		}
+	}
+}
+
+func codexCardOf(d Data) settingsui.Card {
+	c := settingsui.Card{
+		ID: cardID(codexKind), TestID: "chatgpt-card", Attrs: map[string]any{"data-kind": codexKind}, TitleLevel: 4,
+		Title:       codexTitle,
+		Description: "Codex の app-server（OpenAI の公式のプログラム）をこの PC で動かし、そこで ChatGPT にログインします。Business / Enterprise / Edu のワークスペースのアカウントでも、個人のアカウントでも使えます。画像・動画・音声の生成には使いません。LLM の割り当てでは、プロバイダー「chatgpt-codex」を選びます。",
+		Details:     codexDetails(d),
+	}
+	switch {
+	case d.Codex.Login != nil && d.Codex.Login.Pending:
+		c.Tone, c.State = atoms.BadgeInfo, "ログイン待ち"
+	case d.Codex.SignedIn:
+		c.Tone, c.State = atoms.BadgeOK, "ログイン済み"
+	case d.Codex.Engine.State == "failed":
+		c.Tone, c.State = atoms.BadgeError, "エンジンが異常"
+	case !d.Codex.EngineReady():
+		c.Tone, c.State = atoms.BadgeNeutral, "エンジン未取得"
+	default:
+		c.Tone, c.State = atoms.BadgeNeutral, "未ログイン"
+	}
+	return c
+}
+
+templ codexDetails(d Data) {
+	<div class="flex flex-col gap-3" data-testid="chatgpt-codex">
+		<p class="rounded-md border border-amber-500/50 px-3 py-2 text-sm text-amber-300" data-testid="chatgpt-codex-terms">
+			この方式はローカル・オープンソースの利用のためのもので、商用・ホスティング（mam をサーバーで動かして他の人に提供する形）での提供には使えません。ワークスペースの Codex の利用上限を使います。
+		</p>
+		@codexEngine(d.Codex)
+		@codexAccount(d.Codex)
+		@loginFailed(d.Codex.Login)
+		if d.Codex.EngineReady() {
+			<p class="text-xs text-neutral-400">
+				使うには、ワークスペースの所有者が「Codex をローカルで使う」権限（Codex Local）をメンバーに許可している必要があります。デバイスコードでログインするには、デバイスコードのログインも許可されている必要があります（beta）。
+			</p>
+		}
+		if d.Codex.JustSignedIn {
+			<p class="text-sm text-emerald-300" data-testid="chatgpt-codex-assign-hint">
+				ログインしました。「LLM の割り当て」で、使う Agent のプロバイダーを「chatgpt-codex」にすると、この方式で動きます（自動では切り替えません）。
+			</p>
+		}
+	</div>
+}
+
+templ codexEngine(c Codex) {
+	<div class="flex flex-col gap-2 rounded-md border border-neutral-700 px-3 py-2" data-testid="chatgpt-codex-engine">
+		<p class="text-sm">
+			<span class="font-medium">エンジン（Codex app-server）</span>
+			switch c.Engine.State {
+				case "ready", "running":
+					@atoms.Badge(atoms.BadgeOK, engineLabel(c.Engine.State))
+				case "failed":
+					@atoms.Badge(atoms.BadgeError, engineLabel(c.Engine.State))
+				case "installing":
+					@atoms.Badge(atoms.BadgeInfo, engineLabel(c.Engine.State))
+				default:
+					@atoms.Badge(atoms.BadgeNeutral, engineLabel(c.Engine.State))
+			}
+			if c.Engine.Version != "" {
+				<span class="ml-2 text-xs text-neutral-400" data-testid="chatgpt-codex-version">バージョン: { c.Engine.Version }</span>
+			}
+		</p>
+		if s := engineSource(c.Engine.Source); s != "" {
+			<p class="text-xs text-neutral-400">{ s }</p>
+		}
+		if c.Engine.Error != "" {
+			<pre class="whitespace-pre-wrap text-xs text-red-300" role="alert" data-testid="chatgpt-codex-engine-error">{ c.Engine.Error }</pre>
+		}
+		if c.Engine.UpdateAvailable {
+			<p class="text-xs text-amber-300" data-testid="chatgpt-codex-update">この mam が確かめた版は { c.Engine.PinnedVersion } です。取得済みの { c.Engine.Version } は使いません。もう一度取得してください。</p>
+		}
+		if c.Engine.Install.Running {
+			<div class="flex flex-col gap-1" role="status" data-testid="chatgpt-codex-install">
+				<progress class="w-full" max="100" value={ percentText(c.Engine.Install.Percent) }></progress>
+				<p class="text-xs">{ c.Engine.Install.Message }（{ percentText(c.Engine.Install.Percent) }%）</p>
+				<form hx-post={ paths.ChatGPTCodexInstallCancel() } hx-target={ panelTarget } hx-swap="outerHTML" hx-sync="this:drop" hx-params="none" hx-disabled-elt="find button[type=submit]">
+					@atoms.SmallButtonFor(atoms.ToneNeutral, "中断", codexTitle, templ.Attributes{"type": "submit", "data-testid": "chatgpt-codex-install-cancel"})
+				</form>
+			</div>
+		} else {
+			if c.Engine.Install.Error != "" {
+				<p class="text-sm text-red-300" role="alert" data-testid="chatgpt-codex-install-error">{ c.Engine.Install.Error }</p>
+			}
+			if c.Engine.Supported && c.Engine.Source != "custom" && (c.Engine.State == "not_installed" || c.Engine.UpdateAvailable) {
+				<form hx-post={ paths.ChatGPTCodexInstall() } hx-target={ panelTarget } hx-swap="outerHTML" hx-sync="this:drop" hx-params="none" hx-disabled-elt="find button[type=submit]">
+					<p class="mb-2 text-xs text-neutral-400">
+						初回は Codex の実行ファイルを OpenAI の公式のリリース（GitHub）からダウンロードします（約 90 MB。展開後は約 270 MB。SHA-256 とサイズを確かめます。Apache-2.0）。mam の実行ファイルと同じ場所の codex ディレクトリに置きます。
+					</p>
+					@atoms.SmallButtonFor(atoms.TonePrimary, "Codex をダウンロード", codexTitle, templ.Attributes{"type": "submit", "data-testid": "chatgpt-codex-install-button"})
+				</form>
+			}
+		}
+		if !c.Engine.Supported {
+			<p class="text-xs text-neutral-400" data-testid="chatgpt-codex-unsupported">この環境では取得できません（取得は Windows 版だけです）。自分で入れた codex の実行ファイルのパスを指定してください。</p>
+		}
+		@codexPathForm(c)
+	</div>
+}
+
+templ codexPathForm(c Codex) {
+	<form class="flex flex-wrap items-center gap-2" hx-put={ paths.ChatGPTCodexPath() } hx-target={ panelTarget } hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]">
+		<label class="text-xs text-neutral-400" for="chatgpt-codex-path">自分で入れた codex のパス</label>
+		@atoms.Input(atoms.FieldSm, "min-w-64 flex-1", templ.Attributes{"id": "chatgpt-codex-path", "name": "path", "type": "text", "value": c.Engine.CustomPath, "placeholder": "C:\\Tools\\codex\\codex.exe", "data-testid": "chatgpt-codex-path"})
+		@atoms.SmallButtonFor(atoms.ToneNeutral, "パスを設定", codexTitle, templ.Attributes{"type": "submit", "data-testid": "chatgpt-codex-path-set"})
+	</form>
+}
+
+templ codexAccount(c Codex) {
+	<div class="flex flex-col gap-1 text-sm" data-testid="chatgpt-status-codex">
+		if !c.SignedIn {
+			<p class="text-neutral-300">ログインしていません</p>
+		} else {
+			<p>
+				<span class="font-medium" data-testid="chatgpt-email">{ c.Email }</span>
+				if c.Plan != "" {
+					<span class="ml-2 text-xs text-neutral-400" data-testid="chatgpt-plan">プラン: { c.Plan }</span>
+				}
+			</p>
+			<p class="text-xs text-neutral-400">トークンは Codex が自分で保存・更新します（mam は読みも保存もしません）。保存先: { codexStore(c.CredentialsStore) }</p>
+			if len(c.Limits) > 0 {
+				<ul class="flex flex-col gap-0.5 text-xs" data-testid="chatgpt-codex-limits">
+					for _, l := range c.Limits {
+						<li>{ limitText(l) }</li>
+					}
+				</ul>
+			}
+		}
+	</div>
+}
+
+templ codexRefreshButton() {
+	<form hx-post={ paths.ChatGPTCodexRefresh() } hx-target={ panelTarget } hx-swap="outerHTML" hx-sync="this:drop" hx-params="none" hx-disabled-elt="find button[type=submit]">
+		@atoms.SmallButtonFor(atoms.ToneNeutral, "状態と利用上限を更新", codexTitle, templ.Attributes{"type": "submit", "data-testid": "chatgpt-codex-refresh"})
+	</form>
+}
+
+// codexLogout signs out of Codex; the box also deletes the downloaded engine and mam's own CODEX_HOME.
+templ codexLogout() {
+	<form
+		class="flex flex-wrap items-center gap-2"
+		hx-delete={ paths.ChatGPTCodex() }
+		hx-target={ panelTarget }
+		hx-swap="outerHTML"
+		hx-sync="this:drop"
+		hx-disabled-elt="find button[type=submit]"
+		hx-confirm="ログアウトします。Codex が保存したトークンを消します。よろしいですか？"
+	>
+		<label class="flex items-center gap-2 text-xs text-neutral-300">
+			<input type="checkbox" name="remove" value="true" data-testid="chatgpt-codex-remove"/>
+			取得した Codex 本体と mam 専用の CODEX_HOME も削除する
+		</label>
+		@atoms.SmallButtonFor(atoms.ToneDanger, "ログアウト", codexTitle, templ.Attributes{"type": "submit", "data-testid": "chatgpt-logout-codex"})
+	</form>
+}

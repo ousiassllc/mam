@@ -22,7 +22,7 @@
 |--------|------|------|------|----------|
 | `list_local_endpoints` | 登録済みの接続先の一覧 | なし | `pinned`, `endpoints[]`（`name`, `kind`, `base_url`, `max_concurrency`, `timeout_seconds`（既定を反映した値）, `api_key`（`configured`, `last_chars`）, `models[]`（識別子）） | はい |
 | `get_local_endpoint` | 接続先 1 件 | `name` | `list_local_endpoints` の 1 件 | はい |
-| `create_local_endpoint` | 接続先を登録する（すぐに効く） | `name`（英小文字・数字・`.` `_` `-` の 1〜63 文字）, `kind`（`comfyui` / `openai-compat`）, `base_url`, `max_concurrency?`（既定 1）, `timeout_seconds?`（ComfyUI 3600・互換 900）, `api_key?` | 接続先 | いいえ |
+| `create_local_endpoint` | 接続先を登録する（すぐに効く） | `name`（英小文字・数字・`.` `_` `-` の 1〜63 文字。`new` は設定画面の追加フォームの URL と同じなため 422）, `kind`（`comfyui` / `openai-compat`）, `base_url`, `max_concurrency?`（既定 1）, `timeout_seconds?`（ComfyUI 3600・互換 900）, `api_key?` | 接続先 | いいえ |
 | `update_local_endpoint` | `base_url`・同時実行数・タイムアウトを変える（省略した数は既定に戻る）。冪等 | `name`, `base_url`, `max_concurrency?`, `timeout_seconds?` | 接続先 | いいえ |
 | `delete_local_endpoint` | 接続先・そのモデル・API キーを削除する | `name` | `name` | いいえ（破壊的） |
 | `test_local_endpoint` | 接続テスト。`name` だけなら保存済み、`kind`＋`base_url`（＋`api_key`、保存しない）なら未保存の内容を試す。`name` と一緒に渡すとその名前の保存済みキーを使う。ComfyUI は `/system_stats`（バージョン・GPU）、互換は `/v1/models`（件数。無ければ「到達できる」の注意付き成功）。到達できないのは `ok=false` の結果 | `name?` / `kind?`, `base_url?`, `api_key?` | `ok`, `message`, `note`, `version`, `models[]`（20 件まで） | はい（外部への接続） |
@@ -45,3 +45,4 @@
 | 版 | 日付 | 変更内容 | 変更理由 |
 |----|------|---------|---------|
 | 1.0 | 2026-10-25 | 新規作成。接続先・API キー・接続テスト・テンプレート・ワークフローの取り込み・モデルの 15 ツールと方針 | Issue #831。ローカル・代替モデルの操作を MCP から行えるようにする（#830 の方針: 画面の全操作を MCP で操作できる。キーは設定済みと末尾だけ） |
+| 1.1 | 2026-10-25 | `create_local_endpoint` の `name` に `new` を使えない（422）ことを書いた | Issue #847。設定画面の接続先のサブページ `/settings/local-models/endpoints/:name` が追加フォームの `…/endpoints/new` に隠れないようにするため |

@@ -92,7 +92,7 @@ func Section(d Data) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = molecules.SettingsSection("ローカル・代替モデル", "自分の PC や tailnet 上のサーバーで動かしている ComfyUI（画像・動画）と OpenAI 互換の画像 API を登録し、組み込みのモデルと同じように「画像・動画モデル」で選べるようにします。保存するとすぐに反映されます。登録した接続先には http・localhost・LAN・tailnet のアドレスを使えます（リンクローカルは使えません）。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var3), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = molecules.SettingsSectionAt(molecules.HeadingNone, "ローカル・代替モデル", "自分の PC や tailnet 上のサーバーで動かしている ComfyUI（画像・動画）と OpenAI 互換の画像 API を登録し、組み込みのモデルと同じように「画像・動画モデル」で選べるようにします。保存するとすぐに反映されます。登録した接続先には http・localhost・LAN・tailnet のアドレスを使えます（リンクローカルは使えません）。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var3), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

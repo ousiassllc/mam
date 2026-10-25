@@ -260,7 +260,8 @@ func TestModelSettings_AFileThatCannotBeReadOnlyLosesThisSection(t *testing.T) {
 
 	html := s.page()
 	assert.Contains(t, html, `data-testid="model-assignment-problem"`)
-	assert.Contains(t, html, `id="credential-panel"`, "the rest of the screen is still there")
+	assert.Contains(t, html, `<nav aria-label="設定"`, "the rest of the screen is still there")
+	assert.Contains(t, html, "<h1")
 }
 
 // With the age confirmation off the screen does not offer an adult model, but it shows a saved assignment that still names one as

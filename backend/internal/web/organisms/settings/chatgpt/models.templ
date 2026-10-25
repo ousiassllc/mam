@@ -1,0 +1,64 @@
+package chatgpt
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// ModelList is what the model modal is drawn from: the models of the signed-in account, or why they could not be read.
+type ModelList struct {
+	// Kind is the login system: official or codex.
+	Kind   string
+	Models []Model
+	Error  string
+}
+
+// modelsURL is the page that lists the models of a login system.
+func modelsURL(kind string) string {
+	if kind == codexKind {
+		return paths.ChatGPTCodexModels()
+	}
+	return paths.ChatGPTModels()
+}
+
+func modelsTitle(kind string) string {
+	if kind == codexKind {
+		return "Codex 経由で利用できるモデル"
+	}
+	return "ChatGPT のプランで利用できるモデル"
+}
+
+// ModelsModal is the body of the modal that lists the models of the signed-in account (read only).
+templ ModelsModal(m ModelList) {
+	@modal.Frame(modelsTitle(m.Kind), "") {
+		if m.Error != "" {
+			@modal.Error(m.Error)
+		} else if len(m.Models) == 0 {
+			<p class="text-sm text-neutral-400">表示できるモデルがありません。</p>
+		} else {
+			<p class="text-xs text-neutral-400">「LLM の割り当て」のモデル欄に、次のモデル名（太字）を入力します。名前はアカウントと時期で変わります。画像の入力に対応するモデルには「画像可」と付きます。</p>
+			<ul class="flex flex-col gap-1 text-sm" data-testid={ modelsTestID(m.Kind) }>
+				for _, model := range m.Models {
+					<li>
+						<code class="font-medium select-all">{ model.Slug }</code>
+						<span class="text-xs text-neutral-400">{ model.DisplayName }</span>
+						if model.Images {
+							<span class="text-xs text-sky-300">画像可</span>
+						}
+					</li>
+				}
+			</ul>
+		}
+		@modal.Actions() {
+			@atoms.Button(atoms.TonePrimary, "閉じる", templ.Attributes{"type": "button", "data-modal-close": true, "autofocus": true})
+		}
+	}
+}
+
+func modelsTestID(kind string) string {
+	if kind == codexKind {
+		return "chatgpt-codex-model-list"
+	}
+	return "chatgpt-model-list"
+}

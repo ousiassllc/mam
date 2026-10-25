@@ -12,7 +12,8 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex"
 	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex/engine"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/fetch"
-	view "github.com/ousiassllc/mam/backend/internal/web/organisms/chatgptpanel"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/settings/settingshttp"
+	view "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/chatgpt"
 )
 
 // kindCodex is the Codex login system in the paths (":kind" of the login and logout routes).
@@ -53,46 +54,27 @@ func codexData(svc *codex.Service) view.Codex {
 	return c
 }
 
-// defaultMethod is the login method the section shows first: Codex once there is something of it to show (the engine,
-// a login) while the official login is not signed in.
-func defaultMethod(d view.Data) string {
-	codexInUse := d.Codex.SignedIn || d.Codex.Login != nil || d.Codex.Engine.State != "not_installed"
-	if codexInUse && !d.Official.SignedIn {
-		return view.MethodCodex
-	}
-	return view.MethodOfficial
-}
+// codexSection is the section after an action on the Codex login.
+func codexSection(svc *chatgpt.Service) view.Data { return SectionData(svc) }
 
-// methodOf is the method asked by ?method=, else the default.
-func methodOf(c *gin.Context, d view.Data) string {
-	switch m := c.Query("method"); m {
-	case view.MethodOfficial, view.MethodCodex:
-		return m
-	}
-	return defaultMethod(d)
-}
-
-// codexSection is the section showing the Codex login.
-func codexSection(svc *chatgpt.Service) view.Data {
-	d := SectionData(svc)
-	d.Method = view.MethodCodex
-	return d
-}
-
-// CodexModels lists the models of the signed-in Codex account (GET /settings/chatgpt/codex/models, model/list).
-func CodexModels(svc *chatgpt.Service) gin.HandlerFunc {
+// CodexModels lists the models of the signed-in Codex account in a modal (GET /settings/chatgpt/codex/models, model/list).
+func CodexModels(svc *chatgpt.Service, page gin.HandlerFunc) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		d := codexSection(svc)
-		d.Codex.ModelsAsked = true
+		if !settingshttp.IsHTMX(c) {
+			page(c)
+			return
+		}
+		c.Header("Cache-Control", "no-store")
+		list := view.ModelList{Kind: kindCodex}
 		models, err := svc.Codex().Models(c.Request.Context())
 		if err != nil {
 			_ = c.Error(err)
-			d.Error = "モデルの一覧を取得できませんでした。ログインの状態を確認して、もう一度お試しください"
+			list.Error = "モデルの一覧を取得できませんでした。ログインの状態を確認して、もう一度お試しください"
 		}
 		for _, m := range models {
-			d.Codex.Models = append(d.Codex.Models, view.CodexModel{Slug: m.Slug, DisplayName: m.DisplayName, Images: m.Images})
+			list.Models = append(list.Models, view.Model{Slug: m.Slug, DisplayName: m.DisplayName, Images: m.Images})
 		}
-		render(c, http.StatusOK, view.Panel(d))
+		render(c, http.StatusOK, view.ModelsModal(list))
 	}
 }
 
@@ -176,23 +158,22 @@ func startCodexLogin(c *gin.Context, svc *chatgpt.Service) {
 		method = codex.MethodDevice
 	}
 	_, err := svc.Codex().StartLogin(c.Request.Context(), method)
-	d := codexSection(svc)
-	status := http.StatusOK
+	status, message := http.StatusOK, ""
 	var ls *codex.LoginStartError
 	switch {
 	case err == nil:
 	case errors.Is(err, codex.ErrEngineNotInstalled):
-		status, d.Error = http.StatusConflict, "先に Codex をダウンロードするか、自分で入れた codex のパスを指定してください"
+		status, message = http.StatusConflict, "先に Codex をダウンロードするか、自分で入れた codex のパスを指定してください"
 	case errors.Is(err, codex.ErrEngineInstalling):
-		status, d.Error = http.StatusConflict, "Codex のエンジンを導入中です。終わってからもう一度試してください"
+		status, message = http.StatusConflict, "Codex のエンジンを導入中です。終わってからもう一度試してください"
 	case errors.As(err, &ls):
 		_ = c.Error(err)
-		status, d.Error = http.StatusBadGateway, ls.Message
+		status, message = http.StatusBadGateway, ls.Message
 	default:
 		_ = c.Error(err)
-		status, d.Error = http.StatusInternalServerError, "Codex を起動できませんでした。エンジンのエラーと mam のログを確認してください"
+		status, message = http.StatusInternalServerError, "Codex を起動できませんでした。エンジンのエラーと mam のログを確認してください"
 	}
-	render(c, status, view.Panel(d))
+	loginAnswer(c, codexSection(svc), kindCodex, status, message)
 }
 
 // cancelCodexLogin stops the Codex login in progress.
@@ -200,9 +181,7 @@ func cancelCodexLogin(c *gin.Context, svc *chatgpt.Service) {
 	if l, ok := svc.Codex().CurrentLogin(); ok {
 		svc.Codex().CancelLogin(c.Request.Context(), l.ID)
 	}
-	d := codexSection(svc)
-	d.Notice = "ログインを中止しました"
-	render(c, http.StatusOK, view.Panel(d))
+	cancelled(c, svc)
 }
 
 // logoutCodex signs out of Codex; the field remove=true also deletes the downloaded engine and mam's CODEX_HOME.

@@ -1,6 +1,6 @@
 # コンポーネント仕様: 共通の画面部品（カード・アイコン・モーダル・一覧の行）
 
-> **状態: 一部実装済み。** Issue #846（トップ画面のカード）と #847（設定画面のサブページ化）が共有する部品の見た目と契約。**`atoms.Icon`（#846 の 8 個。§2）と `molecules.ToolCard`（`StatusURL` の形。§3）は #846 で実装済み**（2026-10-25）。オーナーは §8 の質問を推奨する既定で決定した。モーダル（§4）・一覧の行（§5）・#847 のアイコン 8 個は #847 で作る（まだ実装していない）。
+> **状態: 一部実装済み。** Issue #846（トップ画面のカード）と #847（設定画面のサブページ化）が共有する部品の見た目と契約。**`atoms.Icon`（#846 の 8 個。§2）と `molecules.ToolCard`（`StatusURL` の形。§3）は #846 で、モーダル（§4）・一覧の行のカード `SettingsCard`（§5。実体は `settingsui.CardItem`）・#847 のアイコン 7 個（`IconKey`・`IconText`・`IconMedia`・`IconLocal`・`IconPlug`・`IconUpdate`・`IconClose`）は #847 の段階 ①・②-1・②-2 で実装済み**（2026-10-25）。**未実装**: 表 `SettingsTable`・`SettingsTableRow`（LLM・画像動画・MCP のトークンの段階で作る）と `IconCopy`（MCP のトークンのコピー）。オーナーは §8 の質問を推奨する既定で決定した。
 
 [overview.md](overview.md) §3 のコンポーネントの階層に、次の部品を足す案。使う画面は [home-screen.md](home-screen.md)（`tool_card`・`atoms.Icon`）と [settings-screen.md](settings-screen.md)・[settings-screen-categories.md](settings-screen-categories.md)（すべて）。`atoms.Icon`・`molecules.ToolCard` は先に出る #846 が作る（#846 決定事項 1）。**モーダルは #847 で作る**（2 つの Issue の文面が食い違っていたが、オーナーが決定。§6.1）。一覧の行・サイドナビは #847 が作る。
 
@@ -121,15 +121,16 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 
 - **置く場所**: 設定の各ページの枠（`pages/settings_pages.templ`。1 ページに 1 つ）。`AppLayout` には足さない（他の画面に不要な要素を出さない。§8 の質問 4）。幅は既定 40rem（640 px）で、1024 px のウィンドウでも余白が残る。広い内容（モデルの割り当て表）は `data-size="lg"` で `max-w-3xl`。高さは画面の高さ − 4rem までで、超えたら中がスクロールする（700 px の高さでも収まる）。
 - **断片の形**（`GET …/edit` などが返す。ルートの根は `#mam-modal-content`）: `<h2 id="mam-modal-title">`（モーダルの名前）→ 任意で `<p id="mam-modal-desc">` → 本文（フォーム）→ フッター（`キャンセル`（`type=button data-modal-close`）と `保存`）。**最初に触る要素に `autofocus` を 1 つだけ付ける**（最初の入力欄。編集できる欄が無いときは閉じるボタン）。エラーは本文の先頭の `<p role="alert" id="mam-modal-error" tabindex="-1">`。
-- **開く**: 開くボタンは `hx-get="{URL}" hx-target="#mam-modal-body" hx-swap="innerHTML" data-modal-open data-focus-key="{キー}"` を持つ（属性は `molecules.ModalOpen(url, focusKey)` が作る）。応答が `#mam-modal-body` に入ったら（`htmx:afterSwap`）、`static/src/components/modal/` が `dialog.showModal()` を呼び、`autofocus` の要素へフォーカスする。応答が 404・409 でも、理由の断片（`role="alert"` と「閉じる」だけ）を同じように表示する（`main.ts` が HTML のエラー応答を swap する）。
+- **開く**: 開くボタンは `hx-get="{URL}" hx-target="#mam-modal-body" hx-swap="innerHTML" data-modal-open data-focus-key="{キー}"` を持つ（属性は `modal.OpenAttrs(url, focusKey)` が作る）。応答が `#mam-modal-body` に入ったら（`htmx:afterSwap`）、`static/src/components/modal/` が `dialog.showModal()` を呼び、`autofocus` の要素へフォーカスする。応答が 404・409 でも、理由の断片（`role="alert"` と「閉じる」だけ）を同じように表示する（`main.ts` が HTML のエラー応答を swap する）。
 - **閉じる**: `Esc`（ネイティブの `cancel`）、`キャンセル`、`閉じる`、保存の成功（下）。**背景のクリックでは閉じない**（入力途中の消失を防ぐ。§8 の質問 5）。閉じたとき（`close` イベント）に `#mam-modal-body` を**空にする**（発行したトークン・入力値を DOM に残さない）。さらに `htmx:beforeHistorySave` で本文を空にし `open` を外す（`lib/history.ts` の `sanitizeHistoryHtml` に足す。トークンが htmx の履歴スナップショット（sessionStorage）に残らないように）。
+- **入れ替えの間は触れない**: 本文が入ったあと htmx が `hx-*` を処理する（swap が settle する）まで約 20ms ある。その間にフォームが送られるとブラウザ自身が送り、キーが URL に載る。そのため `modal.ts` は本文を `inert` にして、`htmx:afterSettle` で外して初期フォーカスを置く。キーのフォームは念のため `method="post"`（万一ブラウザが送っても、キーは URL ではなく本文）。2026-10-25 の実機（headless Chromium）で、本文が出た直後に打鍵と送信をするとこの競合が起きることを確かめて直した。
 - **フォーカスの閉じ込め**: `showModal()` が外側を `inert` にするので、独自の閉じ込めは書かない。Windows 版の WebView2（Chromium）でも同じ動作の見込み（**未検証**。実機が要る）。
 - **フォーカスの戻り**（`focus-restore` と同じ考え方）: 開くボタンを `htmx:beforeRequest` の時点で覚える（`document.activeElement`、`data-focus-key`、最も近い `id` 付きの祖先の id）。閉じたあと、(1) 覚えたボタンがまだ DOM にあればそこへ、(2) 行が OOB で差し替わっていれば、覚えた行の中で種類と `data-focus-key` が同じコントロールへ、(3) 無ければその行、(4) それも無ければ一覧の見出しへ（`tabindex="-1"` を付けて）。開くボタンには必ず `data-focus-key`（`edit-<行のキー>`・`add`・`issue` など。ラベルが変わってもキーは変えない）。
 - **成功**: 保存の応答は 200 で、本文は**一覧の行の OOB だけ**（`hx-swap-oob="true"`。同じ `id` の行を置き換える。新しい行は `beforeend:#<一覧の id>`）、ヘッダーに `HX-Trigger-After-Swap: modal-close`。モーダルの本文には空が入る。`modal/` は `document` で `modal-close` を聞いて閉じる（htmx 2.0.11 の `htmx.js` は、リクエストを出した要素が swap で DOM から消えていると、`HX-Trigger-After-Swap` を `<body>` に起こす。2026-10-25 に読んで確認。`bubbles` なので `document` で受けられる）。
 - **失敗（422）**: 応答の本文はモーダルの断片（`#mam-modal-body` に入り直す）。理由は `#mam-modal-error`、入力は**残す**（`value` を描き戻す）。`aria-invalid="true"` と `aria-describedby="mam-modal-error"` を、問題の欄に付ける。差し替え後は、問題の欄（無ければ `#mam-modal-error`）にフォーカス（`autofocus` を付け直す）。**秘密の値（API キー・トークン）は 422 でも描き戻さない**（入力し直す）。
 - **トーストは見えない**: `#toast-region` は `<body>` の子で、モーダルは最前面の層（top layer）に出るため、モーダルが開いている間のトーストはモーダルの背後に隠れる。そのためモーダル内の失敗は、断片の `role="alert"` に出す。HTML でない失敗（通信断・タイムアウト・5xx の非 HTML）は `htmx:responseError` / `sendError` / `timeout` を `modal/` が聞き、`#mam-modal-failure` に `requestFailureMessage` の文言を出す（トーストは出さない）。
 - **二重送信**: モーダルのフォームは `hx-sync="this:drop"` と `hx-disabled-elt="find button[type=submit]"` を持つ（`double_submit_test`）。削除などの危険な操作は `hx-confirm`（#847 決定事項 8(a)。`destructive_confirm_test`）。
-- **置き場所**: `molecules/modal/`（`Host`・`Frame`・`ModalOpen`）と `static/src/components/modal/`（`modal.ts`・`modal.wtest.ts`。Lit ではなく `focus-restore` と同じ `installModal()`。`main.ts` が呼ぶ）。テストは wtr: 開くとフォーカスが `autofocus` へ・`Esc` で閉じて開いたボタンへ戻る・行が差し替わっても戻る・成功で閉じる・422 で開いたまま入力が残る・閉じると本文が空・履歴の保存で空になる。
+- **置き場所**: `molecules/modal/`（`Host`・`Frame`・`Error`・`Actions`・`Cancel`・`Notice`・`OpenAttrs`）と `static/src/components/modal/`（`modal.ts`・`modal.wtest.ts`。Lit ではなく `focus-restore` と同じ `installModal()`。`main.ts` が呼ぶ）。テストは wtr: 開くとフォーカスが `autofocus` へ・`Esc` で閉じて開いたボタンへ戻る・行が差し替わっても戻る・成功で閉じる・422 で開いたまま入力が残る・閉じると本文が空・履歴の保存で空になる。
 
 ## 5. 一覧の行（`SettingsCard`・`SettingsTable`・`SettingsTableRow`）
 
@@ -174,6 +175,7 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 | 0.2 | 2026-10-25 | モーダルの担当を未決にした（§6.1 に #846・#847 の原文を併記、§8 の質問 7 を追加） | 独立レビュー（PR #849）の指摘。#846 決定事項 1 は #846 で作ると読め、#847 の「やること」は #847 で作ると読める。仕様書が片方に決めていた |
 | 0.3 | 2026-10-25 | 状態を「一部実装済み」にした（`atoms.Icon` の 8 個と `molecules.ToolCard` を #846 で実装）。§8 をオーナーの決定の表にし、モーダルを #847 で作ることを §6.1 に記録した | Issue #846 の実装と、オーナーの 2026-10-25 の判断 |
 | 0.4 | 2026-10-25 | §1 のフォーカスの輪を `outline-none` から `outline-hidden` にした（輪郭が `forced-colors` で描かれる） | 独立レビュー（PR #849 の 2 周目）の指摘。輪は box-shadow で、Windows のハイコントラストでは消える |
+| 0.5 | 2026-10-25 | §4 に「入れ替えの間は触れない」を足した。状態を更新した。`atoms.Icon` の #847 の 7 個・モーダル（`molecules/modal/`・`static/src/components/modal/`）・`SettingsCard`（`settingsui.CardItem`）を実装した。`SettingsTable`・`IconCopy` は後続。モーダルの関数の名前を実装に合わせた（`ModalOpen` → `OpenAttrs`）。成功の通知は `atoms.SuccessToastOOB` | Issue #847 段階 ①・②-1・②-2 の実装 |
 
 ## 8. オーナーへの確認事項と決定（2026-10-25: すべて推奨する既定で決定）
 

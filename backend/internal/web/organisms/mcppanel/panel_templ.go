@@ -90,7 +90,7 @@ func Section(d Data) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = molecules.SettingsSection("MCP サーバー", "エージェント（Grok Bot など）から、画面と同じ操作を MCP（Streamable HTTP）で行えます。接続にはここで発行するトークンが必要です。待ち受け先は 127.0.0.1 か tailnet の IP（100.x）にできます。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = molecules.SettingsSectionAt(molecules.HeadingNone, "MCP サーバー", "エージェント（Grok Bot など）から、画面と同じ操作を MCP（Streamable HTTP）で行えます。接続にはここで発行するトークンが必要です。待ち受け先は 127.0.0.1 か tailnet の IP（100.x）にできます。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -56,7 +56,7 @@ func newUpdateScreen(t *testing.T, version string, checker appupdate.Checker) *u
 		settings.Update = appupdate.New(checker, version, func(string) {}, nil)
 	}
 	s := &updateScreen{t: t, engine: router.New(svc, router.Options{Settings: settings})}
-	rec := s.send(httptest.NewRequest(http.MethodGet, paths.Settings(), nil))
+	rec := s.send(httptest.NewRequest(http.MethodGet, paths.SettingsCategory(paths.SettingsUpdate), nil))
 	require.Equal(t, http.StatusOK, rec.Code)
 	for _, c := range rec.Result().Cookies() {
 		if c.Name == middleware.CSRFCookieName {

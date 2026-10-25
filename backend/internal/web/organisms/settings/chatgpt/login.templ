@@ -1,0 +1,128 @@
+package chatgpt
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// LoginForm is what the login modal of a system is drawn from: the login in progress (or the one that just failed) and,
+// when the last request was refused, why.
+type LoginForm struct {
+	// Kind is the login system: official, image or codex.
+	Kind  string
+	Login *Login
+	Error string
+}
+
+// loginMethod is one way to log in: the value of the form field "method" and what the choice says.
+type loginMethod struct{ Value, Label string }
+
+func loginMethods(kind string) []loginMethod {
+	browser := loginMethod{"browser", "ブラウザでログイン"}
+	if kind == officialKind {
+		return []loginMethod{{"browser", "ブラウザでログイン（Continue with ChatGPT）"}}
+	}
+	return []loginMethod{browser, {"device", "デバイスコードでログイン"}}
+}
+
+// startLabel is the button that starts the login: the official one carries the name of the button of the sign-in.
+func startLabel(kind string) string {
+	if kind == officialKind {
+		return "Continue with ChatGPT"
+	}
+	return "ログインを始める"
+}
+
+func loginTitle(kind string) string {
+	switch kind {
+	case imageKind:
+		return imageTitle + "のログイン"
+	case codexKind:
+		return codexTitle + "のログイン"
+	}
+	return officialTitle + "のログイン"
+}
+
+// pollAttrs make the body of the modal read itself again every two seconds while the login is pending: the login
+// finishes in the browser or on another device, and the modal says so (or closes) when it has.
+func pollAttrs(kind string) templ.Attributes {
+	return templ.Attributes{
+		"hx-get":     paths.ChatGPTLogin(kind) + "?poll=1",
+		"hx-trigger": "every 2s",
+		"hx-target":  "#" + modal.BodyID,
+		"hx-swap":    "innerHTML",
+	}
+}
+
+// LoginModal is the body of the modal that logs in to a system: the choice of the method and, once it is started, what
+// to do (the URL of the browser login, the URL and the code of the device login) while the login is pending.
+templ LoginModal(f LoginForm) {
+	@modal.Frame(loginTitle(f.Kind), "") {
+		if f.Login != nil && f.Login.Pending {
+			<div class="flex flex-col gap-4" data-testid="chatgpt-login-progress" { pollAttrs(f.Kind)... }>
+				@loginProgress(f.Login)
+				@modal.Actions() {
+					<p class="mr-auto text-xs text-neutral-400">この画面を閉じても、ログインは続きます。</p>
+					@modal.Cancel("閉じる")
+					<form hx-post={ paths.ChatGPTLoginCancel(f.Kind) } hx-target="#mam-modal-body" hx-swap="innerHTML" hx-sync="this:drop" hx-params="none" hx-disabled-elt="find button[type=submit]">
+						@atoms.Button(atoms.ToneNeutral, "ログインを中止", templ.Attributes{"type": "submit", "autofocus": true, "data-testid": "chatgpt-cancel-" + f.Kind})
+					</form>
+				}
+			</div>
+		} else {
+			if f.Error != "" {
+				@modal.Error(f.Error)
+			} else if f.Login != nil && f.Login.Failed {
+				@modal.Error(f.Login.Message)
+			}
+			@loginStart(f)
+		}
+	}
+}
+
+// loginStart is the form that starts a login.
+templ loginStart(f LoginForm) {
+	<form class="flex flex-col gap-4" hx-post={ paths.ChatGPTLogin(f.Kind) } hx-target="#mam-modal-body" hx-swap="innerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]">
+		if methods := loginMethods(f.Kind); len(methods) == 1 {
+			<input type="hidden" name="method" value={ methods[0].Value }/>
+			<p class="text-sm text-neutral-300">ブラウザは、mam が動いているこの PC で開きます。tailnet などの別のマシンから操作しているときは、先にこの PC でログインしてください（公式のログインにはデバイスコードの方式がありません）。</p>
+		} else {
+			<fieldset class="flex flex-col gap-2">
+				<legend class="mb-1 text-sm font-medium">ログインの方法</legend>
+				for i, m := range methods {
+					<label class="flex items-center gap-2 text-sm">
+						<input type="radio" name="method" value={ m.Value } checked?={ i == 0 } autofocus?={ i == 0 } data-testid={ "chatgpt-login-" + f.Kind + "-" + m.Value }/>
+						{ m.Label }
+					</label>
+				}
+			</fieldset>
+			<p class="text-xs text-neutral-400">デバイスコードは、別の端末のブラウザで ChatGPT にログインして、表示するコードを入力する方法です。</p>
+		}
+		@modal.Actions() {
+			@modal.Cancel("キャンセル")
+			@atoms.Button(atoms.TonePrimary, startLabel(f.Kind), templ.Attributes{"type": "submit", "autofocus": len(loginMethods(f.Kind)) == 1, "data-testid": "chatgpt-login-" + f.Kind + "-start"})
+		}
+	</form>
+}
+
+// loginProgress is what to do for the login in progress.
+templ loginProgress(l *Login) {
+	if l.Device {
+		<div class="flex flex-col gap-2 rounded-md border border-neutral-700 px-3 py-2" role="status" data-testid="chatgpt-device">
+			<p class="text-sm">1. 別の端末でも構いません。次の URL を開いて ChatGPT にログインします。</p>
+			<a class="break-all text-sm underline" href={ templ.SafeURL(l.VerificationURL) } target="_blank" rel="noopener noreferrer" data-testid="chatgpt-device-url">{ l.VerificationURL }</a>
+			<p class="text-sm">2. 次のコードを入力します（有効期限: { l.ExpiresAt.Local().Format("15:04") } まで）。</p>
+			<code class="w-fit rounded bg-neutral-950 px-3 py-1 text-lg tracking-widest select-all" data-testid="chatgpt-device-code">{ l.UserCode }</code>
+			<p class="text-xs text-neutral-400">自分で始めたログインのときだけ続けてください。人やサイトに教えられたコードは入力しないでください。完了すると、この表示は自動で閉じます。</p>
+		</div>
+	} else {
+		<div class="flex flex-col gap-2 rounded-md border border-neutral-700 px-3 py-2" role="status" data-testid="chatgpt-browser-login">
+			<p class="text-sm">{ l.Message }</p>
+			if l.AuthURL != "" && !l.BrowserOpened {
+				<a class="break-all text-sm underline" href={ templ.SafeURL(l.AuthURL) } target="_blank" rel="noopener noreferrer" data-testid="chatgpt-auth-url">ログインのページを開く</a>
+			}
+			<p class="text-xs text-neutral-400">完了すると、この表示は自動で閉じます。</p>
+		</div>
+	}
+}

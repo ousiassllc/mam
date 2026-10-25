@@ -77,7 +77,7 @@ func (s *modelScreen) request(method string, form url.Values) *httptest.Response
 }
 
 func (s *modelScreen) page() string {
-	req := httptest.NewRequest(http.MethodGet, paths.Settings(), nil)
+	req := httptest.NewRequest(http.MethodGet, paths.ModelSettings(), nil)
 	req.AddCookie(s.cookie)
 	rec := s.send(req)
 	require.Equal(s.t, http.StatusOK, rec.Code)
