@@ -294,7 +294,7 @@ func imageSlot(f ImageForm, slot, slotLabel string, t ImageTarget, first bool) t
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = atoms.Select(atoms.FieldMd, "", selectAttrs(ImageModelField(f.Row.Purpose, slot), first)).Render(templ.WithChildren(ctx, templ_7745c5c3_Var9), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = atoms.Select(atoms.FieldMd, "", selectAttrs(ImageModelField(f.Row.Purpose, slot), first, f.Blame == slot)).Render(templ.WithChildren(ctx, templ_7745c5c3_Var9), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -429,14 +429,14 @@ func PolicyModal(f PolicyForm) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = atoms.Input(atoms.FieldMd, "w-20", templ.Attributes{
+			templ_7745c5c3_Err = atoms.Input(atoms.FieldMd, "w-20", blamed(templ.Attributes{
 				"id":    PolicyTakesField(f.Row.Policy),
 				"name":  PolicyTakesField(f.Row.Policy),
 				"type":  "number",
 				"min":   "1",
 				"step":  "1",
 				"value": strconv.Itoa(f.Row.Takes),
-			}).Render(ctx, templ_7745c5c3_Buffer)
+			}, f.Blame == BlameTakes)).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -640,7 +640,7 @@ func policySlot(f PolicyForm, slot, slotLabel, selected string, first bool) temp
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = atoms.Select(atoms.FieldMd, "", selectAttrs(PolicyTargetField(f.Row.Policy, slot), first)).Render(templ.WithChildren(ctx, templ_7745c5c3_Var25), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = atoms.Select(atoms.FieldMd, "", selectAttrs(PolicyTargetField(f.Row.Policy, slot), first, f.Blame == slot)).Render(templ.WithChildren(ctx, templ_7745c5c3_Var25), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -653,11 +653,19 @@ func policySlot(f PolicyForm, slot, slotLabel, selected string, first bool) temp
 }
 
 // selectAttrs are the attributes of a model <select>: the first one of the modal is the one to start with, unless a refusal
-// is to be read first.
-func selectAttrs(name string, first bool) templ.Attributes {
+// is to be read first; the one a refusal is about (blame) is marked and is the one to start with.
+func selectAttrs(name string, first, blame bool) templ.Attributes {
 	a := templ.Attributes{"id": name, "name": name}
 	if first {
 		a["autofocus"] = true
+	}
+	return blamed(a, blame)
+}
+
+// blamed marks the field a refusal is about: what says so (aria-invalid, the reason as its description) and the focus.
+func blamed(a templ.Attributes, blame bool) templ.Attributes {
+	if blame {
+		a["aria-invalid"], a["aria-describedby"], a["autofocus"] = "true", modal.ErrorID, true
 	}
 	return a
 }

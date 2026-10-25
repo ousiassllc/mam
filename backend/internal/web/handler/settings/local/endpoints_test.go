@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -72,6 +73,20 @@ func TestEndpoint_Refusals(t *testing.T) {
 
 	badName := s.addEndpoint("Bad Name", "comfyui", "http://127.0.0.1:8188")
 	assert.Equal(t, http.StatusUnprocessableEntity, badName.Code)
+
+	// Two problems are two sentences of plain Japanese: no prefix of the settings file's check, no raw field name, no English.
+	both := s.addEndpoint("Bad Name", "comfyui", "http://169.254.169.254")
+	assert.Equal(t, http.StatusUnprocessableEntity, both.Code)
+	reason := regexp.MustCompile(`(?s)<p id="mam-modal-error"[^>]*>(.*?)</p>`).FindStringSubmatch(both.Body.String())
+	require.Len(t, reason, 2, "the reason is the alert of the modal")
+	assert.Contains(t, both.Body.String(), `value="Bad Name"`, "what was typed is shown again")
+	assert.Contains(t, reason[1], "名前は 1〜63 文字")
+	assert.Contains(t, reason[1], "リンクローカル")
+	assert.Equal(t, 1, strings.Count(reason[1], "\n"), "one line per problem: %q", reason[1])
+	assert.Contains(t, both.Body.String(), "whitespace-pre-line", "the lines are drawn as lines")
+	for _, raw := range []string{"endpoints", "base_url", "must be", "cannot be used", "Bad Name:"} {
+		assert.NotContains(t, reason[1], raw)
+	}
 
 	notNumber := s.do(http.MethodPost, paths.LocalEndpoints(), url.Values{"name": {"x"}, "kind": {"comfyui"}, "base_url": {"http://127.0.0.1:8188"}, "max_concurrency": {"many"}})
 	assert.Equal(t, http.StatusUnprocessableEntity, notNumber.Code)
@@ -203,6 +218,10 @@ func TestConnectionTest_ComfyUICompatAndLinkLocal(t *testing.T) {
 	meta := s.do(http.MethodPost, paths.LocalEndpoints()+"/test", url.Values{"kind": {"comfyui"}, "base_url": {"http://169.254.169.254"}})
 	assert.Equal(t, http.StatusUnprocessableEntity, meta.Code)
 	assert.Contains(t, meta.Body.String(), "リンクローカル")
+	assert.Contains(t, meta.Body.String(), `id="mam-modal-error" hx-swap-oob="delete"`, "a result of the modal's test takes the reason of an earlier refused save away")
+	assert.Contains(t, draft.Body.String(), `id="mam-modal-error" hx-swap-oob="delete"`)
+	saved := s.do(http.MethodPost, paths.LocalEndpoint("bare", "test"), nil)
+	assert.NotContains(t, saved.Body.String(), "mam-modal-error", "the test of a saved endpoint is on the card, not in the modal")
 	assert.Equal(t, http.StatusNotFound, s.do(http.MethodPost, paths.LocalEndpoint("nope", "test"), nil).Code)
 	assert.Contains(t, s.page(), `data-endpoint="box"`)
 	assert.NotContains(t, s.page(), "NVIDIA", "a test result is not part of the screen")

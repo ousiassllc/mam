@@ -134,7 +134,7 @@ func (h Handlers) DeleteEndpoint(c *gin.Context) {
 // answers with the result line. A test that fails is 200 with the reason: the request itself worked.
 func (h Handlers) TestEndpoint(c *gin.Context) {
 	res, err := h.Local.TestEndpoint(c.Request.Context(), c.Param("name"))
-	h.testResult(c, res, err)
+	h.testResult(c, res, err, view.TestResult)
 }
 
 // TestDraft tests the endpoint of the form as typed, saved or not (POST /settings/local-models/endpoints/test;
@@ -147,19 +147,20 @@ func (h Handlers) TestDraft(c *gin.Context) {
 		BaseURL: strings.TrimSpace(form.Get(view.FieldBaseURL)), APIKey: form.Get(view.FieldAPIKey),
 	}
 	if in.Kind == "" || in.BaseURL == "" {
-		h.testResult(c, service.TestResult{}, &service.InvalidError{Message: "種類と base_url を入力してください"})
+		h.testResult(c, service.TestResult{}, &service.InvalidError{Message: "種類と接続先の URL を入力してください"}, view.DraftTestResult)
 		return
 	}
 	res, err := h.Local.Test(c.Request.Context(), in)
-	h.testResult(c, res, err)
+	h.testResult(c, res, err, view.DraftTestResult)
 }
 
-func (h Handlers) testResult(c *gin.Context, res service.TestResult, err error) {
+// testResult answers with the line of a connection test, drawn by render.
+func (h Handlers) testResult(c *gin.Context, res service.TestResult, err error, render func(view.TestView) templ.Component) {
 	status, v := http.StatusOK, view.TestView{OK: res.OK, Message: res.Message, Note: res.Note, Models: res.Models}
 	if err != nil {
 		status, v.Message = h.classify(c, err, "")
 	}
-	settingshttp.Render(c, status, view.TestResult(v))
+	settingshttp.Render(c, status, render(v))
 }
 
 // SetKey stores the API key of the endpoint called :name (PUT /settings/local-models/endpoints/:name/key,

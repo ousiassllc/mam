@@ -25,8 +25,16 @@ import (
 // never written by the settings screen.
 var ErrPinned = errors.New("modelsettings: the settings file is pinned by a start-up option")
 
-// InvalidError is a refused input or a settings file that cannot be used. Message is shown to the user.
-type InvalidError struct{ Message string }
+// InvalidError is a refused input or a settings file that cannot be used. Message is shown to the user. Field, when set, is
+// the part of one row the refusal is about (FieldPrimary, FieldFallback or FieldTakes), so that a form can point at it.
+type InvalidError struct{ Message, Field string }
+
+// The parts of a route that a refusal can be about (InvalidError.Field).
+const (
+	FieldPrimary  = "primary"
+	FieldFallback = "fallback"
+	FieldTakes    = "takes"
+)
 
 func (e *InvalidError) Error() string { return "invalid model settings: " + e.Message }
 

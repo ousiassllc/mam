@@ -43,7 +43,7 @@ func (s *Service) CreateEndpoint(_ context.Context, in EndpointInput) error {
 		if _, ok := st.endpoints[in.Name]; ok {
 			return ErrExists
 		}
-		if err := firstError(localcfg.ValidateEndpoint(in.Name, in.endpoint())); err != nil {
+		if err := endpointError(localcfg.ValidateEndpoint(in.Name, in.endpoint())); err != nil {
 			return err
 		}
 		st.endpoints[in.Name] = in.endpoint()
@@ -66,7 +66,7 @@ func (s *Service) UpdateEndpoint(_ context.Context, name string, in EndpointInpu
 			return invalid("接続先の種類は変更できません。削除して作り直してください")
 		}
 		in.Name, in.Kind = name, old.Kind
-		if err := firstError(localcfg.ValidateEndpoint(name, in.endpoint())); err != nil {
+		if err := endpointError(localcfg.ValidateEndpoint(name, in.endpoint())); err != nil {
 			return err
 		}
 		st.endpoints[name] = in.endpoint()
@@ -205,18 +205,10 @@ func usedBy(cfg modeladapter.Config, id string) []string {
 	return used
 }
 
-// firstError is the first of errs as an *InvalidError, nil for none.
+// firstError is the problems of errs as an *InvalidError, nil for none.
 func firstError(errs []error) error {
 	if len(errs) == 0 {
 		return nil
 	}
-	err := errors.Join(errs...)
-	if strings.Contains(err.Error(), "link-local") {
-		return invalid("%v %s", err, linkLocalHint)
-	}
-	return invalid("%v", err)
+	return invalid("%v", errors.Join(errs...))
 }
-
-// linkLocalHint says in Japanese why such an address is refused: the validation's own text is English only.
-// It is never allowed, not even for an endpoint the user registers.
-const linkLocalHint = "（リンクローカル（169.254.x.x・fe80::）、未指定、マルチキャストのアドレスは、登録した接続先でも使えません。クラウドのメタデータサービスなどに届いてしまうためです）"

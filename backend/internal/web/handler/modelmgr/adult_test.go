@@ -48,6 +48,12 @@ func TestAdult_TheConfirmationDialogAndTheSetting(t *testing.T) {
 	assert.Contains(t, dlg.Body.String(), "未成年（未成年に見える表現を含む）のコンテンツは生成しないでください")
 	assert.Contains(t, dlg.Body.String(), `name="notice_version" value="`+modelmanager.AdultNoticeVersion+`"`)
 	assert.Contains(t, dlg.Body.String(), `name="agree"`)
+	// What the script (components/inline-dialog) needs: the focus goes in, Esc presses the close button, and the focus goes back
+	// to the card of the setting when the opener is replaced.
+	assert.Contains(t, dlg.Body.String(), `data-inline-dialog`)
+	assert.Contains(t, dlg.Body.String(), `data-return-focus="#mm-adult"`)
+	assert.Contains(t, dlg.Body.String(), `tabindex="-1"`)
+	assert.Regexp(t, `<button[^>]*data-inline-dialog-close[^>]*>閉じる`, dlg.Body.String(), "Esc closes through the 閉じる button")
 
 	// no confirmation at all, not the age, another wording: nothing turns on
 	rec := s.do(http.MethodPut, adultURL(), url.Values{"on": {"1"}})

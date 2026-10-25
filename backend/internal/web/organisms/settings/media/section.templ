@@ -77,13 +77,17 @@ templ Status(d Data, oob bool) {
 	</div>
 }
 
+// editColumn is the column of the 編集 button of both tables: right-aligned, so that the button is at the same place in the
+// two tables whatever their other columns take.
+const editColumn = "whitespace-nowrap text-right"
+
 // modelCell keeps the name of a model from being broken into pieces by a row head that takes the width.
 const modelCell = "min-w-36"
 
 func imageColumns(pinned bool) []settingsui.Column {
 	cols := []settingsui.Column{{Header: "用途"}, {Header: "主モデル"}, {Header: "代替モデル"}}
 	if !pinned {
-		cols = append(cols, settingsui.Column{Header: "操作", SROnly: true})
+		cols = append(cols, settingsui.Column{Header: "操作", SROnly: true, Class: editColumn})
 	}
 	return cols
 }
@@ -91,7 +95,7 @@ func imageColumns(pinned bool) []settingsui.Column {
 func policyColumns(pinned bool) []settingsui.Column {
 	cols := []settingsui.Column{{Header: "Quality Policy"}, {Header: "主モデル"}, {Header: "代替モデル"}, {Header: "テイク数"}}
 	if !pinned {
-		cols = append(cols, settingsui.Column{Header: "操作", SROnly: true})
+		cols = append(cols, settingsui.Column{Header: "操作", SROnly: true, Class: editColumn})
 	}
 	return cols
 }
@@ -123,7 +127,7 @@ templ imageRow(r ImageRow, pinned, oob bool) {
 			@imageTarget(r.Fallback)
 		}
 		if !pinned {
-			@settingsui.Cell("whitespace-nowrap") {
+			@settingsui.Cell(editColumn) {
 				@atoms.SmallButtonFor(atoms.ToneNeutral, "編集", r.Label, modal.OpenAttrs(paths.ModelImageEdit(r.Purpose), ImageFocusKey(r.Purpose)))
 			}
 		}
@@ -155,7 +159,7 @@ templ policyRow(r PolicyRow, pinned, oob bool) {
 			{ strconv.Itoa(r.Takes) }
 		}
 		if !pinned {
-			@settingsui.Cell("whitespace-nowrap") {
+			@settingsui.Cell(editColumn) {
 				@atoms.SmallButtonFor(atoms.ToneNeutral, "編集", r.Label, modal.OpenAttrs(paths.ModelPolicyEdit(r.Policy), PolicyFocusKey(r.Policy)))
 			}
 		}

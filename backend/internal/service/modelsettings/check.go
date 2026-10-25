@@ -78,18 +78,18 @@ func checkImage(cfg modeladapter.Config, p modeladapter.ImagePurpose, r modelada
 	}
 	images := imageOptions(cfg, gated)
 	for _, st := range []struct {
-		slot string
-		t    modeladapter.ImageTarget
-	}{{"主モデル", r.Primary}, {"代替モデル", r.Fallback}} {
-		slot, t := st.slot, st.t
+		field, slot string
+		t           modeladapter.ImageTarget
+	}{{FieldPrimary, "主モデル", r.Primary}, {FieldFallback, "代替モデル", r.Fallback}} {
+		field, slot, t := st.field, st.slot, st.t
 		i := slices.IndexFunc(images, func(o ImageOption) bool { return o.Model == t.Model })
 		switch {
 		case gated(t.Model):
-			return invalid("画像の用途 %s の%s: %s", p, slot, gatedReason(t.Model))
+			return invalidAt(field, "画像の用途 %s の%s: %s", p, slot, gatedReason(t.Model))
 		case i < 0:
-			return invalid("画像の用途 %s の%s: %q は選べない画像モデルです", p, slot, t.Model)
+			return invalidAt(field, "画像の用途 %s の%s: %q は選べない画像モデルです", p, slot, t.Model)
 		case t.Fast && !images[i].Fast:
-			return invalid("画像の用途 %s の%s: %s には高速版がありません", p, slot, t.Model)
+			return invalidAt(field, "画像の用途 %s の%s: %s には高速版がありません", p, slot, t.Model)
 		}
 	}
 	return nil
@@ -102,22 +102,22 @@ func checkPolicy(cfg modeladapter.Config, q domain.QualityPolicy, r modeladapter
 		return invalid("品質ポリシー %q はありません", q)
 	}
 	if r.Takes < 1 {
-		return invalid("品質ポリシー %s: テイク数は 1 以上にしてください", q.Label())
+		return invalidAt(FieldTakes, "品質ポリシー %s: テイク数は 1 以上にしてください", q.Label())
 	}
 	videos := videoOptions(cfg, gated)
 	for _, st := range []struct {
-		slot string
-		t    modeladapter.VideoTarget
-	}{{"主モデル", r.Primary}, {"代替モデル", r.Fallback}} {
-		slot, t := st.slot, st.t
+		field, slot string
+		t           modeladapter.VideoTarget
+	}{{FieldPrimary, "主モデル", r.Primary}, {FieldFallback, "代替モデル", r.Fallback}} {
+		field, slot, t := st.field, st.slot, st.t
 		i := slices.IndexFunc(videos, func(o VideoOption) bool { return o.Model == t.Model })
 		switch {
 		case gated(t.Model):
-			return invalid("品質ポリシー %s の%s: %s", q.Label(), slot, gatedReason(t.Model))
+			return invalidAt(field, "品質ポリシー %s の%s: %s", q.Label(), slot, gatedReason(t.Model))
 		case i < 0:
-			return invalid("品質ポリシー %s の%s: %q は選べない動画モデルです", q.Label(), slot, t.Model)
+			return invalidAt(field, "品質ポリシー %s の%s: %q は選べない動画モデルです", q.Label(), slot, t.Model)
 		case !slices.Contains(videos[i].Resolutions, t.Resolution):
-			return invalid("品質ポリシー %s の%s: %s は %q の解像度に対応していません", q.Label(), slot, t.Model, t.Resolution)
+			return invalidAt(field, "品質ポリシー %s の%s: %s は %q の解像度に対応していません", q.Label(), slot, t.Model, t.Resolution)
 		}
 	}
 	return nil
@@ -125,4 +125,9 @@ func checkPolicy(cfg modeladapter.Config, q domain.QualityPolicy, r modeladapter
 
 func invalid(format string, args ...any) error {
 	return &InvalidError{Message: fmt.Sprintf(format, args...)}
+}
+
+// invalidAt is invalid for a refusal about one part of a row (InvalidError.Field).
+func invalidAt(field, format string, args ...any) error {
+	return &InvalidError{Message: fmt.Sprintf(format, args...), Field: field}
 }
