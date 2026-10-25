@@ -118,6 +118,25 @@ func (se *Session) Call(ctx context.Context, method string, params, result any) 
 // Done is closed when the process ended.
 func (se *Session) Done() <-chan struct{} { return se.conn.Done() }
 
+// endWait is how long EndReason waits for the exit status after the output of the process ended.
+const endWait = 2 * time.Second
+
+// EndReason says, for the user, how the process ended: its exit code and the end of its standard error. The output of a
+// process ends just before it exits, so this waits a moment for the exit status.
+func (se *Session) EndReason() string {
+	select {
+	case <-se.proc.Done():
+	case <-time.After(endWait):
+	}
+	if info := se.proc.ExitInfo(); info != "" {
+		return info
+	}
+	if err := se.conn.Err(); err != nil {
+		return err.Error()
+	}
+	return ""
+}
+
 // Subscribe starts the delivery of the thread's notifications. Call it before thread/start answers could be followed by a
 // turn: the events of a thread that nobody subscribed to are dropped.
 func (se *Session) Subscribe(threadID string) *Sub { return se.h.subscribe(threadID) }
@@ -236,10 +255,8 @@ func (s *Server) watch(se *Session) {
 	s.mu.Unlock()
 	se.proc.Stop() // the connection may have ended with the process still running
 	err := fmt.Errorf("%w", ErrStart)
-	if info := se.proc.ExitInfo(); info != "" {
+	if info := se.EndReason(); info != "" {
 		err = errors.New(info)
-	} else if e := se.conn.Err(); e != nil {
-		err = e
 	}
 	s.opts.Logger.Warn("codex app-server ended", "state", "failed")
 	_ = s.fail(err)

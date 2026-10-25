@@ -101,13 +101,25 @@ const (
 	WebSearchDisabled      = "disabled"
 )
 
-// ToolSettings are the -c settings that switch off the tools of the agent that a text answer never needs (web search,
-// apps, sub-agents, image generation, the browser). They are best effort: the config schema has no switch for the shell
-// tool, which the read-only sandbox, the refusal of every approval and appserver's tool detection hold back instead.
+// ToolSettings are the -c settings that switch off the tools of the agent that a text answer never needs: the shell, the
+// patch tool, reading local images, web search, apps and plugins, sub-agents, memories, image generation, the browser.
+// They are the first layer; the read-only sandbox, the refusal of every approval and the interruption of a turn that
+// uses a tool (codex.Complete) are the others, because a feature name can change with a Codex version (the schema test
+// checks each one against the pinned version) and an unknown one is ignored by the app-server.
 var ToolSettings = []string{
 	ConfigWebSearch + `="` + WebSearchDisabled + `"`,
-	"features.apps=false",
+	"features.shell_tool=false",
+	"features.unified_exec=false",
+	"features.apply_patch_freeform=false",
+	"features.view_image=false",
+	"features.js_repl=false",
+	"features.code_mode=false",
+	"features.multi_agent=false",
 	"features.collab=false",
+	"features.apps=false",
+	"features.plugins=false",
+	"features.memories=false",
 	"features.image_generation=false",
 	"features.browser_use=false",
+	"features.computer_use=false",
 }

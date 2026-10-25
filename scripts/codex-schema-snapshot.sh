@@ -57,7 +57,7 @@ snapshot="$(
   echo "\"clientRequests\": $(methods ClientRequest),"
   echo "\"serverRequests\": $(methods ServerRequest),"
   echo "\"serverNotifications\": $(methods ServerNotification),"
-  echo "\"config\": $(jq -c '{AuthCredentialsStoreMode: .definitions.AuthCredentialsStoreMode, WebSearchMode: .definitions.WebSearchMode, keys: (.properties | with_entries(select(.key | IN("cli_auth_credentials_store", "web_search"))) | keys), features: (.properties.features.properties | with_entries(select(.key | IN("apps", "collab", "image_generation", "browser_use"))) | keys)}' "$tmp/config.schema.json"),"
+  echo "\"config\": $(jq -c '{AuthCredentialsStoreMode: .definitions.AuthCredentialsStoreMode, WebSearchMode: .definitions.WebSearchMode, keys: (.properties | with_entries(select(.key | IN("cli_auth_credentials_store", "web_search"))) | keys), features: (.properties.features.properties | keys)}' "$tmp/config.schema.json"),"
   echo "\"schemas\": {"
   for i in "${!names[@]}"; do
     sep=","
