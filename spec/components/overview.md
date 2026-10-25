@@ -66,7 +66,7 @@ flowchart TB
 
 モデルマネージャー画面（`model_manager_page` と organisms の `modelmgr`）のコンポーネントは [model-manager-screen.md](model-manager-screen.md)。
 
-生成テスト画面（`gentest_pages` と organisms の `gentest`）のコンポーネントは [gentest-screen.md](gentest-screen.md)。
+生成テスト画面（`gentest_pages` と organisms の `gentest`）のコンポーネントは [gentest-screen.md](gentest-screen.md)。トップ画面のツールのカード（#846）と全体の設定画面のサブページ・モーダル（#847）の画面仕様案（実装前）は [home-screen.md](home-screen.md)・[settings-screen.md](settings-screen.md)、共通の部品は [shared-ui-parts.md](shared-ui-parts.md)。
 
 外部由来の ID は現状 `[A-Za-z0-9_-]{1,64}`（UUID を含む）に限られ、`.`・`:`・空白を含む ID はバンドル取込で拒否される（`bundlepath.ValidID`。`spec/requirements/non-functional.md` §8）。ID セレクタ（`hx-target="#shot-<id>"` など）の CSS エスケープは、この制約が将来緩められたときに備えた多層防御で、Templ では `internal/web/selector` の `selector.ID`、`shot.ts` では `CSS.escape` で組み立てる（手で `"#shot-" + id` と連結しない。制約が緩んだ後に連結していると、`.` などを含む ID で `htmx:targetError` になり結果が画面に反映されない）。URL のセグメントを `internal/web/paths` でパスエスケープするのと同じ位置づけ。
 
