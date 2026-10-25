@@ -56,7 +56,7 @@
 | カードの大きさ | 幅はグリッドが決める。高さは同じ行で揃える（`h-full`）。最低 `min-h-36`（144 px）。内側 `p-4` |
 | 色 | 面 `bg-neutral-900`、枠 `border-neutral-800`、タイトル `text-neutral-100`、説明 `text-neutral-400`、アイコンの箱 `bg-neutral-800`・アイコン `text-indigo-300`、CTA `text-indigo-300`。[shared-ui-parts.md](shared-ui-parts.md) §1 |
 | 状態 | カードの下部（`mt-auto`）に `atoms.Badge` ＋短い文を縦に並べる（最大 2 行）。CTA はその下 |
-| フォーカス | `focus-visible:ring-2 ring-indigo-400 ring-offset-2 ring-offset-neutral-950`。ホバーは枠と面の色の変化だけ（動きなし。`motion-reduce:transition-none`） |
+| フォーカス | `focus-visible:outline-hidden focus-visible:ring-2 ring-indigo-400 ring-offset-2 ring-offset-neutral-950`（輪は box-shadow で、Windows のハイコントラスト（`forced-colors`）では消える。`outline-hidden` は通常は透明で、`forced-colors` では輪郭が描かれる。`outline-none` は使わない）。ホバーは枠と面の色の変化だけ（動きなし。`motion-reduce:transition-none`） |
 | 見出しのあとの余白 | `<h2>` ツールは今の「プロジェクト」と同じ書式（`mt-8 text-sm font-medium text-neutral-300`）。文字のリンクがあった `mt-4`〜の余白は消す |
 
 ### ワイヤーフレーム（1440×900。ページはスクロールする。幅はカード区画 960 px）
@@ -101,11 +101,11 @@
 
 - **読み込みの仕組み**（決定事項 2(b)）: 各カードの状態の枠が `hx-get="/tools/<ID>/status" hx-trigger="load" hx-target="this" hx-swap="innerHTML"` を持つ。ページの表示は状態を待たない。
 - **応答は常に 200**（読めなくても）。本文は `Badge` ＋短い文の断片、または**空**。空なら状態は出ない（カードは出る）。`Cache-Control: no-store`。サーバー側で 2 秒の締め切り（`context.WithTimeout`）を持ち、超えたら空を返す。5xx にしないのは、`main.ts` の失敗のトースト（`htmx:responseError`）がカードの数だけ並ぶのを避けるため。
-- 取得は `web/handler/toolstatus/`（新しいパッケージ。`handler/` は基準値 2,895 行で上限を超えている）。サービスは `modelmanager.Service.Engine()`・`workflows.Service.List`・`ReviewService.Inbox`・`CredentialService.Status`・`chatgpt.Service.Overview`（トークンの保存場所の読み取りだけ。ネットワークなし）。organism・molecule はサービスを import しない（`layers_test`）。ハンドラーが表示用の値に直して渡す。
+- 取得は `web/handler/toolstatus/`（新しいパッケージ。`handler/` は基準値 2,895 行で上限を超えている）。サービスは `modelmanager.Service.Brief()`（導入記録・プロセスの状態・接続先の一覧だけを読む。ディスクに何も書かず、空き容量・ビルドの一覧も取らない。`Status()`・`Engine()` は書き込み確認（`CheckWritable`）をするので使わない）・`workflows.Service.List`・`ReviewService.Inbox`・`CredentialService.Status`・`chatgpt.Service.Overview`（トークンの保存場所の読み取りだけ。ネットワークなし）。organism・molecule はサービスを import しない（`layers_test`）。ハンドラーが表示用の値に直して渡す。
 
 ### ComfyUI の状態（ノード・モデルマネージャー）
 
-同梱エンジンの状態（`modelmanager.EngineView`。`Process.State` は `stopped`/`starting`/`running`/`failed`、`Installed`・`Supported`）と、登録済みの外部 ComfyUI の件数（`localmodels` の接続先のうち種類 ComfyUI）から決める。外部は件数のみ。
+同梱エンジンの状態（`modelmanager.Brief`。`Process`（`stopped`/`starting`/`running`/`failed`）、`Installed`（壊れていれば未導入として扱う）・`Supported`）と、登録済みの外部 ComfyUI の件数（`Brief.External`。`localmodels` の接続先のうち種類 ComfyUI で、同梱でないもの）から決める。外部は件数のみ。状態を読むだけで `comfyui` ディレクトリは作らない（未導入の機械にも作らない。テスト `TestComfyUIStatus_NotInstalledWritesNothingToDisk`）。
 
 | 同梱エンジン | 外部 ComfyUI | 表示（`Badge` ・ 文） |
 |--------------|-------------|----------------------|
@@ -128,7 +128,7 @@
 | ワークフロー | neutral ・ 保存 n 件（0 件は「保存なし」） | `workflows.Service.List`（ローカルの DB） | 空 |
 | レビューパッケージ | neutral ・ 受け取り n 件（0 件は「受け取りなし」） | `ReviewService.Inbox`（ローカルの DB） | 空 |
 | 設定（1 行目） | info ・ API キー n / 10 件（n = 設定済み。10 = `len(service.CredentialProviders)`。0 件のときは warn） | `CredentialService.Status` | キーストアが読めない: warn ・ キーストアを利用できません |
-| 設定（2 行目） | ok ・ ChatGPT: ログイン済み ／ neutral ・ ChatGPT: 未ログイン ／ warn ・ ChatGPT: 再ログインが必要（公式・画像生成（非公式）のどれかが当てはまる。#845 の Codex 経由は実装済みだが `chatgpt.Service.Overview` には含まれない（`codex.Service.Status`）。含めるかは §9 の質問 9） | `chatgpt.Service.Overview` | サービスが無い（`Services.ChatGPT` が nil）: 2 行目を出さない。読めない: 出さない |
+| 設定（2 行目） | ok ・ ChatGPT: ログイン済み ／ neutral ・ ChatGPT: 未ログイン ／ warn ・ ChatGPT: 再ログインが必要（公式・画像生成（非公式）のどれかが再ログイン要。#845 の Codex 経由は `codex.Service.Status().Account.SignedIn` を読み、ログイン済みの判定にだけ含める。Codex には再ログイン要の状態が無いので、再ログインの判定には入らない。§9 の質問 9） | `chatgpt.Service.Overview` | サービスが無い（`Services.ChatGPT` が nil）: 2 行目を出さない。読めない: 出さない |
 | 生成テスト・制作指標 | なし | — | — |
 
 - 「10」は定数から取る（テンプレートに数字を書かない。`maxlength_test` と同じ考え方）。
@@ -173,7 +173,7 @@
 
 ## 9. オーナーへの確認事項と決定
 
-2026-10-25 に、オーナーはすべての質問について**推奨する既定を決定**とした。実装はこの表の「推奨する既定」のとおり（質問 9 は、Codex 経由も含める。`Services.ChatGPT` の `Codex().Status()` の `Account.SignedIn` を読む）。
+2026-10-25 に、オーナーはすべての質問について**推奨する既定を決定**とした。実装はこの表の「推奨する既定」のとおり（質問 9 は、Codex 経由も含める。`Services.ChatGPT` の `Codex().Status()` の `Account.SignedIn` を読む。再ログイン要の判定は公式と画像生成（非公式）だけ）。
 
 | # | 質問 | 決定（推奨する既定） |
 |---|------|-------------|
@@ -185,7 +185,7 @@
 | 6 | 「生成テスト」の状態（最近の生成の件数。Issue では任意）を出すか | 出さない（`gentest.Service` に件数を数える関数が無く、足すと範囲が広がる） |
 | 7 | 「状態を出さない」カードに、状態の枠の高さを確保するか | 確保しない（状態の枠が無いカードは `min-h-36` のまま。下端の CTA の位置はそろう） |
 | 8 | 状態の更新（ComfyUI を起動した直後など）を、ページを開き直さずに反映するか | しない（`load` の 1 回だけ。モデルマネージャー・ノードの画面で確かめられる） |
-| 9 | 「設定」カードの ChatGPT の行に、#845 の Codex 経由のログイン状態も含めるか（`Overview` は公式と画像生成（非公式）だけ。含めるなら `codex.Service.Status` を読む） | 含める（3 方式のどれかが再ログイン要なら warn、どれかがログイン済みなら ok）。含めない案もある（Codex は任意の方式で、設定画面で確かめられる） |
+| 9 | 「設定」カードの ChatGPT の行に、#845 の Codex 経由のログイン状態も含めるか（`Overview` は公式と画像生成（非公式）だけ。含めるなら `codex.Service.Status` を読む） | 含める（どれかがログイン済みなら ok。再ログイン要の状態を持つのは公式と画像生成（非公式）だけで、どちらかが要なら warn。Codex には再ログイン要の状態が無い）。含めない案もある（Codex は任意の方式で、設定画面で確かめられる） |
 
 ## 改訂履歴
 
@@ -195,3 +195,4 @@
 | 0.2 | 2026-10-25 | §5 の ChatGPT の行を #845 の実装の現状（Codex 経由は `Overview` に含まれない）に合わせ、§9 に質問 9 を足した | 統合の見直し。#845 が先に入ったため |
 | 0.3 | 2026-10-25 | 決定事項 1 の行にモーダルの担当が未決であることを足し、§5 に `endpoints.md` の行数（296 行）と置き場の案を書いた | 独立レビュー（PR #849）の指摘 |
 | 0.4 | 2026-10-25 | 状態を「実装済み」にした。§9 をオーナーの決定（推奨する既定）の表にし、§5 のエンドポイントを [endpoints-home.md](../api/endpoints-home.md) に移した | Issue #846 の実装 |
+| 0.5 | 2026-10-25 | §5 の取得元を `modelmanager.Service.Brief()`（ディスクに書かない）にし、ChatGPT の行と §9 の質問 9 を実装（Codex はログイン済みの判定だけ。再ログイン要は公式・画像生成（非公式）だけ）に合わせた。フォーカスの輪に `outline-hidden` を足した | 独立レビュー（PR #849 の 2 周目）の指摘 |
