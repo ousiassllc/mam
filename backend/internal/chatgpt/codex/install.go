@@ -56,29 +56,40 @@ func (s *Service) StartInstall() (started bool, err error) {
 	if !s.supported {
 		return false, ErrUnsupported
 	}
+	// The state is set under the lock of the check, so that two callers cannot both start, and starts of the engine are
+	// refused from then on (startProcess): the checks below and the stop of the engine take a while.
+	ctx, cancel := context.WithCancel(context.Background())
 	s.mu.Lock()
 	if s.closed {
 		s.mu.Unlock()
+		cancel()
 		return false, errors.New("codex: mam is shutting down")
 	}
 	if s.install.State == InstallRunning {
 		s.mu.Unlock()
+		cancel()
 		return false, nil
 	}
-	s.mu.Unlock()
-	if err := s.installer.Layout.CheckWritable(); err != nil {
-		return false, err
-	}
-	if err := s.installer.CheckSpace(); err != nil {
-		return false, err
-	}
-	s.srv.Stop() // the files are replaced: the engine must not be running
-	ctx, cancel := context.WithCancel(context.Background())
-	s.mu.Lock()
+	prev := s.install.InstallStatus
 	s.install.InstallStatus = InstallStatus{State: InstallRunning, Phase: string(engine.PhaseDownload), Message: "Codex をダウンロードしています"}
 	s.install.cancel = cancel
 	s.install.wg.Add(1)
 	s.mu.Unlock()
+	abort := func(err error) (bool, error) {
+		s.mu.Lock()
+		s.install.InstallStatus, s.install.cancel = prev, nil
+		s.mu.Unlock()
+		s.install.wg.Done()
+		cancel()
+		return false, err
+	}
+	if err := s.installer.Layout.CheckWritable(); err != nil {
+		return abort(err)
+	}
+	if err := s.installer.CheckSpace(); err != nil {
+		return abort(err)
+	}
+	s.srv.Stop() // the files are replaced: the engine must not be running
 	go s.runInstall(ctx)
 	return true, nil
 }
@@ -101,6 +112,8 @@ func (s *Service) runInstall(ctx context.Context) {
 		s.install.InstallStatus = InstallStatus{State: InstallRunning, Phase: string(p), Percent: pct, Done: done, Total: total, Message: msg}
 		s.mu.Unlock()
 	})
+	// Starts are refused while the state is running: this clears the failed status those refusals left.
+	s.srv.Stop()
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.install.cancel = nil

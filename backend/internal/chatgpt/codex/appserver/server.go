@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -67,6 +68,7 @@ type Server struct {
 	starting chan struct{} // closed when the start in progress ends
 	status   Status
 	closed   bool
+	gen      int // bumped by Stop: a start that began before it is torn down
 }
 
 // New returns a Server with no process started.
@@ -169,12 +171,13 @@ func (s *Server) Ensure(ctx context.Context) (*Session, error) {
 		}
 		s.starting = make(chan struct{})
 		s.status = Status{State: StateStarting}
+		gen := s.gen
 		s.mu.Unlock()
-		return s.start(ctx)
+		return s.start(ctx, gen)
 	}
 }
 
-func (s *Server) start(ctx context.Context) (*Session, error) {
+func (s *Server) start(ctx context.Context, gen int) (*Session, error) {
 	defer func() {
 		s.mu.Lock()
 		close(s.starting)
@@ -198,10 +201,11 @@ func (s *Server) start(ctx context.Context) (*Session, error) {
 		return nil, s.fail(err)
 	}
 	s.mu.Lock()
-	if s.closed {
+	if s.closed || s.gen != gen {
 		s.mu.Unlock()
 		p.Stop()
-		return nil, fmt.Errorf("%w: mam is shutting down", ErrStart)
+		conn.Close()
+		return nil, s.stopped()
 	}
 	s.cur, s.status = se, Status{State: StateRunning}
 	s.mu.Unlock()
@@ -228,90 +232,24 @@ func (s *Server) handshake(ctx context.Context, se *Session) error {
 	return nil
 }
 
-// sameDir compares two directories as paths, ignoring case on Windows.
+// sameDir tells whether two paths are the same directory. The server reports the CODEX_HOME it resolved (Codex makes
+// the path absolute and follows symlinks), which can spell mam's directory differently, so equal spellings (ignoring
+// case on Windows) are accepted first and else both are looked up on disk and compared with os.SameFile.
 func sameDir(a, b string) bool {
 	if a == "" || b == "" {
 		return false
 	}
-	a, b = filepath.Clean(a), filepath.Clean(b)
-	if runtime.GOOS == "windows" {
-		return strings.EqualFold(a, b)
+	ca, cb := filepath.Clean(a), filepath.Clean(b)
+	if ca == cb || (runtime.GOOS == "windows" && strings.EqualFold(ca, cb)) {
+		return true
 	}
-	return a == b
-}
-
-// watch notices the end of the process: one nobody asked for is a failure (the status says so; the next use starts again).
-func (s *Server) watch(se *Session) {
-	select {
-	case <-se.proc.Done():
-	case <-se.conn.Done():
+	ia, err := os.Stat(a)
+	if err != nil {
+		return false
 	}
-	s.mu.Lock()
-	if s.cur != se {
-		s.mu.Unlock()
-		return
+	ib, err := os.Stat(b)
+	if err != nil {
+		return false
 	}
-	s.cur = nil
-	s.mu.Unlock()
-	se.proc.Stop() // the connection may have ended with the process still running
-	err := fmt.Errorf("%w", ErrStart)
-	if info := se.EndReason(); info != "" {
-		err = errors.New(info)
-	}
-	s.opts.Logger.Warn("codex app-server ended", "state", "failed")
-	_ = s.fail(err)
-}
-
-func (s *Server) fail(err error) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if !s.closed {
-		s.status = Status{State: StateFailed, Error: err.Error()}
-	}
-	return err
-}
-
-// Stop ends the process. The next use starts it again unless Close was called.
-func (s *Server) Stop() {
-	s.mu.Lock()
-	se := s.cur
-	s.cur = nil
-	if se != nil || s.status.State == StateFailed {
-		s.status = Status{State: StateStopped}
-	}
-	s.mu.Unlock()
-	if se != nil {
-		se.conn.Close()
-		se.proc.Stop()
-		// A notification already read must not touch mam's state after Stop returns (a logout with removal deletes it).
-		waitReader(se.conn)
-	}
-}
-
-// waitReader waits for the reading goroutine of the connection once the process is gone. A stream that is not closed
-// with the process (a child of the process holding the pipe) would hold Stop for ever: it gives up after a few seconds.
-func waitReader(c *rpc.Conn) {
-	ended := make(chan struct{})
-	go func() { c.Wait(); close(ended) }()
-	select {
-	case <-ended:
-	case <-time.After(readerGrace):
-	}
-}
-
-const readerGrace = 5 * time.Second
-
-// Close stops the process for good (mam is shutting down): later calls fail with ErrStart.
-func (s *Server) Close() {
-	s.mu.Lock()
-	s.closed = true
-	s.mu.Unlock()
-	s.Stop()
-}
-
-// Running reports whether a process is up, without starting one.
-func (s *Server) Running() bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.cur != nil
+	return os.SameFile(ia, ib)
 }

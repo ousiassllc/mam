@@ -139,6 +139,8 @@ func (h handlers) startCodexLogin(ctx context.Context, in CodexLoginInput) (Logi
 	switch {
 	case errors.Is(err, codex.ErrEngineNotInstalled):
 		return LoginOutput{}, &service.ConflictError{Message: "Codex のエンジンがありません。install_chatgpt_codex_engine でダウンロードするか、設定画面で自分で入れた codex のパスを指定してください"}
+	case errors.Is(err, codex.ErrEngineInstalling):
+		return LoginOutput{}, &service.ConflictError{Message: "Codex のエンジンを導入中です。終わってからもう一度試してください"}
 	case errors.As(err, &ls):
 		return LoginOutput{}, &service.ConflictError{Message: ls.Message}
 	case err != nil:

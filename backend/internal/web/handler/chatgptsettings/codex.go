@@ -183,6 +183,8 @@ func startCodexLogin(c *gin.Context, svc *chatgpt.Service) {
 	case err == nil:
 	case errors.Is(err, codex.ErrEngineNotInstalled):
 		status, d.Error = http.StatusConflict, "先に Codex をダウンロードするか、自分で入れた codex のパスを指定してください"
+	case errors.Is(err, codex.ErrEngineInstalling):
+		status, d.Error = http.StatusConflict, "Codex のエンジンを導入中です。終わってからもう一度試してください"
 	case errors.As(err, &ls):
 		_ = c.Error(err)
 		status, d.Error = http.StatusBadGateway, ls.Message
