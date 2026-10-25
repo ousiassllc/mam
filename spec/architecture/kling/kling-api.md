@@ -4,20 +4,20 @@ Issue #838。[model-adapters.md](../model-adapters.md)（§9 の実装）に足�
 
 ## 1. 結論
 
-- **本文と経路は変えない。** 公式の「3.0」のページは新しい本文（`contents` / `settings`）の経路を載せているが、旧経路（`/v1/videos/text2video`・`/v1/videos/image2video`）のページ（各ページの「legacy」）にも `model_name` の値として `kling-v3` が載っており、公式の更新履歴（2026-07-15）に「旧 API は引き続き使え、廃止の予定は今のところない」とある。旧経路が `kling-v3` を受け付けないと読める記述は見つからなかった。
-- ただし**実機では確かめていない**。旧経路が今も `kling-v3` を受け付けるか、ホスト名（§3 の 1）、シード・ネガティブプロンプトの扱いは**未検証**（§4）。確かめて合わなければ、新しい本文に合わせる（Issue #838 の決定）。
+- **本文と経路は変えない。** 公式の「3.0」のページは新しい本文（`contents` / `settings`）の経路を載せているが、旧経路（`/v1/videos/text2video`・`/v1/videos/image2video`）のページ（各ページの「legacy」）にも `model_name` の値として `kling-v3` が載っており、公式の更新履歴（2026-07-15）に「旧 API は引き続き使え、廃止の予定は今のところない」とある。旧経路が `kling-v3` を受け付けないと読める記述は見つからなかった。ただし旧（legacy）のページは画面を JavaScript で描くため、本文を直接取得できず、検索結果の抜粋で確かめた（§2）。
+- **実機では確かめていない。** 最初に確かめるのは**ホスト名**。公式の認証のページは、中国の外のサーバー向けのホストを `api.klingai.com` から `api-singapore.klingai.com` に変えたと書いているが、mam の既定は今も `api.klingai.com`（§3 の 1）。旧経路が今も `kling-v3` を受け付けるか、シード・ネガティブプロンプトの扱い、JWT の認証も**未検証**（§4）。確かめて合わなければ、新しい本文に合わせるかをオーナーが決める（Issue #838 の「やること」。#838 に「決定事項」の節は無い）。
 
 ## 2. 公式ドキュメントの形（2026-10-25 時点）
 
-出典: <https://kling.ai/document-api/api/video/3-0-omni/text-to-video>（新）と同 `/legacy`（旧）、同 `image-to-video` と `/legacy`、<https://kling.ai/document-api/api/get-started/authentication>、<https://kling.ai/document-api/updates/api>。
+出典: <https://kling.ai/document-api/api/video/3-0-omni/text-to-video>（新）と同 `/legacy`（旧）、同 `image-to-video` と `/legacy`、<https://kling.ai/document-api/api/get-started/authentication>、<https://kling.ai/document-api/updates/api>。新・認証・更新履歴のページは本文を取得して読んだ。旧（`/legacy`）のページは、本文を直接取得できず、検索結果の抜粋で読んだ範囲だけを「確認できた」とし、読めなかった欄はそう書く。
 
 | 項目 | 新（3.0 のページ） | 旧（legacy のページ。mam が使う） |
 |------|---------------------|-------------------------------------|
 | 作成 | `POST /text-to-video/kling-3.0`、`POST /image-to-video/kling-3.0` | `POST /v1/videos/text2video`、`POST /v1/videos/image2video` |
 | モデル | パスの `kling-3.0` | 本文の `model_name`（`kling-v2-5-turbo` / `kling-v2-6` / `kling-v3`） |
-| 認証 | API キー 1 つを `Authorization: Bearer <API_KEY>` | AccessKey + SecretKey から作る JWT（HS256）を `Bearer`。同じページに「API キーだけの認証は既存のモデルでも使える」との記述がある（更新履歴 2026-06-17） |
-| 本文（テキスト） | `prompt`（3072 文字まで、推奨 2500）、`settings`（`multi_shot` 既定 true・`audio` `native`/`off`・`resolution` `720p`/`1080p`/`4k`・`aspect_ratio`・`duration` 整数 3〜15）、`options` | `model_name`・`prompt`（2500 文字まで）・`negative_prompt`（2500 文字まで）・`mode`（`std`=720p / `pro`=1080p / `4k`）・`aspect_ratio`・`duration`（文字列 3〜15）・`sound`・`multi_shot`（既定 false）など |
-| 本文（画像） | `contents[]`（`prompt` / `first_frame` / `last_frame` / `element`）。画像は URL か Base64 | `image` / `image_tail`。URL か、`data:` の接頭辞なしの Base64（10MB まで） |
+| 認証 | API キー 1 つを `Authorization: Bearer <API_KEY>` | AccessKey + SecretKey から作る JWT（HS256）を `Bearer`。認証のページは AK/SK を「legacy 設計向け」と位置づけ、更新履歴（2026-06-17）には API キーだけの認証が既存のモデルと互換とある（**未検証**。実機の確認は §4） |
+| 本文（テキスト） | `prompt`（3072 文字まで、推奨 2500）、`settings`（`multi_shot` 既定 true・`audio` `native`/`off`・`resolution` `720p`/`1080p`/`4k`・`aspect_ratio`・`duration` 整数 3〜15）、`options` | `model_name`・`prompt`（2500 文字まで）・`negative_prompt`（2500 文字まで）・`mode`（`std`=720p / `pro`=1080p / `4k`）・`aspect_ratio`・`duration`（文字列。3〜15 は旧ページの本文を再取得できず、検索結果の抜粋では確認できなかった）・`sound`（同じ理由で確認できなかった）・`multi_shot`（既定 false）など |
+| 本文（画像） | `contents[]`（`prompt` / `first_frame` / `last_frame` / `element`）。画像は URL か Base64 | `image` / `image_tail`。URL か、`data:` の接頭辞なしの Base64（10MB までは旧ページの本文を再取得できず、検索結果の抜粋では確認できなかった） |
 | ネガティブプロンプト | **欄なし**（`prompt` に否定の記述を含められる、とだけある） | `negative_prompt` あり（ドキュメントは「プロンプトの中の否定文で補う」ことも勧める） |
 | シード | **欄なし** | **欄なし** |
 | 応答 | `data.id`・`data.status`（`submitted` / `processing` / `succeeded` / `failed`） | `data.task_id`・`data.task_status`（`submitted` / `processing` / `succeed` / `failed`） |
@@ -51,3 +51,4 @@ Issue #838。[model-adapters.md](../model-adapters.md)（§9 の実装）に足�
 | 版 | 日付 | 変更内容 | 変更理由 |
 |----|------|---------|---------|
 | 1.0 | 2026-10-25 | 新規作成。公式ドキュメントの新旧の形と、`klingBackend` との差、未検証の項目を記録 | Issue #838。コードは変えず、実機で確かめるまでの状態を残すため |
+| 1.1 | 2026-10-25 | 認証の行の出典を直し（認証のページと更新履歴を分けた）、旧ページで確認できなかった項目を明記、ホスト名を最初の確認事項に、「決定」の言い方を直した | 独立レビュー（PR #849）の指摘。過大な言い方の訂正 |

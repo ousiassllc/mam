@@ -123,7 +123,7 @@
 | 段階 | 内容 | 主な変更 | デザインレビュー |
 |------|------|---------|------------------|
 | ① | ナビ・分類ごとの URL・概要。**中身は今の区画をそのまま**各分類のページに移す（フォーム・ルート・応答は変えない） | `pages/settings_pages.templ`・`molecules/settingsui`（`SettingsNav`）・`organisms/settings/overview/`・`handler/settingspage/`・`settingsroutes`・`SettingsSection` の見出しのレベル | ① の完成で 1024×700・1440×900 |
-| ②-1 | **モーダルの部品**と一覧の行の部品を作り、API キーのカードで使う | `molecules/modal/`・`static/src/components/modal/`・`organisms/settings/credentials/` | **部品の段階**で 1024×700・1440×900（決定事項 10(a) の 1 回目） |
+| ②-1 | **モーダルの部品**と一覧の行の部品を作り、API キーのカードで使う（モーダルの担当は未決。#846 の決定事項 1 は #846 で作ると読める。[shared-ui-parts.md](shared-ui-parts.md) §8 の質問 7。ここは推奨する既定に沿って #847 で作る前提） | `molecules/modal/`・`static/src/components/modal/`・`organisms/settings/credentials/` | **部品の段階**で 1024×700・1440×900（決定事項 10(a) の 1 回目） |
 | ②-2 | ChatGPT のログインをカードに（ログイン中の表示はモーダル）。#845 の Codex 経由は 3 つ目のカード（§9） | `organisms/settings/chatgpt/` | |
 | ②-3 | LLM の割り当て（Agent の表・Agent ごとの保存） | `organisms/settings/llm/`・`PUT /settings/llm/agents/:agent` | |
 | ②-4 | 画像・動画モデル | `organisms/settings/media/` | |
@@ -158,6 +158,7 @@
 | `molecules/settingsui/`・`molecules/modal/` | ナビ・カード・表・モーダル | 新規 |
 
 - **#845（Codex 経由）の取り込み**: 「API キーとログイン」の分類に、方式ごとのカードを並べる（`organisms/settings/chatgpt/` のカードの一覧が `[]AccountCard` を受け取る。公式・画像生成（非公式）・Codex 経由の順。#845 は 3 つ目を足すだけで、枠・モーダルの部品は触らない）。#845 は入っていて、Codex 経由は今の縦のブロック（`chatgptpanel/codex.templ`。方式のタブ・エンジンの取得・パスの指定・ログイン・利用上限の更新・モデル一覧）として足されており、②-2 が 3 つを一緒にカードにする。Codex の取得・ログインの仕組み（#845 の範囲）は変えない。
+- **方式のタブ（#845 が足した `role="tablist"`）**: #847 の Issue の背景は「`role="tablist"` はリポジトリに見当たらない」と書いている（起票の時点。2026-10-25）が、#845 が入ったあとの `chatgptpanel/codex.templ`（`aria-label="ログインの方式"`、`aria-selected`）には、方式の切り替えのタブがある。②-2 でカードに置き換えるとき、このタブはなくなる（方式ごとのカードに分かれるため）。タブを検査しているテストがあれば、②-2 で一緒に直す。
 - 層の規則（`layers_test`）: organism・molecule はサービスを import せず、ハンドラーが表示用の値を渡す。
 
 ## 10. MCP が `web/` に依存しないことの調査（#847「背景」の未検証の項目）
@@ -192,3 +193,4 @@
 |----|------|---------|---------|
 | 0.1 | 2026-10-25 | 新規作成（案） | Issue #847 決定事項 1(a)。実装前にオーナーが確認するための設定画面の仕様 |
 | 0.2 | 2026-10-25 | §3 の GET の数（8 → 9。`/settings/chatgpt/codex/models`）と §9 の `chatgptpanel` の行数・#845 の取り込みの記述を、入った #845 の実装に合わせた | 統合の見直し。#845 が先に入ったため |
+| 0.3 | 2026-10-25 | ②-1 のモーダルの担当を未決とし（[shared-ui-parts.md](shared-ui-parts.md) §8 の質問 7）、#845 のタブ（`role="tablist"`）の扱いを §9 に足した | 独立レビュー（PR #849）の指摘 |
