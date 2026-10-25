@@ -14,6 +14,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmview"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/hfimport"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -142,7 +143,8 @@ func trialDetail(r gentest.ResultView) string {
 func (h Handlers) data(c *gin.Context) view.Data {
 	ctx := c.Request.Context()
 	d := view.Data{
-		Engine: engineData(ctx, h.Svc, "", false), Adult: adultData(h.Svc), Catalog: catalogData(ctx, h.Svc, nil), HF: hfData(h),
+		Engine: engineData(ctx, h.Svc, "", false), Adult: adultData(h.Svc), Catalog: catalogData(ctx, h.Svc, nil),
+		HF: hfimport.TokenData(h.Svc), HFImport: hfimport.Panel(ctx, h.Svc),
 		External: view.External{Endpoints: h.externalEndpoints(c)},
 		Trial:    h.trialPanel(ctx, view.TrialForm{}, "", ""),
 	}

@@ -28,6 +28,9 @@ templ Body(d Data) {
 		@molecules.SettingsSection("試し生成", "導入したモデル（登録済みの外部の ComfyUI のモデルも）で、プロジェクトの外で 1 枚・1 本だけ試します。") {
 			@TrialSection(d.Trial)
 		}
+		@molecules.SettingsSection("Hugging Face から導入", "Hugging Face のモデルファイル（.safetensors）を、URL・owner/repo・キーワードから探して導入します。コミットに固定し、LFS の SHA-256 とサイズを確かめます。GGUF は一覧に出しますが導入できません。pickle 形式（.ckpt・.pt など）は導入しません。") {
+			@HFImportSection(d.HFImport)
+		}
 		@molecules.SettingsSection("Hugging Face のトークン（任意）", "ログインが必要なモデルを取得するときだけ使います。") {
 			@HFCard(d.HF)
 		}

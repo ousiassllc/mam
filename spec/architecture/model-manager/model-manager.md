@@ -238,6 +238,13 @@ func (*Service) AdultContent() AdultContentStatus
 func (*Service) AdultContentEnabled() bool
 func (*Service) SetAdultContent(on bool, *AdultConfirmation) error
 func (*Service) HidesModel(id string) bool
+// Hugging Face からの導入（model-manager-hf.md）
+func (*Service) SearchHF(ctx, query, kind string, limit int) ([]hf.SearchHit, error)  // NFAA はゲートが閉じている間は除く
+func (*Service) HFRepo(ctx, input string) (HFRepoView, error)                         // URL・owner/repo → コミットに固定したファイルの一覧
+func (*Service) InstallHFFile(ctx, HFInstallInput) (JobRef, error)                    // repo・commit・path。SHA-256・サイズは Service が HF から読み直す
+func (*Service) ActiveHFJobs() map[string]string                                      // 動いている導入（target → job_id）
+func (*Service) UserModels() []UserModelView                                          // 利用者が足したファイル
+func (*Service) DeleteUserModel(ctx, path string) error
 ```
 
 - **エンジンの更新**: MAM の更新とは独立。サイレントインストーラーはエンジンを取り直さない。`Engine()` の導入版と固定版（カタログ）が違えば更新できる状態で、`InstallEngine` が新しい固定版を入れる（`engine\` を入れ替え、`data\` は残る）。
@@ -257,6 +264,7 @@ func (*Service) HidesModel(id string) bool
 | Wan 2.2 14B に `wan_2.1_vae` を使うこと、Chroma の `CLIPLoader type=chroma` ＋ fp8mixed の組み合わせ | **未検証**（ComfyUI の公式手順・作者のワークフローに基づく。実機で確かめる） |
 | NSFW MASTER の作者の原本のライセンス | **未確認**（HF のミラーのタグは MIT。Civitai の API はライセンス名を返さない。全体を非商用として扱う） |
 | 実物の Hugging Face からの 6 モデルの取得（数十 GB）と、ミラーが消えたときの実際の応答 | **未実施**（偽の HF で、404 の `ErrSourceGone`・SHA-256 の不一致・共有ファイルの 1 回取得は確認） |
+| 実物の Hugging Face からの任意のモデルの導入（Issue #842: 実物の API・CDN・gated・GPU・SDXL の生成） | **未検証**（[model-manager-hf.md](model-manager-hf.md) §10。偽の HF で確認） |
 
 ## 12. 画面と MCP ツール
 
@@ -266,3 +274,4 @@ func (*Service) HidesModel(id string) bool
 - **導入の中断**: `CancelInstall`。ジョブは失敗で終わり（理由に「導入を中断しました」）、`.part` は残るので、導入し直すと続きから再開する。
 - **同意の強制は API**: 画面のダイアログは同意を渡す手段で、`InstallModel` が記録を確かめる（§6）。MCP からも同じ（記録が無ければ 409 / `conflict`）。**年齢確認も同じ**（§6.2）: 画面のダイアログ（`PUT /model-manager/adult`）と MCP の `set_adult_content` は確認を渡す手段で、`Catalog`・`InstallModel`・試し生成の一覧は Service が閉じる。`ErrAdultNotConfirmed` は 409 / `conflict`（`mmview.Refuse`）。
 - **テスト用の部品**: `service/modelmanager/mmtest` は偽の GitHub / Hugging Face（`Range`・保留 `Hold` つき）・偽のエンジンのプロセス・ジョブキューつきの `Service` を作る（画面と MCP のテストが共有する）。
+- **Hugging Face からの導入**（Issue #842）: カタログに無い `.safetensors` を HF のリポジトリから導入する経路。意味・固定・フォルダ・年齢ゲート・記録・未検証は [model-manager-hf.md](model-manager-hf.md)。画面は `web/handler/modelmgr/hfimport`、MCP は `mcp/tools/modelmgr/hf.go` の 5 ツール。

@@ -162,3 +162,16 @@ func (s *Service) checkHFSpace(p hfplan.Payload) error {
 	}
 	return nil
 }
+
+// ActiveHFJobs are the imports that are queued or running: the job target ("hf:<repo>@<commit>/<path>") to its job id.
+func (s *Service) ActiveHFJobs() map[string]string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	out := map[string]string{}
+	for target, id := range s.active {
+		if strings.HasPrefix(target, "hf:") {
+			out[target] = id
+		}
+	}
+	return out
+}

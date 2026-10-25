@@ -1,5 +1,7 @@
 // Package modelmgr holds the MCP tools of the model manager screen (/model-manager): the bundled ComfyUI engine, the
-// catalog of local image and video models with its license acceptance, the optional Hugging Face token and the read-only
+// catalog of local image and video models with its license acceptance, the import of .safetensors files from Hugging Face
+// (hf.go: search_hf_models, get_hf_model_files, install_hf_file, list_user_models, delete_user_model; the service pins the
+// commit and checks the terms, the age gate and the SHA-256), the optional Hugging Face token and the read-only
 // view of an external ComfyUI (spec/api/mcp-tools-model-manager.md, spec/architecture/model-manager/model-manager.md).
 // The generation test (which the trial generations of the model manager screen run through) is package gentest.
 //
@@ -34,6 +36,7 @@ func Register(r *mcpkit.Registrar, svc *service.Services) {
 	registerCatalog(r, h)
 	registerAdult(r, h)
 	registerExtras(r, h)
+	registerHF(r, h)
 }
 
 type handlers struct {
@@ -103,7 +106,7 @@ func ProgressOf(st modelmanager.JobStatus) mcpkit.Progress {
 type JobOutput struct {
 	mcpkit.JobRef
 	Existing bool   `json:"existing,omitempty" jsonschema:"同じ対象の導入がすでに動いていたので、新しいジョブは作らずそれを返した / the same install was already running"`
-	Target   string `json:"target" jsonschema:"engine または model:<catalog id>"`
+	Target   string `json:"target" jsonschema:"engine・model:<catalog id>・hf:<repo>@<commit>/<path>"`
 }
 
 // startInstall queues an install and returns its job_id.
