@@ -1,6 +1,7 @@
 package gptimage_test
 
 import (
+	"math"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -66,4 +67,61 @@ func TestActualCostIsUnknownWithoutUsageOrForAnotherModel(t *testing.T) {
 	assert.Nil(t, gptimage.ActualCost("gpt-image-2", nil), "the response had no usage")
 	assert.Nil(t, gptimage.ActualCost("gpt-image-1.5", &gptimage.Usage{OutputTokens: 100}), "other models have other prices")
 	assert.NotNil(t, gptimage.ActualCost("gpt-image-2-2026-04-21", &gptimage.Usage{OutputTokens: 100}), "a snapshot of the model")
+}
+
+func TestActualCostOfACountThatCannotBeRealIsUnknown(t *testing.T) {
+	huge := math.MaxInt64
+	usage := func(in, text, image, out int) *gptimage.Usage {
+		u := &gptimage.Usage{InputTokens: in, OutputTokens: out}
+		u.InputDetails.TextTokens, u.InputDetails.ImageTokens = text, image
+		return u
+	}
+	for name, tc := range map[string]struct {
+		usage  *gptimage.Usage
+		usable bool
+	}{
+		"the largest image of mam":          {usage(100, 100, 0, 7033), true},
+		"the ceiling of output":             {usage(0, 0, 0, 100_000), true},
+		"over the ceiling of output":        {usage(0, 0, 0, 100_001), false},
+		"a huge output":                     {usage(0, 0, 0, 9_000_000_000_000_000_000), false},
+		"a negative output":                 {usage(0, 0, 0, -1), false},
+		"the ceiling of input":              {usage(200_000, 0, 200_000, 100), true},
+		"over the ceiling of input":         {usage(200_001, 0, 0, 100), false},
+		"a negative input":                  {usage(-5, 0, 0, 100), false},
+		"a huge text count":                 {usage(100, huge, 0, 100), false},
+		"a negative image count":            {usage(100, 0, -1, 100), false},
+		"details that wrap around":          {usage(100, huge, huge, 100), false},
+		"a total that is below the details": {usage(10, 300, 1000, 100), true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			got := gptimage.ActualCost("gpt-image-2", tc.usage)
+
+			if tc.usable {
+				require.NotNil(t, got)
+				assert.GreaterOrEqual(t, *got, 0.0)
+				return
+			}
+			assert.Nil(t, got, "the estimate is used")
+		})
+	}
+}
+
+func TestParseUsageNeverFails(t *testing.T) {
+	for name, tc := range map[string]struct {
+		raw  string
+		want *gptimage.Usage
+	}{
+		"absent":              {"", nil},
+		"null":                {"null", nil},
+		"not an object":       {`"x"`, nil},
+		"a string count":      {`{"output_tokens":"x"}`, nil},
+		"a fractional count":  {`{"output_tokens":1300.5}`, nil},
+		"over int64":          {`{"output_tokens":99999999999999999999}`, nil},
+		"a string detail":     {`{"input_tokens_details":{"text_tokens":"3"}}`, nil},
+		"a well-formed usage": {`{"input_tokens":68,"output_tokens":1300}`, &gptimage.Usage{InputTokens: 68, OutputTokens: 1300}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			assert.Equal(t, tc.want, gptimage.ParseUsage([]byte(tc.raw)))
+		})
+	}
 }

@@ -1,6 +1,8 @@
 package configcheck_test
 
 import (
+	"bytes"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"testing"
@@ -81,4 +83,35 @@ func TestConfigRejectsAQualityThatIsNotAProfile(t *testing.T) {
 	mc.Quality = "high"
 	cfg.Models[domain.ModelFlux2] = mc
 	assert.ErrorContains(t, configcheck.Validate(cfg), "only gpt-image-2 has one")
+}
+
+func TestLoadWarnsWhenGPTImage2HasNoKnownPrice(t *testing.T) {
+	for name, tc := range map[string]struct {
+		models string
+		warn   bool
+	}{
+		"the default":                   {`{}`, false},
+		"a snapshot of the model":       {`{"models":{"gpt-image-2":{"model":"gpt-image-2-2026-04-21"}}}`, false},
+		"another model without a price": {`{"models":{"gpt-image-2":{"model":"gpt-image-1.5"}}}`, true},
+		"another model with a price":    {`{"models":{"gpt-image-2":{"model":"gpt-image-1.5","cost_per_image_usd":0.04}}}`, false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			var logs bytes.Buffer
+			previous := slog.Default()
+			slog.SetDefault(slog.New(slog.NewTextHandler(&logs, nil)))
+			t.Cleanup(func() { slog.SetDefault(previous) })
+			path := filepath.Join(t.TempDir(), "models.json")
+			require.NoError(t, os.WriteFile(path, []byte(tc.models), 0o600))
+
+			_, err := configcheck.Load(path)
+
+			require.NoError(t, err, "a warning, not a refusal")
+			if tc.warn {
+				assert.Contains(t, logs.String(), "level=WARN")
+				assert.Contains(t, logs.String(), "cost_per_image_usd")
+				return
+			}
+			assert.Empty(t, logs.String())
+		})
+	}
 }

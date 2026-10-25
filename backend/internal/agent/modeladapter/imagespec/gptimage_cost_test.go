@@ -106,3 +106,37 @@ func TestAnotherAPIModelIDHasNoTablePrice(t *testing.T) {
 
 	assert.Zero(t, cfg.ImageCost(domain.ModelGPTImage2), "the table is gpt-image-2's: no price is invented for another model")
 }
+
+func TestAMalformedUsageDoesNotLoseThePaidImage(t *testing.T) {
+	for name, usage := range map[string]string{
+		"a string count":         `{"output_tokens":"x"}`,
+		"a fractional count":     `{"output_tokens":1300.5}`,
+		"a count over int64":     `{"output_tokens":99999999999999999999}`,
+		"not an object":          `"used"`,
+		"a count over a ceiling": `{"output_tokens":9000000000000000000}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			var calls int
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				calls++
+				_, _ = w.Write([]byte(`{"data":[{"b64_json":"` + base64.StdEncoding.EncodeToString([]byte("IMG")) + `"}],"usage":` + usage + `}`))
+			}))
+			defer srv.Close()
+			cfg := modeladapter.DefaultConfig()
+			for v, vc := range cfg.Vendors {
+				vc.BaseURL = srv.URL
+				cfg.Vendors[v] = vc
+			}
+			backends := modeladapter.NewBackends(cfg, memKeys{"openai": "sk-test"}, srv.Client(), 0, modeladapter.WithLocalDownloads())
+			adapter := modeladapter.New(cfg, backends)
+
+			out, err := adapter.GenerateImage(context.Background(), modeladapter.PurposeNewReference, modeladapter.ImageRequest{Prompt: "a bottle", AspectRatio: "16:9"})
+
+			require.NoError(t, err, "the image is paid for: it is returned")
+			assert.Equal(t, []byte("IMG"), out.Data)
+			assert.Nil(t, out.ActualCost, "the estimate stands")
+			assert.InDelta(t, 0.041, out.EstimatedCost, 1e-9)
+			assert.Equal(t, 1, calls, "not called again, and so not billed again")
+		})
+	}
+}
