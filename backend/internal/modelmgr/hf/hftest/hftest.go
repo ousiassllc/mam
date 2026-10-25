@@ -40,6 +40,10 @@ type Repo struct {
 	NFAA bool
 	// OldCommit is an earlier commit (same files) whose card does not carry the NFAA tag yet: the tag was added later.
 	OldCommit string
+	// HeadStatus, when not 0, is the status that revision/main answers (404, 500, 429, ...) while every other revision still works:
+	// the head cannot be read, so the tag the head carries is unknown. HeadMalformed answers 200 with a body that is not JSON.
+	HeadStatus    int
+	HeadMalformed bool
 	// License is cardData.license ("" for none); LicenseName and LicenseLink are the other card fields.
 	License, LicenseName, LicenseLink string
 	Downloads, Likes                  int64

@@ -72,6 +72,15 @@ func (s *Server) api(w http.ResponseWriter, r *http.Request) {
 	}
 	switch parts[2] {
 	case "revision":
+		if parts[3] == "main" && repo.HeadMalformed {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"id": "`))
+			return
+		}
+		if parts[3] == "main" && repo.HeadStatus != 0 {
+			writeJSON(w, repo.HeadStatus, map[string]string{"error": "the head cannot be read"})
+			return
+		}
 		s.revision(w, repo, parts[3])
 	case "tree":
 		s.tree(w, r, repo)

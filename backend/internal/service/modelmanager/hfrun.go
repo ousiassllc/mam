@@ -30,7 +30,11 @@ func (s *Service) runHFInstall(ctx context.Context, p hfplan.Payload, set func(t
 		return ErrAdultNotConfirmed
 	}
 	dest := s.Layout.ModelPath(p.Rel())
-	defer s.lockDests(p.Rel())()                                                                                      // held until the record is written: a job for the same file waits and then sees it
+	defer s.lockDests(p.Rel())() // held until the record is written: a job for the same file waits and then sees it
+	// The gate again: the wait for the lock lasts as long as another download, and the gate may have been closed meanwhile.
+	if p.NFAA && !s.AdultContentEnabled() {
+		return ErrAdultNotConfirmed
+	}
 	if err := errors.Join(s.Layout.CheckWritable(), s.hfError(hfplan.CheckDest(dest, p, s.recordedAt))); err != nil { // again: another install may have written the file while this one waited
 		return err
 	}
@@ -68,7 +72,11 @@ func (s *Service) runHFInstall(ctx context.Context, p hfplan.Payload, set func(t
 		if st.UserModels == nil {
 			st.UserModels = map[string]store.UserModel{}
 		}
-		st.UserModels[p.Rel()] = hfplan.Record(p, family, workflows, s.Now())
+		rec := hfplan.Record(p, family, workflows, s.Now())
+		if old, ok := st.UserModels[p.Rel()]; ok {
+			rec = hfplan.KeepEarlier(rec, old) // the same bytes again: an adult file does not become general
+		}
+		st.UserModels[p.Rel()] = rec
 	}); err != nil {
 		return err
 	}
