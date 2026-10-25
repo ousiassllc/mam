@@ -1,0 +1,63 @@
+package catalog_test
+
+import (
+	"strings"
+	"testing"
+
+	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex/catalog"
+)
+
+func TestDefaultIsValidAndPinsBothWindowsArchitectures(t *testing.T) {
+	c := catalog.Default()
+	if c.Version != "0.164.0" {
+		t.Fatalf("version = %q", c.Version)
+	}
+	for _, arch := range []string{"amd64", "arm64"} {
+		a, ok := c.AssetFor(arch)
+		if !ok {
+			t.Fatalf("no asset for %s", arch)
+		}
+		if !strings.HasSuffix(a.URL, ".exe.zip") || !strings.Contains(a.URL, "/releases/download/rust-v0.164.0/") {
+			t.Errorf("%s: url %q is not the pinned zip asset", arch, a.URL)
+		}
+	}
+	if _, ok := c.AssetFor("386"); ok {
+		t.Error("an architecture without a Windows build must have no asset")
+	}
+}
+
+func TestParseRejectsUnpinnedOrMalformedData(t *testing.T) {
+	base := catalog.Default()
+	good := base.Assets["amd64"]
+	cases := map[string]func(c *catalog.Catalog, a *catalog.Asset){
+		"tag of another version": func(c *catalog.Catalog, _ *catalog.Asset) { c.Tag = "rust-v0.1.0" },
+		"another host": func(_ *catalog.Catalog, a *catalog.Asset) {
+			a.URL = "https://example.com/openai/codex/releases/download/rust-v0.164.0/x.exe.zip"
+		},
+		"plain http": func(_ *catalog.Catalog, a *catalog.Asset) { a.URL = strings.Replace(a.URL, "https", "http", 1) },
+		"latest instead of tag": func(_ *catalog.Catalog, a *catalog.Asset) {
+			a.URL = "https://github.com/openai/codex/releases/latest/download/x.exe.zip"
+		},
+		"short sha":       func(_ *catalog.Catalog, a *catalog.Asset) { a.SHA256 = "abc" },
+		"no size":         func(_ *catalog.Catalog, a *catalog.Asset) { a.Size = 0 },
+		"exe with a path": func(_ *catalog.Catalog, a *catalog.Asset) { a.Exe = "../codex.exe" },
+	}
+	for name, mutate := range cases {
+		t.Run(name, func(t *testing.T) {
+			c := base
+			c.Assets = map[string]catalog.Asset{"amd64": good}
+			a := good
+			mutate(&c, &a)
+			c.Assets["amd64"] = a
+			if err := c.Validate(); err == nil {
+				t.Fatal("Validate accepted it")
+			}
+		})
+	}
+}
+
+func TestParseRefusesUnknownFields(t *testing.T) {
+	if _, err := catalog.Parse([]byte(`{"version":"1","unknown":true}`)); err == nil {
+		t.Fatal("an unknown field was accepted")
+	}
+}
