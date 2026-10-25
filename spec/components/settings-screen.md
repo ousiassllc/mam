@@ -52,7 +52,7 @@
 
 `/settings/llm`・`/settings/models`・`/settings/mcp`・`/settings/update` に GET は無い（PUT・DELETE・POST だけ）ので、新しく GET を足してよい。Gin v1.12.0 で、同じ位置の静的な `…/endpoints/new` とパラメーター `…/endpoints/:name`（と `:name/edit`・`:name/models/new`）が**同じメソッドで共存できる**ことを、使い捨てのプログラムで確かめた（`/new` は静的、`/foo` は `:name` に解決。`/endpoints/new/edit` は `:name=new` として解決）。
 
-- **要確認（未解決）**: 接続先の名前 `new` は `localcfg.ValidName` で有効（小文字・数字・`.` `_` `-`）。接続先のサブページを `GET /settings/local-models/endpoints/:name` に置くと、名前が `new` の接続先のサブページが、追加フォームの `GET …/endpoints/new` に隠れて開けない。**推奨**: 接続先の作成で名前 `new` を 422 にする。保存済みの設定にすでに `new` がある場合の扱い（サブページに行けない旨を一覧に出す）は実装のときに決める。決めるのは §11 の質問 6。
+- **決定済み・実装済み**: 接続先の名前 `new` は `localcfg.ValidName` で有効（小文字・数字・`.` `_` `-`）だが、接続先のサブページを `GET /settings/local-models/endpoints/:name` に置くと、名前が `new` の接続先のサブページは追加フォームの `GET …/endpoints/new` に隠れて開けない。**決定**（§11 の質問 6）: 接続先の作成で名前 `new` を 422 にする（`service/localmodels` の `ReservedEndpointName`）。保存済みの設定にすでに `new` がある場合は、サブページへのリンクを出さず、サブページが無い旨をカードに出す（②-5）。
 
 ### HTMX かどうかの分け方
 
@@ -116,7 +116,7 @@
 今は `molecules/format.go` の `refLinkOf` が `ref_type=settings` を `paths.Project(m.ProjectID, "settings")`（**プロジェクトの設定**。ディスク容量の警告から Take のアーカイブへ行く。唯一の発行元は `agent/generation/orchestrator.go` の `warnLowDisk`）に結んでいる。**全体の設定の分類へ案内する経路は無い**。
 
 - 案: 新しい `ref_type=global_settings`、`ref_id` に分類のスラッグ（`api-keys` など。未知・空は `/settings`）。`refLinkOf` に 1 つ `case` を足し、ラベルは分類ごと（例: 「API キーの設定を開く」）、リンクは `paths.SettingsCategory(slug)`。`chat_message.ref_type` は `TEXT`（CHECK 制約なし。`20260929000001_init_schema.sql`）なのでマイグレーションは要らない。`spec/architecture/er.md` の `ref_type` の説明と `domain/chat.go` の定数に足す。今の `settings`（プロジェクトの設定）は変えない。
-- **実装済み**（2026-10-25）: `domain.RefGlobalSettings`、`molecules/settings_link.go`（スラッグ → リンクの文言。未知・空は概要。`ref_id` から URL は作らない）。`er.md`（737 行）の `ref_type` の説明は、コミット前の行数の検査が 300 行を超えるファイルを通さないため、今回は更新していない（契約はこの節と `domain/chat.go` の定数のコメントにある）。
+- **実装済み**（2026-10-25）: `domain.RefGlobalSettings`、`molecules/settings_link.go`（スラッグ → リンクの文言。未知・空は概要。`ref_id` から URL は作らない）。`er.md`（738 行）の `ref_type` の説明は更新していない。文言を既存の行（`chat_message` の行）に足すだけで行数は増えないことを試したが、コミット前の検査（lefthook の `linterly` = `scripts/linterly-staged.sh`）は、コミットするファイルが 300 行を超えていれば、増減にかかわらず止める（`make lint-lines` の ratchet とは別の検査。`--no-verify` は使えない）。行数の ratchet は通るが、コミットできない。`er.md` の分割は Issue #850 で扱う。契約はこの節と `domain/chat.go` の定数のコメントにある。
 - この Issue で新しく発行する通知は**足さない**。経路の契約だけを決める。最初の利用者は、将来の「API キーが未設定です」のようなチャットの通知（今は無い）。§11 の質問 7。
 
 ## 7. 提供の段階（決定事項 11(a)・10(a)）
@@ -124,7 +124,7 @@
 | 段階 | 内容 | 主な変更 | デザインレビュー |
 |------|------|---------|------------------|
 | ① **実装済み** | ナビ・分類ごとの URL・概要。**中身は今の区画をそのまま**各分類のページに移す（フォーム・ルート・応答は変えない） | `pages/settings_pages.templ`・`molecules/settingsui`（`SettingsNav`）・`organisms/settings/overview/`・`handler/settingspage/`・`settingsroutes`・`SettingsSection` の見出しのレベル | ① の完成で 1024×700・1440×900 |
-| ②-1 **実装済み** | **モーダルの部品**と一覧の行の部品を作り、API キーのカードで使う（モーダルの担当は未決。#846 の決定事項 1 は #846 で作ると読める。[shared-ui-parts.md](shared-ui-parts.md) §8 の質問 7。ここは推奨する既定に沿って #847 で作る前提） | `molecules/modal/`・`static/src/components/modal/`・`organisms/settings/credentials/` | **部品の段階**で 1024×700・1440×900（決定事項 10(a) の 1 回目） |
+| ②-1 **実装済み** | **モーダルの部品**と一覧の行の部品を作り、API キーのカードで使う（モーダルの担当は #847 に決まった。[shared-ui-parts.md](shared-ui-parts.md) §8 の質問 7 の推奨どおり。#846 の決定事項 1 の「モーダル」は #847 が作る部品を使う） | `molecules/modal/`・`static/src/components/modal/`・`organisms/settings/credentials/` | **部品の段階**で 1024×700・1440×900（決定事項 10(a) の 1 回目） |
 | ②-2 **実装済み**（API キーのカードと接続テストを含む） | ChatGPT のログインをカードに（ログイン中の表示はモーダル）。#845 の Codex 経由は 3 つ目のカード（§9） | `organisms/settings/chatgpt/` | |
 | ②-3 **実装済み** | LLM の割り当て（Agent の表・Agent ごとの保存） | `organisms/settings/llm/`・`handler/settings/llm/`・`PUT`・`DELETE /settings/llm/agents/:agent`。旧 `organisms/llmassign/`・`handler/llmassign/` は消した | |
 | ②-4 **実装済み** | 画像・動画モデル（画像の用途の表・Quality Policy の表・行ごとのモーダルと保存） | `organisms/settings/media/`・`handler/settings/media/`・`PUT /settings/models/images/:purpose`・`…/policies/:policy`・`modelsettings.Service.SaveImage`・`SavePolicy`。旧 `organisms/modelassignment/`・`handler/modelassign/` は消し、ローカルのモデルの応答の `#model-assignment` の OOB を外した | |
@@ -155,7 +155,7 @@
 | `organisms/settings/overview/` | 概要のカード | 新規（`global_settings_body.templ` を置き換え） |
 | `organisms/settings/credentials/` | API キーのカード・モーダルの断片 | `organisms/credentialpanel/`（111 行）を作り直して消す |
 | `organisms/settings/chatgpt/` | ログインのカード・ログイン中のモーダル・モデル一覧のモーダル | `organisms/chatgptpanel/`（`panel.templ` 274 行・Codex 経由の `codex.templ` 218 行。1 ファイルの上限に近いのでカード・モーダル・データに分ける） |
-| `organisms/settings/llm/`・`media/`・`local/`・`mcp/`・`update/` | 各分類 | `llmassign/`・`modelassignment/`・`localmodels/`（②-5 で `settings/local/` に移した）・`mcppanel/`（②-6 で `settings/mcp/` に移した）・`updatepanel/` |
+| `organisms/settings/llm/`・`media/`・`local/`・`mcp/` | 各分類 | `llmassign/`・`modelassignment/`・`localmodels/`（②-5 で `settings/local/` に移した）・`mcppanel/`（②-6 で `settings/mcp/` に移した）。バージョンとアップデートは `organisms/updatepanel/` のまま動かしていない（`GET /settings/update` もこれを使う） |
 | `handler/settingspage/`・`handler/settings/<分類>/` | ページ・モーダルの断片・保存。`handler/` は基準値 2,895 行で上限を超え、増やせない | `handler/credential.go` の保存・削除は `handler/settings/credentials/` に移す |
 | `molecules/settingsui/`・`molecules/modal/` | ナビ・カード・表・モーダル | 新規 |
 
@@ -200,3 +200,4 @@
 | 0.5 | 2026-10-25 | 状態を「段階 ①・②-1・②-2 実装済み」にした（§7 の表に印）。実装: ナビ・概要・分類ごとのページ・モーダル・API キーとログイン。接続先の名前 `new` は 422（§11 の質問 6 の推奨）。ログインのカードの取り直しは `GET /settings/chatgpt/:kind/login?poll=1`（モーダル）とパネル全体の取り直しで行い、`card=<kind>` は使わなかった（`method` クエリは読まない） | Issue #847 の実装 |
 | 0.6 | 2026-10-25 | 状態を「段階 ①〜②-4 実装済み」にした（§7 の表に印）。実装: テキスト生成（LLM）と画像・動画モデルを表とモーダルに（`SettingsTable`）。1024×700 では「用途」の列を `lg` ではなく `xl` から出す（サイドナビで表が約 700 px に狭まり、`lg` ではモデル名が割れるため。[settings-screen-categories.md](settings-screen-categories.md) §2） | Issue #847 段階 ②-3・②-4 の実装 |
 | 0.7 | 2026-10-25 | 段階 ②-5（ローカル・代替モデル）と ②-6（MCP サーバー）を実装済みにした。チャットのリンク `ref_type=global_settings` の経路（契約だけ。通知は足さない）を §6 に実装済みと書いた。`localmodels`・`mcppanel` は `organisms/settings/local/`・`settings/mcp/`（と `handler/settings/local/`・`settings/mcp/`）に移した | Issue #847 の実装 |
+| 0.8 | 2026-10-25 | 古い記述を決定・実装に合わせた: §3 の名前 `new`（決定済み・実装済み）、§6 の `er.md` を更新しない理由（コミット前の検査は、増減に関わらず 300 行超のファイルを止める。ratchet とは別）、§7 ②-1 のモーダルの担当（#847 に決定）、§9 の `updatepanel`（移していない） | PR #849 の第 2 周の独立レビューの指摘 |

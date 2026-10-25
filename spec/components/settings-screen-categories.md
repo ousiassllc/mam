@@ -19,20 +19,20 @@
 | 状態 | `Badge`: 設定済み（ok）／未設定（neutral） |
 | ボタン | 未設定: 「設定」。設定済み: 「変更」「削除」（`ButtonFor` で `aria-label` に名前） |
 
-| provider | 何に使うキーか（案。`model-adapters.md` の節） | 接続テストの候補（読むだけで無料のもの） | 確認の状態 |
+| provider | 何に使うキーか（案。`model-adapters.md` の節） | 接続テスト（実装済み。呼び出しの詳細は [endpoints-settings.md](../api/endpoints-settings.md) §4） | 公式資料の確認（2026-10-25）と実キー |
 |----------|---------------------------------------------|----------------------------------------|------------|
-| `anthropic` | テキスト生成（Claude。§2） | `GET https://api.anthropic.com/v1/models`（`x-api-key`・`anthropic-version`） | **未確認**（広く知られた仕様だが、この仕様では一次資料を未読・実キーでは未実行） |
-| `openai` | テキスト生成（GPT-5 系）と画像生成（GPT Image 2。§2・§3） | `GET https://api.openai.com/v1/models`（`Authorization: Bearer`） | **未確認**（同上） |
-| `google` | テキスト生成（Gemini）と画像生成（Nano Banana。§2・§3） | `GET https://generativelanguage.googleapis.com/v1beta/models`（`x-goog-api-key`） | **未確認**（同上） |
-| `flux` | 画像生成（FLUX.2。§3） | `GET https://api.bfl.ai/v1/credits`（`x-key`。残高を読むだけ） | 公式ドキュメント（docs.bfl.ai「Get the user's credits」）に記載があると検索結果の要約で確認（2026-10-25）。**実キーでは未検証** |
-| `kling` | 動画生成（Kling 3.0。§4） | なし（キーは `ACCESS_KEY:SECRET_KEY` で、JWT を作って呼ぶ。読むだけの無料の API は**未確認**） | **未確認**→ 候補なし。「保存したあと、最初の生成で確かめられます」を出す |
-| `seedance` | 動画生成（Seedance 2.0。§4） | なし（BytePlus ModelArk。読むだけの無料の API は**未確認**） | **未確認**→ 候補なし |
-| `runway` | 動画生成（Runway Gen-4.5。§4） | `GET https://api.dev.runwayml.com/v1/organization`（`Authorization: Bearer`・`X-Runway-Version`。組織情報と残高を読むだけ） | 検索結果の要約で記載を確認（2026-10-25）。**実キーでは未検証**。`X-Runway-Version` の値は既存のアダプターに合わせる |
-| `elevenlabs` | 音声（TTS・Music・SFX。§5） | `GET https://api.elevenlabs.io/v1/user/subscription`（`xi-api-key`。契約の状態を読むだけ） | 公式ドキュメントの記載を検索結果の要約で確認（2026-10-25）。**実キーでは未検証** |
-| `synclabs` | Lip Sync（§5） | なし（**未確認**） | **未確認**→ 候補なし |
-| `typesafe` | Repair の前段選別（Jev。§4.5） | なし（`POST /v1/systemone` だけ。課金の有無は**未確認**） | **未確認**→ 候補なし |
+| `anthropic` | テキスト生成（Claude。§2） | `GET https://api.anthropic.com/v1/models?limit=1`（`x-api-key`・`anthropic-version`） | モデル一覧 API の記載を確認。**実キーでは未検証** |
+| `openai` | テキスト生成（GPT-5 系）と画像生成（GPT Image 2。§2・§3） | `GET https://api.openai.com/v1/models`（`Authorization: Bearer`） | 記載を確認。**実キーでは未検証** |
+| `google` | テキスト生成（Gemini）と画像生成（Nano Banana。§2・§3） | `GET https://generativelanguage.googleapis.com/v1beta/models?pageSize=1`（`x-goog-api-key`） | 記載を確認。**実キーでは未検証** |
+| `flux` | 画像生成（FLUX.2。§3） | `GET https://api.bfl.ai/v1/credits`（`x-key`。残高を読むだけ） | 公式の OpenAPI（`docs.bfl.ml`）に記載。**実キーでは未検証** |
+| `kling` | 動画生成（Kling 3.0。§4） | なし（キーは `ACCESS_KEY:SECRET_KEY` で、JWT を作って呼ぶ。読むだけの無料の API を公式資料で確認できなかった） | 候補なし。「保存したあと、最初の生成で確かめられます」を出す |
+| `seedance` | 動画生成（Seedance 2.0。§4） | なし（BytePlus ModelArk。読むだけの無料の API を公式資料で確認できなかった） | 候補なし。同上 |
+| `runway` | 動画生成（Runway Gen-4.5。§4） | `GET https://api.dev.runwayml.com/v1/organization`（`Authorization: Bearer`・`X-Runway-Version`。組織の残高と階層を読むだけ） | 公式の `api.md` に記載。**実キーでは未検証**。`X-Runway-Version` の値は endpoints-settings.md §4 |
+| `elevenlabs` | 音声（TTS・Music・SFX。§5） | `GET https://api.elevenlabs.io/v1/user/subscription`（`xi-api-key`。契約の状態を読むだけ） | 認証ヘッダーは公式の認証の頁、エンドポイントは記載を確認。**実キーでは未検証** |
+| `synclabs` | Lip Sync（§5） | なし（読むだけの無料の API を公式資料で確認できなかった） | 候補なし。同上 |
+| `typesafe` | Repair の前段選別（Jev。§4.5） | なし（`POST /v1/systemone` だけ。読むだけの無料の API を公式資料で確認できなかった） | 候補なし。同上 |
 
-- 候補は、決定事項 5(a)（無料で読むだけの API があるプロバイダーだけ）に沿った案。**どのプロバイダーに付けるかは、実装のときに公式ドキュメントを 1 つずつ確かめて決め、実キーでの動作は所有者の実機で確かめる（未検証）**。確認できないものには接続テストのボタンを出さず、「保存したあと、最初の生成で確かめられます」を出す。
+- 接続テストは、決定事項 5(a)（無料で読むだけの API があるプロバイダーだけ）に沿って付けた（上の 6 つ）。**実キーでの動作は所有者の実機で確かめる（未検証）**。公式資料で確認できなかった 4 つには接続テストのボタンを出さず、「保存したあと、最初の生成で確かめられます」を出す。
 - 「キーの取り方のリンク」（各社のコンソール）: anthropic `https://platform.claude.com/settings/keys`、google `https://aistudio.google.com/apikey`、flux `https://dashboard.bfl.ai`、runway `https://dev.runway.com`（公式の setup の頁で確認）、elevenlabs `https://elevenlabs.io/app/api/api-keys`（公式のクイックスタートで確認）。そのほかのプロバイダーはリンクを出さない（公式の取得先を確認できていない）。リンクは `target="_blank" rel="noopener noreferrer"`。接続テストの呼び出しとその結果の分類は [../api/endpoints-settings.md](../api/endpoints-settings.md) §4。
 
 ### 1.2 API キーのモーダル（`GET /settings/credentials/:provider/edit`）
@@ -55,7 +55,7 @@
 | 画像生成（非公式・既定 OFF） | ON/OFF とログインの状態。ON にするときのリスクの確認は今のまま（`acknowledge_risks`） | 「ON にする」「ログイン」「ログアウト」 |
 | Codex 経由（#845。**3 つ目**。実装済みの区画は `chatgptpanel/codex.templ`） | エンジンの状態（未取得・取得中・利用可・動作中・失敗）・`account/read` のメール・プラン・利用上限 | 「Codex をダウンロード」「中断」「パスを設定」「ブラウザでログイン」「デバイスコードでログイン」「状態と利用上限を更新」「ログアウト」「利用できるモデルを表示」（文言は今の区画のまま移す） |
 
-- 「ログイン」はモーダルを開き、ブラウザ／デバイスコードの選択（フォーム `method` = `browser` / `device`）→ 開始 → 途中の表示（認可 URL・確認 URL・コード・期限）を**モーダルの中**に出す。ログイン中の 2 秒ごとの取り直し（`hx-trigger="every 2s"`）は、モーダルの本文が自分を取り直す形（HTMX の `GET /settings/chatgpt`）。取り直しのクエリは、今の `GET /settings/chatgpt` が持つ `method`（`official` / `codex`。#845。取り直しでも保つ）を使う。**公式・Codex の 2 つはこの `method` で足りるが、画像生成（非公式。`image`）は `method` では指せない**。カードごとに取り直すための新しいクエリ（案: `card=<kind>`。`kind` は `official` / `image` / `codex`）を足すか、`method` を `kind` に置き換えるかは未決（[settings-screen-routes.md](settings-screen-routes.md) §6 の質問 5）。完了・取り消しでモーダルを閉じ、カードの行を OOB で差し替える。
+- 「ログイン」はモーダルを開き（`GET /settings/chatgpt/:kind/login`。`:kind` は `official` / `image` / `codex`）、ブラウザ／デバイスコードの選択（フォーム `method` = `browser` / `device`）→ 開始 → 途中の表示（認可 URL・確認 URL・コード・期限）を**モーダルの中**に出す。ログイン中の 2 秒ごとの取り直し（`hx-trigger="every 2s"`）は、モーダルの本文が自分の URL（`GET /settings/chatgpt/:kind/login?poll=1`）を取り直す形。今の `GET /settings/chatgpt` のクエリ `method`（`official` / `codex`。#845）は取り直しに使わず、`card=<kind>` も足さない（[settings-screen-routes.md](settings-screen-routes.md) §6 の質問 5。決定済み）。完了・取り消しでモーダルを閉じ、カードの行を OOB で差し替える。
 - 「利用できるモデルを表示」の結果は、小さなモーダル（読み取りだけ）に出す（今は区画の下にインラインで出す）。
 - ログインのモーダルの詳細（デバイスコードの表示の文言・期限切れ・取り消し）は、今の `chatgptpanel` の文言を移す。変えない。
 - **#845 との関係**: #845 は 3 つ目の区画と、その状態・ログインの処理を足した（実装済み）。このカードの枠・モーダルの部品・ルートの置き場（`organisms/settings/chatgpt/`）は #847 が作る。#845 の仕組み（取得・起動・`account/*`）は触らない。
@@ -111,7 +111,7 @@
 - 「トークンを発行」（表の上）→ モーダル（`GET /settings/mcp/tokens/new`）: 名前の欄（`MaxNameLen`）と「発行」。`POST /settings/mcp/tokens`: 成功は **201 で、同じモーダルの本文を「発行したトークン」の表示に差し替え**（`HX-Trigger-After-Swap` は付けない。モーダルを閉じない）、トークンの値を**この応答に 1 回だけ**入れ（`Cache-Control: no-store`）、「コピー」ボタン（`navigator.clipboard`。失敗時は欄を選択状態にして手動のコピーを案内）と、`role="status"` の「コピーしました」。表の新しい行は同じ応答の OOB（`beforeend:#mcp-token-list`）で足す（値は載せない。先頭 8 文字だけ）。
 - トークンの表示は `readonly` の `<input>`（`aria-label`「発行したトークン」）に入れ、モーダルを**閉じると本文ごと消す**（二度と出さない。今の決まりのまま）。閉じる前に「このトークンはもう表示されません」の注意を出す。履歴のスナップショットにも残さない（shared-ui-parts §4）。名前が不正なら 422（入力を残す）。
 - 発行の応答を返したあとに再読み込み・戻るをしても、トークンは出ない（今と同じ）。
-- **実装の注記**（2026-10-25。実機の Chromium で確かめた）: コピーのボタンは `data-copy-source`（欄の id）・`data-copy-status`（`role="status"` の行）を持ち、`static/src/components/copy/` が押下を聞く。クリップボードが使えないときは欄を選択状態にして手動のコピーを案内する。トークンの表の行（`<tr>`）と `<tbody>` の OOB は `<template>` に包む（[../api/endpoints-settings.md](../api/endpoints-settings.md) §5.1）。失効したあとは行（`<tr tabindex="-1">`）にフォーカスが移る（押したボタンが消えるため）。待ち受け先のモーダルは `datalist` つきの 1 欄で、保存済みのアドレスが入る。 Windows 版（WebView2）での `navigator.clipboard` によるコピーは**未検証**（実機が要る。使えないときは欄を選択して手動のコピーを案内する）。
+- **実装の注記**（2026-10-25。ヘッドレスの Chromium（Linux）で確かめた）: コピーのボタンは `data-copy-source`（欄の id）・`data-copy-status`（`role="status"` の行）を持ち、`static/src/components/copy/` が押下を聞く。クリップボードが使えないときは欄を選択状態にして手動のコピーを案内する。トークンの表の行（`<tr>`）と `<tbody>` の OOB は `<template>` に包む（[../api/endpoints-settings.md](../api/endpoints-settings.md) §5.1）。失効したあとは行（`<tr tabindex="-1">`）にフォーカスが移る（押したボタンが消えるため）。待ち受け先のモーダルは `datalist` つきの 1 欄で、保存済みのアドレスが入る。 Windows 版（WebView2）での `navigator.clipboard` によるコピーは**未検証**（実機が要る。使えないときは欄を選択して手動のコピーを案内する）。
 
 ## 5. ローカル・代替モデル（`/settings/local-models`）
 
@@ -123,7 +123,7 @@
 - API キーの行（接続先ごと）は、カードの中の小さな行として今の `#local-key-row-<name>` を残す（キーの保存・削除は今のルート。モーダルにするかは §7 の質問 5）。
 - **サブページ**（`GET /settings/local-models/endpoints/:name`）: 接続先の概要（カードと同じ内容）と、モデルの表（名前・種類（画像／動画）・モデル ID・使用中の場所）。「モデルを追加」（今の 2 段階のフォームを入れる。ComfyUI のテンプレート／ワークフロー JSON の選択 → 割り当て表は項目が多く長い作業のため、**このサブページの中に開く**。モーダルにしない）・モデルごとの「編集」「削除」。ナビの現在の分類は「ローカル・代替モデル」、見出しは h2「ローカル・代替モデル」の下に h3 で接続先名。パンくず（「← ローカル・代替モデルに戻る」）を最上部に置く。
 - 名前が無い接続先の URL は 404。HTMX でない `GET` はページ全体、HTMX は断片（settings-screen.md §3 と同じ）。
-- **実装の注記**（2026-10-25。実機の Chromium で確かめた）:
+- **実装の注記**（2026-10-25。ヘッドレスの Chromium（Linux）で確かめた）:
   - カードの行 `id` は `local-endpoint-<名前>`、一覧は `#local-endpoints`（`<ul>`）、「接続先はまだ…」の文は `#local-endpoints-empty`。接続の状態は「未確認」で、「接続テスト」の結果が `#local-test-<名前>` に入る。カードの要約は「同時実行・タイムアウト・モデル n 件」。
   - 追加・編集のモーダルの保存は、カードの OOB（追加は一覧の末尾に足す）とトースト。名前の重複は 409、入力の誤りは 422 で、モーダルに理由と入力値（API キーを除く）。サブページで開いた編集（`?page=1`）は、サブページ先頭の概要のカード（削除ボタンとモデルへのリンクが無い形。接続先をここで削除すると開いているページが無くなるため）を置き換える。
   - 削除（接続先・モデル）は、押したボタンのある一覧（`<ul>`・`<tbody>`）の中身を、残りのカードや行で置き換える（フォーカスの戻りのため。対象の要素そのものを消すと `htmx:afterSwap` が文書まで届かず、フォーカスが `<body>` に落ちる）。使用中は 422 のトースト。
@@ -158,3 +158,4 @@
 | 0.5 | 2026-10-25 | §1 を実装済みにした。§1.1 の接続テストの表の「確認の状態」を、公式資料で確かめた結果（6 つに接続テスト、4 つは候補なし）と、実キーでは未検証であることに書き直し、キーの取り方のリンクの URL を書いた。成功の通知はトースト（決定事項どおり） | Issue #847 の実装 |
 | 0.6 | 2026-10-25 | §2・§3 を実装済みにした。§2 の「用途」の列を `lg:` から `xl:` にした（1024×700 の実画面で比べた結果）。実装の形（行の保存・`#model-status`・全体の保存の残し方）を足した | Issue #847 段階 ②-3・②-4 の実装 |
 | 0.7 | 2026-10-25 | §4（MCP）・§5（ローカル・代替モデル）を実装済みにし、実装の注記（行の `id`・削除の応答の形・サブページで開いた編集・名前 `new`・コピーのボタン）を足した | Issue #847 ②-5・②-6 |
+| 0.8 | 2026-10-25 | §1.1 の接続テストの表を、実装した接続テストと公式資料の確認（endpoints-settings.md §4）に合わせた。§1.3 のログインの取り直しは、`card=<kind>` を足さずモーダルが自分の URL を取り直す形に直した。「実機の Chromium」を「ヘッドレスの Chromium（Linux）」に直した | PR #849 の第 2 周の独立レビューの指摘 |
