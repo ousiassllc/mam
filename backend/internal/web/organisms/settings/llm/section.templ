@@ -77,7 +77,8 @@ func columns(pinned bool) []settingsui.Column {
 	return cols
 }
 
-// purposeClass hides the purpose column of a narrow window: the purpose is then under the name of the Agent.
+// purposeClass hides the purpose column of a window narrower than xl: the side navigation takes a fifth of a 1024 px window,
+// and the cells of a column that narrow break the names of the models, so the purpose is then under the name of the Agent.
 const purposeClass = "hidden xl:table-cell"
 
 // RowOOB is the row of an Agent as the answer of a save: it replaces the row with its id out of band. Put it first in the
@@ -95,13 +96,13 @@ templ row(r Row, pinned, oob bool) {
 		@settingsui.Cell(purposeClass + " text-neutral-400") {
 			{ r.Purpose }
 		}
-		@settingsui.Cell("") {
+		@settingsui.Cell("min-w-40") {
 			{ r.Primary.Summary() }
 		}
-		@settingsui.Cell("") {
+		@settingsui.Cell("min-w-40") {
 			{ r.Fallback.Summary() }
 		}
-		@settingsui.Cell("") {
+		@settingsui.Cell("whitespace-nowrap") {
 			<span class="flex flex-col items-start gap-1">
 				if r.Customized() {
 					@atoms.Badge(atoms.BadgeInfo, "変更あり")
@@ -114,7 +115,7 @@ templ row(r Row, pinned, oob bool) {
 			</span>
 		}
 		if !pinned {
-			@settingsui.Cell("") {
+			@settingsui.Cell("whitespace-nowrap") {
 				@atoms.SmallButtonFor(atoms.ToneNeutral, "編集", r.Label, modal.OpenAttrs(paths.LLMAgentEdit(r.Agent), FocusKey(r.Agent)))
 			}
 		}

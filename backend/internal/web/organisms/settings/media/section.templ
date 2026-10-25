@@ -77,6 +77,9 @@ templ Status(d Data, oob bool) {
 	</div>
 }
 
+// modelCell keeps the name of a model from being broken into pieces by a row head that takes the width.
+const modelCell = "min-w-36"
+
 func imageColumns(pinned bool) []settingsui.Column {
 	cols := []settingsui.Column{{Header: "用途"}, {Header: "主モデル"}, {Header: "代替モデル"}}
 	if !pinned {
@@ -106,21 +109,21 @@ templ PolicyRowOOB(r PolicyRow) {
 
 templ imageRow(r ImageRow, pinned, oob bool) {
 	@settingsui.TableRowItem(settingsui.TableRow{ID: ImageRowID(r.Purpose), TestID: "model-assignment-image", Attrs: templ.Attributes{"data-purpose": r.Purpose}, OOB: oob}) {
-		@settingsui.RowHead("") {
+		@settingsui.RowHead("max-w-sm") {
 			{ r.Label }
 			<span class="mt-1 block text-xs font-normal text-neutral-400">{ r.Hint }</span>
 			if r.ReferenceNote != "" {
 				<span class="mt-1 block text-xs font-normal text-amber-300" role="status" data-testid="model-assignment-reference-note">{ r.ReferenceNote }</span>
 			}
 		}
-		@settingsui.Cell("") {
+		@settingsui.Cell(modelCell) {
 			@imageTarget(r.Primary)
 		}
-		@settingsui.Cell("") {
+		@settingsui.Cell(modelCell) {
 			@imageTarget(r.Fallback)
 		}
 		if !pinned {
-			@settingsui.Cell("") {
+			@settingsui.Cell("whitespace-nowrap") {
 				@atoms.SmallButtonFor(atoms.ToneNeutral, "編集", r.Label, modal.OpenAttrs(paths.ModelImageEdit(r.Purpose), ImageFocusKey(r.Purpose)))
 			}
 		}
@@ -142,17 +145,17 @@ templ policyRow(r PolicyRow, pinned, oob bool) {
 		@settingsui.RowHead("") {
 			{ r.Label }
 		}
-		@settingsui.Cell("") {
+		@settingsui.Cell(modelCell) {
 			@policyTarget(r.Primary, r.PrimaryUnusable)
 		}
-		@settingsui.Cell("") {
+		@settingsui.Cell(modelCell) {
 			@policyTarget(r.Fallback, r.FallbackUnusable)
 		}
 		@settingsui.Cell("") {
 			{ strconv.Itoa(r.Takes) }
 		}
 		if !pinned {
-			@settingsui.Cell("") {
+			@settingsui.Cell("whitespace-nowrap") {
 				@atoms.SmallButtonFor(atoms.ToneNeutral, "編集", r.Label, modal.OpenAttrs(paths.ModelPolicyEdit(r.Policy), PolicyFocusKey(r.Policy)))
 			}
 		}

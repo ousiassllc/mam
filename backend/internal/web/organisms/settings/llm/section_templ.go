@@ -236,7 +236,8 @@ func columns(pinned bool) []settingsui.Column {
 	return cols
 }
 
-// purposeClass hides the purpose column of a narrow window: the purpose is then under the name of the Agent.
+// purposeClass hides the purpose column of a window narrower than xl: the side navigation takes a fifth of a 1024 px window,
+// and the cells of a column that narrow break the names of the models, so the purpose is then under the name of the Agent.
 const purposeClass = "hidden xl:table-cell"
 
 // RowOOB is the row of an Agent as the answer of a save: it replaces the row with its id out of band. Put it first in the
@@ -318,7 +319,7 @@ func row(r Row, pinned, oob bool) templ.Component {
 				var templ_7745c5c3_Var12 string
 				templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(r.Label)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/llm/section.templ`, Line: 92, Col: 12}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/llm/section.templ`, Line: 93, Col: 12}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 				if templ_7745c5c3_Err != nil {
@@ -331,7 +332,7 @@ func row(r Row, pinned, oob bool) templ.Component {
 				var templ_7745c5c3_Var13 string
 				templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(r.Purpose)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/llm/section.templ`, Line: 93, Col: 86}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/llm/section.templ`, Line: 94, Col: 86}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 				if templ_7745c5c3_Err != nil {
@@ -366,7 +367,7 @@ func row(r Row, pinned, oob bool) templ.Component {
 				var templ_7745c5c3_Var15 string
 				templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(r.Purpose)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/llm/section.templ`, Line: 96, Col: 14}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/llm/section.templ`, Line: 97, Col: 14}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 				if templ_7745c5c3_Err != nil {
@@ -397,7 +398,7 @@ func row(r Row, pinned, oob bool) templ.Component {
 				var templ_7745c5c3_Var17 string
 				templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(r.Primary.Summary())
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/llm/section.templ`, Line: 99, Col: 24}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/llm/section.templ`, Line: 100, Col: 24}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 				if templ_7745c5c3_Err != nil {
@@ -405,7 +406,7 @@ func row(r Row, pinned, oob bool) templ.Component {
 				}
 				return nil
 			})
-			templ_7745c5c3_Err = settingsui.Cell("").Render(templ.WithChildren(ctx, templ_7745c5c3_Var16), templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = settingsui.Cell("min-w-40").Render(templ.WithChildren(ctx, templ_7745c5c3_Var16), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -428,7 +429,7 @@ func row(r Row, pinned, oob bool) templ.Component {
 				var templ_7745c5c3_Var19 string
 				templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(r.Fallback.Summary())
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/llm/section.templ`, Line: 102, Col: 25}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/llm/section.templ`, Line: 103, Col: 25}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 				if templ_7745c5c3_Err != nil {
@@ -436,7 +437,7 @@ func row(r Row, pinned, oob bool) templ.Component {
 				}
 				return nil
 			})
-			templ_7745c5c3_Err = settingsui.Cell("").Render(templ.WithChildren(ctx, templ_7745c5c3_Var18), templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = settingsui.Cell("min-w-40").Render(templ.WithChildren(ctx, templ_7745c5c3_Var18), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -483,7 +484,7 @@ func row(r Row, pinned, oob bool) templ.Component {
 				}
 				return nil
 			})
-			templ_7745c5c3_Err = settingsui.Cell("").Render(templ.WithChildren(ctx, templ_7745c5c3_Var20), templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = settingsui.Cell("whitespace-nowrap").Render(templ.WithChildren(ctx, templ_7745c5c3_Var20), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -510,7 +511,7 @@ func row(r Row, pinned, oob bool) templ.Component {
 					}
 					return nil
 				})
-				templ_7745c5c3_Err = settingsui.Cell("").Render(templ.WithChildren(ctx, templ_7745c5c3_Var21), templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = settingsui.Cell("whitespace-nowrap").Render(templ.WithChildren(ctx, templ_7745c5c3_Var21), templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
