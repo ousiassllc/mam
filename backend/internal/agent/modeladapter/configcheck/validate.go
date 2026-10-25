@@ -29,6 +29,7 @@ func Load(path string) (modeladapter.Config, error) {
 	if err := Validate(cfg); err != nil {
 		return modeladapter.Config{}, fmt.Errorf("model config %s: %w", path, err)
 	}
+	warnUnpricedGPTImage2(cfg)
 	return cfg, nil
 }
 
