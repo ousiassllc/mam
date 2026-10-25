@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	service "github.com/ousiassllc/mam/backend/internal/service/workflows"
-	localview "github.com/ousiassllc/mam/backend/internal/web/organisms/localmodels"
+	localview "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/local"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/workflows"
 )
 

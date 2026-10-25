@@ -11,6 +11,7 @@
 - **`--model-config` で固定されたファイルは読めるが変更できない**: 接続先・モデルの作成・変更・削除は `conflict`（「起動オプション（--model-config）で固定されている…」）。`list_*` の `pinned` が `true`。API キーの保存・削除と接続テストは固定でも使える。
 - **API キーは返さない**: 接続先は `api_key.configured` と `last_chars`（末尾数文字。短いキーは空）だけを返す。キーは `credential.Store`（ベンダー名 `endpoint:<名前>`）に保存し、`models.json` に入らない。
 - **リンクローカル**（`169.254.0.0/16`・`fe80::/10`）の `base_url` は常に `validation`。接続テストも同じメッセージを返す。
+- **接続先の入力の検証の文言は日本語だけ**（画面と同じ。1 問題 1 行。値や英語の項目名、英語の補足は含まない）。MCP の呼び出し元もこの文言を受け取る（以前の英語の補足は無い）。
 - 使用中のモデル（画像の用途・Quality Policy に割り当て済み）と、そのモデルを持つ接続先は削除できない（`validation`。メッセージに `images.new_reference.primary` のような使用箇所が入る）。
 - **割り当ては既存の `set_model_assignment`**（[mcp-tools-settings-policy.md](mcp-tools-settings-policy.md)）で行う。`model` に識別子（`comfyui:gpu/wan`・`openai-compat:lm/flux`）を渡せ、`get_global_settings` の `models.image_models` / `video_models`（と動画の解像度）に登録済みのモデルが加わる。保存はすぐに反映される（モデルの割り当ては再起動を待たない。LLM の割り当ては従来どおり再起動後）。
 - **生成は既存の生成ツール**（`generate_shot` ほか。`job_id` を返し、`get_job` で進捗・結果を取る）。ローカルモデルで作った Take の `model_name` と Cost Ledger の `provider` に識別子が残る（見積コストは既定 0 USD、0 でも行は書く）。専用の生成ツールは無い。
@@ -22,7 +23,7 @@
 |--------|------|------|------|----------|
 | `list_local_endpoints` | 登録済みの接続先の一覧 | なし | `pinned`, `endpoints[]`（`name`, `kind`, `base_url`, `max_concurrency`, `timeout_seconds`（既定を反映した値）, `api_key`（`configured`, `last_chars`）, `models[]`（識別子）） | はい |
 | `get_local_endpoint` | 接続先 1 件 | `name` | `list_local_endpoints` の 1 件 | はい |
-| `create_local_endpoint` | 接続先を登録する（すぐに効く） | `name`（英小文字・数字・`.` `_` `-` の 1〜63 文字）, `kind`（`comfyui` / `openai-compat`）, `base_url`, `max_concurrency?`（既定 1）, `timeout_seconds?`（ComfyUI 3600・互換 900）, `api_key?` | 接続先 | いいえ |
+| `create_local_endpoint` | 接続先を登録する（すぐに効く） | `name`（英小文字・数字・`.` `_` `-` の 1〜63 文字。`new` は設定画面の追加フォームの URL と同じなため 422）, `kind`（`comfyui` / `openai-compat`）, `base_url`, `max_concurrency?`（既定 1）, `timeout_seconds?`（ComfyUI 3600・互換 900）, `api_key?` | 接続先 | いいえ |
 | `update_local_endpoint` | `base_url`・同時実行数・タイムアウトを変える（省略した数は既定に戻る）。冪等 | `name`, `base_url`, `max_concurrency?`, `timeout_seconds?` | 接続先 | いいえ |
 | `delete_local_endpoint` | 接続先・そのモデル・API キーを削除する | `name` | `name` | いいえ（破壊的） |
 | `test_local_endpoint` | 接続テスト。`name` だけなら保存済み、`kind`＋`base_url`（＋`api_key`、保存しない）なら未保存の内容を試す。`name` と一緒に渡すとその名前の保存済みキーを使う。ComfyUI は `/system_stats`（バージョン・GPU）、互換は `/v1/models`（件数。無ければ「到達できる」の注意付き成功）。到達できないのは `ok=false` の結果 | `name?` / `kind?`, `base_url?`, `api_key?` | `ok`, `message`, `note`, `version`, `models[]`（20 件まで） | はい（外部への接続） |
@@ -45,3 +46,5 @@
 | 版 | 日付 | 変更内容 | 変更理由 |
 |----|------|---------|---------|
 | 1.0 | 2026-10-25 | 新規作成。接続先・API キー・接続テスト・テンプレート・ワークフローの取り込み・モデルの 15 ツールと方針 | Issue #831。ローカル・代替モデルの操作を MCP から行えるようにする（#830 の方針: 画面の全操作を MCP で操作できる。キーは設定済みと末尾だけ） |
+| 1.1 | 2026-10-25 | `create_local_endpoint` の `name` に `new` を使えない（422）ことを書いた | Issue #847。設定画面の接続先のサブページ `/settings/local-models/endpoints/:name` が追加フォームの `…/endpoints/new` に隠れないようにするため |
+| 1.2 | 2026-10-25 | 接続先の入力の検証の文言（`create_local_endpoint`・`update_local_endpoint`・`test_local_endpoint` の `validation`）は、画面と同じ**日本語だけ**の 1 問題 1 行になった（値や英語の項目名、リンクローカルの英語の補足は含まない）。MCP など画面でない呼び出し元も同じ文言を受け取る。検証の意味（名前・種類・`base_url`・同時実行数・タイムアウトの条件と順序）は変わらない | PR #849 第 2 周のレビューの指摘。設定画面の接続先のモーダルが、利用者向けの日本語の理由を出すようにしたため |

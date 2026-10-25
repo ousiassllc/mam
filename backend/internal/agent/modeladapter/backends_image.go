@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/aspectsize"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/gptimage"
 )
 
 // The vendors' request formats below are the published ones at the time of writing
@@ -88,8 +89,11 @@ func (b geminiImageBackend) GenerateImage(ctx context.Context, apiModel string, 
 	return ImageResult{}, b.empty("image (the prompt may have been filtered)")
 }
 
-// openAIImageBackend calls GPT Image (images/generations, and images/edits with references).
-type openAIImageBackend struct{ api }
+// openAIImageBackend calls GPT Image (images/generations, edits with references) with the quality profile (§9.2).
+type openAIImageBackend struct {
+	api
+	quality gptimage.Quality
+}
 
 func (b openAIImageBackend) GenerateImage(ctx context.Context, apiModel string, req ImageRequest) (ImageResult, error) {
 	key, err := b.key()
@@ -99,7 +103,7 @@ func (b openAIImageBackend) GenerateImage(ctx context.Context, apiModel string, 
 	auth := map[string]string{"Authorization": "Bearer " + key}
 	var data []byte
 	if len(req.Inputs) == 0 {
-		body, _ := json.Marshal(map[string]any{"model": apiModel, "prompt": req.Prompt, "size": aspectsize.OpenAI(req.AspectRatio), "n": 1})
+		body, _ := json.Marshal(map[string]any{"model": apiModel, "prompt": req.Prompt, "size": aspectsize.OpenAI(req.AspectRatio), "quality": b.quality, "n": 1})
 		data, err = b.request(ctx, http.MethodPost, b.baseURL+"/v1/images/generations", jsonHeader(auth), body, maxJSONBytes)
 	} else {
 		var buf bytes.Buffer
@@ -107,6 +111,7 @@ func (b openAIImageBackend) GenerateImage(ctx context.Context, apiModel string, 
 		_ = w.WriteField("model", apiModel)
 		_ = w.WriteField("prompt", req.Prompt)
 		_ = w.WriteField("size", aspectsize.OpenAI(req.AspectRatio))
+		_ = w.WriteField("quality", string(b.quality))
 		for i, in := range req.Inputs {
 			h := textproto.MIMEHeader{}
 			h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="image[]"; filename="input%d%s"`, i, extFor(in.MimeType)))
@@ -130,6 +135,7 @@ func (b openAIImageBackend) GenerateImage(ctx context.Context, apiModel string, 
 		Data []struct {
 			B64 string `json:"b64_json"`
 		} `json:"data"`
+		Usage json.RawMessage `json:"usage"` // decoded apart (gptimage.ParseUsage): a bad usage must not lose the image
 	}
 	if err := unmarshal(b.api, data, &out); err != nil {
 		return ImageResult{}, err
@@ -141,7 +147,7 @@ func (b openAIImageBackend) GenerateImage(ctx context.Context, apiModel string, 
 	if err != nil {
 		return ImageResult{}, err
 	}
-	return ImageResult{Data: img, MimeType: "image/png"}, nil
+	return ImageResult{Data: img, MimeType: "image/png", ActualCost: gptimage.ActualCost(apiModel, gptimage.ParseUsage(out.Usage))}, nil
 }
 
 // fluxBackend calls FLUX.2 (Black Forest Labs API): submit, poll the returned URL, download.

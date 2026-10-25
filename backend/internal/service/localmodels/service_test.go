@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -168,6 +169,19 @@ func TestInvalidInputWritesNothing(t *testing.T) {
 	assert.Equal(t, before, after)
 }
 
+// An endpoint called "new" would be hidden behind the address of the form that adds one, so it is refused for good.
+func TestCreateEndpoint_RefusesTheNameThatIsTheAddressOfTheAddForm(t *testing.T) {
+	r := newRig(t, false, "")
+	var invalid *localmodels.InvalidError
+
+	err := r.svc.CreateEndpoint(context.Background(), localmodels.EndpointInput{Name: "new", Kind: localcfg.KindComfyUI, BaseURL: "http://127.0.0.1:8188"})
+
+	require.ErrorAs(t, err, &invalid)
+	assert.Contains(t, invalid.Message, "「new」")
+	assert.NoFileExists(t, r.path, "nothing is written")
+	require.NoError(t, r.svc.CreateEndpoint(context.Background(), localmodels.EndpointInput{Name: "news", Kind: localcfg.KindComfyUI, BaseURL: "http://127.0.0.1:8188"}), "only the exact name")
+}
+
 func TestPinnedFileIsNeverWritten(t *testing.T) {
 	r := newRig(t, true, `{"endpoints":{"box":{"kind":"comfyui","base_url":"http://127.0.0.1:8188"}}}`)
 	before, _ := os.ReadFile(r.path)
@@ -265,3 +279,37 @@ func TestOtherKeysOfTheFileAreKept(t *testing.T) {
 }
 
 func errOf(_ localmodels.ImportedWorkflow, err error) error { return err }
+
+// The reason of a refused endpoint is for the screen: Japanese, one line per problem, with no prefix of the settings file's
+// check ("endpoints box: ...") and no raw field names.
+func TestInvalidEndpointIsRefusedInPlainJapanese(t *testing.T) {
+	r := newRig(t, false, "")
+	var invalid *localmodels.InvalidError
+
+	err := r.svc.CreateEndpoint(context.Background(), localmodels.EndpointInput{Name: "Bad Name", Kind: localcfg.KindComfyUI, BaseURL: "http://169.254.169.254"})
+
+	require.ErrorAs(t, err, &invalid)
+	lines := strings.Split(invalid.Message, "\n")
+	require.Len(t, lines, 2, "one line per problem: %q", invalid.Message)
+	assert.Contains(t, lines[0], "名前は")
+	assert.Contains(t, lines[1], "リンクローカル")
+	for _, raw := range []string{"endpoints", "base_url", "must be", "cannot be used"} {
+		assert.NotContains(t, invalid.Message, raw)
+	}
+
+	for name, c := range map[string]struct {
+		in   localmodels.EndpointInput
+		want string
+	}{
+		"kind":        {localmodels.EndpointInput{Name: "box", Kind: "x", BaseURL: "http://127.0.0.1:8188"}, "種類は"},
+		"shape":       {localmodels.EndpointInput{Name: "box", Kind: localcfg.KindComfyUI, BaseURL: "127.0.0.1"}, "http://127.0.0.1:8188 のような形"},
+		"scheme":      {localmodels.EndpointInput{Name: "box", Kind: localcfg.KindComfyUI, BaseURL: "ftp://127.0.0.1"}, "http:// か https://"},
+		"parts":       {localmodels.EndpointInput{Name: "box", Kind: localcfg.KindComfyUI, BaseURL: "http://u:p@127.0.0.1"}, "ユーザー名"},
+		"concurrency": {localmodels.EndpointInput{Name: "box", Kind: localcfg.KindComfyUI, BaseURL: "http://127.0.0.1:8188", MaxConcurrency: 65}, "同時実行数は 1〜64"},
+		"timeout":     {localmodels.EndpointInput{Name: "box", Kind: localcfg.KindComfyUI, BaseURL: "http://127.0.0.1:8188", TimeoutSeconds: 86401}, "タイムアウトは 1〜86400"},
+	} {
+		require.ErrorAs(t, r.svc.CreateEndpoint(context.Background(), c.in), &invalid, name)
+		assert.Equal(t, 1, strings.Count(invalid.Message, "。"), name+": %q", invalid.Message)
+		assert.Contains(t, invalid.Message, c.want, name)
+	}
+}

@@ -1,11 +1,14 @@
 // Package modelmgr holds the MCP tools of the model manager screen (/model-manager): the bundled ComfyUI engine, the
-// catalog of local image and video models with its license acceptance, the optional Hugging Face token and the read-only
+// catalog of local image and video models with its license acceptance, the import of .safetensors files from Hugging Face
+// (hf.go: search_hf_models, get_hf_model_files, install_hf_file, list_user_models, delete_user_model; the service pins the
+// commit and checks the terms, the age gate and the SHA-256), the optional Hugging Face token and the read-only
 // view of an external ComfyUI (spec/api/mcp-tools-model-manager.md, spec/architecture/model-manager/model-manager.md).
 // The generation test (which the trial generations of the model manager screen run through) is package gentest.
 //
 // The tools call the same modelmanager.Service as the screen, so the same checks hold: a model whose license needs an
 // acceptance is not installed without a record of it (install_model answers "conflict" until accept_model_license ran,
-// or the call carries the acceptance), the engine is Windows only, a pinned model file refuses installs. The long
+// or the call carries the acceptance), an adult model is neither listed nor installed until the age confirmation is on record
+// (set_adult_content; the tools never confirm on the user's behalf), the engine is Windows only, a pinned model file refuses installs. The long
 // operations (install_model_engine, install_model) answer with a job_id; get_job reads the job through the Probe of the
 // job kind "model_install". No tool returns the Hugging Face token: a read gives whether it is set and its last characters.
 package modelmgr
@@ -31,7 +34,9 @@ func Register(r *mcpkit.Registrar, svc *service.Services) {
 	r.Jobs.RegisterKind(KindModelInstall, h.probe)
 	registerEngine(r, h)
 	registerCatalog(r, h)
+	registerAdult(r, h)
 	registerExtras(r, h)
+	registerHF(r, h)
 }
 
 type handlers struct {
@@ -101,7 +106,7 @@ func ProgressOf(st modelmanager.JobStatus) mcpkit.Progress {
 type JobOutput struct {
 	mcpkit.JobRef
 	Existing bool   `json:"existing,omitempty" jsonschema:"同じ対象の導入がすでに動いていたので、新しいジョブは作らずそれを返した / the same install was already running"`
-	Target   string `json:"target" jsonschema:"engine または model:<catalog id>"`
+	Target   string `json:"target" jsonschema:"engine・model:<catalog id>・hf:<repo>@<commit>/<path>"`
 }
 
 // startInstall queues an install and returns its job_id.

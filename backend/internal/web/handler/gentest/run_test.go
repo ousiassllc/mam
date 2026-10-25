@@ -117,7 +117,7 @@ func TestEstimateOverTheCostCapCannotBeRun(t *testing.T) {
 func TestAnUnpricedModelIsSaidSoInTheConfirmation(t *testing.T) {
 	s := newScreen(t, gentesttest.WithConfig(func(c *modeladapter.Config) {
 		mc := c.Models[domain.ModelGPTImage2]
-		mc.CostPerImage = 0 // a cloud model whose price the user removed from models.json
+		mc.Model, mc.CostPerImage = "gpt-image-1.5", 0 // a cloud model the built-in prices do not cover (the user changed its API model ID)
 		c.Models[domain.ModelGPTImage2] = mc
 	}))
 	rec := s.upload(paths.GenerationTestPart("estimate"), batchForm("gpt-image-2"), "", nil)

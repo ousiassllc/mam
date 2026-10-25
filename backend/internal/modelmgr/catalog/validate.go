@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 )
@@ -16,7 +17,22 @@ var (
 	modelURLPattern = regexp.MustCompile(`^https://huggingface\.co/[A-Za-z0-9._-]+/[A-Za-z0-9._-]+/resolve/[0-9a-f]{40}/[^?#\s]+$`)
 	engineTag       = regexp.MustCompile(`^v[0-9]+\.[0-9]+\.[0-9]+$`)
 	fileNamePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._+-]*\.safetensors$`)
+	// sourceNoteDate finds the date a mirror's SHA-256 was checked against the original, in a File.SourceNote.
+	sourceNoteDate = regexp.MustCompile(`20[0-9]{2}-[0-9]{2}-[0-9]{2}`)
 )
+
+// hasCheckDate reports whether the note names a real calendar date (YYYY-MM-DD).
+func hasCheckDate(note string) bool {
+	for _, d := range sourceNoteDate.FindAllString(note, -1) {
+		if _, err := time.Parse(time.DateOnly, d); err == nil {
+			return true
+		}
+	}
+	return false
+}
+
+// unspecifiedLicense is the license ID of a model whose source states no license text.
+const unspecifiedLicense = "unspecified"
 
 // loaderInputs are the inputs of the core loader nodes that name a model file, with the folder the file is in.
 var loaderInputs = map[string]map[string]string{
@@ -25,6 +41,7 @@ var loaderInputs = map[string]map[string]string{
 	"CLIPLoader":             {"clip_name": "text_encoders"},
 	"DualCLIPLoader":         {"clip_name1": "text_encoders", "clip_name2": "text_encoders"},
 	"VAELoader":              {"vae_name": "vae"},
+	"LoraLoaderModelOnly":    {"lora_name": "loras"},
 }
 
 // Validate checks the catalog: the pins (https URL at a commit or tag, SHA-256, size), the licenses, the
@@ -118,6 +135,7 @@ func validateModel(m Model, shared map[string]File) []error {
 	if m.ConsentRequired != (m.Tier == TierAdvanced) || (restricted && !m.ConsentRequired) {
 		errs = append(errs, fmt.Errorf("%s: an advanced model, and a model whose license is not plain commercial use, requires consent (and only those)", where))
 	}
+	errs = append(errs, validateRating(where, m)...)
 	if m.RequiresHFToken {
 		errs = append(errs, fmt.Errorf("%s: no model of the catalog is behind a Hugging Face login", where))
 	}
@@ -125,6 +143,30 @@ func validateModel(m Model, shared map[string]File) []error {
 		errs = append(errs, fmt.Errorf("%s: files and workflows are required", where))
 	}
 	return append(errs, validateFiles(where, m.Files, shared)...)
+}
+
+// validateRating checks the content rating and what follows from it: an adult model is an advanced one (the consent
+// shows the adult notice after the license summary), a license without a text (id "unspecified") is not commercial
+// use, and trigger words belong to a model that carries a LoRA.
+func validateRating(where string, m Model) []error {
+	var errs []error
+	if m.ContentRating != RatingGeneral && m.ContentRating != RatingAdult {
+		errs = append(errs, fmt.Errorf("%s: content_rating must be general or adult", where))
+	}
+	if m.Adult() && m.Tier != TierAdvanced {
+		errs = append(errs, fmt.Errorf("%s: an adult model is an advanced model (consent required)", where))
+	}
+	if m.License.ID == unspecifiedLicense && m.License.CommercialUse {
+		errs = append(errs, fmt.Errorf("%s: a license without a text (%s) is not commercial use", where, unspecifiedLicense))
+	}
+	hasLoRA := slices.ContainsFunc(m.Files, func(f File) bool { return f.Folder == "loras" })
+	if len(m.TriggerWords) > 0 && !hasLoRA {
+		errs = append(errs, fmt.Errorf("%s: trigger_words belong to a model with a LoRA file", where))
+	}
+	if slices.ContainsFunc(m.TriggerWords, func(w string) bool { return strings.TrimSpace(w) == "" }) {
+		errs = append(errs, fmt.Errorf("%s: a trigger word is empty", where))
+	}
+	return errs
 }
 
 // validateFiles checks the pins of every file of a model; shared maps a destination to the file first seen there.
@@ -136,8 +178,10 @@ func validateFiles(where string, files []File, shared map[string]File) []error {
 		switch {
 		case !fileNamePattern.MatchString(f.Name):
 			errs = append(errs, fmt.Errorf("%s: name must be a .safetensors file name", fw))
-		case !slices.Contains([]string{"checkpoints", "diffusion_models", "text_encoders", "vae"}, f.Folder):
+		case !slices.Contains([]string{"checkpoints", "diffusion_models", "text_encoders", "vae", "loras"}, f.Folder):
 			errs = append(errs, fmt.Errorf("%s: folder %q is not a model folder", fw, f.Folder))
+		case f.SourceNote != "" && !hasCheckDate(f.SourceNote):
+			errs = append(errs, fmt.Errorf("%s: source_note must say where the original is and the date (YYYY-MM-DD) its SHA-256 was checked", fw))
 		case !modelURLPattern.MatchString(f.URL):
 			errs = append(errs, fmt.Errorf("%s: url must be https://huggingface.co/<repo>/resolve/<40-hex commit>/<path>", fw))
 		case !sha256Pattern.MatchString(f.SHA256):

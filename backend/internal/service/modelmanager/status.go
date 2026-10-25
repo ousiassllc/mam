@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/proc"
 )
 
 // EndpointRef is a ComfyUI endpoint the user can use.
@@ -44,4 +45,30 @@ func (s *Service) Status(context.Context) (Status, error) {
 		}
 	}
 	return st, nil
+}
+
+// Brief is the part of Status that the tool cards of the home page show.
+type Brief struct {
+	// Supported: the bundled engine exists on this OS. Installed: it is installed and its files are there.
+	Supported, Installed bool
+	Process              proc.State
+	// External is the number of registered ComfyUI endpoints that are not the bundled one.
+	External int
+}
+
+// Brief reads what the home page needs: the install record, one stat of the engine's interpreter, the process state and the
+// model setting file. Unlike Status (Engine) it writes nothing (no directory next to mam.exe is made, no probe file is
+// created), does not ask the disk for its free space or the key store about the endpoints, and does not list the builds.
+func (s *Service) Brief(context.Context) (Brief, error) {
+	names, err := s.Models.EndpointNames(localcfg.KindComfyUI)
+	if err != nil {
+		return Brief{}, err
+	}
+	b := Brief{Supported: s.bundled, Installed: s.engine.Status().Installed, Process: s.proc.Status().State}
+	for _, name := range names {
+		if name != BundledEndpoint {
+			b.External++
+		}
+	}
+	return b, nil
 }

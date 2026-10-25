@@ -45,15 +45,16 @@ const (
 
 // chat_message.ref_type values understood by the chat. Cards refer to an entity (er.md §4); Approval cards use CheckpointRefType.
 const (
-	RefBriefField    = "brief_field" // Question card: ref_id is the BriefField being asked
-	RefAsset         = "asset"       // Keyframe card: ref_id is the asset ID
-	RefTake          = "take"        // Take card: ref_id is the take ID
-	RefJob           = "job"         // Progress card: ref_id is the job ID (status is read live)
-	RefShot          = "shot"        // Escalation card: ref_id is the shot ID (optional)
-	RefNotePromotion = "note_promotion"
-	RefContinue      = "continue" // Question card of Continue: ref_id is the completed shot ID
-	RefExport        = "export"   // Text notice of a finished export: ref_id is the export ID (the chat draws its download link)
-	RefSettings      = "settings" // Text notice that points at the settings page of the Project (no ref_id; the chat draws the link)
+	RefBriefField     = "brief_field" // Question card: ref_id is the BriefField being asked
+	RefAsset          = "asset"       // Keyframe card: ref_id is the asset ID
+	RefTake           = "take"        // Take card: ref_id is the take ID
+	RefJob            = "job"         // Progress card: ref_id is the job ID (status is read live)
+	RefShot           = "shot"        // Escalation card: ref_id is the shot ID (optional)
+	RefNotePromotion  = "note_promotion"
+	RefContinue       = "continue"        // Question card of Continue: ref_id is the completed shot ID
+	RefExport         = "export"          // Text notice of a finished export: ref_id is the export ID (the chat draws its download link)
+	RefSettings       = "settings"        // Text notice that points at the settings page of the Project (no ref_id; the chat draws the link)
+	RefGlobalSettings = "global_settings" // Text notice for a category of the global settings screen: ref_id is its slug (empty or unknown: the overview)
 )
 
 // ChatMessage is one entry of a Project's chat thread. The thread is append-only;
@@ -107,8 +108,7 @@ func DecodeCardBody(content string) CardBody {
 	return b
 }
 
-// TakeCardBody is the JSON stored in content of take cards. VideoURL is resolved
-// by the producer of the card (a same-origin path); the Take itself is ref_id.
+// TakeCardBody is the JSON stored in content of take cards. VideoURL is resolved by the producer of the card (a same-origin path); the Take itself is ref_id.
 type TakeCardBody struct {
 	Title    string   `json:"title"`
 	Badge    string   `json:"badge,omitempty"` // e.g. "AI Pick"

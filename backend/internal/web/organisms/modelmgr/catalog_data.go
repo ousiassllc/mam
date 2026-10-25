@@ -6,14 +6,21 @@ type File struct {
 	Size    string
 	Present bool
 	Shared  []string
+	// SourceNote is where the original of a third party's mirror lies ("" for a file of the original repository).
+	SourceNote string
 }
 
 // Model is a model of the catalog.
 type Model struct {
-	ID          string
-	Name        string
-	KindLabel   string
-	Advanced    bool
+	ID        string
+	Name      string
+	KindLabel string
+	Advanced  bool
+	// Adult is the badge 成人向け; TriggerWords are the words a LoRA of the model needs in the prompt.
+	Adult        bool
+	TriggerWords []string
+	// Sources are the places of the originals of the mirrored files (each once).
+	Sources     []string
 	Description string
 	Size        string
 	Need        string
@@ -65,5 +72,25 @@ type Consent struct {
 	ModelID string
 	Name    string
 	License License
-	Error   string
+	// AdultNotice is the notice for adult models, shown after the license summary ("" for a general model); Sources are the
+	// places of the originals of the mirrored files.
+	AdultNotice string
+	Sources     []string
+	Error       string
+}
+
+// Adult is the setting "成人向けモデルを表示する".
+type Adult struct {
+	Message
+	Enabled bool
+	// Confirmed: the age is confirmed in the current wording, so the setting turns on without asking again.
+	Confirmed   bool
+	ConfirmedAt string
+}
+
+// AdultConfirm is the dialog that asks the age confirmation: the notice and its version, which the form sends back.
+type AdultConfirm struct {
+	Notice        string
+	NoticeVersion string
+	Error         string
 }

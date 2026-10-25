@@ -47,6 +47,7 @@ type options struct {
 // fixture is one Project with one Shot and an Orchestrator wired to fakes and a temp SQLite DB.
 type fixture struct {
 	orch      *generation.Orchestrator
+	adapter   *modeladapter.Adapter
 	db        *repository.DB
 	gens      *repository.GenerationRepository
 	policies  *repository.PolicyRepository
@@ -118,10 +119,11 @@ func newFixture(t *testing.T, opt options) *fixture {
 	if freeBytes == nil {
 		freeBytes = func(string) (uint64, error) { return 1 << 40, nil }
 	}
+	f.adapter = modeladapter.New(pricedConfig(), backends, modeladapter.WithSleep(noSleep))
 	deps := generation.Deps{
 		Generations: gens, World: repository.NewWorldRepository(db), Projects: projects, Policies: policies,
 		Assets: repository.NewAssetRepository(db), Repairs: repository.NewRepairRepository(db), Chat: f.chat, Jobs: f.jobs, LLM: f.llm,
-		Adapter:   modeladapter.New(pricedConfig(), backends, modeladapter.WithSleep(noSleep)),
+		Adapter:   f.adapter,
 		AssetsDir: f.assetsDir, FreeBytes: freeBytes, Notify: f.progress.add,
 	}
 	if opt.withJudge {

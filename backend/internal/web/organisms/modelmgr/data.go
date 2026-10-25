@@ -16,6 +16,7 @@ const (
 	HFID       = "mm-hf"
 	ExternalID = "mm-external"
 	TrialID    = "mm-trial"
+	AdultID    = "mm-adult"
 	TrialFmID  = "mm-trial-form"
 	TrialsID   = "mm-trials"
 )
@@ -29,6 +30,7 @@ const (
 	FieldLicenseID = "license_id"
 	FieldLicenseV  = "license_version"
 	FieldAgree     = "agree"
+	FieldNoticeV   = "notice_version"
 	FieldEndpoint  = "endpoint"
 	FieldModelID   = "model_id"
 	FieldPrompt    = "prompt"
@@ -51,10 +53,12 @@ const Polling = "every 2s"
 // Data is the whole screen.
 type Data struct {
 	Engine   Engine
+	Adult    Adult
 	Catalog  Catalog
 	HF       HFToken
 	External External
 	Trial    TrialPanel
+	HFImport HFImport
 }
 
 // Message is the confirmation or the refusal of the last action of a section.

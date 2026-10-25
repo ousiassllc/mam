@@ -1,0 +1,52 @@
+package pages
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// toolGroup is a heading and the cards under it on the home page.
+type toolGroup struct {
+	ID    string
+	Title string
+	Cards []molecules.ToolCard
+}
+
+// toolGroups are the tools of the home page in three groups: make → prepare → the rest (spec/components/home-screen.md §3).
+// A card with a tool has a status that the page reads after it is shown; the others have none.
+func toolGroups() []toolGroup {
+	return []toolGroup{
+		{ID: "make", Title: "作る系", Cards: []molecules.ToolCard{
+			{ID: "generation-test", Href: templ.SafeURL(paths.GenerationTest()), Icon: atoms.IconFlask, Title: "生成テスト", Description: "モデルとプロンプトを並べて、画像・動画を比べる"},
+			{ID: "nodes", Href: templ.SafeURL(paths.Nodes()), Icon: atoms.IconNetwork, Title: "ノード", Description: "ComfyUI のノード画面でワークフローを作る", StatusURL: paths.ToolStatus(paths.ToolNodes)},
+			{ID: "workflows", Href: templ.SafeURL(paths.Workflows()), Icon: atoms.IconWorkflow, Title: "ワークフロー", Description: "保存したワークフローを、Shot の生成方法に使う", StatusURL: paths.ToolStatus(paths.ToolWorkflows)},
+		}},
+		{ID: "prepare", Title: "準備系", Cards: []molecules.ToolCard{
+			{ID: "model-manager", Href: templ.SafeURL(paths.ModelManager()), Icon: atoms.IconPackage, Title: "モデルマネージャー", Description: "ComfyUI とローカルモデルの導入・試し生成", StatusURL: paths.ToolStatus(paths.ToolModelManager)},
+			{ID: "settings", Href: templ.SafeURL(paths.Settings()), Icon: atoms.IconSettings, Title: "設定", Description: "API キー・ChatGPT のログイン・モデルの割り当て", StatusURL: paths.ToolStatus(paths.ToolSettings)},
+		}},
+		{ID: "other", Title: "その他", Cards: []molecules.ToolCard{
+			{ID: "analytics", Href: templ.SafeURL(paths.Analytics()), Icon: atoms.IconChart, Title: "制作指標", Description: "すべてのプロジェクトの制作指標"},
+			{ID: "reviews", Href: templ.SafeURL(paths.Reviews()), Icon: atoms.IconReview, Title: "レビューパッケージ", Description: "受け取ったレビューを開く（レビュアー向け）", StatusURL: paths.ToolStatus(paths.ToolReviews)},
+		}},
+	}
+}
+
+// ToolSection is the tools of the home page: an h2 and, under it, one list of cards for each group with the group name
+// as its h3. Each group is a <ul role="list"> named by its heading.
+templ ToolSection() {
+	<section aria-labelledby="tools-heading">
+		<h2 id="tools-heading" class="mt-8 text-sm font-medium text-neutral-300">ツール</h2>
+		for _, g := range toolGroups() {
+			<div class="mt-6 first-of-type:mt-3">
+				<h3 id={ "tool-group-" + g.ID } class="text-sm font-medium text-neutral-300">{ g.Title }</h3>
+				<ul role="list" aria-labelledby={ "tool-group-" + g.ID } class="mt-2 grid grid-cols-3 gap-4">
+					for _, c := range g.Cards {
+						@molecules.ToolCardItem(c)
+					}
+				</ul>
+			</div>
+		}
+	</section>
+}

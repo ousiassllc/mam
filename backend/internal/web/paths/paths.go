@@ -169,6 +169,12 @@ func MCPSettings() string { return Settings() + "/mcp" }
 // MCPBind is "/settings/mcp/bind", the bind address of the MCP listener (PUT).
 func MCPBind() string { return MCPSettings() + "/bind" }
 
+// MCPBindEdit is "/settings/mcp/bind/edit": GET answers the body of the modal that changes the bind address.
+func MCPBindEdit() string { return MCPBind() + "/edit" }
+
+// MCPTokenNew is "/settings/mcp/tokens/new": GET answers the body of the modal that issues a token.
+func MCPTokenNew() string { return MCPTokens() + "/new" }
+
 // MCPTokens is "/settings/mcp/tokens", where an MCP bearer token is issued (POST).
 func MCPTokens() string { return MCPSettings() + "/tokens" }
 

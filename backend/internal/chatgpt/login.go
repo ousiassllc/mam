@@ -54,6 +54,9 @@ type Login struct {
 	ExpiresAt       time.Time
 	// FinishedAt is when the login left pending (zero while pending).
 	FinishedAt time.Time
+	// UseCodex is true when the login failed because the account's organization does not allow the app: the user is
+	// pointed to the Codex login (spec/architecture/chatgpt-signin.md §8).
+	UseCodex bool
 }
 
 type activeLogin struct {
@@ -91,15 +94,24 @@ func (a *Account) finish(id string, err error) {
 		}
 		l.State = LoginFailed
 		l.Message = loginFailure(err)
+		l.UseCodex = policyDenied(err)
 	})
 	if err != nil {
 		a.logger.Warn("chatgpt login failed", "kind", a.kind, "err", err)
 	}
 }
 
+// policyDenied reports whether the server refused the login because of the organization's policy.
+func policyDenied(err error) bool {
+	var se *oauth.ServerError
+	return errors.As(err, &se) && se.Code == oauth.PolicyDeniedCode
+}
+
 // loginFailure is the text the user sees for a failed login. Errors of this package carry no token.
 func loginFailure(err error) string {
 	switch {
+	case policyDenied(err):
+		return PolicyDeniedMessage
 	case errors.Is(err, oauth.ErrAccessDenied):
 		return "ChatGPT の画面でログインが許可されませんでした"
 	case errors.Is(err, context.DeadlineExceeded), errors.Is(err, oauth.ErrDeviceExpired):

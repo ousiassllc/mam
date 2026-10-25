@@ -24,7 +24,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/logging"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/router"
-	"github.com/ousiassllc/mam/backend/internal/router/settingsroutes"
+	"github.com/ousiassllc/mam/backend/internal/version"
 	"github.com/ousiassllc/mam/static"
 )
 
@@ -98,7 +98,11 @@ func Run(ctx context.Context, opts Options) error {
 }
 
 func serve(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Options) error {
-	gpt := chatgpt.New(chatgpt.Options{Keys: credential.NewKeyring(), DataDir: cfg.DataDir, Open: opts.OpenBrowser, Logger: logger})
+	gpt := chatgpt.New(chatgpt.Options{
+		Keys: credential.NewKeyring(), DataDir: cfg.DataDir, Open: opts.OpenBrowser, Logger: logger,
+		CodexLayout: codexLayout(logger), Version: version.Version,
+	})
+	defer gpt.Close() // the Codex app-server is a child process of mam
 	services, db, cleanup, err := buildServices(ctx, cfg, logger, gpt)
 	if err != nil {
 		return err
@@ -106,20 +110,7 @@ func serve(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Opt
 	defer cleanup()
 
 	gin.SetMode(gin.ReleaseMode)
-	llmFile, llmPinned := cfg.LLMSettingsFile()
-	modelFile, modelPinned := cfg.ModelSettingsFile()
-	settings := settingsroutes.New(llmFile, llmPinned, modelFile, modelPinned)
-	settings.LocalModels = services.LocalModels
-	settings.Workflows = services.Workflows
-	// A saved image / video assignment applies at once, as a saved endpoint or model does.
-	settings.Models.SetOnChange(func() {
-		if err := services.LocalModels.Reload(); err != nil {
-			logger.Error("apply the saved model settings failed", "err", err)
-		}
-	})
-	settings.ChatGPT = gpt
-	settings.ModelManager = services.ModelManager
-	settings.Gentest = services.Gentest
+	settings := newSettings(cfg, services, gpt, logger)
 	if opts.Update != nil {
 		var stop func()
 		settings.Update, stop = startUpdates(ctx, opts.Update, services, repository.NewJobRepository(db), logger)
