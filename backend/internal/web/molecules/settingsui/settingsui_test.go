@@ -91,3 +91,39 @@ func TestCardItem_DefaultTestIDAndNoEmptyParts(t *testing.T) {
 	assert.Contains(t, sb.String(), `data-testid="settings-card"`)
 	assert.NotContains(t, sb.String(), "<p ", "no description, summary or notice: no empty paragraph")
 }
+
+// A table is named by its caption, its columns are headers with a scope, the first cell of a row is the header of the
+// row, and a row replaces itself out of band only when asked.
+func TestSettingsTable_HasACaptionColumnHeadersRowHeadsAndRowsThatReplaceThemselvesOnRequest(t *testing.T) {
+	row := func(r settingsui.TableRow) string {
+		ctx := templ.WithChildren(context.Background(), templ.Raw(`<td>X</td>`))
+		var sb strings.Builder
+		require.NoError(t, settingsui.TableRowItem(r).Render(ctx, &sb))
+		return sb.String()
+	}
+	ctx := templ.WithChildren(context.Background(), templ.Raw("<tr><td>ROW</td></tr>"))
+	var sb strings.Builder
+	require.NoError(t, settingsui.SettingsTable("llm-table", "Agent ごとの割り当て", []settingsui.Column{
+		{Header: "Agent"}, {Header: "用途", Class: "hidden lg:table-cell"}, {Header: "操作", SROnly: true},
+	}).Render(ctx, &sb))
+	html := sb.String()
+
+	assert.Contains(t, html, `<caption class="sr-only">Agent ごとの割り当て</caption>`)
+	assert.Equal(t, 3, strings.Count(html, `<th scope="col"`))
+	assert.Contains(t, html, `<tbody id="llm-table"`)
+	assert.Contains(t, html, `hidden lg:table-cell`)
+	assert.Contains(t, html, `<span class="sr-only">操作</span>`)
+	assert.Less(t, strings.Index(html, "</thead>"), strings.Index(html, "ROW"))
+
+	plain := row(settingsui.TableRow{ID: "llm-row-writer", TestID: "llm-row", Attrs: templ.Attributes{"data-agent": "writer"}})
+	assert.Contains(t, plain, `<tr id="llm-row-writer" data-testid="llm-row"`)
+	assert.Contains(t, plain, `data-agent="writer"`)
+	assert.NotContains(t, plain, "hx-swap-oob")
+	assert.Contains(t, row(settingsui.TableRow{ID: "llm-row-writer", OOB: true}), `hx-swap-oob="true"`)
+
+	ctx = templ.WithChildren(context.Background(), templ.Raw("Writer"))
+	sb.Reset()
+	require.NoError(t, settingsui.RowHead("").Render(ctx, &sb))
+	assert.Contains(t, sb.String(), `<th scope="row"`)
+	assert.NotContains(t, html+sb.String(), "text-neutral-500")
+}

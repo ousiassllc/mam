@@ -1,6 +1,6 @@
 # コンポーネント仕様: 共通の画面部品（カード・アイコン・モーダル・一覧の行）
 
-> **状態: 一部実装済み。** Issue #846（トップ画面のカード）と #847（設定画面のサブページ化）が共有する部品の見た目と契約。**`atoms.Icon`（#846 の 8 個。§2）と `molecules.ToolCard`（`StatusURL` の形。§3）は #846 で、モーダル（§4）・一覧の行のカード `SettingsCard`（§5。実体は `settingsui.CardItem`）・#847 のアイコン 7 個（`IconKey`・`IconText`・`IconMedia`・`IconLocal`・`IconPlug`・`IconUpdate`・`IconClose`）は #847 の段階 ①・②-1・②-2 で実装済み**（2026-10-25）。**未実装**: 表 `SettingsTable`・`SettingsTableRow`（LLM・画像動画・MCP のトークンの段階で作る）と `IconCopy`（MCP のトークンのコピー）。オーナーは §8 の質問を推奨する既定で決定した。
+> **状態: 一部実装済み。** Issue #846（トップ画面のカード）と #847（設定画面のサブページ化）が共有する部品の見た目と契約。**`atoms.Icon`（#846 の 8 個。§2）と `molecules.ToolCard`（`StatusURL` の形。§3）は #846 で、モーダル（§4）・一覧の行のカード `SettingsCard`（§5。実体は `settingsui.CardItem`）・#847 のアイコン 7 個（`IconKey`・`IconText`・`IconMedia`・`IconLocal`・`IconPlug`・`IconUpdate`・`IconClose`）は #847 の段階 ①・②-1・②-2 で実装済み**（2026-10-25）。表 `SettingsTable`・`TableRowItem`（§5。`settingsui.SettingsTable` ほか）と `IconCopy`（MCP のトークンのコピーに使う）は段階 ②-3 で実装済み（2026-10-25）。オーナーは §8 の質問を推奨する既定で決定した。
 
 [overview.md](overview.md) §3 のコンポーネントの階層に、次の部品を足す案。使う画面は [home-screen.md](home-screen.md)（`tool_card`・`atoms.Icon`）と [settings-screen.md](settings-screen.md)・[settings-screen-categories.md](settings-screen-categories.md)（すべて）。`atoms.Icon`・`molecules.ToolCard` は先に出る #846 が作る（#846 決定事項 1）。**モーダルは #847 で作る**（2 つの Issue の文面が食い違っていたが、オーナーが決定。§6.1）。一覧の行・サイドナビは #847 が作る。
 
@@ -144,6 +144,7 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 - 行のボタンは **`atoms.SmallButtonFor(tone, "編集", 行の名前, attrs)`**（見える文言は「編集」のまま、`aria-label` が「編集: <行の名前>」。#783・#793。`a11y/row_names_*` の検査に足す）。モーダルを開くボタンは `ModalOpen` の属性を持つ。
 - 状態は `Badge` ＋文字（§1）。「変更あり」「既定」のような印も文字のバッジ（色だけにしない）。
 - 説明・要約は `text-neutral-400`、折り返しを許す（`break-words`）。切り詰め（`truncate`）で情報を隠さない。
+- 実装（`settingsui/table.templ`）: `SettingsTable(bodyID, caption, []Column)`（`<tbody id=bodyID>` が一覧。新しい行の OOB は `beforeend:#<bodyID>`。広い表はその箱の中で横にスクロールし、ページを広げない）・`TableRowItem(TableRow{ID, TestID, Attrs, OOB})`（`SettingsTableRow` の実体）・`RowHead`（`<th scope="row">`）・`Cell`。`Column.Class` を `<th>` と同じ列の `Cell` に付けて、狭い窓で列を隠す（`hidden lg:table-cell`）。**OOB の `<tr>` は応答の先頭に置く**（HTML のパーサーは先頭の `<tr>` だけを行として読む）。
 - 置き場所: `molecules/settingsui/`（`card.templ`・`table.templ`・`nav.templ`）。`molecules/` の直下に置くと上限（2,000 行）に近づくため、サブパッケージにする（§8 の質問 3）。サイドナビ `SettingsNav` は [settings-screen.md](settings-screen.md) §4。
 
 ## 6. 2 つの Issue の取り合い
@@ -176,6 +177,7 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 | 0.3 | 2026-10-25 | 状態を「一部実装済み」にした（`atoms.Icon` の 8 個と `molecules.ToolCard` を #846 で実装）。§8 をオーナーの決定の表にし、モーダルを #847 で作ることを §6.1 に記録した | Issue #846 の実装と、オーナーの 2026-10-25 の判断 |
 | 0.4 | 2026-10-25 | §1 のフォーカスの輪を `outline-none` から `outline-hidden` にした（輪郭が `forced-colors` で描かれる） | 独立レビュー（PR #849 の 2 周目）の指摘。輪は box-shadow で、Windows のハイコントラストでは消える |
 | 0.5 | 2026-10-25 | §4 に「入れ替えの間は触れない」を足した。状態を更新した。`atoms.Icon` の #847 の 7 個・モーダル（`molecules/modal/`・`static/src/components/modal/`）・`SettingsCard`（`settingsui.CardItem`）を実装した。`SettingsTable`・`IconCopy` は後続。モーダルの関数の名前を実装に合わせた（`ModalOpen` → `OpenAttrs`）。成功の通知は `atoms.SuccessToastOOB` | Issue #847 段階 ①・②-1・②-2 の実装 |
+| 0.6 | 2026-10-25 | `SettingsTable`・`TableRowItem`・`RowHead`・`Cell` と `IconCopy` を実装した（§5 に実装の形を足した。状態を更新した） | Issue #847 段階 ②-3 の実装 |
 
 ## 8. オーナーへの確認事項と決定（2026-10-25: すべて推奨する既定で決定）
 
