@@ -3,6 +3,8 @@
   <p id="mam-modal-error" role="alert" tabindex="-1">入力が正しくありません</p>
   <form id="modal-form" hx-get="/src/components/testdata/modal-saved.html" hx-target="#mam-modal-body" hx-swap="innerHTML">
     <label>値 <input id="modal-input" name="value" value="typed" aria-invalid="true" aria-describedby="mam-modal-error" autofocus></label>
+    <div id="draft-result" role="status"></div>
+    <button type="button" id="draft-test" hx-get="/src/components/testdata/modal-draft.html" hx-target="#draft-result" hx-swap="innerHTML">接続テスト</button>
     <button type="button" data-modal-close>キャンセル</button>
   </form>
 </div>
