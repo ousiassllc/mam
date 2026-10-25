@@ -5,6 +5,8 @@
 #     build/windows/Taskfile.yml), plus the Go standard library
 #   - npm packages in the production front-end bundle: what static/src/main.ts imports (found with an esbuild
 #     metafile, like static/build.mjs bundles it) and tailwindcss (its CSS is part of the generated app.css)
+#   - material copied into the source tree: the Lucide icons of backend/internal/web/atoms/icon.templ, with the
+#     license text of the release they were copied from (atoms/icons/LICENSE; the release is named in icon.templ)
 # Usage: scripts/third-party-notices.sh [OUTPUT]      OUTPUT defaults to THIRD_PARTY_NOTICES.md in the repository root
 # Needs: go, node, and `npm ci --prefix static` done. Run it again when go.mod or static/package-lock.json changes.
 # Fails when a component has no license file, so a dependency can never be left out silently.
@@ -93,6 +95,14 @@ while IFS='|' read -r name version dir; do
   while IFS= read -r f; do record 3 "$name" "$version" "$f" "$dir"; done <<<"$files"
 done <<<"$npm_packages"
 
+# 4. Material copied into the source tree (the Go and npm lists above do not see it): the Lucide icons. The release
+# is the one icon.templ names ("Lucide v1.61.0"); the license file is the one of that release, whole.
+icons_dir="backend/internal/web/atoms/icons"
+lucide_version="$(sed -n 's/.*Lucide v\([0-9][0-9.]*\).*/\1/p' backend/internal/web/atoms/icon.templ 2>/dev/null | head -n1 || true)"
+[[ -n "$lucide_version" ]] || die "backend/internal/web/atoms/icon.templ does not name the Lucide release (\"Lucide v<version>\")"
+[[ -n "$(license_files_in "$icons_dir")" ]] || die "no license file in $icons_dir (the Lucide icons)"
+while IFS= read -r f; do record 4 "Lucide（アイコン）" "$lucide_version" "$f" "$icons_dir"; done < <(license_files_in "$icons_dir")
+
 LC_ALL=C sort -t'|' -k1,1 -k2,2 -k4,4 -u "$records" -o "$records"
 
 # A fence longer than any run of ~ in the text, so a license text can never close it early.
@@ -110,7 +120,7 @@ emit_file() { # <file>
   echo "$fence"
 }
 kind_label() {
-  case "$1" in 1) echo "Go 標準ライブラリ" ;; 2) echo "Go モジュール" ;; *) echo "npm パッケージ" ;; esac
+  case "$1" in 1) echo "Go 標準ライブラリ" ;; 2) echo "Go モジュール" ;; 4) echo "同梱した素材" ;; *) echo "npm パッケージ" ;; esac
 }
 
 tmp_out="$(mktemp "${TMPDIR:-/tmp}/mam-notices-out-XXXXXX")"
@@ -126,6 +136,7 @@ MAM の Windows 版に含まれるサードパーティのソフトウェアと�
 
 - Go の標準ライブラリと、Windows 版 exe（`backend/cmd/wails`、`GOOS=windows`、`-tags production`）にリンクされる Go モジュール
 - `static/` の本番バンドルに入る npm パッケージ（`static/src/main.ts` から import されるもの。`static/src/dist/app.css` に Tailwind CSS が含まれるので `tailwindcss` も）
+- ソースにコピーして同梱した素材: アイコンの Lucide（ISC。Feather 由来のアイコンの MIT を含む。取り込んだ版の `LICENSE` の全文）
 - インストーラーに同梱する Microsoft の WebView2 ブートストラッパー（下の節）
 
 開発用のツール・テスト用のパッケージ（`devDependencies` など）は配布物に入らないので載せていません。ffmpeg と ComfyUI は同梱しません（ComfyUI は下の節）。
