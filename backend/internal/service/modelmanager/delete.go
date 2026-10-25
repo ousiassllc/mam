@@ -6,7 +6,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/fetch"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/store"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
@@ -17,8 +16,7 @@ import (
 // files recorded at the installs). A model that an image purpose or a Quality Policy chooses is refused
 // (*InvalidError): change the assignment first. An install that is running is ErrBusy.
 func (s *Service) DeleteModel(ctx context.Context, modelID string) error {
-	m, ok := s.cat.Model(modelID)
-	if !ok {
+	if _, ok := s.cat.Model(modelID); !ok {
 		return ErrNotFound
 	}
 	if s.activeJob("model:"+modelID) != "" {
@@ -29,7 +27,7 @@ func (s *Service) DeleteModel(ctx context.Context, modelID string) error {
 	if !installed {
 		return ErrNotInstalled
 	}
-	if err := s.checkNotInUse(m.Workflows); err != nil {
+	if err := s.checkNotInUse(inst.Workflows); err != nil {
 		return err
 	}
 	for _, name := range inst.Workflows {
@@ -39,6 +37,9 @@ func (s *Service) DeleteModel(ctx context.Context, modelID string) error {
 		}
 	}
 	keep := map[string]bool{}
+	for path := range st.UserModels { // a file the user added from Hugging Face stays while its record does
+		keep[path] = true
+	}
 	for id, other := range st.Models {
 		if id == modelID {
 			continue
@@ -65,8 +66,8 @@ func (s *Service) DeleteModel(ctx context.Context, modelID string) error {
 	return failed
 }
 
-// checkNotInUse refuses a delete when a model of the workflows is chosen somewhere.
-func (s *Service) checkNotInUse(workflows []catalog.Workflow) error {
+// checkNotInUse refuses a delete when a model of that name is chosen somewhere.
+func (s *Service) checkNotInUse(workflows []string) error {
 	view, err := s.Models.View()
 	if err != nil {
 		return err
@@ -77,7 +78,7 @@ func (s *Service) checkNotInUse(workflows []catalog.Workflow) error {
 			continue
 		}
 		for _, w := range workflows {
-			if mv.Name == w.Name {
+			if mv.Name == w {
 				used = append(used, mv.ID+"（"+strings.Join(mv.UsedBy, "、")+"）")
 			}
 		}

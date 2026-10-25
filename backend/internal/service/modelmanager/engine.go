@@ -11,6 +11,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/engine"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/hfplan"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/proc"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/track"
 )
@@ -94,10 +95,11 @@ func (s *Service) free(path string) uint64 {
 
 // installPayload is the payload of a model_install job.
 type installPayload struct {
-	// Target is "engine" or "model:<catalog id>".
+	// Target is "engine", "model:<catalog id>" or "hf:<repo>@<commit>/<path>" (HF holds the pins of the last).
 	Target  string          `json:"target"`
 	Variant catalog.Variant `json:"variant,omitempty"`
 	CPU     bool            `json:"cpu,omitempty"`
+	HF      *hfplan.Payload `json:"hf,omitempty"`
 }
 
 // EngineInstallInput chooses the build to install. An empty Variant takes the one for the GPU of the machine
@@ -194,6 +196,8 @@ func (s *Service) handleInstall(ctx context.Context, job domain.Job) error {
 	var err error
 	if p.Target == engineTarget {
 		err = s.runEngineInstall(ctx, p, set)
+	} else if p.HF != nil {
+		err = s.runHFInstall(ctx, *p.HF, set)
 	} else if id, ok := modelTarget(p.Target); ok {
 		err = s.runModelInstall(ctx, id, set)
 	} else {

@@ -156,6 +156,9 @@ func (s *Service) sharedWith(st store.State, self, path string) []string {
 		}
 		ids = append(ids, id)
 	}
+	if um, ok := st.UserModels[path]; ok && (!um.NFAA || s.AdultContentEnabled()) { // a file the user added from Hugging Face
+		ids = append(ids, "HF: "+um.Name)
+	}
 	slices.Sort(ids)
 	return ids
 }

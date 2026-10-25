@@ -9,58 +9,16 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/jobview"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
 )
 
-// bytesText is a size as the screen writes it: GiB with a decimal, or whole MiB (KiB below one MiB).
-func bytesText(n int64) string {
-	const gib = 1 << 30
-	if n >= gib {
-		return fmt.Sprintf("%.1f GiB", float64(n)/gib)
-	}
-	if n >= 1<<20 {
-		return fmt.Sprintf("%.0f MiB", float64(n)/(1<<20))
-	}
-	return fmt.Sprintf("%.0f KiB", float64(n)/(1<<10))
-}
-
-// progressOf is what a running job reports (a placeholder while its status cannot be read).
-func progressOf(ctx context.Context, svc *modelmanager.Service, jobID string) *view.Progress {
-	st, err := svc.JobStatus(ctx, jobID)
-	if err != nil {
-		return &view.Progress{JobID: jobID, Message: "状態を取得しています"}
-	}
-	p := &view.Progress{JobID: jobID, Percent: st.Progress.Percent, Message: st.Progress.Message}
-	if st.State == domain.JobQueued {
-		p.Message = "順番を待っています"
-	}
-	if p.Message == "" {
-		p.Message = "準備しています"
-	}
-	if t := st.Progress.TotalBytes; t > 0 {
-		p.Bytes = bytesText(st.Progress.DoneBytes) + " / " + bytesText(t)
-	}
-	return p
-}
-
-// ended is how a job ended, as a notice or an error line; both are empty while it runs (or when it is unknown).
-func ended(ctx context.Context, svc *modelmanager.Service, jobID, name string) (notice, failure string) {
-	st, err := svc.JobStatus(ctx, jobID)
-	if err != nil {
-		return "", ""
-	}
-	switch st.State {
-	case domain.JobSucceeded:
-		return name + "を導入しました", ""
-	case domain.JobFailed:
-		reason := st.Error
-		if reason == "" {
-			reason = "原因は mam のログを確認してください"
-		}
-		return "", name + "の導入に失敗しました: " + reason
-	}
-	return "", ""
-}
+// bytesText, progressOf and ended are shared with the child packages (jobview).
+var (
+	bytesText  = jobview.BytesText
+	progressOf = jobview.Progress
+	ended      = jobview.Ended
+)
 
 // engineData is the card of the engine. job is the install job the card reports on ("" for the running one);
 // starting says a start was just asked for, which the process status may not show yet.

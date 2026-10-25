@@ -58,6 +58,7 @@ type Data struct {
 	HF       HFToken
 	External External
 	Trial    TrialPanel
+	HFImport HFImport
 }
 
 // Message is the confirmation or the refusal of the last action of a section.

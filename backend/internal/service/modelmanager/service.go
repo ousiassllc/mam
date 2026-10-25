@@ -30,6 +30,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/extract"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/fetch"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/gpu"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/hf"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/proc"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/store"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/track"
@@ -104,6 +105,9 @@ type Deps struct {
 	Extract extract.Extractor
 	// Fetch are the options of the downloads (client, URL check); Progress is set per download.
 	Fetch fetch.Options
+	// HFBase is the Hugging Face site the import reads (default hf.DefaultBase; a test points it at a fake). The reads follow the
+	// rules of Fetch (client, URL check, token host).
+	HFBase string
 	// FreeBytes reports the free disk space at a path (default fsutil.FreeBytes).
 	FreeBytes func(path string) (uint64, error)
 	// Command builds the launch of the engine for a port (default: the installed engine).
@@ -132,6 +136,7 @@ type Service struct {
 	active  map[string]string // target -> job id of the queued or running job
 	targets map[string]*sync.Mutex
 	cancels map[string]context.CancelCauseFunc // job id -> cancel of a running install
+	hf      *hf.Client
 }
 
 // New returns the Service. It reads the record (a broken one is an error).
@@ -163,6 +168,7 @@ func New(d Deps) (*Service, error) {
 	}
 	s := &Service{Deps: d, cat: d.Catalog, state: st, bundled: d.Platform == "windows", tracker: track.New(),
 		active: map[string]string{}, targets: map[string]*sync.Mutex{}, cancels: map[string]context.CancelCauseFunc{}}
+	s.hf = hf.New(hf.Options{Base: d.HFBase, HTTP: d.Fetch.Client, CheckURL: d.Fetch.CheckURL, AuthHost: d.Fetch.AuthHost, Token: s.huggingFaceToken})
 	s.engine = &engine.Installer{Layout: d.Layout, Engine: d.Catalog.Engine, Store: st, Extract: d.Extract, Fetch: d.Fetch, FreeBytes: d.FreeBytes, Now: d.Now}
 	build := d.Command
 	if build == nil {

@@ -43,6 +43,18 @@
 | `get_adult_content_status` | 成人向けモデルの表示（年齢確認のゲート）の状態と、いまの注意書き | なし | `enabled`（ゲートが開いている）, `confirmed`（現行の注意書きの版の確認が記録済み）, `confirmed_at`, `notice_version`, `notice` | はい |
 | `set_adult_content` | 成人向けモデルの表示を切り替える（冪等）。**オンにするのは、`notice` をユーザーに見せ、ユーザー自身が「18 歳以上（またはお住まいの地域で成年）」と注意書きへの同意を答えた後だけ**。エージェントが自分で確認したことにして呼ばない（`accept_model_license` と同じ扱い）。確認の日時と注意書きの版は `state.json` に記録される | `enabled`, `confirm_adult`（ユーザーが答えたとき true）, `notice_version`（`get_adult_content_status` の値）。一度確認すれば、オフ→オンでは `confirm_adult` を省ける | `get_adult_content_status` と同じ | いいえ |
 
+### Hugging Face からの導入（Issue #842）
+
+意味は [model-manager-hf.md](../architecture/model-manager/model-manager-hf.md)。**terms の確認・年齢ゲート・コミット固定・SHA-256 の検証は Service が強制する**（`install_hf_file` は `accept_terms` が無く記録も無ければ `conflict`。NFAA のリポジトリは年齢確認の前は `search_hf_models` に出ず、`get_hf_model_files`・`install_hf_file` は `conflict`）。`accept_terms` は、ユーザーが `get_hf_model_files` のライセンス・terms を見て自分で答えた後にだけ渡す（エージェントが代わりに true にしない）。GGUF は一覧に出るが `installable=false`（導入は `validation`）、pickle 形式は導入しない。
+
+| ツール | 説明 | 入力 | 出力 | readOnly |
+|--------|------|------|------|----------|
+| `search_hf_models` | HF のモデルをキーワードで検索（ダウンロード数の多い順）。NFAA は年齢確認が済むまで出ない | `q`, `kind`（`text-to-image` / `text-to-video` / `image-to-video`。省略で全部）, `limit`（既定 20・最大 50） | `hits[]`（`repo`, `downloads`, `likes`, `gated`, `nfaa`, `pipeline_tag`） | はい（外部へ接続する） |
+| `get_hf_model_files` | リポジトリ（`owner/repo` か `huggingface.co` の URL）をコミットに固定してファイルを一覧する | `repo` | `repo`（`id`, `commit`, `license`, `gated`, `nfaa`, `tags`）, `page`, `terms`, `terms_version`, `license_warning`, `consented`, `token_configured`, `selected`, `files[]`（`path`, `name`, `size`, `sha256`, `format`, `installable`, `reason`, `security`, `group`, `variant`, `folder`・`folder_source`・`folder_reason`・`family`, `fit`・`need_bytes`, `selected`, `installed`, `install_job`）, `truncated` | はい（外部へ接続する） |
+| `install_hf_file` | `.safetensors` を 1 つ導入する（ジョブ）。SHA-256・サイズは Service が HF から読み直す | `repo`, `commit`, `path`（`get_hf_model_files` の値）, `folder`・`name`（省略でパス・ヘッダーから決める）, `accept_terms`・`terms_version` | `job_id`, `state`, `existing`, `target`（`hf:<repo>@<commit>/<path>`） | いいえ |
+| `list_user_models` | 利用者が HF から足したファイル（NFAA は年齢確認が済むまで出ない） | なし | `models[]`（`path`, `name`, `folder`, `repo`, `commit`, `repo_path`, `sha256`, `size`, `license`, `gated`, `nfaa`, `family`, `workflows[]`, `model_ids[]`, `shared_with[]`, `present`, `installed_at`） | はい |
+| `delete_user_model` | 足したファイルと、作ったモデルを削除する（使用中の用途・Policy があれば `validation`、導入中は `conflict`、記録に無ければ `conflict`）。カタログのモデルと共有しているファイルは、そのモデルが残る間は消えない | `path`（`list_user_models` の `path`） | `path`, `deleted` | いいえ（破壊的） |
+
 ## 試し生成
 
 モデルマネージャーの「試し生成」は、生成テスト（[mcp-tools-generation-test.md](mcp-tools-generation-test.md)）の 1 件のバッチとして動く。専用のツールは無い。ローカルのモデルを試すには `list_generation_models`・`estimate_generation_test`・`run_generation_test`（参照画像は用途 `gentest_reference`、結果のファイルは `get_generation_result` の URL）を使う。**導入済みの成人向けモデルは、年齢確認のゲートが閉じている間は `list_generation_models` に出ず、名指しても不明なモデルとして断られる**（Service が強制する。[model-manager.md](../architecture/model-manager/model-manager.md) §6.2）。1.0 の `list_trial_models`・`start_model_trial`・`list_model_trials`・`get_model_trial`・`get_model_trial_file_url`・`delete_model_trial`、アップロードの用途 `model_trial_reference`、ダウンロードの種類 `model_trial_file` は削除した。
@@ -51,7 +63,7 @@
 
 | 種別（`kind`） | 開始するツール | `target` | `done` / `total` | `result` |
 |---------------|---------------|----------|------------------|----------|
-| `model_install` | `install_model_engine`・`install_model` | `engine` / `model:<id>` | 進捗の割合 / 100 | `target`, `phase`（download / extract / register / done など）, `done_bytes`, `total_bytes` |
+| `model_install` | `install_model_engine`・`install_model`・`install_hf_file` | `engine` / `model:<id>` / `hf:<repo>@<commit>/<path>` | 進捗の割合 / 100 | `target`, `phase`（download / extract / register / done など）, `done_bytes`, `total_bytes` |
 
 `state` は `queued` / `running` / `succeeded` / `failed`。失敗の `error` はジョブキューの行の理由（SHA-256 の不一致・空き容量・取得元が認証を求めた・**取得元が消えた（404・410。ミラーの削除など。ファイル名と、ミラーなら原本の場所を添える）**・中断・ComfyUI の失敗など）。導入は再開できる（再起動のたびに最大 3 回）。進捗の割合はメモリ上で、ジョブの終了直前や再起動の後は 0 に戻ることがある（`succeeded` では 100）。
 
@@ -66,3 +78,4 @@
 | 1.0 | 2026-10-25 | 新規作成。エンジン 9 ツール・カタログ 9 ツール・試し生成 6 ツール、ジョブの種別 `model_install`・`gentest`、アップロードの用途 `model_trial_reference`、ダウンロードの種類 `model_trial_file` | Issue #833（#830 の方針: 画面の全操作を MCP で操作できるようにする） |
 | 1.1 | 2026-10-26 | 試し生成の 6 ツール・アップロードの用途 `model_trial_reference`・ダウンロードの種類 `model_trial_file` を削除し、生成テストのツール（[mcp-tools-generation-test.md](mcp-tools-generation-test.md)）に統合した。ジョブの種別 `gentest` の Probe も生成テスト側に移った | Issue #835。生成テストの実装を 1 つにする（試し生成は 1 モデル 1 プロンプトのバッチ） |
 | 1.2 | 2026-10-25 | 成人向けモデルの年齢確認のツール `get_adult_content_status`・`set_adult_content` を足した。`list_model_catalog`・`get_catalog_model` に `content_rating`・`trigger_words`（と `files[].source_note`・`adult_notice`）を足し、ゲートが閉じている間は成人向けモデルを一覧に出さず、`get_catalog_model`・`accept_model_license`・`install_model` は `conflict` にした。取得元が消えた導入の失敗の理由を足した | Issue #841。成人向け（非検閲）のモデル・LoRA と年齢確認 |
+| 1.3 | 2026-10-26 | Hugging Face の任意の `.safetensors` の導入のツール `search_hf_models`・`get_hf_model_files`・`install_hf_file`・`list_user_models`・`delete_user_model` を足した。ジョブの `target` に `hf:<repo>@<commit>/<path>` を足した | Issue #842。意味は [../architecture/model-manager/model-manager-hf.md](../architecture/model-manager/model-manager-hf.md) |
