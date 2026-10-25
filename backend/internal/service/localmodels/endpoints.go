@@ -25,9 +25,10 @@ type EndpointInput struct {
 	TimeoutSeconds int
 }
 
-// reservedEndpointName is the last segment of the address of the form that adds an endpoint
-// (/settings/local-models/endpoints/new), so an endpoint of that name could not have a page of its own.
-const reservedEndpointName = "new"
+// ReservedEndpointName is the last segment of the address of the form that adds an endpoint
+// (/settings/local-models/endpoints/new), so an endpoint of that name could not have a page of its own: a new one is
+// refused, and one that an older file holds is listed without a page.
+const ReservedEndpointName = "new"
 
 func (in EndpointInput) endpoint() localcfg.Endpoint {
 	return localcfg.Endpoint{Kind: in.Kind, BaseURL: strings.TrimSpace(in.BaseURL), MaxConcurrency: in.MaxConcurrency, TimeoutSeconds: in.TimeoutSeconds}
@@ -36,8 +37,8 @@ func (in EndpointInput) endpoint() localcfg.Endpoint {
 // CreateEndpoint registers an endpoint. A name in use is ErrExists; a bad input is *InvalidError.
 func (s *Service) CreateEndpoint(_ context.Context, in EndpointInput) error {
 	return s.change(func(st *state, _ modeladapter.Config) error {
-		if in.Name == reservedEndpointName {
-			return invalid("「%s」は接続先の名前に使えません（接続先の追加の画面の URL と同じなため）。別の名前にしてください", reservedEndpointName)
+		if in.Name == ReservedEndpointName {
+			return invalid("「%s」は接続先の名前に使えません（接続先の追加の画面の URL と同じなため）。別の名前にしてください", ReservedEndpointName)
 		}
 		if _, ok := st.endpoints[in.Name]; ok {
 			return ErrExists

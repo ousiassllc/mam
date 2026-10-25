@@ -23,11 +23,11 @@ import (
 	updatehandler "github.com/ousiassllc/mam/backend/internal/web/handler/appupdate"
 	chatgpthandler "github.com/ousiassllc/mam/backend/internal/web/handler/chatgptsettings"
 	gentesthandler "github.com/ousiassllc/mam/backend/internal/web/handler/gentest"
-	localhandler "github.com/ousiassllc/mam/backend/internal/web/handler/localmodels"
-	mcphandler "github.com/ousiassllc/mam/backend/internal/web/handler/mcpsettings"
 	modelmgrhandler "github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr"
 	credentialshandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/credentials"
 	llmhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/llm"
+	localhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/local"
+	mcphandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/mcp"
 	mediahandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/media"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/settingspage"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
@@ -80,9 +80,12 @@ func Register(engine *gin.Engine, services *service.Services, s *Services, logge
 		engine.POST(paths.UpdateCheck(), updatehandler.Check(update))
 	}
 	if s != nil && s.MCP != nil {
-		engine.PUT(paths.MCPBind(), mcphandler.Bind(s.MCP))
-		engine.POST(paths.MCPTokens(), mcphandler.Issue(s.MCP))
-		engine.DELETE(paths.MCPToken(":id"), mcphandler.Revoke(s.MCP))
+		h := mcphandler.Handlers{Svc: s.MCP, Page: pages.Page(paths.SettingsMCP)}
+		engine.GET(paths.MCPBindEdit(), h.EditBind)
+		engine.GET(paths.MCPTokenNew(), h.NewToken)
+		engine.PUT(paths.MCPBind(), h.Bind)
+		engine.POST(paths.MCPTokens(), h.Issue)
+		engine.DELETE(paths.MCPToken(":id"), h.Revoke)
 	}
 	if s != nil && s.ChatGPT != nil {
 		apiKeys := pages.Page(paths.SettingsAPIKeys)
@@ -107,9 +110,9 @@ func Register(engine *gin.Engine, services *service.Services, s *Services, logge
 		registerWorkflows(engine, s.Workflows)
 	}
 	if s != nil && s.LocalModels != nil {
-		h := localhandler.Handlers{Local: s.LocalModels}
-		pages.Fragments = map[string]gin.HandlerFunc{paths.SettingsLocalModels: h.Panel}
-		registerLocalModels(engine, h)
+		registerLocalModels(engine, localhandler.Handlers{
+			Local: s.LocalModels, Category: pages.Page(paths.SettingsLocalModels), Endpoint: pages.LocalEndpoint(),
+		})
 		engine.GET(paths.LocalModelsHealth(), settingspage.Health(s.LocalModels, 0))
 	}
 	if s != nil && s.ModelManager != nil {
@@ -137,6 +140,7 @@ func pageServices(services *service.Services, s *Services) settingspage.Services
 // registerLocalModels adds the routes of the "ローカル・代替モデル" section (spec/api/endpoints.md).
 func registerLocalModels(engine *gin.Engine, h localhandler.Handlers) {
 	engine.GET(paths.LocalEndpoints()+"/new", h.NewEndpoint)
+	engine.GET(paths.LocalEndpoint(":name"), h.Endpoint)
 	engine.POST(paths.LocalEndpoints(), h.CreateEndpoint)
 	engine.POST(paths.LocalEndpoints()+"/test", h.TestDraft)
 	engine.GET(paths.LocalEndpoint(":name", "edit"), h.EditEndpoint)

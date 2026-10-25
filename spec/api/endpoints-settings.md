@@ -2,7 +2,7 @@
 
 [endpoints.md](endpoints.md) §1 の `GET /settings` の行の本体。画面の作りは [../components/settings-screen.md](../components/settings-screen.md)（枠・ナビ・概要）・[../components/settings-screen-categories.md](../components/settings-screen-categories.md)（分類ごとの一覧とモーダル）、部品は [../components/shared-ui-parts.md](../components/shared-ui-parts.md)、新しいルートの経緯と応答の決まりの下書きは [../components/settings-screen-routes.md](../components/settings-screen-routes.md)（Issue #847）。「ローカル・代替モデル」のルートは [endpoints-local-models.md](endpoints-local-models.md)。`endpoints.md` は行数の上限（300 行）に収めるため、この分類のルートはここに書く。
 
-実装の段階（settings-screen.md §7）: ① ナビ・分類ごとの URL・概要、②-1 モーダルと一覧の行の部品、②-2 API キーとログイン、②-3 テキスト生成（LLM）、②-4 画像・動画モデル、までが実装済み。ローカルの接続先・MCP のモーダルの保存（下の「実装していないもの」）は後続の段階。
+実装の段階（settings-screen.md §7）: ① ナビ・分類ごとの URL・概要、②-1 モーダルと一覧の行の部品、②-2 API キーとログイン、②-3 テキスト生成（LLM）、②-4 画像・動画モデル、②-5 ローカル・代替モデル、②-6 MCP サーバーが実装済み。
 
 ## 1. ページ（HTMX でないときはページ全体、HTMX のときは本体だけ）
 
@@ -14,14 +14,15 @@
 | `/settings/api-keys` | API キーとログイン（API キーのカード、ChatGPT のログインのカード 3 枚） | 常に |
 | `/settings/llm` | テキスト生成（Agent ごとの表。§3 の「表の行の保存」。使われない Agent は折りたたみ） | LLM のサービスがあるとき |
 | `/settings/models` | 画像・動画モデル（画像の用途の表と Quality Policy の表。§3 の「表の行の保存」） | モデル設定のサービスがあるとき |
-| `/settings/local-models` | ローカル・代替モデル。**HTMX のときは今の区画の断片**（`#local-models-panel`。今のルートの意味を保つ）、HTMX でなければ分類のページ | `localmodels.Service` があるとき |
+| `/settings/local-models` | ローカル・代替モデル（モデルマネージャーのカード・接続先のカード）。HTMX のときは本体だけ、HTMX でなければ分類のページ | `localmodels.Service` があるとき |
+| `/settings/local-models/endpoints/:name` | 接続先のサブページ（接続先のカードと、そのモデルの表。モデルの追加・編集のフォームはこのページの中に開く）。タイトルは「設定: ローカル・代替モデル: <名前>」、ナビの現在の分類は「ローカル・代替モデル」。無い接続先は 404。名前が `new` の接続先（古い設定ファイルにだけある）は、追加フォームの URL に隠れるのでページが無い（一覧のカードがそう書く） | 同上 |
 | `/settings/mcp` | MCP サーバー（今の区画をそのまま） | `app` が MCP サーバーを起動したとき |
 | `/settings/update` | バージョンとアップデート（今の区画をそのまま） | 常に |
 | `/settings/chatgpt` | HTMX: 今の区画の断片（`#chatgpt-panel`。クエリ `method` は読まない。ログイン中・ダウンロード中は区画が 2 秒ごとにこの URL を取り直す）。HTMX でなければ `/settings/api-keys` のページ全体で、`<link rel="canonical" href="/settings/api-keys">` を付ける（`/settings/chatgpt/models` も同じ） | ChatGPT のサービスがあるとき |
 | `/settings/local-models/health` | 概要の「ローカル・代替モデル」のカード用: 接続先ごとの接続状態の断片（接続先ごとに接続テスト `localmodels.Service.TestEndpoint` と同じ確認を同時に行い、各 3 秒で打ち切る）。常に 200（接続先が無ければ空）、`Cache-Control: no-store` | `localmodels.Service` があるとき |
 
 - ページのタイトルは概要が「設定」、分類が「設定: <分類名>」。ページ全体は `<nav aria-label="設定">`（現在の分類に `aria-current="page"`）と、分類の `<section id="settings-category">`（`h2#settings-category-title`）を持つ。分類を移るのは通常のリンク（`hx-boost` は使わない）。
-- 分類の本文の区画は、API キーとログイン・画像・動画モデル（画像の用途の表・Quality Policy の表）が `h3`（作り直した区画）、テキスト生成（LLM）は見出しの無い 1 つの区画（分類の `h2` が見出し）、ほかは今の区画のまま（見出しは分類の `h2` に統合され、区画の `h2` は出ない）。
+- 分類の本文の区画は、API キーとログイン・画像・動画モデル（画像の用途の表・Quality Policy の表）・ローカル・代替モデル（「接続先」）・MCP サーバー（「トークン」）が `h3`（作り直した区画）、テキスト生成（LLM）は見出しの無い 1 つの区画（分類の `h2` が見出し）、ほかは今の区画のまま（見出しは分類の `h2` に統合され、区画の `h2` は出ない）。
 - 概要のカードの「いまの状態」の文（例: 「設定済み 3 / 10」）は、サーバーが読める値だけで組み立てる。接続先の状態だけは `/settings/local-models/health` が後から差し込む（`hx-trigger="load"`。読めないときは「状態を確認できません」）。
 
 ## 2. モーダル
@@ -36,6 +37,9 @@ HTMX 専用の断片（`#mam-modal-body` に入る）。HTMX でない GET は 4
 | GET | `/settings/models/images/:purpose/edit` | 画像の用途のモーダル（主・代替のモデルの `<select>`、高速版を持つモデルがあるときだけ「高速版」）。開くたびに、いま選べるモデル（登録したローカルのモデルを含む）を読む。選べなくなった保存済みのモデルは「（現在は使えません）」つきで選択済みのまま。未知の用途は 404、固定・設定ファイルが読めないときは 409 |
 | GET | `/settings/models/policies/:policy/edit` | Quality Policy のモーダル（主・代替の `<モデル>@<解像度>` の `<select>` とテイク数）。未知は 404、固定・設定ファイルが読めないときは 409 |
 | GET | `/settings/chatgpt/:kind/login` | ログインのモーダル。`:kind` は `official` / `image` / `codex`（他は 404）。方式の選択（公式は「Continue with ChatGPT」のブラウザだけ、画像・Codex はブラウザかデバイスコード）。画像が OFF の `image` は 409、エンジンが無い `codex` は 409（理由の断片）。**`?poll=1`**: ログイン中のモーダルが 2 秒ごとに取り直す。ログイン中は進行の表示、終わっていたら成功で `HX-Trigger-After-Swap: modal-close` と区画（`#chatgpt-panel`）の OOB、失敗・取り消しは方式の選択に理由（失敗のとき）を添えて返す |
+| GET | `/settings/local-models/endpoints/new`・`…/endpoints/:name/edit` | 接続先の追加・編集のモーダル。追加は名前・種類・`base_url`・同時実行数・タイムアウト・API キー（任意）と「入力中の内容で接続テスト」（`POST …/endpoints/test`。保存しない）。編集は `base_url`・同時実行数・タイムアウトだけ（名前と種類は文字）。**`?page=1`**: 接続先のサブページで開いたとき、保存はそのページの概要のカードを差し替える。固定ファイル（`--model-config`）は 409（理由の断片）、無い接続先の編集は 404 |
+| GET | `/settings/mcp/bind/edit` | MCP の待ち受け先のモーダル（候補つきの 1 欄。保存済みのアドレスが入る） |
+| GET | `/settings/mcp/tokens/new` | MCP トークンの発行のモーダル（名前の欄 1 つ） |
 | GET | `/settings/chatgpt/models`・`/settings/chatgpt/codex/models` | 利用できるモデルの一覧のモーダル（読み取りだけ）。読めないときはその理由 |
 
 ## 3. 保存・操作の応答の決まり（モーダルを使う操作）
@@ -76,7 +80,7 @@ HTMX 専用の断片（`#mam-modal-body` に入る）。HTMX でない GET は 4
 | POST | `/settings/chatgpt/:kind/login` | 本文が**モーダルの断片**（ブラウザ: 開いたことと認可 URL、デバイスコード: 確認 URL・コード・期限、どちらも 2 秒ごとの取り直しつき）＋区画の OOB。公式のデバイスコードは 422、画像が OFF は 409、エンジンが無い `codex` は 409（モーダルの断片に理由） |
 | POST | `/settings/chatgpt/:kind/login/cancel` | ログインの中止。モーダルを閉じ（`HX-Trigger-After-Swap: modal-close`）、カードを OOB で差し替える |
 | DELETE・PUT・POST | `/settings/chatgpt/…`（ログアウト・画像の ON/OFF・Codex の取得・中断・パス・更新） | 本文は今のまま区画（`#chatgpt-panel`、`hx-swap="outerHTML"`）。区画の中身がカードの一覧になった |
-| GET | `/settings/local-models` | HTMX でなければ分類のページ（上の §1）。HTMX は今の断片 |
+| GET | `/settings/local-models` | HTMX でなければ分類のページ全体、HTMX は本体だけ（上の §1）。今の断片（`#local-models-panel` の区画）はもう返さない |
 
 ## 4. API キーの接続テスト
 
@@ -94,9 +98,27 @@ HTMX 専用の断片（`#mam-modal-body` に入る）。HTMX でない GET は 4
 
 結果の分類: 2xx = 受け付けられた、401/403 = キーが拒否された、429 = 上限に達した、通信の失敗・タイムアウト = 通信できない、そのほか = 想定外の応答（ステータスコードを添える）。
 
-## 5. 実装していないもの（後続の段階）
+## 5. 今のルートのまま残すもの
 
-次はまだ今のルートのまま（settings-screen.md §7 の②-5 以降）: `GET /settings/mcp/bind/edit`・`/settings/mcp/tokens/new`、`GET /settings/local-models/endpoints/:name`（サブページ）、ローカルの接続先の保存の応答の OOB 化、MCP トークンの発行の例外（201。settings-screen-routes.md §3）。
+§3・§5.1 のとおり、LLM・画像動画（②-3・②-4）とローカル・MCP（②-5・②-6）の保存の応答は行の OOB に作り直した。全体の保存・リセット（`PUT`・`DELETE /settings/llm`・`/settings/models`）は今のルートのまま（§6）。
+
+## 5.1 ローカル・代替モデルと MCP サーバーの保存の応答（②-5・②-6）
+
+§3 の決まり（成功は行の OOB ＋トースト、モーダルの閉じる合図。誤りは 422 でモーダルの断片）に従う。パス・フォーム・状態コードは [endpoints-local-models.md](endpoints-local-models.md) §2 と [endpoints.md](endpoints.md) のとおり。応答の形だけが変わった。
+
+| 操作 | 成功の本文 | 失敗 |
+|------|-----------|------|
+| `POST …/local-models/endpoints`（追加） | 新しいカードを `<ul hx-swap-oob="beforeend:#local-endpoints">` で足し、「接続先はまだ…」の文（`#local-endpoints-empty`）を `hx-swap-oob="delete"` で外す。モーダルを閉じる。API キーの保存だけが失敗したときは、接続先は追加したので、エラーのトースト（理由）とその状態コードで、カードは足す | 名前の重複は 409、入力の誤り（名前 `new`・リンクローカルのアドレス・数字でない値）は 422。どちらもモーダルの断片（理由と、キー以外の入力値）。固定ファイルは 409（理由だけ） |
+| `PUT …/endpoints/:name`（変更） | カード（`#local-endpoint-<名前>`）を OOB で置き換える。フォームの `page=1` のとき（サブページで開いたモーダル）は、サブページの概要のカード（削除ボタンとモデルへのリンクが無い形）に置き換える | 422・409・404 は同上 |
+| `DELETE …/endpoints/:name` | 残りのカードを一覧（`#local-endpoints`）に `innerHTML` で入れる（押したボタンが消えても、フォーカスは次のカードの同じボタンに戻る）。最後の 1 件なら「接続先はまだ…」の文を `beforebegin:#local-endpoints` で足す。トースト | 使用中のモデルがあると 422、固定は 409、無いと 404。いずれもトーストだけ（`HX-Reswap: none`）で、カードは残る |
+| `POST`・`PUT …/endpoints/:name/models(/:model)` | サブページのエディタ（`#local-models-editor`）を空にし、モデルの行（`#local-model-<接続先>-<モデル>`）を OOB で置き換える（追加は表 `#local-models-table` に足し、「モデルはまだ…」の行を外す）。概要のカードも OOB で件数を直す。トースト。**`#model-assignment` は返さない**（「画像・動画モデル」は別のページで、開くたびに最新のモデルを選択肢にする） | 422・409 は、エディタの中にフォームと理由。404・固定は理由だけ |
+| `DELETE …/models/:model` | 残りの行を表に `innerHTML` で入れる（先頭に置く。表の行は先頭でないと HTML として読まれない）。概要のカードを OOB で直す。トースト | 使用中は 422（トースト） |
+| `GET …/endpoints/:name/models/new`・`…/:model/edit`・`POST …/models/start` | エディタの中のフォーム（ComfyUI は 2 段階）。固定ファイルは 409。HTMX でない `GET` は、接続先のサブページ全体 | |
+| `PUT /settings/mcp/bind` | 待ち受け先のカード（`#mcp-bind-row`）を OOB で置き換え、トースト、モーダルを閉じる | 許されないアドレスは 422、開けない・保存できないは 500。モーダルの断片（理由と入力値） |
+| `POST /settings/mcp/tokens` | **201**。モーダルの本文を「発行したトークン」に替える（`<input readonly>` の値・コピーのボタン・「閉じると二度と表示できません」）。表に新しい行（先頭 8 文字だけ）を足し、「発行済みのトークンはありません」の行を外す。**`HX-Trigger-After-Swap` は付けない**（モーダルを閉じない）。`Cache-Control: no-store`。値はこの応答の欄に 1 回だけ。モーダルを閉じると本文が空になる | 名前が空・長すぎるは 422（モーダルに理由と入力値）。値は出ない |
+| `DELETE /settings/mcp/tokens/:id` | そのトークンの行を OOB ではなくそのまま（押したボタンのある行を `outerHTML` で）「失効済み」にして返す。トースト | 無いトークンは 404（トースト） |
+
+行（`<tr>`）と表の本体（`<tbody>`）を OOB で足す・置き換えるときは、`<template>` に包む（HTML の構文解析は、`<tr>` を表の外で読むと捨てるため。htmx は `<template>` の中の OOB を読む）。`<ul>` に足すときは `<ul hx-swap-oob="beforeend:#…">` の子として、置き換えでない OOB は要素の**中身**が入ることに注意する。
 
 ## 6. 区画の保存の規則（LLM の割り当て・画像・動画モデルの全体の保存と、アップデート）。LLM・画像動画の画面は §3 の「表の行の保存」の表とモーダルに作り直した
 
@@ -115,3 +137,4 @@ HTMX 専用の断片（`#mam-modal-body` に入る）。HTMX でない GET は 4
 | 1.0 | 2026-10-25 | 新規作成。分類ごとのページ、API キーとログインのモーダル・接続テスト、モーダルの保存の応答の決まりを書いた | Issue #847。`endpoints.md` の行数上限（300 行）に収めるため、設定画面の分類のルートを別ファイルにした |
 | 1.1 | 2026-10-25 | §6 に、年齢確認がオフの間の成人向けモデルの扱い（選択肢から外す・保存済みの割り当ては「（現在は使えません）」・保存は 422）を足した | Issue #848 が `endpoints.md` §1 の `GET /settings` の行に足した規則を、#847 で行をここへ移したのに合わせて移した |
 | 1.2 | 2026-10-25 | LLM・画像動画の分類を表とモーダルにした。`GET /settings/llm/agents/:agent/edit`・`/settings/models/images/:purpose/edit`・`…/policies/:policy/edit`、`PUT`・`DELETE /settings/llm/agents/:agent`、`PUT /settings/models/images/:purpose`・`…/policies/:policy` を足した（§2・§3）。全体の保存・リセットは残し、応答を分類の本文にした。ローカルのモデルの変更の応答は `#model-assignment` を添えなくなった | Issue #847 段階 ②-3・②-4 |
+| 1.3 | 2026-10-25 | §1 に接続先のサブページ（`GET /settings/local-models/endpoints/:name`）、§2 に接続先・MCP のモーダル（`GET …/endpoints/new`・`…/:name/edit`・`/settings/mcp/bind/edit`・`/settings/mcp/tokens/new`）、§5.1 にローカル・代替モデルと MCP の保存の応答（行の OOB、`#model-assignment` の OOB の廃止、トークンの発行の 201）を書いた。§5 の「実装していないもの」を「今のルートのまま残すもの」に改めた | Issue #847 ②-5・②-6 |

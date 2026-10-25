@@ -1,0 +1,153 @@
+package mcp
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// TokenFieldID is the field that holds the issued token; the copy button reads it.
+const (
+	TokenFieldID  = "mcp-issued-value"
+	CopyStatusID  = "mcp-copy-status"
+	bindDatalist  = "mcp-bind-candidates"
+	bindInputID   = "mcp-bind-address"
+	tokenNameID   = "mcp-token-name"
+	bindModalHelp = "127.0.0.1 か、tailnet の IP（100.64.0.0/10）にできます。切り替えると、いまの接続は切れるので、接続し直してください。"
+)
+
+// BindModal is the body of the modal that changes the address the server listens on: one field, with the addresses of this
+// machine as suggestions. A refusal draws it again with the reason and what was typed.
+templ BindModal(f BindForm) {
+	@modal.Frame("MCP の待ち受け先", bindModalHelp) {
+		if f.Error != "" {
+			@modal.Error(f.Error)
+		}
+		<form
+			class="flex flex-col gap-3"
+			hx-put={ paths.MCPBind() }
+			hx-target={ "#" + modal.BodyID }
+			hx-swap="innerHTML"
+			hx-sync="this:drop"
+			hx-disabled-elt="find button[type=submit]"
+			autocomplete="off"
+		>
+			<label class="flex flex-col gap-1 text-sm" for={ bindInputID }>
+				<span class="font-medium">待ち受け先の IP アドレス</span>
+				@atoms.Input(atoms.FieldMd, "w-full", bindAttrs(f))
+				<datalist id={ bindDatalist }>
+					for _, c := range f.Candidates {
+						<option value={ c }></option>
+					}
+				</datalist>
+			</label>
+			@modal.Actions() {
+				@modal.Cancel("キャンセル")
+				@atoms.Button(atoms.TonePrimary, "切り替える", templ.Attributes{"type": "submit"})
+			}
+		</form>
+	}
+}
+
+func bindAttrs(f BindForm) templ.Attributes {
+	a := templ.Attributes{
+		"id":           bindInputID,
+		"name":         "bind_address",
+		"type":         "text",
+		"value":        f.Address,
+		"list":         bindDatalist,
+		"required":     true,
+		"autocomplete": "off",
+		"inputmode":    "decimal",
+		"autofocus":    true,
+	}
+	if f.Error != "" {
+		a["aria-invalid"] = "true"
+		a["aria-describedby"] = modal.ErrorID
+	}
+	return a
+}
+
+// IssueModal is the body of the modal that issues a token: its name, which agent it is for. A refusal draws it again with
+// the reason and what was typed.
+templ IssueModal(f IssueForm) {
+	@modal.Frame("MCP トークンを発行", "どのエージェント用かが分かる名前を付けてください。発行したトークンの値は、発行した直後の 1 回だけ表示されます。") {
+		if f.Error != "" {
+			@modal.Error(f.Error)
+		}
+		<form
+			class="flex flex-col gap-3"
+			hx-post={ paths.MCPTokens() }
+			hx-target={ "#" + modal.BodyID }
+			hx-swap="innerHTML"
+			hx-sync="this:drop"
+			hx-disabled-elt="find button[type=submit]"
+			autocomplete="off"
+		>
+			<label class="flex flex-col gap-1 text-sm" for={ tokenNameID }>
+				<span class="font-medium">トークンの名前</span>
+				@atoms.Input(atoms.FieldMd, "w-full", nameAttrs(f))
+			</label>
+			@modal.Actions() {
+				@modal.Cancel("キャンセル")
+				@atoms.Button(atoms.TonePrimary, "発行", templ.Attributes{"type": "submit"})
+			}
+		</form>
+	}
+}
+
+func nameAttrs(f IssueForm) templ.Attributes {
+	a := templ.Attributes{
+		"id":           tokenNameID,
+		"name":         "name",
+		"type":         "text",
+		"value":        f.Name,
+		"required":     true,
+		"maxlength":    maxLength(f.MaxNameLen),
+		"autocomplete": "off",
+		"autofocus":    true,
+	}
+	if f.Error != "" {
+		a["aria-invalid"] = "true"
+		a["aria-describedby"] = modal.ErrorID
+	}
+	return a
+}
+
+// IssuedModal is the body of the modal after a token was issued: its value in a read-only field, with a button that copies
+// it. This is the only answer that holds the value, and closing the modal empties the body: the value cannot be shown
+// again. Nothing else on the page, and no row of the table, carries it.
+templ IssuedModal(t NewToken) {
+	@modal.Frame("トークン「"+t.Name+"」を発行しました", "") {
+		<p class="text-sm" data-testid="mcp-issued">
+			<strong>この値は今しか表示されません。</strong>いまコピーして、エージェントの設定に貼り付けてください。閉じると、二度と表示できません。
+		</p>
+		<div class="flex flex-wrap items-center gap-2">
+			<input
+				id={ TokenFieldID }
+				type="text"
+				readonly
+				value={ t.Value }
+				aria-label="発行したトークン"
+				spellcheck="false"
+				autocomplete="off"
+				data-testid="mcp-issued-value"
+				class="min-w-0 flex-1 select-all rounded-md border border-neutral-700 bg-neutral-950 px-2 py-1.5 font-mono text-sm text-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+			/>
+			<button
+				type="button"
+				autofocus
+				data-copy-source={ TokenFieldID }
+				data-copy-status={ CopyStatusID }
+				class="inline-flex items-center gap-1.5 rounded-md border border-neutral-600 px-3 py-1.5 text-sm font-medium text-neutral-200 hover:bg-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+			>
+				@atoms.Icon(atoms.IconCopy, "h-4 w-4")
+				コピー
+			</button>
+		</div>
+		<p id={ CopyStatusID } role="status" class="min-h-5 text-sm text-emerald-300"></p>
+		@modal.Actions() {
+			@atoms.Button(atoms.ToneNeutral, "閉じる", templ.Attributes{"type": "button", "data-modal-close": true})
+		}
+	}
+}

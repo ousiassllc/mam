@@ -1,0 +1,184 @@
+package local
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+	"github.com/ousiassllc/mam/backend/internal/web/selector"
+)
+
+// cardKind is where a card of an endpoint is: in the list of the category (a link to the page of the endpoint and the
+// delete button) or at the head of the page of the endpoint itself (neither: it is what the page is about).
+type cardKind int
+
+const (
+	cardList cardKind = iota
+	cardPage
+)
+
+const listSelector = "#" + ListID
+
+// CardID is the id of the card of an endpoint: what a save replaces out of band.
+func CardID(endpoint string) string { return "local-endpoint-" + endpoint }
+
+// EditFocusKey names the button that opens the modal of an endpoint (it stays the same when the card is replaced).
+func EditFocusKey(endpoint string) string { return "edit-endpoint-" + endpoint }
+
+func (e Endpoint) card(kind cardKind, oob bool) settingsui.Card {
+	c := settingsui.Card{
+		ID: CardID(e.Name), TestID: "local-endpoint", Attrs: map[string]any{"data-endpoint": e.Name},
+		Title: e.Name, TitleLevel: 4, Tone: atoms.BadgeInfo, State: e.KindLabel,
+		Summary: "同時実行 " + itoa(e.MaxConcurrency) + " ／ タイムアウト " + itoa(e.TimeoutSeconds) + " 秒 ／ モデル " + itoa(len(e.Models)) + " 件",
+		Details: endpointDetails(e), OOB: oob,
+	}
+	if kind == cardPage {
+		c.TitleLevel = 3
+	}
+	return c
+}
+
+// endpointDetails is what the card says besides its name: the address, the state of the connection (not tried until the
+// button is pressed), the API key and, for the name that has no page, why the models cannot be opened.
+templ endpointDetails(e Endpoint) {
+	<code class="break-all text-xs text-neutral-300" data-testid="local-endpoint-url">{ e.BaseURL }</code>
+	<div class="flex items-baseline gap-2 text-xs">
+		<span class="shrink-0 text-neutral-400">接続:</span>
+		<div id={ testID(e.Name) } role="status" aria-live="polite" class="min-w-0 flex-1" data-testid="local-endpoint-test">
+			<span class="text-neutral-400">未確認（「接続テスト」で確かめます）</span>
+		</div>
+	</div>
+	@KeyRow(e.Name, e.Key)
+	if e.NoPage {
+		<p class="text-xs text-amber-300" data-testid="local-endpoint-no-page">
+			「{ e.Name }」は接続先の追加の画面と同じ URL になるため、この接続先のモデルは開けません。削除して、別の名前で作り直してください。
+		</p>
+	}
+}
+
+// endpointCard is the card of an endpoint: the buttons that test it, change it, open its models and delete it. A pinned
+// file leaves the ones that change it disabled, with the reason.
+templ endpointCard(pinned bool, note string, e Endpoint, kind cardKind, oob bool) {
+	@settingsui.CardItem(e.card(kind, oob)) {
+		@atoms.SmallButtonFor(atoms.ToneNeutral, "接続テスト", e.Name, templ.Attributes{
+			"type":            "button",
+			"hx-post":         paths.LocalEndpoint(e.Name, "test"),
+			"hx-target":       selector.ID("local-test-", e.Name),
+			"hx-swap":         "innerHTML",
+			"hx-sync":         "this:drop",
+			"hx-disabled-elt": "this",
+		})
+		@atoms.SmallButtonFor(atoms.ToneNeutral, "編集", e.Name, guard(pinned, note, modal.OpenAttrs(editURL(e.Name, kind), EditFocusKey(e.Name))))
+		if kind == cardList && !e.NoPage {
+			@atoms.SmallButtonLinkFor(atoms.ToneNeutral, "モデル（"+itoa(len(e.Models))+"）", e.Name, templ.SafeURL(paths.LocalEndpoint(e.Name)), nil)
+		}
+		if kind == cardList {
+			@atoms.SmallButtonFor(atoms.ToneDanger, "削除", e.Name, guard(pinned, note, templ.Attributes{
+				"type":       "button",
+				"hx-delete":  paths.LocalEndpoint(e.Name),
+				"hx-target":  listSelector,
+				"hx-swap":    "innerHTML",
+				"hx-sync":    "this:drop",
+				"hx-confirm": "接続先「" + e.Name + "」と、その接続先のモデルをすべて削除します（API キーも消えます）。よろしいですか？",
+			}))
+		}
+	}
+}
+
+// editURL is the modal of an endpoint; on its own page it says so, so that the save replaces the summary of the page.
+func editURL(name string, kind cardKind) string {
+	if kind == cardPage {
+		return paths.LocalEndpoint(name, "edit") + "?" + PageQuery + "=1"
+	}
+	return paths.LocalEndpoint(name, "edit")
+}
+
+// guard is attrs of a control that changes the settings file; for a pinned file it is a disabled button that says why
+// (the request is never sent).
+func guard(pinned bool, note string, attrs templ.Attributes) templ.Attributes {
+	if !pinned {
+		return attrs
+	}
+	return templ.Attributes{"type": "button", "disabled": true, "title": note}
+}
+
+// EndpointCardOOB is the card of an endpoint as the answer of a save: it replaces the card with its id out of band. On
+// the page of the endpoint it is the summary at its head.
+templ EndpointCardOOB(e Endpoint, onPage bool) {
+	if onPage {
+		@endpointCard(false, "", e, cardPage, true)
+	} else {
+		@endpointCard(false, "", e, cardList, true)
+	}
+}
+
+// KeyRow is the API key of an endpoint: whether one is set and its last characters (never the key), the
+// form that saves one and the button that removes it. It replaces itself on a save or a clear, so that
+// nothing else on the screen is touched. The key works also while the settings file is pinned.
+templ KeyRow(endpoint string, k Key) {
+	<div id={ keyRowID(endpoint) } class="flex flex-col gap-1" data-testid="local-endpoint-key">
+		<form
+			class="flex flex-wrap items-center gap-2"
+			hx-put={ paths.LocalEndpoint(endpoint, "key") }
+			hx-target={ selector.ID("local-key-row-", endpoint) }
+			hx-swap="outerHTML"
+			hx-sync="this:drop"
+			hx-disabled-elt="find button[type=submit]"
+			autocomplete="off"
+		>
+			<span class="text-xs text-neutral-400">API キー（任意）:</span>
+			if k.Unavailable {
+				<span data-testid="local-key-state">
+					@atoms.Badge(atoms.BadgeWarn, "キーストアを利用できません")
+				</span>
+			} else if k.Configured {
+				<span data-testid="local-key-state">
+					@atoms.Badge(atoms.BadgeOK, keyState(k))
+				</span>
+			} else {
+				<span data-testid="local-key-state">
+					@atoms.Badge(atoms.BadgeNeutral, "未設定")
+				</span>
+			}
+			<label class="sr-only" for={ "local-key-" + endpoint }>{ endpoint } の API キー</label>
+			@atoms.Input(atoms.FieldSm, "min-w-0 w-56", templ.Attributes{
+				"id":           "local-key-" + endpoint,
+				"name":         FieldAPIKey,
+				"type":         "password",
+				"autocomplete": "new-password",
+				"placeholder":  keyPlaceholder(k.Configured),
+			})
+			@atoms.SmallButtonFor(atoms.TonePrimary, "キーを保存", endpoint, templ.Attributes{"type": "submit"})
+			if k.Configured {
+				@atoms.SmallButtonFor(atoms.ToneNeutral, "キーを削除", endpoint, templ.Attributes{
+					"type":       "button",
+					"hx-delete":  paths.LocalEndpoint(endpoint, "key"),
+					"hx-params":  "none", // inside the key form: never send its values with a DELETE
+					"hx-target":  selector.ID("local-key-row-", endpoint),
+					"hx-swap":    "outerHTML",
+					"hx-confirm": "接続先「" + endpoint + "」の API キーを削除します。よろしいですか？",
+				})
+			}
+		</form>
+		if k.Error != "" {
+			<p class="text-xs text-red-300" role="alert" data-testid="local-key-error">{ k.Error }</p>
+		}
+	</div>
+}
+
+// TestResult is the line a connection test answers with.
+templ TestResult(t TestView) {
+	<div class="flex flex-col gap-1 text-xs" data-testid="local-test-result">
+		if t.OK {
+			<p class="text-emerald-300">{ t.Message }</p>
+		} else {
+			<p class="text-red-300" role="alert">{ t.Message }</p>
+		}
+		if t.Note != "" {
+			<p class="text-amber-300" data-testid="local-test-note">{ t.Note }</p>
+		}
+		if len(t.Models) > 0 {
+			<p class="text-neutral-400" data-testid="local-test-models">モデル: { joinNames(t.Models) }</p>
+		}
+	</div>
+}

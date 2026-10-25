@@ -178,6 +178,7 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 | 0.4 | 2026-10-25 | §1 のフォーカスの輪を `outline-none` から `outline-hidden` にした（輪郭が `forced-colors` で描かれる） | 独立レビュー（PR #849 の 2 周目）の指摘。輪は box-shadow で、Windows のハイコントラストでは消える |
 | 0.5 | 2026-10-25 | §4 に「入れ替えの間は触れない」を足した。状態を更新した。`atoms.Icon` の #847 の 7 個・モーダル（`molecules/modal/`・`static/src/components/modal/`）・`SettingsCard`（`settingsui.CardItem`）を実装した。`SettingsTable`・`IconCopy` は後続。モーダルの関数の名前を実装に合わせた（`ModalOpen` → `OpenAttrs`）。成功の通知は `atoms.SuccessToastOOB` | Issue #847 段階 ①・②-1・②-2 の実装 |
 | 0.6 | 2026-10-25 | `SettingsTable`・`TableRowItem`・`RowHead`・`Cell` と `IconCopy` を実装した（§5 に実装の形を足した。状態を更新した） | Issue #847 段階 ②-3 の実装 |
+| 0.7 | 2026-10-25 | 「コピー」のボタン（`data-copy-source`・`data-copy-status`。`static/src/components/copy/`）を MCP のトークンの発行のモーダルに実装した。`SettingsTable` は ②-5（モデルの表）・②-6（トークンの表）が使う | Issue #847 ②-5・②-6 |
 
 ## 8. オーナーへの確認事項と決定（2026-10-25: すべて推奨する既定で決定）
 

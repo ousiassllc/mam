@@ -11,6 +11,7 @@ import { installSaveOnChangeRevert } from './components/save-on-change/save-on-c
 import { installFocusRestore } from './components/focus-restore/focus-restore';
 import { dedupeToastsOnSwap, dismissToastsOnClick } from './components/lib/toast';
 import { insideModal, installModal } from './components/modal/modal';
+import { installCopy } from './components/copy/copy';
 
 // Attach the CSRF token (from <meta name="csrf-token">) to every HTMX request.
 document.addEventListener('htmx:configRequest', (event) => {
@@ -56,6 +57,9 @@ installFocusRestore();
 // The modal dialog of the settings screen: opens when the body it was asked for arrives, closes on Esc / its buttons /
 // a saved form, and gives the focus back to the control that opened it.
 installModal();
+
+// The "コピー" button of a value that is shown once (an MCP token that was just issued).
+installCopy();
 
 lockDownHtmx(htmx.config);
 

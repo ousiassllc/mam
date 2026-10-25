@@ -9,15 +9,15 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	updatehandler "github.com/ousiassllc/mam/backend/internal/web/handler/appupdate"
-	localhandler "github.com/ousiassllc/mam/backend/internal/web/handler/localmodels"
-	mcphandler "github.com/ousiassllc/mam/backend/internal/web/handler/mcpsettings"
 	llmhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/llm"
+	localhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/local"
+	mcphandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/mcp"
 	mediahandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/media"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/toolstatus"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
-	localview "github.com/ousiassllc/mam/backend/internal/web/organisms/localmodels"
-	mcpview "github.com/ousiassllc/mam/backend/internal/web/organisms/mcppanel"
 	llmview "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/llm"
+	localview "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/local"
+	mcpview "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/mcp"
 	modelview "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/media"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/overview"
 	updateview "github.com/ousiassllc/mam/backend/internal/web/organisms/updatepanel"
@@ -34,10 +34,7 @@ func overviewBody(c *gin.Context, s Services) templ.Component {
 		}
 		cards = append(cards, s.card(c, cat.slug))
 	}
-	cards = append(cards, molecules.ToolCard{
-		ID: "model-manager", Href: templ.SafeURL(paths.ModelManager()), Icon: atoms.IconPackage, Title: "モデルマネージャー",
-		Description: "ComfyUI とローカルモデルの導入・試し生成。別の画面を開きます。", StatusURL: paths.ToolStatus(paths.ToolModelManager),
-	})
+	cards = append(cards, localview.ManagerCard())
 	return pages.SettingsOverviewBody(overview.Data{Cards: cards})
 }
 

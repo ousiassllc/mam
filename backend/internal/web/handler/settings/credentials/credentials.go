@@ -18,7 +18,6 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/settings/settingshttp"
-	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/credentials"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
@@ -118,7 +117,7 @@ func Save(k Keys) gin.HandlerFunc {
 		provider := c.Param("provider")
 		err := k.Svc.Save(provider, c.PostForm("api_key"))
 		if invalid := asValidation(err); invalid != nil && invalid.Field == "provider" {
-			toast(c, http.StatusUnprocessableEntity, invalid.Message)
+			settingshttp.Toast(c, http.StatusUnprocessableEntity, invalid.Message)
 			return
 		}
 		done(c, k, provider, err, "API キーを保存しました", "API キーを保存しました。キーストアの状態は確認できませんでした", saveFailed)
@@ -132,12 +131,12 @@ func Delete(k Keys) gin.HandlerFunc {
 		provider := c.Param("provider")
 		err := k.Svc.Remove(provider)
 		if invalid := asValidation(err); invalid != nil {
-			toast(c, http.StatusUnprocessableEntity, invalid.Message)
+			settingshttp.Toast(c, http.StatusUnprocessableEntity, invalid.Message)
 			return
 		}
 		if err != nil {
 			_ = c.Error(err)
-			toast(c, http.StatusServiceUnavailable, deleteFailed)
+			settingshttp.Toast(c, http.StatusServiceUnavailable, deleteFailed)
 			return
 		}
 		settingshttp.NoStore(c)
@@ -191,12 +190,6 @@ func unreadable(c *gin.Context, k Keys, status int, notice string, statusErr err
 	c.Header("HX-Retarget", "#credential-panel")
 	c.Header("HX-Reswap", "outerHTML")
 	settingshttp.Render(c, status, view.Panel(view.Data{Unavailable: true, Notice: notice, Providers: providerViews(k, unknownStatuses())}))
-}
-
-// toast answers with a toast and leaves the page alone.
-func toast(c *gin.Context, status int, message string) {
-	middleware.ToastOnly(c)
-	settingshttp.Render(c, status, atoms.ToastOOB(message))
 }
 
 func asValidation(err error) *service.ValidationError {
