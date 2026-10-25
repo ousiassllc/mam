@@ -6,6 +6,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/generation"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/agegate"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/textutil"
@@ -141,6 +142,8 @@ func mapGenerationError(err error) error {
 		return ErrBusy
 	case errors.Is(err, generation.ErrBudgetExceeded):
 		return ErrBudgetExceeded
+	case errors.Is(err, agegate.ErrRefused): // an adult model while the age confirmation is off: tell the user how to go on
+		return conflict("%s", agegate.Reason(err))
 	case errors.Is(err, generation.ErrJudgeUnavailable):
 		return ErrUnavailable
 	case errors.Is(err, repository.ErrLocked):

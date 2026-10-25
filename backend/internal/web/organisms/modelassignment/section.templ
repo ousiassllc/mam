@@ -80,6 +80,8 @@ type Data struct {
 	Notice     string
 	Error      string
 	Problem    string
+	// GatedNote, when set, says the saved assignment names adult models that are not offered while the age confirmation is off.
+	GatedNote string
 	// OOB: the form is sent out of band, to replace the one on the screen (an action of another section changed
 	// what can be chosen: the local models).
 	OOB          bool
@@ -90,6 +92,10 @@ type Data struct {
 }
 
 const sectionID = "model-assignment"
+
+// unusableSuffix marks the option of a saved model that is not among the choices (an adult model while the age confirmation
+// is off), so that the select shows the saved assignment instead of silently showing another model.
+const unusableSuffix = "（現在は使えません）"
 
 // SectionIf is Section, or nothing when d is nil.
 templ SectionIf(d *Data) {
@@ -136,6 +142,9 @@ templ Form(d Data) {
 		}
 		if d.Error != "" {
 			<p class="text-sm text-red-300" role="alert" data-testid="model-assignment-error">{ d.Error }</p>
+		}
+		if d.GatedNote != "" {
+			<p class="text-sm text-amber-300" role="status" data-testid="model-assignment-gated">{ d.GatedNote }</p>
 		}
 		<fieldset class="flex flex-col gap-2" disabled?={ d.Pinned }>
 			<legend class="text-sm font-medium">画像モデル</legend>
@@ -205,6 +214,9 @@ templ imageSlot(purpose, slot, slotLabel, purposeLabel string, t ImageTarget, mo
 			for _, m := range models {
 				<option value={ m.Name } selected?={ m.Name == t.Model }>{ m.Name }</option>
 			}
+			if t.Model != "" && !slices.ContainsFunc(models, func(m ImageModel) bool { return m.Name == t.Model }) {
+				<option value={ t.Model } selected>{ t.Model }{ unusableSuffix }</option>
+			}
 		}
 		if showFast(t, models) {
 			<label class="flex items-center gap-1 text-xs">
@@ -242,6 +254,9 @@ templ policySlot(policy, slot, slotLabel, policyLabel, selected string, choices 
 		@atoms.Select(atoms.FieldMd, "", templ.Attributes{"id": PolicyTargetField(policy, slot), "name": PolicyTargetField(policy, slot)}) {
 			for _, c := range choices {
 				<option value={ c.Value } selected?={ c.Value == selected }>{ c.Label }</option>
+			}
+			if selected != "" && !slices.ContainsFunc(choices, func(c VideoChoice) bool { return c.Value == selected }) {
+				<option value={ selected } selected>{ selected }{ unusableSuffix }</option>
 			}
 		}
 	</div>

@@ -35,8 +35,17 @@ type modelScreen struct {
 
 func newModelScreen(t *testing.T, file string, pinned bool) *modelScreen {
 	t.Helper()
+	return newGatedModelScreen(t, file, pinned, nil)
+}
+
+// newGatedModelScreen is newModelScreen with the age gate of the model manager: hidden says which models are adult models while the
+// age confirmation is off (nil: none).
+func newGatedModelScreen(t *testing.T, file string, pinned bool, hidden func(modelID string) bool) *modelScreen {
+	t.Helper()
 	svc := servicetest.New(t, service.Deps{DB: testdb.Open(t), Credentials: credentialtest.New()})
-	s := &modelScreen{t: t, file: file, engine: router.New(svc, router.Options{Settings: settingsroutes.New(filepath.Join(t.TempDir(), "llm.json"), false, file, pinned)})}
+	settings := settingsroutes.New(filepath.Join(t.TempDir(), "llm.json"), false, file, pinned)
+	settings.Models.SetHidden(hidden)
+	s := &modelScreen{t: t, file: file, engine: router.New(svc, router.Options{Settings: settings})}
 	rec := s.send(httptest.NewRequest(http.MethodGet, paths.Settings(), nil))
 	require.Equal(t, http.StatusOK, rec.Code)
 	for _, c := range rec.Result().Cookies() {

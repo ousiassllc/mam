@@ -137,6 +137,9 @@ func New(t *testing.T, opts ...Option) *Rig {
 	r.Svc, err = modelmanager.New(d)
 	require.NoError(t, err)
 	r.Svc.Register()
+	// as the app wires it: an adult model is refused by every generation and left out of the assignment choices while the gate is closed
+	r.Adapter.Gate.Set(func(m domain.ModelName) bool { return r.Svc.HidesModel(string(m)) })
+	r.Sets.SetHidden(r.Svc.HidesModel)
 	r.Gentest = gentest.New(gentest.Deps{
 		Repo: gentestrepo.New(r.db), Jobs: r.Queue, JobTable: r.Table, Adapter: r.Adapter, DataDir: r.DataDir, AssetsDir: t.TempDir(),
 		Projects: repository.NewProjectRepository(r.db), Assets: repository.NewAssetRepository(r.db), References: repository.NewReferenceRepository(r.db),

@@ -60,6 +60,7 @@ type ModelsSection struct {
 	Policies    []PolicyRoute `json:"policies"`
 	ImageModels []ImageOption `json:"image_models"`
 	VideoModels []VideoOption `json:"video_models"`
+	GatedModels []string      `json:"gated_models" jsonschema:"年齢確認がオフのため使えない成人向けモデルで、割り当てがまだ指しているもの。選べず、生成は断られる。年齢確認をオンにするか、別のモデルに割り当て直す"`
 }
 
 func modelsSection(svc *modelsettings.Service) ModelsSection {
@@ -78,7 +79,10 @@ func modelsSection(svc *modelsettings.Service) ModelsSection {
 func sectionOf(v modelsettings.View) ModelsSection {
 	out := ModelsSection{
 		Available: true, Pinned: v.Pinned, Customized: v.Customized,
-		Images: []ImageRoute{}, Policies: []PolicyRoute{}, ImageModels: []ImageOption{}, VideoModels: []VideoOption{},
+		Images: []ImageRoute{}, Policies: []PolicyRoute{}, ImageModels: []ImageOption{}, VideoModels: []VideoOption{}, GatedModels: []string{},
+	}
+	for _, m := range v.Gated {
+		out.GatedModels = append(out.GatedModels, string(m))
 	}
 	for _, p := range modelsettings.ImagePurposes() {
 		r := v.Images[p]
