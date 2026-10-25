@@ -5,7 +5,7 @@
 ## 方針
 
 - **トークンはどのツールの応答にも載せない**（アクセス・リフレッシュ・ID トークン、`id_token_hint` つきの URL も）。返すのは、ログインしているか・メール・プラン・アクセストークンの期限・再ログインの要否・画像生成の ON/OFF だけ。全ツールの結果の全文に、保存されたトークンの値と JWT らしい値（`eyJ`）が無いことを、テスト（`chatgptauth_test.go`）で確かめている。
-- ログインは 3 系統（`account`）: `official`（公式。テキスト生成）、`codex`（Codex の app-server 経由。テキスト生成のみ。Business / Enterprise / Edu のワークスペースのアカウントも使える。プロバイダー `chatgpt-codex`。設計 §8）、`image`（画像生成・非公式）。`codex` もトークンを返さない（mam は Codex のトークンを読まない）。
+- ログインは 3 系統（`account`）: `official`（公式。テキスト生成）、`codex`（Codex の app-server 経由。テキスト生成のみ。Business / Enterprise / Edu のワークスペースのアカウントも使える。プロバイダー `chatgpt-codex`。設計 `chatgpt-codex/codex-login.md`）、`image`（画像生成・非公式）。`codex` もトークンを返さない（mam は Codex のトークンを読まない）。
 - **ブラウザのログインはコールバックが mam の PC の `127.0.0.1` に来る**。`start_chatgpt_login` は mam の PC の既定ブラウザを開き、`auth_url` も返す。tailnet などリモートから使うときは、mam の PC のブラウザでその URL を開いてもらう（公式のログインにデバイスコードはない: 確認済み、設計 §2）。画像生成のログインだけ、デバイスコードでどの端末からも行える。
 - **画像生成（非公式）は既定で OFF**。`set_chatgpt_image_generation` の説明と応答にリスクを載せ、ON にするには `acknowledge_risks: true`（利用者がリスクを確認したことを呼び出し側が確かめて渡す）が要る。OFF のあいだは、画像生成のログインも開始できず（`conflict`）、この経路は一切呼ばれない。
 - ログアウトはリフレッシュトークンの失効を OpenAI に求めてから、保存したトークンを消す。失効を確認できなくてもローカルのトークンは消え、応答の `revoke_confirmed: false` と `message` で知らせる（ChatGPT の設定で接続を解除してもらう）。
