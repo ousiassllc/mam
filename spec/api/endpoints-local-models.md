@@ -20,9 +20,10 @@
 
 | Method | Path | 内容 |
 |--------|------|------|
-| GET | `/settings/local-models` | 区画だけ（「閉じる」） |
+| GET | `/settings/local-models` | HTMX のときは区画だけ（「閉じる」）。HTMX でなければ分類のページ全体（`/settings/local-models` が分類の URL。[endpoints-settings.md](endpoints-settings.md) §1） |
+| GET | `/settings/local-models/health` | 設定画面の概要のカード用の接続状態の断片。[endpoints-settings.md](endpoints-settings.md) §1 |
 | GET | `/settings/local-models/endpoints/new` | 接続先の追加フォーム（`#local-models-editor` に差し込む断片）。固定ファイルでは 409 で区画を返す（`HX-Retarget` で区画を差し替える） |
-| POST | `/settings/local-models/endpoints` | 接続先の登録。フォーム `name`・`kind`（`comfyui` / `openai-compat`）・`base_url`・`max_concurrency`・`timeout_seconds`・`api_key`（任意）。リンクローカルの `base_url` は 422 |
+| POST | `/settings/local-models/endpoints` | 接続先の登録。フォーム `name`・`kind`（`comfyui` / `openai-compat`）・`base_url`・`max_concurrency`・`timeout_seconds`・`api_key`（任意）。リンクローカルの `base_url` は 422。名前 `new` も 422（`/settings/local-models/endpoints/new` は追加フォームの URL で、接続先の名前が `new` だと将来そのサブページ `/settings/local-models/endpoints/:name` に行けなくなるため。MCP の `create_local_endpoint` も同じ検査）。すでに保存済みの設定にある `new` は読み込めるが、サブページは開けない（settings-screen.md §3） |
 | GET | `/settings/local-models/endpoints/:name/edit` | 編集フォーム（`base_url`・`max_concurrency`・`timeout_seconds` だけ） |
 | PUT | `/settings/local-models/endpoints/:name` | 変更。名前・種類のフィールドは読まない |
 | DELETE | `/settings/local-models/endpoints/:name` | 接続先とそのモデル・キーの削除（使用中のモデルがあれば 422） |
@@ -42,3 +43,4 @@
 | 版 | 日付 | 変更内容 | 変更理由 |
 |----|------|---------|---------|
 | 1.0 | 2026-10-25 | 新規作成。設定画面「ローカル・代替モデル」の画面の仕様とルート | Issue #831。`endpoints.md` の行数上限（300 行）に収めるため、区画のルートを別ファイルにした |
+| 1.1 | 2026-10-25 | `GET /settings/local-models` は HTMX でなければ分類のページ全体を返すと明記し、`GET /settings/local-models/health` を足した。接続先の名前 `new` を 422 にした | Issue #847（設定画面の分類ごとのサブページ。settings-screen.md §11 の質問 6 の推奨の既定） |

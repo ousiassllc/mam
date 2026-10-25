@@ -1,6 +1,6 @@
 # 画面仕様: 全体の設定画面（分類ごとのサブページ）
 
-> **状態: 案（実装前。オーナーの確認待ち）。** Issue #847。コード・テンプレート・CSS・テストはまだ書かない。分類ごとの一覧とモーダルは [settings-screen-categories.md](settings-screen-categories.md)、新しいルートと応答の決まりは [settings-screen-routes.md](settings-screen-routes.md)、共通の部品（カード・アイコン・モーダル・一覧の行）は [shared-ui-parts.md](shared-ui-parts.md)。確認が要る点は §11。
+> **状態: 段階 ①・②-1・②-2 実装済み（2026-10-25）。②-3 以降（LLM・画像動画・ローカルの接続先・MCP の作り直し）は未実装。** Issue #847。オーナーは §11 を推奨する既定で決定した（2026-10-25）。分類ごとの一覧とモーダルは [settings-screen-categories.md](settings-screen-categories.md)、新しいルートと応答の決まりは [settings-screen-routes.md](settings-screen-routes.md)、共通の部品（カード・アイコン・モーダル・一覧の行）は [shared-ui-parts.md](shared-ui-parts.md)。確認が要る点は §11。
 
 [overview.md](overview.md) §3 の `global_settings_page`・`global_settings_body`（`GET /settings`。API キー・ChatGPT・LLM・画像動画モデル・ローカル・MCP・バージョンが 1 ページに縦に並ぶ）を、**左のサイドナビ ＋ 分類ごとのサブページ**に分ける。プロジェクトの設定（`/projects/:id/settings`）・モデルマネージャーの作り直し・全画面共通のナビゲーションは範囲外。
 
@@ -122,9 +122,9 @@
 
 | 段階 | 内容 | 主な変更 | デザインレビュー |
 |------|------|---------|------------------|
-| ① | ナビ・分類ごとの URL・概要。**中身は今の区画をそのまま**各分類のページに移す（フォーム・ルート・応答は変えない） | `pages/settings_pages.templ`・`molecules/settingsui`（`SettingsNav`）・`organisms/settings/overview/`・`handler/settingspage/`・`settingsroutes`・`SettingsSection` の見出しのレベル | ① の完成で 1024×700・1440×900 |
-| ②-1 | **モーダルの部品**と一覧の行の部品を作り、API キーのカードで使う（モーダルの担当は未決。#846 の決定事項 1 は #846 で作ると読める。[shared-ui-parts.md](shared-ui-parts.md) §8 の質問 7。ここは推奨する既定に沿って #847 で作る前提） | `molecules/modal/`・`static/src/components/modal/`・`organisms/settings/credentials/` | **部品の段階**で 1024×700・1440×900（決定事項 10(a) の 1 回目） |
-| ②-2 | ChatGPT のログインをカードに（ログイン中の表示はモーダル）。#845 の Codex 経由は 3 つ目のカード（§9） | `organisms/settings/chatgpt/` | |
+| ① **実装済み** | ナビ・分類ごとの URL・概要。**中身は今の区画をそのまま**各分類のページに移す（フォーム・ルート・応答は変えない） | `pages/settings_pages.templ`・`molecules/settingsui`（`SettingsNav`）・`organisms/settings/overview/`・`handler/settingspage/`・`settingsroutes`・`SettingsSection` の見出しのレベル | ① の完成で 1024×700・1440×900 |
+| ②-1 **実装済み** | **モーダルの部品**と一覧の行の部品を作り、API キーのカードで使う（モーダルの担当は未決。#846 の決定事項 1 は #846 で作ると読める。[shared-ui-parts.md](shared-ui-parts.md) §8 の質問 7。ここは推奨する既定に沿って #847 で作る前提） | `molecules/modal/`・`static/src/components/modal/`・`organisms/settings/credentials/` | **部品の段階**で 1024×700・1440×900（決定事項 10(a) の 1 回目） |
+| ②-2 **実装済み**（API キーのカードと接続テストを含む） | ChatGPT のログインをカードに（ログイン中の表示はモーダル）。#845 の Codex 経由は 3 つ目のカード（§9） | `organisms/settings/chatgpt/` | |
 | ②-3 | LLM の割り当て（Agent の表・Agent ごとの保存） | `organisms/settings/llm/`・`PUT /settings/llm/agents/:agent` | |
 | ②-4 | 画像・動画モデル | `organisms/settings/media/` | |
 | ②-5 | ローカルの接続先（カード・モーダル）とサブページ | `organisms/settings/local/` | |
@@ -194,3 +194,4 @@
 | 0.1 | 2026-10-25 | 新規作成（案） | Issue #847 決定事項 1(a)。実装前にオーナーが確認するための設定画面の仕様 |
 | 0.2 | 2026-10-25 | §3 の GET の数（8 → 9。`/settings/chatgpt/codex/models`）と §9 の `chatgptpanel` の行数・#845 の取り込みの記述を、入った #845 の実装に合わせた | 統合の見直し。#845 が先に入ったため |
 | 0.3 | 2026-10-25 | ②-1 のモーダルの担当を未決とし（[shared-ui-parts.md](shared-ui-parts.md) §8 の質問 7）、#845 のタブ（`role="tablist"`）の扱いを §9 に足した | 独立レビュー（PR #849）の指摘 |
+| 0.4 | 2026-10-25 | 状態を「段階 ①・②-1・②-2 実装済み」にした（§7 の表に印）。実装: ナビ・概要・分類ごとのページ・モーダル・API キーとログイン。接続先の名前 `new` は 422（§11 の質問 6 の推奨）。ログインのカードの取り直しは `GET /settings/chatgpt/:kind/login?poll=1`（モーダル）とパネル全体の取り直しで行い、`card=<kind>` は使わなかった（`method` クエリは読まない） | Issue #847 の実装 |

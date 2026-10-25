@@ -1,6 +1,6 @@
 # 画面仕様: 設定画面の分類ごとの一覧とモーダル
 
-> **状態: 案（実装前。オーナーの確認待ち）。** Issue #847 ステージ ②。枠・ナビ・URL・概要は [settings-screen.md](settings-screen.md)、ルートと応答の決まりは [settings-screen-routes.md](settings-screen-routes.md)、部品は [shared-ui-parts.md](shared-ui-parts.md)。`<dialog>` の決まり（開く・閉じる・フォーカス・成功・422）はすべて shared-ui-parts §4 に従い、ここでは繰り返さない。
+> **状態: §1（API キーとログイン）は実装済み（2026-10-25）。§2 以降（LLM・画像動画・ローカル・MCP）は未実装（段階 ②-3 以降）。** Issue #847 ステージ ②。オーナーは §7 を推奨する既定で決定した（2026-10-25）。枠・ナビ・URL・概要は [settings-screen.md](settings-screen.md)、ルートと応答の決まりは [settings-screen-routes.md](settings-screen-routes.md)、部品は [shared-ui-parts.md](shared-ui-parts.md)。`<dialog>` の決まり（開く・閉じる・フォーカス・成功・422）はすべて shared-ui-parts §4 に従い、ここでは繰り返さない。
 
 方式の凡例（決定事項 8(a)）: **モーダル** = 1 つの対象の短い編集（項目が数個・1 回の保存）。**サブページ** = 一覧を持つもの・長い作業（URL を持つ）。削除の確認は今のまま `hx-confirm`。
 
@@ -33,7 +33,7 @@
 | `typesafe` | Repair の前段選別（Jev。§4.5） | なし（`POST /v1/systemone` だけ。課金の有無は**未確認**） | **未確認**→ 候補なし |
 
 - 候補は、決定事項 5(a)（無料で読むだけの API があるプロバイダーだけ）に沿った案。**どのプロバイダーに付けるかは、実装のときに公式ドキュメントを 1 つずつ確かめて決め、実キーでの動作は所有者の実機で確かめる（未検証）**。確認できないものには接続テストのボタンを出さず、「保存したあと、最初の生成で確かめられます」を出す。
-- 「キーの取り方のリンク」（各社のコンソール）の URL もすべて実装のときに公式ページで確かめる（この仕様には書かない。未確認）。
+- 「キーの取り方のリンク」（各社のコンソール）: anthropic `https://platform.claude.com/settings/keys`、google `https://aistudio.google.com/apikey`、flux `https://dashboard.bfl.ai`、runway `https://dev.runway.com`（公式の setup の頁で確認）、elevenlabs `https://elevenlabs.io/app/api/api-keys`（公式のクイックスタートで確認）。そのほかのプロバイダーはリンクを出さない（公式の取得先を確認できていない）。リンクは `target="_blank" rel="noopener noreferrer"`。接続テストの呼び出しとその結果の分類は [../api/endpoints-settings.md](../api/endpoints-settings.md) §4。
 
 ### 1.2 API キーのモーダル（`GET /settings/credentials/:provider/edit`）
 
@@ -143,3 +143,4 @@
 | 0.1 | 2026-10-25 | 新規作成（案） | Issue #847 決定事項 1(a)・3(a)・5(a)・8(a)・9(a)。分類ごとの一覧とモーダルの案 |
 | 0.2 | 2026-10-25 | §1.3 の Codex 経由の行と §2 の `chatgpt-codex` の記述を、入った #845 の実装に合わせた | 統合の見直し。#845 が先に入ったため |
 | 0.3 | 2026-10-25 | §1.3 のログインのモーダルの取り直しのクエリを、今の `GET /settings/chatgpt?method=` との関係つきで書き直した（`card` は未決の質問） | 独立レビュー（PR #849）の指摘 |
+| 0.4 | 2026-10-25 | §1 を実装済みにした。§1.1 の接続テストの表の「確認の状態」を、公式資料で確かめた結果（6 つに接続テスト、4 つは候補なし）と、実キーでは未検証であることに書き直し、キーの取り方のリンクの URL を書いた。成功の通知はトースト（決定事項どおり） | Issue #847 の実装 |
