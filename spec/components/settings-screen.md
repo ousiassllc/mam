@@ -40,13 +40,13 @@
 
 ### 今のルーターの調査（2026-10-25。`router/settingsroutes/settingsroutes.go`・`router/actions.go`）
 
-「ルーターに同じパスの GET がすでに無いか」の確認結果。`/settings` 以下の **GET は 8 本だけ**で、新しいスラッグと重なるのは `local-models` の 1 本。
+「ルーターに同じパスの GET がすでに無いか」の確認結果。`/settings` 以下の **GET は 9 本だけ**（#845 で `/settings/chatgpt/codex/models` が増えた）で、新しいスラッグと重なるのは `local-models` の 1 本。
 
 | GET | 今 | 新しいスラッグとの関係 |
 |-----|----|---------------------|
 | `/settings` | ページ（`GlobalSettingsPage`。HTMX のときは本体だけ） | 概要に変わる（§4） |
 | `/settings/chatgpt` | 区画だけ（`#chatgpt-panel`。ログイン中に 2 秒ごとに取り直す） | スラッグではない。**API キーの分類のページを返す**側に回る（下） |
-| `/settings/chatgpt/models` | 利用できるモデルの断片 | 重ならない。HTMX でないときは `/settings/chatgpt` と同じ扱い |
+| `/settings/chatgpt/models`・`/settings/chatgpt/codex/models` | 利用できるモデルの断片（後者は #845 の Codex 経由） | 重ならない。HTMX でないときは `/settings/chatgpt` と同じ扱い |
 | `/settings/local-models` | 区画だけ（`#local-models-panel`） | **スラッグと同じパス**。HTMX でなければ分類のページ、HTMX なら今の断片（下） |
 | `/settings/local-models/endpoints/new`・`/endpoints/:name/edit`・`/endpoints/:name/models/new`・`/endpoints/:name/models/:model/edit` | 編集フォームの断片 | モーダル・接続先のサブページの断片になる（[routes](settings-screen-routes.md)） |
 
@@ -152,12 +152,12 @@
 | `pages/settings_pages.templ`（約 60 行） | 枠（戻る・h1・nav・分類の h2） | `pages/global_settings_page.templ` を置き換え |
 | `organisms/settings/overview/` | 概要のカード | 新規（`global_settings_body.templ` を置き換え） |
 | `organisms/settings/credentials/` | API キーのカード・モーダルの断片 | `organisms/credentialpanel/`（111 行）を作り直して消す |
-| `organisms/settings/chatgpt/` | ログインのカード・ログイン中のモーダル・モデル一覧のモーダル | `organisms/chatgptpanel/`（266 行。1 ファイルの上限に近いのでカード・モーダル・データに分ける） |
+| `organisms/settings/chatgpt/` | ログインのカード・ログイン中のモーダル・モデル一覧のモーダル | `organisms/chatgptpanel/`（`panel.templ` 274 行・Codex 経由の `codex.templ` 218 行。1 ファイルの上限に近いのでカード・モーダル・データに分ける） |
 | `organisms/settings/llm/`・`media/`・`local/`・`mcp/`・`update/` | 各分類 | `llmassign/`・`modelassignment/`・`localmodels/`・`mcppanel/`・`updatepanel/` |
 | `handler/settingspage/`・`handler/settings/<分類>/` | ページ・モーダルの断片・保存。`handler/` は基準値 2,895 行で上限を超え、増やせない | `handler/credential.go` の保存・削除は `handler/settings/credentials/` に移す |
 | `molecules/settingsui/`・`molecules/modal/` | ナビ・カード・表・モーダル | 新規 |
 
-- **#845（Codex 経由）の取り込み**: 「API キーとログイン」の分類に、方式ごとのカードを並べる（`organisms/settings/chatgpt/` のカードの一覧が `[]AccountCard` を受け取る。公式・画像生成（非公式）・Codex 経由の順。#845 は 3 つ目を足すだけで、枠・モーダルの部品は触らない）。#845 が先に入ると、まず今の縦のブロックとして足され、②-2 が 3 つを一緒にカードにする。どちらが先でも、Codex の取得・ログインの仕組み（#845 の範囲）は変えない。
+- **#845（Codex 経由）の取り込み**: 「API キーとログイン」の分類に、方式ごとのカードを並べる（`organisms/settings/chatgpt/` のカードの一覧が `[]AccountCard` を受け取る。公式・画像生成（非公式）・Codex 経由の順。#845 は 3 つ目を足すだけで、枠・モーダルの部品は触らない）。#845 は入っていて、Codex 経由は今の縦のブロック（`chatgptpanel/codex.templ`。方式のタブ・エンジンの取得・パスの指定・ログイン・利用上限の更新・モデル一覧）として足されており、②-2 が 3 つを一緒にカードにする。Codex の取得・ログインの仕組み（#845 の範囲）は変えない。
 - 層の規則（`layers_test`）: organism・molecule はサービスを import せず、ハンドラーが表示用の値を渡す。
 
 ## 10. MCP が `web/` に依存しないことの調査（#847「背景」の未検証の項目）
@@ -191,3 +191,4 @@
 | 版 | 日付 | 変更内容 | 変更理由 |
 |----|------|---------|---------|
 | 0.1 | 2026-10-25 | 新規作成（案） | Issue #847 決定事項 1(a)。実装前にオーナーが確認するための設定画面の仕様 |
+| 0.2 | 2026-10-25 | §3 の GET の数（8 → 9。`/settings/chatgpt/codex/models`）と §9 の `chatgptpanel` の行数・#845 の取り込みの記述を、入った #845 の実装に合わせた | 統合の見直し。#845 が先に入ったため |

@@ -32,7 +32,7 @@ GET は状態を変えない。PUT・POST・DELETE は CSRF 必須。`:provider`
 | GET | `/settings/mcp/bind/edit` | 待ち受け先のモーダル |
 | GET | `/settings/mcp/tokens/new` | トークン発行のモーダル |
 | GET | `/settings/local-models/endpoints/new`・`…/:name/edit` | **変更**: 今は `#local-models-editor` に差し込む断片。モーダルの本文になる（応答の形は変えるが、パスと意味は同じ） |
-| GET | `/settings/chatgpt/:kind/login` | ログインのモーダル（方式の選択）。`:kind` は `official` / `image`（#845 で `codex` など） |
+| GET | `/settings/chatgpt/:kind/login` | ログインのモーダル（方式の選択）。`:kind` は `official` / `image` / `codex`（#845） |
 
 ### 保存・操作（新規）
 
@@ -106,3 +106,4 @@ GET は状態を変えない。PUT・POST・DELETE は CSRF 必須。`:provider`
 | 版 | 日付 | 変更内容 | 変更理由 |
 |----|------|---------|---------|
 | 0.1 | 2026-10-25 | 新規作成（案） | Issue #847 決定事項 4(a)・8(a)・9(a)。新しいルートと、モーダルの保存の応答の下書き |
+| 0.2 | 2026-10-25 | §1 のログインのモーダルの `:kind` に `codex` を足した | 統合の見直し。#845 が先に入ったため |

@@ -128,7 +128,7 @@
 | ワークフロー | neutral ・ 保存 n 件（0 件は「保存なし」） | `workflows.Service.List`（ローカルの DB） | 空 |
 | レビューパッケージ | neutral ・ 受け取り n 件（0 件は「受け取りなし」） | `ReviewService.Inbox`（ローカルの DB） | 空 |
 | 設定（1 行目） | info ・ API キー n / 10 件（n = 設定済み。10 = `len(service.CredentialProviders)`。0 件のときは warn） | `CredentialService.Status` | キーストアが読めない: warn ・ キーストアを利用できません |
-| 設定（2 行目） | ok ・ ChatGPT: ログイン済み ／ neutral ・ ChatGPT: 未ログイン ／ warn ・ ChatGPT: 再ログインが必要（公式・画像生成（非公式）のどれかが当てはまる。#845 の Codex 経由もできたら同じ規則に含める） | `chatgpt.Service.Overview` | サービスが無い（`Services.ChatGPT` が nil）: 2 行目を出さない。読めない: 出さない |
+| 設定（2 行目） | ok ・ ChatGPT: ログイン済み ／ neutral ・ ChatGPT: 未ログイン ／ warn ・ ChatGPT: 再ログインが必要（公式・画像生成（非公式）のどれかが当てはまる。#845 の Codex 経由は実装済みだが `chatgpt.Service.Overview` には含まれない（`codex.Service.Status`）。含めるかは §9 の質問 9） | `chatgpt.Service.Overview` | サービスが無い（`Services.ChatGPT` が nil）: 2 行目を出さない。読めない: 出さない |
 | 生成テスト・制作指標 | なし | — | — |
 
 - 「10」は定数から取る（テンプレートに数字を書かない。`maxlength_test` と同じ考え方）。
@@ -181,9 +181,11 @@
 | 6 | 「生成テスト」の状態（最近の生成の件数。Issue では任意）を出すか | 出さない（`gentest.Service` に件数を数える関数が無く、足すと範囲が広がる） |
 | 7 | 「状態を出さない」カードに、状態の枠の高さを確保するか | 確保しない（状態の枠が無いカードは `min-h-36` のまま。下端の CTA の位置はそろう） |
 | 8 | 状態の更新（ComfyUI を起動した直後など）を、ページを開き直さずに反映するか | しない（`load` の 1 回だけ。モデルマネージャー・ノードの画面で確かめられる） |
+| 9 | 「設定」カードの ChatGPT の行に、#845 の Codex 経由のログイン状態も含めるか（`Overview` は公式と画像生成（非公式）だけ。含めるなら `codex.Service.Status` を読む） | 含める（3 方式のどれかが再ログイン要なら warn、どれかがログイン済みなら ok）。含めない案もある（Codex は任意の方式で、設定画面で確かめられる） |
 
 ## 改訂履歴
 
 | 版 | 日付 | 変更内容 | 変更理由 |
 |----|------|---------|---------|
 | 0.1 | 2026-10-25 | 新規作成（案） | Issue #846 決定事項 5(a)。実装前にオーナーが確認するためのトップ画面の仕様 |
+| 0.2 | 2026-10-25 | §5 の ChatGPT の行を #845 の実装の現状（Codex 経由は `Overview` に含まれない）に合わせ、§9 に質問 9 を足した | 統合の見直し。#845 が先に入ったため |
