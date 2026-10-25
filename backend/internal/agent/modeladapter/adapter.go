@@ -180,7 +180,7 @@ func (a *Adapter) GenerateImage(ctx context.Context, purpose ImagePurpose, req I
 			return backend.GenerateImage(ctx, apiModel, treq)
 		}, string(t.Model))
 		if err == nil {
-			return ImageOutput{ImageResult: res, Model: t.Model, FellBack: i > 0, EstimatedCost: st.cfg.ImageCost(t.Model)}, nil
+			return ImageOutput{ImageResult: res, Model: t.Model, FellBack: i > 0, EstimatedCost: st.cfg.ImageCostFor(t.Model, req.AspectRatio)}, nil
 		}
 		if ctx.Err() != nil {
 			return ImageOutput{}, ctx.Err()
