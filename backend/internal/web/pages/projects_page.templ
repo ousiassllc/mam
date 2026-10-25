@@ -7,19 +7,16 @@ import (
 )
 
 // ProjectsPage is the landing page: start a new Project from a first message, or open an existing one, and the tool
-// cards (ToolSection) under the Project list. The forms and the list keep the width of a column (max-w-3xl); the cards
-// are wider.
+// cards (ToolSection) under the Project list. The whole page is one column of max-w-5xl (spec/components/home-screen.md §2).
 templ ProjectsPage(csrfToken string, projects []domain.Project, form organisms.NewProjectFormData) {
 	@layout.AppLayout("プロジェクト", csrfToken) {
 		<main class="mx-auto max-w-5xl p-8">
-			<div class="max-w-3xl">
-				<h1 class="text-2xl font-semibold">mam</h1>
-				<p class="mb-6 mt-1 text-neutral-400">Autonomous Shot Studio</p>
-				@organisms.NewProjectForm(form)
-				@organisms.ProjectImportForm(organisms.ProjectImportFormData{})
-				<h2 class="mt-8 text-sm font-medium text-neutral-300">プロジェクト</h2>
-				@organisms.ProjectList(projects)
-			</div>
+			<h1 class="text-2xl font-semibold">mam</h1>
+			<p class="mb-6 mt-1 text-neutral-400">Autonomous Shot Studio</p>
+			@organisms.NewProjectForm(form)
+			@organisms.ProjectImportForm(organisms.ProjectImportFormData{})
+			<h2 class="mt-8 text-sm font-medium text-neutral-300">プロジェクト</h2>
+			@organisms.ProjectList(projects)
 			@ToolSection()
 		</main>
 	}

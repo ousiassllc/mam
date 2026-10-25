@@ -17,6 +17,7 @@ ChatGPT Business / Enterprise / Edu のワークスペースのアカウント�
 7. **名前**: プロバイダー `chatgpt-codex`、MCP のアカウント名 `codex`。
 8. **システムプロンプト**: `thread/start` の `baseInstructions`（Codex 既定の、コーディング用の指示を置き換える）に入れる。`developerInstructions`（既定の指示に足す）へ切り替える**切り替え点は `codex.DefaultInstructions` の 1 値**。実機での比較は未実施（§7）。
 9. **公式ログインは自動でログアウトしない**: ワークスペースのプランだと分かったとき・組織に拒否されたときは、案内（「Codex 経由のログインを使う」ボタンと `WorkspaceAdvice`）を出すだけで、公式のログインは消さない。
+10. **子プロセスの環境は、許可リストにせず、ほぼそのまま渡す（決定。2026-10-25 オーナー決定）**: app-server の子プロセスは mam の環境を引き継ぎ、渡さないのは item 4 の 5 つだけ（`CODEX_HOME` は mam 専用の値で上書きし、`CODEX_SQLITE_HOME`・`CODEX_ACCESS_TOKEN`・`CODEX_API_KEY`・`OPENAI_API_KEY` は外す）。実装は `appserver.Launch.Spec`（`Env: CODEX_HOME=<mam の codex-home>`、`DropEnv: secretEnv`）と `modelmgr/proc` の `inherited`（`os.Environ()` から `DropEnv` を引いたもの＋ `Env`）で、これ以外の変数（`HTTP_PROXY`・`HTTPS_PROXY`・`NO_PROXY`・`SSL_CERT_FILE` などのプロキシ・証明書、`OPENAI_BASE_URL` のような `OPENAI_*`・`CODEX_*`（上の 4 つを除く）、`RUST_LOG`、`PATH`・`HOME`・`USERPROFILE` など）はそのまま届く。理由: ①利用者が自分の PC で設定したプロキシ・`OPENAI_*`・`CODEX_*`・`RUST_LOG` は、ローカルのアプリでも効いてほしい（許可リストだと、リストに無い変数が黙って効かなくなる）。②mam はローカルで利用者自身が動かすアプリで、その環境は利用者のもの。③許可リストにするとプロキシ・独自の CA が使えず、会社のネットワークでログインできなくなり、設定が隠れて原因を探しにくい。④mam はどの場合もトークンを読まず・保存せず（item 6）、資格情報を渡す環境変数は外している（item 4）ので、許可リストにしても守れるものが増えない。⑤保存先は mam が決める（`CODEX_HOME` は mam 専用の場所に固定し、`cli_auth_credentials_store` は `keyring`／`auto` を起動引数で明示する。item 4）ので、環境の変数で `~/.codex` や別の保存方式に切り替わることは無い。`RUST_LOG` で子プロセスのログが増えても、異常終了の出力の末尾は他の文章と同じく伏せ字にしてから使う（`appserver/exit.go`）。
 
 ## 3. 使い方・構成
 

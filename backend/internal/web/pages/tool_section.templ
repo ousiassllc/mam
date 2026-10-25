@@ -41,7 +41,7 @@ templ ToolSection() {
 		for _, g := range toolGroups() {
 			<div class="mt-6 first-of-type:mt-3">
 				<h3 id={ "tool-group-" + g.ID } class="text-sm font-medium text-neutral-300">{ g.Title }</h3>
-				<ul role="list" aria-labelledby={ "tool-group-" + g.ID } class="mt-2 grid grid-cols-2 gap-4 xl:grid-cols-3">
+				<ul role="list" aria-labelledby={ "tool-group-" + g.ID } class="mt-2 grid grid-cols-3 gap-4">
 					for _, c := range g.Cards {
 						@molecules.ToolCardItem(c)
 					}

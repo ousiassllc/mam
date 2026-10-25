@@ -15,8 +15,7 @@ import (
 )
 
 // ProjectsPage is the landing page: start a new Project from a first message, or open an existing one, and the tool
-// cards (ToolSection) under the Project list. The forms and the list keep the width of a column (max-w-3xl); the cards
-// are wider.
+// cards (ToolSection) under the Project list. The whole page is one column of max-w-5xl (spec/components/home-screen.md §2).
 func ProjectsPage(csrfToken string, projects []domain.Project, form organisms.NewProjectFormData) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -50,7 +49,7 @@ func ProjectsPage(csrfToken string, projects []domain.Project, form organisms.Ne
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<main class=\"mx-auto max-w-5xl p-8\"><div class=\"max-w-3xl\"><h1 class=\"text-2xl font-semibold\">mam</h1><p class=\"mb-6 mt-1 text-neutral-400\">Autonomous Shot Studio</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<main class=\"mx-auto max-w-5xl p-8\"><h1 class=\"text-2xl font-semibold\">mam</h1><p class=\"mb-6 mt-1 text-neutral-400\">Autonomous Shot Studio</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -70,15 +69,11 @@ func ProjectsPage(csrfToken string, projects []domain.Project, form organisms.Ne
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</div>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
 			templ_7745c5c3_Err = ToolSection().Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</main>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</main>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
