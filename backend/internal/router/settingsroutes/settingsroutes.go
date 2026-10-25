@@ -23,12 +23,12 @@ import (
 	updatehandler "github.com/ousiassllc/mam/backend/internal/web/handler/appupdate"
 	chatgpthandler "github.com/ousiassllc/mam/backend/internal/web/handler/chatgptsettings"
 	gentesthandler "github.com/ousiassllc/mam/backend/internal/web/handler/gentest"
-	llmhandler "github.com/ousiassllc/mam/backend/internal/web/handler/llmassign"
 	localhandler "github.com/ousiassllc/mam/backend/internal/web/handler/localmodels"
 	mcphandler "github.com/ousiassllc/mam/backend/internal/web/handler/mcpsettings"
-	modelhandler "github.com/ousiassllc/mam/backend/internal/web/handler/modelassign"
 	modelmgrhandler "github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr"
 	credentialshandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/credentials"
+	llmhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/llm"
+	mediahandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/media"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/settingspage"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -100,16 +100,14 @@ func Register(engine *gin.Engine, services *service.Services, s *Services, logge
 		engine.PUT(paths.ChatGPTCodexPath(), chatgpthandler.CodexSetPath(s.ChatGPT))
 	}
 	if s != nil {
-		engine.PUT(paths.LLMSettings(), llmhandler.Save(s.LLM))
-		engine.DELETE(paths.LLMSettings(), llmhandler.Reset(s.LLM))
-		engine.PUT(paths.ModelSettings(), modelhandler.Save(s.Models))
-		engine.DELETE(paths.ModelSettings(), modelhandler.Reset(s.Models))
+		llmhandler.Register(engine, s.LLM, pages.Page(paths.SettingsLLM))
+		mediahandler.Register(engine, s.Models, pages.Page(paths.SettingsModels))
 	}
 	if s != nil && s.Workflows != nil {
 		registerWorkflows(engine, s.Workflows)
 	}
 	if s != nil && s.LocalModels != nil {
-		h := localhandler.Handlers{Local: s.LocalModels, Models: s.Models}
+		h := localhandler.Handlers{Local: s.LocalModels}
 		pages.Fragments = map[string]gin.HandlerFunc{paths.SettingsLocalModels: h.Panel}
 		registerLocalModels(engine, h)
 		engine.GET(paths.LocalModelsHealth(), settingspage.Health(s.LocalModels, 0))

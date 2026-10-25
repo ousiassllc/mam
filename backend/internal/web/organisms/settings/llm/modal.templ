@@ -1,0 +1,85 @@
+package llm
+
+import (
+	"strconv"
+
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// Modal is the body of the modal that edits the LLM of one Agent: the primary and the fallback (a provider and a model
+// name each, with the default beside the model), "保存" for this Agent, and "この Agent を既定に戻す". A refusal draws it again
+// with what was typed and why.
+templ Modal(f Form) {
+	@modal.Frame(f.Row.Label+" の LLM", f.Row.Purpose+"。反映にはアプリの再起動が必要です。") {
+		if f.Error != "" {
+			@modal.Error(f.Error)
+		}
+		<form
+			class="flex flex-col gap-4"
+			method="post"
+			hx-put={ paths.LLMAgent(f.Row.Agent) }
+			hx-target={ "#" + modal.BodyID }
+			hx-swap="innerHTML"
+			hx-sync="this:drop"
+			hx-disabled-elt="find button"
+			autocomplete="off"
+		>
+			@targetFields(f, "primary", "プライマリ", f.Row.Primary, f.Row.DefaultPrimary)
+			@targetFields(f, "fallback", "代替", f.Row.Fallback, f.Row.DefaultFallback)
+			@modal.Actions() {
+				@atoms.Button(atoms.ToneNeutral, "この Agent を既定に戻す", templ.Attributes{
+					"type":      "button",
+					"hx-delete": paths.LLMAgent(f.Row.Agent),
+					"hx-target": "#" + modal.BodyID,
+					"hx-swap":   "innerHTML",
+					"hx-sync":   "closest form:drop", // a save and a reset never run together
+					"hx-params": "none",
+				})
+				@modal.Cancel("キャンセル")
+				@atoms.Button(atoms.TonePrimary, "保存", templ.Attributes{"type": "submit"})
+			}
+		</form>
+	}
+}
+
+// targetFields is the provider and the model of one target. The names are "<role>.provider" and "<role>.model".
+templ targetFields(f Form, role, roleLabel string, t, def Target) {
+	<fieldset class="flex flex-wrap items-end gap-3">
+		<legend class="mb-1 text-sm font-medium">{ roleLabel }</legend>
+		<label class="flex flex-col gap-1 text-xs text-neutral-400" for={ fieldID(role, "provider") }>
+			<span>プロバイダー</span>
+			@atoms.Select(atoms.FieldMd, "", fieldAttrs(f, role, "provider", templ.Attributes{})) {
+				for _, p := range f.Providers {
+					<option value={ p } selected?={ p == t.Provider }>{ p }</option>
+				}
+			}
+		</label>
+		<label class="flex min-w-0 flex-1 flex-col gap-1 text-xs text-neutral-400" for={ fieldID(role, "model") }>
+			<span>モデル（既定: { def.Summary() }）</span>
+			@atoms.Input(atoms.FieldMd, "min-w-0", fieldAttrs(f, role, "model", templ.Attributes{
+				"type":         "text",
+				"value":        t.Model,
+				"placeholder":  def.Model,
+				"required":     true,
+				"maxlength":    strconv.Itoa(f.MaxModelLength),
+				"autocomplete": "off",
+				"spellcheck":   "false",
+			}))
+		</label>
+	</fieldset>
+}
+
+// fieldAttrs are the attributes of the field of a target: its id and name, and, for the field the refusal is about, what
+// says so (aria-invalid) and the focus. With nothing to blame, the first field is the one to start with.
+func fieldAttrs(f Form, role, field string, attrs templ.Attributes) templ.Attributes {
+	attrs["id"], attrs["name"] = fieldID(role, field), role+"."+field
+	switch {
+	case f.Blame == role+"."+field:
+		attrs["aria-invalid"], attrs["aria-describedby"], attrs["autofocus"] = "true", modal.ErrorID, true
+	case f.Blame == "" && f.Error == "" && role == "primary" && field == "provider":
+		attrs["autofocus"] = true
+	}
+	return attrs
+}

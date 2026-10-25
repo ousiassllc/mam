@@ -1,0 +1,122 @@
+package llm
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// Section is the category: the restart notice, the notes of the file (pinned, unreadable) and of the plan sign-in, the
+// button that puts the whole table back to the defaults, and the table of the Agents that run with those that do not
+// folded below it. The whole table's answers (a reset, PUT /settings/llm) replace it by PanelID. A pinned file is a table
+// to read: no button edits or resets it.
+templ Section(d Data) {
+	<section id={ PanelID } class="flex flex-col gap-3">
+		<p class="text-sm text-neutral-300" data-testid="llm-restart-note">反映にはアプリの再起動が必要です。保存した割り当ては、次の起動から使われます。</p>
+		if d.Pinned {
+			<p class="text-sm text-neutral-300" data-testid="llm-pinned">起動オプション（--llm-config / MAM_LLM_CONFIG）で固定されています。この画面では変更できません。</p>
+		}
+		if d.Problem != "" {
+			<p class="text-sm text-amber-300" role="alert" data-testid="llm-problem">保存済みの設定ファイルを読み込めません（表示は既定値です）: { d.Problem }</p>
+		}
+		if d.Notice != "" {
+			<p class="text-sm text-emerald-300" role="status" data-testid="llm-notice">{ d.Notice }</p>
+		}
+		if d.Error != "" {
+			<p class="text-sm text-red-300" role="alert" data-testid="llm-error">{ d.Error }</p>
+		}
+		<p class="text-xs text-neutral-400" data-testid="llm-chatgpt-note">
+			プロバイダー「chatgpt-subscription」を選ぶと、ChatGPT のプランを使います（Using ChatGPT plan）。組織（Business / Enterprise / Edu）のアカウントは、「API キーとログイン」の Codex 経由でログインして、プロバイダー「chatgpt-codex」を選びます（テキスト生成だけ）。モデル名は、ログインしたあと、「API キーとログイン」の ChatGPT の欄で確認できます。
+			<a class="underline" href="https://chatgpt.com/settings/usage" target="_blank" rel="noopener noreferrer">Manage usage</a>
+		</p>
+		if !d.Pinned {
+			<div>
+				@atoms.Button(atoms.ToneNeutral, "すべて既定に戻す", templ.Attributes{
+					"type":            "button",
+					"hx-delete":       paths.LLMSettings(),
+					"hx-target":       "#" + PanelID,
+					"hx-swap":         "outerHTML",
+					"hx-sync":         "this:drop",
+					"hx-disabled-elt": "this",
+					"hx-confirm":      "すべての Agent の LLM の割り当てを既定に戻します。よろしいですか？",
+					"data-testid":     "llm-reset",
+				})
+			</div>
+		}
+		@table(TableID, "LLM の割り当て（Agent ごと）", d.Rows, d.Pinned)
+		if len(d.Unused) > 0 {
+			<details class="rounded-md border border-neutral-800 px-3 py-2" data-testid="llm-unused">
+				<summary class="cursor-pointer text-sm text-neutral-300">現在は使われません</summary>
+				<p class="my-2 text-xs text-neutral-400">これらの Agent は今のところ LLM を呼びません。割り当ては保存され、使われるようになったときに効きます。</p>
+				@table(UnusedTableID, "LLM の割り当て（現在は使われない Agent）", d.Unused, d.Pinned)
+			</details>
+		}
+	</section>
+}
+
+templ table(id, caption string, rows []Row, pinned bool) {
+	@settingsui.SettingsTable(id, caption, columns(pinned)) {
+		for _, r := range rows {
+			@row(r, pinned, false)
+		}
+	}
+}
+
+func columns(pinned bool) []settingsui.Column {
+	cols := []settingsui.Column{
+		{Header: "Agent"},
+		{Header: "用途", Class: purposeClass},
+		{Header: "プライマリ"},
+		{Header: "代替"},
+		{Header: "変更"},
+	}
+	if !pinned {
+		cols = append(cols, settingsui.Column{Header: "操作", SROnly: true})
+	}
+	return cols
+}
+
+// purposeClass hides the purpose column of a narrow window: the purpose is then under the name of the Agent.
+const purposeClass = "hidden xl:table-cell"
+
+// RowOOB is the row of an Agent as the answer of a save: it replaces the row with its id out of band. Put it first in the
+// answer: a <tr> is read as a row only at the head of the response.
+templ RowOOB(r Row) {
+	@row(r, false, true)
+}
+
+templ row(r Row, pinned, oob bool) {
+	@settingsui.TableRowItem(settingsui.TableRow{ID: RowID(r.Agent), TestID: "llm-row", Attrs: templ.Attributes{"data-agent": r.Agent}, OOB: oob}) {
+		@settingsui.RowHead("") {
+			{ r.Label }
+			<span class="mt-1 block text-xs font-normal text-neutral-400 xl:hidden">{ r.Purpose }</span>
+		}
+		@settingsui.Cell(purposeClass + " text-neutral-400") {
+			{ r.Purpose }
+		}
+		@settingsui.Cell("") {
+			{ r.Primary.Summary() }
+		}
+		@settingsui.Cell("") {
+			{ r.Fallback.Summary() }
+		}
+		@settingsui.Cell("") {
+			<span class="flex flex-col items-start gap-1">
+				if r.Customized() {
+					@atoms.Badge(atoms.BadgeInfo, "変更あり")
+				} else {
+					@atoms.Badge(atoms.BadgeNeutral, "既定")
+				}
+				if r.Restart {
+					@atoms.Badge(atoms.BadgeWarn, "再起動で反映")
+				}
+			</span>
+		}
+		if !pinned {
+			@settingsui.Cell("") {
+				@atoms.SmallButtonFor(atoms.ToneNeutral, "編集", r.Label, modal.OpenAttrs(paths.LLMAgentEdit(r.Agent), FocusKey(r.Agent)))
+			}
+		}
+	}
+}

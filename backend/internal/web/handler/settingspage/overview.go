@@ -9,16 +9,16 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	updatehandler "github.com/ousiassllc/mam/backend/internal/web/handler/appupdate"
-	llmhandler "github.com/ousiassllc/mam/backend/internal/web/handler/llmassign"
 	localhandler "github.com/ousiassllc/mam/backend/internal/web/handler/localmodels"
 	mcphandler "github.com/ousiassllc/mam/backend/internal/web/handler/mcpsettings"
-	modelhandler "github.com/ousiassllc/mam/backend/internal/web/handler/modelassign"
+	llmhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/llm"
+	mediahandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/media"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/toolstatus"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
-	llmview "github.com/ousiassllc/mam/backend/internal/web/organisms/llmassign"
 	localview "github.com/ousiassllc/mam/backend/internal/web/organisms/localmodels"
 	mcpview "github.com/ousiassllc/mam/backend/internal/web/organisms/mcppanel"
-	modelview "github.com/ousiassllc/mam/backend/internal/web/organisms/modelassignment"
+	llmview "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/llm"
+	modelview "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/media"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/overview"
 	updateview "github.com/ousiassllc/mam/backend/internal/web/organisms/updatepanel"
 	"github.com/ousiassllc/mam/backend/internal/web/pages"
@@ -54,7 +54,7 @@ func (s Services) card(c *gin.Context, slug string) molecules.ToolCard {
 		card.Status = llmStatus(llmhandler.SectionData(s.LLM))
 	case paths.SettingsModels:
 		card.Icon, card.Description = atoms.IconMedia, "画像の用途・動画の Quality Policy ごとに、使うモデルを選ぶ。"
-		card.Status = modelsStatus(modelhandler.SectionData(s.Models))
+		card.Status = modelsStatus(mediahandler.SectionData(s.Models))
 	case paths.SettingsLocalModels:
 		card.Icon, card.Description = atoms.IconLocal, "自分の PC や tailnet 上の ComfyUI・OpenAI 互換のサーバーを登録する。"
 		card.Status, card.StatusURL = localStatus(localhandler.SectionData(s.LocalModels))
@@ -87,7 +87,7 @@ func llmStatus(d llmview.Data) []molecules.StatusLine {
 	rows := append(append([]llmview.Row{}, d.Rows...), d.Unused...)
 	changed := 0
 	for _, r := range rows {
-		if r.Primary != r.DefaultPrimary || r.Fallback != r.DefaultFallback {
+		if r.Customized() {
 			changed++
 		}
 	}
