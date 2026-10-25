@@ -70,3 +70,15 @@ func TestProjectsPage_WithoutProjectsTheCardsAreTheSame(t *testing.T) {
 	assert.Equal(t, strings.Count(with, `data-testid="tool-card"`), strings.Count(without, `data-testid="tool-card"`))
 	assert.Equal(t, 7, strings.Count(without, `data-testid="tool-card"`))
 }
+
+// The whole page is one column of max-w-5xl (no narrower wrapper around the forms and the list), and the tool cards are
+// three columns at every width (spec/components/home-screen.md §2, §4, §9 question 2).
+func TestProjectsPage_IsOneWideColumnWithThreeCardColumns(t *testing.T) {
+	html := renderProjectsPage(t, domain.Project{ID: "p1", Name: "作品"})
+
+	assert.Contains(t, html, `<main class="mx-auto max-w-5xl p-8">`)
+	assert.NotContains(t, html, "max-w-3xl", "the heading, the forms and the list are not in a narrower wrapper")
+	assert.Equal(t, 3, strings.Count(html, `class="mt-2 grid grid-cols-3 gap-4"`), "each of the three groups is three columns")
+	assert.NotContains(t, html, "grid-cols-2")
+	assert.NotContains(t, html, "xl:grid-cols")
+}
