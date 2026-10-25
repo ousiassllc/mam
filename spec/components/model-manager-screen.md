@@ -31,4 +31,4 @@
 | 1.0 | 2026-10-25 | 新規作成 | Issue #833。モデルマネージャーの画面のコンポーネント |
 | 1.1 | 2026-10-26 | 試し生成の区画が生成テストの結果を出すことに合わせ、プロンプトの上限の出どころを `gentest.MaxPromptRunes` に改めた | Issue #835 |
 | 1.2 | 2026-10-25 | モデルの一覧に「成人向け」のバッジ・トリガー語・原本の場所（ミラー）を足し、同意ダイアログに成人向けの注意書きと原本の場所を足した。設定「成人向けモデルを表示する」（`AdultCard`）と年齢確認のダイアログ（`AdultDialog`）・`AdultWithCatalog` を足した | Issue #841。成人向けモデルと年齢確認 |
-| 1.3 | 2026-10-26 | 区画「Hugging Face から導入」の organism（`HFImportSection`・`HFResultView`・`HFModelListView` ほか）と、ハンドラのパッケージ `web/handler/modelmgr/hfimport`（`jobview` を共有。画面テストの部品は `web/screentest`）を足した。`hf-token` のハンドラは `hfimport` に移した | Issue #842 |
+| 1.3 | 2026-10-25 | 区画「Hugging Face から導入」の organism（`HFImportSection`・`HFResultView`・`HFModelListView` ほか）と、ハンドラのパッケージ `web/handler/modelmgr/hfimport`（`jobview` を共有。画面テストの部品は `web/screentest`）を足した。`hf-token` のハンドラは `hfimport` に移した | Issue #842 |

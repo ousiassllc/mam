@@ -1,6 +1,6 @@
 # 画面仕様: 設定画面の新しいルートと応答の決まり（下書き）
 
-> **状態: 案（実装前。オーナーの確認待ち）。** Issue #847。実装のとき、§1 の表を `spec/api/endpoints.md` §1（`/settings` の行と新しいルート）と [../api/endpoints-local-models.md](../api/endpoints-local-models.md) に移す。ここでは、その下書きと、モーダルの保存の応答の決まりを書く。画面は [settings-screen.md](settings-screen.md)・[settings-screen-categories.md](settings-screen-categories.md)、部品は [shared-ui-parts.md](shared-ui-parts.md)。
+> **状態: 案（実装前。オーナーの確認待ち）。** Issue #847。実装のとき、§1 の表を `spec/api/endpoints-settings.md`（新規。`endpoints.md` が上限に近いため。§4）と [../api/endpoints-local-models.md](../api/endpoints-local-models.md) に移し、`spec/api/endpoints.md` §1 の `/settings` の行は「概要」にして `endpoints-settings.md` への案内を足す。ここでは、その下書きと、モーダルの保存の応答の決まりを書く。画面は [settings-screen.md](settings-screen.md)・[settings-screen-categories.md](settings-screen-categories.md)、部品は [shared-ui-parts.md](shared-ui-parts.md)。
 
 ## 1. 新しいルート（すべて今のルートに足す。今のルートの意味は変えない）
 
@@ -18,7 +18,7 @@ GET は状態を変えない。PUT・POST・DELETE は CSRF 必須。`:provider`
 | GET | `/settings/local-models/endpoints/:name` | 接続先のサブページ（モデルの表・追加）。無ければ 404 | 同上 |
 | GET | `/settings/mcp` | MCP サーバー | `Services.MCP` あり |
 | GET | `/settings/update` | バージョンとアップデート | 常に |
-| GET | `/settings/chatgpt` | **変更**: HTMX でなければ `/settings/api-keys` のページ全体（`canonical` つき）。HTMX は今どおり区画の断片 | `Services.ChatGPT` あり |
+| GET | `/settings/chatgpt` | **変更**: HTMX でなければ `/settings/api-keys` のページ全体（`canonical` つき）。HTMX は今どおり区画の断片（今のクエリ `method` = `official` / `codex` を保つ。ログインのカードごとの取り直しに `card=<kind>` を足すかは §6 の質問 5） | `Services.ChatGPT` あり |
 | GET | `/settings/local-models/health` | 概要のカード用: 接続先の接続状態の断片（各 3 秒で打ち切り。空の 200 もある） | `Services.LocalModels` あり |
 
 ### モーダルの本文（断片。HTMX 専用。HTMX でない GET は 400 ではなく、該当する分類のページ全体を返す）
@@ -73,7 +73,7 @@ GET は状態を変えない。PUT・POST・DELETE は CSRF 必須。`:provider`
 
 | 仕様書 | 変更 |
 |--------|------|
-| `spec/api/endpoints.md` §1 | `/settings` の行を「概要」にし、上の表のページ・モーダル・保存のルートを足す。**`endpoints.md` は 293 行で上限（300 行）に近い**ので、新しいルートは `endpoints-settings.md`（新規）に書き、`endpoints.md` にはその一覧への 1 行の案内を足す（`endpoints-local-models.md` と同じやり方） |
+| `spec/api/endpoints.md` §1 | `/settings` の行を「概要」にし、`endpoints-settings.md` への案内を足す。**`endpoints.md` は 296 行で上限（300 行）まで 4 行**（2026-10-25 時点。#845 が 3 行足した）なので、新しいルートは `endpoints-settings.md`（新規）に書き、`endpoints.md` にはその一覧への 1 行の案内を足す（`endpoints-local-models.md` と同じやり方）。[home-screen.md](home-screen.md) の `GET /tools/:tool/status` の 1 行も `endpoints.md` に足すので、合わせて 298 行 |
 | `spec/api/endpoints-local-models.md` | §1「画面」・§2 の表の GET の行（区画 → モーダル・サブページ・HTMX の分岐）、成功の応答（区画全体 → 行の OOB）、`#model-assignment` の OOB の削除 |
 | `spec/components/overview.md` §3 | `global_settings_body`・`global_settings_page` の行を新しい作りに、`molecules` に `tool_card`・`settingsui`・`modal`、`atoms` に `icon` を足す（**この文書群への 1 行のポインターだけを今回足す**。本文の更新は実装のとき） |
 | `spec/api/endpoints.changelog.md`・各仕様書の改訂履歴 | 追記 |
@@ -96,10 +96,11 @@ GET は状態を変えない。PUT・POST・DELETE は CSRF 必須。`:provider`
 
 | # | 質問 | 推奨する既定 |
 |---|------|-------------|
-| 1 | 新しいルートの一覧を `endpoints.md` に直接足さず、`endpoints-settings.md`（新規）に書くか（`endpoints.md` が 293 行で上限に近い） | `endpoints-settings.md` を新規に作る |
+| 1 | 新しいルートの一覧を `endpoints.md` に直接足さず、`endpoints-settings.md`（新規）に書くか（`endpoints.md` が 296 行で、上限の 300 行まで 4 行） | `endpoints-settings.md` を新規に作る |
 | 2 | HTMX でない `GET` をモーダルの本文のパスに送ったとき、400 にするか、該当分類のページ全体を返すか | ページ全体（直接開いても壊れない。URL をブックマークされても 404 にならない） |
 | 3 | モーダルを使う保存の応答を、全体の保存（`PUT /settings/llm`・`/settings/models`）と分けて持つことでよいか | 分ける（全体の保存は MCP・テストのために今のまま。モーダルのルートだけ OOB の行を返す） |
 | 4 | 成功の通知を、行の中の文にするか、トースト（`atoms.ToastOOB`）にするか | トースト（モーダルが閉じたあとに見える。行は要約だけにする） |
+| 5 | ログインのモーダルがカードごとに取り直すとき、`GET /settings/chatgpt` に新しいクエリ `card=<kind>` を足すか、今の `method`（`official` / `codex`）を保つだけにするか、`method` を `kind` に置き換えるか。今の `method` は画像生成（`image`）を指せない | `card=<kind>` を足し、`method` は互換のために残す（今の区画が `method` で動いているため。置き換えは #845 の取り込みを壊す） |
 
 ## 改訂履歴
 
@@ -107,3 +108,4 @@ GET は状態を変えない。PUT・POST・DELETE は CSRF 必須。`:provider`
 |----|------|---------|---------|
 | 0.1 | 2026-10-25 | 新規作成（案） | Issue #847 決定事項 4(a)・8(a)・9(a)。新しいルートと、モーダルの保存の応答の下書き |
 | 0.2 | 2026-10-25 | §1 のログインのモーダルの `:kind` に `codex` を足した | 統合の見直し。#845 が先に入ったため |
+| 0.3 | 2026-10-25 | `endpoints.md` の行数を 296 行に直し、`GET /tools/:tool/status` との合計を書いた。`GET /settings/chatgpt` の `card` と今の `method` の関係を未決の質問（§6 の 5）にした | 独立レビュー（PR #849）の指摘 |

@@ -28,4 +28,4 @@
 | 版 | 日付 | 変更内容 | 変更理由 |
 |----|------|---------|---------|
 | 1.0 | 2026-10-24 | 新規作成。6 ツール（`get_chatgpt_status`・`start_chatgpt_login`・`start_chatgpt_image_device_login`・`get_chatgpt_login_status`・`logout_chatgpt`・`set_chatgpt_image_generation`） | Issue #832。ChatGPT のログインを MCP でも扱う（トークンは返さない） |
-| 1.1 | 2026-10-26 | `account: codex` を足し、`install_chatgpt_codex_engine`・`start_chatgpt_codex_login` を追加（8 ツール）。`get_chatgpt_status` に `codex`、`logout_chatgpt` に `remove_files` | Issue #845。Business / Enterprise / Edu のアカウントを Codex の app-server 経由で使えるようにする |
+| 1.1 | 2026-10-25 | `account: codex` を足し、`install_chatgpt_codex_engine`・`start_chatgpt_codex_login` を追加（8 ツール）。`get_chatgpt_status` に `codex`、`logout_chatgpt` に `remove_files` | Issue #845。Business / Enterprise / Edu のアカウントを Codex の app-server 経由で使えるようにする |
