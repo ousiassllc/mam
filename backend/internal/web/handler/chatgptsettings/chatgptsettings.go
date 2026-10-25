@@ -35,20 +35,22 @@ func SectionData(svc *chatgpt.Service) view.Data {
 	d.Official = accountData(svc.Official(), ov.Official)
 	d.Image = accountData(svc.Image(), ov.Image)
 	d.ImageEnabled = ov.ImageEnabled
+	d.Codex = codexData(svc.Codex())
+	d.Method = defaultMethod(d)
 	return d
 }
 
 func accountData(a *chatgpt.Account, s chatgpt.Status) view.Account {
 	out := view.Account{
 		SignedIn: s.SignedIn, NeedsRelogin: s.NeedsRelogin, Email: s.Email, Plan: s.Plan, ExpiresAt: s.ExpiresAt,
-		PlanUsageGranted: s.PlanUsageGranted,
+		PlanUsageGranted: s.PlanUsageGranted, WorkspacePlan: s.WorkspacePlan,
 	}
 	if l, ok := a.CurrentLogin(); ok {
 		if l.State == chatgpt.LoginPending || (l.State != chatgpt.LoginSucceeded && time.Since(l.FinishedAt) < finishedLoginShown) {
 			out.Login = &view.Login{
 				Pending: l.State == chatgpt.LoginPending, Failed: l.State == chatgpt.LoginFailed, Message: l.Message,
 				AuthURL: l.AuthURL, BrowserOpened: l.BrowserOpened, VerificationURL: l.VerificationURL, UserCode: l.UserCode,
-				ExpiresAt: l.ExpiresAt, Device: l.Method == chatgpt.MethodDevice,
+				ExpiresAt: l.ExpiresAt, Device: l.Method == chatgpt.MethodDevice, UseCodex: l.UseCodex,
 			}
 		}
 	}
@@ -59,14 +61,16 @@ func accountData(a *chatgpt.Account, s chatgpt.Status) view.Account {
 func Panel(svc *chatgpt.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Header("Cache-Control", "no-store")
-		render(c, http.StatusOK, view.Panel(SectionData(svc)))
+		d := SectionData(svc)
+		d.Method = methodOf(c, d)
+		render(c, http.StatusOK, view.Panel(d))
 	}
 }
 
 // Models lists the models of the signed-in plan (GET /settings/chatgpt/models) and answers with the section.
 func Models(svc *chatgpt.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		d := SectionData(svc)
+		d := officialSection(svc)
 		d.ModelsAsked = true
 		models, err := svc.Models(c.Request.Context())
 		if err != nil {
@@ -89,7 +93,16 @@ func account(svc *chatgpt.Service, kind string) *chatgpt.Account {
 	return svc.Official()
 }
 
-func validKind(kind string) bool { return kind == kindOfficial || kind == kindImage }
+func validKind(kind string) bool {
+	return kind == kindOfficial || kind == kindImage || kind == kindCodex
+}
+
+// officialSection is the section showing the official login (the answer of an action on it or on the image login).
+func officialSection(svc *chatgpt.Service) view.Data {
+	d := SectionData(svc)
+	d.Method = view.MethodOfficial
+	return d
+}
 
 // StartLogin starts a login (POST /settings/chatgpt/:kind/login, field method: browser or device) and answers with the
 // section showing it. The image login refuses while the image generation is off; the official one has no device login.
@@ -98,6 +111,10 @@ func StartLogin(svc *chatgpt.Service) gin.HandlerFunc {
 		kind := c.Param("kind")
 		if !validKind(kind) {
 			c.AbortWithStatus(http.StatusNotFound)
+			return
+		}
+		if kind == kindCodex {
+			startCodexLogin(c, svc)
 			return
 		}
 		var err error
@@ -111,7 +128,7 @@ func StartLogin(svc *chatgpt.Service) gin.HandlerFunc {
 		default:
 			_, err = svc.Official().StartBrowserLogin()
 		}
-		d := SectionData(svc)
+		d := officialSection(svc)
 		status := http.StatusOK
 		switch {
 		case err == nil:
@@ -135,11 +152,15 @@ func CancelLogin(svc *chatgpt.Service) gin.HandlerFunc {
 			c.AbortWithStatus(http.StatusNotFound)
 			return
 		}
+		if kind == kindCodex {
+			cancelCodexLogin(c, svc)
+			return
+		}
 		a := account(svc, kind)
 		if l, ok := a.CurrentLogin(); ok {
 			a.CancelLogin(l.ID)
 		}
-		d := SectionData(svc)
+		d := officialSection(svc)
 		d.Notice = "ログインを中止しました"
 		render(c, http.StatusOK, view.Panel(d))
 	}
@@ -154,8 +175,12 @@ func Logout(svc *chatgpt.Service) gin.HandlerFunc {
 			c.AbortWithStatus(http.StatusNotFound)
 			return
 		}
+		if kind == kindCodex {
+			logoutCodex(c, svc)
+			return
+		}
 		res, err := account(svc, kind).Logout(c.Request.Context())
-		d := SectionData(svc)
+		d := officialSection(svc)
 		status := http.StatusOK
 		switch {
 		case err != nil:

@@ -20,6 +20,8 @@ type Login struct {
 	UserCode        string
 	ExpiresAt       time.Time
 	Device          bool
+	// UseCodex is true for an official login that the organization of the account refused: the Codex login is the way.
+	UseCodex bool
 }
 
 // Account is the state of one login system.
@@ -30,11 +32,19 @@ type Account struct {
 	Plan             string
 	ExpiresAt        time.Time
 	PlanUsageGranted bool
-	Login            *Login
+	// WorkspacePlan is true when Plan is a workspace plan (Business / Enterprise / Edu): the official login cannot use it.
+	WorkspacePlan bool
+	Login         *Login
 }
 
 // Model is a model of the signed-in plan.
 type Model struct{ Slug, DisplayName string }
+
+// Methods of the text generation login: which block of the section is shown.
+const (
+	MethodOfficial = "official"
+	MethodCodex    = "codex"
+)
 
 // Data is the section. Notice is a success, Error is why an action was refused. Models is the list a click on
 // "利用できるモデルを表示" fetched; ModelsAsked says it was asked.
@@ -47,4 +57,7 @@ type Data struct {
 	Error        string
 	Models       []Model
 	ModelsAsked  bool
+	// Method is the text generation login shown: MethodOfficial or MethodCodex.
+	Method string
+	Codex  Codex
 }

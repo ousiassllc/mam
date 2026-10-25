@@ -20,6 +20,10 @@ func TestMain(m *testing.M) {
 		fakeComfy(mode)
 		return
 	}
+	if os.Getenv("MAM_FAKE_STDIO") != "" {
+		fakeStdio()
+		return
+	}
 	if os.Getenv("MAM_FAKE_SUPERVISOR") != "" {
 		supervisor()
 		return

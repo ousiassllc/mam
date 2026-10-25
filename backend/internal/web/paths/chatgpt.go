@@ -18,3 +18,24 @@ func ChatGPTImageEnabled() string { return ChatGPTAccount("image") + "/enabled" 
 
 // ChatGPTModels is "/settings/chatgpt/models", the models of the signed-in plan (GET).
 func ChatGPTModels() string { return ChatGPTSettings() + "/models" }
+
+// ChatGPTCodex is "/settings/chatgpt/codex", the Codex login system (the app-server route for any plan, workspace
+// accounts included). The login, its cancel and the logout use the same shapes as the other systems
+// (ChatGPTLogin("codex"), ChatGPTLoginCancel("codex"), ChatGPTAccount("codex")).
+func ChatGPTCodex() string { return ChatGPTAccount("codex") }
+
+// ChatGPTCodexInstall is "/settings/chatgpt/codex/install": POST downloads the pinned Codex app-server.
+func ChatGPTCodexInstall() string { return ChatGPTCodex() + "/install" }
+
+// ChatGPTCodexInstallCancel is "/settings/chatgpt/codex/install/cancel": POST stops the download (it resumes later).
+func ChatGPTCodexInstallCancel() string { return ChatGPTCodexInstall() + "/cancel" }
+
+// ChatGPTCodexPath is "/settings/chatgpt/codex/path": PUT sets (field path) or clears (empty) the codex executable the
+// user installed.
+func ChatGPTCodexPath() string { return ChatGPTCodex() + "/path" }
+
+// ChatGPTCodexRefresh is "/settings/chatgpt/codex/refresh": POST reads the account and the usage limit again.
+func ChatGPTCodexRefresh() string { return ChatGPTCodex() + "/refresh" }
+
+// ChatGPTCodexModels is "/settings/chatgpt/codex/models": GET lists the models of the signed-in account (model/list).
+func ChatGPTCodexModels() string { return ChatGPTCodex() + "/models" }

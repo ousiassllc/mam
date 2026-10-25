@@ -13,11 +13,12 @@ const (
 	panelTarget  = "#chatgpt-panel"
 	officialKind = "official"
 	imageKind    = "image"
+	codexKind    = "codex"
 )
 
 // Section is the "ChatGPT でログイン" section of the global settings screen: Panel under its title.
 templ Section(d Data) {
-	@molecules.SettingsSection("ChatGPT でログイン", "ChatGPT のサブスク（Plus / Pro など）を、API キーの代わりに使えます。テキスト生成は OpenAI 公式の Sign in with ChatGPT で動き、LLM の割り当てでプロバイダー「chatgpt-subscription」を選ぶと使われます。画像生成は非公式の経路で、別のログインと確認が必要です。") {
+	@molecules.SettingsSection("ChatGPT でログイン", "ChatGPT のサブスク（Plus / Pro など）を、API キーの代わりに使えます。テキスト生成には方式が 2 つあります。個人（Go / Plus / Pro）は OpenAI 公式の Sign in with ChatGPT（プロバイダー「chatgpt-subscription」）、組織（Business / Enterprise / Edu）のアカウントは Codex 経由（プロバイダー「chatgpt-codex」）です。LLM の割り当てで選ぶと使われます。画像生成は非公式の経路で、別のログインと確認が必要です。") {
 		@Panel(d)
 	}
 }
@@ -35,7 +36,7 @@ templ Panel(d Data) {
 		id="chatgpt-panel"
 		class="flex flex-col gap-6"
 		if polling(d) {
-			hx-get={ paths.ChatGPTSettings() }
+			hx-get={ methodURL(d.Method) }
 			hx-trigger="every 2s"
 			hx-swap="outerHTML"
 		}
@@ -46,13 +47,19 @@ templ Panel(d Data) {
 		if d.Error != "" {
 			<p class="text-sm text-red-300" role="alert" data-testid="chatgpt-error">{ d.Error }</p>
 		}
-		@officialBlock(d)
+		@methodTabs(d)
+		if d.Method == MethodCodex {
+			@codexBlock(d)
+		} else {
+			@officialBlock(d)
+		}
 		@imageBlock(d)
 	</section>
 }
 
 func polling(d Data) bool {
-	return (d.Official.Login != nil && d.Official.Login.Pending) || (d.Image.Login != nil && d.Image.Login.Pending)
+	return (d.Official.Login != nil && d.Official.Login.Pending) || (d.Image.Login != nil && d.Image.Login.Pending) ||
+		(d.Codex.Login != nil && d.Codex.Login.Pending) || d.Codex.Engine.Install.Running
 }
 
 templ officialBlock(d Data) {
@@ -60,6 +67,7 @@ templ officialBlock(d Data) {
 		<h3 class="text-sm font-semibold">ChatGPT サブスク（公式・テキスト生成）</h3>
 		@accountStatus(officialKind, d.Official)
 		@loginMessage(d.Official.Login)
+		@codexGuidance(d)
 		if d.Official.SignedIn && !d.Official.NeedsRelogin {
 			<p class="text-xs text-neutral-400" data-testid="chatgpt-using-plan">
 				{ "Using ChatGPT plan" }

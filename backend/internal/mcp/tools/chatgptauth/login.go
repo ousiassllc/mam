@@ -12,7 +12,7 @@ import (
 // LoginOutput is a login as the agent sees it. It holds no token.
 type LoginOutput struct {
 	LoginID string `json:"login_id" jsonschema:"get_chatgpt_login_status に渡す"`
-	Account string `json:"account" jsonschema:"official（公式）または image（画像生成・非公式）"`
+	Account string `json:"account" jsonschema:"official（公式）、codex（Codex 経由）または image（画像生成・非公式）"`
 	Method  string `json:"method" jsonschema:"browser または device"`
 	State   string `json:"state" jsonschema:"pending / succeeded / failed / cancelled"`
 	Message string `json:"message,omitempty"`
@@ -88,12 +88,16 @@ func (h handlers) loginStatus(_ context.Context, in LoginStatusInput) (LoginOutp
 			return loginOutput(a.name, l), nil
 		}
 	}
+	if l, ok := svc.Codex().LoginStatus(in.LoginID); ok {
+		return codexLoginOutput(l), nil
+	}
 	return LoginOutput{}, service.ErrNotFound
 }
 
 // LogoutInput names the sign-in to end.
 type LogoutInput struct {
-	Account string `json:"account" jsonschema:"official（公式のログイン）または image（画像生成・非公式のログイン）"`
+	Account     string `json:"account" jsonschema:"official（公式のログイン）、codex（Codex 経由のログイン）または image（画像生成・非公式のログイン）"`
+	RemoveFiles bool   `json:"remove_files,omitempty" jsonschema:"codex のときだけ指定できる。取得した Codex 本体と mam 専用の CODEX_HOME も削除する（アンインストールの前に使う）"`
 }
 
 // LogoutOutput is what the sign-out did.
@@ -111,12 +115,14 @@ func (h handlers) logout(ctx context.Context, in LogoutInput) (LogoutOutput, err
 	}
 	var acc *chatgpt.Account
 	switch in.Account {
+	case "codex":
+		return h.logoutCodex(ctx, in.RemoveFiles)
 	case "official":
 		acc = svc.Official()
 	case "image":
 		acc = svc.Image()
 	default:
-		return LogoutOutput{}, &service.ValidationError{Field: "account", Message: "official か image を指定してください"}
+		return LogoutOutput{}, &service.ValidationError{Field: "account", Message: "official・codex・image のどれかを指定してください"}
 	}
 	res, err := acc.Logout(ctx)
 	if err != nil {
