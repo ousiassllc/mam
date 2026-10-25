@@ -25,7 +25,7 @@
 
 ## 3. 一覧と固定（`hfplan.Browse`・`Pin`）
 
-1. `revision/<rev>` でコミットのハッシュ・gated・タグ（NFAA）・ライセンス（`cardData`）を読み、**以後の要求はすべてそのコミットに固定**する（`resolve/<commit>/<path>`。ブランチ名・タグ名のままでは取得しない）。改名されたリポジトリ（307）は新しい名前へ追う。**NFAA は「そのコミットのタグ」と「リポジトリの今の先頭（`revision/main`）のタグ」の OR**（古いコミットはタグが付く前の `cardData` を持つことがあり、コミットを名指しするだけでゲートを越えられないようにする）。`Browse`・`Pin`（導入時の読み直しを含む）・検索・MCP・画面のすべてがこの `hf.Client.Revision` を通る。タグは大文字小文字を区別せず、`nfaa` も NFAA と見なす（`hf.IsNFAA`）。
+1. `revision/<rev>` でコミットのハッシュ・gated・タグ（NFAA）・ライセンス（`cardData`）を読み、**以後の要求はすべてそのコミットに固定**する（`resolve/<commit>/<path>`。ブランチ名・タグ名のままでは取得しない）。改名されたリポジトリ（307）は新しい名前へ追う。**NFAA は「そのコミットのタグ」と「リポジトリの今の先頭（`revision/main`）のタグ」の OR**（古いコミットはタグが付く前の `cardData` を持つことがあり、コミットを名指しするだけでゲートを越えられないようにする）。`Browse`・`Pin`（導入時の読み直しを含む）・検索・MCP・画面のすべてがこの `hf.Client.Revision` を通る。タグは大文字小文字を区別せず、`nfaa` も NFAA と見なす（`hf.IsNFAA`）。**先頭の読み取りが失敗したとき（404・5xx・形式不正）は NFAA が決まらないので、`Revision` はエラーを返す**（古いコミットだけを見て年齢ゲートを越えない。`Browse`・`Pin`・導入のすべてが断る）。
 2. ツリーを、`Link` ヘッダーのカーソルで読む。モデルのファイル（拡張子 `.safetensors` `.sft` `.gguf` と pickle 系）だけを残す。
 3. `paths-info`（`expand=true`）で、LFS の SHA-256（`lfs.oid`）・サイズ・セキュリティのスキャン（`securityFileStatus`）を読む。
 4. 各ファイルを判定する（`hfplan.Judge`）。導入できるのは、**LFS の `.safetensors`/`.sft` で、単一ファイル（分割形式でない）・サイズが 0 でなくツリーと LFS が一致・スキャンが `unsafe` でない**もの。できないものは理由（`ReasonGGUF`・`ReasonPickle`・`ReasonSplit`・`ReasonNoLFS`・`ReasonUnsafe`・`ReasonEmpty`）を付けて一覧に残す。
@@ -40,7 +40,7 @@
 - **フォルダ**は `checkpoints`・`diffusion_models`・`text_encoders`・`vae`・`loras` の 5 つだけ（カタログと同じ）。パスにこれらの名前（または `split_files/<folder>/`）があればそれ。無ければ safetensors のヘッダー（先頭 8 バイトの長さ + JSON を `Range` で読む。上限 8 MiB。一度に 12 ファイル・4 並列まで）のテンソル名から推定する（`hfplan.Infer`）: LoRA のテンソル名（`lora_unet_`・`lora_te`・`.lora_A.`・`.lora_down.`・`.alpha`）→ `loras`、`model.diffusion_model`・`conditioner`/`cond_stage_model`・`first_stage_model` がそろう一体型 → `checkpoints`（family `sdxl`／`sdxl-refiner`／`sd1`）、`model.diffusion_model` のみまたは transformer のテンソル名（`double_blocks.` など）→ `diffusion_models`、`text_model.`・`encoder.block.`・`model.layers.` → `text_encoders`、`encoder.`+`decoder.`（と `quant_conv`）だけ → `vae`。**判定表に無い構成は空のまま**にし、利用者が選ぶ（API は `folder` の指定が無ければ `*InvalidError`）。
 - **ファイル名**は `[A-Za-z0-9][A-Za-z0-9._+-]*` の `.safetensors`/`.sft`・120 文字まで・Windows の予約名でない。リポジトリ内の名前から作る（`SanitizeName`）。`name` で上書きできる。
 - **衝突**: 同名で中身の違うファイルがあれば上書きせず `*InvalidError`（別の名前を提案する）。同名で SHA-256 とサイズが記録と同じなら導入済みとして扱う。記録に無い既存ファイルは、サイズが同じならハッシュして合えば採用し、違えば同様に断る。
-- **同じ宛先への導入は直列にする**: 導入のジョブは、ジョブの対象（`hf:<repo>@<commit>/<path>`・`model:<id>`）のロックに加えて、**書き込み先（`models/<folder>/<name>`、大文字小文字は区別しない）ごとのロック**を取る（`Service.lockDests`。複数あるときは並べ替えた順に取り、互いに待たない）。ロックは記録を書くまで持ち、**ロックを取った後で宛先の検査（`CheckDest`）をもう一度行う**。要求の時点では宛先が空だった 2 つの導入（同じ名前の別のリポジトリ、HF とカタログの同名ファイル）は 1 つずつ動き、後のものは先のものの記録を見て上書きせずに失敗する。**カタログのモデルの導入も、同じ宛先に利用者が足した別の SHA-256 のファイルがあれば上書きしない**（要求のときと、ロックを取った後のジョブで `*InvalidError`）。同じ SHA-256・サイズなら両方の記録に載せて共有する。
+- **同じ宛先への導入は直列にする**: 導入のジョブは、ジョブの対象（`hf:<repo>@<commit>/<path>`・`model:<id>`）のロックに加えて、**書き込み先（`models/<folder>/<name>`、大文字小文字は区別しない）ごとのロック**を取る（`Service.lockDests`。複数あるときは並べ替えた順に取り、互いに待たない）。ロックは記録を書くまで持ち、**ロックを取った後で宛先の検査（`CheckDest`）と年齢ゲートをもう一度行う**（ロックの待ちは別の導入のダウンロードの長さになり、その間にゲートが閉じられることがある。HF の導入は `NFAA`、カタログの導入は成人向けのモデルが対象。最初の検査も残す）。要求の時点では宛先が空だった 2 つの導入（同じ名前の別のリポジトリ、HF とカタログの同名ファイル）は 1 つずつ動き、後のものは先のものの記録を見て上書きせずに失敗する。**カタログのモデルの導入も、同じ宛先に利用者が足した別の SHA-256 のファイルがあれば上書きしない**（要求のときと、ロックを取った後のジョブで `*InvalidError`）。同じ SHA-256・サイズなら両方の記録に載せて共有する。
 - 同じファイルの導入が動いている間に、別のフォルダ・名前でもう一度頼むと、先のジョブを返さず `*InvalidError`（先のジョブの宛先を示す）。同じ宛先ならこれまでどおり同じジョブ（`Existing`）を返す。
 - SDXL のチェックポイントのモデル名は `hf-<slug>-<sha6>`（と `-img2img`）。ワークフローは埋め込みのテンプレートの `ckpt_name` だけを差し替える（`hfplan.WithCheckpoint`）。作ったモデル名は `UserModel.Workflows` に記録し、削除で一緒に消す。
 
@@ -51,7 +51,7 @@
 ## 6. 年齢ゲート（#841）と NFAA
 
 - リポジトリのタグ `not-for-all-audiences`（NFAA）は成人向けとして扱う（§3 のとおり、コミットのタグと今の先頭のタグの OR）。**Service が強制する**（画面だけではない）: 年齢確認（`AdultContentEnabled()`）が済むまで、`SearchHF` の結果から外し、`HFRepo`・`InstallHFFile` は `ErrAdultNotConfirmed`（409）、ツリーを読む前に断る。古いコミットの URL（`tree/<commit>`・`blob/<commit>`・`resolve/<commit>`）や `install_hf_file` の `commit` を名指ししても同じ。
-- 導入済みの NFAA のファイルは、ゲートが閉じている間 `UserModels()` から隠れ、作ったモデルは `HidesModel` で隠れる（試し生成の選択肢にも出ない）。`UserModels()` の `shared_with` も、ゲートが閉じている間は成人向けのカタログのモデルを挙げない。キューに入った後でゲートが閉じたら、実行時に `ErrAdultNotConfirmed` で失敗する。`DeleteUserModel` はゲートに関係なく動く（片付けは常にできる）。
+- 導入済みの NFAA のファイルは、ゲートが閉じている間 `UserModels()` から隠れ、作ったモデルは `HidesModel` で隠れる（試し生成の選択肢にも出ない）。`UserModels()` の `shared_with` も、ゲートが閉じている間は成人向けのカタログのモデルを挙げない。キューに入った後でゲートが閉じたら、実行時（宛先のロックを取った後も）に `ErrAdultNotConfirmed` で失敗する。同じパス・同じ SHA-256 の記録がすでにあるとき、NFAA でないリポジトリからの再導入は記録の `nfaa` を落とさず（古い記録か新しい記録のどちらかが NFAA なら NFAA）、作ったモデル名も引き継ぐ（`hfplan.KeepEarlier`）。`DeleteUserModel` はゲートに関係なく動く（片付けは常にできる）。
 - 年齢の確認を自動で済ませる仕組みは無い（`set_adult_content` と画面のダイアログだけ）。
 
 ## 7. 注意書き（terms）の確認

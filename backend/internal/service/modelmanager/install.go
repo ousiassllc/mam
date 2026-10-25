@@ -163,6 +163,10 @@ func (s *Service) runModelInstall(ctx context.Context, id string, set func(track
 		rels = append(rels, f.Path())
 	}
 	defer s.lockDests(rels...)() // held until the record is written: an import of the same file waits and then sees it
+	// The gate again: the wait for the lock lasts as long as another download, and the gate may have been closed meanwhile.
+	if !s.allowed(m) {
+		return ErrAdultNotConfirmed
+	}
 	if err := s.Layout.CheckWritable(); err != nil {
 		return err
 	}

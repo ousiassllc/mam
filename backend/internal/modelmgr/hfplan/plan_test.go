@@ -9,6 +9,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/hf"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/hfplan"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/store"
 )
 
 func lfs(path string, size int64) hf.TreeEntry {
@@ -235,4 +236,16 @@ func TestWithCheckpoint_NeedsExactlyOneCheckpointLoader(t *testing.T) {
 	tpl, _ := localcfg.TemplateByID("txt2img-qwen-image") // loads UNET + CLIP + VAE, no checkpoint
 	_, err := hfplan.WithCheckpoint(tpl, "x.safetensors")
 	assert.Error(t, err)
+}
+
+func TestKeepEarlier_AdultAndWorkflowsOfTheSameBytesStay(t *testing.T) {
+	old := store.UserModel{Path: "models/checkpoints/a.safetensors", SHA256: "aa", NFAA: true, Workflows: []string{"hf-a-img2img", "hf-a"}}
+	rec := store.UserModel{Path: old.Path, SHA256: "aa", Repo: "o/general", Workflows: []string{"hf-a"}}
+	got := hfplan.KeepEarlier(rec, old)
+	assert.True(t, got.NFAA)
+	assert.Equal(t, []string{"hf-a", "hf-a-img2img"}, got.Workflows)
+	assert.Equal(t, "o/general", got.Repo, "the rest is the new record's")
+
+	other := store.UserModel{Path: old.Path, SHA256: "bb", Repo: "o/general"}
+	assert.Equal(t, other, hfplan.KeepEarlier(other, old), "other bytes: nothing is carried over")
 }

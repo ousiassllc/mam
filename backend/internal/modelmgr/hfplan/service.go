@@ -72,6 +72,20 @@ func Record(p Payload, family string, workflows []string, now time.Time) store.U
 	}
 }
 
+// KeepEarlier is rec with what the record of the same bytes at the same path already says: a file that was recorded as adult
+// stays adult when the same bytes are installed again from a repository that is not tagged, and the workflows made for it stay.
+// A record of other bytes is not what rec replaces, so rec is returned as it is.
+func KeepEarlier(rec, old store.UserModel) store.UserModel {
+	if old.SHA256 != rec.SHA256 || old.Path != rec.Path {
+		return rec
+	}
+	rec.NFAA = rec.NFAA || old.NFAA
+	rec.Workflows = slices.Concat(rec.Workflows, old.Workflows)
+	slices.Sort(rec.Workflows)
+	rec.Workflows = slices.Compact(rec.Workflows)
+	return rec
+}
+
 // StoreLicense is the license of the payload as state.json records it.
 func (p Payload) StoreLicense() store.HFLicense {
 	return store.HFLicense{ID: p.License.ID, Name: p.License.Name, Link: p.License.Link}
