@@ -293,10 +293,10 @@ func NewBackends(cfg Config, keys credential.Store, client httpclient.Doer, poll
 	}
 	return Backends{
 		Image: map[domain.ModelName]ImageBackend{
-			domain.ModelImagen4:    imagenBackend{mk(VendorGoogle)},
-			domain.ModelNanoBanana: geminiImageBackend{mk(VendorGoogle)},
-			domain.ModelGPTImage2:  openAIImageBackend{mk(VendorOpenAI)},
-			domain.ModelFlux2:      fluxBackend{mk(VendorFlux)},
+			domain.ModelNanoBanana:     geminiImageBackend{mk(VendorGoogle)},
+			domain.ModelNanoBananaLite: geminiImageBackend{mk(VendorGoogle)},
+			domain.ModelGPTImage2:      openAIImageBackend{mk(VendorOpenAI)},
+			domain.ModelFlux2:          fluxBackend{mk(VendorFlux)},
 		},
 		Video: map[domain.ModelName]VideoBackend{
 			domain.ModelKling3:      klingBackend{api: mk(VendorKling), now: time.Now},

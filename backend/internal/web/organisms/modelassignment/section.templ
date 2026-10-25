@@ -1,6 +1,7 @@
 package modelassignment
 
 import (
+	"slices"
 	"strconv"
 
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
@@ -191,6 +192,12 @@ templ imageRow(r ImageRow, models []ImageModel) {
 	</li>
 }
 
+// showFast reports whether a slot offers the "fast variant" checkbox: only when a model has a fast variant
+// (models.<id>.fast_model; no built-in model has one) or the saved route already asks for it.
+func showFast(t ImageTarget, models []ImageModel) bool {
+	return t.Fast || slices.ContainsFunc(models, func(m ImageModel) bool { return m.Fast })
+}
+
 templ imageSlot(purpose, slot, slotLabel, purposeLabel string, t ImageTarget, models []ImageModel) {
 	<div class="flex flex-wrap items-center gap-2">
 		<label for={ ImageModelField(purpose, slot) }>{ slotLabel }<span class="sr-only">（{ purposeLabel }）</span></label>
@@ -199,10 +206,12 @@ templ imageSlot(purpose, slot, slotLabel, purposeLabel string, t ImageTarget, mo
 				<option value={ m.Name } selected?={ m.Name == t.Model }>{ m.Name }</option>
 			}
 		}
-		<label class="flex items-center gap-1 text-xs">
-			@atoms.Choice("", templ.Attributes{"type": "checkbox", "name": ImageFastField(purpose, slot), "value": "1", "checked": t.Fast})
-			高速版<span class="sr-only">（{ slotLabel }、{ purposeLabel }）</span>
-		</label>
+		if showFast(t, models) {
+			<label class="flex items-center gap-1 text-xs">
+				@atoms.Choice("", templ.Attributes{"type": "checkbox", "name": ImageFastField(purpose, slot), "value": "1", "checked": t.Fast})
+				高速版<span class="sr-only">（{ slotLabel }、{ purposeLabel }）</span>
+			</label>
+		}
 	</div>
 }
 

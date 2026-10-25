@@ -161,3 +161,4 @@
 | 1.154 | 2026-10-25 | §1 にモデルマネージャー画面のルート（`/model-manager/…`）を足し、仕様を [endpoints-model-manager.md](endpoints-model-manager.md) に分けて書いた | Issue #833。ComfyUI エンジンの導入・モデルのカタログ・ライセンスの同意・試し生成の画面 |
 | 1.155 | 2026-10-25 | §1 に `GET /nodes`・`POST /nodes/start`（ノード画面）と `/workflows/…`（保存した ComfyUI ワークフローの画面）を足し、仕様を [endpoints-workflows.md](endpoints-workflows.md) に書いた | Issue #834 |
 | 1.156 | 2026-10-26 | §1 に生成テスト画面のルート（`/generation-test/…`）を足し、仕様を [endpoints-gentest.md](endpoints-gentest.md) に書いた。モデルマネージャーの試し生成のルートは、生成テストの 1 件のバッチを動かすものに改めた（[endpoints-model-manager.md](endpoints-model-manager.md) 1.1） | Issue #835 |
+| 1.157 | 2026-10-25 | §1 の `GET /settings` の行: 参照画像を使えないモデルは組み込みにはなく登録モデルだけになったこと、保存済みの `models.json` の `imagen-4` を読み込み時に Nano Banana（高速版は Nano Banana Lite）として扱うことを追記 | Imagen 4 の終了と、画像モデルの割り当て・識別子の変更（`model-adapters.md` 1.52。Issue #836・#837） |

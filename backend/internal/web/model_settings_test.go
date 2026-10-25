@@ -16,6 +16,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/configcheck"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/domain/modelreg"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelassignment"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -34,10 +35,13 @@ func TestModelSettings_TheScreenListsEveryPurposeAndPolicyWithOnlyWhatTheAdapter
 	for _, p := range modeladapter.ImagePurposes() {
 		name := modelassignment.ImageModelField(string(p), modelassignment.SlotPrimary)
 		assert.Equal(t, string(def.Images[p].Primary.Model), selectedOption(t, html, name), p)
-		assert.ElementsMatch(t, []string{"imagen-4", "nano-banana", "flux-2", "gpt-image-2"}, optionValues(t, html, name), "the models that have an image backend")
+		assert.ElementsMatch(t, []string{"nano-banana", "nano-banana-lite", "flux-2", "gpt-image-2"}, optionValues(t, html, name), "the models that have an image backend")
 	}
-	assert.True(t, isChecked(t, html, modelassignment.ImageFastField("preview", modelassignment.SlotFallback)), "the default preview fallback is the fast Imagen 4")
-	assert.False(t, isChecked(t, html, modelassignment.ImageFastField("preview", modelassignment.SlotPrimary)))
+	for _, p := range modeladapter.ImagePurposes() {
+		for _, slot := range []string{modelassignment.SlotPrimary, modelassignment.SlotFallback} {
+			assert.NotContains(t, html, `name="`+modelassignment.ImageFastField(string(p), slot)+`"`, "no model has a fast variant by default: the checkbox is not offered: %s %s", p, slot)
+		}
+	}
 
 	for _, q := range domain.QualityPolicies() {
 		route := def.Policies[q]
@@ -60,22 +64,89 @@ func TestModelSettings_TheScreenListsEveryPurposeAndPolicyWithOnlyWhatTheAdapter
 	}
 }
 
+// noteOf is the reference-image note of the row of an image purpose ("" when it has none).
+func noteOf(t *testing.T, html, purpose string) string {
+	t.Helper()
+	row := regexp.MustCompile(`(?s)data-purpose="` + purpose + `".*?</li>`).FindString(html)
+	require.NotEmpty(t, row, purpose)
+	return regexp.MustCompile(`(?s)data-testid="model-assignment-reference-note"[^>]*>(.*?)</p>`).FindStringSubmatch(row + `<p data-testid="model-assignment-reference-note"></p>`)[1]
+}
+
 func TestModelSettings_TheReferenceImageWarningStatesWhatTheAdapterDoes(t *testing.T) {
 	s := newModelScreen(t, filepath.Join(t.TempDir(), "models.json"), false)
 	html := s.page()
 
 	assert.Contains(t, html, `data-testid="model-assignment-reference-warning"`)
 	assert.Contains(t, html, "参照画像は渡されず、Prompt だけで画像を作ります")
-	// Only a route that has such a model names it: the default new-reference route is Imagen 4, then GPT Image 2.
-	noteOf := func(purpose string) string {
-		row := regexp.MustCompile(`(?s)data-purpose="` + purpose + `".*?</li>`).FindString(html)
-		require.NotEmpty(t, row, purpose)
-		return regexp.MustCompile(`(?s)data-testid="model-assignment-reference-note"[^>]*>(.*?)</p>`).FindStringSubmatch(row + `<p data-testid="model-assignment-reference-note"></p>`)[1]
+	for _, p := range modeladapter.ImagePurposes() {
+		assert.Empty(t, noteOf(t, html, string(p)), "every built-in model takes reference images: %s", p)
 	}
-	assert.Contains(t, noteOf("new_reference"), "主モデル imagen-4 は参照画像を使えません")
-	assert.NotContains(t, noteOf("new_reference"), "代替モデル")
-	assert.Contains(t, noteOf("edit_reference"), "代替モデル imagen-4 は参照画像を使えません")
-	assert.NotContains(t, noteOf("edit_reference"), "主モデル")
+
+	// Only a route that names a model that cannot take them has the note: a local model without an image input.
+	t.Cleanup(func() { modelreg.Set(nil, nil) })
+	modelreg.Set([]string{noRefLocalModel}, nil)
+	file := filepath.Join(t.TempDir(), "models.json")
+	require.NoError(t, os.WriteFile(file, []byte(`{
+	  "endpoints": {"oa": {"kind": "openai-compat", "base_url": "http://192.168.1.9:8000"}},
+	  "local_models": {"oa/x": {"media": "image", "model": "x", "accepts_image_inputs": false}},
+	  "images": {
+	    "new_reference": {"primary": {"model": "`+noRefLocalModel+`"}, "fallback": {"model": "nano-banana"}},
+	    "edit_reference": {"primary": {"model": "nano-banana"}, "fallback": {"model": "`+noRefLocalModel+`"}}
+	  }
+	}`), 0o600))
+	html = newModelScreen(t, file, false).page()
+	assert.Contains(t, noteOf(t, html, "new_reference"), "主モデル "+noRefLocalModel+" は参照画像を使えません")
+	assert.NotContains(t, noteOf(t, html, "new_reference"), "代替モデル")
+	assert.Contains(t, noteOf(t, html, "edit_reference"), "代替モデル "+noRefLocalModel+" は参照画像を使えません")
+	assert.NotContains(t, noteOf(t, html, "edit_reference"), "主モデル")
+	assert.Empty(t, noteOf(t, html, "preview"))
+}
+
+// noRefLocalModel is a local image model whose adapter drops reference images.
+const noRefLocalModel = "openai-compat:oa/x"
+
+func TestModelSettings_AModelsFileThatStillNamesImagen4IsShownAsNanoBanana(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "models.json")
+	const legacy = `{
+	  "models": {"imagen-4": {"model": "imagen-4.0-generate-001", "fast_model": "imagen-4.0-fast-generate-001", "cost_per_image_usd": 0.04}},
+	  "images": {"new_reference": {"primary": {"model": "imagen-4"}, "fallback": {"model": "imagen-4", "fast": true}}}
+	}`
+	require.NoError(t, os.WriteFile(file, []byte(legacy), 0o600))
+	s := newModelScreen(t, file, false)
+
+	html := s.page()
+	assert.NotContains(t, html, `data-testid="model-assignment-problem"`)
+	assert.Equal(t, "nano-banana", selectedOption(t, html, modelassignment.ImageModelField("new_reference", modelassignment.SlotPrimary)))
+	assert.Equal(t, "nano-banana-lite", selectedOption(t, html, modelassignment.ImageModelField("new_reference", modelassignment.SlotFallback)))
+	assert.NotContains(t, html, `name="`+modelassignment.ImageFastField("new_reference", modelassignment.SlotFallback)+`"`, "the fast flag is dropped")
+	assert.NotContains(t, optionValues(t, html, modelassignment.ImageModelField("new_reference", modelassignment.SlotPrimary)), "imagen-4")
+	data, err := os.ReadFile(file)
+	require.NoError(t, err)
+	assert.JSONEq(t, legacy, string(data), "the file is read, not rewritten")
+}
+
+func TestModelSettings_TheFastVariantIsSavedOnlyForAModelThatHasOne(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "models.json")
+	require.NoError(t, os.WriteFile(file, []byte(`{"models":{"flux-2":{"model":"flux-2-pro","fast_model":"flux-2-klein","cost_per_image_usd":0.03}}}`), 0o600))
+	s := newModelScreen(t, file, false)
+
+	html := s.page()
+	assert.False(t, isChecked(t, html, modelassignment.ImageFastField("preview", modelassignment.SlotPrimary)))
+	form := modelDefaultForm()
+	form.Set(modelassignment.ImageFastField("preview", modelassignment.SlotPrimary), "1") // preview's primary is FLUX.2, which has a fast model here
+	rec := s.request(http.MethodPut, form)
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	cfg, err := configcheck.Load(file)
+	require.NoError(t, err)
+	assert.Equal(t, modeladapter.ImageTarget{Model: domain.ModelFlux2, Fast: true}, cfg.Images[modeladapter.PurposePreview].Primary)
+	assert.True(t, isChecked(t, s.page(), modelassignment.ImageFastField("preview", modelassignment.SlotPrimary)))
+
+	// Nano Banana Lite (preview's fallback) has no fast variant by default: refused, with the reason.
+	form = modelDefaultForm()
+	form.Set(modelassignment.ImageFastField("preview", modelassignment.SlotFallback), "1")
+	rec = s.request(http.MethodPut, form)
+	require.Equal(t, http.StatusUnprocessableEntity, rec.Code, rec.Body.String())
+	assert.Contains(t, rec.Body.String(), "nano-banana-lite には高速版がありません")
 }
 
 func TestModelSettings_SaveIsShownAgainAndRead_ByTheStartupLoader(t *testing.T) {
@@ -83,9 +154,7 @@ func TestModelSettings_SaveIsShownAgainAndRead_ByTheStartupLoader(t *testing.T) 
 	s := newModelScreen(t, file, false)
 
 	form := modelDefaultForm()
-	form.Set(modelassignment.ImageModelField("preview", modelassignment.SlotPrimary), "imagen-4")
-	form.Set(modelassignment.ImageFastField("preview", modelassignment.SlotPrimary), "1")
-	form.Del(modelassignment.ImageFastField("preview", modelassignment.SlotFallback))
+	form.Set(modelassignment.ImageModelField("preview", modelassignment.SlotPrimary), "gpt-image-2")
 	form.Set(modelassignment.PolicyTargetField("fast", modelassignment.SlotPrimary), "seedance-2.0@1080p")
 	form.Set(modelassignment.PolicyTakesField("fast"), "5")
 	rec := s.request(http.MethodPut, form)
@@ -97,8 +166,8 @@ func TestModelSettings_SaveIsShownAgainAndRead_ByTheStartupLoader(t *testing.T) 
 	cfg, err := configcheck.Load(file)
 	require.NoError(t, err)
 	assert.Equal(t, modeladapter.ImageRoute{
-		Primary:  modeladapter.ImageTarget{Model: domain.ModelImagen4, Fast: true},
-		Fallback: modeladapter.ImageTarget{Model: domain.ModelImagen4},
+		Primary:  modeladapter.ImageTarget{Model: domain.ModelGPTImage2},
+		Fallback: modeladapter.ImageTarget{Model: domain.ModelNanoBananaLite},
 	}, cfg.Images[modeladapter.PurposePreview])
 	assert.Equal(t, modeladapter.PolicyRoute{
 		Primary:  modeladapter.VideoTarget{Model: domain.ModelSeedance2, Resolution: "1080p"},
@@ -109,9 +178,8 @@ func TestModelSettings_SaveIsShownAgainAndRead_ByTheStartupLoader(t *testing.T) 
 
 	// The next visit shows what was saved, with the reset offered.
 	html := s.page()
-	assert.Equal(t, "imagen-4", selectedOption(t, html, modelassignment.ImageModelField("preview", modelassignment.SlotPrimary)))
-	assert.True(t, isChecked(t, html, modelassignment.ImageFastField("preview", modelassignment.SlotPrimary)))
-	assert.False(t, isChecked(t, html, modelassignment.ImageFastField("preview", modelassignment.SlotFallback)))
+	assert.Equal(t, "gpt-image-2", selectedOption(t, html, modelassignment.ImageModelField("preview", modelassignment.SlotPrimary)))
+	assert.Equal(t, "nano-banana-lite", selectedOption(t, html, modelassignment.ImageModelField("preview", modelassignment.SlotFallback)))
 	assert.Equal(t, "seedance-2.0@1080p", selectedOption(t, html, modelassignment.PolicyTargetField("fast", modelassignment.SlotPrimary)))
 	assert.Equal(t, "5", numberValue(t, html, modelassignment.PolicyTakesField("fast")))
 	assert.Contains(t, html, `hx-delete="`+paths.ModelSettings()+`"`)

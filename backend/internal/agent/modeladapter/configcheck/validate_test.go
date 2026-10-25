@@ -121,8 +121,13 @@ func TestValidateStepsReportOnlyTheirOwnProblems(t *testing.T) {
 func TestCheckTargets(t *testing.T) {
 	cfg := modeladapter.DefaultConfig()
 	delete(cfg.Vendors, modeladapter.VendorOf(domain.ModelFlux2))
+	// No built-in model has a fast variant: a fast target is valid once the user sets fast_model.
+	lite := cfg.Models[domain.ModelNanoBananaLite]
+	lite.FastModel = "gemini-fast-lite"
+	cfg.Models[domain.ModelNanoBananaLite] = lite
 
-	assert.Empty(t, checkImageTarget(cfg, "where", modeladapter.ImageTarget{Model: domain.ModelImagen4, Fast: true}))
+	assert.Empty(t, checkImageTarget(cfg, "where", modeladapter.ImageTarget{Model: domain.ModelNanoBananaLite, Fast: true}))
+	assert.Contains(t, errStrings(checkImageTarget(cfg, "where", modeladapter.ImageTarget{Model: domain.ModelNanoBanana, Fast: true})), `where: "nano-banana" has no fast_model`)
 	assert.Contains(t, errStrings(checkImageTarget(cfg, "where", modeladapter.ImageTarget{Model: domain.ModelKling3})), `where: "kling-3.0" is not a configured image model`)
 	assert.Contains(t, errStrings(checkImageTarget(cfg, "where", modeladapter.ImageTarget{Model: domain.ModelFlux2})), `where: no vendor settings for "flux"`)
 

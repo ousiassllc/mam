@@ -19,14 +19,14 @@ type ImagePurpose string
 
 // Image purposes.
 const (
-	// PurposeNewReference: new Character / Product / Location references (Imagen 4, then GPT Image 2).
+	// PurposeNewReference: new Character / Product / Location references (GPT Image 2, then Nano Banana).
 	PurposeNewReference ImagePurpose = "new_reference"
 	// PurposeEditReference: Style / Lighting references, Keyframes and edits of existing material
-	// (Nano Banana, then Imagen 4).
+	// (Nano Banana, then GPT Image 2).
 	PurposeEditReference ImagePurpose = "edit_reference"
-	// PurposePreview: fast, cheap iterations (FLUX.2, then Imagen 4 Fast).
+	// PurposePreview: fast, cheap iterations (FLUX.2, then Nano Banana Lite).
 	PurposePreview ImagePurpose = "preview"
-	// PurposeUnifiedOpenAI: one vendor for reasoning and images (GPT Image 2, then Imagen 4).
+	// PurposeUnifiedOpenAI: one vendor for reasoning and images (GPT Image 2, then Nano Banana).
 	PurposeUnifiedOpenAI ImagePurpose = "unified_openai"
 )
 
@@ -153,21 +153,25 @@ func DefaultConfig() Config {
 			VendorRunway:   {BaseURL: "https://api.dev.runwayml.com", MaxConcurrency: 2, TimeoutSeconds: 900},
 		},
 		Models: map[domain.ModelName]ModelConfig{
-			domain.ModelImagen4:    {Model: "imagen-4.0-generate-001", FastModel: "imagen-4.0-fast-generate-001", CostPerImage: 0.04},
-			domain.ModelNanoBanana: {Model: "gemini-2.5-flash-image", CostPerImage: 0.04},
-			domain.ModelFlux2:      {Model: "flux-2-pro", CostPerImage: 0.03},
-			domain.ModelGPTImage2:  {Model: "gpt-image-1", CostPerImage: 0.06},
-			chatgptid.Model:        {Model: chatgptid.APIModel}, // the plan pays: 0 USD per image
-			domain.ModelKling3:     {Model: "kling-v3", CostPerSecond: map[string]float64{"720p": 0.07, "1080p": 0.14}},
-			domain.ModelSeedance2:  {Model: "seedance-2-0", CostPerSecond: map[string]float64{"480p": 0.03, "720p": 0.08, "1080p": 0.18}},
+			// Prices: Google's Gemini API pricing page (1K image, the size an unset image_size gives), BFL's
+			// pricing page (FLUX.2 [pro], text only, up to 1 megapixel). GPT Image 2 is priced per token and
+			// the request leaves the quality to the model ("auto"), so it has no per-image price here: 0 is
+			// "not priced" (spec/architecture/model-adapters.md §8).
+			domain.ModelNanoBanana:     {Model: "gemini-nano-banana-2.1", CostPerImage: 0.0336},
+			domain.ModelNanoBananaLite: {Model: "gemini-3.1-flash-lite-image", CostPerImage: 0.0336},
+			domain.ModelFlux2:          {Model: "flux-2-pro", CostPerImage: 0.03},
+			domain.ModelGPTImage2:      {Model: "gpt-image-2"},
+			chatgptid.Model:            {Model: chatgptid.APIModel}, // the plan pays: 0 USD per image
+			domain.ModelKling3:         {Model: "kling-v3", CostPerSecond: map[string]float64{"720p": 0.07, "1080p": 0.14}},
+			domain.ModelSeedance2:      {Model: "seedance-2-0", CostPerSecond: map[string]float64{"480p": 0.03, "720p": 0.08, "1080p": 0.18}},
 			// Runway prices in credits (12 credits per second of Gen-4.5, 1 credit = USD 0.01).
 			domain.ModelRunwayGen45: {Model: "gen4.5", CostPerSecond: map[string]float64{"720p": 0.12}},
 		},
 		Images: map[ImagePurpose]ImageRoute{
-			PurposeNewReference:  {Primary: ImageTarget{Model: domain.ModelImagen4}, Fallback: ImageTarget{Model: domain.ModelGPTImage2}},
-			PurposeEditReference: {Primary: ImageTarget{Model: domain.ModelNanoBanana}, Fallback: ImageTarget{Model: domain.ModelImagen4}},
-			PurposePreview:       {Primary: ImageTarget{Model: domain.ModelFlux2}, Fallback: ImageTarget{Model: domain.ModelImagen4, Fast: true}},
-			PurposeUnifiedOpenAI: {Primary: ImageTarget{Model: domain.ModelGPTImage2}, Fallback: ImageTarget{Model: domain.ModelImagen4}},
+			PurposeNewReference:  {Primary: ImageTarget{Model: domain.ModelGPTImage2}, Fallback: ImageTarget{Model: domain.ModelNanoBanana}},
+			PurposeEditReference: {Primary: ImageTarget{Model: domain.ModelNanoBanana}, Fallback: ImageTarget{Model: domain.ModelGPTImage2}},
+			PurposePreview:       {Primary: ImageTarget{Model: domain.ModelFlux2}, Fallback: ImageTarget{Model: domain.ModelNanoBananaLite}},
+			PurposeUnifiedOpenAI: {Primary: ImageTarget{Model: domain.ModelGPTImage2}, Fallback: ImageTarget{Model: domain.ModelNanoBanana}},
 		},
 		// model-adapters.md §4. MAX QUALITY uses Runway Gen-4.5 (720p, its only output size); the
 		// alternative ("Different Model") is Kling 3.0.

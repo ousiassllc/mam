@@ -42,7 +42,7 @@ func TestEstimateMultipliesModelsPromptsAndCountAndPricesEachModel(t *testing.T)
 	require.NoError(t, err)
 
 	assert.Equal(t, 2*2*3, e.TotalItems)
-	assert.InDelta(t, 6*0.03+6*0.04, e.TotalUSD, 1e-9)
+	assert.InDelta(t, 6*0.03+6*0.0336, e.TotalUSD, 1e-9)
 	flux := line(t, e, "flux-2")
 	assert.Equal(t, 6, flux.Items)
 	assert.Equal(t, "priced", flux.Basis)
@@ -115,10 +115,10 @@ func codes(e gentest.Estimate) []string {
 }
 
 func TestEstimateWarnsAboutInputsAModelCannotUse(t *testing.T) {
-	r := gentesttest.New(t)
+	r := gentesttest.New(t, gentesttest.WithNoReferenceModel())
 	id, _, err := r.Svc.StageReference(gentesttest.PNG)
 	require.NoError(t, err)
-	req := imageReq("imagen-4", "flux-2")
+	req := imageReq(string(gentesttest.NoReferenceModel), "flux-2")
 	req.References = []gentest.RefInput{{Source: gentest.FromStaged, ID: id}}
 
 	e, err := r.Svc.Estimate(context.Background(), req)
@@ -129,7 +129,7 @@ func TestEstimateWarnsAboutInputsAModelCannotUse(t *testing.T) {
 			dropped = append(dropped, w.Model)
 		}
 	}
-	assert.Equal(t, []string{"imagen-4"}, dropped, "Imagen 4 throws reference images away")
+	assert.Equal(t, []string{string(gentesttest.NoReferenceModel)}, dropped, "a local model without image inputs throws reference images away")
 
 	vreq := gentest.Request{Media: "video", Models: []string{"runway-gen-4.5", "kling-3.0", "seedance-2.0"}, Prompts: []gentest.PromptInput{p("x")}, AspectRatio: "1:1",
 		References: []gentest.RefInput{{Source: gentest.FromStaged, ID: id, Role: "reference"}, {Source: gentest.FromStaged, ID: id, Role: "last_frame"}}}
@@ -171,7 +171,7 @@ func TestEstimateLimitsAreEnforcedAndConfigurable(t *testing.T) {
 	require.ErrorAs(t, err, &invalid, "6 results are over max_items 5")
 	assert.Contains(t, invalid.Message, "5")
 
-	req.Count = 2 // 4 results: 0.03*2 + 0.04*2 = 0.14 > 0.10
+	req.Count = 2 // 4 results: 0.03*2 + 0.0336*2 = 0.1272 > 0.10
 	e, err := r.Svc.Estimate(context.Background(), req)
 	require.NoError(t, err)
 	assert.NotEmpty(t, e.OverLimit, "the screen shows the figures, and the confirmation is refused")
@@ -211,24 +211,25 @@ func TestEstimateRefusesWhatCannotRun(t *testing.T) {
 }
 
 func TestModelsListsEveryBuiltInModelAndWhyOneCannotBeChosen(t *testing.T) {
-	r := gentesttest.New(t, gentesttest.WithoutBackend(domain.ModelImagen4), gentesttest.WithoutBackend(domain.ModelSeedance2))
+	r := gentesttest.New(t, gentesttest.WithNoReferenceModel(), gentesttest.WithoutBackend(domain.ModelNanoBananaLite), gentesttest.WithoutBackend(domain.ModelSeedance2))
 	byID := map[string]modelcatalog.Info{}
 	for _, m := range r.Svc.Models(context.Background(), "") {
 		byID[m.ID] = m
 	}
-	for _, id := range []string{"imagen-4", "nano-banana", "flux-2", "gpt-image-2", "kling-3.0", "seedance-2.0", "runway-gen-4.5"} {
+	for _, id := range []string{"nano-banana-lite", "nano-banana", "flux-2", "gpt-image-2", "kling-3.0", "seedance-2.0", "runway-gen-4.5"} {
 		assert.Contains(t, byID, id)
 	}
-	assert.False(t, byID["imagen-4"].Available)
-	assert.Equal(t, domain.ExcludedNoBackend, byID["imagen-4"].Unavailable)
-	assert.NotEmpty(t, byID["imagen-4"].UnavailableMessage, "the user is told why")
+	assert.False(t, byID["nano-banana-lite"].Available)
+	assert.Equal(t, domain.ExcludedNoBackend, byID["nano-banana-lite"].Unavailable)
+	assert.NotEmpty(t, byID["nano-banana-lite"].UnavailableMessage, "the user is told why")
 	assert.False(t, byID["seedance-2.0"].Available)
 	assert.True(t, byID["flux-2"].Available)
 	assert.True(t, byID["flux-2"].SupportsSeed)
 	assert.False(t, byID["nano-banana"].SupportsSeed)
 	assert.True(t, byID["kling-3.0"].NegativeField)
 	assert.True(t, byID["gpt-image-2"].AcceptsReferences)
-	assert.False(t, byID["imagen-4"].AcceptsReferences)
+	assert.True(t, byID["nano-banana-lite"].AcceptsReferences)
+	assert.False(t, byID[string(gentesttest.NoReferenceModel)].AcceptsReferences, "a local model can be without image inputs")
 	require.NotNil(t, byID["runway-gen-4.5"].Video)
 	assert.False(t, byID["runway-gen-4.5"].Video.LastFrame)
 	assert.Equal(t, "priced", byID["kling-3.0"].Price.Basis)

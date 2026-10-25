@@ -238,7 +238,7 @@ func TestDeleteRefusesAModelThatIsChosenSomewhere(t *testing.T) {
 	require.NoError(t, err)
 	in := modelsettings.Input{Images: view.Images, Policies: view.Policies}
 	in.Images[modelsettings.PurposeEditReference] = modelsettings.ImageRoute{
-		Primary: modelsettings.ImageTarget{Model: "comfyui:bundled-comfyui/wf-a-i2i"}, Fallback: modelsettings.ImageTarget{Model: domain.ModelImagen4},
+		Primary: modelsettings.ImageTarget{Model: "comfyui:bundled-comfyui/wf-a-i2i"}, Fallback: modelsettings.ImageTarget{Model: domain.ModelNanoBanana},
 	}
 	require.NoError(t, r.sets.Save(in))
 
