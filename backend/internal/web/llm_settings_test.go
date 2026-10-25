@@ -70,7 +70,7 @@ func (s *llmScreen) request(method string, form url.Values) *httptest.ResponseRe
 }
 
 func (s *llmScreen) page() string {
-	req := httptest.NewRequest(http.MethodGet, paths.Settings(), nil)
+	req := httptest.NewRequest(http.MethodGet, paths.LLMSettings(), nil)
 	req.AddCookie(s.cookie)
 	rec := s.send(req)
 	require.Equal(s.t, http.StatusOK, rec.Code)

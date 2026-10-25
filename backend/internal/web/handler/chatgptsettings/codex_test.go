@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -43,21 +44,22 @@ func codexScreen(t *testing.T) (*screen, *codextest.Fake) {
 	return s, fake
 }
 
-func TestChatGPTCodex_TheOfficialBlockIsTheDefaultAndTheTabShowsTheTermsAndTheEngine(t *testing.T) {
+// The three login systems are three cards of one list, in the order of the spec; the Codex card replaced the tab.
+func TestChatGPTCodex_TheCodexCardShowsTheTermsAndTheEngineAmongTheOtherCards(t *testing.T) {
 	s := newScreen(t, true)
-	assert.Contains(t, s.page, `data-testid="chatgpt-method-codex"`)
-	assert.NotContains(t, s.page, `data-testid="chatgpt-codex-terms"`)
+	assert.NotContains(t, s.page, `role="tablist"`, "the method tabs are gone: one card for each method")
+	assert.NotContains(t, s.page, `data-testid="chatgpt-method-codex"`)
+	official, image, codexCard := strings.Index(s.page, `id="chatgpt-card-official"`), strings.Index(s.page, `id="chatgpt-card-image"`), strings.Index(s.page, `id="chatgpt-card-codex"`)
+	assert.True(t, 0 < official && official < image && image < codexCard, "official, image generation, Codex")
 
-	req := httptest.NewRequest(http.MethodGet, paths.ChatGPTSettings()+"?method=codex", nil)
-	rec := s.send(req)
-	require.Equal(t, http.StatusOK, rec.Code)
-	body := rec.Body.String()
+	body := s.panel()
 	assert.Contains(t, body, "商用・ホスティング")
 	assert.Contains(t, body, `data-testid="chatgpt-codex-engine"`)
 	assert.Contains(t, body, `data-testid="chatgpt-codex-unsupported"`, "the download is for Windows; here only a path")
 	assert.Contains(t, body, `data-testid="chatgpt-codex-path"`)
 	assert.NotContains(t, body, `data-testid="chatgpt-codex-install-button"`)
 	assert.NotContains(t, body, `data-testid="chatgpt-login-codex"`, "no login before there is an engine")
+	assert.Contains(t, body, "エンジン未取得")
 }
 
 func TestChatGPTCodex_InstallIsRefusedWhereTheDownloadIsNotAvailable(t *testing.T) {
@@ -92,9 +94,11 @@ func TestChatGPTCodex_LoginRefreshModelsAndLogout(t *testing.T) {
 	s, fake := codexScreen(t)
 
 	body := s.panel()
-	assert.Contains(t, body, `data-testid="chatgpt-login-codex-browser"`)
-	assert.Contains(t, body, `data-testid="chatgpt-login-codex-device"`)
-	assert.NotContains(t, body, `data-testid="chatgpt-codex-models-show"`, "models only for a signed-in account")
+	assert.Contains(t, body, `data-testid="chatgpt-login-codex"`)
+	assert.NotContains(t, body, `data-testid="chatgpt-models-show-codex"`, "models only for a signed-in account")
+	modal := s.modal(paths.ChatGPTLogin("codex"))
+	assert.Contains(t, modal, `data-testid="chatgpt-login-codex-browser"`)
+	assert.Contains(t, modal, `data-testid="chatgpt-login-codex-device"`)
 
 	rec := s.act(http.MethodPost, paths.ChatGPTLogin("codex"), url.Values{"method": {"browser"}})
 	require.Equal(t, http.StatusOK, rec.Code)

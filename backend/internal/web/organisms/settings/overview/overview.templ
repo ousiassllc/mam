@@ -1,0 +1,19 @@
+// Package overview is the overview page of the settings screen (spec/components/settings-screen.md §5): a card for each
+// category with its state, and the card of the model manager, which is another screen.
+package overview
+
+import "github.com/ousiassllc/mam/backend/internal/web/molecules"
+
+// Data is the cards of the overview, in order. The handler builds them: it knows the services the states are read from.
+type Data struct {
+	Cards []molecules.ToolCard
+}
+
+// Overview is the cards in two columns. Each is a link to its category, with the state that the server already knows.
+templ Overview(d Data) {
+	<ul id="settings-overview" role="list" class="grid grid-cols-1 gap-4 md:grid-cols-2">
+		for _, c := range d.Cards {
+			@molecules.ToolCardItem(c)
+		}
+	</ul>
+}

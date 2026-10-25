@@ -96,10 +96,15 @@ func (s *screen) do(method, path string, form url.Values) *httptest.ResponseReco
 	return s.send(req)
 }
 
-// page is GET /settings.
-func (s *screen) page() string {
+// page is GET /settings/local-models (the page of the category).
+func (s *screen) page() string { return s.get(paths.LocalModels()) }
+
+// modelsPage is GET /settings/models: the image / video model assignment, which the local models are choices of.
+func (s *screen) modelsPage() string { return s.get(paths.ModelSettings()) }
+
+func (s *screen) get(target string) string {
 	s.t.Helper()
-	req := httptest.NewRequest(http.MethodGet, paths.Settings(), nil)
+	req := httptest.NewRequest(http.MethodGet, target, nil)
 	req.AddCookie(s.cookie)
 	rec := s.send(req)
 	require.Equal(s.t, http.StatusOK, rec.Code)

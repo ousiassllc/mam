@@ -21,7 +21,7 @@ templ SectionIf(d *Data) {
 
 // Section is the "ローカル・代替モデル" section of the global settings screen: Panel under its title.
 templ Section(d Data) {
-	@molecules.SettingsSection("ローカル・代替モデル", "自分の PC や tailnet 上のサーバーで動かしている ComfyUI（画像・動画）と OpenAI 互換の画像 API を登録し、組み込みのモデルと同じように「画像・動画モデル」で選べるようにします。保存するとすぐに反映されます。登録した接続先には http・localhost・LAN・tailnet のアドレスを使えます（リンクローカルは使えません）。") {
+	@molecules.SettingsSectionAt(molecules.HeadingNone, "ローカル・代替モデル", "自分の PC や tailnet 上のサーバーで動かしている ComfyUI（画像・動画）と OpenAI 互換の画像 API を登録し、組み込みのモデルと同じように「画像・動画モデル」で選べるようにします。保存するとすぐに反映されます。登録した接続先には http・localhost・LAN・tailnet のアドレスを使えます（リンクローカルは使えません）。") {
 		@Panel(d)
 	}
 }

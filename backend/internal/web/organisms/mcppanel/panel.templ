@@ -44,7 +44,7 @@ type Data struct {
 
 // Section is the "MCP サーバー" section of the global settings screen: Panel under its title.
 templ Section(d Data) {
-	@molecules.SettingsSection("MCP サーバー", "エージェント（Grok Bot など）から、画面と同じ操作を MCP（Streamable HTTP）で行えます。接続にはここで発行するトークンが必要です。待ち受け先は 127.0.0.1 か tailnet の IP（100.x）にできます。") {
+	@molecules.SettingsSectionAt(molecules.HeadingNone, "MCP サーバー", "エージェント（Grok Bot など）から、画面と同じ操作を MCP（Streamable HTTP）で行えます。接続にはここで発行するトークンが必要です。待ち受け先は 127.0.0.1 か tailnet の IP（100.x）にできます。") {
 		@Panel(d)
 	}
 }

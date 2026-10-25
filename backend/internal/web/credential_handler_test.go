@@ -14,7 +14,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/service"
-	"github.com/ousiassllc/mam/backend/internal/web/handler"
+	credentialshandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/credentials"
 )
 
 // flakyStore is a key store that works until it is told to fail the reads after a write (a locked
@@ -64,8 +64,8 @@ func do(t *testing.T, store *flakyStore, method, target string, form url.Values)
 	gin.SetMode(gin.TestMode)
 	svc := service.NewCredentialService(store)
 	r := gin.New()
-	r.PUT("/credentials/:provider", handler.SaveCredential(svc))
-	r.DELETE("/credentials/:provider", handler.DeleteCredential(svc))
+	r.PUT("/credentials/:provider", credentialshandler.Save(credentialshandler.Keys{Svc: svc}))
+	r.DELETE("/credentials/:provider", credentialshandler.Delete(credentialshandler.Keys{Svc: svc}))
 	req := httptest.NewRequest(method, target, strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
@@ -91,14 +91,14 @@ func TestDeleteCredential_DeletedKeyIsNotReportedAsFailedWhenTheStoreCannotBeRea
 	assert.NotContains(t, store.keys, "kling")
 }
 
-// A key store that refuses the write or the delete answers 503 with the panel and a clear message,
-// not a generic internal error.
+// A key store that refuses the write or the delete answers 503 with a clear message (in the modal of a save, a toast for a
+// delete), not a generic internal error.
 func TestCredential_RefusedByTheStoreAnswers503WithAClearMessage(t *testing.T) {
 	store := &flakyStore{keys: map[string]string{"kling": "sk-abc"}, setErr: errors.New("locked"), deleteEr: errors.New("locked"), hasErr: errors.New("locked")}
 	for _, c := range []struct{ method, form string }{{http.MethodPut, "sk-new"}, {http.MethodDelete, ""}} {
 		rec := do(t, store, c.method, "/credentials/kling", url.Values{"api_key": {c.form}})
 		assert.Equal(t, http.StatusServiceUnavailable, rec.Code, c.method)
-		assert.Contains(t, rec.Body.String(), `data-testid="credential-unavailable"`, c.method)
+		assert.Contains(t, rec.Body.String(), "できませんでした", c.method)
 		assert.NotContains(t, rec.Body.String(), "内部エラー", c.method)
 	}
 	store.hasErr = nil

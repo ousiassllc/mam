@@ -85,3 +85,23 @@ func TestToolStatus_DrawsOneBadgeForEachLineAndNothingForNone(t *testing.T) {
 	assert.Contains(t, html, ">ChatGPT: 再ログインが必要</span>")
 	assert.Empty(t, render(t, molecules.ToolStatus(nil)))
 }
+
+// A card whose status the server already knows draws it with the card (no request), and a card that has both keeps the
+// lines first and reads the rest into a box of its own; either way the box is what the link is described by.
+func TestToolCard_StatusLinesAreDrawnWithTheCardAndMayBeFollowedByARead(t *testing.T) {
+	c := card()
+	c.StatusURL = ""
+	c.Status = []molecules.StatusLine{{Tone: atoms.BadgeInfo, Text: "API キー 3 / 10 件"}}
+
+	html := render(t, molecules.ToolCardItem(c))
+	assert.Contains(t, html, `aria-describedby="tool-nodes-desc tool-nodes-status"`)
+	assert.Contains(t, html, `<span id="tool-nodes-status"`)
+	assert.Contains(t, html, "API キー 3 / 10 件")
+	assert.NotContains(t, html, "hx-get")
+
+	c.StatusURL = "/settings/local-models/health"
+	both := render(t, molecules.ToolCardItem(c))
+	assert.Less(t, strings.Index(both, "API キー 3 / 10 件"), strings.Index(both, `hx-get="/settings/local-models/health"`))
+	assert.Contains(t, both, `id="tool-nodes-live"`)
+	assert.Equal(t, 1, strings.Count(both, `id="tool-nodes-status"`))
+}

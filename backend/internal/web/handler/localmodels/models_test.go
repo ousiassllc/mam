@@ -73,7 +73,7 @@ func TestModel_TemplateFormSubmitsAsItIsAndTheModelAppearsInTheAssignments(t *te
 	assert.NotContains(t, options(body, "image_new_reference_primary_model"), "comfyui:box/wan", "a video model is not an image choice")
 
 	// ... and so on the screen after a reload.
-	page := s.page()
+	page := s.modelsPage()
 	for _, purpose := range []string{"new_reference", "edit_reference", "preview", "unified_openai"} {
 		for _, slot := range []string{"primary", "fallback"} {
 			assert.Contains(t, options(page, "image_"+purpose+"_"+slot+"_model"), "comfyui:box/sdxl", purpose+" "+slot)
@@ -266,7 +266,7 @@ func TestProblem_AnUnreadableFileIsOnlyThisSectionsProblem(t *testing.T) {
 	require.NoError(t, os.WriteFile(s.file, []byte("{broken"), 0o600))
 	body := s.page()
 	assert.Contains(t, body, `data-testid="local-models-problem"`)
-	assert.Contains(t, body, `id="credential-panel"`, "the rest of the screen works")
+	assert.Contains(t, body, `<nav aria-label="設定"`, "the rest of the screen works")
 }
 
 func referenceFields(names []string) []string {

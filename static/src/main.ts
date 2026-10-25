@@ -10,6 +10,7 @@ import { installHistorySnapshotHygiene } from './components/lib/history';
 import { installSaveOnChangeRevert } from './components/save-on-change/save-on-change';
 import { installFocusRestore } from './components/focus-restore/focus-restore';
 import { dedupeToastsOnSwap, dismissToastsOnClick } from './components/lib/toast';
+import { insideModal, installModal } from './components/modal/modal';
 
 // Attach the CSRF token (from <meta name="csrf-token">) to every HTMX request.
 document.addEventListener('htmx:configRequest', (event) => {
@@ -35,6 +36,8 @@ for (const type of [
   'htmx:timeout',
 ] as const satisfies readonly RequestFailure[]) {
   document.addEventListener(type, (event) => {
+    // The modal says so itself: the toast region lies behind the dialog, which is in the top layer.
+    if (insideModal(event.target as Element | null)) return;
     const xhr = (event as CustomEvent<{ xhr?: XMLHttpRequest }>).detail?.xhr;
     showToast(requestFailureMessage(type, xhr?.status));
   });
@@ -49,6 +52,10 @@ installSaveOnChangeRevert();
 // A swap that the user started and that replaced the control they used (a LockToggle button, a Delete
 // button) would leave the focus on <body>: give it back to the control that took its place (issues 789, 794).
 installFocusRestore();
+
+// The modal dialog of the settings screen: opens when the body it was asked for arrives, closes on Esc / its buttons /
+// a saved form, and gives the focus back to the control that opened it.
+installModal();
 
 lockDownHtmx(htmx.config);
 

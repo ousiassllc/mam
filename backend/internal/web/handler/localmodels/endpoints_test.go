@@ -113,7 +113,7 @@ func TestEndpoint_DeleteRemovesItsModelsAndKeyButNotWhileAModelIsChosen(t *testi
 		url.Values{"name": {"flux"}, "media": {"image"}, "model_id": {"flux-schnell"}}).Code)
 
 	// Choose the model for a purpose, then try to delete the endpoint.
-	assign := s.do(http.MethodPut, paths.ModelSettings(), assignmentForm(t, s.page(), "image_new_reference_primary_model", "openai-compat:box/flux"))
+	assign := s.do(http.MethodPut, paths.ModelSettings(), assignmentForm(t, s.modelsPage(), "image_new_reference_primary_model", "openai-compat:box/flux"))
 	require.Equal(t, http.StatusOK, assign.Code, assign.Body.String())
 	refused := s.do(http.MethodDelete, paths.LocalEndpoint("box"), nil)
 	assert.Equal(t, http.StatusUnprocessableEntity, refused.Code)

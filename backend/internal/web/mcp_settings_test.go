@@ -80,6 +80,11 @@ func newMCPScreen(t *testing.T, withMCP bool) *mcpScreen {
 	m := regexp.MustCompile(`<meta name="csrf-token" content="([^"]+)"`).FindStringSubmatch(rec.Body.String())
 	require.Len(t, m, 2)
 	s.token, s.page = m[1], rec.Body.String()
+	if withMCP { // the MCP category has its own page; without the server the overview is all there is
+		page := s.send(httptest.NewRequest(http.MethodGet, paths.MCPSettings(), nil))
+		require.Equal(t, http.StatusOK, page.Code)
+		s.page = page.Body.String()
+	}
 	return s
 }
 
@@ -102,7 +107,7 @@ func (s *mcpScreen) act(method, target string, form url.Values, withToken bool) 
 }
 
 func (s *mcpScreen) get() string {
-	req := httptest.NewRequest(http.MethodGet, paths.Settings(), nil)
+	req := httptest.NewRequest(http.MethodGet, paths.MCPSettings(), nil)
 	req.Header.Set("HX-Request", "true")
 	return s.send(req).Body.String()
 }

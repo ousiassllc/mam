@@ -60,7 +60,7 @@ func newScreen(t *testing.T, withChatGPT bool, tweak ...func(*chatgpt.Options)) 
 		settings.ChatGPT = s.svc
 	}
 	s.engine = router.New(svc, router.Options{Settings: settings})
-	rec := s.send(httptest.NewRequest(http.MethodGet, paths.Settings(), nil))
+	rec := s.send(httptest.NewRequest(http.MethodGet, paths.SettingsCategory(paths.SettingsAPIKeys), nil))
 	require.Equal(t, http.StatusOK, rec.Code)
 	for _, c := range rec.Result().Cookies() {
 		if c.Name == middleware.CSRFCookieName {
@@ -88,6 +88,15 @@ func (s *screen) act(method, target string, form url.Values) *httptest.ResponseR
 	req.AddCookie(s.cookie)
 	req.Header.Set(middleware.CSRFHeaderName, s.token)
 	return s.send(req)
+}
+
+// modal is the body of the modal at target, asked for as the button of the page does.
+func (s *screen) modal(target string) string {
+	req := httptest.NewRequest(http.MethodGet, target, nil)
+	req.Header.Set("HX-Request", "true")
+	rec := s.send(req)
+	require.Equal(s.t, http.StatusOK, rec.Code)
+	return rec.Body.String()
 }
 
 func (s *screen) panel() string {
@@ -129,13 +138,19 @@ func TestChatGPTSettings_WithoutTheServiceThereIsNoSectionAndNoRoute(t *testing.
 func TestChatGPTSettings_TheSectionShowsTheButtonTheRisksAndAnOffSwitch(t *testing.T) {
 	s := newScreen(t, true)
 	for _, want := range []string{
-		"ChatGPT でログイン", "Continue with ChatGPT", "ログインしていません", "chatgpt-subscription",
+		"ChatGPT でログイン", `data-testid="chatgpt-login-official"`, "ログインしていません", "chatgpt-subscription",
 		"非公式", "サポート外", "利用上限", "オンにする", `data-testid="chatgpt-image-ack"`, "オフの間は、この経路を一切呼びません",
 	} {
 		assert.Contains(t, s.page, want)
 	}
 	assert.NotContains(t, s.page, `data-testid="chatgpt-login-image-device"`, "no image login while it is off")
 	assert.NotContains(t, s.page, `data-testid="chatgpt-using-plan"`, "nothing to show before signing in")
+
+	// The login is a modal: the button opens it, and the modal has the Continue with ChatGPT button.
+	assert.Contains(t, s.page, `hx-get="`+paths.ChatGPTLogin("official")+`"`)
+	modal := s.modal(paths.ChatGPTLogin("official"))
+	assert.Contains(t, modal, "Continue with ChatGPT")
+	assert.Contains(t, modal, `id="mam-modal-title"`)
 }
 
 func TestChatGPTSettings_OfficialLoginShowsTheAccountAndNeverATokenThenLogsOut(t *testing.T) {
@@ -153,7 +168,7 @@ func TestChatGPTSettings_OfficialLoginShowsTheAccountAndNeverATokenThenLogsOut(t
 	assert.NotContains(t, p, `hx-trigger="every 2s"`, "no polling once it is done")
 	s.noTokens(p)
 	s.noTokens(s.page)
-	full := s.send(httptest.NewRequest(http.MethodGet, paths.Settings(), nil)).Body.String()
+	full := s.send(httptest.NewRequest(http.MethodGet, paths.SettingsCategory(paths.SettingsAPIKeys), nil)).Body.String()
 	assert.Contains(t, full, "me@example.com")
 	s.noTokens(full)
 
@@ -208,8 +223,11 @@ func TestChatGPTSettings_ImageGenerationNeedsTheConfirmationAndHasItsOwnLogin(t 
 	rec = s.act(http.MethodPut, paths.ChatGPTImageEnabled(), url.Values{"enabled": {"true"}, "acknowledge_risks": {"true"}})
 	require.Equal(t, http.StatusOK, rec.Code)
 	assert.True(t, s.svc.ImageEnabled())
-	for _, want := range []string{"オフにする", "デバイスコードでログイン", "ブラウザでログイン"} {
-		assert.Contains(t, rec.Body.String(), want)
+	assert.Contains(t, rec.Body.String(), "オフにする")
+	assert.Contains(t, rec.Body.String(), `data-testid="chatgpt-login-image"`)
+	modal := s.modal(paths.ChatGPTLogin("image"))
+	for _, want := range []string{"デバイスコードでログイン", "ブラウザでログイン"} {
+		assert.Contains(t, modal, want, "the image login has both methods")
 	}
 
 	s.auth.PendingPolls = 1
@@ -249,41 +267,4 @@ func TestChatGPTSettings_ActionsNeedTheCSRFToken(t *testing.T) {
 	req := httptest.NewRequest(http.MethodDelete, paths.ChatGPTAccount("official"), nil)
 	req.AddCookie(s.cookie)
 	assert.Equal(t, http.StatusForbidden, s.send(req).Code)
-}
-
-func TestChatGPTSettings_CancelAndModels(t *testing.T) {
-	s := newScreen(t, true, newGate(t).tweak) // never opened: the login stays pending until it is cancelled
-	s.auth.PendingPolls = 1 << 20
-	require.NoError(t, s.svc.SetImageEnabled(true, true))
-	s.act(http.MethodPost, paths.ChatGPTLogin("image"), url.Values{"method": {"device"}})
-	assert.Contains(t, s.panel(), "ABCD-1234")
-	rec := s.act(http.MethodPost, paths.ChatGPTLoginCancel("image"), nil)
-	require.Equal(t, http.StatusOK, rec.Code)
-	assert.Contains(t, rec.Body.String(), "ログインを中止しました")
-	assert.NotContains(t, rec.Body.String(), "ABCD-1234")
-
-	req := httptest.NewRequest(http.MethodGet, paths.ChatGPTModels(), nil)
-	req.Header.Set("HX-Request", "true")
-	rec = s.send(req)
-	assert.NotContains(t, rec.Body.String(), "chatgpt-model-list", "not signed in: no list")
-}
-
-func TestChatGPTSettings_ModelsListsTheVisibleModelsOfTheSignedInPlan(t *testing.T) {
-	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = fmt.Fprint(w, `{"models":[{"slug":"plan-model-1","display_name":"Plan One","visibility":"list"},{"slug":"hidden-model","visibility":"hide"}]}`)
-	}))
-	defer api.Close()
-	s := newScreen(t, true, func(o *chatgpt.Options) { o.APIBase = api.URL })
-
-	req := httptest.NewRequest(http.MethodGet, paths.ChatGPTModels(), nil)
-	req.Header.Set("HX-Request", "true")
-	assert.Contains(t, s.send(req).Body.String(), "モデルの一覧を取得できませんでした", "not signed in")
-
-	s.act(http.MethodPost, paths.ChatGPTLogin("official"), url.Values{"method": {"browser"}})
-	s.waitFor("me@example.com")
-	rec := s.send(req)
-	assert.Contains(t, rec.Body.String(), "plan-model-1")
-	assert.Contains(t, rec.Body.String(), "Plan One")
-	assert.NotContains(t, rec.Body.String(), "hidden-model")
-	s.noTokens(rec.Body.String())
 }

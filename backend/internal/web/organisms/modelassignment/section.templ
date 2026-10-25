@@ -100,7 +100,7 @@ templ SectionIf(d *Data) {
 
 // Section is the "画像・動画モデル" section of the global settings screen.
 templ Section(d Data) {
-	@molecules.SettingsSection("画像・動画モデル", "画像の用途ごと・Quality Policy ごとに、主モデルと、主モデルが使えないときの代替モデルを選びます。保存した内容は <データフォルダ>/models.json に書かれ、すぐに反映されます。「ローカル・代替モデル」で登録したモデルも選べます。") {
+	@molecules.SettingsSectionAt(molecules.HeadingNone, "画像・動画モデル", "画像の用途ごと・Quality Policy ごとに、主モデルと、主モデルが使えないときの代替モデルを選びます。保存した内容は <データフォルダ>/models.json に書かれ、すぐに反映されます。「ローカル・代替モデル」で登録したモデルも選べます。") {
 		if d.Problem != "" {
 			<div id={ sectionID }>
 				<p class="text-sm text-red-300" role="alert" data-testid="model-assignment-problem">{ d.Problem }</p>
