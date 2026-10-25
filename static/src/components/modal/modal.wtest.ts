@@ -35,7 +35,7 @@ describe('modal dialog (spec/components/shared-ui-parts.md §4)', () => {
     opener.click();
     await waitUntil(() => dialog().open, 'the dialog did not open', { timeout: 2000 });
     // htmx processes the new content (the hx-* attributes of its form) when the swap settles.
-    await waitUntil(() => !body().classList.contains('htmx-settling'), 'the swap did not settle', { timeout: 2000 });
+    await waitUntil(() => !body().inert, 'the swap did not settle', { timeout: 2000 });
   }
 
   beforeEach(() => render());
@@ -54,6 +54,32 @@ describe('modal dialog (spec/components/shared-ui-parts.md §4)', () => {
     // modal: the rest of the page cannot take the focus
     byId('elsewhere').focus();
     expect(document.activeElement === byId('elsewhere')).to.equal(false);
+  });
+
+  it('keeps the new content from being used until htmx has processed it, so a form is never sent by the browser', async () => {
+    // These listeners come after the modal's own, so they see what it has done when the event reaches them.
+    const seen: { swapInert?: boolean; settleInert?: boolean; settleFocus?: boolean } = {};
+    const onSwap = (e: Event) => {
+      if ((e.target as Element).id === 'mam-modal-body') seen.swapInert = body().inert;
+    };
+    const onSettle = (e: Event) => {
+      if ((e.target as Element).id !== 'mam-modal-body') return;
+      seen.settleInert = body().inert;
+      seen.settleFocus = document.activeElement === byId('modal-input');
+    };
+    document.addEventListener('htmx:afterSwap', onSwap);
+    document.addEventListener('htmx:afterSettle', onSettle);
+    try {
+      await open();
+    } finally {
+      document.removeEventListener('htmx:afterSwap', onSwap);
+      document.removeEventListener('htmx:afterSettle', onSettle);
+    }
+
+    // inert after the swap (not yet processed), usable and focused once settled
+    expect(seen.swapInert).to.equal(true);
+    expect(seen.settleInert).to.equal(false);
+    expect(seen.settleFocus).to.equal(true);
   });
 
   it('closes on Esc, empties the body and gives the focus back to the button that opened it', async () => {

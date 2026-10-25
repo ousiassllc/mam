@@ -155,7 +155,7 @@ func imageDetails(d Data) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if d.ImageEnabled {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<p class=\"text-sm\" data-testid=\"chatgpt-image-state\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<p class=\"flex items-center gap-2 text-sm\" data-testid=\"chatgpt-image-state\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -218,7 +218,7 @@ func imageDetails(d Data) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<p class=\"text-sm text-neutral-300\" data-testid=\"chatgpt-image-state\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<p class=\"flex items-center gap-2 text-sm text-neutral-300\" data-testid=\"chatgpt-image-state\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

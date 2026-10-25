@@ -52,7 +52,7 @@ templ imageDetails(d Data) {
 			</p>
 		</div>
 		if d.ImageEnabled {
-			<p class="text-sm" data-testid="chatgpt-image-state">
+			<p class="flex items-center gap-2 text-sm" data-testid="chatgpt-image-state">
 				@atoms.Badge(atoms.BadgeWarn, "オン")
 				画像の用途に、この経路のモデルを選べます。
 			</p>
@@ -69,7 +69,7 @@ templ imageDetails(d Data) {
 				@atoms.SmallButtonFor(atoms.ToneNeutral, "オフにする", imageTitle, templ.Attributes{"type": "submit", "data-testid": "chatgpt-image-off"})
 			</form>
 		} else {
-			<p class="text-sm text-neutral-300" data-testid="chatgpt-image-state">
+			<p class="flex items-center gap-2 text-sm text-neutral-300" data-testid="chatgpt-image-state">
 				@atoms.Badge(atoms.BadgeNeutral, "オフ")
 				オフの間は、この経路を一切呼びません。
 			</p>

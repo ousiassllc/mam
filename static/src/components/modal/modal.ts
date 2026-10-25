@@ -118,10 +118,13 @@ export function installModal(root: Document = document): void {
   });
 
   // The answer of the request that opened the modal (or of a form inside it, which fills the body again): open the
-  // dialog when it is not open, and give the focus to the control to start with.
+  // dialog when it is not open. The new content is not processed by htmx until the swap settles (the hx-* attributes of
+  // its form), and a form that is sent before that is sent by the browser itself, with the key in the address. So the
+  // body is inert until then, and the control to start with takes the focus when it settles.
   root.addEventListener('htmx:afterSwap', (event) => {
     // The event is triggered on each element the swap changed, and its detail is shared: take the body's own.
-    if (!targetOf(event)?.matches(BODY)) return;
+    const body = targetOf(event);
+    if (!body?.matches(BODY)) return;
     const requester = detailOf(event).requestConfig?.elt;
     const dlg = dialog();
     if (!dlg) return;
@@ -130,6 +133,14 @@ export function installModal(root: Document = document): void {
       if (!requester?.hasAttribute('data-modal-open')) return; // nothing asked for the modal: leave it closed
       dlg.showModal();
     }
+    (body as HTMLElement).inert = true;
+  });
+
+  root.addEventListener('htmx:afterSettle', (event) => {
+    const body = targetOf(event);
+    const dlg = dialog();
+    if (!dlg?.open || !body?.matches(BODY)) return;
+    (body as HTMLElement).inert = false;
     focusable(initialFocus(dlg));
   });
 
@@ -162,7 +173,9 @@ export function installModal(root: Document = document): void {
     (event) => {
       const dlg = dialog();
       if (!dlg || event.target !== dlg) return;
-      dlg.querySelector(BODY)?.replaceChildren();
+      const body = dlg.querySelector<HTMLElement>(BODY);
+      if (body) body.inert = false;
+      body?.replaceChildren();
       hideFailure(dlg);
       dlg.removeAttribute('aria-describedby');
       const from = opener;

@@ -71,3 +71,16 @@ func TestRow_AnswersForItsProviderOnlyAndReplacesItselfOnlyOutOfBand(t *testing.
 	assert.NotContains(t, plain.String(), `id="credential-panel"`)
 	assert.Contains(t, oob.String(), `hx-swap-oob="true"`)
 }
+
+// The key is typed into a form that htmx sends as a PUT. Should the browser send it instead (before htmx has processed it),
+// it must be in the body of a request and never in the address: the form is a POST.
+func TestModal_TheKeyFormIsNeverAGetThatPutsTheKeyInTheAddress(t *testing.T) {
+	var sb strings.Builder
+	require.NoError(t, credentials.Modal(credentials.Form{Provider: credentials.ProviderView{Provider: "kling", Label: "Kling"}}, 2560).Render(context.Background(), &sb))
+	html := sb.String()
+
+	assert.Contains(t, html, `method="post"`)
+	assert.Contains(t, html, `hx-put="/credentials/kling"`)
+	assert.Contains(t, html, `type="password"`)
+	assert.NotContains(t, html, `value="`+"FAKE", "the key field is never filled")
+}
