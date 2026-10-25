@@ -138,7 +138,7 @@ ComfyUI・OpenAI 互換の接続先とそのモデル（`spec/architecture/local
 
 ## Linterly
 
-`.linterly.yml`。行数上限はデフォルト（1 ファイル 300 行 / 1 ディレクトリ 2000 行）のまま維持し、特別な理由がない限り変えない。除外は生成物（`*_templ.go`、`static/src/dist/**`、`package-lock.json`、`go.sum`）とライセンス全文（`LICENSE`、`THIRD_PARTY_NOTICES.md`）のみで、手書きソースは除外しない。
+`.linterly.yml`。行数上限はデフォルト（1 ファイル 300 行 / 1 ディレクトリ 2000 行）のまま維持し、特別な理由がない限り変えない。除外は生成物（`*_templ.go`、`static/src/dist/**`、`package-lock.json`、`go.sum`）、ライセンス全文（`LICENSE`、`THIRD_PARTY_NOTICES.md`）、ドキュメント（Markdown。`**/*.md`。Issue #850 の判断）で、手書きのソースコードは除外しない。
 
 既存の超過（linterly の `error`: 上限に `warning_threshold` を足した値を超えたもの。`linterly check` が exit 1 になる判定と同じ）は、超過ゼロを目標にせず、**増やさないことを CI で保証する**。超過しているファイルとディレクトリの行数を `.linterly-baseline`（`<行数><TAB><パス>`、ディレクトリは末尾 `/`）に基準値として記録し、`scripts/linterly-baseline.sh check`（`make lint-lines`、CI の「Line limit (no regression)」ステップ）が次のどちらかで失敗させる。
 
@@ -149,7 +149,7 @@ ComfyUI・OpenAI 互換の接続先とそのモデル（`spec/architecture/local
 
 ディレクトリ上限（2000 行）も同じ基準値方式で扱い、Go のフラットなパッケージ向けの別基準（ファイル数など）は設けない。超過しているパッケージは、その直下の合計行数を増やせない（ファイルの追加・既存ファイルの行増で CI が落ちる）。新しいコードは新しいパッケージへ置くか、パッケージを責務ごとに分割して満たす。分割できたら基準値から外す。
 
-仕様書（Markdown）も計測対象で、同じ基準で扱う。改訂履歴の追記で本文が基準値や上限を超えそうなときは、基準値を上げず、改訂履歴の表を `<spec>.changelog.md`（例: `spec/architecture/overview.changelog.md`）へ移し、本文には参照だけを残す（`overview.md`・`endpoints.md`・`er.md`・`model-adapters.md` は分割済み。新しい版はそれぞれの `*.changelog.md` の末尾に足す）。
+ドキュメント（Markdown）は行数チェックの対象外で、`linterly` の計測にも `.linterly-baseline` にも載らない（Issue #850 の判断。仕様書は 1 つの話題を 1 ファイルに保つため、行数で分割する必要はない）。このため `spec/architecture/er.md`・`spec/spec.md` は基準値から外した。すでに分割してある `*.changelog.md`（`overview.md`・`endpoints.md`・`er.md`・`model-adapters.md` ほか）は、そのまま使ってよい（新しい版はそれぞれの `*.changelog.md` の末尾に足す）。ただし、行数のために分割する義務はない。
 
 pre-commit（`scripts/linterly-staged.sh`）は従来どおり、コミット対象のファイルが超過していれば基準値の有無に関わらず止める。
 
@@ -210,3 +210,4 @@ pre-commit（`scripts/linterly-staged.sh`）は従来どおり、コミット対
 | 1.38 | 2026-10-24 | 「MCP サーバーの設定」の節（`--mcp-port` / `MAM_MCP_PORT` と `mcp.json` の `bind_address`）を足した | Issue #830。MCP サーバーのポートと待ち受け先の設定の置き場所と規則を、環境構築の側にも残すため |
 | 1.39 | 2026-10-24 | 「ローカル・代替モデルの設定」の節（`models.json` の `endpoints`・`local_models`、固定ファイルは読み取り専用、キー、ComfyUI 0.3.57 以上）を足した | Issue #831 |
 | 1.40 | 2026-10-25 | 「モデルマネージャーの設定」の節（`comfyui` ディレクトリの置き場所、`--detect-gpu`・`--detect-comfyui`・`--detect-output`）を足した。`go.sum`（依存の追加で 300 行を超えた生成ファイル）を Linterly の除外に加えた | Issue #833 |
+| 1.41 | 2026-10-26 | Linterly の除外に `**/*.md`（ドキュメント）を加え、「仕様書（Markdown）も計測対象」の記述を改めた。`spec/architecture/er.md`・`spec/spec.md` を `.linterly-baseline` から外した | Issue #850。`er.md`（738 行）の分割は、`chat_message.ref_type` に 1 句を足すだけのために分けるには不自然なので、ドキュメントを行数チェックの対象外にする判断になった |
