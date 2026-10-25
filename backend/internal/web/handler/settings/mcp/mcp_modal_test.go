@@ -41,10 +41,12 @@ func TestMCPSettings_TheModalsAreFragmentsAndAPageWithoutHTMX(t *testing.T) {
 	assert.Contains(t, bind.Body.String(), `value="127.0.0.1"`, "the saved address")
 	assert.Contains(t, bind.Body.String(), `<option value="100.101.102.103">`, "the addresses of this machine are suggested")
 	assert.Contains(t, bind.Body.String(), `hx-put="`+paths.MCPBind()+`"`)
+	assert.Contains(t, bind.Body.String(), `method="post"`, "a form sent by the browser before htmx has it is no GET")
 
 	issue := s.modal(paths.MCPTokenNew())
 	require.Equal(t, http.StatusOK, issue.Code)
 	assert.Contains(t, issue.Body.String(), `hx-post="`+paths.MCPTokens()+`"`)
+	assert.Contains(t, issue.Body.String(), `method="post"`)
 	assert.NotContains(t, issue.Body.String(), "mam_mcp_")
 
 	for _, target := range []string{paths.MCPBindEdit(), paths.MCPTokenNew()} {

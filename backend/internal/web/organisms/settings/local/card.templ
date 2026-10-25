@@ -119,6 +119,7 @@ templ KeyRow(endpoint string, k Key) {
 	<div id={ keyRowID(endpoint) } class="flex flex-col gap-1" data-testid="local-endpoint-key">
 		<form
 			class="flex flex-wrap items-center gap-2"
+			method="post"
 			hx-put={ paths.LocalEndpoint(endpoint, "key") }
 			hx-target={ selector.ID("local-key-row-", endpoint) }
 			hx-swap="outerHTML"

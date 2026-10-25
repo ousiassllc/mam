@@ -120,3 +120,18 @@ func TestChatGPTSettings_ModelsListsTheVisibleModelsOfTheSignedInPlan(t *testing
 	assert.NotContains(t, rec.Body.String(), "hidden-model")
 	s.noTokens(rec.Body.String())
 }
+
+// An unknown kind is a 404 modal that says so when HTMX asks, and the page of the category when the address is typed in,
+// like the other modals of the screen.
+func TestChatGPTSettings_TheLoginModalOfAnUnknownKindIs404ForHTMXAndThePageOtherwise(t *testing.T) {
+	s := newScreen(t, true)
+
+	rec := s.act(http.MethodGet, paths.ChatGPTLogin("nobody"), nil)
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+	assert.Contains(t, rec.Body.String(), "対象が見つかりません")
+	assert.Contains(t, rec.Body.String(), "data-modal-close", "the modal can be closed")
+
+	rec = s.send(httptest.NewRequest(http.MethodGet, paths.ChatGPTLogin("nobody"), nil))
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), "<html", "typed into the address bar, it is the page of its category")
+}

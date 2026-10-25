@@ -150,7 +150,8 @@ func TestPages_TheChatGPTURLWithoutHTMXIsTheAPIKeyPageWithACanonicalLink(t *test
 	}
 	fragment := s.get(paths.ChatGPTSettings(), "HX-Request", "true").Body.String()
 	assert.True(t, strings.HasPrefix(fragment, `<section id="chatgpt-panel"`), "the poll's fragment is the cards alone")
-	assert.Equal(t, http.StatusNotFound, s.get(paths.ChatGPTLogin("nobody")).Code)
+	assert.Equal(t, http.StatusNotFound, s.get(paths.ChatGPTLogin("nobody"), "HX-Request", "true").Code, "HTMX asks for a modal that is not there: a 404 modal")
+	assert.Equal(t, http.StatusOK, s.get(paths.ChatGPTLogin("nobody")).Code, "typed into the address bar, it is the page like any other modal address")
 }
 
 // The overview has one card for each category the screen has, in the order of the navigation, and the model manager last;

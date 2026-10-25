@@ -20,6 +20,7 @@ describe('modal dialog (spec/components/shared-ui-parts.md §4)', () => {
         <button type="button" id="opener" data-modal-open data-focus-key="edit-a" hx-get="${openUrl}" hx-target="#mam-modal-body" hx-swap="innerHTML">設定</button>
       </li></ul>
       <button type="button" id="elsewhere">ほかのボタン</button>
+      <button type="button" id="outside" hx-get="${DATA}/modal-token.html" hx-target="#mam-modal-body" hx-swap="innerHTML">ほかの要求</button>
       <dialog id="mam-modal" data-modal aria-labelledby="mam-modal-title">
         <div id="mam-modal-body"></div>
         <p id="mam-modal-failure" role="alert" hidden></p>
@@ -156,6 +157,50 @@ describe('modal dialog (spec/components/shared-ui-parts.md §4)', () => {
     expect(document.querySelector('#toast-region [data-toast]')).to.equal(null);
   });
 
+  it('abandons a request that is in flight when the dialog is closed, so its answer never comes back into the body', async () => {
+    await open();
+    // Keep the request in flight after htmx has opened it: no answer can come until the test says, and the abort is seen.
+    let held: XMLHttpRequest | undefined;
+    let aborted = false;
+    const hold = (e: Event) => {
+      const xhr = (e as CustomEvent<{ xhr: XMLHttpRequest }>).detail.xhr;
+      held = xhr;
+      xhr.send = () => {};
+      const abort = xhr.abort.bind(xhr);
+      xhr.abort = () => {
+        aborted = true;
+        abort();
+      };
+    };
+    document.addEventListener('htmx:beforeSend', hold);
+    try {
+      (byId('modal-token') as HTMLButtonElement).click();
+      await waitUntil(() => held !== undefined, 'the request was not sent', { timeout: 2000 });
+    } finally {
+      document.removeEventListener('htmx:beforeSend', hold);
+    }
+    expect(aborted).to.equal(false);
+
+    await sendKeys({ press: 'Escape' });
+    await waitUntil(() => !dialog().open, 'Esc did not close the dialog', { timeout: 2000 });
+
+    expect(aborted).to.equal(true);
+    expect(body().children.length).to.equal(0);
+  });
+
+  it('does not keep an answer in the body of a closed dialog when nothing asked for the modal (a token is shown once)', async () => {
+    expect(dialog().open).to.equal(false);
+    let answered = false;
+    document.addEventListener('htmx:afterSwap', () => (answered = true), { once: true });
+
+    (byId('outside') as HTMLButtonElement).click();
+    await waitUntil(() => answered, 'the answer did not arrive', { timeout: 2000 });
+
+    expect(dialog().open).to.equal(false);
+    expect(body().children.length).to.equal(0);
+    expect(dialog().textContent).to.not.contain('secret-token-value');
+  });
+
   it('is closed and emptied before the page goes into the history, so no snapshot restores it open', async () => {
     await open();
     expect(body().innerHTML).to.contain('modal-input');
@@ -164,6 +209,15 @@ describe('modal dialog (spec/components/shared-ui-parts.md §4)', () => {
 
     expect(dialog().open).to.equal(false);
     expect(dialog().outerHTML).to.not.contain(' open');
+    expect(body().children.length).to.equal(0);
+  });
+
+  it('empties the body before the history snapshot even when the dialog is already closed', () => {
+    body().innerHTML = '<input readonly value="left over">';
+    expect(dialog().open).to.equal(false);
+
+    document.dispatchEvent(new CustomEvent('htmx:beforeHistorySave'));
+
     expect(body().children.length).to.equal(0);
   });
 });

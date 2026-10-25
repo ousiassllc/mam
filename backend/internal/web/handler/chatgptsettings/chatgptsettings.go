@@ -13,6 +13,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/chatgpt"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/settings/settingshttp"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/chatgpt"
 )
 
@@ -116,16 +117,17 @@ func signedIn(d view.Data, kind string) bool {
 
 // LoginModal answers the modal of a login (GET /settings/chatgpt/:kind/login): the choice of the method, or what to do while
 // the login is pending. With poll=1 (the pending modal asking again) a login that has ended is the answer too: signed in
-// closes the modal and replaces the cards; a failure is shown in the modal. A request that is not HTMX gets page.
+// closes the modal and replaces the cards; a failure is shown in the modal. A request that is not HTMX gets page, whatever
+// the kind; an unknown kind asked by HTMX gets a 404 modal that says so.
 func LoginModal(svc *chatgpt.Service, page gin.HandlerFunc) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		kind := c.Param("kind")
-		if !validKind(kind) {
-			c.AbortWithStatus(http.StatusNotFound)
-			return
-		}
 		if !settingshttp.IsHTMX(c) {
 			page(c)
+			return
+		}
+		kind := c.Param("kind")
+		if !validKind(kind) {
+			render(c, http.StatusNotFound, modal.Notice("ChatGPT でログイン", "対象が見つかりません"))
 			return
 		}
 		c.Header("Cache-Control", "no-store")

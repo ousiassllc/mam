@@ -200,7 +200,7 @@ func TestLLMSettings_TheWholeSaveAndResetStay(t *testing.T) {
 	rec = s.request(http.MethodDelete, nil)
 
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-	assert.Contains(t, rec.Body.String(), "反映にはアプリの再起動が必要です")
+	assert.Regexp(t, `role="status"[^>]*data-testid="llm-notice">既定に戻しました。反映にはアプリの再起動が必要です`, rec.Body.String(), "the reset says so, not only the restart note that is always there")
 	assert.NoFileExists(t, s.file)
 
 	for name, mutate := range map[string]func(url.Values){

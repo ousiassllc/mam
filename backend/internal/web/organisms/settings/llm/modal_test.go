@@ -36,7 +36,8 @@ func TestModal_ResetButtonSendsNoFormValuesAndSharesTheFormSync(t *testing.T) {
 	require.NotEmpty(t, button)
 	assert.Contains(t, button, `hx-params="none"`)
 	assert.Contains(t, button, `hx-sync="closest form:drop"`)
-	assert.Regexp(t, `<form[^>]*hx-sync="this:drop"[^>]*hx-disabled-elt=`, html)
+	assert.Contains(t, button, `hx-disabled-elt="this"`, "the form's find button[type=submit] is looked up from the reset button and finds nothing")
+	assert.Regexp(t, `<form[^>]*hx-sync="this:drop"[^>]*hx-disabled-elt="find button\[type=submit\]"`, html)
 	assert.Regexp(t, `<form[^>]*method="post"`, html, "a form sent by the browser itself would still not put a value in the URL")
 }
 
