@@ -45,12 +45,15 @@ func (s *Service) Logout(ctx context.Context, removeFiles bool) (LogoutResult, e
 	} else if !errors.Is(exeErr, ErrEngineNotInstalled) {
 		return res, exeErr
 	}
+	// No refresh may land after the sign-out record or the removal below: stop the process (no notification arrives
+	// after that), then wait for the refreshes that were already started.
+	s.srv.Stop()
+	s.bg.Wait()
 	s.setAccount(AccountView{SignedIn: false})
 	s.forgetModels()
 	if l, ok := s.CurrentLogin(); ok && l.State == LoginPending {
 		s.finishLogin(l.ID, LoginCancelled, "ログアウトしたため中止しました")
 	}
-	s.srv.Stop()
 	if !removeFiles {
 		return res, nil
 	}

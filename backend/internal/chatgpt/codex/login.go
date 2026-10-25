@@ -3,7 +3,6 @@ package codex
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"time"
 
@@ -214,7 +213,7 @@ func (s *Service) onNotification(method string, params json.RawMessage) {
 			s.setAccount(AccountView{SignedIn: false})
 			return
 		}
-		go s.refreshAccountQuietly()
+		s.goRefreshAccount()
 	case protocol.NotifRateLimits:
 		var n protocol.RateLimitsUpdated
 		if json.Unmarshal(params, &n) != nil {
@@ -231,7 +230,7 @@ func (s *Service) loginCompleted(n protocol.LoginCompleted) {
 	}
 	if n.Success {
 		if s.finishLogin(cur.ID, LoginSucceeded, "ログインしました") {
-			go s.refreshAccountQuietly() // the e-mail address, the plan and the usage limit
+			s.goRefreshAccount() // the e-mail address, the plan and the usage limit
 		}
 		return
 	}
@@ -242,21 +241,31 @@ func (s *Service) loginCompleted(n protocol.LoginCompleted) {
 	s.finishLogin(cur.ID, LoginFailed, msg)
 }
 
-// refreshAccountQuietly reads the account and the limits for the cache; a failure is only logged.
-func (s *Service) refreshAccountQuietly() {
+// refreshAccountQuietly reads the account and the limits for the cache; a failure is only logged. It runs in the
+// background (Service.bg) on the process that sent the notification and never starts one: after a Stop (a logout)
+// there is nothing to read and nothing to write.
+func (s *Service) refreshAccountQuietly(se *appserver.Session) {
+	defer s.bg.Done()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	if _, err := s.Refresh(ctx); err != nil && !errors.Is(err, ErrEngineNotInstalled) {
+	if err := s.refreshOn(ctx, se); err != nil {
 		s.opts.Logger.Warn("codex: reading the account failed", "err", sanitize(err.Error()))
 	}
 }
 
-// cancelRemote tells the running app-server to drop the login (nothing is started for it).
-func (s *Service) cancelRemote(ctx context.Context, id string) {
-	if !s.srv.Running() {
+// goRefreshAccount starts refreshAccountQuietly on the running process (none: nothing to refresh).
+func (s *Service) goRefreshAccount() {
+	se := s.srv.Current()
+	if se == nil {
 		return
 	}
-	if se, err := s.srv.Ensure(ctx); err == nil {
+	s.bg.Add(1)
+	go s.refreshAccountQuietly(se)
+}
+
+// cancelRemote tells the running app-server to drop the login (nothing is started for it).
+func (s *Service) cancelRemote(ctx context.Context, id string) {
+	if se := s.srv.Current(); se != nil {
 		_ = se.Call(ctx, protocol.MethodLoginCancel, protocol.CancelLoginParams{LoginID: id}, nil)
 	}
 }

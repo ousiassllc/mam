@@ -3,10 +3,10 @@ package codex
 import (
 	"errors"
 	"fmt"
-	"regexp"
 	"strings"
 	"time"
 
+	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex/appserver"
 	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex/protocol"
 )
 
@@ -52,6 +52,9 @@ func (f *Failure) Unwrap() error { return f.Err }
 // ErrEngineNotInstalled means there is no app-server to start: nothing is installed and no path is set.
 var ErrEngineNotInstalled = errors.New("codex: the app-server is not installed")
 
+// ErrEngineInstalling means the engine is being installed: its files are replaced, so it is not started until the install ends.
+var ErrEngineInstalling = errors.New("codex: the engine is being installed")
+
 // ErrUnsupported means the download is not available on this platform (only Windows has it): set the path of a codex.
 var ErrUnsupported = errors.New("codex: the engine download is available on Windows only; set the path of an installed codex")
 
@@ -70,15 +73,12 @@ func kindOf(info protocol.ErrorInfo) Kind {
 	return KindPermanent
 }
 
-// tokenLike matches what looks like a credential: a JWT, an OAuth client or refresh token, an API key.
-var tokenLike = regexp.MustCompile(`eyJ[A-Za-z0-9_-]{8,}(\.[A-Za-z0-9_-]+){0,2}|\b(?:sk|oaiapp|rt|at)[-_][A-Za-z0-9_-]{16,}|\b[Bb]earer\s+\S+`)
-
 const maxMessageRunes = 300
 
 // sanitize makes a message of the app-server fit to show: anything that looks like a token is removed and the text is
 // shortened. The app-server does not print tokens; this is the second guard.
 func sanitize(msg string) string {
-	msg = tokenLike.ReplaceAllString(strings.TrimSpace(msg), "[redacted]")
+	msg = appserver.Redact(strings.TrimSpace(msg))
 	if r := []rune(msg); len(r) > maxMessageRunes {
 		msg = string(r[:maxMessageRunes]) + "…"
 	}

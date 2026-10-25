@@ -2,6 +2,7 @@ package integration_test
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -162,7 +163,11 @@ func TestACustomPathThatDisappearedIsNotInstalled(t *testing.T) {
 	if st := r.svc.Status(); st.Engine != codex.EngineNotInstalled {
 		t.Errorf("status = %+v", st)
 	}
-	if _, err := r.svc.Refresh(context.Background()); err == nil || r.fake.Starts() != 0 {
+	if _, err := r.svc.Refresh(context.Background()); !errors.Is(err, codex.ErrEngineNotInstalled) || r.fake.Starts() != 0 {
 		t.Errorf("err = %v, starts = %d", err, r.fake.Starts())
+	}
+	// A use before the install is not a failure of the engine: the screens keep saying "not installed".
+	if st := r.svc.Status(); st.Engine != codex.EngineNotInstalled || st.EngineError != "" {
+		t.Errorf("status after the refused start = %+v", st)
 	}
 }

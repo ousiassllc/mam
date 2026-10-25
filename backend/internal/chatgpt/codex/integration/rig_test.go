@@ -24,7 +24,9 @@ type rig struct {
 	exe      string
 	mu       sync.Mutex
 	launches []appserver.Launch
-	opened   []string
+	// wrap, when set (under mu), wraps each process the Service starts.
+	wrap   func(*codextest.Process) appserver.Process
+	opened []string
 }
 
 type rigOption func(*codex.Options)
@@ -47,7 +49,11 @@ func newRig(t *testing.T, opts ...rigOption) *rig {
 		Start: func(l appserver.Launch) (appserver.Process, error) {
 			r.mu.Lock()
 			r.launches = append(r.launches, l)
+			wrap := r.wrap
 			r.mu.Unlock()
+			if wrap != nil {
+				return wrap(r.fake.Process()), nil
+			}
 			return r.fake.Process(), nil
 		},
 	}

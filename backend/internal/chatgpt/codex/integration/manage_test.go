@@ -39,7 +39,7 @@ type installRig struct {
 
 func (ir *installRig) catAsset() catalog.Asset { return ir.asset }
 
-func newInstallRig(t *testing.T) *installRig {
+func newInstallRig(t *testing.T, extra ...rigOption) *installRig {
 	t.Helper()
 	exe := "MZ fake app-server"
 	var buf bytes.Buffer
@@ -60,10 +60,10 @@ func newInstallRig(t *testing.T) *installRig {
 	}
 	cat.Assets = map[string]catalog.Asset{"amd64": ir.asset}
 	ir.layout = engine.Layout{Root: filepath.Join(t.TempDir(), "codex")}
-	ir.rig = newRig(t, func(o *codex.Options) {
+	ir.rig = newRig(t, append([]rigOption{func(o *codex.Options) {
 		o.Platform, o.Arch, o.Catalog, o.Layout = "windows", "amd64", cat, ir.layout
 		o.Fetch = fetch.Options{Client: srv.Client(), CheckURL: func(*url.URL) error { return nil }}
-	})
+	}}, extra...)...)
 	if err := ir.svc.SetCustomPath(""); err != nil { // the rig sets a path: use the download
 		t.Fatal(err)
 	}

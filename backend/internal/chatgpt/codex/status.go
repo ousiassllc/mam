@@ -86,7 +86,8 @@ func (s *Service) Status() Status {
 	st.CredentialsStore = s.credsStore
 	s.mu.Unlock()
 
-	if _, custom, err := s.exePath(); err == nil && custom {
+	_, custom, exeErr := s.exePath()
+	if exeErr == nil && custom {
 		st.Source = SourceCustom
 	} else if s.installer != nil {
 		is := s.installer.Status()
@@ -101,7 +102,7 @@ func (s *Service) Status() Status {
 		st.Engine = EngineInstalling
 	case srv.State == appserver.StateRunning:
 		st.Engine = EngineRunning
-	case srv.State == appserver.StateFailed:
+	case srv.State == appserver.StateFailed && exeErr == nil: // a start that found no engine is not a failure of the engine
 		st.Engine, st.EngineError = EngineFailed, srv.Error
 	case st.Source != SourceNone && !st.UpdateAvailable:
 		st.Engine = EngineReady
@@ -117,9 +118,15 @@ func (s *Service) Refresh(ctx context.Context) (Status, error) {
 	if err != nil {
 		return s.Status(), err
 	}
+	err = s.refreshOn(ctx, se)
+	return s.Status(), err
+}
+
+// refreshOn reads the account and the usage limits from the process and keeps them.
+func (s *Service) refreshOn(ctx context.Context, se *appserver.Session) error {
 	var acc protocol.GetAccountResult
 	if err := se.Call(ctx, protocol.MethodAccountRead, protocol.GetAccountParams{RefreshToken: false}, &acc); err != nil {
-		return s.Status(), fmt.Errorf("codex: account/read: %w", err)
+		return fmt.Errorf("codex: account/read: %w", err)
 	}
 	view := AccountView{}
 	if acc.Account != nil && acc.Account.Type == protocol.AccountTypeChatGPT {
@@ -136,7 +143,7 @@ func (s *Service) Refresh(ctx context.Context) (Status, error) {
 	} else {
 		s.setRateLimits(protocol.RateLimitSnapshot{})
 	}
-	return s.Status(), nil
+	return nil
 }
 
 func (s *Service) setAccount(v AccountView) {

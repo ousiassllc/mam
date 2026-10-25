@@ -93,6 +93,9 @@ type Service struct {
 	credsStore  string // keyring or auto, decided on the first start
 
 	closed bool
+
+	// bg counts the background refreshes of the account: a logout and Close wait for them.
+	bg sync.WaitGroup
 }
 
 // New builds the Service. Nothing is started and nothing is downloaded.
@@ -112,6 +115,13 @@ func New(o Options) *Service {
 	cat := o.Catalog
 	if cat.Version == "" {
 		cat = catalog.Default()
+	}
+	if o.DataDir != "" {
+		// The path goes to the child as CODEX_HOME and its working directory is another one: a relative one would
+		// point elsewhere there (and Codex reports the absolute path, which the handshake compares).
+		if abs, err := filepath.Abs(o.DataDir); err == nil {
+			o.DataDir = abs
+		}
 	}
 	s := &Service{opts: o, cat: cat, home: filepath.Join(o.DataDir, codexHomeDir), work: filepath.Join(o.DataDir, workDirName),
 		state: openState(filepath.Join(o.DataDir, StateFile))}
@@ -150,6 +160,12 @@ func (s *Service) exePath() (path string, custom bool, err error) {
 
 // startProcess is the start function of the app-server: it prepares mam's own directories and launches the engine.
 func (s *Service) startProcess() (appserver.Process, error) {
+	s.mu.Lock()
+	installing := s.install.State == InstallRunning
+	s.mu.Unlock()
+	if installing { // the files are being replaced
+		return nil, ErrEngineInstalling
+	}
 	exe, _, err := s.exePath()
 	if err != nil {
 		return nil, err
@@ -198,4 +214,5 @@ func (s *Service) Close() {
 		cancel()
 	}
 	s.srv.Close()
+	s.bg.Wait()
 }
