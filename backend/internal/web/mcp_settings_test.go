@@ -114,7 +114,7 @@ func (s *mcpScreen) get() string {
 
 func issuedValue(t *testing.T, html string) string {
 	t.Helper()
-	m := regexp.MustCompile(`data-testid="mcp-issued-value">(mam_mcp_[A-Za-z0-9_-]+)<`).FindStringSubmatch(html)
+	m := regexp.MustCompile(`value="(mam_mcp_[A-Za-z0-9_-]+)"[^>]*data-testid="mcp-issued-value"`).FindStringSubmatch(html)
 	require.Len(t, m, 2, html)
 	return m[1]
 }
@@ -141,6 +141,10 @@ func TestMCPSettings_IssueShowsTheValueOnceAndTheListNeverAgain(t *testing.T) {
 	assert.Equal(t, 1, strings.Count(rec.Body.String(), value), "the value appears once in the answer")
 	assert.Contains(t, rec.Body.String(), "Grok Bot")
 	assert.Contains(t, rec.Body.String(), "未使用")
+	assert.Contains(t, rec.Body.String(), `data-copy-source="mcp-issued-value"`, "the copy button reads the field of the value")
+	assert.Empty(t, rec.Header().Get("HX-Trigger-After-Swap"), "the modal stays open to show the value")
+	assert.Contains(t, rec.Body.String(), `hx-swap-oob="beforeend:#mcp-token-list"`, "the row joins the table, without the value")
+	assert.Contains(t, rec.Body.String(), `<span id="mcp-tokens-empty" hx-swap-oob="delete">`)
 
 	// The value works as a bearer token, and no later view of the section shows it.
 	tok, err := s.tokens.Verify(context.Background(), value)

@@ -6,7 +6,7 @@ package workflows
 import (
 	"strconv"
 
-	"github.com/ousiassllc/mam/backend/internal/web/organisms/localmodels"
+	localmodels "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/local"
 )
 
 // IDs of the elements the actions swap.

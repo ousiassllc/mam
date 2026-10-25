@@ -3,11 +3,11 @@ package pages
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/llmassign"
-	"github.com/ousiassllc/mam/backend/internal/web/organisms/localmodels"
-	"github.com/ousiassllc/mam/backend/internal/web/organisms/mcppanel"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelassignment"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/chatgpt"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/credentials"
+	local "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/local"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/mcp"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/overview"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/updatepanel"
 )
@@ -45,16 +45,23 @@ templ SettingsModelsBody(d modelassignment.Data) {
 }
 
 // SettingsLocalModelsBody is "ローカル・代替モデル".
-templ SettingsLocalModelsBody(d localmodels.Data) {
+templ SettingsLocalModelsBody(d local.Data) {
+	@settingsui.Category("ローカル・代替モデル", local.Description) {
+		@local.Section(d)
+	}
+}
+
+// SettingsLocalEndpointBody is the page of one local endpoint, under the title of "ローカル・代替モデル".
+templ SettingsLocalEndpointBody(d local.Data, e local.Endpoint) {
 	@settingsui.Category("ローカル・代替モデル", "") {
-		@localmodels.Section(d)
+		@local.Page(d, e)
 	}
 }
 
 // SettingsMCPBody is "MCP サーバー".
-templ SettingsMCPBody(d mcppanel.Data) {
-	@settingsui.Category("MCP サーバー", "") {
-		@mcppanel.Section(d)
+templ SettingsMCPBody(d mcp.Data) {
+	@settingsui.Category("MCP サーバー", mcp.Description) {
+		@mcp.Section(d)
 	}
 }
 

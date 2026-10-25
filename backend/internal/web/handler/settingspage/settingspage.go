@@ -24,10 +24,10 @@ import (
 	updatehandler "github.com/ousiassllc/mam/backend/internal/web/handler/appupdate"
 	chatgpthandler "github.com/ousiassllc/mam/backend/internal/web/handler/chatgptsettings"
 	llmhandler "github.com/ousiassllc/mam/backend/internal/web/handler/llmassign"
-	localhandler "github.com/ousiassllc/mam/backend/internal/web/handler/localmodels"
-	mcphandler "github.com/ousiassllc/mam/backend/internal/web/handler/mcpsettings"
 	modelhandler "github.com/ousiassllc/mam/backend/internal/web/handler/modelassign"
 	credentialshandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/credentials"
+	localhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/local"
+	mcphandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/mcp"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/settings/settingshttp"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
@@ -49,9 +49,6 @@ type Services struct {
 	LocalModels *localmodels.Service
 	MCP         *mcpsettings.Service
 	Update      *appupdate.Service
-	// Fragments answer an HTMX request for the category of their slug instead of its body: the screens that are still
-	// their own fragments (the local models panel, which its actions replace).
-	Fragments map[string]gin.HandlerFunc
 }
 
 // category is one entry of the navigation: where it is, what it is called and what it needs.
@@ -140,26 +137,31 @@ func (s Services) Page(slug string) gin.HandlerFunc {
 			return
 		}
 		c.Header("Cache-Control", "no-store")
-		htmx := settingshttp.IsHTMX(c)
-		if fragment := s.Fragments[slug]; htmx && fragment != nil {
-			fragment(c)
-			return
-		}
-		body := cat.body(c, s)
-		if htmx {
-			settingshttp.Render(c, http.StatusOK, body)
-			return
-		}
 		title := "設定"
 		if slug != paths.SettingsOverview {
 			title = "設定: " + cat.title
 		}
-		canonical := ""
-		if own := paths.SettingsCategory(slug); c.Request.URL.Path != own {
-			canonical = own
-		}
-		settingshttp.Render(c, http.StatusOK, pages.GlobalSettingsPage(middleware.CSRFToken(c), pages.GlobalSettingsPageData{
-			Title: title, Canonical: canonical, Nav: s.nav(slug), Body: body,
-		}))
+		own := paths.SettingsCategory(slug)
+		s.render(c, slug, title, canonicalOf(c, own), cat.body(c, s))
 	}
+}
+
+// canonicalOf is own when the request is for another address that shows the same page, "" when it is for own.
+func canonicalOf(c *gin.Context, own string) string {
+	if c.Request.URL.Path == own {
+		return ""
+	}
+	return own
+}
+
+// render answers with body, the content of the category slug: alone for an HTMX request, else in the whole page called
+// title. A page that stands for another one (/settings/chatgpt for the API keys) names it as its canonical ("" for none).
+func (s Services) render(c *gin.Context, slug, title, canonical string, body templ.Component) {
+	if settingshttp.IsHTMX(c) {
+		settingshttp.Render(c, http.StatusOK, body)
+		return
+	}
+	settingshttp.Render(c, http.StatusOK, pages.GlobalSettingsPage(middleware.CSRFToken(c), pages.GlobalSettingsPageData{
+		Title: title, Canonical: canonical, Nav: s.nav(slug), Body: body,
+	}))
 }

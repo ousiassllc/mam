@@ -1,6 +1,6 @@
 # 画面仕様: 全体の設定画面（分類ごとのサブページ）
 
-> **状態: 段階 ①・②-1・②-2 実装済み（2026-10-25）。②-3 以降（LLM・画像動画・ローカルの接続先・MCP の作り直し）は未実装。** Issue #847。オーナーは §11 を推奨する既定で決定した（2026-10-25）。分類ごとの一覧とモーダルは [settings-screen-categories.md](settings-screen-categories.md)、新しいルートと応答の決まりは [settings-screen-routes.md](settings-screen-routes.md)、共通の部品（カード・アイコン・モーダル・一覧の行）は [shared-ui-parts.md](shared-ui-parts.md)。確認が要る点は §11。
+> **状態: 段階 ①・②-1・②-2・②-5・②-6 実装済み（2026-10-25）。②-3・②-4（LLM・画像動画の作り直し）は別の実装。** Issue #847。オーナーは §11 を推奨する既定で決定した（2026-10-25）。分類ごとの一覧とモーダルは [settings-screen-categories.md](settings-screen-categories.md)、新しいルートと応答の決まりは [settings-screen-routes.md](settings-screen-routes.md)、共通の部品（カード・アイコン・モーダル・一覧の行）は [shared-ui-parts.md](shared-ui-parts.md)。確認が要る点は §11。
 
 [overview.md](overview.md) §3 の `global_settings_page`・`global_settings_body`（`GET /settings`。API キー・ChatGPT・LLM・画像動画モデル・ローカル・MCP・バージョンが 1 ページに縦に並ぶ）を、**左のサイドナビ ＋ 分類ごとのサブページ**に分ける。プロジェクトの設定（`/projects/:id/settings`）・モデルマネージャーの作り直し・全画面共通のナビゲーションは範囲外。
 
@@ -29,7 +29,7 @@
 | 2 | テキスト生成（LLM） | `/settings/llm` | LLM の割り当て（`llmassign`） | `Settings` サービスがある |
 | 3 | 画像・動画モデル | `/settings/models` | 画像の用途・Quality Policy ごとの割り当て（`modelassignment`）。年齢確認がオフの間は成人向けのモデルを選択肢から外し、保存済みの割り当ては「（現在は使えません）」付きで見せる（[settings-screen-categories.md](settings-screen-categories.md) §3） | 同上 |
 | 4 | ローカル・代替モデル | `/settings/local-models` | 接続先とモデル（`localmodels`）＋モデルマネージャーへのカード | `Services.LocalModels` がある |
-| 5 | MCP サーバー | `/settings/mcp` | 待ち受け先・トークン（`mcppanel`） | `Services.MCP` がある |
+| 5 | MCP サーバー | `/settings/mcp` | 待ち受け先・トークン（`organisms/settings/mcp`） | `Services.MCP` がある |
 | 6 | バージョンとアップデート | `/settings/update` | 版と「今すぐ確認」（`updatepanel`） | 常に（版の表示だけのときもある） |
 
 - スラッグは、今の**書き込みのルートの接頭辞と同じ**にする（`PUT /settings/llm`・`/settings/models`・`/settings/mcp/…`・`/settings/update/check`）。同じパスに GET（ページ）と PUT・DELETE（操作）が並ぶ。API キーの分類だけ新しい接頭辞（`api-keys`）で、書き込みは今の `PUT /credentials/:provider` のまま。
@@ -116,6 +116,7 @@
 今は `molecules/format.go` の `refLinkOf` が `ref_type=settings` を `paths.Project(m.ProjectID, "settings")`（**プロジェクトの設定**。ディスク容量の警告から Take のアーカイブへ行く。唯一の発行元は `agent/generation/orchestrator.go` の `warnLowDisk`）に結んでいる。**全体の設定の分類へ案内する経路は無い**。
 
 - 案: 新しい `ref_type=global_settings`、`ref_id` に分類のスラッグ（`api-keys` など。未知・空は `/settings`）。`refLinkOf` に 1 つ `case` を足し、ラベルは分類ごと（例: 「API キーの設定を開く」）、リンクは `paths.SettingsCategory(slug)`。`chat_message.ref_type` は `TEXT`（CHECK 制約なし。`20260929000001_init_schema.sql`）なのでマイグレーションは要らない。`spec/architecture/er.md` の `ref_type` の説明と `domain/chat.go` の定数に足す。今の `settings`（プロジェクトの設定）は変えない。
+- **実装済み**（2026-10-25）: `domain.RefGlobalSettings`、`molecules/settings_link.go`（スラッグ → リンクの文言。未知・空は概要。`ref_id` から URL は作らない）。`er.md`（737 行）の `ref_type` の説明は、コミット前の行数の検査が 300 行を超えるファイルを通さないため、今回は更新していない（契約はこの節と `domain/chat.go` の定数のコメントにある）。
 - この Issue で新しく発行する通知は**足さない**。経路の契約だけを決める。最初の利用者は、将来の「API キーが未設定です」のようなチャットの通知（今は無い）。§11 の質問 7。
 
 ## 7. 提供の段階（決定事項 11(a)・10(a)）
@@ -127,8 +128,8 @@
 | ②-2 **実装済み**（API キーのカードと接続テストを含む） | ChatGPT のログインをカードに（ログイン中の表示はモーダル）。#845 の Codex 経由は 3 つ目のカード（§9） | `organisms/settings/chatgpt/` | |
 | ②-3 | LLM の割り当て（Agent の表・Agent ごとの保存） | `organisms/settings/llm/`・`PUT /settings/llm/agents/:agent` | |
 | ②-4 | 画像・動画モデル | `organisms/settings/media/` | |
-| ②-5 | ローカルの接続先（カード・モーダル）とサブページ | `organisms/settings/local/` | |
-| ②-6 | MCP（待ち受け先・トークンの表・発行のモーダル） | `organisms/settings/mcp/` | **完成の段階**で全分類を 1024×700・1440×900（10(a) の 2 回目） |
+| ②-5 **実装済み** | ローカルの接続先（カード・モーダル）とサブページ。モデルマネージャーのカードを先頭に置く。成功の応答は行の OOB（`#model-assignment` の OOB は廃止）。名前 `new` の保存済みの接続先は、サブページが無い旨をカードに出す | `organisms/settings/local/`・`handler/settings/local/`・`handler/settingspage/local.go` | |
+| ②-6 **実装済み** | MCP（待ち受け先・トークンの表・発行のモーダル。発行は 201 でモーダルの本文を 1 回だけの表示に替える。コピーのボタン） | `organisms/settings/mcp/`・`handler/settings/mcp/`・`static/src/components/copy/` | **完成の段階**で全分類を 1024×700・1440×900（10(a) の 2 回目） |
 
 - ② の各段階は、古い区画を**新しい場所に作り直して古いものを消す**（二重に残さない）。段階の間は、まだ移していない分類は ① のままの区画が動く。
 - ① の時点で、概要から各分類へ行け、「1 ページに全部並んで見にくい」は解消する。
@@ -140,7 +141,7 @@
 | `web/global_settings_test.go` | `GET /settings` に全区画がある前提を、概要＋各分類のページに書き直す。API キーのパネルは `/settings/api-keys` | カードの `id`・`data-testid`（既存を維持）に合わせる |
 | `web/llm_settings_test.go`・`model_settings_test.go`・`model_settings_screen_test.go`・`mcp_settings_test.go`・`update_settings_test.go` | ページの取得先を各分類の URL に変える | モーダルの断片・Agent ごとの保存・OOB の行・422 の本文を検査するものに書き換える（今の全体フォームの検査は、`PUT /settings/llm` と `/settings/models` が残るので残す） |
 | `router/credential_test.go`・`web/credential_handler_test.go` | `GET /settings/api-keys` を取得する | 保存の応答を OOB の行＋ `HX-Trigger-After-Swap` に。422・キーが応答に出ないことは残す |
-| `web/handler/localmodels/screen_test.go`・`endpoints_test.go` | 取得先を `/settings/local-models`（HTMX でない）に | カード・モーダル・サブページ。`#model-assignment` の OOB の検査は、別ページになるため外す |
+| `web/handler/settings/local/screen_test.go`・`endpoints_test.go` | 取得先を `/settings/local-models`（HTMX でない）に | カード・モーダル・サブページ。`#model-assignment` の OOB の検査は、別ページになるため外す |
 | `web/handler/chatgptsettings/chatgptsettings_test.go` | `GET /settings/chatgpt`（HTMX なし）がページ全体、HTMX が断片 | カードの一覧の断片 |
 | `web/destructive_confirm_test.go`・`double_submit_test.go`・`a11y/*` | 新しいテンプレートも検査の対象になる | モーダルのフォームの二重送信防止・削除の `hx-confirm`・行ごとのボタン名（`SmallButtonFor`）を足す |
 | 新規 | `settingspage` のスラッグ・404（サービス nil）・HTMX 分岐・`Vary`・`canonical`、`SettingsNav` の `aria-current`・`nav` の名前、`paths.SettingsCategory` | wtr のモーダル（[shared-ui-parts.md](shared-ui-parts.md) §4） |
@@ -153,7 +154,7 @@
 | `organisms/settings/overview/` | 概要のカード | 新規（`global_settings_body.templ` を置き換え） |
 | `organisms/settings/credentials/` | API キーのカード・モーダルの断片 | `organisms/credentialpanel/`（111 行）を作り直して消す |
 | `organisms/settings/chatgpt/` | ログインのカード・ログイン中のモーダル・モデル一覧のモーダル | `organisms/chatgptpanel/`（`panel.templ` 274 行・Codex 経由の `codex.templ` 218 行。1 ファイルの上限に近いのでカード・モーダル・データに分ける） |
-| `organisms/settings/llm/`・`media/`・`local/`・`mcp/`・`update/` | 各分類 | `llmassign/`・`modelassignment/`・`localmodels/`・`mcppanel/`・`updatepanel/` |
+| `organisms/settings/llm/`・`media/`・`local/`・`mcp/`・`update/` | 各分類 | `llmassign/`・`modelassignment/`・`localmodels/`（②-5 で `settings/local/` に移した）・`mcppanel/`（②-6 で `settings/mcp/` に移した）・`updatepanel/` |
 | `handler/settingspage/`・`handler/settings/<分類>/` | ページ・モーダルの断片・保存。`handler/` は基準値 2,895 行で上限を超え、増やせない | `handler/credential.go` の保存・削除は `handler/settings/credentials/` に移す |
 | `molecules/settingsui/`・`molecules/modal/` | ナビ・カード・表・モーダル | 新規 |
 
@@ -196,3 +197,4 @@
 | 0.3 | 2026-10-25 | ②-1 のモーダルの担当を未決とし（[shared-ui-parts.md](shared-ui-parts.md) §8 の質問 7）、#845 のタブ（`role="tablist"`）の扱いを §9 に足した | 独立レビュー（PR #849）の指摘 |
 | 0.4 | 2026-10-25 | §2 の分類の表の「画像・動画モデル」の行に、年齢確認がオフの間の画面の挙動（成人向けを選択肢から外す・「（現在は使えません）」・保存は 422）への参照を足した。詳細は settings-screen-categories.md §3（0.4） | PR #849 の独立レビュー（#848）の指摘 |
 | 0.5 | 2026-10-25 | 状態を「段階 ①・②-1・②-2 実装済み」にした（§7 の表に印）。実装: ナビ・概要・分類ごとのページ・モーダル・API キーとログイン。接続先の名前 `new` は 422（§11 の質問 6 の推奨）。ログインのカードの取り直しは `GET /settings/chatgpt/:kind/login?poll=1`（モーダル）とパネル全体の取り直しで行い、`card=<kind>` は使わなかった（`method` クエリは読まない） | Issue #847 の実装 |
+| 0.6 | 2026-10-25 | 段階 ②-5（ローカル・代替モデル）と ②-6（MCP サーバー）を実装済みにした。チャットのリンク `ref_type=global_settings` の経路（契約だけ。通知は足さない）を §6 に実装済みと書いた。`localmodels`・`mcppanel` は `organisms/settings/local/`・`settings/mcp/`（と `handler/settings/local/`・`settings/mcp/`）に移した | Issue #847 の実装 |

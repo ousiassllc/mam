@@ -9,6 +9,8 @@ import (
 	"github.com/a-h/templ"
 	"github.com/gin-gonic/gin"
 
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
 )
 
@@ -41,4 +43,11 @@ func NoStore(c *gin.Context) {
 // answer's own body is the rows to replace out of band; what goes into the modal is empty.
 func CloseModal(c *gin.Context) {
 	c.Header("HX-Trigger-After-Swap", modal.CloseEvent)
+}
+
+// Toast answers with an error toast and leaves the page alone: the refusal of an action that has no form to say it in
+// (a delete, a test). status is the status of the answer.
+func Toast(c *gin.Context, status int, message string) {
+	middleware.ToastOnly(c)
+	Render(c, status, atoms.ToastOOB(message))
 }

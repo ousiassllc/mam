@@ -127,4 +127,3 @@ func (s *Service) Reload() error                                            // �
 - **設定画面**（`GET /settings` の「ローカル・代替モデル」）: §8 の Service API を HTMX の断片で操作する。画面の仕様とルートは [../api/endpoints-local-models.md](../api/endpoints-local-models.md)。固定ファイル（`--model-config`）は読み取り専用で、理由を表示して変更のボタンを無効にする（API キーと接続テストは使える）。名前と種類は編集で変えられない。リンクローカルの `base_url` は 422 で、接続テストも理由を表示する。API キーは設定済みかと末尾 4 文字だけを表示する。
 - **反映の確認**: 接続先・モデルの追加・削除の応答は「画像・動画モデル」のフォームを `hx-swap-oob` で添え、追加したモデルが画像の 4 用途（primary / fallback）と Quality Policy の選択肢に並ぶ。「画像・動画モデル」の保存も再起動を待たない（`modelsettings` の保存が `Reload` を呼ぶ）。
 - **MCP ツール**: 同じサービスを呼ぶ 15 のツール（接続先・API キー・接続テスト・テンプレート・ワークフローの取り込み・モデル）。割り当ては既存の `set_model_assignment` に識別子を渡す。生成は既存の `generate_shot` などで、ジョブは `get_job` で見る。一覧は [../api/mcp-tools-local-models.md](../api/mcp-tools-local-models.md)。
-
