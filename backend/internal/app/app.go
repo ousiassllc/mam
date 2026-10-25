@@ -124,6 +124,7 @@ func serve(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Opt
 	})
 	settings.ChatGPT = gpt
 	settings.ModelManager = services.ModelManager
+	settings.Models.SetHidden(services.ModelManager.HidesModel)
 	settings.Gentest = services.Gentest
 	if opts.Update != nil {
 		var stop func()

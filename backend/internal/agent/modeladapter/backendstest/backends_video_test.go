@@ -1,4 +1,4 @@
-package modeladapter_test
+package backendstest_test
 
 import (
 	"context"

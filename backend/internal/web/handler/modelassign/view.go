@@ -49,6 +49,9 @@ func Data(v modelsettings.View, in *modelsettings.Input) modelassignment.Data {
 	if v.Pinned {
 		d.PinnedNote = pinnedNote
 	}
+	if len(v.Gated) > 0 {
+		d.GatedNote = gatedNote(v.Gated)
+	}
 	for _, m := range v.ImageModels {
 		d.ImageModels = append(d.ImageModels, modelassignment.ImageModel{Name: string(m.Model), Fast: m.Fast, AcceptsReferences: m.AcceptsReferences})
 	}
@@ -74,6 +77,16 @@ func Data(v modelsettings.View, in *modelsettings.Input) modelassignment.Data {
 		})
 	}
 	return d
+}
+
+// gatedNote says that the saved assignment names adult models that are not offered while the age confirmation is off.
+func gatedNote(models []domain.ModelName) string {
+	names := make([]string, len(models))
+	for i, m := range models {
+		names[i] = string(m)
+	}
+	return "年齢確認がオフのため、成人向けモデル（" + strings.Join(names, "、") + "）は選べず、生成にも使われません（生成は断られます）。" +
+		"年齢確認をオンにするか、別のモデルを選んで保存してください"
 }
 
 // referenceNote says which models of the route do not use reference images ("" when both do).

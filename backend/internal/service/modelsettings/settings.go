@@ -94,6 +94,9 @@ type View struct {
 	Policies    map[domain.QualityPolicy]modeladapter.PolicyRoute
 	ImageModels []ImageOption
 	VideoModels []VideoOption
+	// Gated are the adult models the saved routes still name while the age confirmation is off: they are not among
+	// ImageModels / VideoModels, generation with them is refused, and Save refuses a route that names one.
+	Gated []domain.ModelName
 }
 
 // Service edits the image / video part of one Model Adapter setting file.
@@ -102,6 +105,8 @@ type Service struct {
 	pinned bool
 	// onChange, when set, runs after a change was saved (SetOnChange).
 	onChange func()
+	// hidden, when set, says which models are adult models while the age confirmation is off (SetHidden).
+	hidden func(modelID string) bool
 }
 
 // SetOnChange registers f to run after Save or Reset wrote the file: the app applies the saved assignment
@@ -133,8 +138,9 @@ func (s *Service) View() (View, error) {
 		Customized:  !maps.Equal(cfg.Images, def.Images) || !maps.Equal(cfg.Policies, def.Policies),
 		Images:      cfg.Images,
 		Policies:    cfg.Policies,
-		ImageModels: imageOptions(cfg),
-		VideoModels: videoOptions(cfg),
+		ImageModels: imageOptions(cfg, s.gated),
+		VideoModels: videoOptions(cfg, s.gated),
+		Gated:       s.gatedRoutes(cfg),
 	}, nil
 }
 
@@ -151,7 +157,7 @@ func (s *Service) Save(in Input) error {
 	if err != nil {
 		return err
 	}
-	if err := check(cfg, in); err != nil {
+	if err := check(cfg, in, s.gated); err != nil {
 		return err
 	}
 	raw, err := s.readKeys()

@@ -262,3 +262,37 @@ func TestModelSettings_AFileThatCannotBeReadOnlyLosesThisSection(t *testing.T) {
 	assert.Contains(t, html, `data-testid="model-assignment-problem"`)
 	assert.Contains(t, html, `id="credential-panel"`, "the rest of the screen is still there")
 }
+
+// With the age confirmation off the screen does not offer an adult model, but it shows a saved assignment that still names one as
+// what it is (an option that says it cannot be used, not another model that would be saved by accident), says so above the
+// form, and a save that keeps it is refused with the reason.
+func TestModelSettings_AnAdultModelOfTheSavedAssignmentIsShownAsUnusableWhileTheAgeConfirmationIsOff(t *testing.T) {
+	t.Cleanup(func() { modelreg.Set(nil, nil) })
+	modelreg.Set([]string{noRefLocalModel}, nil)
+	file := filepath.Join(t.TempDir(), "models.json")
+	require.NoError(t, os.WriteFile(file, []byte(`{
+	  "endpoints": {"oa": {"kind": "openai-compat", "base_url": "http://192.168.1.9:8000"}},
+	  "local_models": {"oa/x": {"media": "image", "model": "x"}},
+	  "images": {"new_reference": {"primary": {"model": "`+noRefLocalModel+`"}, "fallback": {"model": "nano-banana"}}}
+	}`), 0o600))
+	closed := true
+	s := newGatedModelScreen(t, file, false, func(id string) bool { return closed && id == noRefLocalModel })
+	primary := modelassignment.ImageModelField("new_reference", modelassignment.SlotPrimary)
+
+	html := s.page()
+	assert.NotContains(t, optionValues(t, html, modelassignment.ImageModelField("preview", modelassignment.SlotPrimary)), noRefLocalModel, "not a choice")
+	assert.Equal(t, noRefLocalModel, selectedOption(t, html, primary), "the saved model is what the select shows")
+	assert.Contains(t, html, noRefLocalModel+"（現在は使えません）")
+	assert.Contains(t, html, `data-testid="model-assignment-gated"`)
+	assert.Contains(t, html, "年齢確認をオンにするか")
+
+	form := modelDefaultForm()
+	form.Set(primary, noRefLocalModel)
+	rec := s.request(http.MethodPut, form)
+	require.Equal(t, http.StatusUnprocessableEntity, rec.Code, rec.Body.String())
+	assert.Contains(t, rec.Body.String(), "年齢確認がオフ")
+
+	closed = false
+	assert.Contains(t, optionValues(t, s.page(), modelassignment.ImageModelField("preview", modelassignment.SlotPrimary)), noRefLocalModel, "a choice again")
+	assert.NotContains(t, s.page(), `data-testid="model-assignment-gated"`)
+}

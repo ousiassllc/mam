@@ -1,4 +1,4 @@
-package generation_test
+package routingtest_test
 
 import (
 	"testing"

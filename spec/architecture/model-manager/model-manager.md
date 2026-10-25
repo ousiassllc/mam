@@ -160,6 +160,7 @@ Wan 2.2 14B は T2V を入れない（I2V のみ。決定 4）。ミラーのフ
 
 - 成人向け（非検閲のモデル、または非検閲にする LoRA）は `content_rating = adult`。**必ず `tier = advanced`・`consent_required = true`**（Apache-2.0 の Chroma1-HD も。成人向けの利用条件への同意を取るため。`catalog.Validate` が確かめる）。
 - **年齢確認が済むまで、成人向けのモデルは出さず、導入させない**。画面ではなく **Service が強制する**（§6.2）。モデルのカードには「成人向け」のバッジを付ける。一覧・詳細・導入・ライセンスの同意・試し生成の選択肢に加えて、**外部の ComfyUI の確認（`ExternalInventory`）にも出さない**。キューに入った試し生成の結果は、始まる時にゲートをもう一度調べ（`ReasonHidden`）、閉じていて成人向けのモデルなら呼ばずに失敗にする。
+- **導入済みの成人向けモデルも、年齢確認がオフの間は使えない**（Issue #848 の判断。「導入済みなら使える」とはしない）。ゲートは導入だけでなく、選ぶことと生成を止める: (1) **割り当ての選択肢から外す**（`modelsettings` の `ImageModels`・`VideoModels`。画面・MCP の `get_global_settings` の `image_models`・`video_models`）。保存済みの割り当てが成人向けのモデルを指していれば、`View.Gated`（MCP は `gated_models`）に挙げ、画面は「（現在は使えません）」を付けたそのモデルを選択済みで見せて注意を出す（別のモデルが選ばれたように見せない）。`Save`・`set_model_assignment` は、その経路（主・代替どちらでも、変えていなくても）を理由つきの 422 / `validation` で断る。「既定に戻す」はできる。(2) **生成を断る**: Model Adapter が経路を呼ぶ前に調べる（`Adapter.Gate`。`GenerateVideo`・`GenerateImage`・直接呼び出し `direct.Image`・`direct.Video`）。**割り当てが成人向けのモデルを指したままでも断る**。(3) **削除はできるまま**（§6.2 の表）。**代替には回さない**: 通常の代替（主モデルが落ちた・ブレーカー OPEN のとき代替を呼ぶ。model-adapters.md §7）は、主モデルが使えないときに代替が同じ結果を作れるという前提で、Take の `fell_back` に残すだけの扱いである。ゲートの拒否は「使えない」ではなく「使ってはいけない」なので、**経路の主・代替のどちらかが成人向けなら、経路ごと断る**（代替が成人向けで主が非成人向けでも断る。成人向けの主モデルが、気づかれないまま非成人向けの代替の結果に変わらないように）。何も呼ばず（ComfyUI も起動せず）、課金もない。断りは `*agegate.RefusedError`（`errors.Is(err, agegate.ErrRefused)`）で、文言は「<モデル> は成人向けモデルで、年齢確認がオフのため使えません。モデル管理で年齢確認をオンにするか、モデルの割り当て（品質ポリシー・画像の用途）を別のモデルに変えてください」。Shot の生成・Reference Pack の作成は**キューに入れる前**に断り（`Orchestrator` の `decide`・`StartReferencePack`。画面・MCP は 409 / `conflict` でこの文言）、キューに入った後でゲートが閉じたジョブは実行時にもう一度断り、チャットに同じ文言を出す。Multi-model routing の候補は `Adapter.Unavailable` が「年齢確認がオフ」で外す。Shot の Video Model の MANUAL / LOCK が成人向けのモデルを指していても同じく断る（固定は他のモデルに替えない）。ゲートを開けば、同じ割り当てがそのまま使える。
 - **LoRA だけを足すモデル**（`flux1-dev-nsfw-master`・`wan22-i2v-14b-nsfw-lora`）は、ベースのファイルも `files` に含める。ベースが導入済みなら取り直さず、ベースのモデルを消しても、LoRA のモデルが残る間は共有ファイルは消えない（§7）。`trigger_words`（LoRA のトリガー語）は一覧・MCP に出す。
 - 第三者のミラー（原本が Civitai のもの）のファイルは `source_note`（原本の場所と、SHA-256 が一致することを確かめた日付）を持つ。ミラーが消えて 404・410 になったときは、取得の失敗ではなく**「取得元が消えています」**（`ErrSourceGone`。ファイル名・HTTP の状態・`source_note` を添える）で失敗する。
 
@@ -173,13 +174,15 @@ Wan 2.2 14B は T2V を入れない（I2V のみ。決定 4）。ミラーのフ
 | `Model(id)`・`AcceptLicense`・`InstallModel` | `ErrAdultNotConfirmed`（導入は何もダウンロードせず、同意も記録しない。画面・MCP は 409 / `conflict`） |
 | 導入のジョブ（`runModelInstall`） | 待っている間に閉じられたら、始めに同じ理由で失敗する |
 | 試し生成のモデルの一覧（`mmview.TrialModels`、生成テストの `Models`・`Model`） | 導入済みの成人向けモデル（`comfyui:bundled-comfyui/<ワークフロー名>`）も出さず、名指しの要求は不明なモデルとして断る（`gentest.Deps.Hidden` = `HidesModel`） |
-| `DeleteModel` | 影響しない（導入済みのファイルの片づけは、いつでもできる） |
+| 画像・動画モデルの割り当て（`modelsettings`、画面・MCP） | 導入済みの成人向けモデルを選択肢に出さず、それを指す割り当ては保存できない（`HidesModel` = `modelsettings.Service.SetHidden`）。§6.1 |
+| 生成（Shot・Reference Pack・生成テスト・Adapter の直接呼び出し） | 割り当てが指していても断る（`agegate.ErrRefused`。何も呼ばず、代替にも回さない）。§6.1 |
+| `DeleteModel` | 影響しない（導入済みのファイルの片づけは、いつでもできる。ゲートが閉じていても導入済みのモデルを消せる。ただし割り当てが指していれば従来どおり `*InvalidError`） |
 
 ```go
 func (*Service) AdultContent() AdultContentStatus          // enabled・confirmed・confirmed_at・notice_version・notice
 func (*Service) AdultContentEnabled() bool                 // ゲートが開いているか。#842（Hugging Face の取り込み）などが「成人向けの確認は済んだか」を聞くのはこれ
 func (*Service) SetAdultContent(on bool, *AdultConfirmation) error  // オンは確認（Adult=true・現行の NoticeVersion）が要る。確認が無く、記録も無ければ ErrAdultNotConfirmed、確認が足りなければ *InvalidError
-func (*Service) HidesModel(id string) bool                 // 試し生成などが、成人向けのモデルを隠すかを聞く
+func (*Service) HidesModel(id string) bool                 // 試し生成・割り当ての選択肢・生成（Adapter の Gate）が、成人向けのモデルを隠す・断るかを聞く
 ```
 
 **MAM は年齢を自分で確認したことにしない**。画面は「同意する」のチェックの後にだけ `AdultConfirmation` を渡し、MCP の `set_adult_content` は、ユーザー自身が確認して答えた後にだけ `confirm_adult=true` で呼ぶ（`accept_model_license` と同じ扱い。mcp-tools-model-manager.md）。生成物の内容は選別しない（ローカルでの利用は利用者の責任）。
@@ -264,6 +267,7 @@ func (*Service) DeleteUserModel(ctx, path string) error
 | Wan 2.2 14B に `wan_2.1_vae` を使うこと、Chroma の `CLIPLoader type=chroma` ＋ fp8mixed の組み合わせ | **未検証**（ComfyUI の公式手順・作者のワークフローに基づく。実機で確かめる） |
 | NSFW MASTER の作者の原本のライセンス | **未確認**（HF のミラーのタグは MIT。Civitai の API はライセンス名を返さない。全体を非商用として扱う） |
 | 実物の Hugging Face からの 6 モデルの取得（数十 GB）と、ミラーが消えたときの実際の応答 | **未実施**（偽の HF で、404 の `ErrSourceGone`・SHA-256 の不一致・共有ファイルの 1 回取得は確認） |
+| 年齢確認がオフのときの生成の断りを、実物の ComfyUI・クラウドに対して確かめること（呼び出しが届かないこと） | **未検証**（断りは Adapter の手前で、偽のバックエンドの呼び出し回数 0 と、同梱エンジンが起動しないことで確認。実機の ComfyUI・実アカウントは使っていない） |
 | 実物の Hugging Face からの任意のモデルの導入（Issue #842: 実物の API・CDN・gated・GPU・SDXL の生成） | **未検証**（[model-manager-hf.md](model-manager-hf.md) §10。偽の HF で確認） |
 
 ## 12. 画面と MCP ツール
