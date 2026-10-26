@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/aspectsize"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/gptimage"
 )
 
 // The vendors' request formats below are the published ones at the time of writing
@@ -33,44 +34,8 @@ func unmarshal(a api, data []byte, into any) error {
 	return nil
 }
 
-// imagenBackend calls Imagen 4 through the Gemini API (models/*:predict).
-type imagenBackend struct{ api }
-
-func (b imagenBackend) GenerateImage(ctx context.Context, apiModel string, req ImageRequest) (ImageResult, error) {
-	key, err := b.key()
-	if err != nil {
-		return ImageResult{}, err
-	}
-	body, _ := json.Marshal(map[string]any{
-		"instances":  []map[string]any{{"prompt": req.Prompt}},
-		"parameters": map[string]any{"sampleCount": 1, "aspectRatio": req.AspectRatio},
-	})
-	data, err := b.request(ctx, http.MethodPost, b.baseURL+"/v1beta/models/"+url.PathEscape(apiModel)+":predict",
-		jsonHeader(map[string]string{"x-goog-api-key": key}), body, maxJSONBytes)
-	if err != nil {
-		return ImageResult{}, err
-	}
-	var out struct {
-		Predictions []struct {
-			Bytes string `json:"bytesBase64Encoded"`
-			Mime  string `json:"mimeType"`
-		} `json:"predictions"`
-	}
-	if err := unmarshal(b.api, data, &out); err != nil {
-		return ImageResult{}, err
-	}
-	if len(out.Predictions) == 0 {
-		return ImageResult{}, b.empty("image (the prompt may have been filtered)")
-	}
-	img, err := decodeB64(b.api, out.Predictions[0].Bytes)
-	if err != nil {
-		return ImageResult{}, err
-	}
-	return ImageResult{Data: img, MimeType: orDefault(out.Predictions[0].Mime, "image/png")}, nil
-}
-
-// geminiImageBackend calls Nano Banana (Gemini image models, models/*:generateContent), which
-// also edits: the reference images travel as inline data next to the prompt.
+// geminiImageBackend calls Nano Banana and Nano Banana Lite (Gemini image models, models/*:generateContent),
+// which also edit: the reference images travel as inline data next to the prompt.
 type geminiImageBackend struct{ api }
 
 func (b geminiImageBackend) GenerateImage(ctx context.Context, apiModel string, req ImageRequest) (ImageResult, error) {
@@ -124,8 +89,11 @@ func (b geminiImageBackend) GenerateImage(ctx context.Context, apiModel string, 
 	return ImageResult{}, b.empty("image (the prompt may have been filtered)")
 }
 
-// openAIImageBackend calls GPT Image (images/generations, and images/edits with references).
-type openAIImageBackend struct{ api }
+// openAIImageBackend calls GPT Image (images/generations, edits with references) with the quality profile (§9.2).
+type openAIImageBackend struct {
+	api
+	quality gptimage.Quality
+}
 
 func (b openAIImageBackend) GenerateImage(ctx context.Context, apiModel string, req ImageRequest) (ImageResult, error) {
 	key, err := b.key()
@@ -135,7 +103,7 @@ func (b openAIImageBackend) GenerateImage(ctx context.Context, apiModel string, 
 	auth := map[string]string{"Authorization": "Bearer " + key}
 	var data []byte
 	if len(req.Inputs) == 0 {
-		body, _ := json.Marshal(map[string]any{"model": apiModel, "prompt": req.Prompt, "size": aspectsize.OpenAI(req.AspectRatio), "n": 1})
+		body, _ := json.Marshal(map[string]any{"model": apiModel, "prompt": req.Prompt, "size": aspectsize.OpenAI(req.AspectRatio), "quality": b.quality, "n": 1})
 		data, err = b.request(ctx, http.MethodPost, b.baseURL+"/v1/images/generations", jsonHeader(auth), body, maxJSONBytes)
 	} else {
 		var buf bytes.Buffer
@@ -143,6 +111,7 @@ func (b openAIImageBackend) GenerateImage(ctx context.Context, apiModel string, 
 		_ = w.WriteField("model", apiModel)
 		_ = w.WriteField("prompt", req.Prompt)
 		_ = w.WriteField("size", aspectsize.OpenAI(req.AspectRatio))
+		_ = w.WriteField("quality", string(b.quality))
 		for i, in := range req.Inputs {
 			h := textproto.MIMEHeader{}
 			h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="image[]"; filename="input%d%s"`, i, extFor(in.MimeType)))
@@ -166,6 +135,7 @@ func (b openAIImageBackend) GenerateImage(ctx context.Context, apiModel string, 
 		Data []struct {
 			B64 string `json:"b64_json"`
 		} `json:"data"`
+		Usage json.RawMessage `json:"usage"` // decoded apart (gptimage.ParseUsage): a bad usage must not lose the image
 	}
 	if err := unmarshal(b.api, data, &out); err != nil {
 		return ImageResult{}, err
@@ -177,7 +147,7 @@ func (b openAIImageBackend) GenerateImage(ctx context.Context, apiModel string, 
 	if err != nil {
 		return ImageResult{}, err
 	}
-	return ImageResult{Data: img, MimeType: "image/png"}, nil
+	return ImageResult{Data: img, MimeType: "image/png", ActualCost: gptimage.ActualCost(apiModel, gptimage.ParseUsage(out.Usage))}, nil
 }
 
 // fluxBackend calls FLUX.2 (Black Forest Labs API): submit, poll the returned URL, download.

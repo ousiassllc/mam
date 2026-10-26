@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -50,8 +51,9 @@ func (r *run) logTail() string {
 	return "\n--- エンジンのログの末尾 ---\n" + t
 }
 
-// launch starts the child in a group that is killed with mam, and returns once it has started.
-func launch(spec Spec, logger *slog.Logger) (*run, error) {
+// launch starts the child in a group that is killed with mam, and returns once it has started. With pipes, the
+// child's standard input and output are the pipes (its output is the protocol, so only its standard error is logged).
+func launch(spec Spec, logger *slog.Logger, pipes *childPipes) (*run, error) {
 	r := &run{tail: &tail{}, done: make(chan struct{})}
 	var out io.Writer = r.tail
 	if spec.LogPath != "" {
@@ -63,7 +65,10 @@ func launch(spec Spec, logger *slog.Logger) (*run, error) {
 	}
 	cmd := exec.Command(spec.Command, spec.Args...) // #nosec G204 -- the command is the engine the catalog pinned, in mam's own directory
 	cmd.Dir, cmd.Stdout, cmd.Stderr = spec.Dir, out, out
-	cmd.Env = append(os.Environ(), spec.Env...)
+	if pipes != nil {
+		cmd.Stdin, cmd.Stdout = pipes.childIn, pipes.childOut
+	}
+	cmd.Env = append(inherited(spec.DropEnv), spec.Env...)
 	cmd.WaitDelay = 2 * time.Second // a grandchild that keeps the pipe open must not hold Wait
 	prepare(cmd)
 	grp, err := newGroup()
@@ -87,6 +92,7 @@ func launch(spec Spec, logger *slog.Logger) (*run, error) {
 				_ = cmd.Process.Kill()
 			}
 		}
+		pipes.closeChildEnds() // the child has its own copies now (or never started)
 		started <- err
 		if err != nil && cmd.Process == nil {
 			r.finish(-1)
@@ -170,4 +176,28 @@ func (t *tail) String() string {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	return strings.ToValidUTF8(string(t.buf), "")
+}
+
+// inherited is the environment of mam without the variables in drop.
+func inherited(drop []string) []string {
+	env := os.Environ()
+	if len(drop) == 0 {
+		return env
+	}
+	out := env[:0:0]
+	for _, kv := range env {
+		name, _, _ := strings.Cut(kv, "=")
+		if !slices.ContainsFunc(drop, func(d string) bool { return sameEnvName(d, name) }) {
+			out = append(out, kv)
+		}
+	}
+	return out
+}
+
+// sameEnvName compares two variable names: without case on Windows, where the environment has none.
+func sameEnvName(a, b string) bool {
+	if runtime.GOOS == "windows" {
+		return strings.EqualFold(a, b)
+	}
+	return a == b
 }

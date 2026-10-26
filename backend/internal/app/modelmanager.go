@@ -3,8 +3,6 @@ package app
 import (
 	"fmt"
 	"log/slog"
-	"os"
-	"path/filepath"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
@@ -22,12 +20,9 @@ import (
 func newModelManager(lm *localmodels.Service, adapter *modeladapter.Adapter, jobs *jobqueue.Queue, table *repository.JobRepository,
 	keys credential.Store, backends localbackends.Options, logger *slog.Logger,
 ) (*modelmanager.Service, error) {
-	exe, err := os.Executable()
+	exe, err := executablePath()
 	if err != nil {
-		return nil, fmt.Errorf("find the executable: %w", err)
-	}
-	if resolved, err := filepath.EvalSymlinks(exe); err == nil {
-		exe = resolved
+		return nil, err
 	}
 	m, err := modelmanager.New(modelmanager.Deps{
 		Layout: store.ForExecutable(exe), Jobs: jobs, JobTable: table, Models: lm, Adapter: adapter,

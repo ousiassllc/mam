@@ -172,17 +172,17 @@ func TestBatchRecordsNoTakeLedgerOrAsset(t *testing.T) {
 }
 
 func TestBatchStoresInputsAndGivesEachModelOnlyWhatItUses(t *testing.T) {
-	r := gentesttest.New(t)
+	r := gentesttest.New(t, gentesttest.WithNoReferenceModel())
 	id, _, err := r.Svc.StageReference(gentesttest.PNG)
 	require.NoError(t, err)
-	req := imageReq("imagen-4", "nano-banana")
+	req := imageReq(string(gentesttest.NoReferenceModel), "nano-banana")
 	req.References = []gentest.RefInput{{Source: gentest.FromStaged, ID: id}}
 	ref, err := r.Confirmed(req)
 	require.NoError(t, err)
 	st := r.Wait(ref.BatchID)
 
 	require.Equal(t, gentest.StateSucceeded, st.State)
-	assert.Empty(t, r.Fake.CallsOf(domain.ModelImagen4)[0].Image.Inputs, "Imagen 4 gets none")
+	assert.Empty(t, r.Fake.CallsOf(gentesttest.NoReferenceModel)[0].Image.Inputs, "a model without image inputs gets none")
 	assert.Len(t, r.Fake.CallsOf(domain.ModelNanoBanana)[0].Image.Inputs, 1)
 	assert.Empty(t, st.Results[0].UsedInputs)
 	assert.Len(t, st.Results[1].UsedInputs, 1)

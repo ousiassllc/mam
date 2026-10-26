@@ -1,12 +1,13 @@
 // Package modelmgr holds the handlers of the model manager screen (paths.ModelManager, spec/api/endpoints-model-manager.md):
-// the ComfyUI engine, the model catalog with the license consent, the Hugging Face token, the view of an external
-// ComfyUI and the trial generations. It is a package of its own because handler is at its size limit; like handler it
+// the ComfyUI engine, the model catalog with the license consent, the view of an external
+// ComfyUI and the trial generations (the import from Hugging Face and its token are the child package hfimport). It is a package of its own because handler is at its size limit; like handler it
 // depends on the service layer and the web layer only. Every action calls modelmanager.Service (the same
 // service the MCP tools call), answers with the section it changed, and turns the service's refusals into a status
 // and a message with modelmanager.Refuse. view.go builds what the screen draws.
 package modelmgr
 
 import (
+	"context"
 	"errors"
 	"net/http"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmview"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/hfimport"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
 	"github.com/ousiassllc/mam/backend/internal/web/pages"
@@ -47,13 +49,15 @@ func Register(engine *gin.Engine, svc *modelmanager.Service, g *gentest.Service)
 	engine.POST(paths.ModelManagerPart("engine", "detect"), h.DetectComfyUI)
 	engine.POST(paths.ModelManagerPart("jobs", ":job", "cancel"), h.CancelJob)
 
+	engine.GET(paths.ModelManagerPart("adult", "confirm"), h.AdultConfirm)
+	engine.PUT(paths.ModelManagerPart("adult"), h.SetAdult)
+
 	engine.GET(paths.ModelManagerPart("models"), h.Models)
 	engine.GET(paths.ModelManagerPart("models", ":id", "consent"), h.Consent)
 	engine.POST(paths.ModelManagerPart("models", ":id", "install"), h.InstallModel)
 	engine.DELETE(paths.ModelManagerPart("models", ":id"), h.DeleteModel)
 
-	engine.PUT(paths.ModelManagerPart("hf-token"), h.SetToken)
-	engine.DELETE(paths.ModelManagerPart("hf-token"), h.ClearToken)
+	hfimport.Register(engine, svc, func(ctx context.Context) view.TrialPanel { return h.trialPanel(ctx, view.TrialForm{}, "", "") })
 	engine.GET(paths.ModelManagerPart("external"), h.External)
 
 	engine.GET(paths.ModelManagerPart("trials"), h.Trials)

@@ -17,6 +17,8 @@ import (
 	"fmt"
 	"log/slog"
 	"runtime"
+	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -30,6 +32,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/extract"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/fetch"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/gpu"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/hf"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/proc"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/store"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/track"
@@ -104,6 +107,9 @@ type Deps struct {
 	Extract extract.Extractor
 	// Fetch are the options of the downloads (client, URL check); Progress is set per download.
 	Fetch fetch.Options
+	// HFBase is the Hugging Face site the import reads (default hf.DefaultBase; a test points it at a fake). The reads follow the
+	// rules of Fetch (client, URL check, token host).
+	HFBase string
 	// FreeBytes reports the free disk space at a path (default fsutil.FreeBytes).
 	FreeBytes func(path string) (uint64, error)
 	// Command builds the launch of the engine for a port (default: the installed engine).
@@ -128,10 +134,13 @@ type Service struct {
 	tracker *track.Tracker
 	bundled bool
 
-	mu      sync.Mutex
-	active  map[string]string // target -> job id of the queued or running job
-	targets map[string]*sync.Mutex
-	cancels map[string]context.CancelCauseFunc // job id -> cancel of a running install
+	mu     sync.Mutex
+	active map[string]string // target -> job id of the queued or running job
+	// activeDest is where an import job writes (models/<folder>/<name>), by target.
+	activeDest map[string]string
+	targets    map[string]*sync.Mutex
+	cancels    map[string]context.CancelCauseFunc // job id -> cancel of a running install
+	hf         *hf.Client
 }
 
 // New returns the Service. It reads the record (a broken one is an error).
@@ -162,7 +171,8 @@ func New(d Deps) (*Service, error) {
 		return nil, err
 	}
 	s := &Service{Deps: d, cat: d.Catalog, state: st, bundled: d.Platform == "windows", tracker: track.New(),
-		active: map[string]string{}, targets: map[string]*sync.Mutex{}, cancels: map[string]context.CancelCauseFunc{}}
+		active: map[string]string{}, activeDest: map[string]string{}, targets: map[string]*sync.Mutex{}, cancels: map[string]context.CancelCauseFunc{}}
+	s.hf = hf.New(hf.Options{Base: d.HFBase, HTTP: d.Fetch.Client, CheckURL: d.Fetch.CheckURL, AuthHost: d.Fetch.AuthHost, Token: s.huggingFaceToken})
 	s.engine = &engine.Installer{Layout: d.Layout, Engine: d.Catalog.Engine, Store: st, Extract: d.Extract, Fetch: d.Fetch, FreeBytes: d.FreeBytes, Now: d.Now}
 	build := d.Command
 	if build == nil {
@@ -186,4 +196,26 @@ func (s *Service) lock(target string) func() {
 	s.mu.Unlock()
 	m.Lock()
 	return m.Unlock
+}
+
+// lockDests serializes the installs that write the same files: it takes the lock of every destination (the paths below the data
+// directory, compared without case, in one order so that two installs never wait for each other) and returns the unlock. Two
+// jobs of different targets (a catalog model and an import, or two imports) that resolve to one file thus run one after the other,
+// and the second finds the first one's file and record when it checks the destination again.
+func (s *Service) lockDests(rels ...string) func() {
+	keys := make([]string, 0, len(rels))
+	for _, rel := range rels {
+		keys = append(keys, "dest:"+strings.ToLower(rel))
+	}
+	slices.Sort(keys)
+	keys = slices.Compact(keys)
+	unlocks := make([]func(), 0, len(keys))
+	for _, k := range keys {
+		unlocks = append(unlocks, s.lock(k))
+	}
+	return func() {
+		for i := len(unlocks) - 1; i >= 0; i-- {
+			unlocks[i]()
+		}
+	}
 }

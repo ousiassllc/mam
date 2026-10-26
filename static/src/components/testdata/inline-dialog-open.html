@@ -1,0 +1,8 @@
+<section role="dialog" aria-labelledby="dlg-title" tabindex="-1" data-inline-dialog data-return-focus="#card">
+  <h3 id="dlg-title">確認</h3>
+  <form hx-get="/src/components/testdata/inline-dialog-refused.html" hx-target="#mm-dialog" hx-swap="innerHTML">
+    <input type="checkbox" id="dlg-agree"/>
+    <button type="submit" id="dlg-submit">確認して表示する</button>
+    <button type="button" id="dlg-close" data-inline-dialog-close hx-get="/src/components/testdata/inline-dialog-empty.html" hx-target="#mm-dialog" hx-swap="innerHTML">閉じる</button>
+  </form>
+</section>

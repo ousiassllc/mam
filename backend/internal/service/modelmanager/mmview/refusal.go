@@ -23,7 +23,7 @@ const (
 	RefusalNone RefusalKind = iota
 	// RefusalInvalid: the input cannot be accepted as it is (422).
 	RefusalInvalid
-	// RefusalConflict: the state does not allow it now (409): a missing consent or engine, a running install, a
+	// RefusalConflict: the state does not allow it now (409): a missing consent, age confirmation or engine, a running install, a
 	// pinned setting file, an OS without the bundled engine.
 	RefusalConflict
 	// RefusalNotFound: no such model, job or trial (404).
@@ -44,6 +44,8 @@ func Refuse(err error) (RefusalKind, string) {
 		return RefusalNotFound, "対象が見つかりません。画面を読み込み直してください"
 	case errors.Is(err, modelmanager.ErrConsentRequired):
 		return RefusalConflict, "このモデルのライセンスに同意してから導入してください"
+	case errors.Is(err, modelmanager.ErrAdultNotConfirmed):
+		return RefusalConflict, modelmanager.AdultGateMessage
 	case errors.Is(err, modelmanager.ErrBusy):
 		return RefusalConflict, "導入または試し生成が実行中です。終わってから、またはキャンセルしてからやり直してください"
 	case errors.Is(err, modelmanager.ErrNoGPU):

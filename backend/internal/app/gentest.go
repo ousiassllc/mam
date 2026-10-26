@@ -31,6 +31,7 @@ func newGentest(cfg config.Config, db *repository.DB, jobs *jobqueue.Queue, adap
 			_, msg := mmview.Refuse(err)
 			return msg
 		},
+		Hidden: services.ModelManager.HidesModel,
 		Logger: logger,
 	})
 	g.Register()

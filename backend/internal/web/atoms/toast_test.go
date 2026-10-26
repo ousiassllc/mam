@@ -40,3 +40,16 @@ func TestToast_EscapesTheMessage(t *testing.T) {
 	assert.NotContains(t, sb.String(), "<img")
 	assert.Contains(t, sb.String(), `data-toast-message`)
 }
+
+func TestSuccessToastOOB_IsAStatusInTheRegionThatTheCloseButtonRemoves(t *testing.T) {
+	var sb strings.Builder
+	require.NoError(t, atoms.SuccessToastOOB("API キーを保存しました").Render(context.Background(), &sb))
+	html := sb.String()
+
+	assert.Contains(t, html, `id="toast-region" hx-swap-oob="beforeend"`)
+	assert.Contains(t, html, `role="status" data-toast`)
+	assert.NotContains(t, html, `role="alert"`, "nothing is wrong")
+	assert.Contains(t, html, "API キーを保存しました")
+	assert.Contains(t, html, `data-toast-close`)
+	assert.Contains(t, html, `data-toast-message`, "the same message is not shown twice (toast.ts drops a repeat)")
+}

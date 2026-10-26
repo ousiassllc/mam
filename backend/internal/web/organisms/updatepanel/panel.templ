@@ -34,7 +34,7 @@ type Data struct {
 
 // Section is the "バージョンとアップデート" section of the global settings screen: Panel under its title.
 templ Section(d Data) {
-	@molecules.SettingsSection("バージョンとアップデート", description(d)) {
+	@molecules.SettingsSectionAt(molecules.HeadingNone, "バージョンとアップデート", description(d)) {
 		@Panel(d)
 	}
 }

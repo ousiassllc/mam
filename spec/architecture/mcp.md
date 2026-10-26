@@ -22,7 +22,7 @@ app.Run ─ serve ─┬─ router（gin。画面と /api/v1。127.0.0.1:8787）
 | ツールの土台 | `mcp/mcpkit` | `Registrar`（型付きの `Read` / `Write` / `Destroy`、エラー写像）、`Jobs`（§6）、`Files`（§7）。ツールのパッケージに依存しない |
 | ツール | `mcp/tools/<ドメイン>` | 各パッケージが `Register(r *mcpkit.Registrar, svc *service.Services)` を公開する。一覧は `mcp/toolset/all.go` の 1 か所だけ |
 | トークン | `service/mcptoken`、`repository/mcptoken` | 発行・失効・検証（§4） |
-| 設定画面 | `service/mcpsettings`、`web/handler/mcpsettings`、`web/organisms/mcppanel` | 「MCP サーバー」の区画（§9） |
+| 設定画面 | `service/mcpsettings`、`web/handler/settings/mcp`、`web/organisms/settings/mcp` | 「MCP サーバー」の区画（§9） |
 
 `app.startMCP` が `server.New`（ツールの登録）と `Manager.Start`（リスナーを開く）を行い、`defer` で `Manager.Close` を呼ぶ。サービスを閉じる前に止まる。MCP を開けなくてもアプリは動き続ける（ログに残し、設定画面に「待ち受けていません」と出す）。
 
@@ -70,7 +70,7 @@ app.Run ─ serve ─┬─ router（gin。画面と /api/v1。127.0.0.1:8787）
 
 ## 9. 設定画面
 
-`GET /settings` の「MCP サーバー」区画（`#mcp-panel`。HTMX の断片で、他の区画と同じ作り）。待ち受け中のアドレス（`http://<addr>/mcp`）、`Problem` の警告、待ち受け先のフォーム（`PUT /settings/mcp/bind`。候補は `127.0.0.1` とこのマシンの tailnet の IP）、トークンの発行フォーム（`POST /settings/mcp/tokens`。発行の応答に値を**一度だけ**出す。`Cache-Control: no-store`）、トークン一覧（名前・先頭 8 文字・作成・最終利用・状態・失効ボタン `DELETE /settings/mcp/tokens/:id`）。CSRF は他の画面操作と同じ（`X-CSRF-Token`）。ルートは `app` が MCP サーバーを起動したときだけ存在する。
+`/settings/mcp`（分類「MCP サーバー」。`#mcp-panel`）。待ち受け先のカード（`#mcp-bind-row`。待ち受け中のアドレス `http://<addr>/mcp` と `Problem` の警告、「変更」で開くモーダル `GET /settings/mcp/bind/edit`・`PUT /settings/mcp/bind`。候補は `127.0.0.1` とこのマシンの tailnet の IP）、トークンの表（名前・先頭 8 文字・作成・最終利用・状態・失効ボタン `DELETE /settings/mcp/tokens/:id`）、トークンの発行のモーダル（`GET /settings/mcp/tokens/new`・`POST /settings/mcp/tokens`。発行の応答 201 は、モーダルの本文を発行したトークンの表示に替える。値は**この応答に一度だけ**出し、コピーのボタンが付く。モーダルを閉じると本文ごと消え、表の行・再読み込み・履歴には値が出ない。`Cache-Control: no-store`）。CSRF は他の画面操作と同じ（`X-CSRF-Token`）。ルートは `app` が MCP サーバーを起動したときだけ存在する。画面の作りは [../components/settings-screen-categories.md](../components/settings-screen-categories.md) §4。
 
 ## 10. セキュリティの根拠
 
@@ -87,3 +87,4 @@ app.Run ─ serve ─┬─ router（gin。画面と /api/v1。127.0.0.1:8787）
 | 版 | 日付 | 変更内容 | 変更理由 |
 |----|------|---------|---------|
 | 1.0 | 2026-10-24 | 新規作成。別リスナー・待ち受け先の規則・トークン・Origin 検査・ジョブ・ファイルのチケット・API キー・設定画面を定めた | Issue #830。画面の全操作を MCP（Streamable HTTP、tailnet 経由）で操作できるようにする基盤 |
+| 1.1 | 2026-10-25 | §9 を、待ち受け先のカード・トークンの表・2 つのモーダルの作りに改めた（`GET /settings/mcp/bind/edit`・`/settings/mcp/tokens/new`）。トークンの値を一度だけ出す決まりは変えていない | Issue #847 ②-6 |

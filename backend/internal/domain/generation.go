@@ -18,18 +18,18 @@ type ModelName string
 
 // The built-in image models (the first four), then the video models.
 const (
-	ModelImagen4     ModelName = "imagen-4"
-	ModelNanoBanana  ModelName = "nano-banana"
-	ModelFlux2       ModelName = "flux-2"
-	ModelGPTImage2   ModelName = "gpt-image-2"
-	ModelKling3      ModelName = "kling-3.0"
-	ModelSeedance2   ModelName = "seedance-2.0"
-	ModelRunwayGen45 ModelName = "runway-gen-4.5"
+	ModelNanoBanana     ModelName = "nano-banana"
+	ModelNanoBananaLite ModelName = "nano-banana-lite" // Gemini 3.1 Flash Lite Image: the cheap, fast 1K model
+	ModelFlux2          ModelName = "flux-2"
+	ModelGPTImage2      ModelName = "gpt-image-2"
+	ModelKling3         ModelName = "kling-3.0"
+	ModelSeedance2      ModelName = "seedance-2.0"
+	ModelRunwayGen45    ModelName = "runway-gen-4.5"
 )
 
 // ImageModels lists the image models (built-in, then defined on registered endpoints: modelreg).
 func ImageModels() []ModelName {
-	return mr.Image(ModelImagen4, ModelNanoBanana, ModelFlux2, ModelGPTImage2)
+	return mr.Image(ModelNanoBanana, ModelNanoBananaLite, ModelFlux2, ModelGPTImage2)
 }
 
 // VideoModels lists the video models that have an adapter (built-in, then defined on registered endpoints).

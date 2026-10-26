@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/agegate"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/limitclock"
 	"github.com/ousiassllc/mam/backend/internal/agent/resilience"
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -45,6 +46,8 @@ type state struct {
 // Adapter is the Model Adapter. It is safe for concurrent use.
 type Adapter struct {
 	state atomic.Pointer[state]
+	// Gate refuses an adult model while the age confirmation is off: before any call of a route, and as unavailable.
+	Gate  agegate.Gate
 	now   func() time.Time
 	sleep func(ctx context.Context, d time.Duration) error
 	// timeLimit maps the limit of a video job to the one that is applied; nil applies it as given.
@@ -111,6 +114,9 @@ func (a *Adapter) Config() Config { return a.state.Load().cfg }
 // backend or no API key is stored for its vendor; domain.ExcludedCircuitOpen: its vendor's circuit
 // breaker is open), or "" when it can. It does not consume the breaker's probe call.
 func (a *Adapter) Unavailable(m domain.ModelName) string {
+	if a.Gate.Refuses(m) {
+		return agegate.Excluded
+	}
 	st := a.state.Load()
 	backend := any(st.backends.Video[m])
 	if backend == nil {
@@ -152,6 +158,9 @@ func (a *Adapter) EstimateImage(purpose ImagePurpose) float64 {
 func (a *Adapter) GenerateImage(ctx context.Context, purpose ImagePurpose, req ImageRequest) (ImageOutput, error) {
 	st := a.state.Load()
 	route := st.cfg.ImageRouteFor(purpose)
+	if err := a.Gate.Check(route.Primary.Model, route.Fallback.Model); err != nil {
+		return ImageOutput{}, err
+	}
 	targets := []ImageTarget{route.Primary}
 	if route.Fallback != route.Primary {
 		targets = append(targets, route.Fallback)
@@ -180,7 +189,7 @@ func (a *Adapter) GenerateImage(ctx context.Context, purpose ImagePurpose, req I
 			return backend.GenerateImage(ctx, apiModel, treq)
 		}, string(t.Model))
 		if err == nil {
-			return ImageOutput{ImageResult: res, Model: t.Model, FellBack: i > 0, EstimatedCost: st.cfg.ImageCost(t.Model)}, nil
+			return ImageOutput{ImageResult: res, Model: t.Model, FellBack: i > 0, EstimatedCost: st.cfg.ImageCostFor(t.Model, req.AspectRatio)}, nil
 		}
 		if ctx.Err() != nil {
 			return ImageOutput{}, ctx.Err()
@@ -195,6 +204,9 @@ func (a *Adapter) GenerateImage(ctx context.Context, purpose ImagePurpose, req I
 // primary is unavailable (breaker open, or failed after the retries) it renders the job again for
 // the alternative and calls that (F-14 "Different Model", model-adapters.md §7).
 func (a *Adapter) GenerateVideo(ctx context.Context, primary, fallback VideoTarget, job VideoJob) (VideoOutput, error) {
+	if err := a.Gate.Check(primary.Model, fallback.Model); err != nil {
+		return VideoOutput{}, err
+	}
 	st := a.state.Load()
 	if a.timeLimit != nil {
 		job.MaxTime = a.timeLimit(job.MaxTime)
@@ -236,18 +248,6 @@ func (a *Adapter) GenerateVideo(ctx context.Context, primary, fallback VideoTarg
 		a.logFailover(t.Model, i, len(targets), err)
 	}
 	return VideoOutput{}, fmt.Errorf("modeladapter: every video model failed: %w", routeFailure(failures))
-}
-
-// routeFailure joins what every model of a route failed with (see resilience.RouteFailure): only a
-// route whose models were all skipped by their breakers is an ErrCircuitOpen.
-func routeFailure(failures []error) error {
-	return resilience.RouteFailure(failures, func(err error) bool { return errors.Is(err, ErrCircuitOpen) })
-}
-
-func (a *Adapter) logFailover(m domain.ModelName, i, n int, err error) {
-	if i+1 < n {
-		a.logger.Warn("model failed, routing to the alternative", "model", m, "err", err)
-	}
 }
 
 // call runs fn against one vendor: it skips the vendor while its breaker is open, takes a

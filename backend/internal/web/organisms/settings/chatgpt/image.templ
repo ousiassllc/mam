@@ -1,0 +1,94 @@
+package chatgpt
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+const imageTitle = "ChatGPT 画像生成（非公式）"
+
+// imageCard is the card of the unofficial image generation: the risks, the switch, and its own sign-in once it is on.
+templ imageCard(d Data) {
+	@settingsui.CardItem(imageCardOf(d)) {
+		if d.ImageEnabled {
+			if !d.Image.SignedIn || d.Image.NeedsRelogin {
+				@openLogin(imageKind, imageLoginLabel(d.Image), imageTitle, !d.Image.SignedIn)
+			}
+			if d.Image.SignedIn {
+				@logoutButton(imageKind, imageTitle)
+			}
+		}
+	}
+}
+
+func imageLoginLabel(a Account) string {
+	if a.SignedIn && a.NeedsRelogin {
+		return "ログインし直す"
+	}
+	return "ログイン"
+}
+
+func imageCardOf(d Data) settingsui.Card {
+	c := accountCard(imageKind, imageTitle, "画像生成だけに使う、非公式の経路です。既定はオフで、オンにするときにリスクの確認が要ります。", d.Image, imageDetails(d))
+	if !d.ImageEnabled {
+		c.Tone, c.State = atoms.BadgeNeutral, "オフ"
+	}
+	return c
+}
+
+templ imageDetails(d Data) {
+	<div class="flex flex-col gap-3" data-testid="chatgpt-image">
+		<div class="flex flex-col gap-2 rounded-md border border-amber-500/50 px-3 py-2" data-testid="chatgpt-risks">
+			<p class="text-sm font-medium text-amber-300">オンにする前に、次のリスクを確認してください。</p>
+			<ul class="list-disc pl-5 text-sm">
+				for _, r := range d.Risks {
+					<li>{ r }</li>
+				}
+			</ul>
+			<p class="text-xs text-neutral-400">
+				<a class="underline" href={ templ.SafeURL(usageURL) } target="_blank" rel="noopener noreferrer">Manage usage</a>
+				で、プランの利用状況を確認できます。
+			</p>
+		</div>
+		if d.ImageEnabled {
+			<p class="flex items-center gap-2 text-sm" data-testid="chatgpt-image-state">
+				@atoms.Badge(atoms.BadgeWarn, "オン")
+				画像の用途に、この経路のモデルを選べます。
+			</p>
+			@accountStatus(imageKind, d.Image)
+			@loginFailed(d.Image.Login)
+			<form
+				hx-put={ paths.ChatGPTImageEnabled() }
+				hx-target={ panelTarget }
+				hx-swap="outerHTML"
+				hx-sync="this:drop"
+				hx-disabled-elt="find button[type=submit]"
+			>
+				<input type="hidden" name="enabled" value="false"/>
+				@atoms.SmallButtonFor(atoms.ToneNeutral, "オフにする", imageTitle, templ.Attributes{"type": "submit", "data-testid": "chatgpt-image-off"})
+			</form>
+		} else {
+			<p class="flex items-center gap-2 text-sm text-neutral-300" data-testid="chatgpt-image-state">
+				@atoms.Badge(atoms.BadgeNeutral, "オフ")
+				オフの間は、この経路を一切呼びません。
+			</p>
+			<form
+				class="flex flex-col gap-2"
+				hx-put={ paths.ChatGPTImageEnabled() }
+				hx-target={ panelTarget }
+				hx-swap="outerHTML"
+				hx-sync="this:drop"
+				hx-disabled-elt="find button[type=submit]"
+				hx-confirm="非公式の経路で画像を生成します。予告なく使えなくなることがあり、公式のプレビューでは画像生成はサポート外で、ChatGPT のプランの利用上限を消費します。オンにしますか？"
+			>
+				<input type="hidden" name="enabled" value="true"/>
+				<label class="flex items-center gap-2 text-sm">
+					<input type="checkbox" name="acknowledge_risks" value="true" required data-testid="chatgpt-image-ack"/>
+					上のリスクを理解したうえで、オンにします
+				</label>
+				@atoms.SmallButtonFor(atoms.TonePrimary, "オンにする", imageTitle, templ.Attributes{"type": "submit", "data-testid": "chatgpt-image-on"})
+			</form>
+		}
+	</div>
+}

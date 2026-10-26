@@ -9,7 +9,6 @@
 package localcfg
 
 import (
-	"errors"
 	"fmt"
 	"net/netip"
 	"net/url"
@@ -49,8 +48,6 @@ const (
 	DefaultConcurrency    = 1
 	DefaultTimeoutComfyUI = 3600
 	DefaultTimeoutCompat  = 900
-	maxTimeoutSeconds     = 24 * 3600
-	maxConcurrency        = 64
 )
 
 // Endpoint is a server the user registered. BaseURL may be plain http and may name localhost, a LAN
@@ -119,45 +116,49 @@ func SplitKey(key string) (endpoint, name string, ok bool) {
 // the Model Adapter, and the credential.Store key of the endpoint's API key.
 func VendorKey(endpoint string) string { return "endpoint:" + endpoint }
 
-// ValidateEndpoint checks one endpoint of the settings; a nil error means it can be used.
+// ValidateEndpoint checks one endpoint of the settings; a nil error means it can be used. Each problem is an
+// *EndpointError.
 func ValidateEndpoint(name string, e Endpoint) []error {
 	var errs []error
-	where := "endpoints " + name
+	where := "endpoints " + name + ": "
+	problem := func(field EndpointField, reason error, text string) {
+		errs = append(errs, &EndpointError{Field: field, Reason: reason, text: where + text})
+	}
 	if !ValidName(name) {
-		errs = append(errs, fmt.Errorf("%s: the name must be 1-63 characters of a-z, 0-9, '.', '_' or '-'", where))
+		problem(FieldName, nil, "the name must be 1-63 characters of a-z, 0-9, '.', '_' or '-'")
 	}
 	if !e.Kind.Valid() {
-		errs = append(errs, fmt.Errorf("%s: kind %q is not comfyui or openai-compat", where, e.Kind))
+		problem(FieldKind, nil, fmt.Sprintf("kind %q is not comfyui or openai-compat", e.Kind))
 	}
 	if err := CheckBaseURL(e.BaseURL); err != nil {
-		errs = append(errs, fmt.Errorf("%s: base_url: %w", where, err))
+		problem(FieldBaseURL, err, "base_url: "+err.Error())
 	}
-	if e.MaxConcurrency < 0 || e.MaxConcurrency > maxConcurrency {
-		errs = append(errs, fmt.Errorf("%s: max_concurrency must be within 0-%d", where, maxConcurrency))
+	if e.MaxConcurrency < 0 || e.MaxConcurrency > MaxConcurrency {
+		problem(FieldMaxConcurrency, nil, fmt.Sprintf("max_concurrency must be within 0-%d", MaxConcurrency))
 	}
-	if e.TimeoutSeconds < 0 || e.TimeoutSeconds > maxTimeoutSeconds {
-		errs = append(errs, fmt.Errorf("%s: timeout_seconds must be within 0-%d", where, maxTimeoutSeconds))
+	if e.TimeoutSeconds < 0 || e.TimeoutSeconds > MaxTimeoutSeconds {
+		problem(FieldTimeoutSeconds, nil, fmt.Sprintf("timeout_seconds must be within 0-%d", MaxTimeoutSeconds))
 	}
 	return errs
 }
 
-// CheckBaseURL accepts an http or https URL with a host and no user name, query or fragment. A literal
-// link-local address is refused here for a clear message; the connection itself is guarded at connect time
-// (safefetch.NewEndpointClient), which also catches a name that resolves to one.
+// CheckBaseURL accepts an http or https URL with a host and no user name, query or fragment; the refusal is one of the
+// ErrBaseURL values. A literal link-local address is refused here for a clear message; the connection itself is guarded
+// at connect time (safefetch.NewEndpointClient), which also catches a name that resolves to one.
 func CheckBaseURL(raw string) error {
 	u, err := url.Parse(raw)
 	if err != nil || u.Hostname() == "" {
-		return errors.New("must be a URL such as http://127.0.0.1:8188")
+		return ErrBaseURLShape
 	}
 	switch {
 	case u.Scheme != "http" && u.Scheme != "https":
-		return errors.New("must start with http:// or https://")
+		return ErrBaseURLScheme
 	case u.User != nil || u.RawQuery != "" || u.Fragment != "":
-		return errors.New("must not contain a user name, query or fragment")
+		return ErrBaseURLParts
 	}
 	if ip, err := netip.ParseAddr(strings.Trim(u.Hostname(), "[]")); err == nil {
 		if ip = ip.Unmap(); ip.IsLinkLocalUnicast() || ip.IsUnspecified() || ip.IsMulticast() {
-			return errors.New("link-local, unspecified and multicast addresses cannot be used")
+			return ErrBaseURLLinkLocal
 		}
 	}
 	return nil

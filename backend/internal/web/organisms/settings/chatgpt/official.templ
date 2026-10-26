@@ -1,0 +1,107 @@
+package chatgpt
+
+import (
+	"time"
+
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
+)
+
+const officialTitle = "Sign in with ChatGPT（公式・テキスト生成）"
+
+// accountState is the badge of a login system: its tone and what it says.
+func accountState(kind string, a Account) (atoms.BadgeTone, string) {
+	switch {
+	case a.Login != nil && a.Login.Pending:
+		return atoms.BadgeInfo, "ログイン待ち"
+	case !a.SignedIn:
+		return atoms.BadgeNeutral, "未ログイン"
+	case a.NeedsRelogin:
+		return atoms.BadgeError, "再ログインが必要"
+	case kind == officialKind && !a.PlanUsageGranted:
+		return atoms.BadgeError, "プランの利用が未許可"
+	}
+	return atoms.BadgeOK, "ログイン済み"
+}
+
+// officialCard is the card of the official sign-in (text generation).
+templ officialCard(d Data) {
+	@settingsui.CardItem(accountCard(officialKind, officialTitle, "個人（Go / Plus / Pro）の ChatGPT のプランで、テキスト生成を使います。", d.Official, officialDetails(d))) {
+		if !d.Official.SignedIn || d.Official.NeedsRelogin || !d.Official.PlanUsageGranted {
+			@openLogin(officialKind, loginLabel(d.Official), officialTitle, !d.Official.SignedIn)
+		}
+		if d.Official.SignedIn {
+			@openModels(officialKind, modelsURL(officialKind), officialTitle)
+			@logoutButton(officialKind, officialTitle)
+		}
+	}
+}
+
+// accountCard is the card of a login system: its state and, when it is not signed in, the line that says so.
+func accountCard(kind, title, description string, a Account, details templ.Component) settingsui.Card {
+	tone, state := accountState(kind, a)
+	c := settingsui.Card{
+		ID: cardID(kind), TestID: "chatgpt-card", Attrs: map[string]any{"data-kind": kind}, TitleLevel: 4,
+		Title: title, Description: description, Tone: tone, State: state, Details: details,
+	}
+	return c
+}
+
+templ officialDetails(d Data) {
+	<div class="flex flex-col gap-2" data-testid="chatgpt-official">
+		@accountStatus(officialKind, d.Official)
+		@loginFailed(d.Official.Login)
+		@codexGuidance(d)
+		if d.Official.SignedIn && !d.Official.NeedsRelogin {
+			<p class="text-xs text-neutral-400" data-testid="chatgpt-using-plan">
+				{ "Using ChatGPT plan" }
+				／
+				<a class="underline" href={ templ.SafeURL(usageURL) } target="_blank" rel="noopener noreferrer">Manage usage</a>
+				（使用量の確認と上限の設定は ChatGPT の画面で行います）
+			</p>
+		}
+		<p class="text-xs text-neutral-400" data-testid="chatgpt-official-remote">
+			ブラウザは、mam が動いているこの PC で開きます。tailnet などの別のマシンから操作しているときは、先にこの PC でログインしてください（公式のログインにはデバイスコードの方式がありません）。
+		</p>
+	</div>
+}
+
+// accountStatus is who is signed in to a system, or that nobody is.
+templ accountStatus(kind string, a Account) {
+	<div class="flex flex-col gap-1 text-sm" data-testid={ "chatgpt-status-" + kind }>
+		if !a.SignedIn {
+			<p class="text-neutral-300">ログインしていません</p>
+		} else {
+			<p>
+				<span class="font-medium" data-testid="chatgpt-email">{ a.Email }</span>
+				if a.Plan != "" {
+					<span class="ml-2 text-xs text-neutral-400" data-testid="chatgpt-plan">プラン: { a.Plan }</span>
+				}
+			</p>
+			if a.NeedsRelogin {
+				<p class="text-amber-300" role="alert" data-testid="chatgpt-relogin">ログインの有効期限が切れました。もう一度ログインしてください。それまでこの経路は使われません。</p>
+			}
+			if !a.ExpiresAt.IsZero() {
+				<p class="text-xs text-neutral-400">アクセストークンの期限: <time datetime={ a.ExpiresAt.UTC().Format(time.RFC3339) }>{ a.ExpiresAt.Local().Format("2006-01-02 15:04") }</time>（期限の前に自動で更新します）</p>
+			}
+		}
+	</div>
+}
+
+// loginFailed is why the last login ended without success (a pending login is shown by the modal).
+templ loginFailed(l *Login) {
+	if l != nil && l.Failed && !l.Pending {
+		<p class="text-sm text-red-300" role="alert" data-testid="chatgpt-login-failed">{ l.Message }</p>
+	}
+}
+
+// codexGuidance points an official sign-in that cannot work (the organization refused it, or the account is a workspace
+// one) to the Codex card. The official login stays as it is: nothing is signed out.
+templ codexGuidance(d Data) {
+	if (d.Official.Login != nil && d.Official.Login.UseCodex) || (d.Official.SignedIn && d.Official.WorkspacePlan) {
+		<div class="flex flex-col gap-2 rounded-md border border-amber-500/50 px-3 py-2" data-testid="chatgpt-use-codex">
+			<p class="text-sm text-amber-300">組織のアカウントは Codex 経由のログインを使ってください。Business / Enterprise / Edu のワークスペースのアカウントは、OpenAI の仕様で、公式の方式ではプランを使えません。</p>
+			<a class="w-fit text-sm text-indigo-300 underline" href={ templ.SafeURL("#" + cardID(codexKind)) } data-testid="chatgpt-use-codex-button">Codex 経由のカードへ</a>
+		</div>
+	}
+}

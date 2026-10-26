@@ -1,0 +1,45 @@
+{
+ "id": "img2video-wan22-14b-lora",
+ "label": "Wan 2.2 14B + LoRA: 先頭フレームから動画",
+ "media": "video",
+ "description": "Wan 2.2 I2V 14B（wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors と wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors）の高ノイズ用・低ノイズ用のそれぞれに LoraLoaderModelOnly で LoRA（NSFW-22-H-e8.safetensors と NSFW-22-L-e8.safetensors、強さ 1）を重ねて、先頭フレーム 1 枚から動画を作る標準ノードだけのワークフロー。サンプラーは img2video-wan22-14b と同じ（20 ステップ・euler/simple・cfg 3.5、10 ステップ目で切り替え）。ModelSamplingSD3 の shift は 8、16fps、VAE は Wan 2.1 の wan_2.1_vae.safetensors（ComfyUI の公式手順に従う）。GPU では未実行（構造のテストのみ）。",
+ "model": {
+  "media": "video",
+  "video": {"durations": [3, 4, 5], "resolutions": ["480p", "720p"]},
+  "workflow": {
+   "graph": {
+    "95": {"class_type": "UNETLoader", "inputs": {"unet_name": "wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors", "weight_dtype": "default"}},
+    "96": {"class_type": "UNETLoader", "inputs": {"unet_name": "wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors", "weight_dtype": "default"}},
+    "97": {"class_type": "LoraLoaderModelOnly", "inputs": {"lora_name": "NSFW-22-H-e8.safetensors", "strength_model": 1, "model": ["95", 0]}},
+    "98": {"class_type": "LoraLoaderModelOnly", "inputs": {"lora_name": "NSFW-22-L-e8.safetensors", "strength_model": 1, "model": ["96", 0]}},
+    "38": {"class_type": "CLIPLoader", "inputs": {"clip_name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors", "type": "wan", "device": "default"}},
+    "39": {"class_type": "VAELoader", "inputs": {"vae_name": "wan_2.1_vae.safetensors"}},
+    "54": {"class_type": "ModelSamplingSD3", "inputs": {"shift": 8, "model": ["97", 0]}},
+    "55": {"class_type": "ModelSamplingSD3", "inputs": {"shift": 8, "model": ["98", 0]}},
+    "6": {"class_type": "CLIPTextEncode", "inputs": {"text": "", "clip": ["38", 0]}},
+    "7": {"class_type": "CLIPTextEncode", "inputs": {"text": "", "clip": ["38", 0]}},
+    "56": {"class_type": "LoadImage", "inputs": {"image": "example.png"}},
+    "57": {"class_type": "WanImageToVideo", "inputs": {"width": 832, "height": 480, "length": 81, "batch_size": 1, "positive": ["6", 0], "negative": ["7", 0], "vae": ["39", 0], "start_image": ["56", 0]}},
+    "3": {"class_type": "KSamplerAdvanced", "inputs": {"add_noise": "enable", "noise_seed": 0, "steps": 20, "cfg": 3.5, "sampler_name": "euler", "scheduler": "simple", "start_at_step": 0, "end_at_step": 10, "return_with_leftover_noise": "enable", "model": ["54", 0], "positive": ["57", 0], "negative": ["57", 1], "latent_image": ["57", 2]}},
+    "4": {"class_type": "KSamplerAdvanced", "inputs": {"add_noise": "disable", "noise_seed": 0, "steps": 20, "cfg": 3.5, "sampler_name": "euler", "scheduler": "simple", "start_at_step": 10, "end_at_step": 10000, "return_with_leftover_noise": "disable", "model": ["55", 0], "positive": ["57", 0], "negative": ["57", 1], "latent_image": ["3", 0]}},
+    "8": {"class_type": "VAEDecode", "inputs": {"samples": ["4", 0], "vae": ["39", 0]}},
+    "58": {"class_type": "CreateVideo", "inputs": {"fps": 16, "images": ["8", 0]}},
+    "59": {"class_type": "SaveVideo", "inputs": {"filename_prefix": "video/mam", "format": "auto", "codec": "auto", "video": ["58", 0]}}
+   },
+   "assignments": [
+    {"param": "prompt", "node": "6", "input": "text"},
+    {"param": "negative_prompt", "node": "7", "input": "text"},
+    {"param": "seed", "node": "3", "input": "noise_seed"},
+    {"param": "width", "node": "57", "input": "width"},
+    {"param": "height", "node": "57", "input": "height"},
+    {"param": "frames", "node": "57", "input": "length"},
+    {"param": "fps", "node": "58", "input": "fps"},
+    {"param": "first_frame", "node": "56", "input": "image"}
+   ],
+   "output_node": "59",
+   "fps": 16,
+   "frames_step": 4,
+   "size_multiple": 16
+  }
+ }
+}

@@ -4,27 +4,20 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/layout"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
-	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
-// ProjectsPage is the landing page: start a new Project from a first message, or open an existing one.
+// ProjectsPage is the landing page: start a new Project from a first message, or open an existing one, and the tool
+// cards (ToolSection) under the Project list. The whole page is one column of max-w-5xl (spec/components/home-screen.md §2).
 templ ProjectsPage(csrfToken string, projects []domain.Project, form organisms.NewProjectFormData) {
 	@layout.AppLayout("プロジェクト", csrfToken) {
-		<main class="mx-auto max-w-3xl p-8">
+		<main class="mx-auto max-w-5xl p-8">
 			<h1 class="text-2xl font-semibold">mam</h1>
 			<p class="mb-6 mt-1 text-neutral-400">Autonomous Shot Studio</p>
 			@organisms.NewProjectForm(form)
 			@organisms.ProjectImportForm(organisms.ProjectImportFormData{})
-			<p class="mt-2 text-sm text-neutral-400">
-				<a href={ templ.SafeURL(paths.Reviews()) } class="underline hover:text-neutral-100">受け取ったレビューパッケージを開く（レビュアー向け）</a>
-			</p>
 			<h2 class="mt-8 text-sm font-medium text-neutral-300">プロジェクト</h2>
 			@organisms.ProjectList(projects)
-			<p class="mt-4 text-sm"><a href={ templ.SafeURL(paths.Analytics()) } class="text-neutral-400 hover:text-neutral-100">制作指標（すべてのプロジェクト）</a></p>
-			<p class="mt-2 text-sm"><a href={ templ.SafeURL(paths.Settings()) } class="text-neutral-400 hover:text-neutral-100">設定（API キー・モデル）</a></p>
-			<p class="mt-2 text-sm"><a href={ templ.SafeURL(paths.ModelManager()) } class="text-neutral-400 hover:text-neutral-100">モデルマネージャー（ローカルモデルの導入・試し生成）</a></p>
-			<p class="mt-2 text-sm"><a href={ templ.SafeURL(paths.GenerationTest()) } class="text-neutral-400 hover:text-neutral-100">生成テスト（モデルとプロンプトを並べて比べる）</a></p>
-			<p class="mt-2 text-sm"><a href={ templ.SafeURL(paths.Nodes()) } class="text-neutral-400 hover:text-neutral-100">ノード（ComfyUI のワークフロー）</a></p>
+			@ToolSection()
 		</main>
 	}
 }
