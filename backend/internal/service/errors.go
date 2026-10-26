@@ -15,8 +15,7 @@ import (
 var (
 	// ErrNotFound means the addressed Project, message or asset does not exist.
 	ErrNotFound = errors.New("service: not found")
-	// ErrConflict means the request is valid but the target is not in the required
-	// state (for example, an approval card that was already answered). HTTP 409.
+	// ErrConflict means the request is valid but the target is not in the required state (e.g. a card already answered). HTTP 409.
 	ErrConflict = errors.New("service: conflict")
 	// ErrBusy means the Shot is already being generated. HTTP 409.
 	ErrBusy = errors.New("service: shot is being generated")
@@ -26,8 +25,7 @@ var (
 	ErrNoVideo = errors.New("service: take has no video")
 	// ErrNotJudged means the Take has no Judge result to repair from. HTTP 409.
 	ErrNotJudged = errors.New("service: take has not been judged")
-	// ErrAccepted means the Take passed the Judge and the minimum scores of the Retry Policy, so there is
-	// nothing to repair. HTTP 409.
+	// ErrAccepted means the Take passed the Judge and the Retry Policy minimums: nothing to repair. HTTP 409.
 	ErrAccepted = errors.New("service: take is accepted")
 	// ErrBudgetExceeded means not even one Take fits the budget ceiling. HTTP 402.
 	ErrBudgetExceeded = errors.New("service: budget ceiling exceeded")

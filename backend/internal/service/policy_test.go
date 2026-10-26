@@ -61,8 +61,7 @@ func TestSetQualityPolicy_RoutesTheVideoModelsAndTakeCountAccordingToThePolicy(t
 	require.NoError(t, err)
 	f.generate(t)
 	assert.Equal(t, 4, f.count(t, `SELECT COUNT(*) FROM take WHERE model_name = 'runway-gen-4.5'`), "MAX QUALITY -> more Takes on Runway Gen-4.5")
-	var params string
-	require.NoError(t, f.query(t, `SELECT model_parameters FROM take WHERE model_name = 'runway-gen-4.5' LIMIT 1`).Scan(&params))
+	params := f.text(t, `SELECT model_parameters FROM take WHERE model_name = 'runway-gen-4.5' LIMIT 1`)
 	assert.Contains(t, params, `"720p"`)
 }
 
@@ -171,7 +170,7 @@ func TestGenerateShot_StopsAtMaxGenerationTimeAndReportsIt(t *testing.T) {
 }
 
 func TestGenerateShot_WarnsBeforeStartingWhenTheDiskIsTooSmall(t *testing.T) {
-	g := newGenFixtureWithFreeBytes(t, true, func(string) (uint64, error) { return 1 << 20, nil }) // 1 MiB free
+	g := newGenFixtureWithDeps(t, true, func(string) (uint64, error) { return 1 << 20, nil }, nil) // 1 MiB free
 
 	g.generate(t)
 

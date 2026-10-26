@@ -5,7 +5,11 @@
 # Usage: scripts/package-windows.sh <version>      <version> is X.Y.Z (the tag v<version> without the v)
 # Output:
 #   bin/mam-<version>-windows-amd64.exe             portable mam.exe (Wails window front)
-#   bin/mam-<version>-windows-amd64-setup.exe       NSIS installer (includes the WebView2 bootstrapper)
+#   bin/mam-<version>-windows-amd64-setup.exe       per-user NSIS installer ($LOCALAPPDATA\Programs\MAM, no administrator
+#                                                   rights; includes the WebView2 bootstrapper)
+# The exe embeds backend/internal/version.Version = "v<version>" (the auto update compares it with the latest release) and
+# version.ReleasePublicKey = $RELEASE_SIGNING_PUBLIC_KEY (base64 of the raw 32-byte ed25519 public key that verifies
+# checksums.txt.sig; optional: empty = not embedded, the app then skips the signature check with a warning).
 # Needs: go, node/npm, wails3 (the version of go.mod's github.com/wailsapp/wails/v3), makensis, jq.
 # templ is not needed on PATH: it runs through `go run` at the version of go.mod's github.com/a-h/templ (like `make generate`).
 set -euo pipefail
@@ -28,6 +32,12 @@ have="$(wails3 version 2>&1 | tr -d '[:space:]')"
 if [[ "$have" != "$want" ]]; then
   echo "wails3 $have does not match go.mod ($want): go install github.com/wailsapp/wails/v3/cmd/wails3@$want" >&2
   exit 1
+fi
+
+# The Taskfile reads RELEASE_SIGNING_PUBLIC_KEY from the environment for the -X ldflags.
+export RELEASE_SIGNING_PUBLIC_KEY="${RELEASE_SIGNING_PUBLIC_KEY:-}"
+if [[ -z "$RELEASE_SIGNING_PUBLIC_KEY" ]]; then
+  echo "warning: RELEASE_SIGNING_PUBLIC_KEY is empty: the exe is built WITHOUT the release public key (auto update signature check skipped)" >&2
 fi
 
 # Never the templ that is first on PATH: a stale binary rewrites the committed *_templ.go differently from go.mod's runtime

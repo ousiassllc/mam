@@ -17,11 +17,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/ousiassllc/mam/backend/internal/chatgpt"
 	"github.com/ousiassllc/mam/backend/internal/config"
+	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
 	"github.com/ousiassllc/mam/backend/internal/logging"
+	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/router"
-	"github.com/ousiassllc/mam/backend/internal/router/settingsroutes"
+	"github.com/ousiassllc/mam/backend/internal/version"
 	"github.com/ousiassllc/mam/static"
 )
 
@@ -36,6 +39,11 @@ type Options struct {
 	// OnReady, when not nil, is called with the base URL (http://127.0.0.1:<port>) once the server
 	// accepts connections. It runs on the goroutine of Run, so it must not block.
 	OnReady func(url string)
+	// Update, when not nil, turns the automatic update on (the Wails front only).
+	Update *UpdateOptions
+	// OpenBrowser opens a URL in the default browser of this machine (never in the Wails window): the browser login
+	// of "Sign in with ChatGPT" uses it. Nil: the login screen shows the URL to open by hand.
+	OpenBrowser func(url string) error
 }
 
 // staticFS serves assets from disk when --static-dir is set (make dev), else from the binary.
@@ -82,24 +90,35 @@ func Run(ctx context.Context, opts Options) error {
 	}
 	defer func() { _ = closeLog.Close() }()
 
-	if err := serve(ctx, cfg, logger, opts.OnReady); err != nil {
+	if err := serve(ctx, cfg, logger, opts); err != nil {
 		logger.Error("server terminated", "err", err)
 		return err
 	}
 	return nil
 }
 
-func serve(ctx context.Context, cfg config.Config, logger *slog.Logger, onReady func(url string)) error {
-	services, cleanup, err := buildServices(ctx, cfg, logger)
+func serve(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Options) error {
+	gpt := chatgpt.New(chatgpt.Options{
+		Keys: credential.NewKeyring(), DataDir: cfg.DataDir, Open: opts.OpenBrowser, Logger: logger,
+		CodexLayout: codexLayout(logger), Version: version.Version,
+	})
+	defer gpt.Close() // the Codex app-server is a child process of mam
+	services, db, cleanup, err := buildServices(ctx, cfg, logger, gpt)
 	if err != nil {
 		return err
 	}
 	defer cleanup()
 
 	gin.SetMode(gin.ReleaseMode)
-	llmFile, llmPinned := cfg.LLMSettingsFile()
-	modelFile, modelPinned := cfg.ModelSettingsFile()
-	settings := settingsroutes.New(llmFile, llmPinned, modelFile, modelPinned)
+	settings := newSettings(cfg, services, gpt, logger)
+	if opts.Update != nil {
+		var stop func()
+		settings.Update, stop = startUpdates(ctx, opts.Update, services, repository.NewJobRepository(db), logger)
+		defer stop() // before cleanup: the check in flight is cancelled while the services are still there
+	}
+	var stopMCP func()
+	settings.MCP, stopMCP = startMCP(cfg, services, settings, db, logger)
+	defer stopMCP() // before cleanup: tool calls in flight use the services
 	engine := router.New(services, router.Options{Logger: logger, Static: staticFS(cfg), Settings: settings})
 
 	ln, err := listenLoopback(cfg.Port)
@@ -108,8 +127,8 @@ func serve(ctx context.Context, cfg config.Config, logger *slog.Logger, onReady 
 	}
 	return runHTTP(ctx, engine, ln, logger, func(url string) {
 		logger.Info("server started", "url", url, "data_dir", cfg.DataDir)
-		if onReady != nil {
-			onReady(url)
+		if opts.OnReady != nil {
+			opts.OnReady(url)
 		}
 	})
 }

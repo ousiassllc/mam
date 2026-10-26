@@ -124,8 +124,11 @@ type Command struct {
 	Operations []Operation
 }
 
-// system is the system prompt; systemTemplate with the video models filled in from domain.VideoModels.
-var system = strings.Replace(systemTemplate, videoModelsPlaceholder, quotedChoices(domain.VideoModels()), 1)
+// systemPrompt is systemTemplate with the video models filled in from domain.VideoModels. It is built for every
+// call: the models the user registered come and go while the app runs.
+func systemPrompt() string {
+	return strings.Replace(systemTemplate, videoModelsPlaceholder, quotedChoices(domain.VideoModels()), 1)
+}
 
 const videoModelsPlaceholder = "{{video_models}}"
 
@@ -185,7 +188,7 @@ func (i *Interpreter) Interpret(ctx context.Context, in Input) (Command, error) 
 		Question   string      `json:"question"`
 		Operations []Operation `json:"operations"`
 	}
-	out, err := llm.CompleteJSON[raw](ctx, i.llm, llm.AgentCommandInterpreter, llm.Request{System: system, User: userPrompt(in)})
+	out, err := llm.CompleteJSON[raw](ctx, i.llm, llm.AgentCommandInterpreter, llm.Request{System: systemPrompt(), User: userPrompt(in)})
 	if err != nil {
 		return Command{}, fmt.Errorf("command interpreter: %w", err)
 	}

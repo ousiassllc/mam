@@ -9,11 +9,14 @@ count_mode: all # 変更しない
 default_excludes: true
 language: ja
 
-# 除外は生成物・ロックファイル・ライセンス全文（LICENSE、THIRD_PARTY_NOTICES.md）のみ。手書きソースは除外しない。
+# 除外は生成物・ロックファイル・ライセンス全文（LICENSE、THIRD_PARTY_NOTICES.md）と、ドキュメント（Markdown）のみ。手書きのソースコードは除外しない。
 ignore:
   - "**/*_templ.go"
   - "static/src/dist/**"
   - "static/package-lock.json"
+  - "go.sum"
   # ライセンス全文（LICENSE は AGPL-3.0 の公式本文、THIRD_PARTY_NOTICES.md は scripts/third-party-notices.sh の生成物）
   - "LICENSE"
   - "THIRD_PARTY_NOTICES.md"
+  # ドキュメント（Markdown）は行数チェックの対象外（#850 の判断）
+  - "**/*.md"

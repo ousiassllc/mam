@@ -1,0 +1,122 @@
+package chatgpt
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+const (
+	usageURL     = "https://chatgpt.com/settings/usage"
+	panelTarget  = "#chatgpt-panel"
+	officialKind = "official"
+	imageKind    = "image"
+	codexKind    = "codex"
+)
+
+// CardsID is the id of the list of the cards.
+const CardsID = "chatgpt-cards"
+
+// Section is the "ChatGPT でログイン" section of the category: Panel under its title (an h3).
+templ Section(d Data) {
+	@molecules.SettingsSectionAt(molecules.HeadingH3, "ChatGPT でログイン", "ChatGPT のサブスク（Plus / Pro など）を、API キーの代わりに使えます。テキスト生成には方式が 2 つあります。個人（Go / Plus / Pro）は OpenAI 公式の Sign in with ChatGPT（プロバイダー「chatgpt-subscription」）、組織（Business / Enterprise / Edu）のアカウントは Codex 経由（プロバイダー「chatgpt-codex」）です。LLM の割り当てで選ぶと使われます。画像生成は非公式の経路で、別のログインと確認が必要です。") {
+		@Panel(d)
+	}
+}
+
+// SectionIf is Section, or nothing when d is nil.
+templ SectionIf(d *Data) {
+	if d != nil {
+		@Section(*d)
+	}
+}
+
+// Panel is the cards of the three login systems: official, image generation (unofficial), Codex, in that order. Every
+// action that is not the login answers with the panel itself; while a login is pending, or the Codex engine is being
+// downloaded, the panel polls itself. The login and the model list are modals (login.templ, models.templ).
+templ Panel(d Data) {
+	<section
+		id="chatgpt-panel"
+		class="flex flex-col gap-4"
+		if d.OOB {
+			hx-swap-oob="true"
+		}
+		if polling(d) {
+			hx-get={ paths.ChatGPTSettings() }
+			hx-trigger="every 2s"
+			hx-swap="outerHTML"
+		}
+	>
+		if d.Notice != "" {
+			<p class="text-sm text-emerald-300" role="status" data-testid="chatgpt-notice">{ d.Notice }</p>
+		}
+		if d.Error != "" {
+			<p class="text-sm text-red-300" role="alert" data-testid="chatgpt-error">{ d.Error }</p>
+		}
+		<ul id={ CardsID } role="list" class="flex flex-col gap-4">
+			@officialCard(d)
+			@imageCard(d)
+			@codexCard(d)
+		</ul>
+	</section>
+}
+
+func polling(d Data) bool {
+	return (d.Official.Login != nil && d.Official.Login.Pending) || (d.Image.Login != nil && d.Image.Login.Pending) ||
+		(d.Codex.Login != nil && d.Codex.Login.Pending) || d.Codex.Engine.Install.Running
+}
+
+// cardID is the id of the card of a login system.
+func cardID(kind string) string { return "chatgpt-card-" + kind }
+
+// openLogin is the button that opens the login modal of a system. label names what it does ("ログイン", "ログインし直す").
+templ openLogin(kind, label, subject string, primary bool) {
+	if primary {
+		@atoms.SmallButtonFor(atoms.TonePrimary, label, subject, openLoginAttrs(kind))
+	} else {
+		@atoms.SmallButtonFor(atoms.ToneNeutral, label, subject, openLoginAttrs(kind))
+	}
+}
+
+func openLoginAttrs(kind string) map[string]any {
+	a := modal.OpenAttrs(paths.ChatGPTLogin(kind), "chatgpt-login-"+kind)
+	a["data-testid"] = "chatgpt-login-" + kind
+	return a
+}
+
+// openModels is the button that opens the list of the models of the signed-in account.
+templ openModels(kind, url, subject string) {
+	@atoms.SmallButtonFor(atoms.ToneNeutral, "利用できるモデルを表示", subject, openModelsAttrs(kind, url))
+}
+
+func openModelsAttrs(kind, url string) map[string]any {
+	a := modal.OpenAttrs(url, "chatgpt-models-"+kind)
+	a["data-testid"] = "chatgpt-models-show-" + kind
+	return a
+}
+
+// loginLabel is what the login button of the official system says.
+func loginLabel(a Account) string {
+	if a.SignedIn && a.NeedsRelogin {
+		return "ログインし直す"
+	}
+	if a.SignedIn && !a.PlanUsageGranted {
+		return "プランの利用を許可する"
+	}
+	return "ログイン"
+}
+
+templ logoutButton(kind, subject string) {
+	<form
+		hx-delete={ paths.ChatGPTAccount(kind) }
+		hx-target={ panelTarget }
+		hx-swap="outerHTML"
+		hx-sync="this:drop"
+		hx-params="none"
+		hx-disabled-elt="find button[type=submit]"
+		hx-confirm="ログアウトします。保存したトークンを削除し、可能なら OpenAI 側でも失効させます。よろしいですか？"
+	>
+		@atoms.SmallButtonFor(atoms.ToneDanger, "ログアウト", subject, templ.Attributes{"type": "submit", "data-testid": "chatgpt-logout-" + kind})
+	</form>
+}

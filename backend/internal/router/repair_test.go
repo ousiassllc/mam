@@ -29,13 +29,13 @@ func TestRepair_PostMakesANewTakeThatIsTracedAndLeavesTheRepairedTakeAsItIs(t *t
 	j.director()
 	ids := j.generateAndJudge()
 	source := ids[0]
-
+	j.video.gate = make(chan struct{}) // the repair's video call waits here, so the answer is read while REPAIRING
 	rec := j.form(http.MethodPost, "/takes/"+source+"/repair", nil)
 	require.Equal(t, http.StatusAccepted, rec.Code, rec.Body.String())
 	assert.Contains(t, rec.Body.String(), `id="shot-`+j.shotID+`"`, "the Shot card")
 	assert.Contains(t, rec.Body.String(), "Repair 中", "REPAIRING")
+	close(j.video.gate)
 	j.waitTakes(4)
-
 	require.Eventually(t, func() bool {
 		return j.count(`SELECT COUNT(*) FROM repair_action WHERE resulting_take_id IS NOT NULL`) == 1
 	}, 30*time.Second, 10*time.Millisecond)
@@ -119,7 +119,7 @@ func TestRepair_AutoModeRepairsUntilMaxRetriesThenEscalates(t *testing.T) {
 	assert.Equal(t, 5, j.count(`SELECT COUNT(*) FROM take`), "3 takes and 2 retries")
 	assert.Equal(t, 2, j.count(`SELECT COUNT(*) FROM repair_action WHERE resulting_take_id IS NOT NULL`))
 	assert.Equal(t, 2, j.count(`SELECT COUNT(*) FROM repair_action`), "the escalation is no repair")
-	time.Sleep(200 * time.Millisecond)
+	require.Eventually(t, func() bool { return j.count(`SELECT COUNT(*) FROM job WHERE status IN ('queued', 'running')`) == 0 }, 30*time.Second, 10*time.Millisecond, "every job ends")
 	assert.Equal(t, 1, j.count(`SELECT COUNT(*) FROM chat_message WHERE kind = 'escalation'`), "asked once")
 	assert.Equal(t, 5, j.count(`SELECT COUNT(*) FROM take`), "and nothing is generated afterwards")
 }

@@ -1,0 +1,109 @@
+package molecules
+
+import "github.com/ousiassllc/mam/backend/internal/web/atoms"
+
+// ToolCardCTA is the call to action of a ToolCard whose CTA is empty.
+const ToolCardCTA = "開く"
+
+// ToolCard is a card that links to one screen (spec/components/shared-ui-parts.md §3): an icon, the title, a one-line
+// description, an optional status and a call to action. The whole card is one link; nothing focusable is inside it.
+type ToolCard struct {
+	// ID is the base of the element ids ("generation-test": lowercase letters and hyphens).
+	ID          string
+	Href        templ.SafeURL
+	Icon        atoms.IconName
+	Title       string // the name of the link
+	Description string
+	// CTA is drawn only (aria-hidden); empty means ToolCardCTA.
+	CTA string
+	// StatusURL, when set, is read after the page is shown (hx-get, hx-trigger="load") and its fragment (ToolStatus)
+	// replaces the content of the status box. The box stays empty while the request runs and when it fails.
+	StatusURL string
+	// Status is the status the server already knows (the cards of the settings overview): one Badge each, drawn with the
+	// card. A card may have both: the lines first, then what StatusURL reads.
+	Status []StatusLine
+}
+
+// StatusLine is one line of the status of a card: a Badge whose text says the state in words (the tone only helps).
+type StatusLine struct {
+	Tone atoms.BadgeTone
+	Text string
+}
+
+// hasStatusBox is whether the card has a status box at all: lines the server knows or a URL to read.
+func (c ToolCard) hasStatusBox() bool { return c.StatusURL != "" || len(c.Status) > 0 }
+
+func (c ToolCard) cta() string {
+	if c.CTA == "" {
+		return ToolCardCTA
+	}
+	return c.CTA
+}
+
+func (c ToolCard) elementID(part string) string { return "tool-" + c.ID + "-" + part }
+
+// describedBy names the description and, when the card has a status box, the box (it may be empty).
+func (c ToolCard) describedBy() string {
+	if !c.hasStatusBox() {
+		return c.elementID("desc")
+	}
+	return c.elementID("desc") + " " + c.elementID("status")
+}
+
+// ToolCardItem is a ToolCard as a list item; the cards of one group go into one <ul role="list">.
+templ ToolCardItem(c ToolCard) {
+	<li>
+		<a
+			id={ "tool-" + c.ID }
+			href={ c.Href }
+			data-testid="tool-card"
+			data-tool={ c.ID }
+			aria-labelledby={ c.elementID("title") }
+			aria-describedby={ c.describedBy() }
+			class="flex h-full min-h-36 flex-col gap-3 rounded-lg border border-neutral-800 bg-neutral-900 p-4 transition-colors hover:border-neutral-600 hover:bg-neutral-800/60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 motion-reduce:transition-none"
+		>
+			<span class="flex items-center gap-3">
+				<span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-neutral-800 text-indigo-300" aria-hidden="true">
+					@atoms.Icon(c.Icon, "")
+				</span>
+				<span id={ c.elementID("title") } class="text-base font-semibold text-neutral-100">{ c.Title }</span>
+			</span>
+			<span id={ c.elementID("desc") } class="text-pretty text-sm text-neutral-400">{ c.Description }</span>
+			if len(c.Status) == 0 && c.StatusURL != "" {
+				<span
+					id={ c.elementID("status") }
+					class="mt-auto flex min-h-6 flex-col items-start gap-1 text-xs text-neutral-300"
+					hx-get={ c.StatusURL }
+					hx-trigger="load"
+					hx-target="this"
+					hx-swap="innerHTML"
+				></span>
+			} else if len(c.Status) > 0 {
+				<span id={ c.elementID("status") } class="mt-auto flex min-h-6 flex-col items-start gap-1 text-xs text-neutral-300">
+					@ToolStatus(c.Status)
+					if c.StatusURL != "" {
+						<span
+							id={ c.elementID("live") }
+							class="flex flex-col items-start gap-1"
+							hx-get={ c.StatusURL }
+							hx-trigger="load"
+							hx-target="this"
+							hx-swap="innerHTML"
+						></span>
+					}
+				</span>
+			}
+			<span class={ "inline-flex items-center gap-1 text-sm font-medium text-indigo-300", templ.KV("mt-auto", !c.hasStatusBox()) } aria-hidden="true">
+				{ c.cta() }
+				@atoms.Icon(atoms.IconChevronRight, "h-4 w-4 shrink-0")
+			</span>
+		</a>
+	</li>
+}
+
+// ToolStatus is the fragment that fills the status box of a card: the lines, one Badge each. No line draws nothing.
+templ ToolStatus(lines []StatusLine) {
+	for _, l := range lines {
+		@atoms.Badge(l.Tone, l.Text)
+	}
+}

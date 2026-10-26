@@ -81,3 +81,15 @@ func TestLocker_TryLockDoesNotTakeTheLockOfAWaiter(t *testing.T) {
 	assert.False(t, ok)
 	unlock()
 }
+
+func TestLocker_BusyWhileAKeyIsHeld(t *testing.T) {
+	var k keylock.Locker
+	assert.False(t, k.Busy())
+
+	unlock, err := k.Lock(context.Background(), "a")
+	require.NoError(t, err)
+	assert.True(t, k.Busy())
+
+	unlock()
+	assert.False(t, k.Busy(), "an entry lives only while its key is held or waited for")
+}

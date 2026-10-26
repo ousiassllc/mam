@@ -1,0 +1,70 @@
+package pages
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/layout"
+	gentest "github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// generationNav is the links between the pages of the generation test.
+templ generationNav(current string) {
+	<nav class="flex flex-wrap gap-4 text-sm" aria-label="生成テスト">
+		for _, l := range []struct{ Key, Label, Href string }{
+			{"new", "生成する", paths.GenerationTest()},
+			{"history", "履歴", paths.GenerationTestHistory()},
+			{"prompts", "プロンプト履歴", paths.GenerationTestPrompts()},
+		} {
+			if l.Key == current {
+				<span class="font-medium text-neutral-100" aria-current="page">{ l.Label }</span>
+			} else {
+				<a class="text-neutral-400 underline hover:text-neutral-100" href={ templ.SafeURL(l.Href) }>{ l.Label }</a>
+			}
+		}
+	</nav>
+}
+
+// generationShell is the frame of every page of the generation test: it belongs to no Project.
+templ generationShell(title, csrfToken, current, lead string) {
+	@layout.AppLayout(title, csrfToken) {
+		<main class="mx-auto flex max-w-5xl flex-col gap-6 p-8">
+			<div>
+				@atoms.BackLink(paths.Home(), "← プロジェクト一覧に戻る")
+				<h1 class="mb-1 mt-3 text-xl font-semibold">{ title }</h1>
+				<p class="text-sm text-neutral-400">{ lead }</p>
+			</div>
+			@generationNav(current)
+			{ children... }
+		</main>
+	}
+}
+
+// GenerationTestPage is GET /generation-test: choose models and prompts, see the estimate, run, compare.
+templ GenerationTestPage(csrfToken string, c gentest.Compose) {
+	@generationShell("生成テスト", csrfToken, "new", "プロジェクトに属さない画像・動画の生成です。モデルとプロンプトを組み合わせて並べて比べ、気に入った結果だけプロジェクトに取り込めます。結果は Take・コスト台帳には入りません。") {
+		@gentest.ComposeForm(c)
+		@gentest.ConfirmEmpty()
+		@gentest.BatchEmpty()
+	}
+}
+
+// GenerationHistoryPage is GET /generation-test/history.
+templ GenerationHistoryPage(csrfToken string, h gentest.History) {
+	@generationShell("生成テストの履歴", csrfToken, "history", "これまでの生成結果（新しい順）。削除するまで残ります。") {
+		@gentest.HistoryList(h)
+	}
+}
+
+// GenerationResultPage is GET /generation-test/results/:id.
+templ GenerationResultPage(csrfToken string, d gentest.Detail) {
+	@generationShell("生成結果", csrfToken, "history", "この結果を作った設定と入力です。プロジェクトに取り込めます。") {
+		@gentest.ResultDetail(d)
+	}
+}
+
+// GenerationPromptsPage is GET /generation-test/prompts.
+templ GenerationPromptsPage(csrfToken string, p gentest.Prompts) {
+	@generationShell("プロンプト履歴", csrfToken, "prompts", "生成テストで使ったプロンプト（同じ組は 1 件）。生成結果とは別に、削除するまで残ります。") {
+		@gentest.PromptHistory(p)
+	}
+}

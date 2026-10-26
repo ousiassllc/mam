@@ -13,4 +13,5 @@ func TestHxVals_EncodesAJSONObjectEvenForEmptyAndSpecialValues(t *testing.T) {
 	assert.Equal(t, `{"selected":"true"}`, atoms.HxVals(map[string]string{"selected": "true"}))
 	assert.Equal(t, `{"content":"a \"b\" \u003cc\u003e"}`, atoms.HxVals(map[string]string{"content": `a "b" <c>`}))
 	assert.Equal(t, `{}`, atoms.HxVals(map[string]string{}))
+	assert.Equal(t, `{}`, atoms.HxVals(nil), "never null: htmx cannot read it and the request is not sent")
 }

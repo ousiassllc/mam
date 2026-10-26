@@ -2,6 +2,7 @@ package media
 
 import (
 	"context"
+	"image/jpeg"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -243,4 +244,51 @@ func TestThumbnail_ASecondPastTheEndTakesTheLastFrameOfAMatroskaVideo(t *testing
 	require.NotEqual(t, thumbnailBytes(t, tools, src, 0), last)
 
 	assert.Equal(t, last, thumbnailBytes(t, tools, src, 1000))
+}
+
+// makeSolidVideo writes a video of one colour as limited-range yuv420p, which is how every H.264 video
+// is made: black is 16 and white 235 in it.
+func makeSolidVideo(t *testing.T, tools Tools, colour string) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), colour+".mp4")
+	out, err := exec.Command(tools.ffmpeg, "-v", "error", "-y", "-f", "lavfi", "-i",
+		"color=c="+colour+":size=64x64:rate=10:duration=1", "-c:v", "libx264", "-pix_fmt", "yuv420p", path).CombinedOutput()
+	require.NoError(t, err, string(out))
+	return path
+}
+
+// A JPEG is full-range: a limited-range frame has to be converted when it is written, or its black is
+// shown as dark grey (16) and its white as light grey (235). Forcing the encoder to accept the
+// limited range (-strict unofficial) without converting would do exactly that.
+func TestThumbnail_KeepsTheFullRangeOfTheLevels(t *testing.T) {
+	tools := lookOrSkip(t)
+	for colour, want := range map[string]uint8{"black": 0, "white": 255} {
+		t.Run(colour, func(t *testing.T) {
+			dst := filepath.Join(t.TempDir(), "frame.jpg")
+			require.NoError(t, tools.Thumbnail(context.Background(), makeSolidVideo(t, tools, colour), dst, 0.5))
+			f, err := os.Open(dst)
+			require.NoError(t, err)
+			defer func() { _ = f.Close() }()
+			img, err := jpeg.Decode(f)
+			require.NoError(t, err)
+			r, g, b, _ := img.At(32, 32).RGBA()
+			for _, c := range []uint32{r, g, b} {
+				assert.InDelta(t, int(want), int(c>>8), 3, "the %s of the video is %d in the JPEG", colour, want)
+			}
+		})
+	}
+}
+
+// A filter that keeps no frame is no error and writes no file (the Judge says "no frame could be read"
+// itself); ffmpeg 8 fails at the opening of the JPEG encoder there when it is not told how.
+func TestFrames_AFilterThatKeepsNoFrameIsNoErrorAndWritesNoFile(t *testing.T) {
+	tools := lookOrSkip(t)
+	src := makeVideo(t, tools, "v.mp4", 64, 64, 10, 1, false)
+	dir := t.TempDir()
+
+	require.NoError(t, tools.Frames(context.Background(), src, filepath.Join(dir, "%04d.jpg"), "select='gt(t,100)'", 3, 1))
+
+	names, err := filepath.Glob(filepath.Join(dir, "*.jpg"))
+	require.NoError(t, err)
+	assert.Empty(t, names)
 }

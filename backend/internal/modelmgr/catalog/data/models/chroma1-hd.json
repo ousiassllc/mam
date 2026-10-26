@@ -1,0 +1,52 @@
+{
+ "id": "chroma1-hd",
+ "name": "Chroma1-HD（fp8mixed・非検閲）",
+ "kind": "image",
+ "tier": "advanced",
+ "content_rating": "adult",
+ "description": "FLUX.1 schnell 系の 8.9B を非検閲に学習した Chroma の最終版（成人向け）。ComfyUI 用の fp8mixed（約 9.2 GB）・T5-XXL fp8 のテキストエンコーダー（約 5.2 GB）・FLUX の VAE の 3 ファイル、合計約 14.7 GB。ネガティブプロンプトを使う（cfg）。",
+ "files": [
+  {
+   "name": "Chroma1-HD-fp8mixed.safetensors",
+   "folder": "diffusion_models",
+   "url": "https://huggingface.co/Comfy-Org/Chroma1-HD/resolve/409cfff960d66598d4d0ff46cb932f53492cc6d9/split_files/diffusion_models/Chroma1-HD-fp8mixed.safetensors",
+   "sha256": "a2928ca6075f308f4d5e2182e2b96120fa8ad270ec6ea9b1b5c724c85c49a575",
+   "size": 9193379316
+  },
+  {
+   "name": "t5xxl_fp8_e4m3fn_scaled.safetensors",
+   "folder": "text_encoders",
+   "url": "https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/6af2a98e3f615bdfa612fbd85da93d1ed5f69ef5/t5xxl_fp8_e4m3fn_scaled.safetensors",
+   "sha256": "a498f0485dc9536735258018417c3fd7758dc3bccc0a645feaa472b34955557a",
+   "size": 5157348688
+  },
+  {
+   "name": "ae.safetensors",
+   "folder": "vae",
+   "url": "https://huggingface.co/lodestones/Chroma/resolve/2f3b2730d7b5edbd02cdff12f72610af5787300b/ae.safetensors",
+   "sha256": "afc8e28272cd15db3919bacdb6918ce9c1ed22e96cb12c4d5ed0fba823529e38",
+   "size": 335304388
+  }
+ ],
+ "vram": {
+  "min_gb": 12,
+  "source": "Chroma fp8 は 12〜16 GB の目安。Issue #841 付録（Notion の記載または mam の推定。mam の実機では未検証）",
+  "estimate": true
+ },
+ "license": {
+  "id": "apache-2.0",
+  "version": "2.0",
+  "name": "Apache License 2.0",
+  "url": "https://www.apache.org/licenses/LICENSE-2.0",
+  "summary": "Apache-2.0（Chroma1-HD・T5-XXL・VAE）。商用を含めて自由に使える。著作権表示とライセンス文を保つ。成人向けのモデルなので、ライセンスが商用可でも、成人向けの利用条件への同意を取る。",
+  "commercial_use": true
+ },
+ "consent_required": true,
+ "requires_hf_token": false,
+ "workflows": [
+  {
+   "name": "chroma1-hd",
+   "template": "txt2img-chroma"
+  }
+ ]
+}

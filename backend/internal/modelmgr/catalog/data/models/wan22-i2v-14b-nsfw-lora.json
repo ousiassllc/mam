@@ -1,0 +1,79 @@
+{
+ "id": "wan22-i2v-14b-nsfw-lora",
+ "name": "Wan 2.2 I2V 14B + General NSFW LoRA",
+ "kind": "video",
+ "tier": "advanced",
+ "content_rating": "adult",
+ "description": "wan22-i2v-14b（ベースは共有）に、成人向けの表現を足す LoRA「General NSFW」の高ノイズ用・低ノイズ用（各約 0.6 GB）を重ねる構成（成人向け）。ベースを導入済みなら、取得するのは LoRA だけ。LoRA の強さは 1.0。16fps。",
+ "trigger_words": [
+  "nsfwsks"
+ ],
+ "files": [
+  {
+   "name": "wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors",
+   "folder": "diffusion_models",
+   "url": "https://huggingface.co/Comfy-Org/Wan-2.2/resolve/ee6f4a40737a995bf5818954cfce6d59443b0f04/split_files/diffusion_models/wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors",
+   "sha256": "6122e79d55e0f235698d11d657f3b196c5273c830da00b2b013c5a048d5e6a42",
+   "size": 14294742832
+  },
+  {
+   "name": "wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors",
+   "folder": "diffusion_models",
+   "url": "https://huggingface.co/Comfy-Org/Wan-2.2/resolve/ee6f4a40737a995bf5818954cfce6d59443b0f04/split_files/diffusion_models/wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors",
+   "sha256": "5471a457b6ac404202a5fbe6c11595a3d5641fc766b00f38763f72303fffc21e",
+   "size": 14294742832
+  },
+  {
+   "name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+   "folder": "text_encoders",
+   "url": "https://huggingface.co/Comfy-Org/Wan-2.2/resolve/ee6f4a40737a995bf5818954cfce6d59443b0f04/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+   "sha256": "c3355d30191f1f066b26d93fba017ae9809dce6c627dda5f6a66eaa651204f68",
+   "size": 6735906897
+  },
+  {
+   "name": "wan_2.1_vae.safetensors",
+   "folder": "vae",
+   "url": "https://huggingface.co/Comfy-Org/Wan-2.2/resolve/ee6f4a40737a995bf5818954cfce6d59443b0f04/split_files/vae/wan_2.1_vae.safetensors",
+   "sha256": "2fc39d31359a4b0a64f55876d8ff7fa8d780956ae2cb13463b0223e15148976b",
+   "size": 253815318
+  },
+  {
+   "name": "NSFW-22-H-e8.safetensors",
+   "folder": "loras",
+   "url": "https://huggingface.co/lopi999/Wan2.2-I2V_General-NSFW-LoRA/resolve/aeef17d7fa51d753ab7d1004ddb4f218a95d756d/NSFW-22-H-e8.safetensors",
+   "sha256": "34e2144d3cd65360f97d09ccbe03e1c39a096df6c9234af5fe3899d1b63cda39",
+   "size": 613516752,
+   "source_note": "第三者のミラー。原本は Civitai の Wan 2.2 General NSFW LoRA（model 1307155 の v0.08a）で、SHA-256 が一致することを 2026-10-25 に確かめた。"
+  },
+  {
+   "name": "NSFW-22-L-e8.safetensors",
+   "folder": "loras",
+   "url": "https://huggingface.co/lopi999/Wan2.2-I2V_General-NSFW-LoRA/resolve/aeef17d7fa51d753ab7d1004ddb4f218a95d756d/NSFW-22-L-e8.safetensors",
+   "sha256": "d6b783742f4d5fd63a0223ae1d5bf64fc995a6b408480ac2a00528ae0d4146db",
+   "size": 613516752,
+   "source_note": "第三者のミラー。原本は Civitai の Wan 2.2 General NSFW LoRA（model 1307155 の v0.08a）で、SHA-256 が一致することを 2026-10-25 に確かめた。"
+  }
+ ],
+ "vram": {
+  "min_gb": 16,
+  "source": "wan22-i2v-14b と同じ。16〜24 GB 以上の目安。Issue #841 付録（Notion の記載または mam の推定。mam の実機では未検証）",
+  "estimate": true
+ },
+ "license": {
+  "id": "unspecified",
+  "version": "1",
+  "name": "ライセンスの記載なし（Wan 2.2 General NSFW LoRA）",
+  "url": "https://civitai.com/models/1307155",
+  "summary": "ライセンスの記載が無い（HF に記載なし）。原本（Civitai）の表示は「RentCivit」だけで、Civitai の外での商用は認められないと読める。そのため、mam では商用不可として扱う。ベースの Wan 2.2 は Apache-2.0。",
+  "commercial_use": false,
+  "notice": "この mam のインストール先に取得するモデルです。ライセンスの記載が無いため、商用には使わないでください。"
+ },
+ "consent_required": true,
+ "requires_hf_token": false,
+ "workflows": [
+  {
+   "name": "wan22-i2v-14b-nsfw-lora",
+   "template": "img2video-wan22-14b-lora"
+  }
+ ]
+}

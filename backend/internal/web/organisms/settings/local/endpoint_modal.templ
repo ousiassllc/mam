@@ -1,0 +1,129 @@
+package local
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// PageQuery and PageField say that the modal was opened on the page of the endpoint (EndpointForm.OnPage): the query of
+// the address that opens it, and the hidden field that carries it to the save.
+const (
+	PageQuery = "page"
+	PageField = "page"
+)
+
+// EndpointModal is the body of the modal that adds an endpoint or changes the address, concurrency and timeout of one,
+// with a connection test of what is typed (nothing is saved by it). A refusal draws it again with the reason and what was
+// typed; the API key is not drawn again, so it is typed again. The form is sent by post even if the browser were to
+// send it before htmx has processed it, so that a key never goes into an address.
+templ EndpointModal(f EndpointForm, errMsg string) {
+	@modal.Frame(endpointTitle(f), "接続先は保存するとすぐに使えます。名前と種類は、保存したあと変えられません。") {
+		if errMsg != "" {
+			@modal.Error(errMsg)
+		}
+		<form
+			class="flex flex-col gap-3"
+			method="post"
+			if f.Edit {
+				hx-put={ paths.LocalEndpoint(f.Name) }
+			} else {
+				hx-post={ paths.LocalEndpoints() }
+			}
+			hx-target={ "#" + modal.BodyID }
+			hx-swap="innerHTML"
+			hx-sync="this:drop"
+			hx-disabled-elt="find button[type=submit]"
+			autocomplete="off"
+			data-testid="local-endpoint-form"
+		>
+			if f.OnPage {
+				<input type="hidden" name={ PageField } value="1"/>
+			}
+			if f.Edit {
+				<p class="text-sm" data-testid="local-endpoint-fixed">
+					<span class="text-neutral-400">名前:</span> <code>{ f.Name }</code>
+					<span class="ml-3 text-neutral-400">種類:</span> { kindLabel(f.Kind) }
+				</p>
+				<p class="text-xs text-neutral-400">名前と種類は変えられません（Take とコスト台帳に残る識別子が名前でできているため）。変えたいときは、削除して作り直してください。</p>
+			} else {
+				<div class="flex flex-wrap items-end gap-3">
+					<label class="flex flex-col gap-1 text-xs text-neutral-400" for="local-endpoint-name">
+						<span>名前（英小文字・数字・. _ -）</span>
+						@atoms.Input(atoms.FieldMd, "w-48", templ.Attributes{
+							"id": "local-endpoint-name", "name": FieldName, "type": "text", "value": f.Name, "required": true,
+							"maxlength": itoa(MaxNameLen), "pattern": NamePattern, "autocomplete": "off", "autofocus": errMsg == "",
+						})
+					</label>
+					<label class="flex flex-col gap-1 text-xs text-neutral-400" for="local-endpoint-kind">
+						<span>種類</span>
+						@atoms.Select(atoms.FieldMd, "", templ.Attributes{"id": "local-endpoint-kind", "name": FieldKind}) {
+							<option value={ KindComfyUI } selected?={ f.Kind != KindOpenAICompat }>ComfyUI（画像・動画）</option>
+							<option value={ KindOpenAICompat } selected?={ f.Kind == KindOpenAICompat }>OpenAI 互換（画像のみ）</option>
+						}
+					</label>
+				</div>
+			}
+			<label class="flex flex-col gap-1 text-xs text-neutral-400" for="local-endpoint-url-input">
+				<span>base_url（例: http://127.0.0.1:8188、http://192.168.0.10:1234、http://100.101.102.103:8188）</span>
+				@atoms.Input(atoms.FieldMd, "w-full", templ.Attributes{
+					"id": "local-endpoint-url-input", "name": FieldBaseURL, "type": "url", "value": f.BaseURL, "required": true,
+					"maxlength": itoa(MaxURLLen), "autocomplete": "off", "inputmode": "url", "autofocus": f.Edit && errMsg == "",
+				})
+			</label>
+			<div class="flex flex-wrap items-end gap-3">
+				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="local-endpoint-concurrency">
+					<span>同時実行数（空: 1）</span>
+					@atoms.Input(atoms.FieldMd, "w-24", templ.Attributes{
+						"id": "local-endpoint-concurrency", "name": FieldConcurrency, "type": "number", "min": "1", "step": "1", "value": f.MaxConcurrency,
+					})
+				</label>
+				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="local-endpoint-timeout">
+					<span>タイムアウト（秒。空: ComfyUI 3600・互換 900）</span>
+					@atoms.Input(atoms.FieldMd, "w-32", templ.Attributes{
+						"id": "local-endpoint-timeout", "name": FieldTimeout, "type": "number", "min": "1", "step": "1", "value": f.TimeoutSeconds,
+					})
+				</label>
+			</div>
+			if !f.Edit {
+				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="local-endpoint-key-input">
+					<span>API キー（任意。保存後は設定済みかどうかと末尾 4 文字だけを表示します）</span>
+					@atoms.Input(atoms.FieldMd, "w-full", templ.Attributes{
+						"id": "local-endpoint-key-input", "name": FieldAPIKey, "type": "password", "autocomplete": "new-password", "spellcheck": "false",
+					})
+				</label>
+			}
+			<div id="local-form-test" role="status" aria-live="polite" class="min-h-5" data-testid="local-form-test"></div>
+			@modal.Actions() {
+				@atoms.Button(atoms.ToneNeutral, "入力中の内容で接続テスト", templ.Attributes{
+					"type":            "button",
+					"hx-post":         paths.LocalEndpoints() + "/test",
+					"hx-include":      "closest form",
+					"hx-vals":         vals(f),
+					"hx-target":       "#local-form-test",
+					"hx-swap":         "innerHTML",
+					"hx-sync":         "closest form:drop",
+					"hx-disabled-elt": "this",
+				})
+				@modal.Cancel("キャンセル")
+				@atoms.Button(atoms.TonePrimary, "保存", templ.Attributes{"type": "submit"})
+			}
+		</form>
+	}
+}
+
+func endpointTitle(f EndpointForm) string {
+	if f.Edit {
+		return "接続先「" + f.Name + "」を編集"
+	}
+	return "接続先を追加"
+}
+
+// vals is the hx-vals of the draft's connection test: an edit has no name or kind field, so the form says
+// which endpoint (its saved key is used when none is typed) and what kind.
+func vals(f EndpointForm) string {
+	if !f.Edit {
+		return atoms.HxVals(nil)
+	}
+	return atoms.HxVals(map[string]string{FieldName: f.Name, FieldKind: f.Kind})
+}
