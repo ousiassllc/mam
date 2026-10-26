@@ -13,6 +13,8 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localbackends"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
@@ -134,6 +136,7 @@ type Rig struct {
 	Assigned *[]string
 	seed     int64
 	missing  map[domain.ModelName]bool
+	extra    []domain.ModelName // image models with a fake backend besides the built-in ones
 }
 
 // Option changes the Rig before the Service is made.
@@ -147,6 +150,22 @@ func WithConfig(f func(*modeladapter.Config)) Option {
 // WithoutBackend leaves a model without a backend (the model is listed as unavailable).
 func WithoutBackend(m domain.ModelName) Option {
 	return func(r *Rig, _ *gentest.Deps) { r.missing[m] = true }
+}
+
+// NoReferenceModel is the local image model WithNoReferenceModel adds: an OpenAI-compatible model that cannot take
+// reference images (every built-in image model can).
+const NoReferenceModel domain.ModelName = "openai-compat:box/plain"
+
+// WithNoReferenceModel adds NoReferenceModel to the rig, with a fake backend: the model throws reference images away.
+// It is registered process-wide (like the application's own registration) until the test ends.
+func WithNoReferenceModel() Option {
+	return func(r *Rig, _ *gentest.Deps) {
+		r.Config.Endpoints = map[string]localcfg.Endpoint{"box": {Kind: localcfg.KindOpenAICompat, BaseURL: "http://localhost:1234"}}
+		r.Config.LocalModels = map[string]localcfg.Model{"box/plain": {Media: localcfg.MediaImage, Model: "plain"}}
+		r.extra = append(r.extra, NoReferenceModel)
+		localbackends.Publish(r.Config)
+		r.T.Cleanup(func() { localbackends.Publish(modeladapter.DefaultConfig()) })
+	}
 }
 
 // New builds a Rig with a started job queue. Every built-in image and video model has a fake backend; the seed of the
@@ -171,10 +190,13 @@ func NewOn(t testing.TB, db *repository.DB, opts ...Option) *Rig {
 		o(r, &deps)
 	}
 	backends := modeladapter.Backends{Image: map[domain.ModelName]modeladapter.ImageBackend{}, Video: map[domain.ModelName]modeladapter.VideoBackend{}}
-	for _, m := range []domain.ModelName{domain.ModelImagen4, domain.ModelNanoBanana, domain.ModelFlux2, domain.ModelGPTImage2} {
+	for _, m := range []domain.ModelName{domain.ModelNanoBanana, domain.ModelNanoBananaLite, domain.ModelFlux2, domain.ModelGPTImage2} {
 		if !r.missing[m] {
 			backends.Image[m] = imageBackend{f, m}
 		}
+	}
+	for _, m := range r.extra {
+		backends.Image[m] = imageBackend{f, m}
 	}
 	for _, m := range []domain.ModelName{domain.ModelKling3, domain.ModelSeedance2, domain.ModelRunwayGen45} {
 		if !r.missing[m] {

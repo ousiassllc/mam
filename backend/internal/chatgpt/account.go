@@ -64,6 +64,9 @@ type Status struct {
 	Scopes        []string
 	// PlanUsageGranted is whether the official sign-in has the scope of ChatGPT plan usage.
 	PlanUsageGranted bool
+	// WorkspacePlan is whether Plan is a workspace plan (Team, Business, Enterprise, Edu): the official sign-in
+	// cannot use it for the plan usage, and the Codex login is the way (IsWorkspacePlan).
+	WorkspacePlan bool
 }
 
 // accountOptions are what Service gives an Account.
@@ -114,7 +117,7 @@ func (a *Account) Status() (Status, error) {
 	return Status{
 		SignedIn: true, NeedsRelogin: t.Meta.ReloginRequired, ReloginReason: t.Meta.ReloginReason,
 		Email: t.Meta.Email, Plan: t.Meta.Plan, ExpiresAt: t.Meta.ExpiresAt, Scopes: slices.Clone(t.Meta.Scopes),
-		PlanUsageGranted: slices.Contains(t.Meta.Scopes, planUsageScope),
+		PlanUsageGranted: slices.Contains(t.Meta.Scopes, planUsageScope), WorkspacePlan: IsWorkspacePlan(t.Meta.Plan),
 	}, nil
 }
 

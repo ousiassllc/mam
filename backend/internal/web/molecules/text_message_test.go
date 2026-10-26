@@ -28,6 +28,23 @@ func TestTextMessage_DrawsTheSettingsLinkOfAStorageNotice(t *testing.T) {
 	assert.Contains(t, html, `<a href="/projects/p1/settings"`)
 }
 
+func TestTextMessage_DrawsTheLinkOfACategoryOfTheGlobalSettingsFromItsSlug(t *testing.T) {
+	for slug, want := range map[string][2]string{
+		"api-keys":     {"/settings/api-keys", "API キーの設定を開く"},
+		"local-models": {"/settings/local-models", "ローカル・代替モデルの設定を開く"},
+		"update":       {"/settings/update", "バージョンとアップデートを開く"},
+		"":             {"/settings", "設定画面を開く"},
+		"nope":         {"/settings", "設定画面を開く"},
+		"../projects":  {"/settings", "設定画面を開く"},
+	} {
+		html := render(t, molecules.TextMessage(textMessage(domain.RoleAssistant, domain.RefGlobalSettings, slug)))
+
+		assert.Contains(t, html, `<a href="`+want[0]+`"`, slug)
+		assert.Contains(t, html, want[1], slug)
+	}
+	assert.NotContains(t, render(t, molecules.TextMessage(textMessage(domain.RoleUser, domain.RefGlobalSettings, "api-keys"))), `<a `, "only a notice of the app has a link")
+}
+
 func TestTextMessage_HasNoLinkWithoutADestinationOrFromAUser(t *testing.T) {
 	assert.NotContains(t, render(t, molecules.TextMessage(textMessage(domain.RoleAssistant, "", ""))), `<a `)
 	assert.NotContains(t, render(t, molecules.TextMessage(textMessage(domain.RoleAssistant, domain.RefExport, ""))), `<a `)

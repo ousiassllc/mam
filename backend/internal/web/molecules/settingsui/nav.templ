@@ -1,0 +1,59 @@
+// Package settingsui holds the parts of the global settings screen (spec/components/settings-screen.md §4,
+// shared-ui-parts.md §5): the side navigation, the frame of a category and the card of a row of a list. It is a package
+// of its own so that molecules stays inside its line limit.
+package settingsui
+
+// NavItem is one category in the side navigation.
+type NavItem struct {
+	Href    templ.SafeURL
+	Label   string
+	Current bool
+}
+
+const (
+	navLinkClass    = "block rounded-md border-l-2 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 motion-reduce:transition-none"
+	navCurrentClass = "border-indigo-400 bg-neutral-800 font-medium text-neutral-100"
+	navOtherClass   = "border-transparent text-neutral-300 transition-colors hover:bg-neutral-900 hover:text-neutral-100"
+)
+
+func navClass(current bool) string {
+	if current {
+		return navLinkClass + " " + navCurrentClass
+	}
+	return navLinkClass + " " + navOtherClass
+}
+
+// Nav is the side navigation of the settings screen: one plain link per category (a navigation is a page load, so back,
+// reload and bookmarks work), the current one marked with aria-current and, not by colour alone, a heavier weight and
+// a border. Narrow windows put it above the page, the links wrapping.
+templ Nav(items []NavItem) {
+	<nav aria-label="設定" data-testid="settings-nav" class="w-full shrink-0 lg:sticky lg:top-8 lg:w-56 lg:self-start">
+		<ul role="list" class="flex flex-wrap gap-1 lg:flex-col">
+			for _, it := range items {
+				<li>
+					<a
+						href={ it.Href }
+						class={ navClass(it.Current) }
+						if it.Current {
+							aria-current="page"
+						}
+					>{ it.Label }</a>
+				</li>
+			}
+		</ul>
+	</nav>
+}
+
+// Category is the body of one category of the settings screen: its h2, an optional line under it and the content. It is
+// what an HTMX request for a category gets, without the frame of the page.
+templ Category(title, description string) {
+	<section id="settings-category" aria-labelledby="settings-category-title" class="flex flex-col gap-6">
+		<div>
+			<h2 id="settings-category-title" class="text-lg font-semibold">{ title }</h2>
+			if description != "" {
+				<p class="mt-1 text-sm text-neutral-400">{ description }</p>
+			}
+		</div>
+		{ children... }
+	</section>
+}

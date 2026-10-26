@@ -10,7 +10,6 @@
 package modelsettings
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"maps"
@@ -26,8 +25,16 @@ import (
 // never written by the settings screen.
 var ErrPinned = errors.New("modelsettings: the settings file is pinned by a start-up option")
 
-// InvalidError is a refused input or a settings file that cannot be used. Message is shown to the user.
-type InvalidError struct{ Message string }
+// InvalidError is a refused input or a settings file that cannot be used. Message is shown to the user. Field, when set, is
+// the part of one row the refusal is about (FieldPrimary, FieldFallback or FieldTakes), so that a form can point at it.
+type InvalidError struct{ Message, Field string }
+
+// The parts of a route that a refusal can be about (InvalidError.Field).
+const (
+	FieldPrimary  = "primary"
+	FieldFallback = "fallback"
+	FieldTakes    = "takes"
+)
 
 func (e *InvalidError) Error() string { return "invalid model settings: " + e.Message }
 
@@ -94,6 +101,9 @@ type View struct {
 	Policies    map[domain.QualityPolicy]modeladapter.PolicyRoute
 	ImageModels []ImageOption
 	VideoModels []VideoOption
+	// Gated are the adult models the saved routes still name while the age confirmation is off: they are not among
+	// ImageModels / VideoModels, generation with them is refused, and Save refuses a route that names one.
+	Gated []domain.ModelName
 }
 
 // Service edits the image / video part of one Model Adapter setting file.
@@ -102,6 +112,8 @@ type Service struct {
 	pinned bool
 	// onChange, when set, runs after a change was saved (SetOnChange).
 	onChange func()
+	// hidden, when set, says which models are adult models while the age confirmation is off (SetHidden).
+	hidden func(modelID string) bool
 }
 
 // SetOnChange registers f to run after Save or Reset wrote the file: the app applies the saved assignment
@@ -133,8 +145,9 @@ func (s *Service) View() (View, error) {
 		Customized:  !maps.Equal(cfg.Images, def.Images) || !maps.Equal(cfg.Policies, def.Policies),
 		Images:      cfg.Images,
 		Policies:    cfg.Policies,
-		ImageModels: imageOptions(cfg),
-		VideoModels: videoOptions(cfg),
+		ImageModels: imageOptions(cfg, s.gated),
+		VideoModels: videoOptions(cfg, s.gated),
+		Gated:       s.gatedRoutes(cfg),
 	}, nil
 }
 
@@ -143,41 +156,7 @@ func (s *Service) View() (View, error) {
 // (*InvalidError) and refuses a pinned file (ErrPinned). When nothing differs from the defaults the
 // file is removed if no other key is left in it.
 func (s *Service) Save(in Input) error {
-	if s.pinned {
-		return ErrPinned
-	}
-	defer settingsfile.Lock(s.path)()
-	cfg, err := s.load()
-	if err != nil {
-		return err
-	}
-	if err := check(cfg, in); err != nil {
-		return err
-	}
-	raw, err := s.readKeys()
-	if err != nil {
-		return err
-	}
-	def := modeladapter.DefaultConfig()
-	images := map[modeladapter.ImagePurpose]imageRouteJSON{}
-	for _, p := range modeladapter.ImagePurposes() {
-		if in.Images[p] != def.Images[p] {
-			images[p] = routeJSON(in.Images[p])
-		}
-	}
-	policies := map[domain.QualityPolicy]modeladapter.PolicyRoute{}
-	for _, q := range domain.QualityPolicies() {
-		if in.Policies[q] != def.Policies[q] {
-			policies[q] = in.Policies[q]
-		}
-	}
-	if err := setKey(raw, keyImages, images); err != nil {
-		return err
-	}
-	if err := setKey(raw, keyPolicies, policies); err != nil {
-		return err
-	}
-	return s.committed(raw)
+	return s.save(func(cfg modeladapter.Config) (Input, error) { return in, check(cfg, in, s.gated) })
 }
 
 // Reset removes the image and policy overrides from the file, back to the defaults; the other keys are
@@ -269,36 +248,4 @@ func checkFile(data []byte) error {
 		return &InvalidError{Message: "この割り当てでは設定が不正になります: " + err.Error()}
 	}
 	return nil
-}
-
-func setKey[K ~string, V any](raw settingsfile.Object, key string, entries map[K]V) error {
-	if len(entries) == 0 {
-		delete(raw, key)
-		return nil
-	}
-	data, err := json.Marshal(entries)
-	if err != nil {
-		return err
-	}
-	raw[key] = data
-	return nil
-}
-
-// imageTargetJSON names Fast explicitly: an omitted "fast" would keep the default's value (the preview
-// fallback is the fast Imagen 4), so that a route could not switch it off.
-type imageTargetJSON struct {
-	Model domain.ModelName `json:"model"`
-	Fast  bool             `json:"fast"`
-}
-
-type imageRouteJSON struct {
-	Primary  imageTargetJSON `json:"primary"`
-	Fallback imageTargetJSON `json:"fallback"`
-}
-
-func routeJSON(r modeladapter.ImageRoute) imageRouteJSON {
-	return imageRouteJSON{
-		Primary:  imageTargetJSON{Model: r.Primary.Model, Fast: r.Primary.Fast},
-		Fallback: imageTargetJSON{Model: r.Fallback.Model, Fast: r.Fallback.Fast},
-	}
 }

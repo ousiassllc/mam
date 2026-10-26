@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
+	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
@@ -26,6 +28,9 @@ func (s *Service) AcceptLicense(modelID string, ref LicenseRef) error {
 	if !ok {
 		return ErrNotFound
 	}
+	if !s.allowed(m) {
+		return ErrAdultNotConfirmed
+	}
 	if ref.ID != m.License.ID || ref.Version != m.License.Version {
 		return invalid("同意するライセンスが違います（%s %s が必要です）", m.License.ID, m.License.Version)
 	}
@@ -33,13 +38,13 @@ func (s *Service) AcceptLicense(modelID string, ref LicenseRef) error {
 		if st.Consents == nil {
 			st.Consents = map[string]store.Consent{}
 		}
-		st.Consents[m.License.ID] = store.Consent{Version: m.License.Version, AcceptedAt: s.Now().UTC()}
+		st.Consents[consentKey(m)] = store.Consent{Version: m.License.Version, AcceptedAt: s.Now().UTC()}
 	})
 }
 
 // accepted reports whether the license of m was accepted in its current version.
 func (s *Service) accepted(m catalog.Model) bool {
-	c, ok := s.state.Get().Consents[m.License.ID]
+	c, ok := s.state.Get().Consents[consentKey(m)]
 	return ok && c.Version == m.License.Version
 }
 
@@ -53,6 +58,9 @@ func (s *Service) InstallModel(ctx context.Context, modelID string, accept *Lice
 	m, ok := s.cat.Model(modelID)
 	if !ok {
 		return JobRef{}, ErrNotFound
+	}
+	if !s.allowed(m) {
+		return JobRef{}, ErrAdultNotConfirmed
 	}
 	if !s.bundled {
 		return JobRef{}, ErrUnsupported
@@ -86,10 +94,34 @@ func (s *Service) InstallModel(ctx context.Context, modelID string, accept *Lice
 	if err := s.Layout.CheckWritable(); err != nil {
 		return JobRef{}, err
 	}
+	if err := s.checkModelFiles(m); err != nil {
+		return JobRef{}, err
+	}
 	if err := s.checkModelSpace(m); err != nil {
 		return JobRef{}, userFacing(ctx, err)
 	}
 	return s.enqueue(ctx, "model:"+m.ID, installPayload{Target: "model:" + m.ID})
+}
+
+// checkModelFiles refuses an install that would replace a file the user added from Hugging Face with a file of another SHA-256
+// (a catalog file and an import can share models/<folder>/<name>). The same file is fine: it is recorded for both.
+func (s *Service) checkModelFiles(m catalog.Model) error {
+	for _, f := range m.Files {
+		if um, ok := s.userModelAt(f.Path()); ok && (!strings.EqualFold(um.SHA256, f.SHA256) || um.Size != f.Size) {
+			return invalid("%s には、Hugging Face から追加した別のファイルがあります。上書きしません。モデル管理でそのファイルを削除してから導入してください", f.Path())
+		}
+	}
+	return nil
+}
+
+// userModelAt is the file the user added from Hugging Face at the relative path (compared without case).
+func (s *Service) userModelAt(rel string) (store.UserModel, bool) {
+	for _, um := range s.state.Get().UserModels {
+		if strings.EqualFold(um.Path, rel) {
+			return um, true
+		}
+	}
+	return store.UserModel{}, false
 }
 
 // checkModelSpace is the refusal of an install that does not fit: what is not downloaded yet against the free space.
@@ -123,7 +155,22 @@ func (s *Service) runModelInstall(ctx context.Context, id string, set func(track
 	if !ok {
 		return fmt.Errorf("model %q is not in the catalog", id)
 	}
+	if !s.allowed(m) { // the gate was closed after the job was queued (or before a restart resumed it)
+		return ErrAdultNotConfirmed
+	}
+	rels := make([]string, 0, len(m.Files))
+	for _, f := range m.Files {
+		rels = append(rels, f.Path())
+	}
+	defer s.lockDests(rels...)() // held until the record is written: an import of the same file waits and then sees it
+	// The gate again: the wait for the lock lasts as long as another download, and the gate may have been closed meanwhile.
+	if !s.allowed(m) {
+		return ErrAdultNotConfirmed
+	}
 	if err := s.Layout.CheckWritable(); err != nil {
+		return err
+	}
+	if err := s.checkModelFiles(m); err != nil { // again: an import may have written a file while this one waited
 		return err
 	}
 	if err := s.checkModelSpace(m); err != nil {
@@ -167,7 +214,7 @@ func (s *Service) runModelInstall(ctx context.Context, id string, set func(track
 		if st.Models == nil {
 			st.Models = map[string]store.InstalledModel{}
 		}
-		st.Models[id] = store.InstalledModel{InstalledAt: s.Now().UTC(), Files: installed, Workflows: names, LicenseID: m.License.ID}
+		st.Models[id] = store.InstalledModel{InstalledAt: s.Now().UTC(), Files: installed, Workflows: names, LicenseID: m.License.ID, Adult: m.Adult()}
 	}); err != nil {
 		return err
 	}
@@ -188,19 +235,17 @@ func (s *Service) fetchFile(ctx context.Context, dest string, f catalog.File, op
 	if err == nil || ctx.Err() != nil {
 		return err
 	}
+	var he *fetch.HTTPError
+	if errors.As(err, &he) && (he.Status == http.StatusNotFound || he.Status == http.StatusGone) {
+		return sourceGone(f, he.Status, err)
+	}
 	return fmt.Errorf("%s: %w", f.Name, err)
 }
 
-// recordedGood reports whether an installed model recorded the file as verified.
+// recordedGood reports whether an installed model (or a user model) recorded the file as verified.
 func (s *Service) recordedGood(f catalog.File) bool {
-	for _, im := range s.state.Get().Models {
-		for _, r := range im.Files {
-			if r.Path == f.Path() && r.SHA256 == f.SHA256 && r.Size == f.Size {
-				return true
-			}
-		}
-	}
-	return false
+	sha, size, ok := s.recordedAt(f.Path())
+	return ok && sha == f.SHA256 && size == f.Size
 }
 
 // SetHuggingFaceToken stores the optional Hugging Face token (credential provider "huggingface"). No model of the

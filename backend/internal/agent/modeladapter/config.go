@@ -9,6 +9,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/chatgptid"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/gentestcfg"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/gptimage"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/overlay"
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -19,14 +20,14 @@ type ImagePurpose string
 
 // Image purposes.
 const (
-	// PurposeNewReference: new Character / Product / Location references (Imagen 4, then GPT Image 2).
+	// PurposeNewReference: new Character / Product / Location references (GPT Image 2, then Nano Banana).
 	PurposeNewReference ImagePurpose = "new_reference"
 	// PurposeEditReference: Style / Lighting references, Keyframes and edits of existing material
-	// (Nano Banana, then Imagen 4).
+	// (Nano Banana, then GPT Image 2).
 	PurposeEditReference ImagePurpose = "edit_reference"
-	// PurposePreview: fast, cheap iterations (FLUX.2, then Imagen 4 Fast).
+	// PurposePreview: fast, cheap iterations (FLUX.2, then Nano Banana Lite).
 	PurposePreview ImagePurpose = "preview"
-	// PurposeUnifiedOpenAI: one vendor for reasoning and images (GPT Image 2, then Imagen 4).
+	// PurposeUnifiedOpenAI: one vendor for reasoning and images (GPT Image 2, then Nano Banana).
 	PurposeUnifiedOpenAI ImagePurpose = "unified_openai"
 )
 
@@ -100,8 +101,9 @@ type ModelConfig struct {
 	// Model is the vendor's identifier of the model. FastModel is used for ImageTarget.Fast.
 	Model     string `json:"model"`
 	FastModel string `json:"fast_model,omitempty"`
-	// CostPerImage is the estimated cost of one image (USD), for image models.
+	// CostPerImage is the estimated cost of one image (USD), for image models. GPT Image 2 without one is priced by Quality.
 	CostPerImage float64 `json:"cost_per_image_usd,omitempty"`
+	Quality      string  `json:"quality,omitempty"` // the quality profile sent to GPT Image 2 (gptimage.Qualities; empty: gptimage.Default)
 	// CostPerSecond is the estimated cost of one second of video (USD) by resolution.
 	CostPerSecond map[string]float64 `json:"cost_per_second_usd,omitempty"`
 }
@@ -153,21 +155,24 @@ func DefaultConfig() Config {
 			VendorRunway:   {BaseURL: "https://api.dev.runwayml.com", MaxConcurrency: 2, TimeoutSeconds: 900},
 		},
 		Models: map[domain.ModelName]ModelConfig{
-			domain.ModelImagen4:    {Model: "imagen-4.0-generate-001", FastModel: "imagen-4.0-fast-generate-001", CostPerImage: 0.04},
-			domain.ModelNanoBanana: {Model: "gemini-2.5-flash-image", CostPerImage: 0.04},
-			domain.ModelFlux2:      {Model: "flux-2-pro", CostPerImage: 0.03},
-			domain.ModelGPTImage2:  {Model: "gpt-image-1", CostPerImage: 0.06},
-			chatgptid.Model:        {Model: chatgptid.APIModel}, // the plan pays: 0 USD per image
-			domain.ModelKling3:     {Model: "kling-v3", CostPerSecond: map[string]float64{"720p": 0.07, "1080p": 0.14}},
-			domain.ModelSeedance2:  {Model: "seedance-2-0", CostPerSecond: map[string]float64{"480p": 0.03, "720p": 0.08, "1080p": 0.18}},
+			// Prices: Google's Gemini API pricing page (1K image, the size an unset image_size gives), BFL's
+			// pricing page (FLUX.2 [pro], text only, up to 1 megapixel). GPT Image 2 is priced by the quality
+			// profile it is sent and the size (package gptimage; spec/architecture/model-adapters.md §9.2).
+			domain.ModelNanoBanana:     {Model: "gemini-nano-banana-2.1", CostPerImage: 0.0336},
+			domain.ModelNanoBananaLite: {Model: "gemini-3.1-flash-lite-image", CostPerImage: 0.0336},
+			domain.ModelFlux2:          {Model: "flux-2-pro", CostPerImage: 0.03},
+			domain.ModelGPTImage2:      {Model: gptimage.APIModel, Quality: string(gptimage.Default)},
+			chatgptid.Model:            {Model: chatgptid.APIModel}, // the plan pays: 0 USD per image
+			domain.ModelKling3:         {Model: "kling-v3", CostPerSecond: map[string]float64{"720p": 0.07, "1080p": 0.14}},
+			domain.ModelSeedance2:      {Model: "seedance-2-0", CostPerSecond: map[string]float64{"480p": 0.03, "720p": 0.08, "1080p": 0.18}},
 			// Runway prices in credits (12 credits per second of Gen-4.5, 1 credit = USD 0.01).
 			domain.ModelRunwayGen45: {Model: "gen4.5", CostPerSecond: map[string]float64{"720p": 0.12}},
 		},
 		Images: map[ImagePurpose]ImageRoute{
-			PurposeNewReference:  {Primary: ImageTarget{Model: domain.ModelImagen4}, Fallback: ImageTarget{Model: domain.ModelGPTImage2}},
-			PurposeEditReference: {Primary: ImageTarget{Model: domain.ModelNanoBanana}, Fallback: ImageTarget{Model: domain.ModelImagen4}},
-			PurposePreview:       {Primary: ImageTarget{Model: domain.ModelFlux2}, Fallback: ImageTarget{Model: domain.ModelImagen4, Fast: true}},
-			PurposeUnifiedOpenAI: {Primary: ImageTarget{Model: domain.ModelGPTImage2}, Fallback: ImageTarget{Model: domain.ModelImagen4}},
+			PurposeNewReference:  {Primary: ImageTarget{Model: domain.ModelGPTImage2}, Fallback: ImageTarget{Model: domain.ModelNanoBanana}},
+			PurposeEditReference: {Primary: ImageTarget{Model: domain.ModelNanoBanana}, Fallback: ImageTarget{Model: domain.ModelGPTImage2}},
+			PurposePreview:       {Primary: ImageTarget{Model: domain.ModelFlux2}, Fallback: ImageTarget{Model: domain.ModelNanoBananaLite}},
+			PurposeUnifiedOpenAI: {Primary: ImageTarget{Model: domain.ModelGPTImage2}, Fallback: ImageTarget{Model: domain.ModelNanoBanana}},
 		},
 		// model-adapters.md §4. MAX QUALITY uses Runway Gen-4.5 (720p, its only output size); the
 		// alternative ("Different Model") is Kling 3.0.
@@ -317,6 +322,3 @@ func (c Config) VideoCost(t VideoTarget, seconds float64) float64 {
 	}
 	return c.Models[t.Model].CostPerSecond[t.Resolution] * seconds
 }
-
-// ImageCost is the estimated cost of one image.
-func (c Config) ImageCost(m domain.ModelName) float64 { return c.ModelSettings(m).CostPerImage }

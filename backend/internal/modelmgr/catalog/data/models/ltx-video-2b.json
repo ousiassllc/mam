@@ -3,6 +3,7 @@
  "name": "LTX-Video 2B v0.9.5",
  "kind": "video",
  "tier": "standard",
+ "content_rating": "general",
  "description": "軽量で速い動画モデル。チェックポイントと T5 テキストエンコーダー（fp8）の 2 ファイル、合計約 11 GB。24fps。",
  "files": [
   {

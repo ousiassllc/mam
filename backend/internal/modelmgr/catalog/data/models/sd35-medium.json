@@ -3,6 +3,7 @@
  "name": "Stable Diffusion 3.5 Medium (fp8)",
  "kind": "image",
  "tier": "advanced",
+ "content_rating": "general",
  "description": "Stable Diffusion 3.5 の中型版。CLIP と T5 入りの 1 ファイルのチェックポイント（約 12 GB）。",
  "files": [
   {

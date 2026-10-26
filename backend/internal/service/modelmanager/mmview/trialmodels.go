@@ -36,6 +36,9 @@ func TrialModels(s *modelmanager.Service) []TrialModel {
 			continue
 		}
 		m := cfg.LocalModels[key]
+		if s.HidesModel(localcfg.ID(ep.Kind, endpoint, name)) {
+			continue
+		}
 		tm := TrialModel{
 			ID: localcfg.ID(ep.Kind, endpoint, name), Endpoint: endpoint, Name: name, Media: m.Media, Bundled: endpoint == modelmanager.BundledEndpoint,
 			AcceptsReference: m.ImageInputs(ep.Kind),

@@ -8,7 +8,7 @@
 
 - **MCP トークンの管理は MCP からはできない**（設定画面だけ。`PUT /settings/mcp/bind`・`POST /settings/mcp/tokens`・`DELETE /settings/mcp/tokens/:id`）。トークンの発行・失効や待ち受け先の変更をエージェントに許すと、エージェントが自分の接続の権限を変えられてしまうため、ツールを作らない（`spec/architecture/mcp.md`）。`get_global_settings` にも MCP の区画は含めない。
 - **LLM・モデルの割り当ては「保存した設定」を読み書きする**。画面と同じく、LLM の割り当ての反映にはアプリの再起動が必要（実行中の割り当てではない）。画像・動画モデルの割り当ては保存するとすぐに反映される（#831。`model` にはローカル・代替モデルの識別子も使える。[mcp-tools-local-models.md](mcp-tools-local-models.md)）。`--llm-config` / `--model-config` で固定されたファイルは読めるが変更できず、`conflict`（「起動オプションで固定されている…」）になる。
-- `set_llm_assignment` / `set_model_assignment` は、**指定した Agent・用途・Quality Policy だけ**を変える（画面はフォーム全体を送るが、ツールは差分だけ受け、保存済みの値に重ねてから同じ検証 `check` を通す）。指定しなかったものは保存済みのまま。検証の失敗は `validation`（メッセージは画面と同じ）で、ファイルには何も書かない。
+- `set_llm_assignment` / `set_model_assignment` は、**指定した Agent・用途・Quality Policy だけ**を変える（画面はフォーム全体を送るが、ツールは差分だけ受け、保存済みの値に重ねてから同じ検証 `check` を通す）。指定しなかったものは保存済みのまま。年齢確認がオフの間は、導入済みの成人向けモデルは `image_models` / `video_models` に出ず、割り当てがまだ指していれば `gated_models` に挙がる（そのモデルでの生成は `conflict` で断られる）。主・代替のどちらかが成人向けのモデルを指す保存は、変えていなくても `validation` で断る（メッセージに年齢確認をオンにするか別のモデルを選ぶ旨。`reset_model_assignment` はできる。[../architecture/model-manager/model-manager.md](../architecture/model-manager/model-manager.md) §6.1）。検証の失敗は `validation`（メッセージは画面と同じ）で、ファイルには何も書かない。
 - **アップデート**は、アップデーターを持つ版（Windows デスクトップ）でだけ使える。ヘッドレス版では `get_update_status` / `check_for_update` が `unavailable`、`get_global_settings` の `update.available` が `false`（バージョンだけ返す）。LLM・モデルの区画を持たないアプリ（テスト用ルーター）では同様に各ツールが `unavailable`、`get_global_settings` の `llm.available` / `models.available` が `false`。
 - キーの値はどのツールにも出ない。`get_global_settings` は API キーの区画を含まない（`list_credentials` を使う）。
 
@@ -43,7 +43,7 @@
 
 | ツール | 説明 | 入力 | 出力 | readOnly |
 |--------|------|------|------|----------|
-| `get_global_settings` | 全体設定画面の内容（API キーの区画・MCP の区画を除く）。保存済みの設定で、反映は次の起動から | なし | `llm`（`available`, `pinned`, `problem`, `providers[]`, `max_model_length`, `agents[]`: `agent`, `label`, `unused`, `primary`, `fallback`, `default_primary`, `default_fallback`）, `models`（`available`, `pinned`, `customized`, `problem`, `images[]`, `policies[]`, `image_models[]`, `video_models[]`）, `update`（`get_update_status` と同じ） | はい |
+| `get_global_settings` | 全体設定画面の内容（API キーの区画・MCP の区画を除く）。保存済みの設定で、反映は次の起動から | なし | `llm`（`available`, `pinned`, `problem`, `providers[]`, `max_model_length`, `agents[]`: `agent`, `label`, `unused`, `primary`, `fallback`, `default_primary`, `default_fallback`）, `models`（`available`, `pinned`, `customized`, `problem`, `images[]`, `policies[]`, `image_models[]`, `video_models[]`, `gated_models[]`）, `update`（`get_update_status` と同じ） | はい |
 | `set_llm_assignment` | 指定した Agent の LLM（主・代替）を保存する。冪等 | `routes[]`: `agent`, `primary`, `fallback`（`provider`, `model`） | `get_global_settings` の `llm` | いいえ |
 | `reset_llm_assignment` | LLM の割り当てを既定に戻す（上書きをすべて消す。冪等） | なし | 同上 | いいえ（破壊的） |
 | `set_model_assignment` | 指定した画像の用途・Quality Policy のモデルを保存する。冪等 | `images?[]`: `purpose`（`new_reference` / `edit_reference` / `preview` / `unified_openai`）, `primary`, `fallback`（`model`, `fast?`）。`policies?[]`: `quality_policy`, `primary`, `fallback`（`model`, `resolution`）, `takes`（1 以上）。どちらかは必須 | `get_global_settings` の `models` | いいえ |
@@ -95,3 +95,4 @@
 | 版 | 日付 | 変更内容 | 変更理由 |
 |----|------|---------|---------|
 | 1.0 | 2026-10-24 | 新規作成。Project の設定（制作テンプレート・Quality Policy・予算・コスト・Take のアーカイブ）、Brand 制約とテンプレート、全体設定（LLM・モデルの割り当て・アップデート）、制作指標、ヘルスのツールと、ルートの対応表。MCP トークンの管理はツールにしない方針 | Issue #830。画面の全操作を MCP ツールにする（設定・ポリシー・指標・ヘルスの担当分） |
+| 1.1 | 2026-10-25 | `get_global_settings` の `models` に `gated_models[]` を足した。年齢確認がオフの間は成人向けモデルを選択肢から外し、`set_model_assignment` がそれを指す経路を断る | Issue #848 |

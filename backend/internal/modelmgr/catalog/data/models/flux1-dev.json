@@ -3,6 +3,7 @@
  "name": "FLUX.1 dev (fp8)",
  "kind": "image",
  "tier": "advanced",
+ "content_rating": "general",
  "description": "FLUX.1 の高品質版。非商用ライセンス。CLIP・T5・VAE を含む 1 ファイルのチェックポイント（約 17 GB）。",
  "files": [
   {

@@ -8,6 +8,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex"
+	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex/engine"
 	"github.com/ousiassllc/mam/backend/internal/chatgpt/oauth"
 	"github.com/ousiassllc/mam/backend/internal/chatgpt/tokenstore"
 	"github.com/ousiassllc/mam/backend/internal/credential"
@@ -35,15 +37,23 @@ type Options struct {
 	// Open opens a URL in the default browser of the machine mam runs on; nil opens none.
 	Open   func(url string) error
 	Logger *slog.Logger
+	// CodexLayout is where the downloaded Codex app-server lies (the "codex" directory next to mam.exe); an empty Root
+	// leaves the download off (a path to a codex the user installed still works). Version is the mam version.
+	CodexLayout engine.Layout
+	Version     string
+	// Codex lets a test replace the options of the Codex login (its fields set here win over the ones above).
+	Codex func(*codex.Options)
 	// Now and Sleep replace the clock and the waits (tests).
 	Now   func() time.Time
 	Sleep func(ctx context.Context, d time.Duration) error
 }
 
-// Service is both login systems and the switch of the image generation.
+// Service is the three login systems (the official one, the Codex one and the image one) and the switch of the image
+// generation.
 type Service struct {
 	official *Account
 	image    *Account
+	codex    *codex.Service
 	settings *settings
 	apiBase  string
 	client   *oauth.Client
@@ -77,8 +87,14 @@ func New(o Options) *Service {
 			lockPath: o.LockPath, open: o.Open, logger: o.Logger,
 		})
 	}
+	co := codex.Options{
+		DataDir: o.DataDir, Layout: o.CodexLayout, Version: o.Version, Keys: o.Keys, Open: o.Open, Logger: o.Logger,
+	}
+	if o.Codex != nil {
+		o.Codex(&co)
+	}
 	return &Service{
-		official: account(KindOfficial), image: account(KindImage),
+		official: account(KindOfficial), image: account(KindImage), codex: codex.New(co),
 		settings: &settings{path: filepath.Join(o.DataDir, SettingsFile), now: client.Now},
 		apiBase:  o.APIBase, client: client,
 	}
@@ -96,6 +112,12 @@ func DefaultLockPath() string {
 
 // Official is the ChatGPT plan usage sign-in (text generation).
 func (s *Service) Official() *Account { return s.official }
+
+// Codex is the sign-in through the Codex app-server (text generation; any plan, including workspace accounts).
+func (s *Service) Codex() *codex.Service { return s.codex }
+
+// Close stops what the Service started: the Codex app-server (mam shuts down).
+func (s *Service) Close() { s.codex.Close() }
 
 // Image is the Codex-client sign-in of the unofficial image generation. Use StartImage* to log in: they refuse while
 // the generation is off.

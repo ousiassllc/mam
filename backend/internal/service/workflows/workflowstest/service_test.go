@@ -156,7 +156,7 @@ func TestRoutesFollowTheLatestVersionAndAUsedWorkflowCannotBeDeleted(t *testing.
 	assert.True(t, slices.ContainsFunc(view.ImageModels, func(o modelsettings.ImageOption) bool { return string(o.Model) == w.ModelID }), "listed in the settings choices")
 	in := modelsettings.Input{Images: view.Images, Policies: view.Policies}
 	in.Images[modelsettings.PurposeNewReference] = modelsettings.ImageRoute{
-		Primary: modelsettings.ImageTarget{Model: domain.ModelName(w.ModelID)}, Fallback: modelsettings.ImageTarget{Model: domain.ModelImagen4},
+		Primary: modelsettings.ImageTarget{Model: domain.ModelName(w.ModelID)}, Fallback: modelsettings.ImageTarget{Model: domain.ModelNanoBanana},
 	}
 	require.NoError(t, r.models.Save(in))
 	assert.Equal(t, domain.ModelName(w.ModelID), r.adapter.Config().Images[modeladapter.PurposeNewReference].Primary.Model)

@@ -21,11 +21,15 @@ templ Body(d Data) {
 			</div>
 		}
 		@molecules.SettingsSection("モデル", "導入すると、画像・動画のモデルとして選べます（設定の「画像・動画モデル」・Shot の生成）。ダウンロードは取得元から直接で、SHA-256 を確かめます。ライセンスの同意が要るモデルは、同意してから導入します。") {
+			@AdultCard(d.Adult)
 			<div id={ DialogID } data-testid="mm-dialog"></div>
 			@CatalogList(d.Catalog)
 		}
 		@molecules.SettingsSection("試し生成", "導入したモデル（登録済みの外部の ComfyUI のモデルも）で、プロジェクトの外で 1 枚・1 本だけ試します。") {
 			@TrialSection(d.Trial)
+		}
+		@molecules.SettingsSection("Hugging Face から導入", "Hugging Face のモデルファイル（.safetensors）を、URL・owner/repo・キーワードから探して導入します。コミットに固定し、LFS の SHA-256 とサイズを確かめます。GGUF は一覧に出しますが導入できません。pickle 形式（.ckpt・.pt など）は導入しません。") {
+			@HFImportSection(d.HFImport)
 		}
 		@molecules.SettingsSection("Hugging Face のトークン（任意）", "ログインが必要なモデルを取得するときだけ使います。") {
 			@HFCard(d.HF)

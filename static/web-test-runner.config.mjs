@@ -27,13 +27,27 @@ async function hxTriggerMiddleware(ctx, next) {
   if (ctx.path.endsWith('/focus-trigger-after.html')) ctx.set('HX-Trigger', 'branch-reload');
 }
 
+// The answers of the modal dialog (test: modal): a saved form closes it through `HX-Trigger-After-Swap: modal-close`, a
+// refused one is a 422 with the form again.
+async function modalAnswerMiddleware(ctx, next) {
+  // The answer of a POST (the dev server only serves files on GET): a token issued, with a row to swap out of band.
+  if (ctx.method === 'POST' && ctx.path.endsWith('/modal-issued.html')) {
+    ctx.type = 'text/html';
+    ctx.body = await readFile(new URL('./src/components/testdata/modal-issued.html', import.meta.url));
+    return;
+  }
+  await next();
+  if (ctx.path.endsWith('/modal-saved.html')) ctx.set('HX-Trigger-After-Swap', 'modal-close');
+  if (ctx.path.endsWith('/modal-invalid.html')) ctx.status = 422;
+}
+
 export default {
   files: 'src/components/**/*.wtest.ts',
   // One page at a time: when two pages load a clip together (video-player and review-workspace wtests
   // run side by side) the <video> metadata of both never loads and the tests time out.
   concurrency: 1,
   nodeResolve: true,
-  middleware: [reviewAnswerMiddleware, hxTriggerMiddleware],
+  middleware: [reviewAnswerMiddleware, hxTriggerMiddleware, modalAnswerMiddleware],
   plugins: [esbuildPlugin({ ts: true, tsconfig: './tsconfig.json' })],
   browsers: [
     chromeLauncher({

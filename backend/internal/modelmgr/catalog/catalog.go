@@ -62,14 +62,17 @@ type License struct {
 }
 
 // File is one file of a model, pinned. Folder is the ComfyUI model folder it goes to (checkpoints,
-// diffusion_models, text_encoders, vae), Name its file name there. A file that two models share (the same
-// Folder and Name) has the same SHA256 and Size in both.
+// diffusion_models, text_encoders, vae, loras), Name its file name there. A file that two models share (the same
+// Folder and Name) has the same SHA256 and Size in both. SourceNote is set for a file that a third party mirrors
+// (the original lies elsewhere, such as Civitai): where the original is and the date its SHA-256 was checked to be
+// the mirror's. It is shown before the install, and a mirror that is gone is reported as such.
 type File struct {
-	Name   string `json:"name"`
-	Folder string `json:"folder"`
-	URL    string `json:"url"`
-	SHA256 string `json:"sha256"`
-	Size   int64  `json:"size"`
+	Name       string `json:"name"`
+	Folder     string `json:"folder"`
+	URL        string `json:"url"`
+	SHA256     string `json:"sha256"`
+	Size       int64  `json:"size"`
+	SourceNote string `json:"source_note,omitempty"`
 }
 
 // Path is where the file lies below the base directory of the engine: models/<folder>/<name>.
@@ -90,22 +93,39 @@ type Workflow struct {
 	Template string `json:"template"`
 }
 
+// ContentRating says who a model is for. An adult model (an uncensored model, or a LoRA that adds that) is hidden
+// from the list, the install and the trial generation until the age confirmation is on record
+// (modelmanager.Service.SetAdultContent); the catalog rule is that it is an advanced model (consent required).
+type ContentRating string
+
+// The content ratings.
+const (
+	RatingGeneral ContentRating = "general"
+	RatingAdult   ContentRating = "adult"
+)
+
 // Model is a model of the catalog.
 type Model struct {
-	ID          string         `json:"id"`
-	Name        string         `json:"name"`
-	Kind        localcfg.Media `json:"kind"`
-	Tier        Tier           `json:"tier"`
-	Description string         `json:"description"`
-	Files       []File         `json:"files"`
-	VRAM        VRAM           `json:"vram"`
-	License     License        `json:"license"`
+	ID            string         `json:"id"`
+	Name          string         `json:"name"`
+	Kind          localcfg.Media `json:"kind"`
+	Tier          Tier           `json:"tier"`
+	ContentRating ContentRating  `json:"content_rating"`
+	Description   string         `json:"description"`
+	// TriggerWords are the words a LoRA of the model needs in the prompt (none for a model without a LoRA).
+	TriggerWords []string `json:"trigger_words,omitempty"`
+	Files        []File   `json:"files"`
+	VRAM         VRAM     `json:"vram"`
+	License      License  `json:"license"`
 	// ConsentRequired: the license has to be accepted (recorded with its ID and version) before the install.
 	ConsentRequired bool `json:"consent_required"`
 	// RequiresHFToken says the files are behind a Hugging Face login. No model of the catalog is.
 	RequiresHFToken bool       `json:"requires_hf_token"`
 	Workflows       []Workflow `json:"workflows"`
 }
+
+// Adult reports whether the model is for adults only.
+func (m Model) Adult() bool { return m.ContentRating == RatingAdult }
 
 // TotalSize is the size of all the files of the model in bytes.
 func (m Model) TotalSize() int64 {

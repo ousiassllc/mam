@@ -40,7 +40,7 @@ func (h Handlers) Consent(c *gin.Context) {
 }
 
 func consentOf(m modelmanager.ModelView, errMsg string) view.Consent {
-	return view.Consent{ModelID: m.ID, Name: m.Name, License: licenseOf(m.License), Error: errMsg}
+	return view.Consent{ModelID: m.ID, Name: m.Name, License: licenseOf(m.License), AdultNotice: m.AdultNotice, Sources: sourcesOf(m), Error: errMsg}
 }
 
 // InstallModel starts the install of a model as a job (POST /model-manager/models/:id/install). A model whose license

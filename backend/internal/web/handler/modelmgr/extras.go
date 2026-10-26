@@ -10,42 +10,6 @@ import (
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
 )
 
-// hfData is the state of the Hugging Face token: whether it is set and its last characters, never the token.
-func hfData(h Handlers) view.HFToken {
-	configured, last, err := h.Svc.HuggingFaceTokenStatus()
-	if err != nil {
-		return view.HFToken{Unavailable: true}
-	}
-	return view.HFToken{Configured: configured, LastChars: last}
-}
-
-// SetToken stores the Hugging Face token (PUT /model-manager/hf-token, field token) and answers with its state. The
-// token is not in the answer, in a log or in a header.
-func (h Handlers) SetToken(c *gin.Context) {
-	err := h.Svc.SetHuggingFaceToken(c.PostForm(view.FieldToken))
-	d := hfData(h)
-	status := http.StatusOK
-	if err != nil {
-		status, d.Error = refuse(c, err)
-	} else {
-		d.Notice = "トークンを保存しました"
-	}
-	render(c, status, view.HFCard(d))
-}
-
-// ClearToken removes the Hugging Face token (DELETE /model-manager/hf-token).
-func (h Handlers) ClearToken(c *gin.Context) {
-	err := h.Svc.ClearHuggingFaceToken()
-	d := hfData(h)
-	status := http.StatusOK
-	if err != nil {
-		status, d.Error = refuse(c, err)
-	} else {
-		d.Notice = "トークンを削除しました"
-	}
-	render(c, status, view.HFCard(d))
-}
-
 // externalEndpoints are the registered ComfyUI endpoints other than the bundled one.
 func (h Handlers) externalEndpoints(c *gin.Context) []string {
 	st, err := h.Svc.Status(c.Request.Context())

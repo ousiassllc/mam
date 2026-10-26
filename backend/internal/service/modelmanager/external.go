@@ -13,7 +13,7 @@ import (
 )
 
 // modelFolders are the ComfyUI model folders the catalog installs into.
-var modelFolders = []string{"checkpoints", "diffusion_models", "text_encoders", "vae"}
+var modelFolders = []string{"checkpoints", "diffusion_models", "text_encoders", "vae", "loras"}
 
 // ExternalModel is a model of the catalog against an external ComfyUI: which of its files the server has.
 type ExternalModel struct {
@@ -69,6 +69,9 @@ func (s *Service) ExternalInventory(ctx context.Context, endpoint string) (Exter
 		inv.Folders[folder] = files
 	}
 	for _, m := range s.cat.Models {
+		if !s.allowed(m) { // an adult model is not listed until the age confirmation is on record
+			continue
+		}
 		em := ExternalModel{ID: m.ID, Name: m.Name, Present: []string{}, Missing: []string{}}
 		for _, f := range m.Files {
 			if slices.Contains(inv.Folders[f.Folder], f.Name) {

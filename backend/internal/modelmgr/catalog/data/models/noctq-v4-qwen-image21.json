@@ -1,0 +1,53 @@
+{
+ "id": "noctq-v4-qwen-image21",
+ "name": "Noct Q V4（Qwen-Image 2.1 非検閲・int8）",
+ "kind": "image",
+ "tier": "advanced",
+ "content_rating": "adult",
+ "description": "Qwen-Image 2.1 を非検閲にした派生モデル（成人向け）。標準ノードだけで動く int8_convrot 版で、拡散モデル（約 7.3 GB）・Qwen3-VL 8B のテキストエンコーダー（約 9.4 GB）・VAE の 3 ファイル、合計約 17.3 GB。作者の推奨は 25 ステップ・euler/simple・cfg 3（ネガティブプロンプトあり）。",
+ "files": [
+  {
+   "name": "NoctQ_V4_int8_convrot.safetensors",
+   "folder": "diffusion_models",
+   "url": "https://huggingface.co/Noctaluna/Noct-Q-Uncensored-Qwen-Image-2.1/resolve/a81b9af51120a78e285e57906f2250a2a02080e9/NoctQ_V4_int8_convrot.safetensors",
+   "sha256": "4d92d5538253ab36e6a73b056cce5f697950f4303cb9e6686a3198d0ea13f9e8",
+   "size": 7256784368
+  },
+  {
+   "name": "qwen3vl_8b_int8_convrot.safetensors",
+   "folder": "text_encoders",
+   "url": "https://huggingface.co/Comfy-Org/Qwen-Image-2.1/resolve/0217efd1d9c9452e84f6448903d6e21bfa171ffd/text_encoders/qwen3vl_8b_int8_convrot.safetensors",
+   "sha256": "8bfd0f6e12abf2d2d697ecc888e5e90b0d6741d6708f05799f53afa560452e8f",
+   "size": 9350798360
+  },
+  {
+   "name": "qwen_image_2.1_vae_bf16.safetensors",
+   "folder": "vae",
+   "url": "https://huggingface.co/Comfy-Org/Qwen-Image-2.1/resolve/0217efd1d9c9452e84f6448903d6e21bfa171ffd/vae/qwen_image_2.1_vae_bf16.safetensors",
+   "sha256": "bb21f7473051e1ac368515dd3f2e15cd44d7a11748ee8823e1ddca3e4876b7c9",
+   "size": 675509688
+  }
+ ],
+ "vram": {
+  "min_gb": 16,
+  "source": "Qwen-Image-2.1 int8 は 16〜24 GB の目安。Issue #841 付録（Notion の記載または mam の推定。mam の実機では未検証）",
+  "estimate": true
+ },
+ "license": {
+  "id": "qwen-research",
+  "version": "2026-09-20",
+  "name": "Qwen RESEARCH LICENSE AGREEMENT（2026-09-20）",
+  "url": "https://huggingface.co/Noctaluna/Noct-Q-Uncensored-Qwen-Image-2.1/blob/a81b9af51120a78e285e57906f2250a2a02080e9/LICENSE",
+  "summary": "研究・評価の目的に限る非商用のライセンス。商用には Qwen 側との別の商用ライセンスが要る。再配布するときは、ライセンスの写しと Qwen の帰属表示（Notice）を付ける。Noct Q は Qwen-Image-2.1 の重みを改変した派生物で、同じライセンスに従う。",
+  "commercial_use": false,
+  "notice": "この mam のインストール先に取得するモデルのライセンスです。研究・評価などの非商用の用途にだけ使ってください。"
+ },
+ "consent_required": true,
+ "requires_hf_token": false,
+ "workflows": [
+  {
+   "name": "noctq-v4-qwen-image21",
+   "template": "txt2img-qwen-image21"
+  }
+ ]
+}

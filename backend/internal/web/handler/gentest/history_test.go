@@ -23,7 +23,7 @@ func TestHistoryListsNewestFirstFiltersAndShowsTheSpend(t *testing.T) {
 	full := s.page(paths.GenerationTestHistory())
 	assert.Equal(t, 5, strings.Count(full, `data-testid="gt-history-item"`))
 	assert.Contains(t, full, `data-testid="gt-spend"`)
-	assert.Contains(t, full, "これまでの生成テストの合計: $0.1600", "4 x 0.03 + 1 x 0.04")
+	assert.Contains(t, full, "これまでの生成テストの合計: $0.1536", "4 x 0.03 + 1 x 0.0336")
 	assert.Contains(t, full, "<html", "a direct visit is the whole page")
 	assert.Less(t, strings.Index(full, "a green fox"), strings.Index(full, "a red fox"), "newest first")
 

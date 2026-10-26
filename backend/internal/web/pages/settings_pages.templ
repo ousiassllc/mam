@@ -1,0 +1,39 @@
+package pages
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/layout"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// GlobalSettingsPageData is one page of the global settings screen: the overview or a category (spec/components/settings-screen.md §4).
+type GlobalSettingsPageData struct {
+	// Title is the <title> of the page; every category has its own (WCAG 2.4.2).
+	Title string
+	// Canonical is the URL that stands for the page when another one shows it too ("" for none).
+	Canonical string
+	Nav       []settingsui.NavItem
+	// Body is the category: its h2 and what it holds (settingsui.Category). An HTMX request gets it alone.
+	Body templ.Component
+}
+
+// GlobalSettingsPage is the frame of the global settings screen (the settings that belong to no Project): the way back, the h1,
+// the side navigation and the category on its right, and the modal that the category's buttons fill.
+templ GlobalSettingsPage(csrfToken string, d GlobalSettingsPageData) {
+	@layout.AppLayoutAt(d.Title, csrfToken, d.Canonical) {
+		<main class="mx-auto max-w-6xl p-8">
+			@atoms.BackLink(paths.Home(), "← プロジェクト一覧に戻る")
+			<h1 class="mb-1 mt-3 text-xl font-semibold">設定</h1>
+			<p class="text-sm text-neutral-400">すべてのプロジェクトで共通の設定です。</p>
+			<div class="mt-6 flex flex-col gap-8 lg:flex-row">
+				@settingsui.Nav(d.Nav)
+				<div class="min-w-0 flex-1">
+					@d.Body
+				</div>
+			</div>
+			@modal.Host()
+		</main>
+	}
+}
