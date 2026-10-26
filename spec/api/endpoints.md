@@ -37,7 +37,24 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 | GET | `/projects/:id/edit` | AI Editor / Rough Cut編集ページ（`mam-timeline-editor` を埋め込み）。`HX-Request` では編集画面の本体（`editorpanel.Workspace`。`organisms/editorpanel/`）のフラグメントを返す | フルページ / フラグメント |
 | GET | `/projects/:id/branches` | Branch ツリーページ（ツリーは `branch_tree` をサーバー描画）。`HX-Request` では `BranchView` のフラグメントを返す | フルページ / フラグメント |
 | GET | `/projects/:id/export` | Final Export ページ | フルページ / フラグメント |
-| GET | `/projects/:id/settings` | Production Template・Quality/Cost Policy・予算上限・コスト（`cost_summary_panel`）・ディスク使用量（Project の Take の分に加えて、プレビューのキャッシュ（`assets/.previews`）の合計を「プレビューのキャッシュ（全 Project 共通）」として別に表示する。他の Project のプレビューも含む）と不要 Take のアーカイブ・Brand Constraints・APIキー設定。Chat Workspace の補助ビュー一覧と入力欄の「設定」から開く | フルページ / フラグメント |
+| GET | `/projects/:id/settings` | Production Template・Quality/Cost Policy・予算上限・コスト（`cost_summary_panel`）・ディスク使用量（Project の Take の分に加えて、プレビューのキャッシュ（`assets/.previews`）の合計を「プレビューのキャッシュ（全 Project 共通）」として別に表示する。他の Project のプレビューも含む）と不要 Take のアーカイブ・Brand Constraints。API キーは Project に属さないため含めず、「API キーとモデルの設定は全体の設定へ」のリンク（`GET /settings`）を置く。Chat Workspace の補助ビュー一覧と入力欄の「設定」から開く | フルページ / フラグメント |
+| GET | `/settings` | 全体の設定画面の**概要**（Project に属さない設定。`paths.Settings()`）。分類ごとのカード（API キーとログイン・テキスト生成・画像・動画モデル・ローカル・代替モデル・MCP サーバー・バージョンとアップデート）から、分類ごとのサブページ `/settings/<slug>` へ行く。ルート・応答・モーダルは [endpoints-settings.md](endpoints-settings.md)、各区画の保存の規則（LLM・画像・動画モデル・アップデート）も同じ文書の §6、「ローカル・代替モデル」は [endpoints-local-models.md](endpoints-local-models.md)。ランディングページ（`GET /`）の「設定」カードと `GET /projects/:id/settings` のリンクから開く | フルページ / フラグメント |
+| POST | `/settings/update/check` | 設定画面の「今すぐ確認」（Wails 版のみ。`cmd/server` には無い）。新しいリリースを確認し、あれば検証して入れ替える（流れ・安全ゲートは `spec/architecture/desktop.md` §6）。CSRF 必須。200 で区画（`#update-panel`）を返す。失敗も 200 で、区画にエラーの種類を出す（生のメッセージはログだけ）。新版を取得・検証して入れ替える場合は、アプリが終了するため応答が届かないことがある。ボタンは送信中 `hx-disabled-elt` で無効にし、`hx-sync="this:drop"` で二重送信を捨てる |
+| PUT | `/settings/mcp/bind` | 設定画面「MCP サーバー」の待ち受け先の切り替え。フォーム `bind_address`（前後の空白は除く）。CSRF 必須。MCP リスナーを新しい IP へその場で切り替え、`mcp.json` に保存する（新しいリスナーを先に開き、成功してから古いほうを閉じる。規則は `spec/architecture/mcp.md` §3: このマシンのインターフェースにある、ループバックか `100.64.0.0/10` の IP だけ）。モーダルの保存で、200 は待ち受け先のカード（`#mcp-bind-row`）の OOB ＋トースト＋ `HX-Trigger-After-Swap: modal-close`。許されないアドレス（`0.0.0.0`・LAN・ホスト名・インターフェースにない IP）は 422 で理由と入力値をモーダルに出す。リスナーを開けない・保存できない場合は 500 で、古いリスナーと設定のまま（原因はログだけ。モーダルに理由）。モーダルは `GET /settings/mcp/bind/edit`（[endpoints-settings.md](endpoints-settings.md) §2）。この区画は MCP サーバーがないとき（ルーター単体のテスト）は存在せず、ルートも無い |
+| POST | `/settings/mcp/tokens` | MCP のベアラートークンの発行。フォーム `name`（空白を除いて 1〜64 文字）。CSRF 必須。モーダル（`GET /settings/mcp/tokens/new`）の保存で、201 は発行のモーダルの本文を「発行したトークン」の表示（読み取り専用の欄とコピーのボタン）に替え、表の新しい行を OOB で足す。**発行したトークンの値はこの応答に一度だけ**出る（`Cache-Control: no-store`。モーダルは閉じない。以後の画面には先頭 8 文字だけ）。名前が不正なら 422（モーダルに理由と入力値）。DB に残るのは SHA-256 だけ |
+| DELETE | `/settings/mcp/tokens/:id` | MCP トークンの失効。CSRF 必須。200 でそのトークンの行（`#mcp-token-<id>`。「失効済み」で残り、失効ボタンは消える）とトーストを返す。このトークンでの接続は即時にできなくなる。無ければ 404 |
+| GET ほか | `/nodes`・`/workflows/…` | ノード画面（ComfyUI の UI の埋め込み）と、保存した ComfyUI ワークフローの画面。一覧と仕様は [endpoints-workflows.md](endpoints-workflows.md) |
+| （各種） | `/settings/local-models/…` | 設定画面「ローカル・代替モデル」の接続先・モデル・API キー・接続テストのルート。一覧と仕様は [endpoints-local-models.md](endpoints-local-models.md) |
+| （各種） | `/model-manager/…` | モデルマネージャー画面（ComfyUI エンジン・モデルのカタログと導入・ライセンスの同意・試し生成）。入口はプロジェクト一覧と設定画面のリンク。ルートと仕様は [endpoints-model-manager.md](endpoints-model-manager.md)（`GET /model-manager` が画面） |
+| （各種） | `/generation-test/…` | 生成テスト画面（プロジェクトに属さない画像・動画の比較生成。モデル × プロンプト × 本数の見積り確認・実行・進捗と比較表・履歴・プロンプト履歴・プロジェクトへの取り込み）。入口はプロジェクト一覧のリンク。ルートと仕様は [endpoints-gentest.md](endpoints-gentest.md)（`GET /generation-test` が画面） |
+| GET | `/tools/:tool/status` | トップ画面のツールのカード（`nodes` / `workflows` / `model-manager` / `settings` / `reviews`）の状態の断片。常に 200（読めないときは空）、`Cache-Control: no-store`、外部の API は呼ばない。一覧と仕様は [endpoints-home.md](endpoints-home.md) |
+| GET | `/settings/chatgpt` | 設定画面「ChatGPT でログイン」のカードの一覧だけ（`#chatgpt-panel`。HTMX でなければ `/settings/api-keys` のページ全体）。ログイン中・ダウンロード中は区画が 2 秒ごとにこの URL を取り直す（`Cache-Control: no-store`）。`GET /settings/chatgpt/models` は公式ログインのプランで使えるモデル（`GET https://api.openai.com/v1/models` の `visibility=="list"`）のモーダル。区画は `app` が ChatGPT のサービスを持つときだけ。トークンの値はどの応答にも出ない（`spec/architecture/chatgpt-signin.md`）。モーダルの応答は [endpoints-settings.md](endpoints-settings.md) |
+| POST | `/settings/chatgpt/:kind/login` | ログインの開始。`:kind` は `official` / `image` / `codex`（他は 404）。フォーム `method`（`browser` / `device`）。CSRF 必須。エンジンが無い `codex` は 409。200 でログインのモーダルの本文（ブラウザ: 開いたことと認可 URL、デバイスコード: 確認 URL・コード・期限）と区画の OOB。画像生成が OFF の `image` は 409、公式のデバイスコードは 422（どちらもモーダルの断片に理由）。`GET …/login` はモーダルの本文（方式の選択。`?poll=1` でログイン中の取り直し）、`POST …/login/cancel` は進行中のログインを中止してモーダルを閉じる（[endpoints-settings.md](endpoints-settings.md) §2・§3） |
+| DELETE | `/settings/chatgpt/:kind` | ログアウト（失効の要求 → 保存したトークンの削除。`codex` は app-server に `account/logout` を頼み、フォーム `remove=true` で取得した本体と `CODEX_HOME` も削除する）。CSRF 必須。200 で区画を返し、失効を確認できなかったときはその旨と「ChatGPT の設定で接続を解除」を出す（ローカルのトークンは消える） |
+| PUT | `/settings/chatgpt/image/enabled` | 画像生成（非公式）の ON/OFF。フォーム `enabled`（`true` / `false`）、ON は `acknowledge_risks=true`（リスクの確認）が必須で、無ければ 422。CSRF 必須。200 で区画。OFF の間は画像生成の経路を一切呼ばない |
+| POST | `/settings/chatgpt/codex/install` | Codex の app-server のダウンロード（`mam.exe` と同じ場所の `codex` ディレクトリ。固定した版・SHA-256・サイズを検証）。CSRF 必須。200 で進捗の区画（Windows 以外・書き込めない場所は 409、ディスクの空き不足は 507）。`POST …/install/cancel` は中断（再開できる） |
+| PUT | `/settings/chatgpt/codex/path` | 自分で入れた codex の実行ファイルのパスを設定（フォーム `path`。空で解除）。絶対パスの実在するファイルでなければ 422。CSRF 必須 |
+| POST / GET | `/settings/chatgpt/codex/refresh` ・ `…/codex/models` | アカウント・利用上限を読み直す（POST、CSRF 必須。リセット時刻は日本時間）／ サインイン中のアカウントで使えるモデルを区画に出す（GET、`model/list`）。区画は `method=codex` で返る（仕様: `spec/architecture/chatgpt-codex/codex-login.md`） |
 | GET | `/projects/:id/analytics` | Production Analytics（M3、`spec/spec.md` §28）。Project の MVP Success Metrics（North Star・Shot・人間の介入・時間・コスト・品質・完成）を `analytics_panel` で表示する。計算式と記録する人間の介入は §28.2・§28.3。集計はローカル DB のみで外部へ送信しない。存在しない Project は 404。Project のメニューの「制作指標」から開く | フルページ / フラグメント |
 | GET | `/analytics` | すべての Project の合計の MVP Success Metrics（`/projects/:id/analytics` と同じ画面、Project 名の代わりに「すべてのプロジェクト」）。Project 一覧の「制作指標」から開く | フルページ / フラグメント |
 | GET | `/projects/:id/world-state` | World State 一覧（Character/Product/Location/Camera/Story の現在値表示） | フルページ / フラグメント |
@@ -101,7 +118,7 @@ M1 の入出力契約（Issue #12）:
 |---|---|---|---|
 | POST | `/shots/:id/reference-pack` | Keyframe / Reference Pack（Character/Product/Location/Style/Lighting Reference）生成・再生成。非同期ジョブを起動し、`/shots/:id/generate` と同じく 202 と GENERATING の Shot カードを返す。画像が 1 枚（最も安い画像モデルの見積り）も予算上限（Project / Shot）に収まらなければ 402（枚数は実行中に決まるため、ジョブ中の超過は事前には防がない） | F-11 |
 | POST | `/shots/:id/generate` | Prompt Autopilot → Model Adapter → Video Generation を実行（非同期ジョブ起動、202+進捗はWSで通知）。Body `additional_instruction`（任意、1000 文字以内）。予算上限に 1 Take も収まらなければ 402、生成中の Shot は 409、存在しない Shot は 404、生成機能が未構成（Model Adapter / LLM / ジョブキューなし）は 503。完了した Take は Take カードとしてチャットに追記され、`take.model_name` と `cost_ledger_entry.provider` は `spec/architecture/model-adapters.md` §6 の正規識別子で保存される | F-06, F-07, F-12 |
-| POST | `/shots/:id/generate/candidates` | Prompt Candidate Generation（Quality/Balanced/Economy Mode）。Shot カードの「生成」ボタンはこのルートを呼ぶ（Judge が構成済みで、Spec 済みの Shot の Prompt が LOCK されていないとき。それ以外は単発の `/shots/:id/generate`）。Continue / Branch / 追加撮影（Editor）/ Director の再生成も同じ条件で Candidate 生成を起動する。Prompt Planner が Stability First / Acting First / Dynamic Camera の Candidate（Prompt Version）を作り、Take を生成して AI Video Judge が Best Take（`take.status=ai_pick`）を選ぶ。非同期ジョブ（`job.kind` は generation と同じ）を起動し、`/shots/:id/generate` と同じく 202 と GENERATING の Shot カードを返す。進捗 WebSocket の `action` は `candidates` で、`stage` は §4 の列挙のままである。Body `additional_instruction`（任意）。モードは Quality/Cost Policy で決まる: MAX QUALITY→Quality（Stability First / Acting First / Dynamic Camera を並列生成し Judge が選ぶ。予算が 3 Take 分あれば 3 戦略すべて。1〜2 本だけ収まるときは先頭からその本数だけ 202 で並列生成し、1 本も収まらなければ 402 でジョブも Take も作らない）、BALANCED→Balanced（第一候補のみ。Judge が FAIL の間、Retry Policy と予算の範囲で次の Candidate を追加）、FAST→Economy（1 Take。LOCK 違反または high の Issue があるときだけ Retake）。Take の `model_parameters.candidate_strategy` に戦略を保存する。エラーは `/shots/:id/generate` と同じ（402 / 404 / 409 / 503）で、Judge が未構成でも 503。加えて、候補生成は Shot Spec を作り直すため、Spec 済みで Prompt が LOCK された Shot は `additional_instruction` が空でも 423（`/shots/:id/generate` は指示を伴うときだけ 423）| F-08 |
+| POST | `/shots/:id/generate/candidates` | Prompt Candidate Generation（Quality/Balanced/Economy Mode）。Shot カードの「生成」ボタンはこのルートを呼ぶ（Judge が構成済みで、Spec 済みの Shot の Prompt が LOCK されていないとき。それ以外は単発の `/shots/:id/generate`）。Continue / Branch / 追加撮影（Editor）/ Director の再生成も同じ条件で Candidate 生成を起動する。Prompt Planner が Stability First / Acting First / Dynamic Camera の Candidate（Prompt Version）を作り、Take を生成して AI Video Judge が Best Take（`take.status=ai_pick`）を選ぶ。非同期ジョブ（`job.kind` は generation と同じ）を起動し、`/shots/:id/generate` と同じく 202 と GENERATING の Shot カードを返す。進捗 WebSocket の `action` は `candidates` で、`stage` は `endpoints-api.md` §4 の列挙のままである。Body `additional_instruction`（任意）。モードは Quality/Cost Policy で決まる: MAX QUALITY→Quality（Stability First / Acting First / Dynamic Camera を並列生成し Judge が選ぶ。予算が 3 Take 分あれば 3 戦略すべて。1〜2 本だけ収まるときは先頭からその本数だけ 202 で並列生成し、1 本も収まらなければ 402 でジョブも Take も作らない）、BALANCED→Balanced（第一候補のみ。Judge が FAIL の間、Retry Policy と予算の範囲で次の Candidate を追加）、FAST→Economy（1 Take。LOCK 違反または high の Issue があるときだけ Retake）。Take の `model_parameters.candidate_strategy` に戦略を保存する。エラーは `/shots/:id/generate` と同じ（402 / 404 / 409 / 503）で、Judge が未構成でも 503。加えて、候補生成は Shot Spec を作り直すため、Spec 済みで Prompt が LOCK された Shot は `additional_instruction` が空でも 423（`/shots/:id/generate` は指示を伴うときだけ 423）| F-08 |
 | POST | `/takes/:id/judge` | AI Video Judge を明示的に再実行。非同期ジョブ（`job.kind=judge`）を起動し、202 と JUDGING の Shot カードを返す。結果は `judge_result` に追記され（過去の結果は残る）、チャットに投稿される。Take を作るたびに自動でも実行される。Shot カードの Take 行には、一度も Judge されていない（Judge が失敗して結果が無い場合を含む）Take のうち、サーバーが受け付けるものにだけ「Judge」ボタンを出す。応答のカードの描画は任意の要求値 `selected` に従う（§2.4 の `POST /takes/:id/select`）。Judge 中のカードに生成フォームは無いので、入力欄 `instruction-<Shot ID>` は `hx-preserve` の対象にならない。エラー: 404（Take が存在しない）、409（この Take の Judge がすでに実行待ち/実行中、Shot が生成中/Repair 中、Take に動画ファイルが無い）、503（ffmpeg / LLM 未設定で Judge が無効） | F-13 |
 | POST | `/takes/:id/repair` | Judge 結果に基づく Repair 実行。最新の Judge 結果から Repair Agent が戦略（Prompt Repair/Partial Regeneration/Full Retake/Different Model/Reference Reinforcement/Edit-Level Repair）を選び、Retry Policy の範囲内で新しい Take を作る（Edit-Level Repair だけは例外で、動画モデルを呼ばず Take も作らず Judge もしない。該当区間をチャットで知らせ、編集で直す。`resulting_take_id` は NULL のまま。`spec/architecture/model-adapters.md` §11.3）。非同期ジョブ（`job.kind=repair`）を起動し、202 と REPAIRING の Shot カードを返す。応答のカードの描画は任意の要求値 `selected` に従う（§2.4 の `POST /takes/:id/select`）。Repair 中のカードに生成フォームは無いので、入力欄 `instruction-<Shot ID>` は `hx-preserve` の対象にならない。新しい Take は `take` の新しい行で、修復元の Take は変わらない（`repair_action.resulting_take_id` で追跡）。作られた Take は自動で Judge される。Partial Regeneration は、Judge のすべての Issue が `time_range` を持ち ffmpeg があるとき、Shot 全体の新しい Take に加えて、その区間だけを新しい Take の映像に差し替えた候補 Take（`model_parameters.kind=partial_take`、`source=partial_regeneration`。Shot の選択 Take は置き換えない）をもう 1 本作り、これも Judge する（`spec/spec.md` §13）。Retry Policy（Max retries / Max cost per Shot / Project 予算）の上限に達していたときはジョブが Take を作らず、チャットに Escalation カードを出す。AUTO MODE では Judge のあと全 Take が不合格なら最良の Take から自動で繰り返す（DIRECTOR MODE では自動で繰り返さない）。エラー: 404（Take が存在しない）、409（まだ Judge されていない／Judge に合格していて Repair 不要／Shot が生成中または Repair 中）、503（ジョブキュー・LLM・Model Adapter・ffmpeg のいずれかが未設定で Repair が無効。Judge と生成の両方が要る） | F-14 |
 
@@ -166,7 +183,7 @@ M1（F-18 Simple / F-20 簡易版 / F-26。範囲は `spec/requirements/function
 | PUT | `/edit-timelines/:id` | JSON `{"clips":[{"shot_id","take_id","in_point","out_point","transition":{"type","seconds"}}]}` を次の版として保存し 204。`:id` は編集画面が表示していた版で、それより新しい版があれば 409（古い画面での上書き防止）。クリップ 0 件・クリップが 200 個（`MaxClips`）を超える・最短 0.5 秒未満・Take の長さ超過・別 Shot の Take・不明な Transition・`cut` 以外の Transition の長さが 0 秒以下または 2 秒超（`MaxTransitionSeconds`。最初のクリップと `cut` の長さは無視して 0 にする）は 422。保存すると Project は EDITING に戻る。クリップには `kind`（`main`（省略時）/`insert`/`reaction`。追加 Shot 由来の切り出し）と `caption`（字幕、最大 60 文字、空で字幕なし）も持てる。`GET /api/v1/projects/:id/edit-timeline` の `clips` をそのまま送り返してよいが、`label`・`objective`・`video_url`・`thumbnail_url` は読まず（余分なフィールドは無視する）、`source_seconds` は送られた値を信用せず保存時に Take のファイルから決め直す。保存は `:id` の版と同じ Branch の版として追記する |
 | GET | `/edit-timelines/:id/preview` | Rough Cut の下書きレンダリング（`video/mp4`、Range 対応）。版ごとに初回アクセスで作成しキャッシュする（ffmpeg が必要。なければ 503）。同じ版への同時要求は 1 回のレンダリングを待ち、レンダリングはクライアントの切断（シークなど）では止めない。失敗（ffmpeg の失敗・上限時間切れ）は 10 分間覚え、その間は再レンダリングせず同じ失敗を返す。作ったファイルは `assets/.previews` の合計 4 GiB の上限で、最後に使われた（再生・要求された）のが古いものから削除される（LRU。作ってから古いものではない） |
 | POST | `/edit-timelines/:id/judge` | Editor Judge（PASS / Re-edit / `need_shot`）。最新版のみ・EDITING / EDIT_JUDGING のみ（`need_shot` のまま追加 Shot を待っている EDIT_JUDGING からの再判定を含む。Escalation 応答後の REPAIRING からも実行でき、EDITING へ戻す）。判定は Production Template の評価軸に従い、Pace / Hook / Retention / CTA Timing / Caption は編集で直せる指摘（Re-edit）、Product Exposure / Reaction Shot は追加 Shot が要る指摘（`need_shot`、指摘に `need_shot: {kind: insert|reaction, after_clip, objective, duration_seconds}` が付く）にする。1 件でも `need_shot` があれば判定は `need_shot`。結果を `editor_judge_result` に保存する。PASS は AUDIO へ（Confirmation Level が Rough Cut の確認を求める場合は Approval カードで AWAITING_APPROVAL、承認で AUDIO）。Re-edit は EDITING のまま、指摘をチャットに投稿する。`need_shot` は EDIT_JUDGING のまま、AUTO では続けて `request-additional-shot` の処理を自動で行い、DIRECTOR では要求を待つ。`HX-Trigger: timeline-reload` を返す（`mam-timeline-editor` が Judge 結果と readonly を読み直す） |
-| POST | `/projects/:id/audio/generate` | AUDIO のときのみ。Audio Director（M3、`spec/architecture/model-adapters.md` §14）が Scene Emotion と編集テンポを読んで Audio Timeline（Dialogue / Narration / BGM / SE / Foley / Ambience）を作り、Take の音声とミックスして −14 LUFS に正規化し、Audio Timeline の版として保存する。作る層は Quality Policy で決まる（下記）。フォーム／JSON の `branch_id`（省略時=主系列トランク）でその Branch の Edit Timeline から作り、Branch ごとの系列に版を追記する。`elevenlabs` の API キー未設定は、脚本に台詞行（`dialogue`、ナレーション含む）があるときだけ 502（Planner の有料呼び出しの前に確認する。設定画面で登録）で、台詞行が無いと確認せず、キーが要る層（BGM / SE / Foley / Ambience）を skip して 200 を返す（作れなかった層とその理由はチャットの投稿と画面に出る）。ffmpeg なしは 503 |
+| POST | `/projects/:id/audio/generate` | AUDIO のときのみ。Audio Director（M3、`spec/architecture/model-adapters-m3.md` §14）が Scene Emotion と編集テンポを読んで Audio Timeline（Dialogue / Narration / BGM / SE / Foley / Ambience）を作り、Take の音声とミックスして −14 LUFS に正規化し、Audio Timeline の版として保存する。作る層は Quality Policy で決まる（下記）。フォーム／JSON の `branch_id`（省略時=主系列トランク）でその Branch の Edit Timeline から作り、Branch ごとの系列に版を追記する。`elevenlabs` の API キー未設定は、脚本に台詞行（`dialogue`、ナレーション含む）があるときだけ 502（Planner の有料呼び出しの前に確認する。全体の設定画面（`GET /settings`）で登録）で、台詞行が無いと確認せず、キーが要る層（BGM / SE / Foley / Ambience）を skip して 200 を返す（作れなかった層とその理由はチャットの投稿と画面に出る）。ffmpeg なしは 503 |
 | POST | `/projects/:id/final-qc` | AUDIO のとき、および異常終了で FINAL_QC に取り残された Project の再実行（それ以外は 409）。PASS → READY（Final の確認を求める設定なら Approval カード経由）。FAIL → 該当工程（EDITING / AUDIO）へ差し戻し、指摘をチャットに投稿する。結果は `final_qc_result` に履歴として残る。応答は `HX-Trigger: timeline-reload` を返す（差し戻しで EDITING に戻ったときに `mam-timeline-editor` が読み直す） |
 | POST | `/projects/:id/export` | READY（または再書き出しの EXPORTED）のときのみ。フォーム／JSON の `aspect_ratio`（`16:9`/`9:16`/`1:1`/`4:5`。`4:5` は書き出しだけの選択肢）・`resolution`（`720p`/`1080p`/`1440p`/`2160p`）・`codec`（`h264`/`h265`/`vp9`）を指定（省略時は Brief のアスペクト比（`9:16`/`16:9`/`1:1` は書き出しの 4 つに含まれるのでそのまま使う。Brief が空・保存済みの値が範囲外なら `16:9`）・1080p・h264）。`branch_id`（省略時=主系列トランク）の Edit Timeline と Audio Timeline を書き出し、その Branch が無い・そのタイムラインが無いときは 404、Audio Timeline が最新の Edit Timeline に対して作られていない（`edit_timeline_id` が違う）ときは 409。一時ファイルへ書いて完了後にリネームし（アトミック）、`export`（`branch_id` も記録）に記録して EXPORTED にする |
 | GET | `/projects/:id/exports/:exportId/video` | 書き出した動画のダウンロード（`video/mp4` / `video/webm`。`Content-Disposition: attachment; filename="mam-export-<書き出した日(UTC)>-<exportId>.<mp4|webm>"` を付け、保存名が URL の最後のセグメント `video` にならないようにする。名前は日付・ID・拡張子だけから作り、引用符を含まない。Take のプレビュー再生（`GET /takes/:id/video`）には付けない） |
@@ -179,7 +196,7 @@ M3（F-20 Audio Director）の実装は次のとおり。
 | POST | `/projects/:id/audio/generate` | Project が AUDIO でなければ 409。Branch がこの Project のものでなければ 404（Branch に Edit Timeline がなければ 404）。①Edit Timeline の Scene ごとに編集テンポ（`fast`/`medium`/`slow`）と Scene Emotion（Reasoning LLM が判定。LLM 未設定時は規則）を読み、②脚本の `dialogue` 行を ElevenLabs TTS（`elevenlabs-tts`）で話し（話者に音声クローンがあればその声）、③Quality Policy に応じて BGM（`elevenlabs-music`）・Ambience / SE / Foley（`elevenlabs-sfx`）・Lip Sync（`sync-labs`）を作り、④ローカル ffmpeg でミックスして −14 LUFS に正規化する。**FAST** はセリフ + BGM、**BALANCED** は + Ambience・SE、**MAX QUALITY** は + Foley・Lip Sync。プロバイダー呼び出しごとの見積を `cost_ledger_entry` に記録し、Project の予算上限に収まらない層は作らず（`skipped`）、セリフの合成だけで上限を超えるときは 409 で何も呼ばない。プランの LLM 出力が使えないときは 502（何も課金しない）。作れなかった層とその理由はチャットの投稿と画面に出る（個別のプロバイダーの失敗は実行全体を失敗にしない。TTS の失敗は 502）。`HX-Trigger` なし。応答はステージボタンのフラグメント |
 | POST | `/projects/:id/audio/voices` | multipart の `speaker`（1〜20 文字）・`sample`（音声ファイル、1 バイト以上 10 MB 以下。10 MB 超でも本文全体が 10 MB + 1 MiB 以内なら 422、それを超えれば §0 の 413）・任意の `name`・`branch_id`（応答の画面用）。ElevenLabs で音声クローンを作り（`elevenlabs` のキーが必要。未設定 502、クローン未対応の構成 503）、`voice_clone` に保存する（話者ごとに 1 件。再クローンは置き換え）。入力不備は 422 |
 
-Audio Timeline の版は Branch ごとに 1 から振る追記のみの系列で、M1 の簡易音声の版（`mode` なし）はそのまま読める（`spec/architecture/model-adapters.md` §14.6）。
+Audio Timeline の版は Branch ごとに 1 から振る追記のみの系列で、M1 の簡易音声の版（`mode` なし）はそのまま読める（`spec/architecture/model-adapters-m3.md` §14.6）。
 
 ### 2.7 Brand / Cost
 
@@ -190,8 +207,8 @@ Audio Timeline の版は Branch ごとに 1 から振る追記のみの系列で
 | POST | `/projects/:id/brand-templates` | Project の制約の現在のセットを Brand Template として保存（M3）。フォーム `name`（空白をまとめて 1〜100 文字、大文字小文字を区別せず一意）。保存はその時点のコピー（以後の Project の制約の変更はテンプレートに影響しない）。成功は 200 で一覧（`#brand-template-list`）と、空にした保存フォーム（`#brand-template-form`）を `hx-swap-oob` で返す。名前の不備・重複、制約が 1 件もない Project は 422（一覧と、入力とエラーを載せた保存フォームを `hx-swap-oob` で返す）、Project が無ければ 404。設定画面（`GET /projects/:id/settings`）に `brand_template_panel` を表示する | F-23 |
 | POST | `/projects/:id/brand-templates/:templateId/apply` | テンプレートの制約を既存 Project にコピー適用（M3）。同じ `type`・`level`・`text` の制約を Project がすでに持つ場合はコピーせず、既存の制約は変更しない。適用後のコピーは Project 自身の制約で、独立して削除・追加できテンプレートには伝播しない。200 で一覧（`#brand-constraint-list`。追加フォームは含まない）、Project またはテンプレートが無ければ 404 | F-23 |
 | DELETE | `/projects/:id/brand-templates/:templateId` | テンプレートを削除（M3。`:id` は応答を描く設定画面の Project）。適用済みの Project の制約は変わらない。200 で一覧（`#brand-template-list`。保存フォームは含まず、書きかけのテンプレート名を消さない）、無ければ 404 | F-23 |
-| PUT | `/credentials/:provider` | 外部モデル API キーの保存・置き換え（Form `api_key`）。`provider` は `anthropic` / `openai` / `google` / `flux` / `kling` / `seedance` / `runway` / `elevenlabs` / `synclabs` / `typesafe`。キーは前後の空白を除いて OS のセキュアストレージ（`credential.Store`）へ保存し、再起動なしで次の呼び出しから有効になる。200 で当該プロバイダの行（`credential_panel` の 1 行。設定済み/未設定のみ。キーの値は返さない。他のプロバイダの入力欄は含めない）。空・空白を含む・長すぎるキー（2560 バイト超、または OS のキーストアがサイズで拒むもの）と未対応の `provider` は 422（既存のキーは変えない）。OS のキーストアが保存を拒むときは 503 で当該プロバイダの行（保存できなかった理由つき）、読めないときは 503 で `credential_panel` 全体（キーストア利用不可の案内。`HX-Retarget: #credential-panel`）を返し、保存は成功したが読み戻せないだけのときは 200 で案内と「保存しました」を返す（成功を失敗に見せない） | フラグメント |
-| DELETE | `/credentials/:provider` | API キーの削除。未設定でもエラーにならず 200 で当該プロバイダの行を返す。未対応の `provider` は 422。キーストアが削除を拒む／読めないときは PUT と同じく 503（削除は成功したが読み戻せないだけなら 200 と案内） | フラグメント |
+| PUT | `/credentials/:provider` | 外部モデル API キーの保存・置き換え（Form `api_key`）。`provider` は `anthropic` / `openai` / `google` / `flux` / `kling` / `seedance` / `runway` / `elevenlabs` / `synclabs` / `typesafe`。キーは前後の空白を除いて OS のセキュアストレージ（`credential.Store`）へ保存し、再起動なしで次の呼び出しから有効になる。API キーのモーダルから送る。200 でカード（`#credential-row-<provider>` の OOB。設定済み/未設定のみ。キーの値は返さない）と成功のトースト、`HX-Trigger-After-Swap: modal-close`、`Cache-Control: no-store`。空・空白を含む・長すぎるキー（2560 バイト超、または OS のキーストアがサイズで拒むもの）は 422、OS のキーストアが保存を拒むときは 503（どちらもモーダルの断片に理由。キーは描き戻さず、既存のキーは変えない）、未対応の `provider` は 422（赤いトースト）。保存は成功したがキーストアを読み戻せないだけのときは 200 で区画全体（`HX-Retarget: #credential-panel`、案内つき）を返す（成功を失敗に見せない）。接続テストとモーダルは [endpoints-settings.md](endpoints-settings.md) | フラグメント |
+| DELETE | `/credentials/:provider` | API キーの削除。未設定でもエラーにならず 200 で当該プロバイダのカードだけ（`hx-swap="outerHTML"`）と成功のトーストを返す。未対応の `provider` は 422、キーストアが削除を拒むときは 503（どちらも赤いトースト）。削除は成功したが読み戻せないだけなら 200 で区画全体と案内 | フラグメント |
 | GET | `/projects/:id/cost-summary` | Shot/Scene/Project 別の推定コスト・実コスト集計（`cost_summary_panel`向けフラグメント）。推定コストは生成時の見積り、実コストはベンダーが報告した金額（`cost_ledger_entry.actual_cost`。報告が無い呼び出しがあれば合計に `*` を付ける）。予算上限に対する消化率を併せて表示し、フラグメントは 15 秒ごとに自己更新する | F-22 |
 | POST | `/projects/:id/takes/:takeId/archive` | Take の動画ファイルと、その Take の `.previews` のプロキシ・サムネイルを削除して Rejected にする（Take 行・Judge/Repair 履歴・コスト記録は残す）。Selected Take と、Edit Timeline（トランク・Branch の最新版）のクリップまたは Audio Timeline の Lip Sync が使っている Take は 409（理由つき: 「選択中か、編集・音声のタイムラインで使われているためアーカイブできません」）、当該 Project に無い Take・ファイルを既に手放した Take は 404。ディスク使用量パネルのフラグメントを返す（プレビューのキャッシュの合計にも反映される）。パネルの Take 行の「アーカイブ」ボタンは、この 409 にならない Take（Selected でなく、タイムラインも使っていない Take）にだけ出し、そうでない行には理由の注記を出す | non-functional.md §4 |
 | POST | `/projects/:id/storage/archive-unneeded` | 不要な Take（Rejected、または同じ Shot の別 Take が Selected）をまとめてアーカイブする（Edit Timeline のクリップ・Lip Sync が使っている Take は書き出しに要るため残す）。各 Take の `.previews` のプロキシ・サムネイルも削除する。ディスク使用量パネルのフラグメントを返す | non-functional.md §4 |
@@ -271,103 +288,10 @@ M2 の入出力契約（Issue #15）:
 - `POST /reviews/import`: 成功時は `HX-Redirect: /reviews/:id`（201）。ZIP として読めない・`manifest.json` と `video.mp4|webm` 以外のエントリがある・形式やバージョンが違う・動画の署名が合わない・サイズ超過（本文全体が 2 GiB + 2 MiB 以内のとき。超えれば §0 の 413）は 422（何も保存しない）、同じ `review_id` を読み込み済みなら 409
 - `POST /reviews/:id/comments`・`DELETE /reviews/:id/comments/:commentId`・`PUT /reviews/:id/decision`: 変わる部分だけのフラグメント（201 / 200）。動画（`<video>`）を含む画面全体は返さない（再生位置と、他のフォームの書きかけを失わないため）。コメントの追加は、コメント一覧（`#review-comments`）と、空にした追加フォーム（`#review-comment-form`、OOB スワップ）。削除は一覧だけ（書きかけの追加フォームは残る）。判定の保存は判定の領域（`#review-decision`。保存後のバッジと応答ファイルのダウンロードリンクを含む）だけ。コメントは 1 レビュー 200 件まで（超過は 422）、`timecode` が負・秒でも 分:秒 でもない・24 時間超は 422、`decision` が不正・`reviewer_name` が空か長すぎるは 422。コメントや判定を変えると、書き出す応答の `response_id` が新しくなる
 
-## 3. API ルート（Huma, JSON, `/api/v1`）
+## 3. API ルート / 4. WebSocket
 
-Lit Web Components 専用。HTMX リクエストは発行しない（`spec/architecture/overview.md` §7 の境界ルール）。
-
-| Method | Path | 概要 | 利用コンポーネント |
-|---|---|---|---|
-| GET | `/api/v1/shots/:id` | Shot詳細（`id`/`scene_id`/`project_id`/`order_index`/`objective`/`duration_seconds`/`shot_spec`/`state`/`selected_take_id`（未選択なら省略））。存在しない Shot は 404 | 現状なし（Lit は使わない。`mam-video-player` は Take の `judge-result`、`mam-timeline-editor` は `edit-timeline` を読む） |
-| GET | `/api/v1/shots/:id/takes` | Take一覧（古い順。応答の最上位は `shot_id`・`duration_seconds`（Shot の計画尺）・`takes`、下記の `partial_url`・`limits`。各 Take は `id`・`label`（A, B, …）・`status`（candidate/ai_pick/selected/rejected）・`status_label`（画面に出す状態名: 候補 / AI Pick / 採用 / 除外。Shot カードと同じ）・`adopted`（Shot が使う Take）・`model_name`（生成に使ったモデル名）・`created_at`・`scores`（product/acting/camera/continuity/overall、各 0-100。最新 Judge の Issue から算出: 各軸 100 から high 35・medium 15・low 5 を、Issue ごとにその `dimension` の軸から引く（下限 0。`domain.ScoreTake`）。product=`product_accuracy`/`product_geometry`/`logo_text_accuracy`/`object_consistency`、acting=`character_identity`/`character_consistency`/`face`/`hands`/`pose`/`acting`/`lip_sync`/`motion_quality`、camera=`camera_motion`/`composition`/`lighting`、continuity=`scene_continuity`/`background_consistency`/`temporal_consistency`/`flicker`/`shot_compatibility`/`physics`。`prompt_adherence`（Take 全体が指示と合っていない指摘）は同じ減点を 4 軸すべてから引く。`type=face_identity_drift` の Issue は dimension によらず acting だけから引く。22 個の dimension はどれかの軸に対応する。AI Pick の順位・Minimum acceptance/axis score の判定・Multi-model routing の quality・Take 比較の赤表示はこのスコアを使う。未 Judge は null）・`verdict`・`resolution`/`fps`/`duration_seconds`・`proxied`・`video_url`/`thumbnail_url`/`judge_result_url`、操作可能なときだけ返る `select_url`（選択可能な Take のみ）/`reject_url`（除外可能な Take のみ）、区間指定に使える Take を示す `partial_usable`、区間指定が可能なときだけ返る Shot の `partial_url`、および区間指定の上限と低スコアの下限を渡す `limits`（`max_segments`・`min_segment_seconds`・`min_axis_score`。前 2 つは `domain.MaxTakeSegments` / `MinTakeSegmentSeconds` と同じ値。`min_axis_score` は Project の Quality Policy にユーザーの上書きを当てた軸ごとの最低点（`domain.ProjectPolicy.Effective`。設定画面の「軸ごとの最低スコア」と同じ値）で、AI Video Judge はこれ未満の軸スコアを不合格にし、`mam-take-comparator` はスコア表のこれ未満の値を赤で出す。クライアントはどの値も持たない）） | `mam-take-comparator` |
-| GET | `/api/v1/takes/:id/judge-result` | 最新のJudge Result（`result`/`overall_confidence`/`metrics`/`issues`（`time_range`/`frames`付き）/`preserve`/`repair_strategy`/`created_at`/`scores`）。`scores` は Production Template の評価軸ごとの 0-100 のスコアで、Judge が出さなかったときは省略する（Take 一覧の `scores` 4 軸とは別）。同一Takeの過去Judge履歴は含まない（最新1件）。Take が存在しない、または一度も Judge されていないとき 404 | `mam-video-player`（フレームマーカー重畳） |
-| GET | `/api/v1/repair/jev-shadow-report` | Jev のシャドー実行の集計（`runs`/`errors`/`agreed`/`agreement_rate`（失敗を除く一致率）/`mean_confidence`/`mean_latency_ms`（失敗を除く平均）/`total_cost_usd`/`confidence_histogram`（0.1 刻み 10 区間）/`confidence_agreed`）。Jev による前段選別を有効にするかどうかの判断材料（`spec/architecture/model-adapters.md` §4.5・§11） | Repair Agent（F-14） |
-| GET | `/api/v1/projects/:id/edit-timeline` | 現在の Edit Timeline（Shot順序/Cut Point/Transition）。Editor Judge の結果は返さない（編集画面の Templ が描く）。Rough Cut がなければ 404。クエリ `branch_id`（省略時=主系列トランク）で Branch ごとの版を返す。応答は `id`・`version_number`・`created_at`・`duration_seconds`・`readonly`・`save_url`・`preview_url`・`transitions`・`limits`（`min_clip_seconds`・`max_transition_seconds`・`max_caption_runes`）・`clips`、Branch の版のときだけ `branch_id`（トランクでは省略）。クリップは `shot_id`・`take_id`・`label`・`kind`・`caption`・`objective`・`in_point`・`out_point`・`start`・`transition` に加え、Take から決まる `source_seconds`（Take ファイルの長さ。Out 点の上限判定に使う参考値）・`video_url`・`thumbnail_url`（Take の動画・サムネイルの URL（`/takes/:id/video`・`/takes/:id/thumbnail`）。`source_seconds` は Take の長さが分からないとき省略）を含む。追加 Shot の依頼は Editor Judge の `need_shot` を受けた Templ の `hx-post`（`/edit-timelines/:id/request-additional-shot`）で行い、この応答に判定の指摘は無い（Lit は URL を受け取らない） | `mam-timeline-editor` |
-| — | `PUT /edit-timelines/:id`（アクションルート、§2.6） | Edit Timeline 保存（ドラッグ&ドロップ操作の反映）。`/api/v1` では提供せず、JSON API の GET が返す `save_url` へ PUT する（Lit は API クライアント経由で CSRF トークン付きで送る）。`branch_id` は M2 | `mam-timeline-editor` |
-| GET | `/api/v1/health` | ヘルスチェック。`/healthz` と同一の応答（`ok`/`database`、DB 障害時は 503） | 外形監視（Lit は使わない） |
-| GET | `/api/v1/openapi.json` | OpenAPI 3.1 スペック（Huma自動生成）。`/api/v1/openapi.yaml`・`/api/v1/openapi-3.0.json`・`/api/v1/openapi-3.0.yaml` は同内容の別形式、`/api/v1/schemas/:schema` は各型の JSON Schema | - |
-
-### リクエスト/レスポンス例
-
-```yaml
-# POST /shots/:id/generate （アクションルート、フラグメント返却）
-Request:
-  additional_instruction: "もう少しカメラを寄せて"   # 任意（DIRECTOR MODE指示があれば反映）
-Response: 202 Accepted
-  # フラグメント: Shot状態=GENERATINGのInspector表示
-  # 完了通知は /ws/shots/:id 経由
-```
-```yaml
-# GET /api/v1/projects/:id/edit-timeline   （mam-timeline-editor。保存は PUT /edit-timelines/:id のアクションルート）
-Response 200:
-  Body:
-    id: "et_01"                  # 表示している版。保存時に PUT のパスへ使う
-    version_number: 5
-    created_at: "2026-10-12T09:00:00Z"
-    duration_seconds: 9.5
-    readonly: false              # 編集できない段階（承認待ち・READY 等）では true
-    save_url: "/edit-timelines/et_01"
-    preview_url: "/edit-timelines/et_01/preview"
-    transitions: ["cut", "fade", "fade_black", "dissolve"]
-    limits: { min_clip_seconds: 0.5, max_transition_seconds: 2, max_caption_runes: 60 }
-    branch_id: "br_01"           # Branch の版のときだけ。トランクでは省略
-    clips:
-      - { shot_id: "shot_003", take_id: "take_010", label: "Scene 1 · Shot 1", objective: "駅のホームを歩く",
-          source_seconds: 6.0,   # Take ファイルの長さ（参考値。Out 点の上限判定用。長さが不明なら省略）
-          video_url: "/takes/take_010/video", thumbnail_url: "/takes/take_010/thumbnail",
-          in_point: 0.0, out_point: 4.2, start: 0.0, transition: { type: "cut", seconds: 0 } }
-Errors:
-  404: "Rough Cut がまだない"
-```
-
-```yaml
-# GET /api/v1/takes/:id/judge-result
-Response 200:
-  Body:
-    result: "fail"
-    overall_confidence: 0.94
-    metrics:
-      face_identity:
-        - character_id: "Character_A"
-          similarity_mean: 0.71
-          similarity_min: 0.42
-          sampled_frames: 48
-          undetected_ratio: 0.08
-    issues:
-      - type: "product_logo_deformation"
-        severity: "high"
-        time_range: "2.1-2.8s"
-        frames: [63, 84]
-      - type: "face_identity_drift"
-        severity: "high"
-        time_range: "3.0-3.9s"
-    preserve: ["character", "acting", "background"]
-    repair_strategy:            # PASS で戦略が無いときは省略
-      action: "partial_regeneration"
-      instructions:
-        - "increase_product_reference_strength"
-        - "preserve_logo_geometry"
-    scores:                     # Judge が評価軸別のスコアを出さなかったときは省略
-      product_accuracy: 88
-      product_exposure: 72
-    created_at: "2026-09-30T12:34:56Z"
-Notes:
-  metrics.face_identity_status: "measured" | "not_applicable"（顔参照を持つ Character が Shot にいない）| "unavailable"（顔モデル未配置・推論エラーで定性評価のみ）
-  metrics.face_identity[]: 上記に加え evaluated（数値評価が成立したか。false は undetected_ratio が高い等で定性評価のみ）/ warn_threshold / fail_threshold / calibrated（参照画像でキャリブレーションした閾値か）
-  issues[]: 上記に加え dimension（評価軸）/ character_id（face_identity_drift）/ description / lock_violation（LOCK 違反。true の Take は score に関係なく FAIL）/ brand_constraint_id（Brand / Safety Constraint の違反。`type=brand_constraint_violation`。`lock` の制約は lock_violation=true、`advisory` は severity low の警告）
-  scores: Production Template の評価軸（`product_accuracy` / `hook` など）→ 0-100。Retry Policy の Minimum acceptance score の判定に使う。created_at: この Judge Result を記録した時刻（RFC 3339）
-  time_range: "開始-終了s"（秒）。frames: [開始フレーム, 終了フレーム]（ソース動画のフレーム番号、両端を含む）
-```
-
-## 4. WebSocket
-
-| Path | 概要 |
-|---|---|
-| `/ws/shots/:id` | 生成中Shotの進捗（キュー待ち/生成中/Judge中/完了/失敗）をプッシュ通知。メッセージは JSON `{"shot_id","action"?:"generate\|candidates\|reference_pack\|judge\|repair","stage":"idle\|queued\|generating\|judging\|repairing\|done\|failed","message"?,"takes_done"?,"takes_total"?}`。候補生成中も `action=candidates` で、`stage` はこの列挙のまま（`queued` / `generating` / `judging` / `done` / `failed`）である。接続直後に 1 通送る: GENERATING / JUDGING / REPAIRING の Shot は現在の `stage`（`generating` / `judging`＋`action=judge` / `repairing`＋`action=repair`）、それ以外は `stage=idle`（購読してから状態を読むので、その間に届いた `done` / `failed` は失われない）。同一オリジンの接続のみ受理し、存在しない Shot は 404。Judge 中は `action=judge` で `stage=queued\|judging\|done\|failed`（`stage` に `judging` を追加）。Repair 中は `action=repair` で `stage=queued\|repairing\|done\|failed`（`stage` に `repairing` を追加。Retry Policy の上限で止めたときは `done` とその理由の `message`） 生成中・Judge 中の Shot カードは `mam-video-player` が接続し、完了（done/failed/idle）の `progress-finished` でカードを再取得する。プレーヤーのないカード（Repair 中）は `shot.ts` が接続する。カード 1 枚につき接続は 1 本 |
-| `/ws/projects/:id` | チャットの通知のみを配信する（Core State Machine 遷移・コスト更新・Editor→Reshoot ループの発火のための専用イベントは配信しない。これらの変化はチャットに投稿されたメッセージ・カードとして `message.created` / `card.updated` で届くか、画面が HTTP で取得する。コストは Cost Summary パネルが 15 秒間隔の HTMX ポーリングで更新する）。通知は本文を含まない JSON `{"type":"message.created","message_id":"<最新メッセージID>"}`（新着あり。クライアントは `GET /projects/:id/messages?after=` で取得）と `{"type":"card.updated","message_id":"<カードID>"}`（進捗カード等の更新。`GET /projects/:id/messages/:messageId` で取得）。同一オリジンの接続のみ受理する |
-
-`lib/ws.ts` 経由で接続し、自動再接続（指数バックオフ、最大10回）を行う。接続してから 1 秒以内に閉じた接続は失敗として数える（開いてすぐ閉じるサーバーを 500ms 間隔で繰り返さず、10回で断念する）。断念した後、および再接続待ちの間は、ブラウザの `online`・`visibilitychange`（表示）または画面の「再接続」で直ちに再試行する。断念するとチャット・生成進捗（Shot カード・`mam-video-player`）は「接続が切れました」の通知（「再接続」「再読み込み」ボタン付き）を表示する。チャット画面は再接続後、新着メッセージに加えて、まだ変わりうるカード（未回答の承認・質問・エスカレーション、未完了ジョブの進行カード。サーバーが `data-card-pending` を付ける）を `GET /projects/:id/messages/:messageId` で取り直す（切断中の `card.updated` の取りこぼしを補う）（`spec/architecture/overview.md` 参照元 HALT 標準パターン）。
+`/api/v1`（Huma, JSON）の API ルートと WebSocket は [endpoints-api.md](endpoints-api.md)（§3・§4）に分けた。
 
 ## 改訂履歴
 
 [endpoints.changelog.md](endpoints.changelog.md) を参照（本文の行数を増やさないよう別ファイルに分けている。環境構築 spec の Linterly 節）。
-

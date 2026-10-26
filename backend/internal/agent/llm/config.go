@@ -47,6 +47,9 @@ func Agents() []Agent {
 	}
 }
 
+// CodexBaseURL is the base_url of ProviderChatGPTCodex: a label, because the provider talks to a local process over stdio.
+const CodexBaseURL = "stdio://codex-app-server"
+
 // Provider names an LLM vendor. It is also the credential.Store key of the vendor's API key.
 type Provider string
 
@@ -55,11 +58,18 @@ const (
 	ProviderAnthropic Provider = "anthropic"
 	ProviderOpenAI    Provider = "openai"
 	ProviderGoogle    Provider = "google"
+	// ProviderChatGPTSubscription is the official ChatGPT plan usage route (Responses API, signed in with ChatGPT).
+	// It has no API key: the sign-in of package chatgpt takes its place.
+	ProviderChatGPTSubscription Provider = "chatgpt-subscription"
+	// ProviderChatGPTCodex is the ChatGPT plan used through the Codex app-server (a child process of mam), for the
+	// accounts that the official route does not accept (Business / Enterprise / Edu workspaces). Text generation only.
+	// It has no API key: the Codex login of package chatgpt/codex takes its place.
+	ProviderChatGPTCodex Provider = "chatgpt-codex"
 )
 
 // Providers lists every supported provider.
 func Providers() []Provider {
-	return []Provider{ProviderAnthropic, ProviderOpenAI, ProviderGoogle}
+	return []Provider{ProviderAnthropic, ProviderOpenAI, ProviderGoogle, ProviderChatGPTSubscription, ProviderChatGPTCodex}
 }
 
 // Target is one provider and the model to call on it.
@@ -158,6 +168,10 @@ func DefaultConfig() Config {
 			ProviderAnthropic: {BaseURL: "https://api.anthropic.com"},
 			ProviderOpenAI:    {BaseURL: "https://api.openai.com"},
 			ProviderGoogle:    {BaseURL: "https://generativelanguage.googleapis.com"},
+			// The Responses API of the plan usage flow lives on the public API host.
+			ProviderChatGPTSubscription: {BaseURL: "https://api.openai.com"},
+			// The Codex app-server is a child process, not a host: the value only names it (the field must not be empty).
+			ProviderChatGPTCodex: {BaseURL: CodexBaseURL},
 		},
 		TimeoutSeconds: 120,
 		Retry:          RetryConfig{MaxAttempts: 3, BaseDelayMillis: 1000, MaxDelayMillis: 16000},
@@ -169,21 +183,32 @@ func DefaultConfig() Config {
 // empty path selects the defaults. Unknown keys are rejected so a typo does not silently
 // leave a route unchanged.
 func LoadConfig(path string) (Config, error) {
-	cfg := DefaultConfig()
 	if path == "" {
-		return cfg, nil
+		return DefaultConfig(), nil
 	}
 	data, err := os.ReadFile(path) // #nosec G304 -- the operator chooses the settings file
 	if err != nil {
 		return Config{}, fmt.Errorf("read llm config: %w", err)
 	}
+	cfg, err := ParseConfig(data)
+	if err != nil {
+		return Config{}, fmt.Errorf("%s: %w", path, err)
+	}
+	return cfg, nil
+}
+
+// ParseConfig is LoadConfig for the content of a settings file: DefaultConfig with the JSON applied on
+// top, unknown keys rejected, the result validated. The settings screen checks what it is about to
+// write with it, so that a file it writes is one that LoadConfig accepts at the next start.
+func ParseConfig(data []byte) (Config, error) {
+	cfg := DefaultConfig()
 	dec := json.NewDecoder(bytes.NewReader(data))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&cfg); err != nil {
-		return Config{}, fmt.Errorf("decode llm config %s: %w", path, err)
+		return Config{}, fmt.Errorf("decode llm config: %w", err)
 	}
 	if err := cfg.Validate(); err != nil {
-		return Config{}, fmt.Errorf("llm config %s: %w", path, err)
+		return Config{}, fmt.Errorf("llm config: %w", err)
 	}
 	return cfg, nil
 }

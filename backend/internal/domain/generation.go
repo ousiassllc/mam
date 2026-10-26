@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"strings"
 	"time"
+
+	mr "github.com/ousiassllc/mam/backend/internal/domain/modelreg"
 )
 
 // MaxInstructionRunes bounds the additional instruction of a generation.
@@ -14,28 +16,24 @@ const MaxInstructionRunes = 1000
 // cost_ledger_entry.provider.
 type ModelName string
 
-// Image models.
+// The built-in image models (the first four), then the video models.
 const (
-	ModelImagen4    ModelName = "imagen-4"
-	ModelNanoBanana ModelName = "nano-banana"
-	ModelFlux2      ModelName = "flux-2"
-	ModelGPTImage2  ModelName = "gpt-image-2"
+	ModelNanoBanana     ModelName = "nano-banana"
+	ModelNanoBananaLite ModelName = "nano-banana-lite" // Gemini 3.1 Flash Lite Image: the cheap, fast 1K model
+	ModelFlux2          ModelName = "flux-2"
+	ModelGPTImage2      ModelName = "gpt-image-2"
+	ModelKling3         ModelName = "kling-3.0"
+	ModelSeedance2      ModelName = "seedance-2.0"
+	ModelRunwayGen45    ModelName = "runway-gen-4.5"
 )
 
-// Video models.
-const (
-	ModelKling3      ModelName = "kling-3.0"
-	ModelSeedance2   ModelName = "seedance-2.0"
-	ModelRunwayGen45 ModelName = "runway-gen-4.5"
-)
-
-// ImageModels lists the image models.
+// ImageModels lists the image models (built-in, then defined on registered endpoints: modelreg).
 func ImageModels() []ModelName {
-	return []ModelName{ModelImagen4, ModelNanoBanana, ModelFlux2, ModelGPTImage2}
+	return mr.Image(ModelNanoBanana, ModelNanoBananaLite, ModelFlux2, ModelGPTImage2)
 }
 
-// VideoModels lists the video models that have an adapter.
-func VideoModels() []ModelName { return []ModelName{ModelKling3, ModelSeedance2, ModelRunwayGen45} }
+// VideoModels lists the video models that have an adapter (built-in, then defined on registered endpoints).
+func VideoModels() []ModelName { return mr.Video(ModelKling3, ModelSeedance2, ModelRunwayGen45) }
 
 // JoinModels renders models separated by sep ("kling-3.0 / seedance-2.0 / runway-gen-4.5" for " / ").
 func JoinModels(models []ModelName, sep string) string {

@@ -21,6 +21,9 @@ type Blob struct {
 // BlobOf returns an in-memory Blob.
 func BlobOf(data []byte) Blob { return Blob{data: data, size: int64(len(data))} }
 
+// StagedBlob wraps a file a backend staged itself (fsutil.StageReader): the Blob owns it from now on.
+func StagedBlob(path string, size int64) Blob { return Blob{path: path, size: size} }
+
 // Size is the length of the content in bytes.
 func (b Blob) Size() int64 { return b.size }
 

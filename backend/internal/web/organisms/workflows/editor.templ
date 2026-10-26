@@ -1,0 +1,131 @@
+package workflows
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// EditorBody is what #workflows-editor holds: the form "編集" opened.
+templ EditorBody(e Editor) {
+	if e.Open() {
+		@editor(e)
+	}
+}
+
+templ editor(e Editor) {
+	<form
+		class="flex flex-col gap-4 rounded-md border border-neutral-700 p-4"
+		hx-put={ paths.Workflow(e.ID) }
+		hx-target={ "#" + PanelID }
+		hx-swap="outerHTML"
+		hx-sync="this:drop"
+		hx-disabled-elt="find button[type=submit]"
+		autocomplete="off"
+		data-testid="workflow-editor-form"
+	>
+		<h3 class="text-sm font-semibold">ワークフロー「{ e.Name }」を編集（現在 v{ itoa(e.Version) }）</h3>
+		<p class="text-xs text-neutral-400">グラフか入力の割り当てを変えて保存すると、版が上がります（v{ itoa(e.Version + 1) }）。過去の Take は、作ったときの版の識別子を残します。名前や接続先だけの変更では版は上がりません。</p>
+		if e.Error != "" {
+			<p class="text-sm text-red-300" role="alert" data-testid="workflow-form-error">{ e.Error }</p>
+		}
+		for _, p := range e.Problems {
+			<p class="text-xs text-amber-300" data-testid="workflow-editor-problem">{ p }</p>
+		}
+		<input type="hidden" name={ FieldKind } value={ e.Kind }/>
+		<div class="flex flex-wrap items-end gap-3">
+			<label class="flex flex-col gap-1 text-xs text-neutral-400" for="workflow-edit-name">
+				<span>名前</span>
+				@atoms.Input(atoms.FieldMd, "w-64", templ.Attributes{"id": "workflow-edit-name", "name": FieldName, "type": "text", "value": e.Name, "required": true, "maxlength": itoa(MaxNameLen)})
+			</label>
+			@endpointSelect("workflow-edit-endpoint", e.Endpoints, e.Endpoint)
+		</div>
+		<fieldset class="flex flex-col gap-2" data-testid="workflow-assignments">
+			<legend class="text-sm font-medium">入力の割り当て</legend>
+			<p class="text-xs text-neutral-400">mam の値を、ワークフローのどのノードのどの入力に入れるかを選びます（ノードの一覧は、このワークフローの API 形式のグラフから作っています）。他のノードがつないでいる入力は選べません。Prompt は必須です。</p>
+			<table class="w-full text-sm">
+				<tbody>
+					for _, s := range e.Slots {
+						<tr class="border-b border-neutral-800">
+							<th scope="row" class="py-1 pr-3 text-left font-normal">
+								<label for={ s.Field }>{ s.Label }</label>
+							</th>
+							<td class="py-1">
+								@atoms.Select(atoms.FieldSm, "max-w-xl", templ.Attributes{"id": s.Field, "name": s.Field}) {
+									<option value="" selected?={ s.Selected == "" }>（使わない）</option>
+									for _, n := range e.Nodes {
+										<optgroup label={ n.ID + ": " + n.Class }>
+											for _, o := range n.Options {
+												<option value={ o.Value } selected?={ o.Value == s.Selected }>{ o.Label }</option>
+											}
+										</optgroup>
+									}
+								}
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</fieldset>
+		<label class="flex flex-col gap-1 text-xs text-neutral-400" for="workflow-edit-output">
+			<span>出力に使うノード（画像・動画を保存するノード）</span>
+			@atoms.Select(atoms.FieldMd, "max-w-md", templ.Attributes{"id": "workflow-edit-output", "name": FieldOutputNode, "required": true}) {
+				<option value="" selected?={ e.Output == "" }>選んでください</option>
+				for _, n := range e.Nodes {
+					<option value={ n.ID } selected?={ n.ID == e.Output }>{ n.ID }: { n.Class }</option>
+				}
+			}
+		</label>
+		<div class="flex flex-wrap items-end gap-3">
+			if e.Kind == KindVideo {
+				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="workflow-edit-fps">
+					<span>fps（空: 16）</span>
+					@atoms.Input(atoms.FieldMd, "w-24", templ.Attributes{"id": "workflow-edit-fps", "name": FieldFPS, "type": "number", "min": "1", "max": "240", "value": e.FPS})
+				</label>
+				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="workflow-edit-step">
+					<span>フレーム数の刻み（Wan は 4、LTX は 8）</span>
+					@atoms.Input(atoms.FieldMd, "w-24", templ.Attributes{"id": "workflow-edit-step", "name": FieldFramesStep, "type": "number", "min": "0", "max": "64", "value": e.FramesStep})
+				</label>
+			}
+			<label class="flex flex-col gap-1 text-xs text-neutral-400" for="workflow-edit-multiple">
+				<span>幅・高さの倍数（空: 16）</span>
+				@atoms.Input(atoms.FieldMd, "w-24", templ.Attributes{"id": "workflow-edit-multiple", "name": FieldSizeMultiple, "type": "number", "min": "1", "max": "128", "value": e.SizeMultiple})
+			</label>
+		</div>
+		if e.Kind == KindVideo {
+			<fieldset class="flex flex-col gap-2" data-testid="workflow-video-fields">
+				<legend class="text-sm font-medium">動画の能力</legend>
+				<div class="flex flex-wrap items-end gap-3">
+					<label class="flex flex-col gap-1 text-xs text-neutral-400" for="workflow-edit-durations">
+						<span>長さ（秒。小さい順にカンマ区切り）</span>
+						@atoms.Input(atoms.FieldMd, "w-48", templ.Attributes{"id": "workflow-edit-durations", "name": FieldDurations, "type": "text", "value": e.Durations, "required": true})
+					</label>
+					<label class="flex flex-col gap-1 text-xs text-neutral-400" for="workflow-edit-resolutions">
+						<span>解像度（短辺。カンマ区切り）</span>
+						@atoms.Input(atoms.FieldMd, "w-48", templ.Attributes{"id": "workflow-edit-resolutions", "name": FieldResolutions, "type": "text", "value": e.Resolutions, "required": true})
+					</label>
+				</div>
+				<label class="flex items-center gap-2 text-sm">
+					@atoms.Choice("", templ.Attributes{"type": "checkbox", "name": FieldNativeAudio, "value": "1", "checked": e.NativeAudio})
+					音声も同時に生成する
+				</label>
+			</fieldset>
+		}
+		if len(e.Versions) > 0 {
+			<div class="text-xs text-neutral-400" data-testid="workflow-versions">
+				版:
+				for _, v := range e.Versions {
+					<code class="mr-2">{ v.ModelID }{ currentMark(v.Current) }</code>
+				}
+			</div>
+		}
+		<div class="flex flex-wrap items-center gap-2">
+			@atoms.Button(atoms.TonePrimary, "保存", templ.Attributes{"type": "submit"})
+			@atoms.Button(atoms.ToneNeutral, "閉じる", templ.Attributes{
+				"type":      "button",
+				"hx-get":    paths.Workflows(),
+				"hx-target": "#" + PanelID,
+				"hx-swap":   "outerHTML",
+			})
+		</div>
+	</form>
+}

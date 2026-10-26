@@ -4,6 +4,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/layout"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // SettingsPage is GET /projects/:id/settings: Production Template, Quality/Cost Policy, budget, the
@@ -15,6 +16,7 @@ templ SettingsPage(csrfToken string, d organisms.SettingsBodyData) {
 				@atoms.ChatBackLink(d.Policy.Project.ID)
 				<h1 class="mb-1 mt-3 text-xl font-semibold">設定</h1>
 				<p class="text-sm text-neutral-400">{ d.Policy.Project.Name }</p>
+				<p class="mt-2 text-sm"><a href={ templ.SafeURL(paths.Settings()) } class="text-neutral-400 underline hover:text-neutral-100">API キーとモデルの設定は全体の設定へ</a></p>
 			</div>
 			@organisms.SettingsBody(d)
 		</main>

@@ -45,13 +45,14 @@ func (s *JudgeService) Judge(ctx context.Context, takeID string) (ShotFragment, 
 	case domain.JudgeBusy:
 		return ShotFragment{}, ErrBusy
 	}
-	if _, err := s.runner.Start(ctx, takeID); err != nil {
+	job, err := s.runner.Start(ctx, takeID)
+	if err != nil {
 		if errors.Is(err, judge.ErrBusy) {
 			return ShotFragment{}, ErrJudgeBusy
 		}
 		return ShotFragment{}, notFound(err)
 	}
-	return s.generations.Shot(ctx, ref.Take.ShotID)
+	return s.generations.shotOfJob(ctx, ref.Take.ShotID, job)
 }
 
 // LatestResult returns the newest Judge result of the Take. ErrNotFound means the Take does not

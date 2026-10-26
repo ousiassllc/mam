@@ -1,0 +1,168 @@
+package atoms
+
+// Icons: paths copied from Lucide v1.61.0 (https://lucide.dev, ISC; the licence text is atoms/icons/LICENSE and goes
+// into THIRD_PARTY_NOTICES.md through scripts/third-party-notices.sh). To add an icon, copy the children of the
+// <svg> of icons/<name>.svg of that release into a new case below and add its IconName. Icons are decoration: the
+// SVG is aria-hidden and every meaning is carried by text next to it.
+
+// IconName is the name of an icon of Icon.
+type IconName string
+
+// Icons, by what they stand for (the Lucide name is in the comment of its case in Icon).
+const (
+	IconFlask        IconName = "flask"
+	IconNetwork      IconName = "network"
+	IconWorkflow     IconName = "workflow"
+	IconPackage      IconName = "package"
+	IconSettings     IconName = "settings"
+	IconChart        IconName = "chart"
+	IconReview       IconName = "review"
+	IconChevronRight IconName = "chevron-right"
+	IconKey          IconName = "key"
+	IconText         IconName = "text"
+	IconMedia        IconName = "media"
+	IconLocal        IconName = "local"
+	IconPlug         IconName = "plug"
+	IconUpdate       IconName = "update"
+	IconClose        IconName = "close"
+	IconCopy         IconName = "copy"
+)
+
+// iconDefaultClass is the size of an icon whose class is empty.
+const iconDefaultClass = "h-5 w-5 shrink-0"
+
+func iconClass(class string) string {
+	if class == "" {
+		return iconDefaultClass
+	}
+	return class
+}
+
+// Icon draws a decorative icon in the colour of the parent text (currentColor). An empty class means h-5 w-5; an
+// unknown name draws nothing.
+templ Icon(name IconName, class string) {
+	switch name {
+		case IconFlask:
+			// flask-conical
+			@iconSVG(class) {
+				<path d="M14 2v6a2 2 0 0 0 .245.96l5.51 10.08A2 2 0 0 1 18 22H6a2 2 0 0 1-1.755-2.96l5.51-10.08A2 2 0 0 0 10 8V2"></path>
+				<path d="M6.453 15h11.094"></path>
+				<path d="M8.5 2h7"></path>
+			}
+		case IconNetwork:
+			// network
+			@iconSVG(class) {
+				<rect x="16" y="16" width="6" height="6" rx="1"></rect>
+				<rect x="2" y="16" width="6" height="6" rx="1"></rect>
+				<rect x="9" y="2" width="6" height="6" rx="1"></rect>
+				<path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3"></path>
+				<path d="M12 12V8"></path>
+			}
+		case IconWorkflow:
+			// workflow
+			@iconSVG(class) {
+				<rect width="8" height="8" x="3" y="3" rx="2"></rect>
+				<path d="M7 11v4a2 2 0 0 0 2 2h4"></path>
+				<rect width="8" height="8" x="13" y="13" rx="2"></rect>
+			}
+		case IconPackage:
+			// package
+			@iconSVG(class) {
+				<path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"></path>
+				<path d="M12 22V12"></path>
+				<polyline points="3.29 7 12 12 20.71 7"></polyline>
+				<path d="m7.5 4.27 9 5.15"></path>
+			}
+		case IconSettings:
+			// settings
+			@iconSVG(class) {
+				<path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"></path>
+				<circle cx="12" cy="12" r="3"></circle>
+			}
+		case IconChart:
+			// chart-column
+			@iconSVG(class) {
+				<path d="M3 3v16a2 2 0 0 0 2 2h16"></path>
+				<path d="M18 17V9"></path>
+				<path d="M13 17V5"></path>
+				<path d="M8 17v-3"></path>
+			}
+		case IconReview:
+			// clipboard-check
+			@iconSVG(class) {
+				<rect width="8" height="4" x="8" y="2" rx="1" ry="1"></rect>
+				<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+				<path d="m9 14 2 2 4-4"></path>
+			}
+		case IconChevronRight:
+			// chevron-right
+			@iconSVG(class) {
+				<path d="m9 18 6-6-6-6"></path>
+			}
+		case IconKey:
+			// key-round
+			@iconSVG(class) {
+				<path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"></path>
+				<circle cx="16.5" cy="7.5" r=".5" fill="currentColor"></circle>
+			}
+		case IconText:
+			// message-square-text
+			@iconSVG(class) {
+				<path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z"></path>
+				<path d="M7 11h10"></path>
+				<path d="M7 15h6"></path>
+				<path d="M7 7h8"></path>
+			}
+		case IconMedia:
+			// clapperboard
+			@iconSVG(class) {
+				<path d="m12.296 3.464 3.02 3.956"></path>
+				<path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3z"></path>
+				<path d="M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+				<path d="m6.18 5.276 3.1 3.899"></path>
+			}
+		case IconLocal:
+			// hard-drive
+			@iconSVG(class) {
+				<path d="M10 16h.01"></path>
+				<path d="M2.212 11.577a2 2 0 0 0-.212.896V18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5.527a2 2 0 0 0-.212-.896L18.55 5.11A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path>
+				<path d="M21.946 12.013H2.054"></path>
+				<path d="M6 16h.01"></path>
+			}
+		case IconPlug:
+			// plug
+			@iconSVG(class) {
+				<path d="M12 22v-5"></path>
+				<path d="M15 8V2"></path>
+				<path d="M17 8a1 1 0 0 1 1 1v4a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1z"></path>
+				<path d="M9 8V2"></path>
+			}
+		case IconUpdate:
+			// refresh-cw
+			@iconSVG(class) {
+				<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
+				<path d="M21 3v5h-5"></path>
+				<path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
+				<path d="M8 16H3v5"></path>
+			}
+		case IconClose:
+			// x
+			@iconSVG(class) {
+				<path d="M18 6 6 18"></path>
+				<path d="m6 6 12 12"></path>
+			}
+		case IconCopy:
+			// copy
+			@iconSVG(class) {
+				<rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect>
+				<path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+			}
+	}
+}
+
+// iconSVG is the <svg> every icon shares; the children are the shapes of the icon.
+templ iconSVG(class string) {
+	<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" class={ iconClass(class) }>
+		{ children... }
+	</svg>
+}

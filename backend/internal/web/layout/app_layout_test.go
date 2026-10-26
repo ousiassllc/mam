@@ -43,3 +43,14 @@ func TestAppLayout_ConnectionNoticeTemplateHoldsTheAtomMarkup(t *testing.T) {
 	assert.Contains(t, notice, `data-action="reload"`)
 	assert.Contains(t, notice, `role="alert"`)
 }
+
+// A page that several URLs show says which one is its own: the canonical link is in the head, and only when asked for.
+func TestAppLayoutAt_CanonicalLinkIsInTheHeadOnlyWhenGiven(t *testing.T) {
+	ctx := templ.WithChildren(context.Background(), templ.Raw("<main></main>"))
+
+	with := render(ctx, t, layout.AppLayoutAt("t", "csrf", "/settings/api-keys"))
+	assert.Contains(t, with, `<link rel="canonical" href="/settings/api-keys">`)
+	assert.Less(t, strings.Index(with, `rel="canonical"`), strings.Index(with, "</head>"))
+
+	assert.NotContains(t, render(ctx, t, layout.AppLayout("t", "csrf")), `rel="canonical"`)
+}

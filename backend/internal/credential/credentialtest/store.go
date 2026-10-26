@@ -17,12 +17,21 @@ type Memory struct {
 	mu   sync.Mutex
 	keys map[string]string
 	err  error
+	max  int
 }
 
 var _ credential.Store = (*Memory)(nil)
 
 // New returns an empty Memory.
 func New() *Memory { return &Memory{keys: map[string]string{}} }
+
+// LimitBytes makes Set refuse a value longer than n bytes with credential.ErrTooLarge, as the Windows
+// Credential Manager does at 2560. Zero lifts the limit.
+func (m *Memory) LimitBytes(n int) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.max = n
+}
 
 // FailWith makes every following call fail with err, as an OS key store that is not available does.
 func (m *Memory) FailWith(err error) {
@@ -50,6 +59,9 @@ func (m *Memory) Set(provider, apiKey string) error {
 	}
 	if apiKey == "" {
 		return errors.New("credential: api key must not be empty")
+	}
+	if m.max > 0 && len(apiKey) > m.max {
+		return credential.ErrTooLarge
 	}
 	m.keys[provider] = apiKey
 	return nil

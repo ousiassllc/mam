@@ -2,30 +2,45 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io/fs"
 	"log/slog"
+	"os"
 	"path/filepath"
+	"sync/atomic"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector"
 	"github.com/ousiassllc/mam/backend/internal/agent/jev"
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
+	"github.com/ousiassllc/mam/backend/internal/agent/llm/chatgptcodex"
+	"github.com/ousiassllc/mam/backend/internal/agent/llm/chatgptsub"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/chatgptimage"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/configcheck"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localbackends"
 	"github.com/ousiassllc/mam/backend/internal/bundlezip"
+	"github.com/ousiassllc/mam/backend/internal/chatgpt"
 	"github.com/ousiassllc/mam/backend/internal/config"
 	"github.com/ousiassllc/mam/backend/internal/credential"
+	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
 	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/repository/comfywf"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
+	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
+	"github.com/ousiassllc/mam/backend/internal/service/workflows"
 )
 
 // buildServices opens the database, builds every dependency of the services, recovers the work an
 // abnormal termination left behind and starts the job queue. cleanup stops and closes all of it in
 // the reverse order of construction (queue, services, Judge, database). It is nil on error, where
-// buildServices has already released everything it had built.
-func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger) (_ *service.Services, _ func(), err error) {
+// buildServices has already released everything it had built. db is the database: the app updater reads
+// the job table through it to see whether any work is in flight, and the MCP server keeps its tokens in it.
+func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, gpt *chatgpt.Service) (_ *service.Services, _ *repository.DB, _ func(), err error) {
 	var closers []func()
 	release := func() {
 		for i := len(closers) - 1; i >= 0; i-- {
@@ -60,7 +75,7 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger) 
 
 	db, err := repository.Open(ctx, cfg.DBPath(), logger)
 	if err != nil {
-		return nil, nil, fmt.Errorf("open database: %w", err)
+		return nil, nil, nil, fmt.Errorf("open database: %w", err)
 	}
 	closers = append(closers, func() {
 		if err := db.Close(); err != nil {
@@ -68,22 +83,57 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger) 
 		}
 	})
 
-	llmCfg, err := llm.LoadConfig(cfg.LLMConfigPath)
+	llmFile, err := settingsFileToLoad(cfg.LLMSettingsFile())
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
+	}
+	llmCfg, err := llm.LoadConfig(llmFile)
+	if err != nil {
+		return nil, nil, nil, err
 	}
 	keys := credential.NewKeyring()
-	reasoning := llm.NewClient(llmCfg, llm.NewBackends(llmCfg, keys, nil), llm.WithLogger(logger))
+	llmBackends := llm.NewBackends(llmCfg, keys, nil)
+	chatgptsub.Add(llmBackends, llmCfg, gpt.Official(), nil) // the ChatGPT plan provider; its sign-in is not an API key
+	chatgptcodex.Add(llmBackends, llmCfg, gpt.Codex())       // the same plan through the Codex app-server (workspace accounts)
+	reasoning := llm.NewClient(llmCfg, llmBackends, llm.WithLogger(logger))
 
-	modelCfg, err := configcheck.Load(cfg.ModelConfigPath)
-	if err != nil {
-		return nil, nil, err
+	// The saved ComfyUI workflows are models of the settings: the routes of models.json may name them.
+	if err := workflows.Publish(ctx, comfywf.New(db), logger); err != nil {
+		return nil, nil, nil, err
 	}
-	models := modeladapter.New(modelCfg, modeladapter.NewBackends(modelCfg, keys, nil, 0, modeladapter.WithStagingDir(filepath.Join(cfg.AssetsDir(), ".staging"))), modeladapter.WithLogger(logger))
+	modelPath, modelPinned := cfg.ModelSettingsFile()
+	modelFile, err := settingsFileToLoad(modelPath, modelPinned)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	modelCfg, err := configcheck.Load(modelFile)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	// The bundled ComfyUI starts on the first call of one of its models (modelmanager.Service.Prepare); the manager
+	// is built after the queue it needs, so the hook finds it through a pointer.
+	var manager atomic.Pointer[modelmanager.Service]
+	backendOpts := localbackends.Options{
+		StagingDir:   filepath.Join(cfg.AssetsDir(), ".staging"),
+		ChatGPTImage: chatgptimage.New(gpt, chatgptimage.Options{}), ChatGPTImageEnabled: gpt.ImageEnabled,
+		Prepare: func(ctx context.Context, endpoint string) error {
+			if m := manager.Load(); m != nil {
+				return m.Prepare(ctx, endpoint)
+			}
+			return nil
+		},
+	}
+	models := modeladapter.New(modelCfg, localbackends.Build(modelCfg, keys, backendOpts), modeladapter.WithLogger(logger))
+	backendOpts.Publish(modelCfg)
+	// The subscription's image model is listed only while it is on: the switch republishes the list.
+	gpt.SetOnImageChange(func() { backendOpts.Publish(models.Config()) })
+	localModels := localmodels.New(localmodels.Deps{
+		Path: modelPath, Pinned: modelPinned, Keys: keys, Adapter: models, Backends: backendOpts, Logger: logger,
+	})
 
 	judging, err := newJudgeSetup(cfg, logger)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	closers = append(closers, judging.close)
 
@@ -96,15 +146,16 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger) 
 
 	jevCfg, err := jev.LoadConfig(cfg.JevConfigPath)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	// The Jev shadow run of the Repair Agent works once a TypeSafe API key is stored (credential provider "typesafe").
 	shadow, err := jev.New(jevCfg, keys, nil)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
-	jobs := jobqueue.New(repository.NewJobRepository(db), jobqueue.Options{Logger: logger})
+	jobTable := repository.NewJobRepository(db)
+	jobs := jobqueue.New(jobTable, jobqueue.Options{Logger: logger})
 	// Job handlers are registered by service.New (the plan job) and by the features that add more kinds.
 	// The services are built before the queue starts: they subscribe to job changes.
 	services := service.New(service.Deps{
@@ -122,13 +173,28 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger) 
 		Media:       previews,
 		Audio:       audioProviders(keys),
 	})
+	services.LocalModels = localModels
 	closers = append(closers, services.Close) // runs after jobs.Stop: no job change wakes the workers any more
-	if err := recoverWork(ctx, services, jobs, logger); err != nil {
-		return nil, nil, err
+	mgr, err := newModelManager(localModels, models, jobs, jobTable, keys, backendOpts, logger)
+	if err != nil {
+		return nil, nil, nil, err
 	}
+	services.ModelManager = mgr
+	manager.Store(mgr)
+	// An adult model is refused while the age confirmation is off: by every generation (Shot, Reference Pack, the trial
+	// generations) even when an assignment still points at it. The same predicate leaves it out of the assignment choices (SetHidden).
+	models.Gate.Set(func(m domain.ModelName) bool { return mgr.HidesModel(string(m)) })
+	services.Gentest = newGentest(cfg, db, jobs, models, services, logger)
+	services.Workflows = newWorkflows(cfg, db, localModels, models, mgr, services.Projects, keys, backendOpts, logger)
+	closers = append(closers, mgr.Close) // after jobs.Stop too: the engine outlives the jobs that call it
+	if err := recoverWork(ctx, services, jobs, logger); err != nil {
+		return nil, nil, nil, err
+	}
+	services.Gentest.OnStartup(ctx) // after the queue failed the interrupted jobs: settles the results they left
 	jobs.Start(ctx)
 	closers = append(closers, jobs.Stop)
-	return services, release, nil
+	mgr.OnStartup(ctx)
+	return services, db, release, nil
 }
 
 // recoverWork cleans up after an abnormal termination: Shots left GENERATING / REPAIRING are released
@@ -170,4 +236,19 @@ func audioProviders(keys credential.Store) audiodirector.Providers {
 	p := audiodirector.ElevenLabsProviders(audiodirector.NewElevenLabs(audiodirector.Config{}, keys, nil))
 	p.LipSync = audiodirector.NewSyncLabs(audiodirector.SyncLabsConfig{}, keys, nil)
 	return p
+}
+
+// settingsFileToLoad is the path to hand to llm.LoadConfig / configcheck.Load: a pinned file (the
+// operator named it) as it is, so a missing one is an error; the default file of the data directory only
+// when it exists, where "" selects the defaults. Any other failure to reach it is an error, as it is for a pinned file.
+func settingsFileToLoad(path string, pinned bool) (string, error) {
+	if pinned {
+		return path, nil
+	}
+	if _, err := os.Stat(path); errors.Is(err, fs.ErrNotExist) {
+		return "", nil
+	} else if err != nil {
+		return "", fmt.Errorf("settings file %s: %w", path, err)
+	}
+	return path, nil
 }

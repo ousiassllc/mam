@@ -5,8 +5,12 @@ package atoms
 import "encoding/json"
 
 // HxVals encodes the hx-vals attribute of an HTMX element (extra request parameters) as a JSON
-// object. Every hx-vals of the pages is built here, so values are always JSON-escaped.
+// object (a nil map is "{}", not "null": htmx fails to read a null and sends nothing). Every hx-vals of the pages is built
+// here, so values are always JSON-escaped.
 func HxVals(v map[string]string) string {
+	if v == nil {
+		v = map[string]string{}
+	}
 	raw, err := json.Marshal(v)
 	if err != nil { // a map of strings always marshals
 		panic(err)

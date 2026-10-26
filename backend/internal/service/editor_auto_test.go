@@ -90,7 +90,7 @@ func TestAdvanceAuto_AFailedStageIsNotRetriedOrAnnouncedAgainByUnrelatedUpdates(
 
 	for range 5 { // every job update of any Project wakes the chain
 		f.svc.Editor.ResumeEditing()
-		time.Sleep(50 * time.Millisecond)
+		f.waitEditingWorkerIdle(t)
 	}
 
 	assert.Equal(t, 1, f.countNotices(t), "the same stop is announced once")

@@ -1,0 +1,56 @@
+{
+ "id": "wan22-ti2v-5b",
+ "name": "Wan 2.2 TI2V 5B",
+ "kind": "video",
+ "tier": "standard",
+ "content_rating": "general",
+ "description": "テキストからも先頭フレームからも動画を作れる、いちばん小さい Wan 2.2（拡散モデル・テキストエンコーダー・VAE の 3 ファイル、合計約 18 GB）。24fps。",
+ "files": [
+  {
+   "name": "wan2.2_ti2v_5B_fp16.safetensors",
+   "folder": "diffusion_models",
+   "url": "https://huggingface.co/Comfy-Org/Wan-2.2/resolve/ee6f4a40737a995bf5818954cfce6d59443b0f04/split_files/diffusion_models/wan2.2_ti2v_5B_fp16.safetensors",
+   "sha256": "456f901338bd9eadbded3828b819109a9b68e8a525ca5cf8d0049a69fcfeca1e",
+   "size": 9999658848
+  },
+  {
+   "name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+   "folder": "text_encoders",
+   "url": "https://huggingface.co/Comfy-Org/Wan-2.2/resolve/ee6f4a40737a995bf5818954cfce6d59443b0f04/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+   "sha256": "c3355d30191f1f066b26d93fba017ae9809dce6c627dda5f6a66eaa651204f68",
+   "size": 6735906897
+  },
+  {
+   "name": "wan2.2_vae.safetensors",
+   "folder": "vae",
+   "url": "https://huggingface.co/Comfy-Org/Wan-2.2/resolve/ee6f4a40737a995bf5818954cfce6d59443b0f04/split_files/vae/wan2.2_vae.safetensors",
+   "sha256": "e40321bd36b9709991dae2530eb4ac303dd168276980d3e9bc4b6e2b75fed156",
+   "size": 1409400960
+  }
+ ],
+ "vram": {
+  "min_gb": 24,
+  "source": "Wan-AI/Wan2.2-TI2V-5B の README（720p・24fps を RTX 4090 クラスの 1 枚で動かせる、参照実装は 24 GB 以上）",
+  "estimate": false
+ },
+ "license": {
+  "id": "apache-2.0",
+  "version": "2.0",
+  "name": "Apache License 2.0",
+  "url": "https://www.apache.org/licenses/LICENSE-2.0",
+  "summary": "商用を含めて自由に使える。著作権表示とライセンス文を保つ。生成物の権利は主張されない。",
+  "commercial_use": true
+ },
+ "consent_required": false,
+ "requires_hf_token": false,
+ "workflows": [
+  {
+   "name": "wan22-ti2v-5b",
+   "template": "txt2video-wan22-5b"
+  },
+  {
+   "name": "wan22-ti2v-5b-i2v",
+   "template": "img2video-wan22-5b"
+  }
+ ]
+}

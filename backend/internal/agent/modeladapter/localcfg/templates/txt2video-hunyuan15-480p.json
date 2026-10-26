@@ -1,0 +1,231 @@
+{
+ "id": "txt2video-hunyuan15-480p",
+ "label": "HunyuanVideo 1.5 480p: テキストから動画",
+ "media": "video",
+ "description": "ComfyUI 標準ノードだけの HunyuanVideo 1.5 480p（cfg 蒸留版 fp8 の hunyuanvideo1.5_480p_t2v_cfg_distilled_fp8_scaled.safetensors、テキストエンコーダー qwen_2.5_vl_7b_fp8_scaled.safetensors と byt5_small_glyphxl_fp16.safetensors、VAE hunyuanvideo15_vae_fp16.safetensors）のワークフロー。24fps、フレーム数は 4n+1。サンプラーの設定は公式の 720p テンプレートを 480p の蒸留版に合わせた推定値。GPU では未実行（構造のテストのみ）。",
+ "model": {
+  "media": "video",
+  "workflow": {
+   "graph": {
+    "11": {
+     "class_type": "DualCLIPLoader",
+     "inputs": {
+      "clip_name1": "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+      "clip_name2": "byt5_small_glyphxl_fp16.safetensors",
+      "type": "hunyuan_video_15",
+      "device": "default"
+     }
+    },
+    "12": {
+     "class_type": "UNETLoader",
+     "inputs": {
+      "unet_name": "hunyuanvideo1.5_480p_t2v_cfg_distilled_fp8_scaled.safetensors",
+      "weight_dtype": "default"
+     }
+    },
+    "10": {
+     "class_type": "VAELoader",
+     "inputs": {
+      "vae_name": "hunyuanvideo15_vae_fp16.safetensors"
+     }
+    },
+    "132": {
+     "class_type": "ModelSamplingSD3",
+     "inputs": {
+      "shift": 7,
+      "model": [
+       "12",
+       0
+      ]
+     }
+    },
+    "44": {
+     "class_type": "CLIPTextEncode",
+     "inputs": {
+      "text": "",
+      "clip": [
+       "11",
+       0
+      ]
+     }
+    },
+    "93": {
+     "class_type": "CLIPTextEncode",
+     "inputs": {
+      "text": "",
+      "clip": [
+       "11",
+       0
+      ]
+     }
+    },
+    "124": {
+     "class_type": "EmptyHunyuanVideo15Latent",
+     "inputs": {
+      "width": 848,
+      "height": 480,
+      "length": 121,
+      "batch_size": 1
+     }
+    },
+    "131": {
+     "class_type": "CFGGuider",
+     "inputs": {
+      "cfg": 1,
+      "model": [
+       "132",
+       0
+      ],
+      "positive": [
+       "44",
+       0
+      ],
+      "negative": [
+       "93",
+       0
+      ]
+     }
+    },
+    "129": {
+     "class_type": "RandomNoise",
+     "inputs": {
+      "noise_seed": 0
+     }
+    },
+    "130": {
+     "class_type": "KSamplerSelect",
+     "inputs": {
+      "sampler_name": "euler"
+     }
+    },
+    "128": {
+     "class_type": "BasicScheduler",
+     "inputs": {
+      "scheduler": "simple",
+      "steps": 20,
+      "denoise": 1,
+      "model": [
+       "132",
+       0
+      ]
+     }
+    },
+    "127": {
+     "class_type": "SamplerCustomAdvanced",
+     "inputs": {
+      "noise": [
+       "129",
+       0
+      ],
+      "guider": [
+       "131",
+       0
+      ],
+      "sampler": [
+       "130",
+       0
+      ],
+      "sigmas": [
+       "128",
+       0
+      ],
+      "latent_image": [
+       "124",
+       0
+      ]
+     }
+    },
+    "8": {
+     "class_type": "VAEDecodeTiled",
+     "inputs": {
+      "tile_size": 512,
+      "overlap": 64,
+      "temporal_size": 64,
+      "temporal_overlap": 8,
+      "samples": [
+       "127",
+       0
+      ],
+      "vae": [
+       "10",
+       0
+      ]
+     }
+    },
+    "101": {
+     "class_type": "CreateVideo",
+     "inputs": {
+      "fps": 24,
+      "images": [
+       "8",
+       0
+      ]
+     }
+    },
+    "102": {
+     "class_type": "SaveVideo",
+     "inputs": {
+      "filename_prefix": "video/mam",
+      "format": "auto",
+      "codec": "auto",
+      "video": [
+       "101",
+       0
+      ]
+     }
+    }
+   },
+   "assignments": [
+    {
+     "param": "prompt",
+     "node": "44",
+     "input": "text"
+    },
+    {
+     "param": "negative_prompt",
+     "node": "93",
+     "input": "text"
+    },
+    {
+     "param": "seed",
+     "node": "129",
+     "input": "noise_seed"
+    },
+    {
+     "param": "width",
+     "node": "124",
+     "input": "width"
+    },
+    {
+     "param": "height",
+     "node": "124",
+     "input": "height"
+    },
+    {
+     "param": "frames",
+     "node": "124",
+     "input": "length"
+    },
+    {
+     "param": "fps",
+     "node": "101",
+     "input": "fps"
+    }
+   ],
+   "output_node": "102",
+   "fps": 24,
+   "frames_step": 4,
+   "size_multiple": 16
+  },
+  "video": {
+   "durations": [
+    3,
+    4,
+    5
+   ],
+   "resolutions": [
+    "480p"
+   ]
+  }
+ }
+}

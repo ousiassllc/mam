@@ -1,0 +1,120 @@
+{
+ "id": "txt2img-flux-schnell",
+ "label": "FLUX.1 schnell: テキストから画像",
+ "media": "image",
+ "description": "ComfyUI 標準ノードだけの FLUX.1 schnell（fp8 チェックポイント flux1-schnell-fp8.safetensors）のワークフロー。4 ステップ・cfg 1 で、ネガティブプロンプトは使わない。GPU では未実行（構造のテストのみ）。",
+ "model": {
+  "media": "image",
+  "workflow": {
+   "graph": {
+    "30": {
+     "class_type": "CheckpointLoaderSimple",
+     "inputs": {
+      "ckpt_name": "flux1-schnell-fp8.safetensors"
+     }
+    },
+    "6": {
+     "class_type": "CLIPTextEncode",
+     "inputs": {
+      "text": "",
+      "clip": [
+       "30",
+       1
+      ]
+     }
+    },
+    "33": {
+     "class_type": "CLIPTextEncode",
+     "inputs": {
+      "text": "",
+      "clip": [
+       "30",
+       1
+      ]
+     }
+    },
+    "27": {
+     "class_type": "EmptySD3LatentImage",
+     "inputs": {
+      "width": 1024,
+      "height": 1024,
+      "batch_size": 1
+     }
+    },
+    "31": {
+     "class_type": "KSampler",
+     "inputs": {
+      "seed": 0,
+      "steps": 4,
+      "cfg": 1,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "denoise": 1,
+      "model": [
+       "30",
+       0
+      ],
+      "positive": [
+       "6",
+       0
+      ],
+      "negative": [
+       "33",
+       0
+      ],
+      "latent_image": [
+       "27",
+       0
+      ]
+     }
+    },
+    "8": {
+     "class_type": "VAEDecode",
+     "inputs": {
+      "samples": [
+       "31",
+       0
+      ],
+      "vae": [
+       "30",
+       2
+      ]
+     }
+    },
+    "9": {
+     "class_type": "SaveImage",
+     "inputs": {
+      "filename_prefix": "mam/image",
+      "images": [
+       "8",
+       0
+      ]
+     }
+    }
+   },
+   "assignments": [
+    {
+     "param": "prompt",
+     "node": "6",
+     "input": "text"
+    },
+    {
+     "param": "seed",
+     "node": "31",
+     "input": "seed"
+    },
+    {
+     "param": "width",
+     "node": "27",
+     "input": "width"
+    },
+    {
+     "param": "height",
+     "node": "27",
+     "input": "height"
+    }
+   ],
+   "output_node": "9"
+  }
+ }
+}

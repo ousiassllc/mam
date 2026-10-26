@@ -1,7 +1,6 @@
 package credential_test
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -68,11 +67,9 @@ func TestSettings_RendersWhenTheKeyStoreNeverAnswers(t *testing.T) {
 	t.Parallel()
 	keys := credential.WithTimeout(credentialtest.NewBlocking(t), testTimeout)
 	svc := servicetest.New(t, service.Deps{DB: testdb.Open(t), Credentials: keys})
-	project, err := svc.Projects.Create(context.Background(), service.CreateProjectInput{Content: "動画を作りたい"})
-	require.NoError(t, err)
 	engine := router.New(svc, router.Options{})
 
-	req := httptest.NewRequest(http.MethodGet, "/projects/"+project.ID+"/settings", nil)
+	req := httptest.NewRequest(http.MethodGet, "/settings/api-keys", nil)
 	req.Host, req.RemoteAddr = "127.0.0.1:8787", "127.0.0.1:54321"
 	rec := httptest.NewRecorder()
 	done := make(chan struct{})
@@ -88,5 +85,5 @@ func TestSettings_RendersWhenTheKeyStoreNeverAnswers(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	assert.Contains(t, rec.Body.String(), `data-testid="credential-unavailable"`)
-	assert.Contains(t, rec.Body.String(), `id="policy-`, "the rest of the screen is still there")
+	assert.Contains(t, rec.Body.String(), `<h1`, "the rest of the screen is still there")
 }

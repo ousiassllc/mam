@@ -1,0 +1,317 @@
+package modelmgr
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// HFImportSection is the import from Hugging Face: a search or URL form, its result (hits, or the files of a repository
+// with the form that installs one) and the files the user added. The server enforces every rule (formats, terms, the age
+// gate); the forms are only how a user asks.
+templ HFImportSection(h HFImport) {
+	<div class="flex flex-col gap-4" data-testid="mm-hfi">
+		<form
+			class="flex flex-wrap items-end gap-2"
+			hx-get={ paths.ModelManagerPart("hf") }
+			hx-target={ "#" + HFResultID }
+			hx-swap="outerHTML"
+			hx-sync="this:replace"
+			hx-disabled-elt="find button[type=submit]"
+			data-testid="mm-hfi-form"
+		>
+			<label class="flex flex-col gap-1 text-xs text-neutral-400" for="mm-hfi-q">
+				<span>キーワード・owner/repo・Hugging Face の URL</span>
+				@atoms.Input(atoms.FieldMd, "w-96 max-w-full", templ.Attributes{
+					"id": "mm-hfi-q", "name": FieldQuery, "type": "text", "required": true, "maxlength": itoa(MaxQueryLen), "value": h.Query,
+					"placeholder": "例: sdxl / stabilityai/sdxl-turbo / https://huggingface.co/…", "autocomplete": "off",
+				})
+			</label>
+			<label class="flex flex-col gap-1 text-xs text-neutral-400" for="mm-hfi-kind">
+				<span>種別（キーワード検索のとき）</span>
+				@atoms.Select(atoms.FieldMd, "", templ.Attributes{"id": "mm-hfi-kind", "name": FieldKind}) {
+					for _, k := range HFKinds {
+						<option value={ k[0] } selected?={ k[0] == h.Kind }>{ k[1] }</option>
+					}
+				}
+			</label>
+			@atoms.Button(atoms.TonePrimary, "探す", templ.Attributes{"type": "submit"})
+		</form>
+		<p id={ HFMsgID } class="text-sm text-red-300" role="alert" data-testid="mm-hfi-msg"></p>
+		@HFResultView(h.Result)
+		<h3 class="text-sm font-semibold">追加したモデル</h3>
+		@HFModelListView(h.Models)
+	</div>
+}
+
+// HFResultView is the answer to a search or a repository.
+templ HFResultView(r HFResult) {
+	<div id={ HFResultID } class="flex flex-col gap-3" data-testid="mm-hfi-result">
+		@notice(r.Message, "mm-hfi-result")
+		if len(r.Hits) > 0 {
+			<ul class="flex flex-col divide-y divide-neutral-800 text-sm" data-testid="mm-hfi-hits">
+				for _, hit := range r.Hits {
+					<li class="flex flex-wrap items-center justify-between gap-2 py-2" data-repo={ hit.Repo }>
+						<span class="flex flex-wrap items-center gap-2">
+							<code>{ hit.Repo }</code>
+							if hit.Gated {
+								@atoms.Badge(atoms.BadgeWarn, "gated")
+							}
+							if hit.NFAA {
+								@atoms.Badge(atoms.BadgeError, "NFAA")
+							}
+							<span class="text-xs text-neutral-400">ダウンロード { hit.Downloads }・いいね { hit.Likes }</span>
+						</span>
+						@atoms.SmallButtonFor(atoms.ToneNeutral, "ファイルを見る", hit.Repo, templ.Attributes{
+							"type": "button", "hx-get": hfSearchURL(hit.Repo), "hx-target": "#" + HFResultID, "hx-swap": "outerHTML",
+							"hx-sync": "this:drop", "hx-disabled-elt": "this",
+						})
+					</li>
+				}
+			</ul>
+		}
+		if r.Repo != nil {
+			@hfRepoView(*r.Repo)
+		}
+	</div>
+}
+
+templ hfRepoView(r HFRepo) {
+	<div class="flex flex-col gap-3" data-testid="mm-hfi-repo" data-repo={ r.ID } data-commit={ r.Commit }>
+		<div class="flex flex-wrap items-center gap-2 text-sm">
+			<a class="underline" href={ templ.SafeURL(r.Page) } target="_blank" rel="noopener noreferrer"><code>{ r.ID }</code></a>
+			<span class="text-xs text-neutral-400">コミット <code>{ shortHash(r.Commit) }</code> に固定</span>
+			if r.Gated {
+				@atoms.BadgeWith(atoms.BadgeWarn, "gated", templ.Attributes{"data-testid": "mm-hfi-gated"})
+			}
+			if r.NFAA {
+				@atoms.BadgeWith(atoms.BadgeError, "NFAA（成人向け）", templ.Attributes{"data-testid": "mm-hfi-nfaa"})
+			}
+		</div>
+		<p class="text-sm" data-testid="mm-hfi-license">ライセンス: { r.License }</p>
+		if r.LicenseWarn != "" {
+			<p class="text-sm text-amber-300" data-testid="mm-hfi-license-warning">{ r.LicenseWarn }</p>
+		}
+		if r.Gated && r.NoToken {
+			<p class="text-sm text-amber-300" data-testid="mm-hfi-gated-notice">gated のリポジトリです。下の「Hugging Face のトークン」を設定し、<a class="underline" href={ templ.SafeURL(r.Page) } target="_blank" rel="noopener noreferrer">リポジトリのページ</a>でアクセスを申請してください（mam からは申請できません）。</p>
+		}
+		<p class="text-xs text-neutral-300" data-testid="mm-hfi-terms">{ r.Terms }</p>
+		if r.Truncated {
+			<p class="text-xs text-amber-300">ファイルが多いため、一部だけ表示しています。</p>
+		}
+		if len(r.Groups) == 0 {
+			<p class="text-sm text-neutral-300" data-testid="mm-hfi-nofiles">モデルのファイル（.safetensors・.gguf・.ckpt など）が見つかりません。</p>
+		}
+		for _, g := range r.Groups {
+			<section class="flex flex-col gap-1" data-testid="mm-hfi-group" data-group={ g.Name }>
+				<h4 class="text-sm font-medium">{ g.Name }</h4>
+				<ul class="flex flex-col divide-y divide-neutral-800 text-xs">
+					for _, f := range g.Files {
+						@hfFileRow(r, f)
+					}
+				</ul>
+			</section>
+		}
+	</div>
+}
+
+templ hfFileRow(r HFRepo, f HFFile) {
+	<li class="flex flex-col gap-1 py-2" data-testid="mm-hfi-file" data-path={ f.Path } data-installable={ boolText(f.Installable) }>
+		<div class="flex flex-wrap items-center gap-2">
+			<code>{ f.Path }</code>
+			<span class="text-neutral-300">{ f.Size }</span>
+			@atoms.Badge(atoms.BadgeNeutral, f.Format)
+			if f.Variant != "" {
+				@atoms.Badge(atoms.BadgeInfo, f.Variant)
+			}
+			if f.Installable {
+				@atoms.BadgeWith(fitTone(f.Fit), fitLabel(f.Fit)+"（目安 "+f.Need+"）", templ.Attributes{"data-testid": "mm-hfi-fit", "data-fit": f.Fit})
+			}
+			@atoms.BadgeWith(securityTone(f.Security), securityLabel(f.Security), templ.Attributes{"data-testid": "mm-hfi-security"})
+			if f.Installed {
+				@atoms.Badge(atoms.BadgeOK, "導入済み")
+			}
+			if f.Selected {
+				@atoms.Badge(atoms.BadgeInfo, "選択中のファイル")
+			}
+		</div>
+		if f.SHA256 != "" {
+			<p class="text-neutral-400">SHA-256 <code>{ f.SHA256 }</code></p>
+		}
+		if !f.Installable {
+			<p class="text-amber-300" data-testid="mm-hfi-reason">{ f.Reason }</p>
+		} else if f.Job != "" {
+			<p class="text-neutral-300">導入中です（下の「追加したモデル」に進み具合が出ます）</p>
+		} else {
+			<details class="text-neutral-300" data-testid="mm-hfi-install">
+				<summary class="cursor-pointer text-emerald-300">導入する…</summary>
+				@hfInstallForm(r, f)
+			</details>
+		}
+	</li>
+}
+
+templ hfInstallForm(r HFRepo, f HFFile) {
+	<form
+		class="mt-2 flex flex-col gap-2"
+		hx-post={ paths.ModelManagerPart("hf", "install") }
+		hx-target={ "#" + HFModelsID }
+		hx-swap="outerHTML"
+		hx-sync="this:drop"
+		hx-disabled-elt="find button[type=submit]"
+		data-testid="mm-hfi-install-form"
+	>
+		<input type="hidden" name={ FieldRepo } value={ r.ID }/>
+		<input type="hidden" name={ FieldCommit } value={ r.Commit }/>
+		<input type="hidden" name={ FieldPath } value={ f.Path }/>
+		<input type="hidden" name={ FieldTerms } value={ r.TermsVersion }/>
+		<div class="flex flex-wrap items-end gap-2">
+			<label class="flex flex-col gap-1 text-xs text-neutral-400">
+				<span>導入先のフォルダ</span>
+				@atoms.Select(atoms.FieldMd, "", templ.Attributes{"name": FieldFolder, "data-testid": "mm-hfi-folder"}) {
+					if f.Folder == "" {
+						<option value="" selected>選んでください</option>
+					}
+					for _, folder := range r.Folders {
+						<option value={ folder } selected?={ folder == f.Folder }>{ folder }</option>
+					}
+				}
+			</label>
+			<label class="flex flex-col gap-1 text-xs text-neutral-400">
+				<span>ファイル名</span>
+				@atoms.Input(atoms.FieldMd, "w-72 max-w-full", templ.Attributes{"name": FieldName, "type": "text", "value": f.Name, "maxlength": itoa(MaxFileNameLen), "autocomplete": "off"})
+			</label>
+		</div>
+		if f.FolderNote != "" {
+			<p class="text-neutral-400" data-testid="mm-hfi-folder-note">{ f.FolderNote }</p>
+		}
+		if f.Family == "sdxl" {
+			<p class="text-emerald-300" data-testid="mm-hfi-sdxl">SDXL 系の一体型チェックポイントです。導入すると、画像モデル（テキストから画像・参照画像から画像）として試し生成で選べます。</p>
+		} else {
+			<p class="text-neutral-400">このファイルは置くだけです（ワークフローは作りません）。ノード画面や自分で書いたワークフローから使います。</p>
+		}
+		if !r.Consented {
+			<label class="flex items-start gap-2">
+				@atoms.Choice("mt-1", templ.Attributes{"type": "checkbox", "name": FieldAgree, "value": "1", "required": true, "data-testid": "mm-hfi-agree"})
+				<span>上のライセンスと取得元を確認しました。{ r.Terms }</span>
+			</label>
+		} else {
+			<input type="hidden" name={ FieldAgree } value="1"/>
+		}
+		<div>
+			@atoms.Button(atoms.TonePrimary, "導入", templ.Attributes{"type": "submit"})
+		</div>
+	</form>
+}
+
+func fitTone(fit string) atoms.BadgeTone {
+	switch fit {
+	case "fits":
+		return atoms.BadgeOK
+	case "tight":
+		return atoms.BadgeWarn
+	case "over":
+		return atoms.BadgeError
+	}
+	return atoms.BadgeNeutral
+}
+
+func securityTone(s string) atoms.BadgeTone {
+	switch s {
+	case "safe":
+		return atoms.BadgeOK
+	case "caution":
+		return atoms.BadgeWarn
+	case "unsafe":
+		return atoms.BadgeError
+	}
+	return atoms.BadgeNeutral
+}
+
+// HFModelListView is the files the user added from Hugging Face and the imports that are running; while one runs it polls
+// itself.
+templ HFModelListView(l HFModelList) {
+	<div
+		id={ HFModelsID }
+		class="flex flex-col gap-3"
+		data-testid="mm-hfi-models"
+		if l.OOB {
+			hx-swap-oob="true"
+		}
+		if l.Polling() {
+			hx-get={ hfModelsURL(l) }
+			hx-trigger={ Polling }
+			hx-swap="outerHTML"
+		}
+	>
+		@notice(l.Message, "mm-hfi-models")
+		for _, j := range l.Installing {
+			<div class="flex flex-col gap-1" data-testid="mm-hfi-job">
+				<div class="flex flex-wrap items-center justify-between gap-2 text-sm">
+					<code>{ j.Name }</code>
+					@atoms.SmallButtonFor(atoms.ToneNeutral, "中断", j.Name, templ.Attributes{
+						"type": "button", "hx-post": paths.ModelManagerPart("hf", "jobs", j.Progress.JobID, "cancel"), "hx-target": "#" + HFModelsID,
+						"hx-swap": "outerHTML", "hx-sync": "this:drop", "hx-disabled-elt": "this",
+						"hx-confirm": "「" + j.Name + "」の導入を中断します。ダウンロード済みの分は残り、導入し直すと続きから再開します。よろしいですか？",
+					})
+				</div>
+				@progressBar(j.Progress, j.Name+" の導入の進み具合")
+			</div>
+		}
+		if len(l.Models) == 0 && len(l.Installing) == 0 {
+			<p class="text-sm text-neutral-300" data-testid="mm-hfi-none">まだありません。</p>
+		}
+		<ul class="flex flex-col divide-y divide-neutral-800 text-sm">
+			for _, m := range l.Models {
+				<li class="flex flex-col gap-1 py-3" data-testid="mm-hfi-model" data-path={ m.Path }>
+					<div class="flex flex-wrap items-start justify-between gap-2">
+						<span class="flex flex-wrap items-center gap-2">
+							<span class="font-medium">{ m.Name }</span>
+							@atoms.Badge(atoms.BadgeInfo, m.Folder)
+							if m.Family == "sdxl" {
+								@atoms.Badge(atoms.BadgeOK, "SDXL")
+							}
+							if m.Gated {
+								@atoms.Badge(atoms.BadgeWarn, "gated")
+							}
+							if m.NFAA {
+								@atoms.Badge(atoms.BadgeError, "NFAA")
+							}
+							if m.Missing {
+								@atoms.Badge(atoms.BadgeWarn, "ファイルが見つかりません")
+							}
+						</span>
+						@atoms.SmallButtonFor(atoms.ToneDanger, "削除", m.Name, templ.Attributes{
+							"type": "button", "hx-delete": paths.ModelManagerPart("hf", "models") + "?" + FieldPath + "=" + queryEscape(m.Path),
+							"hx-target": "#" + HFModelsID, "hx-swap": "outerHTML", "hx-sync": "this:drop", "hx-disabled-elt": "this",
+							"hx-confirm": "「" + m.Name + "」を削除します。カタログのモデルと共有しているファイルは、そのモデルが残る間は消えません。よろしいですか？",
+						})
+					</div>
+					<p class="text-xs text-neutral-300"><code>{ m.Repo }</code>（コミット <code>{ m.Commit }</code>）・{ m.Size }・ライセンス: { m.License }・{ m.At }</p>
+					if len(m.ModelIDs) > 0 {
+						<p class="text-xs text-neutral-400" data-testid="mm-hfi-model-ids">{ joinNames(m.ModelIDs) }</p>
+					}
+					if len(m.Shared) > 0 {
+						<p class="text-xs text-neutral-400">{ joinNames(m.Shared) } と共有しています。使うモデルが残る間は、ファイルは消えません。</p>
+					}
+				</li>
+			}
+		</ul>
+	</div>
+}
+
+// HFModelsWithMsgClear is the list with the error line above it emptied out of band: an action that worked.
+templ HFModelsWithMsgClear(l HFModelList) {
+	@HFModelListView(l)
+	<p id={ HFMsgID } hx-swap-oob="true" class="text-sm text-red-300" role="alert" data-testid="mm-hfi-msg"></p>
+}
+
+// HFModelsWithTrial is the list with the trial section out of band: an import that ended changed the models a trial can use.
+templ HFModelsWithTrial(l HFModelList, t TrialPanel) {
+	@HFModelListView(l)
+	@TrialSection(t)
+}
+
+// HFMsg is the error line of the import, swapped in where the form's error answer is retargeted.
+templ HFMsg(msg string) {
+	<span data-testid="mm-hfi-msg-text">{ msg }</span>
+}

@@ -1,0 +1,41 @@
+package modelmgr
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// Body is the screen without the page frame: the engine, the models, the trial generations, the Hugging Face token
+// and the external ComfyUI, one section each (molecules.SettingsSection).
+templ Body(d Data) {
+	<div id="model-manager-body" class="flex flex-col gap-8" data-testid="model-manager">
+		@molecules.SettingsSection("ComfyUI エンジン", "画像・動画のモデルを動かす ComfyUI を、mam が取得して起動・停止します。インストーラーには含まれず、ここから導入します。") {
+			@EngineCard(d.Engine)
+			<div class="flex flex-col gap-2">
+				@atoms.Button(atoms.ToneNeutral, "すでに動いている ComfyUI を検出", templ.Attributes{
+					"type": "button", "hx-post": paths.ModelManagerPart("engine", "detect"), "hx-target": "#" + DetectID, "hx-swap": "outerHTML",
+					"hx-sync": "this:drop", "hx-disabled-elt": "this", "data-testid": "mm-detect-button",
+				})
+				<div id={ DetectID }></div>
+			</div>
+		}
+		@molecules.SettingsSection("モデル", "導入すると、画像・動画のモデルとして選べます（設定の「画像・動画モデル」・Shot の生成）。ダウンロードは取得元から直接で、SHA-256 を確かめます。ライセンスの同意が要るモデルは、同意してから導入します。") {
+			@AdultCard(d.Adult)
+			<div id={ DialogID } data-testid="mm-dialog"></div>
+			@CatalogList(d.Catalog)
+		}
+		@molecules.SettingsSection("試し生成", "導入したモデル（登録済みの外部の ComfyUI のモデルも）で、プロジェクトの外で 1 枚・1 本だけ試します。") {
+			@TrialSection(d.Trial)
+		}
+		@molecules.SettingsSection("Hugging Face から導入", "Hugging Face のモデルファイル（.safetensors）を、URL・owner/repo・キーワードから探して導入します。コミットに固定し、LFS の SHA-256 とサイズを確かめます。GGUF は一覧に出しますが導入できません。pickle 形式（.ckpt・.pt など）は導入しません。") {
+			@HFImportSection(d.HFImport)
+		}
+		@molecules.SettingsSection("Hugging Face のトークン（任意）", "ログインが必要なモデルを取得するときだけ使います。") {
+			@HFCard(d.HF)
+		}
+		@molecules.SettingsSection("外部の ComfyUI", "別のマシン（tailnet を含む）や ComfyUI Desktop など、mam が起動していない ComfyUI にあるモデルを確かめます。") {
+			@ExternalCard(d.External)
+		}
+	</div>
+}

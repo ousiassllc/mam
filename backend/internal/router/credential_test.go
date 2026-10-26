@@ -14,7 +14,6 @@ import (
 
 func TestSettings_APIKeysAreSavedAndDeletedWithoutEverBeingShown(t *testing.T) {
 	a := newApp(t)
-	project := a.createProject("CM")
 	store := a.keys
 	const secret = "sk-very-secret-value"
 	row := func(body, provider string) string {
@@ -22,14 +21,14 @@ func TestSettings_APIKeysAreSavedAndDeletedWithoutEverBeingShown(t *testing.T) {
 		return regexpFind(t, re, body)
 	}
 
-	// The settings screen lists every provider as unset and offers a save form.
-	body := a.get("/projects/"+project+"/settings", false).Body.String()
+	// The API key category lists every provider as unset and offers the modal that sets the key.
+	body := a.get("/settings/api-keys", false).Body.String()
 	for _, p := range []string{"anthropic", "openai", "google", "kling", "seedance", "runway", "elevenlabs", "synclabs", "typesafe"} {
-		assert.Contains(t, body, `hx-put="/credentials/`+p+`"`, p)
+		assert.Contains(t, body, `hx-get="/settings/credentials/`+p+`/edit"`, p)
 	}
 	assert.Contains(t, row(body, "kling"), "未設定")
 
-	// Saving takes effect in the store at once and the panel only says "設定済み".
+	// Saving takes effect in the store at once; the answer replaces the card out of band and says "設定済み" without the key.
 	rec := a.form(http.MethodPut, "/credentials/kling", url.Values{"api_key": {"  " + secret + "  "}})
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	got, err := store.Get("kling")
@@ -37,7 +36,7 @@ func TestSettings_APIKeysAreSavedAndDeletedWithoutEverBeingShown(t *testing.T) {
 	assert.Equal(t, secret, got, "the key is trimmed and stored")
 	assert.Contains(t, row(rec.Body.String(), "kling"), "設定済み")
 	assert.NotContains(t, rec.Body.String(), secret)
-	assert.NotContains(t, a.get("/projects/"+project+"/settings", false).Body.String(), secret)
+	assert.NotContains(t, a.get("/settings/api-keys", false).Body.String(), secret)
 
 	// A refused key keeps the stored one and says why.
 	for _, bad := range []string{"", "   ", "two words"} {
@@ -77,25 +76,25 @@ func regexpFind(t *testing.T, pattern, body string) string {
 // of the settings screen, which needs no key, still renders.
 func TestSettings_RendersWithoutAKeyStore(t *testing.T) {
 	a := newApp(t)
-	project := a.createProject("CM")
 	a.keys.FailWith(errors.New("secret service is not available"))
 
-	rec := a.get("/projects/"+project+"/settings", false)
+	rec := a.get("/settings/api-keys", false)
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	body := rec.Body.String()
 	assert.Contains(t, body, `data-testid="credential-unavailable"`)
-	assert.NotContains(t, body, `data-testid="credential-row"`)
-	assert.Contains(t, body, `id="policy-`, "the policy form is still there")
+	assert.NotContains(t, body, `hx-get="/settings/credentials/kling/edit"`, "no key can be typed without a key store")
+	assert.Contains(t, body, "<h1", "the rest of the screen is still there")
+	assert.Equal(t, http.StatusOK, a.get("/settings", false).Code, "the overview does not need the key store")
 
 	// The HTMX fragment degrades the same way.
-	rec = a.get("/projects/"+project+"/settings", true)
+	rec = a.get("/settings/api-keys", true)
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	assert.Contains(t, rec.Body.String(), `data-testid="credential-unavailable"`)
 }
 
-// Saving or deleting a key with an unusable OS key store answers the panel that says so (503), not
-// the generic internal error (#324).
-func TestSettings_SavingAndDeletingKeysWithoutAKeyStoreAnswersThePanelWith503(t *testing.T) {
+// Saving or deleting a key with an unusable OS key store answers 503 with the reason (the modal of a save, the toast of a
+// delete), not the generic internal error (#324).
+func TestSettings_SavingAndDeletingKeysWithoutAKeyStoreAnswers503WithTheReason(t *testing.T) {
 	a := newApp(t)
 	a.keys.FailWith(errors.New("secret service is not available"))
 
@@ -104,7 +103,7 @@ func TestSettings_SavingAndDeletingKeysWithoutAKeyStoreAnswersThePanelWith503(t 
 		a.form(http.MethodDelete, "/credentials/kling", nil),
 	} {
 		assert.Equal(t, http.StatusServiceUnavailable, rec.Code, rec.Body.String())
-		assert.Contains(t, rec.Body.String(), `data-testid="credential-unavailable"`)
+		assert.Contains(t, rec.Body.String(), "できませんでした")
 		assert.NotContains(t, rec.Body.String(), "内部エラー")
 	}
 }

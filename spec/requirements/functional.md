@@ -251,7 +251,7 @@ Editor Agent は Production Template（`spec/spec.md` §19）が評価軸に持�
 - **Audio Timeline**: Dialogue / Narration（ElevenLabs TTS、話者ごとの音声クローン）、BGM（ElevenLabs Music v2）、SE / Foley / Ambience（ElevenLabs Sound Effects）、Lip Sync（Sync Labs）を層として持ち、ローカル DSP（ffmpeg）でミックス・ラウドネス正規化（−14 LUFS / −1.5 dBTP）する
 - **Quality/Cost Policy**: FAST = セリフ + BGM / BALANCED = + Ambience・SE / MAX QUALITY = + Foley・Lip Sync。生成コストは `cost_ledger_entry` に見積で記録し、Project の予算上限を超える層は作らない（セリフの合成自体が上限を超えるときは実行しない）
 - **版管理**: Audio Timeline は Branch ごとの追記のみの系列。M1 の簡易音声の版はそのまま読める。`POST /projects/:id/audio/generate` は以後常に Audio Director で作る
-- 詳細は `spec/architecture/model-adapters.md` §14
+- 詳細は `spec/architecture/model-adapters-m3.md` §14
 
 ## 改訂履歴
 
@@ -285,3 +285,4 @@ Editor Agent は Production Template（`spec/spec.md` §19）が評価軸に持�
 | 1.25 | 2026-10-03 | UC-7 に、Series の次の Episode は Content Type を持たないため Production Template が常に PRODUCT/CM で始まり、変更は設定画面で行う（Series から継承しない）ことを追記 | 実装（`SeriesService.CreateEpisode`）は Template を PRODUCT/CM に固定し、Episode の Brief は Content Type を持たない。Series に Template を持たせる要件はなく、導出規則の記述が Episode の経路に触れていなかったため仕様を実装に合わせた（Issue #463） |
 | 1.26 | 2026-10-03 | 機能一覧に F-33（Windows デスクトップ版: Wails ウィンドウ + インストーラー）を追加 | Issue #480。Windows 向けにインストーラー exe を GitHub Releases で配布する要望。表示・操作は変えず、起動と終了の挙動（単一インスタンス・ウィンドウを閉じると終了）だけが新規の要件 |
 | 1.27 | 2026-10-12 | §3.7 の Editor → Reshoot Loop（F-19）に、1 回の Editor Judge が求める追加 Shot は最大 3 件（同じ挿入位置・`kind` は 1 件）、長さは 1〜8 秒（未指定 2 秒）、Timeline が 200 クリップのときは求めないことを追記した | 実装（`domain.MaxShotNeeds`・`MinNeedSeconds` / `MaxNeedSeconds` / `DefaultNeedSeconds`・`MaxClips`、`agent/editor` の `limitNeeds`）が持つ上限が仕様に無く、F-19 は Retry Policy の回数制限しか書いていなかったため（Issue #536） |
+| 1.28 | 2026-10-21 | §3.8 の Audio Director の参照先を `spec/architecture/model-adapters-m3.md` §14 に改めた | `endpoints.md`・`model-adapters.md` が行数上限（300 行）を超え、後半を別ファイルに分けたため（`spec/api/endpoints.changelog.md` 1.149、`spec/architecture/model-adapters.changelog.md` 1.46） |
