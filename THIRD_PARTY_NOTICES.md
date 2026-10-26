@@ -66,13 +66,13 @@ MAM の Windows 版に含まれるサードパーティのソフトウェアと�
 | Go モジュール | go.uber.org/multierr | v1.11.0 |
 | Go モジュール | go4.org | v0.0.0-20200411211856-f5505b9728dd |
 | Go モジュール | golang.org/x/crypto | v0.57.0 |
-| Go モジュール | golang.org/x/image | v0.46.0 |
+| Go モジュール | golang.org/x/image | v0.47.0 |
 | Go モジュール | golang.org/x/mod | v0.41.0 |
 | Go モジュール | golang.org/x/net | v0.60.0 |
 | Go モジュール | golang.org/x/oauth2 | v0.35.0 |
-| Go モジュール | golang.org/x/sync | v0.23.0 |
-| Go モジュール | golang.org/x/sys | v0.48.0 |
-| Go モジュール | golang.org/x/text | v0.42.0 |
+| Go モジュール | golang.org/x/sync | v0.24.0 |
+| Go モジュール | golang.org/x/sys | v0.49.0 |
+| Go モジュール | golang.org/x/text | v0.43.0 |
 | Go モジュール | golang.org/x/time | v0.15.0 |
 | Go モジュール | google.golang.org/protobuf | v1.36.12 |
 | Go モジュール | gopkg.in/natefinch/lumberjack.v2 | v2.2.1 |
@@ -3730,7 +3730,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ~~~
 
-## golang.org/x/image v0.46.0
+## golang.org/x/image v0.47.0
 
 Go モジュール
 
@@ -3874,7 +3874,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ~~~
 
-## golang.org/x/sync v0.23.0
+## golang.org/x/sync v0.24.0
 
 Go モジュール
 
@@ -3910,7 +3910,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ~~~
 
-## golang.org/x/sys v0.48.0
+## golang.org/x/sys v0.49.0
 
 Go モジュール
 
@@ -3946,7 +3946,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ~~~
 
-## golang.org/x/text v0.42.0
+## golang.org/x/text v0.43.0
 
 Go モジュール
 
