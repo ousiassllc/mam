@@ -6,6 +6,7 @@ toolchain go1.26.10
 
 require (
 	github.com/a-h/templ v0.3.1020
+	github.com/bodgit/sevenzip v1.6.0
 	github.com/coder/websocket v1.8.15
 	github.com/danielgtaylor/huma/v2 v2.39.1
 	github.com/gin-gonic/gin v1.12.0
@@ -15,7 +16,7 @@ require (
 	github.com/pressly/goose/v3 v3.28.0
 	github.com/shota3506/onnxruntime-purego v0.0.0-20260315223538-8db8bd7424b2
 	github.com/stretchr/testify v1.12.1
-	github.com/wailsapp/wails/v3 v3.0.0-beta.27
+	github.com/wailsapp/wails/v3 v3.0.0-beta.34
 	github.com/zalando/go-keyring v0.2.8
 	golang.org/x/image v0.46.0
 	golang.org/x/mod v0.41.0
@@ -28,7 +29,6 @@ require (
 	github.com/adrg/xdg v0.5.3 // indirect
 	github.com/andybalholm/brotli v1.2.3 // indirect
 	github.com/bodgit/plumbing v1.3.0 // indirect
-	github.com/bodgit/sevenzip v1.6.0 // indirect
 	github.com/bodgit/windows v1.0.1 // indirect
 	github.com/bytedance/gopkg v0.1.4 // indirect
 	github.com/bytedance/sonic v1.15.2 // indirect
