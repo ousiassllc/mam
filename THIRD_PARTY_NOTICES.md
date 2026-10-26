@@ -79,7 +79,7 @@ MAM の Windows 版に含まれるサードパーティのソフトウェアと�
 | Go モジュール | modernc.org/libc | v1.77.1 |
 | Go モジュール | modernc.org/mathutil | v1.7.1 |
 | Go モジュール | modernc.org/memory | v1.12.1 |
-| Go モジュール | modernc.org/sqlite | v1.60.0 |
+| Go モジュール | modernc.org/sqlite | v1.60.1 |
 | npm パッケージ | @lit/reactive-element | 2.1.2 |
 | npm パッケージ | htmx.org | 2.0.11 |
 | npm パッケージ | lit | 3.3.3 |
@@ -4564,7 +4564,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ~~~
 
-## modernc.org/sqlite v1.60.0
+## modernc.org/sqlite v1.60.1
 
 Go モジュール
 
