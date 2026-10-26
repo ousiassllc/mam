@@ -25,7 +25,7 @@
     "@web/dev-server-esbuild": "^2.0.0",
     "@web/test-runner": "^1.0.0",
     "@web/test-runner-chrome": "^1.0.1",
-    "concurrently": "^9.2.4",
+    "concurrently": "^10.0.6",
     "esbuild": "^0.28.2",
     "tailwindcss": "^4.1.0",
     "typescript": "^7.0.2",
