@@ -2,6 +2,7 @@ package molecules
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/domain/modelreg"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 )
 
@@ -75,7 +76,7 @@ templ LockToggle(d LockToggleData) {
 			@atoms.Select(atoms.FieldSm, "", templ.Attributes{"name": "value", "aria-label": "Video Model"}) {
 				<option value="" selected?={ d.Model == "" }>（現在のモデル）</option>
 				for _, m := range d.Models {
-					<option value={ string(m) } selected?={ d.Model == string(m) }>{ string(m) }</option>
+					<option value={ string(m) } selected?={ d.Model == string(m) }>{ modelreg.Label(string(m)) }</option>
 				}
 			}
 		}

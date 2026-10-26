@@ -24,12 +24,27 @@ func TestDestructiveControls_AskForConfirmation(t *testing.T) {
 		raw, err := os.ReadFile(f)
 		require.NoError(t, err)
 		src := string(raw)
+		exempt := confirmExempt[f]
 		for _, m := range destructiveMarker.FindAllStringIndex(src, -1) {
 			seen++
+			if exempt.reason != "" && exempt.count > 0 {
+				exempt.count--
+				continue
+			}
 			assert.Contains(t, controlOf(src, m[0]), "hx-confirm", "%s:%d is destructive but does not ask first", f, 1+strings.Count(src[:m[0]], "\n"))
 		}
 	}
 	assert.Positive(t, seen, "no destructive control found: the pattern no longer matches the templates")
+}
+
+// confirmExempt are the controls that undo a change inside a modal without asking: the owner decided that the button
+// "この Agent を既定に戻す" of the LLM modal has no confirmation (spec/components/settings-screen-categories.md §7 question 3):
+// the modal is open, the change is one Agent's and it can be made again. count is how many controls of the file are exempt.
+var confirmExempt = map[string]struct {
+	reason string
+	count  int
+}{
+	"organisms/settings/llm/modal.templ": {reason: "settings-screen-categories.md §2 and §7 question 3", count: 1},
 }
 
 var (

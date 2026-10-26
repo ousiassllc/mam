@@ -29,7 +29,8 @@ func (s *RepairService) Repair(ctx context.Context, takeID string) (ShotFragment
 	if err != nil {
 		return ShotFragment{}, notFound(err)
 	}
-	if _, err := s.agent.Start(ctx, takeID, false); err != nil {
+	job, err := s.agent.Start(ctx, takeID, false)
+	if err != nil {
 		switch {
 		case errors.Is(err, repair.ErrNotJudged):
 			return ShotFragment{}, ErrNotJudged
@@ -41,7 +42,7 @@ func (s *RepairService) Repair(ctx context.Context, takeID string) (ShotFragment
 		return ShotFragment{}, notFound(err)
 	}
 	s.recordIntervention(ctx, domain.Intervention{TakeID: takeID, Kind: domain.InterventionRepair})
-	return s.generations.Shot(ctx, ref.Take.ShotID)
+	return s.generations.shotOfJob(ctx, ref.Take.ShotID, job)
 }
 
 // ShadowReport returns the figures of the Jev shadow runs: agreement with the Repair Agent, the

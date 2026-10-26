@@ -19,6 +19,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/agent/repair/escalation"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/keylock"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
 
@@ -101,6 +102,8 @@ type Agent struct {
 	Deps
 	// escalated is what the automatic loop has already asked the user about.
 	escalated escalation.Memory
+	// looks makes one look of the automatic loop at a Shot at a time (Continue).
+	looks keylock.Locker
 }
 
 // New returns an Agent.

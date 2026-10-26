@@ -17,3 +17,15 @@ templ ToastOOB(message string) {
 		@Toast(message)
 	</div>
 }
+
+// SuccessToastOOB appends a toast that says something worked (a key saved while the modal that saved it is closing, so the
+// card alone could not be seen to change). It is not an alert: it is read out politely and stays until it is closed, like
+// the error toast.
+templ SuccessToastOOB(message string) {
+	<div id="toast-region" hx-swap-oob="beforeend">
+		<div class="pointer-events-auto flex items-start gap-3 rounded-md border border-emerald-500/50 bg-neutral-900 px-4 py-2 text-sm text-emerald-200 shadow-lg" role="status" data-toast>
+			<span data-toast-message>{ message }</span>
+			<button type="button" class="ml-auto leading-none hover:text-emerald-100" aria-label="閉じる" data-toast-close>×</button>
+		</div>
+	</div>
+}

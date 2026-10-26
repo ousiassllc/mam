@@ -1,0 +1,49 @@
+{
+ "id": "ltx-video-2b",
+ "name": "LTX-Video 2B v0.9.5",
+ "kind": "video",
+ "tier": "standard",
+ "content_rating": "general",
+ "description": "軽量で速い動画モデル。チェックポイントと T5 テキストエンコーダー（fp8）の 2 ファイル、合計約 11 GB。24fps。",
+ "files": [
+  {
+   "name": "ltx-video-2b-v0.9.5.safetensors",
+   "folder": "checkpoints",
+   "url": "https://huggingface.co/Lightricks/LTX-Video/resolve/8984fa25007f376c1a299016d0957a37a2f797bb/ltx-video-2b-v0.9.5.safetensors",
+   "sha256": "720d15c9f19f7d0f6b2a92bbbc34410e2cfb2f6856a100b38f734fbf973d4adf",
+   "size": 6340729500
+  },
+  {
+   "name": "t5xxl_fp8_e4m3fn.safetensors",
+   "folder": "text_encoders",
+   "url": "https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/6af2a98e3f615bdfa612fbd85da93d1ed5f69ef5/t5xxl_fp8_e4m3fn.safetensors",
+   "sha256": "7d330da4816157540d6bb7838bf63a0f02f573fc48ca4d8de34bb0cbfd514f09",
+   "size": 4893934904
+  }
+ ],
+ "vram": {
+  "min_gb": 12,
+  "source": "mam の見積もり（出典なし・実機未検証）",
+  "estimate": true
+ },
+ "license": {
+  "id": "ltx-video-open-rail-m",
+  "version": "2025-03-05",
+  "name": "Open RAIL-M License (LTX Video 2B 0.9.5)",
+  "url": "https://huggingface.co/Lightricks/LTX-Video/blob/main/ltx-video-2b-v0.9.5.license.txt",
+  "summary": "商用を含めて使える。ただし違法・有害な用途（未成年の搾取、なりすまし、偽情報の拡散など）を禁じる使用制限（Attachment A）が付き、機械生成であることを明示せずにコンテンツを広めることも制限される。生成物の権利は主張されない。",
+  "commercial_use": true
+ },
+ "consent_required": false,
+ "requires_hf_token": false,
+ "workflows": [
+  {
+   "name": "ltx-video-2b",
+   "template": "txt2video-ltx-v095"
+  },
+  {
+   "name": "ltx-video-2b-i2v",
+   "template": "img2video-ltx-v095"
+  }
+ ]
+}

@@ -193,3 +193,24 @@ func TestSettingsFiles_AFlagOrEnvironmentPinsTheFile(t *testing.T) {
 	assert.Equal(t, "/etc/mam/models.json", path)
 	assert.True(t, pinned, "MAM_MODEL_CONFIG pins the file")
 }
+
+func TestLoad_MCPPortFollowsTheSameRulesAsThePort(t *testing.T) {
+	cfg, err := config.Load(nil, env(map[string]string{"MAM_DATA_DIR": "/data"}), io.Discard)
+	require.NoError(t, err)
+	assert.Equal(t, config.DefaultMCPPort, cfg.MCPPort)
+	assert.Equal(t, filepath.Join("/data", "mcp.json"), cfg.MCPSettingsFile())
+
+	cfg, err = config.Load(nil, env(map[string]string{"MAM_DATA_DIR": "/data", "MAM_MCP_PORT": "9101"}), io.Discard)
+	require.NoError(t, err)
+	assert.Equal(t, 9101, cfg.MCPPort)
+
+	cfg, err = config.Load([]string{"--mcp-port", "9102"}, env(map[string]string{"MAM_DATA_DIR": "/data", "MAM_MCP_PORT": "abc"}), io.Discard)
+	require.NoError(t, err, "an explicit flag wins over a malformed variable")
+	assert.Equal(t, 9102, cfg.MCPPort)
+
+	_, err = config.Load(nil, env(map[string]string{"MAM_DATA_DIR": "/data", "MAM_MCP_PORT": "abc"}), io.Discard)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "MAM_MCP_PORT")
+	_, err = config.Load([]string{"--mcp-port", "70000"}, env(map[string]string{"MAM_DATA_DIR": "/data"}), io.Discard)
+	assert.Error(t, err)
+}

@@ -12,9 +12,20 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
 )
+
+var locks sync.Map // path -> *sync.Mutex
+
+// Lock takes the lock of the settings file at path and returns the function that releases it: services that
+// read-modify-write the same file (models.json is edited by more than one) hold it for the whole change.
+func Lock(path string) (unlock func()) {
+	mu, _ := locks.LoadOrStore(path, &sync.Mutex{})
+	mu.(*sync.Mutex).Lock()
+	return mu.(*sync.Mutex).Unlock
+}
 
 // Object is the top-level JSON object of a settings file, one raw value per key.
 type Object map[string]json.RawMessage

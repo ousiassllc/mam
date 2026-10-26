@@ -9,7 +9,10 @@ import { showToast } from './ajax';
 import { installHistorySnapshotHygiene } from './components/lib/history';
 import { installSaveOnChangeRevert } from './components/save-on-change/save-on-change';
 import { installFocusRestore } from './components/focus-restore/focus-restore';
+import { installInlineDialog } from './components/inline-dialog/inline-dialog';
 import { dedupeToastsOnSwap, dismissToastsOnClick } from './components/lib/toast';
+import { insideModal, installModal } from './components/modal/modal';
+import { installCopy } from './components/copy/copy';
 
 // Attach the CSRF token (from <meta name="csrf-token">) to every HTMX request.
 document.addEventListener('htmx:configRequest', (event) => {
@@ -35,6 +38,8 @@ for (const type of [
   'htmx:timeout',
 ] as const satisfies readonly RequestFailure[]) {
   document.addEventListener(type, (event) => {
+    // The modal says so itself: the toast region lies behind the dialog, which is in the top layer.
+    if (insideModal(event.target as Element | null)) return;
     const xhr = (event as CustomEvent<{ xhr?: XMLHttpRequest }>).detail?.xhr;
     showToast(requestFailureMessage(type, xhr?.status));
   });
@@ -46,9 +51,20 @@ for (const type of [
 // shows a value that was not saved (issue 538).
 installSaveOnChangeRevert();
 
+// The model manager's questions in the page (age confirmation, license): the focus goes in, Esc closes, the focus goes back.
+// Before the focus restore: a focus that is back on a control is not touched by it.
+installInlineDialog();
+
 // A swap that the user started and that replaced the control they used (a LockToggle button, a Delete
 // button) would leave the focus on <body>: give it back to the control that took its place (issues 789, 794).
 installFocusRestore();
+
+// The modal dialog of the settings screen: opens when the body it was asked for arrives, closes on Esc / its buttons /
+// a saved form, and gives the focus back to the control that opened it.
+installModal();
+
+// The "コピー" button of a value that is shown once (an MCP token that was just issued).
+installCopy();
 
 lockDownHtmx(htmx.config);
 
@@ -73,3 +89,4 @@ document.addEventListener('htmx:load', (event) => {
 import './components/video-player/mam-video-player';
 import './components/take-comparator/mam-take-comparator';
 import './components/timeline-editor/mam-timeline-editor';
+import './components/comfy-frame/mam-comfy-frame';

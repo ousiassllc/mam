@@ -38,10 +38,14 @@ func readFile(t *testing.T, path string) map[string]json.RawMessage {
 
 func TestSave_WritesOnlyWhatDiffersFromTheDefaults(t *testing.T) {
 	svc, path := newService(t)
+	// No built-in model has a fast variant by default: the user gives Nano Banana Lite one.
+	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o700))
+	const withFast = `{"models":{"nano-banana-lite":{"model":"gemini-3.1-flash-lite-image","fast_model":"gemini-3.1-flash-lite-image-fast","cost_per_image_usd":0.0336}}}`
+	require.NoError(t, os.WriteFile(path, []byte(withFast), 0o600))
 	in := defaults()
 	in.Images[modeladapter.PurposePreview] = modeladapter.ImageRoute{
-		Primary:  modeladapter.ImageTarget{Model: domain.ModelImagen4, Fast: true},
-		Fallback: modeladapter.ImageTarget{Model: domain.ModelFlux2}, // not fast: the default fallback is
+		Primary:  modeladapter.ImageTarget{Model: domain.ModelNanoBananaLite, Fast: true},
+		Fallback: modeladapter.ImageTarget{Model: domain.ModelFlux2},
 	}
 	in.Policies[domain.QualityFast] = modeladapter.PolicyRoute{
 		Primary:  modeladapter.VideoTarget{Model: domain.ModelSeedance2, Resolution: "1080p"},
@@ -51,7 +55,8 @@ func TestSave_WritesOnlyWhatDiffersFromTheDefaults(t *testing.T) {
 	require.NoError(t, svc.Save(in))
 
 	raw := readFile(t, path)
-	assert.Len(t, raw, 2, "only images and policies are written")
+	assert.Len(t, raw, 3, "only images and policies are written next to the models the user set")
+	assert.JSONEq(t, withFast, `{"models":`+string(raw["models"])+`}`, "the models key is kept as it was")
 	var images map[string]json.RawMessage
 	require.NoError(t, json.Unmarshal(raw["images"], &images))
 	assert.Len(t, images, 1, "the purposes left at their default are dropped")
@@ -66,7 +71,8 @@ func TestSave_WritesOnlyWhatDiffersFromTheDefaults(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, in.Images, cfg.Images)
 	assert.Equal(t, in.Policies, cfg.Policies)
-	assert.False(t, cfg.Images[modeladapter.PurposePreview].Fallback.Fast, "a fast flag the default has can be switched off")
+	assert.True(t, cfg.Images[modeladapter.PurposePreview].Primary.Fast, "a fast flag can be set on a model that has a fast_model")
+	assert.False(t, cfg.Images[modeladapter.PurposePreview].Fallback.Fast, "a fast flag of the file can be left off")
 
 	v, err := svc.View()
 	require.NoError(t, err)
@@ -96,13 +102,13 @@ func TestSave_KeepsTheKeysItDoesNotOwn(t *testing.T) {
 	svc, path := newService(t)
 	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o700))
 	handWritten := `{"retry":{"max_attempts":7,"base_delay_ms":500,"max_delay_ms":8000},"prefer_openai":true,
-"images":{"preview":{"primary":{"model":"imagen-4"},"fallback":{"model":"flux-2","fast":false}}}}`
+"images":{"preview":{"primary":{"model":"nano-banana"},"fallback":{"model":"flux-2","fast":false}}}}`
 	require.NoError(t, os.WriteFile(path, []byte(handWritten), 0o600))
 
 	// The screen starts from what the file says, and an assignment equal to the defaults drops that override.
 	v, err := svc.View()
 	require.NoError(t, err)
-	assert.Equal(t, domain.ModelImagen4, v.Images[modeladapter.PurposePreview].Primary.Model)
+	assert.Equal(t, domain.ModelNanoBanana, v.Images[modeladapter.PurposePreview].Primary.Model)
 	in := defaults()
 	in.Policies[domain.QualityFast] = modeladapter.PolicyRoute{
 		Primary: modeladapter.VideoTarget{Model: domain.ModelKling3, Resolution: "1080p"}, Fallback: in.Policies[domain.QualityFast].Fallback, Takes: 2,
@@ -177,7 +183,7 @@ func TestSave_RefusesAnInvalidAssignmentAndLeavesTheFileAlone(t *testing.T) {
 func TestSave_RefusesAFileItCannotRead(t *testing.T) {
 	svc, path := newService(t)
 	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o700))
-	const broken = `{"images":{"preview":{"primary":{"model":"imagen-4"},"fallback":{"model":"flux-2","fast":false}}},"unknown_key":1}`
+	const broken = `{"images":{"preview":{"primary":{"model":"veo-3"},"fallback":{"model":"flux-2","fast":false}}},"unknown_key":1}`
 	require.NoError(t, os.WriteFile(path, []byte(broken), 0o600))
 
 	_, err := svc.View()
@@ -188,6 +194,33 @@ func TestSave_RefusesAFileItCannotRead(t *testing.T) {
 	data, err := os.ReadFile(path)
 	require.NoError(t, err)
 	assert.JSONEq(t, broken, string(data), "a file that is not understood is never rewritten")
+}
+
+func TestLegacyImagen4RoutesAreReadAsNanoBananaAndSavedWithoutIt(t *testing.T) {
+	svc, path := newService(t)
+	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o700))
+	const legacy = `{"images":{"preview":{"primary":{"model":"imagen-4"},"fallback":{"model":"imagen-4","fast":true}}},"models":{"imagen-4":{"model":"imagen-4.0-generate-001"}}}`
+	require.NoError(t, os.WriteFile(path, []byte(legacy), 0o600))
+
+	v, err := svc.View()
+	require.NoError(t, err, "a file that still names imagen-4 is migrated, not refused")
+	preview := v.Images[modeladapter.PurposePreview]
+	assert.Equal(t, modeladapter.ImageTarget{Model: domain.ModelNanoBanana}, preview.Primary)
+	assert.Equal(t, modeladapter.ImageTarget{Model: domain.ModelNanoBananaLite}, preview.Fallback, "imagen-4 fast becomes Nano Banana Lite, not fast")
+
+	require.NoError(t, svc.Save(modelsettings.Input{Images: v.Images, Policies: v.Policies}))
+	data, err := os.ReadFile(path)
+	require.NoError(t, err)
+	var saved struct {
+		Images map[string]json.RawMessage `json:"images"`
+	}
+	require.NoError(t, json.Unmarshal(data, &saved))
+	require.Contains(t, saved.Images, "preview")
+	assert.NotContains(t, string(saved.Images["preview"]), "imagen-4", "the saved route names the models it is now")
+	assert.NotContains(t, saved.Images, "new_reference", "routes left at their default are not written")
+	cfg, err := configcheck.Load(path)
+	require.NoError(t, err)
+	assert.Equal(t, preview, cfg.Images[modeladapter.PurposePreview])
 }
 
 func TestPinned_IsShownButNeverWritten(t *testing.T) {

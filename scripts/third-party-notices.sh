@@ -5,6 +5,8 @@
 #     build/windows/Taskfile.yml), plus the Go standard library
 #   - npm packages in the production front-end bundle: what static/src/main.ts imports (found with an esbuild
 #     metafile, like static/build.mjs bundles it) and tailwindcss (its CSS is part of the generated app.css)
+#   - material copied into the source tree: the Lucide icons of backend/internal/web/atoms/icon.templ, with the
+#     license text of the release they were copied from (atoms/icons/LICENSE; the release is named in icon.templ)
 # Usage: scripts/third-party-notices.sh [OUTPUT]      OUTPUT defaults to THIRD_PARTY_NOTICES.md in the repository root
 # Needs: go, node, and `npm ci --prefix static` done. Run it again when go.mod or static/package-lock.json changes.
 # Fails when a component has no license file, so a dependency can never be left out silently.
@@ -93,6 +95,14 @@ while IFS='|' read -r name version dir; do
   while IFS= read -r f; do record 3 "$name" "$version" "$f" "$dir"; done <<<"$files"
 done <<<"$npm_packages"
 
+# 4. Material copied into the source tree (the Go and npm lists above do not see it): the Lucide icons. The release
+# is the one icon.templ names ("Lucide v1.61.0"); the license file is the one of that release, whole.
+icons_dir="backend/internal/web/atoms/icons"
+lucide_version="$(sed -n 's/.*Lucide v\([0-9][0-9.]*\).*/\1/p' backend/internal/web/atoms/icon.templ 2>/dev/null | head -n1 || true)"
+[[ -n "$lucide_version" ]] || die "backend/internal/web/atoms/icon.templ does not name the Lucide release (\"Lucide v<version>\")"
+[[ -n "$(license_files_in "$icons_dir")" ]] || die "no license file in $icons_dir (the Lucide icons)"
+while IFS= read -r f; do record 4 "Lucide（アイコン）" "$lucide_version" "$f" "$icons_dir"; done < <(license_files_in "$icons_dir")
+
 LC_ALL=C sort -t'|' -k1,1 -k2,2 -k4,4 -u "$records" -o "$records"
 
 # A fence longer than any run of ~ in the text, so a license text can never close it early.
@@ -110,7 +120,7 @@ emit_file() { # <file>
   echo "$fence"
 }
 kind_label() {
-  case "$1" in 1) echo "Go 標準ライブラリ" ;; 2) echo "Go モジュール" ;; *) echo "npm パッケージ" ;; esac
+  case "$1" in 1) echo "Go 標準ライブラリ" ;; 2) echo "Go モジュール" ;; 4) echo "同梱した素材" ;; *) echo "npm パッケージ" ;; esac
 }
 
 tmp_out="$(mktemp "${TMPDIR:-/tmp}/mam-notices-out-XXXXXX")"
@@ -126,9 +136,10 @@ MAM の Windows 版に含まれるサードパーティのソフトウェアと�
 
 - Go の標準ライブラリと、Windows 版 exe（`backend/cmd/wails`、`GOOS=windows`、`-tags production`）にリンクされる Go モジュール
 - `static/` の本番バンドルに入る npm パッケージ（`static/src/main.ts` から import されるもの。`static/src/dist/app.css` に Tailwind CSS が含まれるので `tailwindcss` も）
+- ソースにコピーして同梱した素材: アイコンの Lucide（ISC。Feather 由来のアイコンの MIT を含む。取り込んだ版の `LICENSE` の全文）
 - インストーラーに同梱する Microsoft の WebView2 ブートストラッパー（下の節）
 
-開発用のツール・テスト用のパッケージ（`devDependencies` など）は配布物に入らないので載せていません。ffmpeg は同梱しません。
+開発用のツール・テスト用のパッケージ（`devDependencies` など）は配布物に入らないので載せていません。ffmpeg と ComfyUI は同梱しません（ComfyUI は下の節）。
 
 ## 一覧
 
@@ -165,6 +176,23 @@ EOF
 ## 同梱していないが実行時に取得するもの
 
 Judge の顔同一性（Face Identity Similarity）に使うモデル、YuNet（MIT）と SFace（Apache-2.0）は OpenCV Zoo のもので、MAM には同梱しません。利用者が `scripts/fetch-face-models.sh` で実行時にダウンロードします（ONNX Runtime も別途ダウンロードです）。そのため配布物には入らず、ここにライセンス文は載せません。取得したモデルを再配布するときは、それぞれのライセンスに従ってください。
+
+## ComfyUI（利用者が取得する別プログラム）
+
+MAM のモデルマネージャーは、利用者の操作で ComfyUI のポータブル版（v0.42.1）を公式のリリースから取得し、MAM の実行ファイルと同じ場所の `comfyui` ディレクトリに展開して、別のプロセスとして起動します。ComfyUI は GPL-3.0 のプログラムで、**MAM のインストーラー・ポータブル版・リリースには ComfyUI のバイトを一切含めません**。MAM は ComfyUI のコードをリンクせず、HTTP（`127.0.0.1`）で通信するだけです。
+
+- ComfyUI のライセンス（GPL-3.0）と対応するソースコード: <https://github.com/Comfy-Org/ComfyUI/tree/v0.42.1>（取得するポータブル版は <https://github.com/Comfy-Org/ComfyUI/releases/tag/v0.42.1> のアセットで、SHA-256 を MAM のカタログに固定して検証します）。
+- **ノード画面（ComfyUI のフロントエンド、GPL-3.0）**: MAM の「ノード」画面（`/nodes`）は、取得した ComfyUI が配信する画面（`Comfy-Org/ComfyUI_frontend`、GPL-3.0。ポータブル版に pip パッケージ `comfyui-frontend-package` として入っている）を iframe で表示するだけです。**MAM はそのコードを一切含めず、改変も再配布もしません**（ブラウザは ComfyUI のサーバーから直接読み込みます）。ソース: <https://github.com/Comfy-Org/ComfyUI_frontend>。
+- ポータブル版に入っている Python・PyTorch・その他のパッケージのライセンスは、**一覧を調べていません（未確認）**。取得したものを再配布するときは、取得した `comfyui\engine` の中の各ライセンスを確認してください。
+- 利用者が導入できるモデルの重み（Stable Diffusion XL・FLUX.1・Qwen-Image・Wan 2.2・LTX-Video・Stable Diffusion 3.5・HunyuanVideo など）は、Hugging Face から利用者が取得します。MAM は再配布せず、各モデルのライセンス（商用利用の可否・地域の制限を含む）は導入の画面に表示します。条件の一部（FLUX.1 [dev] の非商用、HunyuanVideo の EU・英国・韓国での不可など）は、導入の前に同意を求めます。
+
+## Codex app-server（利用者が取得する別プログラム）
+
+MAM の「ChatGPT でログイン」の Codex 経由の方式（Business / Enterprise / Edu のワークスペースのアカウントでも使える、テキスト生成だけの方式）は、利用者の操作で OpenAI の Codex の app-server（バージョン 0.164.0。Windows 版のみ）を公式のリリースから取得し、MAM の実行ファイルと同じ場所の `codex` ディレクトリに展開して、別のプロセスとして起動します。Codex は Apache-2.0 のプログラムで、**MAM のインストーラー・ポータブル版・リリースには Codex のバイトを一切含めません**。MAM は Codex のコードをリンクせず、標準入出力の JSON-RPC で通信するだけです。
+
+- Codex のライセンス（Apache-2.0）と対応するソースコード: <https://github.com/openai/codex/tree/rust-v0.164.0>（取得するのは <https://github.com/openai/codex/releases/tag/rust-v0.164.0> のアセット `codex-app-server-x86_64-pc-windows-msvc.exe.zip` または `codex-app-server-aarch64-pc-windows-msvc.exe.zip` で、SHA-256 とサイズを MAM のカタログに固定して検証します）。
+- Codex が保存するログイン情報は、MAM 専用の `CODEX_HOME`（データディレクトリの `codex-home`）と OS の資格情報ストアにあり、MAM は読みません。
+- 取得したものを再配布するときは、Apache-2.0 の LICENSE と NOTICE（上のソースにあります）を添えてください。取得した実行ファイルが静的に含む依存のライセンスは、**一覧を調べていません（未確認）**。
 EOF
 } >"$tmp_out"
 chmod 644 "$tmp_out" # mktemp creates it 0600

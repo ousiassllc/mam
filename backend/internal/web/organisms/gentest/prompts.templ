@@ -1,0 +1,37 @@
+package gentest
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// PromptListID is the DOM id of the prompt history list.
+const PromptListID = "gt-prompt-history"
+
+// PromptHistory is the prompts that were used, once each however many results they made. A prompt goes away only when it is
+// deleted here: deleting results does not touch it, and deleting it does not touch the results.
+templ PromptHistory(p Prompts) {
+	<section id={ PromptListID } class="flex flex-col gap-3" data-testid="gt-prompt-history">
+		@notice(p.Message, "gt-prompts")
+		if len(p.Items) == 0 {
+			<p class="text-sm text-neutral-400" data-testid="gt-prompts-empty">まだプロンプトの履歴はありません。</p>
+		}
+		<ul class="flex flex-col gap-2">
+			for _, r := range p.Items {
+				<li class="flex flex-col gap-2 rounded-md border border-neutral-800 p-3" data-testid="gt-prompt-item">
+					<p class="whitespace-pre-wrap break-words text-sm text-neutral-100">{ r.Text }</p>
+					if r.Negative != "" {
+						<p class="whitespace-pre-wrap break-words text-xs text-neutral-400">ネガティブ: { r.Negative }</p>
+					}
+					<div class="flex flex-wrap items-center gap-3 text-xs text-neutral-400">
+						<span>{ itoa(r.Uses) } 回使用・最後 { r.LastUsed }</span>
+						@atoms.ButtonLink(atoms.ToneNeutral, "生成画面で使う", templ.SafeURL(r.UseURL), templ.Attributes{"aria-label": "このプロンプトを生成画面で使う"})
+						<form hx-delete={ paths.GenerationTestPart("prompts", r.ID) } hx-target={ "#" + PromptListID } hx-swap="outerHTML" hx-confirm="このプロンプトを履歴から削除しますか？（生成した結果は消えません）">
+							@atoms.SmallButtonFor(atoms.ToneDanger, "削除", "プロンプト "+r.Text, templ.Attributes{"type": "submit"})
+						</form>
+					</div>
+				</li>
+			}
+		</ul>
+	</section>
+}

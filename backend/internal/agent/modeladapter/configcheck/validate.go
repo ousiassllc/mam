@@ -10,19 +10,26 @@ import (
 	"slices"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/chatgptid"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/gptimage"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
 // Load is modeladapter.LoadConfig followed by Validate: the Config of the settings file, or an
-// error that says what is wrong with it. An empty path selects the (valid) defaults.
+// error that says what is wrong with it. An empty path selects the (valid) defaults. A file that
+// still names Imagen 4 is read as Nano Banana (migrateLegacyModels).
 func Load(path string) (modeladapter.Config, error) {
 	cfg, err := modeladapter.LoadConfig(path)
 	if err != nil {
 		return modeladapter.Config{}, err
 	}
+	migrateLegacyModels(&cfg)
+	cfg = withWorkflows(cfg)
 	if err := Validate(cfg); err != nil {
 		return modeladapter.Config{}, fmt.Errorf("model config %s: %w", path, err)
 	}
+	warnUnpricedGPTImage2(cfg)
 	return cfg, nil
 }
 
@@ -32,8 +39,8 @@ func Load(path string) (modeladapter.Config, error) {
 func Validate(c modeladapter.Config) error {
 	var errs []error
 	for _, check := range []func(modeladapter.Config) []error{
-		validateVendors, validateModels, validateImageRoutes,
-		validatePolicies, validateRouting, validateRetry,
+		validateVendors, validateModels, validateLocal, validateImageRoutes,
+		validatePolicies, validateRouting, validateRetry, func(c modeladapter.Config) []error { return c.Gentest.Validate() },
 	} {
 		errs = append(errs, check(c)...)
 	}
@@ -60,8 +67,11 @@ func validateModels(c modeladapter.Config) []error {
 	var errs []error
 	for _, m := range slices.Sorted(maps.Keys(c.Models)) {
 		caps, video := modeladapter.Capabilities(m)
-		if !slices.Contains(domain.ImageModels(), m) && !video {
+		if !slices.Contains(domain.ImageModels(), m) && !video && m != chatgptid.Model {
 			errs = append(errs, fmt.Errorf("models: %q is not an image or video model", m))
+		}
+		if q := c.Models[m].Quality; !gptimage.Valid(q) || (q != "" && m != domain.ModelGPTImage2) {
+			errs = append(errs, fmt.Errorf("models %s: quality %q is not one of %v (only %s has one)", m, q, gptimage.Qualities(), domain.ModelGPTImage2))
 		}
 		for _, res := range slices.Sorted(maps.Keys(c.Models[m].CostPerSecond)) {
 			if video && !caps.SupportsResolution(res) {
@@ -151,11 +161,19 @@ func validateRetry(c modeladapter.Config) []error {
 // checkImageTarget checks one image model of a route; where names the route in the messages.
 func checkImageTarget(c modeladapter.Config, where string, t modeladapter.ImageTarget) []error {
 	var errs []error
-	mc, ok := c.Models[t.Model]
-	if !slices.Contains(domain.ImageModels(), t.Model) || !ok || mc.Model == "" {
+	fast, configured := "", false
+	if lm, _, local := c.LocalModel(t.Model); local {
+		configured = lm.Media == localcfg.MediaImage
+	} else {
+		mc, ok := c.Models[t.Model]
+		fast, configured = mc.FastModel, slices.Contains(domain.ImageModels(), t.Model) && ok && mc.Model != ""
+		// Valid while image generation by subscription is off, too: a route that names it then fails over.
+		configured = configured || t.Model == chatgptid.Model
+	}
+	if !configured {
 		errs = append(errs, fmt.Errorf("%s: %q is not a configured image model", where, t.Model))
 	}
-	if t.Fast && mc.FastModel == "" {
+	if t.Fast && fast == "" {
 		errs = append(errs, fmt.Errorf("%s: %q has no fast_model", where, t.Model))
 	}
 	return append(errs, checkVendorSettings(c, where, t.Model)...)
@@ -164,21 +182,24 @@ func checkImageTarget(c modeladapter.Config, where string, t modeladapter.ImageT
 // checkVideoTarget checks one video model at one resolution; where names the route in the messages.
 func checkVideoTarget(c modeladapter.Config, where string, t modeladapter.VideoTarget) []error {
 	var errs []error
-	caps, ok := modeladapter.Capabilities(t.Model)
+	caps, ok := c.VideoCaps(t.Model)
 	mc := c.Models[t.Model]
 	switch {
-	case !ok || mc.Model == "":
+	case !ok || (mc.Model == "" && !isLocal(c, t.Model)):
 		errs = append(errs, fmt.Errorf("%s: %q is not a configured video model", where, t.Model))
 	case !caps.SupportsResolution(t.Resolution):
 		errs = append(errs, fmt.Errorf("%s: %q does not support %q", where, t.Model, t.Resolution))
-	case mc.CostPerSecond[t.Resolution] <= 0:
+	case mc.CostPerSecond[t.Resolution] <= 0 && !isLocal(c, t.Model): // a local model's price may be 0
 		errs = append(errs, fmt.Errorf("%s: no cost_per_second_usd for %s at %s", where, t.Model, t.Resolution))
 	}
 	return append(errs, checkVendorSettings(c, where, t.Model)...)
 }
 
 func checkVendorSettings(c modeladapter.Config, where string, m domain.ModelName) []error {
-	if _, ok := c.Vendors[modeladapter.VendorOf(m)]; !ok {
+	if _, saved := c.Workflows[string(m)]; saved {
+		return nil // a saved workflow runs on the endpoint it names, which may not be registered yet: it has no backend until it is
+	}
+	if _, ok := c.VendorSettings()[modeladapter.VendorOf(m)]; !ok {
 		return []error{fmt.Errorf("%s: no vendor settings for %q", where, modeladapter.VendorOf(m))}
 	}
 	return nil

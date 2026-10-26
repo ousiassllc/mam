@@ -1,0 +1,174 @@
+package media
+
+import (
+	"strconv"
+
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// Section is the category: what applies at once, the notes of the file, the age gate and the reset (Status), and under
+// them the table of the image purposes and the table of the Quality Policies. The answers about the whole assignment (a
+// reset, PUT /settings/models) replace it by PanelID. A pinned file is tables to read: no button edits them.
+templ Section(d Data) {
+	<div id={ PanelID } class="flex flex-col gap-6" data-testid="model-assignment">
+		if d.Problem != "" {
+			<p class="text-sm text-red-300" role="alert" data-testid="model-assignment-problem">{ d.Problem }</p>
+		} else {
+			<p class="text-sm text-neutral-400">{ "保存した内容は <データフォルダ>/models.json に書かれ、すぐに反映されます。「ローカル・代替モデル」で登録したモデルも選べます。" }</p>
+			if d.Notice != "" {
+				<p class="text-sm text-emerald-300" role="status" data-testid="model-assignment-notice">{ d.Notice }</p>
+			}
+			if d.Error != "" {
+				<p class="text-sm text-red-300" role="alert" data-testid="model-assignment-error">{ d.Error }</p>
+			}
+			@Status(d, false)
+			@molecules.SettingsSectionAt(molecules.HeadingH3, "画像モデル（用途ごと）", "代替モデルは、主モデルが使えないとき（連続失敗で遮断中、またはリトライしても失敗したとき）に使われます。「高速版」は、高速版を持つモデルでだけ保存できます。") {
+				@settingsui.SettingsTable(ImagesID, "画像モデルの割り当て（用途ごと）", imageColumns(d.Pinned)) {
+					for _, r := range d.Images {
+						@imageRow(r, d.Pinned, false)
+					}
+				}
+			}
+			@molecules.SettingsSectionAt(molecules.HeadingH3, "動画モデル（Quality Policy ごと）", "モデルは、そのモデルが対応する解像度との組み合わせで選びます。テイク数は 1 以上です。") {
+				@settingsui.SettingsTable(PoliciesID, "動画モデルの割り当て（Quality Policy ごと）", policyColumns(d.Pinned)) {
+					for _, r := range d.Policies {
+						@policyRow(r, d.Pinned, false)
+					}
+				}
+			}
+		}
+	</div>
+}
+
+// Status is the notes that the saved assignment calls for (pinned, a model that cannot be used) and the button that puts the
+// whole assignment back to the defaults. A save of one row changes them, so its answer sends Status out of band (oob).
+templ Status(d Data, oob bool) {
+	<div
+		id={ StatusID }
+		class="flex flex-col gap-3 empty:hidden"
+		if oob {
+			hx-swap-oob="true"
+		}
+	>
+		if d.Pinned {
+			<p class="text-sm text-amber-300" role="status" data-testid="model-assignment-pinned">{ d.PinnedNote }</p>
+		}
+		if d.GatedNote != "" {
+			<p class="text-sm text-amber-300" role="status" data-testid="model-assignment-gated">{ d.GatedNote }</p>
+		}
+		if !d.Pinned && d.Customized {
+			<div>
+				@atoms.Button(atoms.ToneNeutral, "すべて既定に戻す", templ.Attributes{
+					"type":            "button",
+					"hx-delete":       paths.ModelSettings(),
+					"hx-target":       "#" + PanelID,
+					"hx-swap":         "outerHTML",
+					"hx-sync":         "this:drop",
+					"hx-disabled-elt": "this",
+					"hx-confirm":      "画像・動画モデルの割り当てを既定に戻します。よろしいですか？",
+					"data-testid":     "model-reset",
+				})
+			</div>
+		}
+	</div>
+}
+
+// editColumn is the column of the 編集 button of both tables: right-aligned, so that the button is at the same place in the
+// two tables whatever their other columns take.
+const editColumn = "whitespace-nowrap text-right"
+
+// modelCell keeps the name of a model from being broken into pieces by a row head that takes the width.
+const modelCell = "min-w-36"
+
+func imageColumns(pinned bool) []settingsui.Column {
+	cols := []settingsui.Column{{Header: "用途"}, {Header: "主モデル"}, {Header: "代替モデル"}}
+	if !pinned {
+		cols = append(cols, settingsui.Column{Header: "操作", SROnly: true, Class: editColumn})
+	}
+	return cols
+}
+
+func policyColumns(pinned bool) []settingsui.Column {
+	cols := []settingsui.Column{{Header: "Quality Policy"}, {Header: "主モデル"}, {Header: "代替モデル"}, {Header: "テイク数"}}
+	if !pinned {
+		cols = append(cols, settingsui.Column{Header: "操作", SROnly: true, Class: editColumn})
+	}
+	return cols
+}
+
+// ImageRowOOB is the row of an image purpose as the answer of a save: it replaces the row with its id out of band. Put it
+// first in the answer: a <tr> is read as a row only at the head of the response.
+templ ImageRowOOB(r ImageRow) {
+	@imageRow(r, false, true)
+}
+
+// PolicyRowOOB is ImageRowOOB for a Quality Policy.
+templ PolicyRowOOB(r PolicyRow) {
+	@policyRow(r, false, true)
+}
+
+templ imageRow(r ImageRow, pinned, oob bool) {
+	@settingsui.TableRowItem(settingsui.TableRow{ID: ImageRowID(r.Purpose), TestID: "model-assignment-image", Attrs: templ.Attributes{"data-purpose": r.Purpose}, OOB: oob}) {
+		@settingsui.RowHead("max-w-sm") {
+			{ r.Label }
+			<span class="mt-1 block text-xs font-normal text-neutral-400">{ r.Hint }</span>
+			if r.ReferenceNote != "" {
+				<span class="mt-1 block text-xs font-normal text-amber-300" role="status" data-testid="model-assignment-reference-note">{ r.ReferenceNote }</span>
+			}
+		}
+		@settingsui.Cell(modelCell) {
+			@imageTarget(r.Primary)
+		}
+		@settingsui.Cell(modelCell) {
+			@imageTarget(r.Fallback)
+		}
+		if !pinned {
+			@settingsui.Cell(editColumn) {
+				@atoms.SmallButtonFor(atoms.ToneNeutral, "編集", r.Label, modal.OpenAttrs(paths.ModelImageEdit(r.Purpose), ImageFocusKey(r.Purpose)))
+			}
+		}
+	}
+}
+
+templ imageTarget(t ImageTarget) {
+	{ t.Model }
+	if t.Fast {
+		<span class="text-xs text-neutral-400">（高速版）</span>
+	}
+	if t.Unusable {
+		<span class="text-xs text-amber-300">{ unusableSuffix }</span>
+	}
+}
+
+templ policyRow(r PolicyRow, pinned, oob bool) {
+	@settingsui.TableRowItem(settingsui.TableRow{ID: PolicyRowID(r.Policy), TestID: "model-assignment-policy", Attrs: templ.Attributes{"data-policy": r.Policy}, OOB: oob}) {
+		@settingsui.RowHead("") {
+			{ r.Label }
+		}
+		@settingsui.Cell(modelCell) {
+			@policyTarget(r.Primary, r.PrimaryUnusable)
+		}
+		@settingsui.Cell(modelCell) {
+			@policyTarget(r.Fallback, r.FallbackUnusable)
+		}
+		@settingsui.Cell("") {
+			{ strconv.Itoa(r.Takes) }
+		}
+		if !pinned {
+			@settingsui.Cell(editColumn) {
+				@atoms.SmallButtonFor(atoms.ToneNeutral, "編集", r.Label, modal.OpenAttrs(paths.ModelPolicyEdit(r.Policy), PolicyFocusKey(r.Policy)))
+			}
+		}
+	}
+}
+
+templ policyTarget(value string, unusable bool) {
+	{ value }
+	if unusable {
+		<span class="text-xs text-amber-300">{ unusableSuffix }</span>
+	}
+}

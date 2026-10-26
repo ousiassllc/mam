@@ -20,7 +20,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
-	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelassignment"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/media"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -35,8 +35,17 @@ type modelScreen struct {
 
 func newModelScreen(t *testing.T, file string, pinned bool) *modelScreen {
 	t.Helper()
+	return newGatedModelScreen(t, file, pinned, nil)
+}
+
+// newGatedModelScreen is newModelScreen with the age gate of the model manager: hidden says which models are adult models while the
+// age confirmation is off (nil: none).
+func newGatedModelScreen(t *testing.T, file string, pinned bool, hidden func(modelID string) bool) *modelScreen {
+	t.Helper()
 	svc := servicetest.New(t, service.Deps{DB: testdb.Open(t), Credentials: credentialtest.New()})
-	s := &modelScreen{t: t, file: file, engine: router.New(svc, router.Options{Settings: settingsroutes.New(filepath.Join(t.TempDir(), "llm.json"), false, file, pinned)})}
+	settings := settingsroutes.New(filepath.Join(t.TempDir(), "llm.json"), false, file, pinned)
+	settings.Models.SetHidden(hidden)
+	s := &modelScreen{t: t, file: file, engine: router.New(svc, router.Options{Settings: settings})}
 	rec := s.send(httptest.NewRequest(http.MethodGet, paths.Settings(), nil))
 	require.Equal(t, http.StatusOK, rec.Code)
 	for _, c := range rec.Result().Cookies() {
@@ -59,7 +68,12 @@ func (s *modelScreen) send(req *http.Request) *httptest.ResponseRecorder {
 }
 
 func (s *modelScreen) request(method string, form url.Values) *httptest.ResponseRecorder {
-	req := httptest.NewRequest(method, paths.ModelSettings(), strings.NewReader(form.Encode()))
+	return s.requestTo(method, paths.ModelSettings(), form)
+}
+
+// requestTo is an HTMX request with the CSRF token, as the page's script sends one.
+func (s *modelScreen) requestTo(method, path string, form url.Values) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(method, path, strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("HX-Request", "true")
 	req.AddCookie(s.cookie)
@@ -68,10 +82,24 @@ func (s *modelScreen) request(method string, form url.Values) *httptest.Response
 }
 
 func (s *modelScreen) page() string {
-	req := httptest.NewRequest(http.MethodGet, paths.Settings(), nil)
+	req := httptest.NewRequest(http.MethodGet, paths.ModelSettings(), nil)
 	req.AddCookie(s.cookie)
 	rec := s.send(req)
 	require.Equal(s.t, http.StatusOK, rec.Code)
+	return rec.Body.String()
+}
+
+// imageModal is the body of the modal that edits the image purpose, as the button of its row asks for it.
+func (s *modelScreen) imageModal(purpose string) string {
+	rec := s.requestTo(http.MethodGet, paths.ModelImageEdit(purpose), nil)
+	require.Equal(s.t, http.StatusOK, rec.Code, rec.Body.String())
+	return rec.Body.String()
+}
+
+// policyModal is the body of the modal that edits the Quality Policy.
+func (s *modelScreen) policyModal(policy string) string {
+	rec := s.requestTo(http.MethodGet, paths.ModelPolicyEdit(policy), nil)
+	require.Equal(s.t, http.StatusOK, rec.Code, rec.Body.String())
 	return rec.Body.String()
 }
 
@@ -80,17 +108,17 @@ func modelDefaultForm() url.Values {
 	def := modeladapter.DefaultConfig()
 	form := url.Values{}
 	for p, r := range def.Images {
-		for slot, t := range map[string]modeladapter.ImageTarget{modelassignment.SlotPrimary: r.Primary, modelassignment.SlotFallback: r.Fallback} {
-			form.Set(modelassignment.ImageModelField(string(p), slot), string(t.Model))
+		for slot, t := range map[string]modeladapter.ImageTarget{media.SlotPrimary: r.Primary, media.SlotFallback: r.Fallback} {
+			form.Set(media.ImageModelField(string(p), slot), string(t.Model))
 			if t.Fast {
-				form.Set(modelassignment.ImageFastField(string(p), slot), "1")
+				form.Set(media.ImageFastField(string(p), slot), "1")
 			}
 		}
 	}
 	for q, r := range def.Policies {
-		form.Set(modelassignment.PolicyTargetField(string(q), modelassignment.SlotPrimary), string(r.Primary.Model)+"@"+r.Primary.Resolution)
-		form.Set(modelassignment.PolicyTargetField(string(q), modelassignment.SlotFallback), string(r.Fallback.Model)+"@"+r.Fallback.Resolution)
-		form.Set(modelassignment.PolicyTakesField(string(q)), strconv.Itoa(r.Takes))
+		form.Set(media.PolicyTargetField(string(q), media.SlotPrimary), string(r.Primary.Model)+"@"+r.Primary.Resolution)
+		form.Set(media.PolicyTargetField(string(q), media.SlotFallback), string(r.Fallback.Model)+"@"+r.Fallback.Resolution)
+		form.Set(media.PolicyTakesField(string(q)), strconv.Itoa(r.Takes))
 	}
 	return form
 }

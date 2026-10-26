@@ -3,8 +3,10 @@ version: '3'
 includes:
   common: ../Taskfile.yml
 
-# Variables from scripts/package-windows.sh: VERSION (X.Y.Z) becomes the NSIS INFO_PRODUCTVERSION
-# and the installer file name; INFO_JSON is the info.json (with that version) for the exe resources.
+# Variables from scripts/package-windows.sh: VERSION (X.Y.Z) becomes the NSIS INFO_PRODUCTVERSION, the installer file name
+# and the embedded backend/internal/version.Version ("v<VERSION>"; "dev" when VERSION is empty, which turns the auto update
+# off); INFO_JSON is the info.json (with that version) for the exe resources. The environment variable
+# RELEASE_SIGNING_PUBLIC_KEY (base64 of the raw ed25519 public key, optional) is embedded as version.ReleasePublicKey.
 # Only amd64 is built.
 vars:
   ARCH: "amd64"
@@ -16,7 +18,7 @@ tasks:
       - task: common:build:frontend
     cmds:
       - task: generate:syso
-      - go build -tags production -trimpath -buildvcs=false -ldflags="-s -w -H windowsgui" -o "{{.BIN_DIR}}/{{.APP_NAME}}.exe" ./backend/cmd/wails
+      - go build -tags production -trimpath -buildvcs=false -ldflags="-s -w -H windowsgui -X github.com/ousiassllc/mam/backend/internal/version.Version={{if .VERSION}}v{{.VERSION}}{{else}}dev{{end}} -X github.com/ousiassllc/mam/backend/internal/version.ReleasePublicKey={{env "RELEASE_SIGNING_PUBLIC_KEY"}}" -o "{{.BIN_DIR}}/{{.APP_NAME}}.exe" ./backend/cmd/wails
     env:
       GOOS: windows
       GOARCH: amd64
@@ -30,7 +32,7 @@ tasks:
       - wails3 generate syso -arch {{.ARCH}} -icon windows/icon.ico -manifest windows/wails.exe.manifest -info {{.INFO_JSON | default "windows/info.json"}} -out ../backend/cmd/wails/wails_windows_{{.ARCH}}.syso
 
   package:
-    summary: Packages bin/mam.exe into the NSIS installer bin/mam-<version>-windows-amd64-setup.exe
+    summary: Packages bin/mam.exe into the per-user NSIS installer bin/mam-<version>-windows-amd64-setup.exe
     deps:
       - task: build
     dir: build/windows/nsis
@@ -39,7 +41,7 @@ tasks:
       - wails3 generate webview2bootstrapper -dir "{{.ROOT_DIR}}/build/windows/nsis"
       - |
         {{if eq OS "windows"}}
-        makensis -DINFO_PRODUCTVERSION={{.VERSION | default "0.0.0"}} -DARG_WAILS_AMD64_BINARY="{{.ROOT_DIR}}\{{.BIN_DIR}}\{{.APP_NAME}}.exe" project.nsi
+        makensis -DWAILS_INSTALL_SCOPE=user -DINFO_PRODUCTVERSION={{.VERSION | default "0.0.0"}} -DARG_WAILS_AMD64_BINARY="{{.ROOT_DIR}}\{{.BIN_DIR}}\{{.APP_NAME}}.exe" project.nsi
         {{else}}
-        makensis -DINFO_PRODUCTVERSION={{.VERSION | default "0.0.0"}} -DARG_WAILS_AMD64_BINARY="{{.ROOT_DIR}}/{{.BIN_DIR}}/{{.APP_NAME}}.exe" project.nsi
+        makensis -DWAILS_INSTALL_SCOPE=user -DINFO_PRODUCTVERSION={{.VERSION | default "0.0.0"}} -DARG_WAILS_AMD64_BINARY="{{.ROOT_DIR}}/{{.BIN_DIR}}/{{.APP_NAME}}.exe" project.nsi
         {{end}}

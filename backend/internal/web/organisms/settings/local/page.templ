@@ -1,0 +1,132 @@
+package local
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// The elements of the page of an endpoint that the actions swap.
+const (
+	PageID = "local-endpoint-page"
+	// ModelsTableID is the <tbody> of the models; a new row is appended to it out of band. ModelsEmptyID is the row that
+	// says there is none, which the first model takes away (and the last deleted one brings back).
+	ModelsTableID = "local-models-table"
+	ModelsEmptyID = "local-models-empty"
+	EditorID      = "local-models-editor"
+)
+
+var modelColumns = []settingsui.Column{
+	{Header: "モデル"},
+	{Header: "種類"},
+	{Header: "内容"},
+	{Header: "操作", SROnly: true},
+}
+
+// ModelRowID is the id of the row of a model: what a save replaces out of band.
+func ModelRowID(endpoint, model string) string { return "local-model-" + endpoint + "-" + model }
+
+// Page is the page of one endpoint (spec/components/settings-screen-categories.md §5), under the h2 of the category: the
+// way back, the endpoint as a card (what it is, its connection and key), and its models as a table. Adding and changing a
+// model are long (a workflow, the inputs it takes), so their forms open below the table, on the page, and not in a modal.
+templ Page(d Data, e Endpoint) {
+	<div id={ PageID } class="flex flex-col gap-6" data-testid="local-endpoint-page">
+		@atoms.BackLink(paths.LocalModels(), "← ローカル・代替モデルに戻る")
+		if d.Pinned {
+			<p class="text-sm text-amber-300" role="status" data-testid="local-models-pinned">{ d.PinnedNote }</p>
+		}
+		<ul role="list" class="grid grid-cols-1 gap-4">
+			@endpointCard(d.Pinned, d.PinnedNote, e, cardPage, false)
+		</ul>
+		<section aria-labelledby="local-models-title" class="flex flex-col gap-3">
+			<div class="flex flex-wrap items-center justify-between gap-2">
+				<h3 id="local-models-title" class="text-base font-semibold">モデル</h3>
+				@atoms.Button(atoms.TonePrimary, "モデルを追加", guard(d.Pinned, d.PinnedNote, templ.Attributes{
+					"type":      "button",
+					"hx-get":    paths.LocalEndpoint(e.Name, "models", "new"),
+					"hx-target": "#" + EditorID,
+					"hx-swap":   "innerHTML",
+				}))
+			</div>
+			<div id={ EditorID } class="flex flex-col gap-3" data-testid="local-models-editor">
+				@EditorBody(d)
+			</div>
+			@settingsui.SettingsTable(ModelsTableID, "接続先 "+e.Name+" のモデル", modelColumns) {
+				@ModelRows(d.Pinned, d.PinnedNote, e)
+			}
+		</section>
+	</div>
+}
+
+// ModelRows are the rows of the table, which is what a delete swaps into it (the swap target stays in the page, so that the
+// focus can be put back); with no model it is the row that says so. A row is read as one only when it comes first in an answer.
+templ ModelRows(pinned bool, note string, e Endpoint) {
+	for _, m := range e.Models {
+		@modelRow(pinned, note, e.Name, m, false)
+	}
+	if len(e.Models) == 0 {
+		@emptyRow()
+	}
+}
+
+templ emptyRow() {
+	<tr id={ ModelsEmptyID } data-testid="local-models-empty-row">
+		<td colspan="4" class="px-3 py-3 text-neutral-400">モデルはまだ定義されていません。</td>
+	</tr>
+}
+
+templ modelRow(pinned bool, note, endpoint string, m Model, oob bool) {
+	@settingsui.TableRowItem(settingsui.TableRow{
+		ID: ModelRowID(endpoint, m.Name), TestID: "local-model", Attrs: templ.Attributes{"data-model-id": m.ID}, OOB: oob,
+	}) {
+		@settingsui.RowHead("") {
+			{ m.Name }
+		}
+		@settingsui.Cell("") {
+			@atoms.Badge(atoms.BadgeNeutral, mediaLabel(m.Media))
+		}
+		@settingsui.Cell("") {
+			<code class="break-all text-xs text-neutral-300" data-testid="local-model-id">{ m.ID }</code>
+			<span class="block text-xs text-neutral-400">{ m.Summary }</span>
+			if len(m.UsedBy) > 0 {
+				<span class="block text-xs text-neutral-400" data-testid="local-model-used-by">使用中: { joinNames(m.UsedBy) }</span>
+			}
+		}
+		@settingsui.Cell("") {
+			<div class="flex flex-wrap items-center justify-end gap-2">
+				@atoms.SmallButtonFor(atoms.ToneNeutral, "編集", m.ID, guard(pinned, note, templ.Attributes{
+					"type":      "button",
+					"hx-get":    paths.LocalEndpoint(endpoint, "models", m.Name, "edit"),
+					"hx-target": "#" + EditorID,
+					"hx-swap":   "innerHTML",
+				}))
+				@atoms.SmallButtonFor(atoms.ToneDanger, "削除", m.ID, guard(pinned, note, templ.Attributes{
+					"type":       "button",
+					"hx-delete":  paths.LocalEndpoint(endpoint, "models", m.Name),
+					"hx-target":  "#" + ModelsTableID,
+					"hx-swap":    "innerHTML",
+					"hx-sync":    "this:drop",
+					"hx-confirm": "モデル「" + m.ID + "」を削除します。よろしいですか？",
+				}))
+			</div>
+		}
+	}
+}
+
+// ModelRowOOB is the row of a model as the answer of a save: it replaces the row with its id out of band. The row is in a
+// <template>: an HTML parser keeps a table part only inside one (or first in the answer), and htmx reads those.
+templ ModelRowOOB(endpoint string, m Model) {
+	<template>
+		@modelRow(false, "", endpoint, m, true)
+	</template>
+}
+
+// ModelAppended is the row of a new model added to the table out of band, and takes the "no models" row away.
+templ ModelAppended(endpoint string, m Model) {
+	<template>
+		<tbody hx-swap-oob={ "beforeend:#" + ModelsTableID }>
+			@modelRow(false, "", endpoint, m, false)
+		</tbody>
+	</template>
+	<span id={ ModelsEmptyID } hx-swap-oob="delete"></span>
+}
