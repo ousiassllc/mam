@@ -1,0 +1,106 @@
+package updatepanel
+
+import (
+	"time"
+
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// Tone is how the status line is coloured and announced.
+type Tone string
+
+// The tones: neutral and ok are announced politely (role=status), warn and error at once (role=alert).
+const (
+	ToneNeutral Tone = "neutral"
+	ToneOK      Tone = "ok"
+	ToneWarn    Tone = "warn"
+	ToneError   Tone = "error"
+)
+
+// Data is the "バージョンとアップデート" section. Version is what to show as the running version ("開発版" for a
+// build from a working tree). Status is one sentence on the last check and Tone says how serious it is; both
+// are empty when the build cannot update (CanCheck false: the headless server shows the version only).
+// CheckedAt is when the last check finished (zero: none yet). Checking is a check that runs now.
+type Data struct {
+	Version   string
+	Status    string
+	Tone      Tone
+	CheckedAt time.Time
+	CanCheck  bool
+	Checking  bool
+}
+
+// Section is the "バージョンとアップデート" section of the global settings screen: Panel under its title.
+templ Section(d Data) {
+	@molecules.SettingsSectionAt(molecules.HeadingNone, "バージョンとアップデート", description(d)) {
+		@Panel(d)
+	}
+}
+
+// SectionIf is Section, or nothing when d is nil.
+templ SectionIf(d *Data) {
+	if d != nil {
+		@Section(*d)
+	}
+}
+
+func description(d Data) string {
+	if d.CanCheck {
+		return "新しいバージョンは、起動の少しあとと 6 時間ごとに自動で確認します。見つかると、作業が終わったところでアプリを再起動して更新します。"
+	}
+	return "このビルドは自動更新に対応していません。"
+}
+
+// Panel shows the version, the result of the last check and, when the build can update, the button that
+// checks now (POST); the answer is the panel itself. A check that finds a newer release downloads it, which
+// takes a while: the button is disabled and a second click is dropped until the answer comes.
+templ Panel(d Data) {
+	<section id="update-panel" class="flex flex-col gap-3" aria-labelledby="update-version">
+		<p class="text-sm">
+			<span class="text-neutral-400">現在のバージョン:</span>
+			<span id="update-version" class="font-medium" data-testid="update-version">{ d.Version }</span>
+		</p>
+		if d.Status != "" {
+			<p class={ statusClass(d.Tone) } role={ statusRole(d.Tone) } data-testid="update-status" data-tone={ string(d.Tone) }>{ d.Status }</p>
+		}
+		if !d.CheckedAt.IsZero() {
+			<p class="text-xs text-neutral-400" data-testid="update-checked-at">
+				最終確認:
+				<time datetime={ d.CheckedAt.UTC().Format(time.RFC3339) }>{ d.CheckedAt.Local().Format("2006-01-02 15:04") }</time>
+			</p>
+		}
+		if d.CanCheck {
+			<form
+				class="flex items-center gap-2"
+				hx-post={ paths.UpdateCheck() }
+				hx-target="#update-panel"
+				hx-swap="outerHTML"
+				hx-sync="this:drop"
+				hx-disabled-elt="find button[type=submit]"
+			>
+				@atoms.Button(atoms.ToneNeutral, "今すぐ確認", templ.Attributes{"type": "submit", "data-testid": "update-check"})
+			</form>
+		}
+	</section>
+}
+
+func statusClass(t Tone) string {
+	switch t {
+	case ToneOK:
+		return "text-sm text-emerald-300"
+	case ToneWarn:
+		return "text-sm text-amber-300"
+	case ToneError:
+		return "text-sm text-red-300"
+	}
+	return "text-sm text-neutral-300"
+}
+
+func statusRole(t Tone) string {
+	if t == ToneWarn || t == ToneError {
+		return "alert"
+	}
+	return "status"
+}

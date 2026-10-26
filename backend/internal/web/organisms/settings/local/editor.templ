@@ -1,0 +1,95 @@
+package local
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// EditorBody is what #local-models-editor holds on the page of an endpoint: the form an action opened, or nothing. A
+// button that opens a form fetches this alone (the page is not redrawn).
+templ EditorBody(d Data) {
+	if d.Editor.Start != nil {
+		@startForm(*d.Editor.Start, d.Templates, d.Editor.Error)
+	}
+	if d.Editor.Model != nil {
+		@ModelFormView(*d.Editor.Model, d.Editor.Error)
+	}
+}
+
+// EditorNotice is why no form was opened (the file is pinned, the endpoint is gone), in the place of the form.
+templ EditorNotice(msg string) {
+	<p class="text-sm text-red-300" role="alert" data-testid="local-form-error">{ msg }</p>
+}
+
+// closeButton closes the open form by drawing the page of the endpoint again (without it).
+templ closeButton(endpoint string) {
+	@atoms.Button(atoms.ToneNeutral, "閉じる", templ.Attributes{
+		"type":      "button",
+		"hx-get":    paths.LocalEndpoint(endpoint),
+		"hx-target": "#" + PageID,
+		"hx-select": "#" + PageID,
+		"hx-swap":   "outerHTML",
+	})
+}
+
+templ formError(msg string) {
+	if msg != "" {
+		<p class="text-sm text-red-300" role="alert" data-testid="local-form-error">{ msg }</p>
+	}
+}
+
+templ startForm(s ModelStart, templates []TemplateOption, errMsg string) {
+	<form
+		class="flex flex-col gap-3 rounded-md border border-neutral-700 p-4"
+		hx-post={ paths.LocalEndpoint(s.Endpoint, "models", "start") }
+		hx-target={ "#" + EditorID }
+		hx-swap="innerHTML"
+		hx-sync="this:drop"
+		hx-disabled-elt="find button[type=submit]"
+		autocomplete="off"
+		data-testid="local-model-start"
+	>
+		<h4 tabindex="-1" autofocus class="text-sm font-semibold focus-visible:outline-none">接続先「{ s.Endpoint }」にモデルを追加（ステップ 1: ワークフロー）</h4>
+		@formError(errMsg)
+		<fieldset class="flex flex-col gap-2">
+			<legend class="text-xs text-neutral-400">組み込みのテンプレートから始める（モデルのファイル名は、接続先にあるものに直してください）</legend>
+			for _, t := range templates {
+				<label class="flex items-start gap-2 text-sm">
+					@atoms.Choice("mt-1", templ.Attributes{"type": "radio", "name": FieldTemplate, "value": t.ID, "checked": t.ID == s.TemplateID})
+					<span>
+						<span class="font-medium">{ t.Label }</span>
+						<span class="ml-1 text-xs text-neutral-400">（{ mediaLabel(t.Media) }）</span>
+						<span class="block text-xs text-neutral-400">{ t.Description }</span>
+					</span>
+				</label>
+			}
+			<label class="flex items-start gap-2 text-sm">
+				@atoms.Choice("mt-1", templ.Attributes{"type": "radio", "name": FieldTemplate, "value": "", "checked": s.TemplateID == ""})
+				<span class="font-medium">自分のワークフローを取り込む（下の欄に JSON を貼り付け）</span>
+			</label>
+		</fieldset>
+		<fieldset class="flex flex-col gap-2">
+			<legend class="text-xs text-neutral-400">取り込むワークフローの種類（テンプレートを選んだときは無視されます）</legend>
+			<div class="flex items-center gap-4 text-sm">
+				<label class="flex items-center gap-1">
+					@atoms.Choice("", templ.Attributes{"type": "radio", "name": FieldMedia, "value": MediaImage, "checked": s.Media != MediaVideo})
+					画像
+				</label>
+				<label class="flex items-center gap-1">
+					@atoms.Choice("", templ.Attributes{"type": "radio", "name": FieldMedia, "value": MediaVideo, "checked": s.Media == MediaVideo})
+					動画
+				</label>
+			</div>
+		</fieldset>
+		<label class="flex flex-col gap-1 text-xs text-neutral-400" for="local-workflow-json">
+			<span>ワークフローの JSON（ComfyUI の「Save (API Format)」で保存したもの。エディタ形式は取り込めません）</span>
+			@atoms.Textarea(atoms.FieldMd, "h-40 w-full font-mono text-xs", templ.Attributes{
+				"id": "local-workflow-json", "name": FieldWorkflowText, "spellcheck": "false",
+			}, s.WorkflowText)
+		</label>
+		<div class="flex flex-wrap items-center gap-2">
+			@atoms.Button(atoms.TonePrimary, "次へ（割り当てを設定）", templ.Attributes{"type": "submit"})
+			@closeButton(s.Endpoint)
+		</div>
+	</form>
+}

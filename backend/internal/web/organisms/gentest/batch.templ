@@ -1,0 +1,133 @@
+package gentest
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// BatchEmpty is the placeholder the batch is drawn into.
+templ BatchEmpty() {
+	<div id={ BatchID } data-testid="gt-batch-empty"></div>
+}
+
+// BatchBox is the progress and the comparison grid of a batch (rows: models, columns: prompts). While anything waits or runs it
+// asks for itself again every 2 seconds.
+templ BatchBox(b Batch) {
+	<section
+		id={ BatchID }
+		class="flex flex-col gap-3 rounded-md border border-neutral-700 p-4"
+		data-testid="gt-batch"
+		data-state={ b.StateTone }
+		if !b.Finished {
+			hx-get={ paths.GenerationTestPart("batches", b.ID) }
+			hx-trigger={ Polling }
+			hx-swap="outerHTML"
+		}
+	>
+		@notice(b.Message, "gt-batch")
+		<div class="flex flex-wrap items-center gap-3">
+			<h2 class="text-sm font-medium">生成の結果</h2>
+			@atoms.BadgeWith(batchTone(b.StateTone), b.StateText, templ.Attributes{"data-testid": "gt-batch-state"})
+			<span class="text-xs text-neutral-400" data-testid="gt-batch-progress">{ itoa(b.Done) } / { itoa(b.Total) } 件（{ b.Counts }）</span>
+			if b.Estimate != "" {
+				<span class="text-xs text-neutral-400">見積り { b.Estimate }</span>
+			}
+			if !b.Finished {
+				<form
+					hx-post={ paths.GenerationTestPart("batches", b.ID, "cancel") }
+					hx-target={ "#" + BatchID }
+					hx-swap="outerHTML"
+					hx-sync="this:drop"
+					hx-disabled-elt="find button[type=submit]"
+					hx-confirm="まだ始めていない生成を取り消しますか？（呼び出し中のものは終わるまで待ちます）"
+				>
+					@atoms.SmallButtonFor(atoms.ToneDanger, "取り消す", "生成", templ.Attributes{"type": "submit", "data-testid": "gt-cancel"})
+				</form>
+			}
+		</div>
+		if !b.Finished {
+			<progress class="h-2 w-full" max="100" value={ itoa(b.Percent) } aria-label="生成の進み具合" data-testid="gt-progress"></progress>
+		}
+		<div class="overflow-x-auto">
+			<table class="w-full min-w-max border-collapse text-sm" data-testid="gt-grid">
+				<thead>
+					<tr>
+						<th class="p-2 text-left text-xs font-normal text-neutral-400">モデル ＼ プロンプト</th>
+						for _, c := range b.Cols {
+							<th class="max-w-xs p-2 text-left align-top text-xs font-normal text-neutral-300" data-testid="gt-col">
+								<span class="line-clamp-3 whitespace-pre-wrap break-words">{ c.Text }</span>
+								if c.Negative != "" {
+									<span class="mt-1 block text-neutral-400">ネガティブ: { c.Negative }</span>
+								}
+							</th>
+						}
+					</tr>
+				</thead>
+				<tbody>
+					for _, r := range b.Rows {
+						<tr class="border-t border-neutral-800" data-testid="gt-row">
+							<th class="p-2 text-left align-top text-xs font-medium text-neutral-200" scope="row">{ r.Model }</th>
+							for _, cell := range r.Cells {
+								<td class="p-2 align-top" data-testid="gt-cell">
+									<div class="flex flex-wrap gap-2">
+										for _, card := range cell {
+											@ResultCard(card)
+										}
+									</div>
+								</td>
+							}
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+	</section>
+}
+
+func batchTone(tone string) atoms.BadgeTone {
+	switch tone {
+	case "succeeded":
+		return atoms.BadgeOK
+	case "failed", "cancelled":
+		return atoms.BadgeError
+	case "running", "queued":
+		return atoms.BadgeInfo
+	}
+	return atoms.BadgeNeutral
+}
+
+func resultTone(status string) atoms.BadgeTone {
+	switch status {
+	case "succeeded":
+		return atoms.BadgeOK
+	case "failed", "cancelled":
+		return atoms.BadgeError
+	case "running":
+		return atoms.BadgeInfo
+	}
+	return atoms.BadgeNeutral
+}
+
+// ResultCard is a result: the file (an image or a video) or its status, the settings in short and a link to the detail.
+templ ResultCard(c Card) {
+	<article class="flex w-44 flex-col gap-1 rounded-md border border-neutral-800 p-2 text-xs" data-testid="gt-card" data-status={ c.Status } data-result={ c.ID }>
+		if c.FileURL != "" && c.Video {
+			<video class="h-28 w-full rounded bg-black object-contain" src={ c.FileURL } controls preload="metadata"></video>
+		} else if c.FileURL != "" {
+			<img class="h-28 w-full rounded bg-black object-contain" src={ c.FileURL } alt={ c.Prompt } loading="lazy"/>
+		} else {
+			<div class="flex h-28 items-center justify-center rounded bg-neutral-900 text-neutral-400">
+				@atoms.BadgeWith(resultTone(c.Status), c.StatusText, templ.Attributes{"data-testid": "gt-card-status"})
+			</div>
+		}
+		if c.Error != "" {
+			<p class="break-words text-red-300" data-testid="gt-card-error">{ c.Error }</p>
+		}
+		if c.Meta != "" {
+			<p class="break-words text-neutral-400">{ c.Meta }</p>
+		}
+		if c.Detail != "" {
+			<a class="underline" href={ templ.SafeURL(c.Detail) } aria-label={ "結果の詳細: " + c.Model }>詳細</a>
+		}
+	</article>
+}

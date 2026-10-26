@@ -17,6 +17,10 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/facesim"
 	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest"
+	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
+	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
+	"github.com/ousiassllc/mam/backend/internal/service/workflows"
 )
 
 // Deps are the infrastructure dependencies wired once in cmd/server.
@@ -29,22 +33,17 @@ type Deps struct {
 	AssetsDir string
 	// Briefing extracts the Creative Brief from chat messages. Nil selects briefing.RuleExtractor.
 	Briefing briefing.Extractor
-	// LLM is the Reasoning LLM Adapter of the AUTO pipeline. When nil, or when Jobs is nil,
-	// the pipeline is off: Projects stay in DRAFT after the Brief is complete.
+	// LLM is the Reasoning LLM Adapter of the AUTO pipeline; nil (or nil Jobs) turns it off: Projects stay in DRAFT.
 	LLM llm.Completer
-	// Models is the Model Adapter that generates images and videos. Generation (Shot Takes and
-	// Reference Packs) is available only when it, LLM and Jobs are all set.
+	// Models is the Model Adapter that generates images and videos; Takes and Reference Packs need it, LLM and Jobs.
 	Models *modeladapter.Adapter
 	// FreeBytes reports the free disk space at a path. Nil selects fsutil.FreeBytes.
 	FreeBytes func(path string) (uint64, error)
-	// Frames samples frames from Takes (ffmpeg). The AI Video Judge is available only when it, LLM
-	// and Jobs are all set.
+	// Frames samples frames from Takes (ffmpeg). The AI Video Judge is available only when it, LLM and Jobs are all set.
 	Frames judge.FrameSource
-	// Faces is the local face engine of the Face Identity Similarity. Nil: Takes are judged
-	// qualitatively only.
+	// Faces is the local face engine of the Face Identity Similarity. Nil: Takes are judged qualitatively only.
 	Faces facesim.Engine
-	// Media is ffmpeg / ffprobe for the Take previews (4K proxies, thumbnails) and Partial Take Use.
-	// Nil: 4K Takes play as they are and Partial Take Use is unavailable.
+	// Media is ffmpeg / ffprobe for the Take previews (4K proxies, thumbnails) and Partial Take Use; nil: none of them.
 	Media *media.Tools
 	// Judge is the AI Video Judge setting. The zero value selects judge.DefaultConfig.
 	Judge judge.Config
@@ -56,33 +55,36 @@ type Deps struct {
 	Audio audiodirector.Providers
 }
 
-// Services is the DI root handed to router.New. Each feature adds one field
-// here and one line in wiring.services; wiring.go says where its agent is wired.
+// Services is the DI root handed to router.New: one field per feature and one line in wiring.services (wiring.go).
 type Services struct {
-	Health      *HealthService
-	Credentials *CredentialService
-	Projects    *ProjectService
-	Chat        *ChatService
-	Plans       *PlanService
-	Generation  *GenerationService
-	World       *WorldService
-	Director    *DirectorService
-	Policy      *PolicyService
-	Judge       *JudgeService
-	Repair      *RepairService
-	Continue    *ContinueService
-	Reference   *ReferenceService
-	Trace       *TraceService
-	Versions    *VersionService
-	Bundle      *BundleService
-	Series      *SeriesService
-	Takes       *TakeService
-	Notes       *NoteService
-	Branch      *BranchService
-	Review      *ReviewService
-	Editor      *EditorService
-	Brand       *BrandService
-	Analytics   *AnalyticsService
+	Health       *HealthService
+	Credentials  *CredentialService
+	Projects     *ProjectService
+	Chat         *ChatService
+	Plans        *PlanService
+	Generation   *GenerationService
+	World        *WorldService
+	Director     *DirectorService
+	Policy       *PolicyService
+	Judge        *JudgeService
+	Repair       *RepairService
+	Continue     *ContinueService
+	Reference    *ReferenceService
+	Trace        *TraceService
+	Versions     *VersionService
+	Bundle       *BundleService
+	Series       *SeriesService
+	Takes        *TakeService
+	Notes        *NoteService
+	Branch       *BranchService
+	Review       *ReviewService
+	Editor       *EditorService
+	Brand        *BrandService
+	Analytics    *AnalyticsService
+	LocalModels  *localmodels.Service  // ComfyUI / OpenAI-compatible endpoints and models; the app sets it
+	ModelManager *modelmanager.Service // bundled ComfyUI engine, model catalog; the app sets it
+	Gentest      *gentest.Service      // generation test: batches of generations outside any Project, history, import; the app sets it
+	Workflows    *workflows.Service    // ComfyUI workflows saved in mam (node screen, models, MCP); the app sets it
 }
 
 // Close stops the background workers of the services and kills the Take preview conversions that

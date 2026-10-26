@@ -27,6 +27,10 @@ func main() {
 }
 
 func run(ctx context.Context, args []string, getenv func(string) string, stderr io.Writer) error {
+	// --detect-gpu / --detect-comfyui print a report and exit; nothing else starts.
+	if handled, err := app.RunDetect(ctx, args, os.Stdout); handled {
+		return err
+	}
 	// app.Run parses the same arguments again; the parse here only decides whether to open the
 	// browser, and prints --help / a flag error exactly once before app.Run would.
 	cfg, err := config.Load(args, getenv, stderr)
@@ -37,9 +41,10 @@ func run(ctx context.Context, args []string, getenv func(string) string, stderr 
 		return err
 	}
 	return app.Run(ctx, app.Options{
-		Args:   args,
-		Getenv: getenv,
-		Stderr: stderr,
+		Args:        args,
+		Getenv:      getenv,
+		Stderr:      stderr,
+		OpenBrowser: openBrowser,
 		OnReady: func(url string) {
 			if !cfg.OpenBrowser {
 				return

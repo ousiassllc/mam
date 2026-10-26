@@ -22,7 +22,7 @@ func (f genFixture) upload(t *testing.T, kind, name, tags string) domain.Referen
 	return view.Items[0]
 }
 
-func (f genFixture) buildPack(t *testing.T) {
+func (f genFixture) buildReferencePack(t *testing.T) {
 	t.Helper()
 	_, err := f.svc.Generation.BuildReferencePack(context.Background(), f.shotID)
 	require.NoError(t, err)
@@ -100,7 +100,7 @@ func TestReferenceLibrary_RegistersSearchesAndRemoves(t *testing.T) {
 
 func TestBuildReferencePack_RegistersGeneratedImagesInTheLibraryExceptTheKeyframe(t *testing.T) {
 	f := newGenFixture(t, true)
-	f.buildPack(t)
+	f.buildReferencePack(t)
 	view, err := f.svc.Reference.Library(context.Background(), f.projectID, service.LibraryQuery{})
 	require.NoError(t, err)
 	assert.Len(t, view.Items, 5)
@@ -131,7 +131,7 @@ func TestReferencePin_PinnedImageSurvivesARebuildWithoutBeingGeneratedAgain(t *t
 	_, err = f.svc.Reference.Pin(ctx, "missing", it.ID)
 	assert.ErrorIs(t, err, service.ErrNotFound)
 
-	f.buildPack(t)
+	f.buildReferencePack(t)
 	f.models.mu.Lock()
 	generated := len(f.models.images)
 	f.models.mu.Unlock()
@@ -148,7 +148,7 @@ func TestReferencePin_PinnedImageSurvivesARebuildWithoutBeingGeneratedAgain(t *t
 	assert.Equal(t, 5, f.count(t, `SELECT COUNT(*) FROM reference_item`), "the pinned image is not registered twice (1 upload + 4 generated)")
 
 	// A second rebuild keeps it again.
-	f.buildPack(t)
+	f.buildReferencePack(t)
 	for _, r := range f.shot(t).References() {
 		if r.Kind == domain.RefCharacter {
 			assert.Equal(t, it.AssetID, r.AssetID)
@@ -205,7 +205,7 @@ func TestWorldAssignReference_ChecksKindSlotLockAndAppliesToTheNextReferencePack
 	_, err = f.svc.World.AssignReference(ctx, f.projectID, "", domain.TargetCharacter, "nobody", "face", face.ID)
 	assert.ErrorIs(t, err, service.ErrNotFound)
 
-	f.buildPack(t)
+	f.buildReferencePack(t)
 	f.models.mu.Lock()
 	generated := len(f.models.images)
 	f.models.mu.Unlock()

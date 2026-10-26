@@ -69,7 +69,7 @@ func TestSettings_RendersWhenTheKeyStoreNeverAnswers(t *testing.T) {
 	svc := servicetest.New(t, service.Deps{DB: testdb.Open(t), Credentials: keys})
 	engine := router.New(svc, router.Options{})
 
-	req := httptest.NewRequest(http.MethodGet, "/settings", nil)
+	req := httptest.NewRequest(http.MethodGet, "/settings/api-keys", nil)
 	req.Host, req.RemoteAddr = "127.0.0.1:8787", "127.0.0.1:54321"
 	rec := httptest.NewRecorder()
 	done := make(chan struct{})

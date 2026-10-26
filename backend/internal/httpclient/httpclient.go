@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net"
 	"net/http"
+	"syscall"
 	"time"
 )
 
@@ -27,11 +28,19 @@ const (
 // API key never reaches it) or from https to http, and whose transport times out a stalled
 // connect, TLS handshake or response header. It has no overall timeout: the caller's context
 // bounds a call.
-func New() *http.Client {
+func New() *http.Client { return NewGuarded(nil) }
+
+// NewGuarded is New with control run on the resolved address of every connection (net.Dialer.Control),
+// which may refuse it, and without proxy support when control is set (a proxy would hide the real
+// destination from the guard).
+func NewGuarded(control func(network, address string, c syscall.RawConn) error) *http.Client {
 	tr := http.DefaultTransport.(*http.Transport).Clone()
-	tr.DialContext = (&net.Dialer{Timeout: dialTimeout, KeepAlive: 30 * time.Second}).DialContext
+	tr.DialContext = (&net.Dialer{Timeout: dialTimeout, KeepAlive: 30 * time.Second, Control: control}).DialContext
 	tr.TLSHandshakeTimeout = dialTimeout
 	tr.ResponseHeaderTimeout = headerTimeout
+	if control != nil {
+		tr.Proxy = nil
+	}
 	return &http.Client{Transport: tr, CheckRedirect: sameHost}
 }
 

@@ -1,0 +1,70 @@
+package gentest
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// ConfirmEmpty is the placeholder the confirmation is drawn into.
+templ ConfirmEmpty() {
+	<div id={ ConfirmID } data-testid="gt-confirm-empty"></div>
+}
+
+// ConfirmFailed is the confirmation of a request that could not be priced: the reason, in the place of the estimate.
+templ ConfirmFailed(msg string) {
+	<div id={ ConfirmID } class="rounded-md border border-red-500/50 p-4" data-testid="gt-confirm-failed">
+		<p class="text-sm text-red-300" role="alert" data-testid="gt-confirm-error">{ msg }</p>
+	</div>
+}
+
+// ConfirmBox is the estimate of a batch: how many results, what each model costs, what is not priced and the warnings. The
+// batch runs only from this box, with the estimate it shows.
+templ ConfirmBox(c Confirm) {
+	<div id={ ConfirmID } class="flex flex-col gap-3 rounded-md border border-indigo-500/50 p-4" data-testid="gt-confirm">
+		@notice(c.Message, "gt-confirm")
+		<h2 class="text-sm font-medium">実行の確認</h2>
+		<p class="text-sm" data-testid="gt-confirm-items">全部で <strong>{ itoa(c.Items) }</strong> 件を生成します。見積り合計は <strong data-testid="gt-confirm-total">{ c.Total }</strong> です。</p>
+		<table class="w-full text-left text-sm" data-testid="gt-confirm-lines">
+			<thead class="text-xs text-neutral-400">
+				<tr><th class="py-1 pr-2 font-normal">モデル</th><th class="py-1 pr-2 font-normal">件数</th><th class="py-1 pr-2 font-normal">単価</th><th class="py-1 font-normal">小計</th></tr>
+			</thead>
+			<tbody>
+				for _, l := range c.Lines {
+					<tr class="border-t border-neutral-800" data-testid="gt-confirm-line">
+						<td class="py-1 pr-2">{ l.Label }</td>
+						<td class="py-1 pr-2">{ itoa(l.Items) }</td>
+						<td class="py-1 pr-2">{ l.Unit }</td>
+						<td class="py-1">{ l.Subtotal }</td>
+					</tr>
+				}
+			</tbody>
+		</table>
+		if c.Unknown != "" {
+			<p class="text-xs text-amber-300" data-testid="gt-confirm-unknown">{ c.Unknown }</p>
+		}
+		if len(c.Warnings) > 0 {
+			<ul class="list-disc pl-5 text-xs text-amber-300" data-testid="gt-confirm-warnings">
+				for _, w := range c.Warnings {
+					<li>{ w }</li>
+				}
+			</ul>
+		}
+		if c.OverLimit != "" {
+			<p class="text-sm text-red-300" role="alert" data-testid="gt-confirm-over">{ c.OverLimit }</p>
+		}
+		<form
+			class="flex flex-wrap items-center gap-3"
+			hx-post={ paths.GenerationTestPart("run") }
+			hx-target={ "#" + BatchID }
+			hx-swap="outerHTML"
+			hx-sync="this:drop"
+			hx-disabled-elt="find button[type=submit]"
+		>
+			for _, h := range c.Hidden {
+				<input type="hidden" name={ h.Name } value={ h.Value }/>
+			}
+			@atoms.Button(atoms.TonePrimary, "この内容で実行する", templ.Attributes{"type": "submit", "disabled": c.OverLimit != "", "data-testid": "gt-run"})
+			<span class="text-xs text-neutral-400">モデルとプロンプトは補正も代替もせず、そのまま呼びます。結果は履歴に残り、Take やコスト台帳には入りません。</span>
+		</form>
+	</div>
+}

@@ -66,7 +66,7 @@ func TestShot_CanonicalSpecIsPresentOnlyOnceAnObjectiveWasWritten(t *testing.T) 
 }
 
 func TestReferences_RoundTripThroughTheShotSpec(t *testing.T) {
-	refs := []domain.Reference{{Kind: domain.RefCharacter, Name: "Mio", AssetID: "a1", Prompt: "p", Model: domain.ModelImagen4}}
+	refs := []domain.Reference{{Kind: domain.RefCharacter, Name: "Mio", AssetID: "a1", Prompt: "p", Model: domain.ModelNanoBanana}}
 	raw, err := domain.WithReferences(json.RawMessage(`{"shot_objective":"x"}`), refs)
 	require.NoError(t, err)
 	assert.Equal(t, refs, domain.Shot{ShotSpec: raw}.References())

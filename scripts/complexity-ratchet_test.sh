@@ -65,7 +65,7 @@ expect() {
 }
 
 clean=backend/internal/agent/commandinterpreter/interpreter.go
-describe=backend/internal/agent/modeladapter/prompt.go
+describe=backend/internal/agent/modeladapter/shotprompt/shotprompt.go
 views=backend/internal/service/chat_read.go
 execute=backend/internal/service/director_execute.go
 apply=backend/internal/repository/project.go
@@ -74,8 +74,8 @@ apply=backend/internal/repository/project.go
 expect "clean at its recorded value passes" pass $clean commandinterpreter "" clean 26
 expect "clean that got simpler (still over the limit) passes" pass $clean commandinterpreter "" clean 25
 expect "clean that got more complex fails" fail $clean commandinterpreter "" clean 27
-expect "describe at its recorded value passes" pass $describe modeladapter "" describe 30
-expect "describe that got more complex fails" fail $describe modeladapter "" describe 31
+expect "describe at its recorded value passes" pass $describe shotprompt "" Describe 30
+expect "describe that got more complex fails" fail $describe shotprompt "" Describe 31
 expect "ChatService.views at its recorded value passes" pass $views service ChatService views 28
 expect "ChatService.views that got more complex fails" fail $views service ChatService views 29
 expect "DirectorService.execute at its recorded value passes" pass $execute service DirectorService execute 30
@@ -86,7 +86,7 @@ expect "ProjectRepository.Apply that got more complex fails" fail $apply reposit
 
 kind=cyc
 expect "a same-named clean in another package fails" fail backend/internal/other/clean.go other "" clean 26
-expect "a same-named describe in another package fails" fail backend/internal/other/describe.go other "" describe 25
+expect "a same-named Describe in another package fails" fail backend/internal/other/describe.go other "" Describe 25
 expect "a new function over the gocyclo limit in an allowed file fails" fail $clean commandinterpreter "" other 25
 kind=cog
 expect "a new function over the gocognit limit fails" fail backend/internal/other/x.go other "" fn 51

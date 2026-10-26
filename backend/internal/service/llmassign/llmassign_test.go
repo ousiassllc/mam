@@ -163,6 +163,7 @@ func TestReset_RemovesTheFileWhenNothingElseIsInIt(t *testing.T) {
 
 func TestSave_RefusesWhatDoesNotLoadAndWritesNothing(t *testing.T) {
 	good := route(llm.ProviderGoogle, "gemini-3.1-pro")
+	wantField := map[string]string{"unknown provider": "provider", "empty model": "model", "blank model": "model", "model with space": "model", "model too long": "model"}
 	for name, bad := range map[string]llmassign.Route{
 		"unknown provider": route("nobody", "m"),
 		"empty model":      route(llm.ProviderGoogle, ""),
@@ -182,6 +183,8 @@ func TestSave_RefusesWhatDoesNotLoadAndWritesNothing(t *testing.T) {
 			var invalid *llmassign.InvalidError
 			require.ErrorAs(t, err, &invalid)
 			assert.NotEmpty(t, invalid.Message)
+			assert.Equal(t, "primary", invalid.Role, "the field to blame is told")
+			assert.Equal(t, wantField[name], invalid.Field)
 			after, err := os.ReadFile(path)
 			require.NoError(t, err)
 			assert.Equal(t, string(before), string(after), "the file is untouched")

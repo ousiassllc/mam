@@ -1,0 +1,42 @@
+{
+ "id": "sdxl-base",
+ "name": "Stable Diffusion XL base 1.0",
+ "kind": "image",
+ "tier": "standard",
+ "content_rating": "general",
+ "description": "定番の画像モデル。いちばん小さく動く（約 7 GB）。参照画像からの画像（img2img）にも使える。",
+ "files": [
+  {
+   "name": "sd_xl_base_1.0.safetensors",
+   "folder": "checkpoints",
+   "url": "https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0/resolve/462165984030d82259a11f4367a4eed129e94a7b/sd_xl_base_1.0.safetensors",
+   "sha256": "31e35c80fc4829d14f90153f4c74cd59c90b779f6afe05a74cd6120b893f7e5b",
+   "size": 6938078334
+  }
+ ],
+ "vram": {
+  "min_gb": 8,
+  "source": "mam の見積もり（出典なし・実機未検証）",
+  "estimate": true
+ },
+ "license": {
+  "id": "creativeml-openrail++-m",
+  "version": "2023-07-26",
+  "name": "CreativeML Open RAIL++-M License",
+  "url": "https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0/blob/main/LICENSE.md",
+  "summary": "商用を含めて使える。ただし違法・有害な用途（未成年の搾取、なりすまし、偽情報の拡散など）を禁じる使用制限（Attachment A）が付き、モデルを再配布するときは同じ制限を引き継ぐ。生成物の権利は主張されない。",
+  "commercial_use": true
+ },
+ "consent_required": false,
+ "requires_hf_token": false,
+ "workflows": [
+  {
+   "name": "sdxl-base",
+   "template": "txt2img-sdxl"
+  },
+  {
+   "name": "sdxl-base-img2img",
+   "template": "img2img-sdxl"
+  }
+ ]
+}

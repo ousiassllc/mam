@@ -1,0 +1,131 @@
+package media
+
+import (
+	"slices"
+	"strconv"
+
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// ImageModal is the body of the modal that edits the models of one image purpose: the primary and the fallback model (with
+// the "fast variant" where a model has one). The fields are the ones of the whole assignment (ImageModelField, ImageFastField),
+// so that one parser reads both. A model the saved route names but that cannot be chosen is shown as it is, selected, with
+// "（現在は使えません）".
+templ ImageModal(f ImageForm) {
+	@modal.Frame(f.Row.Label+" の画像モデル", f.Row.Hint+"。保存するとすぐに反映されます。") {
+		if f.Error != "" {
+			@modal.Error(f.Error)
+		}
+		<form
+			class="flex flex-col gap-4"
+			method="post"
+			data-testid="media-image-form"
+			hx-put={ paths.ModelImage(f.Row.Purpose) }
+			hx-target={ "#" + modal.BodyID }
+			hx-swap="innerHTML"
+			hx-sync="this:drop"
+			hx-disabled-elt="find button[type=submit]"
+			autocomplete="off"
+		>
+			@imageSlot(f, SlotPrimary, "主モデル", f.Row.Primary, f.Error == "")
+			@imageSlot(f, SlotFallback, "代替モデル", f.Row.Fallback, false)
+			@modal.Actions() {
+				@modal.Cancel("キャンセル")
+				@atoms.Button(atoms.TonePrimary, "保存", templ.Attributes{"type": "submit"})
+			}
+		</form>
+	}
+}
+
+templ imageSlot(f ImageForm, slot, slotLabel string, t ImageTarget, first bool) {
+	<div class="flex flex-wrap items-center gap-3">
+		<label for={ ImageModelField(f.Row.Purpose, slot) } class="w-24 text-sm font-medium">{ slotLabel }</label>
+		@atoms.Select(atoms.FieldMd, "", selectAttrs(ImageModelField(f.Row.Purpose, slot), first, f.Blame == slot)) {
+			for _, m := range f.Models {
+				<option value={ m.Name } selected?={ m.Name == t.Model }>{ m.Name }</option>
+			}
+			if t.Model != "" && !slices.ContainsFunc(f.Models, func(m ImageModel) bool { return m.Name == t.Model }) {
+				<option value={ t.Model } selected>{ t.Model }{ unusableSuffix }</option>
+			}
+		}
+		if showFast(t, f.Models) {
+			<label class="flex items-center gap-1 text-xs">
+				@atoms.Choice("", templ.Attributes{"type": "checkbox", "name": ImageFastField(f.Row.Purpose, slot), "value": "1", "checked": t.Fast})
+				高速版<span class="sr-only">（{ slotLabel }）</span>
+			</label>
+		}
+	</div>
+}
+
+// PolicyModal is the body of the modal that edits the video models and the Takes of one Quality Policy. Each option of a
+// model is the model at a resolution it supports.
+templ PolicyModal(f PolicyForm) {
+	@modal.Frame(f.Row.Label+" の動画モデル", "モデルは、そのモデルが対応する解像度との組み合わせで選びます。保存するとすぐに反映されます。") {
+		if f.Error != "" {
+			@modal.Error(f.Error)
+		}
+		<form
+			class="flex flex-col gap-4"
+			method="post"
+			data-testid="media-policy-form"
+			hx-put={ paths.ModelPolicy(f.Row.Policy) }
+			hx-target={ "#" + modal.BodyID }
+			hx-swap="innerHTML"
+			hx-sync="this:drop"
+			hx-disabled-elt="find button[type=submit]"
+			autocomplete="off"
+		>
+			@policySlot(f, SlotPrimary, "主モデル", f.Row.Primary, f.Error == "")
+			@policySlot(f, SlotFallback, "代替モデル", f.Row.Fallback, false)
+			<div class="flex flex-wrap items-center gap-3">
+				<label for={ PolicyTakesField(f.Row.Policy) } class="w-24 text-sm font-medium">テイク数</label>
+				@atoms.Input(atoms.FieldMd, "w-20", blamed(templ.Attributes{
+					"id":    PolicyTakesField(f.Row.Policy),
+					"name":  PolicyTakesField(f.Row.Policy),
+					"type":  "number",
+					"min":   "1",
+					"step":  "1",
+					"value": strconv.Itoa(f.Row.Takes),
+				}, f.Blame == BlameTakes))
+			</div>
+			@modal.Actions() {
+				@modal.Cancel("キャンセル")
+				@atoms.Button(atoms.TonePrimary, "保存", templ.Attributes{"type": "submit"})
+			}
+		</form>
+	}
+}
+
+templ policySlot(f PolicyForm, slot, slotLabel, selected string, first bool) {
+	<div class="flex flex-wrap items-center gap-3">
+		<label for={ PolicyTargetField(f.Row.Policy, slot) } class="w-24 text-sm font-medium">{ slotLabel }</label>
+		@atoms.Select(atoms.FieldMd, "", selectAttrs(PolicyTargetField(f.Row.Policy, slot), first, f.Blame == slot)) {
+			for _, c := range f.Choices {
+				<option value={ c.Value } selected?={ c.Value == selected }>{ c.Label }</option>
+			}
+			if selected != "" && !slices.ContainsFunc(f.Choices, func(c VideoChoice) bool { return c.Value == selected }) {
+				<option value={ selected } selected>{ selected }{ unusableSuffix }</option>
+			}
+		}
+	</div>
+}
+
+// selectAttrs are the attributes of a model <select>: the first one of the modal is the one to start with, unless a refusal
+// is to be read first; the one a refusal is about (blame) is marked and is the one to start with.
+func selectAttrs(name string, first, blame bool) templ.Attributes {
+	a := templ.Attributes{"id": name, "name": name}
+	if first {
+		a["autofocus"] = true
+	}
+	return blamed(a, blame)
+}
+
+// blamed marks the field a refusal is about: what says so (aria-invalid, the reason as its description) and the focus.
+func blamed(a templ.Attributes, blame bool) templ.Attributes {
+	if blame {
+		a["aria-invalid"], a["aria-describedby"], a["autofocus"] = "true", modal.ErrorID, true
+	}
+	return a
+}

@@ -13,6 +13,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/editorpanel"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/sceneshot"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/overview"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/shotinspector"
 	"github.com/ousiassllc/mam/backend/internal/web/pages"
 )
@@ -25,7 +26,7 @@ func TestAuxiliaryPages_HaveOneH1(t *testing.T) {
 		page templ.Component
 		h1   string
 	}{
-		{"global settings", pages.GlobalSettingsPage("tok", organisms.GlobalSettingsBodyData{}), "設定"},
+		{"global settings", pages.GlobalSettingsPage("tok", pages.GlobalSettingsPageData{Title: "設定", Body: pages.SettingsOverviewBody(overview.Data{})}), "設定"},
 		{"editor", pages.EditorPage("tok", editorpanel.Data{Project: project}), "編集"},
 		{"take comparison", pages.TakeComparisonPage("tok", organisms.TakeComparisonData{Project: project, Shot: domain.Shot{ID: "s"}}), "Take 比較"},
 		{"branch", pages.BranchPage("tok", organisms.BranchPageData{Project: project}), "Branch"},
