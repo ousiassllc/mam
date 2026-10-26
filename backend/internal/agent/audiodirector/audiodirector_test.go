@@ -22,6 +22,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector"
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/testenv"
 )
 
 func keys(t *testing.T, withKey bool) credential.Store {
@@ -303,33 +304,38 @@ func TestSyncLabs_RetriesATransientStatusOrDownloadFailureOfAnAcceptedJob(t *tes
 	assert.Equal(t, 7, downloads)
 }
 
-// A failed status request is retried until the Timeout, every poll interval or, when the vendor asks
-// for a long wait (Retry-After), every that long; a client error is not retried.
-func TestSyncLabs_RetriesTheStatusRequestUntilTheTimeoutAndHonoursRetryAfter(t *testing.T) {
+// A failed status request is retried until the call ends, every poll interval or, when the vendor
+// asks for a long wait (Retry-After), every that long; a client error is not retried. The call ends
+// after the fourth poll or a grace after the first: a Timeout from the test start can end it early.
+func TestSyncLabs_RetriesTheStatusRequestUntilTheCallEndsAndHonoursRetryAfter(t *testing.T) {
 	for _, tc := range []struct {
 		status     int
 		retryAfter string
 		manyTries  bool
 	}{{http.StatusTooManyRequests, "", true}, {http.StatusTooManyRequests, "3600", false}, {http.StatusNotFound, "", false}} {
 		t.Run(fmt.Sprintf("%d Retry-After %q", tc.status, tc.retryAfter), func(t *testing.T) {
-			var polls int
+			var polls atomic.Int32
+			// The fourth poll ends the call; the grace only ends the Retry-After case, which polls once.
+			ctx, cancel := context.WithCancel(testenv.EndsAfterFirstRequest(t, &polls, time.Second))
+			defer cancel()
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.Method == http.MethodPost {
 					_, _ = w.Write([]byte(`{"id":"gen-1","status":"PENDING"}`))
 					return
 				}
-				polls++
+				if polls.Add(1) >= 4 && tc.manyTries {
+					cancel()
+				}
 				w.Header().Set("Retry-After", tc.retryAfter)
 				http.Error(w, "unavailable", tc.status)
 			}))
 			defer srv.Close()
-			sl := audiodirector.NewSyncLabs(audiodirector.SyncLabsConfig{BaseURL: srv.URL, Timeout: 100 * time.Millisecond, PollInterval: time.Millisecond}, syncKeys(t, true), nil)
+			sl := audiodirector.NewSyncLabs(audiodirector.SyncLabsConfig{BaseURL: srv.URL, PollInterval: time.Millisecond}, syncKeys(t, true), nil)
 
-			_, err := sl.Sync(context.Background(), audiodirector.LipSyncRequest{Model: "sync-3"})
+			_, err := sl.Sync(ctx, audiodirector.LipSyncRequest{Model: "sync-3"})
 
-			var charged *audiodirector.ChargedError
-			require.ErrorAs(t, err, &charged)
-			assert.Equal(t, tc.manyTries, polls > 3, "polls: %d", polls)
+			require.ErrorAs(t, err, new(*audiodirector.ChargedError))
+			assert.Equal(t, tc.manyTries, polls.Load() > 3, "polls: %d", polls.Load())
 		})
 	}
 }
@@ -369,30 +375,21 @@ func TestSyncLabs_Failures(t *testing.T) {
 		require.True(t, errors.As(err, &perr))
 		assert.Equal(t, http.StatusUnauthorized, perr.Status)
 	})
-	t.Run("the timeout ends a generation that never completes", func(t *testing.T) {
-		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-			_, _ = w.Write([]byte(`{"id":"g","status":"PROCESSING"}`))
-		}))
-		defer srv.Close()
-		sl := audiodirector.NewSyncLabs(audiodirector.SyncLabsConfig{BaseURL: srv.URL, Timeout: 50 * time.Millisecond, PollInterval: 5 * time.Millisecond}, syncKeys(t, true), nil)
-
-		_, err := sl.Sync(context.Background(), audiodirector.LipSyncRequest{Model: "lipsync-2"})
-
-		require.Error(t, err)
-	})
 }
 
 func TestSyncLabs_ADownloadFailureDoesNotLeakTheSignedOutputURL(t *testing.T) {
 	storage := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
 	storageURL := storage.URL
 	storage.Close()
+	var requests atomic.Int32 // the answer to the create already carries the output URL: no status request follows
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		requests.Add(1)
 		_, _ = w.Write([]byte(`{"id":"g","status":"COMPLETED","outputUrl":"` + storageURL + `/out.mp4?X-Signature=signed-secret"}`))
 	}))
 	defer srv.Close()
-	sl := audiodirector.NewSyncLabs(audiodirector.SyncLabsConfig{BaseURL: srv.URL, Timeout: 100 * time.Millisecond, PollInterval: time.Millisecond, LocalDownloads: true}, syncKeys(t, true), nil)
+	sl := audiodirector.NewSyncLabs(audiodirector.SyncLabsConfig{BaseURL: srv.URL, PollInterval: time.Millisecond, LocalDownloads: true}, syncKeys(t, true), nil)
 
-	_, err := sl.Sync(context.Background(), audiodirector.LipSyncRequest{Model: "sync-3"})
+	_, err := sl.Sync(testenv.EndsAfterFirstRequest(t, &requests, 100*time.Millisecond), audiodirector.LipSyncRequest{Model: "sync-3"})
 
 	require.Error(t, err)
 	assert.NotContains(t, err.Error(), "signed-secret")
@@ -455,7 +452,6 @@ func TestSyncLabs_AFailureAfterTheJobWasAcceptedIsMarkedCharged(t *testing.T) {
 	tests := []struct {
 		name    string
 		handler func(storageURL string) http.HandlerFunc
-		timeout time.Duration
 		charged bool
 	}{
 		{"output download fails", func(storage string) http.HandlerFunc {
@@ -466,12 +462,12 @@ func TestSyncLabs_AFailureAfterTheJobWasAcceptedIsMarkedCharged(t *testing.T) {
 				}
 				_, _ = w.Write([]byte(`{"id":"g","status":"COMPLETED","outputUrl":"` + storage + `/out.mp4"}`))
 			}
-		}, 50 * time.Millisecond, true}, // the unreachable storage is retried until the timeout
+		}, true}, // the unreachable storage is retried until the call ends
 		{"completed without an outputUrl", func(string) http.HandlerFunc {
 			return func(w http.ResponseWriter, _ *http.Request) {
 				_, _ = w.Write([]byte(`{"id":"g","status":"COMPLETED"}`))
 			}
-		}, 0, true},
+		}, true},
 		{"polling fails", func(string) http.HandlerFunc {
 			return func(w http.ResponseWriter, r *http.Request) {
 				if r.Method == http.MethodPost {
@@ -480,31 +476,33 @@ func TestSyncLabs_AFailureAfterTheJobWasAcceptedIsMarkedCharged(t *testing.T) {
 				}
 				http.Error(w, "boom", http.StatusInternalServerError)
 			}
-		}, 50 * time.Millisecond, true},
+		}, true},
 		{"timeout while polling", func(string) http.HandlerFunc {
 			return func(w http.ResponseWriter, _ *http.Request) {
 				_, _ = w.Write([]byte(`{"id":"g","status":"PROCESSING"}`))
 			}
-		}, 50 * time.Millisecond, true},
+		}, true},
 		{"create is refused", func(string) http.HandlerFunc {
 			return func(w http.ResponseWriter, _ *http.Request) { http.Error(w, "no", http.StatusBadRequest) }
-		}, 0, false},
+		}, false},
 		{"generation FAILED", func(string) http.HandlerFunc {
 			return func(w http.ResponseWriter, _ *http.Request) {
 				_, _ = w.Write([]byte(`{"id":"g","status":"FAILED","error":"x"}`))
 			}
-		}, 0, false},
+		}, false},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			storage := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
 			storageURL := storage.URL
 			storage.Close() // the link of the output cannot be downloaded
-			srv := httptest.NewServer(tc.handler(storageURL))
+			// The call ends a grace after the first status request, not after a Timeout from the test start.
+			var polls atomic.Int32
+			srv := httptest.NewServer(testenv.CountGets(&polls, tc.handler(storageURL)))
 			defer srv.Close()
-			sl := audiodirector.NewSyncLabs(audiodirector.SyncLabsConfig{BaseURL: srv.URL, Timeout: tc.timeout, PollInterval: 5 * time.Millisecond, LocalDownloads: true}, syncKeys(t, true), nil)
+			sl := audiodirector.NewSyncLabs(audiodirector.SyncLabsConfig{BaseURL: srv.URL, PollInterval: 5 * time.Millisecond, LocalDownloads: true}, syncKeys(t, true), nil)
 
-			_, err := sl.Sync(context.Background(), audiodirector.LipSyncRequest{Model: "sync-3"})
+			_, err := sl.Sync(testenv.EndsAfterFirstRequest(t, &polls, 50*time.Millisecond), audiodirector.LipSyncRequest{Model: "sync-3"})
 
 			require.Error(t, err)
 			var ce *audiodirector.ChargedError

@@ -26,10 +26,9 @@ func Checkpoints() []Checkpoint {
 	}
 }
 
-// SelectableCheckpoints are the checkpoints the pipeline actually posts an Approval card at:
-// the script (Orchestrator), the Rough Cut and the Final (Editor). Main Visual, character
-// design, product key visual and Scene completion belong to the stages after the Scene/Shot
-// plan, which are started per Shot by hand, so nothing asks there (spec/spec.md §4.4). Only
+// SelectableCheckpoints are the checkpoints the pipeline actually posts an Approval card at: the
+// script (Orchestrator), the Rough Cut and the Final (Editor). The other stages come after the
+// Scene/Shot plan and are started per Shot by hand, so nothing asks there (spec/spec.md §4.4). Only
 // the selectable ones are offered for CUSTOM CHECK.
 func SelectableCheckpoints() []Checkpoint {
 	return []Checkpoint{CheckpointScript, CheckpointRoughCut, CheckpointFinal}

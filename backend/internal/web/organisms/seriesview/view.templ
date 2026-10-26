@@ -5,7 +5,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
-	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/brandtemplate"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -91,7 +91,7 @@ templ View(d Data) {
 						}
 					}
 				</label>
-				@organisms.BrandTemplateSelect("series-brand-template", d.Templates)
+				@brandtemplate.Select("series-brand-template", d.Templates)
 				@atoms.Button(atoms.TonePrimary, "次の Episode を作成", templ.Attributes{"type": "submit"})
 			</form>
 		</section>
@@ -200,7 +200,7 @@ templ seriesCharacterForm(d Data, c domain.WorldCharacter) {
 			}
 		</div>
 		<div>
-			@atoms.Button(atoms.TonePrimary, "保存", templ.Attributes{"type": "submit"})
+			@atoms.ButtonFor(atoms.TonePrimary, "保存", c.Name, templ.Attributes{"type": "submit"})
 		</div>
 	</form>
 }

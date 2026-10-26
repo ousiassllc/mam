@@ -1,0 +1,66 @@
+{
+ "id": "hunyuanvideo15-480p",
+ "name": "HunyuanVideo 1.5 480p (fp8)",
+ "kind": "video",
+ "tier": "advanced",
+ "content_rating": "general",
+ "description": "HunyuanVideo 1.5 のテキストから動画（480p、cfg 蒸留版の fp8）。拡散モデル・テキストエンコーダー 2 つ・VAE の 4 ファイル、合計約 21 GB。24fps。",
+ "files": [
+  {
+   "name": "hunyuanvideo1.5_480p_t2v_cfg_distilled_fp8_scaled.safetensors",
+   "folder": "diffusion_models",
+   "url": "https://huggingface.co/Comfy-Org/Hunyuan-Video-1.5/resolve/1405a2b738c29b890cf6d03fc038d8d3e92eeed7/split_files/diffusion_models/hunyuanvideo1.5_480p_t2v_cfg_distilled_fp8_scaled.safetensors",
+   "sha256": "e1dbece6b36d4a3baf7a371e655c127db11233195c5dde44ce0c08831f92b7df",
+   "size": 8330399746
+  },
+  {
+   "name": "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+   "folder": "text_encoders",
+   "url": "https://huggingface.co/Comfy-Org/Hunyuan-Video-1.5/resolve/1405a2b738c29b890cf6d03fc038d8d3e92eeed7/split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors",
+   "sha256": "cb5636d852a0ea6a9075ab1bef496c0db7aef13c02350571e388aea959c5c0b4",
+   "size": 9384670680
+  },
+  {
+   "name": "byt5_small_glyphxl_fp16.safetensors",
+   "folder": "text_encoders",
+   "url": "https://huggingface.co/Comfy-Org/Hunyuan-Video-1.5/resolve/1405a2b738c29b890cf6d03fc038d8d3e92eeed7/split_files/text_encoders/byt5_small_glyphxl_fp16.safetensors",
+   "sha256": "516910bb4c9b225370290e40585d1b0e6c8cd3583690f7eec2f7fb593990fb48",
+   "size": 438643184
+  },
+  {
+   "name": "hunyuanvideo15_vae_fp16.safetensors",
+   "folder": "vae",
+   "url": "https://huggingface.co/Comfy-Org/Hunyuan-Video-1.5/resolve/1405a2b738c29b890cf6d03fc038d8d3e92eeed7/split_files/vae/hunyuanvideo15_vae_fp16.safetensors",
+   "sha256": "e7c3091949c27e2d55ae6d5df917b99dadfebbf308e5a50d0ade0d16c90297ae",
+   "size": 2521292758
+  }
+ ],
+ "vram": {
+  "min_gb": 24,
+  "source": "docs.comfy.org の HunyuanVideo 1.5 のページ（24 GB VRAM の消費者向け GPU）",
+  "estimate": false
+ },
+ "license": {
+  "id": "tencent-hunyuan-community",
+  "version": "2025-11-21",
+  "name": "Tencent Hunyuan Community License Agreement (HunyuanVideo 1.5)",
+  "url": "https://github.com/Tencent-Hunyuan/HunyuanVideo-1.5/blob/master/LICENSE",
+  "summary": "許諾の地域は EU・英国・韓国を除く全世界。この 3 地域では使えない。月間アクティブユーザーが 1 億を超える製品・サービスは Tencent の許諾が要る。生成物や結果を他の AI モデルの改良に使うことと、地域の外での利用は禁じられる。",
+  "commercial_use": true,
+  "commercial_condition": "月間アクティブユーザーが 1 億を超える場合は Tencent の許諾が要る",
+  "excluded_regions": [
+   "EU",
+   "GB",
+   "KR"
+  ],
+  "notice": "このライセンスは EU・英国・韓国では適用されません（使えません）。これらの地域では導入しないでください。"
+ },
+ "consent_required": true,
+ "requires_hf_token": false,
+ "workflows": [
+  {
+   "name": "hunyuanvideo15-480p",
+   "template": "txt2video-hunyuan15-480p"
+  }
+ ]
+}

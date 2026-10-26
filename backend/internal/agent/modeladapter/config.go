@@ -4,9 +4,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
-	"time"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/chatgptid"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/gentestcfg"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/gptimage"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/overlay"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
@@ -15,14 +20,14 @@ type ImagePurpose string
 
 // Image purposes.
 const (
-	// PurposeNewReference: new Character / Product / Location references (Imagen 4, then GPT Image 2).
+	// PurposeNewReference: new Character / Product / Location references (GPT Image 2, then Nano Banana).
 	PurposeNewReference ImagePurpose = "new_reference"
 	// PurposeEditReference: Style / Lighting references, Keyframes and edits of existing material
-	// (Nano Banana, then Imagen 4).
+	// (Nano Banana, then GPT Image 2).
 	PurposeEditReference ImagePurpose = "edit_reference"
-	// PurposePreview: fast, cheap iterations (FLUX.2, then Imagen 4 Fast).
+	// PurposePreview: fast, cheap iterations (FLUX.2, then Nano Banana Lite).
 	PurposePreview ImagePurpose = "preview"
-	// PurposeUnifiedOpenAI: one vendor for reasoning and images (GPT Image 2, then Imagen 4).
+	// PurposeUnifiedOpenAI: one vendor for reasoning and images (GPT Image 2, then Nano Banana).
 	PurposeUnifiedOpenAI ImagePurpose = "unified_openai"
 )
 
@@ -57,14 +62,14 @@ type PolicyRoute struct {
 }
 
 // RoutingWeights are the weights of the three values Multi-model routing scores a video model by
-// (spec/architecture/model-adapters.md §13.3).
+// (spec/architecture/model-adapters-m3.md §13.3).
 type RoutingWeights struct {
 	Quality float64 `json:"quality"`
 	Cost    float64 `json:"cost"`
 	Fit     float64 `json:"fit"`
 }
 
-// RoutingConfig is the setting of Multi-model routing (model-adapters.md §13).
+// RoutingConfig is the setting of Multi-model routing (model-adapters-m3.md §13).
 type RoutingConfig struct {
 	// Enabled switches it on; off means the Quality Policy's assignment alone (M1).
 	Enabled bool `json:"enabled"`
@@ -96,8 +101,9 @@ type ModelConfig struct {
 	// Model is the vendor's identifier of the model. FastModel is used for ImageTarget.Fast.
 	Model     string `json:"model"`
 	FastModel string `json:"fast_model,omitempty"`
-	// CostPerImage is the estimated cost of one image (USD), for image models.
+	// CostPerImage is the estimated cost of one image (USD), for image models. GPT Image 2 without one is priced by Quality.
 	CostPerImage float64 `json:"cost_per_image_usd,omitempty"`
+	Quality      string  `json:"quality,omitempty"` // the quality profile sent to GPT Image 2 (gptimage.Qualities; empty: gptimage.Default)
 	// CostPerSecond is the estimated cost of one second of video (USD) by resolution.
 	CostPerSecond map[string]float64 `json:"cost_per_second_usd,omitempty"`
 }
@@ -123,12 +129,18 @@ type Config struct {
 	Models   map[domain.ModelName]ModelConfig     `json:"models"`
 	Images   map[ImagePurpose]ImageRoute          `json:"images"`
 	Policies map[domain.QualityPolicy]PolicyRoute `json:"policies"`
+	// Endpoints are the servers the user registered (ComfyUI, OpenAI-compatible) and LocalModels the models
+	// defined on them, keyed "<endpoint>/<name>"; a model is routed to as localcfg.ID (spec/architecture/local-models.md).
+	Endpoints   map[string]localcfg.Endpoint      `json:"endpoints,omitempty"`
+	LocalModels map[string]localcfg.Model         `json:"local_models,omitempty"`
+	Workflows   map[string]localcfg.SavedWorkflow `json:"-"` // saved in mam, by identifier; configcheck.Load attaches them
 	// PreferOpenAI routes new references through PurposeUnifiedOpenAI (§3, row "OpenAI系 LLM と認証・請求を統合したい場合").
 	PreferOpenAI bool          `json:"prefer_openai"`
 	Retry        RetryConfig   `json:"retry"`
 	Breaker      BreakerConfig `json:"breaker"`
-	// Routing is Multi-model routing on top of Policies (model-adapters.md §13).
-	Routing RoutingConfig `json:"routing"`
+	// Routing is Multi-model routing on top of Policies (model-adapters-m3.md §13).
+	Routing RoutingConfig     `json:"routing"`
+	Gentest gentestcfg.Limits `json:"gentest"` // the limits of one batch of the generation test screen
 }
 
 // DefaultConfig is the assignment of model-adapters.md §3, §4 for M1. The prices are reference values.
@@ -143,20 +155,24 @@ func DefaultConfig() Config {
 			VendorRunway:   {BaseURL: "https://api.dev.runwayml.com", MaxConcurrency: 2, TimeoutSeconds: 900},
 		},
 		Models: map[domain.ModelName]ModelConfig{
-			domain.ModelImagen4:    {Model: "imagen-4.0-generate-001", FastModel: "imagen-4.0-fast-generate-001", CostPerImage: 0.04},
-			domain.ModelNanoBanana: {Model: "gemini-2.5-flash-image", CostPerImage: 0.04},
-			domain.ModelFlux2:      {Model: "flux-2-pro", CostPerImage: 0.03},
-			domain.ModelGPTImage2:  {Model: "gpt-image-1", CostPerImage: 0.06},
-			domain.ModelKling3:     {Model: "kling-v3", CostPerSecond: map[string]float64{"720p": 0.07, "1080p": 0.14}},
-			domain.ModelSeedance2:  {Model: "seedance-2-0", CostPerSecond: map[string]float64{"480p": 0.03, "720p": 0.08, "1080p": 0.18}},
+			// Prices: Google's Gemini API pricing page (1K image, the size an unset image_size gives), BFL's
+			// pricing page (FLUX.2 [pro], text only, up to 1 megapixel). GPT Image 2 is priced by the quality
+			// profile it is sent and the size (package gptimage; spec/architecture/model-adapters.md §9.2).
+			domain.ModelNanoBanana:     {Model: "gemini-nano-banana-2.1", CostPerImage: 0.0336},
+			domain.ModelNanoBananaLite: {Model: "gemini-3.1-flash-lite-image", CostPerImage: 0.0336},
+			domain.ModelFlux2:          {Model: "flux-2-pro", CostPerImage: 0.03},
+			domain.ModelGPTImage2:      {Model: gptimage.APIModel, Quality: string(gptimage.Default)},
+			chatgptid.Model:            {Model: chatgptid.APIModel}, // the plan pays: 0 USD per image
+			domain.ModelKling3:         {Model: "kling-v3", CostPerSecond: map[string]float64{"720p": 0.07, "1080p": 0.14}},
+			domain.ModelSeedance2:      {Model: "seedance-2-0", CostPerSecond: map[string]float64{"480p": 0.03, "720p": 0.08, "1080p": 0.18}},
 			// Runway prices in credits (12 credits per second of Gen-4.5, 1 credit = USD 0.01).
 			domain.ModelRunwayGen45: {Model: "gen4.5", CostPerSecond: map[string]float64{"720p": 0.12}},
 		},
 		Images: map[ImagePurpose]ImageRoute{
-			PurposeNewReference:  {Primary: ImageTarget{Model: domain.ModelImagen4}, Fallback: ImageTarget{Model: domain.ModelGPTImage2}},
-			PurposeEditReference: {Primary: ImageTarget{Model: domain.ModelNanoBanana}, Fallback: ImageTarget{Model: domain.ModelImagen4}},
-			PurposePreview:       {Primary: ImageTarget{Model: domain.ModelFlux2}, Fallback: ImageTarget{Model: domain.ModelImagen4, Fast: true}},
-			PurposeUnifiedOpenAI: {Primary: ImageTarget{Model: domain.ModelGPTImage2}, Fallback: ImageTarget{Model: domain.ModelImagen4}},
+			PurposeNewReference:  {Primary: ImageTarget{Model: domain.ModelGPTImage2}, Fallback: ImageTarget{Model: domain.ModelNanoBanana}},
+			PurposeEditReference: {Primary: ImageTarget{Model: domain.ModelNanoBanana}, Fallback: ImageTarget{Model: domain.ModelGPTImage2}},
+			PurposePreview:       {Primary: ImageTarget{Model: domain.ModelFlux2}, Fallback: ImageTarget{Model: domain.ModelNanoBananaLite}},
+			PurposeUnifiedOpenAI: {Primary: ImageTarget{Model: domain.ModelGPTImage2}, Fallback: ImageTarget{Model: domain.ModelNanoBanana}},
 		},
 		// model-adapters.md §4. MAX QUALITY uses Runway Gen-4.5 (720p, its only output size); the
 		// alternative ("Different Model") is Kling 3.0.
@@ -167,7 +183,7 @@ func DefaultConfig() Config {
 		},
 		Retry:   RetryConfig{MaxAttempts: 3, BaseDelayMillis: 1000, MaxDelayMillis: 16000},
 		Breaker: BreakerConfig{FailureThreshold: 5, OpenSeconds: 30},
-		// model-adapters.md §13.2, §12.3: FAST weighs cost most, MAX QUALITY the Judge record.
+		// model-adapters-m3.md §13.2, §13.3: FAST weighs cost most, MAX QUALITY the Judge record.
 		Routing: RoutingConfig{
 			Enabled: true, MinSamples: 5, PriorQuality: 0.75, SwitchMargin: 0.05,
 			Weights: map[domain.QualityPolicy]RoutingWeights{
@@ -221,9 +237,9 @@ func LoadConfig(path string) (Config, error) {
 	cfg = file.Config
 	cfg.Routing = file.Routing.RoutingConfig
 	for _, err := range []error{
-		overlayEntries(cfg.Vendors, file.Vendors), overlayEntries(cfg.Models, file.Models),
-		overlayEntries(cfg.Images, file.Images), overlayEntries(cfg.Policies, file.Policies),
-		overlayEntries(cfg.Routing.Weights, file.Routing.Weights),
+		overlay.Entries(cfg.Vendors, file.Vendors), overlay.Entries(cfg.Models, file.Models),
+		overlay.Entries(cfg.Images, file.Images), overlay.Entries(cfg.Policies, file.Policies),
+		overlay.Entries(cfg.Routing.Weights, file.Routing.Weights),
 	} {
 		if err != nil {
 			return Config{}, fmt.Errorf("decode model config %s: %w", path, err)
@@ -232,23 +248,63 @@ func LoadConfig(path string) (Config, error) {
 	return cfg, nil
 }
 
-// overlayEntries applies the JSON of each entry on top of the entry of dst with the same key (the
-// zero value for a new key); fields the JSON does not name keep their value. Unknown fields are rejected.
-func overlayEntries[K comparable, V any](dst map[K]V, raw map[K]json.RawMessage) error {
-	for k, r := range raw {
-		v := dst[k]
-		dec := json.NewDecoder(bytes.NewReader(r))
-		dec.DisallowUnknownFields()
-		if err := dec.Decode(&v); err != nil {
-			return fmt.Errorf("%v: %w", k, err)
-		}
-		dst[k] = v
+// VendorSettings are the built-in vendors and the registered endpoints (vendors named by localcfg.VendorKey).
+func (c Config) VendorSettings() map[Vendor]VendorConfig {
+	out := maps.Clone(c.Vendors)
+	if out == nil {
+		out = map[Vendor]VendorConfig{}
 	}
-	return nil
+	out[Vendor(chatgptid.Vendor)] = VendorConfig{BaseURL: chatgptid.BaseURL, MaxConcurrency: 1, TimeoutSeconds: chatgptid.TimeoutSeconds}
+	for name, e := range c.Endpoints {
+		out[Vendor(localcfg.VendorKey(name))] = VendorConfig{BaseURL: e.BaseURL, MaxConcurrency: e.Concurrency(), TimeoutSeconds: e.Timeout()}
+	}
+	return out
 }
 
-func (c Config) timeout(v Vendor) time.Duration {
-	return time.Duration(c.Vendors[v].TimeoutSeconds) * time.Second
+// LocalModel returns the model defined on a registered endpoint that the identifier names.
+func (c Config) LocalModel(m domain.ModelName) (localcfg.Model, localcfg.Kind, bool) {
+	if w, ok := c.Workflows[string(m)]; ok {
+		return w.Model, localcfg.KindComfyUI, true
+	}
+	kind, endpoint, name, ok := localcfg.ParseID(string(m))
+	if !ok || c.Endpoints[endpoint].Kind != kind {
+		return localcfg.Model{}, "", false
+	}
+	lm, ok := c.LocalModels[localcfg.Key(endpoint, name)]
+	return lm, kind, ok
+}
+
+// ModelSettings are the settings of a model: its entry of Models, or those a local model stands for.
+func (c Config) ModelSettings(m domain.ModelName) ModelConfig {
+	if lm, _, ok := c.LocalModel(m); ok {
+		return ModelConfig{Model: lm.Model, CostPerImage: lm.CostPerImage}
+	}
+	return c.Models[m]
+}
+
+// VideoCaps are the capabilities of a video model, built-in or defined on an endpoint.
+func (c Config) VideoCaps(m domain.ModelName) (VideoCapabilities, bool) {
+	if lm, _, ok := c.LocalModel(m); ok {
+		caps, isVideo := lm.VideoCaps()
+		return VideoCapabilities(caps), isVideo
+	}
+	return Capabilities(m)
+}
+
+// negativeModel is m when it is a local model whose workflow takes a negative prompt, else "".
+func (c Config) negativeModel(m domain.ModelName) domain.ModelName {
+	if lm, _, ok := c.LocalModel(m); ok && lm.Workflow != nil && lm.Workflow.Has(localcfg.ParamNegativePrompt) {
+		return m
+	}
+	return ""
+}
+
+// AcceptsImages reports whether an image model uses reference images.
+func (c Config) AcceptsImages(m domain.ModelName) bool {
+	if lm, kind, ok := c.LocalModel(m); ok {
+		return lm.ImageInputs(kind)
+	}
+	return AcceptsImageInputs(m)
 }
 
 // ImageRouteFor returns the route of an image purpose, honouring PreferOpenAI for new references.
@@ -261,8 +317,8 @@ func (c Config) ImageRouteFor(p ImagePurpose) ImageRoute {
 
 // VideoCost is the estimated cost of a clip of the given length.
 func (c Config) VideoCost(t VideoTarget, seconds float64) float64 {
+	if lm, _, ok := c.LocalModel(t.Model); ok {
+		return lm.CostPerSecond * seconds
+	}
 	return c.Models[t.Model].CostPerSecond[t.Resolution] * seconds
 }
-
-// ImageCost is the estimated cost of one image.
-func (c Config) ImageCost(m domain.ModelName) float64 { return c.Models[m].CostPerImage }

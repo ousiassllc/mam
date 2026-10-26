@@ -68,9 +68,10 @@ templ BriefForm(d BriefFormData) {
 		<div>
 			<label for="brief-additional-instruction" class="mb-1 block text-sm font-medium">Additional Instruction</label>
 			@atoms.Textarea(atoms.FieldLg, "w-full", templ.Attributes{
-				"id":   "brief-additional-instruction",
-				"name": "additional_instruction",
-				"rows": "3",
+				"id":        "brief-additional-instruction",
+				"name":      "additional_instruction",
+				"rows":      "3",
+				"maxlength": intText(domain.MaxMessageRunes),
 			}, d.Brief.AdditionalInstruction)
 			if msg := d.Errors["additional_instruction"]; msg != "" {
 				<p class="mt-1 text-sm text-red-300" role="alert">{ msg }</p>

@@ -617,7 +617,7 @@ func View(d Data) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = atoms.Button(atoms.ToneNeutral, "生成の経緯", templ.Attributes{
+				templ_7745c5c3_Err = atoms.ButtonFor(atoms.ToneNeutral, "生成の経緯", fmt.Sprintf("Take %d · %s", i+1, t.ModelName), templ.Attributes{
 					"type": "button", "hx-get": paths.Take(t.ID, "trace"), "hx-target": "next [data-take-trace-slot]", "hx-swap": "innerHTML",
 				}).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {

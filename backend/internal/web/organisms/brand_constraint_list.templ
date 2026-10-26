@@ -51,7 +51,7 @@ templ BrandConstraintItems(d BrandConstraintListData) {
 							</div>
 							<p class="mt-1 whitespace-pre-wrap break-words text-neutral-300">{ c.Text }</p>
 						</div>
-						@atoms.SmallButton(atoms.ToneNeutral, "削除", templ.Attributes{
+						@atoms.SmallButtonFor(atoms.ToneNeutral, "削除", c.Text, templ.Attributes{
 							"type":       "button",
 							"hx-delete":  paths.BrandConstraint(c.ID),
 							"hx-target":  "#brand-constraint-list",

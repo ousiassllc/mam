@@ -11,6 +11,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/continuation"
 	"github.com/ousiassllc/mam/backend/internal/agent/editor"
 	"github.com/ousiassllc/mam/backend/internal/agent/generation"
+	"github.com/ousiassllc/mam/backend/internal/agent/generation/relay"
 	"github.com/ousiassllc/mam/backend/internal/agent/judge"
 	"github.com/ousiassllc/mam/backend/internal/agent/orchestrator"
 	"github.com/ousiassllc/mam/backend/internal/agent/repair"
@@ -175,13 +176,14 @@ func (w *wiring) wireGeneration() {
 	if !w.agentsOn() || d.Models == nil {
 		return
 	}
+	progress := relay.New(w.notifyProgress)
 	w.generations.gen = generation.New(generation.Deps{
 		Generations: w.r.gens, World: w.r.world, Notes: w.r.notes, Projects: w.c.projects, Policies: w.r.policies, FreeBytes: d.FreeBytes, Assets: w.c.assets, Chat: w.chat, Jobs: d.Jobs,
 		Repairs: w.r.repairs, LLM: d.LLM, Adapter: d.Models, AssetsDir: d.AssetsDir, Logger: w.logger, Judge: w.takeJudge, Brands: w.r.brands, Media: d.Media,
-		Notify: w.notifyProgress,
+		Notify: progress.Notify,
 	})
 	// Not resumable: a generation costs money, so an interrupted one is failed, not repeated.
-	d.Jobs.Register(domain.JobGenerate, w.generations.gen.Handle, false)
+	d.Jobs.Register(domain.JobGenerate, progress.Wrap(w.generations.gen.Handle), false)
 	w.c.takeActions.gen = w.generations.gen
 }
 

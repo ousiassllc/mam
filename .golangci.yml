@@ -24,6 +24,10 @@ linters:
       rules:
         domain:
           files: ["**/internal/domain/**", "!$test"]
+          list-mode: lax
+          allow:
+            - github.com/ousiassllc/mam/backend/internal/domain/bundlepath # depends on nothing; domain's own sub-package
+            - github.com/ousiassllc/mam/backend/internal/domain/modelreg # depends on nothing; the models of registered endpoints
           deny:
             - pkg: github.com/ousiassllc/mam/backend/internal
               desc: domain MUST NOT depend on any other layer
@@ -80,8 +84,8 @@ linters:
         path: backend/internal/agent/commandinterpreter/interpreter\.go
         text: 'cyclomatic complexity (2[67]) of func `clean` '
       - linters: [gocyclo]
-        path: backend/internal/agent/modeladapter/prompt\.go
-        text: 'cyclomatic complexity (2[6-9]|3[01]) of func `describe` '
+        path: backend/internal/agent/modeladapter/shotprompt/shotprompt\.go
+        text: 'cyclomatic complexity (2[6-9]|3[01]) of func `Describe` '
       - linters: [gocyclo]
         path: backend/internal/service/chat_read\.go
         text: 'cyclomatic complexity (2[6-9]) of func `\(\*ChatService\)\.views` '

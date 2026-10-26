@@ -95,7 +95,7 @@ func TestLoad_MalformedPortEnvironmentDoesNotBreakHelpOrThePortFlag(t *testing.T
 func TestLoad_JudgeAndFaceModelSettings(t *testing.T) {
 	cfg, err := config.Load([]string{"--data-dir", "/d"}, func(string) string { return "" }, io.Discard)
 	require.NoError(t, err)
-	assert.Equal(t, "/d/models", cfg.FaceModels(), "the models default to <data-dir>/models")
+	assert.Equal(t, filepath.Join("/d", "models"), cfg.FaceModels(), "the models default to <data-dir>/models")
 	assert.Empty(t, cfg.JudgeConfigPath)
 
 	env := map[string]string{"MAM_JUDGE_CONFIG": "/j.json", "MAM_FACE_MODEL_DIR": "/m", "MAM_ONNXRUNTIME_LIB": "/lib/libonnxruntime.so"}
@@ -167,4 +167,50 @@ func TestLoad_NoBrowserEnvironmentIsParsedAsABoolean(t *testing.T) {
 	cfg, err := config.Load([]string{"--no-browser"}, env(map[string]string{"MAM_DATA_DIR": "/data", "MAM_NO_BROWSER": "maybe"}), io.Discard)
 	require.NoError(t, err)
 	assert.False(t, cfg.OpenBrowser, "an explicit flag wins over the environment")
+}
+
+func TestSettingsFiles_DefaultToTheDataDirAndAreNotPinned(t *testing.T) {
+	cfg, err := config.Load(nil, env(map[string]string{"MAM_DATA_DIR": "/data"}), io.Discard)
+	require.NoError(t, err)
+
+	path, pinned := cfg.LLMSettingsFile()
+	assert.Equal(t, filepath.Join("/data", "llm.json"), path)
+	assert.False(t, pinned)
+	path, pinned = cfg.ModelSettingsFile()
+	assert.Equal(t, filepath.Join("/data", "models.json"), path)
+	assert.False(t, pinned)
+}
+
+func TestSettingsFiles_AFlagOrEnvironmentPinsTheFile(t *testing.T) {
+	cfg, err := config.Load([]string{"-llm-config", "/etc/mam/llm.json"},
+		env(map[string]string{"MAM_DATA_DIR": "/data", "MAM_MODEL_CONFIG": "/etc/mam/models.json"}), io.Discard)
+	require.NoError(t, err)
+
+	path, pinned := cfg.LLMSettingsFile()
+	assert.Equal(t, "/etc/mam/llm.json", path)
+	assert.True(t, pinned, "--llm-config pins the file")
+	path, pinned = cfg.ModelSettingsFile()
+	assert.Equal(t, "/etc/mam/models.json", path)
+	assert.True(t, pinned, "MAM_MODEL_CONFIG pins the file")
+}
+
+func TestLoad_MCPPortFollowsTheSameRulesAsThePort(t *testing.T) {
+	cfg, err := config.Load(nil, env(map[string]string{"MAM_DATA_DIR": "/data"}), io.Discard)
+	require.NoError(t, err)
+	assert.Equal(t, config.DefaultMCPPort, cfg.MCPPort)
+	assert.Equal(t, filepath.Join("/data", "mcp.json"), cfg.MCPSettingsFile())
+
+	cfg, err = config.Load(nil, env(map[string]string{"MAM_DATA_DIR": "/data", "MAM_MCP_PORT": "9101"}), io.Discard)
+	require.NoError(t, err)
+	assert.Equal(t, 9101, cfg.MCPPort)
+
+	cfg, err = config.Load([]string{"--mcp-port", "9102"}, env(map[string]string{"MAM_DATA_DIR": "/data", "MAM_MCP_PORT": "abc"}), io.Discard)
+	require.NoError(t, err, "an explicit flag wins over a malformed variable")
+	assert.Equal(t, 9102, cfg.MCPPort)
+
+	_, err = config.Load(nil, env(map[string]string{"MAM_DATA_DIR": "/data", "MAM_MCP_PORT": "abc"}), io.Discard)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "MAM_MCP_PORT")
+	_, err = config.Load([]string{"--mcp-port", "70000"}, env(map[string]string{"MAM_DATA_DIR": "/data"}), io.Discard)
+	assert.Error(t, err)
 }

@@ -13,16 +13,16 @@ templ QuestionCard(m domain.ThreadMessage) {
 		if m.Open {
 			<div class="mt-3 flex flex-wrap gap-2" data-options>
 				for _, option := range domain.DecodeCardBody(m.Content).Options {
-					@atoms.Button(atoms.ToneNeutral, option, answerAttrs(m, option))
+					@atoms.ButtonFor(atoms.ToneNeutral, option, excerpt(m.ChatMessage), answerAttrs(m, option))
 				}
-				@atoms.Button(atoms.TonePrimary, domain.DelegateOption, answerAttrs(m, domain.DelegateOption))
+				@atoms.ButtonFor(atoms.TonePrimary, domain.DelegateOption, excerpt(m.ChatMessage), answerAttrs(m, domain.DelegateOption))
 				if m.RefType == domain.RefContinue {
 					// a free direction of Continue is the composer's reply to this card (spec/spec.md §23.2)
 					@ReplyButton(m)
 				}
 			</div>
 		} else {
-			<p class="mt-2 text-xs text-neutral-500">回答済み</p>
+			<p class="mt-2 text-xs text-neutral-400">回答済み</p>
 		}
 	}
 }

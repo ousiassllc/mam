@@ -1,14 +1,41 @@
 package molecules
 
-// SettingsSection is one titled block (title, optional description, content) of the settings screen.
+// HeadingLevel is the level of the heading of a SettingsSection, or no heading at all.
+type HeadingLevel int
+
+// Heading levels of a SettingsSection: under the h1 of the page, a section is an h2; under the h2 of a category of the
+// settings screen it is an h3; a section that is all of its category (its title would repeat the h2) has no heading and
+// only its description.
+const (
+	HeadingH2 HeadingLevel = iota
+	HeadingH3
+	HeadingNone
+)
+
+// SettingsSection is one titled block (title, optional description, content) of a screen: the heading is an h2.
 templ SettingsSection(title, description string) {
+	@SettingsSectionAt(HeadingH2, title, description) {
+		{ children... }
+	}
+}
+
+// SettingsSectionAt is SettingsSection whose heading is at level (HeadingNone: no heading, title is not shown).
+templ SettingsSectionAt(level HeadingLevel, title, description string) {
 	<section class="flex flex-col gap-3">
-		<div>
-			<h2 class="text-base font-semibold">{ title }</h2>
-			if description != "" {
-				<p class="text-sm text-neutral-400">{ description }</p>
-			}
-		</div>
+		if level != HeadingNone || description != "" {
+			<div>
+				switch level {
+					case HeadingH3:
+						<h3 class="text-base font-semibold">{ title }</h3>
+					case HeadingNone:
+					default:
+						<h2 class="text-base font-semibold">{ title }</h2>
+				}
+				if description != "" {
+					<p class="text-sm text-neutral-400">{ description }</p>
+				}
+			</div>
+		}
 		{ children... }
 	</section>
 }

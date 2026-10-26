@@ -1,0 +1,12 @@
+# 行末を LF に固定する。windows-latest の runner は git の core.autocrlf=true が既定で、指定が無いと
+# checkout で scripts/*.sh が CRLF になり bash が `set: pipefail\r: invalid option name` で止まる
+# （//go:embed する migrations/*.sql も CRLF のまま exe に入る）。
+* text=auto eol=lf
+
+# バイナリは変換しない（text=auto の自動判定に頼らず明示する）。
+*.png binary
+*.ico binary
+*.webm binary
+*.exe binary
+*.onnx binary
+*.7z binary

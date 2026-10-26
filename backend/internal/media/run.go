@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+	"sync/atomic"
 	"time"
 )
 
@@ -48,16 +49,31 @@ func (l limits) writeLimit(seconds float64) time.Duration {
 	return l.writeBase + time.Duration(max(seconds, 0)*float64(l.writePerSecond))
 }
 
+// commandContext builds the exec.Cmd of every ffmpeg / ffprobe run. It is a variable so that a test
+// can observe the command run builds (the Windows test checks it hides its console window).
+var commandContext = exec.CommandContext
+
+// active is the number of ffmpeg / ffprobe processes that are running.
+var active atomic.Int32
+
+// Running is how many ffmpeg / ffprobe processes (of any Tools) are running now. The app updater
+// does not restart the app while there is one: it would be killed half way.
+func Running() int { return int(active.Load()) }
+
 // run executes exe with args, killing it after limit, and returns what it printed. A cancelled ctx
 // returns ctx.Err(); the limit running out returns ErrTimeout.
 func run(ctx context.Context, limit time.Duration, exe string, args ...string) (stdout, stderr []byte, err error) {
 	runCtx, cancel := context.WithTimeout(ctx, limit)
 	defer cancel()
 	var out, errOut bytes.Buffer
-	cmd := exec.CommandContext(runCtx, exe, args...) // #nosec G204 -- arguments are built by this package; paths are asset files
+	cmd := commandContext(runCtx, exe, args...) // #nosec G204 -- arguments are built by this package; paths are asset files
+	hideWindow(cmd)
 	cmd.Stdout, cmd.Stderr = &out, &errOut
 	cmd.WaitDelay = waitDelay
-	if err := cmd.Run(); err != nil {
+	active.Add(1)
+	err = cmd.Run()
+	active.Add(-1)
+	if err != nil {
 		switch {
 		case ctx.Err() != nil:
 			err = ctx.Err()

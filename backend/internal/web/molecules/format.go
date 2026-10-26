@@ -83,7 +83,6 @@ func replyAttrs(m domain.ThreadMessage) templ.Attributes {
 		"type":             "button",
 		"data-reply-to":    m.ID,
 		"data-reply-label": excerpt(m.ChatMessage),
-		"aria-label":       "このカードに返信",
 	}
 }
 
@@ -173,6 +172,9 @@ func refLinkOf(m domain.ThreadMessage) (refLink, bool) {
 		}, true
 	case m.RefType == domain.RefSettings:
 		return refLink{Label: "設定画面を開く", Href: templ.SafeURL(paths.Project(m.ProjectID, "settings"))}, true
+	case m.RefType == domain.RefGlobalSettings:
+		slug, label := globalSettingsTarget(m.RefID)
+		return refLink{Label: label, Href: templ.SafeURL(paths.SettingsCategory(slug))}, true
 	}
 	return refLink{}, false
 }

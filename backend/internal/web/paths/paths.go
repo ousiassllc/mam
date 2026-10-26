@@ -1,6 +1,6 @@
 // Package paths builds the URL paths of the pages and actions of a Project, Scene, Shot, Take,
 // Branch, Note, Brand Constraint, Edit Timeline, Series, Review and Credential. Their IDs come from
-// outside; domain.ValidBundleID limits them to [A-Za-z0-9_-] (domain/bundle_test.go is the source
+// outside; bundlepath.ValidID limits them to [A-Za-z0-9_-] (domain/bundlepath/bundlepath_test.go is the source
 // of truth), which needs no escaping. Every segment is path-escaped here all the same, so a URL
 // stays intact were that limit ever relaxed, and nowhere else builds "/projects/…",
 // "/scenes/…", "/shots/…", "/takes/…", "/branches/…", "/notes/…", "/brand-constraints/…",
@@ -149,3 +149,51 @@ func WithBranch(p, branchID string) string {
 
 // Credential is "/credentials/<provider>", the API key of a provider.
 func Credential(provider string) string { return join("/credentials", provider) }
+
+// Settings is the global settings screen (API keys, the LLM and the models), "/settings".
+func Settings() string { return "/settings" }
+
+// LLMSettings is "/settings/llm", the LLM assignment of the settings screen.
+func LLMSettings() string { return Settings() + "/llm" }
+
+// UpdateCheck is "/settings/update/check", the manual update check of the settings screen (POST).
+func UpdateCheck() string { return Settings() + "/update/check" }
+
+// ModelSettings is "/settings/models", the image / video model assignment of the settings screen.
+func ModelSettings() string { return Settings() + "/models" }
+
+// MCPSettings is "/settings/mcp", the MCP server section of the settings screen (the section itself is
+// part of GET /settings).
+func MCPSettings() string { return Settings() + "/mcp" }
+
+// MCPBind is "/settings/mcp/bind", the bind address of the MCP listener (PUT).
+func MCPBind() string { return MCPSettings() + "/bind" }
+
+// MCPBindEdit is "/settings/mcp/bind/edit": GET answers the body of the modal that changes the bind address.
+func MCPBindEdit() string { return MCPBind() + "/edit" }
+
+// MCPTokenNew is "/settings/mcp/tokens/new": GET answers the body of the modal that issues a token.
+func MCPTokenNew() string { return MCPTokens() + "/new" }
+
+// MCPTokens is "/settings/mcp/tokens", where an MCP bearer token is issued (POST).
+func MCPTokens() string { return MCPSettings() + "/tokens" }
+
+// MCPToken is "/settings/mcp/tokens/:id", one MCP token (DELETE revokes it).
+func MCPToken(id string) string { return MCPTokens() + "/" + url.PathEscape(id) }
+
+// LocalModels is "/settings/local-models", the "ローカル・代替モデル" section of the settings screen (the
+// section itself is part of GET /settings; GET here answers with the section alone).
+func LocalModels() string { return Settings() + "/local-models" }
+
+// LocalEndpoints is "/settings/local-models/endpoints", the registered endpoints (POST registers one).
+func LocalEndpoints() string { return LocalModels() + "/endpoints" }
+
+// LocalEndpoint is "/settings/local-models/endpoints/:name[/rest...]", one endpoint or something under it
+// (edit, test, key, models). The names are slugs; every segment is escaped all the same.
+func LocalEndpoint(name string, rest ...string) string {
+	p := LocalEndpoints() + "/" + url.PathEscape(name)
+	for _, s := range rest {
+		p += "/" + url.PathEscape(s)
+	}
+	return p
+}

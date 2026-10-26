@@ -3,17 +3,17 @@ package pages
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/layout"
-	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/editorpanel"
 )
 
 // EditorPage is GET /projects/:id/edit: the timeline editor and the stages from Rough Cut to Export.
-templ EditorPage(csrfToken string, d organisms.EditorPanelData) {
+templ EditorPage(csrfToken string, d editorpanel.Data) {
 	@layout.AppLayout("編集: "+d.Project.Name, csrfToken) {
 		<main class="mx-auto max-w-5xl p-8">
 			@atoms.ChatBackLink(d.Project.ID)
 			<h1 class="mb-1 mt-3 text-xl font-semibold">編集</h1>
 			<p class="mb-6 text-sm text-neutral-400">{ d.Project.Name }</p>
-			@organisms.EditorWorkspace(d)
+			@editorpanel.Workspace(d)
 		</main>
 	}
 }

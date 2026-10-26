@@ -395,7 +395,7 @@ func TestBrandTemplates_SaveApplyToProjectAndEpisodeStayIndependentOfTheTemplate
 	// Deleting the template leaves every Project that used it as it is.
 	rec = a.form(http.MethodDelete, "/projects/"+src+"/brand-templates/"+tpl, nil)
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-	assert.NotContains(t, rec.Body.String(), `data-testid="brand-template"`)
+	assert.NotRegexp(t, `data-testid="brand-template"|id="brand-template-form"|name="name"`, rec.Body.String(), "the answer is the list, not the save form (#729)")
 	assert.Equal(t, []string{"最安値", "効果には個人差があります"}, a.constraintTexts(ep))
 	assert.Equal(t, []string{"最安値", "効果には個人差があります"}, a.constraintTexts(fresh))
 }
@@ -408,7 +408,7 @@ func TestBrandTemplates_InvalidRequestsAreRejected(t *testing.T) {
 	rec := a.form(http.MethodPost, "/projects/"+id+"/brand-templates", url.Values{"name": {"A"}})
 	require.Equal(t, http.StatusUnprocessableEntity, rec.Code)
 	assert.Contains(t, rec.Body.String(), "保存できる制約がありません")
-	assert.Contains(t, rec.Body.String(), `id="brand-template-panel"`)
+	assert.Contains(t, rec.Body.String(), `id="brand-template-form"`)
 
 	a.addConstraint(id, "logo_rule", "lock", "ロゴを歪めない")
 	rec = a.form(http.MethodPost, "/projects/"+id+"/brand-templates", url.Values{"name": {"  "}})

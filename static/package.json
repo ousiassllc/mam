@@ -19,6 +19,7 @@
   "devDependencies": {
     "@biomejs/biome": "2.5.15",
     "@open-wc/testing": "^5.0.0",
+    "@puppeteer/browsers": "3.2.3",
     "@tailwindcss/cli": "^4.1.0",
     "@types/mocha": "^10.0.10",
     "@web/dev-server-esbuild": "^2.0.0",

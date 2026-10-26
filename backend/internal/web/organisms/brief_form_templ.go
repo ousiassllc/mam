@@ -179,9 +179,10 @@ func BriefForm(d BriefFormData) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		templ_7745c5c3_Err = atoms.Textarea(atoms.FieldLg, "w-full", templ.Attributes{
-			"id":   "brief-additional-instruction",
-			"name": "additional_instruction",
-			"rows": "3",
+			"id":        "brief-additional-instruction",
+			"name":      "additional_instruction",
+			"rows":      "3",
+			"maxlength": intText(domain.MaxMessageRunes),
 		}, d.Brief.AdditionalInstruction).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -194,7 +195,7 @@ func BriefForm(d BriefFormData) templ.Component {
 			var templ_7745c5c3_Var7 string
 			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(msg)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/brief_form.templ`, Line: 76, Col: 59}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/brief_form.templ`, Line: 77, Col: 59}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {
@@ -225,7 +226,7 @@ func BriefForm(d BriefFormData) templ.Component {
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(msg)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/brief_form.templ`, Line: 87, Col: 59}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/brief_form.templ`, Line: 88, Col: 59}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {

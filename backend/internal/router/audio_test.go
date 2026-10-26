@@ -241,7 +241,7 @@ func TestExport_TheBranchEditorPageExportsItsBranchAndKeepsTheScope(t *testing.T
 	require.NoError(t, err)
 	require.Len(t, exports, 1)
 	assert.Equal(t, branchID, exports[0].BranchID)
-	assert.Contains(t, rec.Body.String(), `hx-get="/projects/`+e.project+`/edit/actions?branch_id=`+branchID+`"`, "the response keeps the Branch scope")
+	assert.Contains(t, rec.Body.String(), `hx-vals="{&#34;branch_id&#34;:&#34;`+branchID+`&#34;}"`, "the response keeps the Branch scope")
 }
 
 func TestFinalQC_TheBranchEditorPageKeepsItsBranchScopeInTheAnswer(t *testing.T) {
@@ -270,7 +270,7 @@ func TestFinalQC_TheBranchEditorPageKeepsItsBranchScopeInTheAnswer(t *testing.T)
 	rec = e.form(http.MethodPost, "/projects/"+e.project+"/final-qc", url.Values{"branch_id": {sent["branch_id"]}})
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	body := rec.Body.String()
-	assert.Contains(t, body, `hx-get="/projects/`+e.project+`/edit/actions?branch_id=`+branchID+`"`, "the response keeps the Branch scope")
+	assert.Contains(t, body, `hx-vals="{&#34;branch_id&#34;:&#34;`+branchID+`&#34;}"`, "the response keeps the Branch scope")
 	assert.Contains(t, body, `hx-post="/projects/`+e.project+`/audio/generate"`)
 	assert.NotContains(t, body, `hx-vals="{&#34;branch_id&#34;:&#34;&#34;}"`, "no later button falls back to the trunk")
 

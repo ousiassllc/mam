@@ -133,11 +133,12 @@ func WorldStateField(d WorldStateFieldData) templ.Component {
 	})
 }
 
-// WorldStateSave is the save button of an entity's edit form (id is the DOM id of its element). The inputs of
+// WorldStateSave is the save button of an entity's edit form (id is the DOM id of its element; subject names
+// the entity in its accessible name). The inputs of
 // LOCKed fields are disabled, so the browser does not send them: when every field is LOCKed a save would carry
 // nothing and the server would refuse it (422), so the reason is shown instead of a button that always fails.
 // oob makes it replace the one already on the page (the response to a LOCK switch).
-func WorldStateSave(id string, fields []WorldStateFieldData, oob bool) templ.Component {
+func WorldStateSave(id, subject string, fields []WorldStateFieldData, oob bool) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -165,7 +166,7 @@ func WorldStateSave(id string, fields []WorldStateFieldData, oob bool) templ.Com
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue(id)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/world_state_field.templ`, Line: 55, Col: 9}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/world_state_field.templ`, Line: 56, Col: 9}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
 		if templ_7745c5c3_Err != nil {
@@ -186,7 +187,7 @@ func WorldStateSave(id string, fields []WorldStateFieldData, oob bool) templ.Com
 			return templ_7745c5c3_Err
 		}
 		if slices.ContainsFunc(fields, func(f WorldStateFieldData) bool { return !f.Locked }) {
-			templ_7745c5c3_Err = atoms.Button(atoms.TonePrimary, "保存", templ.Attributes{"type": "submit"}).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = atoms.ButtonFor(atoms.TonePrimary, "保存", subject, templ.Attributes{"type": "submit"}).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -233,7 +234,7 @@ func WorldStateReadonly(label, value string, locked bool) templ.Component {
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/world_state_field.templ`, Line: 71, Col: 60}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/world_state_field.templ`, Line: 72, Col: 60}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 		if templ_7745c5c3_Err != nil {
@@ -244,7 +245,7 @@ func WorldStateReadonly(label, value string, locked bool) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if value == "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<span class=\"text-neutral-500\">未設定</span> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<span class=\"text-neutral-400\">未設定</span> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -252,7 +253,7 @@ func WorldStateReadonly(label, value string, locked bool) templ.Component {
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(value)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/world_state_field.templ`, Line: 76, Col: 11}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/world_state_field.templ`, Line: 77, Col: 11}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {

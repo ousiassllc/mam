@@ -1,0 +1,188 @@
+package gentest
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// notice is the notice and the error of a section.
+templ notice(m Message, id string) {
+	if m.Notice != "" {
+		<p class="text-sm text-emerald-300" role="status" data-testid={ id + "-notice" }>{ m.Notice }</p>
+	}
+	if m.Error != "" {
+		<p class="text-sm text-red-300" role="alert" data-testid={ id + "-error" }>{ m.Error }</p>
+	}
+}
+
+// ComposeForm is the form of a batch: models x prompts x a count, the inputs and the parameters. "見積りを見る" prices it
+// without running anything.
+templ ComposeForm(c Compose) {
+	<form
+		id={ ComposeID }
+		class="flex flex-col gap-5 rounded-md border border-neutral-700 p-4"
+		hx-post={ paths.GenerationTestPart("estimate") }
+		hx-encoding="multipart/form-data"
+		hx-target={ "#" + ConfirmID }
+		hx-swap="outerHTML"
+		hx-sync="this:drop"
+		hx-disabled-elt="find button[type=submit]"
+		autocomplete="off"
+		data-testid="gt-form"
+	>
+		@notice(c.Message, "gt-form")
+		<fieldset class="flex flex-wrap items-center gap-4 text-sm">
+			<legend class="mb-1 text-xs text-neutral-400">作るもの</legend>
+			for _, m := range []string{"image", "video"} {
+				<label class="flex items-center gap-1">
+					<input
+						type="radio"
+						name={ FieldMedia }
+						value={ m }
+						checked?={ c.Media == m }
+						hx-get={ paths.GenerationTestPart("form") }
+						hx-trigger="change"
+						hx-target={ "#" + ComposeID }
+						hx-swap="outerHTML"
+						hx-include={ "#" + ComposeID }
+					/>
+					<span>{ mediaLabel(m) }</span>
+				</label>
+			}
+		</fieldset>
+		@modelChoices(c)
+		@promptFields(c)
+		@parameterFields(c)
+		@inputFields(c)
+		<div class="flex flex-wrap items-center gap-3">
+			@atoms.Button(atoms.TonePrimary, "見積りを見る", templ.Attributes{"type": "submit", "data-testid": "gt-estimate"})
+			<span class="text-xs text-neutral-400">
+				実行はまだしません。1 回に { itoa(c.MaxItems) } 件まで
+				if c.MaxCostUSD != "" {
+					、見積りが { c.MaxCostUSD } を超えるときは実行できません
+				}
+				。
+			</span>
+		</div>
+	</form>
+}
+
+func mediaLabel(m string) string {
+	if m == "video" {
+		return "動画"
+	}
+	return "画像"
+}
+
+// modelChoices are the models: every one that can be called now can be ticked; the others say why they cannot.
+templ modelChoices(c Compose) {
+	<fieldset class="flex flex-col gap-2" data-testid="gt-models">
+		<legend class="mb-1 text-xs text-neutral-400">モデル（複数選べます。代替のモデルへは切り替えません）</legend>
+		<ul class="grid gap-2 sm:grid-cols-2">
+			for _, m := range c.Models {
+				<li class="rounded-md border border-neutral-800 p-2 text-sm" data-testid="gt-model" data-model={ m.ID } data-available={ boolText(m.Reason == "") }>
+					<label class="flex items-start gap-2">
+						<input type="checkbox" name={ FieldModel } value={ m.ID } checked?={ m.Selected && m.Reason == "" } disabled?={ m.Reason != "" } class="mt-1"/>
+						<span class="flex flex-col gap-0.5">
+							<span>{ m.Label } <span class="text-xs text-neutral-400">（{ m.Source }）</span></span>
+							<span class="text-xs text-neutral-400">{ m.Price }</span>
+							if m.Features != "" {
+								<span class="text-xs text-neutral-400">{ m.Features }</span>
+							}
+							if m.Reason != "" {
+								<span class="text-xs text-amber-300" data-testid="gt-model-reason">{ m.Reason }</span>
+							}
+						</span>
+					</label>
+				</li>
+			}
+		</ul>
+	</fieldset>
+}
+
+func boolText(b bool) string {
+	if b {
+		return "true"
+	}
+	return "false"
+}
+
+// promptFields are the prompts of the batch (one result set per prompt) with their negative prompts.
+templ promptFields(c Compose) {
+	<fieldset class="flex flex-col gap-3" data-testid="gt-prompt-fields">
+		<legend class="mb-1 text-xs text-neutral-400">プロンプト（そのままモデルに送ります。複数入れると、モデルごとに全部を生成します）</legend>
+		<div id={ PromptsID } class="flex flex-col gap-3">
+			for _, p := range c.Prompts {
+				@PromptRowFields(p, c.MaxPrompt)
+			}
+		</div>
+		<div class="flex flex-wrap items-center gap-3">
+			@atoms.SmallButtonFor(atoms.ToneNeutral, "プロンプトを追加", "生成テストのプロンプト", templ.Attributes{
+				"type": "button", "hx-get": paths.GenerationTestPart("prompt-row"), "hx-target": "#" + PromptsID, "hx-swap": "beforeend",
+			})
+		</div>
+		if len(c.Recent) > 0 {
+			<details class="text-sm" data-testid="gt-recent">
+				<summary class="cursor-pointer text-xs text-neutral-400">過去のプロンプトから追加（<a class="underline" href={ templ.SafeURL(paths.GenerationTestPrompts()) }>履歴を開く</a>）</summary>
+				<ul class="mt-2 flex flex-col gap-2">
+					for _, r := range c.Recent {
+						<li class="flex items-start justify-between gap-2 rounded-md border border-neutral-800 p-2">
+							<span class="whitespace-pre-wrap break-words text-xs text-neutral-200">{ r.Text }</span>
+							@atoms.SmallButtonFor(atoms.ToneNeutral, "追加", "プロンプト "+r.Text, templ.Attributes{
+								"type": "button", "hx-get": paths.GenerationTestPart("prompt-row") + "?from=" + r.ID, "hx-target": "#" + PromptsID, "hx-swap": "beforeend",
+							})
+						</li>
+					}
+				</ul>
+			</details>
+		}
+	</fieldset>
+}
+
+// PromptRowFields is a prompt and its negative prompt.
+templ PromptRowFields(p PromptText, max int) {
+	<div class="flex flex-col gap-1 rounded-md border border-neutral-800 p-2" data-testid="gt-prompt">
+		@atoms.Textarea(atoms.FieldMd, "w-full", templ.Attributes{
+			"name": FieldPrompt, "rows": "3", "maxlength": itoa(max), "aria-label": "プロンプト", "placeholder": "プロンプト",
+		}, p.Text)
+		@atoms.Textarea(atoms.FieldMd, "w-full", templ.Attributes{
+			"name": FieldNegative, "rows": "1", "maxlength": itoa(max), "aria-label": "ネガティブプロンプト（省略可）", "placeholder": "ネガティブプロンプト（省略可。欄の無いモデルには「Avoid: …」として書き足します）",
+		}, p.Negative)
+	</div>
+}
+
+// parameterFields are the count and what the media takes.
+templ parameterFields(c Compose) {
+	<div class="flex flex-wrap items-end gap-3">
+		<label class="flex flex-col gap-1 text-xs text-neutral-400" for="gt-count">
+			<span>1 組あたりの本数（1〜{ itoa(c.MaxCount) }）</span>
+			@atoms.Input(atoms.FieldMd, "w-24", templ.Attributes{
+				"id": "gt-count", "name": FieldCount, "type": "number", "min": "1", "max": itoa(c.MaxCount), "value": c.Count,
+			})
+		</label>
+		<label class="flex flex-col gap-1 text-xs text-neutral-400" for="gt-aspect">
+			<span>縦横比（例 16:9）</span>
+			@atoms.Input(atoms.FieldMd, "w-28", templ.Attributes{
+				"id": "gt-aspect", "name": FieldAspect, "type": "text", "value": c.Aspect, "pattern": "[1-9][0-9]?:[1-9][0-9]?", "maxlength": itoa(MaxAspectLen),
+			})
+		</label>
+		if c.Media == "video" {
+			<label class="flex flex-col gap-1 text-xs text-neutral-400" for="gt-resolution">
+				<span>解像度</span>
+				@atoms.Select(atoms.FieldMd, "", templ.Attributes{"id": "gt-resolution", "name": FieldResolution}) {
+					for _, r := range c.Resolutions {
+						<option value={ r } selected?={ r == c.Resolution }>{ r }</option>
+					}
+				}
+			</label>
+			<label class="flex flex-col gap-1 text-xs text-neutral-400" for="gt-duration">
+				<span>長さ（秒。モデルが作れる長さに丸めます）</span>
+				@atoms.Select(atoms.FieldMd, "", templ.Attributes{"id": "gt-duration", "name": FieldDuration}) {
+					for _, d := range c.Durations {
+						<option value={ d } selected?={ d == c.Duration }>{ d }</option>
+					}
+				}
+			</label>
+		}
+	</div>
+}

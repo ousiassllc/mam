@@ -5,8 +5,13 @@
 # Usage: scripts/package-windows.sh <version>      <version> is X.Y.Z (the tag v<version> without the v)
 # Output:
 #   bin/mam-<version>-windows-amd64.exe             portable mam.exe (Wails window front)
-#   bin/mam-<version>-windows-amd64-setup.exe       NSIS installer (includes the WebView2 bootstrapper)
-# Needs: go, node/npm, templ, wails3 (the version of go.mod's github.com/wailsapp/wails/v3), makensis, jq.
+#   bin/mam-<version>-windows-amd64-setup.exe       per-user NSIS installer ($LOCALAPPDATA\Programs\MAM, no administrator
+#                                                   rights; includes the WebView2 bootstrapper)
+# The exe embeds backend/internal/version.Version = "v<version>" (the auto update compares it with the latest release) and
+# version.ReleasePublicKey = $RELEASE_SIGNING_PUBLIC_KEY (base64 of the raw 32-byte ed25519 public key that verifies
+# checksums.txt.sig; optional: empty = not embedded, the app then skips the signature check with a warning).
+# Needs: go, node/npm, wails3 (the version of go.mod's github.com/wailsapp/wails/v3), makensis, jq.
+# templ is not needed on PATH: it runs through `go run` at the version of go.mod's github.com/a-h/templ (like `make generate`).
 set -euo pipefail
 
 if [[ $# -ne 1 || ! "$1" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
@@ -17,7 +22,7 @@ version="$1"
 
 cd "$(dirname "$0")/.."
 
-for tool in go npm templ wails3 makensis jq; do
+for tool in go npm wails3 makensis jq; do
   command -v "$tool" >/dev/null || { echo "$tool not found in PATH" >&2; exit 1; }
 done
 
@@ -29,8 +34,17 @@ if [[ "$have" != "$want" ]]; then
   exit 1
 fi
 
+# The Taskfile reads RELEASE_SIGNING_PUBLIC_KEY from the environment for the -X ldflags.
+export RELEASE_SIGNING_PUBLIC_KEY="${RELEASE_SIGNING_PUBLIC_KEY:-}"
+if [[ -z "$RELEASE_SIGNING_PUBLIC_KEY" ]]; then
+  echo "warning: RELEASE_SIGNING_PUBLIC_KEY is empty: the exe is built WITHOUT the release public key (auto update signature check skipped)" >&2
+fi
+
+# Never the templ that is first on PATH: a stale binary rewrites the committed *_templ.go differently from go.mod's runtime
+# (Windows has no make, so this repeats the Makefile's TEMPL_RUN).
 echo "==> templ generate"
-templ generate ./backend/...
+templ_version="$(go list -m -f '{{.Version}}' github.com/a-h/templ)"
+go run github.com/a-h/templ/cmd/templ@"$templ_version" generate ./backend/...
 
 echo "==> esbuild + tailwind (minify)"
 npm ci --prefix static

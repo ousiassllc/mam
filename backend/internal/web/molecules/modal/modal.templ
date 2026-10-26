@@ -1,0 +1,94 @@
+// Package modal is the modal dialog of the settings screen (spec/components/shared-ui-parts.md §4): one native <dialog>
+// per page, whose body an HTMX request fills (Host, OpenAttrs); the handlers answer with a Frame. Opening, closing, the
+// focus and the failures are static/src/components/modal/modal.ts. It is a package of its own so that molecules stays
+// inside its line limit.
+package modal
+
+import "github.com/ousiassllc/mam/backend/internal/web/atoms"
+
+// The ids the script and the handlers share.
+const (
+	// BodyID is the element the answer of a request that opens the modal goes into.
+	BodyID = "mam-modal-body"
+	// ErrorID is the id of the reason a request was refused, in the body.
+	ErrorID = "mam-modal-error"
+	// CloseEvent is the HX-Trigger-After-Swap event that closes the modal after a save.
+	CloseEvent = "modal-close"
+)
+
+// Host is the <dialog> of the page, closed and empty: the request of OpenAttrs fills BodyID and the script opens it. A
+// click on the backdrop does not close it (what was typed would be lost); Esc, the buttons "キャンセル" / "閉じる" and a
+// saved form do.
+templ Host() {
+	<dialog
+		id="mam-modal"
+		data-modal
+		aria-labelledby="mam-modal-title"
+		class="m-auto max-h-[calc(100vh-4rem)] w-[min(40rem,calc(100vw-2rem))] overflow-y-auto rounded-lg border border-neutral-700 bg-neutral-900 p-0 text-neutral-100 backdrop:bg-black/70"
+	>
+		<div id={ BodyID }></div>
+		<p id="mam-modal-failure" role="alert" class="px-5 pb-4 text-sm text-red-300" hidden></p>
+		<button
+			type="button"
+			data-modal-close
+			aria-label="閉じる"
+			class="absolute right-3 top-3 rounded-md p-1 text-neutral-300 hover:bg-neutral-800 hover:text-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-900"
+		>
+			@atoms.Icon(atoms.IconClose, "h-5 w-5")
+		</button>
+	</dialog>
+}
+
+// OpenAttrs are the attributes of the button that opens the modal with the body of url. focusKey names the button: when
+// the row it is in is replaced, the focus goes back to the control of the new row with the same key.
+func OpenAttrs(url, focusKey string) templ.Attributes {
+	return templ.Attributes{
+		"type":            "button",
+		"hx-get":          url,
+		"hx-target":       "#" + BodyID,
+		"hx-swap":         "innerHTML",
+		"hx-sync":         "this:drop", // a double click is one request: a second answer would wipe what was typed
+		"data-modal-open": true,
+		"data-focus-key":  focusKey,
+	}
+}
+
+// Frame is the body of the modal: its name (the h2 the dialog is labelled by), what it is for and the content. Put
+// autofocus on the control to start with.
+templ Frame(title, description string) {
+	<div id="mam-modal-content" class="flex flex-col gap-4 p-5">
+		<h2 id="mam-modal-title" class="pr-8 text-lg font-semibold">{ title }</h2>
+		if description != "" {
+			<p id="mam-modal-desc" class="text-sm text-neutral-400">{ description }</p>
+		}
+		{ children... }
+	</div>
+}
+
+// Error is the reason a request was refused; the script moves the focus to it when no field is to blame.
+templ Error(message string) {
+	<p id="mam-modal-error" role="alert" tabindex="-1" class="whitespace-pre-line rounded-md border border-red-500/50 px-3 py-2 text-sm text-red-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">{ message }</p>
+}
+
+// Actions is the row of buttons at the foot of the modal.
+templ Actions() {
+	<div class="flex flex-wrap items-center justify-end gap-2 pt-2">
+		{ children... }
+	</div>
+}
+
+// Cancel is the button that closes the modal without saving.
+templ Cancel(label string) {
+	@atoms.Button(atoms.ToneNeutral, label, templ.Attributes{"type": "button", "data-modal-close": true})
+}
+
+// Notice is a whole body that only says why there is nothing to edit (the target is gone, the file is pinned): the reason
+// and a button that closes the modal. It is the answer of 404 and 409.
+templ Notice(title, reason string) {
+	@Frame(title, "") {
+		@Error(reason)
+		@Actions() {
+			@atoms.Button(atoms.TonePrimary, "閉じる", templ.Attributes{"type": "button", "data-modal-close": true, "autofocus": true})
+		}
+	}
+}

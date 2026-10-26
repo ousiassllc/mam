@@ -41,11 +41,27 @@ templ ReviewInboxList(d ReviewInboxData) {
 	</div>
 }
 
+// ReviewDecisionTone is the badge tone of a decision (shared with the owner's review list).
+func ReviewDecisionTone(d domain.ReviewDecision) atoms.BadgeTone {
+	if d == domain.DecisionApproved {
+		return atoms.BadgeOK
+	}
+	return atoms.BadgeWarn
+}
+
+// TimecodeLabel is the position of a comment in the video: "全体" for a comment on the whole.
+func TimecodeLabel(ms *int64) string {
+	if ms == nil {
+		return "全体"
+	}
+	return domain.FormatReviewTimecode(*ms)
+}
+
 func reviewDecisionBadge(d domain.ReviewDecision) (atoms.BadgeTone, string) {
 	if !d.Valid() {
 		return atoms.BadgeNeutral, "未回答"
 	}
-	return reviewDecisionTone(d), d.Label()
+	return ReviewDecisionTone(d), d.Label()
 }
 
 // ReviewWorkspace is the review screen of a reviewer: the video, the owner's note, the reviewer's
@@ -86,9 +102,9 @@ templ ReviewComments(i domain.ReviewInbox) {
 		<ul class="flex flex-col gap-2">
 			for _, c := range i.Comments {
 				<li class="flex flex-wrap items-start gap-2 text-sm">
-					<span class="w-14 shrink-0 font-mono text-xs text-neutral-400">{ timecodeLabel(c.TimecodeMs) }</span>
+					<span class="w-14 shrink-0 font-mono text-xs text-neutral-400">{ TimecodeLabel(c.TimecodeMs) }</span>
 					<span class="min-w-0 flex-1 whitespace-pre-wrap">{ c.Body }</span>
-					@atoms.Button(atoms.ToneDanger, "削除", templ.Attributes{"hx-delete": paths.Review(i.ID, "comments", c.ID), "hx-target": "#review-comments", "hx-swap": "outerHTML", "type": "button", "hx-confirm": "このコメントを削除します。よろしいですか？"})
+					@atoms.ButtonFor(atoms.ToneDanger, "削除", TimecodeLabel(c.TimecodeMs)+" "+c.Body, templ.Attributes{"hx-delete": paths.Review(i.ID, "comments", c.ID), "hx-target": "#review-comments", "hx-swap": "outerHTML", "type": "button", "hx-confirm": "このコメントを削除します。よろしいですか？"})
 				</li>
 			}
 		</ul>

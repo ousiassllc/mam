@@ -123,7 +123,7 @@ func ApprovalCard(m domain.ThreadMessage) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\" hx-swap=\"outerHTML\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button[type=submit]\"><button type=\"submit\" disabled hidden tabindex=\"-1\" aria-hidden=\"true\"></button>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\" hx-swap=\"outerHTML\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button[value=approve], find button[value=request_changes]\"><button type=\"submit\" disabled hidden tabindex=\"-1\" aria-hidden=\"true\"></button>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -132,16 +132,16 @@ func ApprovalCard(m domain.ThreadMessage) templ.Component {
 					"name":        "comment",
 					"maxlength":   strconv.Itoa(approvalCommentMaxRunes),
 					"placeholder": "コメント（任意）",
-					"aria-label":  "コメント",
+					"aria-label":  atoms.RowLabel("コメント", excerpt(m.ChatMessage)),
 				}).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = atoms.Button(atoms.TonePrimary, "承認", submitAttrs("approve")).Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = atoms.ButtonFor(atoms.TonePrimary, "承認", excerpt(m.ChatMessage), submitAttrs("approve")).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = atoms.Button(atoms.ToneNeutral, "修正を依頼", submitAttrs("request_changes")).Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = atoms.ButtonFor(atoms.ToneNeutral, "修正を依頼", excerpt(m.ChatMessage), submitAttrs("request_changes")).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

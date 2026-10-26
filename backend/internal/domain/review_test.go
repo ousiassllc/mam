@@ -70,17 +70,20 @@ func TestReviewResponse_ValidateAcceptsOnlyAWellFormedAnswer(t *testing.T) {
 	require.NoError(t, withComment.Validate())
 
 	bad := map[string]func(*ReviewResponse){
-		"format":       func(r *ReviewResponse) { r.Format = "x" },
-		"version":      func(r *ReviewResponse) { r.Version = 2 },
-		"response id":  func(r *ReviewResponse) { r.ResponseID = "../x" },
-		"review id":    func(r *ReviewResponse) { r.ReviewID = "" },
-		"decision":     func(r *ReviewResponse) { r.Decision = "maybe" },
-		"name blank":   func(r *ReviewResponse) { r.ReviewerName = " " },
-		"name control": func(r *ReviewResponse) { r.ReviewerName = "a\nb" },
-		"name long":    func(r *ReviewResponse) { r.ReviewerName = strings.Repeat("あ", 51) },
-		"comment long": func(r *ReviewResponse) { r.Comment = strings.Repeat("a", 2001) },
-		"too many":     func(r *ReviewResponse) { r.Comments = make([]ReviewCommentInput, 201) },
-		"empty body":   func(r *ReviewResponse) { r.Comments = []ReviewCommentInput{{Body: ""}} },
+		"format":              func(r *ReviewResponse) { r.Format = "x" },
+		"version":             func(r *ReviewResponse) { r.Version = 2 },
+		"response id":         func(r *ReviewResponse) { r.ResponseID = "../x" },
+		"response id nul":     func(r *ReviewResponse) { r.ResponseID = "nul" },
+		"response id reviews": func(r *ReviewResponse) { r.ResponseID = "Reviews" },
+		"response id com1":    func(r *ReviewResponse) { r.ResponseID = "COM1" },
+		"review id":           func(r *ReviewResponse) { r.ReviewID = "" },
+		"decision":            func(r *ReviewResponse) { r.Decision = "maybe" },
+		"name blank":          func(r *ReviewResponse) { r.ReviewerName = " " },
+		"name control":        func(r *ReviewResponse) { r.ReviewerName = "a\nb" },
+		"name long":           func(r *ReviewResponse) { r.ReviewerName = strings.Repeat("あ", 51) },
+		"comment long":        func(r *ReviewResponse) { r.Comment = strings.Repeat("a", 2001) },
+		"too many":            func(r *ReviewResponse) { r.Comments = make([]ReviewCommentInput, 201) },
+		"empty body":          func(r *ReviewResponse) { r.Comments = []ReviewCommentInput{{Body: ""}} },
 		"position": func(r *ReviewResponse) {
 			neg := int64(-1)
 			r.Comments = []ReviewCommentInput{{TimecodeMs: &neg, Body: "x"}}

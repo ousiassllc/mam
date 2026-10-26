@@ -12,6 +12,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/brandtemplate"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -21,9 +22,7 @@ type SettingsBodyData struct {
 	Cost      domain.CostSummary
 	Storage   StoragePanelData
 	Brand     BrandConstraintListData
-	Templates BrandTemplatePanelData
-	// Credentials is which provider has an API key; never a key.
-	Credentials CredentialPanelData
+	Templates brandtemplate.Data
 }
 
 // SettingsBody is the sections of the settings screen without the page frame.
@@ -196,7 +195,7 @@ func SettingsBody(d SettingsBodyData) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = BrandTemplatePanel(d.Templates).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = brandtemplate.Panel(d.Templates).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -207,28 +206,6 @@ func SettingsBody(d SettingsBodyData) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		templ_7745c5c3_Var9 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
-			templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
-			templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
-			if !templ_7745c5c3_IsBuffer {
-				defer func() {
-					templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
-					if templ_7745c5c3_Err == nil {
-						templ_7745c5c3_Err = templ_7745c5c3_BufErr
-					}
-				}()
-			}
-			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = CredentialPanel(d.Credentials).Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			return nil
-		})
-		templ_7745c5c3_Err = molecules.SettingsSection("API キー", "外部モデルの API キーを登録します。キーは OS のセキュアストレージに保存され、画面には設定済みかどうかだけが表示されます。保存したキーは再起動なしで次の呼び出しから使われます。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var9), templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Var10 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 			templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 			templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 			if !templ_7745c5c3_IsBuffer {
@@ -254,7 +231,7 @@ func SettingsBody(d SettingsBodyData) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = molecules.SettingsSection("プロジェクトバンドル", "プロジェクトのデータとアセットを 1 つの ZIP に書き出します。プロジェクト一覧の読み込みフォームから、この端末でも別の端末でも復元できます。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var10), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = molecules.SettingsSection("プロジェクトバンドル", "プロジェクトのデータとアセットを 1 つの ZIP に書き出します。プロジェクト一覧の読み込みフォームから、この端末でも別の端末でも復元できます。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var9), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -13,7 +13,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
-	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/brandtemplate"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -284,7 +284,7 @@ func View(d Data) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = organisms.BrandTemplateSelect("series-brand-template", d.Templates).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = brandtemplate.Select("series-brand-template", d.Templates).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -718,7 +718,7 @@ func seriesCharacterForm(d Data, c domain.WorldCharacter) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = atoms.Button(atoms.TonePrimary, "保存", templ.Attributes{"type": "submit"}).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = atoms.ButtonFor(atoms.TonePrimary, "保存", c.Name, templ.Attributes{"type": "submit"}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

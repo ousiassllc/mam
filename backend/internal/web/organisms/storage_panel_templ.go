@@ -14,6 +14,11 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
+// storedTakeName is where a stored Take sits and which model made it: how its row names it.
+func storedTakeName(t domain.StoredTake) string {
+	return "Scene " + intText(t.SceneIndex+1) + " · Shot " + intText(t.ShotIndex+1) + " · " + t.ModelName
+}
+
 // StoragePanelData is the disk usage of a Project.
 type StoragePanelData struct {
 	ProjectID string
@@ -60,7 +65,7 @@ func StoragePanel(d StoragePanelData) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(domain.FormatBytes(d.Storage.AssetBytes))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/storage_panel.templ`, Line: 32, Col: 106}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/storage_panel.templ`, Line: 37, Col: 106}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -73,7 +78,7 @@ func StoragePanel(d StoragePanelData) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs("プレビューのキャッシュ（全 Project 共通）: " + domain.FormatBytes(d.Storage.PreviewBytes))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/storage_panel.templ`, Line: 33, Col: 177}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/storage_panel.templ`, Line: 38, Col: 177}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -87,7 +92,7 @@ func StoragePanel(d StoragePanelData) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(domain.FormatBytes(d.Storage.FreeBytes))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/storage_panel.templ`, Line: 39, Col: 47}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/storage_panel.templ`, Line: 44, Col: 47}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -106,7 +111,7 @@ func StoragePanel(d StoragePanelData) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(unneededText(d.Storage))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/storage_panel.templ`, Line: 47, Col: 86}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/storage_panel.templ`, Line: 52, Col: 86}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -124,7 +129,7 @@ func StoragePanel(d StoragePanelData) templ.Component {
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue(paths.Project(d.ProjectID, "storage", "archive-unneeded"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/storage_panel.templ`, Line: 51, Col: 76}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/storage_panel.templ`, Line: 56, Col: 76}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
 			if templ_7745c5c3_Err != nil {
@@ -161,9 +166,9 @@ func StoragePanel(d StoragePanelData) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var7 string
-				templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs("Scene " + intText(t.SceneIndex+1) + " · Shot " + intText(t.ShotIndex+1) + " · " + t.ModelName)
+				templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(storedTakeName(t))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/storage_panel.templ`, Line: 64, Col: 105}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/storage_panel.templ`, Line: 69, Col: 26}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 				if templ_7745c5c3_Err != nil {
@@ -176,7 +181,7 @@ func StoragePanel(d StoragePanelData) templ.Component {
 				var templ_7745c5c3_Var8 string
 				templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(" · " + t.Status.Label() + " · " + domain.FormatBytes(t.SizeBytes))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/storage_panel.templ`, Line: 65, Col: 108}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/storage_panel.templ`, Line: 70, Col: 108}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 				if templ_7745c5c3_Err != nil {
@@ -197,7 +202,7 @@ func StoragePanel(d StoragePanelData) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				if t.Archivable {
-					templ_7745c5c3_Err = atoms.SmallButton(atoms.ToneNeutral, "アーカイブ", templ.Attributes{
+					templ_7745c5c3_Err = atoms.SmallButtonFor(atoms.ToneNeutral, "アーカイブ", storedTakeName(t), templ.Attributes{
 						"type":       "button",
 						"hx-post":    paths.Project(d.ProjectID, "takes", t.TakeID, "archive"),
 						"hx-target":  "#storage-panel",

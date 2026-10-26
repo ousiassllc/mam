@@ -116,7 +116,7 @@ func jsonHeader(h map[string]string) map[string]string {
 // download fetches a generated video from the URL the vendor returned and stages it in a file:
 // the body is streamed to disk, never held in memory. It only runs after the job was submitted,
 // so a transient failure is retried here (the GET is repeatable) and any error it finally returns
-// is marked errAfterSubmit: the job must not be submitted again.
+// is marked ErrAfterSubmit: the job must not be submitted again.
 func (a api) download(ctx context.Context, fileURL string) (Blob, string, error) {
 	return a.fetch(ctx, fileURL, a.stage)
 }
@@ -140,7 +140,7 @@ func (a api) fetch(ctx context.Context, fileURL string, into sink) (Blob, string
 		return err
 	})
 	if err != nil {
-		return Blob{}, "", afterSubmit(err)
+		return Blob{}, "", AfterSubmit(err)
 	}
 	return blob, mime, nil
 }
@@ -241,12 +241,12 @@ func (a api) checkResultURL(raw string) error {
 // the job is billed already, so the call's timeout, not a number of tries, bounds it. fn must be a GET.
 func (a api) repeat(ctx context.Context, fn func() error) error {
 	return resilience.Repeat(ctx, resilience.Backoff{Base: a.pollEvery, Max: resilience.JobRetryMaxDelay},
-		resilience.Hooks{Unavailable: unavailable, RetryAfter: retryAfter}, fn)
+		resilience.Hooks{Unavailable: IsUnavailable, RetryAfter: retryAfter}, fn)
 }
 
 // poll calls check until it reports done or fails, waiting pollEvery between calls. It only runs
 // after the job was submitted: a transient failure of one status request is retried (it is a GET
-// of the same job), and any error it finally returns is marked errAfterSubmit so the whole call
+// of the same job), and any error it finally returns is marked ErrAfterSubmit so the whole call
 // is not repeated, which would submit, and be billed for, the job a second time.
 func (a api) poll(ctx context.Context, check func(ctx context.Context) (done bool, err error)) error {
 	for {
@@ -256,7 +256,7 @@ func (a api) poll(ctx context.Context, check func(ctx context.Context) (done boo
 			return err
 		})
 		if err != nil {
-			return afterSubmit(err)
+			return AfterSubmit(err)
 		}
 		if done {
 			return nil
@@ -264,7 +264,7 @@ func (a api) poll(ctx context.Context, check func(ctx context.Context) (done boo
 		select {
 		case <-time.After(a.pollEvery):
 		case <-ctx.Done():
-			return afterSubmit(ctx.Err())
+			return AfterSubmit(ctx.Err())
 		}
 	}
 }

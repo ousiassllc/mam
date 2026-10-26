@@ -1,55 +1,137 @@
 name: Release
 
-# A v<X.Y.Z> tag push builds the Windows desktop version (Wails window + NSIS installer) and
-# publishes the GitHub Release. No code signing (spec/environment/setup.md "リリース").
+# Builds the Windows desktop version (Wails window + per-user NSIS installer), signs the installer's checksum and publishes
+# the GitHub Release. No Authenticode code signing (spec/environment/setup.md "リリース"). Two triggers:
+#   workflow_run  ci.yml succeeded for a push to main: release main's tip as the next patch (vX.Y.Z+1 of the
+#                 latest v* tag; v0.1.0 if there is none). Nobody tags anything.
+#   tag push      v<X.Y.Z>: a hand-made tag, to raise the minor / major version.
 #
-# Three jobs, so that the build never holds a write token and nothing is published unchecked:
-#   verify  the tagged commit is in main's history, passed ci.yml, and has no reachable known vulnerability
-#   build   package + smoke test; contents: read only; hands the two exes over as an artifact
-#   release gh release create only; the one job with contents: write
+# Every job runs on the GitHub-hosted ubuntu-latest runner (like ci.yml; free for a public repository). The Windows exes
+# are cross-built (GOOS=windows, pure Go) and the installer is
+# made by makensis on Linux; nothing here runs a Windows binary (no Windows-only tests, no installer smoke test).
+#
+# Four jobs, so that the build never holds a write token and nothing is published unchecked:
+#   plan    decide whether to release and which tag (the tip of main only, so an older commit never gets a newer version)
+#   verify  the commit is in main's history, passed ci.yml, and has no reachable known vulnerability
+#   build   package; contents: read only; the version and the release public key are embedded in the exe; makes
+#           checksums.txt and its ed25519 signature (the signing key is a secret, only the last step sees it);
+#           hands the four files over as an artifact
+#   release gh release create in this repository only, with the GITHUB_TOKEN; the one job with contents: write (it creates
+#           the tag too). The installed apps check this repository's Releases and verify the signature with the public key
+#           embedded at build time (there is no other repository to copy the release to).
 # `uses:` are pinned to a commit SHA (the comment is the tag; dependabot's github-actions keeps both up to date).
 on:
   push:
     tags: ['v*']
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
 
 permissions:
   contents: read
 
+# One release at a time: the next version is read from the existing tags, so two runs must not overlap.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 env:
-  # Pinned: choco installs the latest by default. Keep the version available on community.chocolatey.org/packages/nsis.
-  NSIS_VERSION: 3.11.0
+  # The commit to release: the one CI passed on (workflow_run) or the tagged one (tag push).
+  RELEASE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
 
 jobs:
-  verify:
+  plan:
+    # workflow_run fires for every CI run: only a successful push CI of this repository's main releases.
+    if: >-
+      github.event_name == 'push' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      actions: read # gh run list (the CI result of the tagged commit)
+    outputs:
+      release: ${{ steps.plan.outputs.release }}
+      tag: ${{ steps.plan.outputs.tag }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          ref: ${{ env.RELEASE_SHA }}
+          fetch-depth: 0 # all tags (the latest version) and main's tip
+          persist-credentials: false
+
+      - name: Decide the release and its tag
+        id: plan
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = push ]; then
+            if [[ ! "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "::error::tag $GITHUB_REF_NAME is not vX.Y.Z"
+              exit 1
+            fi
+            echo "release=true" >> "$GITHUB_OUTPUT"
+            echo "tag=$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ "$(git rev-parse origin/main)" != "$RELEASE_SHA" ]; then
+            echo "::notice::$RELEASE_SHA is not main's tip any more: the run for the newer commit releases"
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ -n "$(git tag --points-at "$RELEASE_SHA" --list 'v*')" ]; then
+            echo "::notice::$RELEASE_SHA already has a version tag: nothing new to release"
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          latest="$(git tag --list 'v*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1 || true)"
+          if [ -z "$latest" ]; then
+            tag=v0.1.0
+          else
+            IFS=. read -r major minor patch <<< "${latest#v}"
+            tag="v$major.$minor.$((patch + 1))"
+          fi
+          echo "::notice::releasing $tag (latest: ${latest:-none})"
+          echo "release=true" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+  verify:
+    needs: plan
+    if: needs.plan.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read # gh run list (the CI result of the commit)
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ env.RELEASE_SHA }}
           fetch-depth: 0 # the history of main, for the ancestry check
 
-      - name: The tagged commit is in main's history
+      - name: The commit is in main's history
         run: |
-          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
-            echo "::error::$GITHUB_REF_NAME ($GITHUB_SHA) is not in main's history: tag a commit that is merged into main"
+          if ! git merge-base --is-ancestor "$RELEASE_SHA" origin/main; then
+            echo "::error::${{ needs.plan.outputs.tag }} ($RELEASE_SHA) is not in main's history: tag a commit that is merged into main"
             exit 1
           fi
 
-      - name: ci.yml succeeded on the tagged commit
+      - name: ci.yml succeeded on the commit
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          ok="$(gh run list --workflow ci.yml --commit "$GITHUB_SHA" --json conclusion --jq 'any(.[]; .conclusion == "success")')"
+          ok="$(gh run list --workflow ci.yml --commit "$RELEASE_SHA" --json conclusion --jq 'any(.[]; .conclusion == "success")')"
           if [ "$ok" != "true" ]; then
-            echo "::error::no successful CI run for $GITHUB_SHA: wait for CI to pass on this commit (or fix it) before tagging"
+            echo "::error::no successful CI run for $RELEASE_SHA: wait for CI to pass on this commit (or fix it) before tagging"
             exit 1
           fi
 
+      # A GitHub-hosted runner starts empty every time: the Go and npm caches come from the actions cache (see ci.yml).
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version-file: go.mod
+          cache: true
+          cache-dependency-path: go.sum
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
@@ -70,21 +152,21 @@ jobs:
         run: make vuln
 
   build:
-    needs: verify
-    runs-on: windows-latest
+    needs: [plan, verify]
+    runs-on: ubuntu-latest
     permissions:
       contents: read
-    defaults:
-      run:
-        shell: bash
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          ref: ${{ env.RELEASE_SHA }}
           persist-credentials: false
 
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version-file: go.mod
+          cache: true
+          cache-dependency-path: go.sum
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
@@ -92,28 +174,62 @@ jobs:
           cache: npm
           cache-dependency-path: static/package-lock.json
 
-      - name: Install tools
+      # CGO_ENABLED=0: the Wails CLI builds without cgo; with cgo on Linux it wants webkitgtk-6.0 headers.
+      # (The app itself is cross-built for Windows with CGO_ENABLED=0 by wails3 package.)
+      - name: Install wails3
         run: |
-          go install github.com/a-h/templ/cmd/templ@"$(go list -m -f '{{.Version}}' github.com/a-h/templ)"
-          go install github.com/wailsapp/wails/v3/cmd/wails3@"$(go list -m -f '{{.Version}}' github.com/wailsapp/wails/v3)"
-          choco install nsis --version "$NSIS_VERSION" --no-progress -y
+          CGO_ENABLED=0 go install github.com/wailsapp/wails/v3/cmd/wails3@"$(go list -m -f '{{.Version}}' github.com/wailsapp/wails/v3)"
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
-          echo "C:/Program Files (x86)/NSIS" >> "$GITHUB_PATH"
 
+      # makensis (NSIS) makes the installer: scripts/ensure-nsis.sh installs it when missing, without needing root.
+      - name: Ensure NSIS
+        run: bash scripts/ensure-nsis.sh
+
+      # Release builds MUST embed the public key the installed apps verify the update signature with (and the version, which
+      # the script takes from the tag): an exe without it would skip the signature check.
       - name: Package
-        run: bash scripts/package-windows.sh "${GITHUB_REF_NAME#v}"
+        env:
+          TAG: ${{ needs.plan.outputs.tag }}
+          RELEASE_SIGNING_PUBLIC_KEY: ${{ vars.RELEASE_SIGNING_PUBLIC_KEY }}
+        run: |
+          if [ -z "$RELEASE_SIGNING_PUBLIC_KEY" ]; then
+            echo "::error::the repository variable RELEASE_SIGNING_PUBLIC_KEY is not set: a release build must embed the update signature public key"
+            exit 1
+          fi
+          bash scripts/package-windows.sh "${TAG#v}"
 
-      - name: Smoke test the installer
-        run: bash scripts/smoke-windows.sh "bin/mam-${GITHUB_REF_NAME#v}-windows-amd64-setup.exe"
+      # checksums.txt covers the installer only (the one asset the apps install): `<sha256>  <file name>` lines.
+      - name: Checksums
+        env:
+          TAG: ${{ needs.plan.outputs.tag }}
+        run: |
+          version="${TAG#v}"
+          cd bin
+          sha256sum "mam-$version-windows-amd64-setup.exe" > checksums.txt
+          cat checksums.txt
+
+      # The last step of the job: the only one that sees the signing key (a secret, not a write token). It signs checksums.txt
+      # (the base64 of the raw ed25519 signature) and verifies the signature with the public key, so a key that does not match
+      # fails the build (scripts/sign-checksums.sh). VERIFY_PUBLIC_KEY is normally the embedded key; only in the one release of
+      # a key rotation (signed with the OLD key, embedding the NEW one) the variable RELEASE_SIGNING_VERIFY_PUBLIC_KEY holds
+      # the old public key.
+      - name: Sign checksums
+        env:
+          RELEASE_SIGNING_KEY: ${{ secrets.RELEASE_SIGNING_KEY }}
+          VERIFY_PUBLIC_KEY: ${{ vars.RELEASE_SIGNING_VERIFY_PUBLIC_KEY || vars.RELEASE_SIGNING_PUBLIC_KEY }}
+        run: bash scripts/sign-checksums.sh bin
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: windows-release
-          path: bin/mam-*-windows-amd64*.exe
+          path: |
+            bin/mam-*-windows-amd64*.exe
+            bin/checksums.txt
+            bin/checksums.txt.sig
           if-no-files-found: error
 
   release:
-    needs: build
+    needs: [plan, build]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -127,11 +243,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }} # no checkout in this job
+          TAG: ${{ needs.plan.outputs.tag }}
         run: |
-          version="${GITHUB_REF_NAME#v}"
-          gh release create "$GITHUB_REF_NAME" \
-            --title "$GITHUB_REF_NAME" \
+          version="${TAG#v}"
+          # --target creates the tag at the released commit (an existing tag, from a tag push, is kept as is).
+          gh release create "$TAG" \
+            --title "$TAG" \
             --generate-notes \
-            --verify-tag \
+            --target "$RELEASE_SHA" \
             "dist/mam-$version-windows-amd64-setup.exe" \
-            "dist/mam-$version-windows-amd64.exe"
+            "dist/mam-$version-windows-amd64.exe" \
+            dist/checksums.txt \
+            dist/checksums.txt.sig

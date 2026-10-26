@@ -15,15 +15,15 @@ templ EscalationCard(m domain.ThreadMessage) {
 		if m.Open {
 			<div class="mt-3 flex flex-wrap gap-2" data-options>
 				for _, option := range domain.DecodeCardBody(m.Content).Options {
-					@atoms.Button(atoms.ToneNeutral, option, answerAttrs(m, option))
+					@atoms.ButtonFor(atoms.ToneNeutral, option, excerpt(m.ChatMessage), answerAttrs(m, option))
 				}
 			</div>
-			<p class="mt-2 text-xs text-neutral-500">入力欄からの返信でも判断を伝えられます。</p>
+			<p class="mt-2 text-xs text-neutral-400">入力欄からの返信でも判断を伝えられます。</p>
 			<div class="mt-1">
 				@ReplyButton(m)
 			</div>
 		} else {
-			<p class="mt-2 text-xs text-neutral-500">回答済み</p>
+			<p class="mt-2 text-xs text-neutral-400">回答済み</p>
 		}
 	}
 }

@@ -9,8 +9,8 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
-// RoutingInput is what Multi-model routing weighs besides the configuration (spec/architecture/
-// model-adapters.md §13): the nature of the Shot, the Judge record of each video model in the
+// RoutingInput is what Multi-model routing weighs besides the configuration
+// (spec/architecture/model-adapters-m3.md §13): the nature of the Shot, the Judge record of each video model in the
 // Project, the Project's Minimum acceptance score and the state of the vendors.
 type RoutingInput struct {
 	// Spec is the Shot Spec the Shot is generated from; nil when the Shot has none yet.
@@ -54,13 +54,13 @@ func weightedScore(scores, w domain.TakeScores) float64 {
 // fit is the share of what the Shot asks of a video model that the model can do (§12.3): to hold the
 // Shot in one clip, to take a first frame when the Reference Pack has a Keyframe, and to take free
 // reference images when it has other references. It is 1 when the Shot asks for nothing.
-func fit(m domain.ModelName, seconds float64, refs []domain.Reference) float64 {
-	caps, ok := modeladapter.Capabilities(m)
+func fit(cfg modeladapter.Config, m domain.ModelName, seconds float64, refs []domain.Reference) float64 {
+	caps, ok := cfg.VideoCaps(m)
 	if !ok {
 		return 0
 	}
 	asked, met := 1, 0
-	if longest(m) >= seconds-1e-9 {
+	if longest(cfg, m) >= seconds-1e-9 {
 		met++
 	}
 	if slices.ContainsFunc(refs, func(r domain.Reference) bool { return r.Kind == domain.RefKeyframe }) {
@@ -96,7 +96,7 @@ func route(cfg modeladapter.Config, policy domain.QualityPolicy, seconds float64
 	cheapest := 0.0
 	costs := make([]float64, len(targets))
 	for i, t := range targets {
-		caps, _ := modeladapter.Capabilities(t.Model)
+		caps, _ := cfg.VideoCaps(t.Model)
 		costs[i] = cfg.VideoCost(t, caps.SnapDuration(seconds))
 		if costs[i] > 0 && (cheapest == 0 || costs[i] < cheapest) {
 			cheapest = costs[i]
@@ -107,7 +107,7 @@ func route(cfg modeladapter.Config, policy domain.QualityPolicy, seconds float64
 		rec := in.Records[t.Model]
 		c := domain.RoutingCandidate{
 			Model: t.Model, Resolution: t.Resolution, Anchor: i == 0, Samples: rec.Samples, CostPerTake: costs[i],
-			Quality: rc.PriorQuality, Cost: 1, Fit: fit(t.Model, seconds, in.References),
+			Quality: rc.PriorQuality, Cost: 1, Fit: fit(cfg, t.Model, seconds, in.References),
 		}
 		if rec.Samples > 0 {
 			c.MeanScore, c.PassRate = weightedScore(rec.Scores, axis), rec.PassRate

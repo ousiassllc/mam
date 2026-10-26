@@ -14,21 +14,25 @@ concurrency:
 
 jobs:
   ci:
-    # Self-hosted runner (org ousiassllc): GitHub-hosted runners are billed and were blocked by a payment failure.
-    runs-on: [self-hosted, Linux, X64]
+    # GitHub-hosted runner: free for a public repository, and a pull request from a fork never runs on our own
+    # servers. The workflow uses no secrets and only the unprivileged pull_request trigger; the token is contents: read.
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      # No actions cache on the self-hosted runner: the host keeps the Go module / build and npm caches
-      # itself, and the cache save of setup-go hung the job for 25+ minutes in its post step.
-      - uses: actions/setup-go@v5
+      # A GitHub-hosted runner starts empty every time: setup-go caches the Go module and build caches
+      # (key: go.sum) and setup-node the npm cache (key: static/package-lock.json) in the actions cache.
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version-file: go.mod
-          cache: false
+          cache: true
+          cache-dependency-path: go.sum
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24
+          cache: npm
+          cache-dependency-path: static/package-lock.json
 
       - name: Install tools
         run: |
@@ -53,7 +57,8 @@ jobs:
         run: make lint
 
       # Known vulnerabilities reachable from the code: the Go standard library of the toolchain
-      # pinned by go.mod's `toolchain` line, and the required modules. A new advisory fails CI.
+      # pinned by go.mod's `toolchain` line, and the required modules, for the Linux host and the Windows
+      # target (cmd/wails is //go:build windows, so a Linux-only run never analyses it). A new advisory fails CI.
       - name: Vulnerability check
         run: make vuln
 
@@ -63,8 +68,8 @@ jobs:
         run: make lint-lines
 
       # The Go tests that need ffmpeg / ffprobe (Judge frame extraction, media, Audio Director mixing,
-      # Take / partial regeneration) fail without them (testenv). The self-hosted runner normally has
-      # them; install via apt only when missing (needs passwordless sudo), else fail with a clear error.
+      # Take / partial regeneration) fail without them (testenv). The GitHub-hosted ubuntu-latest image does
+      # not ship them: install via apt when missing (the runner user has passwordless sudo).
       - name: Ensure ffmpeg
         run: |
           if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null; then
@@ -74,15 +79,34 @@ jobs:
           ffmpeg -version | head -1
           ffprobe -version | head -1
 
-      # The Lit component tests (make test-static) need a Linux Chrome. Some self-hosted runners (a WSL
-      # host) only have the Windows chrome.exe, which web-test-runner cannot drive: download a Chrome for
-      # Testing into the runner's tool cache (kept between runs) when there is none and CHROME_PATH is unset.
+      # The Lit component tests (make test-static) need a Linux Chrome. The ubuntu-latest image has its own
+      # google-chrome, but its version moves with the image: always download the pinned Chrome for Testing
+      # and point CHROME_PATH at it (web-test-runner uses CHROME_PATH before any installed Chrome), so the
+      # same commit tests the same browser. A GitHub-hosted runner starts empty on every run, so the
+      # download (under RUNNER_TOOL_CACHE) happens on every run; nothing is kept between runs.
+      # Both the downloader (@puppeteer/browsers, pinned by static/package-lock.json and installed by
+      # `make tools`) and the Chrome version (CHROME_VERSION) are pinned; bump CHROME_VERSION by hand
+      # (spec/environment/setup.md). `browsers install` unpacks the Chrome for Testing zip with `unzip`
+      # (without it: "Extraction failed: no zip archiver is available"): the image has it; like ffmpeg,
+      # install it via apt only when missing.
+      # The step fails when the download fails: `shell: bash` is `bash -eo pipefail` (the default `bash -e`
+      # has no pipefail, so `browsers ... | tail | cut` would succeed whatever `browsers` returned and an empty
+      # CHROME_PATH would be exported), and an empty or non-executable result is rejected explicitly.
       - name: Ensure Chrome
+        shell: bash
+        env:
+          CHROME_VERSION: 155.0.8059.79
         run: |
-          if [ -z "${CHROME_PATH:-}" ] && ! command -v google-chrome >/dev/null && ! command -v chromium >/dev/null; then
-            chrome="$(npx --yes @puppeteer/browsers install chrome@stable --path "${RUNNER_TOOL_CACHE}/chrome-for-testing" | tail -n 1 | cut -d' ' -f2-)"
-            echo "CHROME_PATH=${chrome}" >> "$GITHUB_ENV"
+          if ! command -v unzip >/dev/null; then
+            sudo -n apt-get update
+            sudo -n apt-get install -y --no-install-recommends unzip
           fi
+          chrome="$(./static/node_modules/.bin/browsers install "chrome@${CHROME_VERSION}" --path "${RUNNER_TOOL_CACHE}/chrome-for-testing" | tail -n 1 | cut -d' ' -f2-)"
+          if [ ! -x "$chrome" ]; then
+            echo "::error::Chrome for Testing の取得に失敗しました（chrome='${chrome}'）"
+            exit 1
+          fi
+          echo "CHROME_PATH=${chrome}" >> "$GITHUB_ENV"
 
       - name: Test
         run: make test

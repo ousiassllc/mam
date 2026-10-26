@@ -1,0 +1,23 @@
+package pages
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/layout"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/workflows"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// NodesPage is GET /nodes: the ComfyUI node UI in an iframe, and the way to the saved workflows. The response
+// carries frame-src for exactly the ComfyUI it shows (middleware.AllowFrame).
+templ NodesPage(csrfToken string, d workflows.NodeData) {
+	@layout.AppLayout("ノード", csrfToken) {
+		<main class="mx-auto flex max-w-7xl flex-col gap-6 p-8">
+			<div>
+				@atoms.BackLink(paths.Home(), "← プロジェクト一覧に戻る")
+				<h1 class="mb-1 mt-3 text-xl font-semibold">ノード</h1>
+				<p class="text-sm text-neutral-400">ComfyUI のノード画面です。作ったワークフローは <a class="underline hover:text-neutral-100" href={ templ.SafeURL(paths.Workflows()) }>ワークフロー</a> に保存すると、Shot の生成方法に使えます。</p>
+			</div>
+			@workflows.Node(d)
+		</main>
+	}
+}

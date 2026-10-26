@@ -4,10 +4,10 @@
 
 Go（`go.mod` のバージョン）、Node.js（24。CI は `.github/workflows/ci.yml` で `node-version: 24` を固定している。`static/package.json` に `engines` は無い）、`templ`、`golangci-lint`、`linterly`、`govulncheck`、`lefthook`、`jq`、Chrome / Chromium。`make tools` が templ（`go.mod` の版に合わせる）・air・golangci-lint・linterly・govulncheck を版を固定して入れ、npm 依存（`static/node_modules`。Biome を含む）も用意する。`make assets` / `make test-static` / `make lint-static` / `make fmt` / `make fmt-check` / `make dev` は `static/node_modules` が無ければ（または `package-lock.json` が新しければ）`npm ci` を自動で実行する。フロントエンドのパッケージマネージャは npm（`static/package-lock.json`）。
 
-- **`jq`**: pre-commit の `scripts/linterly-staged.sh`（コミット対象ファイルの行数チェック）と `scripts/linterly-baseline.sh`（行数の基準値チェック。`make lint-lines`・CI）が使う。無いと「jq not found」で pre-commit が必ず失敗する（`make tools` では入らない。OS のパッケージマネージャで入れる）。
-- **Chrome / Chromium**: Lit コンポーネントのテスト（`*.wtest.ts`）を実際のブラウザで動かす `@web/test-runner-chrome`（`static/web-test-runner.config.mjs`）が、インストール済みの Chrome を探して使う。`make test-static`（したがって `make test` と pre-push）が必要とし、見つからないときは `CHROME_PATH` で実行ファイルを指定する。CI（self-hosted runner）は runner のホストの Linux 版 Chrome を使い、無いとき（WSL ホストは Windows の `chrome.exe` しか見えず、web-test-runner が操作できない）は `Ensure Chrome` ステップが Chrome for Testing を runner のツールキャッシュへ取得して `CHROME_PATH` に渡す。
-- **ffmpeg / ffprobe**: ビルドには要らず、実行時に任意（PATH に無ければ使わない）。無いと Judge（起動時に警告して無効になる）、Take のプレビュー（4K の 1080p プロキシ・サムネイル）、部分採用・区間指定の再生成の合成、Continue の最終フレーム取り出し、Rough Cut のプレビュー、音声制作（Audio Director: 音声の生成・ミックス・ラウドネス正規化・Lip Sync のクリップ切り出し）、最終 Export が使えない（Export は `ErrUnavailable`）。詳細は `spec/architecture/model-adapters.md` §10.2 と `spec/api/endpoints.md` の各 API。
-- **Wails v3 CLI（`wails3`）と NSIS（`makensis`）**: Windows 版のパッケージング（`scripts/package-windows.sh`）だけが使う。`wails3` は `go install github.com/wailsapp/wails/v3/cmd/wails3@<版>` で入れ、版は `go.mod` の `github.com/wailsapp/wails/v3` と同じものに固定する（v3 はベータ）。NSIS は `choco install nsis`（Windows）。通常の開発・`make build`・`make test` には要らない。
+- **`jq`**: pre-commit の `scripts/linterly-staged.sh`（コミット対象ファイルの行数チェック）と `scripts/linterly-baseline.sh`（行数の基準値チェック。`make lint-lines`・CI）、Windows 版のパッケージング `scripts/package-windows.sh`（`build/windows/info.json` へのバージョン書き込み）が使う。無いと「jq not found」で pre-commit が必ず失敗し、`scripts/package-windows.sh` もツール確認で失敗する（`make tools` では入らない。OS のパッケージマネージャで入れる。Windows の Git Bash には既定で入っていない）。
+- **Chrome / Chromium**: Lit コンポーネントのテスト（`*.wtest.ts`）を実際のブラウザで動かす `@web/test-runner-chrome`（`static/web-test-runner.config.mjs`）が、インストール済みの Chrome を探して使う。`make test-static`（したがって `make test` と pre-push）が必要とし、見つからないときは `CHROME_PATH` で実行ファイルを指定する。CI（GitHub-hosted の `ubuntu-latest`）は、イメージに入っている Chrome の版がイメージの更新で動くため使わず、`Ensure Chrome` ステップが常に Chrome for Testing を取得して `CHROME_PATH` に渡す（web-test-runner は `CHROME_PATH` を優先する）。GitHub-hosted の runner は毎回空の状態で始まるため、取得（`RUNNER_TOOL_CACHE` 以下への展開）は実行のたびに行い、実行の間には残らない。取得は版を固定する: ダウンローダ `@puppeteer/browsers` は `static/package.json` の devDependency（版を固定）で `package-lock.json` が解決し、`make tools` の `npm ci` が入れた `static/node_modules/.bin/browsers` を使う（`npx --yes` で未検証の版を取得しない）。Chrome の版は `ci.yml` の `Ensure Chrome` ステップの `CHROME_VERSION`（`chrome@<ビルド番号>` の完全な版。`stable` などの浮動チャンネルは使わない）で固定し、同じコミットで `make test-static` の結果が変わらないようにする。Chrome の版上げは `CHROME_VERSION` を手で書き換える（`@puppeteer/browsers` は dependabot の `npm` が更新する）。`browsers install` は Chrome for Testing の zip を `unzip` で展開する（`unzip` も任意依存の `yauzl` も無いと `Extraction failed: no zip archiver is available` で失敗する。`yauzl` は `package-lock.json` に無い）ため、`Ensure Chrome` は取得の前に `unzip` が PATH に無ければ `sudo -n apt-get install -y --no-install-recommends unzip` で入れる（ffmpeg と同じ。`ubuntu-latest` のイメージには `unzip` が入っていて、パスワード無しの sudo が使える）。取得に失敗したらステップが失敗する（`shell: bash` で `-o pipefail` を有効にし、`browsers install` が失敗した終了コードを `| tail | cut` に握りつぶさせない。得た `CHROME_PATH` が空・実行できないパスのときも `::error::` を出して `exit 1` する）ので、空の `CHROME_PATH` を書いたまま `Test` まで進まない。
+- **ffmpeg / ffprobe**: ビルドには要らず、実行時に任意（PATH に無ければ使わない）。無いと Judge（起動時に警告して無効になる）、Take のプレビュー（4K の 1080p プロキシ・サムネイル）、部分採用・区間指定の再生成の合成、Continue の最終フレーム取り出し、Rough Cut のプレビュー、音声制作（Audio Director: 音声の生成・ミックス・ラウドネス正規化・Lip Sync のクリップ切り出し）、最終 Export が使えない（Export は `ErrUnavailable`）。詳細は `spec/architecture/model-adapters.md` §10.2 と `spec/api/endpoints.md`・`spec/api/endpoints-api.md` の各 API。動作を確かめている版は 4.4 系（Ubuntu 22.04）と 8 系（`ubuntu-latest` の apt の 8.0.1）の両方。JPEG を作る呼び出し（サムネイルと Judge のフレーム。`backend/internal/media`）は、8 系の mjpeg エンコーダが限定レンジの YUV を拒否する（フレームが 1 枚も来ないまま開くと終了コード 234）ため、フィルタでフルレンジに変換し、`-strict unofficial` を付ける（付けただけでは JPEG の黒が 16・白が 235 になる）。
+- **Wails v3 CLI（`wails3`）と NSIS（`makensis`）**: Windows 版のパッケージング（`scripts/package-windows.sh`。上の `jq` も要る）だけが使う。`wails3` は `CGO_ENABLED=0 go install github.com/wailsapp/wails/v3/cmd/wails3@<版>` で入れ（cgo 有効だと Linux では webkitgtk-6.0 のヘッダを要求される）、版は `go.mod` の `github.com/wailsapp/wails/v3` と同じものに固定する（v3 はベータ）。NSIS は Linux では `apt install nsis`（リリースの `build` ジョブは、無ければ自動で入れる。下の「リリース」節）。通常の開発・`make build`・`make test` には要らない。
 
 ## タスク
 
@@ -18,18 +18,19 @@ Go（`go.mod` のバージョン）、Node.js（24。CI は `.github/workflows/c
 | `make fmt-check` | `gofmt -l backend static` が空であることと `templ fmt -fail backend`（goimports は見ない）、`biome format`（`npm run format:check --prefix static`）。未整形で失敗 |
 | `make lint` | `make lint-go` と `make lint-static` |
 | `make lint-lines` | `scripts/linterly-baseline.sh check`。`.linterly-baseline` より悪化した行数超過があれば失敗（Linterly 節）。`linterly` と `jq` が要る |
-| `make vuln` | `govulncheck ./...`。コードから到達できる既知の脆弱性（標準ライブラリ・依存モジュール）があれば失敗。`make tools` が入れる `govulncheck` が要る |
+| `make vuln` | `govulncheck ./...` を Linux ホストと Windows ターゲット（`GOOS=windows CGO_ENABLED=0 govulncheck ./...`。配布する Windows 版の `backend/cmd/wails`（`//go:build windows`）・Wails v3・Windows 実装は Linux の解析に入らないため）の両方で実行する。コードから到達できる既知の脆弱性（標準ライブラリ・依存モジュール）がどちらかにあれば失敗。`make tools` が入れる `govulncheck` が要る |
 | `make linterly-baseline` | `scripts/linterly-baseline.sh update`。`.linterly-baseline` を現在の `linterly check` の結果で書き換える |
 | `make lint-go` | `make generate` のあと `golangci-lint run ./...`（`.golangci.yml`。`gocyclo` 25 / `gocognit` 50 の複雑度上限を含む。「関数の複雑度」節） |
 | `make lint-static` | `tsc --noEmit`（`npm run typecheck --prefix static`）と `biome lint`（`npm run lint --prefix static`） |
 | `make test` | `make test-go` と `make test-static` と `make test-scripts` |
-| `make test-scripts` | `bash scripts/linterly-baseline_test.sh`（行数基準値のスクリプトのテスト。`jq` が要る）、`bash scripts/slow-tests_test.sh`（遅いテストの一覧を出すスクリプトのテスト。`jq` が要る）、`bash scripts/makefile_test.sh`（`Makefile` の全ターゲットが `.PHONY` と `make help` にあるか）、`bash scripts/complexity-ratchet_test.sh`（複雑度の許可リストの判定。`golangci-lint` が要る） |
+| `make test-scripts` | `bash scripts/linterly-baseline_test.sh`（行数基準値のスクリプトのテスト。`jq` が要る）、`bash scripts/slow-tests_test.sh`（遅いテストの一覧を出すスクリプトのテスト。`jq` が要る）、`bash scripts/makefile_test.sh`（`Makefile` の全ターゲットが `.PHONY` と `make help` にあるか、`.gitattributes` が `scripts/*.sh` などを LF に固定し、バイナリを `binary` にしているか）、`bash scripts/complexity-ratchet_test.sh`（複雑度の許可リストの判定。`golangci-lint` が要る）、`bash scripts/sign-checksums_test.sh`（`checksums.txt` の署名スクリプトのテスト。使い捨ての鍵で、鍵の組の不一致・空の鍵を失敗させる。`openssl` が要る）、`bash scripts/third-party-notices_test.sh`（`scripts/third-party-notices.sh` が表記ファイルを作ること、ライセンスファイルの無い依存で失敗することの検証。偽の `go` と `node` を使い、`jq` も `golangci-lint` も要らない） |
 | `make test-go` | `make generate` のあと `go test -race -timeout 30m -json ./...` を `scripts/slow-tests.sh` に流す（`-race` の逐次テストが長く、既定の 10 分では負荷時に足りない）。テストの出力は `go test` と同じに出し、最後に 3 秒（`SLOW_TEST_SECONDS`）を超えたテストを遅い順に最大 20 件 stderr に一覧する。警告だけで失敗にはしない（終了コードは `go test` のもの）。`jq` が要る |
 | `make test-static` | `npm test --prefix static` |
 | `make build` | `scripts/build.sh`（templ → esbuild/tailwind minify → go build）。`bin/mam` を作る |
 | `make build-all` | `scripts/build.sh --all`。windows / darwin / linux × amd64 / arm64 の 6 構成を `bin/mam-<os>-<arch>[.exe]`（Windows は `.exe` 付き）に出力する（`spec/requirements/non-functional.md` §1） |
 | `make clean` | `bin`・`tmp`・`static/src/dist/app.*` を削除する |
-| `scripts/package-windows.sh <version>` | Windows 版（Wails ウィンドウ）のパッケージング。templ → esbuild/tailwind → `wails3 package GOOS=windows`（`GOARCH=amd64`）で `bin/mam-<version>-windows-amd64.exe`（ポータブル）と `bin/mam-<version>-windows-amd64-setup.exe`（NSIS インストーラー）を作る。`<version>` は `X.Y.Z` 形式でなければ失敗する。Windows 上（Git Bash）で動かす。`make` のターゲットは無い（Windows に `make` が無いため） |
+| `scripts/package-windows.sh <version>` | Windows 版（Wails ウィンドウ）のパッケージング。templ → esbuild/tailwind → `wails3 package GOOS=windows`（`GOARCH=amd64`）で `bin/mam-<version>-windows-amd64.exe`（ポータブル）と `bin/mam-<version>-windows-amd64-setup.exe`（ユーザー単位の NSIS インストーラー）を作る。環境変数 `RELEASE_SIGNING_PUBLIC_KEY`（任意。公開鍵の base64）とバージョンを `-ldflags -X` でバイナリへ埋め込み、空なら警告を出して公開鍵なしで作る（「自動更新の配布物と署名」）。`<version>` は `X.Y.Z` 形式でなければ失敗する。`go`・`npm`・`wails3`・`makensis`・`jq` が要る（無いとツール確認で失敗する）。`templ` は PATH に要らず、`make generate` と同じく `go run` で go.mod と同じ版を使って生成する（Windows に `make` が無くても、古い `templ` が `*_templ.go` を書き換えない）。Windows 上（Git Bash）で動かす。`make` のターゲットは無い（Windows に `make` が無いため） |
+| `scripts/third-party-notices.sh [出力先]` | `THIRD_PARTY_NOTICES.md`（既定。リポジトリ直下）を再生成する。Windows 版 exe（`backend/cmd/wails`、`GOOS=windows`、`-tags production`）にリンクされる Go モジュールと Go の標準ライブラリ、本番フロントエンドバンドル（`static/src/main.ts` が import するもの）の npm パッケージと `tailwindcss` のライセンスファイルを、そのまま写す。`go` と `node` と、済ませた `npm ci --prefix static` が要る。ライセンスファイルが無い依存があると失敗する（表記から黙って漏れない）。`go.mod` や `static/package-lock.json` を変えたら実行し直す。`make` のターゲットは無く、CI でも実行しない |
 
 ## フロントエンドの整形・lint
 
@@ -43,15 +44,19 @@ Go（`go.mod` のバージョン）、Node.js（24。CI は `.github/workflows/c
 
 CI は `make fmt-check` と `make lint` を実行するため、上の検査は追加のステップ無しで CI に入る（`static/node_modules` は `make tools` の `npm ci` で用意される）。
 
+`static/build.mjs`（`npm run build` / `npm run dev`。`make build`・`scripts/package-windows.sh` が使う）は、esbuild と Tailwind を並べて動かす。Tailwind は `npx` を介さず、`process.execPath`（`node`）で、インストール済みの `@tailwindcss/cli`（`static/package.json` の devDependency）の `bin` が指すエントリを直接起動する（`shell` は使わない。Windows の `npx` は `npx.cmd` で、`shell` 無しの `spawn` では `ENOENT`（新しい Node では `EINVAL`）になるため。`--no-install` と同じく何も取得しない）。`static/src/build.test.ts` は環境変数 `MAM_TAILWIND_CLI`（Tailwind のエントリの上書き。テスト専用）で偽の Tailwind を差し込んで失敗経路を、PATH を空にして `npx` が無くても本物の Tailwind で本番ビルドが通ることを検査し、Windows でも動かす（SIGTERM のテストだけは Windows にシグナルが無いので Windows では飛ばす）。
+
 ## CI
 
-`.github/workflows/ci.yml`。`main` への push と全 PR で、組織の self-hosted runner（`runs-on: [self-hosted, Linux, X64]`）で実行する（GitHub-hosted の `ubuntu-latest` は課金で止まるとジョブが開始されず、CI が確認できなくなるため）。ツールは `make tools`（Makefile の版指定）で入れる。`make generate` → コミット済み `*_templ.go` の一致確認 → `fmt-check` → `lint` → 脆弱性の検査（`make vuln`。後述）→ 行数の悪化確認（`make lint-lines`。後述の Linterly 節）→ ffmpeg の確認（無ければ `sudo -n apt-get install -y ffmpeg`）→ `test` → `build` の順。`make generate` の直後に `*_templ.go` が変更・未追跡になっていれば（`.templ` と食い違う古い・手編集の出力、再生成漏れ）失敗させる。`lint` / `test` / `build` は先に再生成するため、この確認がないと食い違いが緑になる（`_templ.go` は git 管理で、素の `go build` はそれをそのままコンパイルする）。`cmd/wails`（`//go:build windows`）は Linux の通常のステップに入らないため、`GOOS=windows CGO_ENABLED=0` で `go build ./backend/...`・`go vet ./backend/...`・`golangci-lint run ./backend/...` を別ステップで実行する（Windows 版の壊れを PR で検知する）。
+`.github/workflows/ci.yml`。`main` への push と全 PR で、GitHub-hosted の `ubuntu-latest`（`runs-on: ubuntu-latest`）で実行する（公開リポジトリなら GitHub-hosted runner は無料で、外部の PR が自社のサーバーで動くこともない。トリガーは `push`（`main`）と `pull_request` だけで `pull_request_target` は使わず、secrets も使わない。`permissions` は `contents: read`）。ツールは `make tools`（Makefile の版指定）で入れる。`make generate` → コミット済み `*_templ.go` の一致確認 → `fmt-check` → `lint` → 脆弱性の検査（`make vuln`。後述）→ 行数の悪化確認（`make lint-lines`。後述の Linterly 節）→ ffmpeg の確認（無ければ `sudo -n apt-get install -y ffmpeg`）→ Chrome の確認（常に固定した版の Chrome for Testing を取得して `CHROME_PATH` に渡す。`unzip` が無ければ `sudo -n apt-get install -y unzip` で入れてから取得する。取得に失敗したらそのステップで失敗する。前提は開発ツールの「Chrome / Chromium」）→ `test` → `build` の順。`make generate` の直後に `*_templ.go` が変更・未追跡になっていれば（`.templ` と食い違う古い・手編集の出力、再生成漏れ）失敗させる。`lint` / `test` / `build` は先に再生成するため、この確認がないと食い違いが緑になる（`_templ.go` は git 管理で、素の `go build` はそれをそのままコンパイルする）。`cmd/wails`（`//go:build windows`）は Linux の通常のステップに入らないため、`GOOS=windows CGO_ENABLED=0` で `go build ./backend/...`・`go vet ./backend/...`・`golangci-lint run ./backend/...` を別ステップで実行する（Windows 版の壊れを PR で検知する）。
 
-標準ライブラリの脆弱性は Go の版で決まるため、`go.mod` の `toolchain` 行で修正版の Go（`actions/setup-go` の `go-version-file: go.mod` が CI と `release.yml` の両方で読む）を固定する。`lint` の次のステップで `make vuln`（`govulncheck ./...`）を実行し、コードから到達できる既知の脆弱性（標準ライブラリ・依存モジュール）があれば失敗させる。依存の更新 PR は `.github/dependabot.yml`（`gomod`・`npm`（`/static`）・`github-actions`）が週次で作る。
+標準ライブラリの脆弱性は Go の版で決まるため、`go.mod` の `toolchain` 行で修正版の Go（`actions/setup-go` の `go-version-file: go.mod` が CI と `release.yml` の両方で読む）を固定する。`lint` の次のステップで `make vuln`（`govulncheck ./...` を Linux ホストと `GOOS=windows CGO_ENABLED=0` の Windows ターゲットの両方で実行）を実行し、コードから到達できる既知の脆弱性（標準ライブラリ・依存モジュール）があれば失敗させる。Windows ターゲットも検査するのは、配布する exe の元になる `backend/cmd/wails`（`//go:build windows`）と Wails v3・Windows 実装が Linux の govulncheck の解析に一度も入らないため（Windows 向けの `go build` / `go vet` / `golangci-lint` を別ステップで回しているのと同じ理由）。依存の更新 PR は `.github/dependabot.yml`（`gomod`・`npm`（`/static`）・`github-actions`）が週次で作る。
 
-ffmpeg / ffprobe は runner のホストに入っているものを使い、PATH に無いときだけ `test` の前に導入する（パスワード無しの sudo が要る。無ければステップが失敗する）。ffmpeg を使う Go テスト（Judge のフレーム抽出、`media`、Audio Director のミックス、Take のプレビュー・部分採用・区間指定の再生成、Continue の最終フレーム）は、PATH に無いとローカルでは `t.Skip` されるが、`CI=true`（GitHub Actions が設定する）では `backend/internal/testenv` の `MissingFFmpeg` が失敗にする。CI の導入手順が外れても緑のまま飛ばされない。ffmpeg の無い開発機では該当テストが Skip され、lefthook の pre-push（同じ `make test`）でも同様なので、実ファイルの経路を確かめるには ffmpeg を入れてから `go test -v` で SKIP が出ていないことを見る。
+ffmpeg / ffprobe は `ubuntu-latest` のイメージに入っていないため、PATH に無いときに `test` の前に apt で導入する（runner のユーザーはパスワード無しの sudo が使える。導入できなければステップが失敗する）。ffmpeg を使う Go テスト（Judge のフレーム抽出、`media`、Audio Director のミックス、Take のプレビュー・部分採用・区間指定の再生成、Continue の最終フレーム）は、PATH に無いとローカルでは `t.Skip` されるが、`CI=true`（GitHub Actions が設定する）では `backend/internal/testenv` の `MissingFFmpeg` が失敗にする。CI の導入手順が外れても緑のまま飛ばされない。ffmpeg の無い開発機では該当テストが Skip され、lefthook の pre-push（同じ `make test`）でも同様なので、実ファイルの経路を確かめるには ffmpeg を入れてから `go test -v` で SKIP が出ていないことを見る。
 
-`actions/setup-go` / `actions/setup-node` は `actions/cache` を使わない（`cache: false`・`cache:` 指定なし）。self-hosted runner のホストが Go のモジュール・ビルドと npm のキャッシュを自前で持つためで、`setup-go` のキャッシュ保存が post ステップで 25 分以上止まりジョブが終わらなかったことがある。
+`actions/setup-go` / `actions/setup-node` は actions のキャッシュを使う。GitHub-hosted runner は毎回空の状態で始まるため、`setup-go` は Go のモジュール・ビルドのキャッシュを `go.sum` をキーに（`cache: true`・`cache-dependency-path: go.sum`）、`setup-node` は npm のキャッシュを `static/package-lock.json` をキーに（`cache: npm`・`cache-dependency-path: static/package-lock.json`）保存・復元する。`release.yml` の `verify`・`build` ジョブも同じ指定にする。
+
+`ci.yml` と `release.yml` の `uses:` はどちらもコミット SHA で固定する（行末のコメントがタグ。同じ action は両ファイルで同じ SHA・コメントにそろえる）。上流のタグが付け替えられても、書き込み権限を持つジョブや配布物を作るジョブで任意コードが走らないようにする。版は dependabot の `github-actions` が SHA とコメントごと更新する。
 
 Go テストの所要時間（`backend/internal/router`）: ffmpeg で作る素材（`testsrc` の mp4、`sine` の wav）は `testenv.FFmpegFile` / `testenv.PatternVideo` がプロセスごとに引数ごと 1 回だけ作り、各テストはそのバイト列を使う（テストごとに ffmpeg を起動しない）。DB・アセット置き場・鍵の保管庫（`credentialtest.Memory`（`backend/internal/credential/credentialtest`）。go-keyring のモックはプロセス全体で 1 つなので使わない）をテストごとに持つ `newApp` / `newEngine` / `newGenApp` / `newTakeApp` / `newJudgeApp` は `testenv.Parallel` で並列に走る。並列数は `testenv` が 8 に絞る（背景ワーカーのタイムアウト待ちが、負荷時に不安定になるのを避ける）。`t.Setenv` を使うテストは並列にできないので `newSerialApp` / `newSerialEngine` を使う。
 
@@ -59,33 +64,81 @@ Go テストの所要時間（`backend/internal/router`）: ffmpeg で作る素�
 
 ## リリース
 
-`.github/workflows/release.yml`。`v*` タグ（`vX.Y.Z`）の push で実行する。ワークフロー全体の `permissions` は `contents: read` で、書き込み権限（`contents: write`）を持つのは `release` ジョブだけ。ビルドの工程（`go install`・`choco install`・`npm ci`）は書き込み用の `GITHUB_TOKEN` を持たない環境で動く。`uses:` はコミット SHA で固定し（行末のコメントがタグ）、版は dependabot の `github-actions` が SHA ごと更新する。3 ジョブ構成（`verify` → `build` → `release`）:
+`.github/workflows/release.yml`。実行の契機は 2 つ。(1) `ci.yml`（`CI`）が `main` への push で成功して完了したとき（`workflow_run`）: `main` の先端を、最新の `v*` タグの patch を 1 つ上げた版（`vX.Y.Z` → `vX.Y.(Z+1)`、タグが 1 つも無ければ `v0.1.0`）でリリースする。誰もタグを打たない。(2) `v*` タグ（`vX.Y.Z`）の手動 push: minor・major を上げるときだけ使う。全ジョブは `ci.yml` と同じ GitHub-hosted の `ubuntu-latest`（`runs-on: ubuntu-latest`）で動く。Windows 版は Linux 上でクロスビルド（`GOOS=windows`、`CGO_ENABLED=0`）し、インストーラーは Linux の `makensis` で作る（Windows の runner は使わない）。ワークフロー全体の `permissions` は `contents: read` で、書き込み権限（`contents: write`）を持つのは `release` ジョブだけ（タグも `gh release create` が作る）。`workflow_run` は同じリポジトリの `main` への push で成功した CI の完了だけを `plan` ジョブの `if:` で通す（fork の CI の完了では動かない）。ビルドの工程（`go install`・NSIS の導入・`npm ci`）は書き込み用の `GITHUB_TOKEN` を持たない環境で動く。`uses:` はコミット SHA で固定し（行末のコメントがタグ）、版は dependabot の `github-actions` が SHA ごと更新する。`concurrency`（`group: release`、`cancel-in-progress: false`）で同時に 1 本だけ動かす（次の版を既存タグから決めるため、重ならないようにする）。待ち行列は 1 件しか持たないので、待っている間に更に新しい実行が来ると古い待機は取り消される（`main` の先端以外はどのみちリリースしない）。リリースするコミット `RELEASE_SHA` は、`workflow_run` では CI が通ったコミット（`workflow_run.head_sha`）、タグの push ではタグのコミット。4 ジョブ構成（`plan` → `verify` → `build` → `release`）:
 
-### `verify`（`ubuntu-latest`、`contents: read` + `actions: read`）
+### `plan`（`ubuntu-latest`、`contents: read`）
 
-タグのコミットを検証する。どれかが失敗したらビルドもリリースも走らない。
+リリースするかどうかとタグを決める。`workflow_run` は CI の実行ごとに起動するため、ジョブの `if` で、成功（`conclusion == success`）・`push` 由来・このリポジトリのブランチ（フォークの `main` を除く）に絞る。`fetch-depth: 0` で全タグと `main` の先端を取り、次のとおり決める。`release=false` のときは後続のジョブを動かさない。
 
-1. `git merge-base --is-ancestor "$GITHUB_SHA" origin/main`: タグのコミットが `main` の履歴にあること（`fetch-depth: 0`）。main 以外のコミットに打ったタグは公開しない
-2. CI の成功確認: `gh run list --workflow ci.yml --commit "$GITHUB_SHA"` に `success` の実行があること。CI が赤い、または未完了のコミットは公開しない（CI が通るのを待ってからタグを打つ）
-3. `make tools` → `make generate` → `make vuln`: CI の後に出た新しい脆弱性勧告でも止める
+- タグの push: タグが `vX.Y.Z` でなければ失敗。そのタグをリリースする
+- `workflow_run`: `RELEASE_SHA` が `origin/main` の先端でなければ `release=false`（CI が遅れて終わった古いコミットが、新しいコミットより新しい版を得ないようにする。その後の実行が先端をリリースする）。`RELEASE_SHA` に既に `v*` タグが付いていれば `release=false`（手動タグでリリース済みのコミットを二重に出さない）。それ以外は、`vX.Y.Z` 形式のタグを `--sort=-v:refname` で並べた先頭の patch に 1 を足す
 
-### `build`（`windows-latest`、`needs: verify`、`contents: read`）
+### `verify`（`ubuntu-latest`、`needs: plan`、`contents: read` + `actions: read`）
 
-1. checkout（`persist-credentials: false`）→ setup-go（`go.mod`）→ setup-node（24、npm キャッシュ）
-2. ツール: `templ`（`go.mod` の版）、`wails3`（`go.mod` の版）、`choco install nsis --version <版>`（ワークフローの `NSIS_VERSION` で固定）
-3. `bash scripts/package-windows.sh "${GITHUB_REF_NAME#v}"`（タグが `vX.Y.Z` でなければ失敗）
-4. スモーク（`bash scripts/smoke-windows.sh bin/mam-<version>-windows-amd64-setup.exe`）: インストーラーを `/S` で `RUNNER_TEMP` 配下へ静かにインストールし（`/D=`）、そのディレクトリの `mam.exe` を `--data-dir`（一時ディレクトリ）・`--port` 固定で起動して `GET /` が 200 を返すことを確認してから停止する。失敗したらリリースを作らない
-5. `actions/upload-artifact`（名前 `windows-release`）で 2 つの exe を `release` ジョブへ渡す
+リリースするコミットを検証する。どれかが失敗したらビルドもリリースも走らない。
 
-### `release`（`ubuntu-latest`、`needs: build`、`contents: write`）
+1. `git merge-base --is-ancestor "$RELEASE_SHA" origin/main`: コミットが `main` の履歴にあること（`fetch-depth: 0`）。main 以外のコミットに打ったタグは公開しない
+2. CI の成功確認: `gh run list --workflow ci.yml --commit "$RELEASE_SHA"` に `success` の実行があること。CI が赤い、または未完了のコミットは公開しない（手動タグは CI が通るのを待ってから打つ）
+3. `make tools` → `make generate` → `make vuln`（Linux と Windows の両方のターゲットを検査する）: CI の後に出た新しい脆弱性勧告でも止める。`setup-go` / `setup-node` は `ci.yml` と同じキャッシュ指定（`go.sum`・`static/package-lock.json`）
 
-checkout はせず（`GH_REPO` を渡す）、`actions/download-artifact` で受け取った exe を使って `gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --generate-notes --verify-tag dist/mam-<version>-windows-amd64-setup.exe dist/mam-<version>-windows-amd64.exe` を実行するだけ。
+### `build`（`ubuntu-latest`、`needs: [plan, verify]`、`contents: read`）
 
-成果物はこの 2 つだけ（`spec/requirements/non-functional.md` §1）。コード署名はしない（署名の手順を足す場合は別 Issue）。リリースノートは GitHub の自動生成に任せる。同じタグのリリースが既にあれば `gh release create` が失敗するため、作り直すときはタグとリリースを削除してから push し直す。
+1. checkout（`persist-credentials: false`）→ setup-go（`go.mod`、`go.sum` のキャッシュ）→ setup-node（24、npm のキャッシュ）。行末はリポジトリ直下の `.gitattributes`（`* text=auto eol=lf`。バイナリ（`*.png`・`*.ico`・`*.webm`・`*.exe`・`*.onnx`）は `binary`）で LF に固定している（Windows の git は `core.autocrlf=true` が既定で `scripts/*.sh` を CRLF にし、bash が `set: pipefail\r: invalid option name` で止まるため。Linux の runner でも `//go:embed` する `migrations/*.sql` の行末が変わらないよう、この指定を保つ）
+2. `wails3`（`go.mod` の版）: `CGO_ENABLED=0 go install`。`templ` は入れない（`scripts/package-windows.sh` が `go run` で `go.mod` の版を使う）
+3. NSIS（`makensis`）: PATH に無ければ導入する（`scripts/ensure-nsis.sh`。ワークフローはこれを呼ぶだけ）。passwordless sudo があれば `apt-get install nsis`。無ければ root 不要の方法として、`apt-get download nsis nsis-common` を `dpkg -x` でユーザーのキャッシュ（`${XDG_CACHE_HOME:-$HOME/.cache}/mam-release/nsis`）へ展開し、`NSISDIR`（スタブは `nsis-common` にある）を設定する `makensis` ラッパーを PATH に足す。キャッシュは実行をまたいで残る。版はディストリビューションのもの（固定しない）。導入できなければ失敗
+4. `Package`: `bash scripts/package-windows.sh "${TAG#v}"`（`TAG` は `plan` が決めたタグ）。環境変数 `RELEASE_SIGNING_PUBLIC_KEY` にリポジトリ変数 `vars.RELEASE_SIGNING_PUBLIC_KEY` を渡し、**空ならここで失敗する**（リリースのビルドは更新の署名検証用の公開鍵を必ず埋め込む）。スクリプトはバージョン（`v<X.Y.Z>`）と公開鍵を `-ldflags -X` で `backend/internal/version` へ埋め込む（後述「自動更新の配布物と署名」）
+5. `Checksums`: `cd bin && sha256sum mam-<version>-windows-amd64-setup.exe > checksums.txt`（対象はインストーラーだけ）
+6. `Sign checksums`: ジョブの最後の工程で、署名鍵（シークレット `RELEASE_SIGNING_KEY`）を見るのはこの工程だけ（`env` はこの工程に限る）。鍵は `umask 077` の一時ディレクトリへ書いて署名後すぐ消す。`scripts/sign-checksums.sh bin`（中身は `openssl pkeyutl -sign -rawin -inkey <鍵> -in bin/checksums.txt | base64 -w0 > bin/checksums.txt.sig`。テストは `scripts/sign-checksums_test.sh`）で、`checksums.txt` の ed25519 分離署名（生の 64 バイトの base64）を作る。続けて同じ工程で、公開鍵（`RELEASE_SIGNING_PUBLIC_KEY` の base64 を 32 バイトに戻し、ASN.1 の接頭辞 `302a300506032b6570032100` を付けて DER にしたもの）で `openssl pkeyutl -verify -rawin -pubin` を実行し、鍵の組が合わなければビルドを失敗させる（どのアプリも検証に失敗するリリースを公開しない）。`RELEASE_SIGNING_KEY` が空でも失敗する。検証に使う公開鍵は `vars.RELEASE_SIGNING_VERIFY_PUBLIC_KEY`（任意。鍵の更新の 1 回だけ使う）があればそれ、無ければ `vars.RELEASE_SIGNING_PUBLIC_KEY`。署名鍵は書き込み用トークンではないので、`build` は `contents: read` のまま
+7. `actions/upload-artifact`（名前 `windows-release`）で 4 つのファイル（2 つの exe・`checksums.txt`・`checksums.txt.sig`）を `release` ジョブへ渡す
+
+Windows 上で動かす検査（`fsutil` の `LockFileEx`・`GetDiskFreeSpaceEx` の実装や `GOOS=windows` 分岐のテスト、子プロセスのコンソール非表示のテスト、フロントエンドの Windows 上のビルド、インストーラーのスモーク `scripts/smoke-windows.sh`）は、Windows の runner が無いためリリースでは動かさない。`smoke-windows.sh` は Windows の機械で手動実行する用に残す（`bash scripts/smoke-windows.sh bin/mam-<version>-windows-amd64-setup.exe`）。
+
+### `release`（`ubuntu-latest`、`needs: [plan, build]`、`contents: write`）
+
+checkout はせず（`GH_REPO` を渡す）、`actions/download-artifact` で受け取った 4 つのファイルを使って `gh release create "$TAG" --title "$TAG" --generate-notes --target "$RELEASE_SHA" dist/mam-<version>-windows-amd64-setup.exe dist/mam-<version>-windows-amd64.exe dist/checksums.txt dist/checksums.txt.sig` を実行するだけ。`--target` はタグが無ければそのコミットにタグを作り、手動タグの push ならそのタグをそのまま使う。トークンは `GITHUB_TOKEN`（`contents: write`）だけで足りる。この Release が、インストール済みのアプリが更新を確認する先でもある（アプリは `ousiassllc/mam` の Releases を見る。別のリポジトリへ複製する `publish` ジョブとその PAT のシークレットは持たない）。
+
+成果物は 4 つ（`spec/requirements/non-functional.md` §1）。Authenticode のコード署名はしない（更新用の ed25519 署名は別物。後述）。リリースノートは GitHub の自動生成に任せる。タグはビルドまで通った後の `release` ジョブでだけ作るので、途中で失敗してもタグは残らず、`main` に次の push があれば同じ版で作り直される。同じタグのリリースが既にあれば `gh release create` が失敗するため、手動タグで作り直すときはタグとリリースを削除してから push し直す。`CI` が失敗・取り消しになった push は、`plan` ジョブごとスキップされる（Actions の一覧には Skipped の Release 実行が並ぶ）。
+
+リポジトリが非公開の間は、アプリが認証無しで照会しても GitHub は 404 を返すので、アプリは「リリースなし」のままになる（失敗ではない）。リポジトリを公開すれば、署名付きの Release が見える。古い版からのつなぎ: 別の公開リポジトリ `ousiassllc/mam-releases`（Release もタグも無い）を確認する版は一度も配布されておらず、つなぐ実装は要らない。配布済みの v0.1.0・v0.1.1 は、自動更新を持たず `checksums.txt` も署名も付いていないので、利用者は署名付きの最初のリリースを手動でインストールする（以後は自動で更新される）。
+
+## 自動更新の配布物と署名
+
+アプリの自動更新（`spec/architecture/desktop.md`）が信頼する配布物の約束。
+
+- **配布物**（`ousiassllc/mam` のリリース。タグは `v<X.Y.Z>`）: `mam-<X.Y.Z>-windows-amd64-setup.exe`（アプリが実行するインストーラー）、`mam-<X.Y.Z>-windows-amd64.exe`（ポータブル。自動ではインストールしない）、`checksums.txt`（インストーラーだけへの `sha256sum` の出力。`<hex>  mam-<X.Y.Z>-windows-amd64-setup.exe`）、`checksums.txt.sig`
+- **署名**: `checksums.txt` の ed25519 分離署名を、生の 64 バイトの base64 にしたもの。アプリは、バイナリに埋め込んだ公開鍵（生の 32 バイトの base64）で `checksums.txt.sig` を検証してから、インストーラーの SHA-256 を `checksums.txt` と照らす。
+- **埋め込み**: `scripts/package-windows.sh`（`build/windows/Taskfile.yml` の `go build`）が `-X github.com/ousiassllc/mam/backend/internal/version.Version=v<X.Y.Z>` と `-X …/version.ReleasePublicKey=<環境変数 RELEASE_SIGNING_PUBLIC_KEY>` を渡す。`RELEASE_SIGNING_PUBLIC_KEY` が空のスクリプト実行（手元のビルド）は警告を出して続行し、公開鍵なしの exe を作る（アプリは警告を出して署名検証を省く）。バージョン引数が無い Taskfile の直接実行は `Version=dev`（アプリは更新確認をしない）。リリースの CI は公開鍵が空なら失敗する。
+- **シークレットと変数**（リポジトリ `ousiassllc/mam`）: `secrets.RELEASE_SIGNING_KEY`（ed25519 秘密鍵の PEM。`Sign checksums` だけが見る）、`vars.RELEASE_SIGNING_PUBLIC_KEY`（公開鍵の生 32 バイトの base64。ビルドへの埋め込みと署名の検証に使う）。Release の作成には `GITHUB_TOKEN` だけを使い、個人アクセストークンのシークレットは要らない。
+- **鍵の更新**: インストール済みのアプリは古い公開鍵を埋め込んでいるので、鍵をいきなり替えると、以後のリリースは既存のアプリに検証されず更新されなくなる。次の順で替える。(1) リポジトリ変数 `RELEASE_SIGNING_PUBLIC_KEY` を**新しい**公開鍵に、`RELEASE_SIGNING_VERIFY_PUBLIC_KEY`（任意の変数。`Sign checksums` が署名の検証に使う公開鍵を、埋め込む鍵と別にするためのもの）を**古い**公開鍵にし、シークレット `RELEASE_SIGNING_KEY` は**古い**秘密鍵のまま 1 回リリースする（古い鍵で署名され、新しい公開鍵を埋め込んだアプリが出る）。(2) 既存のアプリがこのリリースへ更新されるのを待つ。(3) `RELEASE_SIGNING_KEY` を新しい秘密鍵に替え、`RELEASE_SIGNING_VERIFY_PUBLIC_KEY` を削除する。(1) を飛ばした場合や、(2) の前に替えた場合、更新できないアプリは新しいインストーラーを手動で入れ直すまで更新されない。
+- **ユーザー単位のインストール**: インストーラーは `WAILS_INSTALL_SCOPE=user` で作る（`build/windows/Taskfile.yml` の `makensis -DWAILS_INSTALL_SCOPE=user`）。実行レベルは `asInvoker`（管理者権限なし。UAC の確認が出ない）、インストール先は `$LOCALAPPDATA\Programs\MAM`、アンインストール情報は `HKCU`、ショートカットは現在のユーザーの Start メニューとデスクトップ。自動更新が `/S` で実行しても確認が出ない。v0.1.x の管理者権限のインストール（`C:\Program Files\MAM`・`HKLM`）は移行しない。ユーザー単位の版は別に入るので、旧版は「設定 > アプリ」から手動でアンインストールする。
+
+## MCP サーバーの設定
+
+MCP サーバー（`spec/architecture/mcp.md`）の設定は 2 つ。どちらも `app.Run` が読むので、ブラウザ版・Wails 版で同じ。
+
+- **ポート**: `--mcp-port` / 環境変数 `MAM_MCP_PORT`（既定 8788。0 は OS に任せる。使用中なら OS が選ぶ空きポートで、実際のアドレスはログの `mcp server started` と設定画面に出る）。フラグが環境変数に勝ち、環境変数の値が不正でも `--mcp-port` を渡せば起動できる（`--port` / `MAM_PORT` と同じ）。
+- **待ち受け先の IP**: データディレクトリの `mcp.json`（`{"bind_address": "100.101.102.103"}`）。**設定画面の「MCP サーバー」から保存する**のが基本（保存するとその場で切り替わる）。ファイルが無い・キーが無いときは `127.0.0.1`。値は「このマシンのインターフェースにある、ループバックか `100.64.0.0/10` の IP」だけで、起動時に使えなければ `127.0.0.1` で待ち受けて画面に理由を出す。`mcp.json` に他のキーがあっても保存で消えない。`llm.json` / `models.json` と違い、起動オプションで固定するファイルは無い。
+
+
+## ローカル・代替モデルの設定
+
+ComfyUI・OpenAI 互換の接続先とそのモデル（`spec/architecture/local-models.md`）は、`models.json` の `endpoints` と `local_models` に書く（スキーマは同書 §3）。`--model-config` で固定したファイルは読み取り専用で、保存した接続先・モデルは再起動なしで反映される。接続先の API キー（任意）は設定画面から `credential.Store` に保存する。ComfyUI は 0.3.57 以上を推奨（取り消しが他のジョブを止めないため）。
+
+## モデルマネージャーの設定（ComfyUI エンジンの取得と検出）
+
+設計は `spec/architecture/model-manager/model-manager.md`。専用の設定ファイルや環境変数は無く、導入状態（自動起動の有無・導入したエンジンとモデル・ライセンスの同意）は exe と同じ場所の `comfyui\state.json` に、画面（別 Issue）から保存する。置き場所は `<mam.exe のディレクトリ>\comfyui`（インストール版は `%LOCALAPPDATA%\Programs\MAM\comfyui`）で、`--data-dir` では変えられない。
+
+コマンドラインの追加オプション（`--help` に出る。ウィンドウ・データディレクトリ・単一起動の確認より前に処理し、JSON を出して終了する。インストーラーと利用者が使う）:
+
+- `--detect-gpu`: GPU（アダプター名・ベンダー・専用 VRAM）と、推奨する ComfyUI のビルド（`nvidia`・`nvidia_cu126`・`amd`・`intel`、または対応なし）の JSON。Windows 以外は空。
+- `--detect-comfyui`: `127.0.0.1:8188`・`:8000` で動いている ComfyUI（版つき）と、ComfyUI Desktop の設定（`%APPDATA%\ComfyUI\config.json`）の JSON。
+- 両方を付けると `{"gpu": ..., "comfyui": ...}`。`--detect-output FILE` で標準出力ではなくファイルへ書く（`-H windowsgui` の exe はコンソールに書けないことがあるため、インストーラーはこちらを使うと確実）。
+
+テストは `go test ./backend/internal/app/ -run Detect`。Windows の GPU 検出（DXGI）は Windows 上でしか動かず、未検証（model-manager.md §11）。
 
 ## Linterly
 
-`.linterly.yml`。行数上限はデフォルト（1 ファイル 300 行 / 1 ディレクトリ 2000 行）のまま維持し、特別な理由がない限り変えない。除外は生成物（`*_templ.go`、`static/src/dist/**`、`package-lock.json`）のみで、手書きソースは除外しない。
+`.linterly.yml`。行数上限はデフォルト（1 ファイル 300 行 / 1 ディレクトリ 2000 行）のまま維持し、特別な理由がない限り変えない。除外は生成物（`*_templ.go`、`static/src/dist/**`、`package-lock.json`、`go.sum`）、ライセンス全文（`LICENSE`、`THIRD_PARTY_NOTICES.md`）、ドキュメント（Markdown。`**/*.md`。Issue #850 の判断）で、手書きのソースコードは除外しない。
 
 既存の超過（linterly の `error`: 上限に `warning_threshold` を足した値を超えたもの。`linterly check` が exit 1 になる判定と同じ）は、超過ゼロを目標にせず、**増やさないことを CI で保証する**。超過しているファイルとディレクトリの行数を `.linterly-baseline`（`<行数><TAB><パス>`、ディレクトリは末尾 `/`）に基準値として記録し、`scripts/linterly-baseline.sh check`（`make lint-lines`、CI の「Line limit (no regression)」ステップ）が次のどちらかで失敗させる。
 
@@ -96,7 +149,7 @@ checkout はせず（`GH_REPO` を渡す）、`actions/download-artifact` で受
 
 ディレクトリ上限（2000 行）も同じ基準値方式で扱い、Go のフラットなパッケージ向けの別基準（ファイル数など）は設けない。超過しているパッケージは、その直下の合計行数を増やせない（ファイルの追加・既存ファイルの行増で CI が落ちる）。新しいコードは新しいパッケージへ置くか、パッケージを責務ごとに分割して満たす。分割できたら基準値から外す。
 
-仕様書（Markdown）も計測対象で、同じ基準で扱う。改訂履歴の追記で本文が基準値や上限を超えそうなときは、基準値を上げず、改訂履歴の表を `<spec>.changelog.md`（例: `spec/architecture/overview.changelog.md`）へ移し、本文には参照だけを残す（`overview.md`・`endpoints.md`・`er.md`・`model-adapters.md` は分割済み。新しい版はそれぞれの `*.changelog.md` の末尾に足す）。
+ドキュメント（Markdown）は行数チェックの対象外で、`linterly` の計測にも `.linterly-baseline` にも載らない（Issue #850 の判断。仕様書は 1 つの話題を 1 ファイルに保つため、行数で分割する必要はない）。このため `spec/architecture/er.md`・`spec/spec.md` は基準値から外した。すでに分割してある `*.changelog.md`（`overview.md`・`endpoints.md`・`er.md`・`model-adapters.md` ほか）は、そのまま使ってよい（新しい版はそれぞれの `*.changelog.md` の末尾に足す）。ただし、行数のために分割する義務はない。
 
 pre-commit（`scripts/linterly-staged.sh`）は従来どおり、コミット対象のファイルが超過していれば基準値の有無に関わらず止める。
 
@@ -110,7 +163,7 @@ pre-commit（`scripts/linterly-staged.sh`）は従来どおり、コミット対
 
 `lefthook.yml`（`lefthook install` で有効化）。
 
-- pre-commit: コミット対象ファイルの行数（`scripts/linterly-staged.sh`。`linterly check` は 1 パスしか受け取れないため全体結果をコミット対象に絞る）、`make fmt-check`（`*.go` / `*.templ` / `*.ts`）、`make lint-go`、`make lint-static`（`static/**/*.ts` がある場合。`tsc` と Biome lint）
+- pre-commit: コミット対象ファイルの行数（`scripts/linterly-staged.sh`。`linterly check` は 1 パスしか受け取れないため全体結果をコミット対象に絞る）、`make fmt-check`（`*.go` / `*.templ` / `*.ts` / `*.mjs`）、`make lint-go`、`make lint-static`（`static/**/*.ts` / `static/*.mjs` がある場合。`tsc` と Biome lint）
 - pre-push: `go build ./...` と `go vet ./...`、それに `make test`
 
 ## 改訂履歴
@@ -133,3 +186,28 @@ pre-commit（`scripts/linterly-staged.sh`）は従来どおり、コミット対
 | 1.14 | 2026-10-12 | `make test-go` を `go test -json` + `scripts/slow-tests.sh` にし、3 秒を超えたテストを一覧に出すようにした。CI 節に `router` のテストの素材共有と並列化を追記 | Issue #558。`router` の 215 本が直列で 226〜350 秒かかり、ffmpeg で同じ素材をテストごとに作っていた |
 | 1.15 | 2026-10-12 | 「Go テストの所要時間」の段落で、router テストの鍵の保管庫を `memStore` から `credentialtest.Memory`（`backend/internal/credential/credentialtest`）に直した | Issue #559。`backend/internal/router` に `memStore` は無く、実装は #558 で入れた `credentialtest.Memory` だった |
 | 1.16 | 2026-10-12 | CI（`ci.yml`）の実行先を `ubuntu-latest` から組織の self-hosted runner（`[self-hosted, Linux, X64]`）に変え、ffmpeg の導入を「無いときだけ `sudo -n apt-get`」に改めた。Chrome・ffmpeg は runner のホストのものを使い、Linux 版 Chrome が無い runner では `Ensure Chrome` ステップが Chrome for Testing を取得し、`setup-go` / `setup-node` は actions のキャッシュを使わないと CI 節・開発ツールに明記 | GitHub-hosted runner の課金停止で CI ジョブが開始されず、PR #707 の CI が確認できなかった。組織には online の self-hosted runner が 2 台あり、うち `silent` は Windows の chrome.exe しか見えず `make test-static` が起動に失敗し、`setup-go` のキャッシュ保存が止まった |
+| 1.17 | 2026-10-15 | `jq` の用途に `scripts/package-windows.sh`（`build/windows/info.json` へのバージョン書き込み）を加え、Windows 版パッケージングの前提（開発ツール・タスク表の `scripts/package-windows.sh`）に `jq` を明記した。README の前提も同様に直した | Issue #724。`package-windows.sh` は `jq` を必須としツール確認で失敗するのに、仕様書は `jq` の用途を pre-commit・行数基準値のスクリプトに限り、Windows 版パッケージングの前提を `wails3` と NSIS だけとしていた（リリースの CI は runner に `jq` があるため表に出ていなかった） |
+| 1.18 | 2026-10-15 | CI 節に、`ci.yml` も `release.yml` と同じく `uses:` をコミット SHA で固定する方針を追記し、`ci.yml` の `actions/checkout` / `setup-go` / `setup-node` を `release.yml` と同じ SHA に固定した | Issue #722。`ci.yml` だけ浮動タグ（`@v4` / `@v5`）のままで、self-hosted runner（ホストにキャッシュが残る）上でタグの付け替えによる任意コード実行を許していた |
+| 1.19 | 2026-10-15 | CI の `Ensure Chrome` ステップを、`npx --yes @puppeteer/browsers install chrome@stable` から、`static/package.json` の devDependency に固定した `@puppeteer/browsers`（`static/node_modules/.bin/browsers`）と `CHROME_VERSION` で固定した Chrome for Testing の取得に改め、「Chrome / Chromium」に版固定の方針を追記した | Issue #723。`@puppeteer/browsers` も `chrome@stable` も版が固定されておらず、`--yes` で未検証のパッケージを取得して self-hosted runner 上で実行していた。`stable` が進むと同じコミットで Lit コンポーネントテストの結果が変わりえた |
+| 1.20 | 2026-10-15 | 開発ツールの「Chrome / Chromium」と CI 節に、`Ensure Chrome` が Chrome for Testing の zip 展開に `unzip` を必要とすることを明記し、`ci.yml` の `Ensure Chrome` に、`unzip` が無いときだけ `sudo -n apt-get install` で入れる確認を足した（ffmpeg と同じ扱い） | Issue #726。`browsers install` は `unzip`（か任意依存の `yauzl`）が無いと `Extraction failed: no zip archiver is available` で失敗するが、`ci.yml` も仕様書も `unzip` の前提を確認・記載していなかった。Linux 版 Chrome も `unzip` も無い最小構成の runner で、このステップだけが分かりにくく失敗した |
+| 1.21 | 2026-10-16 | CI の `Ensure Chrome` ステップに `shell: bash`（`bash -eo pipefail`）を指定し、取得した Chrome のパスが空・実行不可なら `::error::` を出して失敗させるようにした。開発ツールの「Chrome / Chromium」と CI 節に「取得に失敗したらステップが失敗する」ことを明記した | Issue #728。`ci.yml` の `Ensure Chrome` は `shell:` 未指定（既定は `bash -e` で `pipefail` なし）のため、`browsers install \| tail \| cut` の終了コードが `cut` の 0 になり、取得に失敗してもステップが成功して空の `CHROME_PATH=` を `$GITHUB_ENV` に書いていた。失敗が後続の `Test` で別の症状として現れ、原因が読めなかった |
+| 1.22 | 2026-10-16 | 「フロントエンドの整形・lint」節の後に、`static/build.mjs` が Tailwind を `npx` ではなく `node` でインストール済みの `@tailwindcss/cli` のエントリから直接起動することを追記し、`release.yml` の `build` ジョブの手順に、パッケージの前に Windows 上でフロントエンドのビルドと `build.test.ts` を動かす手順（手順 3）を足した（以降の手順は繰り下げ） | Issue #765。`build.mjs` は `spawn('npx', …)`（`shell` 無し）で Tailwind を起動しており、Windows の `npx.cmd` を起動できず `build failed: spawn npx ENOENT` で `scripts/package-windows.sh` が止まり、リリースの `build` ジョブ（`windows-latest`）が成功しなかった。CI は Linux だけで、`build.test.ts` の Tailwind 異常系も Windows では `skipIf` で飛ばしていたため、この経路は一度も検証されていなかった |
+| 1.23 | 2026-10-16 | `make vuln` を Linux ホストに加えて Windows ターゲット（`GOOS=windows CGO_ENABLED=0 govulncheck ./...`）でも実行するようにし、タスク表・CI 節・リリース節 `verify` の手順 3 に「Linux と Windows の両方のターゲットを検査する」ことを明記した。`scripts/makefile_test.sh` に `make vuln` が両方を実行する検査を足した | Issue #767。`make vuln` は `GOOS` を指定せず Linux でだけ走り、配布する Windows 版の `backend/cmd/wails`（`//go:build windows`）と Wails v3・`fsutil` の Windows 実装・標準ライブラリの Windows 実装が検査の対象外だった（1.8 の「CI と配布する Windows バイナリ」を守るという記述と実装がずれていた）。Windows ターゲットでも現時点で脆弱性は無く、見逃しではなく網羅範囲のずれ |
+| 1.24 | 2026-10-16 | `release.yml` の `build` ジョブの手順に、パッケージの前に Windows 上で `fsutil`・`desktop`・`app`・`config` の Go テストを動かす手順（手順 4）を足した（以降の手順は繰り下げ）。ffmpeg を要するパッケージは対象外とし、その理由を明記した | Issue #771。`fsutil` の Windows 実装（`LockFileEx`・`GetDiskFreeSpaceEx`）と `runtime.GOOS == "windows"` で分岐するテストは、CI（Linux だけ。Windows はビルド・vet・lint まで）でもリリースの `build` ジョブ（スモークは起動時のロック取得だけ）でも `go test` されず、`FreeBytes` の Windows 経路や 2 回目のロック失敗が検証されていなかった（#767 と同種の網羅範囲のずれ） |
+| 1.25 | 2026-10-16 | `scripts/package-windows.sh` が `templ generate` を PATH 上の `templ` ではなく `go run github.com/a-h/templ/cmd/templ@<go.mod の版>` で実行するようにし、`templ` を同スクリプトの前提ツール（タスク表・リリース節の「ツール」・`release.yml` の `Install tools`）から外した。`scripts/makefile_test.sh` に同スクリプトの検査を足した | Issue #768。`Makefile` は PATH の `templ` を使わない方針（古い `templ` が go.mod とずれた `*_templ.go` を書き CI の鮮度確認が落ちる）なのに、`make` の無い Windows で使う `package-windows.sh` だけ版を検証せず PATH の `templ` を使い、`wails3` だけ版を検証していた |
+| 1.26 | 2026-10-16 | Git Hooks 節の pre-commit の対象を `*.mjs`（`make fmt-check`）・`static/*.mjs`（`make lint-static`）まで広げ、`lefthook.yml` の glob も同じにした | Issue #773。Biome の対象（`static/biome.json`）と CI の `make fmt-check` は `static/build.mjs`・`static/web-test-runner.config.mjs` を見るのに、lefthook の glob が `*.ts` だけで、`.mjs` だけを変えたコミットでは整形・lint が走らず push 後の CI まで検出されなかった |
+| 1.27 | 2026-10-16 | `release.yml` の `build` ジョブの手順に、パッケージの前に Windows 上で `internal/media` の `TestHideWindowSetsNoConsoleFlags` だけを `-run` で動かす手順（手順 5）を足した（以降の手順は繰り下げ）。手順 4 の「ffmpeg を要するパッケージは含めない」を「丸ごとは含めない」に直した | Issue #774。#770 の Windows 専用テスト `run_windows_test.go` は、`ci.yml`（Linux だけ）でも手順 4 の対象（`media` が入っていない）でもどこでも実行されず、`run` が `hideWindow` を呼ばなくなる退行を検出できなかった。このテストは ffmpeg を起動しないので、`testenv.MissingFFmpeg` に掛からないよう `-run` で絞れば `build` ジョブで動かせる |
+| 1.28 | 2026-10-16 | リポジトリ直下に `.gitattributes`（`* text=auto eol=lf`、`*.png`・`*.ico`・`*.webm`・`*.exe`・`*.onnx` は `binary`）を追加し、リリース節 `build` ジョブの手順 1 に、行末を LF に固定している理由（Windows runner の `core.autocrlf=true` で bash スクリプトが壊れる）を明記した。`scripts/makefile_test.sh` に、`scripts/*.sh`・`migrations/*.sql`・`Makefile` が LF に固定され、リポジトリのバイナリファイルが `binary` として明示されている検査を足した | Issue #776。`.gitattributes` が無く、`windows-latest` の checkout が `core.autocrlf=true` で `scripts/package-windows.sh` / `scripts/smoke-windows.sh` を CRLF にし、タグを打つたびに「Package」ステップが `set: pipefail\r: invalid option name` で失敗してリリースが作れなかった（Linux / macOS・CI では再現しないため未検出だった） |
+| 1.29 | 2026-10-16 | 手順 5 の Windows 上のテストに `TestRunHidesConsoleWindow` を足し、`internal/media` の `run` の `exec.Cmd` 生成を差し込める変数 `commandContext` にした。手順 5 の説明を、`hideWindow` 単体の検査と `run` 経由の検査に分けて書き直した | Issue #777。`TestHideWindowSetsNoConsoleFlags` は `hideWindow` を直接呼ぶだけで `run` を通らず、`run` から `hideWindow(cmd)` を消しても通るのに、手順 5 は「`run` の退行を検出する」と述べていた。`run` を実 exe で通して作られた `exec.Cmd` を検査するテストを足して記述を実態に合わせた |
+| 1.30 | 2026-10-21 | リリース節を、`main` への push で `ci.yml` が成功した後に自動で次の patch 版をリリースする（`workflow_run`）構成に書き換え、リリースする版とコミットを決める `plan` ジョブを足した（3 → 4 ジョブ）。手動の `v*` タグは minor・major を上げる用に残した。`concurrency` で直列化し、`main` の先端以外・タグ済みのコミットはリリースしない | `release.yml` が一度も動いておらず、リリースのたびにタグを手で打つ運用だったため。`main` に入れるだけで配布物が出るようにする |
+| 1.31 | 2026-10-21 | リリースの全ジョブを self-hosted の Linux runner へ移し、Windows 版は Linux 上のクロスビルド + `makensis` で作る構成にした。`build` ジョブから Windows 上のテスト・フロントエンドの Windows 上のビルド・インストーラーのスモークを外し（`smoke-windows.sh` は手動用に残す）、`wails3` を `CGO_ENABLED=0` で入れ、NSIS を無ければ自動で導入する（sudo があれば apt、無ければ root 不要で展開）手順を足した。依存ツールの節の NSIS の入れ方も改めた | 初回のリリース実行（PR #820 のマージ後）が、GitHub-hosted runner の課金の支払い失敗で `plan` ジョブから起動できず失敗したため。Linux 上で `scripts/package-windows.sh` がインストーラー・単体 exe まで通ることを確認済み |
+| 1.32 | 2026-10-21 | ffmpeg の節の API の参照先に `spec/api/endpoints-api.md` を加えた | `endpoints.md`・`model-adapters.md` が行数上限（300 行）を超え、後半を別ファイルに分けたため（`spec/api/endpoints.changelog.md` 1.149、`spec/architecture/model-adapters.changelog.md` 1.46） |
+| 1.33 | 2026-10-24 | CI（`ci.yml`）と `release.yml` の全ジョブの実行先を、組織の self-hosted runner から GitHub-hosted の `ubuntu-latest` へ戻した（Windows 版は引き続き Linux 上のクロスビルド）。`setup-go`（`go.sum`）・`setup-node`（`static/package-lock.json`）の actions キャッシュを有効にし、`Ensure Chrome` を「ホストの Chrome が無いときだけ取得」から「常に固定版の Chrome for Testing を取得」に改め、ffmpeg は `ubuntu-latest` に無いため apt で導入する旨に直した。CI 節に `pull_request_target`・secrets を使わないことと、`workflow_run` が同一リポジトリの `main` の成功時だけ動くことを明記した | Issue #825。リポジトリを公開する準備として、公開リポジトリなら無料の GitHub-hosted runner に移し、外部の PR が自社のサーバーで動かないようにするため（1.16・1.31 は GitHub-hosted の課金停止で self-hosted へ移していた） |
+| 1.34 | 2026-10-24 | リポジトリ直下に `LICENSE`（AGPL-3.0）と `THIRD_PARTY_NOTICES.md` を足し、`scripts/third-party-notices.sh`（`THIRD_PARTY_NOTICES.md` の再生成）とそのテスト `scripts/third-party-notices_test.sh`（`make test-scripts` に入れた）をタスク表に足した。Linterly の除外に `LICENSE` と `THIRD_PARTY_NOTICES.md` を足した。「Chrome / Chromium」の記述を、GitHub-hosted の runner は毎回空の状態で始まるため Chrome for Testing を実行のたびに取得する（実行の間には残らない）と改めた | Issue #826。公開に向けてライセンスを AGPL-3.0 にし、サードパーティのライセンス表記を足したため。`LICENSE` と生成物の `THIRD_PARTY_NOTICES.md` は行数上限の対象にしない。Chrome の記述は「ツールキャッシュ」が実行間で残るように読めたため直した（Issue #825 の見直し） |
+| 1.35 | 2026-10-21 | リリースにアプリの自動更新のための配布を足した。`build` に `RELEASE_SIGNING_PUBLIC_KEY`（変数）の必須化と `-ldflags -X` でのバージョン・公開鍵の埋め込み、`checksums.txt` の作成と ed25519 署名（`RELEASE_SIGNING_KEY`、最後の工程、同じ工程で公開鍵を使って検証）を、`release` に 4 ファイルの添付を足し、公開リポジトリ `ousiassllc/mam-releases` へ公開する `publish` ジョブ（`RELEASES_TOKEN`、再実行で冪等）を足した（4 → 5 ジョブ）。インストーラーをユーザー単位（`WAILS_INSTALL_SCOPE=user`）にし、「自動更新の配布物と署名」節（配布物・署名・埋め込み・シークレット・鍵の更新手順・v0.1.x の管理者権限インストールは移行しないこと）を追加した | MAM 本体のリポジトリは非公開で、インストール済みのアプリが更新を確認・取得できる場所が無かった。更新を管理者権限の確認（UAC）なしで `/S` 実行できるようにし、配布物の改ざんをアプリが署名で検出できるようにする |
+| 1.36 | 2026-10-24 | `publish` ジョブ（公開リポジトリ `ousiassllc/mam-releases` への複製）を削除し、`RELEASES_TOKEN` を不要にした（5 → 4 ジョブ）。`release` の Release が、アプリの更新の確認先になる。「自動更新の配布物と署名」節の配布物の置き場とシークレットを改め、古い版からのつなぎ（`mam-releases` を見る版は配布されておらず、v0.1.0・v0.1.1 は手動で入れ替える）を書いた | 公開後は mam 自身の Release から配る（Issue #827）。リポジトリを公開すれば別の公開リポジトリと PAT は要らず、`GITHUB_TOKEN` だけで済む |
+| 1.37 | 2026-10-24 | 開発ツールの「ffmpeg / ffprobe」に、動作を確かめている版（4.4 系と 8 系）と、JPEG を作る呼び出しの扱い（フルレンジへの変換と `-strict unofficial`）を足した | 公開後の最初の `ubuntu-latest` の CI で、8.0.1 の mjpeg エンコーダが、フレームが来ないまま開く場合（最後のフレームより先を指す `-ss`、何も残さないフィルタ）に限定レンジを拒否し（終了コード 234）、`TestThumbnail_*` が落ちた。4.4 系は同じ場合に終了コード 0 で何も書かず、`Thumbnail` と Judge がそれを前提にしていた |
+| 1.38 | 2026-10-24 | 「MCP サーバーの設定」の節（`--mcp-port` / `MAM_MCP_PORT` と `mcp.json` の `bind_address`）を足した | Issue #830。MCP サーバーのポートと待ち受け先の設定の置き場所と規則を、環境構築の側にも残すため |
+| 1.39 | 2026-10-24 | 「ローカル・代替モデルの設定」の節（`models.json` の `endpoints`・`local_models`、固定ファイルは読み取り専用、キー、ComfyUI 0.3.57 以上）を足した | Issue #831 |
+| 1.40 | 2026-10-25 | 「モデルマネージャーの設定」の節（`comfyui` ディレクトリの置き場所、`--detect-gpu`・`--detect-comfyui`・`--detect-output`）を足した。`go.sum`（依存の追加で 300 行を超えた生成ファイル）を Linterly の除外に加えた | Issue #833 |
+| 1.41 | 2026-10-26 | Linterly の除外に `**/*.md`（ドキュメント）を加え、「仕様書（Markdown）も計測対象」の記述を改めた。`spec/architecture/er.md`・`spec/spec.md` を `.linterly-baseline` から外した | Issue #850。`er.md`（738 行）の分割は、`chat_message.ref_type` に 1 句を足すだけのために分けるには不自然なので、ドキュメントを行数チェックの対象外にする判断になった |

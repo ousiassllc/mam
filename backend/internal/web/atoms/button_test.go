@@ -32,3 +32,26 @@ func TestLinkButton_PrimaryToneIsTheAccentColour(t *testing.T) {
 	assert.Contains(t, render(atoms.TonePrimary), "text-indigo-300")
 	assert.Contains(t, render(atoms.ToneNeutral), "text-neutral-400")
 }
+
+// A button repeated down a list names the row it acts on, starting with its visible text (#783).
+func TestRowLabel_VisibleLabelFirstThenTheRow(t *testing.T) {
+	assert.Equal(t, "削除: 夜の街", atoms.RowLabel("削除", "夜の街"))
+	assert.Equal(t, "削除: a b", atoms.RowLabel("削除", " a\n b "), "whitespace and line breaks collapse")
+	assert.Equal(t, "削除", atoms.RowLabel("削除", "  "), "a nameless row keeps the plain label")
+	long := atoms.RowLabel("削除", strings.Repeat("あ", 100))
+	assert.Equal(t, "削除: "+strings.Repeat("あ", 60)+"…", long)
+}
+
+func TestRowButtons_AreNamedAfterTheirRowAndKeepTheVisibleText(t *testing.T) {
+	render := func(c templ.Component) string {
+		var sb strings.Builder
+		require.NoError(t, c.Render(context.Background(), &sb))
+		return sb.String()
+	}
+	small := render(atoms.SmallButtonFor(atoms.ToneNeutral, "削除", "制約A", templ.Attributes{"type": "button"}))
+	assert.Contains(t, small, `aria-label="削除: 制約A"`)
+	assert.Contains(t, small, ">削除</button>")
+	link := render(atoms.LinkButtonFor("選択", "Take A", templ.Attributes{"type": "button"}))
+	assert.Contains(t, link, `aria-label="選択: Take A"`)
+	assert.Contains(t, link, ">選択</button>")
+}

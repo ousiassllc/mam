@@ -41,7 +41,7 @@ func ProjectList(projects []domain.Project) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if len(projects) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<li class=\"px-4 py-6 text-center text-sm text-neutral-500\">まだプロジェクトがありません。上の入力欄から作りたい動画を伝えてください。</li>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<li class=\"px-4 py-6 text-center text-sm text-neutral-400\">まだプロジェクトがありません。上の入力欄から作りたい動画を伝えてください。</li>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

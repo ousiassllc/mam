@@ -10,13 +10,13 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/service"
-	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/editorpanel"
 )
 
 func renderActions(t *testing.T, v service.EditorView) string {
 	t.Helper()
 	var sb strings.Builder
-	require.NoError(t, organisms.EditorActions(editorPanelData(v)).Render(context.Background(), &sb))
+	require.NoError(t, editorpanel.Actions(editorPanelData(v)).Render(context.Background(), &sb))
 	return sb.String()
 }
 
@@ -42,8 +42,8 @@ func TestEditorPanelData_CarriesThePendingAdditionalShots(t *testing.T) {
 func TestEditorActionsFragment_RefreshesTheStateBadge(t *testing.T) {
 	var sb strings.Builder
 	d := editorPanelData(service.EditorView{Project: domain.Project{ID: "p", State: domain.StateEditJudging}})
-	require.NoError(t, organisms.EditorActionsFragment(d).Render(context.Background(), &sb))
+	require.NoError(t, editorpanel.ActionsFragment(d).Render(context.Background(), &sb))
 	body := sb.String()
-	assert.Contains(t, body, `id="editor-actions"`)
+	assert.NotContains(t, body, `id="editor-actions"`, "the container holds the inputs being typed in: it is never replaced")
 	assert.Regexp(t, `<span[^>]*data-state="EDIT_JUDGING"[^>]*hx-swap-oob="true"[^>]*id="project-state"`, body) // templ sorts the attributes
 }
