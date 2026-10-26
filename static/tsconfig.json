@@ -10,7 +10,7 @@
     "useDefineForClassFields": false,
     "skipLibCheck": true,
     "noEmit": true,
-    "types": ["mocha"]
+    "types": ["mocha", "node"]
   },
   "include": ["src/**/*.ts", "build.mjs"],
   "exclude": ["src/dist"]

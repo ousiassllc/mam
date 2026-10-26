@@ -59,14 +59,14 @@ MAM の Windows 版に含まれるサードパーティのソフトウェアと�
 | Go モジュール | github.com/sethvargo/go-retry | v0.5.0 |
 | Go モジュール | github.com/ugorji/go/codec | v1.3.1 |
 | Go モジュール | github.com/ulikunitz/xz | v0.5.15 |
-| Go モジュール | github.com/wailsapp/wails/v3 | v3.0.0-beta.27 |
+| Go モジュール | github.com/wailsapp/wails/v3 | v3.0.0-beta.34 |
 | Go モジュール | github.com/yosida95/uritemplate/v3 | v3.0.2 |
 | Go モジュール | github.com/zalando/go-keyring | v0.2.8 |
 | Go モジュール | go.mongodb.org/mongo-driver/v2 | v2.8.0 |
 | Go モジュール | go.uber.org/multierr | v1.11.0 |
 | Go モジュール | go4.org | v0.0.0-20200411211856-f5505b9728dd |
 | Go モジュール | golang.org/x/crypto | v0.58.0 |
-| Go モジュール | golang.org/x/image | v0.46.0 |
+| Go モジュール | golang.org/x/image | v0.47.0 |
 | Go モジュール | golang.org/x/mod | v0.41.0 |
 | Go モジュール | golang.org/x/net | v0.61.0 |
 | Go モジュール | golang.org/x/oauth2 | v0.35.0 |
@@ -3104,7 +3104,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ~~~
 
-## github.com/wailsapp/wails/v3 v3.0.0-beta.27
+## github.com/wailsapp/wails/v3 v3.0.0-beta.34
 
 Go モジュール
 
@@ -3730,7 +3730,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ~~~
 
-## golang.org/x/image v0.46.0
+## golang.org/x/image v0.47.0
 
 Go モジュール
 
