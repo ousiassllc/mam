@@ -74,6 +74,25 @@ func TestAllowedURL(t *testing.T) {
 	}
 }
 
+// The Hugging Face import never leaves Hugging Face: GitHub (the engine archive) is allowed for the engine download only.
+func TestHFAllowedURL(t *testing.T) {
+	for raw, ok := range map[string]bool{
+		"https://huggingface.co/o/m/resolve/abc/f.safetensors": true,
+		"https://cdn-lfs.huggingface.co/repos/a":               true,
+		"https://us.aws.cdn.hf.co/xet-bridge-us/abc":           true,
+		"https://github.com/Comfy-Org/ComfyUI/releases/a":      false,
+		"https://release-assets.githubusercontent.com/x":       false,
+		"http://huggingface.co/x":                              false,
+		"https://evilhuggingface.co/x":                         false,
+		"https://huggingface.co.evil.com/x":                    false,
+		"https://127.0.0.1/x":                                  false,
+	} {
+		u, err := url.Parse(raw)
+		require.NoError(t, err)
+		assert.Equal(t, ok, fetch.HFAllowedURL(u) == nil, raw)
+	}
+}
+
 func TestVerified(t *testing.T) {
 	dir := t.TempDir()
 	f := filepath.Join(dir, "f")

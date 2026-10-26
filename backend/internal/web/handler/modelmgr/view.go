@@ -3,63 +3,22 @@ package modelmgr
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/jobview"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
 )
 
-// bytesText is a size as the screen writes it: GiB with a decimal, or whole MiB (KiB below one MiB).
-func bytesText(n int64) string {
-	const gib = 1 << 30
-	if n >= gib {
-		return fmt.Sprintf("%.1f GiB", float64(n)/gib)
-	}
-	if n >= 1<<20 {
-		return fmt.Sprintf("%.0f MiB", float64(n)/(1<<20))
-	}
-	return fmt.Sprintf("%.0f KiB", float64(n)/(1<<10))
-}
-
-// progressOf is what a running job reports (a placeholder while its status cannot be read).
-func progressOf(ctx context.Context, svc *modelmanager.Service, jobID string) *view.Progress {
-	st, err := svc.JobStatus(ctx, jobID)
-	if err != nil {
-		return &view.Progress{JobID: jobID, Message: "状態を取得しています"}
-	}
-	p := &view.Progress{JobID: jobID, Percent: st.Progress.Percent, Message: st.Progress.Message}
-	if st.State == domain.JobQueued {
-		p.Message = "順番を待っています"
-	}
-	if p.Message == "" {
-		p.Message = "準備しています"
-	}
-	if t := st.Progress.TotalBytes; t > 0 {
-		p.Bytes = bytesText(st.Progress.DoneBytes) + " / " + bytesText(t)
-	}
-	return p
-}
-
-// ended is how a job ended, as a notice or an error line; both are empty while it runs (or when it is unknown).
-func ended(ctx context.Context, svc *modelmanager.Service, jobID, name string) (notice, failure string) {
-	st, err := svc.JobStatus(ctx, jobID)
-	if err != nil {
-		return "", ""
-	}
-	switch st.State {
-	case domain.JobSucceeded:
-		return name + "を導入しました", ""
-	case domain.JobFailed:
-		reason := st.Error
-		if reason == "" {
-			reason = "原因は mam のログを確認してください"
-		}
-		return "", name + "の導入に失敗しました: " + reason
-	}
-	return "", ""
-}
+// bytesText, progressOf and ended are shared with the child packages (jobview).
+var (
+	bytesText  = jobview.BytesText
+	progressOf = jobview.Progress
+	ended      = jobview.Ended
+)
 
 // engineData is the card of the engine. job is the install job the card reports on ("" for the running one);
 // starting says a start was just asked for, which the process status may not show yet.
@@ -173,18 +132,30 @@ func blockedText(ctx context.Context, svc *modelmanager.Service) string {
 func modelData(ctx context.Context, svc *modelmanager.Service, m modelmanager.ModelView, free uint64) view.Model {
 	out := view.Model{
 		ID: m.ID, Name: m.Name, KindLabel: kindLabel(string(m.Kind)), Advanced: m.Tier == "advanced", Description: m.Description,
+		Adult: m.ContentRating == catalog.RatingAdult, TriggerWords: m.TriggerWords, Sources: sourcesOf(m),
 		Size: bytesText(m.TotalSize), Need: bytesText(m.NeedBytes), VRAM: vramText(m.VRAM.MinGB, m.VRAM.Source, m.VRAM.Estimate),
 		License: licenseOf(m.License), Consent: m.ConsentRequired, Accepted: m.Accepted, NeedsToken: m.RequiresHFToken,
 		State: string(m.State), ModelIDs: m.ModelIDs, WorkflowCheck: m.WorkflowCheck,
 		LowDisk: m.NeedBytes > 0 && free > 0 && uint64(m.NeedBytes) > free,
 	}
 	for _, f := range m.Files {
-		out.Files = append(out.Files, view.File{Path: f.Folder + "/" + f.Name, Size: bytesText(f.Size), Present: f.Present, Shared: f.SharedWith})
+		out.Files = append(out.Files, view.File{Path: f.Folder + "/" + f.Name, Size: bytesText(f.Size), Present: f.Present, Shared: f.SharedWith, SourceNote: f.SourceNote})
 	}
 	if m.InstallJob != "" {
 		out.Install = progressOf(ctx, svc, m.InstallJob)
 	}
 	return out
+}
+
+// sourcesOf is the places of the originals of the model's mirrored files, each once, in the order of the files.
+func sourcesOf(m modelmanager.ModelView) []string {
+	var notes []string
+	for _, f := range m.Files {
+		if f.SourceNote != "" && !slices.Contains(notes, f.SourceNote) {
+			notes = append(notes, f.SourceNote)
+		}
+	}
+	return notes
 }
 
 func kindLabel(kind string) string {

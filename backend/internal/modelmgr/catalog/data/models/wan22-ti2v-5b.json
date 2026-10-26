@@ -3,6 +3,7 @@
  "name": "Wan 2.2 TI2V 5B",
  "kind": "video",
  "tier": "standard",
+ "content_rating": "general",
  "description": "テキストからも先頭フレームからも動画を作れる、いちばん小さい Wan 2.2（拡散モデル・テキストエンコーダー・VAE の 3 ファイル、合計約 18 GB）。24fps。",
  "files": [
   {

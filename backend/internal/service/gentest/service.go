@@ -47,6 +47,9 @@ const (
 	ReasonCancelled = "キャンセルされました"
 	// ReasonInterrupted is the reason of a result that was running or waiting when mam stopped.
 	ReasonInterrupted = "mam が停止したため中断されました（課金される生成は再開しません）"
+	// ReasonHidden is the reason of a queued result whose model was hidden before it started (the age gate of the model manager
+	// was closed): the call is not made.
+	ReasonHidden = "年齢確認が無効になったため、このモデルでは生成しませんでした"
 )
 
 // Deps are what the Service needs.
@@ -68,7 +71,10 @@ type Deps struct {
 	// Explain says in words for the user why a call failed, when the failure is one of the app's own refusals (the bundled
 	// engine is not installed, ...); "" leaves the failure as it is. May be nil.
 	Explain func(err error) string
-	Logger  *slog.Logger
+	// Hidden says a model is left out of the model lists and refused as unknown: the adult models of the model manager while
+	// the age gate is closed (modelmanager.Service.HidesModel). May be nil.
+	Hidden func(modelID string) bool
+	Logger *slog.Logger
 	// Now and Seed are for tests.
 	Now  func() time.Time
 	Seed func() int64
@@ -100,7 +106,7 @@ func New(d Deps) *Service {
 		Repo: d.Repo, Dir: filepath.Join(d.DataDir, dirName), AssetsDir: d.AssetsDir, Projects: d.Projects, References: d.References,
 		Assign: d.Assign, Now: d.Now, Logger: d.Logger,
 	})
-	return &Service{Deps: d, Link: link, catalog: modelcatalog.Catalog{Adapter: d.Adapter}, runs: map[string]*run{}}
+	return &Service{Deps: d, Link: link, catalog: modelcatalog.Catalog{Adapter: d.Adapter, Hidden: d.Hidden}, runs: map[string]*run{}}
 }
 
 // Register installs the handler of domain.JobGentest (not resumable). Call it before the job queue starts.

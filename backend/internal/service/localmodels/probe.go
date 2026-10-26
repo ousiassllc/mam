@@ -64,7 +64,7 @@ func (s *Service) Test(ctx context.Context, in TestInput) (TestResult, error) {
 			return TestResult{}, ErrNotFound
 		}
 		e = saved
-	} else if err := firstError(localcfg.ValidateEndpoint(cmpName(name), e)); err != nil {
+	} else if err := endpointError(localcfg.ValidateEndpoint(cmpName(name), e)); err != nil {
 		return TestResult{}, err
 	}
 	keys := s.Keys

@@ -3,6 +3,7 @@
  "name": "FLUX.1 schnell (fp8)",
  "kind": "image",
  "tier": "standard",
+ "content_rating": "general",
  "description": "4 ステップで描く高速な画像モデル。CLIP・T5・VAE を含む 1 ファイルのチェックポイント（約 17 GB）。",
  "files": [
   {

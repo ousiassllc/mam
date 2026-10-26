@@ -1,0 +1,130 @@
+package mcp
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+	"github.com/ousiassllc/mam/backend/internal/web/selector"
+)
+
+// Description is what the category says under its title.
+const Description = "エージェント（Grok Bot など）から、画面と同じ操作を MCP（Streamable HTTP）で行えます。接続にはここで発行するトークンが必要です。待ち受け先は 127.0.0.1 か tailnet の IP（100.x）にできます。"
+
+var tokenColumns = []settingsui.Column{
+	{Header: "名前"},
+	{Header: "作成"},
+	{Header: "最終利用"},
+	{Header: "状態"},
+	{Header: "操作", SROnly: true},
+}
+
+// Section is the category: the address the server listens on as a card and the tokens as a table. A change of the address
+// and the issue of a token are modals; the revoke of a token is a button of its row.
+templ Section(d Data) {
+	<div id="mcp-panel" class="flex flex-col gap-6" data-testid="mcp-panel">
+		if d.Error != "" {
+			<p class="text-sm text-red-300" role="alert" data-testid="mcp-error">{ d.Error }</p>
+		}
+		<ul role="list" class="grid grid-cols-1 gap-4">
+			@BindRow(d, false)
+		</ul>
+		<section aria-labelledby="mcp-tokens-title" class="flex flex-col gap-3">
+			<div class="flex flex-wrap items-center justify-between gap-2">
+				<h3 id="mcp-tokens-title" class="text-base font-semibold">トークン</h3>
+				@atoms.Button(atoms.TonePrimary, "トークンを発行", modal.OpenAttrs(paths.MCPTokenNew(), IssueFocusKey))
+			</div>
+			@settingsui.SettingsTable(TableBodyID, "発行済みの MCP トークン", tokenColumns) {
+				for _, t := range d.Tokens {
+					@TokenRowItem(t, false)
+				}
+				if len(d.Tokens) == 0 {
+					@noTokensRow()
+				}
+			}
+		</section>
+	</div>
+}
+
+// BindRow is the card of the address the server listens on: where it listens now, why it is not on the saved address
+// (when it is not), and the button that opens the modal of the bind address. oob makes it replace the card with its id.
+templ BindRow(d Data, oob bool) {
+	@settingsui.CardItem(settingsui.Card{
+		ID: BindRowID, TestID: "mcp-bind-row", Title: "待ち受け先", Description: "MCP クライアントが接続するアドレスです。", Details: bindDetails(d), OOB: oob,
+	}) {
+		@atoms.SmallButtonFor(atoms.ToneNeutral, "変更", "待ち受け先", modal.OpenAttrs(paths.MCPBindEdit(), BindFocusKey))
+	}
+}
+
+templ bindDetails(d Data) {
+	<p class="text-sm">
+		<span class="text-neutral-400">待ち受け中のアドレス:</span>
+		if d.Addr != "" {
+			<code class="break-all font-medium" data-testid="mcp-addr">{ "http://" + d.Addr + "/mcp" }</code>
+		} else {
+			<span class="font-medium" data-testid="mcp-addr">待ち受けていません</span>
+		}
+	</p>
+	if d.Problem != "" {
+		<p class="text-sm text-amber-300" role="alert" data-testid="mcp-problem">{ d.Problem }</p>
+	}
+}
+
+templ noTokensRow() {
+	<tr id={ NoRowsID } data-testid="mcp-no-tokens">
+		<td colspan="5" class="px-3 py-3 text-neutral-400">発行済みのトークンはありません。トークンがないと MCP には接続できません。</td>
+	</tr>
+}
+
+// TokenRowItem is the row of one token. oob makes it replace the row with its id (a revoked token stays listed); it is read
+// as a row only when it comes first in an answer.
+templ TokenRowItem(t TokenRow, oob bool) {
+	@settingsui.TableRowItem(settingsui.TableRow{
+		ID: TokenRowID(t.ID), TestID: "mcp-token", Attrs: templ.Attributes{"data-token-id": t.ID}, OOB: oob,
+	}) {
+		@settingsui.RowHead("") {
+			{ t.Name }
+			<code class="block text-xs font-normal text-neutral-400">mam_mcp_{ t.Prefix }…</code>
+		}
+		@settingsui.Cell("whitespace-nowrap") {
+			{ formatTime(t.CreatedAt) }
+		}
+		@settingsui.Cell("whitespace-nowrap") {
+			if t.LastUsedAt != nil {
+				{ formatTime(*t.LastUsedAt) }
+			} else {
+				未使用
+			}
+		}
+		@settingsui.Cell("") {
+			if t.Revoked {
+				@atoms.Badge(atoms.BadgeError, "失効済み")
+			} else {
+				@atoms.Badge(atoms.BadgeOK, "有効")
+			}
+		}
+		@settingsui.Cell("text-right") {
+			if !t.Revoked {
+				@atoms.SmallButtonFor(atoms.ToneDanger, "失効", t.Name, templ.Attributes{
+					"type":       "button",
+					"hx-delete":  paths.MCPToken(t.ID),
+					"hx-target":  selector.ID("mcp-token-", t.ID),
+					"hx-swap":    "outerHTML",
+					"hx-sync":    "this:drop",
+					"hx-confirm": "トークン「" + t.Name + "」を失効します。このトークンでの接続はすぐに切れ、元に戻せません。よろしいですか？",
+				})
+			}
+		}
+	}
+}
+
+// TokenAppended is the row of a token that was just issued, added to the table out of band (it holds no value), and takes
+// the "no tokens" row away. The row is in a <template>: an HTML parser keeps a table part only inside one (or first).
+templ TokenAppended(t TokenRow) {
+	<template>
+		<tbody hx-swap-oob={ "beforeend:#" + TableBodyID }>
+			@TokenRowItem(t, false)
+		</tbody>
+	</template>
+	<span id={ NoRowsID } hx-swap-oob="delete"></span>
+}

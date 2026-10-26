@@ -6,6 +6,7 @@ import (
 	"slices"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/agegate"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/chatgptid"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/direct"
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -72,6 +73,9 @@ type Info struct {
 // Catalog lists the models of the generation test.
 type Catalog struct {
 	Adapter *modeladapter.Adapter
+	// Hidden says a model is left out of the lists and cannot be chosen (the adult models of the model manager while the age
+	// gate is closed). Nil hides nothing.
+	Hidden func(id string) bool
 }
 
 // Models lists the models of the media ("" for both): every built-in cloud model, the models of the registered endpoints,
@@ -82,16 +86,22 @@ func (c Catalog) Models(media string) []Info {
 	out := []Info{}
 	if media != gentestrepo.MediaVideo {
 		for _, m := range domain.ImageModels() {
-			out = append(out, c.info(cfg, m, gentestrepo.MediaImage))
+			if !c.hidden(m) {
+				out = append(out, c.info(cfg, m, gentestrepo.MediaImage))
+			}
 		}
 	}
 	if media != gentestrepo.MediaImage {
 		for _, m := range domain.VideoModels() {
-			out = append(out, c.info(cfg, m, gentestrepo.MediaVideo))
+			if !c.hidden(m) {
+				out = append(out, c.info(cfg, m, gentestrepo.MediaVideo))
+			}
 		}
 	}
 	return out
 }
+
+func (c Catalog) hidden(m domain.ModelName) bool { return c.Hidden != nil && c.Hidden(string(m)) }
 
 // Model returns one model of the media; false when there is none.
 func (c Catalog) Model(media, id string) (Info, bool) {
@@ -174,6 +184,8 @@ func priceOf(cfg modeladapter.Config, m domain.ModelName, media string) Price {
 
 func unavailableMessage(reason, source string) string {
 	switch {
+	case reason == agegate.Excluded:
+		return "年齢確認がオフのため、成人向けモデルは使えません（モデル管理で年齢確認をオンにしてください）"
 	case reason == domain.ExcludedCircuitOpen:
 		return "このモデルのベンダーで失敗が続いたため、しばらく止めています。少し待ってからもう一度お試しください"
 	case source == SourceChatGPT:

@@ -20,7 +20,7 @@ func registerExtras(r *mcpkit.Registrar, h handlers) {
 		"保存した Hugging Face のトークンを削除する（未設定でもエラーにならない）/ Remove the stored token.",
 		h.clearToken, mcpkit.Idempotent())
 	mcpkit.Read(r, "get_external_inventory",
-		"外部の ComfyUI（登録済みの接続先。tailnet 上や ComfyUI Desktop など）が持つモデルファイルの一覧と、カタログのモデルに足りないファイル。読むだけで、外部の ComfyUI にモデルは導入しない / Read the model files of an external ComfyUI endpoint and what each catalog model lacks there.",
+		"外部の ComfyUI（登録済みの接続先。tailnet 上や ComfyUI Desktop など）が持つモデルファイル（checkpoints・diffusion_models・text_encoders・vae・loras）の一覧と、カタログのモデルに足りないファイル。成人向けのモデルは、年齢確認（set_adult_content）が済むまで含めない。読むだけで、外部の ComfyUI にモデルは導入しない / Read the model files of an external ComfyUI endpoint and what each catalog model lacks there (adult models are left out until the age confirmation).",
 		h.externalInventory, mcpkit.OpenWorld())
 }
 

@@ -15,6 +15,17 @@ import (
 // ErrAccessDenied is an authorization the user refused (callback error=access_denied).
 var ErrAccessDenied = errors.New("oauth: authorization was denied")
 
+// PolicyDeniedCode is the error the authorization server returns to a workspace account (Business / Enterprise /
+// Edu) whose organization does not allow the app: OpenAI shows "あなたの組織では、このアプリによるアクセスが許可されていません".
+const PolicyDeniedCode = "3p_delegated_access_policy_denied"
+
+// ServerError is an authorization the server refused with an error code (callback error=<code>).
+type ServerError struct{ Code string }
+
+func (e *ServerError) Error() string {
+	return fmt.Sprintf("oauth: the authorization server returned %q", e.Code)
+}
+
 // CallbackResult is a callback with the right state.
 type CallbackResult struct {
 	Code string
@@ -106,7 +117,7 @@ func (c *Callback) handle(w http.ResponseWriter, r *http.Request) {
 	case q.Get("error") == "access_denied":
 		out.err = ErrAccessDenied
 	case q.Get("error") != "":
-		out.err = fmt.Errorf("oauth: the authorization server returned %q", q.Get("error"))
+		out.err = &ServerError{Code: q.Get("error")}
 	case q.Get("code") == "":
 		out.err = errors.New("oauth: the callback has no code")
 	default:

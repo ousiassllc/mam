@@ -84,14 +84,18 @@ func TestLoadReadsEndpointsAndModelsFromTheFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "models.json")
 	require.NoError(t, os.WriteFile(path, []byte(`{
 	  "endpoints": {"oa": {"kind": "openai-compat", "base_url": "http://192.168.1.9:8000", "max_concurrency": 2}},
-	  "local_models": {"oa/flux": {"media": "image", "model": "flux-dev", "cost_per_image_usd": 0.01, "accepts_image_inputs": true}},
-	  "images": {"new_reference": {"primary": {"model": "openai-compat:oa/flux"}, "fallback": {"model": "imagen-4"}}}
+	  "local_models": {
+	    "oa/flux": {"media": "image", "model": "flux-dev", "cost_per_image_usd": 0.01, "accepts_image_inputs": true},
+	    "oa/plain": {"media": "image", "model": "plain-dev", "accepts_image_inputs": false}
+	  },
+	  "images": {"new_reference": {"primary": {"model": "openai-compat:oa/flux"}, "fallback": {"model": "openai-compat:oa/plain"}}}
 	}`), 0o600))
 	cfg, err := configcheck.Load(path)
 	require.NoError(t, err)
 	assert.Equal(t, 2, cfg.Endpoints["oa"].Concurrency())
 	assert.True(t, cfg.AcceptsImages("openai-compat:oa/flux"))
-	assert.False(t, cfg.AcceptsImages(domain.ModelImagen4))
+	assert.False(t, cfg.AcceptsImages("openai-compat:oa/plain"), "accepts_image_inputs is false")
+	assert.True(t, cfg.AcceptsImages(domain.ModelNanoBanana))
 	assert.InDelta(t, 0.01, cfg.ImageCost("openai-compat:oa/flux"), 1e-9)
 
 	for name, bad := range map[string]string{

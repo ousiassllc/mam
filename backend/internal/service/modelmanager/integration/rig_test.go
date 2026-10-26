@@ -31,6 +31,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/detect"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/fetch"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/gpu"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/hf/hftest"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/proc"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/store"
 	"github.com/ousiassllc/mam/backend/internal/repository"
@@ -174,6 +175,7 @@ type rig struct {
 	ad      *modeladapter.Adapter
 	keys    *credentialtest.Memory
 	host    *fakeHost
+	hf      *hftest.Server
 	layout  store.Layout
 	free    func(string) (uint64, error)
 	started bool
@@ -189,7 +191,7 @@ func newPinnedRig(t *testing.T, opts ...option) *rig { return build(t, true, opt
 func build(t *testing.T, pinned bool, opts ...option) *rig {
 	t.Helper()
 	host := newHost(t, allTest...)
-	r := &rig{t: t, host: host, keys: credentialtest.New()}
+	r := &rig{t: t, host: host, hf: hftest.New(t), keys: credentialtest.New()}
 	r.layout = store.Layout{Root: filepath.Join(t.TempDir(), "install", "comfyui")}
 	r.free = func(string) (uint64, error) { return 1 << 40, nil }
 
@@ -218,6 +220,7 @@ func build(t *testing.T, pinned bool, opts ...option) *rig {
 		Layout: r.layout, Catalog: testCatalog(host), Jobs: r.queue, JobTable: r.table, Models: r.models, Adapter: r.ad,
 		Keys: r.keys, Backends: bo, Platform: "windows", FreeBytes: func(p string) (uint64, error) { return r.free(p) },
 		Fetch:   fetch.Options{CheckURL: anyURL, Client: fetch.WithRedirectRules(&http.Client{}, anyURL, "")},
+		HFBase:  r.hf.URL,
 		Command: fakeEngine, PollEvery: 20 * time.Millisecond, StartTimeout: 20 * time.Second,
 		Comfy: func(context.Context) detect.Report { return detect.Report{Found: []detect.Found{}} },
 		GPU: func(context.Context) gpu.Report {

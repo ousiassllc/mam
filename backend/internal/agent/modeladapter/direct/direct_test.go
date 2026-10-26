@@ -13,6 +13,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/direct"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
@@ -84,14 +85,14 @@ func TestImageUsesTheNamedModelWithoutFallbackAndSendsThePromptAsItIs(t *testing
 	flux := &fakeImage{err: perr(modeladapter.VendorFlux, http.StatusUnprocessableEntity)}
 	other := &fakeImage{}
 	a := adapter(modeladapter.DefaultConfig(), modeladapter.Backends{Image: map[domain.ModelName]modeladapter.ImageBackend{
-		domain.ModelFlux2: flux, domain.ModelImagen4: other, domain.ModelGPTImage2: other, domain.ModelNanoBanana: other,
+		domain.ModelFlux2: flux, domain.ModelNanoBananaLite: other, domain.ModelGPTImage2: other, domain.ModelNanoBanana: other,
 	}})
 
 	_, err := direct.Image(t.Context(), a, domain.ModelFlux2, modeladapter.ImageRequest{Prompt: "  a fox, raw  ", AspectRatio: "1:1"})
 	require.Error(t, err)
 	assert.ErrorIs(t, err, modeladapter.ErrRejected)
 	assert.Equal(t, 1, flux.calls())
-	assert.Zero(t, other.calls(), "no other model is tried: the preview route would fall back to Imagen 4 Fast")
+	assert.Zero(t, other.calls(), "no other model is tried: the preview route would fall back to Nano Banana Lite")
 	assert.Equal(t, "  a fox, raw  ", flux.reqs[0].Prompt, "the prompt is not rewritten")
 	assert.Equal(t, "flux-2-pro", flux.models[0])
 }
@@ -118,11 +119,20 @@ func TestImageSeedIsSentOnlyWhereTheVendorTakesOne(t *testing.T) {
 }
 
 func TestImageInputsForAModelThatTakesNoneAreRefusedNotDropped(t *testing.T) {
-	imagen := &fakeImage{}
-	a := adapter(modeladapter.DefaultConfig(), modeladapter.Backends{Image: map[domain.ModelName]modeladapter.ImageBackend{domain.ModelImagen4: imagen}})
-	_, err := direct.Image(t.Context(), a, domain.ModelImagen4, modeladapter.ImageRequest{Prompt: "x", Inputs: png()})
+	cfg := modeladapter.DefaultConfig()
+	cfg.Endpoints = map[string]localcfg.Endpoint{"oa": {Kind: localcfg.KindOpenAICompat, BaseURL: "http://localhost:1234"}}
+	// accepts_image_inputs is false: this local model cannot use reference images.
+	cfg.LocalModels = map[string]localcfg.Model{"oa/plain": {Media: localcfg.MediaImage, Model: "plain-model"}}
+	const plainModel domain.ModelName = "openai-compat:oa/plain"
+	plain := &fakeImage{}
+	a := adapter(cfg, modeladapter.Backends{Image: map[domain.ModelName]modeladapter.ImageBackend{plainModel: plain}})
+	_, err := direct.Image(t.Context(), a, plainModel, modeladapter.ImageRequest{Prompt: "x", Inputs: png()})
 	assert.ErrorIs(t, err, direct.ErrInputsUnsupported)
-	assert.Zero(t, imagen.calls())
+	assert.Zero(t, plain.calls())
+
+	_, err = direct.Image(t.Context(), a, plainModel, modeladapter.ImageRequest{Prompt: "x"})
+	require.NoError(t, err, "the same model works from the prompt alone")
+	assert.Equal(t, 1, plain.calls())
 
 	_, err = direct.Image(t.Context(), a, domain.ModelFlux2, modeladapter.ImageRequest{Prompt: "x"})
 	assert.ErrorIs(t, err, direct.ErrNoBackend)
@@ -241,7 +251,7 @@ func TestSeedAndNegativeFieldCapabilities(t *testing.T) {
 	cfg := modeladapter.DefaultConfig()
 	for m, want := range map[domain.ModelName]bool{
 		domain.ModelFlux2: true, domain.ModelRunwayGen45: true, domain.ModelNanoBanana: false, domain.ModelGPTImage2: false,
-		domain.ModelImagen4: false, domain.ModelKling3: false, domain.ModelSeedance2: false,
+		domain.ModelNanoBananaLite: false, domain.ModelKling3: false, domain.ModelSeedance2: false,
 	} {
 		assert.Equal(t, want, direct.SupportsSeed(cfg, m), m)
 	}

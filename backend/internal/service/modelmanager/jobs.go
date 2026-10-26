@@ -17,7 +17,7 @@ import (
 type JobStatus struct {
 	JobID string         `json:"job_id"`
 	Kind  domain.JobKind `json:"kind"`
-	// Target is "engine" or "model:<catalog id>".
+	// Target is "engine", "model:<catalog id>" or "hf:<repo>@<commit>/<path>".
 	Target     string           `json:"target"`
 	State      domain.JobStatus `json:"state"`
 	Progress   track.Update     `json:"progress"`

@@ -56,7 +56,7 @@ func TestHistoryListsNewestFirstFiltersAndTotalsTheCost(t *testing.T) {
 	spend, err := r.Svc.Spend(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, 3, spend.Items)
-	assert.InDelta(t, 0.03+0.04+0.12*4, spend.PricedUSD, 1e-9)
+	assert.InDelta(t, 0.03+0.0336+0.12*4, spend.PricedUSD, 1e-9)
 
 	require.NoError(t, r.Svc.SetFavorite(ctx, first.Results[0].ID, false))
 	fav, _ = r.Svc.History(ctx, gentest.HistoryFilter{FavoriteOnly: true})

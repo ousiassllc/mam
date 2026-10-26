@@ -1,0 +1,79 @@
+package settingsui
+
+// Column is one column header of a SettingsTable. Class is added to the <th>; give the cells of the column the same
+// class (Cell) when it hides the column on a narrow window ("hidden lg:table-cell").
+type Column struct {
+	Header string
+	Class  string
+	// SROnly draws the header for assistive technology only (the column of the buttons: its cells say what they do).
+	SROnly bool
+}
+
+// SettingsTable is a list of the settings screen drawn as a table (shared-ui-parts.md §5): the LLM assignment, the image
+// and video models, the MCP tokens. The caption names the table for a screen reader (it is not drawn); the columns are
+// headers with scope="col"; the rows are TableRow, whose first cell is RowHead. bodyID is the id of the <tbody>, the list
+// that a new row is added to out of band ("beforeend:#<bodyID>"). Wide tables scroll sideways inside their own box
+// rather than push the page wider.
+templ SettingsTable(bodyID, caption string, cols []Column) {
+	<div class="overflow-x-auto rounded-lg border border-neutral-800">
+		<table class="w-full text-left text-sm">
+			<caption class="sr-only">{ caption }</caption>
+			<thead class="bg-neutral-900 text-xs text-neutral-400">
+				<tr>
+					for _, col := range cols {
+						<th scope="col" class={ "px-3 py-2 font-medium " + col.Class }>
+							if col.SROnly {
+								<span class="sr-only">{ col.Header }</span>
+							} else {
+								{ col.Header }
+							}
+						</th>
+					}
+				</tr>
+			</thead>
+			<tbody id={ bodyID } class="divide-y divide-neutral-800">
+				{ children... }
+			</tbody>
+		</table>
+	</div>
+}
+
+// TableRow is one <tr> of a SettingsTable; the cells are its children. ID is the id that a save replaces out of band
+// (llm-row-<agent>); TestID is its data-testid.
+type TableRow struct {
+	ID, TestID string
+	// Attrs are more attributes of the <tr> (data-agent).
+	Attrs templ.Attributes
+	// OOB makes the <tr> replace the one with its id out of band. Put it first in an answer that has more than the row:
+	// an HTML parser reads a <tr> as a row only when it comes first.
+	OOB bool
+}
+
+// TableRowItem draws a TableRow; its children are RowHead and Cell.
+templ TableRowItem(r TableRow) {
+	<tr
+		id={ r.ID }
+		data-testid={ r.TestID }
+		class="align-top"
+		{ r.Attrs... }
+		if r.OOB {
+			hx-swap-oob="true"
+		}
+	>
+		{ children... }
+	</tr>
+}
+
+// RowHead is the first cell of a row: its name, which is what the other cells and the buttons of the row are about.
+templ RowHead(class string) {
+	<th scope="row" class={ "px-3 py-3 font-medium text-neutral-100 " + class }>
+		{ children... }
+	</th>
+}
+
+// Cell is one cell of a row. Text wraps (break-words): nothing is cut off.
+templ Cell(class string) {
+	<td class={ "break-words px-3 py-3 text-neutral-300 " + class }>
+		{ children... }
+	</td>
+}

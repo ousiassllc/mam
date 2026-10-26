@@ -2,14 +2,15 @@
 
 ChatGPT のサブスク（Plus / Pro など）を持つ利用者が、API キーなしで mam のテキスト生成と画像生成を使えるようにする設計と、確認できたこと・できていないこと。Issue #832。LLM の割り当ては `spec/architecture/model-adapters.md` §2.1、識別子は同 §6、セキュリティは `spec/requirements/non-functional.md` §5、MCP ツールは `spec/api/mcp-tools-chatgpt.md`。
 
-## 1. 決定: 2 つの別々のログイン
+## 1. 決定: 3 つの別々のログイン
 
-OpenAI の 2 つのクライアントは**トークンを使い回せない**ため、ログインを 2 系統に分け、保存も別にする（各 1 アカウント）。
+OpenAI の 2 つのクライアントは**トークンを使い回せない**ため、ログインを分け、保存も別にする（各 1 アカウント）。3 つ目の Codex 経由（`codex`、§8）は、Codex の app-server が自分でログインして自分で保存するので、mam はトークンを持たない。
 
 | 系統 | 用途 | クライアント | 経路 | 既定 |
 |------|------|-------------|------|------|
 | **ChatGPT サブスク（公式）**（`official`） | テキスト生成（Reasoning LLM のプロバイダー `chatgpt-subscription`） | 公式の動的登録（`dynamic_agent_client` で初回登録し、発行された `oaiapp_…` を保存して以後使う）。公式の「ChatGPT plan usage」（オープンソース・ローカル向け） | 公式の Responses API `https://api.openai.com/v1/responses` | ログインすれば使える（LLM の割り当てでプロバイダーを選ぶ） |
 | **ChatGPT 画像生成（非公式）**（`image`） | 画像の用途のモデル `gpt-image-2:chatgpt-subscription` | Codex CLI の公開クライアント `app_EMoamEEZ73f0CkXaXp7hrann`（`codex-rs/login`、`imagine-cli` と同じ） | `https://chatgpt.com/backend-api/codex/responses` の `image_generation` ツール | **OFF**。ON にするときにリスクを表示して確認を取り、ON のときだけログインを始められる |
+| **ChatGPT 経由の Codex**（`codex`。§8） | テキスト生成のみ（プロバイダー `chatgpt-codex`）。Business / Enterprise / Edu のワークスペースのアカウントも使える | Codex の app-server（OpenAI 公式。公式のリリースから実行時に取得、または利用者が入れた codex のパス）。ログインは app-server が行う | app-server の JSON-RPC（標準入出力）。トークンは mam が読まない | 既定の `routes` には入れない。設定画面で方式を「Codex 経由」にして、LLM の割り当てで選ぶ |
 
 - テキスト生成にはコーディング用の非公式経路を使わない（オーナー決定）。画像生成だけが非公式で、使う前に別のログインとリスクの確認が要る。
 - 動画・音声にサブスクを使うことと、複数アカウントの切り替えは対象外。プランの利用量は表示しない（API がない。公式が認める「Manage usage」リンクと「Using ChatGPT plan」の表示だけ置く）。
@@ -72,8 +73,8 @@ OpenAI の 2 つのクライアントは**トークンを使い回せない**た
 
 ## 6. 画面と MCP
 
-- 設定画面（`GET /settings`）の「ChatGPT でログイン」: 公式（状態・メール・プラン・期限・「再ログインが必要」・ログアウト・モデル一覧）と、画像生成（非公式）のリスク・ON/OFF・ブラウザ／デバイスコードのログイン。ログイン中は区画が 2 秒ごとに自分を取り直す。ルートは `spec/api/endpoints.md`。
-- MCP ツール 6 つ（`spec/api/mcp-tools-chatgpt.md`）: ログイン開始・状態の取得・ログアウト・画像生成の ON/OFF。トークンはどの応答にも載せない。ブラウザのログインはコールバックが mam の PC の `127.0.0.1` に来るため、リモートの利用者は mam の PC のブラウザで URL を開く（公式にデバイスコードはない）。画像生成のログインだけデバイスコードで遠隔から行える。
+- 設定画面（`GET /settings`）の「ChatGPT でログイン」: 方式の切り替え（公式／Codex 経由。Codex 経由は `chatgpt-codex/codex-login.md` §3）。公式（状態・メール・プラン・期限・「再ログインが必要」・ログアウト・モデル一覧）と、画像生成（非公式）のリスク・ON/OFF・ブラウザ／デバイスコードのログイン。ログイン中は区画が 2 秒ごとに自分を取り直す。ルートは `spec/api/endpoints.md`。
+- MCP ツール 8 つ（`spec/api/mcp-tools-chatgpt.md`）: ログイン開始・状態の取得・ログアウト・画像生成の ON/OFF・Codex のエンジンの取得とログイン。トークンはどの応答にも載せない。ブラウザのログインはコールバックが mam の PC の `127.0.0.1` に来るため、リモートの利用者は mam の PC のブラウザで URL を開く（公式にデバイスコードはない）。画像生成のログインだけデバイスコードで遠隔から行える。
 
 ## 7. 注意
 
@@ -81,9 +82,17 @@ OpenAI の 2 つのクライアントは**トークンを使い回せない**た
 - Windows の実機（Credential Manager・Wails の既定ブラウザ）での動作は未確認（Linux の CI と、Windows 向けのビルドとモックの上限 2560 バイトで確かめた）。
 - 公式のログインの実機確認（初回登録の画面・発行される `client_id`・トークンの実際の長さ・`text.format`）は、利用者の ChatGPT アカウントでの対話ログインが要り、未実施。
 
+## 8. 3 つ目の系統: Codex 経由（Issue #845。詳細は [`chatgpt-codex/codex-login.md`](chatgpt-codex/codex-login.md)）
+
+- Business / Enterprise / Edu のワークスペースのアカウントは公式の動的登録ではプランを使えない（サインインは通るが、組織の Admin Console に許可の設定が無く、`3p_delegated_access_policy_denied` / `subscription_sharing_user_not_eligible` で拒まれる）。そこで OpenAI 公式の **Codex の app-server** にログインとリクエストを任せ、同じアカウントを**テキスト生成だけ**に使う（画像・動画・音声には使わない）。プロバイダーは別の `chatgpt-codex`（既定の `routes` には入れない。公式の `chatgpt-subscription` には触らない）。
+- エンジンは公式の GitHub リリースの固定した版（SHA-256 とサイズで検証。Windows 版のみ取得、他は自分で入れた codex のパス）。`CODEX_HOME` は mam 専用（データディレクトリの `codex-home`）で、**mam は Codex のトークンを読まない・保存しない**。公式ログインは自動でログアウトせず、案内だけ出す。道具（シェル・ファイル編集・Web 検索など）は切り、承認要求はすべて拒否する。同時実行数の上限は設けない。
+- **ローカル・オープンソースでの利用に限る**（商用・ホスティングは不可）。管理者の前提は Codex Local とデバイスコードの許可。
+- 実機・実アカウントでしか確かめられない項目（Business のログイン・`planType`・keyring の上限・sandbox・道具の無効化・実ダウンロードなど）は **未検証**（`codex-login.md` の「未検証」。`#839` に追記）。
+
 ## 改訂履歴
 
 | 版 | 日付 | 変更内容 | 変更理由 |
 |----|------|---------|---------|
 | 1.0 | 2026-10-24 | 新規作成。ログイン 2 系統（公式・非公式の画像）の決定、要確認 3 点の結果（1 は確認済み、2・3 と `text.format` は未検証）、ブラウザ・デバイスコード、トークンの保存・更新・ログアウト、テキスト・画像の使い道、画面と MCP | Issue #832。ChatGPT のサブスクでログインしてテキスト生成と画像生成に使えるようにする |
 | 1.1 | 2026-10-24 | §5.2: 画像モデルを #831 の開放集合（`modelreg`）に載せた。スイッチ ON のあいだだけ選択肢に出し、OFF では呼ばずに代替へ回る | Issue #832（#831 の取り込み後） |
+| 1.2 | 2026-10-25 | §1 に 3 つ目の系統 `codex` を足し、§8 に Codex 経由（app-server）の要点を足し、詳細（決定 9 点・構成・リクエストと道具の制限・失敗の分け方・利用条件・未検証の一覧）を `chatgpt-codex/codex-login.md` に書いた。§6 の画面・MCP を更新 | Issue #845。Business / Enterprise / Edu のワークスペースのアカウントでテキスト生成を使えるようにする |

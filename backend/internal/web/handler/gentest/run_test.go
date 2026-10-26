@@ -24,7 +24,7 @@ func TestEstimateShowsTheBreakdownAndRunsNothing(t *testing.T) {
 	assert.Contains(t, body, `data-testid="gt-confirm"`)
 	assert.Contains(t, body, "<strong>8</strong>", "2 models x 2 prompts x 2")
 	assert.Equal(t, 2, strings.Count(body, `data-testid="gt-confirm-line"`))
-	assert.Contains(t, body, "$0.2800", "the total")
+	assert.Contains(t, body, "$0.2544", "the total: 4 x 0.03 + 4 x 0.0336")
 	assert.Contains(t, body, `data-testid="gt-confirm-warnings"`, "the negative prompt is folded for a model without the field")
 	assert.Contains(t, body, "Avoid:")
 	assert.NotContains(t, body, `disabled=""`, "the run button is on")
@@ -117,7 +117,7 @@ func TestEstimateOverTheCostCapCannotBeRun(t *testing.T) {
 func TestAnUnpricedModelIsSaidSoInTheConfirmation(t *testing.T) {
 	s := newScreen(t, gentesttest.WithConfig(func(c *modeladapter.Config) {
 		mc := c.Models[domain.ModelGPTImage2]
-		mc.CostPerImage = 0 // a cloud model whose price the user removed from models.json
+		mc.Model, mc.CostPerImage = "gpt-image-1.5", 0 // a cloud model the built-in prices do not cover (the user changed its API model ID)
 		c.Models[domain.ModelGPTImage2] = mc
 	}))
 	rec := s.upload(paths.GenerationTestPart("estimate"), batchForm("gpt-image-2"), "", nil)
