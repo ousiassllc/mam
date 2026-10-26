@@ -33,12 +33,17 @@ func sumOf(b []byte) string { h := sha256.Sum256(b); return hex.EncodeToString(h
 
 // The files of the test catalog: m-a is one file, m-b and m-c two each, sharing the VAE.
 var (
-	CkptA   = File{"checkpoints", "a.safetensors", []byte(strings.Repeat("A", 200_000))}
-	UnetB   = File{"diffusion_models", "b.safetensors", []byte(strings.Repeat("B", 300_000))}
-	VaeBC   = File{"vae", "shared.safetensors", []byte(strings.Repeat("V", 100_000))}
-	ClipC   = File{"text_encoders", "c.safetensors", []byte(strings.Repeat("C", 150_000))}
-	AllFile = []File{CkptA, UnetB, VaeBC, ClipC}
+	CkptA = File{"checkpoints", "a.safetensors", []byte(strings.Repeat("A", 200_000))}
+	UnetB = File{"diffusion_models", "b.safetensors", []byte(strings.Repeat("B", 300_000))}
+	VaeBC = File{"vae", "shared.safetensors", []byte(strings.Repeat("V", 100_000))}
+	ClipC = File{"text_encoders", "c.safetensors", []byte(strings.Repeat("C", 150_000))}
+	// LoraD is the LoRA of the adult model m-d (a third party's mirror), which also holds CkptA as its base.
+	LoraD   = File{"loras", "d.safetensors", []byte(strings.Repeat("D", 50_000))}
+	AllFile = []File{CkptA, UnetB, VaeBC, ClipC, LoraD}
 )
+
+// AdultNoticeSource is the SourceNote of the mirrored LoRA of m-d.
+const AdultNoticeSource = "第三者のミラー。原本は Civitai（model 1）で、SHA-256 が一致することを 2026-10-25 に確かめた。"
 
 // Host is the fake GitHub / Hugging Face: it serves the engine archive and the model files.
 type Host struct {
@@ -48,6 +53,13 @@ type Host struct {
 	archive []byte
 	n       int
 	holds   map[string]*Hold
+}
+
+// Gone makes the host answer 404 for the file from now on: the mirror of a third party was deleted.
+func (h *Host) Gone(f File) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	delete(h.files, "/"+f.Folder+"/"+f.Name)
 }
 
 // Requests is how many requests reached the host.
@@ -108,6 +120,8 @@ func testCatalog(h *Host) *catalog.Catalog {
 	cf := func(f File) catalog.File {
 		return catalog.File{Name: f.Name, Folder: f.Folder, URL: h.URL + "/" + f.Folder + "/" + f.Name, SHA256: f.sha(), Size: int64(len(f.Body))}
 	}
+	mirror := cf(LoraD)
+	mirror.SourceNote = AdultNoticeSource
 	vram := catalog.VRAM{MinGB: 8, Source: "test", Estimate: true}
 	return &catalog.Catalog{
 		Engine: catalog.Engine{
@@ -129,6 +143,12 @@ func testCatalog(h *Host) *catalog.Catalog {
 			{
 				ID: "m-c", Name: "C", Kind: localcfg.MediaImage, Tier: catalog.TierAdvanced, Description: "d", Files: []catalog.File{cf(ClipC), cf(VaeBC)}, VRAM: vram,
 				License: lic("non-commercial", false), ConsentRequired: true, Workflows: []catalog.Workflow{{Name: "wf-c", Template: "txt2img-flux-schnell"}},
+			},
+			{
+				// an adult LoRA model: hidden until the age is confirmed; its base file is shared with m-a
+				ID: "m-d", Name: "D", Kind: localcfg.MediaImage, Tier: catalog.TierAdvanced, ContentRating: catalog.RatingAdult, Description: "d",
+				TriggerWords: []string{"nsfwsks"}, Files: []catalog.File{cf(CkptA), mirror}, VRAM: vram,
+				License: lic("unspecified", false), ConsentRequired: true, Workflows: []catalog.Workflow{{Name: "wf-d", Template: "txt2img-flux-dev-lora"}},
 			},
 		},
 	}

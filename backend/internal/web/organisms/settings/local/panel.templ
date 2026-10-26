@@ -1,0 +1,86 @@
+package local
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// IDs of the elements the actions swap.
+const (
+	PanelID = "local-models-panel"
+	// ListID is the list of endpoint cards; a new card is appended to it out of band. EmptyID is the sentence that says
+	// there are none, which the first card takes away (and the last deleted one brings back).
+	ListID  = "local-endpoints"
+	EmptyID = "local-endpoints-empty"
+)
+
+// Description is what the category says under its title.
+const Description = "自分の PC や tailnet 上のサーバーで動かしている ComfyUI（画像・動画）と OpenAI 互換の画像 API を登録し、組み込みのモデルと同じように「画像・動画モデル」で選べるようにします。保存するとすぐに反映されます。登録した接続先には http・localhost・LAN・tailnet のアドレスを使えます（リンクローカルは使えません）。"
+
+// ManagerCard is the card of the model manager (spec/components/settings-screen.md §5): another screen, where models are
+// installed and tried. Its status line reads how ComfyUI is doing after the page is shown.
+func ManagerCard() molecules.ToolCard {
+	return molecules.ToolCard{
+		ID: "model-manager", Href: templ.SafeURL(paths.ModelManager()), Icon: atoms.IconPackage, Title: "モデルマネージャー",
+		Description: "ComfyUI とローカルモデルの導入・試し生成。別の画面を開きます。", StatusURL: paths.ToolStatus(paths.ToolModelManager),
+	}
+}
+
+// Section is the category: the card of the model manager at its head, then the endpoints as cards. The buttons that
+// change the settings file are disabled (with the reason) when the file is pinned.
+templ Section(d Data) {
+	<div id={ PanelID } class="flex flex-col gap-6" data-testid="local-models">
+		if d.Problem != "" {
+			<p class="text-sm text-red-300" role="alert" data-testid="local-models-problem">{ d.Problem }</p>
+		} else {
+			if d.Pinned {
+				<p class="text-sm text-amber-300" role="status" data-testid="local-models-pinned">{ d.PinnedNote }</p>
+			}
+			<ul role="list" class="grid grid-cols-1 gap-4">
+				@molecules.ToolCardItem(ManagerCard())
+			</ul>
+			<section aria-labelledby="local-endpoints-title" class="flex flex-col gap-3">
+				<div class="flex flex-wrap items-center justify-between gap-2">
+					<h3 id="local-endpoints-title" class="text-base font-semibold">接続先</h3>
+					@atoms.Button(atoms.TonePrimary, "接続先を追加", guard(d.Pinned, d.PinnedNote, modal.OpenAttrs(paths.LocalEndpoints()+"/new", "add-endpoint")))
+				</div>
+				if len(d.Endpoints) == 0 {
+					<p id={ EmptyID } class="text-sm text-neutral-400" data-testid="local-models-empty">接続先はまだ登録されていません。</p>
+				}
+				<ul id={ ListID } role="list" class="grid grid-cols-1 gap-4 xl:grid-cols-2" data-testid="local-endpoints">
+					@EndpointCards(d)
+				</ul>
+			</section>
+		}
+	</div>
+}
+
+// EndpointCards are the cards of the list, which is what a delete swaps into the list: the swap target stays in the page, so
+// that the focus can be put back on the button of the card that took the place of the deleted one.
+templ EndpointCards(d Data) {
+	for _, e := range d.Endpoints {
+		@endpointCard(d.Pinned, d.PinnedNote, e, cardList, false)
+	}
+}
+
+// EmptyNotice is the sentence that says there is no endpoint, drawn out of band before the list when the last one was
+// deleted. An out-of-band swap that is not a replacement takes the content of its element, so the sentence is in a wrapper.
+templ EmptyNotice() {
+	<div hx-swap-oob={ "beforebegin:" + listSelector }>
+		<p id={ EmptyID } class="text-sm text-neutral-400" data-testid="local-models-empty">接続先はまだ登録されていません。</p>
+	</div>
+}
+
+// EmptyGone takes the sentence away when the first endpoint is added.
+templ EmptyGone() {
+	<p id={ EmptyID } hx-swap-oob="delete"></p>
+}
+
+// EndpointAppended is a new endpoint's card added to the end of the list out of band.
+templ EndpointAppended(e Endpoint) {
+	<ul hx-swap-oob={ "beforeend:" + listSelector } role="list">
+		@endpointCard(false, "", e, cardList, false)
+	</ul>
+}

@@ -11,21 +11,25 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/chatgptid"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/gptimage"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
 // Load is modeladapter.LoadConfig followed by Validate: the Config of the settings file, or an
-// error that says what is wrong with it. An empty path selects the (valid) defaults.
+// error that says what is wrong with it. An empty path selects the (valid) defaults. A file that
+// still names Imagen 4 is read as Nano Banana (migrateLegacyModels).
 func Load(path string) (modeladapter.Config, error) {
 	cfg, err := modeladapter.LoadConfig(path)
 	if err != nil {
 		return modeladapter.Config{}, err
 	}
+	migrateLegacyModels(&cfg)
 	cfg = withWorkflows(cfg)
 	if err := Validate(cfg); err != nil {
 		return modeladapter.Config{}, fmt.Errorf("model config %s: %w", path, err)
 	}
+	warnUnpricedGPTImage2(cfg)
 	return cfg, nil
 }
 
@@ -65,6 +69,9 @@ func validateModels(c modeladapter.Config) []error {
 		caps, video := modeladapter.Capabilities(m)
 		if !slices.Contains(domain.ImageModels(), m) && !video && m != chatgptid.Model {
 			errs = append(errs, fmt.Errorf("models: %q is not an image or video model", m))
+		}
+		if q := c.Models[m].Quality; !gptimage.Valid(q) || (q != "" && m != domain.ModelGPTImage2) {
+			errs = append(errs, fmt.Errorf("models %s: quality %q is not one of %v (only %s has one)", m, q, gptimage.Qualities(), domain.ModelGPTImage2))
 		}
 		for _, res := range slices.Sorted(maps.Keys(c.Models[m].CostPerSecond)) {
 			if video && !caps.SupportsResolution(res) {

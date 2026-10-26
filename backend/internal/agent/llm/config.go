@@ -47,6 +47,9 @@ func Agents() []Agent {
 	}
 }
 
+// CodexBaseURL is the base_url of ProviderChatGPTCodex: a label, because the provider talks to a local process over stdio.
+const CodexBaseURL = "stdio://codex-app-server"
+
 // Provider names an LLM vendor. It is also the credential.Store key of the vendor's API key.
 type Provider string
 
@@ -58,11 +61,15 @@ const (
 	// ProviderChatGPTSubscription is the official ChatGPT plan usage route (Responses API, signed in with ChatGPT).
 	// It has no API key: the sign-in of package chatgpt takes its place.
 	ProviderChatGPTSubscription Provider = "chatgpt-subscription"
+	// ProviderChatGPTCodex is the ChatGPT plan used through the Codex app-server (a child process of mam), for the
+	// accounts that the official route does not accept (Business / Enterprise / Edu workspaces). Text generation only.
+	// It has no API key: the Codex login of package chatgpt/codex takes its place.
+	ProviderChatGPTCodex Provider = "chatgpt-codex"
 )
 
 // Providers lists every supported provider.
 func Providers() []Provider {
-	return []Provider{ProviderAnthropic, ProviderOpenAI, ProviderGoogle, ProviderChatGPTSubscription}
+	return []Provider{ProviderAnthropic, ProviderOpenAI, ProviderGoogle, ProviderChatGPTSubscription, ProviderChatGPTCodex}
 }
 
 // Target is one provider and the model to call on it.
@@ -163,6 +170,8 @@ func DefaultConfig() Config {
 			ProviderGoogle:    {BaseURL: "https://generativelanguage.googleapis.com"},
 			// The Responses API of the plan usage flow lives on the public API host.
 			ProviderChatGPTSubscription: {BaseURL: "https://api.openai.com"},
+			// The Codex app-server is a child process, not a host: the value only names it (the field must not be empty).
+			ProviderChatGPTCodex: {BaseURL: CodexBaseURL},
 		},
 		TimeoutSeconds: 120,
 		Retry:          RetryConfig{MaxAttempts: 3, BaseDelayMillis: 1000, MaxDelayMillis: 16000},

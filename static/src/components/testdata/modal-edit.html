@@ -1,0 +1,13 @@
+<div id="mam-modal-content">
+  <h2 id="mam-modal-title">A の設定</h2>
+  <p id="mam-modal-desc">説明です</p>
+  <form id="modal-form" hx-get="/src/components/testdata/modal-saved.html" hx-target="#mam-modal-body" hx-swap="innerHTML">
+    <label>値 <input id="modal-input" name="value" autofocus value="old"></label>
+    <button type="button" data-modal-close>キャンセル</button>
+    <button type="submit" id="modal-save">保存</button>
+    <button type="button" id="modal-invalid" hx-get="/src/components/testdata/modal-invalid.html" hx-target="#mam-modal-body" hx-swap="innerHTML">検証する</button>
+    <button type="button" id="modal-token" hx-get="/src/components/testdata/modal-token.html" hx-target="#mam-modal-body" hx-swap="innerHTML">発行する</button>
+    <button type="button" id="modal-issue" hx-post="/src/components/testdata/modal-issued.html" hx-target="#mam-modal-body" hx-swap="innerHTML">POST で発行する</button>
+    <button type="button" id="modal-broken" hx-get="/src/components/testdata/modal-missing.html" hx-target="#mam-modal-body" hx-swap="innerHTML">壊れた要求</button>
+  </form>
+</div>

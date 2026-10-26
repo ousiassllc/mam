@@ -1,0 +1,72 @@
+package settingsui
+
+import "github.com/ousiassllc/mam/backend/internal/web/atoms"
+
+// Card is one row of a list of the settings screen drawn as a card (shared-ui-parts.md §5): a name, a state, what it is
+// for and the buttons that act on it. The id of the row is what a save replaces out of band.
+type Card struct {
+	// ID is the id of the <li> (credential-row-<provider>); TestID is its data-testid ("settings-card" when empty).
+	ID, TestID string
+	// Attrs are more attributes of the <li> (data-provider).
+	Attrs templ.Attributes
+	Title string
+	// TitleLevel is the level of the heading of the title: 3 or 4 (under an h3 of a section). Zero is 3.
+	TitleLevel int
+	Tone       atoms.BadgeTone
+	State      string // the text of the Badge; empty draws none
+	// Description is what the row is for; Summary is its current value (what is set, who is signed in).
+	Description, Summary string
+	// Details is more of the row between its summary and its buttons (a card whose state needs more than a line).
+	Details templ.Component
+	// Notice is a short confirmation of what the last action did (role="status"); it is gone when the page is read again.
+	Notice string
+	// OOB makes the <li> replace the one with its id out of band.
+	OOB bool
+}
+
+func (c Card) testID() string {
+	if c.TestID == "" {
+		return "settings-card"
+	}
+	return c.TestID
+}
+
+// CardItem is a Card as a list item; the actions are its children, a row of buttons. Put the cards in one
+// <ul role="list">.
+templ CardItem(c Card) {
+	<li
+		id={ c.ID }
+		data-testid={ c.testID() }
+		class="flex min-w-0 flex-col gap-2 rounded-lg border border-neutral-800 bg-neutral-900 p-4"
+		{ c.Attrs... }
+		if c.OOB {
+			hx-swap-oob="true"
+		}
+	>
+		<div class="flex flex-wrap items-center justify-between gap-2">
+			if c.TitleLevel == 4 {
+				<h4 class="text-sm font-semibold text-neutral-100">{ c.Title }</h4>
+			} else {
+				<h3 class="text-sm font-semibold text-neutral-100">{ c.Title }</h3>
+			}
+			if c.State != "" {
+				@atoms.Badge(c.Tone, c.State)
+			}
+		</div>
+		if c.Description != "" {
+			<p class="break-words text-sm text-neutral-400">{ c.Description }</p>
+		}
+		if c.Summary != "" {
+			<p class="break-words text-sm text-neutral-300">{ c.Summary }</p>
+		}
+		if c.Details != nil {
+			@c.Details
+		}
+		if c.Notice != "" {
+			<p class="text-xs text-emerald-300" role="status">{ c.Notice }</p>
+		}
+		<div class="mt-auto flex flex-wrap items-center gap-2 pt-1">
+			{ children... }
+		</div>
+	</li>
+}

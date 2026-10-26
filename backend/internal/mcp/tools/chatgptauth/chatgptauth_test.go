@@ -15,6 +15,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit/mcptest"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/chatgptauth"
+	"github.com/ousiassllc/mam/backend/internal/mcp/tools/jobs"
 )
 
 type fixture struct {
@@ -23,20 +24,25 @@ type fixture struct {
 	svc  *chatgpt.Service
 }
 
-func newFixture(t *testing.T, withService bool) *fixture {
+func newFixture(t *testing.T, withService bool, tweak ...func(*chatgpt.Options)) *fixture {
 	t.Helper()
 	f := &fixture{auth: chatgpttest.NewServer(t)}
 	f.env = mcptest.New(t, func(env *mcptest.Env, r *mcpkit.Registrar) {
 		env.Keys.LimitBytes(2560) // the Windows Credential Manager limit
 		if withService {
-			f.svc = chatgpt.New(chatgpt.Options{
+			opts := chatgpt.Options{
 				Keys: env.Keys, DataDir: t.TempDir(), LockPath: t.TempDir() + "/.auth-refresh.lock", Issuer: f.auth.URL,
 				Sleep: func(context.Context, time.Duration) error { return nil },
 				Open:  func(u string) error { f.auth.Approve(u); return nil },
-			})
+			}
+			for _, tw := range tweak {
+				tw(&opts)
+			}
+			f.svc = chatgpt.New(opts)
 			r.Settings.ChatGPT = f.svc
 		}
 		chatgptauth.Register(r, env.Services)
+		jobs.Register(r, env.Services) // get_job reads the install job
 	})
 	return f
 }

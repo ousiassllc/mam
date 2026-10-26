@@ -21,14 +21,15 @@ func TestEmbeddedCatalogIsValid(t *testing.T) {
 	assert.Empty(t, catalog.Validate(c, localcfg.TemplateByID))
 
 	assert.Equal(t, "v0.42.1", c.Engine.Version)
-	require.Len(t, c.Models, 8)
+	require.Len(t, c.Models, 14)
 	var ids []string
 	for _, m := range c.Models {
 		ids = append(ids, m.ID)
 	}
 	assert.Equal(t, []string{
-		"flux1-schnell", "qwen-image", "sdxl-base", "ltx-video-2b", "wan22-ti2v-5b", // standard: images, then videos
-		"flux1-dev", "sd35-medium", "hunyuanvideo15-480p",
+		"flux1-schnell", "qwen-image", "sdxl-base", "ltx-video-2b", "wan22-i2v-14b", "wan22-ti2v-5b", // standard: images, then videos
+		"chroma1-hd", "flux1-dev", "flux1-dev-nsfw-master", "noctq-v4-qwen-image21", "sd35-medium", // advanced: images, then videos
+		"hunyuanvideo15-480p", "wan22-i2v-14b-nsfw-lora", "wan22-remix-nsfw-i2v",
 	}, ids)
 }
 
@@ -40,14 +41,20 @@ func TestTheCatalogHoldsTheDecidedModelsAndLicenses(t *testing.T) {
 		commerc bool
 		files   int
 	}{
-		"sdxl-base":           {"creativeml-openrail++-m", false, true, 1},
-		"flux1-schnell":       {"apache-2.0", false, true, 1},
-		"qwen-image":          {"apache-2.0", false, true, 3},
-		"wan22-ti2v-5b":       {"apache-2.0", false, true, 3},
-		"ltx-video-2b":        {"ltx-video-open-rail-m", false, true, 2},
-		"flux1-dev":           {"flux-1-dev-non-commercial", true, false, 1},
-		"sd35-medium":         {"stabilityai-ai-community", true, true, 1},
-		"hunyuanvideo15-480p": {"tencent-hunyuan-community", true, true, 4},
+		"sdxl-base":               {"creativeml-openrail++-m", false, true, 1},
+		"flux1-schnell":           {"apache-2.0", false, true, 1},
+		"qwen-image":              {"apache-2.0", false, true, 3},
+		"wan22-ti2v-5b":           {"apache-2.0", false, true, 3},
+		"wan22-i2v-14b":           {"apache-2.0", false, true, 4},
+		"ltx-video-2b":            {"ltx-video-open-rail-m", false, true, 2},
+		"flux1-dev":               {"flux-1-dev-non-commercial", true, false, 1},
+		"sd35-medium":             {"stabilityai-ai-community", true, true, 1},
+		"hunyuanvideo15-480p":     {"tencent-hunyuan-community", true, true, 4},
+		"noctq-v4-qwen-image21":   {"qwen-research", true, false, 3},
+		"chroma1-hd":              {"apache-2.0", true, true, 3},
+		"flux1-dev-nsfw-master":   {"flux-1-dev-non-commercial", true, false, 2},
+		"wan22-remix-nsfw-i2v":    {"unspecified", true, false, 4},
+		"wan22-i2v-14b-nsfw-lora": {"unspecified", true, false, 6},
 	} {
 		m, ok := c.Model(id)
 		require.True(t, ok, id)

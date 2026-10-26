@@ -9,7 +9,8 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
-	"github.com/ousiassllc/mam/backend/internal/web/organisms/credentialpanel"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/chatgpt"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/credentials"
 )
 
 // A button that repeats down a list names its row, so that a button list or a voice command tells the
@@ -58,14 +59,36 @@ func TestVersionHistoryPanel_RestoreButtonsAreNamedAfterTheirVersion(t *testing.
 	assert.Equal(t, []string{"このバージョンに復元: v2", "このバージョンに復元: v1"}, buttonNames(html, "このバージョンに復元"))
 }
 
-func TestCredentialPanel_SaveAndDeleteButtonsAreNamedAfterTheirProvider(t *testing.T) {
-	html := render(t, credentialpanel.Panel(credentialpanel.Data{Providers: []credentialpanel.ProviderView{
+func TestCredentialPanel_OpenAndDeleteButtonsAreNamedAfterTheirProvider(t *testing.T) {
+	html := render(t, credentials.Panel(credentials.Data{Providers: []credentials.ProviderView{
 		{Provider: "kling", Label: "Kling", Configured: true},
 		{Provider: "veo", Label: "Veo", Configured: true},
+		{Provider: "runway", Label: "Runway"},
 	}}))
 
-	assert.Equal(t, []string{"保存: Kling", "保存: Veo"}, buttonNames(html, "保存"))
+	assert.Equal(t, []string{"変更: Kling", "変更: Veo"}, buttonNames(html, "変更"))
+	assert.Equal(t, []string{"設定: Runway"}, buttonNames(html, "設定"))
 	assert.Equal(t, []string{"削除: Kling", "削除: Veo"}, buttonNames(html, "削除"))
+}
+
+// The buttons of the three login cards are named after their card: "ログアウト" and "利用できるモデルを表示" repeat.
+func TestChatGPTCards_ButtonsAreNamedAfterTheirLoginSystem(t *testing.T) {
+	html := render(t, chatgpt.Panel(chatgpt.Data{
+		Official:     chatgpt.Account{SignedIn: true, PlanUsageGranted: true},
+		Image:        chatgpt.Account{SignedIn: true},
+		ImageEnabled: true,
+		Codex:        chatgpt.Codex{SignedIn: true, Engine: chatgpt.CodexEngine{State: "ready", Supported: true}},
+	}))
+
+	assert.Equal(t, []string{
+		"ログアウト: Sign in with ChatGPT（公式・テキスト生成）",
+		"ログアウト: ChatGPT 画像生成（非公式）",
+		"ログアウト: ChatGPT 経由の Codex（テキスト生成のみ）",
+	}, buttonNames(html, "ログアウト"))
+	assert.Equal(t, []string{
+		"利用できるモデルを表示: Sign in with ChatGPT（公式・テキスト生成）",
+		"利用できるモデルを表示: ChatGPT 経由の Codex（テキスト生成のみ）",
+	}, buttonNames(html, "利用できるモデルを表示"))
 }
 
 func TestNoteCard_ButtonsAreNamedAfterTheirNote(t *testing.T) {

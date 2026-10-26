@@ -19,7 +19,7 @@ const MaxAPIKeyBytes = credential.MaxAPIKeyBytes
 var CredentialProviders = []struct{ ID, Label string }{
 	{string(llm.ProviderAnthropic), "Anthropic（Claude）"},
 	{string(llm.ProviderOpenAI), "OpenAI"},
-	{string(llm.ProviderGoogle), "Google（Gemini / Imagen）"},
+	{string(llm.ProviderGoogle), "Google（Gemini / Nano Banana）"},
 	{string(modeladapter.VendorFlux), "Black Forest Labs（Flux）"},
 	{string(modeladapter.VendorKling), "Kling"},
 	{string(modeladapter.VendorSeedance), "Seedance"},

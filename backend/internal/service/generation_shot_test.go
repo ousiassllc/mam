@@ -169,18 +169,18 @@ func TestBuildReferencePack_MakesEveryReferenceAndTheKeyframeThenGenerationUsesT
 	assert.Equal(t, domain.ReferenceKinds(), kinds, "Character / Product / Location / Style / Lighting References and the Keyframe")
 	assert.Equal(t, 6, f.count(t, `SELECT COUNT(*) FROM asset WHERE type = 'reference'`))
 
-	// model-adapters.md §3: new Character / Product / Location -> Imagen 4; Style / Lighting / Keyframe -> Nano Banana.
+	// model-adapters.md §3: new Character / Product / Location -> GPT Image 2; Style / Lighting / Keyframe -> Nano Banana.
 	byKind := map[domain.ReferenceKind]domain.ModelName{}
 	for _, r := range refs {
 		byKind[r.Kind] = r.Model
 	}
-	assert.Equal(t, domain.ModelImagen4, byKind[domain.RefCharacter])
-	assert.Equal(t, domain.ModelImagen4, byKind[domain.RefProduct])
-	assert.Equal(t, domain.ModelImagen4, byKind[domain.RefLocation])
+	assert.Equal(t, domain.ModelGPTImage2, byKind[domain.RefCharacter])
+	assert.Equal(t, domain.ModelGPTImage2, byKind[domain.RefProduct])
+	assert.Equal(t, domain.ModelGPTImage2, byKind[domain.RefLocation])
 	assert.Equal(t, domain.ModelNanoBanana, byKind[domain.RefStyle])
 	assert.Equal(t, domain.ModelNanoBanana, byKind[domain.RefLighting])
 	assert.Equal(t, domain.ModelNanoBanana, byKind[domain.RefKeyframe])
-	assert.Equal(t, 3, f.count(t, `SELECT COUNT(*) FROM cost_ledger_entry WHERE provider = 'imagen-4'`))
+	assert.Equal(t, 3, f.count(t, `SELECT COUNT(*) FROM cost_ledger_entry WHERE provider = 'gpt-image-2'`))
 	assert.Equal(t, 3, f.count(t, `SELECT COUNT(*) FROM cost_ledger_entry WHERE provider = 'nano-banana'`))
 
 	assert.Equal(t, 6, f.count(t, `SELECT COUNT(*) FROM chat_message WHERE kind = 'keyframe' AND project_id = ?`, f.projectID), "every image is shown in the chat")

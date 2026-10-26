@@ -75,3 +75,43 @@ func TestExternalInventoryReportsAnUnreachableServer(t *testing.T) {
 	_, err := r.svc.ExternalInventory(ctx(), "gone")
 	assert.Error(t, err)
 }
+
+// The external inventory follows the age gate like the catalog: an adult model is not listed until the confirmation is on
+// record. The loras folder is read, so that the LoRA of a model can be there.
+func TestExternalInventoryHidesAdultModelsUntilTheAgeIsConfirmedAndReadsLoras(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/system_stats":
+			_, _ = w.Write([]byte(`{"system":{}}`))
+		case "/models/checkpoints":
+			_ = json.NewEncoder(w).Encode([]string{ckptA.name})
+		case "/models/loras":
+			_ = json.NewEncoder(w).Encode([]string{loraD.name})
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+	r := newRig(t, withAdultModel())
+	require.NoError(t, r.models.CreateEndpoint(ctx(), localmodels.EndpointInput{Name: "tailnet", Kind: localcfg.KindComfyUI, BaseURL: srv.URL}))
+
+	inv, err := r.svc.ExternalInventory(ctx(), "tailnet")
+	require.NoError(t, err)
+	for _, m := range inv.Models {
+		assert.NotEqual(t, "m-d", m.ID, "the gate is closed")
+	}
+	assert.Equal(t, []string{loraD.name}, inv.Folders["loras"], "the loras folder is read")
+
+	r.confirmAdult()
+	inv, err = r.svc.ExternalInventory(ctx(), "tailnet")
+	require.NoError(t, err)
+	var d *modelmanager.ExternalModel
+	for i := range inv.Models {
+		if inv.Models[i].ID == "m-d" {
+			d = &inv.Models[i]
+		}
+	}
+	require.NotNil(t, d)
+	assert.True(t, d.Complete)
+	assert.Contains(t, d.Present, "loras/"+loraD.name)
+}

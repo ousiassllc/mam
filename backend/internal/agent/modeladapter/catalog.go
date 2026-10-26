@@ -59,7 +59,7 @@ func (c VideoCapabilities) SupportsResolution(r string) bool {
 
 // AcceptsImageInputs reports whether an image model uses reference images.
 func AcceptsImageInputs(m domain.ModelName) bool {
-	return m == domain.ModelNanoBanana || m == domain.ModelGPTImage2 || m == domain.ModelFlux2 || m == chatgptid.Model
+	return m == domain.ModelNanoBanana || m == domain.ModelNanoBananaLite || m == domain.ModelGPTImage2 || m == domain.ModelFlux2 || m == chatgptid.Model
 }
 
 // SupportsSeed reports whether the vendor of a built-in model takes a seed (OpenAI, Kling, Seedance 2.0 have no such field).

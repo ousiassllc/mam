@@ -103,7 +103,7 @@ func TestTestLocalEndpoint_SavedDraftAndLinkLocal(t *testing.T) {
 	env.CallOK("test_local_endpoint", map[string]any{"kind": "comfyui", "base_url": compat}, &out) // wrong kind for that server
 	assert.False(t, out.OK, "an endpoint that does not answer as its kind is a result, not an error")
 
-	assert.Contains(t, env.CallError("test_local_endpoint", map[string]any{"kind": "comfyui", "base_url": "http://169.254.169.254"}), "link-local")
+	assert.Contains(t, env.CallError("test_local_endpoint", map[string]any{"kind": "comfyui", "base_url": "http://169.254.169.254"}), "リンクローカル")
 	assert.Contains(t, env.CallError("test_local_endpoint", map[string]any{}), "validation")
 	assert.Contains(t, env.CallError("test_local_endpoint", map[string]any{"name": "nope"}), "not_found")
 }

@@ -9,16 +9,16 @@ import (
 
 func registerCatalog(r *mcpkit.Registrar, h handlers) {
 	mcpkit.Read(r, "list_model_catalog",
-		"導入できるローカルの画像・動画モデルの一覧（種別・大きさ・VRAM の目安・ライセンスと商用利用の可否・同意が要るか・導入済みか・導入中のジョブ）/ The catalog of local image and video models with the state of each.",
+		"導入できるローカルの画像・動画モデルの一覧（種別・成人向けか（content_rating）・LoRA のトリガー語・大きさ・VRAM の目安・ライセンスと商用利用の可否・同意が要るか・導入済みか・導入中のジョブ）。成人向けモデルは、年齢確認（set_adult_content）が済むまで一覧に出ない / The catalog of local image and video models with the state of each. Adult models are listed only after the age confirmation.",
 		h.listCatalog)
 	mcpkit.Read(r, "get_catalog_model",
-		"カタログのモデルを 1 件取得する（ファイルの一覧・共有ファイル・ライセンスの要約と URL・地域の制限を含む）。同意が要るモデルは、導入の前にこの内容をユーザーに見せる / One catalog model with its files and license (show it to the user before accepting).",
+		"カタログのモデルを 1 件取得する（ファイルの一覧・共有ファイル・ミラーの原本の場所（source_note）・ライセンスの要約と URL・地域の制限・成人向けの注意書きを含む）。同意が要るモデルは、導入の前にこの内容をユーザーに見せる。成人向けモデルは、年齢確認の前は conflict / One catalog model with its files and license (show it to the user before accepting). An adult model is refused before the age confirmation.",
 		h.getCatalogModel)
 	mcpkit.Write(r, "accept_model_license",
 		"モデルのライセンスに同意したことを記録する。license_id と license_version は get_catalog_model が返した値で、違えば拒否される（版が変わると改めて同意が要る）。ユーザーがライセンスを確認して同意した後にだけ呼ぶ / Record that the user accepted the license of a model (ID and version as in the catalog).",
 		h.acceptLicense, mcpkit.Idempotent())
 	mcpkit.Write(r, "install_model",
-		"カタログのモデルをダウンロードして導入する。job_id を返すので get_job で進捗を見る（SHA-256 を検証し、中断しても再開できる）。同意が要るモデルは、先に accept_model_license しないと conflict で拒否される（導入の前に API が確かめる）。エンジンが未導入・空き容量不足・設定ファイルが固定されているときも始めずに拒否される / Install a catalog model as a job. A model that needs a license acceptance is refused until accepted.",
+		"カタログのモデルをダウンロードして導入する。job_id を返すので get_job で進捗を見る（SHA-256 を検証し、中断しても再開できる）。同意が要るモデルは、先に accept_model_license しないと conflict で拒否される（導入の前に API が確かめる）。成人向けモデルは、年齢確認（set_adult_content）が済むまで conflict で拒否される。エンジンが未導入・空き容量不足・設定ファイルが固定されているときも始めずに拒否される / Install a catalog model as a job. A model that needs a license acceptance is refused until accepted.",
 		h.installModel, mcpkit.OpenWorld())
 	mcpkit.Destroy(r, "delete_model",
 		"導入したモデルを削除する。画像の用途・Quality Policy に使われていれば拒否される。ほかの導入済みモデルと共有しているファイル（VAE など）は、使うモデルが残る間は消えない / Delete an installed model; shared files stay while another installed model uses them.",

@@ -14,7 +14,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/credential/credentialtest"
 	"github.com/ousiassllc/mam/backend/internal/service"
-	"github.com/ousiassllc/mam/backend/internal/web/handler"
+	credentialshandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/credentials"
 )
 
 // tooLargeStore is a readable store whose Set refuses the key for its size, as Keyring does when
@@ -28,7 +28,7 @@ func (tooLargeStore) Set(string, string) error { return credential.ErrTooLarge }
 func TestSaveCredential_KeyTooLargeForTheOSStoreAnswers422(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-	r.PUT("/credentials/:provider", handler.SaveCredential(service.NewCredentialService(tooLargeStore{credentialtest.New()})))
+	r.PUT("/credentials/:provider", credentialshandler.Save(credentialshandler.Keys{Svc: service.NewCredentialService(tooLargeStore{credentialtest.New()})}))
 
 	form := url.Values{"api_key": {"sk-within-the-service-limit"}}
 	req := httptest.NewRequest(http.MethodPut, "/credentials/kling", strings.NewReader(form.Encode()))

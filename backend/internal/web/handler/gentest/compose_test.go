@@ -16,14 +16,14 @@ import (
 )
 
 func TestPageListsEveryModelAndSaysWhyOneCannotBeChosen(t *testing.T) {
-	s := newScreen(t, gentesttest.WithoutBackend(domain.ModelImagen4))
+	s := newScreen(t, gentesttest.WithoutBackend(domain.ModelNanoBananaLite))
 	body := s.page(paths.GenerationTest())
 	assert.Contains(t, body, `data-testid="gt-form"`)
 	assert.Contains(t, body, `value="flux-2"`)
 	assert.Contains(t, body, `value="nano-banana"`)
 	assert.Contains(t, body, "シード対応", "the capabilities are shown")
 	assert.Contains(t, body, "$0.0300 / 枚", "the unit price is shown")
-	disabled := regexp.MustCompile(`(?s)data-model="imagen-4" data-available="false".*?gt-model-reason">([^<]+)<`).FindStringSubmatch(body)
+	disabled := regexp.MustCompile(`(?s)data-model="nano-banana-lite" data-available="false".*?gt-model-reason">([^<]+)<`).FindStringSubmatch(body)
 	require.Len(t, disabled, 2, "an unavailable model is listed, with its reason")
 	assert.Contains(t, disabled[1], "API キー")
 	assert.Contains(t, body, `name="prompt"`)

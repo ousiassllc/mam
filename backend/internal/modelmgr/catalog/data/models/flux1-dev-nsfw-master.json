@@ -1,0 +1,51 @@
+{
+ "id": "flux1-dev-nsfw-master",
+ "name": "FLUX.1 dev (fp8) + NSFW MASTER LoRA",
+ "kind": "image",
+ "tier": "advanced",
+ "content_rating": "adult",
+ "description": "FLUX.1 dev（fp8 のチェックポイント。flux1-dev と共有）に、成人向けの表現を足す LoRA「NSFW MASTER」（約 0.17 GB）を重ねる構成（成人向け）。LoRA の強さは 0.8。flux1-dev を導入済みなら、取得するのは LoRA だけ。",
+ "trigger_words": [
+  "NSFW",
+  "Nude"
+ ],
+ "files": [
+  {
+   "name": "flux1-dev-fp8.safetensors",
+   "folder": "checkpoints",
+   "url": "https://huggingface.co/Comfy-Org/Flux-1-Dev/resolve/83c446ef27a6ac1e9e36ecf13257283aa12cf22a/flux1-dev-fp8.safetensors",
+   "sha256": "8e91b68084b53a7fc44ed2a3756d821e355ac1a7b6fe29be760c1db532f3d88a",
+   "size": 17246524772
+  },
+  {
+   "name": "NSFW_master_Flux.safetensors",
+   "folder": "loras",
+   "url": "https://huggingface.co/Keltezaa/NSFW_MASTER_FLUX/resolve/987923895d4019f16362652a4f3a019c5a6868e4/NSFW_master_Flux.safetensors",
+   "sha256": "84ce473cdeaa1ddd016cdf0406e08b43bb14c01d2c94ef48da2a035bb0b925c2",
+   "size": 171969344,
+   "source_note": "第三者のミラー。原本は Civitai の NSFW MASTER FLUX（version 746602 の NSFW_master.safetensors）で、SHA-256 が一致することを 2026-10-25 に確かめた。ミラーの作者が原本の作者かは未確認。"
+  }
+ ],
+ "vram": {
+  "min_gb": 16,
+  "source": "flux1-dev（fp8）と同じ。Flux dev fp8 は 12〜16 GB の目安の上限側。Issue #841 付録（Notion の記載または mam の推定。mam の実機では未検証）",
+  "estimate": true
+ },
+ "license": {
+  "id": "flux-1-dev-non-commercial",
+  "version": "1.1.1",
+  "name": "FLUX.1 [dev] Non-Commercial License v1.1.1",
+  "url": "https://github.com/black-forest-labs/flux/blob/main/model_licenses/LICENSE-FLUX1-dev",
+  "summary": "ベースの FLUX.1 [dev] は非商用・非本番の用途に限り使える（商用や本番には Black Forest Labs の別の商用ライセンスが要る）。LoRA は第三者のミラーで、HF のタグは MIT だが、原本の作者のライセンスかは確かめられていない。そのため、全体を非商用として扱う。",
+  "commercial_use": false,
+  "notice": "この mam のインストール先に取得するモデルのライセンスです。非商用の用途にだけ使ってください。"
+ },
+ "consent_required": true,
+ "requires_hf_token": false,
+ "workflows": [
+  {
+   "name": "flux1-dev-nsfw-master",
+   "template": "txt2img-flux-dev-lora"
+  }
+ ]
+}

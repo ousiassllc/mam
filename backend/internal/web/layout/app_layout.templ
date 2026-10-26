@@ -12,6 +12,14 @@ import (
 // the toasts it raises itself, so the toast is defined only in atoms.Toast. The same goes for
 // #connection-notice-template (atoms.ConnectionNotice), cloned by connection-notice.ts.
 templ AppLayout(title string, csrfToken string) {
+	@AppLayoutAt(title, csrfToken, "") {
+		{ children... }
+	}
+}
+
+// AppLayoutAt is AppLayout for a page that has another URL as its canonical one (a link rel="canonical" in the head;
+// canonical empty draws none): the page that several URLs show.
+templ AppLayoutAt(title, csrfToken, canonical string) {
 	<!DOCTYPE html>
 	<html lang="ja">
 		<head>
@@ -19,6 +27,9 @@ templ AppLayout(title string, csrfToken string) {
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
 			<meta name="csrf-token" content={ csrfToken }/>
 			<title>{ title } | mam</title>
+			if canonical != "" {
+				<link rel="canonical" href={ canonical }/>
+			}
 			<link rel="stylesheet" href={ paths.StaticCSS }/>
 			<script type="module" src={ paths.StaticApp }></script>
 		</head>

@@ -48,6 +48,8 @@ type Spec struct {
 	Args    []string
 	Dir     string
 	Env     []string
+	// DropEnv names variables of mam's own environment that the child must not inherit (compared without case on Windows).
+	DropEnv []string
 	// LogPath receives the output of the child ("" discards it).
 	LogPath string
 }
@@ -188,7 +190,7 @@ func (m *Manager) startLocked(ctx context.Context) (Status, error) {
 	}
 	url := "http://127.0.0.1:" + strconv.Itoa(port)
 	m.set(Status{State: StateStarting, Port: port, URL: url})
-	r, err := launch(spec, m.cfg.Logger)
+	r, err := launch(spec, m.cfg.Logger, nil)
 	if err != nil {
 		return m.fail(Status{Port: port, URL: url}, fmt.Errorf("ComfyUI を起動できません: %w", err)), err
 	}

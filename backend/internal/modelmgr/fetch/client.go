@@ -15,13 +15,23 @@ import (
 // which redirects to *.githubusercontent.com). Nothing else is fetched.
 var allowedDomains = []string{"huggingface.co", "hf.co", "github.com", "githubusercontent.com"}
 
+// hfDomains are the hosts of the Hugging Face import (the API, the files and the CDN): no GitHub, so that a redirect
+// from Hugging Face never leaves it.
+var hfDomains = []string{"huggingface.co", "hf.co"}
+
 // AllowedURL accepts an https URL on an allowed host (and, through safefetch, no address of the local network).
-func AllowedURL(u *url.URL) error {
+func AllowedURL(u *url.URL) error { return checkHost(u, allowedDomains) }
+
+// HFAllowedURL accepts an https URL on huggingface.co or hf.co and their subdomains only (and no address of the local
+// network). The Hugging Face client and the download of an imported file use it; the engine download keeps AllowedURL.
+func HFAllowedURL(u *url.URL) error { return checkHost(u, hfDomains) }
+
+func checkHost(u *url.URL, domains []string) error {
 	if err := safefetch.CheckURL(u.String()); err != nil {
 		return fmt.Errorf("fetch: %w", err)
 	}
 	host := strings.TrimSuffix(strings.ToLower(u.Hostname()), ".")
-	for _, d := range allowedDomains {
+	for _, d := range domains {
 		if host == d || strings.HasSuffix(host, "."+d) {
 			return nil
 		}

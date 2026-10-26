@@ -14,6 +14,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/jev"
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
+	"github.com/ousiassllc/mam/backend/internal/agent/llm/chatgptcodex"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm/chatgptsub"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/chatgptimage"
@@ -23,6 +24,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/chatgpt"
 	"github.com/ousiassllc/mam/backend/internal/config"
 	"github.com/ousiassllc/mam/backend/internal/credential"
+	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
 	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/repository"
@@ -92,6 +94,7 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 	keys := credential.NewKeyring()
 	llmBackends := llm.NewBackends(llmCfg, keys, nil)
 	chatgptsub.Add(llmBackends, llmCfg, gpt.Official(), nil) // the ChatGPT plan provider; its sign-in is not an API key
+	chatgptcodex.Add(llmBackends, llmCfg, gpt.Codex())       // the same plan through the Codex app-server (workspace accounts)
 	reasoning := llm.NewClient(llmCfg, llmBackends, llm.WithLogger(logger))
 
 	// The saved ComfyUI workflows are models of the settings: the routes of models.json may name them.
@@ -178,6 +181,9 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 	}
 	services.ModelManager = mgr
 	manager.Store(mgr)
+	// An adult model is refused while the age confirmation is off: by every generation (Shot, Reference Pack, the trial
+	// generations) even when an assignment still points at it. The same predicate leaves it out of the assignment choices (SetHidden).
+	models.Gate.Set(func(m domain.ModelName) bool { return mgr.HidesModel(string(m)) })
 	services.Gentest = newGentest(cfg, db, jobs, models, services, logger)
 	services.Workflows = newWorkflows(cfg, db, localModels, models, mgr, services.Projects, keys, backendOpts, logger)
 	closers = append(closers, mgr.Close) // after jobs.Stop too: the engine outlives the jobs that call it
