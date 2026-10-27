@@ -99,11 +99,14 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 ├── .github/
 │   ├── dependabot.yml      # 依存の更新 PR を週次で作る（gomod・npm（`/static`）・github-actions。環境構築 spec の CI 節）
 │   └── workflows/
-│       ├── ci.yml          # CI（lint・脆弱性検査（`make vuln`）・テスト・ビルド・行数上限の基準値チェック。環境構築 spec の CI 節）
-│       └── release.yml     # `main` の CI 成功後に次の patch 版を自動で（手動の `v*` タグでも）Windows インストーラーをビルドして GitHub Releases へ公開（§11）
+│       ├── ci.yml          # CI（`ci` ジョブ: lint・脆弱性検査（`make vuln`）・テスト・ビルド・行数上限の基準値チェック。`macos` ジョブ: GitHub-hosted の `macos-latest` で、dmg の作成・`cmd/wails` の darwin での vet・更新まわりのテスト・本物の dmg への更新の適用（`main` への push とこのリポジトリの PR だけ）。環境構築 spec の CI 節）
+│       ├── release-macos.yml # macOS（Apple Silicon）の dmg をビルドする再利用ワークフロー（`release.yml` の `build-macos` が呼ぶ。GitHub-hosted の `macos-latest`）
+│       └── release.yml     # `main` の CI 成功後に次の patch 版を自動で（手動の `v*` タグでも）Windows インストーラーと macOS（Apple Silicon）の dmg をビルドし、署名して GitHub Releases へ公開（§11）
 ├── scripts/
 │   ├── build.sh            # 本番ビルド（templ → esbuild/tailwind → go build）。`--all` で全プラットフォーム
 │   ├── package-windows.sh  # Windows 版のパッケージング（フロント → Wails ウィンドウ版 exe → NSIS インストーラー。§11）
+│   ├── package-macos.sh    # macOS（Apple Silicon・署名なし）版のパッケージング（フロント → Wails ウィンドウ版 → MAM.app → dmg。`desktop.md` §7）
+│   ├── make-checksums.sh   # リリースの `checksums.txt`（Windows インストーラーと macOS dmg）を作る（`release.yml` の `sign`）
 │   ├── smoke-windows.sh    # インストーラーのスモーク（`/S` で入れ、`mam.exe` を起動して `GET /` が 200 か確認）。Windows の機械で手動実行する（release.yml は動かさない）
 │   ├── fetch-face-models.sh # 顔検出・埋め込みモデル（YuNet / SFace）の取得と SHA-256 検証（§9 / model-adapters.md §10.1）
 │   ├── linterly-staged.sh  # コミット対象ファイルの行数上限チェック（pre-commit）
@@ -318,9 +321,9 @@ HALT のレイヤー別テスト方針を踏襲する。
 | `Services` を作るテスト | `service/servicetest`（`servicetest.New`）。`service.New` の後始末として `Services.Close` を登録する（DB を閉じるクリーンアップより後に登録して先に走らせる） | 再開 Worker のゴルーチンが閉じた DB を触らない |
 | E2E | 未導入（方針: Playwright で Gin サーバーを直接起動してブラウザから検証する） | HTMXインタラクション込みのユーザーフロー。現状は Go ハンドラ（`internal/router` の `httptest`、HTMX ヘッダ込み）と Lit のブラウザ内テストで層別に検証しており、ブラウザ通しのフローは自動検証されない |
 
-## 11. Windows デスクトップ版（Wails v3）
+## 11. デスクトップ版（Wails v3: Windows・macOS）
 
-Windows では、ブラウザ版と同じ `127.0.0.1` のサーバーを `internal/app` で起動し、Wails v3 のネイティブウィンドウ（WebView2）がその URL を開く。Gin の `http.Handler` を Wails の AssetServer へ直接渡す方式は、AssetServer が WebSocket を 501 で拒否するため採らない。`LoopbackOnly`・CSRF・WebSocket・Range・アップロードは変更しない。単一インスタンス・終了・起動エラー・パッケージング（NSIS インストーラー）・GitHub Releases への配布・実装時に検証する項目は `spec/architecture/desktop.md` に書く。ブラウザ版の `cmd/server` は全 OS で残す。インストール済みの Windows 版は新しいリリースを自分で確認して入れ替える（自動更新。ヘッドレスの `cmd/server` は更新しない）。流れ・安全ゲート・署名・ユーザー単位のインストールは `spec/architecture/desktop.md` §6 に書く。
+Windows と macOS（Apple Silicon）では、ブラウザ版と同じ `127.0.0.1` のサーバーを `internal/app` で起動し、Wails v3 のネイティブウィンドウ（Windows は WebView2、macOS は WKWebView）がその URL を開く。Gin の `http.Handler` を Wails の AssetServer へ直接渡す方式は、AssetServer が WebSocket を 501 で拒否するため採らない。`LoopbackOnly`・CSRF・WebSocket・Range・アップロードは変更しない。単一インスタンス・終了・起動エラー・パッケージング（NSIS インストーラー）・GitHub Releases への配布・実装時に検証する項目は `spec/architecture/desktop.md` に書く。ブラウザ版の `cmd/server` は全 OS で残す。インストール済みの Windows 版は新しいリリースを自分で確認して入れ替える（自動更新。ヘッドレスの `cmd/server` は更新しない）。流れ・安全ゲート・署名・ユーザー単位のインストールは `spec/architecture/desktop.md` §6 に書く。
 
 ## 改訂履歴
 

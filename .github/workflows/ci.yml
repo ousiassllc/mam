@@ -124,3 +124,72 @@ jobs:
 
       - name: Windows lint
         run: GOOS=windows CGO_ENABLED=0 golangci-lint run ./backend/...
+
+      # cmd/wails is also the macOS (Apple Silicon) desktop front, but a Wails build for macOS needs cgo and the Apple SDK, which
+      # this Linux runner does not have: build, vet and lint everything else (the update code in internal/desktop and
+      # internal/service/updater has darwin-specific paths) with GOOS=darwin GOARCH=arm64 CGO_ENABLED=0. cmd/wails itself is
+      # compiled, packaged and tested on a Mac by the `macos` job below.
+      - name: macOS build (without cmd/wails)
+        run: |
+          export GOOS=darwin GOARCH=arm64 CGO_ENABLED=0
+          mapfile -t pkgs < <(go list -f '{{if .GoFiles}}{{.ImportPath}}{{end}}' ./backend/... | grep -v '/backend/cmd/wails$')
+          go build "${pkgs[@]}"
+
+      - name: macOS vet (without cmd/wails)
+        run: |
+          export GOOS=darwin GOARCH=arm64 CGO_ENABLED=0
+          mapfile -t pkgs < <(go list ./backend/... | grep -v '/backend/cmd/wails$')
+          go vet "${pkgs[@]}"
+
+      - name: macOS lint (without cmd/wails)
+        run: |
+          export GOOS=darwin GOARCH=arm64 CGO_ENABLED=0
+          mapfile -t dirs < <(go list -f '{{.Dir}}' ./backend/... | grep -v '/backend/cmd/wails$' | sed "s#^$PWD#.#")
+          golangci-lint run "${dirs[@]}"
+
+  # The macOS (Apple Silicon) desktop version on GitHub's hosted macos-latest: the same packaging script as release.yml's
+  # `build-macos` (a dmg of version 0.0.1 without the release public key; never published), the native darwin tests of the
+  # update code, and the update helper run against that real dmg. contents: read, no secret, nothing is installed. A pull
+  # request from a fork does not run this job (the Mac minutes are for this repository's own branches).
+  macos:
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+          cache-dependency-path: go.sum
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: static/package-lock.json
+
+      - name: Package (MAM.app, ad-hoc signature, dmg)
+        run: bash scripts/package-macos.sh 0.0.1
+
+      - name: Vet cmd/wails (darwin, cgo)
+        run: go vet -tags production ./backend/cmd/wails/
+
+      # The update code on macOS itself (asset selection for darwin/arm64, the bundle and install helpers).
+      - name: Test the update code on macOS
+        run: go test -count=1 ./backend/internal/desktop/... ./backend/internal/service/updater/... ./backend/internal/service/appupdate/...
+
+      # The helper that applies an update, against the dmg just built: real hdiutil / ditto / xattr, the new bundle must
+      # pass codesign and start (--detect-gpu), and nothing may stay mounted or on disk.
+      - name: Apply the dmg with the update helper
+        run: MAM_TEST_DMG="$PWD/bin/mam-0.0.1-darwin-arm64.dmg" go test -count=1 -v -run TestMacInstallScript_RealDmgReplacesTheBundle ./backend/internal/desktop/
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: macos-dmg-${{ github.run_id }}
+          path: bin/mam-0.0.1-darwin-arm64.dmg
+          retention-days: 3
+          if-no-files-found: error

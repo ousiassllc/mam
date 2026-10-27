@@ -1,13 +1,14 @@
-// Package updater is the automatic update check and the verified download of the Windows desktop
-// build (spec/architecture/desktop.md §Auto update). Only the Wails front wires it in: cmd/server
-// is headless, has no installer, and never does.
+// Package updater is the automatic update check and the verified download of the desktop builds
+// (Windows installer, macOS Apple Silicon dmg; spec/architecture/desktop.md §Auto update). Only the Wails
+// front wires it in: cmd/server is headless, has no installer, and never does.
 //
 // Checker.CheckForUpdate runs the whole read-only-until-verified pipeline once: fetch the latest
 // release of this repository's own Releases (version.GitHubOwner / version.GitHubRepo), compare its
 // tag_name with version.Version (golang.org/x/mod/semver; no hand-rolled parsing), and - only once
 // Gate.SafeToUpdate says that no work a restart would lose is in flight (SafeGate) - download the
-// installer asset (named exactly mam-<tag_name without its leading v>-windows-amd64-setup.exe: an
-// installer of another version never matches), verify it against the checksums.txt line of that same
+// installer asset (named exactly mam-<tag_name without its leading v>-windows-amd64-setup.exe, or
+// mam-<tag_name without its leading v>-darwin-arm64.dmg on Apple Silicon: Platform.InstallerName; an
+// installer of another version or platform never matches), verify it against the checksums.txt line of that same
 // name and that file's detached signature, and report the verified local path in its Result.
 // The gate is evaluated a second time right after the download: it takes minutes, and the caller
 // quits and installs as soon as the Result is Ready, so work that started meanwhile turns the check
@@ -23,8 +24,8 @@
 //
 // Release authenticity: checksums.txt comes from the same release as the installer, so SHA-256 alone
 // only detects corruption, not a replaced release (a compromised token or release job). The build
-// job of .github/workflows/release.yml therefore also signs checksums.txt, in its last step
-// (Sign checksums, the only one that sees the signing secret; it verifies the signature with the
+// sign job of .github/workflows/release.yml therefore writes checksums.txt over both installers and signs it, in its
+// last script step (Sign checksums, the only one that sees the signing secret; it verifies the signature with the
 // public key in the same step), and the release job only publishes the resulting checksums.txt.sig:
 // a base64 detached ed25519 signature of
 // checksums.txt. The matching public key is embedded in the

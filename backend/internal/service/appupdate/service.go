@@ -1,5 +1,5 @@
-// Package appupdate is what the rest of the app knows about the automatic update of the Windows desktop
-// build (spec/architecture/desktop.md §Auto update): the state to show on the settings screen, the
+// Package appupdate is what the rest of the app knows about the automatic update of the desktop
+// builds (Windows, macOS) (spec/architecture/desktop.md §Auto update): the state to show on the settings screen, the
 // manual check, and the schedule that checks at startup and every few hours. It wraps the
 // updater package (the GitHub access, the verification and the safety gate), so that the web layer
 // never imports that one, and it does not know how the app quits and runs the installer: the front

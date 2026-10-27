@@ -1,0 +1,65 @@
+name: Release (macOS build)
+
+# The macOS (Apple Silicon, unsigned) build of release.yml: called by its `build-macos` job (a reusable workflow, not a trigger
+# of its own: nothing can start it except that job, whose `if:` limits it to this repository's main after CI succeeded and to
+# v* tag pushes). It runs on GitHub's hosted Apple Silicon runner (macos-latest: arm64, Xcode command line tools preinstalled,
+# a fresh VM per run, free for a public repository), and it never sees a secret or a write token: contents: read, no
+# `secrets:` passed by the caller, persist-credentials: false. Nothing is installed by hand and there is no sudo.
+# `uses:` are pinned to a commit SHA like release.yml.
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: the release tag (vX.Y.Z) chosen by release.yml's plan job
+        type: string
+        required: true
+      sha:
+        description: the commit to build
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.sha }}
+          persist-credentials: false
+
+      # A hosted runner starts empty every time: the Go and npm caches come from the actions cache (see release.yml).
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+          cache-dependency-path: go.sum
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: static/package-lock.json
+
+      # The release public key is a repository variable (not a secret); like the Windows build, an empty one fails the build.
+      - name: Package
+        env:
+          TAG: ${{ inputs.tag }}
+          RELEASE_SIGNING_PUBLIC_KEY: ${{ vars.RELEASE_SIGNING_PUBLIC_KEY }}
+        run: |
+          if [ -z "$RELEASE_SIGNING_PUBLIC_KEY" ]; then
+            echo "::error::the repository variable RELEASE_SIGNING_PUBLIC_KEY is not set: a release build must embed the update signature public key"
+            exit 1
+          fi
+          bash scripts/package-macos.sh "${TAG#v}"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: macos-release
+          path: bin/mam-*-darwin-arm64.dmg
+          if-no-files-found: error

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Info.plist of MAM.app. scripts/package-macos.sh replaces @VERSION@ with the release version (X.Y.Z). -->
+<plist version="1.0">
+<dict>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleName</key>
+	<string>MAM</string>
+	<key>CFBundleDisplayName</key>
+	<string>MAM</string>
+	<key>CFBundleExecutable</key>
+	<string>mam</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.ousiassllc.mam</string>
+	<key>CFBundleVersion</key>
+	<string>@VERSION@</string>
+	<key>CFBundleShortVersionString</key>
+	<string>@VERSION@</string>
+	<key>CFBundleGetInfoString</key>
+	<string>Multi-agent AI video production studio</string>
+	<key>CFBundleIconFile</key>
+	<string>icons</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>12.0.0</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSHumanReadableCopyright</key>
+	<string>(c) 2026, ousiassllc</string>
+	<!-- The window opens the app's own server on 127.0.0.1 over http (spec/architecture/desktop.md §1). -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+</dict>
+</plist>

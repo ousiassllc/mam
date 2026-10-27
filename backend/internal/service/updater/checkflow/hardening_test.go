@@ -118,6 +118,7 @@ func TestChecker_CheckForUpdate_MetadataTimeout(t *testing.T) {
 		Owner: "ousiassllc", Repo: "mam", Gate: allowGate(),
 		HTTPClient: server.Client(), BaseURL: server.URL,
 		MetadataTimeout: 50 * time.Millisecond,
+		Platform:        updater.PlatformWindowsAMD64,
 	})
 	start := time.Now()
 	_, err := checker.CheckForUpdate(context.Background())
@@ -153,6 +154,7 @@ func TestChecker_CheckForUpdate_DownloadTimeout(t *testing.T) {
 		HTTPClient: server.Client(), BaseURL: server.URL,
 		DownloadURLPrefix: server.URL + "/download/",
 		DownloadTimeout:   50 * time.Millisecond,
+		Platform:          updater.PlatformWindowsAMD64,
 	})
 	_, err := checker.CheckForUpdate(context.Background())
 	if !errors.Is(err, context.DeadlineExceeded) {

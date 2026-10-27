@@ -54,3 +54,14 @@ func TestAppLayoutAt_CanonicalLinkIsInTheHeadOnlyWhenGiven(t *testing.T) {
 
 	assert.NotContains(t, render(ctx, t, layout.AppLayout("t", "csrf")), `rel="canonical"`)
 }
+
+// The desktop window (Wails) is a web view: a swipe on a trackpad past the edge of the page stretches the whole
+// screen like rubber and lets it spring back (#852). The page itself must not overscroll, on html and on body
+// (Tailwind's overscroll-none = overscroll-behavior: none); the areas that scroll inside the page keep their own scrolling.
+func TestAppLayout_PageDoesNotOverscroll(t *testing.T) {
+	ctx := templ.WithChildren(context.Background(), templ.Raw("<main></main>"))
+	page := render(ctx, t, layout.AppLayout("t", "csrf"))
+
+	assert.Regexp(t, `<html[^>]*class="[^"]*\boverscroll-none\b`, page)
+	assert.Regexp(t, `<body[^>]*class="[^"]*\boverscroll-none\b`, page)
+}
