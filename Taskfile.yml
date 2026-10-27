@@ -1,6 +1,8 @@
 # Entry point of `wails3 package GOOS=windows` (the Wails CLI runs the Taskfile in the working
 # directory). scripts/package-windows.sh is the supported way to run it: it builds the front-end
-# first and validates the version. Only Windows x64 is packaged (spec/architecture/desktop.md §4).
+# first and validates the version. Only Windows x64 is packaged here (spec/architecture/desktop.md §4). The macOS app
+# (Apple Silicon) does not go through the Wails CLI or a Taskfile: scripts/package-macos.sh runs `go build` and hdiutil itself
+# (the only darwin asset is build/darwin/Info.plist).
 version: '3'
 
 vars:

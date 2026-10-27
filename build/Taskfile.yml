@@ -1,6 +1,6 @@
 # Tasks shared by the platform Taskfiles. The Wails template builds a JS front-end here; mam's
 # front-end is static/ (templ -> esbuild -> tailwind), built by scripts/package-windows.sh before
-# `wails3 package` runs.
+# `wails3 package` runs. (scripts/package-macos.sh builds the same front-end itself and does not use these Taskfiles.)
 version: '3'
 
 tasks:

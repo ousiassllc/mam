@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Signs <dir>/checksums.txt with the release signing key and verifies the signature (release.yml, `build` job, last step).
+# Signs <dir>/checksums.txt with the release signing key and verifies the signature (release.yml, `sign` job, last step that runs a script).
 #
 # Usage: scripts/sign-checksums.sh <dir>        writes <dir>/checksums.txt.sig
 # Env:
