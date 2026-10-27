@@ -79,3 +79,4 @@
 | 1.72 | 2026-10-24 | §5 の `version/` の説明を、更新を確認する先が別の公開リポジトリではなくこのリポジトリ自身（`GitHubOwner` / `GitHubRepo`）であることに改めた | 公開後は mam 自身の Release から配る（Issue #827）。`desktop.md` 改訂 1.19 |
 | 1.73 | 2026-10-25 | §4 の CSP の記述（全応答に同じ CSP）には、ノード画面（`GET /nodes`）だけの例外がある: 描画する ComfyUI のオリジン 1 つを `frame-src` に足す（`frame-ancestors 'none'` は変えない）。例外は [comfy-embedding.md](comfy/comfy-embedding.md) に書いた（overview.md は行数上限を超えているため本文は変えていない） | Issue #834 |
 | 1.74 | 2026-10-25 | §2 の外部生成モデル連携の行の画像プロバイダーを、Imagen 4 を外して GPT Image 2 / Nano Banana / Nano Banana Lite / FLUX.2 にした | Imagen 4 の終了と、画像モデルの割り当て・識別子の変更（`model-adapters.md` 1.52。Issue #836・#837） |
+| 1.75 | 2026-10-27 | §5 の構成図に `scripts/package-macos.sh`・`scripts/make-checksums.sh` を足し、`release.yml` の説明を Windows インストーラーと macOS の dmg の配布に直した。§11 の見出しと冒頭を、Windows と macOS（Apple Silicon）のデスクトップ版に改めた | Issue #853。macOS 版（Apple Silicon・署名なし）を同じリリースで配布し、自動更新に対応する（`desktop.md` 1.24） |

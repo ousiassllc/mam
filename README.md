@@ -1,6 +1,6 @@
 # MAM
 
-AI Video Production Agent。企画・脚本・演出・撮影・品質判定・撮り直し・編集・音声・最終 QC までを AI が自律的に進める、ローカル動作の AI Production Studio です。サーバーは自分の PC の `127.0.0.1` だけで待ち受け、画面は既定ブラウザ、または Windows ではネイティブウィンドウで開きます。
+AI Video Production Agent。企画・脚本・演出・撮影・品質判定・撮り直し・編集・音声・最終 QC までを AI が自律的に進める、ローカル動作の AI Production Studio です。サーバーは自分の PC の `127.0.0.1` だけで待ち受け、画面は既定ブラウザ、または Windows・macOS（Apple Silicon）ではネイティブウィンドウで開きます。
 
 仕様は [`spec/`](spec/overview.md) にあります。
 
@@ -52,9 +52,23 @@ ffmpeg は同梱していません。無くても起動はできますが、Judg
 3. MAM を起動し直します（PATH はプロセスの起動時に読むため、起動中の MAM には反映されません）
 4. 確認: PowerShell で `ffmpeg -version` と `ffprobe -version` が動けば使えます
 
-## macOS / Linux、ブラウザで使う
+## macOS（Apple Silicon）でインストールする
 
-Windows 以外、および Windows でもブラウザで使いたいときは、ソースからビルドします（Go と Node.js 24 が要ります）。
+[GitHub Releases](https://github.com/ousiassllc/mam/releases) の最新版から `mam-<version>-darwin-arm64.dmg` をダウンロードします（macOS 12 以降、Apple Silicon（M1 以降）だけ。Intel Mac 用はありません）。
+
+1. dmg を開き、`MAM.app` を `/Applications` にドラッグします。**`/Applications` に置いてください**（ディスクイメージの中や「ダウンロード」フォルダのままでは、自動更新が働きません）
+2. 初回だけ、Gatekeeper が止めます。MAM は Apple の Developer ID による署名・公証をしていないためです。`/Applications` の `MAM.app` を**右クリック（control + クリック）→「開く」**を選び、確認のダイアログで「開く」を押します（2 回目以降は普通に開けます）。macOS 15 以降で「開く」が出ないときは、いったん開こうとしてから「システム設定 > プライバシーとセキュリティ」の「このまま開く」を押します
+3. ターミナルで済ませるときは、隔離属性を外します: `xattr -dr com.apple.quarantine /Applications/MAM.app`
+
+起動するとウィンドウが開き、ウィンドウを閉じるとアプリ全体が終了します。プロジェクト・設定・生成物は `~/Library/Application Support/mam` に保存します（アプリを消しても残ります）。
+
+自動更新は Windows 版と同じです（起動時と 6 時間ごとに確認し、SHA-256 と ed25519 署名を検証し、作業中でないときにアプリを終了して `MAM.app` を入れ替え、新しい版で起動し直します）。`/Applications` など自分が書き込めるフォルダにある `MAM.app` だけが更新されます。
+
+macOS 版でまだ使えないもの: 同梱の ComfyUI エンジンの導入（別に動かしている ComfyUI の URL を設定すれば使えます）、Codex 本体の取得（自分で入れた `codex` のパスを指定してください）。ffmpeg は同梱していません。`brew install ffmpeg` で入れます（Finder から起動した MAM が Homebrew の場所を見つけられない既知の問題があります。#856）。
+
+## Linux、ブラウザで使う
+
+Linux、および Windows・macOS でもブラウザで使いたいときは、ソースからビルドします（Go と Node.js 24 が要ります）。
 
 ```sh
 make tools    # templ・air・golangci-lint・linterly・govulncheck と npm 依存を入れる
@@ -62,7 +76,7 @@ make build    # bin/mam を作る
 bin/mam       # サーバーを起動して既定ブラウザを開く
 ```
 
-`bin/mam --help` で `--data-dir`・`--port`・`--no-browser` などの設定を表示します（それぞれ `MAM_DATA_DIR` などの環境変数でも指定できます）。`make build-all` は Windows / macOS / Linux × amd64 / arm64 の 6 構成を `bin/` に作ります。
+`bin/mam --help` で `--data-dir`・`--port`・`--no-browser` などの設定を表示します（それぞれ `MAM_DATA_DIR` などの環境変数でも指定できます）。`make build-all` は Windows / macOS / Linux × amd64 / arm64 の 6 構成を `bin/` に作ります（これはブラウザ版のサーバーで、ネイティブウィンドウ版ではありません）。
 
 ## 開発
 
@@ -75,7 +89,9 @@ make vuln         # govulncheck: 到達できる既知の脆弱性（標準ラ�
 make fmt          # 整形（Go・templ・TypeScript）
 ```
 
-Windows 版（Wails ウィンドウ + ユーザー単位の NSIS インストーラー）は `scripts/package-windows.sh <version>`（`X.Y.Z`）で作ります。`wails3`（`go.mod` の `github.com/wailsapp/wails/v3` と同じ版）と NSIS（`makensis`）と `jq` が要ります。環境変数 `RELEASE_SIGNING_PUBLIC_KEY`（更新の署名検証用の公開鍵。base64）を渡すとバイナリに埋め込みます（空なら警告して埋め込まず、アプリは署名検証を省きます）。リリースは、`main` への push で CI が成功すると GitHub Actions（`.github/workflows/release.yml`）が最新タグの patch を 1 つ上げた版で自動で作ります。インストーラーの `checksums.txt` に署名（シークレット `RELEASE_SIGNING_KEY`）して、このリポジトリの Releases に載せます（`GITHUB_TOKEN` だけを使います。アプリの自動更新もこの Releases を確認します）。Authenticode のコード署名はしません。minor・major を上げるときだけ `v<version>` タグを手で push します。詳しくは [`spec/architecture/desktop.md`](spec/architecture/desktop.md) と [`spec/environment/setup.md`](spec/environment/setup.md) を参照してください。
+macOS 版（Apple Silicon・署名なし）は、Apple Silicon の Mac で `scripts/package-macos.sh <version>`（`X.Y.Z`）で作ります（Xcode コマンドラインツール・Go・Node.js が要り、`bin/mam-<version>-darwin-arm64.dmg` ができます。リリースでは組織の self-hosted の Mac runner が作ります）。
+
+Windows 版（Wails ウィンドウ + ユーザー単位の NSIS インストーラー）は `scripts/package-windows.sh <version>`（`X.Y.Z`）で作ります。`wails3`（`go.mod` の `github.com/wailsapp/wails/v3` と同じ版）と NSIS（`makensis`）と `jq` が要ります。環境変数 `RELEASE_SIGNING_PUBLIC_KEY`（更新の署名検証用の公開鍵。base64）を渡すとバイナリに埋め込みます（空なら警告して埋め込まず、アプリは署名検証を省きます）。リリースは、`main` への push で CI が成功すると GitHub Actions（`.github/workflows/release.yml`）が最新タグの patch を 1 つ上げた版で自動で作ります。Windows のインストーラーと macOS の dmg の `checksums.txt` に署名（シークレット `RELEASE_SIGNING_KEY`）して、このリポジトリの Releases に載せます（`GITHUB_TOKEN` だけを使います。アプリの自動更新もこの Releases を確認します）。Authenticode のコード署名と、Apple の Developer ID 署名・公証はしません。minor・major を上げるときだけ `v<version>` タグを手で push します。詳しくは [`spec/architecture/desktop.md`](spec/architecture/desktop.md) と [`spec/environment/setup.md`](spec/environment/setup.md) を参照してください。
 
 ## ライセンス
 

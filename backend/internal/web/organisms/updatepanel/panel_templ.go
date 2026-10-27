@@ -124,7 +124,7 @@ func description(d Data) string {
 	if d.CanCheck {
 		return "新しいバージョンは、起動の少しあとと 6 時間ごとに自動で確認します。見つかると、作業が終わったところでアプリを再起動して更新します。"
 	}
-	return "このビルドは自動更新に対応していません。"
+	return "このビルドは自動更新に対応していません。macOS 版のアプリでこの表示になるときは、MAM.app を /Applications に移し、そこから起動し直してください（ディスクイメージの中や、ダウンロードしたままの場所からは更新できません）。"
 }
 
 // Panel shows the version, the result of the last check and, when the build can update, the button that

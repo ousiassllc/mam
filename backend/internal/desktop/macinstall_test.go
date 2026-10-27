@@ -280,3 +280,16 @@ func TestMacInstallScript_ADmgWithoutTheAppIsRefused(t *testing.T) {
 	assert.Empty(t, e.leftovers())
 	assert.Contains(t, strings.Join(e.calls(), "\n"), "detach ", "it was mounted, so it is unmounted")
 }
+
+// The update script looks for Contents/MacOS/mam in the dmg, and the single instance is keyed on the bundle id that
+// cmd/wails uses: the committed Info.plist must agree with both (package-macos.sh builds the binary as MacOS/mam).
+func TestInfoPlist_MatchesTheUpdateScriptAndTheSingleInstanceID(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("..", "..", "..", "build", "darwin", "Info.plist"))
+	require.NoError(t, err)
+	plist := string(data)
+
+	assert.Contains(t, plist, "<key>CFBundleExecutable</key>\n\t<string>mam</string>")
+	assert.Contains(t, macInstallScript, `"$src/Contents/MacOS/mam"`)
+	assert.Contains(t, plist, "<key>CFBundleIdentifier</key>\n\t<string>com.ousiassllc.mam</string>")
+	assert.Contains(t, plist, "@VERSION@", "package-macos.sh fills the release version in")
+}

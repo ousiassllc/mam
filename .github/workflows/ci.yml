@@ -124,3 +124,25 @@ jobs:
 
       - name: Windows lint
         run: GOOS=windows CGO_ENABLED=0 golangci-lint run ./backend/...
+
+      # cmd/wails is also the macOS (Apple Silicon) desktop front, but a Wails build for macOS needs cgo and the Apple SDK, which
+      # this Linux runner does not have: build, vet and lint everything else (the update code in internal/desktop and
+      # internal/service/updater has darwin-specific paths) with GOOS=darwin GOARCH=arm64 CGO_ENABLED=0. cmd/wails itself is
+      # compiled by the self-hosted Mac runner in release.yml only (never for pull requests: this repository is public).
+      - name: macOS build (without cmd/wails)
+        run: |
+          export GOOS=darwin GOARCH=arm64 CGO_ENABLED=0
+          mapfile -t pkgs < <(go list -f '{{if .GoFiles}}{{.ImportPath}}{{end}}' ./backend/... | grep -v '/backend/cmd/wails$')
+          go build "${pkgs[@]}"
+
+      - name: macOS vet (without cmd/wails)
+        run: |
+          export GOOS=darwin GOARCH=arm64 CGO_ENABLED=0
+          mapfile -t pkgs < <(go list ./backend/... | grep -v '/backend/cmd/wails$')
+          go vet "${pkgs[@]}"
+
+      - name: macOS lint (without cmd/wails)
+        run: |
+          export GOOS=darwin GOARCH=arm64 CGO_ENABLED=0
+          mapfile -t dirs < <(go list -f '{{.Dir}}' ./backend/... | grep -v '/backend/cmd/wails$' | sed "s#^$PWD#.#")
+          golangci-lint run "${dirs[@]}"
