@@ -5,6 +5,41 @@ import (
 	"strings"
 )
 
+// Platform is the operating system and CPU architecture whose installer a Checker looks for in a release.
+type Platform struct {
+	OS, Arch string
+}
+
+// The platforms a release carries an installer for (scripts/package-windows.sh, scripts/package-macos.sh).
+var (
+	// PlatformWindowsAMD64 installs through the per-user NSIS installer (mam-<X.Y.Z>-windows-amd64-setup.exe).
+	PlatformWindowsAMD64 = Platform{OS: "windows", Arch: "amd64"}
+	// PlatformDarwinARM64 installs from the disk image of the unsigned Apple Silicon build (mam-<X.Y.Z>-darwin-arm64.dmg).
+	PlatformDarwinARM64 = Platform{OS: "darwin", Arch: "arm64"}
+)
+
+// DefaultPlatform is the platform of the installer a process running on goos/goarch updates itself with:
+// macOS on Apple Silicon takes the dmg, every other build the Windows installer (Windows is the only other
+// platform that updates itself; the headless server never builds a Checker).
+func DefaultPlatform(goos, goarch string) Platform {
+	if goos == PlatformDarwinARM64.OS && goarch == PlatformDarwinARM64.Arch {
+		return PlatformDarwinARM64
+	}
+	return PlatformWindowsAMD64
+}
+
+// InstallerName is the one installer name a release with tag_name tag may carry for p, the name the packaging
+// scripts give it: mam-<tag without its leading "v">-windows-amd64-setup.exe, or
+// mam-<tag without its leading "v">-darwin-arm64.dmg. tag must already be valid semver (Checker.check verifies
+// that first).
+func (p Platform) InstallerName(tag string) string {
+	name := "mam-" + strings.TrimPrefix(tag, "v") + "-" + p.OS + "-" + p.Arch
+	if p == PlatformDarwinARM64 {
+		return name + ".dmg"
+	}
+	return name + "-setup.exe"
+}
+
 // releaseAssets are the release assets the update pipeline uses.
 type releaseAssets struct {
 	installer, checksums Asset
@@ -12,20 +47,13 @@ type releaseAssets struct {
 	signature Asset
 }
 
-// installerAssetName is the one installer name a release with tag_name tag may carry:
-// mam-<tag without its leading "v">-windows-amd64-setup.exe, the name scripts/package-windows.sh
-// gives it. tag must already be valid semver (Checker.check verifies that first).
-func installerAssetName(tag string) string {
-	return "mam-" + strings.TrimPrefix(tag, "v") + "-windows-amd64-setup.exe"
-}
-
-// selectAssets finds the NSIS installer of the release tagged tag and its checksums.txt among
+// selectAssets finds the installer of the release tagged tag for platform and its checksums.txt among
 // assets, plus the optional detached signature checksums.txt.sig. The installer must be named
-// exactly installerAssetName(tag): an installer of another version never matches, and neither does
-// the portable exe (mam-<X.Y.Z>-windows-amd64.exe), which is not installed automatically. The same
+// exactly platform.InstallerName(tag): an installer of another version or platform never matches, and neither
+// does the portable exe (mam-<X.Y.Z>-windows-amd64.exe), which is not installed automatically. The same
 // name is the key of the checksums.txt line the download is verified against (readChecksum).
-func selectAssets(assets []Asset, tag string) (releaseAssets, error) {
-	installerName := installerAssetName(tag)
+func selectAssets(assets []Asset, tag string, platform Platform) (releaseAssets, error) {
+	installerName := platform.InstallerName(tag)
 	var found releaseAssets
 	foundInstaller, foundChecksums := false, false
 	for _, a := range assets {

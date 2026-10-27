@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"time"
 
@@ -22,9 +23,9 @@ import (
 // httptest.Server instead).
 const defaultBaseURL = "https://api.github.com"
 
-// checksumsAssetName is the name of the release's `sha256sum` output over the NSIS installer
-// (scripts/package-windows.sh). The installer's own name depends on the release tag
-// (installerAssetName).
+// checksumsAssetName is the name of the release's `sha256sum` output over the installers (the Windows NSIS installer
+// and the macOS dmg: scripts/make-checksums.sh). The installer's own name depends on the release tag and the
+// platform (Platform.InstallerName).
 const checksumsAssetName = "checksums.txt"
 
 // Default deadlines and size caps . http.DefaultClient has no
@@ -39,7 +40,7 @@ const (
 
 	maxReleaseJSONBytes = 1 << 20   // 1 MiB: GET /releases/latest response
 	maxChecksumsBytes   = 1 << 20   // 1 MiB: checksums.txt
-	maxInstallerBytes   = 512 << 20 // 512 MiB: NSIS installer
+	maxInstallerBytes   = 512 << 20 // 512 MiB: the installer (NSIS exe or dmg)
 )
 
 // Release is the subset of GitHub's
@@ -105,11 +106,15 @@ type Config struct {
 	// key embedded at build time; when neither is set, signature
 	// verification is skipped.
 	PublicKey ed25519.PublicKey
+	// Platform is the installer to look for in a release; the zero value is
+	// DefaultPlatform(runtime.GOOS, runtime.GOARCH).
+	Platform Platform
 }
 
 // Checker implements the periodic GitHub Releases update check
 // (package doc comment).
 type Checker struct {
+	platform    Platform
 	owner, repo string
 	gate        Gate
 	logger      *slog.Logger
@@ -163,7 +168,12 @@ func NewChecker(cfg Config) *Checker {
 		logger = slog.New(slog.DiscardHandler)
 	}
 	publicKey, publicKeyErr := resolvePublicKey(cfg.PublicKey)
+	platform := cfg.Platform
+	if platform == (Platform{}) {
+		platform = DefaultPlatform(runtime.GOOS, runtime.GOARCH)
+	}
 	return &Checker{
+		platform:          platform,
 		logger:            logger,
 		owner:             cfg.Owner,
 		repo:              cfg.Repo,
@@ -227,7 +237,7 @@ func (c *Checker) check(ctx context.Context) (Result, error) {
 		return Result{}, nil
 	}
 
-	assets, err := selectAssets(release.Assets, release.TagName)
+	assets, err := selectAssets(release.Assets, release.TagName, c.platform)
 	if err != nil {
 		return Result{}, withKind(ErrorRelease, fmt.Errorf("updater: %s: %w", release.TagName, err))
 	}

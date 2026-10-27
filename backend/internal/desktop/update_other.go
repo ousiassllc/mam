@@ -2,8 +2,14 @@
 
 package desktop
 
-import "os/exec"
+import (
+	"os/exec"
+	"syscall"
+)
 
-// detach does nothing off Windows: only the Windows desktop build installs updates, and this file
-// exists so that the package builds and is tested on every platform.
-func detach(*exec.Cmd) {}
+// detach gives the helper a session of its own off Windows (the macOS update helper), so that the end of this
+// process, or of the terminal it was started from (SIGHUP), does not reach it. On Windows only the installer is
+// detached (update_windows.go).
+func detach(cmd *exec.Cmd) {
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+}

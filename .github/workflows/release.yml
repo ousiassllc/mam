@@ -1,24 +1,22 @@
 name: Release
 
-# Builds the Windows desktop version (Wails window + per-user NSIS installer), signs the installer's checksum and publishes
-# the GitHub Release. No Authenticode code signing (spec/environment/setup.md "リリース"). Two triggers:
+# Builds the Windows desktop version (Wails window + per-user NSIS installer) and the macOS one (Apple Silicon, unsigned .dmg;
+# release-macos.yml), signs both installers' checksums and publishes the GitHub Release. No Authenticode / Apple code signing or
+# notarization (spec/environment/setup.md "リリース"). Two triggers:
 #   workflow_run  ci.yml succeeded for a push to main: release main's tip as the next patch (vX.Y.Z+1 of the
 #                 latest v* tag; v0.1.0 if there is none). Nobody tags anything.
 #   tag push      v<X.Y.Z>: a hand-made tag, to raise the minor / major version.
 #
-# Every job runs on the GitHub-hosted ubuntu-latest runner (like ci.yml; free for a public repository). The Windows exes
-# are cross-built (GOOS=windows, pure Go) and the installer is
-# made by makensis on Linux; nothing here runs a Windows binary (no Windows-only tests, no installer smoke test).
-#
-# Four jobs, so that the build never holds a write token and nothing is published unchecked:
-#   plan    decide whether to release and which tag (the tip of main only, so an older commit never gets a newer version)
-#   verify  the commit is in main's history, passed ci.yml, and has no reachable known vulnerability
-#   build   package; contents: read only; the version and the release public key are embedded in the exe; makes
-#           checksums.txt and its ed25519 signature (the signing key is a secret, only the last step sees it);
-#           hands the four files over as an artifact
-#   release gh release create in this repository only, with the GITHUB_TOKEN; the one job with contents: write (it creates
-#           the tag too). The installed apps check this repository's Releases and verify the signature with the public key
-#           embedded at build time (there is no other repository to copy the release to).
+# Every job runs on ubuntu-latest (like ci.yml) except the Mac build (the organisation's self-hosted runner). The Windows exes
+# are cross-built (GOOS=windows), the installer is made by makensis on Linux. Six jobs, so that no build holds a write token
+# or the signing key and nothing is published unchecked:
+#   plan          decide whether to release and which tag (main's tip only: an older commit never gets a newer version)
+#   verify        the commit is in main's history, passed ci.yml, and has no reachable known vulnerability
+#   build-windows package the Windows exes (contents: read only; the version and the release public key are embedded)
+#   build-macos   the macOS dmg on the Mac runner (contents: read, no secret; only this repository's main and v* tags)
+#   sign          checksums.txt over the Windows installer AND the macOS dmg, signed; only its last script step sees the signing key
+#   release       gh release create in this repository only, with the GITHUB_TOKEN; the one job with contents: write (it creates
+#                 the tag too). Installed apps check this repository's Releases and verify the signature (public key embedded).
 # `uses:` are pinned to a commit SHA (the comment is the tag; dependabot's github-actions keeps both up to date).
 on:
   push:
@@ -151,7 +149,7 @@ jobs:
       - name: Vulnerability check
         run: make vuln
 
-  build:
+  build-windows:
     needs: [plan, verify]
     runs-on: ubuntu-latest
     permissions:
@@ -198,45 +196,87 @@ jobs:
           fi
           bash scripts/package-windows.sh "${TAG#v}"
 
-      # checksums.txt covers the installer only (the one asset the apps install): `<sha256>  <file name>` lines.
-      - name: Checksums
-        env:
-          TAG: ${{ needs.plan.outputs.tag }}
-        run: |
-          version="${TAG#v}"
-          cd bin
-          sha256sum "mam-$version-windows-amd64-setup.exe" > checksums.txt
-          cat checksums.txt
-
-      # The last step of the job: the only one that sees the signing key (a secret, not a write token). It signs checksums.txt
-      # (the base64 of the raw ed25519 signature) and verifies the signature with the public key, so a key that does not match
-      # fails the build (scripts/sign-checksums.sh). VERIFY_PUBLIC_KEY is normally the embedded key; only in the one release of
-      # a key rotation (signed with the OLD key, embedding the NEW one) the variable RELEASE_SIGNING_VERIFY_PUBLIC_KEY holds
-      # the old public key.
-      - name: Sign checksums
-        env:
-          RELEASE_SIGNING_KEY: ${{ secrets.RELEASE_SIGNING_KEY }}
-          VERIFY_PUBLIC_KEY: ${{ vars.RELEASE_SIGNING_VERIFY_PUBLIC_KEY || vars.RELEASE_SIGNING_PUBLIC_KEY }}
-        run: bash scripts/sign-checksums.sh bin
-
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: windows-release
           path: |
             bin/mam-*-windows-amd64*.exe
-            bin/checksums.txt
-            bin/checksums.txt.sig
+          if-no-files-found: error
+
+  # The Mac build (reusable workflow release-macos.yml) runs on our own self-hosted Mac and this repository is public, so the
+  # guard is on the job itself and holds even if the triggers are widened: a v* tag push, or a successful CI run for a push (never
+  # a pull request, so never a fork's) of this repository's own main. No secrets are passed.
+  build-macos:
+    needs: [plan, verify]
+    if: >-
+      needs.plan.outputs.release == 'true' && needs.verify.result == 'success' &&
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') ||
+       github.event_name == 'workflow_run' && github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
+    permissions:
+      contents: read
+    uses: ./.github/workflows/release-macos.yml
+    with:
+      tag: ${{ needs.plan.outputs.tag }}
+      sha: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+  sign:
+    needs: [plan, build-windows, build-macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.RELEASE_SHA }}
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: '*-release' # windows-release and macos-release
+          merge-multiple: true
+          path: dist
+
+      - name: Release notes
+        env:
+          TAG: ${{ needs.plan.outputs.tag }}
+        run: sed "s/VERSION/${TAG#v}/g" .github/release-notes-macos.md > dist/notes.md
+
+      - name: Checksums # the two installers the apps install (not the portable exe)
+        env:
+          TAG: ${{ needs.plan.outputs.tag }}
+        run: bash scripts/make-checksums.sh dist "${TAG#v}"
+
+      # The last script step, and the only one that sees the signing key (a secret, not a write token): signs checksums.txt
+      # and verifies the signature with the public key, so a key that does not match fails the job (scripts/sign-checksums.sh).
+      # VERIFY_PUBLIC_KEY is the embedded key; only in the one release of a key rotation (signed with the OLD key, embedding the
+      # NEW one) the variable RELEASE_SIGNING_VERIFY_PUBLIC_KEY holds the old public key.
+      - name: Sign checksums
+        env:
+          RELEASE_SIGNING_KEY: ${{ secrets.RELEASE_SIGNING_KEY }}
+          VERIFY_PUBLIC_KEY: ${{ vars.RELEASE_SIGNING_VERIFY_PUBLIC_KEY || vars.RELEASE_SIGNING_PUBLIC_KEY }}
+        run: bash scripts/sign-checksums.sh dist
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-meta
+          path: |
+            dist/checksums.txt
+            dist/checksums.txt.sig
+            dist/notes.md
           if-no-files-found: error
 
   release:
-    needs: [plan, build]
+    needs: [plan, sign]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: windows-release
+          pattern: '*' # windows-release, macos-release and release-meta
+          merge-multiple: true
           path: dist
 
       - name: Create the release
@@ -246,12 +286,14 @@ jobs:
           TAG: ${{ needs.plan.outputs.tag }}
         run: |
           version="${TAG#v}"
-          # --target creates the tag at the released commit (an existing tag, from a tag push, is kept as is).
+          # --target creates the tag at the released commit (an existing tag, from a tag push, is kept).
           gh release create "$TAG" \
             --title "$TAG" \
             --generate-notes \
+            --notes-file dist/notes.md \
             --target "$RELEASE_SHA" \
             "dist/mam-$version-windows-amd64-setup.exe" \
             "dist/mam-$version-windows-amd64.exe" \
+            "dist/mam-$version-darwin-arm64.dmg" \
             dist/checksums.txt \
             dist/checksums.txt.sig

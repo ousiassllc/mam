@@ -25,8 +25,8 @@ AI Video Production Agent は、単一プロンプトで動画を出す「生成
 - **Safety / Brand Constraints**: ブランドガイドライン・禁止表現・権利メタデータの Prompt/Judge 適用
 - 対象コンテンツ種別: 商品PV、TVCM/Web CM、SNS広告・縦型ショート、ドラマ、アニメーション、MV、YouTubeコンテンツ、ブランドムービー、シリーズ/エピソード型コンテンツ
 - **Team Collaboration**（M3）: Review Package（動画とメモの ZIP）を渡してレビュアーからコメント・承認を返してもらう、ファイル受け渡し方式のレビュー・承認。編集できるのは Project を持つインスタンスだけで、同時編集・アカウント・サーバーは持たない
-- 実行基盤: HALT（HTMX + Atomic Design + Lit + Templ）構成のサーバー内蔵型フロントエンドを持つ、ローカル起動型 Web アプリ（Go 単一バイナリ）。表示は既定ブラウザ（全 OS）、または Windows 版の Wails ネイティブウィンドウ（WebView2）。どちらも同じ `127.0.0.1` のサーバーを開く
-- **Windows デスクトップ版の配布**（F-33）: Wails v3 のウィンドウ版 `mam.exe` と NSIS インストーラー exe を GitHub Releases に載せる（Windows x64、コード署名なし）。macOS・Linux・Windows arm64 の成果物は Releases に載せない（`make build-all` で自前ビルド）
+- 実行基盤: HALT（HTMX + Atomic Design + Lit + Templ）構成のサーバー内蔵型フロントエンドを持つ、ローカル起動型 Web アプリ（Go 単一バイナリ）。表示は既定ブラウザ（全 OS）、または Windows・macOS（Apple Silicon）版の Wails ネイティブウィンドウ（Windows は WebView2、macOS は WKWebView）。どちらも同じ `127.0.0.1` のサーバーを開く
+- **デスクトップ版の配布**（F-33）: Wails v3 のウィンドウ版 `mam.exe` と NSIS インストーラー exe（Windows x64、コード署名なし）、および macOS（Apple Silicon）のディスクイメージ `.dmg`（Apple の署名・公証なし）を GitHub Releases に載せ、どちらも自動更新に対応する。macOS の Intel 版・ユニバーサル版、Linux・Windows arm64 の成果物は Releases に載せない（`make build-all` で自前ビルド）
 
 ### 含まないもの
 
@@ -48,7 +48,7 @@ AI Video Production Agent は、単一プロンプトで動画を出す「生成
 ```mermaid
 flowchart TB
     subgraph Local["ローカル環境（Go 単一バイナリ、Windows / macOS / Linux）"]
-        Browser["既定ブラウザ または Wails ウィンドウ（Windows 版）<br/>（アプリ起動時に自動オープン）"]
+        Browser["既定ブラウザ または Wails ウィンドウ（Windows・macOS 版）<br/>（アプリ起動時に自動オープン）"]
         UI["HALT フロントエンド<br/>Templ SSR + HTMX + Lit Web Components"]
         Server["Go バックエンド<br/>Gin + Huma（レイヤード: domain/repository/service/web）"]
         Orchestrator["Orchestrator Agent<br/>状態機械 + goroutine ワーカー"]
@@ -77,8 +77,8 @@ flowchart TB
 |------------|------|------|
 | 機能要件 | `spec/requirements/functional.md` | AUTO/DIRECTOR MODE、Prompt Autopilot、World State、Judge、Repair/Retake、Take/Continue/Branch、Editor、Audio 等のユースケースと機能一覧 |
 | 非機能要件 | `spec/requirements/non-functional.md` | ローカル起動型 Web アプリとしての性能・可用性・データ整合性・セキュリティ・コスト制御要件 |
-| アーキテクチャ設計 | `spec/architecture/overview.md` | HALT（Gin/Huma/Templ/HTMX/Lit）レイヤー構成、Agent Architecture、通信フロー、Wails ウィンドウ版（Windows）の構成 |
-| Windows デスクトップ版 | `spec/architecture/desktop.md` | Wails v3 ウィンドウ版（サーバーを維持して URL を開く方式、単一インスタンス・終了・起動エラー、NSIS インストーラーと GitHub Releases 配布、実装時に検証する項目） |
+| アーキテクチャ設計 | `spec/architecture/overview.md` | HALT（Gin/Huma/Templ/HTMX/Lit）レイヤー構成、Agent Architecture、通信フロー、Wails ウィンドウ版（Windows・macOS）の構成 |
+| デスクトップ版（Windows・macOS） | `spec/architecture/desktop.md` | Wails v3 ウィンドウ版（サーバーを維持して URL を開く方式、単一インスタンス・終了・起動エラー、NSIS インストーラー・macOS の dmg と GitHub Releases 配布、自動更新、実装時に検証する項目） |
 | ER / データモデル | `spec/architecture/er.md` | Project Data Model（Scene/Shot/Take/World State 等）の ER 図とテーブル定義（MCP トークンは `spec/architecture/er-mcp.md`） |
 | MCP サーバー | `spec/architecture/mcp.md` | 画面の全操作を MCP（Streamable HTTP）で操作する内蔵サーバー。別リスナー・待ち受け先の規則（`127.0.0.1` / tailnet）・ベアラートークン・Origin 検査・ジョブ・ファイルのチケット・API キー・設定画面 |
 | API 仕様 | `spec/api/endpoints.md` | ページルート/アクションルート（HTMX）のエンドポイント仕様（§0〜§2） |
@@ -88,7 +88,7 @@ flowchart TB
 | コンポーネント設計 | `spec/components/overview.md` | Agent 群（Producer/Director/Editor 等）とHALT側コンポーネント（atoms/molecules/organisms/Lit）の責務分割 |
 | Model Adapter 選定 | `spec/architecture/model-adapters.md` | エージェント推論LLM・画像/動画生成モデル・音声プロバイダーの具体的な選定とルーティング表（Claude/GPT-5/Gemini、GPT Image 2/Nano Banana/Nano Banana Lite/FLUX.2、Kling/Seedance/Runway、ElevenLabs/Sync Labs） |
 | Model Adapter 選定（M3） | `spec/architecture/model-adapters-m3.md` | Multi-model routing（§13）と Audio Director の実装（§14）。`model-adapters.md` の続き |
-| 環境構築 | `spec/environment/setup.md` | 開発ツール、Makefile タスク、CI、リリース（Windows インストーラー）、Linterly、Git Hooks（Lefthook） |
+| 環境構築 | `spec/environment/setup.md` | 開発ツール、Makefile タスク、CI、リリース（Windows インストーラー・macOS dmg）、Linterly、Git Hooks（Lefthook） |
 
 ## マイルストーン / リリース計画
 
@@ -121,7 +121,7 @@ flowchart TB
 | Orchestrator Agent | 制作全体を状態機械として管理し、次に実行する Agent や人間確認要否を判断する中枢 Agent |
 | Production Template | コンテンツ種別（PRODUCT/CM・DRAMA・ANIME・SNS/SHORT VIDEO）ごとの評価軸・優先度・Workflow定義 |
 | HALT | HTMX + Atomic Design + Lit + Templ による、フロントエンドが API サーバー内で動くサーバー内蔵型アーキテクチャ |
-| Wails | Go バックエンドとネイティブ WebView を組み合わせてデスクトップアプリを構築するフレームワーク。本製品の Windows 版は Wails v3 のウィンドウから `127.0.0.1` のサーバー（HALT）の URL を開く「WebView シェル」として使う。Gin の `http.Handler` を Wails の AssetServer へ直接渡す方式は、AssetServer が WebSocket を扱わない（501 を返す）ため採らない |
+| Wails | Go バックエンドとネイティブ WebView を組み合わせてデスクトップアプリを構築するフレームワーク。本製品の Windows・macOS 版は Wails v3 のウィンドウから `127.0.0.1` のサーバー（HALT）の URL を開く「WebView シェル」として使う。Gin の `http.Handler` を Wails の AssetServer へ直接渡す方式は、AssetServer が WebSocket を扱わない（501 を返す）ため採らない |
 
 ## 改訂履歴
 
@@ -140,3 +140,4 @@ flowchart TB
 | 1.10 | 2026-10-21 | ドキュメントマップに `spec/api/endpoints-api.md`（`endpoints.md` の §3・§4）と `spec/architecture/model-adapters-m3.md`（`model-adapters.md` の §13・§14）を追加し、`endpoints.md` の説明をページ/アクションルートに絞った | `endpoints.md`・`model-adapters.md` が行数上限（300 行）を超えたため後半を別ファイルに分けた。詳細は各 `*.changelog.md` |
 | 1.11 | 2026-10-24 | ドキュメントマップに `spec/architecture/mcp.md`（MCP サーバー）・`spec/api/mcp-tools.md`（MCP ツール一覧）・`spec/architecture/er-mcp.md`（MCP トークンのテーブル）を追加した | Issue #830。MCP サーバーの仕様の所在をドキュメントマップに残すため |
 | 1.12 | 2026-10-25 | ドキュメントマップの Model Adapter 選定の行の画像プロバイダーを、Imagen 4 を外して GPT Image 2 / Nano Banana / Nano Banana Lite / FLUX.2 にした | Imagen 4 の終了と、画像モデルの割り当て・識別子の変更（`model-adapters.md` 1.52。Issue #836・#837） |
+| 1.13 | 2026-10-27 | スコープと実行基盤・ドキュメントマップ・用語集の Wails を、Windows に加えて macOS（Apple Silicon・署名なし）のデスクトップ版と dmg の配布・自動更新に改めた | Issue #853。macOS 版を同じリリースで配布し、自動更新に対応する |

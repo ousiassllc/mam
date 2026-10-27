@@ -1,4 +1,5 @@
-# Wails v3 build configuration of the Windows desktop front (spec/architecture/desktop.md §4).
+# Wails v3 build configuration of the desktop front (spec/architecture/desktop.md §4). The macOS app has its own
+# build/darwin/Info.plist (the version is filled in by scripts/package-macos.sh); `info` below mirrors it.
 # `wails3 package` does not read this file: the exe resources come from build/windows/info.json
 # (scripts/package-windows.sh passes a copy with the release version as INFO_JSON) and the installer
 # version from VERSION. Only `wails3 update build-assets` would regenerate build/windows/* from `info`,
