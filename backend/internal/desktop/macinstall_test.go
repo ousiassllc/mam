@@ -144,7 +144,7 @@ attach)
 detach) echo "detach $2" >>"$STUB_LOG"; rm -rf "$2"/* ;; # unmounting leaves the empty mount point
 esac`,
 		"ditto":     `[ -n "$STUB_DITTO_FAIL" ] && exit 1; cp -R "$1" "$2"`,
-		"xattr":     `echo "xattr $*" >>"$STUB_LOG"`,
+		"xattr":     `echo "xattr $*" >>"$STUB_LOG"; [ -n "$STUB_XATTR_FAIL" ] && exit 1; exit 0`,
 		"open":      `echo "open $*" >>"$STUB_LOG"`,
 		"osascript": `for a; do last=$a; done; echo "osascript $last" >>"$STUB_LOG"`,
 	}
@@ -267,6 +267,20 @@ func TestMacInstallScript_FailuresKeepTheInstalledBundleAndStartItAgain(t *testi
 			assert.Equal(t, tt.wantDetach, strings.Contains(calls, "detach "))
 		})
 	}
+}
+
+// xattr -d fails when there is no quarantine attribute to remove, which is the normal case for a dmg the updater
+// downloaded itself: the update goes on.
+func TestMacInstallScript_ANoSuchQuarantineAttributeDoesNotStopTheUpdate(t *testing.T) {
+	e := newMacScriptEnv(t, "MAM.app")
+
+	require.NoError(t, e.run(deadPID(t), "STUB_XATTR_FAIL=1"))
+
+	assert.Equal(t, "new", e.executable())
+	assert.Empty(t, e.leftovers())
+	calls := strings.Join(e.calls(), "\n")
+	assert.NotContains(t, calls, "osascript ", "no failure dialog")
+	assert.Contains(t, calls, "open "+e.app)
 }
 
 func TestMacInstallScript_ADmgWithoutTheAppIsRefused(t *testing.T) {

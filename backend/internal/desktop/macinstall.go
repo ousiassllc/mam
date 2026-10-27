@@ -16,7 +16,7 @@ import (
 //  1. waits for process <pid> (the application that is quitting) to end,
 //  2. mounts the verified dmg read-only and invisible (hdiutil attach -nobrowse -readonly),
 //  3. copies MAM.app from it next to the installed bundle (the same directory, so the swap is a rename on one
-//     volume), removes the quarantine attribute and swaps it for the running bundle (the old one is put back when the
+//     volume), removes the quarantine attribute (when there is one) and swaps it for the running bundle (the old one is put back when the
 //     swap fails),
 //  4. unmounts the dmg and starts the new bundle (open).
 //
@@ -74,7 +74,9 @@ new="$parent/.mam-update-new.$$"
 old="$parent/.mam-update-old.$$"
 rm -rf "$new" "$old"
 ditto "$src" "$new" || fail "新しい MAM.app をコピーできませんでした（$parent に書き込めません）。"
-xattr -dr com.apple.quarantine "$new" || fail "新しい MAM.app の隔離属性を外せませんでした。"
+# A dmg the updater downloaded carries no quarantine attribute, and xattr -d reports a missing one as an error:
+# that is not a reason to give up the update.
+xattr -dr com.apple.quarantine "$new" || echo "mam update: no quarantine attribute removed from $new"
 mv "$app" "$old" || fail "いまの MAM.app を退避できませんでした。"
 if ! mv "$new" "$app"; then
   mv "$old" "$app"
