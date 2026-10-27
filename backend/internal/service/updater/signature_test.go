@@ -102,6 +102,7 @@ func TestChecker_CheckForUpdate_SignatureVerification(t *testing.T) {
 				HTTPClient: server.Client(), BaseURL: server.URL,
 				DownloadURLPrefix: server.URL + "/download/",
 				PublicKey:         tt.key,
+				Platform:          updater.PlatformWindowsAMD64,
 			})
 
 			result, err := checker.CheckForUpdate(context.Background())

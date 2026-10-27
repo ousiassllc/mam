@@ -99,5 +99,7 @@ func newChecker(server *httptest.Server, gate updater.Gate) *updater.Checker {
 		BaseURL:    server.URL,
 		// newGitHubMock serves assets under /download/ on the same server.
 		DownloadURLPrefix: server.URL + "/download/",
+		// The fixtures carry the Windows installer: the same on every host OS (the zero value follows runtime.GOOS).
+		Platform: updater.PlatformWindowsAMD64,
 	})
 }
