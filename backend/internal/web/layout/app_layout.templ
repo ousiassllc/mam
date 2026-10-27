@@ -21,7 +21,7 @@ templ AppLayout(title string, csrfToken string) {
 // canonical empty draws none): the page that several URLs show.
 templ AppLayoutAt(title, csrfToken, canonical string) {
 	<!DOCTYPE html>
-	<html lang="ja">
+	<html lang="ja" class="overscroll-none">
 		<head>
 			<meta charset="utf-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -33,7 +33,7 @@ templ AppLayoutAt(title, csrfToken, canonical string) {
 			<link rel="stylesheet" href={ paths.StaticCSS }/>
 			<script type="module" src={ paths.StaticApp }></script>
 		</head>
-		<body class="min-h-screen bg-neutral-950 text-neutral-100">
+		<body class="min-h-screen overscroll-none bg-neutral-950 text-neutral-100">
 			{ children... }
 			<div id="toast-region" class="pointer-events-none fixed bottom-4 right-4 z-50 flex max-w-sm flex-col gap-2" aria-live="assertive"></div>
 			<template id="toast-template">
