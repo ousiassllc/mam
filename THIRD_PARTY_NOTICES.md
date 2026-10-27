@@ -20,14 +20,14 @@ MAM の Windows 版に含まれるサードパーティのソフトウェアと�
 | Go 標準ライブラリ | Go standard library | - |
 | Go モジュール | github.com/a-h/templ | v0.3.1020 |
 | Go モジュール | github.com/adrg/xdg | v0.5.3 |
-| Go モジュール | github.com/andybalholm/brotli | v1.2.3 |
+| Go モジュール | github.com/andybalholm/brotli | v1.2.6 |
 | Go モジュール | github.com/bodgit/plumbing | v1.3.0 |
 | Go モジュール | github.com/bodgit/sevenzip | v1.6.0 |
 | Go モジュール | github.com/bodgit/windows | v1.0.1 |
 | Go モジュール | github.com/coder/websocket | v1.8.15 |
 | Go モジュール | github.com/danielgtaylor/huma/v2 | v2.39.1 |
 | Go モジュール | github.com/danieljoos/wincred | v1.2.3 |
-| Go モジュール | github.com/dustin/go-humanize | v1.0.1 |
+| Go モジュール | github.com/dustin/go-humanize | v1.1.0 |
 | Go モジュール | github.com/gabriel-vasile/mimetype | v1.4.13 |
 | Go モジュール | github.com/gin-contrib/sse | v1.1.1 |
 | Go モジュール | github.com/gin-gonic/gin | v1.12.0 |
@@ -42,21 +42,21 @@ MAM の Windows 版に含まれるサードパーティのソフトウェアと�
 | Go モジュール | github.com/hashicorp/errwrap | v1.0.0 |
 | Go モジュール | github.com/hashicorp/go-multierror | v1.1.1 |
 | Go モジュール | github.com/hashicorp/golang-lru/v2 | v2.0.7 |
-| Go モジュール | github.com/klauspost/compress | v1.19.2 |
+| Go モジュール | github.com/klauspost/compress | v1.20.1 |
 | Go モジュール | github.com/leodido/go-urn | v1.4.0 |
 | Go モジュール | github.com/mattn/go-isatty | v0.0.24 |
 | Go モジュール | github.com/mfridman/interpolate | v0.0.2 |
 | Go モジュール | github.com/modelcontextprotocol/go-sdk | v1.8.0 |
-| Go モジュール | github.com/ncruces/go-strftime | v1.0.0 |
+| Go モジュール | github.com/ncruces/go-strftime | v1.1.0 |
 | Go モジュール | github.com/pelletier/go-toml/v2 | v2.4.3 |
-| Go モジュール | github.com/pierrec/lz4/v4 | v4.1.29 |
-| Go モジュール | github.com/pressly/goose/v3 | v3.28.0 |
+| Go モジュール | github.com/pierrec/lz4/v4 | v4.1.33 |
+| Go モジュール | github.com/pressly/goose/v3 | v3.29.0 |
 | Go モジュール | github.com/quic-go/qpack | v0.6.0 |
 | Go モジュール | github.com/quic-go/quic-go | v0.60.0 |
 | Go モジュール | github.com/remyoudompheng/bigfft | v0.0.0-20230129092748-24d4a6f8daec |
 | Go モジュール | github.com/segmentio/asm | v1.2.1 |
 | Go モジュール | github.com/segmentio/encoding | v0.5.4 |
-| Go モジュール | github.com/sethvargo/go-retry | v0.4.0 |
+| Go モジュール | github.com/sethvargo/go-retry | v0.5.0 |
 | Go モジュール | github.com/ugorji/go/codec | v1.3.1 |
 | Go モジュール | github.com/ulikunitz/xz | v0.5.15 |
 | Go モジュール | github.com/wailsapp/wails/v3 | v3.0.0-beta.34 |
@@ -65,10 +65,10 @@ MAM の Windows 版に含まれるサードパーティのソフトウェアと�
 | Go モジュール | go.mongodb.org/mongo-driver/v2 | v2.8.0 |
 | Go モジュール | go.uber.org/multierr | v1.11.0 |
 | Go モジュール | go4.org | v0.0.0-20200411211856-f5505b9728dd |
-| Go モジュール | golang.org/x/crypto | v0.57.0 |
+| Go モジュール | golang.org/x/crypto | v0.58.0 |
 | Go モジュール | golang.org/x/image | v0.47.0 |
 | Go モジュール | golang.org/x/mod | v0.41.0 |
-| Go モジュール | golang.org/x/net | v0.60.0 |
+| Go モジュール | golang.org/x/net | v0.61.0 |
 | Go モジュール | golang.org/x/oauth2 | v0.35.0 |
 | Go モジュール | golang.org/x/sync | v0.24.0 |
 | Go モジュール | golang.org/x/sys | v0.49.0 |
@@ -76,7 +76,7 @@ MAM の Windows 版に含まれるサードパーティのソフトウェアと�
 | Go モジュール | golang.org/x/time | v0.15.0 |
 | Go モジュール | google.golang.org/protobuf | v1.36.12 |
 | Go モジュール | gopkg.in/natefinch/lumberjack.v2 | v2.2.1 |
-| Go モジュール | modernc.org/libc | v1.77.1 |
+| Go モジュール | modernc.org/libc | v1.78.0 |
 | Go モジュール | modernc.org/mathutil | v1.7.1 |
 | Go モジュール | modernc.org/memory | v1.12.1 |
 | Go モジュール | modernc.org/sqlite | v1.60.1 |
@@ -184,7 +184,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ~~~
 
-## github.com/andybalholm/brotli v1.2.3
+## github.com/andybalholm/brotli v1.2.6
 
 Go モジュール
 
@@ -396,7 +396,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ~~~
 
-## github.com/dustin/go-humanize v1.0.1
+## github.com/dustin/go-humanize v1.1.0
 
 Go モジュール
 
@@ -1883,7 +1883,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ~~~
 
-## github.com/klauspost/compress v1.19.2
+## github.com/klauspost/compress v1.20.1
 
 Go モジュール
 
@@ -2561,7 +2561,7 @@ CC-BY-4.0. See https://creativecommons.org/licenses/by/4.0/legalcode for
 the full license text.
 ~~~
 
-## github.com/ncruces/go-strftime v1.0.0
+## github.com/ncruces/go-strftime v1.1.0
 
 Go モジュール
 
@@ -2622,7 +2622,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ~~~
 
-## github.com/pierrec/lz4/v4 v4.1.29
+## github.com/pierrec/lz4/v4 v4.1.33
 
 Go モジュール
 
@@ -2659,7 +2659,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ~~~
 
-## github.com/pressly/goose/v3 v3.28.0
+## github.com/pressly/goose/v3 v3.29.0
 
 Go モジュール
 
@@ -2827,7 +2827,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ~~~
 
-## github.com/sethvargo/go-retry v0.4.0
+## github.com/sethvargo/go-retry v0.5.0
 
 Go モジュール
 
@@ -3694,7 +3694,7 @@ Go モジュール
 
 ~~~
 
-## golang.org/x/crypto v0.57.0
+## golang.org/x/crypto v0.58.0
 
 Go モジュール
 
@@ -3802,7 +3802,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ~~~
 
-## golang.org/x/net v0.60.0
+## golang.org/x/net v0.61.0
 
 Go モジュール
 
@@ -4084,7 +4084,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ~~~
 
-## modernc.org/libc v1.77.1
+## modernc.org/libc v1.78.0
 
 Go モジュール
 
