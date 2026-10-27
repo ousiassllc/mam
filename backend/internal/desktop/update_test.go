@@ -26,6 +26,7 @@ func TestUpdater_InstallQuitsWithoutBlockingAndRunPendingStartsTheInstaller(t *t
 	u := NewUpdater(func() { close(quit); <-release })
 	var started []*exec.Cmd
 	u.start = func(c *exec.Cmd) error { started = append(started, c); return nil }
+	u.command = func(p string) (*exec.Cmd, error) { return InstallCommand(p), nil } // the Windows command, on any host OS
 
 	done := make(chan struct{})
 	go func() { u.Install("/tmp/setup.exe"); close(done) }()
@@ -57,6 +58,7 @@ func TestUpdater_RunPendingReturnsTheFailureToStart(t *testing.T) {
 	u := NewUpdater(func() {})
 	boom := errors.New("access denied")
 	u.start = func(*exec.Cmd) error { return boom }
+	u.command = func(p string) (*exec.Cmd, error) { return InstallCommand(p), nil }
 	u.Install("/tmp/setup.exe")
 
 	require.ErrorIs(t, u.RunPending(), boom)

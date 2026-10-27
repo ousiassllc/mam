@@ -31,7 +31,7 @@ both_installers_are_listed_and_verify() {
   grep -q -- '  mam-1.2.3-darwin-arm64.dmg$' "$work/dist/checksums.txt" || return 1
   (cd "$work/dist" && sha256sum -c checksums.txt >/dev/null 2>&1)
 }
-portable_exe_is_not_listed() { ! grep -q 'windows-amd64.exe' "$work/dist/checksums.txt"; }
+portable_exe_is_not_listed() { fresh_dir && bash "$script" "$work/dist" 1.2.3 >/dev/null 2>&1 && ! grep -q 'windows-amd64.exe' "$work/dist/checksums.txt"; }
 missing_dmg() { fresh_dir && rm "$work/dist/mam-1.2.3-darwin-arm64.dmg" && bash "$script" "$work/dist" 1.2.3 >/dev/null 2>&1; }
 missing_installer() { fresh_dir && rm "$work/dist/mam-1.2.3-windows-amd64-setup.exe" && bash "$script" "$work/dist" 1.2.3 >/dev/null 2>&1; }
 other_version() { fresh_dir && bash "$script" "$work/dist" 1.2.4 >/dev/null 2>&1; }
