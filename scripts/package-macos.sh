@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # macOS desktop packaging (Apple Silicon, unsigned): templ generate -> esbuild + tailwind (minify) -> go build of the Wails
-# window front backend/cmd/wails (cgo) -> MAM.app -> ad-hoc signature -> .dmg (hdiutil). Run on a Mac, on the self-hosted
-# release runner (release.yml, `build-macos` job); spec/architecture/desktop.md §4, spec/environment/setup.md "リリース".
+# window front backend/cmd/wails (cgo) -> MAM.app -> ad-hoc signature -> .dmg (hdiutil). Run on a Mac with Apple Silicon (the
+# GitHub-hosted macos-latest runner: release.yml's `build-macos` job and ci.yml's `macos` job); spec/architecture/desktop.md §4,
+# spec/environment/setup.md "リリース".
 #
 # Usage: scripts/package-macos.sh <version>      <version> is X.Y.Z (the tag v<version> without the v)
 # Output: bin/mam-<version>-darwin-arm64.dmg      MAM.app next to an Applications link, volume name MAM
@@ -11,8 +12,8 @@
 # scripts/package-windows.sh.
 # NO Apple Developer ID signature and NO notarization: the bundle only gets the ad-hoc signature (`codesign --sign -`) that
 # an arm64 binary needs to run at all. Gatekeeper therefore asks the user on the first launch (README.md).
-# Needs (nothing is installed here): Xcode command line tools (clang for cgo; sips, iconutil, plutil, codesign, ditto, hdiutil, lipo
-# ship with macOS), go, node/npm.
+# Needs (nothing is installed here): Xcode command line tools (preinstalled on macos-latest; clang for cgo; sips, iconutil, plutil,
+# codesign, ditto, hdiutil, lipo ship with macOS), go, node/npm.
 # templ is not needed on PATH: it runs through `go run` at the version of go.mod's github.com/a-h/templ (like `make generate`).
 # Scratch files live in a fresh directory under $RUNNER_TEMP (else $TMPDIR) that is removed on exit.
 set -euo pipefail

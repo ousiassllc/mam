@@ -2,11 +2,10 @@ name: Release (macOS build)
 
 # The macOS (Apple Silicon, unsigned) build of release.yml: called by its `build-macos` job (a reusable workflow, not a trigger
 # of its own: nothing can start it except that job, whose `if:` limits it to this repository's main after CI succeeded and to
-# v* tag pushes). It is the only job that runs on the organisation's self-hosted Mac runner, and this repository is public, so
-# it never sees a secret or a write token: contents: read, no `secrets:` passed by the caller, persist-credentials: false.
-# The runner is persistent: a clean checkout, scratch files under $RUNNER_TEMP (scripts/package-macos.sh) and a final
-# `git clean`. Nothing is installed and there is no sudo: the Xcode command line tools are a prerequisite of the runner
-# (spec/environment/setup.md "リリース"). `uses:` are pinned to a commit SHA like release.yml.
+# v* tag pushes). It runs on GitHub's hosted Apple Silicon runner (macos-latest: arm64, Xcode command line tools preinstalled,
+# a fresh VM per run, free for a public repository), and it never sees a secret or a write token: contents: read, no
+# `secrets:` passed by the caller, persist-credentials: false. Nothing is installed by hand and there is no sudo.
+# `uses:` are pinned to a commit SHA like release.yml.
 on:
   workflow_call:
     inputs:
@@ -24,7 +23,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: [self-hosted, macOS, ARM64]
+    runs-on: macos-latest
     timeout-minutes: 60
     permissions:
       contents: read
@@ -32,18 +31,20 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.sha }}
-          clean: true
           persist-credentials: false
 
-      # The Go module cache lives on the runner's disk and go.sum verifies it, so the actions cache is not used here.
+      # A hosted runner starts empty every time: the Go and npm caches come from the actions cache (see release.yml).
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
-          cache: false
+          cache: true
+          cache-dependency-path: go.sum
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
+          cache: npm
+          cache-dependency-path: static/package-lock.json
 
       # The release public key is a repository variable (not a secret); like the Windows build, an empty one fails the build.
       - name: Package
@@ -62,8 +63,3 @@ jobs:
           name: macos-release
           path: bin/mam-*-darwin-arm64.dmg
           if-no-files-found: error
-
-      # Always, even after a failure: the workspace and its build output stay on the runner until the next run.
-      - name: Clean up the workspace
-        if: always()
-        run: git clean -ffdx
