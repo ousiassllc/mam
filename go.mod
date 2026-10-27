@@ -5,7 +5,7 @@ go 1.26.0
 toolchain go1.26.10
 
 require (
-	github.com/a-h/templ v0.3.1020
+	github.com/a-h/templ v0.3.1070
 	github.com/bodgit/sevenzip v1.6.0
 	github.com/coder/websocket v1.8.15
 	github.com/danielgtaylor/huma/v2 v2.39.1

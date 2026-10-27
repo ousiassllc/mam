@@ -18,7 +18,7 @@ MAM の Windows 版に含まれるサードパーティのソフトウェアと�
 | 種別 | 名前 | 版 |
 |---|---|---|
 | Go 標準ライブラリ | Go standard library | - |
-| Go モジュール | github.com/a-h/templ | v0.3.1020 |
+| Go モジュール | github.com/a-h/templ | v0.3.1070 |
 | Go モジュール | github.com/adrg/xdg | v0.5.3 |
 | Go モジュール | github.com/andybalholm/brotli | v1.2.6 |
 | Go モジュール | github.com/bodgit/plumbing | v1.3.0 |
@@ -124,7 +124,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ~~~
 
-## github.com/a-h/templ v0.3.1020
+## github.com/a-h/templ v0.3.1070
 
 Go モジュール
 
