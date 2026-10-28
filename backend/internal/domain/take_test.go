@@ -80,11 +80,12 @@ func TestPickTake_NothingJudgedPicksNothingAndAllFailedIsReportedAsNotPassed(t *
 }
 
 func TestResolutionHeight_And_Proxied(t *testing.T) {
-	for res, want := range map[string]int{"1080p": 1080, "720p": 720, "2160p": 2160, "4K": 2160, "4k": 2160, "": 0, "wide": 0} {
+	for res, want := range map[string]int{"1080p": 1080, "720p": 720, "2160p": 2160, "4K": 2160, "4k": 2160, "2k": 1440, "2K": 1440, "": 0, "wide": 0} {
 		assert.Equal(t, want, ResolutionHeight(res), res)
 	}
 	assert.False(t, TakeInfo{Resolution: "1080p"}.Proxied())
 	assert.True(t, TakeInfo{Resolution: "4K"}.Proxied())
+	assert.True(t, TakeInfo{Resolution: "2k"}.Proxied(), "MiniMax H3 at 2K is taller than 1080 lines")
 	assert.False(t, TakeInfo{}.Proxied())
 }
 

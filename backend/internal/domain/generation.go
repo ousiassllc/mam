@@ -27,6 +27,10 @@ const (
 	ModelGeminiOmniFlash ModelName = "gemini-omni-flash" // Gemini Omni Flash (gemini-omni-1.1-flash), the Gemini API's video model
 	ModelKling4          ModelName = "kling-4.0"         // Kling 4.0 on the new API (Bearer API key); ModelKling3 stays on the old one
 	ModelSeedance25      ModelName = "seedance-2.5"      // Seedance 2.5 (dreamina-seedance-2-5-260628), up to 30 seconds
+	ModelMiniMaxH3       ModelName = "minimax-h3"        // MiniMax H3 (MiniMax-H3), 4-15 seconds, 768P / 2K
+	ModelMiniMaxH3Max    ModelName = "minimax-h3-max"    // MiniMax H3 Max (MiniMax-H3-Max), 5-15 seconds, 480P / 768P
+	ModelWan3            ModelName = "wan-3.0"           // Alibaba Cloud Wan 3.0 (wan3.0-video), 2-30 seconds, 480P-1080P
+	ModelLumaRay32       ModelName = "luma-ray-3.2"      // Luma Ray 3.2 (ray-3.2), 5 or 10 seconds, 360p-1080p
 )
 
 // ImageModels lists the image models (built-in, then defined on registered endpoints: modelreg).
@@ -36,7 +40,7 @@ func ImageModels() []ModelName {
 
 // VideoModels lists the video models that have an adapter (built-in, then defined on registered endpoints).
 func VideoModels() []ModelName {
-	return mr.Video(ModelKling3, ModelSeedance2, ModelRunwayGen45, ModelGeminiOmniFlash, ModelKling4, ModelSeedance25)
+	return mr.Video(ModelKling3, ModelSeedance2, ModelRunwayGen45, ModelGeminiOmniFlash, ModelKling4, ModelSeedance25, ModelMiniMaxH3, ModelMiniMaxH3Max, ModelWan3, ModelLumaRay32)
 }
 
 // JoinModels renders models separated by sep ("kling-3.0 / seedance-2.0 / runway-gen-4.5" for " / ").

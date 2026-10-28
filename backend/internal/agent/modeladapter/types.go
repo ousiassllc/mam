@@ -202,6 +202,13 @@ const (
 	VendorKling4   Vendor = "kling4"
 	VendorSeedance Vendor = "seedance"
 	VendorRunway   Vendor = "runway"
+	// VendorMiniMax is MiniMax H3 / H3 Max (https://api.minimax.io, one API key as the Bearer token).
+	VendorMiniMax Vendor = "minimax"
+	// VendorAlibaba is Alibaba Cloud Model Studio (DashScope): Wan 3.0. Its host holds the workspace ID of the user and its
+	// region (https://{WorkspaceId}.ap-southeast-1.maas.aliyuncs.com), so the key is stored as WORKSPACE_ID:API_KEY.
+	VendorAlibaba Vendor = "alibaba"
+	// VendorLuma is Luma Ray 3.2 on the Agents API (https://agents.lumalabs.ai, one API key as the Bearer token).
+	VendorLuma Vendor = "luma"
 )
 
 // VendorOf returns the vendor of a model.
@@ -221,6 +228,12 @@ func VendorOf(m domain.ModelName) Vendor {
 		return VendorSeedance
 	case domain.ModelRunwayGen45:
 		return VendorRunway
+	case domain.ModelMiniMaxH3, domain.ModelMiniMaxH3Max:
+		return VendorMiniMax
+	case domain.ModelWan3:
+		return VendorAlibaba
+	case domain.ModelLumaRay32:
+		return VendorLuma
 	case chatgptid.Model:
 		return Vendor(chatgptid.Vendor)
 	}
@@ -232,7 +245,7 @@ func VendorOf(m domain.ModelName) Vendor {
 
 // Vendors lists every vendor that has a backend.
 func Vendors() []Vendor {
-	return []Vendor{VendorGoogle, VendorOpenAI, VendorFlux, VendorKling, VendorKling4, VendorSeedance, VendorRunway}
+	return []Vendor{VendorGoogle, VendorOpenAI, VendorFlux, VendorKling, VendorKling4, VendorSeedance, VendorRunway, VendorMiniMax, VendorAlibaba, VendorLuma}
 }
 
 // ImageCost is the most one image of the model can cost (its dearest size): what a budget check holds.

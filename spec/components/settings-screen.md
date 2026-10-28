@@ -78,7 +78,7 @@
 │ ┌ nav aria-label="設定" 224px ┐ ┌ main（残り 832px）───────────────────────────────┐ │
 │ │ ▌概要            ←current   │ │ 概要                       ← h2                   │ │
 │ │  API キーとログイン         │ │ ┌ [🔑]API キーと… ┐ ┌ [💬]テキスト生成 ┐        │ │
-│ │  テキスト生成（LLM）        │ │ │ API キー 3 / 11 件│ │ 変更 2 / 14 Agent │        │ │
+│ │  テキスト生成（LLM）        │ │ │ API キー 3 / 14 件│ │ 変更 2 / 14 Agent │        │ │
 │ │  画像・動画モデル           │ │ │ 開く ›          │ │ 開く ›          │        │ │
 │ │  ローカル・代替モデル       │ │ └──────────────────┘ └──────────────────┘        │ │
 │ │  MCP サーバー               │ │ ┌ 画像・動画モデル ┐ ┌ ローカル・代替 ┐ …（2 列）  │ │
@@ -100,7 +100,7 @@
 
 | カード | 状態の行（取得元） | 行き先 |
 |--------|------------------|--------|
-| API キーとログイン | API キー n / 11 件（`CredentialService.Status`）、ChatGPT のログイン（`chatgpt.Service.Overview`。トップ画面と同じ規則）。キーストアが読めないときは warn ・ キーストアを利用できません | `/settings/api-keys` |
+| API キーとログイン | API キー n / 14 件（`CredentialService.Status`）、ChatGPT のログイン（`chatgpt.Service.Overview`。トップ画面と同じ規則）。キーストアが読めないときは warn ・ キーストアを利用できません | `/settings/api-keys` |
 | テキスト生成（LLM） | 既定から変えた Agent の数「変更 n / 14 件」（`llmassign.Service.View` の `Route` と `Default` を比べる）。固定（`Pinned`）のときは neutral ・ 起動オプションで固定 | `/settings/llm` |
 | 画像・動画モデル | 「既定のまま」／「変更あり」（`modelsettings` の `Customized`）。固定のときは neutral ・ 起動オプションで固定 | `/settings/models` |
 | ローカル・代替モデル | 接続先 n 件・モデル m 件。接続の状態は **`hx-get` で後から**（`GET /settings/local-models/health`。接続先ごとに並行して既存の `localmodels.Service.TestEndpoint` を呼ぶが、概要では各 3 秒で打ち切る。「n 件中 m 件に接続できます」。取れないときは空）。接続先 0 件は「接続先なし」 | `/settings/local-models` |

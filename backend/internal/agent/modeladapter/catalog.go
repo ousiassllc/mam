@@ -58,6 +58,26 @@ func Capabilities(m domain.ModelName) (VideoCapabilities, bool) {
 		// 3-30 s in whole seconds, 720p and 1080p (the Capability Map also lists 4K, but the text-to-video and image-to-video
 		// settings take 720p and 1080p). First and last frame; the omni reference endpoint is not used.
 		return VideoCapabilities{Durations: wholeSeconds(3, 30), Resolutions: []string{"720p", "1080p"}, FirstFrame: true, LastFrame: true}, true
+	case domain.ModelMiniMaxH3:
+		// 4-15 s in whole seconds, 768P and 2K (named as the API names them, lower case). First and last frame, or reference
+		// images (the two modes are exclusive, which Prepare keeps): 5 reference images, the free quota of a task (the sixth
+		// and beyond are billed apart); reference videos and audio are not used.
+		return VideoCapabilities{Durations: wholeSeconds(4, 15), Resolutions: []string{"768p", "2k"}, MaxReferenceImages: 5, FirstFrame: true, LastFrame: true}, true
+	case domain.ModelMiniMaxH3Max:
+		// 5-15 s, 480P and 768P. Same modes as H3; 2 reference images, the free quota of a task of H3 Max.
+		return VideoCapabilities{Durations: wholeSeconds(5, 15), Resolutions: []string{"480p", "768p"}, MaxReferenceImages: 2, FirstFrame: true, LastFrame: true}, true
+	case domain.ModelWan3:
+		// 2-30 s in whole seconds, 480P / 720P / 1080P, with native sound. First and last frame, or up to 10 reference images (the
+		// two modes are exclusive, which Prepare keeps); reference videos and audio, files and web links are not used.
+		return VideoCapabilities{
+			Durations: wholeSeconds(2, 30), Resolutions: []string{"480p", "720p", "1080p"},
+			MaxReferenceImages: 10, FirstFrame: true, LastFrame: true, NativeAudio: true,
+		}, true
+	case domain.ModelLumaRay32:
+		// 5 or 10 s, 360p (draft) to 1080p. First and last frame only in a 5 s clip (the API refuses a frame with 10 s: Prepare
+		// keeps to 5); no free reference images (the video type has none: image_ref is for the image models). HDR, looping,
+		// editing, extension and reframing are not used.
+		return VideoCapabilities{Durations: []float64{5, 10}, Resolutions: []string{"360p", "540p", "720p", "1080p"}, FirstFrame: true, LastFrame: true}, true
 	}
 	return publishedCaps(m)
 }

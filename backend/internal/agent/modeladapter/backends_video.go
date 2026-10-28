@@ -210,6 +210,10 @@ func NewBackends(cfg Config, keys credential.Store, client httpclient.Doer, poll
 			domain.ModelRunwayGen45:     runwayBackend{mk(VendorRunway)},
 			domain.ModelGeminiOmniFlash: geminiOmniBackend{mk(VendorGoogle)},
 			domain.ModelKling4:          kling4Backend{mk(VendorKling4)},
+			domain.ModelMiniMaxH3:       minimaxBackend{mk(VendorMiniMax)},
+			domain.ModelMiniMaxH3Max:    minimaxBackend{mk(VendorMiniMax)},
+			domain.ModelWan3:            alibabaBackend{mk(VendorAlibaba)},
+			domain.ModelLumaRay32:       lumaBackend{mk(VendorLuma)},
 		},
 	}
 }
