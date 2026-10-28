@@ -9,6 +9,7 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 import (
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/help"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/chatgpt"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/credentials"
@@ -69,7 +70,7 @@ func SettingsOverviewBody(d overview.Data) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = settingsui.Category("概要", "各分類の状態です。カードを開くと、その分類の設定に移ります。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = settingsui.Category("概要", help.Text("各分類の状態です。カードを開くと、その分類の設定に移ります。")).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -121,7 +122,7 @@ func SettingsAPIKeysBody(keys credentials.Data, login *chatgpt.Data) templ.Compo
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = settingsui.Category("API キーとログイン", "").Render(templ.WithChildren(ctx, templ_7745c5c3_Var4), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = settingsui.Category("API キーとログイン", nil).Render(templ.WithChildren(ctx, templ_7745c5c3_Var4), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -169,7 +170,7 @@ func SettingsLLMBody(d llm.Data) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = settingsui.Category("テキスト生成（LLM）", "Agent ごとに、最初に呼ぶ LLM（プライマリ）と、失敗したときに切り替える LLM（代替）を選びます。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var6), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = settingsui.Category("テキスト生成（LLM）", help.Text("Agent ごとに、最初に呼ぶ LLM（プライマリ）と、失敗したときに切り替える LLM（代替）を選びます。")).Render(templ.WithChildren(ctx, templ_7745c5c3_Var6), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -217,7 +218,7 @@ func SettingsModelsBody(d media.Data) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = settingsui.Category("画像・動画モデル", "画像の用途ごと・Quality Policy ごとに、主モデルと、主モデルが使えないときの代替モデルを選びます。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var8), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = settingsui.Category("画像・動画モデル", help.Text("画像の用途ごと・Quality Policy ごとに、主モデルと、主モデルが使えないときの代替モデルを選びます。\n保存した内容は <データフォルダ>/models.json に書かれ、すぐに反映されます。「ローカル・代替モデル」で登録したモデルも選べます。")).Render(templ.WithChildren(ctx, templ_7745c5c3_Var8), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -265,7 +266,7 @@ func SettingsLocalModelsBody(d local.Data) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = settingsui.Category("ローカル・代替モデル", local.Description).Render(templ.WithChildren(ctx, templ_7745c5c3_Var10), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = settingsui.Category("ローカル・代替モデル", help.Text(local.Description)).Render(templ.WithChildren(ctx, templ_7745c5c3_Var10), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -313,7 +314,7 @@ func SettingsLocalEndpointBody(d local.Data, e local.Endpoint) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = settingsui.Category("ローカル・代替モデル", "").Render(templ.WithChildren(ctx, templ_7745c5c3_Var12), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = settingsui.Category("ローカル・代替モデル", nil).Render(templ.WithChildren(ctx, templ_7745c5c3_Var12), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -361,7 +362,7 @@ func SettingsMCPBody(d mcp.Data) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = settingsui.Category("MCP サーバー", mcp.Description).Render(templ.WithChildren(ctx, templ_7745c5c3_Var14), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = settingsui.Category("MCP サーバー", help.Text(mcp.Description)).Render(templ.WithChildren(ctx, templ_7745c5c3_Var14), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -409,7 +410,7 @@ func SettingsUpdateBody(d updatepanel.Data) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = settingsui.Category("バージョンとアップデート", "").Render(templ.WithChildren(ctx, templ_7745c5c3_Var16), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = settingsui.Category("バージョンとアップデート", nil).Render(templ.WithChildren(ctx, templ_7745c5c3_Var16), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

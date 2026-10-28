@@ -1,4 +1,4 @@
-# コンポーネント仕様: 共通の画面部品（カード・アイコン・モーダル・一覧の行）
+# コンポーネント仕様: 共通の画面部品（カード・アイコン・モーダル・一覧の行・「?」ヘルプ）
 
 > **状態: 一部実装済み。** Issue #846（トップ画面のカード）と #847（設定画面のサブページ化）が共有する部品の見た目と契約。**`atoms.Icon`（#846 の 8 個。§2）と `molecules.ToolCard`（`StatusURL` の形。§3）は #846 で、モーダル（§4）・一覧の行のカード `SettingsCard`（§5。実体は `settingsui.CardItem`）・#847 のアイコン 7 個（`IconKey`・`IconText`・`IconMedia`・`IconLocal`・`IconPlug`・`IconUpdate`・`IconClose`）は #847 の段階 ①・②-1・②-2 で実装済み**（2026-10-25）。表 `SettingsTable`・`TableRowItem`（§5。`settingsui.SettingsTable` ほか）と `IconCopy`（MCP のトークンのコピーに使う）は段階 ②-3 で実装済み（2026-10-25）。オーナーは §8 の質問を推奨する既定で決定した。
 
@@ -57,6 +57,7 @@
 | `IconUpdate` | `refresh-cw` | 〃 バージョンとアップデート | #847 |
 | `IconClose` | `x` | モーダルの閉じるボタン | #847 |
 | `IconCopy` | `copy` | MCP トークンのコピー | #847 |
+| `IconHelp` | `circle-question-mark`（Lucide v1.61.0。旧名 `circle-help`） | 「?」ヘルプのボタン（§9） | #866 |
 
 - 16 個で、#846 の 8 個 + #847 の 8 個。Issue の「10 個前後」より多いのは、#847 が概要のカードにもアイコンを付けるため（§8 の質問 1。付けないなら #847 は `x` と `copy` の 2 個）。`IconClose`（`x`）はモーダルの部品が使うので、どちらの Issue が持つかはモーダルの担当（§8 の質問 7）に従う。表の「#847」は決定のとおり。
 - 上の Lucide の名前は、2026-10-25 に `lucide-icons/lucide` の `main` の `icons/<名前>.svg` が存在することを確かめた（HTTP 200）。コピーする版（タグ）は実装のときに決め、その版に同じ名前があることを確かめる。名前は Lucide の版で変わることがある。
@@ -184,6 +185,8 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 | 0.8 | 2026-10-25 | §4 のモーダルの履歴の掃除の置き場所を、実装どおり `modal.ts` の `htmx:beforeHistorySave` に直した（`lib/history.ts` は変えていない） | PR #849 の第 2 周の独立レビューの指摘 |
 | 0.9 | 2026-10-25 | §4 に「閉じるときの送信中の要求」（GET だけ取りやめ、POST・PUT・DELETE は答えを受けて OOB を反映し本文を空にする）を足し、理由を取り除く答えが欄の `aria-invalid`・`aria-describedby` も外すと書いた | PR #849 の第 3 周の独立レビューの指摘 |
 | 0.10 | 2026-10-28 | §5 に、モデルマネージャーのモデルのカード（`modelCard`）と `SettingsCard`・`ToolCard` の関係を足した | Issue #865 |
+| 0.11 | 2026-10-28 | §9「「?」ヘルプ」と §10「ヘルプに移した説明の一覧」を足した。§2 に `IconHelp` を足した。`SettingsSection` の説明は常時表示でなくヘルプになった | Issue #866 |
+| 0.12 | 2026-10-28 | §9 のヘルプを、見出しの下に開く開示（インライン）から、ネイティブの Popover API のポップオーバー（ボタンの近くに浮かぶ）に変えた。同時に開くのは 1 つ・`Esc` でボタンへ戻る・外側のクリックで閉じる・`Tab` の動き・`role="group"`・狭い画面での位置（ずらす・反転）を決めた。モデルマネージャーの h1 の説明と「?」は付けない（動かさない）に戻した | オーナーの決定（#866） |
 
 ## 8. オーナーへの確認事項と決定（2026-10-25: すべて推奨する既定で決定）
 
@@ -196,3 +199,71 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 | 5 | 背景のクリックでモーダルを閉じるか | 閉じない（`Esc` と「キャンセル」「閉じる」だけ。入力途中の消失を防ぐ） |
 | 6 | Lucide の `LICENSE` の置き場所と、`THIRD_PARTY_NOTICES.md` への載せ方 | §2 の案（全文を `atoms/icons/LICENSE` に置き、スクリプトの「同梱した素材」の節で載せる） |
 | 7 | **モーダルの部品をどちらの Issue で作るか（決定: #847 で作る）**。#846 決定事項 1 は「カード・アイコン・モーダルの部品は、先に出るトップ画面の Issue で作り」、#847 の「やること」2 は「モーダル（molecules ＋ 小さな TS）」を #847 の共通の部品に挙げていて、食い違っている | 【決定】**#847 で作る**。理由: ①トップ画面はモーダルを使わない（#846 の「やること」にもモーダルの項目が無い）ので、#846 で作ると使い道の無い部品を先に出すことになり、動作（フォーカスの戻り・Esc・422）を実画面で確かめられない ②#847 の受け入れ条件がモーダルの開閉とフォーカスの戻りを含む ③#847 の実装順（settings-screen.md §7 の ②-1）が、モーダルを API キーのカードで先に確かめる。#846 で作る場合は、#846 に `molecules/modal/`・`static/src/components/modal/`・`IconClose`・wtr のテストを足し、#846 のレビューの範囲が広がる。どちらでも §4 の契約は変わらない |
+
+## 9. 「?」ヘルプ（`molecules/help`。Issue #866）
+
+画面の説明の段落（長い文・ヒント）を、いつも見える場所から外し、見出しの横の「?」ボタンで開く短い**ポップオーバー**（ボタンの近くに浮かぶ、モーダルでない小さなパネル）にする部品。**モーダル（§4。設定の編集・ページに 1 つ）でも、`inline-dialog`（モデルマネージャーの同意・確認）でもない**: ヘルプは操作を止めず、背景を `inert` にせず、フォーカスも閉じ込めない。中身は**今まで画面に出していた文言をそのまま移したもの**で、ヘルプのために新しい文は書かない。
+
+### 9.1 形（ネイティブの Popover API）
+
+```html
+<div class="flex items-center gap-2">
+  <h2 class="text-base font-semibold">見出し</h2>
+  <button type="button" data-help-toggle popovertarget="help-<ID>" aria-expanded="false" aria-controls="help-<ID>" aria-label="見出しの説明" class="…">{IconHelp}</button>
+  <div id="help-<ID>" popover role="group" aria-label="見出しの説明" data-help-panel class="inset-auto m-0 max-h-[calc(100dvh-1rem)] w-[min(24rem,calc(100vw-1rem))] overflow-y-auto break-words rounded-lg border border-neutral-700 bg-neutral-900 p-3 text-sm text-neutral-300"><p>説明…</p></div>
+</div>
+```
+
+**なぜネイティブの Popover API か**: ①最前面の層（top layer）に出るので、`overflow-hidden` の親・カード・表の箱に切られない（近くに浮かべる部品の最大の問題）②`Esc`・外側のクリック／タップで閉じる・1 つ開くと他が閉じる、をブラウザが持つ（自前で書くとバグの元）③ボタンの `popovertarget` で、クリック・`Enter`・`Space` の開閉が JS なしでも動く。対象のブラウザ（Windows の WebView2 = Chromium、macOS の WKWebView = Safari 17 以降、開発用の Chrome）は、いずれも Popover API に対応している（Chrome 114・Safari 17・Firefox 125。2026-10-28 時点）。CSS の anchor positioning は Safari 26 以降のため使わず、位置は §9.1 の「位置」のとおり `help.ts` が決める。
+
+- **開く・閉じる**: ボタンのクリック・`Enter`・`Space` で開閉する。初めは閉じている（開いた状態は覚えない。ページを読み直す・本文が差し替わる（OOB でカードが入れ替わる）と閉じる）。`aria-expanded` は `toggle` イベントで `help.ts` が追随させる。
+- **同時に開くのは 1 つ**（決定）: `popover`（`auto`）の標準の動きで、別のヘルプのボタンを押すと、開いていたヘルプは閉じる。理由: 複数が重なると狭い画面で読めず、閉じる操作も増える。
+- **外側のクリック／タップで閉じる**: 標準の light dismiss。パネルの中のクリックでは閉じない。
+- **`Esc`**: フォーカスがボタン・開いているパネルの中・ページ（`body`。パネルの文字をクリックした後など）にあるとき、パネルを閉じて**フォーカスをボタンへ戻す**（`help.ts` が行う。ブラウザの自前の戻しは、タッチや Safari のようにボタンが押してもフォーカスされない環境で `body` に落ちるため頼らない）。その `Esc` は `preventDefault` され、同時に開いている `inline-dialog` を閉じない。ヘルプが開いていないとき、フォーカスが別の部品にあるときは何もしない（モーダル・`inline-dialog` の `Esc` とぶつけない）。
+- **フォーカスと `Tab`**（決定）: 開いてもフォーカスは**ボタンに残す**（ダイアログではない。もう一度 `Enter` で閉じられる）。パネルは DOM でボタンのすぐ後ろにあるので、`Tab` でボタンの次にパネルの中のリンクへ進む（読み上げも続きとして読む）。**フォーカスがボタンとパネルの外へ出たら（`Tab`・`Shift+Tab`）閉じる**（外側のクリックのキーボード版。`focusin` で見る）。リンクの無い説明では、`Tab` は次のコントロールへ進んで閉じる。
+- **ARIA**（決定）: ボタンの名前は「<主題>の説明」（`help.ToggleLabel`。ページ中の「?」を一覧で見分けられるよう「ヘルプ」だけにしない）、`aria-expanded`、`aria-controls`。アイコンは飾り（§2）。パネルは `role="dialog"` にしない（ダイアログは開いたらフォーカスを中へ移し、名前と閉じ方を持つもので、非モーダルの説明に合わない）。`role="group"` と `aria-label`（ボタンと同じ「<主題>の説明」）にする（ランドマークを増やさず、読み上げが「<主題>の説明、グループ」と名前を告げる）。閉じている間は `display: none`（ブラウザ）で、読まれず、キーボードでも届かない。そのため**パネルに `flex`・`grid`・`block` などの display のクラスを付けない**（閉じたまま見えてしまう。`help_test`）。
+- **位置と狭い画面（約 375 px）**（`help.ts` の `place`）: パネルは `position: fixed`（top layer はビューポート基準）で、`toggle` で開いた直後に**ボタンの下**（ボタンの左端にそろえ、間 6 px）へ置く。幅は `min(24rem, 100vw − 1rem)`（375 px では 359 px）で、**はみ出すときは左へずらす**（左右とも 8 px の余白。`left = clamp(ボタンの左, 8, ビューポートの幅 − パネルの幅 − 8)`）。**下に高さが足りなければボタンの上へ反転する**（`top = ボタンの上 − 6 − パネルの高さ`。上にも足りなければ、窓の下端から 8 px 上にそろえる）。高さは `max-h-[calc(100dvh-1rem)]` で、超えたらパネルの中がスクロールする。ウィンドウのリサイズとページのスクロール（ボタンが動く）で置き直す。ページを横にスクロールさせない（`fixed` で、幅が窓を超えない）。親の `overflow` で切られない（top layer）。広い画面と同じ部品・同じ出し方で、画面幅による分岐は無い（上の計算だけ）。
+- **見た目**: 新しい色・影は作らない（§1）。ボタンは 28 px 角（`h-7 w-7`。WCAG 2.5.8 の 24 px 以上）の丸（`rounded-[50%]`。`atoms.Badge` の形を手書きしない検査 `badge_test` が `rounded-full` を禁じるため）で、`border-neutral-700 text-neutral-300`（ホバーで `border-neutral-500 text-neutral-100`）、輪は §1 のフォーカスの輪、`transition-colors motion-reduce:transition-none`。パネルは §1 のカードと同じ面（`bg-neutral-900`・`border-neutral-700`・`rounded-lg`・`p-3`）で文字は `text-neutral-300`。アイコンは `atoms.IconHelp`（§2。Lucide `circle-question-mark`）。
+- **置き場所**: `backend/internal/web/molecules/help/`（`ID`・`ToggleLabel`・`Toggle`・`Panel`・`Text`・`Row`。サブパッケージにするのは `molecules/` の行数の上限を守るため）と `static/src/components/help/`（`help.ts`・`help.wtest.ts`。Lit ではなく `inline-dialog` と同じ `installHelp()`。`main.ts` が呼ぶ。委譲のイベントなので、後から入った本文の「?」も動く）。
+
+### 9.2 画面の部品からの使い方
+
+| 部品 | 使い方 |
+|------|-------|
+| `molecules.SettingsSection(title, explanation)`・`SettingsSectionH3(title, explanation)` | 見出し（h2 / h3）の横にボタン、下に `explanation`（文字列。改行で段落）のパネル。`explanation` が空ならボタンも出さない。`SettingsSectionHelp(level, title, component)` は説明が段落でないとき（リンク・複数の要素） |
+| `molecules.SettingsSectionAt(level, title, description)` | **状態を言う 1 行**（バージョンとアップデートの「現在のバージョン…」）だけ。説明には使わない |
+| `settingsui.Category(title, explanation)` | 分類の h2 の横にボタン。`explanation` は `templ.Component`（`help.Text(...)`・`nil` でボタン無し） |
+| `settingsui.Card.Help` | カードのタイトルの横にボタン、その直後にパネル（`SettingsCard`。§5）。パネルの id は `help.ID(カードの ID)` |
+| `help.Row(id, subject, explanation)` | 上の部品を使わない見出し（生成テストのページの h1 など）。子が見出し。ボタンの直後にパネルを置く（`Tab` の順） |
+
+- パネルの id は主題（見出しの文字・カードの ID）から決まる（`help.ID`。同じ入力は同じ id）。1 ページの主題は重複させない。
+
+### 9.3 ヘルプに入れてよいもの・いけないもの
+
+- **入れる**: 画面・区画・カードが**何のためか**、仕組みの補足、制限・注意の長文、使い方の手順（今まで見出しの下・カードの説明に常時出していた段落）。
+- **入れない（見えたままにする）**: 操作のラベル、状態（バッジ・「ログイン済み」・「設定済み」）、結果・エラー（`role="alert"`・`role="status"`・トースト）、確認（`hx-confirm`・同意）、固定されていて変えられない理由（`llm-pinned`）、操作の可否に関わる前提（「反映にはアプリの再起動が必要です」）。ヘルプを開かないと操作の結果や失敗の理由が分からない画面にしない。
+- パネルの中に操作（フォーム・ボタン）は置かない。リンクは可（`Tab` でボタンから入れる）。
+- **新しい文を足さない**: ヘルプの中身は、今まで常時表示していた文言の移動だけ（段落の区切りを変えるのは可。ヘルプのための言い換え・追加は不可）。
+
+### 9.4 テスト
+
+- `molecules/help/help_test.go`: ボタンの名前・`popovertarget`・`aria-expanded="false"`・`aria-controls` とパネルの id が一致・パネルは `popover` + `role="group"` + 同じ名前で display のクラスが無い・説明が空ならボタンが出ない・id が主題で決まる。
+- `molecules/settings_section_test.go`・`molecules/settingsui/settingsui_test.go`・`organisms/settings/llm/section_test.go`: 説明がパネルの中にだけある・ボタンが見出しの後ろ・操作に関わる文（再起動の注記・固定・エラー）は本体に残る。
+- `pages/help_moved_test.go`: §10 の対象画面で、長い説明がパネルの中にだけあり（ページの本体には無く）、見出し・状態は本体に残る。パネルごとにそれを開くボタンが 1 つある。
+- `static/src/components/help/help.wtest.ts`（実 Chrome）: クリック・`Enter`・`Space` で開閉し `aria-expanded` が追随・`Esc`（ボタンから・パネルの中のリンクから・フォーカスがページにあるとき）で閉じてボタンにフォーカスが戻る・外側の（実ポインターの）クリックで閉じ中のクリックでは閉じない・1 つ開くと他が閉じる・`Tab` でボタンからパネルのリンクへ入り、さらに `Tab`・`Shift+Tab` で出ると閉じる・`overflow: hidden` の親に切られない・デスクトップ幅（1280）と狭い幅（375）で、ボタンが右端・下端・左下のどこにあってもパネルがウィンドウの内側に収まり、ページが横にあふれない。
+
+## 10. ヘルプに移した説明の一覧（Issue #866）
+
+| 画面 | ヘルプへ移した説明（常時表示から） | 本体に残すもの |
+|------|-------------------------------|---------------|
+| モデルマネージャー（[model-manager-screen.md](model-manager-screen.md)） | 各区画（ComfyUI エンジン・モデル・試し生成・Hugging Face から導入・Hugging Face のトークン・外部の ComfyUI）の説明。**h1 の下の説明は動かさない**（h1 に「?」は付けない。オーナーの決定） | h1・h1 の下の説明・各区画の h2・操作・状態・結果・エラー |
+| 設定: API キーとログイン（[settings-screen-categories.md](settings-screen-categories.md)） | 「API キー」「ChatGPT でログイン」の説明、ChatGPT の公式・Codex・画像のカードの説明 | h3・カードの名前・状態・要約・操作 |
+| 設定: テキスト生成（LLM） | 分類の説明、再起動の補足（次の起動から使われる）、ChatGPT プランの長文（`llm-chatgpt-note`） | 「反映にはアプリの再起動が必要です」（操作の前提）・固定・エラー・結果・表 |
+| 設定: 画像・動画モデル | 分類の説明（`models.json` の保存先を含む）、「画像モデル（用途ごと）」「動画モデル（Quality Policy ごと）」の説明 | h2・h3・表 |
+| 設定: ローカル・代替モデル | 分類の説明（`local.Description`） | h2・固定の注意・接続先のカード・エラー |
+| 設定: MCP サーバー | 分類の説明（`mcp.Description`） | h2・待ち受け先・トークンの表・エラー |
+| 設定: 概要 | 分類の説明 | h2・カード（各分類の状態） |
+| 生成テスト（[gentest-screen.md](gentest-screen.md)） | 各ページのリード文（h1 の下） | h1・フォーム・結果・エラー |
+| プロジェクトの設定 | Production Template・Quality Policy・ディスク・Brand / Safety Constraints・Brand Templates・プロジェクトバンドルの区画の説明 | h2・フォーム・状態・結果 |
+
+初回ガイド（`organisms/onboarding/`。[onboarding-screen.md](onboarding-screen.md)）は #866 の対象外で、変えない。ただし「API キーとログイン」の区画（`credentials.Section`・`chatgpt.SectionIf`）を共有しているため、そこに入る「?」は初回ガイドにも出る（同じ部品・同じ動き。§9）。

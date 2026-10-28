@@ -3,6 +3,7 @@ package chatgpt
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/help"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -20,7 +21,7 @@ const CardsID = "chatgpt-cards"
 
 // Section is the "ChatGPT でログイン" section of the category: Panel under its title (an h3).
 templ Section(d Data) {
-	@molecules.SettingsSectionAt(molecules.HeadingH3, "ChatGPT でログイン", "ChatGPT のサブスク（Plus / Pro など）を、API キーの代わりに使えます。テキスト生成には方式が 2 つあります。個人（Go / Plus / Pro）は OpenAI 公式の Sign in with ChatGPT（プロバイダー「chatgpt-subscription」）、組織（Business / Enterprise / Edu）のアカウントは Codex 経由（プロバイダー「chatgpt-codex」）です。LLM の割り当てで選ぶと使われます。画像生成は非公式の経路で、別のログインと確認が必要です。") {
+	@molecules.SettingsSectionHelp(molecules.HeadingH3, "ChatGPT でログイン", help.Text("ChatGPT のサブスク（Plus / Pro など）を、API キーの代わりに使えます。テキスト生成には方式が 2 つあります。個人（Go / Plus / Pro）は OpenAI 公式の Sign in with ChatGPT（プロバイダー「chatgpt-subscription」）、組織（Business / Enterprise / Edu）のアカウントは Codex 経由（プロバイダー「chatgpt-codex」）です。\nLLM の割り当てで選ぶと使われます。画像生成は非公式の経路で、別のログインと確認が必要です。")) {
 		@Panel(d)
 	}
 }

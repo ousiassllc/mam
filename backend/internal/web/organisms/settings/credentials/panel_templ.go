@@ -58,7 +58,7 @@ func Section(d Data) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = molecules.SettingsSectionAt(molecules.HeadingH3, "API キー", "外部モデルの API キーを登録します。キーは OS のセキュアストレージに保存され、画面には設定済みかどうかだけが表示されます。保存したキーは再起動なしで次の呼び出しから使われます。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = molecules.SettingsSectionH3("API キー", "外部モデルの API キーを登録します。キーは OS のセキュアストレージに保存され、画面には設定済みかどうかだけが表示されます。保存したキーは再起動なしで次の呼び出しから使われます。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

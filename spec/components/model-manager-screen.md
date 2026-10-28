@@ -4,8 +4,8 @@
 
 | 区分 | コンポーネント | 責務 |
 |------|---------------|------|
-| pages | `model_manager_page`（`ModelManagerPage`） | `GET /model-manager` の全ページ。戻るリンク・見出し・説明と `modelmgr.Body` |
-| organisms（`organisms/modelmgr/`） | `Body` | 5 つの区画を `molecules.SettingsSection` で包んで縦に並べる |
+| pages | `model_manager_page`（`ModelManagerPage`） | `GET /model-manager` の全ページ。戻るリンク・見出し・説明（Issue #866 でも動かさない。h1 に「?」は付けない）と `modelmgr.Body` |
+| organisms（`organisms/modelmgr/`） | `Body` | 区画を `molecules.SettingsSection` で包んで縦に並べる。各区画の説明は、見出しの横の「?」ヘルプ（ポップオーバー）の中（Issue #866。契約は [shared-ui-parts.md](shared-ui-parts.md) §9）。区画の本体には操作・状態・結果・エラーだけを残す |
 | 〃 | `EngineCard`・`GPUBlock`・`DetectBlock` | エンジンのカード（導入の進捗・起動の状態・起動の失敗の理由・自動起動・更新・削除）、GPU の検出結果と導入フォーム、既存の ComfyUI の検出結果 |
 | 〃 | `CatalogList`・`ConsentDialog`・`DialogClear` | モデルの一覧（1 つのモデルが 1 枚のカード `modelCard`。状態・大きさ・VRAM・ライセンス・商用可否・ファイル・導入の進捗・成人向けのバッジ・トリガー語・原本の場所）と、同意が要るモデルのライセンスのダイアログ（成人向けは注意書きも） |
 | 〃 | `AdultCard`・`AdultDialog` | 設定「成人向けモデルを表示する」（既定オフ）と、初めてオンにするときの年齢確認・注意書きのダイアログ |
@@ -40,3 +40,4 @@
 | 1.3 | 2026-10-25 | 区画「Hugging Face から導入」の organism（`HFImportSection`・`HFResultView`・`HFModelListView` ほか）と、ハンドラのパッケージ `web/handler/modelmgr/hfimport`（`jobview` を共有。画面テストの部品は `web/screentest`）を足した。`hf-token` のハンドラは `hfimport` に移した | Issue #842 |
 | 1.4 | 2026-10-25 | 年齢確認・同意のダイアログに、開いたらフォーカスが入る・Esc で閉じる・閉じたら開いたボタンへフォーカスが戻る、を足した。モデルの行は説明が長くても操作ボタンを右上に置く（`shrink-0`） | 最終の実画面の確認（Issue #841 の指摘） |
 | 1.5 | 2026-10-28 | モデルの一覧を、行の縦並びからカードのグリッドにした（見た目・構造・操作の位置・a11y を「モデルの一覧はカード」に書いた）。`modelRow` は `modelCard` に、`modelRowSelector` は `modelCardSelector` になった | Issue #865 |
+| 1.6 | 2026-10-28 | 各区画（ComfyUI エンジン・モデル・試し生成・Hugging Face から導入・トークン・外部の ComfyUI）の説明を、見出しの横の「?」ヘルプ（ポップオーバー）に移した（h1 の下の説明は動かさない） | Issue #866。画面の文字を減らす |

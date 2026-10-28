@@ -11,6 +11,7 @@ import templruntime "github.com/a-h/templ/runtime"
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/help"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -66,7 +67,7 @@ func Section(d Data) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = molecules.SettingsSectionAt(molecules.HeadingH3, "ChatGPT でログイン", "ChatGPT のサブスク（Plus / Pro など）を、API キーの代わりに使えます。テキスト生成には方式が 2 つあります。個人（Go / Plus / Pro）は OpenAI 公式の Sign in with ChatGPT（プロバイダー「chatgpt-subscription」）、組織（Business / Enterprise / Edu）のアカウントは Codex 経由（プロバイダー「chatgpt-codex」）です。LLM の割り当てで選ぶと使われます。画像生成は非公式の経路で、別のログインと確認が必要です。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = molecules.SettingsSectionHelp(molecules.HeadingH3, "ChatGPT でログイン", help.Text("ChatGPT のサブスク（Plus / Pro など）を、API キーの代わりに使えます。テキスト生成には方式が 2 つあります。個人（Go / Plus / Pro）は OpenAI 公式の Sign in with ChatGPT（プロバイダー「chatgpt-subscription」）、組織（Business / Enterprise / Edu）のアカウントは Codex 経由（プロバイダー「chatgpt-codex」）です。\nLLM の割り当てで選ぶと使われます。画像生成は非公式の経路で、別のログインと確認が必要です。")).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -148,7 +149,7 @@ func Panel(d Data) templ.Component {
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue(paths.ChatGPTSettings())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/panel.templ`, Line: 46, Col: 35}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/panel.templ`, Line: 47, Col: 35}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
 			if templ_7745c5c3_Err != nil {
@@ -171,7 +172,7 @@ func Panel(d Data) templ.Component {
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(d.Notice)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/panel.templ`, Line: 52, Col: 92}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/panel.templ`, Line: 53, Col: 92}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -190,7 +191,7 @@ func Panel(d Data) templ.Component {
 			var templ_7745c5c3_Var7 string
 			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(d.Error)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/panel.templ`, Line: 55, Col: 85}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/panel.templ`, Line: 56, Col: 85}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {
@@ -208,7 +209,7 @@ func Panel(d Data) templ.Component {
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue(CardsID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/panel.templ`, Line: 57, Col: 18}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/panel.templ`, Line: 58, Col: 18}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
 		if templ_7745c5c3_Err != nil {
@@ -364,7 +365,7 @@ func logoutButton(kind, subject string) templ.Component {
 		var templ_7745c5c3_Var12 string
 		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.ResolveAttributeValue(paths.ChatGPTAccount(kind))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/panel.templ`, Line: 112, Col: 40}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/panel.templ`, Line: 113, Col: 40}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var12)
 		if templ_7745c5c3_Err != nil {
@@ -377,7 +378,7 @@ func logoutButton(kind, subject string) templ.Component {
 		var templ_7745c5c3_Var13 string
 		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.ResolveAttributeValue(panelTarget)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/panel.templ`, Line: 113, Col: 25}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/panel.templ`, Line: 114, Col: 25}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var13)
 		if templ_7745c5c3_Err != nil {
