@@ -131,7 +131,7 @@ func (b geminiOmniBackend) GenerateVideo(ctx context.Context, apiModel string, r
 		return VideoResult{}, err
 	}
 	video, _ := out.video()
-	return b.fetchVideo(ctx, key, auth, video)
+	return b.fetchVideo(ctx, auth, video)
 }
 
 // finished waits for the interaction when the answer is not final yet (a job that runs in the background) and returns it once
@@ -167,7 +167,7 @@ func (b geminiOmniBackend) finished(ctx context.Context, auth map[string]string,
 }
 
 // fetchVideo returns the video: decoded when it came inline, else downloaded once its file is ACTIVE.
-func (b geminiOmniBackend) fetchVideo(ctx context.Context, key string, auth map[string]string, v omniVideo) (VideoResult, error) {
+func (b geminiOmniBackend) fetchVideo(ctx context.Context, auth map[string]string, v omniVideo) (VideoResult, error) {
 	if v.Data != "" {
 		file, err := base64.StdEncoding.DecodeString(v.Data)
 		if err != nil || len(file) == 0 {
@@ -175,18 +175,19 @@ func (b geminiOmniBackend) fetchVideo(ctx context.Context, key string, auth map[
 		}
 		return VideoResult{File: BlobOf(file), MimeType: videoMime(v.Mime)}, nil
 	}
-	// The key goes to the vendor's own host only, and in the query like the official example does: Go forwards custom
-	// headers when a download is redirected to another host, a query it does not.
+	// Only the name of the file is taken from the URI: the host of the answer is not trusted with the key, so the file is
+	// asked for (status and download) at the base URL, like every other request of this backend.
 	target, err := url.Parse(v.URI)
-	if err != nil || !b.ownsURL(v.URI) {
-		return VideoResult{}, &ProviderError{Vendor: string(b.vendor), Status: http.StatusOK, Message: "the video URI is not a URL of the vendor"}
+	if err != nil {
+		return VideoResult{}, b.empty("file name")
 	}
 	name, ok := omniFileName(target.Path)
 	if !ok {
 		return VideoResult{}, b.empty("file name")
 	}
+	fileURL := b.baseURL + "/v1beta/files/" + url.PathEscape(name)
 	err = b.poll(ctx, func(ctx context.Context) (bool, error) {
-		d, err := b.request(ctx, http.MethodGet, b.baseURL+"/v1beta/files/"+url.PathEscape(name), auth, nil, maxJSONBytes)
+		d, err := b.request(ctx, http.MethodGet, fileURL, auth, nil, maxJSONBytes)
 		if err != nil {
 			return false, err
 		}
@@ -207,10 +208,7 @@ func (b geminiOmniBackend) fetchVideo(ctx context.Context, key string, auth map[
 	if err != nil {
 		return VideoResult{}, err
 	}
-	q := target.Query()
-	q.Set("key", key)
-	target.RawQuery = q.Encode()
-	file, mime, err := b.download(ctx, target.String())
+	file, mime, err := b.downloadAuthed(ctx, fileURL+":download?alt=media", auth)
 	if err != nil {
 		return VideoResult{}, err
 	}

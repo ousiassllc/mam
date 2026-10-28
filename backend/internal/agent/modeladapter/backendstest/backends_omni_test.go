@@ -28,7 +28,7 @@ func omniPNG(s string) *modeladapter.Input {
 }
 
 // omniServer answers the Interactions API with a video delivered as a file that is PROCESSING for the first two polls.
-// submitted is the decoded body of the POST; downloadKey the key query of the download.
+// submitted is the decoded body of the POST; downloadKey the x-goog-api-key header of the download.
 func omniServer(t *testing.T, submitted *map[string]any, downloadKey *atomic.Value, polls *atomic.Int32) *httptest.Server {
 	t.Helper()
 	mux := http.NewServeMux()
@@ -49,9 +49,9 @@ func omniServer(t *testing.T, submitted *map[string]any, downloadKey *atomic.Val
 		_, _ = w.Write([]byte(`{"name":"files/f1","state":"ACTIVE"}`))
 	})
 	mux.HandleFunc("/v1beta/files/f1:download", func(w http.ResponseWriter, r *http.Request) {
-		downloadKey.Store(r.URL.Query().Get("key"))
+		downloadKey.Store(r.Header.Get("x-goog-api-key"))
 		assert.Equal(t, "media", r.URL.Query().Get("alt"))
-		assert.Empty(t, r.Header.Get("x-goog-api-key"), "the key is in the query: a redirect would forward a header to another host")
+		assert.Empty(t, r.URL.Query().Get("key"), "the key is in the header: a URL with it would go to the Referer of a redirect")
 		w.Header().Set("Content-Type", "video/mp4")
 		_, _ = w.Write([]byte("OMNIMP4"))
 	})
@@ -224,20 +224,94 @@ func TestGeminiOmniBackendRefusesRatiosItCannotMakeWithoutAnyRequest(t *testing.
 	assert.Zero(t, hits.Load())
 }
 
-func TestGeminiOmniBackendNeverSendsTheKeyToAnotherHost(t *testing.T) {
-	var stolen atomic.Int32
-	other := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { stolen.Add(1) }))
-	defer other.Close()
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte(`{"status":"completed","steps":[{"type":"model_output","content":[{"type":"video","uri":"` + other.URL + `/v1beta/files/f1:download?alt=media"}]}]}`))
+func TestGeminiOmniBackendNeverSendsTheKeyToTheHostOfTheVideoURI(t *testing.T) {
+	other := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		assert.Fail(t, "the host of the URI was asked", r.URL.String())
 	}))
+	defer other.Close()
+	for _, host := range []string{other.URL, "https://storage.googleapis.com", "https://x.generativelanguage.googleapis.com"} {
+		t.Run(host, func(t *testing.T) {
+			var downloadKey atomic.Value
+			mux := http.NewServeMux()
+			mux.HandleFunc("/v1beta/interactions", func(w http.ResponseWriter, _ *http.Request) {
+				_, _ = w.Write([]byte(`{"status":"completed","steps":[{"type":"model_output","content":[{"type":"video","uri":"` + host + `/v1beta/files/f1:download?alt=media"}]}]}`))
+			})
+			mux.HandleFunc("/v1beta/files/f1", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte(`{"state":"ACTIVE"}`)) })
+			mux.HandleFunc("/v1beta/files/f1:download", func(w http.ResponseWriter, r *http.Request) {
+				downloadKey.Store(r.Header.Get("x-goog-api-key"))
+				w.Header().Set("Content-Type", "video/mp4")
+				_, _ = w.Write([]byte("OMNIMP4"))
+			})
+			srv := httptest.NewServer(mux)
+			defer srv.Close()
+			b := backendsFor(t, srv, memKeys{"google": "k"})
+
+			res, err := b.Video[domain.ModelGeminiOmniFlash].GenerateVideo(context.Background(), omniAPIModel, omniRequest())
+
+			require.NoError(t, err)
+			assert.Equal(t, []byte("OMNIMP4"), fileBytes(t, res.File), "the file comes from the base URL, whatever host the URI names")
+			assert.Equal(t, "k", downloadKey.Load())
+		})
+	}
+}
+
+// omniRedirectServers returns the vendor, whose download redirects to target(other), and the other host that records what
+// reached it (its URL with query, the key header, the Referer).
+func omniRedirectServers(t *testing.T, target func(other *httptest.Server) string) (srv, other *httptest.Server, seen *atomic.Value) {
+	t.Helper()
+	seen = &atomic.Value{}
+	other = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seen.Store([]string{r.URL.String(), r.Header.Get("x-goog-api-key"), r.Header.Get("Referer")})
+		w.Header().Set("Content-Type", "video/mp4")
+		_, _ = w.Write([]byte("OMNIMP4"))
+	}))
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v1beta/interactions", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"status":"completed","steps":[{"type":"model_output","content":[{"type":"video","uri":"https://x/v1beta/files/f1:download?alt=media"}]}]}`))
+	})
+	mux.HandleFunc("/v1beta/files/f1", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte(`{"state":"ACTIVE"}`)) })
+	mux.HandleFunc("/v1beta/files/f1:download", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, target(other), http.StatusFound)
+	})
+	srv = httptest.NewServer(mux)
+	return srv, other, seen
+}
+
+func TestGeminiOmniBackendFollowsARedirectOfTheDownloadWithoutTheKey(t *testing.T) {
+	srv, other, seen := omniRedirectServers(t, func(other *httptest.Server) string { return other.URL + "/signed?sig=1" })
 	defer srv.Close()
+	defer other.Close()
 	b := backendsFor(t, srv, memKeys{"google": "k"})
 
-	_, err := b.Video[domain.ModelGeminiOmniFlash].GenerateVideo(context.Background(), omniAPIModel, omniRequest())
+	res, err := b.Video[domain.ModelGeminiOmniFlash].GenerateVideo(context.Background(), omniAPIModel, omniRequest())
 
-	require.Error(t, err)
-	assert.Zero(t, stolen.Load())
+	require.NoError(t, err)
+	assert.Equal(t, []byte("OMNIMP4"), fileBytes(t, res.File))
+	got, ok := seen.Load().([]string)
+	require.True(t, ok, "the redirect target was asked")
+	assert.Equal(t, "/signed?sig=1", got[0])
+	assert.Empty(t, got[1], "no key header after the redirect")
+	assert.NotContains(t, got[2], "key=", "the Referer names the vendor's URL, which carries no key")
+}
+
+func TestGeminiOmniBackendKeepsTheKeyOnARedirectWithinTheVendorsHost(t *testing.T) {
+	var key atomic.Value
+	srv, other, _ := omniRedirectServers(t, func(*httptest.Server) string { return "/v1beta/files/f1:final" })
+	defer srv.Close()
+	defer other.Close()
+	// the redirect stays on the vendor's host: its final answer is made by the vendor's own handler
+	srv.Config.Handler.(*http.ServeMux).HandleFunc("/v1beta/files/f1:final", func(w http.ResponseWriter, r *http.Request) {
+		key.Store(r.Header.Get("x-goog-api-key"))
+		w.Header().Set("Content-Type", "video/mp4")
+		_, _ = w.Write([]byte("OMNIMP4"))
+	})
+	b := backendsFor(t, srv, memKeys{"google": "k"})
+
+	res, err := b.Video[domain.ModelGeminiOmniFlash].GenerateVideo(context.Background(), omniAPIModel, omniRequest())
+
+	require.NoError(t, err)
+	assert.Equal(t, []byte("OMNIMP4"), fileBytes(t, res.File))
+	assert.Equal(t, "k", key.Load())
 }
 
 func TestGeminiOmniBackendWithoutAKeyFailsBeforeAnyRequest(t *testing.T) {
