@@ -2,6 +2,7 @@ package codex
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -194,21 +195,26 @@ func windowName(mins int64) string {
 	return fmt.Sprintf("%d 分", mins)
 }
 
+// ErrInvalidPath is a path SetCustomPath refuses because of what the user gave (not absolute, missing, not a file), as
+// opposed to a path that could not be saved.
+var ErrInvalidPath = errors.New("codex: invalid path")
+
 // SetCustomPath sets the app-server to use instead of the downloaded one (a codex the user installed: the codex command
-// or the dedicated app-server), or clears it with "". The path must be absolute and name a file. The running process
-// is stopped so that the next use starts the new one. mam does not run the file to check it: a version other than the
-// pinned one may speak a protocol mam does not know, which the handshake or the first call then reports.
+// or the dedicated app-server), or clears it with "". The path must be absolute and name a file (otherwise the error is an
+// ErrInvalidPath). The running process is stopped so that the next use starts the new one. mam does not run the file to
+// check it: a version other than the pinned one may speak a protocol mam does not know, which the handshake or the first
+// call then reports.
 func (s *Service) SetCustomPath(path string) error {
 	if path != "" {
 		if !filepath.IsAbs(path) {
-			return fmt.Errorf("codex: the path must be absolute: %q", path)
+			return fmt.Errorf("%w: the path must be absolute: %q", ErrInvalidPath, path)
 		}
 		st, err := os.Stat(path)
 		if err != nil {
-			return fmt.Errorf("codex: %w", err)
+			return fmt.Errorf("%w: %w", ErrInvalidPath, err)
 		}
 		if !st.Mode().IsRegular() {
-			return fmt.Errorf("codex: %q is not a file", path)
+			return fmt.Errorf("%w: %q is not a file", ErrInvalidPath, path)
 		}
 		path = filepath.Clean(path)
 	}

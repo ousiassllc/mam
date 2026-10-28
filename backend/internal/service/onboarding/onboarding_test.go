@@ -77,6 +77,37 @@ func TestCompleted_RefusesAFileThatIsNotTheFlag(t *testing.T) {
 	}
 }
 
+// A file that holds no flag and is no object is what would keep the flag from ever being set: it is written over.
+func TestComplete_WritesOverAFileThatIsDamaged(t *testing.T) {
+	for name, content := range map[string]string{
+		"not json":      `{`,
+		"empty":         ``,
+		"not an object": `[1, 2]`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			s, path := newService(t)
+			require.NoError(t, os.WriteFile(path, []byte(content), 0o600))
+
+			require.NoError(t, s.Complete())
+
+			raw, err := os.ReadFile(path)
+			require.NoError(t, err)
+			assert.JSONEq(t, `{"completed": true}`, string(raw))
+			done, err := s.Completed()
+			require.NoError(t, err)
+			assert.True(t, done)
+		})
+	}
+}
+
+// A file that cannot be read at all (here: a directory) is not a damaged one: nothing is written over it.
+func TestComplete_FailsWhenTheFileCannotBeRead(t *testing.T) {
+	s, path := newService(t)
+	require.NoError(t, os.Mkdir(path, 0o700))
+
+	require.Error(t, s.Complete())
+}
+
 func TestComplete_FailsWhenTheFileCannotBeWritten(t *testing.T) {
 	dir := t.TempDir()
 	blocker := filepath.Join(dir, "file")
