@@ -51,6 +51,11 @@ func weightedScore(scores, w domain.TakeScores) float64 {
 	return scores.Product*w.Product + scores.Acting*w.Acting + scores.Camera*w.Camera + scores.Continuity*w.Continuity
 }
 
+// hasKeyframe reports whether the references hold a Keyframe: the first frame of the clip.
+func hasKeyframe(refs []domain.Reference) bool {
+	return slices.ContainsFunc(refs, func(r domain.Reference) bool { return r.Kind == domain.RefKeyframe })
+}
+
 // fit is the share of what the Shot asks of a video model that the model can do (§12.3): to hold the
 // Shot in one clip, to take a first frame when the Reference Pack has a Keyframe, and to take free
 // reference images when it has other references. It is 1 when the Shot asks for nothing.
@@ -63,7 +68,7 @@ func fit(cfg modeladapter.Config, m domain.ModelName, seconds float64, refs []do
 	if longest(cfg, m) >= seconds-1e-9 {
 		met++
 	}
-	if slices.ContainsFunc(refs, func(r domain.Reference) bool { return r.Kind == domain.RefKeyframe }) {
+	if hasKeyframe(refs) {
 		asked++
 		if caps.FirstFrame {
 			met++
@@ -96,8 +101,7 @@ func route(cfg modeladapter.Config, policy domain.QualityPolicy, seconds float64
 	cheapest := 0.0
 	costs := make([]float64, len(targets))
 	for i, t := range targets {
-		caps, _ := cfg.VideoCaps(t.Model)
-		costs[i] = cfg.VideoCost(t, caps.SnapDuration(seconds))
+		costs[i] = cfg.VideoCost(t, cfg.ClipSeconds(t.Model, seconds, hasKeyframe(in.References)))
 		if costs[i] > 0 && (cheapest == 0 || costs[i] < cheapest) {
 			cheapest = costs[i]
 		}

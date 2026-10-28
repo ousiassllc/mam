@@ -57,7 +57,7 @@ func DecideWithModel(cfg modeladapter.Config, policy domain.QualityPolicy, shotS
 // DecideRouted is DecideWithModel with Multi-model routing (spec/architecture/model-adapters-m3.md
 // §13): unless the model is forced or routing is switched off in cfg, the models of the Quality
 // Policy are weighed against the other candidates by the nature of the Shot, the Judge record and
-// the cost, before the budget is applied. A nil in leaves the routing out (and the decision unrecorded).
+// the cost, before the budget is applied. A nil in leaves the routing out (and the decision unrecorded). A Keyframe in in.References is the first frame of the clip (a Luma Ray 3.2 clip with a frame is 5 seconds long).
 func DecideRouted(cfg modeladapter.Config, policy domain.QualityPolicy, shotSeconds float64, budget repository.Budget, forced domain.ModelName, in *RoutingInput) (Strategy, error) {
 	pr, ok := cfg.Policies[policy]
 	if !ok {
@@ -90,9 +90,9 @@ func DecideRouted(cfg modeladapter.Config, policy domain.QualityPolicy, shotSeco
 	}
 
 	remaining := budget.Remaining()
+	framed := in != nil && hasKeyframe(in.References)
 	cost := func(t modeladapter.VideoTarget) float64 {
-		caps, _ := cfg.VideoCaps(t.Model)
-		return cfg.VideoCost(t, caps.SnapDuration(shotSeconds))
+		return cfg.VideoCost(t, cfg.ClipSeconds(t.Model, shotSeconds, framed))
 	}
 	perTake := cost(s.Primary)
 	if fit := affordable(remaining, perTake); fit < s.Takes {
@@ -110,8 +110,7 @@ func DecideRouted(cfg modeladapter.Config, policy domain.QualityPolicy, shotSeco
 		s.Reasons = append(s.Reasons, fmt.Sprintf("the budget allows %d of %d Takes", min(fit, s.Takes), s.Takes))
 		s.Takes = min(fit, s.Takes)
 	}
-	caps, _ := cfg.VideoCaps(s.Primary.Model)
-	s.DurationSeconds = caps.SnapDuration(shotSeconds)
+	s.DurationSeconds = cfg.ClipSeconds(s.Primary.Model, shotSeconds, framed)
 	s.CostPerTake = perTake
 	if decision.Mode != "" {
 		decision.Primary = domain.RoutingModel{Model: s.Primary.Model, Resolution: s.Primary.Resolution}
