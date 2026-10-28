@@ -33,8 +33,8 @@ func catalogURL(c Catalog) string {
 	return paths.ModelManagerPart("models") + "?jobs=" + url.QueryEscape(strings.Join(c.Jobs, ","))
 }
 
-// modelRowSelector is the CSS selector of the row of a model: where the focus goes when the dialog that was asked about it
-// is gone and the row was drawn again.
-func modelRowSelector(id string) string {
+// modelCardSelector is the CSS selector of the card of a model: where the focus goes when the dialog that was asked about it
+// is gone and the card was drawn again.
+func modelCardSelector(id string) string {
 	return `[data-model="` + strings.NewReplacer(`\`, `\\`, `"`, `\"`).Replace(id) + `"]`
 }
