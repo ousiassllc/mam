@@ -46,7 +46,7 @@ func New(services *service.Services, opts Options) *gin.Engine {
 	)
 
 	registerStatic(engine, opts.Static)
-	registerPages(engine, services)
+	registerPages(engine, services, settingsroutes.OnboardingHome(opts.Settings, handler.Projects(services.Projects)))
 	registerActions(engine, services)
 	registerAPI(engine, services)
 	settingsroutes.Register(engine, services, opts.Settings, logger)

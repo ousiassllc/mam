@@ -49,6 +49,8 @@ type Services struct {
 	LocalModels *localmodels.Service
 	MCP         *mcpsettings.Service
 	Update      *appupdate.Service
+	// Guide is whether the first-run guide exists (the overview links to it).
+	Guide bool
 }
 
 // category is one entry of the navigation: where it is, what it is called and what it needs.

@@ -68,6 +68,8 @@ flowchart TB
 
 生成テスト画面（`gentest_pages` と organisms の `gentest`）のコンポーネントは [gentest-screen.md](gentest-screen.md)。トップ画面のツールのカード（#846。実装済み）は [home-screen.md](home-screen.md)、カード・アイコンの部品は [shared-ui-parts.md](shared-ui-parts.md)。全体の設定画面のサブページ・モーダル（#847）の画面仕様案（実装前）は [settings-screen.md](settings-screen.md)。
 
+初回ガイド（ウォークスルー 3 ページと初期セットアップ。`pages` の `onboarding_page`、organisms の `onboarding`。#863。実装済み）は [onboarding-screen.md](onboarding-screen.md)。ルートは [../api/endpoints-onboarding.md](../api/endpoints-onboarding.md)。設定の保存は設定画面の部品とルートをそのまま使い、ガイド専用の保存経路は持たない。
+
 外部由来の ID は現状 `[A-Za-z0-9_-]{1,64}`（UUID を含む）に限られ、`.`・`:`・空白を含む ID はバンドル取込で拒否される（`bundlepath.ValidID`。`spec/requirements/non-functional.md` §8）。ID セレクタ（`hx-target="#shot-<id>"` など）の CSS エスケープは、この制約が将来緩められたときに備えた多層防御で、Templ では `internal/web/selector` の `selector.ID`、`shot.ts` では `CSS.escape` で組み立てる（手で `"#shot-" + id` と連結しない。制約が緩んだ後に連結していると、`.` などを含む ID で `htmx:targetError` になり結果が画面に反映されない）。URL のセグメントを `internal/web/paths` でパスエスケープするのと同じ位置づけ。
 
 ## 4. Lit Web Components インターフェース
@@ -302,3 +304,4 @@ export class MamComfyFrame extends LitElement {
 | 1.89 | 2026-10-25 | §3 の `global_settings_body` / `global_settings_page` を、分類ごとのページ（`settings_pages`・`settings_categories`・`settings/overview`）に置き換え、molecules に `settingsui`・`modal`、`tool_card` の `Status`、atoms の `icon` の追加分、organisms の `settings/credentials`・`settings/chatgpt`（`credentialpanel`・`chatgptpanel` の移動）を記録した。§5.2 の 2 つの箇条を 1 つにまとめた（行数上限のため） | Issue #847（設定画面の分類ごとのサブページ。段階 ①・②-1・②-2） |
 | 1.90 | 2026-10-25 | §3 の `global_settings_body` の LLM の割り当て・画像・動画モデルを、`organisms/settings/llm/`・`organisms/settings/media/`（表＋行のモーダル）に置き換え、`molecules/settingsui` に表（`SettingsTable`・`TableRowItem`・`RowHead`・`Cell`）、atoms の `icon` に `IconCopy` を足した（旧 `organisms/llmassign/`・`organisms/modelassignment/` は消した）。`spec/architecture/overview.md` §5 のディレクトリ構成の該当 2 か所も直した（`spec/architecture/` は行数が上限ちょうどで改訂履歴の行を足せないため、ここに書く） | Issue #847 段階 ②-3・②-4 |
 | 1.91 | 2026-10-25 | §3 の organisms に `settings/local`・`settings/mcp`（`localmodels`・`mcppanel` の作り直しと移動）、atoms に `SmallButtonLinkFor`、TypeScript の `copy` を足し、`localmodels` の「`#model-assignment` を添える」の記述を外した | Issue #847 ②-5・②-6 |
+| 1.92 | 2026-10-28 | §3 に初回ガイド（`pages` の `onboarding_page`・organisms の `onboarding`）の案内を足し、[onboarding-screen.md](onboarding-screen.md) に分けて書いた | Issue #863 |

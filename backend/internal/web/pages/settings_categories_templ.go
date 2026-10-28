@@ -61,6 +61,12 @@ func SettingsOverviewBody(d overview.Data) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
+			if d.Guide {
+				templ_7745c5c3_Err = overview.GuideSection().Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
 			return nil
 		})
 		templ_7745c5c3_Err = settingsui.Category("概要", "各分類の状態です。カードを開くと、その分類の設定に移ります。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)

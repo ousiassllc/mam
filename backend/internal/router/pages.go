@@ -9,9 +9,9 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
-// registerPages registers page routes (GET, branch on HX-Request: full page or fragment).
-func registerPages(engine *gin.Engine, services *service.Services) {
-	engine.GET(paths.Home(), handler.Projects(services.Projects))
+// registerPages registers page routes (GET, branch on HX-Request: full page or fragment); home answers GET /.
+func registerPages(engine *gin.Engine, services *service.Services, home gin.HandlerFunc) {
+	engine.GET(paths.Home(), home)
 	engine.GET("/healthz", health.Handler(services.Health))
 
 	engine.GET(paths.Projects(), handler.Projects(services.Projects))
