@@ -118,25 +118,31 @@ func jsonHeader(h map[string]string) map[string]string {
 // so a transient failure is retried here (the GET is repeatable) and any error it finally returns
 // is marked ErrAfterSubmit: the job must not be submitted again.
 func (a api) download(ctx context.Context, fileURL string) (Blob, string, error) {
-	return a.fetch(ctx, fileURL, a.stage)
+	return a.fetch(ctx, fileURL, nil, a.stage)
+}
+
+// downloadAuthed is download for a URL of the vendor's own host that needs the API key (auth: its header). The key goes
+// to that origin only: a redirect to any other origin is followed without it (see keepAuthAtOrigin).
+func (a api) downloadAuthed(ctx context.Context, fileURL string, auth map[string]string) (Blob, string, error) {
+	return a.fetch(ctx, fileURL, auth, a.stage)
 }
 
 // downloadBytes is download for an image, which is small enough to keep in memory.
 func (a api) downloadBytes(ctx context.Context, fileURL string) ([]byte, string, error) {
-	blob, mime, err := a.fetch(ctx, fileURL, a.collect)
+	blob, mime, err := a.fetch(ctx, fileURL, nil, a.collect)
 	return blob.data, mime, err
 }
 
 // sink turns the body of a download, at most limit bytes of it, into a Blob.
 type sink func(body io.Reader, limit int64) (Blob, error)
 
-func (a api) fetch(ctx context.Context, fileURL string, into sink) (Blob, string, error) {
+func (a api) fetch(ctx context.Context, fileURL string, auth map[string]string, into sink) (Blob, string, error) {
 	var (
 		blob Blob
 		mime string
 	)
 	err := a.repeat(ctx, func() (err error) {
-		blob, mime, err = a.fetchOnce(ctx, fileURL, into)
+		blob, mime, err = a.fetchOnce(ctx, fileURL, auth, into)
 		return err
 	})
 	if err != nil {
@@ -145,7 +151,7 @@ func (a api) fetch(ctx context.Context, fileURL string, into sink) (Blob, string
 	return blob, mime, nil
 }
 
-func (a api) fetchOnce(ctx context.Context, fileURL string, into sink) (Blob, string, error) {
+func (a api) fetchOnce(ctx context.Context, fileURL string, auth map[string]string, into sink) (Blob, string, error) {
 	if err := a.checkResultURL(fileURL); err != nil {
 		return Blob{}, "", &ProviderError{Vendor: string(a.vendor), Status: http.StatusOK, Message: err.Error()}
 	}
@@ -153,7 +159,16 @@ func (a api) fetchOnce(ctx context.Context, fileURL string, into sink) (Blob, st
 	if err != nil {
 		return Blob{}, "", fmt.Errorf("build %s download: %w", a.vendor, err)
 	}
-	res, err := a.fetcher.Do(req)
+	doer := a.fetcher
+	if len(auth) > 0 {
+		for k, v := range auth {
+			req.Header.Set(k, v)
+		}
+		if doer, err = a.keepAuthAtOrigin(doer, auth); err != nil {
+			return Blob{}, "", &ProviderError{Vendor: string(a.vendor), Status: http.StatusOK, Message: err.Error()}
+		}
+	}
+	res, err := doer.Do(req)
 	if err != nil {
 		return Blob{}, "", &ProviderError{Vendor: string(a.vendor), Err: httpclient.RedactURL(err)}
 	}
@@ -199,9 +214,11 @@ func (a api) stage(body io.Reader, limit int64) (Blob, error) {
 }
 
 // ownsURL reports whether target is a URL of the vendor, the only kind a request carrying the API
-// key may go to: it has the scheme and port of the vendor's base URL and its host is the base host
-// or a sub-domain of the base host's parent domain (api.bfl.ai also answers from api.eu.bfl.ai).
-func (a api) ownsURL(target string) bool {
+// key may go to: it has the scheme, host and port of the vendor's base URL. With siblings, a
+// sub-domain of the base host's parent domain is the vendor's too (api.bfl.ai also answers from
+// api.eu.bfl.ai); that is only for a vendor that documents it (FLUX): under a shared parent such as
+// googleapis.com it would reach hosts of other parties (storage.googleapis.com).
+func (a api) ownsURL(target string, siblings bool) bool {
 	base, err := url.Parse(a.baseURL)
 	if err != nil || base.Hostname() == "" {
 		return false
@@ -214,6 +231,9 @@ func (a api) ownsURL(target string) bool {
 	if host == baseHost {
 		return true
 	}
+	if !siblings {
+		return false
+	}
 	if _, err := netip.ParseAddr(baseHost); err == nil {
 		return false
 	}
@@ -222,6 +242,35 @@ func (a api) ownsURL(target string) bool {
 		parent = strings.Join(labels[1:], ".")
 	}
 	return strings.HasSuffix(host, "."+parent)
+}
+
+// maxDownloadRedirects bounds the redirects of a download whose client has no policy of its own (net/http's default).
+const maxDownloadRedirects = 10
+
+// keepAuthAtOrigin returns a client like d that follows a redirect away from the vendor's host without the headers in
+// auth (the API key): net/http copies a custom header such as x-goog-api-key to the target of a redirect, and the
+// Referer it adds names the previous URL. d must be an *http.Client, the only kind whose redirect policy can be changed.
+func (a api) keepAuthAtOrigin(d httpclient.Doer, auth map[string]string) (httpclient.Doer, error) {
+	c, ok := d.(*http.Client)
+	if !ok {
+		return nil, errors.New("the download client cannot keep the API key from a redirect")
+	}
+	next := *c
+	next.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		if !a.ownsURL(req.URL.String(), false) {
+			for k := range auth {
+				req.Header.Del(k)
+			}
+		}
+		switch {
+		case c.CheckRedirect != nil:
+			return c.CheckRedirect(req, via)
+		case len(via) >= maxDownloadRedirects:
+			return errors.New("stopped after too many redirects")
+		}
+		return nil
+	}
+	return &next, nil
 }
 
 // checkResultURL refuses a result URL that is not an https URL of a public host: it comes from the

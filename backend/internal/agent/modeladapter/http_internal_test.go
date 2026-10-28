@@ -17,7 +17,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/testenv"
 )
 
-func TestOwnsURLOnlyAcceptsTheVendorsHosts(t *testing.T) {
+func TestOwnsURLWithSiblingsOnlyAcceptsTheVendorsHosts(t *testing.T) {
 	tests := []struct {
 		base, target string
 		want         bool
@@ -40,9 +40,35 @@ func TestOwnsURLOnlyAcceptsTheVendorsHosts(t *testing.T) {
 		{"", "https://api.bfl.ai/x", false},
 	}
 	for _, tt := range tests {
-		if got := (api{baseURL: tt.base}).ownsURL(tt.target); got != tt.want {
-			t.Errorf("ownsURL(base %q, %q) = %v, want %v", tt.base, tt.target, got, tt.want)
+		if got := (api{baseURL: tt.base}).ownsURL(tt.target, true); got != tt.want {
+			t.Errorf("ownsURL(base %q, %q, siblings) = %v, want %v", tt.base, tt.target, got, tt.want)
 		}
+	}
+}
+
+// The sibling rule is for FLUX alone: under googleapis.com it would hand the key to the buckets of other parties.
+func TestOwnsURLWithoutSiblingsOnlyAcceptsTheBaseHost(t *testing.T) {
+	const base = "https://generativelanguage.googleapis.com"
+	tests := []struct {
+		target string
+		want   bool
+	}{
+		{"https://generativelanguage.googleapis.com/v1beta/files/f1:download?alt=media", true},
+		{"https://GenerativeLanguage.googleapis.com/x", true},
+		{"https://storage.googleapis.com/bucket/f1", false},
+		{"https://x.generativelanguage.googleapis.com/v1beta/files/f1", false},
+		{"https://googleapis.com/x", false},
+		{"http://generativelanguage.googleapis.com/x", false},
+		{"https://generativelanguage.googleapis.com:8443/x", false},
+		{"https://user@generativelanguage.googleapis.com/x", false},
+	}
+	for _, tt := range tests {
+		if got := (api{baseURL: base}).ownsURL(tt.target, false); got != tt.want {
+			t.Errorf("ownsURL(base %q, %q) = %v, want %v", base, tt.target, got, tt.want)
+		}
+	}
+	if !(api{baseURL: base}).ownsURL("https://storage.googleapis.com/x", true) {
+		t.Error("the sibling rule (FLUX) must still accept a host of the parent domain")
 	}
 }
 
