@@ -4,7 +4,7 @@
 
 | 区分 | コンポーネント | 責務 |
 |------|---------------|------|
-| pages（`gentest_pages.templ`） | `GenerationTestPage`・`GenerationHistoryPage`・`GenerationResultPage`・`GenerationPromptsPage` | 4 つのページ。共通の枠 `generationShell`（戻るリンク・見出し・説明・ページ間のリンク `generationNav`）に organisms を入れる |
+| pages（`gentest_pages.templ`） | `GenerationTestPage`・`GenerationHistoryPage`・`GenerationResultPage`・`GenerationPromptsPage` | 4 つのページ。共通の枠 `generationShell`（戻るリンク・見出しとその横の「?」ヘルプ（リード文はヘルプの中。Issue #866。[shared-ui-parts.md](shared-ui-parts.md) §9・§10）・ページ間のリンク `generationNav`）に organisms を入れる |
 | organisms（`organisms/gentest/`） | `ComposeForm`（`modelChoices`・`promptFields`・`parameterFields`・`inputFields`）・`PromptRowFields`・`RefRow`・`Picker` | 作成フォーム（画像／動画・モデルのチェックボックス・複数のプロンプトとネガティブ・本数・縦横比・動画の解像度と長さ・入力画像のアップロードとプロジェクト・履歴からの選択）。無効なモデルは理由つき |
 | 〃 | `ConfirmBox`・`ConfirmFailed`・`ConfirmEmpty` | 見積りの確認（件数・モデルごとの内訳・合計・単価なしの注記・警告・上限超過）と、実行のフォーム（見積りを hidden で持つ） |
 | 〃 | `BatchBox`・`ResultCard` | 進捗（状態・件数・取り消し）と比較表（行＝モデル、列＝プロンプト、セル＝結果のカード） |
@@ -25,3 +25,4 @@
 | 版 | 日付 | 変更内容 | 変更理由 |
 |----|------|---------|---------|
 | 1.0 | 2026-10-26 | 新規作成 | Issue #835。生成テストの画面のコンポーネント |
+| 1.1 | 2026-10-28 | 4 つのページのリード文（見出しの下の説明）を、見出しの横の「?」ヘルプに移した | Issue #866。画面の文字を減らす |

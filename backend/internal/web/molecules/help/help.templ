@@ -1,0 +1,85 @@
+// Package help is the "?" help of a screen (spec/components/shared-ui-parts.md §9): a small button beside a heading that
+// opens a short explanation under it, so that the long text of a section is not always on the page. Opening, closing, Esc
+// and the focus are static/src/components/help/help.ts. It is a package of its own so that molecules stays inside its
+// line limit.
+package help
+
+import (
+	"context"
+	"hash/fnv"
+	"io"
+	"strconv"
+	"strings"
+
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+)
+
+// ID is the id of the panel of a help, from what it is about (a title, the id of a card): the same input gives the same
+// id on every render, so that a swap that draws the help again keeps it open, and two helps of a page differ as long as
+// their subjects do.
+func ID(subject string) string {
+	h := fnv.New32a()
+	_, _ = h.Write([]byte(subject))
+	return "help-" + strconv.FormatUint(uint64(h.Sum32()), 16)
+}
+
+// ToggleLabel is the name of the "?" button of a help about subject. It does not say "ヘルプ" alone: a list of the buttons
+// of a page has to tell them apart.
+func ToggleLabel(subject string) string { return subject + "の説明" }
+
+// Toggle is the "?" button. It controls the Panel with the same id; the script keeps aria-expanded true while it is open.
+// The icon is decoration, the name is ToggleLabel(subject).
+templ Toggle(id, subject string) {
+	<button
+		type="button"
+		data-help-toggle
+		aria-expanded="false"
+		aria-controls={ id }
+		aria-label={ ToggleLabel(subject) }
+		class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[50%] border border-neutral-700 text-neutral-300 transition-colors hover:border-neutral-500 hover:text-neutral-100 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 motion-reduce:transition-none"
+	>
+		@atoms.Icon(atoms.IconHelp, "h-4 w-4")
+	</button>
+}
+
+// Panel is what the Toggle with the same id opens: hidden until then, as wide as the place it is in (a narrow window
+// wraps it, it never floats outside the screen). Its children are the explanation.
+templ Panel(id string) {
+	<div id={ id } data-help-panel hidden class="max-w-prose break-words border-l-2 border-neutral-700 pl-3 text-sm text-neutral-300">
+		{ children... }
+	</div>
+}
+
+// Text is an explanation of plain text: one paragraph per line.
+func Text(text string) templ.Component {
+	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		for _, p := range strings.Split(text, "\n") {
+			if err := paragraph(p).Render(ctx, w); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+templ paragraph(text string) {
+	<p class="[&:not(:first-child)]:mt-2">{ text }</p>
+}
+
+// Row is the heading of a block with its help: children (the heading) and the Toggle on one line, the Panel under it.
+// Without a help (nil) it is the children alone, so that a caller does not branch.
+templ Row(id, subject string, explanation templ.Component) {
+	if explanation == nil {
+		{ children... }
+	} else {
+		<div data-help class="flex flex-col gap-2">
+			<div class="flex items-center gap-2">
+				{ children... }
+				@Toggle(id, subject)
+			</div>
+			@Panel(id) {
+				@explanation
+			}
+		</div>
+	}
+}

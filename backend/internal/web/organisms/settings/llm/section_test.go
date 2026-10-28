@@ -44,3 +44,22 @@ func TestSection_SaysNothingWhenThereIsNothingToSay(t *testing.T) {
 	assert.NotContains(t, html, `role="status"`)
 	assert.NotContains(t, html, `role="alert"`)
 }
+
+// The restart notice is what an operation depends on, so it stays on the page; the longer explanation (when a saved
+// assignment is used, the ChatGPT plan) is only in the help beside it, and the pinned notice and the errors stay visible
+// without opening it.
+func TestSection_KeepsTheRestartNoticeVisibleAndPutsTheLongTextInTheHelp(t *testing.T) {
+	html := renderSection(t, llm.Data{Providers: []string{"anthropic"}, Pinned: true, Error: "失敗"})
+
+	panelAt := strings.Index(html, "data-help-panel hidden")
+	require.GreaterOrEqual(t, panelAt, 0)
+	panelEnd := panelAt + strings.Index(html[panelAt:], "</div>")
+	visible := html[:panelAt] + html[panelEnd:]
+	assert.Contains(t, visible, `data-testid="llm-restart-note">反映にはアプリの再起動が必要です。</p>`)
+	assert.Contains(t, visible, `data-testid="llm-pinned"`)
+	assert.Contains(t, visible, `role="alert" data-testid="llm-error"`)
+	assert.NotContains(t, visible, "llm-chatgpt-note")
+	assert.NotContains(t, visible, "次の起動から使われます")
+	assert.Contains(t, html[panelAt:panelEnd], `data-testid="llm-chatgpt-note"`)
+	assert.Contains(t, html[panelAt:panelEnd], "次の起動から使われます")
+}

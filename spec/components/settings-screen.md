@@ -89,7 +89,7 @@
 
 **1024×700 の変形**: 枠の幅は 960 px（`p-8`）。nav 224 px ＋ すき間 32 px ＋ main 704 px。概要は 2 列のまま（カード 344 px 幅）。表は列を詰めて折り返す（切り詰めない）。縦は main だけがスクロールし、nav は `lg:sticky lg:top-8`。1024 px 未満（ブラウザ版の狭い窓）は nav が上に出て（`flex-col`）、リンクが折り返して並ぶ。
 
-- **構造**: `<main class="mx-auto max-w-6xl p-8">` の中に、戻るリンク・`<h1>設定</h1>`・説明・`<div class="mt-6 flex flex-col gap-8 lg:flex-row">`（`nav` と `<div class="min-w-0 flex-1">`）。分類の見出しは `<h2>`。同じ分類の中の区画の見出しは `<h3>`（`molecules.SettingsSection` に見出しのレベルを渡す。ステージ ① で、API キーの分類の「API キー」「ChatGPT でログイン」が `h3` になる。分類名と区画名が同じ分類（LLM・画像動画・MCP・バージョン）は、区画の見出しを出さず説明だけにする）。
+- **構造**: `<main class="mx-auto max-w-6xl p-8">` の中に、戻るリンク・`<h1>設定</h1>`・説明（`help.Row` の「?」ヘルプのパネル）・`<div class="mt-6 flex flex-col gap-8 lg:flex-row">`（`nav` と `<div class="min-w-0 flex-1">`）。分類の見出しは `<h2>` で、その横に分類の説明を開く「?」ボタン（`settingsui.Category(title, explanation)`。説明は常時表示せず、ヘルプに入る。[shared-ui-parts.md](shared-ui-parts.md) §9・§10）。同じ分類の中の区画の見出しは `<h3>`（`molecules.SettingsSection` に見出しのレベルを渡す。ステージ ① で、API キーの分類の「API キー」「ChatGPT でログイン」が `h3` になる。分類名と区画名が同じ分類（LLM・画像動画・MCP・バージョン）は、区画の見出しを出さず説明だけにする）。
 - **ナビ（`molecules/settingsui.SettingsNav`）**: `<nav aria-label="設定"><ul role="list">`。項目は `<a href class="block rounded-md px-3 py-2 text-sm …">`。**今の分類**は `aria-current="page"`・`bg-neutral-800 font-medium text-neutral-100`・左に `border-l-2 border-indigo-400`（色だけにせず、太さの変化と枠で示す）。ほかは `text-neutral-300 hover:bg-neutral-900 hover:text-neutral-100`。フォーカスは [shared-ui-parts.md](shared-ui-parts.md) §1 の輪。アイコンは付けない（文字を優先。§11 の質問 3）。
 - 状態のバッジをナビの項目に出さない（概要で見る）。
 - 戻るリンクは今のまま（`atoms.BackLink(paths.Home(), "← プロジェクト一覧に戻る")`）。
@@ -185,7 +185,7 @@
 | 6 | 接続先の名前 `new` を作成で 422 にするか（§3） | 422 にする（`…/endpoints/:name` のサブページと衝突させない） |
 | 7 | チャットの設定リンクに `ref_type=global_settings` ＋ `ref_id=<スラッグ>` を足すか（§6）。今のリンクはプロジェクトの設定 | 契約として足す（新しい通知はこの Issue では作らない）。足さずに別の Issue にする案もある |
 | 8 | `mcp/` が `web/` を import しないことを検査するテストを足すか（§10） | 足さない（調査結果の記録にとどめる。範囲外） |
-| 9 | 概要・分類の本文の説明文（各分類の h2 のあとの 1 文）の文言 | 今の `SettingsSection` の説明をそのまま使う |
+| 9 | 概要・分類の本文の説明文（各分類の h2 のあとの 1 文）の文言 | 今の `SettingsSection` の説明をそのまま使う。**Issue #866 で、常時表示から h2 の横の「?」ヘルプへ移した**（文言は同じ） |
 | 10 | ② の分類ごとの PR の順（②-1〜②-6） | §7 の順（モーダルの部品を API キーで先に確かめる） |
 
 詳細な質問（API キーの接続テスト・LLM・画像動画の保存の単位・ローカルのモデルの編集の方式・MCP など）は [settings-screen-categories.md](settings-screen-categories.md) §7 と [settings-screen-routes.md](settings-screen-routes.md) §4。
@@ -203,3 +203,4 @@
 | 0.7 | 2026-10-25 | 段階 ②-5（ローカル・代替モデル）と ②-6（MCP サーバー）を実装済みにした。チャットのリンク `ref_type=global_settings` の経路（契約だけ。通知は足さない）を §6 に実装済みと書いた。`localmodels`・`mcppanel` は `organisms/settings/local/`・`settings/mcp/`（と `handler/settings/local/`・`settings/mcp/`）に移した | Issue #847 の実装 |
 | 0.8 | 2026-10-25 | 古い記述を決定・実装に合わせた: §3 の名前 `new`（決定済み・実装済み）、§6 の `er.md` を更新しない理由（コミット前の検査は、増減に関わらず 300 行超のファイルを止める。ratchet とは別）、§7 ②-1 のモーダルの担当（#847 に決定）、§9 の `updatepanel`（移していない） | PR #849 の第 2 周の独立レビューの指摘 |
 | 0.9 | 2026-10-28 | §5 に、概要の「初期セットアップの案内」の区画（初回ガイドを開き直すリンク）を足した | Issue #863。設定画面からいつでも案内をもう一度開ける |
+| 0.10 | 2026-10-28 | §4 の枠と §11 の質問 9 を、分類の説明が h2 の横の「?」ヘルプに入ることに合わせた | Issue #866。画面の文字を減らす |

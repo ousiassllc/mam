@@ -18,7 +18,6 @@ templ Section(d Data) {
 		if d.Problem != "" {
 			<p class="text-sm text-red-300" role="alert" data-testid="model-assignment-problem">{ d.Problem }</p>
 		} else {
-			<p class="text-sm text-neutral-400">{ "保存した内容は <データフォルダ>/models.json に書かれ、すぐに反映されます。「ローカル・代替モデル」で登録したモデルも選べます。" }</p>
 			if d.Notice != "" {
 				<p class="text-sm text-emerald-300" role="status" data-testid="model-assignment-notice">{ d.Notice }</p>
 			}
@@ -26,14 +25,14 @@ templ Section(d Data) {
 				<p class="text-sm text-red-300" role="alert" data-testid="model-assignment-error">{ d.Error }</p>
 			}
 			@Status(d, false)
-			@molecules.SettingsSectionAt(molecules.HeadingH3, "画像モデル（用途ごと）", "代替モデルは、主モデルが使えないとき（連続失敗で遮断中、またはリトライしても失敗したとき）に使われます。「高速版」は、高速版を持つモデルでだけ保存できます。") {
+			@molecules.SettingsSectionH3("画像モデル（用途ごと）", "代替モデルは、主モデルが使えないとき（連続失敗で遮断中、またはリトライしても失敗したとき）に使われます。「高速版」は、高速版を持つモデルでだけ保存できます。") {
 				@settingsui.SettingsTable(ImagesID, "画像モデルの割り当て（用途ごと）", imageColumns(d.Pinned)) {
 					for _, r := range d.Images {
 						@imageRow(r, d.Pinned, false)
 					}
 				}
 			}
-			@molecules.SettingsSectionAt(molecules.HeadingH3, "動画モデル（Quality Policy ごと）", "モデルは、そのモデルが対応する解像度との組み合わせで選びます。テイク数は 1 以上です。") {
+			@molecules.SettingsSectionH3("動画モデル（Quality Policy ごと）", "モデルは、そのモデルが対応する解像度との組み合わせで選びます。テイク数は 1 以上です。") {
 				@settingsui.SettingsTable(PoliciesID, "動画モデルの割り当て（Quality Policy ごと）", policyColumns(d.Pinned)) {
 					for _, r := range d.Policies {
 						@policyRow(r, d.Pinned, false)

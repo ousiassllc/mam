@@ -1,5 +1,7 @@
 package molecules
 
+import "github.com/ousiassllc/mam/backend/internal/web/molecules/help"
+
 // HeadingLevel is the level of the heading of a SettingsSection, or no heading at all.
 type HeadingLevel int
 
@@ -12,14 +14,46 @@ const (
 	HeadingNone
 )
 
-// SettingsSection is one titled block (title, optional description, content) of a screen: the heading is an h2.
-templ SettingsSection(title, description string) {
-	@SettingsSectionAt(HeadingH2, title, description) {
+// SettingsSection is one titled block (title, content) of a screen: the heading is an h2. What the section is for
+// (explanation) is not on the page: it is behind the "?" button beside the heading (help.Row); empty draws no button.
+templ SettingsSection(title, explanation string) {
+	@SettingsSectionHelp(HeadingH2, title, textHelp(explanation)) {
 		{ children... }
 	}
 }
 
-// SettingsSectionAt is SettingsSection whose heading is at level (HeadingNone: no heading, title is not shown).
+// SettingsSectionH3 is SettingsSection whose heading is an h3, for a section under the h2 of a category.
+templ SettingsSectionH3(title, explanation string) {
+	@SettingsSectionHelp(HeadingH3, title, textHelp(explanation)) {
+		{ children... }
+	}
+}
+
+// textHelp is the help of a plain text, or none for an empty one.
+func textHelp(text string) templ.Component {
+	if text == "" {
+		return nil
+	}
+	return help.Text(text)
+}
+
+// SettingsSectionHelp is SettingsSection at level (H2 or H3) whose explanation is any component (nil: no help).
+templ SettingsSectionHelp(level HeadingLevel, title string, explanation templ.Component) {
+	<section class="flex flex-col gap-3">
+		@help.Row(help.ID(title), title, explanation) {
+			if level == HeadingH3 {
+				<h3 class="text-base font-semibold">{ title }</h3>
+			} else {
+				<h2 class="text-base font-semibold">{ title }</h2>
+			}
+		}
+		{ children... }
+	</section>
+}
+
+// SettingsSectionAt is a block whose description is shown under the title: only for a line that tells the state of the
+// block (the version of the app), not for an explanation (use SettingsSectionHelp). HeadingNone: no heading, title is
+// not shown.
 templ SettingsSectionAt(level HeadingLevel, title, description string) {
 	<section class="flex flex-col gap-3">
 		if level != HeadingNone || description != "" {

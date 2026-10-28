@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/help"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
 )
 
@@ -44,13 +45,32 @@ func TestNav_MarksOnlyTheCurrentCategoryAndLinksAreNotBoosted(t *testing.T) {
 func TestCategory_IsTheH2OfItsContentAndNamedByIt(t *testing.T) {
 	ctx := templ.WithChildren(context.Background(), templ.Raw("<p>CONTENT</p>"))
 	var sb strings.Builder
-	require.NoError(t, settingsui.Category("概要", "説明").Render(ctx, &sb))
+	require.NoError(t, settingsui.Category("概要", help.Text("EXPLANATION")).Render(ctx, &sb))
 	html := sb.String()
 
 	assert.Contains(t, html, `<section id="settings-category" aria-labelledby="settings-category-title"`)
 	assert.Contains(t, html, `<h2 id="settings-category-title"`)
 	assert.Less(t, strings.Index(html, "概要"), strings.Index(html, "CONTENT"))
-	assert.Contains(t, html, "説明")
+	assert.Less(t, strings.Index(html, "data-help-panel hidden"), strings.Index(html, "EXPLANATION"), "the explanation is in the hidden help")
+	assert.Less(t, strings.Index(html, "<h2"), strings.Index(html, "data-help-toggle"), "the button is beside the h2")
+
+	var bare strings.Builder
+	require.NoError(t, settingsui.Category("概要", nil).Render(ctx, &bare))
+	assert.NotContains(t, bare.String(), "data-help", "no explanation, no button")
+}
+
+// A card with a help has the "?" beside its title and the panel under it, named after the card; one without has none.
+func TestCardItem_HasItsHelpBesideTheTitleOnlyWhenGiven(t *testing.T) {
+	card := settingsui.Card{ID: "chatgpt-card-codex", Title: "Codex", Help: help.Text("長い説明"), State: "ログイン済み"}
+	html := render(t, settingsui.CardItem(card))
+
+	assert.Contains(t, html, `aria-label="Codexの説明"`)
+	assert.Less(t, strings.Index(html, "<h3"), strings.Index(html, "data-help-toggle"))
+	assert.Less(t, strings.Index(html, "data-help-panel hidden"), strings.Index(html, "長い説明"))
+	assert.Contains(t, html, "ログイン済み", "the state is on the card, not in the help")
+
+	card.Help = nil
+	assert.NotContains(t, render(t, settingsui.CardItem(card)), "data-help")
 }
 
 // A card is one list item with the id that a save replaces; the title is a heading of the level given, the state is a

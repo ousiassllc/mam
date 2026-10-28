@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/help"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/chatgpt"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/credentials"
@@ -17,7 +18,7 @@ import (
 
 // SettingsOverviewBody is the overview: a card for each category.
 templ SettingsOverviewBody(d overview.Data) {
-	@settingsui.Category("概要", "各分類の状態です。カードを開くと、その分類の設定に移ります。") {
+	@settingsui.Category("概要", help.Text("各分類の状態です。カードを開くと、その分類の設定に移ります。")) {
 		@overview.Overview(d)
 		if d.Guide {
 			@overview.GuideSection()
@@ -27,7 +28,7 @@ templ SettingsOverviewBody(d overview.Data) {
 
 // SettingsAPIKeysBody is "API キーとログイン": the API keys and the ChatGPT login (nil: the service is not there).
 templ SettingsAPIKeysBody(keys credentials.Data, login *chatgpt.Data) {
-	@settingsui.Category("API キーとログイン", "") {
+	@settingsui.Category("API キーとログイン", nil) {
 		@credentials.Section(keys)
 		@chatgpt.SectionIf(login)
 	}
@@ -35,42 +36,42 @@ templ SettingsAPIKeysBody(keys credentials.Data, login *chatgpt.Data) {
 
 // SettingsLLMBody is "テキスト生成（LLM）".
 templ SettingsLLMBody(d llm.Data) {
-	@settingsui.Category("テキスト生成（LLM）", "Agent ごとに、最初に呼ぶ LLM（プライマリ）と、失敗したときに切り替える LLM（代替）を選びます。") {
+	@settingsui.Category("テキスト生成（LLM）", help.Text("Agent ごとに、最初に呼ぶ LLM（プライマリ）と、失敗したときに切り替える LLM（代替）を選びます。")) {
 		@llm.Section(d)
 	}
 }
 
 // SettingsModelsBody is "画像・動画モデル".
 templ SettingsModelsBody(d media.Data) {
-	@settingsui.Category("画像・動画モデル", "画像の用途ごと・Quality Policy ごとに、主モデルと、主モデルが使えないときの代替モデルを選びます。") {
+	@settingsui.Category("画像・動画モデル", help.Text("画像の用途ごと・Quality Policy ごとに、主モデルと、主モデルが使えないときの代替モデルを選びます。\n保存した内容は <データフォルダ>/models.json に書かれ、すぐに反映されます。「ローカル・代替モデル」で登録したモデルも選べます。")) {
 		@media.Section(d)
 	}
 }
 
 // SettingsLocalModelsBody is "ローカル・代替モデル".
 templ SettingsLocalModelsBody(d local.Data) {
-	@settingsui.Category("ローカル・代替モデル", local.Description) {
+	@settingsui.Category("ローカル・代替モデル", help.Text(local.Description)) {
 		@local.Section(d)
 	}
 }
 
 // SettingsLocalEndpointBody is the page of one local endpoint, under the title of "ローカル・代替モデル".
 templ SettingsLocalEndpointBody(d local.Data, e local.Endpoint) {
-	@settingsui.Category("ローカル・代替モデル", "") {
+	@settingsui.Category("ローカル・代替モデル", nil) {
 		@local.Page(d, e)
 	}
 }
 
 // SettingsMCPBody is "MCP サーバー".
 templ SettingsMCPBody(d mcp.Data) {
-	@settingsui.Category("MCP サーバー", mcp.Description) {
+	@settingsui.Category("MCP サーバー", help.Text(mcp.Description)) {
 		@mcp.Section(d)
 	}
 }
 
 // SettingsUpdateBody is "バージョンとアップデート".
 templ SettingsUpdateBody(d updatepanel.Data) {
-	@settingsui.Category("バージョンとアップデート", "") {
+	@settingsui.Category("バージョンとアップデート", nil) {
 		@updatepanel.Section(d)
 	}
 }

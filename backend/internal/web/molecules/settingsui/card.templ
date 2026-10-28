@@ -1,6 +1,9 @@
 package settingsui
 
-import "github.com/ousiassllc/mam/backend/internal/web/atoms"
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/help"
+)
 
 // Card is one row of a list of the settings screen drawn as a card (shared-ui-parts.md §5): a name, a state, what it is
 // for and the buttons that act on it. The id of the row is what a save replaces out of band.
@@ -14,6 +17,8 @@ type Card struct {
 	TitleLevel int
 	Tone       atoms.BadgeTone
 	State      string // the text of the Badge; empty draws none
+	// Help is the explanation of the row behind a "?" button beside its title (nil: none): what is too long for the card.
+	Help templ.Component
 	// Description is what the row is for; Summary is its current value (what is set, who is signed in).
 	Description, Summary string
 	// Details is more of the row between its summary and its buttons (a card whose state needs more than a line).
@@ -39,20 +44,33 @@ templ CardItem(c Card) {
 		data-testid={ c.testID() }
 		class="flex min-w-0 flex-col gap-2 rounded-lg border border-neutral-800 bg-neutral-900 p-4"
 		{ c.Attrs... }
+		if c.Help != nil {
+			data-help
+		}
 		if c.OOB {
 			hx-swap-oob="true"
 		}
 	>
 		<div class="flex flex-wrap items-center justify-between gap-2">
-			if c.TitleLevel == 4 {
-				<h4 class="text-sm font-semibold text-neutral-100">{ c.Title }</h4>
-			} else {
-				<h3 class="text-sm font-semibold text-neutral-100">{ c.Title }</h3>
-			}
+			<div class="flex items-center gap-2">
+				if c.TitleLevel == 4 {
+					<h4 class="text-sm font-semibold text-neutral-100">{ c.Title }</h4>
+				} else {
+					<h3 class="text-sm font-semibold text-neutral-100">{ c.Title }</h3>
+				}
+				if c.Help != nil {
+					@help.Toggle(help.ID(c.ID), c.Title)
+				}
+			</div>
 			if c.State != "" {
 				@atoms.Badge(c.Tone, c.State)
 			}
 		</div>
+		if c.Help != nil {
+			@help.Panel(help.ID(c.ID)) {
+				@c.Help
+			}
+		}
 		if c.Description != "" {
 			<p class="break-words text-sm text-neutral-400">{ c.Description }</p>
 		}

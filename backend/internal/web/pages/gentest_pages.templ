@@ -3,6 +3,7 @@ package pages
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/layout"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/help"
 	gentest "github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -24,14 +25,18 @@ templ generationNav(current string) {
 	</nav>
 }
 
-// generationShell is the frame of every page of the generation test: it belongs to no Project.
+// generationShell is the frame of every page of the generation test: it belongs to no Project. The lead (what the page is
+// for) is behind the "?" beside the title.
 templ generationShell(title, csrfToken, current, lead string) {
 	@layout.AppLayout(title, csrfToken) {
 		<main class="mx-auto flex max-w-5xl flex-col gap-6 p-8">
 			<div>
 				@atoms.BackLink(paths.Home(), "← プロジェクト一覧に戻る")
-				<h1 class="mb-1 mt-3 text-xl font-semibold">{ title }</h1>
-				<p class="text-sm text-neutral-400">{ lead }</p>
+				<div class="mt-3">
+					@help.Row(help.ID(title), title, help.Text(lead)) {
+						<h1 class="text-xl font-semibold">{ title }</h1>
+					}
+				</div>
 			</div>
 			@generationNav(current)
 			{ children... }

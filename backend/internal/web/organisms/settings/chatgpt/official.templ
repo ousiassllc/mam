@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/help"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
 )
 
@@ -37,12 +38,13 @@ templ officialCard(d Data) {
 	}
 }
 
-// accountCard is the card of a login system: its state and, when it is not signed in, the line that says so.
-func accountCard(kind, title, description string, a Account, details templ.Component) settingsui.Card {
+// accountCard is the card of a login system: its state and, when it is not signed in, the line that says so. What the
+// system is for (explanation) is behind the "?" of the card.
+func accountCard(kind, title, explanation string, a Account, details templ.Component) settingsui.Card {
 	tone, state := accountState(kind, a)
 	c := settingsui.Card{
 		ID: cardID(kind), TestID: "chatgpt-card", Attrs: map[string]any{"data-kind": kind}, TitleLevel: 4,
-		Title: title, Description: description, Tone: tone, State: state, Details: details,
+		Title: title, Help: help.Text(explanation), Tone: tone, State: state, Details: details,
 	}
 	return c
 }
