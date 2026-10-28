@@ -8,6 +8,7 @@ package modelreg
 
 import (
 	"slices"
+	"strings"
 	"sync/atomic"
 )
 
@@ -43,4 +44,13 @@ func with[T ~string](builtin []T, pick func(*set) []string) []T {
 		}
 	}
 	return out
+}
+
+// Join renders models separated by sep ("kling-3.0 / seedance-2.0" for " / ").
+func Join[T ~string](models []T, sep string) string {
+	names := make([]string, len(models))
+	for i, m := range models {
+		names[i] = string(m)
+	}
+	return strings.Join(names, sep)
 }

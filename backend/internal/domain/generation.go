@@ -2,7 +2,6 @@ package domain
 
 import (
 	"encoding/json"
-	"strings"
 	"time"
 
 	mr "github.com/ousiassllc/mam/backend/internal/domain/modelreg"
@@ -18,19 +17,16 @@ type ModelName string
 
 // The built-in image models (the first four), then the video models.
 const (
-	ModelNanoBanana     ModelName = "nano-banana"
-	ModelNanoBananaLite ModelName = "nano-banana-lite" // Gemini 3.1 Flash Lite Image: the cheap, fast 1K model
-	ModelFlux2          ModelName = "flux-2"
-	ModelGPTImage2      ModelName = "gpt-image-2"
-	ModelKling3         ModelName = "kling-3.0"
-	ModelSeedance2      ModelName = "seedance-2.0"
-	ModelRunwayGen45    ModelName = "runway-gen-4.5"
-	// ModelGeminiOmniFlash is Gemini Omni Flash (gemini-omni-1.1-flash), the successor of Veo 3.1 in the Gemini API.
-	ModelGeminiOmniFlash ModelName = "gemini-omni-flash"
-	// ModelKling4 is Kling 4.0 (new API, Bearer API key); ModelKling3 stays on the old one.
-	ModelKling4 ModelName = "kling-4.0"
-	// ModelSeedance25 is Seedance 2.5 (dreamina-seedance-2-5-260628), up to 30 seconds; ModelSeedance2 is unchanged.
-	ModelSeedance25 ModelName = "seedance-2.5"
+	ModelNanoBanana      ModelName = "nano-banana"
+	ModelNanoBananaLite  ModelName = "nano-banana-lite" // Gemini 3.1 Flash Lite Image: the cheap, fast 1K model
+	ModelFlux2           ModelName = "flux-2"
+	ModelGPTImage2       ModelName = "gpt-image-2"
+	ModelKling3          ModelName = "kling-3.0"
+	ModelSeedance2       ModelName = "seedance-2.0"
+	ModelRunwayGen45     ModelName = "runway-gen-4.5"
+	ModelGeminiOmniFlash ModelName = "gemini-omni-flash" // Gemini Omni Flash (gemini-omni-1.1-flash), the Gemini API's video model
+	ModelKling4          ModelName = "kling-4.0"         // Kling 4.0 on the new API (Bearer API key); ModelKling3 stays on the old one
+	ModelSeedance25      ModelName = "seedance-2.5"      // Seedance 2.5 (dreamina-seedance-2-5-260628), up to 30 seconds
 )
 
 // ImageModels lists the image models (built-in, then defined on registered endpoints: modelreg).
@@ -44,13 +40,7 @@ func VideoModels() []ModelName {
 }
 
 // JoinModels renders models separated by sep ("kling-3.0 / seedance-2.0 / runway-gen-4.5" for " / ").
-func JoinModels(models []ModelName, sep string) string {
-	names := make([]string, len(models))
-	for i, m := range models {
-		names[i] = string(m)
-	}
-	return strings.Join(names, sep)
-}
+func JoinModels(models []ModelName, sep string) string { return mr.Join(models, sep) }
 
 // PromptVersion is a row of prompt_version: the Shot Spec a generation started from and what the
 // Model Adapter derived from it.
