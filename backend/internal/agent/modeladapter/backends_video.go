@@ -60,19 +60,9 @@ type klingEnvelope struct {
 	} `json:"data"`
 }
 
-// check turns a non-zero Kling code into an error: 1302 / 1303 are its rate limit answers.
+// check turns a non-zero Kling code into an error.
 func (b klingBackend) check(env klingEnvelope) error {
-	if env.Code == 0 {
-		return nil
-	}
-	status := http.StatusUnprocessableEntity
-	switch {
-	case env.Code == 1302 || env.Code == 1303:
-		status = http.StatusTooManyRequests
-	case env.Code >= 5000:
-		status = http.StatusBadGateway
-	}
-	return &ProviderError{Vendor: string(b.vendor), Status: status, Message: fmt.Sprintf("code %d: %s", env.Code, env.Message)}
+	return klingCodeError(b.vendor, env.Code, env.Message)
 }
 
 func (b klingBackend) GenerateVideo(ctx context.Context, apiModel string, req VideoRequest) (VideoResult, error) {
@@ -153,92 +143,6 @@ func (b klingBackend) GenerateVideo(ctx context.Context, apiModel string, req Vi
 	return VideoResult{File: file, MimeType: videoMime(mime)}, nil
 }
 
-// seedanceBackend calls Seedance 2.0 through the BytePlus ModelArk content generation API.
-type seedanceBackend struct{ api }
-
-func (b seedanceBackend) GenerateVideo(ctx context.Context, apiModel string, req VideoRequest) (VideoResult, error) {
-	key, err := b.key()
-	if err != nil {
-		return VideoResult{}, err
-	}
-	auth := map[string]string{"Authorization": "Bearer " + key}
-
-	text := fmt.Sprintf("%s --resolution %s --duration %d --ratio %s", req.Prompt, req.Resolution, int(req.DurationSeconds), req.AspectRatio)
-	content := []map[string]any{{"type": "text", "text": text}}
-	image := func(in Input, role string) {
-		content = append(content, map[string]any{
-			"type": "image_url", "role": role,
-			"image_url": map[string]any{"url": "data:" + in.MimeType + ";base64," + base64.StdEncoding.EncodeToString(in.Data)},
-		})
-	}
-	if req.FirstFrame != nil {
-		image(*req.FirstFrame, "first_frame")
-		if req.LastFrame != nil {
-			image(*req.LastFrame, "last_frame")
-		}
-	}
-	// Frames and reference images are mutually exclusive scenarios of the API (see Prepare).
-	if req.FirstFrame == nil {
-		for _, r := range req.References {
-			image(r, "reference_image")
-		}
-	}
-	raw, _ := json.Marshal(map[string]any{"model": apiModel, "content": content})
-	base := b.baseURL + "/api/v3/contents/generations/tasks"
-	data, err := b.request(ctx, http.MethodPost, base, jsonHeader(auth), raw, maxJSONBytes)
-	if err != nil {
-		return VideoResult{}, err
-	}
-	var submit struct {
-		ID string `json:"id"`
-	}
-	if err := unmarshal(b.api, data, &submit); err != nil {
-		return VideoResult{}, err
-	}
-	if submit.ID == "" {
-		return VideoResult{}, b.empty("task id")
-	}
-
-	var videoURL string
-	err = b.poll(ctx, func(ctx context.Context) (bool, error) {
-		d, err := b.request(ctx, http.MethodGet, base+"/"+url.PathEscape(submit.ID), auth, nil, maxJSONBytes)
-		if err != nil {
-			return false, err
-		}
-		var st struct {
-			Status  string `json:"status"`
-			Content struct {
-				VideoURL string `json:"video_url"`
-			} `json:"content"`
-			Error struct {
-				Message string `json:"message"`
-			} `json:"error"`
-		}
-		if err := unmarshal(b.api, d, &st); err != nil {
-			return false, err
-		}
-		switch st.Status {
-		case "succeeded":
-			if st.Content.VideoURL == "" {
-				return false, b.empty("video")
-			}
-			videoURL = st.Content.VideoURL
-			return true, nil
-		case "failed", "cancelled", "expired":
-			return false, b.failed("the video job ended with status " + st.Status + ": " + st.Error.Message)
-		}
-		return false, nil
-	})
-	if err != nil {
-		return VideoResult{}, err
-	}
-	file, mime, err := b.download(ctx, videoURL)
-	if err != nil {
-		return VideoResult{}, err
-	}
-	return VideoResult{File: file, MimeType: videoMime(mime)}, nil
-}
-
 func videoMime(header string) string {
 	m := strings.TrimSpace(strings.SplitN(header, ";", 2)[0])
 	if strings.HasPrefix(m, "video/") {
@@ -300,9 +204,16 @@ func NewBackends(cfg Config, keys credential.Store, client httpclient.Doer, poll
 			domain.ModelFlux2:          fluxBackend{mk(VendorFlux)},
 		},
 		Video: map[domain.ModelName]VideoBackend{
-			domain.ModelKling3:      klingBackend{api: mk(VendorKling), now: time.Now},
-			domain.ModelSeedance2:   seedanceBackend{mk(VendorSeedance)},
-			domain.ModelRunwayGen45: runwayBackend{mk(VendorRunway)},
+			domain.ModelKling3:          klingBackend{api: mk(VendorKling), now: time.Now},
+			domain.ModelSeedance2:       seedanceBackend{api: mk(VendorSeedance)},
+			domain.ModelSeedance25:      seedanceBackend{api: mk(VendorSeedance), fields: true},
+			domain.ModelRunwayGen45:     runwayBackend{mk(VendorRunway)},
+			domain.ModelGeminiOmniFlash: geminiOmniBackend{mk(VendorGoogle)},
+			domain.ModelKling4:          kling4Backend{mk(VendorKling4)},
+			domain.ModelMiniMaxH3:       minimaxBackend{mk(VendorMiniMax)},
+			domain.ModelMiniMaxH3Max:    minimaxBackend{mk(VendorMiniMax)},
+			domain.ModelWan3:            alibabaBackend{mk(VendorAlibaba)},
+			domain.ModelLumaRay32:       lumaBackend{mk(VendorLuma)},
 		},
 	}
 }
