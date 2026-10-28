@@ -94,7 +94,7 @@ HTMX 専用の断片（`#mam-modal-body` に入る）。HTMX でない GET は 4
 | `flux` | `GET https://api.bfl.ai/v1/credits`（`x-key`。残高を読むだけ） | `docs.bfl.ml` の OpenAPI に記載 | 未検証 |
 | `runway` | `GET https://api.dev.runwayml.com/v1/organization`（`Authorization: Bearer`・`X-Runway-Version: 2024-11-06`） | `api.md` に記載（組織の残高と階層） | 未検証 |
 | `elevenlabs` | `GET https://api.elevenlabs.io/v1/user/subscription`（`xi-api-key`） | 認証ヘッダー `xi-api-key` は公式の認証の頁で確認。このエンドポイントは記載を確認 | 未検証 |
-| `kling`・`seedance`・`synclabs`・`typesafe` | なし | 読むだけの無料の API を公式資料で確認できなかった。ボタンは出さず「保存したあと、最初の生成で確かめられます」を出す | — |
+| `kling`・`kling4`・`seedance`・`synclabs`・`typesafe` | なし | 読むだけの無料の API を公式資料で確認できなかった。ボタンは出さず「保存したあと、最初の生成で確かめられます」を出す | — |
 
 結果の分類: 2xx = 受け付けられた、401/403 = キーが拒否された、429 = 上限に達した、通信の失敗・タイムアウト = 通信できない、そのほか = 想定外の応答（ステータスコードを添える）。
 

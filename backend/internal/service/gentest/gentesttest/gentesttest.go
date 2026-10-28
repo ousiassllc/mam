@@ -198,7 +198,7 @@ func NewOn(t testing.TB, db *repository.DB, opts ...Option) *Rig {
 	for _, m := range r.extra {
 		backends.Image[m] = imageBackend{f, m}
 	}
-	for _, m := range []domain.ModelName{domain.ModelKling3, domain.ModelSeedance2, domain.ModelRunwayGen45} {
+	for _, m := range []domain.ModelName{domain.ModelKling3, domain.ModelSeedance2, domain.ModelRunwayGen45, domain.ModelGeminiOmniFlash, domain.ModelKling4, domain.ModelSeedance25} {
 		if !r.missing[m] {
 			backends.Video[m] = videoBackend{f, m}
 		}

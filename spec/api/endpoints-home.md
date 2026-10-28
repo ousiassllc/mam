@@ -19,4 +19,4 @@
 | `nodes`・`model-manager` | 同梱の ComfyUI が導入済みなら、ok ・ ComfyUI: 起動中 ／ info ・ ComfyUI: 起動しています ／ neutral ・ ComfyUI: 停止中 ／ error ・ ComfyUI: 起動に失敗。未導入・壊れている（`broken`）・非対応（Windows 以外）で外部の ComfyUI が登録済みなら、neutral ・ 外部の ComfyUI: n 件。どちらも無いとき、`nodes` は warn ・ ComfyUI が必要です、`model-manager` は neutral ・ ComfyUI: 未導入（非対応は 同梱の ComfyUI は Windows 版のみ） |
 | `workflows` | neutral ・ 保存 n 件 ／ 保存なし |
 | `reviews` | neutral ・ 受け取り n 件 ／ 受け取りなし |
-| `settings` | 1 行目: info ・ API キー n / 10 件（0 件は warn。キーストアが読めないときは warn ・ キーストアを利用できません）。2 行目（ChatGPT のサービスがあり、読めるとき）: warn ・ ChatGPT: 再ログインが必要（公式・画像生成（非公式）のどちらかが再ログイン要。Codex 経由には再ログイン要の状態が無い）／ ok ・ ChatGPT: ログイン済み（公式・画像生成（非公式）・Codex 経由のどれかがログイン済み）／ neutral ・ ChatGPT: 未ログイン |
+| `settings` | 1 行目: info ・ API キー n / 11 件（0 件は warn。キーストアが読めないときは warn ・ キーストアを利用できません）。2 行目（ChatGPT のサービスがあり、読めるとき）: warn ・ ChatGPT: 再ログインが必要（公式・画像生成（非公式）のどちらかが再ログイン要。Codex 経由には再ログイン要の状態が無い）／ ok ・ ChatGPT: ログイン済み（公式・画像生成（非公式）・Codex 経由のどれかがログイン済み）／ neutral ・ ChatGPT: 未ログイン |

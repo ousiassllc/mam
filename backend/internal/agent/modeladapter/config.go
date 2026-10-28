@@ -9,7 +9,6 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/chatgptid"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/gentestcfg"
-	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/gptimage"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/overlay"
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -147,27 +146,15 @@ type Config struct {
 func DefaultConfig() Config {
 	return Config{
 		Vendors: map[Vendor]VendorConfig{
-			VendorGoogle:   {BaseURL: "https://generativelanguage.googleapis.com", MaxConcurrency: 4, TimeoutSeconds: 120},
+			VendorGoogle:   {BaseURL: "https://generativelanguage.googleapis.com", MaxConcurrency: 4, TimeoutSeconds: 600},
 			VendorOpenAI:   {BaseURL: "https://api.openai.com", MaxConcurrency: 4, TimeoutSeconds: 180},
 			VendorFlux:     {BaseURL: "https://api.bfl.ai", MaxConcurrency: 4, TimeoutSeconds: 180},
 			VendorKling:    {BaseURL: "https://api.klingai.com", MaxConcurrency: 3, TimeoutSeconds: 900},
+			VendorKling4:   {BaseURL: "https://api-singapore.klingai.com", MaxConcurrency: 3, TimeoutSeconds: 900},
 			VendorSeedance: {BaseURL: "https://ark.ap-southeast.bytepluses.com", MaxConcurrency: 3, TimeoutSeconds: 900},
 			VendorRunway:   {BaseURL: "https://api.dev.runwayml.com", MaxConcurrency: 2, TimeoutSeconds: 900},
 		},
-		Models: map[domain.ModelName]ModelConfig{
-			// Prices: Google's Gemini API pricing page (1K image, the size an unset image_size gives), BFL's
-			// pricing page (FLUX.2 [pro], text only, up to 1 megapixel). GPT Image 2 is priced by the quality
-			// profile it is sent and the size (package gptimage; spec/architecture/model-adapters.md §9.2).
-			domain.ModelNanoBanana:     {Model: "gemini-nano-banana-2.1", CostPerImage: 0.0336},
-			domain.ModelNanoBananaLite: {Model: "gemini-3.1-flash-lite-image", CostPerImage: 0.0336},
-			domain.ModelFlux2:          {Model: "flux-2-pro", CostPerImage: 0.03},
-			domain.ModelGPTImage2:      {Model: gptimage.APIModel, Quality: string(gptimage.Default)},
-			chatgptid.Model:            {Model: chatgptid.APIModel}, // the plan pays: 0 USD per image
-			domain.ModelKling3:         {Model: "kling-v3", CostPerSecond: map[string]float64{"720p": 0.07, "1080p": 0.14}},
-			domain.ModelSeedance2:      {Model: "seedance-2-0", CostPerSecond: map[string]float64{"480p": 0.03, "720p": 0.08, "1080p": 0.18}},
-			// Runway prices in credits (12 credits per second of Gen-4.5, 1 credit = USD 0.01).
-			domain.ModelRunwayGen45: {Model: "gen4.5", CostPerSecond: map[string]float64{"720p": 0.12}},
-		},
+		Models: defaultModels(),
 		Images: map[ImagePurpose]ImageRoute{
 			PurposeNewReference:  {Primary: ImageTarget{Model: domain.ModelGPTImage2}, Fallback: ImageTarget{Model: domain.ModelNanoBanana}},
 			PurposeEditReference: {Primary: ImageTarget{Model: domain.ModelNanoBanana}, Fallback: ImageTarget{Model: domain.ModelGPTImage2}},

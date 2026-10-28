@@ -23,10 +23,11 @@
 |----------|---------------------------------------------|----------------------------------------|------------|
 | `anthropic` | テキスト生成（Claude。§2） | `GET https://api.anthropic.com/v1/models?limit=1`（`x-api-key`・`anthropic-version`） | モデル一覧 API の記載を確認。**実キーでは未検証** |
 | `openai` | テキスト生成（GPT-5 系）と画像生成（GPT Image 2。§2・§3） | `GET https://api.openai.com/v1/models`（`Authorization: Bearer`） | 記載を確認。**実キーでは未検証** |
-| `google` | テキスト生成（Gemini）と画像生成（Nano Banana。§2・§3） | `GET https://generativelanguage.googleapis.com/v1beta/models?pageSize=1`（`x-goog-api-key`） | 記載を確認。**実キーでは未検証** |
+| `google` | テキスト生成（Gemini）・画像生成（Nano Banana。§2・§3）・動画生成（Gemini Omni Flash。§4） | `GET https://generativelanguage.googleapis.com/v1beta/models?pageSize=1`（`x-goog-api-key`） | 記載を確認。**実キーでは未検証** |
 | `flux` | 画像生成（FLUX.2。§3） | `GET https://api.bfl.ai/v1/credits`（`x-key`。残高を読むだけ） | 公式の OpenAPI（`docs.bfl.ml`）に記載。**実キーでは未検証** |
 | `kling` | 動画生成（Kling 3.0。§4） | なし（キーは `ACCESS_KEY:SECRET_KEY` で、JWT を作って呼ぶ。読むだけの無料の API を公式資料で確認できなかった） | 候補なし。「保存したあと、最初の生成で確かめられます」を出す |
-| `seedance` | 動画生成（Seedance 2.0。§4） | なし（BytePlus ModelArk。読むだけの無料の API を公式資料で確認できなかった） | 候補なし。同上 |
+| `kling4` | 動画生成（Kling 4.0。§4・[kling-api.md](../architecture/kling/kling-api.md) §5） | なし（キーは Kling の API キー 1 つで、そのまま `Bearer` に付ける。Kling 3.0 の `kling` とは別に保存する。読むだけの無料の API を公式資料で確認できなかった） | 候補なし。同上 |
+| `seedance` | 動画生成（Seedance 2.0・2.5。§4） | なし（BytePlus ModelArk。読むだけの無料の API を公式資料で確認できなかった） | 候補なし。同上 |
 | `runway` | 動画生成（Runway Gen-4.5。§4） | `GET https://api.dev.runwayml.com/v1/organization`（`Authorization: Bearer`・`X-Runway-Version`。組織の残高と階層を読むだけ） | 公式の `api.md` に記載。**実キーでは未検証**。`X-Runway-Version` の値は endpoints-settings.md §4 |
 | `elevenlabs` | 音声（TTS・Music・SFX。§5） | `GET https://api.elevenlabs.io/v1/user/subscription`（`xi-api-key`。契約の状態を読むだけ） | 認証ヘッダーは公式の認証の頁、エンドポイントは記載を確認。**実キーでは未検証** |
 | `synclabs` | Lip Sync（§5） | なし（読むだけの無料の API を公式資料で確認できなかった） | 候補なし。同上 |

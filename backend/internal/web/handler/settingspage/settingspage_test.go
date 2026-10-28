@@ -168,7 +168,7 @@ func TestOverview_HasACardForEachCategoryAndTheModelManagerLast(t *testing.T) {
 		{"api-keys", "/settings/api-keys"}, {"llm", "/settings/llm"}, {"models", "/settings/models"},
 		{"update", "/settings/update"}, {"model-manager", paths.ModelManager()},
 	}, got)
-	assert.Contains(t, body, "API キー 0 / 10 件", "the state of the keys is drawn with the card")
+	assert.Contains(t, body, "API キー 0 / 11 件", "the state of the keys is drawn with the card")
 	assert.Contains(t, body, `hx-get="/tools/model-manager/status"`, "the model manager's state is read after the page is shown")
 	assert.Contains(t, body, "別の画面を開きます")
 	assert.NotContains(t, body, `id="credential-panel"`)
