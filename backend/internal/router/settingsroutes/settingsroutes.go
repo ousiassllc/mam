@@ -19,11 +19,13 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/mcpsettings"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/modelsettings"
+	onboardingsvc "github.com/ousiassllc/mam/backend/internal/service/onboarding"
 	workflowsvc "github.com/ousiassllc/mam/backend/internal/service/workflows"
 	updatehandler "github.com/ousiassllc/mam/backend/internal/web/handler/appupdate"
 	chatgpthandler "github.com/ousiassllc/mam/backend/internal/web/handler/chatgptsettings"
 	gentesthandler "github.com/ousiassllc/mam/backend/internal/web/handler/gentest"
 	modelmgrhandler "github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr"
+	onboardinghandler "github.com/ousiassllc/mam/backend/internal/web/handler/onboarding"
 	credentialshandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/credentials"
 	llmhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/llm"
 	localhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/local"
@@ -55,6 +57,9 @@ type Services struct {
 	Workflows *workflowsvc.Service
 	// ModelManager is the model manager screen (paths.ModelManager). Nil leaves the screen and its routes out.
 	ModelManager *modelmanager.Service
+	// Onboarding is the first-run guide (paths.Onboarding) and the redirect of a first run from GET / (OnboardingHome). Nil
+	// leaves both out: the root page is always the project list.
+	Onboarding *onboardingsvc.Service
 	// Gentest is the generation test screen (paths.GenerationTest) and the trial generations of the model manager screen
 	// (service.Services.Gentest). Nil leaves the screen out and the trial panel without a form.
 	Gentest *gentest.Service
@@ -121,6 +126,9 @@ func Register(engine *gin.Engine, services *service.Services, s *Services, logge
 	if s != nil && s.Gentest != nil {
 		gentesthandler.Register(engine, s.Gentest)
 	}
+	if s != nil && s.Onboarding != nil {
+		registerOnboarding(engine, services, s, pages)
+	}
 	settingspage.Register(engine, pages)
 	registerTools(engine, services, s, logger)
 }
@@ -133,6 +141,7 @@ func pageServices(services *service.Services, s *Services) settingspage.Services
 			p.Tester = probe.NewTester(s.Keys)
 		}
 		p.ChatGPT, p.LLM, p.Models, p.LocalModels, p.MCP, p.Update = s.ChatGPT, s.LLM, s.Models, s.LocalModels, s.MCP, s.Update
+		p.Guide = s.Onboarding != nil
 	}
 	return p
 }
@@ -155,4 +164,25 @@ func registerLocalModels(engine *gin.Engine, h localhandler.Handlers) {
 	engine.GET(paths.LocalEndpoint(":name", "models", ":model", "edit"), h.EditModel)
 	engine.PUT(paths.LocalEndpoint(":name", "models", ":model"), h.UpdateModel)
 	engine.DELETE(paths.LocalEndpoint(":name", "models", ":model"), h.DeleteModel)
+}
+
+// OnboardingHome wraps the handler of GET / so that a first run is sent to the guide; without the guide (s or s.Onboarding
+// nil) it is home itself.
+func OnboardingHome(s *Services, home gin.HandlerFunc) gin.HandlerFunc {
+	if s == nil || s.Onboarding == nil {
+		return home
+	}
+	return onboardinghandler.FirstRun(s.Onboarding, home)
+}
+
+// registerOnboarding adds the routes of the first-run guide (spec/api/endpoints-onboarding.md).
+func registerOnboarding(engine *gin.Engine, services *service.Services, s *Services, pages settingspage.Services) {
+	h := onboardinghandler.Handlers{
+		Guide: s.Onboarding, Keys: services.Credentials, Tester: pages.Tester, ChatGPT: s.ChatGPT, LLM: s.LLM, Models: s.Models,
+	}
+	engine.GET(paths.Onboarding(), h.Start)
+	engine.GET(paths.OnboardingCredentialsStatus(), h.CredentialsStatus)
+	engine.GET(paths.OnboardingStep(":step"), h.Step)
+	engine.POST(paths.OnboardingFinish(), h.Finish)
+	engine.PUT(paths.OnboardingCodexPath(), h.CodexPath)
 }

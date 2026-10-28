@@ -1,0 +1,98 @@
+package onboarding
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+const (
+	linkClass = "text-sm underline text-indigo-300 hover:text-indigo-200"
+	codeClass = "rounded bg-neutral-800 px-1.5 py-0.5 font-mono text-sm text-neutral-100"
+)
+
+// Layout is the frame of one step: the h1, the progress, the step (its h2 and body, the children) and the buttons that go
+// on. Every page of the guide is a whole page; the links are plain links.
+templ Layout(f Frame) {
+	<main class="mx-auto max-w-4xl p-8">
+		<h1 class="mb-1 text-xl font-semibold">はじめに</h1>
+		<p class="text-sm text-neutral-400">mam を使い始めるための案内です。途中で「ガイドを閉じる」を押すと、そこでやめてプロジェクト一覧に進めます。</p>
+		@progress(f)
+		<section aria-labelledby="onboarding-step-title" class="mt-6 flex flex-col gap-4" data-testid="onboarding-step" data-step={ f.Current().Slug }>
+			<p class="text-xs text-neutral-400">ステップ { f.Number() } / { f.Total() }（{ Group(f.Current()) }）</p>
+			<h2 id="onboarding-step-title" class="text-lg font-semibold">{ f.Current().Title }</h2>
+			{ children... }
+		</section>
+		@controls(f)
+		if f.Modal {
+			@modal.Host()
+		}
+	</main>
+}
+
+// progress lists the steps; the current one is aria-current="step" and, not by colour alone, heavier and framed.
+templ progress(f Frame) {
+	<nav aria-label="進み具合" class="mt-4" data-testid="onboarding-progress">
+		<ol role="list" class="flex flex-wrap gap-2 text-sm">
+			for i, s := range f.Steps {
+				<li>
+					if i == f.Index {
+						<span aria-current="step" class="inline-block rounded-md border border-indigo-400 bg-neutral-800 px-2 py-1 font-medium text-neutral-100">
+							{ num(i) }. { s.Title }
+						</span>
+					} else {
+						<a href={ f.StepHref(i) } class="inline-block rounded-md border border-transparent px-2 py-1 text-neutral-300 hover:bg-neutral-900 hover:text-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">
+							{ num(i) }. { s.Title }
+						</a>
+					}
+				</li>
+			}
+		</ol>
+	</nav>
+}
+
+// controls are the buttons under a step. The walkthrough goes on with "次へ"; a setup step may be left with "あとで"
+// (nothing is put in) or "次へ"; the last step finishes the guide. "ガイドを閉じる" skips the rest from every other page.
+templ controls(f Frame) {
+	<div class="mt-8 flex flex-col gap-3 border-t border-neutral-800 pt-4">
+		<div class="flex flex-wrap items-center gap-2">
+			if !f.First() {
+				@atoms.ButtonLink(atoms.ToneNeutral, "戻る", f.PrevHref(), templ.Attributes{"data-testid": "onboarding-back"})
+			}
+			<div class="ml-auto flex flex-wrap items-center gap-2">
+				switch  {
+					case f.Last():
+						@finish(atoms.ToneNeutral, "あとで", "onboarding-later")
+						@finish(atoms.TonePrimary, "完了してプロジェクト一覧へ", "onboarding-finish")
+					case f.Current().Setup:
+						@atoms.ButtonLink(atoms.ToneNeutral, "あとで", f.NextHref(), templ.Attributes{"data-testid": "onboarding-later"})
+						@atoms.ButtonLink(atoms.TonePrimary, "次へ", f.NextHref(), templ.Attributes{"data-testid": "onboarding-next"})
+					default:
+						@atoms.ButtonLink(atoms.TonePrimary, "次へ", f.NextHref(), templ.Attributes{"data-testid": "onboarding-next"})
+				}
+			</div>
+		</div>
+		if f.Current().Setup {
+			<p class="text-xs text-neutral-400">「あとで」で飛ばしても、設定画面からいつでも入れられます。</p>
+		}
+		if !f.Last() {
+			<div>
+				@skip()
+			</div>
+		}
+	</div>
+}
+
+// finish records that the guide is over (POST /onboarding/finish) and goes to the project list (HX-Redirect).
+templ finish(tone atoms.ButtonTone, label, testID string) {
+	<form hx-post={ paths.OnboardingFinish() } hx-swap="none" hx-sync="this:drop" hx-params="none" hx-disabled-elt="find button[type=submit]">
+		@atoms.Button(tone, label, templ.Attributes{"type": "submit", "data-testid": testID})
+	</form>
+}
+
+// skip is the text button "ガイドを閉じてプロジェクト一覧へ": the same POST as finish, from any page.
+templ skip() {
+	<form hx-post={ paths.OnboardingFinish() } hx-swap="none" hx-sync="this:drop" hx-params="none" hx-disabled-elt="find button[type=submit]">
+		@atoms.LinkButton(atoms.ToneNeutral, "ガイドを閉じてプロジェクト一覧へ", templ.Attributes{"type": "submit", "data-testid": "onboarding-skip"})
+	</form>
+}

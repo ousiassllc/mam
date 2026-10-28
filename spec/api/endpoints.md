@@ -18,7 +18,8 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 
 | Method | Path | 概要 | 返却（通常/HTMX） |
 |---|---|---|---|
-| GET | `/` | `GET /projects` と同じ（プロジェクト一覧。ルート URL の入口） | フルページ / プロジェクト一覧フラグメント |
+| GET | `/` | プロジェクト一覧（`GET /projects` と同じ。ルート URL の入口）。**初回だけ**（`<データフォルダ>/onboarding.json` のフラグが無いとき）は `/onboarding` へ 302 で送る（HTMX の要求は送らない）。ガイドの出し方・フラグ・ルートは [endpoints-onboarding.md](endpoints-onboarding.md) | フルページ / プロジェクト一覧フラグメント（初回は 302） |
+| GET ほか | `/onboarding`・`/onboarding/:step`・`/onboarding/credentials/status`・`POST /onboarding/finish`・`PUT /onboarding/codex-path` | 初回ガイド（ウォークスルー 3 ページ → 初期セットアップ。設定画面からいつでも開き直せる。#863）。ルートと応答は [endpoints-onboarding.md](endpoints-onboarding.md)、画面は [../components/onboarding-screen.md](../components/onboarding-screen.md) | フルページ（HX 分岐なし。`credentials/status` だけ断片） |
 | GET | `/healthz` | ヘルスチェック。JSON `{"ok": bool, "database": "ok"\|"unavailable"}`。DB への Ping が失敗すると `ok:false`・`database:"unavailable"` で 503（それ以外は 200）。`GET /api/v1/health` と同じ結果を返す | JSON（HX 分岐なし） |
 | GET | `/static/*filepath` | ビルド済みフロントエンド資産（`app.js`・`app.css` 等）。`HEAD` も可。埋め込みまたは `--static-dir` の内容を配信する | ファイル（HX 分岐なし） |
 | GET | `/projects` | プロジェクト一覧・新規作成導線 | フルページ / プロジェクト一覧フラグメント |

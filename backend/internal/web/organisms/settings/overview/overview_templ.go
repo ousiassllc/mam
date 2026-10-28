@@ -12,11 +12,16 @@ package overview
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import "github.com/ousiassllc/mam/backend/internal/web/molecules"
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/molecules"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
 
 // Data is the cards of the overview, in order. The handler builds them: it knows the services the states are read from.
 type Data struct {
 	Cards []molecules.ToolCard
+	// Guide is whether the first-run guide exists: the overview then says how to open it again.
+	Guide bool
 }
 
 // Overview is the cards in two columns. Each is a link to its category, with the state that the server already knows.
@@ -52,6 +57,50 @@ func Overview(d Data) templ.Component {
 			}
 		}
 		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "</ul>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		return nil
+	})
+}
+
+// GuideSection is the way back into the first-run guide (spec/components/onboarding-screen.md §7), under the cards. It is
+// there whether the guide was finished or not: the link opens it without changing the flag.
+func GuideSection() templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var2 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var2 == nil {
+			templ_7745c5c3_Var2 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<section class=\"mt-8 flex flex-col gap-2\" aria-labelledby=\"settings-guide-title\" data-testid=\"settings-guide\"><h3 id=\"settings-guide-title\" class=\"text-base font-semibold\">初期セットアップの案内</h3><p class=\"text-sm text-neutral-400\">mam でできることの紹介と、API キー・モデル・ffmpeg の順に設定する案内を、もう一度開きます。</p><p><a href=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var3 templ.SafeURL
+		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(paths.Onboarding()))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/overview/overview.templ`, Line: 33, Col: 46}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" class=\"text-sm underline text-indigo-300 hover:text-indigo-200\" data-testid=\"settings-guide-open\">案内をもう一度開く</a></p></section>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

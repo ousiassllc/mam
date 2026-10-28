@@ -19,6 +19,9 @@ import (
 templ SettingsOverviewBody(d overview.Data) {
 	@settingsui.Category("概要", "各分類の状態です。カードを開くと、その分類の設定に移ります。") {
 		@overview.Overview(d)
+		if d.Guide {
+			@overview.GuideSection()
+		}
 	}
 }
 
