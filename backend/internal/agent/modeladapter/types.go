@@ -217,7 +217,7 @@ func VendorOf(m domain.ModelName) Vendor {
 		return VendorKling
 	case domain.ModelKling4:
 		return VendorKling4
-	case domain.ModelSeedance2:
+	case domain.ModelSeedance2, domain.ModelSeedance25:
 		return VendorSeedance
 	case domain.ModelRunwayGen45:
 		return VendorRunway

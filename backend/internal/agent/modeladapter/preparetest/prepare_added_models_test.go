@@ -17,6 +17,7 @@ import (
 var (
 	omniTarget   = modeladapter.VideoTarget{Model: domain.ModelGeminiOmniFlash, Resolution: "720p"}
 	kling4Target = modeladapter.VideoTarget{Model: domain.ModelKling4, Resolution: "1080p"}
+	seed25Target = modeladapter.VideoTarget{Model: domain.ModelSeedance25, Resolution: "720p"}
 )
 
 func TestAddedModelsAreVideoModelsOfTheirVendorWithAPriceAndNoDefaultRoute(t *testing.T) {
@@ -28,6 +29,7 @@ func TestAddedModelsAreVideoModelsOfTheirVendorWithAPriceAndNoDefaultRoute(t *te
 	}{
 		{domain.ModelGeminiOmniFlash, modeladapter.VendorGoogle, "gemini-omni-1.1-flash"},
 		{domain.ModelKling4, modeladapter.VendorKling4, "kling-4.0"},
+		{domain.ModelSeedance25, modeladapter.VendorSeedance, "dreamina-seedance-2-5-260628"},
 	} {
 		t.Run(string(tt.model), func(t *testing.T) {
 			assert.Contains(t, domain.VideoModels(), tt.model)
@@ -140,4 +142,48 @@ func TestPrepareForKling4AllowsALongPromptThanKling3(t *testing.T) {
 	kling3, err := modeladapter.Prepare(klingTarget, job)
 	require.NoError(t, err)
 	assert.LessOrEqual(t, len([]rune(kling3.Prompt)), 2400, "Kling 3.0 is unchanged")
+}
+
+func TestSeedance25IsPricedFromTheOfficialBillingExamples(t *testing.T) {
+	cfg := modeladapter.DefaultConfig()
+	// ModelArk's billing examples for a 16:9 clip of 5 s without video input: USD 0.514 at 480p, 1.156 at 720p, 2.843 at 1080p.
+	for res, perClip := range map[string]float64{"480p": 0.514, "720p": 1.156, "1080p": 2.843} {
+		assert.InDelta(t, perClip, cfg.VideoCost(modeladapter.VideoTarget{Model: domain.ModelSeedance25, Resolution: res}, 5), 0.01, res)
+	}
+	assert.Equal(t, "seedance-2-0", cfg.ModelSettings(domain.ModelSeedance2).Model, "Seedance 2.0 keeps the model identifier it has")
+	assert.Equal(t, cfg.Vendors[modeladapter.VendorSeedance].BaseURL, "https://ark.ap-southeast.bytepluses.com")
+}
+
+func TestPrepareForSeedance25TakesUpTo30SecondsAnd30ReferenceImagesButNeverBoth(t *testing.T) {
+	caps, ok := modeladapter.Capabilities(domain.ModelSeedance25)
+	require.True(t, ok)
+	assert.Equal(t, []string{"480p", "720p", "1080p"}, caps.Resolutions)
+	assert.Len(t, caps.Durations, 27)
+	assert.Equal(t, 4.0, caps.SnapDuration(1), "4 to 30 seconds")
+	assert.Equal(t, 30.0, caps.SnapDuration(99))
+	assert.True(t, caps.NativeAudio)
+
+	job := fullJob()
+	job.DurationSeconds = 21.5
+	req, err := modeladapter.Prepare(seed25Target, job)
+	require.NoError(t, err)
+	assert.Equal(t, 22.0, req.DurationSeconds)
+	assert.NotNil(t, req.FirstFrame)
+	assert.NotNil(t, req.LastFrame)
+	assert.Empty(t, req.References, "a first frame and reference images are exclusive scenarios")
+
+	job.FirstFrame, job.LastFrame = nil, nil
+	for len(job.References) < 40 {
+		job.References = append(job.References, job.References[0])
+	}
+	req, err = modeladapter.Prepare(seed25Target, job)
+	require.NoError(t, err)
+	assert.Len(t, req.References, 30, "up to 30 images of the 50 reference assets")
+	assert.Empty(t, req.NegativePrompt)
+	assert.Contains(t, req.Prompt, "Avoid: blurry")
+
+	older, err := modeladapter.Prepare(seedanceTarget, job)
+	require.NoError(t, err)
+	assert.Len(t, older.References, 9, "Seedance 2.0 is unchanged")
+	assert.LessOrEqual(t, older.DurationSeconds, 12.0)
 }

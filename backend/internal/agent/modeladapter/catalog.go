@@ -36,6 +36,13 @@ func Capabilities(m domain.ModelName) (VideoCapabilities, bool) {
 			Durations: []float64{4, 5, 6, 7, 8, 9, 10, 11, 12}, Resolutions: []string{"480p", "720p", "1080p"},
 			MaxReferenceImages: 9, FirstFrame: true, LastFrame: true, NativeAudio: true,
 		}, true
+	case domain.ModelSeedance25:
+		// 4-30 s, up to 50 omni reference assets of which 30 are images (images are all mam sends). A first frame keeps the
+		// ratio of the image; the draft mode (480p only), mov output, editing and extension are not used.
+		return VideoCapabilities{
+			Durations: wholeSeconds(4, 30), Resolutions: []string{"480p", "720p", "1080p"},
+			MaxReferenceImages: 30, FirstFrame: true, LastFrame: true, NativeAudio: true,
+		}, true
 	case domain.ModelRunwayGen45:
 		// Text-to-video and image-to-video (first frame only) at 720p; no free reference images.
 		return VideoCapabilities{Durations: []float64{2, 3, 4, 5, 6, 7, 8, 9, 10}, Resolutions: []string{"720p"}, FirstFrame: true}, true

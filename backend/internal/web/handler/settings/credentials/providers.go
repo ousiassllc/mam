@@ -18,7 +18,7 @@ var providerInfo = map[string]info{
 	"flux":       {"画像生成（FLUX.2）", "https://dashboard.bfl.ai"},
 	"kling":      {"動画生成（Kling 3.0。キーは ACCESS_KEY:SECRET_KEY の形。Kling 4.0 は次の「Kling 4.0」に API キーを入れる）", ""},
 	"kling4":     {"動画生成（Kling 4.0。キーは Kling の API キー 1 つ。Kling 3.0 の ACCESS_KEY:SECRET_KEY とは別）", ""},
-	"seedance":   {"動画生成（Seedance 2.0）", ""},
+	"seedance":   {"動画生成（Seedance 2.0・2.5）", ""},
 	"runway":     {"動画生成（Runway Gen-4.5）", "https://dev.runway.com"},
 	"elevenlabs": {"音声（TTS・Music・SFX）", "https://elevenlabs.io/app/api/api-keys"},
 	"synclabs":   {"Lip Sync", ""},

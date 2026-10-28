@@ -28,5 +28,8 @@ func defaultModels() map[domain.ModelName]ModelConfig {
 		// Kling 4.0 prices in units (1 unit = USD 0.14 list price): 1.0 unit per second at 720p, 1.5 at 1080p, with no video
 		// input. The pricing page marks them "preview": Kling 4.0 is in early access (spec/architecture/model-adapters.md §9.4).
 		domain.ModelKling4: {Model: "kling-4.0", CostPerSecond: map[string]float64{"720p": 0.14, "1080p": 0.21}},
+		// Seedance 2.5 prices in tokens ($10.70 per million at 480p and 720p, $11.70 at 1080p; no video input): the official
+		// per-second figures of a 16:9 clip (ModelArk pricing page, billing examples).
+		domain.ModelSeedance25: {Model: "dreamina-seedance-2-5-260628", CostPerSecond: map[string]float64{"480p": 0.103, "720p": 0.231, "1080p": 0.569}},
 	}
 }

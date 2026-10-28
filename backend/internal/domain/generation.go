@@ -29,6 +29,8 @@ const (
 	ModelGeminiOmniFlash ModelName = "gemini-omni-flash"
 	// ModelKling4 is Kling 4.0 (new API, Bearer API key); ModelKling3 stays on the old one.
 	ModelKling4 ModelName = "kling-4.0"
+	// ModelSeedance25 is Seedance 2.5 (dreamina-seedance-2-5-260628), up to 30 seconds; ModelSeedance2 is unchanged.
+	ModelSeedance25 ModelName = "seedance-2.5"
 )
 
 // ImageModels lists the image models (built-in, then defined on registered endpoints: modelreg).
@@ -38,7 +40,7 @@ func ImageModels() []ModelName {
 
 // VideoModels lists the video models that have an adapter (built-in, then defined on registered endpoints).
 func VideoModels() []ModelName {
-	return mr.Video(ModelKling3, ModelSeedance2, ModelRunwayGen45, ModelGeminiOmniFlash, ModelKling4)
+	return mr.Video(ModelKling3, ModelSeedance2, ModelRunwayGen45, ModelGeminiOmniFlash, ModelKling4, ModelSeedance25)
 }
 
 // JoinModels renders models separated by sep ("kling-3.0 / seedance-2.0 / runway-gen-4.5" for " / ").
