@@ -39,6 +39,17 @@ func Prepare(target VideoTarget, job VideoJob) (VideoRequest, error) {
 	return publishedConfig().Prepare(target, job)
 }
 
+// ClipSeconds is the length of the clip Prepare asks the model for when the Shot is the given seconds long: the shortest
+// supported length, and for Luma Ray 3.2 a clip with a frame is 5 seconds long. framed says whether the clip takes a first or
+// last frame. The estimates of the strategy use it so they match what Prepare requests.
+func (c Config) ClipSeconds(m domain.ModelName, seconds float64, framed bool) float64 {
+	caps, ok := c.VideoCaps(m)
+	if !ok {
+		return seconds
+	}
+	return clipSeconds(m, caps.SnapDuration(seconds), framed)
+}
+
 // Prepare is the package function for the models of this setting.
 func (c Config) Prepare(target VideoTarget, job VideoJob) (VideoRequest, error) {
 	caps, ok := c.VideoCaps(target.Model)
@@ -60,9 +71,7 @@ func (c Config) Prepare(target VideoTarget, job VideoJob) (VideoRequest, error) 
 	if caps.LastFrame && !useReferences {
 		req.LastFrame = job.LastFrame
 	}
-	if target.Model == domain.ModelLumaRay32 && (req.FirstFrame != nil || req.LastFrame != nil) {
-		req.DurationSeconds = lumaShortSeconds // Ray 3.2 takes a frame with a 5 second clip only
-	}
+	req.DurationSeconds = clipSeconds(target.Model, req.DurationSeconds, req.FirstFrame != nil || req.LastFrame != nil)
 	// A model reads either the frames or the free references, never both: Seedance 2.0 treats first
 	// frame, first-and-last frame and reference-to-video as mutually exclusive scenarios and rejects
 	// a request that mixes them. The frames win here unless the job prefers the references (Reference

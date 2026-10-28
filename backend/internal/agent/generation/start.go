@@ -141,18 +141,16 @@ func (o *Orchestrator) decide(ctx context.Context, ref repository.ShotRef, polic
 		return Strategy{}, err
 	}
 	cfg, forced := o.adapter.Config(), FixedModel(locks)
-	var in *RoutingInput
-	if forced == "" {
-		in = &RoutingInput{}
-		if cfg.Routing.Enabled {
-			records, err := o.gens.ModelRecords(ctx, ref.ProjectID)
-			if err != nil {
-				return Strategy{}, err
-			}
-			in = &RoutingInput{
-				Spec: spec, References: ref.Shot.References(), Records: records,
-				MinAcceptance: policy.Effective().MinAcceptanceScore, Unavailable: o.adapter.Unavailable,
-			}
+	// in always carries the References (the cost needs the Keyframe); a forced model ignores the rest of it.
+	in := &RoutingInput{References: ref.Shot.References()}
+	if forced == "" && cfg.Routing.Enabled {
+		records, err := o.gens.ModelRecords(ctx, ref.ProjectID)
+		if err != nil {
+			return Strategy{}, err
+		}
+		in = &RoutingInput{
+			Spec: spec, References: in.References, Records: records,
+			MinAcceptance: policy.Effective().MinAcceptanceScore, Unavailable: o.adapter.Unavailable,
 		}
 	}
 	s, err := DecideRouted(cfg, policy.Quality, ref.Shot.Duration, budget, forced, in)

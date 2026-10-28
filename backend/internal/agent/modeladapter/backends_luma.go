@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/resilience"
+	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
 // lumaBackend calls Luma Ray 3.2 through the Agents API (spec/architecture/model-adapters.md §9.4): POST /v1/generations with
@@ -31,6 +32,14 @@ func lumaCost(perSecond, seconds float64) float64 {
 		return perSecond * lumaShortSeconds * lumaLongClipFactor
 	}
 	return perSecond * lumaShortSeconds
+}
+
+// clipSeconds is the length of a clip of the model once it takes a frame: Ray 3.2 takes a frame with a 5 second clip only.
+func clipSeconds(m domain.ModelName, seconds float64, framed bool) float64 {
+	if m == domain.ModelLumaRay32 && framed {
+		return lumaShortSeconds
+	}
+	return seconds
 }
 
 // body is the create call. A 10 second clip takes no frame (the API rejects the pair): Prepare makes a clip with a frame 5
