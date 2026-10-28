@@ -300,9 +300,10 @@ func NewBackends(cfg Config, keys credential.Store, client httpclient.Doer, poll
 			domain.ModelFlux2:          fluxBackend{mk(VendorFlux)},
 		},
 		Video: map[domain.ModelName]VideoBackend{
-			domain.ModelKling3:      klingBackend{api: mk(VendorKling), now: time.Now},
-			domain.ModelSeedance2:   seedanceBackend{mk(VendorSeedance)},
-			domain.ModelRunwayGen45: runwayBackend{mk(VendorRunway)},
+			domain.ModelKling3:          klingBackend{api: mk(VendorKling), now: time.Now},
+			domain.ModelSeedance2:       seedanceBackend{mk(VendorSeedance)},
+			domain.ModelRunwayGen45:     runwayBackend{mk(VendorRunway)},
+			domain.ModelGeminiOmniFlash: geminiOmniBackend{mk(VendorGoogle)},
 		},
 	}
 }

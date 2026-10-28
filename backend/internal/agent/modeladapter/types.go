@@ -204,7 +204,7 @@ const (
 // VendorOf returns the vendor of a model.
 func VendorOf(m domain.ModelName) Vendor {
 	switch m {
-	case domain.ModelNanoBanana, domain.ModelNanoBananaLite:
+	case domain.ModelNanoBanana, domain.ModelNanoBananaLite, domain.ModelGeminiOmniFlash:
 		return VendorGoogle
 	case domain.ModelGPTImage2:
 		return VendorOpenAI

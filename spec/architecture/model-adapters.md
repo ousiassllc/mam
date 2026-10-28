@@ -59,6 +59,12 @@
 - OpenAI Sora 2 は候補から除外: API提供が2026-09-24付で終了済みのため
 - ローカルの動画モデルは ComfyUI の接続先に登録したワークフローで、Quality Policy の主・代替に割り当てられる。OpenAI 互換の動画は対象外（公式 Videos API が 2026-09-24 に終了し、互換サーバーごとに仕様が違うため。[local-models.md](local-models.md) §1）
 
+**追加の動画モデル（Issue #872・#873・#874）**: 次の動画モデルは組み込みの識別子（§6）で呼べるが、上の Quality/Cost Policy の既定の主・代替にも Multi-model routing の既定の候補にも**入れていない**（実機で品質と単価を見たうえで別途判断する。使うときは設定画面の「画像・動画モデル」か `models.json` の `policies` で割り当てる）。API・制約・単価は §9.4。
+
+| 識別子 | モデル | 選定の理由と注意 |
+|--------|--------|------------------|
+| `gemini-omni-flash` | Google Gemini Omni Flash（API の `gemini-omni-1.1-flash`） | Gemini API の Veo 3.1 Preview は 2026-10-22 に終了し、公式が後継に案内するモデル（Veo の識別子は追加しない）。画像と同じ `google` の API キーで呼べる。3〜10 秒・ネイティブ音声つき・720p で約 0.10 USD/秒。縦横比は 16:9 / 9:16 だけ |
+
 ## 4.5 評価・判断の補助（Judge / Repair 用）
 
 Reasoning LLM Adapter にも動画/画像生成 Model Adapter にも属さない、判定精度と判断コストを補う2つの部品。いずれも生成物ではないため Take / Cost Ledger の対象外（§6）。
@@ -94,7 +100,7 @@ Jev の利用ルール:
 
 ```
 画像: nano-banana, nano-banana-lite, flux-2, gpt-image-2
-動画: kling-3.0, seedance-2.0, runway-gen-4.5
+動画: kling-3.0, seedance-2.0, runway-gen-4.5, gemini-omni-flash
 音声: elevenlabs-tts, elevenlabs-music, elevenlabs-sfx, sync-labs
 ```
 
@@ -102,7 +108,7 @@ Jev の利用ルール:
 
 利用者が登録した接続先のモデルは `comfyui:<接続先名>/<モデル名>`、`openai-compat:<接続先名>/<モデル名>` で保存する（例: `comfyui:gpu-box/wan22-i2v`）。接続先名・モデル名は作成後に変えられない（Take と Cost Ledger の識別子が指すため。変えるときは削除して作り直す）。見積コストが 0 USD でも Cost Ledger の行は書く。組み込みの識別子は列挙のまま、登録したモデルを足した開いた集合として扱う（[local-models.md](local-models.md) §2）。
 
-ChatGPT のサブスク経由の画像は `gpt-image-2:chatgpt-subscription`（API キー経由の `gpt-image-2` と区別できる識別子。`take.model_name`・`cost_ledger_entry.provider` に制約はないのでマイグレーション不要。見積もり 0 USD で、台帳には 0 円の行を残す）。上の表は組み込みの 7 つで、設定で増える識別子も同じ列に入る。
+ChatGPT のサブスク経由の画像は `gpt-image-2:chatgpt-subscription`（API キー経由の `gpt-image-2` と区別できる識別子。`take.model_name`・`cost_ledger_entry.provider` に制約はないのでマイグレーション不要。見積もり 0 USD で、台帳には 0 円の行を残す）。上の表は組み込みの識別子で、設定で増える識別子も同じ列に入る。
 
 Reasoning LLM Adapter側の呼び出しモデルは Take/Cost Ledger の対象外（生成物ではなく思考プロセスのため）。将来的にLLM呼び出しコストの可視化が必要になった場合は、別テーブル（例: `AGENT_INVOCATION_LOG`）の追加を別途検討する。
 
@@ -136,7 +142,8 @@ M1 Issue #7（F-06/F-07/F-11/F-12）の実装仕様。Reasoning LLM Adapter（§
 
 - **画像**: §3 の 4 モデル（Nano Banana / Nano Banana Lite / FLUX.2 / GPT Image 2）のアダプターと、用途→プライマリ/代替の設定（§3 の表どおり。`new_reference` / `edit_reference` / `preview` / `unified_openai`）を実装する。Nano Banana と Nano Banana Lite は同じ Gemini の `models/<モデル ID>:generateContent`（`responseModalities` は `IMAGE`、`imageConfig.aspectRatio`、`imageSize` は送らず既定の 1K）を呼ぶ。Reference Pack の Character/Product/Location は新規生成として `new_reference`（アップロード素材や World State の参照画像がある場合は参照ベース編集として `edit_reference`）、Style/Lighting/Keyframe は `edit_reference` を使う。`prefer_openai` を有効にすると新規参照を `unified_openai` へ回す。`preview`（FLUX.2 による高速プレビュー）は、現状どの機能からも呼ばれない予約ルートである（FLUX.2 を使うには `images.new_reference` などの `primary` に FLUX.2 を指定する）
 - **動画**: Kling 3.0 / Seedance 2.0（M1）と Runway Gen-4.5（M2）の 3 アダプタ（§4）。Runway Gen-4.5 は `POST /v1/text_to_video`（Shot に先頭フレームがなければ）または `POST /v1/image_to_video`（先頭フレームのみ）を非同期タスクとして起動して `GET /v1/tasks/:id` をポーリングし、`X-Runway-Version` ヘッダーを付ける。出力は 720p のみ、長さは 2〜10 秒、ネガティブプロンプトはなく（Avoid は本文に含める）プロンプトは 1000 文字まで、自由な参照画像は取れない。縦横比は `text_to_video` が 16:9 / 9:16 だけ、`image_to_video` は 1:1 も取れる。そのため Brief の縦横比が 1:1 で Shot に先頭フレーム（Keyframe）がないときは、リクエストを送らず 422 相当の `ProviderError` で失敗し、§9.3 のフェイルオーバーで代替モデルに回る（MAX QUALITY では Kling 3.0）。1:1 の Shot で Runway を主に使うには先頭フレームを用意する。価格はクレジット（12 クレジット/秒、1 クレジット = 0.01 USD）から USD に換算して見積る
-- **`model_name` / `provider`**: `take.model_name`・`cost_ledger_entry.provider` は §6 の正規識別子（`nano-banana` / `nano-banana-lite` / `flux-2` / `gpt-image-2` / `kling-3.0` / `seedance-2.0` / `runway-gen-4.5`）で保存する。API のモデル ID（`gemini-nano-banana-2.1` など。既定は §9.2 の表）は設定値で、保存値には使わない。`gpt-image-2` の既定 API モデル ID は `gpt-image-2`（`gpt-image-1` は 2026-10-23 に終了した）。リクエストは OpenAI の公式仕様（`openai-openapi` の `CreateImageRequest` / `CreateImageEditRequest`）に合わせる: 生成は `POST /v1/images/generations` の JSON（`model`・`prompt`・`size`・`quality`・`n`）、参照画像つきは `POST /v1/images/edits` の multipart（`model`・`prompt`・`size`・`quality`・`image[]`）。`gpt-image-2` では `input_fidelity`（常に高精細で処理され、API が変更を許さない）と `response_format`（GPT Image は常に base64 で返す）を送らない。`quality` は `auto` にせず、**品質プロファイル**（`models.gpt-image-2.quality`: `low` / `medium` / `high`。既定 `medium`。§9.2）を毎回明示して送る（`auto` ではモデルが品質を選び、1 枚の価格を前もって決められないため）。サイズは Brief の縦横比から `1536x1024` / `1024x1536` / `1024x1024`（16 の倍数・比 3:1 以内・画素数の範囲を満たす）に決める
+- **追加の動画モデル（Issue #872・#873・#874）**: Gemini Omni Flash・Kling 4.0・Seedance 2.5 は、既定の割り当てには入れずに識別子で呼べる動画モデルとして足した。API・制約・単価・未検証の点は §9.4
+- **`model_name` / `provider`**: `take.model_name`・`cost_ledger_entry.provider` は §6 の正規識別子で保存する。API のモデル ID（`gemini-nano-banana-2.1` など。既定は §9.2 の表）は設定値で、保存値には使わない。`gpt-image-2` の既定 API モデル ID は `gpt-image-2`（`gpt-image-1` は 2026-10-23 に終了した）。リクエストは OpenAI の公式仕様（`openai-openapi` の `CreateImageRequest` / `CreateImageEditRequest`）に合わせる: 生成は `POST /v1/images/generations` の JSON（`model`・`prompt`・`size`・`quality`・`n`）、参照画像つきは `POST /v1/images/edits` の multipart（`model`・`prompt`・`size`・`quality`・`image[]`）。`gpt-image-2` では `input_fidelity`（常に高精細で処理され、API が変更を許さない）と `response_format`（GPT Image は常に base64 で返す）を送らない。`quality` は `auto` にせず、**品質プロファイル**（`models.gpt-image-2.quality`: `low` / `medium` / `high`。既定 `medium`。§9.2）を毎回明示して送る（`auto` ではモデルが品質を選び、1 枚の価格を前もって決められないため）。サイズは Brief の縦横比から `1536x1024` / `1024x1536` / `1024x1024`（16 の倍数・比 3:1 以内・画素数の範囲を満たす）に決める
 - **ローカル・代替モデル（Issue #831）**: 登録した ComfyUI（画像・動画。`POST /prompt` と `/ws` の進捗、取り消しは自分の `prompt_id` だけ）と OpenAI 互換（画像のみ。`/v1/images/generations`・`/v1/images/edits`）の接続先のモデルを、組み込みと同じ用途・Quality Policy の割り当て、フェイルオーバー、ブレーカー（接続先ごとに `endpoint:<名>`）、同時実行数（既定 1）に載せる。識別子は §6 のとおり。保存した接続先・モデルは再起動なしで反映する。詳細は [local-models.md](local-models.md)
 - **ChatGPT のサブスク経由の画像（非公式、`internal/agent/modeladapter/chatgptimage`）**: `gpt-image-2:chatgpt-subscription`。Codex のエンドポイントの `image_generation` ツールを、画像専用のログイン（Codex の公開クライアント）のトークンで呼ぶ。参照画像は `input_image` で渡せる。**既定 OFF**で、OFF のあいだは外部への呼び出しを一切しない。ON にするには設定画面でリスクを確認する。選択肢（設定画面・MCP）に出るのは ON のあいだだけで、すでに割り当ててあって OFF になった場合は呼ばずに代替モデルへ回る。専用のベンダー `chatgpt-subscription`（ブレーカー・同時実行数 1）を持つ。呼び出しの失敗は §9.3 と同じ再試行・代替の対象で、無音が 180 秒続くと中止する。設計は `spec/architecture/chatgpt-signin.md` §5.2
 
@@ -146,7 +153,7 @@ M1 Issue #7（F-06/F-07/F-11/F-12）の実装仕様。Reasoning LLM Adapter（§
 
 | キー | 内容 | 既定 |
 |---|---|---|
-| `vendors.<google\|openai\|flux\|kling\|seedance\|runway>` | `base_url` / `max_concurrency`（同時実行の上限） / `timeout_seconds` | 4 / 4 / 4 / 3 / 3 / 2、120〜900 秒 |
+| `vendors.<google\|openai\|flux\|kling\|seedance\|runway>` | `base_url` / `max_concurrency`（同時実行の上限） / `timeout_seconds` | 4 / 4 / 4 / 3 / 3 / 2、180〜900 秒（`google` は動画（Gemini Omni Flash）の生成を待つため 600 秒。画像の呼び出しにも同じ値が掛かる） |
 | `models.<正規識別子>` | `model`（API のモデル ID）、`fast_model`、`cost_per_image_usd`、`cost_per_second_usd`（解像度別）、`quality`（`gpt-image-2` だけ。`low` / `medium` / `high`。品質プロファイル。下の「GPT Image 2 の品質プロファイルと価格」）。価格は参考値（§8）で見積コストにのみ使う（GPT Image 2 の `actual_cost` は応答の `usage` から計算する） | §3 / §4 の割り当て。`quality` は `medium` |
 | `images.<purpose>` | `primary` / `fallback`（`model` と `fast`） | §3 の表 |
 | `policies.<fast\|balanced\|max_quality>` | `primary` / `fallback`（`model` と `resolution`）、`takes`（Take 数） | FAST: Kling 3.0 720p → Seedance 2.0 480p、2 Take。BALANCED: Seedance 2.0 720p → Kling 3.0 720p、3 Take。MAX QUALITY: Runway Gen-4.5 720p → Kling 3.0 1080p、4 Take |
@@ -195,6 +202,23 @@ API キーは `credential.Store` のベンダー名（`google` / `openai` / `flu
 - **Prompt Autopilot（F-06）**: Prompt Planner（Reasoning LLM）が Shot の指示と World State・直前 Shot の Spec・Reference Pack から Canonical Shot Spec（JSON、英語）を作る。検証（目的・フレーミングあり、Acting が Shot 内で時系列順、日本語などを含まない）に失敗した回答は保存しない。既存 Spec は、追加指示がある場合だけ改訂し、無ければ再利用する。生成のたびに `prompt_version` が 1 行増え、`shot_spec_snapshot` に保存時点の Spec、`model_adapter_output` に各モデルへ渡す内容（プロンプト・解像度・参照枚数）を記録する
 - **Reference Pack（F-11）**: Art Director（Reasoning LLM）が Character/Product/Location/Style/Lighting/Keyframe の各画像のプロンプトを決め、画像 Model Adapter が生成する。Character/Product/Location/Style/Lighting を先に並列生成し、Keyframe は先行する 3 種を入力にして最後に生成する。全画像が揃ったときだけ `shot.shot_spec.references` を置き換え（途中で失敗したら旧 Pack を残し、作成済みファイルも削除する）。Keyframe は動画生成の First Frame になる。画像モデルへ入力として渡す参照画像は、Brief に添付したアップロード素材も、World State の参照（Character の顔・体、Product の形・ラベル、Location のレイアウト）も、種類ごとに読み込めた先頭の 4 枚までで、5 枚目以降は通知なしで使われない。1 枚 20 MiB を超える保存済み画像は入力にせず、警告ログを残すだけで除外する（AI Video Judge に渡す参照画像も同じ 20 MiB で、超えるものは黙って渡さない）
 - **ジョブ**: 生成・Reference Pack 作成は `job.kind = generate` の非再開ジョブ（課金を伴うため、異常終了後と、シャットダウン（Ctrl+C など）で実行中に中断された場合は、キューに戻さず失敗として扱い、Shot を PLANNING へ戻す）。開始時に Shot を GENERATING にし、同じ Shot の二重実行は 409 とする。進捗は `/ws/shots/:id`、チャットの進捗カードと Take/Keyframe カードで通知する
+
+### 9.4 追加の動画モデル（Gemini Omni Flash・Kling 4.0・Seedance 2.5）
+
+§4 の「追加の動画モデル」の API・制約・単価。どれも既定の割り当てには入れず、識別子で呼べる。単価は公式の料金ページで確認できたものだけを `cost_per_second_usd` に入れる（価格は参考値で、見積コストにのみ使う。§8）。公式に秒あたりの価格が無い解像度は `Capabilities` の解像度から外して提供しない。
+
+#### Gemini Omni Flash（`gemini-omni-flash`、Issue #872）
+
+- **API**: Gemini の Interactions API。ベンダーは `google`（画像と同じ API キー・ベース URL・同時実行・ブレーカー）。`POST {base_url}/v1beta/interactions`（`x-goog-api-key`）。本文は `model`（既定 `gemini-omni-1.1-flash`。Stable。Preview の `gemini-omni-flash-preview` と Veo 3.1 Preview の識別子は終了済みなので入れない）・`input`（画像 `{type: image, mime_type, data}`（Base64）を先に、最後に `{type: text}`）・`response_format`（`type: video`・`aspect_ratio`・`resolution`・`delivery: uri`）・`generation_config.video_config.task`
+- **入力**: テキストだけなら `text_to_video`。First Frame があれば画像を送り、プロンプトの先頭に `<FIRST_FRAME> ` を付けて `image_to_video`。First と Last の両方があれば 2 枚を順に送り `<FIRST_FRAME> <LAST_FRAME> ` を付ける（公式の `task` の値に補間は無いので `task` は送らず、タグで指示する）。自由な参照画像は、画像を送り、プロンプトの先頭に `[# References <IMAGE_REF_0>@Image1 …]`、末尾に公式の案内文（参照画像を最初のフレームとして使わない）を付けて `reference_to_video`。フレームと参照は同時に送らない（`Prepare` が片方を残す。§9.3）。参照画像の上限は公式に記載が無く、公式の例の 6 枚を `MaxReferenceImages` にした。音声・動画の参照は使わない
+- **結果**: `steps[]` の `model_output` の `video`。`delivery: uri` では `uri`（Files API のファイル）が返る。ファイルが `ACTIVE` になるまで `GET {base_url}/v1beta/files/<名前>` を状態確認の間隔でポーリングし（`FAILED` は失敗）、`uri`（`:download?alt=media`）をダウンロードする。ダウンロードにだけ API キーをクエリ（`key=`）で付ける（公式の例と同じ。ヘッダーで送ると、ダウンロードが別ホストへリダイレクトされたときに転送されるため）。`uri` がベンダーのホスト（§9.3 のベンダー応答 URL の規則）でなければ、キーを送らずエラーにする。動画が `data`（インライン）で返ったときはそのまま読む。応答が動画を含まず `in_progress` などのときは `GET {base_url}/v1beta/interactions/<id>` を同じ間隔でポーリングする。`completed` なのに動画が無い（プロンプトのフィルタ）ときは空の結果の `ProviderError`、`failed` / `cancelled` / `incomplete` は 422 相当の拒否。受付後の失敗は §9.3 のとおり同じジョブへの GET だけを再試行し、再提出しない
+- **長さ・解像度**: 長さを渡すリクエストの項目は無く、プロンプトで頼む（`Prepare` のプロンプトに「Duration N seconds」が入る）。対応する長さは 3〜10 秒（整数）。解像度は `720p` だけ。公式は 360p・1080p・4K（アップスケール）も載せるが、秒あたりの価格が公式に載るのは 720p（5,792 トークン/秒）だけなので提供しない
+- **縦横比**: `16:9` と `9:16` だけ（公式の `aspect_ratio` の値）。1:1 は送らず、422 相当の `ProviderError` で失敗して §9.3 のフェイルオーバーで代替に回る（Runway と同じ。`direct.AspectProblem` も断る）
+- **使えない項目**: ネガティブプロンプト・システム指示・温度などは公式が非対応。Avoid の項目はプロンプトへ折り込み、シードは送らない。プロンプトの上限は公式に記載が無く、折り込みモデルと同じ 2400 文字にする
+- **音声**: 生成した動画にモデルのネイティブ音声が付く（既定で、切る項目は無い。`NativeAudio` は真）。mam はそれを Take のファイルにそのまま残し、Audio Director の既存のミキシングが扱う（Seedance 2.0 と同じ扱い）。ElevenLabs の音声（Audio Director）は変えない
+- **単価**: 動画出力 $17.50 / 100 万トークン、720p は 5,792 トークン/秒。公式は実効「約 $0.10/秒」と書き、`cost_per_second_usd` は `720p: 0.10`（計算では 0.1014）。入力（$1.50 / 100 万トークン）は含めず、`actual_cost` は取らない（見積のみ）。出どころ: <https://ai.google.dev/gemini-api/docs/pricing>（2026-10-28 に取得）
+- **同時実行・タイムアウト**: ベンダー `google` のまま（同時実行 4）。呼び出し全体のタイムアウトは画像と共有で、動画は受付から結果の取得まで待つため 120 秒から 600 秒に延ばした（画像が応答しないときの待ちも延びる）
+- **未検証（実際の API キーが要る）**: ① `delivery: uri` と Files API の状態（`ACTIVE` / `FAILED`）・`:download` の形、② `generation_config.video_config.task` と `<FIRST_FRAME>`・`[# References …]` のタグの効き方、③ 参照画像の上限、④ `POST` が生成の完了まで返らないときの待ちと、`in_progress` のときの `GET /v1beta/interactions/<id>`、⑤ 実際の請求が約 0.10 USD/秒に合うか
 
 ## 10. AI Video Judge と Face Identity Similarity の実装（`internal/agent/judge`、`internal/facesim`）
 

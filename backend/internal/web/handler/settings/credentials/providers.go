@@ -14,7 +14,7 @@ type info struct {
 var providerInfo = map[string]info{
 	"anthropic":  {"テキスト生成（Claude。Agent の LLM）", "https://platform.claude.com/settings/keys"},
 	"openai":     {"テキスト生成（GPT-5 系）と画像生成（GPT Image 2）", ""},
-	"google":     {"テキスト生成（Gemini）と画像生成（Nano Banana）", "https://aistudio.google.com/apikey"},
+	"google":     {"テキスト生成（Gemini）・画像生成（Nano Banana）・動画生成（Gemini Omni Flash）", "https://aistudio.google.com/apikey"},
 	"flux":       {"画像生成（FLUX.2）", "https://dashboard.bfl.ai"},
 	"kling":      {"動画生成（Kling 3.0。キーは ACCESS_KEY:SECRET_KEY の形）", ""},
 	"seedance":   {"動画生成（Seedance 2.0）", ""},

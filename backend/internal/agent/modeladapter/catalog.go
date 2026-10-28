@@ -39,6 +39,14 @@ func Capabilities(m domain.ModelName) (VideoCapabilities, bool) {
 	case domain.ModelRunwayGen45:
 		// Text-to-video and image-to-video (first frame only) at 720p; no free reference images.
 		return VideoCapabilities{Durations: []float64{2, 3, 4, 5, 6, 7, 8, 9, 10}, Resolutions: []string{"720p"}, FirstFrame: true}, true
+	case domain.ModelGeminiOmniFlash:
+		// 3-10 s, 24 FPS, with native sound. 360p, 1080p and 4K exist but only the 720p price is published per second, so only
+		// 720p is offered. First and last frame, or free reference images (the two are exclusive in Prepare); no length parameter:
+		// the length is asked for in the prompt. The official documentation states no limit for reference images: 6 is its example.
+		return VideoCapabilities{
+			Durations: []float64{3, 4, 5, 6, 7, 8, 9, 10}, Resolutions: []string{"720p"},
+			MaxReferenceImages: 6, FirstFrame: true, LastFrame: true, NativeAudio: true,
+		}, true
 	}
 	return publishedCaps(m)
 }

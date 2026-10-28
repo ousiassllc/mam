@@ -147,7 +147,7 @@ type Config struct {
 func DefaultConfig() Config {
 	return Config{
 		Vendors: map[Vendor]VendorConfig{
-			VendorGoogle:   {BaseURL: "https://generativelanguage.googleapis.com", MaxConcurrency: 4, TimeoutSeconds: 120},
+			VendorGoogle:   {BaseURL: "https://generativelanguage.googleapis.com", MaxConcurrency: 4, TimeoutSeconds: 600},
 			VendorOpenAI:   {BaseURL: "https://api.openai.com", MaxConcurrency: 4, TimeoutSeconds: 180},
 			VendorFlux:     {BaseURL: "https://api.bfl.ai", MaxConcurrency: 4, TimeoutSeconds: 180},
 			VendorKling:    {BaseURL: "https://api.klingai.com", MaxConcurrency: 3, TimeoutSeconds: 900},
@@ -167,6 +167,8 @@ func DefaultConfig() Config {
 			domain.ModelSeedance2:      {Model: "seedance-2-0", CostPerSecond: map[string]float64{"480p": 0.03, "720p": 0.08, "1080p": 0.18}},
 			// Runway prices in credits (12 credits per second of Gen-4.5, 1 credit = USD 0.01).
 			domain.ModelRunwayGen45: {Model: "gen4.5", CostPerSecond: map[string]float64{"720p": 0.12}},
+			// Gemini Omni Flash prices in tokens ($17.50 per million video output tokens, 5,792 tokens per second of 720p video): about USD 0.10 per second (the official figure).
+			domain.ModelGeminiOmniFlash: {Model: "gemini-omni-1.1-flash", CostPerSecond: map[string]float64{"720p": 0.10}},
 		},
 		Images: map[ImagePurpose]ImageRoute{
 			PurposeNewReference:  {Primary: ImageTarget{Model: domain.ModelGPTImage2}, Fallback: ImageTarget{Model: domain.ModelNanoBanana}},
