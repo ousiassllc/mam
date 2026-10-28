@@ -169,7 +169,7 @@ func priceOf(cfg modeladapter.Config, m domain.ModelName, media string) Price {
 	caps, _ := cfg.VideoCaps(m)
 	prices := map[string]float64{}
 	for _, res := range caps.Resolutions {
-		if p := cfg.VideoCost(modeladapter.VideoTarget{Model: m, Resolution: res}, 1); p > 0 {
+		if p := cfg.VideoPerSecond(modeladapter.VideoTarget{Model: m, Resolution: res}); p > 0 {
 			prices[res] = p
 		}
 	}

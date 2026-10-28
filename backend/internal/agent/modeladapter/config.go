@@ -305,6 +305,15 @@ func (c Config) ImageRouteFor(p ImagePurpose) ImageRoute {
 	return c.Images[p]
 }
 
+// VideoPerSecond is the unit price of a second of a clip (USD): the price shown for the model. Luma Ray 3.2 bills 5 seconds at a
+// time, so this is the price of a second of a 5 second clip, not of VideoCost(t, 1).
+func (c Config) VideoPerSecond(t VideoTarget) float64 {
+	if lm, _, ok := c.LocalModel(t.Model); ok {
+		return lm.CostPerSecond
+	}
+	return c.Models[t.Model].CostPerSecond[t.Resolution]
+}
+
 // VideoCost is the estimated cost of a clip of the given length.
 func (c Config) VideoCost(t VideoTarget, seconds float64) float64 {
 	if lm, _, ok := c.LocalModel(t.Model); ok {
