@@ -1,5 +1,6 @@
 import { expect, waitUntil } from '@open-wc/testing';
 import { sendKeys, sendMouse, setViewport } from '@web/test-runner-commands';
+import htmx from 'htmx.org';
 import '../../main';
 
 describe('"?" help popover (spec/components/shared-ui-parts.md §9)', () => {
@@ -107,6 +108,27 @@ describe('"?" help popover (spec/components/shared-ui-parts.md §9)', () => {
     await sendKeys({ press: 'Escape' });
     await closed();
 
+    expect(document.activeElement === toggle()).to.equal(true);
+  });
+
+  it('takes the Esc before an inline dialog that is open as well: the help closes, the dialog stays', async () => {
+    host.insertAdjacentHTML(
+      'beforeend',
+      '<button type="button" id="ask" hx-get="/src/components/testdata/inline-dialog-open.html" hx-target="#mm-dialog" hx-swap="innerHTML">開く</button><div id="mm-dialog"></div>',
+    );
+    htmx.process(host);
+    host.querySelector<HTMLButtonElement>('#ask')!.click();
+    await waitUntil(() => host.querySelector('[data-inline-dialog]') !== null, 'the dialog did not arrive', {
+      timeout: 2000,
+    });
+    toggle().click();
+    await opened();
+    (document.activeElement as HTMLElement | null)?.blur(); // the focus is on the page, as after a click on the text of the help
+
+    await sendKeys({ press: 'Escape' });
+    await closed();
+
+    expect(host.querySelector('[data-inline-dialog]')).to.not.equal(null);
     expect(document.activeElement === toggle()).to.equal(true);
   });
 

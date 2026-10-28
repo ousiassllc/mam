@@ -52,6 +52,11 @@ for (const type of [
 // shows a value that was not saved (issue 538).
 installSaveOnChangeRevert();
 
+// The "?" helps: a button beside a heading opens its explanation; Esc closes it. Before the inline dialog: both listen
+// to Esc on the document and the one that runs first takes it (preventDefault), so the help, which floats above the page,
+// is what Esc closes first when a question of the model manager is open as well.
+installHelp();
+
 // The model manager's questions in the page (age confirmation, license): the focus goes in, Esc closes, the focus goes back.
 // Before the focus restore: a focus that is back on a control is not touched by it.
 installInlineDialog();
@@ -63,9 +68,6 @@ installFocusRestore();
 // The modal dialog of the settings screen: opens when the body it was asked for arrives, closes on Esc / its buttons /
 // a saved form, and gives the focus back to the control that opened it.
 installModal();
-
-// The "?" helps: a button beside a heading opens its explanation; Esc closes it.
-installHelp();
 
 // The "コピー" button of a value that is shown once (an MCP token that was just issued).
 installCopy();
