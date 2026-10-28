@@ -30,3 +30,8 @@ func TestSetCopiesItsArguments(t *testing.T) {
 	ids[0] = "changed"
 	assert.Contains(t, domain.ImageModels(), domain.ModelName("comfyui:box/a"))
 }
+
+func TestJoinRendersTheVideoModelsTheDirectorOffers(t *testing.T) {
+	assert.Equal(t, "kling-3.0 / seedance-2.0 / runway-gen-4.5 / gemini-omni-flash / kling-4.0 / seedance-2.5 / minimax-h3 / minimax-h3-max / wan-3.0 / luma-ray-3.2", modelreg.Join(domain.VideoModels(), " / "))
+	assert.Empty(t, modelreg.Join([]domain.ModelName(nil), ", "))
+}

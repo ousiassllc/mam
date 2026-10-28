@@ -193,18 +193,28 @@ type Vendor string
 
 // Vendors.
 const (
-	VendorGoogle   Vendor = "google"
-	VendorOpenAI   Vendor = "openai"
-	VendorFlux     Vendor = "flux"
-	VendorKling    Vendor = "kling"
+	VendorGoogle Vendor = "google"
+	VendorOpenAI Vendor = "openai"
+	VendorFlux   Vendor = "flux"
+	VendorKling  Vendor = "kling"
+	// VendorKling4 is Kling 4.0 on the new API (https://api-singapore.klingai.com, one API key as the Bearer token). Kling 3.0
+	// stays on the old one (VendorKling: ACCESS_KEY:SECRET_KEY, JWT), so the two keys and base URLs cannot share a vendor.
+	VendorKling4   Vendor = "kling4"
 	VendorSeedance Vendor = "seedance"
 	VendorRunway   Vendor = "runway"
+	// VendorMiniMax is MiniMax H3 / H3 Max (https://api.minimax.io, one API key as the Bearer token).
+	VendorMiniMax Vendor = "minimax"
+	// VendorAlibaba is Alibaba Cloud Model Studio (DashScope): Wan 3.0. Its host holds the workspace ID of the user and its
+	// region (https://{WorkspaceId}.ap-southeast-1.maas.aliyuncs.com), so the key is stored as WORKSPACE_ID:API_KEY.
+	VendorAlibaba Vendor = "alibaba"
+	// VendorLuma is Luma Ray 3.2 on the Agents API (https://agents.lumalabs.ai, one API key as the Bearer token).
+	VendorLuma Vendor = "luma"
 )
 
 // VendorOf returns the vendor of a model.
 func VendorOf(m domain.ModelName) Vendor {
 	switch m {
-	case domain.ModelNanoBanana, domain.ModelNanoBananaLite:
+	case domain.ModelNanoBanana, domain.ModelNanoBananaLite, domain.ModelGeminiOmniFlash:
 		return VendorGoogle
 	case domain.ModelGPTImage2:
 		return VendorOpenAI
@@ -212,10 +222,18 @@ func VendorOf(m domain.ModelName) Vendor {
 		return VendorFlux
 	case domain.ModelKling3:
 		return VendorKling
-	case domain.ModelSeedance2:
+	case domain.ModelKling4:
+		return VendorKling4
+	case domain.ModelSeedance2, domain.ModelSeedance25:
 		return VendorSeedance
 	case domain.ModelRunwayGen45:
 		return VendorRunway
+	case domain.ModelMiniMaxH3, domain.ModelMiniMaxH3Max:
+		return VendorMiniMax
+	case domain.ModelWan3:
+		return VendorAlibaba
+	case domain.ModelLumaRay32:
+		return VendorLuma
 	case chatgptid.Model:
 		return Vendor(chatgptid.Vendor)
 	}
@@ -227,7 +245,7 @@ func VendorOf(m domain.ModelName) Vendor {
 
 // Vendors lists every vendor that has a backend.
 func Vendors() []Vendor {
-	return []Vendor{VendorGoogle, VendorOpenAI, VendorFlux, VendorKling, VendorSeedance, VendorRunway}
+	return []Vendor{VendorGoogle, VendorOpenAI, VendorFlux, VendorKling, VendorKling4, VendorSeedance, VendorRunway, VendorMiniMax, VendorAlibaba, VendorLuma}
 }
 
 // ImageCost is the most one image of the model can cost (its dearest size): what a budget check holds.

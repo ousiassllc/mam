@@ -24,7 +24,7 @@ Issue #835。[model-adapters.md](../model-adapters.md)（§9 の実装）に足�
 | FLUX.2（BFL） | **送る**（`seed`） | |
 | Runway Gen-4.5 | **送る**（`seed` は 0〜4294967295） | |
 | ローカルの ComfyUI（ワークフローにシードの割り当てがある） | **送る** | `comfyui/graph.go` が割り当てへ入れる。割り当てが無ければ従来どおり乱数 |
-| Nano Banana（Gemini）・Nano Banana Lite・GPT Image 2・Kling 3.0・Seedance 2.0・ChatGPT サブスク ほか | 送らない | 同じ入力を本数ぶん呼ぶ。`seed` は NULL・`seed_sent=0`。Nano Banana は画像への効き方を実機で確認できるまで false（`modeladapter.SupportsSeed`） |
+| Nano Banana（Gemini）・Nano Banana Lite・GPT Image 2・Kling 3.0・Kling 4.0・Seedance 2.0・Seedance 2.5・Gemini Omni Flash・MiniMax H3 / H3 Max・Wan 3.0・Luma Ray 3.2・ChatGPT サブスク ほか | 送らない | 同じ入力を本数ぶん呼ぶ。`seed` は NULL・`seed_sent=0`。Nano Banana は画像への効き方を実機で確認できるまで false（`modeladapter.SupportsSeed`）。Kling 4.0・Gemini Omni Flash・MiniMax は公式の本文に `seed` の欄が無い。Wan 3.0 は公式の本文に `seed` があるが、mam は送らない（`SupportsSeed` は偽） |
 
 `modeladapter.SupportsSeed(model)` が組み込みの判断（FLUX.2・Runway だけ）、`direct.SupportsSeed(cfg, model)` がローカルのワークフローまで含めた判断。**シードはサーバーが作る**（`crypto/rand` の 32 ビット。Runway の範囲に収まる）。結果ごとに別の値を、**実際に送った値**で `gentest_result.seed` に保存する（再現のため）。利用者がシードを指定する欄はない。
 

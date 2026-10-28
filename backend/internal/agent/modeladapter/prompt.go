@@ -39,6 +39,17 @@ func Prepare(target VideoTarget, job VideoJob) (VideoRequest, error) {
 	return publishedConfig().Prepare(target, job)
 }
 
+// ClipSeconds is the length of the clip Prepare asks the model for when the Shot is the given seconds long: the shortest
+// supported length, and for Luma Ray 3.2 a clip with a frame is 5 seconds long. framed says whether the clip takes a first or
+// last frame. The estimates of the strategy use it so they match what Prepare requests.
+func (c Config) ClipSeconds(m domain.ModelName, seconds float64, framed bool) float64 {
+	caps, ok := c.VideoCaps(m)
+	if !ok {
+		return seconds
+	}
+	return clipSeconds(m, caps.SnapDuration(seconds), framed)
+}
+
 // Prepare is the package function for the models of this setting.
 func (c Config) Prepare(target VideoTarget, job VideoJob) (VideoRequest, error) {
 	caps, ok := c.VideoCaps(target.Model)
@@ -60,6 +71,7 @@ func (c Config) Prepare(target VideoTarget, job VideoJob) (VideoRequest, error) 
 	if caps.LastFrame && !useReferences {
 		req.LastFrame = job.LastFrame
 	}
+	req.DurationSeconds = clipSeconds(target.Model, req.DurationSeconds, req.FirstFrame != nil || req.LastFrame != nil)
 	// A model reads either the frames or the free references, never both: Seedance 2.0 treats first
 	// frame, first-and-last frame and reference-to-video as mutually exclusive scenarios and rejects
 	// a request that mixes them. The frames win here unless the job prefers the references (Reference
@@ -75,6 +87,14 @@ func (c Config) Prepare(target VideoTarget, job VideoJob) (VideoRequest, error) 
 	case domain.ModelKling3, c.negativeModel(target.Model):
 		req.Prompt = shotprompt.Fit(body, constraints, 2400)
 		req.NegativePrompt = textutil.TruncateRunes(strings.Join(avoid, ", "), 400)
+	case domain.ModelKling4: // no negative prompt field (the prompt takes negative descriptions); English input up to 26,000 characters
+		req.Prompt = shotprompt.Fit(body, constraints+shotprompt.AvoidSentence(avoid), 26000)
+	case domain.ModelMiniMaxH3, domain.ModelMiniMaxH3Max: // no negative prompt field; up to 7000 characters
+		req.Prompt = shotprompt.Fit(body, constraints+shotprompt.AvoidSentence(avoid), 7000)
+	case domain.ModelWan3: // no negative prompt field; up to 20,000 characters (the API cuts the rest, which would lose the Constraints)
+		req.Prompt = shotprompt.Fit(body, constraints+shotprompt.AvoidSentence(avoid), 20000)
+	case domain.ModelLumaRay32: // no negative prompt field; 1 to 6,000 characters
+		req.Prompt = shotprompt.Fit(body, constraints+shotprompt.AvoidSentence(avoid), 6000)
 	case domain.ModelRunwayGen45: // no negative prompt, and a 1000 character limit: Constraints and the avoid list are kept whole
 		req.Prompt = shotprompt.Fit(body, constraints+shotprompt.AvoidSentence(avoid), 1000)
 	default: // models without a negative prompt get the constraints as part of the prompt

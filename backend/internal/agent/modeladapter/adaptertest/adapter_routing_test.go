@@ -1,4 +1,4 @@
-package modeladapter_test
+package adaptertest_test
 
 import (
 	"context"

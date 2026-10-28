@@ -86,7 +86,7 @@ func TestEdit_OnlyProvidersWithAFreeReadOnlyCallHaveAConnectionTest(t *testing.T
 		assert.Contains(t, body, `hx-post="/settings/credentials/`+p+`/test"`, p)
 		assert.NotContains(t, body, `data-testid="credential-no-test"`, p)
 	}
-	for _, p := range []string{"kling", "seedance", "synclabs", "typesafe"} {
+	for _, p := range []string{"kling", "kling4", "minimax", "alibaba", "luma", "seedance", "synclabs", "typesafe"} {
 		body := r.do(http.MethodGet, paths.CredentialEdit(p), nil, true).Body.String()
 		assert.NotContains(t, body, "/test", p)
 		assert.Contains(t, body, "保存したあと、最初の生成で確かめられます", p)
@@ -237,4 +237,19 @@ func TestTest_RefusesWhatCannotBeTried(t *testing.T) {
 	rec = r.do(http.MethodPost, paths.CredentialTest("openai"), nil, true)
 	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code, "no typed key and no saved one")
 	assert.Contains(t, rec.Body.String(), "API キーを入力してください")
+}
+
+// Kling 3.0 and Kling 4.0 have a key each, and each says which form of key it takes: ACCESS_KEY:SECRET_KEY for the old API,
+// one API key for the new one (spec/architecture/kling/kling-api.md §5).
+func TestEdit_Kling3AndKling4SayWhichFormOfKeyTheyTake(t *testing.T) {
+	r := newRig(t)
+
+	kling3 := r.do(http.MethodGet, paths.CredentialEdit("kling"), nil, true).Body.String()
+	assert.Contains(t, kling3, "ACCESS_KEY:SECRET_KEY")
+	assert.Contains(t, kling3, "Kling 4.0 は次の「Kling 4.0」に API キーを入れる")
+
+	kling4 := r.do(http.MethodGet, paths.CredentialEdit("kling4"), nil, true).Body.String()
+	assert.Contains(t, kling4, "Kling 4.0 の API キー")
+	assert.Contains(t, kling4, "Kling の API キー 1 つ")
+	assert.Contains(t, kling4, `hx-put="/credentials/kling4"`)
 }
