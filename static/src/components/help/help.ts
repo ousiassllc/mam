@@ -1,53 +1,95 @@
 /**
- * The "?" help of a screen (spec/components/shared-ui-parts.md §9, molecules/help): a button with `data-help-toggle`
- * whose `aria-controls` names a panel with `data-help-panel` that is `hidden` until the button is pressed. It is a
- * disclosure, not a dialog: the panel opens in the flow of the page under its heading, the focus stays on the button
- * (so that Enter or Space again closes it) and the screen reader is told by `aria-expanded`.
+ * The "?" help of a screen (spec/components/shared-ui-parts.md §9, molecules/help): a button with `data-help-toggle` and
+ * `popovertarget` that opens a native popover (`popover`, `data-help-panel`) by it. The browser does what a popover is
+ * for: it is in the top layer (no parent with `overflow` clips it), one help is open at a time (opening another closes
+ * it), a click or tap outside closes it, and the button toggles it from a click, Enter or Space. This file adds what the
+ * browser does not:
  *
- * - Enter / Space / click toggle the panel and `aria-expanded` together (a `<button>` gives the keys).
- * - Esc closes the panel when the focus is on its button or inside it, and puts the focus on the button.
- * - Helps are independent: opening one does not close another.
- * - It works on controls that arrive later (a swapped body): the listeners are on the document.
+ * - `aria-expanded` follows the popover (it is closed in the markup).
+ * - The popover is put by its button and kept inside the window: under the button, left edges aligned, shifted left to fit
+ *   the width; flipped above the button when there is no room below; as a last resort it sits at the bottom of the window
+ *   (it scrolls inside, `max-height` in the markup). It is put again when the window is resized or the page scrolls.
+ * - Esc closes it when the focus is on its button, in it or nowhere (on the page), and puts the focus on the button (the
+ *   browser's own return is not reliable: a button pressed by touch or by Safari's click is not focused).
+ * - The focus is not moved into the popover (it is not a dialog), so Tab from the button goes on to what is next in the
+ *   page, which is the content of the popover (its links) when it is open. When the focus goes to anything else, the
+ *   popover closes (the keyboard counterpart of the click outside).
+ *
+ * Listeners are on the document: a help in a swapped body works too.
  */
 
 const TOGGLE = '[data-help-toggle]';
 const PANEL = '[data-help-panel]';
+const GAP = 6;
+const EDGE = 8;
 
-function panelOf(toggle: Element): HTMLElement | null {
-  const id = toggle.getAttribute('aria-controls');
-  return id ? document.getElementById(id) : null;
+function toggleOf(panel: Element): HTMLElement | null {
+  return panel.id ? document.querySelector<HTMLElement>(`${TOGGLE}[aria-controls="${CSS.escape(panel.id)}"]`) : null;
 }
 
-function set(toggle: HTMLElement, open: boolean): void {
-  const panel = panelOf(toggle);
-  if (!panel) return;
-  panel.hidden = !open;
-  toggle.setAttribute('aria-expanded', String(open));
+function openPanel(): HTMLElement | null {
+  return document.querySelector<HTMLElement>(`${PANEL}:popover-open`);
 }
 
-/** The button of the open help that the event is on or inside the panel of; null when it is on none. */
-function openToggleAt(target: Element | null): HTMLElement | null {
-  if (!target) return null;
-  const own = target.closest<HTMLElement>(TOGGLE);
-  if (own && own.getAttribute('aria-expanded') === 'true') return own;
-  const panel = target.closest<HTMLElement>(PANEL);
-  if (!panel || panel.hidden || !panel.id) return null;
-  return document.querySelector<HTMLElement>(`${TOGGLE}[aria-controls="${CSS.escape(panel.id)}"]`);
+/** Puts the open `panel` by `toggle`, inside the window. */
+function place(panel: HTMLElement, toggle: HTMLElement): void {
+  const width = document.documentElement.clientWidth;
+  const height = window.innerHeight;
+  const at = toggle.getBoundingClientRect();
+  const w = panel.offsetWidth;
+  const h = panel.offsetHeight;
+  const left = Math.max(EDGE, Math.min(at.left, width - w - EDGE));
+  let top = at.bottom + GAP;
+  if (top + h > height - EDGE) {
+    const above = at.top - GAP - h;
+    top = above >= EDGE ? above : Math.max(EDGE, height - h - EDGE);
+  }
+  panel.style.left = `${left}px`;
+  panel.style.top = `${top}px`;
+}
+
+function replace(): void {
+  const panel = openPanel();
+  const toggle = panel ? toggleOf(panel) : null;
+  if (panel && toggle) place(panel, toggle);
 }
 
 /** Installs the behaviour of the "?" helps. Call it once (main.ts). */
 export function installHelp(root: Document = document): void {
-  root.addEventListener('click', (event) => {
-    const toggle = (event.target as Element | null)?.closest<HTMLElement>(TOGGLE);
-    if (toggle) set(toggle, toggle.getAttribute('aria-expanded') !== 'true');
-  });
+  // `toggle` does not bubble: listen while it goes down.
+  root.addEventListener(
+    'toggle',
+    (event) => {
+      const panel = event.target as Element | null;
+      if (!panel?.matches(PANEL)) return;
+      const toggle = toggleOf(panel);
+      const open = (event as ToggleEvent).newState === 'open';
+      toggle?.setAttribute('aria-expanded', String(open));
+      if (open && toggle) place(panel as HTMLElement, toggle);
+    },
+    true,
+  );
 
   root.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape' || event.defaultPrevented) return;
-    const toggle = openToggleAt(event.target as Element | null);
-    if (!toggle) return;
+    const panel = openPanel();
+    if (!panel) return;
+    const target = event.target as Element | null;
+    if (target && target !== document.body && !panel.contains(target) && !target.closest(TOGGLE)) return;
     event.preventDefault();
-    set(toggle, false);
-    toggle.focus();
+    panel.hidePopover();
+    toggleOf(panel)?.focus();
   });
+
+  root.addEventListener('focusin', (event) => {
+    const panel = openPanel();
+    const target = event.target as Element | null;
+    if (!panel || !target || panel.contains(target) || toggleOf(panel)?.contains(target)) return;
+    panel.hidePopover();
+  });
+
+  window.addEventListener('resize', replace);
+  // The popover is fixed in the window and the button moves with the page: follow it (a scroll inside the popover is not
+  // a move of the button, and putting it again there changes nothing).
+  root.addEventListener('scroll', replace, true);
 }

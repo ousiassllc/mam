@@ -22,7 +22,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/pages"
 )
 
-var helpPanel = regexp.MustCompile(`(?s)<div id="(help-[0-9a-f]+)" data-help-panel hidden[^>]*>.*?</div>`)
+var helpPanel = regexp.MustCompile(`(?s)<div id="(help-[0-9a-f]+)" popover[^>]*data-help-panel[^>]*>.*?</div>`)
 
 // split gives the text of a page outside the help panels and the text inside them.
 func split(t *testing.T, c templ.Component) (visible, inHelp string) {
@@ -35,7 +35,7 @@ func split(t *testing.T, c templ.Component) (visible, inHelp string) {
 }
 
 // The long explanations of a screen are in the "?" help (hidden until it is opened), not on the page (#866): each one is
-// in a hidden panel, is not anywhere else, and the panel is named by the button that opens it. What is not an explanation
+// in a popover (closed until it is opened), is not anywhere else, and the panel is named by the button that opens it. What is not an explanation
 // (the labels, the states) stays on the page.
 func TestScreens_LongExplanationsAreInTheHelpNotOnThePage(t *testing.T) {
 	tests := []struct {
@@ -45,8 +45,8 @@ func TestScreens_LongExplanationsAreInTheHelpNotOnThePage(t *testing.T) {
 		visible []string
 	}{
 		{"model manager", pages.ModelManagerPage("tok", modelmgr.Data{}),
-			[]string{"ローカルの画像・動画モデルを導入して、すぐに試し生成できます", "画像・動画のモデルを動かす ComfyUI を、mam が取得して起動・停止します", "ダウンロードは取得元から直接で、SHA-256 を確かめます", "コミットに固定し、LFS の SHA-256 とサイズを確かめます"},
-			[]string{"モデルマネージャー", "ComfyUI エンジン", "試し生成", "外部の ComfyUI"}},
+			[]string{"画像・動画のモデルを動かす ComfyUI を、mam が取得して起動・停止します", "ダウンロードは取得元から直接で、SHA-256 を確かめます", "コミットに固定し、LFS の SHA-256 とサイズを確かめます"},
+			[]string{"モデルマネージャー", "ローカルの画像・動画モデルを導入して、すぐに試し生成できます", "ComfyUI エンジン", "試し生成", "外部の ComfyUI"}},
 		{"api keys and login", pages.SettingsAPIKeysBody(credentials.Data{}, &chatgpt.Data{}),
 			[]string{"保存したキーは再起動なしで次の呼び出しから使われます", "個人（Go / Plus / Pro）は OpenAI 公式の Sign in with ChatGPT"},
 			[]string{"API キー", "ChatGPT でログイン"}},

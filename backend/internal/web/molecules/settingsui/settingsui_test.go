@@ -51,7 +51,7 @@ func TestCategory_IsTheH2OfItsContentAndNamedByIt(t *testing.T) {
 	assert.Contains(t, html, `<section id="settings-category" aria-labelledby="settings-category-title"`)
 	assert.Contains(t, html, `<h2 id="settings-category-title"`)
 	assert.Less(t, strings.Index(html, "概要"), strings.Index(html, "CONTENT"))
-	assert.Less(t, strings.Index(html, "data-help-panel hidden"), strings.Index(html, "EXPLANATION"), "the explanation is in the hidden help")
+	assert.Less(t, strings.Index(html, "data-help-panel"), strings.Index(html, "EXPLANATION"), "the explanation is in the popover")
 	assert.Less(t, strings.Index(html, "<h2"), strings.Index(html, "data-help-toggle"), "the button is beside the h2")
 
 	var bare strings.Builder
@@ -66,7 +66,7 @@ func TestCardItem_HasItsHelpBesideTheTitleOnlyWhenGiven(t *testing.T) {
 
 	assert.Contains(t, html, `aria-label="Codexの説明"`)
 	assert.Less(t, strings.Index(html, "<h3"), strings.Index(html, "data-help-toggle"))
-	assert.Less(t, strings.Index(html, "data-help-panel hidden"), strings.Index(html, "長い説明"))
+	assert.Less(t, strings.Index(html, "data-help-panel"), strings.Index(html, "長い説明"))
 	assert.Contains(t, html, "ログイン済み", "the state is on the card, not in the help")
 
 	card.Help = nil

@@ -51,7 +51,7 @@ func TestSection_SaysNothingWhenThereIsNothingToSay(t *testing.T) {
 func TestSection_KeepsTheRestartNoticeVisibleAndPutsTheLongTextInTheHelp(t *testing.T) {
 	html := renderSection(t, llm.Data{Providers: []string{"anthropic"}, Pinned: true, Error: "失敗"})
 
-	panelAt := strings.Index(html, "data-help-panel hidden")
+	panelAt := strings.Index(html, "data-help-panel")
 	require.GreaterOrEqual(t, panelAt, 0)
 	panelEnd := panelAt + strings.Index(html[panelAt:], "</div>")
 	visible := html[:panelAt] + html[panelEnd:]

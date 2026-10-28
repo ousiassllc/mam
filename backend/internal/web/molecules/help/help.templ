@@ -1,5 +1,5 @@
 // Package help is the "?" help of a screen (spec/components/shared-ui-parts.md §9): a small button beside a heading that
-// opens a short explanation under it, so that the long text of a section is not always on the page. Opening, closing, Esc
+// opens a short explanation in a popover by it, so that the long text of a section is not always on the page. Opening, closing, Esc
 // and the focus are static/src/components/help/help.ts. It is a package of its own so that molecules stays inside its
 // line limit.
 package help
@@ -27,12 +27,14 @@ func ID(subject string) string {
 // of a page has to tell them apart.
 func ToggleLabel(subject string) string { return subject + "の説明" }
 
-// Toggle is the "?" button. It controls the Panel with the same id; the script keeps aria-expanded true while it is open.
-// The icon is decoration, the name is ToggleLabel(subject).
+// Toggle is the "?" button. It opens the Panel with the same id (popovertarget: the browser toggles it on a click, Enter
+// or Space); the script keeps aria-expanded true while it is open. The icon is decoration, the name is
+// ToggleLabel(subject).
 templ Toggle(id, subject string) {
 	<button
 		type="button"
 		data-help-toggle
+		popovertarget={ id }
 		aria-expanded="false"
 		aria-controls={ id }
 		aria-label={ ToggleLabel(subject) }
@@ -42,10 +44,11 @@ templ Toggle(id, subject string) {
 	</button>
 }
 
-// Panel is what the Toggle with the same id opens: hidden until then, as wide as the place it is in (a narrow window
-// wraps it, it never floats outside the screen). Its children are the explanation.
-templ Panel(id string) {
-	<div id={ id } data-help-panel hidden class="max-w-prose break-words border-l-2 border-neutral-700 pl-3 text-sm text-neutral-300">
+// Panel is what the Toggle with the same id opens: a native popover (top layer, so no parent clips it; closed by Esc and by
+// a click outside), at most 24rem and never wider than the window; help.ts puts it by the button. Its children are the
+// explanation. It has no display class: the browser hides it while it is closed.
+templ Panel(id, subject string) {
+	<div id={ id } popover role="group" aria-label={ ToggleLabel(subject) } data-help-panel class="inset-auto m-0 max-h-[calc(100dvh-1rem)] w-[min(24rem,calc(100vw-1rem))] overflow-y-auto break-words rounded-lg border border-neutral-700 bg-neutral-900 p-3 text-sm text-neutral-300">
 		{ children... }
 	</div>
 }
@@ -66,18 +69,17 @@ templ paragraph(text string) {
 	<p class="[&:not(:first-child)]:mt-2">{ text }</p>
 }
 
-// Row is the heading of a block with its help: children (the heading) and the Toggle on one line, the Panel under it.
-// Without a help (nil) it is the children alone, so that a caller does not branch.
+// Row is the heading of a block with its help: children (the heading) and the Toggle on one line; the Panel is after the
+// Toggle in the page (so that Tab goes from the button into the popover) but out of the flow. Without a help (nil) it is
+// the children alone, so that a caller does not branch.
 templ Row(id, subject string, explanation templ.Component) {
 	if explanation == nil {
 		{ children... }
 	} else {
-		<div data-help class="flex flex-col gap-2">
-			<div class="flex items-center gap-2">
-				{ children... }
-				@Toggle(id, subject)
-			</div>
-			@Panel(id) {
+		<div class="flex items-center gap-2">
+			{ children... }
+			@Toggle(id, subject)
+			@Panel(id, subject) {
 				@explanation
 			}
 		</div>

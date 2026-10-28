@@ -64,7 +64,7 @@ flowchart TB
 | pages | `projects_page`（プロジェクト一覧の下に、ツールのカード 7 枚を 3 グループで持つ（`tool_section`。生成テスト・ノード・ワークフロー・モデルマネージャー・設定・制作指標・レビューパッケージ。状態の断片は `GET /tools/:tool/status`、`web/handler/toolstatus`）。[home-screen.md](home-screen.md)）, `settings_pages`（`pages/settings_pages.templ`。全体の設定画面 `GlobalSettingsPage`。左のナビ `settingsui.Nav` と分類の本文（`GlobalSettingsPageData.Body`）、`modal.Host()` を持つ。戻るリンクはプロジェクト一覧。`AppLayoutAt` で `canonical` を足せる）, `chat_workspace_page`（標準画面、`chat_thread` + `chat_composer`）, `brief_page`（補助ビュー）, `shot_inspector_page`, `take_comparison_page`（`mam-take-comparator`埋め込み）, `editor_page`（Rough Cut〜Export。`mam-timeline-editor`埋め込み）, `branch_page`（`branch_tree` を含む）, `world_state_page`, `notes_page`（M2、Project / Series 共用）, `settings_page`, `analytics_page`, `reviews_page`（`ReviewsPage` / `ReviewInboxPage` / `ReviewPage`）, `series_page`, `scene_shot_page`, `reference_library_page`, `error_page` | organismsを組み合わせたページ全体 |
 | layout | `app_layout` | 共通シェル（CSRF メタ・JS/CSS・エラートースト領域 `#toast-region` と、`toast.ts` / `connection-notice.ts` が複製するテンプレート）。ナビゲーションは持たず、戻りは各ページの `back_link`。Mode切替・Qualityセレクタは `chat_composer` に置く |
 
-「?」ヘルプ（molecules の `help`（`molecules/help/`）と TypeScript の `help`。見出しの横のボタンで、画面の説明を開く。#866）の契約と、説明をヘルプへ移した画面の一覧は [shared-ui-parts.md](shared-ui-parts.md) §9・§10。
+「?」ヘルプ（molecules の `help`（`molecules/help/`）と TypeScript の `help`。見出しの横のボタンで、説明のポップオーバーを開く。#866）の契約と、説明をヘルプへ移した画面の一覧は [shared-ui-parts.md](shared-ui-parts.md) §9・§10。
 
 モデルマネージャー画面（`model_manager_page` と organisms の `modelmgr`）のコンポーネントは [model-manager-screen.md](model-manager-screen.md)。
 
@@ -308,3 +308,4 @@ export class MamComfyFrame extends LitElement {
 | 1.91 | 2026-10-25 | §3 の organisms に `settings/local`・`settings/mcp`（`localmodels`・`mcppanel` の作り直しと移動）、atoms に `SmallButtonLinkFor`、TypeScript の `copy` を足し、`localmodels` の「`#model-assignment` を添える」の記述を外した | Issue #847 ②-5・②-6 |
 | 1.92 | 2026-10-28 | §3 に初回ガイド（`pages` の `onboarding_page`・organisms の `onboarding`）の案内を足し、[onboarding-screen.md](onboarding-screen.md) に分けて書いた | Issue #863 |
 | 1.93 | 2026-10-28 | §3 に「?」ヘルプ（`molecules/help`・`static/src/components/help/`）の案内を足した。`settings_section` の説明・`settingsui.Category` の説明は、常時表示ではなくヘルプになった | Issue #866 |
+| 1.94 | 2026-10-28 | §3 の「?」ヘルプの記述を、開示でなくポップオーバー（ネイティブの Popover API）に合わせた | Issue #866 のオーナーの決定。契約は shared-ui-parts.md §9 |

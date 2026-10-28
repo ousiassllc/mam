@@ -31,7 +31,7 @@ func TestSettingsSection_ShowsItsExplanationOnlyInTheHelpBesideTheHeading(t *tes
 	assert.Contains(t, with, "<h2")
 	assert.Less(t, strings.Index(with, "予算"), strings.Index(with, "data-help-toggle"))
 	assert.Contains(t, with, `aria-label="予算の説明"`)
-	assert.Less(t, strings.Index(with, "data-help-panel hidden"), strings.Index(with, "説明文"), "the text is inside the hidden panel")
+	assert.Less(t, strings.Index(with, "data-help-panel"), strings.Index(with, "説明文"), "the text is inside the popover")
 	assert.Less(t, strings.Index(with, "説明文"), strings.Index(with, "CONTENT"))
 	assert.Equal(t, 1, strings.Count(with, "説明文"))
 
