@@ -231,7 +231,7 @@ func TestModelsListsEveryBuiltInModelAndWhyOneCannotBeChosen(t *testing.T) {
 	for _, m := range r.Svc.Models(context.Background(), "") {
 		byID[m.ID] = m
 	}
-	for _, id := range []string{"nano-banana-lite", "nano-banana", "flux-2", "gpt-image-2", "kling-3.0", "seedance-2.0", "runway-gen-4.5", "gemini-omni-flash", "kling-4.0", "seedance-2.5", "minimax-h3", "minimax-h3-max", "wan-3.0"} {
+	for _, id := range []string{"nano-banana-lite", "nano-banana", "flux-2", "gpt-image-2", "kling-3.0", "seedance-2.0", "runway-gen-4.5", "gemini-omni-flash", "kling-4.0", "seedance-2.5", "minimax-h3", "minimax-h3-max", "wan-3.0", "luma-ray-3.2"} {
 		assert.Contains(t, byID, id)
 	}
 	assert.False(t, byID["nano-banana-lite"].Available)
@@ -250,7 +250,7 @@ func TestModelsListsEveryBuiltInModelAndWhyOneCannotBeChosen(t *testing.T) {
 	assert.Equal(t, "priced", byID["kling-3.0"].Price.Basis)
 	assert.InDelta(t, 0.14, byID["kling-3.0"].Price.PerSecondUSD["1080p"], 1e-9)
 
-	assert.Len(t, r.Svc.Models(context.Background(), "video"), 9)
+	assert.Len(t, r.Svc.Models(context.Background(), "video"), 10)
 	_, err := r.Svc.Model(context.Background(), "image", "kling-3.0")
 	assert.ErrorIs(t, err, gterr.ErrNotFound)
 }

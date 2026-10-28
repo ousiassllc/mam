@@ -155,6 +155,7 @@ func DefaultConfig() Config {
 			VendorRunway:   {BaseURL: "https://api.dev.runwayml.com", MaxConcurrency: 2, TimeoutSeconds: 900},
 			VendorMiniMax:  {BaseURL: "https://api.minimax.io", MaxConcurrency: 3, TimeoutSeconds: 900},
 			VendorAlibaba:  {BaseURL: alibabaBaseURL, MaxConcurrency: 3, TimeoutSeconds: 1800},
+			VendorLuma:     {BaseURL: "https://agents.lumalabs.ai", MaxConcurrency: 3, TimeoutSeconds: 900},
 		},
 		Models: defaultModels(),
 		Images: map[ImagePurpose]ImageRoute{
@@ -308,6 +309,9 @@ func (c Config) ImageRouteFor(p ImagePurpose) ImageRoute {
 func (c Config) VideoCost(t VideoTarget, seconds float64) float64 {
 	if lm, _, ok := c.LocalModel(t.Model); ok {
 		return lm.CostPerSecond * seconds
+	}
+	if t.Model == domain.ModelLumaRay32 {
+		return lumaCost(c.Models[t.Model].CostPerSecond[t.Resolution], seconds)
 	}
 	return c.Models[t.Model].CostPerSecond[t.Resolution] * seconds
 }

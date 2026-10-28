@@ -89,7 +89,7 @@
 │ │ [▣] モデルマネージャー   │ │ [⚙] 設定                 │                              │
 │ │ ComfyUI とローカルモデル │ │ API キー・ChatGPT のログ │                              │
 │ │ の導入・試し生成         │ │ イン・モデルの割り当て   │                              │
-│ │ [ComfyUI: 停止中]        │ │ [API キー 3 / 13 件]     │                              │
+│ │ [ComfyUI: 停止中]        │ │ [API キー 3 / 14 件]     │                              │
 │ │ 開く ›                   │ │ 開く ›                   │                              │
 │ └──────────────────────────┘ └──────────────────────────┘                              │
 │ その他（h3） … 制作指標 / レビューパッケージ（同じ形。3 列目は空き）                   │
@@ -130,7 +130,7 @@
 |--------|------|--------|-------------|
 | ワークフロー | neutral ・ 保存 n 件（0 件は「保存なし」） | `workflows.Service.List`（ローカルの DB） | 空 |
 | レビューパッケージ | neutral ・ 受け取り n 件（0 件は「受け取りなし」） | `ReviewService.Inbox`（ローカルの DB） | 空 |
-| 設定（1 行目） | info ・ API キー n / 13 件（n = 設定済み。13 = `len(service.CredentialProviders)`。0 件のときは warn） | `CredentialService.Status` | キーストアが読めない: warn ・ キーストアを利用できません |
+| 設定（1 行目） | info ・ API キー n / 14 件（n = 設定済み。14 = `len(service.CredentialProviders)`。0 件のときは warn） | `CredentialService.Status` | キーストアが読めない: warn ・ キーストアを利用できません |
 | 設定（2 行目） | ok ・ ChatGPT: ログイン済み ／ neutral ・ ChatGPT: 未ログイン ／ warn ・ ChatGPT: 再ログインが必要（公式・画像生成（非公式）のどれかが再ログイン要。#845 の Codex 経由は `codex.Service.Status().Account.SignedIn` を読み、ログイン済みの判定にだけ含める。Codex には再ログイン要の状態が無いので、再ログインの判定には入らない。§9 の質問 9） | `chatgpt.Service.Overview` | サービスが無い（`Services.ChatGPT` が nil）: 2 行目を出さない。読めない: 出さない |
 | 生成テスト・制作指標 | なし | — | — |
 

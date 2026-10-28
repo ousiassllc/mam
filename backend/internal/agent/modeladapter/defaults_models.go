@@ -39,5 +39,8 @@ func defaultModels() map[domain.ModelName]ModelConfig {
 		// Wan 3.0 prices by the second of output video, in the Singapore region (the model page's table; the other regions are
 		// 0.041256 / 0.082513 / 0.165025 USD at 480P / 720P / 1080P: set cost_per_second_usd when the base URL is of another region).
 		domain.ModelWan3: {Model: "wan3.0-video", CostPerSecond: map[string]float64{"480p": 0.05, "720p": 0.10, "1080p": 0.20}},
+		// Luma Ray 3.2 bills in credits per 5 seconds (360p 20 / 540p 50 / 720p 100 / 1080p 400; a 10 second clip costs three times that) at
+		// the default list rate of 0.003 USD per credit: the price of a second of a 5 second clip (VideoCost applies the 10 second factor).
+		domain.ModelLumaRay32: {Model: "ray-3.2", CostPerSecond: map[string]float64{"360p": 0.012, "540p": 0.03, "720p": 0.06, "1080p": 0.24}},
 	}
 }

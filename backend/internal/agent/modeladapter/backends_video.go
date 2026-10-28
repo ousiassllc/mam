@@ -213,6 +213,7 @@ func NewBackends(cfg Config, keys credential.Store, client httpclient.Doer, poll
 			domain.ModelMiniMaxH3:       minimaxBackend{mk(VendorMiniMax)},
 			domain.ModelMiniMaxH3Max:    minimaxBackend{mk(VendorMiniMax)},
 			domain.ModelWan3:            alibabaBackend{mk(VendorAlibaba)},
+			domain.ModelLumaRay32:       lumaBackend{mk(VendorLuma)},
 		},
 	}
 }

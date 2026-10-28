@@ -67,3 +67,31 @@ func TestAlibabaKeyIsListedSaysItsFormAndCanBeSaved(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, key, got)
 }
+
+// Luma (Ray 3.2) has a key of its own: listed, saved and deleted like the others, with no connection test.
+func TestLumaKeyIsListedAndCanBeSavedAndDeleted(t *testing.T) {
+	r := newRig(t)
+
+	var listed bool
+	for _, p := range service.CredentialProviders {
+		listed = listed || p.ID == "luma"
+	}
+	require.True(t, listed, "luma is one of the providers of the screen")
+
+	edit := r.do(http.MethodGet, paths.CredentialEdit("luma"), nil, true).Body.String()
+	assert.Contains(t, edit, "Luma Ray 3.2")
+	assert.Contains(t, edit, `hx-put="/credentials/luma"`)
+	assert.NotContains(t, edit, "/test")
+
+	rec := r.do(http.MethodPut, paths.Credential("luma"), url.Values{"api_key": {secret}}, true)
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	got, err := r.keys.Get("luma")
+	require.NoError(t, err)
+	assert.Equal(t, secret, got)
+
+	rec = r.do(http.MethodDelete, paths.Credential("luma"), nil, true)
+	require.Equal(t, http.StatusOK, rec.Code)
+	ok, err := r.keys.Has("luma")
+	require.NoError(t, err)
+	assert.False(t, ok)
+}

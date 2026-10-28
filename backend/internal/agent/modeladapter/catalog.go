@@ -73,6 +73,11 @@ func Capabilities(m domain.ModelName) (VideoCapabilities, bool) {
 			Durations: wholeSeconds(2, 30), Resolutions: []string{"480p", "720p", "1080p"},
 			MaxReferenceImages: 10, FirstFrame: true, LastFrame: true, NativeAudio: true,
 		}, true
+	case domain.ModelLumaRay32:
+		// 5 or 10 s, 360p (draft) to 1080p. First and last frame only in a 5 s clip (the API refuses a frame with 10 s: Prepare
+		// keeps to 5); no free reference images (the video type has none: image_ref is for the image models). HDR, looping,
+		// editing, extension and reframing are not used.
+		return VideoCapabilities{Durations: []float64{5, 10}, Resolutions: []string{"360p", "540p", "720p", "1080p"}, FirstFrame: true, LastFrame: true}, true
 	}
 	return publishedCaps(m)
 }

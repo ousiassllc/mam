@@ -24,7 +24,7 @@ var CredentialProviders = []struct{ ID, Label string }{
 	{string(modeladapter.VendorKling), "Kling"}, {string(modeladapter.VendorKling4), "Kling 4.0"},
 	{string(modeladapter.VendorSeedance), "Seedance"}, {string(modeladapter.VendorRunway), "Runway"},
 	{string(modeladapter.VendorMiniMax), "MiniMax（H3）"},
-	{string(modeladapter.VendorAlibaba), "Alibaba Cloud（Wan 3.0）"},
+	{string(modeladapter.VendorAlibaba), "Alibaba Cloud（Wan 3.0）"}, {string(modeladapter.VendorLuma), "Luma（Ray 3.2）"},
 	{audiodirector.CredentialProvider, "ElevenLabs"},
 	{audiodirector.SyncCredentialProvider, "Sync Labs"},
 	{jev.CredentialProvider, "TypeSafe（Jev）"},
