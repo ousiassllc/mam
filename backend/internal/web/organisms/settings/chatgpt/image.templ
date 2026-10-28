@@ -39,7 +39,7 @@ func imageCardOf(d Data) settingsui.Card {
 
 templ imageDetails(d Data) {
 	<div class="flex flex-col gap-3" data-testid="chatgpt-image">
-		<div class="flex flex-col gap-2 rounded-md border border-amber-500/50 px-3 py-2" data-testid="chatgpt-risks">
+		<div class="flex flex-col gap-2 rounded-md border border-amber-500/60 px-3 py-2" data-testid="chatgpt-risks">
 			<p class="text-sm font-medium text-amber-300">オンにする前に、次のリスクを確認してください。</p>
 			<ul class="list-disc pl-5 text-sm">
 				for _, r := range d.Risks {

@@ -94,9 +94,9 @@ func TestShotLocks_PutSetsTheModeAndReturnsTheSwitchInItsNewState(t *testing.T) 
 
 	rec := g.form(http.MethodPut, "/shots/"+g.shotID+"/locks", url.Values{"parameter": {"camera"}, "mode": {"lock"}})
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-	assert.Contains(t, rec.Body.String(), `aria-pressed="true" class="px-2 py-1 text-xs font-medium transition bg-amber-500/30 text-amber-100">LOCK`)
+	assert.Regexp(t, `aria-pressed="true"[^>]*>LOCK`, rec.Body.String())
 	assert.NotContains(t, rec.Body.String(), "<html")
-	assert.Contains(t, g.get("/shots/"+g.shotID, true).Body.String(), `bg-amber-500/30 text-amber-100">LOCK`, "the Inspector shows the stored setting")
+	assert.Regexp(t, `aria-pressed="true"[^>]*>LOCK`, g.get("/shots/"+g.shotID, true).Body.String(), "the Inspector shows the stored setting")
 
 	rec = g.form(http.MethodPut, "/shots/"+g.shotID+"/locks", url.Values{"parameter": {"video_model"}, "mode": {"manual"}, "value": {"kling-3.0"}})
 	require.Equal(t, http.StatusOK, rec.Code)
@@ -124,7 +124,7 @@ func TestProjectLocks_StoryAndMusicOnly(t *testing.T) {
 
 	rec := a.form(http.MethodPut, "/projects/"+id+"/locks", url.Values{"target_type": {"story"}, "mode": {"lock"}})
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-	assert.Contains(t, rec.Body.String(), `bg-amber-500/30 text-amber-100">LOCK`)
+	assert.Regexp(t, `aria-pressed="true"[^>]*>LOCK`, rec.Body.String())
 	rec = a.form(http.MethodPut, "/projects/"+id+"/locks", url.Values{"parameter": {"music"}, "mode": {"manual"}})
 	require.Equal(t, http.StatusOK, rec.Code)
 

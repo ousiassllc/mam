@@ -95,7 +95,7 @@ templ FFmpegBody(f FFmpeg) {
 		ffmpeg と ffprobe は、品質判定（Judge）・Take のプレビュー・部分採用で使います。無くても mam は起動しますが、これらは使えなくなります。mam を起動した環境の PATH から探します。
 	</p>
 	if f.Found() {
-		<div class="flex flex-col gap-1 rounded-md border border-emerald-500/50 px-3 py-2" role="status" data-testid="onboarding-ffmpeg-found">
+		<div class="flex flex-col gap-1 rounded-md border border-emerald-500/60 px-3 py-2" role="status" data-testid="onboarding-ffmpeg-found">
 			<p class="text-sm">
 				@atoms.Badge(atoms.BadgeOK, "見つかりました")
 				<span class="ml-2">ffmpeg と ffprobe が PATH にあります。</span>
@@ -105,7 +105,7 @@ templ FFmpegBody(f FFmpeg) {
 			<p class="text-xs text-neutral-400">mam を起動したあとに入れたときは、mam を再起動すると反映されます（ffmpeg は起動時に探します）。</p>
 		</div>
 	} else {
-		<div class="flex flex-col gap-3 rounded-md border border-amber-500/50 px-3 py-2" role="status" data-testid="onboarding-ffmpeg-missing">
+		<div class="flex flex-col gap-3 rounded-md border border-amber-500/60 px-3 py-2" role="status" data-testid="onboarding-ffmpeg-missing">
 			<p class="text-sm">
 				@atoms.Badge(atoms.BadgeWarn, "見つかりません")
 				<span class="ml-2">{ missingText(f) }</span>

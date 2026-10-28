@@ -70,8 +70,8 @@ templ Node(d NodeData) {
 }
 
 templ unavailable(d NodeData) {
-	<div class="flex flex-col gap-3 rounded-md border border-amber-700 p-4" role="status" data-testid="nodes-unavailable" data-state={ d.State }>
-		<p class="text-sm text-amber-200">{ d.Reason }</p>
+	<div class="flex flex-col gap-3 rounded-md border border-amber-500/60 p-4" role="status" data-testid="nodes-unavailable" data-state={ d.State }>
+		<p class="text-sm text-amber-300">{ d.Reason }</p>
 		<div class="flex flex-wrap items-center gap-3">
 			if d.Bundled && d.Installed && d.State != NodeStarting {
 				@atoms.Button(atoms.TonePrimary, "ComfyUI を起動する", templ.Attributes{

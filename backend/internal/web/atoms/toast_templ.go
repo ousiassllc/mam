@@ -32,7 +32,7 @@ func Toast(message string) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"pointer-events-auto flex items-start gap-3 rounded-md border border-red-500/50 bg-neutral-900 px-4 py-2 text-sm text-red-200 shadow-lg\" role=\"alert\" data-toast><span data-toast-message>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"pointer-events-auto flex items-start gap-3 rounded-md border border-red-500/60 bg-neutral-900 px-4 py-2 text-sm text-red-300 shadow-lg\" role=\"alert\" data-toast><span data-toast-message>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -45,7 +45,7 @@ func Toast(message string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "</span> <button type=\"button\" class=\"ml-auto leading-none hover:text-red-100\" aria-label=\"閉じる\" data-toast-close>×</button></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "</span> <button type=\"button\" class=\"ml-auto leading-none hover:text-neutral-100\" aria-label=\"閉じる\" data-toast-close>×</button></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -116,7 +116,7 @@ func SuccessToastOOB(message string) templ.Component {
 			templ_7745c5c3_Var4 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<div id=\"toast-region\" hx-swap-oob=\"beforeend\"><div class=\"pointer-events-auto flex items-start gap-3 rounded-md border border-emerald-500/50 bg-neutral-900 px-4 py-2 text-sm text-emerald-200 shadow-lg\" role=\"status\" data-toast><span data-toast-message>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<div id=\"toast-region\" hx-swap-oob=\"beforeend\"><div class=\"pointer-events-auto flex items-start gap-3 rounded-md border border-emerald-500/60 bg-neutral-900 px-4 py-2 text-sm text-emerald-300 shadow-lg\" role=\"status\" data-toast><span data-toast-message>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -129,7 +129,7 @@ func SuccessToastOOB(message string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</span> <button type=\"button\" class=\"ml-auto leading-none hover:text-emerald-100\" aria-label=\"閉じる\" data-toast-close>×</button></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</span> <button type=\"button\" class=\"ml-auto leading-none hover:text-neutral-100\" aria-label=\"閉じる\" data-toast-close>×</button></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

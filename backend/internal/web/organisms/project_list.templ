@@ -14,7 +14,7 @@ templ ProjectList(projects []domain.Project) {
 		}
 		for _, p := range projects {
 			<li>
-				<a class="flex items-center justify-between gap-3 px-4 py-3 hover:bg-neutral-900" href={ templ.SafeURL(paths.Project(p.ID)) }>
+				<a class="flex items-center justify-between gap-3 px-4 py-3 hover:bg-neutral-800/60" href={ templ.SafeURL(paths.Project(p.ID)) }>
 					<span class="truncate font-medium">{ p.Name }</span>
 					<span class="flex shrink-0 items-center gap-3 text-xs text-neutral-400">
 						@atoms.Badge(stateTone(p.State), stateLabel(p.State))

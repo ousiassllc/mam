@@ -186,7 +186,7 @@ templ ConsentDialog(c Consent) {
 		<p class="text-sm"><a class="underline" href={ templ.SafeURL(c.License.URL) } target="_blank" rel="noopener noreferrer">{ c.License.Name }（{ c.License.Version }）の全文</a></p>
 		<p class="text-sm text-neutral-200" data-testid="mm-consent-summary">{ c.License.Summary }</p>
 		if c.AdultNotice != "" {
-			<p class="text-sm text-amber-200" data-testid="mm-consent-adult">{ c.AdultNotice }</p>
+			<p class="text-sm text-amber-300" data-testid="mm-consent-adult">{ c.AdultNotice }</p>
 		}
 		if len(c.Sources) > 0 {
 			<p class="text-xs text-neutral-300" data-testid="mm-consent-sources">原本の場所: { joinNames(c.Sources) }</p>
