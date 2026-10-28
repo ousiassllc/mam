@@ -185,7 +185,7 @@ func sceneItem(projectID string, item Item, current bool) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var6 = []any{"block rounded-md border px-3 py-2 text-sm", templ.KV("border-indigo-400 bg-indigo-500/10", current), templ.KV("border-neutral-700 hover:bg-neutral-800", !current)}
+		var templ_7745c5c3_Var6 = []any{"block rounded-md border px-3 py-2 text-sm", templ.KV("border-indigo-400 bg-indigo-500/20", current), templ.KV("border-neutral-700 hover:bg-neutral-800", !current)}
 		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var6...)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err

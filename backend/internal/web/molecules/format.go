@@ -137,7 +137,7 @@ func frameRate(fps float64) string { return strconv.FormatFloat(fps, 'f', -1, 64
 func frameClass(m domain.ThreadMessage) string {
 	base := "max-w-[85%] rounded-lg px-4 py-3 text-sm "
 	if m.Role == domain.RoleUser {
-		return base + "ml-auto bg-indigo-600/30 text-neutral-100"
+		return base + "ml-auto bg-indigo-500/20 text-neutral-100"
 	}
 	return base + "mr-auto border border-neutral-700 bg-neutral-900 text-neutral-100"
 }

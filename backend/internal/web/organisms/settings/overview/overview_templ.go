@@ -100,7 +100,7 @@ func GuideSection() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" class=\"text-sm underline text-indigo-300 hover:text-indigo-200\" data-testid=\"settings-guide-open\">案内をもう一度開く</a></p></section>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" class=\"text-sm underline text-indigo-300\" data-testid=\"settings-guide-open\">案内をもう一度開く</a></p></section>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

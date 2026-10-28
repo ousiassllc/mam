@@ -91,7 +91,7 @@ func ConfirmFailed(msg string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" class=\"rounded-md border border-red-500/50 p-4\" data-testid=\"gt-confirm-failed\"><p class=\"text-sm text-red-300\" role=\"alert\" data-testid=\"gt-confirm-error\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" class=\"rounded-md border border-red-500/60 p-4\" data-testid=\"gt-confirm-failed\"><p class=\"text-sm text-red-300\" role=\"alert\" data-testid=\"gt-confirm-error\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -148,7 +148,7 @@ func ConfirmBox(c Confirm) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\" class=\"flex flex-col gap-3 rounded-md border border-indigo-500/50 p-4\" data-testid=\"gt-confirm\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\" class=\"flex flex-col gap-3 rounded-md border border-indigo-400 p-4\" data-testid=\"gt-confirm\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

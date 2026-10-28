@@ -101,7 +101,7 @@ templ loginFailed(l *Login) {
 // one) to the Codex card. The official login stays as it is: nothing is signed out.
 templ codexGuidance(d Data) {
 	if (d.Official.Login != nil && d.Official.Login.UseCodex) || (d.Official.SignedIn && d.Official.WorkspacePlan) {
-		<div class="flex flex-col gap-2 rounded-md border border-amber-500/50 px-3 py-2" data-testid="chatgpt-use-codex">
+		<div class="flex flex-col gap-2 rounded-md border border-amber-500/60 px-3 py-2" data-testid="chatgpt-use-codex">
 			<p class="text-sm text-amber-300">組織のアカウントは Codex 経由のログインを使ってください。Business / Enterprise / Edu のワークスペースのアカウントは、OpenAI の仕様で、公式の方式ではプランを使えません。</p>
 			<a class="w-fit text-sm text-indigo-300 underline" href={ templ.SafeURL("#" + cardID(codexKind)) } data-testid="chatgpt-use-codex-button">Codex 経由のカードへ</a>
 		</div>

@@ -148,7 +148,7 @@ func MessageFrame(m domain.ThreadMessage) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if m.ReplyTo != nil {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<p class=\"mb-2 border-l-2 border-neutral-500 pl-2 text-xs text-neutral-400\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<p class=\"mb-2 border-l-2 border-neutral-700 pl-2 text-xs text-neutral-400\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

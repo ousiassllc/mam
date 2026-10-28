@@ -366,7 +366,7 @@ func ShotCard(d ShotCardData) templ.Component {
 			templ_7745c5c3_Var8 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		var templ_7745c5c3_Var9 = []any{"rounded-md border p-3", templ.KV("border-indigo-400 bg-indigo-500/10", d.Selected), templ.KV("border-neutral-700 bg-neutral-900", !d.Selected)}
+		var templ_7745c5c3_Var9 = []any{"rounded-md border p-3", templ.KV("border-indigo-400 bg-indigo-500/20", d.Selected), templ.KV("border-neutral-700 bg-neutral-900", !d.Selected)}
 		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var9...)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err

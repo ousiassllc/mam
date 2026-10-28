@@ -28,7 +28,7 @@ templ MessageFrame(m domain.ThreadMessage) {
 		class={ frameClass(m) }
 	>
 		if m.ReplyTo != nil {
-			<p class="mb-2 border-l-2 border-neutral-500 pl-2 text-xs text-neutral-400">{ "返信: " + excerpt(*m.ReplyTo) }</p>
+			<p class="mb-2 border-l-2 border-neutral-700 pl-2 text-xs text-neutral-400">{ "返信: " + excerpt(*m.ReplyTo) }</p>
 		}
 		{ children... }
 		if len(m.Attachments) > 0 {

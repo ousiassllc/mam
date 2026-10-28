@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	linkClass = "text-sm underline text-indigo-300 hover:text-indigo-200"
+	linkClass = "text-sm underline text-indigo-300"
 	codeClass = "rounded bg-neutral-800 px-1.5 py-0.5 font-mono text-sm text-neutral-100"
 )
 
@@ -221,7 +221,7 @@ func progress(f Frame) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "\" class=\"inline-block rounded-md border border-transparent px-2 py-1 text-neutral-300 hover:bg-neutral-900 hover:text-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "\" class=\"inline-block rounded-md border border-transparent px-2 py-1 text-neutral-300 hover:bg-neutral-800/60 hover:text-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

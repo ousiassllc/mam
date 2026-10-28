@@ -775,7 +775,7 @@ func ConsentDialog(c Consent) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if c.AdultNotice != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 56, "<p class=\"text-sm text-amber-200\" data-testid=\"mm-consent-adult\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 56, "<p class=\"text-sm text-amber-300\" data-testid=\"mm-consent-adult\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

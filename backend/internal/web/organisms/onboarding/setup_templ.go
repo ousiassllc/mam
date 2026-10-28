@@ -231,7 +231,7 @@ func FFmpegBody(f FFmpeg) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if f.Found() {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<div class=\"flex flex-col gap-1 rounded-md border border-emerald-500/50 px-3 py-2\" role=\"status\" data-testid=\"onboarding-ffmpeg-found\"><p class=\"text-sm\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<div class=\"flex flex-col gap-1 rounded-md border border-emerald-500/60 px-3 py-2\" role=\"status\" data-testid=\"onboarding-ffmpeg-found\"><p class=\"text-sm\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -314,7 +314,7 @@ func FFmpegBody(f FFmpeg) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<div class=\"flex flex-col gap-3 rounded-md border border-amber-500/50 px-3 py-2\" role=\"status\" data-testid=\"onboarding-ffmpeg-missing\"><p class=\"text-sm\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<div class=\"flex flex-col gap-3 rounded-md border border-amber-500/60 px-3 py-2\" role=\"status\" data-testid=\"onboarding-ffmpeg-missing\"><p class=\"text-sm\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

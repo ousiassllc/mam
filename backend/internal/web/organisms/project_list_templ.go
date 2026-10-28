@@ -47,14 +47,14 @@ func ProjectList(projects []domain.Project) templ.Component {
 			}
 		}
 		for _, p := range projects {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<li><a class=\"flex items-center justify-between gap-3 px-4 py-3 hover:bg-neutral-900\" href=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<li><a class=\"flex items-center justify-between gap-3 px-4 py-3 hover:bg-neutral-800/60\" href=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var2 templ.SafeURL
 			templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(paths.Project(p.ID)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/project_list.templ`, Line: 17, Col: 127}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/project_list.templ`, Line: 17, Col: 130}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 			if templ_7745c5c3_Err != nil {
