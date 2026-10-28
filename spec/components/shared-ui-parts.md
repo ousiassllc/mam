@@ -147,6 +147,7 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 - 説明・要約は `text-neutral-400`、折り返しを許す（`break-words`）。切り詰め（`truncate`）で情報を隠さない。
 - 実装（`settingsui/table.templ`）: `SettingsTable(bodyID, caption, []Column)`（`<tbody id=bodyID>` が一覧。新しい行の OOB は `beforeend:#<bodyID>`。広い表はその箱の中で横にスクロールし、ページを広げない）・`TableRowItem(TableRow{ID, TestID, Attrs, OOB})`（`SettingsTableRow` の実体）・`RowHead`（`<th scope="row">`）・`Cell`。`Column.Class` を `<th>` と同じ列の `Cell` に付けて、狭い窓で列を隠す（`hidden lg:table-cell`）。**OOB の `<tr>` は応答の先頭に置く**（HTML のパーサーは先頭の `<tr>` だけを行として読む）。
 - 置き場所: `molecules/settingsui/`（`card.templ`・`table.templ`・`nav.templ`）。`molecules/` の直下に置くと上限（2,000 行）に近づくため、サブパッケージにする（§8 の質問 3）。サイドナビ `SettingsNav` は [settings-screen.md](settings-screen.md) §4。
+- **モデルマネージャーのモデルのカード**（Issue #865）: `SettingsCard` と同じ面（`rounded-lg border border-neutral-800 bg-neutral-900 p-4`・見出しは `<h3>`・状態は文字の `Badge`・`ul role="list"` の `grid`）を使うが、複数のバッジ・メタの表・進捗・`<details>` と、右上の操作（`shrink-0`）が要るため、`CardItem` ではなく `organisms/modelmgr` の `modelCard` として持つ。見た目と構造は [model-manager-screen.md](model-manager-screen.md) の「モデルの一覧はカード」。`ToolCard` はリンクのカードで、使わない。
 
 ## 6. 2 つの Issue の取り合い
 
@@ -182,6 +183,7 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 | 0.7 | 2026-10-25 | 「コピー」のボタン（`data-copy-source`・`data-copy-status`。`static/src/components/copy/`）を MCP のトークンの発行のモーダルに実装した。`SettingsTable` は ②-5（モデルの表）・②-6（トークンの表）が使う | Issue #847 ②-5・②-6 |
 | 0.8 | 2026-10-25 | §4 のモーダルの履歴の掃除の置き場所を、実装どおり `modal.ts` の `htmx:beforeHistorySave` に直した（`lib/history.ts` は変えていない） | PR #849 の第 2 周の独立レビューの指摘 |
 | 0.9 | 2026-10-25 | §4 に「閉じるときの送信中の要求」（GET だけ取りやめ、POST・PUT・DELETE は答えを受けて OOB を反映し本文を空にする）を足し、理由を取り除く答えが欄の `aria-invalid`・`aria-describedby` も外すと書いた | PR #849 の第 3 周の独立レビューの指摘 |
+| 0.10 | 2026-10-28 | §5 に、モデルマネージャーのモデルのカード（`modelCard`）と `SettingsCard`・`ToolCard` の関係を足した | Issue #865 |
 
 ## 8. オーナーへの確認事項と決定（2026-10-25: すべて推奨する既定で決定）
 

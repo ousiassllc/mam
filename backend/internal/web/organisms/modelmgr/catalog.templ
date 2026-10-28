@@ -24,9 +24,9 @@ templ CatalogList(c Catalog) {
 		if c.Blocked != "" {
 			<p class="text-sm text-amber-300" data-testid="mm-catalog-blocked">{ c.Blocked }</p>
 		}
-		<ul class="flex flex-col divide-y divide-neutral-800 text-sm" data-testid="mm-models">
+		<ul role="list" class="grid grid-cols-1 gap-4 lg:grid-cols-2" data-testid="mm-models">
 			for _, m := range c.Models {
-				@modelRow(m, c.Blocked != "")
+				@modelCard(m, c.Blocked != "")
 			}
 		</ul>
 	</div>
@@ -44,13 +44,16 @@ func stateTone(state string) (atoms.BadgeTone, string) {
 	return atoms.BadgeNeutral, "未導入"
 }
 
-templ modelRow(m Model, blocked bool) {
+// modelCard is one model as a card (the surface of settingsui.CardItem: shared-ui-parts.md §5). The name is its h3; the
+// state is a Badge with words; the buttons sit at the top right (shrink-0) next to the name and the description, so a long
+// description does not push them out, and drop under them when the card is narrow.
+templ modelCard(m Model, blocked bool) {
 	{{ tone, label := stateTone(m.State) }}
-	<li class="flex flex-col gap-2 py-4" data-testid="mm-model" data-model={ m.ID } data-state={ m.State }>
-		<div class="flex items-start justify-between gap-3">
-			<div class="flex min-w-0 flex-1 flex-col gap-1">
+	<li class="@container flex min-w-0 flex-col gap-3 rounded-lg border border-neutral-800 bg-neutral-900 p-4 text-sm" data-testid="mm-model" data-model={ m.ID } data-state={ m.State }>
+		<div class="flex flex-col gap-3 @min-[22rem]:flex-row @min-[22rem]:items-start @min-[22rem]:justify-between">
+			<div class="flex min-w-0 flex-1 flex-col gap-2">
+				<h3 class="break-words text-sm font-semibold text-neutral-100">{ m.Name }</h3>
 				<span class="flex flex-wrap items-center gap-2">
-					<span class="font-medium">{ m.Name }</span>
 					@atoms.Badge(atoms.BadgeInfo, m.KindLabel)
 					if m.Adult {
 						@atoms.BadgeWith(atoms.BadgeError, "成人向け", templ.Attributes{"data-testid": "mm-adult-badge"})
@@ -60,25 +63,25 @@ templ modelRow(m Model, blocked bool) {
 					}
 					@atoms.BadgeWith(tone, label, templ.Attributes{"data-testid": "mm-model-state"})
 				</span>
-				<span class="text-xs text-neutral-400">{ m.Description }</span>
+				<p class="break-words text-xs text-neutral-400">{ m.Description }</p>
 			</div>
-			<div class="flex shrink-0 flex-wrap items-center justify-end gap-2">
+			<div class="flex shrink-0 flex-wrap items-center gap-2 @min-[22rem]:justify-end">
 				@modelActions(m, blocked)
 			</div>
 		</div>
-		<dl class="grid grid-cols-1 gap-x-4 gap-y-1 text-xs text-neutral-300 sm:grid-cols-2" data-testid="mm-model-meta">
-			<div><dt class="inline text-neutral-400">大きさ: </dt><dd class="inline">{ m.Size }</dd></div>
-			<div><dt class="inline text-neutral-400">VRAM の目安: </dt><dd class="inline" data-testid="mm-vram">{ m.VRAM }</dd></div>
-			<div>
-				<dt class="inline text-neutral-400">ライセンス: </dt>
-				<dd class="inline"><a class="underline" href={ templ.SafeURL(m.License.URL) } target="_blank" rel="noopener noreferrer">{ m.License.Name }</a></dd>
+		<dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-xs text-neutral-300" data-testid="mm-model-meta">
+			<div><dt class="text-neutral-400">大きさ</dt><dd>{ m.Size }</dd></div>
+			<div><dt class="text-neutral-400">VRAM の目安</dt><dd data-testid="mm-vram">{ m.VRAM }</dd></div>
+			<div class="min-w-0">
+				<dt class="text-neutral-400">ライセンス</dt>
+				<dd class="break-words"><a class="underline" href={ templ.SafeURL(m.License.URL) } target="_blank" rel="noopener noreferrer">{ m.License.Name }</a></dd>
 			</div>
-			<div><dt class="inline text-neutral-400">商用利用: </dt><dd class="inline" data-testid="mm-commercial">{ m.License.Commercial }</dd></div>
+			<div><dt class="text-neutral-400">商用利用</dt><dd data-testid="mm-commercial">{ m.License.Commercial }</dd></div>
 			if len(m.TriggerWords) > 0 {
-				<div><dt class="inline text-neutral-400">トリガー語（プロンプトに入れる）: </dt><dd class="inline" data-testid="mm-trigger-words">{ joinNames(m.TriggerWords) }</dd></div>
+				<div class="col-span-2"><dt class="text-neutral-400">トリガー語（プロンプトに入れる）</dt><dd class="break-words" data-testid="mm-trigger-words">{ joinNames(m.TriggerWords) }</dd></div>
 			}
 			if len(m.Sources) > 0 {
-				<div class="sm:col-span-2"><dt class="inline text-neutral-400">原本の場所: </dt><dd class="inline" data-testid="mm-sources">{ joinNames(m.Sources) }</dd></div>
+				<div class="col-span-2"><dt class="text-neutral-400">原本の場所</dt><dd class="break-words" data-testid="mm-sources">{ joinNames(m.Sources) }</dd></div>
 			}
 		</dl>
 		if m.State == "installing" && m.Install != nil {
@@ -93,7 +96,7 @@ templ modelRow(m Model, blocked bool) {
 		}
 		<details class="text-xs text-neutral-300">
 			<summary class="cursor-pointer text-neutral-400">ファイル（{ itoa(len(m.Files)) }）と導入されるモデル</summary>
-			<ul class="mt-1 flex flex-col gap-0.5" data-testid="mm-files">
+			<ul class="mt-1 flex flex-col gap-0.5 break-words" data-testid="mm-files">
 				for _, f := range m.Files {
 					<li>
 						<code>{ f.Path }</code> { f.Size }
@@ -173,7 +176,7 @@ templ ConsentDialog(c Consent) {
 		aria-labelledby="mm-consent-title"
 		tabindex="-1"
 		data-inline-dialog
-		data-return-focus={ modelRowSelector(c.ModelID) }
+		data-return-focus={ modelCardSelector(c.ModelID) }
 		data-testid="mm-consent"
 	>
 		<h3 id="mm-consent-title" class="text-sm font-semibold">「{ c.Name }」のライセンスを確認してください</h3>
