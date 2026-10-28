@@ -60,19 +60,9 @@ type klingEnvelope struct {
 	} `json:"data"`
 }
 
-// check turns a non-zero Kling code into an error: 1302 / 1303 are its rate limit answers.
+// check turns a non-zero Kling code into an error.
 func (b klingBackend) check(env klingEnvelope) error {
-	if env.Code == 0 {
-		return nil
-	}
-	status := http.StatusUnprocessableEntity
-	switch {
-	case env.Code == 1302 || env.Code == 1303:
-		status = http.StatusTooManyRequests
-	case env.Code >= 5000:
-		status = http.StatusBadGateway
-	}
-	return &ProviderError{Vendor: string(b.vendor), Status: status, Message: fmt.Sprintf("code %d: %s", env.Code, env.Message)}
+	return klingCodeError(b.vendor, env.Code, env.Message)
 }
 
 func (b klingBackend) GenerateVideo(ctx context.Context, apiModel string, req VideoRequest) (VideoResult, error) {
@@ -304,6 +294,7 @@ func NewBackends(cfg Config, keys credential.Store, client httpclient.Doer, poll
 			domain.ModelSeedance2:       seedanceBackend{mk(VendorSeedance)},
 			domain.ModelRunwayGen45:     runwayBackend{mk(VendorRunway)},
 			domain.ModelGeminiOmniFlash: geminiOmniBackend{mk(VendorGoogle)},
+			domain.ModelKling4:          kling4Backend{mk(VendorKling4)},
 		},
 	}
 }

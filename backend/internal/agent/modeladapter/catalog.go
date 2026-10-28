@@ -47,8 +47,21 @@ func Capabilities(m domain.ModelName) (VideoCapabilities, bool) {
 			Durations: []float64{3, 4, 5, 6, 7, 8, 9, 10}, Resolutions: []string{"720p"},
 			MaxReferenceImages: 6, FirstFrame: true, LastFrame: true, NativeAudio: true,
 		}, true
+	case domain.ModelKling4:
+		// 3-30 s in whole seconds, 720p and 1080p (the Capability Map also lists 4K, but the text-to-video and image-to-video
+		// settings take 720p and 1080p). First and last frame; the omni reference endpoint is not used.
+		return VideoCapabilities{Durations: wholeSeconds(3, 30), Resolutions: []string{"720p", "1080p"}, FirstFrame: true, LastFrame: true}, true
 	}
 	return publishedCaps(m)
+}
+
+// wholeSeconds lists the lengths from..to in whole seconds.
+func wholeSeconds(from, to int) []float64 {
+	out := make([]float64, 0, to-from+1)
+	for s := from; s <= to; s++ {
+		out = append(out, float64(s))
+	}
+	return out
 }
 
 // SnapDuration returns the shortest supported length that holds the requested seconds, or the

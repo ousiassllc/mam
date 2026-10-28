@@ -75,6 +75,8 @@ func (c Config) Prepare(target VideoTarget, job VideoJob) (VideoRequest, error) 
 	case domain.ModelKling3, c.negativeModel(target.Model):
 		req.Prompt = shotprompt.Fit(body, constraints, 2400)
 		req.NegativePrompt = textutil.TruncateRunes(strings.Join(avoid, ", "), 400)
+	case domain.ModelKling4: // no negative prompt field (the prompt takes negative descriptions); English input up to 26,000 characters
+		req.Prompt = shotprompt.Fit(body, constraints+shotprompt.AvoidSentence(avoid), 26000)
 	case domain.ModelRunwayGen45: // no negative prompt, and a 1000 character limit: Constraints and the avoid list are kept whole
 		req.Prompt = shotprompt.Fit(body, constraints+shotprompt.AvoidSentence(avoid), 1000)
 	default: // models without a negative prompt get the constraints as part of the prompt

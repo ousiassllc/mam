@@ -193,10 +193,13 @@ type Vendor string
 
 // Vendors.
 const (
-	VendorGoogle   Vendor = "google"
-	VendorOpenAI   Vendor = "openai"
-	VendorFlux     Vendor = "flux"
-	VendorKling    Vendor = "kling"
+	VendorGoogle Vendor = "google"
+	VendorOpenAI Vendor = "openai"
+	VendorFlux   Vendor = "flux"
+	VendorKling  Vendor = "kling"
+	// VendorKling4 is Kling 4.0 on the new API (https://api-singapore.klingai.com, one API key as the Bearer token). Kling 3.0
+	// stays on the old one (VendorKling: ACCESS_KEY:SECRET_KEY, JWT), so the two keys and base URLs cannot share a vendor.
+	VendorKling4   Vendor = "kling4"
 	VendorSeedance Vendor = "seedance"
 	VendorRunway   Vendor = "runway"
 )
@@ -212,6 +215,8 @@ func VendorOf(m domain.ModelName) Vendor {
 		return VendorFlux
 	case domain.ModelKling3:
 		return VendorKling
+	case domain.ModelKling4:
+		return VendorKling4
 	case domain.ModelSeedance2:
 		return VendorSeedance
 	case domain.ModelRunwayGen45:
@@ -227,7 +232,7 @@ func VendorOf(m domain.ModelName) Vendor {
 
 // Vendors lists every vendor that has a backend.
 func Vendors() []Vendor {
-	return []Vendor{VendorGoogle, VendorOpenAI, VendorFlux, VendorKling, VendorSeedance, VendorRunway}
+	return []Vendor{VendorGoogle, VendorOpenAI, VendorFlux, VendorKling, VendorKling4, VendorSeedance, VendorRunway}
 }
 
 // ImageCost is the most one image of the model can cost (its dearest size): what a budget check holds.

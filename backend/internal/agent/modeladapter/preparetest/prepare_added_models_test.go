@@ -1,6 +1,7 @@
 package preparetest_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,7 +14,10 @@ import (
 // The models added after the first three (spec/architecture/model-adapters.md §4, "追加の動画モデル"): they can be called
 // by their identifier, but the default Quality Policies and Multi-model routing candidates do not use them.
 
-var omniTarget = modeladapter.VideoTarget{Model: domain.ModelGeminiOmniFlash, Resolution: "720p"}
+var (
+	omniTarget   = modeladapter.VideoTarget{Model: domain.ModelGeminiOmniFlash, Resolution: "720p"}
+	kling4Target = modeladapter.VideoTarget{Model: domain.ModelKling4, Resolution: "1080p"}
+)
 
 func TestAddedModelsAreVideoModelsOfTheirVendorWithAPriceAndNoDefaultRoute(t *testing.T) {
 	cfg := modeladapter.DefaultConfig()
@@ -23,6 +27,7 @@ func TestAddedModelsAreVideoModelsOfTheirVendorWithAPriceAndNoDefaultRoute(t *te
 		apiID  string
 	}{
 		{domain.ModelGeminiOmniFlash, modeladapter.VendorGoogle, "gemini-omni-1.1-flash"},
+		{domain.ModelKling4, modeladapter.VendorKling4, "kling-4.0"},
 	} {
 		t.Run(string(tt.model), func(t *testing.T) {
 			assert.Contains(t, domain.VideoModels(), tt.model)
@@ -79,4 +84,60 @@ func TestPrepareForGeminiOmniFlashSnapsToTheClipLengthsAndKeepsOneKindOfImage(t 
 	req, err = modeladapter.Prepare(omniTarget, job)
 	require.NoError(t, err)
 	assert.Len(t, req.References, 6)
+}
+
+func TestKling4IsPricedFromTheOfficialUnitPrice(t *testing.T) {
+	cfg := modeladapter.DefaultConfig()
+	// 1.0 unit per second at 720p and 1.5 at 1080p (no video input), 1 unit = USD 0.14 (list price).
+	assert.InDelta(t, 0.14*10, cfg.VideoCost(modeladapter.VideoTarget{Model: domain.ModelKling4, Resolution: "720p"}, 10), 1e-9)
+	assert.InDelta(t, 0.14*1.5*10, cfg.VideoCost(kling4Target, 10), 1e-9)
+}
+
+func TestKling4HasItsOwnVendorOnTheNewHostWhileKling3KeepsTheOldOne(t *testing.T) {
+	cfg := modeladapter.DefaultConfig()
+	assert.Equal(t, "https://api-singapore.klingai.com", cfg.Vendors[modeladapter.VendorKling4].BaseURL)
+	assert.Equal(t, "https://api.klingai.com", cfg.Vendors[modeladapter.VendorKling].BaseURL, "Kling 3.0 is not moved to the new host: that needs a real call")
+	assert.Equal(t, "kling-v3", cfg.ModelSettings(domain.ModelKling3).Model)
+	assert.Equal(t, modeladapter.VendorKling, modeladapter.VendorOf(domain.ModelKling3))
+	assert.Contains(t, modeladapter.Vendors(), modeladapter.VendorKling4)
+}
+
+func TestPrepareForKling4TakesAnyWholeSecondFrom3To30AndFoldsTheAvoidList(t *testing.T) {
+	caps, ok := modeladapter.Capabilities(domain.ModelKling4)
+	require.True(t, ok)
+	assert.Equal(t, []string{"720p", "1080p"}, caps.Resolutions)
+	assert.Len(t, caps.Durations, 28)
+	assert.Equal(t, 3.0, caps.SnapDuration(1))
+	assert.Equal(t, 17.0, caps.SnapDuration(16.4))
+	assert.Equal(t, 30.0, caps.SnapDuration(45))
+	assert.Zero(t, caps.MaxReferenceImages)
+
+	job := fullJob()
+	job.DurationSeconds = 25
+	req, err := modeladapter.Prepare(kling4Target, job)
+	require.NoError(t, err)
+	assert.Equal(t, 25.0, req.DurationSeconds)
+	assert.Equal(t, "1080p", req.Resolution)
+	assert.NotNil(t, req.FirstFrame)
+	assert.NotNil(t, req.LastFrame)
+	assert.Empty(t, req.References, "Kling 4.0 takes frames here, not free references")
+	assert.Empty(t, req.NegativePrompt, "the prompt takes negative descriptions: there is no field")
+	assert.Contains(t, req.Prompt, "Avoid: blurry")
+}
+
+func TestPrepareForKling4AllowsALongPromptThanKling3(t *testing.T) {
+	job := fullJob()
+	job.Spec.ShotObjective = strings.Repeat("A very long objective. ", 400)
+	job.Spec.Constraints = []string{"preserve_logo"}
+
+	req, err := modeladapter.Prepare(kling4Target, job)
+	require.NoError(t, err)
+	assert.Greater(t, len([]rune(req.Prompt)), 2400, "the limit is 26,000 characters of English")
+	assert.LessOrEqual(t, len([]rune(req.Prompt)), 26000)
+	assert.Contains(t, req.Prompt, "keep the logo and label text sharp and undistorted")
+	assert.Contains(t, req.Prompt, "Avoid:", "the avoid list survives the cut")
+
+	kling3, err := modeladapter.Prepare(klingTarget, job)
+	require.NoError(t, err)
+	assert.LessOrEqual(t, len([]rune(kling3.Prompt)), 2400, "Kling 3.0 is unchanged")
 }

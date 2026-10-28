@@ -27,6 +27,8 @@ const (
 	ModelRunwayGen45    ModelName = "runway-gen-4.5"
 	// ModelGeminiOmniFlash is Gemini Omni Flash (gemini-omni-1.1-flash), the successor of Veo 3.1 in the Gemini API.
 	ModelGeminiOmniFlash ModelName = "gemini-omni-flash"
+	// ModelKling4 is Kling 4.0 (new API, Bearer API key); ModelKling3 stays on the old one.
+	ModelKling4 ModelName = "kling-4.0"
 )
 
 // ImageModels lists the image models (built-in, then defined on registered endpoints: modelreg).
@@ -36,7 +38,7 @@ func ImageModels() []ModelName {
 
 // VideoModels lists the video models that have an adapter (built-in, then defined on registered endpoints).
 func VideoModels() []ModelName {
-	return mr.Video(ModelKling3, ModelSeedance2, ModelRunwayGen45, ModelGeminiOmniFlash)
+	return mr.Video(ModelKling3, ModelSeedance2, ModelRunwayGen45, ModelGeminiOmniFlash, ModelKling4)
 }
 
 // JoinModels renders models separated by sep ("kling-3.0 / seedance-2.0 / runway-gen-4.5" for " / ").

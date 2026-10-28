@@ -64,6 +64,7 @@
 | 識別子 | モデル | 選定の理由と注意 |
 |--------|--------|------------------|
 | `gemini-omni-flash` | Google Gemini Omni Flash（API の `gemini-omni-1.1-flash`） | Gemini API の Veo 3.1 Preview は 2026-10-22 に終了し、公式が後継に案内するモデル（Veo の識別子は追加しない）。画像と同じ `google` の API キーで呼べる。3〜10 秒・ネイティブ音声つき・720p で約 0.10 USD/秒。縦横比は 16:9 / 9:16 だけ |
+| `kling-4.0` | Kuaishou Kling 4.0（API の `kling-4.0`） | ネイティブ最大 30 秒（3〜30 秒）・720p / 1080p。新 API（`api-singapore.klingai.com`・Bearer の API キー 1 つ）で、Kling 3.0 の旧 API（ACCESS_KEY:SECRET_KEY の JWT）とは別のベンダー `kling4`（API キーも別に保存する）。公式は Early Access（2026-10-28 23:00 北京時間に全面提供と案内）で、単価も公式の料金ページでは Preview。既存の `kling-3.0` は旧 API のまま変えない（§9.4） |
 
 ## 4.5 評価・判断の補助（Judge / Repair 用）
 
@@ -100,7 +101,7 @@ Jev の利用ルール:
 
 ```
 画像: nano-banana, nano-banana-lite, flux-2, gpt-image-2
-動画: kling-3.0, seedance-2.0, runway-gen-4.5, gemini-omni-flash
+動画: kling-3.0, seedance-2.0, runway-gen-4.5, gemini-omni-flash, kling-4.0
 音声: elevenlabs-tts, elevenlabs-music, elevenlabs-sfx, sync-labs
 ```
 
@@ -153,7 +154,7 @@ M1 Issue #7（F-06/F-07/F-11/F-12）の実装仕様。Reasoning LLM Adapter（§
 
 | キー | 内容 | 既定 |
 |---|---|---|
-| `vendors.<google\|openai\|flux\|kling\|seedance\|runway>` | `base_url` / `max_concurrency`（同時実行の上限） / `timeout_seconds` | 4 / 4 / 4 / 3 / 3 / 2、180〜900 秒（`google` は動画（Gemini Omni Flash）の生成を待つため 600 秒。画像の呼び出しにも同じ値が掛かる） |
+| `vendors.<google\|openai\|flux\|kling\|kling4\|seedance\|runway>` | `base_url` / `max_concurrency`（同時実行の上限） / `timeout_seconds` | 4 / 4 / 4 / 3 / 3 / 3 / 2、180〜900 秒（`google` は動画（Gemini Omni Flash）の生成を待つため 600 秒。画像の呼び出しにも同じ値が掛かる）。`kling` は `https://api.klingai.com`、`kling4` は `https://api-singapore.klingai.com` |
 | `models.<正規識別子>` | `model`（API のモデル ID）、`fast_model`、`cost_per_image_usd`、`cost_per_second_usd`（解像度別）、`quality`（`gpt-image-2` だけ。`low` / `medium` / `high`。品質プロファイル。下の「GPT Image 2 の品質プロファイルと価格」）。価格は参考値（§8）で見積コストにのみ使う（GPT Image 2 の `actual_cost` は応答の `usage` から計算する） | §3 / §4 の割り当て。`quality` は `medium` |
 | `images.<purpose>` | `primary` / `fallback`（`model` と `fast`） | §3 の表 |
 | `policies.<fast\|balanced\|max_quality>` | `primary` / `fallback`（`model` と `resolution`）、`takes`（Take 数） | FAST: Kling 3.0 720p → Seedance 2.0 480p、2 Take。BALANCED: Seedance 2.0 720p → Kling 3.0 720p、3 Take。MAX QUALITY: Runway Gen-4.5 720p → Kling 3.0 1080p、4 Take |
@@ -161,7 +162,7 @@ M1 Issue #7（F-06/F-07/F-11/F-12）の実装仕様。Reasoning LLM Adapter（§
 | `prefer_openai` | トップレベルの真偽値。`true` で新規参照（`new_reference`）を `unified_openai` へ回す（§3） | `false` |
 | `retry` / `breaker` | §2.1 と同じ形式・同じ既定値 | 3 回 / 1000ms〜16000ms、5 回失敗で 30 秒 OPEN |
 
-API キーは `credential.Store` のベンダー名（`google` / `openai` / `flux` / `kling` / `seedance` / `runway`）で呼び出しごとに読む。Kling のキーは `ACCESS_KEY:SECRET_KEY` の形式で保存する。Kling の本文と公式ドキュメントとの突き合わせ、旧経路が `kling-v3` を受け付けるかの未検証は [kling-api.md](kling/kling-api.md)。
+API キーは `credential.Store` のベンダー名（`google` / `openai` / `flux` / `kling` / `kling4` / `seedance` / `runway`）で呼び出しごとに読む。`kling`（Kling 3.0）のキーは `ACCESS_KEY:SECRET_KEY` の形式、`kling4`（Kling 4.0）のキーは Kling の API キー 1 つで保存する（設定画面の「Kling」と「Kling 4.0」）。Kling の本文と公式ドキュメントとの突き合わせ、旧経路が `kling-v3` を受け付けるかの未検証は [kling-api.md](kling/kling-api.md)。
 
 既定の API モデル ID と見積価格（`cost_per_image_usd`。2026-10-25 に公式の料金表で確認。価格は参考値で、見積コストにのみ使う）:
 
@@ -193,7 +194,7 @@ API キーは `credential.Store` のベンダー名（`google` / `openai` / `flu
 
 ### 9.3 動作
 
-- **Canonical Shot Spec → モデル固有プロンプト（F-07）**: `Prepare` が Shot Spec を英語のプロンプトへ変換する。モデルごとに対応する長さ（Kling 5/10 秒、Seedance 4〜12 秒。要求を満たす最短の長さ）、First/Last Frame、参照画像の上限（Seedance 9 枚）に合わせて入力を絞る。Negative Prompt を持たないモデルでは本文へ折り込む。プロンプトは英語のみ（`non-functional.md` §9）。プロンプトの長さの上限（文字数は rune）は、Kling 3.0 が本文 2400 文字・ネガティブプロンプト 400 文字（Avoid の項目を `, ` で連結して 400 文字で切る）、Runway Gen-4.5 が 1000 文字、ネガティブプロンプトを持たないその他のモデル（Seedance 2.0 など）が 2400 文字。超えるときは、末尾の Constraints 文（ネガティブプロンプトを持たないモデルでは続く「Avoid:」文も）を丸ごと残し、Shot の描写（本文）の末尾側を削って収める（LOCK 由来の制約・ブランド制約を生成に届けるため）。末尾の文だけで上限を超えるときは、その末尾の文を上限で切る
+- **Canonical Shot Spec → モデル固有プロンプト（F-07）**: `Prepare` が Shot Spec を英語のプロンプトへ変換する。モデルごとに対応する長さ（Kling 3.0 は 5/10 秒、Seedance 2.0 は 4〜12 秒、Kling 4.0 は 3〜30 秒。要求を満たす最短の長さ）、First/Last Frame、参照画像の上限（Seedance 2.0 は 9 枚）に合わせて入力を絞る。Negative Prompt を持たないモデルでは本文へ折り込む。プロンプトは英語のみ（`non-functional.md` §9）。プロンプトの長さの上限（文字数は rune）は、Kling 3.0 が本文 2400 文字・ネガティブプロンプト 400 文字（Avoid の項目を `, ` で連結して 400 文字で切る）、Runway Gen-4.5 が 1000 文字、Kling 4.0 が 26000 文字（公式の英語だけの入力の上限。ネガティブプロンプトの欄は無く Avoid は本文へ折り込む）、ネガティブプロンプトを持たないその他のモデル（Seedance 2.0・Gemini Omni Flash など）が 2400 文字。超えるときは、末尾の Constraints 文（ネガティブプロンプトを持たないモデルでは続く「Avoid:」文も）を丸ごと残し、Shot の描写（本文）の末尾側を削って収める（LOCK 由来の制約・ブランド制約を生成に届けるため）。末尾の文だけで上限を超えるときは、その末尾の文を上限で切る
 - **フェイルオーバー（§7）**: ベンダー単位のブレーカーが OPEN、または再試行しても失敗したとき、同じ Shot Spec を代替モデル向けに再変換して呼ぶ。429・5xx・ネットワーク断のみ同じモデルで再試行し、認証エラー等の 4xx は再試行しない（待ち時間は §2.1 の再試行と同じく、`Retry-After` をバックオフの下限として加味し `max_delay_ms` で頭打ちにする）。タイムアウトは同じモデルでは再試行せず、直ちに代替モデルへフェイルオーバーする（ベンダー側でジョブが継続・課金されている可能性があり、再提出すると二重に課金されるため。LLM の §2.1 は課金を伴う非同期ジョブを持たないためタイムアウトも再試行する）。タイムアウトもブレーカーの失敗に数える。ベンダーがジョブを受け付けた後（状態確認・結果のダウンロード）の 429・5xx・ネットワーク断は、同じジョブ ID への GET だけを再試行する。出力は課金済みで、短い障害で失うと取り戻せないため、回数の上限は置かず、呼び出し全体のタイムアウトまで続ける（待ち時間は状態確認の間隔（既定 5 秒）から倍々に増やして 1 分で頭打ちにし、`Retry-After` がそれより長ければ従う。ただし 1 分を超えない）。タイムアウトに達してもなお失敗していたときは、ジョブを再提出せず（二重課金回避）代替モデルへ進む。Sync Labs（`model-adapters-m3.md` §14.1）のポーリング・ダウンロードも同じ規則で、`Retry-After` と呼び出し全体のタイムアウト（Lip Sync の `timeout`）まで再試行する。ただし結果ファイルの保存先（ステージングディレクトリ）の作成・書き込み・同期の失敗（ディスクフル・権限など、ベンダーではなくこのマシンの問題）は再試行せず、ベンダーの一時障害としても数えない（ダウンロードを期限まで繰り返さず、ブレーカーも開かない）
 - **ベンダー応答の URL の扱い**: API キーを付けるリクエストは、ベンダーのベース URL と同じスキーム・ポートで、同じホストまたはそのベースホストの親ドメイン配下（例: `api.bfl.ai` → `api.eu.bfl.ai`）の URL にだけ送る。FLUX の `polling_url` がそれ以外を指すときは、キーを送らずエラーにする。生成結果のダウンロード（Sync Labs の `outputUrl` を含む。登録した接続先の例外は次の項目）は https の URL だけを受け付け、公開インターネットのアドレス以外へは接続しない（許可リスト型。`localhost`、ループバック、リンクローカル（クラウドのメタデータサービス `169.254.169.254` など）、プライベート、未指定、マルチキャストに加え、IANA の特殊用途範囲 — キャリアグレード NAT `100.64.0.0/10`・`0.0.0.0/8`・ドキュメント用・ベンチマーク用・予約済みクラス E・6to4 リレー anycast・Teredo など — は全て拒否する。IPv4 互換・6to4・NAT64 の IPv6 アドレスは埋め込まれた IPv4 アドレスで判定する。ホスト名の解決後のアドレスも検査する。リダイレクト先も同じ規則。プロキシ設定は使わない）。ローカルの常駐アプリがベンダー応答を経由して内部ネットワークを読み出さないための制限である。ベンダー API を呼ぶ既定の HTTP クライアント（LLM・Model Adapter・Audio Director・Jev 共通、`internal/httpclient`）は、別ホストへのリダイレクトと https から http へのリダイレクトを拒否し（独自ヘッダーの API キーを別ホストへ転送しない）、接続・TLS ハンドシェイク・レスポンスヘッダーの待ちにタイムアウトを持つ。ベンダーの JSON 応答は 64 MiB まで読み、超えると失敗扱いにする（画像は base64 で JSON に入って返るため）。生成動画のダウンロード（上限 300 MB）は本文をメモリに載せずアセットディレクトリ配下の一時ファイル（`<assets>/.staging/`）へストリーム書き込みし、保存時にアセットのパスへリネームする（失敗・サイズ超過時は一時ファイルを削除し、異常終了で残った分は起動時に掃除する）。画像は小さいためメモリ上で扱う
 - **登録した接続先（ローカルモデル）の URL の扱い**: 組み込みベンダーの規則をゆるめるのは、登録した接続先の `base_url` と**同じスキーム・ホスト・ポート**の URL に対してだけで、http・`localhost`・プライベート・`100.64.0.0/10` へ接続できる。それ以外の URL（第三者ベンダーの応答 URL を含む）は上の規則のまま拒否する。ホスト違いと https から http へのリダイレクトは拒否し、API キーは接続先の `base_url` 配下にだけ付ける。**リンクローカル（`169.254.0.0/16`、`fe80::/10`）は登録した接続先でも常に拒否**し、判断は接続時に解決した IP（ダイヤラの `Control`）で行う（DNS リバインディング対策。`local-models.md` §6）
@@ -219,6 +220,17 @@ API キーは `credential.Store` のベンダー名（`google` / `openai` / `flu
 - **単価**: 動画出力 $17.50 / 100 万トークン、720p は 5,792 トークン/秒。公式は実効「約 $0.10/秒」と書き、`cost_per_second_usd` は `720p: 0.10`（計算では 0.1014）。入力（$1.50 / 100 万トークン）は含めず、`actual_cost` は取らない（見積のみ）。出どころ: <https://ai.google.dev/gemini-api/docs/pricing>（2026-10-28 に取得）
 - **同時実行・タイムアウト**: ベンダー `google` のまま（同時実行 4）。呼び出し全体のタイムアウトは画像と共有で、動画は受付から結果の取得まで待つため 120 秒から 600 秒に延ばした（画像が応答しないときの待ちも延びる）
 - **未検証（実際の API キーが要る）**: ① `delivery: uri` と Files API の状態（`ACTIVE` / `FAILED`）・`:download` の形、② `generation_config.video_config.task` と `<FIRST_FRAME>`・`[# References …]` のタグの効き方、③ 参照画像の上限、④ `POST` が生成の完了まで返らないときの待ちと、`in_progress` のときの `GET /v1beta/interactions/<id>`、⑤ 実際の請求が約 0.10 USD/秒に合うか
+
+#### Kling 4.0（`kling-4.0`、Issue #873）
+
+- **新 API と認証**: ベース URL は `https://api-singapore.klingai.com`（公式の認証のページ。`api.klingai.com` から中国の外のサーバー向けに変わった）、認証は `Authorization: Bearer <API キー>`（キーを 1 つ。AccessKey / SecretKey は旧設計向け）。ベンダーは Kling 3.0（`kling`）と別の `kling4` で、API キー（`credential.Store` の `kling4`）・ベース URL・同時実行・ブレーカーを分ける。キー形式が `ACCESS_KEY:SECRET_KEY` だけの利用者は、Kling のコンソールで API キー（Create a new API Key）を作って「Kling 4.0」に入れる（設定画面の説明にもそう書く）
+- **作成**: テキストだけなら `POST /text-to-video/kling-4.0`（本文 `prompt`・`settings`: `duration`（整数の秒）・`resolution`（`720p` / `1080p`）・`aspect_ratio`（`16:9` / `9:16` / `1:1`。公式は 21:9 も取るが mam の縦横比にない））。First Frame があれば `POST /image-to-video/kling-4.0`（本文 `contents`: `{type: prompt, text}`・`{type: first_frame, url}`・（Last Frame があれば）`{type: last_frame, url}`、`settings` は `duration`・`resolution`。縦横比は画像から決まるので送らない）。画像は Base64（`data:` の接頭辞なし）で `url` に入れる。パスのモデル版（`kling-4.0`）は `models.kling-4.0.model` で、API モデル ID として設定できる。ネガティブプロンプトの欄・シードは無く、Avoid は本文へ折り込む。中間フレーム・オムニ参照（参照 15 件）・マルチショット・編集は使わない
+- **取得**: `GET /tasks?task_ids=<id>`。`data[0].status` が `submitted` / `processing`（待つ）・`succeeded`（`outputs[]` の `type: video` の `url` をダウンロード）・`failed`（`message` が理由で、422 相当の拒否）。応答の `code` は Kling 3.0 と同じ扱い（0 が成功、1302 / 1303 は 429、5000 以上は 502、そのほかは 422）。結果は 30 日で消えるので、すぐ保存する（mam は取得後すぐ保存する）
+- **長さ・解像度**: 3〜30 秒の整数。`duration` を渡すと公式はそれを優先する（省かれればプロンプトの意図か 10 秒）。mam は常に渡す。解像度は `720p` / `1080p`（Capability Map は 4K も載せるが、text-to-video・image-to-video の `settings` の値は 720p / 1080p だけ）。参照画像は取らない（`MaxReferenceImages` は 0）
+- **音声**: `settings` に音声の項目は無い。Capability Map の表は文字として読めた範囲ではネイティブ音声の対応を確かめられなかったので、`NativeAudio` は偽にした
+- **単価**: 公式の料金ページ（<https://kling.ai/dev/pricing>、2026-10-28 に取得）の Kling 4.0（映像入力なし）は 720p が 1.0 unit/秒、1080p が 1.5 units/秒、1 unit = 0.14 USD（list price）で、`cost_per_second_usd` は `720p: 0.14`・`1080p: 0.21`。ただし同ページは Kling 4.0 を「Coming Soon」とし、この価格を「プレビュー用で、公式の提供日と価格は別途告知」と書く。**正式価格が出たら見直す**
+- **Kling 3.0（`kling-3.0`）は変えない**: 旧 API（`api.klingai.com`・`/v1/videos/text2video`・`image2video`・JWT）のまま、キーも `kling` のまま。新ホストへ移すか、API キー 1 つで `kling-v3` が通るかは実機で確かめるまで決められないので、移行しない（理由と確認項目は [kling-api.md](kling/kling-api.md) §5。#838 の未検証と同じ）
+- **未検証（実際の API キーが要る）**: ① 新 API の create / `GET /tasks` の応答の形（公式の例を読んだだけ）、② `first_frame` / `last_frame` の Base64 の書式（`data:` の有無）、③ Kling 4.0 が Early Access のあいだ API キーで呼べるか、④ 単価が正式な価格に合うか、⑤ ネイティブ音声の有無
 
 ## 10. AI Video Judge と Face Identity Similarity の実装（`internal/agent/judge`、`internal/facesim`）
 

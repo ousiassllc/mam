@@ -22,6 +22,7 @@ var CredentialProviders = []struct{ ID, Label string }{
 	{string(llm.ProviderGoogle), "Google（Gemini / Nano Banana）"},
 	{string(modeladapter.VendorFlux), "Black Forest Labs（Flux）"},
 	{string(modeladapter.VendorKling), "Kling"},
+	{string(modeladapter.VendorKling4), "Kling 4.0"},
 	{string(modeladapter.VendorSeedance), "Seedance"},
 	{string(modeladapter.VendorRunway), "Runway"},
 	{audiodirector.CredentialProvider, "ElevenLabs"},
