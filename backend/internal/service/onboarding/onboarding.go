@@ -6,6 +6,7 @@ package onboarding
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os/exec"
 	"runtime"
@@ -18,7 +19,8 @@ const FileName = "onboarding.json"
 
 const keyCompleted = "completed"
 
-// OS is the operating system the setup guidance is written for.
+// OS is the operating system the setup guidance is written for. The view (web/organisms/onboarding) has the same three
+// values as a type of its own, because organisms do not import the service layer; the handler maps one to the other.
 type OS string
 
 // The systems the guide has its own text for; every other one is OSOther.
@@ -81,16 +83,28 @@ func (s *Service) Completed() (bool, error) {
 }
 
 // Complete sets the flag, keeping any other key of the file. It is the same when the flag is already set, and the flag is
-// never cleared: opening the guide again from the settings does not make the root page show it again.
+// never cleared: opening the guide again from the settings does not make the root page show it again. A file that is not
+// valid JSON (or not an object) holds nothing worth keeping and is the very thing that would keep the flag from being set:
+// it is written over. A file that cannot be read for another reason (permissions) is an error.
 func (s *Service) Complete() error {
 	lock := settingsfile.Lock(s.path)
 	defer lock()
 	obj, err := settingsfile.Read(s.path)
 	if err != nil {
-		return err
+		if !isDamaged(err) {
+			return err
+		}
+		obj = settingsfile.Object{}
 	}
 	obj[keyCompleted] = json.RawMessage("true")
 	return settingsfile.Write(s.path, obj)
+}
+
+// isDamaged is whether err is settingsfile.Read refusing the content of the file (the JSON is invalid, or is not an object).
+func isDamaged(err error) bool {
+	var syntax *json.SyntaxError
+	var typed *json.UnmarshalTypeError
+	return errors.As(err, &syntax) || errors.As(err, &typed)
 }
 
 // OS is the operating system of this machine, for the text of the steps.

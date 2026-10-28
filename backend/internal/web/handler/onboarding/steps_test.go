@@ -83,6 +83,12 @@ func TestSteps_TheButtonsGoOnLeaveALaterStepAndFinishAtTheEnd(t *testing.T) {
 	assert.Equal(t, 2, strings.Count(last, `hx-post="`+paths.OnboardingFinish()+`"`), "「あとで」 and 「完了」 both finish")
 }
 
+func TestSteps_ThePrepareListNamesTheModelsStepOnlyWhereItIs(t *testing.T) {
+	r := newRig(t)
+
+	assert.Contains(t, r.page(paths.OnboardingPrepare), "モデルの割り当て")
+}
+
 func TestSteps_TheModelsStepIsLeftOutWithoutTheModelSettings(t *testing.T) {
 	r := newRig(t)
 	r.settings.LLM = nil
@@ -90,6 +96,7 @@ func TestSteps_TheModelsStepIsLeftOutWithoutTheModelSettings(t *testing.T) {
 
 	assert.Equal(t, http.StatusNotFound, r.get(paths.OnboardingStep(paths.OnboardingModels)).Code)
 	assert.NotContains(t, r.page(paths.OnboardingCredentials), paths.OnboardingStep(paths.OnboardingModels))
+	assert.NotContains(t, r.page(paths.OnboardingPrepare), "モデルの割り当て", "the list of what comes next has no step that is not there")
 }
 
 // ffmpeg is looked for on the PATH. Found: where, and no instructions. Missing: which one, and the way to install it of the
@@ -109,7 +116,7 @@ func TestFFmpegStep_ReportsWhatIsFoundAndHowToInstallWhatIsNot(t *testing.T) {
 		has    []string
 		hasNot []string
 	}{
-		{"found", "windows", foundBoth, []string{`data-testid="onboarding-ffmpeg-found"`, "/usr/bin/ffmpeg", "/usr/bin/ffprobe"}, []string{"winget", "brew install", "onboarding-ffmpeg-missing"}},
+		{"found", "windows", foundBoth, []string{`data-testid="onboarding-ffmpeg-found"`, "/usr/bin/ffmpeg", "/usr/bin/ffprobe", "PATH にあります", "再起動すると反映されます"}, []string{"winget", "brew install", "onboarding-ffmpeg-missing"}},
 		{"missing on Windows", "windows", missing, []string{"ffmpeg も ffprobe も見つかりません", "winget install Gyan.FFmpeg", `data-testid="onboarding-ffmpeg-windows"`, "もう一度確認する", "起動し直して"}, []string{"brew install", "onboarding-ffmpeg-found"}},
 		{"missing on macOS", "darwin", missing, []string{"brew install ffmpeg", `data-testid="onboarding-ffmpeg-macos"`, "/opt/homebrew/bin"}, []string{"winget"}},
 		{"missing on Linux", "linux", missing, []string{`data-testid="onboarding-ffmpeg-other"`, "パッケージマネージャー"}, []string{"winget", "brew install"}},

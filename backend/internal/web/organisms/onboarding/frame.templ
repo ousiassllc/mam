@@ -83,16 +83,24 @@ templ controls(f Frame) {
 	</div>
 }
 
-// finish records that the guide is over (POST /onboarding/finish) and goes to the project list (HX-Redirect).
-templ finish(tone atoms.ButtonTone, label, testID string) {
+// finishForm is the POST /onboarding/finish form (the guide is over; the answer is HX-Redirect to the project list) around
+// the submit button its children are. finish and skip differ only in that button.
+templ finishForm() {
 	<form hx-post={ paths.OnboardingFinish() } hx-swap="none" hx-sync="this:drop" hx-params="none" hx-disabled-elt="find button[type=submit]">
-		@atoms.Button(tone, label, templ.Attributes{"type": "submit", "data-testid": testID})
+		{ children... }
 	</form>
+}
+
+// finish records that the guide is over and goes to the project list.
+templ finish(tone atoms.ButtonTone, label, testID string) {
+	@finishForm() {
+		@atoms.Button(tone, label, templ.Attributes{"type": "submit", "data-testid": testID})
+	}
 }
 
 // skip is the text button "ガイドを閉じてプロジェクト一覧へ": the same POST as finish, from any page.
 templ skip() {
-	<form hx-post={ paths.OnboardingFinish() } hx-swap="none" hx-sync="this:drop" hx-params="none" hx-disabled-elt="find button[type=submit]">
+	@finishForm() {
 		@atoms.LinkButton(atoms.ToneNeutral, "ガイドを閉じてプロジェクト一覧へ", templ.Attributes{"type": "submit", "data-testid": "onboarding-skip"})
-	</form>
+	}
 }

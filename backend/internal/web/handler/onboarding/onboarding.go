@@ -18,19 +18,17 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/llmassign"
 	"github.com/ousiassllc/mam/backend/internal/service/modelsettings"
 	svc "github.com/ousiassllc/mam/backend/internal/service/onboarding"
-	chatgpthandler "github.com/ousiassllc/mam/backend/internal/web/handler/chatgptsettings"
-	credentialshandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/credentials"
 	llmhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/llm"
 	mediahandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/media"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/settings/settingshttp"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/onboarding"
-	chatgptview "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/chatgpt"
 	"github.com/ousiassllc/mam/backend/internal/web/pages"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
-// Handlers are the services the guide reads. Guide is required; the others leave their step (or part of it) out when nil:
+// Handlers are the services the guide reads. Guide and Keys are required (the credentials step is always there); Tester is
+// the same as the settings screen's (nil: no connection tests). The others leave their step (or part of it) out when nil:
 // the models step needs LLM and Models, the codex path needs ChatGPT.
 type Handlers struct {
 	Guide *svc.Service
@@ -57,11 +55,11 @@ func (h Handlers) steps() []step {
 		{Step: view.Step{Slug: paths.OnboardingFlow, Title: "mam でできること"}, body: func(Handlers, *gin.Context) templ.Component { return view.FlowBody() }},
 		{Step: view.Step{Slug: paths.OnboardingModes, Title: "2 つの進め方"}, body: func(Handlers, *gin.Context) templ.Component { return view.ModesBody() }},
 		{Step: view.Step{Slug: paths.OnboardingPrepare, Title: "使い始める前に"}, body: func(h Handlers, _ *gin.Context) templ.Component {
-			return view.PrepareBody(h.Guide.OS() == svc.OSMac)
+			return view.PrepareBody(h.hasModels(), h.Guide.OS() == svc.OSMac)
 		}},
 		{Step: view.Step{Slug: paths.OnboardingCredentials, Title: "API キーまたは ChatGPT ログイン", Setup: true}, body: Handlers.credentialsBody, modal: true},
 	}
-	if h.LLM != nil && h.Models != nil {
+	if h.hasModels() {
 		all = append(all, step{Step: view.Step{Slug: paths.OnboardingModels, Title: "モデルの割り当て", Setup: true}, body: Handlers.modelsBody, modal: true})
 	}
 	all = append(all, step{Step: view.Step{Slug: paths.OnboardingFFmpeg, Title: "ffmpeg の確認", Setup: true}, body: Handlers.ffmpegBody})
@@ -71,14 +69,12 @@ func (h Handlers) steps() []step {
 	return all
 }
 
+// hasModels is whether the models step is there: it needs both assignments.
+func (h Handlers) hasModels() bool { return h.LLM != nil && h.Models != nil }
+
 func (h Handlers) credentialsBody(c *gin.Context) templ.Component {
-	keys := credentialshandler.Data(c, credentialshandler.Keys{Svc: h.Keys, Tester: h.Tester})
-	var login *chatgptview.Data
-	if h.ChatGPT != nil {
-		d := chatgpthandler.SectionData(h.ChatGPT)
-		login = &d
-	}
-	return view.CredentialsBody(h.credentialsStatus(c), keys, login)
+	keys, login := h.readCredentials(c)
+	return view.CredentialsBody(credentialsStatus(keys, login), keys, login)
 }
 
 func (h Handlers) modelsBody(*gin.Context) templ.Component {
@@ -98,6 +94,8 @@ func (h Handlers) macBody(*gin.Context) templ.Component {
 	return view.MacBody(m)
 }
 
+// viewOS maps the system of the service to the one of the view (organisms do not import the service layer, so the two
+// types are kept apart; a system added to one is added to the other here).
 func viewOS(os svc.OS) view.OS {
 	switch os {
 	case svc.OSWindows:
@@ -109,7 +107,8 @@ func viewOS(os svc.OS) view.OS {
 }
 
 // Start sends the browser to the first step (GET /onboarding). It works whether or not the guide was finished: it is how the
-// settings screen opens the guide again.
+// settings screen opens the guide again. The redirect is the same whatever the state, so it carries no Cache-Control and no
+// Vary (spec/api/endpoints-onboarding.md §1).
 func (h Handlers) Start(c *gin.Context) {
 	c.Redirect(http.StatusFound, paths.OnboardingStep(h.steps()[0].Slug))
 }
@@ -139,7 +138,8 @@ func stepsOf(steps []step) []view.Step {
 }
 
 // Finish records that the guide is over (POST /onboarding/finish): finished or skipped, the same. It answers HX-Redirect to
-// the project list. A flag that cannot be written leaves the page as it is, with a toast: nothing was recorded.
+// the project list. A flag that cannot be written leaves the page as it is, with a toast: nothing was recorded. (A damaged
+// flag file is no such case: Complete writes it again.)
 func (h Handlers) Finish(c *gin.Context) {
 	if err := h.Guide.Complete(); err != nil {
 		_ = c.Error(err)

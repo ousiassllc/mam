@@ -3,10 +3,12 @@ package onboarding_test
 import (
 	"errors"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -14,8 +16,10 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/zalando/go-keyring"
 
+	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex"
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/credential/credentialtest"
+	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -29,7 +33,9 @@ func TestCredentialsStep_TheStateLineSaysWhetherAKeyOrALoginIsSet(t *testing.T) 
 	assert.Contains(t, body, `id="onboarding-credentials-status"`)
 	assert.Contains(t, body, "API キーも ChatGPT ログインもまだありません")
 	assert.Contains(t, body, `hx-get="`+paths.OnboardingCredentialsStatus()+`"`)
-	assert.Contains(t, body, `hx-trigger="modal-close from:body"`, "it reads itself again when the modal that set a key closes")
+	assert.Contains(t, body, `hx-trigger="modal-close from:body, htmx:afterRequest[detail.requestConfig.verb!='get'] from:body"`,
+		"it reads itself again when a modal closes and when a request that is not a GET ends (a key deleted), but never after its own GET")
+	assert.NotContains(t, body, "htmx:afterSettle", "afterSettle would fire again after the line's own reload, without end")
 	assert.Contains(t, body, `id="credential-row-openai"`, "the cards of the settings screen are the ones in the step")
 	assert.Contains(t, body, `hx-get="`+paths.CredentialEdit("openai")+`"`)
 	assert.Contains(t, body, `id="mam-modal"`, "the page holds the modal the cards fill")
@@ -56,6 +62,46 @@ func TestCredentialsStep_AChatGPTLoginCountsLikeAKey(t *testing.T) {
 	require.Eventually(t, func() bool {
 		return strings.Contains(r.get(paths.OnboardingCredentialsStatus()).Body.String(), "設定済み: ChatGPT ログイン済み")
 	}, 10*time.Second, 10*time.Millisecond)
+}
+
+// A sign-in that cannot be read (the OS key store does not answer) is not "no sign-in": the line says it cannot tell,
+// like it does for the API keys.
+func TestCredentialsStep_AChatGPTSignInThatCannotBeReadIsSaidSoNotTakenForNone(t *testing.T) {
+	broken := credentialtest.New()
+	broken.FailWith(errors.New("locked"))
+	r := newRig(t, func(c *config) { c.chatGPT, c.chatGPTKeys = true, broken })
+
+	for name, body := range map[string]string{"line": r.get(paths.OnboardingCredentialsStatus()).Body.String(), "step": r.page(paths.OnboardingCredentials)} {
+		assert.Contains(t, body, "ChatGPT ログインの状態を確認できません", name)
+		assert.NotContains(t, body, "まだありません", name)
+	}
+}
+
+// The OS key store can be slow: the step reads the keys once for the state line and the cards together, and the line alone
+// reads them once as well.
+func TestCredentialsStep_ReadsTheKeyStoreOncePerRequest(t *testing.T) {
+	counted := &countingStore{Store: credentialtest.New()}
+	r := newRig(t, func(c *config) { c.keys = counted })
+	providers := len(service.CredentialProviders)
+
+	counted.n.Store(0)
+	r.page(paths.OnboardingCredentials)
+	assert.EqualValues(t, providers, counted.n.Load(), "one read of each provider for the whole step")
+
+	counted.n.Store(0)
+	r.get(paths.OnboardingCredentialsStatus())
+	assert.EqualValues(t, providers, counted.n.Load(), "and for the state line alone")
+}
+
+// countingStore counts the lookups of a key: one per provider and read.
+type countingStore struct {
+	credential.Store
+	n atomic.Int64
+}
+
+func (s *countingStore) Has(account string) (bool, error) {
+	s.n.Add(1)
+	return s.Store.Has(account)
 }
 
 func TestCredentialsStep_AKeyStoreThatCannotBeReadIsSaidSo(t *testing.T) {
@@ -161,6 +207,37 @@ func TestCodexPath_SetsClearsAndRefusesLikeTheSettingsScreen(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Contains(t, rec.Body.String(), "解除しました")
 	assert.Empty(t, r.settings.ChatGPT.Codex().Status().CustomPath)
+}
+
+// A path that is fine but cannot be saved is not the user's mistake: it is 500 (with the reason for the log), not the 422
+// that tells the user to name an existing file.
+func TestCodexPath_APathThatCannotBeSavedIsNotTheUsersMistake(t *testing.T) {
+	r := newRig(t, func(c *config) { c.goos, c.chatGPT = "darwin", true })
+	exe := filepath.Join(t.TempDir(), "codex")
+	require.NoError(t, os.WriteFile(exe, []byte("not a real executable"), 0o700))
+	require.NoError(t, os.Mkdir(filepath.Join(r.chatGPTDir, codex.StateFile), 0o700)) // a directory where the record belongs
+
+	rec := r.act(http.MethodPut, paths.OnboardingCodexPath(), url.Values{"path": {exe}})
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Contains(t, rec.Body.String(), `role="alert"`)
+	assert.Contains(t, rec.Body.String(), "保存できませんでした")
+	assert.NotContains(t, rec.Body.String(), "絶対パスを指定してください")
+}
+
+// The route rewrites the settings of the executable mam runs: like every write it needs the CSRF token.
+func TestCodexPath_NeedsTheCSRFToken(t *testing.T) {
+	r := newRig(t, func(c *config) { c.goos, c.chatGPT = "darwin", true })
+	exe := filepath.Join(t.TempDir(), "codex")
+	require.NoError(t, os.WriteFile(exe, []byte("not a real executable"), 0o700))
+
+	req := httptest.NewRequest(http.MethodPut, paths.OnboardingCodexPath(), strings.NewReader(url.Values{"path": {exe}}.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.AddCookie(r.cookie) // the cookie alone is not the token
+	rec := r.send(req)
+
+	assert.Equal(t, http.StatusForbidden, rec.Code)
+	assert.Empty(t, r.settings.ChatGPT.Codex().Status().CustomPath, "nothing was set")
 }
 
 func TestCodexPath_IsNotThereOutsideMacOS(t *testing.T) {

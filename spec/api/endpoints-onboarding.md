@@ -6,14 +6,14 @@
 
 ## 1. ページ（GET）
 
-すべてページ全体（HTMX の断片は返さない）。`Cache-Control: no-store`。`Vary: HX-Request, HX-History-Restore-Request`（`GET /` が HTMX かどうかで答えを変えるため）。
+`GET /onboarding/:step` はページ全体（HTMX の断片は返さない）で、`Cache-Control: no-store`。`Vary: HX-Request, HX-History-Restore-Request` を付けるのは **`GET /` の応答だけ**（HTMX かどうかで答えを変えるのは `GET /` だけのため。ステップのページは HTMX かどうかに関わらず同じ全体ページ）。`GET /` の初回の 302 には `Cache-Control: no-store` も付ける（フラグが立つまでだけ正しい送り先のため）。`GET /onboarding` の 302 は状態によらず常に同じ送り先なので、`Cache-Control`・`Vary` は付けない（対象外）。`GET /onboarding/credentials/status` の断片にも `Cache-Control: no-store` を付ける。
 
 | Method | Path | 内容 | 状態コード |
 |--------|------|------|-----------|
 | GET | `/` | **変更**。フラグ（`<データフォルダ>/onboarding.json` の `completed`）が立っていなければ `/onboarding` へ **302**。立っていれば今までどおりプロジェクト一覧（`GET /projects` と同じ）。HTMX の要求は送らない。フラグを読めないとき（ファイルが壊れている）は送らず一覧を返す（エラーはログ） | 302 / 200 |
 | GET | `/onboarding` | 最初のステップ（`/onboarding/flow`）へ **302**。フラグが立っていても開ける（設定画面からの再表示） | 302 |
 | GET | `/onboarding/:step` | ステップのページ。`:step` は `flow`・`modes`・`prepare`（ウォークスルー）、`credentials`・`models`・`ffmpeg`・`mac`（セットアップ）。`mac` は macOS のときだけ。`models` は LLM・モデル設定のサービスがあるときだけ。ほかは 404 | 200 / 404 |
-| GET | `/onboarding/credentials/status` | `credentials` のステップの状態の行（`#onboarding-credentials-status`）の断片。モーダルが閉じたときに取り直す。API キー 1 件以上または ChatGPT のログイン 1 つ以上で「設定済み」、無ければ警告 | 200 |
+| GET | `/onboarding/credentials/status` | `credentials` のステップの状態の行（`#onboarding-credentials-status`）の断片。モーダルが閉じたとき、またはそのページで GET 以外の要求（API キーの削除・ChatGPT のログアウトなど、モーダルを閉じない操作）が終わったときに取り直す。API キー 1 件以上または ChatGPT のログイン 1 つ以上で「設定済み」、無ければ警告。キーストアを読めないときは「状態を確認できません」（API キー側・ChatGPT ログイン側のどちらも） | 200 |
 
 - ページの `<title>` は「はじめに: <ステップの見出し>」。`h1` は「はじめに」の 1 つ、ステップの見出しは `h2`。
 - ステップのページの各リンクは通常の `<a href>`（`hx-boost` を使わない）。
@@ -22,12 +22,12 @@
 
 | Method | Path | 内容 | 状態コード |
 |--------|------|------|-----------|
-| POST | `/onboarding/finish` | ガイドを終える（最後まで進んだ・スキップした）。CSRF 必須。`onboarding.json` に `{"completed": true}` を書く（ほかのキーは残す。すでに立っていても同じ）。本文なし。ヘッダー `HX-Redirect: /`。書けなかったときは 500 とエラーのトースト（`HX-Redirect` なし。フラグは立たない） | 200 / 500 |
-| PUT | `/onboarding/codex-path` | **macOS のときだけ**（ほかは 404。ChatGPT のサービスが無い構成でも 404）。Mac のステップの「Codex のパス」。フォーム `path`（空なら指定を解除）。CSRF 必須。保存は設定画面の `PUT /settings/chatgpt/codex/path` と同じ `chatgpt.Service.Codex().SetCustomPath`。応答は結果の 1 文の断片（`#onboarding-codex-result`）: 成功は `role="status"`（「パスを設定しました。mam は実行して確かめません」/「パスの指定を解除しました」）、実在するファイルの絶対パスでなければ **422** で `role="alert"`（`swapsErrorResponse` が 4xx の HTML を swap する） | 200 / 422 / 404 |
+| POST | `/onboarding/finish` | ガイドを終える（最後まで進んだ・スキップした）。CSRF 必須。`onboarding.json` に `{"completed": true}` を書く（ほかのキーは残す。すでに立っていても同じ）。本文なし。ヘッダー `HX-Redirect: /`。ファイルが壊れていて（JSON として読めない・オブジェクトでない）読めないときは、中身を捨てて `{"completed": true}` で上書きし、成功とする。壊れたファイルのせいで終われない状態にしない。権限など別の理由で読めない・書けなかったときは 500 とエラーのトースト（`HX-Redirect` なし。フラグは立たない） | 200 / 500 |
+| PUT | `/onboarding/codex-path` | **macOS のときだけ**（ほかは 404。ChatGPT のサービスが無い構成でも 404）。Mac のステップの「Codex のパス」。フォーム `path`（空なら指定を解除）。CSRF 必須。保存は設定画面の `PUT /settings/chatgpt/codex/path` と同じ `chatgpt.Service.Codex().SetCustomPath`。応答は結果の 1 文の断片（`#onboarding-codex-result`）: 成功は `role="status"`（「パスを設定しました。mam は実行して確かめません」/「パスの指定を解除しました」）、実在するファイルの絶対パスでなければ **422** で `role="alert"`（`swapsErrorResponse` が 4xx の HTML を swap する）、保存できなかったときは **500**（入力の誤りではないので 422 にしない。エラーはログ）。成功・解除・422・500 の判定と文言は設定画面の `PUT /settings/chatgpt/codex/path` と同じ関数（`chatgptsettings.SetCodexPath`）で決める | 200 / 422 / 500 / 404 |
 
 ## 3. 初回かどうかのフラグ
 
-- 保存先: データフォルダの `onboarding.json`（`service/onboarding.FileName`）。形は `{"completed": true}`。`service/settingsfile` で読み書きする（ほかのキーを消さない。一時ファイルから置き換える）。
+- 保存先: データフォルダの `onboarding.json`（`service/onboarding.FileName`）。形は `{"completed": true}`。`service/settingsfile` で読み書きする（ほかのキーを消さない。一時ファイルから置き換える）。壊れたファイル（JSON として読めない・オブジェクトでない）は、`Completed` では読めないエラー、`Complete` では上書きで直す（権限などの読み取りエラーは直さずエラー）。
 - 秘密を含まない。`--llm-config` のような「固定」の概念は無い（常に書ける）。
 - API キーの数・ログインの有無・ほかの設定からは**推測しない**。
 

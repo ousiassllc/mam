@@ -132,22 +132,43 @@ func CodexInstallCancel(svc *chatgpt.Service) gin.HandlerFunc {
 	}
 }
 
+// CodexPathResult is what a save of the codex path did, in the words the settings screen and the first-run guide share.
+type CodexPathResult struct {
+	Status  int
+	Message string
+}
+
+// OK is whether the path was saved (or cleared).
+func (r CodexPathResult) OK() bool { return r.Status == http.StatusOK }
+
+// SetCodexPath sets the codex the user installed, or clears it with "" (chatgpt.Service.Codex().SetCustomPath). A path that
+// is not an absolute path of a file is the user's mistake (422); a path that could not be saved is not: 500, and the error
+// goes to the log through c.
+func SetCodexPath(c *gin.Context, svc *chatgpt.Service, path string) CodexPathResult {
+	err := svc.Codex().SetCustomPath(path)
+	switch {
+	case err == nil && path == "":
+		return CodexPathResult{http.StatusOK, "パスの指定を解除しました"}
+	case err == nil:
+		return CodexPathResult{http.StatusOK, "パスを設定しました。mam は実行して確かめません。ログインやモデルの取得で使われます"}
+	case errors.Is(err, codex.ErrInvalidPath):
+		return CodexPathResult{http.StatusUnprocessableEntity, "パスを設定できませんでした。実在するファイルの絶対パスを指定してください"}
+	}
+	_ = c.Error(err)
+	return CodexPathResult{http.StatusInternalServerError, "パスを保存できませんでした。データフォルダの権限と空き容量を確認してください"}
+}
+
 // CodexSetPath sets the codex executable the user installed, or clears it (PUT /settings/chatgpt/codex/path, field path).
 func CodexSetPath(svc *chatgpt.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		path := c.PostForm("path")
-		err := svc.Codex().SetCustomPath(path)
+		r := SetCodexPath(c, svc, c.PostForm("path"))
 		d := codexSection(svc)
-		status := http.StatusOK
-		switch {
-		case err == nil && path == "":
-			d.Notice = "パスの指定を解除しました"
-		case err == nil:
-			d.Notice = "パスを設定しました。mam は実行して確かめません。ログインやモデルの取得で使われます"
-		default:
-			status, d.Error = http.StatusUnprocessableEntity, "パスを設定できませんでした。実在するファイルの絶対パスを指定してください"
+		if r.OK() {
+			d.Notice = r.Message
+		} else {
+			d.Error = r.Message
 		}
-		render(c, status, view.Panel(d))
+		render(c, r.Status, view.Panel(d))
 	}
 }
 

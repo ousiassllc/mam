@@ -160,8 +160,9 @@ func ModesBody() templ.Component {
 	})
 }
 
-// PrepareBody is the third page: what the setup steps that follow ask for. mac says that the macOS step is among them.
-func PrepareBody(mac bool) templ.Component {
+// PrepareBody is the third page: what the setup steps that follow ask for. models and mac say that the models step and the
+// macOS step are among them (a configuration without the model assignments has no such step).
+func PrepareBody(models, mac bool) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -182,17 +183,27 @@ func PrepareBody(mac bool) templ.Component {
 			templ_7745c5c3_Var7 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<p class=\"text-sm text-neutral-300\">この後のセットアップで、次のものを順に確かめます。どれも「あとで」で飛ばせて、あとから設定画面で入れられます。</p><ol role=\"list\" class=\"list-decimal pl-6 text-sm text-neutral-300\" data-testid=\"onboarding-prepare\"><li><strong>API キーか ChatGPT のログイン</strong>（どちらか 1 つは必要です。どちらも無いと、生成は動きません）</li><li><strong>モデルの割り当て</strong>（任意です。既定のままでも進めます）</li><li><strong>ffmpeg</strong>（無くても起動しますが、品質判定・Take のプレビュー・部分採用が使えなくなります）</li>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<p class=\"text-sm text-neutral-300\">この後のセットアップで、次のものを順に確かめます。どれも「あとで」で飛ばせて、あとから設定画面で入れられます。</p><ol role=\"list\" class=\"list-decimal pl-6 text-sm text-neutral-300\" data-testid=\"onboarding-prepare\"><li><strong>API キーか ChatGPT のログイン</strong>（どちらか 1 つは必要です。どちらも無いと、生成は動きません）</li>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		if mac {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<li><strong>Mac の準備</strong>（Codex の場所の指定と、ComfyUI は外部のものを使う案内）</li>")
+		if models {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<li><strong>モデルの割り当て</strong>（任意です。既定のままでも進めます）</li>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</ol>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<li><strong>ffmpeg</strong>（無くても起動しますが、品質判定・Take のプレビュー・部分採用が使えなくなります）</li>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if mac {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<li><strong>Mac の準備</strong>（Codex の場所の指定と、ComfyUI は外部のものを使う案内）</li>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</ol>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
