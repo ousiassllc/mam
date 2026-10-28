@@ -188,3 +188,41 @@ func TestEstimateTakesAPictureOverTheOrdinaryBodyLimit(t *testing.T) {
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String()[:min(300, rec.Body.Len())])
 	assert.Contains(t, rec.Body.String(), `data-testid="gt-run"`)
 }
+
+// browserReads is the confirmation's hidden fields as a browser holds them: the HTML parser reads a CRLF in an attribute as LF.
+func browserReads(form url.Values) url.Values {
+	out := url.Values{}
+	for k, vs := range form {
+		for _, v := range vs {
+			out.Add(k, strings.NewReplacer("\r\n", "\n", "\r", "\n").Replace(v))
+		}
+	}
+	return out
+}
+
+func TestRunStartsTheConfirmedBatchOfAMultiLinePrompt(t *testing.T) {
+	unpriced := func(c *modeladapter.Config) {
+		mc := c.Models[domain.ModelGPTImage2]
+		mc.Model, mc.CostPerImage = "gpt-image-1.5", 0 // a cloud model the built-in prices do not cover (the user changed its API model ID)
+		c.Models[domain.ModelGPTImage2] = mc
+	}
+	for name, models := range map[string][]string{
+		"a model without a price":   {"gpt-image-2"},
+		"mixed with a priced model": {"flux-2", "gpt-image-2"},
+		"a priced model":            {"flux-2"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			s := newScreen(t, gentesttest.WithConfig(unpriced))
+			// the browser posts the text of a textarea with CRLF line breaks
+			form := url.Values{"media": {"image"}, "model": models, "count": {"1"}, "aspect_ratio": {"1:1"}, "prompt": {"a fox\r\nin the snow"}, "negative": {"blurry\r\nnoisy"}}
+			confirmed := browserReads(s.confirmed(form))
+
+			_, id := s.start(confirmed)
+			s.settled(id)
+			for _, r := range s.results(id) {
+				assert.Equal(t, "a fox\nin the snow", r.Prompt)
+				assert.Equal(t, "succeeded", r.Status)
+			}
+		})
+	}
+}

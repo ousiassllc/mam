@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"slices"
+	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
 
@@ -107,13 +109,24 @@ func round4(v float64) float64 { return math.Round(v*1e4) / 1e4 }
 // usd writes an amount the way the screens do.
 func usd(v float64) string { return fmt.Sprintf("%.4f", v) }
 
-// estimateID is a digest of the normalized request and of the figures the user confirmed.
+// lineBreaks writes every line break (CRLF, CR) as LF for the digest of an estimate.
+var lineBreaks = strings.NewReplacer("\r\n", "\n", "\r", "\n")
+
+// estimateID is a digest of the normalized request and of the figures the user confirmed. The line breaks of the prompts are
+// not part of what is compared: a browser posts the text of a textarea with CRLF, but reads the confirmation's hidden field back
+// with LF, so the same prompt would otherwise never match the run that follows its own estimate. The prompts themselves are
+// sent as they are.
 func estimateID(e Estimate) string {
+	r := e.Request
+	r.Prompts = slices.Clone(r.Prompts)
+	for i, p := range r.Prompts {
+		r.Prompts[i] = PromptInput{Prompt: lineBreaks.Replace(p.Prompt), Negative: lineBreaks.Replace(p.Negative)}
+	}
 	raw, _ := json.Marshal(struct {
 		Request Request         `json:"r"`
 		Lines   []ModelEstimate `json:"l"`
 		Total   string          `json:"t"`
-	}{e.Request, e.Breakdown, usd(e.TotalUSD)})
+	}{r, e.Breakdown, usd(e.TotalUSD)})
 	sum := sha256.Sum256(raw)
 	return hex.EncodeToString(sum[:16])
 }
