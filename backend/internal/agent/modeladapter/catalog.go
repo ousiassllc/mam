@@ -58,6 +58,14 @@ func Capabilities(m domain.ModelName) (VideoCapabilities, bool) {
 		// 3-30 s in whole seconds, 720p and 1080p (the Capability Map also lists 4K, but the text-to-video and image-to-video
 		// settings take 720p and 1080p). First and last frame; the omni reference endpoint is not used.
 		return VideoCapabilities{Durations: wholeSeconds(3, 30), Resolutions: []string{"720p", "1080p"}, FirstFrame: true, LastFrame: true}, true
+	case domain.ModelMiniMaxH3:
+		// 4-15 s in whole seconds, 768P and 2K (named as the API names them, lower case). First and last frame, or reference
+		// images (the two modes are exclusive, which Prepare keeps): 5 reference images, the free quota of a task (the sixth
+		// and beyond are billed apart); reference videos and audio are not used.
+		return VideoCapabilities{Durations: wholeSeconds(4, 15), Resolutions: []string{"768p", "2k"}, MaxReferenceImages: 5, FirstFrame: true, LastFrame: true}, true
+	case domain.ModelMiniMaxH3Max:
+		// 5-15 s, 480P and 768P. Same modes as H3; 2 reference images, the free quota of a task of H3 Max.
+		return VideoCapabilities{Durations: wholeSeconds(5, 15), Resolutions: []string{"480p", "768p"}, MaxReferenceImages: 2, FirstFrame: true, LastFrame: true}, true
 	}
 	return publishedCaps(m)
 }

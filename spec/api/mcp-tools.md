@@ -27,7 +27,7 @@
 
 ### プロバイダー ID（`provider`）
 
-`anthropic`・`openai`・`google`・`flux`・`kling`・`kling4`・`seedance`・`runway`・`elevenlabs`・`synclabs`・`typesafe`（画面の「API キー」と同じ。`list_credentials` が返す一覧が正）。未対応の値は `validation`。
+`anthropic`・`openai`・`google`・`flux`・`kling`・`kling4`・`seedance`・`runway`・`minimax`・`elevenlabs`・`synclabs`・`typesafe`（画面の「API キー」と同じ。`list_credentials` が返す一覧が正）。未対応の値は `validation`。
 
 ### アップロードの用途（`purpose`）
 

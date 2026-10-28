@@ -30,6 +30,8 @@ func TestAddedModelsAreVideoModelsOfTheirVendorWithAPriceAndNoDefaultRoute(t *te
 		{domain.ModelGeminiOmniFlash, modeladapter.VendorGoogle, "gemini-omni-1.1-flash"},
 		{domain.ModelKling4, modeladapter.VendorKling4, "kling-4.0"},
 		{domain.ModelSeedance25, modeladapter.VendorSeedance, "dreamina-seedance-2-5-260628"},
+		{domain.ModelMiniMaxH3, modeladapter.VendorMiniMax, "MiniMax-H3"},
+		{domain.ModelMiniMaxH3Max, modeladapter.VendorMiniMax, "MiniMax-H3-Max"},
 	} {
 		t.Run(string(tt.model), func(t *testing.T) {
 			assert.Contains(t, domain.VideoModels(), tt.model)

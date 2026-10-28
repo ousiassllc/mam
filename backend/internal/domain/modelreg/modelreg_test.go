@@ -32,6 +32,6 @@ func TestSetCopiesItsArguments(t *testing.T) {
 }
 
 func TestJoinRendersTheVideoModelsTheDirectorOffers(t *testing.T) {
-	assert.Equal(t, "kling-3.0 / seedance-2.0 / runway-gen-4.5 / gemini-omni-flash / kling-4.0 / seedance-2.5", modelreg.Join(domain.VideoModels(), " / "))
+	assert.Equal(t, "kling-3.0 / seedance-2.0 / runway-gen-4.5 / gemini-omni-flash / kling-4.0 / seedance-2.5 / minimax-h3 / minimax-h3-max", modelreg.Join(domain.VideoModels(), " / "))
 	assert.Empty(t, modelreg.Join([]domain.ModelName(nil), ", "))
 }

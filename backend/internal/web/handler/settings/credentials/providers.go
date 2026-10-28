@@ -20,6 +20,7 @@ var providerInfo = map[string]info{
 	"kling4":     {"動画生成（Kling 4.0。キーは Kling の API キー 1 つ。Kling 3.0 の ACCESS_KEY:SECRET_KEY とは別）", ""},
 	"seedance":   {"動画生成（Seedance 2.0・2.5）", ""},
 	"runway":     {"動画生成（Runway Gen-4.5）", "https://dev.runway.com"},
+	"minimax":    {"動画生成（MiniMax H3・H3 Max。キーは MiniMax の API キー 1 つ。従量課金（Pay-as-you-go）の API が要る）", "https://platform.minimax.io/user-center/basic-information/interface-key"},
 	"elevenlabs": {"音声（TTS・Music・SFX）", "https://elevenlabs.io/app/api/api-keys"},
 	"synclabs":   {"Lip Sync", ""},
 	"typesafe":   {"Repair の前段選別（Jev）", ""},

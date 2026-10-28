@@ -202,6 +202,8 @@ const (
 	VendorKling4   Vendor = "kling4"
 	VendorSeedance Vendor = "seedance"
 	VendorRunway   Vendor = "runway"
+	// VendorMiniMax is MiniMax H3 / H3 Max (https://api.minimax.io, one API key as the Bearer token).
+	VendorMiniMax Vendor = "minimax"
 )
 
 // VendorOf returns the vendor of a model.
@@ -221,6 +223,8 @@ func VendorOf(m domain.ModelName) Vendor {
 		return VendorSeedance
 	case domain.ModelRunwayGen45:
 		return VendorRunway
+	case domain.ModelMiniMaxH3, domain.ModelMiniMaxH3Max:
+		return VendorMiniMax
 	case chatgptid.Model:
 		return Vendor(chatgptid.Vendor)
 	}
@@ -232,7 +236,7 @@ func VendorOf(m domain.ModelName) Vendor {
 
 // Vendors lists every vendor that has a backend.
 func Vendors() []Vendor {
-	return []Vendor{VendorGoogle, VendorOpenAI, VendorFlux, VendorKling, VendorKling4, VendorSeedance, VendorRunway}
+	return []Vendor{VendorGoogle, VendorOpenAI, VendorFlux, VendorKling, VendorKling4, VendorSeedance, VendorRunway, VendorMiniMax}
 }
 
 // ImageCost is the most one image of the model can cost (its dearest size): what a budget check holds.

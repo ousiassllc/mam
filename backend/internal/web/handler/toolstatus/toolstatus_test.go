@@ -156,14 +156,14 @@ func TestReviewsStatus_NothingReceivedIsSaidInWords(t *testing.T) {
 
 func TestSettingsStatus_CountsTheKeysThatAreSet(t *testing.T) {
 	a := newApp(t, appOpts{})
-	assert.Contains(t, a.body(paths.ToolSettings), "API キー 0 / 11 件")
+	assert.Contains(t, a.body(paths.ToolSettings), "API キー 0 / 12 件")
 	assert.NotContains(t, a.body(paths.ToolSettings), "ChatGPT", "no ChatGPT service: no second line")
 
 	require.NoError(t, a.svc.Credentials.Save("anthropic", "sk-test-fake-1"))
 	require.NoError(t, a.svc.Credentials.Save("openai", "sk-test-fake-2"))
 
 	body := a.body(paths.ToolSettings)
-	assert.Contains(t, body, "API キー 2 / 11 件")
+	assert.Contains(t, body, "API キー 2 / 12 件")
 	assert.NotContains(t, body, "sk-test", "a key never reaches the page")
 }
 

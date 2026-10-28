@@ -31,5 +31,10 @@ func defaultModels() map[domain.ModelName]ModelConfig {
 		// Seedance 2.5 prices in tokens ($10.70 per million at 480p and 720p, $11.70 at 1080p; no video input): the official
 		// per-second figures of a 16:9 clip (ModelArk pricing page, billing examples).
 		domain.ModelSeedance25: {Model: "dreamina-seedance-2-5-260628", CostPerSecond: map[string]float64{"480p": 0.103, "720p": 0.231, "1080p": 0.569}},
+		// MiniMax H3 / H3 Max price by the second of output video (Pay-as-you-go pricing page): H3 USD 0.08 at 768P and 0.13 at 2K,
+		// H3 Max 0.05 at 480P and 0.08 at 768P. Input images beyond the free quota are billed apart, and mam never sends more
+		// images than the quota (MaxReferenceImages in Capabilities), so the per-second price is the whole cost.
+		domain.ModelMiniMaxH3:    {Model: "MiniMax-H3", CostPerSecond: map[string]float64{"768p": 0.08, "2k": 0.13}},
+		domain.ModelMiniMaxH3Max: {Model: "MiniMax-H3-Max", CostPerSecond: map[string]float64{"480p": 0.05, "768p": 0.08}},
 	}
 }
