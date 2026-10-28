@@ -94,7 +94,7 @@ func TestShotLocks_PutSetsTheModeAndReturnsTheSwitchInItsNewState(t *testing.T) 
 
 	rec := g.form(http.MethodPut, "/shots/"+g.shotID+"/locks", url.Values{"parameter": {"camera"}, "mode": {"lock"}})
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-	assert.Regexp(t, `aria-pressed="true"[^>]*>LOCK`, rec.Body.String())
+	assert.Regexp(t, `(?s)aria-pressed="false"[^>]*>AUTO<.*aria-pressed="false"[^>]*>MANUAL<.*aria-pressed="true"[^>]*>LOCK<`, rec.Body.String(), "only LOCK is pressed")
 	assert.NotContains(t, rec.Body.String(), "<html")
 	assert.Regexp(t, `aria-pressed="true"[^>]*>LOCK`, g.get("/shots/"+g.shotID, true).Body.String(), "the Inspector shows the stored setting")
 
