@@ -1,6 +1,9 @@
 package settingsui
 
-import "github.com/ousiassllc/mam/backend/internal/web/atoms"
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/help"
+)
 
 // Card is one row of a list of the settings screen drawn as a card (shared-ui-parts.md §5): a name, a state, what it is
 // for and the buttons that act on it. The id of the row is what a save replaces out of band.
@@ -14,6 +17,12 @@ type Card struct {
 	TitleLevel int
 	Tone       atoms.BadgeTone
 	State      string // the text of the Badge; empty draws none
+	// Help is the explanation of the row behind a "?" button beside its title (nil: none): what is too long for the card.
+	Help templ.Component
+	// HelpPanelElsewhere leaves the panel of Help out of the card: the card draws only the "?" button (aria-controls =
+	// help.ID(ID)) and the caller draws the panel with that id somewhere a swap of the card does not reach. For a card
+	// that is swapped while the help may be open (a polled panel): a panel inside the swap closes with it.
+	HelpPanelElsewhere bool
 	// Description is what the row is for; Summary is its current value (what is set, who is signed in).
 	Description, Summary string
 	// Details is more of the row between its summary and its buttons (a card whose state needs more than a line).
@@ -44,11 +53,21 @@ templ CardItem(c Card) {
 		}
 	>
 		<div class="flex flex-wrap items-center justify-between gap-2">
-			if c.TitleLevel == 4 {
-				<h4 class="text-sm font-semibold text-neutral-100">{ c.Title }</h4>
-			} else {
-				<h3 class="text-sm font-semibold text-neutral-100">{ c.Title }</h3>
-			}
+			<div class="flex items-center gap-2">
+				if c.TitleLevel == 4 {
+					<h4 class="text-sm font-semibold text-neutral-100">{ c.Title }</h4>
+				} else {
+					<h3 class="text-sm font-semibold text-neutral-100">{ c.Title }</h3>
+				}
+				if c.Help != nil {
+					@help.Toggle(help.ID(c.ID), c.Title)
+					if !c.HelpPanelElsewhere {
+						@help.Panel(help.ID(c.ID), c.Title) {
+							@c.Help
+						}
+					}
+				}
+			</div>
 			if c.State != "" {
 				@atoms.Badge(c.Tone, c.State)
 			}

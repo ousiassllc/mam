@@ -242,7 +242,7 @@ export class MamTakeComparator extends LitElement {
 
   private renderError() {
     return this.error
-      ? html`<p class="rounded border border-red-500/50 bg-red-950/40 px-3 py-2 text-xs text-red-200" role="alert" data-error>${this.error}</p>`
+      ? html`<p class="rounded border border-red-500/60 bg-red-500/10 px-3 py-2 text-xs text-red-300" role="alert" data-error>${this.error}</p>`
       : nothing;
   }
 
@@ -278,10 +278,10 @@ export class MamTakeComparator extends LitElement {
       >
         ${this.selection.map((s, i) =>
           s.take_id === t.id
-            ? html`<div class="pointer-events-none absolute top-0 h-full rounded-sm bg-emerald-500/60 text-[10px] leading-7 text-white" style=${bar(s)} data-picked>${i + 1}</div>`
+            ? html`<div class="pointer-events-none absolute top-0 h-full rounded-sm bg-emerald-500/70 text-[10px] leading-7 text-white" style=${bar(s)} data-picked>${i + 1}</div>`
             : nothing,
         )}
-        ${preview ? html`<div class="pointer-events-none absolute top-0 h-full rounded-sm bg-sky-400/50" style=${bar(preview)} data-drag></div>` : nothing}
+        ${preview ? html`<div class="pointer-events-none absolute top-0 h-full rounded-sm bg-sky-500/70" style=${bar(preview)} data-drag></div>` : nothing}
       </div>
     </div>`;
   }

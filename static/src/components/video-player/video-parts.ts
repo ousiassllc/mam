@@ -104,7 +104,7 @@ export function renderPlaceholder(progress: ShotProgress | null) {
       fraction === null
         ? nothing
         : html`<div class="h-1 w-1/2 overflow-hidden rounded bg-neutral-800">
-          <div class="h-full bg-neutral-300" style="width:${fraction * 100}%" data-progress-bar></div>
+          <div class="h-full bg-sky-500/70" style="width:${fraction * 100}%" data-progress-bar></div>
         </div>`
     }
   </div>`;

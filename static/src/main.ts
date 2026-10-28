@@ -13,6 +13,7 @@ import { installInlineDialog } from './components/inline-dialog/inline-dialog';
 import { dedupeToastsOnSwap, dismissToastsOnClick } from './components/lib/toast';
 import { insideModal, installModal } from './components/modal/modal';
 import { installCopy } from './components/copy/copy';
+import { installHelp } from './components/help/help';
 
 // Attach the CSRF token (from <meta name="csrf-token">) to every HTMX request.
 document.addEventListener('htmx:configRequest', (event) => {
@@ -50,6 +51,11 @@ for (const type of [
 // (a 4xx/5xx toast, server down, timeout), put it back to the stored value, so that the screen never
 // shows a value that was not saved (issue 538).
 installSaveOnChangeRevert();
+
+// The "?" helps: a button beside a heading opens its explanation; Esc closes it. Before the inline dialog: both listen
+// to Esc on the document and the one that runs first takes it (preventDefault), so the help, which floats above the page,
+// is what Esc closes first when a question of the model manager is open as well.
+installHelp();
 
 // The model manager's questions in the page (age confirmation, license): the focus goes in, Esc closes, the focus goes back.
 // Before the focus restore: a focus that is back on a control is not touched by it.

@@ -2,6 +2,7 @@ package chatgpt
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/help"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -28,9 +29,10 @@ templ codexCard(d Data) {
 func codexCardOf(d Data) settingsui.Card {
 	c := settingsui.Card{
 		ID: cardID(codexKind), TestID: "chatgpt-card", Attrs: map[string]any{"data-kind": codexKind}, TitleLevel: 4,
-		Title:       codexTitle,
-		Description: "Codex の app-server（OpenAI の公式のプログラム）をこの PC で動かし、そこで ChatGPT にログインします。Business / Enterprise / Edu のワークスペースのアカウントでも、個人のアカウントでも使えます。画像・動画・音声の生成には使いません。LLM の割り当てでは、プロバイダー「chatgpt-codex」を選びます。",
-		Details:     codexDetails(d),
+		Title:              codexTitle,
+		Help:               help.Text(codexHelp),
+		HelpPanelElsewhere: true,
+		Details:            codexDetails(d),
 	}
 	switch {
 	case d.Codex.Login != nil && d.Codex.Login.Pending:
@@ -49,7 +51,7 @@ func codexCardOf(d Data) settingsui.Card {
 
 templ codexDetails(d Data) {
 	<div class="flex flex-col gap-3" data-testid="chatgpt-codex">
-		<p class="rounded-md border border-amber-500/50 px-3 py-2 text-sm text-amber-300" data-testid="chatgpt-codex-terms">
+		<p class="rounded-md border border-amber-500/60 px-3 py-2 text-sm text-amber-300" data-testid="chatgpt-codex-terms">
 			この方式はローカル・オープンソースの利用のためのもので、商用・ホスティング（mam をサーバーで動かして他の人に提供する形）での提供には使えません。ワークスペースの Codex の利用上限を使います。
 		</p>
 		@codexEngine(d.Codex)

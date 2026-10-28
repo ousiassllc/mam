@@ -3,6 +3,8 @@
 // of its own so that molecules stays inside its line limit.
 package settingsui
 
+import "github.com/ousiassllc/mam/backend/internal/web/molecules/help"
+
 // NavItem is one category in the side navigation.
 type NavItem struct {
 	Href    templ.SafeURL
@@ -13,7 +15,7 @@ type NavItem struct {
 const (
 	navLinkClass    = "block rounded-md border-l-2 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 motion-reduce:transition-none"
 	navCurrentClass = "border-indigo-400 bg-neutral-800 font-medium text-neutral-100"
-	navOtherClass   = "border-transparent text-neutral-300 transition-colors hover:bg-neutral-900 hover:text-neutral-100"
+	navOtherClass   = "border-transparent text-neutral-300 transition-colors hover:bg-neutral-800/60 hover:text-neutral-100"
 )
 
 func navClass(current bool) string {
@@ -44,16 +46,14 @@ templ Nav(items []NavItem) {
 	</nav>
 }
 
-// Category is the body of one category of the settings screen: its h2, an optional line under it and the content. It is
-// what an HTMX request for a category gets, without the frame of the page.
-templ Category(title, description string) {
+// Category is the body of one category of the settings screen: its h2 with the "?" button of what the category is for
+// (explanation; nil: no help) and the content. It is what an HTMX request for a category gets, without the frame of the
+// page.
+templ Category(title string, explanation templ.Component) {
 	<section id="settings-category" aria-labelledby="settings-category-title" class="flex flex-col gap-6">
-		<div>
+		@help.Row(help.ID(title), title, explanation) {
 			<h2 id="settings-category-title" class="text-lg font-semibold">{ title }</h2>
-			if description != "" {
-				<p class="mt-1 text-sm text-neutral-400">{ description }</p>
-			}
-		</div>
+		}
 		{ children... }
 	</section>
 }

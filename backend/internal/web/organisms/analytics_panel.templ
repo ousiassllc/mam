@@ -7,7 +7,7 @@ import "github.com/ousiassllc/mam/backend/internal/domain"
 // nothing to measure yet shows "—". Everything is computed from the local database.
 templ AnalyticsPanel(m domain.ProductionMetrics) {
 	<div id="analytics-panel" class="flex flex-col gap-6">
-		<section class="rounded-md border border-emerald-700 bg-emerald-950/30 p-4" data-testid="north-star">
+		<section class="rounded-md border border-emerald-500/60 bg-emerald-500/10 p-4" data-testid="north-star">
 			<h2 class="text-xs text-neutral-400">North Star: 人間の細かな生成操作なしで、採用可能な完成動画に到達した割合</h2>
 			<p class="text-3xl font-semibold" data-testid="metric-north-star">{ percentText(m.NorthStar) }</p>
 			<p class="text-xs text-neutral-400">{ fractionText(m.NorthStar) } Project（着手済み { intText(m.Started) } 件のうち、完成・介入なし）</p>

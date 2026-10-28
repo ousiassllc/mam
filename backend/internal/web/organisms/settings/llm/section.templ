@@ -2,6 +2,7 @@ package llm
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/help"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
@@ -13,7 +14,9 @@ import (
 // to read: no button edits or resets it.
 templ Section(d Data) {
 	<section id={ PanelID } class="flex flex-col gap-3">
-		<p class="text-sm text-neutral-300" data-testid="llm-restart-note">反映にはアプリの再起動が必要です。保存した割り当ては、次の起動から使われます。</p>
+		@help.Row(help.ID(helpSubject), helpSubject, planHelp()) {
+			<p class="text-sm text-neutral-300" data-testid="llm-restart-note">反映にはアプリの再起動が必要です。</p>
+		}
 		if d.Pinned {
 			<p class="text-sm text-neutral-300" data-testid="llm-pinned">起動オプション（--llm-config / MAM_LLM_CONFIG）で固定されています。この画面では変更できません。</p>
 		}
@@ -26,10 +29,6 @@ templ Section(d Data) {
 		if d.Error != "" {
 			<p class="text-sm text-red-300" role="alert" data-testid="llm-error">{ d.Error }</p>
 		}
-		<p class="text-xs text-neutral-400" data-testid="llm-chatgpt-note">
-			プロバイダー「chatgpt-subscription」を選ぶと、ChatGPT のプランを使います（Using ChatGPT plan）。組織（Business / Enterprise / Edu）のアカウントは、「API キーとログイン」の Codex 経由でログインして、プロバイダー「chatgpt-codex」を選びます（テキスト生成だけ）。モデル名は、ログインしたあと、「API キーとログイン」の ChatGPT の欄で確認できます。
-			<a class="underline" href="https://chatgpt.com/settings/usage" target="_blank" rel="noopener noreferrer">Manage usage</a>
-		</p>
 		if !d.Pinned {
 			<div>
 				@atoms.Button(atoms.ToneNeutral, "すべて既定に戻す", templ.Attributes{
@@ -53,6 +52,18 @@ templ Section(d Data) {
 			</details>
 		}
 	</section>
+}
+
+// helpSubject is what the "?" beside the restart notice explains.
+const helpSubject = "テキスト生成の割り当て"
+
+// planHelp is behind the "?" of the restart notice: when a saved assignment is used and how to use a ChatGPT plan.
+templ planHelp() {
+	<p>保存した割り当ては、次の起動から使われます。</p>
+	<p class="mt-2" data-testid="llm-chatgpt-note">
+		プロバイダー「chatgpt-subscription」を選ぶと、ChatGPT のプランを使います（Using ChatGPT plan）。組織（Business / Enterprise / Edu）のアカウントは、「API キーとログイン」の Codex 経由でログインして、プロバイダー「chatgpt-codex」を選びます（テキスト生成だけ）。モデル名は、ログインしたあと、「API キーとログイン」の ChatGPT の欄で確認できます。
+		<a class="underline" href="https://chatgpt.com/settings/usage" target="_blank" rel="noopener noreferrer">Manage usage</a>
+	</p>
 }
 
 templ table(id, caption string, rows []Row, pinned bool) {

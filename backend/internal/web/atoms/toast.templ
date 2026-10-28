@@ -4,9 +4,9 @@ package atoms
 // pressed (static/src/components/lib/toast.ts handles the click). The page shell embeds it once as
 // <template id="toast-template">, which toast.ts clones for the toasts it raises itself.
 templ Toast(message string) {
-	<div class="pointer-events-auto flex items-start gap-3 rounded-md border border-red-500/50 bg-neutral-900 px-4 py-2 text-sm text-red-200 shadow-lg" role="alert" data-toast>
+	<div class="pointer-events-auto flex items-start gap-3 rounded-md border border-red-500/60 bg-neutral-900 px-4 py-2 text-sm text-red-300 shadow-lg" role="alert" data-toast>
 		<span data-toast-message>{ message }</span>
-		<button type="button" class="ml-auto leading-none hover:text-red-100" aria-label="閉じる" data-toast-close>×</button>
+		<button type="button" class="ml-auto leading-none hover:text-neutral-100" aria-label="閉じる" data-toast-close>×</button>
 	</div>
 }
 
@@ -23,9 +23,9 @@ templ ToastOOB(message string) {
 // the error toast.
 templ SuccessToastOOB(message string) {
 	<div id="toast-region" hx-swap-oob="beforeend">
-		<div class="pointer-events-auto flex items-start gap-3 rounded-md border border-emerald-500/50 bg-neutral-900 px-4 py-2 text-sm text-emerald-200 shadow-lg" role="status" data-toast>
+		<div class="pointer-events-auto flex items-start gap-3 rounded-md border border-emerald-500/60 bg-neutral-900 px-4 py-2 text-sm text-emerald-300 shadow-lg" role="status" data-toast>
 			<span data-toast-message>{ message }</span>
-			<button type="button" class="ml-auto leading-none hover:text-emerald-100" aria-label="閉じる" data-toast-close>×</button>
+			<button type="button" class="ml-auto leading-none hover:text-neutral-100" aria-label="閉じる" data-toast-close>×</button>
 		</div>
 	</div>
 }

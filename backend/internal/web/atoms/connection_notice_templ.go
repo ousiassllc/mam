@@ -33,7 +33,7 @@ func ConnectionNotice() templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"pointer-events-auto flex items-center gap-3 rounded-md border border-amber-500/50 bg-neutral-900 px-4 py-2 text-sm text-amber-200 shadow-lg\" role=\"alert\" data-connection-lost=\"\"><span data-connection-lost-message></span> <button type=\"button\" class=\"rounded border border-amber-500/50 px-2 py-1 hover:bg-neutral-800\" data-action=\"reconnect\">再接続</button> <button type=\"button\" class=\"rounded border border-amber-500/50 px-2 py-1 hover:bg-neutral-800\" data-action=\"reload\">再読み込み</button></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"pointer-events-auto flex items-center gap-3 rounded-md border border-amber-500/60 bg-neutral-900 px-4 py-2 text-sm text-amber-300 shadow-lg\" role=\"alert\" data-connection-lost=\"\"><span data-connection-lost-message></span> <button type=\"button\" class=\"rounded border border-amber-500/60 px-2 py-1 hover:bg-neutral-800\" data-action=\"reconnect\">再接続</button> <button type=\"button\" class=\"rounded border border-amber-500/60 px-2 py-1 hover:bg-neutral-800\" data-action=\"reload\">再読み込み</button></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

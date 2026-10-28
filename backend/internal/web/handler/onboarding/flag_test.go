@@ -22,6 +22,7 @@ func TestRoot_FirstRunGoesToTheGuideAndNeverAgainAfterItIsFinished(t *testing.T)
 	assert.Equal(t, paths.Onboarding(), rec.Header().Get("Location"))
 	assert.Equal(t, "no-store", rec.Header().Get("Cache-Control"), "a redirect that is true only until the guide is finished is not cached")
 	assert.Contains(t, rec.Header().Values("Vary"), "HX-Request, HX-History-Restore-Request")
+	assert.Equal(t, "no-store", r.get(paths.OnboardingStep(paths.OnboardingFlow)).Header().Get("Cache-Control"), "a step page is not cached either")
 	assert.Equal(t, http.StatusOK, r.get(paths.Projects()).Code, "the project list is reachable without finishing the guide")
 	assert.Equal(t, http.StatusOK, r.get(paths.Settings()).Code)
 	assert.Equal(t, http.StatusOK, r.get(paths.Home(), "HX-Request", "true").Code, "an HTMX request is a fragment, not a first visit")
@@ -78,6 +79,25 @@ func TestFinish_NeedsTheCSRFToken(t *testing.T) {
 
 	assert.Equal(t, http.StatusForbidden, rec.Code)
 	assert.NoFileExists(t, r.flagFile())
+}
+
+// A flag file that is damaged is no reason to be unable to finish the guide: Complete writes it over, and the root page
+// is then the project list.
+func TestFinish_ADamagedFlagFileIsWrittenOverAndTheGuideEnds(t *testing.T) {
+	for name, content := range map[string]string{"not json": `{`, "not an object": `[]`, "empty": ` `} {
+		t.Run(name, func(t *testing.T) {
+			r := newRig(t, func(c *config) { c.flagBytes = content })
+
+			rec := r.act(http.MethodPost, paths.OnboardingFinish(), nil)
+
+			assert.Equal(t, http.StatusOK, rec.Code)
+			assert.Equal(t, paths.Home(), rec.Header().Get("HX-Redirect"))
+			raw, err := os.ReadFile(r.flagFile())
+			require.NoError(t, err)
+			assert.JSONEq(t, `{"completed": true}`, string(raw))
+			assert.Contains(t, r.get(paths.Home()).Body.String(), `<title>プロジェクト`)
+		})
+	}
 }
 
 // A flag that could not be written is not recorded: the page stays, with a toast, and there is no redirect.

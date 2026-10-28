@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	linkClass = "text-sm underline text-indigo-300 hover:text-indigo-200"
+	linkClass = "text-sm underline text-indigo-300"
 	codeClass = "rounded bg-neutral-800 px-1.5 py-0.5 font-mono text-sm text-neutral-100"
 )
 
@@ -41,7 +41,7 @@ templ progress(f Frame) {
 							{ num(i) }. { s.Title }
 						</span>
 					} else {
-						<a href={ f.StepHref(i) } class="inline-block rounded-md border border-transparent px-2 py-1 text-neutral-300 hover:bg-neutral-900 hover:text-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">
+						<a href={ f.StepHref(i) } class="inline-block rounded-md border border-transparent px-2 py-1 text-neutral-300 hover:bg-neutral-800/60 hover:text-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">
 							{ num(i) }. { s.Title }
 						</a>
 					}
@@ -83,16 +83,24 @@ templ controls(f Frame) {
 	</div>
 }
 
-// finish records that the guide is over (POST /onboarding/finish) and goes to the project list (HX-Redirect).
-templ finish(tone atoms.ButtonTone, label, testID string) {
+// finishForm is the POST /onboarding/finish form (the guide is over; the answer is HX-Redirect to the project list) around
+// the submit button its children are. finish and skip differ only in that button.
+templ finishForm() {
 	<form hx-post={ paths.OnboardingFinish() } hx-swap="none" hx-sync="this:drop" hx-params="none" hx-disabled-elt="find button[type=submit]">
-		@atoms.Button(tone, label, templ.Attributes{"type": "submit", "data-testid": testID})
+		{ children... }
 	</form>
+}
+
+// finish records that the guide is over and goes to the project list.
+templ finish(tone atoms.ButtonTone, label, testID string) {
+	@finishForm() {
+		@atoms.Button(tone, label, templ.Attributes{"type": "submit", "data-testid": testID})
+	}
 }
 
 // skip is the text button "ガイドを閉じてプロジェクト一覧へ": the same POST as finish, from any page.
 templ skip() {
-	<form hx-post={ paths.OnboardingFinish() } hx-swap="none" hx-sync="this:drop" hx-params="none" hx-disabled-elt="find button[type=submit]">
+	@finishForm() {
 		@atoms.LinkButton(atoms.ToneNeutral, "ガイドを閉じてプロジェクト一覧へ", templ.Attributes{"type": "submit", "data-testid": "onboarding-skip"})
-	</form>
+	}
 }

@@ -12,7 +12,7 @@ templ ConfirmEmpty() {
 
 // ConfirmFailed is the confirmation of a request that could not be priced: the reason, in the place of the estimate.
 templ ConfirmFailed(msg string) {
-	<div id={ ConfirmID } class="rounded-md border border-red-500/50 p-4" data-testid="gt-confirm-failed">
+	<div id={ ConfirmID } class="rounded-md border border-red-500/60 p-4" data-testid="gt-confirm-failed">
 		<p class="text-sm text-red-300" role="alert" data-testid="gt-confirm-error">{ msg }</p>
 	</div>
 }
@@ -20,7 +20,7 @@ templ ConfirmFailed(msg string) {
 // ConfirmBox is the estimate of a batch: how many results, what each model costs, what is not priced and the warnings. The
 // batch runs only from this box, with the estimate it shows.
 templ ConfirmBox(c Confirm) {
-	<div id={ ConfirmID } class="flex flex-col gap-3 rounded-md border border-indigo-500/50 p-4" data-testid="gt-confirm">
+	<div id={ ConfirmID } class="flex flex-col gap-3 rounded-md border border-indigo-400 p-4" data-testid="gt-confirm">
 		@notice(c.Message, "gt-confirm")
 		<h2 class="text-sm font-medium">実行の確認</h2>
 		<p class="text-sm" data-testid="gt-confirm-items">全部で <strong>{ itoa(c.Items) }</strong> 件を生成します。見積り合計は <strong data-testid="gt-confirm-total">{ c.Total }</strong> です。</p>

@@ -48,7 +48,7 @@ templ LinkButton(tone ButtonTone, label string, attrs templ.Attributes) {
 	if tone == TonePrimary {
 		<button class="text-xs text-indigo-300 underline" { attrs... }>{ label }</button>
 	} else {
-		<button class="text-xs text-neutral-400 underline hover:text-neutral-200" { attrs... }>{ label }</button>
+		<button class="text-xs text-neutral-400 underline hover:text-neutral-100" { attrs... }>{ label }</button>
 	}
 }
 
@@ -72,7 +72,7 @@ templ SmallButtonFor(tone ButtonTone, label, subject string, attrs templ.Attribu
 
 // LinkButtonFor is the LinkButton of one row of a list, named after the row like SmallButtonFor.
 templ LinkButtonFor(label, subject string, attrs templ.Attributes) {
-	<button class="text-xs text-neutral-400 underline hover:text-neutral-200" aria-label={ RowLabel(label, subject) } { attrs... }>{ label }</button>
+	<button class="text-xs text-neutral-400 underline hover:text-neutral-100" aria-label={ RowLabel(label, subject) } { attrs... }>{ label }</button>
 }
 
 // SmallButtonLinkFor is a link that looks like the SmallButtonFor of one row of a list (the page the row opens): its

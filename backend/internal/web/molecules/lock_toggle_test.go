@@ -1,9 +1,11 @@
 package molecules_test
 
 import (
+	"regexp"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
@@ -54,3 +56,37 @@ func TestLockToggle_CarriesTheHiddenFieldsOfAWorldStateSwitchAndReplacesOnlyItse
 	assert.Contains(t, html, `value="lock"`)
 	assert.NotContains(t, html, `value="manual"`)
 }
+
+// The current mode is not only aria-pressed: it is the one that looks set (a tinted face; LOCK is amber, the others indigo),
+// and the modes that are not current look like plain buttons. The page then shows what is stored in both the tree and the
+// eye (color-rules.md: the selection is indigo, a warning is amber).
+func TestLockToggle_OnlyTheCurrentModeLooksSet(t *testing.T) {
+	for mode, tint := range map[domain.LockMode]string{
+		domain.LockAuto:   "bg-indigo-500/20 text-indigo-300",
+		domain.LockManual: "bg-indigo-500/20 text-indigo-300",
+		domain.LockLocked: "bg-amber-500/20 text-amber-300",
+	} {
+		html := render(t, molecules.LockToggle(molecules.LockToggleData{
+			DOMID: "lock-s1-camera", URL: "/shots/s1/locks", Parameter: domain.ParamCamera, Mode: mode,
+		}))
+
+		buttons := lockButton.FindAllStringSubmatch(html, -1)
+		require.Len(t, buttons, 3, mode)
+		for _, b := range buttons {
+			value, pressed, class := b[1], b[2], b[3]
+			if value == string(mode) {
+				assert.Equal(t, "true", pressed, "%s: %s is pressed", mode, value)
+				assert.Contains(t, class, tint, "%s: the current mode is tinted", mode)
+				assert.NotContains(t, class, "hover:bg-neutral-800", "%s: the current mode is not a plain button", mode)
+				continue
+			}
+			assert.Equal(t, "false", pressed, "%s: %s is not pressed", mode, value)
+			assert.Contains(t, class, "text-neutral-300 hover:bg-neutral-800", "%s: %s is a plain button", mode, value)
+			assert.NotContains(t, class, "bg-amber-500/20", "%s: %s is not tinted", mode, value)
+			assert.NotContains(t, class, "bg-indigo-500/20", "%s: %s is not tinted", mode, value)
+		}
+	}
+}
+
+// lockButton captures the value, aria-pressed and class of each mode button of a LockToggle.
+var lockButton = regexp.MustCompile(`name="mode" value="(\w+)" aria-pressed="(\w+)" class="([^"]*)"`)

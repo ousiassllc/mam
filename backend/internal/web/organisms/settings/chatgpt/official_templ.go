@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/help"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
 )
 
@@ -88,7 +89,7 @@ func officialCard(d Data) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = settingsui.CardItem(accountCard(officialKind, officialTitle, "個人（Go / Plus / Pro）の ChatGPT のプランで、テキスト生成を使います。", d.Official, officialDetails(d))).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = settingsui.CardItem(accountCard(officialKind, officialTitle, officialHelp, d.Official, officialDetails(d))).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -96,12 +97,13 @@ func officialCard(d Data) templ.Component {
 	})
 }
 
-// accountCard is the card of a login system: its state and, when it is not signed in, the line that says so.
-func accountCard(kind, title, description string, a Account, details templ.Component) settingsui.Card {
+// accountCard is the card of a login system: its state and, when it is not signed in, the line that says so. What the
+// system is for (explanation) is behind the "?" of the card.
+func accountCard(kind, title, explanation string, a Account, details templ.Component) settingsui.Card {
 	tone, state := accountState(kind, a)
 	c := settingsui.Card{
 		ID: cardID(kind), TestID: "chatgpt-card", Attrs: map[string]any{"data-kind": kind}, TitleLevel: 4,
-		Title: title, Description: description, Tone: tone, State: state, Details: details,
+		Title: title, Help: help.Text(explanation), HelpPanelElsewhere: true, Tone: tone, State: state, Details: details,
 	}
 	return c
 }
@@ -151,7 +153,7 @@ func officialDetails(d Data) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs("Using ChatGPT plan")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/official.templ`, Line: 57, Col: 26}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/official.templ`, Line: 59, Col: 26}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -164,7 +166,7 @@ func officialDetails(d Data) templ.Component {
 			var templ_7745c5c3_Var5 templ.SafeURL
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(usageURL))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/official.templ`, Line: 59, Col: 55}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/official.templ`, Line: 61, Col: 55}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -212,7 +214,7 @@ func accountStatus(kind string, a Account) templ.Component {
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.ResolveAttributeValue("chatgpt-status-" + kind)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/official.templ`, Line: 71, Col: 80}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/official.templ`, Line: 73, Col: 80}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var7)
 		if templ_7745c5c3_Err != nil {
@@ -235,7 +237,7 @@ func accountStatus(kind string, a Account) templ.Component {
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(a.Email)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/official.templ`, Line: 76, Col: 67}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/official.templ`, Line: 78, Col: 67}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {
@@ -253,7 +255,7 @@ func accountStatus(kind string, a Account) templ.Component {
 				var templ_7745c5c3_Var9 string
 				templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(a.Plan)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/official.templ`, Line: 78, Col: 95}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/official.templ`, Line: 80, Col: 95}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 				if templ_7745c5c3_Err != nil {
@@ -286,7 +288,7 @@ func accountStatus(kind string, a Account) templ.Component {
 				var templ_7745c5c3_Var10 string
 				templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.ResolveAttributeValue(a.ExpiresAt.UTC().Format(time.RFC3339))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/official.templ`, Line: 85, Col: 130}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/official.templ`, Line: 87, Col: 130}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var10)
 				if templ_7745c5c3_Err != nil {
@@ -299,7 +301,7 @@ func accountStatus(kind string, a Account) templ.Component {
 				var templ_7745c5c3_Var11 string
 				templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(a.ExpiresAt.Local().Format("2006-01-02 15:04"))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/official.templ`, Line: 85, Col: 181}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/official.templ`, Line: 87, Col: 181}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 				if templ_7745c5c3_Err != nil {
@@ -349,7 +351,7 @@ func loginFailed(l *Login) templ.Component {
 			var templ_7745c5c3_Var13 string
 			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(l.Message)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/official.templ`, Line: 94, Col: 93}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/official.templ`, Line: 96, Col: 93}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 			if templ_7745c5c3_Err != nil {
@@ -388,14 +390,14 @@ func codexGuidance(d Data) templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 		if (d.Official.Login != nil && d.Official.Login.UseCodex) || (d.Official.SignedIn && d.Official.WorkspacePlan) {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<div class=\"flex flex-col gap-2 rounded-md border border-amber-500/50 px-3 py-2\" data-testid=\"chatgpt-use-codex\"><p class=\"text-sm text-amber-300\">組織のアカウントは Codex 経由のログインを使ってください。Business / Enterprise / Edu のワークスペースのアカウントは、OpenAI の仕様で、公式の方式ではプランを使えません。</p><a class=\"w-fit text-sm text-indigo-300 underline\" href=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<div class=\"flex flex-col gap-2 rounded-md border border-amber-500/60 px-3 py-2\" data-testid=\"chatgpt-use-codex\"><p class=\"text-sm text-amber-300\">組織のアカウントは Codex 経由のログインを使ってください。Business / Enterprise / Edu のワークスペースのアカウントは、OpenAI の仕様で、公式の方式ではプランを使えません。</p><a class=\"w-fit text-sm text-indigo-300 underline\" href=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var15 templ.SafeURL
 			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("#" + cardID(codexKind)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/official.templ`, Line: 104, Col: 99}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/official.templ`, Line: 106, Col: 99}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 			if templ_7745c5c3_Err != nil {

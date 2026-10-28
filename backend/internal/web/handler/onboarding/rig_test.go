@@ -31,23 +31,25 @@ import (
 // rig is the router over the settings of a test with the first-run guide, driven as the browser's HTMX does (the CSRF
 // cookie and header). Everything lives in temporary directories and fake services: no real key store, no network.
 type rig struct {
-	t        *testing.T
-	engine   http.Handler
-	dir      string
-	llmFile  string
-	keys     credential.Store
-	cookie   *http.Cookie
-	token    string
-	settings *settingsroutes.Services
+	t          *testing.T
+	engine     http.Handler
+	dir        string
+	llmFile    string
+	keys       credential.Store
+	cookie     *http.Cookie
+	token      string
+	settings   *settingsroutes.Services
+	chatGPTDir string // the data directory of the ChatGPT service (when there is one)
 }
 
 type config struct {
-	goos      string
-	look      func(string) (string, error)
-	noGuide   bool
-	chatGPT   bool
-	keys      credential.Store
-	flagBytes string // the content of onboarding.json before the first request ("" for no file)
+	goos        string
+	look        func(string) (string, error)
+	noGuide     bool
+	chatGPT     bool
+	keys        credential.Store
+	chatGPTKeys credential.Store // the key store of the ChatGPT sign-in (nil: an empty memory one)
+	flagBytes   string           // the content of onboarding.json before the first request ("" for no file)
 }
 
 func foundBoth(file string) (string, error) { return "/usr/bin/" + file, nil }
@@ -74,8 +76,12 @@ func newRig(t *testing.T, mutate ...func(*config)) *rig {
 		t.Setenv("HOME", home) // nothing may be read or written below the user's own home
 		t.Setenv("USERPROFILE", home)
 		auth := chatgpttest.NewServer(t)
+		if cfg.chatGPTKeys == nil {
+			cfg.chatGPTKeys = credentialtest.New()
+		}
+		r.chatGPTDir = t.TempDir()
 		r.settings.ChatGPT = chatgpt.New(chatgpt.Options{
-			Keys: credentialtest.New(), DataDir: t.TempDir(), LockPath: filepath.Join(t.TempDir(), ".auth-refresh.lock"), Issuer: auth.URL,
+			Keys: cfg.chatGPTKeys, DataDir: r.chatGPTDir, LockPath: filepath.Join(t.TempDir(), ".auth-refresh.lock"), Issuer: auth.URL,
 			Now:   time.Now,
 			Sleep: func(context.Context, time.Duration) error { return nil },
 			Open:  func(u string) error { auth.Approve(u); return nil },

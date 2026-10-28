@@ -33,6 +33,33 @@ func TestCatalog_ShowsKindSizeVRAMLicenseCommercialAndState(t *testing.T) {
 	assert.NotContains(t, body, `hx-post="`+installURL("m-c")+`"`)
 }
 
+// A model is a card in a grid, not a row of a divided list (model-manager-screen.md "モデルの一覧のカード"): the list is a
+// <ul role="list">, each card is an <li> with the name as its h3, the state as a Badge with words, the buttons in a
+// shrink-0 box next to the name and the description, then the meta, and the file list.
+func TestCatalog_EachModelIsACardWithAnH3AndShrinkZeroActions(t *testing.T) {
+	s := newScreen(t)
+	s.rig.InstallEngine()
+	body := s.get(paths.ModelManagerPart("models")).Body.String()
+
+	assert.Regexp(t, `<ul role="list" class="[^"]*\bgrid\b[^"]*" data-testid="mm-models">`, body)
+	assert.Regexp(t, `<li class="[^"]*rounded-lg border border-neutral-800 bg-neutral-900[^"]*" data-testid="mm-model"`, body, "the surface of a card")
+	assert.NotContains(t, body, "divide-y", "the models are not a divided list of rows")
+
+	cards := strings.Split(body, `data-testid="mm-model" data-model="`)[1:]
+	require.GreaterOrEqual(t, len(cards), 2, "several models are drawn")
+	for _, card := range cards {
+		id := card[:strings.Index(card, `"`)]
+		assert.Regexp(t, `<h3 class="[^"]*">[^<]+</h3>`, card, "%s: the name is the heading of the card", id)
+		assert.Contains(t, card, `data-testid="mm-model-state"`, id)
+		assert.Regexp(t, `(?s)<div class="flex shrink-0 [^"]*">\s*<button`, card, "%s: the buttons stay in a shrink-0 box", id)
+		for _, testID := range []string{"mm-model-meta", "mm-vram", "mm-commercial", "mm-files"} {
+			assert.Contains(t, card, `data-testid="`+testID+`"`, "%s: the card keeps %s", id, testID)
+		}
+		assert.Contains(t, card, "<details", id)
+		assert.NotContains(t, card, `data-testid="mm-model"`, id)
+	}
+}
+
 func TestInstallModel_RunsAsAJobWithProgressAndThenIsInstalled(t *testing.T) {
 	s := newScreen(t)
 	s.rig.InstallEngine()

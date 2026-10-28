@@ -54,7 +54,7 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 | DELETE | `/settings/chatgpt/:kind` | ログアウト（失効の要求 → 保存したトークンの削除。`codex` は app-server に `account/logout` を頼み、フォーム `remove=true` で取得した本体と `CODEX_HOME` も削除する）。CSRF 必須。200 で区画を返し、失効を確認できなかったときはその旨と「ChatGPT の設定で接続を解除」を出す（ローカルのトークンは消える） |
 | PUT | `/settings/chatgpt/image/enabled` | 画像生成（非公式）の ON/OFF。フォーム `enabled`（`true` / `false`）、ON は `acknowledge_risks=true`（リスクの確認）が必須で、無ければ 422。CSRF 必須。200 で区画。OFF の間は画像生成の経路を一切呼ばない |
 | POST | `/settings/chatgpt/codex/install` | Codex の app-server のダウンロード（`mam.exe` と同じ場所の `codex` ディレクトリ。固定した版・SHA-256・サイズを検証）。CSRF 必須。200 で進捗の区画（Windows 以外・書き込めない場所は 409、ディスクの空き不足は 507）。`POST …/install/cancel` は中断（再開できる） |
-| PUT | `/settings/chatgpt/codex/path` | 自分で入れた codex の実行ファイルのパスを設定（フォーム `path`。空で解除）。絶対パスの実在するファイルでなければ 422。CSRF 必須 |
+| PUT | `/settings/chatgpt/codex/path` | 自分で入れた codex の実行ファイルのパスを設定（フォーム `path`。空で解除）。絶対パスの実在するファイルでなければ 422、保存できなければ 500。CSRF 必須 |
 | POST / GET | `/settings/chatgpt/codex/refresh` ・ `…/codex/models` | アカウント・利用上限を読み直す（POST、CSRF 必須。リセット時刻は日本時間）／ サインイン中のアカウントで使えるモデルを区画に出す（GET、`model/list`）。区画は `method=codex` で返る（仕様: `spec/architecture/chatgpt-codex/codex-login.md`） |
 | GET | `/projects/:id/analytics` | Production Analytics（M3、`spec/spec.md` §28）。Project の MVP Success Metrics（North Star・Shot・人間の介入・時間・コスト・品質・完成）を `analytics_panel` で表示する。計算式と記録する人間の介入は §28.2・§28.3。集計はローカル DB のみで外部へ送信しない。存在しない Project は 404。Project のメニューの「制作指標」から開く | フルページ / フラグメント |
 | GET | `/analytics` | すべての Project の合計の MVP Success Metrics（`/projects/:id/analytics` と同じ画面、Project 名の代わりに「すべてのプロジェクト」）。Project 一覧の「制作指標」から開く | フルページ / フラグメント |

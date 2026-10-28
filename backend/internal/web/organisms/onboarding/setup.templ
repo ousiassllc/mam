@@ -30,14 +30,16 @@ templ CredentialsBody(status CredentialsStatus, keys credentials.Data, login *ch
 	@chatgpt.SectionIf(login)
 }
 
-// CredentialsStatusLine is the state line. It reads itself again when a modal closes (a key saved, a login that ended).
+// CredentialsStatusLine is the state line. It reads itself again when a modal closes (a key saved, a login that ended) and
+// when any request that is not a GET ends on the page (an API key deleted, a ChatGPT sign-out: they close no modal). Its own
+// reload is a GET, so it does not trigger itself again (htmx:afterSettle from:body would).
 templ CredentialsStatusLine(s CredentialsStatus) {
 	<p
 		id={ StatusID }
 		role="status"
 		class="flex items-center gap-2 rounded-md border border-neutral-800 px-3 py-2 text-sm"
 		hx-get={ paths.OnboardingCredentialsStatus() }
-		hx-trigger="modal-close from:body"
+		hx-trigger="modal-close from:body, htmx:afterRequest[detail.requestConfig.verb!='get'] from:body"
 		hx-swap="outerHTML"
 		data-testid="onboarding-credentials-status"
 	>
@@ -66,7 +68,8 @@ templ ModelsBody(text llm.Data, images media.Data) {
 	</details>
 }
 
-// OS is the operating system the text of a step is for.
+// OS is the operating system the text of a step is for. It mirrors service/onboarding.OS (organisms do not import the
+// service layer); the handler maps one to the other (viewOS).
 type OS string
 
 // The systems with their own text.
@@ -92,16 +95,17 @@ templ FFmpegBody(f FFmpeg) {
 		ffmpeg と ffprobe は、品質判定（Judge）・Take のプレビュー・部分採用で使います。無くても mam は起動しますが、これらは使えなくなります。mam を起動した環境の PATH から探します。
 	</p>
 	if f.Found() {
-		<div class="flex flex-col gap-1 rounded-md border border-emerald-500/50 px-3 py-2" role="status" data-testid="onboarding-ffmpeg-found">
+		<div class="flex flex-col gap-1 rounded-md border border-emerald-500/60 px-3 py-2" role="status" data-testid="onboarding-ffmpeg-found">
 			<p class="text-sm">
 				@atoms.Badge(atoms.BadgeOK, "見つかりました")
-				<span class="ml-2">ffmpeg と ffprobe が使えます。</span>
+				<span class="ml-2">ffmpeg と ffprobe が PATH にあります。</span>
 			</p>
 			<p class="text-xs text-neutral-400">ffmpeg: <code class={ codeClass }>{ f.FFmpeg }</code></p>
 			<p class="text-xs text-neutral-400">ffprobe: <code class={ codeClass }>{ f.FFprobe }</code></p>
+			<p class="text-xs text-neutral-400">mam を起動したあとに入れたときは、mam を再起動すると反映されます（ffmpeg は起動時に探します）。</p>
 		</div>
 	} else {
-		<div class="flex flex-col gap-3 rounded-md border border-amber-500/50 px-3 py-2" role="status" data-testid="onboarding-ffmpeg-missing">
+		<div class="flex flex-col gap-3 rounded-md border border-amber-500/60 px-3 py-2" role="status" data-testid="onboarding-ffmpeg-missing">
 			<p class="text-sm">
 				@atoms.Badge(atoms.BadgeWarn, "見つかりません")
 				<span class="ml-2">{ missingText(f) }</span>
