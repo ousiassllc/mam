@@ -100,16 +100,14 @@ type TakeInfo struct {
 // Label is the name of a Judge verdict shown to the user, in the capitals of Editor Judge and Final QC.
 func (v JudgeVerdict) Label() string { return strings.ToUpper(string(v)) }
 
-// ResolutionHeight is the number of lines of "1080p", "2160p" or "4K" (0 when unknown); "2K" (size not stated by MiniMax) is 1440.
+// namedHeights are the resolutions named by a word, not by their lines. "2K" is MiniMax H3's top size, whose pixels the vendor does not state.
+var namedHeights = map[string]int{"2k": 1440, "4k": 2160, "uhd": 2160, "8k": 4320}
+
+// ResolutionHeight is the number of lines of "1080p", "2160p" or "4K" (0 when unknown).
 func ResolutionHeight(res string) int {
 	res = strings.ToLower(strings.TrimSpace(res))
-	switch res {
-	case "2k":
-		return 1440
-	case "4k", "uhd":
-		return 2160
-	case "8k":
-		return 4320
+	if h, ok := namedHeights[res]; ok {
+		return h
 	}
 	n, _ := strconv.Atoi(strings.TrimSuffix(res, "p")) // 0 when it is not a number
 	return n

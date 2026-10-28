@@ -32,6 +32,7 @@ func TestAddedModelsAreVideoModelsOfTheirVendorWithAPriceAndNoDefaultRoute(t *te
 		{domain.ModelSeedance25, modeladapter.VendorSeedance, "dreamina-seedance-2-5-260628"},
 		{domain.ModelMiniMaxH3, modeladapter.VendorMiniMax, "MiniMax-H3"},
 		{domain.ModelMiniMaxH3Max, modeladapter.VendorMiniMax, "MiniMax-H3-Max"},
+		{domain.ModelWan3, modeladapter.VendorAlibaba, "wan3.0-video"},
 	} {
 		t.Run(string(tt.model), func(t *testing.T) {
 			assert.Contains(t, domain.VideoModels(), tt.model)

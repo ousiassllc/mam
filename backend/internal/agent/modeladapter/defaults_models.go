@@ -36,5 +36,8 @@ func defaultModels() map[domain.ModelName]ModelConfig {
 		// images than the quota (MaxReferenceImages in Capabilities), so the per-second price is the whole cost.
 		domain.ModelMiniMaxH3:    {Model: "MiniMax-H3", CostPerSecond: map[string]float64{"768p": 0.08, "2k": 0.13}},
 		domain.ModelMiniMaxH3Max: {Model: "MiniMax-H3-Max", CostPerSecond: map[string]float64{"480p": 0.05, "768p": 0.08}},
+		// Wan 3.0 prices by the second of output video, in the Singapore region (the model page's table; the other regions are
+		// 0.041256 / 0.082513 / 0.165025 USD at 480P / 720P / 1080P: set cost_per_second_usd when the base URL is of another region).
+		domain.ModelWan3: {Model: "wan3.0-video", CostPerSecond: map[string]float64{"480p": 0.05, "720p": 0.10, "1080p": 0.20}},
 	}
 }

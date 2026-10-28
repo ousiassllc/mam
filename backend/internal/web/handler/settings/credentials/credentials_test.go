@@ -86,7 +86,7 @@ func TestEdit_OnlyProvidersWithAFreeReadOnlyCallHaveAConnectionTest(t *testing.T
 		assert.Contains(t, body, `hx-post="/settings/credentials/`+p+`/test"`, p)
 		assert.NotContains(t, body, `data-testid="credential-no-test"`, p)
 	}
-	for _, p := range []string{"kling", "kling4", "minimax", "seedance", "synclabs", "typesafe"} {
+	for _, p := range []string{"kling", "kling4", "minimax", "alibaba", "seedance", "synclabs", "typesafe"} {
 		body := r.do(http.MethodGet, paths.CredentialEdit(p), nil, true).Body.String()
 		assert.NotContains(t, body, "/test", p)
 		assert.Contains(t, body, "保存したあと、最初の生成で確かめられます", p)

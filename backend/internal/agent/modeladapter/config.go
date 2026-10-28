@@ -154,6 +154,7 @@ func DefaultConfig() Config {
 			VendorSeedance: {BaseURL: "https://ark.ap-southeast.bytepluses.com", MaxConcurrency: 3, TimeoutSeconds: 900},
 			VendorRunway:   {BaseURL: "https://api.dev.runwayml.com", MaxConcurrency: 2, TimeoutSeconds: 900},
 			VendorMiniMax:  {BaseURL: "https://api.minimax.io", MaxConcurrency: 3, TimeoutSeconds: 900},
+			VendorAlibaba:  {BaseURL: alibabaBaseURL, MaxConcurrency: 3, TimeoutSeconds: 1800},
 		},
 		Models: defaultModels(),
 		Images: map[ImagePurpose]ImageRoute{

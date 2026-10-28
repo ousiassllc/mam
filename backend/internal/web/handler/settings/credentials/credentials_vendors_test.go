@@ -42,3 +42,28 @@ func TestMiniMaxKeyIsListedAndCanBeSavedAndDeleted(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, ok)
 }
+
+// Alibaba Cloud (Wan 3.0) has a key of its own too, in the form WORKSPACE_ID:API_KEY, and the modal says so.
+func TestAlibabaKeyIsListedSaysItsFormAndCanBeSaved(t *testing.T) {
+	r := newRig(t)
+
+	var listed bool
+	for _, p := range service.CredentialProviders {
+		listed = listed || p.ID == "alibaba"
+	}
+	require.True(t, listed, "alibaba is one of the providers of the screen")
+
+	edit := r.do(http.MethodGet, paths.CredentialEdit("alibaba"), nil, true).Body.String()
+	assert.Contains(t, edit, "Wan 3.0")
+	assert.Contains(t, edit, "ワークスペース ID:API キー")
+	assert.Contains(t, edit, `hx-put="/credentials/alibaba"`)
+	assert.NotContains(t, edit, "/test", "no free read-only call is documented for the key")
+
+	key := "llm-ab12:" + secret
+	rec := r.do(http.MethodPut, paths.Credential("alibaba"), url.Values{"api_key": {key}}, true)
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.Contains(t, rec.Body.String(), `<li id="credential-row-alibaba"`)
+	got, err := r.keys.Get("alibaba")
+	require.NoError(t, err)
+	assert.Equal(t, key, got)
+}

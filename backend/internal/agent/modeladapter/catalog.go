@@ -66,6 +66,13 @@ func Capabilities(m domain.ModelName) (VideoCapabilities, bool) {
 	case domain.ModelMiniMaxH3Max:
 		// 5-15 s, 480P and 768P. Same modes as H3; 2 reference images, the free quota of a task of H3 Max.
 		return VideoCapabilities{Durations: wholeSeconds(5, 15), Resolutions: []string{"480p", "768p"}, MaxReferenceImages: 2, FirstFrame: true, LastFrame: true}, true
+	case domain.ModelWan3:
+		// 2-30 s in whole seconds, 480P / 720P / 1080P, with native sound. First and last frame, or up to 10 reference images (the
+		// two modes are exclusive, which Prepare keeps); reference videos and audio, files and web links are not used.
+		return VideoCapabilities{
+			Durations: wholeSeconds(2, 30), Resolutions: []string{"480p", "720p", "1080p"},
+			MaxReferenceImages: 10, FirstFrame: true, LastFrame: true, NativeAudio: true,
+		}, true
 	}
 	return publishedCaps(m)
 }
