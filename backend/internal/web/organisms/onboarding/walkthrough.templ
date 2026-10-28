@@ -1,0 +1,56 @@
+package onboarding
+
+// FlowBody is the first page of the walkthrough: what mam does, from the plan to the final QC (spec/spec.md §1).
+templ FlowBody() {
+	<p class="text-sm text-neutral-300">
+		mam は、作りたい動画を伝えると、AI が制作チームとして最後まで進める映像制作スタジオです。1 つのプロンプトから動画を 1 本出すだけのツールではありません。
+	</p>
+	<ol role="list" class="flex flex-col gap-3" data-testid="onboarding-flow">
+		@flowStage("1", "企画", "作りたいもの・目的・世界観・制約をチャットで伝えます。AI が Brief（企画書）にまとめ、脚本と絵コンテ（Scene / Shot）を作ります。")
+		@flowStage("2", "撮影", "Shot ごとにキーフレーム（最初の絵）と動画を生成します。1 つの Shot に複数の Take（撮影の試行）ができます。")
+		@flowStage("3", "品質判定と撮り直し", "AI が Take を見て、狙いどおりか・人物や商品が崩れていないかを判定し、足りなければ撮り直します。")
+		@flowStage("4", "編集・音声", "選んだ Take をつないで編集し、台詞やナレーション・音を重ねます。")
+		@flowStage("5", "最終 QC と書き出し", "完成した動画を最後に点検してから、書き出します。")
+	</ol>
+}
+
+templ flowStage(number, title, text string) {
+	<li class="flex gap-3 rounded-md border border-neutral-800 px-3 py-2">
+		<span class="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-neutral-600 text-xs" aria-hidden="true">{ number }</span>
+		<div>
+			<h3 class="text-sm font-semibold">{ title }</h3>
+			<p class="text-sm text-neutral-300">{ text }</p>
+		</div>
+	</li>
+}
+
+// ModesBody is the second page: AUTO MODE and DIRECTOR MODE (spec/spec.md §3–§5).
+templ ModesBody() {
+	<p class="text-sm text-neutral-300">進め方は 2 つあります。同じプロジェクトで、いつでも切り替えられます。</p>
+	<div class="grid grid-cols-1 gap-4 md:grid-cols-2" data-testid="onboarding-modes">
+		<section class="rounded-md border border-neutral-800 px-4 py-3" aria-labelledby="onboarding-mode-auto">
+			<h3 id="onboarding-mode-auto" class="text-base font-semibold">AUTO MODE（自動生成）</h3>
+			<p class="mt-1 text-sm text-neutral-300">作りたい動画を指定すると、AI が完成まで自律的に進めます。まず初稿を作りたいときに向いています。</p>
+		</section>
+		<section class="rounded-md border border-neutral-800 px-4 py-3" aria-labelledby="onboarding-mode-director">
+			<h3 id="onboarding-mode-director" class="text-base font-semibold">DIRECTOR MODE（監督）</h3>
+			<p class="mt-1 text-sm text-neutral-300">自分が監督になります。プロンプトを書く代わりに、「もう少し寄って」「この瞬間だけ不安そうな顔にして」のように、自然な言葉で演出を指示します。</p>
+		</section>
+	</div>
+	<p class="text-sm text-neutral-300">
+		たとえば、AUTO で初稿を 8 割まで作り、気になる Scene だけ DIRECTOR で直し、また AUTO に戻して、編集・音声・最終 QC に進む、という使い方ができます。
+	</p>
+}
+
+// PrepareBody is the third page: what the setup steps that follow ask for. mac says that the macOS step is among them.
+templ PrepareBody(mac bool) {
+	<p class="text-sm text-neutral-300">この後のセットアップで、次のものを順に確かめます。どれも「あとで」で飛ばせて、あとから設定画面で入れられます。</p>
+	<ol role="list" class="list-decimal pl-6 text-sm text-neutral-300" data-testid="onboarding-prepare">
+		<li><strong>API キーか ChatGPT のログイン</strong>（どちらか 1 つは必要です。どちらも無いと、生成は動きません）</li>
+		<li><strong>モデルの割り当て</strong>（任意です。既定のままでも進めます）</li>
+		<li><strong>ffmpeg</strong>（無くても起動しますが、品質判定・Take のプレビュー・部分採用が使えなくなります）</li>
+		if mac {
+			<li><strong>Mac の準備</strong>（Codex の場所の指定と、ComfyUI は外部のものを使う案内）</li>
+		}
+	</ol>
+}

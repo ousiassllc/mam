@@ -1,0 +1,16 @@
+package pages
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/layout"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/onboarding"
+)
+
+// OnboardingPage is one step of the first-run guide (spec/components/onboarding-screen.md): the frame with its progress and
+// buttons, and the step as the body. Every step is a whole page.
+templ OnboardingPage(csrfToken, title string, f onboarding.Frame, body templ.Component) {
+	@layout.AppLayoutAt(title, csrfToken, "") {
+		@onboarding.Layout(f) {
+			@body
+		}
+	}
+}

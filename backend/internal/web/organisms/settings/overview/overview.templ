@@ -2,11 +2,16 @@
 // category with its state, and the card of the model manager, which is another screen.
 package overview
 
-import "github.com/ousiassllc/mam/backend/internal/web/molecules"
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/molecules"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
 
 // Data is the cards of the overview, in order. The handler builds them: it knows the services the states are read from.
 type Data struct {
 	Cards []molecules.ToolCard
+	// Guide is whether the first-run guide exists: the overview then says how to open it again.
+	Guide bool
 }
 
 // Overview is the cards in two columns. Each is a link to its category, with the state that the server already knows.
@@ -16,4 +21,16 @@ templ Overview(d Data) {
 			@molecules.ToolCardItem(c)
 		}
 	</ul>
+}
+
+// GuideSection is the way back into the first-run guide (spec/components/onboarding-screen.md §7), under the cards. It is
+// there whether the guide was finished or not: the link opens it without changing the flag.
+templ GuideSection() {
+	<section class="mt-8 flex flex-col gap-2" aria-labelledby="settings-guide-title" data-testid="settings-guide">
+		<h3 id="settings-guide-title" class="text-base font-semibold">初期セットアップの案内</h3>
+		<p class="text-sm text-neutral-400">mam でできることの紹介と、API キー・モデル・ffmpeg の順に設定する案内を、もう一度開きます。</p>
+		<p>
+			<a href={ templ.SafeURL(paths.Onboarding()) } class="text-sm underline text-indigo-300 hover:text-indigo-200" data-testid="settings-guide-open">案内をもう一度開く</a>
+		</p>
+	</section>
 }

@@ -35,7 +35,7 @@ func overviewBody(c *gin.Context, s Services) templ.Component {
 		cards = append(cards, s.card(c, cat.slug))
 	}
 	cards = append(cards, localview.ManagerCard())
-	return pages.SettingsOverviewBody(overview.Data{Cards: cards})
+	return pages.SettingsOverviewBody(overview.Data{Cards: cards, Guide: s.Guide})
 }
 
 // card is the card of a category: its icon, what it is for and the state the server knows (the one thing it cannot know

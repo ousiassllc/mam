@@ -2,12 +2,14 @@ package app
 
 import (
 	"log/slog"
+	"path/filepath"
 
 	"github.com/ousiassllc/mam/backend/internal/chatgpt"
 	"github.com/ousiassllc/mam/backend/internal/config"
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/router/settingsroutes"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/service/onboarding"
 )
 
 // newSettings is the settings services of the screen and the MCP server (the Update and MCP parts are set by the caller).
@@ -30,5 +32,6 @@ func newSettings(cfg config.Config, services *service.Services, gpt *chatgpt.Ser
 	settings.ModelManager = services.ModelManager
 	settings.Models.SetHidden(services.ModelManager.HidesModel)
 	settings.Gentest = services.Gentest
+	settings.Onboarding = onboarding.New(filepath.Join(cfg.DataDir, onboarding.FileName))
 	return settings
 }
