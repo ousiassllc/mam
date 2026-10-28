@@ -2,6 +2,7 @@ package chatgpt_test
 
 import (
 	"context"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -117,4 +118,27 @@ func TestLoginModal_ChoosesTheMethodOrShowsTheProgress(t *testing.T) {
 	assert.Contains(t, failed, `id="mam-modal-error"`)
 	assert.Contains(t, failed, "期限が切れました")
 	assert.Contains(t, failed, `name="method"`, "and it can be started again")
+}
+
+// The "?" of a card has its panel outside #chatgpt-panel, which a poll swaps: the panel is drawn by Section, the Panel
+// (what the poll answers) has the buttons only, and every button's panel is in the Section, named by it.
+func TestSection_TheHelpPanelsOfTheCardsAreOutsideWhatAPollSwaps(t *testing.T) {
+	d := view.Data{}
+	d.Codex.Engine.Install.Running = true // the panel polls itself
+
+	poll := render(t, view.Panel(d))
+	section := render(t, view.Section(d))
+
+	assert.Contains(t, poll, `hx-trigger="every 2s"`)
+	assert.NotContains(t, poll, "data-help-panel", "a help panel in what a poll swaps closes with every poll")
+	buttons := regexp.MustCompile(`data-help-toggle[^>]*aria-controls="(help-[0-9a-f]+)"`).FindAllStringSubmatch(poll, -1)
+	require.Len(t, buttons, 3, "a button for each card")
+	start := strings.Index(section, `id="chatgpt-panel"`)
+	require.Positive(t, start)
+	end := start + strings.Index(section[start:], "</section>")
+	for _, b := range buttons {
+		at := strings.Index(section, `<div id="`+b[1]+`" popover`)
+		require.Positive(t, at, "the Section has the panel %s", b[1])
+		assert.True(t, at < start || at > end, "the panel %s is inside what a poll swaps", b[1])
+	}
 }

@@ -19,6 +19,10 @@ type Card struct {
 	State      string // the text of the Badge; empty draws none
 	// Help is the explanation of the row behind a "?" button beside its title (nil: none): what is too long for the card.
 	Help templ.Component
+	// HelpPanelElsewhere leaves the panel of Help out of the card: the card draws only the "?" button (aria-controls =
+	// help.ID(ID)) and the caller draws the panel with that id somewhere a swap of the card does not reach. For a card
+	// that is swapped while the help may be open (a polled panel): a panel inside the swap closes with it.
+	HelpPanelElsewhere bool
 	// Description is what the row is for; Summary is its current value (what is set, who is signed in).
 	Description, Summary string
 	// Details is more of the row between its summary and its buttons (a card whose state needs more than a line).
@@ -57,8 +61,10 @@ templ CardItem(c Card) {
 				}
 				if c.Help != nil {
 					@help.Toggle(help.ID(c.ID), c.Title)
-					@help.Panel(help.ID(c.ID), c.Title) {
-						@c.Help
+					if !c.HelpPanelElsewhere {
+						@help.Panel(help.ID(c.ID), c.Title) {
+							@c.Help
+						}
 					}
 				}
 			</div>

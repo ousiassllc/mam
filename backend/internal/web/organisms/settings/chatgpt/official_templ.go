@@ -89,7 +89,7 @@ func officialCard(d Data) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = settingsui.CardItem(accountCard(officialKind, officialTitle, "個人（Go / Plus / Pro）の ChatGPT のプランで、テキスト生成を使います。", d.Official, officialDetails(d))).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = settingsui.CardItem(accountCard(officialKind, officialTitle, officialHelp, d.Official, officialDetails(d))).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -103,7 +103,7 @@ func accountCard(kind, title, explanation string, a Account, details templ.Compo
 	tone, state := accountState(kind, a)
 	c := settingsui.Card{
 		ID: cardID(kind), TestID: "chatgpt-card", Attrs: map[string]any{"data-kind": kind}, TitleLevel: 4,
-		Title: title, Help: help.Text(explanation), Tone: tone, State: state, Details: details,
+		Title: title, Help: help.Text(explanation), HelpPanelElsewhere: true, Tone: tone, State: state, Details: details,
 	}
 	return c
 }

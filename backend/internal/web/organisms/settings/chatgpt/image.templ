@@ -30,7 +30,7 @@ func imageLoginLabel(a Account) string {
 }
 
 func imageCardOf(d Data) settingsui.Card {
-	c := accountCard(imageKind, imageTitle, "画像生成だけに使う、非公式の経路です。既定はオフで、オンにするときにリスクの確認が要ります。", d.Image, imageDetails(d))
+	c := accountCard(imageKind, imageTitle, imageHelp, d.Image, imageDetails(d))
 	if !d.ImageEnabled {
 		c.Tone, c.State = atoms.BadgeNeutral, "オフ"
 	}

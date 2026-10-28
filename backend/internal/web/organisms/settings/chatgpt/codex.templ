@@ -29,9 +29,10 @@ templ codexCard(d Data) {
 func codexCardOf(d Data) settingsui.Card {
 	c := settingsui.Card{
 		ID: cardID(codexKind), TestID: "chatgpt-card", Attrs: map[string]any{"data-kind": codexKind}, TitleLevel: 4,
-		Title:   codexTitle,
-		Help:    help.Text("Codex の app-server（OpenAI の公式のプログラム）をこの PC で動かし、そこで ChatGPT にログインします。Business / Enterprise / Edu のワークスペースのアカウントでも、個人のアカウントでも使えます。画像・動画・音声の生成には使いません。LLM の割り当てでは、プロバイダー「chatgpt-codex」を選びます。"),
-		Details: codexDetails(d),
+		Title:              codexTitle,
+		Help:               help.Text(codexHelp),
+		HelpPanelElsewhere: true,
+		Details:            codexDetails(d),
 	}
 	switch {
 	case d.Codex.Login != nil && d.Codex.Login.Pending:

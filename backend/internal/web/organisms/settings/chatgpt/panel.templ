@@ -23,6 +23,18 @@ const CardsID = "chatgpt-cards"
 templ Section(d Data) {
 	@molecules.SettingsSectionHelp(molecules.HeadingH3, "ChatGPT でログイン", help.Text("ChatGPT のサブスク（Plus / Pro など）を、API キーの代わりに使えます。テキスト生成には方式が 2 つあります。個人（Go / Plus / Pro）は OpenAI 公式の Sign in with ChatGPT（プロバイダー「chatgpt-subscription」）、組織（Business / Enterprise / Edu）のアカウントは Codex 経由（プロバイダー「chatgpt-codex」）です。\nLLM の割り当てで選ぶと使われます。画像生成は非公式の経路で、別のログインと確認が必要です。")) {
 		@Panel(d)
+		@cardHelpPanels()
+	}
+}
+
+// cardHelpPanels are the panels of the "?" of the cards. They are in Section, not in Panel: Panel is what a poll swaps,
+// and a help that is open stays open across it (spec/components/shared-ui-parts.md §9.1). The popover is in the top
+// layer, so where it is in the page does not change where it shows.
+templ cardHelpPanels() {
+	for _, h := range cardHelps {
+		@help.Panel(help.ID(cardID(h.kind)), h.title) {
+			@help.Text(h.text)
+		}
 	}
 }
 

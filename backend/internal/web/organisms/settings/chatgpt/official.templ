@@ -27,7 +27,7 @@ func accountState(kind string, a Account) (atoms.BadgeTone, string) {
 
 // officialCard is the card of the official sign-in (text generation).
 templ officialCard(d Data) {
-	@settingsui.CardItem(accountCard(officialKind, officialTitle, "個人（Go / Plus / Pro）の ChatGPT のプランで、テキスト生成を使います。", d.Official, officialDetails(d))) {
+	@settingsui.CardItem(accountCard(officialKind, officialTitle, officialHelp, d.Official, officialDetails(d))) {
 		if !d.Official.SignedIn || d.Official.NeedsRelogin || !d.Official.PlanUsageGranted {
 			@openLogin(officialKind, loginLabel(d.Official), officialTitle, !d.Official.SignedIn)
 		}
@@ -44,7 +44,7 @@ func accountCard(kind, title, explanation string, a Account, details templ.Compo
 	tone, state := accountState(kind, a)
 	c := settingsui.Card{
 		ID: cardID(kind), TestID: "chatgpt-card", Attrs: map[string]any{"data-kind": kind}, TitleLevel: 4,
-		Title: title, Help: help.Text(explanation), Tone: tone, State: state, Details: details,
+		Title: title, Help: help.Text(explanation), HelpPanelElsewhere: true, Tone: tone, State: state, Details: details,
 	}
 	return c
 }

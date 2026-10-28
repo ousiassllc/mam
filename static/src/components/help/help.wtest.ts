@@ -190,6 +190,85 @@ describe('"?" help popover (spec/components/shared-ui-parts.md §9)', () => {
     await closed();
   });
 
+  describe('across a swap (a help of a polled card)', () => {
+    const DATA = '/src/components/testdata';
+    const swapCards = () => htmx.ajax('get', `${DATA}/help-swap-cards.html`, { target: '#cards', swap: 'outerHTML' });
+
+    beforeEach(() => {
+      const cards = document.createElement('div');
+      cards.innerHTML = `
+        <ul id="cards"><li><button type="button" id="t3" data-help-toggle popovertarget="p3" aria-expanded="false" aria-controls="p3" aria-label="カードの説明">?</button></li></ul>
+        <div id="p3" popover role="group" aria-label="カードの説明" data-help-panel style="box-sizing:border-box;width:min(24rem,calc(100vw - 1rem));margin:0;inset:auto"><p>説明 3</p></div>
+        <div id="region"></div>`;
+      host.append(cards);
+      htmx.process(cards);
+    });
+
+    it('stays open when its button is swapped, and the new button says so', async () => {
+      const old = host.querySelector('#t3')!;
+      old.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await waitUntil(() => host.querySelector('#p3')!.matches(':popover-open'), 'help 3 did not open');
+
+      await swapCards();
+      await waitUntil(() => host.querySelector('#t3') !== old, 'the cards were not swapped');
+
+      const fresh = host.querySelector<HTMLButtonElement>('#t3')!;
+      await waitUntil(() => fresh.getAttribute('aria-expanded') === 'true', 'the new button does not say it is open');
+      expect(host.querySelector('#p3')!.matches(':popover-open')).to.equal(true);
+    });
+
+    it('is put by the new button, and closes on Esc with the focus on the new button', async () => {
+      host.querySelector<HTMLButtonElement>('#t3')!.click();
+      await waitUntil(() => host.querySelector('#p3')!.matches(':popover-open'), 'help 3 did not open');
+      await swapCards();
+      await waitUntil(() => host.querySelector('#t3')?.getAttribute('aria-expanded') === 'true', 'not synced');
+
+      const p = host.querySelector<HTMLElement>('#p3')!.getBoundingClientRect();
+      const at = host.querySelector('#t3')!.getBoundingClientRect();
+      expect(p.top).to.be.at.least(at.bottom);
+
+      await sendKeys({ press: 'Escape' });
+      await waitUntil(() => !host.querySelector('#p3')!.matches(':popover-open'), 'Esc did not close it');
+
+      expect(document.activeElement === host.querySelector('#t3')).to.equal(true);
+      expect(host.querySelector('#t3')!.getAttribute('aria-expanded')).to.equal('false');
+    });
+
+    it('toggles from a real click on the new button: it closes, and a second click opens it again', async () => {
+      host.querySelector<HTMLButtonElement>('#t3')!.click();
+      await waitUntil(() => host.querySelector('#p3')!.matches(':popover-open'), 'help 3 did not open');
+      await swapCards();
+      await waitUntil(() => host.querySelector('#t3')?.getAttribute('aria-expanded') === 'true', 'not synced');
+
+      await sendMouse({ type: 'click', position: centre(host.querySelector('#t3')!) });
+      await waitUntil(
+        () => !host.querySelector('#p3')!.matches(':popover-open'),
+        'a click on the new button did not close it',
+      );
+      expect(host.querySelector('#t3')!.getAttribute('aria-expanded')).to.equal('false');
+
+      await sendMouse({ type: 'click', position: centre(host.querySelector('#t3')!) });
+      await waitUntil(() => host.querySelector('#p3')!.matches(':popover-open'), 'a second click did not open it');
+    });
+
+    it('closes a panel that is inside what is swapped: the new panel is a new, closed popover', async () => {
+      host.insertAdjacentHTML(
+        'beforeend',
+        `<section id="inside"><button type="button" id="t4" data-help-toggle popovertarget="p4" aria-expanded="false" aria-controls="p4" aria-label="中の説明">?</button><div id="p4" popover role="group" aria-label="中の説明" data-help-panel style="margin:0;inset:auto"><p>説明 4</p></div></section>`,
+      );
+      host.querySelector<HTMLButtonElement>('#t4')!.click();
+      await waitUntil(() => host.querySelector('#p4')!.matches(':popover-open'), 'help 4 did not open');
+
+      await htmx.ajax('get', `${DATA}/help-swap-inside.html`, { target: '#inside', swap: 'outerHTML' });
+      await waitUntil(
+        () => host.querySelector('#p4') && !host.querySelector('#p4')!.matches(':popover-open'),
+        'not closed',
+      );
+
+      expect(host.querySelector('#t4')!.getAttribute('aria-expanded')).to.equal('false');
+    });
+  });
+
   it('is not clipped by a parent with overflow hidden: it is in the top layer under the button', async () => {
     toggle().click();
     await opened();

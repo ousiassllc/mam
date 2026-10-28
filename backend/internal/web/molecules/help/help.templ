@@ -16,7 +16,8 @@ import (
 
 // ID is the id of the panel of a help, from what it is about (a title, the id of a card): the same input gives the same
 // id on every render, so that a swap that draws the help again links its button to its panel the same way (the new panel
-// starts closed: an open help is not kept across a swap, spec/components/shared-ui-parts.md §9.1), and two helps of a page
+// starts closed: an open help is not kept across a swap, except one whose panel is outside the swapped region,
+// settingsui.Card.HelpPanelElsewhere; spec/components/shared-ui-parts.md §9.1), and two helps of a page
 // differ as long as their subjects do.
 func ID(subject string) string {
 	h := fnv.New32a()

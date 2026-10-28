@@ -15,6 +15,9 @@
  *   page, which is the content of the popover (its links) when it is open. When the focus goes to anything else, the
  *   popover closes (the keyboard counterpart of the click outside).
  *
+ * - A panel that is outside what a swap replaces stays open across it (a help of a polled card): `htmx:afterSettle`
+ *   gives the new button its `aria-expanded` and puts the panel by it again. A panel inside a swapped body is new, so closed.
+ *
  * Listeners are on the document: a help in a swapped body works too.
  */
 
@@ -54,6 +57,22 @@ function replace(): void {
   if (panel && toggle) place(panel, toggle);
 }
 
+/**
+ * After a swap, tells a button its panel is open. A panel kept out of the swapped region (a help of a polled card) stays
+ * open while its button is drawn again, closed in the markup: the button of an open panel says so, and the panel is put
+ * by the new button.
+ */
+function syncToggles(): void {
+  for (const toggle of document.querySelectorAll<HTMLElement>(TOGGLE)) {
+    const id = toggle.getAttribute('aria-controls');
+    const panel = id ? document.getElementById(id) : null;
+    const open = !!panel?.matches(':popover-open');
+    const was = toggle.getAttribute('aria-expanded') === 'true';
+    if (open !== was) toggle.setAttribute('aria-expanded', String(open));
+  }
+  replace();
+}
+
 /** Installs the behaviour of the "?" helps. Call it once (main.ts). */
 export function installHelp(root: Document = document): void {
   // `toggle` does not bubble: listen while it goes down.
@@ -88,6 +107,8 @@ export function installHelp(root: Document = document): void {
     panel.hidePopover();
   });
 
+  // htmx puts the new content in and settles it (the buttons of a swapped card are new elements).
+  root.addEventListener('htmx:afterSettle', syncToggles);
   window.addEventListener('resize', replace);
   // The popover is fixed in the window and the button moves with the page: follow it (a scroll inside the popover is not
   // a move of the button, and putting it again there changes nothing).

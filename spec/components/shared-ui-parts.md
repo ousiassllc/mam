@@ -190,6 +190,7 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 | 0.11 | 2026-10-28 | §9「「?」ヘルプ」と §10「ヘルプに移した説明の一覧」を足した。§2 に `IconHelp` を足した。`SettingsSection` の説明は常時表示でなくヘルプになった | Issue #866 |
 | 0.12 | 2026-10-28 | §9 のヘルプを、見出しの下に開く開示（インライン）から、ネイティブの Popover API のポップオーバー（ボタンの近くに浮かぶ）に変えた。同時に開くのは 1 つ・`Esc` でボタンへ戻る・外側のクリックで閉じる・`Tab` の動き・`role="group"`・狭い画面での位置（ずらす・反転）を決めた。モデルマネージャーの h1 の説明と「?」は付けない（動かさない）に戻した | オーナーの決定（#866） |
 | 0.13 | 2026-10-28 | §1 の冒頭に、色の用途別の許可クラスの表 [color-rules.md](color-rules.md) への参照を足した。`Badge`・`Button` の色は、その表の正とした | Issue #867 |
+| 0.14 | 2026-10-29 | §9.1 に、ポーリングで差し替わる範囲のカードの「?」のパネルを範囲の外に置き、差し替えても開いたままにする例外を足した（`Card.HelpPanelElsewhere`・`help.ts` の `htmx:afterSettle`）。§9.2 の `Card.Help` の行を合わせた | Issue #866。オーナーの決定（案 A） |
 
 ## 8. オーナーへの確認事項と決定（2026-10-25: すべて推奨する既定で決定）
 
@@ -219,7 +220,7 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 
 **なぜネイティブの Popover API か**: ①最前面の層（top layer）に出るので、`overflow-hidden` の親・カード・表の箱に切られない（近くに浮かべる部品の最大の問題）②`Esc`・外側のクリック／タップで閉じる・1 つ開くと他が閉じる、をブラウザが持つ（自前で書くとバグの元）③ボタンの `popovertarget` で、クリック・`Enter`・`Space` の開閉が JS なしでも動く。対象のブラウザ（Windows の WebView2 = Chromium、macOS の WKWebView = Safari 17 以降、開発用の Chrome）は、いずれも Popover API に対応している（Chrome 114・Safari 17・Firefox 125。2026-10-28 時点）。CSS の anchor positioning は Safari 26 以降のため使わず、位置は §9.1 の「位置」のとおり `help.ts` が決める。
 
-- **開く・閉じる**: ボタンのクリック・`Enter`・`Space` で開閉する。初めは閉じている（開いた状態は覚えない。ページを読み直す・本文が差し替わる（OOB でカードが入れ替わる）と閉じる）。`aria-expanded` は `toggle` イベントで `help.ts` が追随させる。
+- **開く・閉じる**: ボタンのクリック・`Enter`・`Space` で開閉する。初めは閉じている（開いた状態は覚えない。ページを読み直す・本文が差し替わる（OOB でカードが入れ替わる）と、差し替えられる範囲の中のパネルは新しい要素なので閉じる）。`aria-expanded` は `toggle` イベントで `help.ts` が追随させる。**例外（Issue #866 の決定、2026-10-29）**: ポーリングで 2 秒ごとに差し替わる範囲（ChatGPT の `#chatgpt-panel`）のカードの「?」は、パネルを差し替えの範囲の外に置く（`settingsui.Card.HelpPanelElsewhere`。カードはボタンだけを描き、パネルは `Section` が `Panel` の外に描く）。差し替わってもパネルは開いたままで、`help.ts` が `htmx:afterSettle` で、新しいボタンの `aria-expanded` を開いている状態に合わせ、パネルを新しいボタンの近くへ置き直す。`Esc` で閉じるとフォーカスは新しいボタンへ戻る。この形のパネルは、ボタンの直後（`Tab` の順）にならない。説明にリンクを入れない（今の 3 枚は文だけ）。
 - **同時に開くのは 1 つ**（決定）: `popover`（`auto`）の標準の動きで、別のヘルプのボタンを押すと、開いていたヘルプは閉じる。理由: 複数が重なると狭い画面で読めず、閉じる操作も増える。
 - **外側のクリック／タップで閉じる**: 標準の light dismiss。パネルの中のクリックでは閉じない。
 - **`Esc`**: フォーカスがボタン・開いているパネルの中・ページ（`body`。パネルの文字をクリックした後など）にあるとき、パネルを閉じて**フォーカスをボタンへ戻す**（`help.ts` が行う。ブラウザの自前の戻しは、タッチや Safari のようにボタンが押してもフォーカスされない環境で `body` に落ちるため頼らない）。その `Esc` は `preventDefault` され、同時に開いている `inline-dialog` を閉じない。ヘルプが開いていないとき、フォーカスが別の部品にあるときは何もしない（モーダル・`inline-dialog` の `Esc` とぶつけない）。
@@ -236,7 +237,7 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 | `molecules.SettingsSection(title, explanation)`・`SettingsSectionH3(title, explanation)` | 見出し（h2 / h3）の横にボタン、下に `explanation`（文字列。改行で段落）のパネル。`explanation` が空ならボタンも出さない。`SettingsSectionHelp(level, title, component)` は説明が段落でないとき（リンク・複数の要素） |
 | `molecules.SettingsSectionAt(level, title, description)` | **状態を言う 1 行**（バージョンとアップデートの「現在のバージョン…」）だけ。説明には使わない |
 | `settingsui.Category(title, explanation)` | 分類の h2 の横にボタン。`explanation` は `templ.Component`（`help.Text(...)`・`nil` でボタン無し） |
-| `settingsui.Card.Help` | カードのタイトルの横にボタン、その直後にパネル（`SettingsCard`。§5）。パネルの id は `help.ID(カードの ID)` |
+| `settingsui.Card.Help` | カードのタイトルの横にボタン、その直後にパネル（`SettingsCard`。§5）。パネルの id は `help.ID(カードの ID)`。`HelpPanelElsewhere` を立てると、ボタンだけを描く（パネルは呼び出し側が同じ id で、差し替えの範囲の外に描く。§9.1 の例外。ChatGPT のカード） |
 | `help.Row(id, subject, explanation)` | 上の部品を使わない見出し（生成テストのページの h1 など）。子が見出し。ボタンの直後にパネルを置く（`Tab` の順） |
 
 - パネルの id は主題（見出しの文字・カードの ID）から決まる（`help.ID`。同じ入力は同じ id）。1 ページの主題は重複させない。
