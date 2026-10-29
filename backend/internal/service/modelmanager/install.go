@@ -12,6 +12,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/fetch"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/store"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/track"
+	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/hfguide"
 )
 
 // LicenseRef names the license a user accepted: the ID and the version the screen showed.
@@ -76,7 +77,7 @@ func (s *Service) InstallModel(ctx context.Context, modelID string, accept *Lice
 		return JobRef{}, ErrPinned
 	}
 	if m.RequiresHFToken {
-		if err := s.requireHFToken(); err != nil { // before the consent: nothing is recorded for a model that cannot be fetched
+		if err := hfguide.RequireToken(s.hf); err != nil { // before the consent: nothing is recorded for a model that cannot be fetched
 			return JobRef{}, err
 		}
 	}
@@ -103,8 +104,12 @@ func (s *Service) InstallModel(ctx context.Context, modelID string, accept *Lice
 		return JobRef{}, userFacing(ctx, err)
 	}
 	if m.RequiresHFToken {
-		if err := s.checkHFAccess(ctx, m); err != nil {
-			return JobRef{}, err
+		if err := hfguide.CheckAccess(ctx, s.hf, m); err != nil {
+			var refusal *InvalidError
+			if errors.As(err, &refusal) {
+				return JobRef{}, err
+			}
+			return JobRef{}, s.hfError(err)
 		}
 	}
 	return s.enqueue(ctx, "model:"+m.ID, installPayload{Target: "model:" + m.ID})
@@ -242,8 +247,8 @@ func (s *Service) fetchFile(ctx context.Context, dest string, f catalog.File, op
 	if err == nil || ctx.Err() != nil {
 		return err
 	}
-	if denied := s.hfDownloadDenied(ctx, f.URL, err); denied != nil {
-		return denied
+	if msg, ok := hfguide.DownloadDenied(ctx, s.hf, f.URL, err); ok {
+		return &userError{msg, fmt.Errorf("%w: %w", errHFAccess, err)}
 	}
 	var he *fetch.HTTPError
 	if errors.As(err, &he) && (he.Status == http.StatusNotFound || he.Status == http.StatusGone) {

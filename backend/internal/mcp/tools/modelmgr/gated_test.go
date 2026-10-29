@@ -8,7 +8,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/modelmgr"
-	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
+	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/hfguide"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmtest"
 )
 
@@ -24,13 +24,13 @@ func TestInstallModel_AModelBehindTheLoginChecksTheTokenAndTheAccessBeforeAJob(t
 	msg := env.CallError("install_model", args) // no token
 	errs = append(errs, msg)
 	assert.Contains(t, msg, "validation")
-	assert.Contains(t, msg, modelmanager.HFNoTokenGuide)
+	assert.Contains(t, msg, hfguide.NoToken)
 
 	env.CallOK("set_huggingface_token", map[string]any{"token": "hf_notthetokenthehubknows"}, &modelmgr.TokenStatus{})
 	msg = env.CallError("install_model", args) // a token the Hub does not accept
 	errs = append(errs, msg)
 	assert.Contains(t, msg, "validation")
-	assert.Contains(t, msg, modelmanager.HFInvalidTokenGuide)
+	assert.Contains(t, msg, hfguide.InvalidToken)
 
 	env.CallOK("set_huggingface_token", map[string]any{"token": token}, &modelmgr.TokenStatus{})
 	msg = env.CallError("install_model", args) // a token without the access

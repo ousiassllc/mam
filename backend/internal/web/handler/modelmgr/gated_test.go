@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
+	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/hfguide"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmtest"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -39,7 +39,7 @@ func TestCatalog_AModelBehindTheLoginHasABadgeAndTheGuidanceWhileThereIsNoToken(
 	assert.Contains(t, g, `data-testid="mm-token-badge"`)
 	assert.Contains(t, g, "HF トークンが必要")
 	assert.Contains(t, g, `data-testid="mm-token-guide"`)
-	assert.Contains(t, g, modelmanager.HFNoTokenGuide, "the same words as the refusal")
+	assert.Contains(t, g, hfguide.NoToken, "the same words as the refusal")
 	assert.Contains(t, g, `href="#mm-hf"`, "the link to the card of the token")
 	a := card(t, list, "m-a")
 	assert.NotContains(t, a, "mm-token-badge")
@@ -74,12 +74,12 @@ func TestInstallModel_AModelBehindTheLoginChecksTheTokenAndTheAccessBeforeAJob(t
 
 	code, body := install() // no token
 	assert.Equal(t, http.StatusUnprocessableEntity, code)
-	assert.Contains(t, body, modelmanager.HFNoTokenGuide)
+	assert.Contains(t, body, hfguide.NoToken)
 
 	require.NoError(t, s.rig.Svc.SetHuggingFaceToken("hf_notthetokenthehubknows"))
 	code, body = install() // a token the Hub does not accept
 	assert.Equal(t, http.StatusUnprocessableEntity, code)
-	assert.Contains(t, body, modelmanager.HFInvalidTokenGuide)
+	assert.Contains(t, body, hfguide.InvalidToken)
 
 	require.NoError(t, s.rig.Svc.SetHuggingFaceToken(token))
 	code, body = install() // a token without the access

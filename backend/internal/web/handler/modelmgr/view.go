@@ -9,6 +9,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
+	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/hfguide"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/jobview"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
 )
@@ -139,7 +140,7 @@ func modelData(ctx context.Context, svc *modelmanager.Service, m modelmanager.Mo
 		LowDisk: m.NeedBytes > 0 && free > 0 && uint64(m.NeedBytes) > free,
 	}
 	if m.RequiresHFToken && tokenMissing {
-		out.TokenGuide = modelmanager.HFNoTokenGuide // the same words as the refusal of the install (service, MCP)
+		out.TokenGuide = hfguide.NoToken // the same words as the refusal of the install (service, MCP)
 	}
 	for _, f := range m.Files {
 		out.Files = append(out.Files, view.File{Path: f.Folder + "/" + f.Name, Size: bytesText(f.Size), Present: f.Present, Shared: f.SharedWith, SourceNote: f.SourceNote})
