@@ -80,7 +80,8 @@ func CheckAccess(ctx context.Context, c *hf.Client, m catalog.Model) error {
 }
 
 // DownloadDenied is the message for a download that Hugging Face refused after the job was queued (the token was cleared or revoked,
-// or the access was withdrawn): the same guidance as the check before the job. ok is false when err is something else.
+// or the access was withdrawn): the same guidance as the check before the job, so a token that is no longer stored is message A, not B.
+// ok is false when err is something else.
 func DownloadDenied(ctx context.Context, c *hf.Client, fileURL string, err error) (msg string, ok bool) {
 	var he *fetch.HTTPError
 	if ctx.Err() != nil || !errors.As(err, &he) || (he.Status != http.StatusUnauthorized && he.Status != http.StatusForbidden) {
@@ -89,6 +90,9 @@ func DownloadDenied(ctx context.Context, c *hf.Client, fileURL string, err error
 	repo, _, _, found := fileAt(fileURL)
 	if !found {
 		return "", false
+	}
+	if !c.HasToken() {
+		return NoToken, true
 	}
 	return Denied(he.Status, "", repo, c.PageURL(repo)), true
 }
