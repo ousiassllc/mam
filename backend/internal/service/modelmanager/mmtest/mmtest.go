@@ -62,6 +62,7 @@ type Rig struct {
 	db        *repository.DB
 	pinned    bool
 	authHost  string
+	hfBase    string
 }
 
 // Option changes the Deps (and the Rig) before the Service is made.
@@ -76,6 +77,10 @@ func Pinned() Option { return func(_ *modelmanager.Deps, r *Rig) { r.pinned = tr
 // HFAuth makes the fake Hugging Face (and the fake hosts, which share the loopback address) the host that gets the stored
 // token, as huggingface.co is in production: a test of a gated repository needs it. Without it no host sees the token.
 func HFAuth() Option { return func(_ *modelmanager.Deps, r *Rig) { r.authHost = "127.0.0.1" } }
+
+// HFBase makes the Service ask the site at base for Hugging Face's API, instead of the fake of the rig (a test of how a site that
+// fails, limits or is gone is told to the user). The file URLs of the models stay as they were made.
+func HFBase(base string) Option { return func(_ *modelmanager.Deps, r *Rig) { r.hfBase = base } }
 
 // NotWindows makes the Service one of an OS without the bundled engine.
 func NotWindows() Option { return func(d *modelmanager.Deps, _ *Rig) { d.Platform = "linux" } }
@@ -134,6 +139,9 @@ func New(t *testing.T, opts ...Option) *Rig {
 	d.Fetch = fetch.Options{CheckURL: anyURL, Client: fetch.WithRedirectRules(&http.Client{}, anyURL, r.authHost)}
 	d.Fetch.AuthHost = r.authHost
 	d.HFBase = r.HF.URL
+	if r.hfBase != "" {
+		d.HFBase = r.hfBase
+	}
 	r.Svc, err = modelmanager.New(d)
 	require.NoError(t, err)
 	r.Svc.Register()

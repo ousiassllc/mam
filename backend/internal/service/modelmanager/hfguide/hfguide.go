@@ -57,7 +57,8 @@ func RequireToken(c *hf.Client) error {
 
 // CheckAccess is the last check, before the job is made: the first byte of one file of each repository the model reads (as
 // hfplan's checkAccess does for an import) shows whether the token is accepted (401, message B) and whether the access was granted
-// (403, message C). Those are an *InvalidError; any other failure (the network, a rate limit) is returned as it is. Nothing else is
+// (403, message C). Those are an *InvalidError, and so are a file that is gone, a rate limit and a failing server (short guidance that does
+// not blame the token); any other failure (the network) is returned as it is. Nothing else is
 // downloaded.
 func CheckAccess(ctx context.Context, c *hf.Client, m catalog.Model) error {
 	seen := map[string]bool{}
@@ -72,11 +73,31 @@ func CheckAccess(ctx context.Context, c *hf.Client, m catalog.Model) error {
 		if errors.As(err, &ae) && (ae.Status == http.StatusUnauthorized || ae.Status == http.StatusForbidden) {
 			return refuse(Denied(ae.Status, ae.Code, repo, c.PageURL(repo)))
 		}
+		if msg, told := unreachable(err, repo); told {
+			return refuse(msg)
+		}
 		if err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// unreachable is the short guidance for a probe that failed for a reason that is neither the token nor the access: the file is gone
+// (404), Hugging Face limits the requests (429) or is failing (5xx). None of them says anything about the token, so none blames it.
+// told is false for nil and for any other failure (the network), which the caller returns as it is.
+func unreachable(err error, repo string) (msg string, told bool) {
+	var ae *hf.APIError
+	var rl *hf.RateLimitError
+	switch {
+	case errors.As(err, &rl):
+		return "Hugging Face のレート制限に達しました。しばらく待ってからやり直してください", true
+	case errors.As(err, &ae) && ae.Status == http.StatusNotFound:
+		return fmt.Sprintf("Hugging Face に %s のファイルが見つかりません（HTTP 404）。取得元が移動したか削除された可能性があります", repo), true
+	case errors.As(err, &ae) && ae.Status >= http.StatusInternalServerError:
+		return fmt.Sprintf("Hugging Face が一時的に応答できません（HTTP %d）。しばらく待ってからやり直してください", ae.Status), true
+	}
+	return "", false
 }
 
 // DownloadDenied is the message for a download that Hugging Face refused after the job was queued (the token was cleared or revoked,
