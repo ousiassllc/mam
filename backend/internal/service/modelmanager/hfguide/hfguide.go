@@ -85,7 +85,7 @@ func CheckAccess(ctx context.Context, c *hf.Client, m catalog.Model) error {
 
 // unreachable is the short guidance for a probe that failed for a reason that is neither the token nor the access: the file is gone
 // (404), Hugging Face limits the requests (429) or is failing (5xx). None of them says anything about the token, so none blames it.
-// told is false for nil and for any other failure (the network), which the caller returns as it is.
+// told is false for nil and for any other failure (the network), which the caller words (Service.hfError).
 func unreachable(err error, repo string) (msg string, told bool) {
 	var ae *hf.APIError
 	var rl *hf.RateLimitError
