@@ -15,7 +15,7 @@ templ HFCard(h HFToken) {
 		} else if h.Configured {
 			<p class="text-sm" data-testid="mm-hf-status">{ hfState(h) }</p>
 		} else {
-			<p class="text-sm text-neutral-300" data-testid="mm-hf-status">トークンは設定されていません（いまのカタログのモデルは、トークンなしで取得できます）。</p>
+			<p class="text-sm text-neutral-300" data-testid="mm-hf-status">トークンは設定されていません（ログインや同意が要るモデル（例: LTX-2.5）の取得に使います。それ以外のカタログのモデルは、トークンなしで取得できます）。</p>
 		}
 		if !h.Unavailable {
 			<form

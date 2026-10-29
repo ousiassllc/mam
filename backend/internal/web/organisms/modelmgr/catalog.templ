@@ -61,9 +61,15 @@ templ modelCard(m Model, blocked bool) {
 					if m.Advanced {
 						@atoms.Badge(atoms.BadgeWarn, "ライセンスの同意が必要")
 					}
+					if m.NeedsToken {
+						@atoms.BadgeWith(atoms.BadgeWarn, "HF トークンが必要", templ.Attributes{"data-testid": "mm-token-badge"})
+					}
 					@atoms.BadgeWith(tone, label, templ.Attributes{"data-testid": "mm-model-state"})
 				</span>
 				<p class="break-words text-xs text-neutral-400">{ m.Description }</p>
+				if m.TokenGuide != "" && m.State != "installed" && m.State != "installing" {
+					<p class="break-words text-xs text-amber-300" data-testid="mm-token-guide">{ m.TokenGuide } <a class="underline" href={ "#" + HFID }>トークンの区画へ</a></p>
+				}
 			</div>
 			<div class="flex shrink-0 flex-wrap items-center gap-2 @min-[22rem]:justify-end">
 				@modelActions(m, blocked)
