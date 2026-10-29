@@ -44,11 +44,19 @@ func stateTone(state string) (atoms.BadgeTone, string) {
 	return atoms.BadgeNeutral, "未導入"
 }
 
+// showsTokenGuide says whether the card carries the guidance for the missing token (beside the install button: the actions of such a
+// card sit under the name and the description, so that the guidance has the width of the card and wraps under the button when it is narrow).
+func showsTokenGuide(m Model) bool {
+	return m.TokenGuide != "" && m.State != "installed" && m.State != "installing"
+}
+
 // modelCard is one model as a card (the surface of settingsui.CardItem: shared-ui-parts.md §5). The name is its h3; the
 // state is a Badge with words; the buttons sit at the top right (shrink-0) next to the name and the description, so a long
-// description does not push them out, and drop under them when the card is narrow.
+// description does not push them out, and drop under them when the card is narrow. While the token a model needs is missing, the
+// buttons sit under the name and the description instead, with the guidance beside the install button (showsTokenGuide).
 templ modelCard(m Model, blocked bool) {
 	{{ tone, label := stateTone(m.State) }}
+	{{ guided := showsTokenGuide(m) }}
 	<li class="@container flex min-w-0 flex-col gap-3 rounded-lg border border-neutral-800 bg-neutral-900 p-4 text-sm" data-testid="mm-model" data-model={ m.ID } data-state={ m.State }>
 		<div class="flex flex-col gap-3 @min-[22rem]:flex-row @min-[22rem]:items-start @min-[22rem]:justify-between">
 			<div class="flex min-w-0 flex-1 flex-col gap-2">
@@ -61,14 +69,24 @@ templ modelCard(m Model, blocked bool) {
 					if m.Advanced {
 						@atoms.Badge(atoms.BadgeWarn, "ライセンスの同意が必要")
 					}
+					if m.NeedsToken {
+						@atoms.BadgeWith(atoms.BadgeWarn, "HF トークンが必要", templ.Attributes{"data-testid": "mm-token-badge"})
+					}
 					@atoms.BadgeWith(tone, label, templ.Attributes{"data-testid": "mm-model-state"})
 				</span>
 				<p class="break-words text-xs text-neutral-400">{ m.Description }</p>
 			</div>
-			<div class="flex shrink-0 flex-wrap items-center gap-2 @min-[22rem]:justify-end">
+			if !guided {
+				<div class="flex shrink-0 flex-wrap items-center gap-2 @min-[22rem]:justify-end">
+					@modelActions(m, blocked)
+				</div>
+			}
+		</div>
+		if guided {
+			<div class="flex flex-wrap items-center gap-2">
 				@modelActions(m, blocked)
 			</div>
-		</div>
+		}
 		<dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-xs text-neutral-300" data-testid="mm-model-meta">
 			<div><dt class="text-neutral-400">大きさ</dt><dd>{ m.Size }</dd></div>
 			<div><dt class="text-neutral-400">VRAM の目安</dt><dd data-testid="mm-vram">{ m.VRAM }</dd></div>
@@ -139,6 +157,9 @@ templ modelActions(m Model, blocked bool) {
 			})
 		default:
 			@installButton(m, blocked)
+			if showsTokenGuide(m) {
+				<p class="max-w-xs break-words text-xs text-amber-300" data-testid="mm-token-guide">{ m.TokenGuide } <a class="underline" href={ "#" + HFID }>トークンの区画へ</a></p>
+			}
 	}
 }
 

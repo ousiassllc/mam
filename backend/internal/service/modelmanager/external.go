@@ -13,7 +13,7 @@ import (
 )
 
 // modelFolders are the ComfyUI model folders the catalog installs into.
-var modelFolders = []string{"checkpoints", "diffusion_models", "text_encoders", "vae", "loras"}
+var modelFolders = []string{"checkpoints", "diffusion_models", "text_encoders", "vae", "loras", "latent_upscale_models"}
 
 // ExternalModel is a model of the catalog against an external ComfyUI: which of its files the server has.
 type ExternalModel struct {

@@ -14,6 +14,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/store"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/track"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
+	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/hfguide"
 )
 
 // errHFAccess is why a download of a gated file was refused after the install was queued.
@@ -51,9 +52,8 @@ func (s *Service) runHFInstall(ctx context.Context, p hfplan.Payload, set func(t
 	}
 	set(track.Update{Phase: "download", Message: p.Name, TotalBytes: p.Size})
 	err := s.fetchFile(ctx, dest, catalog.File{Name: p.Name, Folder: p.Folder, URL: p.URL, SHA256: p.SHA256, Size: p.Size}, opts)
-	var he *fetch.HTTPError
-	if errors.As(err, &he) && (he.Status == 401 || he.Status == 403) && ctx.Err() == nil {
-		return &userError{fmt.Sprintf("Hugging Face が取得を断りました（%d）。gated のリポジトリは、トークンの設定と、%s でのアクセスの承認が要ります", he.Status, s.hf.PageURL(p.Repo)), errHFAccess}
+	if msg, ok := hfguide.DownloadDenied(ctx, s.hf, p.URL, err); ok {
+		return &userError{msg, fmt.Errorf("%w: %w", errHFAccess, err)}
 	}
 	if err != nil {
 		return err

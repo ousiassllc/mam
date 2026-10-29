@@ -9,6 +9,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
+	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/hfguide"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/jobview"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
 )
@@ -129,7 +130,7 @@ func blockedText(ctx context.Context, svc *modelmanager.Service) string {
 	return ""
 }
 
-func modelData(ctx context.Context, svc *modelmanager.Service, m modelmanager.ModelView, free uint64) view.Model {
+func modelData(ctx context.Context, svc *modelmanager.Service, m modelmanager.ModelView, free uint64, tokenMissing bool) view.Model {
 	out := view.Model{
 		ID: m.ID, Name: m.Name, KindLabel: kindLabel(string(m.Kind)), Advanced: m.Tier == "advanced", Description: m.Description,
 		Adult: m.ContentRating == catalog.RatingAdult, TriggerWords: m.TriggerWords, Sources: sourcesOf(m),
@@ -137,6 +138,9 @@ func modelData(ctx context.Context, svc *modelmanager.Service, m modelmanager.Mo
 		License: licenseOf(m.License), Consent: m.ConsentRequired, Accepted: m.Accepted, NeedsToken: m.RequiresHFToken,
 		State: string(m.State), ModelIDs: m.ModelIDs, WorkflowCheck: m.WorkflowCheck,
 		LowDisk: m.NeedBytes > 0 && free > 0 && uint64(m.NeedBytes) > free,
+	}
+	if m.RequiresHFToken && tokenMissing {
+		out.TokenGuide = hfguide.NoToken // the same words as the refusal of the install (service, MCP)
 	}
 	for _, f := range m.Files {
 		out.Files = append(out.Files, view.File{Path: f.Folder + "/" + f.Name, Size: bytesText(f.Size), Present: f.Present, Shared: f.SharedWith, SourceNote: f.SourceNote})
@@ -169,10 +173,11 @@ func kindLabel(kind string) string {
 // are shown once as a notice or an error.
 func catalogData(ctx context.Context, svc *modelmanager.Service, jobs []string) view.Catalog {
 	free := svc.Engine().FreeBytes
+	hasToken, tokenErr := svc.HasHuggingFaceToken()
 	c := view.Catalog{Blocked: blockedText(ctx, svc)}
 	names := map[string]string{}
 	for _, m := range svc.Catalog() {
-		md := modelData(ctx, svc, m, free)
+		md := modelData(ctx, svc, m, free, tokenErr == nil && !hasToken)
 		names[m.InstallJob] = "「" + m.Name + "」"
 		c.Models = append(c.Models, md)
 		if m.InstallJob != "" {

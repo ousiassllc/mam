@@ -81,7 +81,7 @@ func HFCard(h HFToken) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<p class=\"text-sm text-neutral-300\" data-testid=\"mm-hf-status\">トークンは設定されていません（いまのカタログのモデルは、トークンなしで取得できます）。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<p class=\"text-sm text-neutral-300\" data-testid=\"mm-hf-status\">トークンは設定されていません（ログインや同意が要るモデル（例: LTX-2.5）の取得に使います。それ以外のカタログのモデルは、トークンなしで取得できます）。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

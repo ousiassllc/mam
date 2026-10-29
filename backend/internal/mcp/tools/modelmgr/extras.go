@@ -14,7 +14,7 @@ func registerExtras(r *mcpkit.Registrar, h handlers) {
 		"Hugging Face のトークンが設定されているかと末尾の数文字（値は返さない）/ Whether a Hugging Face token is set, with its last characters. Never returns the token.",
 		h.tokenStatus)
 	mcpkit.Write(r, "set_huggingface_token",
-		"Hugging Face のトークンを保存または置き換える（ログインが要るモデルの取得だけに使う。いまのカタログのモデルは不要）。OS のセキュアストレージに保存され、応答には含まれない / Store the optional Hugging Face token (never echoed).",
+		"Hugging Face のトークンを保存または置き換える（ログインが要るモデルの取得に使う: カタログの requires_hf_token のモデル（LTX-2.5）と gated のリポジトリ。ほかのカタログのモデルは不要）。OS のセキュアストレージに保存され、応答には含まれない / Store the optional Hugging Face token (never echoed).",
 		h.setToken, mcpkit.Idempotent())
 	mcpkit.Destroy(r, "clear_huggingface_token",
 		"保存した Hugging Face のトークンを削除する（未設定でもエラーにならない）/ Remove the stored token.",

@@ -24,7 +24,7 @@
 | GET | `/model-manager/models/:id/consent` | ライセンスの確認ダイアログ（`#mm-dialog` に差し込む）。同意が要らないモデルは 404 |
 | GET | `/model-manager/adult/confirm` | 成人向けモデルの年齢確認と注意書きのダイアログ（`#mm-dialog` に差し込む） |
 | PUT | `/model-manager/adult` | 設定「成人向けモデルを表示する」（既定オフ）。フォーム `on`（`1` / `0`）。**オンにする最初の 1 回**は、ダイアログの `notice_version`（`Service.AdultContent().NoticeVersion`）と `agree=1`（18 歳以上の確認と注意書きへの同意）が要る。確認の記録（日時・注意書きの版）が `state.json` に残り、以後のオン／オフは `on` だけでよい。確認の記録が無く `notice_version` も無いオンは 409、`agree` が無い・版が違うのは 422（ダイアログに理由を出し、ゲートは開かない）。200 でカード（`#mm-adult`）を返し、モデルの一覧・試し生成の区画を `hx-swap-oob` で描き直し、ダイアログを閉じる。**確認が無い間は、一覧（`GET /model-manager/models`）に成人向けのモデルが出ず、試し生成のフォームにも導入済みの成人向けモデルが出ず、名指しの要求は 404** |
-| POST | `/model-manager/models/:id/install` | モデルの導入（ジョブ）。同意が要るモデルは、フォーム `agree=1`・`license_id`・`license_version` で同意を渡す。**同意の記録が無ければ、画面を経ずに叩いても 409 で、ジョブは作らない**（サービスが強制する）。**成人向けのモデルは、年齢確認が無ければ同意を渡しても 409**（下の `adult`）。202 で一覧を返し、ダイアログを閉じる |
+| POST | `/model-manager/models/:id/install` | モデルの導入（ジョブ）。`requires_hf_token` のモデル（LTX-2.5）は、トークン未設定・トークンが無効（401）・アクセスが承認されていない（403）のとき、**ジョブを作らず 422** で案内（model-manager.md §5.3 の文言 A〜C。トークンの区画へのリンクとモデルのページへのリンクつき）を返す。同意が要るモデルは、フォーム `agree=1`・`license_id`・`license_version` で同意を渡す。**同意の記録が無ければ、画面を経ずに叩いても 409 で、ジョブは作らない**（サービスが強制する）。**成人向けのモデルは、年齢確認が無ければ同意を渡しても 409**（下の `adult`）。202 で一覧を返し、ダイアログを閉じる |
 | DELETE | `/model-manager/models/:id` | モデルの削除。画像の用途・Quality Policy に使われていれば 422、導入中は 409、未導入は 409。他のモデルと共有するファイルは残る |
 | GET | `/model-manager/dialog` | 空（ダイアログを閉じる） |
 | PUT | `/model-manager/hf-token` | Hugging Face のトークンの保存。フォーム `token`。応答は「設定済み（末尾 4 文字）」の状態だけで、**値は返さない** |
@@ -88,3 +88,4 @@
 | 1.2 | 2026-10-25 | 成人向けモデルの年齢確認のルート（`GET /model-manager/adult/confirm`・`PUT /model-manager/adult`）と、`ErrAdultNotConfirmed`（409）を足した。モデルの一覧・導入・試し生成の選択肢は、確認が無い間は成人向けのモデルを出さず、導入は 409 | Issue #841 |
 | 1.3 | 2026-10-25 | Hugging Face からの導入のルート（`/model-manager/hf`・`hf/install`・`hf/models`・`hf/jobs/:job/cancel`）と区画「Hugging Face から導入」（`#mm-hfi`）を足した。`hf-token` のハンドラは新しいパッケージ `hfimport` に移した（ルートは同じ） | Issue #842。意味は [../architecture/model-manager/model-manager-hf.md](../architecture/model-manager/model-manager-hf.md) |
 | 1.4 | 2026-10-25 | `/model-manager/external` が成人向けのモデルを年齢確認が済むまで出さず、`loras` フォルダを読むようにした。`/model-manager/hf`・`/model-manager/hf/install` の NFAA 判定を、コミットのタグと今の先頭のタグの OR にした（`tree/<commit>` などで古いコミットを指しても 409）。別のフォルダ・名前で導入中の同じファイルは 422 | PR #849 のレビューの指摘（#841・#842）への修正 |
+| 1.5 | 2026-10-29 | `POST /model-manager/models/:id/install` が、`requires_hf_token` のモデルでトークンとアクセスを確かめ、足りなければジョブを作らず 422 で案内することを足した | Issue #877 |

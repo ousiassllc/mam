@@ -121,19 +121,21 @@ const coreVersion = "v0.42.1"
 
 var coreNodes = []string{
 	"BasicScheduler", "BetaSamplingScheduler", "CFGGuider", "CLIPLoader", "CLIPTextEncode", "CheckpointLoaderSimple",
-	"ConditioningZeroOut", "CreateVideo", "DualCLIPLoader", "EmptyHunyuanVideo15Latent", "EmptyLTXVLatentVideo",
-	"EmptyLatentImage", "EmptySD3LatentImage", "FluxGuidance", "KSampler", "KSamplerAdvanced", "KSamplerSelect",
-	"LTXVConditioning", "LTXVImgToVideo", "LTXVScheduler", "LoadImage", "LoraLoaderModelOnly", "ModelSamplingAuraFlow",
-	"ModelSamplingSD3", "RandomNoise", "SamplerCustom", "SamplerCustomAdvanced", "SaveImage", "SaveVideo",
-	"T5TokenizerOptions", "TextEncodeQwenImage21", "UNETLoader", "VAEDecode", "VAEDecodeTiled", "VAEEncode",
-	"VAELoader", "Wan22ImageToVideoLatent", "WanImageToVideo",
+	"ComfyMathExpression", "ConditioningZeroOut", "CreateVideo", "DualCLIPLoader", "EmptyHunyuanVideo15Latent",
+	"EmptyLTXVLatentVideo", "EmptyLatentImage", "EmptySD3LatentImage", "FluxGuidance", "KSampler", "KSamplerAdvanced",
+	"KSamplerSelect", "LTXVAudioVAEDecode", "LTXVConcatAVLatent", "LTXVConditioning", "LTXVDualCFGGuider",
+	"LTXVEmptyLatentAudio", "LTXVImgToVideo", "LTXVImgToVideoInplace", "LTXVLatentUpsampler", "LTXVPreprocess",
+	"LTXVScheduler", "LTXVSeparateAVLatent", "LatentUpscaleModelLoader", "LoadImage", "LoraLoaderModelOnly",
+	"ManualSigmas", "ModelSamplingAuraFlow", "ModelSamplingSD3", "PrimitiveInt", "RandomNoise", "SamplerCustom",
+	"SamplerCustomAdvanced", "SaveImage", "SaveVideo", "T5TokenizerOptions", "TextEncodeQwenImage21", "UNETLoader",
+	"VAEDecode", "VAEDecodeTiled", "VAEEncode", "VAELoader", "Wan22ImageToVideoLatent", "WanImageToVideo",
 }
 
 // Every built-in template is a valid model: each assignment points to an existing, literal input of an
 // existing node, the output node exists, and the capabilities follow from the assignments.
 func TestTemplatesAreStructurallyValid(t *testing.T) {
 	templates := localcfg.Templates()
-	require.Len(t, templates, 17)
+	require.Len(t, templates, 19)
 	byMedia := map[localcfg.Media]int{}
 	for _, tpl := range templates {
 		byMedia[tpl.Media]++
@@ -150,7 +152,7 @@ func TestTemplatesAreStructurallyValid(t *testing.T) {
 		assert.Equal(t, tpl.ID, got.ID)
 	}
 	assert.Equal(t, 9, byMedia[localcfg.MediaImage])
-	assert.Equal(t, 8, byMedia[localcfg.MediaVideo])
+	assert.Equal(t, 10, byMedia[localcfg.MediaVideo])
 
 	i2v, _ := localcfg.TemplateByID("img2video-wan22-5b")
 	caps, ok := i2v.Model.VideoCaps()

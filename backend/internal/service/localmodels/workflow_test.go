@@ -22,7 +22,7 @@ func TestImportWorkflowAndTemplates(t *testing.T) {
 	var invalid *localmodels.InvalidError
 	require.ErrorAs(t, errOf(r.svc.ImportWorkflow([]byte(`{"nodes":[],"links":[]}`))), &invalid)
 	assert.Contains(t, invalid.Message, "API Format")
-	assert.Len(t, r.svc.Templates(), 17)
+	assert.Len(t, r.svc.Templates(), 19)
 
 	// An imported graph with the user's assignments becomes a model.
 	ctx := context.Background()

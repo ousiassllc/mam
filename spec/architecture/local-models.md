@@ -69,8 +69,21 @@ openai-compat:lmstudio/flux-schnell
 - **実行**: `/ws?clientId=…` を開いてから `POST /prompt`（`prompt_id` と `client_id` は mam が決める）。`/ws` の `progress`・`executing` から割合を求め、`/history/<id>` を確認して完了を待つ。結果は `GET /view` で取る（動画は `.mp4`・`.m4v`・`.webm`・`.mov` のみ。それ以外は投入後のエラー）。
 - **進捗**: 割合は Shot の進捗（`/ws/shots/:id`、チャットの進捗カード、Take カード）のメッセージに「動画を生成しています（42%）」の形で入る。モデル呼び出しの文脈に進捗の関数を持たせ（`modeladapter/progress`）、`generation/relay` が Orchestrator の通知（Take 数など）のメッセージに割合を足して配信する（`Progress` の型は変えない）。
 - **取り消し**: Take の生成を止めたときは、**自分の `prompt_id` だけ**を止める。まず `POST /api/jobs/<id>/cancel`、404 なら `GET /queue` で見て、実行中なら `POST /interrupt {"prompt_id"}`、待機中なら `POST /queue {"delete":[id]}`。対象を指さない割り込み・キューの全消しはしない。接続テストは ComfyUI が 0.3.57 未満だと「取り消しが他のジョブを止めうる」と注意を出す。
-- **組み込みテンプレート**: `localcfg/templates/*.json`（コアノードだけ。カスタムノード不要）。`txt2img-sdxl`、`img2img-sdxl`、`txt2video-wan22-5b`、`img2video-wan22-5b`。モデルファイル名（チェックポイント）は接続先にあるものへ直す。**GPU では実行していない**（開発環境に GPU が無い）。構造だけをテストする（割り当てが指すノード・入力と出力ノードの存在）。実機での検証は #833 で対象モデルを決めるときに行う。
+- **組み込みテンプレート**: `localcfg/templates/*.json`（コアノードだけ。カスタムノード不要）。`txt2img-sdxl`、`img2img-sdxl`、`txt2video-wan22-5b`、`img2video-wan22-5b`、LTX-2.5 の `txt2video-ltx-2-5`・`img2video-ltx-2-5`（§4.1）ほか（一覧は model-manager.md §4.2）。モデルファイル名（チェックポイント）は接続先にあるものへ直す。**GPU では実行していない**（開発環境に GPU が無い）。構造だけをテストする（割り当てが指すノード・入力と出力ノードの存在）。実機での検証は #833 で対象モデルを決めるときに行う。
 - **取り込み**: 利用者の「Save (API Format)」の JSON を取り込める。エディタ形式（`nodes`/`links`）は拒否してヒントを返す。ノードと入力の一覧を返すので、割り当てを利用者が決める。
+
+### 4.1 LTX-2.5（Lightricks。映像と音声を一緒に作る動画モデル）
+
+カタログ `ltx-2.5-22b-distilled`（[model-manager.md](model-manager/model-manager.md) §4.2）が入れるモデルと、組み込みテンプレート `txt2video-ltx-2-5`（ワークフロー名 `ltx-2-5-t2v`。テキストから動画）・`img2video-ltx-2-5`（`ltx-2-5-i2v`。先頭フレームから動画）。Comfy 公式の LTX-2.5 のワークフロー（Template Library の Video。出典: [LTX-2.5 in ComfyUI](https://docs.comfy.org/tutorials/video/ltx/ltx-2-5)）と同じファイル・同じ手順（2 段: 半分の解像度 → 潜在空間で 2 倍 → 仕上げ）で、24 fps・フレーム数 8n+1・幅と高さは 64 の倍数。出力は音声つきの動画（`video.native_audio`）。旧 `ltx-video-2b`（LTX-Video 2B v0.9.5。`txt2video-ltx-v095`・`img2video-ltx-v095`）はそのまま残る。
+
+モデルのファイルは Hugging Face の **gated** なリポジトリ `Lightricks/LTX-2.5` にある。**mam からアクセスを申請することはできない**ので、導入の前に次の順で準備する:
+
+1. **同意とアクセスの申請**: Hugging Face にログインして `https://huggingface.co/Lightricks/LTX-2.5` を開き、ライセンスに同意してアクセスを申請する。承認されるまで取得は 403 になる。
+2. **トークンの発行**: Hugging Face の設定（Access Tokens）で、読み取り（Read）権限のトークンを発行する。
+3. **トークンの保存**: モデルマネージャーの「Hugging Face のトークン（任意）」の区画に貼り付けて保存する（OS の資格情報ストアに入る。画面には出ない）。MCP は `set_huggingface_token`。
+4. **導入**: カタログの `ltx-2.5-22b-distilled`（「HF トークンが必要」のバッジ）の導入を押し、mam のライセンスの確認にも同意する。トークンが無い・無効・承認前のときは、ジョブを作る前に、状況に合う案内（model-manager.md §5.3 の文言 A・B・C）で止まる。
+
+**外部の ComfyUI**（macOS・ブラウザ版・サーバー版など、同梱エンジンを使わない環境）では、mam はモデルを入れない。上の 1〜2 のあと、ComfyUI 側で同じ名前のファイルを `diffusion_models/`・`text_encoders/`・`vae/`・`latent_upscale_models/` に置く（Comfy の公式ワークフローを開くと、ファイルの取得を案内される）。置いたあと、設定の「ローカル・代替モデル」にテンプレートからワークフローを登録する。ComfyUI は、必要なノード（`LTXV*`・`ComfyMathExpression`・Gemma 4 の `CLIPLoader type=ltxv`）を持つ新しい版にする（同梱エンジンの v0.42.1 は持つ）。GPU での生成は未確認（model-manager.md §11）。
 
 ## 5. 接続テスト
 

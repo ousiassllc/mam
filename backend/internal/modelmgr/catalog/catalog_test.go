@@ -21,7 +21,7 @@ func TestEmbeddedCatalogIsValid(t *testing.T) {
 	assert.Empty(t, catalog.Validate(c, localcfg.TemplateByID))
 
 	assert.Equal(t, "v0.42.1", c.Engine.Version)
-	require.Len(t, c.Models, 14)
+	require.Len(t, c.Models, 15)
 	var ids []string
 	for _, m := range c.Models {
 		ids = append(ids, m.ID)
@@ -29,7 +29,7 @@ func TestEmbeddedCatalogIsValid(t *testing.T) {
 	assert.Equal(t, []string{
 		"flux1-schnell", "qwen-image", "sdxl-base", "ltx-video-2b", "wan22-i2v-14b", "wan22-ti2v-5b", // standard: images, then videos
 		"chroma1-hd", "flux1-dev", "flux1-dev-nsfw-master", "noctq-v4-qwen-image21", "sd35-medium", // advanced: images, then videos
-		"hunyuanvideo15-480p", "wan22-i2v-14b-nsfw-lora", "wan22-remix-nsfw-i2v",
+		"hunyuanvideo15-480p", "ltx-2.5-22b-distilled", "wan22-i2v-14b-nsfw-lora", "wan22-remix-nsfw-i2v",
 	}, ids)
 }
 
@@ -55,6 +55,7 @@ func TestTheCatalogHoldsTheDecidedModelsAndLicenses(t *testing.T) {
 		"flux1-dev-nsfw-master":   {"flux-1-dev-non-commercial", true, false, 2},
 		"wan22-remix-nsfw-i2v":    {"unspecified", true, false, 4},
 		"wan22-i2v-14b-nsfw-lora": {"unspecified", true, false, 6},
+		"ltx-2.5-22b-distilled":   {"ltx-2x-community", true, true, 5},
 	} {
 		m, ok := c.Model(id)
 		require.True(t, ok, id)
@@ -62,7 +63,7 @@ func TestTheCatalogHoldsTheDecidedModelsAndLicenses(t *testing.T) {
 		assert.Equal(t, want.consent, m.ConsentRequired, id)
 		assert.Equal(t, want.commerc, m.License.CommercialUse, id)
 		assert.Len(t, m.Files, want.files, id)
-		assert.False(t, m.RequiresHFToken, id)
+		assert.Equal(t, id == "ltx-2.5-22b-distilled", m.RequiresHFToken, id+": only the gated LTX-2.5 is behind the Hugging Face login")
 		assert.Positive(t, m.TotalSize(), id)
 	}
 	hunyuan, _ := c.Model("hunyuanvideo15-480p")
@@ -146,11 +147,15 @@ func TestValidateChecksLicensesConsentAndWorkflows(t *testing.T) {
 		"missing license summary":                  {func(c *catalog.Catalog) { find(c, "sdxl-base").License.Summary = "" }, "license needs"},
 		"a non-commercial license without consent": {func(c *catalog.Catalog) { find(c, "flux1-dev").ConsentRequired = false }, "requires consent"},
 		"consent on a plain model":                 {func(c *catalog.Catalog) { find(c, "sdxl-base").ConsentRequired = true }, "requires consent"},
-		"a login-only model":                       {func(c *catalog.Catalog) { find(c, "sdxl-base").RequiresHFToken = true }, "Hugging Face login"},
-		"no vram source":                           {func(c *catalog.Catalog) { find(c, "sdxl-base").VRAM.Source = "" }, "source of the guideline"},
-		"unknown template":                         {func(c *catalog.Catalog) { find(c, "sdxl-base").Workflows[0].Template = "nope" }, "does not exist"},
-		"template of the wrong media":              {func(c *catalog.Catalog) { find(c, "sdxl-base").Workflows[0].Template = "txt2video-wan22-5b" }, "makes video"},
-		"duplicate workflow name":                  {func(c *catalog.Catalog) { find(c, "flux1-dev").Workflows[0].Name = "sdxl-base" }, "used twice"},
+		"a login-only model mirrored by a third party": {func(c *catalog.Catalog) {
+			m := find(c, "sdxl-base")
+			m.RequiresHFToken = true
+			m.Files[0].SourceNote = "第三者のミラー。原本は Civitai で、SHA-256 が一致することを 2026-10-25 に確かめた。"
+		}, "not mirrored by a third party"},
+		"no vram source":              {func(c *catalog.Catalog) { find(c, "sdxl-base").VRAM.Source = "" }, "source of the guideline"},
+		"unknown template":            {func(c *catalog.Catalog) { find(c, "sdxl-base").Workflows[0].Template = "nope" }, "does not exist"},
+		"template of the wrong media": {func(c *catalog.Catalog) { find(c, "sdxl-base").Workflows[0].Template = "txt2video-wan22-5b" }, "makes video"},
+		"duplicate workflow name":     {func(c *catalog.Catalog) { find(c, "flux1-dev").Workflows[0].Name = "sdxl-base" }, "used twice"},
 		"a file the workflow does not load": {func(c *catalog.Catalog) {
 			m := find(c, "sdxl-base")
 			extra := m.Files[0]
