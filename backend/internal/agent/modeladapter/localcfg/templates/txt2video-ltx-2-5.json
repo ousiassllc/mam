@@ -1,0 +1,63 @@
+{
+ "id": "txt2video-ltx-2-5",
+ "label": "LTX-2.5: テキストから動画（音声つき）",
+ "media": "video",
+ "description": "Lightricks の LTX-2.5（蒸留版 22B）の、テキストから動画を音声つきで作るワークフロー。Comfy 公式のテンプレート（video_ltx2_5_t2v）を API 形式に展開したもので、ComfyUI 標準ノードだけを使う。最終の解像度の半分で 1 段目を作り、潜在空間で 2 倍に拡大して 2 段目で仕上げる。24fps、フレーム数は 8n+1、幅と高さは 64 の倍数。Hugging Face の gated なリポジトリ Lightricks/LTX-2.5 のファイル（トークンと承認が要る）を使う。GPU では未実行（構造のテストのみ）。",
+ "model": {
+  "media": "video",
+  "video": {"durations": [3, 4, 5, 6], "resolutions": ["480p", "720p"], "native_audio": true},
+  "workflow": {
+   "graph": {
+    "75": {"class_type": "SaveVideo", "inputs": {"filename_prefix": "video/mam", "format": "auto", "codec": "auto", "video": ["370", 0]}},
+    "338": {"class_type": "RandomNoise", "inputs": {"noise_seed": 42}},
+    "339": {"class_type": "RandomNoise", "inputs": {"noise_seed": 0}},
+    "340": {"class_type": "LTXVConcatAVLatent", "inputs": {"video_latent": ["348", 0], "audio_latent": ["367", 1]}},
+    "341": {"class_type": "KSamplerSelect", "inputs": {"sampler_name": "euler_ancestral"}},
+    "344": {"class_type": "SamplerCustomAdvanced", "inputs": {"noise": ["339", 0], "guider": ["388", 0], "sampler": ["352", 0], "sigmas": ["404", 0], "latent_image": ["377", 0]}},
+    "348": {"class_type": "LTXVLatentUpsampler", "inputs": {"samples": ["367", 0], "upscale_model": ["371", 0], "vae": ["385", 0]}},
+    "352": {"class_type": "KSamplerSelect", "inputs": {"sampler_name": "euler_ancestral"}},
+    "353": {"class_type": "ComfyMathExpression", "inputs": {"expression": "a/2", "values.a": ["372", 0]}},
+    "355": {"class_type": "ComfyMathExpression", "inputs": {"expression": "a/2", "values.a": ["360", 0]}},
+    "356": {"class_type": "EmptyLTXVLatentVideo", "inputs": {"width": ["353", 1], "height": ["355", 1], "length": 121, "batch_size": 1}},
+    "358": {"class_type": "LTXVAudioVAEDecode", "inputs": {"samples": ["369", 1], "audio_vae": ["386", 0]}},
+    "360": {"class_type": "PrimitiveInt", "inputs": {"value": 720}},
+    "364": {"class_type": "CLIPTextEncode", "inputs": {"text": "", "clip": ["387", 0]}},
+    "365": {"class_type": "LTXVConditioning", "inputs": {"frame_rate": 24, "positive": ["364", 0], "negative": ["373", 0]}},
+    "366": {"class_type": "LTXVEmptyLatentAudio", "inputs": {"frames_number": 121, "frame_rate": 24, "batch_size": 1, "audio_vae": ["386", 0]}},
+    "367": {"class_type": "LTXVSeparateAVLatent", "inputs": {"av_latent": ["344", 0]}},
+    "368": {"class_type": "SamplerCustomAdvanced", "inputs": {"noise": ["338", 0], "guider": ["391", 0], "sampler": ["341", 0], "sigmas": ["395", 0], "latent_image": ["340", 0]}},
+    "369": {"class_type": "LTXVSeparateAVLatent", "inputs": {"av_latent": ["368", 0]}},
+    "370": {"class_type": "CreateVideo", "inputs": {"fps": 24, "images": ["374", 0], "audio": ["358", 0]}},
+    "371": {"class_type": "LatentUpscaleModelLoader", "inputs": {"model_name": "ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors"}},
+    "372": {"class_type": "PrimitiveInt", "inputs": {"value": 1280}},
+    "373": {"class_type": "CLIPTextEncode", "inputs": {"text": "pc game, console game, video game, cartoon, childish, ugly", "clip": ["387", 0]}},
+    "374": {"class_type": "VAEDecodeTiled", "inputs": {"tile_size": 512, "overlap": 64, "temporal_size": 64, "temporal_overlap": 16, "samples": ["369", 0], "vae": ["385", 0]}},
+    "377": {"class_type": "LTXVConcatAVLatent", "inputs": {"video_latent": ["356", 0], "audio_latent": ["366", 0]}},
+    "384": {"class_type": "UNETLoader", "inputs": {"unet_name": "ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors", "weight_dtype": "default"}},
+    "385": {"class_type": "VAELoader", "inputs": {"vae_name": "ltx-2.5-video-vae-bf16.safetensors"}},
+    "386": {"class_type": "VAELoader", "inputs": {"vae_name": "ltx-2.5-audio-vae-bf16.safetensors"}},
+    "387": {"class_type": "CLIPLoader", "inputs": {"clip_name": "gemma4-12b-with-proj-ltx-2.5-comfy-int8-convrot.safetensors", "type": "ltxv", "device": "default"}},
+    "388": {"class_type": "LTXVDualCFGGuider", "inputs": {"video_cfg": 1, "audio_cfg": 1, "model": ["384", 0], "positive": ["365", 0], "negative": ["365", 1]}},
+    "391": {"class_type": "LTXVDualCFGGuider", "inputs": {"video_cfg": 1, "audio_cfg": 1, "model": ["384", 0], "positive": ["365", 0], "negative": ["365", 1]}},
+    "395": {"class_type": "ManualSigmas", "inputs": {"sigmas": "0.85, 0.7250, 0.4219, 0.0"}},
+    "404": {"class_type": "ManualSigmas", "inputs": {"sigmas": "1.0, 0.99375, 0.9875, 0.98125, 0.975, 0.909375, 0.725, 0.421875, 0.0"}}
+   },
+   "assignments": [
+    {"param": "prompt", "node": "364", "input": "text"},
+    {"param": "negative_prompt", "node": "373", "input": "text"},
+    {"param": "seed", "node": "339", "input": "noise_seed"},
+    {"param": "width", "node": "372", "input": "value"},
+    {"param": "height", "node": "360", "input": "value"},
+    {"param": "frames", "node": "356", "input": "length"},
+    {"param": "frames", "node": "366", "input": "frames_number"},
+    {"param": "fps", "node": "365", "input": "frame_rate"},
+    {"param": "fps", "node": "366", "input": "frame_rate"},
+    {"param": "fps", "node": "370", "input": "fps"}
+   ],
+   "output_node": "75",
+   "fps": 24,
+   "frames_step": 8,
+   "size_multiple": 64
+  }
+ }
+}
