@@ -209,6 +209,11 @@ func (s *Service) runModelInstall(ctx context.Context, id string, set func(track
 		}
 		set(track.Update{Percent: int(float64(base) / float64(total) * 99), Phase: "download", Message: label, DoneBytes: base, TotalBytes: total})
 		if err := s.fetchFile(ctx, dest, f, opts); err != nil {
+			if m.RequiresHFToken { // only a model behind the login is guided to the token and the access; any other keeps the plain 401/403 message (userFacing)
+				if msg, ok := hfguide.DownloadDenied(ctx, s.hf, f.URL, err); ok {
+					return &userError{msg, fmt.Errorf("%w: %w", errHFAccess, err)}
+				}
+			}
 			return err
 		}
 		installed = append(installed, store.InstalledFile{Path: f.Path(), SHA256: f.SHA256, Size: f.Size})
@@ -246,9 +251,6 @@ func (s *Service) fetchFile(ctx context.Context, dest string, f catalog.File, op
 	err := fetch.Download(ctx, dest, fetch.Source{URL: f.URL, SHA256: f.SHA256, Size: f.Size}, opts)
 	if err == nil || ctx.Err() != nil {
 		return err
-	}
-	if msg, ok := hfguide.DownloadDenied(ctx, s.hf, f.URL, err); ok {
-		return &userError{msg, fmt.Errorf("%w: %w", errHFAccess, err)}
 	}
 	var he *fetch.HTTPError
 	if errors.As(err, &he) && (he.Status == http.StatusNotFound || he.Status == http.StatusGone) {

@@ -17,13 +17,18 @@ func userFacing(ctx context.Context, err error) error {
 		return err
 	}
 	var ns *fetch.NoSpaceError
+	var he *fetch.HTTPError
 	switch {
+	case errors.Is(err, errHFAccess): // already worded by hfguide
+		return err
 	case errors.As(err, &ns):
 		return &userError{fmt.Sprintf("空き容量が足りません（必要 %s、空き %s、場所 %s）", humanBytes(ns.Need), humanBytes(ns.Free), ns.Path), err}
 	case errors.Is(err, fetch.ErrChecksum):
 		return fmt.Errorf("ダウンロードしたファイルの SHA-256 が一致しません。ダウンロードを破棄しました（取得元の改ざんか転送の破損の可能性があります）: %w", err)
 	case errors.Is(err, fetch.ErrSize):
 		return fmt.Errorf("ダウンロードしたファイルの大きさが固定した値と違います。ダウンロードを破棄しました: %w", err)
+	case errors.As(err, &he) && (he.Status == 401 || he.Status == 403):
+		return fmt.Errorf("取得元が認証を求めています（%d）。Hugging Face のトークンを設定してください: %w", he.Status, err)
 	case errors.Is(err, ErrAdultNotConfirmed):
 		return &userError{AdultGateMessage, err}
 	case errors.Is(err, store.ErrNotWritable):
