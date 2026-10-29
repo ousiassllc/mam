@@ -173,7 +173,7 @@ func kindLabel(kind string) string {
 // are shown once as a notice or an error.
 func catalogData(ctx context.Context, svc *modelmanager.Service, jobs []string) view.Catalog {
 	free := svc.Engine().FreeBytes
-	hasToken, _, tokenErr := svc.HuggingFaceTokenStatus()
+	hasToken, tokenErr := svc.HasHuggingFaceToken()
 	c := view.Catalog{Blocked: blockedText(ctx, svc)}
 	names := map[string]string{}
 	for _, m := range svc.Catalog() {
