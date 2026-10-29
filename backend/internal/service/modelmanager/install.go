@@ -289,6 +289,9 @@ func (s *Service) ClearHuggingFaceToken() error {
 	return nil
 }
 
+// HasHuggingFaceToken says whether a token is stored, without reading it or its hint (the model list asks on every render).
+func (s *Service) HasHuggingFaceToken() (bool, error) { return s.Keys.Has(HuggingFaceProvider) }
+
 // HuggingFaceTokenStatus says whether a token is stored and its last characters; it never returns the token.
 func (s *Service) HuggingFaceTokenStatus() (configured bool, lastChars string, err error) {
 	ok, err := s.Keys.Has(HuggingFaceProvider)
