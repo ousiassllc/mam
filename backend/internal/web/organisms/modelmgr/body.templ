@@ -31,7 +31,7 @@ templ Body(d Data) {
 		@molecules.SettingsSection("Hugging Face から導入", "Hugging Face のモデルファイル（.safetensors）を、URL・owner/repo・キーワードから探して導入します。コミットに固定し、LFS の SHA-256 とサイズを確かめます。GGUF は一覧に出しますが導入できません。pickle 形式（.ckpt・.pt など）は導入しません。") {
 			@HFImportSection(d.HFImport)
 		}
-		@molecules.SettingsSection("Hugging Face のトークン（任意）", "ログインが必要なモデルを取得するときだけ使います。") {
+		@molecules.SettingsSection("Hugging Face のトークン（任意）", "ログインや同意が必要なモデル（LTX-2.5 など）を取得するときだけ使います。") {
 			@HFCard(d.HF)
 		}
 		@molecules.SettingsSection("外部の ComfyUI", "別のマシン（tailnet を含む）や ComfyUI Desktop など、mam が起動していない ComfyUI にあるモデルを確かめます。") {

@@ -62,7 +62,7 @@ type License struct {
 }
 
 // File is one file of a model, pinned. Folder is the ComfyUI model folder it goes to (checkpoints,
-// diffusion_models, text_encoders, vae, loras), Name its file name there. A file that two models share (the same
+// diffusion_models, text_encoders, vae, loras, latent_upscale_models), Name its file name there. A file that two models share (the same
 // Folder and Name) has the same SHA256 and Size in both. SourceNote is set for a file that a third party mirrors
 // (the original lies elsewhere, such as Civitai): where the original is and the date its SHA-256 was checked to be
 // the mirror's. It is shown before the install, and a mirror that is gone is reported as such.
@@ -119,7 +119,8 @@ type Model struct {
 	License      License  `json:"license"`
 	// ConsentRequired: the license has to be accepted (recorded with its ID and version) before the install.
 	ConsentRequired bool `json:"consent_required"`
-	// RequiresHFToken says the files are behind a Hugging Face login. No model of the catalog is.
+	// RequiresHFToken says the files are behind a Hugging Face login (a gated repository such as Lightricks/LTX-2.5): the install
+	// refuses without a stored token and checks the access before it makes a job.
 	RequiresHFToken bool       `json:"requires_hf_token"`
 	Workflows       []Workflow `json:"workflows"`
 }

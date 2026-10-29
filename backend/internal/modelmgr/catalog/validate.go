@@ -34,14 +34,19 @@ func hasCheckDate(note string) bool {
 // unspecifiedLicense is the license ID of a model whose source states no license text.
 const unspecifiedLicense = "unspecified"
 
+// modelFolders are the ComfyUI model folders a catalog file goes to. latent_upscale_models is the folder of the spatial upscaler
+// the LTX-2.5 workflow loads (LatentUpscaleModelLoader).
+var modelFolders = []string{"checkpoints", "diffusion_models", "text_encoders", "vae", "loras", "latent_upscale_models"}
+
 // loaderInputs are the inputs of the core loader nodes that name a model file, with the folder the file is in.
 var loaderInputs = map[string]map[string]string{
-	"CheckpointLoaderSimple": {"ckpt_name": "checkpoints"},
-	"UNETLoader":             {"unet_name": "diffusion_models"},
-	"CLIPLoader":             {"clip_name": "text_encoders"},
-	"DualCLIPLoader":         {"clip_name1": "text_encoders", "clip_name2": "text_encoders"},
-	"VAELoader":              {"vae_name": "vae"},
-	"LoraLoaderModelOnly":    {"lora_name": "loras"},
+	"CheckpointLoaderSimple":   {"ckpt_name": "checkpoints"},
+	"UNETLoader":               {"unet_name": "diffusion_models"},
+	"CLIPLoader":               {"clip_name": "text_encoders"},
+	"DualCLIPLoader":           {"clip_name1": "text_encoders", "clip_name2": "text_encoders"},
+	"VAELoader":                {"vae_name": "vae"},
+	"LoraLoaderModelOnly":      {"lora_name": "loras"},
+	"LatentUpscaleModelLoader": {"model_name": "latent_upscale_models"},
 }
 
 // Validate checks the catalog: the pins (https URL at a commit or tag, SHA-256, size), the licenses, the
@@ -137,7 +142,13 @@ func validateModel(m Model, shared map[string]File) []error {
 	}
 	errs = append(errs, validateRating(where, m)...)
 	if m.RequiresHFToken {
-		errs = append(errs, fmt.Errorf("%s: no model of the catalog is behind a Hugging Face login", where))
+		// The files of a login-only model stay at the Hugging Face repository that asks for the login: a mirror of a third
+		// party would be a way round the gate (and the install checks the access against that repository).
+		for _, f := range m.Files {
+			if f.SourceNote != "" {
+				errs = append(errs, fmt.Errorf("%s: file %s: a model behind a Hugging Face login is not mirrored by a third party", where, f.Name))
+			}
+		}
 	}
 	if len(m.Files) == 0 || len(m.Workflows) == 0 {
 		errs = append(errs, fmt.Errorf("%s: files and workflows are required", where))
@@ -178,7 +189,7 @@ func validateFiles(where string, files []File, shared map[string]File) []error {
 		switch {
 		case !fileNamePattern.MatchString(f.Name):
 			errs = append(errs, fmt.Errorf("%s: name must be a .safetensors file name", fw))
-		case !slices.Contains([]string{"checkpoints", "diffusion_models", "text_encoders", "vae", "loras"}, f.Folder):
+		case !slices.Contains(modelFolders, f.Folder):
 			errs = append(errs, fmt.Errorf("%s: folder %q is not a model folder", fw, f.Folder))
 		case f.SourceNote != "" && !hasCheckDate(f.SourceNote):
 			errs = append(errs, fmt.Errorf("%s: source_note must say where the original is and the date (YYYY-MM-DD) its SHA-256 was checked", fw))

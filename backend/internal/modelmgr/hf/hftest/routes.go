@@ -189,6 +189,10 @@ func (s *Server) resolve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !s.open(r, repo) {
+		if r.Header.Get("Authorization") != "" && !s.authorized(r) { // as the Hub: a token it does not know is 401 "Invalid credentials", not a gated answer
+			http.Error(w, "Invalid credentials in Authorization header", http.StatusUnauthorized)
+			return
+		}
 		w.Header().Set("X-Error-Code", "GatedRepo")
 		status := http.StatusUnauthorized
 		if s.authorized(r) {

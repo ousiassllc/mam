@@ -18,7 +18,7 @@ func registerCatalog(r *mcpkit.Registrar, h handlers) {
 		"モデルのライセンスに同意したことを記録する。license_id と license_version は get_catalog_model が返した値で、違えば拒否される（版が変わると改めて同意が要る）。ユーザーがライセンスを確認して同意した後にだけ呼ぶ / Record that the user accepted the license of a model (ID and version as in the catalog).",
 		h.acceptLicense, mcpkit.Idempotent())
 	mcpkit.Write(r, "install_model",
-		"カタログのモデルをダウンロードして導入する。job_id を返すので get_job で進捗を見る（SHA-256 を検証し、中断しても再開できる）。同意が要るモデルは、先に accept_model_license しないと conflict で拒否される（導入の前に API が確かめる）。成人向けモデルは、年齢確認（set_adult_content）が済むまで conflict で拒否される。エンジンが未導入・空き容量不足・設定ファイルが固定されているときも始めずに拒否される / Install a catalog model as a job. A model that needs a license acceptance is refused until accepted.",
+		"カタログのモデルをダウンロードして導入する。job_id を返すので get_job で進捗を見る（SHA-256 を検証し、中断しても再開できる）。同意が要るモデルは、先に accept_model_license しないと conflict で拒否される（導入の前に API が確かめる）。成人向けモデルは、年齢確認（set_adult_content）が済むまで conflict で拒否される。エンジンが未導入・空き容量不足・設定ファイルが固定されているときも始めずに拒否される。requires_hf_token のモデル（LTX-2.5 など。Hugging Face の gated）は、トークン未設定（set_huggingface_token）・トークンが無効・モデルのページでアクセスが承認されていないとき、ジョブを作らずに validation で拒否され、メッセージが次にすることを案内する（アクセスの申請は mam からはできない） / Install a catalog model as a job. A model that needs a license acceptance is refused until accepted. A model behind a Hugging Face login (requires_hf_token) is refused before any job without a token, with a token that is not accepted, or without the approved access, with guidance.",
 		h.installModel, mcpkit.OpenWorld())
 	mcpkit.Destroy(r, "delete_model",
 		"導入したモデルを削除する。画像の用途・Quality Policy に使われていれば拒否される。ほかの導入済みモデルと共有しているファイル（VAE など）は、使うモデルが残る間は消えない / Delete an installed model; shared files stay while another installed model uses them.",

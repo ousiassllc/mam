@@ -12,6 +12,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/fetch"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/store"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/track"
+	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/hfguide"
 )
 
 // LicenseRef names the license a user accepted: the ID and the version the screen showed.
@@ -52,8 +53,10 @@ func (s *Service) accepted(m catalog.Model) bool {
 // download continues from its .part file, and every file is checked against its pinned SHA-256). It refuses at
 // once, before anything is downloaded: without the engine, when the license needs an acceptance that was not given
 // (accept records one, with the ID and version the screen showed), when the disk lacks the room
-// (*fetch.NoSpaceError), and when the model file setting is pinned. The models of the install appear on the
-// managed endpoint when the job succeeds.
+// (*fetch.NoSpaceError), when the model file setting is pinned, and, for a model behind a Hugging Face login
+// (RequiresHFToken), when no token is stored, the token is not accepted or the access was not granted (*InvalidError with the
+// guidance of hfguide.go; only the first byte of a file is asked for). The models of the install appear on the managed
+// endpoint when the job succeeds.
 func (s *Service) InstallModel(ctx context.Context, modelID string, accept *LicenseRef) (JobRef, error) {
 	m, ok := s.cat.Model(modelID)
 	if !ok {
@@ -73,6 +76,11 @@ func (s *Service) InstallModel(ctx context.Context, modelID string, accept *Lice
 	} else if view.Pinned {
 		return JobRef{}, ErrPinned
 	}
+	if m.RequiresHFToken {
+		if err := hfguide.RequireToken(s.hf); err != nil { // before the consent: nothing is recorded for a model that cannot be fetched
+			return JobRef{}, err
+		}
+	}
 	if m.ConsentRequired {
 		if accept != nil {
 			if err := s.AcceptLicense(modelID, *accept); err != nil {
@@ -81,11 +89,6 @@ func (s *Service) InstallModel(ctx context.Context, modelID string, accept *Lice
 		}
 		if !s.accepted(m) {
 			return JobRef{}, ErrConsentRequired
-		}
-	}
-	if m.RequiresHFToken {
-		if has, _ := s.Keys.Has(HuggingFaceProvider); !has {
-			return JobRef{}, invalid("このモデルの取得には Hugging Face のトークンが要ります。先に設定してください")
 		}
 	}
 	if v := s.view(m, s.state.Get()); v.State == ModelInstalled {
@@ -99,6 +102,15 @@ func (s *Service) InstallModel(ctx context.Context, modelID string, accept *Lice
 	}
 	if err := s.checkModelSpace(m); err != nil {
 		return JobRef{}, userFacing(ctx, err)
+	}
+	if m.RequiresHFToken {
+		if err := hfguide.CheckAccess(ctx, s.hf, m); err != nil {
+			var refusal *InvalidError
+			if errors.As(err, &refusal) {
+				return JobRef{}, err
+			}
+			return JobRef{}, s.hfError(err)
+		}
 	}
 	return s.enqueue(ctx, "model:"+m.ID, installPayload{Target: "model:" + m.ID})
 }
@@ -235,6 +247,9 @@ func (s *Service) fetchFile(ctx context.Context, dest string, f catalog.File, op
 	if err == nil || ctx.Err() != nil {
 		return err
 	}
+	if msg, ok := hfguide.DownloadDenied(ctx, s.hf, f.URL, err); ok {
+		return &userError{msg, fmt.Errorf("%w: %w", errHFAccess, err)}
+	}
 	var he *fetch.HTTPError
 	if errors.As(err, &he) && (he.Status == http.StatusNotFound || he.Status == http.StatusGone) {
 		return sourceGone(f, he.Status, err)
@@ -248,9 +263,9 @@ func (s *Service) recordedGood(f catalog.File) bool {
 	return ok && sha == f.SHA256 && size == f.Size
 }
 
-// SetHuggingFaceToken stores the optional Hugging Face token (credential provider "huggingface"). No model of the
-// catalog needs it; it is sent as a bearer token to huggingface.co only, never to the CDN a download is redirected
-// to. Empty or malformed is *InvalidError.
+// SetHuggingFaceToken stores the Hugging Face token (credential provider "huggingface"). Only the gated models of the
+// catalog (RequiresHFToken: LTX-2.5) and gated repositories of the import need it; it is sent as a bearer token to huggingface.co
+// only, never to the CDN a download is redirected to. Empty or malformed is *InvalidError.
 func (s *Service) SetHuggingFaceToken(token string) error {
 	token, problem := credential.CleanAPIKey(token)
 	if problem != "" {
