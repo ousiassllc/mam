@@ -87,11 +87,11 @@ ComfyUI **v0.42.1** のリリースアセット 4 種（`ComfyUI_windows_portabl
 | `id` / `name` / `kind` / `tier` / `description` | `kind` は `image`・`video`。`tier` は `standard` か `advanced`（同意が要る） |
 | `content_rating` | `general` か `adult`。`adult` は年齢確認（§6.2）が済むまで一覧・導入・試し生成に出ない。**`adult` は `tier = advanced`（同意必須）** |
 | `trigger_words[]` | LoRA を含むモデルのトリガー語（プロンプトに入れる語）。`loras` のファイルを持つモデルだけ |
-| `files[]` | `name`・`folder`（`checkpoints`・`diffusion_models`・`text_encoders`・`vae`・`loras`）・`url`（**コミット固定の** Hugging Face の URL、https）・`sha256`・`size`・`source_note`（第三者のミラーのとき: 原本の場所と、SHA-256 が一致することを確かめた日付。省略可） |
+| `files[]` | `name`・`folder`（`checkpoints`・`diffusion_models`・`text_encoders`・`vae`・`loras`・`latent_upscale_models`）・`url`（**コミット固定の** Hugging Face の URL、https）・`sha256`・`size`・`source_note`（第三者のミラーのとき: 原本の場所と、SHA-256 が一致することを確かめた日付。省略可） |
 | `vram` | `min_gb`（目安）・`source`（出典。無いものは保守的な値）・`estimate`（true は MAM の推定で GPU では未確認） |
 | `license` | `id`・`version`・`name`・`url`・`summary`・`commercial_use`・`commercial_condition`・`excluded_regions`・`notice` |
 | `consent_required` | true のモデルは、同意の記録が無いと導入のジョブを作れない（§6） |
-| `requires_hf_token` | 既定のカタログはすべて false（ログイン不要の `Comfy-Org` ミラー） |
+| `requires_hf_token` | true のモデルは、Hugging Face のログイン（トークン）が要るファイルを持つ（gated。LTX-2.5）。`InstallModel` が、トークンの有無とアクセスの権限を**ジョブを作る前に**確かめる（§5.3）。画面のカードに「HF トークンが必要」のバッジを出す。それ以外のモデルは false（ログイン不要の `Comfy-Org` ミラーなど）。true のモデルのファイルは、すべて `huggingface.co` の固定 URL でなければならない（第三者のミラーは使わない。`catalog.Validate`） |
 | `workflows[]` | `name`（`local_models` のワークフロー名）と `template`（`localcfg` のテンプレート。local-models.md §4） |
 
 ### 4.2 v1 のモデル
@@ -103,6 +103,7 @@ ComfyUI **v0.42.1** のリリースアセット 4 種（`ComfyUI_windows_portabl
 | `qwen-image` | 画像 | 標準 | 30.1 GB | 24 GB（推定） | Apache-2.0 |
 | `wan22-ti2v-5b` | 動画 | 標準 | 18.1 GB | 24 GB（Wan2.2 の README: 4090 級で動作） | Apache-2.0 |
 | `ltx-video-2b` | 動画 | 標準 | 11.2 GB | 12 GB（推定） | LTX-Video Open RAIL-M |
+| `ltx-2.5-22b-distilled` | 動画 | 同意（HF トークン必須） | 39.7 GB | 24 GB（推定） | LTX-2.x Community License（年間売上 1,000 万 US ドル未満は無償） |
 | `flux1-dev` | 画像 | 同意 | 17.2 GB | 16 GB（推定） | FLUX.1 \[dev\] Non-Commercial（商用不可） |
 | `sd35-medium` | 画像 | 同意 | 11.6 GB | 12 GB（推定） | Stability AI Community（年間売上 100 万 US ドル未満は無償） |
 | `hunyuanvideo15-480p` | 動画 | 同意 | 20.7 GB | 24 GB（Hunyuan の文書） | Tencent Hunyuan Community（EU・英国・韓国では無効。月間 1 億人超は別途許諾） |
@@ -121,9 +122,18 @@ ComfyUI **v0.42.1** のリリースアセット 4 種（`ComfyUI_windows_portabl
 Wan 2.2 14B は T2V を入れない（I2V のみ。決定 4）。ミラーのファイル（NSFW MASTER・Remix・Wan NSFW LoRA）は、Hugging Face のミラーの SHA-256 が Civitai の原本と一致することを 2026-10-25 に確かめた（`source_note`）。Remix と Wan NSFW LoRA は HF にライセンスの本文が無く、Civitai の表示（販売まで可／Civitai 上の利用だけ）に頼らず、商用不可として入れる。除外したもの: LTX-2.3 Uncensored（テキストエンコーダーが GGUF で `ComfyUI-GGUF` が要る）・WAI-NSFW-Illustrious-SDXL（Civitai だけ）・abenzerps UC。
 ワークフローは `localcfg/templates/` の **コアノード（ComfyUI 本体のノード）だけ**で書く。SDXL と Wan 2.2 は既存のテンプレートを使い、FLUX schnell/dev・SD3.5・Qwen-Image・LTX・HunyuanVideo のテンプレートを足した（`txt2img-flux-schnell` など 7 つ）。成人向けの追加で、`txt2img-qwen-image21`（`TextEncodeQwenImage21`、25 ステップ・euler/simple・cfg 3）・`txt2img-chroma`（`CLIPLoader type=chroma`、`T5TokenizerOptions`、`BetaSamplingScheduler`、`CFGGuider` cfg 3.8）・`txt2img-flux-dev-lora`（`LoraLoaderModelOnly`、強さ 0.8）・`img2video-wan22-14b`（高ノイズ→低ノイズの 2 段の `KSamplerAdvanced`、`WanImageToVideo`、16fps）・`img2video-wan22-14b-remix`（同じ形、12 ステップ・cfg 1）・`img2video-wan22-14b-lora`（高・低のそれぞれに `LoraLoaderModelOnly`、強さ 1）の 6 つを足した（合計 17）。`catalog.Validate` は、各テンプレートのローダーノード（`CheckpointLoaderSimple`・`UNETLoader`・`CLIPLoader`・`DualCLIPLoader`・`VAELoader`・`LoraLoaderModelOnly`）が、そのモデルのファイル名（と `loras` などのフォルダ）と一致することを確かめる。**テンプレートは構造テストだけで、GPU 実機では未検証**（画面にも「構造テストのみ・GPU 実機未検証」と出す。`ModelView.WorkflowCheck`）。
 
+**LTX-2.5（Issue #877）**。`ltx-2.5-22b-distilled`（Lightricks 公式の `Lightricks/LTX-2.5`。ComfyUI のネイティブワークフローが使う蒸留版の 22B）。映像と同期した音声を 1 回の生成で作る。旧 `ltx-video-2b`（LTX-Video 2B v0.9.5）は**残す**（別のモデル・別のテンプレートで、既存の割り当てを壊さない。VRAM が小さい経路として使い続けられる）。
+
+- **ファイル**（すべて `Lightricks/LTX-2.5` の固定コミットの LFS オブジェクト。SHA-256・サイズは Hugging Face が返す LFS の oid とサイズ。第三者のミラーは使わない）: `diffusion_models/ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors`、`text_encoders/gemma4-12b-with-proj-ltx-2.5-comfy-int8-convrot.safetensors`、`vae/ltx-2.5-video-vae-bf16.safetensors`、`vae/ltx-2.5-audio-vae-bf16.safetensors`、`latent_upscale_models/ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors`。ComfyUI の公式ワークフロー（Template Library の LTX-2.5 T2V・I2V）が読むファイルと同じ。プロンプト拡張用の `gemma4_e2b_it_int8_convrot`（`Comfy-Org/gemma-4`、任意）は入れない（公式のワークフローも既定でオフ）。
+- **`latent_upscale_models` フォルダ**: 公式のワークフローは 2 段で作る（半分の解像度で作り、潜在空間で 2 倍に拡大してから仕上げる）。拡大モデルを読む `LatentUpscaleModelLoader` の入力 `model_name` はこのフォルダのファイルなので、カタログの `files[].folder` と `catalog.Validate` のローダー表（`loaderInputs`）に足した。外部の ComfyUI の確認（`ExternalInventory`）もこのフォルダを読む。HF からの導入（model-manager-hf.md）のフォルダは 5 つのまま変えない。
+- **ライセンス**: モデルカード（Hugging Face の `README.md`）の `license: other`・`license_name: ltx-2.x-community-license-agreement`、本文は `https://github.com/Lightricks/LTX-2/blob/main/LICENSE-2_x`（2026-08-11 版）。年間売上が 1,000 万 US ドル未満の個人・組織は、商用・制作での利用も無償（売上は子会社・関連会社を合算して数える）。1,000 万 US ドル以上の組織は、個人の趣味・研究や非本番の評価のような非商用の目的を除き、有償の商用ライセンス（licensing@ltx.io）が要る。派生モデルの第三者への譲渡、用途の制限（Attachment A）、AI 規制（EU AI Act など）の遵守と、透かし・開示の機能を外さないことが条件。カタログでは `commercial_use = true`・`commercial_condition`（売上の条件）・`consent_required = true`・`tier = advanced`（制限付きのライセンスは同意が要る。§6）。Hugging Face のゲートの文面は、プライバシーポリシーへの同意と、案内・広告の受け取りへの同意（「Agree and Access」）。
+- **VRAM**: Lightricks・ComfyUI は最小値を公表していない。`min_gb = 24`・`estimate = true`（MAM の推定。ファイルは拡散モデル 21.5 GB とテキストエンコーダー 15.4 GB の int8 で、ComfyUI のオフロードが前提。GPU では未確認）。
+- **テンプレート**（`localcfg/templates/`。ほかと同じく ComfyUI 本体のコアノードだけ）: `txt2video-ltx-2-5`（ワークフロー名 `ltx-2-5-t2v`）と `img2video-ltx-2-5`（`ltx-2-5-i2v`）。Comfy 公式の `video_ltx2_5_t2v`・`video_ltx2_5_i2v`（Comfy-Org/workflow_templates）のサブグラフを API 形式に展開し、mam の割り当てに接続した。24 fps、フレーム数は 8n+1（`frames_step` 8）。1 段目は最終の解像度の半分（`ComfyMathExpression` の `a/2`）で、`LTXVLatentUpsampler` で 2 倍にして 2 段目で仕上げる（このため最終の幅・高さは 64 の倍数 = `size_multiple` 64）。割り当て: `prompt`・`negative_prompt`・`seed`（1 段目の `RandomNoise`）・`width`・`height`・`frames`・`fps`、I2V は `first_frame`。サンプラー・シグマ・ガイダンスは公式の値（`euler_ancestral`、蒸留版の `ManualSigmas`、`LTXVDualCFGGuider` の映像・音声とも 1）。`native_audio` は true。公式のプロンプト拡張（`TextGenerateLTX2Prompt`。任意で既定オフ）と、画像の長辺 1536 への縮小（`ResizeImageMaskNode`。`LTXVImgToVideoInplace` が潜在空間の大きさへ合わせる）は入れない。FLF2V・DFR・マルチショットのテンプレートは今回の範囲外。
+- **同梱エンジン（ComfyUI v0.42.1）が必要なコアノードを持つか**: このテンプレートが使うノード（`LTXVConcatAVLatent`・`LTXVSeparateAVLatent`・`LTXVLatentUpsampler`・`LTXVAudioVAEDecode`・`LTXVEmptyLatentAudio`・`LTXVDualCFGGuider`・`LTXVImgToVideoInplace`・`LTXVPreprocess`・`LTXVConditioning`・`EmptyLTXVLatentVideo`・`LatentUpscaleModelLoader`・`ComfyMathExpression`・`CreateVideo`・`SaveVideo`・`SamplerCustomAdvanced` ほか）は、v0.42.1 のソース（`comfy_extras/*.py`・`nodes.py`）に実装がある。`CLIPLoader type=ltxv` の Gemma 4 12B の検出（`comfy/sd.py` の `TEModel.GEMMA_4_12B`）も v0.42.1 にある。**実際の読み込み・実行は未確認**（§11）。
+
 ### 4.3 検証（`catalog_test.go`）
 
-すべてのファイルに https の固定 URL・64 桁の SHA-256・正のサイズがあること、同意が要るモデルにライセンス情報が揃うこと、ID と（フォルダ, 名前）の重複が無いこと、テンプレートが存在し構造が正しいこと。`content_rating` が `general` か `adult` で、`adult` は `advanced`（同意必須）であること、`license.id = unspecified` は商用不可であること、`trigger_words` は `loras` のファイルを持つモデルだけにあること、`source_note` に確認の日付があること、`loras` のファイルと `LoraLoaderModelOnly` のローダーがモデルのファイルと一致すること。新しい 6 モデルの URL・SHA-256・サイズは、Hugging Face の LFS の oid とコミットに照らした値で固定されている（`adult_test.go`）。
+すべてのファイルに https の固定 URL・64 桁の SHA-256・正のサイズがあること、同意が要るモデルにライセンス情報が揃うこと、ID と（フォルダ, 名前）の重複が無いこと、テンプレートが存在し構造が正しいこと。`content_rating` が `general` か `adult` で、`adult` は `advanced`（同意必須）であること、`license.id = unspecified` は商用不可であること、`trigger_words` は `loras` のファイルを持つモデルだけにあること、`source_note` に確認の日付があること、`loras` のファイルと `LoraLoaderModelOnly` のローダーがモデルのファイルと一致すること、`LatentUpscaleModelLoader` の `model_name` が `latent_upscale_models` のファイルと一致すること。新しい 6 モデルの URL・SHA-256・サイズは、Hugging Face の LFS の oid とコミットに照らした値で固定されている（`adult_test.go`）。**`requires_hf_token` が true のモデル**（LTX-2.5）は、すべてのファイルが `huggingface.co` の固定 URL で、第三者のミラーの注記（`source_note`）を持たないこと（ログインの要るファイルを第三者のミラーに置き換えない）。`ltx-2.5-22b-distilled` のファイル名・SHA-256・サイズ・コミットは `ltx25_test.go` が固定する。
 
 ## 5. モデルの導入
 
@@ -144,9 +154,30 @@ Wan 2.2 14B は T2V を入れない（I2V のみ。決定 4）。ミラーのフ
 
 導入の完了で、ワークフローごとの `local_models`（`bundled-comfyui`）を作る。再導入や、ファイルが欠けた `incomplete` の復旧は同じ操作で行う。
 
-### 5.3 Hugging Face のトークン（任意）
+### 5.3 Hugging Face のトークンと gated のモデル
 
-`credential.Store` のプロバイダー `huggingface`（`SetHuggingFaceToken`）。既定のカタログは使わない。トークンは `huggingface.co` への最初の要求にだけ付き、別ホストへのリダイレクトでは外す。
+`credential.Store` のプロバイダー `huggingface`（`SetHuggingFaceToken`。画面の「Hugging Face のトークン（任意）」の区画と、MCP の `get_`・`set_`・`clear_huggingface_token`）。トークンは `huggingface.co` への最初の要求にだけ付き、別ホストへのリダイレクト（CDN）では外す。カタログの導入（`install.go`）も、HF からの導入（model-manager-hf.md）も、保存したトークンを同じ方法で使う。**値はログ・画面・エラー・MCP の応答のどこにも出さない**（状態は「設定済み・末尾 4 文字」だけ）。
+
+**ログインが要るモデル（`requires_hf_token = true`。LTX-2.5）の導入前チェック**。`InstallModel`（画面と MCP の共通の入口）が、**ジョブを作る前**に次の順で確かめ、どれかで止まるときはジョブを作らず、何もダウンロードしない:
+
+1. **トークン未設定**: 同意の記録（§6）より前に止める（文言 A。同意も記録しない）。
+2. トークンがあれば、同意の記録の後に、**アクセスを確かめる**: `hfplan` の `checkAccess` と同じ方式で、モデルのファイルの**先頭 1 バイト**（`Range: bytes=0-0`。`hf.Client.Probe`）を `huggingface.co` に要求する。リポジトリごとに、固定コミットのファイル 1 つで足りる（LTX-2.5 は 1 リポジトリ）。ファイルの本体は取らない。
+   - `401`: トークンが無効または失効している（文言 B）。
+   - `403`（`X-Error-Code: GatedRepo`）: トークンは有効だが、このモデルへのアクセスが承認されていない（文言 C）。
+   - それ以外の失敗（ネットワーク・レート制限）は、案内ではなくそのまま返す（ジョブは作らない）。
+3. **ダウンロードの途中の 401・403**（承認の取り消し・トークンの失効）も、同じ文言 B・C で**ジョブを失敗**にする。
+
+**案内の文言**は 1 か所（`modelmanager/hfguide.go`）で定義し、画面・MCP・エラー・ジョブの失敗理由が同じ内容を出す:
+
+| 文言 | 状況 | 内容 |
+|---|---|---|
+| A | トークン未設定 | このモデルの取得には Hugging Face のトークンが要る。モデルマネージャーの「Hugging Face のトークン（任意）」の区画（`/model-manager#mm-hf`）で設定する（MCP では `set_huggingface_token`） |
+| B | `401` | トークンが無効または失効している。Hugging Face で発行し直し、同じ区画で保存し直す |
+| C | `403`・`GatedRepo` | モデルのページ（`https://huggingface.co/<owner>/<repo>`）でライセンスに同意してアクセスを申請し、承認されてからやり直す（**申請は mam から API ではしない**） |
+
+画面と MCP は、導入前チェックの文言を `*InvalidError`（画面は 422、MCP は `validation`）で受ける。カードには、`requires_hf_token` のモデルに「HF トークンが必要」のバッジを出し、トークンが未設定のときは導入ボタンの隣に文言 A とトークンの区画へのリンクを出す（既存のバッジ・案内の部品を使い、色・レイアウトは足さない）。
+
+**取得の手順**（LTX-2.5。local-models.md §4.1）: (1) Hugging Face で `Lightricks/LTX-2.5` のページを開き、ライセンスに同意してアクセスを申請する（承認を待つ） → (2) Hugging Face の設定で読み取り用のトークンを発行する → (3) mam のモデルマネージャーの「Hugging Face のトークン」の区画で保存する → (4) カタログの `ltx-2.5-22b-distilled` の導入を押す（ライセンスの同意も要る）。
 
 ## 6. 同意（ライセンスの確認）
 
@@ -211,7 +242,7 @@ func (*Service) HidesModel(id string) bool                 // 試し生成・割
 
 ## 10. Service API（`internal/service/modelmanager`）
 
-画面・MCP は次を呼ぶ（戻りは JSON タグ付きの構造体）。エラーは `ErrUnsupported`・`ErrNotFound`・`ErrEngineNotInstalled`・`ErrAlreadyInstalled`・`ErrNotInstalled`・`ErrConsentRequired`・`ErrAdultNotConfirmed`・`ErrBusy`・`ErrNoGPU`・`ErrPinned`・`ErrEndpointMoved`・`*InvalidError`（メッセージを利用者に見せる）。取得元が消えたときのジョブの失敗は `ErrSourceGone`（利用者向けのメッセージに包む）。
+画面・MCP は次を呼ぶ（戻りは JSON タグ付きの構造体）。エラーは `ErrUnsupported`・`ErrNotFound`・`ErrEngineNotInstalled`・`ErrAlreadyInstalled`・`ErrNotInstalled`・`ErrConsentRequired`・`ErrAdultNotConfirmed`・`ErrBusy`・`ErrNoGPU`・`ErrPinned`・`ErrEndpointMoved`・`*InvalidError`（メッセージを利用者に見せる。`requires_hf_token` のモデルの導入前チェックの文言 A〜C もこれ。§5.3）。取得元が消えたときのジョブの失敗は `ErrSourceGone`（利用者向けのメッセージに包む）。
 
 ```go
 func New(Deps) (*Service, error)
@@ -274,6 +305,8 @@ func (*Service) DeleteUserModel(ctx, path string) error
 | Wan 2.2 14B に `wan_2.1_vae` を使うこと、Chroma の `CLIPLoader type=chroma` ＋ fp8mixed の組み合わせ | **未検証**（ComfyUI の公式手順・作者のワークフローに基づく。実機で確かめる） |
 | NSFW MASTER の作者の原本のライセンス | **未確認**（HF のミラーのタグは MIT。Civitai の API はライセンス名を返さない。全体を非商用として扱う） |
 | 実物の Hugging Face からの 6 モデルの取得（数十 GB）と、ミラーが消えたときの実際の応答 | **未実施**（偽の HF で、404 の `ErrSourceGone`・SHA-256 の不一致・共有ファイルの 1 回取得は確認） |
+| 実物の Hugging Face からの LTX-2.5（Issue #877）の全ファイルの取得（数十 GB）と、gated のアクセス確認（先頭 1 バイト）の実物への動作 | **未実施**。`ltx-2.5-22b-distilled` の SHA-256・サイズ・コミットは、実物の Hugging Face の API・応答ヘッダーから読み取った（ファイルの本体は取っていない）。導入前チェックと途中の 401・403 は、偽の HF（`hftest`）の 4 通り（未設定・401・403 GatedRepo・成功）で確認 |
+| LTX-2.5 のテンプレート（`txt2video-ltx-2-5`・`img2video-ltx-2-5`）の ComfyUI での読み込みと GPU 実機の生成、`CLIPLoader type=ltxv` での Gemma 4 12B（int8 convrot）の読み込み | **未確認**（構造テストと、ローダーとファイル名の一致だけ。v0.42.1 のソースに必要なノードがあることは読んで確かめたが、実行はしていない。サンプラー・シグマは Comfy 公式のワークフローの値） |
 | ファイル名での成人向けの判定（§6.1）が、実物の ComfyUI のファイル名（サブフォルダ付き）と一致すること | **未検証**（`ckpt_name` などは ComfyUI の `/models/<folder>` が返す名前で、サブフォルダ付きのときは末尾の名前で比べる。実機のサーバーは使っていない）。中身が同じで名前だけ違うファイルは見分けられない。一般的な名前の成人向けのファイルの過検出は受け入れた限界（§6.1） |
 | 年齢確認がオフのときの生成の断りを、実物の ComfyUI・クラウドに対して確かめること（呼び出しが届かないこと） | **未検証**（断りは Adapter の手前で、偽のバックエンドの呼び出し回数 0 と、同梱エンジンが起動しないことで確認。実機の ComfyUI・実アカウントは使っていない） |
 | 実物の Hugging Face からの任意のモデルの導入（Issue #842: 実物の API・CDN・gated・GPU・SDXL の生成） | **未検証**（[model-manager-hf.md](model-manager-hf.md) §10。偽の HF で確認） |
