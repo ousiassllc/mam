@@ -81,6 +81,12 @@ func get(t *testing.T, target string) *http.Response {
 	return res
 }
 
+// The ports the tests of the callers replace (chatgpt.Options.CallbackPorts) stay what the registrations allow.
+func TestProfiles_CallbackPortsAreTheRegisteredOnes(t *testing.T) {
+	assert.Equal(t, []int{1455, 1457, 0}, oauth.Official("", "").Ports, "official: 1455, 1457, then any free port")
+	assert.Equal(t, []int{1455, 1457}, oauth.Codex("").Ports, "the Codex client allows 1455 and 1457 only")
+}
+
 func TestCallback_UsesTheNextPortWhenTheFirstIsBusy(t *testing.T) {
 	busy, err := net.Listen("tcp4", "127.0.0.1:0")
 	require.NoError(t, err)

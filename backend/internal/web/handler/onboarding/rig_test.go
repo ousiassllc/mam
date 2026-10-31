@@ -82,9 +82,10 @@ func newRig(t *testing.T, mutate ...func(*config)) *rig {
 		r.chatGPTDir = t.TempDir()
 		r.settings.ChatGPT = chatgpt.New(chatgpt.Options{
 			Keys: cfg.chatGPTKeys, DataDir: r.chatGPTDir, LockPath: filepath.Join(t.TempDir(), ".auth-refresh.lock"), Issuer: auth.URL,
-			Now:   time.Now,
-			Sleep: func(context.Context, time.Duration) error { return nil },
-			Open:  func(u string) error { auth.Approve(u); return nil },
+			CallbackPorts: []int{0}, // not the real 1455 and 1457: every process of the host shares them
+			Now:           time.Now,
+			Sleep:         func(context.Context, time.Duration) error { return nil },
+			Open:          func(u string) error { auth.Approve(u); return nil },
 		})
 	}
 	r.engine = router.New(svc, router.Options{Settings: r.settings})

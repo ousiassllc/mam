@@ -2,7 +2,10 @@ package oauth_test
 
 import (
 	"context"
+	"net"
 	"net/http"
+	"sync/atomic"
+	"syscall"
 	"testing"
 	"time"
 
@@ -82,17 +85,23 @@ func TestReloginRequired_ClassificationTable(t *testing.T) {
 	}
 
 	t.Run("a network failure is never a reason to log in again", func(t *testing.T) {
-		srv := newFakeServer(t, func(http.ResponseWriter, request) {})
-		p := oauth.Codex(srv.URL)
-		srv.Close()
-		_, err := c.Refresh(context.Background(), p, oauth.CodexClientID, "SECRET-REFRESH-TOKEN")
+		// A real client whose dial is refused. Dialing the port of a closed server would reach whatever another
+		// process of the host (a parallel test) listens on by then.
+		refused := &net.OpError{Op: "dial", Net: "tcp", Err: syscall.ECONNREFUSED}
+		c, _ := testClient(t)
+		c.HTTP = &http.Client{Transport: &http.Transport{
+			DialContext: func(context.Context, string, string) (net.Conn, error) { return nil, refused },
+		}}
+		issuer := "http://auth.example.invalid:4711"
+		_, err := c.Refresh(context.Background(), oauth.Codex(issuer), oauth.CodexClientID, "SECRET-REFRESH-TOKEN")
 		require.Error(t, err)
 		_, ok := oauth.ReloginRequired(err)
 		assert.False(t, ok)
 		var ne *oauth.NetworkError
 		assert.ErrorAs(t, err, &ne)
+		assert.ErrorIs(t, err, syscall.ECONNREFUSED)
 		assert.NotContains(t, err.Error(), "SECRET-REFRESH-TOKEN")
-		assert.NotContains(t, err.Error(), srv.URL, "the URL is dropped from a transport error")
+		assert.NotContains(t, err.Error(), issuer, "the URL is dropped from a transport error")
 	})
 }
 
@@ -140,13 +149,13 @@ func TestRevoke_RefusesADiscoveredEndpointOfAnotherHostAndReportsFailure(t *test
 }
 
 func deviceServer(t *testing.T, pendingPolls int) *fakeServer {
-	polls := 0
+	var polls atomic.Int64 // handlers of different connections run on different goroutines
 	return newFakeServer(t, func(w http.ResponseWriter, r request) {
 		switch r.Path {
 		case "/api/accounts/deviceauth/usercode":
 			writeJSON(w, 200, map[string]any{"device_auth_id": "dev-1", "user_code": "ABCD-1234", "interval": "7", "expires_at": fixedNow.Add(15 * time.Minute).Format(time.RFC3339)})
 		case "/api/accounts/deviceauth/token":
-			if polls++; polls <= pendingPolls {
+			if int(polls.Add(1)) <= pendingPolls {
 				writeJSON(w, http.StatusForbidden, map[string]any{"error": "deviceauth_authorization_pending"})
 				return
 			}
