@@ -15,7 +15,7 @@ import (
 func TestAGatedDownloadRefusedAfterTheTokenWasClearedIsTheMissingTokenGuidance(t *testing.T) {
 	r := newRig(t)
 	require.NoError(t, r.Svc.SetHuggingFaceToken(r.HF.Token))
-	r.HF.Granted = true
+	r.HF.Granted.Store(true)
 	ref, msg := install(t, r) // the queue is not running yet: the job waits
 	require.Empty(t, msg)
 	require.NoError(t, r.Svc.ClearHuggingFaceToken())

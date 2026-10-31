@@ -137,7 +137,7 @@ func (s *Server) tree(w http.ResponseWriter, r *http.Request, repo Repo) {
 
 // open reports whether the request may read the files of a gated repository: the token is the right one and was granted access.
 func (s *Server) open(r *http.Request, repo Repo) bool {
-	return !repo.Gated || (s.authorized(r) && s.Granted)
+	return !repo.Gated || (s.authorized(r) && s.Granted.Load())
 }
 
 func (s *Server) pathsInfo(w http.ResponseWriter, r *http.Request, repo Repo) {

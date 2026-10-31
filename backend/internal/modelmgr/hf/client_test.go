@@ -182,7 +182,7 @@ func TestRateLimit_IsRepeatedThenReported(t *testing.T) {
 func TestToken_IsSentToTheAPIHostOnlyNotToTheCDN(t *testing.T) {
 	body := hftest.Safetensors([]string{"x"}, nil, 10)
 	srv := hftest.New(t, hftest.Repo{ID: "o/m", Commit: commit, Gated: true, Files: []hftest.File{{Path: "w.safetensors", Body: body}}})
-	srv.Granted = true
+	srv.Granted.Store(true)
 	c := newClient(srv, srv.Token)
 	require.NoError(t, c.Probe(context.Background(), "o/m", commit, "w.safetensors"))
 	var api, cdn int

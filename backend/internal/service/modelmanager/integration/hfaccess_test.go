@@ -98,7 +98,7 @@ func TestAGatedRepositoryNeedsATokenAndGrantedAccessBeforeAnyDownload(t *testing
 	assert.Zero(t, r.cdnRequests(), "nothing was downloaded")
 	assert.NotContains(t, readState(t, r), "hf_consents")
 
-	r.hf.Granted = true
+	r.hf.Granted.Store(true)
 	r.hfInstallOK("pony.safetensors")
 	assert.FileExists(t, r.hfPath("checkpoints", "pony.safetensors"))
 	for _, q := range r.hf.Requests() {
