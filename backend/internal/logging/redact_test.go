@@ -66,6 +66,15 @@ func TestReader_NeverReturnsOrConfirmsASecretInTheLog(t *testing.T) {
 	assert.Len(t, read(t, dir, logging.Query{Keyword: "[redacted]"}).Entries, 1)
 }
 
+func TestReader_HidesAListUnderASecretLikeKey(t *testing.T) {
+	dir := t.TempDir()
+	write(t, dir, "mam.log", line(0, "ERROR", "failed", "tokens", `["`+fakeMCP+`"]`, "ids", `["a","b"]`))
+	res := read(t, dir, logging.Query{})
+	require.Len(t, res.Entries, 1)
+	assert.Equal(t, "[redacted]", res.Entries[0].Attrs["tokens"])
+	assert.Equal(t, `["a","b"]`, res.Entries[0].Attrs["ids"])
+}
+
 func fmtAny(v any) string { return fmt.Sprint(v) }
 
 func TestRedact_HidesTheLiteralSecretsTheCallerKnowsInAnyShape(t *testing.T) {

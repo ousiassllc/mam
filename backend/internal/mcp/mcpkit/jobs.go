@@ -123,6 +123,8 @@ type Jobs struct {
 
 	mu    sync.Mutex
 	kinds map[string]kind
+
+	recordMu sync.Mutex // serializes record (jobs_history.go)
 }
 
 // NewJobs returns Jobs over the job table and the history. table may be nil (tests, and builds without a

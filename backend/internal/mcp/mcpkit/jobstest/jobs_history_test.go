@@ -2,6 +2,7 @@ package jobstest_test
 
 import (
 	"context"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -196,4 +197,55 @@ func TestJobs_ObserveAndRefreshOpenRecordTheEnd(t *testing.T) {
 	assert.NotNil(t, h.EndedAt)
 	assert.Empty(t, h.Result, "the result is kept only for kinds whose work cannot be read again")
 	j.Observe(ctx, "job_unknown") // not an error
+}
+
+// A reader that probed before the end and records after another reader recorded the end (a client polling
+// while Observe runs at the end of a stage) must neither move the end later nor take the job back to running.
+func TestJobs_ConcurrentReadersKeepTheFirstEndOfAnInMemoryJob(t *testing.T) {
+	for name, slowReaderSees := range map[string]string{"also ended": "done", "still running": "run"} {
+		t.Run(name, func(t *testing.T) {
+			ctx := context.Background()
+			hist := jobhistory.New(testdb.Open(t))
+			clock := time.Date(2026, 10, 24, 12, 0, 0, 0, time.UTC)
+			j := startProcess(t, hist, &clock, nil)
+			entered, release := make(chan struct{}), make(chan struct{})
+			work := &memoryWork{}
+			var calls atomic.Int32
+			j.RegisterKind("judge_edit_timeline", func(ctx context.Context, info mcpkit.JobInfo) (mcpkit.Progress, error) {
+				if calls.Add(1) == 1 { // the slow reader: it stops inside the probe until the other one is done
+					close(entered)
+					<-release
+					return (&memoryWork{state: slowReaderSees}).probe(ctx, info)
+				}
+				return work.probe(ctx, info)
+			}, mcpkit.InMemory())
+			ref, err := j.Run(ctx, "judge_edit_timeline", "tl-1", func(context.Context) (string, error) { return "", nil })
+			require.NoError(t, err)
+
+			slow := make(chan mcpkit.JobStatus, 1)
+			go func() {
+				st, _ := j.Get(ctx, ref.JobID)
+				slow <- st
+			}()
+			<-entered
+			work.state = "done"
+			clock = clock.Add(time.Minute)
+			first, err := j.Get(ctx, ref.JobID)
+			require.NoError(t, err)
+			require.Equal(t, mcpkit.JobSucceeded, first.State)
+			require.NotNil(t, first.EndedAt)
+
+			clock = clock.Add(time.Minute)
+			close(release)
+			got := <-slow
+			assert.Equal(t, mcpkit.JobSucceeded, got.State)
+			require.NotNil(t, got.EndedAt)
+			assert.True(t, first.EndedAt.Equal(*got.EndedAt), "the end is the time the first reader saw it")
+			h, err := hist.Get(ctx, ref.JobID)
+			require.NoError(t, err)
+			assert.Equal(t, "succeeded", h.State)
+			assert.True(t, first.EndedAt.Equal(*h.EndedAt))
+			assert.JSONEq(t, `{"verdict":"pass"}`, string(h.Result))
+		})
+	}
 }

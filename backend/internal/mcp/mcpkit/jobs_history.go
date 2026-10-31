@@ -82,7 +82,22 @@ func (j *Jobs) RefreshOpen(ctx context.Context) error {
 
 // record completes st with what the history knows (the Project, the failure's code, when it ended) and
 // writes the state back when it changed. A failed write is logged: the answer does not depend on it.
+//
+// Readers of one job run at the same time (a client, list_jobs, and Observe at the end of a stage), and
+// each decides from the row it read before the probe ran. record therefore runs one at a time and goes on
+// from the row as the reader before left it: the end of a job is the time the first reader saw it over (a
+// second reader would write its own, later time), and a job whose Probe only reads memory is not taken
+// back from final to running by a reader that probed just before the end.
 func (j *Jobs) record(ctx context.Context, h jobhistory.Entry, st *JobStatus, k kind) {
+	j.recordMu.Lock()
+	defer j.recordMu.Unlock()
+	if fresh, err := j.history.Get(ctx, h.ID); err == nil {
+		h = fresh
+	}
+	if k.inMemory && !h.Open() && !st.State.Final() {
+		*st = statusFrom(h)
+		return
+	}
 	st.ProjectID = h.ProjectID
 	if st.State == JobFailed {
 		st.ErrorCode = errorCodeOf(st.Error)

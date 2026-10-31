@@ -249,9 +249,9 @@ func flatten(dst map[string]any, prefix string, src map[string]any, secrets []st
 			flatten(dst, key+".", x, secrets)
 		case string:
 			dst[key] = clip(redactAttr(key, x, secrets).(string))
-		case []any: // a list is shown as the text it was written as, scanned for secrets
+		case []any: // a list is shown as the text it was written as, scanned for secrets (all of it under a secret-like key)
 			b, _ := json.Marshal(x)
-			dst[key] = clip(Redact(string(b), secrets...))
+			dst[key] = clip(redactAttr(key, string(b), secrets).(string))
 		default:
 			dst[key] = v
 		}
