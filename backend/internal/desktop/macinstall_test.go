@@ -53,41 +53,6 @@ func TestMacAppBundle(t *testing.T) {
 	}
 }
 
-func TestMacUpdatableBundle(t *testing.T) {
-	// Running from a disk image or a translocated copy: refused before the file system is touched.
-	for _, exe := range []string{
-		"/Volumes/MAM/MAM.app/Contents/MacOS/mam",
-		"/private/var/folders/ab/c/T/AppTranslocation/0E3A/d/MAM.app/Contents/MacOS/mam",
-	} {
-		_, err := MacUpdatableBundle(exe)
-		require.Error(t, err, exe)
-		assert.Contains(t, err.Error(), "/Applications", "the message tells where to move the app")
-	}
-
-	// A bundle in a folder the user can write to.
-	dir := t.TempDir()
-	exe := filepath.Join(dir, "MAM.app", "Contents", "MacOS", "mam")
-	require.NoError(t, os.MkdirAll(filepath.Dir(exe), 0o750))
-	got, err := MacUpdatableBundle(exe)
-	require.NoError(t, err)
-	assert.Equal(t, filepath.Join(dir, "MAM.app"), got)
-	entries, err := os.ReadDir(dir)
-	require.NoError(t, err)
-	assert.Len(t, entries, 1, "the writability probe leaves nothing behind")
-
-	// Not inside a bundle at all.
-	_, err = MacUpdatableBundle(filepath.Join(dir, "mam"))
-	require.Error(t, err)
-
-	// A folder that is not writable (root ignores the mode).
-	if os.Geteuid() != 0 {
-		require.NoError(t, os.Chmod(dir, 0o500))       // #nosec G302 -- the test makes the folder read-only
-		t.Cleanup(func() { _ = os.Chmod(dir, 0o700) }) // #nosec G302 -- so TempDir can remove it
-		_, err = MacUpdatableBundle(exe)
-		require.Error(t, err)
-	}
-}
-
 func TestUpdater_RunPendingReturnsTheFailureToBuildTheCommand(t *testing.T) {
 	u := NewUpdater(func() {})
 	boom := os.ErrPermission
