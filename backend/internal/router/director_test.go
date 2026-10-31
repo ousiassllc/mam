@@ -28,12 +28,12 @@ func (g *genApp) takeIDs() []string {
 	return ids
 }
 
-// generateTakes generates the Shot and returns the IDs of its three Takes, oldest first.
+// generateTakes generates the Shot and returns the IDs of its three Takes, oldest first (a repair's Takes come after them).
 func (g *genApp) generateTakes() []string {
 	g.t.Helper()
 	require.Equal(g.t, http.StatusAccepted, g.form(http.MethodPost, "/shots/"+g.shotID+"/generate", nil).Code)
 	g.waitTakes(3)
-	return g.takeIDs()
+	return g.takeIDs()[:3]
 }
 
 func (g *genApp) generateAndWait() {

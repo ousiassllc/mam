@@ -127,12 +127,10 @@ func newGenAppOpts(t *testing.T, withModels bool, o genOpts) *genApp {
 	return g
 }
 
+// waitTakes waits for n Takes at least: in AUTO mode a failed Take is repaired by itself, so the count can pass n between two polls.
 func (g *genApp) waitTakes(n int) {
 	g.t.Helper()
-	require.Eventually(g.t, func() bool {
-		var c int
-		return g.db.Reader().QueryRow(`SELECT COUNT(*) FROM take`).Scan(&c) == nil && c == n
-	}, 30*time.Second, 10*time.Millisecond)
+	require.Eventually(g.t, func() bool { return g.countTakes(`SELECT COUNT(*) FROM take`) >= n }, 30*time.Second, 10*time.Millisecond)
 }
 
 func TestGenerate_Answers202WithTheGeneratingShotCardAndStartsAJob(t *testing.T) {
