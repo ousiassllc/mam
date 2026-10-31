@@ -9,11 +9,9 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/textutil"
 )
 
-// pick marks the best judged Take of the Shot as its AI Pick: in AUTO a Take that the Retry Policy
-// accepts (a pass that also reaches the Minimum acceptance scores, the rule the Repair loop applies)
-// also becomes the Shot's Take, in DIRECTOR (or when the Shot's Take Selection is MANUAL / LOCK) the
-// pick is only a recommendation. It returns the line
-// of the chat notice about it ("" when the pick did not change or could not be made).
+// pick marks the best judged Take of the Shot as its AI Pick; in AUTO one the Retry Policy accepts (a
+// pass reaching the Minimum acceptance scores) also becomes the Shot's Take, otherwise (DIRECTOR, Take
+// Selection MANUAL / LOCK) it is only recommended. It returns the chat notice line ("" if unchanged).
 func (r *Runner) pick(ctx context.Context, ref repository.TakeRef) string {
 	if r.Takes == nil || r.Projects == nil {
 		return ""
@@ -49,9 +47,9 @@ func (r *Runner) pick(ctx context.Context, ref repository.TakeRef) string {
 	return fmt.Sprintf("\nAI Pick: Take %s がおすすめです（Take 比較から選択できます）。", textutil.ShortID(pick.TakeID))
 }
 
-// acceptance tells which Takes of the Shot the Retry Policy of the Project accepts (the latest
-// Judge result of the Take: verdict, LOCK violations and the Minimum acceptance scores). It returns
-// nil, meaning a pass is enough, when the policy or the Takes cannot be read.
+// acceptance tells which Takes the Retry Policy accepts (the latest Judge result: verdict, LOCK
+// violations, Minimum acceptance scores); nil (a pass is enough) when the policy cannot be read. A
+// result is read when PickBest asks, inside its write transaction: a stale one let the newer Take win.
 func (r *Runner) acceptance(ctx context.Context, ref repository.TakeRef) func(takeID string) bool {
 	if r.Policies == nil {
 		return nil
@@ -61,17 +59,9 @@ func (r *Runner) acceptance(ctx context.Context, ref repository.TakeRef) func(ta
 		r.Logger.Error("ai pick: read policy failed", "project_id", ref.ProjectID, "err", err)
 		return nil
 	}
-	takes, err := r.Takes.ShotTakes(ctx, ref.Take.ShotID)
-	if err != nil {
-		r.Logger.Error("ai pick: read takes failed", "shot_id", ref.Take.ShotID, "err", err)
-		return nil
-	}
 	eff := policy.Effective()
-	accepted := make(map[string]bool, len(takes))
-	for _, t := range takes {
-		if res, err := r.Judges.Latest(ctx, t.ID); err == nil {
-			accepted[t.ID] = res.Accepted(eff, policy.Template)
-		}
+	return func(takeID string) bool {
+		res, err := r.Judges.Latest(ctx, takeID)
+		return err == nil && res.Accepted(eff, policy.Template)
 	}
-	return func(takeID string) bool { return accepted[takeID] }
 }
