@@ -19,6 +19,7 @@ type JobHistory interface {
 	Get(ctx context.Context, id string) (jobhistory.Entry, error)
 	Settle(ctx context.Context, e jobhistory.Entry) error
 	Open(ctx context.Context, limit int) ([]jobhistory.Entry, error)
+	List(ctx context.Context, f jobhistory.Filter) (jobhistory.Page, error)
 }
 
 // lostMessage is what a job says when mam restarted while it ran and nothing recorded its end.
@@ -31,13 +32,16 @@ const maxRefresh = 200
 // in the history on the way. A job whose Probe only reads memory (InMemory) and that started before this
 // process did is answered from the history alone: its recorded end, or a failure when none was recorded.
 func (j *Jobs) statusOf(ctx context.Context, h jobhistory.Entry) (JobStatus, error) {
-	k, _ := j.kind(h.Kind)
+	k, known := j.kind(h.Kind)
+	if !known && h.QueueJobID == "" { // nothing reads this kind any more (the tool package is gone): what was recorded is all there is
+		return statusFrom(h), nil
+	}
 	if k.inMemory && h.StartedAt.Before(j.bootedAt) {
 		if !h.Open() {
 			return statusFrom(h), nil
 		}
 		st := statusFrom(h)
-		st.State, st.Error, st.ErrorCode = JobFailed, lostMessage, ""
+		st.State, st.Error, st.ErrorCode, st.ErrorID = JobFailed, lostMessage, "", ""
 		j.record(ctx, h, &st, k)
 		return st, nil
 	}
@@ -89,7 +93,7 @@ func (j *Jobs) record(ctx context.Context, h jobhistory.Entry, st *JobStatus, k 
 	}
 	n := h
 	n.State, n.Message, n.Done, n.Total = string(st.State), st.Message, st.Done, st.Total
-	n.ErrorCode, n.ErrorMessage = st.ErrorCode, st.Error
+	n.ErrorCode, n.ErrorMessage, n.ErrorID = st.ErrorCode, st.Error, st.ErrorID
 	n.FinishedAt, n.EndedAt = st.FinishedAt, st.EndedAt
 	n.Result = nil
 	if k.inMemory && len(st.Result) > 0 { // nothing else can produce the result again
@@ -133,7 +137,7 @@ func sameTime(a, b *time.Time) bool {
 func statusFrom(h jobhistory.Entry) JobStatus {
 	st := JobStatus{
 		JobID: h.ID, Kind: h.Kind, Target: h.Target, State: JobState(h.State), Message: h.Message, Done: h.Done, Total: h.Total,
-		Error: h.ErrorMessage, ErrorCode: h.ErrorCode, ProjectID: h.ProjectID, StartedAt: h.StartedAt, FinishedAt: h.FinishedAt, EndedAt: h.EndedAt,
+		Error: h.ErrorMessage, ErrorCode: h.ErrorCode, ErrorID: h.ErrorID, ProjectID: h.ProjectID, StartedAt: h.StartedAt, FinishedAt: h.FinishedAt, EndedAt: h.EndedAt,
 	}
 	if len(h.Result) > 0 {
 		_ = json.Unmarshal(h.Result, &st.Result) // a result that does not read back is left out

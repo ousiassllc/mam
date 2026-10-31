@@ -47,6 +47,7 @@ type JobStatus struct {
 	Total      int            `json:"total,omitempty" jsonschema:"全体の数 / items in all"`
 	Result     map[string]any `json:"result,omitempty" jsonschema:"成功したときの結果（take_id など）/ result when it succeeded (e.g. take_ids)"`
 	Error      string         `json:"error,omitempty" jsonschema:"失敗の理由 / why it failed"`
+	ErrorID    string         `json:"error_id,omitempty" jsonschema:"internal の失敗の相関 ID。get_app_logs の attrs に {\"error_id\": …} で渡すと原因のログ行が見つかる / correlation id of an internal failure: find its cause with get_app_logs (attrs error_id)"`
 	ErrorCode  string         `json:"error_code,omitempty" jsonschema:"失敗のコード（error の <code>: <message> の <code>。validation・conflict・budget_exceeded・upstream・internal など）/ code of the failure"`
 	ProjectID  string         `json:"project_id,omitempty" jsonschema:"対象が属する Project の ID（無ければ省略）/ Project of the target, when it has one"`
 	StartedAt  time.Time      `json:"started_at"`
@@ -70,6 +71,8 @@ type Progress struct {
 	Total   int
 	Result  map[string]any
 	Error   string
+	// ErrorID is the correlation id of an internal failure (ReportError); "" for any other state.
+	ErrorID string
 }
 
 // Probe derives the Progress of one kind of job from the state the service layer persisted (a Shot's
@@ -126,7 +129,15 @@ type Jobs struct {
 // job queue).
 func NewJobs(table JobTable, history JobHistory) *Jobs {
 	now := time.Now
-	return &Jobs{table: table, history: history, now: now, bootedAt: now().UTC(), kinds: map[string]kind{}}
+	return &Jobs{table: table, history: history, now: now, bootedAt: now().UTC().Truncate(time.Millisecond), kinds: map[string]kind{}}
+}
+
+// WithClock makes the Jobs read the time from now (tests of the history move the clock). The start of the
+// process, which separates the jobs of an InMemory kind that survive from the ones a restart ended, is the
+// time of this call.
+func (j *Jobs) WithClock(now func() time.Time) *Jobs {
+	j.now, j.bootedAt = now, now().UTC().Truncate(time.Millisecond)
+	return j
 }
 
 // RegisterKind installs the Probe of a kind of job. A tool package calls it once, from its Register.
@@ -226,7 +237,7 @@ func (j *Jobs) live(ctx context.Context, e *entry) (_ JobStatus, gone bool, _ er
 		if err != nil {
 			return JobStatus{}, false, err
 		}
-		st.State, st.Message, st.Done, st.Total, st.Result, st.Error = p.State, p.Message, p.Done, p.Total, p.Result, p.Error
+		st.State, st.Message, st.Done, st.Total, st.Result, st.Error, st.ErrorID = p.State, p.Message, p.Done, p.Total, p.Result, p.Error, p.ErrorID
 	}
 	if e.queueJobID != "" {
 		row, err := j.row(ctx, e.queueJobID)
@@ -250,7 +261,7 @@ func applyRow(st *JobStatus, row domain.Job, probed bool) {
 	case domain.JobRunning:
 		st.State = JobRunning
 	case domain.JobFailed:
-		st.State, st.Error = JobFailed, row.Error
+		st.State, st.Error, st.ErrorID = JobFailed, row.Error, ""
 	case domain.JobSucceeded:
 		if !probed {
 			st.State = JobSucceeded

@@ -1,4 +1,4 @@
-package mcpkit
+package jobstest_test
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
 	"github.com/ousiassllc/mam/backend/internal/repository/jobhistory"
 	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 	"github.com/ousiassllc/mam/backend/internal/service"
@@ -17,28 +18,27 @@ import (
 // process is one run of mam over a database that outlives it: a new process has new Jobs, so nothing the
 // old one kept in memory is there.
 type process struct {
-	*Jobs
+	*mcpkit.Jobs
 	clock *time.Time
 }
 
-func startProcess(t *testing.T, hist *jobhistory.Repository, clock *time.Time, table JobTable) process {
+func startProcess(t *testing.T, hist *jobhistory.Repository, clock *time.Time, table mcpkit.JobTable) process {
 	t.Helper()
 	now := func() time.Time { return *clock }
-	j := NewJobs(table, hist.WithClock(now))
-	j.now, j.bootedAt = now, *clock
+	j := mcpkit.NewJobs(table, hist.WithClock(now)).WithClock(now)
 	return process{Jobs: j, clock: clock}
 }
 
 type memoryWork struct{ state, err string }
 
-func (m *memoryWork) probe(_ context.Context, _ JobInfo) (Progress, error) {
+func (m *memoryWork) probe(_ context.Context, _ mcpkit.JobInfo) (mcpkit.Progress, error) {
 	switch m.state {
 	case "done":
-		return Progress{State: JobSucceeded, Result: map[string]any{"verdict": "pass"}}, nil
+		return mcpkit.Progress{State: mcpkit.JobSucceeded, Result: map[string]any{"verdict": "pass"}}, nil
 	case "failed":
-		return Progress{State: JobFailed, Error: m.err}, nil
+		return mcpkit.Progress{State: mcpkit.JobFailed, Error: m.err}, nil
 	}
-	return Progress{State: JobRunning, Message: "working"}, nil
+	return mcpkit.Progress{State: mcpkit.JobRunning, Message: "working"}, nil
 }
 
 func TestJobs_AnInMemoryJobIsAnsweredFromTheHistoryAfterARestart(t *testing.T) {
@@ -48,20 +48,20 @@ func TestJobs_AnInMemoryJobIsAnsweredFromTheHistoryAfterARestart(t *testing.T) {
 
 	before := startProcess(t, hist, &clock, nil)
 	work := &memoryWork{state: "run"}
-	before.RegisterKind("judge_edit_timeline", work.probe, InMemory())
+	before.RegisterKind("judge_edit_timeline", work.probe, mcpkit.InMemory())
 	ref, err := before.Run(ctx, "judge_edit_timeline", "tl-1", func(context.Context) (string, error) { return "", nil })
 	require.NoError(t, err)
 	clock = clock.Add(time.Minute)
 	work.state = "done"
 	want, err := before.Get(ctx, ref.JobID)
 	require.NoError(t, err)
-	require.Equal(t, JobSucceeded, want.State)
+	require.Equal(t, mcpkit.JobSucceeded, want.State)
 	require.NotNil(t, want.EndedAt)
 
 	clock = clock.Add(time.Hour)
 	after := startProcess(t, hist, &clock, nil)
 	forgotten := &memoryWork{state: "failed", err: "nothing remembered"} // what a probe reads after a restart
-	after.RegisterKind("judge_edit_timeline", forgotten.probe, InMemory())
+	after.RegisterKind("judge_edit_timeline", forgotten.probe, mcpkit.InMemory())
 	got, err := after.Get(ctx, ref.JobID)
 	require.NoError(t, err)
 	assert.Equal(t, want, got, "the same state, target, times and result as before the restart")
@@ -72,17 +72,17 @@ func TestJobs_AnInMemoryJobThatNobodySawEndIsFailedAfterARestart(t *testing.T) {
 	hist := jobhistory.New(testdb.Open(t))
 	clock := time.Date(2026, 10, 24, 12, 0, 0, 0, time.UTC)
 	before := startProcess(t, hist, &clock, nil)
-	before.RegisterKind("generate_audio", (&memoryWork{state: "run"}).probe, InMemory())
+	before.RegisterKind("generate_audio", (&memoryWork{state: "run"}).probe, mcpkit.InMemory())
 	ref, err := before.Run(ctx, "generate_audio", "p-1", func(context.Context) (string, error) { return "", nil })
 	require.NoError(t, err)
 
 	clock = clock.Add(time.Hour)
 	after := startProcess(t, hist, &clock, nil)
-	after.RegisterKind("generate_audio", (&memoryWork{state: "run"}).probe, InMemory())
+	after.RegisterKind("generate_audio", (&memoryWork{state: "run"}).probe, mcpkit.InMemory())
 	got, err := after.Get(ctx, ref.JobID)
 	require.NoError(t, err)
-	assert.Equal(t, JobFailed, got.State, "a restart ended it")
-	assert.Equal(t, lostMessage, got.Error)
+	assert.Equal(t, mcpkit.JobFailed, got.State, "a restart ended it")
+	assert.Contains(t, got.Error, "再起動", "the restart is the reason")
 	assert.Equal(t, "generate_audio", got.Kind)
 	assert.Equal(t, "p-1", got.Target)
 	require.NotNil(t, got.EndedAt)
@@ -115,7 +115,7 @@ func TestJobs_AJobThatReadsPersistedStateAnswersAsBeforeAfterARestart(t *testing
 	after.RegisterKind("generate_shot", work.probe)
 	st, err := after.Get(ctx, "q1")
 	require.NoError(t, err)
-	assert.Equal(t, JobQueued, st.State, "the row decides, as it did before the restart")
+	assert.Equal(t, mcpkit.JobQueued, st.State, "the row decides, as it did before the restart")
 	assert.Equal(t, "shot-1", st.Target, "the target comes from the history, not from the row")
 	assert.Equal(t, time.Date(2026, 10, 24, 12, 0, 0, 0, time.UTC), st.StartedAt.UTC())
 
@@ -123,7 +123,7 @@ func TestJobs_AJobThatReadsPersistedStateAnswersAsBeforeAfterARestart(t *testing
 	table["q1"] = domain.Job{ID: "q1", Status: domain.JobFailed, Error: "interrupted by shutdown", FinishedAt: &finished}
 	st, err = after.Get(ctx, "q1")
 	require.NoError(t, err)
-	assert.Equal(t, JobFailed, st.State)
+	assert.Equal(t, mcpkit.JobFailed, st.State)
 	assert.Equal(t, "interrupted by shutdown", st.Error)
 	require.NotNil(t, st.EndedAt)
 	assert.True(t, finished.Equal(*st.EndedAt), "the job queue's finish time is the end")
@@ -131,7 +131,7 @@ func TestJobs_AJobThatReadsPersistedStateAnswersAsBeforeAfterARestart(t *testing
 	delete(table, "q1") // the row is gone: the recorded end remains
 	st, err = after.Get(ctx, "q1")
 	require.NoError(t, err)
-	assert.Equal(t, JobFailed, st.State)
+	assert.Equal(t, mcpkit.JobFailed, st.State)
 	assert.Equal(t, "interrupted by shutdown", st.Error)
 
 	_, err = after.Get(ctx, "job_unknown")
@@ -162,7 +162,7 @@ func TestJobs_TheProjectOfTheTargetIsRecordedAndErrorCodesAreRead(t *testing.T) 
 	require.NoError(t, err)
 	st, err := j.Get(ctx, ref.JobID)
 	require.NoError(t, err)
-	assert.Equal(t, JobFailed, st.State)
+	assert.Equal(t, mcpkit.JobFailed, st.State)
 	assert.Equal(t, "budget_exceeded", st.ErrorCode)
 	assert.Empty(t, st.ProjectID)
 

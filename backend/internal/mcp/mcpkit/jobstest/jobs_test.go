@@ -1,4 +1,4 @@
-package mcpkit
+package jobstest_test
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/jobhistory"
 	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
@@ -31,27 +32,31 @@ type shotWork struct {
 	takes []string
 }
 
-func (w *shotWork) probe(_ context.Context, job JobInfo) (Progress, error) {
-	p := Progress{Done: len(w.takes), Total: 2, Result: map[string]any{"shot_id": job.Target}}
+func (w *shotWork) probe(_ context.Context, job mcpkit.JobInfo) (mcpkit.Progress, error) {
+	p := mcpkit.Progress{Done: len(w.takes), Total: 2, Result: map[string]any{"shot_id": job.Target}}
 	switch w.state {
 	case "running":
-		p.State, p.Message = JobRunning, "generating"
+		p.State, p.Message = mcpkit.JobRunning, "generating"
 	case "done":
-		p.State, p.Result["take_ids"] = JobSucceeded, w.takes
+		p.State, p.Result["take_ids"] = mcpkit.JobSucceeded, w.takes
 	default:
-		p.State, p.Error = JobFailed, "no take"
+		p.State, p.Error = mcpkit.JobFailed, "no take"
 	}
 	return p, nil
 }
 
-// newJobs makes Jobs over a temporary database on a clock the test moves. The history reads the same clock,
+// newJobs makes mcpkit.Jobs over a temporary database on a clock the test moves. The history reads the same clock,
 // so that its retention is not a function of the day the test runs.
-func newJobs(t *testing.T, table JobTable) (*Jobs, *time.Time) {
+// histories is the history each Jobs of a test writes to, to look at the table itself.
+var histories = map[*mcpkit.Jobs]*jobhistory.Repository{}
+
+func newJobs(t *testing.T, table mcpkit.JobTable) (*mcpkit.Jobs, *time.Time) {
 	t.Helper()
 	now := time.Date(2026, 10, 24, 12, 0, 0, 0, time.UTC)
 	clock := func() time.Time { return now }
-	j := NewJobs(table, jobhistory.New(testdb.Open(t)).WithClock(clock))
-	j.now, j.bootedAt = clock, now
+	hist := jobhistory.New(testdb.Open(t)).WithClock(clock)
+	j := mcpkit.NewJobs(table, hist).WithClock(clock)
+	histories[j] = hist
 	return j, &now
 }
 
@@ -67,13 +72,13 @@ func TestJobs_FollowTheWorkFromRunningToSucceeded(t *testing.T) {
 		return "", nil
 	})
 	require.NoError(t, err)
-	assert.Equal(t, JobQueued, ref.State)
+	assert.Equal(t, mcpkit.JobQueued, ref.State)
 	assert.Contains(t, ref.JobID, "job_")
 
 	st, err := j.Get(ctx, ref.JobID)
 	require.NoError(t, err)
-	assert.Equal(t, JobStatus{
-		JobID: ref.JobID, Kind: "generate_shot", Target: "shot-1", State: JobRunning, Message: "generating",
+	assert.Equal(t, mcpkit.JobStatus{
+		JobID: ref.JobID, Kind: "generate_shot", Target: "shot-1", State: mcpkit.JobRunning, Message: "generating",
 		Done: 0, Total: 2, Result: map[string]any{"shot_id": "shot-1"}, StartedAt: startedBefore,
 	}, st)
 
@@ -84,14 +89,14 @@ func TestJobs_FollowTheWorkFromRunningToSucceeded(t *testing.T) {
 	work.state, work.takes = "done", []string{"take-1", "take-2"}
 	st, err = j.Get(ctx, ref.JobID)
 	require.NoError(t, err)
-	assert.Equal(t, JobSucceeded, st.State)
+	assert.Equal(t, mcpkit.JobSucceeded, st.State)
 	assert.Equal(t, []string{"take-1", "take-2"}, st.Result["take_ids"])
 	assert.True(t, st.State.Final())
 
 	work.state = "failed"
 	st, err = j.Get(ctx, ref.JobID)
 	require.NoError(t, err)
-	assert.Equal(t, JobFailed, st.State)
+	assert.Equal(t, mcpkit.JobFailed, st.State)
 	assert.Equal(t, "no take", st.Error)
 }
 
@@ -105,7 +110,7 @@ func TestJobs_TheQueueRowDecidesQueuedRunningAndFailureReason(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "q1", ref.JobID, "the queue's own id is used when the service gives it")
 
-	for status, want := range map[domain.JobStatus]JobState{domain.JobQueued: JobQueued, domain.JobRunning: JobRunning} {
+	for status, want := range map[domain.JobStatus]mcpkit.JobState{domain.JobQueued: mcpkit.JobQueued, domain.JobRunning: mcpkit.JobRunning} {
 		table["q1"] = domain.Job{ID: "q1", Status: status}
 		st, err := j.Get(ctx, "q1")
 		require.NoError(t, err)
@@ -116,20 +121,20 @@ func TestJobs_TheQueueRowDecidesQueuedRunningAndFailureReason(t *testing.T) {
 	table["q1"] = domain.Job{ID: "q1", Status: domain.JobFailed, Error: "interrupted by shutdown", FinishedAt: &done}
 	st, err := j.Get(ctx, "q1")
 	require.NoError(t, err)
-	assert.Equal(t, JobFailed, st.State)
+	assert.Equal(t, mcpkit.JobFailed, st.State)
 	assert.Equal(t, "interrupted by shutdown", st.Error, "the reason comes from the row")
 	assert.Equal(t, &done, st.FinishedAt)
 
 	table["q1"] = domain.Job{ID: "q1", Status: domain.JobSucceeded}
 	st, err = j.Get(ctx, "q1")
 	require.NoError(t, err)
-	assert.Equal(t, JobSucceeded, st.State)
+	assert.Equal(t, mcpkit.JobSucceeded, st.State)
 	assert.Equal(t, []string{"t"}, st.Result["take_ids"], "the probe still supplies the result")
 
 	work.state = "running" // the job succeeded but a later stage (judge) of the same work runs
 	st, err = j.Get(ctx, "q1")
 	require.NoError(t, err)
-	assert.Equal(t, JobRunning, st.State, "a succeeded row does not end work the probe sees running")
+	assert.Equal(t, mcpkit.JobRunning, st.State, "a succeeded row does not end work the probe sees running")
 }
 
 func TestJobs_AQueueRowIdWorksWithoutTheRegistry(t *testing.T) {
@@ -139,7 +144,7 @@ func TestJobs_AQueueRowIdWorksWithoutTheRegistry(t *testing.T) {
 
 	st, err := j.Get(ctx, "q9")
 	require.NoError(t, err)
-	assert.Equal(t, JobRunning, st.State)
+	assert.Equal(t, mcpkit.JobRunning, st.State)
 	assert.Equal(t, "plan", st.Kind)
 
 	_, err = j.Get(ctx, "job_unknown")
@@ -156,13 +161,13 @@ func TestJobs_RunRefusesWhatCannotBeFollowed(t *testing.T) {
 	boom := errors.New("busy")
 	_, err := j.Run(ctx, "k", "x", func(context.Context) (string, error) { return "", boom })
 	assert.ErrorIs(t, err, boom, "the service's error comes back as it is")
-	open, err := j.history.Open(ctx, 10)
+	open, err := histories[j].Open(ctx, 10)
 	require.NoError(t, err)
 	assert.Empty(t, open, "a start that failed leaves no job")
 
 	_, err = j.Run(ctx, "unprobed", "x", func(context.Context) (string, error) { return "", nil })
 	assert.Error(t, err, "no probe and no queue id: there would be nothing to read the state from")
-	open, err = j.history.Open(ctx, 10)
+	open, err = histories[j].Open(ctx, 10)
 	require.NoError(t, err)
 	assert.Empty(t, open)
 	assert.Panics(t, func() { j.RegisterKind("k", nil); j.RegisterKind("k", nil) })

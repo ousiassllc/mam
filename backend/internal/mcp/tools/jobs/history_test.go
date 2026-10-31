@@ -69,3 +69,7 @@ func TestGetJob_AQueueJobKeepsItsAnswerAcrossARestart(t *testing.T) {
 	assert.Equal(t, "kling: insufficient credit", got.Error)
 	assert.Equal(t, "sh1", got.Target, "the target the history kept, which the row does not have")
 }
+
+func repositoryJob(env *mcptest.Env) *repository.JobRepository {
+	return repository.NewJobRepository(env.DB)
+}

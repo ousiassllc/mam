@@ -52,11 +52,8 @@ func add[In, Out any](r *Registrar, name, description string, a *mcp.ToolAnnotat
 		func(ctx context.Context, _ *mcp.CallToolRequest, in In) (*mcp.CallToolResult, Out, error) {
 			out, err := h(ctx, in)
 			if err != nil {
-				if Internal(err) {
-					r.Logger.Error("mcp tool failed", "tool", name, "err", err)
-				}
 				var zero Out
-				return nil, zero, MapError(err)
+				return nil, zero, ReportError(r.Logger, "mcp tool failed", err, "tool", name)
 			}
 			return nil, out, nil
 		})

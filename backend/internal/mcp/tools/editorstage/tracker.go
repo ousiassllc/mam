@@ -25,8 +25,9 @@ const maxRuns = 4096
 
 // outcome is what a stage ended with.
 type outcome struct {
-	done   chan struct{} // closed when the stage ended; err and result are set before
+	done   chan struct{} // closed when the stage ended; err, te and result are set before
 	err    error
+	te     *mcpkit.ToolError // err as the agent sees it: an internal failure carries its correlation id and was logged with it
 	result map[string]any
 }
 
@@ -52,6 +53,9 @@ func (t *tracker) start(ctx context.Context, kind, target string, work func(ctx 
 		defer timer.Stop()
 		select {
 		case <-o.done:
+			if o.te != nil && o.te.ErrorID != "" {
+				return "", o.te // an internal failure: logged already, with the id the caller gets
+			}
 			return "", o.err
 		case <-timer.C:
 		case <-ctx.Done():
@@ -75,12 +79,12 @@ func (t *tracker) run(ctx context.Context, kind, target string, o *outcome, work
 	defer func() {
 		if p := recover(); p != nil { // a panic here would end mam; a handler's panic is recovered by the router
 			o.err = fmt.Errorf("panic in %s: %v", kind, p)
-			t.r.Logger.Error("mcp editing stage panicked", "kind", kind, "target", target, "panic", p)
+			o.te = mcpkit.ReportError(t.r.Logger, "mcp editing stage panicked", o.err, "kind", kind, "target", target, "panic", p)
 		}
 	}()
 	o.result, o.err = work(ctx)
-	if o.err != nil && mcpkit.Internal(o.err) {
-		t.r.Logger.Error("mcp editing stage failed", "kind", kind, "target", target, "err", o.err)
+	if o.err != nil {
+		o.te = mcpkit.ReportError(t.r.Logger, "mcp editing stage failed", o.err, "kind", kind, "target", target)
 	}
 }
 
@@ -114,8 +118,8 @@ func (t *tracker) probe(running string) mcpkit.Probe {
 		default:
 			return mcpkit.Progress{State: mcpkit.JobRunning, Message: running}, nil
 		}
-		if o.err != nil {
-			return mcpkit.Progress{State: mcpkit.JobFailed, Error: mcpkit.MapError(o.err).Error()}, nil
+		if o.te != nil {
+			return mcpkit.Progress{State: mcpkit.JobFailed, Error: o.te.Error(), ErrorID: o.te.ErrorID}, nil
 		}
 		return mcpkit.Progress{State: mcpkit.JobSucceeded, Result: o.result}, nil
 	}

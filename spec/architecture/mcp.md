@@ -57,6 +57,8 @@ app.Run ─ serve ─┬─ router（gin。画面と /api/v1。127.0.0.1:8787）
 - 種別 `generate_shot`（Shot の生成・Prompt Candidate Generation）の Probe は基盤が持つ: Shot が GENERATING / JUDGING / REPAIRING の間は `running`、止まって開始後の Take があれば `succeeded`（`take_ids`）、なければ `failed`。他の種別は各ツールのパッケージが `Jobs.RegisterKind` で足す。メモリ上の記録だけを読む種別（編集ステージの追跡、Codex エンジンの導入の状態）は `mcpkit.InMemory()` を付けて登録する。
 - **履歴**: `job_id` を返した操作は、すべて `mcp_job_history` テーブルに 1 行残る（ER は [er-mcp.md](er-mcp.md)）。`Jobs.Run` / `RunResolved` が開始時に行を書き（`job_id`・種別・対象・対象の Project（対象の ID が Project・Shot・Take・Edit Timeline のときに引く。無ければ空）・`job` テーブルの行 ID・開始時刻・`queued`）、`get_job` が状態を取るたびに、見つけた状態（`state`・`message`・`done` / `total`・失敗の理由とコード・`finished_at`・終わった時刻 `ended_at`）を行へ書き戻す。`ended_at` は `job` テーブルが終了を記録していればその時刻（`finished_at`）、なければ mam が終了を最初に確かめた時刻。**状態の決め方は変えない**: `get_job` は今までどおり、行（`job` テーブル）と Probe から毎回決める。履歴が足すのは、メモリが持っていた `(job_id, kind, target, started_at, queue_job_id)` と、記録された終わりだけ。
 - **再起動をまたぐ `get_job`**: メモリ上の `job_id` も履歴から `(kind, target, started_at, queue_job_id)` を戻して、Probe と行から答える。Probe が永続化済みの状態を読む種別（Shot・Take・Branch・ワークフローの実行など）は、再起動の前後で同じ答えになる。Probe が**メモリだけ**を読む種別（`InMemory`）で、この mam の起動より前に始まった操作は、Probe を呼ばず履歴の記録で答える: 終わりが記録されていればその状態・結果・失敗（例: Editor Judge の `verdict`）を返し、終わりが記録されていなければ `failed`（「mam が再起動したため、この操作の結果を確かめられません」）にして、その終わりを記録する。編集ステージは終わった時点で履歴に終わりを書くので（`Jobs.Observe`）、`get_job` を呼ばないまま mam を止めても終わりは残る。履歴にも `job` の行にもない ID は `not_found`。
+- **相関 ID（`internal` の失敗）**: `mcpkit.ReportError` が、`MapError` の知らないエラー（`internal`）を作った時点で相関 ID `err_<UUIDv7>` を決める。原因を ERROR のログ行に**属性 `error_id`** つきで書き（ツールの失敗は `mcp tool failed`、編集ステージの失敗は `mcp editing stage failed`、ファイル URL の失敗も同じ）、返すエラーの文面にも `（error_id: err_…）` を付ける（原因は出さない）。ジョブでは、Probe が `Progress.ErrorID` で返し、履歴の `error_id` 列・`get_job` / `list_jobs` の `error_id` に出る。エージェントは `get_app_logs` の `attrs: {"error_id": …}` で原因の行を引く。すでに ID を持つエラーは再度ログに書かない。`job` テーブルの行の失敗（ジョブキューが書いた理由）は `<code>` も相関 ID も持たず、原因のログ行は `job_id` で引く。
+- **一覧（`list_jobs`）**: 履歴を `started_at` の新しい順（同時刻は `id`）に、カーソル（最後のジョブの `started_at` と `id`）でページングして返す（`jobhistory.Repository.List`）。種別・状態・エラーコード・Project・開始時刻の範囲で絞る。一覧の前に、終わっていないジョブ（最大 200 件）を `get_job` と同じ方法で状態を確かめ直して履歴に書くので、誰も `get_job` を呼ばなかったジョブの終わりも検索に出る。
 - **保存期間・件数**: **30 日**（ログの保持 `logging.maxAgeDays` と揃える）と **10,000 行**。開始時刻（`started_at`）が 30 日より古い行と、10,000 行を超えたぶん（`started_at` の古い順）を、行の追加と同じトランザクションと mam の起動時に消す（`jobhistory.Retention` / `MaxRows`）。以前のメモリ上の記録（24 時間・4096 件）の約 2.4 倍の件数で、1 日数百回の操作の 30 日ぶんを収められる。1 行 0.5 KB ほどなので、テーブルは 5 MB 前後に収まる。`started_at` に索引があり、一覧も削除も安い。
 
 ## 7. ファイル
@@ -84,7 +86,7 @@ app.Run ─ serve ─┬─ router（gin。画面と /api/v1。127.0.0.1:8787）
 
 ## 11. テスト
 
-トークン（発行でハッシュだけ保存・失効・未知/失効は拒否・最終利用の間引き）、アドレス検証（インターフェース一覧を差し込める純関数）、`Manager`（切り替え・失敗時の据え置き・起動時のフォールバック・Close）、認証と Origin（`httptest`）、ジョブ（再起動をまたぐ `get_job`・履歴の保存期間と件数の上限）、チケット（期限・単一リソース・方向・単回・トークン失効）、ツール（インメモリの MCP クライアント `mcpkit/mcptest`）、設定画面（CSRF・値の一回表示）、ログの読み取り（絞り込み・ローテーション済みの世代と圧縮・秘密を返さない・サイズの上限。`mcptest` と実サーバー）、マイグレーション（`mcp_token`・`mcp_job_history`）の up / down。
+トークン（発行でハッシュだけ保存・失効・未知/失効は拒否・最終利用の間引き）、アドレス検証（インターフェース一覧を差し込める純関数）、`Manager`（切り替え・失敗時の据え置き・起動時のフォールバック・Close）、認証と Origin（`httptest`）、ジョブ（再起動をまたぐ `get_job`・履歴の保存期間と件数の上限・`list_jobs` の絞り込みとページング・相関 ID がログ行・履歴・`get_job` / `list_jobs` に出る）、チケット（期限・単一リソース・方向・単回・トークン失効）、ツール（インメモリの MCP クライアント `mcpkit/mcptest`）、設定画面（CSRF・値の一回表示）、ログの読み取り（絞り込み・ローテーション済みの世代と圧縮・秘密を返さない・サイズの上限。`mcptest` と実サーバー）、マイグレーション（`mcp_token`・`mcp_job_history`）の up / down。
 
 ## 改訂履歴
 
@@ -94,3 +96,4 @@ app.Run ─ serve ─┬─ router（gin。画面と /api/v1。127.0.0.1:8787）
 | 1.1 | 2026-10-25 | §9 を、待ち受け先のカード・トークンの表・2 つのモーダルの作りに改めた（`GET /settings/mcp/bind/edit`・`/settings/mcp/tokens/new`）。トークンの値を一度だけ出す決まりは変えていない | Issue #847 ②-6 |
 | 1.2 | 2026-10-31 | §6 に、`job_id` を返した全種別の履歴（`mcp_job_history`）・再起動をまたぐ `get_job`・保存期間 30 日と 10,000 行を足し、メモリ上・24 時間・4096 件の記述を改めた。`get_job` の状態の決め方（`job` テーブルの行と Probe）は変えない | Issue #890（親 #889）。メモリ上の `job_id` が再起動で消え、エージェントが失敗をたどれなかった |
 | 1.3 | 2026-10-31 | §2 に、ログを読む `get_app_logs`（`logging.Reader`・`mcp/tools/logs`）を足した | Issue #891（親 #889）。エージェントが `internal` エラーの原因をログからたどれるようにする |
+| 1.4 | 2026-10-31 | §6 に、`internal` の失敗の相関 ID（`error_id`。ログの行・エラーの文面・履歴・`get_job` / `list_jobs`）と、履歴の一覧 `list_jobs` を足した | Issue #892（親 #889）。`internal` の失敗から原因のログ行をたどれるようにし、最近の失敗を探せるようにする |

@@ -43,17 +43,21 @@ func (f *Files) Handler() http.Handler {
 			f.serveUpload(w, r, value)
 		default:
 			w.Header().Set("Allow", "GET, HEAD, POST")
-			writeError(w, &ToolError{CodeValidation, "GET か POST で呼んでください", http.StatusMethodNotAllowed})
+			writeError(w, &ToolError{Code: CodeValidation, Message: "GET か POST で呼んでください", Status: http.StatusMethodNotAllowed})
 		}
 	})
 }
 
 func notFound() *ToolError {
-	return &ToolError{CodeNotFound, "URL が無効か、期限が切れています", http.StatusNotFound}
+	return &ToolError{Code: CodeNotFound, Message: "URL が無効か、期限が切れています", Status: http.StatusNotFound}
 }
 
 func writeError(w http.ResponseWriter, e *ToolError) {
-	writeJSON(w, e.Status, map[string]any{"error": map[string]string{"code": e.Code, "message": e.Message}})
+	body := map[string]string{"code": e.Code, "message": e.Message}
+	if e.ErrorID != "" {
+		body[ErrorIDKey] = e.ErrorID
+	}
+	writeJSON(w, e.Status, map[string]any{"error": body})
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
@@ -69,7 +73,7 @@ func (f *Files) live(r *http.Request, value string, dir direction) (*ticket, *To
 		return nil, notFound()
 	}
 	if t.tokenID != "" && f.authorize != nil && !f.authorize(r.Context(), t.tokenID) {
-		return nil, &ToolError{CodeValidation, "このチケットを発行したトークンは失効しています", http.StatusUnauthorized}
+		return nil, &ToolError{Code: CodeValidation, Message: "このチケットを発行したトークンは失効しています", Status: http.StatusUnauthorized}
 	}
 	return t, nil
 }
@@ -85,7 +89,7 @@ func (f *Files) serveDownload(w http.ResponseWriter, r *http.Request, value stri
 	f.mu.Unlock()
 	file, err := fn(r.Context(), t.id)
 	if err != nil {
-		writeError(w, MapError(err))
+		writeError(w, ReportError(f.logger, "mcp download failed", err, "kind", t.kind))
 		return
 	}
 	disposition := mime.FormatMediaType("attachment", map[string]string{"filename": file.Name})
@@ -160,17 +164,14 @@ func (f *Files) serveUpload(w http.ResponseWriter, r *http.Request, value string
 	result, err := spec.Handle(r.Context(), UploadInput{Params: t.params, Header: headers[0]})
 	if err != nil {
 		f.release(value) // nothing was stored: the same ticket can carry a corrected file
-		if Internal(err) {
-			f.logger.Error("mcp upload failed", "purpose", spec.Purpose, "err", err)
-		}
-		writeError(w, MapError(err))
+		writeError(w, ReportError(f.logger, "mcp upload failed", err, "purpose", spec.Purpose))
 		return
 	}
 	writeJSON(w, http.StatusCreated, map[string]any{"purpose": spec.Purpose, "result": result})
 }
 
 func tooLarge() *ToolError {
-	return &ToolError{CodeValidation, "送信内容が大きすぎます", http.StatusRequestEntityTooLarge}
+	return &ToolError{Code: CodeValidation, Message: "送信内容が大きすぎます", Status: http.StatusRequestEntityTooLarge}
 }
 
 // idleBody gives every read of an upload a fresh read deadline.
