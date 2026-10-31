@@ -1,7 +1,7 @@
 // Tests of the Lit components (*.wtest.ts) run in a real Chrome: `npm run test:components`.
 // The pure helpers of components/lib are tested by vitest (*.test.ts).
 import { execFile } from 'node:child_process';
-import { mkdtemp, readFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -61,15 +61,20 @@ async function buildTailwindCss() {
   const pkgPath = createRequire(import.meta.url).resolve('@tailwindcss/cli/package.json');
   const { bin } = JSON.parse(await readFile(pkgPath, 'utf8'));
   const entry = join(dirname(pkgPath), typeof bin === 'string' ? bin : bin.tailwindcss);
-  const out = join(await mkdtemp(join(tmpdir(), 'mam-tailwind-')), 'app.css');
-  await promisify(execFile)(
-    process.execPath,
-    [entry, '--input', join(root, 'src', 'css', 'app.css'), '--output', out],
-    {
-      cwd: root,
-    },
-  );
-  return readFile(out, 'utf8');
+  const dir = await mkdtemp(join(tmpdir(), 'mam-tailwind-'));
+  try {
+    const out = join(dir, 'app.css');
+    await promisify(execFile)(
+      process.execPath,
+      [entry, '--input', join(root, 'src', 'css', 'app.css'), '--output', out],
+      {
+        cwd: root,
+      },
+    );
+    return await readFile(out, 'utf8');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 }
 
 const tailwindCss = buildTailwindCss();
