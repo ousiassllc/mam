@@ -122,7 +122,7 @@ func TestGenerateVideoFallsBackToTheAlternativeModelWithItsOwnPrompt(t *testing.
 	assert.True(t, out.FellBack)
 	assert.Equal(t, 3, primary.callCount(), "the primary is retried with backoff before the alternative is used")
 	assert.Equal(t, 5.0, out.DurationSeconds, "Kling produces 5 or 10 seconds: the 4 second Shot is generated as 5")
-	assert.InDelta(t, 5*0.07, out.EstimatedCost, 1e-9)
+	assert.InDelta(t, 5*0.084, out.EstimatedCost, 1e-9)
 	assert.NotEmpty(t, fallback.requests[0].NegativePrompt, "Kling takes a negative prompt, rendered for it")
 	assert.Equal(t, "kling-v3", fallback.models[0])
 }

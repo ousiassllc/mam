@@ -72,11 +72,11 @@ func TestEstimateVideoUsesTheSnappedLengthAndTheResolutionPrice(t *testing.T) {
 
 	kling := line(t, e, "kling-3.0")
 	assert.Equal(t, 10.0, kling.Seconds, "Kling makes 5 or 10 seconds: 6 snaps up to 10")
-	assert.InDelta(t, 0.07*10*2, *kling.SubtotalUSD, 1e-9)
+	assert.InDelta(t, 0.084*10*2, *kling.SubtotalUSD, 1e-9)
 	runway := line(t, e, "runway-gen-4.5")
 	assert.Equal(t, 6.0, runway.Seconds)
 	assert.InDelta(t, 0.12*6*2, *runway.SubtotalUSD, 1e-9)
-	assert.InDelta(t, 0.08*6*2, *line(t, e, "seedance-2.0").SubtotalUSD, 1e-9)
+	assert.InDelta(t, 0.15*6*2, *line(t, e, "seedance-2.0").SubtotalUSD, 1e-9)
 	var snapped []string
 	for _, w := range e.Warnings {
 		if w.Code == gentest.WarnDurationSnapped {
@@ -248,7 +248,7 @@ func TestModelsListsEveryBuiltInModelAndWhyOneCannotBeChosen(t *testing.T) {
 	require.NotNil(t, byID["runway-gen-4.5"].Video)
 	assert.False(t, byID["runway-gen-4.5"].Video.LastFrame)
 	assert.Equal(t, "priced", byID["kling-3.0"].Price.Basis)
-	assert.InDelta(t, 0.14, byID["kling-3.0"].Price.PerSecondUSD["1080p"], 1e-9)
+	assert.InDelta(t, 0.112, byID["kling-3.0"].Price.PerSecondUSD["1080p"], 1e-9)
 
 	assert.Len(t, r.Svc.Models(context.Background(), "video"), 10)
 	_, err := r.Svc.Model(context.Background(), "image", "kling-3.0")
