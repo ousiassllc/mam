@@ -115,7 +115,6 @@ func TestRepair_AutoModeRepairsUntilMaxRetriesThenEscalates(t *testing.T) {
 	require.Eventually(t, func() bool {
 		return j.count(`SELECT COUNT(*) FROM chat_message WHERE kind = 'escalation'`) == 1
 	}, 60*time.Second, 20*time.Millisecond, "at the limit the user is asked")
-	j.waitTakes(3) // the 3 generated Takes are long past, and the repairs made 2 more
 
 	assert.Equal(t, 5, j.count(`SELECT COUNT(*) FROM take`), "3 takes and 2 retries")
 	assert.Equal(t, 2, j.count(`SELECT COUNT(*) FROM repair_action WHERE resulting_take_id IS NOT NULL`))
