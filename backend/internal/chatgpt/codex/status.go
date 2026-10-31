@@ -77,12 +77,13 @@ type Status struct {
 func (s *Service) Status() Status {
 	st := Status{
 		Supported: s.supported, PinnedVersion: s.cat.Version, CustomPath: s.state.get().ExePath, Install: s.InstallStatus(),
-		Account: s.state.get().Account, License: s.cat.License, SourceURL: s.cat.SourceURL, CodexHome: s.home,
+		License: s.cat.License, SourceURL: s.cat.SourceURL, CodexHome: s.home,
 	}
 	if s.installer != nil {
 		st.Dir = s.installer.Layout.Root
 	}
 	s.mu.Lock()
+	st.Account = s.state.get().Account // with the limits under one lock: setAccount switches both together
 	st.RateLimits = append([]Window(nil), s.rateWindows...)
 	st.CredentialsStore = s.credsStore
 	s.mu.Unlock()
@@ -147,15 +148,19 @@ func (s *Service) refreshOn(ctx context.Context, se *appserver.Session) error {
 	return nil
 }
 
+// setAccount keeps the account. A signed-out account takes the usage limits with it under the lock Status reads them
+// under, so that Status never shows limits next to an account that is signed out.
 func (s *Service) setAccount(v AccountView) {
 	if v.SignedIn || v.CheckedAt.IsZero() {
 		v.CheckedAt = s.now().UTC()
 	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if !v.SignedIn {
+		s.rateWindows = nil
+	}
 	if err := s.state.update(func(d *stateData) { d.Account = v }); err != nil {
 		s.opts.Logger.Warn("codex: could not save the account facts", "err", err)
-	}
-	if !v.SignedIn {
-		s.setRateLimits(protocol.RateLimitSnapshot{})
 	}
 }
 
