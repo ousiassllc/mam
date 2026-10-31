@@ -76,8 +76,8 @@ func TestCodexLogin_BrowserThenStatusLimitsAndLogoutWithoutAnyToken(t *testing.T
 	done := f.waitDone(login.LoginID)
 	require.Equal(t, "succeeded", done.State, done.Message)
 
-	var out chatgptauth.StatusOutput
-	f.env.CallOK("get_chatgpt_status", map[string]any{}, &out)
+	// The login is done when the app-server says so; the account (e-mail, plan) is read right after, in the background.
+	out := f.waitCodexAccount()
 	assert.True(t, out.Codex.SignedIn)
 	assert.Equal(t, "user@example.invalid", out.Codex.Email)
 	assert.Equal(t, "business", out.Codex.Plan)

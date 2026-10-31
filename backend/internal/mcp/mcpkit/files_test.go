@@ -104,6 +104,27 @@ func TestDownloadURL_StreamedFilesAndMissingResources(t *testing.T) {
 	assert.Error(t, err)
 }
 
+// alteredLastChar returns s with its last character replaced by a different one, always.
+// (Replacing it with a fixed character leaves s unchanged when s already ends in that character.)
+func alteredLastChar(s string) string {
+	last := "A"
+	if strings.HasSuffix(s, last) {
+		last = "B"
+	}
+	return s[:len(s)-1] + last
+}
+
+func TestAlteredLastChar_AlwaysDiffers(t *testing.T) {
+	const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+	for _, c := range alphabet {
+		s := "xyz" + string(c)
+		got := alteredLastChar(s)
+		assert.NotEqual(t, s, got, "last char %q", c)
+		assert.Len(t, got, len(s))
+		assert.Equal(t, s[:len(s)-1], got[:len(got)-1])
+	}
+}
+
 func TestHandler_AnythingWrongWithATicketIsTheSame404(t *testing.T) {
 	e := newFileEnv(t)
 	link, err := e.f.DownloadURL(context.Background(), "clip", "a")
@@ -114,7 +135,7 @@ func TestHandler_AnythingWrongWithATicketIsTheSame404(t *testing.T) {
 		"no ticket":     FilesPath,
 		"unknown":       FilesPath + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
 		"with a suffix": FilesPath + ticket + "/x",
-		"altered":       FilesPath + ticket[:len(ticket)-1] + "_",
+		"altered":       FilesPath + alteredLastChar(ticket),
 	} {
 		rec := e.do(http.MethodGet, path, nil, "")
 		assert.Equal(t, http.StatusNotFound, rec.Code, name)

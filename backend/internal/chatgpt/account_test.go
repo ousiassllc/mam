@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net"
 	"net/http"
 	"net/url"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -75,19 +75,11 @@ func TestOfficialBrowserLogin_StoresTheSignInAndShowsTheAccount(t *testing.T) {
 	}
 }
 
+// The preferred ports (in production 1455 and 1457) are stood in for by ports of the test that stay busy, so the test
+// does not depend on what other processes of the host hold.
 func TestOfficialBrowserLogin_UsesAnotherPortWhen1455IsBusy(t *testing.T) {
-	var held []net.Listener
-	for _, p := range []int{1455, 1457} { // busy, or already used by another program: both are the case under test
-		if ln, err := net.Listen("tcp4", fmt.Sprintf("127.0.0.1:%d", p)); err == nil {
-			held = append(held, ln)
-		}
-	}
-	defer func() {
-		for _, ln := range held {
-			_ = ln.Close()
-		}
-	}()
-	f := newFixture(t)
+	first, second := busyPort(t), busyPort(t)
+	f := newFixtureOn(t, []int{first, second, 0})
 	l, err := f.svc.Official().StartBrowserLogin()
 	require.NoError(t, err)
 	u, err := url.Parse(l.AuthURL)
@@ -95,9 +87,18 @@ func TestOfficialBrowserLogin_UsesAnotherPortWhen1455IsBusy(t *testing.T) {
 	redirect, err := url.Parse(u.Query().Get("redirect_uri"))
 	require.NoError(t, err)
 	assert.Equal(t, "127.0.0.1", redirect.Hostname())
-	assert.NotEqual(t, "1455", redirect.Port())
-	assert.NotEqual(t, "1457", redirect.Port())
+	assert.NotEqual(t, strconv.Itoa(first), redirect.Port())
+	assert.NotEqual(t, strconv.Itoa(second), redirect.Port())
 	require.Equal(t, chatgpt.LoginSucceeded, waitLogin(t, f.svc.Official(), l.ID).State, "the login works on the alternative port")
+}
+
+func TestBrowserLogin_FailsWhenEveryCallbackPortIsBusy(t *testing.T) {
+	f := newFixtureOn(t, []int{busyPort(t), busyPort(t)})
+	require.NoError(t, f.svc.SetImageEnabled(true, true))
+	_, err := f.svc.Official().StartBrowserLogin()
+	require.ErrorContains(t, err, "no free callback port")
+	_, err = f.svc.StartImageBrowserLogin()
+	require.ErrorContains(t, err, "no free callback port")
 }
 
 func TestOfficialBrowserLogin_RefusesAnUnregisteredCallbackAndADifferentIssuedClient(t *testing.T) {

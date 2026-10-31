@@ -32,7 +32,7 @@ func TestChatGPTSettings_TheLoginModalPollsAndClosesWhenTheLoginHasWorked(t *tes
 	assert.Contains(t, pending, "この画面を閉じても、ログインは続きます")
 
 	g.open()
-	s.waitFor("codex@example.com")
+	s.waitSettled(s.svc.Image(), "codex@example.com")
 	done := s.act(http.MethodGet, paths.ChatGPTLogin("image")+"?poll=1", nil)
 	require.Equal(t, http.StatusOK, done.Code)
 	assert.Equal(t, "modal-close", done.Header().Get("HX-Trigger-After-Swap"))
@@ -113,7 +113,7 @@ func TestChatGPTSettings_ModelsListsTheVisibleModelsOfTheSignedInPlan(t *testing
 	assert.Contains(t, s.send(req).Body.String(), "モデルの一覧を取得できませんでした", "not signed in")
 
 	s.act(http.MethodPost, paths.ChatGPTLogin("official"), url.Values{"method": {"browser"}})
-	s.waitFor("me@example.com")
+	s.waitSettled(s.svc.Official(), "me@example.com")
 	rec := s.send(req)
 	assert.Contains(t, rec.Body.String(), "plan-model-1")
 	assert.Contains(t, rec.Body.String(), "Plan One")

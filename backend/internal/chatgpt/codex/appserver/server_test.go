@@ -74,6 +74,8 @@ func TestEnsureStartsOnFirstUseAndHandshakesOnce(t *testing.T) {
 	if r.fake.Starts() != 1 {
 		t.Fatalf("starts = %d, want one process for five concurrent callers", r.fake.Starts())
 	}
+	// "initialized" is a notification: Ensure does not wait for the fake to record it.
+	waitFor(t, "the initialized notification", func() bool { return len(r.fake.Calls()) >= 2 })
 	calls := r.fake.Calls()
 	if len(calls) < 2 || calls[0].Method != protocol.MethodInitialize || calls[1].Method != "initialized" {
 		t.Fatalf("handshake = %v", calls)

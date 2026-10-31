@@ -105,3 +105,13 @@ func TestPick_AutoAdoptsAPassingTakeThatReachesTheMinimum(t *testing.T) {
 
 	assert.Equal(t, "t1", r.selectedTake(t))
 }
+
+func TestPick_AcceptanceReadsTheJudgeResultsWhenPickBestAsks(t *testing.T) {
+	r, ref := pickRig(t)
+	r.saveJudged(t, "t2", domain.JudgeResult{Result: domain.JudgePass, Scores: scoresOf(90)})
+	accepts := r.acceptance(context.Background(), ref) // t1 is judged after the policy was read
+	r.saveJudged(t, "t1", domain.JudgeResult{Result: domain.JudgePass, Scores: scoresOf(90)})
+	pick, err := r.Takes.PickBest(context.Background(), "sh1", false, accepts)
+	require.NoError(t, err)
+	assert.Equal(t, "t1", pick.TakeID, "equal scores: the older Take is the AI Pick")
+}

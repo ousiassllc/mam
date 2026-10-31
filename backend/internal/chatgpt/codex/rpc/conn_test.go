@@ -161,6 +161,40 @@ func TestCallStopsWithItsContext(t *testing.T) {
 	}
 }
 
+// lateDoneContext is a context that is over, but says so (Done) only after release is closed: a Call waiting on it
+// finds its ctx over and the response in hand at the same moment.
+type lateDoneContext struct {
+	context.Context
+	release <-chan struct{}
+}
+
+func (c lateDoneContext) Done() <-chan struct{} {
+	<-c.release
+	return c.Context.Done()
+}
+
+func TestACallThatAlreadyHasItsResponseReturnsItWhenItsContextEndsAtTheSameTime(t *testing.T) {
+	c, p := newPair(t, &recorder{})
+	over, cancel := context.WithCancel(context.Background())
+	cancel()
+	for i := range 200 {
+		release := make(chan struct{})
+		done := make(chan error, 1)
+		var out struct{ Answer string }
+		go func() { done <- c.Call(lateDoneContext{over, release}, "start", nil, &out) }()
+		req := p.next(t)
+		id, _ := json.Marshal(req["id"])
+		p.send(t, `{"id":`+string(id)+`,"result":{"answer":"started"}}`)
+		// The connection reads in order: once it answered this request of the server, it has read the response.
+		p.send(t, `{"id":"sync","method":"sync"}`)
+		p.next(t)
+		close(release)
+		if err := <-done; err != nil || out.Answer != "started" {
+			t.Fatalf("call %d: err = %v, out = %+v: the response that had arrived was dropped for the end of the context", i, err, out)
+		}
+	}
+}
+
 type blockingNotifications struct {
 	recorder
 	entered chan struct{}

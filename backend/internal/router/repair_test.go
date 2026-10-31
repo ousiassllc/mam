@@ -111,7 +111,7 @@ func TestRepair_AutoModeRepairsUntilMaxRetriesThenEscalates(t *testing.T) {
 	j := newJudgeApp(t, failVerdict, 0.95, 0.95, 0.95, 0.95)
 	j.execSQL(`INSERT INTO project_policy (project_id, max_retries) VALUES (?, 2)`, j.project)
 
-	require.Equal(t, http.StatusAccepted, j.form(http.MethodPost, "/shots/"+j.shotID+"/generate", nil).Code)
+	j.generateTakes()
 	require.Eventually(t, func() bool {
 		return j.count(`SELECT COUNT(*) FROM chat_message WHERE kind = 'escalation'`) == 1
 	}, 60*time.Second, 20*time.Millisecond, "at the limit the user is asked")

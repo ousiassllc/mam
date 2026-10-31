@@ -49,9 +49,10 @@ func newScreen(t *testing.T, withChatGPT bool, tweak ...func(*chatgpt.Options)) 
 	if withChatGPT {
 		opts := chatgpt.Options{
 			Keys: s.keys, DataDir: t.TempDir(), LockPath: filepath.Join(t.TempDir(), ".auth-refresh.lock"), Issuer: s.auth.URL,
-			Now:   func() time.Time { return time.Now().Add(time.Duration(s.clock.Load()) * time.Second) },
-			Sleep: func(context.Context, time.Duration) error { return nil },
-			Open:  func(u string) error { s.auth.Approve(u); return nil },
+			CallbackPorts: []int{0}, // not the real 1455 and 1457: every process of the host shares them
+			Now:           func() time.Time { return time.Now().Add(time.Duration(s.clock.Load()) * time.Second) },
+			Sleep:         func(context.Context, time.Duration) error { return nil },
+			Open:          func(u string) error { s.auth.Approve(u); return nil },
 		}
 		for _, f := range tweak {
 			f(&opts)
@@ -117,12 +118,33 @@ func (s *screen) waitFor(want string) string {
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-	require.FailNow(s.t, "the panel never showed", want)
+	l, _ := s.svc.Official().CurrentLogin()
+	require.FailNow(s.t, "the panel never showed", "%q; the login: %+v", want, l)
 	return ""
 }
 
+// waitSettled polls the panel until it holds want and the login of account has ended. The sign-in is stored before the
+// login is marked as succeeded, so the panel can show the account while it still polls once more.
+func (s *screen) waitSettled(account *chatgpt.Account, want string) string {
+	s.t.Helper()
+	s.waitFor(want)
+	deadline := time.Now().Add(10 * time.Second)
+	for time.Now().Before(deadline) {
+		if l, ok := account.CurrentLogin(); ok && l.State != chatgpt.LoginPending {
+			return s.panel()
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	require.FailNow(s.t, "the login stayed pending")
+	return ""
+}
+
+// csrfMeta is the random CSRF token of a page: base64url, so it holds "eyJ" now and then.
+var csrfMeta = regexp.MustCompile(`<meta name="csrf-token" content="[^"]*"`)
+
 func (s *screen) noTokens(html string) {
 	s.t.Helper()
+	html = csrfMeta.ReplaceAllString(chatgpttest.WithoutAttemptValues(html), "") // random base64url holds "eyJ" now and then
 	for _, marker := range []string{"-ACCESS-", "-REFRESH-", "secretsecret", "eyJ"} {
 		assert.NotContains(s.t, html, marker)
 	}
@@ -154,12 +176,16 @@ func TestChatGPTSettings_TheSectionShowsTheButtonTheRisksAndAnOffSwitch(t *testi
 }
 
 func TestChatGPTSettings_OfficialLoginShowsTheAccountAndNeverATokenThenLogsOut(t *testing.T) {
-	s := newScreen(t, true)
+	// The browser opens but does not approve until the pending screen was seen: a login that is approved at once can end
+	// before the answer of the request is made.
+	opened := make(chan string, 2)
+	s := newScreen(t, true, func(o *chatgpt.Options) { o.Open = func(u string) error { opened <- u; return nil } })
 	rec := s.act(http.MethodPost, paths.ChatGPTLogin("official"), url.Values{"method": {"browser"}})
 	require.Equal(t, http.StatusOK, rec.Code)
 	assert.Contains(t, rec.Body.String(), `hx-trigger="every 2s"`, "the panel polls while the login is pending")
+	s.auth.Approve(<-opened)
 
-	p := s.waitFor("me@example.com")
+	p := s.waitSettled(s.svc.Official(), "me@example.com")
 	assert.Contains(t, p, "ログイン済み")
 	assert.Contains(t, p, "Using ChatGPT plan")
 	assert.Contains(t, p, "Manage usage")
@@ -180,7 +206,8 @@ func TestChatGPTSettings_OfficialLoginShowsTheAccountAndNeverATokenThenLogsOut(t
 	assert.Equal(t, 1, s.auth.Count("/api/accounts/oauth/revoke"))
 
 	s.act(http.MethodPost, paths.ChatGPTLogin("official"), url.Values{"method": {"browser"}})
-	s.waitFor("me@example.com")
+	s.auth.Approve(<-opened)
+	s.waitSettled(s.svc.Official(), "me@example.com")
 	s.auth.RevokeStatus = http.StatusServiceUnavailable
 	rec = s.act(http.MethodDelete, paths.ChatGPTAccount("official"), nil)
 	assert.Contains(t, rec.Body.String(), "失効を確認できませんでした", "the user is told when revocation is unconfirmed")
@@ -190,7 +217,7 @@ func TestChatGPTSettings_OfficialLoginShowsTheAccountAndNeverATokenThenLogsOut(t
 func TestChatGPTSettings_AnExpiredSignInAsksToLogInAgain(t *testing.T) {
 	s := newScreen(t, true)
 	s.act(http.MethodPost, paths.ChatGPTLogin("official"), url.Values{"method": {"browser"}})
-	s.waitFor("me@example.com")
+	s.waitSettled(s.svc.Official(), "me@example.com")
 
 	s.auth.RefreshHandler = func(w http.ResponseWriter, _ url.Values) bool {
 		w.WriteHeader(http.StatusBadRequest)
