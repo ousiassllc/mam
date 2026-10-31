@@ -89,7 +89,8 @@ func TestRoute_ChallengersThatDoNotQualifyAreExcludedWithAReason(t *testing.T) {
 	}{
 		{"too few judged Takes", recordsOf(record(domain.ModelKling3, 4, 99, 1)), 75, domain.ExcludedInsufficientEvidence},
 		{"average under the Minimum acceptance score", recordsOf(record(domain.ModelKling3, 9, 70, 1), record(domain.ModelSeedance2, 9, 20, 0)), 75, domain.ExcludedBelowMinimumScore},
-		{"not better by the switch margin", recordsOf(record(domain.ModelKling3, 9, 80, 0.8), record(domain.ModelSeedance2, 9, 80, 0.8)), 75, domain.ExcludedMargin},
+		// Kling's lower price (0.42 against 0.60 for a 4 s Take) is worth 0.09 of score; Seedance's higher pass rate takes it back under the 0.05 margin.
+		{"not better by the switch margin", recordsOf(record(domain.ModelKling3, 9, 80, 0.8), record(domain.ModelSeedance2, 9, 80, 1)), 75, domain.ExcludedMargin},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -189,9 +190,9 @@ func TestRoute_FixedModelAndDisabledRoutingAreRecordedAndNotRouted(t *testing.T)
 }
 
 func TestRoute_TheBudgetIsAppliedToTheRoutedModels(t *testing.T) {
-	// Kling wins the routing. A 5 s Take costs 0.35 USD on Kling and 0.40 USD on Seedance (the Quality
-	// Policy's primary), so a 0.75 USD ceiling allows 2 Takes with the routed model but only 1 with the default.
-	ceiling := 0.75
+	// Kling wins the routing. A 5 s Take costs 0.42 USD on Kling and 0.75 USD on Seedance (the Quality
+	// Policy's primary), so a 1.0 USD ceiling allows 2 Takes with the routed model but only 1 with the default.
+	ceiling := 1.0
 	budget := repository.Budget{ShotCeiling: &ceiling}
 	in := generation.RoutingInput{MinAcceptance: 75, Records: recordsOf(record(domain.ModelKling3, 9, 99, 1), record(domain.ModelSeedance2, 9, 60, 0.2))}
 

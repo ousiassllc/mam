@@ -126,11 +126,11 @@ func TestCostSummary_ShowsEstimatedAndVendorReportedCostByShotSceneAndProject(t 
 	ctx := context.Background()
 	f.models.actual = fp(0.30)
 
-	f.generate(t) // BALANCED: 3 Takes of 4 s at 0.08 USD/s
+	f.generate(t) // BALANCED: 3 Takes of 4 s at 0.15 USD/s
 
 	sum, err := f.svc.Policy.CostSummary(ctx, f.projectID)
 	require.NoError(t, err)
-	assert.InDelta(t, 3*0.32, sum.Project.Estimated, 1e-6)
+	assert.InDelta(t, 3*0.60, sum.Project.Estimated, 1e-6)
 	assert.InDelta(t, 3*0.30, sum.Project.Actual, 1e-6)
 	assert.True(t, sum.Project.ActualKnown())
 	require.Len(t, sum.Scenes, 1)
