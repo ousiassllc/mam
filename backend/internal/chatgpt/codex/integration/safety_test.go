@@ -163,7 +163,12 @@ func TestAProcessThatDiesDuringATurnIsATryAgainAndTheNextCallStartsANewOne(t *te
 func TestCancellingTheContextInterruptsTheTurn(t *testing.T) {
 	r := newRig(t)
 	ctx, cancel := context.WithCancel(context.Background())
-	r.fake.Script = func(*codextest.Turn) { cancel() } // the turn never completes
+	r.fake.Script = func(turn *codextest.Turn) { // the turn never completes
+		// The connection reads in order: once it has answered this request, it has read the answer to turn/start, so the
+		// turn id is known when the context ends (a cancel before it could not name the turn to interrupt).
+		_, _ = turn.Ask(protocol.ReqCommandApproval, map[string]any{"itemId": "c1", "command": "true"})
+		cancel()
+	}
 	_, err := r.svc.Complete(ctx, codex.Request{Model: "gpt-text", User: "u"})
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("err = %v", err)

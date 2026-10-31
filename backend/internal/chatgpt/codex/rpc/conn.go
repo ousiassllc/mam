@@ -141,23 +141,31 @@ func (c *Conn) Call(ctx context.Context, method string, params, result any) erro
 		c.forget(id)
 		return err
 	}
+	var res response
+	var ok bool
 	select {
-	case res, ok := <-ch:
-		switch {
-		case !ok:
-			return c.Err()
-		case res.err != nil:
-			return res.err
-		case result != nil && len(res.result) > 0:
-			if err := json.Unmarshal(res.result, result); err != nil {
-				return fmt.Errorf("codex rpc: undecodable result of %s: %w", method, err)
-			}
-		}
-		return nil
+	case res, ok = <-ch:
 	case <-ctx.Done():
-		c.forget(id)
-		return ctx.Err()
+		// A response that had already arrived when ctx ended is the call's answer, not ctx's error: the app-server did
+		// what was asked (a started turn, whose id is the response), and only the answer tells the caller what to undo.
+		select {
+		case res, ok = <-ch:
+		default:
+			c.forget(id)
+			return ctx.Err()
+		}
 	}
+	switch {
+	case !ok:
+		return c.Err()
+	case res.err != nil:
+		return res.err
+	case result != nil && len(res.result) > 0:
+		if err := json.Unmarshal(res.result, result); err != nil {
+			return fmt.Errorf("codex rpc: undecodable result of %s: %w", method, err)
+		}
+	}
+	return nil
 }
 
 func (c *Conn) forget(id int64) {
