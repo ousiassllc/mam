@@ -28,17 +28,12 @@ func (g *genApp) takeIDs() []string {
 	return ids
 }
 
-// waitTakesAtLeast waits for n Takes or more: in AUTO mode a failed Take is repaired by itself, so the count can pass n between two polls.
-func (g *genApp) waitTakesAtLeast(n int) {
-	g.t.Helper()
-	require.Eventually(g.t, func() bool { return g.countTakes(`SELECT COUNT(*) FROM take`) >= n }, 30*time.Second, 10*time.Millisecond)
-}
-
-// generateTakes generates the Shot and returns the IDs of its three Takes, oldest first (a repair's Takes come after them).
+// generateTakes generates the Shot and returns the IDs of its three Takes, oldest first. It waits for 3 Takes or more:
+// in AUTO mode a failed Take is repaired by itself, so the count can pass 3 between two polls (the repairs' Takes come after).
 func (g *genApp) generateTakes() []string {
 	g.t.Helper()
 	require.Equal(g.t, http.StatusAccepted, g.form(http.MethodPost, "/shots/"+g.shotID+"/generate", nil).Code)
-	g.waitTakesAtLeast(3)
+	require.Eventually(g.t, func() bool { return g.countTakes(`SELECT COUNT(*) FROM take`) >= 3 }, 30*time.Second, 10*time.Millisecond)
 	return g.takeIDs()[:3]
 }
 
