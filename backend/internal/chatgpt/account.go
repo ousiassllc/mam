@@ -78,6 +78,8 @@ type accountOptions struct {
 	lockPath string
 	open     func(url string) error
 	logger   *slog.Logger
+	// callbackPorts replaces the loopback ports of the browser login when not nil (tests).
+	callbackPorts []int
 }
 
 // Account is one login system.
@@ -97,10 +99,14 @@ func (a *Account) Kind() Kind { return a.kind }
 
 // profile is the OAuth profile for clientID (the issued id of the official login; ignored for Codex).
 func (a *Account) profile(clientID string) oauth.Profile {
+	p := oauth.Codex(a.issuer)
 	if a.kind == KindOfficial {
-		return oauth.Official(a.issuer, clientID)
+		p = oauth.Official(a.issuer, clientID)
 	}
-	return oauth.Codex(a.issuer)
+	if a.callbackPorts != nil {
+		p.Ports = a.callbackPorts
+	}
+	return p
 }
 
 func (a *Account) now() time.Time { return a.client.Now() }

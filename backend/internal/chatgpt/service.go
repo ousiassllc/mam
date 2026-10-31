@@ -46,6 +46,9 @@ type Options struct {
 	// Now and Sleep replace the clock and the waits (tests).
 	Now   func() time.Time
 	Sleep func(ctx context.Context, d time.Duration) error
+	// CallbackPorts replaces the loopback ports the browser logins try, in order (0: any free port), when not nil
+	// (tests: the real ports 1455 and 1457 are shared by every process of the host).
+	CallbackPorts []int
 }
 
 // Service is the three login systems (the official one, the Codex one and the image one) and the switch of the image
@@ -84,7 +87,7 @@ func New(o Options) *Service {
 	account := func(kind Kind) *Account {
 		return newAccount(accountOptions{
 			kind: kind, issuer: o.Issuer, store: tokenstore.New(o.Keys, string(kind)), client: client,
-			lockPath: o.LockPath, open: o.Open, logger: o.Logger,
+			lockPath: o.LockPath, open: o.Open, logger: o.Logger, callbackPorts: o.CallbackPorts,
 		})
 	}
 	co := codex.Options{

@@ -32,8 +32,9 @@ func newFixture(t *testing.T, withService bool, tweak ...func(*chatgpt.Options))
 		if withService {
 			opts := chatgpt.Options{
 				Keys: env.Keys, DataDir: t.TempDir(), LockPath: t.TempDir() + "/.auth-refresh.lock", Issuer: f.auth.URL,
-				Sleep: func(context.Context, time.Duration) error { return nil },
-				Open:  func(u string) error { f.auth.Approve(u); return nil },
+				CallbackPorts: []int{0}, // not the real 1455 and 1457: every process of the host shares them
+				Sleep:         func(context.Context, time.Duration) error { return nil },
+				Open:          func(u string) error { f.auth.Approve(u); return nil },
 			}
 			for _, tw := range tweak {
 				tw(&opts)
@@ -69,6 +70,23 @@ func (f *fixture) waitDone(id string) chatgptauth.LoginOutput {
 	}
 	require.FailNow(f.env.T, "login stayed pending")
 	return chatgptauth.LoginOutput{}
+}
+
+// waitCodexAccount polls get_chatgpt_status until the Codex account is signed in (the account is read in the
+// background after the login completed) and returns that status.
+func (f *fixture) waitCodexAccount() chatgptauth.StatusOutput {
+	f.env.T.Helper()
+	deadline := time.Now().Add(10 * time.Second)
+	for time.Now().Before(deadline) {
+		var out chatgptauth.StatusOutput
+		f.env.CallOK("get_chatgpt_status", map[string]any{}, &out)
+		if out.Codex.SignedIn {
+			return out
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	require.FailNow(f.env.T, "the Codex account was never read")
+	return chatgptauth.StatusOutput{}
 }
 
 func TestStatus_NothingSignedInImageOffAndTheRisksAreShown(t *testing.T) {
@@ -130,7 +148,8 @@ func TestOfficialLogin_ThroughMCPAndNoToolEverShowsAToken(t *testing.T) {
 			assert.NotContains(t, seen, s, c.name)
 		}
 		for _, marker := range []string{"-ACCESS-", "-REFRESH-", "secretsecret", "eyJ"} {
-			assert.NotContains(t, seen, marker, "%s: a token-like value", c.name)
+			// the random values of an authorization attempt hold "eyJ" now and then
+			assert.NotContains(t, chatgpttest.WithoutAttemptValues(seen), marker, "%s: a token-like value", c.name)
 		}
 	}
 }
