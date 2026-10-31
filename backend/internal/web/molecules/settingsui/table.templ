@@ -13,9 +13,11 @@ type Column struct {
 // and video models, the MCP tokens. The caption names the table for a screen reader (it is not drawn); the columns are
 // headers with scope="col"; the rows are TableRow, whose first cell is RowHead. bodyID is the id of the <tbody>, the list
 // that a new row is added to out of band ("beforeend:#<bodyID>"). Wide tables scroll sideways inside their own box
-// rather than push the page wider.
+// rather than push the page wider: the box is positioned (relative), because the sr-only parts of the table (the caption,
+// the hidden headers) are absolutely placed, and an absolutely placed element is cut by the scroll box only when the box is
+// its containing block; otherwise it sits out at the table's far edge and widens the page.
 templ SettingsTable(bodyID, caption string, cols []Column) {
-	<div class="overflow-x-auto rounded-lg border border-neutral-800">
+	<div class="relative overflow-x-auto rounded-lg border border-neutral-800">
 		<table class="w-full text-left text-sm">
 			<caption class="sr-only">{ caption }</caption>
 			<thead class="bg-neutral-900 text-xs text-neutral-400">

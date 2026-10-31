@@ -19,7 +19,7 @@ templ HFImportSection(h HFImport) {
 			hx-disabled-elt="find button[type=submit]"
 			data-testid="mm-hfi-form"
 		>
-			<label class="flex flex-col gap-1 text-xs text-neutral-400" for="mm-hfi-q">
+			<label class="flex max-w-full flex-col gap-1 text-xs text-neutral-400" for="mm-hfi-q">
 				<span>キーワード・owner/repo・Hugging Face の URL</span>
 				@atoms.Input(atoms.FieldMd, "w-96 max-w-full", templ.Attributes{
 					"id": "mm-hfi-q", "name": FieldQuery, "type": "text", "required": true, "maxlength": itoa(MaxQueryLen), "value": h.Query,
