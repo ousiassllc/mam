@@ -80,6 +80,11 @@ export default {
   // One page at a time: when two pages load a clip together (video-player and review-workspace wtests
   // run side by side) the <video> metadata of both never loads and the tests time out.
   concurrency: 1,
+  // Mocha's default of 2 s cut every test off before the waits inside it (`waitUntil(..., { timeout: 5000 })` for
+  // a video that loads, 2 s for an htmx answer) could end: on a loaded host a first request or a video takes
+  // longer than that, and the test failed with a bare "Timeout of 2000ms exceeded" instead of the message of
+  // the wait. Mocha now only bounds a test that hangs; each wait bounds itself and says what it waited for.
+  testFramework: { config: { timeout: 15000 } },
   nodeResolve: true,
   middleware: [reviewAnswerMiddleware, hxTriggerMiddleware, modalAnswerMiddleware, tailwindCssMiddleware],
   plugins: [esbuildPlugin({ ts: true, tsconfig: './tsconfig.json' })],
