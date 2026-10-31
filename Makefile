@@ -11,6 +11,15 @@ GOLANGCI_LINT_VERSION ?= v2.12.2
 LINTERLY_VERSION ?= v0.3.3
 GOVULNCHECK_VERSION ?= v1.8.0
 
+# golangci-lint stores each package's issues in its cache under a key of the package content, with the file
+# paths relative to the directory it ran in. Worktrees of this repo share the module path and mostly the same
+# files, so with the one shared cache the second worktree is served the first one's issues, whose paths point
+# into the other checkout (../mam-sweep-852/backend/...). One cache directory per checkout (named after the
+# directory plus a hash of its absolute path) keeps them apart without ever clearing a cache. The lefthook
+# pre-commit lint goes through `make lint-go`, so it gets the same cache. Overridable on the command line.
+GOLANGCI_LINT_CACHE_ROOT ?= $(or $(XDG_CACHE_HOME),$(HOME)/.cache)/golangci-lint/worktrees
+export GOLANGCI_LINT_CACHE := $(GOLANGCI_LINT_CACHE_ROOT)/$(notdir $(CURDIR))-$(shell printf '%s' '$(CURDIR)' | cksum | cut -d' ' -f1)
+
 .PHONY: help dev build build-all generate assets test test-go test-static test-scripts lint lint-go lint-static lint-lines linterly-baseline vuln fmt fmt-check tools clean
 
 help: ## show targets

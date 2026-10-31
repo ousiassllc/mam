@@ -150,7 +150,7 @@ func TestHF_AGatedRepositoryNeedsATokenAndTheAccessBeforeADownload(t *testing.T)
 	assert.Contains(t, msg, "アクセスを申請")
 	assert.Zero(t, rig.HF.Count("/cdn/"), "nothing was downloaded")
 
-	rig.HF.Granted = true
+	rig.HF.Granted.Store(true)
 	var job modelmgr.JobOutput
 	env.CallOK("install_hf_file", args, &job)
 	assert.Equal(t, mcpkit.JobSucceeded, jobDone(t, env, rig, job.JobID).State)

@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"sync"
+
+	"github.com/ousiassllc/mam/backend/internal/service/updater"
 )
 
 // silentInstallFlag is the NSIS flag that runs an installer without any page. The installer then
@@ -49,15 +51,23 @@ func runningMacBundle() (string, error) {
 	return MacUpdatableBundle(exe)
 }
 
-// CheckCanInstall reports why this process could not install an update where it runs, nil when it can (or when
-// nothing here needs checking: Windows installs through its own installer). The front turns the automatic update
-// off when it can not (macOS: running from a disk image or a read-only place), instead of finding out after the
-// application has quit.
+// CheckCanInstall reports why this process could not install an update where it runs, nil when it can. The front
+// turns the automatic update off when it can not (a GOOS/GOARCH no installer is released for, or on macOS a
+// bundle in a read-only place), instead of finding out after the application has quit.
 func CheckCanInstall() error {
-	if runtime.GOOS != "darwin" {
+	return checkCanInstallOn(runtime.GOOS, runtime.GOARCH, runningMacBundle)
+}
+
+// checkCanInstallOn is CheckCanInstall for the platform goos/goarch, with macBundle finding the running bundle on
+// macOS: Windows installs through its own installer, so nothing else needs checking there.
+func checkCanInstallOn(goos, goarch string, macBundle func() (string, error)) error {
+	if !updater.DefaultPlatform(goos, goarch).Supported() {
+		return fmt.Errorf("no installer is released for %s/%s", goos, goarch)
+	}
+	if goos != "darwin" {
 		return nil
 	}
-	_, err := runningMacBundle()
+	_, err := macBundle()
 	return err
 }
 

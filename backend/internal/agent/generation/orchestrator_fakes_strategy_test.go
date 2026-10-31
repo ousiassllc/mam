@@ -42,6 +42,7 @@ type options struct {
 	quality     domain.QualityPolicy
 	freeBytes   func(string) (uint64, error)
 	limits      *domain.PolicyLimits
+	config      func(*modeladapter.Config) // changes the Model Adapter setting
 }
 
 // fixture is one Project with one Shot and an Orchestrator wired to fakes and a temp SQLite DB.
@@ -119,7 +120,11 @@ func newFixture(t *testing.T, opt options) *fixture {
 	if freeBytes == nil {
 		freeBytes = func(string) (uint64, error) { return 1 << 40, nil }
 	}
-	f.adapter = modeladapter.New(pricedConfig(), backends, modeladapter.WithSleep(noSleep))
+	cfg := pricedConfig()
+	if opt.config != nil {
+		opt.config(&cfg)
+	}
+	f.adapter = modeladapter.New(cfg, backends, modeladapter.WithSleep(noSleep))
 	deps := generation.Deps{
 		Generations: gens, World: repository.NewWorldRepository(db), Projects: projects, Policies: policies,
 		Assets: repository.NewAssetRepository(db), Repairs: repository.NewRepairRepository(db), Chat: f.chat, Jobs: f.jobs, LLM: f.llm,
@@ -224,7 +229,7 @@ func TestDecide_ClipLengthFollowsTheModelAndCostIsEstimatedForIt(t *testing.T) {
 	s, err := generation.Decide(cfg, domain.QualityFast, 4, repository.Budget{}) // Kling: 5 s or 10 s clips
 	require.NoError(t, err)
 	assert.InDelta(t, 5, s.DurationSeconds, 1e-9)
-	assert.InDelta(t, 5*0.07, s.CostPerTake, 1e-9)
+	assert.InDelta(t, 5*0.084, s.CostPerTake, 1e-9)
 }
 
 func TestDecide_LongShotMovesToTheModelThatCanHoldIt(t *testing.T) {
@@ -241,17 +246,17 @@ func TestDecide_LongShotMovesToTheModelThatCanHoldIt(t *testing.T) {
 func TestDecide_BudgetReducesTakesThenSwitchesModelThenFails(t *testing.T) {
 	cfg := modeladapter.DefaultConfig()
 
-	// Balanced, 4 s: Seedance 720p = 0.32 per Take, Kling 720p = 0.35 (5 s clip).
-	s, err := generation.Decide(cfg, domain.QualityBalanced, 4, repository.Budget{ShotCeiling: ptr(0.7)})
+	// Balanced, 4 s: Seedance 720p = 0.60 per Take, Kling 720p = 0.42 (5 s clip).
+	s, err := generation.Decide(cfg, domain.QualityBalanced, 4, repository.Budget{ShotCeiling: ptr(1.3)})
 	require.NoError(t, err)
-	assert.Equal(t, 2, s.Takes, "0.7 pays for two Takes of 0.32")
+	assert.Equal(t, 2, s.Takes, "1.3 pays for two Takes of 0.60")
 	assert.Equal(t, domain.ModelSeedance2, s.Primary.Model)
 
 	s, err = generation.Decide(cfg, domain.QualityBalanced, 4, repository.Budget{
-		ProjectCeiling: ptr(10), ProjectSpent: 9.6, ShotCeiling: ptr(5), ShotSpent: 0,
+		ProjectCeiling: ptr(10), ProjectSpent: 9.3, ShotCeiling: ptr(5), ShotSpent: 0,
 	})
 	require.NoError(t, err)
-	assert.Equal(t, 1, s.Takes, "the tighter ceiling counts: 0.4 is left in the Project")
+	assert.Equal(t, 1, s.Takes, "the tighter ceiling counts: 0.7 is left in the Project")
 
 	_, err = generation.Decide(cfg, domain.QualityBalanced, 4, repository.Budget{ShotCeiling: ptr(0.1)})
 	assert.ErrorIs(t, err, generation.ErrBudgetExceeded, "neither model fits")
@@ -259,8 +264,8 @@ func TestDecide_BudgetReducesTakesThenSwitchesModelThenFails(t *testing.T) {
 
 func TestDecide_UsesTheCheaperAlternativeWhenOnlyItFits(t *testing.T) {
 	cfg := modeladapter.DefaultConfig()
-	// FAST, 4 s: Kling 720p (5 s clip) = 0.35 per Take; Seedance 480p = 0.12.
-	s, err := generation.Decide(cfg, domain.QualityFast, 4, repository.Budget{ShotCeiling: ptr(0.2)})
+	// FAST, 4 s: Kling 720p (5 s clip) = 0.42 per Take; Seedance 480p = 0.28.
+	s, err := generation.Decide(cfg, domain.QualityFast, 4, repository.Budget{ShotCeiling: ptr(0.3)})
 	require.NoError(t, err)
 	assert.Equal(t, domain.ModelSeedance2, s.Primary.Model)
 	assert.Equal(t, 1, s.Takes)

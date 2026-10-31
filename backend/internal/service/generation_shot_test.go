@@ -109,8 +109,8 @@ func TestGenerateShot_RejectsASecondRunWhileTheShotIsBeingGenerated(t *testing.T
 func TestGenerateShot_BudgetCeilingLimitsTakesOrRefuses(t *testing.T) {
 	f := newGenFixture(t, true)
 	ctx := context.Background()
-	// Balanced: Seedance 2.0 at 720p costs 0.08 USD/s; the Shot's clip is 4 s, so one Take costs 0.32.
-	tiny, oneTake := 0.01, 0.35
+	// Balanced: Seedance 2.0 at 720p costs 0.15 USD/s; the Shot's clip is 4 s, so one Take costs 0.60.
+	tiny, oneTake := 0.01, 0.65
 
 	f.setBudget(t, nil, &tiny)
 	_, err := f.svc.Generation.GenerateShot(ctx, f.shotID, "")

@@ -21,7 +21,9 @@ type Column struct {
 // and video models, the MCP tokens. The caption names the table for a screen reader (it is not drawn); the columns are
 // headers with scope="col"; the rows are TableRow, whose first cell is RowHead. bodyID is the id of the <tbody>, the list
 // that a new row is added to out of band ("beforeend:#<bodyID>"). Wide tables scroll sideways inside their own box
-// rather than push the page wider.
+// rather than push the page wider: the box is positioned (relative), because the sr-only parts of the table (the caption,
+// the hidden headers) are absolutely placed, and an absolutely placed element is cut by the scroll box only when the box is
+// its containing block; otherwise it sits out at the table's far edge and widens the page.
 func SettingsTable(bodyID, caption string, cols []Column) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -43,14 +45,14 @@ func SettingsTable(bodyID, caption string, cols []Column) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"overflow-x-auto rounded-lg border border-neutral-800\"><table class=\"w-full text-left text-sm\"><caption class=\"sr-only\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"relative overflow-x-auto rounded-lg border border-neutral-800\"><table class=\"w-full text-left text-sm\"><caption class=\"sr-only\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(caption)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/settingsui/table.templ`, Line: 20, Col: 37}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/settingsui/table.templ`, Line: 22, Col: 37}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -91,7 +93,7 @@ func SettingsTable(bodyID, caption string, cols []Column) templ.Component {
 				var templ_7745c5c3_Var5 string
 				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(col.Header)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/settingsui/table.templ`, Line: 26, Col: 42}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/settingsui/table.templ`, Line: 28, Col: 42}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 				if templ_7745c5c3_Err != nil {
@@ -105,7 +107,7 @@ func SettingsTable(bodyID, caption string, cols []Column) templ.Component {
 				var templ_7745c5c3_Var6 string
 				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(col.Header)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/settingsui/table.templ`, Line: 28, Col: 20}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/settingsui/table.templ`, Line: 30, Col: 20}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 				if templ_7745c5c3_Err != nil {
@@ -124,7 +126,7 @@ func SettingsTable(bodyID, caption string, cols []Column) templ.Component {
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.ResolveAttributeValue(bodyID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/settingsui/table.templ`, Line: 34, Col: 21}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/settingsui/table.templ`, Line: 36, Col: 21}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var7)
 		if templ_7745c5c3_Err != nil {
@@ -186,7 +188,7 @@ func TableRowItem(r TableRow) templ.Component {
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue(r.ID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/settingsui/table.templ`, Line: 55, Col: 11}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/settingsui/table.templ`, Line: 57, Col: 11}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
 		if templ_7745c5c3_Err != nil {
@@ -199,7 +201,7 @@ func TableRowItem(r TableRow) templ.Component {
 		var templ_7745c5c3_Var10 string
 		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.ResolveAttributeValue(r.TestID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/settingsui/table.templ`, Line: 56, Col: 24}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/settingsui/table.templ`, Line: 58, Col: 24}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var10)
 		if templ_7745c5c3_Err != nil {

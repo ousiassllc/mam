@@ -21,6 +21,8 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/chatgpt"
 	"github.com/ousiassllc/mam/backend/internal/credential/credentialtest"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/domain/modelreg"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
 )
 
 // fallbackServer is an OpenAI-compatible endpoint that answers every image request with png.
@@ -101,4 +103,25 @@ func TestSubscriptionImageModelIsListedOnlyWhileItIsOn(t *testing.T) {
 	on = false
 	o.Publish(cfg)
 	assert.NotContains(t, domain.ImageModels(), chatgptid.Model)
+}
+
+// The generation test's model list and the estimate's breakdown show the model by its display name (Info.Label), not by
+// the identifier "gpt-image-2:chatgpt-subscription".
+func TestSubscriptionImageModelHasADisplayName(t *testing.T) {
+	on := true
+	o := localbackends.Options{ChatGPTImage: chatgptimage.New(&source{}, chatgptimage.Options{}), ChatGPTImageEnabled: func() bool { return on }}
+	t.Cleanup(func() { localbackends.Publish(modeladapter.DefaultConfig()) })
+	cfg := modeladapter.DefaultConfig()
+	a := modeladapter.New(cfg, localbackends.Build(cfg, credentialtest.New(), o))
+	o.Publish(cfg)
+
+	info, ok := modelcatalog.Catalog{Adapter: a}.Model("image", string(chatgptid.Model))
+	require.True(t, ok, "the model is listed while it is on")
+	assert.Equal(t, chatgptid.Label, info.Label)
+	assert.NotEqual(t, string(chatgptid.Model), info.Label)
+	assert.Contains(t, info.Label, "ChatGPT", "the label says how the model is reached")
+
+	on = false
+	o.Publish(cfg)
+	assert.Equal(t, chatgptid.Label, modelreg.Label(string(chatgptid.Model)), "a batch made while it was on still names it after it is turned off")
 }

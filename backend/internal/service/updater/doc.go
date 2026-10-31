@@ -14,7 +14,10 @@
 // quits and installs as soon as the Result is Ready, so work that started meanwhile turns the check
 // into Status.Blocked instead (the installer is discarded and the next check downloads it again).
 //
-// A build whose version.Version is not a semver ("dev") skips the check entirely.
+// A build whose version.Version is not a semver ("dev") skips the check entirely. So does a GOOS/GOARCH that has
+// no installer (DefaultPlatform is then the zero Platform): the front keeps the automatic update off there
+// (desktop.CheckCanInstall), and a Checker built for it anyway fails with ErrUnsupportedPlatform before it
+// reads any release.
 //
 // Fetch hardening: every request carries a context deadline (Config.MetadataTimeout for the release
 // lookup, Config.DownloadTimeout for the whole download phase), so a stalled connection cannot hold

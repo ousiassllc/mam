@@ -63,7 +63,7 @@ func HFImportSection(h HFImport) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" hx-swap=\"outerHTML\" hx-sync=\"this:replace\" hx-disabled-elt=\"find button[type=submit]\" data-testid=\"mm-hfi-form\"><label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"mm-hfi-q\"><span>キーワード・owner/repo・Hugging Face の URL</span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" hx-swap=\"outerHTML\" hx-sync=\"this:replace\" hx-disabled-elt=\"find button[type=submit]\" data-testid=\"mm-hfi-form\"><label class=\"flex max-w-full flex-col gap-1 text-xs text-neutral-400\" for=\"mm-hfi-q\"><span>キーワード・owner/repo・Hugging Face の URL</span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -42,7 +42,7 @@ func TestInstallModel_AModelBehindTheLoginChecksTheTokenAndTheAccessBeforeAJob(t
 	assert.Contains(t, msg, rig.HF.URL+"/"+mmtest.GatedRepo)
 	assert.Zero(t, rig.HF.Count("/cdn/"), "nothing was downloaded")
 
-	rig.HF.Granted = true
+	rig.HF.Granted.Store(true)
 	var job modelmgr.JobOutput
 	env.CallOK("install_model", args, &job)
 	assert.Equal(t, mcpkit.JobSucceeded, jobDone(t, env, rig, job.JobID).State)

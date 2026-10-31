@@ -18,8 +18,11 @@ func defaultModels() map[domain.ModelName]ModelConfig {
 		domain.ModelFlux2:          {Model: "flux-2-pro", CostPerImage: 0.03},
 		domain.ModelGPTImage2:      {Model: gptimage.APIModel, Quality: string(gptimage.Default)},
 		chatgptid.Model:            {Model: chatgptid.APIModel}, // the plan pays: 0 USD per image
-		domain.ModelKling3:         {Model: "kling-v3", CostPerSecond: map[string]float64{"720p": 0.07, "1080p": 0.14}},
-		domain.ModelSeedance2:      {Model: "seedance-2-0", CostPerSecond: map[string]float64{"480p": 0.03, "720p": 0.08, "1080p": 0.18}},
+		// Kling 3.0 prices in units (1 unit = USD 0.14 list price). klingBackend sends no sound (the legacy API defaults it to
+		// off), so it is the "No Native Audio" row: 0.6 units per second at 720p, 0.8 at 1080p (Kling pricing page, spec §9.2).
+		domain.ModelKling3: {Model: "kling-v3", CostPerSecond: map[string]float64{"720p": 0.084, "1080p": 0.112}},
+		// Seedance 2.0 prices by the second of a 16:9 video without video input (BytePlus ModelArk pricing page, spec §9.2).
+		domain.ModelSeedance2: {Model: "seedance-2-0", CostPerSecond: map[string]float64{"480p": 0.07, "720p": 0.15, "1080p": 0.37}},
 		// Runway prices in credits (12 credits per second of Gen-4.5, 1 credit = USD 0.01).
 		domain.ModelRunwayGen45: {Model: "gen4.5", CostPerSecond: map[string]float64{"720p": 0.12}},
 		// Gemini Omni Flash prices in tokens ($17.50 per million video output tokens, 5,792 tokens per second of 720p

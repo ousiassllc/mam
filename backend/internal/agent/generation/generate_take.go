@@ -19,26 +19,51 @@ import (
 func (o *Orchestrator) videoJob(ctx context.Context, projectID string, spec domain.ShotSpec, brief domain.Brief, seconds float64, refs []domain.Reference) (modeladapter.VideoJob, error) {
 	job := modeladapter.VideoJob{Spec: spec, DurationSeconds: seconds, AspectRatio: aspectRatio(brief)}
 	for _, r := range refs {
-		asset, err := o.assets.Get(ctx, projectID, r.AssetID)
-		if errors.Is(err, repository.ErrNotFound) {
-			continue // the Reference Pack can be rebuilt; a missing image is not fatal
-		}
+		in, ok, err := o.referenceInput(ctx, projectID, r)
 		if err != nil {
 			return job, err
 		}
-		data, err := o.files.read(asset)
-		if err != nil {
-			o.logger.Warn("reference image unavailable", "asset_id", r.AssetID, "err", err)
-			continue
-		}
-		in := modeladapter.Input{Data: data, MimeType: asset.MimeType}
-		if r.Kind == domain.RefKeyframe {
+		switch {
+		case !ok:
+		case r.Kind == domain.RefKeyframe:
 			job.FirstFrame = &in
-		} else {
+		default:
 			job.References = append(job.References, in)
 		}
 	}
 	return job, nil
+}
+
+// referenceInput is the image of the Reference as a model input. ok is false when the image is not
+// there to read: the Reference Pack can be rebuilt, so a missing or unreadable image is not fatal.
+func (o *Orchestrator) referenceInput(ctx context.Context, projectID string, r domain.Reference) (in modeladapter.Input, ok bool, err error) {
+	asset, err := o.assets.Get(ctx, projectID, r.AssetID)
+	if errors.Is(err, repository.ErrNotFound) {
+		return in, false, nil
+	}
+	if err != nil {
+		return in, false, err
+	}
+	data, err := o.files.read(asset)
+	if err != nil {
+		o.logger.Warn("reference image unavailable", "asset_id", r.AssetID, "err", err)
+		return in, false, nil
+	}
+	return modeladapter.Input{Data: data, MimeType: asset.MimeType}, true, nil
+}
+
+// keyframeRead reports whether a Keyframe of the Shot can be read, that is whether videoJob gives
+// the clip a first frame.
+func (o *Orchestrator) keyframeRead(ctx context.Context, ref repository.ShotRef) (bool, error) {
+	for _, r := range ref.Shot.References() {
+		if r.Kind != domain.RefKeyframe {
+			continue
+		}
+		if _, ok, err := o.referenceInput(ctx, ref.ProjectID, r); ok || err != nil {
+			return ok, err
+		}
+	}
+	return false, nil
 }
 
 // recordOf renders the job for both models of the strategy and returns the JSON kept in

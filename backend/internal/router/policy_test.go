@@ -151,10 +151,10 @@ func TestCostSummary_ShowsCostByShotAfterGenerationAndTheBudgetBlocksWith402(t *
 	g.generateTakes()
 
 	after := g.get("/projects/"+g.project+"/cost-summary", true).Body.String()
-	assert.Contains(t, after, `data-testid="project-estimated">$0.960<`, "3 Takes x 4 s x 0.08 USD/s")
+	assert.Contains(t, after, `data-testid="project-estimated">$1.80<`, "3 Takes x 4 s x 0.15 USD/s")
 	assert.Contains(t, after, `data-testid="project-actual">-<`, "the fake vendor reports no cost")
 	assert.Contains(t, after, "上限: $10.00")
-	assert.Contains(t, g.get("/projects/"+g.project+"/settings", false).Body.String(), `data-testid="project-estimated">$0.960<`)
+	assert.Contains(t, g.get("/projects/"+g.project+"/settings", false).Body.String(), `data-testid="project-estimated">$1.80<`)
 
 	assert.Equal(t, http.StatusNotFound, g.get("/projects/missing/cost-summary", true).Code)
 }

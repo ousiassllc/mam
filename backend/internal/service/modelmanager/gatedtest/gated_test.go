@@ -93,7 +93,7 @@ func TestAGatedCatalogModelChecksTheTokenAndTheAccessBeforeAnyJob(t *testing.T) 
 	}
 
 	// 4. the access granted: the first byte is asked for (and never the whole file), then the job is made and the file fetched
-	r.HF.Granted = true
+	r.HF.Granted.Store(true)
 	ref, msg := install(t, r)
 	require.Empty(t, msg)
 	st := r.Wait(ref.JobID)
@@ -120,14 +120,18 @@ func TestAGatedCatalogModelChecksTheTokenAndTheAccessBeforeAnyJob(t *testing.T) 
 // The answer of Hugging Face half way (the access withdrawn, the token revoked) after the job was queued fails the job with the same
 // guidance as the check before it.
 func TestAGatedDownloadRefusedHalfWayFailsWithTheSameGuidance(t *testing.T) {
-	r := newRig(t)
+	r := mmtest.New(t, mmtest.WithGatedModel(), mmtest.HFAuth())
+	hold := newQueueHold(r)
+	r.InstallEngine()
 	token := r.HF.Token
 	require.NoError(t, r.Svc.SetHuggingFaceToken(token))
-	r.HF.Granted = true
+	r.HF.Granted.Store(true)
 
-	ref, msg := install(t, r) // the queue is not running yet: the job waits
+	release := hold.Hold(t, r) // every worker is busy: the job waits in the queue
+	ref, msg := install(t, r)
 	require.Empty(t, msg)
-	r.HF.Granted = false // the access is withdrawn after the check: 403 (C)
+	r.HF.Granted.Store(false) // the access is withdrawn after the check: 403 (C)
+	release()
 	st := r.Wait(ref.JobID)
 	require.Equal(t, domain.JobFailed, st.State)
 	assert.Contains(t, st.Error, "ライセンスに同意してアクセスを申請")
@@ -135,10 +139,12 @@ func TestAGatedDownloadRefusedHalfWayFailsWithTheSameGuidance(t *testing.T) {
 	assert.NotContains(t, st.Error, token)
 	assert.NoFileExists(t, r.ModelFile(mmtest.GatedFile))
 
-	r.HF.Granted = true
+	r.HF.Granted.Store(true)
+	release = hold.Hold(t, r)
 	ref, msg = install(t, r)
 	require.Empty(t, msg)
 	require.NoError(t, r.Svc.SetHuggingFaceToken(wrongToken)) // the token is revoked after the check: 401 (B)
+	release()
 	st = r.Wait(ref.JobID)
 	require.Equal(t, domain.JobFailed, st.State)
 	assert.Equal(t, hfguide.InvalidToken, st.Error)

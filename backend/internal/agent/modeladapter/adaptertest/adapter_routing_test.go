@@ -121,7 +121,7 @@ func TestLoadConfigMergesAnEntryThatNamesOnlySomeOfItsFields(t *testing.T) {
 	})
 	t.Run("a model's video prices are merged by resolution", func(t *testing.T) {
 		cfg := load(t, `{"models":{"kling-3.0":{"cost_per_second_usd":{"720p":0.5}}}}`)
-		assert.Equal(t, map[string]float64{"720p": 0.5, "1080p": 0.14}, cfg.Models[domain.ModelKling3].CostPerSecond)
+		assert.Equal(t, map[string]float64{"720p": 0.5, "1080p": 0.112}, cfg.Models[domain.ModelKling3].CostPerSecond)
 		assert.Equal(t, "kling-v3", cfg.Models[domain.ModelKling3].Model)
 	})
 	t.Run("a policy keeps its models", func(t *testing.T) {

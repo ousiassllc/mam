@@ -3,6 +3,7 @@ package updater_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -62,5 +63,42 @@ func TestChecker_CheckForUpdate_DarwinDownloadsAndVerifiesTheDmg(t *testing.T) {
 	}
 	if st := mac.Status(); st.ErrorKind != updater.ErrorRelease {
 		t.Fatalf("ErrorKind = %q, want %q", st.ErrorKind, updater.ErrorRelease)
+	}
+}
+
+// A Checker for a GOOS/GOARCH that has no installer (DefaultPlatform's zero Platform) never looks at a release:
+// it makes no request, picks no installer and fails the check, permanently, with ErrUnsupportedPlatform.
+func TestChecker_UnsupportedPlatformChecksNothing(t *testing.T) {
+	setVersion(t, "v0.1.0")
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { requests++ }))
+	t.Cleanup(server.Close)
+
+	gateCalls := 0
+	for name, platform := range map[string]updater.Platform{
+		"darwin/amd64":  {OS: "darwin", Arch: "amd64"}, // an Intel Mac: no build, no installer
+		"windows/arm64": {OS: "windows", Arch: "arm64"},
+	} {
+		c := updater.NewChecker(updater.Config{
+			Owner: "ousiassllc", Repo: "mam", Gate: fakeGate{calls: &gateCalls},
+			HTTPClient: server.Client(), BaseURL: server.URL, Platform: platform,
+		})
+		result, err := c.CheckForUpdate(context.Background())
+		if !errors.Is(err, updater.ErrUnsupportedPlatform) {
+			t.Fatalf("%s: err = %v, want ErrUnsupportedPlatform", name, err)
+		}
+		var perm interface{ Permanent() bool }
+		if !errors.As(err, &perm) || !perm.Permanent() {
+			t.Errorf("%s: err = %v, want a Permanent one (it never clears by retrying)", name, err)
+		}
+		if result != (updater.Result{}) {
+			t.Errorf("%s: result = %+v, want none", name, result)
+		}
+		if st := c.Status(); st.Ready || st.Available || st.LastError == "" {
+			t.Errorf("%s: Status = %+v, want a failed check that found nothing", name, st)
+		}
+	}
+	if requests != 0 || gateCalls != 0 {
+		t.Errorf("requests = %d, gate calls = %d, want none", requests, gateCalls)
 	}
 }

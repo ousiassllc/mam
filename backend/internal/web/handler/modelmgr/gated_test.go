@@ -96,7 +96,7 @@ func TestInstallModel_AModelBehindTheLoginChecksTheTokenAndTheAccessBeforeAJob(t
 	assert.Contains(t, body, s.rig.HF.URL+"/"+mmtest.GatedRepo, "the link to the page of the model")
 	assert.Zero(t, s.rig.HF.Count("/cdn/"), "nothing was downloaded")
 
-	s.rig.HF.Granted = true
+	s.rig.HF.Granted.Store(true)
 	rec := s.do(http.MethodPost, installURL(mmtest.GatedModelID), gatedForm())
 	require.Equal(t, http.StatusAccepted, rec.Code, rec.Body.String())
 	answers = append(answers, rec.Body.String())
