@@ -109,7 +109,10 @@ func TestStart_LogsAFailedCheckOnce(t *testing.T) {
 			stop := appupdate.New(checker, "v0.1.0", func(string) {}, capturedLogger(&sink)).Start(t.Context(), sc)
 
 			expectCalls(t, checker, 1)
-			stop() // waits for the schedule goroutine: every line of the failed check is written
+			// The fake reports the call before it answers, and stop cancels the check: a check that is cancelled is not
+			// logged. So wait until the schedule has handled the failed check (it says so after Check has logged it).
+			require.Eventually(t, func() bool { return strings.Contains(sink.String(), "the failed check") }, wait, time.Millisecond, "the schedule handled the failed check")
+			stop() // waits for the schedule goroutine
 
 			lines := errorLines(sink.String())
 			require.Len(t, lines, 1, sink.String())
