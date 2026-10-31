@@ -63,3 +63,27 @@ func TestUpdater_RunPendingReturnsTheFailureToStart(t *testing.T) {
 
 	require.ErrorIs(t, u.RunPending(), boom)
 }
+
+// The automatic update is on only where a release carries an installer: on every other GOOS/GOARCH the front
+// gets an error and passes no Update option, so the Checker (and its choice of an installer) is never built.
+func TestCheckCanInstallOn_OnlyWherePlatformHasAnInstaller(t *testing.T) {
+	macBundle := func() (string, error) { return "/Applications/MAM.app", nil }
+	noBundle := func() (string, error) {
+		t.Fatal("the bundle of an unsupported platform was looked for")
+		return "", nil
+	}
+
+	require.NoError(t, checkCanInstallOn("windows", "amd64", noBundle), "Windows installs through its own installer")
+	require.NoError(t, checkCanInstallOn("darwin", "arm64", macBundle))
+	for _, p := range [][2]string{{"darwin", "amd64"}, {"windows", "arm64"}, {"linux", "amd64"}, {"", ""}} {
+		err := checkCanInstallOn(p[0], p[1], noBundle)
+		require.Error(t, err, "%s/%s", p[0], p[1])
+		assert.Contains(t, err.Error(), "no installer is released")
+	}
+}
+
+func TestCheckCanInstallOn_MacNeedsAReplaceableBundle(t *testing.T) {
+	boom := errors.New("running from a disk image")
+	err := checkCanInstallOn("darwin", "arm64", func() (string, error) { return "", boom })
+	require.ErrorIs(t, err, boom)
+}

@@ -3,12 +3,13 @@
 // Command wails is the desktop front of mam (Windows: WebView2, macOS on Apple Silicon: WKWebView): a Wails v3
 // window that opens the same 127.0.0.1 server as the browser front (cmd/server). The window is a shell for that
 // URL: the Wails asset server, bindings and events are not used (spec/architecture/desktop.md). What differs per
-// OS (error dialog, the navigation event, the update options) is in dialog_*.go and platform_*.go.
+// OS (error dialog, the navigation event) is in dialog_*.go and platform_*.go.
 package main
 
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"sync/atomic"
 
@@ -37,6 +38,19 @@ func main() {
 		os.Exit(0)
 	}
 	os.Exit(run(os.Args[1:], os.Getenv))
+}
+
+// updateOptions turns the automatic update on when this process can install an update where it runs
+// (desktop.CheckCanInstall). It cannot on a GOOS/GOARCH no installer is released for, and on macOS when the running
+// bundle cannot be replaced where it is (a disk image, a translocated copy of an app opened straight from
+// Downloads, a folder this user cannot write to): the update stays off, with the reason on stderr, and the settings
+// screen says the build does not update itself (on macOS until the app is moved to /Applications: README.md).
+func updateOptions(u *desktop.Updater) *app.UpdateOptions {
+	if err := desktop.CheckCanInstall(); err != nil {
+		fmt.Fprintln(os.Stderr, "mam: automatic update is off:", err)
+		return nil
+	}
+	return &app.UpdateOptions{Install: u.Install}
 }
 
 func run(args []string, getenv func(string) string) int {
