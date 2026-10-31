@@ -111,21 +111,28 @@ func MacAppBundle(exe string) (string, error) {
 	return bundle, nil
 }
 
-// MacUpdatableBundle is MacAppBundle, refused when the bundle cannot be replaced where it is: it runs from a
-// mounted disk image (/Volumes/..., read-only) or from the randomized read-only copy macOS makes of an app that was
-// downloaded and opened without being moved (App Translocation), or its directory is not writable by this user.
-// The user moves the app to /Applications (or any folder they own) first.
+// createUpdateProbe creates the empty file MacUpdatableBundle uses to find out whether the folder of the bundle is
+// writable; a variable so that the tests can stand in for the read-only volume of a mounted dmg.
+var createUpdateProbe = func(dir string) (*os.File, error) { return os.CreateTemp(dir, ".mam-update-probe-*") }
+
+// MacUpdatableBundle is MacAppBundle, refused when the bundle cannot be replaced where it is: it runs from the
+// randomized read-only copy macOS makes of an app that was downloaded and opened without being moved (App
+// Translocation), or the folder it sits in is not writable by this user (the update swaps the bundle for the new one
+// there). The writability probe is what rules out a mounted disk image: its volume (/Volumes/..., HFS+ UDZO, see
+// scripts/package-macos.sh) is read-only, so the probe fails there. The path itself says nothing about it: a
+// writable external drive or other volume under /Volumes updates like any folder. The user moves the app to
+// /Applications (or any folder they own) first.
 func MacUpdatableBundle(exe string) (string, error) {
 	bundle, err := MacAppBundle(exe)
 	if err != nil {
 		return "", err
 	}
-	if strings.Contains(bundle, "/AppTranslocation/") || strings.HasPrefix(bundle, "/Volumes/") {
-		return "", fmt.Errorf("%s is running from a disk image or a translocated copy: move MAM to /Applications and start it from there", bundle)
+	if strings.Contains(bundle, "/AppTranslocation/") {
+		return "", fmt.Errorf("%s is running from a translocated copy: move MAM to /Applications and start it from there", bundle)
 	}
-	probe, err := os.CreateTemp(filepath.Dir(bundle), ".mam-update-probe-*")
+	probe, err := createUpdateProbe(filepath.Dir(bundle))
 	if err != nil {
-		return "", fmt.Errorf("the folder of %s is not writable: %w", bundle, err)
+		return "", fmt.Errorf("the folder of %s is not writable (a disk image is read-only): move MAM to /Applications and start it from there: %w", bundle, err)
 	}
 	return bundle, errors.Join(probe.Close(), os.Remove(probe.Name()))
 }

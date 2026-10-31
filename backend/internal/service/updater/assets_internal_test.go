@@ -113,12 +113,32 @@ func TestDefaultPlatform(t *testing.T) {
 	}{
 		{"darwin", "arm64", PlatformDarwinARM64},
 		{"windows", "amd64", PlatformWindowsAMD64},
-		{"linux", "amd64", PlatformWindowsAMD64},  // not a platform that updates itself: the tests' default
-		{"darwin", "amd64", PlatformWindowsAMD64}, // no Intel build exists; never the dmg
+		// No installer is released for these: never another platform's installer, the zero Platform instead.
+		{"linux", "amd64", Platform{}},
+		{"darwin", "amd64", Platform{}},  // no Intel build exists; never the dmg nor the Windows installer
+		{"windows", "arm64", Platform{}}, // the installer is an amd64 build
+		{"windows", "386", Platform{}},
+		{"freebsd", "amd64", Platform{}},
+		{"", "", Platform{}},
 	}
 	for _, tt := range tests {
-		if got := DefaultPlatform(tt.goos, tt.goarch); got != tt.want {
+		got := DefaultPlatform(tt.goos, tt.goarch)
+		if got != tt.want {
 			t.Errorf("DefaultPlatform(%q, %q) = %+v, want %+v", tt.goos, tt.goarch, got, tt.want)
+		}
+		if got.Supported() != (tt.want != Platform{}) {
+			t.Errorf("DefaultPlatform(%q, %q).Supported() = %v", tt.goos, tt.goarch, got.Supported())
+		}
+	}
+}
+
+func TestPlatform_Supported(t *testing.T) {
+	if !PlatformWindowsAMD64.Supported() || !PlatformDarwinARM64.Supported() {
+		t.Error("a platform a release carries an installer for must be supported")
+	}
+	for _, p := range []Platform{{}, {OS: "linux", Arch: "amd64"}, {OS: "darwin", Arch: "amd64"}, {OS: "windows"}} {
+		if p.Supported() {
+			t.Errorf("%+v.Supported() = true, want false", p)
 		}
 	}
 }

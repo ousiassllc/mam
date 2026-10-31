@@ -107,7 +107,8 @@ type Config struct {
 	// verification is skipped.
 	PublicKey ed25519.PublicKey
 	// Platform is the installer to look for in a release; the zero value is
-	// DefaultPlatform(runtime.GOOS, runtime.GOARCH).
+	// DefaultPlatform(runtime.GOOS, runtime.GOARCH), which is itself the zero Platform on a GOOS/GOARCH that has
+	// no installer: such a Checker fails every check with ErrUnsupportedPlatform.
 	Platform Platform
 }
 
@@ -209,6 +210,10 @@ func (c *Checker) check(ctx context.Context) (Result, error) {
 		c.logger.Debug("updater: skipping check on a non-release (dev) build", "version", version.Version)
 		c.setStatus(Status{CheckedAt: time.Now(), DevBuild: true})
 		return Result{}, nil
+	}
+
+	if !c.platform.Supported() {
+		return Result{}, kindErrorf(ErrorRelease, "updater: %w", ErrUnsupportedPlatform)
 	}
 
 	release, err := c.latestRelease(ctx)

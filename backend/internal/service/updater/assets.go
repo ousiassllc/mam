@@ -1,6 +1,7 @@
 package updater
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -18,14 +19,26 @@ var (
 	PlatformDarwinARM64 = Platform{OS: "darwin", Arch: "arm64"}
 )
 
+// ErrUnsupportedPlatform is why a Checker built for a Platform that has no installer (DefaultPlatform's zero
+// value) refuses to check: it never looks at a release, so it never picks an installer of another platform.
+var ErrUnsupportedPlatform = errors.New("no installer is released for this platform")
+
+// Supported reports whether a release carries an installer for p: false for the zero Platform
+// (DefaultPlatform of a GOOS/GOARCH without one), on which the automatic update stays off.
+func (p Platform) Supported() bool {
+	return p == PlatformWindowsAMD64 || p == PlatformDarwinARM64
+}
+
 // DefaultPlatform is the platform of the installer a process running on goos/goarch updates itself with:
-// macOS on Apple Silicon takes the dmg, every other build the Windows installer (Windows is the only other
-// platform that updates itself; the headless server never builds a Checker).
+// the dmg on macOS on Apple Silicon, the Windows installer on Windows on amd64, and the zero Platform for every
+// other GOOS/GOARCH (no installer is released for it, so the automatic update is off there: Supported). The
+// headless server never builds a Checker.
 func DefaultPlatform(goos, goarch string) Platform {
-	if goos == PlatformDarwinARM64.OS && goarch == PlatformDarwinARM64.Arch {
-		return PlatformDarwinARM64
+	switch p := (Platform{OS: goos, Arch: goarch}); p {
+	case PlatformWindowsAMD64, PlatformDarwinARM64:
+		return p
 	}
-	return PlatformWindowsAMD64
+	return Platform{}
 }
 
 // InstallerName is the one installer name a release with tag_name tag may carry for p, the name the packaging
