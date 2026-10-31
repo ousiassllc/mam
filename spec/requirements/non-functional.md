@@ -76,7 +76,7 @@
 | 項目 | 要件 |
 |------|------|
 | 生成トレース | 各 Take について Source Shot Spec / World State version / Prompt version / Model / Model parameters / Model routing（選択理由、M3） / References / Output / Judge result / Repair history を保存する（F-27） |
-| ログ | Go バックエンドは構造化ログ（レベル別）をローカルファイルにローテーション出力する |
+| ログ | Go バックエンドは構造化ログ（レベル別）をローカルファイル（`<ログのディレクトリ>/mam.log`。JSON、10 MB ごとに最大 5 世代、30 日、古い世代は gzip）にローテーション出力する。外部へは送らない（§5）。**MCP から読める**: `get_app_logs`（[mcp-tools.md](../api/mcp-tools.md)）が `mam.log` とローテーション済みの世代（圧縮されたものも）を読み、レベル・時刻・件数・キーワード・属性（`project_id`・`shot_id`・`job_id`・`error_id` など）で絞って新しい順に返す。読み取りだけで、1 回の応答は件数（最大 500）とサイズ（約 200 KB）で頭打ちにする。**秘密はログに書かない**（API キー・MCP トークン・Hugging Face トークン・ChatGPT / Codex のトークンはロガーに渡さない。テストで確かめる）うえで、読み取りも多重に防ぐ: 既知の形（MCP トークン・`hf_`・ベンダーのキー・Bearer・JWT・`key=` や `api_key` 風のフィールド）と、キーストアにある API キー・Hugging Face トークンの値そのものを `[redacted]` に置き換えてから、絞り込みと返却を行う（絞り込みで秘密の有無を探れない）。保存期間の 30 日は、ジョブの履歴（`mcp_job_history`）と揃えている |
 | バージョン復元 | Shot / Take / Branch / World State の主要変更を Version 化し、以前の状態へ復元できる（F-28）。復元は指定バージョンの内容を新バージョンとして追記する（履歴を消さない）。LOCK 中の項目を変える復元は行わない |
 | 制作指標（Production Analytics） | MVP Success Metrics（`spec/spec.md` §28）はローカルの SQLite（Take / Judge Result / Repair Action / Cost Ledger / Export / Edit Timeline / `human_intervention`）だけから集計し、外部へ送信しない（§5）。人間の介入・上書きの記録も同じ DB に追記する。`GET /projects/:id/analytics`・`GET /analytics` で表示する |
 
@@ -143,3 +143,4 @@
 | 1.41 | 2026-10-25 | §8 のエクスポート/インポートに、ComfyUI ワークフローはバンドルに含めず、取り込み時に足りないワークフロー（版）を警告する（失敗にしない）ことを足した | Issue #834（[comfy-workflows.md](../architecture/comfy/comfy-workflows.md) §6） |
 | 1.42 | 2026-10-25 | §5 に「Codex 経由のログイン」の行を足した（mam はトークンを読まない・専用の `CODEX_HOME`・環境の鍵を渡さない・固定した版の検証つき取得・道具の無効化と承認の拒否・ローカル利用に限る） | Issue #845 |
 | 1.43 | 2026-10-27 | §1 の配布の行の、macOS 版のビルドの実行先を「Mac の self-hosted runner」から GitHub-hosted の `macos-latest`（Apple Silicon）に改めた | Issue #853。Mac を自社の常駐する機械に置かず、GitHub の hosted runner でビルドする（`spec/environment/setup.md` の改訂 1.43） |
+| 1.44 | 2026-10-31 | §7 のログの行に、MCP の `get_app_logs` で読めること・応答の上限・秘密をログに書かず読み取りでも伏せること・保存期間 30 日を足した | Issue #891（親 #889）。エージェントが `internal` エラーの原因をたどれるようにする |

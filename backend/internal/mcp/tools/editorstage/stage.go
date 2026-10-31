@@ -23,9 +23,9 @@ const (
 // Register adds the tools and the job kinds of this package.
 func Register(r *mcpkit.Registrar, svc *service.Services) {
 	t := newTracker(r)
-	r.Jobs.RegisterKind(KindJudgeTimeline, t.probe("Editor Judge が判定しています"))
-	r.Jobs.RegisterKind(KindGenerateAudio, t.probe("音声（セリフ・BGM・効果音）を作ってミックスしています"))
-	r.Jobs.RegisterKind(KindExportVideo, t.probe("動画を書き出しています"))
+	r.Jobs.RegisterKind(KindJudgeTimeline, t.probe("Editor Judge が判定しています"), mcpkit.InMemory())
+	r.Jobs.RegisterKind(KindGenerateAudio, t.probe("音声（セリフ・BGM・効果音）を作ってミックスしています"), mcpkit.InMemory())
+	r.Jobs.RegisterKind(KindExportVideo, t.probe("動画を書き出しています"), mcpkit.InMemory())
 
 	mcpkit.Write(r, "judge_edit_timeline",
 		"Edit Timeline の版を Editor Judge にかける（job_id を返す）。PASS は音声制作（AUDIO）へ、re_edit は EDITING のまま指摘がチャットに出る、need_shot は request_additional_shot で追加 Shot を頼める。timeline_id が最新でない・EDITING でないと conflict / Run the Editor Judge on a timeline version; returns a job_id.",

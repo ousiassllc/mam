@@ -176,3 +176,38 @@ func TestExportVideo_ChecksTheOptionsAndThatTheAudioIsOfTheLatestEdit(t *testing
 	assert.Contains(t, msg, "音声が最新の編集に対して作られていません")
 	assert.Equal(t, "READY", f.State(), "a refused export changes nothing")
 }
+
+// A restart forgets the tracker, but the stage's end is in the job history: get_job answers the same.
+func TestEditingStages_TheirJobsAreAnsweredAfterARestart(t *testing.T) {
+	f := newFixture(t)
+	f.WithScript()
+	var rc editor.ViewOutput
+	f.CallOK("create_rough_cut", map[string]any{"project_id": f.ProjectID}, &rc)
+	var judge editorstage.Ref
+	f.CallOK("judge_edit_timeline", map[string]any{"timeline_id": rc.Timeline.ID}, &judge)
+	before := f.WaitJob(judge.JobID)
+	require.Equal(t, mcpkit.JobSucceeded, before.State, before.Error)
+	require.NotNil(t, before.EndedAt)
+	var audio editorstage.Ref
+	f.CallOK("generate_audio", map[string]any{"project_id": f.ProjectID}, &audio)
+	audioBefore := f.WaitJob(audio.JobID)
+	require.Equal(t, mcpkit.JobSucceeded, audioBefore.State, audioBefore.Error)
+
+	after := f.Restart(func(env *mcptest.Env, r *mcpkit.Registrar) {
+		jobs.Register(r, env.Services)
+		editor.Register(r, env.Services)
+		editorstage.Register(r, env.Services)
+	})
+	var got mcpkit.JobStatus
+	after.CallOK("get_job", map[string]any{"job_id": judge.JobID}, &got)
+	assert.Equal(t, before.State, got.State)
+	assert.Equal(t, before.Kind, got.Kind)
+	assert.Equal(t, before.Target, got.Target)
+	assert.Equal(t, f.ProjectID, got.ProjectID, "the Project of the timeline")
+	assert.True(t, before.StartedAt.Equal(got.StartedAt))
+	assert.True(t, before.EndedAt.Equal(*got.EndedAt))
+	assert.Equal(t, "pass", got.Result["verdict"], "the stage's result survived")
+	after.CallOK("get_job", map[string]any{"job_id": audio.JobID}, &got)
+	assert.Equal(t, mcpkit.JobSucceeded, got.State)
+	assert.EqualValues(t, 2, got.Result["speech_lines"])
+}

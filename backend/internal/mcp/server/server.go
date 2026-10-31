@@ -21,12 +21,16 @@ type Options struct {
 	Tokens   *mcptoken.Service
 	// JobTable is the persisted job queue, which get_job also reads (repository.JobRepository).
 	JobTable mcpkit.JobTable
+	// JobHistory is the history of the jobs the tools started (repository/jobhistory.Repository).
+	JobHistory mcpkit.JobHistory
 	// Keys is the key store; the credential tools read only the end of a key from it.
 	Keys credential.Store
 	// Settings are the LLM / model assignment and update services of the settings screen (a nil field: not there).
 	Settings mcpkit.Settings
 	Logger   *slog.Logger
-	Version  string
+	// LogDir is the log directory (config.Config.LogDir) that get_app_logs reads.
+	LogDir  string
+	Version string
 	// DataDir holds mcp.json.
 	DataDir string
 	// Port is the preferred port; 0 selects DefaultPort.
@@ -62,11 +66,12 @@ func New(o Options) *Server {
 		Logger:       o.Logger,
 	})
 	reg := mcpkit.NewRegistrar(mcpServer, mcpkit.Kit{
-		Jobs:        mcpkit.NewJobs(o.JobTable),
+		Jobs:        mcpkit.NewJobs(o.JobTable, o.JobHistory),
 		Files:       files,
 		Credentials: o.Keys,
 		Settings:    o.Settings,
 		Logger:      o.Logger,
+		LogDir:      o.LogDir,
 		Version:     o.Version,
 		ListenAddr:  func() string { return mgr.Addr() },
 	})

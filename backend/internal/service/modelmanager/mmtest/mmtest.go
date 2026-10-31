@@ -6,6 +6,7 @@ package mmtest
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -70,6 +71,9 @@ type Option func(*modelmanager.Deps, *Rig)
 
 // WithDB makes the rig use an existing database (the one an MCP test environment reads its jobs from).
 func WithDB(db *repository.DB) Option { return func(_ *modelmanager.Deps, r *Rig) { r.db = db } }
+
+// WithLogger gives the Service the logger a test reads back (a test that the Hugging Face token is not logged).
+func WithLogger(l *slog.Logger) Option { return func(d *modelmanager.Deps, _ *Rig) { d.Logger = l } }
 
 // Pinned makes the model setting file the one the operator pinned (--model-config).
 func Pinned() Option { return func(_ *modelmanager.Deps, r *Rig) { r.pinned = true } }

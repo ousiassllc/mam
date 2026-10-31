@@ -17,6 +17,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/health"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/jobs"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/localmodels"
+	"github.com/ousiassllc/mam/backend/internal/mcp/tools/logs"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/modelmgr"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/policy"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/projectbundle"
@@ -37,6 +38,7 @@ import (
 func Register(r *mcpkit.Registrar, svc *service.Services) {
 	serverinfo.Register(r, svc)
 	jobs.Register(r, svc)
+	logs.Register(r, svc)
 	credentials.Register(r, svc)
 	files.Register(r, svc)
 	projects.Register(r, svc)

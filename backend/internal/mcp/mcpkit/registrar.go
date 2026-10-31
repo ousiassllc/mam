@@ -46,6 +46,8 @@ type Kit struct {
 	Credentials credential.Store
 	// Logger receives the causes of internal tool errors. Nil discards them.
 	Logger *slog.Logger
+	// LogDir is the directory of the mam log files (get_app_logs reads them). Empty: no log tool answers.
+	LogDir string
 	// Version is the running mam version.
 	Version string
 	// ListenAddr is the address the MCP listener has now ("127.0.0.1:8788").
@@ -68,6 +70,9 @@ type Registrar struct {
 func NewRegistrar(server *mcp.Server, kit Kit) *Registrar {
 	if kit.Logger == nil {
 		kit.Logger = slog.New(slog.DiscardHandler)
+	}
+	if kit.Jobs != nil && kit.Jobs.logger == nil {
+		kit.Jobs.logger = kit.Logger
 	}
 	if kit.ListenAddr == nil {
 		kit.ListenAddr = func() string { return "" }

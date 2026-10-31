@@ -53,7 +53,7 @@
 | `judge_take` | `judge_take` | Take ID | `take_id`, `verdict`, `overall_confidence`。結果が作られずに止まれば `failed` |
 | `repair_take` | `repair_take` | Take ID | `take_id`, `action`, `new_take_id`。新しい Take を作らない Repair（Edit-Level Repair）は `new_take_id` が空で `succeeded`、作るはずが作れなければ `failed`。Retry Policy の上限で止まったときも `failed` |
 
-`send_director_command` の再生成と `confirm_continue` は、サービスがジョブ行を返さないため `job_id` は `job_<UUID>`（メモリ上。24 時間）。他は `job` テーブルの行の ID。
+`send_director_command` の再生成と `confirm_continue` は、サービスがジョブ行を返さないため `job_id` は `job_<UUID>`（ジョブの履歴に残るので再起動後も引ける）。他は `job` テーブルの行の ID。
 
 ## Take
 

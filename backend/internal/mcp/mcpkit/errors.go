@@ -2,7 +2,10 @@ package mcpkit
 
 import (
 	"errors"
+	"fmt"
+	"log/slog"
 	"net/http"
+	"slices"
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -24,12 +27,23 @@ const (
 	CodeInternal    = "internal"        // anything else; the cause is in the mam log, not in the message
 )
 
+// errorCodes lists every code, to read the code back from the text of an error.
+var errorCodes = []string{
+	CodeValidation, CodeNotFound, CodeConflict, CodeLocked, CodeForbidden, CodeBudget, CodeRateLimited,
+	CodeUnavailable, CodeUpstream, CodeInternal,
+}
+
+// ErrorCodes returns every code, in the order of the constants.
+func ErrorCodes() []string { return slices.Clone(errorCodes) }
+
 // ToolError is the error of a tool call as the agent sees it.
 type ToolError struct {
 	Code    string
 	Message string
 	// Status is the HTTP status the file endpoint answers with for the same error.
 	Status int
+	// ErrorID is the correlation id of an internal error (see ReportError); "" for any other.
+	ErrorID string
 }
 
 func (e *ToolError) Error() string { return e.Code + ": " + e.Message }
@@ -51,33 +65,64 @@ func MapError(err error) *ToolError {
 	case errors.As(err, &te):
 		return te
 	case errors.As(err, &brand):
-		return &ToolError{CodeForbidden, "Brand / Safety Constraint に違反しています: " + brand.Message(), http.StatusForbidden}
+		return &ToolError{Code: CodeForbidden, Message: "Brand / Safety Constraint に違反しています: " + brand.Message(), Status: http.StatusForbidden}
 	case errors.Is(err, service.ErrBrandViolation):
-		return &ToolError{CodeForbidden, "Brand / Safety Constraint に違反しています", http.StatusForbidden}
+		return &ToolError{Code: CodeForbidden, Message: "Brand / Safety Constraint に違反しています", Status: http.StatusForbidden}
 	case errors.As(err, &conflicted):
-		return &ToolError{CodeConflict, conflicted.Message, http.StatusConflict}
+		return &ToolError{Code: CodeConflict, Message: conflicted.Message, Status: http.StatusConflict}
 	case errors.As(err, &locked) && len(locked.Parameters) > 0:
 		names := make([]string, len(locked.Parameters))
 		for i, p := range locked.Parameters {
 			names[i] = p.Label()
 		}
-		return &ToolError{CodeLocked, strings.Join(names, " / ") + " は LOCK されているため変更できません。LOCK を解除してから指示してください", http.StatusLocked}
+		return &ToolError{Code: CodeLocked, Message: strings.Join(names, " / ") + " は LOCK されているため変更できません。LOCK を解除してから指示してください", Status: http.StatusLocked}
 	case errors.Is(err, service.ErrRateLimited):
 		if errors.As(err, &ai) {
-			return &ToolError{CodeRateLimited, ai.Reason, http.StatusTooManyRequests}
+			return &ToolError{Code: CodeRateLimited, Message: ai.Reason, Status: http.StatusTooManyRequests}
 		}
-		return &ToolError{CodeRateLimited, "外部の生成モデル API のレート制限に達しました。しばらく待ってから再実行してください", http.StatusTooManyRequests}
+		return &ToolError{Code: CodeRateLimited, Message: "外部の生成モデル API のレート制限に達しました。しばらく待ってから再実行してください", Status: http.StatusTooManyRequests}
 	case errors.As(err, &ai):
-		return &ToolError{CodeUpstream, ai.Reason, http.StatusBadGateway}
+		return &ToolError{Code: CodeUpstream, Message: ai.Reason, Status: http.StatusBadGateway}
 	case errors.As(err, &invalid):
-		return &ToolError{CodeValidation, invalid.Error(), http.StatusUnprocessableEntity}
+		return &ToolError{Code: CodeValidation, Message: invalid.Error(), Status: http.StatusUnprocessableEntity}
 	}
 	for _, m := range sentinels {
 		if errors.Is(err, m.err) {
-			return &ToolError{m.code, m.message, m.status}
+			return &ToolError{Code: m.code, Message: m.message, Status: m.status}
 		}
 	}
-	return &ToolError{CodeInternal, "予期しないエラーです。mam のログを確認してください", http.StatusInternalServerError}
+	return &ToolError{Code: CodeInternal, Message: "予期しないエラーです。mam のログを確認してください", Status: http.StatusInternalServerError}
+}
+
+// ErrorIDKey is the attribute of the log line that holds the correlation id of an internal error.
+const ErrorIDKey = "error_id"
+
+// NewErrorID returns the correlation id of one internal failure.
+func NewErrorID() string { return "err_" + domain.NewID() }
+
+// ReportError maps err for the caller. An internal error (one MapError does not know) gets a new
+// correlation id: its cause is logged at once with the id as the error_id attribute, and the returned
+// error tells the id, so that an agent finds the cause with get_app_logs (attrs: error_id) without the
+// cause being in the message. attrs are added to the log line. An error that already carries an id was
+// reported before and is returned as it is.
+func ReportError(logger *slog.Logger, msg string, err error, attrs ...any) *ToolError {
+	te := MapError(err)
+	if te.Code != CodeInternal || te.ErrorID != "" {
+		return te
+	}
+	id := NewErrorID()
+	if logger != nil {
+		logger.Error(msg, append([]any{ErrorIDKey, id, "err", err}, attrs...)...)
+	}
+	return te.WithErrorID(id)
+}
+
+// WithErrorID returns a copy of the internal error that carries id in the error and in its message.
+func (e *ToolError) WithErrorID(id string) *ToolError {
+	c := *e
+	c.ErrorID = id
+	c.Message = fmt.Sprintf("%s（%s: %s）", e.Message, ErrorIDKey, id)
+	return &c
 }
 
 // Internal reports whether MapError does not know err, that is, whether the caller should log it.

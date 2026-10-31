@@ -7,6 +7,8 @@ package mcptest
 import (
 	"context"
 	"encoding/json"
+	"io"
+	"log/slog"
 	"testing"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -14,8 +16,10 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
 	"github.com/ousiassllc/mam/backend/internal/credential/credentialtest"
+	"github.com/ousiassllc/mam/backend/internal/logging"
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/repository/jobhistory"
 	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
@@ -34,6 +38,10 @@ type Env struct {
 	DB *repository.DB
 	// AssetsDir is the temporary assets directory.
 	AssetsDir string
+	// LogDir is the temporary log directory: Logger (the logger of the Registrar, so the causes of internal
+	// tool errors go there) writes mam.log into it, as the app does.
+	LogDir string
+	Logger *slog.Logger
 }
 
 // New builds the services (no model, no job queue: set deps to change that), registers tools with
@@ -44,8 +52,27 @@ type Env struct {
 // so it gets the services through the Env it is called with.
 func New(t testing.TB, register func(env *Env, r *mcpkit.Registrar), deps ...func(*service.Deps)) *Env {
 	t.Helper()
-	env := &Env{T: t, Keys: credentialtest.New(), DB: testdb.Open(t), AssetsDir: t.TempDir()}
-	d := service.Deps{DB: env.DB, Credentials: env.Keys, AssetsDir: env.AssetsDir}
+	env := &Env{T: t, Keys: credentialtest.New(), DB: testdb.Open(t), AssetsDir: t.TempDir(), LogDir: t.TempDir()}
+	return env.build(register, deps)
+}
+
+// Restart is what the app does when mam is stopped and started again on the same data: new services, a new
+// MCP server and new Jobs over the same database, assets, key store and log directory. Nothing the old Env
+// kept in memory is in the new one. The old Env stays usable (the same database), which a test must not rely on.
+func (e *Env) Restart(register func(env *Env, r *mcpkit.Registrar), deps ...func(*service.Deps)) *Env {
+	e.T.Helper()
+	env := &Env{T: e.T, Keys: e.Keys, DB: e.DB, AssetsDir: e.AssetsDir, LogDir: e.LogDir}
+	return env.build(register, deps)
+}
+
+func (env *Env) build(register func(env *Env, r *mcpkit.Registrar), deps []func(*service.Deps)) *Env {
+	t := env.T
+	var closer io.Closer
+	var err error
+	env.Logger, closer, err = logging.New(env.LogDir, slog.LevelDebug, nil)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = closer.Close() })
+	d := service.Deps{DB: env.DB, Credentials: env.Keys, AssetsDir: env.AssetsDir, Logger: env.Logger}
 	for _, f := range deps {
 		f(&d)
 	}
@@ -54,9 +81,11 @@ func New(t testing.TB, register func(env *Env, r *mcpkit.Registrar), deps ...fun
 	server := mcp.NewServer(&mcp.Implementation{Name: "mam-test", Version: "test"}, nil)
 	files := mcpkit.NewFiles(mcpkit.FilesOptions{})
 	env.Registrar = mcpkit.NewRegistrar(server, mcpkit.Kit{
-		Jobs:        mcpkit.NewJobs(repository.NewJobRepository(env.DB)),
+		Jobs:        mcpkit.NewJobs(repository.NewJobRepository(env.DB), jobhistory.New(env.DB)),
 		Files:       files,
 		Credentials: env.Keys,
+		Logger:      env.Logger,
+		LogDir:      env.LogDir,
 		Version:     "test",
 		ListenAddr:  func() string { return "127.0.0.1:0" },
 	})

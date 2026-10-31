@@ -56,7 +56,7 @@ func listProjects(svc *service.ProjectService) mcpkit.Handler[ListProjectsInput,
 - 名前は `snake_case` の `動詞_名詞`（2 語以上）。規約違反と重複は起動時に panic する。`description` は必須、日本語を主に英語でも通じる短さで。
 - `Read`（readOnlyHint）／`Write`（destructiveHint=false）／`Destroy`（destructiveHint=true）。冪等なら `mcpkit.Idempotent()`、モデル API を自分で呼ぶなら `mcpkit.OpenWorld()`。
 - 入出力は構造体。`json` と `jsonschema:"説明"` のタグがスキーマになり、引数は呼び出し前に検証される。出力は必ずオブジェクト。
-- MCP 専用の確認や上限は足さない（画面と同じ扱い）。エラーは `return zero, err` で返す: `ValidationError` は `validation`、`ErrNotFound` は `not_found`、`ErrConflict` / `ErrBusy` は `conflict`、`LockedError` は `locked`、… 未知のエラーは `internal`（文面は出さずログに残る）。`MapError` に無い種類のエラーを足すときは `mcpkit/errors.go` に 1 行足す。
+- MCP 専用の確認や上限は足さない（画面と同じ扱い）。エラーは `return zero, err` で返す: `ValidationError` は `validation`、`ErrNotFound` は `not_found`、`ErrConflict` / `ErrBusy` は `conflict`、`LockedError` は `locked`、… 未知のエラーは `internal`（文面は出さず、原因は ERROR のログ行に残る。行と文面には同じ相関 ID `error_id` が付くので、`get_app_logs` の `attrs` で引ける）。ツールのパッケージが自分でエラーを写すときは `mcpkit.MapError` ではなく `mcpkit.ReportError(logger, msg, err)` を使うと ID とログが付く。`MapError` に無い種類のエラーを足すときは `mcpkit/errors.go` に 1 行足す。
 - ID（`project_id` など）は文字列で受ける。ファイルを base64 で受けない・返さない。
 
 ## 長い操作: `job_id` を返す
@@ -88,14 +88,14 @@ func generate(r *mcpkit.Registrar, svc *service.Services) mcpkit.Handler[Generat
 ```go
 func (j *Jobs) Run(ctx context.Context, kind, target string,
 	start func(ctx context.Context) (queueJobID string, err error)) (JobRef, error)
-func (j *Jobs) RegisterKind(kind string, probe Probe)           // Probe = func(ctx, JobInfo) (Progress, error)
+func (j *Jobs) RegisterKind(kind string, probe Probe, opts ...KindOption) // Probe = func(ctx, JobInfo) (Progress, error)
 func (j *Jobs) Get(ctx context.Context, id string) (JobStatus, error) // get_job が呼ぶ
 type JobRef struct { JobID string; State JobState }             // 出力に埋め込む
 type Progress struct { State JobState; Message string; Done, Total int; Result map[string]any; Error string }
 ```
 
 - `get_job` は基盤にある（足さない）。クライアントは返された `job_id` を渡すだけ。
-- `queueJobID` を返すと `job_id` がジョブキューの行の ID になり、`queued` / `running` / `failed`（理由つき）は行から取り、再起動後も使える。返さないと `job_<UUIDv7>` で、メモリ上（24 時間・4096 件）。Probe のない種別は `queueJobID` が必須。サービスがジョブを返さないなら、`service` に ID を返すメソッドを足してよい（`orchestrator.Start` は `domain.Job` を返す）。
+- `queueJobID` を返すと `job_id` がジョブキューの行の ID になり、`queued` / `running` / `failed`（理由つき）は行から取り、再起動後も使える。返さないと `job_<UUIDv7>`。どちらもジョブの履歴（`mcp_job_history`。30 日・10,000 行）に残るので、再起動後も `get_job` で引ける。Probe が永続化済みの状態ではなくメモリ上の記録だけを読む種別は `r.Jobs.RegisterKind(kind, probe, mcpkit.InMemory())` で登録する（再起動後は履歴の記録で答える。終わりを履歴に残すには `Jobs.Observe` を呼ぶ）。Probe のない種別は `queueJobID` が必須。サービスがジョブを返さないなら、`service` に ID を返すメソッドを足してよい（`orchestrator.Start` は `domain.Job` を返す）。
 - `generate_shot`（Shot の生成・Candidates）の Probe は `tools/jobs` にある。Judge・Repair・書き出しなどは、そのツールのパッケージが種別を足す。状態は Shot / Take / Project の永続状態から導く（`StartedAt` より後に作られたものを結果にする）。
 
 ## ファイルを渡す・受け取る

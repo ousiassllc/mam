@@ -18,7 +18,7 @@ const KindCodexInstall = "chatgpt_codex_install"
 // registerCodex adds the tools of the Codex login (text generation through the Codex app-server: any plan, workspace
 // accounts included) and the Probe of its engine install.
 func registerCodex(r *mcpkit.Registrar, h handlers) {
-	r.Jobs.RegisterKind(KindCodexInstall, h.probeInstall)
+	r.Jobs.RegisterKind(KindCodexInstall, h.probeInstall, mcpkit.InMemory())
 	mcpkit.Write(r, "install_chatgpt_codex_engine",
 		"Codex 経由のログインに使う Codex app-server（OpenAI 公式。Apache-2.0）を、公式の GitHub リリースから mam.exe と同じ場所の codex ディレクトリにダウンロードする（約 90 MB。SHA-256 とサイズを確かめる。Windows 版のみ）。job_id を返すので get_job で進捗を見る。中断しても続きから再開する / Download the pinned Codex app-server (Windows only) and poll it with get_job.",
 		h.installEngine, mcpkit.OpenWorld())

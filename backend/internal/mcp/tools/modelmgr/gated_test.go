@@ -1,6 +1,8 @@
 package modelmgr_test
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -46,6 +48,11 @@ func TestInstallModel_AModelBehindTheLoginChecksTheTokenAndTheAccessBeforeAJob(t
 	assert.Equal(t, mcpkit.JobSucceeded, jobDone(t, env, rig, job.JobID).State)
 	assert.FileExists(t, rig.ModelFile(mmtest.GatedFile))
 
+	logged, err := os.ReadFile(filepath.Join(env.LogDir, "mam.log")) // the log has neither token, however the install went
+	if err == nil {
+		assert.NotContains(t, string(logged), token)
+		assert.NotContains(t, string(logged), "hf_notthetokenthehubknows")
+	}
 	var status modelmgr.TokenStatus
 	env.CallOK("get_huggingface_token_status", map[string]any{}, &status)
 	require.True(t, status.Configured)

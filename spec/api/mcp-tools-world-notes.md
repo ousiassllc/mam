@@ -40,7 +40,7 @@
 
 ### ジョブ `create_branch`
 
-`create_branch` に `direction` を渡したときだけ `job` を返す。`job_id` は `get_job` に渡す（メモリ上の ID。24 時間）。対象（`target`）は分岐元の Shot。Branch の作成と最初の Shot の計画・生成の開始は `job` が返るまでに終わっている。状態は永続化された Branch・その最初の Shot・Take から導く: `running`（最初の Shot が GENERATING / JUDGING / REPAIRING）→ `succeeded`（ジョブの開始より後に作られた Take がある。`result`: `branch_id`, `shot_id`, `shot_state`, `take_ids`）。Branch に Shot がない、または Take ができないまま止まったときは `failed`。
+`create_branch` に `direction` を渡したときだけ `job` を返す。`job_id` は `get_job` に渡す（`job_<UUIDv7>`。ジョブの履歴に残るので再起動後も引ける）。対象（`target`）は分岐元の Shot。Branch の作成と最初の Shot の計画・生成の開始は `job` が返るまでに終わっている。状態は永続化された Branch・その最初の Shot・Take から導く: `running`（最初の Shot が GENERATING / JUDGING / REPAIRING）→ `succeeded`（ジョブの開始より後に作られた Take がある。`result`: `branch_id`, `shot_id`, `shot_state`, `take_ids`）。Branch に Shot がない、または Take ができないまま止まったときは `failed`。
 
 ## バージョン履歴（F-28）
 

@@ -1,5 +1,5 @@
-// Package jobs holds get_job, the status tool of every long operation, and the Probe of the generation
-// job (generate_shot).
+// Package jobs holds get_job, the status tool of every long operation, list_jobs, which searches their
+// history, and the Probe of the generation job (generate_shot).
 package jobs
 
 import (
@@ -14,12 +14,13 @@ import (
 // KindGenerateShot is the job kind of a Shot generation (generation, Prompt Candidates).
 const KindGenerateShot = "generate_shot"
 
-// Register adds get_job and the Probe of KindGenerateShot.
+// Register adds get_job, list_jobs and the Probe of KindGenerateShot.
 func Register(r *mcpkit.Registrar, svc *service.Services) {
 	r.Jobs.RegisterKind(KindGenerateShot, shotProbe(svc.Generation))
 	mcpkit.Read(r, "get_job",
 		"長い操作（生成など）の状態・進捗・結果・失敗理由を返す / Status, progress, result and failure reason of a long operation. job_id は開始したツールが返したもの。",
 		func(ctx context.Context, in Input) (mcpkit.JobStatus, error) { return r.Jobs.Get(ctx, in.JobID) })
+	mcpkit.Read(r, "list_jobs", listDescription, func(ctx context.Context, in ListInput) (ListOutput, error) { return list(ctx, r.Jobs, in) })
 }
 
 // Input names the job.

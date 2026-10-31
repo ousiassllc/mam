@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/repository/jobhistory"
 	"github.com/ousiassllc/mam/backend/internal/service"
 )
 
@@ -45,8 +47,12 @@ type JobStatus struct {
 	Total      int            `json:"total,omitempty" jsonschema:"全体の数 / items in all"`
 	Result     map[string]any `json:"result,omitempty" jsonschema:"成功したときの結果（take_id など）/ result when it succeeded (e.g. take_ids)"`
 	Error      string         `json:"error,omitempty" jsonschema:"失敗の理由 / why it failed"`
+	ErrorID    string         `json:"error_id,omitempty" jsonschema:"internal の失敗の相関 ID。get_app_logs の attrs に {\"error_id\": …} で渡すと原因のログ行が見つかる / correlation id of an internal failure: find its cause with get_app_logs (attrs error_id)"`
+	ErrorCode  string         `json:"error_code,omitempty" jsonschema:"失敗のコード（error の <code>: <message> の <code>。validation・conflict・budget_exceeded・upstream・internal など）/ code of the failure"`
+	ProjectID  string         `json:"project_id,omitempty" jsonschema:"対象が属する Project の ID（無ければ省略）/ Project of the target, when it has one"`
 	StartedAt  time.Time      `json:"started_at"`
 	FinishedAt *time.Time     `json:"finished_at,omitempty" jsonschema:"ジョブキューが終了を記録した時刻 / when the job queue recorded the end"`
+	EndedAt    *time.Time     `json:"ended_at,omitempty" jsonschema:"終わった時刻（ジョブキューの記録があればそれ、無ければ mam が終了を最初に確かめた時刻）/ when it ended: the job queue's time, else when mam first saw the end"`
 }
 
 // JobInfo is what a Probe is told about the job it looks at.
@@ -65,6 +71,8 @@ type Progress struct {
 	Total   int
 	Result  map[string]any
 	Error   string
+	// ErrorID is the correlation id of an internal failure (ReportError); "" for any other state.
+	ErrorID string
 }
 
 // Probe derives the Progress of one kind of job from the state the service layer persisted (a Shot's
@@ -72,17 +80,25 @@ type Progress struct {
 // answers after the work ended. It must not change anything.
 type Probe func(ctx context.Context, job JobInfo) (Progress, error)
 
+// KindOption adjusts a job kind registered with RegisterKind.
+type KindOption func(*kind)
+
+// InMemory marks a kind whose Probe reads state that only lives in memory (a tracker of the running
+// stage, the status of an install): a restart forgets it, so a job of this kind that started before this
+// process did is answered from the history only (see Jobs).
+func InMemory() KindOption { return func(k *kind) { k.inMemory = true } }
+
+type kind struct {
+	probe    Probe
+	inMemory bool
+}
+
 // JobTable is the persisted job queue (repository.JobRepository).
 type JobTable interface {
 	Get(ctx context.Context, id string) (domain.Job, error)
 }
 
-// Registry limits: a job nobody asks about for a day is forgotten, and so is the oldest when there are too many.
-const (
-	jobTTL     = 24 * time.Hour
-	maxJobs    = 4096
-	jobIDStart = "job_"
-)
+const jobIDStart = "job_"
 
 type entry struct {
 	JobInfo
@@ -94,31 +110,57 @@ type entry struct {
 // A job is the pair (kind, target) plus, when the service can say it, the id of the row in the persisted
 // job table. Its state comes from two places: the job table says queued, running, failed (with the
 // reason) and, once finished, hands over to the Probe of the kind, which reads what the work produced.
-// The ids live in memory (a restart forgets them); the id of a job table row is accepted by get_job
-// as it is, and survives restarts.
+// The identity of every job (id, kind, target, start, queue job id) is kept in the history table
+// (JobHistory), so a job_id works after a restart; the id of a job table row is also accepted by get_job
+// as it is. Whatever Get finds (state, message, failure, end) is written back to the history, so that
+// list_jobs can search it and so that the end of a job is still known when nothing can read it any more.
 type Jobs struct {
-	table JobTable
-	now   func() time.Time
+	table    JobTable
+	history  JobHistory
+	now      func() time.Time
+	bootedAt time.Time    // when this process made the Jobs: an InMemory job older than this lost its state
+	logger   *slog.Logger // set by NewRegistrar; nil discards
 
-	mu      sync.Mutex
-	probes  map[string]Probe
-	entries map[string]*entry
-	order   []string // ids, oldest first
+	mu    sync.Mutex
+	kinds map[string]kind
+
+	recordMu sync.Mutex // serializes record (jobs_history.go)
 }
 
-// NewJobs returns Jobs over the job table. table may be nil (tests, and builds without a job queue).
-func NewJobs(table JobTable) *Jobs {
-	return &Jobs{table: table, now: time.Now, probes: map[string]Probe{}, entries: map[string]*entry{}}
+// NewJobs returns Jobs over the job table and the history. table may be nil (tests, and builds without a
+// job queue).
+func NewJobs(table JobTable, history JobHistory) *Jobs {
+	now := time.Now
+	return &Jobs{table: table, history: history, now: now, bootedAt: now().UTC().Truncate(time.Millisecond), kinds: map[string]kind{}}
+}
+
+// WithClock makes the Jobs read the time from now (tests of the history move the clock). The start of the
+// process, which separates the jobs of an InMemory kind that survive from the ones a restart ended, is the
+// time of this call.
+func (j *Jobs) WithClock(now func() time.Time) *Jobs {
+	j.now, j.bootedAt = now, now().UTC().Truncate(time.Millisecond)
+	return j
 }
 
 // RegisterKind installs the Probe of a kind of job. A tool package calls it once, from its Register.
-func (j *Jobs) RegisterKind(kind string, probe Probe) {
+func (j *Jobs) RegisterKind(name string, probe Probe, opts ...KindOption) {
 	j.mu.Lock()
 	defer j.mu.Unlock()
-	if _, dup := j.probes[kind]; dup {
-		panic(fmt.Sprintf("mcpkit: job kind %q is registered twice", kind))
+	if _, dup := j.kinds[name]; dup {
+		panic(fmt.Sprintf("mcpkit: job kind %q is registered twice", name))
 	}
-	j.probes[kind] = probe
+	k := kind{probe: probe}
+	for _, o := range opts {
+		o(&k)
+	}
+	j.kinds[name] = k
+}
+
+func (j *Jobs) kind(name string) (kind, bool) {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	k, ok := j.kinds[name]
+	return k, ok
 }
 
 // Run starts a long operation and returns its JobRef. start calls the service (e.g.
@@ -135,59 +177,44 @@ func (j *Jobs) Run(ctx context.Context, kind, target string, start func(ctx cont
 
 // RunResolved is Run for work whose target is only known once it has started (Continue makes the Shot it
 // generates): start returns the target together with the queue job id.
-func (j *Jobs) RunResolved(ctx context.Context, kind string, start func(ctx context.Context) (target, queueJobID string, err error)) (JobRef, error) {
-	j.mu.Lock()
-	_, probed := j.probes[kind]
-	j.mu.Unlock()
-	startedAt := j.now().UTC()
+func (j *Jobs) RunResolved(ctx context.Context, name string, start func(ctx context.Context) (target, queueJobID string, err error)) (JobRef, error) {
+	_, probed := j.kind(name)
+	startedAt := j.now().UTC().Truncate(time.Millisecond) // the precision the history keeps
 	target, queueID, err := start(ctx)
 	if err != nil {
 		return JobRef{}, err
 	}
 	if !probed && queueID == "" {
-		return JobRef{}, fmt.Errorf("mcpkit: job kind %q has no Probe and start returned no queue job id", kind)
+		return JobRef{}, fmt.Errorf("mcpkit: job kind %q has no Probe and start returned no queue job id", name)
 	}
 	id := queueID
 	if id == "" {
 		id = jobIDStart + domain.NewID()
 	}
-	e := &entry{JobInfo: JobInfo{ID: id, Kind: kind, Target: target, StartedAt: startedAt}, queueJobID: queueID}
-	j.remember(e)
+	// The work has started: the row is written even when the caller has gone.
+	h := jobhistory.Entry{ID: id, Kind: name, Target: target, QueueJobID: queueID, StartedAt: startedAt, State: string(JobQueued)}
+	if err := j.history.Insert(context.WithoutCancel(ctx), h); err != nil {
+		return JobRef{}, fmt.Errorf("mcpkit: record job %s: %w", id, err)
+	}
 	return JobRef{JobID: id, State: JobQueued}, nil
 }
 
-func (j *Jobs) remember(e *entry) {
-	j.mu.Lock()
-	defer j.mu.Unlock()
-	cutoff := j.now().Add(-jobTTL)
-	for len(j.order) > 0 {
-		oldest := j.entries[j.order[0]]
-		if oldest != nil && len(j.order) < maxJobs && !oldest.StartedAt.Before(cutoff) {
-			break
-		}
-		delete(j.entries, j.order[0])
-		j.order = j.order[1:]
-	}
-	if _, known := j.entries[e.ID]; !known {
-		j.order = append(j.order, e.ID)
-	}
-	j.entries[e.ID] = e
-}
-
-// Get returns the status of a job: a job_id Run returned, or the id of a job table row. It is
-// service.ErrNotFound for any other id.
+// Get returns the status of a job: a job_id Run returned (also after a restart), or the id of a job table
+// row. It is service.ErrNotFound for any other id.
 func (j *Jobs) Get(ctx context.Context, id string) (JobStatus, error) {
-	j.mu.Lock()
-	e := j.entries[id]
-	j.mu.Unlock()
-	if e == nil {
+	h, err := j.history.Get(ctx, id)
+	if errors.Is(err, repository.ErrNotFound) {
 		row, err := j.row(ctx, id)
 		if err != nil {
 			return JobStatus{}, err
 		}
-		e = &entry{JobInfo: JobInfo{ID: id, Kind: string(row.Kind), StartedAt: row.CreatedAt}, queueJobID: id}
+		st, _, err := j.live(ctx, &entry{JobInfo: JobInfo{ID: id, Kind: string(row.Kind), StartedAt: row.CreatedAt}, queueJobID: id})
+		return st, err
 	}
-	return j.status(ctx, e)
+	if err != nil {
+		return JobStatus{}, err
+	}
+	return j.statusOf(ctx, h)
 }
 
 func (j *Jobs) row(ctx context.Context, id string) (domain.Job, error) {
@@ -201,27 +228,30 @@ func (j *Jobs) row(ctx context.Context, id string) (domain.Job, error) {
 	return row, err
 }
 
-func (j *Jobs) status(ctx context.Context, e *entry) (JobStatus, error) {
+// live reads the state of the job from the Probe of its kind and the job table row. gone reports that the
+// row the job names no longer exists; the status is then what the Probe said, and the caller may know better.
+func (j *Jobs) live(ctx context.Context, e *entry) (_ JobStatus, gone bool, _ error) {
 	st := JobStatus{JobID: e.ID, Kind: e.Kind, Target: e.Target, State: JobRunning, StartedAt: e.StartedAt}
 
-	j.mu.Lock()
-	probe := j.probes[e.Kind]
-	j.mu.Unlock()
-	if probe != nil {
-		p, err := probe(ctx, e.JobInfo)
+	k, _ := j.kind(e.Kind)
+	if k.probe != nil {
+		p, err := k.probe(ctx, e.JobInfo)
 		if err != nil {
-			return JobStatus{}, err
+			return JobStatus{}, false, err
 		}
-		st.State, st.Message, st.Done, st.Total, st.Result, st.Error = p.State, p.Message, p.Done, p.Total, p.Result, p.Error
+		st.State, st.Message, st.Done, st.Total, st.Result, st.Error, st.ErrorID = p.State, p.Message, p.Done, p.Total, p.Result, p.Error, p.ErrorID
 	}
 	if e.queueJobID != "" {
 		row, err := j.row(ctx, e.queueJobID)
-		if err != nil {
-			return JobStatus{}, err
+		if errors.Is(err, service.ErrNotFound) {
+			return st, true, nil
 		}
-		applyRow(&st, row, probe != nil)
+		if err != nil {
+			return JobStatus{}, false, err
+		}
+		applyRow(&st, row, k.probe != nil)
 	}
-	return st, nil
+	return st, false, nil
 }
 
 // applyRow lets the job table override the probe where it knows better: a queued, running or failed
@@ -233,7 +263,7 @@ func applyRow(st *JobStatus, row domain.Job, probed bool) {
 	case domain.JobRunning:
 		st.State = JobRunning
 	case domain.JobFailed:
-		st.State, st.Error = JobFailed, row.Error
+		st.State, st.Error, st.ErrorID = JobFailed, row.Error, ""
 	case domain.JobSucceeded:
 		if !probed {
 			st.State = JobSucceeded
