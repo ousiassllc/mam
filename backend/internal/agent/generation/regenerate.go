@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/generation/repairspec"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
@@ -50,6 +51,11 @@ type Regeneration struct {
 	NoteRefs []domain.NoteRef
 }
 
+// repair is what the pure functions of repairspec read of the Regeneration.
+func (r Regeneration) repair() repairspec.Repair {
+	return repairspec.Repair{Issues: r.Issues, Instructions: r.Instructions, Preserve: r.Preserve, Ranges: r.Ranges, Direction: r.Direction}
+}
+
 // RegenerationStrategy plans the single Take of a repair: the strategy of the Quality Policy, with
 // the models swapped for Different Model. It fails with ErrBudgetExceeded when not even that one
 // Take fits the budget, and with ErrNoOtherModel when Different Model has nowhere to go. CostPerTake
@@ -87,12 +93,16 @@ func (o *Orchestrator) RegenerationStrategy(ctx context.Context, ref repository.
 	if primary.Model == r.SourceModel {
 		return Strategy{}, ErrNoOtherModel
 	}
-	caps, ok := modeladapter.Capabilities(primary.Model)
-	if !ok {
+	if _, ok := modeladapter.Capabilities(primary.Model); !ok {
 		return Strategy{}, ErrNoOtherModel
 	}
 	s.Primary, s.Fallback = primary, fallback
-	s.DurationSeconds = caps.SnapDuration(ref.Shot.Duration)
+	// The clip is as long as Prepare makes it: only a frame that is really read shortens a Luma clip.
+	framed, err := o.keyframeRead(ctx, ref)
+	if err != nil {
+		return Strategy{}, err
+	}
+	s.DurationSeconds = cfg.ClipSeconds(primary.Model, ref.Shot.Duration, framed)
 	s.CostPerTake = cfg.VideoCost(primary, s.DurationSeconds)
 	if affordable(budget.Remaining(), s.CostPerTake) == 0 {
 		return Strategy{}, ErrBudgetExceeded
@@ -159,11 +169,11 @@ func (o *Orchestrator) Regenerate(ctx context.Context, ref repository.ShotRef, r
 			return "", err
 		}
 	case r.Action == domain.RepairReferenceReinforce:
-		boost := boostedKinds(r)
-		if reinforced := reinforce(current, boost); len(domain.LockedChanges(locks, current, reinforced)) == 0 {
+		boost := repairspec.BoostedKinds(r.repair())
+		if reinforced := repairspec.Reinforce(current, boost); len(domain.LockedChanges(locks, current, reinforced)) == 0 {
 			spec = reinforced
 		}
-		references = reinforceReferences(references, boost)
+		references = repairspec.ReinforceReferences(references, boost)
 	}
 
 	if err := brand.CheckText(spec.BrandText()); err != nil {

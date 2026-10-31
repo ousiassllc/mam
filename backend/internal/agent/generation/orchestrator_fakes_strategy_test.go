@@ -42,6 +42,7 @@ type options struct {
 	quality     domain.QualityPolicy
 	freeBytes   func(string) (uint64, error)
 	limits      *domain.PolicyLimits
+	config      func(*modeladapter.Config) // changes the Model Adapter setting
 }
 
 // fixture is one Project with one Shot and an Orchestrator wired to fakes and a temp SQLite DB.
@@ -119,7 +120,11 @@ func newFixture(t *testing.T, opt options) *fixture {
 	if freeBytes == nil {
 		freeBytes = func(string) (uint64, error) { return 1 << 40, nil }
 	}
-	f.adapter = modeladapter.New(pricedConfig(), backends, modeladapter.WithSleep(noSleep))
+	cfg := pricedConfig()
+	if opt.config != nil {
+		opt.config(&cfg)
+	}
+	f.adapter = modeladapter.New(cfg, backends, modeladapter.WithSleep(noSleep))
 	deps := generation.Deps{
 		Generations: gens, World: repository.NewWorldRepository(db), Projects: projects, Policies: policies,
 		Assets: repository.NewAssetRepository(db), Repairs: repository.NewRepairRepository(db), Chat: f.chat, Jobs: f.jobs, LLM: f.llm,
