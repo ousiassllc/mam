@@ -18,7 +18,7 @@ func newEnv(t *testing.T, opts ...mmtest.Option) (*mcptest.Env, *mmtest.Rig) {
 	t.Helper()
 	var rig *mmtest.Rig
 	env := mcptest.New(t, func(env *mcptest.Env, r *mcpkit.Registrar) {
-		rig = mmtest.New(t, append(opts, mmtest.WithDB(env.DB))...)
+		rig = mmtest.New(t, append(opts, mmtest.WithDB(env.DB), mmtest.WithLogger(env.Logger))...)
 		env.Services.ModelManager = rig.Svc
 		jobs.Register(r, env.Services)
 		modelmgr.Register(r, env.Services)

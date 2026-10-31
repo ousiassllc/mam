@@ -21,6 +21,7 @@ app.Run ─ serve ─┬─ router（gin。画面と /api/v1。127.0.0.1:8787）
 | 待ち受け先の規則 | `mcp/bind` | アドレスの検証（§3）と `mcp.json` の読み書き |
 | ツールの土台 | `mcp/mcpkit` | `Registrar`（型付きの `Read` / `Write` / `Destroy`、エラー写像）、`Jobs`（§6）、`Files`（§7）。ツールのパッケージに依存しない |
 | ツール | `mcp/tools/<ドメイン>` | 各パッケージが `Register(r *mcpkit.Registrar, svc *service.Services)` を公開する。一覧は `mcp/toolset/all.go` の 1 か所だけ |
+| ログの読み取り | `logging`（`Reader`・`Redact`）、`mcp/tools/logs` | `get_app_logs`: `mam.log` とローテーション済みの世代を読み、絞り込み、秘密を伏せて返す（[mcp-tools.md](../api/mcp-tools.md)、[non-functional.md](../requirements/non-functional.md) §7）。ログのディレクトリは `app.startMCP` が `Kit.LogDir` に渡す |
 | トークン | `service/mcptoken`、`repository/mcptoken` | 発行・失効・検証（§4） |
 | 設定画面 | `service/mcpsettings`、`web/handler/settings/mcp`、`web/organisms/settings/mcp` | 「MCP サーバー」の区画（§9） |
 
@@ -83,7 +84,7 @@ app.Run ─ serve ─┬─ router（gin。画面と /api/v1。127.0.0.1:8787）
 
 ## 11. テスト
 
-トークン（発行でハッシュだけ保存・失効・未知/失効は拒否・最終利用の間引き）、アドレス検証（インターフェース一覧を差し込める純関数）、`Manager`（切り替え・失敗時の据え置き・起動時のフォールバック・Close）、認証と Origin（`httptest`）、ジョブ（再起動をまたぐ `get_job`・履歴の保存期間と件数の上限）、チケット（期限・単一リソース・方向・単回・トークン失効）、ツール（インメモリの MCP クライアント `mcpkit/mcptest`）、設定画面（CSRF・値の一回表示）、マイグレーション（`mcp_token`・`mcp_job_history`）の up / down。
+トークン（発行でハッシュだけ保存・失効・未知/失効は拒否・最終利用の間引き）、アドレス検証（インターフェース一覧を差し込める純関数）、`Manager`（切り替え・失敗時の据え置き・起動時のフォールバック・Close）、認証と Origin（`httptest`）、ジョブ（再起動をまたぐ `get_job`・履歴の保存期間と件数の上限）、チケット（期限・単一リソース・方向・単回・トークン失効）、ツール（インメモリの MCP クライアント `mcpkit/mcptest`）、設定画面（CSRF・値の一回表示）、ログの読み取り（絞り込み・ローテーション済みの世代と圧縮・秘密を返さない・サイズの上限。`mcptest` と実サーバー）、マイグレーション（`mcp_token`・`mcp_job_history`）の up / down。
 
 ## 改訂履歴
 
@@ -92,3 +93,4 @@ app.Run ─ serve ─┬─ router（gin。画面と /api/v1。127.0.0.1:8787）
 | 1.0 | 2026-10-24 | 新規作成。別リスナー・待ち受け先の規則・トークン・Origin 検査・ジョブ・ファイルのチケット・API キー・設定画面を定めた | Issue #830。画面の全操作を MCP（Streamable HTTP、tailnet 経由）で操作できるようにする基盤 |
 | 1.1 | 2026-10-25 | §9 を、待ち受け先のカード・トークンの表・2 つのモーダルの作りに改めた（`GET /settings/mcp/bind/edit`・`/settings/mcp/tokens/new`）。トークンの値を一度だけ出す決まりは変えていない | Issue #847 ②-6 |
 | 1.2 | 2026-10-31 | §6 に、`job_id` を返した全種別の履歴（`mcp_job_history`）・再起動をまたぐ `get_job`・保存期間 30 日と 10,000 行を足し、メモリ上・24 時間・4096 件の記述を改めた。`get_job` の状態の決め方（`job` テーブルの行と Probe）は変えない | Issue #890（親 #889）。メモリ上の `job_id` が再起動で消え、エージェントが失敗をたどれなかった |
+| 1.3 | 2026-10-31 | §2 に、ログを読む `get_app_logs`（`logging.Reader`・`mcp/tools/logs`）を足した | Issue #891（親 #889）。エージェントが `internal` エラーの原因をログからたどれるようにする |

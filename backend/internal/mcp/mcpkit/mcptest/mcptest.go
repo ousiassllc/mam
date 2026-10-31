@@ -85,6 +85,7 @@ func (env *Env) build(register func(env *Env, r *mcpkit.Registrar), deps []func(
 		Files:       files,
 		Credentials: env.Keys,
 		Logger:      env.Logger,
+		LogDir:      env.LogDir,
 		Version:     "test",
 		ListenAddr:  func() string { return "127.0.0.1:0" },
 	})

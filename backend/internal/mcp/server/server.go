@@ -28,7 +28,9 @@ type Options struct {
 	// Settings are the LLM / model assignment and update services of the settings screen (a nil field: not there).
 	Settings mcpkit.Settings
 	Logger   *slog.Logger
-	Version  string
+	// LogDir is the log directory (config.Config.LogDir) that get_app_logs reads.
+	LogDir  string
+	Version string
 	// DataDir holds mcp.json.
 	DataDir string
 	// Port is the preferred port; 0 selects DefaultPort.
@@ -69,6 +71,7 @@ func New(o Options) *Server {
 		Credentials: o.Keys,
 		Settings:    o.Settings,
 		Logger:      o.Logger,
+		LogDir:      o.LogDir,
 		Version:     o.Version,
 		ListenAddr:  func() string { return mgr.Addr() },
 	})

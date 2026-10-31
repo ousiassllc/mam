@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"image"
 	"image/png"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -14,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/credential/credentialtest"
+	"github.com/ousiassllc/mam/backend/internal/logging"
 	"github.com/ousiassllc/mam/backend/internal/mcp/server"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/jobhistory"
@@ -32,6 +34,9 @@ type fixture struct {
 	tokens   *mcptoken.Service
 	services *service.Services
 	keys     *credentialtest.Memory
+	// logDir holds the mam.log the server writes (the logger the app builds with logging.New).
+	logDir string
+	logger *slog.Logger
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -40,13 +45,17 @@ func newFixture(t *testing.T) *fixture {
 	keys := credentialtest.New()
 	services := servicetest.New(t, service.Deps{DB: db, Credentials: keys, AssetsDir: t.TempDir()})
 	tokens := mcptoken.New(repo.New(db))
+	logDir := t.TempDir()
+	logger, closer, err := logging.New(logDir, slog.LevelDebug, nil)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = closer.Close() })
 	srv := server.New(server.Options{
 		Services: services, Tokens: tokens, JobTable: repository.NewJobRepository(db), JobHistory: jobhistory.New(db),
-		Keys: keys, Version: "test", DataDir: t.TempDir(),
+		Keys: keys, Logger: logger, LogDir: logDir, Version: "test", DataDir: t.TempDir(),
 	})
 	h := httptest.NewServer(srv.Handler)
 	t.Cleanup(h.Close)
-	return &fixture{t: t, srv: srv, http: h, tokens: tokens, services: services, keys: keys}
+	return &fixture{t: t, srv: srv, http: h, tokens: tokens, services: services, keys: keys, logDir: logDir, logger: logger}
 }
 
 func (f *fixture) issue(name string) mcptoken.Issued {

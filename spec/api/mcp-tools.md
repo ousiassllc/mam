@@ -18,12 +18,19 @@
 | `get_server_info` | サーバーの名前・バージョン・待ち受けアドレス・登録ツール数。接続とトークンの確認用（サービスを使わない） | なし | `name`, `version`, `listen_addr`, `tool_count` | はい |
 | `list_projects` | Project の一覧（新しい順）。ホーム画面と同じ | なし | `projects[]`: `id`, `name`, `state`, `mode`, `confirmation_level`, `series_id`, `episode_number`, `created_at` | はい |
 | `get_job` | 長い操作の状態・進捗・結果・失敗理由 | `job_id` | `job_id`, `kind`, `target`, `state`（`queued` / `running` / `succeeded` / `failed` / `cancelled`）, `message`, `done`, `total`, `result`, `error`, `error_code`, `project_id`, `started_at`, `finished_at`, `ended_at` | はい |
+| `get_app_logs` | mam のアプリログ（`mam.log` とローテーション済みの世代。圧縮されたものも）を新しい順に返す。`internal` エラーの原因はここだけにある。API キー・トークンなどの秘密は返さない（既知の形とキーストアの値を `[redacted]` にしてから絞り込む） | すべて省略可: `level`（`debug` / `info` / `warn` / `error`。省略は `info`）, `since`・`until`（RFC 3339。`until` は含まない）, `keyword`（メッセージ・属性名・属性値。大文字小文字を区別しない）, `attrs`（属性の絞り込み。キーと値の組がすべて一致した行。`project_id`・`shot_id`・`take_id`・`job_id`・`error_id` など。グループの属性は `a.b`。10 個まで）, `limit`（既定 100、上限 500） | `entries[]`: `time`, `level`, `msg`, `attrs`; `truncated`（件数かサイズ（約 200 KB）の上限で、まだ古い行がある）, `next_until`（`truncated` のとき、続きを読む `until`） | はい |
 | `list_credentials` | 外部モデルの API キーの登録状況。キーの値は返さない | なし | `credentials[]`: `provider`, `label`, `configured`, `last_chars`（末尾 4 文字まで。短いキーは空） | はい |
 | `set_credential` | API キーを登録・置き換える（OS のセキュアストレージ。再起動不要。冪等） | `provider`, `api_key` | `provider`, `label`, `configured`, `last_chars`（キーは返さない） | いいえ（破壊的でない） |
 | `delete_credential` | API キーを削除する（未設定でもエラーにならない。冪等） | `provider` | 同上 | いいえ（破壊的） |
 | `list_upload_purposes` | アップロードできる用途と、必須項目・上限サイズ | なし | `purposes[]`: `purpose`, `description`, `max_bytes`, `params[]`（`name`, `description`, `required`） | はい |
 | `create_upload_ticket` | 用途に結び付いた、15 分・1 回限りのアップロード URL を発行する | `purpose`, `params` | `url`, `expires_at`, `purpose`, `method`（`POST`）, `content_type`（`multipart/form-data`）, `file_field`（`file`）, `headers`, `max_bytes`, `curl_example` | いいえ（破壊的でない） |
 | `get_asset_download_url` | Project にアップロードされた画像・動画（アセット）のダウンロード URL（15 分） | `project_id`, `asset_id` | `url`, `expires_at`, `file_name` | はい |
+
+### `get_app_logs` の補足
+
+- 不正な `level`・時刻・`limit`・`attrs` は `validation`。ログのディレクトリが無いビルドは `unavailable`。
+- 1 行の属性は文字列が 2,000 文字で切られる。パースできない行は読み飛ばす。ログを書くときの属性名がそのままキーになる（`project_id`・`shot_id`・`job_id`・`tool`・`err` など）。
+- 秘密の扱い: ログへは書かない（キーストア・トークンのサービス・アダプターは値をロガーに渡さない）。読み取りでは、既知の形と、キーストアにある API キー・Hugging Face トークンの値を伏せる。名前が `token`・`secret`・`password`・`api_key`・`authorization` などの文字列の属性は値を丸ごと `[redacted]` にする。伏せたあとの文字列で絞り込むので、`keyword` や `attrs` で秘密を探り当てることはできない。
 
 ### プロバイダー ID（`provider`）
 
@@ -84,3 +91,4 @@ MCP ツールの対象外: MCP サーバー自身の設定（待ち受け先の�
 | 1.5 | 2026-10-25 | 「ドメイン別」に [mcp-tools-workflows.md](mcp-tools-workflows.md)（ComfyUI ワークフロー）を足した | Issue #834。保存したワークフローの一覧・取り込み・実行・Shot への固定を MCP ツールにする（ノード画面は対象外） |
 | 1.6 | 2026-10-26 | 「ドメイン別」に [mcp-tools-generation-test.md](mcp-tools-generation-test.md)（生成テスト）を足し、モデルマネージャーの試し生成のツールをそこへ統合した | Issue #835。モデル × プロンプトの比較生成・履歴・取り込みを MCP ツールにする（#830 の方針） |
 | 1.7 | 2026-10-31 | `get_job` の出力に `error_code`・`project_id`・`ended_at` を足し、`job_id` が履歴（30 日・10,000 行）に残って再起動後も引けることを書いた。状態の決め方は変えない | Issue #890（親 #889） |
+| 1.8 | 2026-10-31 | 基盤のツールに `get_app_logs`（アプリログの読み取り。レベル・時刻・件数・キーワード・属性で絞り込み、秘密は返さない）を足した | Issue #891（親 #889） |

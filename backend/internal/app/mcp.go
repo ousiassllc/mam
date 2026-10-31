@@ -36,6 +36,7 @@ func startMCP(cfg config.Config, services *service.Services, settings *settingsr
 		JobHistory: history,
 		Keys:       credential.NewKeyring(),
 		Logger:     logger,
+		LogDir:     cfg.LogDir(),
 		Version:    version.Version,
 		DataDir:    cfg.DataDir,
 		Port:       cfg.MCPPort,
