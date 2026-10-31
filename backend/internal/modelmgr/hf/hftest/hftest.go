@@ -14,6 +14,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 )
 
@@ -57,8 +58,8 @@ type Server struct {
 	*httptest.Server
 	// Token is the bearer token that is accepted (default "hf_testtoken").
 	Token string
-	// Granted is whether the token has access to the gated repositories.
-	Granted bool
+	// Granted is whether the token has access to the gated repositories (atomic: a test flips it while the handlers read it).
+	Granted atomic.Bool
 	// PageSize is how many tree entries a page holds (default 2).
 	PageSize int
 

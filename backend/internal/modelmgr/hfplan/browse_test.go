@@ -278,7 +278,7 @@ func TestPin_AGatedRepositoryStopsBeforeAnyDownload(t *testing.T) {
 	assert.Contains(t, rf.Message, "アクセスを申請")
 	assert.Contains(t, rf.Message, srv.URL+"/o/m")
 
-	srv.Granted = true
+	srv.Granted.Store(true)
 	p, err := pin(t, srv, srv.Token, "pony-fp16.safetensors", hfplan.PinOptions{})
 	require.NoError(t, err)
 	assert.True(t, p.Gated)
