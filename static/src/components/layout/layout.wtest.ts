@@ -3,7 +3,7 @@ import { setViewport } from '@web/test-runner-commands';
 
 // What the real screens put on the page, drawn with the real Tailwind CSS (web-test-runner.config.mjs builds it from
 // src/css/app.css) in a phone-width window: the page must not scroll sideways. A wide thing scrolls inside its own box
-// or wraps; it never pushes the page wider (#881: the form of "Hugging Face から導入"). The markup is what the Go
+// or wraps; it never pushes the page wider (#881: the form of "Hugging Face から導入"; #882: the table of /settings/llm). The markup is what the Go
 // components render (backend/internal/web/layout_fixture_test.go keeps it current), so this checks the screens' own
 // markup.
 const TESTDATA = '/src/components/testdata/';
@@ -52,6 +52,15 @@ describe('a phone-width window (375 px)', () => {
     expect(field.getBoundingClientRect().right, 'the URL field is cut by the edge of the page').to.be.at.most(
       page().clientWidth,
     );
+    expect(overflowOf(), 'the page scrolls sideways').to.be.at.most(0);
+  });
+
+  it('scrolls the table of /settings/llm inside its own box instead of the page', async () => {
+    await show('layout-llm-section.html');
+
+    const box = host.querySelector<HTMLElement>('#llm-table')!.closest<HTMLElement>('.overflow-x-auto')!;
+    expect(page().clientWidth).to.equal(375);
+    expect(box.scrollWidth, 'the table fits: the test no longer shows a wide table').to.be.greaterThan(box.clientWidth);
     expect(overflowOf(), 'the page scrolls sideways').to.be.at.most(0);
   });
 });

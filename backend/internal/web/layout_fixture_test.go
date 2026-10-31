@@ -12,17 +12,26 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/llm"
 )
 
 // updateFixturesEnv rewrites the layout fixtures instead of comparing with them.
 const updateFixturesEnv = "MAM_UPDATE_FIXTURES"
 
 // The wtest static/src/components/layout/layout.wtest.ts opens these files in a 375 px wide window with the real Tailwind
-// CSS and checks that the page does not scroll sideways (#881). The files are what the screens' components render, so
+// CSS and checks that the page does not scroll sideways (#881, #882). The files are what the screens' components render, so
 // the test measures the real markup, not a copy of it: when a component changes, this test fails until
 // `MAM_UPDATE_FIXTURES=1 go test ./backend/internal/web -run TestLayoutFixtures` writes the new markup.
 func TestLayoutFixtures_AreWhatTheComponentsRender(t *testing.T) {
+	target := llm.Target{Provider: "anthropic", Model: "claude-sonnet-4-5-20250929"}
 	fixtures := map[string]templ.Component{
+		"layout-llm-section.html": llm.Section(llm.Data{
+			Providers: []string{"anthropic", "openai"},
+			Rows: []llm.Row{
+				{Agent: "producer", Label: "Producer", Purpose: "企画の取りまとめ", Primary: target, Fallback: target, DefaultPrimary: target, DefaultFallback: target},
+				{Agent: "director", Label: "Director", Purpose: "カットの演出", Primary: target, Fallback: llm.Target{Provider: "openai", Model: "gpt-5"}, DefaultPrimary: target, DefaultFallback: target, Restart: true},
+			},
+		}),
 		"layout-hf-import.html": modelmgr.HFImportSection(modelmgr.HFImport{Kind: "text-to-image"}),
 	}
 
