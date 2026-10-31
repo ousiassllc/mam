@@ -16,6 +16,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/credential/credentialtest"
 	"github.com/ousiassllc/mam/backend/internal/mcp/server"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/repository/jobhistory"
 	repo "github.com/ousiassllc/mam/backend/internal/repository/mcptoken"
 	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 	"github.com/ousiassllc/mam/backend/internal/service"
@@ -40,7 +41,7 @@ func newFixture(t *testing.T) *fixture {
 	services := servicetest.New(t, service.Deps{DB: db, Credentials: keys, AssetsDir: t.TempDir()})
 	tokens := mcptoken.New(repo.New(db))
 	srv := server.New(server.Options{
-		Services: services, Tokens: tokens, JobTable: repository.NewJobRepository(db),
+		Services: services, Tokens: tokens, JobTable: repository.NewJobRepository(db), JobHistory: jobhistory.New(db),
 		Keys: keys, Version: "test", DataDir: t.TempDir(),
 	})
 	h := httptest.NewServer(srv.Handler)

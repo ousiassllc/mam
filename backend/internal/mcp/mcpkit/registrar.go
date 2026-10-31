@@ -69,6 +69,9 @@ func NewRegistrar(server *mcp.Server, kit Kit) *Registrar {
 	if kit.Logger == nil {
 		kit.Logger = slog.New(slog.DiscardHandler)
 	}
+	if kit.Jobs != nil && kit.Jobs.logger == nil {
+		kit.Jobs.logger = kit.Logger
+	}
 	if kit.ListenAddr == nil {
 		kit.ListenAddr = func() string { return "" }
 	}

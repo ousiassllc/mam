@@ -11,7 +11,7 @@
 | Rough Cut・Final QC・追加 Shot の要求・タイムライン保存 | `create_rough_cut`・`run_final_qc`・`request_additional_shot`・`save_edit_timeline` | 数秒で終わるのでその場で結果を返す（`get_editor_view` と同じ形） |
 | Editor Judge・音声生成・書き出し | `judge_edit_timeline`・`generate_audio`・`export_video` | すぐ `job_id`（`state: queued`）を返し、`get_job` で状態・結果を取る（種別 `judge_edit_timeline`・`generate_audio`・`export_video`。`target` は版の ID か Project の ID） |
 
-`job_id` のツールは、ステージをバックグラウンドで走らせる。受け付けの検査（状態が違う・別のステージが実行中・オプションが不正・機能が無効・版が見つからない）は画面と同じエラーとして**呼び出しの結果**で返し、`job_id` は作られない（開始後 2 秒以内に失敗したものが対象）。それより後の失敗は `get_job` の `state: failed` と `error`（`<code>: <message>`）に出る。`get_job` の `result` はステージごとの要約（下表）。`job_id` は `mcpkit.Jobs` のメモリ上のもの（24 時間・4096 件。再起動で忘れる）で、ステージの結果の記録もそれと同じ寿命で持つ。ステージの途中で mam を止めると、画面のリクエストが途中で切れるのと同じく、そのステージは完了しない。
+`job_id` のツールは、ステージをバックグラウンドで走らせる。受け付けの検査（状態が違う・別のステージが実行中・オプションが不正・機能が無効・版が見つからない）は画面と同じエラーとして**呼び出しの結果**で返し、`job_id` は作られない（開始後 2 秒以内に失敗したものが対象）。それより後の失敗は `get_job` の `state: failed` と `error`（`<code>: <message>`）に出る。`get_job` の `result` はステージごとの要約（下表）。`job_id` は `job_<UUIDv7>` で、ジョブの履歴（`mcp_job_history`。30 日・10,000 行。[mcp.md](../architecture/mcp.md) §6）に残るので、mam を再起動したあとも `get_job` で引ける（ステージの終わりは終わった時点で履歴に書く）。ステージの途中で mam を止めると、画面のリクエストが途中で切れるのと同じく、そのステージは完了しない。止まったときに履歴に終わりが無かったジョブは、再起動後の `get_job` で `failed`（「mam が再起動したため、この操作の結果を確かめられません」）になる。
 
 同じ Project のステージは 1 つずつしか走らない: 実行中に別のステージを呼ぶと `conflict`（別の編集処理が実行中）。
 

@@ -11,6 +11,8 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/repository/jobhistory"
+	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 	"github.com/ousiassllc/mam/backend/internal/service"
 )
 
@@ -42,16 +44,20 @@ func (w *shotWork) probe(_ context.Context, job JobInfo) (Progress, error) {
 	return p, nil
 }
 
-func newJobs(table JobTable) (*Jobs, *time.Time) {
+// newJobs makes Jobs over a temporary database on a clock the test moves. The history reads the same clock,
+// so that its retention is not a function of the day the test runs.
+func newJobs(t *testing.T, table JobTable) (*Jobs, *time.Time) {
+	t.Helper()
 	now := time.Date(2026, 10, 24, 12, 0, 0, 0, time.UTC)
-	j := NewJobs(table)
-	j.now = func() time.Time { return now }
+	clock := func() time.Time { return now }
+	j := NewJobs(table, jobhistory.New(testdb.Open(t)).WithClock(clock))
+	j.now, j.bootedAt = clock, now
 	return j, &now
 }
 
 func TestJobs_FollowTheWorkFromRunningToSucceeded(t *testing.T) {
 	ctx := context.Background()
-	j, clock := newJobs(nil)
+	j, clock := newJobs(t, nil)
 	work := &shotWork{state: "running"}
 	j.RegisterKind("generate_shot", work.probe)
 
@@ -92,7 +98,7 @@ func TestJobs_FollowTheWorkFromRunningToSucceeded(t *testing.T) {
 func TestJobs_TheQueueRowDecidesQueuedRunningAndFailureReason(t *testing.T) {
 	ctx := context.Background()
 	table := fakeTable{"q1": {ID: "q1", Kind: domain.JobGenerate, Status: domain.JobQueued}}
-	j, _ := newJobs(table)
+	j, _ := newJobs(t, table)
 	work := &shotWork{state: "done", takes: []string{"t"}}
 	j.RegisterKind("generate_shot", work.probe)
 	ref, err := j.Run(ctx, "generate_shot", "shot-1", func(context.Context) (string, error) { return "q1", nil })
@@ -129,7 +135,7 @@ func TestJobs_TheQueueRowDecidesQueuedRunningAndFailureReason(t *testing.T) {
 func TestJobs_AQueueRowIdWorksWithoutTheRegistry(t *testing.T) {
 	ctx := context.Background()
 	started := time.Date(2026, 10, 24, 11, 0, 0, 0, time.UTC)
-	j, _ := newJobs(fakeTable{"q9": {ID: "q9", Kind: domain.JobPlan, Status: domain.JobRunning, CreatedAt: started}})
+	j, _ := newJobs(t, fakeTable{"q9": {ID: "q9", Kind: domain.JobPlan, Status: domain.JobRunning, CreatedAt: started}})
 
 	st, err := j.Get(ctx, "q9")
 	require.NoError(t, err)
@@ -138,55 +144,33 @@ func TestJobs_AQueueRowIdWorksWithoutTheRegistry(t *testing.T) {
 
 	_, err = j.Get(ctx, "job_unknown")
 	assert.ErrorIs(t, err, service.ErrNotFound)
-	_, err = NewJobs(nil).Get(ctx, "q9")
+	nj, _ := newJobs(t, nil)
+	_, err = nj.Get(ctx, "q9")
 	assert.ErrorIs(t, err, service.ErrNotFound, "without a job table only registered ids are known")
 }
 
 func TestJobs_RunRefusesWhatCannotBeFollowed(t *testing.T) {
 	ctx := context.Background()
-	j, _ := newJobs(nil)
+	j, _ := newJobs(t, nil)
 
 	boom := errors.New("busy")
 	_, err := j.Run(ctx, "k", "x", func(context.Context) (string, error) { return "", boom })
 	assert.ErrorIs(t, err, boom, "the service's error comes back as it is")
-	assert.Empty(t, j.entries, "a start that failed leaves no job")
+	open, err := j.history.Open(ctx, 10)
+	require.NoError(t, err)
+	assert.Empty(t, open, "a start that failed leaves no job")
 
 	_, err = j.Run(ctx, "unprobed", "x", func(context.Context) (string, error) { return "", nil })
 	assert.Error(t, err, "no probe and no queue id: there would be nothing to read the state from")
-	assert.Empty(t, j.entries)
+	open, err = j.history.Open(ctx, 10)
+	require.NoError(t, err)
+	assert.Empty(t, open)
 	assert.Panics(t, func() { j.RegisterKind("k", nil); j.RegisterKind("k", nil) })
-}
-
-func TestJobs_ForgetsOldJobsAndKeepsTheNewest(t *testing.T) {
-	ctx := context.Background()
-	j, clock := newJobs(nil)
-	j.RegisterKind("k", (&shotWork{state: "running"}).probe)
-	start := func() string {
-		ref, err := j.Run(ctx, "k", "t", func(context.Context) (string, error) { return "", nil })
-		require.NoError(t, err)
-		return ref.JobID
-	}
-
-	old := start()
-	*clock = clock.Add(jobTTL + time.Minute)
-	fresh := start()
-	_, err := j.Get(ctx, old)
-	assert.ErrorIs(t, err, service.ErrNotFound, "a day-old job is forgotten")
-	_, err = j.Get(ctx, fresh)
-	assert.NoError(t, err)
-
-	first := fresh
-	for range maxJobs {
-		start()
-	}
-	_, err = j.Get(ctx, first)
-	assert.ErrorIs(t, err, service.ErrNotFound, "the oldest goes when the registry is full")
-	assert.LessOrEqual(t, len(j.entries), maxJobs)
 }
 
 func TestJobs_RunResolvedTakesTheTargetFromTheStartedWork(t *testing.T) {
 	ctx := context.Background()
-	j, _ := newJobs(nil)
+	j, _ := newJobs(t, nil)
 	work := &shotWork{state: "running"}
 	j.RegisterKind("generate_shot", work.probe)
 

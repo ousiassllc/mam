@@ -88,14 +88,14 @@ func generate(r *mcpkit.Registrar, svc *service.Services) mcpkit.Handler[Generat
 ```go
 func (j *Jobs) Run(ctx context.Context, kind, target string,
 	start func(ctx context.Context) (queueJobID string, err error)) (JobRef, error)
-func (j *Jobs) RegisterKind(kind string, probe Probe)           // Probe = func(ctx, JobInfo) (Progress, error)
+func (j *Jobs) RegisterKind(kind string, probe Probe, opts ...KindOption) // Probe = func(ctx, JobInfo) (Progress, error)
 func (j *Jobs) Get(ctx context.Context, id string) (JobStatus, error) // get_job が呼ぶ
 type JobRef struct { JobID string; State JobState }             // 出力に埋め込む
 type Progress struct { State JobState; Message string; Done, Total int; Result map[string]any; Error string }
 ```
 
 - `get_job` は基盤にある（足さない）。クライアントは返された `job_id` を渡すだけ。
-- `queueJobID` を返すと `job_id` がジョブキューの行の ID になり、`queued` / `running` / `failed`（理由つき）は行から取り、再起動後も使える。返さないと `job_<UUIDv7>` で、メモリ上（24 時間・4096 件）。Probe のない種別は `queueJobID` が必須。サービスがジョブを返さないなら、`service` に ID を返すメソッドを足してよい（`orchestrator.Start` は `domain.Job` を返す）。
+- `queueJobID` を返すと `job_id` がジョブキューの行の ID になり、`queued` / `running` / `failed`（理由つき）は行から取り、再起動後も使える。返さないと `job_<UUIDv7>`。どちらもジョブの履歴（`mcp_job_history`。30 日・10,000 行）に残るので、再起動後も `get_job` で引ける。Probe が永続化済みの状態ではなくメモリ上の記録だけを読む種別は `r.Jobs.RegisterKind(kind, probe, mcpkit.InMemory())` で登録する（再起動後は履歴の記録で答える。終わりを履歴に残すには `Jobs.Observe` を呼ぶ）。Probe のない種別は `queueJobID` が必須。サービスがジョブを返さないなら、`service` に ID を返すメソッドを足してよい（`orchestrator.Start` は `domain.Job` を返す）。
 - `generate_shot`（Shot の生成・Candidates）の Probe は `tools/jobs` にある。Judge・Repair・書き出しなどは、そのツールのパッケージが種別を足す。状態は Shot / Take / Project の永続状態から導く（`StartedAt` より後に作られたものを結果にする）。
 
 ## ファイルを渡す・受け取る

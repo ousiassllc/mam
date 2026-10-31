@@ -100,6 +100,7 @@ var unbundledTables = map[string]string{ // #nosec G101 -- table names with the 
 	"comfy_workflow":            "ComfyUI workflows are global, shared by every Project (spec/architecture/comfy/comfy-workflows.md): a bundle does not embed them, and an import warns about the ones its Takes and Locks name that this instance lacks (MissingWorkflows)",
 	"comfy_workflow_version":    "the version history of a ComfyUI workflow (see comfy_workflow)",
 	"mcp_token":                 "the MCP server's bearer tokens (spec/architecture/mcp.md): credentials of this instance, never to leave it in a bundle",
+	"mcp_job_history":           "the history of the long operations the MCP server started (spec/architecture/mcp.md §6): operational records of this instance, never to leave it in a bundle",
 }
 
 // Repository reads the Project Data Model of a Project out of the database and writes it into

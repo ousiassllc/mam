@@ -24,6 +24,12 @@ const (
 	CodeInternal    = "internal"        // anything else; the cause is in the mam log, not in the message
 )
 
+// errorCodes lists every code, to read the code back from the text of an error.
+var errorCodes = []string{
+	CodeValidation, CodeNotFound, CodeConflict, CodeLocked, CodeForbidden, CodeBudget, CodeRateLimited,
+	CodeUnavailable, CodeUpstream, CodeInternal,
+}
+
 // ToolError is the error of a tool call as the agent sees it.
 type ToolError struct {
 	Code    string

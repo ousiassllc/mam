@@ -51,9 +51,12 @@ app.Run ─ serve ─┬─ router（gin。画面と /api/v1。127.0.0.1:8787）
 
 生成・Judge・Repair などはすぐ **`job_id`** を返し（`mcpkit.JobRef`）、`get_job` で状態（`queued` / `running` / `succeeded` / `failed` / `cancelled`）・進捗（`message`・`done` / `total`）・結果（`result`。例: `take_ids`）・失敗の理由（`error`）を取る。何度でも問い合わせられ、終わったあとも同じ答えを返す。
 
-- `job_id` は `(kind, target)` の組（例: `generate_shot`, `shot_id`）に対応する。サービスが永続ジョブ（`job` テーブル）の ID を返せるときはそれを `job_id` にする（再起動後も使える）。返せないときは `job_<UUIDv7>` を割り当てる（メモリ上。24 時間と 4096 件まで。再起動で忘れる）。
+- `job_id` は `(kind, target)` の組（例: `generate_shot`, `shot_id`）に対応する。サービスが永続ジョブ（`job` テーブル）の ID を返せるときはそれを `job_id` にする（再起動後も使える）。返せないときは `job_<UUIDv7>` を割り当てる。どちらも履歴（下の「履歴」）に残るので、再起動後も `get_job` で引ける。
 - 状態は 2 か所から決める。`job` テーブルの行（`queued` / `running` / `failed` とその理由）と、種別ごとの **Probe**（永続化済みの状態、たとえば Shot の状態と開始後に作られた Take から進捗と結果を導く。副作用なし）。行が `queued` / `running` / `failed` なら行が勝ち、`succeeded` のときは Probe が見ている仕事が続いていれば Probe に従う。
-- 種別 `generate_shot`（Shot の生成・Prompt Candidate Generation）の Probe は基盤が持つ: Shot が GENERATING / JUDGING / REPAIRING の間は `running`、止まって開始後の Take があれば `succeeded`（`take_ids`）、なければ `failed`。他の種別は各ツールのパッケージが `Jobs.RegisterKind` で足す。
+- 種別 `generate_shot`（Shot の生成・Prompt Candidate Generation）の Probe は基盤が持つ: Shot が GENERATING / JUDGING / REPAIRING の間は `running`、止まって開始後の Take があれば `succeeded`（`take_ids`）、なければ `failed`。他の種別は各ツールのパッケージが `Jobs.RegisterKind` で足す。メモリ上の記録だけを読む種別（編集ステージの追跡、Codex エンジンの導入の状態）は `mcpkit.InMemory()` を付けて登録する。
+- **履歴**: `job_id` を返した操作は、すべて `mcp_job_history` テーブルに 1 行残る（ER は [er-mcp.md](er-mcp.md)）。`Jobs.Run` / `RunResolved` が開始時に行を書き（`job_id`・種別・対象・対象の Project（対象の ID が Project・Shot・Take・Edit Timeline のときに引く。無ければ空）・`job` テーブルの行 ID・開始時刻・`queued`）、`get_job` が状態を取るたびに、見つけた状態（`state`・`message`・`done` / `total`・失敗の理由とコード・`finished_at`・終わった時刻 `ended_at`）を行へ書き戻す。`ended_at` は `job` テーブルが終了を記録していればその時刻（`finished_at`）、なければ mam が終了を最初に確かめた時刻。**状態の決め方は変えない**: `get_job` は今までどおり、行（`job` テーブル）と Probe から毎回決める。履歴が足すのは、メモリが持っていた `(job_id, kind, target, started_at, queue_job_id)` と、記録された終わりだけ。
+- **再起動をまたぐ `get_job`**: メモリ上の `job_id` も履歴から `(kind, target, started_at, queue_job_id)` を戻して、Probe と行から答える。Probe が永続化済みの状態を読む種別（Shot・Take・Branch・ワークフローの実行など）は、再起動の前後で同じ答えになる。Probe が**メモリだけ**を読む種別（`InMemory`）で、この mam の起動より前に始まった操作は、Probe を呼ばず履歴の記録で答える: 終わりが記録されていればその状態・結果・失敗（例: Editor Judge の `verdict`）を返し、終わりが記録されていなければ `failed`（「mam が再起動したため、この操作の結果を確かめられません」）にして、その終わりを記録する。編集ステージは終わった時点で履歴に終わりを書くので（`Jobs.Observe`）、`get_job` を呼ばないまま mam を止めても終わりは残る。履歴にも `job` の行にもない ID は `not_found`。
+- **保存期間・件数**: **30 日**（ログの保持 `logging.maxAgeDays` と揃える）と **10,000 行**。開始時刻（`started_at`）が 30 日より古い行と、10,000 行を超えたぶん（`started_at` の古い順）を、行の追加と同じトランザクションと mam の起動時に消す（`jobhistory.Retention` / `MaxRows`）。以前のメモリ上の記録（24 時間・4096 件）の約 2.4 倍の件数で、1 日数百回の操作の 30 日ぶんを収められる。1 行 0.5 KB ほどなので、テーブルは 5 MB 前後に収まる。`started_at` に索引があり、一覧も削除も安い。
 
 ## 7. ファイル
 
@@ -80,7 +83,7 @@ app.Run ─ serve ─┬─ router（gin。画面と /api/v1。127.0.0.1:8787）
 
 ## 11. テスト
 
-トークン（発行でハッシュだけ保存・失効・未知/失効は拒否・最終利用の間引き）、アドレス検証（インターフェース一覧を差し込める純関数）、`Manager`（切り替え・失敗時の据え置き・起動時のフォールバック・Close）、認証と Origin（`httptest`）、ジョブ、チケット（期限・単一リソース・方向・単回・トークン失効）、ツール（インメモリの MCP クライアント `mcpkit/mcptest`）、設定画面（CSRF・値の一回表示）、マイグレーションの up / down。
+トークン（発行でハッシュだけ保存・失効・未知/失効は拒否・最終利用の間引き）、アドレス検証（インターフェース一覧を差し込める純関数）、`Manager`（切り替え・失敗時の据え置き・起動時のフォールバック・Close）、認証と Origin（`httptest`）、ジョブ（再起動をまたぐ `get_job`・履歴の保存期間と件数の上限）、チケット（期限・単一リソース・方向・単回・トークン失効）、ツール（インメモリの MCP クライアント `mcpkit/mcptest`）、設定画面（CSRF・値の一回表示）、マイグレーション（`mcp_token`・`mcp_job_history`）の up / down。
 
 ## 改訂履歴
 
@@ -88,3 +91,4 @@ app.Run ─ serve ─┬─ router（gin。画面と /api/v1。127.0.0.1:8787）
 |----|------|---------|---------|
 | 1.0 | 2026-10-24 | 新規作成。別リスナー・待ち受け先の規則・トークン・Origin 検査・ジョブ・ファイルのチケット・API キー・設定画面を定めた | Issue #830。画面の全操作を MCP（Streamable HTTP、tailnet 経由）で操作できるようにする基盤 |
 | 1.1 | 2026-10-25 | §9 を、待ち受け先のカード・トークンの表・2 つのモーダルの作りに改めた（`GET /settings/mcp/bind/edit`・`/settings/mcp/tokens/new`）。トークンの値を一度だけ出す決まりは変えていない | Issue #847 ②-6 |
+| 1.2 | 2026-10-31 | §6 に、`job_id` を返した全種別の履歴（`mcp_job_history`）・再起動をまたぐ `get_job`・保存期間 30 日と 10,000 行を足し、メモリ上・24 時間・4096 件の記述を改めた。`get_job` の状態の決め方（`job` テーブルの行と Probe）は変えない | Issue #890（親 #889）。メモリ上の `job_id` が再起動で消え、エージェントが失敗をたどれなかった |

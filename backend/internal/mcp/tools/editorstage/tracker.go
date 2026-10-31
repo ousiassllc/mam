@@ -12,14 +12,15 @@ import (
 // The editing stages (Editor Judge, audio, export) are synchronous in the service layer: the screen
 // waits for the request. A tool must answer at once, so a stage runs in the background and the tracker
 // holds what it ends with. There is no row in the job table for these stages, so their job_ids are the
-// in-memory ones of mcpkit.Jobs, and the tracker lives exactly as long as they do (see maxRuns).
+// job_<UUIDv7> ones of mcpkit.Jobs. The tracker only lives as long as the process: the end of a stage is
+// also recorded in the job history (mcpkit.Jobs.Observe), which answers get_job after a restart.
 
 // earlyFailureWindow is how long a tool waits for a stage that fails at once: the checks that refuse a
 // request (wrong state, stage busy, bad option, feature off) run before the long work, so the caller gets
 // the error of the screen instead of a job that fails a moment later.
 var earlyFailureWindow = 2 * time.Second
 
-// maxRuns is the number of runs the tracker remembers: mcpkit.Jobs forgets the oldest job at 4096.
+// maxRuns is the number of runs the tracker remembers; an older job is answered from the job history.
 const maxRuns = 4096
 
 // outcome is what a stage ended with.
@@ -61,6 +62,11 @@ func (t *tracker) start(ctx context.Context, kind, target string, work func(ctx 
 		return mcpkit.JobRef{}, err
 	}
 	t.remember(ref.JobID, o)
+	// Nobody may ask about the stage before mam stops: the history gets its end now.
+	go func() {
+		<-o.done
+		t.r.Jobs.Observe(context.WithoutCancel(ctx), ref.JobID)
+	}()
 	return ref, nil
 }
 

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"log/slog"
 
 	"github.com/ousiassllc/mam/backend/internal/config"
@@ -8,6 +9,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
 	"github.com/ousiassllc/mam/backend/internal/mcp/server"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/repository/jobhistory"
 	mcptokenrepo "github.com/ousiassllc/mam/backend/internal/repository/mcptoken"
 	"github.com/ousiassllc/mam/backend/internal/router/settingsroutes"
 	"github.com/ousiassllc/mam/backend/internal/service"
@@ -22,16 +24,21 @@ import (
 // screen says so. stop closes the listener; run it before the services are closed.
 func startMCP(cfg config.Config, services *service.Services, settings *settingsroutes.Services, db *repository.DB, logger *slog.Logger) (_ *mcpsettings.Service, stop func()) {
 	tokens := mcptoken.New(mcptokenrepo.New(db))
+	history := jobhistory.New(db)
+	if err := history.Prune(context.Background()); err != nil {
+		logger.Error("prune the mcp job history failed", "err", err)
+	}
 	srv := server.New(server.Options{
-		Services: services,
-		Settings: mcpkit.Settings{LLM: settings.LLM, Models: settings.Models, Update: settings.Update, ChatGPT: settings.ChatGPT},
-		Tokens:   tokens,
-		JobTable: repository.NewJobRepository(db),
-		Keys:     credential.NewKeyring(),
-		Logger:   logger,
-		Version:  version.Version,
-		DataDir:  cfg.DataDir,
-		Port:     cfg.MCPPort,
+		Services:   services,
+		Settings:   mcpkit.Settings{LLM: settings.LLM, Models: settings.Models, Update: settings.Update, ChatGPT: settings.ChatGPT},
+		Tokens:     tokens,
+		JobTable:   repository.NewJobRepository(db),
+		JobHistory: history,
+		Keys:       credential.NewKeyring(),
+		Logger:     logger,
+		Version:    version.Version,
+		DataDir:    cfg.DataDir,
+		Port:       cfg.MCPPort,
 	})
 	if err := srv.Manager.Start(); err != nil {
 		logger.Error("mcp server is off", "err", err)

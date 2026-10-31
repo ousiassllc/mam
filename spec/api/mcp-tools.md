@@ -9,7 +9,7 @@
 - 説明（description）は日本語を主に、英語でも意味が通る短い形。
 - アノテーション: 読み取りだけのツールは `readOnlyHint`、変更するツールは `destructiveHint: false`、削除・上書きするツールは `destructiveHint: true`。どれも `openWorldHint: false`（MCP の既定は `true`）。
 - 失敗は MCP の**ツールエラー**（`isError: true`。プロトコルエラーではない）で、テキストは `<code>: <message>`。`code` は `validation`（422 相当。メッセージは画面と同じ）・`not_found`・`conflict`・`locked`・`forbidden`（Brand / Safety の LOCK 違反）・`budget_exceeded`・`rate_limited`・`unavailable`・`upstream`・`internal`（原因はログだけで、メッセージには出さない）。
-- 長い操作は `job_id` を返す（`job_id` と `state` を持つ）。進捗と結果は `get_job` で取る。ファイルは URL（`*_url`・`create_upload_ticket`）で受け渡す。
+- 長い操作は `job_id` を返す（`job_id` と `state` を持つ）。進捗と結果は `get_job` で取る。`job_id` は履歴（30 日・10,000 行）に残るので、mam を再起動したあとも引ける（[mcp.md](../architecture/mcp.md) §6）。`get_job` の `error_code` は `error` の `<code>: <message>` の `<code>`（`job` テーブルの理由のように `<code>` が無いときは省略）、`project_id` は対象が属する Project（なければ省略）、`ended_at` は終わった時刻（`job` テーブルの記録があればそれ、なければ mam が終了を最初に確かめた時刻）。ファイルは URL（`*_url`・`create_upload_ticket`）で受け渡す。
 
 ## 基盤のツール
 
@@ -17,7 +17,7 @@
 |--------|------|------|------|----------|
 | `get_server_info` | サーバーの名前・バージョン・待ち受けアドレス・登録ツール数。接続とトークンの確認用（サービスを使わない） | なし | `name`, `version`, `listen_addr`, `tool_count` | はい |
 | `list_projects` | Project の一覧（新しい順）。ホーム画面と同じ | なし | `projects[]`: `id`, `name`, `state`, `mode`, `confirmation_level`, `series_id`, `episode_number`, `created_at` | はい |
-| `get_job` | 長い操作の状態・進捗・結果・失敗理由 | `job_id` | `job_id`, `kind`, `target`, `state`（`queued` / `running` / `succeeded` / `failed` / `cancelled`）, `message`, `done`, `total`, `result`, `error`, `started_at`, `finished_at` | はい |
+| `get_job` | 長い操作の状態・進捗・結果・失敗理由 | `job_id` | `job_id`, `kind`, `target`, `state`（`queued` / `running` / `succeeded` / `failed` / `cancelled`）, `message`, `done`, `total`, `result`, `error`, `error_code`, `project_id`, `started_at`, `finished_at`, `ended_at` | はい |
 | `list_credentials` | 外部モデルの API キーの登録状況。キーの値は返さない | なし | `credentials[]`: `provider`, `label`, `configured`, `last_chars`（末尾 4 文字まで。短いキーは空） | はい |
 | `set_credential` | API キーを登録・置き換える（OS のセキュアストレージ。再起動不要。冪等） | `provider`, `api_key` | `provider`, `label`, `configured`, `last_chars`（キーは返さない） | いいえ（破壊的でない） |
 | `delete_credential` | API キーを削除する（未設定でもエラーにならない。冪等） | `provider` | 同上 | いいえ（破壊的） |
@@ -83,3 +83,4 @@ MCP ツールの対象外: MCP サーバー自身の設定（待ち受け先の�
 | 1.4 | 2026-10-25 | 「ドメイン別」に [mcp-tools-model-manager.md](mcp-tools-model-manager.md)（モデルマネージャー）を足した | Issue #833。ComfyUI エンジン・モデルのカタログ・導入・同意・試し生成を MCP ツールにする（#830 の方針） |
 | 1.5 | 2026-10-25 | 「ドメイン別」に [mcp-tools-workflows.md](mcp-tools-workflows.md)（ComfyUI ワークフロー）を足した | Issue #834。保存したワークフローの一覧・取り込み・実行・Shot への固定を MCP ツールにする（ノード画面は対象外） |
 | 1.6 | 2026-10-26 | 「ドメイン別」に [mcp-tools-generation-test.md](mcp-tools-generation-test.md)（生成テスト）を足し、モデルマネージャーの試し生成のツールをそこへ統合した | Issue #835。モデル × プロンプトの比較生成・履歴・取り込みを MCP ツールにする（#830 の方針） |
+| 1.7 | 2026-10-31 | `get_job` の出力に `error_code`・`project_id`・`ended_at` を足し、`job_id` が履歴（30 日・10,000 行）に残って再起動後も引けることを書いた。状態の決め方は変えない | Issue #890（親 #889） |
