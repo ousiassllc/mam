@@ -56,7 +56,7 @@ func listProjects(svc *service.ProjectService) mcpkit.Handler[ListProjectsInput,
 - 名前は `snake_case` の `動詞_名詞`（2 語以上）。規約違反と重複は起動時に panic する。`description` は必須、日本語を主に英語でも通じる短さで。
 - `Read`（readOnlyHint）／`Write`（destructiveHint=false）／`Destroy`（destructiveHint=true）。冪等なら `mcpkit.Idempotent()`、モデル API を自分で呼ぶなら `mcpkit.OpenWorld()`。
 - 入出力は構造体。`json` と `jsonschema:"説明"` のタグがスキーマになり、引数は呼び出し前に検証される。出力は必ずオブジェクト。
-- MCP 専用の確認や上限は足さない（画面と同じ扱い）。エラーは `return zero, err` で返す: `ValidationError` は `validation`、`ErrNotFound` は `not_found`、`ErrConflict` / `ErrBusy` は `conflict`、`LockedError` は `locked`、… 未知のエラーは `internal`（文面は出さずログに残る）。`MapError` に無い種類のエラーを足すときは `mcpkit/errors.go` に 1 行足す。
+- MCP 専用の確認や上限は足さない（画面と同じ扱い）。エラーは `return zero, err` で返す: `ValidationError` は `validation`、`ErrNotFound` は `not_found`、`ErrConflict` / `ErrBusy` は `conflict`、`LockedError` は `locked`、… 未知のエラーは `internal`（文面は出さず、原因は ERROR のログ行に残る。行と文面には同じ相関 ID `error_id` が付くので、`get_app_logs` の `attrs` で引ける）。ツールのパッケージが自分でエラーを写すときは `mcpkit.MapError` ではなく `mcpkit.ReportError(logger, msg, err)` を使うと ID とログが付く。`MapError` に無い種類のエラーを足すときは `mcpkit/errors.go` に 1 行足す。
 - ID（`project_id` など）は文字列で受ける。ファイルを base64 で受けない・返さない。
 
 ## 長い操作: `job_id` を返す
