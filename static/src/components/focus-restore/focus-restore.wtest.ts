@@ -25,7 +25,7 @@ describe('focus after a swap that replaces the focused control', () => {
 
   function swapped(selector: string): Promise<void> {
     const old = host.querySelector(selector);
-    return waitUntil(() => host.querySelector(selector) !== old, 'the response was not swapped in', { timeout: 5000 });
+    return waitUntil(() => host.querySelector(selector) !== old, 'the response was not swapped in', { timeout: 2000 });
   }
 
   it('puts the focus on the same button of the replaced switch', async () => {

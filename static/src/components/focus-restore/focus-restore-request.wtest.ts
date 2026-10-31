@@ -26,7 +26,7 @@ describe('focus after a request that disables, replaces by hx-swap-oob or sets o
 
   function swapped(selector: string): Promise<void> {
     const old = host.querySelector(selector);
-    return waitUntil(() => host.querySelector(selector) !== old, 'the response was not swapped in', { timeout: 5000 });
+    return waitUntil(() => host.querySelector(selector) !== old, 'the response was not swapped in', { timeout: 2000 });
   }
 
   describe('hx-disabled-elt', () => {
@@ -62,9 +62,9 @@ describe('focus after a request that disables, replaces by hx-swap-oob or sets o
       );
       find('button').focus();
       find('button').click();
-      await waitUntil(() => !find('button').disabled, 'the button was not enabled again', { timeout: 5000 });
+      await waitUntil(() => !find('button').disabled, 'the button was not enabled again', { timeout: 2000 });
       await waitUntil(() => document.activeElement === find('button'), 'the focus did not come back', {
-        timeout: 5000,
+        timeout: 2000,
       });
     });
 
@@ -139,7 +139,7 @@ describe('focus after a request that disables, replaces by hx-swap-oob or sets o
         </article>`);
       find('#history-slot button').focus();
       find('#history-slot button').click();
-      await waitUntil(() => host.querySelector('#reloaded'), 'the Branch was not reloaded', { timeout: 5000 });
+      await waitUntil(() => host.querySelector('#reloaded'), 'the Branch was not reloaded', { timeout: 2000 });
 
       expectFocusOn(find('#history-slot button'));
     });
@@ -151,7 +151,7 @@ describe('focus after a request that disables, replaces by hx-swap-oob or sets o
         </article>`);
       find('#history-slot button').focus();
       document.body.dispatchEvent(new CustomEvent('branch-reload'));
-      await waitUntil(() => host.querySelector('#reloaded'), 'the Branch was not reloaded', { timeout: 5000 });
+      await waitUntil(() => host.querySelector('#reloaded'), 'the Branch was not reloaded', { timeout: 2000 });
 
       expect(document.activeElement === document.body, 'the focus is on <body>').to.equal(true);
     });
