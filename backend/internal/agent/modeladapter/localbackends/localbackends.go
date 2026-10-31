@@ -93,6 +93,8 @@ func (o Options) Publish(cfg modeladapter.Config) {
 	if o.ChatGPTImage != nil && o.ChatGPTImageEnabled != nil && o.ChatGPTImageEnabled() {
 		images = append(images, string(chatgptid.Model))
 	}
+	// The label is published whether or not the model is on: the batches made while it was on still name it.
+	labels[string(chatgptid.Model)] = chatgptid.Label
 	modelreg.Set(images, append(localcfg.IDs(cfg.Endpoints, cfg.LocalModels, localcfg.MediaVideo), savedVideos...))
 	modelreg.SetLabels(labels)
 }
