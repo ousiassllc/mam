@@ -9,6 +9,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/references"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/series"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/versions"
+	"github.com/ousiassllc/mam/backend/internal/mcp/tools/voicereference"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/worldstate"
 	"github.com/ousiassllc/mam/backend/internal/service"
 )
@@ -20,5 +21,6 @@ func Register(r *mcpkit.Registrar, svc *service.Services) {
 	branches.Register(r, svc)
 	versions.Register(r, svc)
 	series.Register(r, svc)
+	voicereference.Register(r, svc)
 	notes.Register(r, svc)
 }

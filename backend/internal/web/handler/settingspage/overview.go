@@ -2,6 +2,7 @@ package settingspage
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -9,6 +10,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	updatehandler "github.com/ousiassllc/mam/backend/internal/web/handler/appupdate"
+	audiohandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/audio"
 	ffmpeghandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/ffmpeg"
 	llmhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/llm"
 	localhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/local"
@@ -16,6 +18,7 @@ import (
 	mediahandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/media"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/toolstatus"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
+	audioview "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/audio"
 	ffmpegview "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/ffmpeg"
 	llmview "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/llm"
 	localview "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/local"
@@ -57,6 +60,9 @@ func (s Services) card(c *gin.Context, slug string) molecules.ToolCard {
 	case paths.SettingsLocalModels:
 		card.Icon, card.Description = atoms.IconLocal, "自分の PC や tailnet 上の ComfyUI・OpenAI 互換のサーバーを登録する。"
 		card.Status, card.StatusURL = localStatus(localhandler.SectionData(s.LocalModels))
+	case paths.SettingsAudio:
+		card.Icon, card.Description = atoms.IconMedia, "声と口パクを、クラウドで作るか、この PC のローカルモデルで作るかを選ぶ。"
+		card.Status = audioStatus(audiohandler.SectionData(c.Request.Context(), s.Audio))
 	case paths.SettingsMCP:
 		card.Icon, card.Description = atoms.IconPlug, "エージェントから画面と同じ操作をするための、待ち受け先とトークン。"
 		card.Status = mcpStatus(mcphandler.SectionData(c.Request.Context(), s.MCP))
@@ -131,6 +137,37 @@ func localStatus(d localview.Data) ([]molecules.StatusLine, string) {
 		models += len(e.Models)
 	}
 	return []molecules.StatusLine{line(atoms.BadgeNeutral, "接続先 %d 件・モデル %d 件", len(d.Endpoints), models)}, paths.LocalModelsHealth()
+}
+
+// audioStatus is who speaks and who redoes the mouths, and whether the fallback to the cloud is on.
+func audioStatus(d audioview.Data) []molecules.StatusLine {
+	if d.Problem != "" {
+		return []molecules.StatusLine{line(atoms.BadgeWarn, "%s", problemHead(d.Problem))}
+	}
+	out := []molecules.StatusLine{
+		line(atoms.BadgeNeutral, "声: %s", providerName(d.Voice)),
+		line(atoms.BadgeNeutral, "口パク: %s", providerName(d.LipSync)),
+	}
+	if d.Fallback {
+		out = append(out, line(atoms.BadgeInfo, "ローカルが使えないときはクラウド"))
+	}
+	return out
+}
+
+// providerName is the provider a card has chosen, as the overview says it: a saved local provider this PC cannot run is not the one used.
+func providerName(p audioview.Provider) string {
+	if p.Selected == audioview.LocalValue && p.Local != nil && p.Local.Supported {
+		return p.Local.Name + "（この PC）"
+	}
+	return p.CloudLabel
+}
+
+// problemHead is the first sentence of a problem: the card has room for one line.
+func problemHead(problem string) string {
+	if head, _, ok := strings.Cut(problem, "。"); ok {
+		return head
+	}
+	return problem
 }
 
 // mcpStatus is where the server listens and how many tokens work.

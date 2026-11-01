@@ -16,9 +16,11 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
+	"github.com/ousiassllc/mam/backend/internal/service/localruntime"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmview"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/hfimport"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/runtimes"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
 	"github.com/ousiassllc/mam/backend/internal/web/pages"
@@ -31,11 +33,13 @@ type Handlers struct {
 	// Gentest runs the trial generations (a batch of one result of the generation test) and keeps their results. Nil
 	// leaves the trial panel without a form.
 	Gentest *gentest.Service
+	// Runtimes are the local voice and lip-sync runtimes (section "ローカル音声・口パク"). Nil leaves the section and its routes out.
+	Runtimes *localruntime.Service
 }
 
 // Register adds the routes of the screen to the engine.
-func Register(engine *gin.Engine, svc *modelmanager.Service, g *gentest.Service) {
-	h := Handlers{Svc: svc, Gentest: g}
+func Register(engine *gin.Engine, svc *modelmanager.Service, g *gentest.Service, rts *localruntime.Service) {
+	h := Handlers{Svc: svc, Gentest: g, Runtimes: rts}
 	engine.GET(paths.ModelManager(), h.Page)
 	engine.GET(paths.ModelManagerPart("dialog"), h.CloseDialog)
 
@@ -48,6 +52,10 @@ func Register(engine *gin.Engine, svc *modelmanager.Service, g *gentest.Service)
 	engine.DELETE(paths.ModelManagerPart("engine"), h.RemoveEngine)
 	engine.POST(paths.ModelManagerPart("engine", "detect"), h.DetectComfyUI)
 	engine.POST(paths.ModelManagerPart("jobs", ":job", "cancel"), h.CancelJob)
+
+	if rts != nil {
+		runtimes.Register(engine, rts)
+	}
 
 	engine.GET(paths.ModelManagerPart("adult", "confirm"), h.AdultConfirm)
 	engine.PUT(paths.ModelManagerPart("adult"), h.SetAdult)

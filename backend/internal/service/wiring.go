@@ -22,6 +22,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/bundle"
 	"github.com/ousiassllc/mam/backend/internal/repository/review"
+	"github.com/ousiassllc/mam/backend/internal/service/voicerefsvc"
 )
 
 // repos are the repositories more than one service uses. Each is built once, so that a repository
@@ -78,6 +79,7 @@ type wiring struct {
 	notes       *NoteService
 	branch      *BranchService
 	editors     *EditorService
+	voiceRef    *voicerefsvc.Service
 
 	takeJudge generation.Judger // stays nil (not a typed nil) while the Judge is off
 }
@@ -238,11 +240,12 @@ func (w *wiring) wireContinuity() {
 // wireEditor sets up the Editor and, with ffmpeg and a speech vendor, the Audio Director.
 func (w *wiring) wireEditor() {
 	d := w.deps
+	w.voiceRef = voicerefsvc.New(voicerefsvc.Deps{DB: d.DB, Series: w.r.series, Projects: w.c.projects, World: w.r.world, AssetsDir: d.AssetsDir, Media: d.Media, Logger: w.logger})
 	// Without a Reasoning LLM the Editor Judge runs its deterministic checks alone.
 	w.editors = &EditorService{
 		core: w.c, editors: repository.NewEditorRepository(d.DB), shots: w.r.gens, generation: w.generations, policies: w.r.policies, takes: w.r.takes, locks: w.r.locks, chatSvc: w.chat, tools: d.Media,
 		judge: editor.NewJudge(d.LLM), brands: w.r.brands, judges: w.r.judges,
-		voices: repository.NewVoiceRepository(d.DB), cloner: d.Audio.Cloner,
+		voices: repository.NewVoiceRepository(d.DB), cloner: d.Audio.Cloner, voiceRef: w.voiceRef, prefs: d.AudioSettings,
 	}
 	w.editors.resume = bgwork.NewWorker(w.logger, "editor resume", w.editors.resumeAll)
 	w.takes.afterSelect = w.editors.ResumeEditing
@@ -309,5 +312,6 @@ func (w *wiring) services() *Services {
 		Brand:     &BrandService{core: c, brands: w.r.brands},
 		Review:    &ReviewService{core: c, reviews: review.New(d.DB), editors: w.editors.editors, chatSvc: w.chat, now: time.Now},
 		Analytics: &AnalyticsService{c},
+		VoiceRef:  w.voiceRef,
 	}
 }

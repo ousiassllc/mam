@@ -6,6 +6,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/brandtemplate"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/voicereference"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -50,8 +51,12 @@ templ View(d Data) {
 			if len(d.Canon.Characters) == 0 {
 				<p class="text-sm text-neutral-400">登録された Character はありません。</p>
 			}
+			<p class="text-xs text-neutral-400">参照音声は、ローカルの声（GPT-SoVITS）が同じ声を毎回作るための音声です。正本に付けると次の Episode にコピーされ、作成済みの Episode は変わりません。</p>
 			for _, c := range d.Canon.Characters {
-				@seriesCharacterForm(d, c)
+				<div class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3">
+					@seriesCharacterForm(d, c)
+					@seriesVoiceForm(d, c)
+				</div>
 			}
 		</section>
 		<section aria-label="Products and Locations" class="flex flex-col gap-2">
@@ -154,6 +159,24 @@ templ CharacterSaved(d Data, characterID string) {
 	@seriesCanonSaved(d)
 }
 
+// VoiceSaved answers the save or the removal of the reference voice of a Character
+// (PUT / DELETE /series/:id/characters/:characterId/voice-reference): the voice form of that Character only, with the
+// new version carried along.
+templ VoiceSaved(d Data, characterID string) {
+	for _, c := range d.Canon.Characters {
+		if c.ID == characterID {
+			@seriesVoiceForm(d, c)
+		}
+	}
+	@seriesCanonSaved(d)
+}
+
+templ seriesVoiceForm(d Data, c domain.WorldCharacter) {
+	@voicereference.Form(voicereference.Data{
+		DOMID: "series-voice-" + c.ID, URL: paths.Series(d.Series.ID, "characters", c.ID, "voice-reference"), Name: c.Name, Ref: c.VoiceReference,
+	})
+}
+
 templ seriesStyleForm(d Data) {
 	<form
 		id="series-style-form"
@@ -179,7 +202,7 @@ templ seriesStyleForm(d Data) {
 templ seriesCharacterForm(d Data, c domain.WorldCharacter) {
 	<form
 		id={ "series-character-" + c.ID }
-		class="flex flex-col gap-2 rounded-md border border-neutral-700 p-3"
+		class="flex flex-col gap-2"
 		hx-put={ paths.Series(d.Series.ID, "characters", c.ID) }
 		hx-target="this"
 		hx-swap="outerHTML"

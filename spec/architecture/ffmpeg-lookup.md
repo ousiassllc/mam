@@ -31,6 +31,7 @@ ffmpeg と ffprobe は別々に指定でき、片方だけ指定したときの�
 
 - 保存先: データフォルダの `ffmpeg.json`（`{"ffmpeg": "/abs/ffmpeg", "ffprobe": "/abs/ffprobe"}`。指定の無いキーは書かない。両方空にするとファイルを消す。ファイルにある未知のキーは保存で消さない）。壊れたファイルは、設定画面では分類の問題として出し（ほかの分類は使える）、起動時の探索では ffmpeg が無い扱いにしてログに理由を出す。
 - **反映は次の起動から**。mam は起動時に一度だけ探して `media.Tools` を各サービスに渡す（`internal/app` の `buildServices`）ため、保存では動いているサービスのパスを替えない。初回ガイドの ffmpeg の確認（`service/onboarding.Service.FFmpeg`）は、保存したパスと同じ探し方で毎回読むので、保存の直後に「見つかりました」になる。
+- ローカルの口パク（MuseTalk。[model-manager/local-runtime.md §13](model-manager/local-runtime.md)）は ffmpeg を持たない。呼び出し側（Audio Director の口パクプロバイダー）が、この探索の結果（`media.Tools.FFmpeg`）を `lipsync.Request.FFmpegPath` に入れて渡し、ランタイムのラッパーはそれを `-nostdin` つきで動かす。見つからない・使えないときは、ランタイムを起動する前に呼び出し側が止める。
 - 探し方の使い手: `media.Look()`（設定なし。テストと `testenv`）、`media.LookWith(locate.Config)`、`media.LookIn(locate.Finder, locate.Config)`（Finder を差し替えられる）。アプリは `ffmpegsettings.Service.Look()`（保存したパスつき）を使う。Judge（`judge.NewFFmpeg`）・Take のプレビュー・MCP のツール・各サービスは、見つけた `media.Tools` を受け取り、名前で `exec` しない（子プロセスは `Tools` の絶対パスで起動する）。
 
 ## 4. テスト
@@ -45,3 +46,4 @@ ffmpeg と ffprobe は別々に指定でき、片方だけ指定したときの�
 |----|------|---------|---------|
 | 1.0 | 2026-11-01 | 新規作成 | Issue #856。Finder から起動した MAM.app が Homebrew の ffmpeg を見つけられなかった。`PATH` と Homebrew の既定の場所を探し、設定したパスを優先する |
 | 1.1 | 2026-11-01 | 追加のディレクトリ（`Finder.Extra`）に、ダウンロードして入れた ffmpeg の `bin/` を最後に足した（`ffmpegsettings.WithManagedDirs`。呼ぶたびに読む）。設定したパス ＞ `PATH` ＞ Homebrew ＞ 入れたもの | Issue #900 |
+| 1.2 | 2026-11-01 | ローカルの口パク（MuseTalk）が、この探索の結果を要求で受け取って使うことを §3 に足した（ランタイムは ffmpeg を同梱しない）。探し方は変えていない | Issue #921 |

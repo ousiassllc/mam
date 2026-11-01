@@ -31,6 +31,13 @@
 | DELETE | `/model-manager/hf-token` | トークンの削除（未設定でもエラーにならない） |
 | GET | `/model-manager/hf` | Hugging Face の検索と、リポジトリのファイルの一覧（`#mm-hfi-result`）。クエリ `q` が URL（`://` を含む）か `owner/repo` ならそのリポジトリをコミットに固定して一覧し（`Service.HFRepo`）、それ以外はキーワード検索（`Service.SearchHF`、`kind` で絞る）。`q` が空・形式が不正（`hf.co`・http・他のホスト・`datasets/`）は 422、NFAA（コミットのタグか、リポジトリの今の先頭のタグ）を年齢確認の前に開くと 409（古いコミットの URL でも同じ）、gated でトークン・アクセス権が無いのは 422、無いリポジトリは 422 |
 | POST | `/model-manager/hf/install` | ファイル 1 つの導入（ジョブ）。フォーム `repo`・`commit`・`path`・`folder`・`name`・`agree=1`・`terms_version`。202 で「追加したモデル」を返す（導入中の進捗つき）。拒否は `HX-Retarget: #mm-hfi-msg`・`HX-Reswap: innerHTML` でエラーの行に出す: terms の確認が無ければ 409、版違い・GGUF・pickle・名前の衝突（同じ宛先の別ファイル、別のフォルダ・名前で導入中の同じファイルを含む）・gated・フォルダ不明は 422、NFAA を年齢確認の前に導入しようとすると 409。SHA-256・サイズは送らない（Service が HF から読み直す） |
+| GET | `/model-manager/runtimes/:id` | ローカルの実行環境（GPT-SoVITS・MuseTalk）のカード（`#mm-runtime-<id>`。Issue #920）。導入中・起動中は自分で取り直す。未知の ID は 404 |
+| POST | `/model-manager/runtimes/:id/install` | 環境の導入・更新（ジョブ。Python 環境・本体・重みまで）。この PC で使えなければ 409（理由とクラウドの案内つき）。202 |
+| POST | `/model-manager/runtimes/:id/weights` | **重み・依存ファイルだけ**の確認と取得（ジョブ。足りない・壊れたファイルだけを取り直す）。未導入は 409。202 |
+| POST | `/model-manager/runtimes/:id/start` | 起動。必須の重みが足りなければ 409「…の重みが不足しています（<名前>）。「重みを導入」を実行してください」（起動しない） |
+| POST | `/model-manager/runtimes/:id/stop` | 停止 |
+| PUT | `/model-manager/runtimes/:id/autostart` | 自動起動。フォーム `on`（`1` / `0`） |
+| DELETE | `/model-manager/runtimes/:id` | 環境と取得した重みの削除（設定は残る）。導入中は 409。`hx-confirm` つき |
 | GET | `/model-manager/hf/models` | 「追加したモデル」（`#mm-hfi-models`）。導入中は自分で取り直す。クエリ `jobs`（カンマ区切り）は報告するジョブで、終わったら結果を 1 度出し、試し生成の区画を `hx-swap-oob` で描き直す |
 | POST | `/model-manager/hf/jobs/:job/cancel` | 動いている導入の中断（「追加したモデル」を返す。ダウンロード済みの分は残り、導入し直すと続きから再開する） |
 | DELETE | `/model-manager/hf/models` | 追加したファイルの削除。クエリ `path`（`models/<folder>/<name>`）。作ったモデルも消える。使用中は 422、導入中・記録に無いのは 409。カタログのモデルと共有するファイルは、そのモデルが残る間は残る。試し生成の区画を描き直す |
@@ -56,6 +63,7 @@
 | `ErrPinned` | 409 | `conflict` | `--model-config` で固定されているため、導入・削除できない |
 | `ErrUnsupported` | 409 | `conflict` | 同梱の ComfyUI は Windows 版だけ。外部の ComfyUI の URL を使う |
 | `ErrEngineNotInstalled`・`ErrAlreadyInstalled`・`ErrNotInstalled`・`ErrEndpointMoved`・`fetch.NoSpaceError`（空き容量不足）・`store.ErrNotWritable`・`engine.ErrBusyRunning` | 409 | `conflict` | それぞれの理由（空き容量は必要量・空き・場所） |
+| `localruntime.ErrWeightsMissing`（`*WeightsError`）・`ErrSourceGone`・`ErrNotInstalled`・`ErrUnsupported`（`*SupportError`）・`ErrBusy` | 409 | `conflict` | ローカルの実行環境（`mmview.RefuseRuntime`。`mmview.Refuse` の上に載せた）。重みの不足は不足している名前と「重みを導入」の案内、取得元が消えたときは取得元の名前・HTTP の状態・原本の場所、使えない PC は理由とクラウドの案内 |
 | `ErrNotFound` | 404 | `not_found` | 対象が見つかりません |
 | それ以外 | 500 | `internal` | 「処理できませんでした」（原因はログだけ。画面に出さない） |
 
@@ -73,11 +81,15 @@
 - **Hugging Face から導入**（区画「Hugging Face から導入」、`#mm-hfi`。Issue #842）: 上から、検索フォーム（キーワード・`owner/repo`・URL のどれか 1 つと、キーワード検索の種別）、エラーの行（`#mm-hfi-msg`。導入の拒否はここに出る）、結果（`#mm-hfi-result`）、「追加したモデル」（`#mm-hfi-models`）。結果はヒットしたリポジトリの一覧（gated・NFAA の印・ダウンロード数・「ファイルを見る」）か、1 つのリポジトリ: コミットに固定したことと、ライセンス・警告（記載が無いとき）・gated の案内（トークンの設定とリポジトリのページでのアクセスの申請。mam からは申請できない）・terms と、モデルのファイルをグループ（同じモデルの版）ごとに出す。各ファイルは大きさ・形式・SHA-256 の先頭・Hub のスキャン・VRAM の目安（収まる見込み／ぎりぎり／収まらない見込み／VRAM 不明）・導入済みの印を出し、**導入できないファイル（GGUF・pickle・分割形式・unsafe）は理由を出してフォームを出さない**。導入できるファイルは「導入する…」を開くと、フォルダ（推定の既定値つき・判定できなければ「選んでください」）・ファイル名・（そのリポジトリのコミットで未確認なら）terms のチェックボックスのフォームが出る。SDXL のチェックポイントには「試し生成で選べる画像モデルになる」、それ以外には「置くだけでワークフローは作らない」と書く。導入すると 202 で「追加したモデル」を返し、動いている間は 2 秒ごとに自分を取り直す（進捗バー・「中断」。終わったら試し生成の区画を `hx-swap-oob` で描き直す）。各モデルは、リポジトリ・コミット・大きさ・ライセンス・共有しているカタログのモデルを出し、「削除」（確認つき）を持つ。**NFAA のモデルは年齢確認が済むまで出ない**（Service が隠す）。
 - **外部の ComfyUI**: 接続先の選択と「導入済みのモデルを確認」。結果は、カタログのモデルごとに「そろっています」／「足りないファイルがあります（足りない: …）」、フォルダごとのファイル（`loras` を含む）。成人向けのモデルは、年齢確認が済むまで出ない。「外部の ComfyUI へのモデルの導入は、その ComfyUI の側で」と書く。
 
+- **ローカル音声・口パク**（区画 `#mm-runtimes`、Issue #920。ハンドラーは `handler/modelmgr/runtimes`、見た目は `organisms/modelmgr/runtimecard`・`weightlist`。`localruntime.Service` を持つときだけ。意味は [local-runtime.md](../architecture/model-manager/local-runtime.md) §12）: ランタイムごとに 1 枚のカード（`data-testid="mm-runtime"`）。状態（未導入 / 導入中 / 導入済み + 停止中・起動中・失敗）、導入中の進捗バーと「中断する」（`hx-confirm`。`POST /model-manager/jobs/:job/cancel` がジョブの `target=runtime:<id>` を見て振り分ける）、版・導入先・空き容量、起動の失敗はログの末尾つき。**この PC で使えないとき**（macOS ほか）は、導入・起動のボタンの代わりに**理由**（`mm-runtime-reason`）と**クラウドの案内**（`mm-runtime-fallback`。ElevenLabs / Sync Labs を選べる）を枠で出す。**重み**（`<details data-testid="mm-runtime-weights">`）は、asset ごとに名前・大きさ・必須か・状態（あり / なし / 未確認）・出典のリンク・ライセンスのリンク・商用利用のバッジ（「商用利用: 可」/「不可」/「**はっきりしません**」）を出す。`unclear` / `no` の asset は、その行に琥珀色の枠で `notice`、一覧の前に「商用利用がはっきりしない重みを含みます（N 件）」の枠を出し、一覧を最初から開く。導入済みでも必須の重みが足りないときは「導入済み（重みが不足）」を出し、起動の代わりに「重みを導入」を出す。削除は `hx-confirm`、導入・起動・重みの導入は `hx-sync` と `hx-disabled-elt`（二重送信の防止）。
+
 ## 4. テスト
 
 `handler/modelmgr` の画面テスト（`mmtest` の偽の GitHub・Hugging Face・エンジンのプロセス、`comfyuitest` の偽の ComfyUI で、HTMX のリクエストを CSRF のクッキーとヘッダーつきで送る）: エンジンの導入・進捗・完了・起動・停止・自動起動・削除・中断と再導入、GPU が無いとき、Windows 以外、空き容量不足、同意の強制（ダイアログを経ない要求の 409・別のライセンスの 422・同意後の導入）、固定された設定ファイル、モデルの導入・削除・共有ファイル、トークンが画面に出ないこと、外部 ComfyUI の一覧、試し生成（開始・進捗・結果ファイルの sandbox・削除・拒否・失敗）、CSRF のトークンが無い要求の 403。
 
 `handler/modelmgr/hfimport` の画面テスト（`mmtest` の偽の HF `hftest`。`web/screentest` の `Screen` で送る）: キーワード検索・URL（`blob` を含む）と ID・短縮 URL／http／他のホストの 422、GGUF・pickle の理由と導入の 422、terms の確認が無い 409・版違いの 422、導入の進捗→完了（試し生成の区画の描き直し）→削除、NFAA の検索からの除外と 409、gated のトークンの案内と 422。実物の HF・GPU は使わない。
+
+`handler/modelmgr/runtimes` の `runtimes_test.go`（`screentest.NewWithRuntimes`。`service/localruntime/lrtest` の偽のパッケージ・偽の Hugging Face・偽のプロセス）: カードの表示（未導入・導入中・導入済み・重みが不足）、出典・ライセンス・`unclear` の注記とバナー、使えない環境の理由とクラウドの案内、導入・重みの導入・起動・停止・自動起動・削除、重みが不足した起動の 409 と文面、取得元が消えたときの失敗の表示、取り消し、未知の ID の 404、サービスが無い画面にはルートが無いこと、スクリーンリーダー用のラベルと鍵・トークンを出さないこと。
 
 ## 改訂履歴
 
@@ -89,3 +101,5 @@
 | 1.3 | 2026-10-25 | Hugging Face からの導入のルート（`/model-manager/hf`・`hf/install`・`hf/models`・`hf/jobs/:job/cancel`）と区画「Hugging Face から導入」（`#mm-hfi`）を足した。`hf-token` のハンドラは新しいパッケージ `hfimport` に移した（ルートは同じ） | Issue #842。意味は [../architecture/model-manager/model-manager-hf.md](../architecture/model-manager/model-manager-hf.md) |
 | 1.4 | 2026-10-25 | `/model-manager/external` が成人向けのモデルを年齢確認が済むまで出さず、`loras` フォルダを読むようにした。`/model-manager/hf`・`/model-manager/hf/install` の NFAA 判定を、コミットのタグと今の先頭のタグの OR にした（`tree/<commit>` などで古いコミットを指しても 409）。別のフォルダ・名前で導入中の同じファイルは 422 | PR #849 のレビューの指摘（#841・#842）への修正 |
 | 1.5 | 2026-10-29 | `POST /model-manager/models/:id/install` が、`requires_hf_token` のモデルでトークンとアクセスを確かめ、足りなければジョブを作らず 422 で案内することを足した | Issue #877 |
+| 1.6 | 2026-11-01 | ローカルの実行環境（GPT-SoVITS・MuseTalk）のルート（`/model-manager/runtimes/:id` と `install`・`weights`・`start`・`stop`・`autostart`）、エラーの対応（`ErrWeightsMissing`・`ErrSourceGone` ほか。`mmview.RefuseRuntime`）、区画「ローカル音声・口パク」（出典・ライセンス・商用利用の表示、使えない環境の理由とクラウドの案内）、テストを足した。`POST /model-manager/jobs/:job/cancel` が `target=runtime:<id>` のジョブも中断する | Issue #920。重み・依存ファイルの出典とライセンスの画面表示、未導入・重み不足の状態 |
+| 1.7 | 2026-11-01 | ローカルの実行環境のルートが MuseTalk 1.5（`musetalk`）でも同じ形で使えることを書いた（導入のジョブは部品 84 個の取得・展開と重みの取得。使えない PC の理由・案内は `Support.Code` に `compute_cap` が増えた）。ルート・フィールドは変えていない。意味は [local-runtime.md §13](../architecture/model-manager/local-runtime.md) | Issue #921 |

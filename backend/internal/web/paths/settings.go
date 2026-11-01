@@ -8,6 +8,7 @@ const (
 	SettingsLLM         = "llm"
 	SettingsModels      = "models"
 	SettingsLocalModels = "local-models"
+	SettingsAudio       = "audio"
 	SettingsMCP         = "mcp"
 	SettingsFFmpeg      = "ffmpeg"
 	SettingsUpdate      = "update"

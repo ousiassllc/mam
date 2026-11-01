@@ -68,6 +68,17 @@
 | `update_series_character` | 正本の登場人物の `hairstyle` / `wardrobe` / `voice` / `personality` を、渡した項目だけ更新（各 200 文字以内）。正本に新しいバージョンができる | `series_id`, `character_id`, 各属性 | `get_series` と同じ | いいえ |
 | `update_series_style` | 正本の Style を更新する（500 文字以内。空にもできる） | `series_id`, `style` | `get_series` と同じ | いいえ |
 
+## 参照音声（`/series/:id/characters/:characterId/voice-reference`・`/projects/:id/characters/:characterId/voice-reference`）
+
+登場人物の参照音声（F-20・F-29）。ローカルの声（GPT-SoVITS）が同じキャラに同じ声を毎回作るための、3〜10 秒の録音と、その書き起こし・言語。Series の正本の登場人物（`series_id` と `get_series` の `canon.characters[].id`）にも、Project の登場人物（`project_id` と `get_world_state` の `characters[].id`）にも付けられる。`series_id` と `project_id` はどちらか一方（両方・どちらも無しは `validation`）。正本に付けると正本に新しいバージョンができ、作成済みの Episode は変わらない（次の Episode から）。Episode の登場人物の音声は、その Episode だけ差し替えられる。`get_series`・`get_world_state` の登場人物に `voice_reference`（`file_path`（アセットディレクトリ内の保存先。参照しない・ダウンロードは `get_character_voice_reference_url`）, `mime_type`, `size_bytes`, `duration_ms`, `text?`, `language`。無ければ省略）が付く。
+
+| ツール | 説明 | 入力 | 出力 | readOnly |
+|--------|------|------|------|----------|
+| （アップロード `purpose=character_voice_reference`） | 音声ファイルを置き換える。`create_upload_ticket` で発行した URL に multipart で送る（[mcp-tools.md](mcp-tools.md) の表）。拡張子と中身の署名・10 MB・長さ（ffprobe があるときだけ 3〜10 秒）・言語・書き起こしの長さを画面と同じに検証し、不正は `validation` | `params`: `series_id` か `project_id`, `character_id`, `text?`, `language?` | `{series_id?, project_id?, character_id, voice_reference}` | いいえ |
+| `update_character_voice_reference` | 書き起こしと言語だけを変える（渡した項目だけ。録音が未設定なら `validation`、書き起こしは 500 文字以内） | `series_id?` / `project_id?`, `character_id`, `text?`, `language?` | `{series_id?, project_id?, character_id, voice_reference}` | いいえ |
+| `delete_character_voice_reference` | 参照音声を削除する（ほかの Episode や正本に複製された音声は残る。未設定なら何もしない） | `series_id?` / `project_id?`, `character_id` | 同上（`voice_reference` は `null`） | いいえ |
+| `get_character_voice_reference_url` | 録音のダウンロード URL（15 分有効。試聴用）。未設定なら `not_found` | `series_id?` / `project_id?`, `character_id` | `url`, `expires_at`, `file_name` | はい |
+
 ## メモ（`/projects/:id/notes`・`/series/:id/notes`）
 
 Project のメモと Series の正本メモは同じ形。Series のメモは Episode の開始時に Project へコピーされる（アーカイブ済みは除く）。アーカイブしたメモは一覧に残るが、どの AI にも渡らない。題は 100 文字以内、本文は 1〜4000 文字、`category` は `character` / `product` / `location` / `world` / `tone` / `other`。
@@ -87,3 +98,4 @@ Project のメモと Series の正本メモは同じ形。Series のメモは Ep
 | 版 | 日付 | 変更内容 | 変更理由 |
 |----|------|---------|---------|
 | 1.0 | 2026-10-24 | 新規作成。World State（8）・Reference Library（3）・Branch（4）・バージョン履歴（7）・Series（5）・メモ（7）の 34 ツールと、ジョブ `create_branch` | Issue #830。画面の全操作を MCP ツールにする |
+| 1.1 | 2026-11-01 | 「参照音声」の節を足した（アップロード `character_voice_reference`、`update_character_voice_reference`・`delete_character_voice_reference`・`get_character_voice_reference_url`。`get_series`・`get_world_state` の登場人物に `voice_reference`） | Issue #919（#912） |

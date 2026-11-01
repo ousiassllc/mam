@@ -2,7 +2,8 @@
 // catalog of local image and video models with its license acceptance, the import of .safetensors files from Hugging Face
 // (hf.go: search_hf_models, get_hf_model_files, install_hf_file, list_user_models, delete_user_model; the service pins the
 // commit and checks the terms, the age gate and the SHA-256), the optional Hugging Face token and the read-only
-// view of an external ComfyUI (spec/api/mcp-tools-model-manager.md, spec/architecture/model-manager/model-manager.md).
+// view of an external ComfyUI, and the local voice and lip-sync runtimes (runtimes.go: list_local_runtimes, install_local_runtime,
+// install_local_runtime_weights, start/stop/remove_local_runtime; weights with their source and license) (spec/api/mcp-tools-model-manager.md, spec/architecture/model-manager/model-manager.md).
 // The generation test (which the trial generations of the model manager screen run through) is package gentest.
 //
 // The tools call the same modelmanager.Service as the screen, so the same checks hold: a model whose license needs an
@@ -28,7 +29,7 @@ import (
 const KindModelInstall = string(domain.JobModelInstall)
 
 // Register adds the tools and the Probe of this package. They answer "unavailable" when the app has no model manager
-// (svc.ModelManager is nil).
+// (svc.ModelManager is nil); the tools of the local runtimes (runtimes.go) when it has no runtime manager (svc.LocalRuntimes is nil).
 func Register(r *mcpkit.Registrar, svc *service.Services) {
 	h := handlers{svc: svc, registrar: r}
 	r.Jobs.RegisterKind(KindModelInstall, h.probe)
@@ -37,6 +38,7 @@ func Register(r *mcpkit.Registrar, svc *service.Services) {
 	registerAdult(r, h)
 	registerExtras(r, h)
 	registerHF(r, h)
+	registerRuntimes(r, h)
 }
 
 type handlers struct {
@@ -80,6 +82,9 @@ func (h handlers) probe(ctx context.Context, job mcpkit.JobInfo) (mcpkit.Progres
 	st, err := m.JobStatus(ctx, job.ID)
 	if err != nil {
 		return mcpkit.Progress{}, MapError(err)
+	}
+	if p, ok, err := h.runtimeJob(ctx, job.ID, st); ok { // the job of a local runtime: its progress is kept by its own manager
+		return p, err
 	}
 	p := ProgressOf(st)
 	p.Result = map[string]any{"target": st.Target, "phase": st.Progress.Phase, "done_bytes": st.Progress.DoneBytes, "total_bytes": st.Progress.TotalBytes}

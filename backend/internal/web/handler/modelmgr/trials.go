@@ -15,6 +15,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmview"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/hfimport"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/runtimes"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -147,6 +148,7 @@ func (h Handlers) data(c *gin.Context) view.Data {
 		HF: hfimport.TokenData(h.Svc), HFImport: hfimport.Panel(ctx, h.Svc),
 		External: view.External{Endpoints: h.externalEndpoints(c)},
 		Trial:    h.trialPanel(ctx, view.TrialForm{}, "", ""),
+		Runtimes: runtimes.Section(ctx, h.Runtimes),
 	}
 	return d
 }

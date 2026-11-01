@@ -111,3 +111,11 @@ func oobField(f molecules.WorldStateFieldData) molecules.WorldStateFieldData {
 	f.OOB = true
 	return f
 }
+
+// VoiceSaved answers the save or the removal of the reference voice of a Character
+// (PUT / DELETE /projects/:id/characters/:characterId/voice-reference): the voice form of that Character only.
+templ VoiceSaved(d Data, id string) {
+	if e, ok := d.entity(domain.TargetCharacter, id); ok {
+		@voiceForm(d, e)
+	}
+}

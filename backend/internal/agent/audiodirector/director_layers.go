@@ -13,7 +13,7 @@ func (r *run) speak(ctx context.Context, lines []domain.VoiceLine, sceneOfLine m
 	cursor := 0.0
 	for i, line := range lines {
 		cursor = max(cursor, sceneOfLine[i].Start)
-		speech, err := r.d.Providers.Speech.Synthesize(ctx, line)
+		speech, err := r.speech.say(ctx, line)
 		if err != nil {
 			return err
 		}
@@ -22,7 +22,7 @@ func (r *run) speak(ctx context.Context, lines []domain.VoiceLine, sceneOfLine m
 			layer = domain.LayerNarration
 		}
 		// The provider has charged for the line: the ledger gets it before the local work can fail.
-		if err := r.spend.record(ctx, domain.ModelElevenLabsTTS, r.d.Prices.TTS(line.Text)); err != nil {
+		if err := r.spend.record(ctx, r.speech.model, r.speech.price(line.Text)); err != nil {
 			return err
 		}
 		rel, length, err := r.save(ctx, fmt.Sprintf("line-%02d", i+1), speech)
@@ -30,7 +30,7 @@ func (r *run) speak(ctx context.Context, lines []domain.VoiceLine, sceneOfLine m
 			return err
 		}
 		r.tl.Clips = append(r.tl.Clips, domain.AudioClip{
-			VoiceLine: line, Layer: layer, Model: domain.ModelElevenLabsTTS, Path: rel, StartSeconds: cursor, DurationSeconds: length,
+			VoiceLine: line, Layer: layer, Model: r.speech.model, Path: rel, StartSeconds: cursor, DurationSeconds: length,
 		})
 		cursor += length + LineGap
 	}

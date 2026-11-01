@@ -3,25 +3,42 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector"
+	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector/localvoice"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/service/audiosettings"
+	"github.com/ousiassllc/mam/backend/internal/service/audiosummary"
+	"github.com/ousiassllc/mam/backend/internal/service/localspeech"
+	"github.com/ousiassllc/mam/backend/internal/service/voicerefsvc"
 )
 
-// GenerateAudio makes the Audio Timeline of the latest Edit Timeline of the trunk (branchID "") or
-// of a Branch (POST /projects/:id/audio/generate): the Audio Director reads the Scenes of the cut,
-// speaks Dialogue and Narration, makes the BGM, Ambience, SE, Foley and Lip Sync the Quality Policy
-// pays for within the budget, mixes everything with the sound of the Rough Cut and normalizes the
-// loudness. The result is the next Audio Timeline version of that Branch. The Project must be in
-// AUDIO (the Editor Judge passed).
+// GenerateAudio makes the Audio Timeline of the latest Edit Timeline of the trunk (branchID "") or of a Branch (POST /projects/:id/audio/generate):
+// the Audio Director reads the Scenes of the cut, speaks Dialogue and Narration, makes the BGM, Ambience, SE, Foley and Lip Sync the Quality Policy
+// pays for within the budget, mixes everything with the sound of the Rough Cut and normalizes the loudness. The result is the next Audio Timeline
+// version of that Branch. The Project must be in AUDIO (the Editor Judge passed). The providers are the saved settings (audiosettings), read on every run.
 func (s *EditorService) GenerateAudio(ctx context.Context, projectID, branchID string) (EditorView, error) {
+	opts, err := s.prefs.Load()
+	if err != nil {
+		return EditorView{}, audioError(err)
+	}
+	return s.GenerateAudioWith(ctx, projectID, branchID, opts)
+}
+
+// AudioOptions are the choices of one run of the Audio Director: the saved audio settings (audiosettings.Settings).
+type AudioOptions = audiosettings.Settings
+
+// GenerateAudioWith is GenerateAudio with the choices of the run.
+func (s *EditorService) GenerateAudioWith(ctx context.Context, projectID, branchID string, opts AudioOptions) (EditorView, error) {
+	if field := localvoice.InvalidProvider(opts.VoiceProvider, opts.LipSyncProvider); field != "" {
+		return EditorView{}, invalid(field, "声のプロバイダー（voice_provider）は elevenlabs か local、口パクのプロバイダー（lip_sync_provider）は synclabs か local を指定してください")
+	}
 	if s.audio == nil || s.tools == nil {
 		return EditorView{}, ErrUnavailable
 	}
@@ -56,7 +73,7 @@ func (s *EditorService) GenerateAudio(ctx context.Context, projectID, branchID s
 	}
 	in := audiodirector.Input{
 		ProjectID: projectID, EditTimelineID: ver.ID, Brief: brief, Template: project.ProductionTemplate, Quality: policy.Quality,
-		Rough: roughPath, HasSound: info.HasAudio, Seconds: info.Duration,
+		Rough: roughPath, HasSound: info.HasAudio, Seconds: info.Duration, VoiceProvider: opts.VoiceProvider, LipSyncProvider: opts.LipSyncProvider,
 	}
 	if in.Scenes, err = s.audioScenes(ctx, projectID, branchID, ver.Timeline); err != nil {
 		return EditorView{}, err
@@ -66,6 +83,10 @@ func (s *EditorService) GenerateAudio(ctx context.Context, projectID, branchID s
 			return EditorView{}, err
 		}
 	}
+	notes, err := s.prefs.Settle(ctx, &in, s.voiceRef, branchID, opts.FallbackToCloud)
+	if err != nil {
+		return EditorView{}, audioError(err)
+	}
 	if err := s.fixMusic(ctx, projectID, branchID, &in); err != nil {
 		return EditorView{}, err
 	}
@@ -73,11 +94,7 @@ func (s *EditorService) GenerateAudio(ctx context.Context, projectID, branchID s
 	if err != nil {
 		return EditorView{}, err
 	}
-	in.Voices = make(map[string]string, len(clones))
-	for _, c := range clones {
-		in.Voices[c.Speaker] = c.VoiceID
-	}
-
+	in.Voices = localvoice.VoiceIDs(clones)
 	in.RunID = domain.NewID()
 	tl, err := s.audio.Produce(ctx, in)
 	if err != nil {
@@ -88,13 +105,14 @@ func (s *EditorService) GenerateAudio(ctx context.Context, projectID, branchID s
 		_ = s.audio.DiscardRun(in)
 		return EditorView{}, notFound(err)
 	}
-	s.announce(ctx, projectID, assistantText(audioSummary(tl, branchID != "")))
-	return s.View(ctx, projectID, branchID)
+	s.announce(ctx, projectID, assistantText(audiosummary.Of(tl, branchID != "", notes...)))
+	v, err := s.View(ctx, projectID, branchID)
+	v.ProviderNotes = notes
+	return v, err
 }
 
-// fixMusic holds the BGM when the Project's Music is MANUAL or LOCK (spec/spec.md §6): the Audio
-// Director carries over the BGM of the latest Audio Timeline, whose files are still there, instead
-// of planning and making it again.
+// fixMusic holds the BGM when the Project's Music is MANUAL or LOCK (spec/spec.md §6): the Audio Director carries over the BGM of the
+// latest Audio Timeline, whose files are still there, instead of planning and making it again.
 func (s *EditorService) fixMusic(ctx context.Context, projectID, branchID string, in *audiodirector.Input) error {
 	locks, err := s.locks.ProjectLocks(ctx, projectID)
 	if err != nil {
@@ -119,74 +137,8 @@ func (s *EditorService) fixMusic(ctx context.Context, projectID, branchID string
 	return nil
 }
 
-// audioSummary is the chat message after the Audio Director finished.
-func audioSummary(tl domain.AudioTimeline, branch bool) string {
-	var sb strings.Builder
-	sb.WriteString("音声を作成しました")
-	if branch {
-		sb.WriteString("（Branch）")
-	}
-	if tl.MixPath == "" {
-		sb.WriteString("（セリフも Take の音声もなく、足す音もないため、無音の動画になります）。")
-		writeSkippedAudio(&sb, tl.Skipped)
-		return sb.String()
-	}
-	var layers []string
-	for _, l := range []struct {
-		layer domain.AudioLayer
-		label string
-	}{{domain.LayerDialogue, "Dialogue"}, {domain.LayerNarration, "Narration"}, {domain.LayerBGM, "BGM"}, {domain.LayerAmbience, "Ambience"}, {domain.LayerSE, "SE"}, {domain.LayerFoley, "Foley"}} {
-		if n := tl.Count(l.layer); n > 0 {
-			layers = append(layers, fmt.Sprintf("%s %d", l.label, n))
-		}
-	}
-	if n := len(tl.LipSync); n > 0 {
-		layers = append(layers, fmt.Sprintf("Lip Sync %d", n))
-	}
-	if len(layers) == 0 {
-		layers = []string{"Take の音声のみ"}
-	}
-	fmt.Fprintf(&sb, "（%s、ラウドネス %.1f LUFS", strings.Join(layers, " / "), tl.MeasuredLUFS)
-	if tl.EstimatedCost > 0 {
-		fmt.Fprintf(&sb, "、見積コスト $%.2f", tl.EstimatedCost)
-	}
-	sb.WriteString("）。")
-	writeSkippedAudio(&sb, tl.Skipped)
-	return sb.String()
-}
-
-// writeSkippedAudio lists the layers the Audio Director could not make and why (spec/api/endpoints.md);
-// the layers the Quality Policy chose not to pay for are not failures and stay out.
-func writeSkippedAudio(sb *strings.Builder, skipped []domain.SkippedAudio) {
-	var notes []string
-	for _, sk := range skipped {
-		if sk.Reason != domain.SkipPolicy {
-			notes = append(notes, skippedText(sk))
-		}
-	}
-	if len(notes) > 0 {
-		sb.WriteString("\n作れなかった音:\n・" + strings.Join(notes, "\n・"))
-	}
-}
-
-func skippedText(sk domain.SkippedAudio) string {
-	what := strings.ToUpper(string(sk.Layer))
-	if sk.Layer == domain.LayerLipSync {
-		what = "Lip Sync"
-	}
-	if sk.Prompt != "" {
-		what += "「" + sk.Prompt + "」"
-	}
-	reason := map[string]string{domain.SkipBudget: "予算上限", domain.SkipError: "生成に失敗"}[sk.Reason]
-	if sk.Detail != "" {
-		return fmt.Sprintf("%s（%s: %s）", what, reason, sk.Detail)
-	}
-	return fmt.Sprintf("%s（%s）", what, reason)
-}
-
-// audioScenes reads the Scenes of the cut in the order they play: where each sits in the finished
-// video, how many clips it has, what the script says there (Dialogue / Narration only for Scenes of
-// the script, not for the Scenes of a Branch) and what the Shots of its clips are for.
+// audioScenes reads the Scenes of the cut in the order they play: where each sits in the finished video, how many clips it has, what the script
+// says there (Dialogue / Narration only for Scenes of the script, not for the Scenes of a Branch) and what the Shots of its clips are for.
 func (s *EditorService) audioScenes(ctx context.Context, projectID, branchID string, tl domain.EditTimeline) ([]audiodirector.Scene, error) {
 	idx, err := s.shotIndex(ctx, projectID, branchID)
 	if err != nil {
@@ -256,7 +208,12 @@ func audioError(err error) error {
 		be  *audiodirector.BudgetError
 		api *llm.APIError
 	)
+	reason, local := localspeech.Reason(err)
 	switch {
+	case local:
+		return &AIError{Reason: reason, Err: err}
+	case errors.Is(err, voicerefsvc.ErrNotFound):
+		return ErrNotFound
 	case errors.Is(err, audiodirector.ErrNoAPIKey):
 		return &AIError{Reason: "ElevenLabs の API キーが設定されていません（設定画面で elevenlabs のキーを登録してください）", Err: err}
 	case errors.As(err, &be):
@@ -273,10 +230,8 @@ func audioError(err error) error {
 	return &AIError{Reason: "音声のミキシングに失敗しました: " + err.Error(), Err: err}
 }
 
-// Voice sample limits: MaxVoiceSampleBytes is the largest sample recording.
-const (
-	MaxVoiceSampleBytes = 10 << 20
-)
+// MaxVoiceSampleBytes is the largest voice sample recording.
+const MaxVoiceSampleBytes = 10 << 20
 
 // CloneVoice clones a voice from a sample recording and makes it the voice of the speaker's lines
 // in the Project (POST /projects/:id/audio/voices, ElevenLabs instant voice cloning). A speaker

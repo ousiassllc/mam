@@ -20,6 +20,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/chatgpt"
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/service/appupdate"
+	"github.com/ousiassllc/mam/backend/internal/service/audiosettings"
 	"github.com/ousiassllc/mam/backend/internal/service/llmassign"
 	"github.com/ousiassllc/mam/backend/internal/service/modelsettings"
 )
@@ -33,6 +34,8 @@ type Settings struct {
 	Update *appupdate.Service
 	// ChatGPT is the ChatGPT sign-in (login, logout, status and the image generation switch).
 	ChatGPT *chatgpt.Service
+	// Audio is the choice of the voice and lip-sync providers (audio.json).
+	Audio *audiosettings.Service
 }
 
 // Kit is what the server shares with the tool packages besides service.Services.

@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -71,6 +72,32 @@ func TestAllowedURL(t *testing.T) {
 		u, err := url.Parse(raw)
 		require.NoError(t, err)
 		assert.Equal(t, ok, fetch.AllowedURL(u) == nil, raw)
+	}
+}
+
+// The parts of an assembled runtime (MuseTalk) come from the hosts of AllowedURL and the Python package hosts, and from no other.
+func TestPackageURL(t *testing.T) {
+	for raw, ok := range map[string]bool{
+		"https://huggingface.co/o/m/resolve/abc/f.7z":                                             true,
+		"https://github.com/TMElyralab/MuseTalk/archive/abc.zip":                                  true,
+		"https://codeload.github.com/TMElyralab/MuseTalk/zip/abc":                                 true,
+		"https://www.python.org/ftp/python/3.10.11/python-3.10.11-embed-amd64.zip":                true,
+		"https://files.pythonhosted.org/packages/ab/cd/numpy-1.23.5-cp310-cp310-win_amd64.whl":    true,
+		"https://download.pytorch.org/whl/cu118/torch-2.0.1%2Bcu118-cp310-cp310-win_amd64.whl":    true,
+		"https://download-r2.pytorch.org/whl/cu118/torch-2.0.1%2Bcu118-cp310-cp310-win_amd64.whl": true,
+		"https://download.openmmlab.com/mmcv/dist/cu118/torch2.0.0/mmcv-2.0.1.whl":                true,
+		"http://files.pythonhosted.org/packages/x.whl":                                            false,
+		"https://pypi.org/simple/numpy/":                                                          false,
+		"https://evilpytorch.org/x.whl":                                                           false,
+		"https://pytorch.org.evil.com/x.whl":                                                      false,
+		"https://127.0.0.1/x":                                                                     false,
+	} {
+		u, err := url.Parse(raw)
+		require.NoError(t, err)
+		assert.Equal(t, ok, fetch.PackageURL(u) == nil, raw)
+		if ok && !strings.Contains(raw, "huggingface") && !strings.Contains(raw, "github") {
+			assert.Error(t, fetch.AllowedURL(u), "the weights and the engine never come from a package host: "+raw)
+		}
 	}
 }
 

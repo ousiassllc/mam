@@ -162,6 +162,10 @@ func UpdateCheck() string { return Settings() + "/update/check" }
 // ModelSettings is "/settings/models", the image / video model assignment of the settings screen.
 func ModelSettings() string { return Settings() + "/models" }
 
+// AudioSettings is "/settings/audio", the "音声・口パク" category of the settings screen (GET: the page) and the choice of the voice and
+// lip-sync providers (PUT).
+func AudioSettings() string { return Settings() + "/" + SettingsAudio }
+
 // FFmpegSettings is "/settings/ffmpeg", the ffmpeg section of the settings screen (GET: the page) and the paths of ffmpeg and
 // ffprobe (PUT).
 func FFmpegSettings() string { return Settings() + "/" + SettingsFFmpeg }

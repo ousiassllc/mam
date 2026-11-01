@@ -2,7 +2,6 @@ package modelmgr
 
 import (
 	"context"
-	"fmt"
 	"slices"
 	"strings"
 
@@ -14,11 +13,12 @@ import (
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
 )
 
-// bytesText, progressOf and ended are shared with the child packages (jobview).
+// bytesText, progressOf, ended and vramText are shared with the child packages (jobview).
 var (
 	bytesText  = jobview.BytesText
 	progressOf = jobview.Progress
 	ended      = jobview.Ended
+	vramText   = jobview.VRAMText
 )
 
 // engineData is the card of the engine. job is the install job the card reports on ("" for the running one);
@@ -99,14 +99,6 @@ func licenseOf(l catalog.License) view.License {
 		out.Regions = "次の地域では、このライセンスは適用されず、このモデルを使えません: " + strings.Join(names, "・")
 	}
 	return out
-}
-
-// vramText is the guideline of the video memory with where it comes from.
-func vramText(minGB int, source string, estimate bool) string {
-	if estimate {
-		return fmt.Sprintf("%d GB 以上（mam の推定。GPU では未確認）", minGB)
-	}
-	return fmt.Sprintf("%d GB 以上（出典: %s）", minGB, source)
 }
 
 // blockedText says why no model can be installed now, or "".
