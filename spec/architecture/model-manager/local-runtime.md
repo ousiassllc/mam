@@ -12,7 +12,7 @@
 
 ## 1. 方針（変えない前提）
 
-- **ComfyUI を経由せず、ランタイムごとに独立した Python 環境とプロセスを持つ**。GPT-SoVITS は公式の `api_v2.py`（FastAPI）を、MAM が `127.0.0.1` 限定で起動して HTTP で呼ぶ。ComfyUI のカスタムノード経由にしない（親 Issue「ComfyUI のカスタムノードは古いものが多い」。決定事項 1 で、MAM が管理する独立の実行環境・プロセスに決まった）。
+- **ComfyUI を経由せず、ランタイムごとに独立した Python 環境とプロセスを持つ**。GPT-SoVITS は公式の `api_v2.py`（FastAPI）を、mam が同梱する起動用スクリプト（トークンと Host の確認を足す。§5.2）経由で、MAM が `127.0.0.1` 限定で起動して HTTP で呼ぶ。ComfyUI のカスタムノード経由にしない（親 Issue「ComfyUI のカスタムノードは古いものが多い」。決定事項 1 で、MAM が管理する独立の実行環境・プロセスに決まった）。
 - **ランタイムの種類はデータ**（`catalog/data/runtimes/<名前>.json`）。コードは GPT-SoVITS を知らない。MuseTalk は同じ形の JSON を足し、起動の引数・確認パス・対応環境の判定の文を書くだけで載る（§9）。
 - **MAM は何も同梱しない**。公式の配布先から取得する別プログラムで、`THIRD_PARTY_NOTICES.md`（GPT-SoVITS の節）に載せる。ライセンスと商用利用の可否の表示は §12（#920）。
 - **置き場所は `<mam.exe のあるディレクトリ>\localai\<ランタイム ID>\` だけ**（§2）。ライブラリのキャッシュと一時ファイルもその中に置く。インストール版はアンインストーラーが消し、ポータブル版は exe の隣に残る。書けない場所なら `store.ErrNotWritable` で断る。
@@ -81,7 +81,7 @@ SHA-256 は Hugging Face の API（`/api/models/lj1995/GPT-SoVITS-windows-packag
 
 1. 対応を判定（§4）→ 書き込み可否 → 空き容量（未取得分＋展開後。足りなければ `*fetch.NoSpaceError`）。
 2. `downloads\<名前>.part` へ `Range` 再開つきで取得し、SHA-256・サイズを検証してからリネーム（`ErrChecksum`・`ErrSize` は `.part` を消す。取り消し・ネットワークの失敗は残して、次の導入が続きから再開する）。
-3. 7z を `env.new\` へ展開し、`runtime\python.exe` と入口のスクリプト（`api_v2.py`）があることを確かめて `env\` と入れ替える（既存は `env.old\` に退避して成功で消す。失敗で戻す）。
+3. 7z を `env.new\` へ展開し、続けて**カタログの `extra_files`（mam が同梱する起動用スクリプト `mam_gptsovits_server.py`。`catalog/data/overlays/`）を `env.new\` に書き**、`runtime\python.exe` と入口のスクリプト（`mam_gptsovits_server.py`）があることを確かめて `env\` と入れ替える（既存は `env.old\` に退避して成功で消す。失敗で戻す）。導入のたびに環境を作り直すので、更新・再導入でもこのファイルは今の mam のものになる。さらに**起動のたび**（`Installer.Command`）に、同じファイルを `env\` へ書き直す（起動用スクリプトは守り（トークン・Host・許可する要求）そのものなので、mam の修正が、パッケージの再取得なしで次の起動から効く）。`extra_files` は `build.files` と同じ形（`dest`＋`overlay` か `lines`。検証は `parts.CheckFiles`）で、組み立てるランタイム（`build`）とは併用しない。`Status` は、導入済みと記録されていても `extra_files` のファイルが無い環境（このスクリプトが入る前に導入したもの）を `broken`（導入し直す）にする。
 4. `state.json` に版・変種・時刻を記録し、アーカイブと `downloads\` を消す。
 
 進捗は展開前の取得 70 %・展開 30 %。実行中のプロセスは、ファイルを入れ替える前に止める。失敗は日本語にして出す（SHA-256 不一致・大きさ不一致・空き容量・取得元の 4xx・書き込めない場所）。
@@ -90,8 +90,9 @@ SHA-256 は Hugging Face の API（`/api/models/lj1995/GPT-SoVITS-windows-packag
 
 | 項目 | 内容 |
 |---|---|
-| コマンド | `env\runtime\python.exe -I -u -X utf8 api_v2.py -a 127.0.0.1 -p <空きポート> -c GPT_SoVITS/configs/tts_infer.yaml`（作業ディレクトリは `env\`）。公式の `go-webui.bat`（`runtime\python.exe -I …`、`runtime` を `PATH` の先頭へ）と同じ作りで、`-I`（隔離モード）により利用者の Python・`PYTHONPATH` に影響されない。`api_v2.py` が自分で `sys.path` に作業ディレクトリを足す |
-| 待ち受け | **`127.0.0.1` だけ**（カタログの検証が、`127.0.0.1`・`{port}` を含み `0.0.0.0`・`::` を含まない引数だけを許す）。ポートは前回のポートを優先し、空いていなければ空きポート（`proc.FreePort`） |
+| コマンド | `env\runtime\python.exe -I -u -X utf8 mam_gptsovits_server.py -a 127.0.0.1 -p <空きポート> -c GPT_SoVITS/configs/tts_infer.yaml`（作業ディレクトリは `env\`）。**公式の `api_v2.py` を直接は起動しない**: mam の起動用スクリプト（`catalog/data/overlays/mam_gptsovits_server.py`）が、`-I` で外れる `sys.path`（作業ディレクトリと `GPT_SoVITS`）を `api_v2.py` と同じに足して `api_v2` を import し（引数 `-a`・`-p`・`-c` は `api_v2.py` がそのまま読む。モデルを読み込んでからポートが開く）、その FastAPI アプリ（`api_v2.APP`）の前に下の守りを置いてから、`api_v2.py` の `__main__` と同じに `uvicorn.run(host, port, workers=1)` する。公式の `go-webui.bat`（`runtime\python.exe -I …`、`runtime` を `PATH` の先頭へ）と同じ作りで、`-I`（隔離モード）により利用者の Python・`PYTHONPATH` に影響されない |
+| 待ち受け | **`127.0.0.1` だけ**（カタログの検証が、`127.0.0.1`・`{port}` を含み `0.0.0.0`・`::` を含まない引数だけを許す。起動用スクリプトも `-a` が `127.0.0.1` でなければ、モデルを読む前に終了コード 2 で断る）。ポートは前回のポートを優先し、空いていなければ空きポート（`proc.FreePort`） |
+| 認証と Host の確認 | 公式の `api_v2.py` はトークンも Host の確認も持たず、`GET /control?command=exit\|restart`・`/set_gpt_weights`・`/set_sovits_weights`（任意のパスの重みを読む）・`/tts?ref_audio_path=` が、ブラウザの Web ページからの単純な GET（と DNS リバインディング）で呼べてしまう。そこで起動用スクリプトの ASGI ミドルウェアが、**全要求**に次を課す（順に判定）。①`Host` が `127.0.0.1:<port>`・`localhost:<port>`（大文字小文字は問わない・1 つだけ）でなければ **403**。②**許可する要求だけ**を通す: `POST /tts`（mam の声の呼び出しが使う唯一のもの。`agent/audiodirector/gptsovits`）と `GET /openapi.json`（起動確認）。それ以外（`/control`・`/set_gpt_weights`・`/set_sovits_weights`・`/set_refer_audio`・`GET /tts`・`/docs` ほか）は**トークンを持っていても 404**（トークンの持ち主でも、サーバーに任意のパスを読み込ませたり止めさせたりできない）。③`POST /tts` はヘッダー `X-Mam-Token` が環境変数 `MAM_RUNTIME_TOKEN`（カタログの `launch.token_env`）と一致すること（`hmac.compare_digest`。ヘッダーが 2 つなら不一致）。違えば **403**。`GET /openapi.json` はトークンなし（mam の起動確認がトークンを持たない。Host の確認は受ける）。トークンは起動のたびに mam が作る 24 バイトの乱数（§13.3 の MuseTalk と同じ `localruntime` の `withToken`/`currentToken`）で、`MAM_RUNTIME_TOKEN` が無い・16 文字未満のときは起動用スクリプトが起動しない（終了コード 2）。トークンはログにも画面にも出さない |
 | 応答の待ち | `GET /openapi.json` が 200（FastAPI の既定。**モデルを読み込んだ後にポートが開く**ので、応答があれば使える）。最長 5 分（初回はモデルの読み込みに時間がかかる） |
 | オフライン設定 | `HF_HUB_OFFLINE=1`・`TRANSFORMERS_OFFLINE=1`・`HF_DATASETS_OFFLINE=1`・`HF_HUB_DISABLE_TELEMETRY=1`・`DO_NOT_TRACK=1`・`GRADIO_ANALYTICS_ENABLED=False`（カタログの `launch.env`）。実行中にライブラリが重みを取りに行かない。必要な重みは取得済みのものだけを使う。ミラー（`modelscope`）も `MODELSCOPE_CACHE` をランタイムの `cache\` に向ける |
 | 書き込み先 | `HF_HOME`・`TORCH_HOME`・`MODELSCOPE_CACHE`・`XDG_CACHE_HOME` は `cache\`、`TEMP`・`TMP`・`TMPDIR` は `tmp\`（どちらもランタイムのディレクトリの中）。`PATH` の先頭に `env\runtime`。`PYTHONPATH`・`PYTHONHOME`・`PYTHONSTARTUP`・`VIRTUAL_ENV` は子に渡さない |
@@ -118,6 +119,7 @@ func (*Service) CheckStart(ctx, id) error               // Start の前提（対
 func (*Service) Start(ctx, id) (proc.Status, error)
 func (*Service) Stop(id) error
 func (*Service) Prepare(ctx, id) error
+func (*Service) Token(id) (string, error)               // 今の起動のトークン（`token_env` の無いランタイムは ""）。呼び出し側の秘密で、`View` には載せない（§5.2）
 func (*Service) SetAutoStart(id, on) error
 func (*Service) CancelInstall(jobID) error              // 動いている導入の中断（ErrNotFound: 動いていない）
 func (*Service) JobStatus(ctx, jobID) (JobStatus, error)
@@ -154,9 +156,9 @@ func (*Service) Watch(func(Event)) (cancel func())      // プロセスの状態
 
 | 項目 | 状態 |
 |---|---|
-| **実物の Windows ＋ NVIDIA での統合パッケージの導入（約 8 GB の取得と約 14 GB の展開）と、`api_v2.py` の起動・応答** | **未確認**。合成 7z（`extract/testdata/bcj2.7z`）と偽の取得元・偽のプロセス（このテストバイナリ自身）で、取得・`Range` 再開・ハッシュ／サイズ不一致・空き容量・取り消し・展開・入れ替え・起動・停止・失敗の分岐を確認。実物の 7z は、ヘッダー（58,007 個のファイル、展開後 14,128,680,597 バイト）だけを `Range` で読み、`runtime\python.exe`・`api_v2.py`・`GPT_SoVITS\configs\tts_infer.yaml` があることを確かめた（本体は取っていない） |
+| **実物の Windows ＋ NVIDIA での統合パッケージの導入（約 8 GB の取得と約 14 GB の展開）と、`mam_gptsovits_server.py` 経由での `api_v2.py` の起動・応答** | **未確認**。合成 7z（`extract/testdata/bcj2.7z`）と偽の取得元・偽のプロセス（このテストバイナリ自身）で、取得・`Range` 再開・ハッシュ／サイズ不一致・空き容量・取り消し・展開・`extra_files` の書き込み・入れ替え・起動・停止・失敗の分岐を確認。起動用スクリプトの守り（Host・トークン・許可する要求）は、偽の `api_v2`・`uvicorn` の Python のテスト（`catalog/gptsovitstest/testdata/test_gptsovits_server.py`）で確認した（実物の `api_v2.py` と組み合わせては動かしていない）。実物の 7z は、ヘッダー（58,007 個のファイル、展開後 14,128,680,597 バイト）だけを `Range` で読み、`runtime\python.exe`・`api_v2.py`・`GPT_SoVITS\configs\tts_infer.yaml` があることを確かめた（本体は取っていない） |
 | 14 GB・5.8 万ファイルの 7z を `bodgit/sevenzip` で展開するときのメモリ・時間・Windows の長いパス | **未確認**（ComfyUI の 4.4 GB のものとは桁が違う。ヘッダーの読み込みは 166 回の `Range` で済んだ） |
-| `-I` ＋ 作業ディレクトリ `env\` で `api_v2.py` が `tools`・`GPT_SoVITS` を import できること、`GET /openapi.json` が 200 になるまでの時間 | **未確認**（`api_v2.py` のソースで `sys.path` への追加と FastAPI の既定の `/openapi.json` を読んで確かめたが、実行していない） |
+| `-I` ＋ 作業ディレクトリ `env\` で `mam_gptsovits_server.py` が `api_v2`（と `tools`・`GPT_SoVITS`）を import できること、`api_v2` のモジュール変数（`APP`・`host`・`port`）が 20250606v2pro のままであること、`GET /openapi.json` が 200 になるまでの時間 | **未確認**（`api_v2.py` のソース（タグ `20250606v2pro`）で、`sys.path` への追加・import 時に `argparse` が `sys.argv` を読んでモデルを読み込むこと・`APP = FastAPI()`・`__main__` の `uvicorn.run(app=APP, host=host, port=port, workers=1)` を読んで確かめたが、実行していない） |
 | オフライン設定（`HF_HUB_OFFLINE` ほか）で、統合パッケージの推論が重みを取りに行かず動くこと | **未確認**（重みは同梱されているが、実機で起動して確かめていない） |
 | VRAM の下限 4 GB（推定） | **未確認**（公式に数値がない。`vram.estimate=true`） |
 | RTX 50 シリーズ向けパッケージ（`nvidia50`）の起動、`nvidia-smi` の `compute_cap` による選択 | **未確認**（判定は純粋関数のテストだけ。実機の `nvidia-smi` は使っていない） |

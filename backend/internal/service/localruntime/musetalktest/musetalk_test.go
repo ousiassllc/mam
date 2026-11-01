@@ -77,6 +77,25 @@ func TestLipSyncStartsTheRuntimeLazilyAndReturnsTheReport(t *testing.T) {
 	require.NoError(t, err)
 }
 
+// Service.Token is the token of the current start, which the server accepts (the voice client takes it from here for GPT-SoVITS).
+func TestTokenIsTheOneOfTheCurrentStartAndTheServerAcceptsIt(t *testing.T) {
+	r := newRig(t)
+	r.installMuseTalk()
+	_, err := r.svc.Token("nope")
+	require.ErrorIs(t, err, localruntime.ErrNotFound)
+	req := inputs(t, "face.mp4")
+	_, err = r.svc.LipSync(ctx(), req)
+	require.NoError(t, err)
+	v, _ := r.svc.Status(ctx(), "musetalk")
+
+	token, err := r.svc.Token("musetalk")
+
+	require.NoError(t, err)
+	assert.GreaterOrEqual(t, len(token), 16)
+	_, err = lipsync.Client{BaseURL: "http://127.0.0.1:" + strconv.Itoa(v.Process.Port), Token: token}.Lipsync(ctx(), req)
+	require.NoError(t, err)
+}
+
 func TestLipSyncReportsWhatTheGenerationRefusedWith(t *testing.T) {
 	r := newRig(t)
 	r.installMuseTalk()

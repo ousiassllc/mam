@@ -159,6 +159,31 @@ func TestSeriesVoice_SetPlayReplaceAndRemoveOnTheCanonicalCharacter(t *testing.T
 	assert.Equal(t, http.StatusNotFound, a.request(http.MethodGet, route, nil, "").Code)
 }
 
+// The form pre-fills the transcript field with the stored transcript and sends it back with a new recording.
+func TestSeriesVoice_ANewRecordingDropsTheStoredTranscriptUnlessTheFieldWasChanged(t *testing.T) {
+	a := newApp(t)
+	_, seriesID, canonID := a.fixture()
+	route := "/series/" + seriesID + "/characters/" + canonID + "/voice-reference"
+	require.Equal(t, http.StatusOK, a.put(route, "voice.wav", wav(64), map[string]string{"text": "古い書き起こし"}).Code)
+
+	// The field was not touched: the old transcript does not stay with the new recording.
+	rec := a.put(route, "new.wav", wav(80), map[string]string{"text": "古い書き起こし"})
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.NotContains(t, rec.Body.String(), "古い書き起こし")
+	assert.Equal(t, wav(80), a.request(http.MethodGet, route, nil, "").Body.Bytes())
+
+	// A transcript typed for the new recording is kept.
+	require.Equal(t, http.StatusOK, a.put(route, "", nil, map[string]string{"text": "二つ目"}).Code)
+	rec = a.put(route, "newer.wav", wav(96), map[string]string{"text": "新しい書き起こし"})
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.Contains(t, rec.Body.String(), `value="新しい書き起こし"`)
+
+	// Without a file the same text is just a save: it stays.
+	rec = a.put(route, "", nil, map[string]string{"text": "新しい書き起こし"})
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.Contains(t, rec.Body.String(), `value="新しい書き起こし"`)
+}
+
 func TestSeriesVoice_RefusesWhatIsNotAVoiceWith422AndUnknownTargetsWith404(t *testing.T) {
 	a := newApp(t)
 	_, seriesID, canonID := a.fixture()

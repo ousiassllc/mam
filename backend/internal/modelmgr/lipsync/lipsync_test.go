@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -186,4 +188,32 @@ func TestHealth(t *testing.T) {
 
 	f = serve(t, 403, `{"error":{"code":"forbidden","message":"このアドレスでは受け付けません"}}`)
 	require.ErrorIs(t, lipsync.Client{BaseURL: f.URL}.Health(context.Background()), lipsync.ErrForbidden)
+}
+
+// The client made for a call is not kept: a connection left open after each generation would leak a socket and goroutines on this side
+// and a blocked handler thread on the server's.
+func TestLipsyncDoesNotKeepTheConnectionOfTheClientItMakes(t *testing.T) {
+	var conns atomic.Int32
+	var kept atomic.Bool
+	srv := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !r.Close {
+			kept.Store(true)
+		}
+		_, _ = w.Write([]byte(`{"output_path":"/work/out.mp4","frames":1,"fps":25,"duration_sec":1,"elapsed_sec":1}`))
+	}))
+	srv.Config.ConnState = func(_ net.Conn, s http.ConnState) {
+		if s == http.StateNew {
+			conns.Add(1)
+		}
+	}
+	srv.Start()
+	t.Cleanup(srv.Close)
+
+	c := lipsync.Client{BaseURL: srv.URL, Token: "t"}
+	for range 3 {
+		_, err := c.Lipsync(context.Background(), goodRequest())
+		require.NoError(t, err)
+	}
+	assert.False(t, kept.Load(), "every request asks the server to close the connection")
+	assert.EqualValues(t, 3, conns.Load(), "each call has a connection of its own")
 }

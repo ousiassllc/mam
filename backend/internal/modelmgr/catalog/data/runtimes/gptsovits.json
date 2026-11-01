@@ -6,11 +6,14 @@
  "source_url": "https://github.com/RVC-Boss/GPT-SoVITS/tree/20250606v2pro",
  "description": "参照音声（約 5 秒）から声を真似て日本語の音声を作る GPT-SoVITS の実行環境。公式の Windows 統合パッケージ（Python 環境・本体・学習済みモデルを含む約 8 GB）を公式の配布先から取得して展開し、mam が起動・停止まで管理します。",
  "archive_root": "GPT-SoVITS-v2pro-20250604",
+ "extra_files": [
+  {"dest": "mam_gptsovits_server.py", "overlay": "mam_gptsovits_server.py"}
+ ],
  "launch": {
   "python": "runtime/python.exe",
   "path_dirs": ["runtime"],
-  "entry": "api_v2.py",
-  "args": ["-I", "-u", "-X", "utf8", "api_v2.py", "-a", "127.0.0.1", "-p", "{port}", "-c", "GPT_SoVITS/configs/tts_infer.yaml"],
+  "entry": "mam_gptsovits_server.py",
+  "args": ["-I", "-u", "-X", "utf8", "mam_gptsovits_server.py", "-a", "127.0.0.1", "-p", "{port}", "-c", "GPT_SoVITS/configs/tts_infer.yaml"],
   "ready_path": "/openapi.json",
   "env": [
    "HF_HUB_OFFLINE=1",
@@ -20,7 +23,8 @@
    "DO_NOT_TRACK=1",
    "GRADIO_ANALYTICS_ENABLED=False"
   ],
-  "start_timeout_sec": 300
+  "start_timeout_sec": 300,
+  "token_env": "MAM_RUNTIME_TOKEN"
  },
  "vram": {
   "min_gb": 4,

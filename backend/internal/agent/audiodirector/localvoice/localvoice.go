@@ -54,9 +54,10 @@ func SpeakerOf(line domain.VoiceLine) string {
 }
 
 // Server is the local GPT-SoVITS server: Ensure starts it when it is stopped (the lazy start of the runtime manager), waits
-// until it answers and returns its base URL ("http://127.0.0.1:<port>"). A server that cannot be used is an *UnavailableError.
+// until it answers and returns its base URL ("http://127.0.0.1:<port>") and the token of this start (the server answers only the
+// caller that sends it in the header X-Mam-Token). A server that cannot be used is an *UnavailableError.
 type Server interface {
-	Ensure(ctx context.Context) (baseURL string, err error)
+	Ensure(ctx context.Context) (baseURL, token string, err error)
 }
 
 // VoiceIDs maps a speaker name to the voice cloned for it (the Input.Voices of a run).

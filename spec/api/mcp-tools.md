@@ -104,3 +104,4 @@ MCP ツールの対象外: MCP サーバー自身の設定（待ち受け先の�
 | 1.9 | 2026-10-31 | `list_jobs`（履歴の一覧。種別・状態・エラーコード・Project・期間で絞り込み、新しい順・カーソルのページング）を足し、`get_job` に `error_id` を足した。`internal` エラーに相関 ID `error_id` を持たせ、ログの ERROR 行・エラーの文面・ジョブの履歴・`get_job` / `list_jobs` に同じ値を載せ、`get_app_logs` の属性の絞り込みでログ行をたどれることを規約に書いた | Issue #892（親 #889） |
 | 1.10 | 2026-11-01 | アップロードの用途の表に `character_voice_reference`（登場人物の参照音声。Series の正本か Project の登場人物）を足した | Issue #919（#912）。参照音声の MCP の入口 |
 | 1.11 | 2026-11-01 | ツールの一覧の「全体設定」の行に、音声・口パクのプロバイダー（`get_audio_providers`・`set_audio_providers`。`mcp-tools-settings-policy.md`）を足した | Issue #924。ツールの詳細は [mcp-tools-settings-policy.md](mcp-tools-settings-policy.md) |
+| 1.12 | 2026-11-01 | `generate_audio` のジョブの結果に、ローカルからクラウドに切り替えた実行のときだけ `provider_notes`（切り替えの理由の配列）が付くことを [mcp-tools-editor-review.md](mcp-tools-editor-review.md) に足した | Issue #912。`model-adapters-m3.md` §14.10 が「ジョブの結果に書く」と言っていたのに、実装がチャットの要約にしか書いていなかったため |

@@ -39,7 +39,8 @@ type RuntimeLaunch struct {
 	// separated) that are put in front of PATH, as the vendor's launcher does.
 	Python   string   `json:"python"`
 	PathDirs []string `json:"path_dirs,omitempty"`
-	// Entry is the vendor's server script (relative): the install checks it is in the archive, and Args must run it.
+	// Entry is the server script (relative): the vendor's, or mam's own launcher that the install writes (Runtime.ExtraFiles); the
+	// install checks it is in the environment, and Args must run it.
 	Entry string `json:"entry"`
 	// Args are the arguments of Python; "{port}" is replaced by the port. The server must bind 127.0.0.1 only (validated).
 	Args []string `json:"args"`
@@ -96,6 +97,10 @@ type Runtime struct {
 	License License        `json:"license"`
 	// Build says how the parts of an assembled variant become the environment (nil when every variant is one archive).
 	Build *parts.Build `json:"build,omitempty"`
+	// ExtraFiles are the files mam writes into the extracted environment of an archive runtime (a runtime without Build): its own
+	// launcher script next to the vendor's server, which the install writes after every extraction and Installer.Command writes again before every start
+	// (the current one of this mam, without a new download of the package).
+	ExtraFiles []parts.File `json:"extra_files,omitempty"`
 	// Variants are the pinned builds by the GPU generation they are for.
 	Variants map[Variant]RuntimeVariant `json:"variants"`
 }

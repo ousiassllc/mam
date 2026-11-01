@@ -88,10 +88,15 @@ func New(d Deps) *Service {
 // Input is what is set on a Character. File may be left out to change the transcript or the language of the
 // reference voice it already has. Text and Language nil keep what the Character has (a new recording starts with
 // no transcript and the default language); "" for Language is the default language.
+//
+// TextPrefilled is for the screen, whose transcript field is pre-filled with the stored transcript and so always
+// sends it: with a new File, a Text equal to the stored transcript is then the untouched field, not a transcript
+// for the new recording, and counts as not sent.
 type Input struct {
-	File     File
-	Text     *string
-	Language *string
+	File          File
+	Text          *string
+	Language      *string
+	TextPrefilled bool
 }
 
 // owner is a Project or a Series: whose Character it is and the directory its recordings are stored in.
@@ -197,7 +202,7 @@ func metadata(in Input, have *voiceref.Reference) (text, lang string, err error)
 			text = have.Text
 		}
 	}
-	if in.Text != nil {
+	if in.Text != nil && !untouched(in, have) {
 		text = *in.Text
 	}
 	if in.Language != nil {
@@ -210,4 +215,9 @@ func metadata(in Input, have *voiceref.Reference) (text, lang string, err error)
 		return "", "", invalid("language", "言語は %s のいずれかを指定してください", strings.Join(voiceref.Languages(), " / "))
 	}
 	return text, lang, nil
+}
+
+// untouched reports that the transcript sent with a new recording is the stored one sent back by a pre-filled field.
+func untouched(in Input, have *voiceref.Reference) bool {
+	return in.TextPrefilled && in.File.Open != nil && have != nil && strings.TrimSpace(*in.Text) == have.Text
 }

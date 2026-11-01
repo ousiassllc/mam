@@ -19,11 +19,13 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/voicerefsvc"
 )
 
-// runtime is the runtime manager: Prepare answers with err, Status with the address the process listens on.
+// runtime is the runtime manager: Prepare answers with err, Status with the address the process listens on, Token with the token of the start.
 type runtime struct {
 	err       error
 	statusErr error
+	tokenErr  error
 	url       string
+	token     string
 	prepared  []string
 }
 
@@ -36,22 +38,32 @@ func (r *runtime) Status(context.Context, string) (localruntime.View, error) {
 	return localruntime.View{Process: proc.Status{State: proc.StateRunning, URL: r.url}}, r.statusErr
 }
 
-func TestServer_EnsureStartsTheRuntimeAndReturnsItsAddress(t *testing.T) {
-	rt := &runtime{url: "http://127.0.0.1:9880"}
+func (r *runtime) Token(string) (string, error) { return r.token, r.tokenErr }
 
-	base, err := localspeech.Server{Runtime: rt}.Ensure(context.Background())
+func TestServer_EnsureStartsTheRuntimeAndReturnsItsAddressAndToken(t *testing.T) {
+	rt := &runtime{url: "http://127.0.0.1:9880", token: "token-of-the-start"}
+
+	base, token, err := localspeech.Server{Runtime: rt}.Ensure(context.Background())
 
 	require.NoError(t, err)
 	assert.Equal(t, "http://127.0.0.1:9880", base)
+	assert.Equal(t, "token-of-the-start", token)
 	assert.Equal(t, []string{"gpt-sovits"}, rt.prepared, "the runtime of the catalog")
 }
 
-func TestServer_EnsureWithoutAnAddressIsKindProcess(t *testing.T) {
-	_, err := localspeech.Server{Runtime: &runtime{}}.Ensure(context.Background())
+func TestServer_EnsureWithoutAnAddressOrATokenIsKindProcess(t *testing.T) {
+	for name, rt := range map[string]*runtime{
+		"no address": {token: "t"},
+		"no token":   {url: "http://127.0.0.1:9880"}, // the server answers no request without it
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, _, err := localspeech.Server{Runtime: rt}.Ensure(context.Background())
 
-	var un *localvoice.UnavailableError
-	require.ErrorAs(t, err, &un)
-	assert.Equal(t, localvoice.KindProcess, un.Kind)
+			var un *localvoice.UnavailableError
+			require.ErrorAs(t, err, &un)
+			assert.Equal(t, localvoice.KindProcess, un.Kind)
+		})
+	}
 }
 
 func TestUnavailable_EveryRefusalOfTheRuntimeManagerHasItsKind(t *testing.T) {

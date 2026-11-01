@@ -1,6 +1,7 @@
-// Package gptsovits is the local voice of the Audio Director: it speaks a line of the script with GPT-SoVITS, the server
-// (api_v2.py) that mam installs, starts and stops itself (package localruntime), in the voice of the Character's reference
-// recording (spec/architecture/model-adapters-m3.md §14.8). It implements audiodirector.LocalSynthesizer.
+// Package gptsovits is the local voice of the Audio Director: it speaks a line of the script with GPT-SoVITS, the server (api_v2.py
+// behind mam's own launcher, which answers only the caller that has the token of the start) that mam installs, starts and stops itself
+// (package localruntime), in the voice of the Character's reference recording (spec/architecture/model-adapters-m3.md §14.8). It
+// implements audiodirector.LocalSynthesizer.
 package gptsovits
 
 import (
@@ -11,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -32,6 +34,9 @@ const (
 	maxSpeechBytes = 32 << 20
 	// splitMethod is the text_split_method of api_v2: "cut5" splits the line at every punctuation mark.
 	splitMethod = "cut5"
+	// tokenHeader carries the token of this start of the server: mam's launcher (spec/architecture/model-manager/local-runtime.md §5.2)
+	// answers /tts only with it.
+	tokenHeader = "X-Mam-Token" //nolint:gosec // the name of a header, not a credential
 )
 
 // Config is the setting of the client; zero fields take the defaults.
@@ -67,7 +72,7 @@ func New(server localvoice.Server, cfg Config, doer httpclient.Doer) *Client {
 // Prepare starts the server when it is stopped and waits until it answers (audiodirector.LocalSynthesizer). A server that cannot
 // be used is an *localvoice.UnavailableError.
 func (c *Client) Prepare(ctx context.Context) error {
-	_, err := c.server.Ensure(ctx)
+	_, _, err := c.server.Ensure(ctx)
 	return err
 }
 
@@ -101,8 +106,13 @@ func (c *Client) Synthesize(ctx context.Context, line domain.VoiceLine, voice lo
 	if lang == "" {
 		lang = DefaultTextLanguage
 	}
+	// The server is another process with its own working directory: a relative path (a relative data directory) would not be found.
+	refPath, err := filepath.Abs(voice.Path)
+	if err != nil {
+		return audiodirector.Speech{}, fmt.Errorf("gptsovits: the path of the reference voice of %q: %w", localvoice.SpeakerOf(line), err)
+	}
 	body, err := json.Marshal(request{
-		Text: text, TextLang: c.cfg.TextLanguage, RefAudioPath: voice.Path, PromptText: voice.Text, PromptLang: lang,
+		Text: text, TextLang: c.cfg.TextLanguage, RefAudioPath: refPath, PromptText: voice.Text, PromptLang: lang,
 		TextSplit: splitMethod, MediaType: "wav",
 	})
 	if err != nil {
@@ -114,11 +124,11 @@ func (c *Client) Synthesize(ctx context.Context, line domain.VoiceLine, voice lo
 	case <-ctx.Done():
 		return audiodirector.Speech{}, ctx.Err()
 	}
-	base, err := c.server.Ensure(ctx)
+	base, token, err := c.server.Ensure(ctx)
 	if err != nil {
 		return audiodirector.Speech{}, err
 	}
-	data, err := c.post(ctx, strings.TrimRight(base, "/")+"/tts", body)
+	data, err := c.post(ctx, strings.TrimRight(base, "/")+"/tts", token, body)
 	if err != nil {
 		return audiodirector.Speech{}, err
 	}
@@ -126,7 +136,7 @@ func (c *Client) Synthesize(ctx context.Context, line domain.VoiceLine, voice lo
 }
 
 // post sends the request and returns the wav of the answer.
-func (c *Client) post(ctx context.Context, url string, body []byte) ([]byte, error) {
+func (c *Client) post(ctx context.Context, url, token string, body []byte) ([]byte, error) {
 	callCtx, cancel := context.WithTimeout(ctx, c.cfg.Timeout)
 	defer cancel()
 	req, err := http.NewRequestWithContext(callCtx, http.MethodPost, url, bytes.NewReader(body))
@@ -134,6 +144,7 @@ func (c *Client) post(ctx context.Context, url string, body []byte) ([]byte, err
 		return nil, fmt.Errorf("build request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set(tokenHeader, token)
 	res, err := c.doer.Do(req)
 	if err != nil {
 		return nil, c.transportError(ctx, callCtx, err)

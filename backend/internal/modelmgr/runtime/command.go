@@ -25,6 +25,11 @@ func (i *Installer) Command(port int) (proc.Spec, error) {
 	if !i.Status().Installed {
 		return proc.Spec{}, ErrNotInstalled
 	}
+	// The launcher is mam's guard of the server (token, Host, paths): it is the one of this mam at every start, not the one an earlier
+	// mam wrote at install time, so a fix of it needs no new download of the package.
+	if err := i.writeFiles(i.Layout.EnvDir(), i.Runtime.ExtraFiles); err != nil {
+		return proc.Spec{}, err
+	}
 	l := i.Runtime.Launch
 	args := make([]string, len(l.Args))
 	for n, a := range l.Args {

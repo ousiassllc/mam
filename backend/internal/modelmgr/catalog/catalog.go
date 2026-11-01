@@ -169,8 +169,8 @@ type Catalog struct {
 	Models       []Model
 	Runtimes     []Runtime
 	ResourceSets []ResourceSet
-	// Overlays are the files of data/overlays by name: the scripts mam writes into the environment of an assembled runtime (the
-	// vendor ships no server of its own). They are compiled into mam, so they need no pin.
+	// Overlays are the files of data/overlays by name: the scripts mam writes into the environment of a runtime (the server of an assembled
+	// runtime, which the vendor does not ship; the guarded launcher of an archive runtime). They are compiled into mam, so they need no pin.
 	Overlays map[string][]byte
 }
 

@@ -152,7 +152,9 @@ func (c Client) do(ctx context.Context, method, path string, body []byte) (int, 
 	req.Header.Set(TokenHeader, c.Token)
 	doer := c.HTTP
 	if doer == nil {
-		doer = &http.Client{Transport: &http.Transport{Proxy: nil}} // the server is on this machine: never through a proxy
+		// The server is on this machine: never through a proxy. The client is made for this call alone, so its keep-alive connection
+		// would be left open (a socket, two goroutines and a blocked server thread) with nobody to reuse it: the connection is not kept.
+		doer = &http.Client{Transport: &http.Transport{Proxy: nil, DisableKeepAlives: true}}
 	}
 	res, err := doer.Do(req)
 	if err != nil {

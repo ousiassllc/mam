@@ -124,7 +124,7 @@ func serve(c *gin.Context) func(voicerefsvc.Playback, error) {
 }
 
 // readInput reads the multipart form: the optional file and the optional text and language (a field that was not
-// sent keeps what the Character has).
+// sent keeps what the Character has; the transcript the form sends back unchanged does not stay with a new recording).
 func readInput(c *gin.Context) (voicerefsvc.Input, error) {
 	if c.Request.ContentLength > bodyLimit {
 		return voicerefsvc.Input{}, errTooLarge
@@ -138,7 +138,7 @@ func readInput(c *gin.Context) (voicerefsvc.Input, error) {
 		return voicerefsvc.Input{}, &voicerefsvc.InvalidError{Message: "送信内容を読み取れませんでした（multipart/form-data で送ってください）"}
 	}
 	form := c.Request.MultipartForm
-	var in voicerefsvc.Input
+	in := voicerefsvc.Input{TextPrefilled: true}                               // the voice form pre-fills the transcript field with the stored one
 	if files := form.File["file"]; len(files) > 0 && files[0].Filename != "" { // an empty file input is an unnamed part
 		in.File = uploadOf(files[0])
 	}

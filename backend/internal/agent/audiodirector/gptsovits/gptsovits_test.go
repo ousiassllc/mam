@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -23,16 +24,17 @@ import (
 // wav is the smallest answer api_v2 could give that looks like a wav file.
 var wav = append([]byte("RIFF\x24\x00\x00\x00WAVEfmt "), make([]byte, 24)...)
 
-// server is a Server that answers with the address of a fake api_v2.
+// server is a Server that answers with the address of a fake api_v2 and the token of its start.
 type server struct {
 	url   string
+	token string
 	err   error
 	calls atomic.Int32
 }
 
-func (s *server) Ensure(context.Context) (string, error) {
+func (s *server) Ensure(context.Context) (string, string, error) {
 	s.calls.Add(1)
-	return s.url, s.err
+	return s.url, s.token, s.err
 }
 
 var voice = localvoice.Voice{Path: "/assets/p1/voices/yui.wav", Text: "こんにちは、ユイです", Language: "ja"}
@@ -62,7 +64,9 @@ func TestClient_PostsTheTextAndTheReferenceVoiceToApiV2AndReturnsTheWav(t *testi
 	assert.Equal(t, "application/json", got.contentType)
 	assert.Equal(t, "今日はいい天気ですね", got.body["text"])
 	assert.Equal(t, "ja", got.body["text_lang"])
-	assert.Equal(t, "/assets/p1/voices/yui.wav", got.body["ref_audio_path"])
+	wantPath, err := filepath.Abs(voice.Path)
+	require.NoError(t, err)
+	assert.Equal(t, wantPath, got.body["ref_audio_path"])
 	assert.Equal(t, "こんにちは、ユイです", got.body["prompt_text"])
 	assert.Equal(t, "ja", got.body["prompt_lang"])
 	assert.Equal(t, "wav", got.body["media_type"])

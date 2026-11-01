@@ -27,25 +27,34 @@ type Runtime interface {
 	// Prepare starts the runtime when it is stopped (the lazy start) and waits until it answers.
 	Prepare(ctx context.Context, id string) error
 	Status(ctx context.Context, id string) (localruntime.View, error)
+	// Token is the token of the server's current start (the header X-Mam-Token of every request to it).
+	Token(id string) (string, error)
 }
 
 // Server is the GPT-SoVITS server of the runtime manager, for gptsovits.New.
 type Server struct{ Runtime Runtime }
 
-// Ensure implements localvoice.Server: it starts the runtime when it is stopped and returns the address it listens on. Every
-// refusal of the manager is an *localvoice.UnavailableError with its Kind.
-func (s Server) Ensure(ctx context.Context) (string, error) {
+// Ensure implements localvoice.Server: it starts the runtime when it is stopped and returns the address it listens on and the token of
+// this start. Every refusal of the manager is an *localvoice.UnavailableError with its Kind.
+func (s Server) Ensure(ctx context.Context) (string, string, error) {
 	if err := s.Runtime.Prepare(ctx, RuntimeID); err != nil {
-		return "", Unavailable(ctx, err)
+		return "", "", Unavailable(ctx, err)
 	}
 	v, err := s.Runtime.Status(ctx, RuntimeID)
 	if err != nil {
-		return "", Unavailable(ctx, err)
+		return "", "", Unavailable(ctx, err)
 	}
 	if v.Process.URL == "" {
-		return "", &localvoice.UnavailableError{Kind: localvoice.KindProcess, Detail: "GPT-SoVITS のアドレスを取得できませんでした"}
+		return "", "", &localvoice.UnavailableError{Kind: localvoice.KindProcess, Detail: "GPT-SoVITS のアドレスを取得できませんでした"}
 	}
-	return v.Process.URL, nil
+	token, err := s.Runtime.Token(RuntimeID)
+	if err != nil {
+		return "", "", Unavailable(ctx, err)
+	}
+	if token == "" { // the server answers no request without it: say so here, not as a refusal of every line
+		return "", "", &localvoice.UnavailableError{Kind: localvoice.KindProcess, Detail: "GPT-SoVITS のトークンを取得できませんでした"}
+	}
+	return v.Process.URL, token, nil
 }
 
 // Unavailable turns the error of the runtime manager into the typed error of the local voice. ctx is the context of the call: its own

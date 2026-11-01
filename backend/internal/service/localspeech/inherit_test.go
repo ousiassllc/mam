@@ -108,7 +108,7 @@ func toneWav(t *testing.T) []byte {
 
 type fixedServer struct{ url string }
 
-func (f fixedServer) Ensure(context.Context) (string, error) { return f.url, nil }
+func (f fixedServer) Ensure(context.Context) (string, string, error) { return f.url, "test-token", nil }
 
 func exec1(t *testing.T, db *repository.DB, q string, args ...any) {
 	t.Helper()

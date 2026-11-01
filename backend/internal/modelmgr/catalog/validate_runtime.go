@@ -61,6 +61,10 @@ func validateRuntime(c *Catalog, r Runtime) []error {
 	if r.Build != nil {
 		errs = append(errs, parts.CheckBuild(where, r.Build, c.Overlays)...)
 	}
+	if r.Build != nil && len(r.ExtraFiles) > 0 {
+		errs = append(errs, fmt.Errorf("%s: an assembled runtime writes its files by build.files, not extra_files", where))
+	}
+	errs = append(errs, parts.CheckFiles(where+" extra_files", r.ExtraFiles, c.Overlays)...)
 	return append(errs, validateRuntimeVariants(where, r)...)
 }
 

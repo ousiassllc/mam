@@ -16,7 +16,8 @@ func HTTPReady(path string) func(ctx context.Context, url string) error {
 		if err != nil {
 			return err
 		}
-		res, err := (&http.Client{Transport: &http.Transport{Proxy: nil}}).Do(req)
+		// One probe per client: a kept connection would be left open with nobody to reuse it.
+		res, err := (&http.Client{Transport: &http.Transport{Proxy: nil, DisableKeepAlives: true}}).Do(req)
 		if err != nil {
 			return err
 		}
