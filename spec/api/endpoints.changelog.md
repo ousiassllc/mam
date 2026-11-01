@@ -174,3 +174,4 @@
 | 1.167 | 2026-11-01 | §1 の `POST /settings/chatgpt/codex/install` の行を、Windows に加えて macOS（Apple Silicon）でも取得できる（置き場所は `.app` の外のデータディレクトリの `codex`）、それ以外の環境は 409 に改めた | Issue #855。macOS 版でも設定画面から Codex 本体を取得できるようにした（`architecture/chatgpt-codex/codex-login.md` §2） |
 | 1.168 | 2026-11-01 | [endpoints-settings.md](endpoints-settings.md) §5.2.1 に、ffmpeg のダウンロードのルート（`GET`・`POST`・`DELETE /settings/ffmpeg/download`、`POST /settings/ffmpeg/download/cancel`）を足した | Issue #900 |
 | 1.169 | 2026-11-01 | §1 の表に、`GET`・`PUT /settings/ffmpeg`、`GET`・`POST`・`DELETE /settings/ffmpeg/download`、`POST /settings/ffmpeg/download/cancel` の行を足した（[endpoints-settings.md](endpoints-settings.md) §1・§5.2・§5.2.1 にあったのに、この表に無かった）。ダウンロードの削除中に開始を 409 で断ることを足した | Issue #900 |
+| 1.170 | 2026-11-01 | [endpoints-gentest.md](endpoints-gentest.md)（1.1）の「画面」の節で、モデルはカードのタップで選ぶもの、選べない理由は「?」ヘルプと読み上げにあるものに改めた | Issue #906 |
