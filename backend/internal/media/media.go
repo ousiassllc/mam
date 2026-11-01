@@ -9,14 +9,15 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/ousiassllc/mam/backend/internal/media/locate"
 )
 
-// ErrUnavailable means ffmpeg / ffprobe are not installed.
+// ErrUnavailable means ffmpeg / ffprobe cannot be used: they are not installed, or the path the user set is not one.
 var ErrUnavailable = errors.New("media: ffmpeg and ffprobe are required")
 
 // MaxPreviewHeight is the tallest picture the preview plays as it is; a taller Take (4K) is
@@ -42,12 +43,21 @@ type Tools struct {
 	lim             limits // the zero value means defaultLimits
 }
 
-// Look finds ffmpeg and ffprobe on the PATH. It returns ErrUnavailable when either is missing.
-func Look() (Tools, error) {
-	ffmpeg, err1 := exec.LookPath("ffmpeg")
-	ffprobe, err2 := exec.LookPath("ffprobe")
-	if err1 != nil || err2 != nil {
-		return Tools{}, ErrUnavailable
+// Look finds ffmpeg and ffprobe with no path set by the user: the search of locate.Find (PATH, then the Homebrew
+// directories on macOS). It returns an error wrapping ErrUnavailable when either is missing.
+func Look() (Tools, error) { return LookWith(locate.Config{}) }
+
+// LookWith finds ffmpeg and ffprobe on this machine: the path in cfg when it is set, else the search (LookIn of the
+// machine's Finder).
+func LookWith(cfg locate.Config) (Tools, error) { return LookIn(locate.DefaultFinder(), cfg) }
+
+// LookIn finds ffmpeg and ffprobe with f. It returns an error wrapping ErrUnavailable that says, for each of the two that
+// is missing, where it looked or which configured path cannot be used (errors.As finds a *locate.PathError).
+func LookIn(f locate.Finder, cfg locate.Config) (Tools, error) {
+	ffmpeg, err1 := f.Find(locate.FFmpeg, cfg.FFmpeg)
+	ffprobe, err2 := f.Find(locate.FFprobe, cfg.FFprobe)
+	if err := errors.Join(err1, err2); err != nil {
+		return Tools{}, fmt.Errorf("%w: %w", ErrUnavailable, err)
 	}
 	return Tools{ffmpeg: ffmpeg, ffprobe: ffprobe, lim: defaultLimits}, nil
 }

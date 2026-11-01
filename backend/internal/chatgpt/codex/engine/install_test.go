@@ -20,6 +20,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex/catalog"
 	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex/engine"
+	"github.com/ousiassllc/mam/backend/internal/exeinstall"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/fetch"
 )
 
@@ -76,7 +77,7 @@ func newRig(t *testing.T, zipBytes []byte, exe string) *rig {
 		Layout:  engine.Layout{Root: filepath.Join(dir, "codex")},
 		Version: "9.9.9",
 		Asset: catalog.Asset{
-			URL: r.srv.URL + "/codex.zip", SHA256: sum(zipBytes), Size: int64(len(zipBytes)),
+			URL: r.srv.URL + "/codex.zip", Format: catalog.FormatZip, SHA256: sum(zipBytes), Size: int64(len(zipBytes)),
 			Exe: exeName, ExeSHA256: sum([]byte(exe)), ExeSize: int64(len(exe)),
 		},
 		Fetch: fetch.Options{Client: r.srv.Client(), CheckURL: func(*url.URL) error { return nil }},
@@ -151,8 +152,8 @@ func TestInstallRefusesAnExecutableThatIsNotThePinnedOne(t *testing.T) {
 	r := newRig(t, makeZip(t, [2]string{exeName, "something else entirely"}), "the pinned executable")
 	r.ins.Asset.ExeSize = int64(len("something else entirely")) // same size, other content: only the SHA-256 tells
 	err := r.ins.Install(context.Background(), nil)
-	if !errors.Is(err, engine.ErrExeMismatch) {
-		t.Fatalf("err = %v, want ErrExeMismatch", err)
+	if !errors.Is(err, exeinstall.ErrMismatch) {
+		t.Fatalf("err = %v, want ErrMismatch", err)
 	}
 	assertNothingInstalled(t, r)
 	if _, err := os.Stat(filepath.Join(r.ins.Layout.DownloadsDir(), "codex.zip")); err == nil {
@@ -175,7 +176,7 @@ func TestInstallRefusesUnsafeArchives(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			r := newRig(t, makeZip(t, entries...), "exe")
 			err := r.ins.Install(context.Background(), nil)
-			if !errors.Is(err, engine.ErrUnsafeArchive) {
+			if !errors.Is(err, exeinstall.ErrUnsafeArchive) {
 				t.Fatalf("err = %v, want ErrUnsafeArchive", err)
 			}
 			assertNothingInstalled(t, r)

@@ -18,10 +18,12 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/chatgpt/chatgpttest"
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/credential/credentialtest"
+	"github.com/ousiassllc/mam/backend/internal/media/ffmpegdl"
 	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 	"github.com/ousiassllc/mam/backend/internal/router"
 	"github.com/ousiassllc/mam/backend/internal/router/settingsroutes"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/service/ffmpegsettings"
 	guide "github.com/ousiassllc/mam/backend/internal/service/onboarding"
 	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
@@ -48,8 +50,9 @@ type config struct {
 	noGuide     bool
 	chatGPT     bool
 	keys        credential.Store
-	chatGPTKeys credential.Store // the key store of the ChatGPT sign-in (nil: an empty memory one)
-	flagBytes   string           // the content of onboarding.json before the first request ("" for no file)
+	chatGPTKeys credential.Store  // the key store of the ChatGPT sign-in (nil: an empty memory one)
+	flagBytes   string            // the content of onboarding.json before the first request ("" for no file)
+	download    *ffmpegdl.Service // the download of ffmpeg of the settings (nil: none)
 }
 
 func foundBoth(file string) (string, error) { return "/usr/bin/" + file, nil }
@@ -67,6 +70,10 @@ func newRig(t *testing.T, mutate ...func(*config)) *rig {
 	flag := filepath.Join(r.dir, guide.FileName)
 	if cfg.flagBytes != "" {
 		require.NoError(t, os.WriteFile(flag, []byte(cfg.flagBytes), 0o600))
+	}
+	if cfg.download != nil {
+		r.settings.FFmpeg = ffmpegsettings.New(filepath.Join(r.dir, ffmpegsettings.FileName))
+		r.settings.FFmpegDownload = cfg.download
 	}
 	if !cfg.noGuide {
 		r.settings.Onboarding = guide.New(flag, guide.WithGOOS(cfg.goos), guide.WithLookPath(cfg.look))

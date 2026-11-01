@@ -13,26 +13,36 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/judge"
+	"github.com/ousiassllc/mam/backend/internal/media"
+	"github.com/ousiassllc/mam/backend/internal/media/locate"
 	"github.com/ousiassllc/mam/backend/internal/testenv"
 )
+
+// lookFFmpeg is the FrameSource over the ffmpeg of this machine; a machine without one ends the test.
+func lookFFmpeg(t *testing.T) judge.FFmpeg {
+	t.Helper()
+	tools, err := media.Look()
+	if err != nil {
+		testenv.MissingFFmpeg(t, "ffmpeg is not installed")
+	}
+	return judge.NewFFmpeg(tools)
+}
 
 // testVideo makes a 2-second, 30 fps, 320×180 clip with ffmpeg.
 func testVideo(t *testing.T) string {
 	t.Helper()
-	if _, err := exec.LookPath("ffmpeg"); err != nil {
+	ffmpeg, err := locate.Find(locate.FFmpeg, "")
+	if err != nil {
 		testenv.MissingFFmpeg(t, "ffmpeg is not installed")
 	}
 	path := filepath.Join(t.TempDir(), "take.mp4")
-	out, err := exec.Command("ffmpeg", "-v", "error", "-f", "lavfi", "-i", "testsrc=size=320x180:rate=30:duration=2", "-pix_fmt", "yuv420p", path).CombinedOutput() // #nosec G204 -- test
+	out, err := exec.Command(ffmpeg, "-v", "error", "-f", "lavfi", "-i", "testsrc=size=320x180:rate=30:duration=2", "-pix_fmt", "yuv420p", path).CombinedOutput() // #nosec G204 -- test
 	require.NoError(t, err, string(out))
 	return path
 }
 
 func TestFFmpeg_SamplesEvenlySpacedFramesAndNumbersThemBySourceFrame(t *testing.T) {
-	ff, err := judge.LookFFmpeg()
-	if err != nil {
-		testenv.MissingFFmpeg(t, "ffmpeg is not installed")
-	}
+	ff := lookFFmpeg(t)
 	clip, err := ff.Sample(context.Background(), testVideo(t), judge.SampleSpec{FPS: 4, MaxFrames: 48, MaxWidth: 160})
 
 	require.NoError(t, err)
@@ -50,10 +60,7 @@ func TestFFmpeg_SamplesEvenlySpacedFramesAndNumbersThemBySourceFrame(t *testing.
 }
 
 func TestFFmpeg_ALongTakeIsSampledMoreSparselyThanTheFrameLimit(t *testing.T) {
-	ff, err := judge.LookFFmpeg()
-	if err != nil {
-		testenv.MissingFFmpeg(t, "ffmpeg is not installed")
-	}
+	ff := lookFFmpeg(t)
 	clip, err := ff.Sample(context.Background(), testVideo(t), judge.SampleSpec{FPS: 30, MaxFrames: 5, MaxWidth: 1000})
 
 	require.NoError(t, err)
@@ -65,13 +72,10 @@ func TestFFmpeg_ALongTakeIsSampledMoreSparselyThanTheFrameLimit(t *testing.T) {
 }
 
 func TestFFmpeg_AFileThatIsNotAVideoIsAnError(t *testing.T) {
-	ff, err := judge.LookFFmpeg()
-	if err != nil {
-		testenv.MissingFFmpeg(t, "ffmpeg is not installed")
-	}
+	ff := lookFFmpeg(t)
 	bad := filepath.Join(t.TempDir(), "bad.mp4")
 	require.NoError(t, writeFile(bad, []byte("\x00\x00\x00\x18ftypisom")))
-	_, err = ff.Sample(context.Background(), bad, judge.SampleSpec{FPS: 4, MaxFrames: 10, MaxWidth: 100})
+	_, err := ff.Sample(context.Background(), bad, judge.SampleSpec{FPS: 4, MaxFrames: 10, MaxWidth: 100})
 	assert.Error(t, err)
 }
 

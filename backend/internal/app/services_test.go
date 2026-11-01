@@ -20,6 +20,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/config"
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/media/ffmpegdl"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
 
@@ -36,7 +37,7 @@ func TestBuildServices_ACleanupClosesEverythingItOpened(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	services, _, cleanup, err := buildServices(ctx, cfg, slog.New(slog.DiscardHandler), testChatGPT(cfg))
+	services, _, cleanup, err := buildServices(ctx, cfg, slog.New(slog.DiscardHandler), testChatGPT(cfg), testFFmpegDL(cfg))
 	require.NoError(t, err)
 	require.NotNil(t, services)
 	assert.Equal(t, "ok", services.Health.Check(ctx).Database)
@@ -51,14 +52,14 @@ func TestBuildServices_AFailureLateInTheBuildReleasesTheDatabase(t *testing.T) {
 	require.NoError(t, os.WriteFile(bad, []byte(`{"nope": 1}`), 0o600))
 	cfg.ModelConfigPath = bad // fails after the database is open
 
-	services, _, cleanup, err := buildServices(context.Background(), cfg, slog.New(slog.DiscardHandler), testChatGPT(cfg))
+	services, _, cleanup, err := buildServices(context.Background(), cfg, slog.New(slog.DiscardHandler), testChatGPT(cfg), testFFmpegDL(cfg))
 	require.Error(t, err)
 	assert.Nil(t, services)
 	assert.Nil(t, cleanup)
 
 	// The database file lock is free again: opening the same data dir succeeds.
 	cfg.ModelConfigPath = ""
-	_, _, cleanup, err = buildServices(context.Background(), cfg, slog.New(slog.DiscardHandler), testChatGPT(cfg))
+	_, _, cleanup, err = buildServices(context.Background(), cfg, slog.New(slog.DiscardHandler), testChatGPT(cfg), testFFmpegDL(cfg))
 	require.NoError(t, err)
 	cleanup()
 }
@@ -68,7 +69,7 @@ func TestBuildServices_AFailureLateInTheBuildReleasesTheDatabase(t *testing.T) {
 func TestBuildServices_ARestartReleasesAJudgingShotWhoseJudgeJobFailedAtRecovery(t *testing.T) {
 	cfg := testConfig(t)
 	ctx := context.Background()
-	_, _, cleanup, err := buildServices(ctx, cfg, slog.New(slog.DiscardHandler), testChatGPT(cfg)) // creates the database
+	_, _, cleanup, err := buildServices(ctx, cfg, slog.New(slog.DiscardHandler), testChatGPT(cfg), testFFmpegDL(cfg)) // creates the database
 	require.NoError(t, err)
 	cleanup()
 
@@ -102,7 +103,7 @@ func TestBuildServices_ARestartReleasesAJudgingShotWhoseJudgeJobFailedAtRecovery
 	}))
 	require.NoError(t, db.Close())
 
-	_, _, cleanup, err = buildServices(ctx, cfg, slog.New(slog.DiscardHandler), testChatGPT(cfg))
+	_, _, cleanup, err = buildServices(ctx, cfg, slog.New(slog.DiscardHandler), testChatGPT(cfg), testFFmpegDL(cfg))
 	require.NoError(t, err)
 	cleanup()
 
@@ -119,7 +120,7 @@ func TestBuildServices_ARestartReleasesAJudgingShotWhoseJudgeJobFailedAtRecovery
 func TestBuildServices_ARestartResumesTheEditingFollowUpsLeftUndone(t *testing.T) {
 	cfg := testConfig(t)
 	ctx := context.Background()
-	_, _, cleanup, err := buildServices(ctx, cfg, slog.New(slog.DiscardHandler), testChatGPT(cfg)) // creates the database
+	_, _, cleanup, err := buildServices(ctx, cfg, slog.New(slog.DiscardHandler), testChatGPT(cfg), testFFmpegDL(cfg)) // creates the database
 	require.NoError(t, err)
 	cleanup()
 
@@ -138,7 +139,7 @@ func TestBuildServices_ARestartResumesTheEditingFollowUpsLeftUndone(t *testing.T
 	require.NoError(t, db.Close())
 
 	logs := &syncBuffer{}
-	_, _, cleanup, err = buildServices(ctx, cfg, slog.New(slog.NewTextHandler(logs, nil)), testChatGPT(cfg))
+	_, _, cleanup, err = buildServices(ctx, cfg, slog.New(slog.NewTextHandler(logs, nil)), testChatGPT(cfg), testFFmpegDL(cfg))
 	require.NoError(t, err)
 	defer cleanup()
 
@@ -160,7 +161,7 @@ func TestBuildServices_AStartRemovesPreviewConversionsAKillLeftBehind(t *testing
 	require.NoError(t, os.WriteFile(stale, []byte("half"), 0o600))
 	require.NoError(t, os.WriteFile(done, []byte("done"), 0o600))
 
-	_, _, cleanup, err := buildServices(context.Background(), cfg, slog.New(slog.DiscardHandler), testChatGPT(cfg))
+	_, _, cleanup, err := buildServices(context.Background(), cfg, slog.New(slog.DiscardHandler), testChatGPT(cfg), testFFmpegDL(cfg))
 	require.NoError(t, err)
 	defer cleanup()
 
@@ -186,7 +187,7 @@ func TestBuildServices_AStartSurvivesAFailedSweepOfLeftovers(t *testing.T) {
 	require.NoError(t, os.WriteFile(stale, []byte("half"), 0o600))
 
 	logs := &syncBuffer{}
-	_, _, cleanup, err := buildServices(context.Background(), cfg, slog.New(slog.NewTextHandler(logs, nil)), testChatGPT(cfg))
+	_, _, cleanup, err := buildServices(context.Background(), cfg, slog.New(slog.NewTextHandler(logs, nil)), testChatGPT(cfg), testFFmpegDL(cfg))
 	require.NoError(t, err)
 	defer cleanup()
 
@@ -197,4 +198,9 @@ func TestBuildServices_AStartSurvivesAFailedSweepOfLeftovers(t *testing.T) {
 // testChatGPT is the ChatGPT sign-in over the mock key store testConfig installed.
 func testChatGPT(cfg config.Config) *chatgpt.Service {
 	return chatgpt.New(chatgpt.Options{Keys: credential.NewKeyring(), DataDir: cfg.DataDir, LockPath: filepath.Join(cfg.DataDir, ".auth-refresh.lock")})
+}
+
+// testFFmpegDL is the ffmpeg download service over the test data directory.
+func testFFmpegDL(cfg config.Config) *ffmpegdl.Service {
+	return newFFmpegDownloader(cfg, slog.New(slog.DiscardHandler))
 }

@@ -46,10 +46,12 @@ type Window struct {
 // Status is the state of the Codex login as the screens and the MCP tools show it. It holds no token. Reading it
 // starts nothing: the account is the one last read (AccountView.CheckedAt); Refresh reads it again.
 type Status struct {
-	// Supported is whether the engine can be downloaded here (Windows only); elsewhere set a path.
+	// Supported is whether the engine can be downloaded here (Windows, macOS on Apple Silicon); elsewhere set a path.
 	Supported bool
-	Engine    EngineState
-	Source    EngineSource
+	// DownloadBytes and ExtractedBytes are the size of the download and of the engine after extraction (0 when Supported is false).
+	DownloadBytes, ExtractedBytes int64
+	Engine                        EngineState
+	Source                        EngineSource
 	// Version is the Codex version of the engine: the installed one for a download, "" for a path.
 	Version string
 	// PinnedVersion is the version mam was checked against; UpdateAvailable: the installed one differs, so it is not
@@ -81,6 +83,7 @@ func (s *Service) Status() Status {
 	}
 	if s.installer != nil {
 		st.Dir = s.installer.Layout.Root
+		st.DownloadBytes, st.ExtractedBytes = s.installer.Asset.Size, s.installer.Asset.ExeSize
 	}
 	s.mu.Lock()
 	st.Account = s.state.get().Account // with the limits under one lock: setAccount switches both together

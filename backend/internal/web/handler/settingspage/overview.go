@@ -9,12 +9,14 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	updatehandler "github.com/ousiassllc/mam/backend/internal/web/handler/appupdate"
+	ffmpeghandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/ffmpeg"
 	llmhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/llm"
 	localhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/local"
 	mcphandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/mcp"
 	mediahandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/media"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/toolstatus"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
+	ffmpegview "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/ffmpeg"
 	llmview "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/llm"
 	localview "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/local"
 	mcpview "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/mcp"
@@ -58,6 +60,9 @@ func (s Services) card(c *gin.Context, slug string) molecules.ToolCard {
 	case paths.SettingsMCP:
 		card.Icon, card.Description = atoms.IconPlug, "エージェントから画面と同じ操作をするための、待ち受け先とトークン。"
 		card.Status = mcpStatus(mcphandler.SectionData(c.Request.Context(), s.MCP))
+	case paths.SettingsFFmpeg:
+		card.Icon, card.Description = atoms.IconMedia, "プレビュー・部分採用・品質判定に使う ffmpeg と ffprobe の場所。"
+		card.Status = ffmpegStatus(ffmpeghandler.SectionData(s.ffmpeg()))
 	case paths.SettingsUpdate:
 		card.Icon, card.Description = atoms.IconUpdate, "いまの版と、新しい版の確認。"
 		card.Status = updateStatus(updatehandler.SectionData(s.Update))
@@ -146,6 +151,21 @@ func mcpStatus(d mcpview.Data) []molecules.StatusLine {
 		}
 	}
 	return append(out, line(atoms.BadgeNeutral, "有効なトークン %d 件", active))
+}
+
+// ffmpegStatus is whether ffmpeg and ffprobe are found.
+func ffmpegStatus(d ffmpegview.Data) []molecules.StatusLine {
+	switch {
+	case d.Problem != "":
+		return []molecules.StatusLine{line(atoms.BadgeWarn, "設定ファイルを読めません")}
+	case d.FFmpeg.Problem != "" && d.FFprobe.Problem != "":
+		return []molecules.StatusLine{line(atoms.BadgeWarn, "ffmpeg・ffprobe が見つかりません")}
+	case d.FFmpeg.Problem != "":
+		return []molecules.StatusLine{line(atoms.BadgeWarn, "ffmpeg が見つかりません")}
+	case d.FFprobe.Problem != "":
+		return []molecules.StatusLine{line(atoms.BadgeWarn, "ffprobe が見つかりません")}
+	}
+	return []molecules.StatusLine{line(atoms.BadgeOK, "ffmpeg・ffprobe を使えます")}
 }
 
 // updateStatus is the version and the result of the last check.

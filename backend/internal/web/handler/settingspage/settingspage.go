@@ -15,8 +15,10 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/chatgpt"
 	"github.com/ousiassllc/mam/backend/internal/credential/probe"
+	"github.com/ousiassllc/mam/backend/internal/media/ffmpegdl"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/appupdate"
+	"github.com/ousiassllc/mam/backend/internal/service/ffmpegsettings"
 	"github.com/ousiassllc/mam/backend/internal/service/llmassign"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
 	"github.com/ousiassllc/mam/backend/internal/service/mcpsettings"
@@ -24,6 +26,7 @@ import (
 	updatehandler "github.com/ousiassllc/mam/backend/internal/web/handler/appupdate"
 	chatgpthandler "github.com/ousiassllc/mam/backend/internal/web/handler/chatgptsettings"
 	credentialshandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/credentials"
+	ffmpeghandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/ffmpeg"
 	llmhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/llm"
 	localhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/local"
 	mcphandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/mcp"
@@ -48,9 +51,17 @@ type Services struct {
 	Models      *modelsettings.Service
 	LocalModels *localmodels.Service
 	MCP         *mcpsettings.Service
-	Update      *appupdate.Service
+	FFmpeg      *ffmpegsettings.Service
+	// FFmpegDownload is the download of ffmpeg shown in the ffmpeg category; nil leaves the download out.
+	FFmpegDownload *ffmpegdl.Service
+	Update         *appupdate.Service
 	// Guide is whether the first-run guide exists (the overview links to it).
 	Guide bool
+}
+
+// ffmpeg is what the ffmpeg category reads.
+func (s Services) ffmpeg() ffmpeghandler.Services {
+	return ffmpeghandler.Services{Settings: s.FFmpeg, Download: s.FFmpegDownload}
 }
 
 // category is one entry of the navigation: where it is, what it is called and what it needs.
@@ -84,6 +95,9 @@ func init() {
 		}},
 		{paths.SettingsMCP, "MCP サーバー", func(s Services) bool { return s.MCP != nil }, func(c *gin.Context, s Services) templ.Component {
 			return pages.SettingsMCPBody(mcphandler.SectionData(c.Request.Context(), s.MCP))
+		}},
+		{paths.SettingsFFmpeg, "ffmpeg", func(s Services) bool { return s.FFmpeg != nil }, func(_ *gin.Context, s Services) templ.Component {
+			return pages.SettingsFFmpegBody(ffmpeghandler.SectionData(s.ffmpeg()))
 		}},
 		{paths.SettingsUpdate, "バージョンとアップデート", always, func(_ *gin.Context, s Services) templ.Component {
 			return pages.SettingsUpdateBody(updatehandler.SectionData(s.Update))

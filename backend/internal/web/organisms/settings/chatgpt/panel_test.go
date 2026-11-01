@@ -62,6 +62,24 @@ func TestPanel_TheEngineDownloadPollsAndHasACancel(t *testing.T) {
 	html = render(t, view.Panel(d))
 	assert.Contains(t, html, `data-testid="chatgpt-codex-install-button"`)
 	assert.NotContains(t, html, `hx-trigger="every 2s"`)
+	assert.NotContains(t, html, "約 0 MB", "sizes are shown only when the engine says them")
+}
+
+// The notice before the download names the size of the asset of this platform and where it is put, and the
+// "unsupported" note is for the platforms that have no download (macOS is no longer one of them).
+func TestPanel_TheDownloadNoticeNamesTheSizesAndThePlace(t *testing.T) {
+	d := view.Data{}
+	d.Codex.Engine = view.CodexEngine{State: "not_installed", Supported: true, DownloadBytes: 78_849_710, ExtractedBytes: 201_321_648, Dir: "/Users/x/Library/Application Support/mam/codex"}
+	html := render(t, view.Panel(d))
+	assert.Contains(t, html, "約 79 MB。展開後は約 201 MB。")
+	assert.Contains(t, html, "置き場所は /Users/x/Library/Application Support/mam/codex です")
+	assert.NotContains(t, html, `data-testid="chatgpt-codex-unsupported"`)
+
+	d.Codex.Engine = view.CodexEngine{State: "not_installed", Supported: false}
+	html = render(t, view.Panel(d))
+	assert.Contains(t, html, `data-testid="chatgpt-codex-unsupported"`)
+	assert.Contains(t, html, "Windows 版と macOS 版（Apple Silicon）だけ")
+	assert.NotContains(t, html, `data-testid="chatgpt-codex-install-button"`)
 }
 
 func TestPanel_TheUsageLimitResetsAreShownInJapanStandardTime(t *testing.T) {

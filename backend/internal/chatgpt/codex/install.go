@@ -49,9 +49,10 @@ func (s *Service) InstallStatus() InstallStatus {
 }
 
 // StartInstall downloads the pinned engine in the background (progress: InstallStatus) and installs it. It refuses at
-// once where the download is not available (ErrUnsupported), the directory next to mam.exe cannot be written to
-// (engine.ErrNotWritable) or the disk lacks the room (*fetch.NoSpaceError). started is false when an install is already
-// running. Installing again resumes an interrupted download and, with a newer pinned version, is the update.
+// once where the download is not available (ErrUnsupported), the engine directory cannot be written to
+// (exeinstall.ErrNotWritable) or the disk lacks the room (*fetch.NoSpaceError). started is false when an install is already
+// running (ErrEngineRemoving: the files are being deleted by a logout). Installing again resumes an interrupted download
+// and, with a newer pinned version, is the update.
 func (s *Service) StartInstall() (started bool, err error) {
 	if !s.supported {
 		return false, ErrUnsupported
@@ -64,6 +65,11 @@ func (s *Service) StartInstall() (started bool, err error) {
 		s.mu.Unlock()
 		cancel()
 		return false, errors.New("codex: mam is shutting down")
+	}
+	if s.removing {
+		s.mu.Unlock()
+		cancel()
+		return false, ErrEngineRemoving
 	}
 	if s.install.State == InstallRunning {
 		s.mu.Unlock()

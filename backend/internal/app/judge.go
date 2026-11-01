@@ -7,6 +7,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/judge"
 	"github.com/ousiassllc/mam/backend/internal/config"
 	"github.com/ousiassllc/mam/backend/internal/facesim"
+	"github.com/ousiassllc/mam/backend/internal/media"
 )
 
 // judgeSetup is what the AI Video Judge needs from the machine: ffmpeg to sample frames and, for
@@ -22,16 +23,17 @@ type judgeSetup struct {
 
 // newJudgeSetup loads the Judge setting and looks for ffmpeg and the face models. Missing tools
 // are not fatal: the reduced feature set is logged.
-func newJudgeSetup(cfg config.Config, logger *slog.Logger) (judgeSetup, error) {
+// tools is the ffmpeg and ffprobe the app found at startup (nil: not found, and logged by the caller).
+func newJudgeSetup(cfg config.Config, tools *media.Tools, logger *slog.Logger) (judgeSetup, error) {
 	s := judgeSetup{}
 	var err error
 	if s.config, err = judge.LoadConfig(cfg.JudgeConfigPath); err != nil {
 		return s, err
 	}
-	if ff, err := judge.LookFFmpeg(); err != nil {
+	if tools == nil {
 		logger.Warn("AI Video Judge is off: ffmpeg / ffprobe not found")
 	} else {
-		s.frames = ff
+		s.frames = judge.NewFFmpeg(*tools)
 	}
 	// The Windows stub (facesim/onnx_windows.go) always fails with ErrUnavailable, so staticcheck sees the success case as dead there.
 	faces, err := facesim.NewONNX(facesim.ONNXConfig{ModelDir: cfg.FaceModels(), RuntimeLibrary: cfg.ONNXRuntimeLib}) //nolint:staticcheck // SA4023: platform stub

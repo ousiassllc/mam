@@ -25,7 +25,9 @@ func buildWithAdultModel(t *testing.T) (*modelsettings.Service, func() []domain.
 	cfg := testConfig(t)
 	gpt := testChatGPT(cfg)
 	logger := slog.New(slog.DiscardHandler)
-	services, _, cleanup, err := buildServices(context.Background(), cfg, logger, gpt)
+	ffmpegDL := newFFmpegDownloader(cfg, logger)
+	t.Cleanup(ffmpegDL.Close)
+	services, _, cleanup, err := buildServices(context.Background(), cfg, logger, gpt, ffmpegDL)
 	require.NoError(t, err)
 	t.Cleanup(cleanup)
 
@@ -36,7 +38,7 @@ func buildWithAdultModel(t *testing.T) (*modelsettings.Service, func() []domain.
 	require.NoError(t, services.LocalModels.CreateModel(ctx, localmodels.ModelInput{Endpoint: modelmanager.BundledEndpoint, Name: "chroma1-hd", Model: tpl.Model}))
 	require.False(t, services.ModelManager.AdultContentEnabled(), "the age was never confirmed")
 
-	settings := newSettings(cfg, services, gpt, logger)
+	settings := newSettings(cfg, services, gpt, ffmpegDL, logger)
 	choices := func() []domain.ModelName {
 		view, err := settings.Models.View()
 		require.NoError(t, err)

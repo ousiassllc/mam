@@ -178,9 +178,25 @@ jobs:
       - name: Vet cmd/wails (darwin, cgo)
         run: go vet -tags production ./backend/cmd/wails/
 
-      # The update code on macOS itself (asset selection for darwin/arm64, the bundle and install helpers).
-      - name: Test the update code on macOS
-        run: go test -count=1 ./backend/internal/desktop/... ./backend/internal/service/updater/... ./backend/internal/service/appupdate/...
+      # The ffmpegdl tests that serve the machine's own ffmpeg / ffprobe as the "download" (the lookup after an install) fail
+      # without them (testenv), as in the `ci` job. The macos-latest image does not ship them: install via Homebrew (already on
+      # the image, no sudo) when missing. Before the test step below.
+      - name: Ensure ffmpeg
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: "1"
+          HOMEBREW_NO_INSTALL_CLEANUP: "1"
+        run: |
+          if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null; then
+            brew install ffmpeg
+          fi
+          ffmpeg -version | head -1
+          ffprobe -version | head -1
+
+      # The native darwin tests: the update code (asset selection for darwin/arm64, the bundle and install helpers) and the
+      # install of a downloaded executable (Codex app-server, ffmpeg: extraction with the exec bit, the quarantine attribute,
+      # running the file, and the lookup of the installed copy with the machine's real ffmpeg).
+      - name: Test the update code and the executable install on macOS
+        run: go test -count=1 ./backend/internal/desktop/... ./backend/internal/service/updater/... ./backend/internal/service/appupdate/... ./backend/internal/chatgpt/codex/engine/... ./backend/internal/exeinstall/... ./backend/internal/media/ffmpegdl/...
 
       # The helper that applies an update, against the dmg just built: real hdiutil / ditto / xattr, the new bundle must
       # pass codesign and start (--detect-gpu), and nothing may stay mounted or on disk.

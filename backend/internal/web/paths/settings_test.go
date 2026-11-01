@@ -17,6 +17,9 @@ func TestSettingsCategory_SlugsAreThePrefixOfTheWritePaths(t *testing.T) {
 	assert.Equal(t, paths.ModelSettings(), paths.SettingsCategory(paths.SettingsModels))
 	assert.Equal(t, paths.LocalModels(), paths.SettingsCategory(paths.SettingsLocalModels))
 	assert.Equal(t, paths.MCPSettings(), paths.SettingsCategory(paths.SettingsMCP))
+	assert.Equal(t, paths.FFmpegSettings(), paths.SettingsCategory(paths.SettingsFFmpeg))
+	assert.Equal(t, "/settings/ffmpeg/download", paths.FFmpegDownload())
+	assert.Equal(t, "/settings/ffmpeg/download/cancel", paths.FFmpegDownloadCancel())
 	assert.Equal(t, "/settings/update", paths.SettingsCategory(paths.SettingsUpdate))
 	assert.Equal(t, "/settings/a%2Fb", paths.SettingsCategory("a/b"))
 }

@@ -27,6 +27,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
 	"github.com/ousiassllc/mam/backend/internal/media"
+	"github.com/ousiassllc/mam/backend/internal/media/ffmpegdl"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/comfywf"
 	"github.com/ousiassllc/mam/backend/internal/service"
@@ -40,7 +41,8 @@ import (
 // the reverse order of construction (queue, services, Judge, database). It is nil on error, where
 // buildServices has already released everything it had built. db is the database: the app updater reads
 // the job table through it to see whether any work is in flight, and the MCP server keeps its tokens in it.
-func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, gpt *chatgpt.Service) (_ *service.Services, _ *repository.DB, _ func(), err error) {
+// ffmpegDL is the ffmpeg download service (serve builds it once and closes it): its directory is the last place the ffmpeg lookup searches.
+func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, gpt *chatgpt.Service, ffmpegDL *ffmpegdl.Service) (_ *service.Services, _ *repository.DB, _ func(), err error) {
 	var closers []func()
 	release := func() {
 		for i := len(closers) - 1; i >= 0; i-- {
@@ -131,18 +133,20 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 		Path: modelPath, Pinned: modelPinned, Keys: keys, Adapter: models, Backends: backendOpts, Logger: logger,
 	})
 
-	judging, err := newJudgeSetup(cfg, logger)
+	// ffmpeg for the Take previews, Partial Take Use and the AI Video Judge: the path set in the settings, else the search
+	// (spec/architecture/ffmpeg-lookup.md). nil when missing; a saved path takes effect from the next start.
+	var previews *media.Tools
+	if tools, err := newFFmpegSettings(cfg, ffmpegDL).Look(); err != nil {
+		logger.Warn("Take previews are limited: ffmpeg / ffprobe not found (4K Takes play as they are, Partial Take Use is off)", "err", err)
+	} else {
+		previews = &tools
+	}
+
+	judging, err := newJudgeSetup(cfg, previews, logger)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 	closers = append(closers, judging.close)
-
-	var previews *media.Tools // ffmpeg for the Take previews and Partial Take Use; nil when missing
-	if tools, err := media.Look(); err != nil {
-		logger.Warn("Take previews are limited: ffmpeg / ffprobe not found (4K Takes play as they are, Partial Take Use is off)")
-	} else {
-		previews = &tools
-	}
 
 	jevCfg, err := jev.LoadConfig(cfg.JevConfigPath)
 	if err != nil {

@@ -4,6 +4,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/chatgpt"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/credentials"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/ffmpeg"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/llm"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/media"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
@@ -84,6 +85,9 @@ type FFmpeg struct {
 	OS      OS
 	FFmpeg  string
 	FFprobe string
+	// Download is the panel of the download of ffmpeg (the same as the settings screen's); nil when the app has none. It is shown
+	// while a tool is missing and the machine can download.
+	Download *ffmpeg.Download
 }
 
 // Found is whether both tools are there.
@@ -92,13 +96,13 @@ func (f FFmpeg) Found() bool { return f.FFmpeg != "" && f.FFprobe != "" }
 // FFmpegBody is the step "ffmpeg": where it was found, or how to install it on this operating system.
 templ FFmpegBody(f FFmpeg) {
 	<p class="text-sm text-neutral-300">
-		ffmpeg と ffprobe は、品質判定（Judge）・Take のプレビュー・部分採用で使います。無くても mam は起動しますが、これらは使えなくなります。mam を起動した環境の PATH から探します。
+		ffmpeg と ffprobe は、品質判定（Judge）・Take のプレビュー・部分採用で使います。無くても mam は起動しますが、これらは使えなくなります。設定画面の「ffmpeg」でパスを指定していればそのパスを、無ければ mam を起動した環境の PATH（Mac では Homebrew の /opt/homebrew/bin と /usr/local/bin も）から探し、どこにも無ければ mam でダウンロードして入れたものを使います。
 	</p>
 	if f.Found() {
 		<div class="flex flex-col gap-1 rounded-md border border-emerald-500/60 px-3 py-2" role="status" data-testid="onboarding-ffmpeg-found">
 			<p class="text-sm">
 				@atoms.Badge(atoms.BadgeOK, "見つかりました")
-				<span class="ml-2">ffmpeg と ffprobe が PATH にあります。</span>
+				<span class="ml-2">ffmpeg と ffprobe を使えます。</span>
 			</p>
 			<p class="text-xs text-neutral-400">ffmpeg: <code class={ codeClass }>{ f.FFmpeg }</code></p>
 			<p class="text-xs text-neutral-400">ffprobe: <code class={ codeClass }>{ f.FFprobe }</code></p>
@@ -110,6 +114,10 @@ templ FFmpegBody(f FFmpeg) {
 				@atoms.Badge(atoms.BadgeWarn, "見つかりません")
 				<span class="ml-2">{ missingText(f) }</span>
 			</p>
+			if f.Download != nil && f.Download.Supported {
+				@ffmpeg.DownloadPanel(*f.Download)
+				<p class="text-sm text-neutral-300" data-testid="onboarding-ffmpeg-manual">自分で入れるときは、次のとおりです。</p>
+			}
 			@installGuide(f.OS)
 			<p class="text-sm text-neutral-300">入れたあとは、mam を一度終了して、起動し直してください（ffmpeg は起動時に探します）。</p>
 			<p><a href={ templ.SafeURL(paths.OnboardingStep(paths.OnboardingFFmpeg)) } class={ linkClass } data-testid="onboarding-ffmpeg-recheck">もう一度確認する</a></p>
@@ -139,7 +147,7 @@ templ installGuide(os OS) {
 			<div class="flex flex-col gap-1" data-testid="onboarding-ffmpeg-macos">
 				<p class="text-sm text-neutral-300">Mac では、ターミナルで Homebrew を使って次のコマンドを実行します（ffprobe も一緒に入ります）。Homebrew が無いときは、先に <a class={ linkClass } href="https://brew.sh" target="_blank" rel="noopener noreferrer">brew.sh</a> の手順で入れてください。</p>
 				<p><code class={ codeClass }>brew install ffmpeg</code></p>
-				<p class="text-xs text-neutral-400">入れたのに見つからないときは、mam を動かしている環境の PATH に Homebrew の場所（Apple Silicon では /opt/homebrew/bin）が入っていない可能性があります。</p>
+				<p class="text-xs text-neutral-400">Homebrew の /opt/homebrew/bin（Apple Silicon）と /usr/local/bin（Intel）は自動で探します。ほかの場所に入れたときは、設定画面の「ffmpeg」でパスを指定してください。</p>
 			</div>
 		default:
 			<div class="flex flex-col gap-1" data-testid="onboarding-ffmpeg-other">

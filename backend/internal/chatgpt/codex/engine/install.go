@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex/catalog"
+	"github.com/ousiassllc/mam/backend/internal/exeinstall"
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/fetch"
 )
@@ -27,7 +28,7 @@ const (
 // Progress receives the phase and the bytes done and in all of that phase. It must not block.
 type Progress func(p Phase, done, total int64)
 
-// Installer installs the pinned app-server of one architecture.
+// Installer installs the pinned app-server of one platform.
 type Installer struct {
 	Layout  Layout
 	Version string
@@ -37,6 +38,9 @@ type Installer struct {
 	// FreeBytes reports the free space at a path (nil: fsutil.FreeBytes).
 	FreeBytes func(path string) (uint64, error)
 	Now       func() time.Time
+	// ClearQuarantine removes the macOS quarantine attribute from the extracted executable (nil: exeinstall.ClearQuarantine, which
+	// does nothing off macOS). It is best effort: mam's own download never sets the attribute, so a failure is ignored.
+	ClearQuarantine func(path string) error
 }
 
 // Record is what an install left: the version, and the executable as it was verified.
@@ -112,8 +116,8 @@ func (i *Installer) archivePath() string {
 	return filepath.Join(i.Layout.DownloadsDir(), path.Base(i.Asset.URL))
 }
 
-// NeedBytes is the free space an install needs: the part of the zip that is not downloaded yet, and the executable
-// (which exists next to the zip until it is deleted).
+// NeedBytes is the free space an install needs: the part of the archive that is not downloaded yet, and the executable
+// (which exists next to the archive until it is deleted).
 func (i *Installer) NeedBytes() int64 {
 	have := int64(0)
 	if st, err := os.Stat(fetch.PartPath(i.archivePath())); err == nil {
@@ -124,22 +128,10 @@ func (i *Installer) NeedBytes() int64 {
 
 // CheckSpace returns a *fetch.NoSpaceError when the disk cannot hold the install.
 func (i *Installer) CheckSpace() error {
-	free := i.FreeBytes
-	if free == nil {
-		free = fsutil.FreeBytes
-	}
-	need := i.NeedBytes()
-	have, err := free(i.Layout.Root)
-	if err != nil {
-		return fmt.Errorf("free space: %w", err)
-	}
-	if uint64(need) > have { //nolint:gosec // need is a size, never negative
-		return &fetch.NoSpaceError{Need: uint64(need), Free: have, Path: i.Layout.Root} //nolint:gosec // same
-	}
-	return nil
+	return exeinstall.CheckSpace(i.Layout.Root, i.NeedBytes(), i.FreeBytes)
 }
 
-// Install downloads the pinned zip, verifies its SHA-256 and size, extracts the executable, verifies that too, and swaps
+// Install downloads the pinned archive, verifies its SHA-256 and size, extracts the executable, verifies that too, and swaps
 // it in for the installed one. A repeated call after an interruption resumes the download. A file that does not match
 // is never left behind: the part file of a wrong checksum is removed, and so is a half-extracted engine.
 func (i *Installer) Install(ctx context.Context, progress Progress) error {
@@ -161,18 +153,26 @@ func (i *Installer) Install(ctx context.Context, progress Progress) error {
 	}
 	tmp := i.Layout.EngineNewDir()
 	_ = os.RemoveAll(tmp)
-	err := extractExe(ctx, archive, tmp, i.Asset, func(done, total int64) {
-		if progress != nil {
-			progress(PhaseExtract, done, total)
-		}
-	})
+	a := i.Asset
+	err := exeinstall.Extract(ctx, archive, a.Format, tmp,
+		[]exeinstall.Member{{Entry: a.Exe, Name: a.Exe, Size: a.ExeSize, SHA256: a.ExeSHA256}},
+		exeinstall.Options{Exact: true, Progress: func(done, total int64) {
+			if progress != nil {
+				progress(PhaseExtract, done, total)
+			}
+		}})
 	if err == nil {
+		unmark := i.ClearQuarantine
+		if unmark == nil {
+			unmark = exeinstall.ClearQuarantine
+		}
+		_ = unmark(filepath.Join(tmp, i.Asset.Exe)) // best effort, see ClearQuarantine
 		err = i.swap(tmp)
 	}
 	if err != nil {
 		_ = os.RemoveAll(tmp)
-		if errors.Is(err, ErrExeMismatch) || errors.Is(err, ErrUnsafeArchive) {
-			_ = os.Remove(archive) // the zip matched its checksum but is not what the catalog describes: download it again
+		if errors.Is(err, exeinstall.ErrMismatch) || errors.Is(err, exeinstall.ErrUnsafeArchive) {
+			_ = os.Remove(archive) // the archive matched its checksum but is not what the catalog describes: download it again
 		}
 		return err
 	}
@@ -196,19 +196,7 @@ func (i *Installer) writeRecord() error {
 
 // swap makes tmp the engine; the previous engine is removed once the new one is in place.
 func (i *Installer) swap(tmp string) error {
-	engine, old := i.Layout.EngineDir(), i.Layout.EngineOldDir()
-	_ = os.RemoveAll(old)
-	if _, err := os.Stat(engine); err == nil {
-		if err := os.Rename(engine, old); err != nil {
-			return fmt.Errorf("engine: replace the installed engine: %w", err)
-		}
-	}
-	if err := os.Rename(tmp, engine); err != nil {
-		_ = os.Rename(old, engine) // put the previous engine back
-		return fmt.Errorf("engine: put the new engine in place: %w", err)
-	}
-	_ = os.RemoveAll(old)
-	return nil
+	return exeinstall.Swap(tmp, i.Layout.EngineDir(), i.Layout.EngineOldDir())
 }
 
 // Remove deletes the engine, its record and what is left of a download.
@@ -229,14 +217,5 @@ func (i *Installer) Remove() error {
 // CleanLeftovers removes what an interrupted install left: a half-extracted engine.new, and engine.old (or puts it back
 // when the swap stopped between its two renames).
 func (i *Installer) CleanLeftovers() {
-	_ = os.RemoveAll(i.Layout.EngineNewDir())
-	engine, old := i.Layout.EngineDir(), i.Layout.EngineOldDir()
-	if _, err := os.Stat(old); err != nil {
-		return
-	}
-	if _, err := os.Stat(engine); errors.Is(err, os.ErrNotExist) {
-		_ = os.Rename(old, engine)
-		return
-	}
-	_ = os.RemoveAll(old)
+	exeinstall.CleanLeftovers(i.Layout.EngineNewDir(), i.Layout.EngineDir(), i.Layout.EngineOldDir())
 }

@@ -59,14 +59,8 @@ type FFmpeg struct {
 	tools media.Tools
 }
 
-// LookFFmpeg finds ffmpeg and ffprobe on the PATH. It returns ErrNoFFmpeg when either is missing.
-func LookFFmpeg() (FFmpeg, error) {
-	tools, err := media.Look()
-	if err != nil {
-		return FFmpeg{}, ErrNoFFmpeg
-	}
-	return FFmpeg{tools: tools}, nil
-}
+// NewFFmpeg is the FrameSource that runs the ffmpeg and ffprobe of tools (media.Look and its variants find them).
+func NewFFmpeg(tools media.Tools) FFmpeg { return FFmpeg{tools: tools} }
 
 // Sample implements FrameSource.
 func (f FFmpeg) Sample(ctx context.Context, videoPath string, spec SampleSpec) (Clip, error) {

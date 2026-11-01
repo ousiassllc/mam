@@ -18,6 +18,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/llmassign"
 	"github.com/ousiassllc/mam/backend/internal/service/modelsettings"
 	svc "github.com/ousiassllc/mam/backend/internal/service/onboarding"
+	ffmpeghandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/ffmpeg"
 	llmhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/llm"
 	mediahandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/media"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/settings/settingshttp"
@@ -40,6 +41,9 @@ type Handlers struct {
 	// LLM and Models are the assignments of the models step: both or neither.
 	LLM    *llmassign.Service
 	Models *modelsettings.Service
+	// FFmpeg is the download of ffmpeg shown in the ffmpeg step when a tool is missing (the same routes as the settings
+	// screen's). Its Download is nil when the app has none: the step then only explains how to install it.
+	FFmpeg ffmpeghandler.Services
 }
 
 // step is a page of the guide: what it is called, whether it asks for something, and its body.
@@ -83,7 +87,12 @@ func (h Handlers) modelsBody(*gin.Context) templ.Component {
 
 func (h Handlers) ffmpegBody(*gin.Context) templ.Component {
 	f := h.Guide.FFmpeg()
-	return view.FFmpegBody(view.FFmpeg{OS: viewOS(h.Guide.OS()), FFmpeg: f.FFmpeg, FFprobe: f.FFprobe})
+	body := view.FFmpeg{OS: viewOS(h.Guide.OS()), FFmpeg: f.FFmpeg, FFprobe: f.FFprobe}
+	if h.FFmpeg.Download != nil {
+		d := ffmpeghandler.DownloadData(h.FFmpeg)
+		body.Download = &d
+	}
+	return view.FFmpegBody(body)
 }
 
 func (h Handlers) macBody(*gin.Context) templ.Component {
