@@ -1,23 +1,30 @@
 package gentest
 
 import (
+	"fmt"
+
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/help"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
+// inputsHelp is what the input images are for (what was in the legend and the labels): the limit, the formats, and what is
+// done with a model that cannot use them.
+func inputsHelp(c Compose) string {
+	t := fmt.Sprintf("最大 %d 枚。PNG・JPEG・WebP。複数アップロードできます。使えないモデルには渡さず、見積りで知らせます。", c.MaxReferences)
+	if c.Media == "video" {
+		t += "\n「参照画像」は自由な参照、最初・最後のフレームはそれぞれの位置に使います。"
+	}
+	return t
+}
+
 // inputFields are the input images: files to upload, and images picked from a Project or from the history.
 templ inputFields(c Compose) {
-	<fieldset class="flex flex-col gap-3" data-testid="gt-inputs">
-		<legend class="mb-1 text-xs text-neutral-400">
-			入力画像（省略可。最大 { itoa(c.MaxReferences) } 枚。PNG・JPEG・WebP）。使えないモデルには渡さず、見積りで知らせます
-		</legend>
+	<fieldset class="flex flex-col gap-3" aria-labelledby="gt-inputs-title" data-testid="gt-inputs">
+		@sectionTitle("gt-inputs-title", "入力画像（省略可）", help.Text(inputsHelp(c)))
 		<label class="flex flex-col gap-1 text-xs text-neutral-400" for="gt-upload">
 			<span>
-				if c.Media == "video" {
-					参照画像をアップロード（自由な参照。複数可）
-				} else {
-					参照画像をアップロード（複数可）
-				}
+				参照画像をアップロード
 			</span>
 			<input id="gt-upload" type="file" name={ FieldUpload } multiple accept="image/png,image/jpeg,image/webp" class="text-sm"/>
 		</label>

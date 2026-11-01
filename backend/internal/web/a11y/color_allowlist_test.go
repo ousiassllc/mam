@@ -40,7 +40,7 @@ var colorExceptions = map[string][]string{
 	"field border":   {"border-neutral-500"},
 	"raised face":    {"bg-neutral-800"},
 	"hover text":     {"hover:text-neutral-100"},
-	"selected":       {"border-indigo-400", "has-[:checked]:border-indigo-400", "bg-indigo-500/20", "border-t-indigo-400"},
+	"selected":       {"border-indigo-400", "has-[:checked]:border-indigo-400", "bg-indigo-500/20", "border-t-indigo-400", "peer-checked:border-indigo-400", "peer-checked:bg-indigo-500/20", "peer-checked:shadow-indigo-400/40"},
 	"video backdrop": {"bg-black"},
 	"reserved edge":  {"border-transparent"},
 	"meter fill":     {"accent-red-400", "accent-amber-400", "accent-emerald-400"},
