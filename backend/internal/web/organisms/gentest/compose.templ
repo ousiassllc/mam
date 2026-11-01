@@ -72,6 +72,12 @@ templ ComposeForm(c Compose) {
 	</form>
 }
 
+// promptsHelp and translateHelp are what the prompts section explains (behind its "?" and the "?" of the translation switch).
+const (
+	promptsHelp   = "英訳をオフにしたときは、そのままモデルに送ります（補正はしません）。\n複数入れると、モデルごとに全部を生成します。\nネガティブプロンプトの欄の無いモデルには「Avoid: …」として書き足します。"
+	translateHelp = "オンにすると、プロンプトとネガティブプロンプトを LLM で英語に訳してから送ります（生成モデルは英語のほうが良い結果になりやすいため）。\n使う LLM は設定の「LLM の割り当て」の Prompt Planner です。すでに英語の文は訳しません。\n訳した英語は結果の列と詳細に出て、履歴には入力した文と送った英語の両方が残ります。\n訳せなかったときは、日本語のまま送らず、何も生成せずにエラーにします。\n見積りには訳す文の数が入りますが、LLM の単価は分からないため合計には入りません。\nオフにすると、入力したままモデルに送ります。"
+)
+
 func mediaLabel(m string) string {
 	if m == "video" {
 		return "動画"
@@ -89,13 +95,21 @@ func boolText(b bool) string {
 // promptFields are the prompts of the batch (one result set per prompt) with their negative prompts.
 templ promptFields(c Compose) {
 	<fieldset class="flex flex-col gap-3" aria-labelledby="gt-prompts-title" data-testid="gt-prompt-fields">
-		@sectionTitle("gt-prompts-title", "プロンプト", help.Text("そのままモデルに送ります。複数入れると、モデルごとに全部を生成します。\nネガティブプロンプトの欄の無いモデルには「Avoid: …」として書き足します。"))
+		@sectionTitle("gt-prompts-title", "プロンプト", help.Text(promptsHelp))
 		<div id={ PromptsID } class="flex flex-col gap-3">
 			for _, p := range c.Prompts {
 				@PromptRowFields(p, c.MaxPrompt)
 			}
 		</div>
 		<div class="flex flex-wrap items-center gap-3">
+			<label class="flex items-center gap-2 text-sm" data-testid="gt-translate">
+				@atoms.Choice("", templ.Attributes{"type": "checkbox", "name": FieldTranslate, "value": "1", "checked": c.Translate, "data-testid": "gt-translate-input"})
+				<span>英語に訳して送る</span>
+			</label>
+			@help.Toggle(help.ID("英訳"), "英訳")
+			@help.Panel(help.ID("英訳"), "英訳") {
+				@help.Text(translateHelp)
+			}
 			@atoms.SmallButtonFor(atoms.ToneNeutral, "プロンプトを追加", "生成テストのプロンプト", templ.Attributes{
 				"type": "button", "hx-get": paths.GenerationTestPart("prompt-row"), "hx-target": "#" + PromptsID, "hx-swap": "beforeend",
 			})

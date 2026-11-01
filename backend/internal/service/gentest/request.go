@@ -54,6 +54,10 @@ type Request struct {
 	Resolution      string     `json:"resolution,omitempty"`
 	DurationSeconds float64    `json:"duration_seconds,omitempty"`
 	References      []RefInput `json:"references,omitempty"`
+	// TranslateToEnglish translates the prompts and the negative prompts that are not English with the Reasoning LLM before
+	// they are sent (once per run; English ones are left as they are). A failed translation stops the run. The zero value is
+	// off: DefaultTranslate is what the screen and the MCP tools ask for when the caller does not say.
+	TranslateToEnglish bool `json:"translate_to_english"`
 }
 
 var aspectPattern = regexp.MustCompile(`^[1-9][0-9]?:[1-9][0-9]?$`)

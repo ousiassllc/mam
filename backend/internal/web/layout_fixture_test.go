@@ -73,6 +73,6 @@ func gentestCompose(media string, models []gentest.ModelChoice) gentest.Compose 
 	return gentest.Compose{
 		Media: media, Models: models, Prompts: []gentest.PromptText{{}}, Count: "1", Aspect: "16:9",
 		Resolutions: []string{"720p", "1080p"}, Durations: []string{"5", "10"}, Resolution: "720p", Duration: "5",
-		MaxPrompt: 4000, MaxCount: 20, MaxItems: 50, MaxReferences: 10, MaxCostUSD: "$5.00",
+		MaxPrompt: 4000, MaxCount: 20, MaxItems: 50, MaxReferences: 10, MaxCostUSD: "$5.00", Translate: true, // #913: the switch is drawn on
 	}
 }
