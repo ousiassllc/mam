@@ -85,3 +85,4 @@
 | 1.78 | 2026-11-01 | §5 の構成図に `exeinstall/`（取得したプログラムの安全な展開・隔離属性の除去）を足し、`media/` に ffmpeg の取得（`media/ffmpegdl`）と探す順の末尾（取得して入れたもの）を足した | Issue #900 |
 | 1.79 | 2026-11-01 | §5 の構成図の `testenv/` に `CPUTime`（処理が使った CPU 時間を測る。Linux はスレッドの CPU 時間、他 OS は時計）を足した | Issue #905。初期表示の速さを測るテストが、テストを 24 並列で走らせたときに時計の上限で偽の失敗になっていたため、CPU 時間で測る |
 | 1.80 | 2026-11-01 | §5 の構成図に `scripts/stress-test.sh`（`make stress`。テストのフレークを追う繰り返し実行。プロセスは既定 2・上限 4）を足し、`*_test.sh` の説明に `stress-test_test.sh` を足した | Issue #905。負荷時だけ落ちるテストを 24 本並列で追うと共有のマシンが使えなくなるため、少ないプロセスで再現する入口を 1 つに決めた。詳細は `spec/environment/setup.md` |
+| 1.81 | 2026-11-01 | §9 の「その他のターゲット」に、`make test-scripts` が流す `scripts/stress-test_test.sh`（`make stress` のプロセス数の上限と既定のテスト）と、`make stress`（`scripts/stress-test.sh`。`JOBS` の既定 2・上限 4・超える指定は断る）を足した | Issue #905。`make stress` と `stress-test_test.sh` を足した（1.80）のに、§9 の一覧に無かった |
