@@ -51,7 +51,7 @@ func weightedScore(scores, w domain.TakeScores) float64 {
 	return scores.Product*w.Product + scores.Acting*w.Acting + scores.Camera*w.Camera + scores.Continuity*w.Continuity
 }
 
-// hasKeyframe reports whether the references hold a Keyframe: the first frame of the clip.
+// hasKeyframe reports whether the references hold a Keyframe: the first frame of the clip (decide passes only a Keyframe that is read, #902).
 func hasKeyframe(refs []domain.Reference) bool {
 	return slices.ContainsFunc(refs, func(r domain.Reference) bool { return r.Kind == domain.RefKeyframe })
 }
