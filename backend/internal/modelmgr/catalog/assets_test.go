@@ -111,12 +111,12 @@ func TestGPTSoVITSAssetsHoldTheWeightsAndEveryDependencyThePackageNeeds(t *testi
 	}())
 }
 
-// MuseTalk's weights are recorded before its runtime is (#921): the six sources of the decision and what MuseTalk fetches by itself.
+// MuseTalk's weights are recorded apart from its runtime (#920, #921): the six sources of the decision and what MuseTalk fetches by itself.
 func TestMuseTalkAssetsListTheWeightsAndTheirLicenses(t *testing.T) {
 	c := catalog.Default()
 	s := setOf(t, c, "musetalk")
 	_, hasRuntime := c.Runtime("musetalk")
-	assert.False(t, hasRuntime, "the runtime package is #921's")
+	assert.True(t, hasRuntime, "the runtime of #921 is the one the weights belong to")
 
 	for name, repo := range map[string]string{
 		"MuseTalk 1.5 の重み": "TMElyralab/MuseTalk", "sd-vae-ft-mse の重み": "stabilityai/sd-vae-ft-mse", "whisper-tiny の重み": "openai/whisper-tiny",

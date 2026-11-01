@@ -97,6 +97,9 @@ check "the ComfyUI section: a separate GPL-3.0 program, the source, no bytes, th
 check "the GPT-SoVITS section: a separate MIT program, the source, no bytes, Windows + NVIDIA only, the unverified package inventory" "$(
   has '## GPT-SoVITS（利用者が取得する別プログラム）' && grep -qF 'https://github.com/RVC-Boss/GPT-SoVITS/tree/20250606v2pro' "$out" && grep -qF 'GPT-SoVITS のバイトを一切含めません' "$out" && grep -qF 'NVIDIA' "$out" && grep -qF '未確認' "$out" && echo 0 || echo 1
 )"
+check "the MuseTalk section: a separate MIT program, the pinned commit, no bytes, the sources of the environment, the unverified licenses of the wheels" "$(
+  has '## MuseTalk 1.5（利用者が取得する別プログラム）' && grep -qF 'https://github.com/TMElyralab/MuseTalk/tree/0a89dec45a0192b824e3cf4daf96c239440c5ed8' "$out" && grep -qF 'MuseTalk・Python・下の Python パッケージ・PyTorch のバイトを一切含めません' "$out" && grep -qF 'https://download.pytorch.org/whl/cu118/' "$out" && grep -qF '| torch | 2.0.1+cu118 |' "$out" && grep -qF 'NVIDIA の CUDA ランタイムと cuDNN の DLL' "$out" && grep -qF '未確認' "$out" && echo 0 || echo 1
+)"
 check "the weights section: not bundled, pinned, the unclear commercial-use ones are named, for GPT-SoVITS and MuseTalk" "$(
   has '## GPT-SoVITS と MuseTalk の重み・依存ファイル（利用者が取得するもの）' && grep -qF '同梱せず再配布しません' "$out" && grep -qF '### MuseTalk 1.5 の重みと依存ファイル' "$out" && grep -qF 'はっきりしない' "$out" && grep -qF 'face-parse-bisent' "$out" && echo 0 || echo 1
 )"

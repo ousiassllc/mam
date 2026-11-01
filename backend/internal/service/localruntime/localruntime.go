@@ -1,4 +1,4 @@
-// Package localruntime is the manager of the local AI runtimes (GPT-SoVITS now, MuseTalk later): for each runtime of the catalog it
+// Package localruntime is the manager of the local AI runtimes (GPT-SoVITS and MuseTalk): for each runtime of the catalog it
 // installs the vendor's pinned package next to mam.exe (as a model_install job with the target "runtime:<id>"), starts and stops its
 // server process, and says what is installed, whether this machine can run it and why not (spec/architecture/model-manager/
 // local-runtime.md). It is the counterpart of the bundled ComfyUI engine of package modelmanager, with which it shares the job
@@ -9,6 +9,8 @@ package localruntime
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -19,6 +21,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/httpclient"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/extract"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/fetch"
@@ -114,6 +117,8 @@ type Deps struct {
 	FreeBytes func(path string) (uint64, error)
 	// Command builds the launch of a runtime for a port (default: the installed runtime, see rtm.Installer.Command).
 	Command func(id string, port int) (proc.Spec, error)
+	// HTTP sends the requests to a runtime's server (nil: a client without a timeout and without a proxy).
+	HTTP httpclient.Doer
 	// Ready probes the server at a url (default: GET of the runtime's ready_path answers 200).
 	Ready func(ctx context.Context, url string) error
 	// StartTimeout and PollEvery tune the start (defaults: the catalog's start_timeout_sec, and proc's).
@@ -137,6 +142,12 @@ type instance struct {
 	proc    *proc.Manager
 	// work serializes the jobs of the runtime (two installs never write the same files).
 	work sync.Mutex
+	// call serializes the requests to the server of a runtime that does one thing at a time (MuseTalk: one generation on the GPU): a
+	// request holds its one slot, and one that waits can give up with its context.
+	call chan struct{}
+	// token is the token of the server's current start ("" for a runtime without one); see tokenFor.
+	tokenMu sync.Mutex
+	token   string
 }
 
 // Service is the manager of the local runtimes.
@@ -188,13 +199,16 @@ func (s *Service) newInstance(rt catalog.Runtime) (*instance, error) {
 	if err != nil {
 		return nil, fmt.Errorf("local runtime %s: %w", rt.ID, err)
 	}
-	inst := &instance{rt: rt, layout: layout, state: st}
+	inst := &instance{rt: rt, layout: layout, state: st, call: make(chan struct{}, 1)}
 	set, _ := s.Catalog.ResourceSet(rt.ID)
-	inst.install = &rtm.Installer{Layout: layout, Runtime: rt, AssetSet: set, Store: st, Extract: s.Extract, Fetch: s.Fetch, FreeBytes: s.FreeBytes, Now: s.Now}
+	inst.install = &rtm.Installer{
+		Layout: layout, Runtime: rt, AssetSet: set, Store: st, Extract: s.Extract, Overlays: s.Catalog.Overlays, Fetch: s.Fetch, FreeBytes: s.FreeBytes, Now: s.Now,
+	}
 	build := inst.install.Command
 	if s.Command != nil {
 		build = func(port int) (proc.Spec, error) { return s.Command(rt.ID, port) }
 	}
+	build = inst.withToken(build)
 	ready := s.Ready
 	if ready == nil {
 		ready = proc.HTTPReady(rt.Launch.ReadyPath)
@@ -208,6 +222,38 @@ func (s *Service) newInstance(rt catalog.Runtime) (*instance, error) {
 		PreferredPort: func() int { return st.Get().LastPort },
 	})
 	return inst, nil
+}
+
+// withToken makes every start of a runtime that has a token_env get a fresh random token: it is put in the environment of the
+// process and kept for the requests to it (a web page cannot send it, and a restart makes the old one useless).
+func (i *instance) withToken(build func(port int) (proc.Spec, error)) func(port int) (proc.Spec, error) {
+	name := i.rt.Launch.TokenEnv
+	if name == "" {
+		return build
+	}
+	return func(port int) (proc.Spec, error) {
+		spec, err := build(port)
+		if err != nil {
+			return spec, err
+		}
+		var b [24]byte
+		if _, err := rand.Read(b[:]); err != nil {
+			return spec, fmt.Errorf("token: %w", err)
+		}
+		tok := hex.EncodeToString(b[:])
+		spec.Env = append(spec.Env, name+"="+tok)
+		i.tokenMu.Lock()
+		i.token = tok
+		i.tokenMu.Unlock()
+		return spec, nil
+	}
+}
+
+// currentToken is the token of the server's current start.
+func (i *instance) currentToken() string {
+	i.tokenMu.Lock()
+	defer i.tokenMu.Unlock()
+	return i.token
 }
 
 // instance finds the runtime with the id (ErrNotFound for another).
