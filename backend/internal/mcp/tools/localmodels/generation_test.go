@@ -49,11 +49,7 @@ func TestGenerationWithALocalModelRunsThroughTheExistingJobTools(t *testing.T) {
 	f.CallOK("generate_shot", map[string]any{"shot_id": f.ShotID}, &out)
 	require.NotEmpty(t, out.JobID)
 
-	var st mcpkit.JobStatus
-	require.Eventually(t, func() bool {
-		f.CallOK("get_job", map[string]any{"job_id": out.JobID}, &st)
-		return st.State.Final()
-	}, 30*time.Second, 10*time.Millisecond, "the job never finished (last: %+v)", st)
+	st := f.WaitJob(out.JobID, 30*time.Second, 10*time.Millisecond, "the job never finished")
 	assert.Equal(t, mcpkit.JobSucceeded, st.State, st.Error)
 	f.WaitIdle(t)
 

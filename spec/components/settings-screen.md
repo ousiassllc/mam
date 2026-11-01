@@ -33,6 +33,7 @@
 | 6 | MCP サーバー | `/settings/mcp` | 待ち受け先・トークン（`organisms/settings/mcp`） | `Services.MCP` がある |
 | 7 | ffmpeg | `/settings/ffmpeg` | ffmpeg と ffprobe のパス（`organisms/settings/ffmpeg`。[categories](settings-screen-categories.md) §8）と、探した結果、ダウンロードして入れる部品（Windows x64・macOS arm64。#900。[../architecture/ffmpeg-download.md](../architecture/ffmpeg-download.md)） | `Services.FFmpeg` がある |
 | 8 | バージョンとアップデート | `/settings/update` | 版と「今すぐ確認」（`updatepanel`） | 常に（版の表示だけのときもある） |
+| 9 | 第三者のライセンス | `/settings/licenses` | 同梱・利用するサードパーティのソフトウェアのライセンス文（`THIRD_PARTY_NOTICES.md` の埋め込み。グループごとの `<details>`、全文は開いたときに読む。#910。[settings-screen-licenses.md](settings-screen-licenses.md)） | 常に |
 
 - スラッグは、今の**書き込みのルートの接頭辞と同じ**にする（`PUT /settings/llm`・`/settings/models`・`/settings/mcp/…`・`/settings/update/check`）。同じパスに GET（ページ）と PUT・DELETE（操作）が並ぶ。API キーの分類だけ新しい接頭辞（`api-keys`）で、書き込みは今の `PUT /credentials/:provider` のまま。
 - 出さない分類は、ナビに無く、その URL は 404（`GET /settings` だけは今も `Settings` サービスの有無にかかわらず開ける）。
@@ -110,9 +111,10 @@
 | MCP サーバー | 待ち受け先（`mcpsettings.Service.View` の `Addr`）、有効なトークン n 件（失効済みを除く） | `/settings/mcp` |
 | ffmpeg | 「ffmpeg・ffprobe を使えます」（ok）／「ffmpeg が見つかりません」などの警告（warn）／「設定ファイルを読めません」（`ffmpegsettings.Service` の探した結果。[categories](settings-screen-categories.md) §8） | `/settings/ffmpeg` |
 | バージョンとアップデート | 版（`updatepanel.Data.Version`）と状態（最後の確認の結果。`Tone` をそのまま使う） | `/settings/update` |
+| 第三者のライセンス | 項目の数「n 件」（neutral。`licenses.Catalog.Len`）。説明は 1 行「MAM が使っているソフトウェアのライセンス文。」（#910。[settings-screen-licenses.md](settings-screen-licenses.md) §4） | `/settings/licenses` |
 | モデルマネージャー（決定事項 6(a)） | ComfyUI の状態（トップ画面と同じ。[home-screen.md](home-screen.md) §5。`hx-get="/tools/model-manager/status"` を使う）。説明は「別の画面を開きます」を含める | `paths.ModelManager()` |
 
-- 9 枚（#856 で ffmpeg、#924 で音声・口パクを足した）で、並びはナビと同じ順にモデルマネージャーを最後に置く。`Settings` サービスが無い構成では LLM・画像動画のカードを出さない（ナビと同じ条件）。
+- 10 枚（#856 で ffmpeg、#924 で音声・口パク、#910 で第三者のライセンスを足した）で、並びはナビと同じ順にモデルマネージャーを最後に置く。`Settings` サービスが無い構成では LLM・画像動画のカードを出さない（ナビと同じ条件）。
 - 「接続の状態」を概要に出すかは §11 の質問 5（既定は上の案）。
 - カードの下に「初期セットアップの案内」の区画（`h3`）を置き、「案内をもう一度開く」のリンク（`/onboarding`）を出す（#863。[onboarding-screen.md](onboarding-screen.md) §7）。初回ガイドを出さない構成（`Services.Onboarding` が無い）では区画ごと無い。
 
@@ -211,3 +213,4 @@
 | 0.11 | 2026-11-01 | §2 の分類の表に「ffmpeg」（`/settings/ffmpeg`。バージョンの前）を足した | Issue #856。Finder から起動した macOS で ffmpeg が見つからないとき、パスを指定できるようにするため |
 | 0.12 | 2026-11-01 | §5 の概要のカードの表に「ffmpeg」を足し（7 枚 → 8 枚）、版の番号の重複（0.10 が 2 行）を直し、2 行目（#856 の ffmpeg の追加）を 0.11 にした。決定事項 3 の「7 つの分類」の数え方（概要を含めた決定時の数と、いまの数）を書いた | PR #911 のレビューの指摘 |
 | 0.13 | 2026-11-01 | §2 の分類の表に「音声・口パク」（`/settings/audio`。MCP サーバーの前）を足して順を 1 つずつ後ろにし、§5 の概要のカードの表に「音声・口パク」を足した（8 枚 → 9 枚） | Issue #924（#912 声と口パクのローカル化）。ローカルの声・口パクを選ぶ場所が要る |
+| 0.14 | 2026-11-02 | §2 の分類の表に「第三者のライセンス」（`/settings/licenses`。バージョンのあと）を足し、§5 の概要のカードの表に「第三者のライセンス」を足した（9 枚 → 10 枚）。分類の仕様は [settings-screen-licenses.md](settings-screen-licenses.md)（新規） | Issue #910（オーナー決定: ONNX Runtime の DLL を同梱するので、ライセンス表記をアプリの中にも出す） |

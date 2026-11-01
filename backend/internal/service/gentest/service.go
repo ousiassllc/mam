@@ -24,6 +24,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
+	"github.com/ousiassllc/mam/backend/internal/agent/prompttranslate"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
@@ -74,7 +75,9 @@ type Deps struct {
 	// Hidden says a model is left out of the model lists and refused as unknown: the adult models of the model manager while
 	// the age gate is closed (modelmanager.Service.HidesModel). May be nil.
 	Hidden func(modelID string) bool
-	Logger *slog.Logger
+	// Translator translates the prompts of a batch that asks for it (nil: such a batch is refused unless every prompt is English).
+	Translator *prompttranslate.Translator
+	Logger     *slog.Logger
 	// Now and Seed are for tests.
 	Now  func() time.Time
 	Seed func() int64

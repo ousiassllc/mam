@@ -108,6 +108,9 @@ jobs:
           fi
           echo "CHROME_PATH=${chrome}" >> "$GITHUB_ENV"
 
+      - name: THIRD_PARTY_NOTICES.md is up to date (it is embedded in the binary)
+        run: make check-notices
+
       - name: Test
         run: make test
 
@@ -209,3 +212,38 @@ jobs:
           path: bin/mam-0.0.1-darwin-arm64.dmg
           retention-days: 3
           if-no-files-found: error
+
+  # The Face Identity Similarity on real Windows (Issue #910): the `ci` job only cross-builds, vets and lints the Windows target from
+  # Linux, which cannot show that the ONNX Runtime bindings load onnxruntime.dll, pass a UTF-16 model path and run the models. This
+  # job downloads the pinned ONNX Runtime DLL (scripts/fetch-onnxruntime.sh, SHA-256 checked, the one the installer bundles) and the
+  # face models (scripts/fetch-face-models.sh) and runs the facesim tests on them (the ones that need no photos: a made-up image
+  # through both models, a model path with non-ASCII characters, the DLL laid out next to mam.exe as the installer does). contents:
+  # read, no secret. A pull request from a fork does not run this job (like `macos`).
+  windows:
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+          cache-dependency-path: go.sum
+
+      # Git Bash (the default `bash` of the runner) runs the two fetch scripts; cygpath -m gives the paths Go and the DLL loader understand.
+      - name: Fetch the ONNX Runtime DLL and the face models
+        shell: bash
+        run: |
+          dir="$(cygpath -m "$RUNNER_TEMP")/mam-face"
+          bash scripts/fetch-onnxruntime.sh "$dir/onnxruntime"
+          bash scripts/fetch-face-models.sh "$dir/models"
+          echo "MAM_FACESIM_RUNTIME_LIB=$dir/onnxruntime/onnxruntime.dll" >> "$GITHUB_ENV"
+          echo "MAM_FACESIM_MODEL_DIR=$dir/models" >> "$GITHUB_ENV"
+
+      - name: Test facesim on Windows
+        shell: bash
+        run: go test -count=1 -v ./backend/internal/facesim/...

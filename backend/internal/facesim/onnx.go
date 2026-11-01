@@ -1,7 +1,6 @@
-//go:build !windows
-
-// The ONNX Runtime bindings (onnxruntime-purego) load the library with dlopen and do not build for
-// Windows; onnx_windows.go answers ErrUnavailable there, so the Judge falls back to qualitative judging.
+// The ONNX Runtime bindings (onnxruntime-purego) load the library with dlopen (macOS, Linux) or LoadLibrary
+// (Windows; go.mod's replace) and need no cgo. When the library or a model is missing, NewONNX answers
+// ErrUnavailable and the Judge falls back to qualitative judging.
 
 package facesim
 
@@ -64,9 +63,16 @@ func NewONNX(cfg ONNXConfig) (*ONNX, error) {
 			return nil, fmt.Errorf("%w: %w", ErrUnavailable, err)
 		}
 	}
-	rt, err := ort.NewRuntime(cfg.RuntimeLibrary, ortAPIVersion)
-	if err != nil {
+	lib := cfg.RuntimeLibrary
+	if lib != "" {
+		lib = filepath.Clean(lib) // Windows: the loader wants backslashes, and a path of a Git Bash or a config file has slashes
+	}
+	if err := checkRuntimeLibrary(lib); err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrUnavailable, err)
+	}
+	rt, err := ort.NewRuntime(lib, ortAPIVersion)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w%s", ErrUnavailable, err, loadFailureHint())
 	}
 	e := &ONNX{rt: rt, minScore: cfg.MinScore}
 	if e.minScore <= 0 {

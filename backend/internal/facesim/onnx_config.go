@@ -14,7 +14,8 @@ type ONNXConfig struct {
 	DetectorPath   string
 	RecognizerPath string
 	// RuntimeLibrary is the ONNX Runtime shared library (libonnxruntime.so, .dylib or onnxruntime.dll,
-	// version 1.23.x). Empty lets the system search its standard library locations.
+	// version 1.23.x). Empty lets the system search its standard library locations (RuntimeLibraryPath
+	// resolves the Windows default, the DLL next to mam.exe).
 	RuntimeLibrary string
 	// MinScore is the detection confidence a face needs (YuNet score, 0..1).
 	MinScore float32

@@ -29,17 +29,13 @@ func (j *judgeApp) candidates() {
 	j.t.Helper()
 	rec := j.form(http.MethodPost, "/shots/"+j.shotID+"/generate/candidates", nil)
 	require.Equal(j.t, http.StatusAccepted, rec.Code, rec.Body.String())
-	require.Eventually(j.t, func() bool { return j.count(`SELECT COUNT(*) FROM take WHERE status = ?`, domain.TakeAIPick) == 1 },
+	require.EventuallyWithT(j.t, func(c *assert.CollectT) {
+		assert.Equal(c, 1, j.countOn(c, `SELECT COUNT(*) FROM take WHERE status = ?`, domain.TakeAIPick))
+	},
 		30*time.Second, 10*time.Millisecond, "the Judge picks the Best Take")
-	require.Eventually(j.t, func() bool {
-		return j.count(`SELECT COUNT(*) FROM job WHERE status IN ('queued', 'running')`) == 0
+	require.EventuallyWithT(j.t, func(c *assert.CollectT) {
+		assert.Zero(c, j.countOn(c, `SELECT COUNT(*) FROM job WHERE status IN ('queued', 'running')`))
 	}, 30*time.Second, 10*time.Millisecond)
-}
-
-func (j *judgeApp) count(q string, args ...any) int {
-	var n int
-	require.NoError(j.t, j.db.Reader().QueryRow(q, args...).Scan(&n))
-	return n
 }
 
 func (j *judgeApp) candidateStrategies() []string {
@@ -179,8 +175,8 @@ func TestCandidates_DirectorRegenerateHonoursMaxQuality(t *testing.T) {
 	rec := j.form(http.MethodPost, "/shots/"+j.shotID+"/director-command", url.Values{"content": {"カメラを固定して"}})
 	require.Equal(t, http.StatusAccepted, rec.Code, rec.Body.String())
 
-	require.Eventually(t, func() bool {
-		return j.count(`SELECT COUNT(*) FROM take WHERE json_extract(model_parameters, '$.candidate_strategy') IS NOT NULL`) == 3
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		assert.Equal(c, 3, j.countOn(c, `SELECT COUNT(*) FROM take WHERE json_extract(model_parameters, '$.candidate_strategy') IS NOT NULL`))
 	}, 30*time.Second, 10*time.Millisecond, "a Candidate per strategy")
 	assert.Equal(t, before+3, j.count(`SELECT COUNT(*) FROM take`), "and no single Take besides")
 }

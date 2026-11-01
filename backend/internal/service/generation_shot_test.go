@@ -77,14 +77,14 @@ func TestGenerateShot_KeepsTheSpecUnlessThereIsANewInstruction(t *testing.T) {
 
 	_, err := f.svc.Generation.GenerateShot(ctx, f.shotID, "")
 	require.NoError(t, err)
-	require.Eventually(t, func() bool { return f.count(t, `SELECT COUNT(*) FROM take`) == 6 }, 30*time.Second, 10*time.Millisecond)
+	require.EventuallyWithT(t, func(c *assert.CollectT) { assert.Equal(c, 6, f.count(c, `SELECT COUNT(*) FROM take`)) }, 30*time.Second, 10*time.Millisecond)
 	f.waitShotState(t, domain.ShotPlanning)
 	assert.Equal(t, 1, f.llm.calls(llm.AgentPromptPlanner), "a retake reuses the Canonical Shot Spec")
 	assert.Equal(t, 2, f.count(t, `SELECT COUNT(*) FROM prompt_version`), "every generation is a prompt version")
 
 	_, err = f.svc.Generation.GenerateShot(ctx, f.shotID, "もう少しカメラを寄せて")
 	require.NoError(t, err)
-	require.Eventually(t, func() bool { return f.count(t, `SELECT COUNT(*) FROM take`) == 9 }, 30*time.Second, 10*time.Millisecond)
+	require.EventuallyWithT(t, func(c *assert.CollectT) { assert.Equal(c, 9, f.count(c, `SELECT COUNT(*) FROM take`)) }, 30*time.Second, 10*time.Millisecond)
 	assert.Equal(t, 2, f.llm.calls(llm.AgentPromptPlanner), "an instruction makes the Prompt Planner revise the spec")
 	assert.Contains(t, f.llm.prompts(llm.AgentPromptPlanner)[1], "もう少しカメラを寄せて")
 }
@@ -212,8 +212,9 @@ func TestBuildReferencePack_FailureKeepsTheOldPackAndLeavesNoFiles(t *testing.T)
 	f.models.err = &modeladapter.ProviderError{Vendor: "google", Status: http.StatusForbidden}
 	_, err := f.svc.Generation.BuildReferencePack(context.Background(), f.shotID)
 	require.NoError(t, err)
-	require.Eventually(t, func() bool {
-		return f.shot(t).State == domain.ShotPlanning && f.count(t, `SELECT COUNT(*) FROM job WHERE status = 'failed'`) == 1
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		assert.Equal(c, domain.ShotPlanning, f.shot(c).State)
+		assert.Equal(c, 1, f.count(c, `SELECT COUNT(*) FROM job WHERE status = 'failed'`))
 	}, 30*time.Second, 10*time.Millisecond)
 
 	assert.Equal(t, before, f.shot(t).References())

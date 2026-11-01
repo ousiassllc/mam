@@ -95,6 +95,9 @@ func (s *Service) estimate(_ context.Context, r Request) (Estimate, []modelPlan,
 		est.Breakdown = append(est.Breakdown, line)
 		est.Warnings = append(est.Warnings, p.warnings...)
 	}
+	if err := s.addTranslation(&est, r); err != nil {
+		return Estimate{}, nil, err
+	}
 	est.TotalUSD = round4(est.TotalUSD)
 	if est.MaxCostUSD > 0 && est.TotalUSD > est.MaxCostUSD {
 		est.OverLimit = fmt.Sprintf("見積り %s USD が 1 回の上限 %s USD を超えています。モデル・プロンプト・本数を減らしてください（上限は models.json の gentest.max_cost_usd）",

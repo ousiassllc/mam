@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
+	"github.com/ousiassllc/mam/backend/internal/chatgpt"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
@@ -111,6 +112,23 @@ func TestBatchNeverFallsBackToAnotherModel(t *testing.T) {
 	assert.Len(t, r.Fake.CallsOf(domain.ModelFlux2), 1, "a 422 is not retried")
 	assert.Len(t, r.Fake.CallsOf(domain.ModelNanoBanana), 1, "Nano Banana is not the stand-in for FLUX.2: it was asked for its own result only")
 	assert.Equal(t, gentest.StateSucceeded, st.State, "a batch with a file succeeded as a batch")
+}
+
+// When the ChatGPT subscription has no Codex model for the image tool, the history says what happened and what to do
+// instead of the vendor's 400 (#907).
+func TestFailureOfTheChatGPTImageWithoutACodexModelIsExplained(t *testing.T) {
+	r := gentesttest.New(t)
+	r.Fake.FailWith(domain.ModelFlux2, &modeladapter.ProviderError{Vendor: "chatgpt-subscription", Status: http.StatusBadRequest,
+		Message: "The 'gpt-5.5' model is not supported when using Codex with a ChatGPT account", Err: chatgpt.ErrNoImageModel})
+	ref, err := r.Confirmed(imageReq("flux-2"))
+	require.NoError(t, err)
+	st := r.Wait(ref.BatchID)
+
+	require.Len(t, st.Results, 1)
+	assert.Equal(t, gentestrepo.StatusFailed, st.Results[0].Status)
+	assert.Equal(t, chatgpt.ImageModelUnavailableMessage, st.Results[0].Error)
+	assert.NotContains(t, st.Results[0].Error, "ベンダーがリクエストを拒否しました")
+	assert.NotContains(t, st.Results[0].Error, "gpt-5.5")
 }
 
 func TestSeedIsGeneratedPerResultAndRecordedOnlyWhereItIsSent(t *testing.T) {

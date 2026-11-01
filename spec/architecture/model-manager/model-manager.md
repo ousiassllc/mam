@@ -51,6 +51,14 @@ ComfyUI **v0.42.1** のリリースアセット 4 種（`ComfyUI_windows_portabl
 5. 失敗・取り消しでは `engine.new\`・`.part`・退避を片づける。起動時にも前回の取りこぼしを消す（`CleanLeftovers`）。
 6. 進捗（バイト・割合・メッセージ）は `track` に載せ、`JobStatus` と `Watch` で読める。
 
+**通信が切れたときの自動再開**（`fetch.Options.Retry`・`OnRetry`。エンジン・カタログのモデル・HF からの導入・Codex のエンジン・ffmpeg の取得が共有する）:
+
+- 取得の途中で接続が切れた（接続のリセット・強制切断（Windows の `wsarecv: An existing connection was forcibly closed by the remote host`）・本体が途中で終わる・タイムアウト・アイドルで中断）ときと、サーバーが 5xx・408・429 を返したときは、`.part` の続きから `Range` で自動的に取り直す。再開のたびにディスク上のバイト列を読み直すので、SHA-256 は常にファイル全体にかかる。
+- **回数と待ち時間には上限がある**: 最初の取得を含めて最大 6 回（`Retry.Attempts`）、再開の前の待ちは 2 秒から倍に増やして最大 30 秒（`Retry.Backoff`・`MaxBackoff`）。待ちの間も取り消しが効く。
+- **取り直さないもの**: 利用者の取り消し（`ctx` の取り消し）、ディスクの空き不足・書き込みの失敗（`fsutil.LocalError`・`NoSpaceError`）、SHA-256・サイズの不一致、4xx（408・429 を除く）、アドレス規則の拒否など、通信の切断でないエラー。
+- 上限まで切れ続けたときの失敗は `*fetch.ConnectionLostError` で、`.part` は残る。モデルマネージャーのジョブは「通信が切れました。もう一度導入すると続きから再開します」で失敗する（原因の詳細は `userError` の裏側に残り、ログに出る）。
+- 再開は WARN（`download interrupted, resuming from the part file`。`job_id`・`target`・`attempt`・`max_attempts`・`retry_in`・`err`）、導入ジョブの結末は成功が INFO（`install succeeded`）、利用者の中断が INFO（`install cancelled by the user`）、シャットダウンでの中断が WARN（`install interrupted`）、失敗が ERROR（`install failed`。原因の `err` つき）で、いずれも `job_id` と対象（`target` = `engine`・`model:<id>`・`hf:…`）を持つ。
+
 取得できるホストは `huggingface.co`・`hf.co`・`github.com`・`githubusercontent.com` だけで、リダイレクト先も同じ規則で調べる（`fetch.AllowedURL`。エンジンのアーカイブとカタログのモデルの取得）。**Hugging Face の導入経路（`hf` のクライアントと導入したファイルの取得）は `huggingface.co` と `*.hf.co` だけ**（`fetch.HFAllowedURL`。GitHub へのリダイレクトは断る。[model-manager-hf.md](model-manager-hf.md) §2）。`Authorization` は最初の要求の宛先ホストにだけ付け、ホストが変わると外す（§5.3）。
 
 **7z の方式**: 公式パッケージは LZMA2＋BCJ2（`-m0=lzma2 -mf=BCJ2 -md=768m`）。`bodgit/sevenzip` v1.6.0 が同じ方式で作った合成アーカイブ（`extract/testdata/bcj2.7z`、1.5 GB のものでも）を読めることを確かめた。展開時の最大メモリは 1.5 GB のアーカイブで約 1.6 GB。実物の約 2 GB を丸ごと取得・展開した検証は未実施（§11）。
@@ -145,6 +153,8 @@ Wan 2.2 14B は T2V を入れない（I2V のみ。決定 4）。ミラーのフ
 | `gentest` | しない（`resumable=false`） | 試し生成（§8）。生成テストのバッチ（[../gentest/gentest.md](../gentest/gentest.md)）として動く。MAM が落ちたら、終わっていない結果は失敗になる |
 
 - 再起動のたびに再開するのは `jobqueue.DefaultMaxAttempts`（3）回まで。それを超えると失敗として残り、利用者が導入をやり直す。
+- ジョブの再開（上）とは別に、**1 回の取得の中の通信切断は、ジョブの中で自動的に `.part` から取り直す**（§3.3「通信が切れたときの自動再開」）。上限まで切れたジョブは失敗で終わり、再起動の再開の回数には数えない（ハンドラーがエラーを返すと、キューは再開せず失敗にする）。
+- 同時に流す導入（ダウンロード）の数は絞っていない（ワーカー数の分だけ並ぶ）。絞るかどうかは未決定（Issue #909 の質問）。
 - 同じ対象のジョブが動いている間の再実行は、新しいジョブを作らずそのジョブを返す（`JobRef.Existing`）。対象ごとに直列化する。**書き込み先（`models/<folder>/<name>`）ごとにも直列化する**（対象が違っても同じ宛先なら 1 つずつ動き、ロックを取った後に宛先を調べ直す。`model:<id>` の導入は、利用者が HF から足した別の SHA-256 のファイルを上書きせず `*InvalidError` で断る。[model-manager-hf.md](model-manager-hf.md) §4）。
 - 他のモデルが検証済みの同じファイル（パス・SHA-256・サイズが同じ。VAE・テキストエンコーダーなど）は、再ハッシュせず信用する。
 - 2 つの種別は 1 つのマイグレーション（`20261025090000_job_kind_model.sql`）で `job.kind` の CHECK に加える（[er-model-manager.md](er-model-manager.md)）。
@@ -318,6 +328,8 @@ func (*Service) DeleteUserModel(ctx, path string) error
 - **MCP ツール**: `mcp/tools/modelmgr`（エンジン・カタログ・トークン・外部）と 生成テストの `mcp/tools/gentest`（試し生成もこれで行う）。仕様は [mcp-tools-model-manager.md](../../api/mcp-tools-model-manager.md)・[mcp-tools-generation-test.md](../../api/mcp-tools-generation-test.md)。ジョブの種別 `model_install` の Probe はこの画面側、`gentest` の Probe は生成テスト側にあり、`get_job` が状態・進捗・結果・失敗の理由を返す。
 - **共有**: サービスの拒否は `service/modelmanager/mmview.Refuse`（種類とメッセージ）で、画面の HTTP 状態と MCP のエラーコードに写す（`ErrConsentRequired`・`ErrBusy`・`ErrPinned`・`ErrUnsupported` は 409 / `conflict`、`ErrNoGPU`・`*InvalidError` は 422 / `validation`）。`mmview.TrialModels` は試し生成の選択肢（モデルの識別子・動画の解像度と長さ・参照画像を使えるか）。
 - **導入の中断**: `CancelInstall`。ジョブは失敗で終わり（理由に「導入を中断しました」）、`.part` は残るので、導入し直すと続きから再開する。
+- **通信切断での失敗**: 切断が続いて自動再開の上限を超えたジョブも、`.part` は残る。理由は「通信が切れました。もう一度導入すると続きから再開します」で、導入し直すと続きから再開する（§3.3）。
 - **同意の強制は API**: 画面のダイアログは同意を渡す手段で、`InstallModel` が記録を確かめる（§6）。MCP からも同じ（記録が無ければ 409 / `conflict`）。**年齢確認も同じ**（§6.2）: 画面のダイアログ（`PUT /model-manager/adult`）と MCP の `set_adult_content` は確認を渡す手段で、`Catalog`・`InstallModel`・試し生成の一覧は Service が閉じる。`ErrAdultNotConfirmed` は 409 / `conflict`（`mmview.Refuse`）。
 - **テスト用の部品**: `service/modelmanager/mmtest` は偽の GitHub / Hugging Face（`Range`・保留 `Hold` つき）・偽のエンジンのプロセス・ジョブキューつきの `Service` を作る（画面と MCP のテストが共有する）。
+- **切断のまね**: `mmtest.Host.Drop(file, bytes, times)` が、そのファイルの次の `times` 回の要求を `bytes` バイトで切る。`mmtest.FetchRetry` が再開の待ちを決める（既定は数ミリ秒）。`service/modelmanager/retrytest` が、再開して完了・上限で失敗して次の導入で完了・404 は再開しない、を確かめる。`fetch` の単体テスト（`retry_test.go`）が、切断（FIN・RST）・アイドル・5xx・取り消し・待ちの途中の取り消しを確かめる。
 - **Hugging Face からの導入**（Issue #842）: カタログに無い `.safetensors` を HF のリポジトリから導入する経路。意味・固定・フォルダ・年齢ゲート・記録・未検証は [model-manager-hf.md](model-manager-hf.md)。画面は `web/handler/modelmgr/hfimport`、MCP は `mcp/tools/modelmgr/hf.go` の 5 ツール。

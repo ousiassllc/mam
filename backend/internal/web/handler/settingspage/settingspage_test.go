@@ -71,6 +71,7 @@ func TestPages_EveryCategoryHasItsURLTitleHeadingAndCurrentLinkInTheNavigation(t
 		{paths.SettingsLLM, "設定: テキスト生成（LLM）", "テキスト生成（LLM）"},
 		{paths.SettingsModels, "設定: 画像・動画モデル", "画像・動画モデル"},
 		{paths.SettingsUpdate, "設定: バージョンとアップデート", "バージョンとアップデート"},
+		{paths.SettingsLicenses, "設定: 第三者のライセンス", "第三者のライセンス"},
 	}
 	for _, tc := range tests {
 		t.Run("/settings/"+tc.slug, func(t *testing.T) {
@@ -97,7 +98,7 @@ func TestPages_ACategoryWithoutItsServiceHasNoLinkAndNoPage(t *testing.T) {
 	without := newScreen(t, nil)
 	body := without.get(paths.Settings()).Body.String()
 	nav := navRe.FindString(body)
-	for _, label := range []string{"概要", "API キーとログイン", "バージョンとアップデート"} {
+	for _, label := range []string{"概要", "API キーとログイン", "バージョンとアップデート", "第三者のライセンス"} {
 		assert.Contains(t, nav, ">"+label+"<")
 	}
 	for _, label := range []string{"テキスト生成（LLM）", "画像・動画モデル", "ローカル・代替モデル", "MCP サーバー"} {
@@ -110,7 +111,7 @@ func TestPages_ACategoryWithoutItsServiceHasNoLinkAndNoPage(t *testing.T) {
 	with := newScreen(t, withSettings)
 	order := navRe.FindString(with.get(paths.Settings()).Body.String())
 	last := -1
-	for _, label := range []string{"概要", "API キーとログイン", "テキスト生成（LLM）", "画像・動画モデル", "バージョンとアップデート"} {
+	for _, label := range []string{"概要", "API キーとログイン", "テキスト生成（LLM）", "画像・動画モデル", "バージョンとアップデート", "第三者のライセンス"} {
 		at := strings.Index(order, ">"+label+"<")
 		assert.Greater(t, at, last, label+" comes in the order of the spec")
 		last = at
@@ -121,7 +122,7 @@ func TestPages_ACategoryWithoutItsServiceHasNoLinkAndNoPage(t *testing.T) {
 // history restore gets the page. The answer depends on the headers, so Vary names them.
 func TestPages_HTMXGetsTheBodyAndANavigationOrHistoryRestoreGetsThePage(t *testing.T) {
 	s := newScreen(t, withSettings)
-	for _, slug := range []string{paths.SettingsOverview, paths.SettingsAPIKeys, paths.SettingsLLM, paths.SettingsUpdate} {
+	for _, slug := range []string{paths.SettingsOverview, paths.SettingsAPIKeys, paths.SettingsLLM, paths.SettingsUpdate, paths.SettingsLicenses} {
 		target := paths.SettingsCategory(slug)
 		fragment := s.get(target, "HX-Request", "true")
 		require.Equal(t, http.StatusOK, fragment.Code, target)
@@ -167,7 +168,7 @@ func TestOverview_HasACardForEachCategoryAndTheModelManagerLast(t *testing.T) {
 	}
 	assert.Equal(t, [][2]string{
 		{"api-keys", "/settings/api-keys"}, {"llm", "/settings/llm"}, {"models", "/settings/models"},
-		{"update", "/settings/update"}, {"model-manager", paths.ModelManager()},
+		{"update", "/settings/update"}, {"licenses", "/settings/licenses"}, {"model-manager", paths.ModelManager()},
 	}, got)
 	assert.Contains(t, body, "API キー 0 / 14 件", "the state of the keys is drawn with the card")
 	assert.Contains(t, body, `hx-get="/tools/model-manager/status"`, "the model manager's state is read after the page is shown")

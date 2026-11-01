@@ -44,7 +44,7 @@ type ReferenceInput struct {
 
 // PromptInput is a prompt with its negative prompt.
 type PromptInput struct {
-	Prompt         string `json:"prompt" jsonschema:"1〜4000 文字。そのままモデルに送る（補正しない）"`
+	Prompt         string `json:"prompt" jsonschema:"1〜4000 文字。translate_to_english が true（既定）なら英語に訳して送る。false ならそのまま送る（補正しない）"`
 	NegativePrompt string `json:"negative_prompt,omitempty" jsonschema:"ネガティブの欄が無いモデルには「Avoid: …」としてプロンプトに書き足して送る"`
 }
 
@@ -58,12 +58,17 @@ type RequestInput struct {
 	Resolution      string           `json:"resolution,omitempty" jsonschema:"動画だけ。モデルの resolutions のどれか。省くと 720p かモデルの最初のもの"`
 	DurationSeconds float64          `json:"duration_seconds,omitempty" jsonschema:"動画だけ。省くと 5 秒。モデルが作れる長さに丸める"`
 	References      []ReferenceInput `json:"references,omitempty" jsonschema:"入力画像（画像モデルの参照画像・動画の最初／最後のフレーム）"`
+	// TranslateToEnglish is a pointer: omitted means the default of the screen (on), false is a deliberate off.
+	TranslateToEnglish *bool `json:"translate_to_english,omitempty" jsonschema:"プロンプトとネガティブプロンプトを LLM（LLM の割り当ての Prompt Planner）で英語に訳してから送る。既定 true（画面と同じ）。すでに英語の文は訳さずそのまま。訳せなければ何も生成せずエラー（upstream）。見積りには訳す文の数が単価なしの行（model が translate）として入る。false でそのまま送る"`
 }
 
 func (in RequestInput) request() gentest.Request {
 	r := gentest.Request{
 		Media: in.Media, Models: in.Models, Count: in.Count, AspectRatio: in.AspectRatio, Resolution: in.Resolution,
-		DurationSeconds: in.DurationSeconds,
+		DurationSeconds: in.DurationSeconds, TranslateToEnglish: gentest.DefaultTranslate,
+	}
+	if in.TranslateToEnglish != nil {
+		r.TranslateToEnglish = *in.TranslateToEnglish
 	}
 	for _, p := range in.Prompts {
 		r.Prompts = append(r.Prompts, gentest.PromptInput{Prompt: p.Prompt, Negative: p.NegativePrompt})

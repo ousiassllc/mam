@@ -62,12 +62,7 @@ func multipartBody(t *testing.T, field, name string, data []byte) (io.Reader, st
 
 func (r *rig) job(id string) mcpkit.JobStatus {
 	r.T.Helper()
-	var st mcpkit.JobStatus
-	require.Eventually(r.T, func() bool {
-		r.CallOK("get_job", map[string]any{"job_id": id}, &st)
-		return st.State.Final()
-	}, 20*time.Second, 10*time.Millisecond)
-	return st
+	return r.WaitJob(id, 20*time.Second, 10*time.Millisecond)
 }
 
 func batch(models ...string) map[string]any {

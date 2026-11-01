@@ -2,7 +2,9 @@ package app
 
 import (
 	"errors"
+	"fmt"
 	"log/slog"
+	"runtime"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/judge"
 	"github.com/ousiassllc/mam/backend/internal/config"
@@ -35,10 +37,9 @@ func newJudgeSetup(cfg config.Config, tools *media.Tools, logger *slog.Logger) (
 	} else {
 		s.frames = judge.NewFFmpeg(*tools)
 	}
-	// The Windows stub (facesim/onnx_windows.go) always fails with ErrUnavailable, so staticcheck sees the success case as dead there.
-	faces, err := facesim.NewONNX(facesim.ONNXConfig{ModelDir: cfg.FaceModels(), RuntimeLibrary: cfg.ONNXRuntimeLib}) //nolint:staticcheck // SA4023: platform stub
+	faces, err := newFaceEngine(cfg)
 	switch {
-	case err == nil: //nolint:staticcheck // SA4023: platform stub
+	case err == nil:
 		s.faces = faces
 	case errors.Is(err, facesim.ErrUnavailable):
 		logger.Warn("face identity similarity is off: Takes are judged qualitatively only", "model_dir", cfg.FaceModels(), "err", err)
@@ -46,6 +47,20 @@ func newJudgeSetup(cfg config.Config, tools *media.Tools, logger *slog.Logger) (
 		return s, err
 	}
 	return s, nil
+}
+
+// newFaceEngine loads the face models and the ONNX Runtime library: --onnxruntime-lib, else onnxruntime.dll next to mam.exe
+// on Windows (the installer puts it there), else the system's standard library search.
+func newFaceEngine(cfg config.Config) (*facesim.ONNX, error) {
+	exe, err := executablePath()
+	if err != nil {
+		exe = "" // only the Windows lookup needs it, and RuntimeLibraryPath says so
+	}
+	lib, err := facesim.RuntimeLibraryPath(runtime.GOOS, cfg.ONNXRuntimeLib, exe)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", facesim.ErrUnavailable, err)
+	}
+	return facesim.NewONNX(facesim.ONNXConfig{ModelDir: cfg.FaceModels(), RuntimeLibrary: lib})
 }
 
 // close releases the face models.

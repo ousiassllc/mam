@@ -46,11 +46,7 @@ func TestListShotTakes_ShowsScoresStatusAndWhichActionsAreOpen(t *testing.T) {
 	ids := f.Generate(t)
 	var judged shotgen.TakeJobOutput
 	f.CallOK("judge_take", map[string]any{"take_id": ids[0]}, &judged)
-	require.Eventually(t, func() bool {
-		var st mcpkit.JobStatus
-		f.CallOK("get_job", map[string]any{"job_id": judged.JobID}, &st)
-		return st.State.Final()
-	}, 30e9, 10e6)
+	f.WaitJob(judged.JobID, 30e9, 10e6)
 	f.WaitIdle(t)
 
 	var out takes.ListTakesOutput
@@ -157,11 +153,7 @@ func TestGetTakeTrace_ReturnsSpecModelJudgeAndRepairHistory(t *testing.T) {
 
 	var judged shotgen.TakeJobOutput
 	f.CallOK("judge_take", map[string]any{"take_id": ids[0]}, &judged)
-	require.Eventually(t, func() bool {
-		var st mcpkit.JobStatus
-		f.CallOK("get_job", map[string]any{"job_id": judged.JobID}, &st)
-		return st.State.Final()
-	}, 30e9, 10e6)
+	f.WaitJob(judged.JobID, 30e9, 10e6)
 	f.WaitIdle(t)
 
 	var tr takes.TraceOutput

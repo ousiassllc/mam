@@ -14,6 +14,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/hfplan"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/proc"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/track"
+	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/instlog"
 )
 
 // JobRef is a started job: poll it with JobStatus. Existing is true when the same work was already queued or
@@ -207,7 +208,7 @@ func (s *Service) HandleInstall(ctx context.Context, job domain.Job) error {
 	defer s.tracker.Finish(job.ID)
 	defer s.lock(p.Target)()
 	set := func(u track.Update) { s.tracker.Set(job.ID, p.Target, u) }
-	ctx, done := s.cancellable(ctx, job.ID)
+	ctx, done := s.cancellable(instlog.WithJob(ctx, job.ID, p.Target), job.ID)
 	defer done()
 	var err error
 	if p.Target == engineTarget {
@@ -219,7 +220,9 @@ func (s *Service) HandleInstall(ctx context.Context, job domain.Job) error {
 	} else {
 		err = fmt.Errorf("unknown install target %q", p.Target)
 	}
-	if err != nil && errors.Is(context.Cause(ctx), errCancelled) {
+	stopped := errors.Is(context.Cause(ctx), errCancelled)
+	instlog.Finished(ctx, s.Logger, job.ID, p.Target, err, err != nil && stopped)
+	if err != nil && stopped {
 		return errCancelled
 	}
 	return userFacing(ctx, err)

@@ -69,7 +69,7 @@ func write(ctx context.Context, cancel context.CancelFunc, part string, have int
 			if ctx.Err() != nil {
 				return context.Cause(ctx)
 			}
-			return rerr
+			return &bodyError{rerr}
 		}
 	}
 	if ctx.Err() != nil {

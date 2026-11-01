@@ -9,6 +9,11 @@
  * - Esc closes it, through its own `data-inline-dialog-close` button, so that the server's answer is what closes it.
  * - When it is gone, the focus goes back to the control that opened it or, when the swap replaced that control (the card
  *   of the setting, the row of the model), to the first control of the place named by `data-return-focus` (a selector).
+ * - The focus never scrolls the page by itself (`preventScroll`): the dialog stands above the list, so what brings it into
+ *   view is one explicit, minimal scroll when it opens (also when another control swaps a different question in while one
+ *   is open; a redraw from inside the dialog does not scroll), and when it is gone the page is put back where it was when the
+ *   control was pressed. Answering the question (or closing it) leaves the reader where they were, not at the card the
+ *   focus went back to, which can be screens away from the dialog (#908).
  *
  * Install it before `installFocusRestore`: the focus that is back on a control is not touched by that one.
  */
@@ -21,9 +26,18 @@ interface SwapDetail {
   requestConfig?: { elt?: Element };
 }
 
+interface RequestDetail {
+  elt?: Element;
+}
+
+interface Scroll {
+  left: number;
+  top: number;
+}
+
 function focusOn(el: HTMLElement | null | undefined): boolean {
   if (!el?.isConnected) return false;
-  el.focus();
+  el.focus({ preventScroll: true });
   return document.activeElement === el;
 }
 
@@ -33,16 +47,31 @@ export function installInlineDialog(root: Document = document): void {
   let shown: HTMLElement | null = null;
   let opener: Element | null = null;
   let returnTo: string | null = null;
+  /** Where the page was when each control sent its request: the place to go back to when the dialog it opened is gone. */
+  const pressedAt = new WeakMap<Element, Scroll>();
+  let origin: Scroll | null = null;
+
+  root.addEventListener('htmx:beforeRequest', (event) => {
+    const elt = (event as CustomEvent<RequestDetail>).detail?.elt;
+    if (elt) pressedAt.set(elt, { left: window.scrollX, top: window.scrollY });
+  });
 
   root.addEventListener('htmx:afterSwap', (event) => {
     const dlg = document.querySelector<HTMLElement>(DIALOG);
     if (dlg) {
       if (dlg === shown) return;
       const requester = (event as CustomEvent<SwapDetail>).detail?.requestConfig?.elt ?? null;
-      // A request from inside the dialog redraws it (a refusal): the control that opened it stays the one to go back to.
-      if (!shown || (requester && !shown.contains(requester))) opener = requester;
+      // A request from inside the dialog redraws it (a refusal): the control that opened it stays the one to go back to,
+      // and the page stays where it is. Any other control that draws a dialog (the first one, or a different question
+      // while one is open) is a new question: the page goes to it and, when it is gone, back to where that control was.
+      const isNewQuestion = !shown || (!!requester && !shown.contains(requester));
+      if (isNewQuestion) {
+        opener = requester;
+        origin = (requester && pressedAt.get(requester)) || null;
+      }
       shown = dlg;
       returnTo = dlg.getAttribute('data-return-focus');
+      if (isNewQuestion) dlg.scrollIntoView({ block: 'nearest', inline: 'nearest' });
       focusOn(dlg.querySelector<HTMLElement>('[role="alert"]') ?? dlg);
       return;
     }
@@ -50,6 +79,8 @@ export function installInlineDialog(root: Document = document): void {
     shown = null;
     const from = opener;
     opener = null;
+    if (origin) window.scrollTo({ left: origin.left, top: origin.top, behavior: 'instant' });
+    origin = null;
     // The focus the user (or htmx) put somewhere else is not ours; the dialog's own control that had it is gone.
     if (document.activeElement && document.activeElement !== document.body) return;
     if (focusOn(from as HTMLElement | null)) return;

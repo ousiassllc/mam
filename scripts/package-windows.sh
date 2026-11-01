@@ -6,11 +6,13 @@
 # Output:
 #   bin/mam-<version>-windows-amd64.exe             portable mam.exe (Wails window front)
 #   bin/mam-<version>-windows-amd64-setup.exe       per-user NSIS installer ($LOCALAPPDATA\Programs\MAM, no administrator
-#                                                   rights; includes the WebView2 bootstrapper)
+#                                                   rights; includes the WebView2 bootstrapper and, next to mam.exe, the ONNX
+#                                                   Runtime DLLs of the Face Identity Similarity)
 # The exe embeds backend/internal/version.Version = "v<version>" (the auto update compares it with the latest release) and
 # version.ReleasePublicKey = $RELEASE_SIGNING_PUBLIC_KEY (base64 of the raw 32-byte ed25519 public key that verifies
 # checksums.txt.sig; optional: empty = not embedded, the app then skips the signature check with a warning).
-# Needs: go, node/npm, wails3 (the version of go.mod's github.com/wailsapp/wails/v3), makensis, jq.
+# The portable exe is the one file: it has no ONNX Runtime DLL (the face numbers are then off until onnxruntime.dll lies next to it).
+# Needs: go, node/npm, wails3 (the version of go.mod's github.com/wailsapp/wails/v3), makensis, jq, curl, unzip (or bsdtar / 7z).
 # templ is not needed on PATH: it runs through `go run` at the version of go.mod's github.com/a-h/templ (like `make generate`).
 set -euo pipefail
 
@@ -49,6 +51,11 @@ go run github.com/a-h/templ/cmd/templ@"$templ_version" generate ./backend/...
 echo "==> esbuild + tailwind (minify)"
 npm ci --prefix static
 npm run build --prefix static -- --minify
+
+# ONNX Runtime (MIT) for the Face Identity Similarity: the pinned release is downloaded over https and checked against its SHA-256
+# (scripts/fetch-onnxruntime.sh), then build/windows/nsis/project.nsi puts the two DLLs next to mam.exe. Never fetched by the app at run time.
+echo "==> ONNX Runtime DLLs"
+bash scripts/fetch-onnxruntime.sh build/windows/nsis/onnxruntime
 
 # The version goes into the exe resources through a copy of info.json (the committed one stays 0.0.0).
 info_json="$(mktemp "${TMPDIR:-/tmp}/mam-info-XXXXXX.json")"

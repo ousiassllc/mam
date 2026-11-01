@@ -27,7 +27,7 @@ func (noKeySpeech) Synthesize(context.Context, domain.VoiceLine) (audiodirector.
 
 const autoStopNotice = "自動の編集工程が止まりました"
 
-func (f genFixture) countNotices(t *testing.T) int {
+func (f genFixture) countNotices(t require.TestingT) int {
 	n := 0
 	for _, m := range f.thread(t, f.projectID) {
 		if m.Kind == domain.KindText && m.Role == domain.RoleAssistant && strings.Contains(m.Content, autoStopNotice) {
@@ -43,7 +43,7 @@ func autoAudioFixture(t *testing.T) genFixture {
 	t.Helper()
 	f := autoFixture(t)
 	f.selectTakeOf(t, f.shotID) // the last Selected Take starts the chain: Rough Cut, Editor Judge, audio
-	require.Eventually(t, func() bool { return f.countNotices(t) == 1 }, 15*time.Second, 10*time.Millisecond, "the stage that cannot run is announced")
+	require.EventuallyWithT(t, func(c *assert.CollectT) { assert.Equal(c, 1, f.countNotices(c)) }, 15*time.Second, 10*time.Millisecond, "the stage that cannot run is announced")
 	require.Equal(t, domain.StateAudio, f.state(t))
 	return f
 }
@@ -104,7 +104,7 @@ func TestAdvanceAuto_ARepairingProjectStartsTheRoughCutWhenTheLastTakeIsSelected
 
 	f.selectTakeOf(t, f.shotID)
 
-	require.Eventually(t, func() bool { return f.countNotices(t) == 1 }, 15*time.Second, 10*time.Millisecond, "the chain ran: Rough Cut, Editor Judge, then the audio that cannot be made")
+	require.EventuallyWithT(t, func(c *assert.CollectT) { assert.Equal(c, 1, f.countNotices(c)) }, 15*time.Second, 10*time.Millisecond, "the chain ran: Rough Cut, Editor Judge, then the audio that cannot be made")
 	assert.Equal(t, domain.StateAudio, f.state(t))
 }
 
@@ -113,7 +113,7 @@ func TestAdvanceAuto_TheUsersAnswerRunsTheFailedStageAgain(t *testing.T) {
 
 	f.svc.Editor.RetryAuto(f.projectID) // what an answered Approval card does
 
-	require.Eventually(t, func() bool { return f.countNotices(t) == 2 }, 15*time.Second, 10*time.Millisecond)
+	require.EventuallyWithT(t, func(c *assert.CollectT) { assert.Equal(c, 2, f.countNotices(c)) }, 15*time.Second, 10*time.Millisecond)
 }
 
 func TestEditorClose_CancelsARunningAutoStageInsteadOfWaitingForIt(t *testing.T) {

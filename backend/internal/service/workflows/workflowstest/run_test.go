@@ -17,14 +17,13 @@ import (
 // wait polls the record of a run until it is no longer running.
 func wait(t *testing.T, r *rig, id string) workflows.RunRecord {
 	t.Helper()
-	var rec workflows.RunRecord
-	require.Eventually(t, func() bool {
-		var err error
-		rec, err = r.svc.Run(context.Background(), id)
-		require.NoError(t, err)
-		return rec.Status != workflows.RunRunning
-	}, 10*time.Second, 5*time.Millisecond)
-	return rec
+	run := func(c require.TestingT) workflows.RunRecord {
+		rec, err := r.svc.Run(context.Background(), id)
+		require.NoError(c, err)
+		return rec
+	}
+	require.EventuallyWithT(t, func(c *assert.CollectT) { assert.NotEqual(c, workflows.RunRunning, run(c).Status) }, 10*time.Second, 5*time.Millisecond)
+	return run(t)
 }
 
 func TestRunExecutesTheStoredGraphWithTheAssignmentAndKeepsTheResult(t *testing.T) {

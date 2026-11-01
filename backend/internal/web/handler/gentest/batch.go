@@ -35,7 +35,7 @@ func batchView(b gentest.BatchStatus) view.Batch {
 		k := key{r.Prompt, r.NegativePrompt}
 		if _, ok := col[k]; !ok {
 			col[k] = len(v.Cols)
-			v.Cols = append(v.Cols, view.Col{Text: r.Prompt, Negative: r.NegativePrompt})
+			v.Cols = append(v.Cols, view.Col{Text: r.Prompt, Negative: r.NegativePrompt, English: r.TranslatedPrompt, EnglishNegative: r.TranslatedNegativePrompt})
 		}
 		if _, ok := row[r.Model]; !ok {
 			row[r.Model] = len(v.Rows)

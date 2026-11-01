@@ -7,6 +7,9 @@
 #     metafile, like static/build.mjs bundles it) and tailwindcss (its CSS is part of the generated app.css)
 #   - material copied into the source tree: the Lucide icons of backend/internal/web/atoms/icon.templ, with the
 #     license text of the release they were copied from (atoms/icons/LICENSE; the release is named in icon.templ)
+#   - the ONNX Runtime DLL the installer bundles (Face Identity Similarity): the LICENSE and ThirdPartyNotices.txt of the
+#     pinned release, committed in build/windows/onnxruntime/ (scripts/fetch-onnxruntime.sh pins the version and refuses
+#     a zip whose two files differ from the committed ones)
 #   - scripts/third-party-notices-musetalk.md: the MuseTalk section (text that is written by hand)
 # Usage: scripts/third-party-notices.sh [OUTPUT]      OUTPUT defaults to THIRD_PARTY_NOTICES.md in the repository root
 # Needs: go, node, and `npm ci --prefix static` done. Run it again when go.mod or static/package-lock.json changes.
@@ -104,6 +107,16 @@ lucide_version="$(sed -n 's/.*Lucide v\([0-9][0-9.]*\).*/\1/p' backend/internal/
 [[ -n "$(license_files_in "$icons_dir")" ]] || die "no license file in $icons_dir (the Lucide icons)"
 while IFS= read -r f; do record 4 "Lucide（アイコン）" "$lucide_version" "$f" "$icons_dir"; done < <(license_files_in "$icons_dir")
 
+# 5. The ONNX Runtime DLL of the installer (scripts/package-windows.sh -> scripts/fetch-onnxruntime.sh). The license files are the
+# ones of the pinned release: LICENSE (MIT) and ThirdPartyNotices.txt (Microsoft's notices for what ONNX Runtime contains).
+ort_dir="build/windows/onnxruntime"
+ort_version="$(bash scripts/fetch-onnxruntime.sh --version)"
+[[ -n "$ort_version" ]] || die "scripts/fetch-onnxruntime.sh does not print the ONNX Runtime version"
+for f in LICENSE ThirdPartyNotices.txt; do
+  [[ -s "$ort_dir/$f" ]] || die "no $f in $ort_dir (the ONNX Runtime license texts)"
+  record 4 "ONNX Runtime（onnxruntime.dll）" "$ort_version" "$ort_dir/$f" "$ort_dir"
+done
+
 LC_ALL=C sort -t'|' -k1,1 -k2,2 -k4,4 -u "$records" -o "$records"
 
 # A fence longer than any run of ~ in the text, so a license text can never close it early.
@@ -131,13 +144,14 @@ tmp_out="$(mktemp "${TMPDIR:-/tmp}/mam-notices-out-XXXXXX")"
 
 MAM の Windows 版に含まれるサードパーティのソフトウェアと、そのライセンス文です。MAM 自身のライセンスは [AGPL-3.0](LICENSE) です。インストーラー（`mam-<version>-windows-amd64-setup.exe`）は、`LICENSE` とこのファイルをインストール先に置きます。
 
-このファイルは [`scripts/third-party-notices.sh`](scripts/third-party-notices.sh) が生成します。手で編集せず、`go.mod` や `static/package-lock.json` を変えたらスクリプトを実行し直してください。ライセンス文は各コンポーネントの `LICENSE` などのファイルをそのまま写しています。
+このファイルは [`scripts/third-party-notices.sh`](scripts/third-party-notices.sh) が生成します。手で編集せず、`go.mod` や `static/package-lock.json` を変えたらスクリプトを実行し直してください。ライセンス文は各コンポーネントの `LICENSE` などのファイルをそのまま写しています。MAM の設定画面の「第三者のライセンス」には、このファイルをバイナリに埋め込んで、同じ内容を節ごとに表示します。
 
 載せている範囲は次のとおりです。
 
 - Go の標準ライブラリと、Windows 版 exe（`backend/cmd/wails`、`GOOS=windows`、`-tags production`）にリンクされる Go モジュール
 - `static/` の本番バンドルに入る npm パッケージ（`static/src/main.ts` から import されるもの。`static/src/dist/app.css` に Tailwind CSS が含まれるので `tailwindcss` も）
 - ソースにコピーして同梱した素材: アイコンの Lucide（ISC。Feather 由来のアイコンの MIT を含む。取り込んだ版の `LICENSE` の全文）
+- インストーラーが `mam.exe` の隣に置く ONNX Runtime の DLL（`onnxruntime.dll`・`onnxruntime_providers_shared.dll`。MIT、Microsoft）: 顔の同一性の数値評価に使います。取り込んだ版の `LICENSE` と、Microsoft が付ける第三者の通知 `ThirdPartyNotices.txt` の全文を載せています（`build/windows/onnxruntime/` にある写しで、`scripts/fetch-onnxruntime.sh` が固定した版のリリースと同じ内容であることを確かめます）。ONNX Runtime を Go から呼ぶバインディング（`github.com/shota3506/onnxruntime-purego`、MIT）と、その下の `github.com/ebitengine/purego`（Apache-2.0）は、上の Go モジュールに入っています。バインディングは、Windows 対応の修正（DLL の読み込みとモデルのパスの UTF-16 化）の 1 コミットだけを足した `github.com/aubs3993/onnxruntime-purego` のコミットに `go.mod` の `replace` で差し替えています（上の「版」は元のモジュールのもので、`LICENSE` は同じ MIT です）
 - インストーラーに同梱する Microsoft の WebView2 ブートストラッパー（下の節）
 
 開発用のツール・テスト用のパッケージ（`devDependencies` など）は配布物に入らないので載せていません。ffmpeg・ComfyUI・GPT-SoVITS・MuseTalk・Codex は同梱しません（利用者が取得する別プログラムとして、下の節に載せています）。
@@ -176,7 +190,7 @@ EOF
 
 ## 同梱していないが実行時に取得するもの
 
-Judge の顔同一性（Face Identity Similarity）に使うモデル、YuNet（MIT）と SFace（Apache-2.0）は OpenCV Zoo のもので、MAM には同梱しません。利用者が `scripts/fetch-face-models.sh` で実行時にダウンロードします（ONNX Runtime も別途ダウンロードです）。そのため配布物には入らず、ここにライセンス文は載せません。取得したモデルを再配布するときは、それぞれのライセンスに従ってください。
+Judge の顔同一性（Face Identity Similarity）に使うモデル、YuNet（MIT）と SFace（Apache-2.0）は OpenCV Zoo のもので、MAM には同梱しません。利用者が `scripts/fetch-face-models.sh` で実行時にダウンロードします。そのため配布物には入らず、ここにライセンス文は載せません。取得したモデルを再配布するときは、それぞれのライセンスに従ってください。ONNX Runtime の DLL（Windows 版）は同梱しており、上の節に載せています（macOS 版は同梱せず、利用者が用意した `libonnxruntime.dylib` を使います）。
 
 ## ComfyUI（利用者が取得する別プログラム）
 

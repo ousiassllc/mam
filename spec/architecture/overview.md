@@ -109,12 +109,14 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 │   ├── make-checksums.sh   # リリースの `checksums.txt`（Windows インストーラーと macOS dmg）を作る（`release.yml` の `sign`）
 │   ├── smoke-windows.sh    # インストーラーのスモーク（`/S` で入れ、`mam.exe` を起動して `GET /` が 200 か確認）。Windows の機械で手動実行する（release.yml は動かさない）
 │   ├── fetch-face-models.sh # 顔検出・埋め込みモデル（YuNet / SFace）の取得と SHA-256 検証（§9 / model-adapters.md §10.1）
+│   ├── fetch-onnxruntime.sh # Windows 版が同梱する ONNX Runtime（固定した版）の DLL の取得と SHA-256 検証（`package-windows.sh` と CI の `windows` ジョブが呼ぶ。model-adapters.md §10.1）
 │   ├── linterly-staged.sh  # コミット対象ファイルの行数上限チェック（pre-commit）
 │   ├── linterly-baseline.sh # 行数上限の既存超過を `.linterly-baseline` と比べ、悪化を検出する（`make lint-lines`・CI）。`update` で基準値を書き換える
 │   ├── slow-tests.sh       # `go test -json` を読み、テストの出力と 3 秒（`SLOW_TEST_SECONDS`）を超えたテストの一覧を出す（`make test-go`）
-│   ├── third-party-notices.sh # `THIRD_PARTY_NOTICES.md` を再生成する（Windows 版 exe にリンクされる Go モジュールと本番フロントエンドバンドルの npm パッケージのライセンスファイルを写す。`go`・`node` と `npm ci --prefix static` が要り、ライセンスファイルが無い依存があると失敗する）
-│   └── *_test.sh           # スクリプトのテスト（`linterly-baseline_test.sh`: 行数基準値、`slow-tests_test.sh`: 遅いテストの一覧、`complexity-ratchet_test.sh`: `.golangci.yml` の複雑度の許可リスト、`makefile_test.sh`: `Makefile` のターゲット、`third-party-notices_test.sh`: 表記ファイルの生成。`make test-scripts`）
-├── build/                  # Wails v3 のパッケージング設定（`config.yml`・`Taskfile.yml`・`windows/`: アイコン・マニフェスト・`info.json`・`nsis/project.nsi`。§11）
+│   ├── stress-test.sh      # テストのフレークを追うために Go のテストを `-race` で繰り返す（`make stress`）。同時に走らせるプロセスは既定 2・上限 4（超える指定は断る）で、`-c` で CPU を絞って負荷を再現する。共有のマシンに負荷をかけないため
+│   ├── third-party-notices.sh # `THIRD_PARTY_NOTICES.md` を再生成する（Windows 版 exe にリンクされる Go モジュールと本番フロントエンドバンドルの npm パッケージ、同梱する ONNX Runtime のライセンスファイルを写す。`go`・`node` と `npm ci --prefix static` が要り、ライセンスファイルが無い依存があると失敗する）
+│   └── *_test.sh           # スクリプトのテスト（`linterly-baseline_test.sh`: 行数基準値、`slow-tests_test.sh`: 遅いテストの一覧、`stress-test_test.sh`: 繰り返し実行の上限と既定、`complexity-ratchet_test.sh`: `.golangci.yml` の複雑度の許可リスト、`makefile_test.sh`: `Makefile` のターゲット、`third-party-notices_test.sh`: 表記ファイルの生成、`fetch-onnxruntime_test.sh`: ONNX Runtime の取得の検証。`make test-scripts`）
+├── build/                  # Wails v3 のパッケージング設定（`config.yml`・`Taskfile.yml`・`windows/`: アイコン・マニフェスト・`info.json`・`nsis/project.nsi`、`onnxruntime/`: 同梱する ONNX Runtime の `LICENSE` と `ThirdPartyNotices.txt` の写し。§11）
 ├── backend/
 │   ├── cmd/
 │   │   ├── server/         # ブラウザ版（全 OS）のエントリーポイント
@@ -134,7 +136,7 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 │       ├── safefetch/      # ベンダー API が返したダウンロード URL の検証（https 以外と、公開インターネット以外のアドレス（ループバック・リンクローカル・プライベート・マルチキャスト・CGNAT などの IANA 特殊用途範囲。IPv4 を埋め込んだ IPv6 は埋め込み先で判定）への接続を拒否）
 │       ├── facesim/        # 顔の同一性の局所計測（ONNX Runtime で YuNet / SFace をプロセス内実行、外部送信なし。`model-adapters.md` §10.1）
 │       ├── textutil/       # 文字列ヘルパー（ルーン単位の切り詰め `TruncateRunes` / `TruncateRunesEllipsis`、ID の短縮 `ShortID`）。domain からは使わない
-│       ├── testenv/        # テストの共通ヘルパー: ffmpeg が無いときの扱い（`MissingFFmpeg`: ローカルは Skip、`CI=true` では失敗）、並列実行（`Parallel`: 並列数を 8 に絞る）、ffmpeg の素材（`FFmpegFile` / `PatternVideo`: プロセスごとに 1 回だけ作り共有する）、期限の起点（`EndsAfterFirstRequest`: 最初のリクエストをサーバが受けてから一定時間後に終わる ctx。固定の期限だと負荷時に最初のリクエストの前に切れる。`CountGets`: ジョブ API のハンドラが受けた GET＝最初の状態確認を数える。受理前の POST では起点にならないため）
+│       ├── testenv/        # テストの共通ヘルパー: ffmpeg が無いときの扱い（`MissingFFmpeg`: ローカルは Skip、`CI=true` では失敗）、並列実行（`Parallel`: 並列数を 8 に絞る）、ffmpeg の素材（`FFmpegFile` / `PatternVideo`: プロセスごとに 1 回だけ作り共有する）、期限の起点（`EndsAfterFirstRequest`: 最初のリクエストをサーバが受けてから一定時間後に終わる ctx。固定の期限だと負荷時に最初のリクエストの前に切れる。`CountGets`: ジョブ API のハンドラが受けた GET＝最初の状態確認を数える。受理前の POST では起点にならないため。`CPUTime`: 処理が使った CPU 時間を測る（Linux はスレッドの CPU 時間）。`Starvation`: 一定量の CPU 仕事が使った CPU 時間の何倍の時計時間を要したか（空いたマシンでは 1。Linux 以外は常に 1）。時計の上限に掛けると、負荷でスケジュールされない時間を遅さと取り違えて落ちるのを防ぎつつ、空いたマシンでは時計のままの厳しさを保つ。ロックや I/O の待ちは赦さない）
 │       ├── bgwork/         # 専用ゴルーチンで動かす処理の panic をログに落とす（`RunSafely`）と、起こし合図をまとめて 1 本のワーカーで走らせる `Worker`（サーバー全体を落とさない）
 │       ├── version/        # ビルドが埋め込む版（`Version`。開発ビルドは `dev`）と署名の公開鍵（`ReleasePublicKey`）、更新を確認するリポジトリ（このリポジトリ自身。`GitHubOwner` / `GitHubRepo`）
 │       ├── keylock/        # キー別のロック（`Locker`）。待機側は ctx のキャンセルで諦められ、エントリは保持・待機中だけ存在する（キーの数だけ増え続けない）。service 層専用ではなく、`agent/orchestrator`（Project ごとの `advance` を 1 度に 1 つに直列化）、`service/take.go`（`compose` のみ。Shot ごと）、`service/editor.go`（`stage` / `auto` / `preview`）、`previewcache`（ファイルごと）が使う
@@ -262,7 +264,7 @@ waitForShutdownSignal()
   - `--judge-config`: AI Video Judge のフレーム抽出と顔類似度の閾値 JSON（`model-adapters.md` §10）
   - `--jev-config`: Repair Agent の TypeSafe Jev シャドー実行（固定バージョン・base URL・タイムアウト・単価）JSON（`model-adapters.md` §11.4）
   - `--face-model-dir`: 顔検出・埋め込みモデルのディレクトリ（既定 `<data-dir>/models`、`model-adapters.md` §10.1）
-  - `--onnxruntime-lib`: 顔モデル用 ONNX Runtime 共有ライブラリ（1.23.x、`model-adapters.md` §10.1）
+  - `--onnxruntime-lib`: 顔モデル用 ONNX Runtime 共有ライブラリ（1.23.x、`model-adapters.md` §10.1）。空のとき Windows は `mam.exe` と同じディレクトリの `onnxruntime.dll`（インストーラーが置く）、それ以外はシステムの標準ライブラリ検索
 - データディレクトリ配下に `mam.db`（SQLite）・`logs/`・`assets/` を置く
 - Huma の対話ドキュメントページは CDN から UI を読み込むため無効化し、OpenAPI 3.1 は `/api/v1/openapi.json` で配信する（外部通信を行わない）
 
@@ -305,7 +307,7 @@ dev:
 - `make dev` は `MAM_STATIC_DIR=static/src/dist` を設定し、再ビルドのたびにバイナリを作り直さずディスク上のアセットを配信する
 - 本番ビルド: `make build`（`scripts/build.sh`）が `templ generate` → `esbuild`（minify） → `tailwind`（minify） → `go build`（`go:embed`で静的アセット同梱、`CGO_ENABLED=0`）を一括実行し `bin/mam` を生成する（`make build-all` = `scripts/build.sh --all` は windows / darwin / linux × amd64 / arm64 の全プラットフォームを `bin/mam-<os>-<arch>` に生成する）。SQLite は純 Go ドライバ（modernc.org/sqlite）のため各 OS/arch へクロスコンパイル可能
 - Windows 版: `scripts/package-windows.sh` が上の本番ビルドと同じフロントエンド工程の後に `wails3 package GOOS=windows` を実行し、ポータブル `mam.exe` と NSIS インストーラーを作る（`desktop.md` §4）。ローカルの確認は Windows 上で行う（Wails v3 の `wails3` CLI と NSIS（`makensis`）が必要）
-- その他のターゲット: `make test`（Go `-race`（`make test-go`。`go test -json` を `scripts/slow-tests.sh` に流し、3 秒を超えたテストを遅い順に最大 20 件 stderr に一覧する。警告だけで失敗にはしない）+ フロントの vitest + web-test-runner の Lit コンポーネントテスト（Chrome が必要）+ `make test-scripts`（`bash scripts/linterly-baseline_test.sh`・`scripts/slow-tests_test.sh`・`scripts/makefile_test.sh`・`scripts/complexity-ratchet_test.sh`・`scripts/third-party-notices_test.sh`。行数基準値・遅いテストの一覧・`Makefile` のターゲット・複雑度の許可リスト・サードパーティ表記の生成のテスト。`jq` は行数基準値と遅いテストの一覧のテストが、`golangci-lint` は複雑度の許可リストのテストが要る））、`make lint`（golangci-lint + `tsc --noEmit` + Biome lint）、`make vuln`（`govulncheck ./...` を Linux ホストと Windows ターゲット（`GOOS=windows CGO_ENABLED=0`。`backend/cmd/wails` は `//go:build windows` で Linux の解析に入らないため）の両方で実行する。コードから到達できる既知の脆弱性（標準ライブラリ・依存モジュール）がどちらかにあれば失敗する。`make tools` が入れる `govulncheck` が要る。CI の「Vulnerability check」ステップ。`spec/environment/setup.md` の CI 節）、`make lint-lines`（`scripts/linterly-baseline.sh check`。`.linterly-baseline` より悪化した行数超過があれば失敗する。CI の「Line limit (no regression)」ステップ）、`make linterly-baseline`（同 `update`。基準値の書き換え。`spec/environment/setup.md` の Linterly 節）、`make fmt` / `make fmt-check`（Go・templ に加えてフロントの TypeScript を Biome で整形・検査）
+- その他のターゲット: `make test`（Go `-race`（`make test-go`。`go test -json` を `scripts/slow-tests.sh` に流し、3 秒を超えたテストを遅い順に最大 20 件 stderr に一覧する。警告だけで失敗にはしない）+ フロントの vitest + web-test-runner の Lit コンポーネントテスト（Chrome が必要）+ `make test-scripts`（`bash scripts/linterly-baseline_test.sh`・`scripts/slow-tests_test.sh`・`scripts/makefile_test.sh`・`scripts/complexity-ratchet_test.sh`・`scripts/third-party-notices_test.sh`・`scripts/stress-test_test.sh`。行数基準値・遅いテストの一覧・`Makefile` のターゲット・複雑度の許可リスト・サードパーティ表記の生成のテストと、`make stress` のプロセス数の上限と既定のテスト。`jq` は行数基準値と遅いテストの一覧のテストが、`golangci-lint` は複雑度の許可リストのテストが要る））、`make stress`（`scripts/stress-test.sh`。テストのフレークを追うために Go のテストを `-race` で繰り返す。同時に走らせるプロセス数 `JOBS` の既定は 2、上限は 4 で、超える指定は丸めずに断る）、`make lint`（golangci-lint + `tsc --noEmit` + Biome lint）、`make vuln`（`govulncheck ./...` を Linux ホストと Windows ターゲット（`GOOS=windows CGO_ENABLED=0`。`backend/cmd/wails` は `//go:build windows` で Linux の解析に入らないため）の両方で実行する。コードから到達できる既知の脆弱性（標準ライブラリ・依存モジュール）がどちらかにあれば失敗する。`make tools` が入れる `govulncheck` が要る。CI の「Vulnerability check」ステップ。`spec/environment/setup.md` の CI 節）、`make lint-lines`（`scripts/linterly-baseline.sh check`。`.linterly-baseline` より悪化した行数超過があれば失敗する。CI の「Line limit (no regression)」ステップ）、`make linterly-baseline`（同 `update`。基準値の書き換え。`spec/environment/setup.md` の Linterly 節）、`make fmt` / `make fmt-check`（Go・templ に加えてフロントの TypeScript を Biome で整形・検査）
 
 ## 10. テスト戦略
 

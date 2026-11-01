@@ -34,10 +34,11 @@ type RunRef struct {
 
 // batchParams is gentest_batch.params.
 type batchParams struct {
-	AspectRatio     string  `json:"aspect_ratio"`
-	Resolution      string  `json:"resolution,omitempty"`
-	DurationSeconds float64 `json:"duration_seconds,omitempty"`
-	Count           int     `json:"count"`
+	AspectRatio        string  `json:"aspect_ratio"`
+	Resolution         string  `json:"resolution,omitempty"`
+	DurationSeconds    float64 `json:"duration_seconds,omitempty"`
+	Count              int     `json:"count"`
+	TranslateToEnglish bool    `json:"translate_to_english,omitempty"`
 }
 
 // resultParams is gentest_result.params: what was asked of that model.
@@ -45,6 +46,8 @@ type resultParams struct {
 	AspectRatio     string  `json:"aspect_ratio"`
 	Resolution      string  `json:"resolution,omitempty"`
 	DurationSeconds float64 `json:"duration_seconds,omitempty"`
+	// Translation is the English the prompt (and negative prompt) was translated to; nil when it was sent as typed.
+	Translation *sentText `json:"translation,omitempty"`
 }
 
 // randomSeed is a seed for FLUX.2 and Runway Gen-4.5: an unsigned 32-bit number (Runway takes 0 to 4294967295).
@@ -78,7 +81,11 @@ func (s *Service) Run(ctx context.Context, r Request, c Confirmation) (RunRef, e
 			return RunRef{}, err
 		}
 	}
-	nb, err := s.newBatch(r, est, plans, sources)
+	tr, err := s.translate(ctx, r) // once for the whole batch; before anything of the batch is written
+	if err != nil {
+		return RunRef{}, err
+	}
+	nb, err := s.newBatch(r, est, plans, sources, tr)
 	if err != nil {
 		return RunRef{}, err
 	}
@@ -104,8 +111,8 @@ func (s *Service) Run(ctx context.Context, r Request, c Confirmation) (RunRef, e
 }
 
 // newBatch copies the inputs into the batch's directory and plans every result: the models in the order given, each with
-// every prompt, each Count times, every result with its own seed when the model takes one.
-func (s *Service) newBatch(r Request, est Estimate, plans []modelPlan, sources []source) (gentestrepo.NewBatch, error) {
+// every prompt (sent as tr says: translated, or as typed), each Count times, every result with its own seed when the model takes one.
+func (s *Service) newBatch(r Request, est Estimate, plans []modelPlan, sources []source, tr translated) (gentestrepo.NewBatch, error) {
 	cfg := s.Adapter.Config()
 	now := s.Now().UTC()
 	id := domain.NewID()
@@ -117,7 +124,9 @@ func (s *Service) newBatch(r Request, est Estimate, plans []modelPlan, sources [
 		_ = os.RemoveAll(dir)
 		return gentestrepo.NewBatch{}, err
 	}
-	params, _ := json.Marshal(batchParams{AspectRatio: r.AspectRatio, Resolution: r.Resolution, DurationSeconds: r.DurationSeconds, Count: r.Count})
+	params, _ := json.Marshal(batchParams{
+		AspectRatio: r.AspectRatio, Resolution: r.Resolution, DurationSeconds: r.DurationSeconds, Count: r.Count, TranslateToEnglish: r.TranslateToEnglish,
+	})
 	estimate, _ := json.Marshal(est)
 	nb := gentestrepo.NewBatch{Batch: gentestrepo.Batch{
 		ID: id, Media: r.Media, Params: params, EstimatedCost: est.TotalUSD, Estimate: estimate, CreatedAt: now,
@@ -143,16 +152,17 @@ func (s *Service) newBatch(r Request, est Estimate, plans []modelPlan, sources [
 		for i, idx := range mp.used {
 			used[i] = inputIDs[idx]
 		}
-		rp, _ := json.Marshal(resultParams{AspectRatio: r.AspectRatio, Resolution: mp.resolution, DurationSeconds: mp.seconds})
 		for _, p := range r.Prompts {
+			send := tr.sendOf(p)
+			rp, _ := json.Marshal(resultParams{AspectRatio: r.AspectRatio, Resolution: mp.resolution, DurationSeconds: mp.seconds, Translation: tr.record(p)})
 			for range r.Count {
 				res := gentestrepo.Result{
 					ID: domain.NewID(), BatchID: id, Position: pos, Media: r.Media, Model: mp.info.ID, APIModel: cfg.ModelSettings(domain.ModelName(mp.info.ID)).Model,
-					Prompt: p.Prompt, NegativePrompt: p.Negative, SentPrompt: p.Prompt, NegativeMode: gentestrepo.NegativeNone, Params: rp,
+					Prompt: p.Prompt, NegativePrompt: p.Negative, SentPrompt: send.Prompt, NegativeMode: gentestrepo.NegativeNone, Params: rp,
 					UsedInputs: used, CostBasis: mp.basis, EstimatedCost: mp.unit, CreatedAt: now,
 				}
 				if p.Negative != "" {
-					res.SentPrompt, res.NegativeMode = foldFor(mp.info, p)
+					res.SentPrompt, res.NegativeMode = foldFor(mp.info, send)
 				}
 				if mp.info.SupportsSeed {
 					seed := s.Seed()

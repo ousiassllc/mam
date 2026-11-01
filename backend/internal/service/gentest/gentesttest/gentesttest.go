@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
@@ -218,13 +219,14 @@ func NewOn(t testing.TB, db *repository.DB, opts ...Option) *Rig {
 // Wait blocks until every result of the batch is over (at most 20 seconds) and returns the batch.
 func (r *Rig) Wait(batchID string) gentest.BatchStatus {
 	r.T.Helper()
-	var st gentest.BatchStatus
-	require.Eventually(r.T, func() bool {
-		var err error
-		st, err = r.Svc.Batch(context.Background(), batchID, true)
-		require.NoError(r.T, err)
-		return st.Finished
-	}, 20*time.Second, 10*time.Millisecond, "the batch did not finish")
+	require.EventuallyWithT(r.T, func(c *assert.CollectT) { assert.True(c, r.batchOn(c, batchID).Finished) }, 20*time.Second, 10*time.Millisecond, "the batch did not finish")
+	return r.batchOn(r.T, batchID)
+}
+
+// batchOn reads the batch, failing c: a polling condition passes its *assert.CollectT so that a late poll never fails a finished test.
+func (r *Rig) batchOn(c require.TestingT, id string) gentest.BatchStatus {
+	st, err := r.Svc.Batch(context.Background(), id, true)
+	require.NoError(c, err)
 	return st
 }
 

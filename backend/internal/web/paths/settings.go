@@ -12,6 +12,7 @@ const (
 	SettingsMCP         = "mcp"
 	SettingsFFmpeg      = "ffmpeg"
 	SettingsUpdate      = "update"
+	SettingsLicenses    = "licenses"
 )
 
 // SettingsCategory is the page of a category of the settings screen: "/settings/<slug>", and "/settings" for the
@@ -22,6 +23,10 @@ func SettingsCategory(slug string) string {
 	}
 	return join(Settings(), slug)
 }
+
+// LicenseText is "/settings/licenses/<id>": GET answers the text of one entry of the "第三者のライセンス" category (a fragment that the
+// entry loads when it is opened; spec/components/settings-screen-licenses.md). id is what licenses.Section.ID holds.
+func LicenseText(id string) string { return join(SettingsCategory(SettingsLicenses), id) }
 
 // CredentialEdit is "/settings/credentials/<provider>/edit": GET answers the body of the modal that sets the API key of
 // the provider.

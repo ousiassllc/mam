@@ -59,6 +59,15 @@ templ BatchBox(b Batch) {
 								if c.Negative != "" {
 									<span class="mt-1 block text-neutral-400">ネガティブ: { c.Negative }</span>
 								}
+								if c.English != "" || c.EnglishNegative != "" {
+									<span class="mt-1 block text-neutral-200" data-testid="gt-col-english">
+										英訳:
+										<span class="line-clamp-3 whitespace-pre-wrap break-words">{ c.English }</span>
+										if c.EnglishNegative != "" {
+											<span class="block whitespace-pre-wrap break-words">ネガティブ: { c.EnglishNegative }</span>
+										}
+									</span>
+								}
 							</th>
 						}
 					</tr>

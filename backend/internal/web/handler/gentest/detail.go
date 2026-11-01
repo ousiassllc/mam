@@ -21,6 +21,7 @@ var negativeModeText = map[string]string{"field": "モデルの欄に送った",
 func (h Handlers) detail(ctx context.Context, d gentest.ResultDetail, f view.ImportForm) view.Detail {
 	v := view.Detail{
 		Card: cardOf(d.ResultView, false), SentPrompt: d.SentPrompt, Negative: d.NegativePrompt, NegMode: negativeModeText[d.NegativeMode],
+		English: d.TranslatedPrompt, EnglishNegative: d.TranslatedNegativePrompt,
 		Params: params(d),
 	}
 	if d.Media == gentest.MediaImage && d.HasFile {

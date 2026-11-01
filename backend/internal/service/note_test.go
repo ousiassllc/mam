@@ -35,8 +35,7 @@ func promotionAnswer(fields ...string) func(string) string {
 	}
 }
 
-func (f genFixture) promotionCards(t *testing.T) []domain.ThreadMessage {
-	t.Helper()
+func (f genFixture) promotionCards(t require.TestingT) []domain.ThreadMessage {
 	var out []domain.ThreadMessage
 	for _, m := range f.thread(t, f.projectID) {
 		if m.RefType == domain.RefNotePromotion {
@@ -48,15 +47,8 @@ func (f genFixture) promotionCards(t *testing.T) []domain.ThreadMessage {
 
 func (f genFixture) waitPromotionCard(t *testing.T) domain.ThreadMessage {
 	t.Helper()
-	require.Eventually(t, func() bool { return len(f.promotionCards(t)) == 1 }, 10*time.Second, 10*time.Millisecond)
+	require.EventuallyWithT(t, func(c *assert.CollectT) { assert.Len(c, f.promotionCards(c), 1) }, 10*time.Second, 10*time.Millisecond)
 	return f.promotionCards(t)[0]
-}
-
-func (f genFixture) projectState(t *testing.T) domain.ProjectState {
-	t.Helper()
-	p, err := f.svc.Projects.Get(context.Background(), f.projectID)
-	require.NoError(t, err)
-	return p.State
 }
 
 func (f genFixture) character(t *testing.T) domain.WorldCharacter {
@@ -70,7 +62,6 @@ func (f genFixture) character(t *testing.T) domain.WorldCharacter {
 func TestChat_RememberCreatesAProjectNoteFromTheChat(t *testing.T) {
 	f := newGenFixture(t, false)
 	f.llm.interpreter = opsJSON(`{"type":"create_note","title":"口調","content":"主人公は落ち着いた口調で話す。過去の火事の話は序盤では出さない。","category":"tone"}`)
-
 	ws := f.say(t, "主人公は落ち着いた口調で。過去の火事の話は序盤では出さないで。これ覚えておいて。", "")
 	require.Len(t, ws.Messages, 2)
 	assert.Contains(t, lastMessage(t, ws.Messages).Content, "メモ")
@@ -105,7 +96,6 @@ func TestChat_DirectorModeMakesNoNoteWhenTheInterpreterReturnsOneWithoutARemembe
 	view, err := f.svc.Notes.ProjectNotes(context.Background(), f.projectID)
 	require.NoError(t, err)
 	assert.Empty(t, view.Notes, "no request word: no note, whatever the model returned")
-
 	f.say(t, "主人公は黒髪ロングにしたい。覚えておいて", "")
 	view, err = f.svc.Notes.ProjectNotes(context.Background(), f.projectID)
 	require.NoError(t, err)
@@ -117,7 +107,7 @@ func TestNotes_PromotionCardIsNonBlockingAndApprovingWritesTheWorldState(t *test
 	f.llm.extractor = promotionAnswer("hairstyle", "personality")
 	f.buildReferencePack(t)
 	before := f.character(t)
-	stateBefore := f.projectState(t)
+	stateBefore := f.state(t)
 
 	_, err := f.svc.Notes.CreateProjectNote(context.Background(), f.projectID, service.NoteInput{Title: "Mio", Content: "黒髪ロングで落ち着いた性格"})
 	require.NoError(t, err)
@@ -125,7 +115,7 @@ func TestNotes_PromotionCardIsNonBlockingAndApprovingWritesTheWorldState(t *test
 	assert.Equal(t, domain.KindApproval, card.Kind)
 	assert.Equal(t, domain.ApprovalPending, card.ApprovalStatus)
 	assert.Contains(t, card.Content, "hairstyle")
-	assert.Equal(t, stateBefore, f.projectState(t), "the card never moves the Project to AWAITING_APPROVAL")
+	assert.Equal(t, stateBefore, f.state(t), "the card never moves the Project to AWAITING_APPROVAL")
 	assert.Equal(t, before, f.character(t), "an unanswered proposal changes nothing")
 
 	// The same memo version is proposed once: settling the category and re-proposing adds no card.
@@ -133,7 +123,6 @@ func TestNotes_PromotionCardIsNonBlockingAndApprovingWritesTheWorldState(t *test
 	require.NoError(t, err)
 	require.NoError(t, f.svc.Notes.ProposePromotion(context.Background(), notes.Notes[0].ID, notes.Notes[0].Version.Number))
 	assert.Len(t, f.promotionCards(t), 1)
-
 	worldVersions := f.count(t, `SELECT COUNT(*) FROM world_state_version WHERE branch_id IS NULL`)
 	_, answered, err := f.svc.Chat.RespondApproval(context.Background(), f.projectID, card.ID, service.DecisionApprove, "")
 	require.NoError(t, err)
@@ -142,7 +131,7 @@ func TestNotes_PromotionCardIsNonBlockingAndApprovingWritesTheWorldState(t *test
 	assert.Equal(t, "proposed_hairstyle", got.Hairstyle)
 	assert.Equal(t, "proposed_personality", got.Personality)
 	assert.Equal(t, worldVersions+1, f.count(t, `SELECT COUNT(*) FROM world_state_version WHERE branch_id IS NULL`))
-	assert.Equal(t, stateBefore, f.projectState(t))
+	assert.Equal(t, stateBefore, f.state(t))
 
 	_, _, err = f.svc.Chat.RespondApproval(context.Background(), f.projectID, card.ID, service.DecisionApprove, "")
 	assert.ErrorIs(t, err, service.ErrConflict, "a card is answered once")
@@ -168,7 +157,6 @@ func TestNotes_AllLockedFieldsStillPostACardThatWritesNothing(t *testing.T) {
 	assert.Contains(t, card.Content, "hairstyle")
 	assert.Contains(t, card.Content, "personality")
 	assert.Equal(t, c, f.character(t))
-
 	_, _, err = f.svc.Chat.RespondApproval(context.Background(), f.projectID, card.ID, service.DecisionApprove, "")
 	require.NoError(t, err)
 	assert.Equal(t, c, f.character(t), "approving a card of only LOCKed fields writes nothing")
@@ -194,7 +182,6 @@ func TestNotes_LockedFieldsAreLeftOutOfTheProposalAndOfTheApproval(t *testing.T)
 	c := f.character(t)
 	_, err := f.svc.World.SetFieldLock(context.Background(), f.projectID, "", domain.TargetCharacter, c.ID, "hairstyle", domain.LockLocked)
 	require.NoError(t, err)
-
 	_, err = f.svc.Notes.CreateProjectNote(context.Background(), f.projectID, service.NoteInput{Title: "Mio", Content: "黒髪ロングで落ち着いた性格"})
 	require.NoError(t, err)
 	card := f.waitPromotionCard(t)
@@ -290,55 +277,4 @@ func TestNotes_OnlyThePlannerGetsTheNotesAndItsVersionsAreRecorded(t *testing.T)
 	var refs []domain.NoteRef
 	require.NoError(t, json.Unmarshal([]byte(raw), &refs))
 	assert.Equal(t, []domain.NoteRef{{NoteID: pinnedID, VersionNumber: 1}}, refs)
-}
-
-func TestNotes_UpdateRestoreAndArchiveThroughTheService(t *testing.T) {
-	f := newGenFixture(t, false)
-	ctx := context.Background()
-	created, err := f.svc.Notes.CreateProjectNote(ctx, f.projectID, service.NoteInput{Title: "A", Content: "one", Category: "other"})
-	require.NoError(t, err)
-	id := created.Notes[0].ID
-
-	content := "two"
-	_, err = f.svc.Notes.Update(ctx, id, service.NoteChange{Content: &content})
-	require.NoError(t, err)
-	restored, err := f.svc.Notes.Restore(ctx, id, 1)
-	require.NoError(t, err)
-	assert.Equal(t, 3, restored.Notes[0].Version.Number)
-	assert.Equal(t, "one", restored.Notes[0].Version.Content)
-	assert.Len(t, restored.Notes[0].Versions, 3)
-
-	_, err = f.svc.Notes.Restore(ctx, id, 9)
-	assert.ErrorIs(t, err, service.ErrNotFound)
-	_, err = f.svc.Notes.CreateProjectNote(ctx, f.projectID, service.NoteInput{Title: "B", Content: "  "})
-	var verr *service.ValidationError
-	assert.ErrorAs(t, err, &verr)
-	_, err = f.svc.Notes.CreateProjectNote(ctx, f.projectID, service.NoteInput{Title: "B", Content: "x", Category: "nope"})
-	assert.ErrorAs(t, err, &verr)
-
-	archivedView, err := f.svc.Notes.Archive(ctx, id)
-	require.NoError(t, err)
-	assert.True(t, archivedView.Notes[0].Archived())
-}
-
-func TestNotes_WriterAndDirectorGetTheNotesButTheStoryboardDoesNot(t *testing.T) {
-	f := newPipelineFixture(t)
-	ctx := context.Background()
-	p := f.createProject(t, "美容液の縦型15秒CMを作りたい")
-	_, err := f.svc.Notes.CreateProjectNote(ctx, p.ID, service.NoteInput{Title: "秘密", Content: "過去の火事の話は序盤では出さない", Category: "world", Pinned: true})
-	require.NoError(t, err)
-	f.completeBrief(t, p.ID)
-	f.waitState(t, p.ID, domain.StateAwaitingApproval)
-	card := f.approvalCard(t, p.ID)
-	require.NotNil(t, card)
-	_, _, err = f.svc.Chat.RespondApproval(ctx, p.ID, card.ID, service.DecisionApprove, "")
-	require.NoError(t, err)
-	require.Eventually(t, func() bool { return f.llm.count(llm.AgentStoryboard) == 1 }, 5*time.Second, 10*time.Millisecond)
-
-	for _, agent := range []llm.Agent{llm.AgentWriter, llm.AgentDirector} {
-		assert.Contains(t, f.llm.lastUser(agent), "過去の火事の話は序盤では出さない", string(agent))
-	}
-	for _, agent := range []llm.Agent{llm.AgentProducer, llm.AgentStoryboard} {
-		assert.NotContains(t, f.llm.lastUser(agent), "過去の火事の話は序盤では出さない", string(agent))
-	}
 }

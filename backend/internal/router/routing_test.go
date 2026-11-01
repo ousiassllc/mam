@@ -53,10 +53,13 @@ func (g *genApp) generateAfterSeed(seeded int) {
 	}, 30*time.Second, 10*time.Millisecond)
 }
 
-func (g *genApp) countTakes(q string) int {
-	g.t.Helper()
+func (g *genApp) count(q string, args ...any) int { return g.countOn(g.t, q, args...) }
+
+// countOn fails c, not the test: the condition of an Eventually runs in its own goroutine, which may outlive the test
+// (c is then the assert.CollectT of an EventuallyWithT, whose failure ends that tick only).
+func (g *genApp) countOn(c require.TestingT, q string, args ...any) int {
 	var n int
-	require.NoError(g.t, g.db.Reader().QueryRow(q).Scan(&n))
+	require.NoError(c, g.db.Reader().QueryRow(q, args...).Scan(&n))
 	return n
 }
 
@@ -94,7 +97,7 @@ func TestRouting_AModelWithAGoodJudgeRecordTakesOverAndTheTraceExplainsWhy(t *te
 	assert.Equal(t, domain.ModelSeedance2, d.PolicyPrimary.Model, "BALANCED starts with Seedance 2.0")
 	assert.Equal(t, domain.ModelKling3, d.Primary.Model)
 	assert.Equal(t, domain.ModelSeedance2, d.Fallback.Model, "the old primary is the alternative")
-	assert.Equal(t, 0, g.countTakes(`SELECT COUNT(*) FROM take WHERE model_name = 'seedance-2.0'`), "every Take was made by the routed model")
+	assert.Equal(t, 0, g.count(`SELECT COUNT(*) FROM take WHERE model_name = 'seedance-2.0'`), "every Take was made by the routed model")
 
 	body := g.get("/takes/"+g.takeOf(domain.ModelKling3)+"/trace", true).Body.String()
 	assert.Contains(t, body, "実績で切り替え")
@@ -111,5 +114,5 @@ func TestRouting_ALockedVideoModelIsNotRoutedAwayAndIsRecordedAsFixed(t *testing
 
 	d := g.routingOf(domain.ModelSeedance2)
 	assert.Equal(t, domain.RoutingFixed, d.Mode)
-	assert.Equal(t, 0, g.countTakes(`SELECT COUNT(*) FROM take WHERE model_name = 'kling-3.0' AND id NOT LIKE 'seed-%'`))
+	assert.Equal(t, 0, g.count(`SELECT COUNT(*) FROM take WHERE model_name = 'kling-3.0' AND id NOT LIKE 'seed-%'`))
 }

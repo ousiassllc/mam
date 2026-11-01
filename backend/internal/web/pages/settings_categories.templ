@@ -7,6 +7,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/chatgpt"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/credentials"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/ffmpeg"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/licenses"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/llm"
 	local "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/local"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/mcp"
@@ -82,6 +83,13 @@ templ SettingsAudioBody(d audio.Data) {
 templ SettingsMCPBody(d mcp.Data) {
 	@settingsui.Category("MCP サーバー", help.Text(mcp.Description)) {
 		@mcp.Section(d)
+	}
+}
+
+// SettingsLicensesBody is "第三者のライセンス".
+templ SettingsLicensesBody(d licenses.Data) {
+	@settingsui.Category("第三者のライセンス", help.Text(licenses.Description)) {
+		@licenses.Section(d)
 	}
 }
 

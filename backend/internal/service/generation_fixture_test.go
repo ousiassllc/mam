@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
@@ -218,33 +219,38 @@ func newGenFixtureWithDeps(t *testing.T, withModels bool, freeBytes func(string)
 	return f
 }
 
-func (f genFixture) shot(t *testing.T) service.ShotFragment {
-	t.Helper()
+func (f genFixture) shot(t require.TestingT) service.ShotFragment {
 	frag, err := f.svc.Generation.Shot(context.Background(), f.shotID)
 	require.NoError(t, err)
 	return frag
 }
 
+func (f genFixture) state(t require.TestingT) domain.ProjectState {
+	p, err := f.svc.Projects.Get(context.Background(), f.projectID)
+	require.NoError(t, err)
+	return p.State
+}
+
 func (f genFixture) waitShotState(t *testing.T, want domain.ShotState) {
 	t.Helper()
-	require.Eventually(t, func() bool { return f.shot(t).State == want }, 30*time.Second, 10*time.Millisecond)
+	require.EventuallyWithT(t, func(c *assert.CollectT) { assert.Equal(c, want, f.shot(c).State) }, 30*time.Second, 10*time.Millisecond)
 }
 
 // waitJobsDone waits until every progress card of the thread shows a finished job.
 func (f genFixture) waitJobsDone(t *testing.T) {
 	t.Helper()
-	require.Eventually(t, func() bool {
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		seen := 0
-		for _, m := range f.thread(t, f.projectID) {
+		for _, m := range f.thread(c, f.projectID) {
 			if m.Kind != domain.KindProgress {
 				continue
 			}
 			seen++
 			if m.Job == nil || (m.Job.Status != domain.JobSucceeded && m.Job.Status != domain.JobFailed) {
-				return false
+				require.Fail(c, "a progress card's job is not finished")
 			}
 		}
-		return seen > 0
+		assert.Positive(c, seen)
 	}, 30*time.Second, 10*time.Millisecond, "the generate job never finished")
 }
 
@@ -253,11 +259,16 @@ func (f genFixture) query(t *testing.T, q string, args ...any) *sql.Row {
 	return f.db.Reader().QueryRow(q, args...)
 }
 
-func (f genFixture) count(t *testing.T, q string, args ...any) int {
-	t.Helper()
+func (f genFixture) count(t require.TestingT, q string, args ...any) int {
 	var n int
-	require.NoError(t, f.query(t, q, args...).Scan(&n))
+	require.NoError(t, f.db.Reader().QueryRow(q, args...).Scan(&n))
 	return n
+}
+
+// waitCount waits until the query counts want rows.
+func (f genFixture) waitCount(t *testing.T, timeout time.Duration, want int, q string, msgAndArgs ...any) {
+	t.Helper()
+	require.EventuallyWithT(t, func(c *assert.CollectT) { assert.Equal(c, want, f.count(c, q)) }, timeout, 10*time.Millisecond, msgAndArgs...)
 }
 
 // text is the one string the query selects.

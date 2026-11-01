@@ -33,7 +33,7 @@ Quality Policy ごとに候補（`routing.candidates.<policy>`、動画モデル
 
 1. **quality（過去の Judge 実績）**: Project 内で Judge 済みの Take（最新の Judge result があるもの）を、`take.model_name` ごとに集計する。`quality = 0.5 × 軸別平均点の加重和 / 100 + 0.5 × 合格率`。軸は `take.scores` の 4 軸（product / acting / camera / continuity）で、重みは **Shot の性質**から決める（下記）。実績（Judge 済み Take）が `min_samples`（既定 5）に満たないモデルは実績なしとして `prior_quality`（既定 0.75）を使う。
 2. **cost（コスト効率）**: `候補の中で最も安い推定コスト / そのモデルの推定コスト`（推定コストは Shot を対応する長さに合わせたクリップ 1 本分。同じ Shot・同じ長さで比べる）。
-3. **fit（Shot の性質への適合）**: Shot が要求する能力のうち、モデルが満たす割合。要求は (a) Shot の長さを 1 クリップで収められる、(b) Reference Pack に Keyframe があれば First Frame を取れる、(c) Keyframe 以外の参照画像があれば自由な参照画像を取れる。要求が無ければ 1。
+3. **fit（Shot の性質への適合）**: Shot が要求する能力のうち、モデルが満たす割合。要求は (a) Shot の長さを 1 クリップで収められる、(b) Reference Pack に Keyframe があれば First Frame を取れる（Keyframe のファイルが読めず First Frame が付かないときは、Keyframe を要求として数えない。クリップの長さ・見積りと同じ条件）、(c) Keyframe 以外の参照画像があれば自由な参照画像を取れる。要求が無ければ 1。
 
 Shot の性質による軸の重み: 4 軸とも基準 1 に、Shot Spec に Product があれば product に +2、Character があるか Acting が 1 つ以上あれば acting に +2、`camera.movement` があり `static` でなければ camera に +2、`continuity.start_from_previous_final_state` が真または `lighting.inherit` があれば continuity に +2 を加え、合計が 1 になるよう正規化する。
 

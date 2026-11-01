@@ -120,7 +120,7 @@ func TestPartialRegeneration_RepairSplicesTheRegeneratedRangeIntoTheFailedTakeAs
 	require.NoError(t, j.db.Reader().QueryRow(`SELECT resulting_take_id FROM repair_action`).Scan(&resulting))
 	assert.Equal(t, sp.Regenerated, resulting, "the repair traces the regenerated Take")
 
-	require.Eventually(t, func() bool { return j.results(sp.ID) == 1 }, 30*time.Second, 10*time.Millisecond, "the spliced Take is judged")
+	require.EventuallyWithT(t, func(c *assert.CollectT) { assert.Equal(c, 1, j.results(c, sp.ID)) }, 30*time.Second, 10*time.Millisecond, "the spliced Take is judged")
 	for _, id := range ids {
 		assert.Equal(t, 1, j.count(`SELECT COUNT(*) FROM take WHERE id = ?`, id), "the Takes that existed are still there")
 	}
@@ -134,8 +134,8 @@ func TestPartialRegeneration_AnIssueOfTheWholeTakeIsNotSpliced(t *testing.T) {
 	require.Equal(t, http.StatusAccepted, j.form(http.MethodPost, "/takes/"+ids[0]+"/repair", nil).Code)
 	j.waitTakes(4)
 
-	assert.Eventually(t, func() bool {
-		return j.count(`SELECT COUNT(*) FROM repair_action WHERE resulting_take_id IS NOT NULL`) == 1
+	assert.EventuallyWithT(t, func(c *assert.CollectT) {
+		assert.Equal(c, 1, j.countOn(c, `SELECT COUNT(*) FROM repair_action WHERE resulting_take_id IS NOT NULL`))
 	}, 30*time.Second, 10*time.Millisecond)
 	assert.Empty(t, j.splices(), "only a Judge Issue with a time range can be fixed by regenerating that range")
 }
@@ -159,7 +159,7 @@ func TestPartialRegeneration_DirectorCommandFixesTheNamedRangeAndKeepsTheRestOfT
 	assert.NotContains(t, ids, sp.Regenerated)
 	assert.Equal(t, 0, j.count(`SELECT COUNT(*) FROM repair_action`), "the director asked: no Retry Policy step is recorded")
 	assert.Contains(t, j.get("/projects/"+j.project, false).Body.String(), "1.0-2.0秒")
-	require.Eventually(t, func() bool { return j.results(sp.ID) == 1 }, 30*time.Second, 10*time.Millisecond)
+	require.EventuallyWithT(t, func(c *assert.CollectT) { assert.Equal(c, 1, j.results(c, sp.ID)) }, 30*time.Second, 10*time.Millisecond)
 }
 
 func TestPartialRegeneration_DirectorCommandWithoutFfmpegSaysSoAndMakesNothing(t *testing.T) {

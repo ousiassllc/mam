@@ -191,6 +191,7 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 | 0.12 | 2026-10-28 | §9 のヘルプを、見出しの下に開く開示（インライン）から、ネイティブの Popover API のポップオーバー（ボタンの近くに浮かぶ）に変えた。同時に開くのは 1 つ・`Esc` でボタンへ戻る・外側のクリックで閉じる・`Tab` の動き・`role="group"`・狭い画面での位置（ずらす・反転）を決めた。モデルマネージャーの h1 の説明と「?」は付けない（動かさない）に戻した | オーナーの決定（#866） |
 | 0.13 | 2026-10-28 | §1 の冒頭に、色の用途別の許可クラスの表 [color-rules.md](color-rules.md) への参照を足した。`Badge`・`Button` の色は、その表の正とした | Issue #867 |
 | 0.14 | 2026-10-29 | §9.1 に、ポーリングで差し替わる範囲のカードの「?」のパネルを範囲の外に置き、差し替えても開いたままにする例外を足した（`Card.HelpPanelElsewhere`・`help.ts` の `htmx:afterSettle`）。§9.2 の `Card.Help` の行を合わせた | Issue #866。オーナーの決定（案 A） |
+| 0.15 | 2026-11-01 | §10 の生成テストの行に、作成フォームの区画の説明・モデルごとの性質と選べない理由・パラメーター・見積り・実行の補足を足した | Issue #906 |
 
 ## 8. オーナーへの確認事項と決定（2026-10-25: すべて推奨する既定で決定）
 
@@ -267,7 +268,7 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 | 設定: ローカル・代替モデル | 分類の説明（`local.Description`） | h2・固定の注意・接続先のカード・エラー |
 | 設定: MCP サーバー | 分類の説明（`mcp.Description`） | h2・待ち受け先・トークンの表・エラー |
 | 設定: 概要 | 分類の説明 | h2・カード（各分類の状態） |
-| 生成テスト（[gentest-screen.md](gentest-screen.md)） | 各ページのリード文（h1 の下） | h1・フォーム・結果・エラー |
+| 生成テスト（[gentest-screen.md](gentest-screen.md)） | 各ページのリード文（h1 の下）。作成フォームでは、モデル・プロンプト・入力画像の区画の説明、モデルごとの性質（シード・ネガティブ・参照画像）と選べない理由、パラメーター・見積り・実行の補足（Issue #906） | h1・モデルのカード（名前・出どころ・単価・選べないバッジ）・フォーム・結果・エラー |
 | プロジェクトの設定 | Production Template・Quality Policy・ディスク・Brand / Safety Constraints・Brand Templates・プロジェクトバンドルの区画の説明 | h2・フォーム・状態・結果 |
 
 初回ガイド（`organisms/onboarding/`。[onboarding-screen.md](onboarding-screen.md)）は #866 の対象外で、変えない。ただし「API キーとログイン」の区画（`credentials.Section`・`chatgpt.SectionIf`）を共有しているため、そこに入る「?」は初回ガイドにも出る（同じ部品・同じ動き。§9）。
