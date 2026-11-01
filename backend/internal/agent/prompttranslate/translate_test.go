@@ -33,6 +33,11 @@ var target = llm.Target{Provider: llm.ProviderOpenAI, Model: "m"}
 func TestNeeds(t *testing.T) {
 	for text, want := range map[string]bool{
 		"a fox": false, "café": false, "😀 4k 16:9": false, "": false, "夕暮れ": true, "fox 狐": true, "Привет": true, "한글": true,
+		// Common-script letters (µ U+00B5, ʼ U+02BC) are not "another script": plain English stays English.
+		"5µm particles": false, "ʼtis a fox": false, "µ": false, "ʼ": false,
+		"Ελληνικά": true, "ひらがな": true, "カタカナ": true, "日本語 and English": true, "5µm 粒子": true,
+		"über señor café": false, "ＡＢＣ": false, "ＡＢＣ 狐": true,
+		" \t\n": false, "1234 !?#%": false, "😀🎉": false,
 	} {
 		assert.Equal(t, want, prompttranslate.Needs(text), text)
 	}
