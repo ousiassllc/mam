@@ -1,4 +1,4 @@
-// Package proc runs the bundled ComfyUI as a child process of mam (spec/architecture/model-manager/model-manager.md §3.4): on
+// Package proc runs the bundled ComfyUI (and the local runtimes, spec/architecture/model-manager/local-runtime.md §5) as a child process of mam (spec/architecture/model-manager/model-manager.md §3.4): on
 // 127.0.0.1 and a free port, without a console window, in a group that the operating system kills when mam ends or
 // crashes (a Windows Job Object with KILL_ON_JOB_CLOSE; a process group and Pdeathsig on Linux), so that the files of
 // the engine can be deleted by the uninstaller. Its state is a Status the screen and the chat read, and a start
@@ -11,8 +11,8 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
-	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -52,6 +52,8 @@ type Spec struct {
 	DropEnv []string
 	// LogPath receives the output of the child ("" discards it).
 	LogPath string
+	// Name is the child's name in the log (default "comfyui"); Manager sets it from Config.Name.
+	Name string
 }
 
 // Config of a Manager.
@@ -61,8 +63,10 @@ type Config struct {
 	// PreferredPort returns the port tried first (0 or nil: any free port), so that the address stays the same
 	// from run to run.
 	PreferredPort func() int
-	// Ready returns nil once the child at url answers (default GET /system_stats is 200).
+	// Ready returns nil once the child at url answers (default GET /system_stats is 200; HTTPReady makes another path).
 	Ready func(ctx context.Context, url string) error
+	// Name is what the messages call the child (default "ComfyUI"), for a runtime that is not ComfyUI.
+	Name string
 	// StartTimeout bounds the wait for Ready (default 3 minutes: the first start of the portable build loads
 	// PyTorch). StopTimeout bounds the wait after the polite stop (default 10 seconds).
 	StartTimeout time.Duration
@@ -90,7 +94,10 @@ func New(cfg Config) *Manager {
 		cfg.Logger = slog.New(slog.DiscardHandler)
 	}
 	if cfg.Ready == nil {
-		cfg.Ready = systemStatsReady
+		cfg.Ready = HTTPReady("/system_stats")
+	}
+	if cfg.Name == "" {
+		cfg.Name = "ComfyUI"
 	}
 	if cfg.StartTimeout <= 0 {
 		cfg.StartTimeout = 3 * time.Minute
@@ -188,11 +195,12 @@ func (m *Manager) startLocked(ctx context.Context) (Status, error) {
 	if err != nil {
 		return m.fail(Status{Port: port}, err), err
 	}
+	spec.Name = strings.ToLower(m.cfg.Name)
 	url := "http://127.0.0.1:" + strconv.Itoa(port)
 	m.set(Status{State: StateStarting, Port: port, URL: url})
 	r, err := launch(spec, m.cfg.Logger, nil)
 	if err != nil {
-		return m.fail(Status{Port: port, URL: url}, fmt.Errorf("ComfyUI を起動できません: %w", err)), err
+		return m.fail(Status{Port: port, URL: url}, fmt.Errorf("%s を起動できません: %w", m.cfg.Name, err)), err
 	}
 	started := time.Now()
 	m.mu.Lock()
@@ -208,7 +216,7 @@ func (m *Manager) startLocked(ctx context.Context) (Status, error) {
 			return m.Status(), context.Canceled
 		}
 		m.kill(r)
-		reason := fmt.Errorf("ComfyUI が起動しませんでした: %w%s", err, r.logTail())
+		reason := fmt.Errorf("%s が起動しませんでした: %w%s", m.cfg.Name, err, r.logTail())
 		return m.fail(Status{Port: port, URL: url, ExitCode: r.exitCode()}, reason), reason
 	}
 	s := Status{State: StateRunning, Port: port, URL: url, PID: r.pid(), StartedAt: started}
@@ -254,8 +262,8 @@ func (m *Manager) watchExit(r *run, port int, url string) {
 	wasRunning := m.status.State == StateRunning && m.status.PID == r.pid()
 	m.mu.Unlock()
 	if current && wasRunning && !r.stopping() {
-		err := fmt.Errorf("ComfyUI が予期せず終了しました（終了コード %d）%s", r.exitCode(), r.logTail())
-		m.cfg.Logger.Warn("comfyui exited", "exit_code", r.exitCode())
+		err := fmt.Errorf("%s が予期せず終了しました（終了コード %d）%s", m.cfg.Name, r.exitCode(), r.logTail())
+		m.cfg.Logger.Warn("child exited", "name", m.cfg.Name, "exit_code", r.exitCode())
 		m.fail(Status{Port: port, URL: url, ExitCode: r.exitCode()}, err)
 	}
 }
@@ -299,23 +307,4 @@ func FreePort(preferred int) (int, error) {
 		return port, nil
 	}
 	return 0, errors.New("no free loopback port")
-}
-
-// systemStatsReady is the default Ready: GET /system_stats answers 200.
-func systemStatsReady(ctx context.Context, url string) error {
-	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
-	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url+"/system_stats", nil)
-	if err != nil {
-		return err
-	}
-	res, err := (&http.Client{Transport: &http.Transport{Proxy: nil}}).Do(req)
-	if err != nil {
-		return err
-	}
-	_ = res.Body.Close()
-	if res.StatusCode != http.StatusOK {
-		return fmt.Errorf("status %d", res.StatusCode)
-	}
-	return nil
 }

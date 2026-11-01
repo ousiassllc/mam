@@ -191,9 +191,10 @@ func (s *Service) release(target, jobID string) {
 	s.mu.Unlock()
 }
 
-// handleInstall is the handler of domain.JobModelInstall (resumable: the download continues from its .part
+// HandleInstall is the handler of domain.JobModelInstall (resumable: the download continues from its .part
 // file and verified files are kept). Note that the queue resumes a job at most jobqueue.DefaultMaxAttempts times.
-func (s *Service) handleInstall(ctx context.Context, job domain.Job) error {
+// localruntime.Service.Register wraps it: the jobs of a local runtime go to that service, the others here.
+func (s *Service) HandleInstall(ctx context.Context, job domain.Job) error {
 	var p installPayload
 	if err := json.Unmarshal(job.Payload, &p); err != nil {
 		return fmt.Errorf("bad payload: %w", err)

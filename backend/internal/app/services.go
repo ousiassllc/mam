@@ -185,12 +185,17 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 	}
 	services.ModelManager = mgr
 	manager.Store(mgr)
+	rts, err := newLocalRuntimes(jobs, jobTable, mgr, logger)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	services.LocalRuntimes = rts
 	// An adult model is refused while the age confirmation is off: by every generation (Shot, Reference Pack, the trial
 	// generations) even when an assignment still points at it. The same predicate leaves it out of the assignment choices (SetHidden).
 	models.Gate.Set(func(m domain.ModelName) bool { return mgr.HidesModel(string(m)) })
 	services.Gentest = newGentest(cfg, db, jobs, models, services, logger)
 	services.Workflows = newWorkflows(cfg, db, localModels, models, mgr, services.Projects, keys, backendOpts, logger)
-	closers = append(closers, mgr.Close) // after jobs.Stop too: the engine outlives the jobs that call it
+	closers = append(closers, mgr.Close, rts.Close) // after jobs.Stop too: the engine and the runtimes outlive the jobs that call them
 	if err := recoverWork(ctx, services, jobs, logger); err != nil {
 		return nil, nil, nil, err
 	}
@@ -198,6 +203,7 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 	jobs.Start(ctx)
 	closers = append(closers, jobs.Stop)
 	mgr.OnStartup(ctx)
+	rts.OnStartup(ctx)
 	return services, db, release, nil
 }
 
