@@ -18,6 +18,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -26,6 +27,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/aspectsize"
 	"github.com/ousiassllc/mam/backend/internal/chatgpt"
+	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex/catalog"
 	"github.com/ousiassllc/mam/backend/internal/httpclient"
 )
 
@@ -38,9 +40,6 @@ type CredentialSource interface {
 const (
 	// DefaultBaseURL is the Codex backend.
 	DefaultBaseURL = "https://chatgpt.com/backend-api/codex"
-	// DefaultDriver is the model that hosts the image_generation tool call; the image model travels inside the tool.
-	// It is a Codex model name and changes with Codex: Options.Driver replaces it.
-	DefaultDriver = "gpt-5.5"
 	// DefaultStall is how long the stream may be silent before the call is given up.
 	DefaultStall = 180 * time.Second
 
@@ -56,18 +55,26 @@ const (
 // Options configure a Backend. The zero value selects the defaults.
 type Options struct {
 	BaseURL string
-	Driver  string
-	Stall   time.Duration
-	Client  httpclient.Doer
+	// Driver pins the Codex model that hosts the image_generation tool call. Empty (the default) lets the backend choose
+	// a model the ChatGPT account may use by itself (driver.go); a pinned model is used as it is, with no fallback.
+	Driver string
+	// ClientVersion is the Codex version sent to the model list ("" selects the version of the pinned Codex catalog).
+	ClientVersion string
+	Stall         time.Duration
+	Client        httpclient.Doer
 }
 
 // Backend implements modeladapter.ImageBackend.
 type Backend struct {
-	source  CredentialSource
-	baseURL string
-	driver  string
-	stall   time.Duration
-	client  httpclient.Doer
+	source        CredentialSource
+	baseURL       string
+	pinned        string
+	clientVersion string
+	stall         time.Duration
+	client        httpclient.Doer
+
+	mu     sync.Mutex
+	picked string // the driver that worked last; "" until one did, and again once it stopped working
 }
 
 var _ modeladapter.ImageBackend = (*Backend)(nil)
@@ -77,8 +84,8 @@ func New(source CredentialSource, o Options) *Backend {
 	if o.BaseURL == "" {
 		o.BaseURL = DefaultBaseURL
 	}
-	if o.Driver == "" {
-		o.Driver = DefaultDriver
+	if o.ClientVersion == "" {
+		o.ClientVersion = catalog.Default().Version
 	}
 	if o.Stall <= 0 {
 		o.Stall = DefaultStall
@@ -86,17 +93,28 @@ func New(source CredentialSource, o Options) *Backend {
 	if o.Client == nil {
 		o.Client = httpclient.New()
 	}
-	return &Backend{source: source, baseURL: strings.TrimRight(o.BaseURL, "/"), driver: o.Driver, stall: o.Stall, client: o.Client}
+	return &Backend{
+		source: source, baseURL: strings.TrimRight(o.BaseURL, "/"), pinned: o.Driver, clientVersion: o.ClientVersion,
+		stall: o.Stall, client: o.Client,
+	}
 }
 
-// GenerateImage implements modeladapter.ImageBackend. apiModel is the image model of the tool ("gpt-image-2").
+// GenerateImage implements modeladapter.ImageBackend. apiModel is the image model of the tool ("gpt-image-2"). The Codex
+// model that hosts the tool call is chosen by driverLoop.
 func (b *Backend) GenerateImage(ctx context.Context, apiModel string, req modeladapter.ImageRequest) (modeladapter.ImageResult, error) {
 	creds, err := b.source.ImageCredentials(ctx)
 	if err != nil {
 		return modeladapter.ImageResult{}, fmt.Errorf("chatgpt image generation: %w", err)
 	}
+	return b.driverLoop(ctx, creds, func(driver string) (modeladapter.ImageResult, error) {
+		return b.generate(ctx, creds, driver, apiModel, req)
+	})
+}
+
+// generate is one call of the Codex endpoint with driver as the hosting model.
+func (b *Backend) generate(ctx context.Context, creds chatgpt.Credentials, driver, apiModel string, req modeladapter.ImageRequest) (modeladapter.ImageResult, error) {
 	body, err := json.Marshal(map[string]any{
-		"model":        b.driver,
+		"model":        driver,
 		"instructions": instructions,
 		"input":        []map[string]any{{"role": "user", "content": content(req)}},
 		"tools":        []map[string]any{{"type": "image_generation", "model": apiModel, "size": aspectsize.OpenAI(req.AspectRatio), "output_format": "png"}},
@@ -107,19 +125,13 @@ func (b *Backend) GenerateImage(ctx context.Context, apiModel string, req modela
 	if err != nil {
 		return modeladapter.ImageResult{}, fmt.Errorf("marshal %s request: %w", vendor, err)
 	}
-	r, err := http.NewRequestWithContext(ctx, http.MethodPost, b.baseURL+"/responses", bytes.NewReader(body))
+	r, err := b.newRequest(ctx, http.MethodPost, b.baseURL+"/responses", bytes.NewReader(body), creds)
 	if err != nil {
-		return modeladapter.ImageResult{}, fmt.Errorf("build %s request: %w", vendor, err)
+		return modeladapter.ImageResult{}, err
 	}
 	r.Header.Set("Content-Type", "application/json")
 	r.Header.Set("Accept", "text/event-stream")
-	r.Header.Set("Authorization", "Bearer "+creds.AccessToken)
-	if creds.AccountID != "" {
-		r.Header.Set("ChatGPT-Account-Id", creds.AccountID)
-	}
 	r.Header.Set("OpenAI-Beta", "responses=experimental")
-	r.Header.Set("originator", originator)
-	r.Header.Set("User-Agent", userAgent)
 	r.Header.Set("session_id", uuid.NewString())
 
 	res, err := b.client.Do(r)
@@ -134,6 +146,21 @@ func (b *Backend) GenerateImage(ctx context.Context, apiModel string, req modela
 	stalled := newStallReader(res.Body, b.stall)
 	defer stalled.stop()
 	return parseStream(io.LimitReader(stalled, maxStreamBytes))
+}
+
+// newRequest is a request of the Codex endpoint signed with the ChatGPT credentials, as Codex signs its own.
+func (b *Backend) newRequest(ctx context.Context, method, url string, body io.Reader, creds chatgpt.Credentials) (*http.Request, error) {
+	r, err := http.NewRequestWithContext(ctx, method, url, body)
+	if err != nil {
+		return nil, fmt.Errorf("build %s request: %w", vendor, err)
+	}
+	r.Header.Set("Authorization", "Bearer "+creds.AccessToken)
+	if creds.AccountID != "" {
+		r.Header.Set("ChatGPT-Account-Id", creds.AccountID)
+	}
+	r.Header.Set("originator", originator)
+	r.Header.Set("User-Agent", userAgent)
+	return r, nil
 }
 
 func content(req modeladapter.ImageRequest) []map[string]any {

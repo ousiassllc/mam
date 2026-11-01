@@ -11,6 +11,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/direct"
+	"github.com/ousiassllc/mam/backend/internal/chatgpt"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
@@ -154,6 +155,8 @@ func (s *Service) failureText(ctx context.Context, err error) string {
 		msg = "ベンダーの応答が時間内に返りませんでした（ベンダー側では生成が続き、課金される場合があります）: " + err.Error()
 	case errors.Is(err, direct.ErrInputsUnsupported), errors.Is(err, direct.ErrInputsConflict), errors.Is(err, direct.ErrResolution):
 		msg = "このモデルはその入力・解像度を受け付けません: " + err.Error()
+	case errors.Is(err, chatgpt.ErrNoImageModel): // before ErrRejected: the vendor's 400 is the symptom, not what to tell
+		msg = chatgpt.ImageModelUnavailableMessage
 	case errors.Is(err, modeladapter.ErrRejected):
 		msg = "ベンダーがリクエストを拒否しました: " + err.Error()
 	default:

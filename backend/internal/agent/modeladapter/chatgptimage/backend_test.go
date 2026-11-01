@@ -42,13 +42,48 @@ type codex struct {
 	mu      sync.Mutex
 	body    map[string]any
 	headers http.Header
-	n       atomic.Int32
+	n       atomic.Int32 // the calls of /responses (or any other path but /models)
+	// listed counts the reads of /models; models answers them (nil: 404, as a Codex backend without a list does).
+	listed atomic.Int32
+	models func(w http.ResponseWriter, r *http.Request)
+}
+
+func (c *codex) setModels(models func(w http.ResponseWriter, r *http.Request)) {
+	c.mu.Lock()
+	c.models = models
+	c.mu.Unlock()
+}
+
+func (c *codex) serveModels(w http.ResponseWriter, r *http.Request) {
+	c.listed.Add(1)
+	c.mu.Lock()
+	models := c.models
+	c.mu.Unlock()
+	if models == nil {
+		http.NotFound(w, r)
+		return
+	}
+	models(w, r)
+}
+
+// newCodexWith is a Codex backend whose every path but /models is answered by serve.
+func newCodexWith(t *testing.T, serve func(c *codex, w http.ResponseWriter, r *http.Request)) *codex {
+	t.Helper()
+	c := &codex{}
+	c.Server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/models" {
+			c.serveModels(w, r)
+			return
+		}
+		serve(c, w, r)
+	}))
+	t.Cleanup(c.Close)
+	return c
 }
 
 func newCodex(t *testing.T, reply func(w http.ResponseWriter, f http.Flusher)) *codex {
 	t.Helper()
-	c := &codex{}
-	c.Server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return newCodexWith(t, func(c *codex, w http.ResponseWriter, r *http.Request) {
 		raw, _ := io.ReadAll(r.Body)
 		c.mu.Lock()
 		_ = json.Unmarshal(raw, &c.body)
@@ -61,9 +96,7 @@ func newCodex(t *testing.T, reply func(w http.ResponseWriter, f http.Flusher)) *
 		}
 		w.Header().Set("Content-Type", "text/event-stream")
 		reply(w, w.(http.Flusher))
-	}))
-	t.Cleanup(c.Close)
-	return c
+	})
 }
 
 func data(w http.ResponseWriter, events ...string) {
@@ -107,7 +140,7 @@ func TestGenerateImage_CallsTheCodexResponsesEndpointWithTheImageTool(t *testing
 
 	assert.Equal(t, true, c.body["stream"])
 	assert.Equal(t, false, c.body["store"])
-	assert.Equal(t, chatgptimage.DefaultDriver, c.body["model"])
+	assert.Equal(t, chatgptimage.FallbackDrivers[0], c.body["model"], "no model list: the first fallback driver hosts the call")
 	assert.NotEmpty(t, c.body["instructions"], "the endpoint needs instructions to call the tool")
 	assert.Equal(t, map[string]any{"type": "image_generation"}, c.body["tool_choice"])
 	tool := c.body["tools"].([]any)[0].(map[string]any)
