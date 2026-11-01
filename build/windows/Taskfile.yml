@@ -32,7 +32,7 @@ tasks:
       - wails3 generate syso -arch {{.ARCH}} -icon windows/icon.ico -manifest windows/wails.exe.manifest -info {{.INFO_JSON | default "windows/info.json"}} -out ../backend/cmd/wails/wails_windows_{{.ARCH}}.syso
 
   package:
-    summary: Packages bin/mam.exe into the per-user NSIS installer bin/mam-<version>-windows-amd64-setup.exe
+    summary: Packages bin/mam.exe into the per-user NSIS installer bin/mam-<version>-windows-amd64-setup.exe (the ONNX Runtime DLLs in nsis/onnxruntime come from scripts/package-windows.sh)
     deps:
       - task: build
     dir: build/windows/nsis

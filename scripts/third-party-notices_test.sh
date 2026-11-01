@@ -9,7 +9,7 @@ trap 'rm -rf "$work"' EXIT
 
 # A throw-away repository: scripts/ holds a copy of the script (it works from its own parent directory).
 mkdir -p "$work/repo/scripts" "$work/repo/static/node_modules" "$work/bin" "$work/goroot" "$work/mods" "$work/npm"
-cp "$script" "$work/repo/scripts/"
+cp "$script" "$(dirname "$script")/fetch-onnxruntime.sh" "$work/repo/scripts/"
 cat >"$work/bin/go" <<'STUB'
 #!/usr/bin/env bash
 case "$1" in
@@ -41,6 +41,10 @@ mkdir -p "$work/npm/node_modules/lib"
 mkdir -p "$work/repo/backend/internal/web/atoms/icons"
 printf '// Icons: paths copied from Lucide v9.8.7 (https://lucide.dev, ISC).\npackage atoms\n' >"$work/repo/backend/internal/web/atoms/icon.templ"
 printf 'ISC License\n\nLucide text\n\nThe MIT License (MIT) (for portions derived from Feather)\n' >"$work/repo/backend/internal/web/atoms/icons/LICENSE"
+# The bundled ONNX Runtime DLL: the version comes from fetch-onnxruntime.sh, the texts from build/windows/onnxruntime/.
+mkdir -p "$work/repo/build/windows/onnxruntime"
+printf 'MIT License\n\nONNX Runtime license text\n' >"$work/repo/build/windows/onnxruntime/LICENSE"
+printf 'THIRD PARTY SOFTWARE NOTICES\r\nline two\r\n' >"$work/repo/build/windows/onnxruntime/ThirdPartyNotices.txt"
 printf 'License of lib\n' >"$work/npm/node_modules/lib/LICENSE"
 write_lists() {
   {
@@ -69,6 +73,11 @@ check "lists an npm package" "$(has '## lib 1.2.3' && echo 0 || echo 1)"
 check "lists the copied Lucide icons with the release icon.templ names" "$(has '## Lucide（アイコン） 9.8.7' && grep -qxF '| 同梱した素材 | Lucide（アイコン） | 9.8.7 |' "$out" && echo 0 || echo 1)"
 check "the Lucide license is shown whole, the Feather MIT part included" "$(
   diff <(awk '/^## Lucide/ { b = 1 } /^### LICENSE$/ && b { f = 1; next } f && /^~~~$/ { if (++n == 2) exit; next } f && n == 1 { print }' "$out") "$work/repo/backend/internal/web/atoms/icons/LICENSE" >/dev/null && grep -qF 'Feather' "$out" && echo 0 || echo 1
+)"
+check "lists the bundled ONNX Runtime with the pinned version, its license and Microsoft's notices whole" "$(
+  pinned="$(bash "$work/repo/scripts/fetch-onnxruntime.sh" --version)"
+  has "## ONNX Runtime（onnxruntime.dll） $pinned" && grep -qxF "| 同梱した素材 | ONNX Runtime（onnxruntime.dll） | $pinned |" "$out" && has '### LICENSE' && has 'ONNX Runtime license text' &&
+    has '### ThirdPartyNotices.txt' && has 'THIRD PARTY SOFTWARE NOTICES' && has 'line two' && echo 0 || echo 1
 )"
 check "lists the table row of every component" "$(
   [[ "$(grep -c '^| \(Go\|npm\)' "$out")" -eq 5 ]] && echo 0 || echo 1
@@ -127,6 +136,14 @@ printf 'package atoms\n' >"$work/repo/backend/internal/web/atoms/icon.templ"
 err="$(cd "$work/repo" && bash scripts/third-party-notices.sh "$work/third.md" 2>&1)" && rc=0 || rc=$?
 check "icons without a named Lucide release fail" "$([[ $rc -ne 0 && "$err" == *"does not name the Lucide release"* ]] && echo 0 || echo 1)"
 printf '// Lucide v9.8.7\n' >"$work/repo/backend/internal/web/atoms/icon.templ"
+
+# The ONNX Runtime license texts missing fail, one by one (the texts are back afterwards).
+for f in LICENSE ThirdPartyNotices.txt; do
+  mv "$work/repo/build/windows/onnxruntime/$f" "$work/ort-$f"
+  err="$(cd "$work/repo" && bash scripts/third-party-notices.sh "$work/third.md" 2>&1)" && rc=0 || rc=$?
+  check "the ONNX Runtime without $f fails" "$([[ $rc -ne 0 && "$err" == *"no $f in build/windows/onnxruntime"* ]] && echo 0 || echo 1)"
+  mv "$work/ort-$f" "$work/repo/build/windows/onnxruntime/$f"
+done
 
 # No Go module / npm package at all is an error, not an empty file.
 : >"$FAKE_GO_LIST"
