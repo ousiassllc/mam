@@ -21,12 +21,7 @@ import (
 func jobDone(t *testing.T, env *mcptest.Env, rig *mmtest.Rig, id string) mcpkit.JobStatus {
 	t.Helper()
 	rig.Start()
-	var st mcpkit.JobStatus
-	require.Eventually(t, func() bool {
-		env.CallOK("get_job", map[string]any{"job_id": id}, &st)
-		return st.State.Final()
-	}, 30*time.Second, 20*time.Millisecond)
-	return st
+	return env.WaitJob(id, 30*time.Second, 20*time.Millisecond)
 }
 
 func TestEngine_InstallRunsAsAJobThatGetJobReadsAndTheStatusFollows(t *testing.T) {
@@ -195,7 +190,6 @@ func TestInstallModel_ConsentIsEnforcedThroughMCPAndInstallsAfterAcceptance(t *t
 	assert.Equal(t, mcpkit.JobSucceeded, st.State, st.Error)
 	assert.Equal(t, "model:m-c", st.Result["target"])
 	assert.FileExists(t, rig.ModelFile(mmtest.ClipC))
-
 	assert.Contains(t, env.CallError("install_model", map[string]any{"model_id": "m-c"}), "導入済み")
 }
 
@@ -283,7 +277,6 @@ func TestHuggingFaceToken_StatusOnly(t *testing.T) {
 	var st modelmgr.TokenStatus
 	env.CallOK("get_huggingface_token_status", map[string]any{}, &st)
 	assert.False(t, st.Configured)
-
 	for _, call := range []struct {
 		tool string
 		args map[string]any
@@ -303,7 +296,6 @@ func TestHuggingFaceToken_StatusOnly(t *testing.T) {
 	stored, err := rig.Keys.Get("huggingface")
 	require.NoError(t, err)
 	assert.Equal(t, secret, stored)
-
 	env.CallOK("clear_huggingface_token", map[string]any{}, &st)
 	assert.False(t, st.Configured)
 	env.CallOK("clear_huggingface_token", map[string]any{}, &st)

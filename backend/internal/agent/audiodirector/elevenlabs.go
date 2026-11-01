@@ -64,64 +64,6 @@ func (e *ProviderError) Error() string {
 
 func (e *ProviderError) Unwrap() error { return e.Err }
 
-// Speech is generated audio in a file format ffmpeg reads. (Music and sound effects use it too.)
-type Speech struct {
-	Data []byte
-	// Ext is the file extension of the audio format, without the dot.
-	Ext string
-}
-
-// Synthesizer turns a line of the script into speech. *ElevenLabs implements it.
-type Synthesizer interface {
-	Synthesize(ctx context.Context, line domain.VoiceLine) (Speech, error)
-}
-
-// KeyChecker is implemented by a provider that can tell without calling the vendor whether its
-// API key is stored. The Director asks before the Planner's paid model call, so a missing key
-// does not cost one on every attempt. *ElevenLabs implements it.
-type KeyChecker interface {
-	// CheckKey returns ErrNoAPIKey when no key is stored.
-	CheckKey() error
-}
-
-// Composer makes instrumental music of the given length from a prompt (ElevenLabs Music).
-type Composer interface {
-	Compose(ctx context.Context, prompt string, seconds float64) (Speech, error)
-}
-
-// SoundMaker makes a sound effect from a prompt (ElevenLabs Sound Effects). Loop asks for a sound
-// that repeats smoothly (Ambience).
-type SoundMaker interface {
-	Generate(ctx context.Context, prompt string, seconds float64, loop bool) (Speech, error)
-}
-
-// Sample is a recording of the voice to clone.
-type Sample struct {
-	Filename string
-	Data     []byte
-}
-
-// VoiceCloner clones a voice from a sample and returns the voice ID (ElevenLabs instant voice cloning).
-type VoiceCloner interface {
-	Clone(ctx context.Context, name string, sample Sample) (voiceID string, err error)
-}
-
-// Providers are the vendors the Audio Director calls. Nil members are left out: without Speech
-// there is no audio production; without Music / Sounds / LipSync the layers they make are
-// skipped and reported.
-type Providers struct {
-	Speech  Synthesizer
-	Music   Composer
-	Sounds  SoundMaker
-	Cloner  VoiceCloner
-	LipSync LipSyncer
-}
-
-// ElevenLabsProviders is Providers with every ElevenLabs capability of e.
-func ElevenLabsProviders(e *ElevenLabs) Providers {
-	return Providers{Speech: e, Music: e, Sounds: e, Cloner: e}
-}
-
 // Config is the ElevenLabs setting.
 type Config struct {
 	BaseURL string
@@ -320,7 +262,7 @@ func (e *ElevenLabs) do(ctx context.Context, timeout time.Duration, path, conten
 	req.Header.Set("Accept", accept)
 	res, err := e.client.Do(req)
 	if err != nil {
-		return nil, &ProviderError{Err: redact(err, key)}
+		return nil, &ProviderError{Err: Redact(err, key)}
 	}
 	defer func() { _ = res.Body.Close() }()
 	data, err := io.ReadAll(io.LimitReader(res.Body, limit+1))
@@ -336,9 +278,9 @@ func (e *ElevenLabs) do(ctx context.Context, timeout time.Duration, path, conten
 	return data, nil
 }
 
-// redact keeps the API key and the request URL out of an error message: a transport error carries
+// Redact keeps the API key and the request URL out of an error message: a transport error carries
 // the full URL (a signed output link, for one), which must not reach the saved skip detail or the chat.
-func redact(err error, key string) error {
+func Redact(err error, key string) error {
 	err = httpclient.RedactURL(err)
 	if key == "" {
 		return err

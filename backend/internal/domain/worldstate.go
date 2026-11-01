@@ -8,10 +8,11 @@ import (
 	"slices"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/ousiassllc/mam/backend/internal/domain/voiceref"
 )
 
-// WorldTarget names what a World State field belongs to (spec/spec.md §9.2). The values are also
-// the target_type of the lock table.
+// WorldTarget names what a World State field belongs to (spec/spec.md §9.2); also the target_type of the lock table.
 type WorldTarget string
 
 // World State targets. Camera and Story exist once per Project.
@@ -38,13 +39,11 @@ const (
 	MaxKnownInformation = 20
 )
 
-// StoryFieldScene is story.scene, the only number of the World State. The State Extractor sets it
-// from the Scene of the completed Shot; it is not an editable text field.
+// StoryFieldScene is story.scene, the only number of the World State: the State Extractor sets it from the Scene of the Shot.
 const StoryFieldScene = "scene"
 
-// WorldContext is the World State (spec/spec.md §9.2) as generation reads it: the Characters,
-// Products and Locations of the Project with their reference assets, and the Camera and Story
-// of the latest Shot. It is also the JSON of world_state_version.state.
+// WorldContext is the World State (spec/spec.md §9.2) as generation reads it: the Characters, Products and Locations
+// with their reference assets, and the Camera and Story of the latest Shot. It is the JSON of world_state_version.state.
 type WorldContext struct {
 	Characters []WorldCharacter `json:"characters"`
 	Products   []WorldProduct   `json:"products"`
@@ -69,10 +68,12 @@ type WorldCharacter struct {
 	CurrentAction        string `json:"current_action,omitempty"`
 	FaceReferenceAssetID string `json:"face_reference,omitempty"`
 	BodyReferenceAssetID string `json:"body_reference,omitempty"`
-	// SeriesFaceReferenceAssetID is the face_reference of the Series canon row this Character was
-	// copied from ("" outside a Series). The Face Identity Similarity is measured against it, so
-	// the face stays the same across Episodes (F-29). It is not part of the World State snapshot.
+	// SeriesFaceReferenceAssetID is the face_reference of the Series canon row this Character was copied from ("" outside a
+	// Series): the Face Identity Similarity is measured against it, so the face stays the same across Episodes (F-29). Not in the snapshot.
 	SeriesFaceReferenceAssetID string `json:"-"`
+	// VoiceReference is the reference voice a local voice provider clones (F-20, F-29); nil = none. The canon row keeps
+	// one; an Episode's copy and a Branch's copy share the file.
+	VoiceReference *voiceref.Reference `json:"voice_reference,omitempty"`
 }
 
 // WorldProduct is a row of product.
@@ -126,124 +127,6 @@ type StateChange struct {
 // StateDiff is what the State Extractor found in a completed Shot (state_diff.diff).
 type StateDiff struct {
 	Changes []StateChange `json:"changes"`
-}
-
-// LockKey addresses one field under a LOCK. ID is "" for Camera and Story.
-type LockKey struct {
-	Target WorldTarget
-	ID     string
-	Field  string
-}
-
-// LockSet is the set of fields held back from an editor: the ones the user has LOCKed (lock.mode = 'lock',
-// spec/spec.md §6), or, for what the State Extractor may not change, also the MANUAL Story.
-type LockSet map[LockKey]struct{}
-
-// Locked reports whether the field is LOCKed. The Story parameter of spec/spec.md §6 (the lock row
-// story/story, set by PUT /projects/:id/locks) freezes every field of the Story.
-func (l LockSet) Locked(t WorldTarget, id, field string) bool {
-	if t.IsSingleton() {
-		id = ""
-	}
-	if _, ok := l[LockKey{t, id, field}]; ok {
-		return true
-	}
-	if t == TargetStory {
-		_, ok := l[LockKey{TargetStory, "", string(ParamStory)}]
-		return ok
-	}
-	return false
-}
-
-var editableFields = map[WorldTarget][]string{
-	TargetCharacter: {"hairstyle", "wardrobe", "voice", "personality", "emotion", "position", "current_action"},
-	TargetProduct:   {"material", "orientation", "condition"},
-	TargetLocation:  {"time", "lighting_state", "weather"},
-}
-
-// The State Extractor changes what a Shot can change. Personality, voice and material are set by
-// the user only. Location State (time of day, lighting, weather) is updated for the Location the
-// Shot takes place in (spec/spec.md §9.3, M2).
-var extractableFields = map[WorldTarget][]string{
-	TargetCharacter: {"hairstyle", "wardrobe", "emotion", "position", "current_action"},
-	TargetProduct:   {"orientation", "condition"},
-	TargetLocation:  {"time", "lighting_state", "weather"},
-	TargetCamera:    {"lens", "position", "angle", "movement"},
-	TargetStory:     {"character_goal", "known_information", "previous_event"},
-}
-
-// lockOnlyFields are the LOCKable attributes that are not text fields of the World State: the
-// look of a Character and the shape and label of a Product (the reference images), and the layout
-// of a Location. They name the rows of the lock table only (spec/architecture/er.md §4).
-var lockOnlyFields = map[WorldTarget][]string{
-	TargetCharacter: {LockParamIdentity},
-	TargetProduct:   {LockParamGeometry, LockParamLabel},
-	TargetLocation:  {LockFieldLayoutReference},
-}
-
-// LockFieldLayoutReference is the lock attribute of a Location's layout reference image.
-const LockFieldLayoutReference = "layout_reference"
-
-// EditableFields lists the fields the user may edit with PUT /projects/:id/{characters,products,locations}/:id,
-// in display order. Camera and Story have none.
-func EditableFields(t WorldTarget) []string { return slices.Clone(editableFields[t]) }
-
-// ExtractableFields lists the fields the State Extractor may change, in prompt order.
-func ExtractableFields(t WorldTarget) []string { return slices.Clone(extractableFields[t]) }
-
-// IsEditable reports whether the user may edit the field.
-func IsEditable(t WorldTarget, field string) bool { return slices.Contains(editableFields[t], field) }
-
-// LockableFields lists the attributes of the target the user can switch between AUTO and LOCK, in
-// display order: the editable fields, then the reference attributes (identity, geometry, label,
-// layout_reference); Camera and Story have their extractable fields (and story.scene).
-func LockableFields(t WorldTarget) []string {
-	switch t {
-	case TargetCamera:
-		return ExtractableFields(t)
-	case TargetStory:
-		return append([]string{StoryFieldScene}, extractableFields[t]...)
-	}
-	return append(EditableFields(t), lockOnlyFields[t]...)
-}
-
-// IsLockable reports whether the attribute can be LOCKed.
-func IsLockable(t WorldTarget, field string) bool { return slices.Contains(LockableFields(t), field) }
-
-// ReferenceSlot is a place of the World State that holds a reference image of the Reference
-// Library (spec/spec.md §10.1): the image of a Character's face or body, of a Product's shape or
-// label, or of a Location's layout.
-type ReferenceSlot struct {
-	Target WorldTarget
-	Name   string        // "face", "body", "geometry", "label", "layout"
-	Kind   ReferenceKind // the kind of library image that fits
-	Lock   string        // the lock attribute that freezes the slot
-	Column string        // the column of the entity table
-}
-
-// Field is the name of the slot in the World State snapshot (world_state_version.state): "face_reference",
-// "body_reference", "geometry_reference", "label_reference" or "layout_reference".
-func (s ReferenceSlot) Field() string { return s.Name + "_reference" }
-
-// ReferenceSlots lists every slot.
-func ReferenceSlots() []ReferenceSlot {
-	return []ReferenceSlot{
-		{TargetCharacter, "face", RefCharacter, LockParamIdentity, "face_reference_asset_id"},
-		{TargetCharacter, "body", RefCharacter, LockParamIdentity, "body_reference_asset_id"},
-		{TargetProduct, "geometry", RefProduct, LockParamGeometry, "geometry_reference_asset_id"},
-		{TargetProduct, "label", RefProduct, LockParamLabel, "label_reference_asset_id"},
-		{TargetLocation, "layout", RefLocation, LockFieldLayoutReference, "layout_reference_asset_id"},
-	}
-}
-
-// FindReferenceSlot returns the slot of the target with the given name.
-func FindReferenceSlot(t WorldTarget, name string) (ReferenceSlot, bool) {
-	for _, s := range ReferenceSlots() {
-		if s.Target == t && s.Name == name {
-			return s, true
-		}
-	}
-	return ReferenceSlot{}, false
 }
 
 // Character returns the Character that ref names, by ID or (ignoring case) by name: the Shot Spec

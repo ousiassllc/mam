@@ -9,7 +9,7 @@
 | `id` | PK |
 | `media` | `image` / `video` |
 | `job_id` | ジョブ（種別 `gentest`）の ID。`idx_gentest_batch_job` |
-| `params` | JSON: `aspect_ratio`・`resolution`・`duration_seconds`・`count`（1 組あたりの本数） |
+| `params` | JSON: `aspect_ratio`・`resolution`・`duration_seconds`・`count`（1 組あたりの本数）・`translate_to_english`（英訳を ON にして実行したとき true。[gentest.md](gentest.md) §3.1） |
 | `estimated_cost` | 確認した見積りの合計（USD。単価なしは含まない） |
 | `estimate` | JSON: 確認した見積り（要求・モデルごとの内訳・警告） |
 | `created_at` / `finished_at` | 作成・全結果が終わった日時 |
@@ -25,7 +25,7 @@
 | `id`・`batch_id`・`position` | PK・FK（カスケード）・バッチ内の計画順（モデル → プロンプト → 本数） |
 | `media`・`model`・`api_model` | 種類・**正規のモデル識別子（代替しないので実際に使ったモデル）**・ベンダーの識別子 |
 | `prompt`・`negative_prompt`・`sent_prompt`・`negative_mode` | 入力・実際に送った文・`none` / `field`（モデルの欄）/ `folded`（「Avoid: …」としてプロンプトに書き足した） |
-| `params`・`used_inputs` | JSON: この結果の縦横比・解像度・長さ / このモデルに渡した入力画像の ID |
+| `params`・`used_inputs` | JSON: この結果の縦横比・解像度・長さ・`translation`（英訳して送ったときだけ。`prompt`・`negative_prompt` に訳した英語。列の `prompt`・`negative_prompt` は入力した文のまま、`sent_prompt` は実際に送った文） / このモデルに渡した入力画像の ID |
 | `seed`・`seed_sent` | 送ったシード（対応しないモデルは NULL・0）。実際に送った値を保存する |
 | `status`・`error` | `queued` / `running` / `succeeded` / `failed` / `cancelled`・失敗の理由 |
 | `file_path`・`mime_type`・`size_bytes` | 結果のファイル（成功したときだけ） |

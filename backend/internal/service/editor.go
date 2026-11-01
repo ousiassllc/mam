@@ -16,6 +16,8 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/keylock"
 	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/service/audiosettings"
+	"github.com/ousiassllc/mam/backend/internal/service/localspeech"
 )
 
 // ErrStageBusy means another editing stage (Rough Cut, judge, audio, Final QC, export) of the
@@ -53,11 +55,14 @@ type EditorService struct {
 	// brands and judges give Final QC the Brand constraints and the Brand Issues of the Takes (F-23).
 	brands *repository.BrandRepository
 	judges *repository.JudgeRepository
-	// audio is nil without ffmpeg or the speech vendor; cloner is nil without the ElevenLabs adapter.
-	audio   *audiodirector.Director
-	voices  *repository.VoiceRepository
-	cloner  audiodirector.VoiceCloner
-	chatSvc *ChatService
+	// audio is nil without ffmpeg or the speech vendor; cloner is nil without the ElevenLabs adapter; voiceRef gives the
+	// reference voices the local voice speaks with.
+	audio    *audiodirector.Director
+	voices   *repository.VoiceRepository
+	cloner   audiodirector.VoiceCloner
+	voiceRef localspeech.Lookup
+	prefs    *audiosettings.Service // the saved audio providers and the check of the local ones (nil: the cloud)
+	chatSvc  *ChatService
 	// tools is ffmpeg / ffprobe; nil when they are not installed.
 	tools *media.Tools
 	// stage claims the editing stage of a Project (acquire); auto guards its AUTO chain
@@ -140,6 +145,8 @@ type EditorView struct {
 	Defaults domain.ExportOptions
 	// CanRender is false without ffmpeg: no preview, audio or export.
 	CanRender bool
+	// ProviderNotes tell why a GenerateAudio run went to the cloud (model-adapters-m3.md §14.10); empty for every other view.
+	ProviderNotes []string
 }
 
 func (s *EditorService) briefOptions(ctx context.Context, projectID string) (domain.Brief, domain.ExportOptions, error) {

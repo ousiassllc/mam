@@ -2,6 +2,7 @@ package modelmgr
 
 import (
 	"context"
+	"errors"
 
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
@@ -37,7 +38,7 @@ func registerEngine(r *mcpkit.Registrar, h handlers) {
 		"mam の起動時に同梱の ComfyUI を起動するか（既定はオフ: モデルを最初に使うときに起動）/ Start the engine when mam starts.",
 		h.setAutoStart, mcpkit.Idempotent())
 	mcpkit.Write(r, "cancel_model_install",
-		"動いているエンジン・モデルの導入を中断する。ジョブは失敗で終わるが、ダウンロード済みの分は残り、もう一度導入すると続きから再開する / Cancel a running install; installing again resumes the download.",
+		"動いているエンジン・モデル・ローカルの実行環境の導入を中断する。ジョブは失敗で終わるが、ダウンロード済みの分は残り、もう一度導入すると続きから再開する / Cancel a running install; installing again resumes the download.",
 		h.cancelInstall)
 }
 
@@ -164,7 +165,13 @@ func (h handlers) cancelInstall(_ context.Context, in CancelInput) (CancelOutput
 	if err != nil {
 		return CancelOutput{}, err
 	}
-	if err := m.CancelInstall(in.JobID); err != nil {
+	err = m.CancelInstall(in.JobID)
+	if errors.Is(err, modelmanager.ErrNotFound) && h.svc.LocalRuntimes != nil { // not the manager's: maybe the job of a local runtime
+		if rerr := h.svc.LocalRuntimes.CancelInstall(in.JobID); rerr == nil {
+			return CancelOutput{JobID: in.JobID, Cancelled: true}, nil
+		}
+	}
+	if err != nil {
 		return CancelOutput{}, MapError(err)
 	}
 	return CancelOutput{JobID: in.JobID, Cancelled: true}, nil

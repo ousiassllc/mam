@@ -109,7 +109,11 @@ func launch(spec Spec, logger *slog.Logger, pipes *childPipes) (*run, error) {
 		<-r.done
 		return nil, err
 	}
-	logger.Info("comfyui started", "pid", r.pid(), "dir", filepath.Base(spec.Dir))
+	name := spec.Name
+	if name == "" {
+		name = "comfyui"
+	}
+	logger.Info(name+" started", "pid", r.pid(), "dir", filepath.Base(spec.Dir))
 	return r, nil
 }
 

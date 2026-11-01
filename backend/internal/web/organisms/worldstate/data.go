@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/domain/voiceref"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -71,6 +72,8 @@ type entityView struct {
 	Fields []molecules.WorldStateFieldData
 	// Slots is the asset ID now in each reference slot, by slot name.
 	Slots map[string]string
+	// VoiceRef is the reference voice of a Character (nil for none and for the other entities).
+	VoiceRef *voiceref.Reference
 }
 
 // formID is the id of the attribute form of the entity; a save replaces that form only.
@@ -90,7 +93,7 @@ func characterView(d Data, c domain.WorldCharacter) entityView {
 	return entityView{
 		Target: domain.TargetCharacter, Plural: "characters", ID: c.ID, Name: c.Name,
 		Fields: entityFields(d, domain.TargetCharacter, c.ID, values),
-		Slots:  map[string]string{"face": c.FaceReferenceAssetID, "body": c.BodyReferenceAssetID},
+		Slots:  map[string]string{"face": c.FaceReferenceAssetID, "body": c.BodyReferenceAssetID}, VoiceRef: c.VoiceReference,
 	}
 }
 

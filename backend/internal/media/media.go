@@ -43,6 +43,9 @@ type Tools struct {
 	lim             limits // the zero value means defaultLimits
 }
 
+// FFmpegPath is the ffmpeg executable found: what a local runtime, which ships none, is told to run.
+func (t Tools) FFmpegPath() string { return t.ffmpeg }
+
 // Look finds ffmpeg and ffprobe with no path set by the user: the search of locate.Find (PATH, then the Homebrew
 // directories on macOS). It returns an error wrapping ErrUnavailable when either is missing.
 func Look() (Tools, error) { return LookWith(locate.Config{}) }

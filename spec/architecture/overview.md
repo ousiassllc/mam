@@ -163,6 +163,7 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 │       │   └── jobqueue/   # 内部ジョブキュー（goroutineワーカー。ジョブは job テーブルに永続化し、再起動時に復旧）
 │       ├── service/        # アプリケーションサービス層（agentを利用しユースケースを実装）。services.go が DI ルート、wiring.go が機能ごとの `wire*`（plan → judge → generation → repair → director → continuity → editor の順）とジョブキューの `OnChange` を最後に 1 つだけ登録する `watchJobs`
 │       │   ├── appupdate/  # 自動更新の状態（`View`）・手動確認（`CheckNow`）・起動 1 分後と 6 時間ごとのスケジュール（`Start`）。Wails 版だけが組み立てる（`desktop.md` §6）
+│       │   ├── audiosettings/ # Audio Director のプロバイダーの選択（`audio.json` の `voice_provider` / `lip_sync_provider` / `fallback_to_cloud` の読み書き。`Service.Load`・`Save`・`View`・`Preflight` / `Settle`）。`GenerateAudio` が実行のたびに設定を読み、「ローカルが使えないときはクラウド」がオンのときだけ、実行の開始前の検査でその実行の全体をクラウドに切り替える（`model-adapters-m3.md` §14.10）
 │       │   ├── chatbrief/  # テスト専用（非テストの `.go` は無い）。チャットの質問カードへの回答が Brief の値域（Aspect Ratio・200 文字）を外れたとき聞き直すことを `service` の公開 API 越しに確かめる回帰テスト
 │       │   ├── finalframe/ # テスト専用（`unix` のみ。非テストの `.go` は無い）。Continue Agent に渡す最終フレームの元になる Take ファイルの選び方を `service` の公開 API 越しに確かめる回帰テスト
 │       │   ├── modelsettings/ # 全体の設定画面の「画像・動画モデル」の保存先（`models.json` の `images` / `policies` の読み書き。`Service`・`InvalidError`・`ErrPinned`）。`service` の行数基準値のために別パッケージにしてあり、`service` は import しない。同じ理由の別パッケージに、「LLM の割り当て」の `llm.json`（`routes`）の読み書きの `llmassign/`（`Service`・`InvalidError`・`ErrPinned`）と、両者が使う設定 JSON の読み書きの `settingsfile/`（`Read` / `Write`。他のキーを残して書く）がある

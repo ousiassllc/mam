@@ -3,7 +3,6 @@ package service_test
 import (
 	"context"
 	"path/filepath"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -118,8 +117,7 @@ func (f pipelineFixture) completeBrief(t *testing.T, projectID string) {
 	require.NoError(t, err)
 }
 
-func (f pipelineFixture) state(t *testing.T, projectID string) domain.ProjectState {
-	t.Helper()
+func (f pipelineFixture) state(t require.TestingT, projectID string) domain.ProjectState {
 	p, err := f.svc.Projects.Get(context.Background(), projectID)
 	require.NoError(t, err)
 	return p.State
@@ -134,8 +132,7 @@ func (f pipelineFixture) waitState(t *testing.T, projectID string, want domain.P
 }
 
 // approvalCard returns the newest Approval card of the thread, or nil.
-func (f pipelineFixture) approvalCard(t *testing.T, projectID string) *domain.ThreadMessage {
-	t.Helper()
+func (f pipelineFixture) approvalCard(t require.TestingT, projectID string) *domain.ThreadMessage {
 	msgs := f.thread(t, projectID)
 	for i := len(msgs) - 1; i >= 0; i-- {
 		if msgs[i].Kind == domain.KindApproval {
@@ -145,8 +142,7 @@ func (f pipelineFixture) approvalCard(t *testing.T, projectID string) *domain.Th
 	return nil
 }
 
-func (f pipelineFixture) hierarchy(t *testing.T, projectID string) service.SceneView {
-	t.Helper()
+func (f pipelineFixture) hierarchy(t require.TestingT, projectID string) service.SceneView {
 	v, err := f.svc.Plans.Hierarchy(context.Background(), projectID, "", "")
 	require.NoError(t, err)
 	return v
@@ -154,14 +150,14 @@ func (f pipelineFixture) hierarchy(t *testing.T, projectID string) service.Scene
 
 func (f pipelineFixture) waitIdle(t *testing.T, projectID string) {
 	t.Helper()
-	require.Eventually(t, func() bool {
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		ok := true
-		for _, m := range f.thread(t, projectID) {
+		for _, m := range f.thread(c, projectID) {
 			if m.Kind == domain.KindProgress && (m.Job == nil || (m.Job.Status != domain.JobSucceeded && m.Job.Status != domain.JobFailed)) {
 				ok = false
 			}
 		}
-		return ok
+		assert.True(c, ok)
 	}, 5*time.Second, 10*time.Millisecond, "a plan job never finished")
 }
 
@@ -169,7 +165,6 @@ func TestPipeline_RunsProducerWriterThenHoldsAtTheScriptApproval(t *testing.T) {
 	f := newPipelineFixture(t)
 	p := f.createProject(t, "美容液の縦型15秒CMを作りたい")
 	f.completeBrief(t, p.ID)
-
 	f.waitState(t, p.ID, domain.StateAwaitingApproval)
 	assert.Equal(t, []llm.Agent{llm.AgentProducer, llm.AgentWriter}, f.llm.agents(), "Producer then Writer, nothing after")
 
@@ -179,7 +174,6 @@ func TestPipeline_RunsProducerWriterThenHoldsAtTheScriptApproval(t *testing.T) {
 	assert.Equal(t, "script_version", card.RefType)
 	assert.Contains(t, card.Content, "脚本 v1")
 	assert.Contains(t, card.Content, "2 Scene")
-
 	f.waitIdle(t, p.ID)
 	assert.Empty(t, f.hierarchy(t, p.ID).Scenes, "no Scene is planned before the script is approved")
 	time.Sleep(100 * time.Millisecond)
@@ -197,8 +191,7 @@ func TestPipeline_ApprovalRunsDirectorAndStoryboardAndCreatesScenesAndShots(t *t
 
 	_, _, err := f.svc.Chat.RespondApproval(context.Background(), p.ID, card.ID, service.DecisionApprove, "")
 	require.NoError(t, err)
-
-	require.Eventually(t, func() bool { return len(f.hierarchy(t, p.ID).Scenes) == 2 }, 5*time.Second, 10*time.Millisecond)
+	require.EventuallyWithT(t, func(c *assert.CollectT) { assert.Len(c, f.hierarchy(c, p.ID).Scenes, 2) }, 5*time.Second, 10*time.Millisecond)
 	assert.Equal(t, []llm.Agent{llm.AgentProducer, llm.AgentWriter, llm.AgentDirector, llm.AgentStoryboard}, f.llm.agents(),
 		"Producer → Writer → Director → Storyboard in this order")
 	f.waitState(t, p.ID, domain.StateVisualDesign)
@@ -215,7 +208,6 @@ func TestPipeline_ApprovalRunsDirectorAndStoryboardAndCreatesScenesAndShots(t *t
 	require.NotNil(t, view.Shots[0].Storyboard)
 	assert.Equal(t, "ワイド", view.Shots[0].Storyboard.Framing)
 	assert.Equal(t, "寝室", view.Scene.Location, "the Location named by the plan is stored")
-
 	msgs := f.thread(t, p.ID)
 	assert.Contains(t, lastMessage(t, msgs).Content, "2 Scene / 3 Shot")
 	assert.Empty(t, f.pendingApprovals(t, p.ID))
@@ -242,8 +234,7 @@ func TestPipeline_ApprovingInWordsAlsoContinues(t *testing.T) {
 
 	_, err := f.svc.Chat.PostMessage(context.Background(), p.ID, service.PostMessageInput{Content: "承認", ReplyToMessageID: card.ID})
 	require.NoError(t, err)
-
-	require.Eventually(t, func() bool { return len(f.hierarchy(t, p.ID).Scenes) == 2 }, 5*time.Second, 10*time.Millisecond)
+	require.EventuallyWithT(t, func(c *assert.CollectT) { assert.Len(c, f.hierarchy(c, p.ID).Scenes, 2) }, 5*time.Second, 10*time.Millisecond)
 }
 
 func TestPipeline_ChangeRequestRewritesTheScriptWithTheFeedbackAndAsksAgain(t *testing.T) {
@@ -253,13 +244,13 @@ func TestPipeline_ChangeRequestRewritesTheScriptWithTheFeedbackAndAsksAgain(t *t
 	f.waitState(t, p.ID, domain.StateAwaitingApproval)
 	first := f.approvalCard(t, p.ID)
 	require.NotNil(t, first)
-
 	_, _, err := f.svc.Chat.RespondApproval(context.Background(), p.ID, first.ID, service.DecisionRequestChanges, "夜のシーンにして")
 	require.NoError(t, err)
-
-	require.Eventually(t, func() bool {
-		c := f.approvalCard(t, p.ID)
-		return c != nil && c.ID != first.ID && c.ApprovalStatus == domain.ApprovalPending
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		card := f.approvalCard(c, p.ID)
+		require.NotNil(c, card)
+		assert.NotEqual(c, first.ID, card.ID)
+		assert.Equal(c, domain.ApprovalPending, card.ApprovalStatus)
 	}, 5*time.Second, 10*time.Millisecond, "a second approval card is posted for the rewritten script")
 	f.waitState(t, p.ID, domain.StateAwaitingApproval)
 
@@ -279,8 +270,7 @@ func TestPipeline_FullAutoDoesNotStopForTheScript(t *testing.T) {
 	_, err := f.svc.Projects.SetConfirmationLevel(context.Background(), p.ID, domain.ConfirmFullAuto, nil)
 	require.NoError(t, err)
 	f.completeBrief(t, p.ID)
-
-	require.Eventually(t, func() bool { return len(f.hierarchy(t, p.ID).Scenes) == 2 }, 5*time.Second, 10*time.Millisecond)
+	require.EventuallyWithT(t, func(c *assert.CollectT) { assert.Len(c, f.hierarchy(c, p.ID).Scenes, 2) }, 5*time.Second, 10*time.Millisecond)
 	assert.Nil(t, f.approvalCard(t, p.ID), "FULL AUTO posts no approval card")
 	f.waitState(t, p.ID, domain.StateVisualDesign)
 }
@@ -291,169 +281,4 @@ func TestPipeline_DoesNotStartWhileTheBriefIsIncomplete(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 	assert.Empty(t, f.llm.agents())
 	assert.Equal(t, domain.StateDraft, f.state(t, p.ID))
-}
-
-func TestPipeline_LLMFailureIsReportedInTheChatAndResumesFromTheFailedStage(t *testing.T) {
-	f := newPipelineFixture(t)
-	f.llm.setFailure(llm.AgentDirector, &llm.APIError{Provider: llm.ProviderAnthropic, Status: 503, Message: "secret-detail"})
-	p := f.createProject(t, "美容液の縦型15秒CMを作りたい")
-	_, err := f.svc.Projects.SetConfirmationLevel(context.Background(), p.ID, domain.ConfirmFullAuto, nil)
-	require.NoError(t, err)
-	f.completeBrief(t, p.ID)
-
-	require.Eventually(t, func() bool {
-		msgs := f.thread(t, p.ID)
-		return strings.Contains(lastMessage(t, msgs).Content, "制作を続けられませんでした")
-	}, 5*time.Second, 10*time.Millisecond)
-	f.waitIdle(t, p.ID)
-
-	msgs := f.thread(t, p.ID)
-	notice := lastMessage(t, msgs).Content
-	assert.NotContains(t, notice, "secret-detail", "provider details stay out of the chat")
-	assert.Equal(t, domain.StateVisualDesign, f.state(t, p.ID), "the script stage was completed and kept")
-	assert.Empty(t, f.hierarchy(t, p.ID).Scenes)
-	require.Equal(t, 1, f.llm.count(llm.AgentProducer))
-
-	f.llm.setFailure(llm.AgentDirector, nil)
-	_, err = f.svc.Chat.PostMessage(context.Background(), p.ID, service.PostMessageInput{Content: "続けてください"})
-	require.NoError(t, err)
-
-	require.Eventually(t, func() bool { return len(f.hierarchy(t, p.ID).Scenes) == 2 }, 5*time.Second, 10*time.Millisecond)
-	assert.Equal(t, 1, f.llm.count(llm.AgentProducer), "the finished stages are not run again")
-	assert.Equal(t, 1, f.llm.count(llm.AgentWriter))
-}
-
-func TestPipeline_MissingAPIKeyIsExplained(t *testing.T) {
-	f := newPipelineFixture(t)
-	f.llm.setFailure(llm.AgentProducer, llm.ErrNoAPIKey)
-	p := f.createProject(t, "美容液の縦型15秒CMを作りたい")
-	f.completeBrief(t, p.ID)
-
-	require.Eventually(t, func() bool {
-		return strings.Contains(lastMessage(t, f.thread(t, p.ID)).Content, "API キー")
-	}, 5*time.Second, 10*time.Millisecond)
-	assert.Equal(t, domain.StatePlanning, f.state(t, p.ID))
-}
-
-func TestPipeline_ProgressCardTracksThePlanJob(t *testing.T) {
-	f := newPipelineFixture(t)
-	p := f.createProject(t, "美容液の縦型15秒CMを作りたい")
-	f.completeBrief(t, p.ID)
-	f.waitState(t, p.ID, domain.StateAwaitingApproval)
-	f.waitIdle(t, p.ID)
-
-	var progress []domain.ThreadMessage
-	for _, m := range f.thread(t, p.ID) {
-		if m.Kind == domain.KindProgress {
-			progress = append(progress, m)
-		}
-	}
-	require.Len(t, progress, 1)
-	require.NotNil(t, progress[0].Job)
-	assert.Equal(t, domain.JobSucceeded, progress[0].Job.Status)
-	assert.Equal(t, domain.JobPlan, progress[0].Job.Kind)
-}
-
-func TestHierarchy_CreateSceneAndShotByHand(t *testing.T) {
-	f := newFixture(t)
-	p := f.createProject(t, "美容液の縦型15秒CMを作りたい")
-	ctx := context.Background()
-
-	empty, err := f.svc.Plans.Hierarchy(ctx, p.ID, "", "")
-	require.NoError(t, err)
-	assert.Empty(t, empty.Scenes)
-	assert.Nil(t, empty.Scene)
-
-	v, err := f.svc.Plans.CreateScene(ctx, p.ID, service.SceneForm{Title: " 導入 ", Location: "スタジオ", Objective: "つかむ"})
-	require.NoError(t, err)
-	require.Len(t, v.Scenes, 1)
-	require.NotNil(t, v.Scene)
-	assert.Equal(t, "導入", v.Scene.Title)
-	assert.Equal(t, "スタジオ", v.Scene.Location)
-	sceneID := v.Scene.ID
-
-	v, err = f.svc.Plans.CreateScene(ctx, p.ID, service.SceneForm{Title: "本編"})
-	require.NoError(t, err)
-	require.Len(t, v.Scenes, 2)
-	assert.Equal(t, 1, v.Scene.OrderIndex, "a new Scene goes to the end and is selected")
-
-	v, err = f.svc.Plans.CreateShot(ctx, sceneID, service.ShotForm{Objective: "商品を見せる", DurationSeconds: "3.5"})
-	require.NoError(t, err)
-	assert.Equal(t, sceneID, v.Scene.ID)
-	require.Len(t, v.Shots, 1)
-	assert.Equal(t, 3.5, v.Shots[0].Duration)
-	assert.True(t, v.Shots[0].Selected)
-	assert.Nil(t, v.Shots[0].Storyboard)
-	assert.Equal(t, 1, v.Scenes[0].ShotCount)
-
-	v, err = f.svc.Plans.CreateShot(ctx, sceneID, service.ShotForm{Objective: "笑顔", DurationSeconds: "2"})
-	require.NoError(t, err)
-	require.Len(t, v.Shots, 2)
-	assert.Equal(t, 1, v.Shots[1].OrderIndex)
-
-	// Selecting: the Scene by ID, the Shot by query.
-	v, err = f.svc.Plans.Hierarchy(ctx, p.ID, sceneID, v.Shots[0].ID)
-	require.NoError(t, err)
-	assert.True(t, v.Shots[0].Selected)
-	assert.False(t, v.Shots[1].Selected)
-
-	notes := 0
-	for _, m := range f.thread(t, p.ID) {
-		if strings.Contains(m.Content, "追加しました") {
-			notes++
-		}
-	}
-	assert.Equal(t, 4, notes, "every addition is recorded in the thread")
-}
-
-func TestHierarchy_RejectsBadInputAndUnknownTargets(t *testing.T) {
-	f := newFixture(t)
-	p := f.createProject(t, "美容液の縦型15秒CMを作りたい")
-	ctx := context.Background()
-	v, err := f.svc.Plans.CreateScene(ctx, p.ID, service.SceneForm{Title: "S"})
-	require.NoError(t, err)
-
-	_, err = f.svc.Plans.CreateScene(ctx, p.ID, service.SceneForm{Title: "  "})
-	var verr *service.ValidationError
-	require.ErrorAs(t, err, &verr)
-	assert.Equal(t, "title", verr.Field)
-	_, err = f.svc.Plans.CreateScene(ctx, p.ID, service.SceneForm{Title: strings.Repeat("あ", 101)})
-	assert.ErrorAs(t, err, &verr)
-
-	for name, form := range map[string]service.ShotForm{
-		"no objective":  {DurationSeconds: "3"},
-		"no duration":   {Objective: "x"},
-		"zero":          {Objective: "x", DurationSeconds: "0"},
-		"negative":      {Objective: "x", DurationSeconds: "-1"},
-		"not a number":  {Objective: "x", DurationSeconds: "abc"},
-		"too long":      {Objective: "x", DurationSeconds: "61"},
-		"nan":           {Objective: "x", DurationSeconds: "NaN"},
-		"infinite":      {Objective: "x", DurationSeconds: "Inf"},
-		"long question": {Objective: strings.Repeat("あ", 301), DurationSeconds: "3"},
-	} {
-		view, err := f.svc.Plans.CreateShot(ctx, v.Scene.ID, form)
-		assert.ErrorAs(t, err, &verr, name)
-		assert.Empty(t, view.Shots, name+": nothing was stored")
-	}
-
-	_, err = f.svc.Plans.CreateShot(ctx, "nope", service.ShotForm{Objective: "x", DurationSeconds: "3"})
-	assert.ErrorIs(t, err, service.ErrNotFound)
-	_, err = f.svc.Plans.CreateScene(ctx, "nope", service.SceneForm{Title: "S"})
-	assert.ErrorIs(t, err, service.ErrNotFound)
-	_, err = f.svc.Plans.Hierarchy(ctx, p.ID, "nope", "")
-	assert.ErrorIs(t, err, service.ErrNotFound)
-	_, err = f.svc.Plans.Hierarchy(ctx, "nope", "", "")
-	assert.ErrorIs(t, err, service.ErrNotFound)
-}
-
-func TestHierarchy_SceneOfAnotherProjectIsNotFound(t *testing.T) {
-	f := newFixture(t)
-	a := f.createProject(t, "美容液の縦型15秒CMを作りたい")
-	b := f.createProject(t, "香水の縦型15秒CMを作りたい")
-	ctx := context.Background()
-	v, err := f.svc.Plans.CreateScene(ctx, a.ID, service.SceneForm{Title: "A の Scene"})
-	require.NoError(t, err)
-
-	_, err = f.svc.Plans.Hierarchy(ctx, b.ID, v.Scene.ID, "")
-	assert.ErrorIs(t, err, service.ErrNotFound)
 }

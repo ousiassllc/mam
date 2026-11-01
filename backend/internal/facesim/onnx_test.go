@@ -175,7 +175,11 @@ func TestNewONNX_LoadsTheDLLNextToTheExecutableOnWindows(t *testing.T) {
 	if lib == "" {
 		t.Skip("MAM_FACESIM_RUNTIME_LIB is not set")
 	}
-	install := t.TempDir()
+	// Not t.TempDir(): the loaded DLL stays mapped (and locked by Windows) until the test process ends, so the directory
+	// cannot be removed by the test; the removal is tried and its failure is no failure of the test (the runner is ephemeral).
+	install, err := os.MkdirTemp("", "mam-facesim-dll-")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = os.RemoveAll(install) })
 	for _, name := range []string{facesim.WindowsRuntimeLibraryFile, "onnxruntime_providers_shared.dll"} {
 		data, err := os.ReadFile(filepath.Join(filepath.Dir(lib), name)) // #nosec G304 -- test fixture path from the environment
 		require.NoError(t, err)

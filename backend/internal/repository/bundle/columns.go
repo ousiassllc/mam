@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/domain/voiceref"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
 
@@ -59,6 +60,7 @@ var bundleJSONColumns = map[string]map[string]jsonShape{
 	"edit_timeline_version":  {"timeline": shapeOf[domain.EditTimeline]()},
 	"editor_judge_result":    {"findings": shapeOf[[]domain.EditorFinding]()},
 	"audio_timeline_version": {"timeline": shapeOf[domain.AudioTimeline]()},
+	"character":              {"voice_reference": shapeOf[voiceref.Reference]()},
 	"final_qc_result":        {"findings": shapeOf[[]domain.QCFinding]()},
 	"reference_item":         {"tags": shapeOf[[]string]()},
 	"brand_constraint":       {"value": shapeOf[repository.BrandValue]()},

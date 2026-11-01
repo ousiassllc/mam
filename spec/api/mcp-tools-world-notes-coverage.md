@@ -34,6 +34,12 @@
 | `POST /series/:id/episodes` | `create_episode` |
 | `PUT /series/:id/characters/:characterId` | `update_series_character` |
 | `PUT /series/:id/style` | `update_series_style` |
+| `PUT /series/:id/characters/:characterId/voice-reference` | `create_upload_ticket`（基盤。`purpose=character_voice_reference`）, `update_character_voice_reference` |
+| `DELETE /series/:id/characters/:characterId/voice-reference` | `delete_character_voice_reference` |
+| `GET /series/:id/characters/:characterId/voice-reference` | `get_character_voice_reference_url` |
+| `PUT /projects/:id/characters/:characterId/voice-reference` | `create_upload_ticket`（基盤。`purpose=character_voice_reference`）, `update_character_voice_reference` |
+| `DELETE /projects/:id/characters/:characterId/voice-reference` | `delete_character_voice_reference` |
+| `GET /projects/:id/characters/:characterId/voice-reference` | `get_character_voice_reference_url` |
 | `GET /projects/:id/notes` | `list_project_notes` |
 | `GET /series/:id/notes` | `list_series_notes` |
 | `POST /projects/:id/notes` | `create_project_note` |
@@ -55,3 +61,4 @@
 | 版 | 日付 | 変更内容 | 変更理由 |
 |----|------|---------|---------|
 | 1.0 | 2026-10-24 | 新規作成。ルートとツールの対応表 | Issue #830。画面の全操作を MCP ツールにする |
+| 1.1 | 2026-11-01 | 参照音声のルート 6 行を足した（`PUT`・`DELETE`・`GET` の Series と Project） | Issue #919（#912） |

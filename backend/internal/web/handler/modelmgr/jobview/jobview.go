@@ -24,6 +24,14 @@ func BytesText(n int64) string {
 	return fmt.Sprintf("%.0f KiB", float64(n)/(1<<10))
 }
 
+// VRAMText is the guideline of the video memory with where it comes from.
+func VRAMText(minGB int, source string, estimate bool) string {
+	if estimate {
+		return fmt.Sprintf("%d GB 以上（mam の推定。GPU では未確認）", minGB)
+	}
+	return fmt.Sprintf("%d GB 以上（出典: %s）", minGB, source)
+}
+
 // Progress is what a running job reports (a placeholder while its status cannot be read).
 func Progress(ctx context.Context, svc *modelmanager.Service, jobID string) *view.Progress {
 	st, err := svc.JobStatus(ctx, jobID)

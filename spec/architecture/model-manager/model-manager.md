@@ -1,6 +1,6 @@
 # モデルマネージャー（ComfyUI エンジンの取得・起動とモデルの導入）
 
-[local-models.md](../local-models.md)（利用者が登録した ComfyUI・OpenAI 互換の接続先）に、**MAM が自分で ComfyUI を取得・起動し、カタログのモデルを入れる**経路を足す。実装は `backend/internal/modelmgr/*`（部品）と `backend/internal/service/modelmanager`（Service）。画面（[../../api/endpoints-model-manager.md](../../api/endpoints-model-manager.md)）・MCP ツール（[../../api/mcp-tools-model-manager.md](../../api/mcp-tools-model-manager.md)）はこの Service API の上に載る（§12）。インストーラーは変わらない（desktop.md §4・§6.8）。改訂履歴は [model-manager.changelog.md](model-manager.changelog.md)。
+[local-models.md](../local-models.md)（利用者が登録した ComfyUI・OpenAI 互換の接続先）に、**MAM が自分で ComfyUI を取得・起動し、カタログのモデルを入れる**経路を足す。実装は `backend/internal/modelmgr/*`（部品）と `backend/internal/service/modelmanager`（Service）。画面（[../../api/endpoints-model-manager.md](../../api/endpoints-model-manager.md)）・MCP ツール（[../../api/mcp-tools-model-manager.md](../../api/mcp-tools-model-manager.md)）はこの Service API の上に載る（§12）。インストーラーは変わらない（desktop.md §4・§6.8）。声（GPT-SoVITS）・口パク（MuseTalk）のローカルランタイムは同じ作りで別の文書（[local-runtime.md](local-runtime.md)）。改訂履歴は [model-manager.changelog.md](model-manager.changelog.md)。
 
 ## 1. 方針（変えない前提）
 
@@ -149,7 +149,7 @@ Wan 2.2 14B は T2V を入れない（I2V のみ。決定 4）。ミラーのフ
 
 | 種別 | 再開 | 内容 |
 |---|---|---|
-| `model_install` | **する**（`resumable=true`） | `target` は `engine` か `model:<id>`。ファイルを順に `downloads\` の `.part` へ取得（`Range` で再開）→ SHA-256 を再検証 → `data\models\<folder>\` へ移す。冪等で、検証済みのファイルは取り直さない |
+| `model_install` | **する**（`resumable=true`） | `target` は `engine` か `model:<id>`（ローカルランタイムは `runtime:<id>`。[local-runtime.md](local-runtime.md) §6）。ファイルを順に `downloads\` の `.part` へ取得（`Range` で再開）→ SHA-256 を再検証 → `data\models\<folder>\` へ移す。冪等で、検証済みのファイルは取り直さない |
 | `gentest` | しない（`resumable=false`） | 試し生成（§8）。生成テストのバッチ（[../gentest/gentest.md](../gentest/gentest.md)）として動く。MAM が落ちたら、終わっていない結果は失敗になる |
 
 - 再起動のたびに再開するのは `jobqueue.DefaultMaxAttempts`（3）回まで。それを超えると失敗として残り、利用者が導入をやり直す。
@@ -248,7 +248,7 @@ func (*Service) HidesModel(id string) bool                 // 試し生成・割
 
 ## 9. 起動・連携（`internal/app`）
 
-- `services.go` が `modelmanager.Service` を作り、`Register()` をジョブキューの開始前に呼ぶ。`Services.ModelManager` で公開する。`mm.Close` はジョブの停止の後に走る（エンジンを使うジョブが先に止まる）。
+- `services.go` が `modelmanager.Service` を作り、`Register()` をジョブキューの開始前に呼ぶ。`Services.ModelManager` で公開する。`mm.Close` はジョブの停止の後に走る（エンジンを使うジョブが先に止まる）。ローカルランタイム（`localruntime.Service`）も同じ順で配線する（[local-runtime.md](local-runtime.md) §7）。
 - `mam.exe --detect-gpu` / `--detect-comfyui` は、ウィンドウもデータディレクトリも開く前に JSON を出して終わる（`app.RunDetect`、`cmd/server` と `cmd/wails` が最初に呼ぶ。両方を付けると `{"gpu":..., "comfyui":...}`。`--detect-output FILE` で標準出力ではなくファイルへ書く。setup.md）。
 
 ## 10. Service API（`internal/service/modelmanager`）

@@ -1,6 +1,7 @@
 // Package gterr holds the refusals of the generation test service (package gentest and its sub-packages), so that the layers
 // above map them without importing the service: *InvalidError is a refused input, *ConflictError a refusal because of the
-// state, ErrNotFound a missing batch, result, prompt, Project, asset or file.
+// state, *UpstreamError a refusal because the Reasoning LLM could not translate the prompts, ErrNotFound a missing batch,
+// result, prompt, Project, asset or file.
 package gterr
 
 import (

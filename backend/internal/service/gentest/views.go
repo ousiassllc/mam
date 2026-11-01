@@ -35,11 +35,16 @@ type ResultView struct {
 	APIModel   string `json:"api_model"`
 	Prompt     string `json:"prompt" jsonschema:"入力したプロンプト"`
 	// SentPrompt is what was sent: the prompt, with the negative prompt written in when the model has no field for it.
-	SentPrompt     string `json:"sent_prompt"`
-	NegativePrompt string `json:"negative_prompt,omitempty"`
-	NegativeMode   string `json:"negative_mode" jsonschema:"none / field（モデルの欄に送った）/ folded（プロンプトに「Avoid: …」として書き足した）"`
-	AspectRatio    string `json:"aspect_ratio"`
-	Resolution     string `json:"resolution,omitempty"`
+	SentPrompt string `json:"sent_prompt"`
+	// Translated says the prompt (and negative prompt) was translated into English before it was sent: TranslatedPrompt and
+	// TranslatedNegativePrompt are that English. Absent when it was sent as typed (translation off, or English already).
+	Translated               bool   `json:"translated"`
+	TranslatedPrompt         string `json:"translated_prompt,omitempty"`
+	TranslatedNegativePrompt string `json:"translated_negative_prompt,omitempty"`
+	NegativePrompt           string `json:"negative_prompt,omitempty"`
+	NegativeMode             string `json:"negative_mode" jsonschema:"none / field（モデルの欄に送った）/ folded（プロンプトに「Avoid: …」として書き足した）"`
+	AspectRatio              string `json:"aspect_ratio"`
+	Resolution               string `json:"resolution,omitempty"`
 	// DurationSeconds is the length the model was asked for (rounded to what it makes).
 	DurationSeconds float64 `json:"duration_seconds,omitempty"`
 	// Seed is the seed that was sent; absent for a model that takes none (SeedSent false).
@@ -64,7 +69,7 @@ type ResultView struct {
 func viewOf(r gentestrepo.Result) ResultView {
 	var p resultParams
 	_ = json.Unmarshal(r.Params, &p)
-	return ResultView{
+	v := ResultView{
 		ID: r.ID, BatchID: r.BatchID, Position: r.Position, Media: r.Media, Model: r.Model, ModelLabel: modelreg.Label(r.Model), APIModel: r.APIModel,
 		Prompt: r.Prompt, SentPrompt: r.SentPrompt, NegativePrompt: r.NegativePrompt, NegativeMode: r.NegativeMode,
 		AspectRatio: p.AspectRatio, Resolution: p.Resolution, DurationSeconds: p.DurationSeconds, Seed: r.Seed, SeedSent: r.SeedSent,
@@ -72,6 +77,10 @@ func viewOf(r gentestrepo.Result) ResultView {
 		CostBasis: r.CostBasis, EstimatedUSD: r.EstimatedCost, ActualUSD: r.ActualCost, Favorite: r.Favorite, UsedInputs: r.UsedInputs,
 		CreatedAt: r.CreatedAt, FinishedAt: r.FinishedAt,
 	}
+	if p.Translation != nil {
+		v.Translated, v.TranslatedPrompt, v.TranslatedNegativePrompt = true, p.Translation.Prompt, p.Translation.Negative
+	}
+	return v
 }
 
 func viewsOf(list []gentestrepo.Result) []ResultView {

@@ -40,7 +40,9 @@ type formState struct {
 	aspect   string
 	resol    string
 	duration string
-	refs     []gentest.RefInput
+	// translate is the switch "英語に訳して送る": a checkbox, so a form that does not carry it has it off.
+	translate bool
+	refs      []gentest.RefInput
 }
 
 // readForm reads the compose form (a POST, multipart or not, or the query of a GET that includes the form). Input images that
@@ -56,7 +58,7 @@ func readForm(c *gin.Context, stage bool) (formState, error) {
 	f := formState{
 		media: strings.TrimSpace(v.Get(view.FieldMedia)), models: v[view.FieldModel], count: strings.TrimSpace(v.Get(view.FieldCount)),
 		aspect: strings.TrimSpace(v.Get(view.FieldAspect)), resol: strings.TrimSpace(v.Get(view.FieldResolution)),
-		duration: strings.TrimSpace(v.Get(view.FieldDuration)),
+		duration: strings.TrimSpace(v.Get(view.FieldDuration)), translate: v.Get(view.FieldTranslate) == "1",
 	}
 	texts, negs := v[view.FieldPrompt], v[view.FieldNegative]
 	for i, t := range texts {
@@ -123,7 +125,7 @@ func (h Handlers) stage(fh *multipart.FileHeader) (string, error) {
 // request is the batch the form describes.
 func (f formState) request() (gentest.Request, error) {
 	r := gentest.Request{
-		Media: f.media, Models: f.models, AspectRatio: f.aspect, Resolution: f.resol, References: f.refs,
+		Media: f.media, Models: f.models, AspectRatio: f.aspect, Resolution: f.resol, References: f.refs, TranslateToEnglish: f.translate,
 	}
 	for _, p := range f.prompts {
 		if strings.TrimSpace(p.Text) == "" {
@@ -157,6 +159,9 @@ func hidden(f formState, req gentest.Request, estimateID, total string) []view.H
 	}
 	for _, p := range req.Prompts {
 		h = append(h, view.Hidden{Name: view.FieldPrompt, Value: p.Prompt}, view.Hidden{Name: view.FieldNegative, Value: p.Negative})
+	}
+	if req.TranslateToEnglish {
+		h = append(h, view.Hidden{Name: view.FieldTranslate, Value: "1"})
 	}
 	h = append(h,
 		view.Hidden{Name: view.FieldCount, Value: f.count}, view.Hidden{Name: view.FieldAspect, Value: f.aspect},

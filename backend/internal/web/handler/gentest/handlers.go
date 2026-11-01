@@ -70,6 +70,7 @@ func refuse(c *gin.Context, err error) (status int, msg string) {
 	var (
 		invalid  *gterr.InvalidError
 		conflict *gterr.ConflictError
+		upstream *gterr.UpstreamError
 		partial  *projectlink.PartialImportError
 		tooBig   *http.MaxBytesError
 	)
@@ -80,6 +81,8 @@ func refuse(c *gin.Context, err error) (status int, msg string) {
 		return http.StatusUnprocessableEntity, invalid.Message
 	case errors.As(err, &conflict):
 		return http.StatusConflict, conflict.Message
+	case errors.As(err, &upstream):
+		return http.StatusBadGateway, upstream.Message
 	case errors.As(err, &partial):
 		return http.StatusConflict, "画像は取り込みましたが、スロットには割り当てられませんでした（LOCK されているか、対象が見つかりません）"
 	case errors.Is(err, gterr.ErrNotFound):

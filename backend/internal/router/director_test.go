@@ -33,7 +33,7 @@ func (g *genApp) takeIDs() []string {
 func (g *genApp) generateTakes() []string {
 	g.t.Helper()
 	require.Equal(g.t, http.StatusAccepted, g.form(http.MethodPost, "/shots/"+g.shotID+"/generate", nil).Code)
-	require.Eventually(g.t, func() bool { return g.countTakes(`SELECT COUNT(*) FROM take`) >= 3 }, 30*time.Second, 10*time.Millisecond)
+	require.EventuallyWithT(g.t, func(c *assert.CollectT) { assert.GreaterOrEqual(c, g.countOn(c, `SELECT COUNT(*) FROM take`), 3) }, 30*time.Second, 10*time.Millisecond)
 	return g.takeIDs()[:3]
 }
 

@@ -54,11 +54,10 @@ func Open(src io.ReaderAt, size int64) (*Archive, error) {
 	if err != nil {
 		return nil, err
 	}
-	timelinePaths, err := data.AudioTimelinePaths()
+	named, err := dataPaths(data)
 	if err != nil {
-		return nil, invalid("音声タイムラインを読み取れません")
+		return nil, invalid("音声タイムラインまたは参照音声を読み取れません")
 	}
-	named := append(data.FilePaths(), timelinePaths...)
 	for _, rel := range named {
 		if !bundlepath.ValidFilePath(data.ProjectID, rel) {
 			return nil, invalid("バンドルに不正なファイルパスがあります")

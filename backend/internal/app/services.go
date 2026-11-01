@@ -11,6 +11,9 @@ import (
 	"sync/atomic"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector"
+	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector/gptsovits"
+	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector/musetalk"
+	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector/synclabs"
 	"github.com/ousiassllc/mam/backend/internal/agent/jev"
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
@@ -31,7 +34,10 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/comfywf"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/service/locallipsync"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
+	"github.com/ousiassllc/mam/backend/internal/service/localruntime"
+	"github.com/ousiassllc/mam/backend/internal/service/localspeech"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/workflows"
 )
@@ -160,37 +166,44 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 
 	jobTable := repository.NewJobRepository(db)
 	jobs := jobqueue.New(jobTable, jobqueue.Options{Logger: logger})
-	// Job handlers are registered by service.New (the plan job) and by the features that add more kinds.
-	// The services are built before the queue starts: they subscribe to job changes.
-	services := service.New(service.Deps{
-		DB:          db,
-		Jobs:        jobs,
-		Credentials: keys,
-		LLM:         reasoning,
-		Models:      models,
-		Logger:      logger,
-		AssetsDir:   cfg.AssetsDir(),
-		Frames:      judging.frames,
-		Faces:       judging.engine(),
-		Judge:       judging.config,
-		Jev:         shadow,
-		Media:       previews,
-		Audio:       audioProviders(keys),
-	})
-	services.LocalModels = localModels
-	closers = append(closers, services.Close) // runs after jobs.Stop: no job change wakes the workers any more
+	// The model manager and the local runtimes are built before the services: the Audio Director speaks with GPT-SoVITS through them.
 	mgr, err := newModelManager(localModels, models, jobs, jobTable, keys, backendOpts, logger)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	services.ModelManager = mgr
 	manager.Store(mgr)
+	rts, err := newLocalRuntimes(jobs, jobTable, mgr, logger)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	// Job handlers are registered by service.New (the plan job) and by the features that add more kinds.
+	// The services are built before the queue starts: they subscribe to job changes.
+	services := service.New(service.Deps{
+		DB:            db,
+		Jobs:          jobs,
+		Credentials:   keys,
+		LLM:           reasoning,
+		Models:        models,
+		Logger:        logger,
+		AssetsDir:     cfg.AssetsDir(),
+		Frames:        judging.frames,
+		Faces:         judging.engine(),
+		Judge:         judging.config,
+		Jev:           shadow,
+		Media:         previews,
+		Audio:         audioProviders(keys, rts, previews),
+		AudioSettings: newAudioSettings(cfg, rts, keys), // read at every run
+	})
+	services.LocalModels = localModels
+	closers = append(closers, services.Close) // runs after jobs.Stop: no job change wakes the workers any more
+	services.ModelManager = mgr
+	services.LocalRuntimes = rts
 	// An adult model is refused while the age confirmation is off: by every generation (Shot, Reference Pack, the trial
 	// generations) even when an assignment still points at it. The same predicate leaves it out of the assignment choices (SetHidden).
 	models.Gate.Set(func(m domain.ModelName) bool { return mgr.HidesModel(string(m)) })
-	services.Gentest = newGentest(cfg, db, jobs, models, services, logger)
+	services.Gentest = newGentest(cfg, db, jobs, models, services, newTranslator(reasoning, llmCfg), logger)
 	services.Workflows = newWorkflows(cfg, db, localModels, models, mgr, services.Projects, keys, backendOpts, logger)
-	closers = append(closers, mgr.Close) // after jobs.Stop too: the engine outlives the jobs that call it
+	closers = append(closers, mgr.Close, rts.Close) // after jobs.Stop too: the engine and the runtimes outlive the jobs that call them
 	if err := recoverWork(ctx, services, jobs, logger); err != nil {
 		return nil, nil, nil, err
 	}
@@ -198,6 +211,7 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 	jobs.Start(ctx)
 	closers = append(closers, jobs.Stop)
 	mgr.OnStartup(ctx)
+	rts.OnStartup(ctx)
 	return services, db, release, nil
 }
 
@@ -234,11 +248,19 @@ func recoverWork(ctx context.Context, services *service.Services, jobs *jobqueue
 	return nil
 }
 
-// audioProviders are the vendors of the Audio Director: ElevenLabs (TTS, cloned voices, Music,
-// Sound Effects; API key "elevenlabs") and Sync Labs (Lip Sync; API key "synclabs").
-func audioProviders(keys credential.Store) audiodirector.Providers {
+// audioProviders are the vendors of the Audio Director: ElevenLabs (TTS, cloned voices, Music, Sound Effects; API key "elevenlabs"),
+// Sync Labs (Lip Sync; API key "synclabs") and the local voice and lip sync, GPT-SoVITS and MuseTalk 1.5 of the local runtime manager,
+// which a run may choose instead of ElevenLabs' TTS and Sync Labs. A runtime need not be installed: the local provider reports that when
+// a run chooses it. The lip sync is told the ffmpeg of tools, the one the Director runs (nil: none; the Director is not available then either).
+func audioProviders(keys credential.Store, rts *localruntime.Service, tools *media.Tools) audiodirector.Providers {
 	p := audiodirector.ElevenLabsProviders(audiodirector.NewElevenLabs(audiodirector.Config{}, keys, nil))
-	p.LipSync = audiodirector.NewSyncLabs(audiodirector.SyncLabsConfig{}, keys, nil)
+	p.LipSync = synclabs.New(synclabs.Config{}, keys, nil)
+	p.LocalSpeech = gptsovits.New(localspeech.Server{Runtime: rts}, gptsovits.Config{}, nil)
+	lip := musetalk.Config{}
+	if tools != nil {
+		lip.FFmpegPath = tools.FFmpegPath()
+	}
+	p.LocalLipSync = musetalk.New(locallipsync.Runner{Runtime: rts}, lip)
 	return p
 }
 

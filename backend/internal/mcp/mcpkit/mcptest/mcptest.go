@@ -10,8 +10,10 @@ import (
 	"io"
 	"log/slog"
 	"testing"
+	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
@@ -111,22 +113,51 @@ func WithJobQueue(d *service.Deps) {
 // Call calls a tool and returns the raw result.
 func (e *Env) Call(name string, args any) *mcp.CallToolResult {
 	e.T.Helper()
+	return e.CallOn(e.T, name, args)
+}
+
+// CallOn is Call failing c instead of the test: a polling condition (assert.EventuallyWithT) passes its
+// *assert.CollectT, so that a late condition never fails a finished test.
+func (e *Env) CallOn(c require.TestingT, name string, args any) *mcp.CallToolResult {
 	res, err := e.Client.CallTool(context.Background(), &mcp.CallToolParams{Name: name, Arguments: args})
-	require.NoError(e.T, err, "protocol error calling %s", name)
+	require.NoError(c, err, "protocol error calling %s", name)
 	return res
 }
 
 // CallOK calls a tool that must succeed and decodes its structured output into out (nil: ignore it).
 func (e *Env) CallOK(name string, args any, out any) {
 	e.T.Helper()
-	res := e.Call(name, args)
-	require.False(e.T, res.IsError, "%s failed: %s", name, Text(res))
+	e.CallOKOn(e.T, name, args, out)
+}
+
+// CallOKOn is CallOK failing c instead of the test (see CallOn).
+func (e *Env) CallOKOn(c require.TestingT, name string, args any, out any) {
+	res := e.CallOn(c, name, args)
+	require.False(c, res.IsError, "%s failed: %s", name, Text(res))
 	if out == nil {
 		return
 	}
 	raw, err := json.Marshal(res.StructuredContent)
-	require.NoError(e.T, err)
-	require.NoError(e.T, json.Unmarshal(raw, out))
+	require.NoError(c, err)
+	require.NoError(c, json.Unmarshal(raw, out))
+}
+
+// WaitJob polls get_job until the job is over and returns the final status it saw. The poll runs under
+// require.EventuallyWithT on a *assert.CollectT, so that a poll still running after the test failed or
+// finished never fails it. Only one poll runs at a time and none starts after a passing one, so the status
+// the passing poll stored is read here without a race.
+func (e *Env) WaitJob(id string, waitFor, tick time.Duration, msgAndArgs ...any) mcpkit.JobStatus {
+	e.T.Helper()
+	args := map[string]any{"job_id": id}
+	var final mcpkit.JobStatus
+	require.EventuallyWithT(e.T, func(c *assert.CollectT) {
+		var st mcpkit.JobStatus
+		e.CallOKOn(c, "get_job", args, &st)
+		if assert.True(c, st.State.Final(), "job %s is %v", id, st.State) {
+			final = st
+		}
+	}, waitFor, tick, msgAndArgs...)
+	return final
 }
 
 // CallError calls a tool that must fail as a tool error and returns its text ("<code>: <message>").

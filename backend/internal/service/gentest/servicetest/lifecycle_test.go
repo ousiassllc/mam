@@ -99,10 +99,11 @@ func TestProgressIsCountedFromTheResults(t *testing.T) {
 	ref, err := r.Confirmed(req)
 	require.NoError(t, err)
 	<-r.Fake.Started()
-	require.Eventually(t, func() bool {
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		st, err := r.Svc.Batch(context.Background(), ref.BatchID, false)
-		require.NoError(t, err)
-		return st.Succeeded == 2 && st.Running >= 1
+		require.NoError(c, err)
+		assert.Equal(c, 2, st.Succeeded)
+		assert.GreaterOrEqual(c, st.Running, 1)
 	}, 10*time.Second, 5*time.Millisecond)
 
 	st, err := r.Svc.BatchOfJob(context.Background(), ref.JobID, true)
@@ -154,10 +155,10 @@ func TestAJobWhoseBatchWasDeletedEndsWithoutWork(t *testing.T) {
 	require.True(t, r.Queue.Handles(domain.JobGentest))
 	job, err := r.Queue.Enqueue(context.Background(), domain.JobGentest, map[string]string{"batch_id": "gone"})
 	require.NoError(t, err)
-	require.Eventually(t, func() bool {
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		j, err := r.Jobs.Get(context.Background(), job.ID)
-		require.NoError(t, err)
-		return j.Status == domain.JobSucceeded
+		require.NoError(c, err)
+		assert.Equal(c, domain.JobSucceeded, j.Status)
 	}, 10*time.Second, 5*time.Millisecond)
 }
 

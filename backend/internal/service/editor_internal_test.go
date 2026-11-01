@@ -13,6 +13,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/service/audiosummary"
 )
 
 func TestEditorService_AssetPathNeverLeavesTheAssetsDirectory(t *testing.T) {
@@ -72,10 +73,10 @@ func TestAudioSummary_SkippedLayersAreListedAlsoWhenThereIsNoMix(t *testing.T) {
 		{Layer: domain.LayerSE, Reason: domain.SkipPolicy},
 	}
 	for name, mix := range map[string]string{"no mix": "", "with mix": "audio/mix.wav"} {
-		got := audioSummary(domain.AudioTimeline{MixPath: mix, Skipped: skipped}, false)
+		got := audiosummary.Of(domain.AudioTimeline{MixPath: mix, Skipped: skipped}, false)
 		assert.Contains(t, got, "作れなかった音", name)
 		assert.Contains(t, got, "BGM「静かな曲」（生成に失敗: API キーがありません）", name)
 		assert.NotContains(t, got, "SE", name, "a layer the Quality Policy chose not to pay for is not a failure")
 	}
-	assert.NotContains(t, audioSummary(domain.AudioTimeline{}, false), "作れなかった音")
+	assert.NotContains(t, audiosummary.Of(domain.AudioTimeline{}, false), "作れなかった音")
 }

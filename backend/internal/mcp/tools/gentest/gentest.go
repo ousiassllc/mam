@@ -51,10 +51,10 @@ func Register(r *mcpkit.Registrar, svc *service.Services) {
 		"生成テストで選べるモデル（組み込みのクラウドモデルと、ローカル・登録した外部 ComfyUI・保存したワークフロー・ChatGPT サブスクのモデル）。能力・単価（priced / free / unknown）・使えない理由を含む / Models a generation test can use, with capabilities, unit prices and why one is unavailable.",
 		h.listModels)
 	mcpkit.Read(r, "estimate_generation_test",
-		"生成テスト（モデル × プロンプト × 本数の全組み合わせ）の本数と見積りを返す。モデルごとの内訳・警告・上限を含む。run_generation_test に estimate_id と total_usd をそのまま渡す。単価が分からないモデル（unknown）は合計に入らない / Price a batch without running it.",
+		"生成テスト（モデル × プロンプト × 本数の全組み合わせ）の本数と見積りを返す。モデルごとの内訳・警告・上限を含む。run_generation_test に estimate_id と total_usd をそのまま渡す。単価が分からないモデル（unknown）は合計に入らない。translate_to_english（既定 true）のとき、日本語などの文を英語に訳す行（model が translate）が単価なしで入る / Price a batch without running it; the translation of non-English prompts is a line without a price.",
 		h.estimate)
 	mcpkit.Write(r, "run_generation_test",
-		"生成テストを実行する。estimate_generation_test と同じ条件に、その estimate_id と confirmed_total_usd（= total_usd）を付ける。サーバーが見積りをやり直し、変わっていたり上限（gentest.max_cost_usd / max_items）を超えたら conflict で拒否する。job_id と batch_id を返す。Take・コスト台帳には入らない / Run a confirmed batch as a job.",
+		"生成テストを実行する。estimate_generation_test と同じ条件に、その estimate_id と confirmed_total_usd（= total_usd）を付ける。サーバーが見積りをやり直し、変わっていたり上限（gentest.max_cost_usd / max_items）を超えたら conflict で拒否する。translate_to_english（既定 true。画面と同じ）なら、日本語などのプロンプトを LLM で英語に訳してから送る（訳せなければ何も生成せず upstream）。job_id と batch_id を返す。Take・コスト台帳には入らない / Run a confirmed batch as a job; prompts that are not English are translated first unless translate_to_english is false.",
 		h.run, mcpkit.OpenWorld())
 	mcpkit.Read(r, "get_generation_test",
 		"生成テストのバッチの進捗（状態ごとの件数）と、全結果（プロンプト・実際に送った文・シード・状態・失敗の理由・ファイルの有無）/ A batch with its progress and every result.",
@@ -110,6 +110,7 @@ func mapError(err error) error {
 	var (
 		invalid  *gterr.InvalidError
 		conflict *gterr.ConflictError
+		upstream *gterr.UpstreamError
 		partial  *projectlink.PartialImportError
 	)
 	switch {
@@ -117,6 +118,8 @@ func mapError(err error) error {
 		return &mcpkit.ToolError{Code: mcpkit.CodeValidation, Message: invalid.Message, Status: http.StatusUnprocessableEntity}
 	case errors.As(err, &conflict):
 		return &mcpkit.ToolError{Code: mcpkit.CodeConflict, Message: conflict.Message, Status: http.StatusConflict}
+	case errors.As(err, &upstream):
+		return &mcpkit.ToolError{Code: mcpkit.CodeUpstream, Message: upstream.Message, Status: http.StatusBadGateway}
 	case errors.As(err, &partial):
 		te := mcpkit.MapError(partial.Err)
 		te.Message = "画像は取り込みましたが（asset_id " + partial.Outcome.AssetID + "、reference_id " + partial.Outcome.ReferenceItemID + "）、スロットへ割り当てられませんでした: " + te.Message

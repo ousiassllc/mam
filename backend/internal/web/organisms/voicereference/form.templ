@@ -1,0 +1,88 @@
+package voicereference
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/domain/voiceref"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"strconv"
+)
+
+// Form is the reference voice of one Character: the player and the facts of the recording that is set, and the
+// fields that set or replace it. It is replaced alone by the answer of its own save or removal, so what is typed in
+// another form is kept. A save without a file changes the transcript and the language of the recording it has.
+templ Form(d Data) {
+	<form
+		id={ d.DOMID }
+		class="flex flex-col gap-2 border-t border-neutral-800 pt-2"
+		hx-put={ d.URL }
+		hx-encoding="multipart/form-data"
+		hx-target="this"
+		hx-swap="outerHTML"
+		hx-sync="this:drop"
+		hx-disabled-elt="find button"
+	>
+		<div class="flex flex-wrap items-center gap-2">
+			<p class="text-xs font-medium text-neutral-200">参照音声（声のクローン用）</p>
+			if d.Ref == nil {
+				@atoms.Badge(atoms.BadgeNeutral, "未設定")
+			} else {
+				@atoms.Badge(atoms.BadgeOK, "設定済み")
+			}
+		</div>
+		if d.Ref != nil {
+			<audio controls preload="none" class="w-full" src={ d.PlayerSrc() } aria-label={ d.Name + " の参照音声" }></audio>
+			<p class="text-xs text-neutral-400">{ d.Current() }</p>
+			if d.Unmeasured() {
+				<p class="text-xs text-amber-300">長さを確認できていません（ffprobe がないため）。3〜10 秒の音声にしてください。</p>
+			}
+		}
+		<div class="grid gap-2 sm:grid-cols-2">
+			<label class="flex flex-col gap-1 text-xs text-neutral-400" for={ d.DOMID + "-file" }>
+				音声ファイル（{ FormatList() }、{ strconv.Itoa(voiceref.MaxBytes >> 20) } MB まで、3〜10 秒）
+				<input id={ d.DOMID + "-file" } name="file" type="file" accept={ Accept() } class="text-sm text-neutral-200"/>
+			</label>
+			<label class="flex flex-col gap-1 text-xs text-neutral-400" for={ d.DOMID + "-language" }>
+				言語
+				@atoms.Select(atoms.FieldMd, "", templ.Attributes{"id": d.DOMID + "-language", "name": "language"}) {
+					for _, code := range Languages() {
+						<option value={ code } selected?={ code == selectedLanguage(d) }>{ LanguageLabel(code) }</option>
+					}
+				}
+			</label>
+		</div>
+		<label class="flex flex-col gap-1 text-xs text-neutral-400" for={ d.DOMID + "-text" }>
+			書き起こし（音声が言っている内容。ないと声の再現が弱くなります）
+			@atoms.Input(atoms.FieldMd, "", templ.Attributes{
+				"id":        d.DOMID + "-text",
+				"name":      "text",
+				"type":      "text",
+				"value":     currentText(d),
+				"maxlength": strconv.Itoa(voiceref.MaxTextRunes),
+			})
+		</label>
+		<p class="text-xs text-neutral-400">ファイルを選ばずに保存すると、いまの音声のまま書き起こしと言語だけ変わります。</p>
+		<div class="flex flex-wrap gap-2">
+			@atoms.ButtonFor(atoms.TonePrimary, "参照音声を保存", d.Name, templ.Attributes{"type": "submit"})
+			if d.Ref != nil {
+				@atoms.ButtonFor(atoms.ToneDanger, "参照音声を削除", d.Name, templ.Attributes{
+					"type":       "button",
+					"hx-delete":  d.URL,
+					"hx-confirm": "参照音声を削除しますか？（ほかの話や正本に複製された音声は残ります）",
+				})
+			}
+		</div>
+	</form>
+}
+
+func selectedLanguage(d Data) string {
+	if d.Ref == nil {
+		return voiceref.DefaultLanguage
+	}
+	return d.Ref.Language
+}
+
+func currentText(d Data) string {
+	if d.Ref == nil {
+		return ""
+	}
+	return d.Ref.Text
+}

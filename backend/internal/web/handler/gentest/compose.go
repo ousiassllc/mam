@@ -28,7 +28,7 @@ func (h Handlers) compose(ctx context.Context, f formState) view.Compose {
 	models := h.Svc.Models(ctx, media)
 	maxItems, maxCost := h.Svc.Limits()
 	c := view.Compose{
-		Media: media, Models: choicesOf(models, f.models), Prompts: f.prompts,
+		Media: media, Models: choicesOf(models, f.models), Prompts: f.prompts, Translate: f.translate,
 		Count: orDefault(f.count, "1"), Aspect: orDefault(f.aspect, defaultAspect(media)),
 		MaxPrompt: gentest.MaxPromptRunes, MaxCount: gentest.MaxCount, MaxItems: maxItems, MaxReferences: gentest.MaxReferences,
 	}
@@ -95,7 +95,7 @@ func pick(v string, choices []string, preferred string) string {
 // "?ref=<source>:<project>:<id>" adds an input image (the detail of a result and the model manager link here).
 func (h Handlers) Page(c *gin.Context) {
 	ctx := c.Request.Context()
-	f := formState{media: c.Query(view.FieldMedia), models: c.QueryArray(view.FieldModel)}
+	f := formState{media: c.Query(view.FieldMedia), models: c.QueryArray(view.FieldModel), translate: gentest.DefaultTranslate}
 	if id := c.Query("prompt"); id != "" {
 		if p, err := h.Svc.Prompt(ctx, id); err == nil {
 			f.prompts = []view.PromptText{{Text: p.Prompt, Negative: p.NegativePrompt}}

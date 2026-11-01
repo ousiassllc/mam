@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector/localvoice"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
 	"github.com/ousiassllc/mam/backend/internal/media"
@@ -44,6 +45,12 @@ type Input struct {
 	FixedBGM   []domain.AudioClip
 	// Voices maps a speaker name to the cloned voice that speaks their lines.
 	Voices map[string]string
+	// VoiceProvider is who speaks the lines ("" selects ElevenLabs). LocalVoices maps a speaker name (localvoice.SpeakerOf) to the
+	// reference voice the local provider speaks their lines with; it is read for localvoice.Local only.
+	VoiceProvider localvoice.Provider
+	LocalVoices   map[string]localvoice.Voice
+	// LipSyncProvider is who redoes the mouths of MAX QUALITY ("" selects Sync Labs).
+	LipSyncProvider localvoice.LipSyncProvider
 	// Rough is the rendered Rough Cut and HasSound tells whether it has sound of its own.
 	Rough    string
 	HasSound bool
@@ -55,20 +62,6 @@ type Input struct {
 	// new ID; a caller that may have to DiscardRun the files after Produce succeeded sets it.
 	RunID string
 }
-
-// VideoClip is a clip of the Edit Timeline with the file of its Take.
-type VideoClip struct {
-	// Index is the 1-based position of the clip in the Edit Timeline.
-	Index  int
-	TakeID string
-	// Path is the Take file (absolute).
-	Path string
-	// In and Out are the seconds of the Take the clip plays; Start is where it begins in the cut.
-	In, Out, Start float64
-}
-
-// Length is how long the clip plays.
-func (c VideoClip) Length() float64 { return c.Out - c.In }
 
 // Deps are what a Director needs.
 type Deps struct {
@@ -152,6 +145,9 @@ func (d *Director) produce(ctx context.Context, in Input, rel string) (domain.Au
 	if target == 0 {
 		target = domain.DefaultTargetLUFS
 	}
+	if !in.LipSyncProvider.Valid() {
+		return domain.AudioTimeline{}, fmt.Errorf("%w: %q", localvoice.ErrUnknownLipSyncProvider, in.LipSyncProvider)
+	}
 	scope := domain.AudioScopeOf(in.Quality)
 	tl := domain.AudioTimeline{
 		Mode: domain.AudioModeDirector, EditTimelineID: in.EditTimelineID, Quality: in.Quality,
@@ -162,7 +158,7 @@ func (d *Director) produce(ctx context.Context, in Input, rel string) (domain.Au
 	for _, sc := range in.Scenes {
 		for _, entry := range sc.Lines {
 			if line, ok := domain.ParseVoiceLine(entry); ok {
-				if line.Kind == domain.VoiceDialogue {
+				if line.Kind == domain.VoiceDialogue && in.VoiceProvider != localvoice.Local {
 					line.VoiceID = in.Voices[line.Speaker]
 				}
 				sceneOfLine[len(lines)] = sc
@@ -170,19 +166,14 @@ func (d *Director) produce(ctx context.Context, in Input, rel string) (domain.Au
 			}
 		}
 	}
-	if len(lines) > 0 && d.Providers.Speech == nil {
-		return domain.AudioTimeline{}, ErrNoAPIKey
-	}
-	// A missing key is known without a call: it is refused before the Planner's paid model call.
-	if kc, ok := d.Providers.Speech.(KeyChecker); ok && len(lines) > 0 {
-		if err := kc.CheckKey(); err != nil {
-			return domain.AudioTimeline{}, err
-		}
+	say, err := d.speakerFor(ctx, in, lines)
+	if err != nil {
+		return domain.AudioTimeline{}, err
 	}
 	spend := &spending{ledger: d.Ledger, projectID: in.ProjectID}
 	var speechCost float64
 	for _, l := range lines {
-		speechCost += d.Prices.TTS(l.Text)
+		speechCost += say.price(l.Text)
 	}
 	// The speech is held up front, so that runs of the Project that start at the same time cannot
 	// together pass the ceiling; it is released once the lines are in the ledger.
@@ -192,7 +183,7 @@ func (d *Director) produce(ctx context.Context, in Input, rel string) (domain.Au
 	}
 	defer releaseSpeech()
 
-	r := &run{d: d, in: in, tl: &tl, spend: spend, scope: scope, rel: rel}
+	r := &run{d: d, in: in, tl: &tl, spend: spend, scope: scope, rel: rel, speech: say}
 	// The plan costs nothing outside: a planner failure ends the run before any provider is paid.
 	if err := r.planScenes(ctx); err != nil {
 		return domain.AudioTimeline{}, err
@@ -253,6 +244,8 @@ type run struct {
 	// rel is the directory of the run, relative to the assets directory.
 	rel  string
 	plan Plan
+	// speech is who speaks the lines of the run.
+	speech speaker
 }
 
 func (r *run) abs(rel string) string { return filepath.Join(r.d.Root, filepath.FromSlash(rel)) }

@@ -1,0 +1,191 @@
+package runtimecard
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/weightlist"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// RuntimesSection is the cards of the local runtimes (voice and lip sync). Each card swaps itself and polls while it has an install
+// or a start in progress.
+templ RuntimesSection(r Runtimes) {
+	<div id={ RuntimesID } class="flex flex-col gap-4" data-testid="mm-runtimes">
+		@view.Notice(r.Message, "mm-runtimes")
+		for _, item := range r.Items {
+			@RuntimeCard(item)
+		}
+	</div>
+}
+
+// runtimeBadge is the one badge that sums the card up.
+func runtimeBadge(r Runtime) (atoms.BadgeTone, string) {
+	switch {
+	case !r.Supported:
+		return atoms.BadgeNeutral, "この PC では使えません"
+	case r.Install != nil:
+		return atoms.BadgeInfo, "導入中"
+	case r.Broken:
+		return atoms.BadgeWarn, "ファイルが見つかりません"
+	case !r.Installed:
+		return atoms.BadgeNeutral, "未導入"
+	case r.Weights.State == "missing" || r.Weights.State == "unverified":
+		return atoms.BadgeWarn, "導入済み（重みが不足）"
+	}
+	return view.StateBadge(r.State)
+}
+
+// RuntimeCard is the card of one local runtime: the state, what to do, why it cannot run here, and the weights with their source and license.
+templ RuntimeCard(r Runtime) {
+	{{ tone, label := runtimeBadge(r) }}
+	<section
+		id={ RuntimeID(r.ID) }
+		class="flex flex-col gap-3 rounded-md border border-neutral-700 p-4"
+		data-testid="mm-runtime"
+		data-runtime={ r.ID }
+		data-state={ r.State }
+		aria-labelledby={ RuntimeID(r.ID) + "-title" }
+		if r.Polling() {
+			hx-get={ runtimeURL(r) }
+			hx-trigger={ view.Polling }
+			hx-swap="outerHTML"
+		}
+	>
+		<div class="flex flex-wrap items-center gap-2">
+			<h3 id={ RuntimeID(r.ID) + "-title" } class="text-base font-semibold">{ r.Name }</h3>
+			@atoms.Badge(atoms.BadgeInfo, r.Purpose)
+			@atoms.BadgeWith(tone, label, templ.Attributes{"data-testid": "mm-runtime-badge"})
+		</div>
+		<p class="text-xs text-neutral-400">{ r.Description }</p>
+		@view.Notice(r.Message, RuntimeID(r.ID))
+		switch  {
+			case !r.Supported:
+				@runtimeUnsupported(r)
+			case !r.Writable:
+				<p class="text-sm text-amber-300" role="alert" data-testid="mm-runtime-readonly">
+					mam.exe のあるフォルダ（{ r.Dir }）に書き込めません。書き込める場所に置き直してください。
+				</p>
+				<p class="text-xs text-neutral-400">{ r.WritableError }</p>
+			default:
+				@runtimeStatus(r)
+		}
+		@weightlist.List(r.Weights)
+		<p class="text-xs text-neutral-400">
+			{ r.Name } は mam とは別のプログラムで、mam には含まれません。公式の配布先から実行時に取得し、SHA-256 を確かめてから使います。
+			if r.SourceURL != "" {
+				<a class="underline" href={ templ.SafeURL(r.SourceURL) } target="_blank" rel="noopener noreferrer">ソース</a>
+			}
+			if r.LicenseURL != "" {
+				／ <a class="underline" href={ templ.SafeURL(r.LicenseURL) } target="_blank" rel="noopener noreferrer">{ r.LicenseName }</a>
+			}
+		</p>
+		if r.LicenseCondition != "" {
+			<p class="text-xs text-amber-300" data-testid="mm-runtime-license-note">{ r.LicenseCondition }</p>
+		}
+		if r.Supported && r.Writable {
+			<p class="text-xs text-neutral-400" data-testid="mm-runtime-dir">導入先: <code class="break-all">{ r.Dir }</code>（空き { r.Free }）。アンインストールするとここも一緒に消えます。</p>
+		}
+	</section>
+}
+
+// runtimeUnsupported says why the runtime cannot run on this machine (the sentence of the catalog: macOS has its own) and what to use instead.
+templ runtimeUnsupported(r Runtime) {
+	<div class="flex flex-col gap-1 rounded-md border border-amber-500/60 bg-amber-500/10 p-3 text-sm text-amber-300" role="note" data-testid="mm-runtime-unsupported">
+		<p data-testid="mm-runtime-reason">{ r.Reason }</p>
+		if r.Fallback != "" {
+			<p data-testid="mm-runtime-fallback">{ r.Fallback }</p>
+		}
+	</div>
+}
+
+templ runtimeStatus(r Runtime) {
+	switch  {
+		case r.Install != nil:
+			@view.ProgressBar(*r.Install, r.Name+" の導入の進み具合")
+			@atoms.SmallButtonFor(atoms.ToneNeutral, "中断する", r.Name, templ.Attributes{
+				"type": "button", "hx-post": paths.ModelManagerPart("jobs", r.Install.JobID, "cancel"), "hx-target": "#" + RuntimeID(r.ID),
+				"hx-swap": "outerHTML", "hx-sync": "this:drop", "hx-disabled-elt": "this",
+				"hx-confirm": r.Name + " の導入を中断します。ダウンロード済みの分は残り、もう一度導入すると続きから再開します。よろしいですか？",
+			})
+		case r.Installed:
+			@runtimeInstalled(r)
+		default:
+			if r.Broken {
+				<p class="text-sm text-amber-300" role="alert" data-testid="mm-runtime-broken">導入済みの記録がありますが、ファイルが見つかりません。もう一度導入してください。</p>
+			} else {
+				<p class="text-sm text-neutral-300" data-testid="mm-runtime-missing">{ r.Name } は導入されていません。</p>
+			}
+			<dl class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-neutral-300">
+				<div><dt class="text-neutral-400">必要な空き容量</dt><dd data-testid="mm-runtime-need">{ r.Need }</dd></div>
+				<div><dt class="text-neutral-400">VRAM の目安</dt><dd data-testid="mm-runtime-vram">{ r.VRAM }</dd></div>
+			</dl>
+			if r.GPU != "" {
+				<p class="text-xs text-neutral-400">この PC の GPU: { r.GPU }（{ r.VariantLabel }）</p>
+			}
+			@atoms.SmallButtonFor(atoms.TonePrimary, "導入", r.Name, templ.Attributes{
+				"type": "button", "hx-post": paths.ModelManagerPart("runtimes", r.ID, "install"), "hx-target": "#" + RuntimeID(r.ID), "hx-swap": "outerHTML",
+				"hx-sync": "this:drop", "hx-disabled-elt": "this", "data-testid": "mm-runtime-install",
+			})
+	}
+}
+
+templ runtimeInstalled(r Runtime) {
+	{{ tone, label := view.StateBadge(r.State) }}
+	<div class="flex flex-wrap items-center gap-2 text-sm" data-testid="mm-runtime-status">
+		@atoms.BadgeWith(tone, label, templ.Attributes{"data-testid": "mm-runtime-state", "data-state": r.State})
+		<span>{ r.Name } { r.Version }</span>
+		<span class="text-neutral-400">（{ r.VariantLabel }）</span>
+	</div>
+	if r.State == "running" {
+		<p class="text-xs text-neutral-300">待ち受け: <code data-testid="mm-runtime-url">{ r.URL }</code>（この PC の中だけ）</p>
+	}
+	if r.State == "failed" && r.ProcessError != "" {
+		<pre class="max-h-48 overflow-auto whitespace-pre-wrap rounded bg-neutral-900 p-2 text-xs text-red-300" role="alert" data-testid="mm-runtime-failure">{ r.ProcessError }</pre>
+	}
+	if r.Weights.Message != "" {
+		<p class="text-sm text-amber-300" role="status" data-testid="mm-runtime-weights-message">{ r.Weights.Message }</p>
+	}
+	if r.UpdateAvailable {
+		<form
+			class="flex flex-wrap items-center gap-2 text-sm text-amber-300"
+			hx-post={ paths.ModelManagerPart("runtimes", r.ID, "install") }
+			hx-target={ "#" + RuntimeID(r.ID) }
+			hx-swap="outerHTML"
+			hx-sync="this:drop"
+			hx-disabled-elt="find button[type=submit]"
+			data-testid="mm-runtime-update"
+		>
+			<span>固定版 { r.PinnedVersion } があります（導入済み: { r.Version }）。</span>
+			@atoms.SmallButtonFor(atoms.TonePrimary, "更新する", r.Name, templ.Attributes{"type": "submit"})
+		</form>
+	}
+	<div class="flex flex-wrap items-center gap-2">
+		if r.State == "running" || r.State == "starting" {
+			@atoms.SmallButtonFor(atoms.ToneNeutral, "停止", r.Name, templ.Attributes{
+				"type": "button", "hx-post": paths.ModelManagerPart("runtimes", r.ID, "stop"), "hx-target": "#" + RuntimeID(r.ID),
+				"hx-swap": "outerHTML", "hx-sync": "this:drop", "hx-disabled-elt": "this",
+			})
+		} else {
+			@atoms.SmallButtonFor(atoms.TonePrimary, "起動", r.Name, templ.Attributes{
+				"type": "button", "hx-post": paths.ModelManagerPart("runtimes", r.ID, "start"), "hx-target": "#" + RuntimeID(r.ID),
+				"hx-swap": "outerHTML", "hx-sync": "this:drop", "hx-disabled-elt": "this", "data-testid": "mm-runtime-start",
+			})
+		}
+		if r.Weights.NotReady > 0 {
+			@atoms.SmallButtonFor(atoms.TonePrimary, "重みを導入", r.Name, templ.Attributes{
+				"type": "button", "hx-post": paths.ModelManagerPart("runtimes", r.ID, "weights"), "hx-target": "#" + RuntimeID(r.ID),
+				"hx-swap": "outerHTML", "hx-sync": "this:drop", "hx-disabled-elt": "this", "data-testid": "mm-runtime-weights-install",
+			})
+		}
+		@atoms.SmallButtonFor(atoms.ToneNeutral, view.AutoStartLabel(r.AutoStart), r.Name, templ.Attributes{
+			"type": "button", "hx-put": paths.ModelManagerPart("runtimes", r.ID, "autostart"), "hx-vals": atoms.HxVals(map[string]string{view.FieldOn: view.AutoStartValue(!r.AutoStart)}),
+			"hx-target": "#" + RuntimeID(r.ID), "hx-swap": "outerHTML", "hx-sync": "this:drop", "hx-disabled-elt": "this",
+			"aria-pressed": view.BoolText(r.AutoStart), "data-testid": "mm-runtime-autostart",
+		})
+		@atoms.SmallButtonFor(atoms.ToneDanger, "削除", r.Name, templ.Attributes{
+			"type": "button", "hx-delete": paths.ModelManagerPart("runtimes", r.ID), "hx-target": "#" + RuntimeID(r.ID), "hx-swap": "outerHTML",
+			"hx-sync": "this:drop", "hx-disabled-elt": "this",
+			"hx-confirm": r.Name + " を削除します（環境と、取得した重みも消えます。再び使うには導入し直します）。よろしいですか？",
+		})
+	</div>
+}
