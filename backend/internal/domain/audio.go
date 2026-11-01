@@ -6,6 +6,7 @@ import "time"
 // stored in cost_ledger_entry.provider.
 const (
 	ModelElevenLabsTTS   ModelName = "elevenlabs-tts"
+	ModelGPTSoVITSTTS    ModelName = "gpt-sovits-tts" // the local voice: no API cost, but the ledger keeps the line
 	ModelElevenLabsMusic ModelName = "elevenlabs-music"
 	ModelElevenLabsSFX   ModelName = "elevenlabs-sfx"
 	ModelSyncLabs        ModelName = "sync-labs"
@@ -159,8 +160,7 @@ type SkippedAudio struct {
 	Detail string     `json:"detail,omitempty"`
 }
 
-// VoiceClone is a cloned voice that speaks the lines of one speaker of a Project (ElevenLabs
-// instant voice cloning).
+// VoiceClone is a cloned voice that speaks the lines of one speaker of a Project (ElevenLabs instant cloning).
 type VoiceClone struct {
 	ID        string
 	ProjectID string

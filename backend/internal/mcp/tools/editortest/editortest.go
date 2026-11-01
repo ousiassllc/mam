@@ -68,8 +68,9 @@ func (VoiceCloner) Clone(context.Context, string, audiodirector.Sample) (string,
 	return "cloned-voice-1", nil
 }
 
-// New builds the Fixture and registers the tools with register.
-func New(t *testing.T, register func(env *mcptest.Env, r *mcpkit.Registrar)) *Fixture {
+// New builds the Fixture and registers the tools with register. tweak changes the Deps after the fixture has set its own (a test of
+// another provider of the audio, say).
+func New(t *testing.T, register func(env *mcptest.Env, r *mcpkit.Registrar), tweak ...func(*service.Deps)) *Fixture {
 	t.Helper()
 	tools, err := media.Look()
 	if err != nil {
@@ -78,10 +79,10 @@ func New(t *testing.T, register func(env *mcptest.Env, r *mcpkit.Registrar)) *Fi
 	testenv.Parallel(t)
 	answer := passVerdict
 	sound := tone{data: testenv.FFmpegFile(t, ".wav", "-f", "lavfi", "-i", "sine=frequency=300:duration=1.5")}
-	env := mcptest.New(t, register, func(d *service.Deps) {
+	env := mcptest.New(t, register, append([]func(*service.Deps){func(d *service.Deps) {
 		d.LLM, d.Media = fakeLLM{answer: &answer}, &tools
 		d.Audio = audiodirector.Providers{Speech: sound, Music: sound, Sounds: sound, Cloner: VoiceCloner{}}
-	})
+	}}, tweak...)...)
 	f := &Fixture{Env: env, Judge: &answer}
 	ctx := context.Background()
 
