@@ -72,18 +72,26 @@ func TestTranslateCallsNothingForNoText(t *testing.T) {
 	assert.Zero(t, a.calls)
 }
 
-func TestTranslateRefusesAnAnswerThatIsNotATranslationOfEveryText(t *testing.T) {
+func TestTranslateRefusesAnAnswerThatIsNotATextForEveryText(t *testing.T) {
 	for name, text := range map[string]string{
-		"too few":   `{"texts": ["a fox"]}`,
-		"too many":  `{"texts": ["a fox", "a cat", "a dog"]}`,
-		"unchanged": `{"texts": ["a fox", "猫"]}`,
-		"empty":     `{"texts": ["a fox", " "]}`,
+		"too few":  `{"texts": ["a fox"]}`,
+		"too many": `{"texts": ["a fox", "a cat", "a dog"]}`,
+		"empty":    `{"texts": ["a fox", " "]}`,
 	} {
 		_, err := prompttranslate.New(&answer{text: text}, target).Translate(t.Context(), []string{"狐", "猫"})
 		assert.ErrorIs(t, err, prompttranslate.ErrNotTranslated, name)
 	}
 	_, err := prompttranslate.New(&answer{text: "no json at all"}, target).Translate(t.Context(), []string{"狐"})
 	assert.ErrorIs(t, err, llm.ErrInvalidOutput)
+}
+
+// A text with a Greek letter but nothing to translate (50Ω resistor) comes back as it was: that is no failure, the text stays
+// as it was typed and the others are still translated.
+func TestTranslateKeepsATextTheLLMReturnedUnchanged(t *testing.T) {
+	a := &answer{text: `{"texts": ["50Ω resistor", "a fox", " π day "]}`}
+	got, err := prompttranslate.New(a, target).Translate(t.Context(), []string{"50Ω resistor", "狐", " π day "})
+	require.NoError(t, err)
+	assert.Equal(t, []string{"50Ω resistor", "a fox", " π day "}, got)
 }
 
 func TestTranslateReturnsTheFailureOfTheLLM(t *testing.T) {

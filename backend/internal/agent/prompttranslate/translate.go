@@ -4,8 +4,9 @@
 // model-facing prompts of a Project in English: the assignment screen has no role of its own for it.
 //
 // A text that has no letter outside the Latin script counts as English and is never sent to the LLM (Needs). Texts that need
-// a translation go in one call, and every answer is checked: a text that came back unchanged was not translated, and that is
-// an error (ErrNotTranslated), never a Japanese prompt sent on.
+// a translation go in one call, and every answer is checked: a text that came back empty is not a translation, and that is
+// an error (ErrNotTranslated). A text that came back unchanged is kept as it was typed: some texts need no translation although
+// they have a letter of another script (50Ω resistor), and the run goes on with them as they are.
 package prompttranslate
 
 import (
@@ -22,7 +23,7 @@ import (
 // Agent is the LLM role whose route translates.
 const Agent = llm.AgentPromptPlanner
 
-// ErrNotTranslated means the LLM answered, but not with an English text for every text it was given.
+// ErrNotTranslated means the LLM answered, but not with a text for every text it was given (a different count, or an empty one).
 var ErrNotTranslated = errors.New("prompttranslate: the answer is not a translation of every text")
 
 // Needs reports whether a text has to be translated: it has a letter of a script other than Latin (Japanese, Chinese,
@@ -76,9 +77,10 @@ type payload struct {
 	Texts []string `json:"texts"`
 }
 
-// Translate returns the English of every text in texts, in order. All of them are expected to Need a translation (Select
-// makes the list); with none, no call is made. A failure of the LLM is wrapped and returned (errors.Is finds llm.ErrNoAPIKey,
-// llm.ErrTimeout, ...), an answer that is not a translation of every text wraps ErrNotTranslated.
+// Translate returns the English of every text in texts, in order; a text the LLM returned unchanged stays as it was given. All
+// of them are expected to Need a translation (Select makes the list); with none, no call is made. A failure of the LLM is
+// wrapped and returned (errors.Is finds llm.ErrNoAPIKey, llm.ErrTimeout, ...), an answer that is not a text for every text
+// wraps ErrNotTranslated.
 func (t *Translator) Translate(ctx context.Context, texts []string) ([]string, error) {
 	if len(texts) == 0 {
 		return nil, nil
@@ -93,14 +95,14 @@ func (t *Translator) Translate(ctx context.Context, texts []string) ([]string, e
 	}
 	for i, en := range ans.Texts {
 		en = strings.TrimSpace(en)
-		if en == "" || en == strings.TrimSpace(texts[i]) {
-			why := "unchanged"
-			if en == "" {
-				why = "empty"
-			}
-			return nil, fmt.Errorf("%w: text %d came back %s", ErrNotTranslated, i+1, why)
+		switch {
+		case en == "":
+			return nil, fmt.Errorf("%w: text %d came back empty", ErrNotTranslated, i+1)
+		case en == strings.TrimSpace(texts[i]):
+			ans.Texts[i] = texts[i]
+		default:
+			ans.Texts[i] = en
 		}
-		ans.Texts[i] = en
 	}
 	return ans.Texts, nil
 }
