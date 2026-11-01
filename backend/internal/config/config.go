@@ -229,5 +229,8 @@ func envBool(getenv func(string) string, key string) (bool, error) {
 	return false, fmt.Errorf("invalid %s %q: not a boolean (1/true/yes/on or 0/false/no/off)", key, v)
 }
 
+// FFmpegSettingsFile is the file of the paths of ffmpeg and ffprobe (ffmpeg.json), which the settings screen writes.
+func (c Config) FFmpegSettingsFile() string { return filepath.Join(c.DataDir, "ffmpeg.json") }
+
 // MCPSettingsFile is the file of the MCP bind address (mcp.json), which the settings screen writes.
 func (c Config) MCPSettingsFile() string { return filepath.Join(c.DataDir, "mcp.json") }

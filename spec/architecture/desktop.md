@@ -22,7 +22,7 @@ Windows では Wails v3 のネイティブウィンドウ（WebView2）、macOS�
 - 終了: ウィンドウを閉じるとアプリ全体を終了する（トレイ常駐なし）。`app.Run` の `ctx` を取り消してグレースフルシャットダウン（`shutdownTimeout` 10 秒）を行い、サーバーが止まってから Wails アプリを終了する。10 秒で終わらないリクエスト（動画の配信・長いアップロードなど）は中断し（コンテキストをキャンセルして接続を閉じる）、ハンドラが戻るまで最大 5 秒（`abortTimeout`）待ってからジョブキューや DB を閉じる（中断は要求された停止であり、失敗として扱わない）。ウィンドウを閉じてからアプリが終わるまでの最長は約 15 秒。生成ジョブ（外部 API 呼び出しで課金が発生する）の実行中に閉じたときの扱い: ジョブは中断され、次回起動時にクラッシュ復旧（non-functional.md §3）と同じ経路で再開または安全に失敗として扱う。実行中ジョブがあるときの確認ダイアログは出さない（ブラウザ版でタブやプロセスを閉じるのと同じ扱い）
 - 起動エラー（設定の誤り・データディレクトリが別プロセスで使用中・リッスン失敗）はコンソールが無い（`-H windowsgui`）ためネイティブのエラーダイアログ（Win32 `MessageBox`。Wails のダイアログはイベントループが要るため使わない）に出して終了コード 1 で終わる。`--help` と引数の誤りもダイアログに出す（`app.ValidateArgs` が使い方の文字列を返す）。起動後にサーバーが落ちたときも同じ（ダイアログ → 終了コード 1）
 - 設定は `cmd/server` と同じ `config.Load`（フラグ・`MAM_*`。`--data-dir`・`MAM_DATA_DIR` も同様に効く）。`--no-browser` は無視する。ショートカットは引数なしで起動する（データディレクトリの既定は `os.UserConfigDir()` 配下の `mam`、つまり `%AppData%\mam`）
-- ブラウザ版と異なる点: Windows では ONNX Runtime のバインディングが無いため顔同一性の定量評価は使えない（non-functional.md §1、ブラウザ版も同じ）。ffmpeg は PATH から探す（同梱しない）
+- ブラウザ版と異なる点: Windows では ONNX Runtime のバインディングが無いため顔同一性の定量評価は使えない（non-functional.md §1、ブラウザ版も同じ）。ffmpeg は設定で指定したパス、無ければ `PATH`（macOS は Homebrew の場所も）から探す（同梱しない。[ffmpeg-lookup.md](ffmpeg-lookup.md)）
 - 子プロセス: ffmpeg / ffprobe はコンソールウィンドウを出さずに起動する（GUI プロセスはコンソールを持たず、何もしないと起動のたびに黒いウィンドウが点滅するため。`internal/media/run_windows.go` が `HideWindow` と `CREATE_NO_WINDOW` を付ける）。ブラウザ版は親のコンソールを継承するので影響しない。付くことは Windows 専用テスト `internal/media/run_windows_test.go` が確かめる（`hideWindow` 単体と、ffmpeg / ffprobe を起動する唯一の経路 `run` を実 exe で通して `commandContext` が作った `exec.Cmd` を見る検査の 2 つ）。リリースの `build` ジョブ（`spec/environment/setup.md` のリリース手順 5）が Windows 上で動かす
 
 ## 3. 実装時に検証する項目
@@ -141,7 +141,7 @@ Issue #853。Windows 版と同じ `cmd/wails`（サーバーを維持し、ウ�
 
 - ウィンドウ（`Title`・既定サイズ・最小サイズ・背景色）・単一インスタンス（`UniqueID: com.ousiassllc.mam`）・終了（`OnShutdown` でサーバーを止める）・更新の有効化（`main.go` の `updateOptions`。`desktop.CheckCanInstall` が通るときだけ `Update` を渡す）は Windows と同じコード（`main.go`）。違いは `platform_darwin.go`（ナビゲーション完了のイベントは `events.Mac.WebViewDidFinishNavigation`、`Mac.ApplicationShouldTerminateAfterLastWindowClosed = true`）と `dialog_darwin.go`（起動エラーのダイアログは `osascript` の `display alert`。Wails のダイアログはイベントループが要るため使わない。タイトルと本文は引数で渡す）
 - データディレクトリの既定は `os.UserConfigDir()` 配下の `mam`、つまり `~/Library/Application Support/mam`。API キーなどは macOS のキーチェーンに保存する
-- macOS 版で動かない・制限がある機能（別 Issue）: 同梱の ComfyUI エンジン（#854）・Codex 本体の取得（#855）・Finder から起動したときの ffmpeg の探索（#856。`PATH` に Homebrew が入らない）。顔同一性の定量評価（ONNX Runtime）はブラウザ版と同じく、`libonnxruntime` とモデルを自分で用意したときだけ動く
+- macOS 版で動かない・制限がある機能（別 Issue）: 同梱の ComfyUI エンジン（#854）・Codex 本体の取得（#855）。顔同一性の定量評価（ONNX Runtime）はブラウザ版と同じく、`libonnxruntime` とモデルを自分で用意したときだけ動く
 - 実機でしか確かめられない項目（WKWebView でのダウンロード・`target="_blank"`・WebSocket、単一インスタンス、⌘Q での終了、Gatekeeper の手順、実際の `open` での再起動、2 つの実際のリリースをまたぐ更新、App Translocation の挙動）は未確認で、#857 で行う。`cmd/wails` の darwin でのコンパイルと、dmg の作成・入れ替えスクリプトの本物の `hdiutil`・`ditto` での実行は、`ci.yml` の `macos` ジョブが確かめる（§7.5）
 
 ### 7.5 テストできること・できないこと
@@ -183,3 +183,4 @@ Issue #853。Windows 版と同じ `cmd/wails`（サーバーを維持し、ウ�
 | 1.26 | 2026-11-01 | §7.3 の自動更新に、`DefaultPlatform` が darwin/arm64・windows/amd64 以外ではゼロ値を返し自動更新を無効にすること（`Platform.Supported`・`desktop.CheckCanInstall`・`ErrUnsupportedPlatform`）を、§7.5 のテストの範囲にその確認を足した | Issue #859。darwin/amd64 などで自前ビルドすると、Windows の setup.exe を選んでダウンロードし、適用で失敗していたため |
 | 1.27 | 2026-11-01 | §7.3 の「更新できる場所」から `/Volumes/` 配下を一律に除く判定を外し、バンドルのあるフォルダの書き込みプローブに任せることにした（dmg のボリュームは読み取り専用なので、プローブで無効になる）。§7.5 のテストの範囲に、プローブを差し替えた `/Volumes/` 配下の確認を足した | Issue #860。外付けドライブなど `/Volumes/` 配下の書き込める `MAM.app` も自動更新が無効になり、コメントと仕様が「ディスクイメージ」と説明する実態より広く拒否していたため |
 | 1.28 | 2026-11-01 | §7.4 の差分の説明から `platform_darwin.go` の「更新の有効化」を外し、更新の有効化は OS 共通の `main.go` の `updateOptions`（`desktop.CheckCanInstall`）が行うと書いた | #859 の統合で `updateOptions` が `platform_*.go` から `main.go` に移り、仕様の説明が実装とずれたため |
+| 1.29 | 2026-11-01 | §2 の ffmpeg の探し方と §7 の macOS の制限から、Finder から起動したときの ffmpeg の探索（#856）を外し、設定のパスと Homebrew の場所を探すこと（[ffmpeg-lookup.md](ffmpeg-lookup.md)）を書いた | Issue #856 |

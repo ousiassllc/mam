@@ -1,0 +1,54 @@
+package ffmpeg
+
+import (
+	"strings"
+
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// Section is the category: the two tools with what the lookup finds for each, and the form of the paths. The answer of a save
+// replaces it by PanelID.
+templ Section(d Data) {
+	<div id={ PanelID } class="flex flex-col gap-4" data-testid="ffmpeg-panel">
+		if d.Problem != "" {
+			<p class="text-sm text-red-300" role="alert" data-testid="ffmpeg-problem">{ d.Problem }</p>
+		} else {
+			if d.Notice != "" {
+				<p class="text-sm text-emerald-300" role="status" data-testid="ffmpeg-notice">{ d.Notice }</p>
+			}
+			if d.Error != "" {
+				<p class="text-sm text-red-300" role="alert" data-testid="ffmpeg-error">{ d.Error }</p>
+			}
+			<form class="flex flex-col gap-4" hx-put={ paths.FFmpegSettings() } hx-target={ "#" + PanelID } hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]" data-testid="ffmpeg-form">
+				@toolField(d.FFmpeg)
+				@toolField(d.FFprobe)
+				<div>
+					@atoms.Button(atoms.TonePrimary, "保存", templ.Attributes{"type": "submit", "data-testid": "ffmpeg-save"})
+				</div>
+			</form>
+			<p class="text-xs text-neutral-400" data-testid="ffmpeg-search-dirs">パスを空にしたときの探し方: { strings.Join(d.SearchDirs, "、") }（この順）</p>
+		}
+	</div>
+}
+
+templ toolField(t Tool) {
+	<div class="flex flex-col gap-1" data-testid={ "ffmpeg-tool-" + t.Field }>
+		<label class="text-sm font-semibold text-neutral-100" for={ "ffmpeg-path-" + t.Field }>{ t.Label } のパス</label>
+		@atoms.Input(atoms.FieldSm, "w-full", templ.Attributes{
+			"id": "ffmpeg-path-" + t.Field, "name": t.Field, "type": "text", "value": t.Configured,
+			"placeholder": "空: 自動で探す", "autocomplete": "off", "spellcheck": "false", "data-testid": "ffmpeg-path-" + t.Field,
+		})
+		if t.Problem != "" {
+			<p class="text-xs text-amber-300" role="status" data-testid={ "ffmpeg-state-" + t.Field }>
+				@atoms.Badge(atoms.BadgeWarn, "見つかりません")
+				<span class="ml-2">{ t.Problem }</span>
+			</p>
+		} else {
+			<p class="text-xs text-neutral-400" data-testid={ "ffmpeg-state-" + t.Field }>
+				@atoms.Badge(atoms.BadgeOK, "使えます")
+				<code class="ml-2 break-all">{ t.Found }</code>
+			</p>
+		}
+	</div>
+}

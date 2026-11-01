@@ -10,13 +10,14 @@
 
 | Path | 内容 | 出す条件 |
 |------|------|----------|
-| `/settings` | **概要**。分類ごとのカード（`molecules.ToolCard`。名前・1 行の説明・いまの状態・「開く」）。先頭が「API キーとログイン」、続いて「テキスト生成（LLM）」「画像・動画モデル」「ローカル・代替モデル」「MCP サーバー」「バージョンとアップデート」、最後に「モデルマネージャー」（別の画面 `/tools/model-manager`）。カードの状態は設定ファイル・キーストアを読むだけで、外部へは通信しない | 常に |
+| `/settings` | **概要**。分類ごとのカード（`molecules.ToolCard`。名前・1 行の説明・いまの状態・「開く」）。先頭が「API キーとログイン」、続いて「テキスト生成（LLM）」「画像・動画モデル」「ローカル・代替モデル」「MCP サーバー」「ffmpeg」「バージョンとアップデート」、最後に「モデルマネージャー」（別の画面 `/tools/model-manager`）。カードの状態は設定ファイル・キーストアを読むだけで、外部へは通信しない | 常に |
 | `/settings/api-keys` | API キーとログイン（API キーのカード、ChatGPT のログインのカード 3 枚） | 常に |
 | `/settings/llm` | テキスト生成（Agent ごとの表。§3 の「表の行の保存」。使われない Agent は折りたたみ） | LLM のサービスがあるとき |
 | `/settings/models` | 画像・動画モデル（画像の用途の表と Quality Policy の表。§3 の「表の行の保存」） | モデル設定のサービスがあるとき |
 | `/settings/local-models` | ローカル・代替モデル（モデルマネージャーのカード・接続先のカード）。HTMX のときは本体だけ、HTMX でなければ分類のページ | `localmodels.Service` があるとき |
 | `/settings/local-models/endpoints/:name` | 接続先のサブページ（接続先のカードと、そのモデルの表。モデルの追加・編集のフォームはこのページの中に開く）。タイトルは「設定: ローカル・代替モデル: <名前>」、ナビの現在の分類は「ローカル・代替モデル」。無い接続先は 404。名前が `new` の接続先（古い設定ファイルにだけある）は、追加フォームの URL に隠れるのでページが無い（一覧のカードがそう書く） | 同上 |
 | `/settings/mcp` | MCP サーバー（今の区画をそのまま） | `app` が MCP サーバーを起動したとき |
+| `/settings/ffmpeg` | ffmpeg（ffmpeg と ffprobe のパスの欄と、探した結果。§5.2） | `ffmpegsettings.Service` があるとき |
 | `/settings/update` | バージョンとアップデート（今の区画をそのまま） | 常に |
 | `/settings/chatgpt` | HTMX: 今の区画の断片（`#chatgpt-panel`。クエリ `method` は読まない。ログイン中・ダウンロード中は区画が 2 秒ごとにこの URL を取り直す）。HTMX でなければ `/settings/api-keys` のページ全体で、`<link rel="canonical" href="/settings/api-keys">` を付ける（`/settings/chatgpt/models` も同じ） | ChatGPT のサービスがあるとき |
 | `/settings/local-models/health` | 概要の「ローカル・代替モデル」のカード用: 接続先ごとの接続状態の断片（接続先ごとに接続テスト `localmodels.Service.TestEndpoint` と同じ確認を同時に行い、各 3 秒で打ち切る）。常に 200（接続先が無ければ空）、`Cache-Control: no-store` | `localmodels.Service` があるとき |
@@ -120,6 +121,14 @@ HTMX 専用の断片（`#mam-modal-body` に入る）。HTMX でない GET は 4
 
 行（`<tr>`）と表の本体（`<tbody>`）を OOB で足す・置き換えるときは、`<template>` に包む（HTML の構文解析は、`<tr>` を表の外で読むと捨てるため。htmx は `<template>` の中の OOB を読む）。`<ul>` に足すときは `<ul hx-swap-oob="beforeend:#…">` の子として、置き換えでない OOB は要素の**中身**が入ることに注意する。
 
+## 5.2 ffmpeg の保存（Issue #856）
+
+| 操作 | 成功の本文 | 失敗 |
+|------|-----------|------|
+| `PUT /settings/ffmpeg`（フォーム `ffmpeg`・`ffprobe`。空は指定なし） | **200**。分類の本文（`#ffmpeg-panel`。`hx-swap="outerHTML"`）に `role="status"` の結果（「保存しました。次に mam を起動したときから使われます」。両方空は「パスの指定を解除しました。…」）。`ffmpeg.json` に書く（両方空ならファイルを消す） | 絶対パスでない・実在しない・実行できないパスは **422**。書かずに、分類の本文に `role="alert"` の理由と入力値を返す（探し直さない）。ファイルを書けないは 500。CSRF は他の `PUT` と同じ |
+
+ルートは `ffmpegsettings.Service` があるときだけ登録する（ない構成では 404）。方針は [../architecture/ffmpeg-lookup.md](../architecture/ffmpeg-lookup.md)。
+
 ## 6. 区画の保存の規則（LLM の割り当て・画像・動画モデルの全体の保存と、アップデート）。LLM・画像動画の画面は §3 の「表の行の保存」の表とモーダルに作り直した
 
 旧 `GET /settings` の行（`endpoints.md` §1。Issue #847 で本文をここへ移した）から。
@@ -139,3 +148,4 @@ HTMX 専用の断片（`#mam-modal-body` に入る）。HTMX でない GET は 4
 | 1.2 | 2026-10-25 | LLM・画像動画の分類を表とモーダルにした。`GET /settings/llm/agents/:agent/edit`・`/settings/models/images/:purpose/edit`・`…/policies/:policy/edit`、`PUT`・`DELETE /settings/llm/agents/:agent`、`PUT /settings/models/images/:purpose`・`…/policies/:policy` を足した（§2・§3）。全体の保存・リセットは残し、応答を分類の本文にした。ローカルのモデルの変更の応答は `#model-assignment` を添えなくなった | Issue #847 段階 ②-3・②-4 |
 | 1.3 | 2026-10-25 | §1 に接続先のサブページ（`GET /settings/local-models/endpoints/:name`）、§2 に接続先・MCP のモーダル（`GET …/endpoints/new`・`…/:name/edit`・`/settings/mcp/bind/edit`・`/settings/mcp/tokens/new`）、§5.1 にローカル・代替モデルと MCP の保存の応答（行の OOB、`#model-assignment` の OOB の廃止、トークンの発行の 201）を書いた。§5 の「実装していないもの」を「今のルートのまま残すもの」に改めた | Issue #847 ②-5・②-6 |
 | 1.4 | 2026-10-25 | §1 の概要の接続先の状態を、読めないとき空にする（実装どおり）に直した。§6 のランディングページの入口の名前を、カードの現在の名前「設定」に直した | PR #849 の第 2 周の独立レビューの指摘 |
+| 1.5 | 2026-11-01 | §1 に `/settings/ffmpeg` を、§5.2 に `PUT /settings/ffmpeg`（ffmpeg と ffprobe のパスの保存。使えないパスは 422）を足した | Issue #856 |

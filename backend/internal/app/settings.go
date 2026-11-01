@@ -9,6 +9,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/router/settingsroutes"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/service/ffmpegsettings"
 	"github.com/ousiassllc/mam/backend/internal/service/onboarding"
 )
 
@@ -20,6 +21,8 @@ func newSettings(cfg config.Config, services *service.Services, gpt *chatgpt.Ser
 	modelFile, modelPinned := cfg.ModelSettingsFile()
 	settings := settingsroutes.New(llmFile, llmPinned, modelFile, modelPinned)
 	settings.LocalModels = services.LocalModels
+	ffmpeg := ffmpegsettings.New(cfg.FFmpegSettingsFile())
+	settings.FFmpeg = ffmpeg
 	settings.Keys = credential.NewKeyring() // the OS secure storage: the connection test of an API key reads a saved key from it
 	settings.Workflows = services.Workflows
 	// A saved image / video assignment applies at once, as a saved endpoint or model does.
@@ -32,6 +35,6 @@ func newSettings(cfg config.Config, services *service.Services, gpt *chatgpt.Ser
 	settings.ModelManager = services.ModelManager
 	settings.Models.SetHidden(services.ModelManager.HidesModel)
 	settings.Gentest = services.Gentest
-	settings.Onboarding = onboarding.New(filepath.Join(cfg.DataDir, onboarding.FileName))
+	settings.Onboarding = onboarding.New(filepath.Join(cfg.DataDir, onboarding.FileName), onboarding.WithLookPath(ffmpeg.Find))
 	return settings
 }

@@ -30,6 +30,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/comfywf"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/service/ffmpegsettings"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/workflows"
@@ -131,18 +132,20 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 		Path: modelPath, Pinned: modelPinned, Keys: keys, Adapter: models, Backends: backendOpts, Logger: logger,
 	})
 
-	judging, err := newJudgeSetup(cfg, logger)
+	// ffmpeg for the Take previews, Partial Take Use and the AI Video Judge: the path set in the settings, else the search
+	// (spec/architecture/ffmpeg-lookup.md). nil when missing; a saved path takes effect from the next start.
+	var previews *media.Tools
+	if tools, err := ffmpegsettings.New(cfg.FFmpegSettingsFile()).Look(); err != nil {
+		logger.Warn("Take previews are limited: ffmpeg / ffprobe not found (4K Takes play as they are, Partial Take Use is off)", "err", err)
+	} else {
+		previews = &tools
+	}
+
+	judging, err := newJudgeSetup(cfg, previews, logger)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 	closers = append(closers, judging.close)
-
-	var previews *media.Tools // ffmpeg for the Take previews and Partial Take Use; nil when missing
-	if tools, err := media.Look(); err != nil {
-		logger.Warn("Take previews are limited: ffmpeg / ffprobe not found (4K Takes play as they are, Partial Take Use is off)")
-	} else {
-		previews = &tools
-	}
 
 	jevCfg, err := jev.LoadConfig(cfg.JevConfigPath)
 	if err != nil {

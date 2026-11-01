@@ -33,7 +33,7 @@
 
 ## 4. ffmpeg の確認
 
-- `GET /onboarding/ffmpeg` の本文のために、`service/onboarding.Service.FFmpeg` が `exec.LookPath("ffmpeg")`・`exec.LookPath("ffprobe")` を呼ぶ（`internal/media` の `Look` と同じ探し方。実行はしない）。結果は 2 つのパス（見つからないものは空）。
+- `GET /onboarding/ffmpeg` の本文のために、`service/onboarding.Service.FFmpeg` が `ffmpegsettings.Service.Find`（設定したパス → `PATH` → macOS の Homebrew の場所。`internal/media` の起動時の探し方と同じ。[../architecture/ffmpeg-lookup.md](../architecture/ffmpeg-lookup.md)。実行はしない）を呼ぶ。結果は 2 つのパス（見つからないものは空）。
 - OS は `runtime.GOOS`（`windows` → winget、`darwin` → brew、ほか → 汎用の文）。画面の文言は [../components/onboarding-screen.md](../components/onboarding-screen.md) §4.3。
 
 ## 5. 変わらないこと

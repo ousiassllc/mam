@@ -10,6 +10,7 @@ var globalSettingsLabels = map[string]string{
 	paths.SettingsModels:      "画像・動画モデルの設定を開く",
 	paths.SettingsLocalModels: "ローカル・代替モデルの設定を開く",
 	paths.SettingsMCP:         "MCP サーバーの設定を開く",
+	paths.SettingsFFmpeg:      "ffmpeg の設定を開く",
 	paths.SettingsUpdate:      "バージョンとアップデートを開く",
 }
 

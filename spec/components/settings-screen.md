@@ -30,7 +30,8 @@
 | 3 | 画像・動画モデル | `/settings/models` | 画像の用途・Quality Policy ごとの割り当て（`modelassignment`）。年齢確認がオフの間は成人向けのモデルを選択肢から外し、保存済みの割り当ては「（現在は使えません）」付きで見せる（[settings-screen-categories.md](settings-screen-categories.md) §3） | 同上 |
 | 4 | ローカル・代替モデル | `/settings/local-models` | 接続先とモデル（`localmodels`）＋モデルマネージャーへのカード | `Services.LocalModels` がある |
 | 5 | MCP サーバー | `/settings/mcp` | 待ち受け先・トークン（`organisms/settings/mcp`） | `Services.MCP` がある |
-| 6 | バージョンとアップデート | `/settings/update` | 版と「今すぐ確認」（`updatepanel`） | 常に（版の表示だけのときもある） |
+| 6 | ffmpeg | `/settings/ffmpeg` | ffmpeg と ffprobe のパス（`organisms/settings/ffmpeg`。[categories](settings-screen-categories.md) §8）と、探した結果 | `Services.FFmpeg` がある |
+| 7 | バージョンとアップデート | `/settings/update` | 版と「今すぐ確認」（`updatepanel`） | 常に（版の表示だけのときもある） |
 
 - スラッグは、今の**書き込みのルートの接頭辞と同じ**にする（`PUT /settings/llm`・`/settings/models`・`/settings/mcp/…`・`/settings/update/check`）。同じパスに GET（ページ）と PUT・DELETE（操作）が並ぶ。API キーの分類だけ新しい接頭辞（`api-keys`）で、書き込みは今の `PUT /credentials/:provider` のまま。
 - 出さない分類は、ナビに無く、その URL は 404（`GET /settings` だけは今も `Settings` サービスの有無にかかわらず開ける）。
@@ -204,3 +205,4 @@
 | 0.8 | 2026-10-25 | 古い記述を決定・実装に合わせた: §3 の名前 `new`（決定済み・実装済み）、§6 の `er.md` を更新しない理由（コミット前の検査は、増減に関わらず 300 行超のファイルを止める。ratchet とは別）、§7 ②-1 のモーダルの担当（#847 に決定）、§9 の `updatepanel`（移していない） | PR #849 の第 2 周の独立レビューの指摘 |
 | 0.9 | 2026-10-28 | §5 に、概要の「初期セットアップの案内」の区画（初回ガイドを開き直すリンク）を足した | Issue #863。設定画面からいつでも案内をもう一度開ける |
 | 0.10 | 2026-10-28 | §4 の枠と §11 の質問 9 を、分類の説明が h2 の横の「?」ヘルプ（ポップオーバー）に入ることに合わせた | Issue #866。画面の文字を減らす |
+| 0.10 | 2026-11-01 | §2 の分類の表に「ffmpeg」（`/settings/ffmpeg`。バージョンの前）を足した | Issue #856。Finder から起動した macOS で ffmpeg が見つからないとき、パスを指定できるようにするため |

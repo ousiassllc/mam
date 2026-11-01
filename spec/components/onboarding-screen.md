@@ -56,14 +56,14 @@ Issue #863 の本文で決まっていること（オーナー指示を含む）
 
 ### 4.3 `ffmpeg` — ffmpeg の確認
 
-- サーバーの `PATH` から `ffmpeg` と `ffprobe` を探す（`exec.LookPath`。mam が実際に使う探し方と同じ。`internal/media`）。実行はしない。
-- **見つかった**: 「見つかりました」（緑）と「ffmpeg と ffprobe が PATH にあります」、それぞれのパス。入れ方の案内は出さない。mam 本体は起動時にしか探さないので、「mam を起動したあとに入れたときは、mam を再起動すると反映されます」と添える。
+- `ffmpeg` と `ffprobe` を、設定画面で指定したパス（`/settings/ffmpeg`）があればそれで、無ければ `PATH` と macOS の Homebrew の場所（`/opt/homebrew/bin`・`/usr/local/bin`）から探す（mam が実際に使う探し方と同じ。[../architecture/ffmpeg-lookup.md](../architecture/ffmpeg-lookup.md)）。実行はしない。
+- **見つかった**: 「見つかりました」（緑）と「ffmpeg と ffprobe を使えます」、それぞれのパス。入れ方の案内は出さない。mam 本体は起動時にしか探さないので、「mam を起動したあとに入れたときは、mam を再起動すると反映されます」と添える。
 - **見つからない**: どちらが無いかを書き（警告）、無いと何が縮退するかを 1 文（Judge・Take のプレビュー・部分採用）、そして **OS ごとの入れ方**を出す。OS は mam が動いている OS（`runtime.GOOS`）。
 
 | OS | 案内 |
 |----|------|
 | Windows | `winget install Gyan.FFmpeg` を PowerShell で実行する |
-| macOS | Homebrew で `brew install ffmpeg` を実行する（`ffprobe` も入る）。入れたのに見つからないときは、この mam の `PATH` に Homebrew（`/opt/homebrew/bin`）が入っていない可能性がある、と書く（Finder から起動したときの `PATH` の問題は #856 の範囲で、この Issue では探し方を変えない） |
+| macOS | Homebrew で `brew install ffmpeg` を実行する（`ffprobe` も入る）。Homebrew の `/opt/homebrew/bin`・`/usr/local/bin` は自動で探すと書き、ほかの場所に入れたときは設定画面の「ffmpeg」でパスを指定する、と書く（#856） |
 | ほか（Linux） | お使いのパッケージマネージャーで ffmpeg（ffprobe を含む）を入れる、と書く |
 
 - どの OS でも「入れたあとは mam を一度終了して起動し直してください（ffmpeg は起動時に探します）」と書き、「もう一度確認する」のリンク（同じ URL の GET）を置く。
@@ -136,3 +136,4 @@ macOS 以外ではこのステップはない（ナビにも出ず、URL は 404
 | 1.0 | 2026-10-28 | 新規作成。初回ガイド（ウォークスルー 3 ページ・セットアップ 4 ステップ）の画面仕様 | Issue #863 |
 | 1.1 | 2026-10-28 | 「ガイドを閉じる」は最後のステップには置かないこと、進み具合の番号は 1 から振ることを実装に合わせた | Issue #863 の実装 |
 | 1.2 | 2026-10-28 | §2 のフラグを立てるページを実装に合わせた（最後以外の「ガイドを閉じる」）。§5 の枠の図を実装の nav（平らな一覧）に合わせた。`models` の有無で「使い始める前に」の一覧を変えること、状態の行の取り直しの契機（非 GET の完了）と「状態を確認できません」の範囲、ffmpeg が見つかったときの文言、壊れたフラグのファイルの上書き、コードのパスの保存失敗は 500 を追記 | Issue #879（#869 のレビューの残り） |
+| 1.3 | 2026-11-01 | §4.3 の ffmpeg の探し方を、設定で指定したパス → `PATH` → macOS の Homebrew の場所に直し、macOS の案内を「自動で探す。ほかの場所は設定で指定」にした | Issue #856 |

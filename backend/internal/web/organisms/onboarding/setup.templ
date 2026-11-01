@@ -92,13 +92,13 @@ func (f FFmpeg) Found() bool { return f.FFmpeg != "" && f.FFprobe != "" }
 // FFmpegBody is the step "ffmpeg": where it was found, or how to install it on this operating system.
 templ FFmpegBody(f FFmpeg) {
 	<p class="text-sm text-neutral-300">
-		ffmpeg と ffprobe は、品質判定（Judge）・Take のプレビュー・部分採用で使います。無くても mam は起動しますが、これらは使えなくなります。mam を起動した環境の PATH から探します。
+		ffmpeg と ffprobe は、品質判定（Judge）・Take のプレビュー・部分採用で使います。無くても mam は起動しますが、これらは使えなくなります。設定画面の「ffmpeg」でパスを指定していればそのパスを、無ければ mam を起動した環境の PATH（Mac では Homebrew の /opt/homebrew/bin と /usr/local/bin も）から探します。
 	</p>
 	if f.Found() {
 		<div class="flex flex-col gap-1 rounded-md border border-emerald-500/60 px-3 py-2" role="status" data-testid="onboarding-ffmpeg-found">
 			<p class="text-sm">
 				@atoms.Badge(atoms.BadgeOK, "見つかりました")
-				<span class="ml-2">ffmpeg と ffprobe が PATH にあります。</span>
+				<span class="ml-2">ffmpeg と ffprobe を使えます。</span>
 			</p>
 			<p class="text-xs text-neutral-400">ffmpeg: <code class={ codeClass }>{ f.FFmpeg }</code></p>
 			<p class="text-xs text-neutral-400">ffprobe: <code class={ codeClass }>{ f.FFprobe }</code></p>
@@ -139,7 +139,7 @@ templ installGuide(os OS) {
 			<div class="flex flex-col gap-1" data-testid="onboarding-ffmpeg-macos">
 				<p class="text-sm text-neutral-300">Mac では、ターミナルで Homebrew を使って次のコマンドを実行します（ffprobe も一緒に入ります）。Homebrew が無いときは、先に <a class={ linkClass } href="https://brew.sh" target="_blank" rel="noopener noreferrer">brew.sh</a> の手順で入れてください。</p>
 				<p><code class={ codeClass }>brew install ffmpeg</code></p>
-				<p class="text-xs text-neutral-400">入れたのに見つからないときは、mam を動かしている環境の PATH に Homebrew の場所（Apple Silicon では /opt/homebrew/bin）が入っていない可能性があります。</p>
+				<p class="text-xs text-neutral-400">Homebrew の /opt/homebrew/bin（Apple Silicon）と /usr/local/bin（Intel）は自動で探します。ほかの場所に入れたときは、設定画面の「ffmpeg」でパスを指定してください。</p>
 			</div>
 		default:
 			<div class="flex flex-col gap-1" data-testid="onboarding-ffmpeg-other">

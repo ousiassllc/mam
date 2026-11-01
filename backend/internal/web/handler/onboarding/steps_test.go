@@ -99,7 +99,7 @@ func TestSteps_TheModelsStepIsLeftOutWithoutTheModelSettings(t *testing.T) {
 	assert.NotContains(t, r.page(paths.OnboardingPrepare), "モデルの割り当て", "the list of what comes next has no step that is not there")
 }
 
-// ffmpeg is looked for on the PATH. Found: where, and no instructions. Missing: which one, and the way to install it of the
+// ffmpeg is looked for by the lookup of media/locate. Found: where, and no instructions. Missing: which one, and the way to install it of the
 // operating system the server runs on (winget on Windows, Homebrew on macOS).
 func TestFFmpegStep_ReportsWhatIsFoundAndHowToInstallWhatIsNot(t *testing.T) {
 	missing := func(string) (string, error) { return "", errors.New("not found") }
@@ -116,7 +116,7 @@ func TestFFmpegStep_ReportsWhatIsFoundAndHowToInstallWhatIsNot(t *testing.T) {
 		has    []string
 		hasNot []string
 	}{
-		{"found", "windows", foundBoth, []string{`data-testid="onboarding-ffmpeg-found"`, "/usr/bin/ffmpeg", "/usr/bin/ffprobe", "PATH にあります", "再起動すると反映されます"}, []string{"winget", "brew install", "onboarding-ffmpeg-missing"}},
+		{"found", "windows", foundBoth, []string{`data-testid="onboarding-ffmpeg-found"`, "/usr/bin/ffmpeg", "/usr/bin/ffprobe", "ffmpeg と ffprobe を使えます", "再起動すると反映されます"}, []string{"winget", "brew install", "onboarding-ffmpeg-missing"}},
 		{"missing on Windows", "windows", missing, []string{"ffmpeg も ffprobe も見つかりません", "winget install Gyan.FFmpeg", `data-testid="onboarding-ffmpeg-windows"`, "もう一度確認する", "起動し直して"}, []string{"brew install", "onboarding-ffmpeg-found"}},
 		{"missing on macOS", "darwin", missing, []string{"brew install ffmpeg", `data-testid="onboarding-ffmpeg-macos"`, "/opt/homebrew/bin"}, []string{"winget"}},
 		{"missing on Linux", "linux", missing, []string{`data-testid="onboarding-ffmpeg-other"`, "パッケージマネージャー"}, []string{"winget", "brew install"}},
