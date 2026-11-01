@@ -15,6 +15,8 @@ AI Video Production Agent。企画・脚本・演出・撮影・品質判定・�
 
 インストーラーはユーザー単位のインストールです。`%LocalAppData%\Programs\MAM` に入れるため、管理者権限の確認（UAC）は出ません。WebView2 ランタイムが無い Windows 10 では、インストール中にダウンロードします（インターネット接続が必要）。ポータブル版も WebView2 ランタイムを使います（Windows 11 と最近の Windows 10 には入っています）。
 
+AI Video Judge の顔の一致度（Face Identity Similarity）を数値で出すための ONNX Runtime の DLL（`onnxruntime.dll`、MIT）は、インストーラーが `mam.exe` の隣に置きます（実行時のダウンロードはしません）。顔検出・埋め込みのモデル（約 39 MB）は同梱しないので、`scripts/fetch-face-models.sh`（Git Bash など）で `%AppData%\mam\models` に取得してください。DLL かモデルが無いとき（ポータブル版は DLL を含みません。`onnxruntime.dll` を `mam.exe` の隣に置くか `--onnxruntime-lib` で指します）は、定性評価だけで判定し、その理由は起動ログの警告に出ます。
+
 インストーラー版は自動で更新されます。起動時と 6 時間ごとに、この [GitHub Releases](https://github.com/ousiassllc/mam/releases) に新しい版が無いか確認し、見つかるとダウンロードして検証し（SHA-256 と、リリースに添えた ed25519 署名 `checksums.txt.sig`）、アプリを終了してインストーラーを静かに実行し、更新後に自動で起動し直します。この ed25519 署名は更新の改ざんを検出するためのもので、Authenticode のコード署名ではありません（下の SmartScreen の警告は出ます）。ポータブル版も同じように更新を確認し、新しい版が見つかると、ユーザー単位のインストール版に切り替わります（ポータブルの exe 自体は書き換えません）。v0.1.0・v0.1.1 は自動更新を持たず、チェックサムも署名も付いていないので、自動では更新されません。署名付きの最初のリリースを手動でインストールしてください（以後は自動で更新されます）。v0.1.x の管理者権限のインストール（`C:\Program Files\MAM`）は自動更新に移行しません。「設定 > アプリ」からアンインストールしてから、新しいインストーラーを入れてください。
 
 起動するとウィンドウが開きます。ウィンドウを閉じるとアプリ全体が終了します。すでに起動中のときは、新しいウィンドウは開かず、先のウィンドウが前面に出ます。
@@ -108,4 +110,4 @@ Windows 版（Wails ウィンドウ + ユーザー単位の NSIS インストー
 
 MAM は [GNU Affero General Public License v3.0](LICENSE)（AGPL-3.0）で公開しています。Copyright (C) 2026 Ousiass合同会社。改変した MAM をネットワーク越しに利用させるときも、その利用者にソースコードを提供する義務があります（AGPL-3.0 第 13 条）。
 
-Windows 版が使うサードパーティのソフトウェアのライセンス表記は [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) にあります。インストーラーは `LICENSE` とこのファイルをインストール先に置きます。`go.mod` や `static/package-lock.json` の依存を変えたら、`scripts/third-party-notices.sh` で作り直します。画面のアイコンは [Lucide](https://lucide.dev)（ISC。Feather 由来のものは MIT）の SVG をソースにコピーしたもので、取り込んだ版のライセンス文は [`backend/internal/web/atoms/icons/LICENSE`](backend/internal/web/atoms/icons/LICENSE) にあり、`THIRD_PARTY_NOTICES.md` にも載ります。
+Windows 版が使うサードパーティのソフトウェアのライセンス表記は [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) にあります。インストーラーは `LICENSE` とこのファイル（同梱する ONNX Runtime の MIT ライセンスと Microsoft の第三者の通知を含みます）をインストール先に置きます。`go.mod` や `static/package-lock.json` の依存を変えたら、`scripts/third-party-notices.sh` で作り直します。画面のアイコンは [Lucide](https://lucide.dev)（ISC。Feather 由来のものは MIT）の SVG をソースにコピーしたもので、取り込んだ版のライセンス文は [`backend/internal/web/atoms/icons/LICENSE`](backend/internal/web/atoms/icons/LICENSE) にあり、`THIRD_PARTY_NOTICES.md` にも載ります。

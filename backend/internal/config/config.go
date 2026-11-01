@@ -47,8 +47,9 @@ type Config struct {
 	// FaceModelDir holds the face detection and embedding models (facesim.DetectorFile / RecognizerFile).
 	// Empty selects FaceModels(): DataDir/models.
 	FaceModelDir string
-	// ONNXRuntimeLib is the ONNX Runtime shared library (1.23.x) the face models run on. Empty lets
-	// the system search its standard library locations.
+	// ONNXRuntimeLib is the ONNX Runtime shared library (1.23.x) the face models run on. Empty selects
+	// onnxruntime.dll next to mam.exe on Windows (the installer puts it there) and the system's standard
+	// library search elsewhere (facesim.RuntimeLibraryPath).
 	ONNXRuntimeLib string
 }
 
@@ -114,7 +115,7 @@ func Load(args []string, getenv func(string) string, output io.Writer) (Config, 
 	fs.Bool("detect-gpu", false, "print the GPUs found and the ComfyUI build recommended for them as JSON, then exit")
 	fs.Bool("detect-comfyui", false, "print the ComfyUI already running on this machine (ports 8188 and 8000) as JSON, then exit")
 	fs.String("detect-output", "", "write the JSON of --detect-gpu / --detect-comfyui to this file instead of the standard output")
-	onnxRuntime := fs.String("onnxruntime-lib", getenv("MAM_ONNXRUNTIME_LIB"), "ONNX Runtime shared library (1.23.x) for the face models (MAM_ONNXRUNTIME_LIB)")
+	onnxRuntime := fs.String("onnxruntime-lib", getenv("MAM_ONNXRUNTIME_LIB"), "ONNX Runtime shared library (1.23.x) for the face models; default: onnxruntime.dll next to mam.exe on Windows, else the system's library search (MAM_ONNXRUNTIME_LIB)")
 	if err := fs.Parse(args); err != nil {
 		return Config{}, err
 	}

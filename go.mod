@@ -88,3 +88,10 @@ require (
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.12.1 // indirect
 )
+
+// onnxruntime-purego (face identity similarity, backend/internal/facesim) does not build for Windows upstream: purego.Dlopen
+// is Unix-only, and ORT takes the model path as UTF-16 there. Its open PR #17 (https://github.com/shota3506/onnxruntime-purego/pull/17,
+// the only commit 9c3f4286f91e of aubs3993's fork on top of the pinned upstream commit 8db8bd7424b2) loads the library with
+// syscall.LoadLibrary and encodes the path as UTF-16; everything else is unchanged. Drop this replace when upstream releases
+// Windows support (spec/architecture/model-adapters.md §10.1).
+replace github.com/shota3506/onnxruntime-purego => github.com/aubs3993/onnxruntime-purego v0.0.0-20260728144648-9c3f4286f91e

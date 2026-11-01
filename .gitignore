@@ -18,3 +18,5 @@ static/src/dist/*
 # Windows packaging (scripts/package-windows.sh)
 *.syso
 /build/windows/nsis/MicrosoftEdgeWebview2Setup.exe
+# The ONNX Runtime DLLs of the installer (scripts/fetch-onnxruntime.sh)
+/build/windows/nsis/onnxruntime/

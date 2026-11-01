@@ -63,6 +63,7 @@ test-scripts: ## shell script tests
 	bash scripts/sign-checksums_test.sh
 	bash scripts/make-checksums_test.sh
 	bash scripts/third-party-notices_test.sh
+	bash scripts/fetch-onnxruntime_test.sh
 	bash scripts/stress-test_test.sh
 
 # A flake is chased with few processes (JOBS 2 by default, 4 at most: scripts/stress-test.sh refuses more); to starve
