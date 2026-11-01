@@ -9,8 +9,18 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
-// Of is the chat message after the Audio Director finished.
-func Of(tl domain.AudioTimeline, branch bool) string {
+// Of is the chat message after the Audio Director finished. notes are what the service tells besides (the providers a run switched to the
+// cloud, and why: audiosettings.Service.Settle): each is a line of its own at the end.
+func Of(tl domain.AudioTimeline, branch bool, notes ...string) string {
+	text := made(tl, branch)
+	for _, note := range notes {
+		text += "\n" + note
+	}
+	return text
+}
+
+// made is what was made, and what could not be.
+func made(tl domain.AudioTimeline, branch bool) string {
 	var sb strings.Builder
 	sb.WriteString("音声を作成しました")
 	if branch {

@@ -16,6 +16,7 @@
 | `/settings/models` | 画像・動画モデル（画像の用途の表と Quality Policy の表。§3 の「表の行の保存」） | モデル設定のサービスがあるとき |
 | `/settings/local-models` | ローカル・代替モデル（モデルマネージャーのカード・接続先のカード）。HTMX のときは本体だけ、HTMX でなければ分類のページ | `localmodels.Service` があるとき |
 | `/settings/local-models/endpoints/:name` | 接続先のサブページ（接続先のカードと、そのモデルの表。モデルの追加・編集のフォームはこのページの中に開く）。タイトルは「設定: ローカル・代替モデル: <名前>」、ナビの現在の分類は「ローカル・代替モデル」。無い接続先は 404。名前が `new` の接続先（古い設定ファイルにだけある）は、追加フォームの URL に隠れるのでページが無い（一覧のカードがそう書く） | 同上 |
+| `/settings/audio` | 音声・口パク（声と口パクのプロバイダー・ローカルの状態・この PC で動かせない理由・出典とライセンス・フォールバックのチェック。§5.3） | `audiosettings.Service` があるとき |
 | `/settings/mcp` | MCP サーバー（今の区画をそのまま） | `app` が MCP サーバーを起動したとき |
 | `/settings/ffmpeg` | ffmpeg（ffmpeg と ffprobe のパスの欄と、探した結果。§5.2） | `ffmpegsettings.Service` があるとき |
 | `/settings/update` | バージョンとアップデート（今の区画をそのまま） | 常に |
@@ -142,6 +143,14 @@ HTMX 専用の断片（`#mam-modal-body` に入る）。HTMX でない GET は 4
 
 取得の失敗は、部品の `role="alert"`（`data-testid=ffmpeg-download-install-error`）に出る: SHA-256・サイズの不一致（**ファイルは削除し、使わない**）、アーカイブの中身の不一致、実行できない、配布元が 404（mam を更新する）・そのほかの HTTP エラー、通信の失敗。取得に失敗しても、前に入れた版はそのまま残る。CSRF の対象（`POST`・`DELETE`）。
 
+## 5.3 音声・口パクの保存（Issue #924）
+
+| 操作 | 成功の本文 | 失敗 |
+|------|-----------|------|
+| `PUT /settings/audio`（フォーム `voice_provider`＝`elevenlabs` / `local`、`lip_sync_provider`＝`synclabs` / `local`、`fallback_to_cloud`＝`1`。フォームに無い項目は保存済みのまま。`fallback_to_cloud` だけは、無ければオフ（チェックボックスの外れ）） | **200**。分類の本文（`#audio-panel`。`hx-swap="outerHTML"`）に `role="status"` の「保存しました。次の音声作成から使われます」。`audio.json` に保存し、再起動後も残る | **422**: 知らないプロバイダー、またはこの PC で動かせないローカル（macOS・NVIDIA の GPU 無し・ビデオメモリ不足など）。`role="alert"` にランタイム管理の理由とクラウドの案内。書かない。**409**: `audio.json` が読めない（書き換えない）。**500**: 書き込めない |
+
+ルートは `audiosettings.Service` があるときだけ登録する（ない構成では 404）。規則は [../architecture/model-adapters-m3.md](../architecture/model-adapters-m3.md) §14.10、画面は [../components/settings-screen-categories.md](../components/settings-screen-categories.md) §9。同じ設定を MCP の `get_audio_providers`・`set_audio_providers` で読み書きできる（[mcp-tools-settings-policy.md](mcp-tools-settings-policy.md)）。
+
 ## 6. 区画の保存の規則（LLM の割り当て・画像・動画モデルの全体の保存と、アップデート）。LLM・画像動画の画面は §3 の「表の行の保存」の表とモーダルに作り直した
 
 旧 `GET /settings` の行（`endpoints.md` §1。Issue #847 で本文をここへ移した）から。
@@ -164,3 +173,4 @@ HTMX 専用の断片（`#mam-modal-body` に入る）。HTMX でない GET は 4
 | 1.5 | 2026-11-01 | §1 に `/settings/ffmpeg` を、§5.2 に `PUT /settings/ffmpeg`（ffmpeg と ffprobe のパスの保存。使えないパスは 422）を足した | Issue #856 |
 | 1.6 | 2026-11-01 | §5.2.1 に、ffmpeg と ffprobe のダウンロードのルート（`GET`・`POST`・`DELETE /settings/ffmpeg/download`、`POST /settings/ffmpeg/download/cancel`）を足した | Issue #900 |
 | 1.7 | 2026-11-01 | §5.2.1 の `POST /settings/ffmpeg/download` に、削除の最中は 409 で断ることを足した（削除と導入が重ならないように） | Issue #900 |
+| 1.8 | 2026-11-01 | §1 の表に `GET /settings/audio` を、§5.3 に `PUT /settings/audio`（声・口パクのプロバイダーとフォールバックの保存）を足した | Issue #924 |

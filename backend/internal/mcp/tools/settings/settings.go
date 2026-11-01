@@ -34,6 +34,12 @@ func Register(r *mcpkit.Registrar, _ *service.Services) {
 	mcpkit.Destroy(r, "reset_model_assignment",
 		"画像・動画モデルの割り当てを既定に戻す。すぐに反映される / Drop the saved image / video model overrides (effective at once).",
 		h.resetModels, mcpkit.Idempotent())
+	mcpkit.Read(r, "get_audio_providers",
+		"音声・口パクのプロバイダーの設定。声（elevenlabs か local＝GPT-SoVITS）・口パク（synclabs か local＝MuseTalk 1.5）・ローカルが使えないときにクラウドへ切り替えるか（既定はオフ）と、ローカルの状態・使えない理由（macOS の非対応の理由を含む）・クラウドの API キーの有無（値は返さない）。保存した内容は次の音声作成から使われる / The voice and lip-sync providers and whether the local ones can be used.",
+		h.getAudio)
+	mcpkit.Write(r, "set_audio_providers",
+		"声・口パクのプロバイダーと「ローカルが使えないときはクラウドに切り替える」を保存する。指定した項目だけ変わる。この PC で動かせないとき（macOS など）に local を選ぶと validation で、理由を返す。fallback_to_cloud をオンにすると、ローカルが使えない実行がクラウドで作られ、API 費用が出る。次の音声作成から使われる / Save the voice and lip-sync providers and the opt-in fallback to the cloud.",
+		h.setAudio, mcpkit.Idempotent())
 	mcpkit.Read(r, "get_update_status",
 		"アップデートの状態（今のバージョン・最後の確認の結果・新しいバージョン）。アップデートできない版（ヘッドレス）では unavailable / The state of the update check.",
 		h.updateStatus)

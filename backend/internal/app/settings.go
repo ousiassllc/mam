@@ -33,6 +33,7 @@ func newSettings(cfg config.Config, services *service.Services, gpt *chatgpt.Ser
 	})
 	settings.ChatGPT = gpt
 	settings.ModelManager, settings.LocalRuntimes = services.ModelManager, services.LocalRuntimes
+	settings.Audio = newAudioSettings(cfg, services.LocalRuntimes, settings.Keys)
 	settings.Models.SetHidden(services.ModelManager.HidesModel)
 	settings.Gentest = services.Gentest
 	settings.Onboarding = onboarding.New(filepath.Join(cfg.DataDir, onboarding.FileName), onboarding.WithLookPath(ffmpeg.Find))

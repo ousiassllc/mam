@@ -16,6 +16,7 @@ GET は状態を変えない。PUT・POST・DELETE は CSRF 必須。`:provider`
 | GET | `/settings/models` | 画像・動画モデル | 同上 |
 | GET | `/settings/local-models` | ローカル・代替モデル（**変更**: 今は HTMX の区画だけ。HTMX でなければページ全体） | `Services.LocalModels` あり |
 | GET | `/settings/local-models/endpoints/:name` | 接続先のサブページ（モデルの表・追加）。無ければ 404 | 同上 |
+| GET | `/settings/audio` | 音声・口パク（#924。[categories](settings-screen-categories.md) §9） | `Services.Audio` あり |
 | GET | `/settings/mcp` | MCP サーバー | `Services.MCP` あり |
 | GET | `/settings/update` | バージョンとアップデート | 常に |
 | GET | `/settings/chatgpt` | **変更**: HTMX でなければ `/settings/api-keys` のページ全体（`canonical` つき）。HTMX は今どおり区画の断片（クエリ `method` = `official` / `codex` を保つ。ログインのモーダルの取り直しは `GET /settings/chatgpt/:kind/login?poll=1` で、`card=<kind>` は足さない。§6 の質問 5） | `Services.ChatGPT` あり |
@@ -43,6 +44,7 @@ GET は状態を変えない。PUT・POST・DELETE は CSRF 必須。`:provider`
 | PUT | `/settings/models/images/:purpose`・`/settings/models/policies/:policy` | **新規（案。categories §7 の質問 4）**。1 行の保存。内容は今の `PUT /settings/models` の 1 行ぶんで、保存の検証は `modelsettings.Service` が行う。固定は 409 |
 | POST | `/settings/credentials/:provider/test` | **新規**。API キーの接続テスト（接続テストのあるプロバイダーだけ。無ければ 404）。フォーム `api_key`（空なら保存済みのキー）。結果の行だけ返す（成功・キーが拒否された・通信できない・上限に達した。いずれも 200。キーそのものは**応答にもログにも出さない**）。保存しない。外部への通信は 10 秒で打ち切る |
 | PUT・DELETE | `/credentials/:provider` | **変更なし**（パス・フォーム・状態コードは今のまま）。応答の本文だけ §2 の形（OOB の行＋ `HX-Trigger-After-Swap`）に変える |
+| PUT | `/settings/audio` | **新規（#924）**。声・口パクのプロバイダーとフォールバックの保存。フォーム `voice_provider`（`elevenlabs` / `local`）・`lip_sync_provider`（`synclabs` / `local`）・`fallback_to_cloud`（`1`。無ければオフ）。フォームに無い項目は保存済みのまま。この PC で動かせないローカルは 422（ランタイム管理の理由とクラウドの案内）、`audio.json` が読めないときは 409（書き換えない）。応答は分類の本体（`#audio-panel`。成功は 200 と「保存しました。次の音声作成から使われます」） |
 | PUT | `/settings/mcp/bind`・POST `/settings/mcp/tokens`・DELETE `/settings/mcp/tokens/:id` | パス・フォームは今のまま。応答は §2。**発行（201）だけは例外**（§3） |
 | POST・PUT・DELETE | `/settings/local-models/endpoints/…`（`endpoints-local-models.md` §2） | パス・フォームは今のまま。応答は、保存した行（接続先のカード）の OOB ＋ `HX-Trigger-After-Swap: modal-close`。モデルの変更はサブページの表の行を OOB で差し替える |
 | GET | `/tools/:tool/status` | [home-screen.md](home-screen.md) §5。概要の「モデルマネージャー」のカードも使う（`:tool` は `model-manager` など） |
@@ -113,3 +115,4 @@ GET は状態を変えない。PUT・POST・DELETE は CSRF 必須。`:provider`
 | 0.5 | 2026-10-25 | 状態を更新した。LLM・画像動画のルートを実装した。画像・動画の行ごとの保存（§6 の質問 4）は推奨どおり足した。OOB の行は**応答の先頭**に置く（HTML のパーサーは先頭の `<tr>` だけを行として読む）。画像・動画の保存は `#model-status`（年齢確認の注意とすべて既定に戻す）も OOB で返す | Issue #847 段階 ②-3・②-4 の実装 |
 | 0.6 | 2026-10-25 | 段階 ②-5・②-6 を実装済みにした（接続先のサブページ、`GET …/endpoints/new`・`…/:name/edit`・`/settings/mcp/bind/edit`・`/settings/mcp/tokens/new`、行の OOB、トークンの発行の 201）。行の OOB は `<template>` に包む注意を [../api/endpoints-settings.md](../api/endpoints-settings.md) §5.1 に書いた | Issue #847 の実装 |
 | 0.7 | 2026-10-25 | 題の「（下書き）」を外した。`endpoints.md` の行数を実測の 297 行に直し、§1 の `GET /settings/chatgpt` と §6 の質問 5 に、`card` を足さない実装の形を書いた | PR #849 の第 2 周の独立レビューの指摘 |
+| 0.8 | 2026-11-01 | §1 に `GET /settings/audio`（ページ）と `PUT /settings/audio`（保存）を足した | Issue #924 |
