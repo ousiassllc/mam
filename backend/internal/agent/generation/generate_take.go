@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 	"time"
 
@@ -64,6 +65,20 @@ func (o *Orchestrator) keyframeRead(ctx context.Context, ref repository.ShotRef)
 		}
 	}
 	return false, nil
+}
+
+// attachedReferences is the References of the Shot less its Keyframe when none can be read (videoJob then gives the clip no first
+// frame): decide plans the clip (length, cost, routing) from these, so the plan is the clip Prepare makes (#902).
+func (o *Orchestrator) attachedReferences(ctx context.Context, ref repository.ShotRef) ([]domain.Reference, error) {
+	refs := ref.Shot.References()
+	if !hasKeyframe(refs) {
+		return refs, nil
+	}
+	read, err := o.keyframeRead(ctx, ref)
+	if err != nil || read {
+		return refs, err
+	}
+	return slices.DeleteFunc(refs, func(r domain.Reference) bool { return r.Kind == domain.RefKeyframe }), nil
 }
 
 // recordOf renders the job for both models of the strategy and returns the JSON kept in

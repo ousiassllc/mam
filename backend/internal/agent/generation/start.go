@@ -141,8 +141,12 @@ func (o *Orchestrator) decide(ctx context.Context, ref repository.ShotRef, polic
 		return Strategy{}, err
 	}
 	cfg, forced := o.adapter.Config(), FixedModel(locks)
-	// in always carries the References (the cost needs the Keyframe); a forced model ignores the rest of it.
-	in := &RoutingInput{References: ref.Shot.References()}
+	// in always carries the References the clip is made from, less a Keyframe that cannot be read (no first frame, #902).
+	refs, err := o.attachedReferences(ctx, ref)
+	if err != nil {
+		return Strategy{}, err
+	}
+	in := &RoutingInput{References: refs}
 	if forced == "" && cfg.Routing.Enabled {
 		records, err := o.gens.ModelRecords(ctx, ref.ProjectID)
 		if err != nil {
