@@ -1,12 +1,13 @@
-# ローカルランタイム（GPT-SoVITS・のちに MuseTalk）
+# ローカルランタイム（GPT-SoVITS・MuseTalk）
 
-[model-manager.md](model-manager.md)（同梱の ComfyUI エンジン）と同じ作りで、**声（GPT-SoVITS）と口パク（MuseTalk 1.5）をローカルで動かす実行環境を、MAM が自動で導入・起動・停止・状態表示まで管理する**ための基盤。親 Issue は #912（決定事項: 実行方式 B「ComfyUI の同梱エンジンと同じ感じで、mam が自動で入れて起動まで管理する」）。この文書は基盤と GPT-SoVITS の環境導入（Issue #918）、重み・依存ファイルの固定カタログと取得・検証・出典とライセンスの表示・画面と MCP（Issue #920。§12）を定める。実装は `backend/internal/modelmgr/runtime`（導入・判定・起動コマンド・重みの検証と取得）、`backend/internal/modelmgr/catalog`（カタログ）と `backend/internal/service/localruntime`（Service）。改訂履歴は [model-manager.changelog.md](model-manager.changelog.md)。
+[model-manager.md](model-manager.md)（同梱の ComfyUI エンジン）と同じ作りで、**声（GPT-SoVITS）と口パク（MuseTalk 1.5）をローカルで動かす実行環境を、MAM が自動で導入・起動・停止・状態表示まで管理する**ための基盤。親 Issue は #912（決定事項: 実行方式 B「ComfyUI の同梱エンジンと同じ感じで、mam が自動で入れて起動まで管理する」）。この文書は基盤と GPT-SoVITS の環境導入（Issue #918）、重み・依存ファイルの固定カタログと取得・検証・出典とライセンスの表示・画面と MCP（Issue #920。§12）、MuseTalk 1.5 の環境の組み立て・起動・口パクの入口（Issue #921。§13）を定める。実装は `backend/internal/modelmgr/runtime`（導入・判定・起動コマンド・重みの検証と取得）、`backend/internal/modelmgr/catalog`（カタログ）と `backend/internal/service/localruntime`（Service）。改訂履歴は [model-manager.changelog.md](model-manager.changelog.md)。
 
 | 範囲 | Issue |
 |---|---|
 | ランタイム管理の基盤、GPT-SoVITS の環境の導入・起動・停止・状態 | **#918（この文書）** |
 | 重み・依存ファイルの固定カタログ（固定 URL＋SHA-256、再開可）、出典とライセンスの画面表示、画面・MCP | **#920（§12）** |
-| MuseTalk 1.5 のランタイム | #921（この文書の枠に載せる） |
+| MuseTalk 1.5 のランタイム（環境の組み立て・起動・口パクの入口） | **#921（§13）** |
+| MuseTalk の口パクプロバイダー（Audio Director）・プロバイダーの選択とフォールバック | #923・#924（この文書の範囲外） |
 
 ## 1. 方針（変えない前提）
 
@@ -136,24 +137,17 @@ func (*Service) Watch(func(Event)) (cancel func())      // プロセスの状態
 
 `auto_start`・`last_port`・`installed`（`version`・`variant`・`installed_at`）。読めない記録は `state.json.corrupt` に退避して空から始める（MAM の起動を止めない。ファイルは残るので、`Status` は導入済みと見なさず、導入し直すと検証される）。ComfyUI の `comfyui\state.json` とは別のファイルで、互いに触れない。
 
-## 9. MuseTalk（#921）が載せる形
+## 9. MuseTalk が載せる形（実装は §13）
 
-`catalog/data/runtimes/musetalk.json` を足し、次を書く。**重みと依存ファイルは #920 が `catalog/data/assets/musetalk.json` に固定済み**（§12.7）。#921 は同じ ID `musetalk` のランタイムを足すだけで結び付き、必要なら asset を足す（asset の無いランタイムは検証が落ちる）。コードの変更は要らない（要るのは MuseTalk の固有の部分だけ）。
-
-| カタログの項目 | MuseTalk で決めること |
-|---|---|
-| `purpose` | `lip_sync` |
-| `variants`・`archive_root` | 公式の Windows 向け配布物（7z）。Hugging Face のコミット固定が条件（`catalog.Validate` が、`https://huggingface.co/<repo>/resolve/<40 桁のコミット>/….7z` 以外を拒否する）。GitHub Releases が元なら、検証のパターンを広げる変更とその理由を spec に書く |
-| `launch`（`python`・`entry`・`args`・`ready_path`・`env`） | 口パクのサーバーの起動。HTTP の入口が無ければ、その入口（薄いラッパーのスクリプト）をどこに置くかを #921 で決める（`api_v2.py` に相当するものが公式にない場合）。待ち受けは `127.0.0.1` だけ |
-| `support` | 同じ判定（Windows x64 ＋ NVIDIA）。`fallback` は「Sync Labs」。macOS の第三者の MLX 版は #921 の判断 |
-| `vram` | MuseTalk の下限（公式は 4 GB でも動作例ありと記載） |
+`catalog/data/runtimes/musetalk.json` を足し、**重みと依存ファイルは #920 が `catalog/data/assets/musetalk.json` に固定済み**（§12.7）。同じ ID `musetalk` で結び付く。GPT-SoVITS と違って**公式の配布物が無い**ので、環境は mam が固定した部品から組み立てる（§13.1）。それに必要な拡張（`parts` の変種・`build`（型と検証は `catalog/parts`）・`token_env`・`max_compute_cap`）はコードに足した。ランタイムの種類がデータである方針は変えていない（MuseTalk の固有の部分は JSON と、mam が同梱する薄い HTTP ラッパー `catalog/data/overlays/mam_musetalk_*.py` だけ）。
 
 ## 10. 先送りしたこと（決めたことの記録）
 
 - **ファインチューン（学習）はしない**。参照音声（約 5 秒）のゼロショットだけ（学習は VRAM と時間がかかり、macOS 非推奨）。
 - **クラウドへのフォールバックは利用者が設定で選ぶ**。黙って切り替えない。設定の追加と Audio Director のプロバイダーは #912 の別の子。
 - **Apple Silicon での自動導入**はしない（公式は MPS / CPU の推論に対応するが、パッケージと検証が別に要る）。オーナーの判断で別 Issue。
-- 重みの取得・ライセンス表示・画面・MCP は #920 で実装した（§12）。MuseTalk のランタイムのパッケージと起動は #921。
+- 重みの取得・ライセンス表示・画面・MCP は #920 で実装した（§12）。MuseTalk のランタイムのパッケージと起動は #921（§13）。
+- **MuseTalk の第三者の MLX 版**（`mlx-community/MuseTalk-1.5-q4`）の自動導入は、この Issue では実装しない（オーナーの判断が要る別の事項）。macOS は理由の文とクラウド（Sync Labs）の案内を返す（§13.5）。
 
 ## 11. 未確認
 
@@ -291,6 +285,131 @@ MuseTalk のランタイムのパッケージは #921 が決める。ここで�
 |---|---|
 | **実物の Windows ＋ NVIDIA でのパッケージ導入後の検証（約 2.0 GB の SHA-256 計算）・足りない重みの取得・起動** | **未確認**。偽の Hugging Face（`Range`・取り消し・ハッシュ不一致・404・空き容量不足）と、偽のパッケージ・偽のプロセスで、取得・再開・検証・拒否・起動の拒否を確認した。実物の重み（GPT-SoVITS の asset は約 2.0 GB、MuseTalk は約 6.0 GB）を `Range` で取得して導入する経路は、実機で走らせていない（SHA-256 とサイズは、Hugging Face の API の `lfs.oid`、ダウンロードしたファイル、公式の 7z の中身から確かめた） |
 | 実物の `nltk_data.zip`・`G2PWModel.zip`・`open_jtalk_dic…tar.gz` からのメンバーの取り出し（`exeinstall.Extract`）と、取り出したファイルで GPT-SoVITS が動くこと | **未確認**（アーカイブの一覧とメンバーの SHA-256 は実物で確かめたが、取り出し→起動は実機で試していない。合成のアーカイブでは確認した） |
-| MuseTalk の重みを置いた環境で MuseTalk が動くこと（`models/…` の配置が公式の既定と同じこと、S3FD の置き場所） | **未確認**（#921 のランタイムの実装で確かめる。配置は `download_weights.sh` と推論のコードから読んだ） |
+| MuseTalk の重みを置いた環境で MuseTalk が動くこと（`models/…` の配置が公式の既定と同じこと、S3FD の置き場所） | **Linux の CPU で確認した**（#921。§13.7）: 12 件の重みをカタログの `dest` に置き、ネットワークの無い名前空間で、公式の推論と同じ手順（ラッパー）が 1.2 秒の動画を作った。**Windows ＋ CUDA は未確認** |
 | 各ライセンスの**原文との突き合わせ** | モデルカード・同梱の LICENSE・NLTK の配布一覧・MuseTalk の README / LICENSE.txt は読んだ。**法的な助言ではない**。`unclear` の 5 件（g2pW・SyncNet・face-parse・S3FD・resnet18）は、利用者が配布元に確認する前提（画面の注記） |
 | 第三者のミラー（`ManyOtherFunctions/face-parse-bisent`・`XXXXRT/GPT-SoVITS-Pretrained`）が将来も残ること | 保証できない。消えたら `ErrSourceGone`（原本の場所つき）で失敗する |
+
+## 13. MuseTalk 1.5 のランタイム（Issue #921）
+
+親 Issue #912 の決定事項 1（B）: MuseTalk 1.5 の実行環境（Python 環境とプロセス）を、mam が GPT-SoVITS・ComfyUI と同じように、自動で導入・起動・停止・状態表示する。**ComfyUI のカスタムノードは使わない**（古いものが多い。§1）。MuseTalk の公式の推論スクリプト（`scripts/inference.py`）と同じ手順を、mam が同梱する薄い HTTP ラッパーから 1 度だけ読み込んで呼ぶ。Windows x64 ＋ NVIDIA だけが自動導入の対象（§13.5）。重み（約 6 GB）は §12.7 のカタログで、環境の導入と同じジョブの最後に取得・検証する（§12.3）。
+
+### 13.1 実行環境の作り方（決定と理由）
+
+**決定**: 公式の手順（README の Installation: Python 3.10・PyTorch 2.0.1 + CUDA 11.8・`mmcv==2.0.1`・`mmdet==3.1.0`・`mmpose==1.1.0` ほか）と**同じ版**を、公式の配布先から**ファイルごとに固定の URL・SHA-256・サイズ**で取得し、**mam 自身が展開して組み立てる**。`pip`・`setup.py`・任意のコードは実行しない（実行時にどこにも取りに行かない）。部品は 84 個（`runtimes/musetalk.json` の `variants.nvidia.parts`）:
+
+| 部品 | 数 | 取得元（固定） | 置き場所（`env\` の下） |
+|---|---|---|---|
+| Python 3.10.11 の Windows 用の組み込み版 | 1 | `https://www.python.org/ftp/python/3.10.11/python-3.10.11-embed-amd64.zip`（SHA-256 は python.org の sigstore の署名が指すダイジェストと一致） | `python\` |
+| MuseTalk のソース | 1 | `https://github.com/TMElyralab/MuseTalk/archive/0a89dec45a0192b824e3cf4daf96c239440c5ed8.zip`（コミット固定。`github.com` は `codeload.github.com` へ 302） | `env\` の直下（先頭の `MuseTalk-<コミット>/` を外す） |
+| PyTorch 2.0.1+cu118・torchvision 0.15.2+cu118 | 2 | `https://download.pytorch.org/whl/cu118/…`（SHA-256 は PyTorch の公式の索引の `#sha256=`） | `python\Lib\site-packages\` |
+| mmcv 2.0.1（torch 2.0.0 + cu118 向けの事前ビルド） | 1 | `https://download.openmmlab.com/mmcv/dist/cu118/torch2.0.0/mmcv-2.0.1-cp310-cp310-win_amd64.whl`（OpenMMLab の公式の索引にある。`mim install` が使うものと同じ） | 同上 |
+| その他の Python パッケージ（mmengine・mmdet・mmpose・transformers・diffusers・numpy・opencv-python・librosa ほか） | 79 | PyPI（`files.pythonhosted.org`）。SHA-256・サイズは PyPI の JSON API（`digests.sha256`・`size`） | 同上 |
+
+- **閉包の決め方**: Linux（Python 3.10）に同じ版の環境を作り（`torch==2.0.1`・`mmcv==2.0.1` ほかを公式の README のとおりに入れ、`mmpose` は `chumpy`（sdist のみで Windows でビルドが壊れる。使われない）を避けて `--no-deps`）、**実際の推論が import するものだけ**を、足りないものを足しながら決めた（`xtcocotools`・`pycocotools`・`json_tricks`・`munkres`・`shapely`・`terminaltables`・`setuptools==69.5.1`（`pkg_resources`）が足りなかった）。`pip freeze` の各版について、**Windows cp310 の wheel が PyPI にあること**を確かめて固定した（`tokenizers` は `cp310-none-win_amd64`、`opencv-python` は `cp37-abi3-win_amd64`、`colorama` は Windows だけ必要）。sdist しか無いものは閉包に残っていない。
+- **公式の `requirements.txt` から外したもの**: `tensorflow`・`tensorboard`（学習）、`gradio`（`app.py`）、`gdown`（重みの取得。mam は §12 で取得）、`imageio`・`moviepy`・`requests`（推論の経路が import しない）、`openmim`（mam が wheel を直接取る）。推論の経路は、これらが無い環境で動くことを確かめた（§13.7）。
+- **wheel の展開**（`extract.Wheel`）: pip の代わりに mam が zip として展開する。パッケージのファイルと `*.dist-info`（`importlib.metadata` が読む。transformers が版を調べる）を `site-packages` に置き、`*.data/purelib`・`platlib` は `site-packages` の直下へ、`*.data/scripts`・`headers`・`data` は**展開しない**（`fonttools`・`numba`・`sympy` だけが持つ。スクリプトの実行ファイルは使わない）。84 個の全部で、`..`・絶対パス・ドライブ・リンク・同じパスを 2 つの部品が書くことが無いこと（`extract.ErrExists` で拒否する）を確かめた。
+- **展開の上限**: 各部品の `extracted_size`（実物を測った値）。それより大きいアーカイブ（展開爆弾・違うファイル）は 1 バイトも書く前に断る（`extract.ErrTooLarge`）。部品の `size`・`extracted_size` の合計が変種の値（2,887,125,530 B と 5,739,113,930 B）と一致することを検証する。
+- **組み込み Python の経路**: `python\python310._pth`（`build.files` の `lines`）を、`python310.zip`・`.`・`Lib/site-packages`・`..`（= `env\`。`musetalk` パッケージとラッパー）・`import site` に**置き換える**。組み込み版は環境変数を無視して、このファイルだけで `sys.path` を決める。
+- **ラッパー**: `catalog/data/overlays/mam_musetalk_{server,engine,common}.py`（mam に `embed` で同梱。ソースの `env\` 直下に書く）。部品の後に書くので、部品が同じ名前のファイルを持っていても mam のものになる。
+
+| 案 | 判断 |
+|---|---|
+| **固定した部品を mam が展開して組み立てる（採用）** | 取得物はすべてファイル単位の SHA-256 とサイズで検証され、実行時の `pip` の依存解決・sdist のビルド・任意のコード実行が無い。再現できる。Windows の `mmcv` は、OpenMMLab の公式の事前ビルドを使うのでコンパイラがいらない |
+| `pip install --require-hashes -r …`（固定の要件ファイル） | 取らない。`pip` を組み込み Python で動かす手間（get-pip・ビルドツール）と、sdist に落ちたときのビルドの失敗が残る。許可ホストも同じだけ広がる |
+| 展開済みの環境の 7z を HF に置いて配る | 取らない。mam が再配布することになる（オーナーの決定: 重みも環境も同梱・再配布しない）。Linux の開発環境で Windows の環境を作って検証できない |
+| Conda・uv で解決する | 取らない。実行時にネットワークと解決（コード）が要る |
+
+**GitHub のアーカイブのハッシュ**: `git archive` の zip は、GitHub の実装が変わると同じコミットでもバイト列が変わりうる（過去に一度起きた）。変わったときは SHA-256 の不一致で**導入が失敗する**（黙って別のものを使わない。「ダウンロードしたファイルの SHA-256 が一致しません」）。そのときはカタログの SHA-256 とサイズを更新する（コミットは同じなので中身は同じ）。未確認の保証として §13.8 に書く。
+
+### 13.2 取得元の許可ホストの変更（`fetch.PackageURL`）
+
+重みと ComfyUI のエンジンは、これまでどおり `fetch.AllowedURL`（`huggingface.co`・`hf.co`・`github.com`・`githubusercontent.com`）だけ。**環境の部品の取得だけ**は `fetch.PackageURL`（上に `python.org`・`pythonhosted.org`・`pytorch.org`・`openmmlab.com` を足す。サブドメインを含む。`download-r2.pytorch.org` は PyTorch の CDN）を使う。理由: Windows の PyTorch（CUDA）・mmcv の wheel は Hugging Face・GitHub に無く、PyPI・PyTorch・OpenMMLab の公式の配布先にしか無い。**ホストへの信頼ではなくハッシュで固定する**ので、許可の広がりは影響が小さい: ① 全部品が SHA-256 とサイズの固定つき（不一致は `.part` を捨てて失敗）、② `parts.URLAllowed` の URL パターン（`files.pythonhosted.org/packages/…`・`download.pytorch.org/whl/cu<N>/…whl`・`download.openmmlab.com/mmcv/dist/cu<N>/torch<N>/…whl`・python.org の組み込み版・GitHub の 40 桁のコミットの zip）に合わない URL はカタログの検証が拒否する（ドメインより狭い）、③ `safefetch`（ローカルのネットワークのアドレスに繋がない）とリダイレクトごとの再検査はそのまま。リダイレクト先は、`github.com` が `codeload.github.com`（許可済み）へ 302 するだけで、PyPI・PyTorch・OpenMMLab・python.org は直接配信（`Accept-Ranges: bytes` と `Range` の 206 を確かめた）。`Range` の再開・SHA-256・サイズの検証は §5.1・§12.3 と同じ `fetch.Download`。
+
+### 13.3 プロセスの形と口パクの入口
+
+**形**: MuseTalk には常駐のサーバーが無いので、**mam が同梱する薄い HTTP ラッパー**（`mam_musetalk_server.py`。標準ライブラリの `http.server` だけ）を、MuseTalk の Python モジュールと同じプロセスで動かし、**モデルを 1 度だけ読み込む**（案 (a)。(b) の 1 クリップごとの子プロセスは、毎回 Whisper・VAE・UNet・DWPose・S3FD を読み込み直すので、数十秒の無駄が毎回かかる）。待ち受けは `127.0.0.1` だけ（ラッパーが他のホストを拒否し、カタログの検証も `0.0.0.0` を拒否する）。**ポートが開くのはモデルの読み込みの後**なので、`GET /health` が 200 なら使える。起動・停止・状態は §5.2 と同じ（`stopped` / `starting` / `running` / `failed`。起動の失敗はログ末尾つきの `failed`、予期しない終了も `failed`）。
+
+**起動**: `env\python\python.exe -I -u -X utf8 mam_musetalk_server.py --host 127.0.0.1 --port <空きポート> --use-float16`（作業ディレクトリ `env\`。MuseTalk の相対パス `./models/…`・`./musetalk/utils/dwpose/…` がそこで解決される）。fp16 は、公式が 4 GB の GPU で動かした設定（§13.5）。環境は §5.2 と同じ（オフライン設定・キャッシュと一時ファイルは `localai\musetalk` の中・`PATH` の先頭に `env\python`）。
+
+**認証**: 起動のたびに mam が**ランダムなトークン**（24 バイト）を作り、環境変数 `MAM_RUNTIME_TOKEN`（カタログの `launch.token_env`）で子に渡す。サーバーは**生成の要求**にヘッダー `X-Mam-Token` を要求する（Web ページは送れない。再起動で古いトークンは無効）。`Host` が `127.0.0.1:<port>`・`localhost:<port>` でない要求は全部拒否する（DNS リバインディング）。`/health` はトークンなし（mam の起動確認がトークンを持たず、何も書かない）。トークンはログにも画面にも出さない。
+
+**入口**（`modelmgr/lipsync`。呼び出し側は `localruntime.Service.LipSync(ctx, lipsync.Request)`。#923 の Audio Director の口パクプロバイダーが呼ぶ）:
+
+| | 内容 |
+|---|---|
+| 要求 `lipsync.Request` | `video_path`（動画 mp4・mov・avi・mkv・flv か、顔が 1 つ写った画像 jpg・png・bmp・tif）・`audio_path`（ffmpeg が読める音声）・`output_path`（`.mp4`。入力と別）・`ffmpeg_path`（mam が探した ffmpeg。[../ffmpeg-lookup.md](../ffmpeg-lookup.md) の結果を呼び出し側が渡す。ランタイムは ffmpeg を持たない）・`fps`（画像のときだけ。省略で 25）。パスは**全部絶対パスでこの PC のもの**（動画のバイト列を HTTP で送らない）。`Request.Check()` が、サーバーと同じ規則（絶対パス・`.mp4`・出力が入力でない・fps 1〜60）を、ランタイムを起動する前に確かめる |
+| 応答 `lipsync.Response` | `output_path`・`frames`・`fps`・`duration_sec`（出力の長さ）・`elapsed_sec`（生成にかかった時間）。出力は H.264（yuv420p・crf 18）＋ AAC の mp4 で、音声の長さに揃える |
+| エラー `*lipsync.Error` | `code`（下表）・`status`（HTTP）・`message`（利用者向けの日本語の文。そのまま表示してよい）。`errors.Is` は `lipsync.Err…` に一致する |
+| 起動前の拒否（`LipSync` が生成の前に返す） | `*SupportError`（macOS・非 NVIDIA・VRAM 不足・RTX 50。理由＋ Sync Labs の案内）・`ErrNotInstalled`・`ErrBusy`（導入中）・`*WeightsError`（重みが不足）。どれもサーバーを起動しない |
+| 取りこぼし | サーバーが途中で止まったら `ErrUnreachable`（「…のサーバーが応答しません（途中で止まった可能性があります。ログを確かめて…）」）。呼び出し側の `ctx` の取り消しは待ちを終えるだけ（サーバーは始めた生成を続ける） |
+
+| `code` | HTTP | 意味 | `errors.Is` |
+|---|---|---|---|
+| `bad_request` | 400 | フィールドが無い・正しくない、動画を読めない | `ErrBadRequest` |
+| `forbidden` | 403 | トークンか Host が違う | `ErrForbidden` |
+| `input_not_found` | 404 | 動画・音声・ffmpeg のファイルが無い | `ErrInputNotFound` |
+| `busy` | 409 | 別の生成が動いている（サーバー側の保険。`Service.LipSync` は自分で 1 件ずつ順番を待つ） | `ErrBusy` |
+| `too_large` | 413 | 動画のフレームがメモリ（6 GB）に収まらない | `ErrTooLarge` |
+| `no_face` | 422 | 動画から顔を見つけられない | `ErrNoFace` |
+| `ffmpeg_failed` | 422 | ffmpeg が入力を読めない・出力を書けない（末尾 3 行を含む） | `ErrFFmpegFailed` |
+| `out_of_memory` | 503 | GPU のビデオメモリが足りない（`torch.cuda.OutOfMemoryError`。キャッシュを解放してサーバーは動き続ける） | `ErrOutOfMemory` |
+| `internal` | 500 | それ以外（例外の種類とメッセージつき。未知のコード・本文が JSON でない応答も、これに落とす） | `ErrInternal` |
+
+**同時実行**: GPU は 1 つなので、1 つのサーバーにつき生成は 1 件ずつ。`Service.LipSync` は 1 件ずつ順番に実行し（待っている呼び出しは自分の `ctx` で諦められる）、サーバーも `busy` で 2 件目を断る。
+
+**生成の手順**（`mam_musetalk_engine.py`。`scripts/inference.py`（MIT）の v1.5 の既定値どおり）: ffmpeg で動画をフレームの PNG に分解 → 音声を 16 kHz のモノラルに変換 → Whisper の特徴 → DWPose＋S3FD で顔の位置を取り、顔が写らないフレームは外す（全部で 0 なら `no_face`）→ VAE で潜在変数 → UNet でバッチ（8）ごとに口元を生成 → 顔のパース（`jaw` モード・頬幅 90）で元のフレームに貼り戻す → ffmpeg で音声つきの mp4 にする。作業ファイルは一時ディレクトリに作り、成功も失敗も消す。
+
+### 13.4 重みの結び付けと face-parse-bisent の方針
+
+重みと依存ファイルは §12.7 のカタログ（12 件、すべて必須）。`dest` は MuseTalk の既定のパスで、環境ディレクトリ（= MuseTalk のリポジトリの根）の下: `models/musetalkV15/{unet.pth,musetalk.json}`・`models/sd-vae/…`・`models/whisper/…`・`models/dwpose/dw-ll_ucoco_384.pth`・`models/syncnet/latentsync_syncnet.pt`・`models/face-parse-bisent/{79999_iter.pth,resnet18-5c106cde.pth}`・`musetalk/utils/face_detection/detection/sfd/s3fd.pth`。MuseTalk 1.0 の重み（`models/musetalk/…`）は **v1.5 の推論が読まない**（Linux で、それが無い環境で動くことを確かめた）ので入れない。SyncNet（`latentsync_syncnet.pt`）は、公式の `download_weights` が取得し、推論のコード（`scripts/inference.py` から import される範囲）は読まない（学習の `musetalk/models/syncnet.py` だけが使う）が、オーナーの決定事項 3 が挙げているので、必須のまま検証・取得する（約 1.5 GB）。
+
+**face-parse-bisent（オーナー指定: 方針を spec と PR 本文に書く）**: 原本は `zllrunning/face-parsing.PyTorch` の README が案内する Google Drive（`https://drive.google.com/open?id=154JgKpzCPW82qINcVieuPH3fZ2e0P812`）のファイルだけで、固定 URL も SHA-256 も無い。**方針: Hugging Face の第三者のミラー `ManyOtherFunctions/face-parse-bisent` のコミット固定（`0073b233a5a3c4b1377d4dbf49245017938a72b5`）のファイルを固定 URL として使い、SHA-256 は原本のファイルのものと一致することを確かめて固定する。mam 自身は再配布しない**（`source_note` に原本の場所と確かめた日付を書く。§12.1）。ミラーが消えたら `ErrSourceGone`（原本の場所つきのメッセージ）で失敗し、別の同一ハッシュのコピー（`gaga2210`・`n0x1103`・`vivym`・`leonelhs`）に URL を差し替えて、SHA-256 の一致を確かめ直す。
+
+| ファイル | 原本から取得して計算した SHA-256（2026-11-01） | サイズ | ミラー（カタログ）の SHA-256 | 一致 |
+|---|---|---|---|---|
+| `79999_iter.pth` | Google Drive の `uc?export=download&id=154JgKpzCPW82qINcVieuPH3fZ2e0P812`（応答のファイル名 `79999_iter.pth`）から取得: `468e13ca13a9b43cc0881a9f99083a430e9c0a38abd935431d1c28ee94b26567` | 53,289,463 | `468e13ca…6567` | 一致 |
+| `resnet18-5c106cde.pth` | `https://download.pytorch.org/models/resnet18-5c106cde.pth` から取得: `5c106cde386e87d4033832f2996f5493238eda96ccf559d1d62760c4de0613f8`（torchvision の慣習の、ファイル名の `5c106cde` が SHA-256 の先頭 8 桁と一致） | 46,827,520 | `5c106cde…13f8` | 一致 |
+
+`resnet18` の原本（`download.pytorch.org`）は、**環境の部品の許可ホスト（§13.2）には入るが、重みの取得には使わない**: 重みのカタログの検証は Hugging Face のコミット固定の URL だけを許す（§12.2。重みの許可ホストは増やさない）ので、同じバイトの Hugging Face のミラーを固定 URL にしている。
+
+### 13.5 対応環境の判定（MuseTalk）
+
+判定は §4 と同じ純関数。**Windows x64 ＋ NVIDIA の専用メモリ 4 GB 以上**、**RTX 50 シリーズ（Compute Capability 12.0 以上）は断る**（新しい `Support.Code = compute_cap`。カタログの `support.max_compute_cap` と `compute_cap_reason`）。理由: 環境は公式の PyTorch 2.0.1（CUDA 11.8）で、その wheel の対応する GPU の世代に Blackwell（sm_120）が無い（`torch.cuda.get_arch_list()` は sm_90 まで）ので、導入しても GPU にモデルを載せる時点で失敗する。GPT-SoVITS のような RTX 50 向けの別の変種は、公式の MuseTalk に無い（`mmcv==2.0.1` が PyTorch 2.0 向けのため）。断りの文には必ずクラウドの案内がつく: **「代わりに、クラウドの口パク（Sync Labs）を使ってください。」**（理由の文は画面・MCP・Audio Director が共有する）。
+
+| 条件 | `Code` | 理由（カタログの文の要旨） |
+|---|---|---|
+| macOS | `os` | 「macOS では MuseTalk 1.5 を自動導入できません。**公式の PyTorch 版は macOS（Apple Silicon）の GPU に対応しておらず、第三者の MLX 版（mlx-community/MuseTalk-1.5-q4）は mam の自動導入の対象にしていません。**mam が自動で導入するのは Windows + NVIDIA の GPU の組み合わせだけです」 |
+| Linux・その他の OS | `os` | 自動導入に対応していない |
+| 64 ビット x86 でない | `arch` | 同上 |
+| GPU を取得できない・NVIDIA がない（AMD・Intel） | `no_gpu`・`not_nvidia` | 同上（§4） |
+| NVIDIA の最大の専用メモリ < 4 GB | `low_vram` | 「{gpu} のビデオメモリは {vram_gb} GB で、MuseTalk 1.5 に必要な 4 GB に足りない」 |
+| Compute Capability ≥ 12.0（RTX 50） | `compute_cap` | 「{gpu} は NVIDIA の RTX 50 シリーズ（Blackwell）で、MuseTalk の公式の手順が使う PyTorch 2.0.1（CUDA 11.8）が対応していない」 |
+
+**VRAM の下限 4 GB は、公式の README の記載に基づく**（Gradio Demo の節: 「Windows の NVIDIA GeForce RTX 3050 Ti Laptop GPU、4GB VRAM で、fp16 で 8 秒の動画を約 5 分で生成」）。`vram.estimate=false`（出典あり）。ただし **mam 自身の実機での実測は無い**（§13.8）。出力の解像度・長さによっては 4 GB で足りず、そのときは `out_of_memory` でわかりやすい文を返す。**MLX 版の自動導入は実装しない**（オーナーの判断が要る別の事項）。**クラウドへの自動の切り替えはしない**（§10。利用者が設定で選ぶ。#924）。
+
+### 13.6 ライセンスの記録
+
+MuseTalk 本体（コード MIT・学習済みモデルは商用を含むどんな目的にも使える）は、README の原文（「The code of MuseTalk is released under the MIT License. There is no limitation for both academic and commercial usage.」「The trained model are available for any purpose, even commercially.」「Other open-source models used must comply with their license, such as whisper, ft-mse-vae, dwpose, S3FD, etc..」）を `license.summary` に引いた（コミット `0a89dec4` の README を 2026-11-01 に確認）。重みと依存ファイルの出典・ライセンス・商用利用の可否は §12.7（`unclear` の 4 件を画面で目立たせる。#920 の画面がそのまま MuseTalk のカードに出す）。環境の部品の Python パッケージ 82 個のライセンスは、各 wheel のメタデータの表記を `THIRD_PARTY_NOTICES.md`（「MuseTalk 1.5（利用者が取得する別プログラム）」）に一覧にした。**原文との突き合わせはしていない**（未確認。`torch` の CUDA 版の wheel が含む NVIDIA の DLL の条件、`opencv-python`・`soundfile`・`soxr` が含む LGPL のライブラリを明記）。mam はどれも同梱せず、再配布しない。
+
+### 13.7 テスト
+
+- 部品の組み立て・展開・拒否: `modelmgr/runtime/assemble_test.go`（偽の取得元に 4 つの部品（Python・ソース・wheel 2 つ）。展開の配置・`.data` の扱い・`._pth` の置き換え・SHA-256 不一致・展開爆弾（`ErrTooLarge`）・再開（ダウンロード済みの部品を取り直さない）・失敗しても既存の環境が残る）、`extract/zip_test.go`（`..`・絶対パス・ドライブ・上書き・取り消し）、`fetch/auth_test.go`（`PackageURL`）。
+- カタログ: `catalog/musetalktest/musetalk_test.go`・`catalog/parts/parts_test.go`（固定した URL・SHA-256・合計・URL パターン・検証の拒否 16 通り）。
+- 対応環境: `modelmgr/runtime/musetalk_support_test.go`（macOS・Linux・AMD・GPU なし・2 GB・RTX 50 を断り、Sync Labs の案内が付く）。
+- 起動・停止・状態・口パクの入口: `service/localruntime/musetalktest`（偽のホスト・**偽のプロセス＝テストバイナリ自身**が、ラッパーと同じ契約で応答する）。導入（部品＋重み）・遅延起動・トークンが通る/他のトークンは 403・`no_face`・`out_of_memory` の中継・起動前の拒否（未導入・重みが不足・macOS・RTX 50・VRAM 不足・不正な要求）・1 件ずつの実行（待つ呼び出しが自分の `ctx` で諦める）。入口の型: `modelmgr/lipsync`（偽のサーバー: 要求・トークン・全コードの対応・未知のコード・応答が壊れている・サーバーが無い・取り消し）。
+- **Python 側の契約**: `catalog/musetalktest/testdata/test_musetalk_server.py` を Go のテスト `TestMuseTalkServerHonoursTheClientContract` が実行する（偽のエンジン。トークン・Host・不正な要求 13 通り・各コードの HTTP ステータス・1 件ずつ・ffmpeg の失敗。Python 3 が無い環境ではスキップ）。
+- **実物の確認（Linux の CPU）**: 開発機で、公式の手順と同じ版の環境（PyTorch 2.0.1 の CPU 版・mmcv 2.0.1・mmdet 3.1.0・mmpose 1.1.0 ほか）に、**カタログの 12 件の重みを `dest` の位置に置き**（SHA-256・サイズはカタログと一致することを取得時に確かめた）、**ネットワークの無い名前空間（`unshare -rn`。ループバックだけ）**で、MuseTalk のソース（コミット `0a89dec4`）と `mam_musetalk_server.py` を起動し、`/health` が 200 になってから `POST /v1/lipsync` に 1 秒の動画（576×768・25 fps）と 1.2 秒の音声を送った。**1.2 秒・30 フレーム・H.264＋AAC の mp4 が返った**（約 95 秒。CPU）。ネットワークの無い環境で動いたので、推論の経路が実行時にどこにも取りに行かないことの確認にもなる（S3FD・ResNet-18・Whisper・VAE・DWPose はすべて `models/…` から読んだ）。84 個の部品は、実物を取得して SHA-256 が固定した値と一致すること、wheel の中のパスが安全なことを確かめ、実物の部品を `Installer.Install` に通して `env\` に組み立てた。
+
+### 13.8 未確認
+
+| 項目 | 状態 |
+|---|---|
+| **実物の Windows ＋ NVIDIA での導入（部品 2.9 GB の取得と約 5.7 GB の展開）・起動・口パクの生成** | **未確認**。この開発環境は Linux で、Windows・NVIDIA の GPU が無い。上の §13.7 の Linux の CPU の確認と、Go 側の偽のホスト・偽のプロセスのテストだけ。**実際の口パクの生成の品質・速度も未確認**（日本語の音声での出来は、親 Issue のメモのとおり実機で聞き比べる） |
+| 組み込み Python（`python310._pth`）で、`-I` ＋ 作業ディレクトリ `env\` ＋ `site-packages` の `.pth`（setuptools の `distutils-precedence.pth`）が期待どおりに効くこと、`import torch` が CUDA の DLL を見つけること（Visual C++ 再頒布可能パッケージが要る） | **未確認**（組み込み版の ZIP の中身と `._pth` の書式は実物を確かめた。Windows で実行していない。Python のドキュメントの「Embeddable package」の仕様どおりに書いた） |
+| `<exe のディレクトリ>\localai\musetalk\env\python\Lib\site-packages\…` の深いパスが、Windows の 260 文字の上限に当たること（Python の import は長いパス名に弱い） | **未確認**。mam.exe を浅いフォルダに置けば避けられる（GPT-SoVITS・ComfyUI も同じ。§11） |
+| ラッパーが、顔が写らないフレームを外した動画に音声を重ねる（公式の `scripts/inference.py` は、そのフレームの出力を飛ばして、動画がそこで終わる） | 実装の判断（§13.3）。顔が全フレームで写る動画だけ、Linux で確かめた |
+| fp16（`--use-float16`）・CUDA での動作、VRAM 4 GB での動作（公式の README の記載があるだけ） | **未確認**（Linux の確認は fp32・CPU） |
+| Windows の cp310 wheel を Linux の同じ版で代用して決めた閉包が、Windows でも完全であること | **未確認**。Python のコードはプラットフォームに依存しない前提（`colorama` を足した）。`import` が足りなければ、起動の失敗がログ末尾つきの `failed` で出る |
+| GitHub の zip アーカイブのバイト列が将来も同じであること（§13.1）、PyPI・PyTorch・OpenMMLab・python.org の URL が将来も残ること | 保証できない。変わったら導入は SHA-256 の不一致・404 で失敗する（`ErrSourceGone` と同様に、旧い URL を差し替える更新が要る） |
+| 82 個の Python パッケージ・Python 本体・NVIDIA の DLL のライセンスの原文との突き合わせ | **未確認**（`THIRD_PARTY_NOTICES.md`） |
+| `ffmpeg` の libx264・aac を持つビルド（mam が導入する ffmpeg は GPL ビルドで持つが、利用者が設定で指す ffmpeg は未確認） | 出力の書き込みに失敗したら `ffmpeg_failed`（ffmpeg の末尾のメッセージつき） |

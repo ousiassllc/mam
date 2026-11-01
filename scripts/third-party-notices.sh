@@ -7,6 +7,7 @@
 #     metafile, like static/build.mjs bundles it) and tailwindcss (its CSS is part of the generated app.css)
 #   - material copied into the source tree: the Lucide icons of backend/internal/web/atoms/icon.templ, with the
 #     license text of the release they were copied from (atoms/icons/LICENSE; the release is named in icon.templ)
+#   - scripts/third-party-notices-musetalk.md: the MuseTalk section (text that is written by hand)
 # Usage: scripts/third-party-notices.sh [OUTPUT]      OUTPUT defaults to THIRD_PARTY_NOTICES.md in the repository root
 # Needs: go, node, and `npm ci --prefix static` done. Run it again when go.mod or static/package-lock.json changes.
 # Fails when a component has no license file, so a dependency can never be left out silently.
@@ -139,7 +140,7 @@ MAM の Windows 版に含まれるサードパーティのソフトウェアと�
 - ソースにコピーして同梱した素材: アイコンの Lucide（ISC。Feather 由来のアイコンの MIT を含む。取り込んだ版の `LICENSE` の全文）
 - インストーラーに同梱する Microsoft の WebView2 ブートストラッパー（下の節）
 
-開発用のツール・テスト用のパッケージ（`devDependencies` など）は配布物に入らないので載せていません。ffmpeg・ComfyUI・GPT-SoVITS・Codex は同梱しません（利用者が取得する別プログラムとして、下の節に載せています）。
+開発用のツール・テスト用のパッケージ（`devDependencies` など）は配布物に入らないので載せていません。ffmpeg・ComfyUI・GPT-SoVITS・MuseTalk・Codex は同梱しません（利用者が取得する別プログラムとして、下の節に載せています）。
 
 ## 一覧
 
@@ -193,6 +194,10 @@ MAM のローカルランタイム管理（Issue #918）は、利用者の操作
 - GPT-SoVITS のライセンス（MIT）とソースコード: <https://github.com/RVC-Boss/GPT-SoVITS/tree/20250606v2pro>（ライセンス文は <https://github.com/RVC-Boss/GPT-SoVITS/blob/20250606v2pro/LICENSE>。取得するパッケージは <https://huggingface.co/lj1995/GPT-SoVITS-windows-package> のファイルで、SHA-256 と大きさを MAM のカタログに固定して検証します）。
 - 統合パッケージには、GPT-SoVITS のコードのほかに、Python の実行環境・PyTorch・その他の多数のパッケージと、**学習済みモデルの重み**が入っています。**それぞれのライセンスと商用利用の可否は、一覧を調べていません（未確認）**。取得したものを再配布するときや商用に使うときは、取得した `localai\gpt-sovits\env` の中の各ライセンスと、重みの配布元（<https://huggingface.co/lj1995/GPT-SoVITS>）の記載を確認してください。重みごとの出典とライセンスは、次の節に載せ、モデルマネージャーの画面にも表示します。
 
+EOF
+  # The MuseTalk section is a file of its own: it lists the Python packages of the environment mam assembles (a long table).
+  cat scripts/third-party-notices-musetalk.md
+  cat <<'EOF'
 ## GPT-SoVITS と MuseTalk の重み・依存ファイル（利用者が取得するもの）
 
 MAM のローカルランタイム管理（Issue #920）は、上の GPT-SoVITS の統合パッケージに入っている重みと依存ファイル、および MuseTalk 1.5 が使う重みと依存ファイルを、固定の URL（Hugging Face のコミット固定）と SHA-256 で検証します。**MAM はこれらを同梱せず再配布しません**。足りない・壊れたファイルだけを、利用者の操作で取得元から取得します。出典・ライセンス・商用利用の可否はモデルマネージャーの画面（「ローカル音声・口パク」）と MCP（`list_local_runtimes`）にも表示します。固定の一覧はソースの `backend/internal/modelmgr/catalog/data/assets/` にあり、意味は `spec/architecture/model-manager/local-runtime.md` の §12 です。**法的な助言ではありません**。再配布や商用利用の前に、配布元の条件を確認してください。

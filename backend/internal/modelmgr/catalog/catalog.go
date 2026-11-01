@@ -1,6 +1,6 @@
 // Package catalog is the list of the local models the model manager can install, and the pinned ComfyUI
 // engine it downloads (spec/architecture/model-manager/model-manager.md §3.1, §4). It is data embedded in the binary
-// (data/engine.json, data/models/*.json, data/runtimes/*.json): every URL is pinned to a commit or a release tag and every file has
+// (data/engine.json, data/models/*.json, data/runtimes/*.json, data/assets/*.json, data/overlays/*): every URL is pinned to a commit or a release tag and every file has
 // its SHA-256 and size, so a download is checked against what was reviewed when the catalog was written
 // (the idea of scripts/fetch-face-models.sh). A new model or a new engine version is a new mam release.
 package catalog
@@ -169,6 +169,9 @@ type Catalog struct {
 	Models       []Model
 	Runtimes     []Runtime
 	ResourceSets []ResourceSet
+	// Overlays are the files of data/overlays by name: the scripts mam writes into the environment of an assembled runtime (the
+	// vendor ships no server of its own). They are compiled into mam, so they need no pin.
+	Overlays map[string][]byte
 }
 
 // Model returns the model with the ID.
@@ -242,6 +245,9 @@ func Load(fsys fs.FS) (*Catalog, error) {
 		c.ResourceSets = append(c.ResourceSets, a)
 	}
 	sortResourceSets(c.ResourceSets)
+	if c.Overlays, err = loadOverlays(fsys); err != nil {
+		return nil, err
+	}
 	// Standard models first, each tier in the order of the media (images, then videos) and the ID.
 	rank := func(m Model) string {
 		if m.Tier == TierAdvanced {

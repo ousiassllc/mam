@@ -13,7 +13,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
 )
 
-// LocalAIDirName is the directory next to the executable that holds the local runtimes (GPT-SoVITS, later MuseTalk), one
+// LocalAIDirName is the directory next to the executable that holds the local runtimes (GPT-SoVITS, MuseTalk), one
 // directory per runtime id (spec/architecture/model-manager/local-runtime.md §2). Like the comfyui directory it is the only place a runtime
 // persists in, so that the uninstaller (which removes the install directory) leaves nothing of it behind.
 const LocalAIDirName = "localai"

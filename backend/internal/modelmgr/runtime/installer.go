@@ -24,6 +24,8 @@ type Installer struct {
 	AssetSet catalog.ResourceSet
 	Store    *store.RuntimeStore
 	Extract  extract.Extractor
+	// Overlays are the scripts compiled into mam that an assembled runtime's build writes into the environment (catalog.Catalog.Overlays).
+	Overlays map[string][]byte
 	// Fetch are the options of the download (client, URL check; Progress is set per call).
 	Fetch fetch.Options
 	// FreeBytes reports the free space at a path (nil: fsutil.FreeBytes).
@@ -88,23 +90,44 @@ func (i *Installer) Status() Status {
 	return st
 }
 
-// archivePath is where the archive of a build is downloaded to.
-func (i *Installer) archivePath(a catalog.RuntimeVariant) string {
-	return filepath.Join(i.Layout.DownloadsDir(), path.Base(a.URL))
+// packageFile is a file of the package that is downloaded: the vendor's archive, or a part of an assembled build.
+type packageFile struct {
+	Path   string
+	URL    string
+	SHA256 string
+	Size   int64
 }
 
-// NeedBytes is the free space an install of the build needs: the part of the archive that is not downloaded yet, and the extracted
-// files (which exist next to the archive until it is deleted).
+// packageFiles are the files the install of a build downloads, in the order they are extracted.
+func (i *Installer) packageFiles(a catalog.RuntimeVariant) []packageFile {
+	if !a.Assembled() {
+		return []packageFile{{Path: filepath.Join(i.Layout.DownloadsDir(), path.Base(a.URL)), URL: a.URL, SHA256: a.SHA256, Size: a.Size}}
+	}
+	files := make([]packageFile, 0, len(a.Parts))
+	for _, p := range a.Parts {
+		files = append(files, packageFile{Path: filepath.Join(i.Layout.DownloadsDir(), p.Name+".zip"), URL: p.URL, SHA256: p.SHA256, Size: p.Size})
+	}
+	return files
+}
+
+// NeedBytes is the free space an install of the build needs: the part of the package that is not downloaded yet, and the extracted
+// files (which exist next to the downloads until they are deleted).
 func (i *Installer) NeedBytes(v catalog.Variant) (int64, error) {
 	a, ok := i.Runtime.Variants[v]
 	if !ok {
 		return 0, ErrVariant
 	}
-	have := int64(0)
-	if st, err := os.Stat(fetch.PartPath(i.archivePath(a))); err == nil {
-		have = min(st.Size(), a.Size)
+	need := a.ExtractedSize
+	for _, f := range i.packageFiles(a) {
+		have := int64(0)
+		if st, err := os.Stat(f.Path); err == nil && st.Size() == f.Size {
+			have = f.Size // a part that was downloaded and kept by an interrupted install (it is verified again before it is used)
+		} else if st, err := os.Stat(fetch.PartPath(f.Path)); err == nil {
+			have = min(st.Size(), f.Size)
+		}
+		need += f.Size - have
 	}
-	return a.Size - have + a.ExtractedSize, nil
+	return need, nil
 }
 
 // CheckSpace returns a *fetch.NoSpaceError when the disk of the runtime directory cannot hold the install.
@@ -128,8 +151,8 @@ func (i *Installer) CheckSpace(v catalog.Variant) error {
 }
 
 // Install downloads, verifies and extracts the build, then swaps it in for the installed environment. A repeated call after an
-// interruption resumes the download. On a failure the partial extraction is removed (the archive and its part file are kept for a
-// resume, unless the checksum was wrong).
+// interruption resumes the download (a file that was downloaded whole is kept). On a failure the partial extraction is removed (the
+// downloads are kept for a resume, unless the checksum was wrong). A build of parts is put together by mam itself (assemble).
 func (i *Installer) Install(ctx context.Context, v catalog.Variant, progress Progress) error {
 	a, ok := i.Runtime.Variants[v]
 	if !ok {
@@ -141,23 +164,26 @@ func (i *Installer) Install(ctx context.Context, v catalog.Variant, progress Pro
 	if err := i.CheckSpace(v); err != nil {
 		return err
 	}
-	archive := i.archivePath(a)
+	files := i.packageFiles(a)
 	opts := i.Fetch
-	opts.Progress = func(done, total int64) {
-		if progress != nil {
-			progress(PhaseDownload, done, total)
-		}
+	if opts.CheckURL == nil && a.Assembled() {
+		opts.CheckURL = fetch.PackageURL // the parts of an assembled runtime come from more hosts than the weights (spec §13.2)
 	}
-	if err := fetch.Download(ctx, archive, fetch.Source{URL: a.URL, SHA256: a.SHA256, Size: a.Size}, opts); err != nil {
+	if err := download(ctx, files, a.Size, opts, progress); err != nil {
 		return err
 	}
 	tmp := i.Layout.EnvNewDir()
 	_ = os.RemoveAll(tmp)
-	err := i.Extract.Extract(ctx, archive, tmp, i.Runtime.ArchiveRoot, func(done, total int64) {
-		if progress != nil {
-			progress(PhaseExtract, done, total)
-		}
-	})
+	var err error
+	if a.Assembled() {
+		err = i.assemble(ctx, a, files, tmp, progress)
+	} else {
+		err = i.Extract.Extract(ctx, files[0].Path, tmp, i.Runtime.ArchiveRoot, func(done, total int64) {
+			if progress != nil {
+				progress(PhaseExtract, done, total)
+			}
+		})
+	}
 	if err == nil {
 		err = i.swap(tmp)
 	}
@@ -170,9 +196,29 @@ func (i *Installer) Install(ctx context.Context, v catalog.Variant, progress Pro
 	}); err != nil {
 		return err
 	}
-	_ = os.Remove(archive)
+	for _, f := range files {
+		_ = os.Remove(f.Path)
+	}
 	_ = os.Remove(i.Layout.DownloadsDir()) // only when empty
 	return i.forgetAssets()                // the files of the new environment are not the ones that were verified
+}
+
+// download fetches the files one after the other (each one resumed from its .part file and checked against its SHA-256 and size),
+// reporting the bytes of all of them against total. A file that is there and verified is not fetched again.
+func download(ctx context.Context, files []packageFile, total int64, opts fetch.Options, progress Progress) error {
+	var base int64
+	for _, f := range files {
+		opts.Progress = func(done, _ int64) {
+			if progress != nil {
+				progress(PhaseDownload, base+done, total)
+			}
+		}
+		if err := fetch.Download(ctx, f.Path, fetch.Source{URL: f.URL, SHA256: f.SHA256, Size: f.Size}, opts); err != nil {
+			return err
+		}
+		base += f.Size
+	}
+	return nil
 }
 
 // swap makes tmp the environment; the previous one is removed once the new one is in place.

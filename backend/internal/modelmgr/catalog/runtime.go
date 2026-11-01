@@ -3,6 +3,8 @@ package catalog
 import (
 	"cmp"
 	"slices"
+
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/parts"
 )
 
 // Purpose says what a local runtime makes: speech (TTS, voice cloning) or a lip-synced video. The runtime kind is data (data/runtimes/*.json),
@@ -18,12 +20,17 @@ const (
 // VariantNVIDIA50 is the extra build of a runtime for the newest NVIDIA generation (RTX 50 series, compute capability 12.0 and up).
 const VariantNVIDIA50 Variant = "nvidia50"
 
-// RuntimeVariant is a pinned archive of a runtime build. MinComputeCap is the NVIDIA compute capability the build is for: the build with
-// the highest MinComputeCap that the GPU reaches is installed (0: the build for every other supported GPU).
+// RuntimeVariant is a pinned build of a runtime. MinComputeCap is the NVIDIA compute capability the build is for: the build with
+// the highest MinComputeCap that the GPU reaches is installed (0: the build for every other supported GPU). A build is either one
+// archive (Asset: the vendor's package, a 7z) or Parts that mam puts together (Asset then holds the label and the sums of the parts).
 type RuntimeVariant struct {
 	Asset
-	MinComputeCap float64 `json:"min_compute_cap,omitempty"`
+	MinComputeCap float64      `json:"min_compute_cap,omitempty"`
+	Parts         []parts.Part `json:"parts,omitempty"`
 }
+
+// Assembled reports whether the build is put together from parts (not one archive).
+func (v RuntimeVariant) Assembled() bool { return len(v.Parts) > 0 }
 
 // RuntimeLaunch is how the installed runtime is started: the interpreter and the arguments (relative to the extracted directory), the
 // path that answers once the server is up, and the environment that keeps it from fetching anything by itself.
@@ -42,6 +49,9 @@ type RuntimeLaunch struct {
 	Env []string `json:"env"`
 	// StartTimeoutSec bounds the wait for the server to answer (the first start loads the models).
 	StartTimeoutSec int `json:"start_timeout_sec"`
+	// TokenEnv names the environment variable that carries the random token of this start ("" for none): a server that writes files
+	// on request answers only the caller that has it (a web page cannot send it).
+	TokenEnv string `json:"token_env,omitempty"`
 }
 
 // RuntimeSupport says where a runtime can be installed and, when it cannot, why (Japanese, shown by the screen, the MCP tools and the
@@ -58,6 +68,10 @@ type RuntimeSupport struct {
 	NoGPUReason     string `json:"no_gpu_reason"`
 	NotNVIDIAReason string `json:"not_nvidia_reason"`
 	LowVRAMReason   string `json:"low_vram_reason"`
+	// MaxComputeCap, when set, is the first NVIDIA compute capability the runtime does not support (its libraries are built for the
+	// older GPUs); ComputeCapReason says why (it names {gpu}). A GPU whose capability is unknown is not refused.
+	MaxComputeCap    float64 `json:"max_compute_cap,omitempty"`
+	ComputeCapReason string  `json:"compute_cap_reason,omitempty"`
 	// Fallback says what to do instead: the cloud provider that makes the same thing.
 	Fallback string `json:"fallback"`
 }
@@ -80,6 +94,8 @@ type Runtime struct {
 	VRAM    VRAM           `json:"vram"`
 	Support RuntimeSupport `json:"support"`
 	License License        `json:"license"`
+	// Build says how the parts of an assembled variant become the environment (nil when every variant is one archive).
+	Build *parts.Build `json:"build,omitempty"`
 	// Variants are the pinned builds by the GPU generation they are for.
 	Variants map[Variant]RuntimeVariant `json:"variants"`
 }

@@ -1,4 +1,4 @@
-// Package runtime installs and describes a local AI runtime (GPT-SoVITS; MuseTalk later) that mam starts and stops by itself, the
+// Package runtime installs and describes a local AI runtime (GPT-SoVITS, MuseTalk) that mam starts and stops by itself, the
 // same way as the bundled ComfyUI engine (spec/architecture/model-manager/local-runtime.md): Evaluate says whether this machine can
 // run it, Installer downloads the pinned package of the vendor from its official host, checks its SHA-256, extracts it next to
 // mam.exe and builds the launch of its server. mam ships none of the runtime's bytes. The kind of the runtime is catalog data
@@ -24,6 +24,9 @@ const (
 	CodeNoGPU     Code = "no_gpu"     // no display adapter could be listed
 	CodeNotNVIDIA Code = "not_nvidia" // there is no NVIDIA adapter (AMD, Intel)
 	CodeLowVRAM   Code = "low_vram"   // the NVIDIA adapter has less video memory than the runtime needs
+	// CodeComputeCap: the NVIDIA adapter is newer than the libraries of the runtime support (MuseTalk's PyTorch 2.0.1 + CUDA 11.8 do not
+	// know the RTX 50 series).
+	CodeComputeCap Code = "compute_cap"
 )
 
 // Platform is the OS and the CPU architecture mam runs on (runtime.GOOS and GOARCH; a test passes others).
@@ -69,6 +72,9 @@ func Evaluate(rt catalog.Runtime, p Platform, rep gpu.Report) Support {
 	best := bestNVIDIA(rep.Adapters)
 	if best == nil {
 		return refuse(CodeNotNVIDIA, s.NotNVIDIAReason)
+	}
+	if s.MaxComputeCap > 0 && best.ComputeCap >= s.MaxComputeCap {
+		return refuse(CodeComputeCap, strings.NewReplacer("{gpu}", best.Name).Replace(s.ComputeCapReason))
 	}
 	if best.VRAMBytes < uint64(rt.VRAM.MinGB)<<30 { //nolint:gosec // a positive, validated size
 		return refuse(CodeLowVRAM, strings.NewReplacer(

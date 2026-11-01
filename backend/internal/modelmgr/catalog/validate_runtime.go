@@ -5,6 +5,8 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/parts"
 )
 
 var (
@@ -23,20 +25,20 @@ func relativeSlashPath(p string) bool {
 		!slices.Contains(strings.Split(p, "/"), "..")
 }
 
-func validateRuntimes(rts []Runtime) []error {
+func validateRuntimes(c *Catalog) []error {
 	var errs []error
 	seen := map[string]bool{}
-	for _, r := range rts {
+	for _, r := range c.Runtimes {
 		if seen[r.ID] {
 			errs = append(errs, fmt.Errorf("runtime %s: duplicate id", r.ID))
 		}
 		seen[r.ID] = true
-		errs = append(errs, validateRuntime(r)...)
+		errs = append(errs, validateRuntime(c, r)...)
 	}
 	return errs
 }
 
-func validateRuntime(r Runtime) []error {
+func validateRuntime(c *Catalog, r Runtime) []error {
 	where := "runtime " + r.ID
 	var errs []error
 	switch {
@@ -46,14 +48,19 @@ func validateRuntime(r Runtime) []error {
 		errs = append(errs, fmt.Errorf("%s: purpose must be tts or lip_sync", where))
 	case r.Version == "" || !runtimeSourcePattern.MatchString(r.SourceURL):
 		errs = append(errs, fmt.Errorf("%s: version and a source_url at a GitHub tag or commit are required", where))
-	case !relativeSlashPath(r.ArchiveRoot):
+	case r.Build == nil && !relativeSlashPath(r.ArchiveRoot):
 		errs = append(errs, fmt.Errorf("%s: archive_root %q must be a relative slash path", where, r.ArchiveRoot))
+	case r.Build != nil && r.ArchiveRoot != "":
+		errs = append(errs, fmt.Errorf("%s: an assembled runtime has parts, not an archive_root", where))
 	case r.VRAM.MinGB <= 0 || strings.TrimSpace(r.VRAM.Source) == "":
 		errs = append(errs, fmt.Errorf("%s: vram needs min_gb and the source of the guideline", where))
 	}
 	errs = append(errs, validateLicense(where, r.License)...)
 	errs = append(errs, validateLaunch(where, r.Launch)...)
 	errs = append(errs, validateSupport(where, r.Support)...)
+	if r.Build != nil {
+		errs = append(errs, parts.CheckBuild(where, r.Build, c.Overlays)...)
+	}
 	return append(errs, validateRuntimeVariants(where, r)...)
 }
 
@@ -88,6 +95,9 @@ func validateSupport(where string, s RuntimeSupport) []error {
 	if s.OS == "" || s.Arch == "" || slices.ContainsFunc(reasons, func(t string) bool { return strings.TrimSpace(t) == "" }) {
 		errs = append(errs, fmt.Errorf("%s: support needs os, arch, the reasons (os_reasons.default too) and the fallback", where))
 	}
+	if (s.MaxComputeCap != 0 || s.ComputeCapReason != "") && (s.MaxComputeCap <= 0 || strings.TrimSpace(s.ComputeCapReason) == "") {
+		errs = append(errs, fmt.Errorf("%s: support max_compute_cap and compute_cap_reason go together", where))
+	}
 	if _, own := s.OSReasons[s.OS]; own {
 		errs = append(errs, fmt.Errorf("%s: support os_reasons must not give a reason for the supported OS %s", where, s.OS))
 	}
@@ -108,14 +118,14 @@ func validateRuntimeVariants(where string, r Runtime) []error {
 	for _, v := range r.VariantList() {
 		a := r.Variants[v]
 		vw := fmt.Sprintf("%s variant %s", where, v)
-		switch {
-		case !runtimeArchivePattern.MatchString(a.URL):
-			errs = append(errs, fmt.Errorf("%s: url must be https://huggingface.co/<repo>/resolve/<40-hex commit>/<name>.7z", vw))
-		case !sha256Pattern.MatchString(a.SHA256):
-			errs = append(errs, fmt.Errorf("%s: sha256 must be 64 lower-case hex digits", vw))
-		case a.Size <= 0 || a.ExtractedSize <= a.Size || a.Label == "":
-			errs = append(errs, fmt.Errorf("%s: size, extracted_size (larger) and label are required", vw))
-		case a.MinComputeCap < 0:
+		if a.Assembled() != (r.Build != nil) {
+			errs = append(errs, fmt.Errorf("%s: parts and the runtime's build go together", vw))
+		} else if a.Assembled() {
+			errs = append(errs, validateAssembled(vw, a)...)
+		} else {
+			errs = append(errs, validateArchiveVariant(vw, a)...)
+		}
+		if a.MinComputeCap < 0 {
 			errs = append(errs, fmt.Errorf("%s: min_compute_cap must not be negative", vw))
 		}
 		if a.MinComputeCap == 0 {
@@ -124,6 +134,29 @@ func validateRuntimeVariants(where string, r Runtime) []error {
 	}
 	if base != 1 {
 		errs = append(errs, fmt.Errorf("%s: exactly one variant (min_compute_cap 0) is for the GPUs without a variant of their own", where))
+	}
+	return errs
+}
+
+func validateArchiveVariant(vw string, a RuntimeVariant) []error {
+	switch {
+	case !runtimeArchivePattern.MatchString(a.URL):
+		return []error{fmt.Errorf("%s: url must be https://huggingface.co/<repo>/resolve/<40-hex commit>/<name>.7z", vw)}
+	case !sha256Pattern.MatchString(a.SHA256):
+		return []error{fmt.Errorf("%s: sha256 must be 64 lower-case hex digits", vw)}
+	case a.Size <= 0 || a.ExtractedSize <= a.Size || a.Label == "":
+		return []error{fmt.Errorf("%s: size, extracted_size (larger) and label are required", vw)}
+	}
+	return nil
+}
+
+func validateAssembled(vw string, a RuntimeVariant) []error {
+	size, extracted, errs := parts.Check(vw, a.Parts)
+	if a.Label == "" || a.URL != "" || a.SHA256 != "" {
+		errs = append(errs, fmt.Errorf("%s: a build of parts has a label and no url or sha256 of its own", vw))
+	}
+	if a.Size != size || a.ExtractedSize != extracted {
+		errs = append(errs, fmt.Errorf("%s: size %d and extracted_size %d must be the sums of the parts (%d, %d)", vw, a.Size, a.ExtractedSize, size, extracted))
 	}
 	return errs
 }

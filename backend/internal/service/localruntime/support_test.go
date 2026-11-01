@@ -78,16 +78,21 @@ func TestAnInstalledRuntimeIsNotStartedWhenTheMachineNoLongerQualifies(t *testin
 	assert.Equal(t, "stopped", string(v.Process.State))
 }
 
-// The real catalog on this (Linux CI) host: GPT-SoVITS is refused, with the sentence of the catalog.
+// The real catalog on this (Linux CI) host: GPT-SoVITS and MuseTalk are refused, each with its own sentence of the catalog and the cloud
+// provider that makes the same thing.
 func TestTheRealCatalogRefusesThisHostUnlessItIsWindows(t *testing.T) {
 	svc, err := localruntime.New(localruntime.Deps{Root: t.TempDir(), Platform: rtm.Platform{OS: "darwin", Arch: "arm64"}, Queue: newRig(t).queue})
 	require.NoError(t, err)
 	list := svc.List(ctx())
-	require.Len(t, list, 1)
+	require.Len(t, list, 2)
 	assert.Equal(t, "gpt-sovits", list[0].ID)
 	assert.False(t, list[0].Support.Supported)
 	assert.Contains(t, list[0].Support.Message(), "macOS では GPT-SoVITS の自動導入に対応していません")
 	assert.Contains(t, list[0].Support.Message(), "ElevenLabs")
+	assert.Equal(t, "musetalk", list[1].ID)
+	assert.False(t, list[1].Support.Supported)
+	assert.Contains(t, list[1].Support.Message(), "macOS では MuseTalk 1.5 を自動導入できません")
+	assert.Contains(t, list[1].Support.Message(), "Sync Labs")
 }
 
 // The screen polls Status; a GPU detection runs nvidia-smi, so Status reuses a young report while Install and Start ask again.
