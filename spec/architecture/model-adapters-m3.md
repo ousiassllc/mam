@@ -88,9 +88,10 @@ M3 Issue #25 の仕様。§5 の全機能（TTS・音声クローン / Music / S
 | BGM（Music v2） | `elevenlabs-music` | `POST /v1/music`（`prompt`・`music_length_ms`・`model_id: music_v2`・`force_instrumental: true`）。長さは 3〜600 秒 | `elevenlabs` |
 | SE / Foley / Ambience | `elevenlabs-sfx` | `POST /v1/sound-generation`（`text`・`duration_seconds`・`loop`・`model_id: eleven_text_to_sound_v2`）。長さは 0.5〜30 秒 | `elevenlabs` |
 | Lip Sync | `sync-labs` | `POST https://api.sync.so/v2/generate`（multipart。`video`・`audio`・`model`）→ `GET /v2/generate/{id}` を `COMPLETED` までポーリングし、`outputUrl` をダウンロードする（ダウンロードには API キーを送らない） | `synclabs`（ヘッダー `x-api-key`） |
+| Lip Sync（ローカル） | `musetalk-1.5`（API 費用 0 円。台帳には 0 円で記録する） | mam が導入・起動する MuseTalk 1.5 の口パクの入口（`localruntime.Service.LipSync`。[local-runtime.md §13.3](model-manager/local-runtime.md)）への `POST /v1/lipsync`（§14.9）。実行ごとに `synclabs`（既定）と選ぶ | なし（`127.0.0.1` のみ。キーは使わない） |
 
 - 長さが範囲外の Music / SE はリクエストを送らずに拒否する。429 はレート制限として利用者に伝え、リトライしない。API キーはエラーメッセージに含めない。1 回の呼び出しの時間上限は、ElevenLabs の TTS・SFX・音声クローンが 60 秒、Music が 180 秒、Sync Labs の Lip Sync がアップロードからダウンロードまで 10 分（状態確認の間隔 2 秒）で、超えるとその呼び出しは失敗し、層は `skipped` に残る。生成した音声（TTS・Music・SFX の応答）は 32 MiB まで、Lip Sync の出力動画は 512 MiB までで、空または超えるものは失敗として扱う
-- 各ベンダーの呼び出しはインターフェース（`Synthesizer` / `LocalSynthesizer` / `Composer` / `SoundMaker` / `VoiceCloner` / `LipSyncer`）の裏にあり、`audiodirector.Providers` で束ねて `service.Deps.Audio` に渡す。未設定のプロバイダーの層は作らず、Audio Timeline の `skipped` に残す（偽の音は作らない）
+- 各ベンダーの呼び出しはインターフェース（`Synthesizer` / `LocalSynthesizer` / `Composer` / `SoundMaker` / `VoiceCloner` / `LipSyncer` / `LocalLipSyncer`）の裏にあり、`audiodirector.Providers` で束ねて `service.Deps.Audio` に渡す。未設定のプロバイダーの層は作らず、Audio Timeline の `skipped` に残す（偽の音は作らない）
 
 ### 14.2 Audio Timeline の生成（Scene Emotion と編集テンポ）
 
@@ -115,12 +116,15 @@ Dialogue と Narration は常に作る。
 
 MAX QUALITY のみ。話者付きの Dialogue の行（Narration は対象外）が入っているクリップごとに、そのクリップの Take の該当範囲を切り出した動画と、そのクリップの行を本来の時刻に置いた音声（ffmpeg で作る）を Sync Labs に渡し、返った動画を `<project_id>/audio/<edit_timeline_id>/<run>/lipsync-NN.mp4`（assets ディレクトリ直下からの相対パス）に保存して Audio Timeline の `lip_sync` に記録する。書き出し（Export）はそのクリップの映像を Take の代わりにこの動画から切り出す。行がクリップをまたぐ・どのクリップにも入らない場合と、失敗した場合は、そのクリップの Lip Sync だけ諦めて `skipped` に残す（音声は作る。Sync Labs が受け付けたあとの失敗は見積を台帳に残す。§14.5）。クリップに入っているかの判定には 0.1 秒の許容幅を持つ（行の開始がクリップの開始の 0.1 秒前以降でクリップの終わりより前、かつ行の終わりがクリップの終わりの 0.1 秒後までなら、そのクリップに入っていると見なす）。Sync Labs のキーがなければ、残りのクリップも試さない。
 
+**ローカルの Lip Sync（MuseTalk 1.5）**: 実行が `LipSyncProvider: local` を選んだときは、上の Sync Labs の代わりに MuseTalk 1.5（§14.9）が同じ入力（切り出した動画・行を置いた wav）から口元を合わせた mp4 を作り、**保存先・`lip_sync` の記録・Export の使い方は同じ**（モデル名だけ `musetalk-1.5`）。範囲（MAX QUALITY のみ・話者付きの Dialogue の行があるクリップだけ・行がクリップをまたぐクリップは諦める）も同じで、ローカルでも変えない。止まり方の規則: Sync Labs では API キーが無いと残りのクリップも試さないのと同じく、ローカルでは**ランタイム全体が使えない（未導入・重み未取得・この PC で動かない）ことを、最初のクリップの前に 1 回だけ確かめて `skipped`（`reason: error`・`prompt` は空）に 1 件だけ残し、どのクリップも試さない**（途中でそうなったときも、最初の失敗で残りを止める）。クリップごとの失敗（顔が見つからない・ビデオメモリ不足・時間切れ・空の応答・動画が大きすぎる・サーバーが応答しない）は、そのクリップだけ `skipped` に理由つきで残して次のクリップへ進む。音声は常に作る
+
 ### 14.5 コストと予算（F-22）
 
 - 料金はプロバイダー呼び出しごとの **見積** で `cost_ledger_entry`（`provider` は §14.1 の識別子）に記録する。単価の既定は TTS 1,000 文字あたり $0.30、Music 1 秒あたり $0.02、SFX 1 秒あたり $0.01、Lip Sync は Sync Labs の公開価格（25fps）の 1 秒あたり `lipsync-1.9.0-beta` $0.02・`lipsync-2` $0.04・`sync-3` $0.133。ベンダーの課金は plan・クレジットで実額と異なりうるため、予算管理のための見積である（`actual_cost` は空）。失敗した呼び出しは記録しない。ただし Sync Labs が受け付けたあとに失敗した Lip Sync（受理後の成果物欠如・ダウンロード失敗・ポーリング失敗・タイムアウト・キャンセル。`audiodirector.ChargedError`）は、課金が発生しているので、そのクリップは skipped にしつつ見積を台帳に残す（受理前の失敗と Sync Labs が FAILED / REJECTED を返した場合は記録しない）
 - Project の予算上限（`project.project_budget_ceiling`）から、台帳の合計（`COALESCE(actual_cost, estimated_cost)` の和）と、予約中の見積（同じ Project の他の音声の実行と、画像・動画の生成が確保している額）を引いた残りが、各呼び出しの見積に足りなければその呼び出しは行わず `skipped`（`reason: budget`）に残す。見積は呼び出しの前に予算上限に対して予約し（`CostRepository.Reserve`。残額の確認と予約は 1 つの不可分な操作）、台帳に記録したあと（呼び出しが課金されなかったときはその時点）で解放する。このため同じ Project で同時に動く実行が、合わせて予算上限を超えることはない。セリフの音声合成の見積は、実行の開始時に合計額を一度に予約し、全行を台帳に記録したあとで解放する。その合計が残りを超えるときは、何も呼ばずに 409（`BudgetError`）にする
 - Audio Timeline の `estimated_cost` にその実行の見積合計を保存する
 - ローカルの声（`gpt-sovits-tts`）は API 費用が 0 円で、1 行ごとに `estimated_cost = 0` の台帳エントリを残す（何で作った行かを追えるようにするため）。セリフの見積は 0 円なので予算の予約に加わらず、予算上限が小さくても止まらない（BGM などの層の予算判定は従来どおり）。`elevenlabs-tts` の単価・見積・記録は変えない
+- ローカルの Lip Sync（`musetalk-1.5`）も API 費用が 0 円で、**作れたクリップごとに** `estimated_cost = 0` の台帳エントリを残す（作れなかったクリップは記録しない。ローカルは「受理後の課金」が無いので `ChargedError` を使わない）。クリップの見積は 0 円なので予算の予約に加わらず、Sync Labs の見積（`sync-3` で 4 秒のクリップ約 $0.53）が残り予算に収まらないときでも止まらない。`sync-labs` の単価表・見積・記録は変えない
 
 ### 14.6 M1 の簡易音声からの移行と Branch ごとの版管理
 
@@ -156,3 +160,26 @@ Dialogue / Narration を、クラウドの ElevenLabs の代わりに、この P
   呼び出し元が自分でやめた（`context.Canceled`）ときは、ランタイムの失敗にしない。`service.audioError` は `UnavailableError`・`MissingVoiceError`（話者名つきの文）を `AIError`（HTTP 502）にする
 - **ledger とクリップ**: `AudioClip.Model` と `cost_ledger_entry.provider` は `gpt-sovits-tts`（§14.5）。ミックス・ラウドネスは ElevenLabs の行と同じ（wav も ffmpeg が読む）
 - **未確認（実機）**: 実物の GPT-SoVITS・Windows + NVIDIA での合成、日本語の質（ElevenLabs との聞き比べ）、書き起こしが空のときの声の再現度、CUDA の `out of memory` の実際のメッセージ文字列、1 行あたりの時間は**未確認**（この開発環境は Linux で、`api_v2.py` のソースの読み取りと、`httptest` の偽のサーバーでの確認だけをした）。日本語の質の数値は出さない。親 Issue #912 のとおり実装後に実機で聞き比べる
+
+### 14.9 ローカルの Lip Sync（MuseTalk 1.5）（Issue #923）
+
+Lip Sync を、クラウドの Sync Labs の代わりに、この PC の MuseTalk 1.5（[local-runtime.md](model-manager/local-runtime.md) §13 が導入・起動・停止を管理し、`modelmgr/lipsync` が口パクの入口を定める）で作る。**この節の範囲はプロバイダーの実装と、1 回の実行ごとの選択の入口まで**（§14.8 の声と同じ切り方）。設定画面での選択の保存、クラウドへのフォールバック、利用者向けの最終の文言は #924。
+
+- **選択の入口**: `audiodirector.Input.LipSyncProvider`（`synclabs` / `local`。未指定は `synclabs`＝従来どおり。型は `localvoice.LipSyncProvider`）。`service.EditorService.GenerateAudioWith(ctx, projectID, branchID, AudioOptions{VoiceProvider, LipSyncProvider})` が渡し、`GenerateAudio` は両方とも未指定の実行。知らない値は `ValidationError`（`lip_sync_provider`。声の `voice_provider` と同じ検査）で、課金も起動もしない（`Produce` に直接渡されたときは `localvoice.ErrUnknownLipSyncProvider`）。HTTP・MCP の引数にはまだ出さない（#924）。`audiodirector.Providers.LocalLipSync`（`LocalLipSyncer` ＝ `Prepare(ctx)` ＋ `LipSyncer`）が実装で、`app` が `musetalk.Client`（`audiodirector/musetalk`）を `service/locallipsync.Runner`（ランタイム管理への接続）つきで配線する。ランタイムが未導入でも mam の起動は妨げない（選ばれたときに知らせる）。`Providers.LocalLipSync` が無いときは、`skipped` に「ローカルの口パクのプロバイダーが設定されていません」と 1 件残し、**Sync Labs に黙って切り替えない**
+- **呼び出し**: クリップごとに、Director が ffmpeg で作った動画（`Compose`）と音声（`PlaceVoices`）の bytes を `LipSyncRequest`（`Seconds` に動画の長さを足した）で渡す。`musetalk.Client.Sync` は、それを**一時ディレクトリのファイルにして**（ランタイムは同じ PC のファイルを絶対パスで読む。動画を HTTP で送らない）`localruntime.Service.LipSync(lipsync.Request{video_path, audio_path, output_path, ffmpeg_path})` を呼び、出力の mp4 を読んで返す。`ffmpeg_path` は mam が探した ffmpeg（`media.Tools.FFmpegPath()`。ランタイムは ffmpeg を持たない）。呼び出しの前に、Director が `Prepare`（停止中のランタイムを起動して `/health` を待つ。`localruntime.Service.Prepare`）を **MAX QUALITY で対象のクリップがあるときだけ、実行ごとに 1 回**呼ぶ。GPU は 1 つなので `Service.LipSync` が 1 件ずつ順番に実行する（Director もクリップを順に作る）
+- **入力の整え方**: **mam は動画・音声を整えない**。MuseTalk のラッパー（§13.3）が、動画のフレームレートを自分で読み（全フレームを取り出す。画像だけ `fps` 省略で 25）、音声を 16 kHz のモノラルに自分で変換し、顔のあるフレームだけを使い、出力は音声の長さに揃える。動画の解像度の前提は無い（フレームがメモリ 6 GB に収まれば良く、収まらないと `too_large`）。そのため Director の入力（Take の該当範囲を切り出した H.264 の mp4 ＋ 行を置いた wav）をそのまま渡す
+- **上限**: 渡す動画は 512 MiB まで、音声は 128 MiB まで、出力の mp4 は 512 MiB まで（Sync Labs の出力の上限と同じ）。超える入力はランタイムに渡さず、超える出力・空の出力・無い出力は失敗。**1 クリップの時間上限は動画の長さに比例**（GPU の速さが機種で大きく違うため、固定の秒数にしない）: 3 分 ＋ 動画 1 秒あたり 30 秒、最大 30 分（Config で変えられる）。超えると種類 `timeout`。呼び出し元が自分でやめた（`context.Canceled`）ときは、ランタイムの失敗にしない
+- **種類つきのエラー**（`*localvoice.UnavailableError{Kind, Vendor: "musetalk", Detail, Err}`。型は §14.8 の 1 か所だけを共有し、`Vendor` を足して声と口パクを見分ける。`Systemic()` は ランタイム全体が使えない種類＝`not_installed`・`weights_missing`・`unsupported`。画面・MCP・チャットは `Kind` で文を作る。文言の最終版は #924。いまの文は `localvoice.LipSyncReason`で、`skipped[].detail` に入る）:
+
+| Kind | 意味 | 出どころ |
+|---|---|---|
+| `not_installed` / `weights_missing` / `unsupported` / `gpu_memory`（導入時の判定） / `process` / `timeout` | §14.8 と同じ。出どころはランタイム管理（`localspeech.UnavailableFor`）。macOS・Linux・非 NVIDIA・RTX 50 では `unsupported` で、理由と Sync Labs の案内は [local-runtime.md §13.5](model-manager/local-runtime.md) の文がそのまま `Detail` に入る | `localruntime.Service.Prepare` / `LipSync` の起動前の拒否 |
+| `no_face` | 動画に顔が見つからない（そのクリップだけの事実。`Systemic` ではない） | サーバーの `no_face` |
+| `gpu_memory` | 1 クリップの生成中にビデオメモリが足りない（次の短いクリップは通りうる。`Systemic` ではない） | サーバーの `out_of_memory` |
+| `too_large` | 動画がメモリに収まらない・入出力が上限を超えた | サーバーの `too_large`、上限の検査 |
+| `process` | サーバーが応答しない・途中で落ちた・空の応答・それ以外の失敗 | `ErrUnreachable`・`internal` ほか |
+
+  `skipped[].detail`（利用者向けの文）には、`Kind` ごとの文にサーバーの文（`lipsync.Error.Message`。日本語でそのまま表示してよい）か理由を括弧で添える。`ChargedError` は使わない
+- **ledger とクリップ**: `LipSyncClip.Model` と `cost_ledger_entry.provider` は `musetalk-1.5`（`domain.ModelMuseTalk`。§14.5）。出力は `lipsync-NN.mp4`（§14.4 と同じ場所）。書き出しは変えない（ファイルが無いと Sync Labs のときと同じ `conflict` で止まる。サービスのテストで固定）
+- **テスト**: 偽のランタイムの入口（`musetalk.Runner` の偽物。実物の Python は使わない）に対して、Director → `musetalk.Client` → 偽の入口を通して、全クリップの記録・0 円の台帳・予算・Sync Labs が既定のままであること・クリップごとの失敗と時間切れ・ランタイム全体の失敗が 1 件だけ残ること・途中でランタイムが使えなくなったときに残りを試さないこと・キャンセルを失敗にしないこと・MAX QUALITY 以外で起動しないことを確かめる。`EditorService` では、`lip_sync` の記録・台帳・書き出しがそのファイルを使うこと（消すと書き出しが止まる）を確かめる
+- **未確認（実機）**: 実物の MuseTalk 1.5・Windows + NVIDIA での口パクの生成、**口パクの質・日本語の音声での出来**、1 クリップあたりの時間（上の時間上限の 3 分 ＋ 1 秒あたり 30 秒は、公式の「4 GB でも動く」ことと、Linux の CPU で 1.2 秒のクリップに約 95 秒かかったこと（[local-runtime.md §13.7](model-manager/local-runtime.md)）からの見積で、実機で確かめていない）、実物のランタイムを通した Audio Director の実行は**未確認**（この開発環境は Linux で GPU が無く、偽の入口に対するテストだけをした）。親 Issue #912 のとおり、日本語の質は実装後に実機で聞き比べる

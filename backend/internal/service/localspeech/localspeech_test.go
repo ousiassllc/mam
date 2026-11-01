@@ -199,3 +199,31 @@ func TestVoices_AScriptWithoutLinesNeedsNoLookup(t *testing.T) {
 	assert.Empty(t, got)
 	assert.Empty(t, l.asked)
 }
+
+// The same refusals of the manager are the local lip sync's, tagged with its vendor: the Kind and the Detail are the same.
+func TestUnavailableFor_TheVendorIsOnTheError(t *testing.T) {
+	got := localspeech.UnavailableFor(context.Background(), localvoice.VendorMuseTalk, localruntime.ErrNotInstalled)
+
+	var un *localvoice.UnavailableError
+	require.ErrorAs(t, got, &un)
+	assert.Equal(t, localvoice.VendorMuseTalk, un.Vendor)
+	assert.Equal(t, localvoice.KindNotInstalled, un.Kind)
+	assert.Contains(t, un.Error(), "MuseTalk")
+	assert.ErrorIs(t, got, localruntime.ErrNotInstalled)
+
+	voice := localspeech.Unavailable(context.Background(), localruntime.ErrNotInstalled)
+	require.ErrorAs(t, voice, &un)
+	assert.Empty(t, un.Vendor, "the voice has none")
+	assert.Contains(t, un.Error(), "GPT-SoVITS")
+}
+
+func TestReason_AFailureOfTheLocalLipSyncIsWordedAsTheLipSyncAndAnUnknownProviderIsNamed(t *testing.T) {
+	got, ok := localspeech.Reason(&localvoice.UnavailableError{Kind: localvoice.KindNotInstalled, Vendor: localvoice.VendorMuseTalk})
+	require.True(t, ok)
+	assert.Contains(t, got, "MuseTalk")
+	assert.NotContains(t, got, "GPT-SoVITS")
+
+	got, ok = localspeech.Reason(fmt.Errorf("produce: %w", localvoice.ErrUnknownLipSyncProvider))
+	require.True(t, ok)
+	assert.Contains(t, got, "口パク")
+}

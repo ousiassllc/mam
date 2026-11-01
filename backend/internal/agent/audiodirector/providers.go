@@ -51,14 +51,16 @@ type VoiceCloner interface {
 
 // Providers are the vendors the Audio Director calls. Nil members are left out: without Speech
 // there is no audio production; without Music / Sounds / LipSync the layers they make are
-// skipped and reported. LocalSpeech is the local voice (GPT-SoVITS) that a run may choose instead of Speech.
+// skipped and reported. LocalSpeech is the local voice (GPT-SoVITS) and LocalLipSync the local lip sync (MuseTalk 1.5) that a run may
+// choose instead of Speech and LipSync.
 type Providers struct {
-	Speech      Synthesizer
-	LocalSpeech LocalSynthesizer
-	Music       Composer
-	Sounds      SoundMaker
-	Cloner      VoiceCloner
-	LipSync     LipSyncer
+	Speech       Synthesizer
+	LocalSpeech  LocalSynthesizer
+	Music        Composer
+	Sounds       SoundMaker
+	Cloner       VoiceCloner
+	LipSync      LipSyncer
+	LocalLipSync LocalLipSyncer
 }
 
 // ElevenLabsProviders is Providers with every ElevenLabs capability of e.
@@ -72,4 +74,11 @@ type LocalSynthesizer interface {
 	// *localvoice.UnavailableError, known before anything is paid for.
 	Prepare(ctx context.Context) error
 	Synthesize(ctx context.Context, line domain.VoiceLine, voice localvoice.Voice) (Speech, error)
+}
+
+// LocalLipSyncer redoes the mouth of a video on this machine (*musetalk.Client). It never charges: a failure is an *localvoice.UnavailableError.
+type LocalLipSyncer interface {
+	// Prepare starts the local runtime when it is stopped and waits until it answers, before the first clip is made.
+	Prepare(ctx context.Context) error
+	LipSyncer
 }

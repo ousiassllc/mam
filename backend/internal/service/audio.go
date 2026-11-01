@@ -28,17 +28,18 @@ func (s *EditorService) GenerateAudio(ctx context.Context, projectID, branchID s
 	return s.GenerateAudioWith(ctx, projectID, branchID, AudioOptions{})
 }
 
-// AudioOptions are the choices of one run of the Audio Director.
+// AudioOptions are the choices of one run of the Audio Director: who speaks Dialogue and Narration (localvoice.ElevenLabs, "" too, or
+// localvoice.Local: GPT-SoVITS in the reference voice of each speaker's Character) and who redoes the mouths (localvoice.LipSyncSyncLabs,
+// "" too, or localvoice.LipSyncLocal: MuseTalk 1.5). Saving the choices and the fallback to the cloud are not made here (#924).
 type AudioOptions struct {
-	// VoiceProvider is who speaks Dialogue and Narration: localvoice.ElevenLabs ("" too) or localvoice.Local (GPT-SoVITS, in the
-	// reference voice of each speaker's Character). Saving the choice and the fallback to the cloud are not made here (#924).
-	VoiceProvider localvoice.Provider
+	VoiceProvider   localvoice.Provider
+	LipSyncProvider localvoice.LipSyncProvider
 }
 
 // GenerateAudioWith is GenerateAudio with the choices of the run.
 func (s *EditorService) GenerateAudioWith(ctx context.Context, projectID, branchID string, opts AudioOptions) (EditorView, error) {
-	if !opts.VoiceProvider.Valid() {
-		return EditorView{}, invalid("voice_provider", "声のプロバイダーは elevenlabs か local を指定してください")
+	if field := localvoice.InvalidProvider(opts.VoiceProvider, opts.LipSyncProvider); field != "" {
+		return EditorView{}, invalid(field, "声のプロバイダー（voice_provider）は elevenlabs か local、口パクのプロバイダー（lip_sync_provider）は synclabs か local を指定してください")
 	}
 	if s.audio == nil || s.tools == nil {
 		return EditorView{}, ErrUnavailable
@@ -74,7 +75,7 @@ func (s *EditorService) GenerateAudioWith(ctx context.Context, projectID, branch
 	}
 	in := audiodirector.Input{
 		ProjectID: projectID, EditTimelineID: ver.ID, Brief: brief, Template: project.ProductionTemplate, Quality: policy.Quality,
-		Rough: roughPath, HasSound: info.HasAudio, Seconds: info.Duration, VoiceProvider: opts.VoiceProvider,
+		Rough: roughPath, HasSound: info.HasAudio, Seconds: info.Duration, VoiceProvider: opts.VoiceProvider, LipSyncProvider: opts.LipSyncProvider,
 	}
 	if in.Scenes, err = s.audioScenes(ctx, projectID, branchID, ver.Timeline); err != nil {
 		return EditorView{}, err
@@ -236,10 +237,8 @@ func audioError(err error) error {
 	return &AIError{Reason: "音声のミキシングに失敗しました: " + err.Error(), Err: err}
 }
 
-// Voice sample limits: MaxVoiceSampleBytes is the largest sample recording.
-const (
-	MaxVoiceSampleBytes = 10 << 20
-)
+// MaxVoiceSampleBytes is the largest voice sample recording.
+const MaxVoiceSampleBytes = 10 << 20
 
 // CloneVoice clones a voice from a sample recording and makes it the voice of the speaker's lines
 // in the Project (POST /projects/:id/audio/voices, ElevenLabs instant voice cloning). A speaker
