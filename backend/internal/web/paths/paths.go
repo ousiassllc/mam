@@ -162,6 +162,10 @@ func UpdateCheck() string { return Settings() + "/update/check" }
 // ModelSettings is "/settings/models", the image / video model assignment of the settings screen.
 func ModelSettings() string { return Settings() + "/models" }
 
+// FFmpegSettings is "/settings/ffmpeg", the ffmpeg section of the settings screen (GET: the page) and the paths of ffmpeg and
+// ffprobe (PUT).
+func FFmpegSettings() string { return Settings() + "/" + SettingsFFmpeg }
+
 // MCPSettings is "/settings/mcp", the MCP server section of the settings screen (the section itself is
 // part of GET /settings).
 func MCPSettings() string { return Settings() + "/mcp" }

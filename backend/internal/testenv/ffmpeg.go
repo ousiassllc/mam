@@ -7,6 +7,8 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/ousiassllc/mam/backend/internal/media/locate"
 )
 
 // madeFile is one ffmpeg result of the process: made once, read by every test that asks for it.
@@ -27,7 +29,7 @@ var madeFiles sync.Map // key (extension + arguments) -> *madeFile
 // A machine without ffmpeg ends the test as MissingFFmpeg does.
 func FFmpegFile(t testing.TB, ext string, args ...string) []byte {
 	t.Helper()
-	ffmpeg, err := exec.LookPath("ffmpeg")
+	ffmpeg, err := locate.Find(locate.FFmpeg, "")
 	if err != nil {
 		MissingFFmpeg(t, "ffmpeg is not installed")
 	}

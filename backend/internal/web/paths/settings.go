@@ -9,6 +9,7 @@ const (
 	SettingsModels      = "models"
 	SettingsLocalModels = "local-models"
 	SettingsMCP         = "mcp"
+	SettingsFFmpeg      = "ffmpeg"
 	SettingsUpdate      = "update"
 )
 

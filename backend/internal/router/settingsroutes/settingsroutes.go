@@ -13,6 +13,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/credential/probe"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/appupdate"
+	"github.com/ousiassllc/mam/backend/internal/service/ffmpegsettings"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/llmassign"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
@@ -27,6 +28,7 @@ import (
 	modelmgrhandler "github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr"
 	onboardinghandler "github.com/ousiassllc/mam/backend/internal/web/handler/onboarding"
 	credentialshandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/credentials"
+	ffmpeghandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/ffmpeg"
 	llmhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/llm"
 	localhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/local"
 	mcphandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/mcp"
@@ -60,6 +62,8 @@ type Services struct {
 	// Onboarding is the first-run guide (paths.Onboarding) and the redirect of a first run from GET / (OnboardingHome). Nil
 	// leaves both out: the root page is always the project list.
 	Onboarding *onboardingsvc.Service
+	// FFmpeg is the "ffmpeg" section (the paths of ffmpeg and ffprobe). Nil leaves the section and its route out.
+	FFmpeg *ffmpegsettings.Service
 	// Gentest is the generation test screen (paths.GenerationTest) and the trial generations of the model manager screen
 	// (service.Services.Gentest). Nil leaves the screen out and the trial panel without a form.
 	Gentest *gentest.Service
@@ -111,6 +115,9 @@ func Register(engine *gin.Engine, services *service.Services, s *Services, logge
 		llmhandler.Register(engine, s.LLM, pages.Page(paths.SettingsLLM))
 		mediahandler.Register(engine, s.Models, pages.Page(paths.SettingsModels))
 	}
+	if s != nil && s.FFmpeg != nil {
+		engine.PUT(paths.FFmpegSettings(), ffmpeghandler.Save(s.FFmpeg))
+	}
 	if s != nil && s.Workflows != nil {
 		registerWorkflows(engine, s.Workflows)
 	}
@@ -140,7 +147,7 @@ func pageServices(services *service.Services, s *Services) settingspage.Services
 		if s.Keys != nil {
 			p.Tester = probe.NewTester(s.Keys)
 		}
-		p.ChatGPT, p.LLM, p.Models, p.LocalModels, p.MCP, p.Update = s.ChatGPT, s.LLM, s.Models, s.LocalModels, s.MCP, s.Update
+		p.ChatGPT, p.LLM, p.Models, p.LocalModels, p.MCP, p.Update, p.FFmpeg = s.ChatGPT, s.LLM, s.Models, s.LocalModels, s.MCP, s.Update, s.FFmpeg
 		p.Guide = s.Onboarding != nil
 	}
 	return p

@@ -226,7 +226,7 @@ func FFmpegBody(f FFmpeg) templ.Component {
 			templ_7745c5c3_Var6 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<p class=\"text-sm text-neutral-300\">ffmpeg と ffprobe は、品質判定（Judge）・Take のプレビュー・部分採用で使います。無くても mam は起動しますが、これらは使えなくなります。mam を起動した環境の PATH から探します。</p>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<p class=\"text-sm text-neutral-300\">ffmpeg と ffprobe は、品質判定（Judge）・Take のプレビュー・部分採用で使います。無くても mam は起動しますが、これらは使えなくなります。設定画面の「ffmpeg」でパスを指定していればそのパスを、無ければ mam を起動した環境の PATH（Mac では Homebrew の /opt/homebrew/bin と /usr/local/bin も）から探します。</p>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -239,7 +239,7 @@ func FFmpegBody(f FFmpeg) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<span class=\"ml-2\">ffmpeg と ffprobe が PATH にあります。</span></p><p class=\"text-xs text-neutral-400\">ffmpeg: ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<span class=\"ml-2\">ffmpeg と ffprobe を使えます。</span></p><p class=\"text-xs text-neutral-400\">ffmpeg: ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -492,7 +492,7 @@ func installGuide(os OS) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "\">brew install ffmpeg</code></p><p class=\"text-xs text-neutral-400\">入れたのに見つからないときは、mam を動かしている環境の PATH に Homebrew の場所（Apple Silicon では /opt/homebrew/bin）が入っていない可能性があります。</p></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "\">brew install ffmpeg</code></p><p class=\"text-xs text-neutral-400\">Homebrew の /opt/homebrew/bin（Apple Silicon）と /usr/local/bin（Intel）は自動で探します。ほかの場所に入れたときは、設定画面の「ffmpeg」でパスを指定してください。</p></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

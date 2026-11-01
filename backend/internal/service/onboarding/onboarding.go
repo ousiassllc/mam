@@ -8,9 +8,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os/exec"
 	"runtime"
 
+	"github.com/ousiassllc/mam/backend/internal/media/locate"
 	"github.com/ousiassllc/mam/backend/internal/service/settingsfile"
 )
 
@@ -30,7 +30,7 @@ const (
 	OSOther   OS = "other"
 )
 
-// FFmpeg is where ffmpeg and ffprobe were found on the PATH; an empty path is a tool that was not found.
+// FFmpeg is where ffmpeg and ffprobe were found; an empty path is a tool that was not found.
 type FFmpeg struct {
 	FFmpeg  string
 	FFprobe string
@@ -49,7 +49,7 @@ type Service struct {
 // Option replaces what the service reads from the machine (the tests).
 type Option func(*Service)
 
-// WithLookPath replaces exec.LookPath.
+// WithLookPath replaces how ffmpeg and ffprobe are looked for (the search of media/locate with no path set).
 func WithLookPath(f func(string) (string, error)) Option { return func(s *Service) { s.lookPath = f } }
 
 // WithGOOS replaces runtime.GOOS.
@@ -57,7 +57,7 @@ func WithGOOS(goos string) Option { return func(s *Service) { s.goos = goos } }
 
 // New is the service whose flag is the file at path (FileName in the data directory).
 func New(path string, opts ...Option) *Service {
-	s := &Service{path: path, lookPath: exec.LookPath, goos: runtime.GOOS}
+	s := &Service{path: path, lookPath: func(name string) (string, error) { return locate.Find(name, "") }, goos: runtime.GOOS}
 	for _, o := range opts {
 		o(s)
 	}
@@ -118,13 +118,13 @@ func (s *Service) OS() OS {
 	return OSOther
 }
 
-// FFmpeg looks for ffmpeg and ffprobe on the PATH, the way internal/media does at startup. It runs neither.
+// FFmpeg looks for ffmpeg and ffprobe the way internal/media does at startup (see WithLookPath). It runs neither.
 func (s *Service) FFmpeg() FFmpeg {
 	var f FFmpeg
-	if p, err := s.lookPath("ffmpeg"); err == nil {
+	if p, err := s.lookPath(locate.FFmpeg); err == nil {
 		f.FFmpeg = p
 	}
-	if p, err := s.lookPath("ffprobe"); err == nil {
+	if p, err := s.lookPath(locate.FFprobe); err == nil {
 		f.FFprobe = p
 	}
 	return f

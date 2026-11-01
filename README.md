@@ -45,7 +45,7 @@ Codex のログイン情報は、MAM 専用の `CODEX_HOME`（Windows は `%AppD
 
 ### ffmpeg を PATH に入れる
 
-ffmpeg は同梱していません。無くても起動はできますが、Judge（品質判定）、動画のプレビュー、部分採用の合成、Export は ffmpeg と ffprobe を使うので、使うなら入れてください。
+ffmpeg は同梱していません。無くても起動はできますが、Judge（品質判定）、動画のプレビュー、部分採用の合成、Export は ffmpeg と ffprobe を使うので、使うなら入れてください。設定画面の「ffmpeg」でパスを指定すると、PATH より優先して使います。
 
 1. PowerShell で `winget install Gyan.FFmpeg` を実行します（または [ffmpeg.org](https://ffmpeg.org/download.html) から Windows ビルドを展開します）
 2. `ffmpeg.exe` と `ffprobe.exe` があるフォルダを環境変数 `PATH` に追加します（winget で入れたときは自動で追加されます）
@@ -64,7 +64,17 @@ ffmpeg は同梱していません。無くても起動はできますが、Judg
 
 自動更新は Windows 版と同じです（起動時と 6 時間ごとに確認し、SHA-256 と ed25519 署名を検証し、作業中でないときにアプリを終了して `MAM.app` を入れ替え、新しい版で起動し直します）。`/Applications` など自分が書き込めるフォルダにある `MAM.app` だけが更新されます。
 
-macOS 版でまだ使えないもの: 同梱の ComfyUI エンジンの導入（別に動かしている ComfyUI の URL を設定すれば使えます）。ffmpeg は同梱していません。`brew install ffmpeg` で入れます（Finder から起動した MAM が Homebrew の場所を見つけられない既知の問題があります。#856）。
+macOS 版でまだ使えないもの: 同梱の ComfyUI エンジンの導入（別に動かしている ComfyUI の URL を設定すれば使えます）。ffmpeg は同梱していません（次の節）。
+
+### macOS で ffmpeg を入れる
+
+ffmpeg は同梱していません。無くても起動はできますが、Judge（品質判定）、動画のプレビュー、部分採用の合成、Export は ffmpeg と ffprobe を使うので、使うなら入れてください。
+
+1. ターミナルで `brew install ffmpeg` を実行します（[Homebrew](https://brew.sh) が無いときは先に入れます。ffprobe も一緒に入ります）
+2. MAM を起動し直します（ffmpeg は起動時に探すため、起動中の MAM には反映されません）
+3. 確認: 設定画面の「ffmpeg」に「使えます」と場所が出れば使えます
+
+Finder や Dock から起動した MAM は、ターミナルの `PATH` を引き継ぎません。そのため MAM は `PATH` に加えて、Homebrew の既定の場所（Apple Silicon は `/opt/homebrew/bin`、Intel は `/usr/local/bin`）も探します。ほかの場所（MacPorts など）に入れたときは、設定画面の「ffmpeg」で ffmpeg と ffprobe のパスを指定してください。ログインシェルの `PATH` は読みません。
 
 ## Linux、ブラウザで使う
 

@@ -5,6 +5,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/chatgpt"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/credentials"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/ffmpeg"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/llm"
 	local "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/local"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/mcp"
@@ -59,6 +60,13 @@ templ SettingsLocalModelsBody(d local.Data) {
 templ SettingsLocalEndpointBody(d local.Data, e local.Endpoint) {
 	@settingsui.Category("ローカル・代替モデル", nil) {
 		@local.Page(d, e)
+	}
+}
+
+// SettingsFFmpegBody is "ffmpeg".
+templ SettingsFFmpegBody(d ffmpeg.Data) {
+	@settingsui.Category("ffmpeg", help.Text(ffmpeg.Description)) {
+		@ffmpeg.Section(d)
 	}
 }
 
