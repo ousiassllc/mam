@@ -28,9 +28,9 @@ ManifestDPIAware true
 # !define MUI_WELCOMEFINISHPAGE_BITMAP "resources\leftimage.bmp" #Include this to add a bitmap on the left side of the Welcome Page. Must be a size of 164x314
 !define MUI_FINISHPAGE_NOAUTOCLOSE # Wait on the INSTFILES page so the user can take a look into the details of the installation steps
 !define MUI_ABORTWARNING # This will warn the user if they exit from the installer.
-# ffmpeg is not bundled: the Judge, previews and Export use the ffmpeg / ffprobe found on PATH.
+# ffmpeg is not bundled: the Judge, previews and Export use the ffmpeg / ffprobe found on PATH (or set in the settings), or the one that the app downloads on a click into $INSTDIR\ffmpeg (spec/architecture/ffmpeg-download.md).
 !define MUI_FINISHPAGE_TITLE "${INFO_PRODUCTNAME} has been installed"
-!define MUI_FINISHPAGE_TEXT "Start ${INFO_PRODUCTNAME} from the Start menu or the desktop shortcut.$\r$\n$\r$\nffmpeg is not included. To use the Judge, previews and Export, install ffmpeg and put ffmpeg and ffprobe on your PATH (for example: winget install Gyan.FFmpeg). ${INFO_PRODUCTNAME} starts without it.$\r$\n$\r$\nYour projects and settings are kept in %AppData%\mam and are not removed when you uninstall."
+!define MUI_FINISHPAGE_TEXT "Start ${INFO_PRODUCTNAME} from the Start menu or the desktop shortcut.$\r$\n$\r$\nffmpeg is not included. To use the Judge, previews and Export, open Settings > ffmpeg in ${INFO_PRODUCTNAME} and press the download button (about 110 MB, checked against a pinned SHA-256; it connects only when you press it). If you installed ffmpeg yourself (for example: winget install Gyan.FFmpeg), ${INFO_PRODUCTNAME} uses that one. ${INFO_PRODUCTNAME} starts without ffmpeg.$\r$\n$\r$\nYour projects and settings are kept in %AppData%\mam and are not removed when you uninstall."
 
 !insertmacro MUI_PAGE_WELCOME # Welcome to the installer page.
 # !insertmacro MUI_PAGE_LICENSE "resources\eula.txt" # Adds a EULA page to the installer

@@ -11,6 +11,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/chatgpt"
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/credential/probe"
+	"github.com/ousiassllc/mam/backend/internal/media/ffmpegdl"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/appupdate"
 	"github.com/ousiassllc/mam/backend/internal/service/ffmpegsettings"
@@ -64,6 +65,9 @@ type Services struct {
 	Onboarding *onboardingsvc.Service
 	// FFmpeg is the "ffmpeg" section (the paths of ffmpeg and ffprobe). Nil leaves the section and its route out.
 	FFmpeg *ffmpegsettings.Service
+	// FFmpegDownload is the download of ffmpeg and ffprobe (the button of the ffmpeg section and of the first-run guide). Nil
+	// leaves the download and its routes out.
+	FFmpegDownload *ffmpegdl.Service
 	// Gentest is the generation test screen (paths.GenerationTest) and the trial generations of the model manager screen
 	// (service.Services.Gentest). Nil leaves the screen out and the trial panel without a form.
 	Gentest *gentest.Service
@@ -116,7 +120,14 @@ func Register(engine *gin.Engine, services *service.Services, s *Services, logge
 		mediahandler.Register(engine, s.Models, pages.Page(paths.SettingsModels))
 	}
 	if s != nil && s.FFmpeg != nil {
-		engine.PUT(paths.FFmpegSettings(), ffmpeghandler.Save(s.FFmpeg))
+		f := ffmpeghandler.Services{Settings: s.FFmpeg, Download: s.FFmpegDownload}
+		engine.PUT(paths.FFmpegSettings(), ffmpeghandler.Save(f))
+		if s.FFmpegDownload != nil {
+			engine.GET(paths.FFmpegDownload(), ffmpeghandler.DownloadPanel(f, pages.Page(paths.SettingsFFmpeg)))
+			engine.POST(paths.FFmpegDownload(), ffmpeghandler.StartDownload(f))
+			engine.POST(paths.FFmpegDownloadCancel(), ffmpeghandler.CancelDownload(f))
+			engine.DELETE(paths.FFmpegDownload(), ffmpeghandler.RemoveDownload(f))
+		}
 	}
 	if s != nil && s.Workflows != nil {
 		registerWorkflows(engine, s.Workflows)
@@ -148,6 +159,7 @@ func pageServices(services *service.Services, s *Services) settingspage.Services
 			p.Tester = probe.NewTester(s.Keys)
 		}
 		p.ChatGPT, p.LLM, p.Models, p.LocalModels, p.MCP, p.Update, p.FFmpeg = s.ChatGPT, s.LLM, s.Models, s.LocalModels, s.MCP, s.Update, s.FFmpeg
+		p.FFmpegDownload = s.FFmpegDownload
 		p.Guide = s.Onboarding != nil
 	}
 	return p
@@ -186,6 +198,7 @@ func OnboardingHome(s *Services, home gin.HandlerFunc) gin.HandlerFunc {
 func registerOnboarding(engine *gin.Engine, services *service.Services, s *Services, pages settingspage.Services) {
 	h := onboardinghandler.Handlers{
 		Guide: s.Onboarding, Keys: services.Credentials, Tester: pages.Tester, ChatGPT: s.ChatGPT, LLM: s.LLM, Models: s.Models,
+		FFmpeg: ffmpeghandler.Services{Settings: s.FFmpeg, Download: s.FFmpegDownload},
 	}
 	engine.GET(paths.Onboarding(), h.Start)
 	engine.GET(paths.OnboardingCredentialsStatus(), h.CredentialsStatus)

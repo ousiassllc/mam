@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex/engine"
+	"github.com/ousiassllc/mam/backend/internal/exeinstall"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/fetch"
 )
 
@@ -111,7 +112,7 @@ func TestCheckWritableReportsAReadOnlyPlace(t *testing.T) {
 		t.Fatal(err)
 	}
 	l := engine.Layout{Root: filepath.Join(file, "codex")} // below a file: cannot be created
-	if err := l.CheckWritable(); !errors.Is(err, engine.ErrNotWritable) {
+	if err := l.CheckWritable(); !errors.Is(err, exeinstall.ErrNotWritable) {
 		t.Fatalf("err = %v", err)
 	}
 	if got := engine.ForExecutable(filepath.Join("x", "mam.exe")).Root; got != filepath.Join("x", "codex") {

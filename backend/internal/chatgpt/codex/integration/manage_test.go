@@ -20,6 +20,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex/codextest"
 	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex/engine"
 	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex/protocol"
+	"github.com/ousiassllc/mam/backend/internal/exeinstall"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/fetch"
 )
 
@@ -157,7 +158,7 @@ func TestInstallRefusesAReadOnlyPlaceAndAFullDiskAtOnce(t *testing.T) {
 	ro := newRig(t, func(o *codex.Options) {
 		o.Platform, o.Arch, o.Layout = "windows", "amd64", engine.Layout{Root: filepath.Join(file, "codex")}
 	})
-	if _, err := ro.svc.StartInstall(); !errors.Is(err, engine.ErrNotWritable) {
+	if _, err := ro.svc.StartInstall(); !errors.Is(err, exeinstall.ErrNotWritable) {
 		t.Fatalf("err = %v", err)
 	}
 	full := newRig(t, func(o *codex.Options) {

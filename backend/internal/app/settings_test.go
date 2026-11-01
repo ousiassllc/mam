@@ -36,7 +36,7 @@ func buildWithAdultModel(t *testing.T) (*modelsettings.Service, func() []domain.
 	require.NoError(t, services.LocalModels.CreateModel(ctx, localmodels.ModelInput{Endpoint: modelmanager.BundledEndpoint, Name: "chroma1-hd", Model: tpl.Model}))
 	require.False(t, services.ModelManager.AdultContentEnabled(), "the age was never confirmed")
 
-	settings := newSettings(cfg, services, gpt, logger)
+	settings := newSettings(cfg, services, gpt, newFFmpegDownloader(cfg, logger), logger)
 	choices := func() []domain.ModelName {
 		view, err := settings.Models.View()
 		require.NoError(t, err)

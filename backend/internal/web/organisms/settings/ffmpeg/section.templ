@@ -27,7 +27,10 @@ templ Section(d Data) {
 					@atoms.Button(atoms.TonePrimary, "保存", templ.Attributes{"type": "submit", "data-testid": "ffmpeg-save"})
 				</div>
 			</form>
-			<p class="text-xs text-neutral-400" data-testid="ffmpeg-search-dirs">パスを空にしたときの探し方: { strings.Join(d.SearchDirs, "、") }（この順）</p>
+			<p class="text-xs text-neutral-400" data-testid="ffmpeg-search-dirs">パスを空にしたときの探し方: { strings.Join(d.SearchDirs, "、") }（この順。最後の ffmpeg フォルダは、mam でダウンロードして入れたものです）</p>
+			if d.Download != nil && d.Download.Supported {
+				@DownloadPanel(*d.Download)
+			}
 		}
 	</div>
 }

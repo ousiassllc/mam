@@ -1,0 +1,103 @@
+package ffmpeg
+
+import (
+	"fmt"
+
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+func megabytes(n int64) string { return fmt.Sprintf("%d", (n+(1<<20)-1)>>20) }
+
+// DownloadPanel is the download of ffmpeg and ffprobe: the one button, its progress and cancel, and the copy that is installed.
+// Every action answers with the panel itself (hx-target #ffmpeg-download); while a download runs it polls itself. It is the
+// part of the ffmpeg section that the first-run guide shares. Nothing is fetched but by the button.
+templ DownloadPanel(d Download) {
+	<section
+		id={ DownloadID }
+		class="flex flex-col gap-2 rounded-md border border-neutral-700 px-3 py-2"
+		data-testid="ffmpeg-download"
+		if d.Polling() {
+			hx-get={ paths.FFmpegDownload() }
+			hx-trigger="every 2s"
+			hx-swap="outerHTML"
+		}
+	>
+		<p class="text-sm">
+			<span class="font-medium">mam でダウンロードして入れる</span>
+			switch  {
+				case d.Install.Running:
+					@atoms.Badge(atoms.BadgeInfo, "ダウンロード中")
+				case d.Broken:
+					@atoms.Badge(atoms.BadgeWarn, "壊れています")
+				case d.Installed:
+					@atoms.Badge(atoms.BadgeOK, "入れてあります")
+				default:
+					@atoms.Badge(atoms.BadgeNeutral, "未取得")
+			}
+			if d.Installed && d.Version != "" {
+				<span class="ml-2 text-xs text-neutral-400" data-testid="ffmpeg-download-version">バージョン: { d.Version }</span>
+			}
+		</p>
+		if d.Notice != "" {
+			<p class="text-sm text-emerald-300" role="status" data-testid="ffmpeg-download-notice">{ d.Notice }</p>
+		}
+		if d.Error != "" {
+			<p class="text-sm text-red-300" role="alert" data-testid="ffmpeg-download-error">{ d.Error }</p>
+		}
+		if d.Install.Running {
+			<div class="flex flex-col gap-1" role="status" data-testid="ffmpeg-download-progress">
+				<progress class="w-full" max="100" value={ fmt.Sprintf("%d", d.Install.Percent) }></progress>
+				<p class="text-xs">{ d.Install.Message }（{ fmt.Sprintf("%d", d.Install.Percent) }%）</p>
+				<form hx-post={ paths.FFmpegDownloadCancel() } hx-target={ "#" + DownloadID } hx-swap="outerHTML" hx-sync="this:drop" hx-params="none" hx-disabled-elt="find button[type=submit]">
+					@atoms.SmallButtonFor(atoms.ToneNeutral, "中断", "ffmpeg のダウンロード", templ.Attributes{"type": "submit", "data-testid": "ffmpeg-download-cancel"})
+				</form>
+			</div>
+		} else {
+			if d.Install.Error != "" {
+				<p class="text-sm text-red-300" role="alert" data-testid="ffmpeg-download-install-error">{ d.Install.Error }</p>
+			}
+			if d.Install.Cancelled {
+				<p class="text-sm text-neutral-300" role="status" data-testid="ffmpeg-download-cancelled">ダウンロードを中断しました。もう一度押すと続きから取得します。</p>
+			}
+			if d.Install.Succeeded {
+				<p class="text-sm text-emerald-300" role="status" data-testid="ffmpeg-download-done">
+					ffmpeg と ffprobe を入れました。mam は起動時に ffmpeg を探すので、<strong>mam を一度終了して、起動し直してください</strong>。
+				</p>
+			}
+			if d.Installed && d.UpdateAvailable {
+				<p class="text-xs text-amber-300" data-testid="ffmpeg-download-update">この mam が確かめた版は { d.PinnedVersion } です。入れてある { d.Version } は、そのまま使えます。新しい版にするには、もう一度ダウンロードしてください。</p>
+			}
+			if d.Broken {
+				<p class="text-xs text-amber-300" data-testid="ffmpeg-download-broken">入れたファイルが無いか、変わっています。使われていません。もう一度ダウンロードしてください。</p>
+			}
+			if d.Installed && !d.Broken && !d.UpdateAvailable {
+				<p class="text-xs text-neutral-400">置き場所: <code class="break-all">{ d.Dir }</code>（設定したパスと、PATH などで見つかる ffmpeg が無いときだけ使われます）</p>
+			}
+			if !d.Installed || d.UpdateAvailable {
+				<form hx-post={ paths.FFmpegDownload() } hx-target={ "#" + DownloadID } hx-swap="outerHTML" hx-sync="this:drop" hx-params="none" hx-disabled-elt="find button[type=submit]">
+					<p class="mb-2 text-xs text-neutral-400" data-testid="ffmpeg-download-about">
+						ffmpeg と ffprobe（{ d.Build }）を、配布元（{ d.Publisher }）からダウンロードします。約 { megabytes(d.DownloadBytes) } MB。展開後は約 { megabytes(d.ExtractedBytes) } MB。
+						ダウンロードしたファイルは、mam に固定してある SHA-256 と一致したときだけ使います（一致しなければ削除します）。
+						ライセンスは <a class="underline" href={ templ.SafeURL(d.LicenseURL) } target="_blank" rel="noopener noreferrer">{ d.License }</a>、
+						この版のソースは <a class="underline" href={ templ.SafeURL(d.SourceCodeURL) } target="_blank" rel="noopener noreferrer">こちら</a> です。
+						置き場所は { d.Dir } です。ボタンを押したときだけ通信します（自動の更新確認はしません）。
+					</p>
+					if d.Found && !d.Managed {
+						<p class="mb-2 text-xs text-neutral-400" data-testid="ffmpeg-download-found-elsewhere">すでに別の場所の ffmpeg が見つかっています。そちらが優先されるので、ダウンロードは要りません。</p>
+					}
+					if d.UpdateAvailable {
+						@atoms.SmallButtonFor(atoms.TonePrimary, "新しい版をダウンロード", "ffmpeg のダウンロード", templ.Attributes{"type": "submit", "data-testid": "ffmpeg-download-button"})
+					} else {
+						@atoms.SmallButtonFor(atoms.TonePrimary, "ffmpeg をダウンロードして入れる", "ffmpeg のダウンロード", templ.Attributes{"type": "submit", "data-testid": "ffmpeg-download-button"})
+					}
+				</form>
+			}
+			if d.Installed || d.Broken {
+				<form hx-delete={ paths.FFmpegDownload() } hx-target={ "#" + DownloadID } hx-swap="outerHTML" hx-sync="this:drop" hx-params="none" hx-disabled-elt="find button[type=submit]" hx-confirm="ダウンロードして入れた ffmpeg と ffprobe を削除します。よろしいですか？">
+					@atoms.SmallButtonFor(atoms.ToneDanger, "削除", "ダウンロードした ffmpeg", templ.Attributes{"type": "submit", "data-testid": "ffmpeg-download-remove"})
+				</form>
+			}
+		}
+	</section>
+}

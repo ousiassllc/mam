@@ -29,6 +29,9 @@ const (
 type Service struct {
 	path   string
 	finder locate.Finder
+	// managed are the directories of the ffmpeg mam downloaded (nil: none); read on every lookup and searched after the
+	// others (locate.SearchDirs), so that an ffmpeg the user installed always wins over the managed copy.
+	managed func() []string
 }
 
 // Option replaces what the service reads from the machine (the tests).
@@ -37,6 +40,10 @@ type Option func(*Service)
 // WithFinder replaces the Finder of the machine (locate.DefaultFinder).
 func WithFinder(f locate.Finder) Option { return func(s *Service) { s.finder = f } }
 
+// WithManagedDirs sets where the ffmpeg that mam downloaded lies (ffmpegdl.Service.Dirs). The function is called on every lookup,
+// so a download that finishes is found by the next one.
+func WithManagedDirs(dirs func() []string) Option { return func(s *Service) { s.managed = dirs } }
+
 // New is the service over the file at path (FileName in the data directory).
 func New(path string, opts ...Option) *Service {
 	s := &Service{path: path, finder: locate.DefaultFinder()}
@@ -44,6 +51,15 @@ func New(path string, opts ...Option) *Service {
 		o(s)
 	}
 	return s
+}
+
+// lookup is the Finder of this call: the machine's, with the directories of the downloaded ffmpeg after its own extra ones.
+func (s *Service) lookup() locate.Finder {
+	f := s.finder
+	if s.managed != nil {
+		f.Extra = append(append([]string{}, f.Extra...), s.managed()...)
+	}
+	return f
 }
 
 // Config is the paths the user set; an empty one is left to the search. A file that cannot be read or is not a JSON object
@@ -103,14 +119,14 @@ func (s *Service) Look() (media.Tools, error) {
 	if err != nil {
 		return media.Tools{}, fmt.Errorf("%w: %w", media.ErrUnavailable, err)
 	}
-	return media.LookIn(s.finder, cfg)
+	return media.LookIn(s.lookup(), cfg)
 }
 
 // Find is where the executable called name is with the saved paths, the signature of exec.LookPath: the first-run guide
 // reports it. An unreadable file leaves the paths to the search.
 func (s *Service) Find(name string) (string, error) {
 	cfg, _ := s.Config()
-	return s.finder.Find(name, cfg.Path(name))
+	return s.lookup().Find(name, cfg.Path(name))
 }
 
 // Tool is one of the two executables as the lookup finds it with the saved paths.
@@ -137,13 +153,14 @@ func (s *Service) View() (View, error) {
 	if err != nil {
 		return View{}, err
 	}
+	f := s.lookup()
 	tool := func(name string) Tool {
 		t := Tool{Name: name, Configured: cfg.Path(name)}
-		t.Path, t.Err = s.finder.Find(name, t.Configured)
+		t.Path, t.Err = f.Find(name, t.Configured)
 		return t
 	}
 	return View{
 		FFmpeg: tool(locate.FFmpeg), FFprobe: tool(locate.FFprobe),
-		SearchDirs: locate.SearchDirs(s.finder.GOOS, s.finder.Path, s.finder.Extra),
+		SearchDirs: locate.SearchDirs(f.GOOS, f.Path, f.Extra),
 	}, nil
 }

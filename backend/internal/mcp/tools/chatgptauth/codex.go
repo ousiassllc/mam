@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex"
-	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex/engine"
+	"github.com/ousiassllc/mam/backend/internal/exeinstall"
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/fetch"
 	"github.com/ousiassllc/mam/backend/internal/service"
@@ -91,7 +91,7 @@ func mapInstallError(err error) error {
 		return nil
 	case errors.Is(err, codex.ErrUnsupported):
 		return &service.ConflictError{Message: "この環境ではダウンロードできません（Windows 版と macOS 版（Apple Silicon）のみ）。自分で入れた codex のパスを設定画面で指定してください"}
-	case errors.Is(err, engine.ErrNotWritable):
+	case errors.Is(err, exeinstall.ErrNotWritable):
 		return &service.ConflictError{Message: "Codex の保存先（Windows 版は mam の実行ファイルと同じ場所、macOS 版はデータディレクトリの codex ディレクトリ）に書き込めません"}
 	case errors.As(err, &noSpace):
 		return &service.ConflictError{Message: "ディスクの空きが足りません"}

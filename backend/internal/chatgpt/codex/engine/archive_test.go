@@ -18,6 +18,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex/catalog"
 	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex/engine"
+	"github.com/ousiassllc/mam/backend/internal/exeinstall"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/fetch"
 )
 
@@ -130,7 +131,7 @@ func TestInstallOfTheTarGzRefusesAnExecutableThatIsNotThePinnedOne(t *testing.T)
 		t.Run(name, func(t *testing.T) {
 			r := newTarRig(t, makeTarGz(t, tarEntry{name: macExeName, body: body}), exe)
 			err := r.ins.Install(context.Background(), nil)
-			require.ErrorIs(t, err, engine.ErrExeMismatch)
+			require.ErrorIs(t, err, exeinstall.ErrMismatch)
 			_, statErr := os.Stat(filepath.Join(r.ins.Layout.EngineDir(), macExeName))
 			assert.Error(t, statErr, "a wrong executable must never be installed")
 			_, statErr = os.Stat(r.ins.Layout.EngineNewDir())
@@ -163,7 +164,7 @@ func TestInstallOfTheTarGzRefusesUnsafeArchives(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			r := newTarRig(t, makeTarGz(t, entries...), exe)
 			err := r.ins.Install(context.Background(), nil)
-			require.ErrorIs(t, err, engine.ErrUnsafeArchive)
+			require.ErrorIs(t, err, exeinstall.ErrUnsafeArchive)
 			_, ok := r.ins.ExePath()
 			assert.False(t, ok)
 			// Nothing was written outside the engine directory: the whole tree below the temp dir is the layout's own.
@@ -198,7 +199,7 @@ func TestInstallRefusesAnAssetWithAnUnknownFormat(t *testing.T) {
 	exe := "exe"
 	r := newRig(t, makeZip(t, [2]string{exeName, exe}), exe)
 	r.ins.Asset.Format = "7z"
-	require.ErrorIs(t, r.ins.Install(context.Background(), nil), engine.ErrUnsafeArchive)
+	require.ErrorIs(t, r.ins.Install(context.Background(), nil), exeinstall.ErrUnsafeArchive)
 }
 
 // The install resumes and is reported like the zip's: the tar.gz path goes through the same download and swap.

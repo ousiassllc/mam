@@ -23,12 +23,17 @@ const (
 
 // SectionData is the saved paths and what the lookup finds with them. A settings file that cannot be read is the Problem of
 // the category, so that the rest of the screen still works.
-func SectionData(svc *ffmpegsettings.Service) view.Data {
-	v, err := svc.View()
+func SectionData(s Services) view.Data {
+	v, err := s.Settings.View()
 	if err != nil {
 		return view.Data{Problem: unreadable}
 	}
-	return view.Data{FFmpeg: tool(v.FFmpeg, view.FieldFFmpeg), FFprobe: tool(v.FFprobe, view.FieldFFprobe), SearchDirs: v.SearchDirs}
+	d := view.Data{FFmpeg: tool(v.FFmpeg, view.FieldFFmpeg), FFprobe: tool(v.FFprobe, view.FieldFFprobe), SearchDirs: v.SearchDirs}
+	if s.Download != nil {
+		dl := DownloadData(s)
+		d.Download = &dl
+	}
+	return d
 }
 
 func tool(t ffmpegsettings.Tool, field string) view.Tool {
@@ -47,11 +52,12 @@ func tool(t ffmpegsettings.Tool, field string) view.Tool {
 // Save sets the paths of the form (PUT /settings/ffmpeg, fields ffmpeg and ffprobe; an empty one clears the path) and answers
 // with the category: 200 with the notice, or 422 with the reason and what was typed when a path cannot be used (nothing is
 // then written).
-func Save(svc *ffmpegsettings.Service) gin.HandlerFunc {
+func Save(s Services) gin.HandlerFunc {
+	svc := s.Settings
 	return func(c *gin.Context) {
 		cfg := locate.Config{FFmpeg: c.PostForm(view.FieldFFmpeg), FFprobe: c.PostForm(view.FieldFFprobe)}
 		err := svc.Set(cfg)
-		d := SectionData(svc)
+		d := SectionData(s)
 		status := http.StatusOK
 		var pathErr *locate.PathError
 		switch {

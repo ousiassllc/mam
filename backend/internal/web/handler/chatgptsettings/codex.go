@@ -10,7 +10,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/chatgpt"
 	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex"
-	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex/engine"
+	"github.com/ousiassllc/mam/backend/internal/exeinstall"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/fetch"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/settings/settingshttp"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/settings/chatgpt"
@@ -109,7 +109,7 @@ func CodexInstall(svc *chatgpt.Service) gin.HandlerFunc {
 			d.Notice = "すでにダウンロード中です"
 		case errors.Is(err, codex.ErrUnsupported):
 			status, d.Error = http.StatusConflict, "この環境ではダウンロードできません（ダウンロードできるのは Windows 版と macOS 版（Apple Silicon）だけです）。自分で入れた codex のパスを指定してください"
-		case errors.Is(err, engine.ErrNotWritable):
+		case errors.Is(err, exeinstall.ErrNotWritable):
 			status, d.Error = http.StatusConflict, fmt.Sprintf("Codex の保存先（%s）に書き込めません。書き込み権限を確認してください（Windows 版は mam の実行ファイルの置き場所、macOS 版はデータディレクトリの中です）", svc.Codex().Status().Dir)
 		case errors.As(err, &noSpace):
 			status, d.Error = http.StatusInsufficientStorage, fmt.Sprintf("ディスクの空きが足りません（必要 約 %d MB、空き %d MB）", noSpace.Need>>20, noSpace.Free>>20)

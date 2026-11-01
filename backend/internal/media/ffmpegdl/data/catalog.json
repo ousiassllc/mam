@@ -1,0 +1,80 @@
+{
+  "platforms": {
+    "windows/amd64": {
+      "version": "9.0.2",
+      "build": "gyan.dev essentials_build 9.0.2 (static, 64-bit)",
+      "publisher": "Gyan Doshi (gyan.dev)",
+      "source_url": "https://www.gyan.dev/ffmpeg/builds/",
+      "source_code_url": "https://github.com/FFmpeg/FFmpeg/commit/946fcce07b",
+      "license": {
+        "id": "GPL-3.0-or-later",
+        "name": "GNU General Public License v3 or later",
+        "url": "https://www.gnu.org/licenses/gpl-3.0.html"
+      },
+      "archives": [
+        {
+          "url": "https://github.com/GyanD/codexffmpeg/releases/download/9.0.2/ffmpeg-9.0.2-essentials_build.zip",
+          "format": "zip",
+          "sha256": "60f467265b1e312373dbcd92200c2618a74850f98d3d078e94296bb3fa2047ba",
+          "size": 114768076,
+          "members": [
+            {
+              "entry": "ffmpeg-9.0.2-essentials_build/bin/ffmpeg.exe",
+              "name": "ffmpeg.exe",
+              "size": 105423872,
+              "sha256": "3256173f3f8bffd7df12227c68adf68025edb1832273a9530688a7bb1ed8edec"
+            },
+            {
+              "entry": "ffmpeg-9.0.2-essentials_build/bin/ffprobe.exe",
+              "name": "ffprobe.exe",
+              "size": 105221120,
+              "sha256": "f0d36ecbbdd3bcfac3efa078c96c7271c2e68b3810595552ac3b7f17e9a65c52"
+            }
+          ]
+        }
+      ]
+    },
+    "darwin/arm64": {
+      "version": "9.0.2",
+      "build": "martin-riedl.de release 9.0.2 (static, arm64, Developer ID signed)",
+      "publisher": "Martin Riedl",
+      "source_url": "https://ffmpeg.martin-riedl.de/",
+      "source_code_url": "https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz",
+      "license": {
+        "id": "GPL-3.0-or-later",
+        "name": "GNU General Public License v3 or later",
+        "url": "https://www.gnu.org/licenses/gpl-3.0.html"
+      },
+      "archives": [
+        {
+          "url": "https://ffmpeg.martin-riedl.de/download/macos/arm64/1789931890_9.0.2/ffmpeg.zip",
+          "format": "zip",
+          "sha256": "c8ed4c4e6978a03c485edbfe4e0a5dc2380f8a30bba5150531b31b094492d924",
+          "size": 28395699,
+          "members": [
+            {
+              "entry": "ffmpeg",
+              "name": "ffmpeg",
+              "size": 66332880,
+              "sha256": "2e11c6f90993cdb79fff84d3f90044d28316b310e75b3e030cfc9a54f2c9d384"
+            }
+          ]
+        },
+        {
+          "url": "https://ffmpeg.martin-riedl.de/download/macos/arm64/1789931890_9.0.2/ffprobe.zip",
+          "format": "zip",
+          "sha256": "fcbe839537485eaee7a7a8bc5cbc0f90d53617e80943e8a5b2e31cb851197ea6",
+          "size": 28317701,
+          "members": [
+            {
+              "entry": "ffprobe",
+              "name": "ffprobe",
+              "size": 66158064,
+              "sha256": "2738aa46a7f9acbc8ab09a6715554c90f7de603171ac403726765685df6a0059"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

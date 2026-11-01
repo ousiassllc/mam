@@ -166,6 +166,13 @@ func ModelSettings() string { return Settings() + "/models" }
 // ffprobe (PUT).
 func FFmpegSettings() string { return Settings() + "/" + SettingsFFmpeg }
 
+// FFmpegDownload is "/settings/ffmpeg/download": GET answers the panel of the download (it polls itself while one runs), POST
+// downloads the pinned ffmpeg and ffprobe, DELETE removes the downloaded copy.
+func FFmpegDownload() string { return FFmpegSettings() + "/download" }
+
+// FFmpegDownloadCancel is "/settings/ffmpeg/download/cancel": POST stops the download (it resumes later).
+func FFmpegDownloadCancel() string { return FFmpegDownload() + "/cancel" }
+
 // MCPSettings is "/settings/mcp", the MCP server section of the settings screen (the section itself is
 // part of GET /settings).
 func MCPSettings() string { return Settings() + "/mcp" }

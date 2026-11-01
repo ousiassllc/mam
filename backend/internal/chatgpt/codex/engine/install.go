@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex/catalog"
+	"github.com/ousiassllc/mam/backend/internal/exeinstall"
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/fetch"
 )
@@ -37,7 +38,7 @@ type Installer struct {
 	// FreeBytes reports the free space at a path (nil: fsutil.FreeBytes).
 	FreeBytes func(path string) (uint64, error)
 	Now       func() time.Time
-	// ClearQuarantine removes the macOS quarantine attribute from the extracted executable (nil: clearQuarantine, which
+	// ClearQuarantine removes the macOS quarantine attribute from the extracted executable (nil: exeinstall.ClearQuarantine, which
 	// does nothing off macOS). It is best effort: mam's own download never sets the attribute, so a failure is ignored.
 	ClearQuarantine func(path string) error
 }
@@ -164,22 +165,25 @@ func (i *Installer) Install(ctx context.Context, progress Progress) error {
 	}
 	tmp := i.Layout.EngineNewDir()
 	_ = os.RemoveAll(tmp)
-	err := extractExe(ctx, archive, tmp, i.Asset, func(done, total int64) {
-		if progress != nil {
-			progress(PhaseExtract, done, total)
-		}
-	})
+	a := i.Asset
+	err := exeinstall.Extract(ctx, archive, a.Format, tmp,
+		[]exeinstall.Member{{Entry: a.Exe, Name: a.Exe, Size: a.ExeSize, SHA256: a.ExeSHA256}},
+		exeinstall.Options{Exact: true, Progress: func(done, total int64) {
+			if progress != nil {
+				progress(PhaseExtract, done, total)
+			}
+		}})
 	if err == nil {
 		unmark := i.ClearQuarantine
 		if unmark == nil {
-			unmark = clearQuarantine
+			unmark = exeinstall.ClearQuarantine
 		}
 		_ = unmark(filepath.Join(tmp, i.Asset.Exe)) // best effort, see ClearQuarantine
 		err = i.swap(tmp)
 	}
 	if err != nil {
 		_ = os.RemoveAll(tmp)
-		if errors.Is(err, ErrExeMismatch) || errors.Is(err, ErrUnsafeArchive) {
+		if errors.Is(err, exeinstall.ErrMismatch) || errors.Is(err, exeinstall.ErrUnsafeArchive) {
 			_ = os.Remove(archive) // the archive matched its checksum but is not what the catalog describes: download it again
 		}
 		return err

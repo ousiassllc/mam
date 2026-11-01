@@ -97,6 +97,9 @@ check "the ComfyUI section: a separate GPL-3.0 program, the source, no bytes, th
 check "the Codex section: a separate Apache-2.0 program, the source, no bytes, the unverified dependency inventory" "$(
   has '## Codex app-server（利用者が取得する別プログラム）' && grep -qF 'https://github.com/openai/codex/tree/rust-v0.164.0' "$out" && grep -qF 'Codex のバイトを一切含めません' "$out" && grep -qF 'Apache-2.0' "$out" && echo 0 || echo 1
 )"
+check "the ffmpeg section: a separate GPL v3 program, the source, no bytes, only on a click, the unverified dependency inventory" "$(
+  has '## ffmpeg と ffprobe（利用者が取得する別プログラム）' && grep -qF 'https://github.com/FFmpeg/FFmpeg/commit/946fcce07b' "$out" && grep -qF 'https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz' "$out" && grep -qF 'ffmpeg のバイトを一切含めません' "$out" && grep -qF 'GPL v3 以降' "$out" && grep -qF 'ボタンを押したときだけ' "$out" && echo 0 || echo 1
+)"
 check "the output is deterministic" "$(
   (cd "$work/repo" && bash scripts/third-party-notices.sh "$work/second.md" 2>/dev/null) && cmp -s "$out" "$work/second.md" && echo 0 || echo 1
 )"
