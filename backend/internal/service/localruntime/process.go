@@ -71,6 +71,16 @@ func (s *Service) Prepare(ctx context.Context, id string) error {
 	return err
 }
 
+// Token is the token of the runtime server's current start, which a request to it must carry ("" for a runtime that has no token_env).
+// It is the caller's secret: it is never part of a View.
+func (s *Service) Token(id string) (string, error) {
+	inst, err := s.instance(id)
+	if err != nil {
+		return "", err
+	}
+	return inst.currentToken(), nil
+}
+
 // SetAutoStart says whether the runtime starts when mam starts (false, the default: when it is first used).
 func (s *Service) SetAutoStart(id string, on bool) error {
 	inst, err := s.instance(id)

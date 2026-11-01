@@ -153,8 +153,8 @@ func testCatalog(h *host) *catalog.Catalog {
 		}
 	}
 	real, _ := catalog.Default().Runtime("gpt-sovits")
-	rt := real // the real support rules and texts; the package, the files and the launch are the test's
-	rt.ArchiveRoot, rt.Version = archiveRoot, "1"
+	rt := real                                                        // the real support rules and texts; the package, the files and the launch are the test's
+	rt.ArchiveRoot, rt.Version, rt.ExtraFiles = archiveRoot, "1", nil // the test's package has no launcher of mam's to write
 	rt.Launch = catalog.RuntimeLaunch{
 		Python: pythonRel, Entry: entryRel, Args: []string{entryRel, "-a", "127.0.0.1", "-p", "{port}"}, ReadyPath: "/openapi.json",
 		Env: []string{"HF_HUB_OFFLINE=1"}, StartTimeoutSec: 20,

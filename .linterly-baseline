@@ -37,7 +37,7 @@
 507	backend/internal/router/judge_test.go
 450	backend/internal/router/review_test.go
 434	backend/internal/router/take_test.go
-15168	backend/internal/service/
+15167	backend/internal/service/
 429	backend/internal/service/branch.go
 352	backend/internal/service/branch_test.go
 855	backend/internal/service/chat_test.go

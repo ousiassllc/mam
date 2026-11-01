@@ -24,7 +24,8 @@ type Installer struct {
 	AssetSet catalog.ResourceSet
 	Store    *store.RuntimeStore
 	Extract  extract.Extractor
-	// Overlays are the scripts compiled into mam that an assembled runtime's build writes into the environment (catalog.Catalog.Overlays).
+	// Overlays are the scripts compiled into mam that the install writes into the environment: the build of an assembled runtime, or the
+	// extra files of an archive runtime (catalog.Catalog.Overlays).
 	Overlays map[string][]byte
 	// Fetch are the options of the download (client, URL check; Progress is set per call).
 	Fetch fetch.Options
@@ -82,12 +83,26 @@ func (i *Installer) Status() Status {
 		return st
 	}
 	st.Installed, st.Version, st.Variant = true, rec.Version, rec.Variant
-	if _, err := os.Stat(i.PythonPath()); err != nil {
+	if !i.filesPresent() {
 		st.Installed, st.Broken = false, true
 		return st
 	}
 	st.UpdateAvailable = rec.Version != i.Runtime.Version
 	return st
+}
+
+// filesPresent reports whether the interpreter and the files mam wrote next to the vendor's server are in the environment (an
+// environment installed before the launcher was added has not got it: installing again writes it).
+func (i *Installer) filesPresent() bool {
+	if _, err := os.Stat(i.PythonPath()); err != nil {
+		return false
+	}
+	for _, f := range i.Runtime.ExtraFiles {
+		if _, err := os.Stat(filepath.Join(i.Layout.EnvDir(), filepath.FromSlash(f.Dest))); err != nil {
+			return false
+		}
+	}
+	return true
 }
 
 // packageFile is a file of the package that is downloaded: the vendor's archive, or a part of an assembled build.
@@ -183,6 +198,9 @@ func (i *Installer) Install(ctx context.Context, v catalog.Variant, progress Pro
 				progress(PhaseExtract, done, total)
 			}
 		})
+		if err == nil {
+			err = i.writeFiles(tmp, i.Runtime.ExtraFiles) // mam's own launcher, next to the vendor's server
+		}
 	}
 	if err == nil {
 		err = i.swap(tmp)

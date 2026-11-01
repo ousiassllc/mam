@@ -231,6 +231,16 @@ func (m *Manager) fail(s Status, err error) Status {
 	return s
 }
 
+// startTimeoutError is a child that did not answer within StartTimeout. It is a context.DeadlineExceeded
+// (errors.Is), so that callers can tell a start timeout from a crash, and keeps the user-facing message.
+type startTimeoutError struct{ after time.Duration }
+
+func (e startTimeoutError) Error() string {
+	return fmt.Sprintf("%s 以内に応答しませんでした", e.after)
+}
+
+func (e startTimeoutError) Unwrap() error { return context.DeadlineExceeded }
+
 func (m *Manager) waitReady(ctx context.Context, r *run, url string) error {
 	tick := time.NewTicker(m.cfg.PollEvery)
 	defer tick.Stop()
@@ -243,7 +253,7 @@ func (m *Manager) waitReady(ctx context.Context, r *run, url string) error {
 			return fmt.Errorf("プロセスが終了しました（終了コード %d）", r.exitCode())
 		case <-ctx.Done():
 			if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-				return fmt.Errorf("%s 以内に応答しませんでした", m.cfg.StartTimeout)
+				return startTimeoutError{after: m.cfg.StartTimeout}
 			}
 			return ctx.Err()
 		case <-tick.C:

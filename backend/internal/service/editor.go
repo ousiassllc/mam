@@ -145,6 +145,8 @@ type EditorView struct {
 	Defaults domain.ExportOptions
 	// CanRender is false without ffmpeg: no preview, audio or export.
 	CanRender bool
+	// ProviderNotes tell why a GenerateAudio run went to the cloud (model-adapters-m3.md §14.10); empty for every other view.
+	ProviderNotes []string
 }
 
 func (s *EditorService) briefOptions(ctx context.Context, projectID string) (domain.Brief, domain.ExportOptions, error) {

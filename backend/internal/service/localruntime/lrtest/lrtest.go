@@ -255,7 +255,7 @@ func testCatalog(h *Host) *catalog.Catalog {
 	}
 	real, _ := catalog.Default().Runtime(ID)
 	rt := real
-	rt.ArchiveRoot, rt.Version = archiveRoot, "1"
+	rt.ArchiveRoot, rt.Version, rt.ExtraFiles = archiveRoot, "1", nil // the test's package has no launcher of mam's to write
 	rt.Launch = catalog.RuntimeLaunch{
 		Python: pythonRel, Entry: entryRel, Args: []string{entryRel, "-a", "127.0.0.1", "-p", "{port}"}, ReadyPath: "/openapi.json",
 		Env: []string{"HF_HUB_OFFLINE=1"}, StartTimeoutSec: 20,

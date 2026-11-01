@@ -119,6 +119,7 @@ func TestAChildThatExitsAtOnceIsAFailedStartWithItsLog(t *testing.T) {
 	assert.Equal(t, proc.StateFailed, st.State)
 	assert.Equal(t, 3, st.ExitCode)
 	assert.Contains(t, st.Error, "終了しました")
+	assert.NotErrorIs(t, err, context.DeadlineExceeded, "a crash is not a timeout")
 	assert.Contains(t, st.Error, "ImportError: DLL load failed", "the end of the log tells the user why")
 	assert.Equal(t, []proc.State{proc.StateStarting, proc.StateFailed}, ev.states())
 }
@@ -130,6 +131,7 @@ func TestAChildThatNeverAnswersTimesOutAndIsKilled(t *testing.T) {
 	require.Error(t, err)
 	assert.Equal(t, proc.StateFailed, st.State)
 	assert.Contains(t, st.Error, "応答しませんでした")
+	assert.ErrorIs(t, err, context.DeadlineExceeded, "a start timeout is told from a crash by errors.Is")
 	assert.NoError(t, m.Stop())
 }
 

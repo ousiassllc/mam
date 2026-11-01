@@ -84,6 +84,9 @@ func generateAudio(t *tracker, svc *service.EditorService) mcpkit.Handler[AudioI
 				res["audio_timeline_id"], res["version_number"] = a.ID, a.VersionNumber
 				res["speech_lines"], res["measured_lufs"], res["skipped_steps"] = a.Timeline.SpeechLines(), a.Timeline.MeasuredLUFS, len(a.Timeline.Skipped)
 			}
+			if len(v.ProviderNotes) > 0 {
+				res["provider_notes"] = v.ProviderNotes
+			}
 			return res, nil
 		})
 		return Ref{JobRef: ref}, err

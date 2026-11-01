@@ -125,15 +125,22 @@ func CheckBuild(where string, b *Build, overlays map[string][]byte) []error {
 	if !relativeSlashPath(b.SitePackages) {
 		errs = append(errs, fmt.Errorf("%s: build site_packages must be a relative slash path", where))
 	}
-	for _, f := range b.Files {
+	return append(errs, CheckFiles(where, b.Files, overlays)...)
+}
+
+// CheckFiles validates the files mam writes into the environment (the files of a Build, or the extra files of an archive runtime):
+// each is inside the environment and is either an embedded script (one of overlays) or lines.
+func CheckFiles(where string, files []File, overlays map[string][]byte) []error {
+	var errs []error
+	for _, f := range files {
 		_, haveOverlay := overlays[f.Overlay]
 		switch {
 		case !relativeSlashPath(f.Dest):
-			errs = append(errs, fmt.Errorf("%s: build file dest %q must be a relative slash path", where, f.Dest))
+			errs = append(errs, fmt.Errorf("%s: file dest %q must be a relative slash path", where, f.Dest))
 		case (f.Overlay == "") == (len(f.Lines) == 0):
-			errs = append(errs, fmt.Errorf("%s: build file %s has an overlay or lines, one of them", where, f.Dest))
+			errs = append(errs, fmt.Errorf("%s: file %s has an overlay or lines, one of them", where, f.Dest))
 		case f.Overlay != "" && !haveOverlay:
-			errs = append(errs, fmt.Errorf("%s: build file %s: there is no overlay %q", where, f.Dest, f.Overlay))
+			errs = append(errs, fmt.Errorf("%s: file %s: there is no overlay %q", where, f.Dest, f.Overlay))
 		}
 	}
 	return errs

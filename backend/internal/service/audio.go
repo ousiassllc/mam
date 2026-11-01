@@ -19,12 +19,10 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/voicerefsvc"
 )
 
-// GenerateAudio makes the Audio Timeline of the latest Edit Timeline of the trunk (branchID "") or
-// of a Branch (POST /projects/:id/audio/generate): the Audio Director reads the Scenes of the cut,
-// speaks Dialogue and Narration, makes the BGM, Ambience, SE, Foley and Lip Sync the Quality Policy
-// pays for within the budget, mixes everything with the sound of the Rough Cut and normalizes the
-// loudness. The result is the next Audio Timeline version of that Branch. The Project must be in
-// AUDIO (the Editor Judge passed). The providers are the saved settings (audiosettings), read on every run.
+// GenerateAudio makes the Audio Timeline of the latest Edit Timeline of the trunk (branchID "") or of a Branch (POST /projects/:id/audio/generate):
+// the Audio Director reads the Scenes of the cut, speaks Dialogue and Narration, makes the BGM, Ambience, SE, Foley and Lip Sync the Quality Policy
+// pays for within the budget, mixes everything with the sound of the Rough Cut and normalizes the loudness. The result is the next Audio Timeline
+// version of that Branch. The Project must be in AUDIO (the Editor Judge passed). The providers are the saved settings (audiosettings), read on every run.
 func (s *EditorService) GenerateAudio(ctx context.Context, projectID, branchID string) (EditorView, error) {
 	opts, err := s.prefs.Load()
 	if err != nil {
@@ -97,7 +95,6 @@ func (s *EditorService) GenerateAudioWith(ctx context.Context, projectID, branch
 		return EditorView{}, err
 	}
 	in.Voices = localvoice.VoiceIDs(clones)
-
 	in.RunID = domain.NewID()
 	tl, err := s.audio.Produce(ctx, in)
 	if err != nil {
@@ -109,12 +106,13 @@ func (s *EditorService) GenerateAudioWith(ctx context.Context, projectID, branch
 		return EditorView{}, notFound(err)
 	}
 	s.announce(ctx, projectID, assistantText(audiosummary.Of(tl, branchID != "", notes...)))
-	return s.View(ctx, projectID, branchID)
+	v, err := s.View(ctx, projectID, branchID)
+	v.ProviderNotes = notes
+	return v, err
 }
 
-// fixMusic holds the BGM when the Project's Music is MANUAL or LOCK (spec/spec.md §6): the Audio
-// Director carries over the BGM of the latest Audio Timeline, whose files are still there, instead
-// of planning and making it again.
+// fixMusic holds the BGM when the Project's Music is MANUAL or LOCK (spec/spec.md §6): the Audio Director carries over the BGM of the
+// latest Audio Timeline, whose files are still there, instead of planning and making it again.
 func (s *EditorService) fixMusic(ctx context.Context, projectID, branchID string, in *audiodirector.Input) error {
 	locks, err := s.locks.ProjectLocks(ctx, projectID)
 	if err != nil {
@@ -139,9 +137,8 @@ func (s *EditorService) fixMusic(ctx context.Context, projectID, branchID string
 	return nil
 }
 
-// audioScenes reads the Scenes of the cut in the order they play: where each sits in the finished
-// video, how many clips it has, what the script says there (Dialogue / Narration only for Scenes of
-// the script, not for the Scenes of a Branch) and what the Shots of its clips are for.
+// audioScenes reads the Scenes of the cut in the order they play: where each sits in the finished video, how many clips it has, what the script
+// says there (Dialogue / Narration only for Scenes of the script, not for the Scenes of a Branch) and what the Shots of its clips are for.
 func (s *EditorService) audioScenes(ctx context.Context, projectID, branchID string, tl domain.EditTimeline) ([]audiodirector.Scene, error) {
 	idx, err := s.shotIndex(ctx, projectID, branchID)
 	if err != nil {

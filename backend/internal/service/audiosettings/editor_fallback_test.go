@@ -23,9 +23,12 @@ func TestGenerateAudio_WithTheFallbackAnUnsupportedLocalVoiceMakesTheWholeRunUse
 	e.rig.rt.refuse["gpt-sovits"] = macOSRefusal("gpt-sovits")
 	e.save(audiosettings.Update{VoiceProvider: new(localvoice.Local), FallbackToCloud: new(true)})
 
-	_, err := e.Services.Editor.GenerateAudio(context.Background(), e.ProjectID, "")
+	view, err := e.Services.Editor.GenerateAudio(context.Background(), e.ProjectID, "")
 
 	require.NoError(t, err)
+	require.Len(t, view.ProviderNotes, 1, "the switch is in the result of the run too (provider_notes of the generate_audio job)")
+	assert.Contains(t, view.ProviderNotes[0], "ローカルの声（GPT-SoVITS）を使えなかったため、この実行はクラウドの声（ElevenLabs）で作りました")
+	assert.Contains(t, view.ProviderNotes[0], "公式の PyTorch 版が使えません")
 	assert.Equal(t, map[domain.ModelName]int{domain.ModelElevenLabsTTS: 2}, e.speechModels(), "every line is spoken by the cloud: the two voices are not mixed")
 	assert.Zero(t, e.local.prepared, "the local runtime is not started")
 	assert.Zero(t, e.local.lines)
@@ -71,11 +74,12 @@ func TestGenerateAudio_WithTheFallbackAUsableLocalVoiceIsUsed(t *testing.T) {
 	e := newEditorRig(t, fakeKeys{"elevenlabs": true}, false)
 	e.save(audiosettings.Update{VoiceProvider: new(localvoice.Local), FallbackToCloud: new(true)})
 
-	_, err := e.Services.Editor.GenerateAudio(context.Background(), e.ProjectID, "")
+	view, err := e.Services.Editor.GenerateAudio(context.Background(), e.ProjectID, "")
 
 	require.NoError(t, err)
 	assert.Equal(t, map[domain.ModelName]int{domain.ModelGPTSoVITSTTS: 2}, e.speechModels())
 	assert.NotContains(t, e.lastChat(), "クラウド")
+	assert.Empty(t, view.ProviderNotes, "nothing went to the cloud: no notes")
 }
 
 // The lip sync goes to Sync Labs for the whole run when the local one cannot be used and the user allowed it; the voice, which can be used,

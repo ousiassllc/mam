@@ -42,7 +42,19 @@ func (i *Installer) assemble(ctx context.Context, a catalog.RuntimeVariant, file
 		}
 		base += p.ExtractedSize
 	}
-	for _, f := range b.Files {
+	if err := i.writeFiles(tmp, b.Files); err != nil {
+		return err
+	}
+	if progress != nil {
+		progress(PhaseExtract, a.ExtractedSize, a.ExtractedSize)
+	}
+	return nil
+}
+
+// writeFiles writes the files mam owns (the path file of the Python, mam's own server and launcher scripts) into the environment in
+// tmp; a file of the same name that the archive holds is replaced, so the file mam wrote is the one that runs.
+func (i *Installer) writeFiles(tmp string, files []parts.File) error {
+	for _, f := range files {
 		data := []byte(strings.Join(f.Lines, "\n") + "\n")
 		if f.Overlay != "" {
 			var ok bool
@@ -57,9 +69,6 @@ func (i *Installer) assemble(ctx context.Context, a catalog.RuntimeVariant, file
 		if err := os.WriteFile(target, data, 0o640); err != nil { //nolint:gosec // a file of the runtime's own environment, readable by its interpreter
 			return fmt.Errorf("runtime: write %s: %w", f.Dest, err)
 		}
-	}
-	if progress != nil {
-		progress(PhaseExtract, a.ExtractedSize, a.ExtractedSize)
 	}
 	return nil
 }
