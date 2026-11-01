@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"regexp"
 	"slices"
 	"sort"
 	"strings"
@@ -166,8 +167,15 @@ func pickable(data []byte) []string {
 	return slugs
 }
 
+// quotedName finds the quoted names in a message: 'x', `x`, "x", ‘x’ and “x”. An opening quote must not follow a letter or
+// digit, so the apostrophe of "doesn't" opens nothing.
+var quotedName = regexp.MustCompile("(?:^|[^\\pL\\pN])['\"`‘“]([^'\"`‘’“”]+)['\"`’”]")
+
 // driverRefused reports whether err says the endpoint does not accept driver as the model of the call, for example
 // 400 "The 'gpt-5.5' model is not supported when using Codex with a ChatGPT account". Only that moves the loop on.
+// The model the endpoint names must be the driver itself (compared whole, ignoring case): a refusal of another model, such
+// as the image tool's own "The 'gpt-image-2' model is not supported ...", or of one whose name only starts with the
+// driver's (gpt-6-luna for gpt-6), says nothing about the driver, and trying the other drivers would hide the real error.
 func driverRefused(err error, driver string) bool {
 	var pe *modeladapter.ProviderError
 	if !errors.As(err, &pe) || (pe.Status != http.StatusBadRequest && pe.Status != http.StatusNotFound) {
@@ -180,7 +188,12 @@ func driverRefused(err error, driver string) bool {
 	if !strings.Contains(m, "not supported") && !strings.Contains(m, "not found") && !strings.Contains(m, "does not exist") {
 		return false
 	}
-	return strings.Contains(m, strings.ToLower(driver)) || strings.Contains(m, "chatgpt account")
+	for _, q := range quotedName.FindAllStringSubmatch(m, -1) {
+		if strings.TrimSpace(q[1]) == strings.ToLower(driver) {
+			return true
+		}
+	}
+	return false
 }
 
 // noDriver is the failure when the endpoint refused every driver. It is a 400 (a refusal of the request, which no retry

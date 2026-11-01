@@ -26,10 +26,11 @@ const Agent = llm.AgentPromptPlanner
 var ErrNotTranslated = errors.New("prompttranslate: the answer is not a translation of every text")
 
 // Needs reports whether a text has to be translated: it has a letter of a script other than Latin (Japanese, Chinese,
-// Korean, Cyrillic, ...). Accented Latin letters, digits, punctuation and emoji are English enough.
+// Korean, Cyrillic, Greek, ...). Letters of the Common script (µ U+00B5, ʼ U+02BC, ...) belong to no script, so they are
+// English enough, like accented Latin letters, fullwidth Latin letters, digits, punctuation and emoji.
 func Needs(text string) bool {
 	for _, r := range text {
-		if unicode.IsLetter(r) && !unicode.Is(unicode.Latin, r) {
+		if unicode.IsLetter(r) && !unicode.Is(unicode.Latin, r) && !unicode.Is(unicode.Common, r) {
 			return true
 		}
 	}
@@ -76,8 +77,8 @@ type payload struct {
 }
 
 // Translate returns the English of every text in texts, in order. All of them are expected to Need a translation (Select
-// makes the list); with none, no call is made. A failure of the LLM is returned as it is (llm.ErrNoAPIKey, llm.ErrTimeout, ...), an
-// answer that is not a translation of every text wraps ErrNotTranslated.
+// makes the list); with none, no call is made. A failure of the LLM is wrapped and returned (errors.Is finds llm.ErrNoAPIKey,
+// llm.ErrTimeout, ...), an answer that is not a translation of every text wraps ErrNotTranslated.
 func (t *Translator) Translate(ctx context.Context, texts []string) ([]string, error) {
 	if len(texts) == 0 {
 		return nil, nil
@@ -91,8 +92,13 @@ func (t *Translator) Translate(ctx context.Context, texts []string) ([]string, e
 		return nil, fmt.Errorf("%w: %d texts asked, %d answered", ErrNotTranslated, len(texts), len(ans.Texts))
 	}
 	for i, en := range ans.Texts {
-		if en = strings.TrimSpace(en); en == "" || en == strings.TrimSpace(texts[i]) {
-			return nil, fmt.Errorf("%w: text %d came back %s", ErrNotTranslated, i+1, map[bool]string{true: "empty", false: "unchanged"}[en == ""])
+		en = strings.TrimSpace(en)
+		if en == "" || en == strings.TrimSpace(texts[i]) {
+			why := "unchanged"
+			if en == "" {
+				why = "empty"
+			}
+			return nil, fmt.Errorf("%w: text %d came back %s", ErrNotTranslated, i+1, why)
 		}
 		ans.Texts[i] = en
 	}
