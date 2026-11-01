@@ -60,6 +60,7 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 | POST | `/settings/ffmpeg/download` | 固定した版の ffmpeg・ffprobe のダウンロードを背景で始める（Windows x64・macOS arm64 だけ。ここが通信の契機の全て）。CSRF 必須。200 で進行中の部品。進行中は何も始めず同じ部品。この環境で取得できない・書き込めない・削除中は 409、空き容量不足は 507 | フラグメントのみ |
 | POST | `/settings/ffmpeg/download/cancel` | ダウンロードの中断（部分ファイルは残り、もう一度押すと続きから）。CSRF 必須。200 で部品 | フラグメントのみ |
 | DELETE | `/settings/ffmpeg/download` | ダウンロードして入れた ffmpeg・記録・ダウンロードの残りの削除。CSRF 必須。200 で部品。進行中・この環境に取得したものが無いは 409。起動中の mam は次に起動し直すまで、これまでの ffmpeg を使い続ける | フラグメントのみ |
+| GET | `/settings/licenses` ・ `/settings/licenses/:id` | 設定画面「第三者のライセンス」のページ（`THIRD_PARTY_NOTICES.md` の埋め込み。グループごとの `<details>`）と、項目を開いたときに読む全文の断片（HTMX のとき。HTMX でなければ分類のページ、`:id` が無ければ 404）。常に登録。詳細は [endpoints-settings.md](endpoints-settings.md) §5.4・[../components/settings-screen-licenses.md](../components/settings-screen-licenses.md) | フルページ / フラグメント |
 | PUT | `/settings/chatgpt/codex/path` | 自分で入れた codex の実行ファイルのパスを設定（フォーム `path`。空で解除）。絶対パスの実在するファイルでなければ 422、保存できなければ 500。CSRF 必須 |
 | POST / GET | `/settings/chatgpt/codex/refresh` ・ `…/codex/models` | アカウント・利用上限を読み直す（POST、CSRF 必須。リセット時刻は日本時間）／ サインイン中のアカウントで使えるモデルを区画に出す（GET、`model/list`）。区画は `method=codex` で返る（仕様: `spec/architecture/chatgpt-codex/codex-login.md`） |
 | GET | `/projects/:id/analytics` | Production Analytics（M3、`spec/spec.md` §28）。Project の MVP Success Metrics（North Star・Shot・人間の介入・時間・コスト・品質・完成）を `analytics_panel` で表示する。計算式と記録する人間の介入は §28.2・§28.3。集計はローカル DB のみで外部へ送信しない。存在しない Project は 404。Project のメニューの「制作指標」から開く | フルページ / フラグメント |
