@@ -226,3 +226,58 @@ func TestExplainSaysWhatToDoForEachFailure(t *testing.T) {
 		assert.Contains(t, ffmpegdl.Explain(err), want)
 	}
 }
+
+func TestServiceRefusesToStartAnInstallWhileTheDownloadedCopyIsBeingRemoved(t *testing.T) {
+	r := newRig(t, "9.9.9")
+	s := newService(t, r)
+	started, err := s.StartInstall()
+	require.NoError(t, err)
+	require.True(t, started)
+	s.WaitInstall()
+	require.True(t, s.Status().Installed)
+
+	inRemoval, release := make(chan struct{}), make(chan struct{})
+	ffmpegdl.HoldRemoval(s, func() error {
+		close(inRemoval)
+		<-release
+		return nil
+	})
+	removed := make(chan error, 1)
+	go func() { removed <- s.Remove() }()
+	<-inRemoval
+
+	// The files are being deleted: an install that started now would run on a directory that disappears under it.
+	started, err = s.StartInstall()
+	require.ErrorIs(t, err, ffmpegdl.ErrBusy)
+	assert.False(t, started)
+	assert.Equal(t, ffmpegdl.InstallIdle, s.Status().Install.State, "nothing was started")
+	require.ErrorIs(t, s.Remove(), ffmpegdl.ErrBusy, "two removals do not overlap either")
+
+	close(release)
+	require.NoError(t, <-removed)
+	started, err = s.StartInstall()
+	require.NoError(t, err, "installing is possible again once the removal is over")
+	assert.True(t, started)
+	s.WaitInstall()
+	assert.Equal(t, ffmpegdl.InstallSucceeded, s.Status().Install.State)
+}
+
+func TestNewPutsBackWhatAnInterruptedSwapLeft(t *testing.T) {
+	r := newRig(t, "9.9.9")
+	lay := r.ins.Layout
+	// The swap stopped between its two renames: the installed copy is only bin.old, and a half-extracted bin.new is there.
+	require.NoError(t, os.MkdirAll(lay.BinOldDir(), 0o750))
+	require.NoError(t, os.WriteFile(filepath.Join(lay.BinOldDir(), "ffmpeg"), []byte(fakeFFmpeg), 0o700))
+	require.NoError(t, os.MkdirAll(lay.BinNewDir(), 0o750))
+	require.NoError(t, os.WriteFile(filepath.Join(lay.BinNewDir(), "ffmpeg"), []byte("half"), 0o700))
+
+	newService(t, r)
+
+	restored, err := os.ReadFile(filepath.Join(lay.BinDir(), "ffmpeg"))
+	require.NoError(t, err, "the previous copy is back in place at startup")
+	assert.Equal(t, fakeFFmpeg, string(restored))
+	for _, gone := range []string{lay.BinOldDir(), lay.BinNewDir()} {
+		_, statErr := os.Stat(gone)
+		assert.Error(t, statErr, "%s is cleaned at startup", gone)
+	}
+}

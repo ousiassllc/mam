@@ -84,6 +84,8 @@ func StartDownload(s Services) gin.HandlerFunc {
 			panel(c, s, http.StatusOK, "ダウンロードを始めました", "")
 		case err == nil:
 			panel(c, s, http.StatusOK, "すでにダウンロード中です", "")
+		case errors.Is(err, ffmpegdl.ErrBusy):
+			panel(c, s, http.StatusConflict, "", "ダウンロードした ffmpeg を削除しています。終わってからもう一度お試しください")
 		case errors.Is(err, ffmpegdl.ErrUnsupported):
 			panel(c, s, http.StatusConflict, "", "この環境ではダウンロードできません（できるのは Windows（x64）と macOS（Apple Silicon）だけです）。自分で入れた ffmpeg のパスを指定してください")
 		case errors.Is(err, exeinstall.ErrNotWritable):

@@ -89,6 +89,8 @@ func mapInstallError(err error) error {
 	switch {
 	case err == nil:
 		return nil
+	case errors.Is(err, codex.ErrEngineRemoving):
+		return &service.ConflictError{Message: "Codex のエンジンと関連ファイルを削除しています。終わってからもう一度試してください"}
 	case errors.Is(err, codex.ErrUnsupported):
 		return &service.ConflictError{Message: "この環境ではダウンロードできません（Windows 版と macOS 版（Apple Silicon）のみ）。自分で入れた codex のパスを設定画面で指定してください"}
 	case errors.Is(err, exeinstall.ErrNotWritable):

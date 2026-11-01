@@ -1,5 +1,5 @@
 // Package ffmpeg is the handlers of the "ffmpeg" category of the settings screen (spec/components/settings-screen-categories.md
-// §6): the page body and the save of the paths of ffmpeg and ffprobe (PUT /settings/ffmpeg).
+// §8): the page body and the save of the paths of ffmpeg and ffprobe (PUT /settings/ffmpeg).
 package ffmpeg
 
 import (

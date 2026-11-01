@@ -62,6 +62,8 @@ macOS の 2 つの実行ファイルの SHA-256 の全文: ffmpeg `2e11c6f90993c
 
 **使うのは、記録があり、ファイルがそろっているときだけ**（`Installer.Dirs`）。`installed.json` が無い・壊れている・記録に ffmpeg と ffprobe の両方が載っていない・記録のファイルが無い／サイズが違う（手で消した・変えた）ときは「壊れている」で、**探す場所に加えない**。`bin/` に記録の無いファイルが置かれていても使わない。検証に失敗した導入は、前の導入（あれば）をそのまま残す。
 
+**アーカイブの扱い**: 中身がカタログと一致しなかった（`exeinstall.ErrMismatch`・`ErrUnsafeArchive`）・実行できなかった（`ErrNotRunnable`）ときだけ消す（取り直さないと同じ失敗になるため）。入れ替えに失敗したとき（ディスク・権限）と中断のときは、SHA-256 を確かめたアーカイブを残し、やり直しで再ダウンロードしない。**削除と導入は同時に動かない**: 導入中の削除は `ErrBusy`、削除中の導入開始も `ErrBusy`（409）。起動時（`ffmpegdl.New`）は `CleanLeftovers` で、止まった入れ替えの `bin.old/` を戻し、途中の `bin.new/` を消す。
+
 ## 5. 更新の扱い
 
 - 固定する版は mam のリリースで上げる（Codex のカタログと同じ。`ffmpegdl/data/catalog.json` を書き換えて、SHA-256 を実際にダウンロードして計算し直す。テストが形式（https・`latest` でない・SHA-256 の形・名前）を検査する）。
@@ -93,8 +95,8 @@ macOS の 2 つの実行ファイルの SHA-256 の全文: ffmpeg `2e11c6f90993c
 ## 8. テスト
 
 - `exeinstall/extract_test.go`: zip と tar.gz の展開（名指しのエントリだけ・フラット・パスの拒否・リンク・二重・足りない・サイズ違い・内容違い・途中の失敗で書いたものを消す・上書きしない・取り消し）。Codex のエンジンのテスト（`chatgpt/codex/engine`）は、この共通の展開を通る。
-- `ffmpegdl/*_test.go`: カタログの形（実際の固定値・https・`latest` でない・不正なカタログの拒否）、導入（zip 1 つ・2 つ・フェーズ・記録・原子的入れ替え・更新・失敗した更新が前の版を残す）、**アーカイブの SHA-256 が違えば何も入れず何も残さない**、**アーカイブは合っていても中の実行ファイルが違えば入れない**、実行できなければ入れない、記録が無い／壊れている／ファイルが変わった（壊れている）ときは使わない、中断と再開（Range）、容量不足、書き込み不可、途中の入れ替えの復旧、削除、`Service`（バックグラウンド・1 つずつ・取り消し・閉じる）。
-- **ffmpeg が無いマシンで、ダウンロードして入れたあと、アプリが使う探索（`ffmpegsettings.Look`）が見つけ、そのツールで `Probe`・`Thumbnail` が動く**こと、**PATH の ffmpeg がダウンロードしたものに勝つ**こと、**SHA-256 が合わないダウンロードは見つからない**こと（`ffmpegdl/lookup_test.go`。マシンの本物の ffmpeg を zip に入れて `httptest` で配る）。
+- `ffmpegdl/*_test.go`: カタログの形（実際の固定値・https・`latest` でない・不正なカタログの拒否）、導入（zip 1 つ・2 つ・フェーズ・記録・原子的入れ替え・更新・失敗した更新が前の版を残す）、**アーカイブの SHA-256 が違えば何も入れず何も残さない**、**アーカイブは合っていても中の実行ファイルが違えば入れない**、実行できなければ入れない、記録が無い／壊れている／ファイルが変わった（壊れている）ときは使わない、中断と再開（Range）、容量不足、書き込み不可、途中の入れ替えの復旧（`Installer` と、`New` が起動時に戻す）、入れ替えに失敗してもダウンロード済みのアーカイブを残す（検証に失敗したときだけ消す）、削除（導入と削除は同時に動かない）、`Service`（バックグラウンド・1 つずつ・取り消し・閉じる）。
+- **ffmpeg が無いマシンで、ダウンロードして入れたあと、アプリが使う探索（`ffmpegsettings.Look`）が見つけ、そのツールで `Probe`・`Thumbnail` が動く**こと、**PATH の ffmpeg がダウンロードしたものに勝つ**こと、**SHA-256 が合わないダウンロードは見つからない**こと（`ffmpegdl/lookup_test.go`。マシンの本物の ffmpeg を zip に入れて `httptest` で配る。CI では Linux の `ci` ジョブ（apt の ffmpeg）と macOS の `macos` ジョブ（Homebrew の ffmpeg。`go test` の前の `Ensure ffmpeg` で入れる。[../environment/setup.md](../environment/setup.md)）の両方で動き、ffmpeg が無ければ `CI=true` では失敗になる）。
 - `service/ffmpegsettings`: 入れたものは最後に探す・PATH と設定が勝つ・呼ぶたびに読む。`web/ffmpegscreen/download_test.go`: 画面（ボタン・進み具合・取り消し・チェックサム不一致の表示・削除・CSRF）。`web/handler/onboarding`: 初回ガイドのボタンの出し分け。
 - 実機: §9。
 
@@ -103,7 +105,7 @@ macOS の 2 つの実行ファイルの SHA-256 の全文: ffmpeg `2e11c6f90993c
 - **Windows 11 x64**: ffmpeg の無い PC で、設定の「ffmpeg をダウンロードして入れる」を押し、約 110 MiB を取得して「ffmpeg を入れました」になること。mam を再起動して、Judge・Take のプレビュー・Export が動くこと。`<mam.exe のディレクトリ>\ffmpeg\bin` に `ffmpeg.exe`・`ffprobe.exe` ができ、**Windows Defender・SmartScreen が止めないこと**（Authenticode 署名は無い）。PATH に別の ffmpeg を入れたら、そちらが使われること。
 - **macOS（Apple Silicon）**: 同様に、約 54 MiB を取得して再起動後に Judge・プレビュー・Export が動くこと。`~/Library/Application Support/mam/ffmpeg/bin/ffmpeg` が **Gatekeeper に止められず**、`codesign -dv --verbose=4` で Developer ID の署名が出ること。Finder から起動した MAM.app で動くこと。`brew install ffmpeg` した ffmpeg があれば、そちらが使われること。
 - **Windows の入れ替え**: ダウンロードのあとの `bin.new` → `bin` の改名が、ウイルス対策ソフトに止められないこと。止められるなら、改名のやり直しを足す。
-- **9.0.2 の ffmpeg での mam の動作**（mam の CI は Ubuntu の ffmpeg で動く）。同じ 9.0.2 の Linux 版ではテストが通ることを確かめたが、Windows・macOS のビルドでの Export（H.264・HEVC・VP9）・字幕（drawtext の既定フォント）は実機で確かめる。
+- **9.0.2 の ffmpeg での mam の動作**（mam の CI は Ubuntu（apt）と macOS（Homebrew）の ffmpeg で動く）。同じ 9.0.2 の Linux 版ではテストが通ることを確かめたが、Windows・macOS のビルドでの Export（H.264・HEVC・VP9）・字幕（drawtext の既定フォント）は実機で確かめる。
 
 ## 改訂履歴
 

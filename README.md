@@ -35,7 +35,7 @@ AI Video Production Agent。企画・脚本・演出・撮影・品質判定・�
 ChatGPT Business / Enterprise / Edu のワークスペースアカウントでは、「Sign in with ChatGPT」で他のアプリからプランを使えません（OpenAI の仕様で、プランを使えるのは個人の Go / Plus / Pro だけです）。組織の Admin Console の「外部アクセス」にも、これを許可する設定はありません。
 
 1. 設定画面の「ChatGPT でログイン」で、方式を「Codex 経由」に切り替えます
-2. 初回は Codex の実行ファイルをダウンロードします（約 80〜90 MB。Windows 版は `mam.exe` と同じ場所の `codex` フォルダに、macOS 版（Apple Silicon）は `~/Library/Application Support/mam/codex` に置きます。`MAM.app` の中には置かないので、自動更新で消えません。Windows 版と macOS 版だけです。ほかの環境では自分で入れた `codex` のパスを指定します）
+2. 初回は Codex の実行ファイルをダウンロードします（約 80〜90 MB。Windows 版は `mam.exe` と同じ場所の `codex` フォルダに、macOS 版（Apple Silicon）はデータディレクトリ（既定は `~/Library/Application Support/mam`。`--data-dir` や `MAM_DATA_DIR` で変えたときはそこ）の `codex` フォルダに置きます。`MAM.app` の中には置かないので、自動更新で消えません。Windows 版と macOS 版だけです。ほかの環境では自分で入れた `codex` のパスを指定します）
 3. 「ブラウザでログイン」か「デバイスコードでログイン」で、組織のアカウントにログインします
 4. 「LLM の割り当て」で、使う Agent のプロバイダーを `chatgpt-codex` にします
 
@@ -48,7 +48,7 @@ Codex のログイン情報は、MAM 専用の `CODEX_HOME`（Windows は `%AppD
 ffmpeg は同梱していません。無くても起動はできますが、Judge（品質判定）、動画のプレビュー、部分採用の合成、Export は ffmpeg と ffprobe を使うので、使うなら入れてください。**MAM がボタン 1 つでダウンロードして入れられます**。
 
 1. MAM の設定画面の「ffmpeg」（初回ガイドの「ffmpeg の確認」でも同じです）で「ffmpeg をダウンロードして入れる」を押します。約 110 MB（展開後は約 200 MB）を、配布元の [gyan.dev](https://www.gyan.dev/ffmpeg/builds/) のビルド（GitHub Releases の固定の版。mam が決めた SHA-256 と一致したものだけを使い、一致しなければ削除します）から取得し、`mam.exe` と同じ場所の `ffmpeg` フォルダに置きます（アンインストールで消えます）。ボタンを押したときだけ通信し、自動の更新確認はしません。ライセンスは GPL v3 です（ソースは配布元にあります。[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) も見てください）
-2. 「ffmpeg を入れました」と出たら、MAM を起動し直します（PATH などの探索は起動時に一度だけ行うため、起動中の MAM には反映されません）
+2. 「ffmpeg と ffprobe を入れました。…mam を一度終了して、起動し直してください」と出たら、MAM を起動し直します（PATH などの探索は起動時に一度だけ行うため、起動中の MAM には反映されません）
 3. 確認: 設定画面の「ffmpeg」に「使えます」と場所が出れば使えます
 
 自分で入れたい人は、これまでどおりにできます。PowerShell で `winget install Gyan.FFmpeg` を実行する（または [ffmpeg.org](https://ffmpeg.org/download.html) から Windows ビルドを展開して、`ffmpeg.exe` と `ffprobe.exe` があるフォルダを環境変数 `PATH` に追加する）か、設定画面の「ffmpeg」でパスを指定します。**自分で入れた ffmpeg（設定したパス・`PATH`）は、MAM がダウンロードしたものより優先して使います。** MAM がダウンロードしたものは、ほかに見つからないときに使います。
@@ -71,8 +71,8 @@ macOS 版でまだ使えないもの: 同梱の ComfyUI エンジンの導入（
 
 ffmpeg は同梱していません。無くても起動はできますが、Judge（品質判定）、動画のプレビュー、部分採用の合成、Export は ffmpeg と ffprobe を使うので、使うなら入れてください。**MAM がボタン 1 つでダウンロードして入れられます**（Apple Silicon のみ）。
 
-1. MAM の設定画面の「ffmpeg」（初回ガイドの「ffmpeg の確認」でも同じです）で「ffmpeg をダウンロードして入れる」を押します。約 54 MB（展開後は約 126 MB）を、配布元の [martin-riedl.de](https://ffmpeg.martin-riedl.de/) のビルド（Developer ID で署名された固定の版。mam が決めた SHA-256 と一致したものだけを使い、一致しなければ削除します）から取得し、`~/Library/Application Support/mam/ffmpeg` に置きます（`MAM.app` の中には置かないので、自動更新で消えません）。ボタンを押したときだけ通信し、自動の更新確認はしません。ライセンスは GPL v3 です（ソースは配布元にあります。[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) も見てください）
-2. 「ffmpeg を入れました」と出たら、MAM を起動し直します（ffmpeg は起動時に探すため、起動中の MAM には反映されません）
+1. MAM の設定画面の「ffmpeg」（初回ガイドの「ffmpeg の確認」でも同じです）で「ffmpeg をダウンロードして入れる」を押します。約 54 MB（展開後は約 126 MB）を、配布元の [martin-riedl.de](https://ffmpeg.martin-riedl.de/) のビルド（Developer ID で署名された固定の版。mam が決めた SHA-256 と一致したものだけを使い、一致しなければ削除します）から取得し、データディレクトリ（既定は `~/Library/Application Support/mam`。`--data-dir` や `MAM_DATA_DIR` で変えたときはそこ）の `ffmpeg` フォルダに置きます（`MAM.app` の中には置かないので、自動更新で消えません）。ボタンを押したときだけ通信し、自動の更新確認はしません。ライセンスは GPL v3 です（ソースは配布元にあります。[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) も見てください）
+2. 「ffmpeg と ffprobe を入れました。…mam を一度終了して、起動し直してください」と出たら、MAM を起動し直します（ffmpeg は起動時に探すため、起動中の MAM には反映されません）
 3. 確認: 設定画面の「ffmpeg」に「使えます」と場所が出れば使えます
 
 自分で入れたい人は、ターミナルで `brew install ffmpeg` を実行します（[Homebrew](https://brew.sh) が無いときは先に入れます。ffprobe も一緒に入ります）。Finder や Dock から起動した MAM は、ターミナルの `PATH` を引き継ぎません。そのため MAM は `PATH` に加えて、Homebrew の既定の場所（Apple Silicon は `/opt/homebrew/bin`、Intel は `/usr/local/bin`）も探します。ほかの場所（MacPorts など）に入れたときは、設定画面の「ffmpeg」で ffmpeg と ffprobe のパスを指定してください。ログインシェルの `PATH` は読みません。**自分で入れた ffmpeg は、MAM がダウンロードしたものより優先して使います。**
