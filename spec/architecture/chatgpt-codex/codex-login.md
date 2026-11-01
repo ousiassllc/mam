@@ -8,7 +8,12 @@ ChatGPT Business / Enterprise / Edu のワークスペースのアカウント�
 
 ## 2. 決定事項（Issue #845。オーナーが推奨を選んだもの）
 
-1. **エンジン**: 既定は公式の GitHub リリース `rust-v0.164.0` の `codex-app-server-<arch>-pc-windows-msvc.exe.zip`（amd64 / arm64。約 88 MB・展開後約 270 MB）を実行時に取得し、zip と展開後の実行ファイルの SHA-256 とサイズを検証して、`<mam.exe のディレクトリ>\codex\` に置く（`installed.json` に版と来歴を記録。インストーラー版はアンインストールで一緒に消える）。取得は Windows 版のみ。利用者が自分で入れた codex の絶対パスを設定画面で指定してもよい（他の OS・ブラウザ版はこれだけ）。mam は Codex を再配布しない（`THIRD_PARTY_NOTICES.md`）。
+1. **エンジン**: 既定は公式の GitHub リリース `rust-v0.164.0` の app-server を実行時に取得し、アーカイブと展開後の実行ファイルの SHA-256 とサイズを検証して置く（`installed.json` に版と来歴を記録）。取得できるのは **Windows（amd64 / arm64）と macOS の Apple Silicon（arm64）だけ**で、アセットは `GOOS/GOARCH` ごとに固定する（カタログのキーは `windows/amd64`・`windows/arm64`・`darwin/arm64`）。
+   - Windows: `codex-app-server-<x86_64|aarch64>-pc-windows-msvc.exe.zip`（約 88 MB・展開後約 270 MB）。`<mam.exe のディレクトリ>\codex\` に置く（インストーラー版はアンインストールで一緒に消える）。
+   - macOS（Issue #855）: `codex-app-server-aarch64-apple-darwin.tar.gz`（約 79 MB・展開後約 201 MB。中身は同名の実行ファイル 1 本だけ）。**置き場所は `.app` の外のデータディレクトリ**（`~/Library/Application Support/mam/codex/`。`engine.For(goos, exe, dataDir)` が OS で選ぶ）。実行ファイルは `MAM.app/Contents/MacOS/mam` で、自動更新（`desktop.md` §7.3）は `MAM.app` を丸ごと入れ替えるので、`.app` の中や隣に置くと更新で消える。データディレクトリならアプリを消しても更新しても残り、「ログアウト＋本体を削除」で消せる。Windows の置き場所は変えない。
+   - **取得できない環境**: Intel の Mac（mam 自体が Apple Silicon だけを配るので、Intel 用のアセットは固定しない）・Linux・32 ビットの Windows、置き場所が決まらないとき（実行ファイルもデータディレクトリも分からない）。画面と MCP は「Windows 版と macOS 版（Apple Silicon）だけ」と案内し、利用者が自分で入れた codex の絶対パスを設定画面で指定してもよい（これらの環境はこれだけ）。
+   - **展開**: Windows は zip、macOS は tar.gz（`archive/tar` + `compress/gzip`）。どちらも「`catalog` の `exe` と同名の通常ファイル 1 本だけ」のアーカイブしか受けない（パスの区切り・`..`・ドライブ・絶対パス・リンク・ディレクトリ・2 つ目のエントリは `ErrUnsafeArchive`）ので、アーカイブの中の名前で外のファイルを上書きすることはできない（書き出す先は `engine.new/<exe>` の固定）。サイズと SHA-256 は展開しながら確かめ、合わなければ書き出したファイルを消す。実行ビットはアーカイブの権限に頼らず、作るときに 0700 を付ける（macOS で必要。Windows では無視される）。
+   - **Gatekeeper（macOS）**: 隔離属性 `com.apple.quarantine` は、ブラウザなど隔離に対応したアプリがダウンロードしたファイルに付くもので、mam の HTTP クライアントで取得したファイルには付かない。それでも、取得した実行ファイルを置き換える前に `removexattr`（`golang.org/x/sys/unix`）で `com.apple.quarantine` を外す（`engine.Installer.ClearQuarantine`。付いていないのが普通なので `ENOATTR` は成功扱い。失敗しても導入は止めない＝ベストエフォート。darwin のビルドタグのファイルに閉じ、他の OS では何もしない）。子プロセスは窓を持たないので、隔離属性が付いたまま止められると利用者は応答できない。署名: 公式のリリースの実行ファイルは Developer ID で署名されている（Mach-O に署名のブロブがあり、チーム ID `2DC432GLL2`・ハードンドランタイムの旗を確認した。**公証は Linux からは確かめられず未検証**）。mam は展開後のバイト列を一切変えない（SHA-256 を確かめる）ので署名は壊れず、**アドホック署名を付け直すことはしない**（付け直すと OpenAI の署名を捨て、SHA-256 の固定とも合わなくなる）。実機での起動は §7。
 2. **用途**: テキスト生成のみ。
 3. **プロバイダー**: 別の `chatgpt-codex`（`llm.Providers()` の 5 つ目。既定の `routes` には入れない）。公式の `chatgpt-subscription` の経路には触らない。初めての Codex のログインに成功した区画に、LLM の割り当てで選ぶよう案内を出す（自動では切り替えない）。
 4. **隔離**: `CODEX_HOME` はデータディレクトリの `codex-home`（利用者の `~/.codex` と混ぜない）。データディレクトリは起動時に絶対パスにする（相対のままだと子プロセスの作業ディレクトリで別の場所を指す）。ハンドシェイクで app-server が答えた `codexHome` が mam の `codex-home` と同じディレクトリか（文字列が違っても、シンボリックリンク・ジャンクションの先でも、`os.SameFile` で同一なら同じとみなす）を確かめ、違えば止める。`cli_auth_credentials_store` は `keyring`、使えなければ `auto`。子プロセスには環境の `CODEX_HOME`・`CODEX_SQLITE_HOME`・`CODEX_ACCESS_TOKEN`・`CODEX_API_KEY`・`OPENAI_API_KEY` を渡さない。
@@ -22,7 +27,7 @@ ChatGPT Business / Enterprise / Edu のワークスペースのアカウント�
 ## 3. 使い方・構成
 
 - 設定画面「ChatGPT でログイン」に方式の切り替え（公式／Codex 経由）を置く。Codex 経由の区画は、利用条件（「利用条件」の節）・エンジン（状態・版・取得・進捗・中断・パス指定）・アカウント（メール・プラン・Codex の利用上限。リセット時刻は日本時間）・ブラウザ／デバイスコードのログイン・モデル一覧・ログアウト（取得した本体と `CODEX_HOME` の削除つき）。管理者の前提（Codex Local の許可、デバイスコードの許可）も画面と README に書く。ルートは `spec/api/endpoints.md`、MCP は `spec/api/mcp-tools-chatgpt.md`。
-- 実装は `backend/internal/chatgpt/codex/`: `catalog`（固定した版）・`engine`（取得・検証・展開・置き換え・削除）・`rpc`（JSON-RPC）・`protocol`（型・スキーマの突き合わせ）・`appserver`（起動・ハンドシェイク・異常終了の検知・サーバーからの要求の拒否）・`codextest`（偽の app-server）と、上位の `Service`（状態・導入・ログイン・ログアウト・モデル・`Complete`）。子プロセスは `modelmgr/proc` の標準入出力版（`StartPiped`）で起動し、Windows ではコンソール窓を出さず、mam の終了で一緒に終わる。app-server は最初に使うときに起動する（画面を開いただけでは起動しない）。エンジンの導入は同時に 1 つだけで、始めた時点（本体の差し替えのために app-server を止める前）から終わるまで app-server を起動しない（その間の起動は「導入中」で断る）。エンジンが無いまま使って起動に失敗しても、状態は「失敗」ではなく「未導入」のままにする。ログアウトと終了は、通知で始まったアカウントの読み直しの終わりを待ってから、記録とファイルを消す。
+- 実装は `backend/internal/chatgpt/codex/`: `catalog`（固定した版と `GOOS/GOARCH` ごとのアセット。形式は `zip` か `tar.gz`）・`engine`（取得・検証・展開・置き換え・削除・置き場所 `Layout`・macOS の隔離属性の除去）・`rpc`（JSON-RPC）・`protocol`（型・スキーマの突き合わせ）・`appserver`（起動・ハンドシェイク・異常終了の検知・サーバーからの要求の拒否）・`codextest`（偽の app-server）と、上位の `Service`（状態・導入・ログイン・ログアウト・モデル・`Complete`）。子プロセスは `modelmgr/proc` の標準入出力版（`StartPiped`）で起動し、Windows ではコンソール窓を出さず、mam の終了で一緒に終わる。app-server は最初に使うときに起動する（画面を開いただけでは起動しない）。エンジンの導入は同時に 1 つだけで、始めた時点（本体の差し替えのために app-server を止める前）から終わるまで app-server を起動しない（その間の起動は「導入中」で断る）。エンジンが無いまま使って起動に失敗しても、状態は「失敗」ではなく「未導入」のままにする。ログアウトと終了は、通知で始まったアカウントの読み直しの終わりを待ってから、記録とファイルを消す。
 - ログインはブラウザ（`account/login/start` の `chatgpt`。app-server が認可 URL を返し、mam が既定のブラウザを開く）とデバイスコード（`chatgptDeviceCode`）。進行中は区画が 2 秒ごとに自分を取り直し、中止・期限切れ・`account/login/completed` で終わる。ログアウトは `account/logout` を頼む（app-server が資格情報を消せなかったときは何も消さず失敗にする）。エンジンが無いまま本体と `CODEX_HOME` を消したときは、`keyring` に資格情報が残りうるので、資格情報マネージャーでの削除を案内する。
 
 ## 4. リクエストと道具の制限
@@ -62,6 +67,7 @@ ChatGPT Business / Enterprise / Edu のワークスペースのアカウント�
 - `baseInstructions` と `developerInstructions` の品質の比較、`model/list` の実際の応答
 - `-c features.*=false` と読み取り専用の sandbox で、実機の Codex が本当に道具を使わないか
 - Windows で app-server の子プロセスがコンソール窓を出さないこと・mam の終了でプロセスグループごと終わること
-- 約 88 MB の zip の実際のダウンロード（SHA-256・サイズは固定済みで、検証の手続きは偽の zip・偽のサーバーでだけ試した）
+- 約 88 MB の zip（Windows）と約 79 MB の tar.gz（macOS）の実際のダウンロード（SHA-256・サイズは固定済みで、検証の手続きは偽のアーカイブ・偽のサーバーでだけ試した。macOS のアセットのハッシュと展開後の実行ファイルのハッシュは、公式のリリースから取って手元で計算した）
+- macOS（Apple Silicon）の実機: 設定画面の「Codex をダウンロード」で取得できること（`~/Library/Application Support/mam/codex/engine/` にできて、実行ビットがあること）、取得した `codex-app-server-aarch64-apple-darwin` が Gatekeeper に止められずに起動すること（`codesign -dv --verbose=4`・`spctl -a -vvv -t exec`・`xattr -l` の結果。公証の有無）、`MAM.app` の自動更新のあとも取得済みのエンジンが残って使えること、macOS のキーチェーンに `cli_auth_credentials_store="keyring"` で保存できること（保存できないときは `auto` に落ちる）
 - NSIS のアンインストールと、`keyring` に残る資格情報（README: アンインストールの前にログアウトする）
 - Business の Codex Local・デバイスコードの許可の要件

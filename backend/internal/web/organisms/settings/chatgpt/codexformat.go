@@ -28,6 +28,18 @@ func engineLabel(state string) string {
 	return "未取得"
 }
 
+// megabytes is a size in MB (10^6 bytes) rounded to the nearest, as the download notice shows it.
+func megabytes(n int64) int { return int((n + 500_000) / 1_000_000) }
+
+// downloadNotice is the sizes of the pinned asset for the notice before the download ("" when they are not known):
+// the archive differs by platform (a zip on Windows, a tar.gz on macOS), and so does its size.
+func downloadNotice(e CodexEngine) string {
+	if e.DownloadBytes <= 0 || e.ExtractedBytes <= 0 {
+		return ""
+	}
+	return fmt.Sprintf("約 %d MB。展開後は約 %d MB。", megabytes(e.DownloadBytes), megabytes(e.ExtractedBytes))
+}
+
 func engineSource(source string) string {
 	switch source {
 	case "download":

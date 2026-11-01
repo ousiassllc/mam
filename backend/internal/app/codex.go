@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex/engine"
 )
@@ -23,13 +24,14 @@ func executablePath() (string, error) {
 }
 
 // codexLayout is where the Codex app-server of the "Codex 経由" ChatGPT login is downloaded to: the "codex" directory
-// next to the executable. When the executable cannot be found the layout is empty, which leaves the download off (a path
-// to a codex the user installed still works).
-func codexLayout(logger *slog.Logger) engine.Layout {
+// next to the executable on Windows, and in the data directory on macOS (engine.For: the executable there is inside
+// MAM.app, which the auto-update replaces). When the place cannot be found (no executable, no data directory) the
+// layout is empty, which leaves the download off (a path to a codex the user installed still works).
+func codexLayout(logger *slog.Logger, dataDir string) engine.Layout {
 	exe, err := executablePath()
 	if err != nil {
 		logger.Warn("the Codex engine download is off", "err", err)
 		return engine.Layout{}
 	}
-	return engine.ForExecutable(exe)
+	return engine.For(runtime.GOOS, exe, dataDir)
 }

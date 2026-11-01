@@ -37,7 +37,7 @@ type Options struct {
 	// Open opens a URL in the default browser of the machine mam runs on; nil opens none.
 	Open   func(url string) error
 	Logger *slog.Logger
-	// CodexLayout is where the downloaded Codex app-server lies (the "codex" directory next to mam.exe); an empty Root
+	// CodexLayout is where the downloaded Codex app-server lies (engine.For: the "codex" directory next to mam.exe on Windows, in the data directory on macOS); an empty Root
 	// leaves the download off (a path to a codex the user installed still works). Version is the mam version.
 	CodexLayout engine.Layout
 	Version     string

@@ -85,7 +85,7 @@ OpenAI の 2 つのクライアントは**トークンを使い回せない**た
 ## 8. 3 つ目の系統: Codex 経由（Issue #845。詳細は [`chatgpt-codex/codex-login.md`](chatgpt-codex/codex-login.md)）
 
 - Business / Enterprise / Edu のワークスペースのアカウントは公式の動的登録ではプランを使えない（サインインは通るが、組織の Admin Console に許可の設定が無く、`3p_delegated_access_policy_denied` / `subscription_sharing_user_not_eligible` で拒まれる）。そこで OpenAI 公式の **Codex の app-server** にログインとリクエストを任せ、同じアカウントを**テキスト生成だけ**に使う（画像・動画・音声には使わない）。プロバイダーは別の `chatgpt-codex`（既定の `routes` には入れない。公式の `chatgpt-subscription` には触らない）。
-- エンジンは公式の GitHub リリースの固定した版（SHA-256 とサイズで検証。Windows 版のみ取得、他は自分で入れた codex のパス）。`CODEX_HOME` は mam 専用（データディレクトリの `codex-home`）で、**mam は Codex のトークンを読まない・保存しない**。公式ログインは自動でログアウトせず、案内だけ出す。道具（シェル・ファイル編集・Web 検索など）は切り、承認要求はすべて拒否する。同時実行数の上限は設けない。
+- エンジンは公式の GitHub リリースの固定した版（SHA-256 とサイズで検証。Windows 版と macOS 版（Apple Silicon）だけ取得し、置き場所は Windows が `mam.exe` と同じ場所の `codex`、macOS が `.app` の外のデータディレクトリ内の `codex`（自動更新で消えないため）。他は自分で入れた codex のパス）。`CODEX_HOME` は mam 専用（データディレクトリの `codex-home`）で、**mam は Codex のトークンを読まない・保存しない**。公式ログインは自動でログアウトせず、案内だけ出す。道具（シェル・ファイル編集・Web 検索など）は切り、承認要求はすべて拒否する。同時実行数の上限は設けない。
 - **ローカル・オープンソースでの利用に限る**（商用・ホスティングは不可）。管理者の前提は Codex Local とデバイスコードの許可。
 - 実機・実アカウントでしか確かめられない項目（Business のログイン・`planType`・keyring の上限・sandbox・道具の無効化・実ダウンロードなど）は **未検証**（`codex-login.md` の「未検証」。`#839` に追記）。
 
@@ -96,3 +96,4 @@ OpenAI の 2 つのクライアントは**トークンを使い回せない**た
 | 1.0 | 2026-10-24 | 新規作成。ログイン 2 系統（公式・非公式の画像）の決定、要確認 3 点の結果（1 は確認済み、2・3 と `text.format` は未検証）、ブラウザ・デバイスコード、トークンの保存・更新・ログアウト、テキスト・画像の使い道、画面と MCP | Issue #832。ChatGPT のサブスクでログインしてテキスト生成と画像生成に使えるようにする |
 | 1.1 | 2026-10-24 | §5.2: 画像モデルを #831 の開放集合（`modelreg`）に載せた。スイッチ ON のあいだだけ選択肢に出し、OFF では呼ばずに代替へ回る | Issue #832（#831 の取り込み後） |
 | 1.2 | 2026-10-25 | §1 に 3 つ目の系統 `codex` を足し、§8 に Codex 経由（app-server）の要点を足し、詳細（決定 9 点・構成・リクエストと道具の制限・失敗の分け方・利用条件・未検証の一覧）を `chatgpt-codex/codex-login.md` に書いた。§6 の画面・MCP を更新 | Issue #845。Business / Enterprise / Edu のワークスペースのアカウントでテキスト生成を使えるようにする |
+| 1.3 | 2026-11-01 | §8 のエンジンの取得を、Windows 版のみから Windows と macOS（Apple Silicon）に改め、置き場所（macOS は `.app` の外のデータディレクトリ）を書いた。詳細は `chatgpt-codex/codex-login.md` §2 の 1 | Issue #855。macOS 版でも設定画面の「Codex 経由」から Codex 本体を取得できるようにした |

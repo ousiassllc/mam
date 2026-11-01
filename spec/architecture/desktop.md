@@ -141,7 +141,8 @@ Issue #853。Windows 版と同じ `cmd/wails`（サーバーを維持し、ウ�
 
 - ウィンドウ（`Title`・既定サイズ・最小サイズ・背景色）・単一インスタンス（`UniqueID: com.ousiassllc.mam`）・終了（`OnShutdown` でサーバーを止める）・更新の有効化（`main.go` の `updateOptions`。`desktop.CheckCanInstall` が通るときだけ `Update` を渡す）は Windows と同じコード（`main.go`）。違いは `platform_darwin.go`（ナビゲーション完了のイベントは `events.Mac.WebViewDidFinishNavigation`、`Mac.ApplicationShouldTerminateAfterLastWindowClosed = true`）と `dialog_darwin.go`（起動エラーのダイアログは `osascript` の `display alert`。Wails のダイアログはイベントループが要るため使わない。タイトルと本文は引数で渡す）
 - データディレクトリの既定は `os.UserConfigDir()` 配下の `mam`、つまり `~/Library/Application Support/mam`。API キーなどは macOS のキーチェーンに保存する
-- macOS 版で動かない・制限がある機能（別 Issue）: 同梱の ComfyUI エンジン（#854）・Codex 本体の取得（#855）・Finder から起動したときの ffmpeg の探索（#856。`PATH` に Homebrew が入らない）。顔同一性の定量評価（ONNX Runtime）はブラウザ版と同じく、`libonnxruntime` とモデルを自分で用意したときだけ動く
+- macOS 版で動く Codex 本体の取得（Issue #855）: 設定画面の「Codex 経由」から取得でき、置き場所は `.app` の外のデータディレクトリ（`~/Library/Application Support/mam/codex/`）なので、自動更新（§7.3）で `MAM.app` を入れ替えても消えない（`architecture/chatgpt-codex/codex-login.md` §2 の 1）
+- macOS 版で動かない・制限がある機能（別 Issue）: 同梱の ComfyUI エンジン（#854）・Finder から起動したときの ffmpeg の探索（#856。`PATH` に Homebrew が入らない）。顔同一性の定量評価（ONNX Runtime）はブラウザ版と同じく、`libonnxruntime` とモデルを自分で用意したときだけ動く
 - 実機でしか確かめられない項目（WKWebView でのダウンロード・`target="_blank"`・WebSocket、単一インスタンス、⌘Q での終了、Gatekeeper の手順、実際の `open` での再起動、2 つの実際のリリースをまたぐ更新、App Translocation の挙動）は未確認で、#857 で行う。`cmd/wails` の darwin でのコンパイルと、dmg の作成・入れ替えスクリプトの本物の `hdiutil`・`ditto` での実行は、`ci.yml` の `macos` ジョブが確かめる（§7.5）
 
 ### 7.5 テストできること・できないこと
@@ -183,3 +184,4 @@ Issue #853。Windows 版と同じ `cmd/wails`（サーバーを維持し、ウ�
 | 1.26 | 2026-11-01 | §7.3 の自動更新に、`DefaultPlatform` が darwin/arm64・windows/amd64 以外ではゼロ値を返し自動更新を無効にすること（`Platform.Supported`・`desktop.CheckCanInstall`・`ErrUnsupportedPlatform`）を、§7.5 のテストの範囲にその確認を足した | Issue #859。darwin/amd64 などで自前ビルドすると、Windows の setup.exe を選んでダウンロードし、適用で失敗していたため |
 | 1.27 | 2026-11-01 | §7.3 の「更新できる場所」から `/Volumes/` 配下を一律に除く判定を外し、バンドルのあるフォルダの書き込みプローブに任せることにした（dmg のボリュームは読み取り専用なので、プローブで無効になる）。§7.5 のテストの範囲に、プローブを差し替えた `/Volumes/` 配下の確認を足した | Issue #860。外付けドライブなど `/Volumes/` 配下の書き込める `MAM.app` も自動更新が無効になり、コメントと仕様が「ディスクイメージ」と説明する実態より広く拒否していたため |
 | 1.28 | 2026-11-01 | §7.4 の差分の説明から `platform_darwin.go` の「更新の有効化」を外し、更新の有効化は OS 共通の `main.go` の `updateOptions`（`desktop.CheckCanInstall`）が行うと書いた | #859 の統合で `updateOptions` が `platform_*.go` から `main.go` に移り、仕様の説明が実装とずれたため |
+| 1.29 | 2026-11-01 | §7.4 に、macOS 版でも Codex 本体を取得できること（置き場所は `.app` の外のデータディレクトリで、自動更新で消えない）を足し、「動かない機能」から Codex 本体の取得（#855）を外した | Issue #855。`spec/architecture/chatgpt-codex/codex-login.md` §2 の 1 と合わせた |

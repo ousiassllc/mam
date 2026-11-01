@@ -27,7 +27,7 @@ const (
 // Progress receives the phase and the bytes done and in all of that phase. It must not block.
 type Progress func(p Phase, done, total int64)
 
-// Installer installs the pinned app-server of one architecture.
+// Installer installs the pinned app-server of one platform.
 type Installer struct {
 	Layout  Layout
 	Version string
@@ -37,6 +37,9 @@ type Installer struct {
 	// FreeBytes reports the free space at a path (nil: fsutil.FreeBytes).
 	FreeBytes func(path string) (uint64, error)
 	Now       func() time.Time
+	// ClearQuarantine removes the macOS quarantine attribute from the extracted executable (nil: clearQuarantine, which
+	// does nothing off macOS). It is best effort: mam's own download never sets the attribute, so a failure is ignored.
+	ClearQuarantine func(path string) error
 }
 
 // Record is what an install left: the version, and the executable as it was verified.
@@ -112,8 +115,8 @@ func (i *Installer) archivePath() string {
 	return filepath.Join(i.Layout.DownloadsDir(), path.Base(i.Asset.URL))
 }
 
-// NeedBytes is the free space an install needs: the part of the zip that is not downloaded yet, and the executable
-// (which exists next to the zip until it is deleted).
+// NeedBytes is the free space an install needs: the part of the archive that is not downloaded yet, and the executable
+// (which exists next to the archive until it is deleted).
 func (i *Installer) NeedBytes() int64 {
 	have := int64(0)
 	if st, err := os.Stat(fetch.PartPath(i.archivePath())); err == nil {
@@ -139,7 +142,7 @@ func (i *Installer) CheckSpace() error {
 	return nil
 }
 
-// Install downloads the pinned zip, verifies its SHA-256 and size, extracts the executable, verifies that too, and swaps
+// Install downloads the pinned archive, verifies its SHA-256 and size, extracts the executable, verifies that too, and swaps
 // it in for the installed one. A repeated call after an interruption resumes the download. A file that does not match
 // is never left behind: the part file of a wrong checksum is removed, and so is a half-extracted engine.
 func (i *Installer) Install(ctx context.Context, progress Progress) error {
@@ -167,12 +170,17 @@ func (i *Installer) Install(ctx context.Context, progress Progress) error {
 		}
 	})
 	if err == nil {
+		unmark := i.ClearQuarantine
+		if unmark == nil {
+			unmark = clearQuarantine
+		}
+		_ = unmark(filepath.Join(tmp, i.Asset.Exe)) // best effort, see ClearQuarantine
 		err = i.swap(tmp)
 	}
 	if err != nil {
 		_ = os.RemoveAll(tmp)
 		if errors.Is(err, ErrExeMismatch) || errors.Is(err, ErrUnsafeArchive) {
-			_ = os.Remove(archive) // the zip matched its checksum but is not what the catalog describes: download it again
+			_ = os.Remove(archive) // the archive matched its checksum but is not what the catalog describes: download it again
 		}
 		return err
 	}

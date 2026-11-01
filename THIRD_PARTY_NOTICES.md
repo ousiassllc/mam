@@ -6547,8 +6547,8 @@ MAM のモデルマネージャーは、利用者の操作で ComfyUI のポー�
 
 ## Codex app-server（利用者が取得する別プログラム）
 
-MAM の「ChatGPT でログイン」の Codex 経由の方式（Business / Enterprise / Edu のワークスペースのアカウントでも使える、テキスト生成だけの方式）は、利用者の操作で OpenAI の Codex の app-server（バージョン 0.164.0。Windows 版のみ）を公式のリリースから取得し、MAM の実行ファイルと同じ場所の `codex` ディレクトリに展開して、別のプロセスとして起動します。Codex は Apache-2.0 のプログラムで、**MAM のインストーラー・ポータブル版・リリースには Codex のバイトを一切含めません**。MAM は Codex のコードをリンクせず、標準入出力の JSON-RPC で通信するだけです。
+MAM の「ChatGPT でログイン」の Codex 経由の方式（Business / Enterprise / Edu のワークスペースのアカウントでも使える、テキスト生成だけの方式）は、利用者の操作で OpenAI の Codex の app-server（バージョン 0.164.0。Windows 版と macOS 版（Apple Silicon）のみ）を公式のリリースから取得し、`codex` ディレクトリ（Windows 版は MAM の実行ファイルと同じ場所、macOS 版はデータディレクトリの中）に展開して、別のプロセスとして起動します。Codex は Apache-2.0 のプログラムで、**MAM のインストーラー・ポータブル版・リリースには Codex のバイトを一切含めません**。MAM は Codex のコードをリンクせず、標準入出力の JSON-RPC で通信するだけです。
 
-- Codex のライセンス（Apache-2.0）と対応するソースコード: <https://github.com/openai/codex/tree/rust-v0.164.0>（取得するのは <https://github.com/openai/codex/releases/tag/rust-v0.164.0> のアセット `codex-app-server-x86_64-pc-windows-msvc.exe.zip` または `codex-app-server-aarch64-pc-windows-msvc.exe.zip` で、SHA-256 とサイズを MAM のカタログに固定して検証します）。
+- Codex のライセンス（Apache-2.0）と対応するソースコード: <https://github.com/openai/codex/tree/rust-v0.164.0>（取得するのは <https://github.com/openai/codex/releases/tag/rust-v0.164.0> のアセット `codex-app-server-x86_64-pc-windows-msvc.exe.zip`・`codex-app-server-aarch64-pc-windows-msvc.exe.zip`（Windows）または `codex-app-server-aarch64-apple-darwin.tar.gz`（macOS）で、SHA-256 とサイズを MAM のカタログに固定して検証します）。
 - Codex が保存するログイン情報は、MAM 専用の `CODEX_HOME`（データディレクトリの `codex-home`）と OS の資格情報ストアにあり、MAM は読みません。
 - 取得したものを再配布するときは、Apache-2.0 の LICENSE と NOTICE（上のソースにあります）を添えてください。取得した実行ファイルが静的に含む依存のライセンスは、**一覧を調べていません（未確認）**。

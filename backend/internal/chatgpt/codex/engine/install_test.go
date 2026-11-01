@@ -76,7 +76,7 @@ func newRig(t *testing.T, zipBytes []byte, exe string) *rig {
 		Layout:  engine.Layout{Root: filepath.Join(dir, "codex")},
 		Version: "9.9.9",
 		Asset: catalog.Asset{
-			URL: r.srv.URL + "/codex.zip", SHA256: sum(zipBytes), Size: int64(len(zipBytes)),
+			URL: r.srv.URL + "/codex.zip", Format: catalog.FormatZip, SHA256: sum(zipBytes), Size: int64(len(zipBytes)),
 			Exe: exeName, ExeSHA256: sum([]byte(exe)), ExeSize: int64(len(exe)),
 		},
 		Fetch: fetch.Options{Client: r.srv.Client(), CheckURL: func(*url.URL) error { return nil }},

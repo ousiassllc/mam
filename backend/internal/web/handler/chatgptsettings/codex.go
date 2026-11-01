@@ -25,7 +25,7 @@ func codexData(svc *codex.Service) view.Codex {
 	c := view.Codex{
 		SignedIn: st.Account.SignedIn, Email: st.Account.Email, Plan: st.Account.PlanType, CredentialsStore: st.CredentialsStore,
 		Engine: view.CodexEngine{
-			State: string(st.Engine), Supported: st.Supported, Source: string(st.Source), Version: st.Version,
+			State: string(st.Engine), Supported: st.Supported, DownloadBytes: st.DownloadBytes, ExtractedBytes: st.ExtractedBytes, Source: string(st.Source), Version: st.Version,
 			PinnedVersion: st.PinnedVersion, UpdateAvailable: st.UpdateAvailable, CustomPath: st.CustomPath,
 			Error: st.EngineError, Dir: st.Dir, License: st.License.Name,
 			Install: view.CodexInstall{
@@ -108,9 +108,9 @@ func CodexInstall(svc *chatgpt.Service) gin.HandlerFunc {
 		case err == nil:
 			d.Notice = "すでにダウンロード中です"
 		case errors.Is(err, codex.ErrUnsupported):
-			status, d.Error = http.StatusConflict, "この環境ではダウンロードできません（Windows 版だけです）。自分で入れた codex のパスを指定してください"
+			status, d.Error = http.StatusConflict, "この環境ではダウンロードできません（ダウンロードできるのは Windows 版と macOS 版（Apple Silicon）だけです）。自分で入れた codex のパスを指定してください"
 		case errors.Is(err, engine.ErrNotWritable):
-			status, d.Error = http.StatusConflict, "mam の実行ファイルと同じ場所の codex ディレクトリに書き込めません。書き込める場所に mam を置いてください"
+			status, d.Error = http.StatusConflict, fmt.Sprintf("Codex の保存先（%s）に書き込めません。書き込み権限を確認してください（Windows 版は mam の実行ファイルの置き場所、macOS 版はデータディレクトリの中です）", svc.Codex().Status().Dir)
 		case errors.As(err, &noSpace):
 			status, d.Error = http.StatusInsufficientStorage, fmt.Sprintf("ディスクの空きが足りません（必要 約 %d MB、空き %d MB）", noSpace.Need>>20, noSpace.Free>>20)
 		default:

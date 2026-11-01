@@ -1,7 +1,6 @@
 package integration_test
 
 import (
-	"archive/zip"
 	"bytes"
 	"context"
 	"crypto/sha256"
@@ -24,44 +23,52 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/fetch"
 )
 
-const fakeExeName = "codex-app-server-fake.exe"
+const (
+	fakeExeName    = "codex-app-server-fake.exe"
+	fakeMacExeName = "codex-app-server-fake-apple-darwin"
+)
 
 func sum(b []byte) string { h := sha256.Sum256(b); return hex.EncodeToString(h[:]) }
 
 // installRig is a Service on "windows" whose pinned asset is a fake zip on a local server.
 type installRig struct {
 	*rig
-	exe    string
-	layout engine.Layout
-	hits   int
-	asset  catalog.Asset
+	exe     string
+	exeName string
+	layout  engine.Layout
+	hits    int
+	asset   catalog.Asset
 }
 
 func (ir *installRig) catAsset() catalog.Asset { return ir.asset }
 
 func newInstallRig(t *testing.T, extra ...rigOption) *installRig {
 	t.Helper()
-	exe := "MZ fake app-server"
-	var buf bytes.Buffer
-	zw := zip.NewWriter(&buf)
-	w, _ := zw.Create(fakeExeName)
-	_, _ = w.Write([]byte(exe))
-	_ = zw.Close()
-	body := buf.Bytes()
-	ir := &installRig{exe: exe}
+	return newInstallRigOn(t, "windows", "amd64", extra...)
+}
+
+// newInstallRigOn is an installRig on goos/goarch whose asset is a fake archive of that platform's format.
+func newInstallRigOn(t *testing.T, goos, goarch string, extra ...rigOption) *installRig {
+	t.Helper()
+	exe, exeName := "MZ fake app-server", fakeExeName
+	if goos == "darwin" {
+		exe, exeName = "\xcf\xfa\xed\xfe fake app-server", fakeMacExeName
+	}
+	body, format, ext := fakeArchive(t, goos, exeName, exe)
+	ir := &installRig{exe: exe, exeName: exeName}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ir.hits++
-		http.ServeContent(w, r, "x.zip", time.Time{}, bytes.NewReader(body))
+		http.ServeContent(w, r, "x."+ext, time.Time{}, bytes.NewReader(body))
 	}))
 	t.Cleanup(srv.Close)
 	cat := catalog.Default()
 	ir.asset = catalog.Asset{
-		URL: srv.URL + "/codex.zip", SHA256: sum(body), Size: int64(len(body)), Exe: fakeExeName, ExeSHA256: sum([]byte(exe)), ExeSize: int64(len(exe)),
+		URL: srv.URL + "/codex." + ext, Format: format, SHA256: sum(body), Size: int64(len(body)), Exe: exeName, ExeSHA256: sum([]byte(exe)), ExeSize: int64(len(exe)),
 	}
-	cat.Assets = map[string]catalog.Asset{"amd64": ir.asset}
+	cat.Assets = map[string]catalog.Asset{catalog.Key(goos, goarch): ir.asset}
 	ir.layout = engine.Layout{Root: filepath.Join(t.TempDir(), "codex")}
 	ir.rig = newRig(t, append([]rigOption{func(o *codex.Options) {
-		o.Platform, o.Arch, o.Catalog, o.Layout = "windows", "amd64", cat, ir.layout
+		o.Platform, o.Arch, o.Catalog, o.Layout = goos, goarch, cat, ir.layout
 		o.Fetch = fetch.Options{Client: srv.Client(), CheckURL: func(*url.URL) error { return nil }}
 	}}, extra...)...)
 	if err := ir.svc.SetCustomPath(""); err != nil { // the rig sets a path: use the download
@@ -95,7 +102,7 @@ func TestInstallDownloadsInTheBackgroundAndTheEngineIsReady(t *testing.T) {
 	if _, err := ir.svc.Refresh(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	if l := ir.launched(); len(l) != 1 || filepath.Base(l[0].Exe) != fakeExeName || filepath.Dir(l[0].Exe) != ir.layout.EngineDir() {
+	if l := ir.launched(); len(l) != 1 || filepath.Base(l[0].Exe) != ir.exeName || filepath.Dir(l[0].Exe) != ir.layout.EngineDir() {
 		t.Errorf("launch = %+v", l)
 	}
 }
@@ -105,9 +112,9 @@ func TestInstallFailureIsShownAndNothingIsLeft(t *testing.T) {
 	_ = ir
 	wrong := newRig(t, func(o *codex.Options) {
 		c := catalog.Default()
-		a := c.Assets["amd64"]
+		a := c.Assets["windows/amd64"]
 		a.URL, a.SHA256 = "http://127.0.0.1:1/never", sum([]byte("not it"))
-		c.Assets = map[string]catalog.Asset{"amd64": a}
+		c.Assets = map[string]catalog.Asset{"windows/amd64": a}
 		o.Platform, o.Arch, o.Catalog, o.Layout = "windows", "amd64", c, engine.Layout{Root: filepath.Join(t.TempDir(), "codex")}
 		o.Fetch = fetch.Options{CheckURL: func(*url.URL) error { return nil }}
 	})
@@ -171,7 +178,7 @@ func TestAnOlderInstalledEngineIsNotUsedAfterTheCatalogMovedOn(t *testing.T) {
 	ir.install(t)
 	newer := catalog.Default()
 	newer.Version, newer.Tag = "9.9.9", "rust-v9.9.9"
-	newer.Assets = map[string]catalog.Asset{"amd64": ir.catAsset()}
+	newer.Assets = map[string]catalog.Asset{"windows/amd64": ir.catAsset()}
 	svc := codex.New(codex.Options{DataDir: ir.dataDir, Platform: "windows", Arch: "amd64", Catalog: newer, Layout: ir.layout})
 	t.Cleanup(svc.Close)
 	st := svc.Status()
