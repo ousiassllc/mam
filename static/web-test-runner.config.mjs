@@ -47,6 +47,25 @@ async function modalAnswerMiddleware(ctx, next) {
   if (ctx.path.endsWith('/modal-invalid.html')) ctx.status = 422;
 }
 
+// The answers of the model manager (test: scroll): the install of a model is a POST and the list polls with a query,
+// which the dev server does not serve; the files are what the handlers render (backend/internal/web/scroll_fixture_test.go).
+const modelManagerAnswers = {
+  'POST /model-manager/models/model-5/install': ['scroll-mm-install-answer.html', 202],
+  'POST /model-manager/models/model-8/install': ['scroll-mm-consent-answer.html', 202],
+  'GET /model-manager/models/model-8/consent': ['scroll-mm-consent.html', 200],
+  'GET /model-manager/dialog': ['', 200], // what "閉じる" swaps in: nothing (handlers.CloseDialog)
+  'GET /model-manager/models': ['scroll-mm-poll-done.html', 200],
+};
+
+async function modelManagerAnswerMiddleware(ctx, next) {
+  const answer = modelManagerAnswers[`${ctx.method} ${ctx.path}`];
+  if (!answer) return next();
+  const [file, status] = answer;
+  ctx.status = status;
+  ctx.type = 'text/html';
+  ctx.body = file ? await readFile(new URL(`./src/components/testdata/${file}`, import.meta.url)) : '';
+}
+
 // The real Tailwind CSS of the app (src/css/app.css, which scans the Templ templates and the components), for the tests
 // that measure a layout (components/layout). It is built once, by the installed @tailwindcss/cli, while the browser
 // starts, and served as /__tailwind.css.
@@ -91,7 +110,13 @@ export default {
   // the wait. Mocha now only bounds a test that hangs; each wait bounds itself and says what it waited for.
   testFramework: { config: { timeout: 15000 } },
   nodeResolve: true,
-  middleware: [reviewAnswerMiddleware, hxTriggerMiddleware, modalAnswerMiddleware, tailwindCssMiddleware],
+  middleware: [
+    reviewAnswerMiddleware,
+    hxTriggerMiddleware,
+    modalAnswerMiddleware,
+    modelManagerAnswerMiddleware,
+    tailwindCssMiddleware,
+  ],
   plugins: [esbuildPlugin({ ts: true, tsconfig: './tsconfig.json' })],
   browsers: [
     chromeLauncher({

@@ -35,6 +35,12 @@ func TestLayoutFixtures_AreWhatTheComponentsRender(t *testing.T) {
 		"layout-hf-import.html": modelmgr.HFImportSection(modelmgr.HFImport{Kind: "text-to-image"}),
 	}
 
+	checkFixtures(t, fixtures)
+}
+
+// checkFixtures renders each component and compares it with its file in static/src/components/testdata (or writes it).
+func checkFixtures(t *testing.T, fixtures map[string]templ.Component) {
+	t.Helper()
 	for name, c := range fixtures {
 		t.Run(name, func(t *testing.T) {
 			var sb strings.Builder
