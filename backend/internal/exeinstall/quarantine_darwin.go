@@ -1,4 +1,4 @@
-package engine
+package exeinstall
 
 import "golang.org/x/sys/unix"
 

@@ -129,6 +129,19 @@ HTMX 専用の断片（`#mam-modal-body` に入る）。HTMX でない GET は 4
 
 ルートは `ffmpegsettings.Service` があるときだけ登録する（ない構成では 404）。方針は [../architecture/ffmpeg-lookup.md](../architecture/ffmpeg-lookup.md)。
 
+### 5.2.1 ffmpeg のダウンロード（Issue #900）
+
+`ffmpegdl.Service`（`Services.FFmpegDownload`）があるときだけ登録する（ない構成では 404）。応答の本文は、どれも**ダウンロードの部品**（`#ffmpeg-download`。`hx-swap="outerHTML"`）で、`Cache-Control: no-store`。進行中の部品は `hx-get=/settings/ffmpeg/download` `hx-trigger="every 2s"` で自分を取り直す（終わると付かない）。方針・取得元・検証・ライセンス・更新は [../architecture/ffmpeg-download.md](../architecture/ffmpeg-download.md)。
+
+| 操作 | 成功 | 失敗 |
+|------|------|------|
+| `GET /settings/ffmpeg/download`（htmx） | **200**。いまの部品（進み具合の取り直し）。htmx でないときは `/settings/ffmpeg` のページ | - |
+| `POST /settings/ffmpeg/download`（本文なし） | **200**。取得を始め（背景で、ダウンロード → 展開 → 動作確認 → 入れ替え）、進行中の部品を返す（「ダウンロードを始めました」）。すでに進行中なら何も始めず同じ部品（「すでにダウンロード中です」）。**ここで通信が始まる。ボタン以外に通信の契機は無い** | この環境で取得できない（Windows x64・macOS arm64 以外）は **409**（案内の文）。保存先に書き込めない（読み取り専用の場所のポータブル版など）は **409**。空き容量が足りないは **507**（必要・空きの MB）。どれも通信の前に答える。ほかは **500**（ログに理由） |
+| `POST /settings/ffmpeg/download/cancel` | **200**。取得を止めて（部分ファイルは残す。もう一度押すと続きから）、部品を返す。「中断しました」は失敗ではない | - |
+| `DELETE /settings/ffmpeg/download` | **200**。入れた ffmpeg と記録とダウンロードの残りを消し、部品を返す（「削除しました。起動中の mam は、次に起動し直すまで…」） | 進行中は **409**。この環境に取得したものが無いは **409**。消せなければ **500** |
+
+取得の失敗は、部品の `role="alert"`（`data-testid=ffmpeg-download-install-error`）に出る: SHA-256・サイズの不一致（**ファイルは削除し、使わない**）、アーカイブの中身の不一致、実行できない、配布元が 404（mam を更新する）・そのほかの HTTP エラー、通信の失敗。取得に失敗しても、前に入れた版はそのまま残る。CSRF の対象（`POST`・`DELETE`）。
+
 ## 6. 区画の保存の規則（LLM の割り当て・画像・動画モデルの全体の保存と、アップデート）。LLM・画像動画の画面は §3 の「表の行の保存」の表とモーダルに作り直した
 
 旧 `GET /settings` の行（`endpoints.md` §1。Issue #847 で本文をここへ移した）から。
@@ -149,3 +162,4 @@ HTMX 専用の断片（`#mam-modal-body` に入る）。HTMX でない GET は 4
 | 1.3 | 2026-10-25 | §1 に接続先のサブページ（`GET /settings/local-models/endpoints/:name`）、§2 に接続先・MCP のモーダル（`GET …/endpoints/new`・`…/:name/edit`・`/settings/mcp/bind/edit`・`/settings/mcp/tokens/new`）、§5.1 にローカル・代替モデルと MCP の保存の応答（行の OOB、`#model-assignment` の OOB の廃止、トークンの発行の 201）を書いた。§5 の「実装していないもの」を「今のルートのまま残すもの」に改めた | Issue #847 ②-5・②-6 |
 | 1.4 | 2026-10-25 | §1 の概要の接続先の状態を、読めないとき空にする（実装どおり）に直した。§6 のランディングページの入口の名前を、カードの現在の名前「設定」に直した | PR #849 の第 2 周の独立レビューの指摘 |
 | 1.5 | 2026-11-01 | §1 に `/settings/ffmpeg` を、§5.2 に `PUT /settings/ffmpeg`（ffmpeg と ffprobe のパスの保存。使えないパスは 422）を足した | Issue #856 |
+| 1.6 | 2026-11-01 | §5.2.1 に、ffmpeg と ffprobe のダウンロードのルート（`GET`・`POST`・`DELETE /settings/ffmpeg/download`、`POST /settings/ffmpeg/download/cancel`）を足した | Issue #900 |

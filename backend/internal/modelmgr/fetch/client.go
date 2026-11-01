@@ -26,6 +26,12 @@ func AllowedURL(u *url.URL) error { return checkHost(u, allowedDomains) }
 // network). The Hugging Face client and the download of an imported file use it; the engine download keeps AllowedURL.
 func HFAllowedURL(u *url.URL) error { return checkHost(u, hfDomains) }
 
+// AllowHosts is the URL check of a download from the given domains (and their subdomains) only: https, and no address of the
+// local network. A catalog of programs that mam fetches (ffmpeg) names the hosts of its pinned URLs this way.
+func AllowHosts(domains ...string) func(*url.URL) error {
+	return func(u *url.URL) error { return checkHost(u, domains) }
+}
+
 func checkHost(u *url.URL, domains []string) error {
 	if err := safefetch.CheckURL(u.String()); err != nil {
 		return fmt.Errorf("fetch: %w", err)

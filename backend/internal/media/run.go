@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+	"strings"
 	"sync/atomic"
 	"time"
 )
@@ -83,4 +84,15 @@ func run(ctx context.Context, limit time.Duration, exe string, args ...string) (
 		return out.Bytes(), errOut.Bytes(), err
 	}
 	return out.Bytes(), errOut.Bytes(), nil
+}
+
+// Version runs the executable at exe with -version (ffmpeg and ffprobe both answer it) and returns the first line of what it
+// prints, e.g. "ffmpeg version 9.0.2 Copyright ...". It is how a downloaded executable is checked to run before it is used.
+func Version(ctx context.Context, exe string) (string, error) {
+	out, _, err := run(ctx, defaultLimits.probe, exe, "-version")
+	if err != nil {
+		return "", err
+	}
+	line, _, _ := strings.Cut(string(out), "\n")
+	return strings.TrimSpace(line), nil
 }

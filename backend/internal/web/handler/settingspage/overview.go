@@ -62,7 +62,7 @@ func (s Services) card(c *gin.Context, slug string) molecules.ToolCard {
 		card.Status = mcpStatus(mcphandler.SectionData(c.Request.Context(), s.MCP))
 	case paths.SettingsFFmpeg:
 		card.Icon, card.Description = atoms.IconMedia, "プレビュー・部分採用・品質判定に使う ffmpeg と ffprobe の場所。"
-		card.Status = ffmpegStatus(ffmpeghandler.SectionData(s.FFmpeg))
+		card.Status = ffmpegStatus(ffmpeghandler.SectionData(s.ffmpeg()))
 	case paths.SettingsUpdate:
 		card.Icon, card.Description = atoms.IconUpdate, "いまの版と、新しい版の確認。"
 		card.Status = updateStatus(updatehandler.SectionData(s.Update))

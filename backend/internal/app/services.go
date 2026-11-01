@@ -30,7 +30,6 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/comfywf"
 	"github.com/ousiassllc/mam/backend/internal/service"
-	"github.com/ousiassllc/mam/backend/internal/service/ffmpegsettings"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/workflows"
@@ -135,7 +134,7 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 	// ffmpeg for the Take previews, Partial Take Use and the AI Video Judge: the path set in the settings, else the search
 	// (spec/architecture/ffmpeg-lookup.md). nil when missing; a saved path takes effect from the next start.
 	var previews *media.Tools
-	if tools, err := ffmpegsettings.New(cfg.FFmpegSettingsFile()).Look(); err != nil {
+	if tools, err := newFFmpegSettings(cfg, newFFmpegDownloader(cfg, logger)).Look(); err != nil {
 		logger.Warn("Take previews are limited: ffmpeg / ffprobe not found (4K Takes play as they are, Partial Take Use is off)", "err", err)
 	} else {
 		previews = &tools

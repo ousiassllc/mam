@@ -165,3 +165,65 @@ func TestView_ListsTheSearchDirectories(t *testing.T) {
 	assert.Equal(t, []string{"/usr/bin", "/bin", "/opt/homebrew/bin", "/usr/local/bin"}, v.SearchDirs)
 	assert.ErrorIs(t, v.FFmpeg.Err, locate.ErrNotFound)
 }
+
+// The downloaded ffmpeg (Issue #900) is searched after everything else: one the user installed always wins.
+func TestManagedDirs_TheDownloadedCopyIsFoundWhenNothingElseIs(t *testing.T) {
+	path := filepath.Join(t.TempDir(), FileName)
+	s := New(path, WithFinder(machine("/data/ffmpeg/bin/ffmpeg", "/data/ffmpeg/bin/ffprobe")), WithManagedDirs(func() []string { return []string{"/data/ffmpeg/bin"} }))
+
+	_, err := s.Look()
+	require.NoError(t, err)
+	found, err := s.Find("ffmpeg")
+	require.NoError(t, err)
+	assert.Equal(t, "/data/ffmpeg/bin/ffmpeg", found)
+	v, err := s.View()
+	require.NoError(t, err)
+	assert.Equal(t, "/data/ffmpeg/bin/ffprobe", v.FFprobe.Path)
+	assert.Equal(t, []string{"/usr/bin", "/bin", "/opt/homebrew/bin", "/usr/local/bin", "/data/ffmpeg/bin"}, v.SearchDirs, "last, after PATH and Homebrew")
+}
+
+func TestManagedDirs_AnFFmpegTheUserInstalledWinsOverTheDownloadedOne(t *testing.T) {
+	files := []string{"/data/ffmpeg/bin/ffmpeg", "/data/ffmpeg/bin/ffprobe", "/opt/homebrew/bin/ffmpeg", "/opt/homebrew/bin/ffprobe", "/mine/ffmpeg"}
+	path := filepath.Join(t.TempDir(), FileName)
+	s := New(path, WithFinder(machine(files...)), WithManagedDirs(func() []string { return []string{"/data/ffmpeg/bin"} }))
+
+	v, err := s.View()
+	require.NoError(t, err)
+	assert.Equal(t, "/opt/homebrew/bin/ffmpeg", v.FFmpeg.Path, "Homebrew's, not the managed copy")
+
+	require.NoError(t, s.Set(locate.Config{FFmpeg: "/mine/ffmpeg"}))
+	v, err = s.View()
+	require.NoError(t, err)
+	assert.Equal(t, "/mine/ffmpeg", v.FFmpeg.Path, "the configured path wins over both")
+	assert.Equal(t, "/opt/homebrew/bin/ffprobe", v.FFprobe.Path)
+}
+
+func TestManagedDirs_AreReadOnEveryLookup(t *testing.T) {
+	var dirs []string
+	path := filepath.Join(t.TempDir(), FileName)
+	s := New(path, WithFinder(machine("/data/ffmpeg/bin/ffmpeg", "/data/ffmpeg/bin/ffprobe")), WithManagedDirs(func() []string { return dirs }))
+
+	_, err := s.Look()
+	require.ErrorIs(t, err, media.ErrUnavailable, "before the download")
+	_, err = s.Find("ffmpeg")
+	require.Error(t, err)
+
+	dirs = []string{"/data/ffmpeg/bin"} // the download finished
+	_, err = s.Look()
+	require.NoError(t, err, "found by the next lookup, with no new service")
+	v, err := s.View()
+	require.NoError(t, err)
+	assert.Equal(t, "/data/ffmpeg/bin/ffmpeg", v.FFmpeg.Path)
+}
+
+func TestManagedDirs_DoNotChangeTheFinderOfTheService(t *testing.T) {
+	f := machine()
+	f.Extra = []string{"/mine/extra"}
+	s := New(filepath.Join(t.TempDir(), FileName), WithFinder(f), WithManagedDirs(func() []string { return []string{"/data/ffmpeg/bin"} }))
+	v, err := s.View()
+	require.NoError(t, err)
+	_, err = s.View()
+	require.NoError(t, err)
+	assert.Equal(t, []string{"/usr/bin", "/bin", "/opt/homebrew/bin", "/usr/local/bin", "/mine/extra", "/data/ffmpeg/bin"}, v.SearchDirs)
+	assert.Equal(t, []string{"/mine/extra"}, s.finder.Extra, "the extra directories are copied, not appended in place")
+}

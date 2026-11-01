@@ -15,6 +15,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/chatgpt"
 	"github.com/ousiassllc/mam/backend/internal/credential/probe"
+	"github.com/ousiassllc/mam/backend/internal/media/ffmpegdl"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/appupdate"
 	"github.com/ousiassllc/mam/backend/internal/service/ffmpegsettings"
@@ -51,9 +52,16 @@ type Services struct {
 	LocalModels *localmodels.Service
 	MCP         *mcpsettings.Service
 	FFmpeg      *ffmpegsettings.Service
-	Update      *appupdate.Service
+	// FFmpegDownload is the download of ffmpeg shown in the ffmpeg category; nil leaves the download out.
+	FFmpegDownload *ffmpegdl.Service
+	Update         *appupdate.Service
 	// Guide is whether the first-run guide exists (the overview links to it).
 	Guide bool
+}
+
+// ffmpeg is what the ffmpeg category reads.
+func (s Services) ffmpeg() ffmpeghandler.Services {
+	return ffmpeghandler.Services{Settings: s.FFmpeg, Download: s.FFmpegDownload}
 }
 
 // category is one entry of the navigation: where it is, what it is called and what it needs.
@@ -89,7 +97,7 @@ func init() {
 			return pages.SettingsMCPBody(mcphandler.SectionData(c.Request.Context(), s.MCP))
 		}},
 		{paths.SettingsFFmpeg, "ffmpeg", func(s Services) bool { return s.FFmpeg != nil }, func(_ *gin.Context, s Services) templ.Component {
-			return pages.SettingsFFmpegBody(ffmpeghandler.SectionData(s.FFmpeg))
+			return pages.SettingsFFmpegBody(ffmpeghandler.SectionData(s.ffmpeg()))
 		}},
 		{paths.SettingsUpdate, "バージョンとアップデート", always, func(_ *gin.Context, s Services) templ.Component {
 			return pages.SettingsUpdateBody(updatehandler.SectionData(s.Update))

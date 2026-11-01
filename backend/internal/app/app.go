@@ -110,7 +110,9 @@ func serve(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Opt
 	defer cleanup()
 
 	gin.SetMode(gin.ReleaseMode)
-	settings := newSettings(cfg, services, gpt, logger)
+	ffmpegDL := newFFmpegDownloader(cfg, logger)
+	defer ffmpegDL.Close() // an install in progress is stopped; its part files stay and the next one resumes
+	settings := newSettings(cfg, services, gpt, ffmpegDL, logger)
 	if opts.Update != nil {
 		var stop func()
 		settings.Update, stop = startUpdates(ctx, opts.Update, services, repository.NewJobRepository(db), logger)

@@ -1,6 +1,6 @@
 # ffmpeg / ffprobe の探し方
 
-> **状態: 実装済み**（Issue #856）。実装は `backend/internal/media/locate`（探し方）・`media.Look` / `LookWith` / `LookIn`（`Tools` を作る）・`service/ffmpegsettings`（設定ファイル）。画面は [../components/settings-screen-categories.md](../components/settings-screen-categories.md) §8、ルートは [../api/endpoints-settings.md](../api/endpoints-settings.md) §1・§5.2。
+> **状態: 実装済み**（Issue #856・#900）。実装は `backend/internal/media/locate`（探し方）・`media.Look` / `LookWith` / `LookIn`（`Tools` を作る）・`service/ffmpegsettings`（設定ファイル）。画面は [../components/settings-screen-categories.md](../components/settings-screen-categories.md) §8、ルートは [../api/endpoints-settings.md](../api/endpoints-settings.md) §1・§5.2。
 
 Finder や Dock から起動した macOS のアプリは、`launchd` の `PATH`（`/usr/bin:/bin:/usr/sbin:/sbin`）で動く。Homebrew の `brew install ffmpeg` の入れ先（Apple Silicon は `/opt/homebrew/bin`、Intel は `/usr/local/bin`）はそこに無く、`exec.LookPath` だけでは MAM.app が ffmpeg を見つけられなかった（Issue #856）。
 
@@ -10,7 +10,7 @@ Finder や Dock から起動した macOS のアプリは、`launchd` の `PATH`�
 2. 指定が無いとき、次の場所を**この順に**探す（`locate.SearchDirs`）。
    1. 環境変数 `PATH` の各ディレクトリ（`PATH` の並び順）
    2. macOS（`GOOS=darwin`）だけ: Homebrew の既定の場所 `/opt/homebrew/bin`、`/usr/local/bin`
-   3. 追加のディレクトリ（`locate.Finder.Extra`。mam が自分で置く場所用。今は空で、ffmpeg の自動取得（#900）がここに取得先を足す）
+   3. 追加のディレクトリ（`locate.Finder.Extra`。mam が自分で置く場所用）。**mam がダウンロードして入れた ffmpeg の `bin/`**（#900。[ffmpeg-download.md](ffmpeg-download.md)）がここに入る。導入の記録があり、ファイルがそろっているときだけで、**最後**に探すので、利用者が自分で入れた ffmpeg（`PATH`・Homebrew）が必ず勝つ
 3. **ログインシェルの `PATH` は読まない**（シェルの設定ファイルの実行を伴い、遅く、環境ごとに挙動が違うため）。
 
 `SearchDirs` は OS に依存しない純関数で、環境変数もディスクも読まない（`goos`・`PATH` の値・追加のディレクトリを引数にとる）。空・相対パスの項目と重複は除く（相対パスは作業ディレクトリに結果が左右されるため）。Windows は `;` 区切りで `"` を外し、ファイル名に `.exe` を付ける。
@@ -36,7 +36,7 @@ ffmpeg と ffprobe は別々に指定でき、片方だけ指定したときの�
 ## 4. テスト
 
 - 探す場所の一覧・優先順・エラー: `media/locate/locate_test.go`（`goos=darwin` と `PATH` に ffmpeg が無い状況で、Homebrew の 2 つを探して見つけること、`PATH` が先、設定が最優先、使えない設定はエラーで探し直さない）。Linux で動く。
-- `media.LookIn`: `media/look_test.go`。設定ファイル: `service/ffmpegsettings`。画面と保存: `web/ffmpeg_settings_test.go`。
+- `media.LookIn`: `media/look_test.go`。設定ファイル: `service/ffmpegsettings`。画面と保存: `web/ffmpegscreen/settings_test.go`。
 - Finder から起動した実際の挙動は macOS の実機でしか確かめられない（Issue #856 の「実機で確かめること」）。
 
 ## 改訂履歴
@@ -44,3 +44,4 @@ ffmpeg と ffprobe は別々に指定でき、片方だけ指定したときの�
 | 版 | 日付 | 変更内容 | 変更理由 |
 |----|------|---------|---------|
 | 1.0 | 2026-11-01 | 新規作成 | Issue #856。Finder から起動した MAM.app が Homebrew の ffmpeg を見つけられなかった。`PATH` と Homebrew の既定の場所を探し、設定したパスを優先する |
+| 1.1 | 2026-11-01 | 追加のディレクトリ（`Finder.Extra`）に、ダウンロードして入れた ffmpeg の `bin/` を最後に足した（`ffmpegsettings.WithManagedDirs`。呼ぶたびに読む）。設定したパス ＞ `PATH` ＞ Homebrew ＞ 入れたもの | Issue #900 |

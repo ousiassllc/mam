@@ -1,4 +1,4 @@
-package web_test
+package ffmpegscreen_test
 
 import (
 	"net/http"
@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/credential/credentialtest"
+	"github.com/ousiassllc/mam/backend/internal/media/ffmpegdl"
 	"github.com/ousiassllc/mam/backend/internal/media/locate"
 	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 	"github.com/ousiassllc/mam/backend/internal/router"
@@ -34,7 +35,10 @@ type ffmpegScreen struct {
 	token  string
 }
 
-func newFFmpegScreen(t *testing.T) *ffmpegScreen {
+func newFFmpegScreen(t *testing.T) *ffmpegScreen { return newFFmpegScreenWith(t, nil) }
+
+// newFFmpegScreenWith is the screen with the download of ffmpeg (nil: the app has none, as the headless server).
+func newFFmpegScreenWith(t *testing.T, download *ffmpegdl.Service) *ffmpegScreen {
 	t.Helper()
 	file := filepath.Join(t.TempDir(), ffmpegsettings.FileName)
 	// Only the files of the temporary directory count: the machine's own ffmpeg, if it has one, is not found.
@@ -43,7 +47,12 @@ func newFFmpegScreen(t *testing.T) *ffmpegScreen {
 	}}
 	svc := servicetest.New(t, service.Deps{DB: testdb.Open(t), Credentials: credentialtest.New()})
 	settings := settingsroutes.New(filepath.Join(t.TempDir(), "llm.json"), false, filepath.Join(t.TempDir(), "models.json"), false)
-	settings.FFmpeg = ffmpegsettings.New(file, ffmpegsettings.WithFinder(finder))
+	opts := []ffmpegsettings.Option{ffmpegsettings.WithFinder(finder)}
+	if download != nil {
+		settings.FFmpegDownload = download
+		opts = append(opts, ffmpegsettings.WithManagedDirs(download.Dirs))
+	}
+	settings.FFmpeg = ffmpegsettings.New(file, opts...)
 	s := &ffmpegScreen{t: t, file: file, engine: router.New(svc, router.Options{Settings: settings})}
 	rec := s.send(httptest.NewRequest(http.MethodGet, paths.Settings(), nil))
 	require.Equal(t, http.StatusOK, rec.Code)
