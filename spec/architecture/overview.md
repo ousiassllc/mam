@@ -112,8 +112,9 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 │   ├── linterly-staged.sh  # コミット対象ファイルの行数上限チェック（pre-commit）
 │   ├── linterly-baseline.sh # 行数上限の既存超過を `.linterly-baseline` と比べ、悪化を検出する（`make lint-lines`・CI）。`update` で基準値を書き換える
 │   ├── slow-tests.sh       # `go test -json` を読み、テストの出力と 3 秒（`SLOW_TEST_SECONDS`）を超えたテストの一覧を出す（`make test-go`）
+│   ├── stress-test.sh      # テストのフレークを追うために Go のテストを `-race` で繰り返す（`make stress`）。同時に走らせるプロセスは既定 2・上限 4（超える指定は断る）で、`-c` で CPU を絞って負荷を再現する。共有のマシンに負荷をかけないため
 │   ├── third-party-notices.sh # `THIRD_PARTY_NOTICES.md` を再生成する（Windows 版 exe にリンクされる Go モジュールと本番フロントエンドバンドルの npm パッケージのライセンスファイルを写す。`go`・`node` と `npm ci --prefix static` が要り、ライセンスファイルが無い依存があると失敗する）
-│   └── *_test.sh           # スクリプトのテスト（`linterly-baseline_test.sh`: 行数基準値、`slow-tests_test.sh`: 遅いテストの一覧、`complexity-ratchet_test.sh`: `.golangci.yml` の複雑度の許可リスト、`makefile_test.sh`: `Makefile` のターゲット、`third-party-notices_test.sh`: 表記ファイルの生成。`make test-scripts`）
+│   └── *_test.sh           # スクリプトのテスト（`linterly-baseline_test.sh`: 行数基準値、`slow-tests_test.sh`: 遅いテストの一覧、`stress-test_test.sh`: 繰り返し実行の上限と既定、`complexity-ratchet_test.sh`: `.golangci.yml` の複雑度の許可リスト、`makefile_test.sh`: `Makefile` のターゲット、`third-party-notices_test.sh`: 表記ファイルの生成。`make test-scripts`）
 ├── build/                  # Wails v3 のパッケージング設定（`config.yml`・`Taskfile.yml`・`windows/`: アイコン・マニフェスト・`info.json`・`nsis/project.nsi`。§11）
 ├── backend/
 │   ├── cmd/

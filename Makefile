@@ -20,7 +20,7 @@ GOVULNCHECK_VERSION ?= v1.8.0
 GOLANGCI_LINT_CACHE_ROOT ?= $(or $(XDG_CACHE_HOME),$(HOME)/.cache)/golangci-lint/worktrees
 export GOLANGCI_LINT_CACHE := $(GOLANGCI_LINT_CACHE_ROOT)/$(notdir $(CURDIR))-$(shell printf '%s' '$(CURDIR)' | cksum | cut -d' ' -f1)
 
-.PHONY: help dev build build-all generate assets test test-go test-static test-scripts lint lint-go lint-static lint-lines linterly-baseline vuln fmt fmt-check tools clean
+.PHONY: help dev build build-all generate assets test test-go test-static test-scripts stress lint lint-go lint-static lint-lines linterly-baseline vuln fmt fmt-check tools clean
 
 help: ## show targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -63,6 +63,13 @@ test-scripts: ## shell script tests
 	bash scripts/sign-checksums_test.sh
 	bash scripts/make-checksums_test.sh
 	bash scripts/third-party-notices_test.sh
+	bash scripts/stress-test_test.sh
+
+# A flake is chased with few processes (JOBS 2 by default, 4 at most: scripts/stress-test.sh refuses more); to starve
+# them the way a busy machine does, pin them to fewer CPUs with CPUS instead of adding processes.
+stress: ## repeat a Go test under -race with few processes: make stress PKG=./backend/internal/router RUN=TestX COUNT=200 [JOBS=2] [CPUS=0]
+	@test -n "$(PKG)" || { echo "PKG=./backend/internal/<package> is required"; exit 2; }
+	scripts/stress-test.sh -j $(or $(JOBS),2) -n $(or $(COUNT),20) $(if $(CPUS),-c $(CPUS)) $(if $(RUN),-r '$(RUN)') $(PKG)
 
 lint: lint-go lint-static ## golangci-lint + tsc + biome lint
 
