@@ -38,3 +38,9 @@ func TestRowModalPaths_AreUnderTheirCategoryAndEscapeTheKey(t *testing.T) {
 	assert.Equal(t, "/settings/models/policies/max_quality", paths.ModelPolicy("max_quality"))
 	assert.Equal(t, "/settings/models/policies/max_quality/edit", paths.ModelPolicyEdit("max_quality"))
 }
+
+func TestLicensePaths_AreUnderTheirCategoryAndEscapeTheID(t *testing.T) {
+	assert.Equal(t, "/settings/licenses", paths.SettingsCategory(paths.SettingsLicenses))
+	assert.Equal(t, "/settings/licenses/12", paths.LicenseText("12"))
+	assert.Equal(t, "/settings/licenses/a%2Fb", paths.LicenseText("a/b"))
+}

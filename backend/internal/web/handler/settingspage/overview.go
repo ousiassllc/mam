@@ -72,6 +72,9 @@ func (s Services) card(c *gin.Context, slug string) molecules.ToolCard {
 	case paths.SettingsUpdate:
 		card.Icon, card.Description = atoms.IconUpdate, "いまの版と、新しい版の確認。"
 		card.Status = updateStatus(updatehandler.SectionData(s.Update))
+	case paths.SettingsLicenses:
+		card.Icon, card.Description = atoms.IconPackage, "MAM が使っているソフトウェアのライセンス文。"
+		card.Status = []molecules.StatusLine{line(atoms.BadgeNeutral, "%d 件", s.catalog().Len())}
 	}
 	return card
 }
