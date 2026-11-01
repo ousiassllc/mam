@@ -49,11 +49,13 @@ const (
 type Options struct {
 	// DataDir is mam's data directory: the CODEX_HOME, the working directory of the turns and StateFile live in it.
 	DataDir string
-	// Layout is where the downloaded engine lies (the directory next to mam.exe). An empty Root disables the download.
+	// Layout is where the downloaded engine lies (engine.For: next to mam.exe on Windows, in the data directory on
+	// macOS). An empty Root disables the download.
 	Layout engine.Layout
 	// Version is the mam version (clientInfo.version).
 	Version string
-	// Platform and Arch default to runtime.GOOS and runtime.GOARCH. Only "windows" has the download.
+	// Platform and Arch default to runtime.GOOS and runtime.GOARCH. The download exists where the catalog pins an asset:
+	// Windows (amd64, arm64) and macOS (arm64).
 	Platform, Arch string
 	// Catalog is the pinned Codex; the zero value selects the embedded one.
 	Catalog catalog.Catalog
@@ -125,7 +127,7 @@ func New(o Options) *Service {
 	}
 	s := &Service{opts: o, cat: cat, home: filepath.Join(o.DataDir, codexHomeDir), work: filepath.Join(o.DataDir, workDirName),
 		state: openState(filepath.Join(o.DataDir, StateFile))}
-	if asset, ok := cat.AssetFor(o.Arch); ok && o.Platform == "windows" && o.Layout.Root != "" {
+	if asset, ok := cat.AssetFor(o.Platform, o.Arch); ok && o.Layout.Root != "" {
 		s.supported = true
 		s.installer = &engine.Installer{Layout: o.Layout, Version: cat.Version, Asset: asset, Fetch: o.Fetch, FreeBytes: o.FreeBytes, Now: o.Now}
 		s.installer.CleanLeftovers()

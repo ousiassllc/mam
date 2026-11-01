@@ -20,7 +20,7 @@ const KindCodexInstall = "chatgpt_codex_install"
 func registerCodex(r *mcpkit.Registrar, h handlers) {
 	r.Jobs.RegisterKind(KindCodexInstall, h.probeInstall, mcpkit.InMemory())
 	mcpkit.Write(r, "install_chatgpt_codex_engine",
-		"Codex 経由のログインに使う Codex app-server（OpenAI 公式。Apache-2.0）を、公式の GitHub リリースから mam.exe と同じ場所の codex ディレクトリにダウンロードする（約 90 MB。SHA-256 とサイズを確かめる。Windows 版のみ）。job_id を返すので get_job で進捗を見る。中断しても続きから再開する / Download the pinned Codex app-server (Windows only) and poll it with get_job.",
+		"Codex 経由のログインに使う Codex app-server（OpenAI 公式。Apache-2.0）を、公式の GitHub リリースから codex ディレクトリ（Windows 版は mam.exe と同じ場所、macOS 版はデータディレクトリの中）にダウンロードする（約 75〜90 MB。SHA-256 とサイズを確かめる。Windows 版と macOS 版（Apple Silicon）のみ）。job_id を返すので get_job で進捗を見る。中断しても続きから再開する / Download the pinned Codex app-server (Windows and macOS Apple Silicon only) and poll it with get_job.",
 		h.installEngine, mcpkit.OpenWorld())
 	mcpkit.Write(r, "start_chatgpt_codex_login",
 		"Codex 経由で ChatGPT にログインする（テキスト生成のみ。Business / Enterprise / Edu のワークスペースのアカウントも使える。LLM の割り当てのプロバイダー chatgpt-codex）。method=browser は mam が動いている PC の既定ブラウザを開き、device はユーザーコードと URL を返す（ワークスペースでデバイスコードの許可が必要）。ローカル・オープンソースの利用のみで、商用・ホスティングでは使えない。完了は get_chatgpt_login_status / Start the Codex login (text generation only; workspace accounts work). Local, open-source use only.",
@@ -36,7 +36,7 @@ type CodexAccount struct {
 	EngineVersion string      `json:"engine_version,omitempty"`
 	EngineSource  string      `json:"engine_source,omitempty" jsonschema:"download（公式のリリースから取得）または custom（指定したパスの codex）"`
 	EngineError   string      `json:"engine_error,omitempty"`
-	CanDownload   bool        `json:"can_download" jsonschema:"このアプリでエンジンをダウンロードできる（Windows 版のみ）"`
+	CanDownload   bool        `json:"can_download" jsonschema:"このアプリでエンジンをダウンロードできる（Windows 版と macOS 版（Apple Silicon）のみ）"`
 	RateLimits    []CodexRate `json:"rate_limits,omitempty" jsonschema:"Codex の利用上限（最後に読んだ値）"`
 }
 
@@ -90,9 +90,9 @@ func mapInstallError(err error) error {
 	case err == nil:
 		return nil
 	case errors.Is(err, codex.ErrUnsupported):
-		return &service.ConflictError{Message: "この環境ではダウンロードできません（Windows 版のみ）。自分で入れた codex のパスを設定画面で指定してください"}
+		return &service.ConflictError{Message: "この環境ではダウンロードできません（Windows 版と macOS 版（Apple Silicon）のみ）。自分で入れた codex のパスを設定画面で指定してください"}
 	case errors.Is(err, engine.ErrNotWritable):
-		return &service.ConflictError{Message: "mam の実行ファイルと同じ場所の codex ディレクトリに書き込めません"}
+		return &service.ConflictError{Message: "Codex の保存先（Windows 版は mam の実行ファイルと同じ場所、macOS 版はデータディレクトリの codex ディレクトリ）に書き込めません"}
 	case errors.As(err, &noSpace):
 		return &service.ConflictError{Message: "ディスクの空きが足りません"}
 	}

@@ -22,8 +22,11 @@ type CodexInstall struct {
 type CodexEngine struct {
 	// State is not_installed, installing, ready, running or failed.
 	State string
-	// Supported: the engine can be downloaded here (Windows). Elsewhere a path of an installed codex is the only way.
+	// Supported: the engine can be downloaded here (Windows, macOS on Apple Silicon). Elsewhere a path of an installed
+	// codex is the only way. DownloadBytes and ExtractedBytes are the sizes of the download and of the engine.
 	Supported       bool
+	DownloadBytes   int64
+	ExtractedBytes  int64
 	Source          string // download, custom or ""
 	Version         string
 	PinnedVersion   string

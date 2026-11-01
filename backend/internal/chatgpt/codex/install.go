@@ -49,7 +49,7 @@ func (s *Service) InstallStatus() InstallStatus {
 }
 
 // StartInstall downloads the pinned engine in the background (progress: InstallStatus) and installs it. It refuses at
-// once where the download is not available (ErrUnsupported), the directory next to mam.exe cannot be written to
+// once where the download is not available (ErrUnsupported), the engine directory cannot be written to
 // (engine.ErrNotWritable) or the disk lacks the room (*fetch.NoSpaceError). started is false when an install is already
 // running. Installing again resumes an interrupted download and, with a newer pinned version, is the update.
 func (s *Service) StartInstall() (started bool, err error) {
