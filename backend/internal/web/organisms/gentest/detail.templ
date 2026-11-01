@@ -38,6 +38,15 @@ templ ResultDetail(d Detail) {
 				@atoms.Button(atoms.ToneDanger, "削除", templ.Attributes{"type": "submit", "data-testid": "gt-delete"})
 			</form>
 		</div>
+		if d.English != "" || d.EnglishNegative != "" {
+			<div class="flex flex-col gap-1" data-testid="gt-english">
+				<h3 class="text-xs text-neutral-400">英訳（送った英語）</h3>
+				<p class="whitespace-pre-wrap break-words rounded-md border border-neutral-700 p-2 text-sm" data-testid="gt-english-prompt">{ d.English }</p>
+				if d.EnglishNegative != "" {
+					<p class="text-xs text-neutral-400" data-testid="gt-english-negative">ネガティブ: { d.EnglishNegative }</p>
+				}
+			</div>
+		}
 		<div class="flex flex-col gap-1">
 			<h3 class="text-xs text-neutral-400">実際に送ったプロンプト</h3>
 			<p class="whitespace-pre-wrap break-words rounded-md border border-neutral-800 p-2 text-sm" data-testid="gt-sent-prompt">{ d.SentPrompt }</p>

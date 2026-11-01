@@ -61,7 +61,7 @@ func (br *batchRun) inputsOf(r gentestrepo.Result) []loaded {
 func (br *batchRun) image(ctx context.Context, r gentestrepo.Result, p resultParams) (file, mime string, size int64, cost *float64, err error) {
 	req := modeladapter.ImageRequest{Prompt: r.SentPrompt, AspectRatio: p.AspectRatio, Seed: seedOf(r)}
 	if r.NegativeMode == gentestrepo.NegativeField {
-		req.NegativePrompt = r.NegativePrompt
+		req.NegativePrompt = sentNegative(r, p)
 	}
 	for _, in := range br.inputsOf(r) {
 		req.Inputs = append(req.Inputs, in.in)
@@ -82,7 +82,7 @@ func (br *batchRun) video(ctx context.Context, r gentestrepo.Result, p resultPar
 		Prompt: r.SentPrompt, DurationSeconds: p.DurationSeconds, Resolution: p.Resolution, AspectRatio: p.AspectRatio, Seed: seedOf(r),
 	}
 	if r.NegativeMode == gentestrepo.NegativeField {
-		req.NegativePrompt = r.NegativePrompt
+		req.NegativePrompt = sentNegative(r, p)
 	}
 	for _, in := range br.inputsOf(r) {
 		img := in.in

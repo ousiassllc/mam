@@ -28,6 +28,7 @@ const (
 	FieldModel      = "model"
 	FieldPrompt     = "prompt"
 	FieldNegative   = "negative"
+	FieldTranslate  = "translate"
 	FieldCount      = "count"
 	FieldAspect     = "aspect_ratio"
 	FieldResolution = "resolution"
@@ -103,7 +104,9 @@ type Compose struct {
 	Media  string // image or video
 	Models []ModelChoice
 	// Prompts has at least one entry.
-	Prompts                                      []PromptText
+	Prompts []PromptText
+	// Translate is the switch "英語に訳して送る" (on for a fresh form).
+	Translate                                    bool
 	Count, Aspect, Resolution, Duration          string
 	Resolutions, Durations                       []string
 	MaxPrompt, MaxCount, MaxItems, MaxReferences int
@@ -155,10 +158,13 @@ type Card struct {
 	CreatedAt  string
 }
 
-// Col is a column of the comparison grid: one prompt.
+// Col is a column of the comparison grid: one prompt, and the English it was sent as when it was translated.
 type Col struct {
 	Text     string
 	Negative string
+	// English and EnglishNegative are the translation ("" when it was sent as typed).
+	English         string
+	EnglishNegative string
 }
 
 // Row is a row of the comparison grid: one model with the results of every prompt.
@@ -234,13 +240,17 @@ type Detail struct {
 	Message
 	Card       Card
 	SentPrompt string
-	Negative   string
-	NegMode    string
-	Params     []KV
-	Inputs     []InputCard
-	Imports    []ImportRow
-	Import     ImportForm
-	UseURL     string // compose with this result as an input ("" for a video)
+	// English and EnglishNegative are what the prompt and the negative prompt were translated to before they were sent ("" when they
+	// were sent as typed); the originals are the "入力したプロンプト" of Params.
+	English         string
+	EnglishNegative string
+	Negative        string
+	NegMode         string
+	Params          []KV
+	Inputs          []InputCard
+	Imports         []ImportRow
+	Import          ImportForm
+	UseURL          string // compose with this result as an input ("" for a video)
 }
 
 // PromptRow is an entry of the prompt history.

@@ -175,3 +175,4 @@
 | 1.168 | 2026-11-01 | [endpoints-settings.md](endpoints-settings.md) §5.2.1 に、ffmpeg のダウンロードのルート（`GET`・`POST`・`DELETE /settings/ffmpeg/download`、`POST /settings/ffmpeg/download/cancel`）を足した | Issue #900 |
 | 1.169 | 2026-11-01 | §1 の表に、`GET`・`PUT /settings/ffmpeg`、`GET`・`POST`・`DELETE /settings/ffmpeg/download`、`POST /settings/ffmpeg/download/cancel` の行を足した（[endpoints-settings.md](endpoints-settings.md) §1・§5.2・§5.2.1 にあったのに、この表に無かった）。ダウンロードの削除中に開始を 409 で断ることを足した | Issue #900 |
 | 1.170 | 2026-11-01 | [endpoints-gentest.md](endpoints-gentest.md)（1.1）の「画面」の節で、モデルはカードのタップで選ぶもの、選べない理由は「?」ヘルプと読み上げにあるものに改めた | Issue #906 |
+| 1.171 | 2026-11-01 | [endpoints-gentest.md](endpoints-gentest.md)（1.2）に、見積りの `translate`・`/run` の 502（英訳に失敗）・エラーの対応の `*UpstreamError` を足した | Issue #913 |
