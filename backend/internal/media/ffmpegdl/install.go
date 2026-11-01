@@ -192,17 +192,5 @@ func (i *Installer) removeArchives() {
 // swap makes tmp the bin directory; the previous one is removed once the new one is in place. The record keeps naming the
 // previous version until the install completes: a record whose files are missing or of another size is Broken, never used.
 func (i *Installer) swap(tmp string) error {
-	bin, old := i.Layout.BinDir(), i.Layout.BinOldDir()
-	_ = os.RemoveAll(old)
-	if _, err := os.Stat(bin); err == nil {
-		if err := os.Rename(bin, old); err != nil {
-			return fmt.Errorf("ffmpegdl: replace the installed ffmpeg: %w", err)
-		}
-	}
-	if err := os.Rename(tmp, bin); err != nil {
-		_ = os.Rename(old, bin) // put the previous ffmpeg back
-		return fmt.Errorf("ffmpegdl: put the new ffmpeg in place: %w", err)
-	}
-	_ = os.RemoveAll(old)
-	return nil
+	return exeinstall.Swap(tmp, i.Layout.BinDir(), i.Layout.BinOldDir())
 }

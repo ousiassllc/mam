@@ -2,6 +2,7 @@ package ffmpegdl_test
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -80,6 +81,26 @@ func TestAnInstalledFileThatWasDeletedOrChangedMakesTheInstallBrokenAndUnused(t 
 	assert.True(t, r.ins.Status().Installed)
 	require.NoError(t, os.Remove(filepath.Join(r.ins.Layout.BinDir(), "ffprobe")))
 	assert.True(t, r.ins.Status().Broken)
+}
+
+func TestARecordThatLeavesOutAnExecutableIsBrokenAndOffersNothing(t *testing.T) {
+	r := newRig(t, "9.9.9")
+	require.NoError(t, r.ins.Install(context.Background(), nil))
+	// Cut ffprobe out of the record, as a hand edit would: the directory is offered to the search as a whole, and the
+	// ffprobe in it is then one that no record vouches for.
+	b, err := os.ReadFile(r.ins.Layout.RecordPath())
+	require.NoError(t, err)
+	var rec ffmpegdl.Record
+	require.NoError(t, json.Unmarshal(b, &rec))
+	require.Len(t, rec.Files, 2)
+	rec.Files = rec.Files[:1]
+	b, err = json.Marshal(rec)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(r.ins.Layout.RecordPath(), b, 0o600))
+	st := r.ins.Status()
+	assert.True(t, st.Broken)
+	assert.False(t, st.Installed)
+	assert.Empty(t, r.ins.Dirs())
 }
 
 func TestACorruptRecordIsNoInstall(t *testing.T) {
