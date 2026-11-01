@@ -25,6 +25,12 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/testenv"
 )
 
+// pathOnlyGOOS is the GOOS of the Finders of these tests: one that searches PATH and nothing else. "darwin" would add
+// /opt/homebrew/bin and /usr/local/bin (locate.SearchDirs), where the ffmpeg that CI installs on macOS lies (brew), and
+// "no ffmpeg on the machine" would not hold there. The machine's own ffmpeg is still found by realBuild (locate.Find), which
+// uses the real GOOS.
+const pathOnlyGOOS = "linux"
+
 // realBuild is a zip of the machine's own ffmpeg and ffprobe, and the platform that pins it, served by a test server: the
 // stand-in of the download of a real build. Its executables really run, so what is found after the install can be used.
 func realBuild(t *testing.T) (platform ffmpegdl.Platform, srv *httptest.Server) {
@@ -69,7 +75,7 @@ func TestAfterTheDownloadTheAppFindsFFmpegAndTheToolsWork(t *testing.T) {
 		Fetch: fetch.Options{Client: srv.Client(), CheckURL: func(*url.URL) error { return nil }},
 	}) // the default check: each executable really runs with -version
 	t.Cleanup(service.Close)
-	noPath := locate.Finder{GOOS: runtime.GOOS, Path: "", Usable: locate.IsExecutable}
+	noPath := locate.Finder{GOOS: pathOnlyGOOS, Path: "", Usable: locate.IsExecutable}
 	settings := ffmpegsettings.New(filepath.Join(t.TempDir(), ffmpegsettings.FileName), ffmpegsettings.WithFinder(noPath), ffmpegsettings.WithManagedDirs(service.Dirs))
 
 	_, err := settings.Look()
@@ -114,7 +120,7 @@ func TestAMismatchedDownloadIsNeverFound(t *testing.T) {
 	})
 	t.Cleanup(service.Close)
 	settings := ffmpegsettings.New(filepath.Join(t.TempDir(), ffmpegsettings.FileName),
-		ffmpegsettings.WithFinder(locate.Finder{GOOS: runtime.GOOS, Usable: locate.IsExecutable}), ffmpegsettings.WithManagedDirs(service.Dirs))
+		ffmpegsettings.WithFinder(locate.Finder{GOOS: pathOnlyGOOS, Usable: locate.IsExecutable}), ffmpegsettings.WithManagedDirs(service.Dirs))
 
 	_, err := service.StartInstall()
 	require.NoError(t, err)
@@ -149,7 +155,7 @@ func TestAnFFmpegOnPathWinsOverTheDownloadedCopy(t *testing.T) {
 		require.NoError(t, err)
 		require.NoError(t, os.Symlink(real, filepath.Join(mine, name)))
 	}
-	finder := locate.Finder{GOOS: runtime.GOOS, Path: mine, Usable: locate.IsExecutable}
+	finder := locate.Finder{GOOS: pathOnlyGOOS, Path: mine, Usable: locate.IsExecutable}
 	settings := ffmpegsettings.New(filepath.Join(t.TempDir(), ffmpegsettings.FileName), ffmpegsettings.WithFinder(finder), ffmpegsettings.WithManagedDirs(service.Dirs))
 	v, err := settings.View()
 	require.NoError(t, err)
