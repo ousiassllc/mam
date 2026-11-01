@@ -106,7 +106,7 @@ Windows 実機が要る項目は、リリース前に実機で確かめる（実
 
 自動更新（`setup.exe /S`）が入れ替えるのはインストーラーが置くファイルだけで、`project.nsi` の `install` セクションは `$INSTDIR\comfyui` を消さない（`Delete`・`RMDir` を呼ばず、`File` で上書きするだけ）。よって導入済みの ComfyUI エンジンとモデルは更新後もそのまま使える。**エンジンの更新は MAM の更新とは別**: サイレントインストーラーはエンジンを取り直さず、固定版（カタログ）が変わったときだけ、設定画面の「エンジンを更新」で入れ替える（`model-manager/model-manager.md` §10）。再起動の前に ComfyUI の子プロセスを止める（`Services.Close`）ので、更新がエンジンのファイルに触れて失敗することはない。`comfyui\` の実機での扱い（更新後の残存・アンインストールでの削除）は未確認。
 
-**アンインストールと動いている ComfyUI**: 子プロセスの ComfyUI は、Job Object（`KILL_ON_JOB_CLOSE`、`internal/modelmgr/proc`）により mam の終了で終わるので、`waitForAppToExit` が待つ「インストール済みの `mam.exe` を書き込みで開けるまで」の間に、エンジンも止まる。アンインストーラーには `un.onInit` を足し、同じ待ち（最大 10 秒。サイレントでなくても待つ）をしてから、`RMDir /r $INSTDIR` を `comfyui` が消えるまで最大 5 秒（0.5 秒おき 10 回）くり返す（ComfyUI の子プロセスがファイルを放すまでの短い間に消せないことがある）。新しいインストーラーのページは足さない（エンジンの導入はアプリの中のボタン）。**`makensis` はこの開発ホストに無く、`project.nsi` の構文は目視だけで確認した（未ビルド）**。
+**アンインストールと動いている ComfyUI**: 子プロセスの ComfyUI は、Job Object（`KILL_ON_JOB_CLOSE`、`internal/modelmgr/proc`）により mam の終了で終わるので、`waitForAppToExit` が待つ「インストール済みの `mam.exe` を書き込みで開けるまで」の間に、エンジンも止まる。アンインストーラーには `un.onInit` を足し、同じ待ち（最大 10 秒。サイレントでなくても待つ）をしてから、`RMDir /r $INSTDIR` を `comfyui`・`localai`（ローカルランタイム。[model-manager/local-runtime.md](model-manager/local-runtime.md) §2）が消えるまで最大 5 秒（0.5 秒おき 10 回）くり返す（ComfyUI の子プロセスがファイルを放すまでの短い間に消せないことがある）。新しいインストーラーのページは足さない（エンジンの導入はアプリの中のボタン）。**`makensis` はこの開発ホストに無く、`project.nsi` の構文は目視だけで確認した（未ビルド）**。
 
 ## 7. macOS 版（Apple Silicon・署名なし）
 
@@ -189,3 +189,4 @@ Issue #853。Windows 版と同じ `cmd/wails`（サーバーを維持し、ウ�
 | 1.30 | 2026-11-01 | §2 の ffmpeg の探し方と §7 の macOS の制限から、Finder から起動したときの ffmpeg の探索（#856）を外し、設定のパスと Homebrew の場所を探すこと（[ffmpeg-lookup.md](ffmpeg-lookup.md)）を書いた | Issue #856 |
 | 1.31 | 2026-11-01 | §2 の ffmpeg の探し方に、ボタンで取得して入れたものを足し、§4 に「ffmpeg は同梱しない」（取得して `ffmpeg` ディレクトリに入れる・アンインストールで消える）を、§5 の「ffmpeg の同梱」に取得ボタンは範囲内になったことを足した。インストーラーの完了画面の文を、同じ内容にした | Issue #900（[ffmpeg-download.md](ffmpeg-download.md)） |
 | 1.32 | 2026-11-01 | §4 の成果物の行の、インストーラー完了画面の ffmpeg の案内を、「PATH に置く」だけの記述から、アプリ内のダウンロード（Windows x64・macOS arm64）・自分で入れたもの・探す順に改めた（`build/windows/nsis/project.nsi` の完了画面の文と同じ内容） | PR #911 のレビューの指摘（1.31 で §4 の別の行だけ直していた） |
+| 1.33 | 2026-11-01 | §6.8 のアンインストールの再試行を、`comfyui` に加えて `localai`（ローカルランタイムの置き場所）が消えるまでにした（`project.nsi`。`localai` も `$INSTDIR` の中で、インストーラーは消さない・更新で残る） | Issue #918（親 #912）。GPT-SoVITS の実行環境（約 14 GB）が子プロセスのファイルを放すまでの間に消せないことがあるため |

@@ -94,6 +94,9 @@ check "ends with the WebView2 and face model sections" "$(
 check "the ComfyUI section: a separate GPL-3.0 program, the source, no bytes, the unverified Python/PyTorch inventory" "$(
   has '## ComfyUI（利用者が取得する別プログラム）' && grep -qF 'https://github.com/Comfy-Org/ComfyUI/tree/v0.42.1' "$out" && grep -qF 'ComfyUI のバイトを一切含めません' "$out" && grep -qF '未確認' "$out" && echo 0 || echo 1
 )"
+check "the GPT-SoVITS section: a separate MIT program, the source, no bytes, Windows + NVIDIA only, the unverified package inventory" "$(
+  has '## GPT-SoVITS（利用者が取得する別プログラム）' && grep -qF 'https://github.com/RVC-Boss/GPT-SoVITS/tree/20250606v2pro' "$out" && grep -qF 'GPT-SoVITS のバイトを一切含めません' "$out" && grep -qF 'NVIDIA' "$out" && grep -qF '未確認' "$out" && echo 0 || echo 1
+)"
 check "the Codex section: a separate Apache-2.0 program, the source, no bytes, the unverified dependency inventory" "$(
   has '## Codex app-server（利用者が取得する別プログラム）' && grep -qF 'https://github.com/openai/codex/tree/rust-v0.164.0' "$out" && grep -qF 'Codex のバイトを一切含めません' "$out" && grep -qF 'Apache-2.0' "$out" && echo 0 || echo 1
 )"

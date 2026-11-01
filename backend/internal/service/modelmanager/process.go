@@ -144,5 +144,5 @@ func (s *Service) Close() { _ = s.proc.Stop() }
 // Register installs the handlers of the job kinds of the model manager on Deps.Jobs. It MUST run before the
 // queue starts (and before Recover, which fails the jobs of a kind without a handler).
 func (s *Service) Register() {
-	s.Jobs.Register(domain.JobModelInstall, s.handleInstall, true)
+	s.Jobs.Register(domain.JobModelInstall, s.HandleInstall, true)
 }

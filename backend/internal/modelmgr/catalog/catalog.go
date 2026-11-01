@@ -1,6 +1,6 @@
 // Package catalog is the list of the local models the model manager can install, and the pinned ComfyUI
 // engine it downloads (spec/architecture/model-manager/model-manager.md §3.1, §4). It is data embedded in the binary
-// (data/engine.json, data/models/*.json): every URL is pinned to a commit or a release tag and every file has
+// (data/engine.json, data/models/*.json, data/runtimes/*.json): every URL is pinned to a commit or a release tag and every file has
 // its SHA-256 and size, so a download is checked against what was reviewed when the catalog was written
 // (the idea of scripts/fetch-face-models.sh). A new model or a new engine version is a new mam release.
 package catalog
@@ -10,6 +10,7 @@ import (
 	"cmp"
 	"embed"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"path"
@@ -161,10 +162,11 @@ type Engine struct {
 	Variants map[Variant]Asset `json:"variants"`
 }
 
-// Catalog is the engine and the models.
+// Catalog is the engine, the models and the local runtimes (GPT-SoVITS; data/runtimes/*.json).
 type Catalog struct {
-	Engine Engine
-	Models []Model
+	Engine   Engine
+	Models   []Model
+	Runtimes []Runtime
 }
 
 // Model returns the model with the ID.
@@ -197,7 +199,7 @@ func Default() *Catalog {
 	return loaded
 }
 
-// Load reads data/engine.json and data/models/*.json of fsys, refusing unknown fields.
+// Load reads data/engine.json, data/models/*.json and data/runtimes/*.json (optional) of fsys, refusing unknown fields.
 func Load(fsys fs.FS) (*Catalog, error) {
 	var c Catalog
 	if err := decode(fsys, "data/engine.json", &c.Engine); err != nil {
@@ -213,6 +215,17 @@ func Load(fsys fs.FS) (*Catalog, error) {
 			return nil, err
 		}
 		c.Models = append(c.Models, m)
+	}
+	rts, err := fs.ReadDir(fsys, "data/runtimes")
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return nil, err
+	}
+	for _, e := range rts {
+		var r Runtime
+		if err := decode(fsys, "data/runtimes/"+e.Name(), &r); err != nil {
+			return nil, err
+		}
+		c.Runtimes = append(c.Runtimes, r)
 	}
 	// Standard models first, each tier in the order of the media (images, then videos) and the ID.
 	rank := func(m Model) string {

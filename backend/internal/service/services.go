@@ -19,6 +19,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
+	"github.com/ousiassllc/mam/backend/internal/service/localruntime"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/workflows"
 )
@@ -49,46 +50,45 @@ type Deps struct {
 	Judge judge.Config
 	// Jev is the TypeSafe Jev client of the Repair Agent's shadow run. Nil: no shadow run.
 	Jev repair.Shadow
-	// Audio are the vendors of the Audio Director: ElevenLabs (TTS, cloned voices, Music, Sound
-	// Effects) and Sync Labs (Lip Sync). Audio production is available only when Audio.Speech and
-	// Media are set; a missing Music / Sounds / LipSync leaves that layer out.
+	// Audio are the vendors of the Audio Director: ElevenLabs (TTS, cloned voices, Music, Sound Effects) and Sync Labs (Lip Sync).
+	// Audio production is available only when Audio.Speech and Media are set; a missing Music / Sounds / LipSync leaves that layer out.
 	Audio audiodirector.Providers
 }
 
 // Services is the DI root handed to router.New: one field per feature and one line in wiring.services (wiring.go).
 type Services struct {
-	Health       *HealthService
-	Credentials  *CredentialService
-	Projects     *ProjectService
-	Chat         *ChatService
-	Plans        *PlanService
-	Generation   *GenerationService
-	World        *WorldService
-	Director     *DirectorService
-	Policy       *PolicyService
-	Judge        *JudgeService
-	Repair       *RepairService
-	Continue     *ContinueService
-	Reference    *ReferenceService
-	Trace        *TraceService
-	Versions     *VersionService
-	Bundle       *BundleService
-	Series       *SeriesService
-	Takes        *TakeService
-	Notes        *NoteService
-	Branch       *BranchService
-	Review       *ReviewService
-	Editor       *EditorService
-	Brand        *BrandService
-	Analytics    *AnalyticsService
-	LocalModels  *localmodels.Service  // ComfyUI / OpenAI-compatible endpoints and models; the app sets it
-	ModelManager *modelmanager.Service // bundled ComfyUI engine, model catalog; the app sets it
-	Gentest      *gentest.Service      // generation test: batches of generations outside any Project, history, import; the app sets it
-	Workflows    *workflows.Service    // ComfyUI workflows saved in mam (node screen, models, MCP); the app sets it
+	Health        *HealthService
+	Credentials   *CredentialService
+	Projects      *ProjectService
+	Chat          *ChatService
+	Plans         *PlanService
+	Generation    *GenerationService
+	World         *WorldService
+	Director      *DirectorService
+	Policy        *PolicyService
+	Judge         *JudgeService
+	Repair        *RepairService
+	Continue      *ContinueService
+	Reference     *ReferenceService
+	Trace         *TraceService
+	Versions      *VersionService
+	Bundle        *BundleService
+	Series        *SeriesService
+	Takes         *TakeService
+	Notes         *NoteService
+	Branch        *BranchService
+	Review        *ReviewService
+	Editor        *EditorService
+	Brand         *BrandService
+	Analytics     *AnalyticsService
+	LocalModels   *localmodels.Service  // ComfyUI / OpenAI-compatible endpoints and models; the app sets it
+	ModelManager  *modelmanager.Service // bundled ComfyUI engine, model catalog; the app sets it
+	LocalRuntimes *localruntime.Service // local AI runtimes (GPT-SoVITS): install, start, stop, status; the app sets it
+	Gentest       *gentest.Service      // generation test: batches of generations outside any Project, history, import; the app sets it
+	Workflows     *workflows.Service    // ComfyUI workflows saved in mam (node screen, models, MCP); the app sets it
 }
 
-// Close stops the background workers of the services and kills the Take preview conversions that
-// are running. Call it on shutdown, after the job queue stopped.
+// Close stops the background workers of the services and kills the running Take preview conversions. Call it on shutdown, after the job queue stopped.
 func (s *Services) Close() { s.Takes.previews.Close(); s.Editor.Close() }
 
 // Recover puts Shots left GENERATING, REPAIRING or JUDGING by an abnormal termination back to PLANNING.

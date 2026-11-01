@@ -1,0 +1,70 @@
+{
+ "id": "gpt-sovits",
+ "name": "GPT-SoVITS",
+ "purpose": "tts",
+ "version": "20250604-v2pro",
+ "source_url": "https://github.com/RVC-Boss/GPT-SoVITS/tree/20250606v2pro",
+ "description": "参照音声（約 5 秒）から声を真似て日本語の音声を作る GPT-SoVITS の実行環境。公式の Windows 統合パッケージ（Python 環境・本体・学習済みモデルを含む約 8 GB）を公式の配布先から取得して展開し、mam が起動・停止まで管理します。",
+ "archive_root": "GPT-SoVITS-v2pro-20250604",
+ "launch": {
+  "python": "runtime/python.exe",
+  "path_dirs": ["runtime"],
+  "entry": "api_v2.py",
+  "args": ["-I", "-u", "-X", "utf8", "api_v2.py", "-a", "127.0.0.1", "-p", "{port}", "-c", "GPT_SoVITS/configs/tts_infer.yaml"],
+  "ready_path": "/openapi.json",
+  "env": [
+   "HF_HUB_OFFLINE=1",
+   "TRANSFORMERS_OFFLINE=1",
+   "HF_DATASETS_OFFLINE=1",
+   "HF_HUB_DISABLE_TELEMETRY=1",
+   "DO_NOT_TRACK=1",
+   "GRADIO_ANALYTICS_ENABLED=False"
+  ],
+  "start_timeout_sec": 300
+ },
+ "vram": {
+  "min_gb": 4,
+  "source": "mam の推定。公式は推論に必要なビデオメモリの数値を示していない（実機で未確認）。",
+  "estimate": true
+ },
+ "support": {
+  "os": "windows",
+  "arch": "amd64",
+  "os_reasons": {
+   "darwin": "macOS では GPT-SoVITS の自動導入に対応していません。公式は macOS の MPS / CPU での推論に対応していますが、mam が自動で導入するのは Windows + NVIDIA の GPU の組み合わせだけです。",
+   "linux": "Linux では GPT-SoVITS の自動導入に対応していません。mam が自動で導入するのは Windows + NVIDIA の GPU の組み合わせだけです。",
+   "default": "この OS では GPT-SoVITS の自動導入に対応していません。mam が自動で導入するのは Windows + NVIDIA の GPU の組み合わせだけです。"
+  },
+  "arch_reason": "この CPU（64 ビットの x86 以外）では GPT-SoVITS の自動導入に対応していません。mam が自動で導入するのは Windows + NVIDIA の GPU の組み合わせだけです。",
+  "no_gpu_reason": "GPU を取得できなかったため、GPT-SoVITS を導入できません。自動導入には NVIDIA の GPU が必要です。",
+  "not_nvidia_reason": "NVIDIA の GPU が見つからないため、GPT-SoVITS を導入できません。自動導入は NVIDIA の GPU（CUDA）だけに対応していて、AMD・Intel の GPU では使えません。",
+  "low_vram_reason": "{gpu} のビデオメモリは {vram_gb} GB で、GPT-SoVITS に必要な {min_vram_gb} GB に足りないため導入できません。",
+  "fallback": "代わりに、クラウドの音声合成（ElevenLabs）を使ってください。"
+ },
+ "license": {
+  "id": "mit",
+  "version": "20250606v2pro",
+  "name": "MIT License",
+  "url": "https://github.com/RVC-Boss/GPT-SoVITS/blob/20250606v2pro/LICENSE",
+  "summary": "GPT-SoVITS は mam とは別のプログラムで、コードは MIT ライセンスで公開されている。mam は GPT-SoVITS のバイトを配布せず、利用者の PC に公式の配布先（Hugging Face の lj1995/GPT-SoVITS-windows-package）から取得する。統合パッケージには、サードパーティ製のライブラリと学習済みモデルも含まれ、それぞれのライセンスに従う。",
+  "commercial_use": true,
+  "commercial_condition": "GPT-SoVITS のコードは MIT で商用利用できる。統合パッケージに含まれる学習済みモデルと依存ライブラリ個々のライセンスは確認中で、商用利用がはっきりしないものがある。"
+ },
+ "variants": {
+  "nvidia": {
+   "label": "NVIDIA（GTX 10 シリーズ〜RTX 40 シリーズ。CUDA 11.8）",
+   "url": "https://huggingface.co/lj1995/GPT-SoVITS-windows-package/resolve/c8b61d4f627d1f02e74c1ba158a4844051d2289f/GPT-SoVITS-v2pro-20250604.7z",
+   "sha256": "bd60d0796553ff05d8568136e199c13e0dc22ebe2ed24273134e34ed6f215cd6",
+   "size": 8185086602,
+   "extracted_size": 14128680597
+  },
+  "nvidia50": {
+   "label": "NVIDIA（RTX 50 シリーズ。CUDA 12.8）",
+   "url": "https://huggingface.co/lj1995/GPT-SoVITS-windows-package/resolve/c8b61d4f627d1f02e74c1ba158a4844051d2289f/GPT-SoVITS-v2pro-20250604-nvidia50.7z",
+   "sha256": "97b4edcd451c42357db7e26e6c1c877ca5d85144fe97beaff6d7005d35bee008",
+   "size": 8835144925,
+   "extracted_size": 14964402944,
+   "min_compute_cap": 12.0
+  }
+ }
+}

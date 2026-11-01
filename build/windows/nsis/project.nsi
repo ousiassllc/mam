@@ -141,11 +141,14 @@ Section "uninstall"
     # The data directory (%AppData%\mam: SQLite, generated media, logs) is deliberately kept.
 
     # The engine and the models of the model manager are in $INSTDIR\comfyui (spec/architecture/model-manager/model-manager.md §2),
-    # so this removes them too. The folder is tried again for up to 5 s: ComfyUI's files may be locked for a moment after it ended.
+    # and the local runtimes (GPT-SoVITS) in $INSTDIR\localai (spec/architecture/model-manager/local-runtime.md §2),
+    # so this removes them too. The folders are tried again for up to 5 s: their files may be locked for a moment after the process ended.
     StrCpy $1 0
     removeLoop:
         RMDir /r $INSTDIR
-        IfFileExists "$INSTDIR\comfyui\*.*" 0 removeDone
+        IfFileExists "$INSTDIR\comfyui\*.*" removeAgain 0
+        IfFileExists "$INSTDIR\localai\*.*" removeAgain removeDone
+    removeAgain:
         IntOp $1 $1 + 1
         IntCmp $1 10 removeDone removeMore removeDone
     removeMore:
