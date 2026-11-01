@@ -258,3 +258,33 @@ func TestTakeAPI_MinAxisScoreFollowsTheQualityPolicyAndTheUsersOverride(t *testi
 		assert.InDelta(t, c.want, ta.takes().Limits["min_axis_score"], 0, c.quality+" "+c.override)
 	}
 }
+
+func TestConfirmationLevel_ChangesWhichCheckpointsAsk(t *testing.T) {
+	a := newApp(t)
+	ctx := context.Background()
+	id := a.createProject("動画")
+
+	body := a.get("/projects/"+id, false).Body.String()
+	assert.Contains(t, body, `hx-put="/projects/`+id+`/confirmation-level"`)
+	assert.Contains(t, body, `value="key_check" selected`)
+	assert.NotContains(t, body, `name="checkpoints"`, "the selection appears only for CUSTOM CHECK")
+
+	rec := a.form(http.MethodPut, "/projects/"+id+"/confirmation-level", url.Values{"level": {"custom_check"}, "checkpoints": {"rough_cut"}})
+	require.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), `value="custom_check" selected`)
+	assert.NotContains(t, rec.Body.String(), `value="scene_complete"`, "only checkpoints the pipeline asks at are offered")
+	assertChecked(t, rec.Body.String(), "rough_cut")
+	assertNotChecked(t, rec.Body.String(), "script")
+
+	posted, err := a.svc.Chat.RequestApproval(ctx, id, domain.CheckpointRoughCut, "Rough Cut", "s1")
+	require.NoError(t, err)
+	assert.True(t, posted)
+	posted, err = a.svc.Chat.RequestApproval(ctx, id, domain.CheckpointFinal, "Final", "e1")
+	require.NoError(t, err)
+	assert.False(t, posted)
+
+	rec = a.form(http.MethodPut, "/projects/"+id+"/confirmation-level", url.Values{"level": {"whenever"}})
+	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
+	assert.Equal(t, "none", rec.Header().Get("HX-Reswap"))
+	assert.Equal(t, http.StatusNotFound, a.form(http.MethodPut, "/projects/missing/confirmation-level", url.Values{"level": {"full_auto"}}).Code)
+}

@@ -121,3 +121,51 @@ func TestScenes_HistoryRestoreGetsTheFullPageNotTheFragment(t *testing.T) {
 	assert.NotContains(t, fragment.Body.String(), "<html")
 	assert.NotContains(t, fragment.Body.String(), `name="csrf-token"`)
 }
+
+func TestBrief_ConfirmAndEditInTheAuxiliaryView(t *testing.T) {
+	a := newApp(t)
+	id := a.createProject("美容液の縦型15秒CMを作りたい。上品な雰囲気で", file{"product.png", pngBytes})
+
+	page := a.get("/projects/"+id+"/brief", false)
+	require.Equal(t, http.StatusOK, page.Code)
+	body := page.Body.String()
+	assert.Contains(t, body, "<html")
+	assert.Contains(t, body, `hx-put="/projects/`+id+`/brief"`)
+	assert.Contains(t, body, `name="subject" type="text" value="美容液"`)
+	assert.Contains(t, body, `name="duration" type="text" value="15秒"`)
+	assert.Contains(t, body, `name="aspect_ratio" type="text" value="9:16"`)
+	assert.Contains(t, body, "data-attachments", "uploaded assets are listed")
+	assert.NotContains(t, a.get("/projects/"+id+"/brief", true).Body.String(), "<html")
+	assert.Contains(t, a.get("/projects/"+id, false).Body.String(), `/projects/`+id+`/brief`, "reachable from the ⋯ menu")
+
+	rec := a.form(http.MethodPut, "/projects/"+id+"/brief", url.Values{
+		"content_type": {"商品CM"}, "subject": {"化粧水"}, "duration": {"30秒"}, "aspect_ratio": {"16:9"},
+		"additional_instruction": {"夜のシーン"}, "references": {"https://example.com/ref"},
+	})
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.Contains(t, rec.Body.String(), "保存しました")
+	assert.Contains(t, rec.Body.String(), `value="化粧水"`)
+
+	saved := a.get("/projects/"+id+"/brief", false).Body.String()
+	assert.Contains(t, saved, `value="30秒"`)
+	assert.Contains(t, saved, "https://example.com/ref")
+	assert.Contains(t, a.get("/projects/"+id+"/messages", true).Body.String(), "Brief を更新しました", "the edit is recorded in the thread")
+}
+
+func TestBrief_InvalidEditRerendersWithErrorAndKeepsInput(t *testing.T) {
+	a := newApp(t)
+	id := a.createProject("美容液のCM")
+
+	rec := a.form(http.MethodPut, "/projects/"+id+"/brief", url.Values{"subject": {"化粧水"}, "aspect_ratio": {"縦長"}})
+	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
+	assert.Contains(t, rec.Body.String(), "9:16 / 16:9 / 1:1 から選んでください")
+	assert.Contains(t, rec.Body.String(), `value="縦長"`, "the rejected input is shown again")
+
+	rec = a.form(http.MethodPut, "/projects/"+id+"/brief", url.Values{"references": {"javascript:alert(1)"}})
+	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
+	assert.Contains(t, rec.Body.String(), "javascript:alert(1)")
+	assert.NotContains(t, a.get("/projects/"+id+"/brief", false).Body.String(), "javascript:alert", "rejected input is not stored")
+
+	assert.Equal(t, http.StatusNotFound, a.form(http.MethodPut, "/projects/missing/brief", url.Values{}).Code)
+	assert.Equal(t, http.StatusNotFound, a.get("/projects/missing/brief", false).Code)
+}

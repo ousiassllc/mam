@@ -2,16 +2,24 @@ package router_test
 
 import (
 	"bytes"
+	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/coder/websocket"
+	"github.com/coder/websocket/wsjson"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 )
 
@@ -93,4 +101,56 @@ func TestBodyLimit_OversizedUrlencodedOnUploadRouteIs413Unread(t *testing.T) {
 	req.Header.Set(middleware.CSRFHeaderName, a.token)
 	rec = do(a.engine, req)
 	assert.Equal(t, http.StatusRequestEntityTooLarge, rec.Code, rec.Body.String())
+}
+
+func TestWebSocket_SendsNotificationsOnlyNoBodies(t *testing.T) {
+	a := newApp(t)
+	id := a.createProject("動画を作りたい")
+	server := httptest.NewServer(a.engine)
+	defer server.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	conn, _, err := websocket.Dial(ctx, "ws"+strings.TrimPrefix(server.URL, "http")+"/ws/projects/"+id, nil)
+	require.NoError(t, err)
+	defer func() { _ = conn.CloseNow() }()
+
+	rec := a.form(http.MethodPost, "/projects/"+id+"/messages", url.Values{"content": {"Instagram広告 の秘密の本文"}})
+	require.Equal(t, http.StatusOK, rec.Code)
+	newest := lastID(t, a.get("/projects/"+id+"/messages", true).Body.String())
+
+	var raw json.RawMessage
+	require.NoError(t, wsjson.Read(ctx, conn, &raw))
+	var event map[string]string
+	require.NoError(t, json.Unmarshal(raw, &event))
+	assert.Equal(t, map[string]string{"type": "message.created", "message_id": newest}, event, "only type and id; no content")
+	assert.NotContains(t, string(raw), "秘密の本文")
+
+	jobID, cardID := a.announceProgress(id, "生成中", domain.JobQueued)
+	require.NoError(t, wsjson.Read(ctx, conn, &raw)) // message.created for the card
+	require.NoError(t, repository.NewJobRepository(a.db).MarkRunning(ctx, jobID))
+	a.svc.Chat.JobChanged(ctx, jobID)
+	require.NoError(t, wsjson.Read(ctx, conn, &raw))
+	require.NoError(t, json.Unmarshal(raw, &event))
+	assert.Equal(t, map[string]string{"type": "card.updated", "message_id": cardID}, event)
+}
+
+func TestWebSocket_UnknownProjectAndForeignOriginAreRefused(t *testing.T) {
+	a := newApp(t)
+	id := a.createProject("動画")
+	server := httptest.NewServer(a.engine)
+	defer server.Close()
+	base := "ws" + strings.TrimPrefix(server.URL, "http")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	_, resp, err := websocket.Dial(ctx, base+"/ws/projects/missing", nil)
+	require.Error(t, err)
+	require.NotNil(t, resp)
+	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+
+	_, resp, err = websocket.Dial(ctx, base+"/ws/projects/"+id, &websocket.DialOptions{HTTPHeader: http.Header{"Origin": {"https://evil.example.com"}}})
+	require.Error(t, err)
+	require.NotNil(t, resp)
+	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
 }
