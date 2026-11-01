@@ -33,7 +33,7 @@
 
 ## 4. ffmpeg の確認
 
-- `GET /onboarding/ffmpeg` の本文のために、`service/onboarding.Service.FFmpeg` が `ffmpegsettings.Service.Find`（設定したパス → `PATH` → macOS の Homebrew の場所。`internal/media` の起動時の探し方と同じ。[../architecture/ffmpeg-lookup.md](../architecture/ffmpeg-lookup.md)。実行はしない）を呼ぶ。結果は 2 つのパス（見つからないものは空）。
+- `GET /onboarding/ffmpeg` の本文のために、`service/onboarding.Service.FFmpeg` が `ffmpegsettings.Service.Find`（設定したパス → `PATH` → macOS の Homebrew の場所 → mam がダウンロードして入れたもの。`internal/media` の起動時の探し方と同じ。[../architecture/ffmpeg-lookup.md](../architecture/ffmpeg-lookup.md)。実行はしない）を呼ぶ。結果は 2 つのパス（見つからないものは空）。
 - 見つからず、ダウンロードできる環境（Windows x64・macOS arm64）で、ダウンロードのサービスがあるとき、本文に設定画面と同じ `DownloadPanel`（`#ffmpeg-download`）を含める。ボタンと進み具合と中断と削除は**設定画面のルート**（`POST` / `GET` / `DELETE /settings/ffmpeg/download`、`POST /settings/ffmpeg/download/cancel`。[endpoints-settings.md](endpoints-settings.md) §5.2）を使い、ガイド専用のルートは増やさない。
 - OS は `runtime.GOOS`（`windows` → winget、`darwin` → brew、ほか → 汎用の文）。画面の文言は [../components/onboarding-screen.md](../components/onboarding-screen.md) §4.3。
 

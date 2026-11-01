@@ -128,19 +128,7 @@ func (i *Installer) NeedBytes() int64 {
 
 // CheckSpace returns a *fetch.NoSpaceError when the disk cannot hold the install.
 func (i *Installer) CheckSpace() error {
-	free := i.FreeBytes
-	if free == nil {
-		free = fsutil.FreeBytes
-	}
-	need := i.NeedBytes()
-	have, err := free(i.Layout.Root)
-	if err != nil {
-		return fmt.Errorf("free space: %w", err)
-	}
-	if uint64(need) > have { //nolint:gosec // need is a size, never negative
-		return &fetch.NoSpaceError{Need: uint64(need), Free: have, Path: i.Layout.Root} //nolint:gosec // same
-	}
-	return nil
+	return exeinstall.CheckSpace(i.Layout.Root, i.NeedBytes(), i.FreeBytes)
 }
 
 // Install downloads the pinned archive, verifies its SHA-256 and size, extracts the executable, verifies that too, and swaps
@@ -208,19 +196,7 @@ func (i *Installer) writeRecord() error {
 
 // swap makes tmp the engine; the previous engine is removed once the new one is in place.
 func (i *Installer) swap(tmp string) error {
-	engine, old := i.Layout.EngineDir(), i.Layout.EngineOldDir()
-	_ = os.RemoveAll(old)
-	if _, err := os.Stat(engine); err == nil {
-		if err := os.Rename(engine, old); err != nil {
-			return fmt.Errorf("engine: replace the installed engine: %w", err)
-		}
-	}
-	if err := os.Rename(tmp, engine); err != nil {
-		_ = os.Rename(old, engine) // put the previous engine back
-		return fmt.Errorf("engine: put the new engine in place: %w", err)
-	}
-	_ = os.RemoveAll(old)
-	return nil
+	return exeinstall.Swap(tmp, i.Layout.EngineDir(), i.Layout.EngineOldDir())
 }
 
 // Remove deletes the engine, its record and what is left of a download.
@@ -241,14 +217,5 @@ func (i *Installer) Remove() error {
 // CleanLeftovers removes what an interrupted install left: a half-extracted engine.new, and engine.old (or puts it back
 // when the swap stopped between its two renames).
 func (i *Installer) CleanLeftovers() {
-	_ = os.RemoveAll(i.Layout.EngineNewDir())
-	engine, old := i.Layout.EngineDir(), i.Layout.EngineOldDir()
-	if _, err := os.Stat(old); err != nil {
-		return
-	}
-	if _, err := os.Stat(engine); errors.Is(err, os.ErrNotExist) {
-		_ = os.Rename(old, engine)
-		return
-	}
-	_ = os.RemoveAll(old)
+	exeinstall.CleanLeftovers(i.Layout.EngineNewDir(), i.Layout.EngineDir(), i.Layout.EngineOldDir())
 }

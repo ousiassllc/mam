@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/ousiassllc/mam/backend/internal/exeinstall"
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/fetch"
 )
@@ -62,7 +63,9 @@ func (i *Installer) record() (Record, bool) {
 	return r, true
 }
 
-// Status reads the record and checks the files (their presence and size: the SHA-256 was checked at the install).
+// Status reads the record and checks the files (their presence and size: the SHA-256 was checked at the install). A record
+// that does not vouch for both executables is Broken: the search gets the directory as a whole, so an executable that the
+// record leaves out (put there by hand) must not be found through it.
 func (i *Installer) Status() DiskStatus {
 	st := DiskStatus{PinnedVersion: i.Platform.Version}
 	rec, ok := i.record()
@@ -70,9 +73,17 @@ func (i *Installer) Status() DiskStatus {
 		return st
 	}
 	st.Version = rec.Version
+	vouched := map[string]bool{}
 	for _, f := range rec.Files {
 		info, err := os.Stat(filepath.Join(i.Layout.BinDir(), f.Name))
 		if f.Name != filepath.Base(f.Name) || err != nil || !info.Mode().IsRegular() || info.Size() != f.Size {
+			st.Broken = true
+			return st
+		}
+		vouched[f.Name] = true
+	}
+	for _, m := range i.Platform.Members() {
+		if !vouched[m.Name] {
 			st.Broken = true
 			return st
 		}
@@ -113,19 +124,7 @@ func (i *Installer) NeedBytes() int64 {
 
 // CheckSpace returns a *fetch.NoSpaceError when the disk cannot hold the install.
 func (i *Installer) CheckSpace() error {
-	free := i.FreeBytes
-	if free == nil {
-		free = fsutil.FreeBytes
-	}
-	need := i.NeedBytes()
-	have, err := free(i.Layout.Root)
-	if err != nil {
-		return fmt.Errorf("free space: %w", err)
-	}
-	if uint64(need) > have { //nolint:gosec // need is a size, never negative
-		return &fetch.NoSpaceError{Need: uint64(need), Free: have, Path: i.Layout.Root} //nolint:gosec // same
-	}
-	return nil
+	return exeinstall.CheckSpace(i.Layout.Root, i.NeedBytes(), i.FreeBytes)
 }
 
 func (i *Installer) writeRecord() error {
@@ -146,16 +145,7 @@ func (i *Installer) CleanLeftovers() {
 	if i.Layout.Root == "" {
 		return
 	}
-	_ = os.RemoveAll(i.Layout.BinNewDir())
-	bin, old := i.Layout.BinDir(), i.Layout.BinOldDir()
-	if _, err := os.Stat(old); err != nil {
-		return
-	}
-	if _, err := os.Stat(bin); errors.Is(err, os.ErrNotExist) {
-		_ = os.Rename(old, bin)
-		return
-	}
-	_ = os.RemoveAll(old)
+	exeinstall.CleanLeftovers(i.Layout.BinNewDir(), i.Layout.BinDir(), i.Layout.BinOldDir())
 }
 
 // Remove deletes the installed ffmpeg, its record and what is left of a download.

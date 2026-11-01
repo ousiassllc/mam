@@ -17,27 +17,15 @@ const DirName = "codex"
 type Layout struct{ Root string }
 
 // ForExecutable is the Layout of the directory next to the executable at exe.
-func ForExecutable(exe string) Layout { return Layout{Root: filepath.Join(filepath.Dir(exe), DirName)} }
-
-// ForDataDir is the Layout of the directory in the data directory. An empty dataDir gives the empty Layout (no download).
-func ForDataDir(dataDir string) Layout {
-	if dataDir == "" {
-		return Layout{}
-	}
-	if abs, err := filepath.Abs(dataDir); err == nil {
-		dataDir = abs
-	}
-	return Layout{Root: filepath.Join(dataDir, DirName)}
+func ForExecutable(exe string) Layout {
+	return Layout{Root: exeinstall.RootNextToExecutable(exe, DirName)}
 }
 
-// For is the Layout of the engine on goos. On macOS it lies in the data directory, outside MAM.app: the executable
-// sits inside the .app, which the auto-update replaces as a whole, and anything put there would go with it. Elsewhere it
-// lies next to the executable at exe.
+// For is the Layout of the engine on goos: exeinstall.Root (on macOS in the data directory, outside MAM.app, which the
+// auto-update replaces as a whole; elsewhere next to the executable at exe). An empty dataDir on macOS gives the empty
+// Layout (no download).
 func For(goos, exe, dataDir string) Layout {
-	if goos == "darwin" {
-		return ForDataDir(dataDir)
-	}
-	return ForExecutable(exe)
+	return Layout{Root: exeinstall.Root(goos, exe, dataDir, DirName)}
 }
 
 // EngineDir holds the installed app-server executable.
