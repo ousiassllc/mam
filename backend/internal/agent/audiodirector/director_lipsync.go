@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"slices"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector/localvoice"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
 	"github.com/ousiassllc/mam/backend/internal/media"
@@ -63,17 +64,16 @@ func (r *run) lipSync(ctx context.Context) error {
 	if len(groups) == 0 {
 		return nil
 	}
-	if r.d.Providers.LipSync == nil {
-		r.skip(domain.LayerLipSync, "", domain.SkipError, "Lip Sync のプロバイダーが設定されていません")
-		return nil
+	ls, ok, err := r.lipSyncerFor(ctx)
+	if err != nil || !ok {
+		return err
 	}
-	model := r.scope.LipSyncModel
 	for _, vc := range r.in.Clips {
 		lines := groups[vc.Index]
 		if len(lines) == 0 {
 			continue
 		}
-		cost := r.d.Prices.LipSync(model, vc.Length())
+		cost := ls.price(vc.Length())
 		release, ok, err := r.reserve(ctx, domain.LayerLipSync, lines[0].Text, cost)
 		if err != nil {
 			return err
@@ -81,7 +81,7 @@ func (r *run) lipSync(ctx context.Context) error {
 		if !ok {
 			continue
 		}
-		out, stop, err := r.syncClip(ctx, vc, lines, model, cost)
+		out, stop, err := r.syncClip(ctx, vc, lines, ls, cost)
 		release() // the cost is in the ledger now, or the call was not paid
 		if err != nil {
 			return err
@@ -97,9 +97,9 @@ func (r *run) lipSync(ctx context.Context) error {
 }
 
 // syncClip lip-syncs one clip. The clip is nil when it was left out (listed in Skipped); stop is
-// true when the following clips cannot be lip-synced either (no key). A call Sync Labs accepted is
-// recorded at cost before its result is stored, so a local failure afterwards still counts.
-func (r *run) syncClip(ctx context.Context, vc VideoClip, lines []domain.AudioClip, model string, cost float64) (out *domain.LipSyncClip, stop bool, err error) {
+// true when the following clips cannot be lip-synced either (no key, or a local runtime that cannot be used). A call Sync Labs accepted
+// is recorded at cost before its result is stored, so a local failure afterwards still counts.
+func (r *run) syncClip(ctx context.Context, vc VideoClip, lines []domain.AudioClip, ls lipSyncer, cost float64) (out *domain.LipSyncClip, stop bool, err error) {
 	dir := filepath.Join(r.d.Root, filepath.FromSlash(r.rel), fmt.Sprintf("lipsync-%02d-work", vc.Index))
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return nil, false, fmt.Errorf("create audio directory: %w", err)
@@ -126,12 +126,12 @@ func (r *run) syncClip(ctx context.Context, vc VideoClip, lines []domain.AudioCl
 	if err != nil {
 		return nil, false, fmt.Errorf("read voice: %w", err)
 	}
-	data, err := r.d.Providers.LipSync.Sync(ctx, LipSyncRequest{Model: model, Video: Sample{Filename: "clip.mp4", Data: vb}, Audio: Sample{Filename: "voice.wav", Data: ab}})
+	data, err := ls.sync.Sync(ctx, LipSyncRequest{Model: ls.name, Seconds: vc.Length(), Video: Sample{Filename: "clip.mp4", Data: vb}, Audio: Sample{Filename: "voice.wav", Data: ab}})
 	var charged *ChargedError
 	if err == nil || errors.As(err, &charged) {
 		// Sync Labs has accepted (and bills) the clip, whether or not a video came back: the ledger
 		// gets it even when the download failed, the job timed out or the run was cancelled meanwhile.
-		if err := r.spend.record(ctx, domain.ModelSyncLabs, cost); err != nil {
+		if err := r.spend.record(ctx, ls.model, cost); err != nil {
 			return nil, false, err
 		}
 	}
@@ -143,8 +143,9 @@ func (r *run) syncClip(ctx context.Context, vc VideoClip, lines []domain.AudioCl
 		return nil, true, nil
 	}
 	if err != nil {
-		r.skip(domain.LayerLipSync, label, domain.SkipError, err.Error())
-		return nil, false, nil
+		var un *localvoice.UnavailableError
+		r.skip(domain.LayerLipSync, label, domain.SkipError, localvoice.LipSyncReason(err))
+		return nil, errors.As(err, &un) && un.Systemic(), nil
 	}
 	rel := path.Join(r.rel, fmt.Sprintf("lipsync-%02d.mp4", vc.Index))
 	if err := fsutil.WriteFileAtomic(r.abs(rel), data, 0o600); err != nil {
@@ -156,7 +157,7 @@ func (r *run) syncClip(ctx context.Context, vc VideoClip, lines []domain.AudioCl
 		r.skip(domain.LayerLipSync, label, domain.SkipError, "Lip Sync の映像を読み取れませんでした: "+err.Error())
 		return nil, false, nil
 	}
-	return &domain.LipSyncClip{ClipIndex: vc.Index, TakeID: vc.TakeID, Path: rel, DurationSeconds: info.Duration, Model: domain.ModelSyncLabs}, false, nil
+	return &domain.LipSyncClip{ClipIndex: vc.Index, TakeID: vc.TakeID, Path: rel, DurationSeconds: info.Duration, Model: ls.model}, false, nil
 }
 
 // localFailure lists a clip that ffmpeg could not prepare; a cancelled run is an error.

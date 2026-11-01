@@ -2,6 +2,7 @@ package localvoice_test
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -90,4 +91,55 @@ func TestUnavailableError_MessageAndUnwrap(t *testing.T) {
 	assert.ErrorContains(t, e, "exited")
 	assert.ErrorIs(t, e, inner)
 	assert.NotContains(t, (&localvoice.UnavailableError{Kind: localvoice.KindTimeout}).Error(), "): ")
+}
+
+func TestLipSyncProvider_TheZeroValueIsSyncLabs(t *testing.T) {
+	assert.True(t, localvoice.LipSyncProvider("").Valid())
+	assert.True(t, localvoice.LipSyncSyncLabs.Valid())
+	assert.True(t, localvoice.LipSyncLocal.Valid())
+	assert.False(t, localvoice.LipSyncProvider("sync").Valid())
+	assert.False(t, localvoice.LipSyncProvider("Local").Valid(), "the identifiers are the lower-case ones")
+}
+
+func TestInvalidProvider_NamesTheOptionThatIsWrong(t *testing.T) {
+	assert.Empty(t, localvoice.InvalidProvider("", ""))
+	assert.Empty(t, localvoice.InvalidProvider(localvoice.Local, localvoice.LipSyncLocal))
+	assert.Equal(t, "voice_provider", localvoice.InvalidProvider("azure", localvoice.LipSyncLocal))
+	assert.Equal(t, "lip_sync_provider", localvoice.InvalidProvider(localvoice.Local, "azure"))
+	assert.Equal(t, "voice_provider", localvoice.InvalidProvider("azure", "azure"), "the first is told first")
+}
+
+func TestUnavailableError_NamesItsProviderAndTellsAWholeRuntimeFromOneClip(t *testing.T) {
+	voice := &localvoice.UnavailableError{Kind: localvoice.KindProcess, Detail: "d"}
+	lip := &localvoice.UnavailableError{Kind: localvoice.KindProcess, Vendor: localvoice.VendorMuseTalk, Detail: "d"}
+	assert.Contains(t, voice.Error(), "GPT-SoVITS")
+	assert.Contains(t, lip.Error(), "MuseTalk")
+	assert.Contains(t, lip.Error(), "process")
+
+	systemic := map[localvoice.Kind]bool{
+		localvoice.KindNotInstalled: true, localvoice.KindWeightsMissing: true, localvoice.KindUnsupported: true,
+		localvoice.KindGPUMemory: false, localvoice.KindProcess: false, localvoice.KindTimeout: false, localvoice.KindNoFace: false, localvoice.KindTooLarge: false,
+	}
+	for kind, want := range systemic {
+		assert.Equal(t, want, (&localvoice.UnavailableError{Kind: kind}).Systemic(), kind)
+	}
+}
+
+func TestLipSyncReason_EveryKindHasItsOwnSentenceWithTheDetail(t *testing.T) {
+	kinds := []localvoice.Kind{
+		localvoice.KindNotInstalled, localvoice.KindWeightsMissing, localvoice.KindUnsupported, localvoice.KindGPUMemory,
+		localvoice.KindProcess, localvoice.KindTimeout, localvoice.KindNoFace, localvoice.KindTooLarge,
+	}
+	seen := map[string]localvoice.Kind{}
+	for _, kind := range kinds {
+		text := localvoice.LipSyncReason(fmt.Errorf("clip 1: %w", &localvoice.UnavailableError{Kind: kind, Vendor: localvoice.VendorMuseTalk, Detail: "理由の詳細"}))
+		assert.Contains(t, text, "理由の詳細", kind)
+		assert.NotContains(t, text, "GPT-SoVITS", kind)
+		other, dup := seen[text]
+		assert.False(t, dup, "%s has the sentence of %s", kind, other)
+		seen[text] = kind
+	}
+	assert.Contains(t, localvoice.LipSyncReason(&localvoice.UnavailableError{Kind: "new"}), "MuseTalk", "a kind that is not known yet is still the local lip sync")
+	assert.Equal(t, "boom", localvoice.LipSyncReason(errors.New("boom")), "any other error is told as it is")
+	assert.NotContains(t, localvoice.LipSyncReason(&localvoice.UnavailableError{Kind: localvoice.KindNoFace}), "（", "no detail, no parentheses")
 }

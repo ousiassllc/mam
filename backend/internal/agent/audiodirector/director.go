@@ -49,6 +49,8 @@ type Input struct {
 	// reference voice the local provider speaks their lines with; it is read for localvoice.Local only.
 	VoiceProvider localvoice.Provider
 	LocalVoices   map[string]localvoice.Voice
+	// LipSyncProvider is who redoes the mouths of MAX QUALITY ("" selects Sync Labs).
+	LipSyncProvider localvoice.LipSyncProvider
 	// Rough is the rendered Rough Cut and HasSound tells whether it has sound of its own.
 	Rough    string
 	HasSound bool
@@ -142,6 +144,9 @@ func (d *Director) produce(ctx context.Context, in Input, rel string) (domain.Au
 	target := in.TargetLUFS
 	if target == 0 {
 		target = domain.DefaultTargetLUFS
+	}
+	if !in.LipSyncProvider.Valid() {
+		return domain.AudioTimeline{}, fmt.Errorf("%w: %q", localvoice.ErrUnknownLipSyncProvider, in.LipSyncProvider)
 	}
 	scope := domain.AudioScopeOf(in.Quality)
 	tl := domain.AudioTimeline{

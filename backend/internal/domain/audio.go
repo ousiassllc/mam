@@ -1,6 +1,9 @@
 package domain
 
-import "time"
+import (
+	"slices"
+	"time"
+)
 
 // Audio models. The values are the canonical identifiers of spec/architecture/model-adapters.md §6,
 // stored in cost_ledger_entry.provider.
@@ -10,6 +13,7 @@ const (
 	ModelElevenLabsMusic ModelName = "elevenlabs-music"
 	ModelElevenLabsSFX   ModelName = "elevenlabs-sfx"
 	ModelSyncLabs        ModelName = "sync-labs"
+	ModelMuseTalk        ModelName = "musetalk-1.5" // the local Lip Sync: no API cost, but the ledger keeps the clip
 )
 
 // MaxSpeakerRunes bounds the speaker name of a cloned voice.
@@ -75,14 +79,7 @@ type AudioScope struct {
 }
 
 // Has reports whether the scope makes the planned layer.
-func (s AudioScope) Has(l AudioLayer) bool {
-	for _, p := range s.Planned {
-		if l == p {
-			return true
-		}
-	}
-	return false
-}
+func (s AudioScope) Has(l AudioLayer) bool { return slices.Contains(s.Planned, l) }
 
 // AudioScopeOf is the scope of the Quality Policy: FAST adds only BGM to the speech, BALANCED adds
 // SE and Ambience, MAX QUALITY adds Foley and Lip Sync (with the most capable Sync Labs model).

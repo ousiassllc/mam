@@ -12,6 +12,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector"
 	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector/gptsovits"
+	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector/musetalk"
 	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector/synclabs"
 	"github.com/ousiassllc/mam/backend/internal/agent/jev"
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
@@ -33,6 +34,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/comfywf"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/service/locallipsync"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
 	"github.com/ousiassllc/mam/backend/internal/service/localruntime"
 	"github.com/ousiassllc/mam/backend/internal/service/localspeech"
@@ -189,7 +191,7 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 		Judge:       judging.config,
 		Jev:         shadow,
 		Media:       previews,
-		Audio:       audioProviders(keys, rts),
+		Audio:       audioProviders(keys, rts, previews),
 	})
 	services.LocalModels = localModels
 	closers = append(closers, services.Close) // runs after jobs.Stop: no job change wakes the workers any more
@@ -246,12 +248,18 @@ func recoverWork(ctx context.Context, services *service.Services, jobs *jobqueue
 }
 
 // audioProviders are the vendors of the Audio Director: ElevenLabs (TTS, cloned voices, Music, Sound Effects; API key "elevenlabs"),
-// Sync Labs (Lip Sync; API key "synclabs") and the local voice, GPT-SoVITS of the local runtime manager, which a run may choose
-// instead of ElevenLabs' TTS. The runtime need not be installed: the local voice reports that when a run chooses it.
-func audioProviders(keys credential.Store, rts *localruntime.Service) audiodirector.Providers {
+// Sync Labs (Lip Sync; API key "synclabs") and the local voice and lip sync, GPT-SoVITS and MuseTalk 1.5 of the local runtime manager,
+// which a run may choose instead of ElevenLabs' TTS and Sync Labs. A runtime need not be installed: the local provider reports that when
+// a run chooses it. The lip sync is told the ffmpeg of tools, the one the Director runs (nil: none; the Director is not available then either).
+func audioProviders(keys credential.Store, rts *localruntime.Service, tools *media.Tools) audiodirector.Providers {
 	p := audiodirector.ElevenLabsProviders(audiodirector.NewElevenLabs(audiodirector.Config{}, keys, nil))
 	p.LipSync = synclabs.New(synclabs.Config{}, keys, nil)
 	p.LocalSpeech = gptsovits.New(localspeech.Server{Runtime: rts}, gptsovits.Config{}, nil)
+	lip := musetalk.Config{}
+	if tools != nil {
+		lip.FFmpegPath = tools.FFmpegPath()
+	}
+	p.LocalLipSync = musetalk.New(locallipsync.Runner{Runtime: rts}, lip)
 	return p
 }
 

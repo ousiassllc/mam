@@ -49,8 +49,14 @@ func (s Server) Ensure(ctx context.Context) (string, error) {
 
 // Unavailable turns the error of the runtime manager into the typed error of the local voice. ctx is the context of the call: its own
 // cancellation is not a failure of the runtime and stays as it is.
-func Unavailable(ctx context.Context, err error) error {
+func Unavailable(ctx context.Context, err error) error { return UnavailableFor(ctx, "", err) }
+
+// UnavailableFor is Unavailable for the provider named vendor ("" is the voice; localvoice.VendorMuseTalk is the lip sync).
+func UnavailableFor(ctx context.Context, vendor string, err error) error {
 	var support *localruntime.SupportError
+	un := func(kind localvoice.Kind, detail string) error {
+		return &localvoice.UnavailableError{Kind: kind, Vendor: vendor, Detail: detail, Err: err}
+	}
 	switch {
 	case ctx.Err() != nil:
 		return ctx.Err()
@@ -59,15 +65,15 @@ func Unavailable(ctx context.Context, err error) error {
 		if support.Support.Code == rtm.CodeLowVRAM {
 			kind = localvoice.KindGPUMemory
 		}
-		return &localvoice.UnavailableError{Kind: kind, Detail: support.Error(), Err: err}
+		return un(kind, support.Error())
 	case errors.Is(err, localruntime.ErrNotInstalled), errors.Is(err, localruntime.ErrBusy), errors.Is(err, localruntime.ErrNotFound):
-		return &localvoice.UnavailableError{Kind: localvoice.KindNotInstalled, Detail: err.Error(), Err: err}
+		return un(localvoice.KindNotInstalled, err.Error())
 	case errors.Is(err, localruntime.ErrWeightsMissing):
-		return &localvoice.UnavailableError{Kind: localvoice.KindWeightsMissing, Detail: err.Error(), Err: err}
+		return un(localvoice.KindWeightsMissing, err.Error())
 	case errors.Is(err, context.DeadlineExceeded):
-		return &localvoice.UnavailableError{Kind: localvoice.KindTimeout, Detail: err.Error(), Err: err}
+		return un(localvoice.KindTimeout, err.Error())
 	}
-	return &localvoice.UnavailableError{Kind: localvoice.KindProcess, Detail: err.Error(), Err: err}
+	return un(localvoice.KindProcess, err.Error())
 }
 
 // Lookup finds the reference voice of a speaker (*voicerefsvc.Service).
@@ -117,10 +123,14 @@ func Reason(err error) (string, bool) {
 	case errors.As(err, &mv):
 		return "ローカルの声（GPT-SoVITS）で話せません。参照音声が無い話者がいます: " + joinNames(mv.Names()) +
 			"。Character に参照音声を設定するか、声のプロバイダーを ElevenLabs に切り替えてください", true
+	case errors.As(err, &un) && un.Vendor == localvoice.VendorMuseTalk:
+		return localvoice.LipSyncReason(un), true
 	case errors.As(err, &un):
 		return unavailableReason(un), true
 	case errors.Is(err, localvoice.ErrUnknownProvider):
 		return "声のプロバイダーが正しくありません（elevenlabs か local を指定してください）", true
+	case errors.Is(err, localvoice.ErrUnknownLipSyncProvider):
+		return "口パクのプロバイダーが正しくありません（synclabs か local を指定してください）", true
 	}
 	return "", false
 }
