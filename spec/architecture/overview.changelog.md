@@ -83,3 +83,5 @@
 | 1.76 | 2026-10-27 | §5 の構成図の `ci.yml` に GitHub-hosted の `macos-latest` で動く `macos` ジョブ（dmg の作成・`cmd/wails` の darwin での vet・更新まわりのテスト・本物の dmg への更新の適用）を足し、`release-macos.yml` の実行先を「self-hosted の Mac」から GitHub-hosted の `macos-latest` に改めた | Issue #853。macOS のビルドを Mac の常駐する機械ではなく GitHub-hosted の runner に移し、CI でも dmg の作成と更新の適用を確かめる（`desktop.md` 1.25、`setup.md` 1.43） |
 | 1.77 | 2026-11-01 | §5 の構成図の `media/` に、ffmpeg / ffprobe の探し方（`media/locate`。設定したパス → `PATH` → macOS の Homebrew の場所）を足した | Issue #856。Finder から起動した macOS で Homebrew の ffmpeg が見つからなかった。`ffmpeg-lookup.md` を新設 |
 | 1.78 | 2026-11-01 | §5 の構成図に `exeinstall/`（取得したプログラムの安全な展開・隔離属性の除去）を足し、`media/` に ffmpeg の取得（`media/ffmpegdl`）と探す順の末尾（取得して入れたもの）を足した | Issue #900 |
+| 1.79 | 2026-11-01 | §5 の構成図の `testenv/` に `CPUTime`（処理が使った CPU 時間を測る。Linux はスレッドの CPU 時間、他 OS は時計）を足した | Issue #905。初期表示の速さを測るテストが、テストを 24 並列で走らせたときに時計の上限で偽の失敗になっていたため、CPU 時間で測る |
+| 1.80 | 2026-11-01 | §5 の構成図に `scripts/stress-test.sh`（`make stress`。テストのフレークを追う繰り返し実行。プロセスは既定 2・上限 4）を足し、`*_test.sh` の説明に `stress-test_test.sh` を足した | Issue #905。負荷時だけ落ちるテストを 24 本並列で追うと共有のマシンが使えなくなるため、少ないプロセスで再現する入口を 1 つに決めた。詳細は `spec/environment/setup.md` |
