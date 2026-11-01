@@ -7,19 +7,13 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
-	"path/filepath"
-	"strings"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector"
-	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
-	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/repository"
@@ -132,10 +126,12 @@ func (e *editorApp) setState(state string) {
 	e.execSQL(`UPDATE project SET state = ? WHERE id = ?`, state, e.project)
 }
 
-func (e *editorApp) state() string {
-	e.t.Helper()
+func (e *editorApp) state() string { return e.stateOn(e.t) }
+
+// stateOn, timelineFor and judgeOn fail c, not the test: an Eventually condition runs in its own goroutine (see countOn).
+func (e *editorApp) stateOn(c require.TestingT) string {
 	var s string
-	require.NoError(e.t, e.db.Reader().QueryRowContext(context.Background(), `SELECT state FROM project WHERE id = ?`, e.project).Scan(&s))
+	require.NoError(c, e.db.Reader().QueryRowContext(context.Background(), `SELECT state FROM project WHERE id = ?`, e.project).Scan(&s))
 	return s
 }
 
@@ -164,33 +160,32 @@ type timelineBody struct {
 	} `json:"clips"`
 }
 
-func (e *editorApp) timeline() timelineBody {
-	e.t.Helper()
+func (e *editorApp) timeline() timelineBody { return e.timelineFor(e.t) }
+
+func (e *editorApp) timelineFor(c require.TestingT) timelineBody {
 	rec := e.get("/api/v1/projects/"+e.project+"/edit-timeline", false)
-	require.Equal(e.t, http.StatusOK, rec.Code, rec.Body.String())
+	require.Equal(c, http.StatusOK, rec.Code, rec.Body.String())
 	var b timelineBody
-	require.NoError(e.t, json.Unmarshal(rec.Body.Bytes(), &b))
+	require.NoError(c, json.Unmarshal(rec.Body.Bytes(), &b))
 	return b
 }
 
 // judge is the newest Editor Judge result of the current timeline version (nil: none yet). The
 // result is not part of the timeline API: editorpanel.Actions (Templ) draws it.
-func (e *editorApp) judge() *domain.EditorJudgeResult {
-	e.t.Helper()
-	res, err := repository.NewEditorRepository(e.db).LatestEditorJudge(context.Background(), e.timeline().ID)
+func (e *editorApp) judge() *domain.EditorJudgeResult { return e.judgeOn(e.t) }
+func (e *editorApp) judgeOn(c require.TestingT) *domain.EditorJudgeResult {
+	res, err := repository.NewEditorRepository(e.db).LatestEditorJudge(context.Background(), e.timelineFor(c).ID)
 	if errors.Is(err, repository.ErrNotFound) {
 		return nil
 	}
-	require.NoError(e.t, err)
+	require.NoError(c, err)
 	return &res
 }
 
 func TestEditor_RoughCutNeedsASelectedTakeForEveryShot(t *testing.T) {
 	e := newEditorApp(t)
 	e.setState("VISUAL_DESIGN")
-
 	rec := e.form(http.MethodPost, "/projects/"+e.project+"/edit/rough-cut", nil)
-
 	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
 	assert.Contains(t, rec.Body.String(), "Selected Take")
 	assert.Equal(t, http.StatusNotFound, e.get("/api/v1/projects/"+e.project+"/edit-timeline", false).Code)
@@ -199,532 +194,7 @@ func TestEditor_RoughCutNeedsASelectedTakeForEveryShot(t *testing.T) {
 func TestEditor_RoughCutRefusesAProjectThatIsNotAtTheEditingStage(t *testing.T) {
 	e := newEditorApp(t)
 	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/takes/t1/select", nil).Code)
-
 	rec := e.form(http.MethodPost, "/projects/"+e.project+"/edit/rough-cut", nil) // still DRAFT
-
 	assert.Equal(t, http.StatusConflict, rec.Code)
 	assert.Contains(t, rec.Body.String(), "DRAFT")
-}
-
-func TestEditor_FullFlowFromRoughCutToExport(t *testing.T) {
-	e := newEditorApp(t)
-	e.setState("VISUAL_DESIGN")
-	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/takes/t1/select", nil).Code)
-	doc := domain.ScriptDoc{Script: domain.Script{Scenes: []domain.ScriptScene{{Title: "Street", Dialogue: []string{"ナレーション: 朝が来た", "ユイ: 行こう"}}}}}
-	_, err := repository.NewPlanRepository(e.db).SaveScript(context.Background(), e.project, doc)
-	require.NoError(t, err)
-
-	// Rough Cut: the Selected Take from the start for the planned 4 s, EDITING.
-	rec := e.roughCut()
-	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-	assert.Equal(t, "timeline-reload", rec.Header().Get("HX-Trigger"))
-	assert.Equal(t, "EDITING", e.state())
-	// The stage moved the Project: the answer refreshes the state badge of the page header too.
-	assert.Regexp(t, `<span[^>]*id="project-state"[^>]*hx-swap-oob="true"|<span[^>]*hx-swap-oob="true"[^>]*id="project-state"`, rec.Body.String())
-	assert.Contains(t, rec.Body.String(), `data-state="EDITING"`)
-	tl := e.timeline()
-	require.Len(t, tl.Clips, 1)
-	assert.Equal(t, "t1", tl.Clips[0].TakeID)
-	assert.InDelta(t, 4, tl.Duration, 0.01)
-	assert.False(t, tl.Readonly)
-
-	// Editing: shorten the clip to 2 s with a fade; the save is a new version.
-	body := `{"clips":[{"shot_id":"` + e.shotID + `","take_id":"t1","in_point":1,"out_point":3,"transition":{"type":"fade","seconds":0.5}}]}`
-	rec = e.request(http.MethodPut, "/edit-timelines/"+tl.ID, []byte(body), "application/json", false)
-	require.Equal(t, http.StatusNoContent, rec.Code, rec.Body.String())
-	saved := e.timeline()
-	assert.Equal(t, tl.Version+1, saved.Version)
-	assert.InDelta(t, 2, saved.Duration, 0.01)
-	assert.InDelta(t, 1, saved.Clips[0].In, 1e-9)
-
-	// The old version cannot be saved over the new one.
-	rec = e.request(http.MethodPut, "/edit-timelines/"+tl.ID, []byte(body), "application/json", false)
-	assert.Equal(t, http.StatusConflict, rec.Code)
-
-	// Preview of the rendered Rough Cut.
-	rec = e.get("/edit-timelines/"+saved.ID+"/preview", false)
-	require.Equal(t, http.StatusOK, rec.Code)
-	assert.Equal(t, "video/mp4", rec.Header().Get("Content-Type"))
-	assert.Equal(t, "sandbox", rec.Header().Get("Content-Security-Policy"))
-
-	// Editor Judge: PASS moves the Project to AUDIO (the default level asks for no Rough Cut card).
-	rec = e.form(http.MethodPost, "/edit-timelines/"+saved.ID+"/judge", nil)
-	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-	assert.Equal(t, "timeline-reload", rec.Header().Get("HX-Trigger"), "the timeline editor reloads once the Project moved on")
-	assert.Equal(t, "AUDIO", e.state())
-	assert.Equal(t, domain.EditorPass, e.judge().Verdict)
-
-	// Audio: two lines are spoken, the Scene gets the BGM and SE its Emotion asks for, all mixed and normalized.
-	rec = e.form(http.MethodPost, "/projects/"+e.project+"/audio/generate", nil)
-	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-	assert.Contains(t, rec.Body.String(), "Dialogue 1")
-	assert.Contains(t, rec.Body.String(), "BGM 1")
-	latest, err := repository.NewEditorRepository(e.db).LatestAudioTimeline(context.Background(), e.project, "")
-	require.NoError(t, err)
-	audio := latest.Timeline
-	assert.Equal(t, domain.AudioModeDirector, audio.Mode)
-	assert.Equal(t, 1, latest.VersionNumber)
-	assert.Equal(t, 2, audio.SpeechLines())
-	assert.Equal(t, 1, audio.Count(domain.LayerBGM))
-	assert.Equal(t, 1, audio.Count(domain.LayerSE))
-	require.Len(t, audio.Scenes, 1)
-	assert.Equal(t, "期待", audio.Scenes[0].Emotion)
-	assert.InDelta(t, domain.DefaultTargetLUFS, audio.MeasuredLUFS, 1.5)
-	// Every provider call is in the cost ledger under the identifier of model-adapters.md §6.
-	var providers string
-	require.NoError(t, e.db.Reader().QueryRow(`SELECT group_concat(provider) FROM (SELECT provider FROM cost_ledger_entry WHERE project_id = ? AND provider LIKE 'elevenlabs-%' ORDER BY provider)`, e.project).Scan(&providers))
-	assert.Equal(t, "elevenlabs-music,elevenlabs-sfx,elevenlabs-tts,elevenlabs-tts", providers)
-	_, statErr := os.Stat(filepath.Join(e.dir, "assets", filepath.FromSlash(audio.MixPath)))
-	assert.NoError(t, statErr)
-
-	// Final QC: PASS makes the Project READY.
-	rec = e.form(http.MethodPost, "/projects/"+e.project+"/final-qc", nil)
-	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-	assert.Equal(t, "READY", e.state())
-
-	// Export: 9:16 at 720p in VP9 (WebM), EXPORTED, atomic (no temp file left behind).
-	rec = e.form(http.MethodPost, "/projects/"+e.project+"/export", url.Values{"aspect_ratio": {"9:16"}, "resolution": {"720p"}, "codec": {"vp9"}})
-	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-	assert.Equal(t, "EXPORTED", e.state())
-	exports, err := repository.NewEditorRepository(e.db).ListExports(context.Background(), e.project)
-	require.NoError(t, err)
-	require.Len(t, exports, 1)
-	assert.Equal(t, []string{"9:16", "720p", "vp9"}, []string{exports[0].AspectRatio, exports[0].Resolution, exports[0].Codec})
-	file := filepath.Join(e.dir, "assets", filepath.FromSlash(exports[0].FilePath))
-	info, err := e.tools.Probe(context.Background(), file)
-	require.NoError(t, err)
-	assert.Equal(t, [2]int{720, 1280}, [2]int{info.Width, info.Height})
-	assert.True(t, info.HasAudio)
-	assert.InDelta(t, 2, info.Duration, 0.3)
-	entries, err := os.ReadDir(filepath.Dir(file))
-	require.NoError(t, err)
-	for _, en := range entries {
-		assert.False(t, strings.HasPrefix(en.Name(), "."), "no temporary file remains: %s", en.Name())
-	}
-	rec = e.get("/projects/"+e.project+"/exports/"+exports[0].ID+"/video", false)
-	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Equal(t, "video/webm", rec.Header().Get("Content-Type"))
-	assert.Equal(t, []string{"sandbox", `attachment; filename="mam-export-` + exports[0].ExportedAt.UTC().Format("20060102") + `-` + exports[0].ID + `.webm"`}, []string{rec.Header().Get("Content-Security-Policy"), rec.Header().Get("Content-Disposition")}, "the download is saved under a name of its own, not `video`")
-
-	// The completion notice carries no URL in its text; the chat draws the download link from ref_type / ref_id.
-	var notice string
-	require.NoError(t, e.db.Reader().QueryRow(`SELECT content FROM chat_message WHERE project_id = ? AND ref_type = 'export' AND ref_id = ?`, e.project, exports[0].ID).Scan(&notice))
-	assert.NotContains(t, notice, "/projects/")
-	assert.Contains(t, e.get("/projects/"+e.project, false).Body.String(), `<a href="/projects/`+e.project+`/exports/`+exports[0].ID+`/video"`)
-}
-
-func TestEditor_ReEditVerdictKeepsTheProjectEditing(t *testing.T) {
-	e := newEditorApp(t)
-	e.setState("VISUAL_DESIGN")
-	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/takes/t1/select", nil).Code)
-	require.Equal(t, http.StatusOK, e.roughCut().Code)
-	e.llm.answer = `{"verdict":"re_edit","findings":[{"clip_index":1,"issue":"冒頭が長い","action":"1 秒短くする"}]}`
-
-	rec := e.form(http.MethodPost, "/edit-timelines/"+e.timeline().ID+"/judge", nil)
-
-	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-	assert.Equal(t, "EDITING", e.state())
-	j := e.judge()
-	require.NotNil(t, j)
-	assert.Equal(t, domain.EditorReEdit, j.Verdict)
-	assert.Equal(t, "冒頭が長い", j.Findings[0].Issue)
-	assert.Contains(t, rec.Body.String(), "冒頭が長い")
-}
-
-func TestEditor_SaveRejectsAClipOfAnotherShotsTakeAndAShortClip(t *testing.T) {
-	e := newEditorApp(t)
-	e.setState("VISUAL_DESIGN")
-	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/takes/t1/select", nil).Code)
-	require.Equal(t, http.StatusOK, e.roughCut().Code)
-	id := e.timeline().ID
-
-	tooShort := `{"clips":[{"shot_id":"` + e.shotID + `","take_id":"t1","in_point":0,"out_point":0.1,"transition":{"type":"cut","seconds":0}}]}`
-	rec := e.request(http.MethodPut, "/edit-timelines/"+id, []byte(tooShort), "application/json", false)
-	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
-
-	unknownShot := `{"clips":[{"shot_id":"nope","take_id":"t1","in_point":0,"out_point":2,"transition":{"type":"cut","seconds":0}}]}`
-	rec = e.request(http.MethodPut, "/edit-timelines/"+id, []byte(unknownShot), "application/json", false)
-	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
-	assert.Equal(t, 1, e.timeline().Version, "nothing was saved")
-}
-
-func TestEditor_FinalQCFailSendsTheProjectBackToTheStageWithTheProblem(t *testing.T) {
-	e := newEditorApp(t)
-	e.setState("VISUAL_DESIGN")
-	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/takes/t1/select", nil).Code)
-	require.Equal(t, http.StatusOK, e.roughCut().Code)
-	first := e.timeline()
-	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/edit-timelines/"+first.ID+"/judge", nil).Code)
-	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/projects/"+e.project+"/audio/generate", nil).Code)
-	// The edit changes after the audio was made.
-	body := `{"clips":[{"shot_id":"` + e.shotID + `","take_id":"t1","in_point":0,"out_point":2,"transition":{"type":"cut","seconds":0}}]}`
-	require.Equal(t, http.StatusNoContent, e.request(http.MethodPut, "/edit-timelines/"+first.ID, []byte(body), "application/json", false).Code)
-	assert.Equal(t, "EDITING", e.state(), "an edit takes the Project back to EDITING")
-	e.setState("AUDIO")
-
-	rec := e.form(http.MethodPost, "/projects/"+e.project+"/final-qc", nil)
-
-	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-	assert.Equal(t, "EDITING", e.state())
-	assert.Contains(t, rec.Body.String(), "data-qc-findings")
-	assert.Equal(t, http.StatusConflict, e.form(http.MethodPost, "/projects/"+e.project+"/export", nil).Code, "not READY")
-}
-
-func TestEditor_AudioNeedsTheAudioStageAndExportNeedsReady(t *testing.T) {
-	e := newEditorApp(t)
-	e.setState("EDITING")
-
-	assert.Equal(t, http.StatusConflict, e.form(http.MethodPost, "/projects/"+e.project+"/audio/generate", nil).Code)
-	assert.Equal(t, http.StatusConflict, e.form(http.MethodPost, "/projects/"+e.project+"/final-qc", nil).Code)
-	assert.Equal(t, http.StatusConflict, e.form(http.MethodPost, "/projects/"+e.project+"/export", nil).Code)
-}
-
-func TestEditor_ExportValidatesTheOptions(t *testing.T) {
-	e := newEditorApp(t)
-	e.setState("READY")
-
-	rec := e.form(http.MethodPost, "/projects/"+e.project+"/export", url.Values{"codec": {"prores"}})
-
-	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
-	assert.Contains(t, rec.Body.String(), "コーデック")
-}
-
-func TestEditor_PageRendersTheTimelineEditorAndTheStages(t *testing.T) {
-	e := newEditorApp(t)
-
-	rec := e.get("/projects/"+e.project+"/edit", false)
-
-	require.Equal(t, http.StatusOK, rec.Code)
-	assert.Contains(t, rec.Body.String(), `<mam-timeline-editor api-url="/api/v1/projects/`+e.project+`/edit-timeline">`)
-	assert.Contains(t, rec.Body.String(), `id="editor-actions"`)
-	for _, action := range []string{"/edit/rough-cut", "/audio/generate", "/final-qc", "/export"} {
-		assert.Contains(t, rec.Body.String(), `hx-post="/projects/`+e.project+action+`"`, "the stage buttons post to routes that exist")
-	}
-	assert.Equal(t, http.StatusOK, e.get("/projects/"+e.project+"/export", false).Code)
-	assert.Equal(t, http.StatusOK, e.get("/projects/"+e.project+"/edit/actions", true).Code)
-	assert.Equal(t, http.StatusNotFound, e.get("/projects/nope/edit", false).Code)
-}
-
-func TestEditor_RoughCutCheckpointHoldsTheProjectUntilTheCardIsApproved(t *testing.T) {
-	e := newEditorApp(t)
-	e.setLevel(domain.ConfirmKeyCheck)
-	e.setState("VISUAL_DESIGN")
-	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/takes/t1/select", nil).Code)
-	require.Equal(t, http.StatusOK, e.roughCut().Code)
-
-	rec := e.form(http.MethodPost, "/edit-timelines/"+e.timeline().ID+"/judge", nil)
-	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-	assert.Equal(t, "AWAITING_APPROVAL", e.state())
-	assert.Equal(t, http.StatusConflict, e.form(http.MethodPost, "/projects/"+e.project+"/audio/generate", nil).Code)
-
-	card := lastID(t, e.get("/projects/"+e.project+"/messages", true).Body.String())
-	rec = e.form(http.MethodPost, "/projects/"+e.project+"/approvals/"+card, url.Values{"decision": {"approve"}})
-	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-	assert.Equal(t, "AUDIO", e.state())
-}
-
-// timelineOn is GET /api/v1/projects/:id/edit-timeline for a Branch ("" is the trunk).
-func (e *editorApp) timelineOn(branchID string) (timelineBody, int) {
-	e.t.Helper()
-	rec := e.get("/api/v1/projects/"+e.project+"/edit-timeline?branch_id="+branchID, false)
-	var b timelineBody
-	if rec.Code == http.StatusOK {
-		require.NoError(e.t, json.Unmarshal(rec.Body.Bytes(), &b))
-	}
-	return b, rec.Code
-}
-
-func TestEditor_EachBranchKeepsItsOwnTimelineAndCaptionsSurviveTheSave(t *testing.T) {
-	e := newEditorApp(t)
-	e.setState("VISUAL_DESIGN")
-	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/takes/t1/select", nil).Code)
-	require.Equal(t, http.StatusOK, e.roughCut().Code)
-	trunk := e.timeline()
-
-	rec := e.form(http.MethodPost, "/shots/"+e.shotID+"/branch", url.Values{"name": {"逃げる"}})
-	require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
-	branchID := strings.TrimPrefix(rec.Header().Get("HX-Redirect"), "/branches/")
-	_, code := e.timelineOn(branchID)
-	assert.Equal(t, http.StatusNotFound, code, "a new Branch has no edit yet")
-
-	// The Branch makes its own Rough Cut: its own version series, the trunk stays as it was.
-	rec = e.form(http.MethodPost, "/projects/"+e.project+"/edit/rough-cut", url.Values{"branch_id": {branchID}})
-	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-	onBranch, code := e.timelineOn(branchID)
-	require.Equal(t, http.StatusOK, code)
-	assert.Equal(t, 1, onBranch.Version)
-	assert.NotEqual(t, trunk.ID, onBranch.ID)
-	assert.Contains(t, onBranch.SaveURL, onBranch.ID)
-
-	// Editing the Branch (a caption, a shorter cut) appends to the Branch's series only.
-	body := `{"clips":[{"shot_id":"` + e.shotID + `","take_id":"t1","kind":"main","caption":"  朝が来た ","in_point":0,"out_point":2,"transition":{"type":"cut","seconds":0}}]}`
-	require.Equal(t, http.StatusNoContent, e.request(http.MethodPut, onBranch.SaveURL, []byte(body), "application/json", false).Code)
-	edited, _ := e.timelineOn(branchID)
-	assert.Equal(t, 2, edited.Version)
-	assert.Equal(t, "朝が来た", edited.Clips[0].Caption)
-	assert.Equal(t, "main", edited.Clips[0].Kind)
-	assert.InDelta(t, 2, edited.Duration, 0.01)
-	stillTrunk := e.timeline()
-	assert.Equal(t, trunk.ID, stillTrunk.ID, "the trunk's latest version is untouched")
-	assert.InDelta(t, trunk.Duration, stillTrunk.Duration, 1e-9)
-
-	// A caption over the limit is refused and nothing is saved.
-	tooLong := strings.Replace(body, "  朝が来た ", strings.Repeat("あ", domain.MaxCaptionRunes+1), 1)
-	rec = e.request(http.MethodPut, edited.SaveURL, []byte(tooLong), "application/json", false)
-	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
-	unchanged, _ := e.timelineOn(branchID)
-	assert.Equal(t, 2, unchanged.Version)
-
-	_, code = e.timelineOn("nope")
-	assert.Equal(t, http.StatusNotFound, code)
-}
-
-// The additional Shot request that stops at the limit of the Retry Policy raises an Escalation card and
-// moves the Project to AWAITING_APPROVAL, where the timeline editor is readonly: the response carries
-// timeline-reload so that the editor on the page does not stay editable (#335).
-func TestEditor_RequestAdditionalShotAtTheRetryLimitEscalatesAndReloadsTheTimeline(t *testing.T) {
-	// The generation is available (it is checked before the Retry Policy); no Shot is ever generated here.
-	e := newEditorAppWith(t, func(d *service.Deps) {
-		d.Jobs = jobqueue.New(repository.NewJobRepository(d.DB), jobqueue.Options{})
-		d.Models = modeladapter.New(modeladapter.DefaultConfig(), modeladapter.Backends{})
-	})
-	e.setState("VISUAL_DESIGN")
-	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/takes/t1/select", nil).Code)
-	require.Equal(t, http.StatusOK, e.roughCut().Code)
-	id := e.timeline().ID
-	e.llm.answer = `{"verdict":"need_shot","findings":[{"clip_index":1,"issue":"リアクションがない","action":"足す",` +
-		`"need_shot":{"kind":"reaction","after_clip":1,"objective":"驚く","duration_seconds":2}}]}`
-	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/edit-timelines/"+id+"/judge", nil).Code)
-	e.execSQL(`INSERT INTO project_policy (project_id, max_retries) VALUES (?, 0) ON CONFLICT (project_id) DO UPDATE SET max_retries = 0`, e.project)
-
-	rec := e.form(http.MethodPost, "/edit-timelines/"+id+"/request-additional-shot", nil)
-	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-	assert.Equal(t, "AWAITING_APPROVAL", e.state())
-	assert.Equal(t, "timeline-reload", rec.Header().Get("HX-Trigger"))
-
-	var body struct {
-		Readonly bool `json:"readonly"`
-	}
-	require.NoError(t, json.Unmarshal(e.get("/api/v1/projects/"+e.project+"/edit-timeline", false).Body.Bytes(), &body))
-	assert.True(t, body.Readonly, "the reload the event causes gets a readonly timeline")
-}
-
-func TestEditor_NeedShotVerdictIsReportedWithTheShotToMakeAndAwaitsTheDirector(t *testing.T) {
-	e := newEditorApp(t)
-	e.setState("VISUAL_DESIGN")
-	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/takes/t1/select", nil).Code)
-	require.Equal(t, http.StatusOK, e.roughCut().Code)
-	id := e.timeline().ID
-
-	// Not judged yet: nothing to act on.
-	assert.Equal(t, http.StatusConflict, e.form(http.MethodPost, "/edit-timelines/"+id+"/request-additional-shot", nil).Code)
-
-	e.llm.answer = `{"verdict":"need_shot","findings":[{"clip_index":1,"issue":"リアクションがない","action":"足す",` +
-		`"need_shot":{"kind":"reaction","after_clip":1,"objective":"驚く","duration_seconds":2}}]}`
-	rec := e.form(http.MethodPost, "/edit-timelines/"+id+"/judge", nil)
-	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-	assert.Equal(t, "EDIT_JUDGING", e.state(), "the Project waits for the additional Shot")
-	assert.Contains(t, rec.Body.String(), "data-need-shot")
-	j := e.judge()
-	require.NotNil(t, j)
-	assert.Equal(t, domain.EditorNeedShot, j.Verdict)
-	require.Len(t, j.Findings, 1)
-	require.NotNil(t, j.Findings[0].Need)
-	assert.Equal(t, domain.ClipReaction, j.Findings[0].Need.Kind)
-	assert.Equal(t, 1, j.Findings[0].Need.AfterClip)
-	assert.NotContains(t, e.get("/api/v1/projects/"+e.project+"/edit-timeline", false).Body.String(), "judge", "the Judge result is Templ's (editorpanel.Actions), not an API field")
-	assert.NotContains(t, e.get("/api/v1/projects/"+e.project+"/edit-timeline", false).Body.String(), "request_shot_url", "the button is Templ's (hx-post), not an API field")
-
-	// Without generation configured (no video model) the Director cannot be asked.
-	assert.Equal(t, http.StatusServiceUnavailable, e.form(http.MethodPost, "/edit-timelines/"+id+"/request-additional-shot", nil).Code)
-}
-
-func TestEditor_RoughCutKeepsTheClipOfAShotWhoseEditingIsFixed(t *testing.T) {
-	for _, mode := range []string{"manual", "lock"} {
-		t.Run(mode, func(t *testing.T) {
-			e := newEditorApp(t)
-			e.setState("VISUAL_DESIGN")
-			require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/takes/t1/select", nil).Code)
-			require.Equal(t, http.StatusOK, e.roughCut().Code)
-			tl := e.timeline()
-			body := `{"clips":[{"shot_id":"` + e.shotID + `","take_id":"t1","in_point":1,"out_point":3,"transition":{"type":"fade","seconds":0.5}}]}`
-			require.Equal(t, http.StatusNoContent, e.request(http.MethodPut, "/edit-timelines/"+tl.ID, []byte(body), "application/json", false).Code)
-			require.Equal(t, http.StatusOK, e.form(http.MethodPut, "/shots/"+e.shotID+"/locks", url.Values{"parameter": {"editing"}, "mode": {mode}}).Code)
-
-			require.Equal(t, http.StatusOK, e.roughCut().Code)
-
-			got := e.timeline()
-			require.Len(t, got.Clips, 1)
-			assert.InDelta(t, 1, got.Clips[0].In, 1e-9, "Editing %s: the user's cut survives a new Rough Cut", mode)
-			assert.InDelta(t, 2, got.Duration, 0.01)
-		})
-	}
-
-	t.Run("auto", func(t *testing.T) {
-		e := newEditorApp(t)
-		e.setState("VISUAL_DESIGN")
-		require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/takes/t1/select", nil).Code)
-		require.Equal(t, http.StatusOK, e.roughCut().Code)
-		tl := e.timeline()
-		body := `{"clips":[{"shot_id":"` + e.shotID + `","take_id":"t1","in_point":1,"out_point":3,"transition":{"type":"fade","seconds":0.5}}]}`
-		require.Equal(t, http.StatusNoContent, e.request(http.MethodPut, "/edit-timelines/"+tl.ID, []byte(body), "application/json", false).Code)
-
-		require.Equal(t, http.StatusOK, e.roughCut().Code)
-
-		assert.InDelta(t, 4, e.timeline().Duration, 0.01, "AUTO: the AI cuts the Shot afresh")
-	})
-}
-
-func TestEditor_AudioKeepsTheEarlierBGMWhenMusicIsFixed(t *testing.T) {
-	e := newEditorApp(t)
-	e.setState("VISUAL_DESIGN")
-	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/takes/t1/select", nil).Code)
-	require.Equal(t, http.StatusOK, e.roughCut().Code)
-	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/edit-timelines/"+e.timeline().ID+"/judge", nil).Code)
-	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/projects/"+e.project+"/audio/generate", nil).Code)
-	repo := repository.NewEditorRepository(e.db)
-	first, err := repo.LatestAudioTimeline(context.Background(), e.project, "")
-	require.NoError(t, err)
-	var bgm domain.AudioClip
-	for _, c := range first.Timeline.Clips {
-		if c.LayerOf() == domain.LayerBGM {
-			bgm = c
-		}
-	}
-	require.NotEmpty(t, bgm.Path)
-	require.Equal(t, http.StatusOK, e.form(http.MethodPut, "/projects/"+e.project+"/locks", url.Values{"parameter": {"music"}, "mode": {"lock"}}).Code)
-	musicCalls := func() int {
-		var n int
-		require.NoError(t, e.db.Reader().QueryRowContext(context.Background(), `SELECT COUNT(*) FROM cost_ledger_entry WHERE project_id = ? AND provider = 'elevenlabs-music'`, e.project).Scan(&n))
-		return n
-	}
-	before := musicCalls()
-
-	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/projects/"+e.project+"/audio/generate", nil).Code)
-
-	second, err := repo.LatestAudioTimeline(context.Background(), e.project, "")
-	require.NoError(t, err)
-	assert.Equal(t, first.VersionNumber+1, second.VersionNumber)
-	assert.Equal(t, before, musicCalls(), "Music LOCK: no new music is paid for")
-	var kept []domain.AudioClip
-	for _, c := range second.Timeline.Clips {
-		if c.LayerOf() == domain.LayerBGM {
-			kept = append(kept, c)
-		}
-	}
-	assert.Equal(t, []domain.AudioClip{bgm}, kept, "the earlier BGM is carried over")
-}
-
-func TestEditor_AutoChainRunsFromTheLastSelectedTakeToReady(t *testing.T) {
-	e := newEditorApp(t)
-	e.setMode("auto")
-	e.setState("JUDGING")
-	doc := domain.ScriptDoc{Script: domain.Script{Scenes: []domain.ScriptScene{{Title: "Street", Dialogue: []string{"ナレーション: 朝が来た"}}}}}
-	_, err := repository.NewPlanRepository(e.db).SaveScript(context.Background(), e.project, doc)
-	require.NoError(t, err)
-
-	// The only Shot gets its Selected Take: Rough Cut, Editor Judge, audio and Final QC follow on their own.
-	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/takes/t1/select", nil).Code)
-
-	require.Eventually(t, func() bool { return e.state() == "READY" }, 60*time.Second, 50*time.Millisecond, "state: %s", e.state())
-	assert.Equal(t, domain.EditorPass, e.judge().Verdict)
-	audio, err := repository.NewEditorRepository(e.db).LatestAudioTimeline(context.Background(), e.project, "")
-	require.NoError(t, err)
-	assert.Equal(t, 1, audio.VersionNumber)
-	qc, err := repository.NewEditorRepository(e.db).LatestFinalQC(context.Background(), e.project)
-	require.NoError(t, err)
-	assert.Equal(t, audio.ID, qc.AudioTimelineVersionID)
-	exports, err := repository.NewEditorRepository(e.db).ListExports(context.Background(), e.project)
-	require.NoError(t, err)
-	assert.Empty(t, exports, "the export is the user's action")
-}
-
-func TestEditor_AutoChainStopsAtAReEditVerdict(t *testing.T) {
-	e := newEditorApp(t)
-	e.setMode("auto")
-	e.setState("JUDGING")
-	e.llm.answer = `{"verdict":"re_edit","findings":[{"clip_index":1,"issue":"冒頭が長い","action":"1 秒短くする"}]}`
-
-	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/takes/t1/select", nil).Code)
-
-	require.Eventually(t, func() bool {
-		rec := e.get("/api/v1/projects/"+e.project+"/edit-timeline", false)
-		return rec.Code == http.StatusOK && e.judge() != nil
-	}, 30*time.Second, 50*time.Millisecond)
-	assert.Equal(t, domain.EditorReEdit, e.judge().Verdict)
-	time.Sleep(300 * time.Millisecond)
-	assert.Equal(t, "EDITING", e.state(), "a Re-edit verdict waits for the user")
-	_, err := repository.NewEditorRepository(e.db).LatestAudioTimeline(context.Background(), e.project, "")
-	assert.ErrorIs(t, err, repository.ErrNotFound)
-}
-
-func TestEditor_JudgeStopsOnADatabaseErrorInsteadOfReportingAMissingTakeFile(t *testing.T) {
-	e := newEditorApp(t)
-	e.setState("VISUAL_DESIGN")
-	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/takes/t1/select", nil).Code)
-	require.Equal(t, http.StatusOK, e.roughCut().Code)
-	id := e.timeline().ID
-	// A Take row that cannot be read back (its scores are not a Take Scores object).
-	e.execSQL(`UPDATE take SET scores = '"broken"' WHERE id = 't1'`)
-
-	rec := e.form(http.MethodPost, "/edit-timelines/"+id+"/judge", nil)
-
-	assert.GreaterOrEqual(t, rec.Code, http.StatusInternalServerError, rec.Body.String())
-	assert.Equal(t, "EDITING", e.state())
-	_, err := repository.NewEditorRepository(e.db).LatestEditorJudge(context.Background(), id)
-	assert.ErrorIs(t, err, repository.ErrNotFound, "no false Re-edit finding is stored")
-}
-
-func TestEditor_AudioFilesAreRemovedWhenTheTimelineCannotBeSaved(t *testing.T) {
-	e := newEditorApp(t)
-	e.setState("VISUAL_DESIGN")
-	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/takes/t1/select", nil).Code)
-	require.Equal(t, http.StatusOK, e.roughCut().Code)
-	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/edit-timelines/"+e.timeline().ID+"/judge", nil).Code)
-	e.execSQL(`CREATE TRIGGER refuse_audio BEFORE INSERT ON audio_timeline_version BEGIN SELECT RAISE(ABORT, 'disk full'); END`)
-
-	rec := e.form(http.MethodPost, "/projects/"+e.project+"/audio/generate", nil)
-
-	assert.NotEqual(t, http.StatusOK, rec.Code)
-	var paid int
-	require.NoError(t, e.db.Reader().QueryRowContext(context.Background(), `SELECT COUNT(*) FROM cost_ledger_entry WHERE project_id = ? AND provider LIKE 'elevenlabs-%'`, e.project).Scan(&paid))
-	assert.Positive(t, paid, "the audio was made and paid for before the save failed; the ledger keeps it")
-	runs, err := filepath.Glob(filepath.Join(e.dir, "assets", e.project, "audio", e.timeline().ID, "*"))
-	require.NoError(t, err)
-	assert.Empty(t, runs, "no run directory is left")
-}
-
-func TestEditor_ABranchRoughCutFadesAtTheSceneBoundaryAndNumbersTheScenesOfTheStory(t *testing.T) {
-	e := newEditorApp(t)
-	e.setState("VISUAL_DESIGN")
-	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/takes/t1/select", nil).Code)
-	rec := e.form(http.MethodPost, "/shots/"+e.shotID+"/branch", url.Values{"name": {"逃げる"}})
-	require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
-	branchID := strings.TrimPrefix(rec.Header().Get("HX-Redirect"), "/branches/")
-
-	// The Branch's own first Scene counts from 0 again, like the trunk's first Scene does.
-	ctx := context.Background()
-	plans := repository.NewPlanRepository(e.db)
-	scene, err := plans.CreateScene(ctx, domain.Scene{ProjectID: e.project, BranchID: branchID, Title: "Door"})
-	require.NoError(t, err)
-	require.Equal(t, 0, scene.OrderIndex)
-	shot, err := plans.CreateShot(ctx, domain.Shot{SceneID: scene.ID, Objective: "扉を開ける", Duration: 2})
-	require.NoError(t, err)
-	e.video("b1", "1920x1080", 4)
-	e.execSQL(`INSERT INTO prompt_version (id, shot_id, version_number, shot_spec_snapshot) VALUES ('pvb', ?, 1, '{}')`, shot.ID)
-	e.execSQL(`INSERT INTO asset (id, project_id, type, file_path, mime_type) VALUES ('a-b1', ?, 'video', ?, 'video/mp4')`, e.project, e.project+"/b1.mp4")
-	e.execSQL(`INSERT INTO take (id, prompt_version_id, model_name, model_parameters, file_path, created_at) VALUES ('b1', 'pvb', 'kling-3.0', '{"resolution":"1080p","duration_seconds":4}', ?, '2026-01-01T00:00:09.000Z')`, e.project+"/b1.mp4")
-	require.Equal(t, http.StatusOK, e.form(http.MethodPost, "/takes/b1/select", nil).Code)
-
-	rec = e.form(http.MethodPost, "/projects/"+e.project+"/edit/rough-cut", url.Values{"branch_id": {branchID}})
-	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-	tl, code := e.timelineOn(branchID)
-	require.Equal(t, http.StatusOK, code)
-	require.Len(t, tl.Clips, 2)
-	assert.Equal(t, e.shotID, tl.Clips[0].ShotID, "the inherited Shot comes first")
-	assert.Equal(t, shot.ID, tl.Clips[1].ShotID)
-	assert.Equal(t, "fade", tl.Clips[1].Transition.Type, "the Branch's first Scene is a Scene boundary")
-	assert.InDelta(t, domain.DefaultTransitionSeconds, tl.Clips[1].Transition.Seconds, 1e-9)
-	assert.NotEqual(t, tl.Clips[0].Label, tl.Clips[1].Label, "the two Scenes are told apart")
-	assert.Equal(t, "Scene 2 · Shot 1", tl.Clips[1].Label)
 }

@@ -28,12 +28,7 @@ func newFixture(t *testing.T, o shottest.Options) *shottest.Fixture {
 // waitJob polls get_job until the job reaches a final state.
 func waitJob(t *testing.T, f *shottest.Fixture, id string) mcpkit.JobStatus {
 	t.Helper()
-	var st mcpkit.JobStatus
-	require.Eventually(t, func() bool {
-		f.CallOK("get_job", map[string]any{"job_id": id}, &st)
-		return st.State.Final()
-	}, 30*time.Second, 10*time.Millisecond, "job %s never finished (last: %+v)", id, st)
-	return st
+	return f.WaitJob(id, 30*time.Second, 10*time.Millisecond, "job %s never finished", id)
 }
 
 func TestGenerateShot_ReturnsAJobWhoseStateAndTakesGetJobReports(t *testing.T) {

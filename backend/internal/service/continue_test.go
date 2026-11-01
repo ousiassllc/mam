@@ -54,9 +54,7 @@ func (f genFixture) propose(t *testing.T) domain.ThreadMessage {
 // waitGenerateJobs waits until n generate jobs (Reference Pack included) have succeeded.
 func (f genFixture) waitGenerateJobs(t *testing.T, n int) {
 	t.Helper()
-	require.Eventually(t, func() bool {
-		return f.count(t, `SELECT COUNT(*) FROM job WHERE status = 'succeeded' AND kind = 'generate'`) == n
-	}, 30*time.Second, 10*time.Millisecond, "generate jobs did not finish")
+	f.waitCount(t, 30*time.Second, n, `SELECT COUNT(*) FROM job WHERE status = 'succeeded' AND kind = 'generate'`, "generate jobs did not finish")
 }
 
 func (f genFixture) shotObjectives(t *testing.T) []string {

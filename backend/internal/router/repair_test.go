@@ -36,8 +36,8 @@ func TestRepair_PostMakesANewTakeThatIsTracedAndLeavesTheRepairedTakeAsItIs(t *t
 	assert.Contains(t, rec.Body.String(), "Repair 中", "REPAIRING")
 	close(j.video.gate)
 	j.waitTakes(4)
-	require.Eventually(t, func() bool {
-		return j.count(`SELECT COUNT(*) FROM repair_action WHERE resulting_take_id IS NOT NULL`) == 1
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		assert.Equal(c, 1, j.countOn(c, `SELECT COUNT(*) FROM repair_action WHERE resulting_take_id IS NOT NULL`))
 	}, 30*time.Second, 10*time.Millisecond)
 	var action, resulting, sourceInRow, decidedBy string
 	require.NoError(t, j.db.Reader().QueryRow(`SELECT action_type, resulting_take_id, json_extract(instructions, '$.source_take_id'), json_extract(instructions, '$.decided_by') FROM repair_action`).
@@ -49,7 +49,7 @@ func TestRepair_PostMakesANewTakeThatIsTracedAndLeavesTheRepairedTakeAsItIs(t *t
 	assert.Equal(t, 1, j.count(`SELECT COUNT(*) FROM take WHERE id = ?`, source), "the repaired Take is still there")
 
 	// The new Take is judged, and DIRECTOR MODE does not go on by itself.
-	require.Eventually(t, func() bool { return j.results(resulting) == 1 }, 30*time.Second, 10*time.Millisecond)
+	require.EventuallyWithT(t, func(c *assert.CollectT) { assert.Equal(c, 1, j.results(c, resulting)) }, 30*time.Second, 10*time.Millisecond)
 	assert.Eventually(t, func() bool {
 		page := j.get("/projects/"+j.project+"/scenes/"+j.sceneID+"?shot="+j.shotID, true).Body.String()
 		return !strings.Contains(page, "Repair 中") && !strings.Contains(page, "Judge 中")
@@ -112,14 +112,16 @@ func TestRepair_AutoModeRepairsUntilMaxRetriesThenEscalates(t *testing.T) {
 	j.execSQL(`INSERT INTO project_policy (project_id, max_retries) VALUES (?, 2)`, j.project)
 
 	j.generateTakes()
-	require.Eventually(t, func() bool {
-		return j.count(`SELECT COUNT(*) FROM chat_message WHERE kind = 'escalation'`) == 1
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		assert.Equal(c, 1, j.countOn(c, `SELECT COUNT(*) FROM chat_message WHERE kind = 'escalation'`))
 	}, 60*time.Second, 20*time.Millisecond, "at the limit the user is asked")
 
 	assert.Equal(t, 5, j.count(`SELECT COUNT(*) FROM take`), "3 takes and 2 retries")
 	assert.Equal(t, 2, j.count(`SELECT COUNT(*) FROM repair_action WHERE resulting_take_id IS NOT NULL`))
 	assert.Equal(t, 2, j.count(`SELECT COUNT(*) FROM repair_action`), "the escalation is no repair")
-	require.Eventually(t, func() bool { return j.count(`SELECT COUNT(*) FROM job WHERE status IN ('queued', 'running')`) == 0 }, 30*time.Second, 10*time.Millisecond, "every job ends")
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		assert.Zero(c, j.countOn(c, `SELECT COUNT(*) FROM job WHERE status IN ('queued', 'running')`))
+	}, 30*time.Second, 10*time.Millisecond, "every job ends")
 	assert.Equal(t, 1, j.count(`SELECT COUNT(*) FROM chat_message WHERE kind = 'escalation'`), "asked once")
 	assert.Equal(t, 5, j.count(`SELECT COUNT(*) FROM take`), "and nothing is generated afterwards")
 }
@@ -131,8 +133,8 @@ func TestRepair_TheShotBudgetThatCannotPayTheNextRetryEscalatesInsteadOfGenerati
 	j.execSQL(`UPDATE project SET shot_budget_ceiling = 0.0001 WHERE id = ?`, j.project) // Max cost per Shot: already spent
 
 	require.Equal(t, http.StatusAccepted, j.form(http.MethodPost, "/takes/"+ids[0]+"/repair", nil).Code)
-	require.Eventually(t, func() bool {
-		return j.count(`SELECT COUNT(*) FROM chat_message WHERE kind = 'escalation'`) == 1
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		assert.Equal(c, 1, j.countOn(c, `SELECT COUNT(*) FROM chat_message WHERE kind = 'escalation'`))
 	}, 30*time.Second, 10*time.Millisecond)
 	assert.Zero(t, j.count(`SELECT COUNT(*) FROM repair_action`), "no retry was paid for")
 	assert.Equal(t, 3, j.count(`SELECT COUNT(*) FROM take`))
@@ -159,8 +161,9 @@ func TestRepair_DifferentModelSwitchesModelAndJevRunsInShadowOnly(t *testing.T) 
 
 	require.Equal(t, http.StatusAccepted, j.form(http.MethodPost, "/takes/"+ids[0]+"/repair", nil).Code)
 	j.waitTakes(4)
-	require.Eventually(t, func() bool {
-		return j.count(`SELECT COUNT(*) FROM repair_shadow`) == 1 && j.count(`SELECT COUNT(*) FROM repair_action WHERE resulting_take_id IS NOT NULL`) == 1
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		assert.Equal(c, 1, j.countOn(c, `SELECT COUNT(*) FROM repair_shadow`))
+		assert.Equal(c, 1, j.countOn(c, `SELECT COUNT(*) FROM repair_action WHERE resulting_take_id IS NOT NULL`))
 	}, 30*time.Second, 10*time.Millisecond)
 
 	var sourceModel, newModel, action, decidedBy string
@@ -215,8 +218,8 @@ func TestRepair_JevIsNotAskedWhenARuleOrTheLockDecides(t *testing.T) {
 
 	require.Equal(t, http.StatusAccepted, j.form(http.MethodPost, "/takes/"+ids[0]+"/repair", nil).Code)
 	j.waitTakes(4)
-	require.Eventually(t, func() bool {
-		return j.count(`SELECT COUNT(*) FROM repair_action WHERE resulting_take_id IS NOT NULL`) == 1
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		assert.Equal(c, 1, j.countOn(c, `SELECT COUNT(*) FROM repair_action WHERE resulting_take_id IS NOT NULL`))
 	}, 30*time.Second, 10*time.Millisecond)
 	assert.Zero(t, j.count(`SELECT COUNT(*) FROM repair_shadow`))
 }
