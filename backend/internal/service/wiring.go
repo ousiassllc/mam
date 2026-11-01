@@ -245,7 +245,7 @@ func (w *wiring) wireEditor() {
 	w.editors = &EditorService{
 		core: w.c, editors: repository.NewEditorRepository(d.DB), shots: w.r.gens, generation: w.generations, policies: w.r.policies, takes: w.r.takes, locks: w.r.locks, chatSvc: w.chat, tools: d.Media,
 		judge: editor.NewJudge(d.LLM), brands: w.r.brands, judges: w.r.judges,
-		voices: repository.NewVoiceRepository(d.DB), cloner: d.Audio.Cloner, voiceRef: w.voiceRef,
+		voices: repository.NewVoiceRepository(d.DB), cloner: d.Audio.Cloner, voiceRef: w.voiceRef, prefs: d.AudioSettings,
 	}
 	w.editors.resume = bgwork.NewWorker(w.logger, "editor resume", w.editors.resumeAll)
 	w.takes.afterSelect = w.editors.ResumeEditing

@@ -29,9 +29,10 @@
 | 2 | テキスト生成（LLM） | `/settings/llm` | LLM の割り当て（`llmassign`） | `Settings` サービスがある |
 | 3 | 画像・動画モデル | `/settings/models` | 画像の用途・Quality Policy ごとの割り当て（`modelassignment`）。年齢確認がオフの間は成人向けのモデルを選択肢から外し、保存済みの割り当ては「（現在は使えません）」付きで見せる（[settings-screen-categories.md](settings-screen-categories.md) §3） | 同上 |
 | 4 | ローカル・代替モデル | `/settings/local-models` | 接続先とモデル（`localmodels`）＋モデルマネージャーへのカード | `Services.LocalModels` がある |
-| 5 | MCP サーバー | `/settings/mcp` | 待ち受け先・トークン（`organisms/settings/mcp`） | `Services.MCP` がある |
-| 6 | ffmpeg | `/settings/ffmpeg` | ffmpeg と ffprobe のパス（`organisms/settings/ffmpeg`。[categories](settings-screen-categories.md) §8）と、探した結果、ダウンロードして入れる部品（Windows x64・macOS arm64。#900。[../architecture/ffmpeg-download.md](../architecture/ffmpeg-download.md)） | `Services.FFmpeg` がある |
-| 7 | バージョンとアップデート | `/settings/update` | 版と「今すぐ確認」（`updatepanel`） | 常に（版の表示だけのときもある） |
+| 5 | 音声・口パク | `/settings/audio` | 声（ElevenLabs / GPT-SoVITS）と口パク（Sync Labs / MuseTalk 1.5）のプロバイダーの選択、ローカルの状態（未導入・導入済み・起動中・**この PC では使えない理由**）、出典とライセンス、クラウドの API キーの有無、「ローカルが使えないときはクラウドに切り替える」（`organisms/settings/audio`。[categories](settings-screen-categories.md) §9。#924） | `Services.Audio` がある |
+| 6 | MCP サーバー | `/settings/mcp` | 待ち受け先・トークン（`organisms/settings/mcp`） | `Services.MCP` がある |
+| 7 | ffmpeg | `/settings/ffmpeg` | ffmpeg と ffprobe のパス（`organisms/settings/ffmpeg`。[categories](settings-screen-categories.md) §8）と、探した結果、ダウンロードして入れる部品（Windows x64・macOS arm64。#900。[../architecture/ffmpeg-download.md](../architecture/ffmpeg-download.md)） | `Services.FFmpeg` がある |
+| 8 | バージョンとアップデート | `/settings/update` | 版と「今すぐ確認」（`updatepanel`） | 常に（版の表示だけのときもある） |
 
 - スラッグは、今の**書き込みのルートの接頭辞と同じ**にする（`PUT /settings/llm`・`/settings/models`・`/settings/mcp/…`・`/settings/update/check`）。同じパスに GET（ページ）と PUT・DELETE（操作）が並ぶ。API キーの分類だけ新しい接頭辞（`api-keys`）で、書き込みは今の `PUT /credentials/:provider` のまま。
 - 出さない分類は、ナビに無く、その URL は 404（`GET /settings` だけは今も `Settings` サービスの有無にかかわらず開ける）。
@@ -105,12 +106,13 @@
 | テキスト生成（LLM） | 既定から変えた Agent の数「変更 n / 14 件」（`llmassign.Service.View` の `Route` と `Default` を比べる）。固定（`Pinned`）のときは neutral ・ 起動オプションで固定 | `/settings/llm` |
 | 画像・動画モデル | 「既定のまま」／「変更あり」（`modelsettings` の `Customized`）。固定のときは neutral ・ 起動オプションで固定 | `/settings/models` |
 | ローカル・代替モデル | 接続先 n 件・モデル m 件。接続の状態は **`hx-get` で後から**（`GET /settings/local-models/health`。接続先ごとに並行して既存の `localmodels.Service.TestEndpoint` を呼ぶが、概要では各 3 秒で打ち切る。「n 件中 m 件に接続できます」。取れないときは空）。接続先 0 件は「接続先なし」 | `/settings/local-models` |
+| 音声・口パク | 「声: ElevenLabs（クラウド）」「口パク: Sync Labs（クラウド）」（保存した選択。ローカルを選んでいてもこの PC で動かせないときはクラウドと表示する）。「ローカルが使えないときはクラウド」がオンのときはその行（info）。`audio.json` が読めないときは warn ・ 設定ファイルを読めません（`audiosettings.Service.View`。[categories](settings-screen-categories.md) §9） | `/settings/audio` |
 | MCP サーバー | 待ち受け先（`mcpsettings.Service.View` の `Addr`）、有効なトークン n 件（失効済みを除く） | `/settings/mcp` |
 | ffmpeg | 「ffmpeg・ffprobe を使えます」（ok）／「ffmpeg が見つかりません」などの警告（warn）／「設定ファイルを読めません」（`ffmpegsettings.Service` の探した結果。[categories](settings-screen-categories.md) §8） | `/settings/ffmpeg` |
 | バージョンとアップデート | 版（`updatepanel.Data.Version`）と状態（最後の確認の結果。`Tone` をそのまま使う） | `/settings/update` |
 | モデルマネージャー（決定事項 6(a)） | ComfyUI の状態（トップ画面と同じ。[home-screen.md](home-screen.md) §5。`hx-get="/tools/model-manager/status"` を使う）。説明は「別の画面を開きます」を含める | `paths.ModelManager()` |
 
-- 8 枚（#856 で ffmpeg を足した）で、並びはナビと同じ順にモデルマネージャーを最後に置く。`Settings` サービスが無い構成では LLM・画像動画のカードを出さない（ナビと同じ条件）。
+- 9 枚（#856 で ffmpeg、#924 で音声・口パクを足した）で、並びはナビと同じ順にモデルマネージャーを最後に置く。`Settings` サービスが無い構成では LLM・画像動画のカードを出さない（ナビと同じ条件）。
 - 「接続の状態」を概要に出すかは §11 の質問 5（既定は上の案）。
 - カードの下に「初期セットアップの案内」の区画（`h3`）を置き、「案内をもう一度開く」のリンク（`/onboarding`）を出す（#863。[onboarding-screen.md](onboarding-screen.md) §7）。初回ガイドを出さない構成（`Services.Onboarding` が無い）では区画ごと無い。
 
@@ -208,3 +210,4 @@
 | 0.10 | 2026-10-28 | §4 の枠と §11 の質問 9 を、分類の説明が h2 の横の「?」ヘルプ（ポップオーバー）に入ることに合わせた | Issue #866。画面の文字を減らす |
 | 0.11 | 2026-11-01 | §2 の分類の表に「ffmpeg」（`/settings/ffmpeg`。バージョンの前）を足した | Issue #856。Finder から起動した macOS で ffmpeg が見つからないとき、パスを指定できるようにするため |
 | 0.12 | 2026-11-01 | §5 の概要のカードの表に「ffmpeg」を足し（7 枚 → 8 枚）、版の番号の重複（0.10 が 2 行）を直し、2 行目（#856 の ffmpeg の追加）を 0.11 にした。決定事項 3 の「7 つの分類」の数え方（概要を含めた決定時の数と、いまの数）を書いた | PR #911 のレビューの指摘 |
+| 0.13 | 2026-11-01 | §2 の分類の表に「音声・口パク」（`/settings/audio`。MCP サーバーの前）を足して順を 1 つずつ後ろにし、§5 の概要のカードの表に「音声・口パク」を足した（8 枚 → 9 枚） | Issue #924（#912 声と口パクのローカル化）。ローカルの声・口パクを選ぶ場所が要る |

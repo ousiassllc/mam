@@ -179,19 +179,20 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 	// Job handlers are registered by service.New (the plan job) and by the features that add more kinds.
 	// The services are built before the queue starts: they subscribe to job changes.
 	services := service.New(service.Deps{
-		DB:          db,
-		Jobs:        jobs,
-		Credentials: keys,
-		LLM:         reasoning,
-		Models:      models,
-		Logger:      logger,
-		AssetsDir:   cfg.AssetsDir(),
-		Frames:      judging.frames,
-		Faces:       judging.engine(),
-		Judge:       judging.config,
-		Jev:         shadow,
-		Media:       previews,
-		Audio:       audioProviders(keys, rts, previews),
+		DB:            db,
+		Jobs:          jobs,
+		Credentials:   keys,
+		LLM:           reasoning,
+		Models:        models,
+		Logger:        logger,
+		AssetsDir:     cfg.AssetsDir(),
+		Frames:        judging.frames,
+		Faces:         judging.engine(),
+		Judge:         judging.config,
+		Jev:           shadow,
+		Media:         previews,
+		Audio:         audioProviders(keys, rts, previews),
+		AudioSettings: newAudioSettings(cfg, rts, keys), // read at every run
 	})
 	services.LocalModels = localModels
 	closers = append(closers, services.Close) // runs after jobs.Stop: no job change wakes the workers any more

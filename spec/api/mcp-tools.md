@@ -77,7 +77,7 @@ curl -OJ 'http://100.101.102.103:8788/mcp-files/<ticket>'
 | Project・Brief・チャット・バンドル | [mcp-tools-projects-chat.md](mcp-tools-projects-chat.md) |
 | Scene・Shot・Director・生成・Judge・Repair・Take | [mcp-tools-shots-generation.md](mcp-tools-shots-generation.md) |
 | World State・Reference Library・Branch・バージョン・Series・メモ | [mcp-tools-world-notes.md](mcp-tools-world-notes.md)（対応表: [mcp-tools-world-notes-coverage.md](mcp-tools-world-notes-coverage.md)） |
-| Project 設定・Brand・原価・制作指標・全体設定（LLM・モデル・更新） | [mcp-tools-settings-policy.md](mcp-tools-settings-policy.md) |
+| Project 設定・Brand・原価・制作指標・全体設定（LLM・モデル・音声・口パクのプロバイダー・更新） | [mcp-tools-settings-policy.md](mcp-tools-settings-policy.md) |
 | ローカル・代替モデル（ComfyUI・OpenAI 互換の接続先とモデル） | [mcp-tools-local-models.md](mcp-tools-local-models.md) |
 | ComfyUI ワークフロー（保存・取り込み・実行・Shot への固定） | [mcp-tools-workflows.md](mcp-tools-workflows.md) |
 | ChatGPT でログイン（ログイン・ログアウト・状態・画像生成の ON/OFF） | [mcp-tools-chatgpt.md](mcp-tools-chatgpt.md) |
@@ -103,3 +103,4 @@ MCP ツールの対象外: MCP サーバー自身の設定（待ち受け先の�
 | 1.8 | 2026-10-31 | 基盤のツールに `get_app_logs`（アプリログの読み取り。レベル・時刻・件数・キーワード・属性で絞り込み、秘密は返さない）を足した | Issue #891（親 #889） |
 | 1.9 | 2026-10-31 | `list_jobs`（履歴の一覧。種別・状態・エラーコード・Project・期間で絞り込み、新しい順・カーソルのページング）を足し、`get_job` に `error_id` を足した。`internal` エラーに相関 ID `error_id` を持たせ、ログの ERROR 行・エラーの文面・ジョブの履歴・`get_job` / `list_jobs` に同じ値を載せ、`get_app_logs` の属性の絞り込みでログ行をたどれることを規約に書いた | Issue #892（親 #889） |
 | 1.10 | 2026-11-01 | アップロードの用途の表に `character_voice_reference`（登場人物の参照音声。Series の正本か Project の登場人物）を足した | Issue #919（#912）。参照音声の MCP の入口 |
+| 1.11 | 2026-11-01 | ツールの一覧の「全体設定」の行に、音声・口パクのプロバイダー（`get_audio_providers`・`set_audio_providers`。`mcp-tools-settings-policy.md`）を足した | Issue #924。ツールの詳細は [mcp-tools-settings-policy.md](mcp-tools-settings-policy.md) |

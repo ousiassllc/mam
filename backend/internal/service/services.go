@@ -17,6 +17,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/facesim"
 	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/service/audiosettings"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
 	"github.com/ousiassllc/mam/backend/internal/service/localruntime"
@@ -53,7 +54,8 @@ type Deps struct {
 	Jev repair.Shadow
 	// Audio are the vendors of the Audio Director: ElevenLabs (TTS, cloned voices, Music, Sound Effects) and Sync Labs
 	// (Lip Sync). It needs Audio.Speech and Media; a missing Music / Sounds / LipSync leaves that layer out.
-	Audio audiodirector.Providers
+	Audio         audiodirector.Providers
+	AudioSettings *audiosettings.Service // the saved audio providers (the settings screen and MCP write them)
 }
 
 // Services is the DI root handed to router.New: one field per feature and one line in wiring.services (wiring.go).

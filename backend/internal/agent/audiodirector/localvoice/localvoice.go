@@ -58,3 +58,12 @@ func SpeakerOf(line domain.VoiceLine) string {
 type Server interface {
 	Ensure(ctx context.Context) (baseURL string, err error)
 }
+
+// VoiceIDs maps a speaker name to the voice cloned for it (the Input.Voices of a run).
+func VoiceIDs(clones []domain.VoiceClone) map[string]string {
+	ids := make(map[string]string, len(clones))
+	for _, c := range clones {
+		ids[c.Speaker] = c.VoiceID
+	}
+	return ids
+}

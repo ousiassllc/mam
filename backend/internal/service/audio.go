@@ -13,6 +13,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/service/audiosettings"
 	"github.com/ousiassllc/mam/backend/internal/service/audiosummary"
 	"github.com/ousiassllc/mam/backend/internal/service/localspeech"
 	"github.com/ousiassllc/mam/backend/internal/service/voicerefsvc"
@@ -23,18 +24,17 @@ import (
 // speaks Dialogue and Narration, makes the BGM, Ambience, SE, Foley and Lip Sync the Quality Policy
 // pays for within the budget, mixes everything with the sound of the Rough Cut and normalizes the
 // loudness. The result is the next Audio Timeline version of that Branch. The Project must be in
-// AUDIO (the Editor Judge passed).
+// AUDIO (the Editor Judge passed). The providers are the saved settings (audiosettings), read on every run.
 func (s *EditorService) GenerateAudio(ctx context.Context, projectID, branchID string) (EditorView, error) {
-	return s.GenerateAudioWith(ctx, projectID, branchID, AudioOptions{})
+	opts, err := s.prefs.Load()
+	if err != nil {
+		return EditorView{}, audioError(err)
+	}
+	return s.GenerateAudioWith(ctx, projectID, branchID, opts)
 }
 
-// AudioOptions are the choices of one run of the Audio Director: who speaks Dialogue and Narration (localvoice.ElevenLabs, "" too, or
-// localvoice.Local: GPT-SoVITS in the reference voice of each speaker's Character) and who redoes the mouths (localvoice.LipSyncSyncLabs,
-// "" too, or localvoice.LipSyncLocal: MuseTalk 1.5). Saving the choices and the fallback to the cloud are not made here (#924).
-type AudioOptions struct {
-	VoiceProvider   localvoice.Provider
-	LipSyncProvider localvoice.LipSyncProvider
-}
+// AudioOptions are the choices of one run of the Audio Director: the saved audio settings (audiosettings.Settings).
+type AudioOptions = audiosettings.Settings
 
 // GenerateAudioWith is GenerateAudio with the choices of the run.
 func (s *EditorService) GenerateAudioWith(ctx context.Context, projectID, branchID string, opts AudioOptions) (EditorView, error) {
@@ -80,17 +80,14 @@ func (s *EditorService) GenerateAudioWith(ctx context.Context, projectID, branch
 	if in.Scenes, err = s.audioScenes(ctx, projectID, branchID, ver.Timeline); err != nil {
 		return EditorView{}, err
 	}
-	if in.VoiceProvider == localvoice.Local {
-		if in.LocalVoices, err = localspeech.Voices(ctx, s.voiceRef, projectID, branchID, in.Scenes); errors.Is(err, voicerefsvc.ErrNotFound) {
-			return EditorView{}, ErrNotFound
-		} else if err != nil {
-			return EditorView{}, err
-		}
-	}
 	if domain.AudioScopeOf(policy.Quality).LipSync {
 		if in.Clips, err = s.videoClips(ctx, ver.Timeline); err != nil {
 			return EditorView{}, err
 		}
+	}
+	notes, err := s.prefs.Settle(ctx, &in, s.voiceRef, branchID, opts.FallbackToCloud)
+	if err != nil {
+		return EditorView{}, audioError(err)
 	}
 	if err := s.fixMusic(ctx, projectID, branchID, &in); err != nil {
 		return EditorView{}, err
@@ -99,10 +96,7 @@ func (s *EditorService) GenerateAudioWith(ctx context.Context, projectID, branch
 	if err != nil {
 		return EditorView{}, err
 	}
-	in.Voices = make(map[string]string, len(clones))
-	for _, c := range clones {
-		in.Voices[c.Speaker] = c.VoiceID
-	}
+	in.Voices = localvoice.VoiceIDs(clones)
 
 	in.RunID = domain.NewID()
 	tl, err := s.audio.Produce(ctx, in)
@@ -114,7 +108,7 @@ func (s *EditorService) GenerateAudioWith(ctx context.Context, projectID, branch
 		_ = s.audio.DiscardRun(in)
 		return EditorView{}, notFound(err)
 	}
-	s.announce(ctx, projectID, assistantText(audiosummary.Of(tl, branchID != "")))
+	s.announce(ctx, projectID, assistantText(audiosummary.Of(tl, branchID != "", notes...)))
 	return s.View(ctx, projectID, branchID)
 }
 
@@ -221,6 +215,8 @@ func audioError(err error) error {
 	switch {
 	case local:
 		return &AIError{Reason: reason, Err: err}
+	case errors.Is(err, voicerefsvc.ErrNotFound):
+		return ErrNotFound
 	case errors.Is(err, audiodirector.ErrNoAPIKey):
 		return &AIError{Reason: "ElevenLabs の API キーが設定されていません（設定画面で elevenlabs のキーを登録してください）", Err: err}
 	case errors.As(err, &be):

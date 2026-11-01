@@ -16,6 +16,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/keylock"
 	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/service/audiosettings"
 	"github.com/ousiassllc/mam/backend/internal/service/localspeech"
 )
 
@@ -60,6 +61,7 @@ type EditorService struct {
 	voices   *repository.VoiceRepository
 	cloner   audiodirector.VoiceCloner
 	voiceRef localspeech.Lookup
+	prefs    *audiosettings.Service // the saved audio providers and the check of the local ones (nil: the cloud)
 	chatSvc  *ChatService
 	// tools is ffmpeg / ffprobe; nil when they are not installed.
 	tools *media.Tools

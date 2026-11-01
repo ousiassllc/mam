@@ -22,6 +22,7 @@ AI Video Production Agent は、単一プロンプトで動画を出す「生成
 - **AI Editor Loop**: 素材不足時に撮影工程へ戻る自己修正ループ、音声制作連携
 - **Production Templates**: PRODUCT/CM・DRAMA・ANIME・SNS/SHORT VIDEO ごとの評価軸切り替え
 - **Quality/Cost Policy**: FAST / BALANCED / MAX QUALITY と予算・リトライ上限設定
+- **声・口パクのプロバイダー選択**（M3、Audio Director）: 声（ElevenLabs / GPT-SoVITS）と口パク（Sync Labs / MuseTalk 1.5）を、クラウドかこの PC のローカルモデルかで選べる（既定はクラウド。設定画面「音声・口パク」と MCP で選ぶ）。ローカルは Windows + NVIDIA の GPU だけで、mam がランタイムを自動で導入・起動する。この PC で動かせないとき（macOS など）は理由を画面に出し、利用者が選んだときだけ、使えないローカルの代わりにクラウドで作る
 - **Safety / Brand Constraints**: ブランドガイドライン・禁止表現・権利メタデータの Prompt/Judge 適用
 - 対象コンテンツ種別: 商品PV、TVCM/Web CM、SNS広告・縦型ショート、ドラマ、アニメーション、MV、YouTubeコンテンツ、ブランドムービー、シリーズ/エピソード型コンテンツ
 - **Team Collaboration**（M3）: Review Package（動画とメモの ZIP）を渡してレビュアーからコメント・承認を返してもらう、ファイル受け渡し方式のレビュー・承認。編集できるのは Project を持つインスタンスだけで、同時編集・アカウント・サーバーは持たない
@@ -141,3 +142,4 @@ flowchart TB
 | 1.11 | 2026-10-24 | ドキュメントマップに `spec/architecture/mcp.md`（MCP サーバー）・`spec/api/mcp-tools.md`（MCP ツール一覧）・`spec/architecture/er-mcp.md`（MCP トークンのテーブル）を追加した | Issue #830。MCP サーバーの仕様の所在をドキュメントマップに残すため |
 | 1.12 | 2026-10-25 | ドキュメントマップの Model Adapter 選定の行の画像プロバイダーを、Imagen 4 を外して GPT Image 2 / Nano Banana / Nano Banana Lite / FLUX.2 にした | Imagen 4 の終了と、画像モデルの割り当て・識別子の変更（`model-adapters.md` 1.52。Issue #836・#837） |
 | 1.13 | 2026-10-27 | スコープと実行基盤・ドキュメントマップ・用語集の Wails を、Windows に加えて macOS（Apple Silicon・署名なし）のデスクトップ版と dmg の配布・自動更新に改めた | Issue #853。macOS 版を同じリリースで配布し、自動更新に対応する |
+| 1.14 | 2026-11-01 | スコープに、声・口パクのプロバイダー選択（ローカル／クラウド。既定はクラウド）を足した | Issue #924（#912 声と口パクのローカル化）。ローカルの声・口パクを利用者が選べることが、スコープに載っていなかったため |

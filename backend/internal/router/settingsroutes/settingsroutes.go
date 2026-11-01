@@ -14,6 +14,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/media/ffmpegdl"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/appupdate"
+	"github.com/ousiassllc/mam/backend/internal/service/audiosettings"
 	"github.com/ousiassllc/mam/backend/internal/service/ffmpegsettings"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/llmassign"
@@ -29,6 +30,7 @@ import (
 	gentesthandler "github.com/ousiassllc/mam/backend/internal/web/handler/gentest"
 	modelmgrhandler "github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr"
 	onboardinghandler "github.com/ousiassllc/mam/backend/internal/web/handler/onboarding"
+	audiohandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/audio"
 	credentialshandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/credentials"
 	ffmpeghandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/ffmpeg"
 	llmhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/llm"
@@ -67,6 +69,8 @@ type Services struct {
 	// Onboarding is the first-run guide (paths.Onboarding) and the redirect of a first run from GET / (OnboardingHome). Nil
 	// leaves both out: the root page is always the project list.
 	Onboarding *onboardingsvc.Service
+	// Audio is the "音声・口パク" section (the choice of the voice and lip-sync providers). Nil leaves the section and its route out.
+	Audio *audiosettings.Service
 	// FFmpeg is the "ffmpeg" section (the paths of ffmpeg and ffprobe). Nil leaves the section and its route out.
 	FFmpeg *ffmpegsettings.Service
 	// FFmpegDownload is the download of ffmpeg and ffprobe (the button of the ffmpeg section and of the first-run guide). Nil
@@ -123,6 +127,9 @@ func Register(engine *gin.Engine, services *service.Services, s *Services, logge
 		llmhandler.Register(engine, s.LLM, pages.Page(paths.SettingsLLM))
 		mediahandler.Register(engine, s.Models, pages.Page(paths.SettingsModels))
 	}
+	if s != nil && s.Audio != nil {
+		engine.PUT(paths.AudioSettings(), audiohandler.Save(s.Audio))
+	}
 	if s != nil && s.FFmpeg != nil {
 		f := ffmpeghandler.Services{Settings: s.FFmpeg, Download: s.FFmpegDownload}
 		engine.PUT(paths.FFmpegSettings(), ffmpeghandler.Save(f))
@@ -163,6 +170,7 @@ func pageServices(services *service.Services, s *Services) settingspage.Services
 			p.Tester = probe.NewTester(s.Keys)
 		}
 		p.ChatGPT, p.LLM, p.Models, p.LocalModels, p.MCP, p.Update, p.FFmpeg = s.ChatGPT, s.LLM, s.Models, s.LocalModels, s.MCP, s.Update, s.FFmpeg
+		p.Audio = s.Audio
 		p.FFmpegDownload = s.FFmpegDownload
 		p.Guide = s.Onboarding != nil
 	}

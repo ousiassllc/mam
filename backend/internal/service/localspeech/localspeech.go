@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector"
 	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector/localvoice"
@@ -53,7 +54,10 @@ func Unavailable(ctx context.Context, err error) error { return UnavailableFor(c
 
 // UnavailableFor is Unavailable for the provider named vendor ("" is the voice; localvoice.VendorMuseTalk is the lip sync).
 func UnavailableFor(ctx context.Context, vendor string, err error) error {
-	var support *localruntime.SupportError
+	var (
+		support *localruntime.SupportError
+		weights *localruntime.WeightsError
+	)
 	un := func(kind localvoice.Kind, detail string) error {
 		return &localvoice.UnavailableError{Kind: kind, Vendor: vendor, Detail: detail, Err: err}
 	}
@@ -66,8 +70,12 @@ func UnavailableFor(ctx context.Context, vendor string, err error) error {
 			kind = localvoice.KindGPUMemory
 		}
 		return un(kind, support.Error())
-	case errors.Is(err, localruntime.ErrNotInstalled), errors.Is(err, localruntime.ErrBusy), errors.Is(err, localruntime.ErrNotFound):
-		return un(localvoice.KindNotInstalled, err.Error())
+	case errors.Is(err, localruntime.ErrBusy):
+		return un(localvoice.KindNotInstalled, "導入の最中です。終わってからもう一度実行してください")
+	case errors.Is(err, localruntime.ErrNotInstalled), errors.Is(err, localruntime.ErrNotFound):
+		return un(localvoice.KindNotInstalled, "")
+	case errors.As(err, &weights):
+		return un(localvoice.KindWeightsMissing, "足りない重み・依存ファイル: "+joinAssets(weights.Assets))
 	case errors.Is(err, localruntime.ErrWeightsMissing):
 		return un(localvoice.KindWeightsMissing, err.Error())
 	case errors.Is(err, context.DeadlineExceeded):
@@ -112,45 +120,37 @@ func Voices(ctx context.Context, lookup Lookup, projectID, branchID string, scen
 	return voices, nil
 }
 
-// Reason is the sentence for the user of an error of the local voice, and false for any other error. It is the first version: the
-// final wording belongs to the provider settings (Issue #924); the Kind of the error is what a screen branches on.
+// Reason is the sentence for the user of an error of the local voice or lip sync, and false for any other error. Every sentence of an
+// unavailable provider is localvoice.Reason: the Director's Skipped list, the error of a run, the settings screen and the MCP tools say
+// the same words.
 func Reason(err error) (string, bool) {
 	var (
-		un *localvoice.UnavailableError
 		mv *localvoice.MissingVoiceError
+		nk *localvoice.NoCloudKeyError
+		um interface{ UserMessage() string } // an error that carries its own sentence (audiosettings.ErrUnreadable)
 	)
 	switch {
 	case errors.As(err, &mv):
 		return "ローカルの声（GPT-SoVITS）で話せません。参照音声が無い話者がいます: " + joinNames(mv.Names()) +
 			"。Character に参照音声を設定するか、声のプロバイダーを ElevenLabs に切り替えてください", true
-	case errors.As(err, &un) && un.Vendor == localvoice.VendorMuseTalk:
-		return localvoice.LipSyncReason(un), true
-	case errors.As(err, &un):
-		return unavailableReason(un), true
+	case errors.As(err, &nk):
+		return nk.Error(), true
+	case errors.As(err, &um):
+		return um.UserMessage(), true
 	case errors.Is(err, localvoice.ErrUnknownProvider):
 		return "声のプロバイダーが正しくありません（elevenlabs か local を指定してください）", true
 	case errors.Is(err, localvoice.ErrUnknownLipSyncProvider):
 		return "口パクのプロバイダーが正しくありません（synclabs か local を指定してください）", true
 	}
-	return "", false
+	return localvoice.UnavailableReason(err)
 }
 
-func unavailableReason(e *localvoice.UnavailableError) string {
-	head := map[localvoice.Kind]string{
-		localvoice.KindNotInstalled:   "ローカルの声（GPT-SoVITS）が導入されていません。モデル管理から導入してください",
-		localvoice.KindWeightsMissing: "ローカルの声（GPT-SoVITS）の重みが取得されていません。モデル管理から「重みを導入」を実行してください",
-		localvoice.KindUnsupported:    "この PC ではローカルの声（GPT-SoVITS）を使えません",
-		localvoice.KindGPUMemory:      "ローカルの声（GPT-SoVITS）に GPU のメモリが足りません",
-		localvoice.KindProcess:        "ローカルの声（GPT-SoVITS）が動きませんでした",
-		localvoice.KindTimeout:        "ローカルの声（GPT-SoVITS）が時間内に終わりませんでした",
-	}[e.Kind]
-	if head == "" {
-		head = "ローカルの声（GPT-SoVITS）を使えません"
+func joinAssets(assets []rtm.AssetStatus) string {
+	names := make([]string, 0, len(assets))
+	for _, a := range assets {
+		names = append(names, a.Name)
 	}
-	if e.Detail != "" {
-		head += "（" + e.Detail + "）"
-	}
-	return head
+	return strings.Join(names, "、")
 }
 
 func joinNames(names []string) string {

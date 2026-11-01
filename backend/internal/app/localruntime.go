@@ -5,8 +5,12 @@ import (
 	"log/slog"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
+	"github.com/ousiassllc/mam/backend/internal/config"
+	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/store"
 	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/service/audiosettings"
 	"github.com/ousiassllc/mam/backend/internal/service/localruntime"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 )
@@ -26,4 +30,10 @@ func newLocalRuntimes(jobs *jobqueue.Queue, table *repository.JobRepository, mgr
 	}
 	rts.Register(mgr.HandleInstall)
 	return rts, nil
+}
+
+// newAudioSettings is the saved choice of the Audio Director's providers (audio.json). It holds no state (the file is read on every call),
+// so the services (the run reads it) and the settings screen and MCP tools (they write it) each build one over the same file.
+func newAudioSettings(cfg config.Config, rts *localruntime.Service, keys credential.Store) *audiosettings.Service {
+	return audiosettings.New(cfg.AudioSettingsFile(), rts, service.NewCredentialService(keys))
 }
