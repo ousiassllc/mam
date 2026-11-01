@@ -17,7 +17,7 @@
     "lit": "^3.3.3"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.15",
+    "@biomejs/biome": "2.6.4",
     "@open-wc/testing": "^5.0.0",
     "@puppeteer/browsers": "3.2.5",
     "@tailwindcss/cli": "^4.1.0",
