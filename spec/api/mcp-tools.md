@@ -50,6 +50,7 @@
 |---------|---------|------|------|
 | `import_bundle` | なし | 8 GiB（`service.MaxBundleBytes`） | `{"project_id"}`（バンドルから新しい Project を作る。同じ ID があれば `conflict`） |
 | `reference_image` | `project_id`（必須）, `kind`（必須: character / product / location / style / lighting）, `name`（必須）, `tags`（カンマ区切り） | 画像 20 MB | `{"reference_id", "asset_id"}`（Reference Library に登録） |
+| `character_voice_reference` | `series_id`（Series の正本の登場人物のとき）か `project_id`（Project の登場人物のとき）のどちらか一方, `character_id`（必須）, `text`（書き起こし、500 文字以内）, `language`（`ja` 既定 / `en` / `zh` / `ko` / `yue`） | 音声 10 MB（`.wav/.mp3/.flac/.ogg/.m4a`、3〜10 秒。長さは ffprobe があるときだけ検証） | `{"series_id"?, "project_id"?, "character_id", "voice_reference"}`（登場人物の参照音声を置き換える。[mcp-tools-world-notes.md](mcp-tools-world-notes.md)「参照音声」） |
 
 用途は各ドメインのパッケージが `Files.RegisterUpload` で足す（チャットの添付・音声サンプルなど）。足したら、この表かドメイン別のファイルに書く。
 
@@ -101,3 +102,4 @@ MCP ツールの対象外: MCP サーバー自身の設定（待ち受け先の�
 | 1.7 | 2026-10-31 | `get_job` の出力に `error_code`・`project_id`・`ended_at` を足し、`job_id` が履歴（30 日・10,000 行）に残って再起動後も引けることを書いた。状態の決め方は変えない | Issue #890（親 #889） |
 | 1.8 | 2026-10-31 | 基盤のツールに `get_app_logs`（アプリログの読み取り。レベル・時刻・件数・キーワード・属性で絞り込み、秘密は返さない）を足した | Issue #891（親 #889） |
 | 1.9 | 2026-10-31 | `list_jobs`（履歴の一覧。種別・状態・エラーコード・Project・期間で絞り込み、新しい順・カーソルのページング）を足し、`get_job` に `error_id` を足した。`internal` エラーに相関 ID `error_id` を持たせ、ログの ERROR 行・エラーの文面・ジョブの履歴・`get_job` / `list_jobs` に同じ値を載せ、`get_app_logs` の属性の絞り込みでログ行をたどれることを規約に書いた | Issue #892（親 #889） |
+| 1.10 | 2026-11-01 | アップロードの用途の表に `character_voice_reference`（登場人物の参照音声。Series の正本か Project の登場人物）を足した | Issue #919（#912）。参照音声の MCP の入口 |

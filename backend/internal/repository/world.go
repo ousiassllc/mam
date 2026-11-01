@@ -16,9 +16,8 @@ import (
 // ErrLocked means the write would change a field the user has LOCKed (HTTP 423).
 var ErrLocked = errors.New("repository: field is locked")
 
-// WorldRepository persists the World State (spec/spec.md §9): the Character, Product and
-// Location rows, the appended world_state_version snapshots and the state_diff of each completed
-// Shot (spec/architecture/er.md §2.2). All writes go through DB.Write.
+// WorldRepository persists the World State (spec/spec.md §9): the Character, Product and Location rows, the appended
+// world_state_version snapshots and the state_diff of each completed Shot (spec/architecture/er.md §2.2). Writes go through DB.Write.
 type WorldRepository struct {
 	db  *DB
 	now func() time.Time
@@ -42,8 +41,8 @@ var worldTables = map[domain.WorldTarget]string{
 	domain.TargetLocation:  "location",
 }
 
-// World returns the current World State of the Project, or of its Branch when branchID is set ("" is
-// the trunk). It returns ErrNotFound when the Project, or the Branch in it, does not exist.
+// World returns the current World State of the Project, or of its Branch when branchID is set ("" is the trunk).
+// ErrNotFound when the Project, or the Branch in it, does not exist.
 func (r *WorldRepository) World(ctx context.Context, projectID, branchID string) (domain.WorldContext, error) {
 	db := r.db.Reader()
 	var one int
@@ -74,17 +73,6 @@ func branchExists(ctx context.Context, q queryer, projectID, branchID string) er
 	return nil
 }
 
-// Locks returns the fields of the Project that are LOCKed: the ones the user cannot edit either.
-func (r *WorldRepository) Locks(ctx context.Context, projectID string) (domain.LockSet, error) {
-	return readLocks(ctx, r.db.Reader(), projectID)
-}
-
-// AgentLocks returns the fields of the Project the State Extractor must not change: the LOCKed ones
-// and the ones the user set MANUAL (the Story parameter can be MANUAL, spec/spec.md §6).
-func (r *WorldRepository) AgentLocks(ctx context.Context, projectID string) (domain.LockSet, error) {
-	return readLockRows(ctx, r.db.Reader(), projectID, domain.LockMode.KeepsTheAgentsOut)
-}
-
 // readWorld reads the entity rows and the Camera and Story of the latest world_state_version of the
 // trunk, or of the Branch when branchID is set. `branch_id IS ?` matches NULL (the trunk) for "".
 func readWorld(ctx context.Context, q queryer, projectID, branchID string) (domain.WorldContext, error) {
@@ -93,11 +81,11 @@ func readWorld(ctx context.Context, q queryer, projectID, branchID string) (doma
 	w.Characters, err = queryAll(ctx, q, func(row rowScanner) (domain.WorldCharacter, error) {
 		var c domain.WorldCharacter
 		return c, row.Scan(&c.ID, &c.Name, &c.Hairstyle, &c.Wardrobe, &c.Voice, &c.Personality,
-			&c.Emotion, &c.Position, &c.CurrentAction, &c.FaceReferenceAssetID, &c.BodyReferenceAssetID, &c.SeriesFaceReferenceAssetID)
+			&c.Emotion, &c.Position, &c.CurrentAction, &c.FaceReferenceAssetID, &c.BodyReferenceAssetID, &c.SeriesFaceReferenceAssetID, &c.VoiceReference)
 	}, `SELECT c.id, c.name, COALESCE(c.hairstyle, ''), COALESCE(c.wardrobe, ''), COALESCE(c.voice, ''), COALESCE(c.personality, ''),
 		        COALESCE(c.emotion, ''), COALESCE(c.position, ''), COALESCE(c.current_action, ''),
 		        COALESCE(c.face_reference_asset_id, ''), COALESCE(c.body_reference_asset_id, ''),
-		        COALESCE(o.face_reference_asset_id, '')
+		        COALESCE(o.face_reference_asset_id, ''), c.voice_reference
 		 FROM character c LEFT JOIN character o ON o.id = c.origin_id
 		 WHERE c.project_id = ? AND c.branch_id IS ? ORDER BY c.name, c.id`, projectID, nullIfEmpty(branchID))
 	if err != nil {
@@ -138,38 +126,6 @@ func readWorld(ctx context.Context, q queryer, projectID, branchID string) (doma
 	}
 	w.Camera, w.Story = snapshot.Camera, snapshot.Story
 	return w, nil
-}
-
-// readLocks reads the lock rows in mode 'lock'. The singleton Camera and Story are locked regardless of target_id.
-func readLocks(ctx context.Context, q queryer, projectID string) (domain.LockSet, error) {
-	return readLockRows(ctx, q, projectID, func(m domain.LockMode) bool { return m == domain.LockLocked })
-}
-
-// readLockRows reads the lock rows whose mode holds.
-func readLockRows(ctx context.Context, q queryer, projectID string, holds func(domain.LockMode) bool) (domain.LockSet, error) {
-	type lockRow struct {
-		key  domain.LockKey
-		mode domain.LockMode
-	}
-	rows, err := queryAll(ctx, q, func(row rowScanner) (lockRow, error) {
-		var l lockRow
-		return l, row.Scan(&l.key.Target, &l.key.ID, &l.key.Field, &l.mode)
-	}, `SELECT target_type, target_id, parameter_name, mode FROM lock WHERE project_id = ? AND mode <> 'auto'`, projectID)
-	if err != nil {
-		return nil, fmt.Errorf("list locks: %w", err)
-	}
-	locks := domain.LockSet{}
-	for _, l := range rows {
-		if !holds(l.mode) {
-			continue
-		}
-		k := l.key
-		if k.Target.IsSingleton() {
-			k.ID = ""
-		}
-		locks[k] = struct{}{}
-	}
-	return locks, nil
 }
 
 // appendVersion appends a snapshot of the World State as the next world_state_version of the trunk
@@ -354,82 +310,4 @@ func ensureWorldEntity(ctx context.Context, tx *sql.Tx, projectID, branchID stri
 	}
 	_, err = tx.ExecContext(ctx, `INSERT INTO `+table+` (id, project_id, branch_id, name) VALUES (?, ?, ?, ?)`, domain.NewID(), projectID, nullIfEmpty(branchID), name) //nolint:gosec // table is from worldTables
 	return err
-}
-
-// SetFieldLock sets an attribute of the World State to AUTO or LOCK (a lock row of the target;
-// the singleton Camera and Story use the Project's ID as target_id). The attribute is not
-// checked here (see domain.IsLockable). An unknown Project, or an entity that is not in the
-// trunk (or the Branch when branchID is set), is ErrNotFound.
-func (r *WorldRepository) SetFieldLock(ctx context.Context, projectID, branchID string, target domain.WorldTarget, id, field string, mode domain.LockMode) error {
-	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
-		if err := projectExists(ctx, tx, projectID); err != nil {
-			return err
-		}
-		targetID := projectID
-		if !target.IsSingleton() {
-			if err := entityExists(ctx, tx, projectID, branchID, target, id); err != nil {
-				return err
-			}
-			targetID = id
-		} else if err := branchExists(ctx, tx, projectID, branchID); err != nil {
-			return err
-		}
-		return upsertLock(ctx, tx, projectID, string(target), targetID, field, mode, nil)
-	})
-	if errors.Is(err, ErrNotFound) {
-		return err
-	}
-	if err != nil {
-		return fmt.Errorf("set %s lock: %w", target, err)
-	}
-	return nil
-}
-
-func entityExists(ctx context.Context, q queryer, projectID, branchID string, target domain.WorldTarget, id string) error {
-	table, ok := worldTables[target]
-	if !ok {
-		return fmt.Errorf("%s is not an entity target", target)
-	}
-	var one int
-	err := q.QueryRowContext(ctx, `SELECT 1 FROM `+table+` WHERE id = ? AND project_id = ? AND branch_id IS ?`, id, projectID, nullIfEmpty(branchID)).Scan(&one) //nolint:gosec // table is from worldTables
-	if errors.Is(err, sql.ErrNoRows) {
-		return ErrNotFound
-	}
-	return err
-}
-
-// AssignReference sets the image of a reference slot of a Character, Product or Location (the
-// asset of a Reference Library entry; "" clears the slot) and appends the resulting World State
-// as a new version of the trunk (or of the Branch). The entity is ErrNotFound when it is not in
-// that trunk or Branch and the write is ErrLocked when the attribute the slot belongs to
-// (slot.Lock) is LOCKed.
-func (r *WorldRepository) AssignReference(ctx context.Context, projectID, branchID string, slot domain.ReferenceSlot, id, assetID string) error {
-	err := r.db.Write(ctx, func(ctx context.Context, tx *sql.Tx) error {
-		if err := entityExists(ctx, tx, projectID, branchID, slot.Target, id); err != nil {
-			return err
-		}
-		locks, err := readLocks(ctx, tx, projectID)
-		if err != nil {
-			return err
-		}
-		if locks.Locked(slot.Target, id, slot.Lock) {
-			return ErrLocked
-		}
-		if _, err := tx.ExecContext(ctx, `UPDATE `+worldTables[slot.Target]+` SET `+slot.Column+` = ? WHERE id = ?`, nullIfEmpty(assetID), id); err != nil { //nolint:gosec // table and column are constants of domain.ReferenceSlots; only the values are data
-			return err
-		}
-		w, err := readWorld(ctx, tx, projectID, branchID)
-		if err != nil {
-			return err
-		}
-		_, _, err = r.appendVersion(ctx, tx, projectID, branchID, w)
-		return err
-	})
-	if errors.Is(err, ErrNotFound) || errors.Is(err, ErrLocked) {
-		return err
-	}
-	if err != nil {
-		return fmt.Errorf("assign %s reference: %w", slot.Target, err)
-	}
-	return nil
 }

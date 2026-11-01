@@ -5,6 +5,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/voicereference"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -17,6 +18,9 @@ templ entityForm(d Data, e entityView) {
 		@entityAttributeForm(d, e)
 		for _, sf := range d.slots(e.Target, e.Slots) {
 			@referenceSlotForm(d, e, sf)
+		}
+		if e.Target == domain.TargetCharacter {
+			@voiceForm(d, e)
 		}
 		<details class="text-sm">
 			<summary class="cursor-pointer text-xs text-neutral-400">LOCK 設定（AUTO: AI が更新 / LOCK: 更新しない）</summary>
@@ -138,4 +142,11 @@ templ singletonLocks(d Data, target domain.WorldTarget) {
 			}
 		</div>
 	</details>
+}
+
+// voiceForm is the reference voice of a Character (PUT / DELETE /projects/:id/characters/:id/voice-reference).
+templ voiceForm(d Data, e entityView) {
+	@voicereference.Form(voicereference.Data{
+		DOMID: "ws-voice-" + e.ID, URL: paths.WithBranch(d.entityURL(e.Plural, e.ID)+"/voice-reference", d.branchID()), Name: e.Name, Ref: e.VoiceRef,
+	})
 }

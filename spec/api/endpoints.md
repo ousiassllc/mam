@@ -65,9 +65,11 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 | GET | `/projects/:id/analytics` | Production Analytics（M3、`spec/spec.md` §28）。Project の MVP Success Metrics（North Star・Shot・人間の介入・時間・コスト・品質・完成）を `analytics_panel` で表示する。計算式と記録する人間の介入は §28.2・§28.3。集計はローカル DB のみで外部へ送信しない。存在しない Project は 404。Project のメニューの「制作指標」から開く | フルページ / フラグメント |
 | GET | `/analytics` | すべての Project の合計の MVP Success Metrics（`/projects/:id/analytics` と同じ画面、Project 名の代わりに「すべてのプロジェクト」）。Project 一覧の「制作指標」から開く | フルページ / フラグメント |
 | GET | `/projects/:id/world-state` | World State 一覧（Character/Product/Location/Camera/Story の現在値表示） | フルページ / フラグメント |
+| GET | `/projects/:id/characters/:characterId/voice-reference` | Project の Character の参照音声の録音（試聴用）。未設定・ファイルが無い・別の Project の Character は 404 | F-20 |
 | GET | `/projects/:id/references` | Reference Library（補助ビュー、M2。登録済みの参照画像の検索・アップロード・Shot への追加・削除）。クエリ `q`・`kind`・`tag` で絞り込む | フルページ / フラグメント |
 | GET | `/projects/:id/notes` | Notes 一覧・編集（補助ビュー、M2。ピン留め・カテゴリ・アーカイブの表示、`version_history_panel` でバージョン復元） | フルページ / フラグメント |
 | GET | `/series/:id` | Series（M2。正本の Style・Character・Product・Location、Episode 一覧と次の Episode 作成、正本の更新履歴。Character の編集と Style の保存フォームを持つ） | フルページ / フラグメント |
+| GET | `/series/:id/characters/:characterId/voice-reference` | 正本の参照音声の録音（試聴用。保存したときの `Content-Type`、`Content-Security-Policy: sandbox`）。未設定・ファイルが無い・Character が無いは 404 | F-29 |
 | GET | `/series/:id/notes` | Series 正本 Notes の一覧・編集（M2） | フルページ / フラグメント |
 | GET | `/projects/:id/reviews` | レビュー（補助ビュー、M3。オーナー側）: 書き出しからレビュー依頼を作るフォーム、依頼ごとの状態（未回答/承認済み/修正依頼あり）・パッケージのダウンロード・取り込んだ応答（判定・コメント、解決済み切替）、応答の取り込みフォーム | フルページ / フラグメント |
 | GET | `/projects/:id/reviews/:reviewId/package` | Review Package のダウンロード（ZIP。`Content-Disposition: attachment`、`manifest.json` と `video.mp4|webm` だけ。`spec/spec.md` §27.1）。当該 Project の依頼でなければ 404、書き出しファイルが無ければ 409 | ファイル |
@@ -228,6 +230,8 @@ Audio Timeline の版は Branch ごとに 1 から振る追記のみの系列で
 | PUT | `/projects/:id/products/:productId` | Product 属性更新（material/orientation/condition 等、LOCK対象項目は423）。クエリ `branch_id`（省略時=主系列トランク）で更新対象Branchを指定 | F-09 |
 | PUT | `/projects/:id/locations/:locationId` | Location 属性更新（lighting_state/weather 等、LOCK対象項目は423）。クエリ `branch_id`（省略時=主系列トランク）で更新対象Branchを指定 | F-09 |
 | GET | `/projects/:id/world-state` | 現在の World State（Character/Product/Location/Camera/Story）フラグメント取得。クエリ `branch_id`（省略時=主系列トランク）で対象Branchの派生World Stateを取得 | F-09, F-10 |
+| PUT | `/projects/:id/characters/:characterId/voice-reference` | Project の Character（Episode のものを含む）の参照音声の設定。Body・検証・エラーは `PUT /series/:id/characters/:characterId/voice-reference` と同じ。クエリ `branch_id` は応答のフォームを出す Branch の画面（Branch のコピーの行を指すときだけ）。応答は当該 Character の参照音声のフォーム（`#ws-voice-<id>`）だけ（200）。Episode は継承した声をこの Episode だけ差し替えられる（正本と他の Episode は変わらない）。Series に属さない Project の Character にも付けられる。World State のバージョンは追記しない（LOCK の対象でもない） | F-20, F-09 |
+| DELETE | `/projects/:id/characters/:characterId/voice-reference` | Project の Character の参照音声の削除（ほかの行が同じ録音を指していれば、ファイルは残る）。未設定なら何もしない | F-20 |
 
 M1 の入出力契約（Issue #8）:
 
@@ -249,6 +253,8 @@ M2 の入出力契約（Issue #15）:
 | POST | `/series/:id/episodes` | Series 正本を継承した Episode（Project）を作成（Character/Product/Location/Notes を project 側の行へコピーし `origin_id` で由来を保持。参照画像は Project の `asset`・Reference Library にも複製し、Style は Brief の `style` に入れる）。`episode_number` は最大値+1（`(series_id, episode_number)` UNIQUE）。Body `previous_episode_id`（任意、同じ Series の Episode）で前 Episode の最終 World State を開始状態にし、`inherited_world_state_version_id` に記録する。成功は 201 と `HX-Redirect: /projects/:id`。サーバーは同じ内容の重複を判定しない（呼ぶたびに Episode と連番を 1 つ使う）。二重送信は画面のフォームが防ぐ（送信中は送信ボタンを無効にし、進行中の再送信を捨てる。`hx-sync="this:drop"`・`hx-disabled-elt`）。Series が無ければ 404、`previous_episode_id` が同じ Series の Episode でなければ 422。任意のフォーム項目 `brand_template_id` を指定すると、その Brand Template の制約を Episode にコピーする（存在しなければ 422 で何も作らない。F-23。Series 自体は制約を持たない） | F-29, F-25, F-31 |
 | PUT | `/series/:id/characters/:characterId` | Series 正本の Character 更新。Body（フォーム）`hairstyle`/`wardrobe`/`voice`/`personality`（送った項目だけ更新）。応答は更新した Character のフォーム（`#series-character-<id>`）だけ（200。画面全体は返さない）で、版数表示（`#series-version`）と正本の更新履歴（`#series-history`）を `hx-swap-oob` で添える。新しい `series_version` を追記する。既存 Episode には自動伝播しない（次の Episode から適用）。項目が無い／長すぎる場合は 422、Series・Character が無ければ 404 | F-29 |
 | PUT | `/series/:id/style` | Series の Style 正本（テキスト、500 文字以内）の更新。Body `style`。応答は Style のフォーム（`#series-style-form`）だけ（200。画面全体は返さない）で、版数表示と正本の更新履歴を `hx-swap-oob` で添える。新しい `series_version` を追記する。既存 Episode には自動伝播しない | F-29 |
+| PUT | `/series/:id/characters/:characterId/voice-reference` | Series 正本の Character の参照音声（ローカルの声のクローン用の録音、F-20・F-29）の設定。Body は `multipart/form-data`: `file`（`.wav/.mp3/.flac/.ogg/.m4a`、10 MB まで、3〜10 秒。拡張子と先頭の署名が合わないものは 422）、`text`（書き起こし、500 文字以内）、`language`（`ja`（既定）/`en`/`zh`/`ko`/`yue`）。`file` を付けずに送ると、いまの録音のまま `text`・`language` だけを変える（送らなかった項目はそのまま。新しい録音を置くと古い書き起こしは消える）。応答は更新した Character の参照音声のフォーム（`#series-voice-<id>`）だけ（200）で、版数表示（`#series-version`）と正本の更新履歴（`#series-history`）を `hx-swap-oob` で添える。新しい `series_version` を追記し、既存 Episode には自動伝播しない（次の Episode から）。ffprobe があるときだけ長さを測り、範囲外は 422（ffprobe が無ければ長さは検証せず、画面に「長さを確認できていません」と出す）。ファイルが無く録音も未設定・大きさ 0・上限超（413）・種類違い・言語が不明・書き起こしが長すぎるは 422、Series・Character が無ければ 404 | F-20, F-29 |
+| DELETE | `/series/:id/characters/:characterId/voice-reference` | 正本の参照音声の削除（新しい `series_version`。Episode が複製した音声は残る）。未設定なら何もしない。応答は PUT と同じ | F-29 |
 
 ### 2.10 Notes（M2）
 
