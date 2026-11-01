@@ -2,6 +2,7 @@ package gentest
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/help"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -64,7 +65,10 @@ templ ConfirmBox(c Confirm) {
 				<input type="hidden" name={ h.Name } value={ h.Value }/>
 			}
 			@atoms.Button(atoms.TonePrimary, "この内容で実行する", templ.Attributes{"type": "submit", "disabled": c.OverLimit != "", "data-testid": "gt-run"})
-			<span class="text-xs text-neutral-400">モデルとプロンプトは補正も代替もせず、そのまま呼びます。結果は履歴に残り、Take やコスト台帳には入りません。</span>
+			@help.Toggle(help.ID("実行"), "実行")
+			@help.Panel(help.ID("実行"), "実行") {
+				@help.Text("モデルとプロンプトは補正も代替もせず、そのまま呼びます。\n結果は履歴に残り、Take やコスト台帳には入りません。")
+			}
 		</form>
 	</div>
 }

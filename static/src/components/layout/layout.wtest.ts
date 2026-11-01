@@ -63,4 +63,20 @@ describe('a phone-width window (375 px)', () => {
     expect(box.scrollWidth, 'the table fits: the test no longer shows a wide table').to.be.greaterThan(box.clientWidth);
     expect(overflowOf(), 'the page scrolls sideways').to.be.at.most(0);
   });
+
+  for (const media of ['image', 'video']) {
+    it(`keeps the generation test form (${media}) with its model cards inside the page`, async () => {
+      await show(`layout-gentest-${media}.html`);
+
+      const cards = [...host.querySelectorAll<HTMLElement>('[data-testid=gt-model]')];
+      expect(cards.length).to.be.greaterThan(1);
+      expect(page().clientWidth).to.equal(375);
+      for (const card of cards) {
+        expect(card.getBoundingClientRect().right, 'a model card is cut by the edge of the page').to.be.at.most(
+          page().clientWidth,
+        );
+      }
+      expect(overflowOf(), 'the page scrolls sideways').to.be.at.most(0);
+    });
+  }
 });

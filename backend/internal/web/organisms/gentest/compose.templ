@@ -2,6 +2,7 @@ package gentest
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/help"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -32,7 +33,7 @@ templ ComposeForm(c Compose) {
 	>
 		@notice(c.Message, "gt-form")
 		<fieldset class="flex flex-wrap items-center gap-4 text-sm">
-			<legend class="mb-1 text-xs text-neutral-400">作るもの</legend>
+			<legend class="sr-only">作るもの</legend>
 			for _, m := range []string{"image", "video"} {
 				<label class="flex items-center gap-1">
 					<input
@@ -56,13 +57,17 @@ templ ComposeForm(c Compose) {
 		@inputFields(c)
 		<div class="flex flex-wrap items-center gap-3">
 			@atoms.Button(atoms.TonePrimary, "見積りを見る", templ.Attributes{"type": "submit", "data-testid": "gt-estimate"})
-			<span class="text-xs text-neutral-400">
-				実行はまだしません。1 回に { itoa(c.MaxItems) } 件まで
-				if c.MaxCostUSD != "" {
-					、見積りが { c.MaxCostUSD } を超えるときは実行できません
-				}
-				。
-			</span>
+			<span class="text-xs text-neutral-400">実行はまだしません</span>
+			@help.Toggle(help.ID("見積り"), "見積り")
+			@help.Panel(help.ID("見積り"), "見積り") {
+				<p>
+					1 回に { itoa(c.MaxItems) } 件まで
+					if c.MaxCostUSD != "" {
+						、見積りが { c.MaxCostUSD } を超えるときは実行できません
+					}
+					。
+				</p>
+			}
 		</div>
 	</form>
 }
@@ -74,32 +79,6 @@ func mediaLabel(m string) string {
 	return "画像"
 }
 
-// modelChoices are the models: every one that can be called now can be ticked; the others say why they cannot.
-templ modelChoices(c Compose) {
-	<fieldset class="flex flex-col gap-2" data-testid="gt-models">
-		<legend class="mb-1 text-xs text-neutral-400">モデル（複数選べます。代替のモデルへは切り替えません）</legend>
-		<ul class="grid gap-2 sm:grid-cols-2">
-			for _, m := range c.Models {
-				<li class="rounded-md border border-neutral-800 p-2 text-sm" data-testid="gt-model" data-model={ m.ID } data-available={ boolText(m.Reason == "") }>
-					<label class="flex items-start gap-2">
-						<input type="checkbox" name={ FieldModel } value={ m.ID } checked?={ m.Selected && m.Reason == "" } disabled?={ m.Reason != "" } class="mt-1"/>
-						<span class="flex flex-col gap-0.5">
-							<span>{ m.Label } <span class="text-xs text-neutral-400">（{ m.Source }）</span></span>
-							<span class="text-xs text-neutral-400">{ m.Price }</span>
-							if m.Features != "" {
-								<span class="text-xs text-neutral-400">{ m.Features }</span>
-							}
-							if m.Reason != "" {
-								<span class="text-xs text-amber-300" data-testid="gt-model-reason">{ m.Reason }</span>
-							}
-						</span>
-					</label>
-				</li>
-			}
-		</ul>
-	</fieldset>
-}
-
 func boolText(b bool) string {
 	if b {
 		return "true"
@@ -109,8 +88,8 @@ func boolText(b bool) string {
 
 // promptFields are the prompts of the batch (one result set per prompt) with their negative prompts.
 templ promptFields(c Compose) {
-	<fieldset class="flex flex-col gap-3" data-testid="gt-prompt-fields">
-		<legend class="mb-1 text-xs text-neutral-400">プロンプト（そのままモデルに送ります。複数入れると、モデルごとに全部を生成します）</legend>
+	<fieldset class="flex flex-col gap-3" aria-labelledby="gt-prompts-title" data-testid="gt-prompt-fields">
+		@sectionTitle("gt-prompts-title", "プロンプト", help.Text("そのままモデルに送ります。複数入れると、モデルごとに全部を生成します。\nネガティブプロンプトの欄の無いモデルには「Avoid: …」として書き足します。"))
 		<div id={ PromptsID } class="flex flex-col gap-3">
 			for _, p := range c.Prompts {
 				@PromptRowFields(p, c.MaxPrompt)
@@ -146,24 +125,24 @@ templ PromptRowFields(p PromptText, max int) {
 			"name": FieldPrompt, "rows": "3", "maxlength": itoa(max), "aria-label": "プロンプト", "placeholder": "プロンプト",
 		}, p.Text)
 		@atoms.Textarea(atoms.FieldMd, "w-full", templ.Attributes{
-			"name": FieldNegative, "rows": "1", "maxlength": itoa(max), "aria-label": "ネガティブプロンプト（省略可）", "placeholder": "ネガティブプロンプト（省略可。欄の無いモデルには「Avoid: …」として書き足します）",
+			"name": FieldNegative, "rows": "1", "maxlength": itoa(max), "aria-label": "ネガティブプロンプト（省略可）", "placeholder": "ネガティブプロンプト（省略可）",
 		}, p.Negative)
 	</div>
 }
 
 // parameterFields are the count and what the media takes.
 templ parameterFields(c Compose) {
-	<div class="flex flex-wrap items-end gap-3">
+	<div class="flex flex-wrap items-end gap-3" data-testid="gt-parameters">
 		<label class="flex flex-col gap-1 text-xs text-neutral-400" for="gt-count">
-			<span>1 組あたりの本数（1〜{ itoa(c.MaxCount) }）</span>
+			<span>本数（1〜{ itoa(c.MaxCount) }）</span>
 			@atoms.Input(atoms.FieldMd, "w-24", templ.Attributes{
 				"id": "gt-count", "name": FieldCount, "type": "number", "min": "1", "max": itoa(c.MaxCount), "value": c.Count,
 			})
 		</label>
 		<label class="flex flex-col gap-1 text-xs text-neutral-400" for="gt-aspect">
-			<span>縦横比（例 16:9）</span>
+			<span>縦横比</span>
 			@atoms.Input(atoms.FieldMd, "w-28", templ.Attributes{
-				"id": "gt-aspect", "name": FieldAspect, "type": "text", "value": c.Aspect, "pattern": "[1-9][0-9]?:[1-9][0-9]?", "maxlength": itoa(MaxAspectLen),
+				"id": "gt-aspect", "name": FieldAspect, "type": "text", "value": c.Aspect, "pattern": "[1-9][0-9]?:[1-9][0-9]?", "maxlength": itoa(MaxAspectLen), "placeholder": "16:9",
 			})
 		</label>
 		if c.Media == "video" {
@@ -176,7 +155,7 @@ templ parameterFields(c Compose) {
 				}
 			</label>
 			<label class="flex flex-col gap-1 text-xs text-neutral-400" for="gt-duration">
-				<span>長さ（秒。モデルが作れる長さに丸めます）</span>
+				<span>長さ（秒）</span>
 				@atoms.Select(atoms.FieldMd, "", templ.Attributes{"id": "gt-duration", "name": FieldDuration}) {
 					for _, d := range c.Durations {
 						<option value={ d } selected?={ d == c.Duration }>{ d }</option>
@@ -184,5 +163,18 @@ templ parameterFields(c Compose) {
 				}
 			</label>
 		}
+		@help.Toggle(help.ID("生成の設定"), "生成の設定")
+		@help.Panel(help.ID("生成の設定"), "生成の設定") {
+			@help.Text(parametersHelp(c.Media))
+		}
 	</div>
+}
+
+// parametersHelp is what the parameters mean (what was in their labels).
+func parametersHelp(media string) string {
+	t := "本数は、モデルとプロンプトの 1 組あたりの数です。縦横比は 16:9 のように入れます。"
+	if media == "video" {
+		t += "\n長さ（秒）は、モデルが作れる長さに丸めます。"
+	}
+	return t
 }

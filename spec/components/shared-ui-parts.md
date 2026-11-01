@@ -267,7 +267,7 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 | 設定: ローカル・代替モデル | 分類の説明（`local.Description`） | h2・固定の注意・接続先のカード・エラー |
 | 設定: MCP サーバー | 分類の説明（`mcp.Description`） | h2・待ち受け先・トークンの表・エラー |
 | 設定: 概要 | 分類の説明 | h2・カード（各分類の状態） |
-| 生成テスト（[gentest-screen.md](gentest-screen.md)） | 各ページのリード文（h1 の下） | h1・フォーム・結果・エラー |
+| 生成テスト（[gentest-screen.md](gentest-screen.md)） | 各ページのリード文（h1 の下）。作成フォームでは、モデル・プロンプト・入力画像の区画の説明、モデルごとの性質（シード・ネガティブ・参照画像）と選べない理由、パラメーター・見積り・実行の補足（Issue #906） | h1・モデルのカード（名前・出どころ・単価・選べないバッジ）・フォーム・結果・エラー |
 | プロジェクトの設定 | Production Template・Quality Policy・ディスク・Brand / Safety Constraints・Brand Templates・プロジェクトバンドルの区画の説明 | h2・フォーム・状態・結果 |
 
 初回ガイド（`organisms/onboarding/`。[onboarding-screen.md](onboarding-screen.md)）は #866 の対象外で、変えない。ただし「API キーとログイン」の区画（`credentials.Section`・`chatgpt.SectionIf`）を共有しているため、そこに入る「?」は初回ガイドにも出る（同じ部品・同じ動き。§9）。

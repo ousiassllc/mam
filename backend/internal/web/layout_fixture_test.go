@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/llm"
 )
@@ -33,6 +34,17 @@ func TestLayoutFixtures_AreWhatTheComponentsRender(t *testing.T) {
 			},
 		}),
 		"layout-hf-import.html": modelmgr.HFImportSection(modelmgr.HFImport{Kind: "text-to-image"}),
+		// #906: the model cards of the generation test, in both modes (the long unit prices of the video models are what
+		// pushes a card wide).
+		"layout-gentest-image.html": gentest.ComposeForm(gentestCompose("image", []gentest.ModelChoice{
+			{ID: "nano-banana", Label: "nano-banana", Source: "クラウド", Price: "$0.0336 / 枚", Features: "シード非対応（同じ入力を本数ぶん呼ぶ）", Selected: true},
+			{ID: "nano-banana-lite", Label: "nano-banana-lite", Source: "クラウド", Price: "$0.0336 / 枚", Reason: "API キーが登録されていません（設定の「API キー」）"},
+			{ID: "gpt-image-2", Label: "gpt-image-2", Source: "クラウド", Price: "$0.0530 / 枚"},
+		})),
+		"layout-gentest-video.html": gentest.ComposeForm(gentestCompose("video", []gentest.ModelChoice{
+			{ID: "luma-ray-3.2", Label: "luma-ray-3.2", Source: "クラウド", Price: "1080p $0.2400 / 秒・360p $0.0120 / 秒・540p $0.0300 / 秒・720p $0.0600 / 秒", Selected: true},
+			{ID: "runway-gen-4.5", Label: "runway-gen-4.5", Source: "クラウド", Price: "720p $0.1200 / 秒"},
+		})),
 	}
 
 	for name, c := range fixtures {
@@ -48,5 +60,13 @@ func TestLayoutFixtures_AreWhatTheComponentsRender(t *testing.T) {
 			require.NoError(t, err, "write it with %s=1", updateFixturesEnv)
 			assert.Equal(t, string(want), sb.String(), "the component changed: write the fixture again with %s=1", updateFixturesEnv)
 		})
+	}
+}
+
+func gentestCompose(media string, models []gentest.ModelChoice) gentest.Compose {
+	return gentest.Compose{
+		Media: media, Models: models, Prompts: []gentest.PromptText{{}}, Count: "1", Aspect: "16:9",
+		Resolutions: []string{"720p", "1080p"}, Durations: []string{"5", "10"}, Resolution: "720p", Duration: "5",
+		MaxPrompt: 4000, MaxCount: 20, MaxItems: 50, MaxReferences: 10, MaxCostUSD: "$5.00",
 	}
 }
