@@ -51,11 +51,13 @@ func (l Layout) ModelPath(rel string) string {
 var ErrNotWritable = errors.New("store: the directory next to mam.exe is not writable")
 
 // CheckWritable creates Root if needed and makes sure a file can be created in it.
-func (l Layout) CheckWritable() error {
-	if err := os.MkdirAll(l.Root, 0o750); err != nil {
+func (l Layout) CheckWritable() error { return checkWritable(l.Root) }
+
+func checkWritable(root string) error {
+	if err := os.MkdirAll(root, 0o750); err != nil {
 		return fmt.Errorf("%w: %w", ErrNotWritable, err)
 	}
-	f, err := os.CreateTemp(l.Root, ".write-test-*")
+	f, err := os.CreateTemp(root, ".write-test-*")
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrNotWritable, err)
 	}

@@ -199,6 +199,7 @@ func TestLoad_MCPPortFollowsTheSameRulesAsThePort(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, config.DefaultMCPPort, cfg.MCPPort)
 	assert.Equal(t, filepath.Join("/data", "mcp.json"), cfg.MCPSettingsFile())
+	assert.Equal(t, filepath.Join("/data", "audio.json"), cfg.AudioSettingsFile())
 
 	cfg, err = config.Load(nil, env(map[string]string{"MAM_DATA_DIR": "/data", "MAM_MCP_PORT": "9101"}), io.Discard)
 	require.NoError(t, err)

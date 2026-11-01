@@ -1,6 +1,6 @@
 # MCP ツール: 設定・ポリシー・制作指標・ヘルス
 
-[`mcp-tools.md`](mcp-tools.md) の規約に従う、設定系の画面の操作のツール（Issue #830）。対象は、Project の設定画面（制作テンプレート・Quality / Cost Policy・予算・Take のアーカイブ・Brand 制約とテンプレート）、全体設定画面（LLM の割り当て・画像／動画モデルの割り当て・アップデート）、制作指標、ヘルスチェック。API キーは基盤の `list_credentials` / `set_credential` / `delete_credential`（[`mcp-tools.md`](mcp-tools.md)）。
+[`mcp-tools.md`](mcp-tools.md) の規約に従う、設定系の画面の操作のツール（Issue #830）。対象は、Project の設定画面（制作テンプレート・Quality / Cost Policy・予算・Take のアーカイブ・Brand 制約とテンプレート）、全体設定画面（LLM の割り当て・画像／動画モデルの割り当て・音声・口パクのプロバイダー・アップデート）、制作指標、ヘルスチェック。API キーは基盤の `list_credentials` / `set_credential` / `delete_credential`（[`mcp-tools.md`](mcp-tools.md)）。
 
 実装は `backend/internal/mcp/tools/{policy,brand,analytics,health,settings}`。どれも画面と同じサービスを呼ぶ（`PolicyService`・`BrandService`・`AnalyticsService`・`HealthService`・`llmassign.Service`・`modelsettings.Service`・`appupdate.Service`）。MCP 専用の確認や上限は足さない。
 
@@ -10,6 +10,7 @@
 - **LLM・モデルの割り当ては「保存した設定」を読み書きする**。画面と同じく、LLM の割り当ての反映にはアプリの再起動が必要（実行中の割り当てではない）。画像・動画モデルの割り当ては保存するとすぐに反映される（#831。`model` にはローカル・代替モデルの識別子も使える。[mcp-tools-local-models.md](mcp-tools-local-models.md)）。`--llm-config` / `--model-config` で固定されたファイルは読めるが変更できず、`conflict`（「起動オプションで固定されている…」）になる。
 - `set_llm_assignment` / `set_model_assignment` は、**指定した Agent・用途・Quality Policy だけ**を変える（画面はフォーム全体を送るが、ツールは差分だけ受け、保存済みの値に重ねてから同じ検証 `check` を通す）。指定しなかったものは保存済みのまま。年齢確認がオフの間は、導入済みの成人向けモデルは `image_models` / `video_models` に出ず、割り当てがまだ指していれば `gated_models` に挙がる（そのモデルでの生成は `conflict` で断られる）。主・代替のどちらかが成人向けのモデルを指す保存は、変えていなくても `validation` で断る（メッセージに年齢確認をオンにするか別のモデルを選ぶ旨。`reset_model_assignment` はできる。[../architecture/model-manager/model-manager.md](../architecture/model-manager/model-manager.md) §6.1）。検証の失敗は `validation`（メッセージは画面と同じ）で、ファイルには何も書かない。
 - **アップデート**は、アップデーターを持つ版（Windows デスクトップ）でだけ使える。ヘッドレス版では `get_update_status` / `check_for_update` が `unavailable`、`get_global_settings` の `update.available` が `false`（バージョンだけ返す）。LLM・モデルの区画を持たないアプリ（テスト用ルーター）では同様に各ツールが `unavailable`、`get_global_settings` の `llm.available` / `models.available` が `false`。
+- **音声・口パクのプロバイダーは「保存した設定」を読み書きする**（`audiosettings.Service`。画面と同じ。#924）。反映は**次の音声作成から**で、再起動は要らない。`generate_audio` に provider の引数は無く、選択はこの 2 つのツールで行う。切り替えた実行は、Project のチャット（`list_chat_messages`）に「ローカル…を使えなかったため、この実行はクラウド…で作りました。使えない理由: …」と残る。ローカルを選べない環境（macOS など）では、`get_audio_providers` の `state` が `unsupported` で `support_reason` に理由とクラウドの案内が出る。
 - キーの値はどのツールにも出ない。`get_global_settings` は API キーの区画を含まない（`list_credentials` を使う）。
 
 ## ツール
@@ -48,6 +49,8 @@
 | `reset_llm_assignment` | LLM の割り当てを既定に戻す（上書きをすべて消す。冪等） | なし | 同上 | いいえ（破壊的） |
 | `set_model_assignment` | 指定した画像の用途・Quality Policy のモデルを保存する。冪等 | `images?[]`: `purpose`（`new_reference` / `edit_reference` / `preview` / `unified_openai`）, `primary`, `fallback`（`model`, `fast?`）。`policies?[]`: `quality_policy`, `primary`, `fallback`（`model`, `resolution`）, `takes`（1 以上）。どちらかは必須 | `get_global_settings` の `models` | いいえ |
 | `reset_model_assignment` | 画像・動画モデルの割り当てを既定に戻す（冪等） | なし | 同上 | いいえ（破壊的） |
+| `get_audio_providers` | 音声・口パクのプロバイダーの設定（`audio.json`）と、ローカルの状態。保存済みの設定で、次の音声作成から使われる | なし | `available`, `problem`（`audio.json` が読めない理由）, `voice_provider`（`elevenlabs` / `local`）, `lip_sync_provider`（`synclabs` / `local`）, `fallback_to_cloud`, `voice` と `lip_sync`（`available`, `name`, `runtime_id`, `state`（`unsupported` / `installing` / `not_installed` / `weights_missing` / `ready` / `starting` / `running` / `failed`）, `usable`, `reason`（使えないときの文。画面・実行の失敗と同じ）, `support_reason`（この PC で動かせない理由とクラウドの案内。macOS はここ）, `process_error`, `vram_min_gb`, `vram_estimate`, `source_url`, `license`, `license_url`, `commercial_condition`, `unclear_commercial_use[]`, `cloud_provider`（`elevenlabs` / `synclabs`）, `cloud_key_set`（API キーの有無。値は返さない）） | はい |
+| `set_audio_providers` | 声・口パクのプロバイダーと `fallback_to_cloud` を保存する。指定した項目だけ変わる（`false` も値）。この PC で動かせないローカルを選ぶと `validation`（ランタイム管理の理由つき）、`audio.json` が読めないと `conflict`。`fallback_to_cloud` をオンにすると、ローカルが使えない実行がクラウドで作られ API 費用が出ることがある。冪等 | `voice_provider?`（`elevenlabs` / `local`）, `lip_sync_provider?`（`synclabs` / `local`）, `fallback_to_cloud?`。1 つ以上 | `get_audio_providers` と同じ | いいえ |
 | `get_update_status` | アップデートの状態 | なし | `available`, `version`, `state`（`checking` / `error` / `ready` / `blocked` / `available` / `dev_build` / `no_release` / `up_to_date` / `unchecked`）, `checked_at`, `latest`, `blocked_by`, `error_kind` | はい |
 | `check_for_update` | 今すぐアップデートを確認する。検証できた新しいリリースがあると、画面と同じくアプリが終了してインストーラーが走る（応答は届かないことがある）。確認の失敗は `state: "error"` で返り、ツールエラーにはならない | なし | `get_update_status` と同じ | いいえ（`openWorld`） |
 
@@ -83,6 +86,8 @@
 | `DELETE /settings/llm` | `reset_llm_assignment` |
 | `PUT /settings/models` | `set_model_assignment` |
 | `DELETE /settings/models` | `reset_model_assignment` |
+| `GET /settings/audio` | `get_audio_providers` |
+| `PUT /settings/audio` | `set_audio_providers` |
 | `POST /settings/update/check` | `check_for_update`（状態の読み取りは `get_update_status`） |
 | `PUT /credentials/:provider` | `set_credential`（基盤） |
 | `DELETE /credentials/:provider` | `delete_credential`（基盤） |
@@ -96,3 +101,4 @@
 |----|------|---------|---------|
 | 1.0 | 2026-10-24 | 新規作成。Project の設定（制作テンプレート・Quality Policy・予算・コスト・Take のアーカイブ）、Brand 制約とテンプレート、全体設定（LLM・モデルの割り当て・アップデート）、制作指標、ヘルスのツールと、ルートの対応表。MCP トークンの管理はツールにしない方針 | Issue #830。画面の全操作を MCP ツールにする（設定・ポリシー・指標・ヘルスの担当分） |
 | 1.1 | 2026-10-25 | `get_global_settings` の `models` に `gated_models[]` を足した。年齢確認がオフの間は成人向けモデルを選択肢から外し、`set_model_assignment` がそれを指す経路を断る | Issue #848 |
+| 1.2 | 2026-11-01 | 全体設定（`tools/settings`）に `get_audio_providers`・`set_audio_providers` と、ルートの対応（`GET`・`PUT /settings/audio`）を足した。声・口パクのプロバイダーと「ローカルが使えないときはクラウドに切り替える」の保存。ローカルの状態・使えない理由・クラウドの API キーの有無（値は返さない）を返す | Issue #924（#912 声と口パクのローカル化） |

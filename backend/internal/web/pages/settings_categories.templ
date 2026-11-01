@@ -3,6 +3,7 @@ package pages
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/help"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/audio"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/chatgpt"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/credentials"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/ffmpeg"
@@ -67,6 +68,13 @@ templ SettingsLocalEndpointBody(d local.Data, e local.Endpoint) {
 templ SettingsFFmpegBody(d ffmpeg.Data) {
 	@settingsui.Category("ffmpeg", help.Text(ffmpeg.Description)) {
 		@ffmpeg.Section(d)
+	}
+}
+
+// SettingsAudioBody is "音声・口パク".
+templ SettingsAudioBody(d audio.Data) {
+	@settingsui.Category("音声・口パク", help.Text(audio.Description)) {
+		@audio.Section(d)
 	}
 }
 

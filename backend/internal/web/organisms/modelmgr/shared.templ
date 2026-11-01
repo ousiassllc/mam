@@ -1,0 +1,26 @@
+package modelmgr
+
+import "github.com/ousiassllc/mam/backend/internal/web/atoms"
+
+// What the cards of the packages below share with the screen: the message of an action, the progress bar, the badge of a process and
+// the labels of the autostart toggle. They are packages of their own because this package is at its size limit.
+
+// Notice is the confirmation or the refusal of the last action of a card (id is the card's test id prefix).
+templ Notice(m Message, id string) {
+	@notice(m, id)
+}
+
+// ProgressBar is the progress of a running install.
+templ ProgressBar(p Progress, label string) {
+	@progressBar(p, label)
+}
+
+// StateBadge is the badge of a process state (running, starting, failed, stopped).
+func StateBadge(state string) (atoms.BadgeTone, string) { return stateBadge(state) }
+
+// AutoStartLabel is the label of the autostart toggle, AutoStartValue the value it sends when pressed, BoolText the aria-pressed text.
+func AutoStartLabel(on bool) string { return autoStartLabel(on) }
+
+func AutoStartValue(on bool) string { return autoStartValue(on) }
+
+func BoolText(b bool) string { return boolText(b) }

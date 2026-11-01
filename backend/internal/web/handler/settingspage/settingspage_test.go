@@ -17,6 +17,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/router"
 	"github.com/ousiassllc/mam/backend/internal/router/settingsroutes"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/service/audiosettings"
 	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -172,4 +173,38 @@ func TestOverview_HasACardForEachCategoryAndTheModelManagerLast(t *testing.T) {
 	assert.Contains(t, body, `hx-get="/tools/model-manager/status"`, "the model manager's state is read after the page is shown")
 	assert.Contains(t, body, "別の画面を開きます")
 	assert.NotContains(t, body, `id="credential-panel"`)
+}
+
+// The "音声・口パク" category is a page of its own after "ローカル・代替モデル"'s place in the order (before MCP and ffmpeg), has a card in
+// the overview, and is left out (link, card and page) without its service.
+func TestAudioCategory_HasItsPageNavigationLinkAndOverviewCard(t *testing.T) {
+	s := newScreen(t, func(s *settingsroutes.Services) {
+		s.Audio = audiosettings.New(filepath.Join(t.TempDir(), audiosettings.FileName), nil, nil)
+	})
+
+	rec := s.get(paths.SettingsCategory(paths.SettingsAudio))
+	require.Equal(t, http.StatusOK, rec.Code)
+	body := rec.Body.String()
+	assert.Equal(t, "設定: 音声・口パク | mam", titleRe.FindStringSubmatch(body)[1])
+	assert.Equal(t, "音声・口パク", h2Re.FindStringSubmatch(body)[1])
+	nav := navRe.FindString(body)
+	assert.Equal(t, []string{paths.SettingsCategory(paths.SettingsAudio), "音声・口パク"}, currentRe.FindStringSubmatch(nav)[1:])
+	assert.Equal(t, 1, strings.Count(nav, `aria-current="page"`))
+
+	order := navRe.FindString(s.get(paths.Settings()).Body.String())
+	last := -1
+	for _, label := range []string{"概要", "API キーとログイン", "テキスト生成（LLM）", "画像・動画モデル", "音声・口パク", "バージョンとアップデート"} {
+		at := strings.Index(order, ">"+label+"<")
+		assert.Greater(t, at, last, label+" comes in the order of the spec")
+		last = at
+	}
+
+	overview := s.get(paths.Settings()).Body.String()
+	assert.Contains(t, overview, `<a id="tool-audio" href="/settings/audio" data-testid="tool-card"`)
+	assert.Contains(t, overview, "声: ElevenLabs（クラウド）", "the card says who speaks")
+	assert.Contains(t, overview, "口パク: Sync Labs（クラウド）")
+
+	without := newScreen(t, withSettings)
+	assert.NotContains(t, navRe.FindString(without.get(paths.Settings()).Body.String()), "音声・口パク")
+	assert.Equal(t, http.StatusNotFound, without.get(paths.SettingsCategory(paths.SettingsAudio)).Code)
 }

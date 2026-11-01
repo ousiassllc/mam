@@ -28,6 +28,7 @@ linters:
           allow:
             - github.com/ousiassllc/mam/backend/internal/domain/bundlepath # depends on nothing; domain's own sub-package
             - github.com/ousiassllc/mam/backend/internal/domain/modelreg # depends on nothing; the models of registered endpoints
+            - github.com/ousiassllc/mam/backend/internal/domain/voiceref # depends on nothing; the reference voice of a Character
           deny:
             - pkg: github.com/ousiassllc/mam/backend/internal
               desc: domain MUST NOT depend on any other layer

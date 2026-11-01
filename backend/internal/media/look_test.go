@@ -44,6 +44,13 @@ func TestLookIn_ConfiguredPathsWinOverTheSearch(t *testing.T) {
 	assert.Equal(t, "/opt/homebrew/bin/ffprobe", tools.ffprobe)
 }
 
+// A local runtime ships no ffmpeg: it is told the one that was found (the configured path when there is one).
+func TestFFmpegPath_IsTheFfmpegThatWasFound(t *testing.T) {
+	tools, err := LookIn(finderWith("/opt/homebrew/bin/ffmpeg", "/opt/homebrew/bin/ffprobe", "/mine/ffmpeg"), locate.Config{FFmpeg: "/mine/ffmpeg"})
+	require.NoError(t, err)
+	assert.Equal(t, "/mine/ffmpeg", tools.FFmpegPath())
+}
+
 func TestLookIn_ConfiguredPathThatCannotBeUsedIsReportedNotReplaced(t *testing.T) {
 	f := finderWith("/opt/homebrew/bin/ffmpeg", "/opt/homebrew/bin/ffprobe")
 

@@ -55,6 +55,23 @@
 | `list_user_models` | 利用者が HF から足したファイル（NFAA は年齢確認が済むまで出ない） | なし | `models[]`（`path`, `name`, `folder`, `repo`, `commit`, `repo_path`, `sha256`, `size`, `license`, `gated`, `nfaa`, `family`, `workflows[]`, `model_ids[]`, `shared_with[]`, `present`, `installed_at`） | はい |
 | `delete_user_model` | 足したファイルと、作ったモデルを削除する（使用中の用途・Policy があれば `validation`、導入中は `conflict`、記録に無ければ `conflict`）。カタログのモデルと共有しているファイルは、そのモデルが残る間は消えない | `path`（`list_user_models` の `path`） | `path`, `deleted` | いいえ（破壊的） |
 
+## ローカルの実行環境（声・口パク。Issue #920）
+
+意味は [local-runtime.md](../architecture/model-manager/local-runtime.md)（§12 が重みと依存ファイルの固定カタログ）。GPT-SoVITS（声）と MuseTalk 1.5（口パク。環境の組み立て・起動・口パクの入口は local-runtime.md §13）を、mam が自動で導入・起動・停止する。MuseTalk の `support.fallback` は「代わりに、クラウドの口パク（Sync Labs）を使ってください。」、macOS の理由は「公式の PyTorch 版が使えない。第三者の MLX 版は mam の自動導入の対象にしていない」、RTX 50 シリーズは `support.code=compute_cap`（PyTorch 2.0.1 が対応していない）。`install_local_runtime` の導入は、MuseTalk では部品 84 個の取得・展開（約 2.9 GB・展開後約 5.7 GB）と重み（約 6 GB）の取得までを 1 つのジョブで行う。画面（[endpoints-model-manager.md](endpoints-model-manager.md) §3「ローカル音声・口パク」）と同じ `localruntime.Service`（`service.Services.LocalRuntimes`）を呼ぶ。サービスが無いアプリでは `unavailable`。拒否は `mmview.RefuseRuntime` で画面と同じ文面になる（重みの不足・取得元が消えた・この PC で使えない（理由とクラウドの案内）・導入中・未導入は `conflict`、未知の ID は `not_found`）。**自動導入は Windows ＋ NVIDIA だけ**（同梱の ComfyUI と同じ）。使えない PC では導入・起動が `conflict` で、`support.reason`・`support.fallback`（ElevenLabs / Sync Labs を選ぶ案内）が分かる。クラウドへの切り替えは利用者が設定で選ぶもので、このツールでは黙って切り替えない。
+
+| ツール | 説明 | 入力 | 出力 | readOnly |
+|--------|------|------|------|----------|
+| `list_local_runtimes` | 実行環境の一覧。各環境の状態（導入済みの版・起動中か停止か・自動起動）、この PC で使えるか（`support`: `supported`・`reason`・`fallback`）、`weights`（下） | なし | `runtimes[]`（`id`, `name`, `purpose`（`tts` / `lip_sync`）, `support`, `pinned_version`, `installed`, `broken`, `update_available`, `process`, `auto_start`, `dir`, `writable`, `free_bytes`, `install_job`, `license`, `vram`, `weights`） | はい |
+| `get_local_runtime_status` | 1 つの環境の状態（`list_local_runtimes` の 1 件と同じ） | `runtime_id` | 同上 | はい |
+| `install_local_runtime` | 環境（Python・本体・重み）を取得して導入する（ジョブ）。SHA-256 を検証し、中断しても再開する | `runtime_id` | `job_id`, `state`, `existing`, `target`（`runtime:<id>`） | いいえ（外部へ接続） |
+| `install_local_runtime_weights` | 導入済みの環境の重み・依存ファイルを固定の SHA-256 と照合し、足りない・壊れたファイルだけを取り直す（ジョブ）。未導入は `conflict` | `runtime_id` | 同上 | いいえ（外部へ接続） |
+| `start_local_runtime` | サーバー（127.0.0.1 だけ）を起動し、応答するまで待つ（冪等）。**必須の重みが足りなければ、起動せず `conflict`**（足りない名前と「`install_local_runtime_weights` を実行する」案内） | `runtime_id` | `state`, `port`, `url`, `pid`, `error` | いいえ |
+| `stop_local_runtime` | 停止する（冪等） | `runtime_id` | 同上 | いいえ |
+| `remove_local_runtime` | 環境と取得した重みを削除する（設定は残る。導入中は `conflict`） | `runtime_id` | `removed` | いいえ（破壊的） |
+| `set_local_runtime_autostart` | mam の起動時に起動するか（冪等） | `runtime_id`, `on` | `auto_start` | いいえ |
+
+`weights` は、`state`（`none`: 未導入 / `ready` / `missing`: **導入済みだが重みが不足** / `unverified`: 確認が済んでいない）・`message`・`need_bytes`・`total_bytes`・`unclear`（商用利用が `yes` でない重みの数）と、`assets[]`: `name`, `description`, `state`（`ok` / `missing` / `unverified`）, `required`, `size`, `source`（`name`, `url`, `source_note`）, `license`（`id`, `name`, `url`, `summary`, **`commercial_use`（`yes` / `no` / `unclear`）**, `notice`）。**`commercial_use` が `unclear` / `no` の重みは、ユーザーに `notice` を見せてから使う**（法的な助言ではなく、確認できた範囲の記載）。`cancel_model_install` は `runtime:<id>` のジョブも中断する。
+
 ## 試し生成
 
 モデルマネージャーの「試し生成」は、生成テスト（[mcp-tools-generation-test.md](mcp-tools-generation-test.md)）の 1 件のバッチとして動く。専用のツールは無い。ローカルのモデルを試すには `list_generation_models`・`estimate_generation_test`・`run_generation_test`（参照画像は用途 `gentest_reference`、結果のファイルは `get_generation_result` の URL）を使う。**導入済みの成人向けモデルは、年齢確認のゲートが閉じている間は `list_generation_models` に出ず、名指しても不明なモデルとして断られる**（Service が強制する。[model-manager.md](../architecture/model-manager/model-manager.md) §6.2）。1.0 の `list_trial_models`・`start_model_trial`・`list_model_trials`・`get_model_trial`・`get_model_trial_file_url`・`delete_model_trial`、アップロードの用途 `model_trial_reference`、ダウンロードの種類 `model_trial_file` は削除した。
@@ -63,7 +80,7 @@
 
 | 種別（`kind`） | 開始するツール | `target` | `done` / `total` | `result` |
 |---------------|---------------|----------|------------------|----------|
-| `model_install` | `install_model_engine`・`install_model`・`install_hf_file` | `engine` / `model:<id>` / `hf:<repo>@<commit>/<path>` | 進捗の割合 / 100 | `target`, `phase`（download / extract / register / done など）, `done_bytes`, `total_bytes` |
+| `model_install` | `install_model_engine`・`install_model`・`install_hf_file`・`install_local_runtime`・`install_local_runtime_weights` | `engine` / `model:<id>` / `hf:<repo>@<commit>/<path>` / `runtime:<id>` | 進捗の割合 / 100 | `target`, `phase`（download / extract / register / done など）, `done_bytes`, `total_bytes` |
 
 `state` は `queued` / `running` / `succeeded` / `failed`。失敗の `error` はジョブキューの行の理由（SHA-256 の不一致・空き容量・取得元が認証を求めた・**取得元が消えた（404・410。ミラーの削除など。ファイル名と、ミラーなら原本の場所を添える）**・中断・ComfyUI の失敗など）。導入は再開できる（再起動のたびに最大 3 回）。進捗の割合はメモリ上で、ジョブの終了直前や再起動の後は 0 に戻ることがある（`succeeded` では 100）。
 
@@ -81,3 +98,5 @@
 | 1.3 | 2026-10-25 | Hugging Face の任意の `.safetensors` の導入のツール `search_hf_models`・`get_hf_model_files`・`install_hf_file`・`list_user_models`・`delete_user_model` を足した。ジョブの `target` に `hf:<repo>@<commit>/<path>` を足した | Issue #842。意味は [../architecture/model-manager/model-manager-hf.md](../architecture/model-manager/model-manager-hf.md) |
 | 1.4 | 2026-10-25 | `get_external_inventory` が成人向けのモデルを年齢確認が済むまで返さず、`loras` フォルダも読むようにした。`get_hf_model_files`・`install_hf_file` の NFAA 判定を、コミットのタグと今の先頭のタグの OR にした（古いコミットを指名しても年齢確認が要る）。同じファイルを別のフォルダ・名前で導入中に頼むと `validation`。同じ宛先の別ファイルは上書きされない（`validation`）。`list_user_models` の `shared_with` は年齢確認が済むまで成人向けのモデルを挙げない | PR #849 のレビューの指摘（#841・#842）への修正 |
 | 1.5 | 2026-10-29 | `install_model` が `requires_hf_token` のモデルでトークンとアクセスを確かめ、足りなければ `validation` で案内することを足した。`set_huggingface_token` の説明を、LTX-2.5 に使うものに改めた | Issue #877 |
+| 1.6 | 2026-11-01 | 「ローカルの実行環境」のツール 8 個（`list_local_runtimes`・`get_local_runtime_status`・`install_local_runtime`・`install_local_runtime_weights`・`start_local_runtime`・`stop_local_runtime`・`remove_local_runtime`・`set_local_runtime_autostart`）を足した。重みごとの出典・ライセンス・`commercial_use`（`unclear` を含む）・「導入済み（重みが不足）」を返し、必須の重みが足りない起動は `conflict`。`cancel_model_install` が `runtime:<id>` のジョブも中断し、`get_job` の `model_install` の `target` に `runtime:<id>` を足した | Issue #920。重み・依存ファイルの出典とライセンスを MCP でも見られるように |
+| 1.7 | 2026-11-01 | ローカルの実行環境のツールが MuseTalk 1.5 を扱うことを書いた（`support.fallback` が Sync Labs、macOS の理由、RTX 50 の `compute_cap`、導入のジョブの内容。意味は [local-runtime.md §13](../architecture/model-manager/local-runtime.md)）。ツールの名前・引数・応答の形は変えていない | Issue #921（MuseTalk のランタイム） |

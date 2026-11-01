@@ -20,6 +20,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/router"
 	"github.com/ousiassllc/mam/backend/internal/router/settingsroutes"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/service/localruntime/lrtest"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmtest"
 	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
@@ -28,8 +29,10 @@ import (
 
 // Screen is the screen under test.
 type Screen struct {
-	T      *testing.T
-	Rig    *mmtest.Rig
+	T   *testing.T
+	Rig *mmtest.Rig
+	// Rts are the local runtimes (NewWithRuntimes); nil for a screen without them.
+	Rts    *lrtest.Rig
 	engine http.Handler
 	cookie *http.Cookie
 	token  string
@@ -38,11 +41,26 @@ type Screen struct {
 // New opens the screen: it loads the page for the CSRF cookie and token.
 func New(t *testing.T, opts ...mmtest.Option) *Screen {
 	t.Helper()
-	rig := mmtest.New(t, opts...)
+	return open(t, mmtest.New(t, opts...), nil)
+}
+
+// NewWithRuntimes opens the screen with the local runtimes over fakes (a fake package and weights, a fake process; a Windows PC with an RTX
+// 4070 unless an option says another), on the queue of the model manager.
+func NewWithRuntimes(t *testing.T, opts ...lrtest.Option) *Screen {
+	t.Helper()
+	rig := mmtest.New(t)
+	return open(t, rig, lrtest.New(t, rig.Queue, rig.Table, rig.Svc.HandleInstall, opts...))
+}
+
+func open(t *testing.T, rig *mmtest.Rig, rts *lrtest.Rig) *Screen {
+	t.Helper()
 	svc := servicetest.New(t, service.Deps{DB: testdb.Open(t), Credentials: credentialtest.New()})
 	settings := settingsroutes.New(filepath.Join(t.TempDir(), "llm.json"), false, filepath.Join(t.TempDir(), "m.json"), false)
 	settings.ModelManager, settings.Gentest = rig.Svc, rig.Gentest
-	s := &Screen{T: t, Rig: rig, engine: router.New(svc, router.Options{Settings: settings})}
+	if rts != nil {
+		settings.LocalRuntimes = rts.Svc
+	}
+	s := &Screen{T: t, Rig: rig, Rts: rts, engine: router.New(svc, router.Options{Settings: settings})}
 
 	rec := s.send(httptest.NewRequest(http.MethodGet, paths.ModelManager(), nil))
 	require.Equal(t, http.StatusOK, rec.Code)

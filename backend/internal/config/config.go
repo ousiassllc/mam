@@ -232,5 +232,9 @@ func envBool(getenv func(string) string, key string) (bool, error) {
 // FFmpegSettingsFile is the file of the paths of ffmpeg and ffprobe (ffmpeg.json), which the settings screen writes.
 func (c Config) FFmpegSettingsFile() string { return filepath.Join(c.DataDir, "ffmpeg.json") }
 
+// AudioSettingsFile is the file of the Audio Director's choice of providers (audio.json): the voice, the lip sync and the fallback to the
+// cloud, which the settings screen and the MCP tools write.
+func (c Config) AudioSettingsFile() string { return filepath.Join(c.DataDir, "audio.json") }
+
 // MCPSettingsFile is the file of the MCP bind address (mcp.json), which the settings screen writes.
 func (c Config) MCPSettingsFile() string { return filepath.Join(c.DataDir, "mcp.json") }

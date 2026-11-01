@@ -1,0 +1,128 @@
+package audio
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// Section is the category: one form with a card for the voice and one for the lip sync, the fallback to the cloud and the save. The
+// answer of a save replaces it by PanelID.
+templ Section(d Data) {
+	<div id={ PanelID } class="flex flex-col gap-4" data-testid="audio-panel">
+		if d.Problem != "" {
+			<p class="text-sm text-red-300" role="alert" data-testid="audio-problem">{ d.Problem }</p>
+		} else {
+			if d.Notice != "" {
+				<p class="text-sm text-emerald-300" role="status" data-testid="audio-notice">{ d.Notice }</p>
+			}
+			if d.Error != "" {
+				<p class="text-sm text-red-300" role="alert" data-testid="audio-error">{ d.Error }</p>
+			}
+			<form class="flex flex-col gap-4" hx-put={ paths.AudioSettings() } hx-target={ "#" + PanelID } hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]" data-testid="audio-form">
+				<ul role="list" class="grid grid-cols-1 gap-4">
+					@providerCard(d.Voice)
+					@providerCard(d.LipSync)
+				</ul>
+				<label class="flex items-start gap-2 text-sm" data-testid="audio-fallback">
+					@atoms.Choice("mt-1", templ.Attributes{"type": "checkbox", "name": FieldFallback, "value": "1", "checked": d.Fallback, "data-testid": "audio-fallback-input"})
+					<span>
+						ローカルが使えないときは、クラウドに切り替える（API 費用が出ます）
+						<span class="block text-xs text-neutral-400">実行を始める前の検査で、ローカルが使えない（この PC で動かせない・導入されていない・重みが無い・参照音声が無い話者がいる）と分かったときだけ、その実行の全体をクラウドで作ります。実行の途中で切り替えることはなく、切り替えたときはチャットに書きます。オフのときは、理由を出して止まります（クラウドの費用は出ません）。</span>
+					</span>
+				</label>
+				<div>
+					@atoms.Button(atoms.TonePrimary, "保存", templ.Attributes{"type": "submit", "data-testid": "audio-save"})
+				</div>
+			</form>
+		}
+	</div>
+}
+
+templ providerCard(p Provider) {
+	@settingsui.CardItem(settingsui.Card{
+		ID: p.ID, TestID: "audio-" + p.Field, Title: p.Title, Description: p.Description, Details: providerDetails(p),
+	}) {
+		if p.Local != nil {
+			@atoms.ButtonLink(atoms.ToneNeutral, "モデルマネージャーを開く", templ.SafeURL(paths.ModelManager()), templ.Attributes{"data-testid": "audio-open-manager-" + p.Field})
+		}
+	}
+}
+
+templ providerDetails(p Provider) {
+	<fieldset class="flex flex-col gap-2">
+		<legend class="sr-only">{ p.Title }のプロバイダー</legend>
+		<label class="flex items-start gap-2 text-sm">
+			@atoms.Choice("mt-1", templ.Attributes{"type": "radio", "name": p.Field, "value": p.CloudValue, "checked": cloudChecked(p), "data-testid": "audio-" + p.Field + "-cloud"})
+			<span>
+				{ p.CloudLabel }
+				<span class="block text-xs text-neutral-400" data-testid={ "audio-key-" + p.Field }>
+					if p.CloudKeySet {
+						API キー（{ p.CloudKey }）: 設定済み
+					} else {
+						API キー（{ p.CloudKey }）: 未設定。
+						<a class="underline" href={ templ.SafeURL(paths.SettingsCategory(paths.SettingsAPIKeys)) }>「API キーとログイン」で登録してください</a>
+					}
+				</span>
+			</span>
+		</label>
+		if p.Local != nil {
+			<label class="flex items-start gap-2 text-sm">
+				@atoms.Choice("mt-1", templ.Attributes{
+					"type": "radio", "name": p.Field, "value": LocalValue, "checked": p.Selected == LocalValue && p.Local.Supported,
+					"disabled": !p.Local.Supported, "aria-describedby": "audio-state-" + p.Field, "data-testid": "audio-" + p.Field + "-local",
+				})
+				<span>
+					{ p.LocalLabel }
+					@atoms.BadgeWith(p.Local.Tone, p.Local.State, templ.Attributes{"data-testid": "audio-state-badge-" + p.Field})
+				</span>
+			</label>
+			@localState(p)
+		}
+		if p.Note != "" {
+			<p class="text-xs text-neutral-400" data-testid={ "audio-note-" + p.Field }>{ p.Note }</p>
+		}
+	</fieldset>
+}
+
+templ localState(p Provider) {
+	<div id={ "audio-state-" + p.Field } class="ml-6 flex flex-col gap-2 text-xs text-neutral-400" data-testid={ "audio-local-" + p.Field }>
+		if !p.Local.Supported {
+			<div class="flex flex-col gap-1 rounded-md border border-amber-500/60 bg-amber-500/10 p-3 text-sm text-amber-300" role="note" data-testid={ "audio-unsupported-" + p.Field }>
+				<p>この PC では { p.Local.Name } を選べません。{ p.CloudLabel } のまま使えます。</p>
+				<p data-testid={ "audio-support-reason-" + p.Field }>{ p.Local.SupportReason }</p>
+			</div>
+		} else if p.Local.Reason != "" {
+			<p class="text-amber-300" role="status" data-testid={ "audio-reason-" + p.Field }>{ p.Local.Reason }</p>
+		}
+		if p.Selected == LocalValue && !p.Local.Supported {
+			<p class="text-amber-300" role="status" data-testid={ "audio-saved-local-" + p.Field }>保存済みの設定はローカルですが、この PC では動かせないため、今は使われません（保存するとクラウドに切り替わります）。</p>
+		}
+		if p.Local.ProcessError != "" {
+			<pre class="max-h-40 overflow-auto whitespace-pre-wrap break-all rounded-md bg-neutral-950 p-2" data-testid={ "audio-process-error-" + p.Field }>{ p.Local.ProcessError }</pre>
+		}
+		if p.Local.VRAM != "" {
+			<p data-testid={ "audio-vram-" + p.Field }>{ p.Local.VRAM }</p>
+		}
+		<p data-testid={ "audio-source-" + p.Field }>
+			出典: <a class="underline" href={ templ.SafeURL(p.Local.SourceURL) } rel="noopener noreferrer" target="_blank">{ p.Local.SourceURL }</a>
+			／ ライセンス: 
+			if p.Local.LicenseURL != "" {
+				<a class="underline" href={ templ.SafeURL(p.Local.LicenseURL) } rel="noopener noreferrer" target="_blank">{ p.Local.License }</a>
+			} else {
+				{ p.Local.License }
+			}
+			。重みと依存ファイルの出典・ライセンスは、モデルマネージャーの一覧にあります。
+		</p>
+		if p.Local.Condition != "" {
+			<p class="text-amber-300" data-testid={ "audio-condition-" + p.Field }>{ p.Local.Condition }</p>
+		}
+		if len(p.Local.Unclear) > 0 {
+			<div class="flex flex-col gap-1 rounded-md border border-amber-500/60 bg-amber-500/10 p-3 text-sm text-amber-300" role="note" data-testid={ "audio-unclear-" + p.Field }>
+				<p class="font-semibold">商用利用がはっきりしない重み・依存ファイルが { itoa(len(p.Local.Unclear)) } 件あります</p>
+				<p>{ join(p.Local.Unclear) }</p>
+				<p>商用の動画に使う前に、モデルマネージャーの一覧で出典とライセンスを確認してください。</p>
+			</div>
+		}
+	</div>
+}

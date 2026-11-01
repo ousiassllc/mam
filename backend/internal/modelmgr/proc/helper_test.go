@@ -20,6 +20,10 @@ func TestMain(m *testing.M) {
 		fakeComfy(mode)
 		return
 	}
+	if os.Getenv("MAM_FAKE_RUNTIME") != "" {
+		fakeRuntime()
+		return
+	}
 	if os.Getenv("MAM_FAKE_STDIO") != "" {
 		fakeStdio()
 		return
@@ -77,4 +81,15 @@ func supervisor() {
 	}
 	fmt.Println(st.Port, st.PID)
 	time.Sleep(time.Hour)
+}
+
+// fakeRuntime is a server of another program than ComfyUI: it answers /openapi.json only (like a runtime of the local AI runtimes).
+func fakeRuntime() {
+	l, err := net.Listen("tcp", "127.0.0.1:"+os.Getenv("FAKE_PORT"))
+	if err != nil {
+		os.Exit(4)
+	}
+	mux := http.NewServeMux()
+	mux.HandleFunc("/openapi.json", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte(`{}`)) })
+	_ = http.Serve(l, mux)
 }

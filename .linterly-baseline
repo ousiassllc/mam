@@ -1,33 +1,27 @@
 # linterly の行数上限（.linterly.yml）を超えている既存のファイル・ディレクトリ。scripts/linterly-baseline.sh が CI で悪化を検出する基準値。
 # 分割して減らしたら `make linterly-baseline` で書き換える（差分は削除か数値の減少だけであること）。形式: <行数><TAB><パス>
-3285	backend/internal/agent/audiodirector/
-512	backend/internal/agent/audiodirector/audiodirector_test.go
+3090	backend/internal/agent/audiodirector/
 1125	backend/internal/agent/audiodirector/director_test.go
-347	backend/internal/agent/audiodirector/elevenlabs.go
 4999	backend/internal/agent/generation/
-487	backend/internal/agent/generation/candidates.go
-574	backend/internal/agent/generation/orchestrator.go
 415	backend/internal/agent/generation/orchestrator_candidates_test.go
 384	backend/internal/agent/generation/orchestrator_refpack_regen_test.go
 460	backend/internal/agent/generation/orchestrator_test.go
 369	backend/internal/agent/generation/referencepack.go
 354	backend/internal/agent/jobqueue/queue_test.go
-3097	backend/internal/agent/judge/
+3095	backend/internal/agent/judge/
 469	backend/internal/agent/judge/judge.go
 430	backend/internal/agent/judge/judge_test.go
-3502	backend/internal/agent/modeladapter/
+3303	backend/internal/agent/modeladapter/
 975	backend/internal/agent/orchestrator/orchestrator_test.go
 2948	backend/internal/agent/repair/
 428	backend/internal/agent/repair/agent_flow_fixture_test.go
 1016	backend/internal/agent/repair/agent_flow_test.go
-7639	backend/internal/domain/
+7636	backend/internal/domain/
 359	backend/internal/domain/brand.go
 509	backend/internal/domain/editor.go
 332	backend/internal/domain/judge.go
 374	backend/internal/domain/review.go
-441	backend/internal/domain/worldstate.go
 13047	backend/internal/repository/
-431	backend/internal/repository/branch.go
 352	backend/internal/repository/editor.go
 548	backend/internal/repository/generation.go
 461	backend/internal/repository/generation_test.go
@@ -35,7 +29,6 @@
 362	backend/internal/repository/reference_test.go
 402	backend/internal/repository/series_test.go
 391	backend/internal/repository/versioning.go
-435	backend/internal/repository/world.go
 7799	backend/internal/router/
 442	backend/internal/router/brand_test.go
 383	backend/internal/router/bundle_test.go
@@ -44,8 +37,7 @@
 507	backend/internal/router/judge_test.go
 450	backend/internal/router/review_test.go
 434	backend/internal/router/take_test.go
-15199	backend/internal/service/
-333	backend/internal/service/audio.go
+15167	backend/internal/service/
 429	backend/internal/service/branch.go
 352	backend/internal/service/branch_test.go
 855	backend/internal/service/chat_test.go
@@ -58,6 +50,6 @@
 459	backend/internal/service/pipeline_test.go
 527	backend/internal/service/reshoot_test.go
 440	backend/internal/service/review.go
-2895	backend/internal/web/handler/
-2405	backend/internal/web/organisms/
+2777	backend/internal/web/handler/
+2372	backend/internal/web/organisms/
 2279	static/src/components/lib/

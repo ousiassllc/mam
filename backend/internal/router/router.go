@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/ousiassllc/mam/backend/internal/router/settingsroutes"
+	"github.com/ousiassllc/mam/backend/internal/router/voiceroutes"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/web/handler"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
@@ -25,9 +26,8 @@ type Options struct {
 }
 
 // New builds the engine. Middleware order matters: recovery and logging wrap everything; the
-// loopback guard runs before CSRF so foreign hosts get nothing, not even a token cookie.
-//
-// Routes go in pages.go (pages), actions.go (fragment actions), api.go (Huma JSON); the settings screen's in settingsroutes.
+// loopback guard runs before CSRF so foreign hosts get nothing, not even a token cookie. Routes go in pages.go (pages),
+// actions.go (fragment actions), api.go (Huma JSON); the settings screen's in settingsroutes, the reference voices' in voiceroutes.
 func New(services *service.Services, opts Options) *gin.Engine {
 	logger := opts.Logger
 	if logger == nil {
@@ -50,12 +50,12 @@ func New(services *service.Services, opts Options) *gin.Engine {
 	registerActions(engine, services)
 	registerAPI(engine, services)
 	settingsroutes.Register(engine, services, opts.Settings, logger)
+	voiceroutes.Register(engine, services)
 	return engine
 }
 
 func registerStatic(engine *gin.Engine, static fs.FS) {
-	if static == nil {
-		return
+	if static != nil {
+		engine.StaticFS(paths.StaticPrefix, httpFS(static))
 	}
-	engine.StaticFS(paths.StaticPrefix, httpFS(static))
 }

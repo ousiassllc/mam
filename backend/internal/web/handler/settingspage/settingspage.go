@@ -18,6 +18,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/media/ffmpegdl"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/appupdate"
+	"github.com/ousiassllc/mam/backend/internal/service/audiosettings"
 	"github.com/ousiassllc/mam/backend/internal/service/ffmpegsettings"
 	"github.com/ousiassllc/mam/backend/internal/service/llmassign"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
@@ -25,6 +26,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/modelsettings"
 	updatehandler "github.com/ousiassllc/mam/backend/internal/web/handler/appupdate"
 	chatgpthandler "github.com/ousiassllc/mam/backend/internal/web/handler/chatgptsettings"
+	audiohandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/audio"
 	credentialshandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/credentials"
 	ffmpeghandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/ffmpeg"
 	llmhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/llm"
@@ -50,8 +52,10 @@ type Services struct {
 	LLM         *llmassign.Service
 	Models      *modelsettings.Service
 	LocalModels *localmodels.Service
-	MCP         *mcpsettings.Service
-	FFmpeg      *ffmpegsettings.Service
+	// Audio is the choice of the voice and lip-sync providers (the "音声・口パク" category).
+	Audio  *audiosettings.Service
+	MCP    *mcpsettings.Service
+	FFmpeg *ffmpegsettings.Service
 	// FFmpegDownload is the download of ffmpeg shown in the ffmpeg category; nil leaves the download out.
 	FFmpegDownload *ffmpegdl.Service
 	Update         *appupdate.Service
@@ -92,6 +96,9 @@ func init() {
 		}},
 		{paths.SettingsLocalModels, "ローカル・代替モデル", func(s Services) bool { return s.LocalModels != nil }, func(_ *gin.Context, s Services) templ.Component {
 			return pages.SettingsLocalModelsBody(localhandler.SectionData(s.LocalModels))
+		}},
+		{paths.SettingsAudio, "音声・口パク", func(s Services) bool { return s.Audio != nil }, func(c *gin.Context, s Services) templ.Component {
+			return pages.SettingsAudioBody(audiohandler.SectionData(c.Request.Context(), s.Audio))
 		}},
 		{paths.SettingsMCP, "MCP サーバー", func(s Services) bool { return s.MCP != nil }, func(c *gin.Context, s Services) templ.Component {
 			return pages.SettingsMCPBody(mcphandler.SectionData(c.Request.Context(), s.MCP))

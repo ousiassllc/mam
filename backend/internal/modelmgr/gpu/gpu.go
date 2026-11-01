@@ -31,6 +31,9 @@ type Adapter struct {
 	VRAMBytes uint64 `json:"vram_bytes"`
 	// Software marks a software adapter (the Microsoft Basic Render Driver): never a candidate.
 	Software bool `json:"software,omitempty"`
+	// ComputeCap is the CUDA compute capability of an NVIDIA adapter (from nvidia-smi, else the name; 0: unknown). Detect fills it in:
+	// a local runtime picks the build for the GPU generation by it (spec/architecture/model-manager/local-runtime.md §4).
+	ComputeCap float64 `json:"compute_cap,omitempty"`
 }
 
 // Detector lists the display adapters of the machine.
@@ -74,7 +77,12 @@ func Detect(ctx context.Context, d Detector, caps map[string]float64, goos strin
 	if err != nil {
 		r.Error = err.Error()
 	}
-	r.Adapters = append(r.Adapters, adapters...)
+	for _, a := range adapters {
+		if a.VendorID == VendorNVIDIA {
+			a.ComputeCap, _ = capability(a, caps)
+		}
+		r.Adapters = append(r.Adapters, a)
+	}
 	r.Recommendation = Recommend(adapters, caps)
 	return r
 }

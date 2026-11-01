@@ -53,7 +53,8 @@ var loaderInputs = map[string]map[string]string{
 // consent rules and that every workflow of a model is a valid template whose loader nodes name exactly the
 // files of the model. It returns every problem found; nil means the catalog can be used.
 func Validate(c *Catalog, template func(id string) (localcfg.Template, bool)) []error {
-	errs := validateEngine(c.Engine)
+	errs := append(validateEngine(c.Engine), validateRuntimes(c)...)
+	errs = append(errs, validateResourceSets(c)...)
 	seenModel, seenWorkflow := map[string]bool{}, map[string]bool{}
 	shared := map[string]File{}
 	for _, m := range c.Models {

@@ -10,6 +10,7 @@
 | 〃 | `CatalogList`・`ConsentDialog`・`DialogClear` | モデルの一覧（1 つのモデルが 1 枚のカード `modelCard`。状態・大きさ・VRAM・ライセンス・商用可否・ファイル・導入の進捗・成人向けのバッジ・トリガー語・原本の場所）と、同意が要るモデルのライセンスのダイアログ（成人向けは注意書きも） |
 | 〃 | `AdultCard`・`AdultDialog` | 設定「成人向けモデルを表示する」（既定オフ）と、初めてオンにするときの年齢確認・注意書きのダイアログ |
 | 〃 | `TrialSection`・`TrialFormView`・`TrialList` | 試し生成のフォームと結果（動いているものは進捗、完了は画像・動画、失敗は理由） |
+| 〃（`organisms/modelmgr/runtimecard`・`weightlist`。行数の上限のため別のパッケージ） | `runtimecard.RuntimesSection`・`runtimecard.RuntimeCard`・`weightlist.List` | 区画「ローカル音声・口パク」（Issue #920。`#mm-runtimes`）。ランタイム（GPT-SoVITS・MuseTalk）ごとのカード `#mm-runtime-<id>`（状態・導入の進捗・起動・停止・自動起動・削除・この PC で使えない理由とクラウドの案内）と、重みの一覧（出典・ライセンス・商用利用のバッジ。`unclear` / `no` は琥珀色の注記とバナー）。`Data.Runtimes`（`templ.Component`）が nil なら区画ごと出さない。データは `handler/modelmgr/runtimes/data.go`（`localruntime.View` を画面の型に写す）。親のパッケージの `Notice`・`ProgressBar`・`StateBadge` などを使う |
 | 〃 | `HFCard`・`ExternalCard` | Hugging Face のトークンの状態（値は出さない）、外部の ComfyUI の確認 |
 | 〃 | `EngineWithCatalog`・`CatalogWithTrial`・`CatalogWithDialogClear`・`AdultWithCatalog` | 1 つの操作が複数の区画に及ぶときの応答（片方は `hx-swap-oob`） |
 | 〃 | `HFImportSection`・`HFResultView`・`HFModelListView`・`HFModelsWithMsgClear`・`HFModelsWithTrial`・`HFMsg` | 区画「Hugging Face から導入」（Issue #842）: 検索・URL のフォーム、ヒット・リポジトリのファイルの一覧（導入できないファイルは理由を出してフォームを出さない・ファイルごとの導入フォーム）、追加したモデルと進行中の導入（進捗・中断・削除）、導入の拒否のエラーの行 |
@@ -19,6 +20,7 @@
 - **進捗は HTMX のポーリング**: 動いているジョブのある区画（エンジンのカード・モデルの一覧・試し生成の一覧）は `hx-get` と `hx-trigger="every 2s"` を持ち、ジョブがなくなると属性が消えて止まる。取り直しの URL はジョブの ID を持ち（`?job=`・`?jobs=`）、ジョブが終わった取り直しで、結果（導入した／失敗の理由）を 1 度出す。WebSocket は使わない。
 - **操作の応答は、変えた区画だけ**（`hx-target="#mm-…"`・`outerHTML`）。導入の完了・エンジンの削除・モデルの削除は、ほかの区画（モデルの一覧・試し生成のモデルの選択肢）を `hx-swap-oob` で描き直す。
 - **破壊的な操作**（エンジンの削除・モデルの削除・導入の中断・試し生成の削除・トークンの削除）は `hx-confirm` を持つ。送信ボタンは `hx-disabled-elt` と `hx-sync="this:drop"` で二重送信を防ぐ（`double_submit_test`・`destructive_confirm_test` が検査する）。
+- **ローカル音声・口パクの区画**（Issue #920）: ルートと挙動は [endpoints-model-manager.md](../api/endpoints-model-manager.md) §3。①カードは設定の `settingsui` と同じ面（`rounded-lg border border-neutral-800 bg-neutral-900 p-4`）で、状態は文字のバッジ（色だけで伝えない）。②**商用利用のバッジ**は 3 値（可 = `BadgeOK`、不可 = `BadgeError`、**はっきりしない** = `BadgeWarn`。文言は「商用利用: 可」「商用利用: 不可」「商用利用: はっきりしません」）で、`data-commercial` にも値を持つ。③`unclear` / `no` の重みは、その行に琥珀色の枠（`role="note"`）で `notice`、重みの一覧の前に件数と名前を挙げる枠（`mm-runtime-unclear`）を出し、`<details>` を**開いた状態**で描く（閉じたままにしない）。④使えない環境の理由とクラウドの案内は `role="note"` の枠で、導入ボタンは出さない。⑤重みの導入・起動・導入は `hx-sync="this:drop"` と `hx-disabled-elt`、削除と導入の中断は `hx-confirm`。⑥出典・ライセンスのリンクは `rel="noopener noreferrer"`・`target="_blank"`（取得元は `https` だけ）。⑦新しい色は足さない。
 - **入力の長さ**は定数（`MaxTokenLen`・`MaxAspectLen`、プロンプトは `gentest.MaxPromptRunes`）で、テンプレートに数字を書かない（`maxlength_test`）。
 - **秘密を出さない**: Hugging Face のトークンは、状態（設定済みか・末尾 4 文字）だけを描く。
 - **入口**: `projects_page`（プロジェクト一覧）のリンク「モデルマネージャー」と、`global_settings_page` の見出しの下のリンク。
@@ -43,3 +45,5 @@
 | 1.5 | 2026-10-28 | モデルの一覧を、行の縦並びからカードのグリッドにした（見た目・構造・操作の位置・a11y を「モデルの一覧はカード」に書いた）。`modelRow` は `modelCard` に、`modelRowSelector` は `modelCardSelector` になった | Issue #865 |
 | 1.6 | 2026-10-28 | 各区画（ComfyUI エンジン・モデル・試し生成・Hugging Face から導入・トークン・外部の ComfyUI）の説明を、見出しの横の「?」ヘルプ（ポップオーバー）に移した（h1 の下の説明は動かさない） | Issue #866。画面の文字を減らす |
 | 1.7 | 2026-10-29 | モデルのカードに、`requires_hf_token` のモデルの「HF トークンが必要」のバッジと、トークン未設定の間の案内（トークンの区画へのリンクつき）を足した。トークンの区画の未設定の文を、ログインや同意が要るモデル（LTX-2.5）で使う、という文言に改めた | Issue #877。既存の部品・クラスだけで、見た目は変えない |
+| 1.8 | 2026-11-01 | 区画「ローカル音声・口パク」（`runtimecard.RuntimesSection`・`runtimecard.RuntimeCard`・`weightlist.List`）と、そのルールを足した（Issue #920。商用利用のバッジ・`unclear` の注記とバナー・使えない環境の理由とクラウドの案内） | 重み・依存ファイルの出典とライセンスを画面に出す決定事項 |
+| 1.9 | 2026-11-01 | 区画「ローカル音声・口パク」に MuseTalk 1.5 のカードが出ることを書いた。macOS・非 NVIDIA・VRAM 不足・RTX 50 シリーズでは、理由の文と「代わりに、クラウドの口パク（Sync Labs）を使ってください。」の案内が出る。重みの一覧に、MuseTalk の 12 件（出典・ライセンス・商用利用。`unclear` の 4 件は琥珀色の注記）が出る。画面の部品・ルートは変えていない（カタログのデータだけ）。意味は [local-runtime.md §13](../architecture/model-manager/local-runtime.md) | Issue #921 |

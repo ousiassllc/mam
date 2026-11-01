@@ -1,0 +1,91 @@
+package weightlist
+
+import (
+	"strconv"
+	"strings"
+
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+)
+
+func itoa(n int) string { return strconv.Itoa(n) }
+
+// joinNames lists names in a sentence.
+func joinNames(names []string) string { return strings.Join(names, "、") }
+
+func commercialBadge(c string) (atoms.BadgeTone, string) {
+	switch c {
+	case Yes:
+		return atoms.BadgeOK, "商用利用: 可"
+	case No:
+		return atoms.BadgeError, "商用利用: 不可"
+	}
+	return atoms.BadgeWarn, "商用利用: はっきりしません"
+}
+
+func assetStateBadge(state string) (atoms.BadgeTone, string) {
+	switch state {
+	case "ok":
+		return atoms.BadgeOK, "あり"
+	case "unverified":
+		return atoms.BadgeInfo, "未確認"
+	}
+	return atoms.BadgeWarn, "なし"
+}
+
+// List lists the weights and dependencies of a runtime with where each comes from and its license. A weight whose commercial use is
+// not clear is said before the list (an amber note, not behind the fold) and in its own row.
+templ List(w Weights) {
+	if len(w.Unclear) > 0 {
+		<div class="flex flex-col gap-1 rounded-md border border-amber-500/60 bg-amber-500/10 p-3 text-sm text-amber-300" role="note" data-testid="mm-runtime-unclear">
+			<p class="font-semibold">商用利用がはっきりしない重み・依存ファイルが { itoa(len(w.Unclear)) } 件あります</p>
+			<p>{ joinNames(w.Unclear) }</p>
+			<p class="text-xs">配布元の表示では商用で使ってよいか確かめられていません。商用の動画に使う前に、下の一覧の注意書きと配布元を確認してください。</p>
+		</div>
+	}
+	<details
+		class="text-xs text-neutral-300"
+		data-testid="mm-runtime-weights"
+		if len(w.Unclear) > 0 {
+			open
+		}
+	>
+		<summary class="cursor-pointer text-neutral-400">重み・依存ファイルと出典・ライセンス（{ itoa(len(w.Assets)) } 件、{ w.Total }）</summary>
+		<ul class="mt-2 flex flex-col gap-3" role="list" data-testid="mm-runtime-assets">
+			for _, a := range w.Assets {
+				@item(a)
+			}
+		</ul>
+	</details>
+}
+
+templ item(a Asset) {
+	{{ stTone, stLabel := assetStateBadge(a.State) }}
+	{{ cTone, cLabel := commercialBadge(a.License.Commercial) }}
+	<li class="flex flex-col gap-1 rounded-md border border-neutral-800 bg-neutral-900 p-3" data-testid="mm-runtime-asset" data-commercial={ a.License.Commercial } data-state={ a.State }>
+		<div class="flex flex-wrap items-center gap-2">
+			<span class="font-semibold text-neutral-100">{ a.Name }</span>
+			if !a.Required {
+				@atoms.Badge(atoms.BadgeNeutral, "任意")
+			}
+			@atoms.Badge(stTone, stLabel)
+			<span class="text-neutral-400">{ a.Size }</span>
+		</div>
+		<p class="break-words text-neutral-400">{ a.Description }</p>
+		<p class="break-words">
+			出典:
+			<a class="underline" href={ templ.SafeURL(a.SourceURL) } target="_blank" rel="noopener noreferrer">{ a.SourceName }</a>
+		</p>
+		if a.SourceNote != "" {
+			<p class="break-words text-neutral-400" data-testid="mm-runtime-source-note">{ a.SourceNote }</p>
+		}
+		<p class="flex flex-wrap items-center gap-2 break-words">
+			ライセンス:
+			<a class="underline" href={ templ.SafeURL(a.License.URL) } target="_blank" rel="noopener noreferrer">{ a.License.Name }</a>
+			@atoms.BadgeWith(cTone, cLabel, templ.Attributes{"data-testid": "mm-runtime-commercial"})
+		</p>
+		<p class="break-words text-neutral-400">{ a.License.Summary }</p>
+		if a.License.Commercial != Yes {
+			<p class="break-words rounded-md border border-amber-500/60 bg-amber-500/10 p-2 text-amber-300" role="note" data-testid="mm-runtime-asset-notice">{ a.License.Notice }</p>
+		}
+	</li>
+}
