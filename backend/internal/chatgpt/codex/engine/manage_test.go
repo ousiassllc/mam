@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex/engine"
@@ -115,5 +116,31 @@ func TestCheckWritableReportsAReadOnlyPlace(t *testing.T) {
 	}
 	if got := engine.ForExecutable(filepath.Join("x", "mam.exe")).Root; got != filepath.Join("x", "codex") {
 		t.Errorf("ForExecutable = %q", got)
+	}
+}
+
+// TestForPlacesTheEngineByOS: Windows keeps the engine next to mam.exe (the uninstaller removes it with the install
+// directory); macOS puts it in the data directory, because the executable is inside MAM.app, which the auto-update
+// replaces as a whole.
+func TestForPlacesTheEngineByOS(t *testing.T) {
+	exe := filepath.Join("Applications", "MAM.app", "Contents", "MacOS", "mam")
+	data := t.TempDir()
+	if got, want := engine.For("darwin", exe, data).Root, filepath.Join(data, "codex"); got != want {
+		t.Errorf("darwin: Root = %q, want %q", got, want)
+	}
+	if got := engine.For("darwin", exe, data).Root; strings.Contains(got, ".app") {
+		t.Errorf("darwin: %q is inside the .app bundle", got)
+	}
+	for _, goos := range []string{"windows", "linux"} {
+		if got, want := engine.For(goos, filepath.Join("x", "mam.exe"), data).Root, filepath.Join("x", "codex"); got != want {
+			t.Errorf("%s: Root = %q, want %q", goos, got, want)
+		}
+	}
+	if root := engine.For("darwin", exe, "").Root; root != "" {
+		t.Errorf("darwin without a data directory: Root = %q, want none (the download stays off)", root)
+	}
+	rel := engine.For("darwin", exe, "data").Root
+	if !filepath.IsAbs(rel) || filepath.Base(rel) != "codex" {
+		t.Errorf("a relative data directory gives %q, want an absolute path", rel)
 	}
 }

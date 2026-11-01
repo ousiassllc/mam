@@ -112,14 +112,14 @@ templ codexEngine(c Codex) {
 			if c.Engine.Supported && c.Engine.Source != "custom" && (c.Engine.State == "not_installed" || c.Engine.UpdateAvailable) {
 				<form hx-post={ paths.ChatGPTCodexInstall() } hx-target={ panelTarget } hx-swap="outerHTML" hx-sync="this:drop" hx-params="none" hx-disabled-elt="find button[type=submit]">
 					<p class="mb-2 text-xs text-neutral-400">
-						初回は Codex の実行ファイルを OpenAI の公式のリリース（GitHub）からダウンロードします（約 90 MB。展開後は約 270 MB。SHA-256 とサイズを確かめます。Apache-2.0）。mam の実行ファイルと同じ場所の codex ディレクトリに置きます。
+						初回は Codex の実行ファイルを OpenAI の公式のリリース（GitHub）からダウンロードします（{ downloadNotice(c.Engine) }SHA-256 とサイズを確かめます。Apache-2.0）。置き場所は { c.Engine.Dir } です。
 					</p>
 					@atoms.SmallButtonFor(atoms.TonePrimary, "Codex をダウンロード", codexTitle, templ.Attributes{"type": "submit", "data-testid": "chatgpt-codex-install-button"})
 				</form>
 			}
 		}
 		if !c.Engine.Supported {
-			<p class="text-xs text-neutral-400" data-testid="chatgpt-codex-unsupported">この環境では取得できません（取得は Windows 版だけです）。自分で入れた codex の実行ファイルのパスを指定してください。</p>
+			<p class="text-xs text-neutral-400" data-testid="chatgpt-codex-unsupported">この環境では取得できません（取得できるのは Windows 版と macOS 版（Apple Silicon）だけです）。自分で入れた codex の実行ファイルのパスを指定してください。</p>
 		}
 		@codexPathForm(c)
 	</div>

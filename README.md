@@ -35,13 +35,13 @@ AI Video Production Agent。企画・脚本・演出・撮影・品質判定・�
 ChatGPT Business / Enterprise / Edu のワークスペースアカウントでは、「Sign in with ChatGPT」で他のアプリからプランを使えません（OpenAI の仕様で、プランを使えるのは個人の Go / Plus / Pro だけです）。組織の Admin Console の「外部アクセス」にも、これを許可する設定はありません。
 
 1. 設定画面の「ChatGPT でログイン」で、方式を「Codex 経由」に切り替えます
-2. 初回は Codex の実行ファイルをダウンロードします（約 90 MB。`mam.exe` と同じ場所の `codex` フォルダに置きます）
+2. 初回は Codex の実行ファイルをダウンロードします（約 80〜90 MB。Windows 版は `mam.exe` と同じ場所の `codex` フォルダに、macOS 版（Apple Silicon）は `~/Library/Application Support/mam/codex` に置きます。`MAM.app` の中には置かないので、自動更新で消えません。Windows 版と macOS 版だけです。ほかの環境では自分で入れた `codex` のパスを指定します）
 3. 「ブラウザでログイン」か「デバイスコードでログイン」で、組織のアカウントにログインします
 4. 「LLM の割り当て」で、使う Agent のプロバイダーを `chatgpt-codex` にします
 
 使うには、ワークスペースの所有者が「Codex をローカルで使う」権限（Codex Local）をメンバーに許可している必要があります。デバイスコードでログインするには、デバイスコードのログインも許可されている必要があります。この方式はワークスペースの Codex の利用上限を使います。また、ローカル・オープンソースでの利用のためのもので、MAM をサーバーで動かして他の人に提供する用途には使えません。テキスト生成だけで、画像・動画・音声の生成には使いません。
 
-Codex のログイン情報は、MAM 専用の `CODEX_HOME`（`%AppData%\mam\codex-home`。あなたの `~/.codex` とは混ざりません）と、Windows の資格情報マネージャーに Codex が保存します。MAM は読みません。アンインストールしても、`%AppData%\mam` と資格情報マネージャーの項目は残る場合があります（アンインストールの動作は Windows 実機では未確認です）。アンインストールの前に、設定画面で「ログアウト」（「取得した Codex 本体と mam 専用の CODEX_HOME も削除する」にチェック）をしてください。
+Codex のログイン情報は、MAM 専用の `CODEX_HOME`（Windows は `%AppData%\mam\codex-home`、macOS は `~/Library/Application Support/mam/codex-home`。あなたの `~/.codex` とは混ざりません）と、OS の資格情報の保管庫（Windows の資格情報マネージャー、macOS のキーチェーン）に Codex が保存します。MAM は読みません。アンインストールしても、`%AppData%\mam` と資格情報マネージャーの項目は残る場合があります（アンインストールの動作は Windows 実機では未確認です）。アンインストールの前に、設定画面で「ログアウト」（「取得した Codex 本体と mam 専用の CODEX_HOME も削除する」にチェック）をしてください。
 
 ### ffmpeg を PATH に入れる
 
@@ -64,7 +64,7 @@ ffmpeg は同梱していません。無くても起動はできますが、Judg
 
 自動更新は Windows 版と同じです（起動時と 6 時間ごとに確認し、SHA-256 と ed25519 署名を検証し、作業中でないときにアプリを終了して `MAM.app` を入れ替え、新しい版で起動し直します）。`/Applications` など自分が書き込めるフォルダにある `MAM.app` だけが更新されます。
 
-macOS 版でまだ使えないもの: 同梱の ComfyUI エンジンの導入（別に動かしている ComfyUI の URL を設定すれば使えます）、Codex 本体の取得（自分で入れた `codex` のパスを指定してください）。ffmpeg は同梱していません（次の節）。
+macOS 版でまだ使えないもの: 同梱の ComfyUI エンジンの導入（別に動かしている ComfyUI の URL を設定すれば使えます）。ffmpeg は同梱していません（次の節）。
 
 ### macOS で ffmpeg を入れる
 

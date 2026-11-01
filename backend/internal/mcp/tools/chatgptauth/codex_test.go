@@ -123,9 +123,9 @@ func TestCodexInstall_IsRefusedWhereTheDownloadIsNotAvailable(t *testing.T) {
 func TestCodexInstall_FailureIsReadThroughGetJob(t *testing.T) {
 	f, _ := newCodexFixture(t, func(co *codex.Options) {
 		c := catalog.Default()
-		a := c.Assets["amd64"]
+		a := c.Assets["windows/amd64"]
 		a.URL = "http://127.0.0.1:1/never" // nothing listens there
-		c.Assets = map[string]catalog.Asset{"amd64": a}
+		c.Assets = map[string]catalog.Asset{"windows/amd64": a}
 		co.Platform, co.Arch, co.Catalog = "windows", "amd64", c
 		co.Layout = engine.Layout{Root: filepath.Join(t.TempDir(), "codex")}
 		co.Fetch = fetch.Options{CheckURL: func(*url.URL) error { return nil }}

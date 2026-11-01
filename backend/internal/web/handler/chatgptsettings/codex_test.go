@@ -16,6 +16,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex"
 	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex/appserver"
 	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex/codextest"
+	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex/engine"
 	"github.com/ousiassllc/mam/backend/internal/chatgpt/codex/protocol"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -55,7 +56,7 @@ func TestChatGPTCodex_TheCodexCardShowsTheTermsAndTheEngineAmongTheOtherCards(t 
 	body := s.panel()
 	assert.Contains(t, body, "商用・ホスティング")
 	assert.Contains(t, body, `data-testid="chatgpt-codex-engine"`)
-	assert.Contains(t, body, `data-testid="chatgpt-codex-unsupported"`, "the download is for Windows; here only a path")
+	assert.Contains(t, body, `data-testid="chatgpt-codex-unsupported"`, "no download on this platform; here only a path")
 	assert.Contains(t, body, `data-testid="chatgpt-codex-path"`)
 	assert.NotContains(t, body, `data-testid="chatgpt-codex-install-button"`)
 	assert.NotContains(t, body, `data-testid="chatgpt-login-codex"`, "no login before there is an engine")
@@ -67,7 +68,46 @@ func TestChatGPTCodex_InstallIsRefusedWhereTheDownloadIsNotAvailable(t *testing.
 	rec := s.act(http.MethodPost, paths.ChatGPTCodexInstall(), nil)
 	assert.Equal(t, http.StatusConflict, rec.Code)
 	assert.Contains(t, rec.Body.String(), "ダウンロードできません")
+	assert.Contains(t, rec.Body.String(), "Windows 版と macOS 版（Apple Silicon）だけ", "the refusal names the platforms that can download")
+	assert.NotContains(t, rec.Body.String(), "Windows 版だけです")
 	assert.Equal(t, http.StatusOK, s.act(http.MethodPost, paths.ChatGPTCodexInstallCancel(), nil).Code)
+}
+
+// On macOS (Apple Silicon) the download is offered like on Windows, and a place that cannot be written to is named in the refusal.
+func TestChatGPTCodex_TheDownloadIsOfferedOnMacOSArm64AndAnUnwritablePlaceIsNamed(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "afile")
+	require.NoError(t, os.WriteFile(file, nil, 0o600))
+	root := filepath.Join(file, "codex") // below a file: cannot be created
+	s := newScreen(t, true, func(o *chatgpt.Options) {
+		o.Codex = func(co *codex.Options) {
+			co.Platform, co.Arch, co.Layout = "darwin", "arm64", engine.Layout{Root: root}
+		}
+	})
+	body := s.panel()
+	assert.Contains(t, body, `data-testid="chatgpt-codex-install-button"`)
+	assert.NotContains(t, body, `data-testid="chatgpt-codex-unsupported"`)
+	assert.Contains(t, body, "約 79 MB。展開後は約 201 MB。")
+	assert.Contains(t, body, "置き場所は "+root)
+
+	rec := s.act(http.MethodPost, paths.ChatGPTCodexInstall(), nil)
+	assert.Equal(t, http.StatusConflict, rec.Code)
+	assert.Contains(t, rec.Body.String(), "書き込めません")
+	assert.Contains(t, rec.Body.String(), root)
+}
+
+// An Intel Mac has no build to download: the screen says so and offers only the path.
+func TestChatGPTCodex_NoDownloadOnMacOSIntel(t *testing.T) {
+	s := newScreen(t, true, func(o *chatgpt.Options) {
+		o.Codex = func(co *codex.Options) {
+			co.Platform, co.Arch, co.Layout = "darwin", "amd64", engine.Layout{Root: filepath.Join(t.TempDir(), "codex")}
+		}
+	})
+	body := s.panel()
+	assert.Contains(t, body, `data-testid="chatgpt-codex-unsupported"`)
+	assert.NotContains(t, body, `data-testid="chatgpt-codex-install-button"`)
+	rec := s.act(http.MethodPost, paths.ChatGPTCodexInstall(), nil)
+	assert.Equal(t, http.StatusConflict, rec.Code)
+	assert.Contains(t, rec.Body.String(), "ダウンロードできません")
 }
 
 func TestChatGPTCodex_ThePathNeedsAFileAndCanBeCleared(t *testing.T) {
