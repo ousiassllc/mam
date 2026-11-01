@@ -64,6 +64,7 @@ type Rig struct {
 	pinned    bool
 	authHost  string
 	hfBase    string
+	retry     fetch.Retry
 }
 
 // Option changes the Deps (and the Rig) before the Service is made.
@@ -86,6 +87,9 @@ func HFAuth() Option { return func(_ *modelmanager.Deps, r *Rig) { r.authHost = 
 // fails, limits or is gone is told to the user). The file URLs of the models stay as they were made.
 func HFBase(base string) Option { return func(_ *modelmanager.Deps, r *Rig) { r.hfBase = base } }
 
+// FetchRetry sets how a download resumes after a lost connection (the default of the rig waits a few milliseconds, at most six transfers).
+func FetchRetry(rt fetch.Retry) Option { return func(_ *modelmanager.Deps, r *Rig) { r.retry = rt } }
+
 // NotWindows makes the Service one of an OS without the bundled engine.
 func NotWindows() Option { return func(d *modelmanager.Deps, _ *Rig) { d.Platform = "linux" } }
 
@@ -97,6 +101,7 @@ func New(t *testing.T, opts ...Option) *Rig {
 	r := &Rig{T: t, Host: host, HF: hftest.New(t), Keys: credentialtest.New(), DataDir: t.TempDir()}
 	r.Layout = store.Layout{Root: filepath.Join(t.TempDir(), "install", "comfyui")}
 	r.Free = func(string) (uint64, error) { return 1 << 40, nil }
+	r.retry = fetch.Retry{Backoff: time.Millisecond, MaxBackoff: 5 * time.Millisecond}
 	r.GPUReport = gpu.Report{Recommendation: gpu.Recommendation{Variant: catalog.VariantNVIDIA, Confidence: "high", Reason: "test GPU"}}
 
 	d := modelmanager.Deps{
@@ -142,6 +147,7 @@ func New(t *testing.T, opts ...Option) *Rig {
 	d.GPU = func(context.Context) gpu.Report { return r.GPUReport }
 	d.Fetch = fetch.Options{CheckURL: anyURL, Client: fetch.WithRedirectRules(&http.Client{}, anyURL, r.authHost)}
 	d.Fetch.AuthHost = r.authHost
+	d.Fetch.Retry = r.retry
 	d.HFBase = r.HF.URL
 	if r.hfBase != "" {
 		d.HFBase = r.hfBase

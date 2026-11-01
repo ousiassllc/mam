@@ -53,6 +53,34 @@ type Host struct {
 	archive []byte
 	n       int
 	holds   map[string]*Hold
+	drops   map[string]*drop
+}
+
+// drop cuts the connection of the next times requests for a path after bytes of the body went out.
+type drop struct{ bytes, times int }
+
+// Drop makes the host cut the connection of the next times requests for the file after bytes of the body were sent (a
+// Hugging Face CDN that resets the connection of a long download): the client keeps a part file and has to resume it.
+func (h *Host) Drop(f File, bytes, times int) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.drops["/"+f.Folder+"/"+f.Name] = &drop{bytes: bytes, times: times}
+}
+
+// cutWriter ends the connection (the handler aborts) once limit bytes of the body were written.
+type cutWriter struct {
+	http.ResponseWriter
+	limit int
+}
+
+func (c *cutWriter) Write(p []byte) (int, error) {
+	if len(p) < c.limit {
+		c.limit -= len(p)
+		return c.ResponseWriter.Write(p)
+	}
+	_, _ = c.ResponseWriter.Write(p[:c.limit])
+	c.ResponseWriter.(http.Flusher).Flush()
+	panic(http.ErrAbortHandler) // closes the connection with the body unfinished
 }
 
 // Gone makes the host answer 404 for the file from now on: the mirror of a third party was deleted.
@@ -83,7 +111,7 @@ func archivePath() string {
 
 func newHost(t *testing.T) *Host {
 	t.Helper()
-	h := &Host{files: map[string]File{}, holds: map[string]*Hold{}}
+	h := &Host{files: map[string]File{}, holds: map[string]*Hold{}, drops: map[string]*drop{}}
 	var err error
 	h.archive, err = os.ReadFile(archivePath())
 	require.NoError(t, err)
@@ -95,6 +123,11 @@ func newHost(t *testing.T) *Host {
 		h.n++
 		f, ok := h.files[r.URL.Path]
 		hold := h.holds[r.URL.Path]
+		out := w
+		if d := h.drops[r.URL.Path]; d != nil && d.times > 0 {
+			d.times--
+			out = &cutWriter{ResponseWriter: w, limit: d.bytes}
+		}
 		h.mu.Unlock()
 		if hold != nil {
 			hold.wait(r)
@@ -107,7 +140,7 @@ func newHost(t *testing.T) *Host {
 			http.NotFound(w, r)
 			return
 		}
-		http.ServeContent(w, r, "f", time.Time{}, strings.NewReader(string(body)))
+		http.ServeContent(out, r, "f", time.Time{}, strings.NewReader(string(body)))
 	}))
 	t.Cleanup(h.Close)
 	return h

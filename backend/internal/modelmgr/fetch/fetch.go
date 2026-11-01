@@ -49,11 +49,16 @@ type Options struct {
 	Progress Progress
 	// IdleTimeout aborts a transfer that delivers no byte for this long (default 60 s).
 	IdleTimeout time.Duration
+	// Retry bounds the automatic resume after a lost connection. The zero value resumes up to five times.
+	Retry Retry
+	// OnRetry is told before a download is resumed (it must not block; ctx belongs to the download). Nil: nothing.
+	OnRetry func(ctx context.Context, e RetryEvent)
 }
 
 // Failures of a download. A wrapped *HTTPError, ErrChecksum, ErrSize and *NoSpaceError are definitive (the part
 // file is gone, running it again will not help without a change); the others (network, cancel) keep the part
-// file so the next run resumes.
+// file so the next run resumes. A broken connection is resumed by Download itself (Options.Retry); what is returned
+// after the last transfer is a *ConnectionLostError.
 var (
 	// ErrChecksum: the content has another SHA-256 than the catalog pinned. The part file was removed.
 	ErrChecksum = errors.New("fetch: sha256 mismatch")
@@ -138,7 +143,7 @@ func Download(ctx context.Context, dest string, src Source, o Options) error {
 	if err := os.MkdirAll(dirOf(dest), 0o750); err != nil {
 		return fmt.Errorf("fetch: create %s: %w", dirOf(dest), err)
 	}
-	err = transfer(ctx, part, have, src, o)
+	err = transferResuming(ctx, dest, part, have, src, o)
 	var he *HTTPError
 	switch {
 	case errors.Is(err, ErrChecksum), errors.Is(err, ErrSize), errors.As(err, &he) && he.Definitive():
@@ -219,6 +224,7 @@ func transfer(ctx context.Context, part string, have int64, src Source, o Option
 	if err := o.check()(u); err != nil {
 		return err
 	}
+	parent := ctx
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, src.URL, nil)
@@ -249,45 +255,9 @@ func transfer(ctx context.Context, part string, have int64, src Source, o Option
 	if !resumed {
 		have = 0
 	}
-	return write(ctx, cancel, part, have, res.Body, src, o)
-}
-
-var errRestart = errors.New("restart")
-
-// accept decides what the answer is: a 206 that continues at have is appended; a 200 is the whole file again;
-// a 416 means the part file is unusable.
-func accept(res *http.Response, have int64, src Source) (resumed bool, err error) {
-	switch res.StatusCode {
-	case http.StatusPartialContent:
-		start, ok := rangeStart(res.Header.Get("Content-Range"))
-		if !ok || start != have {
-			return false, fmt.Errorf("fetch: the server continued at the wrong offset (%q)", res.Header.Get("Content-Range"))
-		}
-		return true, nil
-	case http.StatusOK:
-		return false, nil
-	case http.StatusRequestedRangeNotSatisfiable:
-		if have > 0 {
-			return false, errRestart
-		}
+	err = write(ctx, cancel, part, have, res.Body, src, o)
+	if errors.Is(err, context.Canceled) && parent.Err() == nil { // only the idle watchdog cancels the transfer's own context
+		return ErrStalled
 	}
-	return false, &HTTPError{Status: res.StatusCode, URL: redact(res.Request, src.URL)}
-}
-
-func redact(req *http.Request, fallback string) string {
-	if req != nil && req.URL != nil {
-		return req.URL.Scheme + "://" + req.URL.Host + req.URL.Path
-	}
-	return fallback
-}
-
-// rangeStart is the first byte of a Content-Range value "bytes 100-199/200".
-func rangeStart(v string) (int64, bool) {
-	rest, ok := strings.CutPrefix(v, "bytes ")
-	if !ok {
-		return 0, false
-	}
-	first, _, _ := strings.Cut(rest, "-")
-	n, err := strconv.ParseInt(first, 10, 64)
-	return n, err == nil
+	return err
 }
