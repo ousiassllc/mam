@@ -14,12 +14,7 @@ import (
 
 func (r *rig) waitJob(t *testing.T, id string) mcpkit.JobStatus {
 	t.Helper()
-	var st mcpkit.JobStatus
-	require.Eventually(t, func() bool {
-		r.CallOK("get_job", map[string]any{"job_id": id}, &st)
-		return st.State.Final()
-	}, 15*time.Second, 10*time.Millisecond, "the job never finished (last: %+v)", st)
-	return st
+	return r.WaitJob(id, 15*time.Second, 10*time.Millisecond, "the job never finished")
 }
 
 func TestRunWorkflowReturnsAJobAndATokenURLForTheResult(t *testing.T) {

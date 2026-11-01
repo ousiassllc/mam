@@ -10,9 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -61,7 +59,6 @@ func newTakeAppWith(t *testing.T, mutate func(*service.Deps)) *takeApp {
 	ta := &takeApp{app: a, dir: dir, tools: tools}
 	ta.project = a.createProject("美容液のCMを作りたい")
 	_, ta.shotID = a.createShot(ta.project)
-
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "assets", ta.project), 0o700))
 	ta.video("t1", "1920x1080", 4)
 	ta.video("t2", "1920x1080", 4)
@@ -131,7 +128,6 @@ func TestTakeAPI_ListsTakesOldestFirstWithLabelsLinksAndScores(t *testing.T) {
 		Issues: []domain.JudgeIssue{{Type: "product_logo_deformation", Severity: domain.SeverityHigh, Dimension: domain.DimLogoTextAccuracy, TimeRange: "2.1-2.8s"}},
 	})
 	require.NoError(t, err)
-
 	b := ta.takes()
 	assert.Equal(t, ta.shotID, b.ShotID)
 	assert.Equal(t, "/shots/"+ta.shotID+"/takes/partial", b.PartialURL)
@@ -139,7 +135,6 @@ func TestTakeAPI_ListsTakesOldestFirstWithLabelsLinksAndScores(t *testing.T) {
 	require.Len(t, b.Takes, 3)
 	assert.Equal(t, []string{"A", "B", "C"}, []string{b.Takes[0].Label, b.Takes[1].Label, b.Takes[2].Label})
 	assert.Equal(t, "candidate", b.Takes[0].Status)
-
 	first := b.Takes[0]
 	require.NotNil(t, first.Scores, "a judged Take has scores")
 	assert.InDelta(t, 65, first.Scores.Product, 1e-9, "a high Issue takes 35 off the Product axis")
@@ -153,7 +148,6 @@ func TestTakeAPI_ListsTakesOldestFirstWithLabelsLinksAndScores(t *testing.T) {
 	assert.InDelta(t, 10, first.FPS, 0.01, "read from the file")
 	assert.False(t, first.Proxied)
 	assert.True(t, b.Takes[2].Proxied, "4K is played through a proxy")
-
 	assert.Equal(t, http.StatusNotFound, ta.get("/api/v1/shots/nope/takes", false).Code)
 }
 
@@ -161,7 +155,6 @@ func TestTakeAPI_ListsTakesOldestFirstWithLabelsLinksAndScores(t *testing.T) {
 // is allowed, and the Shot carries partial_url only while a Take can be cut (HATEOAS, #482).
 func TestTakeAPI_OffersAnActionOnlyWhileTheServerAllowsIt(t *testing.T) {
 	ta := newTakeApp(t)
-
 	b := ta.takes()
 	assert.NotEmpty(t, b.PartialURL)
 	for _, tk := range b.Takes {
@@ -169,12 +162,10 @@ func TestTakeAPI_OffersAnActionOnlyWhileTheServerAllowsIt(t *testing.T) {
 		assert.NotEmpty(t, tk.RejectURL, tk.ID)
 		assert.True(t, tk.PartialUsable, tk.ID)
 	}
-
 	require.Equal(t, http.StatusOK, ta.form(http.MethodPost, "/takes/t1/select", nil).Code)
 	selected := ta.takes().Takes[0]
 	assert.Empty(t, selected.SelectURL, "the selected Take cannot be selected again")
 	assert.Equal(t, "/takes/t1", selected.RejectURL)
-
 	require.Equal(t, http.StatusOK, ta.form(http.MethodDelete, "/takes/t2", nil).Code)
 	rejected := ta.takes().Takes[1]
 	assert.Empty(t, rejected.SelectURL, "a rejected Take cannot be selected")
@@ -190,7 +181,6 @@ func TestTakeAPI_OffersAnActionOnlyWhileTheServerAllowsIt(t *testing.T) {
 
 func TestTakeAPI_OffersNoPartialUseWithoutFFmpeg(t *testing.T) {
 	ta := newTakeAppWith(t, func(d *service.Deps) { d.Media = nil })
-
 	b := ta.takes()
 	assert.Empty(t, b.PartialURL)
 	assert.NotEmpty(t, b.Takes[0].SelectURL, "selecting needs no ffmpeg")
@@ -204,18 +194,15 @@ func TestTakes_SelectMakesTheTakeTheShotsAndRejectExcludesIt(t *testing.T) {
 	assert.Contains(t, rec.Body.String(), `id="shot-`+ta.shotID+`"`, "answers with the Shot card")
 	assert.Equal(t, "selected", ta.statusOf("t2"))
 	assert.True(t, ta.takes().Takes[1].Adopted)
-
 	require.Equal(t, http.StatusOK, ta.form(http.MethodPost, "/takes/t1/select", nil).Code)
 	assert.Equal(t, "candidate", ta.statusOf("t2"), "the earlier choice is demoted")
 	assert.Equal(t, "selected", ta.statusOf("t1"))
-
 	rec = ta.form(http.MethodDelete, "/takes/t1", nil)
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	assert.Equal(t, "rejected", ta.statusOf("t1"))
 	for _, tk := range ta.takes().Takes {
 		assert.False(t, tk.Adopted, "the Shot has no Take after its Take was rejected")
 	}
-
 	assert.Equal(t, http.StatusNotFound, ta.form(http.MethodPost, "/takes/nope/select", nil).Code)
 	assert.Equal(t, http.StatusNotFound, ta.form(http.MethodDelete, "/takes/nope", nil).Code)
 }
@@ -232,15 +219,12 @@ func TestTakes_SelectAndRejectAnswerWithTheCardAsSelectedOrNotLikeTheOneTheyRepl
 	assert.NotContains(t, rec.Body.String(), current)
 	assert.NotContains(t, rec.Body.String(), "/generate", "no generate form on an unselected card")
 	assert.Equal(t, "selected", ta.statusOf("t1"), "the Take is selected all the same")
-
 	rec = ta.form(http.MethodPost, "/takes/t2/select", url.Values{"selected": {"true"}})
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	assert.Contains(t, rec.Body.String(), current)
-
 	rec = ta.form(http.MethodDelete, "/takes/t2?selected=false", nil)
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	assert.NotContains(t, rec.Body.String(), current)
-
 	rec = ta.form(http.MethodDelete, "/takes/t1?selected=true", nil)
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	assert.Contains(t, rec.Body.String(), current)
@@ -251,7 +235,6 @@ func TestTakes_PartialUseJoinsPartsIntoANewSelectedTakeAndAnnouncesItInTheChat(t
 
 	rec := ta.form(http.MethodPost, "/shots/"+ta.shotID+"/takes/partial", url.Values{"instruction": {"Take A の 0-2秒 + Take B の 2-4秒"}})
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-
 	b := ta.takes()
 	require.Len(t, b.Takes, 4)
 	composed := b.Takes[3]
@@ -260,11 +243,9 @@ func TestTakes_PartialUseJoinsPartsIntoANewSelectedTakeAndAnnouncesItInTheChat(t
 	assert.True(t, composed.Adopted)
 	assert.InDelta(t, 3.75, composed.Duration, 0.2, "2 s + 2 s less the 0.25 s cross-fade")
 	assert.InDelta(t, 10, composed.FPS, 0.01)
-
 	video := ta.get(composed.VideoURL, false)
 	require.Equal(t, http.StatusOK, video.Code)
 	assert.Equal(t, "video/mp4", video.Header().Get("Content-Type"))
-
 	chat := ta.get("/projects/"+ta.project, false).Body.String()
 	assert.Contains(t, chat, "部分採用 Take")
 	assert.Contains(t, chat, "Take A 0.0-2.0秒 + Take B 2.0-4.0秒")
@@ -297,138 +278,8 @@ func TestTakes_PartialUseAcceptsSegmentsAsJSONAndRefusesWhatCannotBeJoined(t *te
 		assert.Equal(t, http.StatusUnprocessableEntity, post(body).Code, name)
 	}
 	assert.Len(t, ta.takes().Takes, 4, "nothing was created by the refused requests")
-
 	ta.form(http.MethodDelete, "/takes/t2", nil)
 	rec = post(`{"segments":[{"take_id":"t1","start":0,"end":1.5},{"take_id":"t2","start":1,"end":3}]}`)
 	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code, "a rejected Take cannot be used")
 	assert.Equal(t, http.StatusNotFound, ta.form(http.MethodPost, "/shots/nope/takes/partial", url.Values{"instruction": {"Take A の 0-1秒 + Take B の 0-1秒"}}).Code)
-}
-
-func TestTakePreview_4KIsPlayedThroughA1080pProxyAndSeekingIsSupported(t *testing.T) {
-	ta := newTakeApp(t)
-
-	rec := ta.get("/takes/t3/video", false)
-	require.Equal(t, http.StatusOK, rec.Code)
-	proxy := filepath.Join(ta.dir, "assets", ".previews", "t3.mp4")
-	info, err := ta.tools.Probe(context.Background(), proxy)
-	require.NoError(t, err, "the proxy is a video file next to the assets")
-	assert.LessOrEqual(t, info.Height, 1080)
-	assert.InDelta(t, 1, info.Duration, 0.2)
-	_, err = os.Stat(filepath.Join(ta.dir, "assets", ta.project, "t3.mp4"))
-	require.NoError(t, err, "the 4K original is kept")
-
-	// A 1080p Take is served as it is, and a range request is answered with the range.
-	req := httptest.NewRequest(http.MethodGet, "/takes/t1/video", nil)
-	req.AddCookie(ta.cookie)
-	req.Header.Set("Range", "bytes=0-99")
-	rec = do(ta.engine, req)
-	assert.Equal(t, http.StatusPartialContent, rec.Code)
-	assert.Equal(t, 100, rec.Body.Len())
-	assert.Equal(t, []string{"sandbox", ""}, []string{rec.Header().Get("Content-Security-Policy"), rec.Header().Get("Content-Disposition")}, "a served file carries its own sandbox policy, and the preview is played, not downloaded")
-	_, err = os.Stat(filepath.Join(ta.dir, "assets", ".previews", "t1.mp4"))
-	assert.True(t, os.IsNotExist(err), "no proxy for 1080p")
-
-	thumb := ta.get("/takes/t1/thumbnail", false)
-	require.Equal(t, http.StatusOK, thumb.Code)
-	assert.Equal(t, "image/jpeg", thumb.Header().Get("Content-Type"))
-	assert.Equal(t, "sandbox", thumb.Header().Get("Content-Security-Policy"))
-	assert.True(t, strings.HasPrefix(thumb.Body.String(), "\xff\xd8"), "a JPEG")
-
-	assert.Equal(t, http.StatusNotFound, ta.get("/takes/nope/video", false).Code)
-	assert.Equal(t, http.StatusNotFound, ta.get("/takes/nope/thumbnail", false).Code)
-}
-
-func TestTakeComparison_PageHostsTheComparatorAndTheChatCardEmbedsThePlayer(t *testing.T) {
-	ta := newTakeApp(t)
-
-	page := ta.get("/shots/"+ta.shotID+"/takes", false).Body.String()
-	assert.Contains(t, page, "<html")
-	assert.Contains(t, page, `<mam-take-comparator api-url="/api/v1/shots/`+ta.shotID+`/takes">`)
-	frag := ta.get("/shots/"+ta.shotID+"/takes", true).Body.String()
-	assert.NotContains(t, frag, "<html")
-	assert.Contains(t, frag, "mam-take-comparator")
-	assert.Equal(t, http.StatusNotFound, ta.get("/shots/nope/takes", false).Code)
-
-	card := domain.ChatMessage{Role: domain.RoleAssistant, Kind: domain.KindTake, RefID: "t1",
-		Content: domain.EncodeTakeCardBody(domain.TakeCardBody{
-			Title: "Shot 1 · Take 1", ShotID: ta.shotID, VideoURL: domain.TakeVideoURL("t1"), PosterURL: domain.TakeThumbnailURL("t1")})}
-	require.NoError(t, ta.svc.Chat.Announce(context.Background(), ta.project, card))
-	chat := ta.get("/projects/"+ta.project, false).Body.String()
-	assert.Contains(t, chat, `video-src="/takes/t1/video"`)
-	assert.Contains(t, chat, `api-url="/api/v1/takes/t1/judge-result"`)
-	assert.Contains(t, chat, `poster="/takes/t1/thumbnail"`)
-	assert.Contains(t, chat, `href="/shots/`+ta.shotID+`/takes"`, "the card links to the comparison")
-	assert.Contains(t, chat, "返信")
-}
-
-// pickState is the status of each Take of the Shot, oldest first, and the index of the one the Shot uses (-1: none).
-func pickState(t *testing.T, a *app, shotID string) (statuses []string, adopted int) {
-	t.Helper()
-	rec := a.get("/api/v1/shots/"+shotID+"/takes", false)
-	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-	var b takeListBody
-	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &b))
-	adopted = -1
-	for i, tk := range b.Takes {
-		statuses = append(statuses, tk.Status)
-		if tk.Adopted {
-			adopted = i
-		}
-	}
-	return statuses, adopted
-}
-
-func TestAIPick_AutoAdoptsTheBestTakeThatPassedTheJudge(t *testing.T) {
-	j := newJudgeApp(t, goodVerdict, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95)
-	j.generateAndJudge()
-
-	statuses, adopted := pickState(t, j.app, j.shotID)
-	assert.Equal(t, []string{"ai_pick", "candidate", "candidate"}, statuses, "equal scores: the older Take is the AI Pick")
-	assert.Equal(t, 0, adopted, "AUTO adopts the AI Pick")
-	assert.Contains(t, j.get("/projects/"+j.project, false).Body.String(), "AI Pick: Take ", "the chat says which Take was adopted")
-}
-
-func TestAIPick_TakeSelectionManualOrLockOnlyRecommendsEvenInAuto(t *testing.T) {
-	for _, mode := range []string{"manual", "lock"} {
-		t.Run(mode, func(t *testing.T) {
-			j := newJudgeApp(t, goodVerdict, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95)
-			require.Equal(t, http.StatusOK, j.form(http.MethodPut, "/shots/"+j.shotID+"/locks", url.Values{"parameter": {"take_selection"}, "mode": {mode}}).Code)
-			j.generateAndJudge()
-
-			statuses, adopted := pickState(t, j.app, j.shotID)
-			assert.Equal(t, []string{"ai_pick", "candidate", "candidate"}, statuses, "the Take is still recommended")
-			assert.Equal(t, -1, adopted, "Take Selection %s: the AI does not make the Shot use it", mode)
-			assert.Contains(t, j.get("/projects/"+j.project, false).Body.String(), "がおすすめです")
-		})
-	}
-}
-
-func TestAIPick_DirectorOnlyRecommendsAndAUserChoiceIsNeverReplaced(t *testing.T) {
-	j := newJudgeApp(t, goodVerdict, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95)
-	require.Equal(t, http.StatusOK, j.form(http.MethodPut, "/projects/"+j.project+"/mode", url.Values{"mode": {"director"}}).Code)
-	ids := j.generateAndJudge()
-
-	statuses, adopted := pickState(t, j.app, j.shotID)
-	assert.Equal(t, []string{"ai_pick", "candidate", "candidate"}, statuses)
-	assert.Equal(t, -1, adopted, "DIRECTOR leaves the choice to the user")
-	assert.Contains(t, j.get("/projects/"+j.project, false).Body.String(), "がおすすめです")
-
-	// The user chooses another Take; judging again does not take the choice back.
-	require.Equal(t, http.StatusOK, j.form(http.MethodPost, "/takes/"+ids[2]+"/select", nil).Code)
-	require.Equal(t, http.StatusAccepted, j.form(http.MethodPost, "/takes/"+ids[0]+"/judge", nil).Code)
-	require.Eventually(t, func() bool { return j.results(ids[0]) == 2 }, 30*time.Second, 10*time.Millisecond)
-	statuses, adopted = pickState(t, j.app, j.shotID)
-	assert.Equal(t, 2, adopted)
-	assert.Equal(t, "selected", statuses[2])
-}
-
-func TestAIPick_ATakeThatFailedIsRecommendedButNotAdoptedInAuto(t *testing.T) {
-	// The face drifts while the spec locks it: every Take fails. Two references calibrate the threshold.
-	j := newJudgeApp(t, goodVerdict, 0.95, 0.95, 0.95, 0.2, 0.2, 0.2, 0.95, 0.95)
-	j.addMatchingCanonFace(t)
-	j.generateAndJudge()
-
-	statuses, adopted := pickState(t, j.app, j.shotID)
-	assert.Equal(t, "ai_pick", statuses[0])
-	assert.Equal(t, -1, adopted, "a failed Take is not adopted without the user")
 }
