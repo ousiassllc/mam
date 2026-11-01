@@ -151,10 +151,10 @@ func copyCanon(ctx context.Context, tx *sql.Tx, canon domain.SeriesCanon, projec
 			return err
 		}
 		if _, err := tx.ExecContext(ctx,
-			`INSERT INTO character (id, project_id, origin_id, name, hairstyle, wardrobe, voice, personality, face_reference_asset_id, body_reference_asset_id)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			`INSERT INTO character (id, project_id, origin_id, name, hairstyle, wardrobe, voice, personality, face_reference_asset_id, body_reference_asset_id, voice_reference)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			domain.NewID(), projectID, c.ID, c.Name, nullIfEmpty(c.Hairstyle), nullIfEmpty(c.Wardrobe), nullIfEmpty(c.Voice), nullIfEmpty(c.Personality),
-			nullIfEmpty(face), nullIfEmpty(body)); err != nil {
+			nullIfEmpty(face), nullIfEmpty(body), c.VoiceReference); err != nil {
 			return fmt.Errorf("copy character: %w", err)
 		}
 	}

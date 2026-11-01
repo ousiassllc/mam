@@ -32,11 +32,14 @@ type Export struct {
 // it refuses to export it rather than leave the file out without a word.
 func NewExport(data domain.BundleData, root string, now time.Time) (Export, error) {
 	sources := relocateSharedAssets(&data)
-	timelinePaths, err := data.AudioTimelinePaths()
-	if err != nil {
-		return Export{}, fmt.Errorf("audio timeline: %w", err)
+	if err := relocateSharedVoices(&data, sources); err != nil {
+		return Export{}, err
 	}
-	for _, rel := range append(data.FilePaths(), timelinePaths...) {
+	paths, err := dataPaths(data)
+	if err != nil {
+		return Export{}, err
+	}
+	for _, rel := range paths {
 		if !bundlepath.ValidFilePath(data.ProjectID, rel) {
 			return Export{}, fmt.Errorf("export bundle: %q is not a file path of the project", rel)
 		}
@@ -82,14 +85,14 @@ func (e Export) Write(w io.Writer) error {
 	if err := WriteJSON(zw, domain.BundleDataName, e.now, e.data); err != nil {
 		return err
 	}
-	timelinePaths, err := e.data.AudioTimelinePaths()
-	if err != nil {
-		return fmt.Errorf("audio timeline: %w", err)
-	}
 	// The mix, clips and Lip Sync pictures live in the Audio Timeline JSON only; without them an
-	// imported Project cannot be exported to video.
+	// imported Project cannot be exported to video. The reference voices live in the character rows only.
+	paths, err := dataPaths(e.data)
+	if err != nil {
+		return err
+	}
 	seen := map[string]bool{}
-	for _, rel := range append(e.data.FilePaths(), timelinePaths...) {
+	for _, rel := range paths {
 		if seen[rel] {
 			continue
 		}

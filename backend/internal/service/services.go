@@ -21,6 +21,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
 	"github.com/ousiassllc/mam/backend/internal/service/localruntime"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
+	"github.com/ousiassllc/mam/backend/internal/service/voicerefsvc"
 	"github.com/ousiassllc/mam/backend/internal/service/workflows"
 )
 
@@ -50,8 +51,8 @@ type Deps struct {
 	Judge judge.Config
 	// Jev is the TypeSafe Jev client of the Repair Agent's shadow run. Nil: no shadow run.
 	Jev repair.Shadow
-	// Audio are the vendors of the Audio Director: ElevenLabs (TTS, cloned voices, Music, Sound Effects) and Sync Labs (Lip Sync).
-	// Audio production is available only when Audio.Speech and Media are set; a missing Music / Sounds / LipSync leaves that layer out.
+	// Audio are the vendors of the Audio Director: ElevenLabs (TTS, cloned voices, Music, Sound Effects) and Sync Labs
+	// (Lip Sync). It needs Audio.Speech and Media; a missing Music / Sounds / LipSync leaves that layer out.
 	Audio audiodirector.Providers
 }
 
@@ -86,24 +87,22 @@ type Services struct {
 	LocalRuntimes *localruntime.Service // local AI runtimes (GPT-SoVITS): install, start, stop, status; the app sets it
 	Gentest       *gentest.Service      // generation test: batches of generations outside any Project, history, import; the app sets it
 	Workflows     *workflows.Service    // ComfyUI workflows saved in mam (node screen, models, MCP); the app sets it
+	VoiceRef      *voicerefsvc.Service  // the reference voice of a Character (F-20, F-29) and the speaker -> voice lookup
 }
 
-// Close stops the background workers of the services and kills the running Take preview conversions. Call it on shutdown, after the job queue stopped.
+// Close stops the background workers and kills the running Take preview conversions. Call it on shutdown, after the job queue stopped.
 func (s *Services) Close() { s.Takes.previews.Close(); s.Editor.Close() }
 
-// Recover puts Shots left GENERATING, REPAIRING or JUDGING by an abnormal termination back to PLANNING.
-// It MUST run after New and before the job queue starts, twice: before the queue resolves its running
-// jobs (their generate jobs are then failed by it) and after (a judge job it failed leaves its Shot
-// JUDGING with no handler to release it). A Shot with a job that will still run keeps its state.
+// Recover puts Shots left GENERATING, REPAIRING or JUDGING by an abnormal termination back to PLANNING. It MUST run
+// after New and before the job queue starts, twice: before the queue resolves its running jobs (their generate jobs are
+// then failed by it) and after (a judge job it failed leaves its Shot JUDGING with no handler to release it). A Shot with a job that will still run keeps its state.
 func (s *Services) Recover(ctx context.Context) (int, error) {
 	return s.Generation.shots.ResetStaleShots(ctx)
 }
 
 // New builds every service from deps. When deps.Jobs is set, job status changes refresh
-// the progress cards in the chat; New therefore MUST run before deps.Jobs.Start.
-//
-// The order is the dependency order: an agent is wired after the agents it holds, and the queue's
-// OnChange callback last (see wiring).
+// the progress cards in the chat; New therefore MUST run before deps.Jobs.Start. The order is the dependency order:
+// an agent is wired after the agents it holds, and the queue's OnChange callback last (see wiring).
 func New(deps Deps) *Services {
 	w := newWiring(deps)
 	w.wirePlan()
