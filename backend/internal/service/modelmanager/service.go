@@ -38,6 +38,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/track"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
+	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/instlog"
 	"github.com/ousiassllc/mam/backend/internal/service/modelsettings"
 )
 
@@ -148,6 +149,7 @@ func New(d Deps) (*Service, error) {
 	if d.Logger == nil {
 		d.Logger = slog.New(slog.DiscardHandler)
 	}
+	d.Fetch.OnRetry = instlog.RetryLogger(d.Logger, d.Fetch.OnRetry) // every download of the model manager (engine, models, imports) logs its resumes
 	if d.Catalog == nil {
 		d.Catalog = catalog.Default()
 	}

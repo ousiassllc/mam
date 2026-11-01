@@ -5,7 +5,6 @@ package mmview
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/engine"
@@ -63,7 +62,7 @@ func Refuse(err error) (RefusalKind, string) {
 	case errors.Is(err, modelmanager.ErrEndpointMoved):
 		return RefusalConflict, modelmanager.ErrEndpointMoved.Error()
 	case errors.As(err, &noSpace):
-		return RefusalConflict, "空き容量が足りません（必要 " + humanBytes(noSpace.Need) + "、空き " + humanBytes(noSpace.Free) + "、場所 " + noSpace.Path + "）。空けてからやり直してください"
+		return RefusalConflict, "空き容量が足りません（必要 " + fetch.HumanBytes(noSpace.Need) + "、空き " + fetch.HumanBytes(noSpace.Free) + "、場所 " + noSpace.Path + "）。空けてからやり直してください"
 	case errors.Is(err, store.ErrNotWritable):
 		return RefusalConflict, "mam.exe のあるフォルダに書き込めません。書き込める場所に置くか、外部の ComfyUI の URL を使ってください"
 	case errors.Is(err, engine.ErrVariant):
@@ -80,12 +79,4 @@ func guidance(err error) string {
 		return msg
 	}
 	return "対応する GPU が見つかりません。外部の ComfyUI の URL を設定するか、CPU 実行を明示的に選んでください"
-}
-
-func humanBytes(n uint64) string {
-	const gib = 1 << 30
-	if n >= gib {
-		return fmt.Sprintf("%.1f GiB", float64(n)/gib)
-	}
-	return fmt.Sprintf("%.0f MiB", float64(n)/(1<<20))
 }

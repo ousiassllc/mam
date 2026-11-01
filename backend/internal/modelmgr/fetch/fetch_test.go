@@ -94,8 +94,9 @@ func loopbackClient(authHost string) *http.Client {
 
 func plenty(string) (uint64, error) { return 1 << 40, nil }
 
+// opts is a download that does not resume by itself (Retry.Attempts 1): the tests of an interruption look at what it leaves.
 func opts(extra ...func(*fetch.Options)) fetch.Options {
-	o := fetch.Options{CheckURL: anyURL, FreeBytes: plenty, Client: loopbackClient("")}
+	o := fetch.Options{CheckURL: anyURL, FreeBytes: plenty, Client: loopbackClient(""), Retry: fetch.Retry{Attempts: 1}}
 	for _, f := range extra {
 		f(&o)
 	}
