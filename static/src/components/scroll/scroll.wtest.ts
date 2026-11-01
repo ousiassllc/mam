@@ -155,6 +155,18 @@ describe('the model manager keeps the page where the reader is (#908)', () => {
       expect(document.activeElement === opener || opener.isConnected === false).to.equal(true);
     });
 
+    it('brings a different question into view when it replaces the one that is open and the reader is far from it', async () => {
+      const first = dialog()!;
+      // The reader went back down to the list, away from the open question, and presses another control that asks.
+      opener.scrollIntoView({ block: 'center' });
+      await waitUntil(() => !inView(first), 'the first question is still in sight');
+      await press(opener);
+      await waitUntil(() => dialog() !== null && dialog() !== first, 'the second question did not arrive');
+      await frames();
+
+      expect(inView(dialog()!), 'the question that replaced the first one is out of sight').to.equal(true);
+    });
+
     it('puts the page back where it was when the license is accepted and the install starts', async () => {
       const agree = host.querySelector<HTMLInputElement>('[data-testid="mm-agree"]')!;
       await press(agree);

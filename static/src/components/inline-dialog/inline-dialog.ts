@@ -10,7 +10,8 @@
  * - When it is gone, the focus goes back to the control that opened it or, when the swap replaced that control (the card
  *   of the setting, the row of the model), to the first control of the place named by `data-return-focus` (a selector).
  * - The focus never scrolls the page by itself (`preventScroll`): the dialog stands above the list, so what brings it into
- *   view is one explicit, minimal scroll when it opens, and when it is gone the page is put back where it was when the
+ *   view is one explicit, minimal scroll when it opens (also when another control swaps a different question in while one
+ *   is open; a redraw from inside the dialog does not scroll), and when it is gone the page is put back where it was when the
  *   control was pressed. Answering the question (or closing it) leaves the reader where they were, not at the card the
  *   focus went back to, which can be screens away from the dialog (#908).
  *
@@ -60,15 +61,17 @@ export function installInlineDialog(root: Document = document): void {
     if (dlg) {
       if (dlg === shown) return;
       const requester = (event as CustomEvent<SwapDetail>).detail?.requestConfig?.elt ?? null;
-      // A request from inside the dialog redraws it (a refusal): the control that opened it stays the one to go back to.
-      if (!shown || (requester && !shown.contains(requester))) {
+      // A request from inside the dialog redraws it (a refusal): the control that opened it stays the one to go back to,
+      // and the page stays where it is. Any other control that draws a dialog (the first one, or a different question
+      // while one is open) is a new question: the page goes to it and, when it is gone, back to where that control was.
+      const isNewQuestion = !shown || (!!requester && !shown.contains(requester));
+      if (isNewQuestion) {
         opener = requester;
         origin = (requester && pressedAt.get(requester)) || null;
       }
-      const opening = shown === null;
       shown = dlg;
       returnTo = dlg.getAttribute('data-return-focus');
-      if (opening) dlg.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      if (isNewQuestion) dlg.scrollIntoView({ block: 'nearest', inline: 'nearest' });
       focusOn(dlg.querySelector<HTMLElement>('[role="alert"]') ?? dlg);
       return;
     }
