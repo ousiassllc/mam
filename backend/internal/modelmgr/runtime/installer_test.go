@@ -109,6 +109,7 @@ func newRig(t *testing.T, version string) *rig {
 		Fetch: fetch.Options{
 			CheckURL: func(*url.URL) error { return nil },
 			Client:   fetch.WithRedirectRules(&http.Client{}, func(*url.URL) error { return nil }, ""),
+			Retry:    fetch.Retry{Attempts: 1}, // these tests are of the resume by the NEXT run; the automatic resume within a run is fetch's own test (#909)
 		},
 		FreeBytes: func(string) (uint64, error) { return 1 << 40, nil },
 		Getenv:    func(string) string { return "/usr/bin" },

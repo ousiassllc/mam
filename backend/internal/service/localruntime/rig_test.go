@@ -211,7 +211,7 @@ func newRig(t *testing.T, opts ...option) *rig {
 		Platform:  rtm.Platform{OS: "windows", Arch: "amd64"},
 		GPU:       func(context.Context) gpu.Report { return r.gpu },
 		FreeBytes: func(string) (uint64, error) { return r.free, nil },
-		Fetch:     fetch.Options{CheckURL: anyURL, Client: fetch.WithRedirectRules(&http.Client{}, anyURL, "")},
+		Fetch:     fetch.Options{CheckURL: anyURL, Client: fetch.WithRedirectRules(&http.Client{}, anyURL, ""), Retry: fetch.Retry{Attempts: 1}}, // the tests here are of the resume by the NEXT run (#909: the automatic one is fetch's own test)
 		Command: func(_ string, port int) (proc.Spec, error) {
 			return proc.Spec{
 				Command: os.Args[0], LogPath: r.layout.LogPath(),
