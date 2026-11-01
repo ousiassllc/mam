@@ -142,20 +142,22 @@ func (e *Env) CallOKOn(c require.TestingT, name string, args any, out any) {
 	require.NoError(c, json.Unmarshal(raw, out))
 }
 
-// WaitJob polls get_job until the job is over and returns its final status. The poll runs under
+// WaitJob polls get_job until the job is over and returns the final status it saw. The poll runs under
 // require.EventuallyWithT on a *assert.CollectT, so that a poll still running after the test failed or
-// finished never fails it (nor races on a result): the status is read once more when the job is over.
+// finished never fails it. Only one poll runs at a time and none starts after a passing one, so the status
+// the passing poll stored is read here without a race.
 func (e *Env) WaitJob(id string, waitFor, tick time.Duration, msgAndArgs ...any) mcpkit.JobStatus {
 	e.T.Helper()
 	args := map[string]any{"job_id": id}
+	var final mcpkit.JobStatus
 	require.EventuallyWithT(e.T, func(c *assert.CollectT) {
 		var st mcpkit.JobStatus
 		e.CallOKOn(c, "get_job", args, &st)
-		assert.True(c, st.State.Final(), "job %s is %v", id, st.State)
+		if assert.True(c, st.State.Final(), "job %s is %v", id, st.State) {
+			final = st
+		}
 	}, waitFor, tick, msgAndArgs...)
-	var st mcpkit.JobStatus
-	e.CallOK("get_job", args, &st)
-	return st
+	return final
 }
 
 // CallError calls a tool that must fail as a tool error and returns its text ("<code>: <message>").
