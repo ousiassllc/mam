@@ -97,6 +97,9 @@ check "the ComfyUI section: a separate GPL-3.0 program, the source, no bytes, th
 check "the GPT-SoVITS section: a separate MIT program, the source, no bytes, Windows + NVIDIA only, the unverified package inventory" "$(
   has '## GPT-SoVITS（利用者が取得する別プログラム）' && grep -qF 'https://github.com/RVC-Boss/GPT-SoVITS/tree/20250606v2pro' "$out" && grep -qF 'GPT-SoVITS のバイトを一切含めません' "$out" && grep -qF 'NVIDIA' "$out" && grep -qF '未確認' "$out" && echo 0 || echo 1
 )"
+check "the weights section: not bundled, pinned, the unclear commercial-use ones are named, for GPT-SoVITS and MuseTalk" "$(
+  has '## GPT-SoVITS と MuseTalk の重み・依存ファイル（利用者が取得するもの）' && grep -qF '同梱せず再配布しません' "$out" && grep -qF '### MuseTalk 1.5 の重みと依存ファイル' "$out" && grep -qF 'はっきりしない' "$out" && grep -qF 'face-parse-bisent' "$out" && echo 0 || echo 1
+)"
 check "the Codex section: a separate Apache-2.0 program, the source, no bytes, the unverified dependency inventory" "$(
   has '## Codex app-server（利用者が取得する別プログラム）' && grep -qF 'https://github.com/openai/codex/tree/rust-v0.164.0' "$out" && grep -qF 'Codex のバイトを一切含めません' "$out" && grep -qF 'Apache-2.0' "$out" && echo 0 || echo 1
 )"

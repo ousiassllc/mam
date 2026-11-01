@@ -48,6 +48,8 @@ type View struct {
 	Variants []VariantView `json:"variants"`
 	// InstallJob is the install that is queued or running ("" for none).
 	InstallJob string `json:"install_job,omitempty"`
+	// Weights are the weights and dependencies the runtime needs, with where each comes from and its license.
+	Weights WeightsView `json:"weights"`
 }
 
 // List describes every runtime of the catalog.
@@ -82,6 +84,7 @@ func (s *Service) view(ctx context.Context, inst *instance) View {
 			v.Writable = true
 		}
 	}
+	v.Weights = weightsView(inst, v.Installed)
 	v.FreeBytes = s.free(inst.layout.Root)
 	for _, name := range rt.VariantList() {
 		a := rt.Variants[name]

@@ -8,23 +8,36 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/track"
 )
 
-// Start starts the runtime's server (a no-op when it runs) and waits until it answers. A machine that cannot run it is refused with
-// the reason (a *SupportError: no GPU, too little video memory, another OS), an install in progress is ErrBusy (its files are
-// being replaced), a runtime that is not installed is ErrNotInstalled.
-func (s *Service) Start(ctx context.Context, id string) (proc.Status, error) {
+// CheckStart is what Start checks before it starts anything: nil when the runtime can be started now. A machine that cannot run it is
+// refused with the reason (a *SupportError: no GPU, too little video memory, another OS), a runtime that is not installed is
+// ErrNotInstalled, an install in progress is ErrBusy (its files are being replaced), and one whose weights are not all there and verified
+// is a *WeightsError (before the server could fail with a message no one can read). The screen asks it to answer a refusal at once.
+func (s *Service) CheckStart(ctx context.Context, id string) error {
 	inst, err := s.instance(id)
 	if err != nil {
-		return proc.Status{}, err
+		return err
 	}
 	if _, err := s.refuse(ctx, inst); err != nil {
-		return proc.Status{}, err
+		return err
 	}
 	if !inst.install.Status().Installed {
-		return proc.Status{}, ErrNotInstalled
+		return ErrNotInstalled
 	}
 	if s.activeJob(TargetPrefix+id) != "" {
-		return proc.Status{}, ErrBusy
+		return ErrBusy
 	}
+	if missing := inst.install.NotReady(); len(missing) > 0 {
+		return &WeightsError{Runtime: id, Name: inst.rt.Name, Assets: missing}
+	}
+	return nil
+}
+
+// Start starts the runtime's server (a no-op when it runs) and waits until it answers; the refusals are those of CheckStart.
+func (s *Service) Start(ctx context.Context, id string) (proc.Status, error) {
+	if err := s.CheckStart(ctx, id); err != nil {
+		return proc.Status{}, err
+	}
+	inst, _ := s.instance(id)
 	st, err := inst.proc.Start(ctx)
 	if err != nil {
 		return st, err

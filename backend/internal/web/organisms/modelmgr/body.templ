@@ -20,6 +20,11 @@ templ Body(d Data) {
 				<div id={ DetectID }></div>
 			</div>
 		}
+		if d.Runtimes != nil {
+			@molecules.SettingsSection("ローカル音声・口パク", "声（GPT-SoVITS）と口パク（MuseTalk）をこの PC で作る実行環境を、mam が取得して起動・停止します。インストーラーには含まれず、ここから導入します。重みと依存ファイルの出典・ライセンスは、各カードの一覧にあります。この PC で使えないときは、クラウド（ElevenLabs・Sync Labs）を選べます。") {
+				@d.Runtimes
+			}
+		}
 		@molecules.SettingsSection("モデル", "導入すると、画像・動画のモデルとして選べます（設定の「画像・動画モデル」・Shot の生成）。ダウンロードは取得元から直接で、SHA-256 を確かめます。ライセンスの同意が要るモデルは、同意してから導入します。") {
 			@AdultCard(d.Adult)
 			<div id={ DialogID } data-testid="mm-dialog"></div>

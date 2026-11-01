@@ -18,6 +18,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/llmassign"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
+	"github.com/ousiassllc/mam/backend/internal/service/localruntime"
 	"github.com/ousiassllc/mam/backend/internal/service/mcpsettings"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/modelsettings"
@@ -60,6 +61,9 @@ type Services struct {
 	Workflows *workflowsvc.Service
 	// ModelManager is the model manager screen (paths.ModelManager). Nil leaves the screen and its routes out.
 	ModelManager *modelmanager.Service
+	// LocalRuntimes are the local voice and lip-sync runtimes (GPT-SoVITS, MuseTalk) shown in the model manager screen. Nil leaves the
+	// section "ローカル音声・口パク" out.
+	LocalRuntimes *localruntime.Service
 	// Onboarding is the first-run guide (paths.Onboarding) and the redirect of a first run from GET / (OnboardingHome). Nil
 	// leaves both out: the root page is always the project list.
 	Onboarding *onboardingsvc.Service
@@ -139,7 +143,7 @@ func Register(engine *gin.Engine, services *service.Services, s *Services, logge
 		engine.GET(paths.LocalModelsHealth(), settingspage.Health(s.LocalModels, 0))
 	}
 	if s != nil && s.ModelManager != nil {
-		modelmgrhandler.Register(engine, s.ModelManager, s.Gentest)
+		modelmgrhandler.Register(engine, s.ModelManager, s.Gentest, s.LocalRuntimes)
 	}
 	if s != nil && s.Gentest != nil {
 		gentesthandler.Register(engine, s.Gentest)

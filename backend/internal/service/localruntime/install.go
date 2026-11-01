@@ -26,6 +26,8 @@ type JobRef struct {
 type installPayload struct {
 	Target  string          `json:"target"`
 	Variant catalog.Variant `json:"variant,omitempty"`
+	// WeightsOnly: the package is installed already; only the weights and dependencies are checked and fetched.
+	WeightsOnly bool `json:"weights_only,omitempty"`
 }
 
 // errCancelled is why an install the user stopped failed. The job is failed, not requeued: the user starts the install again, which
@@ -65,6 +67,41 @@ func (s *Service) Install(ctx context.Context, id string) (JobRef, error) {
 	return JobRef{JobID: job.ID}, nil
 }
 
+// InstallWeights checks the weights and dependencies of an installed runtime against the catalog and downloads what is missing or is
+// not the pinned file (the same step an install ends with), as a job (JobStatus). It is the way to repair a runtime whose file was
+// deleted or damaged, or to continue after an interrupted download. A runtime that is not installed is ErrNotInstalled; a machine that
+// cannot run it, a directory that cannot be written to and a disk without the room are refused at once, as in Install.
+func (s *Service) InstallWeights(ctx context.Context, id string) (JobRef, error) {
+	inst, err := s.instance(id)
+	if err != nil {
+		return JobRef{}, err
+	}
+	if _, err := s.refuse(ctx, inst); err != nil {
+		return JobRef{}, err
+	}
+	if !inst.install.Status().Installed {
+		return JobRef{}, ErrNotInstalled
+	}
+	if err := inst.layout.CheckWritable(); err != nil {
+		return JobRef{}, err
+	}
+	if err := inst.install.CheckAssetSpace(); err != nil {
+		return JobRef{}, err
+	}
+	target := TargetPrefix + id
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if job, ok := s.active[target]; ok {
+		return JobRef{JobID: job, Existing: true}, nil
+	}
+	job, err := s.Queue.Enqueue(ctx, domain.JobModelInstall, installPayload{Target: target, WeightsOnly: true})
+	if err != nil {
+		return JobRef{}, err
+	}
+	s.active[target] = job.ID
+	return JobRef{JobID: job.ID}, nil
+}
+
 // Register installs the handler of domain.JobModelInstall on the queue. The jobs of a runtime (target "runtime:<id>") are the
 // manager's; every other job goes to next, the handler the model manager registered (the queue keeps one handler per kind, so this
 // replaces it). It MUST run before the queue starts, after the model manager's own Register.
@@ -97,11 +134,19 @@ func (s *Service) handleInstall(ctx context.Context, job domain.Job, p installPa
 	if err != nil && errors.Is(context.Cause(ctx), errCancelled) {
 		return errCancelled
 	}
-	return userFacing(ctx, err)
+	return s.userFacing(ctx, inst, err)
 }
 
-// runInstall weighs the download 70 % and the extraction 30 %. The machine is judged again: a job that waited in the queue (or was
-// resumed after a restart) must not install a runtime the machine can no longer run.
+// The weights of the steps of an install, in percent: the package download, its extraction, then the check and download of the weights
+// and dependencies. An install of the weights alone is all of the last step.
+const (
+	pctDownload = 55
+	pctExtract  = 20
+)
+
+// runInstall installs the package (unless the job is for the weights only) and then makes the weights the pinned ones. The machine is
+// judged again: a job that waited in the queue (or was resumed after a restart) must not install a runtime the machine can no longer
+// run.
 func (s *Service) runInstall(ctx context.Context, inst *instance, p installPayload, set func(track.Update)) error {
 	if _, err := s.refuse(ctx, inst); err != nil {
 		return err
@@ -109,18 +154,38 @@ func (s *Service) runInstall(ctx context.Context, inst *instance, p installPaylo
 	if err := inst.proc.Stop(); err != nil { // the files are replaced: the runtime must not be running
 		return err
 	}
-	err := inst.install.Install(ctx, p.Variant, func(ph rtm.Phase, done, total int64) {
-		pct, msg := 0, inst.rt.Name+" をダウンロードしています"
-		if total > 0 {
-			pct = int(float64(done) / float64(total) * 70)
-		}
-		if ph == rtm.PhaseExtract {
-			pct, msg = 70, inst.rt.Name+" を展開しています"
+	from := 0
+	if !p.WeightsOnly {
+		err := inst.install.Install(ctx, p.Variant, func(ph rtm.Phase, done, total int64) {
+			pct, msg := 0, inst.rt.Name+" をダウンロードしています"
 			if total > 0 {
-				pct = 70 + int(float64(done)/float64(total)*30)
+				pct = int(float64(done) / float64(total) * pctDownload)
+			}
+			if ph == rtm.PhaseExtract {
+				pct, msg = pctDownload, inst.rt.Name+" を展開しています"
+				if total > 0 {
+					pct = pctDownload + int(float64(done)/float64(total)*pctExtract)
+				}
+			}
+			set(track.Update{Percent: pct, Phase: string(ph), Message: msg, DoneBytes: done, TotalBytes: total})
+		})
+		if err != nil {
+			return err
+		}
+		from = pctDownload + pctExtract
+	} else if !inst.install.Status().Installed {
+		return ErrNotInstalled
+	}
+	err := inst.install.EnsureAssets(ctx, func(ph rtm.Phase, name string, done, total int64) {
+		pct, msg := 100, "重みと依存の確認が終わりました"
+		if total > 0 && name != "" {
+			pct = from + int(float64(done)/float64(total)*float64(100-from))
+			msg = "重みをダウンロードしています: " + name
+			if ph == rtm.PhaseVerify {
+				msg = "重みを確認しています: " + name
 			}
 		}
-		set(track.Update{Percent: pct, Phase: string(ph), Message: msg, DoneBytes: done, TotalBytes: total})
+		set(track.Update{Percent: min(pct, 99), Phase: string(ph), Message: msg, DoneBytes: done, TotalBytes: total})
 	})
 	if err != nil {
 		return err
@@ -166,7 +231,7 @@ func (s *Service) CancelInstall(jobID string) error {
 	return nil
 }
 
-// Remove stops the runtime and deletes its environment and downloads (its auto-start setting and log stay). An install that is
+// Remove stops the runtime and deletes its environment (with the weights in it) and downloads (its auto-start setting and log stay). An install that is
 // queued or running is ErrBusy. A runtime that is not installed is removed without an error.
 func (s *Service) Remove(_ context.Context, id string) error {
 	inst, err := s.instance(id)
