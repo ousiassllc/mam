@@ -66,7 +66,9 @@ type host struct {
 	body []byte
 	mu   sync.Mutex
 	// ranges are the Range headers of the requests; cut: the next answer drops in the middle; hold: the next answer waits for release.
-	ranges  []string
+	ranges []string
+	// files are more files the host serves by path (the weights of a test catalog); gone are the paths that answer 404.
+	files   map[string][]byte
 	cut     bool
 	hold    chan struct{}
 	reached chan struct{}
@@ -76,8 +78,18 @@ func newHost(t *testing.T) *host {
 	t.Helper()
 	body, err := os.ReadFile(archiveFile)
 	require.NoError(t, err)
-	h := &host{body: body, reached: make(chan struct{}, 8)}
+	h := &host{body: body, reached: make(chan struct{}, 8), files: map[string][]byte{}}
 	h.Server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h.mu.Lock()
+		extra, isExtra := h.files[r.URL.Path]
+		if isExtra {
+			h.ranges = append(h.ranges, r.URL.Path+" "+r.Header.Get("Range"))
+		}
+		h.mu.Unlock()
+		if isExtra {
+			http.ServeContent(w, r, "w", time.Time{}, strings.NewReader(string(extra)))
+			return
+		}
 		if r.URL.Path != "/pkg.7z" {
 			http.NotFound(w, r)
 			return

@@ -6,6 +6,8 @@
 // a token.
 package modelmgr
 
+import "github.com/a-h/templ"
+
 // IDs of the elements the actions swap.
 const (
 	EngineID   = "mm-engine"
@@ -59,6 +61,8 @@ type Data struct {
 	External External
 	Trial    TrialPanel
 	HFImport HFImport
+	// Runtimes is the section of the local voice and lip-sync runtimes (runtimecard.RuntimesSection); nil leaves the section out.
+	Runtimes templ.Component
 }
 
 // Message is the confirmation or the refusal of the last action of a section.

@@ -8,7 +8,9 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
+	"github.com/ousiassllc/mam/backend/internal/service/localruntime"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/runtimes"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
 )
 
@@ -147,6 +149,10 @@ func (h Handlers) CancelJob(c *gin.Context) {
 	ctx := c.Request.Context()
 	id := c.Param("job")
 	st, stErr := h.Svc.JobStatus(ctx, id)
+	if rid, ok := strings.CutPrefix(st.Target, localruntime.TargetPrefix); ok && stErr == nil && h.Runtimes != nil {
+		runtimes.Cancel(c, h.Runtimes, rid, id)
+		return
+	}
 	err := h.Svc.CancelInstall(id)
 	if stErr == nil && st.Target == "engine" {
 		e := engineData(ctx, h.Svc, id, false)

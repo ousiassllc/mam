@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"log/slog"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -42,7 +43,37 @@ var (
 	ErrNotInstalled = errors.New("localruntime: the runtime is not installed")
 	// ErrBusy: an install of the runtime is queued or running.
 	ErrBusy = errors.New("localruntime: an install is running")
+	// ErrWeightsMissing: the runtime is installed but a weight or dependency it needs is not there or not verified (a
+	// *WeightsError names them; errors.Is reaches this). Start refuses before the server would fail in a way no one can read.
+	ErrWeightsMissing = errors.New("localruntime: the weights of the runtime are missing")
+	// ErrSourceGone: a weight answered 404 or 410 at its pinned URL, the repository or the file was deleted (a mirror that went away
+	// is the case the catalog expects, AssetSource.Note). The message names the file and where the original is.
+	ErrSourceGone = errors.New("localruntime: the source of a weight is gone")
 )
+
+// WeightsError is the refusal to start a runtime whose weights are not all there: Assets are the required ones that are not.
+type WeightsError struct {
+	Runtime string
+	Name    string
+	Assets  []rtm.AssetStatus
+}
+
+func (e *WeightsError) Error() string {
+	names := make([]string, 0, len(e.Assets))
+	missing := false
+	for _, a := range e.Assets {
+		names = append(names, a.Name)
+		missing = missing || a.State == rtm.AssetMissing
+	}
+	what := "重みの確認が済んでいません"
+	if missing {
+		what = "重みが不足しています"
+	}
+	return fmt.Sprintf("%s の%s（%s）。「重みを導入」を実行してください", e.Name, what, strings.Join(names, "、"))
+}
+
+// Is makes errors.Is(err, ErrWeightsMissing) true.
+func (e *WeightsError) Is(target error) bool { return target == ErrWeightsMissing }
 
 // SupportError is the refusal of an install or a start on a machine that cannot run the runtime: Support has the code, the reason
 // and what to use instead (the cloud provider). Its message is shown as it is.
@@ -158,7 +189,8 @@ func (s *Service) newInstance(rt catalog.Runtime) (*instance, error) {
 		return nil, fmt.Errorf("local runtime %s: %w", rt.ID, err)
 	}
 	inst := &instance{rt: rt, layout: layout, state: st}
-	inst.install = &rtm.Installer{Layout: layout, Runtime: rt, Store: st, Extract: s.Extract, Fetch: s.Fetch, FreeBytes: s.FreeBytes, Now: s.Now}
+	set, _ := s.Catalog.ResourceSet(rt.ID)
+	inst.install = &rtm.Installer{Layout: layout, Runtime: rt, AssetSet: set, Store: st, Extract: s.Extract, Fetch: s.Fetch, FreeBytes: s.FreeBytes, Now: s.Now}
 	build := inst.install.Command
 	if s.Command != nil {
 		build = func(port int) (proc.Spec, error) { return s.Command(rt.ID, port) }

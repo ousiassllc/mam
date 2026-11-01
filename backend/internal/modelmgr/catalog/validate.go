@@ -54,6 +54,7 @@ var loaderInputs = map[string]map[string]string{
 // files of the model. It returns every problem found; nil means the catalog can be used.
 func Validate(c *Catalog, template func(id string) (localcfg.Template, bool)) []error {
 	errs := append(validateEngine(c.Engine), validateRuntimes(c.Runtimes)...)
+	errs = append(errs, validateResourceSets(c)...)
 	seenModel, seenWorkflow := map[string]bool{}, map[string]bool{}
 	shared := map[string]File{}
 	for _, m := range c.Models {

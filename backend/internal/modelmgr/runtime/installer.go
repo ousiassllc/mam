@@ -20,8 +20,10 @@ import (
 type Installer struct {
 	Layout  store.RuntimeLayout
 	Runtime catalog.Runtime
-	Store   *store.RuntimeStore
-	Extract extract.Extractor
+	// AssetSet is the weights and dependencies the runtime needs on disk (the zero value: none).
+	AssetSet catalog.ResourceSet
+	Store    *store.RuntimeStore
+	Extract  extract.Extractor
 	// Fetch are the options of the download (client, URL check; Progress is set per call).
 	Fetch fetch.Options
 	// FreeBytes reports the free space at a path (nil: fsutil.FreeBytes).
@@ -170,7 +172,7 @@ func (i *Installer) Install(ctx context.Context, v catalog.Variant, progress Pro
 	}
 	_ = os.Remove(archive)
 	_ = os.Remove(i.Layout.DownloadsDir()) // only when empty
-	return nil
+	return i.forgetAssets()                // the files of the new environment are not the ones that were verified
 }
 
 // swap makes tmp the environment; the previous one is removed once the new one is in place.
@@ -203,7 +205,7 @@ func (i *Installer) Remove() error {
 			return fmt.Errorf("runtime: remove: %w", err)
 		}
 	}
-	return i.Store.Update(func(s *store.RuntimeState) { s.Installed = nil })
+	return i.Store.Update(func(s *store.RuntimeState) { s.Installed, s.Files = nil, nil })
 }
 
 // CleanLeftovers removes what an interrupted install or update left: a half-extracted env.new, and env.old (or puts it back when the

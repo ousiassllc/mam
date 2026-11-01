@@ -162,11 +162,13 @@ type Engine struct {
 	Variants map[Variant]Asset `json:"variants"`
 }
 
-// Catalog is the engine, the models and the local runtimes (GPT-SoVITS; data/runtimes/*.json).
+// Catalog is the engine, the models, the local runtimes (GPT-SoVITS; data/runtimes/*.json) and the weights and dependencies of
+// the runtimes (data/assets/*.json).
 type Catalog struct {
-	Engine   Engine
-	Models   []Model
-	Runtimes []Runtime
+	Engine       Engine
+	Models       []Model
+	Runtimes     []Runtime
+	ResourceSets []ResourceSet
 }
 
 // Model returns the model with the ID.
@@ -199,7 +201,8 @@ func Default() *Catalog {
 	return loaded
 }
 
-// Load reads data/engine.json, data/models/*.json and data/runtimes/*.json (optional) of fsys, refusing unknown fields.
+// Load reads data/engine.json, data/models/*.json, data/runtimes/*.json (optional) and data/assets/*.json (optional) of fsys, refusing
+// unknown fields.
 func Load(fsys fs.FS) (*Catalog, error) {
 	var c Catalog
 	if err := decode(fsys, "data/engine.json", &c.Engine); err != nil {
@@ -227,6 +230,18 @@ func Load(fsys fs.FS) (*Catalog, error) {
 		}
 		c.Runtimes = append(c.Runtimes, r)
 	}
+	sets, err := fs.ReadDir(fsys, "data/assets")
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return nil, err
+	}
+	for _, e := range sets {
+		var a ResourceSet
+		if err := decode(fsys, "data/assets/"+e.Name(), &a); err != nil {
+			return nil, err
+		}
+		c.ResourceSets = append(c.ResourceSets, a)
+	}
+	sortResourceSets(c.ResourceSets)
 	// Standard models first, each tier in the order of the media (images, then videos) and the ID.
 	rank := func(m Model) string {
 		if m.Tier == TierAdvanced {

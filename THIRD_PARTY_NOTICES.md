@@ -6550,7 +6550,51 @@ MAM のモデルマネージャーは、利用者の操作で ComfyUI のポー�
 MAM のローカルランタイム管理（Issue #918）は、利用者の操作で GPT-SoVITS（声のクローン・音声合成。公式の Windows 統合パッケージ `GPT-SoVITS-v2pro-20250604`、コードのタグ `20250606v2pro`）を公式の配布先（Hugging Face の `lj1995/GPT-SoVITS-windows-package`、コミット固定）から取得し、MAM の実行ファイルと同じ場所の `localai\gpt-sovits` ディレクトリに展開して、別のプロセス（公式の `api_v2.py`、`127.0.0.1` だけで待ち受け）として起動します。GPT-SoVITS のコードは MIT ライセンスで、**MAM のインストーラー・ポータブル版・リリースには GPT-SoVITS のバイトを一切含めません**。MAM は GPT-SoVITS のコードをリンクせず、HTTP（`127.0.0.1`）で通信するだけです。対応するのは Windows（x64）と NVIDIA の GPU だけで、それ以外の環境では導入せず、理由を表示します。
 
 - GPT-SoVITS のライセンス（MIT）とソースコード: <https://github.com/RVC-Boss/GPT-SoVITS/tree/20250606v2pro>（ライセンス文は <https://github.com/RVC-Boss/GPT-SoVITS/blob/20250606v2pro/LICENSE>。取得するパッケージは <https://huggingface.co/lj1995/GPT-SoVITS-windows-package> のファイルで、SHA-256 と大きさを MAM のカタログに固定して検証します）。
-- 統合パッケージには、GPT-SoVITS のコードのほかに、Python の実行環境・PyTorch・その他の多数のパッケージと、**学習済みモデルの重み**が入っています。**それぞれのライセンスと商用利用の可否は、一覧を調べていません（未確認）**。取得したものを再配布するときや商用に使うときは、取得した `localai\gpt-sovits\env` の中の各ライセンスと、重みの配布元（<https://huggingface.co/lj1995/GPT-SoVITS>）の記載を確認してください。重みごとの出典とライセンスの表示は、モデルの導入の画面（別の Issue）で行います。
+- 統合パッケージには、GPT-SoVITS のコードのほかに、Python の実行環境・PyTorch・その他の多数のパッケージと、**学習済みモデルの重み**が入っています。**それぞれのライセンスと商用利用の可否は、一覧を調べていません（未確認）**。取得したものを再配布するときや商用に使うときは、取得した `localai\gpt-sovits\env` の中の各ライセンスと、重みの配布元（<https://huggingface.co/lj1995/GPT-SoVITS>）の記載を確認してください。重みごとの出典とライセンスは、次の節に載せ、モデルマネージャーの画面にも表示します。
+
+## GPT-SoVITS と MuseTalk の重み・依存ファイル（利用者が取得するもの）
+
+MAM のローカルランタイム管理（Issue #920）は、上の GPT-SoVITS の統合パッケージに入っている重みと依存ファイル、および MuseTalk 1.5 が使う重みと依存ファイルを、固定の URL（Hugging Face のコミット固定）と SHA-256 で検証します。**MAM はこれらを同梱せず再配布しません**。足りない・壊れたファイルだけを、利用者の操作で取得元から取得します。出典・ライセンス・商用利用の可否はモデルマネージャーの画面（「ローカル音声・口パク」）と MCP（`list_local_runtimes`）にも表示します。固定の一覧はソースの `backend/internal/modelmgr/catalog/data/assets/` にあり、意味は `spec/architecture/model-manager/local-runtime.md` の §12 です。**法的な助言ではありません**。再配布や商用利用の前に、配布元の条件を確認してください。
+
+**商用利用がはっきりしないもの（`unclear`）は、GPT-SoVITS の g2pW のモデル、LatentSync の SyncNet、S3FD の顔検出の重み、face-parse-bisent の `79999_iter.pth`（CelebAMask-HQ で学習。データは非商用の研究目的と README に明記）、torchvision の `resnet18` です。** 画面では、これらを琥珀色の注記で目立つように表示します。
+
+### GPT-SoVITS の重みと依存ファイル
+
+| 名前 | 出典 | ライセンス | 商用利用 |
+|---|---|---|---|
+| GPT-SoVITS v2 の GPT モデル | <https://huggingface.co/lj1995/GPT-SoVITS> | [MIT License（GPT-SoVITS の学習済みモデル）](https://huggingface.co/lj1995/GPT-SoVITS) | 可 |
+| GPT-SoVITS v2 の SoVITS モデル | <https://huggingface.co/lj1995/GPT-SoVITS> | [MIT License（GPT-SoVITS の学習済みモデル）](https://huggingface.co/lj1995/GPT-SoVITS) | 可 |
+| chinese-hubert-base の設定 | <https://huggingface.co/lj1995/GPT-SoVITS> | [MIT License（chinese-hubert-base）](https://huggingface.co/TencentGameMate/chinese-hubert-base) | 可 |
+| chinese-hubert-base の前処理の設定 | <https://huggingface.co/lj1995/GPT-SoVITS> | [MIT License（chinese-hubert-base）](https://huggingface.co/TencentGameMate/chinese-hubert-base) | 可 |
+| chinese-hubert-base の重み | <https://huggingface.co/lj1995/GPT-SoVITS> | [MIT License（chinese-hubert-base）](https://huggingface.co/TencentGameMate/chinese-hubert-base) | 可 |
+| chinese-roberta-wwm-ext-large の設定 | <https://huggingface.co/lj1995/GPT-SoVITS> | [Apache License 2.0（chinese-roberta-wwm-ext-large）](https://huggingface.co/hfl/chinese-roberta-wwm-ext-large) | 可 |
+| chinese-roberta-wwm-ext-large のトークナイザー | <https://huggingface.co/lj1995/GPT-SoVITS> | [Apache License 2.0（chinese-roberta-wwm-ext-large）](https://huggingface.co/hfl/chinese-roberta-wwm-ext-large) | 可 |
+| chinese-roberta-wwm-ext-large の重み | <https://huggingface.co/lj1995/GPT-SoVITS> | [Apache License 2.0（chinese-roberta-wwm-ext-large）](https://huggingface.co/hfl/chinese-roberta-wwm-ext-large) | 可 |
+| fastText の言語判定モデル（lid.176） | <https://fasttext.cc/docs/en/language-identification.html> | [CC BY-SA 3.0（fastText の言語判定モデル）](https://fasttext.cc/docs/en/language-identification.html) | 可 |
+| NLTK の cmudict（英語の発音辞書） | <https://github.com/nltk/nltk_data> | [CMU Pronouncing Dictionary の利用条件](https://raw.githubusercontent.com/nltk/nltk_data/gh-pages/index.xml) | 可 |
+| NLTK の Averaged Perceptron Tagger（英語の品詞推定） | <https://github.com/nltk/nltk_data> | [MIT License（Averaged Perceptron Tagger）](https://github.com/sloria/textblob-aptagger) | 可 |
+| Open JTalk の辞書（日本語の読みと音の並び） | <https://github.com/r9y9/pyopenjtalk> | [BSD 3-Clause（Open JTalk の辞書）](https://github.com/r9y9/pyopenjtalk/blob/master/LICENSE.md) | 可 |
+| g2pW（中国語の読みの推定） | <https://github.com/GitYCC/g2pW> | [g2pW の学習済みモデル（配布条件を確認できていない）](https://github.com/GitYCC/g2pW) | **はっきりしない（未確認）** |
+
+### MuseTalk 1.5 の重みと依存ファイル
+
+| 名前 | 出典 | ライセンス | 商用利用 |
+|---|---|---|---|
+| MuseTalk 1.5 の重み（unet.pth） | <https://huggingface.co/TMElyralab/MuseTalk> | [MIT License（MuseTalk の学習済みモデル）](https://huggingface.co/TMElyralab/MuseTalk/blob/2bcb936e2fddb4d86db4c62fd45b387d0c061571/LICENSE.txt) | 可 |
+| MuseTalk 1.5 の設定（musetalk.json） | <https://huggingface.co/TMElyralab/MuseTalk> | [MIT License（MuseTalk の学習済みモデル）](https://huggingface.co/TMElyralab/MuseTalk/blob/2bcb936e2fddb4d86db4c62fd45b387d0c061571/LICENSE.txt) | 可 |
+| sd-vae-ft-mse の重み | <https://huggingface.co/stabilityai/sd-vae-ft-mse> | [MIT License（sd-vae-ft-mse）](https://huggingface.co/stabilityai/sd-vae-ft-mse) | 可 |
+| sd-vae-ft-mse の設定 | <https://huggingface.co/stabilityai/sd-vae-ft-mse> | [MIT License（sd-vae-ft-mse）](https://huggingface.co/stabilityai/sd-vae-ft-mse) | 可 |
+| whisper-tiny の重み | <https://huggingface.co/openai/whisper-tiny> | [Apache License 2.0（whisper-tiny）](https://huggingface.co/openai/whisper-tiny) | 可 |
+| whisper-tiny の設定 | <https://huggingface.co/openai/whisper-tiny> | [Apache License 2.0（whisper-tiny）](https://huggingface.co/openai/whisper-tiny) | 可 |
+| whisper-tiny の前処理の設定 | <https://huggingface.co/openai/whisper-tiny> | [Apache License 2.0（whisper-tiny）](https://huggingface.co/openai/whisper-tiny) | 可 |
+| DWPose の重み（dw-ll_ucoco_384.pth） | <https://huggingface.co/yzd-v/DWPose> | [Apache License 2.0（DWPose）](https://huggingface.co/yzd-v/DWPose) | 可 |
+| LatentSync の SyncNet（latentsync_syncnet.pt） | <https://huggingface.co/ByteDance/LatentSync> | [CreativeML OpenRAIL++（LatentSync の配布物）](https://huggingface.co/ByteDance/LatentSync) | **はっきりしない（未確認）** |
+| S3FD の顔検出の重み（s3fd-619a316812.pth） | <https://github.com/1adrianb/face-alignment> | [S3FD の学習済みモデル（ライセンスの表示を確認できていない）](https://github.com/1adrianb/face-alignment) | **はっきりしない（未確認）** |
+| face-parse-bisent の重み（79999_iter.pth） | <https://github.com/zllrunning/face-parsing.PyTorch> | [face-parsing.PyTorch の学習済みモデル（学習データが研究用）](https://github.com/zllrunning/face-parsing.PyTorch) | **はっきりしない（未確認）** |
+| face-parse-bisent の ResNet-18（resnet18-5c106cde.pth） | <https://github.com/pytorch/vision> | [torchvision の学習済みモデル（ResNet-18）](https://github.com/pytorch/vision#pre-trained-models) | **はっきりしない（未確認）** |
+
+- 取得先が原本と違うもの（第三者のミラー）は、`source_note` に原本の場所と SHA-256 が一致することを確かめた日付（2026-11-01）を書いています。face-parse-bisent は原本が Google Drive だけの配布のため、Hugging Face のミラー（`ManyOtherFunctions/face-parse-bisent`）を、Drive の原本と SHA-256 が一致することを確かめた上で使います。
+- 各ライセンスは、モデルカード・同梱の LICENSE・配布一覧の記載を読んで記録したもので、**原文との突き合わせや学習データのライセンスの確認までは行っていません（未確認）**。
 
 ## ffmpeg と ffprobe（利用者が取得する別プログラム）
 

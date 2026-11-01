@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"sync"
@@ -69,6 +70,15 @@ type RuntimeState struct {
 	// LastPort is the port the runtime was last started on; it is tried first.
 	LastPort  int            `json:"last_port,omitempty"`
 	Installed *RuntimeRecord `json:"installed,omitempty"`
+	// Files are the files of the runtime's weights and dependencies (the catalog's assets) whose SHA-256 mam checked, by their path
+	// below the environment directory: a file whose size and modification time still are these is not hashed again.
+	Files map[string]FileStamp `json:"files,omitempty"`
+}
+
+// FileStamp is what a verified file looked like when it was verified.
+type FileStamp struct {
+	Size    int64 `json:"size"`
+	ModTime int64 `json:"mod_time_unix_nano"`
 }
 
 func (s RuntimeState) clone() RuntimeState {
@@ -76,6 +86,7 @@ func (s RuntimeState) clone() RuntimeState {
 		r := *s.Installed
 		s.Installed = &r
 	}
+	s.Files = maps.Clone(s.Files)
 	return s
 }
 
