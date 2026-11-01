@@ -108,6 +108,9 @@ jobs:
           fi
           echo "CHROME_PATH=${chrome}" >> "$GITHUB_ENV"
 
+      - name: THIRD_PARTY_NOTICES.md is up to date (it is embedded in the binary)
+        run: make check-notices
+
       - name: Test
         run: make test
 

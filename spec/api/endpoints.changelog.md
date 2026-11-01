@@ -179,3 +179,4 @@
 | 1.172 | 2026-11-01 | §2.9 の `PUT .../voice-reference` に、新しい録音と一緒に届いた `text` がいまの書き起こしと同じなら（画面のフォームは欄にいまの書き起こしを入れて送る）送られなかったものとして扱い、古い書き起こしを消すことを足した | Issue #912。録音だけ差し替えると古い書き起こしが新しい録音に残り、声の再現がずれるため |
 | 1.173 | 2026-11-01 | [endpoints-gentest.md](endpoints-gentest.md)（1.1）の「画面」の節で、モデルはカードのタップで選ぶもの、選べない理由は「?」ヘルプと読み上げにあるものに改めた | Issue #906 |
 | 1.174 | 2026-11-01 | [endpoints-gentest.md](endpoints-gentest.md)（1.2）に、見積りの `translate`・`/run` の 502（英訳に失敗）・エラーの対応の `*UpstreamError` を足した | Issue #913 |
+| 1.175 | 2026-11-02 | §1 の表に `GET /settings/licenses`・`GET /settings/licenses/:id`（設定画面「第三者のライセンス」と、項目の全文の断片）の行を足した（[endpoints-settings.md](endpoints-settings.md) §1・§5.4） | Issue #910 |

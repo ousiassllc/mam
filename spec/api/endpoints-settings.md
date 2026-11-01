@@ -20,6 +20,7 @@
 | `/settings/mcp` | MCP サーバー（今の区画をそのまま） | `app` が MCP サーバーを起動したとき |
 | `/settings/ffmpeg` | ffmpeg（ffmpeg と ffprobe のパスの欄と、探した結果。§5.2） | `ffmpegsettings.Service` があるとき |
 | `/settings/update` | バージョンとアップデート（今の区画をそのまま） | 常に |
+| `/settings/licenses` | 第三者のライセンス（`THIRD_PARTY_NOTICES.md` を埋め込んだ文字列を項目に分けた、グループごとの `<details>` の一覧。全文はページに入れない。§5.4） | 常に |
 | `/settings/chatgpt` | HTMX: 今の区画の断片（`#chatgpt-panel`。クエリ `method` は読まない。ログイン中・ダウンロード中は区画が 2 秒ごとにこの URL を取り直す）。HTMX でなければ `/settings/api-keys` のページ全体で、`<link rel="canonical" href="/settings/api-keys">` を付ける（`/settings/chatgpt/models` も同じ） | ChatGPT のサービスがあるとき |
 | `/settings/local-models/health` | 概要の「ローカル・代替モデル」のカード用: 接続先ごとの接続状態の断片（接続先ごとに接続テスト `localmodels.Service.TestEndpoint` と同じ確認を同時に行い、各 3 秒で打ち切る）。常に 200（接続先が無ければ空）、`Cache-Control: no-store` | `localmodels.Service` があるとき |
 
@@ -151,6 +152,15 @@ HTMX 専用の断片（`#mam-modal-body` に入る）。HTMX でない GET は 4
 
 ルートは `audiosettings.Service` があるときだけ登録する（ない構成では 404）。規則は [../architecture/model-adapters-m3.md](../architecture/model-adapters-m3.md) §14.10、画面は [../components/settings-screen-categories.md](../components/settings-screen-categories.md) §9。同じ設定を MCP の `get_audio_providers`・`set_audio_providers` で読み書きできる（[mcp-tools-settings-policy.md](mcp-tools-settings-policy.md)）。
 
+## 5.4 第三者のライセンス（Issue #910）
+
+| 操作 | 成功の本文 | 失敗 |
+|------|-----------|------|
+| `GET /settings/licenses`（§1） | 分類のページ。グループ（`h3`＋件数）と、項目ごとの閉じた `<details>`（`data-testid="license-entry"`。`hx-get="/settings/licenses/<id>"`・`hx-trigger="toggle once"`）。**全文は入れない** | - |
+| `GET /settings/licenses/:id`（HTMX。`:id` は項目の通し番号） | **200**。その項目の全文だけの断片（`<pre data-testid="license-text">`。プレーンテキスト。HTML としては読まず、`<`・`&` などはエスケープする）。`Cache-Control: no-store`・`Vary: HX-Request` は §1 と同じ | `:id` が無い項目は **404**。HTMX でない GET（アドレスを打ち込んだ・再読み込み）は分類のページ全体 |
+
+どちらも GET で、状態を変えない（CSRF は要らない）。ルートは常に登録する。項目の出どころとグループは `internal/licenses.Catalog`（今は埋め込んだ `THIRD_PARTY_NOTICES.md`）で、項目が増えても、ルートの形・画面は変わらない。仕様は [../components/settings-screen-licenses.md](../components/settings-screen-licenses.md)。
+
 ## 6. 区画の保存の規則（LLM の割り当て・画像・動画モデルの全体の保存と、アップデート）。LLM・画像動画の画面は §3 の「表の行の保存」の表とモーダルに作り直した
 
 旧 `GET /settings` の行（`endpoints.md` §1。Issue #847 で本文をここへ移した）から。
@@ -174,3 +184,4 @@ HTMX 専用の断片（`#mam-modal-body` に入る）。HTMX でない GET は 4
 | 1.6 | 2026-11-01 | §5.2.1 に、ffmpeg と ffprobe のダウンロードのルート（`GET`・`POST`・`DELETE /settings/ffmpeg/download`、`POST /settings/ffmpeg/download/cancel`）を足した | Issue #900 |
 | 1.7 | 2026-11-01 | §5.2.1 の `POST /settings/ffmpeg/download` に、削除の最中は 409 で断ることを足した（削除と導入が重ならないように） | Issue #900 |
 | 1.8 | 2026-11-01 | §1 の表に `GET /settings/audio` を、§5.3 に `PUT /settings/audio`（声・口パクのプロバイダーとフォールバックの保存）を足した | Issue #924 |
+| 1.9 | 2026-11-02 | §1 の表に `GET /settings/licenses` を、§5.4 に `GET /settings/licenses/:id`（項目の全文の断片）を足した | Issue #910 |

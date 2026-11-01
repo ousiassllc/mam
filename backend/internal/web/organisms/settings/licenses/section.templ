@@ -1,0 +1,46 @@
+package licenses
+
+import "strconv"
+
+// Section is the groups of the entries. An entry is closed; opening it reads its text once (hx-trigger="toggle once": the
+// <details> element's own toggle event), so the page holds the titles only, not the 13000 lines of the notices.
+templ Section(d Data) {
+	<div class="flex min-w-0 flex-col gap-6" data-testid="licenses">
+		for i, g := range d.Groups {
+			<section class="flex min-w-0 flex-col gap-2" aria-labelledby={ groupID(i) } data-testid="license-group">
+				<h3 id={ groupID(i) } class="text-sm font-semibold text-neutral-100">{ g.Name } <span class="font-normal text-neutral-400">（{ strconv.Itoa(len(g.Items)) }）</span></h3>
+				<ul role="list" class="flex min-w-0 flex-col gap-2">
+					for _, it := range g.Items {
+						@item(it)
+					}
+				</ul>
+			</section>
+		}
+	</div>
+}
+
+templ item(it Item) {
+	<li class="min-w-0">
+		<details
+			class="min-w-0 rounded-lg border border-neutral-800 bg-neutral-900"
+			data-testid="license-entry"
+			hx-get={ it.TextURL }
+			hx-trigger="toggle once"
+			hx-target="find [data-license-text]"
+			hx-swap="innerHTML"
+		>
+			<summary class="cursor-pointer break-words rounded-lg px-3 py-2 text-sm text-neutral-100 hover:bg-neutral-800/60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 motion-reduce:transition-none">{ it.Title }</summary>
+			<div class="min-w-0 border-t border-neutral-800 p-3" data-license-text aria-live="polite">
+				<p class="text-sm text-neutral-400">読み込み中…</p>
+			</div>
+		</details>
+	</li>
+}
+
+func groupID(i int) string { return "license-group-" + strconv.Itoa(i) }
+
+// Text is the text of one entry: plain text in a <pre> (wrapped, so that a narrow window needs no sideways scroll). The text is
+// escaped as every { } of templ is; it is never read as HTML.
+templ Text(title, body string) {
+	<pre tabindex="0" role="region" aria-label={ title + "のライセンス文" } data-testid="license-text" class="max-h-[60vh] overflow-y-auto whitespace-pre-wrap break-words font-mono text-xs text-neutral-300 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950">{ body }</pre>
+}

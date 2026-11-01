@@ -15,6 +15,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/chatgpt"
 	"github.com/ousiassllc/mam/backend/internal/credential/probe"
+	"github.com/ousiassllc/mam/backend/internal/licenses"
 	"github.com/ousiassllc/mam/backend/internal/media/ffmpegdl"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/appupdate"
@@ -29,6 +30,7 @@ import (
 	audiohandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/audio"
 	credentialshandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/credentials"
 	ffmpeghandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/ffmpeg"
+	licenseshandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/licenses"
 	llmhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/llm"
 	localhandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/local"
 	mcphandler "github.com/ousiassllc/mam/backend/internal/web/handler/settings/mcp"
@@ -59,8 +61,18 @@ type Services struct {
 	// FFmpegDownload is the download of ffmpeg shown in the ffmpeg category; nil leaves the download out.
 	FFmpegDownload *ffmpegdl.Service
 	Update         *appupdate.Service
+	// Licenses is the entries of the "第三者のライセンス" category; nil is licenses.Default() (the embedded THIRD_PARTY_NOTICES.md).
+	Licenses *licenses.Catalog
 	// Guide is whether the first-run guide exists (the overview links to it).
 	Guide bool
+}
+
+// catalog is what the licenses category lists.
+func (s Services) catalog() *licenses.Catalog {
+	if s.Licenses != nil {
+		return s.Licenses
+	}
+	return licenses.Default()
 }
 
 // ffmpeg is what the ffmpeg category reads.
@@ -109,6 +121,9 @@ func init() {
 		{paths.SettingsUpdate, "バージョンとアップデート", always, func(_ *gin.Context, s Services) templ.Component {
 			return pages.SettingsUpdateBody(updatehandler.SectionData(s.Update))
 		}},
+		{paths.SettingsLicenses, "第三者のライセンス", always, func(_ *gin.Context, s Services) templ.Component {
+			return pages.SettingsLicensesBody(licenseshandler.SectionData(s.catalog()))
+		}},
 	}
 }
 
@@ -137,6 +152,7 @@ func Register(engine *gin.Engine, s Services) {
 			engine.GET(paths.SettingsCategory(cat.slug), s.Page(cat.slug))
 		}
 	}
+	engine.GET(paths.LicenseText(":id"), licenseshandler.Text(s.catalog(), s.Page(paths.SettingsLicenses)))
 }
 
 // nav is the navigation with the category of slug marked as the current one: the categories this screen has.
