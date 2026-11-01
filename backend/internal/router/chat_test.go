@@ -263,12 +263,21 @@ func TestWorkspace_InitialDisplayOfALongThreadIsFast(t *testing.T) {
 		require.NoError(t, a.svc.Chat.Announce(ctx, id, domain.ChatMessage{Kind: domain.KindText, Content: "発言"}))
 	}
 
+	// Two limits (#905). The CPU the request uses is at most 3 seconds whatever the load. The clock is
+	// at most 3 seconds times how much the machine stretches it right now (1 on an idle machine, so the
+	// limit is the clock there): a request that is fast but was not scheduled under 24 test processes is
+	// not a failure, while one that waits on a lock or on I/O is, as long as the machine is not starved.
 	var rec *httptest.ResponseRecorder
+	starved := testenv.Starvation()
+	start := time.Now()
 	cpu := testenv.CPUTime(func() { rec = a.get("/projects/"+id, false) })
+	elapsed := time.Since(start)
+	starved = max(starved, testenv.Starvation())
 
 	require.Equal(t, http.StatusOK, rec.Code)
 	assert.Greater(t, strings.Count(rec.Body.String(), "data-message-id"), 400)
-	assert.Less(t, cpu, 3*time.Second, "non-functional.md §2: initial display within 3 seconds of CPU time, not of the clock, which a busy machine stretches (#905)")
+	assert.Less(t, cpu, 3*time.Second, "non-functional.md §2: initial display within 3 seconds of CPU time")
+	assert.Less(t, elapsed, time.Duration(float64(3*time.Second)*starved), "non-functional.md §2: initial display within 3 seconds on the clock, stretched by the starvation of the machine (%.1fx)", starved)
 }
 
 func messageIDs(html string) []string {
