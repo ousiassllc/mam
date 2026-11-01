@@ -11,6 +11,8 @@ import (
 	"sync/atomic"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector"
+	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector/gptsovits"
+	"github.com/ousiassllc/mam/backend/internal/agent/audiodirector/synclabs"
 	"github.com/ousiassllc/mam/backend/internal/agent/jev"
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
@@ -32,6 +34,8 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository/comfywf"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
+	"github.com/ousiassllc/mam/backend/internal/service/localruntime"
+	"github.com/ousiassllc/mam/backend/internal/service/localspeech"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/workflows"
 )
@@ -160,6 +164,16 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 
 	jobTable := repository.NewJobRepository(db)
 	jobs := jobqueue.New(jobTable, jobqueue.Options{Logger: logger})
+	// The model manager and the local runtimes are built before the services: the Audio Director speaks with GPT-SoVITS through them.
+	mgr, err := newModelManager(localModels, models, jobs, jobTable, keys, backendOpts, logger)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	manager.Store(mgr)
+	rts, err := newLocalRuntimes(jobs, jobTable, mgr, logger)
+	if err != nil {
+		return nil, nil, nil, err
+	}
 	// Job handlers are registered by service.New (the plan job) and by the features that add more kinds.
 	// The services are built before the queue starts: they subscribe to job changes.
 	services := service.New(service.Deps{
@@ -175,20 +189,11 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 		Judge:       judging.config,
 		Jev:         shadow,
 		Media:       previews,
-		Audio:       audioProviders(keys),
+		Audio:       audioProviders(keys, rts),
 	})
 	services.LocalModels = localModels
 	closers = append(closers, services.Close) // runs after jobs.Stop: no job change wakes the workers any more
-	mgr, err := newModelManager(localModels, models, jobs, jobTable, keys, backendOpts, logger)
-	if err != nil {
-		return nil, nil, nil, err
-	}
 	services.ModelManager = mgr
-	manager.Store(mgr)
-	rts, err := newLocalRuntimes(jobs, jobTable, mgr, logger)
-	if err != nil {
-		return nil, nil, nil, err
-	}
 	services.LocalRuntimes = rts
 	// An adult model is refused while the age confirmation is off: by every generation (Shot, Reference Pack, the trial
 	// generations) even when an assignment still points at it. The same predicate leaves it out of the assignment choices (SetHidden).
@@ -240,11 +245,13 @@ func recoverWork(ctx context.Context, services *service.Services, jobs *jobqueue
 	return nil
 }
 
-// audioProviders are the vendors of the Audio Director: ElevenLabs (TTS, cloned voices, Music,
-// Sound Effects; API key "elevenlabs") and Sync Labs (Lip Sync; API key "synclabs").
-func audioProviders(keys credential.Store) audiodirector.Providers {
+// audioProviders are the vendors of the Audio Director: ElevenLabs (TTS, cloned voices, Music, Sound Effects; API key "elevenlabs"),
+// Sync Labs (Lip Sync; API key "synclabs") and the local voice, GPT-SoVITS of the local runtime manager, which a run may choose
+// instead of ElevenLabs' TTS. The runtime need not be installed: the local voice reports that when a run chooses it.
+func audioProviders(keys credential.Store, rts *localruntime.Service) audiodirector.Providers {
 	p := audiodirector.ElevenLabsProviders(audiodirector.NewElevenLabs(audiodirector.Config{}, keys, nil))
-	p.LipSync = audiodirector.NewSyncLabs(audiodirector.SyncLabsConfig{}, keys, nil)
+	p.LipSync = synclabs.New(synclabs.Config{}, keys, nil)
+	p.LocalSpeech = gptsovits.New(localspeech.Server{Runtime: rts}, gptsovits.Config{}, nil)
 	return p
 }
 

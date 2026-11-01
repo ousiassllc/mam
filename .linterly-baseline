@@ -1,9 +1,7 @@
 # linterly の行数上限（.linterly.yml）を超えている既存のファイル・ディレクトリ。scripts/linterly-baseline.sh が CI で悪化を検出する基準値。
 # 分割して減らしたら `make linterly-baseline` で書き換える（差分は削除か数値の減少だけであること）。形式: <行数><TAB><パス>
-3285	backend/internal/agent/audiodirector/
-512	backend/internal/agent/audiodirector/audiodirector_test.go
+3217	backend/internal/agent/audiodirector/
 1125	backend/internal/agent/audiodirector/director_test.go
-347	backend/internal/agent/audiodirector/elevenlabs.go
 4999	backend/internal/agent/generation/
 415	backend/internal/agent/generation/orchestrator_candidates_test.go
 384	backend/internal/agent/generation/orchestrator_refpack_regen_test.go
@@ -39,8 +37,7 @@
 507	backend/internal/router/judge_test.go
 450	backend/internal/router/review_test.go
 434	backend/internal/router/take_test.go
-15198	backend/internal/service/
-333	backend/internal/service/audio.go
+15169	backend/internal/service/
 429	backend/internal/service/branch.go
 352	backend/internal/service/branch_test.go
 855	backend/internal/service/chat_test.go

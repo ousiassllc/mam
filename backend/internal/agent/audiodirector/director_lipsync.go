@@ -14,6 +14,20 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/media"
 )
 
+// VideoClip is a clip of the Edit Timeline with the file of its Take.
+type VideoClip struct {
+	// Index is the 1-based position of the clip in the Edit Timeline.
+	Index  int
+	TakeID string
+	// Path is the Take file (absolute).
+	Path string
+	// In and Out are the seconds of the Take the clip plays; Start is where it begins in the cut.
+	In, Out, Start float64
+}
+
+// Length is how long the clip plays.
+func (c VideoClip) Length() float64 { return c.Out - c.In }
+
 // lipSync redoes the mouth of the clips where a character speaks (MAX QUALITY): a clip whose
 // Dialogue lines all start and end inside it gets the lines placed at their moments as the audio
 // Sync Labs follows. A clip with a line across its end is given up as a whole (a mouth redone
