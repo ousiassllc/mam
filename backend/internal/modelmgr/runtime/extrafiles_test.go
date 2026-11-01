@@ -34,6 +34,23 @@ func TestInstallWritesTheExtraFilesOfAnArchiveRuntimeEveryTime(t *testing.T) {
 	assert.Equal(t, "# v2\n", string(got))
 }
 
+// The launcher is the one of this mam at every start: an installed one that an older mam wrote is replaced before the server runs.
+func TestCommandWritesTheCurrentExtraFilesBeforeEveryStart(t *testing.T) {
+	r := newRig(t, "1")
+	r.Runtime.ExtraFiles = []parts.File{{Dest: "mam_launcher.py", Overlay: "mam_launcher.py"}}
+	r.Overlays = map[string][]byte{"mam_launcher.py": []byte("# old\n")}
+	require.NoError(t, r.Install(context.Background(), catalog.VariantNVIDIA, nil))
+	target := filepath.Join(r.Layout.EnvDir(), "mam_launcher.py")
+	r.Overlays = map[string][]byte{"mam_launcher.py": []byte("# fixed\n")} // a newer mam, the same catalog version
+
+	_, err := r.Command(9880)
+
+	require.NoError(t, err)
+	got, err := os.ReadFile(target)
+	require.NoError(t, err)
+	assert.Equal(t, "# fixed\n", string(got))
+}
+
 // An environment installed before the launcher existed is Broken (install again), not started with a launcher that is not there.
 func TestStatusIsBrokenWhenTheExtraFilesAreNotThere(t *testing.T) {
 	r := newRig(t, "1")

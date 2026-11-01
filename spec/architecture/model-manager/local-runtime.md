@@ -81,7 +81,7 @@ SHA-256 は Hugging Face の API（`/api/models/lj1995/GPT-SoVITS-windows-packag
 
 1. 対応を判定（§4）→ 書き込み可否 → 空き容量（未取得分＋展開後。足りなければ `*fetch.NoSpaceError`）。
 2. `downloads\<名前>.part` へ `Range` 再開つきで取得し、SHA-256・サイズを検証してからリネーム（`ErrChecksum`・`ErrSize` は `.part` を消す。取り消し・ネットワークの失敗は残して、次の導入が続きから再開する）。
-3. 7z を `env.new\` へ展開し、続けて**カタログの `extra_files`（mam が同梱する起動用スクリプト `mam_gptsovits_server.py`。`catalog/data/overlays/`）を `env.new\` に書き**、`runtime\python.exe` と入口のスクリプト（`mam_gptsovits_server.py`）があることを確かめて `env\` と入れ替える（既存は `env.old\` に退避して成功で消す。失敗で戻す）。導入のたびに環境を作り直すので、更新・再導入でもこのファイルは今の mam のものになる。`extra_files` は `build.files` と同じ形（`dest`＋`overlay` か `lines`。検証は `parts.CheckFiles`）で、組み立てるランタイム（`build`）とは併用しない。`Status` は、導入済みと記録されていても `extra_files` のファイルが無い環境（このスクリプトが入る前に導入したもの）を `broken`（導入し直す）にする。
+3. 7z を `env.new\` へ展開し、続けて**カタログの `extra_files`（mam が同梱する起動用スクリプト `mam_gptsovits_server.py`。`catalog/data/overlays/`）を `env.new\` に書き**、`runtime\python.exe` と入口のスクリプト（`mam_gptsovits_server.py`）があることを確かめて `env\` と入れ替える（既存は `env.old\` に退避して成功で消す。失敗で戻す）。導入のたびに環境を作り直すので、更新・再導入でもこのファイルは今の mam のものになる。さらに**起動のたび**（`Installer.Command`）に、同じファイルを `env\` へ書き直す（起動用スクリプトは守り（トークン・Host・許可する要求）そのものなので、mam の修正が、パッケージの再取得なしで次の起動から効く）。`extra_files` は `build.files` と同じ形（`dest`＋`overlay` か `lines`。検証は `parts.CheckFiles`）で、組み立てるランタイム（`build`）とは併用しない。`Status` は、導入済みと記録されていても `extra_files` のファイルが無い環境（このスクリプトが入る前に導入したもの）を `broken`（導入し直す）にする。
 4. `state.json` に版・変種・時刻を記録し、アーカイブと `downloads\` を消す。
 
 進捗は展開前の取得 70 %・展開 30 %。実行中のプロセスは、ファイルを入れ替える前に止める。失敗は日本語にして出す（SHA-256 不一致・大きさ不一致・空き容量・取得元の 4xx・書き込めない場所）。

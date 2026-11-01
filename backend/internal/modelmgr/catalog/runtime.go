@@ -98,7 +98,8 @@ type Runtime struct {
 	// Build says how the parts of an assembled variant become the environment (nil when every variant is one archive).
 	Build *parts.Build `json:"build,omitempty"`
 	// ExtraFiles are the files mam writes into the extracted environment of an archive runtime (a runtime without Build): its own
-	// launcher script next to the vendor's server, which the install writes after every extraction, so a new install or an update has them.
+	// launcher script next to the vendor's server, which the install writes after every extraction and Installer.Command writes again before every start
+	// (the current one of this mam, without a new download of the package).
 	ExtraFiles []parts.File `json:"extra_files,omitempty"`
 	// Variants are the pinned builds by the GPU generation they are for.
 	Variants map[Variant]RuntimeVariant `json:"variants"`
