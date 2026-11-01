@@ -1,6 +1,6 @@
 # 画面仕様: 設定画面の分類ごとの一覧とモーダル
 
-> **状態: §1（API キーとログイン）・§2（LLM）・§3（画像・動画）・§4（MCP）・§5（ローカル・代替モデル）は実装済み（2026-10-25）。** Issue #847 ステージ ②。オーナーは §7 を推奨する既定で決定した（2026-10-25）。枠・ナビ・URL・概要は [settings-screen.md](settings-screen.md)、ルートと応答の決まりは [settings-screen-routes.md](settings-screen-routes.md)、部品は [shared-ui-parts.md](shared-ui-parts.md)。`<dialog>` の決まり（開く・閉じる・フォーカス・成功・422）はすべて shared-ui-parts §4 に従い、ここでは繰り返さない。
+> **状態: §1（API キーとログイン）・§2（LLM）・§3（画像・動画）・§4（MCP）・§5（ローカル・代替モデル）は実装済み（2026-10-25）。§8（ffmpeg。パスの指定と、ダウンロードして入れる部品）は Issue #856・#900 で実装済み（2026-11-01）。** Issue #847 ステージ ②。オーナーは §7 を推奨する既定で決定した（2026-10-25）。枠・ナビ・URL・概要は [settings-screen.md](settings-screen.md)、ルートと応答の決まりは [settings-screen-routes.md](settings-screen-routes.md)、部品は [shared-ui-parts.md](shared-ui-parts.md)。`<dialog>` の決まり（開く・閉じる・フォーカス・成功・422）はすべて shared-ui-parts §4 に従い、ここでは繰り返さない。
 
 方式の凡例（決定事項 8(a)）: **モーダル** = 1 つの対象の短い編集（項目が数個・1 回の保存）。**サブページ** = 一覧を持つもの・長い作業（URL を持つ）。削除の確認は今のまま `hx-confirm`。
 
@@ -160,7 +160,7 @@
 - 見出し（`h2`）は「ffmpeg」。「?」ヘルプ: 何に使うか（Take のプレビュー・サムネイル・部分採用・Judge）・パスを空にしたときの探し方・保存したパスは次の起動から使われること。
 - 欄（`<label>` つき、`type=text autocomplete=off`）: 「ffmpeg のパス」（`name=ffmpeg`）・「ffprobe のパス」（`name=ffprobe`）。空は「自動で探す」（`placeholder`）。保存済みの値が入る。
 - 欄ごとの状態（`data-testid=ffmpeg-state-<欄>`）: 使えるときは `Badge`「使えます」とそのファイルのパス（指定があればそれ、無ければ探して見つけたもの）。使えないときは `Badge`（warn）「見つかりません」と理由（指定したパスが使えない: 絶対パスでない／実在する実行ファイルでない、または探した場所のどこにも無い）。
-- 欄の下に「パスを空にしたときの探し方」として、探すディレクトリを順に並べる（`PATH` の各項目 → macOS は `/opt/homebrew/bin`・`/usr/local/bin`）。
+- 欄の下に「パスを空にしたときの探し方」として、探すディレクトリを順に並べる（`PATH` の各項目 → macOS は `/opt/homebrew/bin`・`/usr/local/bin` → **mam がダウンロードして入れた `ffmpeg` フォルダの `bin/`**（最後。入れた記録があり、ファイルがそろっているときだけ。[../architecture/ffmpeg-lookup.md](../architecture/ffmpeg-lookup.md) §1））。
 - ボタン: 「保存」（`PUT /settings/ffmpeg`）。成功は `role="status"`「保存しました。次に mam を起動したときから使われます」（両方空にしたときは「パスの指定を解除しました。…自動で探します」）。**パスが使えないときは 422 で書かず**、`role="alert"` に「ffmpeg のパス（…）を保存できませんでした。<理由>」を出し、入力を残す（探し直しに切り替えない。ffmpeg-lookup.md §2）。保存の失敗は 500。
 - 設定ファイル（`ffmpeg.json`）が読めないときは、分類の `role="alert"` の 1 文だけを出す（ほかの分類は使える）。概要のカードは「ffmpeg・ffprobe を使えます」（ok）／「ffmpeg が見つかりません」などの警告（warn）／「設定ファイルを読めません」。
 - 反映は次の起動から（動いている mam のツールは替えない）。
@@ -182,3 +182,4 @@
 | 0.10 | 2026-10-28 | 「説明の出し方」を足した。各分類の説明・区画とカードの説明・LLM の再起動の補足と `llm-chatgpt-note` を「?」ヘルプへ移した（画像・動画の `models.json` の注記は分類のヘルプへ） | Issue #866。画面の文字を減らす |
 | 0.11 | 2026-11-01 | §8（ffmpeg）を足した。ffmpeg と ffprobe のパスを指定する分類（`/settings/ffmpeg`）。指定したパスが使えないときは 422 で書かず、探し直さない | Issue #856 |
 | 0.12 | 2026-11-01 | §8（ffmpeg）に、ダウンロードの部品（ボタン・進み具合・中断・削除。取得元・検証・ライセンスの表示）を足した | Issue #900 |
+| 0.13 | 2026-11-01 | 状態の行（冒頭）に §8（ffmpeg）の実装済みを足し、§8 の「探し方」の順の最後に、ダウンロードして入れた `ffmpeg` フォルダの `bin/` を足した（実装は `ffmpegsettings.Look` の `SearchDirs`） | PR #911 のレビューの指摘 |

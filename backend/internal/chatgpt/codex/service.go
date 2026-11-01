@@ -95,6 +95,8 @@ type Service struct {
 	credsStore  string // keyring or auto, decided on the first start
 
 	closed bool
+	// removing: Logout is deleting the engine and mam's files; StartInstall refuses (ErrEngineRemoving).
+	removing bool
 
 	// bg counts the background refreshes of the account: a logout and Close wait for them.
 	bg sync.WaitGroup

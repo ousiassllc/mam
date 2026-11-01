@@ -287,3 +287,38 @@ func TestLogoutWithRemovalWithoutAnEngineSaysCredentialsMayRemain(t *testing.T) 
 		t.Fatalf("result = %+v, err = %v", res, err)
 	}
 }
+
+func TestNoInstallStartsWhileALogoutWithRemovalDeletesTheFiles(t *testing.T) {
+	ir := newInstallRig(t)
+	ir.install(t)
+	inLogout, release := make(chan struct{}), make(chan struct{})
+	ir.fake.Override = map[string]func(json.RawMessage) codextest.Reply{
+		protocol.MethodLogout: func(json.RawMessage) codextest.Reply {
+			close(inLogout)
+			<-release
+			return codextest.Reply{Result: map[string]any{}}
+		},
+	}
+	if _, err := ir.svc.Refresh(context.Background()); err != nil { // the engine runs
+		t.Fatal(err)
+	}
+	done := make(chan error, 1)
+	go func() { _, err := ir.svc.Logout(context.Background(), true); done <- err }()
+	<-inLogout
+
+	// The removal has begun: an install that started now would run on the files it deletes.
+	if started, err := ir.svc.StartInstall(); started || !errors.Is(err, codex.ErrEngineRemoving) {
+		t.Fatalf("started = %v, err = %v; want a refusal while the files are being removed", started, err)
+	}
+	close(release)
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(ir.layout.Root); err == nil {
+		t.Error("the engine directory is left behind")
+	}
+	ir.install(t) // the removal is over: installing is possible again
+	if st := ir.svc.Status(); st.Engine != codex.EngineReady {
+		t.Fatalf("status = %+v", st)
+	}
+}

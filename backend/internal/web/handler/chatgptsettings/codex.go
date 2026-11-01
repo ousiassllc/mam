@@ -107,6 +107,8 @@ func CodexInstall(svc *chatgpt.Service) gin.HandlerFunc {
 			d.Notice = "ダウンロードを始めました"
 		case err == nil:
 			d.Notice = "すでにダウンロード中です"
+		case errors.Is(err, codex.ErrEngineRemoving):
+			status, d.Error = http.StatusConflict, "Codex のエンジンと関連ファイルを削除しています。終わってからもう一度お試しください"
 		case errors.Is(err, codex.ErrUnsupported):
 			status, d.Error = http.StatusConflict, "この環境ではダウンロードできません（ダウンロードできるのは Windows 版と macOS 版（Apple Silicon）だけです）。自分で入れた codex のパスを指定してください"
 		case errors.Is(err, exeinstall.ErrNotWritable):

@@ -16,8 +16,9 @@ import (
 // it themselves there.
 var ErrUnsupported = errors.New("ffmpegdl: no ffmpeg download for this platform")
 
-// ErrBusy means an install or a removal is running.
-var ErrBusy = errors.New("ffmpegdl: an install is running")
+// ErrBusy means an install or a removal is running: a removal refuses to start under an install, and an install refuses to
+// start while the downloaded copy is being removed.
+var ErrBusy = errors.New("ffmpegdl: an install or a removal is running")
 
 // InstallState is where the download stands.
 type InstallState string
@@ -70,7 +71,12 @@ type Service struct {
 	install InstallStatus
 	cancel  context.CancelFunc
 	closed  bool
-	wg      sync.WaitGroup
+	// removing: Remove is deleting the files; StartInstall refuses (ErrBusy) so that no install starts under the deletion.
+	removing bool
+	wg       sync.WaitGroup
+
+	// removeFiles deletes the downloaded copy (the installer's Remove; tests replace it to hold a removal in the middle).
+	removeFiles func() error
 }
 
 // New is the service. A platform with no pinned build is a service that is not Supported: StartInstall refuses, and Dirs is empty.
@@ -83,13 +89,20 @@ func New(o Options) *Service {
 	if !ok || layout.Root == "" {
 		ok = false
 	}
-	return &Service{
+	s := &Service{
 		supported: ok,
 		logger:    o.Logger,
 		installer: &Installer{
 			Layout: layout, Platform: p, Fetch: o.Fetch, FreeBytes: o.FreeBytes, ClearQuarantine: o.ClearQuarantine, Check: o.Check,
 		},
 	}
+	s.removeFiles = s.installer.Remove
+	if ok {
+		// What an interrupted install left (a half-extracted bin.new, or a swap that stopped between its two renames) is
+		// cleaned, or put back, at startup (spec/architecture/ffmpeg-download.md §4.6).
+		s.installer.CleanLeftovers()
+	}
+	return s
 }
 
 // Status is what the screen shows: what can be downloaded and what is installed.
@@ -140,7 +153,7 @@ func (s *Service) Dirs() []string {
 
 // StartInstall downloads the pinned ffmpeg in the background (progress: Status) and installs it. It refuses at once where the
 // download is not offered (ErrUnsupported), the directory cannot be written to (exeinstall.ErrNotWritable) or the disk lacks the
-// room (*fetch.NoSpaceError). started is false when an install is already running. Installing again resumes an interrupted
+// room (*fetch.NoSpaceError). started is false when an install is already running (ErrBusy: the downloaded copy is being removed). Installing again resumes an interrupted
 // download and, with a newer pinned version, is the update.
 func (s *Service) StartInstall() (started bool, err error) {
 	if !s.supported {
@@ -152,6 +165,11 @@ func (s *Service) StartInstall() (started bool, err error) {
 		s.mu.Unlock()
 		cancel()
 		return false, errors.New("ffmpegdl: mam is shutting down")
+	}
+	if s.removing {
+		s.mu.Unlock()
+		cancel()
+		return false, ErrBusy
 	}
 	if s.install.State == InstallRunning {
 		s.mu.Unlock()
@@ -248,19 +266,26 @@ func (s *Service) CancelInstall() {
 // WaitInstall waits for the install in progress to end (tests and shutdown).
 func (s *Service) WaitInstall() { s.wg.Wait() }
 
-// Remove deletes the downloaded ffmpeg. It refuses (ErrBusy) while an install runs.
+// Remove deletes the downloaded ffmpeg. It refuses (ErrBusy) while an install runs or another removal is in progress, and while
+// it deletes, StartInstall refuses (ErrBusy): the files are never deleted under a running install.
 func (s *Service) Remove() error {
 	if !s.supported {
 		return ErrUnsupported
 	}
 	s.mu.Lock()
-	if s.install.State == InstallRunning {
+	if s.install.State == InstallRunning || s.removing {
 		s.mu.Unlock()
 		return ErrBusy
 	}
+	s.removing = true
 	s.install = InstallStatus{State: InstallIdle}
 	s.mu.Unlock()
-	return s.installer.Remove()
+	defer func() {
+		s.mu.Lock()
+		s.removing = false
+		s.mu.Unlock()
+	}()
+	return s.removeFiles()
 }
 
 // Close stops an install in progress and refuses new ones (shutdown).

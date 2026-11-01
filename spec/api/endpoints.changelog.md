@@ -173,3 +173,4 @@
 | 1.166 | 2026-10-28 | §1 の `PUT /settings/chatgpt/codex/path` の行に、保存できなかったときは 500（入力の誤りの 422 と分ける）を足した。初回ガイドの `PUT /onboarding/codex-path` は同じ判定を使う | Issue #879（#869 のレビューの残り）。保存の失敗を「実在するファイルの絶対パスを指定してください」と案内していた |
 | 1.167 | 2026-11-01 | §1 の `POST /settings/chatgpt/codex/install` の行を、Windows に加えて macOS（Apple Silicon）でも取得できる（置き場所は `.app` の外のデータディレクトリの `codex`）、それ以外の環境は 409 に改めた | Issue #855。macOS 版でも設定画面から Codex 本体を取得できるようにした（`architecture/chatgpt-codex/codex-login.md` §2） |
 | 1.168 | 2026-11-01 | [endpoints-settings.md](endpoints-settings.md) §5.2.1 に、ffmpeg のダウンロードのルート（`GET`・`POST`・`DELETE /settings/ffmpeg/download`、`POST /settings/ffmpeg/download/cancel`）を足した | Issue #900 |
+| 1.169 | 2026-11-01 | §1 の表に、`GET`・`PUT /settings/ffmpeg`、`GET`・`POST`・`DELETE /settings/ffmpeg/download`、`POST /settings/ffmpeg/download/cancel` の行を足した（[endpoints-settings.md](endpoints-settings.md) §1・§5.2・§5.2.1 にあったのに、この表に無かった）。ダウンロードの削除中に開始を 409 で断ることを足した | Issue #900 |

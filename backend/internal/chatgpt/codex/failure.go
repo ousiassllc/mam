@@ -55,6 +55,10 @@ var ErrEngineNotInstalled = errors.New("codex: the app-server is not installed")
 // ErrEngineInstalling means the engine is being installed: its files are replaced, so it is not started until the install ends.
 var ErrEngineInstalling = errors.New("codex: the engine is being installed")
 
+// ErrEngineRemoving means the engine and mam's Codex files are being deleted (a logout with removal): nothing is installed under the
+// deletion, so an install is refused until it ends.
+var ErrEngineRemoving = errors.New("codex: the engine is being removed")
+
 // ErrUnsupported means the download is not available on this platform (only Windows and macOS on Apple Silicon have
 // it): set the path of a codex.
 var ErrUnsupported = errors.New("codex: the engine download is available on Windows and macOS (Apple Silicon) only; set the path of an installed codex")

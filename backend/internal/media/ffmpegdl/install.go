@@ -92,9 +92,10 @@ func (i *Installer) Install(ctx context.Context, progress Progress) error {
 	}
 	if err != nil {
 		_ = os.RemoveAll(tmp)
-		if !errors.Is(err, context.Canceled) {
-			// The archives matched their checksums, so a failure here is not the network's: downloading them again
-			// is what a retry needs, not the files that gave this.
+		if errors.Is(err, exeinstall.ErrMismatch) || errors.Is(err, exeinstall.ErrUnsafeArchive) || errors.Is(err, ErrNotRunnable) {
+			// The archives matched their checksums but what is in them is not what the catalog describes (or does not run):
+			// downloading them again is what a retry needs, not the files that gave this. A cancel or a failed swap
+			// (disk, permissions) is not the archives' fault: they stay, so that a retry does not download them again.
 			i.removeArchives()
 		}
 		return err

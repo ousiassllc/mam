@@ -103,15 +103,15 @@ func serve(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Opt
 		CodexLayout: codexLayout(logger, cfg.DataDir), Version: version.Version,
 	})
 	defer gpt.Close() // the Codex app-server is a child process of mam
-	services, db, cleanup, err := buildServices(ctx, cfg, logger, gpt)
+	ffmpegDL := newFFmpegDownloader(cfg, logger)
+	defer ffmpegDL.Close() // an install in progress is stopped; its part files stay and the next one resumes
+	services, db, cleanup, err := buildServices(ctx, cfg, logger, gpt, ffmpegDL)
 	if err != nil {
 		return err
 	}
 	defer cleanup()
 
 	gin.SetMode(gin.ReleaseMode)
-	ffmpegDL := newFFmpegDownloader(cfg, logger)
-	defer ffmpegDL.Close() // an install in progress is stopped; its part files stay and the next one resumes
 	settings := newSettings(cfg, services, gpt, ffmpegDL, logger)
 	if opts.Update != nil {
 		var stop func()

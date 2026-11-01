@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -98,4 +99,26 @@ func TestInstallRefusesAnUnwritableDirectory(t *testing.T) {
 	require.NoError(t, os.WriteFile(file, nil, 0o600))
 	r.ins.Layout = ffmpegdl.Layout{Root: filepath.Join(file, "ffmpeg")}
 	require.ErrorIs(t, r.ins.Install(context.Background(), nil), exeinstall.ErrNotWritable)
+}
+
+func TestAFailedSwapKeepsTheVerifiedArchivesSoThatARetryDoesNotDownloadThemAgain(t *testing.T) {
+	r := newRig(t, "9.9.9")
+	var hits atomic.Int32
+	r.onServe = func(http.ResponseWriter, *http.Request) bool { hits.Add(1); return false }
+	// The check runs after the extraction and before the swap: taking bin.new away makes the swap fail, as a disk or
+	// permission error would, with nothing wrong in the archive.
+	r.ins.Check = func(_ context.Context, exe string) error { return os.RemoveAll(filepath.Dir(exe)) }
+	err := r.ins.Install(context.Background(), nil)
+	require.Error(t, err)
+	require.NotErrorIs(t, err, exeinstall.ErrMismatch)
+	require.NotErrorIs(t, err, ffmpegdl.ErrNotRunnable)
+	assert.False(t, r.ins.Status().Installed)
+	_, statErr := os.Stat(r.archivePath())
+	require.NoError(t, statErr, "the archive matched its checksum: it stays for the retry")
+	require.Equal(t, int32(1), hits.Load())
+
+	r.ins.Check = func(context.Context, string) error { return nil }
+	require.NoError(t, r.ins.Install(context.Background(), nil))
+	assert.Equal(t, int32(1), hits.Load(), "the retry downloads nothing")
+	assert.True(t, r.ins.Status().Installed)
 }

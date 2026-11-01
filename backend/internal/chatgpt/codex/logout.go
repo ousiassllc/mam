@@ -27,6 +27,17 @@ type LogoutResult struct {
 // would be left in the keyring with no way for mam to remove them. When there is no engine to ask, a removal still
 // goes on and the result says the credentials may remain. A custom path is forgotten, the file is never deleted.
 func (s *Service) Logout(ctx context.Context, removeFiles bool) (LogoutResult, error) {
+	if removeFiles {
+		// From here to the end no install may start: it would run on the files the removal deletes (StartInstall).
+		s.mu.Lock()
+		s.removing = true
+		s.mu.Unlock()
+		defer func() {
+			s.mu.Lock()
+			s.removing = false
+			s.mu.Unlock()
+		}()
+	}
 	res := LogoutResult{WasSignedIn: s.state.get().Account.SignedIn}
 	_, _, exeErr := s.exePath()
 	if exeErr == nil {
