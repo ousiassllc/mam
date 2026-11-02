@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // DOM ids the handlers' HTMX targets name.
@@ -155,6 +156,16 @@ type Confirm struct {
 	// OverLimit says why the batch cannot run ("" when it can); the confirm button is off then.
 	OverLimit string
 	Hidden    []Hidden
+	// Match says the estimate is of a prompt match (Items are its most rounds) and RunPath is where its confirmation is posted ("": the run of a batch).
+	Match   bool
+	RunPath string
+}
+
+func (c Confirm) runPath() string {
+	if c.RunPath != "" {
+		return c.RunPath
+	}
+	return paths.GenerationTestPart("run")
 }
 
 // Card is a result as a card of the grid, the history or the detail.
@@ -266,6 +277,7 @@ type Detail struct {
 	Imports         []ImportRow
 	Import          ImportForm
 	UseURL          string // compose with this result as an input ("" for a video)
+	MatchURL        string // the prompt match with this result as the reference ("" for a video)
 }
 
 // PromptRow is an entry of the prompt history.

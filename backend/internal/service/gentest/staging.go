@@ -92,6 +92,12 @@ type source struct {
 	origin json.RawMessage
 }
 
+// ResolveInput finds the file of an input image (the prompt match copies it into its batch): where it is, its type and size, and where it came from.
+func (s *Service) ResolveInput(ctx context.Context, ref RefInput) (path, mime string, size int64, origin json.RawMessage, err error) {
+	src, err := s.resolve(ctx, ref)
+	return src.path, src.mime, src.size, src.origin, err
+}
+
 // resolve finds the file of an input image. A source that is not there (a deleted Project asset, a staged image that was taken
 // or expired, a history result that is not an image) is *gterr.InvalidError: the request names something that cannot be used.
 func (s *Service) resolve(ctx context.Context, ref RefInput) (source, error) {

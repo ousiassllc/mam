@@ -81,6 +81,9 @@ type Deps struct {
 	// Translator translates the prompts of a batch that asks for it (nil: such a batch is refused unless every prompt is English).
 	Translator *prompttranslate.Translator
 	Logger     *slog.Logger
+	Extra      interface { // runs the batches whose rounds it plans itself (the prompt match); Handle reports false for one that is not its own
+		Handle(context.Context, domain.Job, gentestrepo.Batch) (bool, error)
+	}
 	// Now and Seed are for tests.
 	Now  func() time.Time
 	Seed func() int64
@@ -110,7 +113,7 @@ func New(d Deps) *Service {
 		d.Seed = randomSeed
 	}
 	link := projectlink.New(projectlink.Deps{
-		Repo: d.Repo, Dir: filepath.Join(d.DataDir, dirName), AssetsDir: d.AssetsDir, Projects: d.Projects, References: d.References,
+		Repo: d.Repo, Dir: filepath.Join(d.DataDir, DirName), AssetsDir: d.AssetsDir, Projects: d.Projects, References: d.References,
 		Assign: d.Assign, Now: d.Now, Logger: d.Logger,
 	})
 	return &Service{Deps: d, Link: link, catalog: modelcatalog.Catalog{Adapter: d.Adapter, Hidden: d.Hidden}, runs: map[string]*run{}}
@@ -133,7 +136,7 @@ func (s *Service) OnStartup(ctx context.Context) {
 	s.cleanStaging()
 }
 
-func (s *Service) dir() string { return filepath.Join(s.DataDir, dirName) }
+func (s *Service) dir() string { return filepath.Join(s.DataDir, DirName) }
 
-// dirName is the directory of the history's files below the data directory.
-const dirName = "gentest"
+// DirName is the directory of the history's files below the data directory.
+const DirName = "gentest"

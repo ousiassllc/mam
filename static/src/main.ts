@@ -15,6 +15,7 @@ import { insideModal, installModal } from './components/modal/modal';
 import { installCopy } from './components/copy/copy';
 import { installHelp } from './components/help/help';
 import { initGentestInputs } from './components/gentest/inputs';
+import { initGentestMatch } from './components/gentest/match';
 
 // Attach the CSRF token (from <meta name="csrf-token">) to every HTMX request.
 document.addEventListener('htmx:configRequest', (event) => {
@@ -72,6 +73,9 @@ installModal();
 
 // The "コピー" button of a value that is shown once (an MCP token that was just issued).
 installCopy();
+
+// The prompt match form of the generation test: the chosen image, the fields of the way to go on, the slider's value.
+initGentestMatch();
 
 lockDownHtmx(htmx.config);
 

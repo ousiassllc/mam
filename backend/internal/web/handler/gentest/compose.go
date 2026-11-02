@@ -106,6 +106,9 @@ func (h Handlers) Page(c *gin.Context) {
 			f.prompts = []view.PromptText{{Text: p.Prompt, Negative: p.NegativePrompt}}
 		}
 	}
+	if d, err := h.Svc.Result(ctx, c.Query("from_result")); err == nil { // a round of a prompt match: its prompt, with its model and shape
+		f.prompts, f.models, f.aspect = []view.PromptText{{Text: d.SentPrompt}}, []string{d.Model}, d.AspectRatio
+	}
 	for _, raw := range c.QueryArray(view.FieldRef) {
 		if r, ok := refform.Parse(raw); ok {
 			f.refs = append(f.refs, refform.Input(r, gentest.RoleReference, nil))

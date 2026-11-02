@@ -3,7 +3,6 @@ package gentest
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/help"
-	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // ConfirmEmpty is the placeholder the confirmation is drawn into.
@@ -18,13 +17,24 @@ templ ConfirmFailed(msg string) {
 	</div>
 }
 
+// ConfirmNote is a calm notice in the place of the confirmation (words that were added to a match that is running).
+templ ConfirmNote(msg string) {
+	<div id={ ConfirmID } class="rounded-md border border-emerald-500/60 p-4" data-testid="gt-confirm-note">
+		<p class="text-sm text-emerald-300" role="status">{ msg }</p>
+	</div>
+}
+
 // ConfirmBox is the estimate of a batch: how many results, what each model costs, what is not priced and the warnings. The
 // batch runs only from this box, with the estimate it shows.
 templ ConfirmBox(c Confirm) {
 	<div id={ ConfirmID } class="flex flex-col gap-3 rounded-md border border-indigo-400 p-4" data-testid="gt-confirm">
 		@notice(c.Message, "gt-confirm")
 		<h2 class="text-sm font-medium">実行の確認</h2>
-		<p class="text-sm" data-testid="gt-confirm-items">全部で <strong>{ itoa(c.Items) }</strong> 件を生成します。見積り合計は <strong data-testid="gt-confirm-total">{ c.Total }</strong> です。</p>
+		if c.Match {
+			<p class="text-sm" data-testid="gt-confirm-items">最大 <strong>{ itoa(c.Items) }</strong> 回まで生成します（目標に届けばそこで止まります）。見積り合計は <strong data-testid="gt-confirm-total">{ c.Total }</strong> です。</p>
+		} else {
+			<p class="text-sm" data-testid="gt-confirm-items">全部で <strong>{ itoa(c.Items) }</strong> 件を生成します。見積り合計は <strong data-testid="gt-confirm-total">{ c.Total }</strong> です。</p>
+		}
 		<table class="w-full text-left text-sm" data-testid="gt-confirm-lines">
 			<thead class="text-xs text-neutral-400">
 				<tr><th class="py-1 pr-2 font-normal">モデル</th><th class="py-1 pr-2 font-normal">件数</th><th class="py-1 pr-2 font-normal">単価</th><th class="py-1 font-normal">小計</th></tr>
@@ -55,7 +65,7 @@ templ ConfirmBox(c Confirm) {
 		}
 		<form
 			class="flex flex-wrap items-center gap-3"
-			hx-post={ paths.GenerationTestPart("run") }
+			hx-post={ c.runPath() }
 			hx-target={ "#" + BatchID }
 			hx-swap="outerHTML"
 			hx-sync="this:drop"

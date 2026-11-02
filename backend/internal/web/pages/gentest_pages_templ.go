@@ -44,6 +44,7 @@ func generationNav(current string) templ.Component {
 		}
 		for _, l := range []struct{ Key, Label, Href string }{
 			{"new", "生成する", paths.GenerationTest()},
+			{"match", "画像から似せる", paths.GenerationTestMatch()},
 			{"history", "履歴", paths.GenerationTestHistory()},
 			{"prompts", "プロンプト履歴", paths.GenerationTestPrompts()},
 		} {
@@ -55,7 +56,7 @@ func generationNav(current string) templ.Component {
 				var templ_7745c5c3_Var2 string
 				templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(l.Label)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/pages/gentest_pages.templ`, Line: 20, Col: 76}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/pages/gentest_pages.templ`, Line: 21, Col: 76}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 				if templ_7745c5c3_Err != nil {
@@ -73,7 +74,7 @@ func generationNav(current string) templ.Component {
 				var templ_7745c5c3_Var3 templ.SafeURL
 				templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(l.Href))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/pages/gentest_pages.templ`, Line: 22, Col: 93}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/pages/gentest_pages.templ`, Line: 23, Col: 93}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 				if templ_7745c5c3_Err != nil {
@@ -86,7 +87,7 @@ func generationNav(current string) templ.Component {
 				var templ_7745c5c3_Var4 string
 				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(l.Label)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/pages/gentest_pages.templ`, Line: 22, Col: 105}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/pages/gentest_pages.templ`, Line: 23, Col: 105}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 				if templ_7745c5c3_Err != nil {
@@ -172,7 +173,7 @@ func generationShell(title, csrfToken, current, lead string) templ.Component {
 				var templ_7745c5c3_Var8 string
 				templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(title)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/pages/gentest_pages.templ`, Line: 37, Col: 47}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/pages/gentest_pages.templ`, Line: 38, Col: 47}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 				if templ_7745c5c3_Err != nil {
@@ -270,8 +271,8 @@ func GenerationTestPage(csrfToken string, c gentest.Compose) templ.Component {
 	})
 }
 
-// GenerationHistoryPage is GET /generation-test/history.
-func GenerationHistoryPage(csrfToken string, h gentest.History) templ.Component {
+// GenerationMatchPage is GET /generation-test/match: from one reference image the AI writes a prompt and fixes it until the generated image looks like it.
+func GenerationMatchPage(csrfToken string, c gentest.MatchCompose) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -304,13 +305,21 @@ func GenerationHistoryPage(csrfToken string, h gentest.History) templ.Component 
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = gentest.HistoryList(h).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = gentest.MatchForm(c).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = gentest.ConfirmEmpty().Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = gentest.MatchEmpty().Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = generationShell("生成テストの履歴", csrfToken, "history", "これまでの生成結果（新しい順）。削除するまで残ります。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var12), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = generationShell("画像から似せる", csrfToken, "match", "参考の画像から英語のプロンプトを作り、似るまで直して生成し直します。作ったプロンプトと各回の結果は履歴に残り、いちばん似ていた回のプロンプトをそのまま使えます。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var12), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -318,8 +327,8 @@ func GenerationHistoryPage(csrfToken string, h gentest.History) templ.Component 
 	})
 }
 
-// GenerationResultPage is GET /generation-test/results/:id.
-func GenerationResultPage(csrfToken string, d gentest.Detail) templ.Component {
+// GenerationHistoryPage is GET /generation-test/history.
+func GenerationHistoryPage(csrfToken string, h gentest.History) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -352,13 +361,13 @@ func GenerationResultPage(csrfToken string, d gentest.Detail) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = gentest.ResultDetail(d).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = gentest.HistoryList(h).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = generationShell("生成結果", csrfToken, "history", "この結果を作った設定と入力です。プロジェクトに取り込めます。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var14), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = generationShell("生成テストの履歴", csrfToken, "history", "これまでの生成結果（新しい順）。削除するまで残ります。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var14), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -366,8 +375,8 @@ func GenerationResultPage(csrfToken string, d gentest.Detail) templ.Component {
 	})
 }
 
-// GenerationPromptsPage is GET /generation-test/prompts.
-func GenerationPromptsPage(csrfToken string, p gentest.Prompts) templ.Component {
+// GenerationResultPage is GET /generation-test/results/:id.
+func GenerationResultPage(csrfToken string, d gentest.Detail) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -400,13 +409,61 @@ func GenerationPromptsPage(csrfToken string, p gentest.Prompts) templ.Component 
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
+			templ_7745c5c3_Err = gentest.ResultDetail(d).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			return nil
+		})
+		templ_7745c5c3_Err = generationShell("生成結果", csrfToken, "history", "この結果を作った設定と入力です。プロジェクトに取り込めます。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var16), templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		return nil
+	})
+}
+
+// GenerationPromptsPage is GET /generation-test/prompts.
+func GenerationPromptsPage(csrfToken string, p gentest.Prompts) templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var17 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var17 == nil {
+			templ_7745c5c3_Var17 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		templ_7745c5c3_Var18 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+			templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+			templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+			if !templ_7745c5c3_IsBuffer {
+				defer func() {
+					templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+					if templ_7745c5c3_Err == nil {
+						templ_7745c5c3_Err = templ_7745c5c3_BufErr
+					}
+				}()
+			}
+			ctx = templ.InitializeContext(ctx)
 			templ_7745c5c3_Err = gentest.PromptHistory(p).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = generationShell("プロンプト履歴", csrfToken, "prompts", "生成テストで使ったプロンプト（同じ組は 1 件）。生成結果とは別に、削除するまで残ります。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var16), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = generationShell("プロンプト履歴", csrfToken, "prompts", "生成テストで使ったプロンプト（同じ組は 1 件）。生成結果とは別に、削除するまで残ります。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var18), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

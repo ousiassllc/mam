@@ -52,6 +52,11 @@ func (s *Service) handle(ctx context.Context, job domain.Job) (err error) {
 	if err != nil {
 		return err
 	}
+	if s.Extra != nil {
+		if handled, err := s.Extra.Handle(ctx, job, batch); handled {
+			return err
+		}
+	}
 	results, err := s.Repo.Results(ctx, batch.ID)
 	if err != nil {
 		return err
@@ -135,6 +140,11 @@ func (s *Service) dispatch(ctx context.Context, br *batchRun, results []gentestr
 		})
 	}
 	wg.Wait()
+}
+
+// Generate runs the queued result r now (the prompt match writes the prompt of its rounds as it goes): it is made and settled as in a batch.
+func (s *Service) Generate(ctx context.Context, r gentestrepo.Result) {
+	(&batchRun{s: s, rn: &run{}, dir: filepath.Join(s.dir(), r.BatchID)}).start(ctx, r)
 }
 
 // start runs one result unless the batch was cancelled or mam is stopping.
