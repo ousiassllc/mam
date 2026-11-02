@@ -171,8 +171,13 @@ func pickable(data []byte) []string {
 // digit, so the apostrophe of "doesn't" opens nothing.
 var quotedName = regexp.MustCompile("(?:^|[^\\pL\\pN])['\"`‘“]([^'\"`‘’“”]+)['\"`’”]")
 
+// unquotedRefusal is the other wording the endpoint may use: a message that is only `Unsupported model: <name>`, with no
+// quotes (a final full stop is allowed). Words around it, or a longer name, are not this form.
+var unquotedRefusal = regexp.MustCompile(`^\s*unsupported model:\s*(\S+?)[.\s]*$`)
+
 // driverRefused reports whether err says the endpoint does not accept driver as the model of the call, for example
-// 400 "The 'gpt-5.5' model is not supported when using Codex with a ChatGPT account". Only that moves the loop on.
+// 400 "The 'gpt-5.5' model is not supported when using Codex with a ChatGPT account", or 400 "Unsupported model: gpt-5.5" with
+// no quotes. Only that moves the loop on.
 // The model the endpoint names must be the driver itself (compared whole, ignoring case): a refusal of another model, such
 // as the image tool's own "The 'gpt-image-2' model is not supported ...", or of one whose name only starts with the
 // driver's (gpt-6-luna for gpt-6), says nothing about the driver, and trying the other drivers would hide the real error.
@@ -182,6 +187,9 @@ func driverRefused(err error, driver string) bool {
 		return false
 	}
 	m := strings.ToLower(pe.Message)
+	if u := unquotedRefusal.FindStringSubmatch(m); u != nil {
+		return u[1] == strings.ToLower(driver)
+	}
 	if !strings.Contains(m, "model") {
 		return false
 	}
