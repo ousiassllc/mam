@@ -7,6 +7,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/help"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/pick"
 )
 
 // sectionTitle is the title of a section of the form with its "?" help (spec/components/shared-ui-parts.md §9): the
@@ -62,7 +63,7 @@ templ modelCard(m ModelChoice) {
 					aria-describedby={ "gt-reason-" + m.ID }
 				}
 			/>
-			<span class="flex flex-col gap-1 rounded-md border border-neutral-800 p-3 pr-8 text-sm transition-shadow hover:border-neutral-600 peer-checked:border-indigo-400 peer-checked:bg-indigo-500/20 peer-checked:shadow-[0_0_12px_1px] peer-checked:shadow-indigo-400/40 peer-focus-visible:ring-2 peer-focus-visible:ring-indigo-400 peer-disabled:pointer-events-none peer-disabled:opacity-60 motion-reduce:transition-none">
+			<span class={ "flex flex-col gap-1 rounded-md border border-neutral-800 p-3 pr-8 text-sm", pick.Glow }>
 				<span class="break-words font-medium text-neutral-100">{ m.Label }</span>
 				<span class="break-words text-xs text-neutral-400">{ m.Source } ・ { m.Price }</span>
 				<span class="flex flex-wrap items-center gap-1.5" data-testid="gt-model-badges">

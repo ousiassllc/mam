@@ -3,6 +3,7 @@ package chatgpt
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/pick"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -91,10 +92,9 @@ templ loginStart(f LoginForm) {
 			<fieldset class="flex flex-col gap-2">
 				<legend class="mb-1 text-sm font-medium">ログインの方法</legend>
 				for i, m := range methods {
-					<label class="flex items-center gap-2 text-sm">
-						<input type="radio" name="method" value={ m.Value } checked?={ i == 0 } autofocus?={ i == 0 } data-testid={ "chatgpt-login-" + f.Kind + "-" + m.Value }/>
+					@pick.Card(templ.Attributes{"type": "radio", "name": "method", "value": m.Value, "checked": i == 0, "autofocus": i == 0, "data-testid": "chatgpt-login-" + f.Kind + "-" + m.Value}, "px-3 py-2 text-sm") {
 						{ m.Label }
-					</label>
+					}
 				}
 			</fieldset>
 			<p class="text-xs text-neutral-400">デバイスコードは、別の端末のブラウザで ChatGPT にログインして、表示するコードを入力する方法です。</p>
