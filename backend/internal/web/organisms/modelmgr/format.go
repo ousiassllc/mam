@@ -38,3 +38,23 @@ func catalogURL(c Catalog) string {
 func modelCardSelector(id string) string {
 	return `[data-model="` + strings.NewReplacer(`\`, `\\`, `"`, `\"`).Replace(id) + `"]`
 }
+
+// FitClass colours the judgement of the GPU against a model's VRAM guideline: below the minimum is a danger, "動くが制約あり" a warning,
+// and enough the plain text (color-rules.md §3.1).
+func FitClass(fit string) string {
+	switch fit {
+	case "short":
+		return "text-red-300"
+	case "limited":
+		return "text-amber-300"
+	}
+	return "text-neutral-300"
+}
+
+// NeedClass colours the free space an install needs: red when the disk cannot take it.
+func NeedClass(low bool) string {
+	if low {
+		return "text-red-300"
+	}
+	return "text-neutral-300"
+}

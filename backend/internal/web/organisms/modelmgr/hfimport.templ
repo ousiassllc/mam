@@ -263,43 +263,9 @@ templ HFModelListView(l HFModelList) {
 		if len(l.Models) == 0 && len(l.Installing) == 0 {
 			<p class="text-sm text-neutral-300" data-testid="mm-hfi-none">まだありません。</p>
 		}
-		<ul class="flex flex-col divide-y divide-neutral-800 text-sm">
+		<ul role="list" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3" data-testid="mm-hfi-model-list">
 			for _, m := range l.Models {
-				<li class="flex flex-col gap-1 py-3" data-testid="mm-hfi-model" data-path={ m.Path }>
-					<div class="flex flex-wrap items-start justify-between gap-2">
-						<span class="flex flex-wrap items-center gap-2">
-							<span class="font-medium">{ m.Name }</span>
-							@atoms.Badge(atoms.BadgeInfo, m.Folder)
-							if m.Family == "sdxl" {
-								@atoms.Badge(atoms.BadgeOK, "SDXL")
-							}
-							if m.Gated {
-								@atoms.Badge(atoms.BadgeWarn, "gated")
-							}
-							if m.NFAA {
-								@atoms.Badge(atoms.BadgeError, "NFAA")
-							}
-							if m.Missing {
-								@atoms.Badge(atoms.BadgeWarn, "ファイルが見つかりません")
-							}
-						</span>
-						@atoms.SmallButtonFor(atoms.ToneDanger, "削除", m.Name, templ.Attributes{
-							"type": "button", "hx-delete": paths.ModelManagerPart("hf", "models") + "?" + FieldPath + "=" + queryEscape(m.Path),
-							"hx-target": "#" + HFModelsID, "hx-swap": "outerHTML", "hx-sync": "this:drop", "hx-disabled-elt": "this",
-							"hx-confirm": "「" + m.Name + "」を削除します。カタログのモデルと共有しているファイルは、そのモデルが残る間は消えません。よろしいですか？",
-						})
-					</div>
-					<p class="text-xs text-neutral-300"><code>{ m.Repo }</code>（コミット <code>{ m.Commit }</code>）・{ m.Size }・ライセンス: { m.License }・{ m.At }</p>
-					<p class="flex flex-wrap items-center gap-2">
-						@commercial.Badge(m.Answer)
-					</p>
-					if len(m.ModelIDs) > 0 {
-						<p class="text-xs text-neutral-400" data-testid="mm-hfi-model-ids">{ joinNames(m.ModelIDs) }</p>
-					}
-					if len(m.Shared) > 0 {
-						<p class="text-xs text-neutral-400">{ joinNames(m.Shared) } と共有しています。使うモデルが残る間は、ファイルは消えません。</p>
-					}
-				</li>
+				@hfModelCard(m)
 			}
 		</ul>
 	</div>

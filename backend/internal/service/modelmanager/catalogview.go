@@ -28,6 +28,7 @@ type FileView struct {
 	Name   string `json:"name"`
 	Folder string `json:"folder"`
 	Size   int64  `json:"size"`
+	SHA256 string `json:"sha256"` // the digest the file is checked against at the install
 	// Present: the file is in place (its size is right; its SHA-256 was checked at the install).
 	Present bool `json:"present"`
 	// SharedWith lists the other installed models that use the same file: it stays while one of them is installed.
@@ -87,8 +88,7 @@ func (s *Service) Catalog() []ModelView {
 	return views
 }
 
-// Model is one model of the catalog. An adult model is ErrAdultNotConfirmed until the age confirmation is on record
-// and "show adult models" is on, as in Catalog.
+// Model is one model of the catalog. An adult model is ErrAdultNotConfirmed until the age confirmation is on record and "show adult models" is on.
 func (s *Service) Model(id string) (ModelView, error) {
 	m, ok := s.cat.Model(id)
 	if !ok {
@@ -121,7 +121,7 @@ func (s *Service) view(m catalog.Model, st store.State) ModelView {
 		if ok {
 			present++
 		}
-		fv := FileView{Name: f.Name, Folder: f.Folder, Size: f.Size, Present: ok, SourceNote: f.SourceNote, SharedWith: s.sharedWith(st, m.ID, f.Path())}
+		fv := FileView{Name: f.Name, Folder: f.Folder, Size: f.Size, SHA256: f.SHA256, Present: ok, SourceNote: f.SourceNote, SharedWith: s.sharedWith(st, m.ID, f.Path())}
 		v.Files = append(v.Files, fv)
 		if !ok {
 			v.NeedBytes += f.Size - partSize(s.Layout.ModelPath(f.Path()), f.Size)

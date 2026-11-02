@@ -2,6 +2,7 @@ package modelmgr
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelcard"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -104,21 +105,9 @@ templ externalResult(r ExternalResult) {
 				（ComfyUI { r.Version }）
 			}
 		</p>
-		<ul class="flex flex-col gap-2" data-testid="mm-external-models">
+		<ul role="list" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3" data-testid="mm-external-models">
 			for _, m := range r.Models {
-				<li class="flex flex-col gap-0.5" data-testid="mm-external-model" data-complete={ boolText(m.Complete) }>
-					<span>
-						{ m.Name }
-						if m.Complete {
-							@atoms.Badge(atoms.BadgeOK, "そろっています")
-						} else {
-							@atoms.Badge(atoms.BadgeWarn, "足りないファイルがあります")
-						}
-					</span>
-					if len(m.Missing) > 0 {
-						<span class="text-xs text-neutral-400">足りない: { joinNames(m.Missing) }</span>
-					}
-				</li>
+				@externalModelCard(r.Endpoint, m)
 			}
 		</ul>
 		<details class="text-xs text-neutral-300">
@@ -136,4 +125,27 @@ templ externalResult(r ExternalResult) {
 		</details>
 		<p class="text-xs text-neutral-400">外部の ComfyUI へのモデルの導入は、その ComfyUI の側で行ってください（mam は読むだけです）。そろっているモデルは、接続先にワークフローを登録すると使えます。</p>
 	</div>
+}
+
+// ExternalModelDetailURL is what the card of a model on an external ComfyUI opens: the modal with the files it has and lacks there.
+func ExternalModelDetailURL(endpoint, name string) string {
+	return paths.ModelManagerPart("external", "detail") + "?" + FieldEndpoint + "=" + queryEscape(endpoint) + "&" + FieldName + "=" + queryEscape(name)
+}
+
+// ExternalModelCardID is the id of the card of a model of an external ComfyUI.
+func ExternalModelCardID(endpoint, name string) string {
+	return "mm-external-model-" + endpoint + "-" + name
+}
+
+// externalModelCard is a model of an external ComfyUI as the same card as the models of the catalog (modelcard.Item): its name and whether
+// the files are all there; the files it has and lacks are in the modal that the card opens. There is no button: mam installs nothing there.
+templ externalModelCard(endpoint string, m ExternalModel) {
+	{{ state := modelcard.Badge{Tone: atoms.BadgeOK, Label: "そろっています", Attrs: templ.Attributes{"data-testid": "mm-external-model-state"}} }}
+	if !m.Complete {
+		{{ state = modelcard.Badge{Tone: atoms.BadgeWarn, Label: "足りないファイルがあります", Attrs: templ.Attributes{"data-testid": "mm-external-model-state"}} }}
+	}
+	@modelcard.Item(modelcard.Card{
+		ID: ExternalModelCardID(endpoint, m.Name), Name: m.Name, Icon: atoms.IconNetwork, Meta: "外部の ComfyUI・" + endpoint, DetailURL: ExternalModelDetailURL(endpoint, m.Name),
+		State: state, Attrs: templ.Attributes{"data-testid": "mm-external-model", "data-complete": boolText(m.Complete)},
+	})
 }

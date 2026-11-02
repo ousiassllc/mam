@@ -53,37 +53,61 @@ func (s *screen) waitRuntimeJob(id string) {
 	s.Rts.Wait(id)
 }
 
-func TestRuntimes_ThePageShowsTheCardWithItsWeightsSourceLicenseAndTheUnclearNote(t *testing.T) {
+// The page carries a card for each runtime and nothing fine: the weights, their sources, licenses, files and SHA-256 are in the modal that
+// the card opens (#954), where the weights are listed before the install (the user sees what comes from where).
+func TestRuntimes_ThePageShowsTheCardAndItsModalTheWeightsSourceLicenseAndTheUnclearNote(t *testing.T) {
 	s := newRuntimeScreen(t)
 	body := s.Page()
 	assert.Contains(t, body, "ローカル音声・口パク")
 	assert.Contains(t, body, `data-testid="mm-runtime"`)
 	assert.Contains(t, body, `data-runtime="gpt-sovits"`)
-	assert.Contains(t, body, `data-testid="mm-runtime-missing"`)
+	assert.Contains(t, body, `data-testid="mm-runtime-badge"`)
+	assert.Contains(t, body, "未導入")
 	assert.Contains(t, body, `hx-post="`+runtimePart(lrtest.ID, "install")+`"`)
-	assert.Contains(t, body, "必要な空き容量")
-	assert.Contains(t, body, "VRAM の目安")
-	assert.Contains(t, body, "MIT License", "the license of the program")
+	assert.Contains(t, body, `hx-get="`+runtimePart(lrtest.ID, "detail")+`"`, "the card opens its modal")
+	assert.Contains(t, body, `data-commercial="unknown"`, "the card carries the strictest answer of its weights")
+	assert.Contains(t, body, `data-commercial-badge="unknown"`)
+	assert.Contains(t, body, `data-testid="model-tile"`, "the picture of the card")
+	for _, gone := range []string{`data-testid="mm-runtime-assets"`, `data-testid="mm-runtime-asset"`, "必要な空き容量", "VRAM の目安", `data-testid="mm-sha256"`, "https://huggingface.co/org/repo", `data-testid="mm-runtime-unclear"`, "<details"} {
+		assert.NotContains(t, body, gone, "the page does not carry what the modal says: "+gone)
+	}
 
-	// The weights are listed before the install (the user sees what comes from where), each with its source link and license.
-	assert.Contains(t, body, `data-testid="mm-runtime-assets"`)
-	assert.Equal(t, 2, strings.Count(body, `data-testid="mm-runtime-asset"`))
-	assert.Contains(t, body, `href="https://huggingface.co/org/repo"`)
-	assert.Contains(t, body, `href="https://example.com/mit"`)
-	assert.Contains(t, body, `data-commercial-badge="yes"`)
-	assert.Contains(t, body, "商用OK")
-	assert.Contains(t, body, "原本は x。2026-11-01 に SHA-256 の一致を確認した", "the note of a copy says where the original is")
+	d := s.Get(runtimePart(lrtest.ID, "detail")).Body.String()
+	assert.Contains(t, d, `id="mam-modal-title"`)
+	assert.Contains(t, d, ">GPT-SoVITS</h2>")
+	assert.Contains(t, d, "必要な空き容量")
+	assert.Contains(t, d, "VRAM の目安")
+	assert.Contains(t, d, "MIT License", "the license of the program")
+	assert.Contains(t, d, `data-testid="mm-runtime-assets"`)
+	assert.Equal(t, 2, strings.Count(d, `data-testid="mm-runtime-asset"`))
+	assert.Contains(t, d, `href="https://huggingface.co/org/repo"`)
+	assert.Contains(t, d, `href="https://example.com/mit"`)
+	assert.Contains(t, d, `data-commercial-badge="yes"`)
+	assert.Contains(t, d, "商用OK")
+	assert.Contains(t, d, "原本は x。2026-11-01 に SHA-256 の一致を確認した", "the note of a copy says where the original is")
+
+	// every file of every weight, with the SHA-256 the install checks it against: the catalog's
+	files := 0
+	for _, a := range s.Rts.Svc.List(t.Context())[0].Weights.Assets {
+		for _, f := range a.Files {
+			files++
+			assert.Contains(t, d, "<code>"+f.Dest+"</code>")
+			assert.Contains(t, d, `data-testid="mm-sha256">`+f.SHA256+"</code>")
+		}
+	}
+	assert.Equal(t, 2, files)
+	assert.Equal(t, files, strings.Count(d, `data-testid="mm-sha256"`))
 
 	// The asset whose commercial use is unclear is said before the list, and again in its own row, prominently.
-	assert.Contains(t, body, `data-testid="mm-runtime-unclear"`)
-	assert.Contains(t, body, "商用利用がはっきりしない重み・依存ファイルが 1 件あります")
-	assert.Contains(t, body, `data-commercial-badge="unknown"`)
-	assert.Contains(t, body, `data-testid="mm-runtime-asset-notice"`)
-	assert.Contains(t, body, "商用で使う前に配布元に確認してください")
-	assert.Contains(t, body, `data-commercial="unknown"`)
-	assert.Contains(t, body, `data-commercial="yes"`)
-	assert.Contains(t, body, `data-testid="mm-runtime-weights" open`, "the list is open when something is unclear")
-	assert.Equal(t, 1, strings.Count(body, `data-testid="mm-runtime-asset-notice"`), "a license that is plainly yes carries no warning")
+	assert.Contains(t, d, `data-testid="mm-runtime-unclear"`)
+	assert.Contains(t, d, "商用利用がはっきりしない重み・依存ファイルが 1 件あります")
+	assert.Contains(t, d, `data-commercial-badge="unknown"`)
+	assert.Contains(t, d, `data-testid="mm-runtime-asset-notice"`)
+	assert.Contains(t, d, "商用で使う前に配布元に確認してください")
+	assert.Contains(t, d, `data-commercial="unknown"`)
+	assert.Contains(t, d, `data-commercial="yes"`)
+	assert.Equal(t, 1, strings.Count(d, `data-testid="mm-runtime-asset-notice"`), "a license that is plainly yes carries no warning")
+	assert.NotContains(t, d, "<dialog", "the dialog is the page's")
 }
 
 func TestRuntimes_AMachineThatCannotRunItSeesWhyAndTheCloudProviderToUse(t *testing.T) {
@@ -98,13 +122,15 @@ func TestRuntimes_AMachineThatCannotRunItSeesWhyAndTheCloudProviderToUse(t *test
 		t.Run(name, func(t *testing.T) {
 			s := newRuntimeScreen(t, tc.opts...)
 			body := s.Page()
-			assert.Contains(t, body, `data-testid="mm-runtime-unsupported"`)
-			assert.Contains(t, body, tc.reason)
-			assert.Contains(t, body, `data-testid="mm-runtime-fallback"`)
-			assert.Contains(t, body, "ElevenLabs", "the cloud provider to use instead")
-			assert.Contains(t, body, "この PC では使えません")
+			assert.Contains(t, body, "この PC では使えません", "the card says it in its badge")
 			assert.NotContains(t, body, `data-testid="mm-runtime-install"`, "no install button where it cannot be installed")
-			assert.Contains(t, body, `data-testid="mm-runtime-assets"`, "the sources and licenses are shown on such a machine too")
+			assert.NotContains(t, body, tc.reason, "the reason is in the modal of the card")
+			d := s.Get(runtimePart(lrtest.ID, "detail")).Body.String()
+			assert.Contains(t, d, `data-testid="mm-runtime-unsupported"`)
+			assert.Contains(t, d, tc.reason)
+			assert.Contains(t, d, `data-testid="mm-runtime-fallback"`)
+			assert.Contains(t, d, "ElevenLabs", "the cloud provider to use instead")
+			assert.Contains(t, d, `data-testid="mm-runtime-assets"`, "the sources and licenses are shown on such a machine too")
 
 			rec := s.Do(http.MethodPost, runtimePart(lrtest.ID, "install"), nil)
 			assert.Equal(t, http.StatusConflict, rec.Code)
@@ -132,12 +158,13 @@ func TestRuntimes_InstallShowsProgressThenTheInstalledCardWithTheWeightsChecked(
 	s.waitRuntimeJob(job)
 	done := s.Get(runtimePart(lrtest.ID) + "?job=" + job).Body.String()
 	assert.Contains(t, done, "GPT-SoVITS を導入しました")
-	assert.Contains(t, done, `data-testid="mm-runtime-state"`)
+	assert.Contains(t, done, `data-testid="mm-runtime-badge"`)
+	assert.Contains(t, done, "停止中")
 	assert.Contains(t, done, `data-state="stopped"`)
 	assert.NotContains(t, done, `hx-trigger="every 2s"`, "polling stops once the install ended")
 	assert.NotContains(t, done, "重みが不足")
 	assert.NotContains(t, done, `data-testid="mm-runtime-weights-install"`, "nothing to install: every file is verified")
-	assert.Equal(t, 2, strings.Count(done, `data-state="ok"`), "both weights are there and checked")
+	assert.Equal(t, 2, strings.Count(s.Get(runtimePart(lrtest.ID, "detail")).Body.String(), `data-state="ok"`), "both weights are there and checked (the modal lists them)")
 	assert.FileExists(t, s.Rts.WeightPath(lrtest.WeightDest))
 
 	// A second install request while one runs would join it; once it ended the card offers the actions.
@@ -153,7 +180,7 @@ func TestRuntimes_AMissingWeightShowsInstalledWeightsMissingAndStartIsRefusedBef
 
 	card := s.Get(runtimePart(lrtest.ID)).Body.String()
 	assert.Contains(t, card, "導入済み（重みが不足）")
-	assert.Contains(t, card, `data-testid="mm-runtime-weights-message"`)
+	assert.Contains(t, s.Get(runtimePart(lrtest.ID, "detail")).Body.String(), `data-testid="mm-runtime-weights-message"`, "the sentence is in the modal")
 	assert.Contains(t, card, `data-testid="mm-runtime-weights-install"`)
 	assert.Contains(t, card, `hx-post="`+runtimePart(lrtest.ID, "weights")+`"`)
 
@@ -198,8 +225,9 @@ func TestRuntimes_StartStopAutoStartAndRemove(t *testing.T) {
 		return strings.Contains(s.Get(runtimePart(lrtest.ID)).Body.String(), `data-state="running"`)
 	}, 20*time.Second, 50*time.Millisecond)
 	running := s.Get(runtimePart(lrtest.ID)).Body.String()
-	assert.Contains(t, running, "127.0.0.1:")
+	assert.Contains(t, running, "起動中")
 	assert.Contains(t, running, "停止")
+	assert.Contains(t, s.Get(runtimePart(lrtest.ID, "detail")).Body.String(), "127.0.0.1:", "the address is in the modal")
 
 	rec = s.Do(http.MethodPost, runtimePart(lrtest.ID, "stop"), nil)
 	require.Equal(t, http.StatusOK, rec.Code)
@@ -217,7 +245,8 @@ func TestRuntimes_StartStopAutoStartAndRemove(t *testing.T) {
 	rec = s.Do(http.MethodDelete, runtimePart(lrtest.ID), nil)
 	require.Equal(t, http.StatusOK, rec.Code)
 	assert.Contains(t, rec.Body.String(), "GPT-SoVITS を削除しました")
-	assert.Contains(t, rec.Body.String(), `data-testid="mm-runtime-missing"`)
+	assert.Contains(t, rec.Body.String(), "未導入")
+	assert.Contains(t, rec.Body.String(), `data-testid="mm-runtime-install"`)
 	assert.NoFileExists(t, s.Rts.WeightPath(lrtest.WeightDest), "the weights go with the environment")
 }
 
@@ -292,7 +321,10 @@ func TestRuntimes_TheCardUsesTheLabelsOfScreenReadersAndNeverAKeyOrAToken(t *tes
 	s := newRuntimeScreen(t)
 	s.installRuntime()
 	body := s.Get(runtimePart(lrtest.ID)).Body.String()
-	assert.Contains(t, body, `aria-labelledby="mm-runtime-gpt-sovits-title"`)
-	assert.Contains(t, body, `id="mm-runtime-gpt-sovits-title"`)
+	assert.Regexp(t, `<h3 class="[^"]*"><button [^>]*aria-haspopup="dialog"[^>]*>GPT-SoVITS</button></h3>`, body, "the name is the heading and opens the modal")
+	assert.Contains(t, body, `id="mm-runtime-gpt-sovits"`)
+	assert.Contains(t, body, `data-focus-key="open-mm-runtime-gpt-sovits"`, "the focus comes back to the card that took its place when it polls")
+	assert.Contains(t, body, `aria-label="起動: GPT-SoVITS"`)
 	assert.NotContains(t, strings.ToLower(body), "token")
+	assert.NotContains(t, strings.ToLower(s.Get(runtimePart(lrtest.ID, "detail")).Body.String()), "token")
 }

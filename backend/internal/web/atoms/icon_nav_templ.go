@@ -9,7 +9,7 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 // Icons of the side menu (Lucide v1.61.0, copied as in icon.templ; the file is split from icon.templ to stay under the
-// line limit). Icon hands every name it does not know to iconNav.
+// line limit). Icon hands every name it does not know to iconNav, which hands the rest to iconModel (icon_model.templ).
 
 // Icons of the side menu: the screens of the app and the views of a Project, and the button that folds the menu.
 const (
@@ -371,6 +371,11 @@ func iconNav(name IconName, class string) templ.Component {
 				return nil
 			})
 			templ_7745c5c3_Err = iconSVG(class).Render(templ.WithChildren(ctx, templ_7745c5c3_Var13), templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		default:
+			templ_7745c5c3_Err = iconModel(name, class).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

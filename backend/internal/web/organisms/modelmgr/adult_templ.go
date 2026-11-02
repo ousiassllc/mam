@@ -85,7 +85,7 @@ func AdultCard(a Adult) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<p class=\"text-sm text-neutral-300\" data-testid=\"mm-adult-status\">成人向けモデル（非検閲のモデル・LoRA）は表示していません。18 歳以上の確認と注意書きへの同意の後に、一覧・導入・試し生成に出ます。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<p class=\"text-sm text-neutral-300\" data-testid=\"mm-adult-status\">成人向けモデルは表示していません。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

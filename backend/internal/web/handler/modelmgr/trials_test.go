@@ -2,6 +2,7 @@ package modelmgr_test
 
 import (
 	"bytes"
+	"html"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -226,8 +227,14 @@ func TestExternal_ListsWhatAnExternalComfyUIHasAndWhatIsMissing(t *testing.T) {
 	assert.Contains(t, body, "other.ckpt")
 	assert.Contains(t, body, `data-complete="true"`, "m-a has its file there")
 	assert.Contains(t, body, `data-complete="false"`)
-	assert.Contains(t, body, "足りない: diffusion_models/b.safetensors")
+	assert.Contains(t, body, "足りないファイルがあります", "the card says that something is missing")
+	assert.NotContains(t, body, "足りない: diffusion_models/b.safetensors", "which file is in the modal of the card")
+	assert.Contains(t, body, `hx-get="`+paths.ModelManagerPart("external", "detail")+`?endpoint=tailnet`)
 	assert.Contains(t, body, "mam は読むだけです")
+	detail := s.get(paths.ModelManagerPart("external", "detail") + "?endpoint=tailnet&name=" + url.QueryEscape(missingModelName(t, body)))
+	require.Equal(t, http.StatusOK, detail.Code, detail.Body.String())
+	assert.Contains(t, detail.Body.String(), "足りない: diffusion_models/b.safetensors")
+	assert.Equal(t, http.StatusNotFound, s.get(paths.ModelManagerPart("external", "detail")+"?endpoint=tailnet&name=nope").Code)
 	assert.NotContains(t, body, `hx-post=`+`"/model-manager/models/`, "no install action for an external server")
 
 	assert.Equal(t, http.StatusNotFound, s.get(paths.ModelManagerPart("external")+"?endpoint=nope").Code)
@@ -241,6 +248,14 @@ func TestExternal_ListsWhatAnExternalComfyUIHasAndWhatIsMissing(t *testing.T) {
 	s.rig.InstallEngine()
 	bundled := s.get(paths.ModelManagerPart("external") + "?endpoint=bundled-comfyui")
 	assert.Equal(t, http.StatusUnprocessableEntity, bundled.Code, "the bundled endpoint is not an external one")
+}
+
+// missingModelName is the name of the card of the external result whose files are not all there.
+func missingModelName(t *testing.T, body string) string {
+	t.Helper()
+	m := regexp.MustCompile(`(?s)data-complete="false"[^>]*>.*?<button[^>]*>([^<]+)</button>`).FindStringSubmatch(body)
+	require.Len(t, m, 2, body)
+	return html.UnescapeString(m[1])
 }
 
 func TestSettingsAndTheProjectListLinkToTheScreen(t *testing.T) {

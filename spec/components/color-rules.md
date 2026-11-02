@@ -37,7 +37,7 @@
 | やや弱い本文・表セル | `text-neutral-300` / `text-neutral-200` | 出現が多い既存 |
 | 枠・区切り | `border-neutral-800` / `border-neutral-700` / `divide-neutral-800` | §1・一覧 |
 | ホバー面 | `hover:bg-neutral-800` / `hover:border-neutral-600` / `hover:bg-neutral-800/60` | §1 |
-| フォーカス輪 | `focus-visible:ring-indigo-400` + `focus-visible:ring-offset-neutral-950`（モーダル内は `focus-visible:ring-offset-neutral-900`）。チャットの添付は `peer-focus-visible:ring-indigo-400` | §1 |
+| フォーカス輪 | `focus-visible:ring-indigo-400` + `focus-visible:ring-offset-neutral-950`（モーダル内は `focus-visible:ring-offset-neutral-900`）。チャットの添付は `peer-focus-visible:ring-indigo-400`。開くカード（モデルのカード。#954）は、開く操作（名前のボタン）にフォーカスがあるとき `has-[[data-card-open]:focus-visible]:ring-indigo-400` | §1 |
 | 主アクション（実ボタン） | `bg-indigo-500` / `hover:bg-indigo-400` / `text-white` | `TonePrimary`・§1 |
 | リンク・アイコン強調 | `text-indigo-300` | §1・`Icon` 周り |
 | 危険 | 文字 `text-red-300`、枠/面 `border-red-500/60`・`bg-red-500/10`・`bg-red-500/20`（Badge）・`hover:bg-red-500/10`（`ToneDanger` のホバー） | `ToneDanger`・`BadgeError` |
@@ -92,7 +92,7 @@
 | `border-neutral-500` | 入力欄（`atoms.fieldClass`）と、Lit が出す `<input>`・`<select>`・`<textarea>`（Take の指示欄・タイムラインのクリップ） | 入力欄の枠は、塗り・カード・ページの上で **3:1 以上**（WCAG 1.4.11）が必要で、`border-neutral-600` では足りない（`a11y/field_border_test.go`）。表の `border-neutral-700` / `border-neutral-600` は欄の枠に使えない |
 | `bg-neutral-800` | 現在地のナビ・ステップ・コードの欄・アイコンの台（`ToolCard`）・チャットの添付・選んだ区間のチップ・Take のレーンと進捗バーの下地 | カード面（`neutral-900`）より一段明るい**据え置きの面**。表の `hover:bg-neutral-800` はホバーの面で、据え置きの面の行が表にない |
 | `hover:text-neutral-100` | 文字のリンク・アイコンだけのボタン・戻るリンクのホバー | 基の `text-neutral-400` / `text-neutral-300` を主要な文字の色へ明るくする、表に行が無いホバーの文字。表の色（`text-neutral-100`）への寄せ先が 1 つで、新しいシェードではない |
-| `border-indigo-400`・`has-[:checked]:border-indigo-400`・`peer-checked:border-indigo-400`・`bg-indigo-500/20`・`peer-checked:bg-indigo-500/20`・`peer-checked:shadow-indigo-400/40`・`border-t-indigo-400` | 選ばれた項目・現在地の枠と面（Shot カード・場面の一覧・Production Template の選択・生成テストのモデルのカード（枠・面・光る縁取り）・チャットの自分の吹き出し・ロックのトグル・実行の確認の箱・ナビ・ドラッグ中のクリップ）と、スピナーの回る弧 | 表の `indigo` は主ボタン・リンク・フォーカスの輪だけ。**選択**の意味の行が無い。選択は `indigo` 1 種類（枠 `-400`・面 `/20`。カードの光る縁取りだけ影 `shadow-indigo-400/40`）に揃え、枠が 2 つ重ねられるときは色だけで伝えず `aria-current` と文字を添える |
+| `border-indigo-400`・`has-[:checked]:border-indigo-400`・`peer-checked:border-indigo-400`・`bg-indigo-500/20`・`peer-checked:bg-indigo-500/20`・`peer-checked:shadow-indigo-400/40`・`hover:border-indigo-400`・`hover:shadow-indigo-400/40`・`border-t-indigo-400` | 選ばれた項目・現在地の枠と面（Shot カード・場面の一覧・Production Template の選択・生成テストのモデルのカード（枠・面・光る縁取り）・モデルマネージャーのカードのホバー（開く操作の枠と光る縁取り。選ぶのではないので面は塗らない）・チャットの自分の吹き出し・ロックのトグル・実行の確認の箱・ナビ・ドラッグ中のクリップ）と、スピナーの回る弧 | 表の `indigo` は主ボタン・リンク・フォーカスの輪だけ。**選択**の意味の行が無い。選択は `indigo` 1 種類（枠 `-400`・面 `/20`。カードの光る縁取りだけ影 `shadow-indigo-400/40`）に揃え、枠が 2 つ重ねられるときは色だけで伝えず `aria-current` と文字を添える |
 | `bg-black` | 動画・画像のプレビューの背景（`<video>`・`<img>` の余白）と動画プレイヤーの舞台 | 映像のレターボックスは黒でないと映像が浮く。表の `backdrop:bg-black/70` はモーダルの背後だけ |
 | `border-transparent` | 現在地でないナビ・ステップの枠（`border-l-2` の幅を取っておく） | 枠の幅を保って現在地の切り替えで文字がずれないようにする（色はない） |
 | `accent-red-400`・`accent-amber-400`・`accent-emerald-400` | 予算の `<progress>`（危険・警告・成功） | ブラウザが描くメーターの塗りの色（`accent-*`）で、表の文字用の `-300` / 面用の `/20` は使えない。意味は 3 つの色相（危険 = red・警告 = amber・成功 = emerald）を表と揃える。推定コストと上限の文字を添える（色だけで伝えない） |
@@ -110,3 +110,4 @@
 |----|------|---------|---------|
 | 1.0 | 2026-10-28 | 新規作成。用途 → 許可クラスの表（§3。Issue の案をオーナーが 2026-10-28 に確認してそのまま確定）、意味の色の枠・薄い面（§3.1）、旧クラスの寄せ先（§3.2）、例外（§4）、#865・#866 も従うこと（§5）、検査の範囲（§2）を決めた。UI のクラスをこの表に寄せ、`a11y/color_allowlist_test.go` で許可リスト外を落とすようにした | Issue #867 |
 | 1.1 | 2026-11-01 | §4 の「選択」の行に、生成テストのモデルのカードが使う `peer-checked:border-indigo-400`・`peer-checked:bg-indigo-500/20`・`peer-checked:shadow-indigo-400/40` を足した（チェックボックスを見えなくして、カード全体を選択の枠と光る縁取りで示す） | Issue #906 |
+| 1.2 | 2026-11-02 | §3 のフォーカス輪に `has-[[data-card-open]:focus-visible]:ring-indigo-400`、§4 の「選択」の行に `hover:border-indigo-400`・`hover:shadow-indigo-400/40` を足した（モデルマネージャーのカードは、タップするとモーダルが開く「開くカード」。ホバーとキーボードのフォーカスで、選ぶカードと同じ枠・光る縁取り・輪を使う。新しい色は足していない） | Issue #954 |

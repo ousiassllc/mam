@@ -13,6 +13,13 @@ type License struct {
 	Notice     string
 }
 
+// File is a file an asset puts in the environment of the runtime, with the SHA-256 it is checked against.
+type File struct {
+	Path   string
+	Size   string
+	SHA256 string
+}
+
 // Asset is one weight or dependency of a runtime: what it is, whether it is there, where it comes from and its license.
 type Asset struct {
 	Name        string
@@ -26,6 +33,8 @@ type Asset struct {
 	SourceURL  string
 	SourceNote string
 	License    License
+	// Files are where the asset's files go (one for a single file, one per member of an archive).
+	Files []File
 }
 
 // Weights is the weights and dependencies of a runtime.

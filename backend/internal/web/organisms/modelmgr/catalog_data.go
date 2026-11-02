@@ -4,8 +4,10 @@ import "github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 
 // File is a file of a model.
 type File struct {
-	Path    string
-	Size    string
+	Path string
+	Size string
+	// SHA256 is the digest the file is checked against at the install.
+	SHA256  string
 	Present bool
 	Shared  []string
 	// SourceNote is where the original of a third party's mirror lies ("" for a file of the original repository).
@@ -14,8 +16,10 @@ type File struct {
 
 // Model is a model of the catalog.
 type Model struct {
-	ID        string
-	Name      string
+	ID   string
+	Name string
+	// Kind is image or video (the picture of the card); KindLabel says it in words.
+	Kind      string
 	KindLabel string
 	Advanced  bool
 	// Adult is the badge 成人向け; TriggerWords are the words a LoRA of the model needs in the prompt.

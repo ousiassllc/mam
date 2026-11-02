@@ -1,7 +1,7 @@
 package atoms
 
 // Icons of the side menu (Lucide v1.61.0, copied as in icon.templ; the file is split from icon.templ to stay under the
-// line limit). Icon hands every name it does not know to iconNav.
+// line limit). Icon hands every name it does not know to iconNav, which hands the rest to iconModel (icon_model.templ).
 
 // Icons of the side menu: the screens of the app and the views of a Project, and the button that folds the menu.
 const (
@@ -116,5 +116,7 @@ templ iconNav(name IconName, class string) {
 				<path d="M9 3v18"></path>
 				<path d="m14 9 3 3-3 3"></path>
 			}
+		default:
+			@iconModel(name, class)
 	}
 }
