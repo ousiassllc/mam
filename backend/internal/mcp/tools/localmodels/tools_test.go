@@ -26,7 +26,7 @@ func TestEndpoints_CRUDWithKeyStatusOnlyAndImmutableNames(t *testing.T) {
 	}, &created)
 	assert.Equal(t, "box", created.Name)
 	assert.Equal(t, 2, created.MaxConcurrency)
-	assert.Equal(t, 3600, created.TimeoutSeconds, "the default is shown")
+	assert.Equal(t, 10800, created.TimeoutSeconds, "the default is shown")
 	assert.True(t, created.APIKey.Configured)
 	assert.Equal(t, "EFGH", created.APIKey.LastChars)
 	assert.Empty(t, created.Models)

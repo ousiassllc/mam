@@ -66,6 +66,22 @@ async function modelManagerAnswerMiddleware(ctx, next) {
   ctx.body = file ? await readFile(new URL(`./src/components/testdata/${file}`, import.meta.url)) : '';
 }
 
+// The answers of the generation test (test: scroll/gentest-live): a running batch asks for itself every 2 s, which the dev
+// server does not serve; the files are what the handlers render (backend/internal/web/gentest_live_fixture_test.go).
+const gentestAnswers = {
+  'GET /generation-test/batches/b1': ['gentest-batch-progress.html', 200],
+  'GET /generation-test/history': ['gentest-history-live-done.html', 200], // the part of the history ("?live=1"): the last result finished
+};
+
+async function gentestAnswerMiddleware(ctx, next) {
+  const answer = gentestAnswers[`${ctx.method} ${ctx.path}`];
+  if (!answer) return next();
+  const [file, status] = answer;
+  ctx.status = status;
+  ctx.type = 'text/html';
+  ctx.body = await readFile(new URL(`./src/components/testdata/${file}`, import.meta.url));
+}
+
 // The real Tailwind CSS of the app (src/css/app.css, which scans the Templ templates and the components), for the tests
 // that measure a layout (components/layout). It is built once, by the installed @tailwindcss/cli, while the browser
 // starts, and served as /__tailwind.css.
@@ -115,6 +131,7 @@ export default {
     hxTriggerMiddleware,
     modalAnswerMiddleware,
     modelManagerAnswerMiddleware,
+    gentestAnswerMiddleware,
     tailwindCssMiddleware,
   ],
   plugins: [esbuildPlugin({ ts: true, tsconfig: './tsconfig.json' })],

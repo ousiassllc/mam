@@ -135,13 +135,14 @@ func cmpType(t string) string {
 
 // cancel stops the prompt, if it is still queued or running, without touching the jobs of other clients:
 // POST /api/jobs/<id>/cancel where the server has it, else the queue is read and the prompt is interrupted
-// (only when it is the running one) or deleted from the queue by its ID. It never sends an unscoped
-// interrupt or a clear. It runs after the call's own context ended, so it has its own short deadline.
+// (only when it is the running one) or deleted from the queue by its ID. A server without the route answers
+// 404, or 405 where the static files of its web UI own the path, so any failure of the first request falls
+// through to the queue. It never sends an unscoped interrupt or a clear. It runs after the call's own
+// context ended, so it has its own short deadline.
 func (b *Backend) cancel(promptID string) {
 	ctx, stop := context.WithTimeout(context.Background(), 10*time.Second)
 	defer stop()
-	_, err := b.Client.Request(ctx, http.MethodPost, "/api/jobs/"+url.PathEscape(promptID)+"/cancel", jsonHeader, []byte("{}"), localhttp.MaxJSONBytes)
-	if err == nil || !isNotFound(err) {
+	if _, err := b.Client.Request(ctx, http.MethodPost, "/api/jobs/"+url.PathEscape(promptID)+"/cancel", jsonHeader, []byte("{}"), localhttp.MaxJSONBytes); err == nil {
 		return
 	}
 	data, err := b.Client.Request(ctx, http.MethodGet, "/queue", nil, nil, localhttp.MaxJSONBytes)

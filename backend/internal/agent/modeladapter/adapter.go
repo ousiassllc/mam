@@ -10,6 +10,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/agegate"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/limitclock"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/agent/resilience"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
@@ -250,10 +251,9 @@ func (a *Adapter) GenerateVideo(ctx context.Context, primary, fallback VideoTarg
 	return VideoOutput{}, fmt.Errorf("modeladapter: every video model failed: %w", routeFailure(failures))
 }
 
-// call runs fn against one vendor: it skips the vendor while its breaker is open, takes a
-// concurrency slot, and retries unavailable answers with exponential backoff. A 429 also lowers
-// the vendor's concurrency limit. The call is bounded by the vendor's timeout, and by clock, which
-// starts once the slot is held.
+// call runs fn against one vendor: it skips the vendor while its breaker is open, takes a concurrency slot, and
+// retries unavailable answers with exponential backoff. A 429 also lowers the vendor's concurrency limit. The call
+// is bounded by the vendor's timeout, and by clock, which starts once the slot is held.
 func call[T any](ctx context.Context, a *Adapter, st *state, v Vendor, clock *limitclock.Clock, fn func(context.Context) (T, error), model string) (T, error) {
 	var zero T
 	b, lim := st.breakers[v], st.limiters[v]
@@ -292,7 +292,7 @@ func call[T any](ctx context.Context, a *Adapter, st *state, v Vendor, clock *li
 		defer cancel()
 		out, err := fn(callCtx)
 		if err != nil && ctx.Err() == nil && errors.Is(callCtx.Err(), context.DeadlineExceeded) {
-			return zero, fmt.Errorf("%w after %s: %w", ErrTimeout, timeout, err)
+			return zero, localcfg.MarkTimeout(string(v), timeout, fmt.Errorf("%w after %s: %w", ErrTimeout, timeout, err))
 		}
 		return out, err
 	})

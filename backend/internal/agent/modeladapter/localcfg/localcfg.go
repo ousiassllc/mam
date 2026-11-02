@@ -43,10 +43,11 @@ const (
 )
 
 // Defaults of an endpoint that leaves a number out. One GPU rarely runs two jobs at once, and a video
-// takes minutes to tens of minutes on a local GPU.
+// takes minutes to hours on a local GPU (a 14B video model at 720p on a 16 GB card passes one hour), so the
+// ComfyUI default is 3 hours. A call that runs past it is cancelled on the server too.
 const (
 	DefaultConcurrency    = 1
-	DefaultTimeoutComfyUI = 3600
+	DefaultTimeoutComfyUI = 3 * 3600
 	DefaultTimeoutCompat  = 900
 )
 
@@ -57,7 +58,7 @@ type Endpoint struct {
 	BaseURL string `json:"base_url"`
 	// MaxConcurrency is the most calls in flight at once (0: DefaultConcurrency).
 	MaxConcurrency int `json:"max_concurrency,omitempty"`
-	// TimeoutSeconds bounds one call (0: 3600 for ComfyUI, 900 for an OpenAI-compatible server).
+	// TimeoutSeconds bounds one call (0: 10800 for ComfyUI, 900 for an OpenAI-compatible server).
 	TimeoutSeconds int `json:"timeout_seconds,omitempty"`
 }
 
@@ -115,6 +116,9 @@ func SplitKey(key string) (endpoint, name string, ok bool) {
 // VendorKey is the vendor of an endpoint: the unit of the circuit breaker and the concurrency limit of
 // the Model Adapter, and the credential.Store key of the endpoint's API key.
 func VendorKey(endpoint string) string { return "endpoint:" + endpoint }
+
+// IsVendorKey reports whether the vendor is an endpoint the user registered (a VendorKey), not a built-in vendor.
+func IsVendorKey(vendor string) bool { return strings.HasPrefix(vendor, "endpoint:") }
 
 // ValidateEndpoint checks one endpoint of the settings; a nil error means it can be used. Each problem is an
 // *EndpointError.

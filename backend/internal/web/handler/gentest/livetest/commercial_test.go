@@ -1,6 +1,7 @@
-package gentest_test
+package livetest_test
 
 import (
+	"net/url"
 	"regexp"
 	"strings"
 	"testing"
@@ -11,11 +12,18 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
+// batchForm is a batch of two prompts of the models, two results each.
+func batchForm(models ...string) url.Values {
+	return url.Values{"media": {"image"}, "model": models, "count": {"2"}, "aspect_ratio": {"16:9"}, "prompt": {"a red fox", "a blue fox"}, "negative": {"blurry", ""}}
+}
+
+// #928: a result, the history and the detail say whether the model may be used commercially, and the history can be filtered by it.
 func TestAResultAndTheBatchGridSayWhetherTheModelThatMadeItMayBeUsedCommercially(t *testing.T) {
 	s := newScreen(t)
-	id := s.run(batchForm("flux-2", "gpt-image-2"))
+	id := s.start(batchForm("flux-2", "gpt-image-2"))
+	s.settled(id)
 
-	history := s.page(paths.GenerationTestHistory())
+	history := s.get(paths.GenerationTestHistory())
 	assert.Equal(t, 8, strings.Count(history, `data-testid="gt-history-item"`))
 	assert.Equal(t, 8, strings.Count(history, `data-testid="gt-history-item" data-commercial="yes"`), "each result's item carries the answer of its model")
 	assert.Contains(t, history, `<option value="flux-2" data-commercial="yes"`, "so does the model choice of the filter")
@@ -23,20 +31,20 @@ func TestAResultAndTheBatchGridSayWhetherTheModelThatMadeItMayBeUsedCommercially
 	assert.Contains(t, history, `data-commercial-filter-target="#`, "the history can be filtered too")
 	assert.Contains(t, history, `name="commercial"`, "the choice is a field of the history form, so it survives the paging")
 
-	results := s.results(id)
-	require.NotEmpty(t, results)
-	detail := s.page(paths.GenerationTestPart("results", results[0].ID))
-	assert.Contains(t, detail, `data-commercial-badge="yes"`)
+	b, err := s.rig.Svc.Batch(t.Context(), id, true)
+	require.NoError(t, err)
+	require.NotEmpty(t, b.Results)
+	assert.Contains(t, s.get(paths.GenerationTestPart("results", b.Results[0].ID)), `data-commercial-badge="yes"`)
 }
 
 func TestTheHistoryKeepsTheCommercialFilterInTheNextLink(t *testing.T) {
 	s := newScreen(t)
 	form := batchForm("flux-2")
 	form.Set("count", "20")
-	s.run(form)
-	s.run(form)
+	s.settled(s.start(form))
+	s.settled(s.start(form))
 
-	body := s.get(paths.GenerationTestHistory() + "?commercial=ok").Body.String()
+	body := s.get(paths.GenerationTestHistory() + "?commercial=ok")
 
 	next := regexp.MustCompile(`hx-get="([^"]*offset=24[^"]*)"`).FindStringSubmatch(body)
 	require.Len(t, next, 2)

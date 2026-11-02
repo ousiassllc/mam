@@ -233,6 +233,12 @@ type History struct {
 	Spend        string
 	// Next is the link to the next page ("" on the last).
 	Next string
+	// Refresh is the link to the list as it is now (the page, the filter) with "live=1": the part that the refresh button and the
+	// polling ask for. Active says a result of the page is waiting or running, so the part asks for itself again every 2 s.
+	// UpdatedAt is the time of day this was read ("15:04:05").
+	Refresh   string
+	Active    bool
+	UpdatedAt string
 }
 
 // KV is a line of the settings of a result.

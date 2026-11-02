@@ -23,7 +23,7 @@
 |--------|------|------|------|----------|
 | `list_local_endpoints` | 登録済みの接続先の一覧 | なし | `pinned`, `endpoints[]`（`name`, `kind`, `base_url`, `max_concurrency`, `timeout_seconds`（既定を反映した値）, `api_key`（`configured`, `last_chars`）, `models[]`（識別子）） | はい |
 | `get_local_endpoint` | 接続先 1 件 | `name` | `list_local_endpoints` の 1 件 | はい |
-| `create_local_endpoint` | 接続先を登録する（すぐに効く） | `name`（英小文字・数字・`.` `_` `-` の 1〜63 文字。`new` は設定画面の追加フォームの URL と同じなため 422）, `kind`（`comfyui` / `openai-compat`）, `base_url`, `max_concurrency?`（既定 1）, `timeout_seconds?`（ComfyUI 3600・互換 900）, `api_key?` | 接続先 | いいえ |
+| `create_local_endpoint` | 接続先を登録する（すぐに効く） | `name`（英小文字・数字・`.` `_` `-` の 1〜63 文字。`new` は設定画面の追加フォームの URL と同じなため 422）, `kind`（`comfyui` / `openai-compat`）, `base_url`, `max_concurrency?`（既定 1）, `timeout_seconds?`（ComfyUI 10800・互換 900）, `api_key?` | 接続先 | いいえ |
 | `update_local_endpoint` | `base_url`・同時実行数・タイムアウトを変える（省略した数は既定に戻る）。冪等 | `name`, `base_url`, `max_concurrency?`, `timeout_seconds?` | 接続先 | いいえ |
 | `delete_local_endpoint` | 接続先・そのモデル・API キーを削除する | `name` | `name` | いいえ（破壊的） |
 | `test_local_endpoint` | 接続テスト。`name` だけなら保存済み、`kind`＋`base_url`（＋`api_key`、保存しない）なら未保存の内容を試す。`name` と一緒に渡すとその名前の保存済みキーを使う。ComfyUI は `/system_stats`（バージョン・GPU）、互換は `/v1/models`（件数。無ければ「到達できる」の注意付き成功）。到達できないのは `ok=false` の結果 | `name?` / `kind?`, `base_url?`, `api_key?` | `ok`, `message`, `note`, `version`, `models[]`（20 件まで） | はい（外部への接続） |
@@ -49,3 +49,4 @@
 | 1.1 | 2026-10-25 | `create_local_endpoint` の `name` に `new` を使えない（422）ことを書いた | Issue #847。設定画面の接続先のサブページ `/settings/local-models/endpoints/:name` が追加フォームの `…/endpoints/new` に隠れないようにするため |
 | 1.2 | 2026-10-25 | 接続先の入力の検証の文言（`create_local_endpoint`・`update_local_endpoint`・`test_local_endpoint` の `validation`）は、画面と同じ**日本語だけ**の 1 問題 1 行になった（値や英語の項目名、リンクローカルの英語の補足は含まない）。MCP など画面でない呼び出し元も同じ文言を受け取る。検証の意味（名前・種類・`base_url`・同時実行数・タイムアウトの条件と順序）は変わらない | PR #849 第 2 周のレビューの指摘。設定画面の接続先のモーダルが、利用者向けの日本語の理由を出すようにしたため |
 | 1.3 | 2026-11-02 | `list_local_models` の `max_reference_images` を ComfyUI の画像モデルにも出し、`reference_mode`・`supports_lora` を足した（生成テストの `list_generation_models` と同じ値） | Issue #933 |
+| 1.4 | 2026-11-02 | `create_local_endpoint` の `timeout_seconds` の既定（ComfyUI）を 3600 から 10800 に変えた | Issue #917 |

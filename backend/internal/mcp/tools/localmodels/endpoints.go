@@ -124,7 +124,7 @@ type CreateEndpointInput struct {
 	Kind           string `json:"kind" jsonschema:"comfyui（画像・動画）または openai-compat（画像のみ）。後から変えられない"`
 	BaseURL        string `json:"base_url" jsonschema:"例: http://127.0.0.1:8188、http://192.168.0.10:1234、http://100.101.102.103:8188。リンクローカルは不可"`
 	MaxConcurrency int    `json:"max_concurrency,omitempty" jsonschema:"同時実行数。省略で 1"`
-	TimeoutSeconds int    `json:"timeout_seconds,omitempty" jsonschema:"タイムアウト秒。省略で ComfyUI 3600・互換 900"`
+	TimeoutSeconds int    `json:"timeout_seconds,omitempty" jsonschema:"タイムアウト秒。省略で ComfyUI 10800・互換 900"`
 	APIKey         string `json:"api_key,omitempty" jsonschema:"任意の API キー。応答には含まれない"`
 }
 
@@ -157,7 +157,7 @@ type UpdateEndpointInput struct {
 	Name           string `json:"name" jsonschema:"変える接続先の名前（名前と kind は変えられない）"`
 	BaseURL        string `json:"base_url"`
 	MaxConcurrency int    `json:"max_concurrency,omitempty" jsonschema:"省略で 1"`
-	TimeoutSeconds int    `json:"timeout_seconds,omitempty" jsonschema:"省略で ComfyUI 3600・互換 900"`
+	TimeoutSeconds int    `json:"timeout_seconds,omitempty" jsonschema:"省略で ComfyUI 10800・互換 900"`
 }
 
 func (h handlers) updateEndpoint(ctx context.Context, in UpdateEndpointInput) (Endpoint, error) {

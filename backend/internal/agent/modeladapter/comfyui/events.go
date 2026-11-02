@@ -10,6 +10,7 @@ import (
 
 	"github.com/coder/websocket"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/comfyui/live"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/progress"
 )
@@ -27,10 +28,11 @@ type tracker struct {
 	failure  string
 	ctx      context.Context
 	changed  chan struct{} // receives a signal when the prompt ended or failed
+	job      *live.Job     // where the steps are recorded for the tools that show the GPU
 }
 
-func newTracker(ctx context.Context, promptID string, graph localcfg.Graph) *tracker {
-	t := &tracker{ctx: ctx, promptID: promptID, total: max(1, len(graph)), classes: map[string]string{}, changed: make(chan struct{}, 1)}
+func newTracker(ctx context.Context, promptID string, graph localcfg.Graph, job *live.Job) *tracker {
+	t := &tracker{ctx: ctx, promptID: promptID, job: job, total: max(1, len(graph)), classes: map[string]string{}, changed: make(chan struct{}, 1)}
 	for id, n := range graph {
 		t.classes[id] = n.ClassType
 	}
@@ -42,6 +44,7 @@ func (t *tracker) setPrompt(id string) {
 	t.mu.Lock()
 	t.promptID = id
 	t.mu.Unlock()
+	t.job.Rename(id)
 }
 
 // failed is the message of an execution error the server reported, "" while there is none.
@@ -89,6 +92,7 @@ func (t *tracker) handle(raw []byte) {
 	case "progress":
 		if m.Data.Max > 0 {
 			update = t.update(m.Data.Value / m.Data.Max)
+			t.job.Step(t.current, t.classes[t.current], int(m.Data.Value), int(m.Data.Max), update.Percent)
 		}
 	case "execution_error":
 		t.failure = strings.TrimSpace(m.Data.Message)

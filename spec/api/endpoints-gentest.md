@@ -17,7 +17,7 @@ POST・DELETE は CSRF 必須。操作は区画（`outerHTML`）を返し、ジ�
 | POST | `/generation-test/run` | 確認の区画のフォームの送信。サーバーが見積りをやり直し、`estimate_id` と合計が違う・上限（`gentest.max_items`・`gentest.max_cost_usd`）を超えるなら 409、入力の誤りは 422、英訳が必要なのに LLM が訳せなければ 502（何も生成しない）。202 で進捗と比較表の区画（`#gt-batch`）を返す |
 | GET | `/generation-test/batches/:id` | 進捗と比較表（行＝モデル、列＝プロンプト）。終わるまで 2 秒ごとに自分を取り直す。無ければ 404 |
 | POST | `/generation-test/batches/:id/cancel` | 取り消し。始めていない結果を取り消し、呼び出し中のものは終わるのを待つ。終わったバッチは 409 |
-| GET | `/generation-test/history` | 履歴（新しい順、24 件ずつ。クエリ `model`・`media`・`favorite=1`・`offset`）。直接開くとページ、HTMX は一覧だけ。合計コストの 1 行を持つ |
+| GET | `/generation-test/history` | 履歴（新しい順、24 件ずつ。クエリ `model`・`media`・`favorite=1`・`offset`）。直接開くとページ、HTMX は一覧だけ。合計コストの 1 行と、最終更新の時刻・更新ボタンを持つ。`live=1` を足すと、絞り込みの外の変わる部分（`#gt-history-live`: 合計・結果・次のページのボタン）だけを返す。結果に待機中・生成中のものがあるあいだ、その部分は `hx-trigger="every 2s"` で同じ条件（`model`・`media`・`favorite`・`offset` と `live=1`）を取り直し、完了・失敗・取り消しだけになった答えは属性を持たず、ポーリングが止まる（Issue #925） |
 | GET | `/generation-test/results/:id` | 結果の詳細（設定・実際に送ったプロンプト・シード・入力画像・取り込み先・取り込みフォーム）。無ければ 404 |
 | GET | `/generation-test/results/:id/file` | 結果のファイル。保存した MIME のまま `Content-Security-Policy: sandbox`・`X-Content-Type-Options: nosniff`。`?download=1` で `Content-Disposition: attachment`。完了していない・無い結果は 404 |
 | GET | `/generation-test/inputs/:id/file` | バッチの入力画像のファイル（同じ扱い） |
@@ -58,3 +58,4 @@ POST・DELETE は CSRF 必須。操作は区画（`outerHTML`）を返し、ジ�
 | 1.2 | 2026-11-01 | 見積りの `translate`（英語に訳して送る。無ければ OFF）と確認の「プロンプトの英訳」の行、`/run` の 502（訳せなかった）、エラーの対応の `*UpstreamError` を足した | Issue #913 |
 | 1.3 | 2026-11-02 | 見積りに `strength_<ref>`・`avoid_pose`・`lora`・`lora_strength` と役割 `face`・`style`・`edit`、ブラウザで選んだファイルの `upload::#<n>`、`ref-row` に `?model=` を足した | Issue #933 |
 | 1.4 | 2026-11-02 | `upload::#<n>` の n は届いたファイルの位置とし、空のファイルは保存せず番号を詰めない（その欄は捨てる。範囲外・数でない・同じ番号の 2 つ目も捨てる）。強さの値は範囲外・無限大を 0〜1 に丸める | Issue #933（PR #953 のレビュー） |
+| 1.5 | 2026-11-02 | `GET /generation-test/history` に `live=1`（変わる部分だけ）、最終更新の時刻、更新ボタン、結果が動いているあいだの 2 秒ごとの取り直しを足した | Issue #925。履歴が生成の完了や進み具合をリアルタイムに映さなかった |
