@@ -86,7 +86,7 @@ func TestEndpointAndModelTakeEffectAtOnceAndAreSaved(t *testing.T) {
 	v, err := r.svc.View()
 	require.NoError(t, err)
 	require.Len(t, v.Endpoints, 1)
-	assert.Equal(t, localmodels.EndpointView{Name: "box", Kind: localcfg.KindComfyUI, BaseURL: "http://127.0.0.1:8188", MaxConcurrency: 1, TimeoutSeconds: 3600}, v.Endpoints[0])
+	assert.Equal(t, localmodels.EndpointView{Name: "box", Kind: localcfg.KindComfyUI, BaseURL: "http://127.0.0.1:8188", MaxConcurrency: 1, TimeoutSeconds: 10800}, v.Endpoints[0])
 	require.Len(t, v.Models, 2)
 	assert.Equal(t, "comfyui:box/txt2img", v.Models[0].ID)
 	assert.Equal(t, "comfyui:box/wan", v.Models[1].ID)

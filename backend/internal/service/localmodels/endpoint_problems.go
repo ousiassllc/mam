@@ -36,7 +36,7 @@ func endpointProblem(err error) string {
 	case localcfg.FieldMaxConcurrency:
 		return fmt.Sprintf("同時実行数は 1〜%d の整数で入力してください（空: 1）。", localcfg.MaxConcurrency)
 	case localcfg.FieldTimeoutSeconds:
-		return fmt.Sprintf("タイムアウトは 1〜%d 秒で入力してください（空: ComfyUI 3600・互換 900）。", localcfg.MaxTimeoutSeconds)
+		return fmt.Sprintf("タイムアウトは 1〜%d 秒で入力してください（空: ComfyUI 10800・互換 900）。", localcfg.MaxTimeoutSeconds)
 	}
 	return err.Error()
 }

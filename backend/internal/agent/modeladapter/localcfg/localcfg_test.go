@@ -59,7 +59,7 @@ func TestValidateEndpointNamesTheFieldOfEachProblem(t *testing.T) {
 
 func TestEndpointDefaults(t *testing.T) {
 	assert.Equal(t, 1, localcfg.Endpoint{}.Concurrency())
-	assert.Equal(t, 3600, localcfg.Endpoint{Kind: localcfg.KindComfyUI}.Timeout())
+	assert.Equal(t, 10800, localcfg.Endpoint{Kind: localcfg.KindComfyUI}.Timeout())
 	assert.Equal(t, 900, localcfg.Endpoint{Kind: localcfg.KindOpenAICompat}.Timeout())
 	assert.Equal(t, 5, localcfg.Endpoint{MaxConcurrency: 5, TimeoutSeconds: 5}.Timeout()+localcfg.Endpoint{MaxConcurrency: 5}.Concurrency()-5)
 	assert.Empty(t, localcfg.ValidateEndpoint("a", localcfg.Endpoint{Kind: localcfg.KindComfyUI, BaseURL: "http://127.0.0.1:8188"}))

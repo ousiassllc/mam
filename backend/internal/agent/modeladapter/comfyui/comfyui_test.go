@@ -207,11 +207,16 @@ func TestCancelUsesTheJobsAPIAndNeverAnUnscopedInterrupt(t *testing.T) {
 	assert.Empty(t, f.QueueDeletes())
 }
 
-func TestCancelFallsBackToAScopedInterruptOrQueueDelete(t *testing.T) {
+// A server without /api/jobs answers 404, or 405 where the static files of the web UI own the path: either way
+// the job is interrupted (when it runs) or removed from the queue (when it waits), by its own ID.
+func TestCancelFallsBackWhenTheJobsAPIIsMissing(t *testing.T) { cancelFallsBack(t, 404) }
+func TestCancelFallsBackWhenThePathIsNotAllowed(t *testing.T) { cancelFallsBack(t, 405) }
+
+func cancelFallsBack(t *testing.T, status int) {
 	for name, running := range map[string]bool{"running": true, "pending": false} {
 		t.Run(name, func(t *testing.T) {
 			f := comfyuitest.New(t)
-			f.CancelStatus = 404 // an older server without /api/jobs
+			f.CancelStatus = status
 			f.Hold = make(chan struct{})
 			b := backend(t, f, "txt2img-sdxl", nil)
 			c, cancel := context.WithCancel(ctx(t))

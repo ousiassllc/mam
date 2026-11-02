@@ -282,7 +282,7 @@ func EndpointModal(f EndpointForm, errMsg string) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "</label> <label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"local-endpoint-timeout\"><span>タイムアウト（秒。空: ComfyUI 3600・互換 900）</span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "</label> <label class=\"flex flex-col gap-1 text-xs text-neutral-400\" for=\"local-endpoint-timeout\"><span>タイムアウト（秒。空: ComfyUI 10800・互換 900）</span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

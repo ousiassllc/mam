@@ -46,7 +46,7 @@ func TestLocalModelsAreValidAndRoutable(t *testing.T) {
 	assert.Equal(t, modeladapter.Vendor("kling"), modeladapter.VendorOf(domain.ModelKling3))
 	assert.Zero(t, cfg.VideoCost(cfg.Policies[domain.QualityFast].Primary, 5), "0 USD by default")
 	assert.Equal(t, 1, cfg.VendorSettings()["endpoint:box"].MaxConcurrency, "one GPU, one job")
-	assert.Equal(t, 3600, cfg.VendorSettings()["endpoint:box"].TimeoutSeconds, "a local video takes long")
+	assert.Equal(t, 10800, cfg.VendorSettings()["endpoint:box"].TimeoutSeconds, "a local video takes long")
 }
 
 func TestRoutesMustNameDefinedLocalModels(t *testing.T) {
