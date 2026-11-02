@@ -195,7 +195,7 @@ func (s *Service) estimate(ctx context.Context, r Request) (Estimate, plan, erro
 		return Estimate{}, p, err
 	}
 	if p.req.ContinueBatchID == "" {
-		if _, _, _, _, err := s.g.ResolveInput(ctx, p.req.Reference); err != nil {
+		if _, err := s.g.ResolveInput(ctx, p.req.Reference); err != nil {
 			return Estimate{}, p, err
 		}
 	}

@@ -14,8 +14,11 @@ import { dedupeToastsOnSwap, dismissToastsOnClick } from './components/lib/toast
 import { insideModal, installModal } from './components/modal/modal';
 import { installCopy } from './components/copy/copy';
 import { installHelp } from './components/help/help';
+import { installCommercialFilter } from './components/commercial-filter/commercial-filter';
 import { initGentestInputs } from './components/gentest/inputs';
 import { initGentestMatch } from './components/gentest/match';
+import { installKeepScroll } from './components/scroll/keep-scroll';
+import { installPollGuard } from './components/poll/poll-guard';
 
 // Attach the CSRF token (from <meta name="csrf-token">) to every HTMX request.
 document.addEventListener('htmx:configRequest', (event) => {
@@ -76,6 +79,14 @@ installCopy();
 
 // The prompt match form of the generation test: the chosen image, the fields of the way to go on, the slider's value.
 initGentestMatch();
+// The filter of commercial use of the lists of models: 商用OKのみ / 条件つきまで / すべて.
+installCommercialFilter();
+
+// A scrolling box that a swap draws again (the grid of a running generation, which polls) keeps where it was scrolled to (#940).
+installKeepScroll();
+
+// A poll waits while the tab is hidden or a video in the section plays, so that the swap does not cut it off (#925).
+installPollGuard();
 
 lockDownHtmx(htmx.config);
 

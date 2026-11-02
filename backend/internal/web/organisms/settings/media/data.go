@@ -4,7 +4,11 @@
 // for the tests) and reset by DELETE /settings/models.
 package media
 
-import "slices"
+import (
+	"slices"
+
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+)
 
 // The two models of a route.
 const (
@@ -54,6 +58,8 @@ type ImageModel struct {
 	Name              string
 	Fast              bool
 	AcceptsReferences bool
+	// Answer is whether the model may be used commercially: the option says it in its text and the filter reads it (#928).
+	Answer commercial.View
 }
 
 // ImageTarget is the saved choice of one slot of an image purpose. Unusable: the model is not among the choices (an adult
@@ -79,6 +85,8 @@ type ImageRow struct {
 type VideoChoice struct {
 	Value string
 	Label string
+	// Answer is whether the model may be used commercially (data-commercial of the option).
+	Answer commercial.View
 }
 
 // PolicyRow is one Quality Policy: the video models (a VideoChoice.Value each), whether each is unusable, and the number
@@ -116,6 +124,8 @@ type Data struct {
 type ImageForm struct {
 	Row    ImageRow
 	Models []ImageModel
+	// Filter is the commercial-use filter of the model selects (it narrows the options; the saved choice is always kept).
+	Filter commercial.FilterData
 	Error  string
 	// Blame is the slot (SlotPrimary, SlotFallback) the refusal is about, "" when it is about none.
 	Blame string
@@ -125,7 +135,9 @@ type ImageForm struct {
 type PolicyForm struct {
 	Row     PolicyRow
 	Choices []VideoChoice
-	Error   string
+	// Filter is the commercial-use filter of the model selects.
+	Filter commercial.FilterData
+	Error  string
 	// Blame is the slot (SlotPrimary, SlotFallback) or BlameTakes the refusal is about, "" when it is about none.
 	Blame string
 }

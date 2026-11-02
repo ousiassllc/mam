@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -46,7 +48,7 @@ func withPlainModelAt(base string) mmtest.Option {
 		d.Catalog.Models = append(d.Catalog.Models, catalog.Model{
 			ID: "m-plain", Name: "P", Kind: localcfg.MediaImage, Tier: catalog.TierAdvanced, Description: "d",
 			VRAM:      catalog.VRAM{MinGB: 8, Source: "test", Estimate: true},
-			License:   catalog.License{ID: "plain-license", Version: "1", Name: "plain", URL: "https://example.com/plain", Summary: "s", CommercialUse: true, CommercialCondition: "c"},
+			License:   catalog.License{ID: "plain-license", Version: "1", Name: "plain", URL: "https://example.com/plain", Summary: "s", Commercial: modellicense.Conditional, CommercialCondition: "c", CheckedAt: "2026-11-02"},
 			Files:     []catalog.File{{Name: "p.safetensors", Folder: "vae", URL: base + "/p.safetensors", SHA256: hftest.SHA([]byte("p")), Size: 1}},
 			Workflows: []catalog.Workflow{{Name: "wf-p", Template: "txt2img-sdxl"}},
 		})

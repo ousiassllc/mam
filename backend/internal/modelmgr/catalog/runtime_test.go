@@ -6,6 +6,8 @@ import (
 	"testing"
 	"testing/fstest"
 
+	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -38,7 +40,7 @@ func TestGPTSoVITSRuntimeIsPinnedToTheOfficialPackage(t *testing.T) {
 	assert.Contains(t, rt.Launch.Args, "{port}")
 	assert.Contains(t, rt.Launch.Env, "HF_HUB_OFFLINE=1")
 	assert.Contains(t, rt.Launch.Env, "TRANSFORMERS_OFFLINE=1")
-	assert.False(t, rt.License.CommercialUse && rt.License.CommercialCondition == "", "what is not clear about commercial use is said")
+	assert.False(t, rt.License.Commercial == modellicense.Yes && rt.License.CommercialCondition == "", "what is not clear about commercial use is said")
 
 	// Why a machine is refused is data of the catalog: macOS has its own sentence.
 	assert.Contains(t, rt.Support.OSReasons["darwin"], "macOS では GPT-SoVITS の自動導入に対応していません")

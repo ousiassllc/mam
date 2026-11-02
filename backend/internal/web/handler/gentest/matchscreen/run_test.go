@@ -11,6 +11,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gentesttest"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -51,6 +52,19 @@ func TestRunStartsTheMatchAndTheTimelineShowsTheRoundsTheBestPromptAndTheWordsFi
 	assert.Contains(t, detail, "90%")
 	assert.Contains(t, detail, "直した 1")
 	assert.Contains(t, detail, `data-testid="gt-match-link"`, "an image can start a match of its own")
+}
+
+// The answer of #928 (may the model be used commercially?) is on the model of the form and on the model the rounds were made with.
+func TestTheLicenseOfTheModelIsOnTheFormAndOnTheMatch(t *testing.T) {
+	s := newScreen(t, []int{90}, true)
+	want := commercial.OptionLabel("flux-2（$0.0300 / 枚）", commercial.Of("flux-2"))
+	assert.Contains(t, s.get(paths.GenerationTestMatch()).Body.String(), want, "the option of the model says it in words")
+
+	_, body := s.estimate(matchForm("auto"))
+	require.Equal(t, http.StatusAccepted, s.post(paths.GenerationTestPart("match", "run"), hiddenOf(t, body)).Code)
+	done := s.settled(s.batchID())
+	assert.Contains(t, done, `data-testid="gt-match-model-label"`)
+	assert.Contains(t, done, `data-testid="commercial-badge"`)
 }
 
 func TestRunRefusesAChangedEstimateAndAnOverLimitOne(t *testing.T) {

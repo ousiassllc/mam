@@ -48,7 +48,7 @@ func Register(r *mcpkit.Registrar, svc *service.Services) {
 	})
 
 	mcpkit.Read(r, "list_generation_models",
-		"生成テストで選べるモデル（組み込みのクラウドモデルと、ローカル・登録した外部 ComfyUI・保存したワークフロー・ChatGPT サブスクのモデル）。能力・単価（priced / free / unknown）・使えない理由を含む。画像モデルは参照画像の使い方（reference_mode: edit / img2img、max_reference_images、reference_roles）と LoRA 対応（supports_lora）を持つ。loras は同梱 ComfyUI エンジンの LoRA 名の一覧 / Models a generation test can use, with capabilities, reference image support, LoRA support (loras lists the files), unit prices and why one is unavailable.",
+		"生成テストで選べるモデル（組み込みのクラウドモデルと、ローカル・登録した外部 ComfyUI・保存したワークフロー・ChatGPT サブスクのモデル）。能力・単価（priced / free / unknown）・使えない理由を含む。各モデルの license に商用利用の可否（commercial: yes 商用OK / conditional 条件つき / no 商用NG / unknown 不明）・ライセンス名・条件・出典 URL・確認日がある。commercial 引数（all / ok / ok_or_conditional）で絞り込める（省くと設定「商用OKのモデルだけを使う」に従う）。画像モデルは参照画像の使い方（reference_mode: edit / img2img、max_reference_images、reference_roles）と LoRA 対応（supports_lora）を持つ。loras は同梱 ComfyUI エンジンの LoRA 名の一覧 / Models a generation test can use, with capabilities, reference image support, LoRA support (loras lists the files), unit prices, why one is unavailable, and each model's license (commercial use yes / conditional / no / unknown, name, condition, source, checked date); the commercial argument filters them.",
 		h.listModels)
 	mcpkit.Read(r, "estimate_generation_test",
 		"生成テスト（モデル × プロンプト × 本数の全組み合わせ）の本数と見積りを返す。モデルごとの内訳・警告・上限を含む。画像は references の role / strength、avoid_reference_pose、lora を付けられる（モデルが使えない分は警告）。run_generation_test に estimate_id と total_usd をそのまま渡す。単価が分からないモデル（unknown）は合計に入らない。translate_to_english（既定 true）のとき、日本語などの文を英語に訳す行（model が translate）が単価なしで入る / Price a batch without running it; the translation of non-English prompts is a line without a price.",

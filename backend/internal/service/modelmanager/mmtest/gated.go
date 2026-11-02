@@ -3,6 +3,8 @@ package mmtest
 import (
 	"strings"
 
+	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
+
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/hf/hftest"
@@ -34,7 +36,7 @@ func WithGatedModel() Option {
 		d.Catalog.Models = append(d.Catalog.Models, catalog.Model{
 			ID: GatedModelID, Name: "G", Kind: localcfg.MediaImage, Tier: catalog.TierAdvanced, Description: "d", RequiresHFToken: true, ConsentRequired: true,
 			VRAM:    catalog.VRAM{MinGB: 8, Source: "test", Estimate: true},
-			License: catalog.License{ID: GatedLicense.ID, Version: GatedLicense.Version, Name: "gated", URL: "https://example.com/gated", Summary: "s", CommercialUse: true, CommercialCondition: "c"},
+			License: catalog.License{ID: GatedLicense.ID, Version: GatedLicense.Version, Name: "gated", URL: "https://example.com/gated", Summary: "s", Commercial: modellicense.Conditional, CommercialCondition: "c", CheckedAt: "2026-11-02"},
 			Files: []catalog.File{{
 				Name: GatedFile.Name, Folder: GatedFile.Folder, URL: r.HF.URL + "/" + GatedRepo + "/resolve/" + GatedCommit + "/vae/" + GatedFile.Name,
 				SHA256: GatedFile.sha(), Size: int64(len(GatedBody)),

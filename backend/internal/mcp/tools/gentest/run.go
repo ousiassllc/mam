@@ -11,11 +11,15 @@ import (
 // ListModelsInput narrows the models.
 type ListModelsInput struct {
 	Media string `json:"media,omitempty" jsonschema:"image / video。省くと両方"`
+	// Commercial narrows the models by whether they may be used commercially (#928).
+	Commercial string `json:"commercial,omitempty" jsonschema:"商用利用で絞り込む。all（すべて）/ ok（商用OKだけ）/ ok_or_conditional（商用OKと条件つき）。省くと設定「商用OKのモデルだけを使う」に従う（オフなら all）"`
 }
 
 // ListModelsOutput is the models.
 type ListModelsOutput struct {
 	Models []modelcatalog.Info `json:"models"`
+	// CommercialFilter is the filter that narrowed Models: what commercial asked for, or the setting's default.
+	CommercialFilter string `json:"commercial_filter" jsonschema:"models に適用した商用利用の絞り込み（all / ok / ok_or_conditional）"`
 	// LoRAs are the LoRA files of the bundled ComfyUI engine (lora.name of a request; only for models with supports_lora). Empty
 	// when the engine is not running or has none.
 	LoRAs  []string `json:"loras" jsonschema:"同梱 ComfyUI エンジンにある LoRA ファイル名（昇順）。リクエストの lora.name に使う。supports_lora のモデルだけが使う。エンジンが止まっている・無いときは空"`
@@ -38,7 +42,11 @@ func (h handlers) listModels(ctx context.Context, in ListModelsInput) (ListModel
 	if loras == nil {
 		loras = []string{}
 	}
-	return ListModelsOutput{Models: g.Models(ctx, in.Media), LoRAs: loras, Limits: Limits{MaxItems: items, MaxCostUSD: cost}}, nil
+	models, filter, err := g.ModelsFor(ctx, in.Media, in.Commercial)
+	if err != nil {
+		return ListModelsOutput{}, mapError(err)
+	}
+	return ListModelsOutput{Models: models, CommercialFilter: string(filter), LoRAs: loras, Limits: Limits{MaxItems: items, MaxCostUSD: cost}}, nil
 }
 
 // ReferenceInput is an input image of a batch.

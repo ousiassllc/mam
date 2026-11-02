@@ -73,7 +73,7 @@ func (s *Service) unit(e Estimate) *float64 { return e.Breakdown[0].UnitUSD }
 // create writes a new match: the batch, the reference image copied into the directory of the batch and the planned rounds.
 func (s *Service) create(ctx context.Context, p plan, est Estimate) (string, error) {
 	ref := p.req.Reference
-	file, mime, size, origin, err := s.g.ResolveInput(ctx, ref)
+	src, err := s.g.ResolveInput(ctx, ref)
 	if err != nil {
 		return "", err
 	}
@@ -87,8 +87,8 @@ func (s *Service) create(ctx context.Context, p plan, est Estimate) (string, err
 		return "", err
 	}
 	inID := domain.NewID()
-	name := "in-" + inID + inputTypes[mime]
-	if err := fsutil.CopyFile(file, filepath.Join(dir, name)); err != nil {
+	name := "in-" + inID + inputTypes[src.Mime]
+	if err := fsutil.CopyFile(src.Path, filepath.Join(dir, name)); err != nil {
 		return fail(err)
 	}
 	bp := batchParams{AspectRatio: aspectOf(p.req), Count: 1, Match: &struct {
@@ -98,14 +98,14 @@ func (s *Service) create(ctx context.Context, p plan, est Estimate) (string, err
 	estimate, _ := json.Marshal(est)
 	nb := gentestrepo.NewBatch{
 		Batch:  gentestrepo.Batch{ID: id, Media: gentestrepo.MediaImage, Params: params, EstimatedCost: est.TotalUSD, Estimate: estimate, CreatedAt: s.g.Now().UTC()},
-		Inputs: []gentestrepo.Input{{ID: inID, BatchID: id, Role: gentestrepo.RoleReference, FilePath: path.Join(id, name), MimeType: mime, SizeBytes: size, Origin: origin}},
+		Inputs: []gentestrepo.Input{{ID: inID, BatchID: id, Role: gentestrepo.RoleReference, FilePath: path.Join(id, name), MimeType: src.Mime, SizeBytes: src.Size, Origin: src.Origin}},
 	}
 	nb.Results = s.rounds(id, p, s.unit(est))
 	if err := s.g.Repo.CreateBatch(ctx, nb); err != nil {
 		return fail(err)
 	}
 	if ref.Source == gentest.FromStaged {
-		_ = os.Remove(file) // the staged upload is consumed
+		_ = os.Remove(src.Path) // the staged upload is consumed
 	}
 	return id, nil
 }

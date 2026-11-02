@@ -51,8 +51,10 @@
   "name": "MIT License",
   "url": "https://github.com/RVC-Boss/GPT-SoVITS/blob/20250606v2pro/LICENSE",
   "summary": "GPT-SoVITS は mam とは別のプログラムで、コードは MIT ライセンスで公開されている。mam は GPT-SoVITS のバイトを配布せず、利用者の PC に公式の配布先（Hugging Face の lj1995/GPT-SoVITS-windows-package）から取得する。統合パッケージには、サードパーティ製のライブラリと学習済みモデルも含まれ、それぞれのライセンスに従う。",
-  "commercial_use": true,
-  "commercial_condition": "GPT-SoVITS のコードは MIT で商用利用できる。統合パッケージに含まれる学習済みモデルと依存ライブラリ個々のライセンスは確認中で、商用利用がはっきりしないものがある。"
+  "commercial": "conditional",
+  "checked_at": "2026-11-01",
+  "commercial_condition": "GPT-SoVITS のコードは MIT で商用利用できる。統合パッケージに含まれる学習済みモデルと依存ライブラリ個々のライセンスは確認中で、商用利用がはっきりしないものがある。",
+  "notice": "同梱の重み・依存ファイルに、商用利用がはっきりしないものがあります。商用で使う前に、導入後の一覧（出典とライセンス）の注意書きを確認してください。"
  },
  "variants": {
   "nvidia": {

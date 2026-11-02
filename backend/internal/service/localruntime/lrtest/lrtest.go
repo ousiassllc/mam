@@ -23,6 +23,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
+
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/jobqueue"
@@ -264,8 +266,8 @@ func testCatalog(h *Host) *catalog.Catalog {
 	return &catalog.Catalog{Runtimes: []catalog.Runtime{rt}, ResourceSets: []catalog.ResourceSet{{
 		Runtime: ID,
 		Licenses: []catalog.ResourceLicense{
-			{ID: "mit", Name: "MIT License", URL: "https://example.com/mit", Summary: "商用利用を認めるライセンス", CommercialUse: catalog.CommercialYes},
-			{ID: "odd", Name: "不明なライセンス", URL: "https://example.com/odd", Summary: "配布元に表示がない", CommercialUse: catalog.CommercialUnclear, Notice: "商用で使う前に配布元に確認してください"},
+			{ID: "mit", Name: "MIT License", URL: "https://example.com/mit", Summary: "商用利用を認めるライセンス", Commercial: modellicense.Yes},
+			{ID: "odd", Name: "不明なライセンス", URL: "https://example.com/odd", Summary: "配布元に表示がない", Commercial: modellicense.Unknown, Notice: "商用で使う前に配布元に確認してください"},
 		},
 		Assets: []catalog.Resource{
 			{

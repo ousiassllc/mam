@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
+
 	"github.com/a-h/templ"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -94,9 +96,9 @@ func weightsOf(w localruntime.WeightsView) weightlist.Weights {
 		out.Assets = append(out.Assets, weightlist.Asset{
 			Name: a.Name, Description: a.Description, Size: jobview.BytesText(a.Size), State: string(a.State), Required: a.Required,
 			SourceName: a.Source.Name, SourceURL: a.Source.URL, SourceNote: a.Source.Note,
-			License: weightlist.License{Name: a.License.Name, URL: a.License.URL, Summary: a.License.Summary, Commercial: string(a.License.CommercialUse), Notice: a.License.Notice},
+			License: weightlist.License{Name: a.License.Name, URL: a.License.URL, Summary: a.License.Summary, Commercial: string(a.License.Commercial), Notice: a.License.Notice},
 		})
-		if a.License.CommercialUse != catalog.CommercialYes {
+		if a.License.Commercial != modellicense.Yes {
 			out.Unclear = append(out.Unclear, a.Name)
 		}
 	}

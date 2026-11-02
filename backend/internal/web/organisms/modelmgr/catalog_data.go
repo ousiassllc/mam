@@ -1,5 +1,7 @@
 package modelmgr
 
+import "github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+
 // File is a file of a model.
 type File struct {
 	Path    string
@@ -51,8 +53,10 @@ type License struct {
 	URL        string
 	Summary    string
 	Commercial string
-	Regions    string
-	Notice     string
+	// Answer is the commercial-use answer as the shared badge, note and filter draw it (#928).
+	Answer  commercial.View
+	Regions string
+	Notice  string
 }
 
 // Catalog is the list of models with the state of each.
@@ -80,6 +84,17 @@ type Consent struct {
 	AdultNotice string
 	Sources     []string
 	Error       string
+}
+
+// CommercialPanel is the setting "商用OKのモデルだけを使う" with the filter of the model list: the filter is drawn with the setting's
+// answer checked, and the list keeps showing everything the filter lets through.
+type CommercialPanel struct {
+	Message
+	// Only is the setting: the lists start at "商用OKのみ".
+	Only   bool
+	Filter commercial.FilterData
+	// OOB draws the card out of band (the answer of another section's action).
+	OOB bool
 }
 
 // Adult is the setting "成人向けモデルを表示する".

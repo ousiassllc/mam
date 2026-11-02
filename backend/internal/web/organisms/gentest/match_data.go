@@ -1,6 +1,9 @@
 package gentest
 
-import "github.com/ousiassllc/mam/backend/internal/web/paths"
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
 
 // DOM ids and names of the prompt match screen (#916).
 const (
@@ -37,6 +40,7 @@ var MatchModes = []MatchMode{
 
 // MatchModel is an image model the match form offers.
 type MatchModel struct {
+	Answer   commercial.View // the license of the model (#928)
 	ID       string
 	Label    string
 	Price    string
@@ -95,7 +99,9 @@ type MatchBatch struct {
 	// StateTone is the badge: succeeded, failed, running or neutral.
 	StateTone   string
 	Finished    bool
-	Reference   string // the URL of the reference image ("" when it is not known)
+	Model       string          // the label of the model the rounds were made with
+	Answer      commercial.View // its license (#928)
+	Reference   string          // the URL of the reference image ("" when it is not known)
 	Target      int
 	Done, Total int
 	Percent     int

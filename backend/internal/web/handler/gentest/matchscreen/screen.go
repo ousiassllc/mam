@@ -15,6 +15,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/refform"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
 	"github.com/ousiassllc/mam/backend/internal/web/pages"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
@@ -45,7 +46,7 @@ func (h Handlers) compose(ctx context.Context, f formState) view.MatchCompose {
 	}
 	for _, m := range h.Svc.Models(ctx, gentest.MediaImage) {
 		if m.Available {
-			c.Models = append(c.Models, view.MatchModel{ID: m.ID, Label: m.Label, Price: priceText(m.Price), Selected: m.ID == f.model})
+			c.Models = append(c.Models, view.MatchModel{ID: m.ID, Label: m.Label, Price: priceText(m.Price), Selected: m.ID == f.model, Answer: commercial.Of(m.ID)})
 		}
 	}
 	return c

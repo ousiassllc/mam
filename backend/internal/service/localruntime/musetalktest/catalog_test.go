@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
+
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
@@ -73,7 +75,7 @@ func museTalkCatalog(t *testing.T) *catalog.Catalog {
 	rt.Launch.StartTimeoutSec = 20
 	set := catalog.ResourceSet{
 		Runtime:  "musetalk",
-		Licenses: []catalog.ResourceLicense{{ID: "mit", Name: "MIT", URL: "https://example.com/mit", Summary: "商用可", CommercialUse: catalog.CommercialYes}},
+		Licenses: []catalog.ResourceLicense{{ID: "mit", Name: "MIT", URL: "https://example.com/mit", Summary: "商用可", Commercial: modellicense.Yes}},
 		Assets: []catalog.Resource{{
 			Name: "MuseTalk 1.5 の重み", Description: "unet", Dest: weightDest, URL: h.URL + weightPath, SHA256: sum256(weight), Size: int64(len(weight)), Required: true,
 			Source: catalog.ResourceSource{Name: "TMElyralab/MuseTalk", URL: "https://huggingface.co/TMElyralab/MuseTalk"}, License: "mit",

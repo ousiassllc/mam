@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -143,7 +145,7 @@ func TestCatalog_ListsStateLicenseAndWhyNothingCanBeInstalled(t *testing.T) {
 	assert.Equal(t, "m-c", c.ID)
 	assert.True(t, c.ConsentRequired)
 	assert.False(t, c.Accepted)
-	assert.False(t, c.License.CommercialUse)
+	assert.Equal(t, modellicense.No, c.License.Commercial)
 	assert.Equal(t, []string{"EU", "KR"}, c.License.ExcludedRegions)
 	assert.Equal(t, 8, c.VRAM.MinGB)
 	assert.Equal(t, "not_installed", string(c.State))

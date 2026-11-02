@@ -84,59 +84,53 @@ func (s *Service) cleanStaging() {
 	}
 }
 
-// source is an input image found: the file, its type and where it came from.
-type source struct {
-	path   string
-	mime   string
-	size   int64
-	origin json.RawMessage
+// Source is an input image found: the file, its type and where it came from.
+type Source struct {
+	Path   string
+	Mime   string
+	Size   int64
+	Origin json.RawMessage
 }
 
-// ResolveInput finds the file of an input image (the prompt match copies it into its batch): where it is, its type and size, and where it came from.
-func (s *Service) ResolveInput(ctx context.Context, ref RefInput) (path, mime string, size int64, origin json.RawMessage, err error) {
-	src, err := s.resolve(ctx, ref)
-	return src.path, src.mime, src.size, src.origin, err
-}
-
-// resolve finds the file of an input image. A source that is not there (a deleted Project asset, a staged image that was taken
+// ResolveInput finds the file of an input image (the prompt match copies it into its batch). A source that is not there (a deleted Project asset, a staged image that was taken
 // or expired, a history result that is not an image) is *gterr.InvalidError: the request names something that cannot be used.
-func (s *Service) resolve(ctx context.Context, ref RefInput) (source, error) {
+func (s *Service) ResolveInput(ctx context.Context, ref RefInput) (Source, error) {
 	var path, mime string
 	switch ref.Source {
 	case FromStaged:
 		p, m, err := s.StagedFile(ref.ID)
 		if err != nil {
-			return source{}, gterr.Invalid("アップロードした画像 %q はありません（使用済みか、24 時間を過ぎて消えました）。もう一度アップロードしてください", ref.ID)
+			return Source{}, gterr.Invalid("アップロードした画像 %q はありません（使用済みか、24 時間を過ぎて消えました）。もう一度アップロードしてください", ref.ID)
 		}
 		path, mime = p, m
 	case FromProjectAsset, FromReferenceItem:
 		p, m, err := s.projectFile(ctx, ref)
 		if err != nil {
-			return source{}, err
+			return Source{}, err
 		}
 		path, mime = p, m
 	case FromHistory:
 		res, err := s.Repo.GetResult(ctx, ref.ID)
 		if errors.Is(err, repository.ErrNotFound) || (err == nil && (res.Media != gentestrepo.MediaImage || res.Status != gentestrepo.StatusSucceeded || res.FilePath == "")) {
-			return source{}, gterr.Invalid("履歴の結果 %q は画像として使えません（成功した画像だけ使えます）", ref.ID)
+			return Source{}, gterr.Invalid("履歴の結果 %q は画像として使えません（成功した画像だけ使えます）", ref.ID)
 		}
 		if err != nil {
-			return source{}, err
+			return Source{}, err
 		}
 		path, mime = filepath.Join(s.dir(), res.FilePath), res.MimeType
 	}
 	info, err := os.Stat(path)
 	if err != nil {
-		return source{}, gterr.Invalid("入力画像 %q のファイルが見つかりません", ref.ID)
+		return Source{}, gterr.Invalid("入力画像 %q のファイルが見つかりません", ref.ID)
 	}
 	if info.Size() == 0 || info.Size() > MaxImageBytes {
-		return source{}, gterr.Invalid("入力画像 %q は 1 バイト以上 %d MiB 以下にしてください", ref.ID, MaxImageBytes>>20)
+		return Source{}, gterr.Invalid("入力画像 %q は 1 バイト以上 %d MiB 以下にしてください", ref.ID, MaxImageBytes>>20)
 	}
 	if _, ok := inputTypes[mime]; !ok {
-		return source{}, gterr.Invalid("入力画像 %q は PNG・JPEG・WebP にしてください（今は %s）", ref.ID, mime)
+		return Source{}, gterr.Invalid("入力画像 %q は PNG・JPEG・WebP にしてください（今は %s）", ref.ID, mime)
 	}
 	origin, _ := json.Marshal(map[string]string{"kind": ref.Source, "id": ref.ID, "project_id": ref.ProjectID})
-	return source{path: path, mime: mime, size: info.Size(), origin: origin}, nil
+	return Source{Path: path, Mime: mime, Size: info.Size(), Origin: origin}, nil
 }
 
 // projectFile finds the image of a Project's asset or Reference Library entry inside the assets directory.

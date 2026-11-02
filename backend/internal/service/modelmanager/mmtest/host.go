@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
+
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
@@ -147,8 +149,8 @@ func newHost(t *testing.T) *Host {
 }
 
 func testCatalog(h *Host) *catalog.Catalog {
-	lic := func(id string, commercial bool) catalog.License {
-		return catalog.License{ID: id, Version: "1", Name: id, URL: "https://example.com/" + id, Summary: "summary of " + id, CommercialUse: commercial, ExcludedRegions: regionsOf(id)}
+	lic := func(id string, commercial modellicense.Commercial) catalog.License {
+		return catalog.License{ID: id, Version: "1", Name: id, URL: "https://example.com/" + id, Summary: "summary of " + id, Commercial: commercial, CheckedAt: "2026-11-02", ExcludedRegions: regionsOf(id)}
 	}
 	cf := func(f File) catalog.File {
 		return catalog.File{Name: f.Name, Folder: f.Folder, URL: h.URL + "/" + f.Folder + "/" + f.Name, SHA256: f.sha(), Size: int64(len(f.Body))}
@@ -167,21 +169,21 @@ func testCatalog(h *Host) *catalog.Catalog {
 		Models: []catalog.Model{
 			{
 				ID: "m-a", Name: "A", Kind: localcfg.MediaImage, Tier: catalog.TierStandard, Description: "d", Files: []catalog.File{cf(CkptA)}, VRAM: vram,
-				License: lic("apache-2.0", true), Workflows: []catalog.Workflow{{Name: "wf-a", Template: "txt2img-sdxl"}, {Name: "wf-a-i2i", Template: "img2img-sdxl"}},
+				License: lic("apache-2.0", modellicense.Yes), Workflows: []catalog.Workflow{{Name: "wf-a", Template: "txt2img-sdxl"}, {Name: "wf-a-i2i", Template: "img2img-sdxl"}},
 			},
 			{
 				ID: "m-b", Name: "B", Kind: localcfg.MediaVideo, Tier: catalog.TierStandard, Description: "d", Files: []catalog.File{cf(UnetB), cf(VaeBC)}, VRAM: vram,
-				License: lic("apache-2.0", true), Workflows: []catalog.Workflow{{Name: "wf-b", Template: "txt2video-wan22-5b"}},
+				License: lic("apache-2.0", modellicense.Yes), Workflows: []catalog.Workflow{{Name: "wf-b", Template: "txt2video-wan22-5b"}},
 			},
 			{
 				ID: "m-c", Name: "C", Kind: localcfg.MediaImage, Tier: catalog.TierAdvanced, Description: "d", Files: []catalog.File{cf(ClipC), cf(VaeBC)}, VRAM: vram,
-				License: lic("non-commercial", false), ConsentRequired: true, Workflows: []catalog.Workflow{{Name: "wf-c", Template: "txt2img-flux-schnell"}},
+				License: lic("non-commercial", modellicense.No), ConsentRequired: true, Workflows: []catalog.Workflow{{Name: "wf-c", Template: "txt2img-flux-schnell"}},
 			},
 			{
 				// an adult LoRA model: hidden until the age is confirmed; its base file is shared with m-a
 				ID: "m-d", Name: "D", Kind: localcfg.MediaImage, Tier: catalog.TierAdvanced, ContentRating: catalog.RatingAdult, Description: "d",
 				TriggerWords: []string{"nsfwsks"}, Files: []catalog.File{cf(CkptA), mirror}, VRAM: vram,
-				License: lic("unspecified", false), ConsentRequired: true, Workflows: []catalog.Workflow{{Name: "wf-d", Template: "txt2img-flux-dev-lora"}},
+				License: lic("unspecified", modellicense.Unknown), ConsentRequired: true, Workflows: []catalog.Workflow{{Name: "wf-d", Template: "txt2img-flux-dev-lora"}},
 			},
 		},
 	}

@@ -7,6 +7,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/match"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -36,6 +37,9 @@ func batchView(v match.View) view.MatchBatch {
 	b := view.MatchBatch{ID: v.BatchID, Finished: v.Finished, Target: v.Target, Done: v.Done, Total: v.Total, BestPrompt: v.BestPrompt}
 	if v.Total > 0 {
 		b.Percent = v.Done * 100 / v.Total
+	}
+	if v.Model != "" {
+		b.Model, b.Answer = v.ModelLabel, commercial.Of(v.Model)
 	}
 	if v.ReferenceID != "" {
 		b.Reference = paths.GenerationTestPart("inputs", v.ReferenceID, "file")

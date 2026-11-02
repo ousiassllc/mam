@@ -1,0 +1,71 @@
+package atoms
+
+import "github.com/ousiassllc/mam/backend/internal/domain/modellicense"
+
+// The commercial-use answer of a model (#928) is drawn in one way everywhere: an icon with its short word (CommercialBadge), or the
+// icon alone where the room is tight (CommercialMark). The colours follow the meaning rules of spec/components/color-rules.md:
+// 商用OK is success (emerald), 条件つき warning (amber), 商用NG danger (red), and 不明 is the warning colour with an edge, so that it
+// is the one that is not missed.
+
+func commercialTone(c modellicense.Commercial) BadgeTone {
+	switch c {
+	case modellicense.Yes:
+		return BadgeOK
+	case modellicense.No:
+		return BadgeError
+	}
+	return BadgeWarn
+}
+
+func commercialIcon(c modellicense.Commercial) IconName {
+	switch c {
+	case modellicense.Yes:
+		return IconBadgeCheck
+	case modellicense.Conditional:
+		return IconBadgeAlert
+	case modellicense.No:
+		return IconBan
+	}
+	return IconBadgeHelp
+}
+
+func commercialEdge(c modellicense.Commercial) string {
+	if c == modellicense.Unknown || !c.Valid() {
+		return " border border-amber-500/60"
+	}
+	return ""
+}
+
+func commercialBadgeClass(c modellicense.Commercial) string {
+	return "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium " + badgeColors(commercialTone(c)) + commercialEdge(c)
+}
+
+func commercialMarkClass(c modellicense.Commercial) string {
+	return "inline-flex items-center justify-center rounded-full p-1 " + badgeColors(commercialTone(c)) + commercialEdge(c)
+}
+
+// commercialName is the accessible name: the word, then what the license says.
+func commercialName(c modellicense.Commercial, detail string) string {
+	if detail == "" {
+		return "商用利用: " + c.Label()
+	}
+	return "商用利用: " + c.Label() + "。" + detail
+}
+
+// CommercialBadge says whether the model may be used commercially: the icon and the word (商用OK / 条件つき / 商用NG / 不明). detail is
+// the tooltip and the accessible name's second half (the license name and the condition). attrs are added to the element (a
+// data-testid); data-commercial carries the answer for the filter (components/commercial-filter).
+templ CommercialBadge(c modellicense.Commercial, detail string, attrs templ.Attributes) {
+	<span class={ commercialBadgeClass(c) } role="img" aria-label={ commercialName(c, detail) } title={ detail } data-commercial-badge={ string(c) } { attrs... }>
+		@Icon(commercialIcon(c), "h-3.5 w-3.5 shrink-0")
+		<span aria-hidden="true">{ c.Label() }</span>
+	</span>
+}
+
+// CommercialMark is the answer as an icon only, for a place where the word does not fit (a result card, a table cell): the same colours, the
+// word in the tooltip and the accessible name.
+templ CommercialMark(c modellicense.Commercial, detail string, attrs templ.Attributes) {
+	<span class={ commercialMarkClass(c) } role="img" aria-label={ commercialName(c, detail) } title={ c.Label() + ": " + detail } data-commercial-badge={ string(c) } { attrs... }>
+		@Icon(commercialIcon(c), "h-3.5 w-3.5 shrink-0")
+	</span>
+}

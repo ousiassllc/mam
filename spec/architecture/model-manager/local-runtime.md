@@ -163,7 +163,7 @@ func (*Service) Watch(func(Event)) (cancel func())      // プロセスの状態
 | VRAM の下限 4 GB（推定） | **未確認**（公式に数値がない。`vram.estimate=true`） |
 | RTX 50 シリーズ向けパッケージ（`nvidia50`）の起動、`nvidia-smi` の `compute_cap` による選択 | **未確認**（判定は純粋関数のテストだけ。実機の `nvidia-smi` は使っていない） |
 | Windows の Job Object・非表示ウィンドウでの起動 | model-manager.md §11 と同じ（ビルドと vet のみ。Linux の `Pdeathsig` は子プロセスのテストで確認済み） |
-| パッケージ内の Python パッケージ・重みのライセンスと商用利用の可否 | **重みと依存ファイルは §12 で確認した（`unclear` が 5 件）。パッケージ内の Python パッケージ（約 100 個）は一覧を調べていない**（`THIRD_PARTY_NOTICES.md` に明記） |
+| パッケージ内の Python パッケージ・重みのライセンスと商用利用の可否 | **重みと依存ファイルは §12 で確認した（`unknown` が 5 件）。パッケージ内の Python パッケージ（約 100 個）は一覧を調べていない**（`THIRD_PARTY_NOTICES.md` に明記） |
 | 日本語の音声の質 | **未確認**（公式の数値がない。実機で聞き比べる。親 Issue のメモ） |
 
 ## 12. 重み・依存ファイルの固定カタログ（Issue #920）
@@ -175,7 +175,7 @@ func (*Service) Watch(func(Event)) (cancel func())      // プロセスの状態
 ```json
 {
  "runtime": "gpt-sovits",
- "licenses": [ { "id": "mit-gpt-sovits", "name": "…", "url": "https://…", "summary": "…", "commercial_use": "yes", "notice": "" } ],
+ "licenses": [ { "id": "mit-gpt-sovits", "name": "…", "url": "https://…", "summary": "…", "commercial": "yes", "notice": "" } ],
  "assets": [
   { "name": "…", "description": "…", "dest": "GPT_SoVITS/pretrained_models/…",
     "url": "https://huggingface.co/<owner>/<repo>/resolve/<40 桁のコミット>/<パス>", "sha256": "…", "size": 155315150, "required": true,
@@ -193,11 +193,11 @@ func (*Service) Watch(func(Event)) (cancel func())      // プロセスの状態
 - **単一のファイル**（`dest`）か、**アーカイブ**（`format` が `zip` / `tar.gz` と `members`）。アーカイブの `sha256`・`size` はアーカイブのもの、`members[]` は取り出す各ファイルのエントリ名・`dest`・サイズ・SHA-256。公式が配る形が zip / tar.gz だけの依存（G2PW・NLTK のデータ・Open JTalk の辞書）のために要る。取り出しは `exeinstall.Extract`（ComfyUI 以外の Codex・ffmpeg の導入と共通。エントリのパスで書かず、名前・サイズ・SHA-256 を照合し、失敗なら書いたものを消す）。
 - `required`: true は、無いと**起動を断る**。false は取得するが起動は止めない。
 - `source`（出典）: `name` と `url`（**原本**のリポジトリ・ファイルの場所）。取得先（`url`）が原本と同じ Hugging Face のリポジトリならそれだけ。**そうでない（第三者のミラー・原本が Google Drive や GitHub にある）ときは `source_note` が必須**で、原本の場所と、**原本と SHA-256 が一致することを確かめた日付（`YYYY-MM-DD`）**を書く（[model-manager.md §4.1](model-manager.md) の `files[].source_note` と同じ作り）。
-- `license`: そのファイルの `licenses[].id`。`commercial_use` は `yes` / `no` / **`unclear`**。`no` と `unclear` は `notice`（何に気をつけるか）が必須。`summary` には、**確かめた根拠**（モデルカードの `license:`・同梱の LICENSE・配布一覧の記載）と、**確かめられなかったこと**を書く。`ComfyUI` のモデルの `catalog.License`（`commercial_use` が bool）とは別の型にした（`unclear` は bool で表せない）。
+- `license`: そのファイルの `licenses[].id`。`commercial` は `yes` / `conditional` / `no` / **`unknown`**（旧 `commercial_use` の `unclear` は #928 で `unknown` になった）。`conditional`・`no`・`unknown` は `notice`（何に気をつけるか）が必須。`summary` には、**確かめた根拠**（モデルカードの `license:`・同梱の LICENSE・配布一覧の記載）と、**確かめられなかったこと**を書く。`ComfyUI` のモデルの `catalog.License` とは別の型だが、`commercial` の 4 値は同じ（`modellicense.Commercial`。#928）。
 
 ### 12.2 検証（`catalog.Validate`）
 
-URL は `https://huggingface.co/<owner>/<repo>/resolve/<40 桁のコミット>/<パス>` だけ（ブランチ名・http・他のホストを拒否。**取得の許可ホストは増やさない**。GitHub や Google Drive にある原本は、SHA-256 を確かめた Hugging Face のコピーを使う）。SHA-256 は小文字 64 桁、サイズは正。出典・ライセンスの欠落、ライセンス ID が一覧に無い、同じ名前・同じ `dest` が 2 件、`unclear` / `no` で `notice` が空、`commercial_use` が 3 値以外、取得先と原本が違うのに `source_note` に実在する日付が無い、アーカイブの `members` が空・エントリが `..` を含む・`dest` が外へ出る・メンバーの SHA-256 かサイズが無い、`required` が 1 件も無い、を拒否する。テスト: `catalog/assets_test.go`。
+URL は `https://huggingface.co/<owner>/<repo>/resolve/<40 桁のコミット>/<パス>` だけ（ブランチ名・http・他のホストを拒否。**取得の許可ホストは増やさない**。GitHub や Google Drive にある原本は、SHA-256 を確かめた Hugging Face のコピーを使う）。SHA-256 は小文字 64 桁、サイズは正。出典・ライセンスの欠落、ライセンス ID が一覧に無い、同じ名前・同じ `dest` が 2 件、`conditional` / `no` / `unknown` で `notice` が空、`commercial` が 4 値以外、取得先と原本が違うのに `source_note` に実在する日付が無い、アーカイブの `members` が空・エントリが `..` を含む・`dest` が外へ出る・メンバーの SHA-256 かサイズが無い、`required` が 1 件も無い、を拒否する。テスト: `catalog/assets_test.go`。
 
 ### 12.3 取得・検証（`runtime.Installer.EnsureAssets`）
 
@@ -212,14 +212,14 @@ URL は `https://huggingface.co/<owner>/<repo>/resolve/<40 桁のコミット>/<
 
 ### 12.4 起動の前に分かる
 
-`Service.CheckStart`（`Start`・`Prepare` が最初に呼ぶ）は、対応環境 → 導入済み → 導入中でない → **必須の重みがそろって検証済み**、の順に調べる。そろっていなければ `*WeightsError`（`errors.Is(err, ErrWeightsMissing)`）で断り、サーバーを起動しない（起動後の Python の読み込み失敗にしない）。メッセージは「GPT-SoVITS の重みが不足しています（<名前>、…）。「重みを導入」を実行してください」、`unverified` なら「…の重みの確認が済んでいません…」。`View.Weights` は `state`（`none`: 未導入 / `ready` / `missing` / `unverified`）・`message`（`missing` なら「**導入済み（重みが不足）**。「重みを導入」で、足りないファイルを取得元から取得します」）・`assets[]`（名前・説明・状態・必須・大きさ・出典・ライセンス）・`not_ready`・`need_bytes`・`total_bytes`・`unclear`（`commercial_use` が `yes` でない asset の数）。ライセンスと出典は**未導入でも、この PC で使えない環境でも**返す（導入の前に読めるように）。
+`Service.CheckStart`（`Start`・`Prepare` が最初に呼ぶ）は、対応環境 → 導入済み → 導入中でない → **必須の重みがそろって検証済み**、の順に調べる。そろっていなければ `*WeightsError`（`errors.Is(err, ErrWeightsMissing)`）で断り、サーバーを起動しない（起動後の Python の読み込み失敗にしない）。メッセージは「GPT-SoVITS の重みが不足しています（<名前>、…）。「重みを導入」を実行してください」、`unverified` なら「…の重みの確認が済んでいません…」。`View.Weights` は `state`（`none`: 未導入 / `ready` / `missing` / `unverified`）・`message`（`missing` なら「**導入済み（重みが不足）**。「重みを導入」で、足りないファイルを取得元から取得します」）・`assets[]`（名前・説明・状態・必須・大きさ・出典・ライセンス）・`not_ready`・`need_bytes`・`total_bytes`・`unknown`（`commercial` が `yes` でない asset の数）。ライセンスと出典は**未導入でも、この PC で使えない環境でも**返す（導入の前に読めるように）。
 
 取得元が消えたとき（404・410）は、ジョブを失敗にして `ErrSourceGone` で包み、「取得元が消えています（<名前>、HTTP 404）。…」に、**第三者のミラーなら `source_note`（原本の場所）、そうでなければ原本の URL** を続ける。ハッシュ不一致は「ダウンロードしたファイルの SHA-256 が一致しません。ダウンロードを破棄しました」（`asset` の名前つき）。
 
 ### 12.5 表示
 
-- **画面**: モデルマネージャーの区画「ローカル音声・口パク」（[model-manager-screen.md](../../components/model-manager-screen.md)、[endpoints-model-manager.md](../../api/endpoints-model-manager.md)）。ランタイムごとのカードに、状態・導入・起動・停止・自動起動・削除・進捗、**この PC で使えない理由とクラウドの案内**、重みの一覧（出典のリンク・ライセンス名・商用利用の可否）を出す。**`unclear` / `no` の重みは、一覧の前に琥珀色の枠で件数と名前を挙げ、一覧を開いたままにし、その行にも `notice` を枠つきで出す**。
-- **MCP**: `list_local_runtimes`・`get_local_runtime_status`（`weights.assets[]` に出典・ライセンス・`commercial_use` と `notice`）、`install_local_runtime`・`install_local_runtime_weights`・`start_local_runtime`・`stop_local_runtime`・`remove_local_runtime`・`set_local_runtime_autostart`（[mcp-tools-model-manager.md](../../api/mcp-tools-model-manager.md)）。画面も MCP も同じ `localruntime.Service` を呼び、拒否は `mmview.RefuseRuntime`（`mmview.Refuse` の種類 409 / `conflict`、422 / `validation`、404 / `not_found` に、ランタイム固有のエラーを載せたもの）で同じ文面になる。
+- **画面**: モデルマネージャーの区画「ローカル音声・口パク」（[model-manager-screen.md](../../components/model-manager-screen.md)、[endpoints-model-manager.md](../../api/endpoints-model-manager.md)）。ランタイムごとのカードに、状態・導入・起動・停止・自動起動・削除・進捗、**この PC で使えない理由とクラウドの案内**、重みの一覧（出典のリンク・ライセンス名・商用利用の可否）を出す。**`unknown` / `no` の重みは、一覧の前に琥珀色の枠で件数と名前を挙げ、一覧を開いたままにし、その行にも `notice` を枠つきで出す**。
+- **MCP**: `list_local_runtimes`・`get_local_runtime_status`（`weights.assets[]` に出典・ライセンス・`commercial` と `notice`）、`install_local_runtime`・`install_local_runtime_weights`・`start_local_runtime`・`stop_local_runtime`・`remove_local_runtime`・`set_local_runtime_autostart`（[mcp-tools-model-manager.md](../../api/mcp-tools-model-manager.md)）。画面も MCP も同じ `localruntime.Service` を呼び、拒否は `mmview.RefuseRuntime`（`mmview.Refuse` の種類 409 / `conflict`、422 / `validation`、404 / `not_found` に、ランタイム固有のエラーを載せたもの）で同じ文面になる。
 - **docs**: [THIRD_PARTY_NOTICES.md](../../../THIRD_PARTY_NOTICES.md) の「利用者が取得する別プログラム」の節に、GPT-SoVITS・MuseTalk の重みと依存の一覧（出典・ライセンス・商用利用）を載せる。下の 12.6・12.7 の表と同じ内容で、`scripts/third-party-notices.sh` の対象（同梱物）ではないので手で書く。カタログを変えたらこの 2 か所を一緒に直す。
 
 ### 12.6 GPT-SoVITS の重みと依存（`data/assets/gpt-sovits.json`）
@@ -256,7 +256,7 @@ URL は `https://huggingface.co/<owner>/<repo>/resolve/<40 桁のコミット>/<
 - 公式の重み（`lj1995/GPT-SoVITS`）は、GPT-SoVITS の作者のリポジトリで、モデルカードに `license: mit`。コードも MIT。**学習データのライセンスまでは確認していない**（`summary` にそう書く）。
 - `chinese-hubert-base`・`chinese-roberta-wwm-ext-large` は、`lj1995/GPT-SoVITS` が配る**変換後のファイル**（原本より小さい）。原本のリポジトリ（`TencentGameMate/chinese-hubert-base`: MIT、`hfl/chinese-roberta-wwm-ext-large`: Apache-2.0）のライセンスを、そのまま当てている。
 - `lid.176.bin`・`nltk_data.zip`・`open_jtalk_dic_utf_8-1.11.tar.gz`・`G2PWModel.zip` は、GPT-SoVITS 公式の `install.sh` が使う Hugging Face の配布先 `XXXXRT/GPT-SoVITS-Pretrained`（`license: mit`）のコピーで、`source_note` に原本の場所と確かめた日付（2026-11-01）を書いた。lid.176.bin は Facebook の原本、Open JTalk の辞書は `r9y9/open_jtalk` v1.11.1 のリリース、NLTK の 2 つは NLTK の配布一覧の SHA-256 と一致することを確かめた。
-- **g2pW のモデルは `commercial_use: unclear`**: コード（`GitYCC/g2pW`）は Apache-2.0 だが、配布されるモデル（ONNX）のライセンス表示を、配布先でも原本のリポジトリでも確認できなかった。画面に目立つ注記を出す。これが現時点で `unclear` の唯一の GPT-SoVITS の asset。
+- **g2pW のモデルは `commercial: unknown`**（#928 の前は `unclear`）: コード（`GitYCC/g2pW`）は Apache-2.0 だが、配布されるモデル（ONNX）のライセンス表示を、配布先でも原本のリポジトリでも確認できなかった。画面に目立つ注記を出す。これが現時点で `unknown` の唯一の GPT-SoVITS の asset。
 
 ### 12.7 MuseTalk 1.5 の重みと依存（`data/assets/musetalk.json`）
 
@@ -279,7 +279,7 @@ MuseTalk のランタイムのパッケージは #921 が決める。ここで�
 
 - **face-parse-bisent は Google Drive だけの配布**（`zllrunning/face-parsing.PyTorch` の README が案内する Drive のファイル。MuseTalk の `download_weights.sh` は `gdown` で取る）。Drive には固定 URL（コミット固定）も SHA-256 も無い。**決定: Hugging Face の第三者のミラー `ManyOtherFunctions/face-parse-bisent` のコミット固定のファイルを使い、Drive の原本から取得したファイルと SHA-256 が一致すること（`468e13ca…6567`、53,289,463 バイト）を 2026-11-01 に確かめて `source_note` に書く**。同じ SHA-256 のコピーは、他に 4 つのリポジトリ（`gaga2210`・`n0x1103`・`vivym`・`leonelhs`）にもあった。ミラーが消えたら取得は `ErrSourceGone` で失敗し、メッセージが原本の場所を示す（そのときは別のコピーに差し替えて、SHA-256 の一致を確かめ直す）。`resnet18-5c106cde.pth`（`download.pytorch.org`）も同じミラーにあり、原本と SHA-256 が一致する。
 - **S3FD（顔検出）の重みは MuseTalk が実行時に自分で取りに行く**（`musetalk/utils/face_detection/detection/sfd/sfd_detector.py`: 手元に `s3fd.pth` が無いと `https://www.adrianbulat.com/downloads/python-fan/s3fd-619a316812.pth` を取得）。`download_weights.sh` には無く、そのままだとオフラインで失敗するか、固定されない取得が起きる。`ByteDance/LatentSync` の `auxiliary/s3fd-619a316812.pth` が原本とバイトで同じ（SHA-256 `619a3168…3543`、ファイル名の接頭辞とも一致）ので、これを取得して `musetalk/utils/face_detection/detection/sfd/s3fd.pth` に置く。
-- **`unclear`（商用利用がはっきりしない）の 4 件**: ①LatentSync の SyncNet — モデルカードは `license: openrail++`（用途の制限つきで商用可）だが、README は SyncNet を VoxCeleb2・HDTF で学習したとし、そのデータの商用での条件を確認できていない。②face-parse-bisent の `79999_iter.pth` — コードは MIT だが、重みは CelebAMask-HQ（**非商用の研究目的だけ**と README に明記）で学習したもので、重みのライセンスの表示が無い。③S3FD の重み — face-alignment のコードは BSD-3-Clause だが、重みの元（`yxlijun/S3FD.pytorch`）にライセンスの表示が無い。④torchvision の `resnet18`（ImageNet で学習。torchvision の README が「学習済みモデルは独自のライセンス・条件を持つことがある」と注意している）。MuseTalk 1.5 の重み自体は、モデルカードの `license: mit` と README の「学習済みモデルは商用を含むどんな目的にも使える」から `yes`。
+- **`unknown`（商用利用がはっきりしない）の 4 件**: ①LatentSync の SyncNet — モデルカードは `license: openrail++`（用途の制限つきで商用可）だが、README は SyncNet を VoxCeleb2・HDTF で学習したとし、そのデータの商用での条件を確認できていない。②face-parse-bisent の `79999_iter.pth` — コードは MIT だが、重みは CelebAMask-HQ（**非商用の研究目的だけ**と README に明記）で学習したもので、重みのライセンスの表示が無い。③S3FD の重み — face-alignment のコードは BSD-3-Clause だが、重みの元（`yxlijun/S3FD.pytorch`）にライセンスの表示が無い。④torchvision の `resnet18`（ImageNet で学習。torchvision の README が「学習済みモデルは独自のライセンス・条件を持つことがある」と注意している）。MuseTalk 1.5 の重み自体は、モデルカードの `license: mit` と README の「学習済みモデルは商用を含むどんな目的にも使える」から `yes`。
 - **`yes` と確かめたもの**: MuseTalk 1.5（MIT）・sd-vae-ft-mse（MIT。モデルカード）・whisper-tiny（Apache-2.0。モデルカード）・DWPose（Apache-2.0。モデルカード）。MuseTalk の `LICENSE.txt` も sd-vae-ft-mse・whisper・face-parsing.PyTorch のコードを MIT、DWPose を Apache-2.0、face-alignment を BSD-3-Clause としている。
 
 ### 12.8 未確認（#920）
@@ -289,7 +289,7 @@ MuseTalk のランタイムのパッケージは #921 が決める。ここで�
 | **実物の Windows ＋ NVIDIA でのパッケージ導入後の検証（約 2.0 GB の SHA-256 計算）・足りない重みの取得・起動** | **未確認**。偽の Hugging Face（`Range`・取り消し・ハッシュ不一致・404・空き容量不足）と、偽のパッケージ・偽のプロセスで、取得・再開・検証・拒否・起動の拒否を確認した。実物の重み（GPT-SoVITS の asset は約 2.0 GB、MuseTalk は約 6.0 GB）を `Range` で取得して導入する経路は、実機で走らせていない（SHA-256 とサイズは、Hugging Face の API の `lfs.oid`、ダウンロードしたファイル、公式の 7z の中身から確かめた） |
 | 実物の `nltk_data.zip`・`G2PWModel.zip`・`open_jtalk_dic…tar.gz` からのメンバーの取り出し（`exeinstall.Extract`）と、取り出したファイルで GPT-SoVITS が動くこと | **未確認**（アーカイブの一覧とメンバーの SHA-256 は実物で確かめたが、取り出し→起動は実機で試していない。合成のアーカイブでは確認した） |
 | MuseTalk の重みを置いた環境で MuseTalk が動くこと（`models/…` の配置が公式の既定と同じこと、S3FD の置き場所） | **Linux の CPU で確認した**（#921。§13.7）: 12 件の重みをカタログの `dest` に置き、ネットワークの無い名前空間で、公式の推論と同じ手順（ラッパー）が 1.2 秒の動画を作った。**Windows ＋ CUDA は未確認** |
-| 各ライセンスの**原文との突き合わせ** | モデルカード・同梱の LICENSE・NLTK の配布一覧・MuseTalk の README / LICENSE.txt は読んだ。**法的な助言ではない**。`unclear` の 5 件（g2pW・SyncNet・face-parse・S3FD・resnet18）は、利用者が配布元に確認する前提（画面の注記） |
+| 各ライセンスの**原文との突き合わせ** | モデルカード・同梱の LICENSE・NLTK の配布一覧・MuseTalk の README / LICENSE.txt は読んだ。**法的な助言ではない**。`unknown` の 5 件（g2pW・SyncNet・face-parse・S3FD・resnet18）は、利用者が配布元に確認する前提（画面の注記） |
 | 第三者のミラー（`ManyOtherFunctions/face-parse-bisent`・`XXXXRT/GPT-SoVITS-Pretrained`）が将来も残ること | 保証できない。消えたら `ErrSourceGone`（原本の場所つき）で失敗する |
 
 ## 13. MuseTalk 1.5 のランタイム（Issue #921）
@@ -392,7 +392,7 @@ MuseTalk のランタイムのパッケージは #921 が決める。ここで�
 
 ### 13.6 ライセンスの記録
 
-MuseTalk 本体（コード MIT・学習済みモデルは商用を含むどんな目的にも使える）は、README の原文（「The code of MuseTalk is released under the MIT License. There is no limitation for both academic and commercial usage.」「The trained model are available for any purpose, even commercially.」「Other open-source models used must comply with their license, such as whisper, ft-mse-vae, dwpose, S3FD, etc..」）を `license.summary` に引いた（コミット `0a89dec4` の README を 2026-11-01 に確認）。重みと依存ファイルの出典・ライセンス・商用利用の可否は §12.7（`unclear` の 4 件を画面で目立たせる。#920 の画面がそのまま MuseTalk のカードに出す）。環境の部品の Python パッケージ 82 個のライセンスは、各 wheel のメタデータの表記を `THIRD_PARTY_NOTICES.md`（「MuseTalk 1.5（利用者が取得する別プログラム）」）に一覧にした。**原文との突き合わせはしていない**（未確認。`torch` の CUDA 版の wheel が含む NVIDIA の DLL の条件、`opencv-python`・`soundfile`・`soxr` が含む LGPL のライブラリを明記）。mam はどれも同梱せず、再配布しない。
+MuseTalk 本体（コード MIT・学習済みモデルは商用を含むどんな目的にも使える）は、README の原文（「The code of MuseTalk is released under the MIT License. There is no limitation for both academic and commercial usage.」「The trained model are available for any purpose, even commercially.」「Other open-source models used must comply with their license, such as whisper, ft-mse-vae, dwpose, S3FD, etc..」）を `license.summary` に引いた（コミット `0a89dec4` の README を 2026-11-01 に確認）。重みと依存ファイルの出典・ライセンス・商用利用の可否は §12.7（`unknown` の 4 件を画面で目立たせる。#920 の画面がそのまま MuseTalk のカードに出す）。環境の部品の Python パッケージ 82 個のライセンスは、各 wheel のメタデータの表記を `THIRD_PARTY_NOTICES.md`（「MuseTalk 1.5（利用者が取得する別プログラム）」）に一覧にした。**原文との突き合わせはしていない**（未確認。`torch` の CUDA 版の wheel が含む NVIDIA の DLL の条件、`opencv-python`・`soundfile`・`soxr` が含む LGPL のライブラリを明記）。mam はどれも同梱せず、再配布しない。
 
 ### 13.7 テスト
 

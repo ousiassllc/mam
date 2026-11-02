@@ -53,8 +53,23 @@
   "name": "LTX-2.x Community License Agreement",
   "url": "https://github.com/Lightricks/LTX-2/blob/main/LICENSE-2_x",
   "summary": "年間売上が 1,000 万米ドル未満の個人・組織は、商用を含めて無償で使える（売上は子会社・関連会社を合算して数える）。それ以上の組織は、個人の趣味・研究や非本番の評価のような非商用の目的を除き、Lightricks との有償の商用ライセンスが要る。違法・有害な用途を禁じる使用制限（Attachment A）が付き、AI 規制（EU AI Act など）の遵守と、モデルに組み込まれた透かし・開示の機能を外さないことが条件。生成物の権利は主張されない。",
-  "commercial_use": true,
+  "commercial": "conditional",
   "commercial_condition": "年間売上が 1,000 万米ドル（子会社・関連会社を合算）未満の個人・組織に限る",
+  "checked_at": "2026-11-02",
+  "components": [
+   {
+    "part": "ベースモデル・VAE（LTX-2.5）",
+    "name": "LTX-2.x Community License Agreement",
+    "url": "https://github.com/Lightricks/LTX-2/blob/main/LICENSE-2_x",
+    "commercial": "conditional"
+   },
+   {
+    "part": "テキストエンコーダー（Gemma 4）",
+    "name": "Apache License 2.0",
+    "url": "https://ai.google.dev/gemma/docs/gemma_4_license",
+    "commercial": "yes"
+   }
+  ],
   "notice": "年間売上が 1,000 万米ドル以上の組織が商用に使うには、Lightricks との別の契約（licensing@ltx.io）が必要です。Hugging Face のゲートでは、プライバシーポリシーへの同意と、案内・広告の受け取りへの同意（Agree and Access）を求められます。"
  },
  "consent_required": true,

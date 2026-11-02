@@ -1,6 +1,7 @@
 package localruntime
 
 import (
+	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
 	rtm "github.com/ousiassllc/mam/backend/internal/modelmgr/runtime"
 )
@@ -61,7 +62,7 @@ func weightsView(inst *instance, installed bool) WeightsView {
 			st = rtm.AssetMissing
 		}
 		w.Assets = append(w.Assets, AssetView{Name: a.Name, Description: a.Description, State: st, Required: a.Required, Size: a.Size, Source: a.Source, License: l})
-		if l.CommercialUse != catalog.CommercialYes {
+		if l.Commercial != modellicense.Yes {
 			w.Unclear++
 		}
 	}

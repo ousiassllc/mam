@@ -6,6 +6,10 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"time"
+
+	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 
 	"github.com/gin-gonic/gin"
 
@@ -17,37 +21,68 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
+// fieldCommercial is the query field of the commercial-use filter of the history.
+const fieldCommercial = "commercial"
+
 // historyPage is how many results one page of the history lists.
 const historyPage = 24
 
+// liveParam ("?live=1") asks for the part of the history that changes while something runs (view.HistoryLive), not the whole list.
+const liveParam = "live"
+
+// historyQuery is the query of a page of the history: the filter and the offset ("" and 0 are left out).
+func historyQuery(f view.HistoryFilter, offset int) url.Values {
+	q := url.Values{}
+	for k, v := range map[string]string{view.FieldModel: f.Model, view.FieldMedia: f.Media} {
+		if v != "" {
+			q.Set(k, v)
+		}
+	}
+	if f.Favorite {
+		q.Set("favorite", "1")
+	}
+	if f.Commercial != "" {
+		q.Set(fieldCommercial, f.Commercial)
+	}
+	if offset > 0 {
+		q.Set("offset", strconv.Itoa(offset))
+	}
+	return q
+}
+
 // history builds the history list of the filter in the query ("?model=&media=&favorite=1&offset=").
 func (h Handlers) history(ctx context.Context, q url.Values) (view.History, error) {
-	f := view.HistoryFilter{Model: q.Get(view.FieldModel), Media: q.Get(view.FieldMedia), Favorite: q.Get("favorite") == "1"}
+	f := view.HistoryFilter{Model: q.Get(view.FieldModel), Media: q.Get(view.FieldMedia), Favorite: q.Get("favorite") == "1", Commercial: q.Get(fieldCommercial)}
 	offset, _ := strconv.Atoi(q.Get("offset"))
 	offset = max(offset, 0)
-	out := view.History{Filter: f}
+	chosen := h.Svc.DefaultFilter()
+	if parsed, ok := modellicense.ParseFilter(f.Commercial); ok && f.Commercial != "" {
+		chosen = parsed
+	}
+	live := historyQuery(f, offset)
+	live.Set(liveParam, "1")
+	out := view.History{
+		Filter: f, Commercial: commercial.NewFilter("gt-history-commercial", "#"+view.HistoryID, chosen).WithField(fieldCommercial),
+		Refresh: paths.GenerationTestHistory() + "?" + live.Encode(), UpdatedAt: time.Now().Format(time.TimeOnly),
+	}
 	list, err := h.Svc.History(ctx, gentest.HistoryFilter{Model: f.Model, Media: f.Media, FavoriteOnly: f.Favorite, Limit: historyPage + 1, Offset: offset})
 	if err != nil {
 		return out, err
 	}
 	if len(list) > historyPage {
 		list = list[:historyPage]
-		next := url.Values{}
-		for k, v := range map[string]string{view.FieldModel: f.Model, view.FieldMedia: f.Media, "offset": strconv.Itoa(offset + historyPage)} {
-			if v != "" {
-				next.Set(k, v)
-			}
-		}
-		if f.Favorite {
-			next.Set("favorite", "1")
-		}
-		out.Next = paths.GenerationTestHistory() + "?" + next.Encode()
+		out.Next = paths.GenerationTestHistory() + "?" + historyQuery(f, offset+historyPage).Encode()
 	}
 	for _, r := range list {
 		out.Cards = append(out.Cards, cardOf(r, true))
+		out.Active = out.Active || r.Status == gentest.StatusQueued || r.Status == gentest.StatusRunning
 	}
 	if out.Models, err = h.Svc.HistoryModels(ctx); err != nil {
 		return out, err
+	}
+	out.ModelAnswers = make(map[string]string, len(out.Models))
+	for _, m := range out.Models {
+		out.ModelAnswers[m] = commercial.Of(m).Answer()
 	}
 	s, err := h.Svc.Spend(ctx)
 	out.Spend = spendText(s)
@@ -63,6 +98,10 @@ func (h Handlers) History(c *gin.Context) {
 		status, v.Error = refuse(c, err)
 	}
 	if htmxFragment(c) {
+		if c.Query(liveParam) == "1" {
+			render(c, status, view.HistoryLive(v))
+			return
+		}
 		render(c, status, view.HistoryList(v))
 		return
 	}

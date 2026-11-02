@@ -12,6 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/llm"
@@ -38,16 +40,16 @@ func TestLayoutFixtures_AreWhatTheComponentsRender(t *testing.T) {
 		// #906: the model cards of the generation test, in both modes (the long unit prices of the video models are what
 		// pushes a card wide).
 		"layout-gentest-image.html": gentest.ComposeForm(gentestCompose("image", []gentest.ModelChoice{
-			{ID: "nano-banana", Label: "nano-banana", Source: "クラウド", Price: "$0.0336 / 枚", Features: "シード非対応（同じ入力を本数ぶん呼ぶ）", Selected: true},
-			{ID: "nano-banana-lite", Label: "nano-banana-lite", Source: "クラウド", Price: "$0.0336 / 枚", Reason: "API キーが登録されていません（設定の「API キー」）"},
-			{ID: "gpt-image-2", Label: "gpt-image-2", Source: "クラウド", Price: "$0.0530 / 枚"},
+			{ID: "nano-banana", Label: "nano-banana", Source: "クラウド", Price: "$0.0336 / 枚", Features: "シード非対応（同じ入力を本数ぶん呼ぶ）", Selected: true, Answer: yesAnswer},
+			{ID: "nano-banana-lite", Label: "nano-banana-lite", Source: "クラウド", Price: "$0.0336 / 枚", Reason: "API キーが登録されていません（設定の「API キー」）", Answer: yesAnswer},
+			{ID: "gpt-image-2", Label: "gpt-image-2", Source: "クラウド", Price: "$0.0530 / 枚", Answer: unknownAnswer},
 		})),
 		// #933: the input images of an image model that takes references: three thumbnails with their roles and strengths, the
 		// options of the references, a LoRA, and a model that takes none (the notice).
 		"layout-gentest-refs.html": gentest.ComposeForm(gentestRefsCompose()),
 		"layout-gentest-video.html": gentest.ComposeForm(gentestCompose("video", []gentest.ModelChoice{
-			{ID: "luma-ray-3.2", Label: "luma-ray-3.2", Source: "クラウド", Price: "1080p $0.2400 / 秒・360p $0.0120 / 秒・540p $0.0300 / 秒・720p $0.0600 / 秒", Selected: true},
-			{ID: "runway-gen-4.5", Label: "runway-gen-4.5", Source: "クラウド", Price: "720p $0.1200 / 秒"},
+			{ID: "luma-ray-3.2", Label: "luma-ray-3.2", Source: "クラウド", Price: "1080p $0.2400 / 秒・360p $0.0120 / 秒・540p $0.0300 / 秒・720p $0.0600 / 秒", Selected: true, Answer: conditionalAnswer},
+			{ID: "runway-gen-4.5", Label: "runway-gen-4.5", Source: "クラウド", Price: "720p $0.1200 / 秒", Answer: noAnswer},
 		})),
 	}
 
@@ -73,9 +75,17 @@ func checkFixtures(t *testing.T, fixtures map[string]templ.Component) {
 	}
 }
 
+// The answers the fixtures' model cards carry: every one of the four badges, with the long condition a conditional card says.
+var (
+	yesAnswer         = commercial.FromInfo(modellicense.Info{Commercial: modellicense.Yes, LicenseName: "Apache License 2.0"})
+	conditionalAnswer = commercial.FromInfo(modellicense.Info{Commercial: modellicense.Conditional, LicenseName: "LTX-2.x Community License Agreement", Condition: "年間売上が 1,000 万米ドル（子会社・関連会社を合算）未満の個人・組織に限る"})
+	noAnswer          = commercial.FromInfo(modellicense.Info{Commercial: modellicense.No, LicenseName: "Qwen RESEARCH LICENSE AGREEMENT", Notice: "研究・評価などの非商用の用途にだけ使ってください。"})
+	unknownAnswer     = commercial.FromInfo(modellicense.UnknownInfo(modellicense.NotChecked))
+)
+
 func gentestCompose(media string, models []gentest.ModelChoice) gentest.Compose {
 	return gentest.Compose{
-		Media: media, Models: models, Prompts: []gentest.PromptText{{}}, Count: "1", Aspect: "16:9",
+		Media: media, Models: models, Filter: commercial.NewFilter("gt-commercial", "#gt-models", modellicense.FilterAll), Prompts: []gentest.PromptText{{}}, Count: "1", Aspect: "16:9",
 		Resolutions: []string{"720p", "1080p"}, Durations: []string{"5", "10"}, Resolution: "720p", Duration: "5",
 		MaxPrompt: 4000, MaxCount: 20, MaxItems: 50, MaxReferences: 10, MaxCostUSD: "$5.00", Translate: true, // #913: the switch is drawn on
 	}

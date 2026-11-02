@@ -2,6 +2,7 @@ package gentest
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/help"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -62,7 +63,7 @@ templ MatchForm(c MatchCompose) {
 				<span class="font-medium text-neutral-200">モデル</span>
 				@atoms.Select(atoms.FieldMd, "w-full", templ.Attributes{"id": "gt-match-model", "name": FieldModel, "required": true, "data-testid": "gt-match-model"}) {
 					for _, m := range c.Models {
-						<option value={ m.ID } selected?={ m.Selected }>{ m.Label }（{ m.Price }）</option>
+						<option value={ m.ID } selected?={ m.Selected } data-commercial={ m.Answer.Answer() }>{ commercial.OptionLabel(m.Label+"（"+m.Price+"）", m.Answer) }</option>
 					}
 				}
 			</label>
@@ -162,6 +163,12 @@ templ MatchBox(b MatchBatch) {
 				</span>
 			</div>
 			<span class="text-sm text-neutral-300">目標 { itoa(b.Target) }%</span>
+			if b.Model != "" {
+				<span class="flex flex-col items-start gap-1 text-xs text-neutral-300" data-testid="gt-match-model-label">
+					<span>{ b.Model }</span>
+					@commercial.Badge(b.Answer)
+				</span>
+			}
 			@atoms.BadgeWith(batchTone(b.StateTone), b.StateText, templ.Attributes{"data-testid": "gt-match-state"})
 			<span class="text-xs text-neutral-400" data-testid="gt-match-progress">{ itoa(b.Done) } / { itoa(b.Total) } 回</span>
 			if b.Estimate != "" {
