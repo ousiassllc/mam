@@ -131,6 +131,8 @@ type ImageOptions struct {
 	LoRA *LoRA
 	// Sampling overrides the steps, cfg, sampler and scheduler of a workflow that takes them.
 	Sampling SamplingSettings
+	// UpscaleScale is the scale an upscale workflow (Workflow.Upscale) enlarges the picture by (0: the model's own factor).
+	UpscaleScale float64
 }
 
 // Ref is the option of the i-th input image.

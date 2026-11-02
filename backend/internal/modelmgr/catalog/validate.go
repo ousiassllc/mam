@@ -37,7 +37,7 @@ const unspecifiedLicense = "unspecified"
 
 // modelFolders are the ComfyUI model folders a catalog file goes to. latent_upscale_models is the folder of the spatial upscaler
 // the LTX-2.5 workflow loads (LatentUpscaleModelLoader).
-var modelFolders = []string{"checkpoints", "diffusion_models", "text_encoders", "vae", "loras", "latent_upscale_models"}
+var modelFolders = []string{"checkpoints", "diffusion_models", "text_encoders", "vae", "loras", "latent_upscale_models", "upscale_models"}
 
 // loaderInputs are the inputs of the core loader nodes that name a model file, with the folder the file is in.
 var loaderInputs = map[string]map[string]string{
@@ -48,6 +48,7 @@ var loaderInputs = map[string]map[string]string{
 	"VAELoader":                {"vae_name": "vae"},
 	"LoraLoaderModelOnly":      {"lora_name": "loras"},
 	"LatentUpscaleModelLoader": {"model_name": "latent_upscale_models"},
+	"UpscaleModelLoader":       {"model_name": "upscale_models"},
 }
 
 // Validate checks the catalog: the pins (https URL at a commit or tag, SHA-256, size), the licenses, the
@@ -154,8 +155,8 @@ func validateModel(m Model, shared map[string]File) []error {
 	if !localcfg.ValidName(m.ID) || m.Name == "" || strings.TrimSpace(m.Description) == "" {
 		errs = append(errs, fmt.Errorf("%s: id (slug), name and description are required", where))
 	}
-	if m.Kind != localcfg.MediaImage && m.Kind != localcfg.MediaVideo {
-		errs = append(errs, fmt.Errorf("%s: kind must be image or video", where))
+	if m.Kind != localcfg.MediaImage && m.Kind != localcfg.MediaVideo && m.Kind != KindUpscale {
+		errs = append(errs, fmt.Errorf("%s: kind must be image, video or upscale", where))
 	}
 	if m.Tier != TierStandard && m.Tier != TierAdvanced {
 		errs = append(errs, fmt.Errorf("%s: tier must be standard or advanced", where))
@@ -251,8 +252,10 @@ func validateWorkflow(m Model, w Workflow, template func(id string) (localcfg.Te
 		return []error{fmt.Errorf("%s: name must be a slug", where)}
 	case !ok:
 		return []error{fmt.Errorf("%s: template %q does not exist", where, w.Template)}
-	case t.Media != m.Kind:
+	case t.Media != m.TemplateMedia():
 		return []error{fmt.Errorf("%s: template %s makes %s, the model is %s", where, t.ID, t.Media, m.Kind)}
+	case t.Model.IsUpscale() != (m.Kind == KindUpscale):
+		return []error{fmt.Errorf("%s: template %s and the model must both be upscale ones, or neither (kind %s)", where, t.ID, m.Kind)}
 	}
 	endpoints := map[string]localcfg.Endpoint{"bundled-comfyui": {Kind: localcfg.KindComfyUI, BaseURL: "http://127.0.0.1:8188"}}
 	var errs []error

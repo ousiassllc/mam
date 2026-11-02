@@ -1,0 +1,39 @@
+{
+ "id": "upscale-nomos-uni-span",
+ "name": "4xNomosUni SPAN（汎用・軽い 4 倍アップスケール）",
+ "kind": "upscale",
+ "tier": "standard",
+ "content_rating": "general",
+ "description": "生成した絵を 4 倍まで大きくするアップスケール用モデル（SPAN。約 4.5 MB で軽く速い）。生成テストの結果の「大きくする」で使う（2 倍・4 倍）。プロンプトを渡す画像モデルではない。",
+ "files": [
+  {
+   "name": "4xNomosUni_span_multijpg.safetensors",
+   "folder": "upscale_models",
+   "url": "https://huggingface.co/Phips/4xNomosUni_span_multijpg/resolve/eb7c9845fb088203dcc9b5d94735c2a5f6b6213a/4xNomosUni_span_multijpg.safetensors",
+   "sha256": "3bedff643a1ba51b12e0174ebca62649a930ae3e7b0868be9706d8659d4d32a2",
+   "size": 4492232
+  }
+ ],
+ "vram": {
+  "min_gb": 4,
+  "source": "mam の見積もり（出典なし・実機未測定。ImageUpscaleWithModel は絵をタイルに分けて処理する）",
+  "estimate": true
+ },
+ "license": {
+  "id": "cc-by-4.0",
+  "version": "4.0",
+  "name": "CC BY 4.0（モデルカードの license: cc-by-4.0・本文の License: CC BY 4.0）",
+  "url": "https://huggingface.co/Phips/4xNomosUni_span_multijpg",
+  "summary": "配布元 Phips/4xNomosUni_span_multijpg のモデルカードに、メタデータの license: cc-by-4.0 と本文の License: CC BY 4.0 の両方がある。商用利用はできるが、作者（Philip Hofmann）の表示（出典）が条件。学習データ（nomosuni）の利用条件までは確認していない。",
+  "commercial": "yes",
+  "checked_at": "2026-11-03"
+ },
+ "consent_required": false,
+ "requires_hf_token": false,
+ "workflows": [
+  {
+   "name": "upscale-nomos-uni-span",
+   "template": "upscale-nomos-uni-span"
+  }
+ ]
+}
