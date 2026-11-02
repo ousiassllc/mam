@@ -59,12 +59,14 @@ type Rig struct {
 	Free func(string) (uint64, error)
 	// GPUReport is what the GPU detection answers.
 	GPUReport gpu.Report
-	started   bool
-	db        *repository.DB
-	pinned    bool
-	authHost  string
-	hfBase    string
-	retry     fetch.Retry
+	// GPULive is what the live GPU state answers.
+	GPULive  gpu.Status
+	started  bool
+	db       *repository.DB
+	pinned   bool
+	authHost string
+	hfBase   string
+	retry    fetch.Retry
 }
 
 // Option changes the Deps (and the Rig) before the Service is made.
@@ -145,6 +147,7 @@ func New(t *testing.T, opts ...Option) *Rig {
 	d.Jobs, d.JobTable, d.Models, d.Adapter, d.Backends = r.Queue, r.Table, r.Models, r.Adapter, bo
 	d.FreeBytes = func(p string) (uint64, error) { return r.Free(p) }
 	d.GPU = func(context.Context) gpu.Report { return r.GPUReport }
+	d.GPULive = func(context.Context, int, string) gpu.Status { return r.GPULive }
 	d.Fetch = fetch.Options{CheckURL: anyURL, Client: fetch.WithRedirectRules(&http.Client{}, anyURL, r.authHost)}
 	d.Fetch.AuthHost = r.authHost
 	d.Fetch.Retry = r.retry

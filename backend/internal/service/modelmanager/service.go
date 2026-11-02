@@ -119,7 +119,8 @@ type Deps struct {
 	StartTimeout time.Duration
 	PollEvery    time.Duration
 	// GPU lists the adapters and recommends a build (default gpu.DetectSystem).
-	GPU func(ctx context.Context) gpu.Report
+	GPU     func(ctx context.Context) gpu.Report
+	GPULive func(ctx context.Context, mamPID int, engineDir string) gpu.Status // get_gpu_status's reader (nil: gpu.StatusSystem)
 	// Comfy looks for a ComfyUI that is already there (default detect.Detect over the user's config directory).
 	Comfy func(ctx context.Context) detect.Report
 	Now   func() time.Time
