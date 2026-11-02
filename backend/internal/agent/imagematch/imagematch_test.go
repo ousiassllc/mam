@@ -25,12 +25,15 @@ type answer struct {
 	agent llm.Agent
 	req   llm.Request
 	calls int
+	// answered is what the Response says about the call: the target that answered and the tokens it used (nil: not reported).
+	answered llm.Target
+	usage    *llm.Usage
 }
 
 func (a *answer) Complete(_ context.Context, agent llm.Agent, req llm.Request) (llm.Response, error) {
 	a.calls++
 	a.agent, a.req = agent, req
-	return llm.Response{Text: a.text}, a.err
+	return llm.Response{Text: a.text, Provider: a.answered.Provider, Model: a.answered.Model, Usage: a.usage}, a.err
 }
 
 var target = llm.Target{Provider: llm.ProviderOpenAI, Model: "m"}
@@ -42,7 +45,7 @@ var gen = imagematch.Image{MimeType: "image/png", Data: []byte("gen")}
 
 func TestDescribeAsksThePromptPlannerWithTheReferenceAndTheNote(t *testing.T) {
 	a := &answer{text: "```json\n{\"prompt\": \"  a fox in snow  \"}\n```"}
-	got, err := newMatcher(a).Describe(t.Context(), ref, "背景は海に")
+	got, _, err := newMatcher(a).Describe(t.Context(), ref, "背景は海に")
 	require.NoError(t, err)
 	assert.Equal(t, "a fox in snow", got)
 	assert.Equal(t, llm.AgentPromptPlanner, a.agent, "the prompts are written through the route that writes the prompts of a Project, in English")
@@ -59,12 +62,12 @@ func TestDescribeRefusesAnEmptyOrTooLongPromptAndFailuresPass(t *testing.T) {
 	for name, text := range map[string]string{
 		"empty": `{"prompt": " "}`, "missing": `{}`, "long": `{"prompt": "` + strings.Repeat("a", imagematch.MaxPromptRunes+1) + `"}`,
 	} {
-		_, err := newMatcher(&answer{text: text}).Describe(t.Context(), ref, "")
+		_, _, err := newMatcher(&answer{text: text}).Describe(t.Context(), ref, "")
 		assert.ErrorIs(t, err, llm.ErrInvalidOutput, name)
 	}
-	_, err := newMatcher(&answer{text: "no json"}).Describe(t.Context(), ref, "")
+	_, _, err := newMatcher(&answer{text: "no json"}).Describe(t.Context(), ref, "")
 	assert.ErrorIs(t, err, llm.ErrInvalidOutput)
-	_, err = newMatcher(&answer{err: llm.ErrNoAPIKey}).Describe(t.Context(), ref, "")
+	_, _, err = newMatcher(&answer{err: llm.ErrNoAPIKey}).Describe(t.Context(), ref, "")
 	assert.ErrorIs(t, err, llm.ErrNoAPIKey)
 }
 
@@ -101,7 +104,8 @@ func TestReviseSendsThePromptTheDifferencesAndTheWordsAndReturnsTheFix(t *testin
 		Reference: ref, Generated: gen, Prompt: "a fox", Differences: []string{"暗い"}, Instruction: "もう少し明るく",
 	})
 	require.NoError(t, err)
-	assert.Equal(t, imagematch.Revision{Prompt: "a fox, bright light", Change: "明るくした"}, rev)
+	assert.Equal(t, "a fox, bright light", rev.Prompt)
+	assert.Equal(t, "明るくした", rev.Change)
 	assert.Equal(t, llm.AgentPromptPlanner, a.agent)
 	var sent struct {
 		Prompt      string
@@ -155,4 +159,61 @@ func TestPrepareKeepsASmallPictureAndScalesALargeOneDown(t *testing.T) {
 
 	_, err = imagematch.Prepare([]byte("not an image"))
 	assert.Error(t, err)
+}
+
+func TestTheCallsReportTheTokensTheProviderSaidAndPriceThemAtTheModelThatAnswered(t *testing.T) {
+	answered := llm.Target{Provider: llm.ProviderAnthropic, Model: "claude-opus-4-5"}
+	used := &llm.Usage{InputTokens: 2000, OutputTokens: 300}
+	wantUSD := (2000*5 + 300*25) / 1e6
+
+	prompt := &answer{text: `{"prompt": "a fox"}`, answered: answered, usage: used}
+	_, call, err := newMatcher(prompt).Describe(t.Context(), ref, "")
+	require.NoError(t, err)
+	assert.Equal(t, imagematch.CallDescribe, call.Kind)
+	assert.Equal(t, answered.Provider, call.Provider, "the target that answered, not the primary of the route")
+	assert.Equal(t, answered.Model, call.Model)
+	assert.True(t, call.Measured)
+	assert.Equal(t, 2000, call.InputTokens)
+	assert.Equal(t, 300, call.OutputTokens)
+	require.NotNil(t, call.USD)
+	assert.InDelta(t, wantUSD, *call.USD, 1e-12)
+
+	j, err := newMatcher(&answer{text: `{"score": 70}`, answered: answered, usage: used}).Compare(t.Context(), ref, gen)
+	require.NoError(t, err)
+	assert.Equal(t, imagematch.CallCompare, j.Call.Kind)
+	assert.True(t, j.Call.Measured)
+	assert.InDelta(t, wantUSD, *j.Call.USD, 1e-12)
+
+	rev, err := newMatcher(&answer{text: `{"prompt": "a red fox", "change": "x"}`, answered: answered, usage: used}).Revise(t.Context(),
+		imagematch.ReviseInput{Reference: ref, Generated: gen, Prompt: "a fox"})
+	require.NoError(t, err)
+	assert.Equal(t, imagematch.CallRevise, rev.Call.Kind)
+	assert.True(t, rev.Call.Measured)
+	assert.InDelta(t, wantUSD, *rev.Call.USD, 1e-12)
+}
+
+func TestACallWhoseAnswerHasNoUsageCountsTheAssumedTokensAndSaysSo(t *testing.T) {
+	answered := llm.Target{Provider: llm.ProviderOpenAI, Model: "gpt-5-mini"}
+	_, call, err := newMatcher(&answer{text: `{"prompt": "a fox"}`, answered: answered}).Describe(t.Context(), ref, "")
+	require.NoError(t, err)
+	assert.False(t, call.Measured, "the provider did not say how many tokens: they are the estimate's assumption, not zero")
+	assert.Equal(t, 2600, call.InputTokens)
+	assert.Equal(t, 2000, call.OutputTokens)
+	require.NotNil(t, call.USD)
+	assert.InDelta(t, (2600*0.25+2000*2)/1e6, *call.USD, 1e-12)
+
+	j, err := newMatcher(&answer{text: `{"score": 70}`, answered: answered}).Compare(t.Context(), ref, gen)
+	require.NoError(t, err)
+	assert.False(t, j.Call.Measured)
+	assert.Equal(t, 3700, j.Call.InputTokens)
+	assert.Equal(t, 1000, j.Call.OutputTokens)
+}
+
+func TestACallOfAModelWithoutAPriceHasTokensButNoUSD(t *testing.T) {
+	plan := llm.Target{Provider: llm.ProviderChatGPTSubscription, Model: "gpt-5"}
+	_, call, err := newMatcher(&answer{text: `{"prompt": "a fox"}`, answered: plan, usage: &llm.Usage{InputTokens: 10, OutputTokens: 5}}).Describe(t.Context(), ref, "")
+	require.NoError(t, err)
+	assert.True(t, call.Measured)
+	assert.Equal(t, 10, call.InputTokens)
+	assert.Nil(t, call.USD, "a ChatGPT plan is not billed per token: no price is made up")
 }

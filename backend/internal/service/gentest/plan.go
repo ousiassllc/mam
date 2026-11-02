@@ -6,6 +6,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/direct"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/sampling"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
@@ -37,6 +38,8 @@ const (
 	WarnRoleUnsupported  = refs.WarnRoleUnsupported  // the model does not take the role of a reference: it is used as a whole
 	WarnLoRAUnsupported  = refs.WarnLoRAUnsupported  // the model cannot take a LoRA: it is not sent
 	WarnSpeedUnsupported = refs.WarnSpeedUnsupported // the video model has no such speed mode: it runs its default
+	// WarnSamplingIgnored and WarnSeedIgnored (sampling.go): the model does not take the steps, cfg, sampler, scheduler or seed asked for.
+	// WarnPromptWeight (promptweight.go): the prompt has weights and the model does not read them (or reads them poorly).
 )
 
 // modelPlan is how one model takes the request: the inputs it uses, the parameters it is called with and its unit price.
@@ -50,8 +53,10 @@ type modelPlan struct {
 	lora, avoidPose bool
 	// speedMode is the speed mode the video model is asked for ("" for its default).
 	speedMode string
-	warnings  []Warning
-	basis     string
+	// sampling is the steps, cfg, sampler and scheduler the model runs with (what it takes: the request's value, else its default); nil when it takes none.
+	sampling *sampling.Settings
+	warnings []Warning
+	basis    string
 	// unit is the price of one result in USD (nil when the basis is unknown).
 	unit *float64
 }
@@ -66,6 +71,8 @@ func (s *Service) planModel(cfg modeladapter.Config, r Request, info modelcatalo
 	} else {
 		s.planVideo(cfg, r, &p, warn)
 	}
+	planSampling(r, &p, warn)
+	planPromptWeight(r, &p, warn)
 	p.unit, p.basis = unitPrice(info, r.Media, p.resolution, p.seconds)
 	if r.Media == gentestrepo.MediaImage && p.basis == modelcatalog.BasisPriced {
 		// the price of an image can depend on its size (GPT Image 2): the catalog holds the dearest one
@@ -180,7 +187,7 @@ func unitPrice(info modelcatalog.Info, media, resolution string, seconds float64
 // resultParamsOf is what is recorded of the request for the result of one model.
 func resultParamsOf(r Request, mp modelPlan, translation *record.SentText) record.ResultParams {
 	p := record.ResultParams{
-		AspectRatio: r.AspectRatio, Resolution: mp.resolution, DurationSeconds: mp.seconds, Translation: translation, AvoidPose: mp.avoidPose, SpeedMode: mp.speedMode,
+		AspectRatio: r.AspectRatio, Resolution: mp.resolution, DurationSeconds: mp.seconds, Translation: translation, AvoidPose: mp.avoidPose, SpeedMode: mp.speedMode, Sampling: mp.sampling,
 	}
 	if mp.lora {
 		p.LoRA = &refs.LoRA{Name: r.LoRA.Name, Strength: *r.LoRA.Strength}

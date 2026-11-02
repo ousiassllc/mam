@@ -16,10 +16,13 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/credential/credentialtest"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/repository/jobrecent"
 	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 	"github.com/ousiassllc/mam/backend/internal/router"
 	"github.com/ousiassllc/mam/backend/internal/router/settingsroutes"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/service/joblist"
 	"github.com/ousiassllc/mam/backend/internal/service/localruntime/lrtest"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmtest"
 	"github.com/ousiassllc/mam/backend/internal/service/modelnodes/nodetest"
@@ -71,9 +74,14 @@ func NewWithNodes(t *testing.T) *Screen {
 
 func open(t *testing.T, rig *mmtest.Rig, rts *lrtest.Rig, nodes *nodetest.Rig) *Screen {
 	t.Helper()
-	svc := servicetest.New(t, service.Deps{DB: testdb.Open(t), Credentials: credentialtest.New()})
+	db := testdb.Open(t)
+	svc := servicetest.New(t, service.Deps{DB: db, Credentials: credentialtest.New()})
 	settings := settingsroutes.New(filepath.Join(t.TempDir(), "llm.json"), false, filepath.Join(t.TempDir(), "m.json"), false)
 	settings.ModelManager, settings.Gentest = rig.Svc, rig.Gentest
+	// The jobs of the model manager and of the generation test are in the rig's table; the Projects and Shots in the services'.
+	settings.JobList = joblist.New(joblist.Deps{
+		Table: jobrecent.New(rig.DB()), Shots: repository.NewGenerationRepository(db), Projects: svc.Projects, ModelManager: rig.Svc, Gentest: rig.Gentest,
+	})
 	if rts != nil {
 		settings.LocalRuntimes = rts.Svc
 	}

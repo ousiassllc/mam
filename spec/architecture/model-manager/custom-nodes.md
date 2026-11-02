@@ -85,7 +85,7 @@
 | ノードの定義 | `backend/internal/modelmgr/nodecat/data/nodes/<id>.json` | §2 の全項目。リポジトリの LICENSE の本文を読んで `license` を書き、ソースを読んで `review` を書く。コミットは 40 桁、アーカイブの SHA-256・サイズは `curl -L <archive_url>` で測って、github.com と codeload の両方で一致を確かめる |
 | 依存パッケージ | `nodecat/data/python.json` | 通常は触らない（同梱の環境にあるものだけ）。足りない依存があれば、エントリに `install_blocked` を書く（pip は実行しない。依存を同梱の環境に足すのは別の Issue で決める） |
 | モデル（重み） | `backend/internal/modelmgr/catalog/data/models/<id>.json` | 通常のモデルと同じ（コミット固定・SHA-256・ライセンス）。ノードが登録するフォルダがあれば、`catalog/validate.go` の `modelFolders` に足し、ローダーのクラスと入力名を `loaderInputs` に足す（すべてのファイルがどれかのワークフローのローダーから読まれることを検証するため）。同じフォルダを `service/modelmanager/external.go` の `modelFolders` にも足す（外部の ComfyUI の一覧用） |
-| テンプレート | `backend/internal/agent/modeladapter/localcfg/templates/image/<name>.json` | `model.workflow.requires_nodes: ["<id>"]`。割り当て（`params`）とモード（`reference.go`）は既存のもので足りなければ、`workflow.go` に**追加的に**足す（既存の値は変えない） |
+| テンプレート | `backend/internal/agent/modeladapter/localcfg/templates/image/<name>.json` | `model.workflow.requires_nodes: ["<id>"]`。割り当て（`params`）とモード（`reference.go`）は既存のもので足りなければ、`workflow.go` に**追加的に**足す（既存の値は変えない）。**全テンプレートの規約**: `prompt_weight`（`supported`・`weak`・`unsupported`）と、サンプラーのノードへの `steps`・`cfg`・`sampler`・`scheduler` の割り当てを付ける（`localcfg/samplingtest`・`comfyui/samplingtest` が検出する。#973）。ControlNet・IP-Adapter のように参照画像が要るテンプレートは、`comfyui/samplingtest/rig_test.go` が参照画像を付けて走らせる |
 | テストの許可 | `localcfg_test.go`・`controlnet_test.go` | コアのノードの一覧（`coreNodes`）には足さない（ノードのクラスは `node_classes` から読まれる） |
 | 同意の文面 | `service/modelnodes/view.go` | 注意事項を変えたら `NoticeVersion` を変える（改めて同意が要る） |
 | 仕様 | このファイルの §2.1 の表と [model-manager.md](model-manager.md) §4.2、[model-manager.changelog.md](model-manager.changelog.md) | 足したノードの行を足す |

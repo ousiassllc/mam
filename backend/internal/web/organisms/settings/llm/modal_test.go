@@ -14,9 +14,14 @@ import (
 
 func form(blame, message string) llm.Form {
 	def := llm.Target{Provider: "google", Model: "gemini-x"}
+	fallback := llm.Target{Provider: "openai", Model: "gpt-x"}
+	field := func(role string, t llm.Target) llm.ModelField {
+		return llm.ModelField{Agent: "director", Role: role, Provider: t.Provider, Selected: t.Model, Default: def, Options: []llm.ModelOption{{ID: t.Model}, {ID: "other-model", Name: "Other"}}}
+	}
 	return llm.Form{
-		Row:       llm.Row{Agent: "director", Label: "Director", Purpose: "構成を計画する", Primary: def, Fallback: llm.Target{Provider: "openai", Model: "gpt-x"}, DefaultPrimary: def, DefaultFallback: def},
+		Row:       llm.Row{Agent: "director", Label: "Director", Purpose: "構成を計画する", Primary: def, Fallback: fallback, DefaultPrimary: def, DefaultFallback: def},
 		Providers: []string{"anthropic", "google", "openai"}, MaxModelLength: 128, Error: message, Blame: blame,
+		Primary: field("primary", def), Fallback: field("fallback", fallback),
 	}
 }
 
@@ -64,9 +69,32 @@ func TestModal_ARefusalNamesTheFieldToBlame(t *testing.T) {
 
 	assert.Regexp(t, `<p id="mam-modal-error" role="alert"[^>]*>Director の代替`, html)
 	assert.Equal(t, 1, strings.Count(html, `aria-invalid="true"`))
-	assert.Regexp(t, `<input[^>]*aria-describedby="mam-modal-error"[^>]*|<input[^>]*aria-invalid="true"[^>]*name="fallback.model"|name="fallback.model"[^>]*aria-invalid="true"`, html)
+	assert.Regexp(t, `<select[^>]*aria-invalid="true"[^>]*name="fallback.model"|<select[^>]*name="fallback.model"[^>]*aria-invalid="true"`, html)
 	assert.Equal(t, 1, strings.Count(html, "autofocus"))
 
 	// A refusal that blames no field leaves the focus to the alert (the script moves it there).
 	assert.NotContains(t, render(t, form("", "設定ファイルを読み込めません")), "autofocus")
+}
+
+// The model is a labelled pull-down; where its models come from is said next to it and tied to it (aria-describedby), and a
+// saved model the list lacks is kept as a choice with a warning.
+func TestModal_TheModelPullDownSaysWhereTheModelsComeFromAndWarnsOfAnUnlistedOne(t *testing.T) {
+	f := form("", "")
+	f.Primary.FromAPI = true
+	f.Fallback.Reason, f.Fallback.Selected, f.Fallback.Unlisted = "API キーが登録されていません", "gpt-old", true
+	html := render(t, f)
+
+	assert.Contains(t, html, `<optgroup label="プロバイダーの API の一覧">`)
+	assert.Contains(t, html, "出所: プロバイダーの API の一覧")
+	assert.Contains(t, html, `<optgroup label="mam の既定候補">`)
+	assert.Contains(t, html, "出所: mam の既定候補（API キーが登録されていません）")
+	assert.Regexp(t, `<select[^>]*aria-describedby="llm-primary-model-note"`, html)
+	assert.Contains(t, html, `id="llm-primary-model-note"`)
+	assert.Contains(t, html, `<option value="other-model">Other（other-model）</option>`)
+	assert.Contains(t, html, `<option value="gpt-old" selected>gpt-old</option>`)
+	assert.Contains(t, html, "「gpt-old」は openai の一覧にありません。使えないかもしれません（保存はできます）")
+	assert.Equal(t, 1, strings.Count(html, `data-testid="llm-fallback-model-unlisted"`))
+	assert.NotContains(t, html, `data-testid="llm-primary-model-unlisted"`)
+	assert.Regexp(t, `<label[^>]*for="llm-fallback-model-custom"`, html)
+	assert.Regexp(t, `<button[^>]*id="llm-save"`, html)
 }

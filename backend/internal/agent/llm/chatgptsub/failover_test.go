@@ -20,11 +20,11 @@ type fixedBackend struct {
 	text  string
 }
 
-func (f *fixedBackend) Complete(context.Context, string, llm.Request) (string, error) {
+func (f *fixedBackend) Complete(context.Context, string, llm.Request) (llm.Completion, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.calls++
-	return f.text, nil
+	return llm.Completion{Text: f.text}, nil
 }
 
 // subscriptionClient is a Client whose Writer route is the subscription with the API-key OpenAI as the alternative.

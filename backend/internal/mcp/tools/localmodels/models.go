@@ -35,12 +35,14 @@ func registerModels(r *mcpkit.Registrar, h handlers) {
 
 // Assignment says which input of which node a value of mam goes to.
 type Assignment struct {
-	Param string `json:"param" jsonschema:"prompt, negative_prompt, seed, width, height, reference_image, reference_denoise, frames, fps, first_frame or last_frame（画像は frames・fps・first_frame・last_frame を使えない）"`
+	Param string `json:"param" jsonschema:"prompt, negative_prompt, seed, width, height, reference_image, reference_denoise, steps, cfg, sampler, scheduler, frames, fps, first_frame or last_frame（画像は frames・fps・first_frame・last_frame を使えない）。steps・cfg は数値の入力、sampler・scheduler は文字の入力（KSampler の sampler_name・scheduler など）に割り当てる"`
 	Node  string `json:"node" jsonschema:"ノード ID（import_local_workflow の nodes[].id）"`
 	Input string `json:"input" jsonschema:"そのノードの入力名。ほかのノードがつないでいる入力は使えない"`
 	Index int    `json:"index,omitempty" jsonschema:"reference_image だけ: 何枚目か（0 から、抜けなし）"`
 	// Optional is a pointer so that an update can leave it out: it is then the saved assignment's (same param, index, node, input).
 	Optional *bool `json:"optional,omitempty" jsonschema:"reference_image だけ: 使わない枚があってもよい（その枚のノードは外され、つないでいたほかのノードの入力も外される）。省略すると、保存済みの同じ割り当ての値を引き継ぐ"`
+	// Ratio is a pointer for the same reason as Optional.
+	Ratio *float64 `json:"ratio,omitempty" jsonschema:"steps だけ（0 と 1 の間）: ステップ数そのものではなく round(steps × ratio) を入れる。2 段のサンプラー（Wan 2.2 の高ノイズ・低ノイズ）の切り替えのステップ（KSamplerAdvanced の end_at_step・start_at_step）に使う。省略すると、保存済みの同じ割り当ての値を引き継ぐ"`
 }
 
 // VideoCapabilities is what a video model can make.
@@ -75,6 +77,9 @@ func assignmentsOf(w *localcfg.Workflow) []Assignment {
 		item := Assignment{Param: string(a.Param), Node: a.Node, Input: a.Input, Index: a.Index}
 		if a.Optional {
 			item.Optional = &a.Optional
+		}
+		if a.Ratio != 0 {
+			item.Ratio = &a.Ratio
 		}
 		out = append(out, item)
 	}

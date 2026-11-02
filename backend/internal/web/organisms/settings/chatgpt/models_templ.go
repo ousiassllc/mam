@@ -82,7 +82,7 @@ func ModelsModal(m ModelList) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			} else {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<p class=\"text-xs text-neutral-400\">「LLM の割り当て」のモデル欄に、次のモデル名（太字）を入力します。名前はアカウントと時期で変わります。画像の入力に対応するモデルには「画像可」と付きます。</p><ul class=\"flex flex-col gap-1 text-sm\" data-testid=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<p class=\"text-xs text-neutral-400\">「LLM の割り当て」のモデル欄のプルダウンにも、同じ一覧が「プロバイダーの API の一覧」として出ます（モデル名は太字）。名前はアカウントと時期で変わります。画像の入力に対応するモデルには「画像可」と付きます。</p><ul class=\"flex flex-col gap-1 text-sm\" data-testid=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

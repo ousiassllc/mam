@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/advform"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/gtshare"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 
@@ -49,6 +50,7 @@ func (h Handlers) compose(ctx context.Context, f formState) view.Compose {
 		c.Resolution = pick(f.resol, c.Resolutions, "720p")
 		c.Duration, c.SpeedModes, c.SpeedMode = pick(f.duration, c.Durations, "5"), refform.SpeedChoices(models), f.opts.SpeedMode
 	}
+	c.Section = advform.SectionOf(f.adv, models)
 	if list, err := h.Svc.Prompts(ctx); err == nil {
 		for _, p := range list[:min(len(list), recentPrompts)] {
 			c.Recent = append(c.Recent, view.RecentPrompt{ID: p.ID, Text: p.Prompt, Negative: p.NegativePrompt, Uses: p.UseCount})

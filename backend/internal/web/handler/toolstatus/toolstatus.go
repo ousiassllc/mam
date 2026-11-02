@@ -1,12 +1,11 @@
-// Package toolstatus answers GET /tools/<tool>/status: the status of the tool cards of the home page
-// (spec/components/home-screen.md §5). The page shows the cards at once and each card reads its status after that
-// (hx-get, hx-trigger="load"), so a slow source never delays the page. Everything is read from this machine (the
-// database, the settings files, the key store, the state of the bundled ComfyUI); nothing calls an external API.
-// It is a package of its own because handler is at its size limit; like handler it depends on the service layer and the
-// web layer only.
+// Package toolstatus answers GET /tools/<tool>/status: the status of the model manager card of the settings screen
+// (spec/components/home-screen.md §5). The page shows the card at once and the card reads its status after that
+// (hx-get, hx-trigger="load"), so a slow source never delays the page. Everything is read from this machine (the state
+// of the bundled ComfyUI and the registered endpoints); nothing calls an external API. It is a package of its own because
+// handler is at its size limit; like handler it depends on the service layer and the web layer only.
 //
 // The answer is always 200 with a fragment of badges, or nothing when the status cannot be read: a failing card must
-// not raise the error toast once for each card, and the card is still a link.
+// not raise the error toast, and the card is still a link.
 package toolstatus
 
 import (
@@ -34,7 +33,7 @@ type Source func(ctx context.Context) ([]molecules.StatusLine, error)
 
 // Handlers answer the routes of the cards that have a status.
 type Handlers struct {
-	// Sources are keyed by the tool of the card (paths.ToolNodes ...).
+	// Sources are keyed by the tool of the card (paths.ToolModelManager).
 	Sources map[string]Source
 	// Timeout is the deadline of a read (Deadline when zero).
 	Timeout time.Duration
@@ -42,15 +41,13 @@ type Handlers struct {
 	Logger *slog.Logger
 }
 
-// Register adds GET paths.ToolStatus(tool) for each of the tools of the home page. A tool of another name has no
+// Register adds GET paths.ToolStatus(tool) for each of the tools that have a status. A tool of another name has no
 // route: the router answers 404.
 func Register(engine *gin.Engine, h Handlers) {
 	if h.Logger == nil {
 		h.Logger = slog.New(slog.DiscardHandler)
 	}
-	for _, tool := range []string{paths.ToolNodes, paths.ToolWorkflows, paths.ToolModelManager, paths.ToolSettings, paths.ToolReviews} {
-		engine.GET(paths.ToolStatus(tool), h.status(tool, h.Sources[tool]))
-	}
+	engine.GET(paths.ToolStatus(paths.ToolModelManager), h.status(paths.ToolModelManager, h.Sources[paths.ToolModelManager]))
 }
 
 func (h Handlers) status(tool string, src Source) gin.HandlerFunc {

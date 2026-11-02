@@ -55,6 +55,9 @@ templ Detail(m view.Model) {
 				<div class="col-span-2"><dt class="text-neutral-400">原本の場所</dt><dd class="break-words" data-testid="mm-sources">{ joinNames(m.Sources) }</dd></div>
 			}
 		</dl>
+		if m.PlatformWarning != "" {
+			<p class="text-xs text-amber-300" role="note" data-testid="mm-platform-warning-text">{ m.PlatformWarning }</p>
+		}
 		if m.VRAMFitText != "" {
 			<p class={ "text-xs " + view.FitClass(m.VRAMFit) } data-testid="mm-vram-fit-text" data-fit={ m.VRAMFit }>{ m.VRAMFitText }</p>
 		}

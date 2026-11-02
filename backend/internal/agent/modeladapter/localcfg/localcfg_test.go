@@ -120,7 +120,7 @@ func comfy() map[string]localcfg.Endpoint {
 const coreVersion = "v0.42.1"
 
 var coreNodes = []string{
-	"BasicScheduler", "BetaSamplingScheduler", "CFGGuider", "CLIPLoader", "CLIPTextEncode", "CheckpointLoaderSimple",
+	"BasicScheduler", "BetaSamplingScheduler", "CFGGuider", "CLIPLoader", "CLIPSetLastLayer", "CLIPTextEncode", "CheckpointLoaderSimple",
 	"ComfyMathExpression", "ConditioningZeroOut", "CreateVideo", "DualCLIPLoader", "EmptyHunyuanVideo15Latent",
 	"EmptyLTXVLatentVideo", "EmptyLatentImage", "EmptySD3LatentImage", "FluxGuidance", "ImageScale", "KSampler", "KSamplerAdvanced",
 	"KSamplerSelect", "LTXVAudioVAEDecode", "LTXVConcatAVLatent", "LTXVConditioning", "LTXVDualCFGGuider",
@@ -129,14 +129,14 @@ var coreNodes = []string{
 	"ManualSigmas", "ModelSamplingAuraFlow", "ModelSamplingSD3", "PrimitiveInt", "RandomNoise", "SamplerCustom",
 	"SamplerCustomAdvanced", "SaveImage", "SaveVideo", "SplitSigmasDenoise", "T5TokenizerOptions", "TextEncodeQwenImage21", "UNETLoader",
 	"VAEDecode", "VAEDecodeTiled", "VAEEncode", "VAELoader", "Wan22ImageToVideoLatent", "WanImageToVideo", "EmptyHunyuanLatentVideo", // the last one: Wan 2.2 Remix T2V (Issue #930)
-	"EmptyFlux2LatentImage", "Flux2Scheduler", "ImageScaleToTotalPixels", "ReferenceLatent", "ComfySwitchNode", "GetImageSize", "LTXVAddGeneratedKeyframes", "LTXVAddGuide", "LTXVAddLatentGuide", "LTXVCropGuides", "LTXVFreezeLatent", "LTXVGeneratedKeyframesToGuides", "LTXVSeparateGeneratedKeyframes", "PrimitiveBoolean", "PrimitiveFloat", "ResizeImageMaskNode", "SamplerEulerAncestral", "TextGenerateLTX2Prompt", // FLUX.2 klein (Issue #931) and the LTX-2.5 FLF2V, DFR and prompt enhancer (Issue #968)
+	"TextEncodeQwenImageEditPlus", "CFGNorm", "EmptyFlux2LatentImage", "Flux2Scheduler", "ImageScaleToTotalPixels", "ReferenceLatent", "ComfySwitchNode", "GetImageSize", "LTXVAddGeneratedKeyframes", "LTXVAddGuide", "LTXVAddLatentGuide", "LTXVCropGuides", "LTXVFreezeLatent", "LTXVGeneratedKeyframesToGuides", "LTXVSeparateGeneratedKeyframes", "PrimitiveBoolean", "PrimitiveFloat", "ResizeImageMaskNode", "SamplerEulerAncestral", "TextGenerateLTX2Prompt", // FLUX.2 klein (Issue #931) and the LTX-2.5 FLF2V, DFR and prompt enhancer (Issue #968)
 }
 
 // Every built-in template is a valid model: each assignment points to an existing, literal input of an
 // existing node, the output node exists, and the capabilities follow from the assignments.
 func TestTemplatesAreStructurallyValid(t *testing.T) {
 	templates := localcfg.Templates()
-	require.Len(t, templates, 38)
+	require.Len(t, templates, 45)
 	byMedia := map[localcfg.Media]int{}
 	for _, tpl := range templates {
 		byMedia[tpl.Media]++
@@ -152,8 +152,8 @@ func TestTemplatesAreStructurallyValid(t *testing.T) {
 		assert.True(t, found)
 		assert.Equal(t, tpl.ID, got.ID)
 	}
-	assert.Equal(t, 12, byMedia[localcfg.MediaImage])
-	assert.Equal(t, 26, byMedia[localcfg.MediaVideo])
+	assert.Equal(t, 15, byMedia[localcfg.MediaImage])
+	assert.Equal(t, 30, byMedia[localcfg.MediaVideo])
 
 	i2v, _ := localcfg.TemplateByID("img2video-wan22-5b")
 	caps, ok := i2v.Model.VideoCaps()

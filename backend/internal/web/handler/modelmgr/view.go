@@ -141,7 +141,7 @@ func modelData(ctx context.Context, svc *modelmanager.Service, m modelmanager.Mo
 		Size: bytesText(m.TotalSize), Need: bytesText(m.NeedBytes), VRAM: vramText(m.VRAM),
 		License: licenseOf(m.License), Consent: m.ConsentRequired, Accepted: m.Accepted, NeedsToken: m.RequiresHFToken,
 		State: string(m.State), ModelIDs: m.ModelIDs, WorkflowCheck: m.WorkflowCheck,
-		LowDisk: m.NeedBytes > 0 && free > 0 && uint64(m.NeedBytes) > free,
+		LowDisk: m.NeedBytes > 0 && free > 0 && uint64(m.NeedBytes) > free, PlatformWarning: mmview.PlatformWarning(ctx, svc, m),
 	}
 	if fit, ok := mmview.FitOf(m.VRAM, gpuVRAM); ok {
 		out.VRAMFit, out.VRAMFitText = string(fit.Fit), fit.Text

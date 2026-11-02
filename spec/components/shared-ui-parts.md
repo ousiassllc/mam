@@ -77,6 +77,7 @@
 | `IconSeries` | `users` | 〃 Series（`sidenav.Views` が SeriesID を持つとき） | #915 |
 | `IconPanelClose` | `panel-left-close` | 〃 たたむボタン | #915 |
 | `IconPanelOpen` | `panel-left-open` | 〃 開くボタン | #915 |
+| `IconJobs` | `list-checks` | 左メニュー: ジョブ | #980 |
 | （`IconMedia`・`IconReview`・`IconChart`・`IconSettings` などは左メニューでも再利用） | | Scene / Shot・レビュー・制作指標・設定 | #915 |
 
 - 16 個で、#846 の 8 個 + #847 の 8 個。Issue の「10 個前後」より多いのは、#847 が概要のカードにもアイコンを付けるため（§8 の質問 1。付けないなら #847 は `x` と `copy` の 2 個）。`IconClose`（`x`）はモーダルの部品が使うので、どちらの Issue が持つかはモーダルの担当（§8 の質問 7）に従う。表の「#847」は決定のとおり。
@@ -85,7 +86,7 @@
 
 ## 3. `molecules.ToolCard`（カード）
 
-2 つの画面で使う、リンクとしてのカード。**カードの中にボタンもリンクも入れない**（カード全体が 1 つの `<a>`）。
+設定画面（概要・「ローカル・代替モデル」）で使う、リンクとしてのカード（トップ画面のツールのカードは #978 で外した）。**カードの中にボタンもリンクも入れない**（カード全体が 1 つの `<a>`）。
 
 テンプレートは `ToolCardItem(c ToolCard)`（`<li>`）、状態の断片は `ToolStatus([]StatusLine)`。
 
@@ -97,7 +98,7 @@ type ToolCard struct {
     Title       string        // リンクの名前になる
     Description string        // 1 行の説明（2 行までに折り返す）
     CTA         string        // 既定 "開く"。見た目だけ（aria-hidden）
-    StatusURL   string        // 空でなければ、状態を hx-get で後から読む（トップ画面）
+    StatusURL   string        // 空でなければ、状態を hx-get で後から読む（モデルマネージャーのカード）
     // Status []StatusLine は #847 が足す（StatusURL が空のときの、サーバーで組み立てた状態。設定の概要）。#846 は StatusURL だけ
 }
 type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge の文字（状態を言葉で言う）。実装は #846

@@ -7,6 +7,7 @@
   "media": "video",
   "video": {"durations": [3, 4, 5], "resolutions": ["480p", "720p"]},
   "workflow": {
+   "prompt_weight": "weak",
    "graph": {
     "95": {"class_type": "UNETLoader", "inputs": {"unet_name": "Wan2.2_Remix_NSFW_t2v_14b_high_lighting_v2.0.safetensors", "weight_dtype": "default"}},
     "96": {"class_type": "UNETLoader", "inputs": {"unet_name": "Wan2.2_Remix_NSFW_t2v_14b_low_lighting_v2.0.safetensors", "weight_dtype": "default"}},
@@ -30,7 +31,17 @@
     {"param": "width", "node": "59", "input": "width"},
     {"param": "height", "node": "59", "input": "height"},
     {"param": "frames", "node": "59", "input": "length"},
-    {"param": "fps", "node": "58", "input": "fps"}
+    {"param": "fps", "node": "58", "input": "fps"},
+    {"param": "steps", "node": "3", "input": "steps"},
+    {"param": "cfg", "node": "3", "input": "cfg"},
+    {"param": "sampler", "node": "3", "input": "sampler_name"},
+    {"param": "scheduler", "node": "3", "input": "scheduler"},
+    {"param": "steps", "node": "3", "input": "end_at_step", "ratio": 0.8333},
+    {"param": "steps", "node": "4", "input": "steps"},
+    {"param": "cfg", "node": "4", "input": "cfg"},
+    {"param": "sampler", "node": "4", "input": "sampler_name"},
+    {"param": "scheduler", "node": "4", "input": "scheduler"},
+    {"param": "steps", "node": "4", "input": "start_at_step", "ratio": 0.8333}
    ],
    "output_node": "60",
    "fps": 16,

@@ -138,8 +138,29 @@ func (c Config) breakerOpen() time.Duration {
 const (
 	defaultClaude = "claude-opus-4-5"
 	defaultGPT    = "gpt-5"
-	defaultGemini = "gemini-3.1-pro"
+	// defaultGemini is the model id Google's API takes (ai.google.dev/gemini-api/docs/models, checked 2026-11-03): the preview id.
+	// Earlier versions of the app had "gemini-3.1-pro", which is not an id of the API and has no price in the table.
+	defaultGemini = "gemini-3.1-pro-preview"
 )
+
+// renamedModels are the ids that earlier versions of the app wrote or defaulted to that are not the id of the provider's API,
+// mapped to the id they stand for: a settings file that still names one is read as the right id (ParseConfig).
+var renamedModels = map[Target]string{
+	{ProviderGoogle, "gemini-3.1-pro"}: defaultGemini,
+}
+
+// renameModels reads the ids of renamedModels in the routes as the ids they stand for.
+func (c Config) renameModels() {
+	fix := func(t Target) Target {
+		if model, ok := renamedModels[t]; ok {
+			t.Model = model
+		}
+		return t
+	}
+	for agent, r := range c.Routes {
+		c.Routes[agent] = Route{Primary: fix(r.Primary), Fallback: fix(r.Fallback)}
+	}
+}
 
 func claude() Target { return Target{ProviderAnthropic, defaultClaude} }
 func gpt() Target    { return Target{ProviderOpenAI, defaultGPT} }
@@ -207,6 +228,7 @@ func ParseConfig(data []byte) (Config, error) {
 	if err := dec.Decode(&cfg); err != nil {
 		return Config{}, fmt.Errorf("decode llm config: %w", err)
 	}
+	cfg.renameModels()
 	if err := cfg.Validate(); err != nil {
 		return Config{}, fmt.Errorf("llm config: %w", err)
 	}

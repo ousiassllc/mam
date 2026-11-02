@@ -1,0 +1,108 @@
+package gentestadv
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/help"
+)
+
+const advancedHelp = "ステップ数・CFG・サンプラー・スケジューラーは、同梱の ComfyUI（ローカル）のモデルだけが受け取ります。「モデルの既定」のままなら、モデルごとのテンプレートの値で作ります（今までと同じ結果）。\nシードを固定すると、モデルごとに同じシードで比べられ、本数が複数のときは 2 本目以降が 1 ずつ増えます。空欄なら 1 本ごとにランダムです。使った値は結果の詳細に残るので、同じ条件で作り直せます。\nスライダーで上書きするには「上書きする」を入れます。選んだモデルが受け取らない項目は出しません。\n速さのモード（4 ステップの蒸留 LoRA など）を持つモデルは、速さのモードが優先です。ステップ数と CFG は上書きできず、モードの値で作ります。"
+
+// advancedFields is the section "詳細設定" (closed by default): the seed, the steps and cfg (sliders, on only when switched on), the sampler
+// and the scheduler. The script (static/src/components/gentest/advanced.ts) shows each setting while a chosen model takes it and
+// writes the note of the models that do not; a setting that is not shown is disabled, so that it posts nothing.
+templ Fields(a Section) {
+	<details class="flex flex-col gap-3 rounded-md border border-neutral-800 p-3 text-sm" data-gt-advanced data-testid="gt-advanced" open?={ a.Open() }>
+		<summary class="cursor-pointer text-sm font-medium text-neutral-200">詳細設定（シード・ステップ数・CFG・サンプラー）</summary>
+		<div class="mt-3 flex flex-col gap-3">
+			<div class="flex flex-wrap items-center gap-2">
+				<span class="text-xs text-neutral-400">モデルごとに受け取る項目が違います</span>
+				@help.Toggle(help.ID("詳細設定"), "詳細設定")
+				@help.Panel(help.ID("詳細設定"), "詳細設定") {
+					@help.Text(advancedHelp)
+					<ul class="mt-2 flex flex-col gap-1.5" data-testid="gt-advanced-help">
+						for _, l := range a.Lines {
+							<li class="break-words"><span class="text-neutral-100">{ l.Label }</span>: { l.Text }</li>
+						}
+					</ul>
+				}
+			</div>
+			<div class="flex flex-wrap items-end gap-3" data-gt-adv-field="seed">
+				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="gt-seed">
+					<span>シード（空欄 = ランダム）</span>
+					@atoms.Input(atoms.FieldMd, "w-44", templ.Attributes{
+						"id": "gt-seed", "name": FieldSeed, "type": "number", "inputmode": "numeric", "min": "0", "max": itoa64(MaxSeed), "step": "1",
+						"value": a.Seed, "placeholder": "ランダム", "data-testid": "gt-seed",
+					})
+				</label>
+			</div>
+			@advancedSlider("steps", "ステップ数", FieldSteps, a.Steps, itoa(MinSteps), itoa(MaxSteps), "1", 25)
+			@advancedSlider("cfg", "CFG", FieldCFG, a.CFG, "0", "30", "0.5", 7)
+			<div class="flex flex-wrap items-end gap-3">
+				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="gt-sampler" data-gt-adv-field="sampler">
+					<span>サンプラー</span>
+					@atoms.Select(atoms.FieldMd, "max-w-56", templ.Attributes{"id": "gt-sampler", "name": FieldSampler, "data-testid": "gt-sampler"}) {
+						<option value="" selected?={ a.Sampler == "" }>モデルの既定</option>
+						for _, s := range a.Samplers {
+							<option value={ s } selected?={ s == a.Sampler }>{ s }</option>
+						}
+					}
+				</label>
+				<label class="flex flex-col gap-1 text-xs text-neutral-400" for="gt-scheduler" data-gt-adv-field="scheduler">
+					<span>スケジューラー</span>
+					@atoms.Select(atoms.FieldMd, "max-w-56", templ.Attributes{"id": "gt-scheduler", "name": FieldScheduler, "data-testid": "gt-scheduler"}) {
+						<option value="" selected?={ a.Scheduler == "" }>モデルの既定</option>
+						for _, s := range a.Schedulers {
+							<option value={ s } selected?={ s == a.Scheduler }>{ s }</option>
+						}
+					}
+				</label>
+			</div>
+			<p class="text-xs text-amber-300" data-gt-adv-note hidden data-testid="gt-advanced-note"></p>
+		</div>
+	</details>
+}
+
+// advancedSlider is a slider that is on only while its box is ticked (off: the model's own value, and nothing is posted). The output
+// beside it says "既定" while it is off.
+templ advancedSlider(kind, label, name, value, min, max, step string, def float64) {
+	<div class="flex flex-col gap-1" data-gt-adv-field={ kind }>
+		<div class="flex flex-wrap items-center gap-3 text-xs text-neutral-300">
+			<span class="w-20 shrink-0">{ label }</span>
+			<label class="flex items-center gap-1.5">
+				@atoms.Choice("", templ.Attributes{"type": "checkbox", "checked": value != "", "data-gt-adv-on": "", "data-testid": "gt-" + kind + "-on", "aria-label": label + "を上書きする"})
+				<span>上書きする</span>
+			</label>
+			<input
+				type="range"
+				name={ name }
+				min={ min }
+				max={ max }
+				step={ step }
+				value={ sliderValue(value, def) }
+				aria-label={ label }
+				class="min-w-40 flex-1"
+				disabled?={ value == "" }
+				data-gt-adv-range
+				data-testid={ "gt-" + kind }
+			/>
+			<output class="w-14 text-right tabular-nums" data-gt-adv-out>
+				if value == "" {
+					既定
+				} else {
+					{ value }
+				}
+			</output>
+		</div>
+	</div>
+}
+
+// weightHelp is the explanation behind the "?" of the prompts: how to write a weight, and for each model of the form whether it reads
+// it and, when it does not, what to do instead.
+templ WeightHelp(lines []WeightLine) {
+	@help.Text(weightHelpIntro)
+	<ul class="mt-2 flex flex-col gap-1.5" data-testid="gt-weight-help">
+		for _, l := range lines {
+			<li class="break-words" data-weight={ l.Level }><span class="text-neutral-100">{ l.Label }</span>: { l.Text }</li>
+		}
+	</ul>
+}

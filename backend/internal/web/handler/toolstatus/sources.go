@@ -6,7 +6,6 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/chatgpt"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
-	"github.com/ousiassllc/mam/backend/internal/service/workflows"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -14,28 +13,16 @@ import (
 // Services are what the cards read. A nil one leaves its cards without a status.
 type Services struct {
 	ModelManager *modelmanager.Service
-	Workflows    *workflows.Service
-	Review       *service.ReviewService
 	Credentials  *service.CredentialService
-	// ChatGPT is optional: without it the settings card has the API key line only.
+	// ChatGPT is optional: without it the settings status has the API key line only.
 	ChatGPT *chatgpt.Service
 }
 
-// Sources are the sources of the cards over the services.
+// Sources are the sources of the cards that have a route (Register) over the services.
 func (s Services) Sources() map[string]Source {
 	m := map[string]Source{}
 	if s.ModelManager != nil {
-		m[paths.ToolNodes] = s.comfyUI(ComfyUI.NodesLines)
 		m[paths.ToolModelManager] = s.comfyUI(ComfyUI.ModelManagerLines)
-	}
-	if s.Workflows != nil {
-		m[paths.ToolWorkflows] = s.savedWorkflows
-	}
-	if s.Review != nil {
-		m[paths.ToolReviews] = s.receivedReviews
-	}
-	if s.Credentials != nil {
-		m[paths.ToolSettings] = s.settings
 	}
 	return m
 }
@@ -50,26 +37,11 @@ func (s Services) comfyUI(lines func(ComfyUI) []molecules.StatusLine) Source {
 	}
 }
 
-func (s Services) savedWorkflows(ctx context.Context) ([]molecules.StatusLine, error) {
-	list, err := s.Workflows.List(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return CountLine("保存", len(list), "保存なし"), nil
-}
-
-func (s Services) receivedReviews(ctx context.Context) ([]molecules.StatusLine, error) {
-	inbox, err := s.Review.Inbox(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return CountLine("受け取り", len(inbox), "受け取りなし"), nil
-}
-
-// settings counts the keys that are set. The OS key store can hang (a Secret Service waiting for an unlock prompt, 5 s a
+// Settings is the source of the API keys card of the settings overview (which reads it itself, with no route of its own).
+// It counts the keys that are set. The OS key store can hang (a Secret Service waiting for an unlock prompt, 5 s a
 // call), and this runs on after the card gave up at the deadline, so each provider and the ChatGPT read are asked for
 // only while the request is still waiting: an abandoned read stops after the call it is in.
-func (s Services) settings(ctx context.Context) ([]molecules.StatusLine, error) {
+func (s Services) Settings(ctx context.Context) ([]molecules.StatusLine, error) {
 	configured := 0
 	var keysErr error
 	for _, p := range service.CredentialProviders {

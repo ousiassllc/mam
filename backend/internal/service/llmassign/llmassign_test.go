@@ -75,7 +75,7 @@ func TestSave_TheSavedFileIsWhatTheNextStartLoads(t *testing.T) {
 	path := settingsPath(t)
 	svc := llmassign.New(path, false)
 	saved := llmassign.Route{
-		Primary:  llmassign.Target{Provider: "google", Model: "gemini-3.1-pro"},
+		Primary:  llmassign.Target{Provider: "google", Model: "gemini-x"},
 		Fallback: llmassign.Target{Provider: "anthropic", Model: "claude-x"},
 	}
 
@@ -99,7 +99,7 @@ func TestSave_DropsWhatEqualsTheDefault(t *testing.T) {
 	path := settingsPath(t)
 	svc := llmassign.New(path, false)
 	def := llm.DefaultConfig().Routes
-	changed := route(llm.ProviderGoogle, "gemini-3.1-pro")
+	changed := route(llm.ProviderGoogle, "gemini-x")
 
 	require.NoError(t, svc.Save(map[string]llmassign.Route{string(llm.AgentDirector): changed, string(llm.AgentWriter): asRoute(def[llm.AgentWriter])}))
 
@@ -126,7 +126,7 @@ func TestSave_KeepsWhatTheFileHoldsBesides(t *testing.T) {
 	}`), 0o600))
 	svc := llmassign.New(path, false)
 
-	require.NoError(t, svc.Save(map[string]llmassign.Route{string(llm.AgentDirector): route(llm.ProviderGoogle, "gemini-3.1-pro")}))
+	require.NoError(t, svc.Save(map[string]llmassign.Route{string(llm.AgentDirector): route(llm.ProviderGoogle, "gemini-x")}))
 
 	cfg, err := llm.LoadConfig(path)
 	require.NoError(t, err)
@@ -137,7 +137,7 @@ func TestSave_KeepsWhatTheFileHoldsBesides(t *testing.T) {
 	assert.Equal(t, "gpt-hand", writer.Primary.Model, "the hand-written route stays until the screen is saved with another one")
 	director, err := cfg.RouteFor(llm.AgentDirector)
 	require.NoError(t, err)
-	assert.Equal(t, "gemini-3.1-pro", director.Primary.Model)
+	assert.Equal(t, "gemini-x", director.Primary.Model)
 
 	// Reset takes the routes only.
 	require.NoError(t, svc.Reset())
@@ -151,7 +151,7 @@ func TestSave_KeepsWhatTheFileHoldsBesides(t *testing.T) {
 func TestReset_RemovesTheFileWhenNothingElseIsInIt(t *testing.T) {
 	path := settingsPath(t)
 	svc := llmassign.New(path, false)
-	require.NoError(t, svc.Save(map[string]llmassign.Route{string(llm.AgentDirector): route(llm.ProviderGoogle, "gemini-3.1-pro")}))
+	require.NoError(t, svc.Save(map[string]llmassign.Route{string(llm.AgentDirector): route(llm.ProviderGoogle, "gemini-x")}))
 	require.FileExists(t, path)
 
 	require.NoError(t, svc.Reset())
@@ -162,7 +162,7 @@ func TestReset_RemovesTheFileWhenNothingElseIsInIt(t *testing.T) {
 }
 
 func TestSave_RefusesWhatDoesNotLoadAndWritesNothing(t *testing.T) {
-	good := route(llm.ProviderGoogle, "gemini-3.1-pro")
+	good := route(llm.ProviderGoogle, "gemini-x")
 	wantField := map[string]string{"unknown provider": "provider", "empty model": "model", "blank model": "model", "model with space": "model", "model too long": "model"}
 	for name, bad := range map[string]llmassign.Route{
 		"unknown provider": route("nobody", "m"),
@@ -212,7 +212,7 @@ func TestSave_RefusesAnUnreadableFileAndViewSaysWhy(t *testing.T) {
 	assert.NotEmpty(t, v.Problem)
 	assert.Equal(t, asRoute(llm.DefaultConfig().Routes[llm.AgentDirector]), entry(t, v, llm.AgentDirector).Route)
 
-	err := svc.Save(map[string]llmassign.Route{string(llm.AgentDirector): route(llm.ProviderGoogle, "gemini-3.1-pro")})
+	err := svc.Save(map[string]llmassign.Route{string(llm.AgentDirector): route(llm.ProviderGoogle, "gemini-x")})
 	var invalid *llmassign.InvalidError
 	require.ErrorAs(t, err, &invalid)
 	data, readErr := os.ReadFile(path)
@@ -232,7 +232,7 @@ func TestPinned_IsShownButNeverWritten(t *testing.T) {
 	assert.True(t, v.Pinned)
 	assert.Equal(t, "gpt-pinned", entry(t, v, llm.AgentDirector).Route.Primary.Model)
 
-	err := svc.Save(map[string]llmassign.Route{string(llm.AgentWriter): route(llm.ProviderGoogle, "gemini-3.1-pro")})
+	err := svc.Save(map[string]llmassign.Route{string(llm.AgentWriter): route(llm.ProviderGoogle, "gemini-x")})
 	assert.True(t, errors.Is(err, llmassign.ErrPinned))
 	assert.ErrorIs(t, svc.Reset(), llmassign.ErrPinned)
 	data, readErr := os.ReadFile(path)

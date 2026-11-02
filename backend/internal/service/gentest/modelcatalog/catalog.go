@@ -10,6 +10,8 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/chatgptid"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/direct"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/promptweight"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/sampling"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
 	"github.com/ousiassllc/mam/backend/internal/domain/modelreg"
@@ -85,6 +87,11 @@ type Info struct {
 	// License is whether the model may be used commercially, with the license, the condition and the source (#928). A model whose
 	// license mam has not checked is "unknown".
 	License modellicense.Info `json:"license" jsonschema:"商用利用の可否（commercial: yes / conditional / no / unknown）・ライセンス名・条件・出典 URL・確認日。確認できていないモデルは unknown"`
+	// Sampling is the steps, cfg, sampler and scheduler the model takes with their defaults (a request's sampling and seed fields);
+	// absent for a model that takes none (the cloud models, the distilled LTX-2.5 whose sigmas are fixed).
+	Sampling *sampling.Caps `json:"sampling,omitempty" jsonschema:"このモデルが受け取るステップ数・CFG・サンプラー・スケジューラーと既定値。無い項目は受け取らない（指定しても使わない）。steps / cfg の locked が speed_mode のものは、速さのモードが決めるので指定しても無視する"`
+	// PromptWeight is whether the model reads the weights of a prompt, "(word:1.3)": supported / weak / unsupported / unknown.
+	PromptWeight promptweight.Level `json:"prompt_weight" jsonschema:"プロンプトのウェイト（(word:1.3)）が効くか。supported（効く）/ weak（効くが弱いかもしれない）/ unsupported（効かない: 括弧と数字がそのまま文として読まれる）/ unknown（確かめていない）"`
 }
 
 // FilterByCommercial keeps the models whose answer the filter allows.
@@ -146,11 +153,23 @@ func (c Catalog) missingNodes(cfg modeladapter.Config, m domain.ModelName) strin
 
 func (c Catalog) hidden(m domain.ModelName) bool { return c.Hidden != nil && c.Hidden(string(m)) }
 
-// Model returns one model of the media; false when there is none.
+// Model returns one model of the media; false when there is none. Only that model is described (its backend asked, its price and
+// capabilities read) and only it goes through the Hidden predicate: describing every model of the list to pick one out cost a key
+// lookup in the OS secure storage (a call that can wait for its time limit) and a read of the workflow graph for each of them, on
+// every estimate of a match or a batch (#981).
 func (c Catalog) Model(media, id string) (Info, bool) {
-	for _, m := range c.Models(media) {
-		if m.ID == id {
-			return m, true
+	cfg := c.Adapter.Config()
+	for _, kind := range []struct {
+		media  string
+		models []domain.ModelName
+	}{{gentestrepo.MediaImage, domain.ImageModels()}, {gentestrepo.MediaVideo, domain.VideoModels()}} {
+		if media != "" && media != kind.media {
+			continue
+		}
+		for _, m := range kind.models {
+			if string(m) == id && !c.hidden(m) {
+				return c.info(cfg, m, kind.media), true
+			}
 		}
 	}
 	return Info{}, false
@@ -168,6 +187,10 @@ func (c Catalog) info(cfg modeladapter.Config, m domain.ModelName, media string)
 		mi.Unavailable, mi.UnavailableMessage = ExcludedMissingNode, msg
 	} else {
 		mi.Available = true
+	}
+	mi.PromptWeight = promptweight.Unknown
+	if lm, _, ok := cfg.LocalModel(m); ok && lm.Workflow != nil {
+		mi.Sampling, mi.PromptWeight = lm.Workflow.SamplingCaps(), lm.Workflow.PromptWeight.OrUnknown()
 	}
 	if media == gentestrepo.MediaImage {
 		mi.AcceptsReferences = cfg.AcceptsImages(m)

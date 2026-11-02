@@ -2,6 +2,7 @@
  "id": "txt2video-ltx-2-5-enhanced", "label": "LTX-2.5: テキストから動画（音声つき・プロンプト拡張）", "media": "video",
  "description": "Lightricks の LTX-2.5（蒸留版 22B）の、テキストから動画を音声つきで作るワークフロー。Comfy 公式のテンプレート（video_ltx2_5_t2v）を API 形式に展開したもので、ComfyUI 標準ノードだけを使う。最終の解像度の半分で 1 段目を作り、潜在空間で 2 倍に拡大して 2 段目で仕上げる。24fps、フレーム数は 8n+1、幅と高さは 64 の倍数。Hugging Face の gated なリポジトリ Lightricks/LTX-2.5 のファイル（トークンと承認が要る）を使う。さらに、短いプロンプトを Comfy 公式のプロンプト拡張（Gemma 4 E2B。T2V）で詳しい指示に書き換えてから使う（生成に 1〜2 分ほど足される。ComfyUI のテンプレートでは切り替えのスイッチで、mam のこのテンプレートは常に拡張する。拡張に使う Gemma 4 E2B のファイル、約 5 GB を追加で取得する）。GPU では未実行（構造のテストのみ）。",
  "model": {"media": "video", "video": {"durations": [3, 4, 5, 6], "resolutions": ["480p", "720p"], "native_audio": true}, "workflow": {
+  "prompt_weight": "unsupported",
   "graph": {
    "75": {"class_type": "SaveVideo", "inputs": {"filename_prefix": "video/mam", "format": "auto", "codec": "auto", "video": ["370", 0]}},
    "338": {"class_type": "RandomNoise", "inputs": {"noise_seed": 42}},

@@ -49,6 +49,19 @@ POST・DELETE は CSRF 必須。操作は区画（`outerHTML`）を返し、ジ�
 | `ErrUnavailable`・アプリに生成テストが無い | 503 | `unavailable` |
 | 画像が大きすぎる | 413 | `validation` |
 
+## 詳細設定のフィールド（Issue #973・#972）
+
+`POST /generation-test/estimate` と `/run`（確認の hidden）は、次の項目も受ける。どれも空なら送らない（モデルの既定。シードはランダム）。
+
+|name|意味|範囲|
+|---|---|---|
+|`seed`|固定するシード（n 本目は `seed + n`）|0〜4294967295|
+|`steps`|ステップ数|1〜150|
+|`cfg`|CFG|0〜30|
+|`sampler`・`scheduler`|サンプラー・スケジューラー（ComfyUI の名前）|一覧にあるもの|
+
+範囲外・数でない値は 400（`validation`。理由は確認の区画に出る）。受け取らないモデルへの値と、Speed mode のモデルの `steps`・`cfg`（速さのモードが優先）は、見積りの警告 `sampling_ignored`（シードは `seed_ignored`）で使わない。プロンプトのウェイトを読まないモデルには警告 `prompt_weight`。仕様は [../architecture/gentest/gentest.md](../architecture/gentest/gentest.md) §3.1・§3.3。画面は `#gt-compose` の中の折りたたみ `details[data-gt-advanced]`（[../components/gentest-screen.md](../components/gentest-screen.md)）。
+
 ## 画面
 
 区画は上から: **作成フォーム**（`#gt-compose`: 画像／動画・モデル・プロンプト・パラメーター・入力画像）・**確認**（`#gt-confirm`）・**進捗と比較表**（`#gt-batch`）。モデルはカード（タップで選ぶ。見えないチェックボックス `model` が値を送る）で無効なものも並べ、選べない理由はカードでなく「?」ヘルプと読み上げにある（Issue #906）。見積りの確認は、件数・モデルごとの内訳と合計・「単価なし」のモデルは合計に入らないという注記・警告・上限超過（実行ボタンを無効にする）を出す。結果のカードは完了なら画像（`<img>`）か動画（`<video controls>`）、失敗なら理由。
@@ -72,3 +85,4 @@ POST・DELETE は CSRF 必須。操作は区画（`outerHTML`）を返し、ジ�
 | 1.8 | 2026-11-02 | `GET /generation-test/export` に、`HX-Request` のときの事前の確認（理由の断片・`HX-Redirect`）を足した | 統合レビュー（#932）。書き出せないときのプレーンテキストが画面全体を置き換え、戻る導線が無かった |
 | 1.9 | 2026-11-02 | `POST /generation-test/run-notice` を足した（未対応の役割のモーダルの本文）。`POST /generation-test/run` の応答に `HX-Trigger-After-Swap: modal-close` を付けた（モーダルから実行したときに閉じる） | Issue #959 |
 | 1.10 | 2026-11-02 | プロンプトマッチ: 確認の区画の LLM の行を、単価の分かるものは合計に入れる 2 行に（Issue #965）。タイムラインに点の内訳（顔を混ぜているとき。Issue #964）と、各回の「プロンプトで比べる」（`GET /generation-test?from_result=<結果の id>`。その回のプロンプト・モデル・縦横比で開き、モデルを足して比較する案内を出す） | Issue #964・#965 |
+| 1.11 | 2026-11-03 | 見積り・実行に詳細設定のフィールド `seed`・`steps`・`cfg`・`sampler`・`scheduler` を足した（範囲・警告 `sampling_ignored`・`seed_ignored`・`prompt_weight`） | Issue #973・#972 |

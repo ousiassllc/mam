@@ -1,0 +1,46 @@
+{
+ "id": "juggernaut-xl-ragnarok",
+ "name": "Juggernaut XL Ragnarok（実写・SDXL）",
+ "kind": "image",
+ "tier": "advanced",
+ "content_rating": "adult",
+ "description": "【実写】フォトリアル向けの SDXL チェックポイント（成人向け。作者のカードは「ヌードなどの成人向けも作れる」と注意書きを付ける）。VAE を fp32 で持つ fp16 の 1 ファイル（約 7.1 GB）。テンプレートは SDXL 標準（25 ステップ・dpmpp_2m/karras・cfg 7）で、参照画像からの画像（img2img）にも使える。",
+ "files": [
+  {
+   "name": "juggernautXL_ragnarok.safetensors",
+   "folder": "checkpoints",
+   "url": "https://huggingface.co/Kandoo/Juggernaut-XL-Ragnarok/resolve/aa701fd414bf7810d7403342d645c404cd307459/juggernautXL_ragnarok.safetensors",
+   "sha256": "dd08fa32f98d05a2443ca1419e46df1575a0811f6e3b246d9dd47ff20f5eb66a",
+   "size": 7105350162,
+   "source_note": "作者の Hugging Face リポジトリ（Kandoo/Juggernaut-XL-Ragnarok）。原本は Civitai の Juggernaut XL Ragnarok（model 133005、version 1759168、juggernautXL_ragnarok.safetensors）で、SHA-256 が一致することを 2026-11-03 に確かめた。"
+  }
+ ],
+ "vram": {
+  "min_gb": 8,
+  "source": "SDXL 系の 1 ファイルのチェックポイントは sdxl-base と同じ見積もり（出典なし。mam の実機では未検証）",
+  "estimate": true
+ },
+ "license": {
+  "id": "creativeml-openrail-m",
+  "version": "2022-08-22",
+  "name": "CreativeML OpenRAIL-M（作者 KandooAI のモデルカードの license タグと本文の記載）",
+  "url": "https://huggingface.co/Kandoo/Juggernaut-XL-Ragnarok/blob/aa701fd414bf7810d7403342d645c404cd307459/README.md",
+  "summary": "作者のカードは「モデルも生成物も商用で使える。ライセンスの使用制限（Attachment A）に挙げた目的には使えない。共有・派生するときは同じ使用制限を引き継ぐ」と書く。Civitai のモデルページも商用（生成物の販売）を認める文を書き、法人向けの商用ライセンスの相談先を別に載せる。",
+  "commercial": "yes",
+  "checked_at": "2026-11-03"
+ },
+ "consent_required": true,
+ "requires_hf_token": false,
+ "workflows": [
+  {
+   "name": "juggernaut-xl-ragnarok",
+   "template": "txt2img-sdxl",
+   "model_file": "juggernautXL_ragnarok.safetensors"
+  },
+  {
+   "name": "juggernaut-xl-ragnarok-img2img",
+   "template": "img2img-sdxl",
+   "model_file": "juggernautXL_ragnarok.safetensors"
+  }
+ ]
+}

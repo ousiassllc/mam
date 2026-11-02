@@ -19,7 +19,7 @@ func TestPriceCostIsPerMillionTokensOfInputAndOutput(t *testing.T) {
 
 func TestPriceOfKnowsOnlyTheModelsThatWereCheckedAndNeverGuesses(t *testing.T) {
 	for name, target := range map[string]llm.Target{
-		"a model id that is not on the page": {Provider: llm.ProviderGoogle, Model: "gemini-3.1-pro"},
+		"a model id that is not on the page": {Provider: llm.ProviderGoogle, Model: "gemini-3.1-pro"}, // an id only the app used: the API's is -preview
 		"a dated snapshot is another id":     {Provider: llm.ProviderAnthropic, Model: "claude-opus-4-5-20251101"},
 		"the model of another provider":      {Provider: llm.ProviderOpenAI, Model: "claude-opus-4-5"},
 		"the ChatGPT plan is not per token":  {Provider: llm.ProviderChatGPTSubscription, Model: "gpt-5"},

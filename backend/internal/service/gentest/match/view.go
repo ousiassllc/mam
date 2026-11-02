@@ -45,6 +45,8 @@ type Round struct {
 	Error string `json:"error,omitempty"`
 	// Best marks the round that looks most like the reference.
 	Best bool `json:"best,omitempty"`
+	// LLM are the LLM calls of the round with their tokens (measured when the provider reported them) and price.
+	LLM []imagematch.Call `json:"llm,omitempty" jsonschema:"この回の LLM 呼び出し（kind・provider・model・トークン数・measured・usd）。measured が false のトークン数は見積りの仮定"`
 }
 
 // View is a match with its rounds.
@@ -68,11 +70,16 @@ type View struct {
 	Done  int `json:"done"`
 	// Best is the number of the round that looks most like the reference (0: none was measured); BestScore its similarity and
 	// BestPrompt its prompt: the one to use.
-	Best         int       `json:"best_round"`
-	BestScore    *int      `json:"best_score,omitempty"`
-	BestPrompt   string    `json:"best_prompt,omitempty"`
-	EstimatedUSD float64   `json:"estimated_usd"`
-	CreatedAt    time.Time `json:"created_at"`
+	Best         int     `json:"best_round"`
+	BestScore    *int    `json:"best_score,omitempty"`
+	BestPrompt   string  `json:"best_prompt,omitempty"`
+	EstimatedUSD float64 `json:"estimated_usd"`
+	// LLMUSD is what the LLM calls of the match cost so far, the calls that have a price (a ChatGPT plan, or a model that is not on the
+	// price table, has none). LLMAssumed says some call of it counts the tokens of the estimate's assumption, because the provider did
+	// not report them (a call with no price is in neither).
+	LLMUSD     float64   `json:"llm_usd"`
+	LLMAssumed bool      `json:"llm_assumed,omitempty"`
+	CreatedAt  time.Time `json:"created_at"`
 }
 
 // IsMatch reports whether the batch is a prompt match and, if it is, whether it is still going (the generation test's own state says it
@@ -117,8 +124,14 @@ func (s *Service) View(ctx context.Context, batchID string) (View, error) {
 		v.Rounds = append(v.Rounds, Round{
 			Round: info.Round, ResultID: r.ID, Status: r.Status, Prompt: r.SentPrompt, HasFile: r.Status == gentestrepo.StatusSucceeded && r.FilePath != "",
 			Score: info.Score, Scoring: info.Scoring, Differences: info.Differences, BasedOn: info.BasedOn, BasePrompt: info.BasePrompt, Change: info.Change,
-			Instruction: info.Instruction, Error: cmp.Or(r.Error, info.Error),
+			Instruction: info.Instruction, Error: cmp.Or(r.Error, info.Error), LLM: info.LLM,
 		})
+		for _, c := range info.LLM {
+			if c.USD != nil {
+				v.LLMUSD += *c.USD
+				v.LLMAssumed = v.LLMAssumed || !c.Measured
+			}
+		}
 		over := r.Status == gentestrepo.StatusFailed || r.Status == gentestrepo.StatusCancelled || (info.Score != nil || info.Error != "")
 		v.Done += btoi(over)
 		switch { // how the match ended is how its latest round did: a later round that was measured makes an earlier failure history

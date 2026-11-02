@@ -45,6 +45,10 @@ type event struct {
 				Text string `json:"text"`
 			} `json:"content"`
 		} `json:"output"`
+		Usage *struct {
+			InputTokens  int `json:"input_tokens"`
+			OutputTokens int `json:"output_tokens"`
+		} `json:"usage"`
 		Error             *errorBody `json:"error"`
 		IncompleteDetails *struct {
 			Reason string `json:"reason"`
@@ -54,7 +58,7 @@ type event struct {
 
 // readStream reads the server-sent events until a terminal one. Only response.completed is a success: a failure, an
 // incomplete response and a stream that ends without a terminal event are three different errors.
-func readStream(r io.Reader) (string, error) {
+func readStream(r io.Reader) (llm.Completion, error) {
 	br := bufio.NewReaderSize(r, 64*1024)
 	var text strings.Builder
 	for {
@@ -66,21 +70,21 @@ func readStream(r io.Reader) (string, error) {
 		}
 		if err != nil {
 			if errors.Is(err, io.EOF) {
-				return "", &llm.APIError{Provider: provider, Err: errors.New("the stream ended without response.completed")}
+				return llm.Completion{}, &llm.APIError{Provider: provider, Err: errors.New("the stream ended without response.completed")}
 			}
-			return "", &llm.APIError{Provider: provider, Err: err}
+			return llm.Completion{}, &llm.APIError{Provider: provider, Err: err}
 		}
 	}
 }
 
 // handle processes one data line. done is true for a terminal event, with the text or the error.
-func handle(data string, text *strings.Builder) (out string, done bool, err error) {
+func handle(data string, text *strings.Builder) (out llm.Completion, done bool, err error) {
 	if data == "" || data == "[DONE]" {
-		return "", false, nil
+		return llm.Completion{}, false, nil
 	}
 	var ev event
 	if json.Unmarshal([]byte(data), &ev) != nil {
-		return "", false, nil // a line that is not an event of ours is skipped
+		return llm.Completion{}, false, nil // a line that is not an event of ours is skipped
 	}
 	switch ev.Type {
 	case "response.output_text.delta":
@@ -99,29 +103,33 @@ func handle(data string, text *strings.Builder) (out string, done bool, err erro
 			answer = b.String()
 		}
 		if answer == "" {
-			return "", true, &llm.APIError{Provider: provider, Status: http.StatusOK, Message: "the answer has no text"}
+			return llm.Completion{}, true, &llm.APIError{Provider: provider, Status: http.StatusOK, Message: "the answer has no text"}
 		}
-		return answer, true, nil
+		done := llm.Completion{Text: answer}
+		if ev.Response != nil && ev.Response.Usage != nil {
+			done.Usage = &llm.Usage{InputTokens: ev.Response.Usage.InputTokens, OutputTokens: ev.Response.Usage.OutputTokens}
+		}
+		return done, true, nil
 	case "response.failed":
 		var e *errorBody
 		if ev.Response != nil {
 			e = ev.Response.Error
 		}
-		return "", true, streamFailure(e)
+		return llm.Completion{}, true, streamFailure(e)
 	case "response.incomplete":
 		reason := "unknown"
 		if ev.Response != nil && ev.Response.IncompleteDetails != nil && ev.Response.IncompleteDetails.Reason != "" {
 			reason = ev.Response.IncompleteDetails.Reason
 		}
-		return "", true, &llm.APIError{Provider: provider, Status: http.StatusOK, Permanent: true, Message: "the response is incomplete: " + reason}
+		return llm.Completion{}, true, &llm.APIError{Provider: provider, Status: http.StatusOK, Permanent: true, Message: "the response is incomplete: " + reason}
 	case "error":
 		e := ev.Error
 		if e == nil {
 			e = &errorBody{Code: ev.Code, Message: ev.Message}
 		}
-		return "", true, streamFailure(e)
+		return llm.Completion{}, true, streamFailure(e)
 	}
-	return "", false, nil
+	return llm.Completion{}, false, nil
 }
 
 // streamFailure maps an error that arrived inside a 200 stream.

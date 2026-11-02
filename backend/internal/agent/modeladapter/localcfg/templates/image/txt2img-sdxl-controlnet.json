@@ -165,12 +165,33 @@
      "index": 0
     },
     {
+     "param": "steps",
+     "node": "3",
+     "input": "steps"
+    },
+    {
+     "param": "cfg",
+     "node": "3",
+     "input": "cfg"
+    },
+    {
+     "param": "sampler",
+     "node": "3",
+     "input": "sampler_name"
+    },
+    {
+     "param": "scheduler",
+     "node": "3",
+     "input": "scheduler"
+    },
+    {
      "param": "reference_strength",
      "node": "13",
      "input": "strength"
     }
    ],
    "output_node": "9",
+   "prompt_weight": "supported",
    "reference_mode": "controlnet"
   }
  }

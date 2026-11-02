@@ -28,4 +28,8 @@ type Round struct {
 	Instruction string `json:"instruction,omitempty"`
 	// Error says why the round did not get a measured score or a fixed prompt.
 	Error string `json:"error,omitempty"`
+	// LLM are the LLM calls the round made (the write or the fix, then the comparison) with the tokens they used (Call.Measured says
+	// whether the provider reported them or they are the estimate's assumption) and what they cost. A call whose answer was refused
+	// (a score out of range, a prompt that did not change) is not in it.
+	LLM []imagematch.Call `json:"llm,omitempty"`
 }

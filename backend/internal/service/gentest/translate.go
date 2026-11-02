@@ -3,6 +3,7 @@ package gentest
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/prompttranslate"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/failtext"
@@ -88,6 +89,9 @@ func (s *Service) translate(ctx context.Context, r Request) (translated, error) 
 		to := PromptInput{Prompt: orSame(en, p.Prompt), Negative: orSame(en, p.Negative)}
 		if to != p {
 			out[p] = to
+			if lost := lostWeights(p, to); len(lost) > 0 {
+				s.Logger.Warn("the translation of a generation test prompt lost prompt weights", "lost", lost)
+			}
 		}
 	}
 	return out, nil
@@ -106,5 +110,17 @@ func (t translated) record(p PromptInput) *record.SentText {
 	if !ok {
 		return nil
 	}
-	return &record.SentText{Prompt: en.Prompt, Negative: en.Negative}
+	return &record.SentText{Prompt: en.Prompt, Negative: en.Negative, LostWeights: lostWeights(p, en)}
+}
+
+// lostWeights lists the weights of the prompt and the negative prompt typed as p that the English en does not have, without repeating
+// one that both lost.
+func lostWeights(p, en PromptInput) []string {
+	var out []string
+	for _, w := range append(prompttranslate.LostWeights(p.Prompt, en.Prompt), prompttranslate.LostWeights(p.Negative, en.Negative)...) {
+		if !slices.Contains(out, w) {
+			out = append(out, w)
+		}
+	}
+	return out
 }

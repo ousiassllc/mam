@@ -1,0 +1,19 @@
+package pages
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/layout"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/pagehead"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/jobs"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/sidenav"
+)
+
+// JobsPage is GET /jobs: the jobs that run now and the latest that ended, each with a link to the screen it is worked on in. It belongs to
+// no Project and changes nothing.
+templ JobsPage(csrfToken string, l jobs.List) {
+	@layout.AppLayout("ジョブ", csrfToken, sidenav.At(sidenav.Jobs)) {
+		@pagehead.Main(pagehead.Medium) {
+			@pagehead.Header("ジョブ", "", "いま動いている作業と、さいごに終わった作業の一覧です。モデルの導入・生成テスト・Shot の生成や判定など、裏で動く作業が対象です。見るだけで、ここから止めることはできません。「開く」で、その作業をした画面に移ります。")
+			@jobs.Section(l)
+		}
+	}
+}
