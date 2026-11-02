@@ -126,10 +126,7 @@ func (s *Service) OnStartup(ctx context.Context) {
 	if !s.bundled || !s.engine.Status().Installed {
 		return
 	}
-	switch err := s.ensureEndpoint(ctx); {
-	case err == nil:
-		s.refreshReferenceWorkflows(ctx)
-	case !errors.Is(err, ErrPinned):
+	if err := s.ensureEndpoint(ctx); err != nil && !errors.Is(err, ErrPinned) {
 		s.Logger.Warn("register the bundled ComfyUI endpoint failed", "err", err)
 	}
 	if s.state.Get().AutoStart {
