@@ -1,4 +1,4 @@
-// Package reftest_test tests the input images of the generation test screen (#933) over a real Service with the local reference
+// Package reftest_test tests the input images of the generation test screen (#933), its video speed select (#930) over a real Service with the local reference
 // models of gentesttest (and the commercial-use badges of the model cards, #928), driven as the browser's HTMX does. It has its own small harness because the directory of the handlers
 // is full (linterly): the one in web/handler/gentest is not importable.
 package reftest_test

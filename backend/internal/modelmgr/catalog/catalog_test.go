@@ -23,15 +23,15 @@ func TestEmbeddedCatalogIsValid(t *testing.T) {
 	assert.Empty(t, catalog.Validate(c, localcfg.TemplateByID))
 
 	assert.Equal(t, "v0.42.1", c.Engine.Version)
-	require.Len(t, c.Models, 17)
+	require.Len(t, c.Models, 20)
 	var ids []string
 	for _, m := range c.Models {
 		ids = append(ids, m.ID)
 	}
 	assert.Equal(t, []string{
-		"flux1-schnell", "flux2-klein-4b", "qwen-image", "sdxl-base", "ltx-video-2b", "wan22-i2v-14b", "wan22-ti2v-5b", // standard: images, then videos
+		"flux1-schnell", "flux2-klein-4b", "qwen-image", "sdxl-base", "ltx-video-2b", "wan22-i2v-14b", "wan22-i2v-14b-lightx2v", "wan22-ti2v-5b", // standard: images, then videos
 		"chroma1-hd", "flux1-dev", "flux1-dev-nsfw-master", "noctq-v4-qwen-image21", "sd35-medium", // advanced: images, then videos
-		"hunyuanvideo15-480p", "ltx-2.5-22b-distilled", "ltx-2.5-22b-distilled-uncensored", "wan22-i2v-14b-nsfw-lora", "wan22-remix-nsfw-i2v",
+		"hunyuanvideo15-480p", "ltx-2.5-22b-distilled", "ltx-2.5-22b-distilled-uncensored", "wan22-i2v-14b-lightx2v-uncensored", "wan22-i2v-14b-nsfw-lora", "wan22-remix-nsfw-i2v", "wan22-remix-nsfw-t2v",
 	}, ids)
 }
 
@@ -43,23 +43,26 @@ func TestTheCatalogHoldsTheDecidedModelsAndLicenses(t *testing.T) {
 		commerc modellicense.Commercial
 		files   int
 	}{
-		"sdxl-base":                        {"creativeml-openrail++-m", false, modellicense.Yes, 1},
-		"flux1-schnell":                    {"apache-2.0", false, modellicense.Yes, 1},
-		"flux2-klein-4b":                   {"apache-2.0", false, modellicense.Yes, 3},
-		"qwen-image":                       {"apache-2.0", false, modellicense.Yes, 3},
-		"wan22-ti2v-5b":                    {"apache-2.0", false, modellicense.Yes, 3},
-		"wan22-i2v-14b":                    {"apache-2.0", false, modellicense.Yes, 4},
-		"ltx-video-2b":                     {"ltx-video-open-rail-m", false, modellicense.Yes, 2},
-		"flux1-dev":                        {"flux-1-dev-non-commercial", true, modellicense.No, 1},
-		"sd35-medium":                      {"stabilityai-ai-community", true, modellicense.Conditional, 1},
-		"hunyuanvideo15-480p":              {"tencent-hunyuan-community", true, modellicense.Conditional, 4},
-		"noctq-v4-qwen-image21":            {"qwen-research", true, modellicense.No, 3},
-		"chroma1-hd":                       {"apache-2.0", true, modellicense.Yes, 3},
-		"flux1-dev-nsfw-master":            {"flux-1-dev-non-commercial", true, modellicense.No, 2},
-		"wan22-remix-nsfw-i2v":             {"unspecified", true, modellicense.Unknown, 4},
-		"wan22-i2v-14b-nsfw-lora":          {"unspecified", true, modellicense.Unknown, 6},
-		"ltx-2.5-22b-distilled":            {"ltx-2x-community", true, modellicense.Conditional, 5},
-		"ltx-2.5-22b-distilled-uncensored": {"ltx-2x-community-uncensored-te", true, modellicense.Unknown, 5},
+		"sdxl-base":                         {"creativeml-openrail++-m", false, modellicense.Yes, 1},
+		"flux1-schnell":                     {"apache-2.0", false, modellicense.Yes, 1},
+		"flux2-klein-4b":                    {"apache-2.0", false, modellicense.Yes, 3},
+		"qwen-image":                        {"apache-2.0", false, modellicense.Yes, 3},
+		"wan22-ti2v-5b":                     {"apache-2.0", false, modellicense.Yes, 3},
+		"wan22-i2v-14b":                     {"apache-2.0", false, modellicense.Yes, 4},
+		"wan22-i2v-14b-lightx2v":            {"apache-2.0", false, modellicense.Yes, 6},
+		"ltx-video-2b":                      {"ltx-video-open-rail-m", false, modellicense.Yes, 2},
+		"flux1-dev":                         {"flux-1-dev-non-commercial", true, modellicense.No, 1},
+		"sd35-medium":                       {"stabilityai-ai-community", true, modellicense.Conditional, 1},
+		"hunyuanvideo15-480p":               {"tencent-hunyuan-community", true, modellicense.Conditional, 4},
+		"noctq-v4-qwen-image21":             {"qwen-research", true, modellicense.No, 3},
+		"chroma1-hd":                        {"apache-2.0", true, modellicense.Yes, 3},
+		"flux1-dev-nsfw-master":             {"flux-1-dev-non-commercial", true, modellicense.No, 2},
+		"wan22-remix-nsfw-i2v":              {"unspecified", true, modellicense.Unknown, 4},
+		"wan22-remix-nsfw-t2v":              {"unspecified", true, modellicense.Unknown, 4},
+		"wan22-i2v-14b-lightx2v-uncensored": {"apache-2.0-declared", true, modellicense.Unknown, 6},
+		"wan22-i2v-14b-nsfw-lora":           {"unspecified", true, modellicense.Unknown, 6},
+		"ltx-2.5-22b-distilled":             {"ltx-2x-community", true, modellicense.Conditional, 5},
+		"ltx-2.5-22b-distilled-uncensored":  {"ltx-2x-community-uncensored-te", true, modellicense.Unknown, 5},
 	} {
 		m, ok := c.Model(id)
 		require.True(t, ok, id)
@@ -222,12 +225,15 @@ func TestEveryModelHasItsLicenseWithTheSourceAndTheDateItWasRead(t *testing.T) {
 func TestTheStricterOfTheBaseAndTheDerivativeIsShown(t *testing.T) {
 	c := catalog.Default()
 	for id, want := range map[string]modellicense.Commercial{
-		"flux1-dev-nsfw-master":            modellicense.No,      // FLUX.1 [dev] is non-commercial; the LoRA's license is not known
-		"wan22-i2v-14b-nsfw-lora":          modellicense.Unknown, // the base is Apache-2.0; the LoRA has no license text
-		"wan22-remix-nsfw-i2v":             modellicense.Unknown,
-		"noctq-v4-qwen-image21":            modellicense.No, // the weights, the text encoder and the VAE are all Qwen RESEARCH
-		"ltx-2.5-22b-distilled":            modellicense.Conditional,
-		"ltx-2.5-22b-distilled-uncensored": modellicense.Unknown, // LTX-2.x is conditional; the converted text encoder has no license text
+		"flux1-dev-nsfw-master":             modellicense.No,      // FLUX.1 [dev] is non-commercial; the LoRA's license is not known
+		"wan22-i2v-14b-nsfw-lora":           modellicense.Unknown, // the base is Apache-2.0; the LoRA has no license text
+		"wan22-remix-nsfw-i2v":              modellicense.Unknown,
+		"wan22-remix-nsfw-t2v":              modellicense.Unknown,
+		"wan22-i2v-14b-lightx2v-uncensored": modellicense.Unknown, // Apache-2.0 on the card only: no text, no word on the training data
+		"wan22-i2v-14b-lightx2v":            modellicense.Yes,     // the base and the LoRA are both Apache-2.0
+		"noctq-v4-qwen-image21":             modellicense.No,      // the weights, the text encoder and the VAE are all Qwen RESEARCH
+		"ltx-2.5-22b-distilled":             modellicense.Conditional,
+		"ltx-2.5-22b-distilled-uncensored":  modellicense.Unknown, // LTX-2.x is conditional; the converted text encoder has no license text
 	} {
 		m, ok := c.Model(id)
 		require.True(t, ok, id)

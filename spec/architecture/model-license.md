@@ -58,7 +58,9 @@
 | `ltx-2.5-22b-distilled` | 条件つき | 年間売上 1,000 万米ドル未満。テキストエンコーダーの Gemma 4 は Apache-2.0 |
 | `ltx-2.5-22b-distilled-uncensored` | **不明** | 拡散モデル・VAE は LTX-2.x Community（条件つき）、元の Gemma 4 と非検閲化した `llmfan46/gemma-4-12B-it-uncensored-heretic`（HF のタグ `apache-2.0`）は商用OK。LTX-2.5 用に変換した `DeepNeuralNerd/…LTX_2.5_ComfyUI` は `license: other` で本文が無く、「上流の Gemma 4 と LTX-2 のライセンスを参照」とだけ書く。厳しい方の「不明」（#927。2026-11-02） |
 | `hunyuanvideo15-480p` | 条件つき | 月間 1 億人超は許諾。EU・英国・韓国では使えない |
-| `wan22-i2v-14b-nsfw-lora`・`wan22-remix-nsfw-i2v` | **不明** | ベースの Wan 2.2 は Apache-2.0。LoRA・マージの側にライセンスの本文が無い（旧版は「商用不可」と扱っていた。確認できないものは断定せず不明にした） |
+| `wan22-i2v-14b-lightx2v` | 商用OK | ベースの Wan 2.2 も LightX2V の 4 ステップ LoRA（`lightx2v/Wan2.2-Distill-Loras`）も Apache-2.0（LoRA はモデルカードの `license: apache-2.0`。LICENSE のファイルは無く、カードの宣言に従う）。#930 |
+| `wan22-i2v-14b-lightx2v-uncensored` | **不明** | ベースは Apache-2.0（商用OK）。非検閲の LoRA（`rzgar/Wan2.2_LightX2V_4Step_Uncensored`）はカードが `license: apache-2.0` と宣言するだけで、LICENSE の本文も、非検閲の学習に使ったデータの出所も無い。宣言だけでは確かめられないので、厳しい方の「不明」（`license.id = apache-2.0-declared`）。成人向けなので同意必須。#930 |
+| `wan22-i2v-14b-nsfw-lora`・`wan22-remix-nsfw-i2v`・`wan22-remix-nsfw-t2v` | **不明** | ベースの Wan 2.2 は Apache-2.0。LoRA・マージの側にライセンスの本文が無い（旧版は「商用不可」と扱っていた。確認できないものは断定せず不明にした） |
 | クラウド: `nano-banana`・`nano-banana-lite`・`gemini-omni-flash`（Gemini API。「Use of Generated Content」: Google は生成物の所有権を主張しない）、`flux-2`（BFL。生成物の所有権を主張しない）、`gpt-image-2`・ChatGPT サブスク（OpenAI。Output は利用者のもの）、`runway-gen-4.5`（Runway。入力と生成物の所有権を主張しない） | 商用OK | 各社の利用規約を 2026-11-02 に読み、生成物の所有権を主張しない・利用者に帰属させるとしている（出典 URL は `cloud.json`）。ChatGPT サブスクは mam が使う経路が非公式で、注意を付ける |
 | クラウド: `luma-ray-3.2` | 条件つき | 規約 §4: 商用利用を認めるサブスクリプションに限る |
 | クラウド: `kling-3.0`・`kling-4.0`・`minimax-h3`・`minimax-h3-max`・`wan-3.0`・`seedance-2.0`・`seedance-2.5`（BytePlus） | **不明** | 規約の本文を読めなかった、または商用利用を許す文を見つけられなかった（公開ページが JS 描画・地域制限・契約で非公開）。商用の前に契約を確認する |
@@ -121,3 +123,4 @@
 | 1.0 | 2026-11-02 | 新規。4 つの答え・データの置き場所・ベースと派生は厳しい方・バッジ／フィルター／設定・MCP・後続の追加手順 | Issue #928 |
 | 1.1 | 2026-11-02 | 非検閲のテキストエンコーダーの LTX-2.5（`ltx-2.5-22b-distilled-uncensored`）の答え（不明）を足した | Issue #927 |
 | 1.2 | 2026-11-02 | §3 の答えの表に `flux2-klein-4b`（商用OK）を足した。VAE を FLUX.2 [dev] の再配布から取らず klein のリポジトリのものにした理由を書いた | Issue #931 |
+| 1.3 | 2026-11-02 | §3 の答えの表に `wan22-i2v-14b-lightx2v`（商用OK）・`wan22-i2v-14b-lightx2v-uncensored`（不明。宣言だけ）・`wan22-remix-nsfw-t2v`（不明。I2V と同じ）を足した | Issue #930 |

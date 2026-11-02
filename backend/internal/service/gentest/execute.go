@@ -94,7 +94,7 @@ func (br *batchRun) image(ctx context.Context, r gentestrepo.Result, p resultPar
 
 func (br *batchRun) video(ctx context.Context, r gentestrepo.Result, p resultParams) (file, mime string, size int64, cost *float64, err error) {
 	req := modeladapter.VideoRequest{
-		Prompt: r.SentPrompt, DurationSeconds: p.DurationSeconds, Resolution: p.Resolution, AspectRatio: p.AspectRatio, Seed: seedOf(r),
+		Prompt: r.SentPrompt, DurationSeconds: p.DurationSeconds, Resolution: p.Resolution, AspectRatio: p.AspectRatio, Seed: seedOf(r), SpeedMode: p.SpeedMode,
 	}
 	if r.NegativeMode == gentestrepo.NegativeField {
 		req.NegativePrompt = sentNegative(r, p)

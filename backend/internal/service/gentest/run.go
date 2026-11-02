@@ -52,6 +52,8 @@ type resultParams struct {
 	// AvoidPose says the negative prompt got refs.WithAvoidPose; LoRA is the LoRA the model was given (image models only).
 	AvoidPose bool       `json:"avoid_pose,omitempty"`
 	LoRA      *refs.LoRA `json:"lora,omitempty"`
+	// SpeedMode is the speed mode the video model was asked for (absent: its default).
+	SpeedMode string `json:"speed_mode,omitempty"`
 }
 
 // randomSeed is a seed for FLUX.2 and Runway Gen-4.5: an unsigned 32-bit number (Runway takes 0 to 4294967295).
