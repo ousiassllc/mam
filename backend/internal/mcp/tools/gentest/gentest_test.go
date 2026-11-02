@@ -15,6 +15,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gentesttest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/runner"
 )
 
 func TestListModelsOffersEveryBuiltInModelWithItsCapabilities(t *testing.T) {
@@ -154,9 +155,9 @@ func TestCancelStopsWhatHasNotStarted(t *testing.T) {
 	out, _ := r.run(args)
 	<-r.GT.Fake.Started()
 
-	var res gentest.CancelResult
+	var res runner.CancelResult
 	r.CallOK("cancel_generation_test", map[string]any{"batch_id": out.BatchID}, &res)
-	assert.Equal(t, gentest.CancelResult{Cancelled: 2, Running: 1}, res)
+	assert.Equal(t, runner.CancelResult{Cancelled: 2, Running: 1}, res)
 	release <- struct{}{}
 	st := r.job(out.JobID)
 	assert.Equal(t, mcpkit.JobCancelled, st.State)

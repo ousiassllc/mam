@@ -18,12 +18,14 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/export"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gentesttest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/history"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/record"
 )
 
 func prompt(s string) gentest.PromptInput { return gentest.PromptInput{Prompt: s} }
 
 // images runs a batch of one image model and one prompt per text and returns its results (they made files).
-func images(t *testing.T, r *gentesttest.Rig, model string, prompts ...string) []gentest.ResultView {
+func images(t *testing.T, r *gentesttest.Rig, model string, prompts ...string) []record.ResultView {
 	t.Helper()
 	req := gentest.Request{Media: "image", Models: []string{model}}
 	for _, p := range prompts {
@@ -36,29 +38,13 @@ func images(t *testing.T, r *gentesttest.Rig, model string, prompts ...string) [
 	return st.Results
 }
 
-func video(t *testing.T, r *gentesttest.Rig, model, text string) gentest.ResultView {
+func video(t *testing.T, r *gentesttest.Rig, model, text string) record.ResultView {
 	t.Helper()
 	ref, err := r.Confirmed(gentest.Request{Media: "video", Models: []string{model}, Prompts: []gentest.PromptInput{prompt(text)}, DurationSeconds: 5})
 	require.NoError(t, err)
 	st := r.Wait(ref.BatchID)
 	require.Equal(t, 1, st.Succeeded, st.Results)
 	return st.Results[0]
-}
-
-func ids(list []gentest.ResultView) []string {
-	out := make([]string, len(list))
-	for i, v := range list {
-		out[i] = v.ID
-	}
-	return out
-}
-
-func idsOf(items []export.Item) []string {
-	out := make([]string, len(items))
-	for i, it := range items {
-		out[i] = it.ResultID
-	}
-	return out
 }
 
 // unzip writes the archive and returns its entries by name, in ZIP order.
@@ -110,7 +96,7 @@ func TestArchiveHasPhotosAndPromptsFoldersAndTheSheetMatchesTheFiles(t *testing.
 	rows := sheet(t, files)
 	require.Len(t, rows, 3)
 	pattern := regexp.MustCompile(`^0[1-3]_\d{8}-\d{6}_flux-2_[0-9a-f]{6}\.png$`)
-	byID := map[string]gentest.ResultView{}
+	byID := map[string]record.ResultView{}
 	for _, v := range res {
 		byID[v.ID] = v
 	}
@@ -164,7 +150,7 @@ func TestSelectionTakesTheNewestNOrABatchOrTheChosenOnes(t *testing.T) {
 
 	latest, err := ex.Plan(ctx, export.Selection{Latest: 3}, export.Split{})
 	require.NoError(t, err)
-	hist, err := r.Svc.History(ctx, gentest.HistoryFilter{Limit: 3})
+	hist, err := r.Svc.History(ctx, history.Filter{Limit: 3})
 	require.NoError(t, err)
 	assert.ElementsMatch(t, ids(hist), idsOf(latest.Items), "the newest three are the first three of the history list")
 	assert.Equal(t, []int{1, 2, 3}, []int{latest.Items[0].Number, latest.Items[1].Number, latest.Items[2].Number})

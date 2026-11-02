@@ -14,6 +14,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/projectlink"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/record"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/matchscreen"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/refform"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
@@ -23,7 +24,7 @@ import (
 var negativeModeText = map[string]string{"field": "モデルの欄に送った", "folded": "プロンプトに書き足した"}
 
 // detail builds the page of one result around the import form f.
-func (h Handlers) detail(ctx context.Context, d gentest.ResultDetail, f view.ImportForm) view.Detail {
+func (h Handlers) detail(ctx context.Context, d record.ResultDetail, f view.ImportForm) view.Detail {
 	v := view.Detail{
 		Card: cardOf(d.ResultView, false), SentPrompt: d.SentPrompt, Negative: d.NegativePrompt, NegMode: negativeModeText[d.NegativeMode],
 		English: d.TranslatedPrompt, EnglishNegative: d.TranslatedNegativePrompt,
@@ -61,7 +62,7 @@ var roleNames = map[string]string{
 }
 
 // roleText is the role of an input with the strength it was given (none was when the default was used).
-func roleText(in gentest.InputView) string {
+func roleText(in record.InputView) string {
 	if in.Strength == nil {
 		return roleNames[in.Role]
 	}
@@ -93,7 +94,7 @@ func importText(t projectlink.ImportTarget) string {
 	return what
 }
 
-func params(d gentest.ResultDetail) []view.KV {
+func params(d record.ResultDetail) []view.KV {
 	kv := []view.KV{{Key: "モデル", Value: d.ModelLabel}, {Key: "API のモデル名", Value: d.APIModel}, {Key: "縦横比", Value: d.AspectRatio}}
 	if d.Resolution != "" {
 		kv = append(kv, view.KV{Key: "解像度", Value: d.Resolution})
@@ -113,7 +114,7 @@ func params(d gentest.ResultDetail) []view.KV {
 	return append(kv, view.KV{Key: "作成", Value: timeText(d.CreatedAt)})
 }
 
-func costText(d gentest.ResultDetail) string {
+func costText(d record.ResultDetail) string {
 	switch d.CostBasis {
 	case modelcatalog.BasisFree:
 		return "無料（ローカル）"

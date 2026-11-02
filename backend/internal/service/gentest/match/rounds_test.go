@@ -13,6 +13,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gentesttest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/history"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/match"
 )
 
@@ -58,7 +59,7 @@ func TestAnAutoMatchFixesThePromptUntilTheTargetIsReachedAndKeepsEveryRound(t *t
 		assert.Equal(t, v.Rounds[i].Prompt, c.Image.Prompt)
 		assert.Empty(t, c.Image.Inputs, "the reference is shown to the LLM only: giving it to the model would measure nothing")
 	}
-	hist, err := r.Svc.History(context.Background(), gentest.HistoryFilter{Limit: 10})
+	hist, err := r.Svc.History(context.Background(), history.Filter{Limit: 10})
 	require.NoError(t, err)
 	assert.Len(t, hist, 3)
 	assert.Equal(t, 1, r.LLM.Count(gentesttest.CallDescribe))

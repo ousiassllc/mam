@@ -12,6 +12,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/record"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/refs"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/direct"
@@ -20,40 +21,12 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
 )
 
-// payload is the payload of a gentest job: the batch it runs.
-type payload struct {
-	BatchID string `json:"batch_id"`
-}
-
 // RunRef is a batch that was queued: the batch and the job that runs it.
 type RunRef struct {
 	BatchID string `json:"batch_id"`
 	JobID   string `json:"job_id"`
 	// TotalItems is the number of results the batch makes.
 	TotalItems int `json:"total_items"`
-}
-
-// batchParams is gentest_batch.params.
-type batchParams struct {
-	AspectRatio        string  `json:"aspect_ratio"`
-	Resolution         string  `json:"resolution,omitempty"`
-	DurationSeconds    float64 `json:"duration_seconds,omitempty"`
-	Count              int     `json:"count"`
-	TranslateToEnglish bool    `json:"translate_to_english,omitempty"`
-}
-
-// resultParams is gentest_result.params: what was asked of that model.
-type resultParams struct {
-	AspectRatio     string  `json:"aspect_ratio"`
-	Resolution      string  `json:"resolution,omitempty"`
-	DurationSeconds float64 `json:"duration_seconds,omitempty"`
-	// Translation is the English the prompt (and negative prompt) was translated to; nil when it was sent as typed.
-	Translation *sentText `json:"translation,omitempty"`
-	// AvoidPose says the negative prompt got refs.WithAvoidPose; LoRA is the LoRA the model was given (image models only).
-	AvoidPose bool       `json:"avoid_pose,omitempty"`
-	LoRA      *refs.LoRA `json:"lora,omitempty"`
-	// SpeedMode is the speed mode the video model was asked for (absent: its default).
-	SpeedMode string `json:"speed_mode,omitempty"`
 }
 
 // randomSeed is a seed for FLUX.2 and Runway Gen-4.5: an unsigned 32-bit number (Runway takes 0 to 4294967295).
@@ -99,7 +72,7 @@ func (s *Service) Run(ctx context.Context, r Request, c Confirmation) (RunRef, e
 		_ = os.RemoveAll(filepath.Join(s.dir(), nb.Batch.ID))
 		return RunRef{}, err
 	}
-	job, err := s.Jobs.Enqueue(ctx, domain.JobGentest, payload{BatchID: nb.Batch.ID})
+	job, err := s.Jobs.Enqueue(ctx, domain.JobGentest, record.Payload{BatchID: nb.Batch.ID})
 	if err == nil {
 		err = s.Repo.SetBatchJob(ctx, nb.Batch.ID, job.ID)
 	}
@@ -130,7 +103,7 @@ func (s *Service) newBatch(r Request, est Estimate, plans []modelPlan, sources [
 		_ = os.RemoveAll(dir)
 		return gentestrepo.NewBatch{}, err
 	}
-	params, _ := json.Marshal(batchParams{
+	params, _ := json.Marshal(record.BatchParams{
 		AspectRatio: r.AspectRatio, Resolution: r.Resolution, DurationSeconds: r.DurationSeconds, Count: r.Count, TranslateToEnglish: r.TranslateToEnglish,
 	})
 	estimate, _ := json.Marshal(est)

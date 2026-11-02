@@ -13,6 +13,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/projectlink"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/record"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/refform"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
@@ -205,7 +206,7 @@ func (h Handlers) RefRow(c *gin.Context) {
 	gtshare.Render(c, http.StatusOK, view.RefRow(row, media, ui))
 }
 
-func historyRef(r gentest.ResultView) view.Ref {
+func historyRef(r record.ResultView) view.Ref {
 	v := refform.Value{Source: gentest.FromHistory, ID: r.ID}
 	return view.Ref{
 		Value: v.String(), Label: r.ModelLabel + "・" + shorten(r.Prompt, 40), Role: gentest.RoleReference,

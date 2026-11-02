@@ -10,6 +10,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gentesttest"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/record"
 )
 
 func foxLLM() *gentesttest.FakeLLM {
@@ -82,7 +83,7 @@ func TestRunTranslatesAndTheResultKeepsBothTexts(t *testing.T) {
 		assert.NotContains(t, x.SentPrompt, "赤い狐")
 	}
 	var got struct {
-		gentest.ResultView
+		record.ResultView
 	}
 	r.CallOK("get_generation_result", map[string]any{"result_id": b.Results[0].ID}, &got)
 	assert.Equal(t, "a red fox", got.TranslatedPrompt)

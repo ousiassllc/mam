@@ -16,6 +16,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/history"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/exportbar"
@@ -68,7 +69,7 @@ func (h Handlers) history(ctx context.Context, q url.Values) (view.History, erro
 		Refresh: paths.GenerationTestHistory() + "?" + live.Encode(), UpdatedAt: time.Now().Format(time.TimeOnly),
 	}
 	out.Export = exportbar.Data{URL: paths.GenerationTestExport(), Model: f.Model, Media: f.Media, Favorite: f.Favorite, Commercial: string(chosen)}
-	list, err := h.Svc.History(ctx, gentest.HistoryFilter{Model: f.Model, Media: f.Media, FavoriteOnly: f.Favorite, Limit: historyPage + 1, Offset: offset})
+	list, err := h.Svc.History(ctx, history.Filter{Model: f.Model, Media: f.Media, FavoriteOnly: f.Favorite, Limit: historyPage + 1, Offset: offset})
 	if err != nil {
 		return out, err
 	}
@@ -125,7 +126,7 @@ func (h Handlers) Detail(c *gin.Context) {
 
 // serveFile answers with a stored file as the media routes do: the stored type, inside a sandbox so that the file cannot run
 // as a page of mam; "?download=1" asks the browser to save it.
-func serveFile(c *gin.Context, f gentest.File, err error) {
+func serveFile(c *gin.Context, f history.File, err error) {
 	if err != nil {
 		if c.Request.Context().Err() != nil {
 			return

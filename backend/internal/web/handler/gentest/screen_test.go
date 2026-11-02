@@ -21,6 +21,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gentesttest"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/record"
 	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
@@ -191,7 +192,7 @@ func (s *screen) run(form url.Values) string {
 	return id
 }
 
-func (s *screen) results(batch string) []gentest.ResultView {
+func (s *screen) results(batch string) []record.ResultView {
 	s.t.Helper()
 	b, err := s.rig.Svc.Batch(s.t.Context(), batch, true)
 	require.NoError(s.t, err)
