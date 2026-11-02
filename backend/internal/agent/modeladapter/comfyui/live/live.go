@@ -44,16 +44,18 @@ type View struct {
 	ETAUnavailable string `json:"eta_unavailable,omitempty" jsonschema:"eta_seconds が無い理由 / why eta_seconds is missing"`
 }
 
-// View returns the progress to show, or nil while the server has not reported a step (loading the model, ...).
+// View returns the progress to show, or nil while the server has not reported a step (loading the model, ...). A node whose
+// steps are all done has nothing left to estimate: it gets neither an ETA nor a reason for the lack of one.
 func (p Progress) View() *View {
 	if p.MaxStep == 0 {
 		return nil
 	}
 	v := &View{Node: p.Node, Step: p.Step, MaxStep: p.MaxStep, Percent: p.Percent}
-	if p.HasETA {
+	switch {
+	case p.HasETA:
 		secs := int(p.ETA.Round(time.Second) / time.Second)
 		v.ETASeconds = &secs
-	} else {
+	case p.Step < p.MaxStep:
 		v.ETAUnavailable = "このノードのステップがまだ進んでいないため、残り時間を見積もれません"
 	}
 	return v
