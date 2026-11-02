@@ -17,6 +17,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/match"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/runner"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmview"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/nodegate"
@@ -25,7 +26,7 @@ import (
 // newGentest builds the generation test service and registers its job handler on jobs (before the queue starts and
 // before Recover, which fails the jobs of a kind without handler). A slot assignment of an import goes through the
 // World service, so its locks and kind checks apply.
-func newGentest(cfg config.Config, db *repository.DB, jobs *jobqueue.Queue, adapter *modeladapter.Adapter, services *service.Services, translator *prompttranslate.Translator, matcher *imagematch.Matcher, logger *slog.Logger) *gentest.Service {
+func newGentest(cfg config.Config, db *repository.DB, jobs *jobqueue.Queue, adapter *modeladapter.Adapter, services *service.Services, translator *prompttranslate.Translator, matcher *imagematch.Matcher, faces facesim.Engine, logger *slog.Logger) *gentest.Service {
 	g := gentest.New(gentest.Deps{
 		Repo: gentestrepo.New(db), Jobs: jobs, JobTable: repository.NewJobRepository(db), Adapter: adapter,
 		DataDir: cfg.DataDir, AssetsDir: cfg.AssetsDir(),
@@ -42,11 +43,23 @@ func newGentest(cfg config.Config, db *repository.DB, jobs *jobqueue.Queue, adap
 		MissingNodes:    nodegate.ForModels(services.ModelManager.Nodes, modelmanager.BundledEndpoint), // a workflow whose custom node is not installed cannot be chosen
 		BundledEndpoint: modelmanager.BundledEndpoint,
 		Translator:      translator,
+		FaceCrop:        faceCropper(faces),
 		Logger:          logger,
 	})
 	g.Register()
 	match.New(match.Deps{Gentest: g, Matcher: matcher}) // the runner of the prompt match is found again with match.From
 	return g
+}
+
+// faceCropper is the cut of the face reference of the generation test to the face (#960): it uses the face detector of the Judge, so
+// it works when the face models and the ONNX Runtime library are there, and is nil (the picture goes whole) when they are not.
+func faceCropper(faces facesim.Engine) runner.FaceCropFunc {
+	if faces == nil {
+		return nil
+	}
+	return func(ctx context.Context, image []byte) ([]byte, bool, error) {
+		return facesim.CropFace(ctx, faces, image)
+	}
 }
 
 // newTranslator is the translation of the generation test's prompts: it reasons through the route of the Prompt Planner in

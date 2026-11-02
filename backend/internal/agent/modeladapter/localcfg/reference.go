@@ -109,6 +109,21 @@ const (
 	DefaultLoRAStrength      = 0.4
 )
 
+// DefaultFaceReferenceStrength is the strength of a reference of RoleFace that names none (#960). An editing workflow keeps a
+// reference in the conditioning for the first s of the steps only (spec/architecture/model-adapters.md), and a face is drawn in
+// the finer, later steps: at 0.7 the last 30% of them no longer see it, which is where a face is told from another. A face does
+// not carry the pose, the clothes or the background (the role sentence says so), so a longer stay costs the prompt less than it
+// does for the whole picture. The effect on the likeness is not measured yet.
+const DefaultFaceReferenceStrength = 0.9
+
+// DefaultStrengthOf is the strength of a reference of the role that names none.
+func DefaultStrengthOf(role string) float64 {
+	if role == RoleFace {
+		return DefaultFaceReferenceStrength
+	}
+	return DefaultReferenceStrength
+}
+
 // AvoidPoseNegative is added to the negative prompt when the user asks that a reference's pose and composition not be copied.
 const AvoidPoseNegative = "same pose as reference, same composition as reference, studio portrait"
 
@@ -119,17 +134,17 @@ type LoRA struct {
 }
 
 // RefOption is what a request says about one reference image: its role (RoleWhole when empty) and its strength, how strongly it
-// shows in the result (0..1; 0 is DefaultReferenceStrength).
+// shows in the result (0..1; 0 is DefaultStrengthOf the role).
 type RefOption struct {
 	Role     string
 	Strength float64
 }
 
-// StrengthOrDefault is the strength to use: 0 (not given) and NaN are the default, anything else is kept within 0..1.
+// StrengthOrDefault is the strength to use: 0 (not given) and NaN are the default of the role, anything else is kept within 0..1.
 func (o RefOption) StrengthOrDefault() float64 {
 	switch {
 	case math.IsNaN(o.Strength) || o.Strength <= 0:
-		return DefaultReferenceStrength
+		return DefaultStrengthOf(o.Role)
 	case o.Strength > 1:
 		return 1
 	}
