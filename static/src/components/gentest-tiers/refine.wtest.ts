@@ -12,7 +12,8 @@ const FORM = `
       <input type="checkbox" name="model" value="sdxl" checked>
     </li>
   </ul>
-  <section data-gt-refine>
+  <section data-gt-refine aria-labelledby="gt-refine-title">
+    <h2 id="gt-refine-title">こだわり</h2>
     <button type="button" hidden data-gt-reset-all>全部を元に戻す</button>
     <p data-gt-refine-empty>変えた項目はまだありません</p>
     <ul data-gt-refine-list></ul>
@@ -107,6 +108,49 @@ describe('the こだわり tier marks what was changed and puts it back (spec/co
     expect(q<HTMLInputElement>('[data-gt-adv-range]').value).to.equal('15');
     expect(q<HTMLInputElement>('input[name="seed"]').value).to.equal('');
     expect(q<HTMLSelectElement>('select[name="sampler"]').value).to.equal('');
+  });
+
+  it('keeps the list as it is while the same items differ, and writes only the words that moved', () => {
+    const range = q<HTMLInputElement>('[data-gt-adv-range]');
+    type(range, '40');
+    const li = q('[data-gt-refine-item="adv:steps"]');
+    const button = q('[data-gt-reset="adv:steps"]');
+    type(range, '45');
+    expect(q('[data-gt-refine-item="adv:steps"]')).to.equal(li);
+    expect(q('[data-gt-reset="adv:steps"]')).to.equal(button);
+    expect(li.textContent).to.contain('45');
+  });
+
+  describe('the focus after a reset', () => {
+    function changeThree(): void {
+      type(q<HTMLInputElement>('input[name="seed"]'), '123');
+      type(q<HTMLInputElement>('[data-gt-adv-range]'), '40');
+      type(q<HTMLTextAreaElement>('textarea[name="negative"]'), 'blurry');
+    }
+
+    it('goes to the "元に戻す" of the next item', () => {
+      changeThree();
+      const button = q<HTMLButtonElement>('[data-gt-reset="adv:seed"]');
+      button.focus();
+      button.click();
+      expect(document.activeElement).to.equal(q('[data-gt-reset="adv:steps"]'));
+    });
+
+    it('goes to "全部を元に戻す" when the last item was put back and others remain', () => {
+      changeThree();
+      const button = q<HTMLButtonElement>('[data-gt-reset="negative:0"]');
+      button.focus();
+      button.click();
+      expect(document.activeElement).to.equal(q('[data-gt-reset-all]'));
+    });
+
+    it('goes to the heading when nothing is left to put back', () => {
+      changeThree();
+      const all = q<HTMLButtonElement>('[data-gt-reset-all]');
+      all.focus();
+      all.click();
+      expect(document.activeElement).to.equal(q('#gt-refine-title'));
+    });
   });
 });
 

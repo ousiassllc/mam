@@ -161,24 +161,49 @@ function render(section: HTMLElement): void {
   if (empty) empty.hidden = diff.length > 0;
   if (resetAll) resetAll.hidden = diff.length === 0;
   if (!list) return;
-  list.replaceChildren(
-    ...diff.map((item) => {
-      const li = document.createElement('li');
-      li.className = 'flex flex-wrap items-center justify-between gap-2 text-xs text-neutral-200';
-      li.dataset.gtRefineItem = item.key;
-      const text = document.createElement('span');
-      text.className = 'break-words';
-      text.textContent = line(item);
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.dataset.gtReset = item.key;
-      button.className = 'rounded-md border border-neutral-600 px-2 py-0.5 text-neutral-200 hover:bg-neutral-800';
-      button.textContent = '元に戻す';
-      button.setAttribute('aria-label', resetLabel(item));
-      li.append(text, button);
-      return li;
-    }),
-  );
+  const rows = [...list.children] as HTMLElement[];
+  if (rows.length === diff.length && rows.every((li, i) => li.dataset.gtRefineItem === diff[i]?.key)) {
+    // The same items as before: only the words that moved are written, so the live region and the focus on a button stay as they are.
+    diff.forEach((item, i) => {
+      const span = rows[i]?.querySelector('span');
+      if (span && span.textContent !== line(item)) span.textContent = line(item);
+    });
+    return;
+  }
+  list.replaceChildren(...diff.map(row));
+}
+
+function row(item: Item): HTMLElement {
+  const li = document.createElement('li');
+  li.className = 'flex flex-wrap items-center justify-between gap-2 text-xs text-neutral-200';
+  li.dataset.gtRefineItem = item.key;
+  const text = document.createElement('span');
+  text.className = 'break-words';
+  text.textContent = line(item);
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.dataset.gtReset = item.key;
+  button.className = 'rounded-md border border-neutral-600 px-2 py-0.5 text-neutral-200 hover:bg-neutral-800';
+  button.textContent = '元に戻す';
+  button.setAttribute('aria-label', resetLabel(item));
+  li.append(text, button);
+  return li;
+}
+
+/**
+ * After a reset the button that was pressed is gone (or hidden) and the focus fell to the page: it goes to the "元に戻す" of the item
+ * that followed, else to "全部を元に戻す", else to the heading of the section (no item is left to reach).
+ */
+function refocus(section: HTMLElement, pressed: HTMLElement, nextKey: string | undefined): void {
+  if (pressed.isConnected && !pressed.closest('[hidden]')) return;
+  const next =
+    nextKey === undefined
+      ? null
+      : [...section.querySelectorAll<HTMLElement>('[data-gt-reset]')].find((b) => b.dataset.gtReset === nextKey);
+  const resetAll = section.querySelector<HTMLElement>('[data-gt-reset-all]');
+  const heading = document.getElementById(section.getAttribute('aria-labelledby') ?? '');
+  heading?.setAttribute('tabindex', '-1');
+  (next ?? (resetAll && !resetAll.hidden ? resetAll : heading))?.focus();
 }
 
 function reset(section: HTMLElement, key: string | null): void {
@@ -212,7 +237,11 @@ export function initGentestRefine(root: Document = document): void {
     const el = (event.target as Element | null)?.closest<HTMLElement>('[data-gt-reset],[data-gt-reset-all]');
     const section = el?.closest<HTMLElement>(ROOT);
     if (!el || !section) return;
+    const nextKey = el
+      .closest<HTMLElement>('[data-gt-refine-item]')
+      ?.nextElementSibling?.getAttribute('data-gt-refine-item');
     reset(section, el.matches('[data-gt-reset-all]') ? null : (el.dataset.gtReset ?? null));
+    refocus(section, el, nextKey ?? undefined);
   });
   // a row of an input image, or the models that decide which settings are shown, arrive after the first look
   const later = () => window.setTimeout(() => renderAll(root), 0);

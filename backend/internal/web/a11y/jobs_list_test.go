@@ -2,6 +2,7 @@ package a11y_test
 
 import (
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -27,4 +28,16 @@ func TestJobsList_LinksAndBarsAreNamedAfterTheirRow(t *testing.T) {
 	assert.Contains(t, html, `<progress class="h-2 w-full" max="100" value="40" aria-label="導入 Flux（2026-11-03 10:00）の進み具合">`)
 	assert.Contains(t, html, ">実行中</span>")
 	assert.Contains(t, html, ">失敗</span>")
+}
+
+// The list is swapped every 2 seconds while a job runs, and htmx puts the focus back only on an element with the same id: the "開く" link
+// of a row that has a job id is named after it, and a row without one has no id rather than the same id twice (#980).
+func TestJobsList_OpenLinkHasAStableID(t *testing.T) {
+	html := render(t, jobs.Section(jobs.List{Refresh: "/jobs/list", UpdatedAt: "10:00:00", Rows: []jobs.Row{
+		{ID: "j1", Label: "導入", StateText: "実行中", Tone: atoms.BadgeInfo, StartedAt: "2026-11-03 10:00", Href: "/model-manager"},
+		{Label: "導入", StateText: "失敗", Tone: atoms.BadgeError, StartedAt: "2026-11-03 09:00", Href: "/model-manager"},
+	}}))
+
+	assert.Equal(t, 1, strings.Count(html, ` id="jobs-open-`))
+	assert.Contains(t, html, `<a id="jobs-open-j1" href="/model-manager"`)
 }

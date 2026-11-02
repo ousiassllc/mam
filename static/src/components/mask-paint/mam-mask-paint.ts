@@ -1,15 +1,27 @@
 import { LitElement, html } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { sliderStyle } from '../slider/slider-model';
+
+type Point = { x: number; y: number };
+
+const BUTTON =
+  'inline-flex items-center justify-center rounded-md border border-neutral-600 px-2 py-1 text-xs font-medium text-neutral-200 transition hover:bg-neutral-800 ' +
+  'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950';
+const SELECTED = 'border-indigo-400 bg-indigo-500/20';
+const MAX_SIZE = 128;
 
 /**
  * `<mam-mask-paint>` paints the part of a picture to redraw (spec/components/gentest-screen.md, #974).
  *
  * The mask is a black canvas (keep) with white strokes (redraw). The view shows those strokes in red over
- * the source image, so black is not drawn as red. `maskPNG()` exports the black/white PNG. On the surrounding
- * form's submit the PNG is placed in `input[type=file][name=mask]` before the form is sent.
+ * the source image, so black is not drawn as red. `maskPNG()` exports the black/white PNG. When htmx is about to
+ * send the surrounding form (`htmx:confirm`), the request is held until the PNG is in `input[type=file][name=mask]`,
+ * then released: the form is sent once, with the mask (the submit itself is never cancelled and re-sent, which htmx
+ * would answer twice).
  *
- * Keyboard: B brush, E eraser, [ ] thickness, arrows stamp one dab. The canvas is in the tab order.
- * It renders into the light DOM so the page's Tailwind classes apply.
+ * A drag draws a round-capped line from the previous position, so a fast drag leaves no gaps.
+ * Keyboard: B brush, E eraser, [ ] thickness, arrows draw a line one thickness long from the cursor (kept inside
+ * the picture). The canvas is in the tab order. It renders into the light DOM so the page's Tailwind classes apply.
  */
 @customElement('mam-mask-paint')
 export class MamMaskPaint extends LitElement {
@@ -25,8 +37,8 @@ export class MamMaskPaint extends LitElement {
   private mask?: HTMLCanvasElement;
   private form: HTMLFormElement | null = null;
   private objectURL = '';
-  private drawing = false;
-  private cursor = { x: 32, y: 32 };
+  private last: Point | null = null;
+  private cursor: Point = { x: 32, y: 32 };
   private builtFor = '';
 
   protected override createRenderRoot(): HTMLElement {
@@ -36,13 +48,13 @@ export class MamMaskPaint extends LitElement {
   override connectedCallback(): void {
     super.connectedCallback();
     this.form = this.closest('form');
-    this.form?.addEventListener('submit', this.onSubmit);
+    this.form?.addEventListener('htmx:confirm', this.onConfirm);
     const input = this.sourceInput ? document.getElementById(this.sourceInput) : null;
     input?.addEventListener('change', this.onFile);
   }
 
   override disconnectedCallback(): void {
-    this.form?.removeEventListener('submit', this.onSubmit);
+    this.form?.removeEventListener('htmx:confirm', this.onConfirm);
     document.getElementById(this.sourceInput)?.removeEventListener('change', this.onFile);
     if (this.objectURL) URL.revokeObjectURL(this.objectURL);
     super.disconnectedCallback();
@@ -102,7 +114,7 @@ export class MamMaskPaint extends LitElement {
   }
 
   private setSize(n: number): void {
-    this.size = Math.min(128, Math.max(1, Math.round(n)));
+    this.size = Math.min(MAX_SIZE, Math.max(1, Math.round(n)));
   }
 
   private clear(): void {
@@ -110,7 +122,7 @@ export class MamMaskPaint extends LitElement {
     this.resize(this.view.width, this.view.height, this.builtFor);
   }
 
-  private pos(e: PointerEvent): { x: number; y: number } {
+  private pos(e: PointerEvent): Point {
     const c = this.view!;
     const r = c.getBoundingClientRect();
     const sx = r.width > 0 ? c.width / r.width : 1;
@@ -119,95 +131,130 @@ export class MamMaskPaint extends LitElement {
   }
 
   private down = (e: PointerEvent): void => {
-    this.drawing = true;
-    (e.currentTarget as HTMLCanvasElement).setPointerCapture?.(e.pointerId);
-    this.stamp(this.pos(e));
+    try {
+      (e.currentTarget as HTMLCanvasElement).setPointerCapture(e.pointerId);
+    } catch {
+      // The pointer is gone (or was never a live one): the stroke is still drawn, it just ends when the pointer leaves the canvas.
+    }
+    const at = this.pos(e);
+    this.last = at;
+    this.line(at, at);
   };
 
   private move = (e: PointerEvent): void => {
-    if (!this.drawing) return;
-    this.stamp(this.pos(e));
+    if (!this.last) return;
+    const at = this.pos(e);
+    this.line(this.last, at);
+    this.last = at;
   };
 
   private up = (): void => {
-    this.drawing = false;
+    this.last = null;
   };
 
-  private stamp(at: { x: number; y: number }): void {
+  /** Draws the stroke from `from` to `to` (a dab when they are the same) on the mask and on the view. */
+  private line(from: Point, to: Point): void {
     if (!this.view || !this.mask) return;
-    if (this.form) this.form.dataset.maskReady = '';
-    const r = this.size / 2;
-    const m = this.mask.getContext('2d');
-    const v = this.view.getContext('2d');
-    if (!m || !v) return;
-    m.fillStyle = this.tool === 'brush' ? '#fff' : '#000';
-    m.beginPath();
-    m.arc(at.x, at.y, r, 0, Math.PI * 2);
-    m.fill();
-    v.save();
-    if (this.tool === 'eraser') v.globalCompositeOperation = 'destination-out';
-    else v.globalAlpha = 0.55;
-    v.fillStyle = this.tool === 'brush' ? '#f33' : '#000';
-    v.beginPath();
-    v.arc(at.x, at.y, r, 0, Math.PI * 2);
-    v.fill();
-    v.restore();
-    this.cursor = at;
+    const brush = this.tool === 'brush';
+    this.stroke(this.mask, from, to, brush ? '#fff' : '#000', 'source-over');
+    this.stroke(this.view, from, to, '#f33', brush ? 'source-over' : 'destination-out');
+    this.cursor = to;
+  }
+
+  private stroke(canvas: HTMLCanvasElement, from: Point, to: Point, color: string, op: GlobalCompositeOperation): void {
+    const g = canvas.getContext('2d');
+    if (!g) return;
+    g.save();
+    g.globalCompositeOperation = op;
+    g.fillStyle = color;
+    g.strokeStyle = color;
+    g.lineWidth = this.size;
+    g.lineCap = 'round';
+    g.beginPath();
+    g.arc(from.x, from.y, this.size / 2, 0, Math.PI * 2);
+    g.fill();
+    g.beginPath();
+    g.moveTo(from.x, from.y);
+    g.lineTo(to.x, to.y);
+    g.stroke();
+    g.restore();
+  }
+
+  private step(dx: number, dy: number): void {
+    const from = this.cursor;
+    const w = this.view?.width ?? this.width;
+    const h = this.view?.height ?? this.height;
+    const n = Math.max(1, this.size);
+    const to = {
+      x: Math.min(w, Math.max(0, from.x + dx * n)),
+      y: Math.min(h, Math.max(0, from.y + dy * n)),
+    };
+    this.line(from, to);
   }
 
   private key = (e: KeyboardEvent): void => {
-    const step = Math.max(1, this.size);
     if (e.key === 'b' || e.key === 'B') this.setTool('brush');
     else if (e.key === 'e' || e.key === 'E') this.setTool('eraser');
     else if (e.key === '[') this.setSize(this.size - 2);
     else if (e.key === ']') this.setSize(this.size + 2);
-    else if (e.key === 'ArrowLeft') this.stamp({ x: this.cursor.x - step, y: this.cursor.y });
-    else if (e.key === 'ArrowRight') this.stamp({ x: this.cursor.x + step, y: this.cursor.y });
-    else if (e.key === 'ArrowUp') this.stamp({ x: this.cursor.x, y: this.cursor.y - step });
-    else if (e.key === 'ArrowDown') this.stamp({ x: this.cursor.x, y: this.cursor.y + step });
+    else if (e.key === 'ArrowLeft') this.step(-1, 0);
+    else if (e.key === 'ArrowRight') this.step(1, 0);
+    else if (e.key === 'ArrowUp') this.step(0, -1);
+    else if (e.key === 'ArrowDown') this.step(0, 1);
     else return;
     e.preventDefault();
   };
 
-  private onSubmit = (e: Event): void => {
-    const form = e.currentTarget as HTMLFormElement;
-    if (form.dataset.maskReady === '1') {
-      form.dataset.maskReady = '';
-      return;
-    }
+  /** Holds htmx's request of the form until the mask is in the file input, then releases it (once). */
+  private onConfirm = (e: Event): void => {
+    const form = this.form;
+    const detail = (e as CustomEvent<{ elt: Element; issueRequest: () => void }>).detail;
+    if (!form || detail.elt !== form) return;
     e.preventDefault();
-    void this.maskPNG().then((blob) => {
-      const input = form.querySelector<HTMLInputElement>('input[type="file"][name="mask"]');
-      if (input) {
+    const issue = detail.issueRequest;
+    void this.maskPNG()
+      .then((blob) => {
+        const input = form.querySelector<HTMLInputElement>('input[type="file"][name="mask"]');
+        if (!input) return;
         const dt = new DataTransfer();
         dt.items.add(new File([blob], 'mask.png', { type: 'image/png' }));
         input.files = dt.files;
-      }
-      form.dataset.maskReady = '1';
-      form.requestSubmit();
-    });
+      })
+      .catch(() => undefined)
+      .then(() => issue());
   };
 
+  private toolButton(label: string, tool: 'brush' | 'eraser') {
+    const on = this.tool === tool;
+    return html`<button type="button" class="${BUTTON} ${on ? SELECTED : ''}" aria-pressed=${String(on)} @click=${() => this.setTool(tool)}>${label}</button>`;
+  }
+
   protected override render() {
-    const brush = this.tool === 'brush';
     return html`
       <div class="flex flex-col gap-2" data-testid="gt-mask-paint">
-        <div role="radiogroup" aria-label="描き方" class="flex gap-2">
-          <button type="button" role="radio" aria-checked=${String(brush)} @click=${() => this.setTool('brush')}>筆</button>
-          <button type="button" role="radio" aria-checked=${String(!brush)} @click=${() => this.setTool('eraser')}>消しゴム</button>
+        <div role="group" aria-label="描き方" class="flex flex-wrap items-center gap-2">
+          ${this.toolButton('筆', 'brush')} ${this.toolButton('消しゴム', 'eraser')}
+          <button type="button" class=${BUTTON} @click=${() => this.clear()}>全部消す</button>
         </div>
         <label class="flex items-center gap-2 text-xs text-neutral-400">
           太さ
-          <input type="range" min="1" max="128" .value=${String(this.size)} aria-label="太さ" @input=${(e: Event) => this.setSize(Number((e.target as HTMLInputElement).value))} />
+          <input
+            type="range"
+            min="1"
+            max=${MAX_SIZE}
+            style=${sliderStyle({ value: String(this.size), min: '1', max: String(MAX_SIZE) })}
+            .value=${String(this.size)}
+            aria-label="太さ"
+            @input=${(e: Event) => this.setSize(Number((e.target as HTMLInputElement).value))}
+          />
         </label>
-        <button type="button" @click=${() => this.clear()}>全部消す</button>
         <div class="relative inline-block max-w-full">
           ${this.src ? html`<img src=${this.src} alt="" class="block max-w-full" />` : ''}
           <canvas
             tabindex="0"
             aria-label="描き直す部分。白く塗ったところが描き直されます"
             class=${this.src ? 'absolute inset-0 h-full w-full' : ''}
-            style="touch-action: none; cursor: crosshair"
+            style="touch-action: none; cursor: crosshair; opacity: 0.55"
             @pointerdown=${this.down}
             @pointermove=${this.move}
             @pointerup=${this.up}
