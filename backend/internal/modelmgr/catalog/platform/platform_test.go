@@ -78,9 +78,11 @@ func TestValidate(t *testing.T) {
 	assert.True(t, has(platform.Validate("m", nil, &platform.Unsupported{OS: []string{"darwin"}, Reason: "r", Source: "s 2026-13-45"}), "source must say"), "not a real date")
 }
 
-// The catalog's columns (Issue #979): NVFP4 LTX is Blackwell only (Lightricks' docs, ComfyUI's supports_nvfp4_compute), and every model that
-// loads an fp8 file does not run on macOS (MPS cannot hold Float8_e4m3fn). The columns come with a reason and the date the source was read, and
-// the models that have none (SDXL, the INT8 / bf16 LTX) stay without: nothing is filled in that no primary source says.
+// The catalog's columns (Issue #979): NVFP4 LTX is Blackwell only (Lightricks' docs, ComfyUI's supports_nvfp4_compute), and the models that
+// load umt5_xxl_fp8_e4m3fn_scaled (Wan 2.2) do not run on macOS: the reports of ComfyUI (#10292, #9255, #11626) name that file and the Wan 2.2
+// templates, and no report names another model. The columns come with a reason and the date the source was read, and the models that have
+// none (SDXL, the INT8 / bf16 LTX, and the other fp8 models: Flux, Qwen-Image, SD3.5, LTX-Video 2B, Chroma, HunyuanVideo) stay without:
+// nothing is filled in that no primary source says, and a guess from another model's report is not a warning for this one.
 func TestCatalogColumns(t *testing.T) {
 	c := catalog.Default()
 	nv, ok := c.Model("ltx-2.5-22b-distilled-nvfp4")
@@ -89,26 +91,26 @@ func TestCatalogColumns(t *testing.T) {
 	assert.Equal(t, []string{platform.ArchBlackwell}, nv.Requires.GPUArch)
 	assert.Nil(t, nv.Unsupported)
 
-	fp8 := 0
+	wan := 0
 	for _, m := range c.Models {
-		hasFP8 := false
+		reported := false
 		for _, f := range m.Files {
-			hasFP8 = hasFP8 || strings.Contains(strings.ToLower(f.Name), "fp8")
+			reported = reported || f.Name == "umt5_xxl_fp8_e4m3fn_scaled.safetensors"
 		}
 		switch {
-		case hasFP8:
-			fp8++
-			require.NotNil(t, m.Unsupported, "%s loads an fp8 file: it does not run on a Mac (MPS)", m.ID)
+		case reported:
+			wan++
+			require.NotNil(t, m.Unsupported, "%s loads umt5_xxl_fp8_e4m3fn_scaled: ComfyUI #10292 reports it fails on a Mac (MPS)", m.ID)
 			assert.Equal(t, []string{platform.OSDarwin}, m.Unsupported.OS, m.ID)
 			assert.Contains(t, m.Unsupported.Source, "#10292", m.ID)
 		case m.ID == "ltx-2.5-22b-distilled-nvfp4":
 		default:
-			assert.Nil(t, m.Unsupported, "%s has no fp8 file: nothing says it fails on a Mac", m.ID)
+			assert.Nil(t, m.Unsupported, "%s: no report says it fails on a Mac", m.ID)
 			assert.Nil(t, m.Requires, m.ID)
 		}
 	}
-	assert.GreaterOrEqual(t, fp8, 18, "the fp8 models of the catalog")
-	for _, id := range []string{"sdxl-base", "ltx-2.5-22b-distilled", "noctq-v4-qwen-image21"} {
+	assert.GreaterOrEqual(t, wan, 8, "the Wan 2.2 models of the catalog")
+	for _, id := range []string{"sdxl-base", "ltx-2.5-22b-distilled", "noctq-v4-qwen-image21", "flux1-dev", "qwen-image", "sd35-medium", "ltx-video-2b"} {
 		m, _ := c.Model(id)
 		assert.Nil(t, m.Unsupported, id)
 		assert.Nil(t, m.Requires, id)
