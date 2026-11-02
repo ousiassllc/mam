@@ -20,7 +20,7 @@ func TestTheEmbeddedAllowlistIsValid(t *testing.T) {
 // The pins and the answers of the first entries, as read from the repositories (2026-11-03).
 func TestTheAllowlistHoldsTheDecidedNodes(t *testing.T) {
 	c := nodecat.Default()
-	require.Len(t, c.Nodes, 2)
+	require.Len(t, c.Nodes, 3) // ipadapter-plus, controlnet-aux and vnccs-utils (vnccs_utils_test.go)
 
 	ip, ok := c.Node("ipadapter-plus")
 	require.True(t, ok)
