@@ -73,22 +73,22 @@ func llmInvalid(err error) (string, bool) {
 	return "", false
 }
 
-func (h handlers) setLLM(_ context.Context, in SetLLMInput) (LLMSection, error) {
+func (h handlers) setLLM(ctx context.Context, in SetLLMInput) (SetLLMOutput, error) {
 	svc := h.r.Settings.LLM
 	if svc == nil {
-		return LLMSection{}, unavailable("LLM の割り当て")
+		return SetLLMOutput{}, unavailable("LLM の割り当て")
 	}
 	if len(in.Routes) == 0 {
-		return LLMSection{}, invalidInput("routes", "変える Agent を 1 つ以上指定してください")
+		return SetLLMOutput{}, invalidInput("routes", "変える Agent を 1 つ以上指定してください")
 	}
 	routes := make(map[string]llmassign.Route, len(in.Routes))
 	for _, r := range in.Routes {
 		routes[r.Agent] = llmassign.Route{Primary: modelTrimmed(r.Primary), Fallback: modelTrimmed(r.Fallback)}
 	}
 	if err := svc.Save(routes); err != nil {
-		return LLMSection{}, mapSaveError(err, llmInvalid, llmassign.ErrPinned)
+		return SetLLMOutput{}, mapSaveError(err, llmInvalid, llmassign.ErrPinned)
 	}
-	return llmSection(svc), nil
+	return SetLLMOutput{LLMSection: llmSection(svc), Warnings: h.unlistedWarnings(ctx, in.Routes)}, nil
 }
 
 // modelTrimmed is the target as the screen's form reads it: the model name without surrounding space.

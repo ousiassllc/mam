@@ -22,9 +22,12 @@ func Register(r *mcpkit.Registrar, _ *service.Services) {
 	mcpkit.Read(r, "get_global_settings",
 		"全体設定画面の内容（LLM の割り当て・画像／動画モデルの割り当て・バージョンとアップデート）。API キーは list_credentials。保存済みの設定で、LLM の割り当ては次の起動から、画像・動画モデルはすぐに反映 / The global settings screen without secrets.",
 		h.overview)
+	mcpkit.Read(r, "list_llm_models",
+		"LLM の割り当てで選べるモデルの一覧（プロバイダー指定。省略で全部）。source=api はそのアカウント・API キーで使えるモデル（chatgpt-subscription はサインイン済みのアカウントの一覧、chatgpt-codex は Codex の一覧）、default は取得できないとき（キーなし・未ログイン・失敗）の mam の既定候補。トークン・キーは返さない。10 分ほどキャッシュする / The models to choose for an LLM assignment, from the provider's API when it can be read, else mam's defaults.",
+		h.listModels, mcpkit.OpenWorld())
 	mcpkit.Write(r, "set_llm_assignment",
-		"Agent ごとの LLM（主・代替）の割り当てを保存する。指定した Agent だけ変わる。反映にはアプリの再起動が必要 / Save the LLM routes of some Agents (effective after a restart).",
-		h.setLLM, mcpkit.Idempotent())
+		"Agent ごとの LLM（主・代替）の割り当てを保存する。指定した Agent だけ変わる。反映にはアプリの再起動が必要。モデル名が list_llm_models の一覧にないときは拒否せず保存し、warnings で知らせる / Save the LLM routes of some Agents (effective after a restart). A model that is not in the provider's list is saved with a warning.",
+		h.setLLM, mcpkit.Idempotent(), mcpkit.OpenWorld())
 	mcpkit.Destroy(r, "reset_llm_assignment",
 		"LLM の割り当てを既定に戻す（保存した上書きをすべて消す）。反映にはアプリの再起動が必要 / Drop every saved LLM route override.",
 		h.resetLLM, mcpkit.Idempotent())

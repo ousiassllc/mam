@@ -45,7 +45,8 @@
 | ツール | 説明 | 入力 | 出力 | readOnly |
 |--------|------|------|------|----------|
 | `get_global_settings` | 全体設定画面の内容（API キーの区画・MCP の区画を除く）。保存済みの設定で、反映は次の起動から | なし | `llm`（`available`, `pinned`, `problem`, `providers[]`, `max_model_length`, `agents[]`: `agent`, `label`, `unused`, `primary`, `fallback`, `default_primary`, `default_fallback`）, `models`（`available`, `pinned`, `customized`, `problem`, `images[]`, `policies[]`, `image_models[]`, `video_models[]`, `gated_models[]`）, `update`（`get_update_status` と同じ） | はい |
-| `set_llm_assignment` | 指定した Agent の LLM（主・代替）を保存する。冪等 | `routes[]`: `agent`, `primary`, `fallback`（`provider`, `model`） | `get_global_settings` の `llm` | いいえ |
+| `list_llm_models` | 「LLM の割り当て」で選べるモデルの一覧（API の一覧、取れなければ mam の既定候補。10 分キャッシュ。トークン・キーは返さない。[mcp-tools-chatgpt.md](mcp-tools-chatgpt.md)） | `provider?` | `providers[]`: `provider`, `source`（`api` / `default`）, `reason?`, `models[]`（`id`, `name?`） | はい（openWorld） |
+| `set_llm_assignment` | 指定した Agent の LLM（主・代替）を保存する。冪等。モデル名がそのプロバイダーの一覧（`list_llm_models`）にないときは**拒否せず保存し**、`warnings[]` で知らせる | `routes[]`: `agent`, `primary`, `fallback`（`provider`, `model`） | `get_global_settings` の `llm` に `warnings[]`（`kind`（`unlisted_model`）, `agent`, `role`（`primary` / `fallback`）, `provider`, `model`, `message`。無ければ空配列） | いいえ |
 | `reset_llm_assignment` | LLM の割り当てを既定に戻す（上書きをすべて消す。冪等） | なし | 同上 | いいえ（破壊的） |
 | `set_model_assignment` | 指定した画像の用途・Quality Policy のモデルを保存する。冪等 | `images?[]`: `purpose`（`new_reference` / `edit_reference` / `preview` / `unified_openai`）, `primary`, `fallback`（`model`, `fast?`）。`policies?[]`: `quality_policy`, `primary`, `fallback`（`model`, `resolution`）, `takes`（1 以上）。どちらかは必須 | `get_global_settings` の `models` | いいえ |
 | `reset_model_assignment` | 画像・動画モデルの割り当てを既定に戻す（冪等） | なし | 同上 | いいえ（破壊的） |
@@ -83,6 +84,7 @@
 | `GET /api/v1/health` | `get_health` |
 | `GET /settings` | `get_global_settings`（API キーは `list_credentials`） |
 | `PUT /settings/llm` | `set_llm_assignment` |
+| `GET /settings/llm/agents/:agent/models/:role` | `list_llm_models`（画面のモデルのプルダウンの中身と同じ一覧。`provider` を指定する） |
 | `DELETE /settings/llm` | `reset_llm_assignment` |
 | `PUT /settings/models` | `set_model_assignment` |
 | `DELETE /settings/models` | `reset_model_assignment` |
@@ -102,3 +104,4 @@
 | 1.0 | 2026-10-24 | 新規作成。Project の設定（制作テンプレート・Quality Policy・予算・コスト・Take のアーカイブ）、Brand 制約とテンプレート、全体設定（LLM・モデルの割り当て・アップデート）、制作指標、ヘルスのツールと、ルートの対応表。MCP トークンの管理はツールにしない方針 | Issue #830。画面の全操作を MCP ツールにする（設定・ポリシー・指標・ヘルスの担当分） |
 | 1.1 | 2026-10-25 | `get_global_settings` の `models` に `gated_models[]` を足した。年齢確認がオフの間は成人向けモデルを選択肢から外し、`set_model_assignment` がそれを指す経路を断る | Issue #848 |
 | 1.2 | 2026-11-01 | 全体設定（`tools/settings`）に `get_audio_providers`・`set_audio_providers` と、ルートの対応（`GET`・`PUT /settings/audio`）を足した。声・口パクのプロバイダーと「ローカルが使えないときはクラウドに切り替える」の保存。ローカルの状態・使えない理由・クラウドの API キーの有無（値は返さない）を返す | Issue #924（#912 声と口パクのローカル化） |
+| 1.3 | 2026-11-03 | `list_llm_models` を足し、`set_llm_assignment` が一覧にないモデル名に `warnings[]` を返すようにした（保存は拒まない） | Issue #987・#988 |
