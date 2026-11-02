@@ -25,3 +25,4 @@
 | 1.18 | 2026-11-02 | §3 の上限に `models.json` の `gentest.match_face` を足した（プロンプトマッチの顔の混ぜ方。既定は混ぜない）。プロンプトマッチは [prompt-match.md](prompt-match.md) の 1.1 で、似てる度への顔の混ぜ込み（#964）と、見積りへの LLM のトークン単価の算入・各回から比較への導線（#965）を足した | Issue #964・#965 |
 | 1.19 | 2026-11-03 | §3.3 を新設: 生成の詳細設定（`seed`・`sampling` の `steps`・`cfg`・`sampler`・`scheduler`）。固定シードは n 本目に `seed + n`、受け取らない値は警告 `sampling_ignored`・`seed_ignored`、Speed mode のモデルは steps・cfg を無視（速さのモードが優先）、使った値を `params.sampling` に残す。§3.1: 英訳でウェイト構文（`(語:1.3)`・`(語)`・`[語]`）を残す指示、欠けたウェイトの検出（`lost_weights`）、効かないモデルへの警告 `prompt_weight` | Issue #973・#972 |
 | 1.20 | 2026-11-03 | §6: 参照画像の方式 `controlnet`・`ipadapter` と、追加ノードが無いモデルの `unavailable=missing_node` | Issue #976 |
+| 1.21 | 2026-11-03 | §6: 参照画像の役割 `pose`（ポーズだけ）、入力の出どころ `pose_library`（Shisei のポーズ集。`service/gentest/poses`）、VNCCS PoseStudio の扱い（ルート ①② は既存テンプレート、③④ は許可リストのみ）。§10 に `poses` | Issue #985・#986 |

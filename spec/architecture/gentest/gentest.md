@@ -97,6 +97,12 @@ Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-ge
 
 **ControlNet・IP-Adapter（Issue #976）**: `reference_mode` が `controlnet`（参照画像は制御画像。コアのノード）・`ipadapter`（IP-Adapter の参照画像。追加ノード `ipadapter-plus`）のモデルは、参照画像を**ちょうど 1 枚**要求し（`max_reference_images` 1、役割は `reference`）、参照の強さ（0〜1、既定 0.7）がノードの強さ（`ControlNetApplyAdvanced.strength`・`IPAdapterAdvanced.weight`）に入る（割り当て `reference_strength`）。画像が無い実行は、制御画像／IP-Adapter の参照画像が要ると言って拒否する。**ワークフローが追加ノードを要る（`requires_nodes`）同梱エンジンのモデルは、そのノードが導入・読み込み済みになるまで一覧で `available=false`・`unavailable=missing_node`（理由に、ノードの名前と導入する場所）になり、バッチに入れられない**（`modelcatalog.Catalog.MissingNodes`。`app/gentest.go` が `nodegate.ForModels` を渡す。外部の ComfyUI のモデルは対象外）。詳細は [../model-manager/custom-nodes.md](../model-manager/custom-nodes.md) §6。
 
+**ポーズの参照（Issue #985・#986）**: 画像の参照の役割に `pose`（ポーズだけ。画像のみ・動画には使えない）を足した。参照画像の体のポーズとカメラの角度だけを写し、絵柄・色・顔・髪・服・背景は写さない役割で、`edit` 方式のモデル（Qwen-Image 2.1 の `txt2img-qwen-image21`〔TextEncodeQwenImage21〕・Qwen-Image-Edit-2511〔EditPlus〕）が持つ（`localcfg` の `ModeEdit` の役割）。エンコーダーが画像に付ける番号を指す 1 文（「`<imageN>` はポーズの参照としてだけ使う: …」。`comfyui/stage.roleSentence`）をプロンプトに足し、ポーズの画像は `face`・`style` と同じく視覚の入力にだけ渡して VAE の潜在（latent）は作らない（絵に写させないため。`stage.seenOnly`）。役割を持たないモデルは、ほかの役割と同じく**全体の参照として使い、警告 `role_unsupported`（「ポーズ」と名指し）**を出す。「参照画像のポーズ・構図を真似させない」（`avoid_reference_pose`）は、`pose` の参照を持つ画像モデルでは、その参照を除いて数える（ポーズを写すのが目的の参照のため）。
+
+入力の出どころに `pose_library`（ポーズ集。`RefInput.source`、`ref` の値は `pose_library::<画像 ID>`、画像 ID は `std_P001_front` の形）を足した。ポーズ集は **Shisei**（`wquguru/shisei`。マネキンの線画。コードは Apache-2.0、画像は CC0 1.0）を、利用者が同意して導入したときだけ取得して使う（[model-manager/local-runtime.md](model-manager/local-runtime.md) §12.9。mam は同梱しない）。`service/gentest/poses`（`Library`）が導入・一覧・絞り込み（文字・分類・アングル）・ファイルの解決を持ち、全年齢向け（`rating: general`）で線画のあるポーズだけを出す。未導入・ポーズ集が無い・ポーズ集にない画像は、入力の誤りとして理由と手順を日本語で拒否する。選んだ画像は他の出どころと同じく**バッチへ複製**し（`origin` は `{kind: "pose_library", id}`）、ポーズ集を消しても履歴の入力は読める。画面は入力画像の区画の「ポーズを選ぶ」から、導入の案内（出典・ライセンス・同意）か絞り込み付きの一覧を出す（[../../components/gentest-screen.md](../../components/gentest-screen.md)）。**ポーズの画面にも、選んでいるモデルの商用利用の可否（モデルカードと同じバッジと注意書き）を出す**（Qwen-Image 2.1・Noct Q は Qwen RESEARCH LICENSE で非商用）。
+
+**VNCCS PoseStudio（Issue #985）**: ルート ①（T2I + LoRA）と ②（Edit）は、コアのノードだけの既存テンプレート（`txt2img-qwen-image21`・`txt2img-qwen-image-edit-2511`）と LoRA の差し込み（`lora_model_node`）で動く。ルート ③④（`VNCCS_PoseStudio` のノード）は、追加ノード `vnccs-utils`（[model-manager/custom-nodes.md](model-manager/custom-nodes.md) §2.1）が要るが、ノードがブラウザの画面でポーズを取り込むのを待つ作りで、API だけで流す mam のグラフでは動かせず、実行時の自動取得も固定できないため、**許可リストに載せるだけで導入できず、テンプレートも作らない**。LoRA `MIUProject/VNCCS_PoseStudio_QI2.1`（V2。約 159 MB。ライセンスの記載なし）は、PoseStudio の 3D 人形の画像を入力に学習されている（作者のワークフローのプロンプトは「replace the pose of <image 2> with the pose of <image 1>. keep the character of <image 2>」、強さ 1.0）ため、Shisei の線画との組み合わせは未検証で、mam のカタログには載せていない。ポーズの参照は、LoRA なしでも `pose` の役割で使える。
+
 ## 7. プロジェクトへの取り込み（`projectlink`）
 
 成功した結果ならどれでも取り込める（お気に入りは目印にすぎない）。取り込み先: **参照**（Reference Library の項目。画像のみ。`source='generated'`、`source_shot_id` は NULL、`kind`・`name`・`tags`）か**アセット**（画像・動画）。ファイルはプロジェクトの assets ディレクトリへ複製する。続けて、参照を Character の face/body・Product・Location のスロットに割り当てられる（`WorldService.AssignReference`。スロットの種類と参照の種類が合わなければ入力の誤り、LOCK されていれば 409）。割り当てに失敗しても取り込みは残り、そのことを知らせる（`PartialImportError`）。取り込み先は `gentest_import` に残す（TEXT の ID のみ）。
@@ -133,6 +139,7 @@ Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-ge
 | `history` | 履歴（一覧・詳細・ファイル・お気に入り・削除・プロンプト履歴・累計）。`Store` |
 | `record` | 履歴の JSON 列（`BatchParams`・`ResultParams`・`SentText`）、ジョブのペイロード、結果・入力・取り込み・プロンプトのビュー（`ResultView` ほか）。`runner`・`history`・直下が共有する型 |
 | `export` / `refs` / `match` / `matchinfo` / `modelcatalog` / `projectlink` / `loras` / `failtext` / `gterr` | それぞれ ZIP エクスポート、入力画像と LoRA の判定、プロンプトマッチ、マッチの記録、モデルの一覧、プロジェクト側、LoRA の一覧、失敗の文言、拒否の型 |
+| `poses` / `posetest` | Shisei のポーズ集（導入・一覧・絞り込み・ファイルの解決。`posestest` は偽の GitHub で導入までを走らせる道具）と、ポーズの画像を入力にした実行のテスト（Issue #986） |
 | `gentesttest` / `servicetest` / `localtest` / `speedtest` | テストの道具と、パッケージをまたぐテスト |
 
 `Service` は `projectlink.Link`・`runner.Runner`・`history.Store` を埋め込み、これらのメソッドを自分のものとして公開する。`Deps.Extra`（プロンプトマッチ）は `runner.Runner` のフィールドで、`match.New` が組み立てるときに入れる。
