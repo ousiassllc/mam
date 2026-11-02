@@ -79,22 +79,10 @@ type ComfyUIDevice struct {
 type QueueJob struct {
 	PromptID string `json:"prompt_id"`
 	// Position is the place in the queue of a job that waits (1 is next); a running job has none.
-	Position int          `json:"position,omitempty"`
-	Progress *JobProgress `json:"progress,omitempty"`
+	Position int        `json:"position,omitempty"`
+	Progress *live.View `json:"progress,omitempty"`
 	// ProgressUnavailable is why Progress is missing.
 	ProgressUnavailable string `json:"progress_unavailable,omitempty"`
-}
-
-// JobProgress is how far a running job is. Step and MaxStep count the steps of the node that is running (a workflow can
-// have several sampling nodes: Wan 2.2 has two), Percent the whole workflow.
-type JobProgress struct {
-	Node    string `json:"node,omitempty"`
-	Step    int    `json:"step"`
-	MaxStep int    `json:"max_step"`
-	Percent int    `json:"percent"`
-	// ETASeconds is the time the rest of the current node needs at the speed it has had; not the time of the whole job.
-	ETASeconds     *int   `json:"eta_seconds,omitempty"`
-	ETAUnavailable string `json:"eta_unavailable,omitempty"`
 }
 
 // Read reads the state of the GPUs and of every ComfyUI endpoint.

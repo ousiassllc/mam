@@ -3,6 +3,7 @@ package gentest
 import (
 	"context"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/comfyui/live"
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
@@ -153,16 +154,25 @@ type BatchInput struct {
 	BatchID string `json:"batch_id" jsonschema:"run_generation_test が返した batch_id"`
 }
 
-func (h handlers) get(ctx context.Context, in BatchInput) (gentest.BatchStatus, error) {
+// BatchOutput is the batch with, while it runs, how far the ComfyUI call that makes its results is (Issue #966).
+type BatchOutput struct {
+	gentest.BatchStatus
+	Progress *live.View `json:"progress,omitempty" jsonschema:"いま動いているローカル ComfyUI の生成の進み具合（ステップ・%・残り時間）。取れないとき（クラウドのモデル・準備中・終わったバッチ）は省略 / step, percent and time left of the local ComfyUI call that is running; left out when unknown"`
+}
+
+func (h handlers) get(ctx context.Context, in BatchInput) (BatchOutput, error) {
 	g, err := h.gt()
 	if err != nil {
-		return gentest.BatchStatus{}, err
+		return BatchOutput{}, err
 	}
 	b, err := g.Batch(ctx, in.BatchID, true)
-	if err == nil && h.running(ctx, g, in.BatchID) {
+	if err != nil {
+		return BatchOutput{}, mapError(err)
+	}
+	if h.running(ctx, g, in.BatchID) {
 		b.State, b.Finished = gentest.StateRunning, false
 	}
-	return b, mapError(err)
+	return BatchOutput{BatchStatus: b, Progress: stepsOf(b)}, nil
 }
 
 func (h handlers) cancel(ctx context.Context, in BatchInput) (gentest.CancelResult, error) {

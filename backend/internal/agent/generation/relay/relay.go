@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/generation"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/comfyui/live"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/progress"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
@@ -47,6 +48,7 @@ func (r *Relay) Wrap(handle func(context.Context, domain.Job) error) func(contex
 			Action generation.Action `json:"action"`
 		}
 		if json.Unmarshal(job.Payload, &p) == nil && p.ShotID != "" {
+			ctx = live.WithOwner(ctx, p.ShotID)
 			ctx = progress.With(ctx, func(u progress.Update) { r.report(p.ShotID, p.Action, u) })
 		}
 		return handle(ctx, job)

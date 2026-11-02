@@ -63,7 +63,8 @@ func (st *Status) readNvidia(ctx context.Context, o StatusOptions) {
 }
 
 // addAdapters adds the GPUs the adapter list knows and nvidia-smi did not report: all of them when nvidia-smi
-// failed, else the ones that are not NVIDIA. They carry the dedicated memory size only.
+// failed, else the ones that are not NVIDIA. They carry the dedicated memory size and, on Windows, what the performance
+// counters say (readWDDM); temperature is never known.
 func (st *Status) addAdapters(ctx context.Context, o StatusOptions, smiWorked bool, smiReason string) {
 	if o.Detector == nil {
 		return
@@ -72,6 +73,7 @@ func (st *Status) addAdapters(ctx context.Context, o StatusOptions, smiWorked bo
 	if err != nil {
 		st.Unavailable["adapters"] = "アダプターの一覧を取得できません: " + err.Error()
 	}
+	var counted []wddmGPU // the GPUs the Windows counters are asked about
 	for _, a := range adapters {
 		if a.Software || (a.VendorID == VendorNVIDIA && smiWorked) {
 			continue
@@ -89,10 +91,16 @@ func (st *Status) addAdapters(ctx context.Context, o StatusOptions, smiWorked bo
 		for _, f := range []string{"vram_used_bytes", "vram_free_bytes", "utilization_percent", "temperature_celsius"} {
 			g.Unavailable[f] = why
 		}
+		if o.GOOS == "windows" && a.LUID != 0 {
+			counted = append(counted, wddmGPU{index: len(st.GPUs), luid: a.LUID})
+		}
 		st.GPUs = append(st.GPUs, g)
 		if st.Source == "none" {
 			st.Source = "adapters"
 		}
+	}
+	if len(counted) > 0 {
+		st.readWDDM(ctx, o, counted)
 	}
 }
 
