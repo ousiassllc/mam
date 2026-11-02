@@ -28,13 +28,22 @@ type values struct {
 	denoiseFloor     float64 // the workflow's ReferenceDenoiseMin
 }
 
-func imageValues(req modeladapter.ImageRequest) values {
+// imageValues are the values of an image request. A workflow with a reference mode (a bundled img2img or editing model) takes
+// its inputs as references only when the request describes them (Options.Refs): the callers that pass bare Inputs (a character
+// sheet, a workflow step) meant a picture to see, not a picture to copy, and would get the model's default strength and every
+// image as a reference. The inputs are ignored then and the run is the text-to-image one. A workflow without a reference mode
+// (a user's own img2img graph) takes the inputs as it always did.
+func (b *Backend) imageValues(req modeladapter.ImageRequest) values {
 	w, h := aspectsize.Flux(req.AspectRatio)
 	negative := defaultNegative
 	if req.NegativePrompt != "" {
 		negative = req.NegativePrompt
 	}
-	return values{prompt: req.Prompt, negative: negative, seed: seedOr(req.Seed), width: w, height: h, references: req.Inputs, opts: req.Options}
+	v := values{prompt: req.Prompt, negative: negative, seed: seedOr(req.Seed), width: w, height: h, references: req.Inputs, opts: req.Options}
+	if wf := b.Model.Workflow; wf != nil && wf.ReferenceMode != "" && len(req.Options.Refs) == 0 {
+		v.references = nil
+	}
+	return v
 }
 
 func videoValues(wf localcfg.Workflow, req modeladapter.VideoRequest) values {
@@ -127,7 +136,10 @@ func (b *Backend) build(v values, files map[int]string) (json.RawMessage, error)
 		} else if a.Param == localcfg.ParamReferenceImage {
 			continue // a slot the run has no image for: dropUnused takes its node out
 		}
-		raw, _ := json.Marshal(value)
+		raw, err := json.Marshal(value)
+		if err != nil {
+			return nil, b.Client.Error(http.StatusUnprocessableEntity, fmt.Sprintf("the %s value cannot be put into the workflow: %v", a.Param, err), nil)
+		}
 		g[a.Node].Inputs[a.Input] = raw
 	}
 	dropUnused(g, *b.Model.Workflow, v)

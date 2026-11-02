@@ -81,6 +81,7 @@ func (h Handlers) StartModel(c *gin.Context) {
 			return
 		}
 		f := formOf(endpoint, kind, "", false, t.Model)
+		f.Source = t.ID
 		h.show(c, http.StatusOK, view.Editor{Model: &f})
 		return
 	}
@@ -160,7 +161,12 @@ func (h Handlers) saveModel(c *gin.Context, edit bool) {
 		return
 	}
 	f := modelForm(postForm(c), endpoint, kind, edit, name)
-	m, err := modelOf(f)
+	base, err := h.baseWorkflow(endpoint, name, f, edit)
+	if err != nil {
+		h.refuseForm(c, err)
+		return
+	}
+	m, err := modelOf(f, base)
 	if err == nil && edit {
 		err = h.Local.UpdateModel(c.Request.Context(), endpoint, name, service.ModelInput{Endpoint: endpoint, Name: name, Model: m})
 	} else if err == nil {
@@ -183,6 +189,25 @@ func (h Handlers) saveModel(c *gin.Context, edit bool) {
 	}
 	toast := atoms.SuccessToastOOB("モデル「" + service.ModelID(kind, endpoint, f.Name) + "」を保存しました。すぐに使え、「画像・動画モデル」で選べます")
 	settingshttp.Render(c, http.StatusOK, templ.Join(changed, view.EndpointCardOOB(e, true), toast))
+}
+
+// baseWorkflow is the workflow a saved form starts from: the stored one of an edit, the template's of a model made from a
+// template (the form's Source), nil otherwise (see workflowOf). A model of an OpenAI-compatible endpoint has none.
+func (h Handlers) baseWorkflow(endpoint, name string, f view.ModelForm, edit bool) (*service.Workflow, error) {
+	if f.EndpointKind != string(service.KindComfyUI) {
+		return nil, nil
+	}
+	if edit {
+		m, _, found, err := h.modelOf(endpoint, name)
+		if err == nil && !found {
+			err = service.ErrNotFound
+		}
+		return m.Workflow, err
+	}
+	if t, ok := service.TemplateByID(f.Source); ok {
+		return t.Model.Workflow, nil
+	}
+	return nil, nil
 }
 
 // DeleteModel removes the model :model (DELETE .../endpoints/:name/models/:model) and answers with the rows that are left

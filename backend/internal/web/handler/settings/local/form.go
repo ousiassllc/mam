@@ -1,8 +1,10 @@
 package local
 
 import (
+	"cmp"
 	"encoding/json"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -66,7 +68,7 @@ func modelForm(form url.Values, endpoint string, kind service.Kind, edit bool, n
 	f := view.ModelForm{
 		Edit: edit, Endpoint: endpoint, EndpointKind: string(kind), Name: get(view.FieldName), Media: get(view.FieldMedia),
 		ModelID: get(view.FieldModelID), AcceptsImages: form.Get(view.FieldAcceptsImage) != "",
-		Graph: form.Get(view.FieldGraph), OutputNode: get(view.FieldOutputNode),
+		Graph: form.Get(view.FieldGraph), OutputNode: get(view.FieldOutputNode), Source: get(view.FieldTemplate),
 		FPS: get(view.FieldFPS), FramesStep: get(view.FieldFramesStep), SizeMultiple: get(view.FieldSizeMultiple),
 		Durations: get(view.FieldDurations), Resolutions: get(view.FieldResolutions), NativeAudio: form.Get(view.FieldNativeAudio) != "",
 		CostPerImage: get(view.FieldCostImage), CostPerSecond: get(view.FieldCostSecond),
@@ -78,17 +80,22 @@ func modelForm(form url.Values, endpoint string, kind service.Kind, edit bool, n
 		f.Media = view.MediaImage // an OpenAI-compatible endpoint serves images only
 		return f
 	}
+	refSlots := view.ReferenceSlots
+	for form.Has(view.AssignField(string(service.ParamReferenceImage), refSlots)) { // a stored workflow has more than the minimum
+		refSlots++
+	}
 	selected := map[string]string{}
-	for _, s := range slotsFor(f.Media, nil) {
+	for _, s := range slotsFor(f.Media, nil, refSlots) {
 		selected[s.Field] = form.Get(s.Field)
 	}
-	f.Nodes, f.Slots = nodeChoices(f.Graph), slotsFor(f.Media, selected)
+	f.Nodes, f.Slots = nodeChoices(f.Graph), slotsFor(f.Media, selected, refSlots)
 	return f
 }
 
 // modelOf is the model the form stands for. A field that cannot be read is refused with its name; whether
-// the model as a whole is sound (the workflow, the capabilities) is the service's to say.
-func modelOf(f view.ModelForm) (service.Model, error) {
+// the model as a whole is sound (the workflow, the capabilities) is the service's to say. base is the workflow the form edits
+// (see workflowOf): nil for a model that has none.
+func modelOf(f view.ModelForm, base *service.Workflow) (service.Model, error) {
 	m := service.Model{Media: service.Media(f.Media)}
 	var err error
 	if m.CostPerImage, err = number(f.CostPerImage, "見積コスト（枚）"); err != nil {
@@ -106,7 +113,7 @@ func modelOf(f view.ModelForm) (service.Model, error) {
 		m.Model, m.AcceptsImageInputs = f.ModelID, f.AcceptsImages
 		return m, nil
 	}
-	m.Workflow, err = workflowOf(f)
+	m.Workflow, err = workflowOf(f, base)
 	return m, err
 }
 
@@ -134,10 +141,18 @@ func splitList(s string) []string {
 }
 
 // workflowOf is the workflow of the form: the graph it carries, the node inputs picked in the table (the
-// reference images numbered in the order they are filled, so that a skipped slot leaves no gap) and the
-// output node.
-func workflowOf(f view.ModelForm) (*service.Workflow, error) {
-	w := &service.Workflow{Graph: json.RawMessage(f.Graph), OutputNode: f.OutputNode}
+// reference images numbered in the order they are filled, so that a skipped slot leaves no gap), the output node and the
+// video settings. base is the workflow the form started from (the stored one of an edit, the template's of a model made from
+// a template, nil for an imported workflow): what the form has no field for (the reference mode, the denoise floor, what a
+// run without reference changes, the LoRA node, the optional flag of a reference and the assignments beyond the first of a
+// value) is kept from it.
+func workflowOf(f view.ModelForm, base *service.Workflow) (*service.Workflow, error) {
+	w := &service.Workflow{}
+	if base != nil {
+		kept := *base
+		w = &kept
+	}
+	w.Graph, w.OutputNode = json.RawMessage(f.Graph), f.OutputNode
 	var err error
 	if w.FPS, err = count(f.FPS, "fps"); err != nil {
 		return nil, err
@@ -148,6 +163,7 @@ func workflowOf(f view.ModelForm) (*service.Workflow, error) {
 	if w.SizeMultiple, err = count(f.SizeMultiple, "幅・高さの倍数"); err != nil {
 		return nil, err
 	}
+	var rows []service.Assignment
 	refs := 0
 	for _, s := range f.Slots {
 		node, input, ok := strings.Cut(s.Selected, "|")
@@ -158,7 +174,48 @@ func workflowOf(f view.ModelForm) (*service.Workflow, error) {
 		if a.Param == service.ParamReferenceImage {
 			a.Index, refs = refs, refs+1
 		}
-		w.Assignments = append(w.Assignments, a)
+		rows = append(rows, a)
 	}
+	w.Assignments = withKept(rows, w.Assignments)
 	return w, nil
+}
+
+// withKept adds to the rows of the table what the stored assignments say that the table cannot: the optional flag of a row
+// that puts a value where a stored one did, and the stored assignments of a value beyond its first (the result's width and
+// the reference scale's width are two) as long as the table still uses that value.
+func withKept(rows, stored []service.Assignment) []service.Assignment {
+	same := func(a, b service.Assignment) bool {
+		return a.Param == b.Param && a.Node == b.Node && a.Input == b.Input
+	}
+	for i, r := range rows {
+		if j := slices.IndexFunc(stored, func(s service.Assignment) bool { return same(r, s) }); j >= 0 {
+			rows[i].Optional = stored[j].Optional
+		}
+	}
+	type value struct {
+		param service.Param
+		index int
+	}
+	shown := map[value]bool{}
+	for _, s := range stored {
+		v := value{s.Param, s.Index}
+		if !shown[v] {
+			shown[v] = true // the first of a value is the row the form shows
+			continue
+		}
+		taken := slices.ContainsFunc(rows, func(r service.Assignment) bool { return same(r, s) })
+		used := slices.ContainsFunc(rows, func(r service.Assignment) bool { return r.Param == s.Param && r.Index == s.Index })
+		if used && !taken {
+			rows = append(rows, s)
+		}
+	}
+	// the order of the stored table, so that a save that changes nothing changes nothing of the file
+	pos := func(a service.Assignment) int {
+		if j := slices.IndexFunc(stored, func(s service.Assignment) bool { return same(a, s) }); j >= 0 {
+			return j
+		}
+		return len(stored)
+	}
+	slices.SortStableFunc(rows, func(a, b service.Assignment) int { return cmp.Compare(pos(a), pos(b)) })
+	return rows
 }

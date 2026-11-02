@@ -35,10 +35,12 @@ func registerModels(r *mcpkit.Registrar, h handlers) {
 
 // Assignment says which input of which node a value of mam goes to.
 type Assignment struct {
-	Param string `json:"param" jsonschema:"prompt, negative_prompt, seed, width, height, reference_image, frames, fps, first_frame or last_frame（画像は frames・fps・first_frame・last_frame を使えない）"`
+	Param string `json:"param" jsonschema:"prompt, negative_prompt, seed, width, height, reference_image, reference_denoise, frames, fps, first_frame or last_frame（画像は frames・fps・first_frame・last_frame を使えない）"`
 	Node  string `json:"node" jsonschema:"ノード ID（import_local_workflow の nodes[].id）"`
 	Input string `json:"input" jsonschema:"そのノードの入力名。ほかのノードがつないでいる入力は使えない"`
 	Index int    `json:"index,omitempty" jsonschema:"reference_image だけ: 何枚目か（0 から、抜けなし）"`
+	// Optional is a pointer so that an update can leave it out: it is then the saved assignment's (same param, index, node, input).
+	Optional *bool `json:"optional,omitempty" jsonschema:"reference_image だけ: 使わない枚があってもよい（その枚のノードは外され、つないでいたほかのノードの入力も外される）。省略すると、保存済みの同じ割り当ての値を引き継ぐ"`
 }
 
 // VideoCapabilities is what a video model can make.
@@ -70,7 +72,11 @@ func assignmentsOf(w *localcfg.Workflow) []Assignment {
 		return out
 	}
 	for _, a := range w.Assignments {
-		out = append(out, Assignment{Param: string(a.Param), Node: a.Node, Input: a.Input, Index: a.Index})
+		item := Assignment{Param: string(a.Param), Node: a.Node, Input: a.Input, Index: a.Index}
+		if a.Optional {
+			item.Optional = &a.Optional
+		}
+		out = append(out, item)
 	}
 	return out
 }

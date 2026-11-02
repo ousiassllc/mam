@@ -3,6 +3,7 @@ package localcfg
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"slices"
 )
 
@@ -29,7 +30,7 @@ type ReferenceCaps struct {
 	Mode ReferenceMode
 	// Max is how many reference images one generation takes (0: none).
 	Max int
-	// Roles are the roles (modeladapter.Role*) a reference may have; an img2img model takes the whole picture only.
+	// Roles are the roles (Role*) a reference may have; an img2img model takes the whole picture only.
 	Roles []string
 }
 
@@ -40,9 +41,9 @@ func (m Model) ReferenceCaps() ReferenceCaps {
 	if m.Media != MediaImage || w == nil || !w.Has(ParamReferenceImage) {
 		return ReferenceCaps{}
 	}
-	caps := ReferenceCaps{Mode: w.ReferenceMode, Max: w.Count(ParamReferenceImage), Roles: []string{"reference"}}
+	caps := ReferenceCaps{Mode: w.ReferenceMode, Max: w.Count(ParamReferenceImage), Roles: []string{RoleWhole}}
 	if caps.Mode == ModeEdit {
-		caps.Roles = []string{"reference", "face", "style", "edit"}
+		caps.Roles = []string{RoleWhole, RoleFace, RoleStyle, RoleEdit}
 	}
 	return caps
 }
@@ -112,10 +113,10 @@ type RefOption struct {
 	Strength float64
 }
 
-// StrengthOrDefault is the strength to use: 0 (not given) is the default, anything else is kept within 0..1.
+// StrengthOrDefault is the strength to use: 0 (not given) and NaN are the default, anything else is kept within 0..1.
 func (o RefOption) StrengthOrDefault() float64 {
 	switch {
-	case o.Strength <= 0:
+	case math.IsNaN(o.Strength) || o.Strength <= 0:
 		return DefaultReferenceStrength
 	case o.Strength > 1:
 		return 1

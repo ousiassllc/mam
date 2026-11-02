@@ -57,6 +57,7 @@ func stage(g localcfg.Graph, wf localcfg.Workflow, v values) error {
 		uses[i] = refUse{slot: i, role: o.Role, steps: stepsFor(o.StrengthOrDefault(), total)}
 	}
 	cuts := stageCuts(uses, total)
+	snapToCuts(uses, cuts, total)
 	if total <= 0 || len(cuts) == 0 {
 		return singleStage(g, enc, uses, v.prompt)
 	}
@@ -73,7 +74,8 @@ func stepsFor(strength float64, total int) int {
 }
 
 // stageCuts are the steps at which a reference drops out of the sampling, ascending and distinct. A reference that stays to
-// the end never drops out.
+// the end never drops out. With more distinct steps than maxStages-1 parts allow, the cuts kept are spread evenly over them
+// (the first and the last included); snapToCuts moves the references of the others.
 func stageCuts(uses []refUse, total int) []int {
 	var cuts []int
 	for _, u := range uses {
@@ -82,10 +84,35 @@ func stageCuts(uses []refUse, total int) []int {
 		}
 	}
 	slices.Sort(cuts)
-	if len(cuts) > maxStages-1 {
-		cuts = cuts[:maxStages-1]
+	keep := maxStages - 1
+	if len(cuts) <= keep {
+		return cuts
 	}
-	return cuts
+	kept := make([]int, keep)
+	for i := range kept {
+		kept[i] = cuts[int(math.Round(float64(i*(len(cuts)-1))/float64(keep-1)))]
+	}
+	return kept
+}
+
+// snapToCuts moves every reference that drops out before the end (steps below total) to the nearest cut, so that a reference
+// whose own cut was not kept does not stay to the end. A reference that stays to the end is left alone.
+func snapToCuts(uses []refUse, cuts []int, total int) {
+	for i, u := range uses {
+		if u.steps >= total || len(cuts) == 0 {
+			continue
+		}
+		uses[i].steps = slices.MinFunc(cuts, func(a, b int) int {
+			return cmp.Or(cmp.Compare(absInt(a-u.steps), absInt(b-u.steps)), cmp.Compare(a, b))
+		})
+	}
+}
+
+func absInt(n int) int {
+	if n < 0 {
+		return -n
+	}
+	return n
 }
 
 // singleStage keeps the node: every reference is in the whole run.
@@ -181,14 +208,29 @@ func keepSlots(n, src localcfg.Node, active []refUse) {
 }
 
 // setVAE gives the encoder the VAE when a reference is to be reproduced (the whole picture or the one to edit): the encoder
-// then also hands the picture's latents to the model. A face or a style is read with the vision tower alone.
+// then also hands the picture's latents to the model. A face or a style is read with the vision tower alone. The VAE is the
+// one the VAEDecode node takes (the lowest ID of them when there are several), else the VAELoader with the lowest ID.
 func setVAE(g localcfg.Graph, n localcfg.Node, active []refUse) {
 	if !slices.ContainsFunc(active, func(u refUse) bool { return u.role != localcfg.RoleFace && u.role != localcfg.RoleStyle }) {
 		delete(n.Inputs, "vae")
 		return
 	}
-	for id, c := range g {
-		if c.ClassType == "VAELoader" {
+	ids := make([]string, 0, len(g))
+	for id := range g {
+		ids = append(ids, id)
+	}
+	slices.Sort(ids)
+	for _, id := range ids {
+		if g[id].ClassType != "VAEDecode" {
+			continue
+		}
+		if to, _, ok := linkOf(g[id].Inputs["vae"]); ok && g[to].ClassType == "VAELoader" {
+			n.Inputs["vae"] = link(to, 0)
+			return
+		}
+	}
+	for _, id := range ids {
+		if g[id].ClassType == "VAELoader" {
 			n.Inputs["vae"] = link(id, 0)
 			return
 		}
@@ -216,7 +258,10 @@ func promptFor(active []refUse, prompt string) string {
 			lines = append(lines, s)
 		}
 	}
-	return strings.Join(append(lines, text), "\n")
+	if text != "" {
+		lines = append(lines, text)
+	}
+	return strings.Join(lines, "\n")
 }
 
 // roleSentence tells the editing model what to take from <image n>; the whole picture and the one to edit need no sentence.
