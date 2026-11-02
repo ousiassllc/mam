@@ -19,6 +19,8 @@ type Warning struct {
 	Model   string `json:"model,omitempty"`
 	Code    string `json:"code"`
 	Message string `json:"message"`
+	// Roles are the roles of the references the model does not take, for WarnRoleUnsupported only: they are used as a whole picture.
+	Roles []string `json:"roles,omitempty"`
 }
 
 // The codes of a Warning.
@@ -60,7 +62,7 @@ func (s *Service) planModel(cfg modeladapter.Config, r Request, info modelcatalo
 		p.warnings = append(p.warnings, Warning{Model: info.ID, Code: code, Message: fmt.Sprintf(format, args...)})
 	}
 	if r.Media == gentestrepo.MediaImage {
-		s.planImage(r, &p, warn)
+		s.planImage(r, &p)
 	} else {
 		s.planVideo(cfg, r, &p, warn)
 	}
@@ -187,7 +189,7 @@ func resultParamsOf(r Request, mp modelPlan, translation *record.SentText) recor
 }
 
 // planImage decides which references, which LoRA and which pose option an image model takes of the request (refs.Decide).
-func (s *Service) planImage(r Request, p *modelPlan, warn func(code, format string, args ...any)) {
+func (s *Service) planImage(r Request, p *modelPlan) {
 	roles := make([]string, len(r.References))
 	for i, ref := range r.References {
 		roles[i] = ref.Role
@@ -199,6 +201,6 @@ func (s *Service) planImage(r Request, p *modelPlan, warn func(code, format stri
 	}, roles, r.LoRA != nil, r.AvoidReferencePose)
 	p.used, p.lora, p.avoidPose = d.Used, d.LoRA, d.AvoidPose
 	for _, w := range d.Warnings {
-		warn(w.Code, "%s", w.Message)
+		p.warnings = append(p.warnings, Warning{Model: info.ID, Code: w.Code, Message: w.Message, Roles: w.Roles})
 	}
 }

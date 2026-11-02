@@ -16,8 +16,12 @@ const (
 	WarnLoRAUnsupported = "lora_unsupported" // the model cannot take a LoRA: it is not sent
 )
 
-// Warning is something Decide tells the user about one model.
-type Warning struct{ Code, Message string }
+// Warning is something Decide tells the user about one model. Roles is only for WarnRoleUnsupported: the roles (face / style /
+// edit) of the references that the model does not take and so uses as a whole, in the order the references give them.
+type Warning struct {
+	Code, Message string
+	Roles         []string
+}
 
 // Model is what Decide needs to know of an image model (modelcatalog.Info).
 type Model struct {
@@ -76,7 +80,11 @@ func Decide(m Model, roles []string, hasLoRA, avoidPose bool) Decision {
 			for i, r := range unsupported {
 				labels[i] = roleLabel[r]
 			}
-			warn(WarnRoleUnsupported, "%s は「%s」の参照に対応していないため、その画像は全体の参照として使います", m.Label, strings.Join(labels, "・"))
+			d.Warnings = append(d.Warnings, Warning{
+				Code:    WarnRoleUnsupported,
+				Message: fmt.Sprintf("%s は「%s」の参照に対応していないため、その画像は全体の参照として使います", m.Label, strings.Join(labels, "・")),
+				Roles:   unsupported,
+			})
 		}
 	}
 	if hasLoRA {

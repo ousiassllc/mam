@@ -2,6 +2,7 @@ package pages
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/layout"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/pagehead"
 	gentest "github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/sidenav"
@@ -44,6 +45,7 @@ templ GenerationTestPage(csrfToken string, c gentest.Compose) {
 		@gentest.ComposeForm(c)
 		@gentest.ConfirmEmpty()
 		@gentest.BatchEmpty()
+		@modal.Host()
 	}
 }
 

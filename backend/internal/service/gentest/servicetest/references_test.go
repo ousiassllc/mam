@@ -280,3 +280,28 @@ func TestModelInfoDescribesTheReferencesAndTheLoRAOfAnImageModel(t *testing.T) {
 	assert.Equal(t, []string{"reference"}, cloud.ReferenceRoles)
 	assert.False(t, cloud.SupportsLoRA)
 }
+
+// #959: the warning says which roles of the references a model does not take (what the confirmation's modal names): only the roles
+// that are used (a reference over the model's limit is not), once each, in the order of the references; a model that takes them or
+// none of the references has no such warning.
+func TestRoleUnsupportedWarningNamesTheRolesPerModel(t *testing.T) {
+	r := gentesttest.New(t, gentesttest.WithReferenceModels(""))
+	edit, i2i, plain := string(gentesttest.EditModel), string(gentesttest.Img2ImgModel), string(gentesttest.PlainModel)
+	req := imageReq(edit, i2i, plain, "nano-banana")
+	req.References = stage(t, r, "face", "style", "face")
+	e, err := r.Svc.Estimate(context.Background(), req)
+	require.NoError(t, err)
+	byModel := map[string][]string{}
+	for _, w := range warnings(e, gentest.WarnRoleUnsupported) {
+		byModel[w.Model] = w.Roles
+	}
+	assert.Equal(t, map[string][]string{
+		i2i:           {"face"}, // takes one reference only: the style one is not used
+		"nano-banana": {"face", "style"},
+	}, byModel)
+
+	req.References = stage(t, r, "reference")
+	e, err = r.Svc.Estimate(context.Background(), req)
+	require.NoError(t, err)
+	assert.Empty(t, warnings(e, gentest.WarnRoleUnsupported), "the whole picture is taken by every model")
+}
