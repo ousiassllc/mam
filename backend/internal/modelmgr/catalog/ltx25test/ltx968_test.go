@@ -1,6 +1,7 @@
 package ltx25test_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -38,8 +39,8 @@ func model(t *testing.T, id string) catalog.Model {
 	return m
 }
 
-// The prompt enhancer (Issue #968) is Comfy-Org's copy of Google's Gemma 4 E2B (Apache-2.0, ungated), pinned to its own commit; the standard model carries it, the
-// other LTX-2.5 models do not (the uncensored one would send the prompt through a censored model).
+// The prompt enhancer (Issue #968) is Comfy-Org's copy of Google's Gemma 4 E2B (Apache-2.0, ungated), pinned to its own commit; the standard model carries it, and so
+// do the NVFP4 and DFR models (Issue #979: separate -enhanced workflows, not a switch). The uncensored one does not (it would send the prompt through a censored model).
 func TestPromptEnhancerIsComfyOrgsUngatedCopy(t *testing.T) {
 	std := model(t, "ltx-2.5-22b-distilled")
 	f := fileOf(t, std, enhancerFile)
@@ -51,18 +52,30 @@ func TestPromptEnhancerIsComfyOrgsUngatedCopy(t *testing.T) {
 	assert.Contains(t, std.License.Components[len(std.License.Components)-1].Part, "プロンプト拡張")
 	assert.Equal(t, modellicense.Conditional, std.License.Commercial, "the enhancer is Apache-2.0: the strictest answer is still the revenue condition of LTX-2.x")
 
-	for _, id := range []string{"ltx-2.5-22b-distilled-uncensored", "ltx-2.5-22b-distilled-nvfp4", "ltx-2.5-22b-distilled-dfr"} {
-		for _, f := range model(t, id).Files {
-			assert.NotEqual(t, enhancerFile, f.Name, id)
-		}
+	for _, f := range model(t, "ltx-2.5-22b-distilled-uncensored").Files {
+		assert.NotEqual(t, enhancerFile, f.Name, "uncensored")
 	}
-	var enhanced []string
-	for _, w := range std.Workflows {
-		if len(w.Name) > 9 && w.Name[len(w.Name)-9:] == "-enhanced" {
-			enhanced = append(enhanced, w.Template)
+	enhancedOf := func(m catalog.Model) []string {
+		var enhanced []string
+		for _, w := range m.Workflows {
+			if strings.HasSuffix(w.Name, "-enhanced") {
+				enhanced = append(enhanced, w.Template)
+			}
 		}
+		return enhanced
 	}
-	assert.Equal(t, []string{"txt2video-ltx-2-5-enhanced", "img2video-ltx-2-5-enhanced", "flf2v-ltx-2-5-enhanced"}, enhanced)
+	assert.Equal(t, []string{"txt2video-ltx-2-5-enhanced", "img2video-ltx-2-5-enhanced", "flf2v-ltx-2-5-enhanced"}, enhancedOf(std))
+	assert.Empty(t, enhancedOf(model(t, "ltx-2.5-22b-distilled-uncensored")))
+
+	// NVFP4 and DFR carry the same file (one copy on disk) and the license part of it, and name their own -enhanced workflows after the plain ones.
+	nv, dfr := model(t, "ltx-2.5-22b-distilled-nvfp4"), model(t, "ltx-2.5-22b-distilled-dfr")
+	for _, m := range []catalog.Model{nv, dfr} {
+		assert.Contains(t, m.Files, f, m.ID+": the same file as the standard model")
+		assert.Equal(t, modellicense.Conditional, m.License.Commercial, m.ID)
+		assert.Contains(t, m.License.Components[len(m.License.Components)-1].Part, "プロンプト拡張", m.ID)
+	}
+	assert.Equal(t, []string{"txt2video-ltx-2-5-nvfp4-enhanced", "img2video-ltx-2-5-nvfp4-enhanced", "flf2v-ltx-2-5-nvfp4-enhanced"}, enhancedOf(nv))
+	assert.Equal(t, []string{"img2video-ltx-2-5-dfr-enhanced"}, enhancedOf(dfr))
 }
 
 // NVFP4 (Issue #968): the distilled NVFP4 diffusion model of the gated repository, pinned like the INT8 one; the other four files are the
@@ -85,13 +98,13 @@ func TestNVFP4ModelIsTheDistilledModelWithANVFP4DiffusionModel(t *testing.T) {
 	assert.Equal(t, "diffusion_models", unet.Folder)
 	shared := 0
 	for _, f := range std.Files {
-		if f.Folder != "diffusion_models" && f.Name != enhancerFile {
+		if f.Folder != "diffusion_models" {
 			assert.Contains(t, m.Files, f, "the same file as the standard model: one copy on disk")
 			shared++
 		}
 	}
-	assert.Equal(t, 4, shared)
-	assert.Len(t, m.Files, 5)
+	assert.Equal(t, 5, shared, "the four files and the prompt enhancer")
+	assert.Len(t, m.Files, 6, "the five of the plain workflows and the prompt enhancer (Issue #979)")
 
 	assert.Contains(t, m.Description, "Blackwell")
 	assert.Contains(t, m.Description, "未確認")
@@ -101,7 +114,8 @@ func TestNVFP4ModelIsTheDistilledModelWithANVFP4DiffusionModel(t *testing.T) {
 	assert.Equal(t, std.VRAM.MinGB, m.VRAM.MinGB)
 	assert.Equal(t, std.VRAM.RecommendedGB, m.VRAM.RecommendedGB)
 	assert.Less(t, unet.Size, fileOf(t, std, "ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors").Size)
-	assert.Equal(t, []string{"txt2video-ltx-2-5-nvfp4", "img2video-ltx-2-5-nvfp4", "flf2v-ltx-2-5-nvfp4"}, templatesOf(m))
+	assert.Equal(t, []string{"txt2video-ltx-2-5-nvfp4", "img2video-ltx-2-5-nvfp4", "flf2v-ltx-2-5-nvfp4",
+		"txt2video-ltx-2-5-nvfp4-enhanced", "img2video-ltx-2-5-nvfp4-enhanced", "flf2v-ltx-2-5-nvfp4-enhanced"}, templatesOf(m))
 }
 
 // DFR (Issue #968) needs the temporal upscaler (same gated repository as the rest) and the detailing IC-LoRA, which lives in a second gated repository of
@@ -130,12 +144,10 @@ func TestDFRModelReadsTwoGatedRepositories(t *testing.T) {
 	assert.Contains(t, m.License.Notice, "Lightricks/LTX-2.5-22b-IC-LoRA-Pixel-Spatial-Upscaler")
 
 	for _, f := range std.Files {
-		if f.Name != enhancerFile {
-			assert.Contains(t, m.Files, f, "shared with the standard model")
-		}
+		assert.Contains(t, m.Files, f, "shared with the standard model")
 	}
-	assert.Len(t, m.Files, 7)
-	assert.Equal(t, []string{"img2video-ltx-2-5-dfr"}, templatesOf(m))
+	assert.Len(t, m.Files, 8, "the seven of the plain workflow and the prompt enhancer (Issue #979)")
+	assert.Equal(t, []string{"img2video-ltx-2-5-dfr", "img2video-ltx-2-5-dfr-enhanced"}, templatesOf(m))
 }
 
 // The first and last frames (FLF2V) are offered with the standard, the uncensored and the NVFP4 models; the single stage makes the upscaler unused by that

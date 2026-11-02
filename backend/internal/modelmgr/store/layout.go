@@ -33,6 +33,13 @@ func (l Layout) EngineOldDir() string { return filepath.Join(l.Root, "engine.old
 // DataDir is the --base-directory of ComfyUI: models, input, output, temp, user. It survives an engine update.
 func (l Layout) DataDir() string { return filepath.Join(l.Root, "data") }
 
+// CustomNodesDir is the custom_nodes directory of ComfyUI (below --base-directory): the folders of the installed custom nodes of the allowlist
+// (modelmgr/nodes). It survives an engine update, like the models.
+func (l Layout) CustomNodesDir() string { return filepath.Join(l.DataDir(), "custom_nodes") }
+
+// NodesPath is the record of the installed custom nodes and of the consents to them.
+func (l Layout) NodesPath() string { return filepath.Join(l.Root, "nodes.json") }
+
 // DownloadsDir holds the engine archive while it is downloaded and extracted.
 func (l Layout) DownloadsDir() string { return filepath.Join(l.Root, "downloads") }
 

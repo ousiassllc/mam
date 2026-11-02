@@ -17,6 +17,7 @@ const (
 	IconSeries     IconName = "series"
 	IconPanelClose IconName = "panel-close"
 	IconPanelOpen  IconName = "panel-open"
+	IconJobs       IconName = "jobs"
 )
 
 // iconNav draws the icons of the side menu; an unknown name draws nothing.
@@ -115,6 +116,15 @@ templ iconNav(name IconName, class string) {
 				<rect width="18" height="18" x="3" y="3" rx="2"></rect>
 				<path d="M9 3v18"></path>
 				<path d="m14 9 3 3-3 3"></path>
+			}
+		case IconJobs:
+			// list-checks
+			@iconSVG(class) {
+				<path d="M13 5h8"></path>
+				<path d="M13 12h8"></path>
+				<path d="M13 19h8"></path>
+				<path d="m3 17 2 2 4-4"></path>
+				<path d="m3 7 2 2 4-4"></path>
 			}
 		default:
 			@iconModel(name, class)

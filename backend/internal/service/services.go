@@ -22,6 +22,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
 	"github.com/ousiassllc/mam/backend/internal/service/localruntime"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
+	"github.com/ousiassllc/mam/backend/internal/service/modelnodes"
 	"github.com/ousiassllc/mam/backend/internal/service/voicerefsvc"
 	"github.com/ousiassllc/mam/backend/internal/service/workflows"
 )
@@ -87,6 +88,7 @@ type Services struct {
 	LocalModels   *localmodels.Service  // ComfyUI / OpenAI-compatible endpoints and models; the app sets it
 	ModelManager  *modelmanager.Service // bundled ComfyUI engine, model catalog; the app sets it
 	LocalRuntimes *localruntime.Service // local AI runtimes (GPT-SoVITS): install, start, stop, status; the app sets it
+	ModelNodes    *modelnodes.Service   // custom nodes of the allowlist for the bundled ComfyUI: install, remove, status; the app sets it
 	Gentest       *gentest.Service      // generation test: batches of generations outside any Project, history, import; the app sets it
 	Workflows     *workflows.Service    // ComfyUI workflows saved in mam (node screen, models, MCP); the app sets it
 	VoiceRef      *voicerefsvc.Service  // the reference voice of a Character (F-20, F-29) and the speaker -> voice lookup

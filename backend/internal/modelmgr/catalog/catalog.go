@@ -19,6 +19,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/platform"
 )
 
 //go:embed data
@@ -117,13 +118,6 @@ type VRAM struct {
 	Estimate      bool   `json:"estimate"`
 }
 
-// Workflow is a #831 model created on the bundled endpoint when the model is installed: Name is its model
-// name (the identifier is comfyui:bundled-comfyui/<Name>), Template the localcfg workflow template it starts from.
-type Workflow struct {
-	Name     string `json:"name"`
-	Template string `json:"template"`
-}
-
 // ContentRating says who a model is for. An adult model (an uncensored model, or a LoRA that adds that) is hidden
 // from the list, the install and the trial generation until the age confirmation is on record
 // (modelmanager.Service.SetAdultContent); the catalog rule is that it is an advanced model (consent required).
@@ -154,7 +148,13 @@ type Model struct {
 	// refuses without a stored token and checks the access before it makes a job.
 	RequiresHFToken bool       `json:"requires_hf_token"`
 	Workflows       []Workflow `json:"workflows"`
+	// PlatformColumns are the optional GPU generation / OS columns (Issue #979: requires, unsupported): where the model is made for and where it is
+	// known not to run. They only warn (platform.Warning); nothing is refused.
+	PlatformColumns
 }
+
+// PlatformColumns is platform.Columns, which the model and its view embed.
+type PlatformColumns = platform.Columns
 
 // Adult reports whether the model is for adults only.
 func (m Model) Adult() bool { return m.ContentRating == RatingAdult }
@@ -234,23 +234,27 @@ func Default() *Catalog {
 	return loaded
 }
 
-// Load reads data/engine.json, data/models/*.json, data/runtimes/*.json (optional) and data/assets/*.json (optional) of fsys, refusing
-// unknown fields.
+// Load reads data/engine.json, data/models/**/*.json (a sub directory keeps a group of models, such as the adult photoreal ones, out
+// of the one directory that the line limit counts), data/runtimes/*.json (optional) and data/assets/*.json (optional) of fsys,
+// refusing unknown fields.
 func Load(fsys fs.FS) (*Catalog, error) {
 	var c Catalog
 	if err := decode(fsys, "data/engine.json", &c.Engine); err != nil {
 		return nil, err
 	}
-	entries, err := fs.ReadDir(fsys, "data/models")
-	if err != nil {
-		return nil, err
-	}
-	for _, e := range entries {
+	err := fs.WalkDir(fsys, "data/models", func(name string, e fs.DirEntry, err error) error {
+		if err != nil || e.IsDir() {
+			return err
+		}
 		var m Model
-		if err := decode(fsys, "data/models/"+e.Name(), &m); err != nil {
-			return nil, err
+		if err := decode(fsys, name, &m); err != nil {
+			return err
 		}
 		c.Models = append(c.Models, m)
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 	rts, err := fs.ReadDir(fsys, "data/runtimes")
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {

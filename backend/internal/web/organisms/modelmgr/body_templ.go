@@ -120,7 +120,31 @@ func Body(d Data) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Var5 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		if d.Nodes != nil {
+			templ_7745c5c3_Var5 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+				templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+				templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+				if !templ_7745c5c3_IsBuffer {
+					defer func() {
+						templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+						if templ_7745c5c3_Err == nil {
+							templ_7745c5c3_Err = templ_7745c5c3_BufErr
+						}
+					}()
+				}
+				ctx = templ.InitializeContext(ctx)
+				templ_7745c5c3_Err = d.Nodes.Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				return nil
+			})
+			templ_7745c5c3_Err = molecules.SettingsSection("追加ノード", "ControlNet の画像前処理や IP-Adapter など、ComfyUI に機能を足すプログラム（カスタムノード）です。mam が確認して固定したものだけが、ここから導入でき、読み込まれます。それ以外のフォルダは読み込みません。導入の前に、注意事項とライセンスへの同意が要ります。カードをタップすると、固定したコミット・SHA-256・ライセンス・商用利用の可否・必要な Python パッケージ・ソースの確認結果が見られます。導入と削除のときは、動いている ComfyUI を一度止めて再起動します。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var5), templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Var6 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 			templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 			templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 			if !templ_7745c5c3_IsBuffer {
@@ -144,12 +168,12 @@ func Body(d Data) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var6 string
-			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue(DialogID)
+			var templ_7745c5c3_Var7 string
+			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.ResolveAttributeValue(DialogID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/body.templ`, Line: 34, Col: 21}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/body.templ`, Line: 39, Col: 21}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var7)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -163,11 +187,11 @@ func Body(d Data) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = molecules.SettingsSection("モデル", "導入すると、画像・動画のモデルとして選べます（設定の「画像・動画モデル」・Shot の生成）。カードをタップすると、出典・ライセンス・ファイル一覧・SHA-256 が見られます。ダウンロードは取得元から直接で、SHA-256 を確かめます。ライセンスの同意が要るモデルは、同意してから導入します。導入先の空きが足りないときや、GPU のメモリが足りない見込みのときは、カードにそう出ます。成人向けモデル（非検閲のモデル・LoRA）は、18 歳以上の確認と注意書きへの同意の後に、一覧・導入・試し生成に出ます。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var5), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = molecules.SettingsSection("モデル", "導入すると、画像・動画のモデルとして選べます（設定の「画像・動画モデル」・Shot の生成）。カードをタップすると、出典・ライセンス・ファイル一覧・SHA-256 が見られます。ダウンロードは取得元から直接で、SHA-256 を確かめます。ライセンスの同意が要るモデルは、同意してから導入します。導入先の空きが足りないときや、GPU のメモリが足りない見込みのときは、カードにそう出ます。成人向けモデル（非検閲のモデル・LoRA）は、18 歳以上の確認と注意書きへの同意の後に、一覧・導入・試し生成に出ます。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var6), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Var7 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_Var8 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 			templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 			templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 			if !templ_7745c5c3_IsBuffer {
@@ -185,11 +209,11 @@ func Body(d Data) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = molecules.SettingsSection("試し生成", "導入したモデル（登録済みの外部の ComfyUI のモデルも）で、プロジェクトの外で 1 枚・1 本だけ試します。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var7), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = molecules.SettingsSection("試し生成", "導入したモデル（登録済みの外部の ComfyUI のモデルも）で、プロジェクトの外で 1 枚・1 本だけ試します。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var8), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Var8 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_Var9 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 			templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 			templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 			if !templ_7745c5c3_IsBuffer {
@@ -207,11 +231,11 @@ func Body(d Data) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = molecules.SettingsSection("Hugging Face から導入", "Hugging Face のモデルファイル（.safetensors）を、URL・owner/repo・キーワードから探して導入します。コミットに固定し、LFS の SHA-256 とサイズを確かめます。GGUF は一覧に出しますが導入できません。pickle 形式（.ckpt・.pt など）は導入しません。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var8), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = molecules.SettingsSection("Hugging Face から導入", "Hugging Face のモデルファイル（.safetensors）を、URL・owner/repo・キーワードから探して導入します。コミットに固定し、LFS の SHA-256 とサイズを確かめます。GGUF は一覧に出しますが導入できません。pickle 形式（.ckpt・.pt など）は導入しません。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var9), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Var9 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_Var10 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 			templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 			templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 			if !templ_7745c5c3_IsBuffer {
@@ -229,11 +253,11 @@ func Body(d Data) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = molecules.SettingsSection("Hugging Face のトークン（任意）", "ログインや同意が必要なモデル（LTX-2.5 など）を取得するときだけ使います。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var9), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = molecules.SettingsSection("Hugging Face のトークン（任意）", "ログインや同意が必要なモデル（LTX-2.5 など）を取得するときだけ使います。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var10), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Var10 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_Var11 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 			templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 			templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 			if !templ_7745c5c3_IsBuffer {
@@ -251,7 +275,7 @@ func Body(d Data) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = molecules.SettingsSection("外部の ComfyUI", "別のマシン（tailnet を含む）や ComfyUI Desktop など、mam が起動していない ComfyUI にあるモデルを確かめます。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var10), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = molecules.SettingsSection("外部の ComfyUI", "別のマシン（tailnet を含む）や ComfyUI Desktop など、mam が起動していない ComfyUI にあるモデルを確かめます。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var11), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

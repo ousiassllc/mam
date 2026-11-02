@@ -4,7 +4,7 @@
  "kind": "video",
  "tier": "advanced",
  "content_rating": "general",
- "description": "LTX-2.5（蒸留版 22B）を DFR（Diffusion Fidelity Rendering）の手順で動かす組み合わせ。先頭フレーム 1 枚から、映像と同期した音声つきの動画を作る。Comfy 公式のテンプレートと同じ 3 段で、半分の解像度でキーフレームごと作り、2 倍に拡大して詳細化の IC-LoRA で仕上げ、時間方向に 2 倍にして 48fps にする（長さは変わらない）。段が多いので、ltx-2.5-22b-distilled の 2 段の I2V より時間もメモリも多く要る見込みで、16 GB の PC では特に遅くなる（mam では測っていない）。拡散モデル・テキストエンコーダー・VAE・拡大モデルは ltx-2.5-22b-distilled と同じファイルで、導入済みなら時間方向の拡大モデルと IC-LoRA（約 0.5 GB）だけ取得する。IC-LoRA は別のリポジトリ（Lightricks/LTX-2.5-22b-IC-LoRA-Pixel-Spatial-Upscaler）にあり、そのページでもライセンスに同意してアクセスの承認を受ける必要がある。プロンプト拡張は付けていない。Hugging Face のトークンも保存しておく必要がある。",
+ "description": "LTX-2.5（蒸留版 22B）を DFR（Diffusion Fidelity Rendering）の手順で動かす組み合わせ。先頭フレーム 1 枚から、映像と同期した音声つきの動画を作る。Comfy 公式のテンプレートと同じ 3 段で、半分の解像度でキーフレームごと作り、2 倍に拡大して詳細化の IC-LoRA で仕上げ、時間方向に 2 倍にして 48fps にする（長さは変わらない）。段が多いので、ltx-2.5-22b-distilled の 2 段の I2V より時間もメモリも多く要る見込みで、16 GB の PC では特に遅くなる（mam では測っていない）。拡散モデル・テキストエンコーダー・VAE・拡大モデルは ltx-2.5-22b-distilled と同じファイルで、導入済みなら時間方向の拡大モデルと IC-LoRA（約 0.5 GB）だけ取得する。IC-LoRA は別のリポジトリ（Lightricks/LTX-2.5-22b-IC-LoRA-Pixel-Spatial-Upscaler）にあり、そのページでもライセンスに同意してアクセスの承認を受ける必要がある。プロンプト拡張つきのワークフロー（ワークフロー名の末尾が -enhanced。短いプロンプトを詳しい指示に書き換える。公式の DFR テンプレートの拡張と同じ値）も使える。拡張に使う Gemma 4 E2B（約 5.2 GB）を追加で取得し（標準版を導入済みなら共有）、拡張のぶん生成に 1〜2 分ほど足される。Hugging Face のトークンも保存しておく必要がある。",
  "files": [
   {
    "name": "ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors",
@@ -54,6 +54,13 @@
    "url": "https://huggingface.co/Lightricks/LTX-2.5-22b-IC-LoRA-Pixel-Spatial-Upscaler/resolve/59f26f1e0c11af42f1affa924b4ef231e9e98b2a/ltx-2.5-22b-ic-lora-pixel-spatial-upscaler-x2-1.0.safetensors",
    "sha256": "984851b769ea2bcb4c9e0a239a7676239e42c6a6001ddc69943b41ff0b283c1d",
    "size": 327322640
+  },
+  {
+   "name": "gemma4_e2b_it_int8_convrot.safetensors",
+   "folder": "text_encoders",
+   "url": "https://huggingface.co/Comfy-Org/gemma-4/resolve/63d0f7c476756b88910170c1df75e2384ea1af31/text_encoders/gemma4_e2b_it_int8_convrot.safetensors",
+   "sha256": "efeca0fcad2f863e5ed0a75e3af952b72bc963604c1dda6d20aee87a32b17566",
+   "size": 5199997904
   }
  ],
  "vram": {
@@ -90,6 +97,12 @@
     "name": "Apache License 2.0",
     "url": "https://ai.google.dev/gemma/docs/gemma_4_license",
     "commercial": "yes"
+   },
+   {
+    "part": "プロンプト拡張（Gemma 4 E2B。Comfy-Org の再配布）",
+    "name": "Apache License 2.0",
+    "url": "https://huggingface.co/Comfy-Org/gemma-4",
+    "commercial": "yes"
    }
   ],
   "notice": "年間売上が 1,000 万米ドル以上の組織が商用に使うには、Lightricks との別の契約（licensing@ltx.io）が必要です。Hugging Face のゲートでは、プライバシーポリシーへの同意と、案内・広告の受け取りへの同意（Agree and Access）を、Lightricks/LTX-2.5 と Lightricks/LTX-2.5-22b-IC-LoRA-Pixel-Spatial-Upscaler の 2 つのページで求められます。"
@@ -100,6 +113,10 @@
   {
    "name": "ltx-2-5-dfr-i2v",
    "template": "img2video-ltx-2-5-dfr"
+  },
+  {
+   "name": "ltx-2-5-dfr-i2v-enhanced",
+   "template": "img2video-ltx-2-5-dfr-enhanced"
   }
  ]
 }

@@ -111,6 +111,9 @@ type Catalog struct {
 	// Hidden says a model is left out of the lists and cannot be chosen (the adult models of the model manager while the age
 	// gate is closed). Nil hides nothing.
 	Hidden func(id string) bool
+	// MissingNodes gives the reason a local model cannot be chosen because the custom nodes its workflow requires (localcfg.Workflow.RequiresNodes) are
+	// not installed; empty when it can. Nil asks for none.
+	MissingNodes func(id string, required []string) string
 }
 
 // Models lists the models of the media ("" for both): every built-in cloud model, the models of the registered endpoints,
@@ -134,6 +137,18 @@ func (c Catalog) Models(media string) []Info {
 		}
 	}
 	return out
+}
+
+// ExcludedMissingNode is the reason code of a model whose workflow needs a custom node that is not installed (Info.Unavailable).
+const ExcludedMissingNode = "missing_node"
+
+// missingNodes is the reason the workflow of a local model cannot run: the nodes it requires are not installed ("" when it can).
+func (c Catalog) missingNodes(cfg modeladapter.Config, m domain.ModelName) string {
+	lm, _, ok := cfg.LocalModel(m)
+	if !ok || c.MissingNodes == nil || lm.Workflow == nil {
+		return ""
+	}
+	return c.MissingNodes(string(m), lm.Workflow.RequiresNodes)
 }
 
 func (c Catalog) hidden(m domain.ModelName) bool { return c.Hidden != nil && c.Hidden(string(m)) }
@@ -168,6 +183,8 @@ func (c Catalog) info(cfg modeladapter.Config, m domain.ModelName, media string)
 	}
 	if reason := c.Adapter.Unavailable(m); reason != "" {
 		mi.Unavailable, mi.UnavailableMessage = reason, unavailableMessage(reason, mi.Source)
+	} else if msg := c.missingNodes(cfg, m); msg != "" {
+		mi.Unavailable, mi.UnavailableMessage = ExcludedMissingNode, msg
 	} else {
 		mi.Available = true
 	}

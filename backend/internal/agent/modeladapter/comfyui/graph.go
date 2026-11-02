@@ -107,6 +107,8 @@ func (v values) scalar(p localcfg.Param) any {
 		return v.denoise()
 	case localcfg.ParamUpscaleRatio:
 		return v.upscaleRatio
+	case localcfg.ParamReferenceStrength:
+		return v.opts.Ref(0).StrengthOrDefault()
 	}
 	return nil
 }
@@ -117,10 +119,21 @@ func (v values) scalar(p localcfg.Param) any {
 func (b *Backend) missing(v values) error {
 	for _, a := range b.Model.Workflow.Assignments {
 		if in, isImage := v.input(a); isImage && in == nil && !a.Optional && !b.noReferenceOK(v, a) {
-			return b.Client.Error(http.StatusUnprocessableEntity, fmt.Sprintf("the workflow needs %s (%s), the request has none", a.Param, a.Node), nil)
+			return b.Client.Error(http.StatusUnprocessableEntity, fmt.Sprintf("the workflow needs %s (%s)%s, the request has none", a.Param, a.Node, b.referenceRole()), nil)
 		}
 	}
 	return nil
+}
+
+// referenceRole names what the reference image is for in a ControlNet or an IP-Adapter workflow (they cannot run without it), "" otherwise.
+func (b *Backend) referenceRole() string {
+	switch b.Model.Workflow.ReferenceMode {
+	case localcfg.ModeControlNet:
+		return " as the control image of its ControlNet"
+	case localcfg.ModeIPAdapter:
+		return " as the image its IP-Adapter takes the look from"
+	}
+	return ""
 }
 
 // build puts the values into a copy of the workflow's graph. files are the names the images were uploaded

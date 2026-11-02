@@ -16,16 +16,23 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/credential/credentialtest"
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/repository"
+	"github.com/ousiassllc/mam/backend/internal/repository/jobrecent"
 	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 	"github.com/ousiassllc/mam/backend/internal/router"
 	"github.com/ousiassllc/mam/backend/internal/router/settingsroutes"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/service/joblist"
 	"github.com/ousiassllc/mam/backend/internal/service/localruntime/lrtest"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmtest"
+	"github.com/ousiassllc/mam/backend/internal/service/modelnodes/nodetest"
 	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
+
+// NodeCommitForTest is the commit the node "pack" of NewWithNodes is pinned to.
+const NodeCommitForTest = nodetest.Commit
 
 // Screen is the screen under test.
 type Screen struct {
@@ -34,7 +41,9 @@ type Screen struct {
 	// Svc is the service layer behind the screen (to create a Project the pages of the app can be opened for).
 	Svc *service.Services
 	// Rts are the local runtimes (NewWithRuntimes); nil for a screen without them.
-	Rts    *lrtest.Rig
+	Rts *lrtest.Rig
+	// Nodes are the custom nodes (NewWithNodes); nil for a screen without them.
+	Nodes  *nodetest.Rig
 	engine http.Handler
 	cookie *http.Cookie
 	token  string
@@ -43,7 +52,7 @@ type Screen struct {
 // New opens the screen: it loads the page for the CSRF cookie and token.
 func New(t *testing.T, opts ...mmtest.Option) *Screen {
 	t.Helper()
-	return open(t, mmtest.New(t, opts...), nil)
+	return open(t, mmtest.New(t, opts...), nil, nil)
 }
 
 // NewWithRuntimes opens the screen with the local runtimes over fakes (a fake package and weights, a fake process; a Windows PC with an RTX
@@ -51,16 +60,33 @@ func New(t *testing.T, opts ...mmtest.Option) *Screen {
 func NewWithRuntimes(t *testing.T, opts ...lrtest.Option) *Screen {
 	t.Helper()
 	rig := mmtest.New(t)
-	return open(t, rig, lrtest.New(t, rig.Queue, rig.Table, rig.Svc.HandleInstall, opts...))
+	return open(t, rig, lrtest.New(t, rig.Queue, rig.Table, rig.Svc.HandleInstall, opts...), nil)
 }
 
-func open(t *testing.T, rig *mmtest.Rig, rts *lrtest.Rig) *Screen {
+// NewWithNodes opens the screen with the custom nodes of the allowlist over fakes (see nodetest): a fake host for the archive and a fake bundled engine.
+func NewWithNodes(t *testing.T) *Screen {
 	t.Helper()
-	svc := servicetest.New(t, service.Deps{DB: testdb.Open(t), Credentials: credentialtest.New()})
+	nodes := nodetest.New(t)
+	s := open(t, mmtest.New(t), nil, nodes)
+	s.Nodes = nodes
+	return s
+}
+
+func open(t *testing.T, rig *mmtest.Rig, rts *lrtest.Rig, nodes *nodetest.Rig) *Screen {
+	t.Helper()
+	db := testdb.Open(t)
+	svc := servicetest.New(t, service.Deps{DB: db, Credentials: credentialtest.New()})
 	settings := settingsroutes.New(filepath.Join(t.TempDir(), "llm.json"), false, filepath.Join(t.TempDir(), "m.json"), false)
 	settings.ModelManager, settings.Gentest = rig.Svc, rig.Gentest
+	// The jobs of the model manager and of the generation test are in the rig's table; the Projects and Shots in the services'.
+	settings.JobList = joblist.New(joblist.Deps{
+		Table: jobrecent.New(rig.DB()), Shots: repository.NewGenerationRepository(db), Projects: svc.Projects, ModelManager: rig.Svc, Gentest: rig.Gentest,
+	})
 	if rts != nil {
 		settings.LocalRuntimes = rts.Svc
+	}
+	if nodes != nil {
+		settings.ModelNodes = nodes.Svc
 	}
 	s := &Screen{T: t, Rig: rig, Svc: svc, Rts: rts, engine: router.New(svc, router.Options{Settings: settings})}
 

@@ -2,6 +2,9 @@ package localcfg
 
 import "github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/upscale"
 
+// Upscale marks a Workflow that enlarges a picture instead of making one (package upscale).
+type Upscale = upscale.Spec
+
 // ParamUpscaleRatio is the factor an upscale workflow's ImageScaleBy still applies after its upscale model (upscale.Spec.Ratio).
 const ParamUpscaleRatio Param = "upscale_ratio"
 

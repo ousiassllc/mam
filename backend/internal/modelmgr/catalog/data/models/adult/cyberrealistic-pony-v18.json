@@ -1,0 +1,61 @@
+{
+ "id": "cyberrealistic-pony-v18",
+ "name": "CyberRealistic Pony v18.0 CoreShift（実写寄り・Pony）",
+ "kind": "image",
+ "tier": "advanced",
+ "content_rating": "adult",
+ "description": "【実写寄り】Pony 系の SDXL チェックポイントを実写に寄せたもの（成人向け。約 6.9 GB、fp16）。プロンプトは score_9, score_8_up, score_7_up, （描きたいこと）の形で書く。作者の推奨は 30 ステップ以上・cfg 5・clip skip 2・解像度 832×1216 または 896×1152 で、clip skip 2 のテンプレートを使う。参照画像からの画像（img2img）にも使える。",
+ "files": [
+  {
+   "name": "CyberRealisticPony_V18.0_F16.safetensors",
+   "folder": "checkpoints",
+   "url": "https://huggingface.co/cyberdelia/CyberRealisticPony/resolve/bf85880a58614199d0391c93151211be2832bb8c/CyberRealisticPony_V18.0_F16.safetensors",
+   "sha256": "1d580c1c3f3612fa4db88af65372255582d5509ca0b28f85387273368301941b",
+   "size": 6938041288,
+   "source_note": "作者の Hugging Face リポジトリ（cyberdelia/CyberRealisticPony）。原本は Civitai の CyberRealistic Pony v18.0 CoreShift（model 443821、version 2884631、cyberrealisticPony_v180Coreshift_2764472.safetensors）で、SHA-256 が一致することを 2026-11-03 に確かめた。"
+  }
+ ],
+ "vram": {
+  "min_gb": 8,
+  "source": "SDXL 系の 1 ファイルのチェックポイントは sdxl-base と同じ見積もり（出典なし。mam の実機では未検証）",
+  "estimate": true
+ },
+ "license": {
+  "id": "cyberrealistic-pony-pony-base",
+  "version": "V6",
+  "name": "CreativeML OpenRAIL-M（作者 Cyberdelia のモデルカードの license タグ）。ベースの Pony Diffusion V6 は modified Fair AI Public License 1.0-SD",
+  "url": "https://huggingface.co/cyberdelia/CyberRealisticPony/blob/bf85880a58614199d0391c93151211be2832bb8c/README.md",
+  "summary": "カードは license: creativeml-openrail-m と宣言するが、モデルは「Pony Diffusion に CyberRealistic の要素を足したもの」で、ベースの Pony Diffusion V6 XL は収益化する Web サイトやアプリでの推論を許さず、商用には作者の許諾が要る（modified Fair AI Public License 1.0-SD）。派生は厳しい方に従い、商用NGとして扱う。",
+  "commercial": "no",
+  "checked_at": "2026-11-03",
+  "components": [
+   {
+    "part": "ベースモデル（Pony Diffusion V6 XL）",
+    "name": "modified Fair AI Public License 1.0-SD",
+    "url": "https://civitai.com/models/257749",
+    "commercial": "no"
+   },
+   {
+    "part": "CyberRealistic Pony 本体（Cyberdelia）",
+    "name": "CreativeML OpenRAIL-M（モデルカードの license タグ）",
+    "url": "https://huggingface.co/cyberdelia/CyberRealisticPony/blob/bf85880a58614199d0391c93151211be2832bb8c/README.md",
+    "commercial": "yes"
+   }
+  ],
+  "notice": "この mam のインストール先に取得するモデルです。ベースの Pony Diffusion V6 の制限により、商用には使わないでください。成人向けの表現の公開は、地域の法令と配信先の規約に従ってください。"
+ },
+ "consent_required": true,
+ "requires_hf_token": false,
+ "workflows": [
+  {
+   "name": "cyberrealistic-pony-v18",
+   "template": "txt2img-sdxl-clipskip2",
+   "model_file": "CyberRealisticPony_V18.0_F16.safetensors"
+  },
+  {
+   "name": "cyberrealistic-pony-v18-img2img",
+   "template": "img2img-sdxl-clipskip2",
+   "model_file": "CyberRealisticPony_V18.0_F16.safetensors"
+  }
+ ]
+}

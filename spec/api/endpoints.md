@@ -47,6 +47,7 @@ HALT の3ルートパターン（`spec/architecture/overview.md` §7）に従う
 | GET ほか | `/nodes`・`/workflows/…` | ノード画面（ComfyUI の UI の埋め込み）と、保存した ComfyUI ワークフローの画面。一覧と仕様は [endpoints-workflows.md](endpoints-workflows.md) |
 | （各種） | `/settings/local-models/…` | 設定画面「ローカル・代替モデル」の接続先・モデル・API キー・接続テストのルート。一覧と仕様は [endpoints-local-models.md](endpoints-local-models.md) |
 | （各種） | `/model-manager/…` | モデルマネージャー画面（ComfyUI エンジン・モデルのカタログと導入・ライセンスの同意・試し生成）。入口はプロジェクト一覧と設定画面のリンク。ルートと仕様は [endpoints-model-manager.md](endpoints-model-manager.md)（`GET /model-manager` が画面） |
+| GET | `/jobs`・`/jobs/list` | ジョブ一覧の画面と、その一覧の区画だけ（更新ボタン・2 秒ごとの取り直しが使う）。読み取り専用。常に 200。ルートと挙動は [endpoints-jobs.md](endpoints-jobs.md)（#980） |
 | （各種） | `/generation-test/…` | 生成テスト画面（プロジェクトに属さない画像・動画の比較生成。モデル × プロンプト × 本数の見積り確認・実行・進捗と比較表・履歴・プロンプト履歴・プロジェクトへの取り込み）。入口はプロジェクト一覧のリンク。ルートと仕様は [endpoints-gentest.md](endpoints-gentest.md)（`GET /generation-test` が画面） |
 | GET | `/tools/model-manager/status` | 設定画面のモデルマネージャーのカードの状態の断片（#978 でトップ画面のカードと一緒にほかの `tool` は削除）。常に 200（読めないときは空）、`Cache-Control: no-store`、外部の API は呼ばない。仕様は [endpoints-home.md](endpoints-home.md) |
 | GET | `/settings/chatgpt` | 設定画面「ChatGPT でログイン」のカードの一覧だけ（`#chatgpt-panel`。HTMX でなければ `/settings/api-keys` のページ全体）。ログイン中・ダウンロード中は区画が 2 秒ごとにこの URL を取り直す（`Cache-Control: no-store`）。`GET /settings/chatgpt/models` は公式ログインのプランで使えるモデル（`GET https://api.openai.com/v1/models` の `visibility=="list"`）のモーダル。区画は `app` が ChatGPT のサービスを持つときだけ。トークンの値はどの応答にも出ない（`spec/architecture/chatgpt-signin.md`）。モーダルの応答は [endpoints-settings.md](endpoints-settings.md) |

@@ -42,6 +42,13 @@
 | POST | `/model-manager/runtimes/:id/stop` | 停止 |
 | PUT | `/model-manager/runtimes/:id/autostart` | 自動起動。フォーム `on`（`1` / `0`） |
 | DELETE | `/model-manager/runtimes/:id` | 環境と取得した重みの削除（設定は残る）。導入中は 409。`hx-confirm` つき |
+| GET | `/model-manager/nodes` | 追加ノードの区画全体（`#mm-nodes`。Issue #976）。区画の更新ボタンが取り直す |
+| GET | `/model-manager/nodes/:id` | 追加ノードのカード（`#mm-node-<id>`）。導入中は自分で取り直す（クエリ `job` は報告するジョブ。終わったら結果を 1 度出す）。未知の ID は 404 |
+| GET | `/model-manager/nodes/:id/detail` | カードが開く詳細モーダルの本体。固定したコミット・アーカイブの SHA-256・ライセンスと商用利用の答え・必要な Python パッケージ・ソースの確認結果・注意事項。未知の ID は 404（理由だけのモーダル） |
+| GET | `/model-manager/nodes/:id/consent` | 導入ボタンが `#mm-nodes-dialog` に開く同意のダイアログ（注意事項・ライセンス・コミットと SHA-256 の予告） |
+| POST | `/model-manager/nodes/:id/install` | 導入（ジョブ）。フォーム `license_id`・`license_version`・`notice_version`・`agree=1` が同意。同意が無い・版違いは 422（同意のダイアログを理由つきで返す）、導入できないノード（`install_blocked`）は 422、同梱エンジンが無い・Windows 以外は 409、未知は 404。202 |
+| POST | `/model-manager/nodes/:id/cancel` | 導入の中断（フォーム `job`）。カードを返す |
+| DELETE | `/model-manager/nodes/:id` | ノードの削除（ComfyUI は再起動）。導入中・未導入は 409。`hx-confirm` つき |
 | GET | `/model-manager/hf/models` | 「追加したモデル」（`#mm-hfi-models`）。導入中は自分で取り直す。クエリ `jobs`（カンマ区切り）は報告するジョブで、終わったら結果を 1 度出し、試し生成の区画を `hx-swap-oob` で描き直す |
 | GET | `/model-manager/hf/models/detail` | 追加したファイルのカードが開く詳細モーダルの本体（Issue #954）。クエリ `path`。リポジトリとコミット・ライセンス・SHA-256・作ったモデル。記録に無い `path` は 404（理由だけのモーダル） |
 | POST | `/model-manager/hf/jobs/:job/cancel` | 動いている導入の中断（「追加したモデル」を返す。ダウンロード済みの分は残り、導入し直すと続きから再開する） |
@@ -88,6 +95,7 @@
 - **外部の ComfyUI**: 接続先の選択と「導入済みのモデルを確認」。結果は、カタログのモデルごとに「そろっています」／「足りないファイルがあります（足りない: …）」、フォルダごとのファイル（`loras` を含む）。成人向けのモデルは、年齢確認が済むまで出ない。「外部の ComfyUI へのモデルの導入は、その ComfyUI の側で」と書く。
 
 - **ローカル音声・口パク**（区画 `#mm-runtimes`、Issue #920。ハンドラーは `handler/modelmgr/runtimes`、見た目は `organisms/modelmgr/runtimecard`・`weightlist`。`localruntime.Service` を持つときだけ。意味は [local-runtime.md](../architecture/model-manager/local-runtime.md) §12）: ランタイムごとに 1 枚のカード（`data-testid="mm-runtime"`）。状態（未導入 / 導入中 / 導入済み + 停止中・起動中・失敗）、導入中の進捗バーと「中断する」（`hx-confirm`。`POST /model-manager/jobs/:job/cancel` がジョブの `target=runtime:<id>` を見て振り分ける）、版・導入先・空き容量、起動の失敗はログの末尾つき。**この PC で使えないとき**（macOS ほか）は、導入・起動のボタンの代わりに**理由**（`mm-runtime-reason`）と**クラウドの案内**（`mm-runtime-fallback`。ElevenLabs / Sync Labs を選べる）を枠で出す。**重み**（`<details data-testid="mm-runtime-weights">`）は、asset ごとに名前・大きさ・必須か・状態（あり / なし / 未確認）・出典のリンク・ライセンスのリンク・商用利用のバッジ（「商用利用: 可」/「不可」/「**はっきりしません**」）を出す。`unclear` / `no` の asset は、その行に琥珀色の枠で `notice`、一覧の前に「商用利用がはっきりしない重みを含みます（N 件）」の枠を出し、一覧を最初から開く。導入済みでも必須の重みが足りないときは「導入済み（重みが不足）」を出し、起動の代わりに「重みを導入」を出す。削除は `hx-confirm`、導入・起動・重みの導入は `hx-sync` と `hx-disabled-elt`（二重送信の防止）。
+- **追加ノード**（区画 `#mm-nodes`、Issue #976。ハンドラーは `handler/modelmgr/nodes`、見た目は `organisms/modelmgr/nodecard`。`modelnodes.Service` を持つときだけ。意味は [custom-nodes.md](../architecture/model-manager/custom-nodes.md)）: ノードごとに 1 枚のカード（`data-testid="mm-node"`、`data-node`・`data-state`・`data-commercial`）。導入ボタンは同意のダイアログを開き、同意の後に導入のジョブを始める（サービスが同意を強制する）。`install_blocked` のノードには導入ボタンが無く、理由を出す。カードに固定のコミットは出さず、詳細モーダルに出す。モデルのカードは、必要なノードが無いとき「追加ノードが必要」のバッジと説明を出し、導入ボタンを無効にする。
 
 ## 4. テスト
 
@@ -96,6 +104,8 @@
 `handler/modelmgr/hfimport` の画面テスト（`mmtest` の偽の HF `hftest`。`web/screentest` の `Screen` で送る）: キーワード検索・URL（`blob` を含む）と ID・短縮 URL／http／他のホストの 422、GGUF・pickle の理由と導入の 422、terms の確認が無い 409・版違いの 422、導入の進捗→完了（試し生成の区画の描き直し）→削除、NFAA の検索からの除外と 409、gated のトークンの案内と 422。実物の HF・GPU は使わない。
 
 `handler/modelmgr/runtimes` の `runtimes_test.go`（`screentest.NewWithRuntimes`。`service/localruntime/lrtest` の偽のパッケージ・偽の Hugging Face・偽のプロセス）: カードの表示（未導入・導入中・導入済み・重みが不足）、出典・ライセンス・`unclear` の注記とバナー、使えない環境の理由とクラウドの案内、導入・重みの導入・起動・停止・自動起動・削除、重みが不足した起動の 409 と文面、取得元が消えたときの失敗の表示、取り消し、未知の ID の 404、サービスが無い画面にはルートが無いこと、スクリーンリーダー用のラベルと鍵・トークンを出さないこと。
+
+`handler/modelmgr/nodes` の `nodes_test.go`（`screentest.NewWithNodes`。`service/modelnodes/nodetest` の偽の GitHub のアーカイブ・偽のエンジン）: 区画の一覧（未導入・導入できない理由・このノードを使うモデル）、詳細モーダル（コミット・SHA-256・ライセンス・確認結果）、同意の無い導入と古い版の同意の拒否（何も読み込まれない）、導入→読み込み対象に入る→削除、導入できないノードの拒否、エンジンが無いときの拒否。`organisms/modelmgr/nodecard` の `nodecard_test.go`: ノードの無いモデルの導入ボタンが無効でバッジと理由が出ること、内容が変わったノードが「導入済み」と出ないこと。
 
 ## 改訂履歴
 
@@ -111,3 +121,4 @@
 | 1.7 | 2026-11-01 | ローカルの実行環境のルートが MuseTalk 1.5（`musetalk`）でも同じ形で使えることを書いた（導入のジョブは部品 84 個の取得・展開と重みの取得。使えない PC の理由・案内は `Support.Code` に `compute_cap` が増えた）。ルート・フィールドは変えていない。意味は [local-runtime.md §13](../architecture/model-manager/local-runtime.md) | Issue #921 |
 | 1.8 | 2026-11-02 | カードが開く詳細モーダルのルート（`models/:id/detail`・`runtimes/:id/detail`・`hf/models/detail`・`external/detail`）を足した。一覧・カードの応答にモーダルは含まれない（ページに 1 つ）。見た目は [model-manager-screen.md](../components/model-manager-screen.md) の「カードと詳細モーダル（#954）」 | Issue #954 |
 | 1.9 | 2026-11-02 | 更新ボタン（`molecules/refresh.Bar`）を、エンジンのカード（`GET /model-manager/engine`）・モデルの一覧（`GET /model-manager/models`）・実行環境の区画（新しい `GET /model-manager/runtimes`）・試し生成の結果（`GET /model-manager/trials`）に足した。エンジンのカードが開く詳細モーダルのルート `GET /model-manager/engine/detail` を足した。見た目は [model-manager-screen.md](../components/model-manager-screen.md) の「更新ボタンとエンジンのカード（#962・#970）」 | Issue #962・#970 |
+| 1.10 | 2026-11-03 | 追加ノードの区画のルート（`/model-manager/nodes`・`:id`・`detail`・`consent`・`install`・`cancel`）と、モデルのカードの「追加ノードが必要」を足した | Issue #976 |

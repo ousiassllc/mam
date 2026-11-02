@@ -94,3 +94,22 @@ func TestAnUpscaleWorkflowIsNotAModelOfThePrompts(t *testing.T) {
 	models := map[string]localcfg.Model{"box/up": template(t, "upscale-nomos-uni-span"), "box/gen": template(t, "txt2img-sdxl")}
 	assert.Equal(t, []string{"comfyui:box/gen"}, localcfg.IDs(endpoints, models, localcfg.MediaImage))
 }
+
+// The sampling and prompt-weight conventions of the templates (samplingtest) hold for the upscale ones as far as they apply: the finish
+// samples, so it takes every sampling value and says SDXL's CLIP reads weights; an upscale model alone samples nothing, so it has no value
+// to take (an assignment of one would have no node to go to) and no prompt whose weights could matter ("unknown", not a claim).
+func TestOnlyTheFinishSamplesSoOnlyTheFinishTakesSamplingValuesAndPromptWeights(t *testing.T) {
+	finish := template(t, "upscale-2pass-sdxl-span").Workflow
+	caps := finish.SamplingCaps()
+	require.NotNil(t, caps)
+	assert.NotNil(t, caps.Steps)
+	assert.NotNil(t, caps.CFG)
+	assert.NotEmpty(t, caps.Sampler)
+	assert.NotEmpty(t, caps.Scheduler)
+	assert.Equal(t, "supported", string(finish.PromptWeight))
+	for _, id := range []string{"upscale-nomos-uni-span", "upscale-nomos-webphoto-esrgan"} {
+		w := template(t, id).Workflow
+		assert.Nil(t, w.SamplingCaps(), id)
+		assert.Equal(t, "unknown", string(w.PromptWeight), id)
+	}
+}

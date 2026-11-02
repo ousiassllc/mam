@@ -64,6 +64,14 @@
 | `wan22-i2v-14b-lightx2v` | 商用OK | ベースの Wan 2.2 も LightX2V の 4 ステップ LoRA（`lightx2v/Wan2.2-Distill-Loras`）も Apache-2.0（LoRA はモデルカードの `license: apache-2.0`。LICENSE のファイルは無く、カードの宣言に従う）。#930 |
 | `wan22-i2v-14b-lightx2v-uncensored` | **不明** | ベースは Apache-2.0（商用OK）。非検閲の LoRA（`rzgar/Wan2.2_LightX2V_4Step_Uncensored`）はカードが `license: apache-2.0` と宣言するだけで、LICENSE の本文も、非検閲の学習に使ったデータの出所も無い。宣言だけでは確かめられないので、厳しい方の「不明」（`license.id = apache-2.0-declared`）。成人向けなので同意必須。#930 |
 | `wan22-i2v-14b-nsfw-lora`・`wan22-remix-nsfw-i2v`・`wan22-remix-nsfw-t2v` | **不明** | ベースの Wan 2.2 は Apache-2.0。LoRA・マージの側にライセンスの本文が無い（旧版は「商用不可」と扱っていた。確認できないものは断定せず不明にした） |
+| `realvisxl-v50` | 商用OK | 作者 SG161222 のモデルカード（`SG161222/RealVisXL_V5.0`）の `license: openrail++`。ベースの SDXL も同じ OpenRAIL++-M。成人向けなので同意必須（#984） |
+| `cyberrealistic-xl-v10` | 商用OK | 作者 Cyberdelia のモデルカード（`cyberdelia/CyberRealisticXL`）が「CreativeML Open RAIL++-M License」と書き、`license: creativeml-openrail-m`（#984） |
+| `juggernaut-xl-ragnarok` | 商用OK | 作者 KandooAI のモデルカード（`Kandoo/Juggernaut-XL-Ragnarok`）の `license: creativeml-openrail-m` と本文「モデルも生成物も商用で使える。使用制限に挙げた目的には使えない」。法人向けの商用ライセンスの相談先は別に載る（#984） |
+| `bigasp-v2`・`big-lust-v16`・`epicrealism-xl-lastfame`・`lustify-sdxl-zenith-v9`・`realism-sdxl-stable-yogi-v8`・`thisisreal-sdxl-v3`・`wai-illustrious-sdxl-v17` | **不明** | Civitai のモデルページにも、配布元の HF のカードにも、作者のライセンスの名前・本文が無い（`license.id = unspecified`）。**Civitai の `allowCommercialUse` は参考で、これだけでは商用OKにしない**（`summary` に併記）。第三者のミラーの HF の `license` タグ（`creativeml-openrail-m`・`apache-2.0`・`mit`・`unknown` が割れる）は原本の作者の宣言ではないので採らない。WAI は Illustrious 系の上流が Fair AI Public License 1.0-SD だが、ページはどれに従うかを書かない（#984） |
+| `pony-diffusion-v6-xl` | **商用NG** | Civitai のページ（model 257749）が「modified Fair AI Public License 1.0-SD」と書く: 課金・優先枠など収益化する Web サイト・アプリでの推論を許さず、商用は作者へ連絡。配布元の HF のカードの `license: creativeml-openrail-m` より、作者のページの条項を厳しい方として採る（#984） |
+| `cyberrealistic-pony-v18` | **商用NG** | 作者のカードは `creativeml-openrail-m` だが、ベースの Pony Diffusion V6（上の行）の制限が及ぶので内訳の厳しい方（#984） |
+| `noobai-xl-v11` | **商用NG** | 作者 Laxhar のカード（`Laxhar/noobai-XL-1.1`）が fair-ai-public-license-1.0-sd を継承し、追加条項「II. Commercial Prohibition: モデル・派生モデル・生成物の収益化・商用利用を含むあらゆる商業化を禁じる」を書く（#984） |
+| `qwen-image-21-uncensored-int8` | **商用NG** | 配布元（`abenzerps/Qwen-Image-2.1-Uncensored-Quantized`）のカードが `license: other / license_name: qwen-research` で、Qwen/Qwen-Image-2.1 の量子化と書く。本文は Qwen RESEARCH LICENSE AGREEMENT（`noctq-v4-qwen-image21` と同じ。テキストエンコーダー・VAE も同じ）（#984） |
 | `upscale-nomos-uni-span` | 商用OK | 4xNomosUni_span_multijpg のモデルカード（メタデータ `license: cc-by-4.0`・本文 `License: CC BY 4.0`）。作者（Philip Hofmann）の表示が条件。学習データの条件は未確認（#975） |
 | `upscale-nomos-webphoto-esrgan` | **不明** | 4xNomosWebPhoto_esrgan のモデルカードは、メタデータが `license: cc-by-4.0` で本文が `License: CC-BY-0.4`（存在しない版）と食い違い、作者の GitHub リリースも `CC-BY-0.4`。LICENSE ファイルは無い。確かめられないので不明（#975） |
 | `upscale-2pass-sdxl-span` | 商用OK | SDXL base（CreativeML Open RAIL++-M）と SPAN（CC BY 4.0）の 2 部品で、どちらも商用OK |
@@ -135,4 +143,5 @@
 | 1.5 | 2026-11-02 | §2: HF のカードの `license_link` は https のものだけをリンクにする | 統合レビュー。検証なしに `SourceURL` へ入れ、`templ.SafeURL` で href にしていた（`javascript:` が通る）。HF の `license` タグだけで商用OKにする点は変えていない（方針は人が決める） |
 | 1.6 | 2026-11-02 | §3 の答えの表に `ltx-2.5-22b-distilled-nvfp4`・`-dfr`（条件つき）・`wan22-ti2v-5b-fp8`（商用OK）を足した | Issue #967・#968 |
 | 1.7 | 2026-11-03 | §3 の答えの表に `qwen-image-edit-2511`（商用OK。Apache-2.0）を足した | Issue #971 |
-| 1.8 | 2026-11-03 | §3 の答えの表にアップスケール用のモデル（`upscale-nomos-uni-span`＝商用OK・`upscale-nomos-webphoto-esrgan`＝不明（カードのメタデータと本文のライセンスが食い違う）・`upscale-2pass-sdxl-span`＝商用OK）を足した | Issue #975 |
+| 1.8 | 2026-11-03 | §3 の答えの表に、非検閲（成人向け）の実写中心 14 モデルを足した（商用OK 3・不明 7・商用NG 4）。ライセンスは一次情報（作者のモデルカード・Civitai のページの文言）だけを読み、Civitai の `allowCommercialUse` だけでは商用OKにしない | Issue #984 |
+| 1.9 | 2026-11-03 | §3 の答えの表にアップスケール用のモデル（`upscale-nomos-uni-span`＝商用OK・`upscale-nomos-webphoto-esrgan`＝不明（カードのメタデータと本文のライセンスが食い違う）・`upscale-2pass-sdxl-span`＝商用OK）を足した | Issue #975 |

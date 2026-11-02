@@ -77,6 +77,7 @@
 | `IconSeries` | `users` | 〃 Series（`sidenav.Views` が SeriesID を持つとき） | #915 |
 | `IconPanelClose` | `panel-left-close` | 〃 たたむボタン | #915 |
 | `IconPanelOpen` | `panel-left-open` | 〃 開くボタン | #915 |
+| `IconJobs` | `list-checks` | 左メニュー: ジョブ | #980 |
 | （`IconMedia`・`IconReview`・`IconChart`・`IconSettings` などは左メニューでも再利用） | | Scene / Shot・レビュー・制作指標・設定 | #915 |
 
 - 16 個で、#846 の 8 個 + #847 の 8 個。Issue の「10 個前後」より多いのは、#847 が概要のカードにもアイコンを付けるため（§8 の質問 1。付けないなら #847 は `x` と `copy` の 2 個）。`IconClose`（`x`）はモーダルの部品が使うので、どちらの Issue が持つかはモーダルの担当（§8 の質問 7）に従う。表の「#847」は決定のとおり。

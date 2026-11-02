@@ -1,0 +1,9 @@
+{
+ "comfyui": "v0.42.1",
+ "source": "https://github.com/Comfy-Org/ComfyUI/blob/v0.42.1/requirements.txt（ComfyUI が必須とするパッケージ。同梱の Python 環境にあると mam が言えるのはこれだけで、pip は実行しない）",
+ "packages": [
+  "torch", "torchsde", "torchvision", "numpy", "einops", "transformers", "tokenizers", "sentencepiece", "safetensors",
+  "aiohttp", "yarl", "yaml", "pil", "scipy", "tqdm", "psutil", "alembic", "sqlalchemy", "filelock", "av",
+  "requests", "simpleeval", "blake3", "kornia", "spandrel", "pydantic", "pydantic_settings"
+ ]
+}

@@ -45,8 +45,12 @@ func run(t *testing.T, tpl localcfg.Template, edit func(*localcfg.Workflow), s l
 	seed := int64(1234)
 	img := modeladapter.Input{Data: comfyuitest.PNG, MimeType: "image/png"}
 	if m.Media == localcfg.MediaImage {
+		opts := localcfg.ImageOptions{Sampling: s}
+		if mode := m.Workflow.ReferenceMode; mode == localcfg.ModeControlNet || mode == localcfg.ModeIPAdapter {
+			opts.Refs = []localcfg.RefOption{{}} // these run on their one image only when the request describes it
+		}
 		_, err = b.GenerateImage(ctx, "", modeladapter.ImageRequest{
-			Prompt: "a fox", AspectRatio: "1:1", Seed: &seed, Options: localcfg.ImageOptions{Sampling: s},
+			Prompt: "a fox", AspectRatio: "1:1", Seed: &seed, Options: opts,
 			Inputs: []modeladapter.Input{img}, // a workflow that needs a reference image gets one; the others leave it
 		})
 	} else {

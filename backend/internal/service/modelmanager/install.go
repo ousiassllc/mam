@@ -13,6 +13,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/store"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/track"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/hfguide"
+	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/nodegate"
 )
 
 // LicenseRef names the license a user accepted: the ID and the version the screen showed.
@@ -75,6 +76,9 @@ func (s *Service) InstallModel(ctx context.Context, modelID string, accept *Lice
 		return JobRef{}, err
 	} else if view.Pinned {
 		return JobRef{}, ErrPinned
+	}
+	if err := nodegate.Check(s.Nodes, m); err != nil { // a workflow of the model needs a custom node that is not installed
+		return JobRef{}, err
 	}
 	if m.RequiresHFToken {
 		if err := hfguide.RequireToken(s.hf); err != nil { // before the consent: nothing is recorded for a model that cannot be fetched

@@ -5,6 +5,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelcard"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/refresh"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/installbtn"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -69,7 +70,7 @@ func ModelDetailURL(id string) string { return paths.ModelManagerPart("models", 
 func ModelCardID(id string) string { return "mm-model-" + id }
 
 // modelBadges are the labels beside the state that must not be missed: an adult model, the login a model needs, a disk that is too full to
-// install it, and a GPU that is below what the model needs.
+// install it, a GPU below what the model needs, and an OS / GPU generation it is not made for.
 func modelBadges(m Model) []modelcard.Badge {
 	var out []modelcard.Badge
 	if m.Adult {
@@ -78,8 +79,14 @@ func modelBadges(m Model) []modelcard.Badge {
 	if m.NeedsToken {
 		out = append(out, modelcard.Badge{Tone: atoms.BadgeWarn, Label: "HF トークンが必要", Attrs: templ.Attributes{"data-testid": "mm-token-badge"}})
 	}
+	if m.NeedsNodes != "" && m.State != "installed" {
+		out = append(out, modelcard.Badge{Tone: atoms.BadgeWarn, Label: "追加ノードが必要", Attrs: templ.Attributes{"data-testid": "mm-nodes-badge"}})
+	}
 	if m.LowDisk && m.State != "installed" && m.State != "installing" {
 		out = append(out, modelcard.Badge{Tone: atoms.BadgeError, Label: "空きが足りません", Attrs: templ.Attributes{"data-testid": "mm-low-disk"}})
+	}
+	if m.PlatformWarning != "" {
+		out = append(out, modelcard.Badge{Tone: atoms.BadgeWarn, Label: "この PC は対象外の見込み", Attrs: templ.Attributes{"data-testid": "mm-platform-warning"}})
 	}
 	switch m.VRAMFit {
 	case "short":
@@ -108,6 +115,9 @@ templ modelCard(m Model, blocked bool) {
 	@modelcard.Item(modelCardData(m)) {
 		if m.State == "installing" && m.Install != nil {
 			@progressBar(*m.Install, m.Name+" の導入の進み具合")
+		}
+		if m.NeedsNodes != "" && m.State != "installed" {
+			<p class="text-xs text-amber-300" data-testid="mm-nodes-note">{ m.NeedsNodes }</p>
 		}
 		@modelcard.Actions() {
 			@modelActions(m, blocked)
@@ -139,7 +149,7 @@ templ modelActions(m Model, blocked bool) {
 templ installButton(m Model, blocked bool) {
 	{{ label := installLabel(m) }}
 	switch  {
-		case blocked || m.LowDisk:
+		case blocked || m.LowDisk || m.NeedsNodes != "":
 			@atoms.SmallButtonFor(atoms.ToneNeutral, label, m.Name, templ.Attributes{"type": "button", "disabled": true})
 		case m.Consent && !m.Accepted:
 			@atoms.SmallButtonFor(atoms.TonePrimary, "ライセンスを確認して導入", m.Name, templ.Attributes{
@@ -147,10 +157,7 @@ templ installButton(m Model, blocked bool) {
 				"data-testid": "mm-consent-open",
 			})
 		default:
-			@atoms.SmallButtonFor(atoms.TonePrimary, label, m.Name, templ.Attributes{
-				"type": "button", "hx-post": paths.ModelManagerPart("models", m.ID, "install"), "hx-target": "#" + CatalogID, "hx-swap": "outerHTML",
-				"hx-sync": "this:drop", "hx-disabled-elt": "this", "data-testid": "mm-install",
-			})
+			@atoms.SmallButtonFor(atoms.TonePrimary, label, m.Name, installbtn.Attrs(paths.ModelManagerPart("models", m.ID, "install"), "#"+CatalogID, m.Name, m.PlatformWarning))
 	}
 }
 
@@ -181,6 +188,9 @@ templ ConsentDialog(c Consent) {
 		<p class="text-sm text-neutral-200" data-testid="mm-consent-summary">{ c.License.Summary }</p>
 		if c.AdultNotice != "" {
 			<p class="text-sm text-amber-300" data-testid="mm-consent-adult">{ c.AdultNotice }</p>
+		}
+		if c.PlatformWarning != "" {
+			<p class="text-sm text-amber-300" data-testid="mm-consent-platform-warning">{ c.PlatformWarning }</p>
 		}
 		if len(c.Sources) > 0 {
 			<p class="text-xs text-neutral-300" data-testid="mm-consent-sources">原本の場所: { joinNames(c.Sources) }</p>

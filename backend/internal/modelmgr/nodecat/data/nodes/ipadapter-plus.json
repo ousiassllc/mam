@@ -1,0 +1,32 @@
+{
+ "id": "ipadapter-plus",
+ "name": "ComfyUI_IPAdapter_plus（IP-Adapter）",
+ "description": "参照画像の雰囲気・構図・人物を、プロンプトとは別に画像から生成へ寄せる IP-Adapter のノード集。SDXL の IP-Adapter の重みと CLIP Vision（画像エンコーダー）は、モデルとして別に導入する。FaceID 系のノードは insightface が要るため、同梱の環境では動かない。",
+ "repo": "https://github.com/cubiq/ComfyUI_IPAdapter_plus",
+ "commit": "a0f451a5113cf9becb0847b92884cb10cbdec0ef",
+ "archive_url": "https://github.com/cubiq/ComfyUI_IPAdapter_plus/archive/a0f451a5113cf9becb0847b92884cb10cbdec0ef.zip",
+ "archive_sha256": "c6c49c82aa65cb96b93bdf9f9b547f9c95310a2668a7a9aaa0285cccf4590347",
+ "archive_size": 306422,
+ "extracted_size": 734885,
+ "folder": "ComfyUI_IPAdapter_plus",
+ "license": {
+  "id": "gpl-3.0-ipadapter-plus",
+  "version": "3.0",
+  "name": "GNU General Public License v3.0",
+  "url": "https://github.com/cubiq/ComfyUI_IPAdapter_plus/blob/a0f451a5113cf9becb0847b92884cb10cbdec0ef/LICENSE",
+  "summary": "リポジトリの LICENSE は GPL-3.0 の全文（pyproject.toml も license = GPL-3.0）。mam はこのコードを配布せず、利用者の PC に固定のコミットから取得して、別プロセスの ComfyUI が読み込む。",
+  "commercial": "yes",
+  "commercial_condition": "GPL-3.0 は使うだけなら商用でも制限しない。コードを改変して第三者に配布するときは、GPL-3.0 の条件（同じライセンスでのソース公開）が及ぶ。",
+  "checked_at": "2026-11-03"
+ },
+ "python_requires": ["torch", "torchvision", "einops", "pil"],
+ "python_optional": ["insightface"],
+ "node_classes": [
+  "IPAdapter", "IPAdapterAdvanced", "IPAdapterModelLoader", "IPAdapterUnifiedLoader", "IPAdapterTiled", "IPAdapterEncoder",
+  "IPAdapterEmbeds", "IPAdapterStyleComposition", "PrepImageForClipVision"
+ ],
+ "model_folders": ["ipadapter"],
+ "limits": "FaceID 系のノード（IPAdapterFaceID・IPAdapterInsightFaceLoader ほか）は insightface を import するため、同梱の環境では動きません（mam は pip を実行しません）。",
+ "reviewed_at": "2026-11-03",
+ "review": "コミット a0f451a5 の *.py（IPAdapterPlus.py・CrossAttentionPatch.py・image_proj_models.py・utils.py・__init__.py の 5 本）を読んだ。ネットワーク通信（requests・urllib・socket）、subprocess・os.system、exec・eval、ダウンロードは無い。ネイティブのバイナリ（.so・.dll・.exe）も無い。import は torch・torchvision・einops・PIL・ComfyUI 本体で、insightface は FaceID のノードが動くときだけ関数の中で import する。例外は IPAdapterLoadEmbeds が torch.load（pickle）で input フォルダのファイルを読むことで、mam のワークフローは使わない。リポジトリは 2025-04-14 から保守のみ（更新はほぼ無い）。"
+}

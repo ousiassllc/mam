@@ -13,6 +13,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/hfguide"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmview"
+	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/nodegate"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/modelmgr/jobview"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
@@ -141,7 +142,7 @@ func modelData(ctx context.Context, svc *modelmanager.Service, m modelmanager.Mo
 		Size: bytesText(m.TotalSize), Need: bytesText(m.NeedBytes), VRAM: vramText(m.VRAM),
 		License: licenseOf(m.License), Consent: m.ConsentRequired, Accepted: m.Accepted, NeedsToken: m.RequiresHFToken,
 		State: string(m.State), ModelIDs: m.ModelIDs, WorkflowCheck: m.WorkflowCheck,
-		LowDisk: m.NeedBytes > 0 && free > 0 && uint64(m.NeedBytes) > free,
+		LowDisk: m.NeedBytes > 0 && free > 0 && uint64(m.NeedBytes) > free, PlatformWarning: mmview.PlatformWarning(ctx, svc, m),
 	}
 	if fit, ok := mmview.FitOf(m.VRAM, gpuVRAM); ok {
 		out.VRAMFit, out.VRAMFitText = string(fit.Fit), fit.Text
@@ -149,6 +150,7 @@ func modelData(ctx context.Context, svc *modelmanager.Service, m modelmanager.Mo
 	if m.RequiresHFToken && tokenMissing {
 		out.TokenGuide = hfguide.NoToken // the same words as the refusal of the install (service, MCP)
 	}
+	out.NeedsNodes = nodegate.Message(nodegate.Missing(svc.Nodes, m.RequiresNodes))
 	for _, f := range m.Files {
 		out.Files = append(out.Files, view.File{Path: f.Folder + "/" + f.Name, Size: bytesText(f.Size), SHA256: f.SHA256, Present: f.Present, Shared: f.SharedWith, SourceNote: f.SourceNote})
 	}

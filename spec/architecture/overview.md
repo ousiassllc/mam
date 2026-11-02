@@ -147,6 +147,7 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 │       ├── domain/         # Project/Scene/Shot/Take/WorldState等のドメインモデル。サブパッケージ `bundlepath/` は Project バンドルの ID・ファイルパスの検証（`ValidID` / `ValidFilePath`。行数上限のため分けた）
 │       ├── repository/     # SQLite アクセス層（domainのみに依存）
 │       │   ├── bundle/ review/ # bundle: Project バンドルの書き出し・取り込み（行の検証と全テーブル一覧を持つ）。review: チームコラボレーション（レビュー依頼・返答・コメント）の永続化。どちらも `repository` の接続・エラーに依存
+│       │   ├── jobrecent/  # `job` テーブルの読み取り（新しい N 件＋終わっていないもの。ジョブ一覧の画面が使う。#980）
 │       │   ├── testdb/     # テスト専用。マイグレーション済みの DB を 1 回だけ作り（`migratedTemplate`）、テストごとにファイルを複製して渡す（`Path` / `Open`）。本番コードから import しない
 │       │   └── migrations/ # goose 形式の SQL マイグレーション（タイムスタンプ版、go:embed、起動時に自動適用）
 │       ├── bundlezip/      # Project バンドルの ZIP（`manifest.json`・`data.json`・`assets/`）の書き出し・読み取り・検証（サイズ・パス）・アセットディレクトリへの展開。DB は触らない（`service.BundleService` が `repository/bundle` と組み合わせる）
@@ -168,6 +169,7 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 │       │   ├── audiosettings/ # Audio Director のプロバイダーの選択（`audio.json` の `voice_provider` / `lip_sync_provider` / `fallback_to_cloud` の読み書き。`Service.Load`・`Save`・`View`・`Preflight` / `Settle`）。`GenerateAudio` が実行のたびに設定を読み、「ローカルが使えないときはクラウド」がオンのときだけ、実行の開始前の検査でその実行の全体をクラウドに切り替える（`model-adapters-m3.md` §14.10）
 │       │   ├── chatbrief/  # テスト専用（非テストの `.go` は無い）。チャットの質問カードへの回答が Brief の値域（Aspect Ratio・200 文字）を外れたとき聞き直すことを `service` の公開 API 越しに確かめる回帰テスト
 │       │   ├── finalframe/ # テスト専用（`unix` のみ。非テストの `.go` は無い）。Continue Agent に渡す最終フレームの元になる Take ファイルの選び方を `service` の公開 API 越しに確かめる回帰テスト
+│       │   ├── joblist/    # ジョブ一覧の読み取り専用サービス（`job` テーブルの行に、種類ごとの対象・進み具合・行き先を足す。#980。spec/components/jobs-screen.md）
 │       │   ├── modelsettings/ # 全体の設定画面の「画像・動画モデル」の保存先（`models.json` の `images` / `policies` の読み書き。`Service`・`InvalidError`・`ErrPinned`）。`service` の行数基準値のために別パッケージにしてあり、`service` は import しない。同じ理由の別パッケージに、「LLM の割り当て」の `llm.json`（`routes`）の読み書きの `llmassign/`（`Service`・`InvalidError`・`ErrPinned`）と、両者が使う設定 JSON の読み書きの `settingsfile/`（`Read` / `Write`。他のキーを残して書く）がある
 │       │   ├── servicetest/ # テスト専用。`service.New` に `t.Cleanup(svc.Close)` を付けて組み立てる（`New`）。本番コードから import しない
 │       │   ├── takepreview/ # テスト専用（`unix` のみ。非テストの `.go` は無い）。`TakeService.Video` / `Thumbnail` の Take のプレビューを実 ffmpeg で確かめる回帰テスト

@@ -10,6 +10,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/kind"
 )
 
 // The upscale models (Issue #975) are pinned to a commit of their author's Hugging Face repository (no mirror), as .safetensors (no pickle),
@@ -32,7 +33,7 @@ func TestUpscaleModelsArePinnedSafetensorsOfTheAuthorsRepositoryWithTheirLicense
 	for id, p := range want {
 		m, ok := catalog.Default().Model(id)
 		require.True(t, ok, id)
-		assert.Equal(t, catalog.KindUpscale, m.Kind, id)
+		assert.Equal(t, kind.Upscale, m.Kind, id)
 		require.Len(t, m.Files, 1, id)
 		f := m.Files[0]
 		assert.Equal(t, "upscale_models", f.Folder, id)
@@ -78,7 +79,7 @@ func TestAnUpscaleModelRunsUpscaleTemplatesOnly(t *testing.T) {
 		for _, w := range m.Workflows {
 			tpl, ok := localcfg.TemplateByID(w.Template)
 			require.True(t, ok, w.Template)
-			assert.Equal(t, m.Kind == catalog.KindUpscale, tpl.Model.IsUpscale(), "%s / %s", m.ID, w.Name)
+			assert.Equal(t, m.Kind == kind.Upscale, tpl.Model.IsUpscale(), "%s / %s", m.ID, w.Name)
 		}
 	}
 }
@@ -98,7 +99,7 @@ func TestValidateRefusesAnUpscaleModelOnAPromptTemplateAndTheOtherWayRound(t *te
 	for _, e := range errs {
 		messages = append(messages, e.Error())
 	}
-	assert.Contains(t, messages[0]+messages[len(messages)-1], "must both be upscale ones")
+	assert.Contains(t, messages[0]+messages[len(messages)-1], "does not fit the model of kind")
 	assert.GreaterOrEqual(t, len(errs), 2)
 }
 

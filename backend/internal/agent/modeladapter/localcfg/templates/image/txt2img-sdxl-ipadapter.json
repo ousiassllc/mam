@@ -1,0 +1,206 @@
+{
+ "id": "txt2img-sdxl-ipadapter",
+ "label": "SDXL: IP-Adapter（参照画像の雰囲気で画像）",
+ "media": "image",
+ "description": "追加ノード ComfyUI_IPAdapter_plus（許可リスト `ipadapter-plus`）の IPAdapterModelLoader・CLIPVisionLoader・IPAdapterAdvanced で、参照画像 1 枚の雰囲気・構図・人物を SDXL の生成へ寄せる（ip-adapter-plus_sdxl_vit-h と CLIP ViT-H）。参照の強さが IP-Adapter の weight（既定 0.7）。参照画像が無い実行は断る。ノードが未導入の間は選べない。GPU では未実行（構造のテストのみ）。",
+ "model": {
+  "media": "image",
+  "workflow": {
+   "graph": {
+    "4": {
+     "class_type": "CheckpointLoaderSimple",
+     "inputs": {
+      "ckpt_name": "sd_xl_base_1.0.safetensors"
+     }
+    },
+    "6": {
+     "class_type": "CLIPTextEncode",
+     "inputs": {
+      "text": "",
+      "clip": [
+       "4",
+       1
+      ]
+     }
+    },
+    "7": {
+     "class_type": "CLIPTextEncode",
+     "inputs": {
+      "text": "",
+      "clip": [
+       "4",
+       1
+      ]
+     }
+    },
+    "8": {
+     "class_type": "VAEDecode",
+     "inputs": {
+      "samples": [
+       "3",
+       0
+      ],
+      "vae": [
+       "4",
+       2
+      ]
+     }
+    },
+    "9": {
+     "class_type": "SaveImage",
+     "inputs": {
+      "filename_prefix": "mam/image",
+      "images": [
+       "8",
+       0
+      ]
+     }
+    },
+    "5": {
+     "class_type": "EmptyLatentImage",
+     "inputs": {
+      "width": 1024,
+      "height": 1024,
+      "batch_size": 1
+     }
+    },
+    "3": {
+     "class_type": "KSampler",
+     "inputs": {
+      "seed": 0,
+      "steps": 25,
+      "cfg": 7,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 1,
+      "model": [
+       "13",
+       0
+      ],
+      "positive": [
+       "6",
+       0
+      ],
+      "negative": [
+       "7",
+       0
+      ],
+      "latent_image": [
+       "5",
+       0
+      ]
+     }
+    },
+    "10": {
+     "class_type": "LoadImage",
+     "inputs": {
+      "image": "example.png"
+     }
+    },
+    "11": {
+     "class_type": "IPAdapterModelLoader",
+     "inputs": {
+      "ipadapter_file": "ip-adapter-plus_sdxl_vit-h.safetensors"
+     }
+    },
+    "12": {
+     "class_type": "CLIPVisionLoader",
+     "inputs": {
+      "clip_name": "CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors"
+     }
+    },
+    "13": {
+     "class_type": "IPAdapterAdvanced",
+     "inputs": {
+      "model": [
+       "4",
+       0
+      ],
+      "ipadapter": [
+       "11",
+       0
+      ],
+      "image": [
+       "10",
+       0
+      ],
+      "clip_vision": [
+       "12",
+       0
+      ],
+      "weight": 0.7,
+      "weight_type": "linear",
+      "combine_embeds": "concat",
+      "start_at": 0.0,
+      "end_at": 1.0,
+      "embeds_scaling": "V only"
+     }
+    }
+   },
+   "assignments": [
+    {
+     "param": "prompt",
+     "node": "6",
+     "input": "text"
+    },
+    {
+     "param": "negative_prompt",
+     "node": "7",
+     "input": "text"
+    },
+    {
+     "param": "seed",
+     "node": "3",
+     "input": "seed"
+    },
+    {
+     "param": "width",
+     "node": "5",
+     "input": "width"
+    },
+    {
+     "param": "height",
+     "node": "5",
+     "input": "height"
+    },
+    {
+     "param": "reference_image",
+     "node": "10",
+     "input": "image",
+     "index": 0
+    },
+    {
+     "param": "steps",
+     "node": "3",
+     "input": "steps"
+    },
+    {
+     "param": "cfg",
+     "node": "3",
+     "input": "cfg"
+    },
+    {
+     "param": "sampler",
+     "node": "3",
+     "input": "sampler_name"
+    },
+    {
+     "param": "scheduler",
+     "node": "3",
+     "input": "scheduler"
+    },
+    {
+     "param": "reference_strength",
+     "node": "13",
+     "input": "weight"
+    }
+   ],
+   "output_node": "9",
+   "prompt_weight": "supported",
+   "reference_mode": "ipadapter",
+   "requires_nodes": [
+    "ipadapter-plus"
+   ]
+  }
+ }
+}

@@ -1,0 +1,47 @@
+{
+ "id": "bigasp-v2",
+ "name": "bigASP v2（実写・SDXL）",
+ "kind": "image",
+ "tier": "advanced",
+ "content_rating": "adult",
+ "description": "【実写】写真風の成人向け画像に特化した SDXL チェックポイント（約 6.9 GB）。JoyTag のタグを理解し、自然文でも書ける（作者の例は「Photo of …」の書き出しと、ネガティブの low quality）。テンプレートは SDXL 標準（25 ステップ・dpmpp_2m/karras・cfg 7）で、参照画像からの画像（img2img）にも使える。",
+ "files": [
+  {
+   "name": "bigasp_v20.safetensors",
+   "folder": "checkpoints",
+   "url": "https://huggingface.co/fancyfeast/big-asp-v2/resolve/0c28e01684c6a210673dcbd70feb581df6e5b7ea/cuwm1gxo-complete-20241024a.safetensors",
+   "sha256": "6c77be501b95da35528431c224ccfb51b0ae948857431b3556db64e213cc1edf",
+   "size": 6938040682,
+   "source_note": "第三者のミラー（fancyfeast/big-asp-v2）。原本は Civitai の bigASP 🐍 v2.0（model 502468、version 991916、bigasp_v20.safetensors）で、SHA-256 が一致することを 2026-11-03 に確かめた。ミラーの作者（JoyCaption の作者のアカウントと思われる）が、Civitai の作者 nutbutter と同じかは未確認。"
+  }
+ ],
+ "vram": {
+  "min_gb": 8,
+  "source": "SDXL 系の 1 ファイルのチェックポイントは sdxl-base と同じ見積もり（出典なし。mam の実機では未検証）",
+  "estimate": true
+ },
+ "license": {
+  "id": "unspecified",
+  "version": "1",
+  "name": "ライセンスの記載なし（bigASP v2）",
+  "url": "https://civitai.com/models/502468",
+  "summary": "Civitai のモデルページにライセンスの文言が無く、配布元のモデルカードにも作者のライセンスの記載が無い。配布元の Hugging Face（fancyfeast/big-asp-v2）にはモデルカードが無い。Civitai の許可フラグ（allowCommercialUse）は Image・RentCivit・Rent だが、これは参考でライセンスの代わりにならない。商用利用の可否は「不明」で、確認できるまで商用には使わない前提で扱う。",
+  "commercial": "unknown",
+  "checked_at": "2026-11-03",
+  "notice": "この mam のインストール先に取得するモデルです。ライセンスの記載を一次情報で確かめられていないため、商用には使わないでください。成人向けの表現の公開は、地域の法令と配信先の規約に従ってください。"
+ },
+ "consent_required": true,
+ "requires_hf_token": false,
+ "workflows": [
+  {
+   "name": "bigasp-v2",
+   "template": "txt2img-sdxl",
+   "model_file": "bigasp_v20.safetensors"
+  },
+  {
+   "name": "bigasp-v2-img2img",
+   "template": "img2img-sdxl",
+   "model_file": "bigasp_v20.safetensors"
+  }
+ ]
+}
