@@ -5,6 +5,7 @@ import (
 	"slices"
 
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/refs"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/direct"
@@ -22,15 +23,17 @@ type Warning struct {
 
 // The codes of a Warning.
 const (
-	WarnInputsDropped    = "inputs_dropped"   // an input image the model cannot use is left out for that model
-	WarnDurationSnapped  = "duration_snapped" // the length is rounded to one the model makes
-	WarnResolution       = "resolution"       // the model does not make the resolution: its results fail
-	WarnAspect           = "aspect_ratio"     // the model refuses the aspect ratio: its results fail
-	WarnNoPrice          = "no_price"         // the price is unknown: the model is left out of the total
-	WarnNegativeFolded   = "negative_folded"  // the model has no negative prompt field: it is written into the prompt
-	WarnSeedUnsupported  = "seed_unsupported" // the model takes no seed: the n results are the same call n times
-	WarnFramesOverFree   = "frames_over_refs" // first / last frames and free references cannot be used together
-	WarnTooManyReference = "too_many_refs"    // more free references than the model takes
+	WarnInputsDropped    = refs.WarnInputsDropped   // an input image the model cannot use is left out for that model
+	WarnDurationSnapped  = "duration_snapped"       // the length is rounded to one the model makes
+	WarnResolution       = "resolution"             // the model does not make the resolution: its results fail
+	WarnAspect           = "aspect_ratio"           // the model refuses the aspect ratio: its results fail
+	WarnNoPrice          = "no_price"               // the price is unknown: the model is left out of the total
+	WarnNegativeFolded   = "negative_folded"        // the model has no negative prompt field: it is written into the prompt
+	WarnSeedUnsupported  = "seed_unsupported"       // the model takes no seed: the n results are the same call n times
+	WarnFramesOverFree   = "frames_over_refs"       // first / last frames and free references cannot be used together
+	WarnTooManyReference = refs.WarnTooMany         // more references than the model takes
+	WarnRoleUnsupported  = refs.WarnRoleUnsupported // the model does not take the role of a reference: it is used as a whole
+	WarnLoRAUnsupported  = refs.WarnLoRAUnsupported // the model cannot take a LoRA: it is not sent
 )
 
 // modelPlan is how one model takes the request: the inputs it uses, the parameters it is called with and its unit price.
@@ -39,9 +42,11 @@ type modelPlan struct {
 	resolution string
 	seconds    float64
 	// used are the indexes of the request's References this model is given.
-	used     []int
-	warnings []Warning
-	basis    string
+	used []int
+	// lora says the request's LoRA is sent to the model, avoidPose that the pose negative is added to its negative prompt.
+	lora, avoidPose bool
+	warnings        []Warning
+	basis           string
 	// unit is the price of one result in USD (nil when the basis is unknown).
 	unit *float64
 }
@@ -52,10 +57,7 @@ func (s *Service) planModel(cfg modeladapter.Config, r Request, info modelcatalo
 		p.warnings = append(p.warnings, Warning{Model: info.ID, Code: code, Message: fmt.Sprintf(format, args...)})
 	}
 	if r.Media == gentestrepo.MediaImage {
-		p.used = indexesWhere(r.References, func(RefInput) bool { return info.AcceptsReferences })
-		if len(r.References) > 0 && !info.AcceptsReferences {
-			warn(WarnInputsDropped, "%s は参照画像を使えないため、プロンプトだけで生成します", info.Label)
-		}
+		s.planImage(r, &p, warn)
 	} else {
 		s.planVideo(cfg, r, &p, warn)
 	}
@@ -68,7 +70,7 @@ func (s *Service) planModel(cfg modeladapter.Config, r Request, info modelcatalo
 	if p.basis == modelcatalog.BasisUnknown {
 		warn(WarnNoPrice, "%s は単価が分からないため、見積りの合計に入れません", info.Label)
 	}
-	if hasNegative(r) && !info.NegativeField {
+	if (hasNegative(r) || p.avoidPose) && !info.NegativeField {
 		warn(WarnNegativeFolded, "%s にはネガティブプロンプトの欄が無いため、プロンプトに「Avoid: …」として書き足して送ります", info.Label)
 	}
 	if r.Count > 1 && !info.SupportsSeed {
@@ -81,9 +83,9 @@ func hasNegative(r Request) bool {
 	return slices.ContainsFunc(r.Prompts, func(p PromptInput) bool { return p.Negative != "" })
 }
 
-func indexesWhere(refs []RefInput, keep func(RefInput) bool) []int {
+func indexesWhere(list []RefInput, keep func(RefInput) bool) []int {
 	var out []int
-	for i, ref := range refs {
+	for i, ref := range list {
 		if keep(ref) {
 			out = append(out, i)
 		}
@@ -111,18 +113,18 @@ func (s *Service) planVideo(cfg modeladapter.Config, r Request, p *modelPlan, wa
 		return slices.ContainsFunc(r.References, func(x RefInput) bool { return x.Role == role })
 	}
 	first, last := caps.FirstFrame && has(gentestrepo.RoleFirstFrame), caps.LastFrame && has(gentestrepo.RoleLastFrame) && caps.FirstFrame && has(gentestrepo.RoleFirstFrame)
-	refs := indexesWhere(r.References, func(x RefInput) bool { return x.Role == gentestrepo.RoleReference })
-	if len(refs) > 0 && caps.MaxReferenceImages == 0 {
+	free := indexesWhere(r.References, func(x RefInput) bool { return x.Role == gentestrepo.RoleReference })
+	if len(free) > 0 && caps.MaxReferenceImages == 0 {
 		warn(WarnInputsDropped, "%s は自由参照の画像を使えないため、使いません", p.info.Label)
-		refs = nil
+		free = nil
 	}
-	if len(refs) > caps.MaxReferenceImages && caps.MaxReferenceImages > 0 {
+	if len(free) > caps.MaxReferenceImages && caps.MaxReferenceImages > 0 {
 		warn(WarnTooManyReference, "%s の自由参照は %d 枚までのため、先頭の %d 枚だけ使います", p.info.Label, caps.MaxReferenceImages, caps.MaxReferenceImages)
-		refs = refs[:caps.MaxReferenceImages]
+		free = free[:caps.MaxReferenceImages]
 	}
-	if (first || last) && len(refs) > 0 {
+	if (first || last) && len(free) > 0 {
 		warn(WarnFramesOverFree, "%s は最初・最後のフレームと自由参照を同時に使えないため、フレームを使います", p.info.Label)
-		refs = nil
+		free = nil
 	}
 	if has(gentestrepo.RoleFirstFrame) && !caps.FirstFrame {
 		warn(WarnInputsDropped, "%s は最初のフレームを使えないため、使いません", p.info.Label)
@@ -139,7 +141,7 @@ func (s *Service) planVideo(cfg modeladapter.Config, r Request, p *modelPlan, wa
 		}
 		return false
 	})
-	p.used = append(p.used, refs...)
+	p.used = append(p.used, free...)
 	slices.Sort(p.used)
 	if msg := direct.AspectProblem(domain.ModelName(p.info.ID), r.AspectRatio, first); msg != "" {
 		warn(WarnAspect, "%s: 縦横比 %s は使えません（%s）。このモデルの結果は失敗します", p.info.Label, r.AspectRatio, msg)

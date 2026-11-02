@@ -16,7 +16,10 @@ type ListModelsInput struct {
 // ListModelsOutput is the models.
 type ListModelsOutput struct {
 	Models []modelcatalog.Info `json:"models"`
-	Limits Limits              `json:"limits"`
+	// LoRAs are the LoRA files of the bundled ComfyUI engine (lora.name of a request; only for models with supports_lora). Empty
+	// when the engine is not running or has none.
+	LoRAs  []string `json:"loras" jsonschema:"同梱 ComfyUI エンジンにある LoRA ファイル名（昇順）。リクエストの lora.name に使う。supports_lora のモデルだけが使う。エンジンが止まっている・無いときは空"`
+	Limits Limits   `json:"limits"`
 }
 
 // Limits are the caps of one batch (models.json: gentest).
@@ -31,7 +34,11 @@ func (h handlers) listModels(ctx context.Context, in ListModelsInput) (ListModel
 		return ListModelsOutput{}, err
 	}
 	items, cost := g.Limits()
-	return ListModelsOutput{Models: g.Models(ctx, in.Media), Limits: Limits{MaxItems: items, MaxCostUSD: cost}}, nil
+	loras := g.LoRAs(ctx)
+	if loras == nil {
+		loras = []string{}
+	}
+	return ListModelsOutput{Models: g.Models(ctx, in.Media), LoRAs: loras, Limits: Limits{MaxItems: items, MaxCostUSD: cost}}, nil
 }
 
 // ReferenceInput is an input image of a batch.
@@ -39,7 +46,15 @@ type ReferenceInput struct {
 	Source    string `json:"source" jsonschema:"upload（create_upload_ticket purpose gentest_reference の reference_id）/ project_asset / reference_item（project_id が要る）/ history（生成テストの成功した画像結果の result_id）"`
 	ID        string `json:"id" jsonschema:"source に応じた ID"`
 	ProjectID string `json:"project_id,omitempty" jsonschema:"project_asset / reference_item のとき"`
-	Role      string `json:"role,omitempty" jsonschema:"reference（既定）/ first_frame / last_frame（動画のみ）。モデルが使えない役割は警告つきでそのモデルから外す"`
+	Role      string `json:"role,omitempty" jsonschema:"画像: reference（全体。既定）/ face（顔だけ）/ style（画風・雰囲気だけ）/ edit（編集する元の画像）。動画: reference / first_frame / last_frame。list_generation_models の reference_roles に無い役割は警告 role_unsupported で全体の参照として使う"`
+	// Strength is a pointer: omitted means the default (0.7), 0 is a deliberate "barely".
+	Strength *float64 `json:"strength,omitempty" jsonschema:"画像モデルだけ。参照画像をどれだけ強く反映するか（0〜1、既定 0.7）。モデルごとの実現方法は隠す。動画では指定できない（validation）"`
+}
+
+// LoRAInput is a LoRA of the engine and its strength.
+type LoRAInput struct {
+	Name     string   `json:"name" jsonschema:"list_generation_models の loras のどれか"`
+	Strength *float64 `json:"strength,omitempty" jsonschema:"0〜1、既定 0.4"`
 }
 
 // PromptInput is a prompt with its negative prompt.
@@ -57,7 +72,11 @@ type RequestInput struct {
 	AspectRatio     string           `json:"aspect_ratio,omitempty" jsonschema:"16:9 のように。省くと画像は 1:1、動画は 16:9"`
 	Resolution      string           `json:"resolution,omitempty" jsonschema:"動画だけ。モデルの resolutions のどれか。省くと 720p かモデルの最初のもの"`
 	DurationSeconds float64          `json:"duration_seconds,omitempty" jsonschema:"動画だけ。省くと 5 秒。モデルが作れる長さに丸める"`
-	References      []ReferenceInput `json:"references,omitempty" jsonschema:"入力画像（画像モデルの参照画像・動画の最初／最後のフレーム）"`
+	References      []ReferenceInput `json:"references,omitempty" jsonschema:"入力画像（画像モデルの参照画像・動画の最初／最後のフレーム）。各画像に role と strength を付けられる。モデルが使える枚数は max_reference_images、役割は reference_roles（list_generation_models）。超えた分は警告 too_many_refs で使わない"`
+	// AvoidReferencePose adds "same pose as reference, ..." to the negative prompt of every model that uses a reference.
+	AvoidReferencePose bool `json:"avoid_reference_pose,omitempty" jsonschema:"画像だけ。参照画像のポーズ・構図を真似ないようにする（参照を使うモデルのネガティブプロンプトに「同じポーズ・構図」を足す。ネガティブの欄が無いモデルは Avoid: として書き足す）"`
+	// LoRA is applied together with the references to every model that supports it.
+	LoRA *LoRAInput `json:"lora,omitempty" jsonschema:"画像だけ。参照画像と一緒に使う LoRA。supports_lora でないモデルは警告 lora_unsupported で使わない"`
 	// TranslateToEnglish is a pointer: omitted means the default of the screen (on), false is a deliberate off.
 	TranslateToEnglish *bool `json:"translate_to_english,omitempty" jsonschema:"プロンプトとネガティブプロンプトを LLM（LLM の割り当ての Prompt Planner）で英語に訳してから送る。既定 true（画面と同じ）。すでに英語の文は訳さずそのまま。訳せなければ何も生成せずエラー（upstream）。見積りには訳す文の数が単価なしの行（model が translate）として入る。false でそのまま送る"`
 }
@@ -65,7 +84,10 @@ type RequestInput struct {
 func (in RequestInput) request() gentest.Request {
 	r := gentest.Request{
 		Media: in.Media, Models: in.Models, Count: in.Count, AspectRatio: in.AspectRatio, Resolution: in.Resolution,
-		DurationSeconds: in.DurationSeconds, TranslateToEnglish: gentest.DefaultTranslate,
+		DurationSeconds: in.DurationSeconds, TranslateToEnglish: gentest.DefaultTranslate, AvoidReferencePose: in.AvoidReferencePose,
+	}
+	if in.LoRA != nil {
+		r.LoRA = &gentest.LoRAInput{Name: in.LoRA.Name, Strength: in.LoRA.Strength}
 	}
 	if in.TranslateToEnglish != nil {
 		r.TranslateToEnglish = *in.TranslateToEnglish
@@ -74,7 +96,7 @@ func (in RequestInput) request() gentest.Request {
 		r.Prompts = append(r.Prompts, gentest.PromptInput{Prompt: p.Prompt, Negative: p.NegativePrompt})
 	}
 	for _, ref := range in.References {
-		r.References = append(r.References, gentest.RefInput{Source: ref.Source, ID: ref.ID, ProjectID: ref.ProjectID, Role: ref.Role})
+		r.References = append(r.References, gentest.RefInput{Source: ref.Source, ID: ref.ID, ProjectID: ref.ProjectID, Role: ref.Role, Strength: ref.Strength})
 	}
 	return r
 }

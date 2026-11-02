@@ -62,14 +62,14 @@ func scanBatch(row scanner) (Batch, error) {
 	return b, nil
 }
 
-const inputColumns = `id, batch_id, role, file_path, mime_type, size_bytes, origin, position`
+const inputColumns = `id, batch_id, role, file_path, mime_type, size_bytes, origin, position, strength`
 
 func scanInput(row scanner) (Input, error) {
 	var (
 		in     Input
 		origin string
 	)
-	if err := row.Scan(&in.ID, &in.BatchID, &in.Role, &in.FilePath, &in.MimeType, &in.SizeBytes, &origin, &in.Position); err != nil {
+	if err := row.Scan(&in.ID, &in.BatchID, &in.Role, &in.FilePath, &in.MimeType, &in.SizeBytes, &origin, &in.Position, &in.Strength); err != nil {
 		return Input{}, err
 	}
 	in.Origin = json.RawMessage(origin)

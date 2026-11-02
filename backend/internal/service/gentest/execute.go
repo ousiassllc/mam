@@ -11,10 +11,13 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/direct"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/chatgpt"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/refs"
 	"github.com/ousiassllc/mam/backend/internal/textutil"
 )
 
@@ -63,9 +66,18 @@ func (br *batchRun) image(ctx context.Context, r gentestrepo.Result, p resultPar
 	req := modeladapter.ImageRequest{Prompt: r.SentPrompt, AspectRatio: p.AspectRatio, Seed: seedOf(r)}
 	if r.NegativeMode == gentestrepo.NegativeField {
 		req.NegativePrompt = sentNegative(r, p)
+		if p.AvoidPose {
+			req.NegativePrompt = refs.WithAvoidPose(req.NegativePrompt)
+		}
 	}
+	roles := modelcatalog.ReferenceCapsOf(br.s.Adapter.Config(), domain.ModelName(r.Model)).Roles
 	for _, in := range br.inputsOf(r) {
+		role, strength := refs.InputOf(roles, in.role, in.strength)
 		req.Inputs = append(req.Inputs, in.in)
+		req.Options.Refs = append(req.Options.Refs, localcfg.RefOption{Role: role, Strength: strength})
+	}
+	if p.LoRA != nil {
+		req.Options.LoRA = &localcfg.LoRA{Name: p.LoRA.Name, Strength: p.LoRA.Strength}
 	}
 	out, err := direct.Image(ctx, br.s.Adapter, domain.ModelName(r.Model), req)
 	if err != nil {

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/projectlink"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/refs"
 
 	"github.com/ousiassllc/mam/backend/internal/domain/modelreg"
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
@@ -22,6 +23,9 @@ const (
 	RoleReference   = gentestrepo.RoleReference
 	RoleFirstFrame  = gentestrepo.RoleFirstFrame
 	RoleLastFrame   = gentestrepo.RoleLastFrame
+	RoleFace        = gentestrepo.RoleFace
+	RoleStyle       = gentestrepo.RoleStyle
+	RoleEdit        = gentestrepo.RoleEdit
 )
 
 // ResultView is one result as the screen and the MCP tools show it.
@@ -58,12 +62,15 @@ type ResultView struct {
 	SizeBytes int64  `json:"size_bytes,omitempty"`
 	CostBasis string `json:"cost_basis" jsonschema:"priced / free / unknown"`
 	// EstimatedUSD is the estimate of this result (absent when the price is unknown); ActualUSD what the vendor reported, if it did.
-	EstimatedUSD *float64   `json:"estimated_cost_usd,omitempty"`
-	ActualUSD    *float64   `json:"actual_cost_usd,omitempty"`
-	Favorite     bool       `json:"favorite"`
-	UsedInputs   []string   `json:"used_inputs,omitempty" jsonschema:"このモデルに渡した入力画像（get_generation_result の inputs の id）"`
-	CreatedAt    time.Time  `json:"created_at"`
-	FinishedAt   *time.Time `json:"finished_at,omitempty"`
+	EstimatedUSD *float64 `json:"estimated_cost_usd,omitempty"`
+	ActualUSD    *float64 `json:"actual_cost_usd,omitempty"`
+	Favorite     bool     `json:"favorite"`
+	UsedInputs   []string `json:"used_inputs,omitempty" jsonschema:"このモデルに渡した入力画像（get_generation_result の inputs の id）"`
+	// AvoidReferencePose says the negative prompt got "do not copy the reference's pose and composition"; LoRA is the LoRA the model was given.
+	AvoidReferencePose bool       `json:"avoid_reference_pose,omitempty"`
+	LoRA               *refs.LoRA `json:"lora,omitempty" jsonschema:"このモデルに渡した LoRA（名前と強さ）"`
+	CreatedAt          time.Time  `json:"created_at"`
+	FinishedAt         *time.Time `json:"finished_at,omitempty"`
 }
 
 func viewOf(r gentestrepo.Result) ResultView {
@@ -75,6 +82,7 @@ func viewOf(r gentestrepo.Result) ResultView {
 		AspectRatio: p.AspectRatio, Resolution: p.Resolution, DurationSeconds: p.DurationSeconds, Seed: r.Seed, SeedSent: r.SeedSent,
 		Status: r.Status, Error: r.Error, HasFile: r.Status == gentestrepo.StatusSucceeded && r.FilePath != "", MimeType: r.MimeType, SizeBytes: r.SizeBytes,
 		CostBasis: r.CostBasis, EstimatedUSD: r.EstimatedCost, ActualUSD: r.ActualCost, Favorite: r.Favorite, UsedInputs: r.UsedInputs,
+		AvoidReferencePose: p.AvoidPose, LoRA: p.LoRA,
 		CreatedAt: r.CreatedAt, FinishedAt: r.FinishedAt,
 	}
 	if p.Translation != nil {
@@ -93,11 +101,13 @@ func viewsOf(list []gentestrepo.Result) []ResultView {
 
 // InputView is an input image of a batch.
 type InputView struct {
-	ID        string      `json:"input_id"`
-	Role      string      `json:"role" jsonschema:"reference / first_frame / last_frame"`
-	MimeType  string      `json:"mime_type"`
-	SizeBytes int64       `json:"size_bytes"`
-	Origin    InputOrigin `json:"origin" jsonschema:"どこから取った画像か"`
+	ID        string `json:"input_id"`
+	Role      string `json:"role" jsonschema:"reference / face / style / edit / first_frame / last_frame"`
+	MimeType  string `json:"mime_type"`
+	SizeBytes int64  `json:"size_bytes"`
+	// Strength is how strongly an image model was asked to show the reference; absent when the default was used.
+	Strength *float64    `json:"strength,omitempty"`
+	Origin   InputOrigin `json:"origin" jsonschema:"どこから取った画像か"`
 }
 
 // InputOrigin is where an input image was taken from (the Source of the RefInput and its ID).

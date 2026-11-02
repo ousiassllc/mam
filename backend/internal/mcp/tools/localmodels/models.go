@@ -161,13 +161,15 @@ type Model struct {
 	Media             string             `json:"media" jsonschema:"image or video"`
 	ModelID           string             `json:"model_id,omitempty" jsonschema:"OpenAI 互換: サーバーに渡すモデル ID"`
 	AcceptsReferences bool               `json:"accepts_references" jsonschema:"参照画像を受け取れる"`
+	ReferenceMode     string             `json:"reference_mode,omitempty" jsonschema:"ComfyUI の画像: 参照画像の使い方。edit（編集モデル。複数枚・顔 / スタイル / 編集の役割あり）/ img2img（1 枚から始める）。ワークフローが示さなければ空"`
+	SupportsLoRA      bool               `json:"supports_lora,omitempty" jsonschema:"ComfyUI の画像: 生成テストの LoRA を使える（ワークフローに LoRA を差し込むノードがある）"`
 	Assignments       []Assignment       `json:"assignments" jsonschema:"ComfyUI: 入力の割り当て"`
 	OutputNode        string             `json:"output_node,omitempty"`
 	FPS               int                `json:"fps,omitempty"`
 	FramesStep        int                `json:"frames_step,omitempty"`
 	SizeMultiple      int                `json:"size_multiple,omitempty"`
 	Video             *VideoCapabilities `json:"video,omitempty"`
-	MaxReferences     int                `json:"max_reference_images,omitempty" jsonschema:"動画: 参照画像の上限（割り当てから決まる）"`
+	MaxReferences     int                `json:"max_reference_images,omitempty" jsonschema:"参照画像の上限（割り当てから決まる。ComfyUI の画像・動画）。生成テストの list_generation_models と同じ値"`
 	FirstFrame        bool               `json:"first_frame,omitempty"`
 	LastFrame         bool               `json:"last_frame,omitempty"`
 	CostPerImageUSD   float64            `json:"cost_per_image_usd"`
@@ -187,6 +189,10 @@ func modelOf(m localmodels.ModelView) Model {
 	if caps, ok := m.VideoCaps(); ok {
 		out.MaxReferences, out.FirstFrame, out.LastFrame = caps.MaxReferenceImages, caps.FirstFrame, caps.LastFrame
 	}
+	if caps := m.ReferenceCaps(); caps.Max > 0 {
+		out.MaxReferences, out.ReferenceMode = caps.Max, string(caps.Mode)
+	}
+	out.SupportsLoRA = m.SupportsLoRA() && m.Media == localcfg.MediaImage
 	return out
 }
 
