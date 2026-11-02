@@ -4,6 +4,7 @@ package exposedgate
 
 import (
 	"encoding/json"
+	"slices"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
@@ -27,5 +28,21 @@ func Hides(mgr *modelmanager.Service) func(id string, values map[string]any) boo
 		}
 		raw, err := json.Marshal(g)
 		return err == nil && mgr.AdultFiles().Reads(raw)
+	}
+}
+
+// Choices returns the filter of the choices of a choice input (gentest.Deps.HideChoices): while the gate is closed, it leaves out the choices that
+// name a file only an adult model has, but the one it is told to keep (the value the graph holds). A choice is judged by its own value, on a graph of one node, so it works for an input that is not exposed yet
+// (the picker offers it) as for one that is (the choices the screen and list_generation_models show).
+func Choices(mgr *modelmanager.Service) func(options []string, keep string) []string {
+	return func(options []string, keep string) []string {
+		if len(options) == 0 || mgr.AdultContentEnabled() {
+			return options
+		}
+		files := mgr.AdultFiles()
+		return slices.DeleteFunc(slices.Clone(options), func(o string) bool {
+			raw, err := json.Marshal(map[string]any{"n": map[string]any{"class_type": "x", "inputs": map[string]any{"i": o}}})
+			return o != keep && err == nil && files.Reads(raw)
+		})
 	}
 }

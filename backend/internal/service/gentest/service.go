@@ -72,6 +72,9 @@ type Deps struct {
 	// HiddenWith is Hidden for a run with the values of the exposed inputs put in: they can name a file only an adult model has
 	// (modelmanager.Service.HidesModelWith). May be nil.
 	HiddenWith func(modelID string, exposed map[string]any) bool
+	// HideChoices leaves out of the choices of a choice input the ones only an adult model has while the age gate is closed (exposedgate.Choices),
+	// for the picker and for the choices the models list. May be nil.
+	HideChoices func(options []string, keep string) []string
 	// MissingNodes gives the reason a model of the bundled ComfyUI cannot be chosen because a custom node its workflow requires is not installed
 	// (modelnodes, nodegate.ForModels); empty when it can. Nil: no model is refused for its nodes.
 	MissingNodes func(modelID string, required []string) string
@@ -127,7 +130,7 @@ func New(d Deps) *Service {
 		Repo: d.Repo, Adapter: d.Adapter, Dir: dir, Explain: d.Explain, Hidden: d.Hidden, HiddenWith: d.HiddenWith, FaceCrop: d.FaceCrop, Now: d.Now, Logger: d.Logger,
 	})
 	return &Service{
-		Deps: d, Link: link, Runner: run, Store: history.New(d.Repo, dir), catalog: modelcatalog.Catalog{Adapter: d.Adapter, Hidden: d.Hidden, MissingNodes: d.MissingNodes},
+		Deps: d, Link: link, Runner: run, Store: history.New(d.Repo, dir), catalog: modelcatalog.Catalog{Adapter: d.Adapter, Hidden: d.Hidden, HideChoices: d.HideChoices, MissingNodes: d.MissingNodes},
 	}
 }
 

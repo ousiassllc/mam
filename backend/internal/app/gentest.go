@@ -43,8 +43,8 @@ func newGentest(cfg config.Config, db *repository.DB, jobs *jobqueue.Queue, adap
 			_, msg := mmview.Refuse(err)
 			return msg
 		},
-		Hidden:          services.ModelManager.HidesModel,
-		HiddenWith:      exposedgate.Hides(services.ModelManager),
+		Hidden:     services.ModelManager.HidesModel,
+		HiddenWith: exposedgate.Hides(services.ModelManager), HideChoices: exposedgate.Choices(services.ModelManager),
 		MissingNodes:    nodegate.ForModels(services.ModelManager.Nodes, modelmanager.BundledEndpoint), // a workflow whose custom node is not installed cannot be chosen
 		PlatformWarning: mmview.PlatformWarningFor(services.ModelManager),
 		BundledEndpoint: modelmanager.BundledEndpoint,
