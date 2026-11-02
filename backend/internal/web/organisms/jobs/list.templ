@@ -23,6 +23,8 @@ type Progress struct {
 
 // Row is one job.
 type Row struct {
+	// ID is the job's id: it names the "開く" link (jobs-open-<ID>), so that the link keeps the focus when the list is swapped (#980).
+	ID string
 	// Label is the kind of the job ("導入", "生成テスト") and Subject what it works on (a model, a Project); "" when unknown.
 	Label   string
 	Subject string
@@ -119,6 +121,9 @@ templ row(r Row) {
 	}
 	if r.Href != "" {
 		<a
+			if r.ID != "" {
+				id={ "jobs-open-" + r.ID }
+			}
 			href={ templ.SafeURL(r.Href) }
 			class="self-start text-sm text-indigo-300 underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950"
 			aria-label={ "開く: " + r.name() }
