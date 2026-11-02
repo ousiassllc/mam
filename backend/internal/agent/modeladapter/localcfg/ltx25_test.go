@@ -1,6 +1,7 @@
 package localcfg_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -50,4 +51,38 @@ func TestLTX25TemplatesAreTheTwoPassWorkflowWithAudio(t *testing.T) {
 	i2v := graphOf(t, "img2video-ltx-2-5")
 	assert.Len(t, idsOf(i2v, "LTXVImgToVideoInplace"), 2, "the first frame conditions both passes")
 	assert.Len(t, idsOf(i2v, "LoadImage"), 1)
+}
+
+// The uncensored templates (Issue #927) are the standard ones with one difference: the text encoder file the CLIPLoader reads. The audio comes
+// out the same way: SaveVideo with the automatic container (an mp4 with H.264 video and AAC audio in ComfyUI v0.42.1), so the sound is in the file
+// the generation test stores and the <video> of the screen plays.
+func TestLTX25UncensoredTemplatesDifferOnlyInTheTextEncoder(t *testing.T) {
+	const standard, uncensored = "gemma4-12b-with-proj-ltx-2.5-comfy-int8-convrot.safetensors", "gemma4-12b-uncensored-heretic-deepneuralnerd-ltx-2.5-int8-convrot.safetensors"
+	for _, kind := range []string{"txt2video", "img2video"} {
+		std, _ := localcfg.TemplateByID(kind + "-ltx-2-5")
+		unc, ok := localcfg.TemplateByID(kind + "-ltx-2-5-uncensored")
+		require.True(t, ok, kind)
+		assert.Equal(t, strings.ReplaceAll(string(std.Model.Workflow.Graph), standard, uncensored), string(unc.Model.Workflow.Graph), kind)
+		assert.Equal(t, std.Model.Workflow.Assignments, unc.Model.Workflow.Assignments, kind)
+		caps, ok := unc.Model.VideoCaps()
+		require.True(t, ok)
+		assert.True(t, caps.NativeAudio, kind)
+
+		g := graphOf(t, kind+"-ltx-2-5-uncensored")
+		save := g[idsOf(g, "SaveVideo")[0]]
+		assert.JSONEq(t, `"auto"`, string(save.Inputs["format"]), kind)
+		assert.JSONEq(t, `"auto"`, string(save.Inputs["codec"]), kind)
+		assert.Contains(t, unc.Description, "成人向け", kind)
+	}
+}
+
+// The defaults for a 16 GB GPU are in the graph itself: the quantized diffusion model and text encoder, and the tiled VAE decode.
+func TestLTX25TemplatesDefaultToTheLowVRAMSetup(t *testing.T) {
+	for _, id := range []string{"txt2video-ltx-2-5", "img2video-ltx-2-5", "txt2video-ltx-2-5-uncensored", "img2video-ltx-2-5-uncensored"} {
+		g := graphOf(t, id)
+		assert.Contains(t, string(g[idsOf(g, "UNETLoader")[0]].Inputs["unet_name"]), "int8-convrot", id)
+		assert.Contains(t, string(g[idsOf(g, "CLIPLoader")[0]].Inputs["clip_name"]), "int8", id)
+		require.Len(t, idsOf(g, "VAEDecodeTiled"), 1, id)
+		assert.Empty(t, idsOf(g, "VAEDecode"), id+": the whole frame stack is never decoded at once")
+	}
 }

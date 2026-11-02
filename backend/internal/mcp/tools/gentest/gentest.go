@@ -83,6 +83,7 @@ func Register(r *mcpkit.Registrar, svc *service.Services) {
 	mcpkit.Write(r, "import_generation_result",
 		"生成テストの結果（成功したもの）をプロジェクトに取り込む。参照（Reference Library。画像のみ。source=generated）かアセットとして、ファイルをプロジェクトの assets に複製する。参照にはさらに assign で Character の face/body・Product・Location のスロットへ割り当てられる / Import a succeeded result into a Project as a reference or an asset.",
 		h.importResult)
+	registerMatch(r, h)
 }
 
 type handlers struct {
@@ -144,6 +145,9 @@ func (h handlers) probe(ctx context.Context, job mcpkit.JobInfo) (mcpkit.Progres
 	}
 	if err != nil {
 		return mcpkit.Progress{}, mapError(err)
+	}
+	if h.running(ctx, g, b.BatchID) {
+		b.State, b.Finished = gentest.StateRunning, false
 	}
 	return mcpkit.Progress{
 		State: jobState(b.State), Done: b.Done, Total: b.Total, Error: b.Error,

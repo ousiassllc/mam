@@ -58,7 +58,7 @@ func (s *Service) Estimate(ctx context.Context, r Request) (Estimate, error) {
 		return Estimate{}, err
 	}
 	for _, ref := range est.Request.References { // an input that is gone is refused now, not after the confirmation
-		if _, err := s.resolve(ctx, ref); err != nil {
+		if _, err := s.ResolveInput(ctx, ref); err != nil {
 			return Estimate{}, err
 		}
 	}

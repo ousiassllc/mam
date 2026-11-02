@@ -4,13 +4,12 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
-	"github.com/ousiassllc/mam/backend/internal/service/gentest/refs"
-
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/direct"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/refs"
 )
 
 // Warning is something the confirmation tells the user before the batch runs: an input a model cannot use, a length that is
@@ -165,4 +164,32 @@ func unitPrice(info modelcatalog.Info, media, resolution string, seconds float64
 		}
 	}
 	return nil, modelcatalog.BasisUnknown
+}
+
+// resultParamsOf is what is recorded of the request for the result of one model.
+func resultParamsOf(r Request, mp modelPlan, translation *sentText) resultParams {
+	p := resultParams{
+		AspectRatio: r.AspectRatio, Resolution: mp.resolution, DurationSeconds: mp.seconds, Translation: translation, AvoidPose: mp.avoidPose,
+	}
+	if mp.lora {
+		p.LoRA = &refs.LoRA{Name: r.LoRA.Name, Strength: *r.LoRA.Strength}
+	}
+	return p
+}
+
+// planImage decides which references, which LoRA and which pose option an image model takes of the request (refs.Decide).
+func (s *Service) planImage(r Request, p *modelPlan, warn func(code, format string, args ...any)) {
+	roles := make([]string, len(r.References))
+	for i, ref := range r.References {
+		roles[i] = ref.Role
+	}
+	info := p.info
+	d := refs.Decide(refs.Model{
+		Label: info.Label, AcceptsReferences: info.AcceptsReferences, MaxReferences: info.MaxReferenceImages, Roles: info.ReferenceRoles,
+		SupportsLoRA: info.SupportsLoRA,
+	}, roles, r.LoRA != nil, r.AvoidReferencePose)
+	p.used, p.lora, p.avoidPose = d.Used, d.LoRA, d.AvoidPose
+	for _, w := range d.Warnings {
+		warn(w.Code, "%s", w.Message)
+	}
 }

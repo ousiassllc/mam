@@ -104,6 +104,9 @@ templ modelCard(m Model, blocked bool) {
 				<div class="col-span-2"><dt class="text-neutral-400">原本の場所</dt><dd class="break-words" data-testid="mm-sources">{ joinNames(m.Sources) }</dd></div>
 			}
 		</dl>
+		if m.VRAMFitText != "" {
+			<p class={ "text-xs " + fitClass(m.VRAMFit) } data-testid="mm-vram-fit" data-fit={ m.VRAMFit }>{ m.VRAMFitText }</p>
+		}
 		@commercial.Note(m.License.Answer)
 		if m.State == "installing" && m.Install != nil {
 			@progressBar(*m.Install, m.Name+" の導入の進み具合")
@@ -133,6 +136,18 @@ templ modelCard(m Model, blocked bool) {
 			<p class="mt-1 text-neutral-400">{ joinNames(m.ModelIDs) }／{ m.WorkflowCheck }</p>
 		</details>
 	</li>
+}
+
+// fitClass colours the judgement of the GPU against a model's VRAM guideline: below the minimum is a danger, "動くが制約あり" a warning,
+// and enough the plain text (color-rules.md §3.1).
+func fitClass(fit string) string {
+	switch fit {
+	case "short":
+		return "text-red-300"
+	case "limited":
+		return "text-amber-300"
+	}
+	return "text-neutral-300"
 }
 
 func needClass(low bool) string {

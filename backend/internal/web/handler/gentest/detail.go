@@ -13,6 +13,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/projectlink"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/matchscreen"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/refform"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
@@ -25,10 +26,11 @@ func (h Handlers) detail(ctx context.Context, d gentest.ResultDetail, f view.Imp
 	v := view.Detail{
 		Card: cardOf(d.ResultView, false), SentPrompt: d.SentPrompt, Negative: d.NegativePrompt, NegMode: negativeModeText[d.NegativeMode],
 		English: d.TranslatedPrompt, EnglishNegative: d.TranslatedNegativePrompt,
-		Params: params(d), Answer: commercial.Of(d.Model),
+		Params: append(params(d), matchscreen.DetailKVs(ctx, h.Svc, d.BatchID, d.ID)...), Answer: commercial.Of(d.Model),
 	}
 	if d.Media == gentest.MediaImage && d.HasFile {
 		v.UseURL = paths.GenerationTest() + "?ref=" + refform.Value{Source: gentest.FromHistory, ID: d.ID}.String()
+		v.MatchURL = paths.GenerationTestMatch() + "?ref=" + refform.Value{Source: gentest.FromHistory, ID: d.ID}.String()
 	}
 	for _, in := range d.Inputs {
 		v.Inputs = append(v.Inputs, view.InputCard{Role: roleText(in), Origin: originText[in.Origin.Kind], URL: paths.GenerationTestPart("inputs", in.ID, "file")})

@@ -136,7 +136,7 @@ var coreNodes = []string{
 // existing node, the output node exists, and the capabilities follow from the assignments.
 func TestTemplatesAreStructurallyValid(t *testing.T) {
 	templates := localcfg.Templates()
-	require.Len(t, templates, 20)
+	require.Len(t, templates, 22)
 	byMedia := map[localcfg.Media]int{}
 	for _, tpl := range templates {
 		byMedia[tpl.Media]++
@@ -153,7 +153,7 @@ func TestTemplatesAreStructurallyValid(t *testing.T) {
 		assert.Equal(t, tpl.ID, got.ID)
 	}
 	assert.Equal(t, 10, byMedia[localcfg.MediaImage])
-	assert.Equal(t, 10, byMedia[localcfg.MediaVideo])
+	assert.Equal(t, 12, byMedia[localcfg.MediaVideo])
 
 	i2v, _ := localcfg.TemplateByID("img2video-wan22-5b")
 	caps, ok := i2v.Model.VideoCaps()

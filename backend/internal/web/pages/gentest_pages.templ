@@ -13,6 +13,7 @@ templ generationNav(current string) {
 	<nav class="flex flex-wrap gap-4 text-sm" aria-label="生成テスト">
 		for _, l := range []struct{ Key, Label, Href string }{
 			{"new", "生成する", paths.GenerationTest()},
+			{"match", "画像から似せる", paths.GenerationTestMatch()},
 			{"history", "履歴", paths.GenerationTestHistory()},
 			{"prompts", "プロンプト履歴", paths.GenerationTestPrompts()},
 		} {
@@ -50,6 +51,15 @@ templ GenerationTestPage(csrfToken string, c gentest.Compose) {
 		@gentest.ComposeForm(c)
 		@gentest.ConfirmEmpty()
 		@gentest.BatchEmpty()
+	}
+}
+
+// GenerationMatchPage is GET /generation-test/match: from one reference image the AI writes a prompt and fixes it until the generated image looks like it.
+templ GenerationMatchPage(csrfToken string, c gentest.MatchCompose) {
+	@generationShell("画像から似せる", csrfToken, "match", "参考の画像から英語のプロンプトを作り、似るまで直して生成し直します。作ったプロンプトと各回の結果は履歴に残り、いちばん似ていた回のプロンプトをそのまま使えます。") {
+		@gentest.MatchForm(c)
+		@gentest.ConfirmEmpty()
+		@gentest.MatchEmpty()
 	}
 }
 
