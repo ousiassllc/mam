@@ -9,7 +9,7 @@
 | `id` | PK |
 | `media` | `image` / `video` |
 | `job_id` | ジョブ（種別 `gentest`）の ID。`idx_gentest_batch_job` |
-| `params` | JSON: `aspect_ratio`・`resolution`・`duration_seconds`・`count`（1 組あたりの本数）・`translate_to_english`（英訳を ON にして実行したとき true。[gentest.md](gentest.md) §3.1） |
+| `params` | JSON: プロンプトマッチ（[prompt-match.md](prompt-match.md)）のバッチは `match`（`{"target_score": N}`）を持つ。`aspect_ratio`・`resolution`・`duration_seconds`・`count`（1 組あたりの本数）・`translate_to_english`（英訳を ON にして実行したとき true。[gentest.md](gentest.md) §3.1） |
 | `estimated_cost` | 確認した見積りの合計（USD。単価なしは含まない） |
 | `estimate` | JSON: 確認した見積り（要求・モデルごとの内訳・警告） |
 | `created_at` / `finished_at` | 作成・全結果が終わった日時 |
