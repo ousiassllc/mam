@@ -63,6 +63,20 @@ Issue #835。画面 `/generation-test`、MCP ツール（[../../api/mcp-tools-ge
 - **見積り・ID**: 値は `Estimate.Request` に入り、見積りの ID に含まれる（確認した内容と違う値では実行できない）。単価は変わらない。
 - 実装は `service/gentest/sampling.go`（検証・`seedFor`・`planSampling`）と、`comfyui/sampling.go`（グラフへの書き込み）。
 
+## 3.4 大きくする（アップスケール。Issue #975）
+
+成功した画像の結果を **2 倍・4 倍**にする。結果の詳細の「大きくする」（倍率と方式を選んで 1 操作）と、MCP の `upscale_generation_result`（結果 ID＋倍率）が同じ `Service.Upscale` を呼ぶ。**見積り・確認は無い**（アップスケールのワークフローはローカルの ComfyUI のモデルで、無料。`basis=free`）。
+
+- **別の結果として残る**: 元の結果のファイルを入力として新しいバッチ（結果 1 件・入力 1 枚。origin は `history`）に複製し、ジョブ（種別 `gentest`）で動かす。元の結果は変わらず残り、大きくした結果は履歴の別の行・別のファイル。**元へのリンクと使った値**は結果の `params.upscale`（`record.Upscale`: `source_result_id`・`source_model`・`scale`・`model`・`mode`・`native`・元と出力の大きさ）に残し、`ResultView.upscale`・結果の詳細の「拡大」「大きさ」「元の結果」の行と元の結果へのリンク・MCP の `get_generation_result` に出る。元を後で消してもこの結果は残る（リンクだけが切れる）。大きくした結果をもう一度大きくしてもよい。
+- **ワークフロー種別として扱う**: アップスケールは、**画像モデルの選択とは別の「ワークフロー種別」**にした。ComfyUI のワークフロー（`localcfg.Workflow`）の `upscale`（`localcfg/upscale.Spec` = `{label, native, mode, max_output_pixels}`）で印を付け、同じエンジン（同梱の `bundled-comfyui`）の画像ワークフローとして作る。印のあるワークフローは**プロンプトを渡すモデルの一覧に出さない**（`localcfg.IDs`・生成テストの `modelcatalog.Models`・モデルマネージャーの試し生成から除く）。「大きくする」は `modelcatalog.Catalog.Upscalers` が出す専用の一覧から選ぶ。既存の画像モデルの選択 UI・見積り・確認の流れには触れない（最も小さい変更）。
+- **方式**（`upscale.mode`）: `model` = `LoadImage` → `UpscaleModelLoader` → `ImageUpscaleWithModel`（内部でタイルに分けて処理する。タイルは 512 から始め、メモリが足りなければ半分にする）→ `ImageScaleBy`（lanczos）→ `SaveImage`。`two_pass` = 同じ拡大のあと、`VAEEncodeTiled` → 低い denoise（0.3）の `KSampler`（SDXL base）→ `VAEDecodeTiled`（どちらもタイル 512・重なり 64）→ `SaveImage`。ComfyUI 本体のノードだけ。
+- **倍率**: モデルの倍率（`upscale.native`。今のカタログは 4 倍）と依頼の倍率の比 `scale / native` を、`ImageScaleBy` の `scale_by` に入れる（値の割り当て `upscale_ratio`。4 倍の依頼はそのまま、2 倍は半分に縮める）。倍率は `UpscaleScales`（2・4）以外なら `validation`。
+- **2 パス仕上げ**: 元の結果の**プロンプト・ネガティブプロンプト・送った文・シード**を引き継ぐ（元が英訳されていたら英訳の記録も）。モデルは SDXL base の固定（元の結果のモデルには依存しない。元が別のモデルでも、プロンプトは文として SDXL に渡す）。CLIP のウェイト構文は効く（`prompt_weight: supported`）。
+- **上限**: 出力の画素数（幅 × 高さ）が `MaxUpscaleOutputPixels`（64 Mpx = 8192 × 8192）を超える、またはワークフローの `max_output_pixels`（2 パスは 16 Mpx = 4096 × 4096）を超えるなら、何も始めずに `validation`（元の画像の大きさは、保存した画像の先頭から読む）。理由は、PNG が数百 MB になってエンジンの応答の上限（300 MiB）に近づくことと、2 パスは画像全体をサンプリングするため。**mam が決めた安全側の値で、実測の値ではない**。
+- **入っているモデルだけ**: モデルマネージャーでアップスケール用のモデルを入れる（カタログの `kind: upscale`。[../model-manager/model-manager.md](../model-manager/model-manager.md) §4.2「アップスケール用モデル」）と、そのワークフローが同梱エンジンに作られる。無ければ「大きくする」はモデルマネージャーへの案内を出し、`Upscale` は `validation`（「アップスケール用のモデルが入っていません」）。`model` を省くと、入っているもののうちプロンプトの要らない方式（`mode=model`）の最初。名指しのモデルが入っていない・使えない（年齢確認・サーキットブレーカー）なら `validation`。
+- **16GB の GPU（未測定）**: ComfyUI のタイル処理（`ImageUpscaleWithModel`・`VAEEncodeTiled`・`VAEDecodeTiled`）で、全体を一度に GPU に載せない作りにした。**16GB の GPU で 4 倍が落ちないことは、実機で測っていない（未測定。実機で確認が要る）**。VRAM の目安（カタログの `vram`）も mam の見積もりで、`estimate: true`。
+- テストは `service/gentest/localtest/upscale_test.go`（ComfyUI の偽のサーバーを通して、別ファイルの結果・元の記録・倍率の比・2 パスのプロンプトとシード・拒否・上限・モデルの一覧から外れること）、`web/handler/gentest/upscale_test.go`（画面）、`mcp/tools/gentest/upscale_test.go`（MCP）。
+
 ## 3.2 プロンプトマッチ（Issue #916）
 
 参考の画像 1 枚から、AI が英語のプロンプトを作り、生成して、似ているかを測り、違いをもとに直して生成し直す（おまかせ・1回だけ・調整。言葉の指示で直せる）。生成テストのバッチとして動き、各回は結果として履歴に残る。設計は [prompt-match.md](prompt-match.md)。

@@ -96,6 +96,13 @@ openai-compat:lmstudio/flux-schnell
 - **断定しないもの**: Flux.1（T5-XXL + CLIP-L。ComfyUI は重みを読むが、文を読むのは T5 で、効きは確かめていない）・Chroma（T5）・Wan 2.2（UMT5）・LTX-Video 0.9.5（T5）は `weak`。GPU での効き方は未確認（実機の確認が要る）。ユーザー自作のワークフローと外部のモデルは `unknown`（警告は出さない。当て推量の警告は雑音になる）。
 - **効かないモデルへの案内**: 画面の「?」と、見積りの警告 `prompt_weight`（プロンプトに `(…)` があるときだけ）が、「強調したい語を文で言い換える（特に・とても・大きく、先頭に置く、具体的に書く）」を出す。
 
+### 4.5 画像を大きくするワークフロー（`upscale`。Issue #975）
+
+- **印**: ワークフローの `upscale`（`{label, native, mode, max_output_pixels}`。`localcfg/upscale.Spec`。印の型・倍率の計算（`Ratio`）・検証は `localcfg` の下位パッケージ `upscale` に置いた。`promptweight` と同じ分け方）は、そのワークフローが**画像を作るのではなく、渡した画像を大きくする**ことを表す。`native` はアップスケール用モデルの倍率（4 倍のモデルなら 4）、`mode` は `model`（`UpscaleModelLoader` → `ImageUpscaleWithModel` → `ImageScaleBy`）か `two_pass`（そのあと `VAEEncodeTiled` → 低い denoise の `KSampler` → `VAEDecodeTiled`）。画像のワークフロー（`media: image`）の印として持つので、接続先・保存・版の仕組みはそのまま使う。
+- **割り当て**: `reference_image`（大きくする画像。ちょうど 1 つ）と `upscale_ratio`（`ImageScaleBy` の `scale_by` に、依頼の倍率 ÷ `native` を入れる。ちょうど 1 つ。`two_pass` は加えて `prompt`・`negative_prompt`・`seed`・`steps`・`cfg`・`sampler`・`scheduler`）。印の無いワークフローに `upscale_ratio` は割り当てられない。印のあるワークフローはプロンプトの割り当てが要らない（`model` 方式）。グラフに `ImageUpscaleWithModel` が要る。`localcfg.validateUpscale` → `upscale.Validate`。
+- **一覧**: 印のあるワークフローは、プロンプトを渡すモデルではないので、`localcfg.IDs`（画像・動画のモデルの識別子）・生成テストのモデルの一覧・モデルマネージャーの試し生成には**出ない**。生成テストの `modelcatalog.Catalog.Upscalers` が専用の一覧を返し、「大きくする」（[gentest/gentest.md](gentest/gentest.md) §3.4）が使う。
+- **コアのノードだけ**: `ImageScaleBy`・`ImageUpscaleWithModel`・`UpscaleModelLoader`・`VAEEncodeTiled` をテストの `coreNodes`（テンプレートが使ってよいクラスの一覧）に足した。同梱エンジンは追加ノードなしで動く。
+
 ### 4.2 画像モデルの参照画像・強さ・役割・LoRA（#933）
 画面と MCP は、どのモデルでも同じ「強さ」（0〜1、既定 0.7）と「役割」を渡す。ワークフローの作りの違いは `localcfg`・`comfyui` が吸収する。`reference_mode` が方式を決める（`localcfg.Model.ReferenceCaps()` が方式・上限枚数・選べる役割を返し、画面と `accepts_references`・`max_reference_images` の元になる）。
 

@@ -45,6 +45,8 @@ ComfyUI のノード画面（[comfy-embedding.md](comfy-embedding.md)）で作�
 
 ワークフローは全体で持つので**バンドルに含めない**（`bundle` の `unbundledTables` に理由つきで載せる）。バンドルを取り込んだとき、その Project の Take（`model_name`）と Video Model の LOCK が指す `comfy:<id>@v<N>` のうち、この mam に無いワークフロー（または版）があれば、**取り込みは成功させ**、その Project のチャットに「見つからない」と一覧を出して警告する（`repository/bundle.MissingWorkflows`）。該当の Shot は、ワークフローを取り込むか別のモデルを選び直すまで、固定が無視されて AUTO と同じ経路で選ばれる。
 
+**アップスケールのワークフロー（Issue #975）**: 画像を大きくするワークフロー（`upscale` の印。[../local-models.md](../local-models.md) §4.5）は、モデルマネージャーのカタログ（`kind: upscale`）が同梱エンジンに作る。保存したワークフロー（この表）には、印はまだ持てない（保存の画面は `upscale` を編集しない）。印のある同梱のワークフローは、保存したワークフローの「モデルとしての公開」（§2）と同じ「プロンプトを渡すモデル」の一覧には出ない。
+
 ## 7. 検証できていないこと
 
 実機の ComfyUI と GPU では実行していない（偽の ComfyUI `comfyuitest` が `/object_info`・`/userdata`・`/history`・`/models/<folder>` と実行を再現する）。`/history` の記録の形（`prompt` タプルと `extra_data.extra_pnginfo.workflow`）は ComfyUI のソースから読んだもので、実機での確認が残っている。

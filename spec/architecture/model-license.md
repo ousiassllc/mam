@@ -64,6 +64,9 @@
 | `wan22-i2v-14b-lightx2v` | 商用OK | ベースの Wan 2.2 も LightX2V の 4 ステップ LoRA（`lightx2v/Wan2.2-Distill-Loras`）も Apache-2.0（LoRA はモデルカードの `license: apache-2.0`。LICENSE のファイルは無く、カードの宣言に従う）。#930 |
 | `wan22-i2v-14b-lightx2v-uncensored` | **不明** | ベースは Apache-2.0（商用OK）。非検閲の LoRA（`rzgar/Wan2.2_LightX2V_4Step_Uncensored`）はカードが `license: apache-2.0` と宣言するだけで、LICENSE の本文も、非検閲の学習に使ったデータの出所も無い。宣言だけでは確かめられないので、厳しい方の「不明」（`license.id = apache-2.0-declared`）。成人向けなので同意必須。#930 |
 | `wan22-i2v-14b-nsfw-lora`・`wan22-remix-nsfw-i2v`・`wan22-remix-nsfw-t2v` | **不明** | ベースの Wan 2.2 は Apache-2.0。LoRA・マージの側にライセンスの本文が無い（旧版は「商用不可」と扱っていた。確認できないものは断定せず不明にした） |
+| `upscale-nomos-uni-span` | 商用OK | 4xNomosUni_span_multijpg のモデルカード（メタデータ `license: cc-by-4.0`・本文 `License: CC BY 4.0`）。作者（Philip Hofmann）の表示が条件。学習データの条件は未確認（#975） |
+| `upscale-nomos-webphoto-esrgan` | **不明** | 4xNomosWebPhoto_esrgan のモデルカードは、メタデータが `license: cc-by-4.0` で本文が `License: CC-BY-0.4`（存在しない版）と食い違い、作者の GitHub リリースも `CC-BY-0.4`。LICENSE ファイルは無い。確かめられないので不明（#975） |
+| `upscale-2pass-sdxl-span` | 商用OK | SDXL base（CreativeML Open RAIL++-M）と SPAN（CC BY 4.0）の 2 部品で、どちらも商用OK |
 | クラウド: `nano-banana`・`nano-banana-lite`・`gemini-omni-flash`（Gemini API。「Use of Generated Content」: Google は生成物の所有権を主張しない）、`flux-2`（BFL。生成物の所有権を主張しない）、`gpt-image-2`・ChatGPT サブスク（OpenAI。Output は利用者のもの）、`runway-gen-4.5`（Runway。入力と生成物の所有権を主張しない） | 商用OK | 各社の利用規約を 2026-11-02 に読み、生成物の所有権を主張しない・利用者に帰属させるとしている（出典 URL は `cloud.json`）。ChatGPT サブスクは mam が使う経路が非公式で、注意を付ける |
 | クラウド: `luma-ray-3.2` | 条件つき | 規約 §4: 商用利用を認めるサブスクリプションに限る |
 | クラウド: `kling-3.0`・`kling-4.0`・`minimax-h3`・`minimax-h3-max`・`wan-3.0`・`seedance-2.0`・`seedance-2.5`（BytePlus） | **不明** | 規約の本文を読めなかった、または商用利用を許す文を見つけられなかった（公開ページが JS 描画・地域制限・契約で非公開）。商用の前に契約を確認する |
@@ -132,3 +135,4 @@
 | 1.5 | 2026-11-02 | §2: HF のカードの `license_link` は https のものだけをリンクにする | 統合レビュー。検証なしに `SourceURL` へ入れ、`templ.SafeURL` で href にしていた（`javascript:` が通る）。HF の `license` タグだけで商用OKにする点は変えていない（方針は人が決める） |
 | 1.6 | 2026-11-02 | §3 の答えの表に `ltx-2.5-22b-distilled-nvfp4`・`-dfr`（条件つき）・`wan22-ti2v-5b-fp8`（商用OK）を足した | Issue #967・#968 |
 | 1.7 | 2026-11-03 | §3 の答えの表に `qwen-image-edit-2511`（商用OK。Apache-2.0）を足した | Issue #971 |
+| 1.8 | 2026-11-03 | §3 の答えの表にアップスケール用のモデル（`upscale-nomos-uni-span`＝商用OK・`upscale-nomos-webphoto-esrgan`＝不明（カードのメタデータと本文のライセンスが食い違う）・`upscale-2pass-sdxl-span`＝商用OK）を足した | Issue #975 |
