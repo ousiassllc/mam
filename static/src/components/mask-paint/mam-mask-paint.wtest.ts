@@ -1,4 +1,5 @@
-import { expect, fixture, html } from '@open-wc/testing';
+import { expect, fixture, html, waitUntil } from '@open-wc/testing';
+import htmx from 'htmx.org';
 import './mam-mask-paint';
 import type { MamMaskPaint } from './mam-mask-paint';
 
@@ -42,11 +43,11 @@ describe('the inpaint mask painter (spec/components/gentest-screen.md)', () => {
     for (let i = 0; i < 6; i++) canvas.dispatchEvent(new KeyboardEvent('keydown', { key: '[', bubbles: true }));
     canvas.dispatchEvent(new KeyboardEvent('keydown', { key: 'b', bubbles: true }));
     await el.updateComplete;
-    expect(el.querySelector('[role="radio"]')?.getAttribute('aria-checked')).to.equal('true');
+    expect(el.querySelector('button[aria-pressed]')?.getAttribute('aria-pressed')).to.equal('true');
     canvas.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
     canvas.dispatchEvent(new KeyboardEvent('keydown', { key: 'e', bubbles: true }));
     await el.updateComplete;
-    expect(el.querySelectorAll('[role="radio"]')[1]?.getAttribute('aria-checked')).to.equal('true');
+    expect(el.querySelectorAll('button[aria-pressed]')[1]?.getAttribute('aria-pressed')).to.equal('true');
     canvas.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
     canvas.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
     const back = await pixel(await el.maskPNG(), 20, 16);
@@ -61,28 +62,88 @@ describe('the inpaint mask painter (spec/components/gentest-screen.md)', () => {
     expect(mid.r).to.equal(0);
   });
 
-  it('puts the PNG into the mask file input when the form is submitted', async () => {
-    const form = await fixture<HTMLFormElement>(html`
-      <form>
-        <mam-mask-paint width="32" height="32"></mam-mask-paint>
-        <input type="file" name="mask" />
-        <button type="submit">送る</button>
-      </form>
-    `);
-    const el = form.querySelector('mam-mask-paint') as MamMaskPaint;
+  it('keeps a fast drag as one connected stroke', async () => {
+    const el = await paint();
+    const canvas = el.querySelector('canvas')!;
+    for (let i = 0; i < 6; i++) canvas.dispatchEvent(new KeyboardEvent('keydown', { key: '[', bubbles: true }));
+    const r = canvas.getBoundingClientRect();
+    const at = (type: string, x: number, y: number) =>
+      canvas.dispatchEvent(
+        new PointerEvent(type, { clientX: r.left + x, clientY: r.top + y, pointerId: 7, bubbles: true }),
+      );
+    at('pointerdown', 2, 16);
+    at('pointermove', 30, 16);
+    at('pointerup', 30, 16);
+    const blob = await el.maskPNG();
+    for (const x of [2, 9, 16, 23, 30]) expect((await pixel(blob, x, 16)).r, `x=${x}`).to.be.greaterThan(200);
+    expect((await pixel(blob, 16, 8)).r).to.equal(0);
+  });
+
+  it('draws nothing after the pointer is released and keeps the keyboard cursor inside the picture', async () => {
+    const el = await paint();
+    const canvas = el.querySelector('canvas')!;
+    for (let i = 0; i < 6; i++) canvas.dispatchEvent(new KeyboardEvent('keydown', { key: '[', bubbles: true }));
+    const r = canvas.getBoundingClientRect();
+    canvas.dispatchEvent(new PointerEvent('pointerup', { pointerId: 7, bubbles: true }));
+    canvas.dispatchEvent(
+      new PointerEvent('pointermove', { clientX: r.left + 28, clientY: r.top + 4, pointerId: 7, bubbles: true }),
+    );
+    for (let i = 0; i < 10; i++)
+      canvas.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+    canvas.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    const blob = await el.maskPNG();
+    expect((await pixel(blob, 28, 4)).r).to.equal(0);
+    expect((await pixel(blob, 3, 16)).r).to.be.greaterThan(200);
+  });
+
+  it('shows the chosen tool as a pressed button', async () => {
+    const el = await paint();
+    const [brush, eraser] = [...el.querySelectorAll<HTMLButtonElement>('button[aria-pressed]')];
+    expect(brush?.getAttribute('aria-pressed')).to.equal('true');
+    eraser!.click();
     await el.updateComplete;
-    el.querySelector('canvas')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
-    let submits = 0;
-    form.addEventListener('submit', (e) => {
-      submits += 1;
-      e.preventDefault();
+    expect(brush?.getAttribute('aria-pressed')).to.equal('false');
+    expect(eraser?.getAttribute('aria-pressed')).to.equal('true');
+    expect(eraser?.className).to.contain('focus-visible:ring-2');
+  });
+
+  describe('inside an htmx form', () => {
+    const real = XMLHttpRequest.prototype.send;
+    let sent: FormData[];
+
+    beforeEach(() => {
+      sent = [];
+      // The request is counted and not sent: a form that htmx sends twice (once without the mask) shows up here.
+      XMLHttpRequest.prototype.send = (body?: Document | XMLHttpRequestBodyInit | null) => {
+        sent.push(body as FormData);
+      };
     });
-    form.requestSubmit();
-    await el.maskPNG();
-    await new Promise((r) => setTimeout(r, 0));
-    const file = form.querySelector<HTMLInputElement>('input[name="mask"]')!.files?.[0];
-    expect(submits).to.be.greaterThan(0);
-    expect(file?.type).to.equal('image/png');
-    expect(file?.size).to.be.greaterThan(0);
+
+    afterEach(() => {
+      XMLHttpRequest.prototype.send = real;
+    });
+
+    it('sends the form once, with the mask, and never lets the first submit go without it', async () => {
+      const form = await fixture<HTMLFormElement>(html`
+        <form hx-post="/mask-paint-test" hx-sync="this:drop" hx-encoding="multipart/form-data" enctype="multipart/form-data" hx-swap="none">
+          <mam-mask-paint width="32" height="32"></mam-mask-paint>
+          <input type="file" name="mask" hidden />
+          <button type="submit">送る</button>
+        </form>
+      `);
+      htmx.process(form);
+      const el = form.querySelector('mam-mask-paint') as MamMaskPaint;
+      await el.updateComplete;
+      el.querySelector('canvas')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+      let submits = 0;
+      form.addEventListener('submit', () => (submits += 1));
+      form.requestSubmit();
+      await waitUntil(() => sent.length > 0, 'the form was not sent', { timeout: 2000 });
+      expect(submits).to.equal(1);
+      expect(sent).to.have.length(1);
+      const mask = sent[0]!.get('mask') as File;
+      expect(mask.type).to.equal('image/png');
+      expect(mask.size).to.be.greaterThan(0);
+    });
   });
 });
