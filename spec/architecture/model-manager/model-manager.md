@@ -86,7 +86,7 @@ ComfyUI **v0.42.1** のリリースアセット 4 種（`ComfyUI_windows_portabl
 
 `127.0.0.1:8188`・`:8000` の `/system_stats`（`system.comfyui_version` を持つ JSON）を調べる。`%APPDATA%\ComfyUI\config.json`（ComfyUI Desktop）は**ヒントにだけ**使う。ポート 8000 で見つかったものは ComfyUI Desktop として**外部 URL**に使い、MAM は起動も停止もしない。`Report{Found, Desktop, Recommended}`。
 
-## 4. モデルのカタログ（`catalog/data/models/*.json`）
+## 4. モデルのカタログ（`catalog/data/models/**/*.json`）
 
 ### 4.1 スキーマ
 
@@ -100,7 +100,7 @@ ComfyUI **v0.42.1** のリリースアセット 4 種（`ComfyUI_windows_portabl
 | `license` | `id`・`version`・`name`・`url`・`summary`・`commercial`（`yes` / `conditional` / `no` / `unknown`）・`commercial_condition`・`checked_at`（原文を読んだ日）・`components[]`（ベースと派生でライセンスが違うときの部品ごとの内訳。全体の `commercial` はその最も厳しい答え）・`excluded_regions`・`notice`。意味・置き場所・各モデルの答えは [../model-license.md](../model-license.md)（Issue #928） |
 | `consent_required` | true のモデルは、同意の記録が無いと導入のジョブを作れない（§6） |
 | `requires_hf_token` | true のモデルは、Hugging Face のログイン（トークン）が要るファイルを持つ（gated。LTX-2.5）。`InstallModel` が、トークンの有無とアクセスの権限を**ジョブを作る前に**確かめる（§5.3）。画面のカードに「HF トークンが必要」のバッジを出す。それ以外のモデルは false（ログイン不要の `Comfy-Org` ミラーなど）。true のモデルのファイルは、すべて `huggingface.co` の固定 URL でなければならない（第三者のミラーは使わない。`catalog.Validate`） |
-| `workflows[]` | `name`（`local_models` のワークフロー名）と `template`（`localcfg` のテンプレート。local-models.md §4） |
+| `workflows[]` | `name`（`local_models` のワークフロー名）・`template`（`localcfg` のテンプレート。local-models.md §4）・`model_file`（省略可。テンプレートの**主ファイルのローダー**〔`CheckpointLoaderSimple` の `ckpt_name`、`UNETLoader` の `unet_name`。ちょうど 1 つ〕が読むファイル名を、このモデルのファイルに置き換える。SDXL・Qwen-Image 2.1 のテンプレートを多くのモデルで共有するため。`catalog.Workflow.Model`・`catalog/mainfile`。導入のときも検証も、置き換えたあとのグラフで「ローダーの名前がモデルのファイルと一致する」を調べる） |
 
 ### 4.2 v1 のモデル
 
@@ -201,6 +201,46 @@ Wan 2.2 14B のベース（`wan22-i2v-14b`）は I2V のみ（決定 4）。Remi
 - **DFR（Diffusion Fidelity Rendering。Issue #968）**: `ltx-2.5-22b-distilled-dfr`（ワークフロー名 `ltx-2-5-dfr-i2v`、テンプレート `img2video-ltx-2-5-dfr`）。Comfy 公式の `video_ltx2_5_dfr_i2v`（先頭フレームから。ComfyUI の文書では「画像から、または `Switch to T2V` でテキストから」）の 88 ノードのサブグラフを API 形式に展開し（拡張・スイッチを固定して不要なノードを除いた 71 ノード）、割り当ては `prompt`・`negative_prompt`・`seed`（3 段の `RandomNoise` に同じ値）・`width`・`height`・`frames`（映像と音声の潜在）・`fps`・`first_frame`。**3 段**: 半分の解像度で、1 秒に 1 枚のキーフレームを一緒に作る（`LTXVAddGeneratedKeyframes`）→ 空間を 2 倍に拡大し、詳細化の IC-LoRA で 2 段目（3 ステップ）→ 時間方向に 2 倍（`ltx-2.5-latent-temporal-upscaler-x2`、48 fps になる。長さは変わらない）で 3 段目（4 ステップ）。ファイルは標準モデルと同じ 4 つに、時間方向の拡大モデル（同じリポジトリ。261,944,000 バイト、SHA-256 `2bc3300f…c3fe`）と、**別のゲートのリポジトリ** `Lightricks/LTX-2.5-22b-IC-LoRA-Pixel-Spatial-Upscaler` のコミット `59f26f1e0c11af42f1affa924b4ef231e9e98b2a` の `ltx-2.5-22b-ic-lora-pixel-spatial-upscaler-x2-1.0.safetensors`（327,322,640 バイト、SHA-256 `984851b7…1c1d`。モデルカードの `license_name: ltx-2.x-community-license`＝LTX-2.x Community。商用は年間売上の条件つき）を足した（合計 40.3 GB）。**2 つのリポジトリでそれぞれライセンスに同意してアクセスの承認を受ける必要がある**（導入のアクセス確認 `hfguide.CheckAccess` はファイルのリポジトリごとに先頭 1 バイトを確かめるので、2 つ目が未承認なら導入のジョブを作る前に断る）。**開発ホストの Hugging Face アカウントは、2 つ目のリポジトリのアクセスが未承認**なので、そのリポジトリのファイルの SHA-256・サイズ・コミットは、モデルの API（`/api/models/<repo>?blobs=true`。ゲートでもメタデータは返る）の値で、ファイルの本体の取得とヘッダーの確認はしていない。プロンプト拡張は付けない（公式の DFR のテンプレートの `refine_prompt` も OFF。付けるなら別モデルの判断）。3 段で時間方向の拡大も含むので、`ltx-2.5-22b-distilled` の I2V より時間もメモリも多く要る見込みで、16 GB の PC では特に遅くなる（**未計測**）。
 - **dev 版は入れない（Issue #968 の `not_done`）**: `ltx-2.5-22b-dev-transformer-comfy-int8-convrot.safetensors`（21,504,034,224 バイト、SHA-256 `2edbdb44…f92b`、`Lightricks/LTX-2.5` の同じコミット。HF のモデルカードは「Full / trainable DiT」）は、HF にはあるが、**ワークフローの根拠が無い**。Comfy 公式のテンプレート（T2V・I2V・FLF2V・DFR）と ComfyUI-LTXVideo の `example_workflows/2.5/` の 13 本はすべて蒸留版の拡散モデルを使い（README: "All of them use the distilled transformer"）、dev 版を読む公式のワークフローが 2.5 には無い。dev 版は蒸留版と違うサンプリング（蒸留版は 8 ステップ・CFG 1 の固定のシグマ。dev 版は多いステップ・CFG・ガイダンスのはず）と、モデルカードが「dev-transformer workflows 用」と書く蒸留 LoRA（`loras/ltx-2.5-22b-distilled-lora-450-bf16.safetensors`、8,899,889,568 バイト、SHA-256 `86370bbf…bbf5`）を重ねる手順が要るはずだが、その値を決める出典が無い。**根拠なしに値を推測してワークフローを作ることはしない**（実機で確かめられず、16 GB の構成に 8.9 GB の LoRA を重ねる重い構成でもある）。足す条件は、Lightricks か Comfy が 2.5 の dev 版の ComfyUI のワークフローを公開すること、または実機で値を決められること。そのときは上の INT8 の dev 版と LoRA を、標準モデルと同じコミットのファイルとして足す。
 - **カスタムノードの自動導入（Issue #968）は不要で、作らない**: 既存のモデルマネージャーにカスタムノードを導入する仕組みは無い（同梱の ComfyUI は `--disable-all-custom-nodes` で起動する。§3.4）。そして今回足したテンプレートはすべてコアのノードだけで動く。FLF2V・DFR・プロンプト拡張が使うノード（`LTXVAddGuide`・`LTXVCropGuides`・`LTXVAddGeneratedKeyframes`・`LTXVSeparateGeneratedKeyframes`・`LTXVGeneratedKeyframesToGuides`・`LTXVAddLatentGuide`・`LTXVFreezeLatent`・`TextGenerateLTX2Prompt`・`ResizeImageMaskNode`・`ComfySwitchNode`・`PrimitiveBoolean`・`PrimitiveFloat`・`SamplerEulerAncestral`・`GetImageSize` ほか）は、ComfyUI v0.42.1 のソース（`comfy_extras/nodes_lt.py`・`nodes_lt_keyframes.py`・`nodes_textgen.py` など）にあり、**v0.42.1 を CPU で起動して `execution.validate_prompt` に通し（ファイル名だけのダミーのモデルを置く）、新しいテンプレートが検証を通ることを確認した**（`flf2v-ltx-2-5`・`-enhanced`・`-nvfp4`、`txt2video-ltx-2-5-enhanced`・`img2video-ltx-2-5-enhanced`、`txt2video-ltx-2-5-nvfp4`・`img2video-ltx-2-5-nvfp4`、`img2video-ltx-2-5-dfr`、`txt2video-wan22-5b-fp8`・`img2video-wan22-5b-fp8`。`flf2v-ltx-2-5-uncensored` は元の `flf2v-ltx-2-5` とテキストエンコーダーのファイル名だけが違うグラフ）。ノードの存在と入力の型・値の範囲までの確認で、モデルの読み込みと生成は行っていない。`localcfg` の `coreNodes`（テンプレートが使ってよいクラスの一覧）に、これらのクラスを足した。
+
+**非検閲（成人向け）モデルの追加: 実写中心（Issue #984）**。`catalog/data/models/adult/*.json` に 14 モデルを足した（`data/models/` の行数の上限〔2000 行〕に近いため、サブディレクトリに置く。`catalog.Load` は `data/models/` の下を再帰して読む）。**すべて `content_rating = adult`・`tier = advanced`・`consent_required = true`・`vram.estimate = true`**（SDXL 系は 8 GB、ThisIsReal だけ 10 GB の推定。mam の実機では未検証）。SDXL 系はコアのノードだけの既存テンプレート（`txt2img-sdxl`・`img2img-sdxl`）を使い、チェックポイント名は `workflows[].model_file` で置き換える（ワークフロー名は `<id>` と `<id>-img2img`）。実写とアニメを一覧で見分けるため（スキーマにタグ欄は足さない）、**`name` に「実写」「実写寄り」「アニメ・イラスト」を入れ、`description` を `【実写】`・`【実写寄り】`・`【アニメ・イラスト】`・`【実写もイラストも】` で始める**（テストで固定）。「作者の HF」は、モデルカードが Civitai の作者のページ・原本のページを指す、または Civitai のページと同じ作者名（KandooAI）を書くリポジトリだけ。それ以外は第三者のミラーで、`source_note` に「第三者のミラー」と書く。
+
+| ID | 系統 | 合計サイズ | ライセンス（商用） | ファイルの出どころ |
+|---|---|---|---|---|
+| `realvisxl-v50` | 実写 SDXL | 6.9 GB | OpenRAIL++（**可**。作者のカードの `license: openrail++`） | 作者 SG161222 の HF（`RealVisXL_V5.0_fp16.safetensors`）。Civitai の V5.0（BakedVAE）fp16 と SHA-256 一致 |
+| `cyberrealistic-xl-v10` | 実写 SDXL | 6.9 GB | CreativeML Open RAIL++-M（**可**。作者のカードの本文） | 作者 Cyberdelia の HF（`CyberRealisticXLPlay_V10.0_FP16`）。Civitai の v10.0 fp16 と一致 |
+| `juggernaut-xl-ragnarok` | 実写 SDXL | 7.1 GB | CreativeML OpenRAIL-M（**可**。作者のカード） | 作者 KandooAI の HF。Civitai の Ragnarok と一致 |
+| `bigasp-v2` | 実写 SDXL | 6.9 GB | 記載なし（**不明**） | `fancyfeast/big-asp-v2`（モデルカードなし。第三者のミラー扱い）。Civitai の v2.0 と一致 |
+| `big-lust-v16` | 実写 SDXL（bigASP×LUSTIFY） | 6.9 GB | 記載なし（**不明**） | 第三者のミラー（`Vvilams/bigLust_v16`）。Civitai の v1.6 と一致 |
+| `epicrealism-xl-lastfame` | 実写 SDXL | 6.9 GB | 記載なし（**不明**） | 第三者のミラー（`baziez/…`）。Civitai の VXVI LastFAME と一致 |
+| `lustify-sdxl-zenith-v9` | 実写 SDXL | 6.9 GB | 記載なし（**不明**） | 第三者のミラー（`kkkkk26/lustify_v9`）。Civitai の ZENITH (V9) と一致 |
+| `realism-sdxl-stable-yogi-v8` | 実写 SDXL | 6.9 GB | 記載なし（**不明**） | 第三者のミラー（`Brandon0922/…`）。Civitai の v8.0_FP16 と一致 |
+| `thisisreal-sdxl-v3` | 実写 SDXL | 8.7 GB | 記載なし（**不明**） | 第三者のミラー（`ChangeMeNot/ThisIsRealXL`）。Civitai の v3.0 と一致 |
+| `cyberrealistic-pony-v18` | 実写寄り Pony | 6.9 GB | ベースの Pony が制限つき（**不可**。作者のカードは OpenRAIL-M） | 作者 Cyberdelia の HF。Civitai の v18.0 CoreShift fp16 と一致 |
+| `pony-diffusion-v6-xl` | アニメ・Pony | 6.9 GB | modified Fair AI Public License 1.0-SD（**不可**） | `AstraliteHeart/pony-diffusion-v6` の `v6.safetensors`（カードに Civitai へのリンクが無く、第三者のミラー扱い）。Civitai の V6 と一致 |
+| `noobai-xl-v11` | アニメ・Illustrious 系 | 7.1 GB | fair-ai-public-license-1.0-sd ＋ Commercial Prohibition（**不可**） | 作者 Laxhar の HF。Civitai の Epsilon-pred 1.1 と一致 |
+| `wai-illustrious-sdxl-v17` | アニメ・Illustrious 系 | 6.9 GB | 記載なし（**不明**） | 第三者のミラー（`frankjoshua/…`）。Civitai の v17.0 と一致 |
+| `qwen-image-21-uncensored-int8` | Qwen-Image 2.1（実写もイラストも） | 17.3 GB（導入済みの `noctq-v4-qwen-image21` があれば拡散モデルの 7.3 GB だけ取得） | Qwen Research（**不可**） | `abenzerps/Qwen-Image-2.1-Uncensored-Quantized` の int8_convrot ＋ `noctq-v4-qwen-image21` と共有のテキストエンコーダー・VAE |
+
+- **ファイルの固定**: すべて HF の固定コミットで、SHA-256 とサイズは HF の LFS の oid とサイズ（2026-11-03 に API で確認。ファイルの本体は取っていない）。**Civitai が原本のものは、HF のファイルの SHA-256 が Civitai の API が返す（model, version）の SHA-256 と一致することを 2026-11-03 に確かめ**、`source_note` に Civitai の model・version・ファイル名・確認日を書く（`photorealtest` が固定）。SHA-256 が一致する HF のファイルが見つからないものは入れない（下の表）。
+- **ライセンスの読み方**: 一次情報（HF のモデルカードの `license` と本文・Civitai のモデルページの文言）に書かれた名前だけを `license.name` に書く。**Civitai の `allowCommercialUse`（販売の許可フラグ）はライセンスの名前でも本文でもないので、これだけを根拠に商用OKにしない**（`unspecified` の `summary` に参考として併記）。ページにもカードにもライセンスが無いもの（bigASP・Big Lust・epiCRealism・LUSTIFY・Stable Yogi・ThisIsReal・WAI）は `unspecified`・`commercial = unknown`。第三者のミラーのタグ（`creativeml-openrail-m`・`apache-2.0`・`mit`・`unknown` が混ざる）は原本の作者の宣言ではないので採らない（epiCRealism LastFAME のミラーは 4 つのタグが割れている）。Pony Diffusion V6 は Civitai のページが「modified Fair AI Public License 1.0-SD（収益化する Web サイト・アプリでの推論を許さず、商用は作者へ連絡）」と書くので `no`（配布元の HF のカードは `creativeml-openrail-m`）。CyberRealistic Pony は作者のカードが OpenRAIL-M でも、ベースの Pony の制限が及ぶので、`components[]` に両方を書いて厳しい方の `no`。NoobAI-XL は作者のカードが「あらゆる商業化を禁じる」と書くので `no`。
+- **clip skip 2 のテンプレート**: Pony Diffusion V6（Civitai のページが「clip skip 2 で読み込むこと。さもないと低品質になる」と書く）と CyberRealistic Pony（ページの推奨設定が Clip Skip: 2）は、SDXL テンプレートに `CLIPSetLastLayer`（`stop_at_clip_layer = -2`。コアのノード）を足した `txt2img-sdxl-clipskip2`・`img2img-sdxl-clipskip2` を使う（割り当ては SDXL と同じ）。ほかのモデルは足さない（作者が求めていない。NoobAI・WAI は書いていない）。
+- **Qwen-Image-2.1-Uncensored（Issue の調査結論に従う）**: 配布元（`abenzerps`、旧名 `Qwen-Image-2.1-Uncensored-GGUF`）のカードは**公式 `Qwen/Qwen-Image-2.1` の量子化**で、`license_name: qwen-research`・「検閲のフィルターが無い」という説明だけ（非検閲化の追加学習をしたとは書いていない）。GGUF（Q4〜BF16）は `ComfyUI-GGUF` が要るので**入れない**（#976 の許可リストの後）。非 GGUF の int8_convrot（7,256,796,840 バイト、SHA-256 `5bc5a6c0…19ae`）を `txt2img-qwen-image21` で載せる。**`noctq-v4-qwen-image21` とは別のファイル**（拡散モデルのテンソルの並びと値が違う: MLP が `gate_layer`・`proj` に分かれ、Noct Q と公式の int8 は `gate_up` に束ねる。v0.42.1 のモデル検出〔`comfy/model_detection.py`〕は両方の並びを `fused_mlp` で扱う）で、テキストエンコーダー（`qwen3vl_8b_int8_convrot`）と VAE は同じファイル（共有）、ライセンスも同じ Qwen RESEARCH。重複して意味が無いモデルではない（配布元の説明は公式の量子化。非検閲の度合いの実際は未確認で、本格的に非検閲化した派生は Noct Q）ので入れ、説明に両者の違いを書いた。**GPU では未実行**（`fused_mlp` の読み込み・生成の質は実機で未確認）。
+- **入れなかった候補**（理由）:
+
+| 候補 | 判断 | 理由 |
+|---|---|---|
+| epiCRealism XL Pure_fix（最新） | 入れない（LastFAME を入れた） | Civitai の SHA-256 と一致する HF のファイルが見つからない（Pure・Pure_fix とも）。LastFAME（VXVI）は一致するミラーがある |
+| Halcyon SDXL v1.9 | 入れない | 一致する HF のファイルが無い（v1.7 だけミラーがある。別の版なので入れない） |
+| Photo Momentum v2.0（SiLAS） | 入れない | 一致する HF のファイルが無い |
+| HuslyoRealismXL V3 | 入れない | 一致する HF のファイルが無い（V2 だけある） |
+| CreaLISM Terra Mirabilis v2.0 | 入れない | 一致する HF のファイルが無い |
+| RealVisXL V5.0 Lightning | 入れない | 4〜6 ステップ・低 cfg の蒸留版で、SDXL テンプレートの既定（25 ステップ・cfg 7）と合わない。通常版を入れた |
+| Phr00t Qwen-Image-Edit-Rapid-AIO | 入れない | 28 GB。EditPlus（参照最大 4）の新しいテンプレートが要り、#971 の EditPlus テンプレートと競合する |
+| LUSTIFY v10（Krea 2） | 入れない | Krea 2 用の新しいテンプレートと追加ノードが要る。SDXL 版の ZENITH (V9) を入れた |
+| Qwen-Image-2.1-Uncensored の GGUF | 入れない | `ComfyUI-GGUF` が要る（#976） |
+
+- **商用の表示**: バッジは `license.commercial` に従う（RealVisXL・CyberRealistic XL・Juggernaut は商用OK、Pony・CyberRealistic Pony・NoobAI・Qwen は商用NG、それ以外は不明）。成人向けなので、商用OKでも同意と年齢確認は必須。答えの根拠は [../model-license.md](../model-license.md) §3。
+- **未確認**: 実機（RTX 4070 Ti SUPER）での生成・VRAM・時間（8〜10 GB の推定）、各チェックポイントが `txt2img-sdxl` の既定（25 ステップ・dpmpp_2m/karras・cfg 7）でどの程度の質になるか（作者の推奨は Euler a・cfg 5 前後などで違う。ワークフローの既定は変えていない）、数 GB のファイルの実際の取得、ミラー（第三者の HF のリポジトリ）が後で消えたときの応答。
 
 ### 4.3 検証（`catalog_test.go`）
 
@@ -430,6 +470,8 @@ func (*Service) DeleteUserModel(ctx, path string) error
 | DFR の IC-LoRA（`Lightricks/LTX-2.5-22b-IC-LoRA-Pixel-Spatial-Upscaler`）のアクセスと、ファイルの内容 | **未確認**（開発ホストの HF アカウントは、このリポジトリのアクセスが未承認。SHA-256・サイズ・コミットはゲートでも返るモデルの API の値。ファイルの先頭 1 バイトの取得とヘッダーの確認はしていない） |
 | LTX-2.5 の dev 版（Issue #968） | **入れていない**（2.5 の dev 版を読む公式のワークフローが無い。足す条件は §4.2「dev 版は入れない」） |
 | FLUX.2 klein の bf16 版（macOS 用。Issue #967） | **入れていない**（マネージャーが macOS に入れられない。足す条件は §4.2 の klein の「bf16 版（macOS 用）は追加しない」） |
+| 実写中心の非検閲 14 モデル（Issue #984）の生成・VRAM・時間と、数 GB のファイルの取得 | **未確認**（`estimate=true`。SHA-256・サイズ・コミットは HF の API の値で、Civitai の API の SHA-256 と照合した。ファイルの本体は取っていない）。`txt2img-sdxl` の既定が各チェックポイントに合うか、`txt2img-sdxl-clipskip2`（`CLIPSetLastLayer`）の効果、Qwen-Image 2.1 Uncensored の int8（MLP が `gate_layer`・`proj` の並び）の ComfyUI v0.42.1 での読み込み・生成は**実機で未確認**（§4.2 の Issue #984） |
+| 実写中心の非検閲モデルの第三者のミラー（Issue #984。HF のリポジトリ 9 つ）が後で消えたとき | **未確認**（導入は 404 を `ErrSourceGone` として扱う。ミラーは Civitai の原本と SHA-256 が一致するが、消えると別のミラーに差し替えるまで導入できない）。ライセンスの本文が無いもの 7 つは `unknown`（本文が見つかれば更新する） |
 | ファイル名での成人向けの判定（§6.1）が、実物の ComfyUI のファイル名（サブフォルダ付き）と一致すること | **未検証**（`ckpt_name` などは ComfyUI の `/models/<folder>` が返す名前で、サブフォルダ付きのときは末尾の名前で比べる。実機のサーバーは使っていない）。中身が同じで名前だけ違うファイルは見分けられない。一般的な名前の成人向けのファイルの過検出は受け入れた限界（§6.1） |
 | 年齢確認がオフのときの生成の断りを、実物の ComfyUI・クラウドに対して確かめること（呼び出しが届かないこと） | **未検証**（断りは Adapter の手前で、偽のバックエンドの呼び出し回数 0 と、同梱エンジンが起動しないことで確認。実機の ComfyUI・実アカウントは使っていない） |
 | 実物の Hugging Face からの任意のモデルの導入（Issue #842: 実物の API・CDN・gated・GPU・SDXL の生成） | **未検証**（[model-manager-hf.md](model-manager-hf.md) §10。偽の HF で確認） |
