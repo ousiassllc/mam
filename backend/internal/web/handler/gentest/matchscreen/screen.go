@@ -37,7 +37,8 @@ func priceText(p modelcatalog.Price) string {
 func (h Handlers) compose(ctx context.Context, f formState) view.MatchCompose {
 	_, maxCost := h.Svc.Limits()
 	c := view.MatchCompose{
-		Mode: orDefault(f.mode, view.MatchAuto), Target: orDefault(f.target, strconv.Itoa(match.DefaultTarget)), Rounds: orDefault(f.rounds, strconv.Itoa(match.DefaultRounds)), MaxCost: f.maxCost,
+		Filter: commercial.NewFilter("gt-match-commercial", "#gt-match-model", h.Svc.DefaultFilter()),
+		Mode:   orDefault(f.mode, view.MatchAuto), Target: orDefault(f.target, strconv.Itoa(match.DefaultTarget)), Rounds: orDefault(f.rounds, strconv.Itoa(match.DefaultRounds)), MaxCost: f.maxCost,
 		MaxRounds: match.MaxRounds, Instruction: f.instruction, MaxImageBytes: gentest.MaxImageBytes, MaxInstruction: match.MaxInstructionRunes,
 		RefValue: f.ref, RefThumb: thumbOf(f.ref),
 	}

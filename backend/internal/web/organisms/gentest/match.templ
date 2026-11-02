@@ -60,14 +60,15 @@ templ MatchForm(c MatchCompose) {
 			<p class="text-xs text-red-300" role="alert" data-gt-match-error data-testid="gt-match-error" hidden></p>
 		</fieldset>
 		<div class="grid gap-5 sm:grid-cols-2">
-			<label class="flex flex-col gap-1 text-sm" for="gt-match-model">
-				<span class="font-medium text-neutral-200">モデル</span>
+			<div class="flex flex-col gap-1 text-sm">
+				<label class="font-medium text-neutral-200" for="gt-match-model">モデル</label>
+				@commercial.Filter(c.Filter)
 				@atoms.Select(atoms.FieldMd, "w-full", templ.Attributes{"id": "gt-match-model", "name": FieldModel, "required": true, "data-testid": "gt-match-model"}) {
 					for _, m := range c.Models {
 						<option value={ m.ID } selected?={ m.Selected } data-commercial={ m.Answer.Answer() }>{ commercial.OptionLabel(m.Label+"（"+m.Price+"）", m.Answer) }</option>
 					}
 				}
-			</label>
+			</div>
 			<fieldset class="flex flex-col gap-1" aria-labelledby="gt-match-mode-title">
 				@sectionTitle("gt-match-mode-title", "進め方", help.Text(modeHelp))
 				<div class="grid grid-cols-3 gap-2">
