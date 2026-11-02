@@ -76,7 +76,7 @@ func (s *Service) registerWorkflows(ctx context.Context, m catalog.Model) error 
 		if !ok {
 			return invalid("ワークフローのテンプレート %s がありません", w.Template)
 		}
-		in := localmodels.ModelInput{Endpoint: BundledEndpoint, Name: w.Name, Model: tpl.Model}
+		in := localmodelsInput(w.Name, tpl.Model)
 		err := s.Models.CreateModel(ctx, in)
 		if errors.Is(err, localmodels.ErrExists) {
 			err = s.Models.UpdateModel(ctx, BundledEndpoint, w.Name, in)
@@ -86,4 +86,8 @@ func (s *Service) registerWorkflows(ctx context.Context, m catalog.Model) error 
 		}
 	}
 	return nil
+}
+
+func localmodelsInput(name string, m localcfg.Model) localmodels.ModelInput {
+	return localmodels.ModelInput{Endpoint: BundledEndpoint, Name: name, Model: m}
 }

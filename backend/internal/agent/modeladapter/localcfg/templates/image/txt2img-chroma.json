@@ -1,0 +1,48 @@
+{
+ "id": "txt2img-chroma",
+ "label": "Chroma1-HD: テキスト・参照画像から画像",
+ "media": "image",
+ "description": "ComfyUI 標準ノードだけの Chroma1-HD（fp8mixed の拡散モデル Chroma1-HD-fp8mixed.safetensors、CLIPLoader の type は chroma で T5-XXL fp8 の t5xxl_fp8_e4m3fn_scaled.safetensors、VAE ae.safetensors）のワークフロー。作者（lodestones）のワークフローに従い、26 ステップ・euler・beta スケジューラ・cfg 3.8 でネガティブプロンプトを使う。参照画像（1 枚）があると img2img になる: 参照を VAE で潜在にして SplitSigmasDenoise で途中から生成し、強さ s の denoise は 1-0.4×s（既定 0.7 で 0.72。Chroma の schedule は denoise 0.6 未満ではほとんど変わらないため、下限を 0.6 にして強さの範囲を使い切る）。参照なしは空の潜在から生成する。LoRA は LoraLoaderModelOnly を UNETLoader の後ろに差し込む。GPU では未実行（構造のテストのみ）。",
+ "model": {
+  "media": "image",
+  "workflow": {
+   "graph": {
+    "731": {"class_type": "UNETLoader", "inputs": {"unet_name": "Chroma1-HD-fp8mixed.safetensors", "weight_dtype": "default"}},
+    "733": {"class_type": "CLIPLoader", "inputs": {"clip_name": "t5xxl_fp8_e4m3fn_scaled.safetensors", "type": "chroma", "device": "default"}},
+    "710": {"class_type": "VAELoader", "inputs": {"vae_name": "ae.safetensors"}},
+    "741": {"class_type": "T5TokenizerOptions", "inputs": {"min_padding": 1, "min_length": 0, "clip": ["733", 0]}},
+    "701": {"class_type": "ModelSamplingAuraFlow", "inputs": {"shift": 1, "model": ["731", 0]}},
+    "748": {"class_type": "CLIPTextEncode", "inputs": {"text": "", "clip": ["741", 0]}},
+    "749": {"class_type": "CLIPTextEncode", "inputs": {"text": "", "clip": ["741", 0]}},
+    "737": {"class_type": "EmptySD3LatentImage", "inputs": {"width": 1024, "height": 1024, "batch_size": 1}},
+    "718": {"class_type": "RandomNoise", "inputs": {"noise_seed": 0}},
+    "700": {"class_type": "KSamplerSelect", "inputs": {"sampler_name": "euler"}},
+    "751": {"class_type": "BetaSamplingScheduler", "inputs": {"steps": 26, "alpha": 0.45, "beta": 0.45, "model": ["701", 0]}},
+    "694": {"class_type": "CFGGuider", "inputs": {"cfg": 3.8, "model": ["701", 0], "positive": ["748", 0], "negative": ["749", 0]}},
+    "747": {"class_type": "SamplerCustomAdvanced", "inputs": {"noise": ["718", 0], "guider": ["694", 0], "sampler": ["700", 0], "sigmas": ["763", 1], "latent_image": ["762", 0]}},
+    "298": {"class_type": "VAEDecode", "inputs": {"samples": ["747", 0], "vae": ["710", 0]}},
+    "740": {"class_type": "SaveImage", "inputs": {"filename_prefix": "mam/image", "images": ["298", 0]}},
+    "760": {"class_type": "LoadImage", "inputs": {"image": "example.png"}},
+    "761": {"class_type": "ImageScale", "inputs": {"image": ["760", 0], "upscale_method": "lanczos", "width": 1024, "height": 1024, "crop": "center"}},
+    "762": {"class_type": "VAEEncode", "inputs": {"pixels": ["761", 0], "vae": ["710", 0]}},
+    "763": {"class_type": "SplitSigmasDenoise", "inputs": {"sigmas": ["751", 0], "denoise": 1}}
+   },
+   "assignments": [
+    {"param": "prompt", "node": "748", "input": "text"},
+    {"param": "negative_prompt", "node": "749", "input": "text"},
+    {"param": "seed", "node": "718", "input": "noise_seed"},
+    {"param": "width", "node": "737", "input": "width"},
+    {"param": "height", "node": "737", "input": "height"},
+    {"param": "reference_image", "node": "760", "input": "image"},
+    {"param": "width", "node": "761", "input": "width"},
+    {"param": "height", "node": "761", "input": "height"},
+    {"param": "reference_denoise", "node": "763", "input": "denoise"}
+   ],
+   "reference_mode": "img2img",
+   "reference_denoise_min": 0.6,
+   "no_reference": [{"node": "747", "input": "latent_image", "value": ["737", 0]}, {"node": "747", "input": "sigmas", "value": ["751", 0]}],
+   "lora_model_node": "731",
+   "output_node": "740"
+  }
+ }
+}
