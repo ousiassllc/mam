@@ -6,9 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"slices"
-	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/promptweight"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/sampling"
 )
 
 // Param is a value of a generation that an Assignment puts into a node of a ComfyUI workflow.
@@ -92,6 +92,8 @@ type Workflow struct {
 	Upscale    *Upscale    `json:"upscale,omitempty"` // marks a workflow that enlarges a picture; nil: one that makes pictures
 	// RequiresNodes are the IDs of the custom nodes (the allowlist, modelmgr/nodecat) the graph uses besides the core nodes. Empty: core only.
 	RequiresNodes []string `json:"requires_nodes,omitempty"`
+	// QualityPresets are the steps and cfg of the fast and the high quality of the screen's "品質" buttons (Issue #977); nil: the model has no quality to choose.
+	QualityPresets *sampling.Presets `json:"quality_presets,omitempty"`
 }
 
 // DefaultFPS is the frame rate of a video workflow that names none.
@@ -220,59 +222,6 @@ func sortedKeys[V any](m map[string]V) []string {
 	}
 	slices.Sort(keys)
 	return keys
-}
-
-// InputInfo is one input of a node as the settings screen shows it when the user picks where a value goes.
-type InputInfo struct {
-	Name string `json:"name"`
-	// Link is true when the input is fed by another node (a value cannot be put there).
-	Link bool `json:"link"`
-	// Value is the literal value, shortened (empty for a link).
-	Value string `json:"value,omitempty"`
-}
-
-// NodeInfo is one node of a workflow.
-type NodeInfo struct {
-	ID     string      `json:"id"`
-	Class  string      `json:"class_type"`
-	Inputs []InputInfo `json:"inputs"`
-}
-
-// Inspect lists the nodes of a workflow (API format) with their inputs, by node ID in numeric order where
-// the IDs are numbers.
-func Inspect(raw []byte) ([]NodeInfo, error) {
-	g, err := ParseGraph(raw)
-	if err != nil {
-		return nil, err
-	}
-	ids := sortedKeys(g)
-	slices.SortStableFunc(ids, func(a, b string) int {
-		if len(a) != len(b) {
-			return len(a) - len(b)
-		}
-		return strings.Compare(a, b)
-	})
-	out := make([]NodeInfo, 0, len(ids))
-	for _, id := range ids {
-		n := g[id]
-		info := NodeInfo{ID: id, Class: n.ClassType}
-		for _, name := range sortedKeys(n.Inputs) {
-			in := InputInfo{Name: name, Link: IsLink(n.Inputs[name])}
-			if !in.Link {
-				in.Value = shorten(string(n.Inputs[name]), 60)
-			}
-			info.Inputs = append(info.Inputs, in)
-		}
-		out = append(out, info)
-	}
-	return out, nil
-}
-
-func shorten(s string, n int) string {
-	if r := []rune(s); len(r) > n {
-		return string(r[:n]) + "…"
-	}
-	return s
 }
 
 // validateWorkflow checks a workflow for media: the graph, the assignments (a known value, an existing

@@ -256,3 +256,22 @@ func TestRunBringsAnOldCopyUpToTheSamplingAssignmentsAndThePromptWeight(t *testi
 	wfrefresh.Run(context.Background(), f, catalogOf(catalog.Workflow{Name: "wf", Template: "txt2img-sdxl"}), endpoint, (&warnings{}).warn)
 	assert.Empty(t, f.updates)
 }
+
+// A model installed before the quality buttons has no presets: it is brought up to the template's, which is what makes the 3 buttons appear for
+// it. A user's own steps are an edit, left alone (the presets are measured from the template's steps).
+func TestRunBringsAnOldCopyUpToTheQualityPresets(t *testing.T) {
+	cur := template(t, "txt2img-sdxl")
+	w := *cur.Workflow
+	w.QualityPresets = nil
+	cur.Workflow, cur.CostPerImage = &w, 0.02
+	f := &fakeModels{saved: []localmodels.ModelView{view(endpoint, "wf", cur)}}
+	wfrefresh.Run(context.Background(), f, catalogOf(catalog.Workflow{Name: "wf", Template: "txt2img-sdxl"}), endpoint, (&warnings{}).warn)
+	got, ok := f.updates[endpoint+"/wf"]
+	require.True(t, ok)
+	assert.Equal(t, template(t, "txt2img-sdxl").Workflow.QualityPresets, got.Workflow.QualityPresets)
+	assert.InDelta(t, 0.02, got.CostPerImage, 1e-9)
+
+	f = &fakeModels{saved: []localmodels.ModelView{view(endpoint, "wf", editGraph(t, cur, "3", "steps", 40))}}
+	wfrefresh.Run(context.Background(), f, catalogOf(catalog.Workflow{Name: "wf", Template: "txt2img-sdxl"}), endpoint, (&warnings{}).warn)
+	assert.Empty(t, f.updates)
+}

@@ -15,7 +15,20 @@ const SeedMax = 1<<32 - 1
 const (
 	WarnSamplingIgnored = "sampling_ignored" // the model does not take (some of) the steps, cfg, sampler and scheduler asked for
 	WarnSeedIgnored     = "seed_ignored"     // the model takes no seed: the fixed seed is not sent
+	WarnQualityIgnored  = "quality_ignored"  // the model has no preset of the quality asked for: it is made at its own steps and cfg
 )
+
+// checkQuality reads the quality of a request; the standard one is kept as "" (the model as it stands).
+func checkQuality(q sampling.Quality) (sampling.Quality, error) {
+	parsed, err := sampling.ParseQuality(string(q))
+	if err != nil {
+		return "", gterr.Invalid("%v", err)
+	}
+	if parsed == sampling.QualityStandard {
+		return "", nil
+	}
+	return parsed, nil
+}
 
 // checkSampling checks the seed and the sampling values of a request (the ranges and the names) and returns the sampling trimmed.
 func checkSampling(r Request) (sampling.Settings, error) {
@@ -44,7 +57,7 @@ func (s *Service) seedFor(r Request, n int) int64 {
 // (the values the run uses, defaults included: the steps and the cfg of a model under a speed mode are the mode's and are not kept).
 func planSampling(r Request, p *modelPlan, warn func(code, format string, args ...any)) {
 	caps := p.info.Sampling
-	p.sampling = caps.Effective(r.Sampling)
+	p.sampling = caps.Effective(caps.WithQuality(r.Quality, r.Sampling))
 	var skipped []string
 	for _, sk := range caps.Skipped(r.Sampling) {
 		if sk.Reason == sampling.LockedBySpeedMode {
@@ -55,6 +68,9 @@ func planSampling(r Request, p *modelPlan, warn func(code, format string, args .
 	}
 	if len(skipped) > 0 {
 		warn(WarnSamplingIgnored, "%s は詳細設定の %s を使わないため、モデルの既定で作ります", p.info.Label, strings.Join(skipped, "・"))
+	}
+	if r.Quality != "" && (caps.None() || !caps.Presets.Offers(r.Quality) || (caps.Steps != nil && caps.Steps.Locked != "")) {
+		warn(WarnQualityIgnored, "%s には品質「%s」のプリセットがないため、標準の値で作ります", p.info.Label, r.Quality.Label())
 	}
 	if r.Seed != nil && !p.info.SupportsSeed {
 		warn(WarnSeedIgnored, "%s はシードを渡せないため、指定した seed は使いません", p.info.Label)

@@ -65,7 +65,7 @@ func refreshed(cur localcfg.Model, template string) (localcfg.Model, bool) {
 	return next, true
 }
 
-// behind says the template has something the copy lacks: a reference mode, a prompt weight value, or a sampling assignment.
+// behind says the template has something the copy lacks: a reference mode, a prompt weight value, quality presets, or a sampling assignment.
 func behind(cur, tpl localcfg.Workflow) bool {
 	sampling := func(w localcfg.Workflow) int {
 		n := 0
@@ -76,7 +76,8 @@ func behind(cur, tpl localcfg.Workflow) bool {
 		}
 		return n
 	}
-	return (cur.ReferenceMode == "" && tpl.ReferenceMode != "") || (cur.PromptWeight == "" && tpl.PromptWeight != "") || sampling(cur) < sampling(tpl)
+	return (cur.ReferenceMode == "" && tpl.ReferenceMode != "") || (cur.PromptWeight == "" && tpl.PromptWeight != "") ||
+		(cur.QualityPresets.None() && !tpl.QualityPresets.None()) || sampling(cur) < sampling(tpl)
 }
 
 // unedited reports whether cur is an old copy of tpl that the user did not change: the output node is the same, every

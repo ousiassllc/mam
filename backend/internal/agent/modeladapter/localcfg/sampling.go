@@ -55,6 +55,9 @@ func (w Workflow) SamplingCaps() *sampling.Caps {
 	if c.None() {
 		return nil
 	}
+	if lock == "" && !w.QualityPresets.None() {
+		c.Presets = w.QualityPresets // the steps and the cfg of a workflow under a speed mode are the mode's: no quality to choose
+	}
 	return c
 }
 
@@ -80,5 +83,5 @@ func validateSampling(where string, w Workflow, g Graph) []error {
 			errs = append(errs, fmt.Errorf("%s: %s goes into a text input, input %q of node %s holds %s", at, a.Param, a.Input, a.Node, lit))
 		}
 	}
-	return errs
+	return append(errs, validatePresets(where, w)...)
 }

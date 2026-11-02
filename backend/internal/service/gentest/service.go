@@ -71,6 +71,9 @@ type Deps struct {
 	// MissingNodes gives the reason a model of the bundled ComfyUI cannot be chosen because a custom node its workflow requires is not installed
 	// (modelnodes, nodegate.ForModels); empty when it can. Nil: no model is refused for its nodes.
 	MissingNodes func(modelID string, required []string) string
+	// PlatformWarning says a model is not for this PC: the OS / GPU generation columns of the model catalog (Issue #979) put it outside, so that
+	// the easy tier does not pick it for an intent ("" when it is fine). Nil: no model is ruled out.
+	PlatformWarning func(ctx context.Context, modelID string) string
 	// Poses is the pose library (Shisei), whose pictures can be given as references (FromPoseLibrary). Nil: no pose library; such a reference is refused.
 	Poses *poses.Library
 	// BundledEndpoint is the name of the registered endpoint of the bundled ComfyUI engine, whose LoRA files LoRAs lists ("": none).

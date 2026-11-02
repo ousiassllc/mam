@@ -7,6 +7,7 @@
   "media": "image",
   "workflow": {
    "prompt_weight": "unsupported",
+   "quality_presets": {"fast": {"steps": 12}, "high": {"steps": 30}},
    "graph": {
     "37": {
      "class_type": "UNETLoader",

@@ -7,6 +7,7 @@
   "media": "image",
   "workflow": {
    "prompt_weight": "unsupported",
+   "quality_presets": {"fast": {"steps": 12}, "high": {"steps": 30}},
    "graph": {
     "37": {"class_type": "UNETLoader", "inputs": {"unet_name": "qwen_image_edit_2511_fp8mixed.safetensors", "weight_dtype": "default"}},
     "38": {"class_type": "CLIPLoader", "inputs": {"clip_name": "qwen_2.5_vl_7b_fp8_scaled.safetensors", "type": "qwen_image", "device": "default"}},

@@ -81,6 +81,9 @@ type Request struct {
 	// Sampling overrides the steps, cfg, sampler and scheduler of the models that take them (modelcatalog.Info.Sampling); the
 	// others, and the steps and cfg of a model whose speed mode owns them, ignore it with a warning. The zero value overrides nothing.
 	Sampling sampling.Settings `json:"sampling,omitzero"`
+	// Quality is the screen's "品質" (fast / standard / high; "" is standard): where Sampling names no steps or cfg, a model takes the ones of its
+	// quality preset (modelcatalog.Info.Sampling.Presets). Standard is the model's own values, so a request without it runs as it always did.
+	Quality sampling.Quality `json:"quality,omitempty"`
 	// Mask is the inpaint mask (white redraws, black keeps), in the same shape as a reference. Nil: not a partial redraw.
 	Mask *RefInput `json:"mask,omitempty"`
 	// Denoise is the redraw strength (above 0 through 1). Nil uses each model's template default (modelcatalog.Info.DenoiseDefault).
@@ -148,6 +151,9 @@ func (s *Service) normalize(r Request) (Request, []modelcatalog.Info, error) {
 		return r, nil, err
 	}
 	if r.Sampling, err = checkSampling(r); err != nil {
+		return r, nil, err
+	}
+	if r.Quality, err = checkQuality(r.Quality); err != nil {
 		return r, nil, err
 	}
 	if err := checkInpaint(r, models); err != nil {
