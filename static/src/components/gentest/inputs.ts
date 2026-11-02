@@ -1,6 +1,7 @@
 import { highlight, markAdded, releasePicker, RowReorder } from './inputs-dom';
 import { applyModels } from './inputs-models';
 import { isUploadRef, moveItem, takeFiles, uploadRef } from './inputs-model';
+import { syncSliders } from '../slider/slider';
 
 /**
  * The input images of the generation test (spec/components/gentest-screen.md): one drop zone (drop or click, plus a dialog that
@@ -152,6 +153,7 @@ class Inputs {
       }
       this.files.set(li, { file, url });
       this.list.append(li);
+      syncSliders(li);
     }
     this.sync();
   }

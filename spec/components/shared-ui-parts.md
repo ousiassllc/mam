@@ -8,7 +8,7 @@
 
 **用途ごとの許可クラスの網羅した表（と例外・検査）は [color-rules.md](color-rules.md)（#867。2026-10-28 オーナー確認済み）。この節の表はその一部で、食い違うときは color-rules.md が正。**
 
-`static/src/css/app.css` は `@import "tailwindcss"` と `@source` だけで、独自のトークンは無い。既存のパレットだけを使う。コントラスト比は WCAG の式で計算した値（2026-10-25）。
+`static/src/css/app.css` は `@import "tailwindcss"`・スライダーの CSS（`slider.css`。下の表）と `@source` だけで、独自のトークンは無い。既存のパレットだけを使う。コントラスト比は WCAG の式で計算した値（2026-10-25）。
 
 | 用途 | クラス | 備考 |
 |------|--------|------|
@@ -23,6 +23,7 @@
 | 主ボタンの `bg-indigo-500` | `atoms.TonePrimary` の実ボタン専用 | カードの見た目に使わない（カードはリンクであってボタンではない） |
 | 状態 | `atoms.Badge`（neutral / info / warn / ok / error）と文字。**色だけで伝えない**（#790・#795） | §2 の対応表 |
 | カードの枠 | `border-neutral-800` は飾り。カードはタイトルの文字とフォーカスの輪で見分ける | 入力欄の枠のコントラスト（`field_border_test`）の対象ではない |
+| スライダー（`input[type=range]`。#955） | アプリの**すべて**のスライダーが `static/src/css/slider.css` の共通の見た目（レール 6px・つまみ 16px の丸。塗り `indigo-500`・残り `neutral-600`・つまみ白）。ホバー（光る縁取り）・ドラッグ中（つまみが `indigo-400`）・`focus-visible`（`indigo-400` の輪）・無効（グレー）を持つ。色は [color-rules.md](color-rules.md) §4.1。値は `<output>` を横（参照画像・LoRA の強さ）か上（プロンプトマッチの目標）に置く（動画の再生位置は、下のタイムコードが値） | 要素は `<input type=range>` のまま（矢印キー・ドラッグ・範囲・刻み・初期値は変えない）。WebKit にレールの塗りの疑似要素が無いので、塗りは `--fill`（`components/slider/slider.ts` が値から書く。Lit は `sliderStyle()`）と `linear-gradient` で描く。新しいスライダーは class で見た目を足さず、幅・並べ方だけ書く |
 
 ### 商用利用の可否（Issue #928）
 
@@ -209,6 +210,7 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 | 0.13 | 2026-10-28 | §1 の冒頭に、色の用途別の許可クラスの表 [color-rules.md](color-rules.md) への参照を足した。`Badge`・`Button` の色は、その表の正とした | Issue #867 |
 | 0.14 | 2026-10-29 | §9.1 に、ポーリングで差し替わる範囲のカードの「?」のパネルを範囲の外に置き、差し替えても開いたままにする例外を足した（`Card.HelpPanelElsewhere`・`help.ts` の `htmx:afterSettle`）。§9.2 の `Card.Help` の行を合わせた | Issue #866。オーナーの決定（案 A） |
 | 0.15 | 2026-11-01 | §10 の生成テストの行に、作成フォームの区画の説明・モデルごとの性質と選べない理由・パラメーター・見積り・実行の補足を足した | Issue #906 |
+| 0.16 | 2026-11-02 | §1 の表に、スライダーの共通の見た目（`slider.css`・`--fill`・`components/slider/`）を足した。`app.css` の説明に `slider.css` の import を足した | Issue #955 |
 
 ## 8. オーナーへの確認事項と決定（2026-10-25: すべて推奨する既定で決定）
 
