@@ -1,0 +1,77 @@
+package gentest
+
+import "github.com/ousiassllc/mam/backend/internal/web/atoms"
+
+const thumbButton = "rounded bg-neutral-900 px-1.5 text-xs leading-5 text-neutral-200 hover:text-neutral-100 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-400"
+
+// RefRow is a chosen input image as a thumbnail: its number (the order the models get the images in), a × to take it out, buttons
+// to move it, and (for an image) a role and a strength. The hidden field ref is what posts it; the images chosen in the browser
+// are drawn from this markup too (the template of inputFields).
+templ RefRow(r Ref, media string, ui RefUI) {
+	<li
+		class="flex flex-col gap-1.5 rounded-md border border-neutral-700 bg-neutral-900 p-1.5 text-xs data-[dragging]:opacity-50"
+		data-testid="gt-ref"
+		data-gt-ref
+		data-ref={ r.Value }
+	>
+		<input type="hidden" name={ FieldRef } value={ r.Value }/>
+		<div class="relative" draggable="true" data-gt-handle>
+			<button type="button" class="block w-full cursor-zoom-in focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-400" data-gt-zoom aria-label={ "拡大: " + r.Label } title={ r.Label }>
+				if r.ThumbURL != "" {
+					<img class="aspect-square w-full rounded object-cover" src={ r.ThumbURL } alt="" draggable="false"/>
+				} else {
+					<img class="aspect-square w-full rounded object-cover" alt="" draggable="false"/>
+				}
+			</button>
+			<span class="pointer-events-none absolute left-1 top-1 min-w-5 rounded bg-indigo-500 px-1.5 text-center text-xs font-medium leading-5 text-white" data-gt-badge></span>
+			<button type="button" class={ thumbButton + " absolute right-1 top-1" } data-gt-remove aria-label={ "取り除く: " + r.Label } title="取り除く">×</button>
+			<span class="absolute bottom-1 right-1 flex gap-1">
+				<button type="button" class={ thumbButton } data-gt-move="-1" aria-label={ "前へ: " + r.Label } title="前へ">‹</button>
+				<button type="button" class={ thumbButton } data-gt-move="1" aria-label={ "後ろへ: " + r.Label } title="後ろへ">›</button>
+			</span>
+		</div>
+		@refControls(r, media, ui)
+	</li>
+}
+
+// refControls are the role of an image and, for an image model, its strength. The roles the chosen models do not take are
+// there but not offered (the browser changes that when the models change); the controls are hidden while no chosen model
+// takes input images.
+templ refControls(r Ref, media string, ui RefUI) {
+	if media == "video" {
+		@atoms.Select(atoms.FieldSm, "w-full", templ.Attributes{"name": FieldRolePrefix + r.Value, "aria-label": "役割: " + r.Label, "data-gt-role": ""}) {
+			for _, o := range videoRoles {
+				<option value={ o.Value } selected?={ o.Value == r.Role }>{ o.Label }</option>
+			}
+		}
+	} else {
+		<div class="flex flex-col gap-1.5" data-gt-ref-controls hidden?={ !ui.Show() }>
+			@atoms.Select(atoms.FieldSm, "w-full", templ.Attributes{"name": FieldRolePrefix + r.Value, "aria-label": "役割: " + r.Label, "data-gt-role": "", "disabled": !ui.Show()}) {
+				for _, o := range imageRoles {
+					<option value={ o.Value } selected?={ o.Value == r.Role } hidden?={ !ui.Offers(o.Value) } disabled?={ !ui.Offers(o.Value) }>{ o.Label }</option>
+				}
+			}
+			@strengthSlider(FieldStrengthPrefix+r.Value, "強さ: "+r.Label, r.Strength, DefaultRefStrength, "data-gt-strength", !ui.Show())
+		</div>
+	}
+}
+
+// strengthSlider is a 0..1 slider with its value beside it. marker is the data attribute the browser finds the slider by.
+templ strengthSlider(name, label string, value *float64, def float64, marker string, disabled bool) {
+	<label class="flex items-center gap-1.5 text-neutral-300">
+		<span>強さ</span>
+		<input
+			type="range"
+			name={ name }
+			min="0"
+			max="1"
+			step="0.05"
+			value={ strengthValue(value, def) }
+			aria-label={ label }
+			class="min-w-0 flex-1"
+			disabled?={ disabled }
+			{ templ.Attributes{marker: ""}... }
+		/>
+		<output class="w-9 text-right tabular-nums" data-gt-strength-out>{ strengthText(strengthOrDefault(value, def)) }</output>
+	</label>
+}

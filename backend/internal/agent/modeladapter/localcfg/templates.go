@@ -9,10 +9,10 @@ import (
 	"slices"
 )
 
-//go:embed templates/*.json
+//go:embed templates/image/*.json templates/video/*.json
 var templateFS embed.FS
 
-// Template is a ready workflow with its input assignments, shipped in the binary as data (templates/*.json):
+// Template is a ready workflow with its input assignments, shipped in the binary as data (templates/image/*.json, templates/video/*.json):
 // adding one needs no code. It uses core ComfyUI nodes only, so the server needs no custom nodes. Only the
 // model files (the checkpoint names inside the graph) have to be present on the server, and the names may
 // need changing to what the server has.
@@ -28,23 +28,25 @@ type Template struct {
 // Templates lists the built-in workflow templates: image (text to image, reference to image) and video
 // (text to video, first frame to video), ordered by ID.
 func Templates() []Template {
-	entries, err := fs.ReadDir(templateFS, "templates")
-	if err != nil {
-		panic(err) // the directory is embedded: a build problem, not a run-time one
-	}
 	var out []Template
-	for _, e := range entries {
-		data, err := templateFS.ReadFile("templates/" + e.Name())
+	for _, dir := range []string{"templates/image", "templates/video"} {
+		entries, err := fs.ReadDir(templateFS, dir)
 		if err != nil {
-			panic(err)
+			panic(err) // the directory is embedded: a build problem, not a run-time one
 		}
-		var t Template
-		dec := json.NewDecoder(bytes.NewReader(data))
-		dec.DisallowUnknownFields()
-		if err := dec.Decode(&t); err != nil {
-			panic(fmt.Sprintf("template %s: %v", e.Name(), err))
+		for _, e := range entries {
+			data, err := templateFS.ReadFile(dir + "/" + e.Name())
+			if err != nil {
+				panic(err)
+			}
+			var t Template
+			dec := json.NewDecoder(bytes.NewReader(data))
+			dec.DisallowUnknownFields()
+			if err := dec.Decode(&t); err != nil {
+				panic(fmt.Sprintf("template %s: %v", e.Name(), err))
+			}
+			out = append(out, t)
 		}
-		out = append(out, t)
 	}
 	slices.SortFunc(out, func(a, b Template) int {
 		switch {

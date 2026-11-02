@@ -14,11 +14,12 @@ import (
 //     <script> or an on* attribute that ever reaches a page or an HTMX fragment does not run.
 //   - style-src 'unsafe-inline': the Lit components set style="left:…;width:…" attributes and htmx
 //     injects its indicator <style>; style-src 'self' alone would drop both.
-//   - img-src data: / media-src blob: cover inline icons and object-URL playback.
+//   - img-src data: / blob: and media-src blob: cover inline icons, the object-URL thumbnails of the images chosen on the
+//     generation test screen (#933) and object-URL playback.
 //   - frame-ancestors 'none': the app is never framed (clickjacking).
 const (
 	cspPrefix = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'"
-	cspSuffix = "; img-src 'self' data:; media-src 'self' blob:; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+	cspSuffix = "; img-src 'self' data: blob:; media-src 'self' blob:; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
 )
 
 // SecurityHeaders sets Content-Security-Policy and X-Content-Type-Options on every response, so the

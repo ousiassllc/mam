@@ -2,6 +2,7 @@ package gentest
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/help"
@@ -36,7 +37,16 @@ templ modelChoices(c Compose) {
 // screen reader says "checkbox, checked"; it is what the form posts). The selection is shown by the border, the glow and a
 // mark, so not by colour alone; the keyboard focus by a ring.
 templ modelCard(m ModelChoice) {
-	<li data-testid="gt-model" data-model={ m.ID } data-available={ boolText(m.Reason == "") }>
+	<li
+		data-testid="gt-model"
+		data-model={ m.ID }
+		data-available={ boolText(m.Reason == "") }
+		data-label={ m.Label }
+		data-accepts-references={ boolText(len(m.RefRoles) > 0) }
+		data-reference-mode={ m.RefMode }
+		data-reference-roles={ strings.Join(m.RefRoles, " ") }
+		data-supports-lora={ boolText(m.CanLoRA) }
+	>
 		<label class="relative block cursor-pointer has-[:disabled]:cursor-not-allowed">
 			<input
 				type="checkbox"
@@ -52,11 +62,14 @@ templ modelCard(m ModelChoice) {
 			<span class="flex flex-col gap-1 rounded-md border border-neutral-800 p-3 pr-8 text-sm transition-shadow hover:border-neutral-600 peer-checked:border-indigo-400 peer-checked:bg-indigo-500/20 peer-checked:shadow-[0_0_12px_1px] peer-checked:shadow-indigo-400/40 peer-focus-visible:ring-2 peer-focus-visible:ring-indigo-400 peer-disabled:pointer-events-none peer-disabled:opacity-60 motion-reduce:transition-none">
 				<span class="break-words font-medium text-neutral-100">{ m.Label }</span>
 				<span class="break-words text-xs text-neutral-400">{ m.Source } ・ { m.Price }</span>
-				if m.Reason != "" {
-					<span class="w-fit">
+				<span class="flex flex-wrap items-center gap-1.5" data-testid="gt-model-badges">
+					if m.Media != "video" {
+						@refIcon(m)
+					}
+					if m.Reason != "" {
 						@atoms.Badge(atoms.BadgeNeutral, "選べません")
-					</span>
-				}
+					}
+				</span>
 			</span>
 			<span class="pointer-events-none absolute right-3 top-3 hidden text-indigo-300 peer-checked:block" aria-hidden="true" data-gt-model-mark>✓</span>
 		</label>
@@ -64,6 +77,34 @@ templ modelCard(m ModelChoice) {
 			<span id={ "gt-reason-" + m.ID } class="sr-only" data-testid="gt-model-reason">{ m.Reason }</span>
 		}
 	</li>
+}
+
+// refIcon says whether the model uses input images and how: an icon with its tooltip and its name for a screen reader, and
+// for a model that says its mode the short word beside it (編集 = an editing model with several images, 画像から = one
+// image the sampling starts from).
+templ refIcon(m ModelChoice) {
+	<span
+		class="inline-flex items-center gap-1 text-xs text-neutral-300"
+		role="img"
+		aria-label={ m.RefHint() }
+		title={ m.RefHint() }
+		data-testid="gt-model-ref"
+		data-gt-ref-icon
+	>
+		switch  {
+			case len(m.RefRoles) == 0:
+				@atoms.Icon(atoms.IconImageOff, "h-4 w-4 shrink-0 text-neutral-400")
+			case m.RefMode == "edit":
+				@atoms.Icon(atoms.IconImagePlus, "h-4 w-4 shrink-0 text-indigo-300")
+			case m.RefMode == "img2img":
+				@atoms.Icon(atoms.IconImageUp, "h-4 w-4 shrink-0 text-indigo-300")
+			default:
+				@atoms.Icon(atoms.IconImage, "h-4 w-4 shrink-0 text-indigo-300")
+		}
+		if m.ModeLabel() != "" {
+			<span aria-hidden="true">{ m.ModeLabel() }</span>
+		}
+	</span>
 }
 
 // modelsHelp is the explanation of the models: how to choose, and for each model what it takes (the seed, the negative

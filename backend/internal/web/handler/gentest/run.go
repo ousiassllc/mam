@@ -11,6 +11,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/refform"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
 )
 
@@ -22,9 +23,7 @@ func (h Handlers) Estimate(c *gin.Context) {
 	var req gentest.Request
 	var est gentest.Estimate
 	if err == nil {
-		var staged []gentest.RefInput
-		if staged, err = h.stageUploads(c); err == nil {
-			f.refs = append(f.refs, staged...)
+		if f.refs, err = refform.Stage(f.refs, c.Request.MultipartForm, h.stage); err == nil {
 			if req, err = f.request(); err == nil {
 				est, err = h.Svc.Estimate(ctx, req)
 			}

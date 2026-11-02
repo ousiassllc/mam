@@ -1,0 +1,88 @@
+package gentest
+
+import (
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// refOptions are the options of a batch that go with the input images of an image model: not to copy the pose of the images,
+// and a LoRA. Each is drawn only while a chosen model can use it (the browser follows the model cards), and a control that is
+// not drawn is disabled, so that it posts nothing.
+templ refOptions(c Compose) {
+	if c.Media != "video" {
+		<div class="flex flex-col gap-3" data-gt-options data-testid="gt-ref-options">
+			<label class="flex items-center gap-2 text-sm" data-gt-avoid hidden?={ !c.RefUI().Show() }>
+				@atoms.Choice("", templ.Attributes{"type": "checkbox", "name": FieldAvoidPose, "value": "on", "checked": c.AvoidPose, "disabled": !c.RefUI().Show(), "data-testid": "gt-avoid-pose"})
+				<span>参照画像のポーズ・構図を真似させない</span>
+			</label>
+			if len(c.LoRAs) > 0 {
+				<div class="flex flex-wrap items-center gap-3 text-xs text-neutral-400" data-gt-lora hidden?={ !c.CanLoRA() } data-testid="gt-lora">
+					<label class="flex items-center gap-2" for="gt-lora-name">
+						<span>LoRA</span>
+						@atoms.Select(atoms.FieldSm, "max-w-56", templ.Attributes{"id": "gt-lora-name", "name": FieldLoRA, "disabled": !c.CanLoRA()}) {
+							<option value="" selected?={ c.LoRA == "" }>なし</option>
+							for _, n := range c.LoRAs {
+								<option value={ n } selected?={ n == c.LoRA }>{ n }</option>
+							}
+						}
+					</label>
+					<div class="w-48">
+						@strengthSlider(FieldLoRAStrength, "LoRA の強さ", c.LoRAStrength, DefaultLoRAStrength, "data-gt-lora-strength", !c.CanLoRA())
+					</div>
+				</div>
+			}
+		</div>
+	}
+}
+
+// pickerDialog is the dialog in which an image of a Project or of the history is chosen: the Project to look into, and what
+// it holds (Picker). The images are added to the grid behind it.
+templ pickerDialog(c Compose) {
+	<dialog
+		id={ pickerDialogID }
+		data-gt-picker-dialog
+		aria-labelledby="gt-picker-title"
+		class="m-auto w-[min(48rem,92vw)] max-h-[85vh] overflow-y-auto rounded-lg border border-neutral-700 bg-neutral-900 p-4 text-neutral-100 backdrop:bg-black/70"
+	>
+		<div class="flex flex-wrap items-center justify-between gap-2">
+			<h2 id="gt-picker-title" class="text-sm font-medium">画像を選ぶ</h2>
+			@atoms.SmallButton(atoms.ToneNeutral, "閉じる", templ.Attributes{"type": "button", "data-gt-picker-close": ""})
+		</div>
+		<div class="mt-3 flex flex-wrap items-end gap-3" data-gt-picker-source>
+			<label class="flex flex-col gap-1 text-xs text-neutral-400" for="gt-project">
+				<span>プロジェクト</span>
+				@atoms.Select(atoms.FieldMd, "max-w-xs", templ.Attributes{
+					"id": "gt-project", "name": "project", "hx-get": paths.GenerationTestPart("picker"), "hx-trigger": "change",
+					"hx-target": "#" + PickerID, "hx-swap": "innerHTML", "hx-include": "this",
+				}) {
+					<option value="">（選んでください）</option>
+					for _, p := range c.Projects {
+						<option value={ p.ID }>{ p.Name }</option>
+					}
+				}
+			</label>
+		</div>
+		<div id={ PickerID } class="mt-3" data-testid="gt-picker"></div>
+	</dialog>
+}
+
+// Picker lists images that can be added to the inputs: each has an "追加" button that appends its thumbnail to the grid.
+templ Picker(rows []Ref, empty string) {
+	if len(rows) == 0 {
+		<p class="text-xs text-neutral-400" data-testid="gt-picker-empty">{ empty }</p>
+	}
+	<ul class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+		for _, r := range rows {
+			<li class="flex flex-col gap-1 rounded-md border border-neutral-800 p-2 text-xs" data-testid="gt-pick">
+				if r.ThumbURL != "" {
+					<img class="aspect-square w-full rounded object-cover" src={ r.ThumbURL } alt={ r.Label } loading="lazy"/>
+				}
+				<span class="break-words text-neutral-300">{ r.Label }</span>
+				@atoms.SmallButtonFor(atoms.ToneNeutral, "追加", r.Label, templ.Attributes{
+					"type": "button", "data-ref": r.Value, "hx-get": paths.GenerationTestPart("ref-row") + "?ref=" + r.Value, "hx-target": "#" + RefsID, "hx-swap": "beforeend",
+					"hx-include": "#" + ComposeID + " [name=media], #" + ComposeID + " [name=model]", "hx-sync": "this",
+				})
+			</li>
+		}
+	</ul>
+}

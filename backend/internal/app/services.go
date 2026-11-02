@@ -31,6 +31,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
 	"github.com/ousiassllc/mam/backend/internal/media"
 	"github.com/ousiassllc/mam/backend/internal/media/ffmpegdl"
+	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/repository/comfywf"
 	"github.com/ousiassllc/mam/backend/internal/service"
@@ -39,6 +40,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/localruntime"
 	"github.com/ousiassllc/mam/backend/internal/service/localspeech"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
+	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/wfrefresh"
 	"github.com/ousiassllc/mam/backend/internal/service/workflows"
 )
 
@@ -211,6 +213,7 @@ func buildServices(ctx context.Context, cfg config.Config, logger *slog.Logger, 
 	jobs.Start(ctx)
 	closers = append(closers, jobs.Stop)
 	mgr.OnStartup(ctx)
+	wfrefresh.Run(ctx, localModels, catalog.Default(), modelmanager.BundledEndpoint, logger.Warn) // after the endpoint is registered
 	rts.OnStartup(ctx)
 	return services, db, release, nil
 }

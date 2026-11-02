@@ -110,14 +110,14 @@ func slotParams(media string) []service.Param {
 	return service.ImageParams()
 }
 
-// slotsFor is the table of a workflow: one slot per value (reference images: view.ReferenceSlots of them,
-// placed where the first one is), with selected holding "<node>|<input>" by AssignField.
-func slotsFor(media string, selected map[string]string) []view.Slot {
+// slotsFor is the table of a workflow: one slot per value (reference images: refSlots of them, placed where the first one is),
+// with selected holding "<node>|<input>" by AssignField.
+func slotsFor(media string, selected map[string]string, refSlots int) []view.Slot {
 	var slots []view.Slot
 	for _, p := range slotParams(media) {
 		n := 1
 		if p == service.ParamReferenceImage {
-			n = view.ReferenceSlots
+			n = refSlots
 		}
 		for i := range n {
 			f := view.AssignField(string(p), i)
@@ -125,6 +125,18 @@ func slotsFor(media string, selected map[string]string) []view.Slot {
 		}
 	}
 	return slots
+}
+
+// referenceSlotsOf is how many reference image rows the table of a workflow has: view.ReferenceSlots, or more for a workflow
+// that takes more (Qwen-Image 2.1 takes ten), so that no stored reference is hidden.
+func referenceSlotsOf(w service.Workflow) int {
+	n := view.ReferenceSlots
+	for _, a := range w.Assignments {
+		if a.Param == service.ParamReferenceImage {
+			n = max(n, a.Index+1)
+		}
+	}
+	return n
 }
 
 // nodeChoices lists the nodes of a workflow with the inputs a value can be put into (not the ones another
@@ -164,9 +176,13 @@ func formOf(endpoint string, kind service.Kind, name string, edit bool, m servic
 		f.Nodes = nodeChoices(f.Graph)
 		selected := map[string]string{}
 		for _, a := range w.Assignments {
-			selected[view.AssignField(string(a.Param), a.Index)] = a.Node + "|" + a.Input
+			// Several assignments of one value (the result's width and the reference scale's width) show as the first: the form
+			// edits that one and workflowOf keeps the others.
+			if field := view.AssignField(string(a.Param), a.Index); selected[field] == "" {
+				selected[field] = a.Node + "|" + a.Input
+			}
 		}
-		f.Slots = slotsFor(f.Media, selected)
+		f.Slots = slotsFor(f.Media, selected, referenceSlotsOf(*w))
 	}
 	return f
 }
@@ -189,6 +205,6 @@ func floatField(v float64) string {
 func importedForm(endpoint string, kind service.Kind, media string, graph json.RawMessage) view.ModelForm {
 	f := view.ModelForm{Endpoint: endpoint, EndpointKind: string(kind), Media: media, Graph: string(graph)}
 	f.Nodes = nodeChoices(f.Graph)
-	f.Slots = slotsFor(media, nil)
+	f.Slots = slotsFor(media, nil, view.ReferenceSlots)
 	return f
 }

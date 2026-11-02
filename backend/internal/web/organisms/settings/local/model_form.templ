@@ -76,6 +76,9 @@ templ compatFields(f ModelForm) {
 
 templ workflowFields(f ModelForm) {
 	<input type="hidden" name={ FieldGraph } value={ f.Graph }/>
+	if f.Source != "" {
+		<input type="hidden" name={ FieldTemplate } value={ f.Source }/>
+	}
 	<fieldset class="flex flex-col gap-2" data-testid="local-assignments">
 		<legend class="text-sm font-medium">入力の割り当て</legend>
 		<p class="text-xs text-neutral-400">mam の値を、ワークフローのどのノードのどの入力に入れるかを選びます。他のノードがつないでいる入力は選べません。Prompt は必須です。参照画像の枚数と最初・最後のフレームの対応は、ここで選んだ入力から決まります。</p>

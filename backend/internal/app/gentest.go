@@ -14,6 +14,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
+	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager/mmview"
 )
 
@@ -33,9 +34,10 @@ func newGentest(cfg config.Config, db *repository.DB, jobs *jobqueue.Queue, adap
 			_, msg := mmview.Refuse(err)
 			return msg
 		},
-		Hidden:     services.ModelManager.HidesModel,
-		Translator: translator,
-		Logger:     logger,
+		Hidden:          services.ModelManager.HidesModel,
+		BundledEndpoint: modelmanager.BundledEndpoint,
+		Translator:      translator,
+		Logger:          logger,
 	})
 	g.Register()
 	return g

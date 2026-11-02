@@ -71,7 +71,7 @@ func (s *Service) Result(ctx context.Context, id string) (ResultDetail, error) {
 	}
 	d := ResultDetail{ResultView: viewOf(r), Inputs: []InputView{}, Imports: []ImportView{}, BatchEstimatedUSD: batch.EstimatedCost}
 	for _, in := range inputs {
-		d.Inputs = append(d.Inputs, InputView{ID: in.ID, Role: in.Role, MimeType: in.MimeType, SizeBytes: in.SizeBytes, Origin: decode[InputOrigin](in.Origin)})
+		d.Inputs = append(d.Inputs, InputView{ID: in.ID, Role: in.Role, MimeType: in.MimeType, SizeBytes: in.SizeBytes, Strength: in.Strength, Origin: decode[InputOrigin](in.Origin)})
 	}
 	for _, im := range imports {
 		d.Imports = append(d.Imports, ImportView{ID: im.ID, ProjectID: im.ProjectID, AssetID: im.AssetID, ReferenceItemID: im.ReferenceItemID, Target: decode[projectlink.ImportTarget](im.Target), CreatedAt: im.CreatedAt})

@@ -20,6 +20,10 @@ const (
 	RoleReference  = "reference"
 	RoleFirstFrame = "first_frame"
 	RoleLastFrame  = "last_frame"
+	// The roles of a reference of an image model besides the whole picture (RoleReference).
+	RoleFace  = "face"
+	RoleStyle = "style"
+	RoleEdit  = "edit"
 )
 
 // Status of a result. queued -> running -> succeeded | failed; a queued result can also be cancelled.
@@ -72,6 +76,8 @@ type Input struct {
 	// Origin is {"kind": "upload"|"project_asset"|"reference_item"|"history", "id": ..., "project_id": ...}.
 	Origin   json.RawMessage
 	Position int
+	// Strength (0..1) is how strongly an image model shows the reference; nil is the default (and not applicable to a frame).
+	Strength *float64
 }
 
 // Result is one generation. FilePath is relative to the gentest directory; empty until it succeeded.

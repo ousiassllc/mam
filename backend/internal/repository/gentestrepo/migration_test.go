@@ -68,3 +68,64 @@ func TestMigration_GentestUpAndDown(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 5, tables(), "up again after down")
 }
+
+// beforeInputStrength is the migration before 20261101140000_gentest_input_role_strength.sql.
+const beforeInputStrength = 20261101130000
+
+func TestMigration_GentestInputRoleAndStrength(t *testing.T) {
+	ctx := context.Background()
+	db, err := sql.Open("sqlite", "file:"+filepath.Join(t.TempDir(), "m.db")+"?_pragma=foreign_keys(1)")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = db.Close() })
+	db.SetMaxOpenConns(1)
+	provider, err := goose.NewProvider(goose.DialectSQLite3, db, os.DirFS("../migrations"), goose.WithAllowOutofOrder(true))
+	require.NoError(t, err)
+	exec := func(q string, args ...any) error { _, err := db.ExecContext(ctx, q, args...); return err }
+	insert := func(id, role string) error {
+		return exec(`INSERT INTO gentest_input (id, batch_id, role, file_path, mime_type) VALUES (?, 'b', ?, 'x', 'image/png')`, id, role)
+	}
+	hasStrength := func() bool {
+		var n int
+		require.NoError(t, db.QueryRowContext(ctx, `SELECT COUNT(*) FROM pragma_table_info('gentest_input') WHERE name = 'strength'`).Scan(&n))
+		return n == 1
+	}
+
+	_, err = provider.UpTo(ctx, beforeInputStrength)
+	require.NoError(t, err)
+	require.NoError(t, exec(`INSERT INTO gentest_batch (id, media) VALUES ('b', 'image')`))
+	require.NoError(t, insert("old", "reference"))
+	assert.Error(t, insert("face0", "face"), "the old table knows no face role")
+	assert.False(t, hasStrength())
+
+	_, err = provider.Up(ctx)
+	require.NoError(t, err)
+	assert.True(t, hasStrength())
+	var strength sql.NullFloat64
+	require.NoError(t, db.QueryRowContext(ctx, `SELECT strength FROM gentest_input WHERE id = 'old'`).Scan(&strength))
+	assert.False(t, strength.Valid, "a copied row has the default strength (NULL)")
+	for _, role := range []string{"face", "style", "edit", "first_frame", "last_frame"} {
+		assert.NoError(t, insert("n-"+role, role), role)
+	}
+	assert.Error(t, insert("bad", "middle"), "the role is still checked")
+	require.NoError(t, exec(`UPDATE gentest_input SET strength = 0.4 WHERE id = 'n-face'`))
+	assert.Error(t, exec(`UPDATE gentest_input SET strength = 1.2 WHERE id = 'n-face'`), "the strength is within 0..1")
+	var idx int
+	require.NoError(t, db.QueryRowContext(ctx, `SELECT COUNT(*) FROM sqlite_master WHERE type = 'index' AND name = 'idx_gentest_input_batch'`).Scan(&idx))
+	assert.Equal(t, 1, idx)
+
+	_, err = provider.DownTo(ctx, beforeInputStrength)
+	require.NoError(t, err)
+	assert.False(t, hasStrength())
+	var role string
+	require.NoError(t, db.QueryRowContext(ctx, `SELECT role FROM gentest_input WHERE id = 'n-face'`).Scan(&role))
+	assert.Equal(t, "reference", role, "a face reference goes back to the whole picture")
+	var n int
+	require.NoError(t, db.QueryRowContext(ctx, `SELECT COUNT(*) FROM gentest_input`).Scan(&n))
+	assert.Equal(t, 6, n)
+	require.NoError(t, exec(`DELETE FROM gentest_batch WHERE id = 'b'`))
+	require.NoError(t, db.QueryRowContext(ctx, `SELECT COUNT(*) FROM gentest_input`).Scan(&n))
+	assert.Zero(t, n, "ON DELETE CASCADE survives the rebuild")
+	_, err = provider.Up(ctx)
+	require.NoError(t, err)
+	assert.True(t, hasStrength())
+}

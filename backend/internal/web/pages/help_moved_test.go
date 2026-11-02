@@ -63,7 +63,7 @@ func TestScreens_LongExplanationsAreInTheHelpNotOnThePage(t *testing.T) {
 			[]string{"MCP（Streamable HTTP）で行えます", "tailnet の IP（100.x）にできます"},
 			[]string{"MCP サーバー"}},
 		{"generation test", pages.GenerationTestPage("tok", gentest.Compose{Prompts: []gentest.PromptText{{}}}),
-			[]string{"プロジェクトに属さない画像・動画の生成です", "結果は Take・コスト台帳には入りません", "複数選べます。代替のモデルへは切り替えません", "そのままモデルに送ります", "1 回に", "使えないモデルには渡さず、見積りで知らせます"},
+			[]string{"プロジェクトに属さない画像・動画の生成です", "結果は Take・コスト台帳には入りません", "複数選べます。代替のモデルへは切り替えません", "そのままモデルに送ります", "1 回に", "番号の順にモデルへ渡します"},
 			[]string{"生成テスト", "モデル", "プロンプト", "入力画像（省略可）", "見積りを見る"}},
 		{"project settings", pages.SettingsPage("tok", organisms.SettingsBodyData{}),
 			[]string{"FAST は少ない Take と高速モデル", "LOCK の制約に違反した Take・成果物はスコアに関係なく不合格", "テンプレートを更新・削除しても既存の Project には反映されません"},

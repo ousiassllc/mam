@@ -122,12 +122,12 @@ const coreVersion = "v0.42.1"
 var coreNodes = []string{
 	"BasicScheduler", "BetaSamplingScheduler", "CFGGuider", "CLIPLoader", "CLIPTextEncode", "CheckpointLoaderSimple",
 	"ComfyMathExpression", "ConditioningZeroOut", "CreateVideo", "DualCLIPLoader", "EmptyHunyuanVideo15Latent",
-	"EmptyLTXVLatentVideo", "EmptyLatentImage", "EmptySD3LatentImage", "FluxGuidance", "KSampler", "KSamplerAdvanced",
+	"EmptyLTXVLatentVideo", "EmptyLatentImage", "EmptySD3LatentImage", "FluxGuidance", "ImageScale", "KSampler", "KSamplerAdvanced",
 	"KSamplerSelect", "LTXVAudioVAEDecode", "LTXVConcatAVLatent", "LTXVConditioning", "LTXVDualCFGGuider",
 	"LTXVEmptyLatentAudio", "LTXVImgToVideo", "LTXVImgToVideoInplace", "LTXVLatentUpsampler", "LTXVPreprocess",
 	"LTXVScheduler", "LTXVSeparateAVLatent", "LatentUpscaleModelLoader", "LoadImage", "LoraLoaderModelOnly",
 	"ManualSigmas", "ModelSamplingAuraFlow", "ModelSamplingSD3", "PrimitiveInt", "RandomNoise", "SamplerCustom",
-	"SamplerCustomAdvanced", "SaveImage", "SaveVideo", "T5TokenizerOptions", "TextEncodeQwenImage21", "UNETLoader",
+	"SamplerCustomAdvanced", "SaveImage", "SaveVideo", "SplitSigmasDenoise", "T5TokenizerOptions", "TextEncodeQwenImage21", "UNETLoader",
 	"VAEDecode", "VAEDecodeTiled", "VAEEncode", "VAELoader", "Wan22ImageToVideoLatent", "WanImageToVideo",
 }
 

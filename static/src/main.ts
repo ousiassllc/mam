@@ -14,6 +14,7 @@ import { dedupeToastsOnSwap, dismissToastsOnClick } from './components/lib/toast
 import { insideModal, installModal } from './components/modal/modal';
 import { installCopy } from './components/copy/copy';
 import { installHelp } from './components/help/help';
+import { initGentestInputs } from './components/gentest/inputs';
 
 // Attach the CSRF token (from <meta name="csrf-token">) to every HTMX request.
 document.addEventListener('htmx:configRequest', (event) => {
@@ -85,10 +86,12 @@ installHistorySnapshotHygiene();
 document.addEventListener('DOMContentLoaded', () => {
   initChatWorkspaces();
   initShotProgress();
+  initGentestInputs();
 });
 document.addEventListener('htmx:load', (event) => {
   initChatWorkspaces(event.target as ParentNode);
   initShotProgress(event.target as ParentNode);
+  initGentestInputs(event.target as ParentNode);
 });
 
 // Lit components.

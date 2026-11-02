@@ -28,15 +28,15 @@ type Input struct {
 	MimeType string
 }
 
-// ImageRequest is one image generation. Inputs are reference images; a model that cannot use them
-// generates from the prompt alone.
+// ImageRequest is one image generation. Inputs are reference images (a model that cannot use them generates from the prompt alone).
 type ImageRequest struct {
 	Prompt      string
 	AspectRatio string // "16:9", "9:16", "1:1"
 	Inputs      []Input
 	// NegativePrompt is for a model that has the field (a ComfyUI workflow with a negative prompt); others ignore it.
 	NegativePrompt string
-	Seed           *int64 // for a model that takes one (SupportsSeed); nil lets the vendor choose
+	Seed           *int64                // for a model that takes one (SupportsSeed); nil lets the vendor choose
+	Options        localcfg.ImageOptions // the role and strength of each of Inputs and a LoRA, for a model that has them
 }
 
 // ImageResult is a generated image.

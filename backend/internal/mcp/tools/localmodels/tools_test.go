@@ -143,6 +143,30 @@ func TestTemplatesAndImport(t *testing.T) {
 	assert.Contains(t, env.CallError("import_local_workflow", map[string]any{"workflow_json": "nope"}), "validation")
 }
 
+// The reference fields of an image model follow the template's workflow: the same numbers the generation test lists.
+func TestModels_ImageModelsShowHowTheyUseReferences(t *testing.T) {
+	r := newRig(t, false, "")
+	env := newEnv(t, r)
+	env.CallOK("create_local_endpoint", map[string]any{"name": "box", "kind": "comfyui", "base_url": "http://127.0.0.1:8188"}, nil)
+
+	var plain, edit, img2img localmodels.Model
+	env.CallOK("create_local_model", map[string]any{"endpoint": "box", "name": "sdxl", "template_id": "txt2img-sdxl"}, &plain)
+	assert.False(t, plain.AcceptsReferences)
+	assert.Empty(t, plain.ReferenceMode)
+	assert.Zero(t, plain.MaxReferences)
+	assert.False(t, plain.SupportsLoRA)
+
+	env.CallOK("create_local_model", map[string]any{"endpoint": "box", "name": "qwen", "template_id": "txt2img-qwen-image21"}, &edit)
+	assert.True(t, edit.AcceptsReferences)
+	assert.Equal(t, "edit", edit.ReferenceMode)
+	assert.Positive(t, edit.MaxReferences, "an image model's limit is told too, not only a video model's")
+	assert.True(t, edit.SupportsLoRA)
+
+	env.CallOK("create_local_model", map[string]any{"endpoint": "box", "name": "chroma", "template_id": "txt2img-chroma"}, &img2img)
+	assert.Equal(t, "img2img", img2img.ReferenceMode)
+	assert.Equal(t, 1, img2img.MaxReferences)
+}
+
 func TestModels_CreateFromTemplateAndOwnWorkflowUpdateDeleteAndAssign(t *testing.T) {
 	r := newRig(t, false, "")
 	env := newEnv(t, r)

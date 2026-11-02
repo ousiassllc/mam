@@ -106,7 +106,7 @@ func choicesOf(models []modelcatalog.Info, selected []string) []view.ModelChoice
 	for i, m := range models {
 		out[i] = view.ModelChoice{
 			ID: m.ID, Label: m.Label, Source: sourceLabel[m.Source], Price: priceText(m.Price), Features: featuresText(m),
-			Selected: slices.Contains(selected, m.ID),
+			Selected: slices.Contains(selected, m.ID), Media: m.Media, RefMode: m.ReferenceMode, RefRoles: m.ReferenceRoles, CanLoRA: m.SupportsLoRA,
 		}
 		if !m.Available {
 			out[i].Reason = m.UnavailableMessage
