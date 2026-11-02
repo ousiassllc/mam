@@ -34,13 +34,18 @@ func (t *tracker) touch() {
 // stalled is the timeout error of a prompt that showed no sign of progress for the endpoint's limit, nil while it has
 // (or the endpoint has no limit). A prompt that waits in the server's queue, behind another client's job, shows
 // nothing, and is not stalled: it is looked for in the queue only once the limit has run out, so a healthy job costs
-// no extra request.
+// no extra request. When the queue cannot be read (a failed request) it is not known whether the prompt waits, so the
+// job is not cut off: the next poll looks again.
 func (b *Backend) stalled(ctx context.Context, promptID string, t *tracker) error {
 	limit := b.Client.Stall
 	if limit <= 0 || t.idle() < limit {
 		return nil
 	}
-	if q, err := b.queue(ctx); err == nil && inQueue(q.Pending, promptID) {
+	q, err := b.queue(ctx)
+	if err != nil {
+		return nil
+	}
+	if inQueue(q.Pending, promptID) {
 		t.touch()
 		return nil
 	}

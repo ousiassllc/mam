@@ -2,6 +2,7 @@ package localbackends_test
 
 import (
 	"context"
+	"net/http"
 	"sync"
 	"testing"
 	"time"
@@ -181,6 +182,34 @@ func TestAJobWaitingInTheServersQueueIsNotCutOff(t *testing.T) {
 	var te *localcfg.TimeoutError
 	require.ErrorAs(t, err, &te)
 	assert.True(t, te.Stalled, "running, and silent for the limit")
+	assert.Equal(t, []string{id}, r.f.Cancelled())
+	close(r.f.Hold)
+}
+
+// When the queue cannot be read once the limit has run out (a failed request), it is not known whether the job waits in it:
+// the job is not cut off, and the next poll that reads the queue decides.
+func TestAFailedQueueRequestDoesNotCutOffAStalledJob(t *testing.T) {
+	r := startStallRun(t)
+	id := r.f.PromptID(0)
+	r.f.Lock()
+	r.f.QueueStatus = http.StatusInternalServerError
+	r.f.Unlock()
+
+	r.clock.Advance(stall)
+	failed := r.f.Count("GET /queue")
+	require.Eventually(t, func() bool { return r.f.Count("GET /queue") >= failed+3 }, 10*time.Second, time.Millisecond, "the queue is asked for again at each poll")
+	require.True(t, r.running(), "the queue could not be read: not stalled")
+	assert.Empty(t, r.f.Cancelled())
+
+	r.f.Lock()
+	r.f.QueueStatus = 0
+	r.f.Running = []string{id}
+	r.f.Unlock()
+	err := <-r.result
+
+	var te *localcfg.TimeoutError
+	require.ErrorAs(t, err, &te)
+	assert.True(t, te.Stalled, "the queue is readable again and the job is not in it")
 	assert.Equal(t, []string{id}, r.f.Cancelled())
 	close(r.f.Hold)
 }

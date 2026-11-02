@@ -47,6 +47,8 @@ type Fake struct {
 	NoSocket bool
 	// CancelStatus is the status of POST /api/jobs/<id>/cancel (0: 200).
 	CancelStatus int
+	// QueueStatus is the status of GET /queue (0: 200).
+	QueueStatus int
 	// running / pending are the prompt IDs GET /queue lists.
 	Running, Pending []string
 	Server
@@ -115,6 +117,10 @@ func (f *Fake) serve(w http.ResponseWriter, r *http.Request) {
 	case r.URL.Path == "/queue" && r.Method == http.MethodGet:
 		f.mu.Lock()
 		defer f.mu.Unlock()
+		if f.QueueStatus != 0 {
+			w.WriteHeader(f.QueueStatus)
+			return
+		}
 		entries := func(ids []string) [][]any {
 			out := [][]any{}
 			for i, id := range ids {
