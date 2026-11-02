@@ -22,7 +22,9 @@ func scoringText(s *match.Scoring) string {
 		return ""
 	case s.Face != nil:
 		f := s.Face
-		return fmt.Sprintf("LLM %d点 × %d%% ＋ 顔 %d点（一致度 %.2f）× %d%%", s.LLM, percent(1-f.Weight), f.Points, f.Cosine, percent(f.Weight))
+		llm := percent(1 - f.Weight)
+		// the face share is what the LLM's leaves, so that the two shares add up to 100 % (rounded apart they can make 101 %)
+		return fmt.Sprintf("LLM %d点 × %d%% ＋ 顔 %d点（一致度 %.2f）× %d%%", s.LLM, llm, f.Points, f.Cosine, 100-llm)
 	}
 	if why := skipText[s.Skipped]; why != "" {
 		return fmt.Sprintf("LLM の点だけ（%s）", why)

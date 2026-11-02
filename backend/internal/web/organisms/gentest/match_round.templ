@@ -34,7 +34,7 @@ templ matchRound(r MatchRound, target int) {
 				}
 				<span class="ml-auto flex items-center gap-3">
 					if r.UseURL != "" {
-						<a class="text-xs text-indigo-300 underline" href={ templ.SafeURL(r.UseURL) } aria-label={ "第 " + itoa(r.N) + " 回のプロンプトで生成テストの比較をする" } data-testid="gt-match-round-use">プロンプトで比べる</a>
+						<a class="text-xs text-indigo-300 underline" href={ templ.SafeURL(r.UseURL) } aria-label={ "第 " + itoa(r.N) + " 回のプロンプトで比べる" } data-testid="gt-match-round-use">プロンプトで比べる</a>
 					}
 					if r.DetailURL != "" {
 						<a class="text-xs text-indigo-300 underline" href={ templ.SafeURL(r.DetailURL) } aria-label={ "第 " + itoa(r.N) + " 回の詳細" }>詳細</a>

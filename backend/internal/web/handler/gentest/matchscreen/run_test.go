@@ -221,6 +221,16 @@ func TestTheTimelineAndTheDetailShowHowTheFaceWasMixedIntoTheScore(t *testing.T)
 	assert.Contains(t, detail, "LLM 40点 × 50% ＋ 顔 100点")
 }
 
+// 0.875 and 0.125 both round up as percentages (88 and 13): the shares shown must still add up to 100 %.
+func TestTheSharesOfTheLLMAndTheFaceInTheBreakdownAddUpTo100Percent(t *testing.T) {
+	mix := imagematch.FaceMix{Weight: 0.125, Floor: 0.2, Ceil: 0.7}
+	s := newFaceScreen(t, []int{40}, sameFace{}, mix)
+	_, body := s.estimate(matchForm("once"))
+	require.Equal(t, http.StatusAccepted, s.post(paths.GenerationTestPart("match", "run"), hiddenOf(t, body)).Code)
+	done := s.settled(s.batchID())
+	assert.Contains(t, done, "LLM 40点 × 88% ＋ 顔 100点（一致度 1.00）× 12%")
+}
+
 func TestTheTimelineSaysWhyTheScoreIsTheLLMsAloneWhenTheFaceCannotBeUsed(t *testing.T) {
 	mix := imagematch.FaceMix{Weight: 0.5, Floor: 0.2, Ceil: 0.7}
 	s := newFaceScreen(t, []int{40}, noFace{}, mix)
@@ -248,6 +258,9 @@ func TestEveryRoundWithAPictureCanOpenTheGenerationTestWithItsPromptToCompareMod
 	require.NoError(t, err)
 	require.Len(t, list.Results, 2)
 	assert.Equal(t, 2, strings.Count(done, `data-testid="gt-match-round-use"`), "not only the best round")
+	// the accessible name of the link has the words that are on it (the visible label "プロンプトで比べる"), and says which round
+	assert.Contains(t, done, `aria-label="第 1 回のプロンプトで比べる"`)
+	assert.Contains(t, done, `aria-label="第 2 回のプロンプトで比べる"`)
 	for _, r := range list.Results {
 		assert.Contains(t, done, `href="`+paths.GenerationTest()+`?from_result=`+r.ID+`"`)
 	}
